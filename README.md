@@ -3,7 +3,7 @@
 ### Setup
 
 ```
-./bootstrap.sh
+./scripts/bootstrap.sh
 ```
 
 ### Example
