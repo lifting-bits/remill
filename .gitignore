@@ -1,0 +1,9 @@
+# Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved.
+
+third_party/*
+build/*
+generated/*
+
+*.o
+*.ll
+*.bc
