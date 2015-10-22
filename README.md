@@ -1,4 +1,4 @@
-## McSema2
+## mcsema2
 
 ### Setup
 
