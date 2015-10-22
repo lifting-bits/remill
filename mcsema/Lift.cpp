@@ -112,7 +112,7 @@ extern "C" int main(int argc, char *argv[]) {
   CHECK(!FLAGS_bc_out.empty())
       << "Please specify an output bitcode file with --bc_out.";
 
-  auto arch = mcsema::CreateArch(FLAGS_arch);
+  auto arch = mcsema::Arch::Create(FLAGS_arch);
   auto cfg = mcsema::ReadCFG(FLAGS_cfg);
   auto module = mcsema::CreateOrLoadModule(arch, FLAGS_bc_in);
 

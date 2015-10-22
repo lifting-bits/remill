@@ -19,40 +19,12 @@ namespace cfg {
 class Instr;
 }  // namespace cfg
 
-#if 0
-// Generic register type. For example, a XED register for x86 falls into this
-// type.
-using ArchReg = unsigned;
-
-// X86-specific McSema register type.
-namespace x86 {
-enum class Reg : unsigned;
-}  // namespace x86
-
-// Cross-arch McSema register type.
-//
-// TODO(pag): Add more arch register types here (e.g. `arm::Reg`).
-union McReg {
-
-  inline McReg(const McReg &reg_)
-      : flat(reg_.flat) {}
-
-  inline McReg(unsigned flat_)
-      : flat(flat_) {}
-
-  inline McReg(x86::Reg reg_)
-      : reg_x86(reg_) {}
-
-  const unsigned flat;
-  const x86::Reg reg_x86;
-};
-#endif
-
 class Instr;
 
 class Arch {
  public:
-  Arch(unsigned address_size_);
+  static Arch *Create(std::string arch_name);
+
   virtual ~Arch(void);
 
   // Decode an instruction and invoke a visitor with the decoded instruction.
@@ -67,11 +39,12 @@ class Arch {
   // Number of bits in an address.
   const unsigned address_size;
 
+ protected:
+  Arch(unsigned address_size_);
+
  private:
   Arch(void) = delete;
 };
-
-Arch *CreateArch(std::string arch_name);
 
 }  // namespace mcsema
 
