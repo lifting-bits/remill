@@ -17,10 +17,12 @@ First, extract the control-flow graph information from your binary.
 This script will tell you where it puts the CFG. For example, it might output something
 like `/tmp/tmp.E3RWcczulG.cfg`.
 
-Lets assume that `/path/to/binary` is a 64-bit ELF file. Now you can do the following:
+Lets assume that `/path/to/binary` is a 32-bit ELF file. Now you can do the following:
 
 ```
 ./build/cfg_to_bc --arch=x86 --os=linux --bc_out=/tmp/out.bc --cfg=/tmp/tmp.E3RWcczulG.cfg
 ```
+
+For 64-bit x86 programs, specificy `--arch=amd64`.
 
 Great! Now you have a massive bitcode file. Enjoy!
