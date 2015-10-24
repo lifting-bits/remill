@@ -83,19 +83,20 @@ mkdir -p $DIR/generated/CFG
 # `cfg_to_bc`.
 echo "${YELLOW}Generating architecture-specific state files.${RESET}"
 cd $DIR
-$DIR/third_party/llvm/build/bin/clang++ -x c++ -std=gnu++11 -I$DIR -DMCSEMA_STATE_REG=Reg32 -E - \
+CXXFLAGS="-std=gnu++11 -fno-exceptions -fno-rtti -fno-asynchronous-unwind-tables -I${DIR}"
+$DIR/third_party/llvm/build/bin/clang++ -x c++ -m32 $CXXFLAGS -E - \
     < $DIR/mcsema/Arch/X86/State.inc \
     > $DIR/generated/Arch/X86/State32.cpp
     
-$DIR/third_party/llvm/build/bin/clang++ -x c++ -std=gnu++11 -I$DIR -DMCSEMA_STATE_REG=Reg64 -E - \
+$DIR/third_party/llvm/build/bin/clang++ -x c++ -m64  $CXXFLAGS -E - \
     < $DIR/mcsema/Arch/X86/State.inc \
     > $DIR/generated/Arch/X86/State64.cpp
 
-$DIR/third_party/llvm/build/bin/clang++ -std=gnu++11 -g3 -m32 -emit-llvm \
+$DIR/third_party/llvm/build/bin/clang++ -g3 -m32 $CXXFLAGS -emit-llvm \
     -c $DIR/generated/Arch/X86/State32.cpp \
     -o $DIR/generated/Arch/X86/State32.bc
 
-$DIR/third_party/llvm/build/bin/clang++ -std=gnu++11 -g3 -m64 -emit-llvm \
+$DIR/third_party/llvm/build/bin/clang++ -g3 -m64 $CXXFLAGS -emit-llvm \
     -c $DIR/generated/Arch/X86/State64.cpp \
     -o $DIR/generated/Arch/X86/State64.bc
 

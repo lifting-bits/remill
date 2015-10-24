@@ -59,4 +59,17 @@ void AddTerminatingTailCall(llvm::BasicBlock *B, llvm::Function *To) {
   }
 }
 
+// Find a local variable defined in the entry block of the function. We use
+// this to find register variables.
+llvm::Value *FindLocalVariable(llvm::Function *F, std::string name) {
+  for (auto &I : F->getEntryBlock()) {
+    if (I.getName() == name) {
+      return &I;
+    }
+  }
+  LOG(FATAL) << "Could not find variable " << name << " in function "
+             << F->getName().str();
+  return nullptr;
+}
+
 }  // namespace mcsema

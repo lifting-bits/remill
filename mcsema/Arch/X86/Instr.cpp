@@ -45,32 +45,6 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
   return iclass_name + "_" + std::to_string(op_size);
 }
 
-// Argument types to the instruction function.
-static std::vector<llvm::Type *> FuncArgTypes(std::vector<llvm::Value *> &args) {
-  std::vector<llvm::Type *> arg_types;
-  for (auto arg : args) {
-    arg_types.push_back(arg->getType());
-  }
-  return arg_types;
-}
-
-// Get the instruction function.
-static llvm::Function *InstructionFunction(
-    llvm::Module *M,
-    const xed_decoded_inst_t *xedd,
-    std::vector<llvm::Value *> &args) {
-
-  auto &C = M->getContext();
-  auto func_name = InstructionFunctionName(xedd);
-  auto arg_types = FuncArgTypes(args);
-  auto void_type = llvm::Type::getVoidTy(C);
-  auto instr_type = llvm::FunctionType::get(void_type, arg_types, false);
-  auto V = M->getOrInsertFunction(func_name, instr_type);
-  auto F = llvm::dyn_cast<llvm::Function>(V);
-  InitFunctionAttributes(F);
-  return F;
-}
-
 // Return the type for a given operand.
 static llvm::Type *OperandType(llvm::LLVMContext &C,
                                const xed_operand_t *xedo,
@@ -164,19 +138,6 @@ static llvm::Type *OperandType(llvm::LLVMContext &C,
   }
 }
 
-// Find a local variable defined in the entry block of the function. We use
-// this to find register variables.
-static llvm::Value *LookupLocal(llvm::Function *F, std::string name) {
-  for (auto &I : F->getEntryBlock()) {
-    if (I.getName() == name) {
-      return &I;
-    }
-  }
-  LOG(FATAL) << "Could not find variable " << name << " in function "
-             << F->getName().str();
-  return nullptr;
-}
-
 // Returns the address space associated with a segment register. This is a
 // GNU-specific extension.
 static unsigned AddressSpace(xed_reg_enum_t seg, xed_operand_enum_t name) {
@@ -212,27 +173,27 @@ bool Instr::Lift(const BlockMap &blocks, llvm::BasicBlock *B_) {
   LiftPC();
 
   if (IsDirectJump()) {
-    AddTerminatingTailCall(F, blocks[TargetPC()]);
+    AddTerminatingTailCall(B, blocks[TargetPC()]);
     return false;
 
   } else if (IsIndirectJump()) {
     LiftGeneric();  // loads target into `gpr.rip`.
-    AddTerminatingTailCall(F, IndirectBranchResolver(M));
+    AddTerminatingTailCall(B, IndirectBranchResolver(M));
     return false;
 
   } else if (IsDirectFunctionCall()) {
     LiftGeneric();  // Adjusts the stack, stores `gpr.rip` to the stack.
-    AddTerminatingTailCall(F, blocks[TargetPC()]);
+    AddTerminatingTailCall(B, blocks[TargetPC()]);
     return false;
 
   } else if (IsIndirectFunctionCall()) {
     LiftGeneric();  // Adjusts the stack, loads target into `gpr.rip`.
-    AddTerminatingTailCall(F, IndirectBranchResolver(M));
+    AddTerminatingTailCall(B, IndirectBranchResolver(M));
     return false;
 
   } else if (IsFunctionReturn()) {
     LiftGeneric();  // Adjusts the stack, loads target into `gpr.rip`.
-    AddTerminatingTailCall(F, IndirectBranchResolver(M));
+    AddTerminatingTailCall(B, IndirectBranchResolver(M));
     return false;
 
   } else if (IsBranch()) {
@@ -289,8 +250,9 @@ void Instr::LiftPC(void) {
 
   llvm::IRBuilder<> ir(B);
   llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
-  ir.CreateStore(llvm::ConstantInt::get(IntPtrTy, NextPC(), false),
-                 ir.CreateLoad(LookupLocal(F, PCRegName(xedd) + "_write")));
+  ir.CreateStore(
+      llvm::ConstantInt::get(IntPtrTy, NextPC(), false),
+      ir.CreateLoad(FindLocalVariable(F, PCRegName(xedd) + "_write")));
 }
 
 // Lift a generic instruction.
@@ -306,9 +268,17 @@ void Instr::LiftGeneric(void) {
   }
 
   llvm::IRBuilder<> ir(B);
-  auto instr_func = InstructionFunction(M, xedd, args);
-  auto C = ir.CreateCall(instr_func, args);
-  C->setCallingConv(F->getCallingConv());
+
+  auto func_name = InstructionFunctionName(xedd);
+  if (auto F = M->getFunction(func_name)) {
+    ir.CreateCall(F, args);
+  } else if (auto FP = M->getGlobalVariable(func_name)) {
+    CHECK(FP->isConstant() && FP->hasInitializer())
+        << "Expected a `constexpr` variable as the function pointer.";
+    ir.CreateCall(llvm::dyn_cast<llvm::Function>(FP->getInitializer()), args);
+  } else {
+    LOG(FATAL) << "Missing instruction semantics for " << func_name;
+  }
 
   // Fixup instructions that must follow the instruction function. These handle
   // things like segment-specific memory operands.
@@ -326,7 +296,7 @@ void Instr::LiftConditionalBranch(const BlockMap &blocks) {
 
   llvm::IRBuilder<> ir(B);
   llvm::Value *DestPC = ir.CreateLoad(ir.CreateLoad(
-      LookupLocal(F, PCRegName(xedd) + "_read")));
+      FindLocalVariable(F, PCRegName(xedd) + "_read")));
   llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
   llvm::Value *BranchPC = llvm::ConstantInt::get(IntPtrTy, target_pc, false);
 
@@ -433,7 +403,8 @@ void Instr::LiftMemory(const xed_operand_t *xedo, unsigned op_num) {
         return llvm::ConstantInt::get(IntPtrTy, 0, false);
       } else {
         auto var_name = std::string(xed_reg_enum_t2str(reg)) + "_read";
-        llvm::Value *V = ir.CreateLoad(ir.CreateLoad(LookupLocal(F, var_name)));
+        llvm::Value *V = ir.CreateLoad(ir.CreateLoad(
+            FindLocalVariable(F, var_name)));
         if (xed_get_register_width_bits64(reg) < addr_width) {
           V = ir.CreateZExt(V, IntPtrTy);
         }
@@ -473,35 +444,33 @@ void Instr::LiftMemory(const xed_operand_t *xedo, unsigned op_num) {
 // Convert an immediate constant into an LLVM `Value` for passing into the
 // instruction implementation.
 void Instr::LiftImmediate(xed_operand_enum_t op_name) {
-  llvm::Value *I;
-  auto Ty = llvm::Type::getIntNTy(
-      *C, xed_decoded_inst_get_immediate_width_bits(xedd));
+  auto val = 0ULL;
+  auto is_signed = false;
+  auto op_size = xed_decoded_inst_get_operand_width(xedd);
+  auto imm_size = xed_decoded_inst_get_immediate_width_bits(xedd);
+
+  CHECK(imm_size <= op_size)
+      << "Immediate size is greater than effective operand size at PC "
+      << instr->address();
 
   if (XED_OPERAND_IMM0SIGNED == op_name ||
       xed_operand_values_get_immediate_is_signed(xedd)) {
-    I = llvm::ConstantInt::get(
-        Ty,
-        static_cast<uint64_t>(
-            static_cast<int64_t>(xed_decoded_inst_get_signed_immediate(xedd))),
-        true);
+    val = static_cast<uint64_t>(
+        static_cast<int64_t>(xed_decoded_inst_get_signed_immediate(xedd)));
+    is_signed = true;
 
   } else if (XED_OPERAND_IMM0 == op_name) {
-    I = llvm::ConstantInt::get(
-        Ty,
-        static_cast<uint64_t>(xed_decoded_inst_get_unsigned_immediate(xedd)),
-        false);
+    val = static_cast<uint64_t>(xed_decoded_inst_get_unsigned_immediate(xedd));
 
   } else if (XED_OPERAND_IMM1_BYTES == op_name || XED_OPERAND_IMM1 == op_name) {
-    I = llvm::ConstantInt::get(
-        Ty,
-        static_cast<uint64_t>(xed_decoded_inst_get_second_immediate(xedd)),
-        false);
+    val = static_cast<uint64_t>(xed_decoded_inst_get_second_immediate(xedd));
 
   } else {
     LOG(FATAL) << "Unexpected immediate type " << op_name;
   }
 
-  args.push_back(I);
+  args.push_back(llvm::ConstantInt::get(
+      llvm::Type::getIntNTy(*C, op_size), val, is_signed));
 }
 
 // Lift a register operand. We need to handle both reads and writes. We place
@@ -511,25 +480,23 @@ void Instr::LiftRegister(const xed_operand_t *xedo) {
   auto reg = xed_decoded_inst_get_reg(xedd, op_name);
   std::string reg_name = xed_reg_enum_t2str(reg);
 
+  llvm::IRBuilder<> ir(B);
   if (xed_operand_written(xedo)) {
-    args.push_back(LookupLocal(F, reg_name + "_write"));
-  } else if (xed_operand_read(xedo)) {
-    llvm::IRBuilder<> ir(B);
+    args.push_back(
+        ir.CreateLoad(FindLocalVariable(F, reg_name + "_write")));
+  }
+  if (xed_operand_read(xedo)) {
     args.push_back(
         ir.CreateLoad(
-            ir.CreateLoad(LookupLocal(F, reg_name + "_read"))));
-  } else {
-    LOG(FATAL) << "Operand is neither read nor written.";
+            ir.CreateLoad(FindLocalVariable(F, reg_name + "_read"))));
   }
 }
 
 // Lift a relative branch operand.
 void Instr::LiftBranchDisplacement(void) {
-  auto disp = xed_decoded_inst_get_branch_displacement(xedd);
-  auto width = xed_decoded_inst_get_branch_displacement_width_bits(xedd);
-  llvm::Type *RelBrTy = llvm::Type::getIntNTy(*C, width);
-  args.push_back(llvm::ConstantInt::get(
-      RelBrTy, static_cast<uint64_t>(static_cast<int64_t>(disp)), true));
+  auto addr_width = xed_operand_values_get_effective_address_width(xedd);
+  llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
+  args.push_back(llvm::ConstantInt::get(IntPtrTy, TargetPC(), true));
 }
 
 bool Instr::IsFunctionCall(void) const {

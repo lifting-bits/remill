@@ -206,12 +206,12 @@ static void TerminateBlockMethod(const BlockMap &blocks,
 
 // Lift code contained in blocks into the block methods.
 void BC::LiftBlocks(const cfg::Module *cfg) {
-  llvm::legacy::FunctionPassManager PM(module);
-  PM.add(llvm::createDeadCodeEliminationPass());
-  PM.add(llvm::createCFGSimplificationPass());
-  PM.add(llvm::createPromoteMemoryToRegisterPass());
-  PM.add(llvm::createReassociatePass());
-  PM.add(llvm::createInstructionCombiningPass());
+  llvm::legacy::FunctionPassManager FPM(module);
+  FPM.add(llvm::createDeadCodeEliminationPass());
+  FPM.add(llvm::createCFGSimplificationPass());
+  FPM.add(llvm::createPromoteMemoryToRegisterPass());
+  FPM.add(llvm::createReassociatePass());
+  FPM.add(llvm::createInstructionCombiningPass());
 
   for (const auto &block : cfg->blocks()) {
     CHECK(0 < block.instructions_size())
@@ -228,7 +228,7 @@ void BC::LiftBlocks(const cfg::Module *cfg) {
 
     // Perform simple, incremental optimizations on the block functions to
     // avoid OOMs.
-    PM.run(*BF);
+    FPM.run(*BF);
   }
 }
 

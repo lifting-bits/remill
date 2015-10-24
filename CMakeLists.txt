@@ -63,6 +63,7 @@ target_link_libraries(cfg_to_bc
     LLVMIRReader LLVMBitReader LLVMBitWriter
     LLVMTransformUtils
     LLVMScalarOpts
+    LLVMipo
 )
 
 target_compile_options(cfg_to_bc PRIVATE

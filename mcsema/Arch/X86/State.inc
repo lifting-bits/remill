@@ -1,6 +1,7 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
 #include <cstdint>
+#include <type_traits>
 
 #include "mcsema/Arch/X86/Register.inc"
 
@@ -121,24 +122,9 @@ class Segments {
   uint16_t cs;
 };
 
-union Reg32 {
-  alignas(1) struct {
-    uint8_t low;
-    uint8_t high;
-  } byte;
-  alignas(2) uint16_t word; 
-  alignas(4) uint32_t dword;
-  alignas(4) uint32_t full;
-};
+#ifdef __x86_64__
 
-static_assert(4 == sizeof(Reg32), "Invalid packing of `Reg32`.");
-static_assert(0 == __builtin_offsetof(Reg32, byte.low), "Invalid packing of `Reg32::low`.");
-static_assert(1 == __builtin_offsetof(Reg32, byte.high), "Invalid packing of `Reg32::high`.");
-static_assert(0 == __builtin_offsetof(Reg32, word), "Invalid packing of `Reg32::word`.");
-static_assert(0 == __builtin_offsetof(Reg32, dword), "Invalid packing of `Reg32::dword`.");
-static_assert(0 == __builtin_offsetof(Reg32, full), "Invalid packing of `Reg32::full`.");
-
-union Reg64 {
+union Reg {
   alignas(1) struct {
     uint8_t low;
     uint8_t high;
@@ -146,41 +132,57 @@ union Reg64 {
   alignas(2) uint16_t word; 
   alignas(4) uint32_t dword;
   alignas(8) uint64_t full;
+  alignas(8) uint64_t *ptr;
 };
 
-static_assert(8 == sizeof(Reg64), "Invalid packing of `Reg64`.");
-static_assert(0 == __builtin_offsetof(Reg64, byte.low), "Invalid packing of `Reg64::low`.");
-static_assert(1 == __builtin_offsetof(Reg64, byte.high), "Invalid packing of `Reg64::high`.");
-static_assert(0 == __builtin_offsetof(Reg64, word), "Invalid packing of `Reg64::word`.");
-static_assert(0 == __builtin_offsetof(Reg64, dword), "Invalid packing of `Reg64::dword`.");
-static_assert(0 == __builtin_offsetof(Reg64, full), "Invalid packing of `Reg64::full`.");
+#else
+
+union Reg {
+  alignas(1) struct {
+    uint8_t low;
+    uint8_t high;
+  } byte;
+  alignas(2) uint16_t word; 
+  alignas(4) uint32_t dword;
+  alignas(4) uint32_t full;
+  alignas(4) uint32_t *ptr;
+};
+
+#endif  // __x86_64__
+
+static_assert(sizeof(void *) == sizeof(Reg), "Invalid packing of `Reg`.");
+static_assert(0 == __builtin_offsetof(Reg, byte.low), "Invalid packing of `Reg::low`.");
+static_assert(1 == __builtin_offsetof(Reg, byte.high), "Invalid packing of `Reg::high`.");
+static_assert(0 == __builtin_offsetof(Reg, word), "Invalid packing of `Reg::word`.");
+static_assert(0 == __builtin_offsetof(Reg, dword), "Invalid packing of `Reg::dword`.");
+static_assert(0 == __builtin_offsetof(Reg, full), "Invalid packing of `Reg::full`.");
 
 class GPR {
  public:
   // Named the same way as the 64-bit version to keep names the same
   // across architectures.
-  MCSEMA_STATE_REG rax;
-  MCSEMA_STATE_REG rbx;
-  MCSEMA_STATE_REG rcx;
-  MCSEMA_STATE_REG rdx;
-  MCSEMA_STATE_REG rsi;
-  MCSEMA_STATE_REG rdi;
-  MCSEMA_STATE_REG rsp;
-  MCSEMA_STATE_REG rbp;
+  Reg rax;
+  Reg rbx;
+  Reg rcx;
+  Reg rdx;
+  Reg rsi;
+  Reg rdi;
+  Reg rsp;
+  Reg rbp;
 
   // Not actually used in 32-bit; but useful for keeping everything consistent
   // across architectures.
-  MCSEMA_STATE_REG r8;
-  MCSEMA_STATE_REG r9;
-  MCSEMA_STATE_REG r10;
-  MCSEMA_STATE_REG r11;
-  MCSEMA_STATE_REG r12;
-  MCSEMA_STATE_REG r13;
-  MCSEMA_STATE_REG r14;
-  MCSEMA_STATE_REG r15;
+  Reg r8;
+  Reg r9;
+  Reg r10;
+  Reg r11;
+  Reg r12;
+  Reg r13;
+  Reg r14;
+  Reg r15;
 
   // Next program counter.
-  MCSEMA_STATE_REG rip;
+  Reg rip;
 };
 
 class alignas(64) State {
@@ -209,9 +211,62 @@ class alignas(64) State {
     (void) gpr.rip;
   }
 
+ public:
   FPU fpu;
   Flags flag;
   Segments seg;
   GPR gpr;
 };
 
+typedef uint64_t &R64W;
+typedef uint64_t R64;
+
+typedef decltype(Reg().full) &R32W;
+typedef uint32_t R32;
+
+typedef uint16_t &R16W;
+typedef uint16_t R16;
+
+typedef uint8_t &R8W;
+typedef uint8_t R8;
+
+typedef uint64_t *M64;
+typedef uint32_t *M32;
+typedef uint16_t *M16;
+typedef uint8_t *M8;
+
+typedef uint64_t IMM64;
+typedef uint32_t IMM32;
+typedef uint16_t IMM16;
+typedef uint8_t IMM8;
+
+typedef int64_t SIMM64;
+typedef int32_t SIMM32;
+typedef int16_t SIMM16;
+typedef int8_t SIMM8;
+
+#define INSTR_ATTRIBS __attribute__((always_inline, flatten))
+#define DEF_INSTR(name) extern "C" constexpr auto name __attribute__((used))
+
+namespace {
+
+template <typename T>
+INSTR_ATTRIBS
+static T &W(T *v) { return *v; }
+
+template <typename T>
+INSTR_ATTRIBS
+static T &W(T &v) { return v; }
+
+template <typename T>
+INSTR_ATTRIBS
+static T R(T *v) { return *v; }
+
+template <typename T>
+INSTR_ATTRIBS
+static T R(T v) { return v; }
+
+}  // namespace
+
+#include "mcsema/Arch/X86/Sem/MOV.inc"
+#include "mcsema/Arch/X86/Sem/CALL_RET.inc"
