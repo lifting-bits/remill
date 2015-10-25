@@ -353,7 +353,7 @@ void Instr::LiftOperand(unsigned op_num) {
 void Instr::LiftMemory(const xed_operand_t *xedo, unsigned op_num) {
   auto op_name = xed_operand_name(xedo);
   auto op_width = xed_decoded_inst_operand_length_bits(xedd, op_num);
-  auto mem_index = XED_OPERAND_MEM0 == op_name ? 0 : 1;
+  auto mem_index = (XED_OPERAND_MEM1 == op_name) ? 1 : 0;  // Handles AGEN.
   auto seg = xed_decoded_inst_get_seg_reg(xedd, mem_index);
   auto base = xed_decoded_inst_get_base_reg(xedd, mem_index);
   auto index = xed_decoded_inst_get_index_reg(xedd, mem_index);

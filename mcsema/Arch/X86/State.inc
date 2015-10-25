@@ -246,7 +246,7 @@ typedef int16_t SIMM16;
 typedef int8_t SIMM8;
 
 #define INSTR_ATTRIBS __attribute__((always_inline, flatten))
-#define DEF_INSTR(name) extern "C" constexpr auto name __attribute__((used))
+#define DEF_INSTR(name) extern "C" constexpr auto name __attribute__((used, visibility("default")))
 
 namespace {
 
@@ -268,5 +268,7 @@ static T R(T v) { return v; }
 
 }  // namespace
 
-#include "mcsema/Arch/X86/Sem/MOV.inc"
 #include "mcsema/Arch/X86/Sem/CALL_RET.inc"
+#include "mcsema/Arch/X86/Sem/DATAXFER.inc"
+#include "mcsema/Arch/X86/Sem/LOGICAL.inc"
+#include "mcsema/Arch/X86/Sem/MISC.inc"
