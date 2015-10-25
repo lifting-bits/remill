@@ -268,7 +268,7 @@ static T R(T v) { return v; }
 
 }  // namespace
 
-#include "mcsema/Arch/X86/Sem/CALL_RET.inc"
-#include "mcsema/Arch/X86/Sem/DATAXFER.inc"
-#include "mcsema/Arch/X86/Sem/LOGICAL.inc"
-#include "mcsema/Arch/X86/Sem/MISC.inc"
+#include "mcsema/Arch/X86/Semantics/CALL_RET.inc"
+#include "mcsema/Arch/X86/Semantics/DATAXFER.inc"
+#include "mcsema/Arch/X86/Semantics/LOGICAL.inc"
+#include "mcsema/Arch/X86/Semantics/MISC.inc"
