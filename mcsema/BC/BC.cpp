@@ -27,8 +27,6 @@
 #include "mcsema/BC/Util.h"
 #include "mcsema/CFG/CFG.h"
 
-DECLARE_string(os);
-
 namespace llvm {
 class ReturnInst;
 }  // namespace
@@ -40,16 +38,6 @@ namespace {
 // and private symbols.
 static std::string NamedSymbolMetaId(std::string func_name) {
   return "mcsema_external:" + func_name;
-}
-
-// Find the block method template by name.
-static llvm::Function *BlockMethod(llvm::Module *M) {
-  if (FLAGS_os == "linux") {
-    return M->getFunction("_ZN5State5BlockEv");
-  } else {
-    LOG(FATAL) << "Missing block method name for OS: " << FLAGS_os;
-    return nullptr;
-  }
 }
 
 }  // namespace
@@ -64,6 +52,7 @@ BC::BC(const Arch *arch_, llvm::Module *module_)
       method(BlockMethod(module)) {
   IdentifyExistingSymbols();
   InitFunctionAttributes(method);
+  InitFunctionAttributes(IndirectBranchMethod(module));
 }
 
 // Find existing exported functions and variables. This is for the sake of

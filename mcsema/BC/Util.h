@@ -29,7 +29,13 @@ void AddTerminatingTailCall(llvm::BasicBlock *From, llvm::Function *To);
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
-llvm::Value *FindLocalVariable(llvm::Function *F, std::string name);
+llvm::Value *FindVarInFunction(llvm::Function *F, std::string name);
+
+// Return a pointer to the block method template.
+llvm::Function *BlockMethod(llvm::Module *M);
+
+// Return a pointer to the indirect branch method.
+llvm::Function *IndirectBranchMethod(llvm::Module *M);
 
 }  // namespace mcsema
 

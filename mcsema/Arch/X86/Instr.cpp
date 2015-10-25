@@ -16,8 +16,6 @@
 
 #include "mcsema/CFG/CFG.h"
 
-DECLARE_string(os);
-
 namespace mcsema {
 namespace x86 {
 
@@ -152,16 +150,6 @@ static unsigned AddressSpace(xed_reg_enum_t seg, xed_operand_enum_t name) {
   }
 }
 
-// Find the block method template by name.
-static llvm::Function *IndirectBranchResolver(llvm::Module *M) {
-  if (FLAGS_os == "linux") {
-    return M->getFunction("_ZN5State22IndirectBranchResolverEv");
-  } else {
-    LOG(FATAL) << "Missing block method name for OS: " << FLAGS_os;
-    return nullptr;
-  }
-}
-
 }  // namespace
 
 bool Instr::Lift(const BlockMap &blocks, llvm::BasicBlock *B_) {
@@ -178,7 +166,7 @@ bool Instr::Lift(const BlockMap &blocks, llvm::BasicBlock *B_) {
 
   } else if (IsIndirectJump()) {
     LiftGeneric();  // loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, IndirectBranchResolver(M));
+    AddTerminatingTailCall(B, IndirectBranchMethod(M));
     return false;
 
   } else if (IsDirectFunctionCall()) {
@@ -188,12 +176,12 @@ bool Instr::Lift(const BlockMap &blocks, llvm::BasicBlock *B_) {
 
   } else if (IsIndirectFunctionCall()) {
     LiftGeneric();  // Adjusts the stack, loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, IndirectBranchResolver(M));
+    AddTerminatingTailCall(B, IndirectBranchMethod(M));
     return false;
 
   } else if (IsFunctionReturn()) {
     LiftGeneric();  // Adjusts the stack, loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, IndirectBranchResolver(M));
+    AddTerminatingTailCall(B, IndirectBranchMethod(M));
     return false;
 
   } else if (IsBranch()) {
@@ -252,7 +240,7 @@ void Instr::LiftPC(void) {
   llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
   ir.CreateStore(
       llvm::ConstantInt::get(IntPtrTy, NextPC(), false),
-      ir.CreateLoad(FindLocalVariable(F, PCRegName(xedd) + "_write")));
+      ir.CreateLoad(FindVarInFunction(F, PCRegName(xedd) + "_write")));
 }
 
 // Lift a generic instruction.
@@ -296,7 +284,7 @@ void Instr::LiftConditionalBranch(const BlockMap &blocks) {
 
   llvm::IRBuilder<> ir(B);
   llvm::Value *DestPC = ir.CreateLoad(ir.CreateLoad(
-      FindLocalVariable(F, PCRegName(xedd) + "_read")));
+      FindVarInFunction(F, PCRegName(xedd) + "_read")));
   llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
   llvm::Value *BranchPC = llvm::ConstantInt::get(IntPtrTy, target_pc, false);
 
@@ -404,7 +392,7 @@ void Instr::LiftMemory(const xed_operand_t *xedo, unsigned op_num) {
       } else {
         auto var_name = std::string(xed_reg_enum_t2str(reg)) + "_read";
         llvm::Value *V = ir.CreateLoad(ir.CreateLoad(
-            FindLocalVariable(F, var_name)));
+            FindVarInFunction(F, var_name)));
         if (xed_get_register_width_bits64(reg) < addr_width) {
           V = ir.CreateZExt(V, IntPtrTy);
         }
@@ -483,12 +471,12 @@ void Instr::LiftRegister(const xed_operand_t *xedo) {
   llvm::IRBuilder<> ir(B);
   if (xed_operand_written(xedo)) {
     args.push_back(
-        ir.CreateLoad(FindLocalVariable(F, reg_name + "_write")));
+        ir.CreateLoad(FindVarInFunction(F, reg_name + "_write")));
   }
   if (xed_operand_read(xedo)) {
     args.push_back(
         ir.CreateLoad(
-            ir.CreateLoad(FindLocalVariable(F, reg_name + "_read"))));
+            ir.CreateLoad(FindVarInFunction(F, reg_name + "_read"))));
   }
 }
 

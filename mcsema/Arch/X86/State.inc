@@ -190,7 +190,7 @@ class alignas(64) State {
   // Method that will implement a basic block. We will clone this method for
   // each basic block in the code being lifted.
   __attribute__((used))
-  void Block(void) noexcept {
+  void BlockMethod(void) noexcept {
     
     // Define read- and write-specific aliases of each register. We will
     // reference these variables from the bitcode side of things so that,
@@ -206,8 +206,8 @@ class alignas(64) State {
   }
   
   // TODO(pag): Perform indirect branch based on program counter.
-  __attribute__((used))
-  void IndirectBranchResolver(void) noexcept {
+  __attribute__((used, noinline))
+  void IndirectBranchMethod(void) noexcept {
     (void) gpr.rip;
   }
 
