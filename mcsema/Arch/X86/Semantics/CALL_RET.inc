@@ -3,23 +3,23 @@
 namespace {
 
 template <typename T>
-DEF_SEMANTICS(CALL, T target_pc) {
+DEF_SEM(CALL, T target_pc) {
   *state->gpr.rsp.ptr-- = state->gpr.rip.full;
   state->gpr.rip.full = static_cast<uintptr_t>(target_pc);
 }
 
 template <typename T>
-DEF_SEMANTICS(INDIRECT_CALL, T *target_pc) {
+DEF_SEM(INDIRECT_CALL, T *target_pc) {
   *state->gpr.rsp.ptr-- = state->gpr.rip.full;
   state->gpr.rip.full = static_cast<uintptr_t>(*target_pc);
 }
 
-DEF_SEMANTICS(RET_IMM, IMM16 bytes) {
+DEF_SEM(RET_IMM, IMM16 bytes) {
   state->gpr.rip.full = *state->gpr.rsp.ptr++;
   state->gpr.rsp.full += bytes;
 }
 
-DEF_SEMANTICS(RET) {
+DEF_SEM(RET) {
   state->gpr.rip.full = *state->gpr.rsp.ptr++;
 }
 

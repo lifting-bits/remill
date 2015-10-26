@@ -2,7 +2,7 @@
 namespace {
 
 template <typename D, typename S>
-DEF_SEMANTICS(LEA, D dst, S src) {
+DEF_SEM(LEA, D dst, S src) {
   W(dst) = reinterpret_cast<uintptr_t>(src);
 }
 
