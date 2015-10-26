@@ -3,7 +3,7 @@
 namespace {
 
 template <typename D, typename S>
-IMPL_INSTR(MOV, D dst, S src) {
+DEF_SEMANTICS(MOV, D dst, S src) {
   W(dst) = R(src);
 }
 

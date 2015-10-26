@@ -254,9 +254,12 @@ typedef int16_t SIMM16;
 typedef int8_t SIMM8;
 
 #define INSTR_ATTRIBS __attribute__((always_inline, flatten))
-#define DEF_INSTR(name) extern "C" constexpr auto name __attribute__((used, visibility("default")))
 
-#define IMPL_INSTR(name, ...) \
+// Define a specific instruction selection variable.
+#define DEF_ISEL(name) extern "C" constexpr auto name __attribute__((used, visibility("default")))
+
+// Define a semantics implementing function.
+#define DEF_SEM(name, ...) \
     INSTR_ATTRIBS static void name (State *state, ##__VA_ARGS__)
 
 namespace {
