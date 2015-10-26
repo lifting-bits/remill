@@ -2,8 +2,7 @@
 namespace {
 
 template <typename D, typename S>
-INSTR_ATTRIBS
-static void LEA(State *, D dst, S src) {
+IMPL_INSTR(LEA, D dst, S src) {
   W(dst) = reinterpret_cast<uintptr_t>(src);
 }
 

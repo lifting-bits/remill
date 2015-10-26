@@ -3,8 +3,7 @@
 namespace {
 
 template <typename D, typename S>
-INSTR_ATTRIBS
-static void MOV(State *, D dst, S src) {
+IMPL_INSTR(MOV, D dst, S src) {
   W(dst) = R(src);
 }
 

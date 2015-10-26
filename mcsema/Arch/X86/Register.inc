@@ -8,6 +8,10 @@
 # undef REG_INFO
 #endif
 
+#ifdef REG_INFO64
+# undef REG_INFO64
+#endif
+
 // REG_INFO(read_sel, write_sel, name)
 #define PLAT_X86_REG_INFOS() \
     REG_INFO(gpr.rax.byte.high, gpr.rax.byte.high, AH) \
@@ -22,14 +26,14 @@
 	REG_INFO(gpr.rdi.byte.low, gpr.rdi.byte.low, DIL) \
 	REG_INFO(gpr.rsp.byte.low, gpr.rsp.byte.low, SPL) \
 	REG_INFO(gpr.rbp.byte.low, gpr.rbp.byte.low, BPL) \
-	REG_INFO(gpr.r8.byte.low, gpr.r8.byte.low, R8B) \
-	REG_INFO(gpr.r9.byte.low, gpr.r9.byte.low, R9B) \
-	REG_INFO(gpr.r10.byte.low, gpr.r10.byte.low, R10B) \
-	REG_INFO(gpr.r11.byte.low, gpr.r11.byte.low, R11B) \
-	REG_INFO(gpr.r12.byte.low, gpr.r12.byte.low, R12B) \
-	REG_INFO(gpr.r13.byte.low, gpr.r13.byte.low, R13B) \
-	REG_INFO(gpr.r14.byte.low, gpr.r14.byte.low, R14B) \
-	REG_INFO(gpr.r15.byte.low, gpr.r15.byte.low, R15B) \
+	REG_INFO64(gpr.r8.byte.low, gpr.r8.byte.low, R8B) \
+	REG_INFO64(gpr.r9.byte.low, gpr.r9.byte.low, R9B) \
+	REG_INFO64(gpr.r10.byte.low, gpr.r10.byte.low, R10B) \
+	REG_INFO64(gpr.r11.byte.low, gpr.r11.byte.low, R11B) \
+	REG_INFO64(gpr.r12.byte.low, gpr.r12.byte.low, R12B) \
+	REG_INFO64(gpr.r13.byte.low, gpr.r13.byte.low, R13B) \
+	REG_INFO64(gpr.r14.byte.low, gpr.r14.byte.low, R14B) \
+	REG_INFO64(gpr.r15.byte.low, gpr.r15.byte.low, R15B) \
 	REG_INFO(gpr.rax.word, gpr.rax.word, AX) \
 	REG_INFO(gpr.rbx.word, gpr.rbx.word, BX) \
 	REG_INFO(gpr.rcx.word, gpr.rcx.word, CX) \
@@ -38,14 +42,14 @@
 	REG_INFO(gpr.rdi.word, gpr.rdi.word, DI) \
 	REG_INFO(gpr.rsp.word, gpr.rsp.word, SP) \
 	REG_INFO(gpr.rbp.word, gpr.rbp.word, BP) \
-	REG_INFO(gpr.r8.word, gpr.r8.word, R8W) \
-	REG_INFO(gpr.r9.word, gpr.r9.word, R9W) \
-	REG_INFO(gpr.r10.word, gpr.r10.word, R10W) \
-	REG_INFO(gpr.r11.word, gpr.r11.word, R11W) \
-	REG_INFO(gpr.r12.word, gpr.r12.word, R12W) \
-	REG_INFO(gpr.r13.word, gpr.r13.word, R13W) \
-	REG_INFO(gpr.r14.word, gpr.r14.word, R14W) \
-	REG_INFO(gpr.r15.word, gpr.r15.word, R15W) \
+	REG_INFO64(gpr.r8.word, gpr.r8.word, R8W) \
+	REG_INFO64(gpr.r9.word, gpr.r9.word, R9W) \
+	REG_INFO64(gpr.r10.word, gpr.r10.word, R10W) \
+	REG_INFO64(gpr.r11.word, gpr.r11.word, R11W) \
+	REG_INFO64(gpr.r12.word, gpr.r12.word, R12W) \
+	REG_INFO64(gpr.r13.word, gpr.r13.word, R13W) \
+	REG_INFO64(gpr.r14.word, gpr.r14.word, R14W) \
+	REG_INFO64(gpr.r15.word, gpr.r15.word, R15W) \
 	REG_INFO(gpr.rip.word, gpr.rip.word, IP) \
 	REG_INFO(gpr.rax.dword, gpr.rax.full, EAX) \
 	REG_INFO(gpr.rbx.dword, gpr.rbx.full, EBX) \
@@ -55,14 +59,14 @@
 	REG_INFO(gpr.rdi.dword, gpr.rdi.full, EDI) \
 	REG_INFO(gpr.rsp.dword, gpr.rsp.full, ESP) \
 	REG_INFO(gpr.rbp.dword, gpr.rbp.full, EBP) \
-	REG_INFO(gpr.r8.dword, gpr.r8.full, R8D) \
-	REG_INFO(gpr.r9.dword, gpr.r9.full, R9D) \
-	REG_INFO(gpr.r10.dword, gpr.r10.full, R10D) \
-	REG_INFO(gpr.r11.dword, gpr.r11.full, R11D) \
-	REG_INFO(gpr.r12.dword, gpr.r12.full, R12D) \
-	REG_INFO(gpr.r13.dword, gpr.r13.full, R13D) \
-	REG_INFO(gpr.r14.dword, gpr.r14.full, R14D) \
-	REG_INFO(gpr.r15.dword, gpr.r15.full, R15D) \
+	REG_INFO64(gpr.r8.dword, gpr.r8.full, R8D) \
+	REG_INFO64(gpr.r9.dword, gpr.r9.full, R9D) \
+	REG_INFO64(gpr.r10.dword, gpr.r10.full, R10D) \
+	REG_INFO64(gpr.r11.dword, gpr.r11.full, R11D) \
+	REG_INFO64(gpr.r12.dword, gpr.r12.full, R12D) \
+	REG_INFO64(gpr.r13.dword, gpr.r13.full, R13D) \
+	REG_INFO64(gpr.r14.dword, gpr.r14.full, R14D) \
+	REG_INFO64(gpr.r15.dword, gpr.r15.full, R15D) \
 	REG_INFO(gpr.rip.dword, gpr.rip.full, EIP) \
 	REG_INFO(gpr.rax.full, gpr.rax.full, RAX) \
 	REG_INFO(gpr.rbx.full, gpr.rbx.full, RBX) \
@@ -72,14 +76,14 @@
 	REG_INFO(gpr.rdi.full, gpr.rdi.full, RDI) \
 	REG_INFO(gpr.rsp.full, gpr.rsp.full, RSP) \
 	REG_INFO(gpr.rbp.full, gpr.rbp.full, RBP) \
-	REG_INFO(gpr.r8.full, gpr.r8.full, R8) \
-	REG_INFO(gpr.r9.full, gpr.r9.full, R9) \
-	REG_INFO(gpr.r10.full, gpr.r10.full, R10) \
-	REG_INFO(gpr.r11.full, gpr.r11.full, R11) \
-	REG_INFO(gpr.r12.full, gpr.r12.full, R12) \
-	REG_INFO(gpr.r13.full, gpr.r13.full, R13) \
-	REG_INFO(gpr.r14.full, gpr.r14.full, R14) \
-	REG_INFO(gpr.r15.full, gpr.r15.full, R15) \
+	REG_INFO64(gpr.r8.full, gpr.r8.full, R8) \
+	REG_INFO64(gpr.r9.full, gpr.r9.full, R9) \
+	REG_INFO64(gpr.r10.full, gpr.r10.full, R10) \
+	REG_INFO64(gpr.r11.full, gpr.r11.full, R11) \
+	REG_INFO64(gpr.r12.full, gpr.r12.full, R12) \
+	REG_INFO64(gpr.r13.full, gpr.r13.full, R13) \
+	REG_INFO64(gpr.r14.full, gpr.r14.full, R14) \
+	REG_INFO64(gpr.r15.full, gpr.r15.full, R15) \
 	REG_INFO(gpr.rip.full, gpr.rip.full, RIP) \
 	REG_INFO(seg.ss, seg.ss, SS) \
 	REG_INFO(seg.es, seg.es, ES) \

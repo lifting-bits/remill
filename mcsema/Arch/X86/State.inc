@@ -122,7 +122,7 @@ class Segments {
   uint16_t cs;
 };
 
-#ifdef __x86_64__
+#if 64 == ADDRESS_SIZE_BITS
 
 union Reg {
   alignas(1) struct {
@@ -148,7 +148,7 @@ union Reg {
   alignas(4) uint32_t *ptr;
 };
 
-#endif  // __x86_64__
+#endif  // 64 != ADDRESS_SIZE_BITS
 
 static_assert(sizeof(void *) == sizeof(Reg), "Invalid packing of `Reg`.");
 static_assert(0 == __builtin_offsetof(Reg, byte.low), "Invalid packing of `Reg::low`.");
@@ -170,8 +170,7 @@ class GPR {
   Reg rsp;
   Reg rbp;
 
-  // Not actually used in 32-bit; but useful for keeping everything consistent
-  // across architectures.
+#if 64 == ADDRESS_SIZE_BITS
   Reg r8;
   Reg r9;
   Reg r10;
@@ -180,6 +179,7 @@ class GPR {
   Reg r13;
   Reg r14;
   Reg r15;
+#endif  // 64 == ADDRESS_SIZE_BITS
 
   // Next program counter.
   Reg rip;
@@ -199,10 +199,18 @@ class alignas(64) State {
 #define REG_INFO(read_sel, write_sel, name) \
     auto & name ## _read = read_sel ; \
     auto & name ## _write = write_sel ;
+
+    // Make it so that the register read/write access variables for 64-bit
+    // registers are not defined in 32-bit mode.
+#if 64 == ADDRESS_SIZE_BITS
+# define REG_INFO64 REG_INFO
+#else
+# define REG_INFO64(...)
+#endif  // 64 != ADDRESS_SIZE_BITS
     
     PLAT_X86_REG_INFOS()
 #undef REG_INFO
-
+#undef REG_INFO64
   }
   
   // TODO(pag): Perform indirect branch based on program counter.
@@ -247,6 +255,9 @@ typedef int8_t SIMM8;
 
 #define INSTR_ATTRIBS __attribute__((always_inline, flatten))
 #define DEF_INSTR(name) extern "C" constexpr auto name __attribute__((used, visibility("default")))
+
+#define IMPL_INSTR(name, ...) \
+    INSTR_ATTRIBS static void name (State *state, ##__VA_ARGS__)
 
 namespace {
 

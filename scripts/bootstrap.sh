@@ -84,19 +84,19 @@ mkdir -p $DIR/generated/CFG
 echo "${YELLOW}Generating architecture-specific state files.${RESET}"
 cd $DIR
 CXXFLAGS="-std=gnu++11 -fno-exceptions -fno-rtti -fno-asynchronous-unwind-tables -I${DIR}"
-$DIR/third_party/llvm/build/bin/clang++ -x c++ -m32 $CXXFLAGS -E - \
+$DIR/third_party/llvm/build/bin/clang++ -x c++ -m32 -DADDRESS_SIZE_BITS=32 $CXXFLAGS -E - \
     < $DIR/mcsema/Arch/X86/State.inc \
     > $DIR/generated/Arch/X86/State32.cpp
     
-$DIR/third_party/llvm/build/bin/clang++ -x c++ -m64  $CXXFLAGS -E - \
+$DIR/third_party/llvm/build/bin/clang++ -x c++ -m64 -DADDRESS_SIZE_BITS=64  $CXXFLAGS -E - \
     < $DIR/mcsema/Arch/X86/State.inc \
     > $DIR/generated/Arch/X86/State64.cpp
 
-$DIR/third_party/llvm/build/bin/clang++ -g3 -m32 $CXXFLAGS -emit-llvm \
+$DIR/third_party/llvm/build/bin/clang++ -g3 -m32 -DADDRESS_SIZE_BITS=32 $CXXFLAGS -emit-llvm \
     -c $DIR/generated/Arch/X86/State32.cpp \
     -o $DIR/generated/Arch/X86/State32.bc
 
-$DIR/third_party/llvm/build/bin/clang++ -g3 -m64 $CXXFLAGS -emit-llvm \
+$DIR/third_party/llvm/build/bin/clang++ -g3 -m64 -DADDRESS_SIZE_BITS=64 $CXXFLAGS -emit-llvm \
     -c $DIR/generated/Arch/X86/State64.cpp \
     -o $DIR/generated/Arch/X86/State64.bc
 

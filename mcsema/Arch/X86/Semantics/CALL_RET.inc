@@ -3,27 +3,23 @@
 namespace {
 
 template <typename T>
-INSTR_ATTRIBS
-static void CALL(State *state, T target_pc) {
+IMPL_INSTR(CALL, T target_pc) {
   *state->gpr.rsp.ptr-- = state->gpr.rip.full;
   state->gpr.rip.full = static_cast<uintptr_t>(target_pc);
 }
 
 template <typename T>
-INSTR_ATTRIBS
-static void INDIRECT_CALL(State *state, T *target_pc) {
+IMPL_INSTR(INDIRECT_CALL, T *target_pc) {
   *state->gpr.rsp.ptr-- = state->gpr.rip.full;
   state->gpr.rip.full = static_cast<uintptr_t>(*target_pc);
 }
 
-INSTR_ATTRIBS
-static void RET_IMM(State *state, IMM16 bytes) {
+IMPL_INSTR(RET_IMM, IMM16 bytes) {
   state->gpr.rip.full = *state->gpr.rsp.ptr++;
   state->gpr.rsp.full += bytes;
 }
 
-INSTR_ATTRIBS
-static void RET(State *state) {
+IMPL_INSTR(RET) {
   state->gpr.rip.full = *state->gpr.rsp.ptr++;
 }
 
