@@ -16,6 +16,8 @@
 
 #include "mcsema/CFG/CFG.h"
 
+DECLARE_string(os);
+
 namespace mcsema {
 namespace x86 {
 
@@ -37,10 +39,14 @@ namespace {
 
 // Name of this instruction function.
 static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
-  auto iform = xed_decoded_inst_get_iform_enum(xedd);
-  std::string iclass_name = xed_iform_enum_t2str(iform);
-  auto op_size = xed_decoded_inst_get_operand_width(xedd);
-  return iclass_name + "_" + std::to_string(op_size);
+  std::stringstream ss;
+  if (FLAGS_os == "mac") {
+    ss << "_";
+  }
+  ss << xed_iform_enum_t2str(xed_decoded_inst_get_iform_enum(xedd));
+  ss << "_";
+  ss << xed_decoded_inst_get_operand_width(xedd);
+  return ss.str();
 }
 
 // Return the type for a given operand.
@@ -160,13 +166,17 @@ bool Instr::Lift(const BlockMap &blocks, llvm::BasicBlock *B_) {
 
   LiftPC();
 
-  if (IsDirectJump()) {
+  if (IsError()) {
+    AddTerminatingTailCall(B, ExitProgramErrorDispatcher(M));
+    return false;
+
+  } else if (IsDirectJump()) {
     AddTerminatingTailCall(B, blocks[TargetPC()]);
     return false;
 
   } else if (IsIndirectJump()) {
     LiftGeneric();  // loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, IndirectBranchMethod(M));
+    AddTerminatingTailCall(B, IndirectJumpDispatcher(M));
     return false;
 
   } else if (IsDirectFunctionCall()) {
@@ -176,12 +186,12 @@ bool Instr::Lift(const BlockMap &blocks, llvm::BasicBlock *B_) {
 
   } else if (IsIndirectFunctionCall()) {
     LiftGeneric();  // Adjusts the stack, loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, IndirectBranchMethod(M));
+    AddTerminatingTailCall(B, IndirectFunctionCallDispatcher(M));
     return false;
 
   } else if (IsFunctionReturn()) {
     LiftGeneric();  // Adjusts the stack, loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, IndirectBranchMethod(M));
+    AddTerminatingTailCall(B, FunctionReturnDispatcher(M));
     return false;
 
   } else if (IsBranch()) {
@@ -234,7 +244,7 @@ static std::string PCRegName(const xed_decoded_inst_t *xedd) {
 // Store the next program counter into the associated state register. This
 // lets us access this information from within instruction implementations.
 void Instr::LiftPC(void) {
-  auto addr_width = xed_operand_values_get_effective_address_width(xedd);
+  auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
 
   llvm::IRBuilder<> ir(B);
   llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
@@ -265,7 +275,7 @@ void Instr::LiftGeneric(void) {
         << "Expected a `constexpr` variable as the function pointer.";
     ir.CreateCall(llvm::dyn_cast<llvm::Function>(FP->getInitializer()), args);
   } else {
-    LOG(FATAL) << "Missing instruction semantics for " << func_name;
+    LOG(WARNING) << "Missing instruction semantics for " << func_name;
   }
 
   // Fixup instructions that must follow the instruction function. These handle
@@ -279,7 +289,7 @@ void Instr::LiftGeneric(void) {
 // Lift a conditional branch instruction.
 void Instr::LiftConditionalBranch(const BlockMap &blocks) {
   LiftGeneric();
-  auto addr_width = xed_operand_values_get_effective_address_width(xedd);
+  auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
   auto target_pc = TargetPC();
 
   llvm::IRBuilder<> ir(B);
@@ -359,7 +369,7 @@ void Instr::LiftMemory(const xed_operand_t *xedo, unsigned op_num) {
   auto index = xed_decoded_inst_get_index_reg(xedd, mem_index);
   auto disp = xed_decoded_inst_get_memory_displacement(xedd, mem_index);
   auto scale = xed_decoded_inst_get_scale(xedd, mem_index);
-  auto addr_width = xed_decoded_inst_get_memop_address_width(xedd, mem_index);
+  auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
   auto addr_space = AddressSpace(seg, op_name);
 
   llvm::IRBuilder<> ir(B);
@@ -482,7 +492,7 @@ void Instr::LiftRegister(const xed_operand_t *xedo) {
 
 // Lift a relative branch operand.
 void Instr::LiftBranchDisplacement(void) {
-  auto addr_width = xed_operand_values_get_effective_address_width(xedd);
+  auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
   llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
   args.push_back(llvm::ConstantInt::get(IntPtrTy, TargetPC(), true));
 }
@@ -552,6 +562,10 @@ bool Instr::IsIndirectJump(void) const {
   return (XED_ICLASS_JMP == iclass && XED_OPERAND_RELBR != op_name) ||
          XED_ICLASS_JMP_FAR == iclass ||
          XED_ICLASS_XEND == iclass || XED_ICLASS_XABORT == iclass;
+}
+
+bool Instr::IsError(void) const {
+  return XED_ICLASS_HLT == iclass;
 }
 
 uintptr_t Instr::TargetPC(void) const {

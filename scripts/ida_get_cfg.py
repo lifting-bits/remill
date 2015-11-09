@@ -39,24 +39,53 @@ def address_is_code(address):
   return idc.isCode(pf) and not idc.isData(pf)
 
 
+# Returns True if some address represents executable code.
+def control_flows_to_address(address):
+  pf = idc.GetFlags(address)
+  return idc.isFlow(pf)
+
+
 # Returns True if some address is not code and is data.
 def address_is_data(address):
   pf = idc.GetFlags(address)
   return not idc.isCode(pf) and idc.isData(pf)
 
 
-# Mark an address as containing code.
-def mark_as_code(address):
-  if not idc.isCode(idc.GetFlags(address)):
-    idc.MakeCode(address)
-    idaapi.autoWait()
+# Returns true if some address is alignment.
+def address_is_alignment(address):
+  flags = idc.GetFlags(address)
+  return idc.isAlign(flags)
 
+
+# Mark an address as containing code.
+def try_mark_as_code(address, end_address=0):
+  flags = idc.GetFlags(address)
+  if idc.isAlign(flags):
+    return False
+
+  if idc.isCode(flags):
+    return True
+
+  if idc.MakeCode(address):
+    idaapi.autoWait()
+    return True
+
+  end_address = max(end_address, address + 1)
+  idc.MakeUnknown(address, end_address - address + 1, idc.DOUNK_SIMPLE)
+  
+  if idc.MakeCode(address):
+    idaapi.autoWait()
+    return True
+
+  return False
 
 # Mark an address as being the beginning of a function.
-def try_mark_as_function(address):
-  if not idaapi.add_func(address, idc.BADADDR):
-    debug("Unable to convert code to function:", address)
-    return False
+def try_mark_as_function(ea):
+  if not idc.MakeFunction(ea, idc.BADADDR):
+    idc.MakeUnknown(ea, 1, idc.DOUNK_SIMPLE)
+    if not idc.MakeFunction(ea, idc.BADADDR):
+      debug("Unable to convert code to function:", hex(ea))
+      return False
   idaapi.autoWait()
   return True
 
@@ -65,6 +94,7 @@ def try_mark_as_function(address):
 def try_get_function(address):
   func = idaapi.get_func(address)
   if not func:
+    debug("Error: couldn't find function for", hex(address))
     if not try_mark_as_function(address):
       return None
     func = idaapi.get_func(address)
@@ -114,7 +144,7 @@ def try_decode_instruction(block, ea):
 
 
 # Get the ending effective address of the next block.
-def next_block_end_ea(ea):
+def block_end_ea(ea):
   for begin, end in get_blocks(ea):
     if begin <= ea < end:
       return end
@@ -131,24 +161,36 @@ def visit_instruction(block, ea, end_ea, new_blocks, addressable_blocks):
   if not instr:
     return idc.BADADDR
 
+  # If there's a data reference to this instruction then we'll consider it a block
+  # head and split the block (as long as this ins't the first instruction).
+  if len(tuple(idautils.DataRefsTo(ea))):
+    addressable_blocks.add(ea)
+    if block.address < ea:
+      debug("Splitting block at", hex(ea), "to", hex(end_ea), "(reason: data ref)")
+      new_blocks.add((ea, end_ea))
+      return idc.BADADDR
+
   ea += instr.size
 
   # Split this block at a calls, and mark the blocks following the calls as
-  # being addressed
+  # being addressed. Only do this if the `call` isn't the last instruction in
+  # the block.
   if instr_t.itype in CALL_ITYPES or instr_t.itype in SYSCALL_ITYPES:
     addressable_blocks.add(ea)
     if ea < end_ea:
-      debug("Splitting new block at", hex(ea), "to", hex(end_ea))
+      debug("Splitting block at", hex(ea), "to", hex(end_ea), "(reason: call)")
       new_blocks.add((ea, end_ea))
       return idc.BADADDR
 
   # Instruction is split over two blocks and was merged by our script, try to split the
-  # block to handle this.
+  # block to handle this. This is seen in glibc where code conditionally jumps after
+  # the `LOCK` prefix of a `cmpxchg`, or falls through to the `lock cmpxchg`.
   if instr.size > instr_t.size:
     if ea > end_ea:
-      end_ea = next_block_end_ea(ea)
+      end_ea = block_end_ea(ea)
     if idc.BADADDR != end_ea:
       new_blocks.add((ea, end_ea))
+      debug("Splitting block at", hex(ea), "to", hex(end_ea), "(reason: cross)")
     else:
       debug("Unable to find next block end for merged instruction at", hex(instr.address))
     return idc.BADADDR
@@ -161,9 +203,6 @@ def visit_block(cfg, ea, end_ea, new_blocks, addressable_blocks):
   debug("Found basic block at", hex(ea), "to", hex(end_ea))
   block = cfg.blocks.add()
   block.address = ea
-
-  if len(tuple(idautils.DataRefsTo(ea))):
-    addressable_blocks.add(ea)
 
   while ea < end_ea and idc.BADADDR != ea:
     assert address_is_code(ea)
@@ -200,9 +239,11 @@ def function_blocks(ea, func):
 def get_blocks(ea):
   func = try_get_function(ea)
   if not func:
-    return scan_blocks(ea)
-  else:
-    return function_blocks(ea, func)
+    if not try_mark_as_function(ea):
+      return scan_blocks(ea)
+    func = try_get_function(ea)
+    assert func
+  return function_blocks(ea, func)
 
 
 # Visit all the basic block reachable from a given location.
@@ -318,6 +359,97 @@ def find_indirect_entrypoints(cfg, addressable_blocks):
     block.address = ea
 
 
+# This is a 'fudge' factor when we find that two blocks are separated by data
+# and we think we should merge them. We use the maximum length of an x86
+# instruction as our fudge.
+MAX_INSTRUCTION_LENGTH = 15
+
+
+# Return the next (assumed) block head that is actually code.
+def next_code_head_ea(heads, i):
+  while i < len(heads):
+    if address_is_code(heads[i]):
+      return heads[i]
+    i = i+1
+  return idc.BADADDR
+
+
+# Collect function call targets.
+def collect_function_call_target(heads, ea):
+  global CALL_ITYPES
+  instr_t = idautils.DecodeInstruction(ea)
+  if not instr_t or instr_t.itype not in CALL_ITYPES:
+    return
+  target_ea = instr_t.Operands[0].addr
+  if target_ea and idc.BADADDR != target_ea:
+    heads.add(target_ea)
+
+
+# Clean up a segment of code by trying to make sure that basic blocks connect.
+# We need to be careful during our cleanup because it might introduce new block
+# heads, so we always move in a forward direction and "restart" from intermediate
+# positions.
+def clean_up_segment(seg_start, seg_end, function_heads):
+  head_ea = seg_start
+  while head_ea < seg_end:
+    blocks = list(idautils.Heads(head_ea, seg_end))
+    if not blocks:
+      break
+
+    blocks.append(seg_end)
+
+    for i, head_ea in enumerate(blocks):
+      if head_ea == seg_end:
+        break
+
+      actual_end_ea = blocks[i+1]
+      if not address_is_code(head_ea):
+        continue
+
+      # Try to find called functions.
+      collect_function_call_target(function_heads, head_ea)
+
+      if address_is_code(actual_end_ea):
+        continue
+
+      expected_end_ea = next_code_head_ea(blocks, i+1)
+      if idc.BADADDR == expected_end_ea:
+        continue
+
+      # Looks like there some non-code between two basic blocks. If control
+      # flows from the last instruction to the non-code, and as long as the
+      # non-code stuff isn't too long, then we'll try to mark it as code.
+      if 0 < (expected_end_ea - actual_end_ea) <= MAX_INSTRUCTION_LENGTH:
+        if control_flows_to_address(actual_end_ea):
+          if try_mark_as_code(actual_end_ea, expected_end_ea):
+            debug("Cleanup: marked", hex(actual_end_ea), "as a block head")
+            break
+
+
+# Clean up the code that IDA sees. This is sometimes necessary with code that
+# has no symbols, and so requires more of IDA's heuristics to kick in. We
+# apply some "anti"-heuristics where IDA makes strange choices. These special
+# cases are geared toward "nice" code, as produced by a typical compiler.
+def find_functions():
+  function_heads = set()
+  for seg_ea in idautils.Segments():
+    clean_up_segment(idc.SegStart(seg_ea), idc.SegEnd(seg_ea),
+                     function_heads)
+  
+  # Try to mark known "good" procedure heads.
+  for func_ea in function_heads:
+    try_mark_as_function(func_ea)
+
+  # Mark all remaining things as procedures.
+  for seg_ea in idautils.Segments():
+    for head_ea in idautils.Heads(idc.SegStart(seg_ea), idc.SegEnd(seg_ea)):
+      if address_is_code(head_ea) \
+      and not address_is_alignment(head_ea) \
+      and not idc.GetFunctionName(head_ea):
+        debug("Not part of function:", hex(head_ea))
+        try_mark_as_function(head_ea)
+
+
 # Wait for IDA to finish its analysis.
 def init_analysis():
   analysis_flags = idc.GetShortPrm(idc.INF_START_AF)
@@ -339,6 +471,9 @@ def main(args):
     cfg = CFG_pb2.Module()
     cfg.binary_path = idc.GetInputFile()
     exclude_blocks = set()
+
+    debug("Finding functions...")
+    find_functions()
 
     debug("Analyzing exports...")
     find_exported_functions(cfg, exclude_blocks)

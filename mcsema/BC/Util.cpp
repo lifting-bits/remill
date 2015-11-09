@@ -77,22 +77,57 @@ llvm::Value *FindVarInFunction(llvm::Function *F, std::string name) {
 
 // Return a pointer to the block method template.
 llvm::Function *BlockMethod(llvm::Module *M) {
-  if (FLAGS_os == "linux") {
-    return M->getFunction("_ZN5State11BlockMethodEv");
-  } else {
-    LOG(FATAL) << "Missing block method for OS: " << FLAGS_os;
-    return nullptr;
+  llvm::Function *F = nullptr;
+  F = M->getFunction("BlockMethod");
+  if (!F && FLAGS_os == "mac") {
+    F = M->getFunction("_BlockMethod");
   }
+  LOG_IF(FATAL, !F) << "Missing block method for OS: " << FLAGS_os;
+  return F;
+}
+
+// Return a pointer to the method that exits the program.
+llvm::Function *ExitProgramErrorDispatcher(llvm::Module *M) {
+  llvm::Function *F = nullptr;
+  F = M->getFunction("DispatchExitProgramError");
+  if (!F && FLAGS_os == "mac") {
+    F = M->getFunction("_DispatchExitProgramError");
+  }
+  LOG_IF(FATAL, !F) << "Missing program exit dispatcher for OS: " << FLAGS_os;
+  return F;
 }
 
 // Return a pointer to the indirect branch method.
-llvm::Function *IndirectBranchMethod(llvm::Module *M) {
-  if (FLAGS_os == "linux") {
-    return M->getFunction("_ZN5State20IndirectBranchMethodEv");
-  } else {
-    LOG(FATAL) << "Missing indirect branch method for OS: " << FLAGS_os;
-    return nullptr;
+llvm::Function *IndirectFunctionCallDispatcher(llvm::Module *M) {
+  llvm::Function *F = nullptr;
+  F = M->getFunction("DispatchIndirectFunctionCall");
+  if (!F && FLAGS_os == "mac") {
+    F = M->getFunction("_DispatchIndirectFunctionCall");
   }
+  LOG_IF(FATAL, !F) << "Missing indirect call dispatcher for OS: " << FLAGS_os;
+  return F;
+}
+
+// Return a pointer to the indirect branch method.
+llvm::Function *IndirectJumpDispatcher(llvm::Module *M) {
+  llvm::Function *F = nullptr;
+  F = M->getFunction("DispatchIndirectJump");
+  if (!F && FLAGS_os == "mac") {
+    F = M->getFunction("_DispatchIndirectJump");
+  }
+  LOG_IF(FATAL, !F) << "Missing indirect jump dispatcher for OS: " << FLAGS_os;
+  return F;
+}
+
+// Return a pointer to the indirect branch method.
+llvm::Function *FunctionReturnDispatcher(llvm::Module *M) {
+  llvm::Function *F = nullptr;
+  F = M->getFunction("DispatchFunctionReturn");
+  if (!F && FLAGS_os == "mac") {
+    F = M->getFunction("_DispatchFunctionReturn");
+  }
+  LOG_IF(FATAL, !F) << "Missing return dispatcher for OS: " << FLAGS_os;
+  return F;
 }
 
 }  // namespace mcsema

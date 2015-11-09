@@ -4,42 +4,38 @@ namespace {
 
 template <typename T>
 DEF_SEM(CALL, T target_pc) {
-  *state->gpr.rsp.ptr-- = state->gpr.rip.full;
-  state->gpr.rip.full = static_cast<uintptr_t>(target_pc);
+  CLEAR_AFLAGS();
+  *state.gpr.rsp.ptr-- = state.gpr.rip.full;
+  state.gpr.rip.full = static_cast<PC>(target_pc);
 }
 
 template <typename T>
 DEF_SEM(INDIRECT_CALL, T *target_pc) {
-  *state->gpr.rsp.ptr-- = state->gpr.rip.full;
-  state->gpr.rip.full = static_cast<uintptr_t>(*target_pc);
+  CLEAR_AFLAGS();
+  *state.gpr.rsp.ptr-- = state.gpr.rip.full;
+  state.gpr.rip.full = static_cast<uintptr_t>(*target_pc);
 }
 
 DEF_SEM(RET_IMM, IMM16 bytes) {
-  state->gpr.rip.full = *state->gpr.rsp.ptr++;
-  state->gpr.rsp.full += bytes;
+  CLEAR_AFLAGS();
+  state.gpr.rip.full = *state.gpr.rsp.ptr++;
+  state.gpr.rsp.full += bytes;
 }
 
 DEF_SEM(RET) {
-  state->gpr.rip.full = *state->gpr.rsp.ptr++;
+  CLEAR_AFLAGS();
+  state.gpr.rip.full = *state.gpr.rsp.ptr++;
 }
 
 }  // namespace
 
-DEF_ISEL(CALL_NEAR_RELBRz_8) = CALL<uintptr_t>;
-DEF_ISEL(CALL_NEAR_RELBRz_16) = CALL<uintptr_t>;
-DEF_ISEL(CALL_NEAR_RELBRz_32) = CALL<uintptr_t>;
-DEF_ISEL(CALL_NEAR_RELBRz_64) = CALL<uintptr_t>;
-
-DEF_ISEL(CALL_NEAR_RELBRd_32) = CALL<uintptr_t>;
-DEF_ISEL(CALL_NEAR_RELBRd_64) = CALL<uintptr_t>;
+DEF_ISEL_32UP(CALL_NEAR_RELBRz, CALL<PC>);
+DEF_ISEL_32UP(CALL_NEAR_RELBRd, CALL<PC>);
 
 DEF_ISEL(CALL_NEAR_MEMv_32) = INDIRECT_CALL<uint32_t>;
-DEF_ISEL(CALL_NEAR_MEMv_64) = INDIRECT_CALL<uintptr_t>;
+DEF_ISEL(CALL_NEAR_MEMv_64) = INDIRECT_CALL<uint64_t>;
 
-DEF_ISEL(CALL_NEAR_GPRv_8) = CALL<R8>;
-DEF_ISEL(CALL_NEAR_GPRv_16) = CALL<R16>;
-DEF_ISEL(CALL_NEAR_GPRv_32) = CALL<R32>;
-DEF_ISEL(CALL_NEAR_GPRv_64) = CALL<R64>;
+DEF_ISEL_Rn(CALL_NEAR_GRPv, CALL);
 
 /*
 352 CALL_FAR CALL_FAR_MEMp2 CALL BASE I86 ATTRIBUTES: FAR_XFER FIXED_BASE1 NOTSX SCALABLE STACKPUSH1
@@ -48,14 +44,8 @@ DEF_ISEL(CALL_NEAR_GPRv_64) = CALL<R64>;
 728 IRETD IRETD RET BASE I386 ATTRIBUTES: FIXED_BASE0 NOTSX SCALABLE STACKPOP0
 */
 
-
-DEF_ISEL(RET_NEAR_IMMw_16) = RET_IMM;
-DEF_ISEL(RET_NEAR_IMMw_32) = RET_IMM;
-DEF_ISEL(RET_NEAR_IMMw_64) = RET_IMM;
-
-DEF_ISEL(RET_NEAR_16) = RET;
-DEF_ISEL(RET_NEAR_32) = RET;
-DEF_ISEL(RET_NEAR_64) = RET;
+DEF_ISEL_32UP(RET_NEAR_IMMw, RET_IMM);
+DEF_ISEL_32UP(RET_NEAR, RET);
 
 /*
 1073 RET_FAR RET_FAR_IMMw RET BASE I86 ATTRIBUTES: FAR_XFER FIXED_BASE0 NOTSX SCALABLE STACKPOP0

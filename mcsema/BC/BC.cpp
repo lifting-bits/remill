@@ -52,7 +52,10 @@ BC::BC(const Arch *arch_, llvm::Module *module_)
       method(BlockMethod(module)) {
   IdentifyExistingSymbols();
   InitFunctionAttributes(method);
-  InitFunctionAttributes(IndirectBranchMethod(module));
+  InitFunctionAttributes(IndirectFunctionCallDispatcher(module));
+  InitFunctionAttributes(IndirectJumpDispatcher(module));
+  InitFunctionAttributes(FunctionReturnDispatcher(module));
+  InitFunctionAttributes(ExitProgramErrorDispatcher(module));
 }
 
 // Find existing exported functions and variables. This is for the sake of
@@ -187,8 +190,14 @@ static void TerminateBlockMethod(const BlockMap &blocks,
                                  const cfg::Block &block,
                                  llvm::Function *BF) {
   auto &B = BF->back();
-  if (!B.getTerminator()) {
+  if (B.getTerminator()) {
+    return;
+  }
+  if (block.instructions_size()) {
     AddTerminatingTailCall(BF, blocks[FallThroughPC(block)]);
+  } else {
+    LOG(WARNING) << "Empty basic block at " << block.address();
+    AddTerminatingTailCall(BF, ExitProgramErrorDispatcher(BF->getParent()));
   }
 }
 }  // namespace
@@ -201,18 +210,23 @@ void BC::LiftBlocks(const cfg::Module *cfg) {
   FPM.add(llvm::createPromoteMemoryToRegisterPass());
   FPM.add(llvm::createReassociatePass());
   FPM.add(llvm::createInstructionCombiningPass());
+  FPM.add(llvm::createDeadStoreEliminationPass());
 
   for (const auto &block : cfg->blocks()) {
-    CHECK(0 < block.instructions_size())
+    LOG_IF(WARNING, 0 < block.instructions_size())
         << "Block at " << block.address() << " has no instructions!";
 
     auto BF = blocks[block.address()];
 
-    CHECK(BF->isDeclaration())
-        << "Block at " << block.address() << " is already defined!";
+    if (!BF->isDeclaration()) {
+      LOG(WARNING) << "Ignoring already lifted block at " << block.address();
+      continue;
+    }
 
     CreateMethodForBlock(BF, method);
-    LiftBlockIntoMethod(block, BF);
+    if (block.instructions_size()) {
+      LiftBlockIntoMethod(block, BF);
+    }
     TerminateBlockMethod(blocks, block, BF);
 
     // Perform simple, incremental optimizations on the block functions to

@@ -54,6 +54,8 @@ class Instr : public ::mcsema::Instr {
   bool IsInterruptCall(void) const;
   bool IsInterruptReturn(void) const;
 
+  bool IsError(void) const;
+
   uintptr_t NextPC(void) const;
   uintptr_t TargetPC(void) const;
 

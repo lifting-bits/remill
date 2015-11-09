@@ -34,8 +34,13 @@ llvm::Value *FindVarInFunction(llvm::Function *F, std::string name);
 // Return a pointer to the block method template.
 llvm::Function *BlockMethod(llvm::Module *M);
 
+// Return a pointer to the method that exits the program.
+llvm::Function *ExitProgramErrorDispatcher(llvm::Module *M);
+
 // Return a pointer to the indirect branch method.
-llvm::Function *IndirectBranchMethod(llvm::Module *M);
+llvm::Function *IndirectFunctionCallDispatcher(llvm::Module *M);
+llvm::Function *IndirectJumpDispatcher(llvm::Module *M);
+llvm::Function *FunctionReturnDispatcher(llvm::Module *M);
 
 }  // namespace mcsema
 

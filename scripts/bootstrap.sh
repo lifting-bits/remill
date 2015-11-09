@@ -76,6 +76,7 @@ cd $DIR
 mkdir -p $DIR/generated
 mkdir -p $DIR/generated/Arch
 mkdir -p $DIR/generated/Arch/X86
+mkdir -p $DIR/generated/Arch/X86/Semantics
 mkdir -p $DIR/generated/CFG
 
 
@@ -83,22 +84,22 @@ mkdir -p $DIR/generated/CFG
 # `cfg_to_bc`.
 echo "${YELLOW}Generating architecture-specific state files.${RESET}"
 cd $DIR
-CXXFLAGS="-std=gnu++11 -fno-exceptions -fno-rtti -fno-asynchronous-unwind-tables -I${DIR}"
+CXXFLAGS="-std=gnu++11 -g0 -O0 -fno-exceptions -fno-rtti -fno-asynchronous-unwind-tables -I${DIR}"
 $DIR/third_party/llvm/build/bin/clang++ -x c++ -m32 -DADDRESS_SIZE_BITS=32 $CXXFLAGS -E - \
-    < $DIR/mcsema/Arch/X86/State.inc \
-    > $DIR/generated/Arch/X86/State32.cpp
+    < $DIR/mcsema/Arch/X86/Semantics/State.inc \
+    > $DIR/generated/Arch/X86/Semantics/State32.cpp
     
 $DIR/third_party/llvm/build/bin/clang++ -x c++ -m64 -DADDRESS_SIZE_BITS=64  $CXXFLAGS -E - \
-    < $DIR/mcsema/Arch/X86/State.inc \
-    > $DIR/generated/Arch/X86/State64.cpp
+    < $DIR/mcsema/Arch/X86/Semantics/State.inc \
+    > $DIR/generated/Arch/X86/Semantics/State64.cpp
 
 $DIR/third_party/llvm/build/bin/clang++ -g3 -m32 -DADDRESS_SIZE_BITS=32 $CXXFLAGS -emit-llvm \
-    -c $DIR/generated/Arch/X86/State32.cpp \
-    -o $DIR/generated/Arch/X86/State32.bc
+    -c $DIR/generated/Arch/X86/Semantics/State32.cpp \
+    -o $DIR/generated/Arch/X86/Semantics/State32.bc
 
 $DIR/third_party/llvm/build/bin/clang++ -g3 -m64 -DADDRESS_SIZE_BITS=64 $CXXFLAGS -emit-llvm \
-    -c $DIR/generated/Arch/X86/State64.cpp \
-    -o $DIR/generated/Arch/X86/State64.bc
+    -c $DIR/generated/Arch/X86/Semantics/State64.cpp \
+    -o $DIR/generated/Arch/X86/Semantics/State64.bc
 
 
 # Generate the protocol buffer file for the CFG definition. The lifter will

@@ -19,10 +19,11 @@
 #include "mcsema/BC/BC.h"
 #include "mcsema/CFG/CFG.h"
 
-DEFINE_string(arch, "", "Target architecture. Valid architectures: "
-                        "x86, amd64.");
+// TODO(pag): Support separate source and target architectures?
+DEFINE_string(arch, "", "Architecture of the code being translated. Valid "
+                        "architectures: x86, amd64.");
 
-DEFINE_string(os, "", "Target OS. Valid OSes: linux.");
+DEFINE_string(os, "", "Target OS. Valid OSes: linux, mac.");
 
 DEFINE_string(cfg, "", "Path to the CFG file containing code to lift.");
 
