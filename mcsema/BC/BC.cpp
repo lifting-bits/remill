@@ -9,6 +9,7 @@
 
 #include <llvm/ADT/SmallVector.h>
 
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
@@ -24,7 +25,9 @@
 #include "mcsema/Arch/Instr.h"
 
 #include "mcsema/BC/BC.h"
+#include "mcsema/BC/Intrinsic.h"
 #include "mcsema/BC/Util.h"
+
 #include "mcsema/CFG/CFG.h"
 
 namespace llvm {
@@ -45,17 +48,13 @@ static std::string NamedSymbolMetaId(std::string func_name) {
 BC::BC(const Arch *arch_, llvm::Module *module_)
     : arch(arch_),
       module(module_),
+      intrinsic(Intrinsic::FindInModule(module)),
       blocks(),
       functions(),
       symbols(),
-      next_symbol_id(0),
-      method(BlockMethod(module)) {
+      next_symbol_id(0) {
   IdentifyExistingSymbols();
-  InitFunctionAttributes(method);
-  InitFunctionAttributes(IndirectFunctionCallDispatcher(module));
-  InitFunctionAttributes(IndirectJumpDispatcher(module));
-  InitFunctionAttributes(FunctionReturnDispatcher(module));
-  InitFunctionAttributes(ExitProgramErrorDispatcher(module));
+  RemoveUndefinedIntrinsics();
 }
 
 // Find existing exported functions and variables. This is for the sake of
@@ -80,13 +79,15 @@ void BC::IdentifyExistingSymbols(void) {
 
 // Create functions for every block in the CFG.
 void BC::CreateBlocks(const cfg::Module *cfg) {
-  auto block_type = method->getFunctionType();
+  auto block_type = intrinsic->basic_block->getFunctionType();
   for (const auto &block : cfg->blocks()) {
     auto &BF = blocks[block.address()];
     if (!BF) {
-      auto name = "__mcsema_block_" + std::to_string(next_symbol_id++);
+      std::stringstream ss;
+      ss << "__mcsema_block_" << (next_symbol_id++) << "_0x"
+         << std::hex << block.address();
       BF = llvm::dyn_cast<llvm::Function>(
-          module->getOrInsertFunction(name, block_type));
+          module->getOrInsertFunction(ss.str(), block_type));
       InitFunctionAttributes(BF);
     }
   }
@@ -94,7 +95,7 @@ void BC::CreateBlocks(const cfg::Module *cfg) {
 
 // Create functions for every function in the CFG.
 void BC::CreateFunctions(const cfg::Module *cfg) {
-  auto func_type = method->getFunctionType();
+  auto func_type = intrinsic->basic_block->getFunctionType();
 
   for (const auto &func : cfg->functions()) {
     if (!func.is_exported() && !func.is_imported()) continue;
@@ -117,7 +118,6 @@ void BC::CreateFunctions(const cfg::Module *cfg) {
     // if we merge another CFG into this bitcode module.
     module->getOrInsertNamedMetadata(NamedSymbolMetaId(func.name()));
   }
-
 }
 
 // Link together functions and basic blocks.
@@ -184,11 +184,11 @@ static uint64_t FallThroughPC(const cfg::Block &block) {
   return instr.address() + instr.size();
 }
 
+}  // namespace
+
 // Add a fall-through terminator to the block method just in case one is
 // missing.
-static void TerminateBlockMethod(const BlockMap &blocks,
-                                 const cfg::Block &block,
-                                 llvm::Function *BF) {
+void BC::TerminateBlockMethod(const cfg::Block &block, llvm::Function *BF) {
   auto &B = BF->back();
   if (B.getTerminator()) {
     return;
@@ -197,10 +197,25 @@ static void TerminateBlockMethod(const BlockMap &blocks,
     AddTerminatingTailCall(BF, blocks[FallThroughPC(block)]);
   } else {
     LOG(WARNING) << "Empty basic block at " << block.address();
-    AddTerminatingTailCall(BF, ExitProgramErrorDispatcher(BF->getParent()));
+    AddTerminatingTailCall(BF, intrinsic->error);
   }
 }
-}  // namespace
+
+// Remove calls to the undefined intrinsics.
+void BC::RemoveUndefinedIntrinsics(void) {
+  std::vector<llvm::CallInst *> Cs;
+  for (auto U : intrinsic->undefined_bool->users()) {
+    if (auto C = llvm::dyn_cast<llvm::CallInst>(U)) {
+      Cs.push_back(C);
+    }
+  }
+
+  auto Undef = llvm::UndefValue::get(llvm::Type::getInt1Ty(
+      intrinsic->undefined_bool->getContext()));
+  for (auto C : Cs) {
+    C->replaceAllUsesWith(Undef);
+  }
+}
 
 // Lift code contained in blocks into the block methods.
 void BC::LiftBlocks(const cfg::Module *cfg) {
@@ -223,11 +238,11 @@ void BC::LiftBlocks(const cfg::Module *cfg) {
       continue;
     }
 
-    CreateMethodForBlock(BF, method);
+    CreateMethodForBlock(BF, intrinsic->basic_block);
     if (block.instructions_size()) {
       LiftBlockIntoMethod(block, BF);
     }
-    TerminateBlockMethod(blocks, block, BF);
+    TerminateBlockMethod(block, BF);
 
     // Perform simple, incremental optimizations on the block functions to
     // avoid OOMs.
@@ -267,7 +282,7 @@ bool BC::LiftInstruction(const cfg::Block &block, const cfg::Instr &instr,
   llvm::IRBuilder<> ir(P);
   ir.CreateBr(B);
 
-  return arch_instr.Lift(blocks, B);
+  return arch_instr.Lift(intrinsic, blocks, B);
 }
 
 void BC::LiftCFG(const cfg::Module *cfg) {

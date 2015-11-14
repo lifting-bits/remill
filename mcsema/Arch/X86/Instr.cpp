@@ -12,6 +12,7 @@
 #include "mcsema/Arch/X86/Instr.h"
 #include "mcsema/Arch/X86/XED.h"
 
+#include "mcsema/BC/Intrinsic.h"
 #include "mcsema/BC/Util.h"
 
 #include "mcsema/CFG/CFG.h"
@@ -26,6 +27,7 @@ Instr::Instr(const cfg::Instr *instr_, const struct xed_decoded_inst_s *xedd_)
       xedd(xedd_),
       xedi(xed_decoded_inst_inst(xedd)),
       iclass(xed_decoded_inst_get_iclass(xedd)),
+      intrinsic(nullptr),
       B(nullptr),
       F(nullptr),
       M(nullptr),
@@ -49,99 +51,6 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
   return ss.str();
 }
 
-// Return the type for a given operand.
-static llvm::Type *OperandType(llvm::LLVMContext &C,
-                               const xed_operand_t *xedo,
-                               unsigned op_size) {
-
-  // Special case: treat AGEN operands (e.g. LEA, BND*) as having any type.
-  if (XED_OPERAND_AGEN == xed_operand_name(xedo)) {
-    return llvm::Type::getInt8Ty(C);
-  }
-
-  switch (xed_operand_xtype(xedo)) {
-    case XED_OPERAND_XTYPE_INVALID:
-      LOG(FATAL) << "Invalid operand type: XED_OPERAND_XTYPE_INVALID.";
-      return nullptr;
-
-    // Binary coded decimal. Really an array of char, and only accessed via
-    // memory.
-    case XED_OPERAND_XTYPE_B80:
-      return llvm::Type::getInt8Ty(C);
-
-    // Half-precision floating point. Usually packed into an XMM register.
-    // What we get is a memory operand that's a pointer to four of these.
-    case XED_OPERAND_XTYPE_F16:
-      return llvm::Type::getHalfTy(C);
-
-    // Single-precision floating point type.
-    case XED_OPERAND_XTYPE_F32:
-      return llvm::Type::getFloatTy(C);
-
-    // Double-precision floating point type.
-    case XED_OPERAND_XTYPE_F64:
-      return llvm::Type::getDoubleTy(C);
-
-    // Extended precision (internal to X87 FPU) floating point type.
-    case XED_OPERAND_XTYPE_F80:
-      return llvm::Type::getX86_FP80Ty(C);
-
-    case XED_OPERAND_XTYPE_I1:
-      return llvm::Type::getInt1Ty(C);
-
-    case XED_OPERAND_XTYPE_I16:
-      return llvm::Type::getInt16Ty(C);
-
-    case XED_OPERAND_XTYPE_I32:
-      return llvm::Type::getInt32Ty(C);
-
-    case XED_OPERAND_XTYPE_I64:
-      return llvm::Type::getInt64Ty(C);
-
-    case XED_OPERAND_XTYPE_I8:
-      return llvm::Type::getInt8Ty(C);
-
-    // Specific to the effective operand size.
-    case XED_OPERAND_XTYPE_INT:
-      return llvm::Type::getIntNTy(C, op_size);
-
-    case XED_OPERAND_XTYPE_STRUCT:
-      LOG(WARNING)
-          << "Treating XED_OPERAND_XTYPE_STRUCT as a "
-          << op_size << "-bit integer.";
-      return llvm::Type::getIntNTy(C, op_size);
-
-    case XED_OPERAND_XTYPE_U128:
-      return llvm::Type::getInt128Ty(C);
-
-    case XED_OPERAND_XTYPE_U16:
-      return llvm::Type::getInt16Ty(C);
-
-    case XED_OPERAND_XTYPE_U256:
-      return llvm::Type::getIntNTy(C, 256);
-
-    case XED_OPERAND_XTYPE_U32:
-    return llvm::Type::getInt32Ty(C);
-
-    case XED_OPERAND_XTYPE_U64:
-      return llvm::Type::getInt64Ty(C);
-
-    case XED_OPERAND_XTYPE_U8:
-      return llvm::Type::getInt8Ty(C);
-
-    case XED_OPERAND_XTYPE_UINT:
-      return llvm::Type::getIntNTy(C, op_size);
-
-    case XED_OPERAND_XTYPE_VAR:
-      LOG(FATAL) << "Unsupported operand type: XED_OPERAND_XTYPE_VAR.";
-      return nullptr;
-
-    case XED_OPERAND_XTYPE_LAST:
-      LOG(FATAL) << "Invalid operand type: XED_OPERAND_XTYPE_LAST.";
-      return nullptr;
-  }
-}
-
 // Returns the address space associated with a segment register. This is a
 // GNU-specific extension.
 static unsigned AddressSpace(xed_reg_enum_t seg, xed_operand_enum_t name) {
@@ -158,16 +67,16 @@ static unsigned AddressSpace(xed_reg_enum_t seg, xed_operand_enum_t name) {
 
 }  // namespace
 
-bool Instr::Lift(const BlockMap &blocks, llvm::BasicBlock *B_) {
+bool Instr::Lift(const Intrinsic *intrinsic_, const BlockMap &blocks,
+                 llvm::BasicBlock *B_) {
   B = B_;
   F = B->getParent();
   M = F->getParent();
   C = &(F->getContext());
-
-  LiftPC();
+  intrinsic = intrinsic_;
 
   if (IsError()) {
-    AddTerminatingTailCall(B, ExitProgramErrorDispatcher(M));
+    AddTerminatingTailCall(B, intrinsic->error);
     return false;
 
   } else if (IsDirectJump()) {
@@ -175,46 +84,61 @@ bool Instr::Lift(const BlockMap &blocks, llvm::BasicBlock *B_) {
     return false;
 
   } else if (IsIndirectJump()) {
+    LiftPC();
     LiftGeneric();  // loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, IndirectJumpDispatcher(M));
+    AddTerminatingTailCall(B, intrinsic->jump);
     return false;
 
   } else if (IsDirectFunctionCall()) {
+    LiftPC();
     LiftGeneric();  // Adjusts the stack, stores `gpr.rip` to the stack.
     AddTerminatingTailCall(B, blocks[TargetPC()]);
     return false;
 
   } else if (IsIndirectFunctionCall()) {
+    LiftPC();
     LiftGeneric();  // Adjusts the stack, loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, IndirectFunctionCallDispatcher(M));
+    AddTerminatingTailCall(B, intrinsic->function_call);
     return false;
 
   } else if (IsFunctionReturn()) {
+    LiftPC();
     LiftGeneric();  // Adjusts the stack, loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, FunctionReturnDispatcher(M));
+    AddTerminatingTailCall(B, intrinsic->function_return);
     return false;
 
   } else if (IsBranch()) {
+    LiftPC();
     LiftConditionalBranch(blocks);
     return false;
 
   // Instruction implementation handles syscall emulation.
   } else if (IsSystemCall()) {
+    LiftPC();
     LiftGeneric();
+    AddTerminatingTailCall(B, intrinsic->system_call);
     return false;
 
   } else if (IsSystemReturn()) {
-    LOG(FATAL)
+    LiftPC();
+    LiftGeneric();
+    AddTerminatingTailCall(B, intrinsic->system_return);
+    LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
     return false;
 
   // Instruction implementation handles syscall (x86, x32) emulation.
   } else if (IsInterruptCall()) {
+    LiftPC();
     LiftGeneric();
+    AddTerminatingTailCall(B, intrinsic->interrupt_call);
     return false;
 
   } else if (IsInterruptReturn()) {
-    LOG(FATAL)
+    LiftPC();
+    LiftGeneric();
+    AddTerminatingTailCall(B, intrinsic->interrupt_return);
+    LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
     return false;
 
@@ -362,7 +286,6 @@ void Instr::LiftOperand(unsigned op_num) {
 // The challenge is that we don't want to have
 void Instr::LiftMemory(const xed_operand_t *xedo, unsigned op_num) {
   auto op_name = xed_operand_name(xedo);
-  auto op_width = xed_decoded_inst_operand_length_bits(xedd, op_num);
   auto mem_index = (XED_OPERAND_MEM1 == op_name) ? 1 : 0;  // Handles AGEN.
   auto seg = xed_decoded_inst_get_seg_reg(xedd, mem_index);
   auto base = xed_decoded_inst_get_base_reg(xedd, mem_index);
@@ -373,13 +296,9 @@ void Instr::LiftMemory(const xed_operand_t *xedo, unsigned op_num) {
   auto addr_space = AddressSpace(seg, op_name);
 
   llvm::IRBuilder<> ir(B);
-  llvm::Type *ValTy = OperandType(*C, xedo, op_width);
-  llvm::Type *PtrTy = ValTy->getPointerTo(addr_space);
   llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
   llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
   llvm::Value *A = nullptr;  // Address (as an integer).
-  llvm::Value *P = nullptr;  // Pointer (address space 0).
-  llvm::Value *M = nullptr;  // Pointer (address space specific).
 
   // Address is in the displacement.
   if (XED_REG_INVALID == base && XED_REG_INVALID == index) {
@@ -421,22 +340,15 @@ void Instr::LiftMemory(const xed_operand_t *xedo, unsigned op_num) {
     A = ir.CreateAdd(ir.CreateAdd(B, ir.CreateMul(I, S)), D);
   }
 
-  M = ir.CreateIntToPtr(A, PtrTy);
   if (addr_space) {
-    P = ir.CreateAlloca(ValTy);
-    if (xed_operand_read(xedo)) {
-      ir.CreateStore(ir.CreateLoad(M), P);
-    }
-    if (xed_operand_written(xedo)) {
-      auto V = new llvm::LoadInst(P);
-      append_instrs.push_back(V);
-      append_instrs.push_back(new llvm::StoreInst(V, M));
-    }
-  } else {
-    P = M;
+    std::vector<llvm::Value *> args = {
+        FindStatePointer(F),  // Machine state.
+        A,  // Address.
+        llvm::ConstantInt::get(Int32Ty, addr_space, true)};
+    A = ir.CreateCall(intrinsic->compute_address, args);
   }
 
-  args.push_back(P);
+  args.push_back(A);
 }
 
 // Convert an immediate constant into an LLVM `Value` for passing into the

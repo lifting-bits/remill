@@ -68,9 +68,9 @@ llvm::Module *Arch::CreateModule(void) const {
   llvm::SMDiagnostic err;
 
   if (64 == address_size) {
-    module_file = MCSEMA_DIR "/generated/Arch/X86/Semantics/State64.bc";
+    module_file = MCSEMA_DIR "/generated/Arch/X86/Semantics/MACHINE64.bc";
   } else {
-    module_file = MCSEMA_DIR "/generated/Arch/X86/Semantics/State32.bc";
+    module_file = MCSEMA_DIR "/generated/Arch/X86/Semantics/MACHINE32.bc";
   }
 
   // Load the arch-specific bitcode file as a module.

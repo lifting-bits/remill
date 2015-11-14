@@ -13,6 +13,7 @@ class Instr;
 }  // namespace cfg
 
 class BlockMap;
+class Intrinsic;
 
 class Instr {
  public:
@@ -22,7 +23,10 @@ class Instr {
 
   // Lift an instruction. If the lifter returns `false` then lifting of the
   // block has completed.
-  virtual bool Lift(const BlockMap &blocks, llvm::BasicBlock *B) = 0;
+  //
+  // TODO(pag): I'm not pleased with this interface.
+  virtual bool Lift(const Intrinsic *intrinsic, const BlockMap &blocks,
+                    llvm::BasicBlock *B) = 0;
 
  protected:
   const cfg::Instr * const instr;

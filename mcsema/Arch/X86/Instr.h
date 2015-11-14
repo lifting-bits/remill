@@ -24,7 +24,8 @@ class Instr : public ::mcsema::Instr {
   Instr(const cfg::Instr *, const struct xed_decoded_inst_s *xedd_);
   virtual ~Instr(void);
 
-  virtual bool Lift(const BlockMap &blocks, llvm::BasicBlock *B_) override;
+  virtual bool Lift(const Intrinsic *intrinsic, const BlockMap &blocks,
+                    llvm::BasicBlock *B_) override;
 
  private:
   void LiftPC(void);
@@ -62,6 +63,8 @@ class Instr : public ::mcsema::Instr {
   const xed_decoded_inst_t * const xedd;
   const xed_inst_t * const xedi;
   const xed_iclass_enum_t iclass;
+
+  const Intrinsic *intrinsic;
 
   llvm::BasicBlock *B;
   llvm::Function *F;

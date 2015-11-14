@@ -1,29 +1,22 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#include <cstdint>
 #include <type_traits>
+#include <cstdint>
 
-#include "mcsema/Arch/X86/Semantics/Register.inc"
+struct State;
 
-typedef float float32_t;
-static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
+#include "mcsema/Arch/Semantics/CONTROL.inc"
+#include "mcsema/Arch/Semantics/TYPES.inc"
+#include "mcsema/Arch/Semantics/MACROS.inc"
+#include "mcsema/Arch/Semantics/MEMORY.inc"
 
-typedef double float64_t;
-static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
+#if 64 == ADDRESS_SIZE_BITS
+# define IF_64BIT(...) __VA_ARGS__
+#else
+# define IF_64BIT(...)
+#endif
 
-struct alignas(16) float80_t {
-  long double f;
-};
-static_assert(16 == sizeof(float80_t), "Invalid `float80_t` size.");
-
-typedef unsigned uint128_t __attribute__ ((vector_size (16)));
-static_assert(16 == sizeof(uint128_t), "Invalid `uint128_t` size.");
-
-typedef unsigned uint256_t __attribute__ ((vector_size (32)));
-static_assert(32 == sizeof(uint256_t), "Invalid `uint256_t` size.");
-
-typedef unsigned uint512_t __attribute__ ((vector_size (64)));
-static_assert(64 == sizeof(uint512_t), "Invalid `uint512_t` size.");
+#include "mcsema/Arch/X86/Semantics/REGISTER.inc"
 
 union FPUStatusWord {
   struct {
@@ -68,87 +61,6 @@ union FPUControlWord {
 static_assert(2 == sizeof(FPUControlWord),
               "Invalid structure packing of `FPUControl`.");
 
-typedef uint8_t uint8v16_t __attribute__ ((vector_size (16)));
-typedef uint16_t uint16v8_t __attribute__ ((vector_size (16)));
-typedef uint32_t uint32v4_t __attribute__ ((vector_size (16)));
-typedef uint64_t uint64v2_t __attribute__ ((vector_size (16)));
-typedef float32_t float32v4_t __attribute__ ((vector_size (16)));
-typedef float64_t float64v2_t __attribute__ ((vector_size (16)));
-
-union XMMReg {
-  uint8v16_t bytes;
-  uint16v8_t words;
-  uint32v4_t dwords;
-  uint64v2_t qwords;
-  float32v4_t floats;
-  float64v2_t doubles;
-} __attribute__((packed));
-
-static_assert(16 == sizeof(XMMReg),
-              "Invalid structure packing of `XMMReg`.");
-
-#if 64 == ADDRESS_SIZE_BITS
-
-typedef uint8_t uint8v32_t __attribute__ ((vector_size (32)));
-typedef uint16_t uint16v16_t __attribute__ ((vector_size (32)));
-typedef uint32_t uint32v8_t __attribute__ ((vector_size (32)));
-typedef uint64_t uint64v4_t __attribute__ ((vector_size (32)));
-typedef float32_t float32v8_t __attribute__ ((vector_size (32)));
-typedef float64_t float64v4_t __attribute__ ((vector_size (32)));
-
-union YMMReg {
-  uint8v32_t bytes;
-  uint16v16_t words;
-  uint32v8_t dwords;
-  uint64v4_t qwords;
-  float32v8_t floats;
-  float64v4_t doubles;
-} __attribute__((packed));
-
-static_assert(32 == sizeof(YMMReg),
-              "Invalid structure packing of `YMMReg`.");
-
-typedef uint8_t uint8v64_t __attribute__ ((vector_size (64)));
-typedef uint16_t uint16v32_t __attribute__ ((vector_size (64)));
-typedef uint32_t uint32v16_t __attribute__ ((vector_size (64)));
-typedef uint64_t uint64v8_t __attribute__ ((vector_size (64)));
-typedef float32_t float32v16_t __attribute__ ((vector_size (64)));
-typedef float64_t float64v8_t __attribute__ ((vector_size (64)));
-
-union ZMMReg {
-  uint8v64_t bytes;
-  uint16v32_t words;
-  uint32v16_t dwords;
-  uint64v8_t qwords;
-  float32v16_t floats;
-  float64v8_t doubles;
-} __attribute__((packed));
-
-static_assert(64 == sizeof(ZMMReg),
-              "Invalid structure packing of `ZMMReg`.");
-
-#endif  // 64 == ADDRESS_SIZE_BITS
-
-union alignas(64) VectorReg {
-  XMMReg xmm;
-#if 64 == ADDRESS_SIZE_BITS
-  YMMReg ymm;
-  ZMMReg zmm;
-#endif  // 64 == ADDRESS_SIZE_BITS
-} __attribute__((packed));
-
-static_assert(sizeof(uint512_t) == sizeof(VectorReg),
-              "Invalid structure packing of `VectorReg`.");
-static_assert(0 == __builtin_offsetof(VectorReg, xmm),
-              "Invalid packing of `VectorReg::xmm`.");
-
-#if 64 == ADDRESS_SIZE_BITS
-static_assert(0 == __builtin_offsetof(VectorReg, ymm),
-              "Invalid packing of `VectorReg::ymm`.");
-static_assert(0 == __builtin_offsetof(VectorReg, zmm),
-              "Invalid packing of `VectorReg::zmm`.");
-#endif  // 64 == ADDRESS_SIZE_BITS
-
 union FPUStackElem {
   float80_t st;
   double mmx;
@@ -175,7 +87,7 @@ class FPU {
   // Note: This is consistent with `fxsave64`, but doesn't handle things like
   //       ZMM/YMM registers. Therefore, we use a different set of registers
   //       for those.
-  uint128_t xmm[16];  // 16*16 bytes for each XMM reg = 256 bytes.
+  vec128_t xmm[16];  // 16*16 bytes for each XMM reg = 256 bytes.
   uint32_t padding[24];
 } __attribute__((packed));
 
@@ -248,8 +160,8 @@ union Reg {
   alignas(2) uint16_t word; 
   alignas(4) uint32_t dword;
   alignas(8) uint64_t full;
-  alignas(8) uint64_t *ptr;
-};
+  alignas(8) int64_t sfull;
+} __attribute__((packed));
 
 #else
 
@@ -261,8 +173,8 @@ union Reg {
   alignas(2) uint16_t word; 
   alignas(4) uint32_t dword;
   alignas(4) uint32_t full;
-  alignas(4) uint32_t *ptr;
-};
+  alignas(4) int32_t sfull;
+} __attribute__((packed));
 
 #endif  // 64 != ADDRESS_SIZE_BITS
 
@@ -272,6 +184,25 @@ static_assert(1 == __builtin_offsetof(Reg, byte.high), "Invalid packing of `Reg:
 static_assert(0 == __builtin_offsetof(Reg, word), "Invalid packing of `Reg::word`.");
 static_assert(0 == __builtin_offsetof(Reg, dword), "Invalid packing of `Reg::dword`.");
 static_assert(0 == __builtin_offsetof(Reg, full), "Invalid packing of `Reg::full`.");
+static_assert(0 == __builtin_offsetof(Reg, sfull), "Invalid packing of `Reg::sfull`.");
+
+union alignas(64) VectorReg {
+  vec128_t xmm;
+
+  IF_64BIT( vec256_t ymm; )
+  IF_64BIT( vec512_t zmm; )
+
+} __attribute__((packed));
+
+static_assert(0 == __builtin_offsetof(VectorReg, xmm),
+              "Invalid packing of `VectorReg::xmm`.");
+
+#if 64 == ADDRESS_SIZE_BITS
+static_assert(0 == __builtin_offsetof(VectorReg, ymm),
+              "Invalid packing of `VectorReg::ymm`.");
+static_assert(0 == __builtin_offsetof(VectorReg, zmm),
+              "Invalid packing of `VectorReg::zmm`.");
+#endif  // 64 == ADDRESS_SIZE_BITS
 
 class alignas(8) GPR {
  public:
@@ -322,7 +253,7 @@ extern "C" {
 // Method that will implement a basic block. We will clone this method for
 // each basic block in the code being lifted.
 [[gnu::used]]
-void BlockMethod(State &state) noexcept {
+void __mcsema_basic_block(State &state) noexcept {
 
   // Define read- and write-specific aliases of each register. We will
   // reference these variables from the bitcode side of things so that,
@@ -345,68 +276,75 @@ void BlockMethod(State &state) noexcept {
 #undef REG_INFO64
 }
 
-// TODO(pag): Perform exit the program due to an error.
-[[gnu::used, gnu::noinline]]
-void DispatchExitProgramError(State &state) noexcept {
-  (void) state.gpr.rip;
-}
-
-// TODO(pag): Perform indirect branch based on program counter.
-[[gnu::used, gnu::noinline]]
-void DispatchIndirectFunctionCall(State &state) noexcept {
-  (void) state.gpr.rip;
-}
-
-// TODO(pag): Perform indirect branch based on program counter.
-[[gnu::used, gnu::noinline]]
-void DispatchIndirectJump(State &state) noexcept {
-  (void) state.gpr.rip;
-}
-
-// TODO(pag): Perform indirect branch based on program counter.
-[[gnu::used, gnu::noinline]]
-void DispatchFunctionReturn(State &state) noexcept {
-  (void) state.gpr.rip;
+// This is just a hack to make sure all these functions appear in the bitcode
+// file!
+[[gnu::used]]
+void __mcsema_intrinsics(void) {
+  (void) __mcsema_basic_block;
+  (void) __mcsema_error;
+  (void) __mcsema_function_call;
+  (void) __mcsema_function_return;
+  (void) __mcsema_jump;
+  (void) __mcsema_system_call;
+  (void) __mcsema_system_return;
+  (void) __mcsema_interrupt_call;
+  (void) __mcsema_interrupt_return;
+  (void) __mcsema_read_memory_8;
+  (void) __mcsema_read_memory_16;
+  (void) __mcsema_read_memory_32;
+  (void) __mcsema_read_memory_64;
+  (void) __mcsema_read_memory_128;
+  (void) __mcsema_read_memory_256;
+  (void) __mcsema_read_memory_512;
+  (void) __mcsema_write_memory_8;
+  (void) __mcsema_write_memory_16;
+  (void) __mcsema_write_memory_32;
+  (void) __mcsema_write_memory_64;
+  (void) __mcsema_write_memory_128;
+  (void) __mcsema_write_memory_256;
+  (void) __mcsema_write_memory_512;
+  (void) __mcsema_compute_address;
+  (void) __mcsema_undefined_bool;
 }
 
 }  // extern C
 
-typedef uint64_t &R64W;
-typedef uint64_t R64;
-
-typedef decltype(Reg().full) &R32W;
-typedef uint32_t R32;
-
-typedef uint16_t &R16W;
-typedef uint16_t R16;
+// Unsigned -------------
 
 typedef uint8_t &R8W;
 typedef uint8_t R8;
+typedef uint16_t &R16W;
+typedef uint16_t R16;
+typedef decltype(Reg().full) &R32W;
+typedef uint32_t R32;
+IF_64BIT( typedef uint64_t &R64W; )
+IF_64BIT( typedef uint64_t R64; )
+typedef vec128_t &R128W;
+typedef vec128_t R128;
+typedef vec256_t &R256W;
+typedef vec256_t R256;
+typedef vec512_t &R512W;
+typedef vec512_t R512;
 
-// TODO(pag): These could be turned into references. It would be interesting
-//            to see if this has any effect in terms of optimization, as the
-//            pointers would be marked as `dereferencable`.
-typedef uint64_t *M64;
-typedef uint32_t *M32;
-typedef uint16_t *M16;
-typedef uint8_t *M8;
+IF_64BIT( typedef uint64_t I64; )
+typedef uint32_t I32;
+typedef uint16_t I16;
+typedef uint8_t I8;
 
-typedef uint64_t IMM64;
-typedef uint32_t IMM32;
-typedef uint16_t IMM16;
-typedef uint8_t IMM8;
+IF_64BIT( typedef int64_t SI64; )
+typedef int32_t SI32;
+typedef int16_t SI16;
+typedef int8_t SI8;
 
-typedef int64_t SIMM64;
-typedef int32_t SIMM32;
-typedef int16_t SIMM16;
-typedef int8_t SIMM8;
+// Immediate selectors -------------
 
 typedef uintptr_t PC;
 
-#define INSTR_ATTRIBS [[gnu::always_inline, gnu::gnu_inline, gnu::flatten]]
+#define INSTR_ATTRIBS ALWAYS_INLINE
 
 // Define a specific instruction selection variable.
-#define DEF_ISEL(name) extern "C" constexpr auto name __attribute__((used, visibility("default")))
+#define DEF_ISEL(name) \
+  extern "C" constexpr auto name __attribute__((used, visibility("default")))
 
 // Define a semantics implementing function.
 #define DEF_SEM(name, ...) \
@@ -419,69 +357,123 @@ typedef uintptr_t PC;
     DEF_ISEL(name ## _64) = func
 
 #define DEF_ISEL_32UP(name, func) \
-    DEF_ISEL(name ## _32) = func ; \
-    DEF_ISEL(name ## _64) = func
+    DEF_ISEL(name ## _32) = func \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = func )
 
 #define DEF_ISEL_Rn(name, tpl_func) \
     DEF_ISEL(name ## _8) = tpl_func<R8> ; \
     DEF_ISEL(name ## _16) = tpl_func<R16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<R32> ; \
-    DEF_ISEL(name ## _64) = tpl_func<R64>
+    DEF_ISEL(name ## _32) = tpl_func<R32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64> )
 
-#define DEF_ISEL_WRn_Mn(name, tpl_func) \
+#define DEF_ISEL_Mn(name, tpl_func) \
+    DEF_ISEL(name ## _8) = tpl_func<M8> ; \
+    DEF_ISEL(name ## _16) = tpl_func<M16> ; \
+    DEF_ISEL(name ## _32) = tpl_func<M32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<M64> )
+
+#define DEF_ISEL_In(name, tpl_func) \
+    DEF_ISEL(name ## _8) = tpl_func<I8> ; \
+    DEF_ISEL(name ## _16) = tpl_func<I16> ; \
+    DEF_ISEL(name ## _32) = tpl_func<I32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<I64> )
+
+// Two operand (dst <- src)
+#define DEF_ISEL_Rn_Mn(name, tpl_func) \
     DEF_ISEL(name ## _8) = tpl_func<R8W, M8> ; \
     DEF_ISEL(name ## _16) = tpl_func<R16W, M16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<R32W, M32> ; \
-    DEF_ISEL(name ## _64) = tpl_func<R64W, M64>
+    DEF_ISEL(name ## _32) = tpl_func<R32W, M32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64W, M64> )
 
-#define DEF_ISEL_WRn_Rn(name, tpl_func) \
+#define DEF_ISEL_Rn_Rn(name, tpl_func) \
     DEF_ISEL(name ## _8) = tpl_func<R8W, R8> ; \
     DEF_ISEL(name ## _16) = tpl_func<R16W, R16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<R32W, R32> ; \
-    DEF_ISEL(name ## _64) = tpl_func<R64W, R64>
+    DEF_ISEL(name ## _32) = tpl_func<R32W, R32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64W, R64> )
 
-#define DEF_ISEL_WRn_In(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<R8W, IMM8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<R16W, IMM16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<R32W, IMM32> ; \
-    DEF_ISEL(name ## _64) = tpl_func<R64W, IMM64>
+#define DEF_ISEL_Rn_In(name, tpl_func) \
+    DEF_ISEL(name ## _8) = tpl_func<R8W, I8> ; \
+    DEF_ISEL(name ## _16) = tpl_func<R16W, I16> ; \
+    DEF_ISEL(name ## _32) = tpl_func<R32W, I32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64W, I64> )
 
 #define DEF_ISEL_Mn_In(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<M8, IMM8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<M16, IMM16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<M32, IMM32> ; \
-    DEF_ISEL(name ## _64) = tpl_func<M64, IMM64>
+    DEF_ISEL(name ## _8) = tpl_func<M8, I8> ; \
+    DEF_ISEL(name ## _16) = tpl_func<M16, I16> ; \
+    DEF_ISEL(name ## _32) = tpl_func<M32, I32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<M64, I64> )
 
 #define DEF_ISEL_Mn_Rn(name, tpl_func) \
     DEF_ISEL(name ## _8) = tpl_func<M8, R8> ; \
     DEF_ISEL(name ## _16) = tpl_func<M16, R16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<M32, R32> ; \
-    DEF_ISEL(name ## _64) = tpl_func<M64, R64>
+    DEF_ISEL(name ## _32) = tpl_func<M32, R32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<M64, R64> )
+
+// 3-operand dst <- (src1 op src2)
+#define DEF_ISEL_Rn_Rn_Mn(name, tpl_func) \
+    DEF_ISEL(name ## _8) = tpl_func<R8W, R8, M8> ; \
+    DEF_ISEL(name ## _16) = tpl_func<R16W, R16, M16> ; \
+    DEF_ISEL(name ## _32) = tpl_func<R32W, R32, M32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64W, R64, M64> )
+
+#define DEF_ISEL_Rn_Rn_Rn(name, tpl_func) \
+    DEF_ISEL(name ## _8) = tpl_func<R8W, R8, R8> ; \
+    DEF_ISEL(name ## _16) = tpl_func<R16W, R16, R16> ; \
+    DEF_ISEL(name ## _32) = tpl_func<R32W, R32, R32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64W, R64, R64> )
+
+#define DEF_ISEL_Rn_Rn_In(name, tpl_func) \
+    DEF_ISEL(name ## _8) = tpl_func<R8W, R8, I8> ; \
+    DEF_ISEL(name ## _16) = tpl_func<R16W, R16, I16> ; \
+    DEF_ISEL(name ## _32) = tpl_func<R32W, R32, I32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64W, R64, I64> )
+
+#define DEF_ISEL_Mn_Mn_In(name, tpl_func) \
+    DEF_ISEL(name ## _8) = tpl_func<M8, I8> ; \
+    DEF_ISEL(name ## _16) = tpl_func<M16, I16> ; \
+    DEF_ISEL(name ## _32) = tpl_func<M32, I32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<M64, I64> )
+
+#define DEF_ISEL_Mn_Mn_Rn(name, tpl_func) \
+    DEF_ISEL(name ## _8) = tpl_func<M8, R8> ; \
+    DEF_ISEL(name ## _16) = tpl_func<M16, R16> ; \
+    DEF_ISEL(name ## _32) = tpl_func<M32, R32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<M64, R64> )
 
 namespace {
 
+// Write to memory.
 template <typename T>
 INSTR_ATTRIBS
-static inline T &W(T *v) { return *v; }
+static inline Mn<T> W(Mn<T> addr) {
+  return addr;
+}
 
+// Write to a register.
 template <typename T>
 INSTR_ATTRIBS
 static inline T &W(T &v) { return v; }
 
 template <typename T>
 INSTR_ATTRIBS
-static inline T R(T *v) { return *v; }
+static inline T R(Mn<T> addr) {
+  return addr.Read();
+}
 
 template <typename T>
 INSTR_ATTRIBS
-static inline T R(T v) { return v; }
-
-#include "mcsema/Arch/X86/Semantics/Flags.inc"
+static inline T R(T v) {
+  return v;
+}
 
 }  // namespace
 
+#include "mcsema/Arch/X86/Semantics/FLAGS.inc"
+#include "mcsema/Arch/X86/Semantics/BINARY.inc"
 #include "mcsema/Arch/X86/Semantics/CALL_RET.inc"
 #include "mcsema/Arch/X86/Semantics/COND_BR.inc"
 #include "mcsema/Arch/X86/Semantics/DATAXFER.inc"
 #include "mcsema/Arch/X86/Semantics/LOGICAL.inc"
 #include "mcsema/Arch/X86/Semantics/MISC.inc"
+#include "mcsema/Arch/X86/Semantics/STACK.inc"
+#include "mcsema/Arch/X86/Semantics/UNCOND_BR.inc"

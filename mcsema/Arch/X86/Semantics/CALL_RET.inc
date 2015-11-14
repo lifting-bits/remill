@@ -5,26 +5,23 @@ namespace {
 template <typename T>
 DEF_SEM(CALL, T target_pc) {
   CLEAR_AFLAGS();
-  *state.gpr.rsp.ptr-- = state.gpr.rip.full;
-  state.gpr.rip.full = static_cast<PC>(target_pc);
+  state.gpr.rsp.full -= sizeof(state.gpr.rsp.full);
+  Mn<PC>::Write(state.gpr.rsp.full, state.gpr.rip.full);
+  state.gpr.rip.full = R(target_pc);
 }
 
-template <typename T>
-DEF_SEM(INDIRECT_CALL, T *target_pc) {
+DEF_SEM(RET_IMM, I16 bytes) {
   CLEAR_AFLAGS();
-  *state.gpr.rsp.ptr-- = state.gpr.rip.full;
-  state.gpr.rip.full = static_cast<uintptr_t>(*target_pc);
-}
-
-DEF_SEM(RET_IMM, IMM16 bytes) {
-  CLEAR_AFLAGS();
-  state.gpr.rip.full = *state.gpr.rsp.ptr++;
-  state.gpr.rsp.full += bytes;
+  auto addr = Mn<PC>::Read(state.gpr.rsp.full);
+  state.gpr.rip.full = addr;
+  state.gpr.rsp.full += bytes + sizeof(PC);
 }
 
 DEF_SEM(RET) {
   CLEAR_AFLAGS();
-  state.gpr.rip.full = *state.gpr.rsp.ptr++;
+  auto addr = Mn<PC>::Read(state.gpr.rsp.full);
+  state.gpr.rip.full = addr;
+  state.gpr.rsp.full += sizeof(PC);
 }
 
 }  // namespace
@@ -32,8 +29,8 @@ DEF_SEM(RET) {
 DEF_ISEL_32UP(CALL_NEAR_RELBRz, CALL<PC>);
 DEF_ISEL_32UP(CALL_NEAR_RELBRd, CALL<PC>);
 
-DEF_ISEL(CALL_NEAR_MEMv_32) = INDIRECT_CALL<uint32_t>;
-DEF_ISEL(CALL_NEAR_MEMv_64) = INDIRECT_CALL<uint64_t>;
+DEF_ISEL(CALL_NEAR_MEMv_32) = CALL<M32>;
+IF_64BIT( DEF_ISEL(CALL_NEAR_MEMv_64) = CALL<M64>; )
 
 DEF_ISEL_Rn(CALL_NEAR_GRPv, CALL);
 

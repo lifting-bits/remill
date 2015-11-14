@@ -9,8 +9,6 @@
 
 #include "mcsema/BC/Util.h"
 
-DECLARE_string(os);
-
 namespace mcsema {
 
 llvm::Function *&BlockMap::operator[](uintptr_t pc) {
@@ -54,8 +52,7 @@ void AddTerminatingTailCall(llvm::BasicBlock *B, llvm::Function *To) {
     ir.CreateUnreachable();
   } else {
     llvm::Function *F = B->getParent();
-    llvm::Argument *SP = &*F->getArgumentList().begin();  // Machine state ptr.
-    llvm::CallInst *C = ir.CreateCall(To, {SP});
+    llvm::CallInst *C = ir.CreateCall(To, {FindStatePointer(F)});
     C->setTailCallKind(llvm::CallInst::TCK_MustTail);
     C->setCallingConv(llvm::CallingConv::Fast);
     ir.CreateRetVoid();
@@ -75,59 +72,9 @@ llvm::Value *FindVarInFunction(llvm::Function *F, std::string name) {
   return nullptr;
 }
 
-// Return a pointer to the block method template.
-llvm::Function *BlockMethod(llvm::Module *M) {
-  llvm::Function *F = nullptr;
-  F = M->getFunction("BlockMethod");
-  if (!F && FLAGS_os == "mac") {
-    F = M->getFunction("_BlockMethod");
-  }
-  LOG_IF(FATAL, !F) << "Missing block method for OS: " << FLAGS_os;
-  return F;
-}
-
-// Return a pointer to the method that exits the program.
-llvm::Function *ExitProgramErrorDispatcher(llvm::Module *M) {
-  llvm::Function *F = nullptr;
-  F = M->getFunction("DispatchExitProgramError");
-  if (!F && FLAGS_os == "mac") {
-    F = M->getFunction("_DispatchExitProgramError");
-  }
-  LOG_IF(FATAL, !F) << "Missing program exit dispatcher for OS: " << FLAGS_os;
-  return F;
-}
-
-// Return a pointer to the indirect branch method.
-llvm::Function *IndirectFunctionCallDispatcher(llvm::Module *M) {
-  llvm::Function *F = nullptr;
-  F = M->getFunction("DispatchIndirectFunctionCall");
-  if (!F && FLAGS_os == "mac") {
-    F = M->getFunction("_DispatchIndirectFunctionCall");
-  }
-  LOG_IF(FATAL, !F) << "Missing indirect call dispatcher for OS: " << FLAGS_os;
-  return F;
-}
-
-// Return a pointer to the indirect branch method.
-llvm::Function *IndirectJumpDispatcher(llvm::Module *M) {
-  llvm::Function *F = nullptr;
-  F = M->getFunction("DispatchIndirectJump");
-  if (!F && FLAGS_os == "mac") {
-    F = M->getFunction("_DispatchIndirectJump");
-  }
-  LOG_IF(FATAL, !F) << "Missing indirect jump dispatcher for OS: " << FLAGS_os;
-  return F;
-}
-
-// Return a pointer to the indirect branch method.
-llvm::Function *FunctionReturnDispatcher(llvm::Module *M) {
-  llvm::Function *F = nullptr;
-  F = M->getFunction("DispatchFunctionReturn");
-  if (!F && FLAGS_os == "mac") {
-    F = M->getFunction("_DispatchFunctionReturn");
-  }
-  LOG_IF(FATAL, !F) << "Missing return dispatcher for OS: " << FLAGS_os;
-  return F;
+// Find the machine state pointer.
+llvm::Value *FindStatePointer(llvm::Function *F) {
+  return &*F->getArgumentList().begin();
 }
 
 }  // namespace mcsema

@@ -20,6 +20,7 @@ class Block;
 }  // namespace cfg
 
 class Arch;
+class Intrinsic;
 
 class BC {
  public:
@@ -55,11 +56,21 @@ class BC {
   bool LiftInstruction(const cfg::Block &block, const cfg::Instr &instr,
                        Instr &ainstr, llvm::Function *BF);
 
+  // Add a fall-through terminator to the block method just in case one is
+  // missing.
+  void TerminateBlockMethod(const cfg::Block &block, llvm::Function *BF);
+
+  // Remove calls to the undefined intrinsics.
+  void RemoveUndefinedIntrinsics(void);
+
   // Architecture of the code contained within the CFG being lifted.
   const Arch * const arch;
 
   // Module into which code is lifted.
   llvm::Module * const module;
+
+  // MCSema-specific intrinsics available in the module.
+  Intrinsic * const intrinsic;
 
   // Blocks that we've added, indexed by their entry address.
   BlockMap blocks;
@@ -76,10 +87,6 @@ class BC {
   // with their address because they might conflict. So, we give a unique
   // name to every non-exported symbol we introduce.
   int next_symbol_id;
-
-  // Functions inside of `module` that we will clone for creating new function /
-  // block methods.
-  llvm::Function * const method;
 };
 
 }  // namespace mcsema
