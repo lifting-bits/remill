@@ -12,8 +12,8 @@ namespace cfg {
 class Instr;
 }  // namespace cfg
 
-class BlockMap;
-class Intrinsic;
+class Lifter;
+class Lifter;
 
 class Instr {
  public:
@@ -25,8 +25,7 @@ class Instr {
   // block has completed.
   //
   // TODO(pag): I'm not pleased with this interface.
-  virtual bool Lift(const Intrinsic *intrinsic, const BlockMap &blocks,
-                    llvm::BasicBlock *B) = 0;
+  virtual bool Lift(const Lifter &lifter, llvm::BasicBlock *B) = 0;
 
  protected:
   const cfg::Instr * const instr;

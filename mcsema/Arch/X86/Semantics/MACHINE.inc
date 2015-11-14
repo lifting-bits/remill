@@ -409,6 +409,27 @@ typedef uintptr_t PC;
     DEF_ISEL(name ## _32) = tpl_func<M32, R32> \
     IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<M64, R64> )
 
+#define DEF_ISEL_RO_Rn_Mn(name, tpl_func) \
+    DEF_ISEL(name ## _8) = tpl_func<R8, M8> ; \
+    DEF_ISEL(name ## _16) = tpl_func<R16, M16> ; \
+    DEF_ISEL(name ## _32) = tpl_func<R32, M32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64, M64> )
+
+#define DEF_ISEL_RO_Rn_Rn(name, tpl_func) \
+    DEF_ISEL(name ## _8) = tpl_func<R8, R8> ; \
+    DEF_ISEL(name ## _16) = tpl_func<R16, R16> ; \
+    DEF_ISEL(name ## _32) = tpl_func<R32, R32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64, R64> )
+
+#define DEF_ISEL_RO_Rn_In(name, tpl_func) \
+    DEF_ISEL(name ## _8) = tpl_func<R8, I8> ; \
+    DEF_ISEL(name ## _16) = tpl_func<R16, I16> ; \
+    DEF_ISEL(name ## _32) = tpl_func<R32, I32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64, I64> )
+
+#define DEF_ISEL_RO_Mn_In DEF_ISEL_Mn_In
+#define DEF_ISEL_RO_Mn_Rn DEF_ISEL_Mn_Rn
+
 // 3-operand dst <- (src1 op src2)
 #define DEF_ISEL_Rn_Rn_Mn(name, tpl_func) \
     DEF_ISEL(name ## _8) = tpl_func<R8W, R8, M8> ; \

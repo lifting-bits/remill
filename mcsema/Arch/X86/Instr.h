@@ -24,15 +24,15 @@ class Instr : public ::mcsema::Instr {
   Instr(const cfg::Instr *, const struct xed_decoded_inst_s *xedd_);
   virtual ~Instr(void);
 
-  virtual bool Lift(const Intrinsic *intrinsic, const BlockMap &blocks,
-                    llvm::BasicBlock *B_) override;
+  virtual bool Lift(const Lifter &lifter, llvm::BasicBlock *B_) override;
 
  private:
   void LiftPC(void);
-  void LiftGeneric(void);
-  void LiftConditionalBranch(const BlockMap &blocks);
-  void LiftOperand(unsigned op_num);
-  void LiftMemory(const xed_operand_t *xedo, unsigned op_num);
+  void LiftGeneric(const Lifter &lifter);
+  void LiftConditionalBranch(const Lifter &lifter);
+  void LiftOperand(const Lifter &lifter, unsigned op_num);
+  void LiftMemory(const Lifter &lifter, const xed_operand_t *xedo,
+                  unsigned op_num);
   void LiftImmediate(xed_operand_enum_t op_name);
   void LiftRegister(const xed_operand_t *xedo);
   void LiftBranchDisplacement(void);
@@ -63,8 +63,6 @@ class Instr : public ::mcsema::Instr {
   const xed_decoded_inst_t * const xedd;
   const xed_inst_t * const xedi;
   const xed_iclass_enum_t iclass;
-
-  const Intrinsic *intrinsic;
 
   llvm::BasicBlock *B;
   llvm::Function *F;

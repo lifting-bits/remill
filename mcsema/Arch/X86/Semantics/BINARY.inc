@@ -32,6 +32,22 @@ DEF_SEM(BINARY_OP2, D dst, S1 src1_, S2 src2_) {
       BINARY_OP2<op<S1>, D, S1, S2>(state, dst, src1_, src2_); \
     }
 
+template <typename D, typename S1>
+DEF_SEM(CMP, D src1_, S1 src2_) {
+  auto src1 = static_cast<intptr_t>(R(src1_));
+  auto src2 = static_cast<intptr_t>(R(src2_));
+  auto res = src1 - src2;
+  SET_AFLAGS(src1, src2, res);
+}
+
+template <typename D, typename S1>
+DEF_SEM(TEST, D src1_, S1 src2_) {
+  auto src1 = static_cast<intptr_t>(R(src1_));
+  auto src2 = static_cast<intptr_t>(R(src2_));
+  auto res = src1 & src2;
+  SET_BFLAGS(src1, src2, res);
+}
+
 DEFINE_OP(ADD, std::plus)
 DEFINE_OP(SUB, std::minus)
 DEFINE_OP(MUL, std::multiplies)
@@ -112,3 +128,37 @@ DEF_ISEL_Rn_Rn_In(SUB_OrAX_IMMz, SUB2);
 1295 DIV DIV_MEMv BINARY BASE I86 ATTRIBUTES: SCALABLE
 1296 DIV DIV_GPRv BINARY BASE I86 ATTRIBUTES: SCALABLE
  */
+
+DEF_ISEL(CMP_MEMb_IMMb_80r7_8) = CMP<M8, I8>;
+DEF_ISEL(CMP_GPR8_IMMb_80r7_8) = CMP<R8, I8>;
+DEF_ISEL_RO_Mn_In(CMP_MEMv_IMMz, CMP);
+DEF_ISEL_RO_Rn_In(CMP_GPRv_IMMz, CMP);
+DEF_ISEL(CMP_MEMb_IMMb_82r7_8) = CMP<M8, I8>;
+DEF_ISEL(CMP_GPR8_IMMb_82r7_8) = CMP<R8, I8>;
+DEF_ISEL_RO_Mn_In(CMP_MEMv_IMMb, CMP);
+DEF_ISEL_RO_Rn_In(CMP_GPRv_IMMb, CMP);
+DEF_ISEL(CMP_MEMb_GPR8_8) = CMP<M8, I8>;
+DEF_ISEL(CMP_GPR8_GPR8_38_8) = CMP<R8, R8>;
+DEF_ISEL_RO_Mn_Rn(CMP_MEMv_GPRv, CMP);
+DEF_ISEL_RO_Rn_Rn(CMP_GPRv_GPRv_39, CMP);
+DEF_ISEL(CMP_GPR8_GPR8_3A_8) = CMP<R8, R8>;
+DEF_ISEL(CMP_GPR8_MEMb_8) = CMP<R8, M8>;
+DEF_ISEL_RO_Rn_Rn(CMP_GPRv_GPRv_3B, CMP);
+DEF_ISEL_RO_Rn_Mn(CMP_GPRv_MEMv, CMP);
+DEF_ISEL(CMP_AL_IMMb_8) = CMP<R8, I8>;
+DEF_ISEL_RO_Rn_In(CMP_OrAX_IMMz, CMP);
+
+DEF_ISEL(TEST_MEMb_IMMb_F6r0_8) = TEST<M8, I8>;
+DEF_ISEL(TEST_MEMb_IMMb_F6r1_8) = TEST<M8, I8>;
+DEF_ISEL(TEST_GPR8_IMMb_F6r0_8) = TEST<R8, I8>;
+DEF_ISEL(TEST_GPR8_IMMb_F6r1_8) = TEST<R8, I8>;
+DEF_ISEL_RO_Mn_In(TEST_MEMv_IMMz_F7r0, TEST);
+DEF_ISEL_RO_Mn_In(TEST_MEMv_IMMz_F7r1, TEST);
+DEF_ISEL_RO_Rn_In(TEST_GPRv_IMMz_F7r0, TEST);
+DEF_ISEL_RO_Rn_In(TEST_GPRv_IMMz_F7r1, TEST);
+DEF_ISEL(TEST_MEMb_GPR8_8) = TEST<M8, R8>;
+DEF_ISEL(TEST_GPR8_GPR8_8) = TEST<R8, R8>;
+DEF_ISEL_RO_Mn_Rn(TEST_MEMv_GPRv, TEST);
+DEF_ISEL_RO_Rn_Rn(TEST_GPRv_GPRv, TEST);
+DEF_ISEL(TEST_AL_IMMb_8) = TEST<R8, I8>;
+DEF_ISEL_RO_Rn_In(TEST_OrAX_IMMz, TEST);

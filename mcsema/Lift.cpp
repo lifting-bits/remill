@@ -14,9 +14,8 @@
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/ToolOutputFile.h>
-
+#include <mcsema/BC/Lifter.h>
 #include "mcsema/Arch/Arch.h"
-#include "mcsema/BC/BC.h"
 #include "mcsema/CFG/CFG.h"
 
 // TODO(pag): Support separate source and target architectures?
@@ -117,7 +116,7 @@ extern "C" int main(int argc, char *argv[]) {
   auto cfg = mcsema::ReadCFG(FLAGS_cfg);
   auto module = mcsema::CreateOrLoadModule(arch, FLAGS_bc_in);
 
-  mcsema::BC lifter(arch, module);
+  mcsema::Lifter lifter(arch, module);
   lifter.LiftCFG(cfg);
 
   mcsema::SaveModuleToFile(module, FLAGS_bc_out);

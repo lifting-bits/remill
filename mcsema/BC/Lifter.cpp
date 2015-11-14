@@ -20,15 +20,16 @@
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
-
+#include <mcsema/BC/Lifter.h>
+#include <mcsema/BC/Lifter.h>
 #include "mcsema/Arch/Arch.h"
 #include "mcsema/Arch/Instr.h"
 
-#include "mcsema/BC/BC.h"
-#include "mcsema/BC/Intrinsic.h"
 #include "mcsema/BC/Util.h"
 
 #include "mcsema/CFG/CFG.h"
+
+DECLARE_string(os);
 
 namespace llvm {
 class ReturnInst;
@@ -43,23 +44,62 @@ static std::string NamedSymbolMetaId(std::string func_name) {
   return "mcsema_external:" + func_name;
 }
 
+// Find a specific function.
+static llvm::Function *FindIntrinsic(llvm::Module *M, const char *name) {
+  llvm::Function *F = nullptr;
+  F = M->getFunction(name);
+  if (!F && FLAGS_os == "mac") {
+    F = M->getFunction(std::string("_") + name);
+  }
+  LOG_IF(FATAL, !F) << "Missing intrinsic " << name << "for OS: " << FLAGS_os;
+  InitFunctionAttributes(F);
+
+  F->setDoesNotAccessMemory();
+  F->setCannotDuplicate();
+  return F;
+}
+
 }  // namespace
 
-BC::BC(const Arch *arch_, llvm::Module *module_)
+Lifter::Lifter(const Arch *arch_, llvm::Module *module_)
     : arch(arch_),
       module(module_),
-      intrinsic(Intrinsic::FindInModule(module)),
       blocks(),
       functions(),
       symbols(),
-      next_symbol_id(0) {
+      next_symbol_id(0),
+      basic_block(FindIntrinsic(module, "__mcsema_basic_block")),
+      error(FindIntrinsic(module, "__mcsema_error")),
+      function_call(FindIntrinsic(module, "__mcsema_function_call")),
+      function_return(FindIntrinsic(module, "__mcsema_function_return")),
+      jump(FindIntrinsic(module, "__mcsema_jump")),
+      system_call(FindIntrinsic(module, "__mcsema_system_call")),
+      system_return(FindIntrinsic(module, "__mcsema_system_return")),
+      interrupt_call(FindIntrinsic(module, "__mcsema_interrupt_call")),
+      interrupt_return(FindIntrinsic(module, "__mcsema_interrupt_return")),
+      read_memory_8(FindIntrinsic(module, "__mcsema_read_memory_8")),
+      read_memory_16(FindIntrinsic(module, "__mcsema_read_memory_16")),
+      read_memory_32(FindIntrinsic(module, "__mcsema_read_memory_32")),
+      read_memory_64(FindIntrinsic(module, "__mcsema_read_memory_64")),
+      read_memory_128(FindIntrinsic(module, "__mcsema_read_memory_128")),
+      read_memory_256(FindIntrinsic(module, "__mcsema_read_memory_256")),
+      read_memory_512(FindIntrinsic(module, "__mcsema_read_memory_512")),
+      write_memory_8(FindIntrinsic(module, "__mcsema_write_memory_8")),
+      write_memory_16(FindIntrinsic(module, "__mcsema_write_memory_16")),
+      write_memory_32(FindIntrinsic(module, "__mcsema_write_memory_32")),
+      write_memory_64(FindIntrinsic(module, "__mcsema_write_memory_64")),
+      write_memory_128(FindIntrinsic(module, "__mcsema_write_memory_128")),
+      write_memory_256(FindIntrinsic(module, "__mcsema_write_memory_256")),
+      write_memory_512(FindIntrinsic(module, "__mcsema_write_memory_512")),
+      compute_address(FindIntrinsic(module, "__mcsema_compute_address")),
+      undefined_bool(FindIntrinsic(module, "__mcsema_undefined_bool")){
   IdentifyExistingSymbols();
-  RemoveUndefinedIntrinsics();
+  RemoveUndefinedModules();
 }
 
 // Find existing exported functions and variables. This is for the sake of
 // linking functions of the same names across CFG files.
-void BC::IdentifyExistingSymbols(void) {
+void Lifter::IdentifyExistingSymbols(void) {
   for (auto &F : module->functions()) {
     std::string name = F.getName();
     if (module->getNamedMetadata(NamedSymbolMetaId(name))) {
@@ -78,13 +118,13 @@ void BC::IdentifyExistingSymbols(void) {
 }
 
 // Create functions for every block in the CFG.
-void BC::CreateBlocks(const cfg::Module *cfg) {
-  auto block_type = intrinsic->basic_block->getFunctionType();
+void Lifter::CreateBlocks(const cfg::Module *cfg) {
+  auto block_type = basic_block->getFunctionType();
   for (const auto &block : cfg->blocks()) {
     auto &BF = blocks[block.address()];
     if (!BF) {
       std::stringstream ss;
-      ss << "__mcsema_block_" << (next_symbol_id++) << "_0x"
+      ss << "__lifted_block_" << (next_symbol_id++) << "_0x"
          << std::hex << block.address();
       BF = llvm::dyn_cast<llvm::Function>(
           module->getOrInsertFunction(ss.str(), block_type));
@@ -94,8 +134,8 @@ void BC::CreateBlocks(const cfg::Module *cfg) {
 }
 
 // Create functions for every function in the CFG.
-void BC::CreateFunctions(const cfg::Module *cfg) {
-  auto func_type = intrinsic->basic_block->getFunctionType();
+void Lifter::CreateFunctions(const cfg::Module *cfg) {
+  auto func_type = basic_block->getFunctionType();
 
   for (const auto &func : cfg->functions()) {
     if (!func.is_exported() && !func.is_imported()) continue;
@@ -121,7 +161,7 @@ void BC::CreateFunctions(const cfg::Module *cfg) {
 }
 
 // Link together functions and basic blocks.
-void BC::LinkFunctionsToBlocks(const cfg::Module *cfg) {
+void Lifter::LinkFunctionsToBlocks(const cfg::Module *cfg) {
   for (const auto &func : cfg->functions()) {
     if (!func.is_exported() && !func.is_imported()) continue;
     if (!func.address()) continue;
@@ -188,37 +228,37 @@ static uint64_t FallThroughPC(const cfg::Block &block) {
 
 // Add a fall-through terminator to the block method just in case one is
 // missing.
-void BC::TerminateBlockMethod(const cfg::Block &block, llvm::Function *BF) {
+void Lifter::TerminateBlockMethod(const cfg::Block &block, llvm::Function *BF) {
   auto &B = BF->back();
   if (B.getTerminator()) {
     return;
   }
   if (block.instructions_size()) {
-    AddTerminatingTailCall(BF, blocks[FallThroughPC(block)]);
+    AddTerminatingTailCall(BF, GetLiftedBlockForPC(FallThroughPC(block)));
   } else {
     LOG(WARNING) << "Empty basic block at " << block.address();
-    AddTerminatingTailCall(BF, intrinsic->error);
+    AddTerminatingTailCall(BF, error);
   }
 }
 
 // Remove calls to the undefined intrinsics.
-void BC::RemoveUndefinedIntrinsics(void) {
+void Lifter::RemoveUndefinedModules(void) {
   std::vector<llvm::CallInst *> Cs;
-  for (auto U : intrinsic->undefined_bool->users()) {
+  for (auto U : undefined_bool->users()) {
     if (auto C = llvm::dyn_cast<llvm::CallInst>(U)) {
       Cs.push_back(C);
     }
   }
 
   auto Undef = llvm::UndefValue::get(llvm::Type::getInt1Ty(
-      intrinsic->undefined_bool->getContext()));
+      undefined_bool->getContext()));
   for (auto C : Cs) {
     C->replaceAllUsesWith(Undef);
   }
 }
 
 // Lift code contained in blocks into the block methods.
-void BC::LiftBlocks(const cfg::Module *cfg) {
+void Lifter::LiftBlocks(const cfg::Module *cfg) {
   llvm::legacy::FunctionPassManager FPM(module);
   FPM.add(llvm::createDeadCodeEliminationPass());
   FPM.add(llvm::createCFGSimplificationPass());
@@ -231,14 +271,13 @@ void BC::LiftBlocks(const cfg::Module *cfg) {
     LOG_IF(WARNING, 0 < block.instructions_size())
         << "Block at " << block.address() << " has no instructions!";
 
-    auto BF = blocks[block.address()];
-
+    auto BF = GetLiftedBlockForPC(block.address());
     if (!BF->isDeclaration()) {
       LOG(WARNING) << "Ignoring already lifted block at " << block.address();
       continue;
     }
 
-    CreateMethodForBlock(BF, intrinsic->basic_block);
+    CreateMethodForBlock(BF, basic_block);
     if (block.instructions_size()) {
       LiftBlockIntoMethod(block, BF);
     }
@@ -250,7 +289,7 @@ void BC::LiftBlocks(const cfg::Module *cfg) {
   }
 }
 
-void BC::LiftBlockIntoMethod(const cfg::Block &block, llvm::Function *BF) {
+void Lifter::LiftBlockIntoMethod(const cfg::Block &block, llvm::Function *BF) {
   for (const auto &instr : block.instructions()) {
     CHECK(0 < instr.size())
         << "Can't decode zero-sized instruction at " << instr.address();
@@ -269,7 +308,7 @@ void BC::LiftBlockIntoMethod(const cfg::Block &block, llvm::Function *BF) {
 }
 
 // Lift an architecture-specific instruction.
-bool BC::LiftInstruction(const cfg::Block &block, const cfg::Instr &instr,
+bool Lifter::LiftInstruction(const cfg::Block &block, const cfg::Instr &instr,
                          Instr &arch_instr, llvm::Function *BF) {
   std::stringstream ss;
   ss << std::hex << instr.address();
@@ -282,15 +321,19 @@ bool BC::LiftInstruction(const cfg::Block &block, const cfg::Instr &instr,
   llvm::IRBuilder<> ir(P);
   ir.CreateBr(B);
 
-  return arch_instr.Lift(intrinsic, blocks, B);
+  return arch_instr.Lift(*this, B);
 }
 
-void BC::LiftCFG(const cfg::Module *cfg) {
+void Lifter::LiftCFG(const cfg::Module *cfg) {
   blocks.clear();  // Just in case we call `LiftCFG` multiple times.
   CreateBlocks(cfg);
   CreateFunctions(cfg);
   LinkFunctionsToBlocks(cfg);
   LiftBlocks(cfg);
+}
+
+llvm::Function *Lifter::GetLiftedBlockForPC(uintptr_t pc) const {
+  return blocks[pc];
 }
 
 }  // namespace mcsema

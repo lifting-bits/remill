@@ -8,11 +8,11 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
+#include <mcsema/BC/Lifter.h>
 
 #include "mcsema/Arch/X86/Instr.h"
 #include "mcsema/Arch/X86/XED.h"
 
-#include "mcsema/BC/Intrinsic.h"
 #include "mcsema/BC/Util.h"
 
 #include "mcsema/CFG/CFG.h"
@@ -27,7 +27,6 @@ Instr::Instr(const cfg::Instr *instr_, const struct xed_decoded_inst_s *xedd_)
       xedd(xedd_),
       xedi(xed_decoded_inst_inst(xedd)),
       iclass(xed_decoded_inst_get_iclass(xedd)),
-      intrinsic(nullptr),
       B(nullptr),
       F(nullptr),
       M(nullptr),
@@ -67,62 +66,61 @@ static unsigned AddressSpace(xed_reg_enum_t seg, xed_operand_enum_t name) {
 
 }  // namespace
 
-bool Instr::Lift(const Intrinsic *intrinsic_, const BlockMap &blocks,
-                 llvm::BasicBlock *B_) {
+bool Instr::Lift(const Lifter &lifter, llvm::BasicBlock *B_) {
   B = B_;
   F = B->getParent();
   M = F->getParent();
   C = &(F->getContext());
-  intrinsic = intrinsic_;
 
   if (IsError()) {
-    AddTerminatingTailCall(B, intrinsic->error);
+    AddTerminatingTailCall(B, lifter.error);
     return false;
 
   } else if (IsDirectJump()) {
-    AddTerminatingTailCall(B, blocks[TargetPC()]);
+    AddTerminatingTailCall(B, lifter.GetLiftedBlockForPC(TargetPC()));
     return false;
 
   } else if (IsIndirectJump()) {
     LiftPC();
-    LiftGeneric();  // loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, intrinsic->jump);
+    LiftGeneric(lifter);  // loads target into `gpr.rip`.
+    AddTerminatingTailCall(B, lifter.jump);
     return false;
 
   } else if (IsDirectFunctionCall()) {
     LiftPC();
-    LiftGeneric();  // Adjusts the stack, stores `gpr.rip` to the stack.
-    AddTerminatingTailCall(B, blocks[TargetPC()]);
+    LiftGeneric(lifter);  // Adjusts the stack, stores `gpr.rip` to the stack.
+    AddTerminatingTailCall(B, lifter.GetLiftedBlockForPC(TargetPC()));
     return false;
 
   } else if (IsIndirectFunctionCall()) {
     LiftPC();
-    LiftGeneric();  // Adjusts the stack, loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, intrinsic->function_call);
+    LiftGeneric(lifter);  // Adjusts the stack, loads target into `gpr.rip`.
+    AddTerminatingTailCall(B, lifter.function_call);
     return false;
 
   } else if (IsFunctionReturn()) {
     LiftPC();
-    LiftGeneric();  // Adjusts the stack, loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, intrinsic->function_return);
+    LiftGeneric(lifter);  // Adjusts the stack, loads target into `gpr.rip`.
+    AddTerminatingTailCall(B, lifter.function_return);
     return false;
 
   } else if (IsBranch()) {
     LiftPC();
-    LiftConditionalBranch(blocks);
+    LiftGeneric(lifter);
+    LiftConditionalBranch(lifter);
     return false;
 
   // Instruction implementation handles syscall emulation.
   } else if (IsSystemCall()) {
     LiftPC();
-    LiftGeneric();
-    AddTerminatingTailCall(B, intrinsic->system_call);
+    LiftGeneric(lifter);
+    AddTerminatingTailCall(B, lifter.system_call);
     return false;
 
   } else if (IsSystemReturn()) {
     LiftPC();
-    LiftGeneric();
-    AddTerminatingTailCall(B, intrinsic->system_return);
+    LiftGeneric(lifter);
+    AddTerminatingTailCall(B, lifter.system_return);
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
     return false;
@@ -130,21 +128,21 @@ bool Instr::Lift(const Intrinsic *intrinsic_, const BlockMap &blocks,
   // Instruction implementation handles syscall (x86, x32) emulation.
   } else if (IsInterruptCall()) {
     LiftPC();
-    LiftGeneric();
-    AddTerminatingTailCall(B, intrinsic->interrupt_call);
+    LiftGeneric(lifter);
+    AddTerminatingTailCall(B, lifter.interrupt_call);
     return false;
 
   } else if (IsInterruptReturn()) {
     LiftPC();
-    LiftGeneric();
-    AddTerminatingTailCall(B, intrinsic->interrupt_return);
+    LiftGeneric(lifter);
+    AddTerminatingTailCall(B, lifter.interrupt_return);
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
     return false;
 
   // Not a control-flow instruction, need to add a fall-through.
   } else {
-    LiftGeneric();
+    LiftGeneric(lifter);
     return true;
   }
 }
@@ -178,7 +176,7 @@ void Instr::LiftPC(void) {
 }
 
 // Lift a generic instruction.
-void Instr::LiftGeneric(void) {
+void Instr::LiftGeneric(const Lifter &lifter) {
   args.push_back(&*F->arg_begin());
 
   // Lift the operands. This creates the arguments for us to call the
@@ -186,7 +184,7 @@ void Instr::LiftGeneric(void) {
   auto num_operands = xed_decoded_inst_noperands(xedd);
 
   for (auto i = 0U; i < num_operands; ++i) {
-    LiftOperand(i);
+    LiftOperand(lifter, i);
   }
 
   llvm::IRBuilder<> ir(B);
@@ -211,8 +209,7 @@ void Instr::LiftGeneric(void) {
 }
 
 // Lift a conditional branch instruction.
-void Instr::LiftConditionalBranch(const BlockMap &blocks) {
-  LiftGeneric();
+void Instr::LiftConditionalBranch(const Lifter &lifter) {
   auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
   auto target_pc = TargetPC();
 
@@ -228,21 +225,21 @@ void Instr::LiftConditionalBranch(const BlockMap &blocks) {
   llvm::BasicBlock *FallThrough = llvm::BasicBlock::Create(
       *C, "fall_through", F);
 
-  AddTerminatingTailCall(Taken, blocks[target_pc]);
-  AddTerminatingTailCall(FallThrough, blocks[NextPC()]);
+  AddTerminatingTailCall(Taken, lifter.GetLiftedBlockForPC(target_pc));
+  AddTerminatingTailCall(FallThrough, lifter.GetLiftedBlockForPC(NextPC()));
 
   ir.CreateCondBr(ir.CreateICmpEQ(BranchPC, DestPC), Taken, FallThrough);
 }
 
 // Lift an operand. The goal is to be able to pass all explicit and implicit
 // operands as arguments into a function that implements this instruction.
-void Instr::LiftOperand(unsigned op_num) {
+void Instr::LiftOperand(const Lifter &lifter, unsigned op_num) {
   auto xedo = xed_inst_operand(xedi, op_num);
   if (XED_OPVIS_SUPPRESSED != xed_operand_operand_visibility(xedo)) {
     switch (auto op_name = xed_operand_name(xedo)) {
       case XED_OPERAND_AGEN:
       case XED_OPERAND_MEM0:
-        LiftMemory(xedo, op_num);
+        LiftMemory(lifter, xedo, op_num);
         break;
 
       case XED_OPERAND_IMM0SIGNED:
@@ -284,7 +281,8 @@ void Instr::LiftOperand(unsigned op_num) {
 // A minor challenge is handling the segment register. To handle this we use
 // a GNU-specific extension by specifying an address space of the pointer type.
 // The challenge is that we don't want to have
-void Instr::LiftMemory(const xed_operand_t *xedo, unsigned op_num) {
+void Instr::LiftMemory(const Lifter &lifter, const xed_operand_t *xedo,
+                       unsigned op_num) {
   auto op_name = xed_operand_name(xedo);
   auto mem_index = (XED_OPERAND_MEM1 == op_name) ? 1 : 0;  // Handles AGEN.
   auto seg = xed_decoded_inst_get_seg_reg(xedd, mem_index);
@@ -345,7 +343,7 @@ void Instr::LiftMemory(const xed_operand_t *xedo, unsigned op_num) {
         FindStatePointer(F),  // Machine state.
         A,  // Address.
         llvm::ConstantInt::get(Int32Ty, addr_space, true)};
-    A = ir.CreateCall(intrinsic->compute_address, args);
+    A = ir.CreateCall(lifter.compute_address, args);
   }
 
   args.push_back(A);
