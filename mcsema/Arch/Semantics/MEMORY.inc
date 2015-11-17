@@ -26,6 +26,27 @@ extern void __mcsema_write_memory_128(uintptr_t, vec128_t);
 extern void __mcsema_write_memory_256(uintptr_t, vec256_t);
 extern void __mcsema_write_memory_512(uintptr_t, vec512_t);
 
+// This is just a hack to make sure all these functions appear in the bitcode
+// file!
+[[gnu::used]]
+void __mcsema_memory_intrinsics(void) {
+  (void) __mcsema_read_memory_8;
+  (void) __mcsema_read_memory_16;
+  (void) __mcsema_read_memory_32;
+  (void) __mcsema_read_memory_64;
+  (void) __mcsema_read_memory_128;
+  (void) __mcsema_read_memory_256;
+  (void) __mcsema_read_memory_512;
+  (void) __mcsema_write_memory_8;
+  (void) __mcsema_write_memory_16;
+  (void) __mcsema_write_memory_32;
+  (void) __mcsema_write_memory_64;
+  (void) __mcsema_write_memory_128;
+  (void) __mcsema_write_memory_256;
+  (void) __mcsema_write_memory_512;
+  (void) __mcsema_compute_address;
+}
+
 }  // extern C
 
 template <typename T>
@@ -58,8 +79,6 @@ struct Mn;
     }; \
     using prefix ## size = prefix ## n < T > ;
 
-
-
 MAKE_TYPE(M, uint8_t, 8);
 MAKE_TYPE(M, uint16_t, 16);
 MAKE_TYPE(M, uint32_t, 32);
@@ -67,3 +86,15 @@ MAKE_TYPE(M, uint64_t, 64);
 MAKE_TYPE(M, vec128_t, 128);
 MAKE_TYPE(M, vec256_t, 256);
 MAKE_TYPE(M, vec512_t, 512);
+
+template <typename T>
+struct Mn<const T> : public Mn<T> {};
+
+template <typename T>
+struct Mn<volatile T> : public Mn<T> {};
+
+template <typename T>
+struct Mn<const volatile T> : public Mn<T> {};
+
+template <typename T>
+struct Mn<T &> : public Mn<T> {};

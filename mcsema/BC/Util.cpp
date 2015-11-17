@@ -25,12 +25,28 @@ llvm::Function *BlockMap::operator[](uintptr_t pc) const {
   }
 }
 
+// Initialize the attributes for a lifted function.
 void InitFunctionAttributes(llvm::Function *F) {
+  // This affects code generation. Our functions only take one argument (the
+  // machine state pointer) and they all tail-call to each-other. Therefore,
+  // it makes no sense to save/restore callee-saved registers because there
+  // are no real callers to care about!
+  F->addFnAttr(llvm::Attribute::Naked);
+
+  // Make sure functions are treated as if they return. LLVM doesn't like
+  // mixing must-tail-calls with no-return.
   F->removeFnAttr(llvm::Attribute::NoReturn);
+
+  // Don't use any exception stuff.
   F->addFnAttr(llvm::Attribute::NoUnwind);
   F->removeFnAttr(llvm::Attribute::UWTable);
+
+  // To use must-tail-calls everywhere we need to use the `fast` calling
+  // convention, where it's up the LLVM to decide how to pass arguments.
   F->setCallingConv(llvm::CallingConv::Fast);
-  F->setAlignment(0);
+
+  // Mark everything for inlining.
+  F->addFnAttr(llvm::Attribute::InlineHint);
 }
 
 // Create a tail-call from one lifted function to another.
@@ -46,17 +62,16 @@ void AddTerminatingTailCall(llvm::BasicBlock *B, llvm::Function *To) {
       << "Block already has a terminator; not adding fall-through call to: "
       << (To ? To->getName().str() : "<unreachable>");
 
+  LOG_IF(FATAL, !To) << "Target block does not exist!";
+
   llvm::IRBuilder<> ir(B);
-  if (!To) {
-    LOG(WARNING) << "Target block does not exist!";
-    ir.CreateUnreachable();
-  } else {
-    llvm::Function *F = B->getParent();
-    llvm::CallInst *C = ir.CreateCall(To, {FindStatePointer(F)});
-    C->setTailCallKind(llvm::CallInst::TCK_MustTail);
-    C->setCallingConv(llvm::CallingConv::Fast);
-    ir.CreateRetVoid();
-  }
+  llvm::Function *F = B->getParent();
+  llvm::CallInst *C = ir.CreateCall(To, {FindStatePointer(F)});
+
+  // Make sure we tail-call from one block method to another.
+  C->setTailCallKind(llvm::CallInst::TCK_MustTail);
+  C->setCallingConv(llvm::CallingConv::Fast);
+  ir.CreateRetVoid();
 }
 
 // Find a local variable defined in the entry block of the function. We use

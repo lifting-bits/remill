@@ -10,12 +10,6 @@ struct State;
 #include "mcsema/Arch/Semantics/MACROS.inc"
 #include "mcsema/Arch/Semantics/MEMORY.inc"
 
-#if 64 == ADDRESS_SIZE_BITS
-# define IF_64BIT(...) __VA_ARGS__
-#else
-# define IF_64BIT(...)
-#endif
-
 #include "mcsema/Arch/X86/Semantics/REGISTER.inc"
 
 union FPUStatusWord {
@@ -276,37 +270,6 @@ void __mcsema_basic_block(State &state) noexcept {
 #undef REG_INFO64
 }
 
-// This is just a hack to make sure all these functions appear in the bitcode
-// file!
-[[gnu::used]]
-void __mcsema_intrinsics(void) {
-  (void) __mcsema_basic_block;
-  (void) __mcsema_error;
-  (void) __mcsema_function_call;
-  (void) __mcsema_function_return;
-  (void) __mcsema_jump;
-  (void) __mcsema_system_call;
-  (void) __mcsema_system_return;
-  (void) __mcsema_interrupt_call;
-  (void) __mcsema_interrupt_return;
-  (void) __mcsema_read_memory_8;
-  (void) __mcsema_read_memory_16;
-  (void) __mcsema_read_memory_32;
-  (void) __mcsema_read_memory_64;
-  (void) __mcsema_read_memory_128;
-  (void) __mcsema_read_memory_256;
-  (void) __mcsema_read_memory_512;
-  (void) __mcsema_write_memory_8;
-  (void) __mcsema_write_memory_16;
-  (void) __mcsema_write_memory_32;
-  (void) __mcsema_write_memory_64;
-  (void) __mcsema_write_memory_128;
-  (void) __mcsema_write_memory_256;
-  (void) __mcsema_write_memory_512;
-  (void) __mcsema_compute_address;
-  (void) __mcsema_undefined_bool;
-}
-
 }  // extern C
 
 // Unsigned -------------
@@ -340,127 +303,6 @@ typedef int8_t SI8;
 
 typedef uintptr_t PC;
 
-#define INSTR_ATTRIBS ALWAYS_INLINE
-
-// Define a specific instruction selection variable.
-#define DEF_ISEL(name) \
-  extern "C" constexpr auto name __attribute__((used, visibility("default")))
-
-// Define a semantics implementing function.
-#define DEF_SEM(name, ...) \
-    INSTR_ATTRIBS static inline void name (State &state, ##__VA_ARGS__)
-
-#define DEF_ISEL_ALL(name, func) \
-    DEF_ISEL(name ## _8) = func ; \
-    DEF_ISEL(name ## _16) = func ; \
-    DEF_ISEL(name ## _32) = func ; \
-    DEF_ISEL(name ## _64) = func
-
-#define DEF_ISEL_32UP(name, func) \
-    DEF_ISEL(name ## _32) = func \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = func )
-
-#define DEF_ISEL_Rn(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<R8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<R16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<R32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64> )
-
-#define DEF_ISEL_Mn(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<M8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<M16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<M32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<M64> )
-
-#define DEF_ISEL_In(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<I8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<I16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<I32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<I64> )
-
-// Two operand (dst <- src)
-#define DEF_ISEL_Rn_Mn(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<R8W, M8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<R16W, M16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<R32W, M32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64W, M64> )
-
-#define DEF_ISEL_Rn_Rn(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<R8W, R8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<R16W, R16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<R32W, R32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64W, R64> )
-
-#define DEF_ISEL_Rn_In(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<R8W, I8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<R16W, I16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<R32W, I32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64W, I64> )
-
-#define DEF_ISEL_Mn_In(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<M8, I8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<M16, I16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<M32, I32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<M64, I64> )
-
-#define DEF_ISEL_Mn_Rn(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<M8, R8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<M16, R16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<M32, R32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<M64, R64> )
-
-#define DEF_ISEL_RO_Rn_Mn(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<R8, M8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<R16, M16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<R32, M32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64, M64> )
-
-#define DEF_ISEL_RO_Rn_Rn(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<R8, R8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<R16, R16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<R32, R32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64, R64> )
-
-#define DEF_ISEL_RO_Rn_In(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<R8, I8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<R16, I16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<R32, I32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64, I64> )
-
-#define DEF_ISEL_RO_Mn_In DEF_ISEL_Mn_In
-#define DEF_ISEL_RO_Mn_Rn DEF_ISEL_Mn_Rn
-
-// 3-operand dst <- (src1 op src2)
-#define DEF_ISEL_Rn_Rn_Mn(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<R8W, R8, M8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<R16W, R16, M16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<R32W, R32, M32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64W, R64, M64> )
-
-#define DEF_ISEL_Rn_Rn_Rn(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<R8W, R8, R8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<R16W, R16, R16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<R32W, R32, R32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64W, R64, R64> )
-
-#define DEF_ISEL_Rn_Rn_In(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<R8W, R8, I8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<R16W, R16, I16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<R32W, R32, I32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64W, R64, I64> )
-
-#define DEF_ISEL_Mn_Mn_In(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<M8, I8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<M16, I16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<M32, I32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<M64, I64> )
-
-#define DEF_ISEL_Mn_Mn_Rn(name, tpl_func) \
-    DEF_ISEL(name ## _8) = tpl_func<M8, R8> ; \
-    DEF_ISEL(name ## _16) = tpl_func<M16, R16> ; \
-    DEF_ISEL(name ## _32) = tpl_func<M32, R32> \
-    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<M64, R64> )
-
 namespace {
 
 // Write to memory.
@@ -475,12 +317,14 @@ template <typename T>
 INSTR_ATTRIBS
 static inline T &W(T &v) { return v; }
 
+// Read from memory.
 template <typename T>
 INSTR_ATTRIBS
 static inline T R(Mn<T> addr) {
   return addr.Read();
 }
 
+// Read from a register or from an immediate.
 template <typename T>
 INSTR_ATTRIBS
 static inline T R(T v) {

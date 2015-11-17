@@ -66,7 +66,7 @@ static unsigned AddressSpace(xed_reg_enum_t seg, xed_operand_enum_t name) {
 
 }  // namespace
 
-bool Instr::Lift(const Lifter &lifter, llvm::BasicBlock *B_) {
+bool Instr::LiftIntoBlock(const Lifter &lifter, llvm::BasicBlock *B_) {
   B = B_;
   F = B->getParent();
   M = F->getParent();

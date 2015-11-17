@@ -53,9 +53,20 @@ static llvm::Function *FindIntrinsic(llvm::Module *M, const char *name) {
   }
   LOG_IF(FATAL, !F) << "Missing intrinsic " << name << "for OS: " << FLAGS_os;
   InitFunctionAttributes(F);
+  return F;
+}
 
-  F->setDoesNotAccessMemory();
-  F->setCannotDuplicate();
+// Find a specific function.
+static llvm::Function *FindPureIntrinsic(llvm::Module *M, const char *name) {
+  auto F = FindIntrinsic(M, name);
+
+  // We want memory intrinsics to be marked as not accessing memory so that
+  // they don't interfere with dead store elimination.
+  F->addFnAttr(llvm::Attribute::ReadNone);
+
+  // We don't want calls to memory intrinsics to be duplicated because then
+  // they might have the wrong side effects!
+  F->addFnAttr(llvm::Attribute::NoDuplicate);
   return F;
 }
 
@@ -77,22 +88,22 @@ Lifter::Lifter(const Arch *arch_, llvm::Module *module_)
       system_return(FindIntrinsic(module, "__mcsema_system_return")),
       interrupt_call(FindIntrinsic(module, "__mcsema_interrupt_call")),
       interrupt_return(FindIntrinsic(module, "__mcsema_interrupt_return")),
-      read_memory_8(FindIntrinsic(module, "__mcsema_read_memory_8")),
-      read_memory_16(FindIntrinsic(module, "__mcsema_read_memory_16")),
-      read_memory_32(FindIntrinsic(module, "__mcsema_read_memory_32")),
-      read_memory_64(FindIntrinsic(module, "__mcsema_read_memory_64")),
-      read_memory_128(FindIntrinsic(module, "__mcsema_read_memory_128")),
-      read_memory_256(FindIntrinsic(module, "__mcsema_read_memory_256")),
-      read_memory_512(FindIntrinsic(module, "__mcsema_read_memory_512")),
-      write_memory_8(FindIntrinsic(module, "__mcsema_write_memory_8")),
-      write_memory_16(FindIntrinsic(module, "__mcsema_write_memory_16")),
-      write_memory_32(FindIntrinsic(module, "__mcsema_write_memory_32")),
-      write_memory_64(FindIntrinsic(module, "__mcsema_write_memory_64")),
-      write_memory_128(FindIntrinsic(module, "__mcsema_write_memory_128")),
-      write_memory_256(FindIntrinsic(module, "__mcsema_write_memory_256")),
-      write_memory_512(FindIntrinsic(module, "__mcsema_write_memory_512")),
-      compute_address(FindIntrinsic(module, "__mcsema_compute_address")),
-      undefined_bool(FindIntrinsic(module, "__mcsema_undefined_bool")){
+      read_memory_8(FindPureIntrinsic(module, "__mcsema_read_memory_8")),
+      read_memory_16(FindPureIntrinsic(module, "__mcsema_read_memory_16")),
+      read_memory_32(FindPureIntrinsic(module, "__mcsema_read_memory_32")),
+      read_memory_64(FindPureIntrinsic(module, "__mcsema_read_memory_64")),
+      read_memory_128(FindPureIntrinsic(module, "__mcsema_read_memory_128")),
+      read_memory_256(FindPureIntrinsic(module, "__mcsema_read_memory_256")),
+      read_memory_512(FindPureIntrinsic(module, "__mcsema_read_memory_512")),
+      write_memory_8(FindPureIntrinsic(module, "__mcsema_write_memory_8")),
+      write_memory_16(FindPureIntrinsic(module, "__mcsema_write_memory_16")),
+      write_memory_32(FindPureIntrinsic(module, "__mcsema_write_memory_32")),
+      write_memory_64(FindPureIntrinsic(module, "__mcsema_write_memory_64")),
+      write_memory_128(FindPureIntrinsic(module, "__mcsema_write_memory_128")),
+      write_memory_256(FindPureIntrinsic(module, "__mcsema_write_memory_256")),
+      write_memory_512(FindPureIntrinsic(module, "__mcsema_write_memory_512")),
+      compute_address(FindPureIntrinsic(module, "__mcsema_compute_address")),
+      undefined_bool(FindPureIntrinsic(module, "__mcsema_undefined_bool")){
   IdentifyExistingSymbols();
   RemoveUndefinedModules();
 }
@@ -146,12 +157,17 @@ void Lifter::CreateFunctions(const cfg::Module *cfg) {
     CHECK(!(func.is_exported() && func.is_imported()))
         << "Function " << func.name() << " can't be imported and exported.";
 
-    auto &F = functions[func.name()];
+    llvm::Function *&F = functions[func.name()];
     if (!F) {
       F = llvm::dyn_cast<llvm::Function>(
           module->getOrInsertFunction(func.name(), func_type));
 
       InitFunctionAttributes(F);
+
+      // To get around some issues that `opt` has.
+      F->addFnAttr(llvm::Attribute::NoBuiltin);
+      F->addFnAttr(llvm::Attribute::OptimizeNone);
+      F->addFnAttr(llvm::Attribute::NoInline);
     }
 
     // Mark this symbol as external. We do this so that we can pick up on it
@@ -236,7 +252,6 @@ void Lifter::TerminateBlockMethod(const cfg::Block &block, llvm::Function *BF) {
   if (block.instructions_size()) {
     AddTerminatingTailCall(BF, GetLiftedBlockForPC(FallThroughPC(block)));
   } else {
-    LOG(WARNING) << "Empty basic block at " << block.address();
     AddTerminatingTailCall(BF, error);
   }
 }
@@ -268,7 +283,7 @@ void Lifter::LiftBlocks(const cfg::Module *cfg) {
   FPM.add(llvm::createDeadStoreEliminationPass());
 
   for (const auto &block : cfg->blocks()) {
-    LOG_IF(WARNING, 0 < block.instructions_size())
+    LOG_IF(WARNING, !block.instructions_size())
         << "Block at " << block.address() << " has no instructions!";
 
     auto BF = GetLiftedBlockForPC(block.address());
@@ -311,7 +326,7 @@ void Lifter::LiftBlockIntoMethod(const cfg::Block &block, llvm::Function *BF) {
 bool Lifter::LiftInstruction(const cfg::Block &block, const cfg::Instr &instr,
                          Instr &arch_instr, llvm::Function *BF) {
   std::stringstream ss;
-  ss << std::hex << instr.address();
+  ss << "0x" << std::hex << instr.address();
 
   // Create a block for this instruction.
   auto P = &(BF->back());
@@ -321,7 +336,7 @@ bool Lifter::LiftInstruction(const cfg::Block &block, const cfg::Instr &instr,
   llvm::IRBuilder<> ir(P);
   ir.CreateBr(B);
 
-  return arch_instr.Lift(*this, B);
+  return arch_instr.LiftIntoBlock(*this, B);
 }
 
 void Lifter::LiftCFG(const cfg::Module *cfg) {
@@ -333,7 +348,12 @@ void Lifter::LiftCFG(const cfg::Module *cfg) {
 }
 
 llvm::Function *Lifter::GetLiftedBlockForPC(uintptr_t pc) const {
-  return blocks[pc];
+  auto F = blocks[pc];
+  if (!F) {
+    LOG(ERROR) << "Could not find lifted block for PC " << pc;
+    F = error;
+  }
+  return F;
 }
 
 }  // namespace mcsema

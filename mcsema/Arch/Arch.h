@@ -23,7 +23,7 @@ class Instr;
 
 class Arch {
  public:
-  static Arch *Create(std::string arch_name);
+  static const Arch *Create(std::string arch_name);
 
   virtual ~Arch(void);
 

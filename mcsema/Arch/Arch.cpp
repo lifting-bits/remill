@@ -12,7 +12,7 @@ Arch::Arch(unsigned addressSize_)
 
 Arch::~Arch(void) {}
 
-Arch *Arch::Create(std::string arch_name) {
+const Arch *Arch::Create(std::string arch_name) {
   if (arch_name == "x86") {
     VLOG(1) << "Using architecture: " << arch_name;
     return new x86::Arch(32);
