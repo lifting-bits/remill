@@ -68,5 +68,34 @@ union vec512_t {
 static_assert(64 == sizeof(vec512_t),
               "Invalid structure packing of `vec512_t`.");
 
+template <typename T>
+struct NextLargerIntegerType;
+
+#define MAKE_INT_TYPE(cur, next) \
+    template <> \
+    struct NextLargerIntegerType<cur> { \
+      typedef next Type; \
+    }
+
+MAKE_INT_TYPE(int8_t, int16_t);
+MAKE_INT_TYPE(uint8_t, uint16_t);
+
+MAKE_INT_TYPE(int16_t, int32_t);
+MAKE_INT_TYPE(uint16_t, uint32_t);
+
+MAKE_INT_TYPE(int32_t, int64_t);
+MAKE_INT_TYPE(uint32_t, uint64_t);
+
+#if 64 == ADDRESS_SIZE_BITS
+typedef __int128 int128_t;
+typedef unsigned __int128 uint128_t;
+static_assert(16 == sizeof(int128_t), "Invalid size of `int128_t`.");
+static_assert(16 == sizeof(uint128_t), "Invalid size of `uint128_t`.");
+MAKE_INT_TYPE(int64_t, int128_t);
+MAKE_INT_TYPE(uint64_t, uint128_t);
+#endif  // 64 == ADDRESS_SIZE_BITS
+
+#undef MAKE_INT_TYPE
+
 [[gnu::used]]
 extern "C" bool __mcsema_undefined_bool(void);

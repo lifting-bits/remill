@@ -9,7 +9,7 @@ DEF_SEM(BINARY_ARITH_OP, D dst_src1, S1 src2_) {
   auto src1 = R(dst_src1);
   auto src2 = R(src2_);
   auto res = Op()(src1, src2);
-  SET_AFLAGS(src1, src2, res);
+  SET_AFLAGS_OSZAPC(src1, src2, res);
   W(dst_src1) = res;
 }
 
@@ -18,7 +18,7 @@ DEF_SEM(BINARY_ARITH_OP2, D dst, S1 src1_, S2 src2_) {
   auto src1 = R(src1_);
   auto src2 = R(src2_);
   auto res = Op()(src1, src2);
-  SET_AFLAGS(src1, src2, res);
+  SET_AFLAGS_OSZAPC(src1, src2, res);
   W(dst) = res;
 }
 
@@ -37,15 +37,58 @@ DEF_SEM(CMP, D src1_, S1 src2_) {
   auto src1 = static_cast<intptr_t>(R(src1_));
   auto src2 = static_cast<intptr_t>(R(src2_));
   auto res = src1 - src2;
-  SET_AFLAGS(src1, src2, res);
+  SET_AFLAGS_OSZAPC(src1, src2, res);
 }
 
 DEFINE_OP(ADD, std::plus)
 DEFINE_OP(SUB, std::minus)
-DEFINE_OP(MUL, std::multiplies)
-DEFINE_OP(DIV, std::divides)
+//DEFINE_OP(MUL, std::multiplies)
+//DEFINE_OP(DIV, std::divides)
 
 #undef DEFINE_OP
+
+template <typename T, typename S1>
+DEF_SEM(MUL8, S1 val) {
+  typedef typename NextLargerIntegerType<T>::Type WideT;
+  auto src1 = static_cast<WideT>(static_cast<T>(state.gpr.rax.byte.low));
+  auto src2 = static_cast<WideT>(static_cast<T>(R(val)));
+  auto res = src1 * src2;
+  SET_AFLAGS_OSC(src1, src2, res);
+  state.gpr.rax.word = res;
+}
+
+template <typename T, typename S1>
+DEF_SEM(MUL16, S1 val) {
+  typedef typename NextLargerIntegerType<T>::Type WideT;
+  auto src1 = static_cast<WideT>(static_cast<T>(state.gpr.rax.word));
+  auto src2 = static_cast<WideT>(static_cast<T>(R(val)));
+  auto res = src1 * src2;
+  SET_AFLAGS_OSC(src1, src2, res);
+  state.gpr.rdx.word = static_cast<T>(res >> 16);
+  state.gpr.rax.word = static_cast<T>(res);
+}
+
+template <typename T, typename S1>
+DEF_SEM(MUL32, S1 val) {
+  typedef typename NextLargerIntegerType<T>::Type WideT;
+  auto src1 = static_cast<WideT>(static_cast<T>(state.gpr.rax.dword));
+  auto src2 = static_cast<WideT>(static_cast<T>(R(val)));
+  auto res = src1 * src2;
+  SET_AFLAGS_OSC(src1, src2, res);
+  state.gpr.rdx.full = static_cast<T>(res >> 32);
+  state.gpr.rax.full = static_cast<T>(res);
+}
+
+template <typename T, typename S1>
+DEF_SEM(MUL64, S1 val) {
+  typedef typename NextLargerIntegerType<T>::Type WideT;
+  auto src1 = static_cast<WideT>(static_cast<T>(state.gpr.rax.full));
+  auto src2 = static_cast<WideT>(static_cast<T>(R(val)));
+  auto res = src1 * src2;
+  SET_AFLAGS_OSC(src1, src2, res);
+  state.gpr.rdx.full = static_cast<T>(res >> 64);
+  state.gpr.rax.full = static_cast<T>(res);
+}
 
 }  // namespace
 
@@ -87,11 +130,17 @@ DEF_ISEL_Rn_Rn_Mn(SUB_GPRv_MEMv, SUB2);
 DEF_ISEL(SUB_AL_IMMb_8) = SUB2<R8W, R8, I8>;
 DEF_ISEL_Rn_Rn_In(SUB_OrAX_IMMz, SUB2);
 
+DEF_ISEL(IMUL_MEMb_8) = MUL8<int8_t, M8>;
+DEF_ISEL(IMUL_GPR8_8) = MUL8<int8_t, R8>;
+DEF_ISEL(IMUL_MEMv_8) = MUL8<int8_t, M8>;
+DEF_ISEL(IMUL_MEMv_16) = MUL16<int16_t, M16>;
+DEF_ISEL(IMUL_MEMv_32) = MUL32<int32_t, M32>;
+IF_64BIT( DEF_ISEL(IMUL_MEMv_64) = MUL64<int64_t, M64>; )
+DEF_ISEL(IMUL_GPRv_8) = MUL8<int8_t, R8>;
+DEF_ISEL(IMUL_GPRv_16) = MUL16<int16_t, R16>;
+DEF_ISEL(IMUL_GPRv_32) = MUL32<int32_t, R32>;
+IF_64BIT( DEF_ISEL(IMUL_GPRv_64) = MUL64<int64_t, R64>; )
 /*
-1254 IMUL IMUL_MEMb BINARY BASE I86 ATTRIBUTES: BYTEOP
-1255 IMUL IMUL_GPR8 BINARY BASE I86 ATTRIBUTES: BYTEOP
-1256 IMUL IMUL_MEMv BINARY BASE I86 ATTRIBUTES: SCALABLE
-1257 IMUL IMUL_GPRv BINARY BASE I86 ATTRIBUTES: SCALABLE
 1258 IMUL IMUL_GPRv_MEMv_IMMz BINARY BASE I186 ATTRIBUTES: SCALABLE
 1259 IMUL IMUL_GPRv_GPRv_IMMz BINARY BASE I186 ATTRIBUTES: SCALABLE
 1260 IMUL IMUL_GPRv_MEMv_IMMb BINARY BASE I186 ATTRIBUTES: SCALABLE
@@ -100,12 +149,16 @@ DEF_ISEL_Rn_Rn_In(SUB_OrAX_IMMz, SUB2);
 1263 IMUL IMUL_GPRv_GPRv BINARY BASE I86 ATTRIBUTES: SCALABLE
  */
 
-/*
-740 MUL MUL_MEMb BINARY BASE I86 ATTRIBUTES: BYTEOP
-741 MUL MUL_GPR8 BINARY BASE I86 ATTRIBUTES: BYTEOP
-742 MUL MUL_MEMv BINARY BASE I86 ATTRIBUTES: SCALABLE
-743 MUL MUL_GPRv BINARY BASE I86 ATTRIBUTES: SCALABLE
- */
+DEF_ISEL(MUL_MEMb_8) = MUL8<R8, M8>;
+DEF_ISEL(MUL_GPR8_8) = MUL8<R8, R8>;
+DEF_ISEL(MUL_MEMv_8) = MUL8<R8, M8>;
+DEF_ISEL(MUL_MEMv_16) = MUL16<R16, M16>;
+DEF_ISEL(MUL_MEMv_32) = MUL32<R32, M32>;
+IF_64BIT( DEF_ISEL(MUL_MEMv_64) = MUL64<R64, M64>; )
+DEF_ISEL(MUL_GPRv_8) = MUL8<R8, R8>;
+DEF_ISEL(MUL_GPRv_16) = MUL16<R16, R16>;
+DEF_ISEL(MUL_GPRv_32) = MUL32<R32, R32>;
+IF_64BIT( DEF_ISEL(MUL_GPRv_64) = MUL64<R64, R64>; )
 
 /*
 557 IDIV IDIV_MEMb BINARY BASE I86 ATTRIBUTES: BYTEOP

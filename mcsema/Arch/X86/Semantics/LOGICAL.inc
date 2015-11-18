@@ -7,7 +7,7 @@ DEF_SEM(BITWISE_OP, D dst_src1, S1 src2_) {
   auto src1 = R(dst_src1);
   auto src2 = R(src2_);
   auto res = Op()(src1, src2);
-  SET_BFLAGS(src1, src2, res);
+  SET_AFLAGS_SZAP(src1, src2, res);
   W(dst_src1) = res;
 }
 
@@ -16,7 +16,7 @@ DEF_SEM(BITWISE_OP2, D dst, S1 src1_, S2 src2_) {
   auto src1 = R(src1_);
   auto src2 = R(src2_);
   auto res = Op()(src1, src2);
-  SET_BFLAGS(src1, src2, res);
+  SET_AFLAGS_SZAP(src1, src2, res);
   W(dst) = res;
 }
 
@@ -51,7 +51,7 @@ DEF_SEM(TEST, D src1_, S1 src2_) {
   auto src1 = static_cast<intptr_t>(R(src1_));
   auto src2 = static_cast<intptr_t>(R(src2_));
   auto res = src1 & src2;
-  SET_BFLAGS(src1, src2, res);
+  SET_AFLAGS_SZAP(src1, src2, res);
 }
 
 }  // namespace
