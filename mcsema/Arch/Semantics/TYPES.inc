@@ -71,11 +71,43 @@ static_assert(64 == sizeof(vec512_t),
 template <typename T>
 struct NextLargerIntegerType;
 
+template <typename T>
+struct NextSmallerIntegerType;
+
+template <typename T>
+struct SignedIntegerType {
+  typedef T Type;
+};
+
+template <typename T>
+struct UnsignedIntegerType {
+  typedef T Type;
+};
+
+#define MAKE_SIGNED_INT_CHANGERS(signed_type, unsigned_type) \
+    template <> \
+    struct SignedIntegerType<unsigned_type> { \
+      typedef signed_type Type ; \
+    }; \
+    template <> \
+    struct UnsignedIntegerType<signed_type> { \
+      typedef unsigned_type Type ; \
+    }
+
 #define MAKE_INT_TYPE(cur, next) \
     template <> \
     struct NextLargerIntegerType<cur> { \
       typedef next Type; \
+    }; \
+    template <> \
+    struct NextSmallerIntegerType<next> { \
+      typedef cur Type; \
     }
+
+MAKE_SIGNED_INT_CHANGERS(int8_t, uint8_t);
+MAKE_SIGNED_INT_CHANGERS(int16_t, uint16_t);
+MAKE_SIGNED_INT_CHANGERS(int32_t, uint32_t);
+MAKE_SIGNED_INT_CHANGERS(int64_t, uint64_t);
 
 MAKE_INT_TYPE(int8_t, int16_t);
 MAKE_INT_TYPE(uint8_t, uint16_t);
@@ -93,9 +125,37 @@ static_assert(16 == sizeof(int128_t), "Invalid size of `int128_t`.");
 static_assert(16 == sizeof(uint128_t), "Invalid size of `uint128_t`.");
 MAKE_INT_TYPE(int64_t, int128_t);
 MAKE_INT_TYPE(uint64_t, uint128_t);
+MAKE_SIGNED_INT_CHANGERS(int128_t, uint128_t);
 #endif  // 64 == ADDRESS_SIZE_BITS
 
+#undef MAKE_SIGNED_INT_CHANGERS
 #undef MAKE_INT_TYPE
+
+// Forward declared memory type.
+template <typename T>
+struct Mn;
+
+template <typename T>
+struct BaseType {
+  typedef T Type;
+};
+
+template <typename T>
+struct BaseType<volatile T> : public BaseType<T> {};
+
+template <typename T>
+struct BaseType<const T> : public BaseType<T> {};
+
+template <typename T>
+struct BaseType<T &> : public BaseType<T> {};
+
+template <typename T>
+struct BaseType<T *> : public BaseType<T> {};
+
+template <typename T>
+struct BaseType<Mn<T>> {
+  typedef typename Mn<T>::BaseType Type;
+};
 
 [[gnu::used]]
 extern "C" bool __mcsema_undefined_bool(void);

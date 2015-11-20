@@ -171,6 +171,12 @@
     DEF_ISEL(name ## _32) = tpl_func<R32W, R32, I32> \
     IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64W, R64, I64> )
 
+#define DEF_ISEL_Rn_Mn_In(name, tpl_func) \
+    DEF_ISEL(name ## _8) = tpl_func<R8W, M8, I8> ; \
+    DEF_ISEL(name ## _16) = tpl_func<R16W, M16, I16> ; \
+    DEF_ISEL(name ## _32) = tpl_func<R32W, M32, I32> \
+    IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<R64W, M64, I64> )
+
 // Three operand: MEM_a <- MEM_a OP IMM.
 #define DEF_ISEL_Mn_Mn_In(name, tpl_func) \
     DEF_ISEL(name ## _8) = tpl_func<M8, I8> ; \

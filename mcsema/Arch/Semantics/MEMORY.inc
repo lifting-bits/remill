@@ -55,6 +55,7 @@ struct Mn;
 #define MAKE_TYPE(prefix, T, size) \
     template <> \
     struct Mn<T> { \
+      typedef T BaseType; \
       ALWAYS_INLINE \
       inline void operator=(T that) { \
         __mcsema_write_memory_ ## size (addr, that); \
