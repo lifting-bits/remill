@@ -15,6 +15,7 @@ DEF_SEM(BINARY_ARITH_OP, D dst_src1, S1 src2_) {
 
 template <typename Op, typename D, typename S1, typename S2>
 DEF_SEM(BINARY_ARITH_OP2, D dst, S1 src1_, S2 src2_) {
+  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
   auto src1 = R(src1_);
   auto src2 = R(src2_);
   auto res = Op()(src1, src2);
@@ -24,20 +25,23 @@ DEF_SEM(BINARY_ARITH_OP2, D dst, S1 src1_, S2 src2_) {
 
 template <typename D, typename S1>
 DEF_SEM(CMP, D src1_, S1 src2_) {
-  auto src1 = static_cast<intptr_t>(R(src1_));
-  auto src2 = static_cast<intptr_t>(R(src2_));
-  auto res = src1 - src2;
+  typedef typename BaseType<S1>::Type T;
+  auto src1 = static_cast<T>(R(src1_));
+  auto src2 = static_cast<T>(R(src2_));
+  auto res = static_cast<T>(src1 - src2);
   SET_AFLAGS_OSZAPC(src1, src2, res);
 }
 
 #define DEFINE_OP(name, op) \
     template <typename D, typename S1> \
     DEF_SEM(name, D dst_src1, S1 src2_) { \
-      BINARY_ARITH_OP<op<S1>, D, S1>(state, dst_src1, src2_); \
+      typedef typename BaseType<S1>::Type T; \
+      BINARY_ARITH_OP<op<T>, D, S1>(state, dst_src1, src2_); \
     } \
     template <typename D, typename S1, typename S2> \
     DEF_SEM(name ## 2, D dst, S1 src1_, S2 src2_) { \
-      BINARY_ARITH_OP2<op<S1>, D, S1, S2>(state, dst, src1_, src2_); \
+      typedef typename BaseType<S1>::Type T; \
+      BINARY_ARITH_OP2<op<T>, D, S1, S2>(state, dst, src1_, src2_); \
     }
 DEFINE_OP(ADD, std::plus)
 DEFINE_OP(SUB, std::minus)
@@ -57,7 +61,7 @@ struct Multiplier {
     typedef typename Converter<T>::Type ST;
     auto src1 = static_cast<ST>(R(src1_));
     auto src2 = static_cast<ST>(R(src2_));
-    auto res = src1 * src2;
+    auto res = static_cast<ST>(src1 * src2);
     SET_AFLAGS_OSC(src1, src2, res);
     W(dst) = static_cast<T>(res);
   }
@@ -74,7 +78,7 @@ struct Multiplier {
     auto src1 = static_cast<ConvWideT>(static_cast<ConvT>(
         state.gpr.rax.byte.low));
     auto src2 = static_cast<ConvWideT>(static_cast<ConvT>(R(val)));
-    auto res = src1 * src2;
+    auto res = static_cast<ConvWideT>(src1 * src2);
     SET_AFLAGS_OSC(src1, src2, res);
     state.gpr.rax.word = static_cast<WideT>(res);
   }
@@ -91,7 +95,7 @@ struct Multiplier {
       auto src1 = static_cast<ConvWideT>(static_cast<ConvT>( \
           state.gpr.rax.read_sel)); \
       auto src2 = static_cast<ConvWideT>(static_cast<ConvT>(R(val))); \
-      auto res = src1 * src2; \
+      auto res = static_cast<ConvWideT>(src1 * src2); \
       SET_AFLAGS_OSC(src1, src2, res); \
       state.gpr.rdx.write_sel = static_cast<T>(res >> size); \
       state.gpr.rax.write_sel = static_cast<T>(res); \
@@ -270,7 +274,7 @@ DEF_SEM(INC1, M mem) {
   typedef typename BaseType<M>::Type BT;
   auto val1 = R(mem);
   auto val2 = static_cast<BT>(1);
-  auto res = val1 + val2;
+  auto res = static_cast<BT>(val1 + val2);
   SET_AFLAGS_OSZAP(val1, val2, res);
   W(mem) = res;
 }
@@ -280,7 +284,7 @@ DEF_SEM(INC2, RW dst, R src) {
   typedef typename BaseType<R>::Type BT;
   auto val1 = R(src);
   auto val2 = static_cast<BT>(1);
-  auto res = val1 + val2;
+  auto res = static_cast<BT>(val1 + val2);
   SET_AFLAGS_OSZAP(val1, val2, res);
   W(dst) = res;
 }
@@ -290,7 +294,7 @@ DEF_SEM(DEC1, M mem) {
   typedef typename BaseType<M>::Type BT;
   auto val1 = R(mem);
   auto val2 = static_cast<BT>(1);
-  auto res = val1 - val2;
+  auto res = static_cast<BT>(val1 - val2);
   SET_AFLAGS_OSZAP(val1, val2, res);
   W(mem) = res;
 }
@@ -300,7 +304,7 @@ DEF_SEM(DEC2, RW dst, R src) {
   typedef typename BaseType<R>::Type BT;
   auto val1 = R(src);
   auto val2 = static_cast<BT>(1);
-  auto res = val1 - val2;
+  auto res = static_cast<BT>(val1 - val2);
   SET_AFLAGS_OSZAP(val1, val2, res);
   W(dst) = res;
 }
@@ -310,7 +314,7 @@ DEF_SEM(NEG1, M mem) {
   typedef typename BaseType<M>::Type BT;
   auto val1 = static_cast<BT>(0);
   auto val2 = R(mem);
-  auto res = val1 - val2;
+  auto res = static_cast<BT>(val1 - val2);
   SET_AFLAGS_OSZAP(val1, val2, res);
   state.aflag.cf = !!res;
   W(mem) = res;
@@ -321,7 +325,7 @@ DEF_SEM(NEG2, RW dst, R src) {
   typedef typename BaseType<R>::Type BT;
   auto val1 = static_cast<BT>(0);
   auto val2 = R(src);
-  auto res = val1 - val2;
+  auto res = static_cast<BT>(val1 - val2);
   SET_AFLAGS_OSZAP(val1, val2, res);
   state.aflag.cf = !!res;
   W(dst) = res;
