@@ -24,7 +24,7 @@ template <typename S1, typename S2, typename R>
 [[gnu::const]]
 extern bool OverflowFlag(S1 lhs, S2 rhs, R result);
 
-// Arithmetic flags.
+// Arithmetic flags (e.g. ADD, SUB)
 #define SET_AFLAGS_OSZAPC(lhs, rhs, result) \
     state.aflag.of = OverflowFlag(lhs, rhs, result); \
     state.aflag.sf = SignFlag(lhs, rhs, result); \
@@ -32,6 +32,14 @@ extern bool OverflowFlag(S1 lhs, S2 rhs, R result);
     state.aflag.af = AuxCarryFlag(lhs, rhs, result); \
     state.aflag.pf = ParityFlag(lhs, rhs, result); \
     state.aflag.cf = CarryFlag(lhs, rhs, result)
+
+// Arithmetic flags (e.g. INC, DEC)
+#define SET_AFLAGS_OSZAP(lhs, rhs, result) \
+    state.aflag.of = OverflowFlag(lhs, rhs, result); \
+    state.aflag.sf = SignFlag(lhs, rhs, result); \
+    state.aflag.zf = ZeroFlag(lhs, rhs, result); \
+    state.aflag.af = AuxCarryFlag(lhs, rhs, result); \
+    state.aflag.pf = ParityFlag(lhs, rhs, result)
 
 // Bitwise flags.
 //

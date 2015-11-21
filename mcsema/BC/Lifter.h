@@ -64,7 +64,7 @@ class Lifter {
   void TerminateBlockMethod(const cfg::Block &block, llvm::Function *BF);
 
   // Remove calls to the undefined intrinsics.
-  void RemoveUndefinedModules(void);
+  void ReplaceUndefinedIntrinsics(void);
 
   // Architecture of the code contained within the CFG being lifted.
   const Arch * const arch;

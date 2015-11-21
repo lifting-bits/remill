@@ -105,7 +105,7 @@ Lifter::Lifter(const Arch *arch_, llvm::Module *module_)
       compute_address(FindPureIntrinsic(module, "__mcsema_compute_address")),
       undefined_bool(FindPureIntrinsic(module, "__mcsema_undefined_bool")){
   IdentifyExistingSymbols();
-  RemoveUndefinedModules();
+  ReplaceUndefinedIntrinsics();
 }
 
 // Find existing exported functions and variables. This is for the sake of
@@ -236,8 +236,14 @@ static void CreateMethodForBlock(llvm::Function *BF, const llvm::Function *TF) {
 
 // Fall-through PC for a block.
 static uint64_t FallThroughPC(const cfg::Block &block) {
-  const auto &instr = block.instructions(block.instructions_size() - 1);
-  return instr.address() + instr.size();
+  if (0 < block.instructions_size()) {
+    const auto &instr = block.instructions(block.instructions_size() - 1);
+    return instr.address() + instr.size();
+
+  } else {
+    LOG(ERROR) << "Using block address as fall-through address.";
+    return block.address();
+  }
 }
 
 }  // namespace
@@ -256,8 +262,13 @@ void Lifter::TerminateBlockMethod(const cfg::Block &block, llvm::Function *BF) {
   }
 }
 
-// Remove calls to the undefined intrinsics.
-void Lifter::RemoveUndefinedModules(void) {
+// Remove calls to the undefined intrinsics. The goal here is to improve dead
+// store elimination by peppering the instruction semantics with assignments
+// to the return valyes of special `__mcsema_undefine_*` intrinsics. It's hard
+// to reliably produce an `undef` LLVM value from C/C++, so we use our trick
+// of declaring (but never defining) a special "intrinsic" and then we replace
+// all such uses with `undef` values.
+void Lifter::ReplaceUndefinedIntrinsics(void) {
   std::vector<llvm::CallInst *> Cs;
   for (auto U : undefined_bool->users()) {
     if (auto C = llvm::dyn_cast<llvm::CallInst>(U)) {
