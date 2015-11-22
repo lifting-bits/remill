@@ -330,6 +330,14 @@ void Instr::LiftMemory(const Lifter &lifter, const xed_operand_t *xedo,
     auto B = RegToValue(base);
     auto I = RegToValue(index);
 
+    // Special case: `POP [xSP + ...] uses the value of `xSP` after incrementing
+    // it by the stack width.
+    if (XED_ICLASS_POP == iclass &&
+        XED_REG_RSP == xed_get_largest_enclosing_register(base)) {
+      B = ir.CreateAdd(
+          B, llvm::ConstantInt::get(IntPtrTy, (addr_width / 8), false));
+    }
+
     llvm::Value *S = llvm::ConstantInt::get(IntPtrTy, scale, true);
     llvm::Value *D = llvm::ConstantInt::get(Int32Ty, disp, true);
     if (32 < addr_width) {
@@ -346,7 +354,12 @@ void Instr::LiftMemory(const Lifter &lifter, const xed_operand_t *xedo,
     A = ir.CreateCall(lifter.compute_address, args);
   }
 
-  args.push_back(A);
+  if (xed_operand_written(xedo)) {
+    args.push_back(A);
+  }
+  if (xed_operand_read(xedo)) {
+    args.push_back(A);
+  }
 }
 
 // Convert an immediate constant into an LLVM `Value` for passing into the
@@ -389,14 +402,14 @@ void Instr::LiftRegister(const xed_operand_t *xedo) {
   std::string reg_name = xed_reg_enum_t2str(reg);
 
   llvm::IRBuilder<> ir(B);
+
   if (xed_operand_written(xedo)) {
     args.push_back(
         ir.CreateLoad(FindVarInFunction(F, reg_name + "_write")));
   }
   if (xed_operand_read(xedo)) {
-    args.push_back(
-        ir.CreateLoad(
-            ir.CreateLoad(FindVarInFunction(F, reg_name + "_read"))));
+    args.push_back(ir.CreateLoad(
+        ir.CreateLoad(FindVarInFunction(F, reg_name + "_read"))));
   }
 }
 

@@ -131,9 +131,26 @@ MAKE_SIGNED_INT_CHANGERS(int128_t, uint128_t);
 #undef MAKE_SIGNED_INT_CHANGERS
 #undef MAKE_INT_TYPE
 
-// Forward declared memory type.
+
 template <typename T>
-struct Mn;
+struct Mn {
+  uintptr_t addr;
+};
+
+template <typename T>
+struct MnW {
+  uintptr_t addr;
+};
+
+template <typename T>
+struct Rn {
+  T val;
+};
+
+template <typename T>
+struct RnW {
+  T &val_ref;
+};
 
 template <typename T>
 struct BaseType {
@@ -154,7 +171,22 @@ struct BaseType<T *> : public BaseType<T> {};
 
 template <typename T>
 struct BaseType<Mn<T>> {
-  typedef typename Mn<T>::BaseType Type;
+  typedef typename BaseType<T>::Type Type;
+};
+
+template <typename T>
+struct BaseType<MnW<T>> {
+  typedef typename BaseType<T>::Type Type;
+};
+
+template <typename T>
+struct BaseType<Rn<T>> {
+  typedef typename BaseType<T>::Type Type;
+};
+
+template <typename T>
+struct BaseType<RnW<T>> {
+  typedef typename BaseType<T>::Type Type;
 };
 
 [[gnu::used]]

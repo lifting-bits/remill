@@ -4,30 +4,33 @@ namespace {
 
 template <typename T>
 DEF_SEM(CALL, T target_pc) {
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   state.gpr.rsp.full -= sizeof(state.gpr.rsp.full);
-  Mn<PC>::Write(state.gpr.rsp.full, state.gpr.rip.full);
+  MnW<PC> sp = {state.gpr.rsp.full};
+  W(sp) = state.gpr.rip.full;
   state.gpr.rip.full = R(target_pc);
 }
 
 DEF_SEM(RET_IMM, I16 bytes) {
-  CLEAR_AFLAGS();
-  auto addr = Mn<PC>::Read(state.gpr.rsp.full);
-  state.gpr.rip.full = addr;
-  state.gpr.rsp.full += bytes + sizeof(PC);
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
+  Mn<PC> ret_addr_loc = {state.gpr.rsp.full};
+  const PC ret_addr = R(ret_addr_loc);
+  W(state.gpr.rip.full) = ret_addr;
+  W(state.gpr.rsp.full) = R(state.gpr.rsp.full) + bytes + sizeof(PC);
 }
 
 DEF_SEM(RET) {
-  CLEAR_AFLAGS();
-  auto addr = Mn<PC>::Read(state.gpr.rsp.full);
-  state.gpr.rip.full = addr;
-  state.gpr.rsp.full += sizeof(PC);
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
+  Mn<PC> ret_addr_loc = {state.gpr.rsp.full};
+  const PC ret_addr = R(ret_addr_loc);
+  W(state.gpr.rip.full) = ret_addr;
+  W(state.gpr.rsp.full) = R(state.gpr.rsp.full) + sizeof(PC);
 }
 
 }  // namespace
 
-DEF_ISEL_32UP(CALL_NEAR_RELBRz, CALL<PC>);
-DEF_ISEL_32UP(CALL_NEAR_RELBRd, CALL<PC>);
+DEF_ISEL_32or64(CALL_NEAR_RELBRd, CALL<PC>);
+DEF_ISEL_32or64(CALL_NEAR_RELBRz, CALL<PC>);
 
 IF_32BIT( DEF_ISEL(CALL_NEAR_MEMv_16) = CALL<M16>; )
 IF_32BIT( DEF_ISEL(CALL_NEAR_MEMv_32) = CALL<M32>; )
@@ -44,8 +47,8 @@ IF_64BIT( DEF_ISEL(CALL_NEAR_GPRv_64) = CALL<R64>; )
 728 IRETD IRETD RET BASE I386 ATTRIBUTES: FIXED_BASE0 NOTSX SCALABLE STACKPOP0
 */
 
-DEF_ISEL_32UP(RET_NEAR_IMMw, RET_IMM);
-DEF_ISEL_32UP(RET_NEAR, RET);
+DEF_ISEL_32or64(RET_NEAR_IMMw, RET_IMM);
+DEF_ISEL_32or64(RET_NEAR, RET);
 
 /*
 1073 RET_FAR RET_FAR_IMMw RET BASE I86 ATTRIBUTES: FAR_XFER FIXED_BASE0 NOTSX SCALABLE STACKPOP0

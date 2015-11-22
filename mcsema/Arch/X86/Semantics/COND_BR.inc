@@ -4,7 +4,7 @@ namespace {
 
 DEF_SEM(JNLE, PC taken_rip) {
   const auto cond = !state.aflag.zf & !(state.aflag.cf ^ state.aflag.pf);
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -12,7 +12,7 @@ DEF_SEM(JNLE, PC taken_rip) {
 
 DEF_SEM(JNS, PC taken_rip) {
   const auto cond = !state.aflag.sf;
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -20,7 +20,7 @@ DEF_SEM(JNS, PC taken_rip) {
 
 DEF_SEM(JL, PC taken_rip) {
   const auto cond = state.aflag.sf != state.aflag.of;
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -28,7 +28,7 @@ DEF_SEM(JL, PC taken_rip) {
 
 DEF_SEM(JNP, PC taken_rip) {
   const auto cond = !state.aflag.pf;
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -36,7 +36,7 @@ DEF_SEM(JNP, PC taken_rip) {
 
 DEF_SEM(JNZ, PC taken_rip) {
   const auto cond = !state.aflag.zf;
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -44,7 +44,7 @@ DEF_SEM(JNZ, PC taken_rip) {
 
 DEF_SEM(JNB, PC taken_rip) {
   const auto cond = !state.aflag.cf;
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -52,7 +52,7 @@ DEF_SEM(JNB, PC taken_rip) {
 
 DEF_SEM(JNO, PC taken_rip) {
   const auto cond = !state.aflag.of;
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -60,7 +60,7 @@ DEF_SEM(JNO, PC taken_rip) {
 
 DEF_SEM(JNL, PC taken_rip) {
   const auto cond = state.aflag.sf == state.aflag.of;
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -68,7 +68,7 @@ DEF_SEM(JNL, PC taken_rip) {
 
 DEF_SEM(JNBE, PC taken_rip) {
   const auto cond = !state.aflag.cf & !state.aflag.zf;
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -76,7 +76,7 @@ DEF_SEM(JNBE, PC taken_rip) {
 
 DEF_SEM(JBE, PC taken_rip) {
   const auto cond = state.aflag.cf | state.aflag.zf;
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -84,7 +84,7 @@ DEF_SEM(JBE, PC taken_rip) {
 
 DEF_SEM(JZ, PC taken_rip) {
   const auto cond = state.aflag.zf;
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -92,7 +92,7 @@ DEF_SEM(JZ, PC taken_rip) {
 
 DEF_SEM(JP, PC taken_rip) {
   const auto cond = state.aflag.pf;
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -100,7 +100,7 @@ DEF_SEM(JP, PC taken_rip) {
 
 DEF_SEM(JS, PC taken_rip) {
   const auto cond = state.aflag.sf;
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -108,7 +108,7 @@ DEF_SEM(JS, PC taken_rip) {
 
 DEF_SEM(JO, PC taken_rip) {
   const auto cond = state.aflag.of;
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -116,7 +116,7 @@ DEF_SEM(JO, PC taken_rip) {
 
 DEF_SEM(JB, PC taken_rip) {
   const auto cond = state.aflag.cf;
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -124,7 +124,7 @@ DEF_SEM(JB, PC taken_rip) {
 
 DEF_SEM(JLE, PC taken_rip) {
   const auto cond = state.aflag.zf | (state.aflag.sf ^ state.aflag.of);
-  CLEAR_AFLAGS();
+  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
     state.gpr.rip.full = taken_rip;
   }
@@ -153,69 +153,69 @@ DEF_SEM(JRCXZ, PC taken_rip) {
 
 } // namespace
 
-DEF_ISEL_32UP(JNLE_RELBRb, JNLE);
-DEF_ISEL_32UP(JNLE_RELBRz, JNLE);
-DEF_ISEL_32UP(JNLE_RELBRd, JNLE);
+DEF_ISEL_32or64(JNLE_RELBRb, JNLE);
+DEF_ISEL_32or64(JNLE_RELBRz, JNLE);
+DEF_ISEL_32or64(JNLE_RELBRd, JNLE);
 
-DEF_ISEL_32UP(JNS_RELBRb, JNS);
-DEF_ISEL_32UP(JNS_RELBRz, JNS);
-DEF_ISEL_32UP(JNS_RELBRd, JNS);
+DEF_ISEL_32or64(JNS_RELBRb, JNS);
+DEF_ISEL_32or64(JNS_RELBRz, JNS);
+DEF_ISEL_32or64(JNS_RELBRd, JNS);
 
-DEF_ISEL_32UP(JL_RELBRb, JL);
-DEF_ISEL_32UP(JL_RELBRz, JL);
-DEF_ISEL_32UP(JL_RELBRd, JL);
+DEF_ISEL_32or64(JL_RELBRb, JL);
+DEF_ISEL_32or64(JL_RELBRz, JL);
+DEF_ISEL_32or64(JL_RELBRd, JL);
 
-DEF_ISEL_32UP(JNP_RELBRb, JNP);
-DEF_ISEL_32UP(JNP_RELBRz, JNP);
-DEF_ISEL_32UP(JNP_RELBRd, JNP);
+DEF_ISEL_32or64(JNP_RELBRb, JNP);
+DEF_ISEL_32or64(JNP_RELBRz, JNP);
+DEF_ISEL_32or64(JNP_RELBRd, JNP);
 
-DEF_ISEL_32UP(JNZ_RELBRb, JNZ);
-DEF_ISEL_32UP(JNZ_RELBRz, JNZ);
-DEF_ISEL_32UP(JNZ_RELBRd, JNZ);
+DEF_ISEL_32or64(JNZ_RELBRb, JNZ);
+DEF_ISEL_32or64(JNZ_RELBRz, JNZ);
+DEF_ISEL_32or64(JNZ_RELBRd, JNZ);
 
-DEF_ISEL_32UP(JNB_RELBRb, JNB);
-DEF_ISEL_32UP(JNB_RELBRz, JNB);
-DEF_ISEL_32UP(JNB_RELBRd, JNB);
+DEF_ISEL_32or64(JNB_RELBRb, JNB);
+DEF_ISEL_32or64(JNB_RELBRz, JNB);
+DEF_ISEL_32or64(JNB_RELBRd, JNB);
 
-DEF_ISEL_32UP(JNO_RELBRb, JNO);
-DEF_ISEL_32UP(JNO_RELBRz, JNO);
-DEF_ISEL_32UP(JNO_RELBRd, JNO);
+DEF_ISEL_32or64(JNO_RELBRb, JNO);
+DEF_ISEL_32or64(JNO_RELBRz, JNO);
+DEF_ISEL_32or64(JNO_RELBRd, JNO);
 
-DEF_ISEL_32UP(JNL_RELBRb, JNL);
-DEF_ISEL_32UP(JNL_RELBRz, JNL);
-DEF_ISEL_32UP(JNL_RELBRd, JNL);
+DEF_ISEL_32or64(JNL_RELBRb, JNL);
+DEF_ISEL_32or64(JNL_RELBRz, JNL);
+DEF_ISEL_32or64(JNL_RELBRd, JNL);
 
-DEF_ISEL_32UP(JNBE_RELBRb, JNBE);
-DEF_ISEL_32UP(JNBE_RELBRz, JNBE);
-DEF_ISEL_32UP(JNBE_RELBRd, JNBE);
+DEF_ISEL_32or64(JNBE_RELBRb, JNBE);
+DEF_ISEL_32or64(JNBE_RELBRz, JNBE);
+DEF_ISEL_32or64(JNBE_RELBRd, JNBE);
 
-DEF_ISEL_32UP(JBE_RELBRb, JBE);
-DEF_ISEL_32UP(JBE_RELBRz, JBE);
-DEF_ISEL_32UP(JBE_RELBRd, JBE);
+DEF_ISEL_32or64(JBE_RELBRb, JBE);
+DEF_ISEL_32or64(JBE_RELBRz, JBE);
+DEF_ISEL_32or64(JBE_RELBRd, JBE);
 
-DEF_ISEL_32UP(JZ_RELBRb, JZ);
-DEF_ISEL_32UP(JZ_RELBRz, JZ);
-DEF_ISEL_32UP(JZ_RELBRd, JZ);
+DEF_ISEL_32or64(JZ_RELBRb, JZ);
+DEF_ISEL_32or64(JZ_RELBRz, JZ);
+DEF_ISEL_32or64(JZ_RELBRd, JZ);
 
-DEF_ISEL_32UP(JP_RELBRb, JP);
-DEF_ISEL_32UP(JP_RELBRz, JP);
-DEF_ISEL_32UP(JP_RELBRd, JP);
+DEF_ISEL_32or64(JP_RELBRb, JP);
+DEF_ISEL_32or64(JP_RELBRz, JP);
+DEF_ISEL_32or64(JP_RELBRd, JP);
 
-DEF_ISEL_32UP(JS_RELBRb, JS);
-DEF_ISEL_32UP(JS_RELBRz, JS);
-DEF_ISEL_32UP(JS_RELBRd, JS);
+DEF_ISEL_32or64(JS_RELBRb, JS);
+DEF_ISEL_32or64(JS_RELBRz, JS);
+DEF_ISEL_32or64(JS_RELBRd, JS);
 
-DEF_ISEL_32UP(JO_RELBRb, JO);
-DEF_ISEL_32UP(JO_RELBRz, JO);
-DEF_ISEL_32UP(JO_RELBRd, JO);
+DEF_ISEL_32or64(JO_RELBRb, JO);
+DEF_ISEL_32or64(JO_RELBRz, JO);
+DEF_ISEL_32or64(JO_RELBRd, JO);
 
-DEF_ISEL_32UP(JB_RELBRb, JB);
-DEF_ISEL_32UP(JB_RELBRz, JB);
-DEF_ISEL_32UP(JB_RELBRd, JB);
+DEF_ISEL_32or64(JB_RELBRb, JB);
+DEF_ISEL_32or64(JB_RELBRz, JB);
+DEF_ISEL_32or64(JB_RELBRd, JB);
 
-DEF_ISEL_32UP(JLE_RELBRb, JLE);
-DEF_ISEL_32UP(JLE_RELBRz, JLE);
-DEF_ISEL_32UP(JLE_RELBRd, JLE);
+DEF_ISEL_32or64(JLE_RELBRb, JLE);
+DEF_ISEL_32or64(JLE_RELBRz, JLE);
+DEF_ISEL_32or64(JLE_RELBRd, JLE);
 
 DEF_ISEL(JRCXZ_RELBRb_16) = JCXZ;
 DEF_ISEL(JRCXZ_RELBRb_32) = JECXZ;

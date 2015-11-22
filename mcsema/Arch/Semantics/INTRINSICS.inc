@@ -47,55 +47,43 @@ void __mcsema_memory_intrinsics(void) {
   (void) __mcsema_compute_address;
 }
 
+// Control-flow intrinsics.
+[[gnu::used]]
+extern void __mcsema_error(State &);
+
+[[gnu::used]]
+extern void __mcsema_function_call(State &);
+
+[[gnu::used]]
+extern void __mcsema_function_return(State &);
+
+[[gnu::used]]
+extern void __mcsema_jump(State &);
+
+[[gnu::used]]
+extern void __mcsema_system_call(State &);
+
+[[gnu::used]]
+extern void __mcsema_system_return(State &);
+
+[[gnu::used]]
+extern void __mcsema_interrupt_call(State &);
+
+[[gnu::used]]
+extern void __mcsema_interrupt_return(State &);
+
+// This is just a hack to make sure all these functions appear in the bitcode
+// file!
+[[gnu::used]]
+void __mcsema_control_intrinsics(void) {
+  (void) __mcsema_error;
+  (void) __mcsema_function_call;
+  (void) __mcsema_function_return;
+  (void) __mcsema_jump;
+  (void) __mcsema_system_call;
+  (void) __mcsema_system_return;
+  (void) __mcsema_interrupt_call;
+  (void) __mcsema_interrupt_return;
+}
+
 }  // extern C
-
-template <typename T>
-struct Mn;
-
-#define MAKE_TYPE(prefix, T, size) \
-    template <> \
-    struct Mn<T> { \
-      typedef T BaseType; \
-      ALWAYS_INLINE \
-      inline void operator=(T that) { \
-        __mcsema_write_memory_ ## size (addr, that); \
-      } \
-      ALWAYS_INLINE \
-      inline void Write(T val) const { \
-        return __mcsema_write_memory_ ## size (addr, val); \
-      } \
-      ALWAYS_INLINE \
-      inline T Read(void) const { \
-        return __mcsema_read_memory_ ## size (addr); \
-      } \
-      ALWAYS_INLINE \
-      inline static void Write(uintptr_t addr_, T val) { \
-        return __mcsema_write_memory_ ## size (addr_, val); \
-      } \
-      ALWAYS_INLINE \
-      inline static T Read(uintptr_t addr_) { \
-        return __mcsema_read_memory_ ## size (addr_); \
-      } \
-      uintptr_t addr; \
-    }; \
-    using prefix ## size = prefix ## n < T > ;
-
-MAKE_TYPE(M, uint8_t, 8);
-MAKE_TYPE(M, uint16_t, 16);
-MAKE_TYPE(M, uint32_t, 32);
-MAKE_TYPE(M, uint64_t, 64);
-MAKE_TYPE(M, vec128_t, 128);
-MAKE_TYPE(M, vec256_t, 256);
-MAKE_TYPE(M, vec512_t, 512);
-
-template <typename T>
-struct Mn<const T> : public Mn<T> {};
-
-template <typename T>
-struct Mn<volatile T> : public Mn<T> {};
-
-template <typename T>
-struct Mn<const volatile T> : public Mn<T> {};
-
-template <typename T>
-struct Mn<T &> : public Mn<T> {};

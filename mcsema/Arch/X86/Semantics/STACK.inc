@@ -2,38 +2,49 @@
 
 namespace {
 
-template <typename T>
-DEF_SEM(PUSH, T val_) {
-  const auto val = R(val_);
-  const auto addr = state.gpr.rsp.full - sizeof(val);
-  state.gpr.rsp.full = addr;
-  Mn<decltype(val)>::Write(addr, val);
+template <typename S>
+DEF_SEM(PUSH, S val_) {
+  typedef typename BaseType<S>::Type T;
+  const T pushed_val = R(val_);
+  const uintptr_t sp = R(state.gpr.rsp.full);
+  const uintptr_t new_sp = sp - sizeof(pushed_val);
+
+  MnW<T> stack = {new_sp};
+  W(state.gpr.rsp.full) = new_sp;
+  W(stack) = pushed_val;
 }
 
-template <typename T>
-DEF_SEM(POP, T dst) {
-  const auto addr = state.gpr.rsp.full;
-  const auto val = Mn<decltype(R(dst))>::Read(addr);
-  state.gpr.rsp.full = addr + sizeof(val);
-  W(dst) = val;
+// Note: Special handling of `dst` when it has the form `POP [xSP + ...]`
+//       is handled in the arch-specific instruction operand lifter.
+//
+//       The case of `POP xSP` is correctly handled without special casing.
+template <typename D>
+DEF_SEM(POP, D dst) {
+  typedef typename BaseType<D>::Type T;
+  const uintptr_t old_sp = R(state.gpr.rsp.full);
+  Mn<T> stack = {old_sp};
+
+  const T popped_val = R(stack);
+  W(state.gpr.rsp.full) = old_sp + sizeof(T);
+  W(dst) = popped_val;
 }
 
 }  // namespace
 
 DEF_ISEL(PUSH_GPRv_FFr6_16) = PUSH<R16>;
-DEF_ISEL_READONLY_32OR64(PUSH_GPRv_FFr6, PUSH);
+DEF_ISEL_RI32or64(PUSH_GPRv_FFr6, PUSH);
 
 DEF_ISEL(PUSH_GPRv_50_16) = PUSH<R16>;
-DEF_ISEL_READONLY_32OR64(PUSH_GPRv_50, PUSH);
+DEF_ISEL_RI32or64(PUSH_GPRv_50, PUSH);
 
 DEF_ISEL(PUSH_IMMz_16) = PUSH<I16>;
-DEF_ISEL_READONLY_32OR64(PUSH_IMMz, PUSH);
+DEF_ISEL_RI32or64(PUSH_IMMz, PUSH);
 
 DEF_ISEL(PUSH_IMMb_16) = PUSH<I16>;
-DEF_ISEL_READONLY_32OR64(PUSH_IMMb, PUSH);
+DEF_ISEL_RI32or64(PUSH_IMMb, PUSH);
 
 DEF_ISEL(PUSH_MEMv_16) = PUSH<M16>;
-DEF_ISEL_M32OR64(PUSH_MEMv, PUSH);
+DEF_ISEL_M32or64(PUSH_MEMv, PUSH);
 
 /*
 238 PUSHF PUSHF PUSH BASE I86 ATTRIBUTES: FIXED_BASE0 STACKPUSH0
@@ -51,13 +62,13 @@ DEF_ISEL_M32OR64(PUSH_MEMv, PUSH);
  */
 
 DEF_ISEL(POP_GPRv_8F_16) = POP<R16W>;
-DEF_ISEL_R32OR64(POP_GPRv_8F, POP);
+DEF_ISEL_R32or64W(POP_GPRv_8F, POP);
 
 DEF_ISEL(POP_GPRv_51_16) = POP<R16W>;
-DEF_ISEL_R32OR64(POP_GPRv_51, POP);
+DEF_ISEL_R32or64W(POP_GPRv_51, POP);
 
-DEF_ISEL(POP_MEMv_16) = POP<M16>;
-DEF_ISEL_M32OR64(POP_MEMv, POP);
+DEF_ISEL(POP_MEMv_16) = POP<M16W>;
+DEF_ISEL_M32or64W(POP_MEMv, POP);
 
 /*
 3 POPA POPA POP BASE I186 ATTRIBUTES: FIXED_BASE0 SCALABLE STACKPOP0
