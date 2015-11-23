@@ -692,10 +692,10 @@ typedef Mn<vec128_t> MV128;
 IF_64BIT( typedef Mn<vec256_t> MV256; )
 IF_64BIT( typedef Mn<vec512_t> MV512; )
 
-typedef uint8_t I8;
-typedef uint16_t I16;
-typedef uint32_t I32;
-IF_64BIT( typedef uint64_t I64; )
+typedef In<uint8_t> I8;
+typedef In<uint16_t> I16;
+typedef In<uint32_t> I32;
+IF_64BIT( typedef In<uint64_t> I64; )
 
 
 // Immediate selectors -------------

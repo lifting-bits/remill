@@ -16,7 +16,7 @@ DEF_SEM(RET_IMM, I16 bytes) {
   Mn<PC> ret_addr_loc = {state.gpr.rsp.full};
   const PC ret_addr = R(ret_addr_loc);
   W(state.gpr.rip.full) = ret_addr;
-  W(state.gpr.rsp.full) = R(state.gpr.rsp.full) + bytes + sizeof(PC);
+  W(state.gpr.rsp.full) = R(state.gpr.rsp.full) + R(bytes) + sizeof(PC);
 }
 
 DEF_SEM(RET) {

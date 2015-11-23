@@ -171,7 +171,10 @@ struct RnW {
   T &val_ref;
 };
 
-extern "C" void __escape(void *);
+template <typename T>
+struct In {
+  const T val;
+};
 
 template <typename T>
 struct Vn {
@@ -217,6 +220,11 @@ struct BaseType<Rn<T>> {
 
 template <typename T>
 struct BaseType<RnW<T>> {
+  typedef typename BaseType<T>::Type Type;
+};
+
+template <typename T>
+struct BaseType<In<T>> {
   typedef typename BaseType<T>::Type Type;
 };
 

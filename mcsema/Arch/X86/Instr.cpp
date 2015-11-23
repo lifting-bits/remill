@@ -199,7 +199,8 @@ void Instr::LiftGeneric(const Lifter &lifter) {
   } else if (auto FP = M->getGlobalVariable(func_name)) {
     CHECK(FP->isConstant() && FP->hasInitializer())
         << "Expected a `constexpr` variable as the function pointer.";
-    ir.CreateCall(llvm::dyn_cast<llvm::Function>(FP->getInitializer()), args);
+    llvm::Constant *FC = FP->getInitializer()->stripPointerCasts();
+    ir.CreateCall(llvm::dyn_cast<llvm::Function>(FC), args);
   } else {
     LOG(WARNING) << "Missing instruction semantics for " << func_name;
   }
