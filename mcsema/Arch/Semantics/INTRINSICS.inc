@@ -13,18 +13,22 @@ extern uint8_t __mcsema_read_memory_8(uintptr_t);
 extern uint16_t __mcsema_read_memory_16(uintptr_t);
 extern uint32_t __mcsema_read_memory_32(uintptr_t);
 extern uint64_t __mcsema_read_memory_64(uintptr_t);
-extern vec128_t __mcsema_read_memory_128(uintptr_t);
-extern vec256_t __mcsema_read_memory_256(uintptr_t);
-extern vec512_t __mcsema_read_memory_512(uintptr_t);
+
+extern vec64_t __mcsema_read_memory_v64(uintptr_t);
+extern vec128_t __mcsema_read_memory_v128(uintptr_t);
+extern vec256_t __mcsema_read_memory_v256(uintptr_t);
+extern vec512_t __mcsema_read_memory_v512(uintptr_t);
 
 // Memory write intrinsics.
 extern void __mcsema_write_memory_8(uintptr_t, uint8_t);
 extern void __mcsema_write_memory_16(uintptr_t, uint16_t);
 extern void __mcsema_write_memory_32(uintptr_t, uint32_t);
 extern void __mcsema_write_memory_64(uintptr_t, uint64_t);
-extern void __mcsema_write_memory_128(uintptr_t, vec128_t);
-extern void __mcsema_write_memory_256(uintptr_t, vec256_t);
-extern void __mcsema_write_memory_512(uintptr_t, vec512_t);
+
+extern void __mcsema_write_memory_v64(uintptr_t, const vec64_t &);
+extern void __mcsema_write_memory_v128(uintptr_t, const vec128_t &);
+extern void __mcsema_write_memory_v256(uintptr_t, const vec256_t &);
+extern void __mcsema_write_memory_v512(uintptr_t, const vec512_t &);
 
 // This is just a hack to make sure all these functions appear in the bitcode
 // file!
@@ -34,17 +38,21 @@ void __mcsema_memory_intrinsics(void) {
   (void) __mcsema_read_memory_16;
   (void) __mcsema_read_memory_32;
   (void) __mcsema_read_memory_64;
-  (void) __mcsema_read_memory_128;
-  (void) __mcsema_read_memory_256;
-  (void) __mcsema_read_memory_512;
+  (void) __mcsema_read_memory_v64;
+  (void) __mcsema_read_memory_v128;
+  (void) __mcsema_read_memory_v256;
+  (void) __mcsema_read_memory_v512;
+
   (void) __mcsema_write_memory_8;
   (void) __mcsema_write_memory_16;
   (void) __mcsema_write_memory_32;
   (void) __mcsema_write_memory_64;
-  (void) __mcsema_write_memory_128;
-  (void) __mcsema_write_memory_256;
-  (void) __mcsema_write_memory_512;
-  (void) __mcsema_compute_address;
+  (void) __mcsema_write_memory_v64;
+  (void) __mcsema_write_memory_v128;
+  (void) __mcsema_write_memory_v256;
+  (void) __mcsema_write_memory_v512;
+
+  (void) __mcsema_compute_address;  // Used for segmented addresses.
 }
 
 // Control-flow intrinsics.

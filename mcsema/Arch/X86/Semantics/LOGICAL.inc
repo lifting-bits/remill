@@ -32,8 +32,6 @@ DEF_SEM(XOR, D dst, S1 src1_, S2 src2_) {
   W(dst) = res;
 }
 
-#undef DEFINE_OP
-
 template <typename D, typename S1>
 DEF_SEM(NOT, D dst_src1, S1 src1_) {
   W(dst_src1) = ~R(src1_);
@@ -126,3 +124,108 @@ DEF_ISEL_Mn_Rn(TEST_MEMv_GPRv, TEST);
 DEF_ISEL_Rn_Rn(TEST_GPRv_GPRv, TEST);
 DEF_ISEL(TEST_AL_IMMb_8) = TEST<R8, I8>;
 DEF_ISEL_Rn_In(TEST_OrAX_IMMz, TEST);
+
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PAND, D dst, S1 src1_, S2 src2_) {
+  typedef typename BaseType<S1>::Type T;
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  W(dst) = src1.qwords & src2.qwords;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PANDN, D dst, S1 src1_, S2 src2_) {
+  typedef typename BaseType<S1>::Type T;
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  W(dst) = (~src1.qwords) & src2.qwords;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(POR, D dst, S1 src1_, S2 src2_) {
+  typedef typename BaseType<S1>::Type T;
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  W(dst) = src1.qwords | src2.qwords;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PXOR, D dst, S1 src1_, S2 src2_) {
+  typedef typename BaseType<S1>::Type T;
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  W(dst) = src1.qwords ^ src2.qwords;
+}
+
+template <typename D, typename S1>
+DEF_SEM(PNOT, D dst_src1, S1 src1_) {
+  W(dst_src1) = ~(R(src1_).qwords);
+}
+/*
+template <typename S1, typename S2>
+DEF_SEM(PTEST, S1 src1_, S2 src2_) {
+  typedef typename BaseType<S1>::Type T;
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  //T res;
+  //res.qwords = src1.qwords & src2.qwords;
+  (void) src1;
+  (void) src2;
+}
+*/
+}  // namespace
+
+DEF_ISEL(PXOR_MMXq_MEMq_64) = PXOR<V64W, V64, MV64>;
+DEF_ISEL(PXOR_MMXq_MMXq_64) = PXOR<V64W, V64, V64>;
+DEF_ISEL(PXOR_XMMdq_MEMdq_32) = PXOR<V128W, V128, MV128>;
+DEF_ISEL(PXOR_XMMdq_XMMdq_32) = PXOR<V128W, V128, V128>;
+
+DEF_ISEL(PAND_MMXq_MEMq_64) = PAND<V64W, V64, MV64>;
+DEF_ISEL(PAND_MMXq_MMXq_64) = PAND<V64W, V64, V64>;
+DEF_ISEL(PAND_XMMdq_MEMdq_32) = PAND<V128W, V128, MV128>;
+DEF_ISEL(PAND_XMMdq_XMMdq_32) = PAND<V128W, V128, V128>;
+
+DEF_ISEL(POR_MMXq_MEMq_64) = POR<V64W, V64, MV64>;
+DEF_ISEL(POR_MMXq_MMXq_64) = POR<V64W, V64, V64>;
+DEF_ISEL(POR_XMMdq_MEMdq_32) = POR<V128W, V128, MV128>;
+DEF_ISEL(POR_XMMdq_XMMdq_32) = POR<V128W, V128, V128>;
+
+DEF_ISEL(PANDN_MMXq_MEMq_64) = PANDN<V64W, V64, MV64>;
+DEF_ISEL(PANDN_MMXq_MMXq_64) = PANDN<V64W, V64, V64>;
+DEF_ISEL(PANDN_XMMdq_MEMdq_32) = PANDN<V128W, V128, MV128>;
+DEF_ISEL(PANDN_XMMdq_XMMdq_32) = PANDN<V128W, V128, V128>;
+
+/*
+
+822 PTEST PTEST_XMMdq_MEMdq LOGICAL SSE4 SSE4 ATTRIBUTES: REQUIRES_ALIGNMENT SIMD_PACKED_ALIGNMENT
+823 PTEST PTEST_XMMdq_XMMdq LOGICAL SSE4 SSE4 ATTRIBUTES: REQUIRES_ALIGNMENT SIMD_PACKED_ALIGNMENT
+
+1737 XTEST XTEST LOGICAL RTM RTM ATTRIBUTES:
+
+2246 VPTEST VPTEST_XMMdq_MEMdq LOGICAL AVX AVX ATTRIBUTES:
+2247 VPTEST VPTEST_XMMdq_XMMdq LOGICAL AVX AVX ATTRIBUTES:
+2248 VPTEST VPTEST_YMMqq_MEMqq LOGICAL AVX AVX ATTRIBUTES:
+2249 VPTEST VPTEST_YMMqq_YMMqq LOGICAL AVX AVX ATTRIBUTES:
+
+2268 VPXOR VPXOR_XMMdq_XMMdq_MEMdq LOGICAL AVX AVX ATTRIBUTES:
+2269 VPXOR VPXOR_XMMdq_XMMdq_XMMdq LOGICAL AVX AVX ATTRIBUTES:
+2270 VPXOR VPXOR_YMMqq_YMMqq_MEMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
+2271 VPXOR VPXOR_YMMqq_YMMqq_YMMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
+
+2405 VPAND VPAND_XMMdq_XMMdq_MEMdq LOGICAL AVX AVX ATTRIBUTES:
+2406 VPAND VPAND_XMMdq_XMMdq_XMMdq LOGICAL AVX AVX ATTRIBUTES:
+2407 VPAND VPAND_YMMqq_YMMqq_MEMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
+2408 VPAND VPAND_YMMqq_YMMqq_YMMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
+
+2413 VPANDN VPANDN_XMMdq_XMMdq_MEMdq LOGICAL AVX AVX ATTRIBUTES:
+2414 VPANDN VPANDN_XMMdq_XMMdq_XMMdq LOGICAL AVX AVX ATTRIBUTES:
+2415 VPANDN VPANDN_YMMqq_YMMqq_MEMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
+2416 VPANDN VPANDN_YMMqq_YMMqq_YMMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
+
+2907 VPOR VPOR_XMMdq_XMMdq_MEMdq LOGICAL AVX AVX ATTRIBUTES:
+2908 VPOR VPOR_XMMdq_XMMdq_XMMdq LOGICAL AVX AVX ATTRIBUTES:
+2909 VPOR VPOR_YMMqq_YMMqq_MEMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
+2910 VPOR VPOR_YMMqq_YMMqq_YMMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
+ */

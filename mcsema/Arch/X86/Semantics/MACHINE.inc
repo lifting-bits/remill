@@ -661,25 +661,36 @@ typedef Rn<uint8_t> R8;
 typedef Rn<uint16_t> R16;
 typedef Rn<uint32_t> R32;
 IF_64BIT( typedef Rn<uint64_t> R64; )
-typedef Rn<vec128_t> R128;
-IF_64BIT( typedef Rn<vec256_t> R256; )
-IF_64BIT( typedef Rn<vec512_t> R512; )
+
+typedef Vn<vec64_t> V64;
+typedef Vn<vec128_t> V128;
+IF_64BIT( typedef Vn<vec256_t> V256; )
+IF_64BIT( typedef Vn<vec512_t> V512; )
+
+typedef VnW<vec64_t> V64W;
+typedef VnW<vec128_t> V128W;
+IF_64BIT( typedef VnW<vec256_t> V256W; )
+IF_64BIT( typedef VnW<vec512_t> V512W; )
 
 typedef MnW<uint8_t> M8W;
 typedef MnW<uint16_t> M16W;
 typedef MnW<uint64_t> M32W;
 IF_64BIT( typedef MnW<uint64_t> M64W; )
-typedef MnW<vec128_t> M128W;
-IF_64BIT( typedef MnW<vec256_t> M256W; )
-IF_64BIT( typedef MnW<vec512_t> M512W; )
+
+typedef MnW<vec64_t> MV64W;
+typedef MnW<vec128_t> MV128W;
+IF_64BIT( typedef MnW<vec256_t> MV256W; )
+IF_64BIT( typedef MnW<vec512_t> MV512W; )
 
 typedef Mn<uint8_t> M8;
 typedef Mn<uint16_t> M16;
 typedef Mn<uint32_t> M32;
 IF_64BIT( typedef Mn<uint64_t> M64; )
-typedef Mn<vec128_t> M128;
-IF_64BIT( typedef Mn<vec256_t> M256; )
-IF_64BIT( typedef Mn<vec512_t> M512; )
+
+typedef Mn<vec64_t> MV64;
+typedef Mn<vec128_t> MV128;
+IF_64BIT( typedef Mn<vec256_t> MV256; )
+IF_64BIT( typedef Mn<vec512_t> MV512; )
 
 typedef uint8_t I8;
 typedef uint16_t I16;
@@ -699,5 +710,6 @@ typedef uintptr_t ADDR;
 #include "mcsema/Arch/X86/Semantics/DATAXFER.inc"
 #include "mcsema/Arch/X86/Semantics/LOGICAL.inc"
 #include "mcsema/Arch/X86/Semantics/MISC.inc"
-#include "mcsema/Arch/X86/Semantics/STACK.inc"
+#include "mcsema/Arch/X86/Semantics/STACKPUSH.inc"
+#include "mcsema/Arch/X86/Semantics/STACKPOP.inc"
 #include "mcsema/Arch/X86/Semantics/UNCOND_BR.inc"

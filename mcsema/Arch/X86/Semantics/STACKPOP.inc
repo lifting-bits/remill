@@ -1,0 +1,43 @@
+/* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+
+namespace {
+
+// Note: Special handling of `dst` when it has the form `POP [xSP + ...]`
+//       is handled in the arch-specific instruction operand lifter.
+//
+//       The case of `POP xSP` is correctly handled without special casing.
+template <typename D>
+DEF_SEM(POP, D dst) {
+  typedef typename BaseType<D>::Type T;
+  const uintptr_t old_sp = R(state.gpr.rsp.full);
+  Mn<T> stack = {old_sp};
+
+  const T popped_val = R(stack);
+  W(state.gpr.rsp.full) = old_sp + sizeof(T);
+  W(dst) = popped_val;
+}
+
+}  // namespace
+
+DEF_ISEL(POP_GPRv_8F_16) = POP<R16W>;
+DEF_ISEL_R32or64W(POP_GPRv_8F, POP);
+
+DEF_ISEL(POP_GPRv_51_16) = POP<R16W>;
+DEF_ISEL_R32or64W(POP_GPRv_51, POP);
+
+DEF_ISEL(POP_MEMv_16) = POP<M16W>;
+DEF_ISEL_M32or64W(POP_MEMv, POP);
+
+/*
+3 POPA POPA POP BASE I186 ATTRIBUTES: FIXED_BASE0 SCALABLE STACKPOP0
+6 POPF POPF POP BASE I86 ATTRIBUTES: FIXED_BASE0 NOTSX STACKPOP0
+503 POPFD POPFD POP BASE I386 ATTRIBUTES: FIXED_BASE0 NOTSX STACKPOP0
+1048 POPFQ POPFQ POP LONGMODE LONGMODE ATTRIBUTES: FIXED_BASE0 NOTSX STACKPOP0
+1318 POPAD POPAD POP BASE I386 ATTRIBUTES: FIXED_BASE0 SCALABLE STACKPOP0
+
+1391 POP POP_ES POP BASE I86 ATTRIBUTES: FIXED_BASE0 NOTSX SCALABLE STACKPOP0
+1392 POP POP_SS POP BASE I86 ATTRIBUTES: FIXED_BASE0 NOTSX SCALABLE STACKPOP0
+1393 POP POP_DS POP BASE I86 ATTRIBUTES: FIXED_BASE0 NOTSX SCALABLE STACKPOP0
+1395 POP POP_FS POP BASE I86 ATTRIBUTES: FIXED_BASE0 NOTSX SCALABLE STACKPOP0
+1396 POP POP_GS POP BASE I86 ATTRIBUTES: FIXED_BASE0 NOTSX SCALABLE STACKPOP0
+ */

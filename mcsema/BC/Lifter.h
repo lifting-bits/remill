@@ -110,18 +110,20 @@ class Lifter {
   llvm::Function * const read_memory_16;
   llvm::Function * const read_memory_32;
   llvm::Function * const read_memory_64;
-  llvm::Function * const read_memory_128;
-  llvm::Function * const read_memory_256;
-  llvm::Function * const read_memory_512;
+  llvm::Function * const read_memory_v64;
+  llvm::Function * const read_memory_v128;
+  llvm::Function * const read_memory_v256;
+  llvm::Function * const read_memory_v512;
 
   // Memory write intrinsics.
   llvm::Function * const write_memory_8;
   llvm::Function * const write_memory_16;
   llvm::Function * const write_memory_32;
   llvm::Function * const write_memory_64;
-  llvm::Function * const write_memory_128;
-  llvm::Function * const write_memory_256;
-  llvm::Function * const write_memory_512;
+  llvm::Function * const write_memory_v64;
+  llvm::Function * const write_memory_v128;
+  llvm::Function * const write_memory_v256;
+  llvm::Function * const write_memory_v512;
 
   // Addressing intrinsics.
   llvm::Function * const compute_address;

@@ -11,6 +11,25 @@ struct alignas(16) float80_t {
 };
 static_assert(16 == sizeof(float80_t), "Invalid `float80_t` size.");
 
+typedef uint8_t uint8v8_t __attribute__ ((vector_size (8)));
+typedef uint16_t uint16v4_t __attribute__ ((vector_size (8)));
+typedef uint32_t uint32v2_t __attribute__ ((vector_size (8)));
+typedef uint64_t uint64v1_t __attribute__ ((vector_size (8)));
+typedef float32_t float32v2_t __attribute__ ((vector_size (8)));
+typedef float64_t float64v1_t __attribute__ ((vector_size (8)));
+
+union vec64_t {
+  uint8v8_t bytes;
+  uint16v4_t words;
+  uint32v2_t dwords;
+  uint64v1_t qwords;
+  float32v2_t floats;
+  float64v1_t doubles;
+} __attribute__((packed));
+
+static_assert(8 == sizeof(vec64_t),
+              "Invalid structure packing of `vec64_t`.");
+
 typedef uint8_t uint8v16_t __attribute__ ((vector_size (16)));
 typedef uint16_t uint16v8_t __attribute__ ((vector_size (16)));
 typedef uint32_t uint32v4_t __attribute__ ((vector_size (16)));
@@ -134,21 +153,33 @@ MAKE_SIGNED_INT_CHANGERS(int128_t, uint128_t);
 
 template <typename T>
 struct Mn {
-  uintptr_t addr;
+  const uintptr_t addr;
 };
 
 template <typename T>
 struct MnW {
-  uintptr_t addr;
+  const uintptr_t addr;
 };
 
 template <typename T>
 struct Rn {
-  T val;
+  const T val;
 };
 
 template <typename T>
 struct RnW {
+  T &val_ref;
+};
+
+extern "C" void __escape(void *);
+
+template <typename T>
+struct Vn {
+  const T &val;
+};
+
+template <typename T>
+struct VnW {
   T &val_ref;
 };
 
@@ -186,6 +217,16 @@ struct BaseType<Rn<T>> {
 
 template <typename T>
 struct BaseType<RnW<T>> {
+  typedef typename BaseType<T>::Type Type;
+};
+
+template <typename T>
+struct BaseType<Vn<T>> {
+  typedef typename BaseType<T>::Type Type;
+};
+
+template <typename T>
+struct BaseType<VnW<T>> {
   typedef typename BaseType<T>::Type Type;
 };
 

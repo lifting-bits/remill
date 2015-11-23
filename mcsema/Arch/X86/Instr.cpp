@@ -394,6 +394,17 @@ void Instr::LiftImmediate(xed_operand_enum_t op_name) {
       llvm::Type::getIntNTy(*C, op_size), val, is_signed));
 }
 
+namespace {
+
+static bool IsVectorReg(xed_reg_enum_t reg) {
+  return (XED_REG_MMX_FIRST <= reg && XED_REG_MMX_LAST >= reg) ||
+         (XED_REG_XMM_FIRST <= reg && XED_REG_XMM_LAST >= reg) ||
+         (XED_REG_YMM_FIRST <= reg && XED_REG_YMM_LAST >= reg) ||
+         (XED_REG_ZMM_FIRST <= reg && XED_REG_ZMM_LAST >= reg);
+}
+
+}  // namespace
+
 // Lift a register operand. We need to handle both reads and writes. We place
 // writes first as they are the output operands.
 void Instr::LiftRegister(const xed_operand_t *xedo) {
@@ -408,8 +419,22 @@ void Instr::LiftRegister(const xed_operand_t *xedo) {
         ir.CreateLoad(FindVarInFunction(F, reg_name + "_write")));
   }
   if (xed_operand_read(xedo)) {
-    args.push_back(ir.CreateLoad(
-        ir.CreateLoad(FindVarInFunction(F, reg_name + "_read"))));
+    llvm::Value *RegAddr = ir.CreateLoad(
+        FindVarInFunction(F, reg_name + "_read"));
+
+    // This is an annoying hack. Clang will always use ABI-specific argument
+    // type coercion, which means that important type information isn't always
+    // correctly communicated via argument types. In these cases, we really
+    // want to be passing the structure types associated with the vectors, but
+    // Clang's code generator would have us pass vectors of integral/floating
+    // point values instead. To avoid this issue, we pass vector registers by
+    // constant references (i.e. by address).
+    if (IsVectorReg(reg)) {
+      args.push_back(RegAddr);
+
+    } else {
+      args.push_back(ir.CreateLoad(RegAddr));
+    }
   }
 }
 
