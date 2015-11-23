@@ -128,11 +128,19 @@ DEF_ISEL_Rn_In(TEST_OrAX_IMMz, TEST);
 namespace {
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(PAND, D dst, S1 src1_, S2 src2_) {
+DEF_SEM(PAND_MMX, D dst, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   W(dst) = src1.qwords & src2.qwords;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PAND_SSE, D dst, S1 src1_, S2 src2_) {
+  typedef typename BaseType<S1>::Type T;
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  W(dst) = src1.dwords & src2.dwords;
 }
 
 template <typename D, typename S1, typename S2>
@@ -144,7 +152,7 @@ DEF_SEM(PANDN, D dst, S1 src1_, S2 src2_) {
 }
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(POR, D dst, S1 src1_, S2 src2_) {
+DEF_SEM(POR_MMX, D dst, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
@@ -152,7 +160,23 @@ DEF_SEM(POR, D dst, S1 src1_, S2 src2_) {
 }
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(PXOR, D dst, S1 src1_, S2 src2_) {
+DEF_SEM(POR_SSE, D dst, S1 src1_, S2 src2_) {
+  typedef typename BaseType<S1>::Type T;
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  W(dst) = src1.dwords | src2.dwords;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PXOR_MMX, D dst, S1 src1_, S2 src2_) {
+  typedef typename BaseType<S1>::Type T;
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  W(dst) = src1.qwords ^ src2.qwords;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PXOR_SSE, D dst, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
@@ -177,20 +201,20 @@ DEF_SEM(PTEST, S1 src1_, S2 src2_) {
 */
 }  // namespace
 
-DEF_ISEL(PXOR_MMXq_MEMq_64) = PXOR<V64W, V64, MV64>;
-DEF_ISEL(PXOR_MMXq_MMXq_64) = PXOR<V64W, V64, V64>;
-DEF_ISEL(PXOR_XMMdq_MEMdq_32) = PXOR<V128W, V128, MV128>;
-DEF_ISEL(PXOR_XMMdq_XMMdq_32) = PXOR<V128W, V128, V128>;
+DEF_ISEL(PXOR_MMXq_MEMq_64) = PXOR_MMX<V64W, V64, MV64>;
+DEF_ISEL(PXOR_MMXq_MMXq_64) = PXOR_MMX<V64W, V64, V64>;
+DEF_ISEL(PXOR_XMMdq_MEMdq_32) = PXOR_SSE<V128W, V128, MV128>;
+DEF_ISEL(PXOR_XMMdq_XMMdq_32) = PXOR_SSE<V128W, V128, V128>;
 
-DEF_ISEL(PAND_MMXq_MEMq_64) = PAND<V64W, V64, MV64>;
-DEF_ISEL(PAND_MMXq_MMXq_64) = PAND<V64W, V64, V64>;
-DEF_ISEL(PAND_XMMdq_MEMdq_32) = PAND<V128W, V128, MV128>;
-DEF_ISEL(PAND_XMMdq_XMMdq_32) = PAND<V128W, V128, V128>;
+DEF_ISEL(PAND_MMXq_MEMq_64) = PAND_MMX<V64W, V64, MV64>;
+DEF_ISEL(PAND_MMXq_MMXq_64) = PAND_MMX<V64W, V64, V64>;
+DEF_ISEL(PAND_XMMdq_MEMdq_32) = PAND_SSE<V128W, V128, MV128>;
+DEF_ISEL(PAND_XMMdq_XMMdq_32) = PAND_SSE<V128W, V128, V128>;
 
-DEF_ISEL(POR_MMXq_MEMq_64) = POR<V64W, V64, MV64>;
-DEF_ISEL(POR_MMXq_MMXq_64) = POR<V64W, V64, V64>;
-DEF_ISEL(POR_XMMdq_MEMdq_32) = POR<V128W, V128, MV128>;
-DEF_ISEL(POR_XMMdq_XMMdq_32) = POR<V128W, V128, V128>;
+DEF_ISEL(POR_MMXq_MEMq_64) = POR_MMX<V64W, V64, MV64>;
+DEF_ISEL(POR_MMXq_MMXq_64) = POR_MMX<V64W, V64, V64>;
+DEF_ISEL(POR_XMMdq_MEMdq_32) = POR_SSE<V128W, V128, MV128>;
+DEF_ISEL(POR_XMMdq_XMMdq_32) = POR_SSE<V128W, V128, V128>;
 
 DEF_ISEL(PANDN_MMXq_MEMq_64) = PANDN<V64W, V64, MV64>;
 DEF_ISEL(PANDN_MMXq_MMXq_64) = PANDN<V64W, V64, V64>;

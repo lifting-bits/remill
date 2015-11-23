@@ -429,11 +429,19 @@ void Instr::LiftRegister(const xed_operand_t *xedo) {
     // Clang's code generator would have us pass vectors of integral/floating
     // point values instead. To avoid this issue, we pass vector registers by
     // constant references (i.e. by address).
+    llvm::LoadInst *Val = ir.CreateLoad(RegAddr);
     if (IsVectorReg(reg)) {
-      args.push_back(RegAddr);
+
+      // We go through the indirection of a load then a store to a local so
+      // that we never have the issue where a register is both a source and
+      // destination operand and the destination is written before the
+      // source is read.
+      llvm::AllocaInst *ValAddr = ir.CreateAlloca(Val->getType());
+      ir.CreateStore(Val, ValAddr);
+      args.push_back(ValAddr);
 
     } else {
-      args.push_back(ir.CreateLoad(RegAddr));
+      args.push_back(Val);
     }
   }
 }
