@@ -174,10 +174,10 @@ static_assert(0 == __builtin_offsetof(Reg, full), "Invalid packing of `Reg::full
 static_assert(0 == __builtin_offsetof(Reg, sfull), "Invalid packing of `Reg::sfull`.");
 
 union alignas(64) VectorReg {
-  vec128_t xmm;
+  alignas(64) vec128_t xmm;
 
-  IF_64BIT( vec256_t ymm; )
-  IF_64BIT( vec512_t zmm; )
+  IF_64BIT( alignas(64) vec256_t ymm; )
+  IF_64BIT( alignas(64) vec512_t zmm; )
 
 } __attribute__((packed));
 

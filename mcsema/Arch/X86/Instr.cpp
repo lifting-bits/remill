@@ -22,6 +22,10 @@ DECLARE_string(os);
 namespace mcsema {
 namespace x86 {
 
+enum {
+  kVectorRegAlign = 64
+};
+
 Instr::Instr(const cfg::Instr *instr_, const struct xed_decoded_inst_s *xedd_)
     : ::mcsema::Instr(instr_),
       xedd(xedd_),
@@ -414,12 +418,15 @@ void Instr::LiftRegister(const xed_operand_t *xedo) {
 
   llvm::IRBuilder<> ir(B);
 
+  // Pass the register by reference.
   if (xed_operand_written(xedo)) {
-    args.push_back(
-        ir.CreateLoad(FindVarInFunction(F, reg_name + "_write")));
+    llvm::LoadInst *RegAddr = ir.CreateLoad(
+        FindVarInFunction(F, reg_name + "_write"));
+    args.push_back(RegAddr);
   }
+
   if (xed_operand_read(xedo)) {
-    llvm::Value *RegAddr = ir.CreateLoad(
+    llvm::LoadInst *RegAddr = ir.CreateLoad(
         FindVarInFunction(F, reg_name + "_read"));
 
     // This is an annoying hack. Clang will always use ABI-specific argument
@@ -429,19 +436,21 @@ void Instr::LiftRegister(const xed_operand_t *xedo) {
     // Clang's code generator would have us pass vectors of integral/floating
     // point values instead. To avoid this issue, we pass vector registers by
     // constant references (i.e. by address).
-    llvm::LoadInst *Val = ir.CreateLoad(RegAddr);
+    llvm::LoadInst *Reg = ir.CreateLoad(RegAddr);
+    Reg->setAlignment(kVectorRegAlign);
+
     if (IsVectorReg(reg)) {
 
       // We go through the indirection of a load then a store to a local so
       // that we never have the issue where a register is both a source and
       // destination operand and the destination is written before the
       // source is read.
-      llvm::AllocaInst *ValAddr = ir.CreateAlloca(Val->getType());
-      ir.CreateStore(Val, ValAddr);
-      args.push_back(ValAddr);
+      llvm::AllocaInst *ValAddr = ir.CreateAlloca(Reg->getType());
+      ir.CreateStore(Reg, ValAddr);
 
+      args.push_back(ValAddr);
     } else {
-      args.push_back(Val);
+      args.push_back(Reg);
     }
   }
 }
