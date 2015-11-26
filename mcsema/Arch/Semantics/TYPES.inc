@@ -11,80 +11,220 @@ struct alignas(16) float80_t {
 };
 static_assert(16 == sizeof(float80_t), "Invalid `float80_t` size.");
 
-typedef uint8_t uint8v8_t __attribute__ ((vector_size (8)));
-typedef uint16_t uint16v4_t __attribute__ ((vector_size (8)));
-typedef uint32_t uint32v2_t __attribute__ ((vector_size (8)));
-typedef uint64_t uint64v1_t __attribute__ ((vector_size (8)));
-typedef float32_t float32v2_t __attribute__ ((vector_size (8)));
-typedef float64_t float64v1_t __attribute__ ((vector_size (8)));
+typedef unsigned uint128_t __attribute__((mode(TI)));
+static_assert(16 == sizeof(uint128_t), "Invalid `uint128_t` size.");
+
+typedef int int128_t __attribute__((mode(TI)));
+static_assert(16 == sizeof(int128_t), "Invalid `int128_t` size.");
+
+template <typename T>
+struct VectorInfo;
+
+union vec64_t;
+union vec128_t;
+union vec256_t;
+union vec512_t;
+
+#define MAKE_VECTOR(base_type, nelms, vec_size_bits, width_bytes) \
+    typedef base_type ## _t base_type ## v ## nelms ## _t \
+        __attribute__((vector_size(width_bytes))); \
+    static_assert(width_bytes == sizeof(base_type ## v ## nelms ## _t), \
+        "Invalid definition of `" #base_type "v" #nelms "`."); \
+    template <> \
+    struct VectorInfo<base_type ## v ## nelms ## _t> { \
+      enum { \
+        kNumElms = nelms \
+      }; \
+      typedef base_type ## _t BaseType; \
+      typedef vec ## vec_size_bits ## _t VecType; \
+    }
+
+MAKE_VECTOR(uint8, 8, 64, 8);
+MAKE_VECTOR(uint8, 16, 128, 16);
+MAKE_VECTOR(uint8, 32, 256, 32);
+MAKE_VECTOR(uint8, 64, 512, 64);
+
+MAKE_VECTOR(uint16, 4, 64, 8);
+MAKE_VECTOR(uint16, 8, 128, 16);
+MAKE_VECTOR(uint16, 16, 256, 32);
+MAKE_VECTOR(uint16, 32, 512, 64);
+
+MAKE_VECTOR(uint32, 2, 64, 8);
+MAKE_VECTOR(uint32, 4, 128, 16);
+MAKE_VECTOR(uint32, 8, 256, 32);
+MAKE_VECTOR(uint32, 16, 512, 64);
+
+MAKE_VECTOR(uint64, 1, 64, 8);
+MAKE_VECTOR(uint64, 2, 128, 16);
+MAKE_VECTOR(uint64, 4, 256, 32);
+MAKE_VECTOR(uint64, 8, 512, 64);
+
+//MAKE_VECTOR(uint128, 0, 64, 8);
+MAKE_VECTOR(uint128, 1, 128, 16);
+MAKE_VECTOR(uint128, 2, 256, 32);
+MAKE_VECTOR(uint128, 4, 512, 64);
+
+MAKE_VECTOR(float32, 2, 64, 8);
+MAKE_VECTOR(float32, 4, 128, 16);
+MAKE_VECTOR(float32, 8, 256, 32);
+MAKE_VECTOR(float32, 16, 512, 64);
+
+MAKE_VECTOR(float64, 1, 64, 8);
+MAKE_VECTOR(float64, 2, 128, 16);
+MAKE_VECTOR(float64, 4, 256, 32);
+MAKE_VECTOR(float64, 8, 512, 64);
 
 union vec64_t {
   uint8v8_t bytes;
   uint16v4_t words;
   uint32v2_t dwords;
   uint64v1_t qwords;
+
+  IF_64BIT_ELSE(uint64v1_t, uint32v2_t) iwords;  // Ideal.
+
   float32v2_t floats;
   float64v1_t doubles;
+
+  // Note: This is a special case for consistency in `VecWriter`. In practice
+  //       this should never be used.
+  struct alignas(1) {} dqwords[8];
+
 } __attribute__((packed));
 
-static_assert(8 == sizeof(vec64_t),
+static_assert(8 == sizeof(vec64_t) &&
+              8 == sizeof(vec64_t().bytes) &&
+              8 == sizeof(vec64_t().words) &&
+              8 == sizeof(vec64_t().dwords) &&
+              8 == sizeof(vec64_t().qwords) &&
+              8 == sizeof(vec64_t().dqwords) &&
+              8 == sizeof(vec64_t().floats) &&
+              8 == sizeof(vec64_t().doubles) &&
+              8 == sizeof(vec64_t().iwords),
               "Invalid structure packing of `vec64_t`.");
 
-typedef uint8_t uint8v16_t __attribute__ ((vector_size (16)));
-typedef uint16_t uint16v8_t __attribute__ ((vector_size (16)));
-typedef uint32_t uint32v4_t __attribute__ ((vector_size (16)));
-typedef uint64_t uint64v2_t __attribute__ ((vector_size (16)));
-typedef float32_t float32v4_t __attribute__ ((vector_size (16)));
-typedef float64_t float64v2_t __attribute__ ((vector_size (16)));
-
 union vec128_t {
+  ALWAYS_INLINE inline vec128_t(void)
+      : iwords{0} {}
+
+  ALWAYS_INLINE inline vec128_t(const vec64_t &&sub_vec) {
+    qwords[0] = sub_vec.qwords[0];
+    qwords[1] = 0;
+  }
+
   uint8v16_t bytes;
   uint16v8_t words;
   uint32v4_t dwords;
   uint64v2_t qwords;
+
+  IF_64BIT_ELSE(uint64v2_t, uint32v4_t) iwords;  // Ideal.
+
+  uint128v1_t dqwords;
   float32v4_t floats;
   float64v2_t doubles;
 } __attribute__((packed));
+typedef vec128_t avec128_t __attribute__((aligned(64)));
 
-static_assert(16 == sizeof(vec128_t),
+static_assert(16 == sizeof(vec128_t) &&
+              16 == sizeof(vec128_t().bytes) &&
+              16 == sizeof(vec128_t().words) &&
+              16 == sizeof(vec128_t().dwords) &&
+              16 == sizeof(vec128_t().qwords) &&
+              16 == sizeof(vec128_t().dqwords) &&
+              16 == sizeof(vec128_t().floats) &&
+              16 == sizeof(vec128_t().doubles) &&
+              16 == sizeof(vec128_t().iwords),
               "Invalid structure packing of `vec128_t`.");
 
-typedef uint8_t uint8v32_t __attribute__ ((vector_size (32)));
-typedef uint16_t uint16v16_t __attribute__ ((vector_size (32)));
-typedef uint32_t uint32v8_t __attribute__ ((vector_size (32)));
-typedef uint64_t uint64v4_t __attribute__ ((vector_size (32)));
-typedef float32_t float32v8_t __attribute__ ((vector_size (32)));
-typedef float64_t float64v4_t __attribute__ ((vector_size (32)));
-
 union vec256_t {
+  ALWAYS_INLINE inline vec256_t(void)
+      : iwords{0} {}
+
+  ALWAYS_INLINE inline vec256_t(const vec64_t &&sub_vec) {
+    qwords[0] = sub_vec.qwords[0];
+    qwords[1] = 0;
+    qwords[2] = 0;
+    qwords[3] = 0;
+  }
+
+  ALWAYS_INLINE inline vec256_t(const vec128_t &&sub_vec) {
+    dqwords[0] = sub_vec.dqwords[0];
+    dqwords[1] = 0;
+  }
+
   uint8v32_t bytes;
   uint16v16_t words;
   uint32v8_t dwords;
   uint64v4_t qwords;
+  uint128v2_t dqwords;
+
+  IF_64BIT_ELSE(uint64v4_t, uint32v8_t) iwords;  // Ideal.
+
   float32v8_t floats;
   float64v4_t doubles;
 } __attribute__((packed));
+typedef vec256_t avec256_t __attribute__((aligned(64)));
 
-static_assert(32 == sizeof(vec256_t),
+static_assert(32 == sizeof(vec256_t) &&
+              32 == sizeof(vec256_t().bytes) &&
+              32 == sizeof(vec256_t().words) &&
+              32 == sizeof(vec256_t().dwords) &&
+              32 == sizeof(vec256_t().qwords) &&
+              32 == sizeof(vec256_t().dqwords) &&
+              32 == sizeof(vec256_t().floats) &&
+              32 == sizeof(vec256_t().doubles) &&
+              32 == sizeof(vec256_t().iwords),
               "Invalid structure packing of `vec256_t`.");
 
-typedef uint8_t uint8v64_t __attribute__ ((vector_size (64)));
-typedef uint16_t uint16v32_t __attribute__ ((vector_size (64)));
-typedef uint32_t uint32v16_t __attribute__ ((vector_size (64)));
-typedef uint64_t uint64v8_t __attribute__ ((vector_size (64)));
-typedef float32_t float32v16_t __attribute__ ((vector_size (64)));
-typedef float64_t float64v8_t __attribute__ ((vector_size (64)));
-
 union vec512_t {
+  ALWAYS_INLINE inline vec512_t(void)
+      : iwords{0} {}
+
+  ALWAYS_INLINE inline vec512_t(const vec64_t &&sub_vec) {
+    qwords[0] = sub_vec.qwords[0];
+    qwords[1] = 0;
+    qwords[2] = 0;
+    qwords[3] = 0;
+    qwords[4] = 0;
+    qwords[5] = 0;
+    qwords[6] = 0;
+    qwords[7] = 0;
+  }
+
+  ALWAYS_INLINE inline vec512_t(const vec128_t &&sub_vec) {
+    dqwords[0] = sub_vec.dqwords[0];
+    dqwords[1] = 0;
+    dqwords[2] = 0;
+    dqwords[3] = 0;
+  }
+
+  ALWAYS_INLINE inline vec512_t(const vec256_t &&sub_vec) {
+    dqwords[0] = sub_vec.dqwords[0];
+    dqwords[1] = sub_vec.dqwords[1];
+    dqwords[2] = sub_vec.dqwords[2];
+    dqwords[3] = sub_vec.dqwords[3];
+  }
   uint8v64_t bytes;
   uint16v32_t words;
   uint32v16_t dwords;
   uint64v8_t qwords;
+  uint128v4_t dqwords;
+
+  uint128v4_t iwords;  // Ideal.
+
   float32v16_t floats;
   float64v8_t doubles;
 } __attribute__((packed));
+typedef vec512_t avec512_t __attribute__((aligned(64)));
 
-static_assert(64 == sizeof(vec512_t),
+static_assert(64 == sizeof(vec512_t) &&
+              64 == sizeof(vec512_t().bytes) &&
+              64 == sizeof(vec512_t().words) &&
+              64 == sizeof(vec512_t().dwords) &&
+              64 == sizeof(vec512_t().qwords) &&
+              64 == sizeof(vec512_t().dqwords) &&
+              64 == sizeof(vec512_t().floats) &&
+              64 == sizeof(vec512_t().doubles) &&
+              64 == sizeof(vec512_t().iwords),
               "Invalid structure packing of `vec512_t`.");
 
 template <typename T>
@@ -127,6 +267,7 @@ MAKE_SIGNED_INT_CHANGERS(int8_t, uint8_t);
 MAKE_SIGNED_INT_CHANGERS(int16_t, uint16_t);
 MAKE_SIGNED_INT_CHANGERS(int32_t, uint32_t);
 MAKE_SIGNED_INT_CHANGERS(int64_t, uint64_t);
+MAKE_SIGNED_INT_CHANGERS(int128_t, uint128_t);
 
 MAKE_INT_TYPE(int8_t, int16_t);
 MAKE_INT_TYPE(uint8_t, uint16_t);
@@ -137,19 +278,11 @@ MAKE_INT_TYPE(uint16_t, uint32_t);
 MAKE_INT_TYPE(int32_t, int64_t);
 MAKE_INT_TYPE(uint32_t, uint64_t);
 
-#if 64 == ADDRESS_SIZE_BITS
-typedef __int128 int128_t;
-typedef unsigned __int128 uint128_t;
-static_assert(16 == sizeof(int128_t), "Invalid size of `int128_t`.");
-static_assert(16 == sizeof(uint128_t), "Invalid size of `uint128_t`.");
 MAKE_INT_TYPE(int64_t, int128_t);
 MAKE_INT_TYPE(uint64_t, uint128_t);
-MAKE_SIGNED_INT_CHANGERS(int128_t, uint128_t);
-#endif  // 64 == ADDRESS_SIZE_BITS
 
 #undef MAKE_SIGNED_INT_CHANGERS
 #undef MAKE_INT_TYPE
-
 
 template <typename T>
 struct Mn {

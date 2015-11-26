@@ -5,6 +5,36 @@
 
 #include "mcsema/Arch/Semantics/SEMANTICS.inc"
 
+#define HAS_FEATURE_AVX 0
+#define HAS_FEATURE_AVX512 0
+
+#if HAS_FEATURE_AVX
+#define IF_AVX(...) __VA_ARGS__
+#define IF_AVX_ELSE(a, b) a
+#else
+#define IF_AVX(...)
+#define IF_AVX_ELSE(a, b) b
+#endif
+
+#if HAS_FEATURE_AVX && HAS_FEATURE_AVX512
+#define IF_AVX512(...) __VA_ARGS__
+#define IF_AVX512_ELSE(a, b) a
+#else
+#define IF_AVX512(...)
+#define IF_AVX512_ELSE(a, b) b
+#endif
+
+#if HAS_FEATURE_AVX && HAS_FEATURE_AVX512
+#define AVX_SEL_XYZ(tail) Z ## tail
+#define AVX_SEL_xyz(tail) z ## tail
+#elif HAS_FEATURE_AVX
+#define AVX_SEL_XYZ(tail) Y ## tail
+#define AVX_SEL_xyz(tail) y ## tail
+#else
+#define AVX_SEL_XYZ(tail) X ## tail
+#define AVX_SEL_xyz(tail) x ## tail
+#endif
+
 union FPUStatusWord {
   struct {
     uint16_t ie:1;  ///< bit 0
@@ -174,23 +204,19 @@ static_assert(0 == __builtin_offsetof(Reg, full), "Invalid packing of `Reg::full
 static_assert(0 == __builtin_offsetof(Reg, sfull), "Invalid packing of `Reg::sfull`.");
 
 union alignas(64) VectorReg {
-  alignas(64) vec128_t xmm;
-
-  IF_64BIT( alignas(64) vec256_t ymm; )
-  IF_64BIT( alignas(64) vec512_t zmm; )
-
+  alignas(64) avec128_t xmm;
+  IF_AVX( alignas(64) avec256_t ymm; )
+  IF_AVX512( alignas(64) avec512_t zmm; )
 } __attribute__((packed));
 
 static_assert(0 == __builtin_offsetof(VectorReg, xmm),
               "Invalid packing of `VectorReg::xmm`.");
 
-#if 64 == ADDRESS_SIZE_BITS
-static_assert(0 == __builtin_offsetof(VectorReg, ymm),
-              "Invalid packing of `VectorReg::ymm`.");
+IF_AVX( static_assert(0 == __builtin_offsetof(VectorReg, ymm),
+              "Invalid packing of `VectorReg::ymm`."); )
 
-static_assert(0 == __builtin_offsetof(VectorReg, zmm),
-              "Invalid packing of `VectorReg::zmm`.");
-#endif  // 64 == ADDRESS_SIZE_BITS
+IF_AVX512( static_assert(0 == __builtin_offsetof(VectorReg, zmm),
+                         "Invalid packing of `VectorReg::zmm`."); )
 
 class alignas(8) GPR {
  public:
@@ -410,138 +436,8 @@ void __mcsema_basic_block(State &state) noexcept {
   auto &CS_read = state.seg.cs;
   auto &CS_write =  CS_read;
 
-  auto &XMM0_read = state.vec[0].xmm;
-  auto &XMM0_write =  XMM0_read;
-  auto &XMM1_read = state.vec[1].xmm;
-  auto &XMM1_write =  XMM1_read;
-  auto &XMM2_read = state.vec[2].xmm;
-  auto &XMM2_write =  XMM2_read;
-  auto &XMM3_read = state.vec[3].xmm;
-  auto &XMM3_write =  XMM3_read;
-  auto &XMM4_read = state.vec[4].xmm;
-  auto &XMM4_write =  XMM4_read;
-  auto &XMM5_read = state.vec[5].xmm;
-  auto &XMM5_write =  XMM5_read;
-  auto &XMM6_read = state.vec[6].xmm;
-  auto &XMM6_write =  XMM6_read;
-  auto &XMM7_read = state.vec[7].xmm;
-  auto &XMM7_write =  XMM7_read;
-#if 64 == ADDRESS_SIZE_BITS
-  auto &XMM8_read = state.vec[8].xmm;
-  auto &XMM8_write =  XMM8_read;
-  auto &XMM9_read = state.vec[9].xmm;
-  auto &XMM9_write =  XMM9_read;
-  auto &XMM10_read = state.vec[10].xmm;
-  auto &XMM10_write =  XMM10_read;
-  auto &XMM11_read = state.vec[11].xmm;
-  auto &XMM11_write =  XMM11_read;
-  auto &XMM12_read = state.vec[12].xmm;
-  auto &XMM12_write =  XMM12_read;
-  auto &XMM13_read = state.vec[13].xmm;
-  auto &XMM13_write =  XMM13_read;
-  auto &XMM14_read = state.vec[14].xmm;
-  auto &XMM14_write =  XMM14_read;
-  auto &XMM15_read = state.vec[15].xmm;
-  auto &XMM15_write =  XMM15_read;
-
-  auto &XMM16_read = state.vec[16].xmm;
-  auto &XMM16_write =  XMM16_read;
-  auto &XMM17_read = state.vec[17].xmm;
-  auto &XMM17_write =  XMM17_read;
-  auto &XMM18_read = state.vec[18].xmm;
-  auto &XMM18_write =  XMM18_read;
-  auto &XMM19_read = state.vec[19].xmm;
-  auto &XMM19_write =  XMM19_read;
-  auto &XMM20_read = state.vec[20].xmm;
-  auto &XMM20_write =  XMM20_read;
-  auto &XMM21_read = state.vec[21].xmm;
-  auto &XMM21_write =  XMM21_read;
-  auto &XMM22_read = state.vec[22].xmm;
-  auto &XMM22_write =  XMM22_read;
-  auto &XMM23_read = state.vec[23].xmm;
-  auto &XMM23_write =  XMM23_read;
-  auto &XMM24_read = state.vec[24].xmm;
-  auto &XMM24_write =  XMM24_read;
-  auto &XMM25_read = state.vec[25].xmm;
-  auto &XMM25_write =  XMM25_read;
-  auto &XMM26_read = state.vec[26].xmm;
-  auto &XMM26_write =  XMM26_read;
-  auto &XMM27_read = state.vec[27].xmm;
-  auto &XMM27_write =  XMM27_read;
-  auto &XMM28_read = state.vec[28].xmm;
-  auto &XMM28_write =  XMM28_read;
-  auto &XMM29_read = state.vec[29].xmm;
-  auto &XMM29_write =  XMM29_read;
-  auto &XMM30_read = state.vec[30].xmm;
-  auto &XMM30_write =  XMM30_read;
-  auto &XMM31_read = state.vec[31].xmm;
-  auto &XMM31_write =  XMM31_read;
-
-  auto &YMM0_read = state.vec[0].ymm;
-  auto &YMM0_write =  YMM0_read;
-  auto &YMM1_read = state.vec[1].ymm;
-  auto &YMM1_write =  YMM1_read;
-  auto &YMM2_read = state.vec[2].ymm;
-  auto &YMM2_write =  YMM2_read;
-  auto &YMM3_read = state.vec[3].ymm;
-  auto &YMM3_write =  YMM3_read;
-  auto &YMM4_read = state.vec[4].ymm;
-  auto &YMM4_write =  YMM4_read;
-  auto &YMM5_read = state.vec[5].ymm;
-  auto &YMM5_write =  YMM5_read;
-  auto &YMM6_read = state.vec[6].ymm;
-  auto &YMM6_write =  YMM6_read;
-  auto &YMM7_read = state.vec[7].ymm;
-  auto &YMM7_write =  YMM7_read;
-  auto &YMM8_read = state.vec[8].ymm;
-  auto &YMM8_write =  YMM8_read;
-  auto &YMM9_read = state.vec[9].ymm;
-  auto &YMM9_write =  YMM9_read;
-  auto &YMM10_read = state.vec[10].ymm;
-  auto &YMM10_write =  YMM10_read;
-  auto &YMM11_read = state.vec[11].ymm;
-  auto &YMM11_write =  YMM11_read;
-  auto &YMM12_read = state.vec[12].ymm;
-  auto &YMM12_write =  YMM12_read;
-  auto &YMM13_read = state.vec[13].ymm;
-  auto &YMM13_write =  YMM13_read;
-  auto &YMM14_read = state.vec[14].ymm;
-  auto &YMM14_write =  YMM14_read;
-  auto &YMM15_read = state.vec[15].ymm;
-  auto &YMM15_write =  YMM15_read;
-  auto &YMM16_read = state.vec[16].ymm;
-  auto &YMM16_write =  YMM16_read;
-  auto &YMM17_read = state.vec[17].ymm;
-  auto &YMM17_write =  YMM17_read;
-  auto &YMM18_read = state.vec[18].ymm;
-  auto &YMM18_write =  YMM18_read;
-  auto &YMM19_read = state.vec[19].ymm;
-  auto &YMM19_write =  YMM19_read;
-  auto &YMM20_read = state.vec[20].ymm;
-  auto &YMM20_write =  YMM20_read;
-  auto &YMM21_read = state.vec[21].ymm;
-  auto &YMM21_write =  YMM21_read;
-  auto &YMM22_read = state.vec[22].ymm;
-  auto &YMM22_write =  YMM22_read;
-  auto &YMM23_read = state.vec[23].ymm;
-  auto &YMM23_write =  YMM23_read;
-  auto &YMM24_read = state.vec[24].ymm;
-  auto &YMM24_write =  YMM24_read;
-  auto &YMM25_read = state.vec[25].ymm;
-  auto &YMM25_write =  YMM25_read;
-  auto &YMM26_read = state.vec[26].ymm;
-  auto &YMM26_write =  YMM26_read;
-  auto &YMM27_read = state.vec[27].ymm;
-  auto &YMM27_write =  YMM27_read;
-  auto &YMM28_read = state.vec[28].ymm;
-  auto &YMM28_write =  YMM28_read;
-  auto &YMM29_read = state.vec[29].ymm;
-  auto &YMM29_write =  YMM29_read;
-  auto &YMM30_read = state.vec[30].ymm;
-  auto &YMM30_write =  YMM30_read;
-  auto &YMM31_read = state.vec[31].ymm;
-  auto &YMM31_write =  YMM31_read;
-
+#if IF_AVX_ELSE(1, 0)
+#if IF_AVX512_ELSE(1, 0)
   auto &ZMM0_read = state.vec[0].zmm;
   auto &ZMM0_write =  ZMM0_read;
   auto &ZMM1_read = state.vec[1].zmm;
@@ -558,6 +454,8 @@ void __mcsema_basic_block(State &state) noexcept {
   auto &ZMM6_write =  ZMM6_read;
   auto &ZMM7_read = state.vec[7].zmm;
   auto &ZMM7_write =  ZMM7_read;
+
+#if 64 == ADDRESS_SIZE_BITS
   auto &ZMM8_read = state.vec[8].zmm;
   auto &ZMM8_write =  ZMM8_read;
   auto &ZMM9_read = state.vec[9].zmm;
@@ -607,6 +505,144 @@ void __mcsema_basic_block(State &state) noexcept {
   auto &ZMM31_read = state.vec[31].zmm;
   auto &ZMM31_write =  ZMM31_read;
 #endif  // 64 == ADDRESS_SIZE_BITS
+#endif  // AVX 512
+
+  auto &YMM0_read = state.vec[0].ymm;
+  auto &YMM0_write = AVX_SEL_XYZ(MM0_read);
+  auto &YMM1_read = state.vec[1].ymm;
+  auto &YMM1_write =  AVX_SEL_XYZ(MM1_read);
+  auto &YMM2_read = state.vec[2].ymm;
+  auto &YMM2_write =  AVX_SEL_XYZ(MM2_read);
+  auto &YMM3_read = state.vec[3].ymm;
+  auto &YMM3_write =  AVX_SEL_XYZ(MM3_read);
+  auto &YMM4_read = state.vec[4].ymm;
+  auto &YMM4_write =  AVX_SEL_XYZ(MM4_read);
+  auto &YMM5_read = state.vec[5].ymm;
+  auto &YMM5_write =  AVX_SEL_XYZ(MM5_read);
+  auto &YMM6_read = state.vec[6].ymm;
+  auto &YMM6_write =  AVX_SEL_XYZ(MM6_read);
+  auto &YMM7_read = state.vec[7].ymm;
+  auto &YMM7_write =  AVX_SEL_XYZ(MM7_read);
+
+#if 64 == ADDRESS_SIZE_BITS
+  auto &YMM8_read = state.vec[8].ymm;
+  auto &YMM8_write =  AVX_SEL_XYZ(MM8_read);
+  auto &YMM9_read = state.vec[9].ymm;
+  auto &YMM9_write =  AVX_SEL_XYZ(MM9_read);
+  auto &YMM10_read = state.vec[10].ymm;
+  auto &YMM10_write =  AVX_SEL_XYZ(MM10_read);
+  auto &YMM11_read = state.vec[11].ymm;
+  auto &YMM11_write =  AVX_SEL_XYZ(MM11_read);
+  auto &YMM12_read = state.vec[12].ymm;
+  auto &YMM12_write = AVX_SEL_XYZ(MM12_read);
+  auto &YMM13_read = state.vec[13].ymm;
+  auto &YMM13_write = AVX_SEL_XYZ(MM13_read);
+  auto &YMM14_read = state.vec[14].ymm;
+  auto &YMM14_write = AVX_SEL_XYZ(MM14_read);
+  auto &YMM15_read = state.vec[15].ymm;
+  auto &YMM15_write = AVX_SEL_XYZ(MM15_read);
+  auto &YMM16_read = state.vec[16].ymm;
+  auto &YMM16_write = AVX_SEL_XYZ(MM16_read);
+  auto &YMM17_read = state.vec[17].ymm;
+  auto &YMM17_write = AVX_SEL_XYZ(MM17_read);
+  auto &YMM18_read = state.vec[18].ymm;
+  auto &YMM18_write = AVX_SEL_XYZ(MM18_read);
+  auto &YMM19_read = state.vec[19].ymm;
+  auto &YMM19_write = AVX_SEL_XYZ(MM19_read);
+  auto &YMM20_read = state.vec[20].ymm;
+  auto &YMM20_write = AVX_SEL_XYZ(MM20_read);
+  auto &YMM21_read = state.vec[21].ymm;
+  auto &YMM21_write = AVX_SEL_XYZ(MM21_read);
+  auto &YMM22_read = state.vec[22].ymm;
+  auto &YMM22_write = AVX_SEL_XYZ(MM22_read);
+  auto &YMM23_read = state.vec[23].ymm;
+  auto &YMM23_write = AVX_SEL_XYZ(MM23_read);
+  auto &YMM24_read = state.vec[24].ymm;
+  auto &YMM24_write = AVX_SEL_XYZ(MM24_read);
+  auto &YMM25_read = state.vec[25].ymm;
+  auto &YMM25_write = AVX_SEL_XYZ(MM25_read);
+  auto &YMM26_read = state.vec[26].ymm;
+  auto &YMM26_write = AVX_SEL_XYZ(MM26_read);
+  auto &YMM27_read = state.vec[27].ymm;
+  auto &YMM27_write = AVX_SEL_XYZ(MM27_read);
+  auto &YMM28_read = state.vec[28].ymm;
+  auto &YMM28_write = AVX_SEL_XYZ(MM28_read);
+  auto &YMM29_read = state.vec[29].ymm;
+  auto &YMM29_write = AVX_SEL_XYZ(MM29_read);
+  auto &YMM30_read = state.vec[30].ymm;
+  auto &YMM30_write = AVX_SEL_XYZ(MM30_read);
+  auto &YMM31_read = state.vec[31].ymm;
+  auto &YMM31_write = AVX_SEL_XYZ(MM31_read);
+#endif  // 64 == ADDRESS_SIZE_BITS
+#endif  // AVX
+
+  auto &XMM0_read = state.vec[0].xmm;
+  auto &XMM0_write = AVX_SEL_XYZ(MM0_read);
+  auto &XMM1_read = state.vec[1].xmm;
+  auto &XMM1_write = AVX_SEL_XYZ(MM1_read);
+  auto &XMM2_read = state.vec[2].xmm;
+  auto &XMM2_write = AVX_SEL_XYZ(MM2_read);
+  auto &XMM3_read = state.vec[3].xmm;
+  auto &XMM3_write = AVX_SEL_XYZ(MM3_read);
+  auto &XMM4_read = state.vec[4].xmm;
+  auto &XMM4_write = AVX_SEL_XYZ(MM4_read);
+  auto &XMM5_read = state.vec[5].xmm;
+  auto &XMM5_write = AVX_SEL_XYZ(MM5_read);
+  auto &XMM6_read = state.vec[6].xmm;
+  auto &XMM6_write = AVX_SEL_XYZ(MM6_read);
+  auto &XMM7_read = state.vec[7].xmm;
+  auto &XMM7_write = AVX_SEL_XYZ(MM7_read);
+#if 64 == ADDRESS_SIZE_BITS
+  auto &XMM8_read = state.vec[8].xmm;
+  auto &XMM8_write = AVX_SEL_XYZ(MM8_read);
+  auto &XMM9_read = state.vec[9].xmm;
+  auto &XMM9_write = AVX_SEL_XYZ(MM9_read);
+  auto &XMM10_read = state.vec[10].xmm;
+  auto &XMM10_write = AVX_SEL_XYZ(MM10_read);
+  auto &XMM11_read = state.vec[11].xmm;
+  auto &XMM11_write = AVX_SEL_XYZ(MM11_read);
+  auto &XMM12_read = state.vec[12].xmm;
+  auto &XMM12_write = AVX_SEL_XYZ(MM12_read);
+  auto &XMM13_read = state.vec[13].xmm;
+  auto &XMM13_write = AVX_SEL_XYZ(MM13_read);
+  auto &XMM14_read = state.vec[14].xmm;
+  auto &XMM14_write = AVX_SEL_XYZ(MM14_read);
+  auto &XMM15_read = state.vec[15].xmm;
+  auto &XMM15_write = AVX_SEL_XYZ(MM15_read);
+
+  auto &XMM16_read = state.vec[16].xmm;
+  auto &XMM16_write = AVX_SEL_XYZ(MM16_read);
+  auto &XMM17_read = state.vec[17].xmm;
+  auto &XMM17_write = AVX_SEL_XYZ(MM17_read);
+  auto &XMM18_read = state.vec[18].xmm;
+  auto &XMM18_write = AVX_SEL_XYZ(MM18_read);
+  auto &XMM19_read = state.vec[19].xmm;
+  auto &XMM19_write = AVX_SEL_XYZ(MM19_read);
+  auto &XMM20_read = state.vec[20].xmm;
+  auto &XMM20_write = AVX_SEL_XYZ(MM20_read);
+  auto &XMM21_read = state.vec[21].xmm;
+  auto &XMM21_write = AVX_SEL_XYZ(MM21_read);
+  auto &XMM22_read = state.vec[22].xmm;
+  auto &XMM22_write = AVX_SEL_XYZ(MM22_read);
+  auto &XMM23_read = state.vec[23].xmm;
+  auto &XMM23_write = AVX_SEL_XYZ(MM23_read);
+  auto &XMM24_read = state.vec[24].xmm;
+  auto &XMM24_write = AVX_SEL_XYZ(MM24_read);
+  auto &XMM25_read = state.vec[25].xmm;
+  auto &XMM25_write = AVX_SEL_XYZ(MM25_read);
+  auto &XMM26_read = state.vec[26].xmm;
+  auto &XMM26_write = AVX_SEL_XYZ(MM26_read);
+  auto &XMM27_read = state.vec[27].xmm;
+  auto &XMM27_write = AVX_SEL_XYZ(MM27_read);
+  auto &XMM28_read = state.vec[28].xmm;
+  auto &XMM28_write = AVX_SEL_XYZ(MM28_read);
+  auto &XMM29_read = state.vec[29].xmm;
+  auto &XMM29_write = AVX_SEL_XYZ(MM29_read);
+  auto &XMM30_read = state.vec[30].xmm;
+  auto &XMM30_write = AVX_SEL_XYZ(MM30_read);
+  auto &XMM31_read = state.vec[31].xmm;
+  auto &XMM31_write = AVX_SEL_XYZ(MM31_read);
+#endif  // 64 == ADDRESS_SIZE_BITS
 
   auto &ST0_read = state.fpu.st[0].f;
   auto &ST0_write =  ST0_read;
@@ -653,9 +689,6 @@ typedef RnW<uint8_t> R8W;
 typedef RnW<uint16_t> R16W;
 typedef RnW<decltype(Reg().full)> R32W;  // AMD64-ism.
 IF_64BIT( typedef RnW<uint64_t> R64W; )
-typedef RnW<vec128_t> R128W;
-IF_64BIT( typedef RnW<vec256_t> R256W; )
-IF_64BIT( typedef RnW<vec512_t> R512W; )
 
 typedef Rn<uint8_t> R8;
 typedef Rn<uint16_t> R16;
@@ -663,14 +696,16 @@ typedef Rn<uint32_t> R32;
 IF_64BIT( typedef Rn<uint64_t> R64; )
 
 typedef Vn<vec64_t> V64;
-typedef Vn<vec128_t> V128;
-IF_64BIT( typedef Vn<vec256_t> V256; )
-IF_64BIT( typedef Vn<vec512_t> V512; )
+typedef Vn<avec128_t> V128;
+typedef Vn<avec256_t> V256;
+IF_AVX512( typedef Vn<avec512_t> V512; )
 
-typedef VnW<vec64_t> V64W;
-typedef VnW<vec128_t> V128W;
-IF_64BIT( typedef VnW<vec256_t> V256W; )
-IF_64BIT( typedef VnW<vec512_t> V512W; )
+typedef IF_AVX512_ELSE(avec512_t, IF_AVX_ELSE(avec256_t, avec128_t)) WriteVecType;
+
+typedef VnW<vec64_t> V64W;  // Legacy MMX technology register.
+typedef VnW<WriteVecType> V128W;
+IF_AVX( typedef VnW<WriteVecType> V256W; )
+IF_AVX512( typedef VnW<WriteVecType> V512W; )
 
 typedef MnW<uint8_t> M8W;
 typedef MnW<uint16_t> M16W;
@@ -679,8 +714,8 @@ IF_64BIT( typedef MnW<uint64_t> M64W; )
 
 typedef MnW<vec64_t> MV64W;
 typedef MnW<vec128_t> MV128W;
-IF_64BIT( typedef MnW<vec256_t> MV256W; )
-IF_64BIT( typedef MnW<vec512_t> MV512W; )
+IF_AVX( typedef MnW<vec256_t> MV256W; )
+IF_AVX512( typedef MnW<vec512_t> MV512W; )
 
 typedef Mn<uint8_t> M8;
 typedef Mn<uint16_t> M16;
@@ -689,8 +724,8 @@ IF_64BIT( typedef Mn<uint64_t> M64; )
 
 typedef Mn<vec64_t> MV64;
 typedef Mn<vec128_t> MV128;
-IF_64BIT( typedef Mn<vec256_t> MV256; )
-IF_64BIT( typedef Mn<vec512_t> MV512; )
+IF_AVX( typedef Mn<vec256_t> MV256; )
+IF_AVX512( typedef Mn<vec512_t> MV512; )
 
 typedef In<uint8_t> I8;
 typedef In<uint16_t> I16;

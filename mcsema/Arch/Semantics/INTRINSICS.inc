@@ -14,10 +14,10 @@ extern uint16_t __mcsema_read_memory_16(uintptr_t);
 extern uint32_t __mcsema_read_memory_32(uintptr_t);
 extern uint64_t __mcsema_read_memory_64(uintptr_t);
 
-extern vec64_t __mcsema_read_memory_v64(uintptr_t);
-extern vec128_t __mcsema_read_memory_v128(uintptr_t);
-extern vec256_t __mcsema_read_memory_v256(uintptr_t);
-extern vec512_t __mcsema_read_memory_v512(uintptr_t);
+extern void __mcsema_read_memory_v64(uintptr_t, vec64_t &);
+extern void __mcsema_read_memory_v128(uintptr_t, vec128_t &);
+extern void __mcsema_read_memory_v256(uintptr_t, vec256_t &);
+extern void __mcsema_read_memory_v512(uintptr_t, vec512_t &);
 
 // Memory write intrinsics.
 extern void __mcsema_write_memory_8(uintptr_t, uint8_t);

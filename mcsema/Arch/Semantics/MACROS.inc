@@ -6,9 +6,11 @@
 #if 64 == ADDRESS_SIZE_BITS
 # define IF_32BIT(...)
 # define IF_64BIT(...) __VA_ARGS__
+# define IF_64BIT_ELSE(a, b) a
 #else
 # define IF_32BIT(...) __VA_ARGS__
 # define IF_64BIT(...)
+# define IF_64BIT_ELSE(a, b) b
 #endif
 
 

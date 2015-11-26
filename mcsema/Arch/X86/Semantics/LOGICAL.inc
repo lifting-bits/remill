@@ -128,67 +128,37 @@ DEF_ISEL_Rn_In(TEST_OrAX_IMMz, TEST);
 namespace {
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(PAND_MMX, D dst, S1 src1_, S2 src2_) {
+DEF_SEM(PAND, D dst, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;
-  const T src1 = R(src1_);
-  const T src2 = R(src2_);
-  W(dst) = src1.qwords & src2.qwords;
+  typedef typename BaseType<D>::Type DT;  // Note: sizeof(DT) >= sizeof(T).
+  const DT src1 = R(src1_);
+  const DT src2 = R(src2_);
+  W(dst) = src1.iwords & src2.iwords;
 }
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(PAND_SSE, D dst, S1 src1_, S2 src2_) {
+DEF_SEM(PANDN, D dst, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;
-  const T src1 = R(src1_);
-  const T src2 = R(src2_);
-  W(dst) = src1.dwords & src2.dwords;
+  typedef typename BaseType<D>::Type DT;  // Note: sizeof(DT) >= sizeof(T).
+  const DT src1 = R(src1_);
+  const DT src2 = R(src2_);
+  W(dst) = (~src1.iwords) & src2.iwords;
 }
-
 template <typename D, typename S1, typename S2>
-DEF_SEM(PANDN_MMX, D dst, S1 src1_, S2 src2_) {
+DEF_SEM(POR, D dst, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;
-  const T src1 = R(src1_);
-  const T src2 = R(src2_);
-  W(dst) = (~src1.qwords) & src2.qwords;
+  typedef typename BaseType<D>::Type DT;  // Note: sizeof(DT) >= sizeof(T).
+  const DT src1 = R(src1_);
+  const DT src2 = R(src2_);
+  W(dst) = src1.iwords | src2.iwords;
 }
-
 template <typename D, typename S1, typename S2>
-DEF_SEM(PANDN_SSE, D dst, S1 src1_, S2 src2_) {
+DEF_SEM(PXOR, D dst, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;
-  const T src1 = R(src1_);
-  const T src2 = R(src2_);
-  W(dst) = (~src1.dwords) & src2.dwords;
-}
-
-template <typename D, typename S1, typename S2>
-DEF_SEM(POR_MMX, D dst, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
-  const T src1 = R(src1_);
-  const T src2 = R(src2_);
-  W(dst) = src1.qwords | src2.qwords;
-}
-
-template <typename D, typename S1, typename S2>
-DEF_SEM(POR_SSE, D dst, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
-  const T src1 = R(src1_);
-  const T src2 = R(src2_);
-  W(dst) = src1.dwords | src2.dwords;
-}
-
-template <typename D, typename S1, typename S2>
-DEF_SEM(PXOR_MMX, D dst, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
-  const T src1 = R(src1_);
-  const T src2 = R(src2_);
-  W(dst) = src1.qwords ^ src2.qwords;
-}
-
-template <typename D, typename S1, typename S2>
-DEF_SEM(PXOR_SSE, D dst, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
-  const T src1 = R(src1_);
-  const T src2 = R(src2_);
-  W(dst) = src1.qwords ^ src2.qwords;
+  typedef typename BaseType<D>::Type DT;  // Note: sizeof(DT) >= sizeof(T).
+  const DT src1 = R(src1_);
+  const DT src2 = R(src2_);
+  W(dst) = src1.iwords ^ src2.iwords;
 }
 
 /*
@@ -205,25 +175,41 @@ DEF_SEM(PTEST, S1 src1_, S2 src2_) {
 */
 }  // namespace
 
-DEF_ISEL(PXOR_MMXq_MEMq_64) = PXOR_MMX<V64W, V64, MV64>;
-DEF_ISEL(PXOR_MMXq_MMXq_64) = PXOR_MMX<V64W, V64, V64>;
-DEF_ISEL(PXOR_XMMdq_MEMdq_32) = PXOR_SSE<V128W, V128, MV128>;
-DEF_ISEL(PXOR_XMMdq_XMMdq_32) = PXOR_SSE<V128W, V128, V128>;
+DEF_ISEL(PXORq_MEMq_64) = PXOR<V64W, V64, MV64>;
+DEF_ISEL(PXORqq_64) = PXOR<V64W, V64, V64>;
+DEF_ISEL(PXOR_XMMdq_MEMdq_32) = PXOR<V128W, V128, MV128>;
+DEF_ISEL(PXOR_XMMdq_XMMdq_32) = PXOR<V128W, V128, V128>;
+DEF_ISEL(VPXOR_XMMdq_XMMdq_MEMdq_128) = PXOR<V128W, V128, MV128>;
+DEF_ISEL(VPXOR_XMMdq_XMMdq_XMMdq_128) = PXOR<V128W, V128, MV128>;
+IF_AVX( DEF_ISEL(VPXOR_YMMqq_YMMqq_MEMqq_256) = PXOR<V256W, V256, MV256>; )
+IF_AVX( DEF_ISEL(VPXOR_YMMqq_YMMqq_YMMqq_256) = PXOR<V256W, V256, MV256>; )
 
-DEF_ISEL(PAND_MMXq_MEMq_64) = PAND_MMX<V64W, V64, MV64>;
-DEF_ISEL(PAND_MMXq_MMXq_64) = PAND_MMX<V64W, V64, V64>;
-DEF_ISEL(PAND_XMMdq_MEMdq_32) = PAND_SSE<V128W, V128, MV128>;
-DEF_ISEL(PAND_XMMdq_XMMdq_32) = PAND_SSE<V128W, V128, V128>;
+DEF_ISEL(PANDq_MEMq_64) = PAND<V64W, V64, MV64>;
+DEF_ISEL(PANDqq_64) = PAND<V64W, V64, V64>;
+DEF_ISEL(PAND_XMMdq_MEMdq_32) = PAND<V128W, V128, MV128>;
+DEF_ISEL(PAND_XMMdq_XMMdq_32) = PAND<V128W, V128, V128>;
+DEF_ISEL(VPAND_XMMdq_XMMdq_MEMdq_128) = PAND<V128W, V128, MV128>;
+DEF_ISEL(VPAND_XMMdq_XMMdq_XMMdq_128) = PAND<V128W, V128, MV128>;
+IF_AVX( DEF_ISEL(VPAND_YMMqq_YMMqq_MEMqq_256) = PAND<V256W, V256, MV256>; )
+IF_AVX( DEF_ISEL(VPAND_YMMqq_YMMqq_YMMqq_256) = PAND<V256W, V256, MV256>; )
 
-DEF_ISEL(POR_MMXq_MEMq_64) = POR_MMX<V64W, V64, MV64>;
-DEF_ISEL(POR_MMXq_MMXq_64) = POR_MMX<V64W, V64, V64>;
-DEF_ISEL(POR_XMMdq_MEMdq_32) = POR_SSE<V128W, V128, MV128>;
-DEF_ISEL(POR_XMMdq_XMMdq_32) = POR_SSE<V128W, V128, V128>;
+DEF_ISEL(PANDNq_MEMq_64) = PANDN<V64W, V64, MV64>;
+DEF_ISEL(PANDNqq_64) = PANDN<V64W, V64, V64>;
+DEF_ISEL(PANDN_XMMdq_MEMdq_32) = PANDN<V128W, V128, MV128>;
+DEF_ISEL(PANDN_XMMdq_XMMdq_32) = PANDN<V128W, V128, V128>;
+DEF_ISEL(VPANDN_XMMdq_XMMdq_MEMdq_128) = PANDN<V128W, V128, MV128>;
+DEF_ISEL(VPANDN_XMMdq_XMMdq_XMMdq_128) = PANDN<V128W, V128, MV128>;
+IF_AVX( DEF_ISEL(VPANDN_YMMqq_YMMqq_MEMqq_256) = PANDN<V256W, V256, MV256>; )
+IF_AVX( DEF_ISEL(VPANDN_YMMqq_YMMqq_YMMqq_256) = PANDN<V256W, V256, MV256>; )
 
-DEF_ISEL(PANDN_MMXq_MEMq_64) = PANDN_MMX<V64W, V64, MV64>;
-DEF_ISEL(PANDN_MMXq_MMXq_64) = PANDN_MMX<V64W, V64, V64>;
-DEF_ISEL(PANDN_XMMdq_MEMdq_32) = PANDN_SSE<V128W, V128, MV128>;
-DEF_ISEL(PANDN_XMMdq_XMMdq_32) = PANDN_SSE<V128W, V128, V128>;
+DEF_ISEL(PORq_MEMq_64) = POR<V64W, V64, MV64>;
+DEF_ISEL(PORqq_64) = POR<V64W, V64, V64>;
+DEF_ISEL(POR_XMMdq_MEMdq_32) = POR<V128W, V128, MV128>;
+DEF_ISEL(POR_XMMdq_XMMdq_32) = POR<V128W, V128, V128>;
+DEF_ISEL(VPOR_XMMdq_XMMdq_MEMdq_128) = POR<V128W, V128, MV128>;
+DEF_ISEL(VPOR_XMMdq_XMMdq_XMMdq_128) = POR<V128W, V128, MV128>;
+IF_AVX( DEF_ISEL(VPOR_YMMqq_YMMqq_MEMqq_256) = POR<V256W, V256, MV256>; )
+IF_AVX( DEF_ISEL(VPOR_YMMqq_YMMqq_YMMqq_256) = POR<V256W, V256, MV256>; )
 
 /*
 
@@ -237,23 +223,4 @@ DEF_ISEL(PANDN_XMMdq_XMMdq_32) = PANDN_SSE<V128W, V128, V128>;
 2248 VPTEST VPTEST_YMMqq_MEMqq LOGICAL AVX AVX ATTRIBUTES:
 2249 VPTEST VPTEST_YMMqq_YMMqq LOGICAL AVX AVX ATTRIBUTES:
 
-2268 VPXOR VPXOR_XMMdq_XMMdq_MEMdq LOGICAL AVX AVX ATTRIBUTES:
-2269 VPXOR VPXOR_XMMdq_XMMdq_XMMdq LOGICAL AVX AVX ATTRIBUTES:
-2270 VPXOR VPXOR_YMMqq_YMMqq_MEMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
-2271 VPXOR VPXOR_YMMqq_YMMqq_YMMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
-
-2405 VPAND VPAND_XMMdq_XMMdq_MEMdq LOGICAL AVX AVX ATTRIBUTES:
-2406 VPAND VPAND_XMMdq_XMMdq_XMMdq LOGICAL AVX AVX ATTRIBUTES:
-2407 VPAND VPAND_YMMqq_YMMqq_MEMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
-2408 VPAND VPAND_YMMqq_YMMqq_YMMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
-
-2413 VPANDN VPANDN_XMMdq_XMMdq_MEMdq LOGICAL AVX AVX ATTRIBUTES:
-2414 VPANDN VPANDN_XMMdq_XMMdq_XMMdq LOGICAL AVX AVX ATTRIBUTES:
-2415 VPANDN VPANDN_YMMqq_YMMqq_MEMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
-2416 VPANDN VPANDN_YMMqq_YMMqq_YMMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
-
-2907 VPOR VPOR_XMMdq_XMMdq_MEMdq LOGICAL AVX AVX ATTRIBUTES:
-2908 VPOR VPOR_XMMdq_XMMdq_XMMdq LOGICAL AVX AVX ATTRIBUTES:
-2909 VPOR VPOR_YMMqq_YMMqq_MEMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
-2910 VPOR VPOR_YMMqq_YMMqq_YMMqq LOGICAL AVX2 AVX2 ATTRIBUTES:
  */
