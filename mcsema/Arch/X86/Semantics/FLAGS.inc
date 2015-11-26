@@ -1,91 +1,238 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-extern "C" {
-
-#define MAKE_FLAG(name, size) \
-    [[gnu::const]] extern bool __mcsema_flag_ ## name ## _ ## size ( \
-        uint ## size ## _t, uint ## size ## _t, uint ## size ## _t)
-
-#define DEFINE_FLAG(name) \
-    IF_64BIT( MAKE_FLAG(name, 128) ; ) \
-    MAKE_FLAG(name, 64) ; \
-    MAKE_FLAG(name, 32); \
-    MAKE_FLAG(name, 16); \
-    MAKE_FLAG(name, 8) \
-
-// Create the intrinsics for every flag for every operand size.
-DEFINE_FLAG(carry);
-DEFINE_FLAG(parity);
-DEFINE_FLAG(aux_carry);
-DEFINE_FLAG(zero);
-DEFINE_FLAG(sign);
-DEFINE_FLAG(overflow);
-
-#undef MAKE_FLAG
-
-}  // extern C
 namespace {
 
-template <typename T, bool (*compute)(T, T, T)>
-[[gnu::const, gnu::gnu_inline, gnu::flatten]]
-inline static bool MakeFlag(T src1, T src2, T dst) {
-  return compute(src1, src2, dst);
+// Used to select specializations of flags computations based on what operator
+// is executed.
+enum : uint32_t {
+  kLHS = 2415899639U,
+  kRHS = 70623199U
+};
+
+// Zero flags, tells us whether or not a value is zero.
+template <typename T>
+[[gnu::const]]
+ NEVER_INLINE static bool ZeroFlag(T res) {
+  return static_cast<T>(0) == res;
 }
 
-#define MAKE_FLAG(name, size) \
-  template <typename T, \
-            typename std::enable_if<sizeof(T)==(size/8),int>::type=0> \
-  [[gnu::const, gnu::gnu_inline, gnu::flatten]] \
-  inline static bool __mcsema_flag_ ## name (T src1, T src2, T dst) { \
-    typedef uint ## size ## _t DT; \
-    return MakeFlag<uint ## size ## _t, __mcsema_flag_ ## name ## _ ## size>( \
-        static_cast<DT>(src1), static_cast<DT>(src2), static_cast<DT>(dst)); \
+// Sign flag, tells us if a result is signed or unsigned.
+template <typename T>
+[[gnu::const]]
+ NEVER_INLINE static bool SignFlag(T res) {
+  typedef typename SignedIntegerType<T>::Type ST;
+  __mcsema_defer_inlining();
+  return static_cast<ST>(0) > static_cast<ST>(res);
+}
+
+// Auxiliary carry flag. This is used for binary coded decimal operations and
+// is the 5th bit (where each binary decimal is 4 bits).
+template <typename T>
+[[gnu::const]]
+NEVER_INLINE static bool AuxCarryFlag(T lhs, T rhs, T res) {
+  __mcsema_defer_inlining();
+  return ((res ^ lhs ^ rhs) & static_cast<T>(0x10));
+}
+
+// Tests whether there is an even number of bits or not.
+[[gnu::const]]
+NEVER_INLINE static bool ParityFlag(uint64_t x) {
+  __mcsema_defer_inlining();
+  return 1 - (__builtin_popcountll(x) & 1);
+}
+
+// Tests whether there is an even number of bits or not.
+template <typename T>
+[[gnu::const]]
+NEVER_INLINE static bool ParityFlag(T x) {
+  __mcsema_defer_inlining();
+  return 1 - (__builtin_popcountl(x) & 1);
+}
+
+// Generic overflow flag.
+template <uint32_t kSel>
+struct Overflow;
+
+// Computes an overflow flag when two numbers are added together.
+template <>
+struct Overflow<kLHS + kRHS> {
+  template <typename T>
+  [[gnu::const]]
+  NEVER_INLINE static bool Flag(T lhs, T rhs, T res) {
+    static_assert(std::is_unsigned<T>::value,
+                  "Invalid specialization of `Overflow::Flag` for addition.");
+    enum {
+      kSignShift = sizeof(T) * 8 - 1
+    };
+
+    __mcsema_defer_inlining();
+    const T sign_lhs = lhs >> kSignShift;
+    const T sign_rhs = rhs >> kSignShift;
+    const T sign_res = res >> kSignShift;
+    return 2 == (sign_lhs ^ sign_res) + (sign_rhs ^ sign_res);
+  }
+};
+
+// Computes an overflow flag when one number is subtracted from another.
+template <>
+struct Overflow<kLHS - kRHS> {
+  template <typename T>
+  [[gnu::const]]
+  NEVER_INLINE static bool Flag(T lhs, T rhs, T res) {
+  static_assert(std::is_unsigned<T>::value,
+                  "Invalid specialization of `Overflow::Flag` for "
+                  "subtraction.");
+    enum {
+      kSignShift = sizeof(T) * 8 - 1
+    };
+
+    __mcsema_defer_inlining();
+    const T sign_lhs = lhs >> kSignShift;
+    const T sign_rhs = rhs >> kSignShift;
+    const T sign_res = res >> kSignShift;
+    return 2 == (sign_lhs ^ sign_rhs) + (sign_lhs ^ sign_res);
+  }
+};
+
+// Computes an overflow flag when one number is multiplied with another.
+template <>
+struct Overflow<kLHS * kRHS> {
+
+  // Signed integer multiplication overflow check, where result is twice
+  // the width of the operands.
+  template <typename T, typename R>
+  [[gnu::const]]
+  NEVER_INLINE static bool Flag(
+      T lhs, T rhs, R res,
+      typename std::enable_if<sizeof(T) < sizeof(R),int>::type=0,
+      typename std::enable_if<std::is_signed<T>::value,int>::type=0) {
+    __mcsema_defer_inlining();
+    return static_cast<R>(static_cast<T>(res)) == res;
   }
 
-DEFINE_FLAG(carry)
-DEFINE_FLAG(parity)
-DEFINE_FLAG(aux_carry)
-DEFINE_FLAG(zero)
-DEFINE_FLAG(sign)
-DEFINE_FLAG(overflow)
-#undef DEFINE_FLAG
+  // Unsigned integer multiplication overflow check. Care of the Boehm GC:
+  // github.com/ivmai/bdwgc/commit/83231d0ab5ed60015797c3d1ad9056295ac3b2bb
+  template <typename T, typename R>
+  [[gnu::const]]
+  NEVER_INLINE static bool Flag(
+      T lhs, T rhs, R,
+      typename std::enable_if<std::is_unsigned<T>::value,int>::type=0) {
+    enum : T {
+      kOne = static_cast<T>(1),
+      kNumBits = sizeof(T) * 8,
+      kSqrtSizeMax = ((kOne << (kNumBits / 2)) - kOne)
+    };
+
+    __mcsema_defer_inlining();
+    return ((lhs | rhs) > kSqrtSizeMax) &&
+           rhs &&
+           (lhs > (kSqrtSizeMax / rhs));
+  }
+
+  // Signed integer multiplication overflow check, where the result is
+  // truncated to the size of the operands.
+  template <typename T>
+  [[gnu::const]]
+  NEVER_INLINE static bool Flag(
+      T lhs, T rhs, T res,
+      typename std::enable_if<std::is_signed<T>::value,int>::type=0) {
+    typedef typename NextLargerIntegerType<T>::Type WT;
+
+    __mcsema_defer_inlining();
+    auto lhs_wide = static_cast<WT>(lhs);
+    auto rhs_wide = static_cast<WT>(rhs);
+    return Flag<T, WT>(lhs, rhs, lhs_wide * rhs_wide);
+  }
+};
+
+// Generic overflow flag.
+template <uint32_t kSel>
+struct Carry;
+
+// Computes an overflow flag when two numbers are added together.
+template <>
+struct Carry<kLHS + kRHS> {
+  template <typename T>
+  [[gnu::const]]
+  NEVER_INLINE static bool Flag(T lhs, T, T res) {
+    static_assert(std::is_unsigned<T>::value,
+                  "Invalid specialization of `Carry::Flag` for addition.");
+    return res < lhs;
+  }
+};
+
+// Computes an overflow flag when one number is subtracted from another.
+template <>
+struct Carry<kLHS - kRHS> {
+  template <typename T>
+  [[gnu::const]]
+  NEVER_INLINE static bool Flag(T lhs, T rhs, T) {
+    static_assert(std::is_unsigned<T>::value,
+                  "Invalid specialization of `Carry::Flag` for addition.");
+    return lhs < rhs;
+  }
+};
 
 }  // namespace
 
 // Arithmetic flags (e.g. ADD, SUB)
-#define SET_AFLAGS_OSZAPC(lhs, rhs, result) \
-    state.aflag.of = __mcsema_flag_overflow(lhs, rhs, result); \
-    state.aflag.sf = __mcsema_flag_sign(lhs, rhs, result); \
-    state.aflag.zf = __mcsema_flag_zero(lhs, rhs, result); \
-    state.aflag.af = __mcsema_flag_aux_carry(lhs, rhs, result); \
-    state.aflag.pf = __mcsema_flag_parity(lhs, rhs, result); \
-    state.aflag.cf = __mcsema_flag_carry(lhs, rhs, result)
+#define SET_AFLAGS_ADD_SUB(lhs, op, rhs, T) \
+    ({const auto __lhs = (lhs); \
+      const auto __rhs = (rhs); \
+      const auto __lhs_T = static_cast<T>(__lhs); \
+      const auto __rhs_T = static_cast<T>(__rhs); \
+      const auto __res_T = static_cast<T>(__lhs_T op __rhs_T); \
+      state.aflag.of = Overflow<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
+      state.aflag.sf = SignFlag(__res_T); \
+      state.aflag.zf = ZeroFlag(__res_T); \
+      state.aflag.af = AuxCarryFlag(__lhs_T, __rhs_T, __res_T); \
+      state.aflag.pf = ParityFlag(__res_T); \
+      state.aflag.cf = Carry<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
+      __res_T; })
 
 // Arithmetic flags (e.g. INC, DEC)
-#define SET_AFLAGS_OSZAP(lhs, rhs, result) \
-    state.aflag.of = __mcsema_flag_overflow(lhs, rhs, result); \
-    state.aflag.sf = __mcsema_flag_sign(lhs, rhs, result); \
-    state.aflag.zf = __mcsema_flag_zero(lhs, rhs, result); \
-    state.aflag.af = __mcsema_flag_aux_carry(lhs, rhs, result); \
-    state.aflag.pf = __mcsema_flag_parity(lhs, rhs, result)
+#define SET_AFLAGS_INC_DEC(lhs, op, rhs, T) \
+    ({const auto __lhs = (lhs); \
+      const auto __rhs = (rhs); \
+      const auto __lhs_T = static_cast<T>(__lhs); \
+      const auto __rhs_T = static_cast<T>(__rhs); \
+      const auto __res_T = static_cast<T>(__lhs_T op __rhs_T); \
+      state.aflag.of = Overflow<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
+      state.aflag.sf = SignFlag(__res_T); \
+      state.aflag.zf = ZeroFlag(__res_T); \
+      state.aflag.af = AuxCarryFlag(__lhs_T, __rhs_T, __res_T); \
+      state.aflag.pf = ParityFlag(__res_T); \
+      __res_T; })
 
-// Bitwise flags.
+// Bitwise flags (AND, OR, XOR, TEST).
 //
 // Note: We'll leave the auxiliary carry flag as-is.
-#define SET_AFLAGS_SZAP(lhs, rhs, result) \
-    state.aflag.of = __mcsema_undefined_bool(); \
-    state.aflag.sf = __mcsema_flag_sign(lhs, rhs, result); \
-    state.aflag.zf = __mcsema_flag_zero(lhs, rhs, result); \
-    state.aflag.pf = __mcsema_flag_parity(lhs, rhs, result); \
-    state.aflag.cf = __mcsema_undefined_bool()
+#define SET_AFLAGS_LOGICAL(lhs, op, rhs, T) \
+    ({const auto __lhs = (lhs); \
+      const auto __rhs = (rhs); \
+      const auto __lhs_T = static_cast<T>(__lhs); \
+      const auto __rhs_T = static_cast<T>(__rhs); \
+      const auto __res_T = static_cast<T>(__lhs_T op __rhs_T); \
+      state.aflag.sf = SignFlag(__res_T); \
+      state.aflag.zf = ZeroFlag(__res_T); \
+      state.aflag.pf = ParityFlag(__res_T); \
+      state.aflag.of = 0; \
+      state.aflag.cf = 0; \
+      __res_T; })
 
-#define SET_AFLAGS_OSC(lhs, rhs, result) \
-    state.aflag.of = __mcsema_flag_overflow(lhs, rhs, result); \
-    state.aflag.sf = __mcsema_flag_sign(lhs, rhs, result); \
-    state.aflag.zf = __mcsema_undefined_bool(); \
-    state.aflag.af = __mcsema_undefined_bool(); \
-    state.aflag.pf = __mcsema_undefined_bool(); \
-    state.aflag.cf = __mcsema_flag_carry(lhs, rhs, result)
+// Multiplication (e.g. IMUL, MUL)
+#define SET_AFLAGS_MUL(lhs, op, rhs, T) \
+    ({const auto __lhs = (lhs); \
+      const auto __rhs = (rhs); \
+      const auto __lhs_T = static_cast<T>(__lhs); \
+      const auto __rhs_T = static_cast<T>(__rhs); \
+      const auto __res_T = static_cast<T>(__lhs_T op __rhs_T); \
+      state.aflag.of = Overflow<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
+      state.aflag.cf = state.aflag.of; \
+      state.aflag.sf = (std::is_signed<T>::value ? \
+          SignFlag(static_cast<decltype(__lhs)>(__res_T)) : \
+          state.aflag.sf); \
+      __res_T; })
 
 #define CLEAR_AFLAGS() \
     state.aflag.of = __mcsema_undefined_bool(); \

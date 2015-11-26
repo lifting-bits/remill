@@ -49,7 +49,7 @@ add_compile_options(-Werror)
 add_compile_options(-DMCSEMA_DIR="${MCSEMA_DIR}")
 
 add_executable(cfg_to_bc
-    ${MCSEMA_DIR}/mcsema/Lift.cpp
+    ${MCSEMA_DIR}/mcsema/Translate.cpp
     ${MCSEMA_SOURCE_FILES}
 )
  

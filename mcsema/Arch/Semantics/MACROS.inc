@@ -28,8 +28,11 @@
 #define IF_NOT_TRANSPARENT(...) __VA_ARGS__
 
 // Attributes that will force inlining of specific code.
-#define ALWAYS_INLINE [[gnu::always_inline, gnu::gnu_inline, gnu::flatten]]
-#define INSTR_ATTRIBS ALWAYS_INLINE
+#define ALWAYS_INLINE \
+  [[gnu::always_inline, gnu::gnu_inline, gnu::flatten]] \
+  inline
+
+#define NEVER_INLINE [[gnu::noinline]]
 
 // Define a specific instruction selection variable.
 #define DEF_ISEL(name) \
@@ -37,8 +40,7 @@
 
 // Define a semantics implementing function.
 #define DEF_SEM(name, ...) \
-    INSTR_ATTRIBS \
-    static inline void name (State &state, ##__VA_ARGS__) noexcept
+    ALWAYS_INLINE static void name (State &state, ##__VA_ARGS__) noexcept
 
 // An instruction where the implementation is the same for all operand sizes.
 #define DEF_ISEL_ALL(name, func) \

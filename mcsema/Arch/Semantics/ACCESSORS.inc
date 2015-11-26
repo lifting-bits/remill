@@ -11,7 +11,7 @@ struct VectorAssign;
 #define MAKE_VECTOR_ASSIGNER(base_type, sel) \
     template <typename VecType, typename IntVecType> \
     struct VectorAssign<base_type, VecType, IntVecType> { \
-      ALWAYS_INLINE inline static void assign(VecType &dest, \
+      ALWAYS_INLINE static void assign(VecType &dest, \
                                               const IntVecType &src) { \
         _Pragma("unroll") \
         for (auto i = 0UL; i < sizeof(IntVecType); ++i) { \
@@ -41,28 +41,28 @@ struct VecWriter {
   typedef decltype(T().dqwords) DqwordsType;  // Special case: `vec64_t`.
   typedef decltype(T().floats) FloatsType;
   typedef decltype(T().doubles) DoublesType;
-  ALWAYS_INLINE inline void operator=(T val) const {
+  ALWAYS_INLINE void operator=(T val) const {
     val_ref = val;
   }
-  ALWAYS_INLINE inline void operator=(BytesType val) const {
+  ALWAYS_INLINE void operator=(BytesType val) const {
     val_ref.bytes = val;
   }
-  ALWAYS_INLINE inline void operator=(WordsType val) const {
+  ALWAYS_INLINE void operator=(WordsType val) const {
     val_ref.words = val;
   }
-  ALWAYS_INLINE inline void operator=(DwordsType val) const {
+  ALWAYS_INLINE void operator=(DwordsType val) const {
     val_ref.dwords = val;
   }
-  ALWAYS_INLINE inline void operator=(QwordsType val) const {
+  ALWAYS_INLINE void operator=(QwordsType val) const {
     val_ref.qwords = val;
   }
-  ALWAYS_INLINE inline void operator=(DqwordsType val) const {
+  ALWAYS_INLINE void operator=(DqwordsType val) const {
     val_ref.dqwords = val;
   }
-  ALWAYS_INLINE inline void operator=(FloatsType val) const {
+  ALWAYS_INLINE void operator=(FloatsType val) const {
     val_ref.floats = val;
   }
-  ALWAYS_INLINE inline void operator=(DoublesType val) const {
+  ALWAYS_INLINE void operator=(DoublesType val) const {
     val_ref.doubles = val;
   }
 
@@ -71,7 +71,7 @@ struct VecWriter {
   // to a specific base type, E.g. `V=uint32v4_t` (128 bits) and `T=vec256_t`.
   template <typename V,
             typename std::enable_if<sizeof(V)<sizeof(T),int>::type=0>
-  ALWAYS_INLINE inline void operator=(V val) const {
+  ALWAYS_INLINE void operator=(V val) const {
     VectorAssign<typename VectorInfo<V>::BaseType, T, V>::assign(val_ref, val);
   }
 
@@ -86,51 +86,51 @@ struct VecWriter {
       typedef decltype(T().qwords) QwordsType; \
       typedef decltype(T().floats) FloatsType; \
       typedef decltype(T().doubles) DoublesType; \
-      ALWAYS_INLINE inline void operator=(T val) const { \
+      ALWAYS_INLINE void operator=(T val) const { \
         __mcsema_write_memory_v ## size (addr, val); \
       } \
-      ALWAYS_INLINE inline void operator=(BytesType val) const { \
+      ALWAYS_INLINE void operator=(BytesType val) const { \
         T vec; \
         vec.bytes = val; \
         __mcsema_write_memory_v ## size (addr, vec); \
       } \
-      ALWAYS_INLINE inline void operator=(WordsType val) const { \
+      ALWAYS_INLINE void operator=(WordsType val) const { \
         T vec; \
         vec.words = val; \
         __mcsema_write_memory_v ## size (addr, vec); \
       } \
-      ALWAYS_INLINE inline void operator=(DwordsType val) const { \
+      ALWAYS_INLINE void operator=(DwordsType val) const { \
         T vec; \
         vec.dwords = val; \
         __mcsema_write_memory_v ## size (addr, vec); \
       } \
-      ALWAYS_INLINE inline void operator=(QwordsType val) const { \
+      ALWAYS_INLINE void operator=(QwordsType val) const { \
         T vec; \
         vec.qwords = val; \
         __mcsema_write_memory_v ## size (addr, vec); \
       } \
-      ALWAYS_INLINE inline void operator=(FloatsType val) const { \
+      ALWAYS_INLINE void operator=(FloatsType val) const { \
         T vec; \
         vec.floats = val; \
         __mcsema_write_memory_v ## size (addr, vec); \
       } \
-      ALWAYS_INLINE inline void operator=(DoublesType val) const { \
+      ALWAYS_INLINE void operator=(DoublesType val) const { \
         T vec; \
         vec.doubles = val; \
         __mcsema_write_memory_v ## size (addr, vec); \
       } \
-      uintptr_t addr; \
+      addr_t addr; \
     }; \
     \
-    ALWAYS_INLINE inline static T R(Mn<T> mem) { \
+    ALWAYS_INLINE static T R(Mn<T> mem) { \
       T vec; \
       __mcsema_read_memory_v ## size (mem.addr, vec); \
       return vec; \
     } \
-    ALWAYS_INLINE inline static MemoryWriter ## T W(MnW<T> mem) { \
+    ALWAYS_INLINE static MemoryWriter ## T W(MnW<T> mem) { \
       return MemoryWriter ## T {mem.addr}; \
     } \
-    ALWAYS_INLINE inline static VecWriter<T> W(VnW<T> vec) { \
+    ALWAYS_INLINE static VecWriter<T> W(VnW<T> vec) { \
       return {vec.val_ref}; \
     }
 
@@ -140,17 +140,17 @@ MAKE_VEC_ACCESSORS(vec256_t, 256)
 MAKE_VEC_ACCESSORS(vec512_t, 512)
 
 template <typename T>
-ALWAYS_INLINE inline static T R(In<T> imm) {
+ALWAYS_INLINE static T R(In<T> imm) {
   return imm.val;
 }
 
 template <typename T>
-ALWAYS_INLINE inline static T R(Rn<T> reg) {
+ALWAYS_INLINE static T R(Rn<T> reg) {
   return reg.val;
 }
 
 template <typename T>
-ALWAYS_INLINE inline static T R(Vn<T> vec) {
+ALWAYS_INLINE static T R(Vn<T> vec) {
   return vec.val;
 }
 
@@ -180,29 +180,29 @@ template <typename T>
 
 #define MAKE_ACCESSORS(T, size) \
     struct MemoryWriter ## T { \
-      ALWAYS_INLINE inline void operator=(T val) const { \
+      ALWAYS_INLINE void operator=(T val) const { \
         __mcsema_write_memory_ ## size (addr, val); \
       } \
-      uintptr_t addr; \
+      addr_t addr; \
     }; \
-    ALWAYS_INLINE inline static T R(Mn<T> mem) { \
+    ALWAYS_INLINE static T R(Mn<T> mem) { \
       return __mcsema_read_memory_ ## size (mem.addr); \
     } \
-    ALWAYS_INLINE inline static MemoryWriter ## T W(MnW<T> mem) { \
+    ALWAYS_INLINE static MemoryWriter ## T W(MnW<T> mem) { \
       return MemoryWriter ## T {mem.addr}; \
     } \
     \
-    ALWAYS_INLINE inline static T R(Rn<T> reg) { \
+    ALWAYS_INLINE static T R(Rn<T> reg) { \
       return reg.val; \
     } \
-    ALWAYS_INLINE inline static T &W(RnW<T> reg) { \
+    ALWAYS_INLINE static T &W(RnW<T> reg) { \
       return reg.val_ref; \
     } \
     \
-    ALWAYS_INLINE inline static T &W(T &ref) { \
+    ALWAYS_INLINE static T &W(T &ref) { \
       return ref; \
     }\
-    ALWAYS_INLINE inline static T R(T imm) { \
+    ALWAYS_INLINE static T R(T imm) { \
       return imm; \
     }
 

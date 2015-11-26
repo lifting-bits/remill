@@ -9,8 +9,7 @@ DEF_SEM(ADD, D dst, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  const T res = src1 + src2;
-  SET_AFLAGS_OSZAPC(src1, src2, res);
+  const T res = SET_AFLAGS_ADD_SUB(src1, +, src2, T);
   W(dst) = res;
 }
 
@@ -19,8 +18,7 @@ DEF_SEM(SUB, D dst, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  const T res = src1 - src2;
-  SET_AFLAGS_OSZAPC(src1, src2, res);
+  const T res = SET_AFLAGS_ADD_SUB(src1, -, src2, T);
   W(dst) = res;
 }
 
@@ -29,8 +27,7 @@ DEF_SEM(CMP, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  const T res = src1 - src2;
-  SET_AFLAGS_OSZAPC(src1, src2, res);
+  (void) SET_AFLAGS_ADD_SUB(src1, -, src2, T);
 }
 
 // Creates signed or unsigned multipliers. The `Converter` template template
@@ -43,12 +40,11 @@ struct DivMul {
   // base types.
   template <typename D, typename S1, typename S2>
   DEF_SEM(MUL, D dst, S1 src1_, S2 src2_) {
-    typedef typename BaseType<D>::Type T;
-    typedef typename Converter<T>::Type ST;
-    const auto src1 = static_cast<ST>(R(src1_));
-    const auto src2 = static_cast<ST>(R(src2_));
-    const ST res = src1 * src2;
-    SET_AFLAGS_OSC(src1, src2, res);
+    typedef typename BaseType<S1>::Type T;
+    typedef typename Converter<T>::Type CT;
+    const auto src1 = static_cast<CT>(R(src1_));
+    const auto src2 = static_cast<CT>(R(src2_));
+    const auto res = SET_AFLAGS_MUL(src1, *, src2, CT);
     W(dst) = static_cast<T>(res);
   }
 
@@ -56,31 +52,29 @@ struct DivMul {
   template <typename S1>
   DEF_SEM(MULA_8, S1 val) {
     typedef typename BaseType<S1>::Type T;
-    typedef typename Converter<T>::Type ConvT;
+    typedef typename Converter<T>::Type CT;
 
-    typedef typename NextLargerIntegerType<T>::Type WideT;
-    typedef typename Converter<WideT>::Type ConvWideT;
+    typedef typename NextLargerIntegerType<T>::Type WT;
+    typedef typename Converter<WT>::Type CWT;
 
-    const ConvWideT src1 = static_cast<ConvT>(state.gpr.rax.byte.low);
-    const ConvWideT src2 = static_cast<ConvT>(R(val));
-    const ConvWideT res = src1 * src2;
-    SET_AFLAGS_OSC(src1, src2, res);
-    W(state.gpr.rax.word) = static_cast<WideT>(res);
+    const auto src1 = static_cast<CT>(state.gpr.rax.byte.low);
+    const auto src2 = static_cast<CT>(R(val));
+    const auto res = SET_AFLAGS_MUL(src1, *, src2, CWT);
+    W(state.gpr.rax.word) = static_cast<WT>(res);
   }
 
 #define MAKE_MULTIPLIER(size, read_sel, write_sel) \
     template <typename S2> \
     DEF_SEM(MULAD_ ## size, S2 src2_) { \
       typedef typename BaseType<S2>::Type T; \
-      typedef typename Converter<T>::Type ConvT; \
+      typedef typename Converter<T>::Type CT; \
       \
-      typedef typename NextLargerIntegerType<T>::Type WideT; \
-      typedef typename Converter<WideT>::Type ConvWideT; \
+      typedef typename NextLargerIntegerType<T>::Type WT; \
+      typedef typename Converter<WT>::Type CWT; \
       \
-      const ConvWideT src1 = static_cast<ConvT>(state.gpr.rax.read_sel); \
-      const ConvWideT src2 = static_cast<ConvT>(R(src2_)); \
-      const ConvWideT res = src1 * src2; \
-      SET_AFLAGS_OSC(src1, src2, res); \
+      const auto src1 = static_cast<CT>(state.gpr.rax.read_sel); \
+      const auto src2 = static_cast<CT>(R(src2_)); \
+      const auto res = SET_AFLAGS_MUL(src1, *, src2, CWT); \
       W(state.gpr.rdx.write_sel) = static_cast<T>(res >> size); \
       W(state.gpr.rax.write_sel) = static_cast<T>(res); \
     }
@@ -97,15 +91,15 @@ IF_64BIT(MAKE_MULTIPLIER(64, full, full))
     CLEAR_AFLAGS();
 
     typedef typename BaseType<S2>::Type T;
-    typedef typename NextLargerIntegerType<T>::Type WideT;
+    typedef typename NextLargerIntegerType<T>::Type WT;
 
-    typedef typename Converter<T>::Type ConvT;
-    typedef typename NextLargerIntegerType<T>::Type ConvWideT;
+    typedef typename Converter<T>::Type CT;
+    typedef typename NextLargerIntegerType<WT>::Type CWT;
 
-    const ConvWideT src1 = static_cast<ConvT>(state.gpr.rax.word);
-    const ConvWideT src2 = static_cast<ConvT>(R(src2_));
-    const auto quot = static_cast<ConvT>(src1 / src2);
-    const auto rem = static_cast<ConvT>(src1 % src2);
+    const CWT src1 = static_cast<CT>(state.gpr.rax.word);
+    const CWT src2 = static_cast<CT>(R(src2_));
+    const auto quot = static_cast<CT>(src1 / src2);
+    const auto rem = static_cast<CT>(src1 % src2);
     W(state.gpr.rax.byte.low) = static_cast<T>(quot);
     W(state.gpr.rax.byte.high) = static_cast<T>(rem);
   }
@@ -115,18 +109,18 @@ IF_64BIT(MAKE_MULTIPLIER(64, full, full))
     DEF_SEM(DIVA_ ## size, S2 src2_) { \
       CLEAR_AFLAGS(); \
       typedef typename BaseType<S2>::Type T; \
-      typedef typename Converter<T>::Type ConvT; \
+      typedef typename Converter<T>::Type CT; \
       \
-      typedef typename NextLargerIntegerType<T>::Type WideT; \
-      typedef typename Converter<WideT>::Type ConvWideT; \
+      typedef typename NextLargerIntegerType<T>::Type WT; \
+      typedef typename Converter<WT>::Type CWT; \
       \
-      const auto src1_low = static_cast<WideT>(state.gpr.rax.read_sel); \
-      const auto src1_high = static_cast<WideT>(state.gpr.rdx.read_sel); \
-      const auto src1 = static_cast<ConvWideT>((src1_high << size) | src1_low);\
-      const ConvWideT src2 = static_cast<ConvT>(R(src2_)); \
+      const auto src1_low = static_cast<WT>(state.gpr.rax.read_sel); \
+      const auto src1_high = static_cast<WT>(state.gpr.rdx.read_sel); \
+      const auto src1 = static_cast<CWT>((src1_high << size) | src1_low);\
+      const CWT src2 = static_cast<CT>(R(src2_)); \
       \
-      const auto quot = static_cast<ConvT>(src1 / src2); \
-      const auto rem = static_cast<ConvT>(src1 % src2); \
+      const auto quot = static_cast<CT>(src1 / src2); \
+      const auto rem = static_cast<CT>(src1 % src2); \
       W(state.gpr.rax.write_sel) = static_cast<T>(quot); \
       W(state.gpr.rdx.write_sel) = static_cast<T>(rem); \
     }
@@ -258,8 +252,7 @@ DEF_SEM(INC, D dst, S src) {
   typedef typename BaseType<S>::Type T;
   const T val1 = R(src);
   const T val2 = 1;
-  const T res = val1 + val2;
-  SET_AFLAGS_OSZAP(val1, val2, res);
+  const T res = SET_AFLAGS_INC_DEC(val1, +, val2, T);
   W(dst) = res;
 }
 
@@ -268,8 +261,7 @@ DEF_SEM(DEC, D dst, S src) {
   typedef typename BaseType<S>::Type T;
   const T val1 = R(src);
   const T val2 = 1;
-  const T res = val1 - val2;
-  SET_AFLAGS_OSZAP(val1, val2, res);
+  const T res = SET_AFLAGS_INC_DEC(val1, -, val2, T);
   W(dst) = res;
 }
 
@@ -278,8 +270,7 @@ DEF_SEM(NEG, D dst, S src) {
   typedef typename BaseType<S>::Type T;
   const T val1 = 0;
   const T val2 = R(src);
-  const T res = val1 - val2;
-  SET_AFLAGS_OSZAP(val1, val2, res);
+  const T res = SET_AFLAGS_INC_DEC(val1, -, val2, T);
   state.aflag.cf = !!res;
   W(dst) = res;
 }
@@ -310,8 +301,8 @@ DEF_SEM(SBB, D dst, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  const T res = src1 - (src2 + static_cast<T>(state.aflag.cf));
-  SET_AFLAGS_OSZAPC(src1, src2, res);
+  const T src2_borrow = src2 + static_cast<T>(state.aflag.cf);
+  const T res = SET_AFLAGS_ADD_SUB(src1, -, src2_borrow, T);
   W(dst) = res;
 }
 
@@ -320,8 +311,8 @@ DEF_SEM(ADC, D dst, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  const T res = src1 + src2 + static_cast<T>(state.aflag.cf);
-  SET_AFLAGS_OSZAPC(src1, src2, res);
+  const T src2_carry = src2 + static_cast<T>(state.aflag.cf);
+  const T res = SET_AFLAGS_ADD_SUB(src1, +, src2_carry, T);
   W(dst) = res;
 }
 

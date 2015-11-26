@@ -1,5 +1,9 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+// Address in the source architecture type. We don't use a `uintptr_t` because
+// that might be specific to the destination architecture type.
+typedef IF_64BIT_ELSE(uint64_t, uint32_t) addr_t;
+
 typedef float float32_t;
 static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
 
@@ -17,19 +21,51 @@ static_assert(16 == sizeof(uint128_t), "Invalid `uint128_t` size.");
 typedef int int128_t __attribute__((mode(TI)));
 static_assert(16 == sizeof(int128_t), "Invalid `int128_t` size.");
 
+// Add in some missing type traits.
+namespace std {
+
+template <>
+struct is_signed<int128_t> {
+  static constexpr bool value = true;
+};
+
+template <>
+struct is_unsigned<int128_t> {
+  static constexpr bool value = false;
+};
+
+template <>
+struct is_signed<uint128_t> {
+  static constexpr bool value = false;
+};
+
+template <>
+struct is_unsigned<uint128_t> {
+  static constexpr bool value = true;
+};
+
+
+}  // namespace
+
 template <typename T>
 struct VectorInfo;
 
+// Forward-declaration of basic vector types.
 union vec64_t;
 union vec128_t;
 union vec256_t;
 union vec512_t;
 
+// TODO(pag): See if using the `ext_vector_type` attribute (OpenCL) produces
+//            better code. These might also work better with NEON because they
+//            support different kinds of selectors (`xyzw`).
 #define MAKE_VECTOR(base_type, nelms, vec_size_bits, width_bytes) \
     typedef base_type ## _t base_type ## v ## nelms ## _t \
         __attribute__((vector_size(width_bytes))); \
     static_assert(width_bytes == sizeof(base_type ## v ## nelms ## _t), \
         "Invalid definition of `" #base_type "v" #nelms "`."); \
+    static_assert((width_bytes * 8) == vec_size_bits, \
+            "Invalid definition of `" #base_type "v" #nelms "`."); \
     template <> \
     struct VectorInfo<base_type ## v ## nelms ## _t> { \
       enum { \
@@ -103,10 +139,10 @@ static_assert(8 == sizeof(vec64_t) &&
               "Invalid structure packing of `vec64_t`.");
 
 union vec128_t {
-  ALWAYS_INLINE inline vec128_t(void)
+  ALWAYS_INLINE vec128_t(void)
       : iwords{0} {}
 
-  ALWAYS_INLINE inline vec128_t(const vec64_t &&sub_vec) {
+  ALWAYS_INLINE vec128_t(const vec64_t &&sub_vec) {
     qwords[0] = sub_vec.qwords[0];
     qwords[1] = 0;
   }
@@ -122,7 +158,6 @@ union vec128_t {
   float32v4_t floats;
   float64v2_t doubles;
 } __attribute__((packed));
-typedef vec128_t avec128_t __attribute__((aligned(64)));
 
 static_assert(16 == sizeof(vec128_t) &&
               16 == sizeof(vec128_t().bytes) &&
@@ -136,17 +171,17 @@ static_assert(16 == sizeof(vec128_t) &&
               "Invalid structure packing of `vec128_t`.");
 
 union vec256_t {
-  ALWAYS_INLINE inline vec256_t(void)
+  ALWAYS_INLINE vec256_t(void)
       : iwords{0} {}
 
-  ALWAYS_INLINE inline vec256_t(const vec64_t &&sub_vec) {
+  ALWAYS_INLINE vec256_t(const vec64_t &&sub_vec) {
     qwords[0] = sub_vec.qwords[0];
     qwords[1] = 0;
     qwords[2] = 0;
     qwords[3] = 0;
   }
 
-  ALWAYS_INLINE inline vec256_t(const vec128_t &&sub_vec) {
+  ALWAYS_INLINE vec256_t(const vec128_t &&sub_vec) {
     dqwords[0] = sub_vec.dqwords[0];
     dqwords[1] = 0;
   }
@@ -162,7 +197,7 @@ union vec256_t {
   float32v8_t floats;
   float64v4_t doubles;
 } __attribute__((packed));
-typedef vec256_t avec256_t __attribute__((aligned(64)));
+
 
 static_assert(32 == sizeof(vec256_t) &&
               32 == sizeof(vec256_t().bytes) &&
@@ -176,10 +211,10 @@ static_assert(32 == sizeof(vec256_t) &&
               "Invalid structure packing of `vec256_t`.");
 
 union vec512_t {
-  ALWAYS_INLINE inline vec512_t(void)
+  ALWAYS_INLINE vec512_t(void)
       : iwords{0} {}
 
-  ALWAYS_INLINE inline vec512_t(const vec64_t &&sub_vec) {
+  ALWAYS_INLINE vec512_t(const vec64_t &&sub_vec) {
     qwords[0] = sub_vec.qwords[0];
     qwords[1] = 0;
     qwords[2] = 0;
@@ -190,14 +225,14 @@ union vec512_t {
     qwords[7] = 0;
   }
 
-  ALWAYS_INLINE inline vec512_t(const vec128_t &&sub_vec) {
+  ALWAYS_INLINE vec512_t(const vec128_t &&sub_vec) {
     dqwords[0] = sub_vec.dqwords[0];
     dqwords[1] = 0;
     dqwords[2] = 0;
     dqwords[3] = 0;
   }
 
-  ALWAYS_INLINE inline vec512_t(const vec256_t &&sub_vec) {
+  ALWAYS_INLINE vec512_t(const vec256_t &&sub_vec) {
     dqwords[0] = sub_vec.dqwords[0];
     dqwords[1] = sub_vec.dqwords[1];
     dqwords[2] = sub_vec.dqwords[2];
@@ -214,7 +249,6 @@ union vec512_t {
   float32v16_t floats;
   float64v8_t doubles;
 } __attribute__((packed));
-typedef vec512_t avec512_t __attribute__((aligned(64)));
 
 static_assert(64 == sizeof(vec512_t) &&
               64 == sizeof(vec512_t().bytes) &&
@@ -226,6 +260,11 @@ static_assert(64 == sizeof(vec512_t) &&
               64 == sizeof(vec512_t().doubles) &&
               64 == sizeof(vec512_t().iwords),
               "Invalid structure packing of `vec512_t`.");
+
+// Aligned vector types.
+typedef vec128_t avec128_t __attribute__((aligned(64)));
+typedef vec256_t avec256_t __attribute__((aligned(64)));
+typedef vec512_t avec512_t __attribute__((aligned(64)));
 
 template <typename T>
 struct NextLargerIntegerType;
@@ -244,6 +283,11 @@ struct UnsignedIntegerType {
 };
 
 #define MAKE_SIGNED_INT_CHANGERS(signed_type, unsigned_type) \
+    static_assert(sizeof(signed_type) == sizeof(unsigned_type), \
+                  "Invalid int changer type type."); \
+    static_assert(std::is_signed<signed_type>::value != \
+                  std::is_signed<unsigned_type>::value, \
+                  "Sign match between int type and next int type."); \
     template <> \
     struct SignedIntegerType<unsigned_type> { \
       typedef signed_type Type ; \
@@ -254,6 +298,10 @@ struct UnsignedIntegerType {
     }
 
 #define MAKE_INT_TYPE(cur, next) \
+    static_assert(sizeof(next) == (2 * sizeof(cur)), \
+                  "Invalid next int type."); \
+    static_assert(std::is_signed<cur>::value == std::is_signed<next>::value, \
+                  "Sign mismatch between int type and next int type."); \
     template <> \
     struct NextLargerIntegerType<cur> { \
       typedef next Type; \
@@ -286,12 +334,12 @@ MAKE_INT_TYPE(uint64_t, uint128_t);
 
 template <typename T>
 struct Mn {
-  const uintptr_t addr;
+  const addr_t addr;
 };
 
 template <typename T>
 struct MnW {
-  const uintptr_t addr;
+  const addr_t addr;
 };
 
 template <typename T>
@@ -370,6 +418,3 @@ template <typename T>
 struct BaseType<VnW<T>> {
   typedef typename BaseType<T>::Type Type;
 };
-
-[[gnu::used]]
-extern "C" bool __mcsema_undefined_bool(void);

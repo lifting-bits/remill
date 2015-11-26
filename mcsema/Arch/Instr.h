@@ -12,8 +12,8 @@ namespace cfg {
 class Instr;
 }  // namespace cfg
 
-class Lifter;
-class Lifter;
+class Translator;
+class Translator;
 
 class Instr {
  public:
@@ -25,7 +25,7 @@ class Instr {
   // block has completed.
   //
   // TODO(pag): I'm not pleased with this interface.
-  virtual bool LiftIntoBlock(const Lifter &lifter, llvm::BasicBlock *B) = 0;
+  virtual bool LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *B) = 0;
 
  protected:
   const cfg::Instr * const instr;

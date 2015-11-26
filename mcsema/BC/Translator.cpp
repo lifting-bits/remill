@@ -20,16 +20,15 @@
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
-#include <mcsema/BC/Lifter.h>
-#include <mcsema/BC/Lifter.h>
+
+#include "mcsema/BC/IntrinsicTable.h"
+#include "mcsema/BC/Translator.h"
 #include "mcsema/Arch/Arch.h"
 #include "mcsema/Arch/Instr.h"
 
 #include "mcsema/BC/Util.h"
 
 #include "mcsema/CFG/CFG.h"
-
-DECLARE_string(os);
 
 namespace llvm {
 class ReturnInst;
@@ -44,75 +43,23 @@ static std::string NamedSymbolMetaId(std::string func_name) {
   return "mcsema_external:" + func_name;
 }
 
-// Find a specific function.
-static llvm::Function *FindIntrinsic(llvm::Module *M, const char *name) {
-  llvm::Function *F = nullptr;
-  F = M->getFunction(name);
-  if (!F && FLAGS_os == "mac") {
-    F = M->getFunction(std::string("_") + name);
-  }
-  LOG_IF(FATAL, !F) << "Missing intrinsic " << name << "for OS: " << FLAGS_os;
-  InitFunctionAttributes(F);
-  return F;
-}
-
-// Find a specific function.
-static llvm::Function *FindPureIntrinsic(llvm::Module *M, const char *name) {
-  auto F = FindIntrinsic(M, name);
-
-  // We want memory intrinsics to be marked as not accessing memory so that
-  // they don't interfere with dead store elimination.
-  F->addFnAttr(llvm::Attribute::ReadNone);
-
-  // We don't want calls to memory intrinsics to be duplicated because then
-  // they might have the wrong side effects!
-  F->addFnAttr(llvm::Attribute::NoDuplicate);
-  return F;
-}
-
 }  // namespace
 
-Lifter::Lifter(const Arch *arch_, llvm::Module *module_)
+Translator::Translator(const Arch *arch_, llvm::Module *module_)
     : arch(arch_),
       module(module_),
       blocks(),
       functions(),
       symbols(),
       next_symbol_id(0),
-      basic_block(FindIntrinsic(module, "__mcsema_basic_block")),
-      error(FindIntrinsic(module, "__mcsema_error")),
-      function_call(FindIntrinsic(module, "__mcsema_function_call")),
-      function_return(FindIntrinsic(module, "__mcsema_function_return")),
-      jump(FindIntrinsic(module, "__mcsema_jump")),
-      system_call(FindIntrinsic(module, "__mcsema_system_call")),
-      system_return(FindIntrinsic(module, "__mcsema_system_return")),
-      interrupt_call(FindIntrinsic(module, "__mcsema_interrupt_call")),
-      interrupt_return(FindIntrinsic(module, "__mcsema_interrupt_return")),
-      read_memory_8(FindPureIntrinsic(module, "__mcsema_read_memory_8")),
-      read_memory_16(FindPureIntrinsic(module, "__mcsema_read_memory_16")),
-      read_memory_32(FindPureIntrinsic(module, "__mcsema_read_memory_32")),
-      read_memory_64(FindPureIntrinsic(module, "__mcsema_read_memory_64")),
-      read_memory_v64(FindPureIntrinsic(module, "__mcsema_read_memory_v64")),
-      read_memory_v128(FindPureIntrinsic(module, "__mcsema_read_memory_v128")),
-      read_memory_v256(FindPureIntrinsic(module, "__mcsema_read_memory_v256")),
-      read_memory_v512(FindPureIntrinsic(module, "__mcsema_read_memory_v512")),
-      write_memory_8(FindPureIntrinsic(module, "__mcsema_write_memory_8")),
-      write_memory_16(FindPureIntrinsic(module, "__mcsema_write_memory_16")),
-      write_memory_32(FindPureIntrinsic(module, "__mcsema_write_memory_32")),
-      write_memory_64(FindPureIntrinsic(module, "__mcsema_write_memory_64")),
-      write_memory_v64(FindPureIntrinsic(module, "__mcsema_write_memory_v64")),
-      write_memory_v128(FindPureIntrinsic(module, "__mcsema_write_memory_v128")),
-      write_memory_v256(FindPureIntrinsic(module, "__mcsema_write_memory_v256")),
-      write_memory_v512(FindPureIntrinsic(module, "__mcsema_write_memory_v512")),
-      compute_address(FindPureIntrinsic(module, "__mcsema_compute_address")),
-      undefined_bool(FindPureIntrinsic(module, "__mcsema_undefined_bool")){
+      basic_block(FindFunction(module, "__mcsema_basic_block")),
+      intrinsics(new IntrinsicTable(module)) {
   IdentifyExistingSymbols();
-  ReplaceUndefinedIntrinsics();
 }
 
 // Find existing exported functions and variables. This is for the sake of
 // linking functions of the same names across CFG files.
-void Lifter::IdentifyExistingSymbols(void) {
+void Translator::IdentifyExistingSymbols(void) {
   for (auto &F : module->functions()) {
     std::string name = F.getName();
     if (module->getNamedMetadata(NamedSymbolMetaId(name))) {
@@ -131,7 +78,7 @@ void Lifter::IdentifyExistingSymbols(void) {
 }
 
 // Create functions for every block in the CFG.
-void Lifter::CreateBlocks(const cfg::Module *cfg) {
+void Translator::CreateBlocks(const cfg::Module *cfg) {
   auto block_type = basic_block->getFunctionType();
   for (const auto &block : cfg->blocks()) {
     auto &BF = blocks[block.address()];
@@ -147,7 +94,7 @@ void Lifter::CreateBlocks(const cfg::Module *cfg) {
 }
 
 // Create functions for every function in the CFG.
-void Lifter::CreateFunctions(const cfg::Module *cfg) {
+void Translator::CreateFunctions(const cfg::Module *cfg) {
   auto func_type = basic_block->getFunctionType();
 
   for (const auto &func : cfg->functions()) {
@@ -179,7 +126,7 @@ void Lifter::CreateFunctions(const cfg::Module *cfg) {
 }
 
 // Link together functions and basic blocks.
-void Lifter::LinkFunctionsToBlocks(const cfg::Module *cfg) {
+void Translator::LinkFunctionsToBlocks(const cfg::Module *cfg) {
   for (const auto &func : cfg->functions()) {
     if (!func.is_exported() && !func.is_imported()) continue;
     if (!func.address()) continue;
@@ -252,7 +199,7 @@ static uint64_t FallThroughPC(const cfg::Block &block) {
 
 // Add a fall-through terminator to the block method just in case one is
 // missing.
-void Lifter::TerminateBlockMethod(const cfg::Block &block, llvm::Function *BF) {
+void Translator::TerminateBlockMethod(const cfg::Block &block, llvm::Function *BF) {
   auto &B = BF->back();
   if (B.getTerminator()) {
     return;
@@ -260,33 +207,12 @@ void Lifter::TerminateBlockMethod(const cfg::Block &block, llvm::Function *BF) {
   if (block.instructions_size()) {
     AddTerminatingTailCall(BF, GetLiftedBlockForPC(FallThroughPC(block)));
   } else {
-    AddTerminatingTailCall(BF, error);
-  }
-}
-
-// Remove calls to the undefined intrinsics. The goal here is to improve dead
-// store elimination by peppering the instruction semantics with assignments
-// to the return valyes of special `__mcsema_undefine_*` intrinsics. It's hard
-// to reliably produce an `undef` LLVM value from C/C++, so we use our trick
-// of declaring (but never defining) a special "intrinsic" and then we replace
-// all such uses with `undef` values.
-void Lifter::ReplaceUndefinedIntrinsics(void) {
-  std::vector<llvm::CallInst *> Cs;
-  for (auto U : undefined_bool->users()) {
-    if (auto C = llvm::dyn_cast<llvm::CallInst>(U)) {
-      Cs.push_back(C);
-    }
-  }
-
-  auto Undef = llvm::UndefValue::get(llvm::Type::getInt1Ty(
-      undefined_bool->getContext()));
-  for (auto C : Cs) {
-    C->replaceAllUsesWith(Undef);
+    AddTerminatingTailCall(BF, intrinsics->error);
   }
 }
 
 // Lift code contained in blocks into the block methods.
-void Lifter::LiftBlocks(const cfg::Module *cfg) {
+void Translator::LiftBlocks(const cfg::Module *cfg) {
   llvm::legacy::FunctionPassManager FPM(module);
   FPM.add(llvm::createDeadCodeEliminationPass());
   FPM.add(llvm::createCFGSimplificationPass());
@@ -317,7 +243,7 @@ void Lifter::LiftBlocks(const cfg::Module *cfg) {
   }
 }
 
-void Lifter::LiftBlockIntoMethod(const cfg::Block &block, llvm::Function *BF) {
+void Translator::LiftBlockIntoMethod(const cfg::Block &block, llvm::Function *BF) {
   for (const auto &instr : block.instructions()) {
     CHECK(0 < instr.size())
         << "Can't decode zero-sized instruction at " << instr.address();
@@ -336,7 +262,7 @@ void Lifter::LiftBlockIntoMethod(const cfg::Block &block, llvm::Function *BF) {
 }
 
 // Lift an architecture-specific instruction.
-bool Lifter::LiftInstruction(const cfg::Block &block, const cfg::Instr &instr,
+bool Translator::LiftInstruction(const cfg::Block &block, const cfg::Instr &instr,
                          Instr &arch_instr, llvm::Function *BF) {
   std::stringstream ss;
   ss << "0x" << std::hex << instr.address();
@@ -352,7 +278,7 @@ bool Lifter::LiftInstruction(const cfg::Block &block, const cfg::Instr &instr,
   return arch_instr.LiftIntoBlock(*this, B);
 }
 
-void Lifter::LiftCFG(const cfg::Module *cfg) {
+void Translator::LiftCFG(const cfg::Module *cfg) {
   blocks.clear();  // Just in case we call `LiftCFG` multiple times.
   CreateBlocks(cfg);
   CreateFunctions(cfg);
@@ -360,11 +286,11 @@ void Lifter::LiftCFG(const cfg::Module *cfg) {
   LiftBlocks(cfg);
 }
 
-llvm::Function *Lifter::GetLiftedBlockForPC(uintptr_t pc) const {
+llvm::Function *Translator::GetLiftedBlockForPC(uintptr_t pc) const {
   auto F = blocks[pc];
   if (!F) {
     LOG(ERROR) << "Could not find lifted block for PC " << pc;
-    F = error;
+    F = intrinsics->error;
   }
   return F;
 }

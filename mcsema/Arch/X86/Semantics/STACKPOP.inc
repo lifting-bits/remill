@@ -9,7 +9,7 @@ namespace {
 template <typename D>
 DEF_SEM(POP, D dst) {
   typedef typename BaseType<D>::Type T;
-  const uintptr_t old_sp = R(state.gpr.rsp.full);
+  const addr_t old_sp = R(state.gpr.rsp.full);
   Mn<T> stack = {old_sp};
 
   const T popped_val = R(stack);

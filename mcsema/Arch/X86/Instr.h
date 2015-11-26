@@ -24,15 +24,15 @@ class Instr : public ::mcsema::Instr {
   Instr(const cfg::Instr *, const struct xed_decoded_inst_s *xedd_);
   virtual ~Instr(void);
 
-  virtual bool LiftIntoBlock(const Lifter &lifter,
+  virtual bool LiftIntoBlock(const Translator &lifter,
                              llvm::BasicBlock *B_) override;
 
  private:
   void LiftPC(void);
-  void LiftGeneric(const Lifter &lifter);
-  void LiftConditionalBranch(const Lifter &lifter);
-  void LiftOperand(const Lifter &lifter, unsigned op_num);
-  void LiftMemory(const Lifter &lifter, const xed_operand_t *xedo,
+  void LiftGeneric(const Translator &lifter);
+  void LiftConditionalBranch(const Translator &lifter);
+  void LiftOperand(const Translator &lifter, unsigned op_num);
+  void LiftMemory(const Translator &lifter, const xed_operand_t *xedo,
                   unsigned op_num);
   void LiftImmediate(xed_operand_enum_t op_name);
   void LiftRegister(const xed_operand_t *xedo);

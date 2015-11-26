@@ -2,28 +2,31 @@
 
 namespace {
 
+// TODO(pag): Evaluate branch-free variants. Things to evaluate:
+//            - Do branch-free conditionals lead to better native code
+//              generation?
+//            - Do branch-free conditionals lead to better flag lifetime
+//              analysis.
+//            - Do branch-free conditionals make it easier or harder to
+//              reason about the path condition using an SMT solver (e.g.
+//              XOR operations might make things harder rather than easier).
+
 DEF_SEM(JNLE, PC taken_rip) {
-  const auto cond = !state.aflag.zf & !(state.aflag.cf ^ state.aflag.pf);
+  const auto cond = !state.aflag.zf && state.aflag.cf == state.aflag.pf;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
-  if (cond) {
-    state.gpr.rip.full = taken_rip;
-  }
+  state.gpr.rip.full = cond ? taken_rip : state.gpr.rip.full;
 }
 
 DEF_SEM(JNS, PC taken_rip) {
   const auto cond = !state.aflag.sf;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
-  if (cond) {
-    state.gpr.rip.full = taken_rip;
-  }
+  state.gpr.rip.full = cond ? taken_rip : state.gpr.rip.full;
 }
 
 DEF_SEM(JL, PC taken_rip) {
   const auto cond = state.aflag.sf != state.aflag.of;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
-  if (cond) {
-    state.gpr.rip.full = taken_rip;
-  }
+  state.gpr.rip.full = cond ? taken_rip : state.gpr.rip.full;
 }
 
 DEF_SEM(JNP, PC taken_rip) {

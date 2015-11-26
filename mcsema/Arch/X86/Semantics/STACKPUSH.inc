@@ -6,8 +6,8 @@ template <typename S>
 DEF_SEM(PUSH, S val_) {
   typedef typename BaseType<S>::Type T;
   const T pushed_val = R(val_);
-  const uintptr_t sp = R(state.gpr.rsp.full);
-  const uintptr_t new_sp = sp - sizeof(pushed_val);
+  const addr_t sp = R(state.gpr.rsp.full);
+  const addr_t new_sp = sp - sizeof(pushed_val);
 
   MnW<T> stack = {new_sp};
   W(state.gpr.rsp.full) = new_sp;

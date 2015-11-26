@@ -8,14 +8,15 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
-#include <mcsema/BC/Lifter.h>
 
-#include "mcsema/Arch/X86/Instr.h"
-#include "mcsema/Arch/X86/XED.h"
-
+#include "mcsema/BC/IntrinsicTable.h"
+#include "mcsema/BC/Translator.h"
 #include "mcsema/BC/Util.h"
 
 #include "mcsema/CFG/CFG.h"
+
+#include "mcsema/Arch/X86/Instr.h"
+#include "mcsema/Arch/X86/XED.h"
 
 DECLARE_string(os);
 
@@ -70,14 +71,14 @@ static unsigned AddressSpace(xed_reg_enum_t seg, xed_operand_enum_t name) {
 
 }  // namespace
 
-bool Instr::LiftIntoBlock(const Lifter &lifter, llvm::BasicBlock *B_) {
+bool Instr::LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *B_) {
   B = B_;
   F = B->getParent();
   M = F->getParent();
   C = &(F->getContext());
 
   if (IsError()) {
-    AddTerminatingTailCall(B, lifter.error);
+    AddTerminatingTailCall(B, lifter.intrinsics->error);
     return false;
 
   } else if (IsDirectJump()) {
@@ -87,7 +88,7 @@ bool Instr::LiftIntoBlock(const Lifter &lifter, llvm::BasicBlock *B_) {
   } else if (IsIndirectJump()) {
     LiftPC();
     LiftGeneric(lifter);  // loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, lifter.jump);
+    AddTerminatingTailCall(B, lifter.intrinsics->jump);
     return false;
 
   } else if (IsDirectFunctionCall()) {
@@ -99,13 +100,13 @@ bool Instr::LiftIntoBlock(const Lifter &lifter, llvm::BasicBlock *B_) {
   } else if (IsIndirectFunctionCall()) {
     LiftPC();
     LiftGeneric(lifter);  // Adjusts the stack, loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, lifter.function_call);
+    AddTerminatingTailCall(B, lifter.intrinsics->function_call);
     return false;
 
   } else if (IsFunctionReturn()) {
     LiftPC();
     LiftGeneric(lifter);  // Adjusts the stack, loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, lifter.function_return);
+    AddTerminatingTailCall(B, lifter.intrinsics->function_return);
     return false;
 
   } else if (IsBranch()) {
@@ -118,13 +119,13 @@ bool Instr::LiftIntoBlock(const Lifter &lifter, llvm::BasicBlock *B_) {
   } else if (IsSystemCall()) {
     LiftPC();
     LiftGeneric(lifter);
-    AddTerminatingTailCall(B, lifter.system_call);
+    AddTerminatingTailCall(B, lifter.intrinsics->system_call);
     return false;
 
   } else if (IsSystemReturn()) {
     LiftPC();
     LiftGeneric(lifter);
-    AddTerminatingTailCall(B, lifter.system_return);
+    AddTerminatingTailCall(B, lifter.intrinsics->system_return);
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
     return false;
@@ -133,13 +134,13 @@ bool Instr::LiftIntoBlock(const Lifter &lifter, llvm::BasicBlock *B_) {
   } else if (IsInterruptCall()) {
     LiftPC();
     LiftGeneric(lifter);
-    AddTerminatingTailCall(B, lifter.interrupt_call);
+    AddTerminatingTailCall(B, lifter.intrinsics->interrupt_call);
     return false;
 
   } else if (IsInterruptReturn()) {
     LiftPC();
     LiftGeneric(lifter);
-    AddTerminatingTailCall(B, lifter.interrupt_return);
+    AddTerminatingTailCall(B, lifter.intrinsics->interrupt_return);
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
     return false;
@@ -180,7 +181,7 @@ void Instr::LiftPC(void) {
 }
 
 // Lift a generic instruction.
-void Instr::LiftGeneric(const Lifter &lifter) {
+void Instr::LiftGeneric(const Translator &lifter) {
   args.push_back(&*F->arg_begin());
 
   // Lift the operands. This creates the arguments for us to call the
@@ -214,7 +215,7 @@ void Instr::LiftGeneric(const Lifter &lifter) {
 }
 
 // Lift a conditional branch instruction.
-void Instr::LiftConditionalBranch(const Lifter &lifter) {
+void Instr::LiftConditionalBranch(const Translator &lifter) {
   auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
   auto target_pc = TargetPC();
 
@@ -238,7 +239,7 @@ void Instr::LiftConditionalBranch(const Lifter &lifter) {
 
 // Lift an operand. The goal is to be able to pass all explicit and implicit
 // operands as arguments into a function that implements this instruction.
-void Instr::LiftOperand(const Lifter &lifter, unsigned op_num) {
+void Instr::LiftOperand(const Translator &lifter, unsigned op_num) {
   auto xedo = xed_inst_operand(xedi, op_num);
   if (XED_OPVIS_SUPPRESSED != xed_operand_operand_visibility(xedo)) {
     switch (auto op_name = xed_operand_name(xedo)) {
@@ -286,7 +287,7 @@ void Instr::LiftOperand(const Lifter &lifter, unsigned op_num) {
 // A minor challenge is handling the segment register. To handle this we use
 // a GNU-specific extension by specifying an address space of the pointer type.
 // The challenge is that we don't want to have
-void Instr::LiftMemory(const Lifter &lifter, const xed_operand_t *xedo,
+void Instr::LiftMemory(const Translator &lifter, const xed_operand_t *xedo,
                        unsigned op_num) {
   auto op_name = xed_operand_name(xedo);
   auto mem_index = (XED_OPERAND_MEM1 == op_name) ? 1 : 0;  // Handles AGEN.
@@ -356,7 +357,7 @@ void Instr::LiftMemory(const Lifter &lifter, const xed_operand_t *xedo,
         FindStatePointer(F),  // Machine state.
         A,  // Address.
         llvm::ConstantInt::get(Int32Ty, addr_space, true)};
-    A = ir.CreateCall(lifter.compute_address, args);
+    A = ir.CreateCall(lifter.intrinsics->compute_address, args);
   }
 
   if (xed_operand_written(xedo)) {

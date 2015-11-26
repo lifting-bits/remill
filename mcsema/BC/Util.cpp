@@ -9,6 +9,8 @@
 
 #include "mcsema/BC/Util.h"
 
+DECLARE_string(os);
+
 namespace mcsema {
 
 llvm::Function *&BlockMap::operator[](uintptr_t pc) {
@@ -91,5 +93,17 @@ llvm::Value *FindVarInFunction(llvm::Function *F, std::string name) {
 llvm::Value *FindStatePointer(llvm::Function *F) {
   return &*F->getArgumentList().begin();
 }
+
+// Find a function with name `name` in the module `M`.
+llvm::Function *FindFunction(const llvm::Module *M, const char *name) {
+  llvm::Function *F = nullptr;
+  F = M->getFunction(name);
+  if (!F && FLAGS_os == "mac") {
+    F = M->getFunction(std::string("_") + name);
+  }
+  LOG_IF(FATAL, !F) << "Missing intrinsic " << name << "for OS: " << FLAGS_os;
+  return F;
+}
+
 
 }  // namespace mcsema

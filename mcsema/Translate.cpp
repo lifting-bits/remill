@@ -14,7 +14,8 @@
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/ToolOutputFile.h>
-#include <mcsema/BC/Lifter.h>
+
+#include "mcsema/BC/Translator.h"
 #include "mcsema/Arch/Arch.h"
 #include "mcsema/CFG/CFG.h"
 
@@ -116,7 +117,7 @@ extern "C" int main(int argc, char *argv[]) {
   auto cfg = mcsema::ReadCFG(FLAGS_cfg);
   auto module = mcsema::CreateOrLoadModule(arch, FLAGS_bc_in);
 
-  mcsema::Lifter lifter(arch, module);
+  mcsema::Translator lifter(arch, module);
   lifter.LiftCFG(cfg);
 
   mcsema::SaveModuleToFile(module, FLAGS_bc_out);

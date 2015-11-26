@@ -735,8 +735,8 @@ IF_64BIT( typedef In<uint64_t> I64; )
 
 // Immediate selectors -------------
 
-typedef uintptr_t PC;
-typedef uintptr_t ADDR;
+typedef addr_t PC;
+typedef addr_t ADDR;
 
 #include "mcsema/Arch/X86/Semantics/FLAGS.inc"
 #include "mcsema/Arch/X86/Semantics/BINARY.inc"

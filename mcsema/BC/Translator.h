@@ -1,7 +1,7 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#ifndef MCSEMA_BC_LIFTER_H_
-#define MCSEMA_BC_LIFTER_H_
+#ifndef MCSEMA_BC_TRANSLATOR_H_
+#define MCSEMA_BC_TRANSLATOR_H_
 
 #include <string>
 
@@ -22,19 +22,20 @@ class Module;
 
 class Arch;
 class Instr;
-class Lifter;
+class IntrinsicTable;
+class Translator;
 
 // Lifts CFG files into a bitcode module.
-class Lifter {
+class Translator {
  public:
-  Lifter(const Arch *arch_, llvm::Module *module_);
+  Translator(const Arch *arch_, llvm::Module *module_);
 
   // Lift the control-flow graph specified by `cfg` into this bitcode module.
   void LiftCFG(const cfg::Module *cfg);
 
  private:
-  Lifter(void) = delete;
-  Lifter(const Lifter &) = delete;
+  Translator(void) = delete;
+  Translator(const Translator &) = delete;
 
   // Identify symbols that are already present in the bitcode and can
   // therefore be used as a target for linking.
@@ -63,9 +64,6 @@ class Lifter {
   // missing.
   void TerminateBlockMethod(const cfg::Block &block, llvm::Function *BF);
 
-  // Remove calls to the undefined intrinsics.
-  void ReplaceUndefinedIntrinsics(void);
-
   // Architecture of the code contained within the CFG being lifted.
   const Arch * const arch;
 
@@ -88,50 +86,17 @@ class Lifter {
   // name to every non-exported symbol we introduce.
   int next_symbol_id;
 
+  // Basic block template.
+  llvm::Function * const basic_block;
+
  public:
 
   llvm::Function *GetLiftedBlockForPC(uintptr_t pc) const;
 
-  // Basic block template.
-  llvm::Function * const basic_block;
-
-  // Control-transfer intrinsics.
-  llvm::Function * const error;
-  llvm::Function * const function_call;
-  llvm::Function * const function_return;
-  llvm::Function * const jump;
-  llvm::Function * const system_call;
-  llvm::Function * const system_return;
-  llvm::Function * const interrupt_call;
-  llvm::Function * const interrupt_return;
-
-  // Memory read intrinsics.
-  llvm::Function * const read_memory_8;
-  llvm::Function * const read_memory_16;
-  llvm::Function * const read_memory_32;
-  llvm::Function * const read_memory_64;
-  llvm::Function * const read_memory_v64;
-  llvm::Function * const read_memory_v128;
-  llvm::Function * const read_memory_v256;
-  llvm::Function * const read_memory_v512;
-
-  // Memory write intrinsics.
-  llvm::Function * const write_memory_8;
-  llvm::Function * const write_memory_16;
-  llvm::Function * const write_memory_32;
-  llvm::Function * const write_memory_64;
-  llvm::Function * const write_memory_v64;
-  llvm::Function * const write_memory_v128;
-  llvm::Function * const write_memory_v256;
-  llvm::Function * const write_memory_v512;
-
-  // Addressing intrinsics.
-  llvm::Function * const compute_address;
-
-  // Undefined values.
-  llvm::Function * const undefined_bool;
+  // Set of intrinsics.
+  const IntrinsicTable * const intrinsics;
 };
 
 }  // namespace mcsema
 
-#endif  // MCSEMA_BC_LIFTER_H_
+#endif  // MCSEMA_BC_TRANSLATOR_H_
