@@ -1,5 +1,15 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#ifndef MCSEMA_ARCH_SEMANTICS_TYPES_H_
+#define MCSEMA_ARCH_SEMANTICS_TYPES_H_
+
+#include <cstdint>
+#include <type_traits>
+
+#include "mcsema/Arch/Semantics/MACROS.h"
+
+struct State;
+
 // Address in the source architecture type. We don't use a `uintptr_t` because
 // that might be specific to the destination architecture type.
 typedef IF_64BIT_ELSE(uint64_t, uint32_t) addr_t;
@@ -139,13 +149,8 @@ static_assert(8 == sizeof(vec64_t) &&
               "Invalid structure packing of `vec64_t`.");
 
 union vec128_t {
-  ALWAYS_INLINE vec128_t(void)
-      : iwords{0} {}
-
-  ALWAYS_INLINE vec128_t(const vec64_t &&sub_vec) {
-    qwords[0] = sub_vec.qwords[0];
-    qwords[1] = 0;
-  }
+  ALWAYS_INLINE vec128_t(void);
+  ALWAYS_INLINE vec128_t(const vec64_t &&sub_vec);
 
   uint8v16_t bytes;
   uint16v8_t words;
@@ -171,20 +176,9 @@ static_assert(16 == sizeof(vec128_t) &&
               "Invalid structure packing of `vec128_t`.");
 
 union vec256_t {
-  ALWAYS_INLINE vec256_t(void)
-      : iwords{0} {}
-
-  ALWAYS_INLINE vec256_t(const vec64_t &&sub_vec) {
-    qwords[0] = sub_vec.qwords[0];
-    qwords[1] = 0;
-    qwords[2] = 0;
-    qwords[3] = 0;
-  }
-
-  ALWAYS_INLINE vec256_t(const vec128_t &&sub_vec) {
-    dqwords[0] = sub_vec.dqwords[0];
-    dqwords[1] = 0;
-  }
+  ALWAYS_INLINE vec256_t(void);
+  ALWAYS_INLINE vec256_t(const vec64_t &&sub_vec);
+  ALWAYS_INLINE vec256_t(const vec128_t &&sub_vec);
 
   uint8v32_t bytes;
   uint16v16_t words;
@@ -211,33 +205,11 @@ static_assert(32 == sizeof(vec256_t) &&
               "Invalid structure packing of `vec256_t`.");
 
 union vec512_t {
-  ALWAYS_INLINE vec512_t(void)
-      : iwords{0} {}
+  ALWAYS_INLINE vec512_t(void);
+  ALWAYS_INLINE vec512_t(const vec64_t &&sub_vec);
+  ALWAYS_INLINE vec512_t(const vec128_t &&sub_vec);
+  ALWAYS_INLINE vec512_t(const vec256_t &&sub_vec);
 
-  ALWAYS_INLINE vec512_t(const vec64_t &&sub_vec) {
-    qwords[0] = sub_vec.qwords[0];
-    qwords[1] = 0;
-    qwords[2] = 0;
-    qwords[3] = 0;
-    qwords[4] = 0;
-    qwords[5] = 0;
-    qwords[6] = 0;
-    qwords[7] = 0;
-  }
-
-  ALWAYS_INLINE vec512_t(const vec128_t &&sub_vec) {
-    dqwords[0] = sub_vec.dqwords[0];
-    dqwords[1] = 0;
-    dqwords[2] = 0;
-    dqwords[3] = 0;
-  }
-
-  ALWAYS_INLINE vec512_t(const vec256_t &&sub_vec) {
-    dqwords[0] = sub_vec.dqwords[0];
-    dqwords[1] = sub_vec.dqwords[1];
-    dqwords[2] = sub_vec.dqwords[2];
-    dqwords[3] = sub_vec.dqwords[3];
-  }
   uint8v64_t bytes;
   uint16v32_t words;
   uint32v16_t dwords;
@@ -418,3 +390,5 @@ template <typename T>
 struct BaseType<VnW<T>> {
   typedef typename BaseType<T>::Type Type;
 };
+
+#endif  // MCSEMA_ARCH_SEMANTICS_TYPES_H_

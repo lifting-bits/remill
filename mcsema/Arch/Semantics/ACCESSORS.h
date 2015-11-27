@@ -1,5 +1,8 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#ifndef MCSEMA_ARCH_SEMANTICS_ACCESSORS_H_
+#define MCSEMA_ARCH_SEMANTICS_ACCESSORS_H_
+
 namespace {
 
 template <typename kBaseType, typename VecType, typename IntVecType>
@@ -213,3 +216,5 @@ MAKE_ACCESSORS(uint64_t, 64)
 #undef MAKE_ACCESSORS
 
 }  // namespace
+
+#endif  // MCSEMA_ARCH_SEMANTICS_ACCESSORS_H_

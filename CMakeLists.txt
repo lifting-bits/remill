@@ -43,6 +43,10 @@ file(GLOB MCSEMA_SOURCE_FILES
     "${MCSEMA_DIR}/mcsema/BC/*.cpp"
 )
 
+file(MAKE_DIRECTORY ${MCSEMA_DIR}/build)
+file(MAKE_DIRECTORY ${MCSEMA_DIR}/build/lib)
+file(COPY ${MCSEMA_DIR}/generated/Arch DESTINATION ${MCSEMA_DIR}/build/lib)
+
 # Generic compiler options.
 add_compile_options(-Wall)
 add_compile_options(-Werror)

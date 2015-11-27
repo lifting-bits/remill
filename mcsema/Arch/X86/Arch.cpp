@@ -2,6 +2,8 @@
 
 #include <glog/logging.h>
 
+#include <sstream>
+
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
@@ -11,6 +13,9 @@
 #include "mcsema/Arch/X86/Instr.h"
 
 #include "mcsema/CFG/CFG.h"
+
+DEFINE_bool(with_x86_avx, false, "Enable AVX support.");
+DEFINE_bool(with_x86_avx512, false, "Enable AVX512 support.");
 
 namespace mcsema {
 namespace x86 {
@@ -64,22 +69,31 @@ void Arch::Decode(
 // Creates an LLVM module object for the lifted code. This module is based on
 // an arch-specific template, found in the `State.inc` file.
 llvm::Module *Arch::CreateModule(void) const {
-  std::string module_file;
-  llvm::SMDiagnostic err;
+  std::stringstream module_file;
 
-  if (64 == address_size) {
-    module_file = MCSEMA_DIR "/generated/Arch/X86/Semantics/MACHINE64.bc";
+  // TODO(pag): Eventually make this relative to the build/install directory,
+  //            such that it works in both cases.
+  module_file << MCSEMA_DIR "/generated/Arch/X86/Semantics/MACHINE_";
+  module_file << (64 == address_size ? "amd64" : "x86");
+
+  // Select a bitcode file with specific features.
+  if (FLAGS_with_x86_avx512) {
+    module_file << "_avx512.bc";
+  } else if (FLAGS_with_x86_avx) {
+    module_file << "_avx.bc";
   } else {
-    module_file = MCSEMA_DIR "/generated/Arch/X86/Semantics/MACHINE32.bc";
+    module_file << ".bc";
   }
 
   // Load the arch-specific bitcode file as a module.
-  auto mod_ptr = llvm::parseIRFile(module_file, err, llvm::getGlobalContext());
+  llvm::SMDiagnostic err;
+  auto mod_ptr = llvm::parseIRFile(module_file.str(), err,
+                                   llvm::getGlobalContext());
   auto module = mod_ptr.get();
   mod_ptr.release();
 
   CHECK(nullptr != module)
-      << "Unable to parse module file: " << module_file;
+      << "Unable to parse module file: " << module_file.str();
 
   return module;
 }

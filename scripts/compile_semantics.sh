@@ -2,20 +2,60 @@
 
 DIR=$(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd ))
 
-cd $DIR
-CXXFLAGS="-std=gnu++11 -g0 -O0 -fno-exceptions -fno-rtti -fno-asynchronous-unwind-tables -I${DIR}"
-$DIR/third_party/llvm/build/bin/clang++ -x c++ -m32 -DADDRESS_SIZE_BITS=32 $CXXFLAGS -E - \
-    < $DIR/mcsema/Arch/X86/Semantics/MACHINE.inc \
-    > $DIR/generated/Arch/X86/Semantics/MACHINE32.cpp
+BLUE=`tput setaf 4`
+RESET=`tput sgr0`
+
+CXXFLAGS=
+CXXFLAGS="${CXXFLAGS} -std=gnu++11 -g0 -O0 -fno-exceptions -fno-rtti"
+CXXFLAGS="${CXXFLAGS} -fno-asynchronous-unwind-tables -I${DIR}" 
+
+compile_x86() {
+    MACROS="-DADDRESS_SIZE_BITS=$1 -DHAS_FEATURE_AVX=$2 -DHAS_FEATURE_AVX512=$3"
+    FILE_NAME=MACHINE
+    if [[ $1 -eq 64 ]] ; then
+        FILE_NAME="${FILE_NAME}_amd64"
+        MESSAGE="Building for AMD64"
+    else
+        FILE_NAME="${FILE_NAME}_x86"
+        MESSAGE="Building for x86"
+    fi
     
-$DIR/third_party/llvm/build/bin/clang++ -x c++ -m64 -DADDRESS_SIZE_BITS=64  $CXXFLAGS -E - \
-    < $DIR/mcsema/Arch/X86/Semantics/MACHINE.inc \
-    > $DIR/generated/Arch/X86/Semantics/MACHINE64.cpp
+    if [[ $3 -eq 1 ]] ; then
+        MESSAGE="${MESSAGE} with AVX512"
+        FILE_NAME="${FILE_NAME}_avx512"
+    elif [[ $2 -eq 1 ]] ; then
+        MESSAGE="${MESSAGE} with AVX"
+        FILE_NAME="${FILE_NAME}_avx"
+    fi
+    
+    echo "${BLUE}${MESSAGE}${RESET}"
+    
+    $DIR/third_party/llvm/build/bin/clang++ -x c++ \
+        -emit-llvm -O3 -m$1 $MACROS $CXXFLAGS \
+	    -c $DIR/mcsema/Arch/X86/Semantics/INSTRUCTIONS.cpp \
+	    -o $DIR/generated/Arch/X86/Semantics/${FILE_NAME}_instr.bc
+	    
+    $DIR/third_party/llvm/build/bin/clang++ -x c++ \
+        -emit-llvm -O0 -m$1 $MACROS $CXXFLAGS \
+        -c $DIR/mcsema/Arch/X86/Semantics/BLOCK.cpp \
+        -o $DIR/generated/Arch/X86/Semantics/${FILE_NAME}_block.bc
+    
+    $DIR/third_party/llvm/build/bin/llvm-link \
+        -o=$DIR/generated/Arch/X86/Semantics/${FILE_NAME}.bc \
+        $DIR/generated/Arch/X86/Semantics/${FILE_NAME}_instr.bc \
+        $DIR/generated/Arch/X86/Semantics/${FILE_NAME}_block.bc
+}
 
-$DIR/third_party/llvm/build/bin/clang++ -g3 -m32 -DADDRESS_SIZE_BITS=32 $CXXFLAGS -emit-llvm \
-    -c $DIR/generated/Arch/X86/Semantics/MACHINE32.cpp \
-    -o $DIR/generated/Arch/X86/Semantics/MACHINE32.bc
+mkdir -p $DIR/generated/
+mkdir -p $DIR/generated/Arch/
+mkdir -p $DIR/generated/Arch/X86/
+mkdir -p $DIR/generated/Arch/X86/Semantics
 
-$DIR/third_party/llvm/build/bin/clang++ -g3 -m64 -DADDRESS_SIZE_BITS=64 $CXXFLAGS -emit-llvm \
-    -c $DIR/generated/Arch/X86/Semantics/MACHINE64.cpp \
-    -o $DIR/generated/Arch/X86/Semantics/MACHINE64.bc
+compile_x86 32 0 0
+compile_x86 32 1 0
+compile_x86 32 1 1
+
+compile_x86 64 0 0
+compile_x86 64 1 0
+compile_x86 64 1 1
+

@@ -28,6 +28,7 @@ PIN_VERSION=2.14-71313-gcc.4.4.7-linux
 echo "${GREEN}Downloading third-party code.${RESET}"
 mkdir -p $DIR/third_party
 
+
 # Download LLVM.
 echo "${YELLOW}Downloading LLVM ${LLVM_VERSION}.${RESET}"
 wget http://llvm.org/releases/3.7.0/llvm-${LLVM_VERSION}.src.tar.xz
@@ -74,8 +75,6 @@ echo "${GREEN}Creating aut-generated files.${RESET}"
 cd $DIR
 mkdir -p $DIR/generated
 mkdir -p $DIR/generated/Arch
-mkdir -p $DIR/generated/Arch/X86
-mkdir -p $DIR/generated/Arch/X86/Semantics
 mkdir -p $DIR/generated/CFG
 
 
@@ -83,7 +82,6 @@ mkdir -p $DIR/generated/CFG
 # `cfg_to_bc`.
 echo "${YELLOW}Generating architecture-specific state files.${RESET}"
 $DIR/scripts/compile_semantics.sh
-
 
 # Generate the protocol buffer file for the CFG definition. The lifter will
 # read in CFG protobuf files and output LLVM bitcode files.

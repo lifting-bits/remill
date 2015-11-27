@@ -1,7 +1,7 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#ifndef MCSEMA_ARCH_SEMANTICS_MACROS_INC_
-#define MCSEMA_ARCH_SEMANTICS_MACROS_INC_
+#ifndef MCSEMA_ARCH_SEMANTICS_MACROS_H_
+#define MCSEMA_ARCH_SEMANTICS_MACROS_H_
 
 #if 64 == ADDRESS_SIZE_BITS
 # define IF_32BIT(...)
@@ -186,4 +186,4 @@
 #define DEF_ISEL_MnW_Mn_In(name, tpl_func) \
     _DEF_ISEL_XnW_Yn_Zn(M, M, I, name, tpl_func)
 
-#endif  // MCSEMA_ARCH_SEMANTICS_MACROS_INC_
+#endif  // MCSEMA_ARCH_SEMANTICS_MACROS_H_
