@@ -59,6 +59,7 @@ add_compile_options(-Wall)
 add_compile_options(-Werror)
 add_compile_options(-pedantic)
 add_compile_options(-DMCSEMA_DIR="${MCSEMA_DIR}")
+add_compile_options(-DGOOGLE_PROTOBUF_NO_RTTI)
 
 add_executable(cfg_to_bc
     ${MCSEMA_DIR}/mcsema/Translate.cpp
@@ -78,7 +79,7 @@ target_link_libraries(cfg_to_bc
 
 target_compile_options(cfg_to_bc PRIVATE
     -std=gnu++11
-    -frtti
+    -fno-rtti
     -g3
     -m64
 )
