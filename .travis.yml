@@ -1,0 +1,11 @@
+# Use the new GCE-based environment w/ Trusty (14.04)
+sudo: required
+dist: trusty
+
+# start simple
+language: cpp
+os: linux
+compiler: clang
+
+# just test if it builds
+script: ./scripts/bootstrap.sh
