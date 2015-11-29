@@ -16,6 +16,7 @@ GENERATED_DIR = os.path.join(MCSEMA_DIR, "generated")
 CFG_DIR = os.path.join(GENERATED_DIR, "CFG")
 
 sys.path.append('/usr/lib/python2.7/dist-packages')
+sys.path.append('/usr/local/lib/python2.7/site-packages/protobuf-2.6.1-py2.7.egg')
 sys.path.append(CFG_DIR)
 import CFG_pb2
 
