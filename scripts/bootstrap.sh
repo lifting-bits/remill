@@ -194,7 +194,10 @@ mkdir -p $DIR/generated/CFG
 # Generate 32- and 64-bit x86 machine state modules for importing by
 # `cfg_to_bc`.
 echo "${YELLOW}Generating architecture-specific state files.${RESET}"
-$DIR/scripts/compile_semantics.sh
+$DIR/scripts/compile_semantics.sh || {
+    echo "${RED}Error compiling instruction semantics.${RESET}"
+    exit 1
+}
 
 # Generate the protocol buffer file for the CFG definition. The lifter will
 # read in CFG protobuf files and output LLVM bitcode files.

@@ -2,6 +2,7 @@
 
 DIR=$(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd ))
 
+RED=`tput setaf 1`
 BLUE=`tput setaf 4`
 RESET=`tput sgr0`
 
@@ -45,6 +46,11 @@ compile_x86() {
         -o=$DIR/generated/Arch/X86/${FILE_NAME}.bc \
         $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc \
         $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc
+        
+    if [[ ! -e $DIR/generated/Arch/X86/${FILE_NAME}.bc ]] ; then
+        echo "${RED}Error: ${MESSAGE}${RESET}"
+        exit 1
+    fi;
 }
 
 mkdir -p $DIR/generated/
@@ -60,3 +66,4 @@ compile_x86 64 0 0
 compile_x86 64 1 0
 compile_x86 64 1 1
 
+exit 0
