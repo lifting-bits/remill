@@ -13,9 +13,9 @@ set(_LLVM_CMAKE_DIR ${MCSEMA_DIR}/third_party/llvm/build/share/llvm/cmake)
 set(_LLVM_LIBRARY_DIR "${LLVM_INSTALL_PREFIX}/lib")
 
 # Find LLVM.
-find_package(LLVM REQUIRED Config)
-#include(LLVMConfig)
-#include(AddLLVM)
+#find_package(LLVM REQUIRED Config)
+include(LLVMConfig)
+include(AddLLVM)
 
 # Add LLVM includes.
 add_definitions(${LLVM_DEFINITIONS})
