@@ -57,15 +57,11 @@ add_executable(cfg_to_bc
 )
 
 llvm_map_components_to_libnames(llvm_libs
-    x86desc
-    x86info
-    x86utils
     irreader
     bitreader
     bitwriter
     transformutils
     scalaropts
-    ipo
 )
 
 target_link_libraries(cfg_to_bc
