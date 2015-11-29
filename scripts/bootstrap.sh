@@ -66,9 +66,6 @@ function download_and_install_gflags()
 	pushd $DIR/third_party/src/gflags
 	mkdir build
 	cd build
-
-	CFLAGS="-isystem ${DIR}/third_party/include" \
-	CXXFLAGS="-isystem ${DIR}/third_party/include" \
 	cmake \
 		-G "Unix Makefiles" \
 		-DCMAKE_INSTALL_PREFIX:STRING=$DIR/third_party \
@@ -92,10 +89,6 @@ function download_and_install_glog()
 	popd
 
 	pushd $DIR/third_party/src/glog
-
-	CFLAGS="-isystem ${DIR}/third_party/include -g3" \
-	CXXFLAGS="-isystem ${DIR}/third_party/include -g3" \
-	LDFLAGS="-g" \
 	./configure \
 		--prefix=$DIR/third_party \
 		--disable-rtti \
@@ -118,10 +111,6 @@ function download_and_install_protobuf()
 	popd
 
 	pushd $DIR/third_party/src/protobuf
-	
-	CFLAGS="-isystem ${DIR}/third_party/include -g3" \
-	CXXFLAGS="-isystem ${DIR}/third_party/include -g3" \
-	LDFLAGS="-g" \
 	./configure \
 		--prefix=$DIR/third_party
 	make
@@ -163,6 +152,13 @@ if [[ -e $DIR/third_party/bin/clang ]]; then
 else
 	download_and_install_llvm
 fi;
+
+export CC="${DIR}/third_party/bin/clang"
+export CXX="${DIR}/third_party/bin/clang++"
+
+export CFLAGS="-isystem ${DIR}/third_party/include -g3"
+export CXXFLAGS="-isystem ${DIR}/third_party/include -g3"
+export LDFLAGS="-g"
 
 if [[ -e $DIR/third_party/lib/libgflags.a ]]; then
 	echo "${BLUE}gflags FOUND!${RESET}"
