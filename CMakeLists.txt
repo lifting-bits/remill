@@ -57,6 +57,7 @@ file(COPY ${MCSEMA_DIR}/generated/Arch DESTINATION ${MCSEMA_DIR}/build/lib)
 # Generic compiler options.
 add_compile_options(-Wall)
 add_compile_options(-Werror)
+add_compile_options(-pedantic)
 add_compile_options(-DMCSEMA_DIR="${MCSEMA_DIR}")
 
 add_executable(cfg_to_bc
