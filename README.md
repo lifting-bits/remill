@@ -1,4 +1,5 @@
 ## mcsema2
+[![Build Status](https://travis-ci.com/trailofbits/mcsema2.svg?token=T1UToSpCvaMxn511Cddb)](https://travis-ci.com/trailofbits/mcsema2)
 
 ### Setup
 
