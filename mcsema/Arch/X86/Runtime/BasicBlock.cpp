@@ -7,7 +7,7 @@ extern "C" {
 // Method that will implement a basic block. We will clone this method for
 // each basic block in the code being lifted.
 [[gnu::used]]
-void __mcsema_basic_block(State &state) noexcept {
+void __mcsema_basic_block(State &state) {
 
   // Define read- and write-specific aliases of each register. We will
   // reference these variables from the bitcode side of things so that,
@@ -422,3 +422,5 @@ void __mcsema_basic_block(State &state) noexcept {
 }
 
 }  // extern C
+
+#include "mcsema/Arch/Runtime/Intrinsics.cpp"

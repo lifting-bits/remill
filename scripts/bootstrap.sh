@@ -219,4 +219,4 @@ cmake \
 	-DCMAKE_PREFIX_PATH:STRING=$DIR/third_party \
 	..
 
-#make all
+make all

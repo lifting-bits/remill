@@ -7,6 +7,9 @@
 
 extern "C" {
 
+// The basic block "template".
+[[gnu::used]] void __mcsema_basic_block(State &state);
+
 // Address computation intrinsic. This is only used for non-zero
 // `address_space`d memory accesses.
 [[gnu::used]] extern addr_t __mcsema_compute_address(const State &state,
@@ -57,5 +60,8 @@ extern "C" {
 [[gnu::used]] extern void __mcsema_interrupt_return(State &);
 
 }  // extern C
+
+[[gnu::used]]
+void __mcsema_intrinsics(void);
 
 #endif  // MCSEMA_ARCH_SEMANTICS_INSTRINSICS_H_
