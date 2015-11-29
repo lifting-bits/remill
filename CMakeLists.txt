@@ -6,16 +6,23 @@ cmake_minimum_required (VERSION 2.8)
 set(CMAKE_C_COMPILER "${MCSEMA_DIR}/third_party/llvm/build/bin/clang")
 set(CMAKE_CXX_COMPILER "${MCSEMA_DIR}/third_party/llvm/build/bin/clang")
 
-list(APPEND CMAKE_MODULE_PATH "${MCSEMA_DIR}/third_party/llvm/build/share/llvm/cmake")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${MCSEMA_DIR}/third_party/llvm/build/share/llvm/cmake/)
+
+set(LLVM_INSTALL_PREFIX ${MCSEMA_DIR}/third_party/llvm/build)
+set(_LLVM_CMAKE_DIR ${MCSEMA_DIR}/third_party/llvm/build/share/llvm/cmake)
+set(_LLVM_LIBRARY_DIR "${LLVM_INSTALL_PREFIX}/lib")
 
 # Find LLVM.
-include(LLVMConfig)
-include(AddLLVM)
+find_package(LLVM REQUIRED Config)
+#include(LLVMConfig)
+#include(AddLLVM)
 
 # Add LLVM includes.
-link_directories(${MCSEMA_DIR}/third_party/llvm/build/lib)
 add_definitions(${LLVM_DEFINITIONS})
 include_directories(${LLVM_INCLUDE_DIRS})
+
+link_directories(${MCSEMA_DIR}/third_party/llvm/build/lib)
+set(LLVM_LIBRARY_DIRS ${MCSEMA_DIR}/third_party/llvm/build/lib)
 
 # Find Protocol Buffers.
 find_package(Protobuf REQUIRED)
@@ -56,6 +63,8 @@ add_executable(cfg_to_bc
     ${MCSEMA_DIR}/mcsema/Translate.cpp
     ${MCSEMA_SOURCE_FILES}
 )
+
+llvm_map_components_to_libnames(llvm_libs x86desc x86info x86utils irreader bitreader bitwriter transformutils scalaropts ipo)
  
 target_link_libraries(cfg_to_bc
     xed
@@ -63,11 +72,7 @@ target_link_libraries(cfg_to_bc
     glog
     gflags
     stdc++
-    LLVMX86Desc LLVMX86Info LLVMX86Utils
-    LLVMIRReader LLVMBitReader LLVMBitWriter
-    LLVMTransformUtils
-    LLVMScalarOpts
-    LLVMipo
+	${llvm_libs}
 )
 
 target_compile_options(cfg_to_bc PRIVATE
