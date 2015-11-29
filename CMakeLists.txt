@@ -6,33 +6,12 @@ cmake_minimum_required (VERSION 2.8)
 set(CMAKE_C_COMPILER "${MCSEMA_DIR}/third_party/bin/clang")
 set(CMAKE_CXX_COMPILER "${MCSEMA_DIR}/third_party/bin/clang++")
 
-#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${MCSEMA_DIR}/third_party/llvm/build/share/llvm/cmake/)
-
 set(LLVM_INSTALL_PREFIX ${MCSEMA_DIR}/third_party)
 set(_LLVM_CMAKE_DIR ${MCSEMA_DIR}/third_party/share/llvm/cmake)
 set(_LLVM_LIBRARY_DIR "${LLVM_INSTALL_PREFIX}/lib")
 
 # Find LLVM.
 find_package(LLVM REQUIRED Config)
-#include(LLVMConfig)
-#include(AddLLVM)
-
-# Add LLVM includes.
-#add_definitions(${LLVM_DEFINITIONS})
-#include_directories(${LLVM_INCLUDE_DIRS})
-
-#link_directories(${MCSEMA_DIR}/third_party/llvm/build/lib)
-#set(LLVM_LIBRARY_DIRS ${MCSEMA_DIR}/third_party/llvm/build/lib)
-
-# Find Protocol Buffers.
-#find_package(Protobuf REQUIRED)
-#include_directories(${PROTOBUF_INCLUDE_DIRS})
-
-# Find XED.
-#include_directories(${MCSEMA_DIR}/third_party/pin/extras/xed-intel64/include)
-#link_directories(${MCSEMA_DIR}/third_party/pin/extras/xed-intel64/lib)
-
-#include_directories(${MCSEMA_DIR}/third_party/include)
 
 # Find all libraries.
 link_directories(${MCSEMA_DIR}/third_party/lib)
