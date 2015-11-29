@@ -1,7 +1,7 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#ifndef MCSEMA_ARCH_SEMANTICS_ACCESSORS_H_
-#define MCSEMA_ARCH_SEMANTICS_ACCESSORS_H_
+#ifndef MCSEMA_ARCH_RUNTIME_OPERATORS_H_
+#define MCSEMA_ARCH_RUNTIME_OPERATORS_H_
 
 namespace {
 
@@ -217,4 +217,4 @@ MAKE_ACCESSORS(uint64_t, 64)
 
 }  // namespace
 
-#endif  // MCSEMA_ARCH_SEMANTICS_ACCESSORS_H_
+#endif  // MCSEMA_ARCH_RUNTIME_OPERATORS_H_

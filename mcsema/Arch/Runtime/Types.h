@@ -1,12 +1,14 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#ifndef MCSEMA_ARCH_SEMANTICS_TYPES_H_
-#define MCSEMA_ARCH_SEMANTICS_TYPES_H_
+#ifndef MCSEMA_ARCH_RUNTIME_TYPES_H_
+#define MCSEMA_ARCH_RUNTIME_TYPES_H_
 
+#include "mcsema/Arch/Runtime/Util.h"
 #include <cstdint>
+
+#include <functional>
 #include <type_traits>
 
-#include "mcsema/Arch/Semantics/MACROS.h"
 
 struct State;
 
@@ -391,4 +393,4 @@ struct BaseType<VnW<T>> {
   typedef typename BaseType<T>::Type Type;
 };
 
-#endif  // MCSEMA_ARCH_SEMANTICS_TYPES_H_
+#endif  // MCSEMA_ARCH_RUNTIME_TYPES_H_

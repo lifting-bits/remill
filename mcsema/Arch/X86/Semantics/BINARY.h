@@ -1,7 +1,5 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#include <functional>
-
 namespace {
 
 template <typename D, typename S1, typename S2>

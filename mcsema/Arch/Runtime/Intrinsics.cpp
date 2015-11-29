@@ -1,6 +1,6 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#include "mcsema/Arch/Semantics/INTRINSICS.h"
+#include "mcsema/Arch/Runtime/Intrinsics.h"
 
 // This is just a hack to make sure all these functions appear in the bitcode
 // file!

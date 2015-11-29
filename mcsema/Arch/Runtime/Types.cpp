@@ -1,7 +1,7 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#include "mcsema/Arch/Semantics/MACROS.h"
-#include "mcsema/Arch/Semantics/TYPES.h"
+#include "mcsema/Arch/Runtime/Types.h"
+#include "mcsema/Arch/Runtime/Util.h"
 
 vec128_t::vec128_t(void)
     : iwords{0} {}

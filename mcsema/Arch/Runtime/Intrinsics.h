@@ -3,7 +3,7 @@
 #ifndef MCSEMA_ARCH_SEMANTICS_INSTRINSICS_H_
 #define MCSEMA_ARCH_SEMANTICS_INSTRINSICS_H_
 
-#include "mcsema/Arch/Semantics/TYPES.h"
+#include "mcsema/Arch/Runtime/Types.h"
 
 extern "C" {
 

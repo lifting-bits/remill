@@ -1,6 +1,6 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#include "mcsema/Arch/X86/Semantics/STATE.h"
+#include "mcsema/Arch/X86/Runtime/State.h"
 
 extern "C" {
 

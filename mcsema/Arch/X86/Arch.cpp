@@ -73,7 +73,7 @@ llvm::Module *Arch::CreateModule(void) const {
 
   // TODO(pag): Eventually make this relative to the build/install directory,
   //            such that it works in both cases.
-  module_file << MCSEMA_DIR "/generated/Arch/X86/Semantics/MACHINE_";
+  module_file << MCSEMA_DIR "/generated/Arch/X86/Semantics_";
   module_file << (64 == address_size ? "amd64" : "x86");
 
   // Select a bitcode file with specific features.

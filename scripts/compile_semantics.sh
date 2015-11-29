@@ -11,7 +11,7 @@ CXXFLAGS="${CXXFLAGS} -fno-asynchronous-unwind-tables -I${DIR}"
 
 compile_x86() {
     MACROS="-DADDRESS_SIZE_BITS=$1 -DHAS_FEATURE_AVX=$2 -DHAS_FEATURE_AVX512=$3"
-    FILE_NAME=MACHINE
+    FILE_NAME=Semantics
     if [[ $1 -eq 64 ]] ; then
         FILE_NAME="${FILE_NAME}_amd64"
         MESSAGE="Building for AMD64"
@@ -32,24 +32,24 @@ compile_x86() {
     
     $DIR/third_party/llvm/build/bin/clang++ -x c++ \
         -emit-llvm -O3 -m$1 $MACROS $CXXFLAGS \
-	    -c $DIR/mcsema/Arch/X86/Semantics/INSTRUCTIONS.cpp \
-	    -o $DIR/generated/Arch/X86/Semantics/${FILE_NAME}_instr.bc
+	    -c $DIR/mcsema/Arch/X86/Runtime/Instructions.cpp \
+	    -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc
 	    
     $DIR/third_party/llvm/build/bin/clang++ -x c++ \
         -emit-llvm -O0 -m$1 $MACROS $CXXFLAGS \
-        -c $DIR/mcsema/Arch/X86/Semantics/BLOCK.cpp \
-        -o $DIR/generated/Arch/X86/Semantics/${FILE_NAME}_block.bc
+        -c $DIR/mcsema/Arch/X86/Runtime/BasicBlock.cpp \
+        -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc
     
     $DIR/third_party/llvm/build/bin/llvm-link \
-        -o=$DIR/generated/Arch/X86/Semantics/${FILE_NAME}.bc \
-        $DIR/generated/Arch/X86/Semantics/${FILE_NAME}_instr.bc \
-        $DIR/generated/Arch/X86/Semantics/${FILE_NAME}_block.bc
+        -o=$DIR/generated/Arch/X86/${FILE_NAME}.bc \
+        $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc \
+        $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc
 }
 
 mkdir -p $DIR/generated/
 mkdir -p $DIR/generated/Arch/
 mkdir -p $DIR/generated/Arch/X86/
-mkdir -p $DIR/generated/Arch/X86/Semantics
+mkdir -p $DIR/generated/Arch/X86/Runtime
 
 compile_x86 32 0 0
 compile_x86 32 1 0

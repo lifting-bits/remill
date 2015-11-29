@@ -1,9 +1,7 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#include "mcsema/Arch/X86/Semantics/STATE.h"
-
-#include "mcsema/Arch/Semantics/TYPES.cpp"
-#include "mcsema/Arch/Semantics/INTRINSICS.cpp"
+#ifndef MCSEMA_ARCH_X86_RUNTIME_TYPES_H_
+#define MCSEMA_ARCH_X86_RUNTIME_TYPES_H_
 
 typedef RnW<uint8_t> R8W;
 typedef RnW<uint16_t> R16W;
@@ -52,19 +50,7 @@ typedef In<uint16_t> I16;
 typedef In<uint32_t> I32;
 IF_64BIT( typedef In<uint64_t> I64; )
 
-
-// Immediate selectors -------------
-
 typedef addr_t PC;
 typedef addr_t ADDR;
 
-#include "mcsema/Arch/X86/Semantics/FLAGS.h"
-#include "mcsema/Arch/X86/Semantics/BINARY.h"
-#include "mcsema/Arch/X86/Semantics/CALL_RET.h"
-#include "mcsema/Arch/X86/Semantics/COND_BR.h"
-#include "mcsema/Arch/X86/Semantics/DATAXFER.h"
-#include "mcsema/Arch/X86/Semantics/LOGICAL.h"
-#include "mcsema/Arch/X86/Semantics/MISC.h"
-#include "mcsema/Arch/X86/Semantics/STACKPUSH.h"
-#include "mcsema/Arch/X86/Semantics/STACKPOP.h"
-#include "mcsema/Arch/X86/Semantics/UNCOND_BR.h"
+#endif  // MCSEMA_ARCH_X86_RUNTIME_TYPES_H_

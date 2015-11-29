@@ -1,6 +1,6 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#include "mcsema/Arch/Semantics/SEMANTICS.h"
+#include "mcsema/Arch/Runtime/Runtime.h"
 
 #ifndef HAS_FEATURE_AVX
 # define HAS_FEATURE_AVX 1
