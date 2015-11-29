@@ -30,17 +30,17 @@ compile_x86() {
     
     echo "${BLUE}${MESSAGE}${RESET}"
     
-    $DIR/third_party/llvm/build/bin/clang++ -x c++ \
+    $DIR/third_party/bin/clang++ -x c++ \
         -emit-llvm -O3 -m$1 $MACROS $CXXFLAGS \
 	    -c $DIR/mcsema/Arch/X86/Runtime/Instructions.cpp \
 	    -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc
 	    
-    $DIR/third_party/llvm/build/bin/clang++ -x c++ \
+    $DIR/third_party/bin/clang++ -x c++ \
         -emit-llvm -O0 -m$1 $MACROS $CXXFLAGS \
         -c $DIR/mcsema/Arch/X86/Runtime/BasicBlock.cpp \
         -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc
     
-    $DIR/third_party/llvm/build/bin/llvm-link \
+    $DIR/third_party/bin/llvm-link \
         -o=$DIR/generated/Arch/X86/${FILE_NAME}.bc \
         $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc \
         $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc

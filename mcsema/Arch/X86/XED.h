@@ -11,7 +11,7 @@
 #pragma clang diagnostic ignored "-Wswitch-enum"
 extern "C" {
 #define XED_DLL
-#include <pin/extras/xed-intel64/include/xed-interface.h>
+#include <intel/xed-interface.h>
 }  // extern C
 #pragma clang diagnostic pop
 
