@@ -12,6 +12,7 @@ before_install:
   - sudo apt-get install -y cmake
   - sudo apt-get install -y autotools-dev
   - sudo apt-get install -y autoconf
+  - sudo apt-get install -y libstdc++-4.8-dev
 script: "./scripts/bootstrap.sh"
 notifications:
   slack:
