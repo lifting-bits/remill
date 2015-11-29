@@ -6,8 +6,9 @@ BLUE=`tput setaf 4`
 RESET=`tput sgr0`
 
 CXXFLAGS=
-CXXFLAGS="${CXXFLAGS} -std=gnu++11 -g0 -O0 -fno-exceptions -fno-rtti"
-CXXFLAGS="${CXXFLAGS} -fno-asynchronous-unwind-tables -I${DIR}" 
+CXXFLAGS+=" -isystem ${DIR}/third_party/include"
+CXXFLAGS+=" -std=gnu++11 -g0 -O0 -fno-exceptions -fno-rtti"
+CXXFLAGS+=" -fno-asynchronous-unwind-tables -I${DIR}"
 
 compile_x86() {
     MACROS="-DADDRESS_SIZE_BITS=$1 -DHAS_FEATURE_AVX=$2 -DHAS_FEATURE_AVX512=$3"
