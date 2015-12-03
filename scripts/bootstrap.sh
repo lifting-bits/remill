@@ -13,7 +13,9 @@ RESET=`tput sgr0`
 LLVM_RELEASE=3.7.0
 GLOG_RELEASE=v0.3.4
 GFLAGS_RELEASE=v2.1.2
-PROTOBUF_VERSION=protobuf-2.6.1
+PROTOBUF_VERSION=2.5.0
+PROTOBUF_RELEASE=protobuf-${PROTOBUF_VERSION}
+GTEST_RELEASE=release-1.7.0
 
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
     PIN_VERSION=pin-2.14-71313-gcc.4.4.7-linux
@@ -32,7 +34,8 @@ PIN_URL=http://software.intel.com/sites/landingpage/pintool/downloads/${PIN_VERS
 LLVM_URL=http://llvm.org/releases/${LLVM_RELEASE}/${LLVM_VERSION}.tar.xz
 GLOG_URL=https://github.com/google/glog/archive/${GLOG_RELEASE}.tar.gz
 GFLAGS_URL=https://github.com/gflags/gflags/archive/${GFLAGS_RELEASE}.tar.gz
-PROTOBUF_URL=https://github.com/google/protobuf/releases/download/v2.6.1/${PROTOBUF_VERSION}.tar.gz
+PROTOBUF_URL=https://github.com/google/protobuf/releases/download/v${PROTOBUF_VERSION}/${PROTOBUF_RELEASE}.tar.gz
+GTEST_URL=https://github.com/google/googletest/archive/${GTEST_RELEASE}.tar.gz
 
 function download_and_install_llvm()
 {
@@ -106,8 +109,8 @@ function download_and_install_protobuf()
 	pushd $DIR/third_party
 	curl -L -O ${PROTOBUF_URL}
 	mkdir -p $DIR/third_party/src/protobuf
-	tar xf ${PROTOBUF_VERSION}.tar.gz -C src/protobuf/ --strip-components=1
-	rm ${PROTOBUF_VERSION}.tar.gz
+	tar xf ${PROTOBUF_RELEASE}.tar.gz -C src/protobuf/ --strip-components=1
+	rm ${PROTOBUF_RELEASE}.tar.gz
 	popd
 
 	pushd $DIR/third_party/src/protobuf
@@ -118,6 +121,30 @@ function download_and_install_protobuf()
 	popd
 }
 
+function download_and_install_gtest()
+{
+    echo "${YELLOW}Downloading and installing googletest.${RESET}"
+    pushd $DIR/third_party
+    curl -L -O ${GTEST_URL}
+    mkdir -p $DIR/third_party/src/googletest
+    tar xf ${GTEST_RELEASE}.tar.gz -C src/googletest/ --strip-components=1
+    rm ${GTEST_RELEASE}.tar.gz
+    popd
+    
+    pushd $DIR/third_party/src/googletest
+    mkdir build
+    cd build
+    cmake \
+        -G "Unix Makefiles" \
+        -DCMAKE_INSTALL_PREFIX:STRING=$DIR/third_party \
+        -DGTEST_HAS_PTHREAD=0 \
+        -DGTEST_CREATE_SHARED_LIBRARY=0 \
+        ..
+    make
+    cp $DIR/third_party/src/googletest/build/libgtest.a $DIR/third_party/lib
+    cp -r $DIR/third_party/src/googletest/include/gtest $DIR/third_party/include
+    popd
+}
 
 function download_and_extract_pin()
 {
@@ -178,6 +205,12 @@ else
 	download_and_install_protobuf
 fi;
 
+if [[ -e $DIR/third_party/lib/libgtest.a ]]; then
+    echo "${BLUE}googletest FOUND!${RESET}"
+else
+    download_and_install_gtest
+fi;
+
 if [[ -e $DIR/third_party/bin/xed ]]; then
 	echo "${BLUE}pin FOUND!${RESET}"
 else
@@ -190,6 +223,9 @@ cd $DIR
 mkdir -p $DIR/generated
 mkdir -p $DIR/generated/Arch
 mkdir -p $DIR/generated/CFG
+
+touch $DIR/generated/__init__.py
+touch $DIR/generated/CFG/__init__.py
 
 # Generate 32- and 64-bit x86 machine state modules for importing by
 # `cfg_to_bc`.
