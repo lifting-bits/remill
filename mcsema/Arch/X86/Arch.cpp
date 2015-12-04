@@ -56,7 +56,8 @@ void Arch::Decode(
   auto err = xed_decode(&xedd, bytes, num_bytes);
 
   CHECK(XED_ERROR_NONE == err)
-      << "Unable to decode instruction with error: " << err;
+      << "Unable to decode instruction with error: "
+      << xed_error_enum_t2str(err);
 
   CHECK(xed_decoded_inst_get_length(&xedd) == num_bytes)
       << "Size of decoded instruction (" << xed_decoded_inst_get_length(&xedd)

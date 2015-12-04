@@ -26,7 +26,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
 	LLVM_VERSION=clang+llvm-${LLVM_RELEASE}-x86_64-apple-darwin
 
 else
-    echo "${RED}Unsupported platform: ${OSTYPE}${RESET}"
+    printf "${RED}Unsupported platform: ${OSTYPE}${RESET}"
     exit 1
 fi
 
@@ -37,9 +37,30 @@ GFLAGS_URL=https://github.com/gflags/gflags/archive/${GFLAGS_RELEASE}.tar.gz
 PROTOBUF_URL=https://github.com/google/protobuf/releases/download/v${PROTOBUF_VERSION}/${PROTOBUF_RELEASE}.tar.gz
 GTEST_URL=https://github.com/google/googletest/archive/${GTEST_RELEASE}.tar.gz
 
+function category()
+{
+    printf "\n${GREEN}${1}${RESET}\n"
+}
+
+function sub_category()
+{
+    printf "${YELLOW}${1}${RESET}\n"
+}
+
+function notice()
+{
+    printf "${BLUE}${1}${RESET}\n"
+}
+
+function error()
+{
+    printf "${RED}${1}${RESET}\n"
+    exit 1
+}
+
 function download_and_install_llvm()
 {
-	echo "${YELLOW}Downloading LLVM and clang ${LLVM_VERSION}.${RESET}"
+	sub_category "Downloading LLVM and clang ${LLVM_VERSION}."
 
 	# Create third_party directory if it doesn't exist
 	mkdir -p $DIR/third_party
@@ -57,7 +78,7 @@ function download_and_install_llvm()
 
 function download_and_install_gflags()
 {
-	echo "${YELLOW}Downloading and installing gflags.${RESET}"
+	sub_category "Downloading and installing gflags."
 
 	pushd $DIR/third_party
 	curl -L -O ${GFLAGS_URL}
@@ -81,7 +102,7 @@ function download_and_install_gflags()
 
 function download_and_install_glog()
 {
-	echo "${YELLOW}Downloading and installing glog.${RESET}"
+	sub_category "Downloading and installing glog."
 
 	pushd $DIR/third_party
 
@@ -104,7 +125,7 @@ function download_and_install_glog()
 
 function download_and_install_protobuf()
 {
-	echo "${YELLOW}Downloading and installing protobuf.${RESET}"
+	sub_category "Downloading and installing protobuf."
 
 	pushd $DIR/third_party
 	curl -L -O ${PROTOBUF_URL}
@@ -123,7 +144,7 @@ function download_and_install_protobuf()
 
 function download_and_install_gtest()
 {
-    echo "${YELLOW}Downloading and installing googletest.${RESET}"
+    sub_category "Downloading and installing googletest."
     pushd $DIR/third_party
     curl -L -O ${GTEST_URL}
     mkdir -p $DIR/third_party/src/googletest
@@ -148,7 +169,7 @@ function download_and_install_gtest()
 
 function download_and_extract_pin()
 {
-	echo "${YELLOW}Downloading and installing pin.${RESET}"
+	sub_category "Downloading and installing pin."
 
 	pushd $DIR/third_party
 	curl -L -O ${PIN_URL}
@@ -164,94 +185,117 @@ function download_and_extract_pin()
 	cp -r $DIR/third_party/src/pin/extras/xed-intel64/bin/* $DIR/third_party/bin
 }
 
-# Fetch all dependencies.
-echo "${GREEN}Checking dependencies.${RESET}"
-
-mkdir -p $DIR/third_party
-mkdir -p $DIR/third_party/bin
-mkdir -p $DIR/third_party/lib
-mkdir -p $DIR/third_party/include
-mkdir -p $DIR/third_party/src
-mkdir -p $DIR/third_party/share
-
-if [[ -e $DIR/third_party/bin/clang ]]; then
-	echo "${BLUE}LLVM and clang FOUND!${RESET}"
-else
-	download_and_install_llvm
-fi;
-
-export CC="${DIR}/third_party/bin/clang"
-export CXX="${DIR}/third_party/bin/clang++"
-
-export CFLAGS="-isystem ${DIR}/third_party/include -g3"
-export CXXFLAGS="-isystem ${DIR}/third_party/include -g3"
-export LDFLAGS="-g"
-
-if [[ -e $DIR/third_party/lib/libgflags.a ]]; then
-	echo "${BLUE}gflags FOUND!${RESET}"
-else
-	download_and_install_gflags
-fi;
-
-if [[ -e $DIR/third_party/lib/libglog.a ]]; then
-	echo "${BLUE}glog FOUND!${RESET}"
-else
-	download_and_install_glog
-fi;
-
-if [[ -e $DIR/third_party/bin/protoc ]]; then
-	echo "${BLUE}protobuf FOUND!${RESET}"
-else
-	download_and_install_protobuf
-fi;
-
-if [[ -e $DIR/third_party/lib/libgtest.a ]]; then
-    echo "${BLUE}googletest FOUND!${RESET}"
-else
-    download_and_install_gtest
-fi;
-
-if [[ -e $DIR/third_party/bin/xed ]]; then
-	echo "${BLUE}pin FOUND!${RESET}"
-else
-	download_and_extract_pin
-fi;
-
-# Create the generated files directories.
-echo "${GREEN}Auto-generating files.${RESET}"
-cd $DIR
-mkdir -p $DIR/generated
-mkdir -p $DIR/generated/Arch
-mkdir -p $DIR/generated/CFG
-
-touch $DIR/generated/__init__.py
-touch $DIR/generated/CFG/__init__.py
-
-# Generate 32- and 64-bit x86 machine state modules for importing by
-# `cfg_to_bc`.
-echo "${YELLOW}Generating architecture-specific state files.${RESET}"
-$DIR/scripts/compile_semantics.sh || {
-    echo "${RED}Error compiling instruction semantics.${RESET}"
-    exit 1
+function create_directory_tree()
+{
+    mkdir -p $DIR/third_party
+    mkdir -p $DIR/third_party/bin
+    mkdir -p $DIR/third_party/lib
+    mkdir -p $DIR/third_party/include
+    mkdir -p $DIR/third_party/src
+    mkdir -p $DIR/third_party/share
+    
+    mkdir -p $DIR/generated
+    mkdir -p $DIR/generated/Arch
+    mkdir -p $DIR/generated/CFG
+    
+    touch $DIR/generated/__init__.py
+    touch $DIR/generated/CFG/__init__.py
 }
 
-# Generate the protocol buffer file for the CFG definition. The lifter will
-# read in CFG protobuf files and output LLVM bitcode files.
-echo "${YELLOW}Generating protocol buffers.${RESET}"
-cd $DIR/generated/CFG
-cp $DIR/mcsema/CFG/CFG.proto $DIR/generated/CFG
-$DIR/third_party/bin/protoc --cpp_out=. CFG.proto
-$DIR/third_party/bin/protoc --python_out=. CFG.proto
+function change_compiler_to_llvm()
+{
+    export CC="${DIR}/third_party/bin/clang"
+    export CXX="${DIR}/third_party/bin/clang++"
+    
+    export CFLAGS="-isystem ${DIR}/third_party/include -g3"
+    export CXXFLAGS="-isystem ${DIR}/third_party/include -g3"
+    export LDFLAGS="-g"
+}
 
-# Build McSema. McSema will be built with the above version of Clang.
-echo "${GREEN}Compiling McSema.${RESET}"
-cd $DIR
-mkdir -p $DIR/build
-cd $DIR/build
-cmake \
-	-G "Unix Makefiles" \
-	-DMCSEMA_DIR:STRING=$DIR \
-	-DCMAKE_PREFIX_PATH:STRING=$DIR/third_party \
-	..
+function download_dependencies()
+{
+    category "Checking dependencies."
+    
+    if [[ -e $DIR/third_party/bin/clang ]]; then
+        notice "LLVM and clang FOUND!"
+	else
+	    download_and_install_llvm
+	fi;
+	
+	change_compiler_to_llvm
 
-make all
+    if [[ -e $DIR/third_party/lib/libgflags.a ]]; then
+        notice "gflags FOUND!"
+	else
+	    download_and_install_gflags
+	fi;
+	
+	if [[ -e $DIR/third_party/lib/libglog.a ]]; then
+	    notice "${BLUE}glog FOUND!"
+	else
+	    download_and_install_glog
+	fi;
+	
+	if [[ -e $DIR/third_party/bin/protoc ]]; then
+	    notice "${BLUE}protobuf FOUND!"
+	else
+	    download_and_install_protobuf
+	fi;
+	
+	if [[ -e $DIR/third_party/lib/libgtest.a ]]; then
+	    notice "${BLUE}googletest FOUND!"
+	else
+	    download_and_install_gtest
+	fi;
+	
+	if [[ -e $DIR/third_party/bin/xed ]]; then
+	    notice "${BLUE}pin FOUND!"
+	else
+	    download_and_extract_pin
+	fi;
+}
+
+function generate_files()
+{
+    # Create the generated files directories.
+	category "Auto-generating files."
+	pushd $DIR
+	
+	# Generate 32- and 64-bit x86 machine state modules for importing by
+	# `cfg_to_bc`.
+	sub_category "Generating architecture-specific state files."
+	$DIR/scripts/compile_semantics.sh || {
+	    error "Error compiling instruction semantics."
+	}
+	
+	# Generate the protocol buffer file for the CFG definition. The lifter will
+	# read in CFG protobuf files and output LLVM bitcode files.
+	sub_category "Generating protocol buffers."
+	cd $DIR/generated/CFG
+	cp $DIR/mcsema/CFG/CFG.proto $DIR/generated/CFG
+	$DIR/third_party/bin/protoc --cpp_out=. CFG.proto
+	$DIR/third_party/bin/protoc --python_out=. CFG.proto
+	
+	popd
+}
+
+function build_mcsema()
+{
+    category "Compiling McSema."
+	pushd $DIR
+	mkdir -p $DIR/build
+	pushd $DIR/build
+	cmake \
+	    -G "Unix Makefiles" \
+	    -DMCSEMA_DIR:STRING=$DIR \
+	    -DCMAKE_PREFIX_PATH:STRING=$DIR/third_party \
+	    ..
+	make all
+	popd
+	popd
+}
+
+create_directory_tree
+download_dependencies
+generate_files
+build_mcsema

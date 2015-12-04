@@ -3,6 +3,8 @@
 project(mcsema)
 cmake_minimum_required (VERSION 2.8)
 
+enable_language(ASM)
+
 set(CMAKE_C_COMPILER "${MCSEMA_DIR}/third_party/bin/clang")
 set(CMAKE_CXX_COMPILER "${MCSEMA_DIR}/third_party/bin/clang++")
 
@@ -41,22 +43,24 @@ file(MAKE_DIRECTORY ${MCSEMA_DIR}/build/lib)
 file(COPY ${MCSEMA_DIR}/generated/Arch DESTINATION ${MCSEMA_DIR}/build/lib)
 
 # Generic compiler options.
-add_compile_options(-Wall)
-add_compile_options(-Werror)
-add_compile_options(-pedantic)
-add_compile_options(-DMCSEMA_DIR="${MCSEMA_DIR}")
-add_compile_options(-DGOOGLE_PROTOBUF_NO_RTTI)
-add_compile_options(-D__STDC_CONSTANT_MACROS)
-add_compile_options(-D__STDC_LIMIT_MACROS)
-add_compile_options(-Wno-nested-anon-types)
-add_compile_options(-fno-rtti)
-
-add_executable(cfg_to_bc
-    ${MCSEMA_DIR}/mcsema/Translate.cpp
-    ${MCSEMA_SOURCE_FILES}
+add_compile_options(
+    -Wall
+    -Werror
+    -pedantic
+    -DMCSEMA_DIR="${MCSEMA_DIR}"
+    -DGOOGLE_PROTOBUF_NO_RTTI
+    -D__STDC_CONSTANT_MACROS
+    -D__STDC_LIMIT_MACROS
+    -Wno-nested-anon-types
+    -fno-rtti
+    -g3
+    -m64
+    -std=gnu++11
+    -Wno-variadic-macros
+    -I${MCSEMA_DIR}
 )
 
-llvm_map_components_to_libnames(llvm_libs
+llvm_map_components_to_libnames(LLVM_LIBS
     irreader
     bitreader
     bitwriter
@@ -64,18 +68,53 @@ llvm_map_components_to_libnames(llvm_libs
     scalaropts
 )
 
-target_link_libraries(cfg_to_bc
+set(MCSEMA_LIBS
     libxed.a
     libprotobuf.a
     libgflags.a
     libglog.a
+    pthread
     stdc++
-	${llvm_libs}
 )
 
-target_compile_options(cfg_to_bc PRIVATE
-    -std=gnu++11
-    -fno-rtti
-    -g3
-    -m64
+# cfg_to_bc --------------------------------------------------------------------
+add_executable(cfg_to_bc
+    ${MCSEMA_DIR}/mcsema/Translate.cpp
+    ${MCSEMA_SOURCE_FILES}
+)
+
+target_link_libraries(cfg_to_bc
+    ${MCSEMA_LIBS}
+    ${LLVM_LIBS}
+)
+
+# run_tests_amd64_avx ----------------------------------------------------------
+#add_executable(run_tests_amd64_avx
+#    ${MCSEMA_DIR}/tests/X86/Run.cpp
+#    ${MCSEMA_DIR}/tests/X86/Tests.S
+#)
+
+#target_link_libraries(run_tests_amd64_avx
+#    ${MCSEMA_LIBS}
+#)
+
+#target_compile_options(run_tests_amd64_avx PRIVATE
+#    -DADDRESS_SIZE_BITS=64
+#    -DHAS_FEATURE_AVX=1
+#)
+
+# gen_test_cfg_amd64_avx -------------------------------------------------------
+add_executable(gen_test_cfg_amd64_avx
+    ${MCSEMA_DIR}/tests/X86/Generate.cpp
+    ${MCSEMA_DIR}/tests/X86/Tests.S
+    "${MCSEMA_DIR}/mcsema/CFG/CFG.cpp"
+)
+
+target_link_libraries(gen_test_cfg_amd64_avx
+    ${MCSEMA_LIBS}
+)
+
+target_compile_options(gen_test_cfg_amd64_avx PRIVATE
+    -DADDRESS_SIZE_BITS=64
+    -DHAS_FEATURE_AVX=1
 )
