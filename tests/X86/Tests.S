@@ -18,8 +18,10 @@
 /* Note:    Apple mangles C symbol names to have a leading underscore. */
 #ifdef __APPLE__
 # define SYMBOL(x) _ ## x
+# define DECLARE_WEAK_SYMBOL(x) .weak_reference x
 #else
 # define SYMBOL(x) x
+# define DECLARE_WEAK_SYMBOL(x) .weak x
 #endif
 
 /* This is the name of the function that will be generated. */
@@ -50,7 +52,7 @@
     .file __FILE__ ; \
     .text ; \
     .align 16 ; \
-    .weak LIFTED_FUNC(instr_name) ; \
+    DECLARE_WEAK_SYMBOL(LIFTED_FUNC(instr_name)) ; \
     .globl TEST_FUNC(instr_name) ; \
     .type TEST_FUNC(instr_name), @function ; \
 TEST_FUNC(instr_name): ; \

@@ -7,7 +7,6 @@
 
 namespace test {
 
-
 struct alignas(128) Stack {
   uint8_t bytes[kPageSize];
 };
