@@ -117,4 +117,5 @@ target_link_libraries(gen_test_cfg_amd64_avx
 target_compile_options(gen_test_cfg_amd64_avx PRIVATE
     -DADDRESS_SIZE_BITS=64
     -DHAS_FEATURE_AVX=1
+    -DIN_TEST_GENERATOR
 )

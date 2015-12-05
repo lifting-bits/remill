@@ -18,10 +18,20 @@
 /* Note:    Apple mangles C symbol names to have a leading underscore. */
 #ifdef __APPLE__
 # define SYMBOL(x) _ ## x
-# define DECLARE_WEAK_SYMBOL(x) .weak_reference x
 #else
 # define SYMBOL(x) x
-# define DECLARE_WEAK_SYMBOL(x) .weak x
+#endif
+
+/* In the generator build, we "stub-out" the lifted function. In the Run build,
+ * we reference it as an external that will get linked in.
+ */
+#ifdef IN_TEST_GENERATOR
+# define DECLARE_LIFTED_FUNC(x) \
+    .globl LIFTED_FUNC(x) ; \
+    LIFTED_FUNC(x): ud2 ;
+#else
+# define DECLARE_LIFTED_FUNC(x) \
+    .extern LIFTED_FUNC(x)
 #endif
 
 /* This is the name of the function that will be generated. */
@@ -40,29 +50,19 @@
  * structures are placed into the `__x86_test_table` section of the binary, and
  * bracketed by the `__x86_test_table_begin` and `__x86_test_table_end`
  * symbols, respectively.
- *
- * Note:    The lifted function is defined as a weak symbol. This is because
- *          this assembly file is linked to both Run.cpp and Generate.cpp. In
- *          Generate.cpp, the symbol will go undefined. In Run.cpp, it will
- *          end up being defined because we will link the lifted test assembly
- *          (with renamed instruction functions) with Run.cpp, thus resolving
- *          the symbols.
  */
 #define TEST_BEGIN(instr_name) \
     .file __FILE__ ; \
     .text ; \
+    DECLARE_LIFTED_FUNC(instr_name) ; \
     .align 16 ; \
-    DECLARE_WEAK_SYMBOL(LIFTED_FUNC(instr_name)) ; \
     .globl TEST_FUNC(instr_name) ; \
-    .type TEST_FUNC(instr_name), @function ; \
 TEST_FUNC(instr_name): ; \
-    .cfi_startproc ; \
     995: \
-    .pushsection .data ; \
+    .data ; \
     996: \
     .asciz #instr_name ; \
-    .popsection ; \
-    .pushsection "__x86_test_table", "a" ; \
+    .section "__x86_test_table", "a" ; \
     .balign 4 ; \
     .long 995b + 0 ; \
     .long 999f + 0 ; \
@@ -70,7 +70,8 @@ TEST_FUNC(instr_name): ; \
     .long 997f + 0 ; \
     .long 998f + 0 ; \
     .long LIFTED_FUNC(instr_name) + 0; \
-    .popsection ;
+    .text ; \
+    .cfi_startproc ;
 
 /* Specify where the instruction to be tested begins and ends. We will decode
  * and disassemble this instruction so that, for each test, we can print out
@@ -87,8 +88,7 @@ TEST_FUNC(instr_name): ; \
 #define TEST_END(instr_name) \
     999: \
     ret ; \
-    .cfi_endproc ; \
-    .size TEST_FUNC(instr_name), . - TEST_FUNC(instr_name) ;
+    .cfi_endproc ;
 
 /* Specify the beginning and end of a 64-bit-specific test.
  *
@@ -140,20 +140,19 @@ TEST_FUNC(instr_name): ; \
     .text ;
 
 /* Create a symbol that represents the start of the test information table. */
-    .pushsection "__x86_test_table", "a" ;
+    .section "__x86_test_table", "a" ;
     .balign 4 ;
     .globl SYMBOL(__x86_test_table_begin) ;
 SYMBOL(__x86_test_table_begin):
-    .popsection ;
+    .text ;
 
 /* Bring in all semantic tests. */
 #include "tests/X86/BINARY/ADD.S"
 
 /* Create a symbol that represents the end of the test information table. */
-    .pushsection "__x86_test_table", "a" ;
+    .section "__x86_test_table", "a" ;
     .balign 4 ;
     .globl SYMBOL(__x86_test_table_end) ;
 SYMBOL(__x86_test_table_end):
-    .popsection ;
 
 #endif  /* TESTS_X86_TESTS_S_ */
