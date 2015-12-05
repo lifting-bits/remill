@@ -1,5 +1,6 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <sstream>

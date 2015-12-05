@@ -19,6 +19,9 @@
 # define SYMBOL_PREFIX ""
 #endif
 
+DEFINE_string(cfg_out, "/dev/stdout",
+              "Name of the file in which to place the generated CFG protobuf.");
+
 namespace test {
 namespace {
 
@@ -98,9 +101,6 @@ static void AddFunctionToModule(mcsema::cfg::Module *module,
 }
 
 }  // namespace
-
-DEFINE_string(cfg_out, "/dev/stdout",
-              "Name of the file in which to place the generated CFG protobuf.");
 
 extern "C" int main(int argc, char *argv[]) {
 
