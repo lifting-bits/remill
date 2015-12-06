@@ -1,5 +1,6 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <sstream>
@@ -17,6 +18,8 @@
 #include <llvm/Support/ToolOutputFile.h>
 
 #include "mcsema/BC/Util.h"
+
+DECLARE_string(os);
 
 namespace mcsema {
 
@@ -105,11 +108,11 @@ namespace {
 
 // Returns a symbol name that is "correct" for the host OS.
 std::string CanonicalName(const llvm::Module *M, std::string name) {
-  const auto &DL = M->getDataLayout();
-  const char prefix = DL.getGlobalPrefix();
-
   std::stringstream name_ss;
-  name_ss << &prefix << name;
+  if (FLAGS_os == "mac") {
+    name_ss << "_";
+  }
+  name_ss << name;
   return name_ss.str();
 }
 
