@@ -117,9 +117,6 @@ void __mcsema_write_memory_v512(addr_t, const vec512_t &) {
 
 }
 
-// Inlining control. The idea here is that sometimes we want to defer inlining
-// until a later time, and we need to communicate what should eventually be
-// inlined, even if it's not currently inlined.
 void __mcsema_defer_inlining(void) {
 
 }

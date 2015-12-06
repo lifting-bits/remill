@@ -26,21 +26,33 @@
  * we reference it as an external that will get linked in.
  */
 #ifdef IN_TEST_GENERATOR
-# define DECLARE_LIFTED_FUNC(x) \
-    .globl LIFTED_FUNC(x) ; \
-    LIFTED_FUNC(x): ud2 ;
+# define DECLARE_LIFTED_FUNC(x, num_args) \
+    .globl LIFTED_FUNC(x, num_args) ; \
+LIFTED_FUNC(x, num_args): \
+    nop ;
 #else
-# define DECLARE_LIFTED_FUNC(x) \
-    .extern LIFTED_FUNC(x)
+# define DECLARE_LIFTED_FUNC(x, num_args) \
+    .extern LIFTED_FUNC(x, num_args) ;
 #endif
 
+#define CAT3(a, b,c ) a ## b ## c
+#define CAT2(a, b, c) CAT3(a, b,c )
+#define CAT(a, b, c) CAT2(a, b, c)
+
+#define TO_STRING3(a) # a
+#define TO_STRING2(a) TO_STRING3(a)
+#define TO_STRING(a) TO_STRING2(a)
+
+#define FUNC_NAME(instr_name, num_args) \
+    CAT(instr_name, _, num_args)
+
 /* This is the name of the function that will be generated. */
-#define TEST_FUNC(instr_name) \
-    SYMBOL(X86_TEST_ ## instr_name)
+#define TEST_FUNC(instr_name, num_args) \
+    SYMBOL(CAT(X86_TEST, _, FUNC_NAME(instr_name, num_args)))
 
 /* This is the name what we will give to the lifted function. */
-#define LIFTED_FUNC(instr_name) \
-    SYMBOL(X86_LIFTED_ ## instr_name)
+#define LIFTED_FUNC(instr_name, num_args) \
+    SYMBOL(CAT(X86_LIFTED, _, FUNC_NAME(instr_name, num_args)))
 
 /* Defines the beginning of a test function. The key detail is that tests
  * register themselves into data structures located in a special section of
@@ -51,27 +63,34 @@
  * bracketed by the `__x86_test_table_begin` and `__x86_test_table_end`
  * symbols, respectively.
  */
-#define TEST_BEGIN(instr_name) \
+#define TEST_BEGIN(instr_name, num_args) \
     .file __FILE__ ; \
     .text ; \
-    DECLARE_LIFTED_FUNC(instr_name) ; \
+    \
+    DECLARE_LIFTED_FUNC(instr_name, num_args) ; \
+    \
     .align 16 ; \
-    .globl TEST_FUNC(instr_name) ; \
-TEST_FUNC(instr_name): ; \
-    995: \
+    .globl TEST_FUNC(instr_name, num_args) ; \
+    \
+TEST_FUNC(instr_name, num_args): ; \
     .data ; \
-    996: \
-    .asciz #instr_name ; \
-    .section "__x86_test_table", "a" ; \
-    .balign 4 ; \
     1: \
-    .long 995b - 1b ; \
-    .long 999f - 1b ; \
-    .long 996b - 1b ; \
-    .long 997f - 1b ; \
-    .long 998f - 1b ; \
-    .long LIFTED_FUNC(instr_name) - 1b; \
+    .asciz TO_STRING(FUNC_NAME(instr_name, num_args)) ; \
+    \
+    .section "__x86_test_table", "a" ; \
+    .balign 8 ; \
+    2: \
+    .long 3f - 2b ; \
+    .long 6f - 2b ; \
+    .long 1b - 2b ; \
+    .long 4f - 2b ; \
+    .long 5f - 2b ; \
+    .long LIFTED_FUNC(instr_name, num_args) - 2b; \
+    .long num_args ; \
+    .long 0 ; \
+    \
     .text ; \
+    3: \
     .cfi_startproc ;
 
 /* Specify where the instruction to be tested begins and ends. We will decode
@@ -79,15 +98,15 @@ TEST_FUNC(instr_name): ; \
  * the specific instruction targeted by that test.
  */
 #define TEST_INSTR(...) \
-    997: __VA_ARGS__ ; \
-    998:
+    4: __VA_ARGS__ ; \
+    5:
 
 /* Note:    The test end address is placed *before* the `RET` so that we can
  *          make sure that the end of a test marker is actually
  *          `__mcsema_error`. This is kind of a hack.
  */
-#define TEST_END(instr_name) \
-    999: \
+#define TEST_END \
+    6: \
     ret ; \
     .cfi_endproc ;
 
@@ -97,63 +116,40 @@ TEST_FUNC(instr_name): ; \
  *          into a macro that is never expanded.
  */
 #if 64 == ADDRESS_SIZE_BITS
-# define TEST_BEGIN_64 TEST_BEGIN
+# define TEST_BEGIN_64(instr_name, num_args) \
+    TEST_BEGIN(instr_name ## _64, num_args)
 # define TEST_END_64 TEST_END
 #else
-# define TEST_BEGIN_64(instr_name) \
+# define TEST_BEGIN_64(instr_name, num_args) \
       .macro IGNORE_ ## instr_name ## __LINE__
-# define TEST_END_64(instr_name) \
+# define TEST_END_64 \
       .endm ;
 #endif  /* 64 == ADDRESS_SIZE_BITS */
 
-/* Specify the beginning and end of an AVX-specific test.
- *
- * Note:    AVX tests are elided in 32-bit builds be turning the whole test
- *          into a macro that is never expanded.
- */
-#if HAS_FEATURE_AVX
-# define TEST_BEGIN_AVX TEST_BEGIN
-# define TEST_END_AVX TEST_END
-#else
-# define TEST_BEGIN_AVX(instr_name) \
-      .macro IGNORE_ ## instr_name ## __LINE__
-# define TEST_END_AVX(instr_name) \
-      .endm ;
-#endif  /* HAS_FEATURE_AVX */
-
-/* Specify the beginning and end of an AVX512-specific test.
- *
- * Note:    AVX512 tests are elided in 32-bit builds be turning the whole test
- *          into a macro that is never expanded.
- */
-#if HAS_FEATURE_AVX512
-# define TEST_BEGIN_AVX512 TEST_BEGIN
-# define TEST_END_AVX512 TEST_END
-#else
-# define TEST_BEGIN_AVX512(instr_name) \
-      .macro IGNORE_ ## instr_name ## __LINE__
-# define TEST_END_AVX512(instr_name) \
-      .endm ;
-#endif  /* HAS_FEATURE_AVX512 */
-
     .file __FILE__ ;
     .intel_syntax noprefix ;
-    .text ;
 
-/* Create a symbol that represents the start of the test information table. */
+    /* Create a symbol that represents the start of the test information
+     * table. */
     .section "__x86_test_table", "a" ;
-    .balign 4 ;
+    .balign 8 ;
     .globl SYMBOL(__x86_test_table_begin) ;
 SYMBOL(__x86_test_table_begin):
     .text ;
 
+/* For argument register and return register definitions. */
+#include "tests/X86/ABI.S"
+
 /* Bring in all semantic tests. */
 #include "tests/X86/BINARY/ADD.S"
 
-/* Create a symbol that represents the end of the test information table. */
+    /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a" ;
-    .balign 4 ;
+    .balign 8 ;
     .globl SYMBOL(__x86_test_table_end) ;
 SYMBOL(__x86_test_table_end):
+
+    /* Reset */
+    .att_syntax prefix ;
 
 #endif  /* TESTS_X86_TESTS_S_ */

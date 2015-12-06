@@ -176,8 +176,8 @@ void __mcsema_basic_block(State &state) {
   auto &CS_read = state.seg.cs;
   auto &CS_write =  CS_read;
 
-#if IF_AVX_ELSE(1, 0)
-#if IF_AVX512_ELSE(1, 0)
+#if HAS_FEATURE_AVX
+#if HAS_FEATURE_AVX512
   auto &ZMM0_read = state.vec[0].zmm;
   auto &ZMM0_write =  ZMM0_read;
   auto &ZMM1_read = state.vec[1].zmm;
@@ -194,8 +194,6 @@ void __mcsema_basic_block(State &state) {
   auto &ZMM6_write =  ZMM6_read;
   auto &ZMM7_read = state.vec[7].zmm;
   auto &ZMM7_write =  ZMM7_read;
-
-#if 64 == ADDRESS_SIZE_BITS
   auto &ZMM8_read = state.vec[8].zmm;
   auto &ZMM8_write =  ZMM8_read;
   auto &ZMM9_read = state.vec[9].zmm;
@@ -244,8 +242,7 @@ void __mcsema_basic_block(State &state) {
   auto &ZMM30_write =  ZMM30_read;
   auto &ZMM31_read = state.vec[31].zmm;
   auto &ZMM31_write =  ZMM31_read;
-#endif  // 64 == ADDRESS_SIZE_BITS
-#endif  // AVX 512
+#endif  // HAS_FEATURE_AVX512
 
   auto &YMM0_read = state.vec[0].ymm;
   auto &YMM0_write = AVX_SEL_XYZ(MM0_read);
@@ -263,8 +260,6 @@ void __mcsema_basic_block(State &state) {
   auto &YMM6_write =  AVX_SEL_XYZ(MM6_read);
   auto &YMM7_read = state.vec[7].ymm;
   auto &YMM7_write =  AVX_SEL_XYZ(MM7_read);
-
-#if 64 == ADDRESS_SIZE_BITS
   auto &YMM8_read = state.vec[8].ymm;
   auto &YMM8_write =  AVX_SEL_XYZ(MM8_read);
   auto &YMM9_read = state.vec[9].ymm;
@@ -281,6 +276,8 @@ void __mcsema_basic_block(State &state) {
   auto &YMM14_write = AVX_SEL_XYZ(MM14_read);
   auto &YMM15_read = state.vec[15].ymm;
   auto &YMM15_write = AVX_SEL_XYZ(MM15_read);
+
+#if HAS_FEATURE_AVX512
   auto &YMM16_read = state.vec[16].ymm;
   auto &YMM16_write = AVX_SEL_XYZ(MM16_read);
   auto &YMM17_read = state.vec[17].ymm;
@@ -313,8 +310,8 @@ void __mcsema_basic_block(State &state) {
   auto &YMM30_write = AVX_SEL_XYZ(MM30_read);
   auto &YMM31_read = state.vec[31].ymm;
   auto &YMM31_write = AVX_SEL_XYZ(MM31_read);
-#endif  // 64 == ADDRESS_SIZE_BITS
-#endif  // AVX
+#endif  // HAS_FEATURE_AVX512
+#endif  // HAS_FEATURE_AVX
 
   auto &XMM0_read = state.vec[0].xmm;
   auto &XMM0_write = AVX_SEL_XYZ(MM0_read);
@@ -332,7 +329,6 @@ void __mcsema_basic_block(State &state) {
   auto &XMM6_write = AVX_SEL_XYZ(MM6_read);
   auto &XMM7_read = state.vec[7].xmm;
   auto &XMM7_write = AVX_SEL_XYZ(MM7_read);
-#if 64 == ADDRESS_SIZE_BITS
   auto &XMM8_read = state.vec[8].xmm;
   auto &XMM8_write = AVX_SEL_XYZ(MM8_read);
   auto &XMM9_read = state.vec[9].xmm;
@@ -350,6 +346,7 @@ void __mcsema_basic_block(State &state) {
   auto &XMM15_read = state.vec[15].xmm;
   auto &XMM15_write = AVX_SEL_XYZ(MM15_read);
 
+#if HAS_FEATURE_AVX512
   auto &XMM16_read = state.vec[16].xmm;
   auto &XMM16_write = AVX_SEL_XYZ(MM16_read);
   auto &XMM17_read = state.vec[17].xmm;
@@ -382,7 +379,7 @@ void __mcsema_basic_block(State &state) {
   auto &XMM30_write = AVX_SEL_XYZ(MM30_read);
   auto &XMM31_read = state.vec[31].xmm;
   auto &XMM31_write = AVX_SEL_XYZ(MM31_read);
-#endif  // 64 == ADDRESS_SIZE_BITS
+#endif  // HAS_FEATURE_AVX512
 
   auto &ST0_read = state.fpu.st[0].f;
   auto &ST0_write =  ST0_read;

@@ -10,13 +10,14 @@ enum : size_t {
   kMaxInstrLen = 15
 };
 
-struct TestInfo {
+struct alignas(8) TestInfo {
   int32_t test_begin;
   int32_t test_end;
   int32_t test_name;
   int32_t instr_begin;
   int32_t instr_end;
   int32_t lifted_func;
+  uint32_t num_args;
 };
 
 extern "C" {
