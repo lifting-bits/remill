@@ -30,15 +30,17 @@ compile_x86() {
         FILE_NAME="${FILE_NAME}_avx"
     fi
     
-    echo "${BLUE}${MESSAGE}${RESET}"
+    printf "${BLUE}${MESSAGE}${RESET}\n"
     
     $DIR/third_party/bin/clang++ -x c++ \
         -emit-llvm -O3 -m$1 $MACROS $CXXFLAGS \
+        -ffunction-sections -fdata-sections \
 	    -c $DIR/mcsema/Arch/X86/Runtime/Instructions.cpp \
 	    -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc
 	    
     $DIR/third_party/bin/clang++ -x c++ \
         -emit-llvm -O0 -m$1 $MACROS $CXXFLAGS \
+        -ffunction-sections -fdata-sections \
         -c $DIR/mcsema/Arch/X86/Runtime/BasicBlock.cpp \
         -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc
     
@@ -48,7 +50,7 @@ compile_x86() {
         $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc
         
     if [[ ! -e $DIR/generated/Arch/X86/${FILE_NAME}.bc ]] ; then
-        echo "${RED}Error: ${MESSAGE}${RESET}"
+        printf "${RED}Error: ${MESSAGE}${RESET}\n"
         exit 1
     fi;
 }

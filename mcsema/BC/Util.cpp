@@ -1,16 +1,22 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <sstream>
+#include <system_error>
+
+#include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IRReader/IRReader.h>
+#include <llvm/Support/SourceMgr.h>
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/ToolOutputFile.h>
 
 #include "mcsema/BC/Util.h"
-
-DECLARE_string(os);
 
 namespace mcsema {
 
@@ -95,16 +101,59 @@ llvm::Value *FindStatePointer(llvm::Function *F) {
   return &*F->getArgumentList().begin();
 }
 
-// Find a function with name `name` in the module `M`.
-llvm::Function *FindFunction(const llvm::Module *M, const char *name) {
-  llvm::Function *F = nullptr;
-  F = M->getFunction(name);
-  if (!F && FLAGS_os == "mac") {
-    F = M->getFunction(std::string("_") + name);
-  }
-  LOG_IF(FATAL, !F) << "Missing intrinsic " << name << "for OS: " << FLAGS_os;
-  return F;
+namespace {
+
+// Returns a symbol name that is "correct" for the host OS.
+std::string CanonicalName(const llvm::Module *M, std::string name) {
+  const auto &DL = M->getDataLayout();
+  const char prefix = DL.getGlobalPrefix();
+
+  std::stringstream name_ss;
+  name_ss << &prefix << name;
+  return name_ss.str();
 }
 
+}  // namespace
+
+// Find a function with name `name` in the module `M`.
+llvm::Function *FindFunction(const llvm::Module *M, std::string name) {
+  auto func_name = CanonicalName(M, name);
+  return M->getFunction(func_name);
+}
+
+// Find a global variable with name `name` in the module `M`.
+llvm::GlobalVariable *FindGlobaVariable(const llvm::Module *M,
+                                        std::string name) {
+  auto var_name = CanonicalName(M, name);
+  return M->getGlobalVariable(var_name);
+}
+
+// Reads an LLVM module from a file.
+llvm::Module *LoadModuleFromFile(std::string file_name) {
+  llvm::SMDiagnostic err;
+  auto mod_ptr = llvm::parseIRFile(file_name, err, llvm::getGlobalContext());
+  auto module = mod_ptr.get();
+  mod_ptr.release();
+
+  CHECK(nullptr != module) << "Unable to parse module file: " << file_name;
+
+  module->materializeAll();  // Just in case.
+  return module;
+}
+
+// Store an LLVM module into a file.
+void StoreModuleToFile(llvm::Module *module, std::string file_name) {
+  std::error_code ec;
+  llvm::tool_output_file bc(file_name.c_str(), ec, llvm::sys::fs::F_None);
+
+  CHECK(!ec)
+      << "Unable to open output bitcode file for writing: " << file_name;
+
+  llvm::WriteBitcodeToFile(module, bc.os());
+  bc.keep();
+
+  CHECK(!ec)
+      << "Error writing bitcode to file: " << file_name;
+}
 
 }  // namespace mcsema

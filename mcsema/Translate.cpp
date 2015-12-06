@@ -4,24 +4,23 @@
 #include <glog/logging.h>
 
 #include <fstream>
-#include <system_error>
+#include <sstream>
 
-#include <llvm/Bitcode/ReaderWriter.h>
-#include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
-#include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/CommandLine.h>
-#include <llvm/Support/FileSystem.h>
-#include <llvm/Support/SourceMgr.h>
-#include <llvm/Support/ToolOutputFile.h>
 
 #include "mcsema/BC/Translator.h"
+#include "mcsema/BC/Util.h"
 #include "mcsema/Arch/Arch.h"
 #include "mcsema/CFG/CFG.h"
 
 // TODO(pag): Support separate source and target architectures?
-DEFINE_string(arch, "", "Architecture of the code being translated. Valid "
-                        "architectures: x86, amd64.");
+DEFINE_string(source_arch, "", "Architecture of the code being translated. "
+                               "Valid architectures: x86, amd64.");
+
+DEFINE_string(target_arch, "", "Architecture of the target architecture on "
+                               "which the translated code will run. Valid "
+                                "architectures: x86, amd64.");
 
 DEFINE_string(os, "", "Target OS. Valid OSes: linux, mac.");
 
@@ -45,10 +44,13 @@ namespace {
 // the command-line, use that one. We do a simple verification on the input
 // module by requiring that it has a specific ID.
 static llvm::Module *CreateOrLoadModule(const Arch *arch,
-                                        std::string file_name) {
-  const std::string meta_id = "mcsema:" + FLAGS_arch + ":" + FLAGS_os;
+                                        std::string module_file) {
+  std::stringstream ss;
+  ss << "mcsema:" << FLAGS_source_arch << ":" << FLAGS_target_arch
+     << ":" << FLAGS_os;
+  const std::string meta_id = ss.str();
 
-  if (file_name.empty()) {
+  if (module_file.empty()) {
     auto module = arch->CreateModule();
 
     // Set a specific flag. This will provide a poor man's way of
@@ -58,14 +60,8 @@ static llvm::Module *CreateOrLoadModule(const Arch *arch,
     return module;
 
   } else {
-    // Parse a user-provided bitcode file.
-    llvm::SMDiagnostic err;
-    auto mod_ptr = llvm::parseIRFile(file_name, err, llvm::getGlobalContext());
-    auto module = mod_ptr.get();
-    mod_ptr.release();
-
-    CHECK(nullptr != module)
-        << "Unable to parse module file: " << file_name;
+    LOG(INFO) << "Using " << module_file << " as the base bitcode module.";
+    auto module = LoadModuleFromFile(module_file);
 
     CHECK(nullptr != module->getNamedMetadata(meta_id))
         << "File " << FLAGS_bc_in << " doesn't have the right format for this "
@@ -74,21 +70,6 @@ static llvm::Module *CreateOrLoadModule(const Arch *arch,
 
     return module;
   }
-}
-
-// Write the LLVM module to a bitcode file.
-static void SaveModuleToFile(const llvm::Module *mod, std::string file_name) {
-  std::error_code ec;
-  llvm::tool_output_file bc(file_name.c_str(), ec, llvm::sys::fs::F_None);
-
-  CHECK(!ec)
-      << "Unable to open output bitcode file for writing: " << file_name;
-
-  llvm::WriteBitcodeToFile(mod, bc.os());
-  bc.keep();
-
-  CHECK(!ec)
-      << "Error writing bitcode to file: " << file_name;
 }
 
 }  // namespace
@@ -104,8 +85,11 @@ extern "C" int main(int argc, char *argv[]) {
   CHECK(!FLAGS_os.empty())
       << "Need to specify a target operating system with --os.";
 
-  CHECK(!FLAGS_arch.empty())
-      << "Need to specify a source architecture with --arch.";
+  CHECK(!FLAGS_source_arch.empty())
+      << "Need to specify a source architecture with --source_arch.";
+
+  CHECK(!FLAGS_target_arch.empty())
+      << "Need to specify a target architecture with --target_arch.";
 
   CHECK(!FLAGS_cfg.empty())
       << "Must specify CFG file with --cfg.";
@@ -113,17 +97,20 @@ extern "C" int main(int argc, char *argv[]) {
   CHECK(!FLAGS_bc_out.empty())
       << "Please specify an output bitcode file with --bc_out.";
 
-  auto arch = mcsema::Arch::Create(FLAGS_arch);
-  auto cfg = mcsema::ReadCFG(FLAGS_cfg);
-  auto module = mcsema::CreateOrLoadModule(arch, FLAGS_bc_in);
+  auto source_arch_name = mcsema::Arch::GetName(FLAGS_source_arch);
+  auto source_arch = mcsema::Arch::Create(source_arch_name);
 
-  mcsema::Translator lifter(arch, module);
+  //auto target_arch = mcsema::Arch::Create(FLAGS_target_arch);
+  auto cfg = mcsema::ReadCFG(FLAGS_cfg);
+  auto module = mcsema::CreateOrLoadModule(source_arch, FLAGS_bc_in);
+
+  mcsema::Translator lifter(source_arch, module);
   lifter.LiftCFG(cfg);
 
-  mcsema::SaveModuleToFile(module, FLAGS_bc_out);
+  mcsema::StoreModuleToFile(module, FLAGS_bc_out);
 
   delete cfg;
-  delete arch;
+  delete source_arch;
 
   google::ShutdownGoogleLogging();
   return EXIT_SUCCESS;

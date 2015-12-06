@@ -1,5 +1,7 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#include <glog/logging.h>
+
 #include <vector>
 
 #include <llvm/IR/Constants.h>
@@ -14,7 +16,9 @@ namespace {
 
 // Find a specific function.
 static llvm::Function *FindIntrinsic(const llvm::Module *M, const char *name) {
-  auto F = FindFunction(M, name);
+  llvm::Function *F = FindFunction(M, name);
+  LOG_IF(FATAL, !F) << "Unable to find intrinsic: " << name;
+
   InitFunctionAttributes(F);
 
   // We don't want calls to memory intrinsics to be duplicated because then

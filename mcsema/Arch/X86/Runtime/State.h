@@ -86,8 +86,7 @@ union FPUStackElem {
 };
 
 // FP register state that conforms with `FXSAVE`.
-class FPU {
- public:
+struct FPU {
   FPUControlWord cwd;
   FPUStatusWord swd;
   uint8_t ftw;
@@ -112,8 +111,7 @@ class FPU {
 
 static_assert(512 == sizeof(FPU), "Invalid structure packing of `FPU`.");
 
-class Flags {
- public:
+struct Flags {
   uint32_t cf:1;  ///< bit 0
   uint32_t must_be_1:1;
   uint32_t pf:1;
@@ -145,8 +143,7 @@ class Flags {
 
 static_assert(4 == sizeof(Flags), "Invalid structure packing of `Flags`.");
 
-class alignas(8) ArithFlags {
- public:
+struct alignas(8) ArithFlags {
   bool cf;
   bool pf;
   bool af;
@@ -159,8 +156,7 @@ class alignas(8) ArithFlags {
 
 static_assert(8 == sizeof(ArithFlags), "Invalid structure packing of `ArithFlags`.");
 
-class alignas(8) Segments {
- public:
+struct alignas(8) Segments {
   uint16_t ss;
   uint16_t es;
   uint16_t gs;
@@ -220,8 +216,7 @@ IF_AVX( static_assert(0 == __builtin_offsetof(VectorReg, ymm),
 IF_AVX512( static_assert(0 == __builtin_offsetof(VectorReg, zmm),
                          "Invalid packing of `VectorReg::zmm`."); )
 
-class alignas(8) GPR {
- public:
+struct alignas(8) GPR {
   // Named the same way as the 64-bit version to keep names the same
   // across architectures.
   Reg rax;
@@ -248,8 +243,7 @@ class alignas(8) GPR {
   Reg rip;
 };
 
-class alignas(64) State {
- public:
+struct alignas(64) State {
   // Native `XSAVE64` representation of the FPU, plus a semi-duplicate
   // representation of all vector regs (XMM, YMM, ZMM).
   FPU fpu;
@@ -263,4 +257,3 @@ class alignas(64) State {
   Segments seg;
   GPR gpr;
 };
-

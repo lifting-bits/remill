@@ -64,12 +64,13 @@ TEST_FUNC(instr_name): ; \
     .asciz #instr_name ; \
     .section "__x86_test_table", "a" ; \
     .balign 4 ; \
-    .long 995b + 0 ; \
-    .long 999f + 0 ; \
-    .long 996b + 0 ; \
-    .long 997f + 0 ; \
-    .long 998f + 0 ; \
-    .long LIFTED_FUNC(instr_name) + 0; \
+    1: \
+    .long 995b - 1b ; \
+    .long 999f - 1b ; \
+    .long 996b - 1b ; \
+    .long 997f - 1b ; \
+    .long 998f - 1b ; \
+    .long LIFTED_FUNC(instr_name) - 1b; \
     .text ; \
     .cfi_startproc ;
 

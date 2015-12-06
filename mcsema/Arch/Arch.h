@@ -19,13 +19,21 @@ namespace cfg {
 class Instr;
 }  // namespace cfg
 
+enum ArchName {
+  kArchX86,
+  kArchAMD64
+};
+
 class Instr;
 
 class Arch {
  public:
-  static const Arch *Create(std::string arch_name);
+  static const Arch *Create(ArchName arch_name);
+
+  static ArchName GetName(const std::string &arch_name);
 
   virtual ~Arch(void);
+
 
   // Decode an instruction and invoke a visitor with the decoded instruction.
   virtual void Decode(

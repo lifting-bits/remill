@@ -25,7 +25,7 @@ DEFINE_string(cfg_out, "/dev/stdout",
 namespace test {
 namespace {
 
-#if 32 == ADDRESS_WITH_BITS
+#if 32 == ADDRESS_SIZE_BITS
 const xed_state_t kXEDState = {
     XED_MACHINE_MODE_LONG_COMPAT_32,
     XED_ADDRESS_WIDTH_32b};
@@ -64,11 +64,12 @@ unsigned InstructionLength(const uint8_t *bytes, unsigned num_bytes) {
 // TODO(pag): Eventually handle control-flow.
 static void AddFunctionToModule(mcsema::cfg::Module *module,
                                 const TestInfo &test) {
-  uintptr_t test_begin = test.test_begin;
-  uintptr_t test_end = test.test_end;
+  const auto info_addr = reinterpret_cast<intptr_t>(&test);
+  auto test_begin = info_addr + test.test_begin;
+  auto test_end = info_addr + test.test_end;
 
   const char *test_name = reinterpret_cast<const char *>(
-      static_cast<uintptr_t>(test.test_name));
+      info_addr + static_cast<intptr_t>(test.test_name));
 
   std::stringstream ss;
   ss << SYMBOL_PREFIX << "X86_LIFTED_" << test_name;

@@ -47,9 +47,6 @@ namespace {
 // Name of this instruction function.
 static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
   std::stringstream ss;
-  if (FLAGS_os == "mac") {
-    ss << "_";
-  }
   ss << xed_iform_enum_t2str(xed_decoded_inst_get_iform_enum(xedd));
   ss << "_";
   ss << xed_decoded_inst_get_operand_width(xedd);
@@ -196,9 +193,9 @@ void Instr::LiftGeneric(const Translator &lifter) {
   llvm::IRBuilder<> ir(B);
 
   auto func_name = InstructionFunctionName(xedd);
-  if (auto F = M->getFunction(func_name)) {
+  if (auto F = FindFunction(M, func_name)) {
     ir.CreateCall(F, args);
-  } else if (auto FP = M->getGlobalVariable(func_name)) {
+  } else if (auto FP = FindGlobaVariable(M, func_name)) {
     CHECK(FP->isConstant() && FP->hasInitializer())
         << "Expected a `constexpr` variable as the function pointer.";
     llvm::Constant *FC = FP->getInitializer()->stripPointerCasts();

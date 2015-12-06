@@ -11,12 +11,12 @@ enum : size_t {
 };
 
 struct TestInfo {
-  uint32_t test_begin;
-  uint32_t test_end;
-  uint32_t test_name;
-  uint32_t instr_begin;
-  uint32_t instr_end;
-  uint32_t lifted_func;
+  int32_t test_begin;
+  int32_t test_end;
+  int32_t test_name;
+  int32_t instr_begin;
+  int32_t instr_end;
+  int32_t lifted_func;
 };
 
 extern "C" {

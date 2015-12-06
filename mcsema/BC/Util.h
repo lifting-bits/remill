@@ -3,11 +3,15 @@
 #ifndef MCSEMA_BC_UTIL_H_
 #define MCSEMA_BC_UTIL_H_
 
+#include <string>
 #include <unordered_map>
 
 namespace llvm {
+class BasicBlock;
 class Function;
 class GlobalVariable;
+class Module;
+class Value;
 }  // namespace llvm
 namespace mcsema {
 
@@ -36,7 +40,17 @@ llvm::Value *FindVarInFunction(llvm::Function *F, std::string name);
 llvm::Value *FindStatePointer(llvm::Function *F);
 
 // Find a function with name `name` in the module `M`.
-llvm::Function *FindFunction(const llvm::Module *M, const char *name);
+llvm::Function *FindFunction(const llvm::Module *M, std::string name);
+
+// Find a global variable with name `name` in the module `M`.
+llvm::GlobalVariable *FindGlobaVariable(const llvm::Module *M,
+                                        std::string name);
+
+// Parses and loads a bitcode file into memory.
+llvm::Module *LoadModuleFromFile(std::string file_name);
+
+// Store an LLVM module into a file.
+void StoreModuleToFile(llvm::Module *module, std::string file_name);
 
 }  // namespace mcsema
 

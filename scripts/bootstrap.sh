@@ -20,10 +20,12 @@ GTEST_RELEASE=release-1.7.0
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
     PIN_VERSION=pin-2.14-71313-gcc.4.4.7-linux
 	LLVM_VERSION=clang+llvm-${LLVM_RELEASE}-x86_64-linux-gnu-ubuntu-14.04
+    MCSEMA_OS_NAME="linux"
 
 elif [[ "$OSTYPE" == "darwin"* ]]; then
 	PIN_VERSION=pin-2.14-71313-clang.5.1-mac
 	LLVM_VERSION=clang+llvm-${LLVM_RELEASE}-x86_64-apple-darwin
+    MCSEMA_OS_NAME="mac"
 
 else
     printf "${RED}Unsupported platform: ${OSTYPE}${RESET}"
@@ -288,6 +290,7 @@ function build_mcsema()
 	cmake \
 	    -G "Unix Makefiles" \
 	    -DMCSEMA_DIR:STRING=$DIR \
+	    -DMCSEMA_OS_NAME:STRING=$MCSEMA_OS_NAME \
 	    -DCMAKE_PREFIX_PATH:STRING=$DIR/third_party \
 	    ..
 	make all

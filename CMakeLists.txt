@@ -44,19 +44,11 @@ file(COPY ${MCSEMA_DIR}/generated/Arch DESTINATION ${MCSEMA_DIR}/build/lib)
 
 # Generic compiler options.
 add_compile_options(
-    -Wall
-    -Werror
-    -pedantic
-    -DMCSEMA_DIR="${MCSEMA_DIR}"
-    -DGOOGLE_PROTOBUF_NO_RTTI
-    -D__STDC_CONSTANT_MACROS
-    -D__STDC_LIMIT_MACROS
-    -Wno-nested-anon-types
-    -fno-rtti
-    -g3
-    -m64
-    -std=gnu++11
-    -Wno-variadic-macros
+    -Wall -Werror -pedantic
+    -Wno-nested-anon-types -Wno-variadic-macros -Wno-extended-offsetof
+    -DMCSEMA_DIR="${MCSEMA_DIR}" -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS
+    -fno-rtti -DGOOGLE_PROTOBUF_NO_RTTI 
+    -std=gnu++11 -g3 -m64
     -I${MCSEMA_DIR}
 )
 
@@ -88,34 +80,79 @@ target_link_libraries(cfg_to_bc
     ${LLVM_LIBS}
 )
 
-# run_tests_amd64_avx ----------------------------------------------------------
-#add_executable(run_tests_amd64_avx
-#    ${MCSEMA_DIR}/tests/X86/Run.cpp
-#    ${MCSEMA_DIR}/tests/X86/Tests.S
-#)
 
-#target_link_libraries(run_tests_amd64_avx
-#    ${MCSEMA_LIBS}
-#)
+function(make_x86_tester suffix arch_name addr_size has_avx has_avx512)
+    
+    set(MCSEMA_ARCH_FLAGS
+        -DADDRESS_SIZE_BITS=${addr_size}
+        -DHAS_FEATURE_AVX=${has_avx}
+        -DHAS_FEATURE_AVX512=${has_avx512}
+    )
+    
+    # Start by making the test generator itself.
+    add_executable(gen_test_cfg_${suffix}
+        ${MCSEMA_DIR}/tests/X86/Generate.cpp
+        ${MCSEMA_DIR}/tests/X86/Tests.S
+        ${MCSEMA_DIR}/mcsema/CFG/CFG.cpp
+    )
+    
+    target_link_libraries(gen_test_cfg_${suffix}
+        ${MCSEMA_LIBS}
+    )
+    
+    target_compile_options(gen_test_cfg_${suffix} PRIVATE
+        ${MCSEMA_ARCH_FLAGS}
+        -DIN_TEST_GENERATOR
+    )
+    
+    add_custom_command(
+        OUTPUT tests_${suffix}.cfg
+        COMMAND gen_test_cfg_${suffix} --cfg_out=tests_${suffix}.cfg
+        DEPENDS gen_test_cfg_${suffix}
+        COMMENT "Generating CFG file for tests using gen_test_cfg_${suffix}."
+    )
+    
+    add_custom_command(
+        OUTPUT tests_${suffix}.bc
+        COMMAND cfg_to_bc 
+           --source_arch=${arch_name} --target_arch=amd64 --os=${MCSEMA_OS_NAME} 
+           --cfg=tests_${suffix}.cfg 
+           --bc_out=tests_${suffix}.bc
+        DEPENDS tests_${suffix}.cfg cfg_to_bc
+        COMMENT "Lifting CFG file for tests to tests_${suffix}.bc."
+    )
+    
+    add_custom_command(
+        OUTPUT tests_${suffix}.o
+        COMMAND ${CMAKE_C_COMPILER} 
+           -O3 -m64
+           -c tests_${suffix}.bc 
+           -o tests_${suffix}.o
+        DEPENDS tests_${suffix}.bc
+        COMMENT "Compiling lifted test code into tests_${suffix}.o."
+    )
+    
+    add_executable(run_tests_${suffix}
+        ${MCSEMA_DIR}/tests/X86/Run.cpp
+        ${MCSEMA_DIR}/mcsema/Arch/Runtime/Types.cpp
+        ${MCSEMA_DIR}/tests/X86/Tests.S
+        tests_${suffix}.o
+    )
+    
+    target_compile_options(run_tests_${suffix} PRIVATE
+        ${MCSEMA_ARCH_FLAGS}
+    )
+    
+    target_link_libraries(run_tests_${suffix}
+        ${MCSEMA_LIBS}
+    )
+    
+    set_target_properties(run_tests_${suffix}
+        PROPERTIES LINK_FLAGS -Wl,-gc-sections
+    )
+endfunction(make_x86_tester)
 
-#target_compile_options(run_tests_amd64_avx PRIVATE
-#    -DADDRESS_SIZE_BITS=64
-#    -DHAS_FEATURE_AVX=1
-#)
-
-# gen_test_cfg_amd64_avx -------------------------------------------------------
-add_executable(gen_test_cfg_amd64_avx
-    ${MCSEMA_DIR}/tests/X86/Generate.cpp
-    ${MCSEMA_DIR}/tests/X86/Tests.S
-    "${MCSEMA_DIR}/mcsema/CFG/CFG.cpp"
-)
-
-target_link_libraries(gen_test_cfg_amd64_avx
-    ${MCSEMA_LIBS}
-)
-
-target_compile_options(gen_test_cfg_amd64_avx PRIVATE
-    -DADDRESS_SIZE_BITS=64
-    -DHAS_FEATURE_AVX=1
-    -DIN_TEST_GENERATOR
-)
+#make_x86_tester(x86 x86 32 0 0)
+#make_x86_tester(x86_avx x86 32 1 0)
+make_x86_tester(amd64 amd64 64 0 0)
+make_x86_tester(amd64_avx amd64 64 1 0)
