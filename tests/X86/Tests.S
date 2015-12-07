@@ -15,9 +15,19 @@
 # define HAS_FEATURE_AVX512 1
 #endif
 
+#define CAT_3(a, b) a ## b
+#define CAT_2(a, b) CAT_3(a, b)
+#define CAT(a, b) CAT_2(a, b)
+
+#define CAT3(a, b, c) CAT(a, CAT(b, c))
+
+#define TO_STRING3(a) # a
+#define TO_STRING2(a) TO_STRING3(a)
+#define TO_STRING(a) TO_STRING2(a)
+
 /* Note:    Apple mangles C symbol names to have a leading underscore. */
 #ifdef __APPLE__
-# define SYMBOL(x) _ ## x
+# define SYMBOL(x) CAT(_, x)
 #else
 # define SYMBOL(x) x
 #endif
@@ -35,24 +45,16 @@ LIFTED_FUNC(x, num_args): \
     .extern LIFTED_FUNC(x, num_args) ;
 #endif
 
-#define CAT3(a, b, c) a ## b ## c
-#define CAT2(a, b, c) CAT3(a, b, c)
-#define CAT(a, b, c) CAT2(a, b, c)
-
-#define TO_STRING3(a) # a
-#define TO_STRING2(a) TO_STRING3(a)
-#define TO_STRING(a) TO_STRING2(a)
-
 #define FUNC_NAME(instr_name, num_args) \
-    CAT(instr_name, _, num_args)
+    CAT3(instr_name, _, num_args)
 
 /* This is the name of the function that will be generated. */
 #define TEST_FUNC(instr_name, num_args) \
-    SYMBOL(CAT(X86_TEST, _, FUNC_NAME(instr_name, num_args)))
+    SYMBOL(CAT3(X86_TEST, _, FUNC_NAME(instr_name, num_args)))
 
 /* This is the name what we will give to the lifted function. */
 #define LIFTED_FUNC(instr_name, num_args) \
-    SYMBOL(CAT(X86_LIFTED, _, FUNC_NAME(instr_name, num_args)))
+    SYMBOL(CAT3(X86_LIFTED, _, FUNC_NAME(instr_name, num_args)))
 
 /* Defines the beginning of a test function. The key detail is that tests
  * register themselves into data structures located in a special section of
