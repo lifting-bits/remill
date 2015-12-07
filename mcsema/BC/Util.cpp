@@ -109,7 +109,7 @@ namespace {
 // Returns a symbol name that is "correct" for the host OS.
 std::string CanonicalName(const llvm::Module *M, std::string name) {
   std::stringstream name_ss;
-  if (FLAGS_os == "mac") {
+  if (FLAGS_os == "mac" && '_' != name[0]) {
     name_ss << "_";
   }
   name_ss << name;
