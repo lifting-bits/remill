@@ -142,7 +142,7 @@ void Translator::CreateFunctions(const cfg::Module *cfg) {
 
     // Mark this symbol as external. We do this so that we can pick up on it
     // if we merge another CFG into this bitcode module.
-    module->getOrInsertNamedMetadata(NamedSymbolMetaId(func.name()));
+    module->getOrInsertNamedMetadata(NamedSymbolMetaId(func_name));
   }
 }
 
@@ -152,17 +152,19 @@ void Translator::LinkFunctionsToBlocks(const cfg::Module *cfg) {
     if (!func.is_exported() && !func.is_imported()) continue;
     if (!func.address()) continue;
 
-    auto F = functions[func.name()];
+    auto func_name = CanonicalName(func.name());
+    auto F = functions[func_name];
     auto &BF = blocks[func.address()];
 
     // In the case of an exported function, redirect the function's
     // implementation to a locally defined block.
     if (func.is_exported()) {
+
       CHECK(nullptr != BF)
-          << "Exported function " << func.name() << " has no address!";
+          << "Exported function " << func_name << " has no address!";
 
       CHECK(F->isDeclaration())
-          << "Function " << func.name() << " is already defined!";
+          << "Function " << func_name << " is already defined!";
 
       AddTerminatingTailCall(F, BF);
 

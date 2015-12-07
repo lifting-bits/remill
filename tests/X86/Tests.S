@@ -25,7 +25,12 @@
 #define TO_STRING2(a) TO_STRING3(a)
 #define TO_STRING(a) TO_STRING2(a)
 
-#define SYMBOL(x) x
+/* Note:    Apple mangles C symbol names to have a leading underscore. */
+#ifdef __APPLE__
+# define SYMBOL(x) CAT(_, x)
+#else
+# define SYMBOL(x) x
+#endif
 
 /* In the generator build, we "stub-out" the lifted function. In the Run build,
  * we reference it as an external that will get linked in.
