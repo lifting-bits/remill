@@ -7,6 +7,8 @@ enable_language(ASM)
 
 set(CMAKE_C_COMPILER "${MCSEMA_DIR}/third_party/bin/clang")
 set(CMAKE_CXX_COMPILER "${MCSEMA_DIR}/third_party/bin/clang++")
+set(CMAKE_ASM_COMPILER "${MCSEMA_DIR}/third_party/bin/clang")
+
 
 set(LLVM_INSTALL_PREFIX ${MCSEMA_DIR}/third_party)
 set(_LLVM_CMAKE_DIR ${MCSEMA_DIR}/third_party/share/llvm/cmake)

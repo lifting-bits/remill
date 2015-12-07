@@ -35,8 +35,8 @@ LIFTED_FUNC(x, num_args): \
     .extern LIFTED_FUNC(x, num_args) ;
 #endif
 
-#define CAT3(a, b,c ) a ## b ## c
-#define CAT2(a, b, c) CAT3(a, b,c )
+#define CAT3(a, b, c) a ## b ## c
+#define CAT2(a, b, c) CAT3(a, b, c)
 #define CAT(a, b, c) CAT2(a, b, c)
 
 #define TO_STRING3(a) # a

@@ -247,7 +247,7 @@ struct alignas(64) State {
   // Native `XSAVE64` representation of the FPU, plus a semi-duplicate
   // representation of all vector regs (XMM, YMM, ZMM).
   FPU fpu;
-  VectorReg vec[IF_AVX512_ELSE(32, 16)];
+  VectorReg vec[IF_AVX512_ELSE(32, IF_64BIT_ELSE(16, 8))];
 
   // Two representations of flags. Makes it easy to convert from native-to-
   // lifted, as well as improved the optimizability of the aflags themselves.
