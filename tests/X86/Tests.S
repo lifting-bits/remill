@@ -64,6 +64,8 @@ LIFTED_FUNC(x, num_args): \
  * structures are placed into the `__x86_test_table` section of the binary, and
  * bracketed by the `__x86_test_table_begin` and `__x86_test_table_end`
  * symbols, respectively.
+ *
+ * Note: Double `SYMBOL`ization of the reference to the lifted func.
  */
 #define TEST_BEGIN(instr_name, num_args) \
     .file __FILE__ ; \
@@ -87,7 +89,7 @@ TEST_FUNC(instr_name, num_args): ; \
     .long 1b - 2b ; \
     .long 4f - 2b ; \
     .long 5f - 2b ; \
-    .long LIFTED_FUNC(instr_name, num_args) - 2b; \
+    .long SYMBOL(LIFTED_FUNC(instr_name, num_args)) - 2b; \
     .long num_args ; \
     .long 0 ; \
     \
