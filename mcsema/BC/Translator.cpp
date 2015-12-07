@@ -1,5 +1,6 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <functional>
@@ -29,6 +30,8 @@
 #include "mcsema/BC/Util.h"
 
 #include "mcsema/CFG/CFG.h"
+
+DECLARE_string(os);
 
 namespace llvm {
 class ReturnInst;
@@ -93,6 +96,23 @@ void Translator::CreateBlocks(const cfg::Module *cfg) {
   }
 }
 
+namespace {
+
+// On Mac this strips off leading the underscore on symbol names.
+//
+// TODO(pag): This is really ugly and is probably incorrect. The expectation is
+//            that the leading underscore will be re-added when this code is
+//            compiled.
+std::string CanonicalName(const std::string &name) {
+  if (FLAGS_os == "mac" && name.length() && '_' == name[0]) {
+    return name.substr(1);
+  } else {
+    return name;
+  }
+}
+
+}  // namespace
+
 // Create functions for every function in the CFG.
 void Translator::CreateFunctions(const cfg::Module *cfg) {
   auto func_type = basic_block->getFunctionType();
@@ -100,16 +120,17 @@ void Translator::CreateFunctions(const cfg::Module *cfg) {
   for (const auto &func : cfg->functions()) {
     if (!func.is_exported() && !func.is_imported()) continue;
 
-    CHECK(!func.name().empty())
+    auto func_name = CanonicalName(func.name());
+    CHECK(!func_name.empty())
         << "Module contains unnamed function at address " << func.address();
 
     CHECK(!(func.is_exported() && func.is_imported()))
-        << "Function " << func.name() << " can't be imported and exported.";
+        << "Function " << func_name << " can't be imported and exported.";
 
-    llvm::Function *&F = functions[func.name()];
+    llvm::Function *&F = functions[func_name];
     if (!F) {
       F = llvm::dyn_cast<llvm::Function>(
-          module->getOrInsertFunction(func.name(), func_type));
+          module->getOrInsertFunction(func_name, func_type));
 
       InitFunctionAttributes(F);
 

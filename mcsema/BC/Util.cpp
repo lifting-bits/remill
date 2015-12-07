@@ -1,6 +1,5 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <sstream>
@@ -18,8 +17,6 @@
 #include <llvm/Support/ToolOutputFile.h>
 
 #include "mcsema/BC/Util.h"
-
-DECLARE_string(os);
 
 namespace mcsema {
 
@@ -104,31 +101,15 @@ llvm::Value *FindStatePointer(llvm::Function *F) {
   return &*F->getArgumentList().begin();
 }
 
-namespace {
-
-// Returns a symbol name that is "correct" for the host OS.
-std::string CanonicalName(const llvm::Module *M, std::string name) {
-  std::stringstream name_ss;
-  if (FLAGS_os == "mac") {
-    name_ss << "_";
-  }
-  name_ss << name;
-  return name_ss.str();
-}
-
-}  // namespace
-
 // Find a function with name `name` in the module `M`.
 llvm::Function *FindFunction(const llvm::Module *M, std::string name) {
-  auto func_name = CanonicalName(M, name);
-  return M->getFunction(func_name);
+  return M->getFunction(name);
 }
 
 // Find a global variable with name `name` in the module `M`.
 llvm::GlobalVariable *FindGlobaVariable(const llvm::Module *M,
                                         std::string name) {
-  auto var_name = CanonicalName(M, name);
-  return M->getGlobalVariable(var_name);
+  return M->getGlobalVariable(name);
 }
 
 // Reads an LLVM module from a file.
