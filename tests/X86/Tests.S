@@ -128,15 +128,8 @@ TEST_FUNC(instr_name, num_args): ; \
     \
     .text ; \
     3: \
-    .cfi_startproc ;
-
-/* Specify where the instruction to be tested begins and ends. We will decode
- * and disassemble this instruction so that, for each test, we can print out
- * the specific instruction targeted by that test.
- */
-#define TEST_INSTR(...) \
-    4: __VA_ARGS__ ; \
-    5:
+    .cfi_startproc ; \
+    4:
 
 /* Note:    The test end address is placed *before* the `RET` so that we can
  *          make sure that the end of a test marker is actually
@@ -144,10 +137,12 @@ TEST_FUNC(instr_name, num_args): ; \
  */
 #ifdef IN_TEST_GENERATOR
 # define TEST_END \
+    5: \
     6: \
     .cfi_endproc ;
 #else
 # define TEST_END \
+    5: \
     6: \
     jmp SYMBOL(__x86_save_state_after) ; \
     .cfi_endproc ;
@@ -192,8 +187,8 @@ TEST_FUNC(instr_name, num_args): ; \
     .globl SYMBOL(InvokeTestCase)
 SYMBOL(InvokeTestCase):
     .cfi_startproc
-    xchg rsp, [SYMBOL(gStackSwitcher)]  /* Switch to the recording stack. */
-# define STATE_PTR SYMBOL(gStateLifted)
+    xchg RSP, [RIP + SYMBOL(gStackSwitcher)]  /* Switch onto recording stack. */
+# define STATE_PTR RIP + SYMBOL(gStateLifted)
 # include "tests/X86/SaveState.S"
     jmp QWORD PTR DS:[SYMBOL(gTestToRun) + 0]
     .cfi_endproc
@@ -202,9 +197,9 @@ SYMBOL(InvokeTestCase):
     .align 16
 SYMBOL(__x86_save_state_after):
     .cfi_startproc
-# define STATE_PTR SYMBOL(gStateNative)
+# define STATE_PTR RIP + SYMBOL(gStateNative)
 # include "tests/X86/SaveState.S"
-    xchg rsp, [SYMBOL(gStackSwitcher)]  /* Return to the normal stack. */
+    xchg rsp, [RIP + SYMBOL(gStackSwitcher)]  /* Return to the normal stack. */
     ret
     .cfi_endproc
 # undef STATE_PTR
