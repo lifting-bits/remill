@@ -5,26 +5,26 @@ namespace {
 template <typename T>
 DEF_SEM(CALL, T target_pc) {
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
-  state.gpr.rsp.full -= sizeof(state.gpr.rsp.full);
-  MnW<PC> sp = {state.gpr.rsp.full};
-  W(sp) = state.gpr.rip.full;
-  state.gpr.rip.full = R(target_pc);
+  W(state.gpr.rsp) -= sizeof(R(state.gpr.rsp));
+  MnW<PC> sp = {R(state.gpr.rsp)};
+  W(sp) = R(state.gpr.rip);
+  W(state.gpr.rip) = R(target_pc);
 }
 
 DEF_SEM(RET_IMM, I16 bytes) {
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
-  Mn<PC> ret_addr_loc = {state.gpr.rsp.full};
+  Mn<PC> ret_addr_loc = {R(state.gpr.rsp)};
   const PC ret_addr = R(ret_addr_loc);
-  W(state.gpr.rip.full) = ret_addr;
-  W(state.gpr.rsp.full) = R(state.gpr.rsp.full) + R(bytes) + sizeof(PC);
+  W(state.gpr.rip) = ret_addr;
+  W(state.gpr.rsp) = R(state.gpr.rsp) + R(bytes) + sizeof(PC);
 }
 
 DEF_SEM(RET) {
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
-  Mn<PC> ret_addr_loc = {state.gpr.rsp.full};
+  Mn<PC> ret_addr_loc = {R(state.gpr.rsp)};
   const PC ret_addr = R(ret_addr_loc);
-  W(state.gpr.rip.full) = ret_addr;
-  W(state.gpr.rsp.full) = R(state.gpr.rsp.full) + sizeof(PC);
+  W(state.gpr.rip) = ret_addr;
+  W(state.gpr.rsp) = R(state.gpr.rsp) + sizeof(PC);
 }
 
 }  // namespace

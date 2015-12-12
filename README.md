@@ -3,6 +3,12 @@
 
 ### Setup
 
+## Linux-specific
+```
+sudo apt-get install libunwind8
+```
+
+## Generic
 ```
 ./scripts/bootstrap.sh
 ```

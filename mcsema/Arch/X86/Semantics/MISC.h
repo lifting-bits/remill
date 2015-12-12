@@ -7,22 +7,22 @@ DEF_SEM(LEA, D dst, S src) {
 }
 
 DEF_SEM(LEAVE_16BIT) {
-  const auto prev_bp = R(state.gpr.rbp.full);
+  const auto prev_bp = R(state.gpr.rbp);
   Mn<uint16_t> bp_addr = {prev_bp};
 
-  W(state.gpr.rbp.word) = R(bp_addr);
-  W(state.gpr.rsp.full) = prev_bp + sizeof(uint16_t);
+  state.gpr.rbp.word = R(bp_addr);
+  W(state.gpr.rsp) = prev_bp + sizeof(uint16_t);
 }
 
 template <typename T>
 DEF_SEM(LEAVE_FULL) {
-  static_assert(sizeof(T) == sizeof(state.gpr.rbp.full),
+  static_assert(sizeof(T) == sizeof(R(state.gpr.rbp)),
                 "Invalid specialization of `LEAVE_FULL`.");
-  const auto prev_bp = R(state.gpr.rbp.full);
+  const auto prev_bp = R(state.gpr.rbp);
   Mn<T> bp_addr = {prev_bp};
 
-  W(state.gpr.rbp.full) = R(bp_addr);
-  W(state.gpr.rsp.full) = prev_bp + sizeof(T);
+  W(state.gpr.rbp) = R(bp_addr);
+  W(state.gpr.rsp) = prev_bp + sizeof(T);
 }
 
 }  // namespace

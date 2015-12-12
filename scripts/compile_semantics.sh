@@ -11,7 +11,8 @@ CXXFLAGS+=" -isystem ${DIR}/third_party/include"
 CXXFLAGS+=" -std=gnu++11 -g0 -O0 -fno-exceptions -fno-rtti"
 CXXFLAGS+=" -fno-asynchronous-unwind-tables -I${DIR}"
 
-compile_x86() {
+function compile_x86()
+{
     MACROS="-DADDRESS_SIZE_BITS=$1 -DHAS_FEATURE_AVX=$2 -DHAS_FEATURE_AVX512=$3"
     FILE_NAME=Semantics
     if [[ $1 -eq 64 ]] ; then

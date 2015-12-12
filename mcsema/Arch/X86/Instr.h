@@ -29,6 +29,7 @@ class Instr : public ::mcsema::Instr {
 
  private:
   void LiftPC(void);
+  void LiftPC(uintptr_t next_pc);
   void LiftGeneric(const Translator &lifter);
   void LiftConditionalBranch(const Translator &lifter);
   void LiftOperand(const Translator &lifter, unsigned op_num);

@@ -39,15 +39,15 @@
 
 union FPUStatusWord {
   struct {
-    uint16_t ie:1;  ///< bit 0
+    uint16_t ie:1;  // bit 0
     uint16_t de:1;
     uint16_t ze:1;
     uint16_t oe:1;
-    uint16_t ue:1;  ///< bit 4
+    uint16_t ue:1;  // bit 4
     uint16_t pe:1;
     uint16_t sf:1;
     uint16_t es:1;
-    uint16_t c0:1;  ///< bit 8
+    uint16_t c0:1;  // bit 8
     uint16_t c1:1;
     uint16_t c2:1;
     uint16_t top:3;
@@ -62,14 +62,14 @@ static_assert(2 == sizeof(FPUStatusWord),
 
 union FPUControlWord {
   struct {
-    uint16_t im:1;  ///< bit 0
+    uint16_t im:1;  // bit 0
     uint16_t dm:1;
     uint16_t zm:1;
     uint16_t om:1;
-    uint16_t um:1;  ///< bit 4
+    uint16_t um:1;  // bit 4
     uint16_t pm:1;
     uint16_t _rsvd0:2;
-    uint16_t pc:2;  ///< bit 8
+    uint16_t pc:2;  // bit 8
     uint16_t rc:2;
     uint16_t x:1;
     uint16_t _rsvd1:3;
@@ -112,36 +112,37 @@ struct FPU {
 static_assert(512 == sizeof(FPU), "Invalid structure packing of `FPU`.");
 
 struct Flags {
-  uint32_t cf:1;  ///< bit 0
+  uint32_t cf:1;  // bit 0.
   uint32_t must_be_1:1;
   uint32_t pf:1;
   uint32_t must_be_0a:1;
 
-  uint32_t af:1; ///< bit 4
+  uint32_t af:1; // bit 4.
   uint32_t must_be_0b:1;
   uint32_t zf:1;
   uint32_t sf:1;
 
-  uint32_t tf:1;  ///< bit 8
-  uint32_t _if:1;  ///< underscore to avoid token clash
+  uint32_t tf:1;  // bit 8.
+  uint32_t _if:1;  // underscore to avoid token clash.
   uint32_t df:1;
   uint32_t of:1;
 
-  uint32_t iopl:2; ///< A 2-bit field, bits 12-13
+  uint32_t iopl:2; // A 2-bit field, bits 12-13.
   uint32_t nt:1;
   uint32_t must_be_0c:1;
 
-  uint32_t rf:1; ///< bit 16
+  uint32_t rf:1; // bit 16.
   uint32_t vm:1;
   uint32_t ac:1;
   uint32_t vif:1;
 
-  uint32_t vip:1; ///< bit 20
-  uint32_t id:1;   ///< bit 21
-  uint32_t reserved:10;  ///< bits 22-31
+  uint32_t vip:1; // bit 20.
+  uint32_t id:1;   // bit 21.
+  uint32_t reserved_eflags:10;  // bits 22-31.
+  uint32_t reserved_rflags;  // bits 32-63.
 } __attribute__((packed));
 
-static_assert(4 == sizeof(Flags), "Invalid structure packing of `Flags`.");
+static_assert(8 == sizeof(Flags), "Invalid structure packing of `Flags`.");
 
 struct alignas(8) ArithFlags {
   bool cf;
@@ -149,12 +150,12 @@ struct alignas(8) ArithFlags {
   bool af;
   bool zf;
   bool sf;
+  bool df;
   bool of;
   bool _unused1;
-  bool _unused_2;
 } __attribute__((packed));
 
-static_assert(8 == sizeof(ArithFlags), "Invalid structure packing of `ArithFlags`.");
+static_assert(8 == sizeof(ArithFlags), "Invalid packing of `ArithFlags`.");
 
 struct alignas(8) Segments {
   uint16_t ss;
@@ -163,10 +164,10 @@ struct alignas(8) Segments {
   uint16_t fs;
   uint16_t ds;
   uint16_t cs;
+  uint16_t _unused1;
+  uint16_t _unused2;
 };
 
-#if 64 == ADDRESS_SIZE_BITS
-
 union Reg {
   alignas(1) struct {
     uint8_t low;
@@ -174,51 +175,42 @@ union Reg {
   } byte;
   alignas(2) uint16_t word; 
   alignas(4) uint32_t dword;
-  alignas(8) uint64_t full;
-  alignas(8) int64_t sfull;
+  alignas(8) uint64_t qword;
 } __attribute__((packed));
 
-#else
-
-union Reg {
-  alignas(1) struct {
-    uint8_t low;
-    uint8_t high;
-  } byte;
-  alignas(2) uint16_t word; 
-  alignas(4) uint32_t dword;
-  alignas(4) uint32_t full;
-  alignas(4) int32_t sfull;
-} __attribute__((packed));
-
-#endif  // 64 != ADDRESS_SIZE_BITS
-
-static_assert(sizeof(void *) == sizeof(Reg), "Invalid packing of `Reg`.");
-static_assert(0 == __builtin_offsetof(Reg, byte.low), "Invalid packing of `Reg::low`.");
-static_assert(1 == __builtin_offsetof(Reg, byte.high), "Invalid packing of `Reg::high`.");
-static_assert(0 == __builtin_offsetof(Reg, word), "Invalid packing of `Reg::word`.");
-static_assert(0 == __builtin_offsetof(Reg, dword), "Invalid packing of `Reg::dword`.");
-static_assert(0 == __builtin_offsetof(Reg, full), "Invalid packing of `Reg::full`.");
-static_assert(0 == __builtin_offsetof(Reg, sfull), "Invalid packing of `Reg::sfull`.");
+static_assert(sizeof(uint64_t) == sizeof(Reg), "Invalid packing of `Reg`.");
+static_assert(0 == __builtin_offsetof(Reg, byte.low),
+              "Invalid packing of `Reg::low`.");
+static_assert(1 == __builtin_offsetof(Reg, byte.high),
+              "Invalid packing of `Reg::high`.");
+static_assert(0 == __builtin_offsetof(Reg, word),
+              "Invalid packing of `Reg::word`.");
+static_assert(0 == __builtin_offsetof(Reg, dword),
+              "Invalid packing of `Reg::dword`.");
+static_assert(0 == __builtin_offsetof(Reg, qword),
+              "Invalid packing of `Reg::qword`.");
 
 union alignas(64) VectorReg {
   alignas(64) avec128_t xmm;
-  IF_AVX( alignas(64) avec256_t ymm; )
-  IF_AVX512( alignas(64) avec512_t zmm; )
+  alignas(64) avec256_t ymm;
+  alignas(64) avec512_t zmm;
 } __attribute__((packed));
 
 static_assert(0 == __builtin_offsetof(VectorReg, xmm),
               "Invalid packing of `VectorReg::xmm`.");
 
-IF_AVX( static_assert(0 == __builtin_offsetof(VectorReg, ymm),
-              "Invalid packing of `VectorReg::ymm`."); )
+static_assert(0 == __builtin_offsetof(VectorReg, ymm),
+              "Invalid packing of `VectorReg::ymm`.");
 
-IF_AVX512( static_assert(0 == __builtin_offsetof(VectorReg, zmm),
-                         "Invalid packing of `VectorReg::zmm`."); )
+static_assert(0 == __builtin_offsetof(VectorReg, zmm),
+              "Invalid packing of `VectorReg::zmm`.");
 
 struct alignas(8) GPR {
   // Named the same way as the 64-bit version to keep names the same
-  // across architectures.
+  // across architectures. All registers are here, even the 64-bit ones. The
+  // 64-bit ones are inaccessible in lifted 32-bit code because they will
+  // not be referenced by named variables in the `__mcsema_basic_block`
+  // function.
   Reg rax;
   Reg rbx;
   Reg rcx;
@@ -227,8 +219,6 @@ struct alignas(8) GPR {
   Reg rdi;
   Reg rsp;
   Reg rbp;
-
-#if 64 == ADDRESS_SIZE_BITS
   Reg r8;
   Reg r9;
   Reg r10;
@@ -237,23 +227,32 @@ struct alignas(8) GPR {
   Reg r13;
   Reg r14;
   Reg r15;
-#endif  // 64 == ADDRESS_SIZE_BITS
 
-  // Next program counter.
+  // Program counter. In general, this represents the "next" program counter.
+  // For example, before a function call, the return address is loaded into
+  // `rip`. Similarly, at conditional branches, the fall-through address is
+  // loaded.
   Reg rip;
 };
 
 struct alignas(64) State {
-  // Native `XSAVE64` representation of the FPU, plus a semi-duplicate
+  // Native `FXSAVE64` representation of the FPU, plus a semi-duplicate
   // representation of all vector regs (XMM, YMM, ZMM).
-  FPU fpu;
-  VectorReg vec[IF_AVX512_ELSE(32, IF_64BIT_ELSE(16, 8))];
+  FPU fpu;  // 512 bytes.
+
+  // AVX512 has 32 vector registers, so we always include them all here for
+  // consistency across the various state structures.
+  VectorReg vec[32];  // 2048 bytes.
 
   // Two representations of flags. Makes it easy to convert from native-to-
   // lifted, as well as improved the optimizability of the aflags themselves.
-  ArithFlags aflag;
-  Flags rflag;
+  ArithFlags aflag;  // 8 bytes.
+  Flags rflag;  // 8 bytes.
 
-  Segments seg;
-  GPR gpr;
+  Segments seg;  // 12 bytes, padded to 16 bytes.
+  GPR gpr;  // 136 bytes.
+
+  // Total: 2728 bytes, padded to 2752 bytes.
 };
+
+static_assert(2752 == sizeof(State), "Invalid packing of `State`.");

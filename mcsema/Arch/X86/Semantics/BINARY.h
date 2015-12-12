@@ -78,8 +78,8 @@ struct DivMul {
     }
 
 MAKE_MULTIPLIER(16, word, word)
-MAKE_MULTIPLIER(32, dword, full)
-IF_64BIT(MAKE_MULTIPLIER(64, full, full))
+MAKE_MULTIPLIER(32, dword, IF_64BIT_ELSE(qword, dword))
+IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
 
 #undef MAKE_MULTIPLIER
 
@@ -124,8 +124,8 @@ IF_64BIT(MAKE_MULTIPLIER(64, full, full))
     }
 
 MAKE_DIVIDER(16, word, word)
-MAKE_DIVIDER(32, dword, full)
-IF_64BIT( MAKE_DIVIDER(64, full, full) )
+MAKE_DIVIDER(32, dword, IF_64BIT_ELSE(qword, dword))
+IF_64BIT( MAKE_DIVIDER(64, qword, qword) )
 
 #undef MAKE_DIVIDER
 };

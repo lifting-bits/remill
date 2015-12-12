@@ -5,7 +5,7 @@
 
 typedef RnW<uint8_t> R8W;
 typedef RnW<uint16_t> R16W;
-typedef RnW<decltype(Reg().full)> R32W;  // AMD64-ism.
+typedef RnW<IF_64BIT_ELSE(uint64_t, uint32_t)> R32W;  // AMD64-ism.
 IF_64BIT( typedef RnW<uint64_t> R64W; )
 
 typedef Rn<uint8_t> R8;
@@ -52,5 +52,13 @@ IF_64BIT( typedef In<uint64_t> I64; )
 
 typedef addr_t PC;
 typedef addr_t ADDR;
+
+ALWAYS_INLINE static IF_64BIT_ELSE(uint64_t, uint32_t) R(const Reg &reg) {
+  return reg.IF_64BIT_ELSE(qword, dword);
+}
+
+ALWAYS_INLINE static IF_64BIT_ELSE(uint64_t, uint32_t) &W(Reg &reg) {
+  return reg.IF_64BIT_ELSE(qword, dword);
+}
 
 #endif  // MCSEMA_ARCH_X86_RUNTIME_TYPES_H_

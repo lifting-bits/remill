@@ -92,74 +92,75 @@ void __mcsema_basic_block(State &state) {
   auto &IP_read = state.gpr.rip.word;
   auto &IP_write =  IP_read;
   auto &EAX_read = state.gpr.rax.dword;
-  auto &EAX_write = state.gpr.rax.full;
+  auto &EAX_write = state.gpr.rax.IF_64BIT_ELSE(qword, dword);
   auto &EBX_read = state.gpr.rbx.dword;
-  auto &EBX_write = state.gpr.rbx.full;
+  auto &EBX_write = state.gpr.rbx.IF_64BIT_ELSE(qword, dword);
   auto &ECX_read = state.gpr.rcx.dword;
-  auto &ECX_write = state.gpr.rcx.full;
+  auto &ECX_write = state.gpr.rcx.IF_64BIT_ELSE(qword, dword);
   auto &EDX_read = state.gpr.rdx.dword;
-  auto &EDX_write = state.gpr.rdx.full;
+  auto &EDX_write = state.gpr.rdx.IF_64BIT_ELSE(qword, dword);
   auto &ESI_read = state.gpr.rsi.dword;
-  auto &ESI_write = state.gpr.rsi.full;
+  auto &ESI_write = state.gpr.rsi.IF_64BIT_ELSE(qword, dword);
   auto &EDI_read = state.gpr.rdi.dword;
-  auto &EDI_write = state.gpr.rdi.full;
+  auto &EDI_write = state.gpr.rdi.IF_64BIT_ELSE(qword, dword);
   auto &ESP_read = state.gpr.rsp.dword;
-  auto &ESP_write = state.gpr.rsp.full;
+  auto &ESP_write = state.gpr.rsp.IF_64BIT_ELSE(qword, dword);
   auto &EBP_read = state.gpr.rbp.dword;
-  auto &EBP_write = state.gpr.rbp.full;
+  auto &EBP_write = state.gpr.rbp.IF_64BIT_ELSE(qword, dword);
   auto &EIP_read = state.gpr.rip.dword;
-  auto &EIP_write = state.gpr.rip.full;
+  auto &EIP_write = state.gpr.rip.IF_64BIT_ELSE(qword, dword);
 
 #if 64 == ADDRESS_SIZE_BITS
   auto &R8D_read = state.gpr.r8.dword;
-  auto &R8D_write = state.gpr.r8.full;
+  auto &R8D_write = state.gpr.r8.IF_64BIT_ELSE(qword, dword);
   auto &R9D_read = state.gpr.r9.dword;
-  auto &R9D_write = state.gpr.r9.full;
+  auto &R9D_write = state.gpr.r9.IF_64BIT_ELSE(qword, dword);
   auto &R10D_read = state.gpr.r10.dword;
-  auto &R10D_write = state.gpr.r10.full;
+  auto &R10D_write = state.gpr.r10.IF_64BIT_ELSE(qword, dword);
   auto &R11D_read = state.gpr.r11.dword;
-  auto &R11D_write = state.gpr.r11.full;
+  auto &R11D_write = state.gpr.r11.IF_64BIT_ELSE(qword, dword);
   auto &R12D_read = state.gpr.r12.dword;
-  auto &R12D_write = state.gpr.r12.full;
+  auto &R12D_write = state.gpr.r12.IF_64BIT_ELSE(qword, dword);
   auto &R13D_read = state.gpr.r13.dword;
-  auto &R13D_write = state.gpr.r13.full;
+  auto &R13D_write = state.gpr.r13.IF_64BIT_ELSE(qword, dword);
   auto &R14D_read = state.gpr.r14.dword;
-  auto &R14D_write = state.gpr.r14.full;
+  auto &R14D_write = state.gpr.r14.IF_64BIT_ELSE(qword, dword);
   auto &R15D_read = state.gpr.r15.dword;
-  auto &R15D_write = state.gpr.r15.full;
-  auto &RAX_read = state.gpr.rax.full;
+  auto &R15D_write = state.gpr.r15.IF_64BIT_ELSE(qword, dword);
+
+  auto &RAX_read = state.gpr.rax.qword;
   auto &RAX_write =  RAX_read;
-  auto &RBX_read = state.gpr.rbx.full;
+  auto &RBX_read = state.gpr.rbx.qword;
   auto &RBX_write =  RBX_read;
-  auto &RCX_read = state.gpr.rcx.full;
+  auto &RCX_read = state.gpr.rcx.qword;
   auto &RCX_write =  RCX_read;
-  auto &RDX_read = state.gpr.rdx.full;
+  auto &RDX_read = state.gpr.rdx.qword;
   auto &RDX_write =  RDX_read;
-  auto &RSI_read = state.gpr.rsi.full;
+  auto &RSI_read = state.gpr.rsi.qword;
   auto &RSI_write =  RSI_read;
-  auto &RDI_read = state.gpr.rdi.full;
+  auto &RDI_read = state.gpr.rdi.qword;
   auto &RDI_write =  RDI_read;
-  auto &RSP_read = state.gpr.rsp.full;
+  auto &RSP_read = state.gpr.rsp.qword;
   auto &RSP_write =  RSP_read;
-  auto &RBP_read = state.gpr.rbp.full;
+  auto &RBP_read = state.gpr.rbp.qword;
   auto &RBP_write =  RBP_read;
-  auto &R8_read = state.gpr.r8.full;
+  auto &R8_read = state.gpr.r8.qword;
   auto &R8_write =  R8_read;
-  auto &R9_read = state.gpr.r9.full;
+  auto &R9_read = state.gpr.r9.qword;
   auto &R9_write =  R9_read;
-  auto &R10_read = state.gpr.r10.full;
+  auto &R10_read = state.gpr.r10.qword;
   auto &R10_write =  R10_read;
-  auto &R11_read = state.gpr.r11.full;
+  auto &R11_read = state.gpr.r11.qword;
   auto &R11_write =  R11_read;
-  auto &R12_read = state.gpr.r12.full;
+  auto &R12_read = state.gpr.r12.qword;
   auto &R12_write =  R12_read;
-  auto &R13_read = state.gpr.r13.full;
+  auto &R13_read = state.gpr.r13.qword;
   auto &R13_write =  R13_read;
-  auto &R14_read = state.gpr.r14.full;
+  auto &R14_read = state.gpr.r14.qword;
   auto &R14_write =  R14_read;
-  auto &R15_read = state.gpr.r15.full;
+  auto &R15_read = state.gpr.r15.qword;
   auto &R15_write =  R15_read;
-  auto &RIP_read = state.gpr.rip.full;
+  auto &RIP_read = state.gpr.rip.qword;
   auto &RIP_write =  RIP_read;
 #endif  // 64 == ADDRESS_SIZE_BITS
 
@@ -260,7 +261,7 @@ void __mcsema_basic_block(State &state) {
   auto &YMM6_write =  AVX_SEL_XYZ(MM6_read);
   auto &YMM7_read = state.vec[7].ymm;
   auto &YMM7_write =  AVX_SEL_XYZ(MM7_read);
-#if HAS_FEATURE_AVX512 || 64 == ADDRESS_SIZE_BITS
+#if HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
   auto &YMM8_read = state.vec[8].ymm;
   auto &YMM8_write =  AVX_SEL_XYZ(MM8_read);
   auto &YMM9_read = state.vec[9].ymm;
@@ -277,7 +278,7 @@ void __mcsema_basic_block(State &state) {
   auto &YMM14_write = AVX_SEL_XYZ(MM14_read);
   auto &YMM15_read = state.vec[15].ymm;
   auto &YMM15_write = AVX_SEL_XYZ(MM15_read);
-#endif  // HAS_FEATURE_AVX512 || 64 == ADDRESS_SIZE_BITS
+#endif  // HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
 
 #if HAS_FEATURE_AVX512
   auto &YMM16_read = state.vec[16].ymm;
@@ -331,7 +332,7 @@ void __mcsema_basic_block(State &state) {
   auto &XMM6_write = AVX_SEL_XYZ(MM6_read);
   auto &XMM7_read = state.vec[7].xmm;
   auto &XMM7_write = AVX_SEL_XYZ(MM7_read);
-#if HAS_FEATURE_AVX512 || (HAS_FEATURE_AVX && 64 == ADDRESS_SIZE_BITS)
+#if HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
   auto &XMM8_read = state.vec[8].xmm;
   auto &XMM8_write = AVX_SEL_XYZ(MM8_read);
   auto &XMM9_read = state.vec[9].xmm;
@@ -348,7 +349,7 @@ void __mcsema_basic_block(State &state) {
   auto &XMM14_write = AVX_SEL_XYZ(MM14_read);
   auto &XMM15_read = state.vec[15].xmm;
   auto &XMM15_write = AVX_SEL_XYZ(MM15_read);
-#endif  // HAS_FEATURE_AVX512 || (HAS_FEATURE_AVX && 64 == ADDRESS_SIZE_BITS)
+#endif  // HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
 
 #if HAS_FEATURE_AVX512
   auto &XMM16_read = state.vec[16].xmm;

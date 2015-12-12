@@ -14,26 +14,26 @@ namespace {
 DEF_SEM(JNLE, PC taken_rip) {
   const auto cond = !state.aflag.zf && state.aflag.cf == state.aflag.pf;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
-  state.gpr.rip.full = cond ? taken_rip : state.gpr.rip.full;
+  W(state.gpr.rip) = cond ? taken_rip : R(state.gpr.rip);
 }
 
 DEF_SEM(JNS, PC taken_rip) {
   const auto cond = !state.aflag.sf;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
-  state.gpr.rip.full = cond ? taken_rip : state.gpr.rip.full;
+  W(state.gpr.rip) = cond ? taken_rip : R(state.gpr.rip);
 }
 
 DEF_SEM(JL, PC taken_rip) {
   const auto cond = state.aflag.sf != state.aflag.of;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
-  state.gpr.rip.full = cond ? taken_rip : state.gpr.rip.full;
+  W(state.gpr.rip) = cond ? taken_rip : R(state.gpr.rip);
 }
 
 DEF_SEM(JNP, PC taken_rip) {
   const auto cond = !state.aflag.pf;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 
@@ -41,7 +41,7 @@ DEF_SEM(JNZ, PC taken_rip) {
   const auto cond = !state.aflag.zf;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 
@@ -49,7 +49,7 @@ DEF_SEM(JNB, PC taken_rip) {
   const auto cond = !state.aflag.cf;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 
@@ -57,7 +57,7 @@ DEF_SEM(JNO, PC taken_rip) {
   const auto cond = !state.aflag.of;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 
@@ -65,7 +65,7 @@ DEF_SEM(JNL, PC taken_rip) {
   const auto cond = state.aflag.sf == state.aflag.of;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 
@@ -73,7 +73,7 @@ DEF_SEM(JNBE, PC taken_rip) {
   const auto cond = !state.aflag.cf & !state.aflag.zf;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 
@@ -81,7 +81,7 @@ DEF_SEM(JBE, PC taken_rip) {
   const auto cond = state.aflag.cf | state.aflag.zf;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 
@@ -89,7 +89,7 @@ DEF_SEM(JZ, PC taken_rip) {
   const auto cond = state.aflag.zf;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 
@@ -97,7 +97,7 @@ DEF_SEM(JP, PC taken_rip) {
   const auto cond = state.aflag.pf;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 
@@ -105,7 +105,7 @@ DEF_SEM(JS, PC taken_rip) {
   const auto cond = state.aflag.sf;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 
@@ -113,7 +113,7 @@ DEF_SEM(JO, PC taken_rip) {
   const auto cond = state.aflag.of;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 
@@ -121,7 +121,7 @@ DEF_SEM(JB, PC taken_rip) {
   const auto cond = state.aflag.cf;
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 
@@ -129,28 +129,28 @@ DEF_SEM(JLE, PC taken_rip) {
   const auto cond = state.aflag.zf | (state.aflag.sf ^ state.aflag.of);
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 
 DEF_SEM(JCXZ, PC taken_rip) {
   const auto cond = !state.gpr.rcx.word;
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 
 DEF_SEM(JECXZ, PC taken_rip) {
   const auto cond = !state.gpr.rcx.dword;
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 
 DEF_SEM(JRCXZ, PC taken_rip) {
-  const auto cond = !state.gpr.rcx.full;
+  const auto cond = !R(state.gpr.rcx);
   if (cond) {
-    state.gpr.rip.full = taken_rip;
+    W(state.gpr.rip) = taken_rip;
   }
 }
 

@@ -22,7 +22,6 @@
 DEFINE_string(cfg_out, "/dev/stdout",
               "Name of the file in which to place the generated CFG protobuf.");
 
-namespace test {
 namespace {
 
 #if 32 == ADDRESS_SIZE_BITS
@@ -57,13 +56,11 @@ unsigned InstructionLength(const uint8_t *bytes, unsigned num_bytes) {
   return xed_decoded_inst_get_length(&xedd);
 }
 
-}  // namespace
-
 // Decode a test and add it as a basic block to the module.
 //
 // TODO(pag): Eventually handle control-flow.
 static void AddFunctionToModule(mcsema::cfg::Module *module,
-                                const TestInfo &test) {
+                                const test::TestInfo &test) {
   const auto info_addr = reinterpret_cast<intptr_t>(&test);
   auto test_begin = info_addr + test.test_begin;
   auto test_end = info_addr + test.test_end;
@@ -91,7 +88,7 @@ static void AddFunctionToModule(mcsema::cfg::Module *module,
   while (test_begin < test_end) {
     auto bytes = reinterpret_cast<const uint8_t *>(test_begin);
     auto ilen = InstructionLength(
-        bytes, std::min<unsigned>(kMaxInstrLen, test_end - test_begin));
+        bytes, std::min<unsigned>(test::kMaxInstrLen, test_end - test_begin));
 
     auto instr = block->add_instructions();
     instr->set_address(test_begin);
@@ -118,7 +115,7 @@ extern "C" int main(int argc, char *argv[]) {
   for (auto i = 0U; ; ++i) {
     const auto &test = test::__x86_test_table_begin[i];
     if (&test >= &(test::__x86_test_table_end[0])) break;
-    test::AddFunctionToModule(module, test);
+    AddFunctionToModule(module, test);
   }
 
   std::ofstream out(FLAGS_cfg_out);

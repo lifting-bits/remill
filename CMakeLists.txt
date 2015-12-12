@@ -47,7 +47,8 @@ file(COPY ${MCSEMA_DIR}/generated/Arch DESTINATION ${MCSEMA_DIR}/build/lib)
 # Generic compiler options.
 add_compile_options(
     -Wall -Werror -pedantic
-    -Wno-nested-anon-types -Wno-variadic-macros -Wno-extended-offsetof
+    -Wno-nested-anon-types -Wno-extended-offsetof
+    -Wno-variadic-macros -Wno-gnu-zero-variadic-macro-arguments
     -DMCSEMA_DIR="${MCSEMA_DIR}" -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS
     -fno-rtti -DGOOGLE_PROTOBUF_NO_RTTI 
     -std=gnu++11 -g3 -m64
@@ -62,6 +63,13 @@ llvm_map_components_to_libnames(LLVM_LIBS
     scalaropts
 )
 
+# TODO(pag): This is really ugly.
+if(APPLE)
+    set(UNWIND_LIB )
+else()
+    set(UNWIND_LIB /usr/lib/x86_64-linux-gnu/libunwind.so.8)
+endif(APPLE)
+
 set(MCSEMA_LIBS
     libxed.a
     libprotobuf.a
@@ -69,6 +77,7 @@ set(MCSEMA_LIBS
     libglog.a
     pthread
     stdc++
+    ${UNWIND_LIB}
 )
 
 # cfg_to_bc --------------------------------------------------------------------
@@ -91,10 +100,37 @@ function(make_x86_tester suffix arch_name addr_size has_avx has_avx512)
         -DHAS_FEATURE_AVX512=${has_avx512}
     )
     
+    add_custom_command(
+        OUTPUT gen_Tests_${suffix}.o
+        COMMAND ${MCSEMA_DIR}/third_party/bin/clang
+            -m64 -mavx512f -mavx512pf -mavx512er -mavx512cd
+            ${MCSEMA_ARCH_FLAGS}
+            -DIN_TEST_GENERATOR
+            -I${MCSEMA_DIR}
+            -c ${MCSEMA_DIR}/tests/X86/Tests.S
+            -o gen_Tests_${suffix}.o
+        DEPENDS ${MCSEMA_DIR}/tests/X86/Tests.S
+        COMMENT "Generating CFG file for tests using gen_test_cfg_${suffix}."
+    )
+    
+    # Difference here is the fixed `-m64`. This is so that we can actually run
+    # the 64-bit versions of the 32-bit-specific code.
+    add_custom_command(
+        OUTPUT run_Tests_${suffix}.o
+        COMMAND ${MCSEMA_DIR}/third_party/bin/clang
+            -m64 -mavx512f -mavx512pf -mavx512er -mavx512cd
+            ${MCSEMA_ARCH_FLAGS}
+            -I${MCSEMA_DIR}
+            -c ${MCSEMA_DIR}/tests/X86/Tests.S
+            -o run_Tests_${suffix}.o
+        DEPENDS ${MCSEMA_DIR}/tests/X86/Tests.S
+        COMMENT "Generating CFG file for tests using gen_test_cfg_${suffix}."
+    )
+    
     # Start by making the test generator itself.
     add_executable(gen_test_cfg_${suffix}
         ${MCSEMA_DIR}/tests/X86/Generate.cpp
-        ${MCSEMA_DIR}/tests/X86/Tests.S
+        gen_Tests_${suffix}.o
         ${MCSEMA_DIR}/mcsema/CFG/CFG.cpp
     )
     
@@ -115,30 +151,31 @@ function(make_x86_tester suffix arch_name addr_size has_avx has_avx512)
     )
     
     add_custom_command(
-        OUTPUT tests_${suffix}.bc
+        OUTPUT lifted_tests_${suffix}.bc
         COMMAND cfg_to_bc 
            --source_arch=${arch_name} --target_arch=amd64 --os=${MCSEMA_OS_NAME} 
            --cfg=tests_${suffix}.cfg 
-           --bc_out=tests_${suffix}.bc
+           --bc_out=lifted_tests_${suffix}.bc
         DEPENDS tests_${suffix}.cfg cfg_to_bc
         COMMENT "Lifting CFG file for tests to tests_${suffix}.bc."
     )
     
     add_custom_command(
-        OUTPUT tests_${suffix}.o
+        OUTPUT lifted_tests_${suffix}.o
         COMMAND ${CMAKE_C_COMPILER} 
-           -O3 -m64
-           -c tests_${suffix}.bc 
-           -o tests_${suffix}.o
-        DEPENDS tests_${suffix}.bc
+           -O3
+           -m64
+           -c lifted_tests_${suffix}.bc 
+           -o lifted_tests_${suffix}.o
+        DEPENDS lifted_tests_${suffix}.bc
         COMMENT "Compiling lifted test code into tests_${suffix}.o."
     )
     
     add_executable(run_tests_${suffix}
         ${MCSEMA_DIR}/tests/X86/Run.cpp
         ${MCSEMA_DIR}/mcsema/Arch/Runtime/Types.cpp
-        ${MCSEMA_DIR}/tests/X86/Tests.S
-        tests_${suffix}.o
+        run_Tests_${suffix}.o
+        lifted_tests_${suffix}.o
     )
     
     target_compile_options(run_tests_${suffix} PRIVATE
@@ -147,6 +184,7 @@ function(make_x86_tester suffix arch_name addr_size has_avx has_avx512)
     
     target_link_libraries(run_tests_${suffix}
         ${MCSEMA_LIBS}
+        libgtest.a
     )
     
     set_target_properties(run_tests_${suffix}
@@ -154,6 +192,9 @@ function(make_x86_tester suffix arch_name addr_size has_avx has_avx512)
     )
 endfunction(make_x86_tester)
 
+# Make tests that use all features (except AVX512).
+#
+# TODO(pag): Use feature testing to enable/disable AVX and AVX512.
 #make_x86_tester(x86 x86 32 0 0)
 #make_x86_tester(x86_avx x86 32 1 0)
 make_x86_tester(amd64 amd64 64 0 0)
