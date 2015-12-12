@@ -188,16 +188,16 @@ TEST_FUNC(instr_name, num_args): ; \
 SYMBOL(InvokeTestCase):
     .cfi_startproc
     xchg RSP, [RIP + SYMBOL(gStackSwitcher)]  /* Switch onto recording stack. */
-# define STATE_PTR RIP + SYMBOL(gStateLifted)
+# define STATE_PTR SYMBOL(gStateLifted)
 # include "tests/X86/SaveState.S"
-    jmp QWORD PTR DS:[SYMBOL(gTestToRun) + 0]
+    jmp QWORD PTR DS:[RIP + SYMBOL(gTestToRun)]
     .cfi_endproc
 # undef STATE_PTR
 
     .align 16
 SYMBOL(__x86_save_state_after):
     .cfi_startproc
-# define STATE_PTR RIP + SYMBOL(gStateNative)
+# define STATE_PTR SYMBOL(gStateNative)
 # include "tests/X86/SaveState.S"
     xchg rsp, [RIP + SYMBOL(gStackSwitcher)]  /* Return to the normal stack. */
     ret
