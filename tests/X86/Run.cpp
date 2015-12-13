@@ -44,7 +44,7 @@ std::aligned_storage<sizeof(State), alignof(State)>::type gStateNative;
 // without storing that information in any register. So what we do is we
 // store it here and indrrectly `JMP` into the native test case code after
 // saving the machine state to `gStateBefore`.
-intptr_t gTestToRun = 0;
+uintptr_t gTestToRun = 0;
 
 // Used for swapping the stack pointer between `gStack` and the normal
 // call stack. This lets us run both native and lifted testcase code on
@@ -193,11 +193,8 @@ class InstrTest : public ::testing::TestWithParam<const test::TestInfo *> {};
 
 TEST_P(InstrTest, SemanticsMatchNative) {
   auto info = GetParam();
-  auto info_addr = reinterpret_cast<intptr_t>(info);
-  auto test_name = reinterpret_cast<const char *>(info_addr + info->test_name);
-  auto native_func = info_addr + info->test_begin;
-  auto lifted_func = reinterpret_cast<LiftedFunc>(
-      info_addr + info->lifted_func);
+  auto test_name = reinterpret_cast<const char *>(info->test_name);
+  auto lifted_func = reinterpret_cast<LiftedFunc>(info->lifted_func);
 
   memset(&gLiftedStack, 0, sizeof(gLiftedStack));
   memset(&gStateLifted, 0, sizeof(gStateLifted));
@@ -210,7 +207,7 @@ TEST_P(InstrTest, SemanticsMatchNative) {
   // stack pointer is swapped with `gStackSwitcher`. The idea here is that
   // we want to run the native and lifted testcases on the same stack so that
   // we can compare that they both operate on the stack in the same ways.
-  gTestToRun = native_func;
+  gTestToRun = info->test_begin;
   InvokeTestCase(0, 0, 0);
 
   // Copy out whatever was recorded on the stack so that we can compare it

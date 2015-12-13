@@ -117,12 +117,12 @@ TEST_FUNC(instr_name, num_args): ; \
     .section "__x86_test_table", "a" ; \
     .balign 8 ; \
     2: \
-    .long 3f - 2b ; \
-    .long 6f - 2b ; \
-    .long 1b - 2b ; \
-    .long 4f - 2b ; \
-    .long 5f - 2b ; \
-    .long LIFTED_FUNC(instr_name, num_args) - 2b; \
+    .long 3f ; \
+    .long 6f ; \
+    .long 1b ; \
+    .long 4f ; \
+    .long 5f ; \
+    .long LIFTED_FUNC(instr_name, num_args) ; \
     .long num_args ; \
     .long FEATURE_ ## __VA_ARGS__ ; \
     \

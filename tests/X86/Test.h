@@ -20,12 +20,12 @@ enum : uint32_t {
 };
 
 struct alignas(8) TestInfo {
-  int32_t test_begin;
-  int32_t test_end;
-  int32_t test_name;
-  int32_t instr_begin;
-  int32_t instr_end;
-  int32_t lifted_func;
+  uint32_t test_begin;
+  uint32_t test_end;
+  uint32_t test_name;
+  uint32_t instr_begin;
+  uint32_t instr_end;
+  uint32_t lifted_func;
   uint32_t num_args;
   uint32_t features;
 };

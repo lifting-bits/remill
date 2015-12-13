@@ -61,12 +61,7 @@ unsigned InstructionLength(const uint8_t *bytes, unsigned num_bytes) {
 // TODO(pag): Eventually handle control-flow.
 static void AddFunctionToModule(mcsema::cfg::Module *module,
                                 const test::TestInfo &test) {
-  const auto info_addr = reinterpret_cast<intptr_t>(&test);
-  auto test_begin = info_addr + test.test_begin;
-  auto test_end = info_addr + test.test_end;
-
-  const char *test_name = reinterpret_cast<const char *>(
-      info_addr + static_cast<intptr_t>(test.test_name));
+  const char *test_name = reinterpret_cast<const char *>(test.test_name);
 
   std::stringstream ss;
   ss << SYMBOL_PREFIX << "X86_LIFTED_" << test_name;
@@ -74,7 +69,7 @@ static void AddFunctionToModule(mcsema::cfg::Module *module,
   LOG(INFO) << "Adding function for: " << test_name;
 
   auto func = module->add_functions();
-  func->set_address(test_begin);
+  func->set_address(test.test_begin);
   func->set_name(ss.str());
   func->set_is_exported(true);
   func->set_is_imported(false);
@@ -83,18 +78,19 @@ static void AddFunctionToModule(mcsema::cfg::Module *module,
   LOG(INFO) << "Adding block for: " << test_name;
 
   auto block = module->add_blocks();
-  block->set_address(test_begin);
+  block->set_address(test.test_begin);
 
-  while (test_begin < test_end) {
-    auto bytes = reinterpret_cast<const uint8_t *>(test_begin);
+  auto addr = test.test_begin;
+  while (addr < test.test_end) {
+    auto bytes = reinterpret_cast<const uint8_t *>(addr);
     auto ilen = InstructionLength(
-        bytes, std::min<unsigned>(test::kMaxInstrLen, test_end - test_begin));
+        bytes, std::min<unsigned>(test::kMaxInstrLen, test.test_end - addr));
 
     auto instr = block->add_instructions();
-    instr->set_address(test_begin);
+    instr->set_address(addr);
     instr->set_size(ilen);
     instr->set_bytes(bytes, ilen);
-    test_begin += ilen;
+    addr += ilen;
   }
 }
 
