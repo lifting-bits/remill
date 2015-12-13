@@ -8,7 +8,7 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
     HAS_AVX=`cat /proc/cpuinfo | grep -o 'avx ' | wc -w`
 
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-	HAS_AVX=`cat /proc/cpuinfo | grep -o 'AVX ' | wc -w`
+	HAS_AVX=`sysctl -n machdep.cpu.features | grep -o 'AVX ' | wc -w`
 
 else
     printf "${RED}Unsupported platform: ${OSTYPE}${RESET}"
