@@ -19,13 +19,13 @@ enum : uint32_t {
   kFeature32BitOnly = (1 << 5)
 };
 
-struct alignas(8) TestInfo {
-  uint32_t test_begin;
-  uint32_t test_end;
-  uint32_t test_name;
-  uint32_t instr_begin;
-  uint32_t instr_end;
-  uint32_t lifted_func;
+struct TestInfo {
+  uintptr_t test_begin;
+  uintptr_t test_end;
+  uintptr_t test_name;
+  uintptr_t instr_begin;
+  uintptr_t instr_end;
+  uintptr_t lifted_func;
   uint32_t num_args;
   uint32_t features;
 };

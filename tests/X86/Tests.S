@@ -115,14 +115,13 @@ TEST_FUNC(instr_name, num_args): ; \
     .asciz TO_STRING(FUNC_NAME(instr_name, num_args)) ; \
     \
     .section "__x86_test_table", "a" ; \
-    .balign 8 ; \
     2: \
-    .long 3f ; \
-    .long 6f ; \
-    .long 1b ; \
-    .long 4f ; \
-    .long 5f ; \
-    .long LIFTED_FUNC(instr_name, num_args) ; \
+    .quad 3f ; \
+    .quad 6f ; \
+    .quad 1b ; \
+    .quad 4f ; \
+    .quad 5f ; \
+    .quad LIFTED_FUNC(instr_name, num_args) ; \
     .long num_args ; \
     .long FEATURE_ ## __VA_ARGS__ ; \
     \
@@ -228,7 +227,6 @@ SYMBOL(__x86_test_table_begin):
 
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"
-    .balign 8
     .globl SYMBOL(__x86_test_table_end)
 SYMBOL(__x86_test_table_end):
 
