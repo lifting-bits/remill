@@ -197,7 +197,7 @@ endfunction(make_x86_tester)
 # Make tests that use all features (except AVX512).
 #
 # TODO(pag): Use feature testing to enable/disable AVX and AVX512.
-#make_x86_tester(x86 x86 32 0 0)
-#make_x86_tester(x86_avx x86 32 1 0)
+make_x86_tester(x86 x86 32 0 0)
+make_x86_tester(x86_avx x86 32 1 0)
 make_x86_tester(amd64 amd64 64 0 0)
 make_x86_tester(amd64_avx amd64 64 1 0)

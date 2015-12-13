@@ -83,7 +83,7 @@ static_assert(2 == sizeof(FPUControlWord),
 union FPUStackElem {
   float80_t st;
   double mmx;
-};
+} __attribute__((packed));
 
 // FP register state that conforms with `FXSAVE`.
 struct FPU {
@@ -92,12 +92,17 @@ struct FPU {
   uint8_t ftw;
   uint8_t _rsvd0;
   uint16_t fop;
-  uint32_t ip;
-  uint16_t cs;
+#if 32 == ADDRESS_SIZE_BITS
+  uint32_t ip;  // Offset in segment of last non-control FPU instruction.
+  uint16_t cs;  // Code segment associated with `ip`.
   uint16_t _rsvd1;
   uint32_t dp;
   uint16_t ds;
   uint16_t _rsvd2;
+#else
+  uint64_t ip;
+  uint64_t dp;
+#endif  // 32 == ADDRESS_SIZE_BITS
   uint32_t mxcsr;
   uint32_t mxcr_mask;
   float80_t st[8];   // 8*16 bytes for each FP reg = 128 bytes.
@@ -166,7 +171,7 @@ struct alignas(8) Segments {
   uint16_t cs;
   uint16_t _unused1;
   uint16_t _unused2;
-};
+} __attribute__((packed));
 
 union Reg {
   alignas(1) struct {
@@ -233,7 +238,13 @@ struct alignas(8) GPR {
   // `rip`. Similarly, at conditional branches, the fall-through address is
   // loaded.
   Reg rip;
-};
+} __attribute__((packed));
+
+static_assert(0 == __builtin_offsetof(GPR, rax),
+              "Invalid structure packing of `GPR`.");
+
+static_assert((sizeof(GPR) - 8) == __builtin_offsetof(GPR, rip),
+              "Invalid structure packing of `GPR`.");
 
 struct alignas(64) State {
   // Native `FXSAVE64` representation of the FPU, plus a semi-duplicate
@@ -253,6 +264,24 @@ struct alignas(64) State {
   GPR gpr;  // 136 bytes.
 
   // Total: 2728 bytes, padded to 2752 bytes.
-};
+} __attribute__((packed));
+
+static_assert(0 == __builtin_offsetof(State, fpu),
+              "Invalid packing of `State::fpu`.");
+
+static_assert(512 == __builtin_offsetof(State, vec[0]),
+              "Invalid packing of `State::vec`.");
+
+static_assert(2560 == __builtin_offsetof(State, aflag),
+              "Invalid packing of `State::aflag`.");
+
+static_assert(2568 == __builtin_offsetof(State, rflag),
+              "Invalid packing of `State::rflag`.");
+
+static_assert(2576 == __builtin_offsetof(State, seg),
+              "Invalid packing of `State::seg`.");
+
+static_assert(2592 == __builtin_offsetof(State, gpr),
+              "Invalid packing of `State::seg`.");
 
 static_assert(2752 == sizeof(State), "Invalid packing of `State`.");

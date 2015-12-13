@@ -14,15 +14,14 @@ struct VectorAssign;
 #define MAKE_VECTOR_ASSIGNER(base_type, sel) \
     template <typename VecType, typename IntVecType> \
     struct VectorAssign<base_type, VecType, IntVecType> { \
-      ALWAYS_INLINE static void assign(VecType &dest, \
-                                              const IntVecType &src) { \
+      ALWAYS_INLINE static void assign(VecType *dest, const IntVecType &src) { \
         _Pragma("unroll") \
         for (auto i = 0UL; i < sizeof(IntVecType); ++i) { \
-          dest.sel[i] = src[i]; \
+          dest->sel[i] = src[i]; \
         } \
         _Pragma("unroll") \
         for (auto i = sizeof(IntVecType); i < sizeof(VecType); ++i) { \
-          dest.sel[i] = 0; \
+          dest->sel[i] = 0; \
         } \
       } \
     }
@@ -45,28 +44,28 @@ struct VecWriter {
   typedef decltype(T().floats) FloatsType;
   typedef decltype(T().doubles) DoublesType;
   ALWAYS_INLINE void operator=(T val) const {
-    val_ref = val;
+    *val_ref = val;
   }
   ALWAYS_INLINE void operator=(BytesType val) const {
-    val_ref.bytes = val;
+    val_ref->bytes = val;
   }
   ALWAYS_INLINE void operator=(WordsType val) const {
-    val_ref.words = val;
+    val_ref->words = val;
   }
   ALWAYS_INLINE void operator=(DwordsType val) const {
-    val_ref.dwords = val;
+    val_ref->dwords = val;
   }
   ALWAYS_INLINE void operator=(QwordsType val) const {
-    val_ref.qwords = val;
+    val_ref->qwords = val;
   }
   ALWAYS_INLINE void operator=(DqwordsType val) const {
-    val_ref.dqwords = val;
+    val_ref->dqwords = val;
   }
   ALWAYS_INLINE void operator=(FloatsType val) const {
-    val_ref.floats = val;
+    val_ref->floats = val;
   }
   ALWAYS_INLINE void operator=(DoublesType val) const {
-    val_ref.doubles = val;
+    val_ref->doubles = val;
   }
 
   // Fallback for performing assignments of a smaller vector type to
@@ -78,7 +77,7 @@ struct VecWriter {
     VectorAssign<typename VectorInfo<V>::BaseType, T, V>::assign(val_ref, val);
   }
 
-  T &val_ref;
+  T *val_ref;
 };
 
 #define MAKE_VEC_ACCESSORS(T, size) \
@@ -154,7 +153,7 @@ ALWAYS_INLINE static T R(Rn<T> reg) {
 
 template <typename T>
 ALWAYS_INLINE static T R(Vn<T> vec) {
-  return vec.val;
+  return *(vec.val);
 }
 
 // Disallow writes to read-only register values.
@@ -199,7 +198,7 @@ template <typename T>
       return reg.val; \
     } \
     ALWAYS_INLINE static T &W(RnW<T> reg) { \
-      return reg.val_ref; \
+      return *(reg.val_ref); \
     } \
     \
     ALWAYS_INLINE static T &W(T &ref) { \

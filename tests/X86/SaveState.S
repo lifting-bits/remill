@@ -1,6 +1,10 @@
 /* Auto-generated file! Don't modify! */
 
+#if 64 == ADDRESS_SIZE_BITS
 fxsave64 [RIP + STATE_PTR + 0]
+#else
+fxsave [RIP + STATE_PTR + 0]
+#endif
 lea RSP, [RSP - 8]
 pop QWORD PTR [RIP + SYMBOL(gStackSaveSlot)]
 pushfq

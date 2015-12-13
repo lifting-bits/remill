@@ -323,7 +323,7 @@ struct Rn {
 
 template <typename T>
 struct RnW {
-  T &val_ref;
+  T *val_ref;
 };
 
 template <typename T>
@@ -333,12 +333,12 @@ struct In {
 
 template <typename T>
 struct Vn {
-  const T &val;
+  const T *val;
 };
 
 template <typename T>
 struct VnW {
-  T &val_ref;
+  T *val_ref;
 };
 
 template <typename T>

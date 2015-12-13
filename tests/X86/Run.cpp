@@ -247,9 +247,7 @@ TEST_P(InstrTest, SemanticsMatchNative) {
   std::cerr << std::endl;
 
   // Compare the register states.
-  std::cerr << "Checking that register state matches." << std::endl;
   EXPECT_TRUE(!memcmp(lifted_state, native_state, sizeof(State)));
-  std::cerr << "Checking that stack state matches." << std::endl;
   EXPECT_TRUE(!memcmp(&gLiftedStack, &gNativeStack, sizeof(Stack)));
 }
 

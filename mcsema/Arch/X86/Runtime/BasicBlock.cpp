@@ -112,21 +112,21 @@ void __mcsema_basic_block(State &state) {
 
 #if 64 == ADDRESS_SIZE_BITS
   auto &R8D_read = state.gpr.r8.dword;
-  auto &R8D_write = state.gpr.r8.IF_64BIT_ELSE(qword, dword);
+  auto &R8D_write = state.gpr.r8.qword;
   auto &R9D_read = state.gpr.r9.dword;
-  auto &R9D_write = state.gpr.r9.IF_64BIT_ELSE(qword, dword);
+  auto &R9D_write = state.gpr.r9.qword;
   auto &R10D_read = state.gpr.r10.dword;
-  auto &R10D_write = state.gpr.r10.IF_64BIT_ELSE(qword, dword);
+  auto &R10D_write = state.gpr.r10.qword;
   auto &R11D_read = state.gpr.r11.dword;
-  auto &R11D_write = state.gpr.r11.IF_64BIT_ELSE(qword, dword);
+  auto &R11D_write = state.gpr.r11.qword;
   auto &R12D_read = state.gpr.r12.dword;
-  auto &R12D_write = state.gpr.r12.IF_64BIT_ELSE(qword, dword);
+  auto &R12D_write = state.gpr.r12.qword;
   auto &R13D_read = state.gpr.r13.dword;
-  auto &R13D_write = state.gpr.r13.IF_64BIT_ELSE(qword, dword);
+  auto &R13D_write = state.gpr.r13.qword;
   auto &R14D_read = state.gpr.r14.dword;
-  auto &R14D_write = state.gpr.r14.IF_64BIT_ELSE(qword, dword);
+  auto &R14D_write = state.gpr.r14.qword;
   auto &R15D_read = state.gpr.r15.dword;
-  auto &R15D_write = state.gpr.r15.IF_64BIT_ELSE(qword, dword);
+  auto &R15D_write = state.gpr.r15.qword;
 
   auto &RAX_read = state.gpr.rax.qword;
   auto &RAX_write =  RAX_read;
@@ -403,6 +403,7 @@ void __mcsema_basic_block(State &state) {
   auto &ST7_read = state.fpu.st[7].f;
   auto &ST7_write =  ST7_read;
 
+#if 32 == ADDRESS_SIZE_BITS
   auto &FPU_LASTIP_read = state.fpu.ip;
   auto &FPU_LASTIP_write = state.fpu.ip;
   auto &FPU_LASTCS_read = state.fpu.cs;
@@ -411,6 +412,12 @@ void __mcsema_basic_block(State &state) {
   auto &FPU_LASTDP_write = state.fpu.dp;
   auto &FPU_LASTDS_read = state.fpu.ds;
   auto &FPU_LASTDS_write = state.fpu.ds;
+#else
+  auto &FPU_LASTIP_read = state.fpu.ip;
+  auto &FPU_LASTIP_write = state.fpu.ip;
+  auto &FPU_LASTDP_read = state.fpu.dp;
+  auto &FPU_LASTDP_write = state.fpu.dp;
+#endif
   auto &FPU_OPCODE_read = state.fpu.fop;
   auto &FPU_OPCODE_write = state.fpu.fop;
   auto &FPU_CONTROL_read = state.fpu.cwd.flat;

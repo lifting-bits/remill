@@ -23,7 +23,12 @@ int main(void) {
   printf("/* Auto-generated file! Don't modify! */\n\n");
 
   // Save the FPU state.
+  printf("#if 64 == ADDRESS_SIZE_BITS\n");
   printf("fxsave64 [RIP + STATE_PTR + %lu]\n", offsetof(State, fpu));
+  printf("#else\n");
+  printf("fxsave [RIP + STATE_PTR + %lu]\n", offsetof(State, fpu));
+  printf("#endif\n");
+
 
   // Save the flags. This first saves whatever is on the stack that would get
   // clobbered by the `PUSHFQ`.

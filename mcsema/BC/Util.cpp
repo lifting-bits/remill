@@ -8,12 +8,14 @@
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
-#include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/IRReader/IRReader.h>
-#include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/FileSystem.h>
+#include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/ToolOutputFile.h>
 
 #include "mcsema/BC/Util.h"
@@ -126,14 +128,21 @@ llvm::Module *LoadModuleFromFile(std::string file_name) {
 }
 
 // Store an LLVM module into a file.
-void StoreModuleToFile(llvm::Module *module, std::string file_name) {
+void StoreModuleToFile(llvm::Module *M, std::string file_name) {
+  std::string error;
+  llvm::raw_string_ostream error_stream(error);
+  if (llvm::verifyModule(*M, &error_stream)) {
+    LOG(FATAL)
+        << "Error writing module to file " << file_name << ". " << error;
+  }
+
   std::error_code ec;
   llvm::tool_output_file bc(file_name.c_str(), ec, llvm::sys::fs::F_None);
 
   CHECK(!ec)
       << "Unable to open output bitcode file for writing: " << file_name;
 
-  llvm::WriteBitcodeToFile(module, bc.os());
+  llvm::WriteBitcodeToFile(M, bc.os());
   bc.keep();
 
   CHECK(!ec)
