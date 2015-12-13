@@ -22,10 +22,14 @@ static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
 typedef double float64_t;
 static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
 
+typedef long double arch_float80_t;
+
 struct alignas(16) float80_t {
-  long double f;
-};
+  uint8_t f[16];
+} __attribute__((packed));
 static_assert(16 == sizeof(float80_t), "Invalid `float80_t` size.");
+static_assert(0 == __builtin_offsetof(float80_t, f),
+              "Invalid structure packing of `float80_t`.");
 
 typedef unsigned uint128_t __attribute__((mode(TI)));
 static_assert(16 == sizeof(uint128_t), "Invalid `uint128_t` size.");

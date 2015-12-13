@@ -180,6 +180,15 @@ template <typename T>
   __builtin_unreachable();
 }
 
+// Convert from bytes
+ALWAYS_INLINE static arch_float80_t R(const float80_t &reg) {
+  return *reinterpret_cast<const arch_float80_t *>(&(reg.f[0]));
+}
+
+ALWAYS_INLINE static arch_float80_t &W(float80_t &reg) {
+  return *reinterpret_cast<arch_float80_t *>(&(reg.f[0]));
+}
+
 #define MAKE_ACCESSORS(T, size) \
     struct MemoryWriter ## T { \
       ALWAYS_INLINE void operator=(T val) const { \

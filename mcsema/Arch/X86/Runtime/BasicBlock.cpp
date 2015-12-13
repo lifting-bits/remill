@@ -386,21 +386,21 @@ void __mcsema_basic_block(State &state) {
   auto &XMM31_write = AVX_SEL_XYZ(MM31_read);
 #endif  // HAS_FEATURE_AVX512
 
-  auto &ST0_read = state.fpu.st[0].f;
+  auto &ST0_read = state.fpu.st[0];
   auto &ST0_write =  ST0_read;
-  auto &ST1_read = state.fpu.st[1].f;
+  auto &ST1_read = state.fpu.st[1];
   auto &ST1_write =  ST1_read;
-  auto &ST2_read = state.fpu.st[2].f;
+  auto &ST2_read = state.fpu.st[2];
   auto &ST2_write =  ST2_read;
-  auto &ST3_read = state.fpu.st[3].f;
+  auto &ST3_read = state.fpu.st[3];
   auto &ST3_write =  ST3_read;
-  auto &ST4_read = state.fpu.st[4].f;
+  auto &ST4_read = state.fpu.st[4];
   auto &ST4_write =  ST4_read;
-  auto &ST5_read = state.fpu.st[5].f;
+  auto &ST5_read = state.fpu.st[5];
   auto &ST5_write =  ST5_read;
-  auto &ST6_read = state.fpu.st[6].f;
+  auto &ST6_read = state.fpu.st[6];
   auto &ST6_write =  ST6_read;
-  auto &ST7_read = state.fpu.st[7].f;
+  auto &ST7_read = state.fpu.st[7];
   auto &ST7_write =  ST7_read;
 
 #if 32 == ADDRESS_SIZE_BITS
