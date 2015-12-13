@@ -66,8 +66,10 @@ llvm_map_components_to_libnames(LLVM_LIBS
 # TODO(pag): This is really ugly.
 if(APPLE)
     set(UNWIND_LIB )
+    set(STRIP_DEAD_CODE -Wl,-dead_strip)
 else()
     set(UNWIND_LIB /usr/lib/x86_64-linux-gnu/libunwind.so.8)
+    set(STRIP_DEAD_CODE -Wl,-gc-sections)
 endif(APPLE)
 
 set(MCSEMA_LIBS
@@ -188,7 +190,7 @@ function(make_x86_tester suffix arch_name addr_size has_avx has_avx512)
     )
     
     set_target_properties(run_tests_${suffix}
-        PROPERTIES LINK_FLAGS -Wl,-gc-sections
+        PROPERTIES LINK_FLAGS ${STRIP_DEAD_CODE}
     )
 endfunction(make_x86_tester)
 
