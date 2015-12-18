@@ -42,7 +42,7 @@ void InitFunctionAttributes(llvm::Function *F) {
   // machine state pointer) and they all tail-call to each-other. Therefore,
   // it makes no sense to save/restore callee-saved registers because there
   // are no real callers to care about!
-  F->addFnAttr(llvm::Attribute::Naked);
+  //F->addFnAttr(llvm::Attribute::Naked);
 
   // Make sure functions are treated as if they return. LLVM doesn't like
   // mixing must-tail-calls with no-return.
@@ -56,7 +56,7 @@ void InitFunctionAttributes(llvm::Function *F) {
   // convention, where it's up the LLVM to decide how to pass arguments.
   F->setCallingConv(llvm::CallingConv::Fast);
 
-  // Mark everything for inlining.
+  // Mark everything for inlining, but don't require it.
   F->addFnAttr(llvm::Attribute::InlineHint);
 }
 

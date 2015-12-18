@@ -92,17 +92,20 @@ struct FPU {
   uint8_t ftw;
   uint8_t _rsvd0;
   uint16_t fop;
-#if 32 == ADDRESS_SIZE_BITS
-  uint32_t ip;  // Offset in segment of last non-control FPU instruction.
-  uint16_t cs;  // Code segment associated with `ip`.
-  uint16_t _rsvd1;
-  uint32_t dp;
-  uint16_t ds;
-  uint16_t _rsvd2;
-#else
-  uint64_t ip;
-  uint64_t dp;
-#endif  // 32 == ADDRESS_SIZE_BITS
+  union {
+    struct {
+      uint32_t ip;  // Offset in segment of last non-control FPU instruction.
+      uint16_t cs;  // Code segment associated with `ip`.
+      uint16_t _rsvd1;
+      uint32_t dp;
+      uint16_t ds;
+      uint16_t _rsvd2;
+    } __attribute__((packed)) x86;
+    struct {
+      uint64_t ip;
+      uint64_t dp;
+    } __attribute__((packed)) amd64;
+  } __attribute__((packed)) u;
   uint32_t mxcsr;
   uint32_t mxcr_mask;
   float80_t st[8];   // 8*16 bytes for each FP reg = 128 bytes.

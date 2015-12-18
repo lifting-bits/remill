@@ -404,19 +404,19 @@ void __mcsema_basic_block(State &state) {
   auto &ST7_write =  ST7_read;
 
 #if 32 == ADDRESS_SIZE_BITS
-  auto &FPU_LASTIP_read = state.fpu.ip;
-  auto &FPU_LASTIP_write = state.fpu.ip;
-  auto &FPU_LASTCS_read = state.fpu.cs;
-  auto &FPU_LASTCS_write = state.fpu.cs;
-  auto &FPU_LASTDP_read = state.fpu.dp;
-  auto &FPU_LASTDP_write = state.fpu.dp;
-  auto &FPU_LASTDS_read = state.fpu.ds;
-  auto &FPU_LASTDS_write = state.fpu.ds;
+  auto &FPU_LASTIP_read = state.fpu.u.x86.ip;
+  auto &FPU_LASTIP_write = state.fpu.u.x86.ip;
+  auto &FPU_LASTCS_read = state.fpu.u.x86.cs;
+  auto &FPU_LASTCS_write = state.fpu.u.x86.cs;
+  auto &FPU_LASTDP_read = state.fpu.u.x86.dp;
+  auto &FPU_LASTDP_write = state.fpu.u.x86.dp;
+  auto &FPU_LASTDS_read = state.fpu.u.x86.ds;
+  auto &FPU_LASTDS_write = state.fpu.u.x86.ds;
 #else
-  auto &FPU_LASTIP_read = state.fpu.ip;
-  auto &FPU_LASTIP_write = state.fpu.ip;
-  auto &FPU_LASTDP_read = state.fpu.dp;
-  auto &FPU_LASTDP_write = state.fpu.dp;
+  auto &FPU_LASTIP_read = state.fpu.u.amd64.ip;
+  auto &FPU_LASTIP_write = state.fpu.u.amd64.ip;
+  auto &FPU_LASTDP_read = state.fpu.u.amd64.dp;
+  auto &FPU_LASTDP_write = state.fpu.u.amd64.dp;
 #endif
   auto &FPU_OPCODE_read = state.fpu.fop;
   auto &FPU_OPCODE_write = state.fpu.fop;

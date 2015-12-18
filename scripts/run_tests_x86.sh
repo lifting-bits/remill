@@ -11,7 +11,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
 	HAS_AVX=`sysctl -n machdep.cpu.features | grep -o 'AVX ' | wc -w`
 
 else
-    printf "${RED}Unsupported platform: ${OSTYPE}${RESET}"
+    printf "${RED}Unsupported platform: ${OSTYPE}${RESET}\n"
     exit 1
 fi
 

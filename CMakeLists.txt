@@ -9,13 +9,14 @@ set(CMAKE_C_COMPILER "${MCSEMA_DIR}/third_party/bin/clang")
 set(CMAKE_CXX_COMPILER "${MCSEMA_DIR}/third_party/bin/clang++")
 set(CMAKE_ASM_COMPILER "${MCSEMA_DIR}/third_party/bin/clang")
 
-
-set(LLVM_INSTALL_PREFIX ${MCSEMA_DIR}/third_party)
-set(_LLVM_CMAKE_DIR ${MCSEMA_DIR}/third_party/share/llvm/cmake)
-set(_LLVM_LIBRARY_DIR "${LLVM_INSTALL_PREFIX}/lib")
-
 # Find LLVM.
-find_package(LLVM REQUIRED Config)
+set(LLVM_INSTALL_PREFIX "${MCSEMA_DIR}/third_party")
+set(LLVM_CMAKE_DIR "${LLVM_INSTALL_PREFIX}/share/llvm/cmake")
+set(LLVM_LIBRARY_DIR "${LLVM_INSTALL_PREFIX}/lib")
+list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+#find_package(LLVM 3.7.0 EXACT REQUIRED Config)
+include(LLVMConfig)
+include(AddLLVM)
 
 # Find all libraries.
 link_directories(${MCSEMA_DIR}/third_party/lib)
@@ -93,6 +94,12 @@ target_link_libraries(cfg_to_bc
     ${LLVM_LIBS}
 )
 
+# optimize_bc plugin -----------------------------------------------------------
+
+add_library( Optimizer SHARED ${MCSEMA_DIR}/mcsema/Optimize.cpp )
+add_llvm_loadable_module(Optimizer ${MCSEMA_DIR}/mcsema/Optimize.cpp )
+
+# test code --------------------------------------------------------------------
 
 function(make_x86_tester suffix arch_name addr_size has_avx has_avx512)
     
@@ -112,7 +119,7 @@ function(make_x86_tester suffix arch_name addr_size has_avx has_avx512)
             -c ${MCSEMA_DIR}/tests/X86/Tests.S
             -o gen_Tests_${suffix}.o
         DEPENDS ${MCSEMA_DIR}/tests/X86/Tests.S
-        COMMENT "Generating CFG file for tests using gen_test_cfg_${suffix}."
+        COMMENT "Compiling Tests.S into test generator gen_Tests_${suffix}.o."
     )
     
     # Difference here is the fixed `-m64`. This is so that we can actually run
@@ -126,7 +133,7 @@ function(make_x86_tester suffix arch_name addr_size has_avx has_avx512)
             -c ${MCSEMA_DIR}/tests/X86/Tests.S
             -o run_Tests_${suffix}.o
         DEPENDS ${MCSEMA_DIR}/tests/X86/Tests.S
-        COMMENT "Generating CFG file for tests using gen_test_cfg_${suffix}."
+        COMMENT "Compiling Tests.S into test runner run_Tests_${suffix}.o."
     )
     
     # Start by making the test generator itself.
@@ -155,21 +162,30 @@ function(make_x86_tester suffix arch_name addr_size has_avx has_avx512)
     add_custom_command(
         OUTPUT lifted_tests_${suffix}.bc
         COMMAND cfg_to_bc 
-           --source_arch=${arch_name} --target_arch=amd64 --os=${MCSEMA_OS_NAME} 
-           --cfg=tests_${suffix}.cfg 
-           --bc_out=lifted_tests_${suffix}.bc
+            --source_arch=${arch_name} --target_arch=amd64 --os=${MCSEMA_OS_NAME} 
+            --cfg=tests_${suffix}.cfg 
+            --bc_out=lifted_tests_${suffix}.bc
         DEPENDS tests_${suffix}.cfg cfg_to_bc
-        COMMENT "Lifting CFG file for tests to tests_${suffix}.bc."
+        COMMENT "Lifting CFG file for tests to lifted_tests_${suffix}.bc."
+    )
+
+    add_custom_command(
+        OUTPUT lifted_tests_${suffix}.opt.bc
+        COMMAND ${MCSEMA_DIR}/scripts/optimize_bitcode.sh
+            lifted_tests_${suffix}.bc
+            lifted_tests_${suffix}.opt.bc
+        DEPENDS lifted_tests_${suffix}.bc Optimizer
+        COMMENT "Optimizing lifted_tests_${suffix}.bc."
     )
     
     add_custom_command(
         OUTPUT lifted_tests_${suffix}.o
         COMMAND ${CMAKE_C_COMPILER} 
-           -O3
-           -m64
-           -c lifted_tests_${suffix}.bc 
-           -o lifted_tests_${suffix}.o
-        DEPENDS lifted_tests_${suffix}.bc
+            -O3
+            -m64
+            -c lifted_tests_${suffix}.opt.bc 
+            -o lifted_tests_${suffix}.o
+        DEPENDS lifted_tests_${suffix}.opt.bc
         COMMENT "Compiling lifted test code into tests_${suffix}.o."
     )
     

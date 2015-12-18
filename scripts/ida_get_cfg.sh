@@ -19,7 +19,7 @@ export PYTHONPATH=${MCSEMA_DIR}:${PYTHONPATH}
 export TVHEADLESS=1
 
 "$IDA" -B -S"${SCRIPTS_DIR}/ida_get_cfg.py --output=${BIN}.cfg" $BIN &> /dev/null || {
-    printf "Unable to lift CFG" > /dev/stderr
+    printf "Unable to lift CFG\n" > /dev/stderr
     rm $BIN
     exit 1
 }

@@ -28,7 +28,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     MCSEMA_OS_NAME="mac"
 
 else
-    printf "${RED}Unsupported platform: ${OSTYPE}${RESET}"
+    printf "${RED}Unsupported platform: ${OSTYPE}${RESET}\n"
     exit 1
 fi
 

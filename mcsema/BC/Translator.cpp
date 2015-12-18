@@ -57,7 +57,33 @@ Translator::Translator(const Arch *arch_, llvm::Module *module_)
       next_symbol_id(0),
       basic_block(FindFunction(module, "__mcsema_basic_block")),
       intrinsics(new IntrinsicTable(module)) {
+  EnableDeferredInlining();
   IdentifyExistingSymbols();
+}
+
+namespace {
+
+static void DisableInlining(llvm::Function *F) {
+  F->removeFnAttr(llvm::Attribute::AlwaysInline);
+  F->removeFnAttr(llvm::Attribute::InlineHint);
+  F->addFnAttr(llvm::Attribute::NoInline);
+}
+
+}  // namespace
+
+// Enable deferred inlining. The goal is to support better dead-store
+// elimination for flags.
+void Translator::EnableDeferredInlining(void) {
+  if (!intrinsics->defer_inlining) return;
+  DisableInlining(intrinsics->defer_inlining);
+
+  for (auto U : intrinsics->defer_inlining->users()) {
+    if (auto C = llvm::dyn_cast_or_null<llvm::CallInst>(U)) {
+      auto B = C->getParent();
+      auto F = B->getParent();
+      DisableInlining(F);
+    }
+  }
 }
 
 // Find existing exported functions and variables. This is for the sake of

@@ -37,6 +37,10 @@ class Translator {
   Translator(void) = delete;
   Translator(const Translator &) = delete;
 
+  // Enable deferred inlining. The goal is to support better dead-store
+  // elimination for flags.
+  void EnableDeferredInlining(void);
+
   // Identify symbols that are already present in the bitcode and can
   // therefore be used as a target for linking.
   void IdentifyExistingSymbols(void);

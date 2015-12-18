@@ -28,6 +28,15 @@ struct alignas(128) Stack {
 static Stack gLiftedStack;
 static Stack gNativeStack;
 
+static const auto gStackBase = reinterpret_cast<uintptr_t>(&gLiftedStack);
+static const auto gStackLimit = gStackBase + sizeof(Stack);
+
+template <typename T>
+inline static T &AccessMemory(addr_t addr) {
+  EXPECT_TRUE(addr > gStackBase && addr < gStackLimit);
+  return *reinterpret_cast<T *>(static_cast<uintptr_t>(addr));
+}
+
 extern "C" {
 
 // Native state before we run the native test case. We then use this as the
@@ -66,77 +75,76 @@ extern void InvokeTestCase(uint64_t, uint64_t, uint64_t);
 
 // Address computation intrinsic. This is only used for non-zero
 // `address_space`d memory accesses.
-addr_t __mcsema_compute_address(const State &state, addr_t address,
+addr_t __mcsema_compute_address(const State &state, addr_t addr,
                                 int address_space) {
   (void) state;
-  (void) address;
   (void) address_space;
-  return 0;
+  return addr;
 }
 
 // Memory read intrinsics.
-uint8_t __mcsema_read_memory_8(addr_t) {
-  return 0;
+uint8_t __mcsema_read_memory_8(addr_t addr) {
+  return AccessMemory<uint8_t>(addr);
 }
 
-uint16_t __mcsema_read_memory_16(addr_t) {
-  return 0;
+uint16_t __mcsema_read_memory_16(addr_t addr) {
+  return AccessMemory<uint16_t>(addr);
 }
 
-uint32_t __mcsema_read_memory_32(addr_t) {
-  return 0;
+uint32_t __mcsema_read_memory_32(addr_t addr) {
+  return AccessMemory<uint32_t>(addr);
 }
 
-uint64_t __mcsema_read_memory_64(addr_t) {
-  return 0;
+uint64_t __mcsema_read_memory_64(addr_t addr) {
+  return AccessMemory<uint64_t>(addr);
 }
 
-void __mcsema_read_memory_v64(addr_t, vec64_t &) {
-
+void __mcsema_read_memory_v64(addr_t addr, vec64_t &out) {
+  out = AccessMemory<vec64_t>(addr);
 }
 
-void __mcsema_read_memory_v128(addr_t, vec128_t &) {
-
+void __mcsema_read_memory_v128(addr_t addr, vec128_t &out) {
+  out = AccessMemory<vec128_t>(addr);
 }
-void __mcsema_read_memory_v256(addr_t, vec256_t &) {
-
+void __mcsema_read_memory_v256(addr_t addr, vec256_t &out) {
+  out = AccessMemory<vec256_t>(addr);
 }
 
-void __mcsema_read_memory_v512(addr_t, vec512_t &) {
-
+void __mcsema_read_memory_v512(addr_t addr, vec512_t &out) {
+  out = AccessMemory<vec512_t>(addr);
 }
 
 // Memory write intrinsics.
-void __mcsema_write_memory_8(addr_t, uint8_t) {
-
+void __mcsema_write_memory_8(addr_t addr, uint8_t in) {
+  AccessMemory<uint8_t>(addr) = in;
 }
 
-void __mcsema_write_memory_16(addr_t, uint16_t) {
-
+void __mcsema_write_memory_16(addr_t addr, uint16_t in) {
+  AccessMemory<uint16_t>(addr) = in;
 }
 
-void __mcsema_write_memory_32(addr_t, uint32_t) {
-
+void __mcsema_write_memory_32(addr_t addr, uint32_t in) {
+  AccessMemory<uint32_t>(addr) = in;
 }
 
-void __mcsema_write_memory_64(addr_t, uint64_t) {
-
+void __mcsema_write_memory_64(addr_t addr, uint64_t in) {
+  AccessMemory<uint64_t>(addr) = in;
 }
 
-void __mcsema_write_memory_v64(addr_t, const vec64_t &) {
-
+void __mcsema_write_memory_v64(addr_t addr, const vec64_t &in) {
+  AccessMemory<vec64_t>(addr) = in;
 }
 
-void __mcsema_write_memory_v128(addr_t, const vec128_t &) {
-
+void __mcsema_write_memory_v128(addr_t addr, const vec128_t &in) {
+  AccessMemory<vec128_t>(addr) = in;
 }
 
-void __mcsema_write_memory_v256(addr_t, const vec256_t &) {
-
+void __mcsema_write_memory_v256(addr_t addr, const vec256_t &in) {
+  AccessMemory<vec256_t>(addr) = in;
 }
 
-void __mcsema_write_memory_v512(addr_t, const vec512_t &) {
-
+void __mcsema_write_memory_v512(addr_t addr, const vec512_t &in) {
+  AccessMemory<vec512_t>(addr) = in;
 }
 
 void __mcsema_defer_inlining(void) {}

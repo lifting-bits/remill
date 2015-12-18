@@ -41,6 +41,8 @@ static llvm::Function *FindPureIntrinsic(const llvm::Module *M,
 
 // Replace all uses of a specific intrinsic with an undefined value.
 static void ReplaceIntrinsic(llvm::Function *F, unsigned N) {
+  if (!F) return;
+
   std::vector<llvm::CallInst *> Cs;
   for (auto U : F->users()) {
     if (auto C = llvm::dyn_cast<llvm::CallInst>(U)) {
@@ -84,7 +86,7 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *M)
       write_memory_v256(FindIntrinsic(M, "__mcsema_write_memory_v256")),
       write_memory_v512(FindIntrinsic(M, "__mcsema_write_memory_v512")),
       compute_address(FindPureIntrinsic(M, "__mcsema_compute_address")),
-      defer_inlining(FindPureIntrinsic(M, "__mcsema_defer_inlining")) {
+      defer_inlining(FindIntrinsic(M, "__mcsema_defer_inlining")) {
 
   // Remove calls to the undefined intrinsics. The goal here is to improve dead
   // store elimination by peppering the instruction semantics with assignments

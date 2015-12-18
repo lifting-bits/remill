@@ -12,14 +12,15 @@ enum : uint32_t {
 // Zero flags, tells us whether or not a value is zero.
 template <typename T>
 [[gnu::const]]
- NEVER_INLINE static bool ZeroFlag(T res) {
+NEVER_INLINE static bool ZeroFlag(T res) {
+  __mcsema_defer_inlining();
   return static_cast<T>(0) == res;
 }
 
 // Sign flag, tells us if a result is signed or unsigned.
 template <typename T>
 [[gnu::const]]
- NEVER_INLINE static bool SignFlag(T res) {
+NEVER_INLINE static bool SignFlag(T res) {
   typedef typename SignedIntegerType<T>::Type ST;
   __mcsema_defer_inlining();
   return static_cast<ST>(0) > static_cast<ST>(res);
@@ -157,6 +158,7 @@ struct Carry<kLHS + kRHS> {
   NEVER_INLINE static bool Flag(T lhs, T, T res) {
     static_assert(std::is_unsigned<T>::value,
                   "Invalid specialization of `Carry::Flag` for addition.");
+    __mcsema_defer_inlining();
     return res < lhs;
   }
 };
@@ -169,6 +171,7 @@ struct Carry<kLHS - kRHS> {
   NEVER_INLINE static bool Flag(T lhs, T rhs, T) {
     static_assert(std::is_unsigned<T>::value,
                   "Invalid specialization of `Carry::Flag` for addition.");
+    __mcsema_defer_inlining();
     return lhs < rhs;
   }
 };
