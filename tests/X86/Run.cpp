@@ -242,7 +242,7 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
   // we want to run the native and lifted testcases on the same stack so that
   // we can compare that they both operate on the stack in the same ways.
   gTestToRun = info->test_begin;
-  InvokeTestCase(0, 0, 0);
+  InvokeTestCase(0xFFFFU, ~0xFFFFU, 0x414141U);
 
   // Copy out whatever was recorded on the stack so that we can compare it
   // with how the lifted program mutates the stack.
@@ -284,7 +284,7 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
   if (test::kFeature64BitOnly & info->features) std::cerr << ", 64-bit only";
   if (test::kFeature32BitOnly & info->features) std::cerr << ", 32-bit only";
   if (!((test::kFeature32BitOnly | test::kFeature64BitOnly) & info->features)) {
-    std::cerr << " 32-bit (64-bit compat";
+    std::cerr << " 32-bit (64-bit compat)";
   }
   std::cerr << std::endl;
 
