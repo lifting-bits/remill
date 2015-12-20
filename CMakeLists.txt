@@ -10,11 +10,7 @@ set(CMAKE_CXX_COMPILER "${MCSEMA_DIR}/third_party/bin/clang++")
 set(CMAKE_ASM_COMPILER "${MCSEMA_DIR}/third_party/bin/clang")
 
 # Find LLVM.
-set(LLVM_INSTALL_PREFIX "${MCSEMA_DIR}/third_party")
-set(LLVM_CMAKE_DIR "${LLVM_INSTALL_PREFIX}/share/llvm/cmake")
-set(LLVM_LIBRARY_DIR "${LLVM_INSTALL_PREFIX}/lib")
-list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
-#find_package(LLVM 3.7.0 EXACT REQUIRED Config)
+list(INSERT CMAKE_MODULE_PATH 0 "${MCSEMA_DIR}/third_party/share/llvm/cmake")
 include(LLVMConfig)
 include(AddLLVM)
 

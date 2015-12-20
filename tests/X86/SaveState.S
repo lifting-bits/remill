@@ -7,7 +7,11 @@ fxsave [RIP + STATE_PTR + 0]
 #endif
 lea RSP, [RSP - 8]
 pop QWORD PTR [RIP + SYMBOL(gStackSaveSlot)]
+#ifdef AFTER_TEST_CASE
 pushfq
+#else
+push QWORD PTR [RIP + STATE_PTR + 2568]
+#endif
 bt QWORD PTR [RSP], 0
 adc BYTE PTR [RIP + STATE_PTR + 2560], 0
 bt QWORD PTR [RSP], 2
@@ -22,7 +26,11 @@ bt QWORD PTR [RSP], 10
 adc BYTE PTR [RIP + STATE_PTR + 2565], 0
 bt QWORD PTR [RSP], 11
 adc BYTE PTR [RIP + STATE_PTR + 2566], 0
+#ifdef AFTER_TEST_CASE
+pop QWORD PTR [RIP + STATE_PTR + 2568]
+#else
 popfq
+#endif
 push QWORD PTR [RIP + SYMBOL(gStackSaveSlot)]
 lea RSP, [RSP + 8]
 mov [RIP + STATE_PTR + 2593], AH

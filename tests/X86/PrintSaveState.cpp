@@ -34,7 +34,14 @@ int main(void) {
   // clobbered by the `PUSHFQ`.
   printf("lea RSP, [RSP - 8]\n");
   printf("pop QWORD PTR [RIP + SYMBOL(gStackSaveSlot)]\n");
+
+  // Before the testcase this will initialize the flags, and after the test
+  // case this will record the flags.
+  printf("#ifdef AFTER_TEST_CASE\n");
   printf("pushfq\n");
+  printf("#else\n");
+  printf("push QWORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, rflag));
+  printf("#endif\n");
 
   printf("bt QWORD PTR [RSP], 0\n");
   printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, aflag.cf));
@@ -57,9 +64,14 @@ int main(void) {
   printf("bt QWORD PTR [RSP], 11\n");
   printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, aflag.of));
 
-  // Restore the flags, then restore whatever was previously clobbered by
-  // `PUSHFQ`.
+  // Before the native test case this will set the flags from `gFlags`, but
+  // after the test case this will safe the flags to the `rflag` field.
+  printf("#ifdef AFTER_TEST_CASE\n");
+  printf("pop QWORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, rflag));
+  printf("#else\n");
   printf("popfq\n");
+  printf("#endif\n");
+
   printf("push QWORD PTR [RIP + SYMBOL(gStackSaveSlot)]\n");
   printf("lea RSP, [RSP + 8]\n");
 

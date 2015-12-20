@@ -28,6 +28,9 @@ struct alignas(128) Stack {
 static Stack gLiftedStack;
 static Stack gNativeStack;
 
+static Flags gRflagsOff;
+static Flags gRflagsOn;
+
 static const auto gStackBase = reinterpret_cast<uintptr_t>(&gLiftedStack);
 static const auto gStackLimit = gStackBase + sizeof(Stack);
 
@@ -195,12 +198,31 @@ static void CopyXMMRegsIntoFPU(State *state) {
 
 static std::vector<const test::TestInfo *> gTests;
 
+static void InitFlags(void) {
+  asm("pushfq; pushfq; pop %0; pop %1;" : : "m"(gRflagsOn), "m"(gRflagsOff));
+  gRflagsOn.cf = true;
+  gRflagsOn.pf = true;
+  gRflagsOn.af = true;
+  gRflagsOn.zf = true;
+  gRflagsOn.sf = true;
+  gRflagsOn.df = true;
+  gRflagsOn.of = true;
+
+  gRflagsOff.cf = false;
+  gRflagsOff.pf = false;
+  gRflagsOff.af = false;
+  gRflagsOff.zf = false;
+  gRflagsOff.sf = false;
+  gRflagsOff.df = false;
+  gRflagsOff.of = false;
+}
+
 }  // namespace
 
 class InstrTest : public ::testing::TestWithParam<const test::TestInfo *> {};
 
-TEST_P(InstrTest, SemanticsMatchNative) {
-  auto info = GetParam();
+static void RunWithFlags(const test::TestInfo *info, Flags flags,
+                         const char *desc) {
   auto test_name = reinterpret_cast<const char *>(info->test_name);
   auto lifted_func = reinterpret_cast<LiftedFunc>(info->lifted_func);
 
@@ -210,6 +232,10 @@ TEST_P(InstrTest, SemanticsMatchNative) {
 
   auto lifted_state = reinterpret_cast<State *>(&gStateLifted);
   auto native_state = reinterpret_cast<State *>(&gStateNative);
+
+  // This will be used to initialize the native flags state before executing
+  // the native test.
+  lifted_state->rflag = flags;
 
   // This will execute on `gStack`. The mechanism behind this is that the
   // stack pointer is swapped with `gStackSwitcher`. The idea here is that
@@ -241,16 +267,24 @@ TEST_P(InstrTest, SemanticsMatchNative) {
 
   CopyXMMRegsIntoFPU(lifted_state);
 
-  std::cerr << "Testing instruction: " << test_name << std::endl;
-  std::cerr << "Instruction features:";
-  if (test::kFeatureMMX & info->features) std::cerr << " MMX";
-  if (test::kFeatureSSE & info->features) std::cerr << " SSE";
-  if (test::kFeatureAVX & info->features) std::cerr << " AVX";
-  if (test::kFeatureAVX512 & info->features) std::cerr << " AVX512";
-  if (test::kFeature64BitOnly & info->features) std::cerr << " (64-bit only)";
-  if (test::kFeature32BitOnly & info->features) std::cerr << " (32-bit only)";
+  // Copy the aflags state back into the rflags state.
+  lifted_state->rflag.cf = lifted_state->aflag.cf;
+  lifted_state->rflag.pf = lifted_state->aflag.pf;
+  lifted_state->rflag.af = lifted_state->aflag.af;
+  lifted_state->rflag.zf = lifted_state->aflag.zf;
+  lifted_state->rflag.sf = lifted_state->aflag.sf;
+  lifted_state->rflag.df = lifted_state->aflag.df;
+  lifted_state->rflag.of = lifted_state->aflag.of;
+
+  std::cerr << "Testing instruction: " << test_name << ": " << desc;
+  if (test::kFeatureMMX & info->features) std::cerr << ", MMX";
+  if (test::kFeatureSSE & info->features) std::cerr << ", SSE";
+  if (test::kFeatureAVX & info->features) std::cerr << ", AVX";
+  if (test::kFeatureAVX512 & info->features) std::cerr << ", AVX512";
+  if (test::kFeature64BitOnly & info->features) std::cerr << ", 64-bit only";
+  if (test::kFeature32BitOnly & info->features) std::cerr << ", 32-bit only";
   if (!((test::kFeature32BitOnly | test::kFeature64BitOnly) & info->features)) {
-    std::cerr << " (32-bit, 64-bit compat)";
+    std::cerr << " 32-bit (64-bit compat";
   }
   std::cerr << std::endl;
 
@@ -259,12 +293,21 @@ TEST_P(InstrTest, SemanticsMatchNative) {
   EXPECT_TRUE(!memcmp(&gLiftedStack, &gNativeStack, sizeof(Stack)));
 }
 
+
+TEST_P(InstrTest, SemanticsMatchNative) {
+  auto info = GetParam();
+  RunWithFlags(info, gRflagsOn, "aflags on");
+  RunWithFlags(info, gRflagsOff, "aflags off");
+}
+
 INSTANTIATE_TEST_CASE_P(
     GeneralInstrTest,
     InstrTest,
     testing::ValuesIn(gTests));
 
 int main(int argc, char **argv) {
+
+  InitFlags();
 
   // Populate the tests vector.
   for (auto i = 0U; ; ++i) {

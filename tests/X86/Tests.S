@@ -197,6 +197,7 @@ SYMBOL(InvokeTestCase):
 SYMBOL(__x86_save_state_after):
     .cfi_startproc
 # define STATE_PTR SYMBOL(gStateNative)
+# define AFTER_TEST_CASE
 # include "tests/X86/SaveState.S"
     xchg rsp, [RIP + SYMBOL(gStackSwitcher)]  /* Return to the normal stack. */
     ret

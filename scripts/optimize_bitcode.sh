@@ -35,7 +35,7 @@ $DIR/third_party/bin/opt -O3 -o=$1.opt2.bc $1.opt1.bc || {
 }
 
 mv $1.opt2.bc $2
-rm $1.opt1.bc
-rm $1.opt0.bc
+#rm $1.opt1.bc
+#rm $1.opt0.bc
 
 exit 0
