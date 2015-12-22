@@ -3,6 +3,8 @@
 #ifndef TESTS_X86_TEST_H_
 #define TESTS_X86_TEST_H_
 
+struct State;
+
 namespace test {
 
 enum : size_t {
@@ -22,13 +24,13 @@ enum : uint32_t {
 struct TestInfo {
   uintptr_t test_begin;
   uintptr_t test_end;
-  uintptr_t test_name;
-  uintptr_t instr_begin;
-  uintptr_t instr_end;
-  uintptr_t lifted_func;
+  const char *test_name;
+  const uint64_t *args_begin;
+  const uint64_t *args_end;
+  void (*lifted_func)(State *);
   uint32_t num_args;
   uint32_t features;
-};
+} __attribute__((packed));
 
 extern "C" {
 extern const TestInfo __x86_test_table_begin[];

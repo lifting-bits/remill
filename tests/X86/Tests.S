@@ -127,8 +127,7 @@ TEST_FUNC(instr_name, num_args): ; \
     \
     .text ; \
     3: \
-    .cfi_startproc ; \
-    4:
+    .cfi_startproc ;
 
 /* Note:    The test end address is placed *before* the `RET` so that we can
  *          make sure that the end of a test marker is actually
@@ -136,7 +135,6 @@ TEST_FUNC(instr_name, num_args): ; \
  */
 #ifdef IN_TEST_GENERATOR
 # define TEST_END \
-    5: \
     6: \
     .cfi_endproc ;
 #else
@@ -146,6 +144,19 @@ TEST_FUNC(instr_name, num_args): ; \
     jmp SYMBOL(__x86_save_state_after) ; \
     .cfi_endproc ;
 #endif
+
+
+/* Defines the possible inputs to provide test. We add an extra 3 null inputs
+ * at the end so that we can purposely 'overflow' when accessing the array so
+ * that we can always specify 3 inputs, even if the program uses fewer. */
+#define TEST_INPUTS(...) \
+    .data ; \
+    .balign 8 ; \
+    4: \
+    .quad  __VA_ARGS__ ; \
+    5: \
+    .quad 0, 0, 0; \
+    .text ;
 
 /* Specify the beginning and end of a 32- and 64-bit-specific tests. */
 #if 64 == ADDRESS_SIZE_BITS

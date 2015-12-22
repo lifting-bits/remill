@@ -222,10 +222,8 @@ static void InitFlags(void) {
 class InstrTest : public ::testing::TestWithParam<const test::TestInfo *> {};
 
 static void RunWithFlags(const test::TestInfo *info, Flags flags,
-                         const char *desc) {
-  auto test_name = reinterpret_cast<const char *>(info->test_name);
-  auto lifted_func = reinterpret_cast<LiftedFunc>(info->lifted_func);
-
+                         const char *desc,
+                         uint64_t arg1, uint64_t arg2, uint64_t arg3) {
   memset(&gLiftedStack, 0, sizeof(gLiftedStack));
   memset(&gStateLifted, 0, sizeof(gStateLifted));
   memset(&gStateNative, 0, sizeof(gStateNative));
@@ -242,7 +240,7 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
   // we want to run the native and lifted testcases on the same stack so that
   // we can compare that they both operate on the stack in the same ways.
   gTestToRun = info->test_begin;
-  InvokeTestCase(0xFFFFU, ~0xFFFFU, 0x414141U);
+  InvokeTestCase(arg1, arg2, arg3);
 
   // Copy out whatever was recorded on the stack so that we can compare it
   // with how the lifted program mutates the stack.
@@ -253,7 +251,7 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
   // `gStack`. The mechanism behind this is that `gStateBefore` is the native
   // program state recorded before executing the native testcase, but after
   // swapping execution to operate on `gStack`.
-  lifted_func(lifted_state);
+  info->lifted_func(lifted_state);
 
   // Don't compare the program counters. The code that is lifted is equivalent
   // to the code that is tested but because they are part of separate binaries
@@ -276,7 +274,7 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
   lifted_state->rflag.df = lifted_state->aflag.df;
   lifted_state->rflag.of = lifted_state->aflag.of;
 
-  std::cerr << "Testing instruction: " << test_name << ": " << desc;
+  std::cerr << "Testing instruction: " << info->test_name << ": " << desc;
   if (test::kFeatureMMX & info->features) std::cerr << ", MMX";
   if (test::kFeatureSSE & info->features) std::cerr << ", SSE";
   if (test::kFeatureAVX & info->features) std::cerr << ", AVX";
@@ -296,8 +294,12 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
 
 TEST_P(InstrTest, SemanticsMatchNative) {
   auto info = GetParam();
-  RunWithFlags(info, gRflagsOn, "aflags on");
-  RunWithFlags(info, gRflagsOff, "aflags off");
+  for (auto args = info->args_begin;
+       args < info->args_end;
+       args += info->num_args) {
+    RunWithFlags(info, gRflagsOn, "aflags on", args[0], args[1], args[2]);
+    RunWithFlags(info, gRflagsOff, "aflags off", args[0], args[1], args[2]);
+  }
 }
 
 INSTANTIATE_TEST_CASE_P(
