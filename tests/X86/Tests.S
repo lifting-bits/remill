@@ -115,6 +115,7 @@ TEST_FUNC(instr_name, num_args): ; \
     .asciz TO_STRING(FUNC_NAME(instr_name, num_args)) ; \
     \
     .section "__x86_test_table", "a" ; \
+    .balign 128 ; \
     2: \
     .quad 3f ; \
     .quad 6f ; \
@@ -136,15 +137,32 @@ TEST_FUNC(instr_name, num_args): ; \
 #ifdef IN_TEST_GENERATOR
 # define TEST_END \
     6: \
-    .cfi_endproc ;
+    .cfi_endproc ; \
+    .section "__x86_test_table", "a" ; \
+    .quad 0 ; \
+    .text ;
 #else
 # define TEST_END \
-    5: \
     6: \
     jmp SYMBOL(__x86_save_state_after) ; \
-    .cfi_endproc ;
+    .cfi_endproc ; \
+    .section "__x86_test_table", "a" ; \
+    .quad 0 ; \
+    .text ;
 #endif
 
+#define CF | (1 << 0)
+#define PF | (1 << 2)
+#define AF | (1 << 4)
+#define ZF | (1 << 6)
+#define SF | (1 << 7)
+#define DF | (1 << 10)
+#define OF | (1 << 11)
+
+#define TEST_IGNORE_FLAGS(...) \
+    .section "__x86_test_table", "a" ; \
+    .quad 0 __VA_ARGS__ ; \
+    .text ;
 
 /* Defines the possible inputs to provide test. We add an extra 3 null inputs
  * at the end so that we can purposely 'overflow' when accessing the array so
@@ -226,7 +244,7 @@ SYMBOL(__x86_save_state_after):
     /* Create a symbol that represents the start of the test information
      * table. */
     .section "__x86_test_table", "a"
-    .balign 8
+    .balign 128
     .globl SYMBOL(__x86_test_table_begin)
 SYMBOL(__x86_test_table_begin):
     .text
@@ -236,6 +254,9 @@ SYMBOL(__x86_test_table_begin):
 
 /* Bring in all semantic tests. */
 #include "tests/X86/BINARY/ADD.S"
+#include "tests/X86/BINARY/SUB.S"
+#include "tests/X86/BINARY/CMP.S"
+#include "tests/X86/BINARY/IMUL.S"
 
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"

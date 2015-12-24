@@ -3,7 +3,7 @@
 namespace {
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(ADD, D dst, S1 src1_, S2 src2_) {
+DEF_SEM(ADD, D dst, const S1 src1_, const S2 src2_) {
   typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
@@ -12,7 +12,7 @@ DEF_SEM(ADD, D dst, S1 src1_, S2 src2_) {
 }
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(SUB, D dst, S1 src1_, S2 src2_) {
+DEF_SEM(SUB, D dst, const S1 src1_, const S2 src2_) {
   typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
@@ -21,7 +21,7 @@ DEF_SEM(SUB, D dst, S1 src1_, S2 src2_) {
 }
 
 template <typename S1, typename S2>
-DEF_SEM(CMP, S1 src1_, S2 src2_) {
+DEF_SEM(CMP, const S1 src1_, const S2 src2_) {
   typedef typename BaseType<S1>::Type T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
@@ -37,7 +37,7 @@ struct DivMul {
   // 2-operand and 3-operand multipliers truncate their results down to their
   // base types.
   template <typename D, typename S1, typename S2>
-  DEF_SEM(MUL, D dst, S1 src1_, S2 src2_) {
+  DEF_SEM(MUL, D dst, const S1 src1_, const S2 src2_) {
     typedef typename BaseType<S1>::Type T;
     typedef typename Converter<T>::Type CT;
     const auto src1 = static_cast<CT>(R(src1_));
@@ -48,7 +48,7 @@ struct DivMul {
 
   // `MUL8` and `IMUL8` of `AL` doesn't update `RDX`.
   template <typename S1>
-  DEF_SEM(MULA_8, S1 val) {
+  DEF_SEM(MULA_8, const S1 val) {
     typedef typename BaseType<S1>::Type T;
     typedef typename Converter<T>::Type CT;
 
@@ -63,7 +63,7 @@ struct DivMul {
 
 #define MAKE_MULTIPLIER(size, read_sel, write_sel) \
     template <typename S2> \
-    DEF_SEM(MULAD_ ## size, S2 src2_) { \
+    DEF_SEM(MULAD_ ## size, const S2 src2_) { \
       typedef typename BaseType<S2>::Type T; \
       typedef typename Converter<T>::Type CT; \
       \
@@ -85,7 +85,7 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
 
   // `MUL8` and `IMUL8` of `AL` doesn't update `RDX`.
   template <typename S2>
-  DEF_SEM(DIVA_8, S2 src2_) {
+  DEF_SEM(DIVA_8, const S2 src2_) {
     CLEAR_AFLAGS();
 
     typedef typename BaseType<S2>::Type T;
@@ -104,7 +104,7 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
 
 #define MAKE_DIVIDER(size, read_sel, write_sel) \
     template <typename S2> \
-    DEF_SEM(DIVA_ ## size, S2 src2_) { \
+    DEF_SEM(DIVA_ ## size, const S2 src2_) { \
       CLEAR_AFLAGS(); \
       typedef typename BaseType<S2>::Type T; \
       typedef typename Converter<T>::Type CT; \
@@ -246,7 +246,7 @@ DEF_ISEL_Rn_In(CMP_OrAX_IMMz, CMP);
 namespace {
 
 template <typename D, typename S>
-DEF_SEM(INC, D dst, S src) {
+DEF_SEM(INC, D dst, const S src) {
   typedef typename BaseType<S>::Type T;
   const T val1 = R(src);
   const T val2 = 1;
@@ -255,7 +255,7 @@ DEF_SEM(INC, D dst, S src) {
 }
 
 template <typename D, typename S>
-DEF_SEM(DEC, D dst, S src) {
+DEF_SEM(DEC, D dst, const S src) {
   typedef typename BaseType<S>::Type T;
   const T val1 = R(src);
   const T val2 = 1;
@@ -264,7 +264,7 @@ DEF_SEM(DEC, D dst, S src) {
 }
 
 template <typename D, typename S>
-DEF_SEM(NEG, D dst, S src) {
+DEF_SEM(NEG, D dst, const S src) {
   typedef typename BaseType<S>::Type T;
   const T val1 = 0;
   const T val2 = R(src);
@@ -295,7 +295,7 @@ DEF_ISEL_RnW_Rn(NEG_GPRv, NEG);
 namespace {
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(SBB, D dst, S1 src1_, S2 src2_) {
+DEF_SEM(SBB, D dst, const S1 src1_, const S2 src2_) {
   typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
@@ -305,7 +305,7 @@ DEF_SEM(SBB, D dst, S1 src1_, S2 src2_) {
 }
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(ADC, D dst, S1 src1_, S2 src2_) {
+DEF_SEM(ADC, D dst, const S1 src1_, const S2 src2_) {
   typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);

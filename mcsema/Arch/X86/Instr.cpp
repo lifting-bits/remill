@@ -9,6 +9,7 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include "mcsema/BC/IntrinsicTable.h"
 #include "mcsema/BC/Translator.h"
@@ -182,6 +183,34 @@ void Instr::LiftPC(uintptr_t next_pc) {
       ir.CreateLoad(FindVarInFunction(F, PCRegName(xedd) + "_write")));
 }
 
+// Check the types of a function's argument.
+bool Instr::CheckArgumentTypes(const llvm::Function *F,
+                               const std::string &func_name) {
+  if (F->arg_size() != args.size()) {
+    return false;
+  }
+  auto i = 0;
+  for (const auto &arg : F->args()) {
+    const auto arg_type = arg.getType();
+    if (arg_type != args[i]->getType()) {
+      std::string arg_types_str;
+      llvm::raw_string_ostream arg_types_stream(arg_types_str);
+      arg_types_stream << "\n";
+      arg.print(arg_types_stream);
+      arg_types_stream << " in ";
+      F->getFunctionType()->print(arg_types_stream);
+      arg_types_stream << "\n";
+      args[i]->print(arg_types_stream);
+      LOG(ERROR)
+        << "Argument types don't match to " << func_name << ":"
+        << arg_types_str;
+      return false;
+    }
+    ++i;
+  }
+  return true;
+}
+
 // Lift a generic instruction.
 void Instr::LiftGeneric(const Translator &lifter) {
   args.push_back(&*F->arg_begin());
@@ -189,21 +218,25 @@ void Instr::LiftGeneric(const Translator &lifter) {
   // Lift the operands. This creates the arguments for us to call the
   // instruction implementation.
   auto num_operands = xed_decoded_inst_noperands(xedd);
+  auto func_name = InstructionFunctionName(xedd);
 
   for (auto i = 0U; i < num_operands; ++i) {
     LiftOperand(lifter, i);
   }
 
   llvm::IRBuilder<> ir(B);
+  llvm::Function *F = FindFunction(M, func_name);
+  llvm::GlobalVariable *FP = FindGlobaVariable(M, func_name);
 
-  auto func_name = InstructionFunctionName(xedd);
-  if (auto F = FindFunction(M, func_name)) {
-    ir.CreateCall(F, args);
-  } else if (auto FP = FindGlobaVariable(M, func_name)) {
+  if (!F && FP) {
     CHECK(FP->isConstant() && FP->hasInitializer())
         << "Expected a `constexpr` variable as the function pointer.";
     llvm::Constant *FC = FP->getInitializer()->stripPointerCasts();
-    ir.CreateCall(llvm::dyn_cast<llvm::Function>(FC), args);
+    F = llvm::dyn_cast<llvm::Function>(FC);
+  }
+
+  if (F && CheckArgumentTypes(F, func_name)) {
+    ir.CreateCall(F, args);
   } else {
     LOG(WARNING) << "Missing instruction semantics for " << func_name;
   }
@@ -377,6 +410,7 @@ void Instr::LiftImmediate(xed_operand_enum_t op_name) {
   auto is_signed = false;
   auto op_size = xed_decoded_inst_get_operand_width(xedd);
   auto imm_size = xed_decoded_inst_get_immediate_width_bits(xedd);
+  auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
 
   CHECK(imm_size <= op_size)
       << "Immediate size is greater than effective operand size at PC "
@@ -398,8 +432,10 @@ void Instr::LiftImmediate(xed_operand_enum_t op_name) {
     LOG(FATAL) << "Unexpected immediate type " << op_name;
   }
 
+  // Note: We use `addr_width` instead of `op_size` because `In<T>` internally
+  //       stores an `addr_t` to avoid `byval` arguments.
   args.push_back(llvm::ConstantInt::get(
-      llvm::Type::getIntNTy(*C, op_size), val, is_signed));
+      llvm::Type::getIntNTy(*C, addr_width), val, is_signed));
 }
 
 namespace {
@@ -433,6 +469,8 @@ void Instr::LiftRegister(const xed_operand_t *xedo) {
     llvm::LoadInst *RegAddr = ir.CreateLoad(
         FindVarInFunction(F, reg_name + "_read"));
 
+    llvm::LoadInst *Reg = ir.CreateLoad(RegAddr);
+
     // This is an annoying hack. Clang will always use ABI-specific argument
     // type coercion, which means that important type information isn't always
     // correctly communicated via argument types. In these cases, we really
@@ -440,10 +478,8 @@ void Instr::LiftRegister(const xed_operand_t *xedo) {
     // Clang's code generator would have us pass vectors of integral/floating
     // point values instead. To avoid this issue, we pass vector registers by
     // constant references (i.e. by address).
-    llvm::LoadInst *Reg = ir.CreateLoad(RegAddr);
-    Reg->setAlignment(kVectorRegAlign);
-
     if (IsVectorReg(reg)) {
+      Reg->setAlignment(kVectorRegAlign);
 
       // We go through the indirection of a load then a store to a local so
       // that we never have the issue where a register is both a source and
@@ -453,8 +489,21 @@ void Instr::LiftRegister(const xed_operand_t *xedo) {
       ir.CreateStore(Reg, ValAddr);
 
       args.push_back(ValAddr);
+
+    // Okay so we're only passing a normal value, but then we need to watch
+    // out! We represent all register and immediate types as structures
+    // containing our machine `addr_t` type so that scalarization of the
+    // arguments always happens (as opposed to passing `byval` structure
+    // pointers). So in many cases we'll need to zero-extend the value into
+    // and `addr_t`.
     } else {
-      args.push_back(Reg);
+      auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
+      if (xed_get_register_width_bits64(reg) < addr_width) {
+        llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
+        args.push_back(ir.CreateZExt(Reg, IntPtrTy));
+      } else {
+        args.push_back(Reg);
+      }
     }
   }
 }

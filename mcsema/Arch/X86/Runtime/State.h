@@ -119,35 +119,38 @@ struct FPU {
 
 static_assert(512 == sizeof(FPU), "Invalid structure packing of `FPU`.");
 
-struct Flags {
-  uint32_t cf:1;  // bit 0.
-  uint32_t must_be_1:1;
-  uint32_t pf:1;
-  uint32_t must_be_0a:1;
+union Flags {
+  struct {
+    uint32_t cf:1;  // bit 0.
+    uint32_t must_be_1:1;
+    uint32_t pf:1;
+    uint32_t must_be_0a:1;
 
-  uint32_t af:1; // bit 4.
-  uint32_t must_be_0b:1;
-  uint32_t zf:1;
-  uint32_t sf:1;
+    uint32_t af:1; // bit 4.
+    uint32_t must_be_0b:1;
+    uint32_t zf:1;
+    uint32_t sf:1;
 
-  uint32_t tf:1;  // bit 8.
-  uint32_t _if:1;  // underscore to avoid token clash.
-  uint32_t df:1;
-  uint32_t of:1;
+    uint32_t tf:1;  // bit 8.
+    uint32_t _if:1;  // underscore to avoid token clash.
+    uint32_t df:1;
+    uint32_t of:1;
 
-  uint32_t iopl:2; // A 2-bit field, bits 12-13.
-  uint32_t nt:1;
-  uint32_t must_be_0c:1;
+    uint32_t iopl:2; // A 2-bit field, bits 12-13.
+    uint32_t nt:1;
+    uint32_t must_be_0c:1;
 
-  uint32_t rf:1; // bit 16.
-  uint32_t vm:1;
-  uint32_t ac:1;
-  uint32_t vif:1;
+    uint32_t rf:1; // bit 16.
+    uint32_t vm:1;
+    uint32_t ac:1;
+    uint32_t vif:1;
 
-  uint32_t vip:1; // bit 20.
-  uint32_t id:1;   // bit 21.
-  uint32_t reserved_eflags:10;  // bits 22-31.
-  uint32_t reserved_rflags;  // bits 32-63.
+    uint32_t vip:1; // bit 20.
+    uint32_t id:1;   // bit 21.
+    uint32_t reserved_eflags:10;  // bits 22-31.
+    uint32_t reserved_rflags;  // bits 32-63.
+  } __attribute__((packed));
+  uint64_t flat;
 } __attribute__((packed));
 
 static_assert(8 == sizeof(Flags), "Invalid structure packing of `Flags`.");

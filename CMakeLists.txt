@@ -9,12 +9,15 @@ set(CMAKE_C_COMPILER "${MCSEMA_DIR}/third_party/bin/clang")
 set(CMAKE_CXX_COMPILER "${MCSEMA_DIR}/third_party/bin/clang++")
 set(CMAKE_ASM_COMPILER "${MCSEMA_DIR}/third_party/bin/clang")
 
-# Find LLVM.
-list(INSERT CMAKE_MODULE_PATH 0 "${MCSEMA_DIR}/third_party/share/llvm/cmake")
-include(LLVMConfig)
-include(AddLLVM)
+# Find LLVM. This is so ugly.
+set(_LLVM_CMAKE_DIR "${MCSEMA_DIR}/third_party/share/llvm/cmake")
+set(CMAKE_MODULE_PATH "${_LLVM_CMAKE_DIR}" "${CMAKE_MODULE_PATH}")
+find_package(LLVM EXACT 3.7.0 REQUIRED Config)
 
-# Find all libraries.
+add_definitions(${LLVM_DEFINITIONS})
+include_directories(${LLVM_INCLUDE_DIRS})
+
+# Find all libraries. This includes LLVM libraries.
 link_directories(${MCSEMA_DIR}/third_party/lib)
 
 # Find all headers.
@@ -44,10 +47,10 @@ file(COPY ${MCSEMA_DIR}/generated/Arch DESTINATION ${MCSEMA_DIR}/build/lib)
 # Generic compiler options.
 add_compile_options(
     -Wall -Werror -pedantic
-    -Wno-nested-anon-types -Wno-extended-offsetof
+    -Wno-nested-anon-types -Wno-extended-offsetof -Wno-gnu-anonymous-struct
     -Wno-variadic-macros -Wno-gnu-zero-variadic-macro-arguments
     -DMCSEMA_DIR="${MCSEMA_DIR}" -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS
-    -fno-rtti -DGOOGLE_PROTOBUF_NO_RTTI 
+    -fno-rtti -fno-exceptions -DGOOGLE_PROTOBUF_NO_RTTI 
     -std=gnu++11 -g3 -m64
     -I${MCSEMA_DIR}
 )
@@ -92,8 +95,7 @@ target_link_libraries(cfg_to_bc
 
 # optimize_bc plugin -----------------------------------------------------------
 
-add_library( Optimizer SHARED ${MCSEMA_DIR}/mcsema/Optimize.cpp )
-add_llvm_loadable_module(Optimizer ${MCSEMA_DIR}/mcsema/Optimize.cpp )
+add_library( Optimizer MODULE ${MCSEMA_DIR}/mcsema/Optimize.cpp )
 
 # test code --------------------------------------------------------------------
 

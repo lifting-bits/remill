@@ -274,6 +274,14 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
   lifted_state->rflag.df = lifted_state->aflag.df;
   lifted_state->rflag.of = lifted_state->aflag.of;
 
+  // No longer want to compare these.
+  memset(&(native_state->aflag), 0, sizeof(native_state->aflag));
+  memset(&(lifted_state->aflag), 0, sizeof(lifted_state->aflag));
+
+  // Only compare the non-undefined flags state.
+  native_state->rflag.flat |= info->ignored_flags_mask;
+  lifted_state->rflag.flat |= info->ignored_flags_mask;
+
   std::cerr << "Testing instruction: " << info->test_name << ": " << desc;
   if (test::kFeatureMMX & info->features) std::cerr << ", MMX";
   if (test::kFeatureSSE & info->features) std::cerr << ", SSE";
@@ -287,8 +295,12 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
   std::cerr << std::endl;
 
   // Compare the register states.
-  EXPECT_TRUE(!memcmp(lifted_state, native_state, sizeof(State)));
-  EXPECT_TRUE(!memcmp(&gLiftedStack, &gNativeStack, sizeof(Stack)));
+  if (memcmp(lifted_state, native_state, sizeof(State))) {
+    EXPECT_TRUE(!"Lifted and native states did not match.");
+  }
+  if (memcmp(&gLiftedStack, &gNativeStack, sizeof(Stack))) {
+    EXPECT_TRUE(!"Lifted and native stacks did not match.");
+  }
 }
 
 

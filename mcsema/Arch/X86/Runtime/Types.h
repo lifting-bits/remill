@@ -16,14 +16,15 @@ typedef Rn<uint64_t> R64;
 typedef Vn<vec64_t> V64;
 typedef Vn<avec128_t> V128;
 typedef Vn<avec256_t> V256;
-IF_AVX512( typedef Vn<avec512_t> V512; )
+typedef Vn<avec512_t> V512;
 
-typedef IF_AVX512_ELSE(avec512_t, IF_AVX_ELSE(avec256_t, avec128_t)) WriteVecType;
+typedef IF_AVX512_ELSE(avec512_t, IF_AVX_ELSE(avec256_t, avec128_t))
+        WriteVecType;
 
 typedef VnW<vec64_t> V64W;  // Legacy MMX technology register.
 typedef VnW<WriteVecType> V128W;
-IF_AVX( typedef VnW<WriteVecType> V256W; )
-IF_AVX512( typedef VnW<WriteVecType> V512W; )
+typedef VnW<WriteVecType> V256W;
+typedef VnW<WriteVecType> V512W;
 
 typedef MnW<uint8_t> M8W;
 typedef MnW<uint16_t> M16W;

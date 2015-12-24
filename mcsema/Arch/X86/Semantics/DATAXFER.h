@@ -3,7 +3,7 @@
 namespace {
 
 template <typename D, typename S>
-DEF_SEM(MOV, D dst, S src) {
+DEF_SEM(MOV, D dst, const S src) {
   W(dst) = R(src);
 }
 

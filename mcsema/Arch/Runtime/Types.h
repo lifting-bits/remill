@@ -312,17 +312,23 @@ MAKE_INT_TYPE(uint64_t, uint128_t);
 
 template <typename T>
 struct Mn {
-  const addr_t addr;
+  addr_t addr;
 };
 
 template <typename T>
 struct MnW {
-  const addr_t addr;
+  addr_t addr;
 };
 
+// Note: We use `addr_t` as the internal type for `Rn` and `In` struct templates
+//       because this will be the default register size used for parameter
+//       passing in the underlying ABI that Clang chooses to use when converting
+//       this code to bitcode. We want to avoid the issue where a size that's
+//       too small, e.g. `uint8_t` or `uint16_t` in a struct, is passed as an
+//       aligned pointer to a `byval` parameter.
 template <typename T>
 struct Rn {
-  const T val;
+  const addr_t val;
 };
 
 template <typename T>
@@ -332,7 +338,7 @@ struct RnW {
 
 template <typename T>
 struct In {
-  const T val;
+  const addr_t val;
 };
 
 template <typename T>

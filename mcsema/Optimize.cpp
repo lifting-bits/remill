@@ -11,7 +11,7 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 
-namespace mcsemae {
+namespace mcsema {
 
 // Implements the deferred inlining optimization. McSema2 uses a special
 // `__mcsema_defer_inlining` intrinsic to mark functions as needing to be

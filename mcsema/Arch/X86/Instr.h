@@ -31,6 +31,8 @@ class Instr : public ::mcsema::Instr {
   void LiftPC(void);
   void LiftPC(uintptr_t next_pc);
   void LiftGeneric(const Translator &lifter);
+  bool CheckArgumentTypes(const llvm::Function *F,
+                          const std::string &func_name);
   void LiftConditionalBranch(const Translator &lifter);
   void LiftOperand(const Translator &lifter, unsigned op_num);
   void LiftMemory(const Translator &lifter, const xed_operand_t *xedo,

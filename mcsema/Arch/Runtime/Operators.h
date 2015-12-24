@@ -124,7 +124,7 @@ struct VecWriter {
       addr_t addr; \
     }; \
     \
-    ALWAYS_INLINE static T R(Mn<T> mem) { \
+    ALWAYS_INLINE static T R(const Mn<T> mem) { \
       T vec; \
       __mcsema_read_memory_v ## size (mem.addr, vec); \
       return vec; \
@@ -141,18 +141,23 @@ MAKE_VEC_ACCESSORS(vec128_t, 128)
 MAKE_VEC_ACCESSORS(vec256_t, 256)
 MAKE_VEC_ACCESSORS(vec512_t, 512)
 
+// Note: We apply `static_cast<T>` for `R(In<T>)` and `R(Rn<T>)` because the
+//       internal storage type of these struct templates will be `addr_t` to
+//       avoid these structs being passed `byval` and therefore not being
+//       scalarized to their underlying types.
+
 template <typename T>
-ALWAYS_INLINE static T R(In<T> imm) {
-  return imm.val;
+ALWAYS_INLINE static T R(const In<T> imm) {
+  return static_cast<T>(imm.val);
 }
 
 template <typename T>
-ALWAYS_INLINE static T R(Rn<T> reg) {
-  return reg.val;
+ALWAYS_INLINE static T R(const Rn<T> reg) {
+  return static_cast<T>(reg.val);
 }
 
 template <typename T>
-ALWAYS_INLINE static T R(Vn<T> vec) {
+ALWAYS_INLINE static T R(const Vn<T> vec) {
   return *(vec.val);
 }
 

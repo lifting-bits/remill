@@ -21,7 +21,7 @@ enum : uint32_t {
   kFeature32BitOnly = (1 << 5)
 };
 
-struct TestInfo {
+struct alignas(128) TestInfo {
   uintptr_t test_begin;
   uintptr_t test_end;
   const char *test_name;
@@ -30,6 +30,7 @@ struct TestInfo {
   void (*lifted_func)(State *);
   uint32_t num_args;
   uint32_t features;
+  uint64_t ignored_flags_mask;
 } __attribute__((packed));
 
 extern "C" {
