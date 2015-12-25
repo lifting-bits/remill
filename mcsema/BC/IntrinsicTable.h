@@ -46,6 +46,15 @@ class IntrinsicTable {
   // Addressing intrinsics.
   llvm::Function * const compute_address;
 
+  // Memory barriers.
+  llvm::Function * const barrier_load_load;
+  llvm::Function * const barrier_load_store;
+  llvm::Function * const barrier_store_load;
+  llvm::Function * const barrier_store_store;
+
+  llvm::Function * const barrier_atomic_begin;
+  llvm::Function * const barrier_atomic_end;
+
   // Optimization control.
   llvm::Function * const defer_inlining;
 

@@ -62,13 +62,19 @@ static void ReplaceIntrinsic(llvm::Function *F, unsigned N) {
 
 IntrinsicTable::IntrinsicTable(const llvm::Module *M)
     : error(FindIntrinsic(M, "__mcsema_error")),
+
+      // Control-flow.
       function_call(FindIntrinsic(M, "__mcsema_function_call")),
       function_return(FindIntrinsic(M, "__mcsema_function_return")),
       jump(FindIntrinsic(M, "__mcsema_jump")),
+
+      // OS interaction.
       system_call(FindIntrinsic(M, "__mcsema_system_call")),
       system_return(FindIntrinsic(M, "__mcsema_system_return")),
       interrupt_call(FindIntrinsic(M, "__mcsema_interrupt_call")),
       interrupt_return(FindIntrinsic(M, "__mcsema_interrupt_return")),
+
+      // Memory access.
       read_memory_8(FindPureIntrinsic(M, "__mcsema_read_memory_8")),
       read_memory_16(FindPureIntrinsic(M, "__mcsema_read_memory_16")),
       read_memory_32(FindPureIntrinsic(M, "__mcsema_read_memory_32")),
@@ -86,6 +92,16 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *M)
       write_memory_v256(FindIntrinsic(M, "__mcsema_write_memory_v256")),
       write_memory_v512(FindIntrinsic(M, "__mcsema_write_memory_v512")),
       compute_address(FindPureIntrinsic(M, "__mcsema_compute_address")),
+
+      // Memory barriers.
+      barrier_load_load(FindIntrinsic(M, "__mcsema_barrier_load_load")),
+      barrier_load_store(FindIntrinsic(M, "__mcsema_barrier_load_store")),
+      barrier_store_load(FindIntrinsic(M, "__mcsema_barrier_store_load")),
+      barrier_store_store(FindIntrinsic(M, "__mcsema_barrier_store_store")),
+      barrier_atomic_begin(FindIntrinsic(M, "__mcsema_barrier_atomic_begin")),
+      barrier_atomic_end(FindIntrinsic(M, "__mcsema_barrier_atomic_end")),
+
+      // Optimization guides.
       defer_inlining(FindIntrinsic(M, "__mcsema_defer_inlining")) {
 
   // Remove calls to the undefined intrinsics. The goal here is to improve dead

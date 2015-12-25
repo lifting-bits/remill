@@ -106,73 +106,19 @@ struct Overflow<kLHS - kRHS> {
 template <>
 struct Overflow<kLHS * kRHS> {
 
-  // Signed integer multiplication overflow check, where result is twice
-  // the width of the operands.
+  // Integer multiplication overflow check, where result is twice the width of
+  // the operands.
   template <typename T, typename R>
   [[gnu::const]]
   NEVER_INLINE static bool Flag(
       T, T, R res,
-      typename std::enable_if<sizeof(T) < sizeof(R),int>::type=0,
-      typename std::enable_if<std::is_signed<T>::value,int>::type=0,
-      typename std::enable_if<std::is_signed<R>::value,int>::type=0) {
+      typename std::enable_if<sizeof(T) < sizeof(R),int>::type=0) {
     enum {
-      kSignShift = sizeof(T) * 8 - 1
-    };
-    __mcsema_defer_inlining();
-
-    auto sign_and_above = res >> kSignShift;
-    auto sign = static_cast<R>(sign_and_above & 1);
-    auto mask = static_cast<R>(sign - 1);
-
-    // Unsigned:
-    //    sign_and_above = 0x???0
-    //    sign = 0
-    //    mask = 0xFFF...
-    //    Expected high bits: 0x000..0
-    // Signed:
-    //    sign_and_above = 0x???1
-    //    sign = 1
-    //    Mask = 0x000...
-    //    Expected high bits: 0xFFF...1
-
-    return !(mask ^ sign_and_above);
-  }
-
-  template <typename T, typename R>
-  [[gnu::const]]
-  NEVER_INLINE static bool Flag(
-      T, T, R res,
-      typename std::enable_if<sizeof(T) < sizeof(R),int>::type=0,
-      typename std::enable_if<std::is_unsigned<T>::value,int>::type=0,
-      typename std::enable_if<std::is_unsigned<R>::value,int>::type=0) {
-    enum : T {
       kShift = sizeof(T) * 8
     };
     __mcsema_defer_inlining();
-    return 0 != (res >> kShift);
+    return static_cast<R>(static_cast<T>(res)) != res;
   }
-
-#if 0
-  // Unsigned integer multiplication overflow check. Care of the Boehm GC:
-  // github.com/ivmai/bdwgc/commit/83231d0ab5ed60015797c3d1ad9056295ac3b2bb
-  template <typename T, typename R>
-  [[gnu::const]]
-  NEVER_INLINE static bool Flag(
-      T lhs, T rhs, R,
-      typename std::enable_if<std::is_unsigned<T>::value,int>::type=0,
-      typename std::enable_if<std::is_unsigned<R>::value,int>::type=0) {
-    enum : T {
-      kOne = static_cast<T>(1),
-      kNumBits = sizeof(T) * 8,
-      kSqrtSizeMax = ((kOne << (kNumBits / 2)) - kOne)
-    };
-
-    __mcsema_defer_inlining();
-    return ((lhs | rhs) > kSqrtSizeMax) &&
-           rhs &&
-           (lhs > (kSqrtSizeMax / rhs));
-  }
-#endif
 
   // Signed integer multiplication overflow check, where the result is
   // truncated to the size of the operands.
@@ -267,9 +213,7 @@ struct Carry<kLHS - kRHS> {
       state.aflag.cf = 0; \
       __res_T; })
 
-// Multiplication (e.g. IMUL, MUL)
-//
-// ZF is undefined but we set it.
+// Multiplication (e.g. IMUL, MUL).
 #define SET_AFLAGS_MUL(lhs, op, rhs, T) \
     ({const auto __lhs = (lhs); \
       const auto __rhs = (rhs); \
@@ -279,12 +223,12 @@ struct Carry<kLHS - kRHS> {
       state.aflag.of = Overflow<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
       state.aflag.cf = state.aflag.of; \
       state.aflag.sf = (std::is_signed<T>::value ? \
-          SignFlag(static_cast<decltype(__lhs)>(__res_T)) : \
+          SignFlag<decltype(__lhs)>(static_cast<decltype(__lhs)>(__res_T)) : \
           __mcsema_undefined_bool()); \
       state.aflag.zf = __mcsema_undefined_bool(); \
       state.aflag.af = __mcsema_undefined_bool(); \
       state.aflag.pf = __mcsema_undefined_bool(); \
-      __res_T; }); \
+      __res_T; });
 
 #define CLEAR_AFLAGS() \
     state.aflag.of = __mcsema_undefined_bool(); \

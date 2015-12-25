@@ -177,6 +177,18 @@
 #define DEF_ISEL_RnW_Rn_In(name, tpl_func) \
     _DEF_ISEL_XnW_Yn_Zn(R, R, I, name, tpl_func)
 
+#define _DEF_ISEL_XnW_Xn_YnW_Yn(X, Y, name, tpl_func) \
+  DEF_ISEL(name ## _8) = tpl_func<X ## 8W, X ## 8, Y ## 8W, Y ## 8> ; \
+  DEF_ISEL(name ## _16) = tpl_func<X ## 16W, X ## 16, Y ## 16W, Y ## 16> ; \
+  DEF_ISEL(name ## _32) = tpl_func<X ## 32W, X ## 32, Y ## 32W, Y ## 32> \
+  IF_64BIT( ; DEF_ISEL(name ## _64) = tpl_func<X ## 64W, X ## 64, Y ## 64W, Y ## 64> )
+
+#define DEF_ISEL_MnW_Mn_RnW_Rn(name, tpl_func) \
+  _DEF_ISEL_XnW_Xn_YnW_Yn(M, R, name, tpl_func)
+
+#define DEF_ISEL_RnW_Rn_RnW_Rn(name, tpl_func) \
+  _DEF_ISEL_XnW_Xn_YnW_Yn(R, R, name, tpl_func)
+
 #define DEF_ISEL_RnW_Mn_In(name, tpl_func) \
     _DEF_ISEL_XnW_Yn_Zn(R, M, I, name, tpl_func)
 

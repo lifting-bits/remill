@@ -11,6 +11,33 @@ DEF_SEM(ADD, D dst, const S1 src1_, const S2 src2_) {
   W(dst) = res;
 }
 
+// Atomic fetch-add.
+template <typename MW, typename M, typename RW, typename RT>
+DEF_SEM(XADDM, MW mdst, const M msrc_, const RW rdst, const RT rsrc_) {
+  typedef typename BaseType<RT>::Type T;
+  __mcsema_barrier_atomic_begin(A(mdst), sizeof(T));
+  const auto src1 = R(msrc_);
+  const auto src2 = R(rsrc_);
+  const auto res = SET_AFLAGS_ADD_SUB(src1, +, src2, T);
+  W(mdst) = res;
+  W(rdst) = src1;
+  __mcsema_barrier_atomic_end(A(mdst), sizeof(T));
+}
+
+// Atomic fetch-add, but on registers. Mostly this is just a fancy add that
+// also acts as a memory fence.
+template <typename RW, typename RT>
+DEF_SEM(XADDR, RW rdst1, const RT rsrc1_, const RW rdst2, const RT rsrc2_) {
+  typedef typename BaseType<RT>::Type T;  // `D` might be wider than `S1`.
+  __mcsema_barrier_load_load(0, 0);
+  const auto src1 = R(rsrc1_);
+  const auto src2 = R(rsrc2_);
+  const auto res = SET_AFLAGS_ADD_SUB(src1, +, src2, T);
+  W(rdst1) = res;
+  W(rdst2) = src1;
+  __mcsema_barrier_store_store(0, 0);
+}
+
 template <typename D, typename S1, typename S2>
 DEF_SEM(SUB, D dst, const S1 src1_, const S2 src2_) {
   typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
@@ -40,18 +67,35 @@ struct DivMul {
   DEF_SEM(MUL, D dst, const S1 src1_, const S2 src2_) {
     typedef typename BaseType<S1>::Type T;
     typedef typename Converter<T>::Type CT;
+    typedef typename NextLargerIntegerType<CT>::Type CWT;
+
     const auto src1 = static_cast<CT>(R(src1_));
     const auto src2 = static_cast<CT>(R(src2_));
-    const auto res = SET_AFLAGS_MUL(src1, *, src2, CT);
+    const auto res = SET_AFLAGS_MUL(src1, *, src2, CWT);
     W(dst) = static_cast<T>(res);
   }
 
-  // `MUL8` and `IMUL8` of `AL` doesn't update `RDX`.
-  template <typename S1>
-  DEF_SEM(MULA_8, const S1 val) {
-    typedef typename BaseType<S1>::Type T;
-    typedef typename Converter<T>::Type CT;
+  // Unsigned multiply without affecting flags.
+  template <typename D, typename S>
+  DEF_SEM(MULX, D dst1, D dst2, const S src2_) {
+    typedef typename BaseType<S>::Type T;
+    typedef typename NextLargerIntegerType<T>::Type WT;
+    enum {
+      kShiftSize = sizeof(T) * 8
+    };
 
+    const auto src2 = static_cast<WT>(R(src2_));
+    const auto src1 = static_cast<WT>(R(state.gpr.rdx));
+    const auto res = src1 * src2;
+    W(dst1) = static_cast<T>(res >> kShiftSize);
+    W(dst2) = static_cast<T>(res);
+  }
+
+  // `MUL8` and `IMUL8` of `AL` doesn't update `RDX`.
+  template <typename S2>
+  DEF_SEM(MULA_8, const S2 val) {
+    typedef typename BaseType<S2>::Type T;
+    typedef typename Converter<T>::Type CT;
     typedef typename NextLargerIntegerType<T>::Type WT;
     typedef typename Converter<WT>::Type CWT;
 
@@ -66,9 +110,7 @@ struct DivMul {
     DEF_SEM(MULAD_ ## size, const S2 src2_) { \
       typedef typename BaseType<S2>::Type T; \
       typedef typename Converter<T>::Type CT; \
-      \
-      typedef typename NextLargerIntegerType<T>::Type WT; \
-      typedef typename Converter<WT>::Type CWT; \
+      typedef typename NextLargerIntegerType<CT>::Type CWT; \
       \
       const auto src1 = static_cast<CT>(state.gpr.rax.read_sel); \
       const auto src2 = static_cast<CT>(R(src2_)); \
@@ -151,6 +193,11 @@ DEF_ISEL_RnW_Rn_Rn(ADD_GPRv_GPRv_03, ADD);
 DEF_ISEL(ADD_AL_IMMb_8) = ADD<R8W, R8, I8>;
 DEF_ISEL_RnW_Rn_In(ADD_OrAX_IMMz, ADD);
 
+DEF_ISEL(XADD_MEMb_GPR8_8) = XADDM<M8W, M8, R8W, R8>;
+DEF_ISEL(XADD_GPR8_GPR8_8) = XADDR<R8W, R8>;
+DEF_ISEL_MnW_Mn_RnW_Rn(XADD_MEMv_GPRv, XADDM);
+DEF_ISEL_RnW_Rn(XADD_GPRv_GPRv, XADDR);
+
 DEF_ISEL(SUB_MEMb_IMMb_80r5_8) = SUB<M8W, M8, I8>;
 DEF_ISEL(SUB_GPR8_IMMb_80r5_8) = SUB<R8W, R8, I8>;
 DEF_ISEL_MnW_Mn_In(SUB_MEMv_IMMz, SUB);
@@ -202,6 +249,15 @@ DEF_ISEL(MUL_GPRv_16) = DivMul<UnsignedIntegerType>::MULAD_16<R16>;
 DEF_ISEL(MUL_GPRv_32) = DivMul<UnsignedIntegerType>::MULAD_32<R32>;
 IF_64BIT(DEF_ISEL(MUL_GPRv_64) = DivMul<UnsignedIntegerType>::MULAD_64<R64>;)
 
+DEF_ISEL(MULX_VGPR32d_VGPR32d_VGPR32d_32) =
+    DivMul<UnsignedIntegerType>::MULX<R32W, R32>;
+DEF_ISEL(MULX_VGPR32d_VGPR32d_MEMd_32) =
+    DivMul<UnsignedIntegerType>::MULX<R32W, M32>;
+IF_64BIT(DEF_ISEL(MULX_VGPR64q_VGPR64q_VGPR64q_64) =
+    DivMul<UnsignedIntegerType>::MULX<R64W, R64>;)
+IF_64BIT(DEF_ISEL(MULX_VGPR64q_VGPR64q_MEMq_64) =
+    DivMul<UnsignedIntegerType>::MULX<R64W, M64>;)
+
 DEF_ISEL(IDIV_MEMb_8) = DivMul<SignedIntegerType>::DIVA_8<M8>;
 DEF_ISEL(IDIV_GPR8_8) = DivMul<SignedIntegerType>::DIVA_8<R8>;
 DEF_ISEL(IDIV_MEMv_8) = DivMul<SignedIntegerType>::DIVA_8<M8>;
@@ -242,6 +298,8 @@ DEF_ISEL_Rn_Rn(CMP_GPRv_GPRv_3B, CMP);
 DEF_ISEL_Rn_Mn(CMP_GPRv_MEMv, CMP);
 DEF_ISEL(CMP_AL_IMMb_8) = CMP<R8, I8>;
 DEF_ISEL_Rn_In(CMP_OrAX_IMMz, CMP);
+
+
 
 namespace {
 

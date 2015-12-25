@@ -181,6 +181,7 @@ function(make_x86_tester suffix arch_name addr_size has_avx has_avx512)
         COMMAND ${CMAKE_C_COMPILER} 
             -O3
             -m64
+            -Wno-override-module
             -c lifted_tests_${suffix}.opt.bc 
             -o lifted_tests_${suffix}.o
         DEPENDS lifted_tests_${suffix}.opt.bc

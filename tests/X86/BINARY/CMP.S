@@ -1,6 +1,42 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-TEST_BEGIN(CMPrr, 2)
+TEST_BEGIN(CMPr8r8, 2)
+TEST_INPUTS(
+    0, 0,
+    0, 1,
+    1, 1,
+    0, 0xFF,
+    0x10, 0, /* AF */
+    0xFF, 0x11 /* PF */)
+
+    mov ax, ARG1_16
+    mov bx, ARG2_16
+    cmp al, bl
+TEST_END
+
+TEST_BEGIN(CMPr16r16, 2)
+TEST_INPUTS(
+    0, 0,
+    0, 1,
+    1, 1,
+    0, 0xFFFF,
+    0x10, 0, /* AF */
+    0xFF, 0x11 /* PF */)
+
+    cmp ARG1_16, ARG2_16
+TEST_END
+
+TEST_BEGIN(CMPr16i16, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7FFF,
+    0xFFFF)
+
+    cmp ARG1_16, 0xFFFF
+TEST_END
+
+TEST_BEGIN(CMPr32r32, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -12,28 +48,50 @@ TEST_INPUTS(
     cmp ARG1_32, ARG2_32
 TEST_END
 
-TEST_BEGIN_64(CMPrr, 2)
+TEST_BEGIN(CMPr32i32, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7FFFFFFF,
+    0xFFFFFFFF)
+
+    cmp ARG1_32, 0xFFFFFFFF
+TEST_END
+
+TEST_BEGIN_64(CMPr64r64, 2)
 TEST_INPUTS(
     0, 1,
     1, 1,
-    0, 0xFFFFFFFFFFFFFFFF)
+    0, 0xFFFFFFFFFFFFFFFF,
+    1, 0xFFFFFFFFFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF, 1,
+    0xFFFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFF,
+    0x7FFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF)
 
     cmp ARG1_64, ARG2_64
 TEST_END_64
 
-TEST_BEGIN(CMPri, 1)
+TEST_BEGIN_64(CMPr64s32, 1)
 TEST_INPUTS(
     0,
-    1)
+    1,
+    0xFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF,
+    0x7FFFFFFFFFFFFFFF)
 
-    cmp ARG1_32, 1
-TEST_END
+    .byte 0x48;  /* REX.W */
+    cmp ARG1_32, 0xFFFFFFFF
+TEST_END_64
 
-TEST_BEGIN_64(CMPri, 1)
+TEST_BEGIN_64(CMPr64u32, 1)
 TEST_INPUTS(
     0,
-    1)
+    1,
+    0xFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF,
+    0x7FFFFFFFFFFFFFFF)
 
-    cmp ARG1_64, 1
+    cmp ARG1_64, 0x7FFFFFFF
 TEST_END_64
 

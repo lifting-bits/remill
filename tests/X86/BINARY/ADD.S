@@ -1,8 +1,210 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-TEST_BEGIN(ADDrr, 2)
+TEST_BEGIN(ADDal, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF)
+
+    mov eax, ARG1_32
+    add al, 1
+TEST_END
+
+TEST_BEGIN(ADDax, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF)
+
+    mov eax, ARG1_32
+    add ax, 1
+TEST_END
+
+TEST_BEGIN(ADDeax, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF)
+
+    mov eax, ARG1_32
+    add eax, 1
+TEST_END
+
+TEST_BEGIN(ADDr8i8, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF)
+
+    mov ebx, ARG1_32
+    add bl, 1
+TEST_END
+
+TEST_BEGIN_64(ADDr8u8, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF)
+
+    mov r8, ARG1_64
+    add r8b, 0x7F
+TEST_END_64
+
+TEST_BEGIN_64(ADDr8s8, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF)
+
+    mov r8, ARG1_64
+    add r8b, 0xFF /* Sign-extended to 64-bits */
+TEST_END_64
+
+TEST_BEGIN(ADDr8r8, 2)
+TEST_INPUTS(
+    0, 0,
+    1, 0,
+    0xFF, 1,
+    0x7F, 1,
+    0x7F, 0xFF,
+    0xFF, 0xFF)
+
+    mov ebx, ARG1_32
+    mov eax, ARG2_32
+    add bl, al
+TEST_END
+
+TEST_BEGIN_64(ADDr8r8, 1)
+TEST_INPUTS(
+    0, 0,
+    1, 0,
+    0xFF, 1,
+    0x7F, 1,
+    0x7F, 0xFF,
+    0xFF, 0xFF)
+
+    mov r8, ARG1_64
+    mov r9, ARG2_64
+    add r9b, r8b
+TEST_END_64
+
+TEST_BEGIN(ADDr16u8, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF)
+
+    mov ebx, ARG1_32
+    add bx, 0x7F
+TEST_END
+
+TEST_BEGIN(ADDr16s8, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF)
+
+    mov ebx, ARG1_32
+    add bx, 0xFF /* Sign-extended to 16-bits */
+TEST_END
+
+TEST_BEGIN(ADDr16i16, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF)
+
+    mov ebx, ARG1_32
+    add bx, 0xFFFF
+TEST_END
+
+TEST_BEGIN(ADDr16r16, 2)
+TEST_INPUTS(
+    0, 0,
+    1, 0,
+    0xFF, 1,
+    0x7F, 1,
+    0x7F, 0xFF,
+    0xFF, 0xFF,
+    0x7FFF, 1,
+    0x7FFF, 0xFFFF,
+    0xFFFF, 0xFFFF)
+
+    mov ebx, ARG1_32
+    mov edx, ARG2_32
+    add bx, dx
+TEST_END
+
+TEST_BEGIN(ADDr32u8, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF)
+
+    mov ebx, ARG1_32
+    add ebx, 0x7F
+TEST_END
+
+TEST_BEGIN(ADDr32s8, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF)
+
+    mov ebx, ARG1_32
+    add ebx, 0xFF
+TEST_END
+
+TEST_BEGIN(ADDr32i32, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF)
+
+    mov ebx, ARG1_32
+    add ebx, 0x7FFFFFFF
+TEST_END
+
+TEST_BEGIN(ADDr32r32, 2)
 TEST_INPUTS(
     0, 0, /* ZF */
+    1, 0,
     0xFFFFFFFF, 1, /* OF, CF */
     0xFFFFFFFF, 0xFFFFFFFF, /* OF */
     0x7FFFFFFF, 1, /* SF */
@@ -12,28 +214,84 @@ TEST_INPUTS(
     add ARG1_32, ARG2_32
 TEST_END
 
-TEST_BEGIN_64(ADDrr, 2)
+TEST_BEGIN_64(ADDr64u8, 1)
 TEST_INPUTS(
-    0xFFFFFFFFFFFFFFFF, 1, /* OF, CF */
-    0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, /* OF */
-    0x7FFFFFFFFFFFFFFF, 1 /* SF */)
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF,
+    0x7FFFFFFFFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF)
+
+    add ARG1_64, 0x7F
+TEST_END_64
+
+TEST_BEGIN_64(ADDr64s8, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF,
+    0x7FFFFFFFFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF)
+
+    add ARG1_64, 0xFF /* Sign-extended */
+TEST_END_64
+
+TEST_BEGIN_64(ADDr64u32, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF,
+    0x7FFFFFFFFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF)
+
+    add ARG1_64, 0x7FFFFFFF
+TEST_END_64
+
+TEST_BEGIN_64(ADDr64s32, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF,
+    0x7FFFFFFFFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF)
+
+    .byte 0x48;  /* REX.W */
+    add ARG1_32, 0xFFFFFFFF /* Sign-extended */
+TEST_END_64
+
+TEST_BEGIN_64(ADDr64r64, 2)
+TEST_INPUTS(
+    0, 0, /* ZF */
+    1, 0,
+    0xFFFFFFFF, 1, /* OF, CF */
+    0xFFFFFFFF, 0xFFFFFFFF, /* OF */
+    0x7FFFFFFF, 1, /* SF */
+    0, 0x10, /* AF */
+    0x7F, 0x10, /* PF */
+    0x7FFFFFFFFFFFFFFF, 1,
+    0x7FFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFF,
+    0x7FFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF)
 
     add ARG1_64, ARG2_64
 TEST_END_64
-
-TEST_BEGIN(ADDri, 1)
-TEST_INPUTS(
-    0,
-    1)
-
-    add ARG1_32, 1
-TEST_END
-
-TEST_BEGIN_64(ADDri, 1)
-TEST_INPUTS(
-    0,
-    1)
-
-    add ARG1_64, 1
-TEST_END_64
-

@@ -185,6 +185,16 @@ template <typename T>
   __builtin_unreachable();
 }
 
+template <typename T>
+inline static addr_t A(Mn<T> m) {
+  return m.addr;
+}
+
+template <typename T>
+inline static addr_t A(MnW<T> m) {
+  return m.addr;
+}
+
 // Convert from bytes
 ALWAYS_INLINE static arch_float80_t R(const float80_t &reg) {
   return *reinterpret_cast<const arch_float80_t *>(&(reg.f[0]));

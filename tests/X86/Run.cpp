@@ -150,6 +150,13 @@ void __mcsema_write_memory_v512(addr_t addr, const vec512_t &in) {
   AccessMemory<vec512_t>(addr) = in;
 }
 
+void __mcsema_barrier_load_load(addr_t, size_t) {}
+void __mcsema_barrier_load_store(addr_t, size_t) {}
+void __mcsema_barrier_store_load(addr_t, size_t) {}
+void __mcsema_barrier_store_store(addr_t, size_t) {}
+void __mcsema_barrier_atomic_begin(addr_t, size_t) {}
+void __mcsema_barrier_atomic_end(addr_t, size_t) {}
+
 void __mcsema_defer_inlining(void) {}
 
 // Control-flow intrinsics.
@@ -221,9 +228,12 @@ static void InitFlags(void) {
 
 class InstrTest : public ::testing::TestWithParam<const test::TestInfo *> {};
 
-static void RunWithFlags(const test::TestInfo *info, Flags flags,
-                         const char *desc,
-                         uint64_t arg1, uint64_t arg2, uint64_t arg3) {
+static void RunWithFlags(const test::TestInfo *info,
+                         Flags flags,
+                         std::string desc,
+                         uint64_t arg1,
+                         uint64_t arg2,
+                         uint64_t arg3) {
   memset(&gLiftedStack, 0, sizeof(gLiftedStack));
   memset(&gStateLifted, 0, sizeof(gStateLifted));
   memset(&gStateNative, 0, sizeof(gStateNative));
@@ -309,8 +319,20 @@ TEST_P(InstrTest, SemanticsMatchNative) {
   for (auto args = info->args_begin;
        args < info->args_end;
        args += info->num_args) {
-    RunWithFlags(info, gRflagsOn, "aflags on", args[0], args[1], args[2]);
-    RunWithFlags(info, gRflagsOff, "aflags off", args[0], args[1], args[2]);
+    std::stringstream ss;
+    if (1 <= info->num_args) {
+      ss << "args: 0x" << std::hex << args[0];
+      if (2 <= info->num_args) {
+        ss << ", 0x" << std::hex << args[1];
+        if (3 <= info->num_args) {
+          ss << ", 0x" << std::hex << args[3];
+        }
+      }
+      ss << ";" << std::dec;
+    }
+    auto desc = ss.str();
+    RunWithFlags(info, gRflagsOn, desc + " aflags on", args[0], args[1], args[2]);
+    RunWithFlags(info, gRflagsOff, desc + " aflags off", args[0], args[1], args[2]);
   }
 }
 
