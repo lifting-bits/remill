@@ -113,9 +113,7 @@ struct Overflow<kLHS * kRHS> {
   NEVER_INLINE static bool Flag(
       T, T, R res,
       typename std::enable_if<sizeof(T) < sizeof(R),int>::type=0) {
-    enum {
-      kShift = sizeof(T) * 8
-    };
+
     __mcsema_defer_inlining();
     return static_cast<R>(static_cast<T>(res)) != res;
   }

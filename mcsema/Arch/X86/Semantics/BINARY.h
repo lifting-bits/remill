@@ -411,3 +411,66 @@ DEF_ISEL_RnW_Rn_Mn(ADC_GPRv_MEMv, ADC);
 DEF_ISEL_RnW_Rn_Rn(ADC_GPRv_GPRv_13, ADC);
 DEF_ISEL(ADC_AL_IMMb_8) = ADC<R8W, R8, I8>;
 DEF_ISEL_RnW_Rn_In(ADC_OrAX_IMMz, ADC);
+
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHR, D dst, S1 src1_, S2 src2_) {
+  typedef typename BaseType<S2>::Type T;
+  enum : T {
+    // The mask is based on the REX.W prefix being used and 64-bit mode. We
+    // determine this based on the source being a 64-bit operand.
+    //
+    // Note: The mask will be 31 even for 16- and 8-bit operands.
+    kArchMask = static_cast<T>(64 == sizeof(T) ? 0x3FU : 0x1FU),
+    kNumBits = sizeof(T) * 8
+  };
+
+  const unsigned shift = R(src2_) & kArchMask;
+
+  if (0 == shift) {
+    return;  // No flags affected.
+  }
+
+  const auto val = R(src1_);
+  T new_val = 0;
+
+  if (1 == shift) {
+    state.aflag.of = (val >> (kNumBits - 1)) & 1;  // High-order bit.
+    state.aflag.cf = val & 1;
+    new_val = val >> 1;
+
+  } else if (shift < kNumBits) {
+    auto res = val >> (shift - 1);
+    state.aflag.of = __mcsema_undefined_bool();
+    state.aflag.cf = res & 1;
+    new_val = res >> 1;
+
+  } else {
+    state.aflag.of = __mcsema_undefined_bool();
+    state.aflag.cf = __mcsema_undefined_bool();
+    new_val = 0;
+  }
+
+  state.aflag.zf = ZeroFlag(new_val);
+  state.aflag.sf = false;
+  state.aflag.pf = ParityFlag(new_val);
+  state.aflag.af = __mcsema_undefined_bool();
+
+  W(dst) = new_val;
+}
+
+}  // namespace
+
+DEF_ISEL(SHR_MEMb_IMMb_8) = SHR<M8W, M8, I8>;
+DEF_ISEL(SHR_GPR8_IMMb_8) = SHR<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(SHR_MEMv_IMMb, SHR);
+DEF_ISEL_RnW_Rn_In(SHR_GPRv_IMMb, SHR);
+DEF_ISEL(SHR_MEMb_ONE_8) = SHR<M8W, M8, I8>;
+DEF_ISEL(SHR_GPR8_ONE_8) = SHR<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(SHR_MEMv_ONE, SHR);
+DEF_ISEL_RnW_Rn_In(SHR_GPRv_ONE, SHR);
+DEF_ISEL(SHR_MEMb_CL_8) = SHR<M8W, M8, R8>;
+DEF_ISEL(SHR_GPR8_CL_8) = SHR<R8W, R8, R8>;
+DEF_ISEL_MnW_Mn_Rn(SHR_MEMv_CL, SHR);
+DEF_ISEL_RnW_Rn_Rn(SHR_GPRv_CL, SHR);

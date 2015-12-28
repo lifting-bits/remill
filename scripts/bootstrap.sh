@@ -292,6 +292,7 @@ function build_mcsema()
 	    -DMCSEMA_DIR:STRING=$DIR \
 	    -DMCSEMA_OS_NAME:STRING=$MCSEMA_OS_NAME \
 	    -DCMAKE_PREFIX_PATH:STRING=$DIR/third_party \
+	    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
 	    ..
 	make all
 	popd
