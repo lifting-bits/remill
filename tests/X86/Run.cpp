@@ -428,13 +428,12 @@ static void RecoverFromError(int signum, siginfo_t *, void *context_) {
   siglongjmp(gJmpBuf, 0);
 }
 
-extern "C" void sys_sigreturn();
 typedef void (SignalHandler) (int, siginfo_t *, void *);
 static void HandleSignal(int signum, SignalHandler *handler) {
   struct sigaction sig;
   sig.sa_sigaction = handler;
   sig.sa_flags = SA_SIGINFO | SA_ONSTACK;
-  sig.sa_restorer = sys_sigreturn;
+  sig.sa_restorer = nullptr;
   sigfillset(&(sig.sa_mask));
   sigaction(signum, &sig, nullptr);
 }

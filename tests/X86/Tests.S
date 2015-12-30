@@ -265,17 +265,6 @@ SYMBOL(__x86_test_table_begin):
     .globl SYMBOL(__x86_test_table_end)
 SYMBOL(__x86_test_table_end):
 
-    /* Implements the `sigreturn` system call. */
-    .text
-    .align 16
-    .globl sys_sigreturn;
-sys_sigreturn:
-    .cfi_startproc
-    mov     eax, 15  // `__NR_rt_sigreturn`.
-    syscall
-    .cfi_endproc
-    ud2
-
     /* Reset */
     .att_syntax prefix
 
