@@ -74,6 +74,9 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *M)
       interrupt_call(FindIntrinsic(M, "__mcsema_interrupt_call")),
       interrupt_return(FindIntrinsic(M, "__mcsema_interrupt_return")),
 
+      // Block that can't be found.
+      undefined_block(FindIntrinsic(M, "__mcsema_undefined_block")),
+
       // Memory access.
       read_memory_8(FindPureIntrinsic(M, "__mcsema_read_memory_8")),
       read_memory_16(FindPureIntrinsic(M, "__mcsema_read_memory_16")),

@@ -13,6 +13,9 @@
 # define IF_64BIT_ELSE(a, b) b
 #endif
 
+#ifndef DETECT_RUNTIME_ERRORS
+# define DETECT_RUNTIME_ERRORS 1
+#endif
 
 // Used to enable/disable "transparent" behaviors.
 //
@@ -40,7 +43,8 @@
 
 // Define a semantics implementing function.
 #define DEF_SEM(name, ...) \
-    ALWAYS_INLINE static void name (State &state, ##__VA_ARGS__) noexcept
+    ALWAYS_INLINE static void name ( \
+        State &state, const addr_t next_pc, ##__VA_ARGS__) noexcept
 
 // An instruction where the implementation is the same for all operand sizes.
 #define DEF_ISEL_ALL(name, func) \

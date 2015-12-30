@@ -9,6 +9,10 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include <setjmp.h>
+#include <signal.h>
+#include <ucontext.h>
+
 #include "tests/X86/Test.h"
 
 #include "mcsema/Arch/X86/Runtime/State.h"
@@ -18,7 +22,7 @@ namespace {
 typedef void (*LiftedFunc)(State *);
 
 struct alignas(128) Stack {
-  uint8_t bytes[4096 * 16];
+  uint8_t bytes[SIGSTKSZ];
 };
 
 // Native test case code executes off of `gStack`. The state of the stack
@@ -27,6 +31,7 @@ struct alignas(128) Stack {
 // that act on `gStack`.
 static Stack gLiftedStack;
 static Stack gNativeStack;
+static Stack gSigStack;
 
 static Flags gRflagsOff;
 static Flags gRflagsOn;
@@ -40,16 +45,23 @@ inline static T &AccessMemory(addr_t addr) {
   return *reinterpret_cast<T *>(static_cast<uintptr_t>(addr));
 }
 
+// Used to handle exceptions in instructions.
+static sigjmp_buf gJmpBuf;
+
+// Used to mask the registers from a signal context when we've caught an error.
+static uintptr_t gRegMask32 = 0;
+static uintptr_t gRegMask64 = 0;
+
 extern "C" {
 
 // Native state before we run the native test case. We then use this as the
 // initial state for the lifted testcase. The lifted test case code mutates
 // this, and we require that after running the lifted testcase, `gStateBefore`
 // matches `gStateAfter`,
-std::aligned_storage<sizeof(State), alignof(State)>::type gStateLifted;
+std::aligned_storage<sizeof(State), alignof(State)>::type gLiftedState;
 
 // Native state after running the native test case.
-std::aligned_storage<sizeof(State), alignof(State)>::type gStateNative;
+std::aligned_storage<sizeof(State), alignof(State)>::type gNativeState;
 
 // Address of the native test to run. The `InvokeTestCase` function saves
 // the native program state but then needs a way to figure out where to go
@@ -159,9 +171,14 @@ void __mcsema_barrier_atomic_end(addr_t, size_t) {}
 
 void __mcsema_defer_inlining(void) {}
 
-// Control-flow intrinsics.
 void __mcsema_error(State &) {
+  std::cerr << "Caught error!" << std::endl;
+  siglongjmp(gJmpBuf, 0);
+}
 
+// Control-flow intrinsics.
+void __mcsema_undefined_block(State &) {
+  // This is where we want to end up.
 }
 
 void __mcsema_function_call(State &) {
@@ -228,18 +245,39 @@ static void InitFlags(void) {
 
 class InstrTest : public ::testing::TestWithParam<const test::TestInfo *> {};
 
+template <typename T>
+inline static bool operator==(const T &a, const T &b) {
+  return !memcmp(&a, &b, sizeof(a));
+}
+
+template <typename T>
+inline static bool operator!=(const T &a, const T &b) {
+  return !!memcmp(&a, &b, sizeof(a));
+}
+
 static void RunWithFlags(const test::TestInfo *info,
                          Flags flags,
                          std::string desc,
                          uint64_t arg1,
                          uint64_t arg2,
                          uint64_t arg3) {
-  memset(&gLiftedStack, 0, sizeof(gLiftedStack));
-  memset(&gStateLifted, 0, sizeof(gStateLifted));
-  memset(&gStateNative, 0, sizeof(gStateNative));
 
-  auto lifted_state = reinterpret_cast<State *>(&gStateLifted);
-  auto native_state = reinterpret_cast<State *>(&gStateNative);
+  // Set up the GPR mask just in case an error occurs when we execute this
+  // instruction.
+  if (64 == ADDRESS_SIZE_BITS) {
+    gRegMask32 = std::numeric_limits<uint64_t>::max();
+    gRegMask64 = gRegMask32;
+  } else {
+    gRegMask32 = std::numeric_limits<uint32_t>::max();
+    gRegMask64 = 0;
+  }
+
+  memset(&gLiftedStack, 0, sizeof(gLiftedStack));
+  memset(&gLiftedState, 0, sizeof(gLiftedState));
+  memset(&gNativeState, 0, sizeof(gNativeState));
+
+  auto lifted_state = reinterpret_cast<State *>(&gLiftedState);
+  auto native_state = reinterpret_cast<State *>(&gNativeState);
 
   // This will be used to initialize the native flags state before executing
   // the native test.
@@ -249,8 +287,13 @@ static void RunWithFlags(const test::TestInfo *info,
   // stack pointer is swapped with `gStackSwitcher`. The idea here is that
   // we want to run the native and lifted testcases on the same stack so that
   // we can compare that they both operate on the stack in the same ways.
-  gTestToRun = info->test_begin;
-  InvokeTestCase(arg1, arg2, arg3);
+  auto native_test_faulted = false;
+  if (!sigsetjmp(gJmpBuf, true)) {
+    gTestToRun = info->test_begin;
+    InvokeTestCase(arg1, arg2, arg3);
+  } else {
+    native_test_faulted = true;
+  }
 
   // Copy out whatever was recorded on the stack so that we can compare it
   // with how the lifted program mutates the stack.
@@ -261,7 +304,11 @@ static void RunWithFlags(const test::TestInfo *info,
   // `gStack`. The mechanism behind this is that `gStateBefore` is the native
   // program state recorded before executing the native testcase, but after
   // swapping execution to operate on `gStack`.
-  info->lifted_func(lifted_state);
+  if (!sigsetjmp(gJmpBuf, true)) {
+    info->lifted_func(lifted_state);
+  } else {
+    EXPECT_TRUE(native_test_faulted);
+  }
 
   // Don't compare the program counters. The code that is lifted is equivalent
   // to the code that is tested but because they are part of separate binaries
@@ -305,14 +352,21 @@ static void RunWithFlags(const test::TestInfo *info,
   std::cerr << std::endl;
 
   // Compare the register states.
-  if (memcmp(lifted_state, native_state, sizeof(State))) {
+  EXPECT_TRUE(lifted_state->fpu == native_state->fpu);
+  for (auto i = 0UL; i < kNumVecRegisters; ++i) {
+    EXPECT_TRUE(lifted_state->vec[i] == native_state->vec[i]);
+  }
+  EXPECT_TRUE(lifted_state->aflag == native_state->aflag);
+  EXPECT_TRUE(lifted_state->rflag == native_state->rflag);
+  EXPECT_TRUE(lifted_state->seg == native_state->seg);
+  EXPECT_TRUE(lifted_state->gpr == native_state->gpr);
+  if (gLiftedState != gNativeState) {
     EXPECT_TRUE(!"Lifted and native states did not match.");
   }
-  if (memcmp(&gLiftedStack, &gNativeStack, sizeof(Stack))) {
+  if (gLiftedStack != gNativeStack) {
     EXPECT_TRUE(!"Lifted and native stacks did not match.");
   }
 }
-
 
 TEST_P(InstrTest, SemanticsMatchNative) {
   auto info = GetParam();
@@ -341,6 +395,70 @@ INSTANTIATE_TEST_CASE_P(
     InstrTest,
     testing::ValuesIn(gTests));
 
+// Recover from a signal.
+static void RecoverFromError(int signum, siginfo_t *, void *context_) {
+  std::cerr << "Caught signal " << signum << "!" << std::endl;
+  memcpy(&gNativeState, &gLiftedState, sizeof(State));
+
+  auto context = reinterpret_cast<ucontext_t *>(context_);
+  auto native_state = reinterpret_cast<State *>(&gNativeState);
+  const auto &mcontext = context->uc_mcontext;
+
+  native_state->gpr.rax.qword = mcontext.gregs[REG_RAX] & gRegMask32;
+  native_state->gpr.rbx.qword = mcontext.gregs[REG_RBX] & gRegMask32;
+  native_state->gpr.rcx.qword = mcontext.gregs[REG_RCX] & gRegMask32;
+  native_state->gpr.rdx.qword = mcontext.gregs[REG_RDX] & gRegMask32;
+  native_state->gpr.rsi.qword = mcontext.gregs[REG_RSI] & gRegMask32;
+  native_state->gpr.rdi.qword = mcontext.gregs[REG_RDI] & gRegMask32;
+  native_state->gpr.rbp.qword = mcontext.gregs[REG_RBP] & gRegMask32;
+  native_state->gpr.rsp.qword = mcontext.gregs[REG_RSP] & gRegMask32;
+
+  native_state->gpr.r8.qword = mcontext.gregs[REG_R8] & gRegMask64;
+  native_state->gpr.r9.qword = mcontext.gregs[REG_R9] & gRegMask64;
+  native_state->gpr.r10.qword = mcontext.gregs[REG_R10] & gRegMask64;
+  native_state->gpr.r11.qword = mcontext.gregs[REG_R11] & gRegMask64;
+  native_state->gpr.r12.qword = mcontext.gregs[REG_R12] & gRegMask64;
+  native_state->gpr.r13.qword = mcontext.gregs[REG_R13] & gRegMask64;
+  native_state->gpr.r14.qword = mcontext.gregs[REG_R14] & gRegMask64;
+  native_state->gpr.r15.qword = mcontext.gregs[REG_R15] & gRegMask64;
+
+  native_state->rflag.flat = context->uc_mcontext.gregs[REG_EFL];
+  native_state->rflag.rf = false;  // Resume flag.
+
+  siglongjmp(gJmpBuf, 0);
+}
+
+extern "C" void sys_sigreturn();
+typedef void (SignalHandler) (int, siginfo_t *, void *);
+static void HandleSignal(int signum, SignalHandler *handler) {
+  struct sigaction sig;
+  sig.sa_sigaction = handler;
+  sig.sa_flags = SA_SIGINFO | SA_ONSTACK;
+  sig.sa_restorer = sys_sigreturn;
+  sigfillset(&(sig.sa_mask));
+  sigaction(signum, &sig, nullptr);
+}
+
+// Set up various signal handlers.
+static void SetupSignals(void) {
+  HandleSignal(SIGSEGV, RecoverFromError);
+  HandleSignal(SIGBUS, RecoverFromError);
+  HandleSignal(SIGFPE, RecoverFromError);
+  HandleSignal(SIGSTKFLT, RecoverFromError);
+  HandleSignal(SIGTRAP, RecoverFromError);
+  HandleSignal(SIGILL, RecoverFromError);
+
+  sigset_t set;
+  sigemptyset(&set);
+  sigprocmask(SIG_SETMASK, &set, nullptr);
+
+  stack_t sig_stack;
+  sig_stack.ss_sp = &gSigStack;
+  sig_stack.ss_size = SIGSTKSZ;
+  sig_stack.ss_flags = 0;
+  sigaltstack(&sig_stack, nullptr);
+}
+
 int main(int argc, char **argv) {
 
   InitFlags();
@@ -353,5 +471,7 @@ int main(int argc, char **argv) {
   }
 
   testing::InitGoogleTest(&argc, argv);
+
+  SetupSignals();
   return RUN_ALL_TESTS();
 }

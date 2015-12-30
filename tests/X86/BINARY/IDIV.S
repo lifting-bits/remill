@@ -1,0 +1,121 @@
+/* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+
+TEST_BEGIN(IDIVax, 2)
+TEST_IGNORE_FLAGS(CF OF SF ZF AF PF)
+TEST_INPUTS(
+    0, 0,
+    1, 0,
+    0, 1,
+    1, 1,
+    1, 2,
+    0xFFFF, 1,
+    0xFFFF, 2,
+    0xFFFF, 0xFF,
+    0xFFFF, 0xF7,
+    0x7FFF, 1,
+    0x7FFF, 2,
+    0x7FFF, 0xFF,
+    0x7FFF, 0xF7)
+
+    mov eax, ARG1_32
+    mov ebx, ARG2_32
+
+    idiv bl
+TEST_END
+
+TEST_BEGIN_64(IDIVax, 2)
+TEST_IGNORE_FLAGS(CF OF SF ZF AF PF)
+TEST_INPUTS(
+    0, 0,
+    1, 0,
+    0, 1,
+    1, 1,
+    1, 2,
+    0xFFFF, 1,
+    0xFFFF, 2,
+    0xFFFF, 0xFF,
+    0xFFFF, 0xF7,
+    0x7FFF, 1,
+    0x7FFF, 2,
+    0x7FFF, 0xFF,
+    0x7FFF, 0xF7)
+
+    mov eax, ARG1_32
+    mov r8, ARG2_64
+
+    idiv r8b
+TEST_END_64
+
+TEST_BEGIN(IDIVdxax, 3)
+TEST_IGNORE_FLAGS(CF OF SF ZF AF PF)
+TEST_INPUTS(
+    0, 0, 0,
+    1, 0, 0,
+    0, 1, 0,
+    1, 1, 0,
+    1, 2, 0,
+    0xFFFF, 1, 0,
+    0xFFFF, 2, 0,
+    0xFFFF, 0xFF, 0,
+    0xFFFF, 0xF7, 0,
+    0xFFFF, 1, 0xFFFF,
+    0xFFFF, 2, 0xFFFF,
+    0xFFFF, 0xFF, 0xFFFF,
+    0xFFFF, 0xF7, 0xFFFF,
+    0xFFFF, 1, 0x7FFF,
+    0xFFFF, 2, 0x7FFF,
+    0xFFFF, 0xFF, 0x7FFF,
+    0xFFFF, 0xF7, 0x7FFF)
+
+    mov eax, ARG1_32
+    mov ebx, ARG2_32
+    mov edx, ARG3_32
+
+    idiv bx
+TEST_END
+
+TEST_BEGIN(IDIVedxeax, 3)
+TEST_IGNORE_FLAGS(CF OF SF ZF AF PF)
+TEST_INPUTS(
+    0xFFFF, 0xFF, 0,
+    0xFFFF, 0xF7, 0,
+    0xFFFF, 0xFF, 0xFFFF,
+    0xFFFF, 0xF7, 0xFFFF,
+    0xFFFF, 0xFF, 0x7FFF,
+    0xFFFF, 0xF7, 0x7FFF,
+    0xFFFFFFFF, 0xFF, 0xFFFFFFFF,
+    0xFFFFFFFF, 0xF7, 0xFFFFFFFF,
+    0xFFFFFFFF, 0xFF, 0x7FFFFFFF,
+    0xFFFFFFFF, 0xF7, 0x7FFFFFFF)
+
+    mov eax, ARG1_32
+    mov ebx, ARG2_32
+    mov edx, ARG3_32
+
+    idiv ebx
+TEST_END
+
+TEST_BEGIN_64(IDIVrdxrax, 3)
+TEST_IGNORE_FLAGS(CF OF SF ZF AF PF)
+TEST_INPUTS(
+    0xFFFF, 0xFF, 0,
+    0xFFFF, 0xF7, 0,
+    0xFFFF, 0xFF, 0xFFFF,
+    0xFFFF, 0xF7, 0xFFFF,
+    0xFFFF, 0xFF, 0x7FFF,
+    0xFFFF, 0xF7, 0x7FFF,
+    0xFFFFFFFF, 0xFF, 0xFFFFFFFF,
+    0xFFFFFFFF, 0xF7, 0xFFFFFFFF,
+    0xFFFFFFFF, 0xFF, 0x7FFFFFFF,
+    0xFFFFFFFF, 0xF7, 0x7FFFFFFF,
+    0xFFFFFFFFFFFFFFFF, 0xFF, 0xFFFFFFFFFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF, 0xF7, 0xFFFFFFFFFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF, 0xFF, 0x7FFFFFFFFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF, 0xF7, 0x7FFFFFFFFFFFFFFF)
+
+    mov eax, ARG1_32
+    mov ebx, ARG2_32
+    mov edx, ARG3_32
+
+    idiv ebx
+TEST_END_64

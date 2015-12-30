@@ -339,7 +339,7 @@ llvm::Function *Translator::GetLiftedBlockForPC(uintptr_t pc) const {
   auto F = blocks[pc];
   if (!F) {
     LOG(ERROR) << "Could not find lifted block for PC " << pc;
-    F = intrinsics->error;
+    F = intrinsics->undefined_block;
   }
   return F;
 }

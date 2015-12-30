@@ -36,6 +36,7 @@ void __mcsema_intrinsics(void) {
   (void) __mcsema_defer_inlining;
 
   (void) __mcsema_error;
+
   (void) __mcsema_function_call;
   (void) __mcsema_function_return;
   (void) __mcsema_jump;
@@ -43,6 +44,7 @@ void __mcsema_intrinsics(void) {
   (void) __mcsema_system_return;
   (void) __mcsema_interrupt_call;
   (void) __mcsema_interrupt_return;
+  (void) __mcsema_undefined_block;
 
   (void) __mcsema_undefined_bool;
   (void) __mcsema_undefined_8;

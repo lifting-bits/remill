@@ -13,8 +13,9 @@ class IntrinsicTable {
  public:
   IntrinsicTable(const llvm::Module *M);
 
-  // Control-transfer intrinsics.
   llvm::Function * const error;
+
+  // Control-transfer intrinsics.
   llvm::Function * const function_call;
   llvm::Function * const function_return;
   llvm::Function * const jump;
@@ -22,6 +23,7 @@ class IntrinsicTable {
   llvm::Function * const system_return;
   llvm::Function * const interrupt_call;
   llvm::Function * const interrupt_return;
+  llvm::Function * const undefined_block;
 
   // Memory read intrinsics.
   llvm::Function * const read_memory_8;

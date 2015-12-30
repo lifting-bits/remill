@@ -28,7 +28,6 @@ class Instr : public ::mcsema::Instr {
                              llvm::BasicBlock *B_) override;
 
  private:
-  void LiftPC(void);
   void LiftPC(uintptr_t next_pc);
   void LiftGeneric(const Translator &lifter);
   bool CheckArgumentTypes(const llvm::Function *F,

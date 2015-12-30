@@ -99,7 +99,7 @@ struct DivMul {
     typedef typename NextLargerIntegerType<T>::Type WT;
     typedef typename Converter<WT>::Type CWT;
 
-    const auto src1 = static_cast<CT>(state.gpr.rax.byte.low);
+    const auto src1 = static_cast<CT>(R(state.gpr.rax.byte.low));
     const auto src2 = static_cast<CT>(R(val));
     const auto res = SET_AFLAGS_MUL(src1, *, src2, CWT);
     W(state.gpr.rax.word) = static_cast<WT>(res);
@@ -112,7 +112,7 @@ struct DivMul {
       typedef typename Converter<T>::Type CT; \
       typedef typename NextLargerIntegerType<CT>::Type CWT; \
       \
-      const auto src1 = static_cast<CT>(state.gpr.rax.read_sel); \
+      const auto src1 = static_cast<CT>(R(state.gpr.rax.read_sel)); \
       const auto src2 = static_cast<CT>(R(src2_)); \
       const auto res = SET_AFLAGS_MUL(src1, *, src2, CWT); \
       W(state.gpr.rdx.write_sel) = static_cast<T>(res >> size); \
@@ -125,44 +125,72 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
 
 #undef MAKE_MULTIPLIER
 
-  // `MUL8` and `IMUL8` of `AL` doesn't update `RDX`.
+  // `DIV8` and `IDIV8` of `AL` doesn't update `RDX`.
   template <typename S2>
   DEF_SEM(DIVA_8, const S2 src2_) {
-    CLEAR_AFLAGS();
 
     typedef typename BaseType<S2>::Type T;
     typedef typename NextLargerIntegerType<T>::Type WT;
 
     typedef typename Converter<T>::Type CT;
-    typedef typename NextLargerIntegerType<WT>::Type CWT;
+    typedef typename NextLargerIntegerType<CT>::Type CWT;
 
-    const CWT src1 = static_cast<CT>(state.gpr.rax.word);
+    const auto src1 = static_cast<CWT>(R(state.gpr.rax.word));
     const CWT src2 = static_cast<CT>(R(src2_));
-    const auto quot = static_cast<CT>(src1 / src2);
-    const auto rem = static_cast<CT>(src1 % src2);
-    W(state.gpr.rax.byte.low) = static_cast<T>(quot);
-    W(state.gpr.rax.byte.high) = static_cast<T>(rem);
+
+    if (DETECT_RUNTIME_ERRORS && !src2) {
+      __mcsema_error(state);
+      __builtin_unreachable();
+    }
+
+    const CWT quot = src1 / src2;
+    const CWT rem = src1 % src2;
+    const auto high_half = quot >> 8;
+
+    if (DETECT_RUNTIME_ERRORS && quot &&
+        !(!high_half || (std::is_signed<CT>::value && !~high_half))) {
+      __mcsema_error(state);
+      __builtin_unreachable();
+    } else {
+      W(state.gpr.rax.byte.low) = static_cast<T>(quot);
+      W(state.gpr.rax.byte.high) = static_cast<T>(rem);
+      CLEAR_AFLAGS();
+    }
   }
 
 #define MAKE_DIVIDER(size, read_sel, write_sel) \
     template <typename S2> \
     DEF_SEM(DIVA_ ## size, const S2 src2_) { \
-      CLEAR_AFLAGS(); \
       typedef typename BaseType<S2>::Type T; \
-      typedef typename Converter<T>::Type CT; \
-      \
       typedef typename NextLargerIntegerType<T>::Type WT; \
+      \
+      typedef typename Converter<T>::Type CT; \
       typedef typename Converter<WT>::Type CWT; \
       \
-      const auto src1_low = static_cast<WT>(state.gpr.rax.read_sel); \
-      const auto src1_high = static_cast<WT>(state.gpr.rdx.read_sel); \
-      const auto src1 = static_cast<CWT>((src1_high << size) | src1_low);\
+      const auto src1_low = static_cast<WT>(R(state.gpr.rax.read_sel)); \
+      const auto src1_high = static_cast<WT>(R(state.gpr.rdx.read_sel)); \
+      \
+      const CWT src1 = static_cast<CWT>((src1_high << size) | src1_low);\
       const CWT src2 = static_cast<CT>(R(src2_)); \
       \
-      const auto quot = static_cast<CT>(src1 / src2); \
-      const auto rem = static_cast<CT>(src1 % src2); \
-      W(state.gpr.rax.write_sel) = static_cast<T>(quot); \
-      W(state.gpr.rdx.write_sel) = static_cast<T>(rem); \
+      if (DETECT_RUNTIME_ERRORS && !src2) { \
+        __mcsema_error(state); \
+        __builtin_unreachable(); \
+      } \
+      \
+      const CWT quot = src1 / src2; \
+      const CWT rem = src1 % src2; \
+      \
+      const auto high_half = quot >> size; \
+      if (DETECT_RUNTIME_ERRORS && quot && \
+          !(!high_half || (std::is_signed<CT>::value && !~high_half))) { \
+        __mcsema_error(state); \
+        __builtin_unreachable(); \
+      } else { \
+        W(state.gpr.rax.write_sel) = static_cast<T>(quot); \
+        W(state.gpr.rdx.write_sel) = static_cast<T>(rem); \
+        CLEAR_AFLAGS(); \
+      } \
     }
 
 MAKE_DIVIDER(16, word, word)
@@ -262,23 +290,23 @@ DEF_ISEL(IDIV_MEMb_8) = DivMul<SignedIntegerType>::DIVA_8<M8>;
 DEF_ISEL(IDIV_GPR8_8) = DivMul<SignedIntegerType>::DIVA_8<R8>;
 DEF_ISEL(IDIV_MEMv_8) = DivMul<SignedIntegerType>::DIVA_8<M8>;
 DEF_ISEL(IDIV_MEMv_16) = DivMul<SignedIntegerType>::DIVA_16<M16>;
-DEF_ISEL(IDIV_MEMv_32) = DivMul<SignedIntegerType>::DIVA_16<M32>;
-IF_64BIT(DEF_ISEL(IDIV_MEMv_64) = DivMul<SignedIntegerType>::DIVA_16<M64>;)
+DEF_ISEL(IDIV_MEMv_32) = DivMul<SignedIntegerType>::DIVA_32<M32>;
+IF_64BIT(DEF_ISEL(IDIV_MEMv_64) = DivMul<SignedIntegerType>::DIVA_64<M64>;)
 DEF_ISEL(IDIV_GPRv_8) = DivMul<SignedIntegerType>::DIVA_8<R8>;
 DEF_ISEL(IDIV_GPRv_16) = DivMul<SignedIntegerType>::DIVA_16<R16>;
-DEF_ISEL(IDIV_GPRv_32) = DivMul<SignedIntegerType>::DIVA_16<R32>;
-IF_64BIT(DEF_ISEL(IDIV_GPRv_64) = DivMul<SignedIntegerType>::DIVA_16<R64>;)
+DEF_ISEL(IDIV_GPRv_32) = DivMul<SignedIntegerType>::DIVA_32<R32>;
+IF_64BIT(DEF_ISEL(IDIV_GPRv_64) = DivMul<SignedIntegerType>::DIVA_64<R64>;)
 
 DEF_ISEL(DIV_MEMb_8) = DivMul<UnsignedIntegerType>::DIVA_8<M8>;
 DEF_ISEL(DIV_GPR8_8) = DivMul<UnsignedIntegerType>::DIVA_8<R8>;
 DEF_ISEL(DIV_MEMv_8) = DivMul<UnsignedIntegerType>::DIVA_8<M8>;
 DEF_ISEL(DIV_MEMv_16) = DivMul<UnsignedIntegerType>::DIVA_16<M16>;
-DEF_ISEL(DIV_MEMv_32) = DivMul<UnsignedIntegerType>::DIVA_16<M32>;
-IF_64BIT(DEF_ISEL(DIV_MEMv_64) = DivMul<UnsignedIntegerType>::DIVA_16<M64>;)
+DEF_ISEL(DIV_MEMv_32) = DivMul<UnsignedIntegerType>::DIVA_32<M32>;
+IF_64BIT(DEF_ISEL(DIV_MEMv_64) = DivMul<UnsignedIntegerType>::DIVA_64<M64>;)
 DEF_ISEL(DIV_GPRv_8) = DivMul<UnsignedIntegerType>::DIVA_8<R8>;
 DEF_ISEL(DIV_GPRv_16) = DivMul<UnsignedIntegerType>::DIVA_16<R16>;
-DEF_ISEL(DIV_GPRv_32) = DivMul<UnsignedIntegerType>::DIVA_16<R32>;
-IF_64BIT(DEF_ISEL(DIV_GPRv_64) = DivMul<UnsignedIntegerType>::DIVA_16<R64>;)
+DEF_ISEL(DIV_GPRv_32) = DivMul<UnsignedIntegerType>::DIVA_32<R32>;
+IF_64BIT(DEF_ISEL(DIV_GPRv_64) = DivMul<UnsignedIntegerType>::DIVA_64<R64>;)
 
 DEF_ISEL(CMP_MEMb_IMMb_80r7_8) = CMP<M8, I8>;
 DEF_ISEL(CMP_GPR8_IMMb_80r7_8) = CMP<R8, I8>;

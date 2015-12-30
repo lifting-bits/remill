@@ -252,6 +252,10 @@ static_assert(0 == __builtin_offsetof(GPR, rax),
 static_assert((sizeof(GPR) - 8) == __builtin_offsetof(GPR, rip),
               "Invalid structure packing of `GPR`.");
 
+enum : size_t {
+  kNumVecRegisters = 32
+};
+
 struct alignas(64) State {
   // Native `FXSAVE64` representation of the FPU, plus a semi-duplicate
   // representation of all vector regs (XMM, YMM, ZMM).
@@ -259,7 +263,7 @@ struct alignas(64) State {
 
   // AVX512 has 32 vector registers, so we always include them all here for
   // consistency across the various state structures.
-  VectorReg vec[32];  // 2048 bytes.
+  VectorReg vec[kNumVecRegisters];  // 2048 bytes.
 
   // Two representations of flags. Makes it easy to convert from native-to-
   // lifted, as well as improved the optimizability of the aflags themselves.

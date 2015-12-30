@@ -74,6 +74,8 @@ bool Instr::LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *B_) {
   M = F->getParent();
   C = &(F->getContext());
 
+  LiftPC(instr->address());
+
   if (IsError()) {
     AddTerminatingTailCall(B, lifter.intrinsics->error);
     return false;
@@ -90,13 +92,11 @@ bool Instr::LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *B_) {
     return false;
 
   } else if (IsDirectFunctionCall()) {
-    LiftPC();  // Loads the return address into `gpr.rip`.
     LiftGeneric(lifter);  // Adjusts the stack, stores `gpr.rip` to the stack.
     AddTerminatingTailCall(B, lifter.GetLiftedBlockForPC(TargetPC()));
     return false;
 
   } else if (IsIndirectFunctionCall()) {
-    LiftPC();  // Loads the return address into `gpr.rip`.
     LiftGeneric(lifter);  // Adjusts the stack, loads target into `gpr.rip`.
     AddTerminatingTailCall(B, lifter.intrinsics->function_call);
     return false;
@@ -107,14 +107,12 @@ bool Instr::LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *B_) {
     return false;
 
   } else if (IsBranch()) {
-    LiftPC();  // Loads the fall-through PC into `gpr.rip`.
     LiftGeneric(lifter);  // Conditionally loads taken target into `gpr.rip`.
     LiftConditionalBranch(lifter);  // Conditional branch based on `gpr.rip`.
     return false;
 
   // Instruction implementation handles syscall emulation.
   } else if (IsSystemCall()) {
-    LiftPC();  // Loads the return address from the syscall into `gpr.rip`.
     LiftGeneric(lifter);
     AddTerminatingTailCall(B, lifter.intrinsics->system_call);
     return false;
@@ -128,7 +126,6 @@ bool Instr::LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *B_) {
 
   // Instruction implementation handles syscall (x86, x32) emulation.
   } else if (IsInterruptCall()) {
-    LiftPC();  // Loads the return address from the interrupt into `gpr.rip`.
     LiftGeneric(lifter);
     AddTerminatingTailCall(B, lifter.intrinsics->interrupt_call);
     return false;
@@ -169,10 +166,6 @@ static std::string PCRegName(const xed_decoded_inst_t *xedd) {
 
 // Store the next program counter into the associated state register. This
 // lets us access this information from within instruction implementations.
-void Instr::LiftPC(void) {
-  LiftPC(NextPC());
-}
-
 void Instr::LiftPC(uintptr_t next_pc) {
   auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
 
@@ -213,7 +206,14 @@ bool Instr::CheckArgumentTypes(const llvm::Function *F,
 
 // Lift a generic instruction.
 void Instr::LiftGeneric(const Translator &lifter) {
+  auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
+  llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
+
+  // First argument is the state pointer.
   args.push_back(&*F->arg_begin());
+
+  // Second argument is the next program counter.
+  args.push_back(llvm::ConstantInt::get(IntPtrTy, NextPC(), false));
 
   // Lift the operands. This creates the arguments for us to call the
   // instruction implementation.

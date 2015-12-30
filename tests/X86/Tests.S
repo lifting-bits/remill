@@ -201,8 +201,8 @@ TEST_FUNC(instr_name, num_args): ; \
 #ifndef IN_TEST_GENERATOR
     .data
     .extern SYMBOL(gTestToRun)
-    .extern SYMBOL(gStateLifted)
-    .extern SYMBOL(gStateNative)
+    .extern SYMBOL(gLiftedState)
+    .extern SYMBOL(gNativeState)
     .extern SYMBOL(gStackSwitcher)
     .extern SYMBOL(gTestEnd)
     .extern SYMBOL(gStackSaveSlot)
@@ -216,7 +216,7 @@ TEST_FUNC(instr_name, num_args): ; \
 SYMBOL(InvokeTestCase):
     .cfi_startproc
     xchg RSP, [RIP + SYMBOL(gStackSwitcher)]  /* Switch onto recording stack. */
-# define STATE_PTR SYMBOL(gStateLifted)
+# define STATE_PTR SYMBOL(gLiftedState)
 # include "tests/X86/SaveState.S"
     jmp QWORD PTR DS:[RIP + SYMBOL(gTestToRun)]
     .cfi_endproc
@@ -225,7 +225,7 @@ SYMBOL(InvokeTestCase):
     .align 16
 SYMBOL(__x86_save_state_after):
     .cfi_startproc
-# define STATE_PTR SYMBOL(gStateNative)
+# define STATE_PTR SYMBOL(gNativeState)
 # define AFTER_TEST_CASE
 # include "tests/X86/SaveState.S"
     xchg rsp, [RIP + SYMBOL(gStackSwitcher)]  /* Return to the normal stack. */
@@ -254,15 +254,27 @@ SYMBOL(__x86_test_table_begin):
 
 /* Bring in all semantic tests. */
 #include "tests/X86/BINARY/ADD.S"
-#include "tests/X86/BINARY/SUB.S"
 #include "tests/X86/BINARY/CMP.S"
+#include "tests/X86/BINARY/IDIV.S"
 #include "tests/X86/BINARY/IMUL.S"
 #include "tests/X86/BINARY/MUL.S"
+#include "tests/X86/BINARY/SUB.S"
 
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"
     .globl SYMBOL(__x86_test_table_end)
 SYMBOL(__x86_test_table_end):
+
+    /* Implements the `sigreturn` system call. */
+    .text
+    .align 16
+    .globl sys_sigreturn;
+sys_sigreturn:
+    .cfi_startproc
+    mov     eax, 15  // `__NR_rt_sigreturn`.
+    syscall
+    .cfi_endproc
+    ud2
 
     /* Reset */
     .att_syntax prefix

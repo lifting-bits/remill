@@ -49,8 +49,10 @@ extern "C" {
 // inlined, even if it's not currently inlined.
 [[gnu::used]] extern void __mcsema_defer_inlining(void);
 
-// Control-flow intrinsics.
+// Generic error.
 [[gnu::used]] extern void __mcsema_error(State &);
+
+// Control-flow intrinsics.
 [[gnu::used]] extern void __mcsema_function_call(State &);
 [[gnu::used]] extern void __mcsema_function_return(State &);
 [[gnu::used]] extern void __mcsema_jump(State &);
@@ -58,6 +60,7 @@ extern "C" {
 [[gnu::used]] extern void __mcsema_system_return(State &);
 [[gnu::used]] extern void __mcsema_interrupt_call(State &);
 [[gnu::used]] extern void __mcsema_interrupt_return(State &);
+[[gnu::used]] extern void __mcsema_undefined_block(State &);
 
 // Memory barriers types.
 [[gnu::used]] extern void __mcsema_barrier_load_load(addr_t, size_t);

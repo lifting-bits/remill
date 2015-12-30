@@ -7,7 +7,7 @@ DEF_SEM(CALL, T target_pc) {
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   W(state.gpr.rsp) -= sizeof(R(state.gpr.rsp));
   MnW<PC> sp = {R(state.gpr.rsp)};
-  W(sp) = R(state.gpr.rip);
+  W(sp) = next_pc;
   W(state.gpr.rip) = R(target_pc);
 }
 
