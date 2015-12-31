@@ -28,8 +28,9 @@ void __mcsema_intrinsics(void) {
   (void) __mcsema_barrier_load_store;
   (void) __mcsema_barrier_store_load;
   (void) __mcsema_barrier_store_store;
-  (void) __mcsema_barrier_atomic_begin;
-  (void) __mcsema_barrier_atomic_end;
+
+  (void) __mcsema_atomic_begin;
+  (void) __mcsema_atomic_end;
 
   (void) __mcsema_compute_address;  // Used for segmented addresses.
 

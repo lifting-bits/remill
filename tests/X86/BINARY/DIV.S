@@ -1,6 +1,6 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-TEST_BEGIN(IDIVax, 2)
+TEST_BEGIN(DIVax, 2)
 TEST_IGNORE_FLAGS(CF OF SF ZF AF PF)
 TEST_INPUTS(
     0, 0,
@@ -20,10 +20,10 @@ TEST_INPUTS(
     mov eax, ARG1_32
     mov ebx, ARG2_32
 
-    idiv bl
+    div bl
 TEST_END
 
-TEST_BEGIN_64(IDIVax, 2)
+TEST_BEGIN_64(DIVax, 2)
 TEST_IGNORE_FLAGS(CF OF SF ZF AF PF)
 TEST_INPUTS(
     0, 0,
@@ -43,10 +43,10 @@ TEST_INPUTS(
     mov rax, ARG1_64
     mov r8, ARG2_64
 
-    idiv r8b
+    div r8b
 TEST_END_64
 
-TEST_BEGIN(IDIVdxax, 3)
+TEST_BEGIN(DIVdxax, 3)
 TEST_IGNORE_FLAGS(CF OF SF ZF AF PF)
 TEST_INPUTS(
     0, 0, 0,
@@ -71,10 +71,10 @@ TEST_INPUTS(
     mov ebx, ARG2_32
     mov edx, ARG3_32
 
-    idiv bx
+    div bx
 TEST_END
 
-TEST_BEGIN(IDIVedxeax, 3)
+TEST_BEGIN(DIVedxeax, 3)
 TEST_IGNORE_FLAGS(CF OF SF ZF AF PF)
 TEST_INPUTS(
     0xFFFF, 0xFF, 0,
@@ -92,10 +92,10 @@ TEST_INPUTS(
     mov ebx, ARG2_32
     mov edx, ARG3_32
 
-    idiv ebx
+    div ebx
 TEST_END
 
-TEST_BEGIN_64(IDIVrdxrax, 3)
+TEST_BEGIN_64(DIVrdxrax, 3)
 TEST_IGNORE_FLAGS(CF OF SF ZF AF PF)
 TEST_INPUTS(
     0xFFFF, 0xFF, 0,
@@ -117,5 +117,5 @@ TEST_INPUTS(
     mov ebx, ARG2_32
     mov edx, ARG3_32
 
-    idiv ebx
+    div ebx
 TEST_END_64

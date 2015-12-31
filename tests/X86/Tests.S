@@ -254,8 +254,10 @@ SYMBOL(__x86_test_table_begin):
 
 /* Bring in all semantic tests. */
 #include "tests/X86/BINARY/ADD.S"
+#include "tests/X86/BINARY/XADD.S"
 #include "tests/X86/BINARY/CMP.S"
 #include "tests/X86/BINARY/IDIV.S"
+#include "tests/X86/BINARY/DIV.S"
 #include "tests/X86/BINARY/IMUL.S"
 #include "tests/X86/BINARY/MUL.S"
 #include "tests/X86/BINARY/SUB.S"

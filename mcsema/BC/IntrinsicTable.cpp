@@ -101,8 +101,8 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *M)
       barrier_load_store(FindIntrinsic(M, "__mcsema_barrier_load_store")),
       barrier_store_load(FindIntrinsic(M, "__mcsema_barrier_store_load")),
       barrier_store_store(FindIntrinsic(M, "__mcsema_barrier_store_store")),
-      barrier_atomic_begin(FindIntrinsic(M, "__mcsema_barrier_atomic_begin")),
-      barrier_atomic_end(FindIntrinsic(M, "__mcsema_barrier_atomic_end")),
+      atomic_begin(FindIntrinsic(M, "__mcsema_atomic_begin")),
+      atomic_end(FindIntrinsic(M, "__mcsema_atomic_end")),
 
       // Optimization guides.
       defer_inlining(FindIntrinsic(M, "__mcsema_defer_inlining")) {

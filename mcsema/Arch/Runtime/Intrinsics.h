@@ -62,13 +62,16 @@ extern "C" {
 [[gnu::used]] extern void __mcsema_interrupt_return(State &);
 [[gnu::used]] extern void __mcsema_undefined_block(State &);
 
-// Memory barriers types.
-[[gnu::used]] extern void __mcsema_barrier_load_load(addr_t, uint32_t);
-[[gnu::used]] extern void __mcsema_barrier_load_store(addr_t, uint32_t);
-[[gnu::used]] extern void __mcsema_barrier_store_load(addr_t, uint32_t);
-[[gnu::used]] extern void __mcsema_barrier_store_store(addr_t, uint32_t);
-[[gnu::used]] extern void __mcsema_barrier_atomic_begin(addr_t, uint32_t);
-[[gnu::used]] extern void __mcsema_barrier_atomic_end(addr_t, uint32_t);
+// Memory barriers types, see: http://g.oswego.edu/dl/jmm/cookbook.html
+[[gnu::used]] extern void __mcsema_barrier_load_load(void);
+[[gnu::used]] extern void __mcsema_barrier_load_store(void);
+[[gnu::used]] extern void __mcsema_barrier_store_load(void);
+[[gnu::used]] extern void __mcsema_barrier_store_store(void);
+
+// Atomic operations. The address/size are hints, but the granularity of the
+// access can be bigger. These have implicit StoreLoad semantics.
+[[gnu::used]] extern void __mcsema_atomic_begin(addr_t, uint32_t);
+[[gnu::used]] extern void __mcsema_atomic_end(addr_t, uint32_t);
 
 }  // extern C
 

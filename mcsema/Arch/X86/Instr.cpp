@@ -416,9 +416,9 @@ void Instr::LiftMemory(const Translator &lifter, const xed_operand_t *xedo,
     atomic_args.push_back(A);
     atomic_args.push_back(llvm::ConstantInt::get(Int32Ty, op_width, false));
     prepend_instrs.push_back(ir.CreateCall(
-        lifter.intrinsics->barrier_atomic_begin, atomic_args));
+        lifter.intrinsics->atomic_begin, atomic_args));
     append_instrs.push_back(ir.CreateCall(
-        lifter.intrinsics->barrier_atomic_end, atomic_args));
+        lifter.intrinsics->atomic_end, atomic_args));
   }
 }
 

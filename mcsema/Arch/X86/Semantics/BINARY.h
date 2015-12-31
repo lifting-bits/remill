@@ -13,25 +13,21 @@ DEF_SEM(ADD, D dst, const S1 src1_, const S2 src2_) {
 
 // Atomic fetch-add.
 template <typename MW, typename M, typename RW, typename RT>
-DEF_SEM(XADDM, MW mdst, const M msrc_, const RW rdst, const RT rsrc_) {
+DEF_SEM(XADD, MW mdst, const M msrc_, const RW rdst, const RT rsrc_) {
   typedef typename BaseType<RT>::Type T;
+
+  // Our lifter only injects atomic begin/end around memory access instructions
+  // but this instruction is a full memory barrier, even when registers are
+  // accessed.
+  if (IsRegister<RW>::kValue) {
+    __mcsema_barrier_store_load();
+  }
+
   const auto src1 = R(msrc_);
   const auto src2 = R(rsrc_);
   const auto res = SET_AFLAGS_ADD_SUB(src1, +, src2, T);
   W(mdst) = res;
   W(rdst) = src1;
-}
-
-// Atomic fetch-add, but on registers. Mostly this is just a fancy add that
-// also acts as a memory fence.
-template <typename RW, typename RT>
-DEF_SEM(XADDR, RW rdst1, const RT rsrc1_, const RW rdst2, const RT rsrc2_) {
-  typedef typename BaseType<RT>::Type T;  // `D` might be wider than `S1`.
-  const auto src1 = R(rsrc1_);
-  const auto src2 = R(rsrc2_);
-  const auto res = SET_AFLAGS_ADD_SUB(src1, +, src2, T);
-  W(rdst1) = res;
-  W(rdst2) = src1;
 }
 
 template <typename D, typename S1, typename S2>
@@ -217,10 +213,10 @@ DEF_ISEL_RnW_Rn_Rn(ADD_GPRv_GPRv_03, ADD);
 DEF_ISEL(ADD_AL_IMMb_8) = ADD<R8W, R8, I8>;
 DEF_ISEL_RnW_Rn_In(ADD_OrAX_IMMz, ADD);
 
-DEF_ISEL(XADD_MEMb_GPR8_8) = XADDM<M8W, M8, R8W, R8>;
-DEF_ISEL(XADD_GPR8_GPR8_8) = XADDR<R8W, R8>;
-DEF_ISEL_MnW_Mn_RnW_Rn(XADD_MEMv_GPRv, XADDM);
-DEF_ISEL_RnW_Rn(XADD_GPRv_GPRv, XADDR);
+DEF_ISEL(XADD_MEMb_GPR8_8) = XADD<M8W, M8, R8W, R8>;
+DEF_ISEL(XADD_GPR8_GPR8_8) = XADD<R8W, R8, R8W, R8>;
+DEF_ISEL_MnW_Mn_RnW_Rn(XADD_MEMv_GPRv, XADD);
+DEF_ISEL_RnW_Rn_RnW_Rn(XADD_GPRv_GPRv, XADD);
 
 DEF_ISEL(SUB_MEMb_IMMb_80r5_8) = SUB<M8W, M8, I8>;
 DEF_ISEL(SUB_GPR8_IMMb_80r5_8) = SUB<R8W, R8, I8>;
@@ -322,8 +318,6 @@ DEF_ISEL_Rn_Rn(CMP_GPRv_GPRv_3B, CMP);
 DEF_ISEL_Rn_Mn(CMP_GPRv_MEMv, CMP);
 DEF_ISEL(CMP_AL_IMMb_8) = CMP<R8, I8>;
 DEF_ISEL_Rn_In(CMP_OrAX_IMMz, CMP);
-
-
 
 namespace {
 

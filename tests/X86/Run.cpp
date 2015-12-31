@@ -162,12 +162,12 @@ void __mcsema_write_memory_v512(addr_t addr, const vec512_t &in) {
   AccessMemory<vec512_t>(addr) = in;
 }
 
-void __mcsema_barrier_load_load(addr_t, uint32_t) {}
-void __mcsema_barrier_load_store(addr_t, uint32_t) {}
-void __mcsema_barrier_store_load(addr_t, uint32_t) {}
-void __mcsema_barrier_store_store(addr_t, uint32_t) {}
-void __mcsema_barrier_atomic_begin(addr_t, uint32_t) {}
-void __mcsema_barrier_atomic_end(addr_t, uint32_t) {}
+void __mcsema_barrier_load_load(void) {}
+void __mcsema_barrier_load_store(void) {}
+void __mcsema_barrier_store_load(void) {}
+void __mcsema_barrier_store_store(void) {}
+void __mcsema_atomic_begin(addr_t, uint32_t) {}
+void __mcsema_atomic_end(addr_t, uint32_t) {}
 
 void __mcsema_defer_inlining(void) {}
 

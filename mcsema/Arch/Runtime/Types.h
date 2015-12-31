@@ -357,6 +357,31 @@ struct BaseType {
 };
 
 template <typename T>
+struct IsRegister {
+  static constexpr bool kValue = false;
+};
+
+template <typename T>
+struct IsRegister<Rn<T>> {
+  static constexpr bool kValue = true;
+};
+
+template <typename T>
+struct IsRegister<RnW<T>> {
+  static constexpr bool kValue = true;
+};
+
+template <typename T>
+struct IsRegister<Vn<T>> {
+  static constexpr bool kValue = true;
+};
+
+template <typename T>
+struct IsRegister<VnW<T>> {
+  static constexpr bool kValue = true;
+};
+
+template <typename T>
 struct BaseType<volatile T> : public BaseType<T> {};
 
 template <typename T>
