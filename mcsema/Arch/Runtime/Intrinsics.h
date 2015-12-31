@@ -63,12 +63,12 @@ extern "C" {
 [[gnu::used]] extern void __mcsema_undefined_block(State &);
 
 // Memory barriers types.
-[[gnu::used]] extern void __mcsema_barrier_load_load(addr_t, size_t);
-[[gnu::used]] extern void __mcsema_barrier_load_store(addr_t, size_t);
-[[gnu::used]] extern void __mcsema_barrier_store_load(addr_t, size_t);
-[[gnu::used]] extern void __mcsema_barrier_store_store(addr_t, size_t);
-[[gnu::used]] extern void __mcsema_barrier_atomic_begin(addr_t, size_t);
-[[gnu::used]] extern void __mcsema_barrier_atomic_end(addr_t, size_t);
+[[gnu::used]] extern void __mcsema_barrier_load_load(addr_t, uint32_t);
+[[gnu::used]] extern void __mcsema_barrier_load_store(addr_t, uint32_t);
+[[gnu::used]] extern void __mcsema_barrier_store_load(addr_t, uint32_t);
+[[gnu::used]] extern void __mcsema_barrier_store_store(addr_t, uint32_t);
+[[gnu::used]] extern void __mcsema_barrier_atomic_begin(addr_t, uint32_t);
+[[gnu::used]] extern void __mcsema_barrier_atomic_end(addr_t, uint32_t);
 
 }  // extern C
 

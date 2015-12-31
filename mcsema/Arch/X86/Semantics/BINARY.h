@@ -15,13 +15,11 @@ DEF_SEM(ADD, D dst, const S1 src1_, const S2 src2_) {
 template <typename MW, typename M, typename RW, typename RT>
 DEF_SEM(XADDM, MW mdst, const M msrc_, const RW rdst, const RT rsrc_) {
   typedef typename BaseType<RT>::Type T;
-  __mcsema_barrier_atomic_begin(A(mdst), sizeof(T));
   const auto src1 = R(msrc_);
   const auto src2 = R(rsrc_);
   const auto res = SET_AFLAGS_ADD_SUB(src1, +, src2, T);
   W(mdst) = res;
   W(rdst) = src1;
-  __mcsema_barrier_atomic_end(A(mdst), sizeof(T));
 }
 
 // Atomic fetch-add, but on registers. Mostly this is just a fancy add that
@@ -29,13 +27,11 @@ DEF_SEM(XADDM, MW mdst, const M msrc_, const RW rdst, const RT rsrc_) {
 template <typename RW, typename RT>
 DEF_SEM(XADDR, RW rdst1, const RT rsrc1_, const RW rdst2, const RT rsrc2_) {
   typedef typename BaseType<RT>::Type T;  // `D` might be wider than `S1`.
-  __mcsema_barrier_load_load(0, 0);
   const auto src1 = R(rsrc1_);
   const auto src2 = R(rsrc2_);
   const auto res = SET_AFLAGS_ADD_SUB(src1, +, src2, T);
   W(rdst1) = res;
   W(rdst2) = src1;
-  __mcsema_barrier_store_store(0, 0);
 }
 
 template <typename D, typename S1, typename S2>

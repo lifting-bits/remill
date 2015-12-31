@@ -37,6 +37,7 @@ Instr::Instr(const cfg::Instr *instr_, const struct xed_decoded_inst_s *xedd_)
       M(nullptr),
       C(nullptr),
       args(),
+      prepend_instrs(),
       append_instrs() {}
 
 Instr::~Instr(void) {}
@@ -224,7 +225,6 @@ void Instr::LiftGeneric(const Translator &lifter) {
     LiftOperand(lifter, i);
   }
 
-  llvm::IRBuilder<> ir(B);
   llvm::Function *F = FindFunction(M, func_name);
   llvm::GlobalVariable *FP = FindGlobaVariable(M, func_name);
 
@@ -235,15 +235,20 @@ void Instr::LiftGeneric(const Translator &lifter) {
     F = llvm::dyn_cast<llvm::Function>(FC);
   }
 
+  // Instructions that must follow the instruction function.
+  auto &IList = B->getInstList();
+  std::reverse(prepend_instrs.begin(), prepend_instrs.end());
+  for (auto instr : prepend_instrs) {
+    IList.push_back(instr);
+  }
+
   if (F && CheckArgumentTypes(F, func_name)) {
-    ir.CreateCall(F, args);
+    IList.push_back(llvm::CallInst::Create(F, args));
   } else {
     LOG(WARNING) << "Missing instruction semantics for " << func_name;
   }
 
-  // Fixup instructions that must follow the instruction function. These handle
-  // things like segment-specific memory operands.
-  auto &IList = B->getInstList();
+  // Instructions that must follow the instruction function.
   for (auto instr : append_instrs) {
     IList.push_back(instr);
   }
@@ -325,6 +330,7 @@ void Instr::LiftOperand(const Translator &lifter, unsigned op_num) {
 void Instr::LiftMemory(const Translator &lifter, const xed_operand_t *xedo,
                        unsigned op_num) {
   auto op_name = xed_operand_name(xedo);
+  auto op_width = xed_decoded_inst_get_operand_width(xedd);
   auto mem_index = (XED_OPERAND_MEM1 == op_name) ? 1 : 0;  // Handles AGEN.
   auto seg = xed_decoded_inst_get_seg_reg(xedd, mem_index);
   auto base = xed_decoded_inst_get_base_reg(xedd, mem_index);
@@ -401,6 +407,19 @@ void Instr::LiftMemory(const Translator &lifter, const xed_operand_t *xedo,
   if (xed_operand_read(xedo)) {
     args.push_back(A);
   }
+
+  // Wrap an instruction in atomic begin/end if it accesses memory with RMW
+  // semantics or with a LOCK prefix.
+  if (xed_operand_values_get_atomic(xedd) ||
+      xed_operand_values_has_lock_prefix(xedd)) {
+    std::vector<llvm::Value *> atomic_args;
+    atomic_args.push_back(A);
+    atomic_args.push_back(llvm::ConstantInt::get(Int32Ty, op_width, false));
+    prepend_instrs.push_back(ir.CreateCall(
+        lifter.intrinsics->barrier_atomic_begin, atomic_args));
+    append_instrs.push_back(ir.CreateCall(
+        lifter.intrinsics->barrier_atomic_end, atomic_args));
+  }
 }
 
 // Convert an immediate constant into an LLVM `Value` for passing into the
@@ -441,10 +460,15 @@ void Instr::LiftImmediate(xed_operand_enum_t op_name) {
 namespace {
 
 static bool IsVectorReg(xed_reg_enum_t reg) {
-  return (XED_REG_MMX_FIRST <= reg && XED_REG_MMX_LAST >= reg) ||
-         (XED_REG_XMM_FIRST <= reg && XED_REG_XMM_LAST >= reg) ||
-         (XED_REG_YMM_FIRST <= reg && XED_REG_YMM_LAST >= reg) ||
-         (XED_REG_ZMM_FIRST <= reg && XED_REG_ZMM_LAST >= reg);
+  switch (xed_gpr_reg_class(reg)) {
+    case XED_REG_CLASS_MMX:
+    case XED_REG_CLASS_XMM:
+    case XED_REG_CLASS_YMM:
+    case XED_REG_CLASS_ZMM:
+      return true;
+    default:
+      return false;
+  }
 }
 
 }  // namespace
@@ -461,7 +485,7 @@ void Instr::LiftRegister(const xed_operand_t *xedo) {
   if (xed_operand_written(xedo)) {
     std::string legacy_suffix;
     if (XED_CATEGORY_SSE == xed_decoded_inst_get_category(xedd) &&
-        XED_REG_XMM_FIRST <= reg && XED_REG_XMM_LAST >= reg) {
+        XED_REG_CLASS_XMM == xed_gpr_reg_class(reg)) {
       legacy_suffix = "_legacy";
     }
     llvm::LoadInst *RegAddr = ir.CreateLoad(
@@ -520,7 +544,7 @@ void Instr::LiftBranchDisplacement(void) {
 }
 
 bool Instr::IsFunctionCall(void) const {
-  return XED_ICLASS_CALL_NEAR == iclass || XED_ICLASS_CALL_FAR == iclass;
+  return XED_CATEGORY_CALL == xed_decoded_inst_get_category(xedd);
 }
 
 bool Instr::IsFunctionReturn(void) const {
@@ -548,15 +572,11 @@ bool Instr::IsInterruptReturn(void) const {
 
 // This includes `JRCXZ`.
 bool Instr::IsBranch(void) const {
-  return (XED_ICLASS_JB <= iclass && XED_ICLASS_JLE >= iclass) ||
-         (XED_ICLASS_JNB <= iclass && XED_ICLASS_JZ >= iclass) ||
-         (XED_ICLASS_LOOP <= iclass && XED_ICLASS_LOOPNE >= iclass) ||
-         XED_ICLASS_XBEGIN == iclass;
+  return XED_CATEGORY_COND_BR == xed_decoded_inst_get_category(xedd);
 }
 
 bool Instr::IsJump(void) const {
-  return XED_ICLASS_JMP == iclass || XED_ICLASS_JMP_FAR == iclass ||
-         XED_ICLASS_XEND == iclass || XED_ICLASS_XABORT == iclass;
+  return XED_CATEGORY_UNCOND_BR == xed_decoded_inst_get_category(xedd);
 }
 
 bool Instr::IsDirectFunctionCall(void) const {

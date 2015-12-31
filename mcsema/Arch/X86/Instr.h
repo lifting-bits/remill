@@ -73,6 +73,7 @@ class Instr : public ::mcsema::Instr {
   llvm::LLVMContext *C;
 
   std::vector<llvm::Value *> args;
+  std::vector<llvm::Instruction *> prepend_instrs;
   std::vector<llvm::Instruction *> append_instrs;
 };
 
