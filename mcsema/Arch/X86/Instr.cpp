@@ -455,13 +455,17 @@ void Instr::LiftRegister(const xed_operand_t *xedo) {
   auto op_name = xed_operand_name(xedo);
   auto reg = xed_decoded_inst_get_reg(xedd, op_name);
   std::string reg_name = xed_reg_enum_t2str(reg);
-
   llvm::IRBuilder<> ir(B);
 
   // Pass the register by reference.
   if (xed_operand_written(xedo)) {
+    std::string legacy_suffix;
+    if (XED_CATEGORY_SSE == xed_decoded_inst_get_category(xedd) &&
+        XED_REG_XMM_FIRST <= reg && XED_REG_XMM_LAST >= reg) {
+      legacy_suffix = "_legacy";
+    }
     llvm::LoadInst *RegAddr = ir.CreateLoad(
-        FindVarInFunction(F, reg_name + "_write"));
+        FindVarInFunction(F, reg_name + "_write" + legacy_suffix));
     args.push_back(RegAddr);
   }
 
