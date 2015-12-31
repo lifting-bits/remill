@@ -1,6 +1,12 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
 /* Itanium ABI, used by Linux and Mac. */
+#if 64 == ADDRESS_SIZE_BITS
+# define ARG1_8 dil
+# define ARG2_8 sil
+# define ARG3_8 dl
+#endif
+
 #define ARG1_16 di
 #define ARG2_16 si
 #define ARG3_16 dx

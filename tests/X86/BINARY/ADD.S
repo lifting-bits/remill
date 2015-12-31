@@ -95,9 +95,7 @@ TEST_INPUTS(
     0x7F, 0xFF,
     0xFF, 0xFF)
 
-    mov r8, ARG1_64
-    mov r9, ARG2_64
-    add r9b, r8b
+    add ARG1_8, ARG2_8
 TEST_END_64
 
 TEST_BEGIN(ADDr16u8, 1)
@@ -109,8 +107,7 @@ TEST_INPUTS(
     0x7FFF,
     0xFFFF)
 
-    mov ebx, ARG1_32
-    add bx, 0x7F
+    add ARG1_16, 0x7F
 TEST_END
 
 TEST_BEGIN(ADDr16s8, 1)
@@ -122,8 +119,7 @@ TEST_INPUTS(
     0x7FFF,
     0xFFFF)
 
-    mov ebx, ARG1_32
-    add bx, 0xFF /* Sign-extended to 16-bits */
+    add ARG1_16, 0xFF /* Sign-extended to 16-bits */
 TEST_END
 
 TEST_BEGIN(ADDr16i16, 1)
@@ -135,8 +131,7 @@ TEST_INPUTS(
     0x7FFF,
     0xFFFF)
 
-    mov ebx, ARG1_32
-    add bx, 0xFFFF
+    add ARG1_16, 0xFFFF
 TEST_END
 
 TEST_BEGIN(ADDr16r16, 2)
@@ -151,9 +146,7 @@ TEST_INPUTS(
     0x7FFF, 0xFFFF,
     0xFFFF, 0xFFFF)
 
-    mov ebx, ARG1_32
-    mov edx, ARG2_32
-    add bx, dx
+    add ARG1_16, ARG2_16
 TEST_END
 
 TEST_BEGIN(ADDr32u8, 1)
@@ -167,8 +160,7 @@ TEST_INPUTS(
     0x7FFFFFFF,
     0xFFFFFFFF)
 
-    mov ebx, ARG1_32
-    add ebx, 0x7F
+    add ARG1_32, 0x7F
 TEST_END
 
 TEST_BEGIN(ADDr32s8, 1)
@@ -182,8 +174,7 @@ TEST_INPUTS(
     0x7FFFFFFF,
     0xFFFFFFFF)
 
-    mov ebx, ARG1_32
-    add ebx, 0xFF
+    add ARG1_32, 0xFF
 TEST_END
 
 TEST_BEGIN(ADDr32i32, 1)
@@ -197,8 +188,7 @@ TEST_INPUTS(
     0x7FFFFFFF,
     0xFFFFFFFF)
 
-    mov ebx, ARG1_32
-    add ebx, 0x7FFFFFFF
+    add ARG1_32, 0x7FFFFFFF
 TEST_END
 
 TEST_BEGIN(ADDr32r32, 2)

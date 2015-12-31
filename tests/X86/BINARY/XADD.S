@@ -23,9 +23,7 @@ TEST_INPUTS(
     0x7F, 0xFF,
     0xFF, 0xFF)
 
-    mov r8, ARG1_64
-    mov r9, ARG2_64
-    xadd r9b, r8b
+    xadd ARG1_8, ARG2_8
 TEST_END_64
 
 TEST_BEGIN(XADDr16r16, 2)
@@ -40,9 +38,7 @@ TEST_INPUTS(
     0x7FFF, 0xFFFF,
     0xFFFF, 0xFFFF)
 
-    mov ebx, ARG1_32
-    mov edx, ARG2_32
-    xadd bx, dx
+    xadd ARG1_16, ARG2_16
 TEST_END
 
 TEST_BEGIN(XADDr32r32, 2)

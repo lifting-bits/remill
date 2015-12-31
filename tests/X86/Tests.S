@@ -260,7 +260,10 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BINARY/DIV.S"
 #include "tests/X86/BINARY/IMUL.S"
 #include "tests/X86/BINARY/MUL.S"
+#include "tests/X86/BINARY/MULX.S"
 #include "tests/X86/BINARY/SUB.S"
+#include "tests/X86/BINARY/INC.S"
+#include "tests/X86/BINARY/DEC.S"
 
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"
