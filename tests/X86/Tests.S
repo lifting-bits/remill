@@ -264,6 +264,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BINARY/SUB.S"
 #include "tests/X86/BINARY/INC.S"
 #include "tests/X86/BINARY/DEC.S"
+#include "tests/X86/BINARY/SHR.S"
 
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"

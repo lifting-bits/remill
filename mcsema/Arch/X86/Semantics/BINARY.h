@@ -434,13 +434,13 @@ namespace {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(SHR, D dst, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S2>::Type T;
+  typedef typename BaseType<S1>::Type T;
   enum : T {
     // The mask is based on the REX.W prefix being used and 64-bit mode. We
     // determine this based on the source being a 64-bit operand.
     //
     // Note: The mask will be 31 even for 16- and 8-bit operands.
-    kArchMask = static_cast<T>(64 == sizeof(T) ? 0x3FU : 0x1FU),
+    kArchMask = static_cast<T>(8 == sizeof(T) ? 0x3FU : 0x1FU),
     kNumBits = sizeof(T) * 8
   };
 
