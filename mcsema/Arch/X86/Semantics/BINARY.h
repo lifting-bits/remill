@@ -444,8 +444,7 @@ DEF_SEM(SHR, D dst, S1 src1_, S2 src2_) {
     kNumBits = sizeof(T) * 8
   };
 
-  const unsigned shift = R(src2_) & kArchMask;
-
+  const T shift = R(src2_) & kArchMask;
   if (0 == shift) {
     return;  // No flags affected.
   }
@@ -478,6 +477,55 @@ DEF_SEM(SHR, D dst, S1 src1_, S2 src2_) {
   W(dst) = new_val;
 }
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHL, D dst, S1 src1_, S2 src2_) {
+  typedef typename BaseType<S1>::Type T;
+  enum : T {
+    // The mask is based on the REX.W prefix being used and 64-bit mode. We
+    // determine this based on the source being a 64-bit operand.
+    //
+    // Note: The mask will be 31 even for 16- and 8-bit operands.
+    kArchMask = static_cast<T>(8 == sizeof(T) ? 0x3FU : 0x1FU),
+    kNumBits = sizeof(T) * 8
+  };
+
+  const T shift = R(src2_) & kArchMask;
+  if (0 == shift) {
+    return;  // No flags affected.
+  }
+
+  const auto val = R(src1_);
+  T new_val = 0;
+
+  if (1 == shift) {
+    auto msb = (val >> (kNumBits - 1)) & 1;
+    new_val = val << 1;
+    auto new_msb = (new_val >> (kNumBits - 1)) & 1;
+
+    state.aflag.cf = msb;
+    state.aflag.of = msb ^ new_msb;
+
+  } else if (shift < kNumBits) {
+    auto res = val << (shift - 1);
+    auto msb = (res >> (kNumBits - 1)) & 1;
+    state.aflag.of = __mcsema_undefined_bool();
+    state.aflag.cf = msb & 1;
+    new_val = res << 1;
+
+  } else {
+    state.aflag.of = __mcsema_undefined_bool();
+    state.aflag.cf = __mcsema_undefined_bool();
+    new_val = 0;
+  }
+
+  state.aflag.zf = ZeroFlag(new_val);
+  state.aflag.sf = SignFlag(new_val);
+  state.aflag.pf = ParityFlag(new_val);
+  state.aflag.af = __mcsema_undefined_bool();
+
+  W(dst) = new_val;
+}
+
 }  // namespace
 
 DEF_ISEL(SHR_MEMb_IMMb_8) = SHR<M8W, M8, I8>;
@@ -492,3 +540,28 @@ DEF_ISEL(SHR_MEMb_CL_8) = SHR<M8W, M8, R8>;
 DEF_ISEL(SHR_GPR8_CL_8) = SHR<R8W, R8, R8>;
 DEF_ISEL_MnW_Mn_Rn(SHR_MEMv_CL, SHR);
 DEF_ISEL_RnW_Rn_Rn(SHR_GPRv_CL, SHR);
+
+DEF_ISEL(SHL_MEMb_IMMb_C0r4_8) = SHL<M8W, M8, I8>;
+DEF_ISEL(SHL_GPR8_IMMb_C0r4_8) = SHL<R8W, R8, I8>;
+DEF_ISEL(SHL_MEMb_IMMb_C0r6_8) = SHL<M8W, M8, I8>;
+DEF_ISEL(SHL_GPR8_IMMb_C0r6_8) = SHL<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(SHL_MEMv_IMMb_C1r4, SHL);
+DEF_ISEL_RnW_Rn_In(SHL_GPRv_IMMb_C1r4, SHL);
+DEF_ISEL_MnW_Mn_In(SHL_MEMv_IMMb_C1r6, SHL);
+DEF_ISEL_RnW_Rn_In(SHL_GPRv_IMMb_C1r6, SHL);
+DEF_ISEL(SHL_MEMb_ONE_D0r4_8) = SHL<M8W, M8, I8>;
+DEF_ISEL(SHL_GPR8_ONE_D0r4_8) = SHL<R8W, R8, I8>;
+DEF_ISEL(SHL_MEMb_ONE_D0r6_8) = SHL<M8W, M8, I8>;
+DEF_ISEL(SHL_GPR8_ONE_D0r6_8) = SHL<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(SHL_MEMv_ONE_D1r6, SHL);
+DEF_ISEL_RnW_Rn_In(SHL_GPRv_ONE_D1r6, SHL);
+DEF_ISEL_MnW_Mn_In(SHL_MEMv_ONE_D1r4, SHL);
+DEF_ISEL_RnW_Rn_In(SHL_GPRv_ONE_D1r4, SHL);
+DEF_ISEL(SHL_MEMb_CL_D2r4_8) = SHL<M8W, M8, R8>;
+DEF_ISEL(SHL_GPR8_CL_D2r4_8) = SHL<R8W, R8, R8>;
+DEF_ISEL(SHL_MEMb_CL_D2r6_8) = SHL<M8W, M8, R8>;
+DEF_ISEL(SHL_GPR8_CL_D2r6_8) = SHL<R8W, R8, R8>;
+DEF_ISEL_MnW_Mn_Rn(SHL_MEMv_CL_D3r4, SHL);
+DEF_ISEL_RnW_Rn_Rn(SHL_GPRv_CL_D3r4, SHL);
+DEF_ISEL_MnW_Mn_Rn(SHL_MEMv_CL_D3r6, SHL);
+DEF_ISEL_RnW_Rn_Rn(SHL_GPRv_CL_D3r6, SHL);
