@@ -7,8 +7,7 @@ DEF_SEM(AND, D dst, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  const T res = SET_AFLAGS_LOGICAL(src1, &, src2, T);
-  W(dst) = res;
+  SET_AFLAGS_LOGICAL(src1, &, src2, T, dst);
 }
 
 template <typename D, typename S1, typename S2>
@@ -16,8 +15,7 @@ DEF_SEM(OR, D dst, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  const T res = SET_AFLAGS_LOGICAL(src1, |, src2, T);
-  W(dst) = res;
+  SET_AFLAGS_LOGICAL(src1, |, src2, T, dst);
 }
 
 template <typename D, typename S1, typename S2>
@@ -25,8 +23,7 @@ DEF_SEM(XOR, D dst, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  const T res = SET_AFLAGS_LOGICAL(src1, ^, src2, T);
-  W(dst) = res;
+  SET_AFLAGS_LOGICAL(src1, ^, src2, T, dst);
 }
 
 template <typename D, typename S1>
@@ -39,7 +36,8 @@ DEF_SEM(TEST, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  (void) SET_AFLAGS_LOGICAL(src1, &, src2, T);
+  T unused;
+  SET_AFLAGS_LOGICAL(src1, &, src2, T, unused);
 }
 
 }  // namespace
@@ -174,10 +172,13 @@ DEF_SEM(PTEST, S1 src1_, S2 src2_) {
   andn_res.iwords = (~src1.iwords) & src2.iwords;
   //state.aflag.cf = andn_res.iwords == zero.iwords;
 
-  state.aflag.af = false;
-  state.aflag.of = false;
+  state.aflag.cf = state.aflag.cf;
   state.aflag.pf = false;
+  state.aflag.af = false;
+  state.aflag.zf = state.aflag.zf;
   state.aflag.sf = false;
+  state.aflag.df = state.aflag.df;
+  state.aflag.of = false;
 }
 
 }  // namespace

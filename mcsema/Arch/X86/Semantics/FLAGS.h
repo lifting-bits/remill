@@ -23,7 +23,7 @@ template <typename T>
 NEVER_INLINE static bool SignFlag(T res) {
   typedef typename SignedIntegerType<T>::Type ST;
   __mcsema_defer_inlining();
-  return static_cast<ST>(0) > static_cast<ST>(res);
+  return 0 > static_cast<ST>(res);
 }
 
 // Auxiliary carry flag. This is used for binary coded decimal operations and
@@ -167,71 +167,90 @@ struct Carry<kLHS - kRHS> {
 }  // namespace
 
 // Arithmetic flags (e.g. ADD, SUB)
-#define SET_AFLAGS_ADD_SUB(lhs, op, rhs, T) \
-    ({const auto __lhs = (lhs); \
+#define SET_AFLAGS_ADD_SUB(lhs, op, rhs, T, dst_op) \
+    { const auto __lhs = (lhs); \
       const auto __rhs = (rhs); \
       const auto __lhs_T = static_cast<T>(__lhs); \
       const auto __rhs_T = static_cast<T>(__rhs); \
       const auto __res_T = static_cast<T>(__lhs_T op __rhs_T); \
-      state.aflag.of = Overflow<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
-      state.aflag.sf = SignFlag(__res_T); \
-      state.aflag.zf = ZeroFlag(__res_T); \
-      state.aflag.af = AuxCarryFlag(__lhs_T, __rhs_T, __res_T); \
-      state.aflag.pf = ParityFlag(__res_T); \
-      state.aflag.cf = Carry<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
-      __res_T; })
+      \
+      W(dst_op) = __res_T; \
+      \
+      __mcsema_compiler_barrier(); \
+      \
+      const auto new_cf = Carry<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
+      const auto new_pf = ParityFlag(__res_T); \
+      const auto new_af = AuxCarryFlag(__lhs_T, __rhs_T, __res_T); \
+      const auto new_zf = ZeroFlag(__res_T); \
+      const auto new_sf = SignFlag(__res_T); \
+      const auto new_of = Overflow<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
+      \
+      state.aflag.cf = new_cf; \
+      state.aflag.pf = new_pf; \
+      state.aflag.af = new_af; \
+      state.aflag.zf = new_zf; \
+      state.aflag.sf = new_sf; \
+      state.aflag.df = state.aflag.df; \
+      state.aflag.of = new_of; }
 
 // Arithmetic flags (e.g. INC, DEC)
-#define SET_AFLAGS_INC_DEC(lhs, op, rhs, T) \
-    ({const auto __lhs = (lhs); \
+#define SET_AFLAGS_INC_DEC(lhs, op, rhs, T, dst_op) \
+    { const auto __lhs = (lhs); \
       const auto __rhs = (rhs); \
       const auto __lhs_T = static_cast<T>(__lhs); \
       const auto __rhs_T = static_cast<T>(__rhs); \
       const auto __res_T = static_cast<T>(__lhs_T op __rhs_T); \
-      state.aflag.of = Overflow<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
-      state.aflag.sf = SignFlag(__res_T); \
-      state.aflag.zf = ZeroFlag(__res_T); \
-      state.aflag.af = AuxCarryFlag(__lhs_T, __rhs_T, __res_T); \
-      state.aflag.pf = ParityFlag(__res_T); \
-      __res_T; })
+      \
+      W(dst_op) = __res_T; \
+      \
+      __mcsema_compiler_barrier(); \
+      \
+      const auto new_pf = ParityFlag(__res_T); \
+      const auto new_af = AuxCarryFlag(__lhs_T, __rhs_T, __res_T); \
+      const auto new_zf = ZeroFlag(__res_T); \
+      const auto new_sf = SignFlag(__res_T); \
+      const auto new_of = Overflow<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
+      \
+      state.aflag.cf = state.aflag.cf; \
+      state.aflag.pf = new_pf; \
+      state.aflag.af = new_af; \
+      state.aflag.zf = new_zf; \
+      state.aflag.sf = new_sf; \
+      state.aflag.df = state.aflag.df; \
+      state.aflag.of = new_of; }
 
 // Bitwise flags (AND, OR, XOR, TEST).
 //
 // Note: We'll leave the auxiliary carry flag as-is.
-#define SET_AFLAGS_LOGICAL(lhs, op, rhs, T) \
-    ({const auto __lhs = (lhs); \
+#define SET_AFLAGS_LOGICAL(lhs, op, rhs, T, dst_op) \
+    { const auto __lhs = (lhs); \
       const auto __rhs = (rhs); \
       const auto __lhs_T = static_cast<T>(__lhs); \
       const auto __rhs_T = static_cast<T>(__rhs); \
       const auto __res_T = static_cast<T>(__lhs_T op __rhs_T); \
-      state.aflag.sf = SignFlag(__res_T); \
-      state.aflag.zf = ZeroFlag(__res_T); \
-      state.aflag.pf = ParityFlag(__res_T); \
-      state.aflag.of = 0; \
-      state.aflag.cf = 0; \
-      __res_T; })
-
-// Multiplication (e.g. IMUL, MUL).
-#define SET_AFLAGS_MUL(lhs, op, rhs, T) \
-    ({const auto __lhs = (lhs); \
-      const auto __rhs = (rhs); \
-      const auto __lhs_T = static_cast<T>(__lhs); \
-      const auto __rhs_T = static_cast<T>(__rhs); \
-      const auto __res_T = static_cast<T>(__lhs_T op __rhs_T); \
-      state.aflag.of = Overflow<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
-      state.aflag.cf = state.aflag.of; \
-      state.aflag.sf = (std::is_signed<T>::value ? \
-          SignFlag<decltype(__lhs)>(static_cast<decltype(__lhs)>(__res_T)) : \
-          __mcsema_undefined_bool()); \
-      state.aflag.zf = __mcsema_undefined_bool(); \
-      state.aflag.af = __mcsema_undefined_bool(); \
-      state.aflag.pf = __mcsema_undefined_bool(); \
-      __res_T; });
+      \
+      W(dst_op) = __res_T; \
+      \
+      __mcsema_compiler_barrier(); \
+      \
+      const auto new_pf = ParityFlag(__res_T); \
+      const auto new_zf = ZeroFlag(__res_T); \
+      const auto new_sf = SignFlag(__res_T); \
+      \
+      state.aflag.cf = false; \
+      state.aflag.pf = new_pf; \
+      state.aflag.af = state.aflag.af; \
+      state.aflag.zf = new_zf; \
+      state.aflag.sf = new_sf; \
+      state.aflag.df = state.aflag.df; \
+      state.aflag.of = false; }
 
 #define CLEAR_AFLAGS() \
-    state.aflag.of = __mcsema_undefined_bool(); \
-    state.aflag.sf = __mcsema_undefined_bool(); \
-    state.aflag.zf = __mcsema_undefined_bool(); \
-    state.aflag.af = __mcsema_undefined_bool(); \
-    state.aflag.pf = __mcsema_undefined_bool(); \
-    state.aflag.of = __mcsema_undefined_bool()
+    { __mcsema_compiler_barrier(); \
+      state.aflag.cf = __mcsema_undefined_bool(); \
+      state.aflag.pf = __mcsema_undefined_bool(); \
+      state.aflag.af = __mcsema_undefined_bool(); \
+      state.aflag.zf = __mcsema_undefined_bool(); \
+      state.aflag.sf = __mcsema_undefined_bool(); \
+      state.aflag.df = state.aflag.df; \
+      state.aflag.of = __mcsema_undefined_bool(); }

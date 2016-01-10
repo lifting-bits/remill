@@ -163,7 +163,6 @@ struct alignas(8) ArithFlags {
   bool sf;
   bool df;
   bool of;
-  bool _unused1;
 } __attribute__((packed));
 
 static_assert(8 == sizeof(ArithFlags), "Invalid packing of `ArithFlags`.");

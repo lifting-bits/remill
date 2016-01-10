@@ -7,8 +7,7 @@ DEF_SEM(ADD, D dst, const S1 src1_, const S2 src2_) {
   typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  const T res = SET_AFLAGS_ADD_SUB(src1, +, src2, T);
-  W(dst) = res;
+  SET_AFLAGS_ADD_SUB(src1, +, src2, T, dst);
 }
 
 // Atomic fetch-add.
@@ -25,9 +24,8 @@ DEF_SEM(XADD, MW mdst, const M msrc_, const RW rdst, const RT rsrc_) {
 
   const auto src1 = R(msrc_);
   const auto src2 = R(rsrc_);
-  const auto res = SET_AFLAGS_ADD_SUB(src1, +, src2, T);
-  W(mdst) = res;
   W(rdst) = src1;
+  SET_AFLAGS_ADD_SUB(src1, +, src2, T, mdst);
 }
 
 template <typename D, typename S1, typename S2>
@@ -35,8 +33,7 @@ DEF_SEM(SUB, D dst, const S1 src1_, const S2 src2_) {
   typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  const T res = SET_AFLAGS_ADD_SUB(src1, -, src2, T);
-  W(dst) = res;
+  SET_AFLAGS_ADD_SUB(src1, -, src2, T, dst);
 }
 
 template <typename S1, typename S2>
@@ -44,13 +41,14 @@ DEF_SEM(CMP, const S1 src1_, const S2 src2_) {
   typedef typename BaseType<S1>::Type T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  (void) SET_AFLAGS_ADD_SUB(src1, -, src2, T);
+  T unused;
+  SET_AFLAGS_ADD_SUB(src1, -, src2, T, unused);
 }
 
 // Creates signed or unsigned multipliers. The `Converter` template template
 // parameter is used to take on integer type and convert it to its signed
 // counterpart.
-template <template <typename> class Converter>
+template <template <typename> class Converter, size_t size=0>
 struct DivMul {
 
   // 2-operand and 3-operand multipliers truncate their results down to their
@@ -63,8 +61,26 @@ struct DivMul {
 
     const auto src1 = static_cast<CT>(R(src1_));
     const auto src2 = static_cast<CT>(R(src2_));
-    const auto res = SET_AFLAGS_MUL(src1, *, src2, CWT);
-    W(dst) = static_cast<T>(res);
+
+    const auto src1_wide = static_cast<CWT>(src1);
+    const auto src2_wide = static_cast<CWT>(src2);
+    const auto res = static_cast<CWT>(src1_wide * src2_wide);
+    const auto res_trunc = static_cast<CT>(res);
+    W(dst) = static_cast<T>(res_trunc);
+
+    __mcsema_compiler_barrier();
+
+    const auto new_of = Overflow<kLHS * kRHS>::Flag(src1, src2, res);
+    const auto new_sf = (std::is_signed<CT>::value ?
+        SignFlag(res_trunc) : __mcsema_undefined_bool());
+
+    state.aflag.cf = new_of;
+    state.aflag.pf = __mcsema_undefined_bool();
+    state.aflag.af = __mcsema_undefined_bool();
+    state.aflag.zf = __mcsema_undefined_bool();
+    state.aflag.sf = new_sf;
+    state.aflag.df = state.aflag.df;
+    state.aflag.of = new_of;
   }
 
   // Unsigned multiply without affecting flags.
@@ -86,30 +102,68 @@ struct DivMul {
   // `MUL8` and `IMUL8` of `AL` doesn't update `RDX`.
   template <typename S2>
   DEF_SEM(MULA_8, const S2 val) {
-    typedef typename BaseType<S2>::Type T;
+    typedef typename BaseType<S2>::Type T;  // 8 bit.
+    typedef typename NextLargerIntegerType<T>::Type WT;  // 16-bit.
     typedef typename Converter<T>::Type CT;
-    typedef typename NextLargerIntegerType<T>::Type WT;
     typedef typename Converter<WT>::Type CWT;
 
     const auto src1 = static_cast<CT>(R(state.gpr.rax.byte.low));
     const auto src2 = static_cast<CT>(R(val));
-    const auto res = SET_AFLAGS_MUL(src1, *, src2, CWT);
+
+    const auto src1_wide = static_cast<CWT>(src1);
+    const auto src2_wide = static_cast<CWT>(src2);
+    const auto res = static_cast<CWT>(src1_wide * src2_wide);
+    const auto res_trunc = static_cast<CT>(res);
+
     W(state.gpr.rax.word) = static_cast<WT>(res);
+
+    __mcsema_compiler_barrier();
+
+    const auto new_of = Overflow<kLHS * kRHS>::Flag(src1, src2, res);
+    const auto new_sf = (std::is_signed<CT>::value ?
+        SignFlag(res_trunc) :
+        __mcsema_undefined_bool());
+
+    state.aflag.cf = new_of;
+    state.aflag.pf = __mcsema_undefined_bool();
+    state.aflag.af = __mcsema_undefined_bool();
+    state.aflag.zf = __mcsema_undefined_bool();
+    state.aflag.sf = new_sf;
+    state.aflag.df = state.aflag.df;
+    state.aflag.of = new_of;
   }
 
+
 #define MAKE_MULTIPLIER(size, read_sel, write_sel) \
-    template <typename S2> \
-    DEF_SEM(MULAD_ ## size, const S2 src2_) { \
-      typedef typename BaseType<S2>::Type T; \
-      typedef typename Converter<T>::Type CT; \
-      typedef typename NextLargerIntegerType<CT>::Type CWT; \
-      \
-      const auto src1 = static_cast<CT>(R(state.gpr.rax.read_sel)); \
-      const auto src2 = static_cast<CT>(R(src2_)); \
-      const auto res = SET_AFLAGS_MUL(src1, *, src2, CWT); \
-      W(state.gpr.rdx.write_sel) = static_cast<T>(res >> size); \
-      W(state.gpr.rax.write_sel) = static_cast<T>(res); \
-    }
+  template <typename S2> \
+  DEF_SEM(MULAD_ ## size, const S2 src2_) { \
+    typedef typename BaseType<S2>::Type T; \
+    typedef typename NextLargerIntegerType<T>::Type WT; \
+    typedef typename Converter<T>::Type CT; \
+    typedef typename NextLargerIntegerType<CT>::Type CWT; \
+    \
+    const auto src1 = static_cast<CT>(R(state.gpr.rax.read_sel)); \
+    const auto src2 = static_cast<CT>(R(src2_)); \
+    const auto src1_wide = static_cast<CWT>(src1); \
+    const auto src2_wide = static_cast<CWT>(src2); \
+    const auto res = static_cast<CWT>(src1_wide * src2_wide); \
+    \
+    W(state.gpr.rax.write_sel) = static_cast<T>(res); \
+    W(state.gpr.rdx.write_sel) = static_cast<T>(static_cast<WT>(res) >> size); \
+    \
+    const auto new_of = Overflow<kLHS * kRHS>::Flag(src1, src2, res); \
+    const auto new_sf = (std::is_signed<CT>::value ? \
+        SignFlag(static_cast<CT>(res)) : \
+        __mcsema_undefined_bool()); \
+    \
+    state.aflag.cf = new_of; \
+    state.aflag.pf = __mcsema_undefined_bool(); \
+    state.aflag.af = __mcsema_undefined_bool(); \
+    state.aflag.zf = __mcsema_undefined_bool(); \
+    state.aflag.sf = new_sf; \
+    state.aflag.df = state.aflag.df; \
+    state.aflag.of = new_of; \
+  }
 
 MAKE_MULTIPLIER(16, word, word)
 MAKE_MULTIPLIER(32, dword, IF_64BIT_ELSE(qword, dword))
@@ -326,8 +380,7 @@ DEF_SEM(INC, D dst, const S src) {
   typedef typename BaseType<S>::Type T;
   const T val1 = R(src);
   const T val2 = 1;
-  const T res = SET_AFLAGS_INC_DEC(val1, +, val2, T);
-  W(dst) = res;
+  SET_AFLAGS_INC_DEC(val1, +, val2, T, dst);
 }
 
 template <typename D, typename S>
@@ -335,18 +388,25 @@ DEF_SEM(DEC, D dst, const S src) {
   typedef typename BaseType<S>::Type T;
   const T val1 = R(src);
   const T val2 = 1;
-  const T res = SET_AFLAGS_INC_DEC(val1, -, val2, T);
-  W(dst) = res;
+  SET_AFLAGS_INC_DEC(val1, -, val2, T, dst);
 }
 
 template <typename D, typename S>
 DEF_SEM(NEG, D dst, const S src) {
   typedef typename BaseType<S>::Type T;
-  const T val1 = 0;
-  const T val2 = R(src);
-  const T res = SET_AFLAGS_INC_DEC(val1, -, val2, T);
-  state.aflag.cf = !!res;
+  typedef typename SignedIntegerType<T>::Type ST;
+  const auto val = R(src);
+  const auto res = static_cast<T>(-static_cast<ST>(val));
+
   W(dst) = res;
+
+  state.aflag.cf = 0 != res;
+  state.aflag.pf = ParityFlag(res);
+  state.aflag.af = AuxCarryFlag<T>(0, val, res);
+  state.aflag.zf = ZeroFlag(res);
+  state.aflag.sf = SignFlag(res);
+  state.aflag.df = state.aflag.df;
+  state.aflag.of = Overflow<kLHS - kRHS>::Flag<T>(0, val, res);
 }
 
 }  // namespace
@@ -376,8 +436,7 @@ DEF_SEM(SBB, D dst, const S1 src1_, const S2 src2_) {
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   const T src2_borrow = src2 + static_cast<T>(state.aflag.cf);
-  const T res = SET_AFLAGS_ADD_SUB(src1, -, src2_borrow, T);
-  W(dst) = res;
+  SET_AFLAGS_ADD_SUB(src1, -, src2_borrow, T, dst);
 }
 
 template <typename D, typename S1, typename S2>
@@ -386,8 +445,7 @@ DEF_SEM(ADC, D dst, const S1 src1_, const S2 src2_) {
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   const T src2_carry = src2 + static_cast<T>(state.aflag.cf);
-  const T res = SET_AFLAGS_ADD_SUB(src1, +, src2_carry, T);
-  W(dst) = res;
+  SET_AFLAGS_ADD_SUB(src1, +, src2_carry, T, dst);
 }
 
 }  // namespace
@@ -432,50 +490,76 @@ DEF_ISEL_RnW_Rn_In(ADC_OrAX_IMMz, ADC);
 
 namespace {
 
-template <typename D, typename S1, typename S2>
-DEF_SEM(SHR, D dst, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
-  enum : T {
-    // The mask is based on the REX.W prefix being used and 64-bit mode. We
-    // determine this based on the source being a 64-bit operand.
-    //
-    // Note: The mask will be 31 even for 16- and 8-bit operands.
-    kArchMask = static_cast<T>(8 == sizeof(T) ? 0x3FU : 0x1FU),
-    kNumBits = sizeof(T) * 8
-  };
+template <template <typename> class Converter>
+struct ShiftRight {
+  template <typename D, typename S1, typename S2>
+  DEF_SEM(DO, D dst, S1 src1_, S2 src2_) {
+    typedef typename BaseType<S1>::Type UT;
+    typedef typename Converter<UT>::Type T;
+    enum : T {
+      // The mask is based on the REX.W prefix being used and 64-bit mode. We
+      // determine this based on the source being a 64-bit operand.
+      //
+      // Note: The mask will be 31 even for 16- and 8-bit operands.
+      kArchMask = static_cast<T>(8 == sizeof(T) ? 0x3FU : 0x1FU),
+      kNumBits = sizeof(T) * 8
+    };
 
-  const T shift = R(src2_) & kArchMask;
-  if (0 == shift) {
-    return;  // No flags affected.
+    const UT shift = R(src2_) & kArchMask;
+    if (0 == shift) {
+      return;  // No flags affected.
+    }
+
+    const auto val = static_cast<T>(R(src1_));
+    T new_val = 0;
+    auto new_of = false;
+    auto new_cf = false;
+
+    if (1 == shift) {
+      if (std::is_signed<T>::value) {
+        new_of = false;
+      } else {
+        new_of = SignFlag(val);
+      }
+      new_cf = val & 1;
+      new_val = val >> 1;
+
+    } else if (shift < kNumBits) {
+      const T res = val >> (shift - 1);
+
+      new_of = __mcsema_undefined_bool();
+      new_cf = res & 1;
+      new_val = res >> 1;
+
+    } else {
+      new_of = __mcsema_undefined_bool();
+      new_cf = __mcsema_undefined_bool();
+      if (std::is_signed<T>::value) {
+        if (SignFlag(val)) {
+          new_val = static_cast<T>(std::numeric_limits<UT>::max());
+        } else {
+          new_val = 0;
+        }
+      } else {
+        new_val = 0;
+      }
+    }
+
+    W(dst) = static_cast<UT>(new_val);
+
+    const auto new_pf = ParityFlag(new_val);
+    const auto new_zf = ZeroFlag(new_val);
+    const auto new_sf = std::is_signed<T>::value ? SignFlag(new_val) : false;
+
+    state.aflag.cf = new_cf;
+    state.aflag.pf = new_pf;
+    state.aflag.af = __mcsema_undefined_bool();
+    state.aflag.zf = new_zf;
+    state.aflag.sf = new_sf;
+    state.aflag.df = state.aflag.df;
+    state.aflag.of = new_of;
   }
-
-  const auto val = R(src1_);
-  T new_val = 0;
-
-  if (1 == shift) {
-    state.aflag.of = (val >> (kNumBits - 1)) & 1;  // High-order bit.
-    state.aflag.cf = val & 1;
-    new_val = val >> 1;
-
-  } else if (shift < kNumBits) {
-    auto res = val >> (shift - 1);
-    state.aflag.of = __mcsema_undefined_bool();
-    state.aflag.cf = res & 1;
-    new_val = res >> 1;
-
-  } else {
-    state.aflag.of = __mcsema_undefined_bool();
-    state.aflag.cf = __mcsema_undefined_bool();
-    new_val = 0;
-  }
-
-  state.aflag.zf = ZeroFlag(new_val);
-  state.aflag.sf = false;
-  state.aflag.pf = ParityFlag(new_val);
-  state.aflag.af = __mcsema_undefined_bool();
-
-  W(dst) = new_val;
-}
+};
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(SHL, D dst, S1 src1_, S2 src2_) {
@@ -496,50 +580,74 @@ DEF_SEM(SHL, D dst, S1 src1_, S2 src2_) {
 
   const auto val = R(src1_);
   T new_val = 0;
+  auto new_cf = false;
+  auto new_of = false;
 
   if (1 == shift) {
-    auto msb = (val >> (kNumBits - 1)) & 1;
-    new_val = val << 1;
-    auto new_msb = (new_val >> (kNumBits - 1)) & 1;
+    const T res = val << 1;
+    const auto msb = SignFlag(val);
+    const auto new_msb = SignFlag(res);
 
-    state.aflag.cf = msb;
-    state.aflag.of = msb ^ new_msb;
+    new_of = msb != new_msb;
+    new_cf = msb;
+    new_val = res;
 
   } else if (shift < kNumBits) {
-    auto res = val << (shift - 1);
-    auto msb = (res >> (kNumBits - 1)) & 1;
-    state.aflag.of = __mcsema_undefined_bool();
-    state.aflag.cf = msb & 1;
+    const T res = val << (shift - 1);
+    const auto msb = SignFlag(res);
+
+    new_of = __mcsema_undefined_bool();
+    new_cf = msb;
     new_val = res << 1;
 
   } else {
-    state.aflag.of = __mcsema_undefined_bool();
-    state.aflag.cf = __mcsema_undefined_bool();
+    new_of = __mcsema_undefined_bool();
+    new_cf = __mcsema_undefined_bool();
     new_val = 0;
   }
 
-  state.aflag.zf = ZeroFlag(new_val);
-  state.aflag.sf = SignFlag(new_val);
-  state.aflag.pf = ParityFlag(new_val);
-  state.aflag.af = __mcsema_undefined_bool();
-
   W(dst) = new_val;
+
+  const auto new_pf = ParityFlag(new_val);
+  const auto new_zf = ZeroFlag(new_val);
+  const auto new_sf = SignFlag(new_val);
+
+  state.aflag.cf = new_cf;
+  state.aflag.pf = new_pf;
+  state.aflag.af = __mcsema_undefined_bool();
+  state.aflag.zf = new_zf;
+  state.aflag.sf = new_sf;
+  state.aflag.df = state.aflag.df;
+  state.aflag.of = new_of;
 }
 
 }  // namespace
 
-DEF_ISEL(SHR_MEMb_IMMb_8) = SHR<M8W, M8, I8>;
-DEF_ISEL(SHR_GPR8_IMMb_8) = SHR<R8W, R8, I8>;
-DEF_ISEL_MnW_Mn_In(SHR_MEMv_IMMb, SHR);
-DEF_ISEL_RnW_Rn_In(SHR_GPRv_IMMb, SHR);
-DEF_ISEL(SHR_MEMb_ONE_8) = SHR<M8W, M8, I8>;
-DEF_ISEL(SHR_GPR8_ONE_8) = SHR<R8W, R8, I8>;
-DEF_ISEL_MnW_Mn_In(SHR_MEMv_ONE, SHR);
-DEF_ISEL_RnW_Rn_In(SHR_GPRv_ONE, SHR);
-DEF_ISEL(SHR_MEMb_CL_8) = SHR<M8W, M8, R8>;
-DEF_ISEL(SHR_GPR8_CL_8) = SHR<R8W, R8, R8>;
-DEF_ISEL_MnW_Mn_Rn(SHR_MEMv_CL, SHR);
-DEF_ISEL_RnW_Rn_Rn(SHR_GPRv_CL, SHR);
+DEF_ISEL(SHR_MEMb_IMMb_8) = ShiftRight<UnsignedIntegerType>::DO<M8W, M8, I8>;
+DEF_ISEL(SHR_GPR8_IMMb_8) = ShiftRight<UnsignedIntegerType>::DO<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(SHR_MEMv_IMMb, ShiftRight<UnsignedIntegerType>::DO);
+DEF_ISEL_RnW_Rn_In(SHR_GPRv_IMMb, ShiftRight<UnsignedIntegerType>::DO);
+DEF_ISEL(SHR_MEMb_ONE_8) = ShiftRight<UnsignedIntegerType>::DO<M8W, M8, I8>;
+DEF_ISEL(SHR_GPR8_ONE_8) = ShiftRight<UnsignedIntegerType>::DO<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(SHR_MEMv_ONE, ShiftRight<UnsignedIntegerType>::DO);
+DEF_ISEL_RnW_Rn_In(SHR_GPRv_ONE, ShiftRight<UnsignedIntegerType>::DO);
+DEF_ISEL(SHR_MEMb_CL_8) = ShiftRight<UnsignedIntegerType>::DO<M8W, M8, R8>;
+DEF_ISEL(SHR_GPR8_CL_8) = ShiftRight<UnsignedIntegerType>::DO<R8W, R8, R8>;
+DEF_ISEL_MnW_Mn_Rn(SHR_MEMv_CL, ShiftRight<UnsignedIntegerType>::DO);
+DEF_ISEL_RnW_Rn_Rn(SHR_GPRv_CL, ShiftRight<UnsignedIntegerType>::DO);
+
+DEF_ISEL(SAR_MEMb_IMMb_8) = ShiftRight<SignedIntegerType>::DO<M8W, M8, I8>;
+DEF_ISEL(SAR_GPR8_IMMb_8) = ShiftRight<SignedIntegerType>::DO<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(SAR_MEMv_IMMb, ShiftRight<SignedIntegerType>::DO);
+DEF_ISEL_RnW_Rn_In(SAR_GPRv_IMMb, ShiftRight<SignedIntegerType>::DO);
+DEF_ISEL(SAR_MEMb_ONE_8) = ShiftRight<SignedIntegerType>::DO<M8W, M8, I8>;
+DEF_ISEL(SAR_GPR8_ONE_8) = ShiftRight<SignedIntegerType>::DO<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(SAR_MEMv_ONE, ShiftRight<SignedIntegerType>::DO);
+DEF_ISEL_RnW_Rn_In(SAR_GPRv_ONE, ShiftRight<SignedIntegerType>::DO);
+DEF_ISEL(SAR_MEMb_CL_8) = ShiftRight<SignedIntegerType>::DO<M8W, M8, R8>;
+DEF_ISEL(SAR_GPR8_CL_8) = ShiftRight<SignedIntegerType>::DO<R8W, R8, R8>;
+DEF_ISEL_MnW_Mn_Rn(SAR_MEMv_CL, ShiftRight<SignedIntegerType>::DO);
+DEF_ISEL_RnW_Rn_Rn(SAR_GPRv_CL, ShiftRight<SignedIntegerType>::DO);
 
 DEF_ISEL(SHL_MEMb_IMMb_C0r4_8) = SHL<M8W, M8, I8>;
 DEF_ISEL(SHL_GPR8_IMMb_C0r4_8) = SHL<R8W, R8, I8>;
