@@ -176,7 +176,7 @@ struct Carry<kLHS - kRHS> {
       \
       W(dst_op) = __res_T; \
       \
-      __mcsema_compiler_barrier(); \
+      __mcsema_barrier_compiler(); \
       \
       const auto new_cf = Carry<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
       const auto new_pf = ParityFlag(__res_T); \
@@ -203,7 +203,7 @@ struct Carry<kLHS - kRHS> {
       \
       W(dst_op) = __res_T; \
       \
-      __mcsema_compiler_barrier(); \
+      __mcsema_barrier_compiler(); \
       \
       const auto new_pf = ParityFlag(__res_T); \
       const auto new_af = AuxCarryFlag(__lhs_T, __rhs_T, __res_T); \
@@ -231,7 +231,7 @@ struct Carry<kLHS - kRHS> {
       \
       W(dst_op) = __res_T; \
       \
-      __mcsema_compiler_barrier(); \
+      __mcsema_barrier_compiler(); \
       \
       const auto new_pf = ParityFlag(__res_T); \
       const auto new_zf = ZeroFlag(__res_T); \
@@ -246,7 +246,7 @@ struct Carry<kLHS - kRHS> {
       state.aflag.of = false; }
 
 #define CLEAR_AFLAGS() \
-    { __mcsema_compiler_barrier(); \
+    { __mcsema_barrier_compiler(); \
       state.aflag.cf = __mcsema_undefined_bool(); \
       state.aflag.pf = __mcsema_undefined_bool(); \
       state.aflag.af = __mcsema_undefined_bool(); \

@@ -73,7 +73,7 @@ extern "C" {
 [[gnu::used]] extern void __mcsema_atomic_begin(addr_t, uint32_t);
 [[gnu::used]] extern void __mcsema_atomic_end(addr_t, uint32_t);
 
-#define __mcsema_compiler_barrier() \
+#define __mcsema_barrier_compiler() \
   __asm__ __volatile__ ("" ::: "memory")
 
 }  // extern C

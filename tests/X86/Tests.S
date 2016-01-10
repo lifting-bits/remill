@@ -254,19 +254,20 @@ SYMBOL(__x86_test_table_begin):
 
 /* Bring in all semantic tests. */
 #include "tests/X86/BINARY/ADD.S"
-#include "tests/X86/BINARY/XADD.S"
 #include "tests/X86/BINARY/CMP.S"
-#include "tests/X86/BINARY/IDIV.S"
+#include "tests/X86/BINARY/DEC.S"
 #include "tests/X86/BINARY/DIV.S"
+#include "tests/X86/BINARY/IDIV.S"
 #include "tests/X86/BINARY/IMUL.S"
+#include "tests/X86/BINARY/INC.S"
 #include "tests/X86/BINARY/MUL.S"
 #include "tests/X86/BINARY/MULX.S"
-#include "tests/X86/BINARY/SUB.S"
-#include "tests/X86/BINARY/INC.S"
-#include "tests/X86/BINARY/DEC.S"
+#include "tests/X86/BINARY/NEG.S"
 #include "tests/X86/BINARY/SAR.S"
 #include "tests/X86/BINARY/SHL.S"
 #include "tests/X86/BINARY/SHR.S"
+#include "tests/X86/BINARY/SUB.S"
+#include "tests/X86/BINARY/XADD.S"
 
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"

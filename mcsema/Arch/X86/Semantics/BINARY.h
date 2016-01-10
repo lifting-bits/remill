@@ -68,7 +68,7 @@ struct DivMul {
     const auto res_trunc = static_cast<CT>(res);
     W(dst) = static_cast<T>(res_trunc);
 
-    __mcsema_compiler_barrier();
+    __mcsema_barrier_compiler();
 
     const auto new_of = Overflow<kLHS * kRHS>::Flag(src1, src2, res);
     const auto new_sf = (std::is_signed<CT>::value ?
@@ -117,7 +117,7 @@ struct DivMul {
 
     W(state.gpr.rax.word) = static_cast<WT>(res);
 
-    __mcsema_compiler_barrier();
+    __mcsema_barrier_compiler();
 
     const auto new_of = Overflow<kLHS * kRHS>::Flag(src1, src2, res);
     const auto new_sf = (std::is_signed<CT>::value ?
@@ -400,13 +400,22 @@ DEF_SEM(NEG, D dst, const S src) {
 
   W(dst) = res;
 
-  state.aflag.cf = 0 != res;
-  state.aflag.pf = ParityFlag(res);
-  state.aflag.af = AuxCarryFlag<T>(0, val, res);
-  state.aflag.zf = ZeroFlag(res);
-  state.aflag.sf = SignFlag(res);
+  __mcsema_barrier_compiler();
+
+  const auto new_cf = 0 != val;
+  const auto new_pf = ParityFlag(res);
+  const auto new_af = AuxCarryFlag<T>(0, val, res);
+  const auto new_zf = ZeroFlag(res);
+  const auto new_sf = SignFlag(res);
+  const auto new_of = Overflow<kLHS - kRHS>::Flag<T>(0, val, res);
+
+  state.aflag.cf = new_cf;
+  state.aflag.pf = new_pf;
+  state.aflag.af = new_af;
+  state.aflag.zf = new_zf;
+  state.aflag.sf = new_sf;
   state.aflag.df = state.aflag.df;
-  state.aflag.of = Overflow<kLHS - kRHS>::Flag<T>(0, val, res);
+  state.aflag.of = new_of;
 }
 
 }  // namespace
