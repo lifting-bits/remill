@@ -271,6 +271,8 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BINARY/SUB.S"
 #include "tests/X86/BINARY/XADD.S"
 
+#include "tests/X86/LOGICAL/AND.S"
+
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"
     .globl SYMBOL(__x86_test_table_end)
