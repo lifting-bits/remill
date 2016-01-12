@@ -1,0 +1,308 @@
+/* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+
+TEST_BEGIN(ORal, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF)
+
+    mov eax, ARG1_32
+    or al, 1
+TEST_END
+
+TEST_BEGIN(ORax, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF)
+
+    mov eax, ARG1_32
+    or ax, 1
+TEST_END
+
+TEST_BEGIN(OReax, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF)
+
+    mov eax, ARG1_32
+    or eax, 1
+TEST_END
+
+TEST_BEGIN(ORr8i8, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF)
+
+    mov ebx, ARG1_32
+    or bl, 1
+TEST_END
+
+TEST_BEGIN_64(ORr8u8, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF)
+
+    mov r8, ARG1_64
+    or r8b, 0x7F
+TEST_END_64
+
+TEST_BEGIN_64(ORr8s8, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF)
+
+    mov r8, ARG1_64
+    or r8b, 0xFF /* Sign-extended to 64-bits */
+TEST_END_64
+
+TEST_BEGIN(ORr8r8, 2)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0, 0,
+    1, 0,
+    0xFF, 1,
+    0x7F, 1,
+    0x7F, 0xFF,
+    0xFF, 0xFF)
+
+    mov ebx, ARG1_32
+    mov eax, ARG2_32
+    or bl, al
+TEST_END
+
+TEST_BEGIN_64(ORr8r8, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0, 0,
+    1, 0,
+    0xFF, 1,
+    0x7F, 1,
+    0x7F, 0xFF,
+    0xFF, 0xFF)
+
+    or ARG1_8, ARG2_8
+TEST_END_64
+
+TEST_BEGIN(ORr16u8, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF)
+
+    or ARG1_16, 0x7F
+TEST_END
+
+TEST_BEGIN(ORr16s8, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF)
+
+    or ARG1_16, 0xFF /* Sign-extended to 16-bits */
+TEST_END
+
+TEST_BEGIN(ORr16i16, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF)
+
+    or ARG1_16, 0xFFFF
+TEST_END
+
+TEST_BEGIN(ORr16r16, 2)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0, 0,
+    1, 0,
+    0xFF, 1,
+    0x7F, 1,
+    0x7F, 0xFF,
+    0xFF, 0xFF,
+    0x7FFF, 1,
+    0x7FFF, 0xFFFF,
+    0xFFFF, 0xFFFF)
+
+    or ARG1_16, ARG2_16
+TEST_END
+
+TEST_BEGIN(ORr32u8, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF)
+
+    or ARG1_32, 0x7F
+TEST_END
+
+TEST_BEGIN(ORr32s8, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF)
+
+    or ARG1_32, 0xFF
+TEST_END
+
+TEST_BEGIN(ORr32i32, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF)
+
+    or ARG1_32, 0x7FFFFFFF
+TEST_END
+
+TEST_BEGIN(ORr32r32, 2)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0, 0,
+    1, 0,
+    0xFFFFFFFF, 1,
+    0xFFFFFFFF, 0xFFFFFFFF,
+    0x7FFFFFFF, 1,
+    0, 0x10,
+    0x7F, 0x10)
+
+    or ARG1_32, ARG2_32
+TEST_END
+
+TEST_BEGIN_64(ORr64u8, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF,
+    0x7FFFFFFFFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF)
+
+    or ARG1_64, 0x7F
+TEST_END_64
+
+TEST_BEGIN_64(ORr64s8, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF,
+    0x7FFFFFFFFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF)
+
+    or ARG1_64, 0xFF /* Sign-extended */
+TEST_END_64
+
+TEST_BEGIN_64(ORr64u32, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF,
+    0x7FFFFFFFFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF)
+
+    or ARG1_64, 0x7FFFFFFF
+TEST_END_64
+
+TEST_BEGIN_64(ORr64s32, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0,
+    1,
+    0x7F,
+    0xFF,
+    0x7FFF,
+    0xFFFF,
+    0x7FFFFFFF,
+    0xFFFFFFFF,
+    0x7FFFFFFFFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF)
+
+    .byte 0x48;  /* REX.W */
+    or ARG1_32, 0xFFFFFFFF /* Sign-extended */
+TEST_END_64
+
+TEST_BEGIN_64(ORr64r64, 2)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0, 0,
+    1, 0,
+    0xFFFFFFFF, 1,
+    0xFFFFFFFF, 0xFFFFFFFF,
+    0x7FFFFFFF, 1,
+    0, 0x10,
+    0x7F, 0x10,
+    0x7FFFFFFFFFFFFFFF, 1,
+    0x7FFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFF,
+    0x7FFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF)
+
+    or ARG1_64, ARG2_64
+TEST_END_64
