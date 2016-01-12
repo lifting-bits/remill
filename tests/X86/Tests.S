@@ -265,6 +265,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BINARY/MULX.S"
 #include "tests/X86/BINARY/NEG.S"
 #include "tests/X86/BINARY/SAR.S"
+#include "tests/X86/BINARY/SBB.S"
 #include "tests/X86/BINARY/SHL.S"
 #include "tests/X86/BINARY/SHR.S"
 #include "tests/X86/BINARY/SUB.S"
