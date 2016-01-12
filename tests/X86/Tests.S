@@ -272,7 +272,9 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BINARY/XADD.S"
 
 #include "tests/X86/LOGICAL/AND.S"
+#include "tests/X86/LOGICAL/NOT.S"
 #include "tests/X86/LOGICAL/OR.S"
+#include "tests/X86/LOGICAL/XOR.S"
 
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"
