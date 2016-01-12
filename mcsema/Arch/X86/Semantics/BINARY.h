@@ -2,12 +2,30 @@
 
 namespace {
 
+template <typename Tag, typename T>
+ALWAYS_INLINE void SetFlagsIncDec(State &state, T lhs, T rhs, T res) {
+  state.aflag.pf = ParityFlag(res);
+  state.aflag.af = AuxCarryFlag(lhs, rhs, res);
+  state.aflag.zf = ZeroFlag(res);
+  state.aflag.sf = SignFlag(res);
+  state.aflag.of = Overflow<Tag>::Flag(lhs, rhs, res);
+}
+
+template <typename Tag, typename T>
+ALWAYS_INLINE void SetFlagsAddSub(State &state, T lhs, T rhs, T res) {
+  state.aflag.cf = Carry<Tag>::Flag(lhs, rhs, res);
+  SetFlagsIncDec<Tag>(state, lhs, rhs, res);
+}
+
 template <typename D, typename S1, typename S2>
 DEF_SEM(ADD, D dst, const S1 src1_, const S2 src2_) {
   typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  SET_AFLAGS_ADD_SUB(src1, +, src2, T, dst);
+  const T res = src1 + src2;
+  W(dst) = res;
+  __mcsema_barrier_compiler();
+  SetFlagsAddSub<tag_add>(state, src1, src2, res);
 }
 
 // Atomic fetch-add.
@@ -22,10 +40,14 @@ DEF_SEM(XADD, MW mdst, const M msrc_, const RW rdst, const RT rsrc_) {
     __mcsema_barrier_store_load();
   }
 
-  const auto src1 = R(msrc_);
-  const auto src2 = R(rsrc_);
+  const T src1 = R(msrc_);
+  const T src2 = R(rsrc_);
+  const T res = src1 + src2;
+  W(mdst) = res;
+  __mcsema_barrier_compiler();
   W(rdst) = src1;
-  SET_AFLAGS_ADD_SUB(src1, +, src2, T, mdst);
+  __mcsema_barrier_compiler();
+  SetFlagsAddSub<tag_add>(state, src1, src2, res);
 }
 
 template <typename D, typename S1, typename S2>
@@ -33,7 +55,10 @@ DEF_SEM(SUB, D dst, const S1 src1_, const S2 src2_) {
   typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  SET_AFLAGS_ADD_SUB(src1, -, src2, T, dst);
+  const T res = src1 - src2;
+  W(dst) = res;
+  __mcsema_barrier_compiler();
+  SetFlagsAddSub<tag_sub>(state, src1, src2, res);
 }
 
 template <typename S1, typename S2>
@@ -41,8 +66,24 @@ DEF_SEM(CMP, const S1 src1_, const S2 src2_) {
   typedef typename BaseType<S1>::Type T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  T unused;
-  SET_AFLAGS_ADD_SUB(src1, -, src2, T, unused);
+  const T res = src1 - src2;
+  __mcsema_barrier_compiler();
+  SetFlagsAddSub<tag_sub>(state, src1, src2, res);
+}
+
+
+template <typename T, typename U, typename V>
+ALWAYS_INLINE void SetFlagsMul(State &state, T lhs, T rhs, U res, V res_trunc) {
+  const auto new_of = Overflow<tag_mul>::Flag(lhs, rhs, res);
+
+  state.aflag.cf = new_of;
+  state.aflag.pf = __mcsema_undefined_bool();
+  state.aflag.af = __mcsema_undefined_bool();
+  state.aflag.zf = __mcsema_undefined_bool();
+  state.aflag.sf = std::is_signed<T>::value ?
+      SignFlag(res_trunc) :
+      __mcsema_undefined_bool();
+  state.aflag.of = new_of;
 }
 
 // Creates signed or unsigned multipliers. The `Converter` template template
@@ -66,21 +107,10 @@ struct DivMul {
     const auto src2_wide = static_cast<CWT>(src2);
     const auto res = static_cast<CWT>(src1_wide * src2_wide);
     const auto res_trunc = static_cast<CT>(res);
+
     W(dst) = static_cast<T>(res_trunc);
-
     __mcsema_barrier_compiler();
-
-    const auto new_of = Overflow<kLHS * kRHS>::Flag(src1, src2, res);
-    const auto new_sf = (std::is_signed<CT>::value ?
-        SignFlag(res_trunc) : __mcsema_undefined_bool());
-
-    state.aflag.cf = new_of;
-    state.aflag.pf = __mcsema_undefined_bool();
-    state.aflag.af = __mcsema_undefined_bool();
-    state.aflag.zf = __mcsema_undefined_bool();
-    state.aflag.sf = new_sf;
-    state.aflag.df = state.aflag.df;
-    state.aflag.of = new_of;
+    SetFlagsMul(state, src1, src2, res, res_trunc);
   }
 
   // Unsigned multiply without affecting flags.
@@ -116,21 +146,8 @@ struct DivMul {
     const auto res_trunc = static_cast<CT>(res);
 
     W(state.gpr.rax.word) = static_cast<WT>(res);
-
     __mcsema_barrier_compiler();
-
-    const auto new_of = Overflow<kLHS * kRHS>::Flag(src1, src2, res);
-    const auto new_sf = (std::is_signed<CT>::value ?
-        SignFlag(res_trunc) :
-        __mcsema_undefined_bool());
-
-    state.aflag.cf = new_of;
-    state.aflag.pf = __mcsema_undefined_bool();
-    state.aflag.af = __mcsema_undefined_bool();
-    state.aflag.zf = __mcsema_undefined_bool();
-    state.aflag.sf = new_sf;
-    state.aflag.df = state.aflag.df;
-    state.aflag.of = new_of;
+    SetFlagsMul(state, src1, src2, res, res_trunc);
   }
 
 
@@ -147,22 +164,12 @@ struct DivMul {
     const auto src1_wide = static_cast<CWT>(src1); \
     const auto src2_wide = static_cast<CWT>(src2); \
     const auto res = static_cast<CWT>(src1_wide * src2_wide); \
+    const auto res_trunc = static_cast<CT>(res); \
     \
-    W(state.gpr.rax.write_sel) = static_cast<T>(res); \
+    W(state.gpr.rax.write_sel) = static_cast<T>(res_trunc); \
     W(state.gpr.rdx.write_sel) = static_cast<T>(static_cast<WT>(res) >> size); \
-    \
-    const auto new_of = Overflow<kLHS * kRHS>::Flag(src1, src2, res); \
-    const auto new_sf = (std::is_signed<CT>::value ? \
-        SignFlag(static_cast<CT>(res)) : \
-        __mcsema_undefined_bool()); \
-    \
-    state.aflag.cf = new_of; \
-    state.aflag.pf = __mcsema_undefined_bool(); \
-    state.aflag.af = __mcsema_undefined_bool(); \
-    state.aflag.zf = __mcsema_undefined_bool(); \
-    state.aflag.sf = new_sf; \
-    state.aflag.df = state.aflag.df; \
-    state.aflag.of = new_of; \
+    __mcsema_barrier_compiler(); \
+    SetFlagsMul(state, src1, src2, res, res_trunc); \
   }
 
 MAKE_MULTIPLIER(16, word, word)
@@ -193,7 +200,8 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
     const CWT rem = src1 % src2;
     const auto high_half = quot >> 8;
 
-    if (DETECT_RUNTIME_ERRORS && quot &&
+    if (DETECT_RUNTIME_ERRORS &&
+        quot &&
         !(!high_half || (std::is_signed<CT>::value && !~high_half))) {
       __mcsema_error(state);
       __builtin_unreachable();
@@ -380,7 +388,10 @@ DEF_SEM(INC, D dst, const S src) {
   typedef typename BaseType<S>::Type T;
   const T val1 = R(src);
   const T val2 = 1;
-  SET_AFLAGS_INC_DEC(val1, +, val2, T, dst);
+  const T res = val1 + val2;
+  W(dst) = res;
+  __mcsema_barrier_compiler();
+  SetFlagsIncDec<tag_add>(state, val1, val2, res);
 }
 
 template <typename D, typename S>
@@ -388,7 +399,10 @@ DEF_SEM(DEC, D dst, const S src) {
   typedef typename BaseType<S>::Type T;
   const T val1 = R(src);
   const T val2 = 1;
-  SET_AFLAGS_INC_DEC(val1, -, val2, T, dst);
+  const T res = val1 - val2;
+  W(dst) = res;
+  __mcsema_barrier_compiler();
+  SetFlagsIncDec<tag_sub>(state, val1, val2, res);
 }
 
 template <typename D, typename S>
@@ -397,25 +411,10 @@ DEF_SEM(NEG, D dst, const S src) {
   typedef typename SignedIntegerType<T>::Type ST;
   const auto val = R(src);
   const auto res = static_cast<T>(-static_cast<ST>(val));
-
   W(dst) = res;
-
   __mcsema_barrier_compiler();
-
-  const auto new_cf = 0 != val;
-  const auto new_pf = ParityFlag(res);
-  const auto new_af = AuxCarryFlag<T>(0, val, res);
-  const auto new_zf = ZeroFlag(res);
-  const auto new_sf = SignFlag(res);
-  const auto new_of = Overflow<kLHS - kRHS>::Flag<T>(0, val, res);
-
-  state.aflag.cf = new_cf;
-  state.aflag.pf = new_pf;
-  state.aflag.af = new_af;
-  state.aflag.zf = new_zf;
-  state.aflag.sf = new_sf;
-  state.aflag.df = state.aflag.df;
-  state.aflag.of = new_of;
+  state.aflag.cf = NotZeroFlag(val);
+  SetFlagsIncDec<tag_sub, T>(state, 0, val, res);
 }
 
 }  // namespace
@@ -439,22 +438,40 @@ DEF_ISEL_RnW_Rn(NEG_GPRv, NEG);
 
 namespace {
 
-template <typename D, typename S1, typename S2>
-DEF_SEM(SBB, D dst, const S1 src1_, const S2 src2_) {
-  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
-  const T src1 = R(src1_);
-  const T src2 = R(src2_);
-  const T src2_borrow = src2 + static_cast<T>(state.aflag.cf);
-  SET_AFLAGS_ADD_SUB(src1, -, src2_borrow, T, dst);
+template <typename TagT, typename T>
+NEVER_INLINE static bool CarryFlag(T a, T b, T ab, T c, T abc) {
+  static_assert(std::is_unsigned<T>::value,
+                "Invalid specialization of `CarryFlag` for addition.");
+  __mcsema_defer_inlining();
+  return Carry<TagT>::Flag(a, b, ab) || Carry<TagT>::Flag(ab, c, abc);
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ADC, D dst, const S1 src1_, const S2 src2_) {
   typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  const auto src1 = R(src1_);
+  const auto src2 = R(src2_);
+  const auto carry = static_cast<T>(state.aflag.cf);
+  const T res_add = src1 + src2;
+  const T res = res_add + carry;
+  W(dst) = res;
+  __mcsema_barrier_compiler();
+  state.aflag.cf = CarryFlag<tag_add>(src1, src2, res_add, carry, res);
+  SetFlagsIncDec<tag_add>(state, src1, src2, res);
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SBB, D dst, const S1 src1_, const S2 src2_) {
+  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
-  const T src2_carry = src2 + static_cast<T>(state.aflag.cf);
-  SET_AFLAGS_ADD_SUB(src1, +, src2_carry, T, dst);
+  const T borrow = static_cast<T>(state.aflag.cf);
+  const T res_sub = src1 - src2;
+  const T res = res_sub - borrow;
+  W(dst) = res;
+  __mcsema_barrier_compiler();
+  state.aflag.cf = CarryFlag<tag_sub>(src1, src2, res_sub, borrow, res);
+  SetFlagsIncDec<tag_sub>(state, src1, src2, res);
 }
 
 }  // namespace
@@ -556,16 +573,13 @@ struct ShiftRight {
 
     W(dst) = static_cast<UT>(new_val);
 
-    const auto new_pf = ParityFlag(new_val);
-    const auto new_zf = ZeroFlag(new_val);
-    const auto new_sf = std::is_signed<T>::value ? SignFlag(new_val) : false;
+    __mcsema_barrier_compiler();
 
     state.aflag.cf = new_cf;
-    state.aflag.pf = new_pf;
+    state.aflag.pf = ParityFlag(new_val);
     state.aflag.af = __mcsema_undefined_bool();
-    state.aflag.zf = new_zf;
-    state.aflag.sf = new_sf;
-    state.aflag.df = state.aflag.df;
+    state.aflag.zf = ZeroFlag(new_val);
+    state.aflag.sf = std::is_signed<T>::value ? SignFlag(new_val) : false;
     state.aflag.of = new_of;
   }
 };
@@ -617,16 +631,13 @@ DEF_SEM(SHL, D dst, S1 src1_, S2 src2_) {
 
   W(dst) = new_val;
 
-  const auto new_pf = ParityFlag(new_val);
-  const auto new_zf = ZeroFlag(new_val);
-  const auto new_sf = SignFlag(new_val);
+  __mcsema_barrier_compiler();
 
   state.aflag.cf = new_cf;
-  state.aflag.pf = new_pf;
+  state.aflag.pf = ParityFlag(new_val);
   state.aflag.af = __mcsema_undefined_bool();
-  state.aflag.zf = new_zf;
-  state.aflag.sf = new_sf;
-  state.aflag.df = state.aflag.df;
+  state.aflag.zf = ZeroFlag(new_val);
+  state.aflag.sf = SignFlag(new_val);
   state.aflag.of = new_of;
 }
 

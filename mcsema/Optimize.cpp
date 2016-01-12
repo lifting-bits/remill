@@ -20,12 +20,10 @@ namespace mcsema {
 // then be inlined into their callers for further optimization.
 class DeferredInlineOptimizer : public llvm::ModulePass {
  public:
-  DeferredInlineOptimizer();
+  DeferredInlineOptimizer(void);
+  ~DeferredInlineOptimizer(void);
 
-  virtual const char *getPassName() const override {
-    return "DeferredInlineOptimizer";
-  }
-
+  virtual const char *getPassName(void) const override;
   virtual bool runOnModule(llvm::Module &M) override;
 
   static char ID;
@@ -35,6 +33,12 @@ class DeferredInlineOptimizer : public llvm::ModulePass {
 
 DeferredInlineOptimizer::DeferredInlineOptimizer(void)
     : llvm::ModulePass(ID) {}
+
+DeferredInlineOptimizer::~DeferredInlineOptimizer(void) {}
+
+const char *DeferredInlineOptimizer::getPassName(void) const {
+  return "DeferredInlineOptimizer";
+}
 
 bool DeferredInlineOptimizer::runOnModule(llvm::Module &M) {
   auto F = M.getFunction("__mcsema_defer_inlining");

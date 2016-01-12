@@ -10,15 +10,16 @@ set(CMAKE_CXX_COMPILER "${MCSEMA_DIR}/third_party/bin/clang++")
 set(CMAKE_ASM_COMPILER "${MCSEMA_DIR}/third_party/bin/clang")
 
 # Find LLVM. This is so ugly.
-set(_LLVM_CMAKE_DIR "${MCSEMA_DIR}/third_party/share/llvm/cmake")
-set(CMAKE_MODULE_PATH "${_LLVM_CMAKE_DIR}" "${CMAKE_MODULE_PATH}")
-find_package(LLVM EXACT 3.7.0 REQUIRED Config)
+set(LLVM_ROOT "${MCSEMA_DIR}/third_party")
+set(_LLVM_CMAKE_DIR "${LLVM_ROOT}/share/llvm/cmake")
+list(APPEND CMAKE_PREFIX_PATH "${_LLVM_CMAKE_DIR}")
+find_package(LLVM EXACT 3.7.0 REQUIRED CONFIG)
+list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+
+include(AddLLVM)
 
 add_definitions(${LLVM_DEFINITIONS})
 include_directories(${LLVM_INCLUDE_DIRS})
-
-# Find all libraries. This includes LLVM libraries.
-link_directories(${MCSEMA_DIR}/third_party/lib)
 
 # Find all headers.
 include_directories(${MCSEMA_DIR})
@@ -40,7 +41,6 @@ file(GLOB MCSEMA_SOURCE_FILES
 )
 
 file(MAKE_DIRECTORY ${MCSEMA_DIR}/build)
-
 file(MAKE_DIRECTORY ${MCSEMA_DIR}/build/lib)
 file(COPY ${MCSEMA_DIR}/generated/Arch DESTINATION ${MCSEMA_DIR}/build/lib)
 
@@ -55,14 +55,6 @@ add_compile_options(
     -I${MCSEMA_DIR}
 )
 
-llvm_map_components_to_libnames(LLVM_LIBS
-    irreader
-    bitreader
-    bitwriter
-    transformutils
-    scalaropts
-)
-
 # TODO(pag): This is really ugly.
 if(APPLE)
     set(UNWIND_LIB )
@@ -72,14 +64,26 @@ else()
     set(STRIP_DEAD_CODE -Wl,-gc-sections)
 endif(APPLE)
 
+# Some library stuff.
+list(APPEND CMAKE_LIBRARY_PATH ${MCSEMA_DIR}/third_party/lib)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+# Find all libraries. This includes LLVM libraries.
 set(MCSEMA_LIBS
-    libxed.a
-    libprotobuf.a
-    libgflags.a
-    libglog.a
-    pthread
-    stdc++
-    ${UNWIND_LIB}
+    PRIVATE
+        libxed.a
+        libprotobuf.a
+        libgflags.a
+        libglog.a
+        LLVMIRReader
+        LLVMBitReader
+        LLVMBitWriter
+        LLVMTransformUtils
+        LLVMScalarOpts
+    PUBLIC
+        ${UNWIND_LIB}
+        pthread
+        stdc++
 )
 
 # cfg_to_bc --------------------------------------------------------------------
@@ -90,12 +94,12 @@ add_executable(cfg_to_bc
 
 target_link_libraries(cfg_to_bc
     ${MCSEMA_LIBS}
-    ${LLVM_LIBS}
 )
 
 # optimize_bc plugin -----------------------------------------------------------
 
-add_library( Optimizer MODULE ${MCSEMA_DIR}/mcsema/Optimize.cpp )
+#add_library( Optimizer MODULE ${MCSEMA_DIR}/mcsema/Optimize.cpp )
+add_llvm_loadable_module( Optimizer ${MCSEMA_DIR}/mcsema/Optimize.cpp )
 
 # test code --------------------------------------------------------------------
 

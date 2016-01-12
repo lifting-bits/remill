@@ -17,6 +17,14 @@ NEVER_INLINE static bool ZeroFlag(T res) {
   return static_cast<T>(0) == res;
 }
 
+// Zero flags, tells us whether or not a value is zero.
+template <typename T>
+[[gnu::const]]
+NEVER_INLINE static bool NotZeroFlag(T res) {
+  __mcsema_defer_inlining();
+  return static_cast<T>(0) != res;
+}
+
 // Sign flag, tells us if a result is signed or unsigned.
 template <typename T>
 [[gnu::const]]
@@ -33,6 +41,15 @@ template <typename T>
 NEVER_INLINE static bool AuxCarryFlag(T lhs, T rhs, T res) {
   __mcsema_defer_inlining();
   return ((res ^ lhs ^ rhs) & static_cast<T>(0x10));
+}
+
+// Auxiliary carry flag. This is used for binary coded decimal operations and
+// is the 5th bit (where each binary decimal is 4 bits).
+template <typename T>
+[[gnu::const]]
+NEVER_INLINE static bool AuxCarryFlag(T lhs, T rhs, T carry, T res) {
+  __mcsema_defer_inlining();
+  return ((res ^ lhs ^ carry ^ rhs) & static_cast<T>(0x10));
 }
 
 // Tests whether there is an even number of bits in the low order byte.
@@ -57,13 +74,18 @@ ALWAYS_INLINE static bool ParityFlag(T x) {
   return ParityFlag(static_cast<uint8_t>(x));
 }
 
+struct tag_add {};
+struct tag_sub {};
+struct tag_div {};
+struct tag_mul {};
+
 // Generic overflow flag.
-template <uint32_t kSel>
+template <typename T>
 struct Overflow;
 
 // Computes an overflow flag when two numbers are added together.
 template <>
-struct Overflow<kLHS + kRHS> {
+struct Overflow<tag_add> {
   template <typename T>
   [[gnu::const]]
   NEVER_INLINE static bool Flag(T lhs, T rhs, T res) {
@@ -83,7 +105,7 @@ struct Overflow<kLHS + kRHS> {
 
 // Computes an overflow flag when one number is subtracted from another.
 template <>
-struct Overflow<kLHS - kRHS> {
+struct Overflow<tag_sub> {
   template <typename T>
   [[gnu::const]]
   NEVER_INLINE static bool Flag(T lhs, T rhs, T res) {
@@ -104,7 +126,7 @@ struct Overflow<kLHS - kRHS> {
 
 // Computes an overflow flag when one number is multiplied with another.
 template <>
-struct Overflow<kLHS * kRHS> {
+struct Overflow<tag_mul> {
 
   // Integer multiplication overflow check, where result is twice the width of
   // the operands.
@@ -134,26 +156,26 @@ struct Overflow<kLHS * kRHS> {
   }
 };
 
-// Generic overflow flag.
-template <uint32_t kSel>
+// Generic carry flag.
+template <typename Tag>
 struct Carry;
 
-// Computes an overflow flag when two numbers are added together.
+// Computes an carry flag when two numbers are added together.
 template <>
-struct Carry<kLHS + kRHS> {
+struct Carry<tag_add> {
   template <typename T>
   [[gnu::const]]
-  NEVER_INLINE static bool Flag(T lhs, T, T res) {
+  NEVER_INLINE static bool Flag(T lhs, T rhs, T res) {
     static_assert(std::is_unsigned<T>::value,
                   "Invalid specialization of `Carry::Flag` for addition.");
     __mcsema_defer_inlining();
-    return res < lhs;
+    return res < lhs || res < rhs;
   }
 };
 
-// Computes an overflow flag when one number is subtracted from another.
+// Computes an carry flag when one number is subtracted from another.
 template <>
-struct Carry<kLHS - kRHS> {
+struct Carry<tag_sub> {
   template <typename T>
   [[gnu::const]]
   NEVER_INLINE static bool Flag(T lhs, T rhs, T) {
@@ -166,85 +188,6 @@ struct Carry<kLHS - kRHS> {
 
 }  // namespace
 
-// Arithmetic flags (e.g. ADD, SUB)
-#define SET_AFLAGS_ADD_SUB(lhs, op, rhs, T, dst_op) \
-    { const auto __lhs = (lhs); \
-      const auto __rhs = (rhs); \
-      const auto __lhs_T = static_cast<T>(__lhs); \
-      const auto __rhs_T = static_cast<T>(__rhs); \
-      const auto __res_T = static_cast<T>(__lhs_T op __rhs_T); \
-      \
-      W(dst_op) = __res_T; \
-      \
-      __mcsema_barrier_compiler(); \
-      \
-      const auto new_cf = Carry<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
-      const auto new_pf = ParityFlag(__res_T); \
-      const auto new_af = AuxCarryFlag(__lhs_T, __rhs_T, __res_T); \
-      const auto new_zf = ZeroFlag(__res_T); \
-      const auto new_sf = SignFlag(__res_T); \
-      const auto new_of = Overflow<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
-      \
-      state.aflag.cf = new_cf; \
-      state.aflag.pf = new_pf; \
-      state.aflag.af = new_af; \
-      state.aflag.zf = new_zf; \
-      state.aflag.sf = new_sf; \
-      state.aflag.df = state.aflag.df; \
-      state.aflag.of = new_of; }
-
-// Arithmetic flags (e.g. INC, DEC)
-#define SET_AFLAGS_INC_DEC(lhs, op, rhs, T, dst_op) \
-    { const auto __lhs = (lhs); \
-      const auto __rhs = (rhs); \
-      const auto __lhs_T = static_cast<T>(__lhs); \
-      const auto __rhs_T = static_cast<T>(__rhs); \
-      const auto __res_T = static_cast<T>(__lhs_T op __rhs_T); \
-      \
-      W(dst_op) = __res_T; \
-      \
-      __mcsema_barrier_compiler(); \
-      \
-      const auto new_pf = ParityFlag(__res_T); \
-      const auto new_af = AuxCarryFlag(__lhs_T, __rhs_T, __res_T); \
-      const auto new_zf = ZeroFlag(__res_T); \
-      const auto new_sf = SignFlag(__res_T); \
-      const auto new_of = Overflow<kLHS op kRHS>::Flag(__lhs, __rhs, __res_T); \
-      \
-      state.aflag.cf = state.aflag.cf; \
-      state.aflag.pf = new_pf; \
-      state.aflag.af = new_af; \
-      state.aflag.zf = new_zf; \
-      state.aflag.sf = new_sf; \
-      state.aflag.df = state.aflag.df; \
-      state.aflag.of = new_of; }
-
-// Bitwise flags (AND, OR, XOR, TEST).
-//
-// Note: We'll leave the auxiliary carry flag as-is.
-#define SET_AFLAGS_LOGICAL(lhs, op, rhs, T, dst_op) \
-    { const auto __lhs = (lhs); \
-      const auto __rhs = (rhs); \
-      const auto __lhs_T = static_cast<T>(__lhs); \
-      const auto __rhs_T = static_cast<T>(__rhs); \
-      const auto __res_T = static_cast<T>(__lhs_T op __rhs_T); \
-      \
-      W(dst_op) = __res_T; \
-      \
-      __mcsema_barrier_compiler(); \
-      \
-      const auto new_pf = ParityFlag(__res_T); \
-      const auto new_zf = ZeroFlag(__res_T); \
-      const auto new_sf = SignFlag(__res_T); \
-      \
-      state.aflag.cf = false; \
-      state.aflag.pf = new_pf; \
-      state.aflag.af = state.aflag.af; \
-      state.aflag.zf = new_zf; \
-      state.aflag.sf = new_sf; \
-      state.aflag.df = state.aflag.df; \
-      state.aflag.of = false; }
-
 #define CLEAR_AFLAGS() \
     { __mcsema_barrier_compiler(); \
       state.aflag.cf = __mcsema_undefined_bool(); \
@@ -252,5 +195,4 @@ struct Carry<kLHS - kRHS> {
       state.aflag.af = __mcsema_undefined_bool(); \
       state.aflag.zf = __mcsema_undefined_bool(); \
       state.aflag.sf = __mcsema_undefined_bool(); \
-      state.aflag.df = state.aflag.df; \
       state.aflag.of = __mcsema_undefined_bool(); }
