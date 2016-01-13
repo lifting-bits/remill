@@ -3,7 +3,7 @@ namespace {
 
 template <typename D, typename S>
 DEF_SEM(LEA, D dst, S src) {
-  W(dst) = src.addr;  // `src` will be a memory type.
+  W(dst) = A(src);  // `src` will be a memory type.
 }
 
 DEF_SEM(LEAVE_16BIT) {

@@ -304,7 +304,8 @@ def find_imported_functions(cfg, exclude_blocks):
             ea = plt_jmp_ea
 
       elif ".got" == seg_name:
-        assert idaapi.is_weak_name(plt_offset)
+        #assert idaapi.is_weak_name(plt_offset)
+        pass
 
     if ea:
       func = cfg.functions.add()
