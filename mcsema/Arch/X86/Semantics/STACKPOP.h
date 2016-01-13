@@ -1,5 +1,8 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#ifndef MCSEMA_ARCH_X86_SEMANTICS_STACKPOP_H_
+#define MCSEMA_ARCH_X86_SEMANTICS_STACKPOP_H_
+
 namespace {
 
 // Note: Special handling of `dst` when it has the form `POP [xSP + ...]`
@@ -41,3 +44,5 @@ DEF_ISEL_M32or64W(POP_MEMv, POP);
 1395 POP POP_FS POP BASE I86 ATTRIBUTES: FIXED_BASE0 NOTSX SCALABLE STACKPOP0
 1396 POP POP_GS POP BASE I86 ATTRIBUTES: FIXED_BASE0 NOTSX SCALABLE STACKPOP0
  */
+
+#endif  // MCSEMA_ARCH_X86_SEMANTICS_STACKPOP_H_

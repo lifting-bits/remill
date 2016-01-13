@@ -1,5 +1,8 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#ifndef MCSEMA_ARCH_X86_RUNTIME_STATE_H_
+#define MCSEMA_ARCH_X86_RUNTIME_STATE_H_
+
 #include "mcsema/Arch/Runtime/Runtime.h"
 
 #ifndef HAS_FEATURE_AVX
@@ -294,3 +297,5 @@ static_assert(2592 == __builtin_offsetof(State, gpr),
               "Invalid packing of `State::seg`.");
 
 static_assert(2752 == sizeof(State), "Invalid packing of `State`.");
+
+#endif  // MCSEMA_ARCH_X86_RUNTIME_STATE_H_

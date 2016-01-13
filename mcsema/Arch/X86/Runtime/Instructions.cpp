@@ -4,10 +4,12 @@
 #include "mcsema/Arch/X86/Runtime/Types.h"
 
 #include "mcsema/Arch/X86/Semantics/FLAGS.h"
+
 #include "mcsema/Arch/X86/Semantics/BINARY.h"
 #include "mcsema/Arch/X86/Semantics/CALL_RET.h"
 #include "mcsema/Arch/X86/Semantics/COND_BR.h"
 #include "mcsema/Arch/X86/Semantics/DATAXFER.h"
+#include "mcsema/Arch/X86/Semantics/FMA.h"
 #include "mcsema/Arch/X86/Semantics/LOGICAL.h"
 #include "mcsema/Arch/X86/Semantics/MISC.h"
 #include "mcsema/Arch/X86/Semantics/STACKPUSH.h"

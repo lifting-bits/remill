@@ -1,3 +1,7 @@
+/* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+
+#ifndef MCSEMA_ARCH_X86_SEMANTICS_MISC_H_
+#define MCSEMA_ARCH_X86_SEMANTICS_MISC_H_
 
 namespace {
 
@@ -32,3 +36,5 @@ IF_64BIT( DEF_ISEL(LEA_GPRv_AGEN_64) = LEA<R64W, M8>; )
 
 DEF_ISEL(LEAVE_16) = LEAVE_16BIT;
 DEF_ISEL_RI32or64(LEAVE, LEAVE_FULL);
+
+#endif  // MCSEMA_ARCH_X86_SEMANTICS_MISC_H_

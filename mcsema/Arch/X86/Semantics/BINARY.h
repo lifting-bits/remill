@@ -1,5 +1,8 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#ifndef MCSEMA_ARCH_X86_SEMANTICS_BINARY_H_
+#define MCSEMA_ARCH_X86_SEMANTICS_BINARY_H_
+
 namespace {
 
 template <typename Tag, typename T>
@@ -693,3 +696,5 @@ DEF_ISEL_MnW_Mn_Rn(SHL_MEMv_CL_D3r4, SHL);
 DEF_ISEL_RnW_Rn_Rn(SHL_GPRv_CL_D3r4, SHL);
 DEF_ISEL_MnW_Mn_Rn(SHL_MEMv_CL_D3r6, SHL);
 DEF_ISEL_RnW_Rn_Rn(SHL_GPRv_CL_D3r6, SHL);
+
+#endif  // MCSEMA_ARCH_X86_SEMANTICS_BINARY_H_

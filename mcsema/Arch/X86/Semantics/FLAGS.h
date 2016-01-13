@@ -1,5 +1,8 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#ifndef MCSEMA_ARCH_X86_SEMANTICS_FLAGS_H_
+#define MCSEMA_ARCH_X86_SEMANTICS_FLAGS_H_
+
 namespace {
 
 // Used to select specializations of flags computations based on what operator
@@ -196,3 +199,5 @@ struct Carry<tag_sub> {
       state.aflag.zf = __mcsema_undefined_bool(); \
       state.aflag.sf = __mcsema_undefined_bool(); \
       state.aflag.of = __mcsema_undefined_bool(); }
+
+#endif  // MCSEMA_ARCH_X86_SEMANTICS_FLAGS_H_

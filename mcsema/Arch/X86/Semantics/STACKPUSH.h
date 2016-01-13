@@ -1,5 +1,8 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#ifndef MCSEMA_ARCH_X86_SEMANTICS_STACKPUSH_H_
+#define MCSEMA_ARCH_X86_SEMANTICS_STACKPUSH_H_
+
 namespace {
 
 template <typename S>
@@ -46,3 +49,4 @@ DEF_ISEL_M32or64(PUSH_MEMv, PUSH);
 1300 PUSHA PUSHA PUSH BASE I186 ATTRIBUTES: FIXED_BASE0 SCALABLE STACKPUSH0
  */
 
+#endif  // MCSEMA_ARCH_X86_SEMANTICS_STACKPUSH_H_

@@ -1,5 +1,8 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#ifndef MCSEMA_ARCH_X86_SEMANTICS_COND_BR_H_
+#define MCSEMA_ARCH_X86_SEMANTICS_COND_BR_H_
+
 namespace {
 
 // TODO(pag): Evaluate branch-free variants. Things to evaluate:
@@ -192,3 +195,5 @@ DEF_ISEL(JRCXZ_RELBRb_64) = JRCXZ;
 
 1465 XBEGIN XBEGIN_RELBRz COND_BR RTM RTM ATTRIBUTES: SCALABLE
  */
+
+#endif  // MCSEMA_ARCH_X86_SEMANTICS_COND_BR_H_

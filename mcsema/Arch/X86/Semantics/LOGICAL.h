@@ -1,5 +1,8 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#ifndef MCSEMA_ARCH_X86_SEMANTICS_LOGICAL_H_
+#define MCSEMA_ARCH_X86_SEMANTICS_LOGICAL_H_
+
 namespace {
 
 template <typename T>
@@ -298,3 +301,5 @@ IF_AVX( DEF_ISEL(VPTEST_YMMqq_YMMqq_32) = PTEST<VV256, VV256>; )
 /*
 1737 XTEST XTEST LOGICAL RTM RTM ATTRIBUTES:
  */
+
+#endif  // MCSEMA_ARCH_X86_SEMANTICS_LOGICAL_H_
