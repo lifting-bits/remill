@@ -10,6 +10,10 @@ void __mcsema_intrinsics(void) {
   (void) __mcsema_read_memory_16;
   (void) __mcsema_read_memory_32;
   (void) __mcsema_read_memory_64;
+
+  (void) __mcsema_read_memory_v8;
+  (void) __mcsema_read_memory_v16;
+  (void) __mcsema_read_memory_v32;
   (void) __mcsema_read_memory_v64;
   (void) __mcsema_read_memory_v128;
   (void) __mcsema_read_memory_v256;
@@ -19,6 +23,10 @@ void __mcsema_intrinsics(void) {
   (void) __mcsema_write_memory_16;
   (void) __mcsema_write_memory_32;
   (void) __mcsema_write_memory_64;
+
+  (void) __mcsema_write_memory_v8;
+  (void) __mcsema_write_memory_v16;
+  (void) __mcsema_write_memory_v32;
   (void) __mcsema_write_memory_v64;
   (void) __mcsema_write_memory_v128;
   (void) __mcsema_write_memory_v256;

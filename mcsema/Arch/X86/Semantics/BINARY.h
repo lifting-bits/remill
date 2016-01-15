@@ -31,6 +31,22 @@ DEF_SEM(ADD, D dst, const S1 src1_, const S2 src2_) {
   SetFlagsAddSub<tag_add>(state, src1, src2, res);
 }
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(ADD_VFP64, D dst, const S1 src1_, const S2 src2_) {
+  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  W(dst) = src1.doubles + src2.doubles;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(ADD_VFP32, D dst, const S1 src1_, const S2 src2_) {
+  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  W(dst) = src1.floats + src2.floats;
+}
+
 // Atomic fetch-add.
 template <typename MW, typename M, typename RW, typename RT>
 DEF_SEM(XADD, MW mdst, const M msrc_, const RW rdst, const RT rsrc_) {
@@ -54,6 +70,93 @@ DEF_SEM(XADD, MW mdst, const M msrc_, const RW rdst, const RT rsrc_) {
 }
 
 template <typename D, typename S1, typename S2>
+DEF_SEM(ADDSS, D dst, const S1 src1_, const S2 src2_) {
+  auto src1 = R(src1_);
+  const auto src2 = R(src2_);
+  src1.floats[0] += src2.floats[0];
+  W(dst) = src1;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(VADDSS, D dst, const S1 src1_, const S2 src2_) {
+  const auto src1 = R(src1_);
+  const auto src2 = R(src2_);
+  W(dst) = float32v4_t{src1.floats[0] + src2.floats[0],
+                       src1.floats[1],
+                       src1.floats[2],
+                       src1.floats[3]};
+}
+
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(ADDSD, D dst, const S1 src1_, const S2 src2_) {
+  auto src1 = R(src1_);
+  const auto src2 = R(src2_);
+  src1.doubles[0] += src2.doubles[0];
+  W(dst) = src1;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(VADDSD, D dst, const S1 src1_, const S2 src2_) {
+  const auto src1 = R(src1_);
+  const auto src2 = R(src2_);
+  W(dst) = float64v2_t{src1.doubles[0] + src2.doubles[0],
+                       src1.doubles[1]};
+}
+
+}  // namespace
+
+DEF_ISEL(ADD_MEMb_IMMb_80r0_8) = ADD<M8W, M8, I8>;
+DEF_ISEL(ADD_GPR8_IMMb_80r0_8) = ADD<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(ADD_MEMv_IMMz, ADD);
+DEF_ISEL_RnW_Rn_In(ADD_GPRv_IMMz, ADD);
+DEF_ISEL(ADD_MEMb_IMMb_82r0_8) = ADD<M8W, M8, I8>;
+DEF_ISEL(ADD_GPR8_IMMb_82r0_8) = ADD<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(ADD_MEMv_IMMb, ADD);
+DEF_ISEL_RnW_Rn_In(ADD_GPRv_IMMb, ADD);
+DEF_ISEL(ADD_MEMb_GPR8_8) = ADD<M8W, M8, R8>;
+DEF_ISEL(ADD_GPR8_GPR8_00_8) = ADD<R8W, R8, R8>;
+DEF_ISEL_MnW_Mn_Rn(ADD_MEMv_GPRv, ADD);
+DEF_ISEL_RnW_Rn_Rn(ADD_GPRv_GPRv_01, ADD);
+DEF_ISEL(ADD_GPR8_MEMb_8) = ADD<R8W, R8, M8>;
+DEF_ISEL(ADD_GPR8_GPR8_02_8) = ADD<R8W, R8, R8>;
+DEF_ISEL_RnW_Rn_Mn(ADD_GPRv_MEMv, ADD);
+DEF_ISEL_RnW_Rn_Rn(ADD_GPRv_GPRv_03, ADD);
+DEF_ISEL(ADD_AL_IMMb_8) = ADD<R8W, R8, I8>;
+DEF_ISEL_RnW_Rn_In(ADD_OrAX_IMMz, ADD);
+
+DEF_ISEL(XADD_MEMb_GPR8_8) = XADD<M8W, M8, R8W, R8>;
+DEF_ISEL(XADD_GPR8_GPR8_8) = XADD<R8W, R8, R8W, R8>;
+DEF_ISEL_MnW_Mn_RnW_Rn(XADD_MEMv_GPRv, XADD);
+DEF_ISEL_RnW_Rn_RnW_Rn(XADD_GPRv_GPRv, XADD);
+
+DEF_ISEL(ADDPS_XMMps_MEMps) = ADD_VFP32<V128W, V128, MV128>;
+DEF_ISEL(ADDPS_XMMps_XMMps) = ADD_VFP32<V128W, V128, V128>;
+IF_AVX(DEF_ISEL(VADDPS_XMMdq_XMMdq_MEMdq) = ADD_VFP32<VV128W, VV128, MV128>;)
+IF_AVX(DEF_ISEL(VADDPS_XMMdq_XMMdq_XMMdq) = ADD_VFP32<VV128W, VV128, VV128>;)
+IF_AVX(DEF_ISEL(VADDPS_YMMqq_YMMqq_MEMqq) = ADD_VFP32<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VADDPS_YMMqq_YMMqq_YMMqq) = ADD_VFP32<VV256W, VV256, VV256>;)
+
+DEF_ISEL(ADDPD_XMMpd_MEMpd) = ADD_VFP64<V128W, V128, MV128>;
+DEF_ISEL(ADDPD_XMMpd_XMMpd) = ADD_VFP64<V128W, V128, V128>;
+IF_AVX(DEF_ISEL(VADDPD_XMMdq_XMMdq_MEMdq) = ADD_VFP64<VV128W, VV128, MV128>;)
+IF_AVX(DEF_ISEL(VADDPD_XMMdq_XMMdq_XMMdq) = ADD_VFP64<VV128W, VV128, VV128>;)
+IF_AVX(DEF_ISEL(VADDPD_YMMqq_YMMqq_MEMqq) = ADD_VFP64<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VADDPD_YMMqq_YMMqq_YMMqq) = ADD_VFP64<VV256W, VV256, VV256>;)
+
+DEF_ISEL(ADDSS_XMMss_MEMss) = ADDSS<V128W, V128, MV32>;
+DEF_ISEL(ADDSS_XMMss_XMMss) = ADDSS<V128W, V128, V128>;
+IF_AVX(DEF_ISEL(VADDSS_XMMdq_XMMdq_MEMd) = VADDSS<VV128W, VV128, MV32>;)
+IF_AVX(DEF_ISEL(VADDSS_XMMdq_XMMdq_XMMd) = VADDSS<VV128W, VV128, VV128>;)
+
+DEF_ISEL(ADDSD_XMMsd_MEMsd) = ADDSD<V128W, V128, MV64>;
+DEF_ISEL(ADDSD_XMMss_XMMss) = ADDSD<V128W, V128, V128>;
+IF_AVX(DEF_ISEL(VADDSD_XMMdq_XMMdq_MEMq) = VADDSD<VV128W, VV128, MV64>;)
+IF_AVX(DEF_ISEL(VADDSD_XMMdq_XMMdq_XMMq) = VADDSD<VV128W, VV128, VV128>;)
+
+namespace {
+
+template <typename D, typename S1, typename S2>
 DEF_SEM(SUB, D dst, const S1 src1_, const S2 src2_) {
   typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
@@ -63,6 +166,59 @@ DEF_SEM(SUB, D dst, const S1 src1_, const S2 src2_) {
   __mcsema_barrier_compiler();
   SetFlagsAddSub<tag_sub>(state, src1, src2, res);
 }
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SUB_VFP64, D dst, const S1 src1_, const S2 src2_) {
+  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  W(dst) = src1.doubles - src2.doubles;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SUB_VFP32, D dst, const S1 src1_, const S2 src2_) {
+  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  W(dst) = src1.floats - src2.floats;
+}
+
+}  // namespace
+
+DEF_ISEL(SUB_MEMb_IMMb_80r5_8) = SUB<M8W, M8, I8>;
+DEF_ISEL(SUB_GPR8_IMMb_80r5_8) = SUB<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(SUB_MEMv_IMMz, SUB);
+DEF_ISEL_RnW_Rn_In(SUB_GPRv_IMMz, SUB);
+DEF_ISEL(SUB_MEMb_IMMb_82r5_8) = SUB<M8W, M8, I8>;
+DEF_ISEL(SUB_GPR8_IMMb_82r5_8) = SUB<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(SUB_MEMv_IMMb, SUB);
+DEF_ISEL_RnW_Rn_In(SUB_GPRv_IMMb, SUB);
+DEF_ISEL(SUB_MEMb_GPR8_8) = SUB<M8W, M8, I8>;
+DEF_ISEL(SUB_GPR8_GPR8_28_8) = SUB<R8W, R8, R8>;
+DEF_ISEL_MnW_Mn_Rn(SUB_MEMv_GPRv, SUB);
+DEF_ISEL_RnW_Rn_Rn(SUB_GPRv_GPRv_29, SUB);
+DEF_ISEL(SUB_GPR8_GPR8_2A_8) = SUB<R8W, R8, R8>;
+DEF_ISEL(SUB_GPR8_MEMb_8) = SUB<R8W, R8, M8>;
+DEF_ISEL_RnW_Rn_Rn(SUB_GPRv_GPRv_2B, SUB);
+DEF_ISEL_RnW_Rn_Mn(SUB_GPRv_MEMv, SUB);
+DEF_ISEL(SUB_AL_IMMb_8) = SUB<R8W, R8, I8>;
+DEF_ISEL_RnW_Rn_In(SUB_OrAX_IMMz, SUB);
+
+DEF_ISEL(SUBPS_XMMps_MEMps) = SUB_VFP32<V128W, V128, MV128>;
+DEF_ISEL(SUBPS_XMMps_XMMps) = SUB_VFP32<V128W, V128, V128>;
+IF_AVX(DEF_ISEL(VSUBPS_XMMdq_XMMdq_MEMdq) = SUB_VFP32<VV128W, VV128, MV128>;)
+IF_AVX(DEF_ISEL(VSUBPS_XMMdq_XMMdq_XMMdq) = SUB_VFP32<VV128W, VV128, VV128>;)
+IF_AVX(DEF_ISEL(VSUBPS_YMMqq_YMMqq_MEMqq) = SUB_VFP32<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VSUBPS_YMMqq_YMMqq_YMMqq) = SUB_VFP32<VV256W, VV256, VV256>;)
+
+DEF_ISEL(SUBPD_XMMpd_MEMpd) = SUB_VFP64<V128W, V128, MV128>;
+DEF_ISEL(SUBPD_XMMpd_XMMpd) = SUB_VFP64<V128W, V128, V128>;
+IF_AVX(DEF_ISEL(VSUBPD_XMMdq_XMMdq_MEMdq) = SUB_VFP64<VV128W, VV128, MV128>;)
+IF_AVX(DEF_ISEL(VSUBPD_XMMdq_XMMdq_XMMdq) = SUB_VFP64<VV128W, VV128, VV128>;)
+IF_AVX(DEF_ISEL(VSUBPD_YMMqq_YMMqq_MEMqq) = SUB_VFP64<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VSUBPD_YMMqq_YMMqq_YMMqq) = SUB_VFP64<VV256W, VV256, VV256>;)
+
+namespace {
 
 template <typename S1, typename S2>
 DEF_SEM(CMP, const S1 src1_, const S2 src2_) {
@@ -74,6 +230,28 @@ DEF_SEM(CMP, const S1 src1_, const S2 src2_) {
   SetFlagsAddSub<tag_sub>(state, src1, src2, res);
 }
 
+}  // namespace
+
+DEF_ISEL(CMP_MEMb_IMMb_80r7_8) = CMP<M8, I8>;
+DEF_ISEL(CMP_GPR8_IMMb_80r7_8) = CMP<R8, I8>;
+DEF_ISEL_Mn_In(CMP_MEMv_IMMz, CMP);
+DEF_ISEL_Rn_In(CMP_GPRv_IMMz, CMP);
+DEF_ISEL(CMP_MEMb_IMMb_82r7_8) = CMP<M8, I8>;
+DEF_ISEL(CMP_GPR8_IMMb_82r7_8) = CMP<R8, I8>;
+DEF_ISEL_Mn_In(CMP_MEMv_IMMb, CMP);
+DEF_ISEL_Rn_In(CMP_GPRv_IMMb, CMP);
+DEF_ISEL(CMP_MEMb_GPR8_8) = CMP<M8, I8>;
+DEF_ISEL(CMP_GPR8_GPR8_38_8) = CMP<R8, R8>;
+DEF_ISEL_Mn_In(CMP_MEMv_GPRv, CMP);
+DEF_ISEL_Rn_Rn(CMP_GPRv_GPRv_39, CMP);
+DEF_ISEL(CMP_GPR8_GPR8_3A_8) = CMP<R8, R8>;
+DEF_ISEL(CMP_GPR8_MEMb_8) = CMP<R8, M8>;
+DEF_ISEL_Rn_Rn(CMP_GPRv_GPRv_3B, CMP);
+DEF_ISEL_Rn_Mn(CMP_GPRv_MEMv, CMP);
+DEF_ISEL(CMP_AL_IMMb_8) = CMP<R8, I8>;
+DEF_ISEL_Rn_In(CMP_OrAX_IMMz, CMP);
+
+namespace {
 
 template <typename T, typename U, typename V>
 ALWAYS_INLINE void SetFlagsMul(State &state, T lhs, T rhs, U res, V res_trunc) {
@@ -257,50 +435,39 @@ IF_64BIT( MAKE_DIVIDER(64, qword, qword) )
 #undef MAKE_DIVIDER
 };
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(MUL_VFP64, D dst, const S1 src1_, const S2 src2_) {
+  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  W(dst) = src1.doubles * src2.doubles;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(MUL_VFP32, D dst, const S1 src1_, const S2 src2_) {
+  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  W(dst) = src1.floats * src2.floats;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(DIV_VFP64, D dst, const S1 src1_, const S2 src2_) {
+  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  W(dst) = src1.doubles / src2.doubles;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(DIV_VFP32, D dst, const S1 src1_, const S2 src2_) {
+  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  const T src1 = R(src1_);
+  const T src2 = R(src2_);
+  W(dst) = src1.floats / src2.floats;
+}
+
 }  // namespace
-
-DEF_ISEL(ADD_MEMb_IMMb_80r0_8) = ADD<M8W, M8, I8>;
-DEF_ISEL(ADD_GPR8_IMMb_80r0_8) = ADD<R8W, R8, I8>;
-DEF_ISEL_MnW_Mn_In(ADD_MEMv_IMMz, ADD);
-DEF_ISEL_RnW_Rn_In(ADD_GPRv_IMMz, ADD);
-DEF_ISEL(ADD_MEMb_IMMb_82r0_8) = ADD<M8W, M8, I8>;
-DEF_ISEL(ADD_GPR8_IMMb_82r0_8) = ADD<R8W, R8, I8>;
-DEF_ISEL_MnW_Mn_In(ADD_MEMv_IMMb, ADD);
-DEF_ISEL_RnW_Rn_In(ADD_GPRv_IMMb, ADD);
-DEF_ISEL(ADD_MEMb_GPR8_8) = ADD<M8W, M8, R8>;
-DEF_ISEL(ADD_GPR8_GPR8_00_8) = ADD<R8W, R8, R8>;
-DEF_ISEL_MnW_Mn_Rn(ADD_MEMv_GPRv, ADD);
-DEF_ISEL_RnW_Rn_Rn(ADD_GPRv_GPRv_01, ADD);
-DEF_ISEL(ADD_GPR8_MEMb_8) = ADD<R8W, R8, M8>;
-DEF_ISEL(ADD_GPR8_GPR8_02_8) = ADD<R8W, R8, R8>;
-DEF_ISEL_RnW_Rn_Mn(ADD_GPRv_MEMv, ADD);
-DEF_ISEL_RnW_Rn_Rn(ADD_GPRv_GPRv_03, ADD);
-DEF_ISEL(ADD_AL_IMMb_8) = ADD<R8W, R8, I8>;
-DEF_ISEL_RnW_Rn_In(ADD_OrAX_IMMz, ADD);
-
-DEF_ISEL(XADD_MEMb_GPR8_8) = XADD<M8W, M8, R8W, R8>;
-DEF_ISEL(XADD_GPR8_GPR8_8) = XADD<R8W, R8, R8W, R8>;
-DEF_ISEL_MnW_Mn_RnW_Rn(XADD_MEMv_GPRv, XADD);
-DEF_ISEL_RnW_Rn_RnW_Rn(XADD_GPRv_GPRv, XADD);
-
-DEF_ISEL(SUB_MEMb_IMMb_80r5_8) = SUB<M8W, M8, I8>;
-DEF_ISEL(SUB_GPR8_IMMb_80r5_8) = SUB<R8W, R8, I8>;
-DEF_ISEL_MnW_Mn_In(SUB_MEMv_IMMz, SUB);
-DEF_ISEL_RnW_Rn_In(SUB_GPRv_IMMz, SUB);
-DEF_ISEL(SUB_MEMb_IMMb_82r5_8) = SUB<M8W, M8, I8>;
-DEF_ISEL(SUB_GPR8_IMMb_82r5_8) = SUB<R8W, R8, I8>;
-DEF_ISEL_MnW_Mn_In(SUB_MEMv_IMMb, SUB);
-DEF_ISEL_RnW_Rn_In(SUB_GPRv_IMMb, SUB);
-DEF_ISEL(SUB_MEMb_GPR8_8) = SUB<M8W, M8, I8>;
-DEF_ISEL(SUB_GPR8_GPR8_28_8) = SUB<R8W, R8, R8>;
-DEF_ISEL_MnW_Mn_Rn(SUB_MEMv_GPRv, SUB);
-DEF_ISEL_RnW_Rn_Rn(SUB_GPRv_GPRv_29, SUB);
-DEF_ISEL(SUB_GPR8_GPR8_2A_8) = SUB<R8W, R8, R8>;
-DEF_ISEL(SUB_GPR8_MEMb_8) = SUB<R8W, R8, M8>;
-DEF_ISEL_RnW_Rn_Rn(SUB_GPRv_GPRv_2B, SUB);
-DEF_ISEL_RnW_Rn_Mn(SUB_GPRv_MEMv, SUB);
-DEF_ISEL(SUB_AL_IMMb_8) = SUB<R8W, R8, I8>;
-DEF_ISEL_RnW_Rn_In(SUB_OrAX_IMMz, SUB);
 
 DEF_ISEL(IMUL_MEMb_8) = DivMul<SignedIntegerType>::MULA_8<M8>;
 DEF_ISEL(IMUL_GPR8_8) = DivMul<SignedIntegerType>::MULA_8<R8>;
@@ -343,6 +510,20 @@ IF_64BIT(DEF_ISEL(MULX_VGPR64q_VGPR64q_VGPR64q_64) =
 IF_64BIT(DEF_ISEL(MULX_VGPR64q_VGPR64q_MEMq_64) =
     DivMul<UnsignedIntegerType>::MULX<R64W, M64>;)
 
+DEF_ISEL(MULPS_XMMps_MEMps) = MUL_VFP32<V128W, V128, MV128>;
+DEF_ISEL(MULPS_XMMps_XMMps) = MUL_VFP32<V128W, V128, V128>;
+IF_AVX(DEF_ISEL(VMULPS_XMMdq_XMMdq_MEMdq) = MUL_VFP32<VV128W, VV128, MV128>;)
+IF_AVX(DEF_ISEL(VMULPS_XMMdq_XMMdq_XMMdq) = MUL_VFP32<VV128W, VV128, VV128>;)
+IF_AVX(DEF_ISEL(VMULPS_YMMqq_YMMqq_MEMqq) = MUL_VFP32<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VMULPS_YMMqq_YMMqq_YMMqq) = MUL_VFP32<VV256W, VV256, VV256>;)
+
+DEF_ISEL(MULPD_XMMpd_MEMpd) = MUL_VFP64<V128W, V128, MV128>;
+DEF_ISEL(MULPD_XMMpd_XMMpd) = MUL_VFP64<V128W, V128, V128>;
+IF_AVX(DEF_ISEL(VMULPD_XMMdq_XMMdq_MEMdq) = MUL_VFP64<VV128W, VV128, MV128>;)
+IF_AVX(DEF_ISEL(VMULPD_XMMdq_XMMdq_XMMdq) = MUL_VFP64<VV128W, VV128, VV128>;)
+IF_AVX(DEF_ISEL(VMULPD_YMMqq_YMMqq_MEMqq) = MUL_VFP64<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VMULPD_YMMqq_YMMqq_YMMqq) = MUL_VFP64<VV256W, VV256, VV256>;)
+
 DEF_ISEL(IDIV_MEMb_8) = DivMul<SignedIntegerType>::DIVA_8<M8>;
 DEF_ISEL(IDIV_GPR8_8) = DivMul<SignedIntegerType>::DIVA_8<R8>;
 DEF_ISEL(IDIV_MEMv_8) = DivMul<SignedIntegerType>::DIVA_8<M8>;
@@ -365,24 +546,19 @@ DEF_ISEL(DIV_GPRv_16) = DivMul<UnsignedIntegerType>::DIVA_16<R16>;
 DEF_ISEL(DIV_GPRv_32) = DivMul<UnsignedIntegerType>::DIVA_32<R32>;
 IF_64BIT(DEF_ISEL(DIV_GPRv_64) = DivMul<UnsignedIntegerType>::DIVA_64<R64>;)
 
-DEF_ISEL(CMP_MEMb_IMMb_80r7_8) = CMP<M8, I8>;
-DEF_ISEL(CMP_GPR8_IMMb_80r7_8) = CMP<R8, I8>;
-DEF_ISEL_Mn_In(CMP_MEMv_IMMz, CMP);
-DEF_ISEL_Rn_In(CMP_GPRv_IMMz, CMP);
-DEF_ISEL(CMP_MEMb_IMMb_82r7_8) = CMP<M8, I8>;
-DEF_ISEL(CMP_GPR8_IMMb_82r7_8) = CMP<R8, I8>;
-DEF_ISEL_Mn_In(CMP_MEMv_IMMb, CMP);
-DEF_ISEL_Rn_In(CMP_GPRv_IMMb, CMP);
-DEF_ISEL(CMP_MEMb_GPR8_8) = CMP<M8, I8>;
-DEF_ISEL(CMP_GPR8_GPR8_38_8) = CMP<R8, R8>;
-DEF_ISEL_Mn_In(CMP_MEMv_GPRv, CMP);
-DEF_ISEL_Rn_Rn(CMP_GPRv_GPRv_39, CMP);
-DEF_ISEL(CMP_GPR8_GPR8_3A_8) = CMP<R8, R8>;
-DEF_ISEL(CMP_GPR8_MEMb_8) = CMP<R8, M8>;
-DEF_ISEL_Rn_Rn(CMP_GPRv_GPRv_3B, CMP);
-DEF_ISEL_Rn_Mn(CMP_GPRv_MEMv, CMP);
-DEF_ISEL(CMP_AL_IMMb_8) = CMP<R8, I8>;
-DEF_ISEL_Rn_In(CMP_OrAX_IMMz, CMP);
+DEF_ISEL(DIVPS_XMMps_MEMps) = DIV_VFP32<V128W, V128, MV128>;
+DEF_ISEL(DIVPS_XMMps_XMMps) = DIV_VFP32<V128W, V128, V128>;
+IF_AVX(DEF_ISEL(VDIVPS_XMMdq_XMMdq_MEMdq) = DIV_VFP32<VV128W, VV128, MV128>;)
+IF_AVX(DEF_ISEL(VDIVPS_XMMdq_XMMdq_XMMdq) = DIV_VFP32<VV128W, VV128, VV128>;)
+IF_AVX(DEF_ISEL(VDIVPS_YMMqq_YMMqq_MEMqq) = DIV_VFP32<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VDIVPS_YMMqq_YMMqq_YMMqq) = DIV_VFP32<VV256W, VV256, VV256>;)
+
+DEF_ISEL(DIVPD_XMMpd_MEMpd) = DIV_VFP64<V128W, V128, MV128>;
+DEF_ISEL(DIVPD_XMMpd_XMMpd) = DIV_VFP64<V128W, V128, V128>;
+IF_AVX(DEF_ISEL(VDIVPD_XMMdq_XMMdq_MEMdq) = DIV_VFP64<VV128W, VV128, MV128>;)
+IF_AVX(DEF_ISEL(VDIVPD_XMMdq_XMMdq_XMMdq) = DIV_VFP64<VV128W, VV128, VV128>;)
+IF_AVX(DEF_ISEL(VDIVPD_YMMqq_YMMqq_MEMqq) = DIV_VFP64<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VDIVPD_YMMqq_YMMqq_YMMqq) = DIV_VFP64<VV256W, VV256, VV256>;)
 
 namespace {
 

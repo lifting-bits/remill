@@ -67,6 +67,9 @@ template <typename T>
 struct VectorInfo;
 
 // Forward-declaration of basic vector types.
+union vec8_t;
+union vec16_t;
+union vec32_t;
 union vec64_t;
 union vec128_t;
 union vec256_t;
@@ -91,16 +94,22 @@ union vec512_t;
       typedef vec ## vec_size_bits ## _t VecType; \
     }
 
+MAKE_VECTOR(uint8, 1, 8, 1);
+MAKE_VECTOR(uint8, 2, 16, 2);
+MAKE_VECTOR(uint8, 4, 32, 4);
 MAKE_VECTOR(uint8, 8, 64, 8);
 MAKE_VECTOR(uint8, 16, 128, 16);
 MAKE_VECTOR(uint8, 32, 256, 32);
 MAKE_VECTOR(uint8, 64, 512, 64);
 
+MAKE_VECTOR(uint16, 1, 16, 2);
+MAKE_VECTOR(uint16, 2, 32, 4);
 MAKE_VECTOR(uint16, 4, 64, 8);
 MAKE_VECTOR(uint16, 8, 128, 16);
 MAKE_VECTOR(uint16, 16, 256, 32);
 MAKE_VECTOR(uint16, 32, 512, 64);
 
+MAKE_VECTOR(uint32, 1, 32, 4);
 MAKE_VECTOR(uint32, 2, 64, 8);
 MAKE_VECTOR(uint32, 4, 128, 16);
 MAKE_VECTOR(uint32, 8, 256, 32);
@@ -116,6 +125,7 @@ MAKE_VECTOR(uint128, 1, 128, 16);
 MAKE_VECTOR(uint128, 2, 256, 32);
 MAKE_VECTOR(uint128, 4, 512, 64);
 
+MAKE_VECTOR(float32, 1, 32, 4);
 MAKE_VECTOR(float32, 2, 64, 8);
 MAKE_VECTOR(float32, 4, 128, 16);
 MAKE_VECTOR(float32, 8, 256, 32);
@@ -125,6 +135,128 @@ MAKE_VECTOR(float64, 1, 64, 8);
 MAKE_VECTOR(float64, 2, 128, 16);
 MAKE_VECTOR(float64, 4, 256, 32);
 MAKE_VECTOR(float64, 8, 512, 64);
+
+template <typename T>
+struct SingletonVectorType;
+
+template <>
+struct SingletonVectorType<uint8_t> {
+  typedef uint8v1_t Type;
+};
+
+template <>
+struct SingletonVectorType<uint16_t> {
+  typedef uint16v1_t Type;
+};
+
+template <>
+struct SingletonVectorType<uint32_t> {
+  typedef uint32v1_t Type;
+};
+
+template <>
+struct SingletonVectorType<uint64_t> {
+  typedef uint64v1_t Type;
+};
+
+template <>
+struct SingletonVectorType<uint128_t> {
+  typedef uint128v1_t Type;
+};
+
+template <>
+struct SingletonVectorType<float32_t> {
+  typedef float32v1_t Type;
+};
+
+template <>
+struct SingletonVectorType<float64_t> {
+  typedef float64v1_t Type;
+};
+
+#define UNIQUE_TYPE(size) class { uint8_t foo[size]; }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-private-field"
+
+union vec8_t {
+  uint8v1_t bytes;
+  uint8v1_t iwords;  // Ideal.
+
+  // Note: This is a special case for consistency in `VecWriter`. In practice
+  //       this should never be used.
+
+  UNIQUE_TYPE(1) words;
+  UNIQUE_TYPE(1) dwords;
+  UNIQUE_TYPE(1) qwords;
+  UNIQUE_TYPE(1) floats;
+  UNIQUE_TYPE(1) doubles;
+  UNIQUE_TYPE(1) dqwords;
+
+} __attribute__((packed));
+
+static_assert(1 == sizeof(vec8_t) &&
+              1 == sizeof(vec8_t().bytes) &&
+              1 == sizeof(vec8_t().words) &&
+              1 == sizeof(vec8_t().dwords) &&
+              1 == sizeof(vec8_t().qwords) &&
+              1 == sizeof(vec8_t().dqwords) &&
+              1 == sizeof(vec8_t().floats) &&
+              1 == sizeof(vec8_t().doubles) &&
+              1 == sizeof(vec8_t().iwords),
+              "Invalid structure packing of `vec8_t`.");
+
+union vec16_t {
+  uint8v2_t bytes;
+  uint16v1_t words;
+  uint16v1_t iwords;  // Ideal.
+
+  // Note: This is a special case for consistency in `VecWriter`. In practice
+  //       this should never be used.
+  UNIQUE_TYPE(2) dwords;
+  UNIQUE_TYPE(2) qwords;
+  UNIQUE_TYPE(2) floats;
+  UNIQUE_TYPE(2) doubles;
+  UNIQUE_TYPE(2) dqwords;
+
+} __attribute__((packed));
+
+static_assert(2 == sizeof(vec16_t) &&
+              2 == sizeof(vec16_t().bytes) &&
+              2 == sizeof(vec16_t().words) &&
+              2 == sizeof(vec16_t().dwords) &&
+              2 == sizeof(vec16_t().qwords) &&
+              2 == sizeof(vec16_t().dqwords) &&
+              2 == sizeof(vec16_t().floats) &&
+              2 == sizeof(vec16_t().doubles) &&
+              2 == sizeof(vec16_t().iwords),
+              "Invalid structure packing of `vec16_t`.");
+
+union vec32_t {
+  uint8v4_t bytes;
+  uint16v2_t words;
+  uint32v1_t dwords;
+  uint32v1_t iwords;  // Ideal.
+  float32v1_t floats;
+
+  // Note: This is a special case for consistency in `VecWriter`. In practice
+  //       this should never be used.
+  UNIQUE_TYPE(4) qwords;
+  UNIQUE_TYPE(4) doubles;
+  UNIQUE_TYPE(4) dqwords;
+
+} __attribute__((packed));
+
+static_assert(4 == sizeof(vec32_t) &&
+              4 == sizeof(vec32_t().bytes) &&
+              4 == sizeof(vec32_t().words) &&
+              4 == sizeof(vec32_t().dwords) &&
+              4 == sizeof(vec32_t().qwords) &&
+              4 == sizeof(vec32_t().dqwords) &&
+              4 == sizeof(vec32_t().floats) &&
+              4 == sizeof(vec32_t().doubles) &&
+              4 == sizeof(vec32_t().iwords),
+              "Invalid structure packing of `vec32_t`.");
 
 union vec64_t {
   uint8v8_t bytes;
@@ -139,9 +271,11 @@ union vec64_t {
 
   // Note: This is a special case for consistency in `VecWriter`. In practice
   //       this should never be used.
-  struct alignas(1) {} dqwords[8];
+  UNIQUE_TYPE(8) dqwords;
 
 } __attribute__((packed));
+
+#pragma clang diagnostic pop
 
 static_assert(8 == sizeof(vec64_t) &&
               8 == sizeof(vec64_t().bytes) &&
@@ -354,6 +488,11 @@ struct VnW {
 template <typename T>
 struct BaseType {
   typedef T Type;
+};
+
+template <>
+struct BaseType<float80_t> {
+  typedef arch_float80_t Type;
 };
 
 template <typename T>

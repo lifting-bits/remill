@@ -31,6 +31,8 @@ MAKE_VECTOR_ASSIGNER(uint16_t, words);
 MAKE_VECTOR_ASSIGNER(uint32_t, dwords);
 MAKE_VECTOR_ASSIGNER(uint64_t, qwords);
 MAKE_VECTOR_ASSIGNER(uint128_t, dqwords);
+MAKE_VECTOR_ASSIGNER(float, floats);
+MAKE_VECTOR_ASSIGNER(double, doubles);
 
 #undef MAKE_VECTOR_ASSIGNER
 
@@ -68,13 +70,24 @@ struct VecWriter {
     val_ref->doubles = val;
   }
 
-  // Fallback for performing assignments of a smaller vector type to
+  // Fall-back for performing assignments of a smaller vector type to
   // a larger vector type, where the smaller type is already specialized
   // to a specific base type, E.g. `V=uint32v4_t` (128 bits) and `T=vec256_t`.
   template <typename V,
-            typename std::enable_if<sizeof(V)<sizeof(T),int>::type=0>
+            size_t=sizeof(typename VectorInfo<V>::VecType),
+            size_t=sizeof(typename VectorInfo<V>::BaseType)>
   ALWAYS_INLINE void operator=(V val) const {
     VectorAssign<typename VectorInfo<V>::BaseType, T, V>::assign(val_ref, val);
+  }
+
+  // Fall-back for assigning a single value into a vector of a larger type.
+  // This will assign the value as the first element in the vector.
+  template <typename V,
+            size_t=sizeof(typename SingletonVectorType<V>::Type)>
+  ALWAYS_INLINE void operator=(V val) const {
+    typedef typename SingletonVectorType<V>::Type VecType;
+    VecType vec = {val};
+    VectorAssign<V, T, VecType>::assign(val_ref, val);
   }
 
   T *val_ref;
@@ -136,6 +149,10 @@ struct VecWriter {
       return {vec.val_ref}; \
     }
 
+
+MAKE_VEC_ACCESSORS(vec8_t, 8)
+MAKE_VEC_ACCESSORS(vec16_t, 16)
+MAKE_VEC_ACCESSORS(vec32_t, 32)
 MAKE_VEC_ACCESSORS(vec64_t, 64)
 MAKE_VEC_ACCESSORS(vec128_t, 128)
 MAKE_VEC_ACCESSORS(vec256_t, 256)

@@ -143,6 +143,10 @@ bool Instr::LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *B_) {
 
   // Not a control-flow instruction, need to add a fall-through.
   } else {
+    // TODO(pag): Should we load in the next pc? In practice, the instructions
+    //            don't need access to this information; it only matters at
+    //            control flows.
+
     LiftGeneric(lifter);
     return true;
   }
@@ -194,7 +198,6 @@ bool Instr::CheckArgumentTypes(const llvm::Function *F,
       F->getFunctionType()->print(arg_types_stream);
       arg_types_stream << "\n";
       args[i]->print(arg_types_stream);
-      B->dump();
       LOG(ERROR)
         << "Argument types don't match to " << func_name << ":"
         << arg_types_str;
@@ -604,16 +607,6 @@ bool Instr::IsIndirectJump(void) const {
   return (XED_ICLASS_JMP == iclass && XED_OPERAND_RELBR != op_name) ||
          XED_ICLASS_JMP_FAR == iclass ||
          XED_ICLASS_XEND == iclass || XED_ICLASS_XABORT == iclass;
-}
-
-bool Instr::IsNoOp(void) const {
-  switch (xed_decoded_inst_get_category(xedd)) {
-    case XED_CATEGORY_NOP:
-    case XED_CATEGORY_WIDENOP:
-      return true;
-    default:
-      return false;
-  }
 }
 
 bool Instr::IsError(void) const {

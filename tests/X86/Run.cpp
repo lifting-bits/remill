@@ -97,70 +97,36 @@ addr_t __mcsema_compute_address(const State &state, addr_t addr,
   return addr;
 }
 
-// Memory read intrinsics.
-uint8_t __mcsema_read_memory_8(addr_t addr) {
-  return AccessMemory<uint8_t>(addr);
-}
+#define MAKE_RW_MEMORY(size) \
+  uint ## size ## _t  __mcsema_read_memory_ ## size(addr_t addr) { \
+    return AccessMemory<uint ## size ## _t>(addr); \
+  } \
+  void __mcsema_write_memory_ ## size (addr_t addr, \
+                                        const uint ## size ## _t in) { \
+    AccessMemory<uint ## size ## _t>(addr) = in; \
+  }
 
-uint16_t __mcsema_read_memory_16(addr_t addr) {
-  return AccessMemory<uint16_t>(addr);
-}
+#define MAKE_RW_VEC_MEMORY(size) \
+  void __mcsema_read_memory_v ## size(addr_t addr, vec ## size ## _t &out) { \
+    out = AccessMemory<vec ## size ## _t>(addr); \
+  } \
+  void __mcsema_write_memory_v ## size (addr_t addr, \
+                                        const vec ## size ## _t &in) { \
+    AccessMemory<vec ## size ## _t>(addr) = in; \
+  }
 
-uint32_t __mcsema_read_memory_32(addr_t addr) {
-  return AccessMemory<uint32_t>(addr);
-}
+MAKE_RW_MEMORY(8)
+MAKE_RW_MEMORY(16)
+MAKE_RW_MEMORY(32)
+MAKE_RW_MEMORY(64)
 
-uint64_t __mcsema_read_memory_64(addr_t addr) {
-  return AccessMemory<uint64_t>(addr);
-}
-
-void __mcsema_read_memory_v64(addr_t addr, vec64_t &out) {
-  out = AccessMemory<vec64_t>(addr);
-}
-
-void __mcsema_read_memory_v128(addr_t addr, vec128_t &out) {
-  out = AccessMemory<vec128_t>(addr);
-}
-void __mcsema_read_memory_v256(addr_t addr, vec256_t &out) {
-  out = AccessMemory<vec256_t>(addr);
-}
-
-void __mcsema_read_memory_v512(addr_t addr, vec512_t &out) {
-  out = AccessMemory<vec512_t>(addr);
-}
-
-// Memory write intrinsics.
-void __mcsema_write_memory_8(addr_t addr, uint8_t in) {
-  AccessMemory<uint8_t>(addr) = in;
-}
-
-void __mcsema_write_memory_16(addr_t addr, uint16_t in) {
-  AccessMemory<uint16_t>(addr) = in;
-}
-
-void __mcsema_write_memory_32(addr_t addr, uint32_t in) {
-  AccessMemory<uint32_t>(addr) = in;
-}
-
-void __mcsema_write_memory_64(addr_t addr, uint64_t in) {
-  AccessMemory<uint64_t>(addr) = in;
-}
-
-void __mcsema_write_memory_v64(addr_t addr, const vec64_t &in) {
-  AccessMemory<vec64_t>(addr) = in;
-}
-
-void __mcsema_write_memory_v128(addr_t addr, const vec128_t &in) {
-  AccessMemory<vec128_t>(addr) = in;
-}
-
-void __mcsema_write_memory_v256(addr_t addr, const vec256_t &in) {
-  AccessMemory<vec256_t>(addr) = in;
-}
-
-void __mcsema_write_memory_v512(addr_t addr, const vec512_t &in) {
-  AccessMemory<vec512_t>(addr) = in;
-}
+MAKE_RW_VEC_MEMORY(8)
+MAKE_RW_VEC_MEMORY(16)
+MAKE_RW_VEC_MEMORY(32)
+MAKE_RW_VEC_MEMORY(64)
+MAKE_RW_VEC_MEMORY(128)
+MAKE_RW_VEC_MEMORY(256)
+MAKE_RW_VEC_MEMORY(512)
 
 void __mcsema_barrier_load_load(void) {}
 void __mcsema_barrier_load_store(void) {}
@@ -223,7 +189,6 @@ static void CopyXMMRegsIntoFPU(State *state) {
 static std::vector<const test::TestInfo *> gTests;
 
 static void InitFlags(void) {
-  asm("pushfq; pushfq; pop %0; pop %1;" : : "m"(gRflagsOn), "m"(gRflagsOff));
   gRflagsOn.cf = true;
   gRflagsOn.pf = true;
   gRflagsOn.af = true;

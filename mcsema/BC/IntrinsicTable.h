@@ -30,6 +30,10 @@ class IntrinsicTable {
   llvm::Function * const read_memory_16;
   llvm::Function * const read_memory_32;
   llvm::Function * const read_memory_64;
+
+  llvm::Function * const read_memory_v8;
+  llvm::Function * const read_memory_v16;
+  llvm::Function * const read_memory_v32;
   llvm::Function * const read_memory_v64;
   llvm::Function * const read_memory_v128;
   llvm::Function * const read_memory_v256;
@@ -40,6 +44,10 @@ class IntrinsicTable {
   llvm::Function * const write_memory_16;
   llvm::Function * const write_memory_32;
   llvm::Function * const write_memory_64;
+
+  llvm::Function * const write_memory_v8;
+  llvm::Function * const write_memory_v16;
+  llvm::Function * const write_memory_v32;
   llvm::Function * const write_memory_v64;
   llvm::Function * const write_memory_v128;
   llvm::Function * const write_memory_v256;

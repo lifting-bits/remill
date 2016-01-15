@@ -13,8 +13,12 @@ typedef Rn<uint16_t> R16;
 typedef Rn<uint32_t> R32;
 typedef Rn<uint64_t> R64;
 
+typedef float80_t &F80W;
+typedef float80_t F80;
+
 typedef Vn<vec64_t> V64;  // Legacy MMX technology register.
 typedef Vn<avec128_t> V128;  // Legacy (SSE) XMM register.
+
 typedef Vn<avec128_t> VV128;  // AVX VEX.128-encoded XMM register.
 typedef Vn<avec256_t> VV256;  // AVX YMM register.
 typedef Vn<avec512_t> VV512;  // AVX512 ZMM register.
@@ -24,6 +28,7 @@ typedef IF_AVX512_ELSE(avec512_t, IF_AVX_ELSE(avec256_t, avec128_t))
 
 typedef VnW<vec64_t> V64W;  // Legacy MMX technology register.
 typedef VnW<avec128_t> V128W;  // Legacy (SSE) XMM register.
+
 typedef VnW<WriteVecType> VV128W;  // AVX VEX.128-encoded XMM register.
 typedef VnW<WriteVecType> VV256W;  // AVX YMM register.
 typedef VnW<WriteVecType> VV512W;  // AVX512 ZMM register.
@@ -43,6 +48,9 @@ typedef Mn<uint16_t> M16;
 typedef Mn<uint32_t> M32;
 typedef Mn<uint64_t> M64;
 
+typedef Mn<vec8_t> MV8;
+typedef Mn<vec16_t> MV16;
+typedef Mn<vec32_t> MV32;
 typedef Mn<vec64_t> MV64;
 typedef Mn<vec128_t> MV128;
 typedef Mn<vec256_t> MV256;

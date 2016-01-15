@@ -55,6 +55,8 @@ add_compile_options(
     -I${MCSEMA_DIR}
 )
 
+#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L${MCSEMA_DIR}/third_party/lib")
+
 # TODO(pag): This is really ugly.
 if(APPLE)
     set(UNWIND_LIB )
@@ -64,14 +66,13 @@ else()
     set(STRIP_DEAD_CODE -Wl,-gc-sections)
 endif(APPLE)
 
-# Some library stuff.
-list(APPEND CMAKE_LIBRARY_PATH ${MCSEMA_DIR}/third_party/lib)
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+link_directories(${MCSEMA_DIR}/third_party/lib)
 
 # Find all libraries. This includes LLVM libraries.
 set(MCSEMA_LIBS
     PRIVATE
-        libxed.a
+        ${MCSEMA_DIR}/third_party/lib/libxed.so
         libprotobuf.a
         libgflags.a
         libglog.a
@@ -92,13 +93,16 @@ add_executable(cfg_to_bc
     ${MCSEMA_SOURCE_FILES}
 )
 
+# Some library stuff.
+#list(APPEND CMAKE_LIBRARY_PATH ${MCSEMA_DIR}/third_party/lib)
+#set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 target_link_libraries(cfg_to_bc
     ${MCSEMA_LIBS}
 )
 
 # optimize_bc plugin -----------------------------------------------------------
 
-#add_library( Optimizer MODULE ${MCSEMA_DIR}/mcsema/Optimize.cpp )
 add_llvm_loadable_module( Optimizer ${MCSEMA_DIR}/mcsema/Optimize.cpp )
 
 # test code --------------------------------------------------------------------

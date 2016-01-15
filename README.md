@@ -5,7 +5,8 @@
 
 ## Linux-specific
 ```
-sudo apt-get install libunwind8
+sudo apt-get install libunwind8 libunwind8-dev
+sudo pip install futures
 ```
 
 ## Generic

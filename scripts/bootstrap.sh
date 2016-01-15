@@ -18,12 +18,12 @@ PROTOBUF_RELEASE=protobuf-${PROTOBUF_VERSION}
 GTEST_RELEASE=release-1.7.0
 
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
-    PIN_VERSION=pin-2.14-71313-gcc.4.4.7-linux
+    XED_VERSION=xed-install-base-2015-09-10-lin-x86-64
 	LLVM_VERSION=clang+llvm-${LLVM_RELEASE}-x86_64-linux-gnu-ubuntu-14.04
     MCSEMA_OS_NAME="linux"
 
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-	PIN_VERSION=pin-2.14-71313-clang.5.1-mac
+	XED_VERSION=xed-install-base-2015-09-10-mac-x86-64
 	LLVM_VERSION=clang+llvm-${LLVM_RELEASE}-x86_64-apple-darwin
     MCSEMA_OS_NAME="mac"
 
@@ -32,7 +32,7 @@ else
     exit 1
 fi
 
-PIN_URL=http://software.intel.com/sites/landingpage/pintool/downloads/${PIN_VERSION}.tar.gz
+XED_URL=https://software.intel.com/system/files/managed/58/cc/${XED_VERSION}.zip
 LLVM_URL=http://llvm.org/releases/${LLVM_RELEASE}/${LLVM_VERSION}.tar.xz
 GLOG_URL=https://github.com/google/glog/archive/${GLOG_RELEASE}.tar.gz
 GFLAGS_URL=https://github.com/gflags/gflags/archive/${GFLAGS_RELEASE}.tar.gz
@@ -169,22 +169,22 @@ function download_and_install_gtest()
     popd
 }
 
-function download_and_extract_pin()
+function download_and_extract_xed()
 {
-	sub_category "Downloading and installing pin."
+	sub_category "Downloading and installing XED."
 
-	pushd $DIR/third_party
-	curl -L -O ${PIN_URL}
-	mkdir -p $DIR/third_party/src/pin
-	tar xf ${PIN_VERSION}.tar.gz -C src/pin/ --strip-components=1
-	rm ${PIN_VERSION}.tar.gz
-	popd
+	if [[ ! -e $DIR/blob/${XED_VERSION}.zip ]] ; then
+		error "Please download XED from ${XED_URL} and place it into ${DIR}/blob."
+	fi
+
+	mkdir -p $DIR/third_party/src/xed
+	unzip $DIR/blob/${XED_VERSION}.zip -d $DIR/third_party/src/xed
 
 	# 'install' XED.
 	mkdir -p $DIR/third_party/include/intel
-	cp -r $DIR/third_party/src/pin/extras/xed-intel64/lib/* $DIR/third_party/lib
-	cp -r $DIR/third_party/src/pin/extras/xed-intel64/include/* $DIR/third_party/include/intel
-	cp -r $DIR/third_party/src/pin/extras/xed-intel64/bin/* $DIR/third_party/bin
+	cp -r $DIR/third_party/src/xed/kits/${XED_VERSION}/lib/* $DIR/third_party/lib
+	cp -r $DIR/third_party/src/xed/kits/${XED_VERSION}/include/* $DIR/third_party/include/intel
+	cp -r $DIR/third_party/src/xed/kits/${XED_VERSION}/bin/* $DIR/third_party/bin
 }
 
 function create_directory_tree()
@@ -250,10 +250,10 @@ function download_dependencies()
 	    download_and_install_gtest
 	fi;
 	
-	if [[ -e $DIR/third_party/bin/xed ]]; then
-	    notice "${BLUE}pin FOUND!"
+	if [[ -e $DIR/third_party/lib/libxed.so ]]; then
+	    notice "${BLUE}XED FOUND!"
 	else
-	    download_and_extract_pin
+	    download_and_extract_xed
 	fi;
 }
 

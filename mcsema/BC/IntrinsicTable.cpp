@@ -82,6 +82,10 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *M)
       read_memory_16(FindPureIntrinsic(M, "__mcsema_read_memory_16")),
       read_memory_32(FindPureIntrinsic(M, "__mcsema_read_memory_32")),
       read_memory_64(FindPureIntrinsic(M, "__mcsema_read_memory_64")),
+
+      read_memory_v8(FindPureIntrinsic(M, "__mcsema_read_memory_v8")),
+      read_memory_v16(FindPureIntrinsic(M, "__mcsema_read_memory_v16")),
+      read_memory_v32(FindPureIntrinsic(M, "__mcsema_read_memory_v32")),
       read_memory_v64(FindPureIntrinsic(M, "__mcsema_read_memory_v64")),
       read_memory_v128(FindPureIntrinsic(M, "__mcsema_read_memory_v128")),
       read_memory_v256(FindPureIntrinsic(M, "__mcsema_read_memory_v256")),
@@ -90,6 +94,10 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *M)
       write_memory_16(FindIntrinsic(M, "__mcsema_write_memory_16")),
       write_memory_32(FindIntrinsic(M, "__mcsema_write_memory_32")),
       write_memory_64(FindIntrinsic(M, "__mcsema_write_memory_64")),
+
+      write_memory_v8(FindIntrinsic(M, "__mcsema_write_memory_v8")),
+      write_memory_v16(FindIntrinsic(M, "__mcsema_write_memory_v16")),
+      write_memory_v32(FindIntrinsic(M, "__mcsema_write_memory_v32")),
       write_memory_v64(FindIntrinsic(M, "__mcsema_write_memory_v64")),
       write_memory_v128(FindIntrinsic(M, "__mcsema_write_memory_v128")),
       write_memory_v256(FindIntrinsic(M, "__mcsema_write_memory_v256")),
