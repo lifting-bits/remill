@@ -22,7 +22,7 @@ DEFINE_string(target_arch, "", "Architecture of the target architecture on "
                                "which the translated code will run. Valid "
                                 "architectures: x86, amd64.");
 
-DEFINE_string(os, "", "Target OS. Valid OSes: linux, mac.");
+DEFINE_string(os, MCSEMA_OS, "Target OS. Valid OSes: linux, mac.");
 
 DEFINE_string(cfg, "", "Path to the CFG file containing code to lift.");
 

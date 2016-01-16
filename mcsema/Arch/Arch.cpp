@@ -40,6 +40,7 @@ const Arch *Arch::Create(ArchName arch_name) {
       VLOG(1) << "Using architecture: AMD64";
       return new x86::Arch(64);
   }
+  return nullptr;
 }
 
 ArchName Arch::GetName(const std::string &arch_name) {

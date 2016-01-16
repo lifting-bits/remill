@@ -609,6 +609,16 @@ bool Instr::IsIndirectJump(void) const {
          XED_ICLASS_XEND == iclass || XED_ICLASS_XABORT == iclass;
 }
 
+bool Instr::IsNoOp(void) const {
+  switch (xed_decoded_inst_get_category(xedd)) {
+    case XED_CATEGORY_NOP:
+    case XED_CATEGORY_WIDENOP:
+      return true;
+    default:
+      return false;
+  }
+}
+
 bool Instr::IsError(void) const {
   return XED_ICLASS_HLT == iclass;
 }
