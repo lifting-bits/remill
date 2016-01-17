@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import concurrent.futures
 import glob
 import hashlib
 import os
@@ -33,7 +32,25 @@ INCLUDE_DIR = os.path.join(MCSEMA_DIR, "third_party", "include")
 BIN_DIR = os.path.join(MCSEMA_DIR, "third_party", "bin")
 LIB_DIR = os.path.join(MCSEMA_DIR, "third_party", "lib")
 
-POOL = concurrent.futures.ThreadPoolExecutor(max_workers=32)
+try:
+  import concurrent.futures
+  POOL = concurrent.futures.ThreadPoolExecutor(max_workers=32)
+  TASKS = []
+  def Task(func, *args, **kargs):
+    future = POOL.submit(func, *args, **kargs)
+    TASKS.append(future)
+    return future
+  def FinishAllTasks():
+    for task in TASKS:
+      task.result()
+    POOL.shutdown()
+
+# Don't have a thread pool available.
+except:
+  def Task(func, *args, **kargs):
+    return func(*args, **kargs)
+  def FinishAllTasks():
+    pass
 
 CXX_FLAGS = [
   # Enable warnings.
@@ -51,8 +68,10 @@ CXX_FLAGS = [
   "-Wno-override-module",
   
   # Features.
+  "-fno-omit-frame-pointer",
   "-fno-rtti",
   "-fno-exceptions",
+  "-fvisibility-inlines-hidden",
   "-std=gnu++11",
 
   # Macros.
@@ -75,30 +94,16 @@ CXX_FLAGS = [
 
 # Dictionary for memoizing the compilation of source files.
 SOURCE_FILES = {}
-TASKS = []
 
 
 # Execute a command.
 def Command(*args):
   args = [str(a) for a in args]
+  print "{}\n\n".format(" ".join(args))
   try:
     return subprocess.check_output(args)
   except:
-    print " ".join(args)
-
-
-# Run some task asynchronously.
-def Task(func, *args, **kargs):
-  future = POOL.submit(func, *args, **kargs)
-  TASKS.append(future)
-  return future
-
-
-# Wait until all pending tasks are done.
-def FinishAllTasks():
-  for task in TASKS:
-    task.result()
-  POOL.shutdown()
+    pass
 
 
 # Recursively make directors.
@@ -120,8 +125,9 @@ class FileName(object):
   def __str__(self):
     if isinstance(self.path, str) or isinstance(self.path, unicode):
       return os.path.abspath(self.path)
-    assert isinstance(self.path, concurrent.futures.Future)
-    return os.path.abspath(str(self.path.result()))
+    elif hasattr(self.path, 'result'):
+      return os.path.abspath(str(self.path.result()))
+    assert False
 
 
 class _File(object):
@@ -149,6 +155,10 @@ class _SourceFile(_File):
   def _Build(self, source_path, target_path, extra_args):
     MakeDirsForFile(target_path)
     args = [CXX]
+    
+    if "mac" == OS:
+      args.append("-stdlib=libc++")
+
     args.extend(CXX_FLAGS)
     args.extend(extra_args)
     args.extend([
@@ -173,20 +183,20 @@ def SourceFile(path, extra_args=[]):
 class StaticLibrary(_File):
   """Pre-compiled library within the source/library dirs."""
   def __init__(self, name):
-    abs_path = os.path.abspath(name)
-    if not os.path.exists(abs_path):
-      for where in (LIB_DIR, BUILD_DIR):
-        for ext in ("o", "a", "so", "dylib", "bc"):
-          for prefix in ("lib", ""):
-            path = os.path.join(where, "{}{}.{}".format(prefix, name, ext))
-            if os.path.exists(path):
-              abs_path = path
-              break
-      if not os.path.exists(abs_path):
-        print "Warning: cannot find object file: {}".format(name)
-        abs_path = name
-    super(StaticLibrary, self).__init__(abs_path)
+    super(StaticLibrary, self).__init__(self._FindLib(name))
 
+  def _FindLib(self, name):
+    abs_path = os.path.abspath(name)
+    if os.path.exists(abs_path):
+      return abs_path
+    for where in (LIB_DIR, BUILD_DIR):
+      for ext in ("o", "bc", "so", "dylib", "a"):
+        for prefix in ("lib", ""):
+          path = os.path.join(where, "{}{}.{}".format(prefix, name, ext))
+          if os.path.exists(path):
+            return path
+    print "Warning: cannot find object file: {}".format(name)
+    return name
 
 class ConfigLibraries(object):
   """Set of libraries returned from a configuration command."""
@@ -229,11 +239,11 @@ class _Target(_File):
   def _Build(self, path, source_files, object_files, libraries):
     args = [CXX]
     args.extend(CXX_FLAGS)
+
+    if "mac" == OS:
+      args.append("-stdlib=libc++")
+
     args.extend(self.extra_args)
-
-    for src in source_files:
-      args.extend(src.Paths())
-
     args.extend([
       "-o",
       path,
@@ -248,7 +258,10 @@ class _Target(_File):
     elif "mac" == OS:
       args.extend([
         "-Xlinker", "-rpath", "-Xlinker", LIB_DIR,
-        "-Wl,-dead_strip"])
+        "-Wl,-dead_strip",])
+
+    for src in source_files:
+      args.extend(src.Paths())
 
     for obj in object_files:
       args.extend(obj.Paths())
@@ -279,7 +292,10 @@ class TargetLibrary(_Target):
     if "linux" == OS:
       self.extra_args = ["-shared"]
     elif "mac" == OS:
-      self.extra_args = ["-dynamiclib"]
+      self.extra_args = [
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+        "-dynamiclib"]
     super(TargetLibrary, self).__init__(*args, **kargs)
 
 
@@ -312,7 +328,9 @@ object_files = [
 system_libraries = [
   LinkerLibrary("dl"),
   LinkerLibrary("pthread"),
-  LinkerLibrary("unwind", os="linux")]
+  LinkerLibrary("curses", os="mac"),
+  LinkerLibrary("c++", os="mac"),
+  LinkerLibrary("c++abi", os="mac")]
 
 # Find the LLVM libraries to link in.
 libraries = [ConfigLibraries(
@@ -386,19 +404,19 @@ def BuildTests(arch, bits, suffix, has_avx, has_avx512):
     "--bc_out={}.bc".format(bc_file))
 
   # Enable more bitcode optimizations.
-  Command(
-    os.path.join(BIN_DIR, "opt"),
-    "-load", libOptimize,
-    "-deferred_inliner",
-    "-o={}.opt.bc".format(bc_file),
-    "{}.bc".format(bc_file))
+  #Command(
+  #  os.path.join(BIN_DIR, "opt"),
+  #  "-load", libOptimize,
+  #  "-deferred_inliner",
+  #  "-o={}.opt.bc".format(bc_file),
+  #  "{}.bc".format(bc_file))
 
   # Build the test runner.
   run_tests = TargetExecutable(
     os.path.join(BUILD_DIR, "run_tests_{}{}".format(arch, suffix)),
     source_files=[
       SourceFile(
-        "{}.opt.bc".format(bc_file),
+        "{}.bc".format(bc_file),
         extra_args=["-O3"]),
       SourceFile(
         os.path.join(TEST_DIR, "X86", "Tests.S"),

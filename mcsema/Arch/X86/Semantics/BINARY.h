@@ -87,7 +87,6 @@ DEF_SEM(VADDSS, D dst, const S1 src1_, const S2 src2_) {
                        src1.floats[3]};
 }
 
-
 template <typename D, typename S1, typename S2>
 DEF_SEM(ADDSD, D dst, const S1 src1_, const S2 src2_) {
   auto src1 = R(src1_);
@@ -106,27 +105,27 @@ DEF_SEM(VADDSD, D dst, const S1 src1_, const S2 src2_) {
 
 }  // namespace
 
-DEF_ISEL(ADD_MEMb_IMMb_80r0_8) = ADD<M8W, M8, I8>;
-DEF_ISEL(ADD_GPR8_IMMb_80r0_8) = ADD<R8W, R8, I8>;
+DEF_ISEL(ADD_MEMb_IMMb_80r0) = ADD<M8W, M8, I8>;
+DEF_ISEL(ADD_GPR8_IMMb_80r0) = ADD<R8W, R8, I8>;
 DEF_ISEL_MnW_Mn_In(ADD_MEMv_IMMz, ADD);
 DEF_ISEL_RnW_Rn_In(ADD_GPRv_IMMz, ADD);
-DEF_ISEL(ADD_MEMb_IMMb_82r0_8) = ADD<M8W, M8, I8>;
-DEF_ISEL(ADD_GPR8_IMMb_82r0_8) = ADD<R8W, R8, I8>;
+DEF_ISEL(ADD_MEMb_IMMb_82r0) = ADD<M8W, M8, I8>;
+DEF_ISEL(ADD_GPR8_IMMb_82r0) = ADD<R8W, R8, I8>;
 DEF_ISEL_MnW_Mn_In(ADD_MEMv_IMMb, ADD);
 DEF_ISEL_RnW_Rn_In(ADD_GPRv_IMMb, ADD);
-DEF_ISEL(ADD_MEMb_GPR8_8) = ADD<M8W, M8, R8>;
-DEF_ISEL(ADD_GPR8_GPR8_00_8) = ADD<R8W, R8, R8>;
+DEF_ISEL(ADD_MEMb_GPR8) = ADD<M8W, M8, R8>;
+DEF_ISEL(ADD_GPR8_GPR8_00) = ADD<R8W, R8, R8>;
 DEF_ISEL_MnW_Mn_Rn(ADD_MEMv_GPRv, ADD);
 DEF_ISEL_RnW_Rn_Rn(ADD_GPRv_GPRv_01, ADD);
-DEF_ISEL(ADD_GPR8_MEMb_8) = ADD<R8W, R8, M8>;
-DEF_ISEL(ADD_GPR8_GPR8_02_8) = ADD<R8W, R8, R8>;
+DEF_ISEL(ADD_GPR8_MEMb) = ADD<R8W, R8, M8>;
+DEF_ISEL(ADD_GPR8_GPR8_02) = ADD<R8W, R8, R8>;
 DEF_ISEL_RnW_Rn_Mn(ADD_GPRv_MEMv, ADD);
 DEF_ISEL_RnW_Rn_Rn(ADD_GPRv_GPRv_03, ADD);
-DEF_ISEL(ADD_AL_IMMb_8) = ADD<R8W, R8, I8>;
+DEF_ISEL(ADD_AL_IMMb) = ADD<R8W, R8, I8>;
 DEF_ISEL_RnW_Rn_In(ADD_OrAX_IMMz, ADD);
 
-DEF_ISEL(XADD_MEMb_GPR8_8) = XADD<M8W, M8, R8W, R8>;
-DEF_ISEL(XADD_GPR8_GPR8_8) = XADD<R8W, R8, R8W, R8>;
+DEF_ISEL(XADD_MEMb_GPR8) = XADD<M8W, M8, R8W, R8>;
+DEF_ISEL(XADD_GPR8_GPR8) = XADD<R8W, R8, R8W, R8>;
 DEF_ISEL_MnW_Mn_RnW_Rn(XADD_MEMv_GPRv, XADD);
 DEF_ISEL_RnW_Rn_RnW_Rn(XADD_GPRv_GPRv, XADD);
 
@@ -183,25 +182,59 @@ DEF_SEM(SUB_VFP32, D dst, const S1 src1_, const S2 src2_) {
   W(dst) = src1.floats - src2.floats;
 }
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(SUBSS, D dst, const S1 src1_, const S2 src2_) {
+  auto src1 = R(src1_);
+  const auto src2 = R(src2_);
+  src1.floats[0] -= src2.floats[0];
+  W(dst) = src1;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(VSUBSS, D dst, const S1 src1_, const S2 src2_) {
+  const auto src1 = R(src1_);
+  const auto src2 = R(src2_);
+  W(dst) = float32v4_t{src1.floats[0] - src2.floats[0],
+                       src1.floats[1],
+                       src1.floats[2],
+                       src1.floats[3]};
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SUBSD, D dst, const S1 src1_, const S2 src2_) {
+  auto src1 = R(src1_);
+  const auto src2 = R(src2_);
+  src1.doubles[0] -= src2.doubles[0];
+  W(dst) = src1;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(VSUBSD, D dst, const S1 src1_, const S2 src2_) {
+  const auto src1 = R(src1_);
+  const auto src2 = R(src2_);
+  W(dst) = float64v2_t{src1.doubles[0] - src2.doubles[0],
+                       src1.doubles[1]};
+}
+
 }  // namespace
 
-DEF_ISEL(SUB_MEMb_IMMb_80r5_8) = SUB<M8W, M8, I8>;
-DEF_ISEL(SUB_GPR8_IMMb_80r5_8) = SUB<R8W, R8, I8>;
+DEF_ISEL(SUB_MEMb_IMMb_80r5) = SUB<M8W, M8, I8>;
+DEF_ISEL(SUB_GPR8_IMMb_80r5) = SUB<R8W, R8, I8>;
 DEF_ISEL_MnW_Mn_In(SUB_MEMv_IMMz, SUB);
 DEF_ISEL_RnW_Rn_In(SUB_GPRv_IMMz, SUB);
-DEF_ISEL(SUB_MEMb_IMMb_82r5_8) = SUB<M8W, M8, I8>;
-DEF_ISEL(SUB_GPR8_IMMb_82r5_8) = SUB<R8W, R8, I8>;
+DEF_ISEL(SUB_MEMb_IMMb_82r5) = SUB<M8W, M8, I8>;
+DEF_ISEL(SUB_GPR8_IMMb_82r5) = SUB<R8W, R8, I8>;
 DEF_ISEL_MnW_Mn_In(SUB_MEMv_IMMb, SUB);
 DEF_ISEL_RnW_Rn_In(SUB_GPRv_IMMb, SUB);
-DEF_ISEL(SUB_MEMb_GPR8_8) = SUB<M8W, M8, I8>;
-DEF_ISEL(SUB_GPR8_GPR8_28_8) = SUB<R8W, R8, R8>;
+DEF_ISEL(SUB_MEMb_GPR8) = SUB<M8W, M8, I8>;
+DEF_ISEL(SUB_GPR8_GPR8_28) = SUB<R8W, R8, R8>;
 DEF_ISEL_MnW_Mn_Rn(SUB_MEMv_GPRv, SUB);
 DEF_ISEL_RnW_Rn_Rn(SUB_GPRv_GPRv_29, SUB);
-DEF_ISEL(SUB_GPR8_GPR8_2A_8) = SUB<R8W, R8, R8>;
-DEF_ISEL(SUB_GPR8_MEMb_8) = SUB<R8W, R8, M8>;
+DEF_ISEL(SUB_GPR8_GPR8_2A) = SUB<R8W, R8, R8>;
+DEF_ISEL(SUB_GPR8_MEMb) = SUB<R8W, R8, M8>;
 DEF_ISEL_RnW_Rn_Rn(SUB_GPRv_GPRv_2B, SUB);
 DEF_ISEL_RnW_Rn_Mn(SUB_GPRv_MEMv, SUB);
-DEF_ISEL(SUB_AL_IMMb_8) = SUB<R8W, R8, I8>;
+DEF_ISEL(SUB_AL_IMMb) = SUB<R8W, R8, I8>;
 DEF_ISEL_RnW_Rn_In(SUB_OrAX_IMMz, SUB);
 
 DEF_ISEL(SUBPS_XMMps_MEMps) = SUB_VFP32<V128W, V128, MV128>;
@@ -218,6 +251,16 @@ IF_AVX(DEF_ISEL(VSUBPD_XMMdq_XMMdq_XMMdq) = SUB_VFP64<VV128W, VV128, VV128>;)
 IF_AVX(DEF_ISEL(VSUBPD_YMMqq_YMMqq_MEMqq) = SUB_VFP64<VV256W, VV256, MV256>;)
 IF_AVX(DEF_ISEL(VSUBPD_YMMqq_YMMqq_YMMqq) = SUB_VFP64<VV256W, VV256, VV256>;)
 
+DEF_ISEL(SUBSS_XMMss_MEMss) = SUBSS<V128W, V128, MV32>;
+DEF_ISEL(SUBSS_XMMss_XMMss) = SUBSS<V128W, V128, V128>;
+IF_AVX(DEF_ISEL(VSUBSS_XMMdq_XMMdq_MEMd) = VSUBSS<VV128W, VV128, MV32>;)
+IF_AVX(DEF_ISEL(VSUBSS_XMMdq_XMMdq_XMMd) = VSUBSS<VV128W, VV128, VV128>;)
+
+DEF_ISEL(SUBSD_XMMsd_MEMsd) = SUBSD<V128W, V128, MV64>;
+DEF_ISEL(SUBSD_XMMss_XMMss) = SUBSD<V128W, V128, V128>;
+IF_AVX(DEF_ISEL(VSUBSD_XMMdq_XMMdq_MEMq) = VSUBSD<VV128W, VV128, MV64>;)
+IF_AVX(DEF_ISEL(VSUBSD_XMMdq_XMMdq_XMMq) = VSUBSD<VV128W, VV128, VV128>;)
+
 namespace {
 
 template <typename S1, typename S2>
@@ -232,23 +275,23 @@ DEF_SEM(CMP, const S1 src1_, const S2 src2_) {
 
 }  // namespace
 
-DEF_ISEL(CMP_MEMb_IMMb_80r7_8) = CMP<M8, I8>;
-DEF_ISEL(CMP_GPR8_IMMb_80r7_8) = CMP<R8, I8>;
+DEF_ISEL(CMP_MEMb_IMMb_80r7) = CMP<M8, I8>;
+DEF_ISEL(CMP_GPR8_IMMb_80r7) = CMP<R8, I8>;
 DEF_ISEL_Mn_In(CMP_MEMv_IMMz, CMP);
 DEF_ISEL_Rn_In(CMP_GPRv_IMMz, CMP);
-DEF_ISEL(CMP_MEMb_IMMb_82r7_8) = CMP<M8, I8>;
-DEF_ISEL(CMP_GPR8_IMMb_82r7_8) = CMP<R8, I8>;
+DEF_ISEL(CMP_MEMb_IMMb_82r7) = CMP<M8, I8>;
+DEF_ISEL(CMP_GPR8_IMMb_82r7) = CMP<R8, I8>;
 DEF_ISEL_Mn_In(CMP_MEMv_IMMb, CMP);
 DEF_ISEL_Rn_In(CMP_GPRv_IMMb, CMP);
-DEF_ISEL(CMP_MEMb_GPR8_8) = CMP<M8, I8>;
-DEF_ISEL(CMP_GPR8_GPR8_38_8) = CMP<R8, R8>;
+DEF_ISEL(CMP_MEMb_GPR8) = CMP<M8, I8>;
+DEF_ISEL(CMP_GPR8_GPR8_38) = CMP<R8, R8>;
 DEF_ISEL_Mn_In(CMP_MEMv_GPRv, CMP);
 DEF_ISEL_Rn_Rn(CMP_GPRv_GPRv_39, CMP);
-DEF_ISEL(CMP_GPR8_GPR8_3A_8) = CMP<R8, R8>;
-DEF_ISEL(CMP_GPR8_MEMb_8) = CMP<R8, M8>;
+DEF_ISEL(CMP_GPR8_GPR8_3A) = CMP<R8, R8>;
+DEF_ISEL(CMP_GPR8_MEMb) = CMP<R8, M8>;
 DEF_ISEL_Rn_Rn(CMP_GPRv_GPRv_3B, CMP);
 DEF_ISEL_Rn_Mn(CMP_GPRv_MEMv, CMP);
-DEF_ISEL(CMP_AL_IMMb_8) = CMP<R8, I8>;
+DEF_ISEL(CMP_AL_IMMb) = CMP<R8, I8>;
 DEF_ISEL_Rn_In(CMP_OrAX_IMMz, CMP);
 
 namespace {
@@ -469,8 +512,8 @@ DEF_SEM(DIV_VFP32, D dst, const S1 src1_, const S2 src2_) {
 
 }  // namespace
 
-DEF_ISEL(IMUL_MEMb_8) = DivMul<SignedIntegerType>::MULA_8<M8>;
-DEF_ISEL(IMUL_GPR8_8) = DivMul<SignedIntegerType>::MULA_8<R8>;
+DEF_ISEL(IMUL_MEMb) = DivMul<SignedIntegerType>::MULA_8<M8>;
+DEF_ISEL(IMUL_GPR8) = DivMul<SignedIntegerType>::MULA_8<R8>;
 DEF_ISEL(IMUL_MEMv_8) = DivMul<SignedIntegerType>::MULA_8<M8>;
 DEF_ISEL(IMUL_MEMv_16) = DivMul<SignedIntegerType>::MULAD_16<M16>;
 DEF_ISEL(IMUL_MEMv_32) = DivMul<SignedIntegerType>::MULAD_32<M32>;
@@ -490,8 +533,8 @@ DEF_ISEL_RnW_Rn_In(IMUL_GPRv_GPRv_IMMb, DivMul<SignedIntegerType>::MUL);
 DEF_ISEL_RnW_Rn_Mn(IMUL_GPRv_MEMv, DivMul<SignedIntegerType>::MUL);
 DEF_ISEL_RnW_Rn_Rn(IMUL_GPRv_GPRv, DivMul<SignedIntegerType>::MUL);
 
-DEF_ISEL(MUL_GPR8_8) = DivMul<UnsignedIntegerType>::MULA_8<R8>;
-DEF_ISEL(MUL_MEMb_8) = DivMul<UnsignedIntegerType>::MULA_8<M8>;
+DEF_ISEL(MUL_GPR8) = DivMul<UnsignedIntegerType>::MULA_8<R8>;
+DEF_ISEL(MUL_MEMb) = DivMul<UnsignedIntegerType>::MULA_8<M8>;
 DEF_ISEL(MUL_MEMv_8) = DivMul<UnsignedIntegerType>::MULA_8<M8>;
 DEF_ISEL(MUL_MEMv_16) = DivMul<UnsignedIntegerType>::MULAD_16<M16>;
 DEF_ISEL(MUL_MEMv_32) = DivMul<UnsignedIntegerType>::MULAD_32<M32>;
@@ -501,13 +544,13 @@ DEF_ISEL(MUL_GPRv_16) = DivMul<UnsignedIntegerType>::MULAD_16<R16>;
 DEF_ISEL(MUL_GPRv_32) = DivMul<UnsignedIntegerType>::MULAD_32<R32>;
 IF_64BIT(DEF_ISEL(MUL_GPRv_64) = DivMul<UnsignedIntegerType>::MULAD_64<R64>;)
 
-DEF_ISEL(MULX_VGPR32d_VGPR32d_VGPR32d_32) =
+DEF_ISEL(MULX_VGPR32d_VGPR32d_VGPR32d) =
     DivMul<UnsignedIntegerType>::MULX<R32W, R32>;
-DEF_ISEL(MULX_VGPR32d_VGPR32d_MEMd_32) =
+DEF_ISEL(MULX_VGPR32d_VGPR32d_MEMd) =
     DivMul<UnsignedIntegerType>::MULX<R32W, M32>;
-IF_64BIT(DEF_ISEL(MULX_VGPR64q_VGPR64q_VGPR64q_64) =
+IF_64BIT(DEF_ISEL(MULX_VGPR64q_VGPR64q_VGPR64q) =
     DivMul<UnsignedIntegerType>::MULX<R64W, R64>;)
-IF_64BIT(DEF_ISEL(MULX_VGPR64q_VGPR64q_MEMq_64) =
+IF_64BIT(DEF_ISEL(MULX_VGPR64q_VGPR64q_MEMq) =
     DivMul<UnsignedIntegerType>::MULX<R64W, M64>;)
 
 DEF_ISEL(MULPS_XMMps_MEMps) = MUL_VFP32<V128W, V128, MV128>;
@@ -524,8 +567,8 @@ IF_AVX(DEF_ISEL(VMULPD_XMMdq_XMMdq_XMMdq) = MUL_VFP64<VV128W, VV128, VV128>;)
 IF_AVX(DEF_ISEL(VMULPD_YMMqq_YMMqq_MEMqq) = MUL_VFP64<VV256W, VV256, MV256>;)
 IF_AVX(DEF_ISEL(VMULPD_YMMqq_YMMqq_YMMqq) = MUL_VFP64<VV256W, VV256, VV256>;)
 
-DEF_ISEL(IDIV_MEMb_8) = DivMul<SignedIntegerType>::DIVA_8<M8>;
-DEF_ISEL(IDIV_GPR8_8) = DivMul<SignedIntegerType>::DIVA_8<R8>;
+DEF_ISEL(IDIV_MEMb) = DivMul<SignedIntegerType>::DIVA_8<M8>;
+DEF_ISEL(IDIV_GPR8) = DivMul<SignedIntegerType>::DIVA_8<R8>;
 DEF_ISEL(IDIV_MEMv_8) = DivMul<SignedIntegerType>::DIVA_8<M8>;
 DEF_ISEL(IDIV_MEMv_16) = DivMul<SignedIntegerType>::DIVA_16<M16>;
 DEF_ISEL(IDIV_MEMv_32) = DivMul<SignedIntegerType>::DIVA_32<M32>;
@@ -535,8 +578,8 @@ DEF_ISEL(IDIV_GPRv_16) = DivMul<SignedIntegerType>::DIVA_16<R16>;
 DEF_ISEL(IDIV_GPRv_32) = DivMul<SignedIntegerType>::DIVA_32<R32>;
 IF_64BIT(DEF_ISEL(IDIV_GPRv_64) = DivMul<SignedIntegerType>::DIVA_64<R64>;)
 
-DEF_ISEL(DIV_MEMb_8) = DivMul<UnsignedIntegerType>::DIVA_8<M8>;
-DEF_ISEL(DIV_GPR8_8) = DivMul<UnsignedIntegerType>::DIVA_8<R8>;
+DEF_ISEL(DIV_MEMb) = DivMul<UnsignedIntegerType>::DIVA_8<M8>;
+DEF_ISEL(DIV_GPR8) = DivMul<UnsignedIntegerType>::DIVA_8<R8>;
 DEF_ISEL(DIV_MEMv_8) = DivMul<UnsignedIntegerType>::DIVA_8<M8>;
 DEF_ISEL(DIV_MEMv_16) = DivMul<UnsignedIntegerType>::DIVA_16<M16>;
 DEF_ISEL(DIV_MEMv_32) = DivMul<UnsignedIntegerType>::DIVA_32<M32>;
@@ -598,20 +641,20 @@ DEF_SEM(NEG, D dst, const S src) {
 
 }  // namespace
 
-DEF_ISEL(INC_MEMb_8) = INC<M8W, M8>;
-DEF_ISEL(INC_GPR8_8) = INC<R8W, R8>;
+DEF_ISEL(INC_MEMb) = INC<M8W, M8>;
+DEF_ISEL(INC_GPR8) = INC<R8W, R8>;
 DEF_ISEL_MnW_Mn(INC_MEMv, INC);
 DEF_ISEL_RnW_Rn(INC_GPRv_FFr0, INC);
 DEF_ISEL_RnW_Rn(INC_GPRv_40, INC);
 
-DEF_ISEL(DEC_MEMb_8) = DEC<M8W, M8>;
-DEF_ISEL(DEC_GPR8_8) = DEC<R8W, R8>;
+DEF_ISEL(DEC_MEMb) = DEC<M8W, M8>;
+DEF_ISEL(DEC_GPR8) = DEC<R8W, R8>;
 DEF_ISEL_MnW_Mn(DEC_MEMv, DEC);
 DEF_ISEL_RnW_Rn(DEC_GPRv_FFr1, DEC);
 DEF_ISEL_RnW_Rn(DEC_GPRv_48, DEC);
 
-DEF_ISEL(NEG_MEMb_8) = NEG<M8W, M8>;
-DEF_ISEL(NEG_GPR8_8) = NEG<R8W, R8>;
+DEF_ISEL(NEG_MEMb) = NEG<M8W, M8>;
+DEF_ISEL(NEG_GPR8) = NEG<R8W, R8>;
 DEF_ISEL_MnW_Mn(NEG_MEMv, NEG);
 DEF_ISEL_RnW_Rn(NEG_GPRv, NEG);
 
@@ -655,42 +698,42 @@ DEF_SEM(SBB, D dst, const S1 src1_, const S2 src2_) {
 
 }  // namespace
 
-DEF_ISEL(SBB_MEMb_IMMb_80r3_8) = SBB<M8W, M8, I8>;
-DEF_ISEL(SBB_GPR8_IMMb_80r3_8) = SBB<R8W, R8, I8>;
+DEF_ISEL(SBB_MEMb_IMMb_80r3) = SBB<M8W, M8, I8>;
+DEF_ISEL(SBB_GPR8_IMMb_80r3) = SBB<R8W, R8, I8>;
 DEF_ISEL_MnW_Mn_In(SBB_MEMv_IMMz, SBB);
 DEF_ISEL_RnW_Rn_In(SBB_GPRv_IMMz, SBB);
-DEF_ISEL(SBB_MEMb_IMMb_82r3_8) = SBB<M8W, M8, I8>;
-DEF_ISEL(SBB_GPR8_IMMb_82r3_8) = SBB<R8W, R8, I8>;
+DEF_ISEL(SBB_MEMb_IMMb_82r3) = SBB<M8W, M8, I8>;
+DEF_ISEL(SBB_GPR8_IMMb_82r3) = SBB<R8W, R8, I8>;
 DEF_ISEL_MnW_Mn_In(SBB_MEMv_IMMb, SBB);
 DEF_ISEL_RnW_Rn_In(SBB_GPRv_IMMb, SBB);
-DEF_ISEL(SBB_MEMb_GPR8_8) = SBB<M8W, M8, I8>;
-DEF_ISEL(SBB_GPR8_GPR8_18_8) = SBB<R8W, R8, R8>;
+DEF_ISEL(SBB_MEMb_GPR8) = SBB<M8W, M8, I8>;
+DEF_ISEL(SBB_GPR8_GPR8_18) = SBB<R8W, R8, R8>;
 DEF_ISEL_MnW_Mn_Rn(SBB_MEMv_GPRv, SBB);
 DEF_ISEL_RnW_Rn_Rn(SBB_GPRv_GPRv_19, SBB);
-DEF_ISEL(SBB_GPR8_GPR8_1A_8) = SBB<R8W, R8, R8>;
-DEF_ISEL(SBB_GPR8_MEMb_8) = SBB<R8W, R8, M8>;
+DEF_ISEL(SBB_GPR8_GPR8_1A) = SBB<R8W, R8, R8>;
+DEF_ISEL(SBB_GPR8_MEMb) = SBB<R8W, R8, M8>;
 DEF_ISEL_RnW_Rn_Rn(SBB_GPRv_GPRv_1B, SBB);
 DEF_ISEL_RnW_Rn_Mn(SBB_GPRv_MEMv, SBB);
-DEF_ISEL(SBB_AL_IMMb_8) = SBB<R8W, R8, I8>;
+DEF_ISEL(SBB_AL_IMMb) = SBB<R8W, R8, I8>;
 DEF_ISEL_RnW_Rn_In(SBB_OrAX_IMMz, SBB);
 
-DEF_ISEL(ADC_MEMb_IMMb_80r2_8) = ADC<M8W, M8, I8>;
-DEF_ISEL(ADC_GPR8_IMMb_80r2_8) = ADC<R8W, R8, I8>;
+DEF_ISEL(ADC_MEMb_IMMb_80r2) = ADC<M8W, M8, I8>;
+DEF_ISEL(ADC_GPR8_IMMb_80r2) = ADC<R8W, R8, I8>;
 DEF_ISEL_MnW_Mn_In(ADC_MEMv_IMMz, ADC);
 DEF_ISEL_RnW_Rn_In(ADC_GPRv_IMMz, ADC);
-DEF_ISEL(ADC_MEMb_IMMb_82r2_8) = ADC<M8W, M8, I8>;
-DEF_ISEL(ADC_GPR8_IMMb_82r2_8) = ADC<R8W, R8, I8>;
+DEF_ISEL(ADC_MEMb_IMMb_82r2) = ADC<M8W, M8, I8>;
+DEF_ISEL(ADC_GPR8_IMMb_82r2) = ADC<R8W, R8, I8>;
 DEF_ISEL_MnW_Mn_In(ADC_MEMv_IMMb, ADC);
 DEF_ISEL_RnW_Rn_In(ADC_GPRv_IMMb, ADC);
-DEF_ISEL(ADC_MEMb_GPR8_8) = ADC<M8W, M8, R8>;
-DEF_ISEL(ADC_GPR8_GPR8_10_8) = ADC<R8W, R8, R8>;
+DEF_ISEL(ADC_MEMb_GPR8) = ADC<M8W, M8, R8>;
+DEF_ISEL(ADC_GPR8_GPR8_10) = ADC<R8W, R8, R8>;
 DEF_ISEL_MnW_Mn_Rn(ADC_MEMv_GPRv, ADC);
 DEF_ISEL_RnW_Rn_Rn(ADC_GPRv_GPRv_11, ADC);
-DEF_ISEL(ADC_GPR8_MEMb_8) = ADC<R8W, R8, M8>;
-DEF_ISEL(ADC_GPR8_GPR8_12_8) = ADC<R8W, R8, R8>;
+DEF_ISEL(ADC_GPR8_MEMb) = ADC<R8W, R8, M8>;
+DEF_ISEL(ADC_GPR8_GPR8_12) = ADC<R8W, R8, R8>;
 DEF_ISEL_RnW_Rn_Mn(ADC_GPRv_MEMv, ADC);
 DEF_ISEL_RnW_Rn_Rn(ADC_GPRv_GPRv_13, ADC);
-DEF_ISEL(ADC_AL_IMMb_8) = ADC<R8W, R8, I8>;
+DEF_ISEL(ADC_AL_IMMb) = ADC<R8W, R8, I8>;
 DEF_ISEL_RnW_Rn_In(ADC_OrAX_IMMz, ADC);
 
 namespace {
@@ -822,52 +865,52 @@ DEF_SEM(SHL, D dst, S1 src1_, S2 src2_) {
 
 }  // namespace
 
-DEF_ISEL(SHR_MEMb_IMMb_8) = ShiftRight<UnsignedIntegerType>::DO<M8W, M8, I8>;
-DEF_ISEL(SHR_GPR8_IMMb_8) = ShiftRight<UnsignedIntegerType>::DO<R8W, R8, I8>;
+DEF_ISEL(SHR_MEMb_IMMb) = ShiftRight<UnsignedIntegerType>::DO<M8W, M8, I8>;
+DEF_ISEL(SHR_GPR8_IMMb) = ShiftRight<UnsignedIntegerType>::DO<R8W, R8, I8>;
 DEF_ISEL_MnW_Mn_In(SHR_MEMv_IMMb, ShiftRight<UnsignedIntegerType>::DO);
 DEF_ISEL_RnW_Rn_In(SHR_GPRv_IMMb, ShiftRight<UnsignedIntegerType>::DO);
-DEF_ISEL(SHR_MEMb_ONE_8) = ShiftRight<UnsignedIntegerType>::DO<M8W, M8, I8>;
-DEF_ISEL(SHR_GPR8_ONE_8) = ShiftRight<UnsignedIntegerType>::DO<R8W, R8, I8>;
+DEF_ISEL(SHR_MEMb_ONE) = ShiftRight<UnsignedIntegerType>::DO<M8W, M8, I8>;
+DEF_ISEL(SHR_GPR8_ONE) = ShiftRight<UnsignedIntegerType>::DO<R8W, R8, I8>;
 DEF_ISEL_MnW_Mn_In(SHR_MEMv_ONE, ShiftRight<UnsignedIntegerType>::DO);
 DEF_ISEL_RnW_Rn_In(SHR_GPRv_ONE, ShiftRight<UnsignedIntegerType>::DO);
-DEF_ISEL(SHR_MEMb_CL_8) = ShiftRight<UnsignedIntegerType>::DO<M8W, M8, R8>;
-DEF_ISEL(SHR_GPR8_CL_8) = ShiftRight<UnsignedIntegerType>::DO<R8W, R8, R8>;
+DEF_ISEL(SHR_MEMb_CL) = ShiftRight<UnsignedIntegerType>::DO<M8W, M8, R8>;
+DEF_ISEL(SHR_GPR8_CL) = ShiftRight<UnsignedIntegerType>::DO<R8W, R8, R8>;
 DEF_ISEL_MnW_Mn_Rn(SHR_MEMv_CL, ShiftRight<UnsignedIntegerType>::DO);
 DEF_ISEL_RnW_Rn_Rn(SHR_GPRv_CL, ShiftRight<UnsignedIntegerType>::DO);
 
-DEF_ISEL(SAR_MEMb_IMMb_8) = ShiftRight<SignedIntegerType>::DO<M8W, M8, I8>;
-DEF_ISEL(SAR_GPR8_IMMb_8) = ShiftRight<SignedIntegerType>::DO<R8W, R8, I8>;
+DEF_ISEL(SAR_MEMb_IMMb) = ShiftRight<SignedIntegerType>::DO<M8W, M8, I8>;
+DEF_ISEL(SAR_GPR8_IMMb) = ShiftRight<SignedIntegerType>::DO<R8W, R8, I8>;
 DEF_ISEL_MnW_Mn_In(SAR_MEMv_IMMb, ShiftRight<SignedIntegerType>::DO);
 DEF_ISEL_RnW_Rn_In(SAR_GPRv_IMMb, ShiftRight<SignedIntegerType>::DO);
-DEF_ISEL(SAR_MEMb_ONE_8) = ShiftRight<SignedIntegerType>::DO<M8W, M8, I8>;
-DEF_ISEL(SAR_GPR8_ONE_8) = ShiftRight<SignedIntegerType>::DO<R8W, R8, I8>;
+DEF_ISEL(SAR_MEMb_ONE) = ShiftRight<SignedIntegerType>::DO<M8W, M8, I8>;
+DEF_ISEL(SAR_GPR8_ONE) = ShiftRight<SignedIntegerType>::DO<R8W, R8, I8>;
 DEF_ISEL_MnW_Mn_In(SAR_MEMv_ONE, ShiftRight<SignedIntegerType>::DO);
 DEF_ISEL_RnW_Rn_In(SAR_GPRv_ONE, ShiftRight<SignedIntegerType>::DO);
-DEF_ISEL(SAR_MEMb_CL_8) = ShiftRight<SignedIntegerType>::DO<M8W, M8, R8>;
-DEF_ISEL(SAR_GPR8_CL_8) = ShiftRight<SignedIntegerType>::DO<R8W, R8, R8>;
+DEF_ISEL(SAR_MEMb_CL) = ShiftRight<SignedIntegerType>::DO<M8W, M8, R8>;
+DEF_ISEL(SAR_GPR8_CL) = ShiftRight<SignedIntegerType>::DO<R8W, R8, R8>;
 DEF_ISEL_MnW_Mn_Rn(SAR_MEMv_CL, ShiftRight<SignedIntegerType>::DO);
 DEF_ISEL_RnW_Rn_Rn(SAR_GPRv_CL, ShiftRight<SignedIntegerType>::DO);
 
-DEF_ISEL(SHL_MEMb_IMMb_C0r4_8) = SHL<M8W, M8, I8>;
-DEF_ISEL(SHL_GPR8_IMMb_C0r4_8) = SHL<R8W, R8, I8>;
-DEF_ISEL(SHL_MEMb_IMMb_C0r6_8) = SHL<M8W, M8, I8>;
-DEF_ISEL(SHL_GPR8_IMMb_C0r6_8) = SHL<R8W, R8, I8>;
+DEF_ISEL(SHL_MEMb_IMMb_C0r4) = SHL<M8W, M8, I8>;
+DEF_ISEL(SHL_GPR8_IMMb_C0r4) = SHL<R8W, R8, I8>;
+DEF_ISEL(SHL_MEMb_IMMb_C0r6) = SHL<M8W, M8, I8>;
+DEF_ISEL(SHL_GPR8_IMMb_C0r6) = SHL<R8W, R8, I8>;
 DEF_ISEL_MnW_Mn_In(SHL_MEMv_IMMb_C1r4, SHL);
 DEF_ISEL_RnW_Rn_In(SHL_GPRv_IMMb_C1r4, SHL);
 DEF_ISEL_MnW_Mn_In(SHL_MEMv_IMMb_C1r6, SHL);
 DEF_ISEL_RnW_Rn_In(SHL_GPRv_IMMb_C1r6, SHL);
-DEF_ISEL(SHL_MEMb_ONE_D0r4_8) = SHL<M8W, M8, I8>;
-DEF_ISEL(SHL_GPR8_ONE_D0r4_8) = SHL<R8W, R8, I8>;
-DEF_ISEL(SHL_MEMb_ONE_D0r6_8) = SHL<M8W, M8, I8>;
-DEF_ISEL(SHL_GPR8_ONE_D0r6_8) = SHL<R8W, R8, I8>;
+DEF_ISEL(SHL_MEMb_ONE_D0r4) = SHL<M8W, M8, I8>;
+DEF_ISEL(SHL_GPR8_ONE_D0r4) = SHL<R8W, R8, I8>;
+DEF_ISEL(SHL_MEMb_ONE_D0r6) = SHL<M8W, M8, I8>;
+DEF_ISEL(SHL_GPR8_ONE_D0r6) = SHL<R8W, R8, I8>;
 DEF_ISEL_MnW_Mn_In(SHL_MEMv_ONE_D1r6, SHL);
 DEF_ISEL_RnW_Rn_In(SHL_GPRv_ONE_D1r6, SHL);
 DEF_ISEL_MnW_Mn_In(SHL_MEMv_ONE_D1r4, SHL);
 DEF_ISEL_RnW_Rn_In(SHL_GPRv_ONE_D1r4, SHL);
-DEF_ISEL(SHL_MEMb_CL_D2r4_8) = SHL<M8W, M8, R8>;
-DEF_ISEL(SHL_GPR8_CL_D2r4_8) = SHL<R8W, R8, R8>;
-DEF_ISEL(SHL_MEMb_CL_D2r6_8) = SHL<M8W, M8, R8>;
-DEF_ISEL(SHL_GPR8_CL_D2r6_8) = SHL<R8W, R8, R8>;
+DEF_ISEL(SHL_MEMb_CL_D2r4) = SHL<M8W, M8, R8>;
+DEF_ISEL(SHL_GPR8_CL_D2r4) = SHL<R8W, R8, R8>;
+DEF_ISEL(SHL_MEMb_CL_D2r6) = SHL<M8W, M8, R8>;
+DEF_ISEL(SHL_GPR8_CL_D2r6) = SHL<R8W, R8, R8>;
 DEF_ISEL_MnW_Mn_Rn(SHL_MEMv_CL_D3r4, SHL);
 DEF_ISEL_RnW_Rn_Rn(SHL_GPRv_CL_D3r4, SHL);
 DEF_ISEL_MnW_Mn_Rn(SHL_MEMv_CL_D3r6, SHL);

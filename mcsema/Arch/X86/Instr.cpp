@@ -48,8 +48,10 @@ namespace {
 static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
   std::stringstream ss;
   ss << xed_iform_enum_t2str(xed_decoded_inst_get_iform_enum(xedd));
-  ss << "_";
-  ss << xed_decoded_inst_get_operand_width(xedd);
+  if (xed_decoded_inst_get_attribute(xedd, XED_ATTRIBUTE_SCALABLE)) {
+    ss << "_";
+    ss << xed_decoded_inst_get_operand_width(xedd);
+  }
   return ss.str();
 }
 

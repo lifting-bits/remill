@@ -1,5 +1,7 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#define _XOPEN_SOURCE
+
 #include <cstdint>
 #include <cstring>
 #include <iostream>

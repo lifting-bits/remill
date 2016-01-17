@@ -23,7 +23,7 @@ $DIR/third_party/bin/opt -O3 -o=$1.opt0.bc $1 || {
 }
 
 $DIR/third_party/bin/opt \
-	-load $DIR/build/libOptimizer.$DYLIB_SUFFIX -deferred_inliner \
+	-load $DIR/build/libOptimize.$DYLIB_SUFFIX -deferred_inliner \
 	-o=$1.opt1.bc $1.opt0.bc || {
 	printf "${RED}Could not optimize $1.opt0.bc${RESET}\n"
 	exit 1
