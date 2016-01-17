@@ -40,7 +40,7 @@ static const auto gStackBase = reinterpret_cast<uintptr_t>(&gLiftedStack);
 static const auto gStackLimit = gStackBase + sizeof(Stack);
 
 template <typename T>
-inline static T &AccessMemory(addr_t addr) {
+ALWAYS_INLINE static T &AccessMemory(addr_t addr) {
   EXPECT_TRUE(addr > gStackBase && addr < gStackLimit);
   return *reinterpret_cast<T *>(static_cast<uintptr_t>(addr));
 }
@@ -90,28 +90,29 @@ extern void InvokeTestCase(uint64_t, uint64_t, uint64_t);
 
 // Address computation intrinsic. This is only used for non-zero
 // `address_space`d memory accesses.
-addr_t __mcsema_compute_address(const State &state, addr_t addr,
-                                int address_space) {
+NEVER_INLINE addr_t __mcsema_compute_address(const State &state, addr_t addr,
+                                             int address_space) {
   (void) state;
   (void) address_space;
   return addr;
 }
 
 #define MAKE_RW_MEMORY(size) \
-  uint ## size ## _t  __mcsema_read_memory_ ## size(addr_t addr) { \
+  NEVER_INLINE uint ## size ## _t  __mcsema_read_memory_ ## size(addr_t addr) {\
     return AccessMemory<uint ## size ## _t>(addr); \
   } \
-  void __mcsema_write_memory_ ## size (addr_t addr, \
-                                        const uint ## size ## _t in) { \
+  NEVER_INLINE void __mcsema_write_memory_ ## size ( \
+      addr_t addr, const uint ## size ## _t in) { \
     AccessMemory<uint ## size ## _t>(addr) = in; \
   }
 
 #define MAKE_RW_VEC_MEMORY(size) \
-  void __mcsema_read_memory_v ## size(addr_t addr, vec ## size ## _t &out) { \
+  NEVER_INLINE void __mcsema_read_memory_v ## size(\
+      addr_t addr, vec ## size ## _t &out) { \
     out = AccessMemory<vec ## size ## _t>(addr); \
   } \
-  void __mcsema_write_memory_v ## size (addr_t addr, \
-                                        const vec ## size ## _t &in) { \
+  NEVER_INLINE void __mcsema_write_memory_v ## size (\
+      addr_t addr, const vec ## size ## _t &in) { \
     AccessMemory<vec ## size ## _t>(addr) = in; \
   }
 
@@ -189,6 +190,8 @@ static void CopyXMMRegsIntoFPU(State *state) {
 static std::vector<const test::TestInfo *> gTests;
 
 static void InitFlags(void) {
+  asm("pushfq; pushfq; pop %0; pop %1;" : : "m"(gRflagsOn), "m"(gRflagsOff));
+
   gRflagsOn.cf = true;
   gRflagsOn.pf = true;
   gRflagsOn.af = true;

@@ -278,25 +278,16 @@ function generate_files()
 	$DIR/third_party/bin/protoc --cpp_out=. CFG.proto
 	$DIR/third_party/bin/protoc --python_out=. CFG.proto
 	
+	sub_category "Generating test save state code."
+	$DIR/scripts/print_x86_save_state_asm.sh
+
 	popd
 }
 
 function build_mcsema()
 {
     category "Compiling McSema."
-	pushd $DIR
-	mkdir -p $DIR/build
-	pushd $DIR/build
-	cmake \
-	    -G "Unix Makefiles" \
-	    -DMCSEMA_DIR:STRING=$DIR \
-	    -DMCSEMA_OS_NAME:STRING=$MCSEMA_OS_NAME \
-	    -DCMAKE_PREFIX_PATH:STRING=$DIR/third_party \
-	    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-	    ..
-	make all
-	popd
-	popd
+    python $DIR/scripts/build.py
 }
 
 create_directory_tree

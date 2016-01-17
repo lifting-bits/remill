@@ -65,8 +65,6 @@ bool DeferredInlineOptimizer::runOnModule(llvm::Module &M) {
 
     Fs.insert(F);
 
-    F->setCallingConv(llvm::CallingConv::Fast);
-
     F->removeFnAttr(llvm::Attribute::NoInline);
     F->addFnAttr(llvm::Attribute::AlwaysInline);
     F->addFnAttr(llvm::Attribute::InlineHint);

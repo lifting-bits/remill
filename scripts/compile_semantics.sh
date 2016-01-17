@@ -34,13 +34,13 @@ function compile_x86()
     printf "${BLUE}${MESSAGE}${RESET}\n"
     
     $DIR/third_party/bin/clang++ -x c++ \
-        -emit-llvm -O0 -mtune=generic -m$1 $MACROS $CXXFLAGS \
+        -emit-llvm -O0 -g3 -mtune=generic -m$1 $MACROS $CXXFLAGS \
         -ffunction-sections -fdata-sections \
 	    -c $DIR/mcsema/Arch/X86/Runtime/Instructions.cpp \
 	    -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc
 	    
     $DIR/third_party/bin/clang++ -x c++ \
-        -emit-llvm -O0 -m$1 -mtune=generic $MACROS $CXXFLAGS \
+        -emit-llvm -O0 -g3 -m$1 -mtune=generic $MACROS $CXXFLAGS \
         -ffunction-sections -fdata-sections \
         -c $DIR/mcsema/Arch/X86/Runtime/BasicBlock.cpp \
         -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc
