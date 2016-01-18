@@ -372,6 +372,27 @@ static void RecoverFromError(int signum, siginfo_t *, void *context_) {
 
   auto context = reinterpret_cast<ucontext_t *>(context_);
   auto native_state = reinterpret_cast<State *>(&gNativeState);
+#ifdef __APPLE__
+  const auto mcontext = context->uc_mcontext;
+  const auto &ss = mcontext->__ss;
+  native_state->gpr.rax.qword = ss.__rax & gRegMask32;
+  native_state->gpr.rbx.qword = ss.__rbx & gRegMask32;
+  native_state->gpr.rcx.qword = ss.__rcx & gRegMask32;
+  native_state->gpr.rdx.qword = ss.__rdx & gRegMask32;
+  native_state->gpr.rsi.qword = ss.__rsi & gRegMask32;
+  native_state->gpr.rdi.qword = ss.__rdi & gRegMask32;
+  native_state->gpr.rbp.qword = ss.__rbp & gRegMask32;
+  native_state->gpr.rsp.qword = ss.__rsp & gRegMask32;
+  native_state->gpr.r8.qword = ss.__r8 & gRegMask64;
+  native_state->gpr.r9.qword = ss.__r9 & gRegMask64;
+  native_state->gpr.r10.qword = ss.__r10 & gRegMask64;
+  native_state->gpr.r11.qword = ss.__r11 & gRegMask64;
+  native_state->gpr.r12.qword = ss.__r12 & gRegMask64;
+  native_state->gpr.r13.qword = ss.__r13 & gRegMask64;
+  native_state->gpr.r14.qword = ss.__r14 & gRegMask64;
+  native_state->gpr.r15.qword = ss.__r15 & gRegMask64;
+  native_state->rflag.flat = ss.__rflags;
+#else
   const auto &mcontext = context->uc_mcontext;
 
   native_state->gpr.rax.qword = mcontext.gregs[REG_RAX] & gRegMask32;
@@ -391,8 +412,9 @@ static void RecoverFromError(int signum, siginfo_t *, void *context_) {
   native_state->gpr.r13.qword = mcontext.gregs[REG_R13] & gRegMask64;
   native_state->gpr.r14.qword = mcontext.gregs[REG_R14] & gRegMask64;
   native_state->gpr.r15.qword = mcontext.gregs[REG_R15] & gRegMask64;
-
   native_state->rflag.flat = context->uc_mcontext.gregs[REG_EFL];
+#endif  // __APPLE__
+
   native_state->rflag.rf = false;  // Resume flag.
 
   siglongjmp(gJmpBuf, 0);
@@ -403,7 +425,9 @@ static void HandleSignal(int signum, SignalHandler *handler) {
   struct sigaction sig;
   sig.sa_sigaction = handler;
   sig.sa_flags = SA_SIGINFO | SA_ONSTACK;
+#ifndef __APPLE__
   sig.sa_restorer = nullptr;
+#endif  // __APPLE__
   sigfillset(&(sig.sa_mask));
   sigaction(signum, &sig, nullptr);
 }
@@ -413,10 +437,11 @@ static void SetupSignals(void) {
   HandleSignal(SIGSEGV, RecoverFromError);
   HandleSignal(SIGBUS, RecoverFromError);
   HandleSignal(SIGFPE, RecoverFromError);
-  HandleSignal(SIGSTKFLT, RecoverFromError);
   HandleSignal(SIGTRAP, RecoverFromError);
   HandleSignal(SIGILL, RecoverFromError);
-
+#ifdef SIGSTKFLT
+  HandleSignal(SIGSTKFLT, RecoverFromError);
+#endif  // SIGSTKFLT
   sigset_t set;
   sigemptyset(&set);
   sigprocmask(SIG_SETMASK, &set, nullptr);
