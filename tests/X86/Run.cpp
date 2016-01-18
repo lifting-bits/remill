@@ -75,7 +75,7 @@ uintptr_t gTestToRun = 0;
 // Used for swapping the stack pointer between `gStack` and the normal
 // call stack. This lets us run both native and lifted testcase code on
 // the same stack.
-Stack *gStackSwitcher = (&gLiftedStack) + 1;
+Stack *gStackSwitcher = nullptr;
 
 // We need to capture the native flags state, and so we need a `PUSHFQ`.
 // Unfortunately, this will be done on the 'recording' stack (`gStack`) in
@@ -260,6 +260,7 @@ static void RunWithFlags(const test::TestInfo *info,
   auto native_test_faulted = false;
   if (!sigsetjmp(gJmpBuf, true)) {
     gTestToRun = info->test_begin;
+    gStackSwitcher = (&gLiftedStack) + 1;
     InvokeTestCase(arg1, arg2, arg3);
   } else {
     native_test_faulted = true;
