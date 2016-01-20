@@ -14,7 +14,7 @@ CXXFLAGS+=" -fno-asynchronous-unwind-tables -I${DIR}"
 function compile_x86()
 {
     MACROS="-DADDRESS_SIZE_BITS=$1 -DHAS_FEATURE_AVX=$2 -DHAS_FEATURE_AVX512=$3"
-    FILE_NAME=Semantics
+    FILE_NAME=sem
     if [[ $1 -eq 64 ]] ; then
         FILE_NAME="${FILE_NAME}_amd64"
         MESSAGE="Building for AMD64"
@@ -44,13 +44,17 @@ function compile_x86()
         -ffunction-sections -fdata-sections \
         -c $DIR/mcsema/Arch/X86/Runtime/BasicBlock.cpp \
         -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc
+
+    $DIR/third_party/bin/opt -O3 \
+        -o=$DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.opt.bc \
+        $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc
     
     $DIR/third_party/bin/llvm-link \
-        -o=$DIR/generated/Arch/X86/${FILE_NAME}.bc \
-        $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc \
-        $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc
+        -o=$DIR/generated/${FILE_NAME}.bc \
+        $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc \
+        $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.opt.bc
         
-    if [[ ! -e $DIR/generated/Arch/X86/${FILE_NAME}.bc ]] ; then
+    if [[ ! -e $DIR/generated/${FILE_NAME}.bc ]] ; then
         printf "${RED}Error: ${MESSAGE}${RESET}\n"
         exit 1
     fi;

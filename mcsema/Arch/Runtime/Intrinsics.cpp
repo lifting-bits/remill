@@ -2,62 +2,66 @@
 
 #include "mcsema/Arch/Runtime/Intrinsics.h"
 
+#define USED(sym) \
+  (void) sym ; \
+  asm("" :: "m"(sym))
+
 // This is just a hack to make sure all these functions appear in the bitcode
 // file!
 [[gnu::used]]
 void __mcsema_intrinsics(void) {
-  (void) __mcsema_read_memory_8;
-  (void) __mcsema_read_memory_16;
-  (void) __mcsema_read_memory_32;
-  (void) __mcsema_read_memory_64;
+  USED(__mcsema_read_memory_8);
+  USED(__mcsema_read_memory_16);
+  USED(__mcsema_read_memory_32);
+  USED(__mcsema_read_memory_64);
 
-  (void) __mcsema_read_memory_v8;
-  (void) __mcsema_read_memory_v16;
-  (void) __mcsema_read_memory_v32;
-  (void) __mcsema_read_memory_v64;
-  (void) __mcsema_read_memory_v128;
-  (void) __mcsema_read_memory_v256;
-  (void) __mcsema_read_memory_v512;
+  USED(__mcsema_read_memory_v8);
+  USED(__mcsema_read_memory_v16);
+  USED(__mcsema_read_memory_v32);
+  USED(__mcsema_read_memory_v64);
+  USED(__mcsema_read_memory_v128);
+  USED(__mcsema_read_memory_v256);
+  USED(__mcsema_read_memory_v512);
 
-  (void) __mcsema_write_memory_8;
-  (void) __mcsema_write_memory_16;
-  (void) __mcsema_write_memory_32;
-  (void) __mcsema_write_memory_64;
+  USED(__mcsema_write_memory_8);
+  USED(__mcsema_write_memory_16);
+  USED(__mcsema_write_memory_32);
+  USED(__mcsema_write_memory_64);
 
-  (void) __mcsema_write_memory_v8;
-  (void) __mcsema_write_memory_v16;
-  (void) __mcsema_write_memory_v32;
-  (void) __mcsema_write_memory_v64;
-  (void) __mcsema_write_memory_v128;
-  (void) __mcsema_write_memory_v256;
-  (void) __mcsema_write_memory_v512;
+  USED(__mcsema_write_memory_v8);
+  USED(__mcsema_write_memory_v16);
+  USED(__mcsema_write_memory_v32);
+  USED(__mcsema_write_memory_v64);
+  USED(__mcsema_write_memory_v128);
+  USED(__mcsema_write_memory_v256);
+  USED(__mcsema_write_memory_v512);
 
-  (void) __mcsema_barrier_load_load;
-  (void) __mcsema_barrier_load_store;
-  (void) __mcsema_barrier_store_load;
-  (void) __mcsema_barrier_store_store;
+  USED(__mcsema_barrier_load_load);
+  USED(__mcsema_barrier_load_store);
+  USED(__mcsema_barrier_store_load);
+  USED(__mcsema_barrier_store_store);
 
-  (void) __mcsema_atomic_begin;
-  (void) __mcsema_atomic_end;
+  USED(__mcsema_atomic_begin);
+  USED(__mcsema_atomic_end);
 
-  (void) __mcsema_compute_address;  // Used for segmented addresses.
+  USED(__mcsema_compute_address);  // Used for segmented addresses.
 
-  (void) __mcsema_defer_inlining;
+  USED(__mcsema_defer_inlining);
 
-  (void) __mcsema_error;
+  USED(__mcsema_error);
 
-  (void) __mcsema_function_call;
-  (void) __mcsema_function_return;
-  (void) __mcsema_jump;
-  (void) __mcsema_system_call;
-  (void) __mcsema_system_return;
-  (void) __mcsema_interrupt_call;
-  (void) __mcsema_interrupt_return;
-  (void) __mcsema_undefined_block;
+  USED(__mcsema_function_call);
+  USED(__mcsema_function_return);
+  USED(__mcsema_jump);
+  USED(__mcsema_system_call);
+  USED(__mcsema_system_return);
+  USED(__mcsema_interrupt_call);
+  USED(__mcsema_interrupt_return);
+  USED(__mcsema_undefined_block);
 
-  (void) __mcsema_undefined_bool;
-  (void) __mcsema_undefined_8;
-  (void) __mcsema_undefined_16;
-  (void) __mcsema_undefined_32;
-  (void) __mcsema_undefined_64;
+  USED(__mcsema_undefined_bool);
+  USED(__mcsema_undefined_8);
+  USED(__mcsema_undefined_16);
+  USED(__mcsema_undefined_32);
+  USED(__mcsema_undefined_64);
 }

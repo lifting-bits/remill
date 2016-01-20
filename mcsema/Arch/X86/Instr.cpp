@@ -186,6 +186,9 @@ void Instr::LiftPC(uintptr_t next_pc) {
 bool Instr::CheckArgumentTypes(const llvm::Function *F,
                                const std::string &func_name) {
   if (F->arg_size() != args.size()) {
+    LOG(ERROR)
+            << "Number of arguments don't match to " << func_name << ": "
+            << "got " << args.size() << ", wanted " << F->arg_size();
     return false;
   }
   auto i = 0;

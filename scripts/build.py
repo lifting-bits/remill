@@ -316,6 +316,8 @@ source_paths.extend(list(
   glob.glob(os.path.join(SRC_DIR, "CFG", "*.cpp"))))
 source_paths.extend(list(
   glob.glob(os.path.join(SRC_DIR, "BC", "*.cpp"))))
+source_paths.extend(list(
+  glob.glob(os.path.join(SRC_DIR, "OS", "*.cpp"))))
 
 # Find the pre-existing static libraries to link in.
 object_files = [
@@ -391,6 +393,9 @@ def BuildTests(arch, bits, suffix, has_avx, has_avx512):
   bc_file = os.path.join(
     GEN_DIR, "tests", "bc_{}{}".format(arch, suffix))
 
+  sem_file = os.path.join(
+    GEN_DIR, "sem_{}{}.bc".format(arch, suffix))
+
   MakeDirsForFile(cfg_file)
 
   # Generate a CFG protobuf for the test cases for this specific arch/config.
@@ -398,18 +403,13 @@ def BuildTests(arch, bits, suffix, has_avx, has_avx512):
   
   # Lift the testcases to a bitcode file.
   cfg_to_bc.Execute(
-    "--source_arch={}".format(arch),
-    "--target_arch=amd64",
     "--cfg={}".format(cfg_file),
+    "--os_in={}".format(OS),
+    "--os_out={}".format(OS),
+    "--arch_in={}".format(arch),
+    "--arch_out=amd64",
+    "--bc_in={}".format(sem_file),
     "--bc_out={}.bc".format(bc_file))
-
-  # Enable more bitcode optimizations.
-  #Command(
-  #  os.path.join(BIN_DIR, "opt"),
-  #  "-load", libOptimize,
-  #  "-deferred_inliner",
-  #  "-o={}.opt.bc".format(bc_file),
-  #  "{}.bc".format(bc_file))
 
   # Build the test runner.
   run_tests = TargetExecutable(

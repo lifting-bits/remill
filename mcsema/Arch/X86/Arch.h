@@ -12,14 +12,19 @@ typedef ::mcsema::Instr ArchInstr;
 
 class Arch : public ::mcsema::Arch {
   public:
-    Arch(unsigned address_size_);
+
     virtual ~Arch(void);
 
     virtual void Decode(
         const cfg::Instr &instr,
         std::function<void(::mcsema::Instr &)> visitor) const override;
 
-    virtual llvm::Module *CreateModule(void) const override;
+    virtual llvm::Module *ConvertModule(llvm::Module *mod) const override;
+
+  protected:
+    friend class ::mcsema::Arch;
+
+    using ::mcsema::Arch::Arch;
 
   private:
     Arch(void) = delete;

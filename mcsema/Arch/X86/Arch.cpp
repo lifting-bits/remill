@@ -1,6 +1,5 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <sstream>
@@ -12,9 +11,6 @@
 
 #include "mcsema/BC/Util.h"
 #include "mcsema/CFG/CFG.h"
-
-DEFINE_bool(with_x86_avx, false, "Enable AVX support.");
-DEFINE_bool(with_x86_avx512, false, "Enable AVX512 support.");
 
 namespace mcsema {
 namespace x86 {
@@ -28,16 +24,16 @@ const xed_state_t kXEDState64 = {
     XED_MACHINE_MODE_LONG_64,
     XED_ADDRESS_WIDTH_64b};
 
-}  // namespace
-
-Arch::Arch(unsigned address_size_)
-    : ::mcsema::Arch(address_size_) {
-  CHECK(32 == address_size || 64 == address_size)
-      << "Unsupported x86 architecture: " << address_size << " bits";
-
-  VLOG(1) << "Initializing XED tables for " << address_size << "-bit code";
+static bool InitXED(void) {
+  VLOG(1) << "Initializing XED tables";
   xed_tables_init();
+  return true;
 }
+
+[[gnu::used]]
+static bool gInitXED = InitXED();
+
+}  // namespace
 
 Arch::~Arch(void) {}
 
@@ -46,8 +42,11 @@ void Arch::Decode(
     const cfg::Instr &instr,
     std::function<void(::mcsema::Instr &)> visitor) const {
 
+  CHECK(gInitXED)
+      << "XED must be initialized before instructions can be decoded.";
+
   xed_decoded_inst_t xedd;
-  auto dstate = (32 == address_size) ? &kXEDState32 : &kXEDState64;
+  auto dstate = kArchX86 == arch_name ? &kXEDState32 : &kXEDState64;
   auto num_bytes = instr.size();
   auto bytes = reinterpret_cast<const uint8_t *>(instr.bytes().data());
   xed_decoded_inst_zero_set_mode(&xedd, dstate);
@@ -66,29 +65,37 @@ void Arch::Decode(
   visitor(arch_instr);
 }
 
-// Creates an LLVM module object for the lifted code. This module is based on
-// an arch-specific template, found in the `State.inc` file.
-llvm::Module *Arch::CreateModule(void) const {
-  std::stringstream module_file_ss;
-
-  // TODO(pag): Eventually make this relative to the build/install directory,
-  //            such that it works in both cases.
-  module_file_ss << MCSEMA_DIR "/generated/Arch/X86/Semantics_";
-  module_file_ss << (64 == address_size ? "amd64" : "x86");
-
-  // Select a bitcode file with specific features.
-  if (FLAGS_with_x86_avx512) {
-    module_file_ss << "_avx512.bc";
-  } else if (FLAGS_with_x86_avx) {
-    module_file_ss << "_avx.bc";
-  } else {
-    module_file_ss << ".bc";
+// Converts an LLVM module object to have the right triple / data layout
+// information for the target architecture.
+llvm::Module *Arch::ConvertModule(llvm::Module *mod) const {
+  std::string dl;
+  std::string triple;
+  switch (os_name) {
+    case kOSInvalid:
+      LOG(FATAL) << "Cannot convert module for an unrecognized operating system.";
+      return nullptr;
+    case kOSLinux:
+      if (kArchAMD64 == arch_name) {
+        dl = "e-m:e-i64:64-f80:128-n8:16:32:64-S128";
+        triple = "x86_64-unknown-linux-gnu";
+      } else {
+        dl = "e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128";
+        triple = "i386-unknown-linux-gnu";
+      }
+      break;
+    case kOSMacOSX:
+      if (kArchAMD64 == arch_name) {
+        dl = "e-m:o-i64:64-f80:128-n8:16:32:64-S128";
+        triple = "x86_64-apple-macosx10.10.0";
+      } else {
+        dl = "e-m:o-p:32:32-f64:32:64-f80:128-n8:16:32-S128";
+        triple = "i386-apple-macosx10.10.0";
+      }
+      break;
   }
-
-  auto module_file = module_file_ss.str();
-  LOG(INFO) << "Using " << module_file << " as the base bitcode module.";
-
-  return LoadModuleFromFile(module_file);
+  mod->setDataLayout(dl);
+  mod->setTargetTriple(triple);
+  return mod;
 }
 
 }  // namespace x86

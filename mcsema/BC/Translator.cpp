@@ -1,6 +1,5 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <functional>
@@ -22,16 +21,13 @@
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
 
-#include "mcsema/BC/IntrinsicTable.h"
-#include "mcsema/BC/Translator.h"
 #include "mcsema/Arch/Arch.h"
 #include "mcsema/Arch/Instr.h"
-
+#include "mcsema/BC/IntrinsicTable.h"
+#include "mcsema/BC/Translator.h"
 #include "mcsema/BC/Util.h"
-
 #include "mcsema/CFG/CFG.h"
-
-DECLARE_string(os);
+#include "mcsema/OS/OS.h"
 
 namespace llvm {
 class ReturnInst;
@@ -129,8 +125,8 @@ namespace {
 // TODO(pag): This is really ugly and is probably incorrect. The expectation is
 //            that the leading underscore will be re-added when this code is
 //            compiled.
-std::string CanonicalName(const std::string &name) {
-  if (FLAGS_os == "mac" && name.length() && '_' == name[0]) {
+std::string CanonicalName(OSName os_name, const std::string &name) {
+  if (kOSMacOSX == os_name && name.length() && '_' == name[0]) {
     return name.substr(1);
   } else {
     return name;
@@ -146,7 +142,7 @@ void Translator::CreateFunctions(const cfg::Module *cfg) {
   for (const auto &func : cfg->functions()) {
     if (!func.is_exported() && !func.is_imported()) continue;
 
-    auto func_name = CanonicalName(func.name());
+    auto func_name = CanonicalName(arch->os_name, func.name());
     CHECK(!func_name.empty())
         << "Module contains unnamed function at address " << func.address();
 
@@ -178,7 +174,7 @@ void Translator::LinkFunctionsToBlocks(const cfg::Module *cfg) {
     if (!func.is_exported() && !func.is_imported()) continue;
     if (!func.address()) continue;
 
-    auto func_name = CanonicalName(func.name());
+    auto func_name = CanonicalName(arch->os_name, func.name());
     auto F = functions[func_name];
     auto &BF = blocks[func.address()];
 

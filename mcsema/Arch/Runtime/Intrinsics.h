@@ -84,7 +84,6 @@ extern "C" {
 
 }  // extern C
 
-[[gnu::used]]
-void __mcsema_intrinsics(void);
+[[gnu::used]] extern void __mcsema_intrinsics(void);
 
 #endif  // MCSEMA_ARCH_SEMANTICS_INSTRINSICS_H_

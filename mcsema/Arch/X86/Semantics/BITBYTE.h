@@ -146,14 +146,15 @@ DEF_SEM(BTreg, S1 reg_, S2 bit_) {
 }
 
 template <typename S1, typename S2>
-DEF_SEM(BTmem, S1 mem_, S2 bit_) {
+DEF_SEM(BTmem, S1 src_mem, S2 bit_) {
   typedef typename BaseType<S1>::Type T;
-  const auto addr = A(mem_);
-  const auto bitoffset = R(bit_);
   enum : T {
-    kNumBits = 8 * sizeof(T)
+    kNumBits = 8 * sizeof(T),
+    kMask = kNumBits - 1
   };
-  const auto bit = bitoffset % kNumBits;
+  const auto addr = A(src_mem);
+  const auto bitoffset = R(bit_);
+  const auto bit = bitoffset & kMask;
   const auto byte = sizeof(T) * (bitoffset / kNumBits);
 
   Mn<T> byte_mem = {addr + byte};
@@ -161,78 +162,88 @@ DEF_SEM(BTmem, S1 mem_, S2 bit_) {
 }
 
 template <typename S1, typename S2, typename S3>
-DEF_SEM(BTSreg, S1 dst, S2 src_, S3 bit_) {
-  typedef typename BaseType<S1>::Type T;
-  const T reg = R(src_);
-  const auto bit = R(bit_) % (8 * sizeof(T));
+DEF_SEM(BTSreg, S1 dst, S2 reg_, S3 bit_) {
+  typedef typename BaseType<S2>::Type T;
+  enum : T {
+    kNumBits = 8 * sizeof(T),
+    kMask = kNumBits - 1
+  };
+  const auto bitoffset = R(bit_);
+  const auto bit = bitoffset & kMask;
+  const T reg = R(reg_);
   const T mask = T(1) << bit;
   state.aflag.cf = !!(reg & mask);
   W(dst) = reg | mask;
 }
 
 template <typename S1, typename S2, typename S3>
-DEF_SEM(BTSmem, S2 src_dst_, S3 bit_) {
-  typedef typename BaseType<S1>::Type T;
-  const auto addr = A(src_dst_);
-  const auto bitoffset = R(bit_);
-
+DEF_SEM(BTSmem, S1, S2 src_dst_mem, S3 bit_) {
+  typedef typename BaseType<S2>::Type T;
   enum : T {
-    kNumBits = 8 * sizeof(T)
+    kNumBits = 8 * sizeof(T),
+    kMask = kNumBits - 1
   };
-  const auto bit = bitoffset % kNumBits;
+  const auto bitoffset = R(bit_);
+  const auto bit = bitoffset & kMask;
   const auto byte = sizeof(T) * (bitoffset / kNumBits);
 
-  const T mask = T(1) << bit;
-  const addr_t src_dst_addr = addr + byte;
-
+  const addr_t src_dst_addr = A(src_dst_mem) + byte;
   Mn<T> src_mem = {src_dst_addr};
+  MnW<T> dst_mem = {src_dst_addr};
+
+  const T mask = T(1) << bit;
   const T mem = R(src_mem);
   state.aflag.cf = !!(mem & mask);
-
-  MnW<T> dst_mem = {src_dst_addr};
   W(dst_mem) = mem | mask;
 }
 
 template <typename S1, typename S2, typename S3>
-DEF_SEM(BTRreg, S1 dst, S2 src_, S3 bit_) {
-  typedef typename BaseType<S1>::Type T;
-  const T reg = R(src_);
-  const auto bit = R(bit_) % (8 * sizeof(T));
+DEF_SEM(BTRreg, S1 dst, S2 reg_, S3 bit_) {
+  typedef typename BaseType<S2>::Type T;
+  enum : T {
+    kNumBits = 8 * sizeof(T),
+    kMask = kNumBits - 1
+  };
+  const auto bitoffset = R(bit_);
+  const auto bit = bitoffset & kMask;
   const T mask = T(1) << bit;
+  const T reg = R(reg_);
   state.aflag.cf = !!(reg & mask);
   W(dst) = reg & ~mask;
 }
 
 template <typename S1, typename S2, typename S3>
-DEF_SEM(BTRmem, S1, S2 src_dst_, S3 bit_) {
-  typedef typename BaseType<S1>::Type T;
-  const auto addr = A(src_dst_);
-  const auto bitoffset = R(bit_);
-
+DEF_SEM(BTRmem, S1, S2 src_dst_mem, S3 bit_) {
+  typedef typename BaseType<S2>::Type T;
   enum : T {
-    kNumBits = 8 * sizeof(T)
+    kNumBits = 8 * sizeof(T),
+    kMask = kNumBits - 1
   };
-  const auto bit = bitoffset % kNumBits;
+  const auto bitoffset = R(bit_);
+  const auto bit = bitoffset & kMask;
   const auto byte = sizeof(T) * (bitoffset / kNumBits);
 
-  const T mask = T(1) << bit;
-  const addr_t src_dst_addr = addr + byte;
-
+  const addr_t src_dst_addr = A(src_dst_mem) + byte;
   Mn<T> src_mem = {src_dst_addr};
+  MnW<T> dst_mem = {src_dst_addr};
+
+  const T mask = T(1) << bit;
   const T mem = R(src_mem);
   state.aflag.cf = !!(mem & mask);
-
-  MnW<T> dst_mem = {src_dst_addr};
   W(dst_mem) = mem & ~mask;
 }
 
 
 template <typename S1, typename S2, typename S3>
-DEF_SEM(BTCreg, S1 dst, S2 src_, S3 bit_) {
-  typedef typename BaseType<S1>::Type T;
-  const T reg = R(src_);
+DEF_SEM(BTCreg, S1 dst, S2 reg_, S3 bit_) {
+  typedef typename BaseType<S2>::Type T;
+  enum : T {
+    kNumBits = 8 * sizeof(T),
+    kMask = kNumBits - 1
+  };
   const auto bit = R(bit_) % (8 * sizeof(T));
   const T mask = T(1) << bit;
+  const T reg = R(reg_);
   state.aflag.cf = !!(reg & mask);
   if (state.aflag.cf) {
     W(dst) = reg & ~mask;
@@ -242,25 +253,24 @@ DEF_SEM(BTCreg, S1 dst, S2 src_, S3 bit_) {
 }
 
 template <typename S1, typename S2, typename S3>
-DEF_SEM(BTCmem, S1, S2 src_dst_, S3 bit_) {
-  typedef typename BaseType<S1>::Type T;
-  const auto addr = A(src_dst_);
-  const auto bitoffset = R(bit_);
-
+DEF_SEM(BTCmem, S1, S2 src_dst_mem, S3 bit_) {
+  typedef typename BaseType<S2>::Type T;
   enum : T {
-    kNumBits = 8 * sizeof(T)
+    kNumBits = 8 * sizeof(T),
+    kMask = kNumBits - 1
   };
-  const auto bit = bitoffset % kNumBits;
+  const auto bitoffset = R(bit_);
+  const auto bit = bitoffset & kMask;
   const auto byte = sizeof(T) * (bitoffset / kNumBits);
 
-  const T mask = T(1) << bit;
-  const addr_t src_dst_addr = addr + byte;
-
+  const addr_t src_dst_addr = A(src_dst_mem) + byte;
   Mn<T> src_mem = {src_dst_addr};
-  const T mem = R(src_mem);
-  state.aflag.cf = !!(mem & mask);
-
   MnW<T> dst_mem = {src_dst_addr};
+
+  const T mask = T(1) << bit;
+  const T mem = R(src_mem);
+
+  state.aflag.cf = !!(mem & mask);
   if (state.aflag.cf) {
     W(dst_mem) = mem & ~mask;
   } else {
