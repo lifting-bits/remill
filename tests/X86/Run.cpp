@@ -49,6 +49,7 @@ ALWAYS_INLINE static T &AccessMemory(addr_t addr) {
 
 // Used to handle exceptions in instructions.
 static sigjmp_buf gJmpBuf;
+static sigjmp_buf gUnsupportedInstrBuf;
 
 // Used to mask the registers from a signal context when we've caught an error.
 static uintptr_t gRegMask32 = 0;
@@ -231,6 +232,10 @@ static void RunWithFlags(const test::TestInfo *info,
                          uint64_t arg1,
                          uint64_t arg2,
                          uint64_t arg3) {
+  if (!sigsetjmp(gUnsupportedInstrBuf, true)) {
+    LOG(INFO) << "Unsupported instruction " << info->test_name;
+    return;
+  }
 
   // Set up the GPR mask just in case an error occurs when we execute this
   // instruction.
@@ -421,6 +426,10 @@ static void RecoverFromError(int signum, siginfo_t *, void *context_) {
   siglongjmp(gJmpBuf, 0);
 }
 
+static void HandleUnsupportedInstruction(int, siginfo_t *, void *) {
+  siglongjmp(gUnsupportedInstrBuf, 0);
+}
+
 typedef void (SignalHandler) (int, siginfo_t *, void *);
 static void HandleSignal(int signum, SignalHandler *handler) {
   struct sigaction sig;
@@ -439,7 +448,7 @@ static void SetupSignals(void) {
   HandleSignal(SIGBUS, RecoverFromError);
   HandleSignal(SIGFPE, RecoverFromError);
   HandleSignal(SIGTRAP, RecoverFromError);
-  HandleSignal(SIGILL, RecoverFromError);
+  HandleSignal(SIGILL, HandleUnsupportedInstruction);
 #ifdef SIGSTKFLT
   HandleSignal(SIGSTKFLT, RecoverFromError);
 #endif  // SIGSTKFLT

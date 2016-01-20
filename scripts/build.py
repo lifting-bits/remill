@@ -99,10 +99,10 @@ SOURCE_FILES = {}
 # Execute a command.
 def Command(*args):
   args = [str(a) for a in args]
-  print "{}\n\n".format(" ".join(args))
   try:
     return subprocess.check_output(args)
   except:
+    print "{}\n\n".format(" ".join(args))
     pass
 
 
