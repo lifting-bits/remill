@@ -417,7 +417,7 @@ def BuildTests(arch, bits, suffix, has_avx, has_avx512):
     source_files=[
       SourceFile(
         "{}.bc".format(bc_file),
-        extra_args=["-O3"]),
+        extra_args=["-O3", "-mno-avx", "-mno-sse"]),
       SourceFile(
         os.path.join(TEST_DIR, "X86", "Tests.S"),
         extra_args=macro_args+target_args),
