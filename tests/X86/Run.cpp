@@ -232,7 +232,7 @@ static void RunWithFlags(const test::TestInfo *info,
                          uint64_t arg1,
                          uint64_t arg2,
                          uint64_t arg3) {
-  if (!sigsetjmp(gUnsupportedInstrBuf, true)) {
+  if (sigsetjmp(gUnsupportedInstrBuf, true)) {
     LOG(INFO) << "Unsupported instruction " << info->test_name;
     return;
   }

@@ -248,7 +248,7 @@ DEF_SEM(BTCreg, S1 dst, S2 reg_, S3 bit_) {
   if (state.aflag.cf) {
     W(dst) = reg & ~mask;
   } else {
-    W(dst) = reg  | mask;
+    W(dst) = reg | mask;
   }
 }
 
@@ -270,11 +270,14 @@ DEF_SEM(BTCmem, S1, S2 src_dst_mem, S3 bit_) {
   const T mask = T(1) << bit;
   const T mem = R(src_mem);
 
-  state.aflag.cf = !!(mem & mask);
-  if (state.aflag.cf) {
+  if (0 != (mem & mask)) {
     W(dst_mem) = mem & ~mask;
+    __mcsema_barrier_compiler();
+    state.aflag.cf = true;
   } else {
-    W(dst_mem) = mem  | mask;
+    W(dst_mem) = mem | mask;
+    __mcsema_barrier_compiler();
+    state.aflag.cf = false;
   }
 }
 
