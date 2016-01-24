@@ -30,6 +30,7 @@ class Instr : public ::mcsema::Instr {
  private:
   void LiftPC(uintptr_t next_pc);
   void LiftGeneric(const Translator &lifter);
+  llvm::Function *GetInstructionFunction(void);
   bool CheckArgumentTypes(const llvm::Function *F,
                           const std::string &func_name);
   void LiftConditionalBranch(const Translator &lifter);

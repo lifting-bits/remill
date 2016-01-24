@@ -202,6 +202,7 @@ template <typename T>
   __builtin_unreachable();
 }
 
+// Address of a memory operand.
 template <typename T>
 inline static addr_t A(Mn<T> m) {
   return m.addr;
@@ -212,7 +213,7 @@ inline static addr_t A(MnW<T> m) {
   return m.addr;
 }
 
-// Convert from bytes
+// Convert a byte array into an 80-bit floating point value.
 ALWAYS_INLINE static arch_float80_t R(const float80_t &reg) {
   return *reinterpret_cast<const arch_float80_t *>(&(reg.f[0]));
 }
@@ -244,9 +245,24 @@ ALWAYS_INLINE static arch_float80_t &W(float80_t &reg) {
     \
     ALWAYS_INLINE static T &W(T &ref) { \
       return ref; \
-    }\
+    } \
     ALWAYS_INLINE static T R(T imm) { \
       return imm; \
+    } \
+    ALWAYS_INLINE static T U(RnW<T>) { \
+      return __mcsema_undefined_ ## size (); \
+    } \
+    ALWAYS_INLINE static T U(MnW<T>) { \
+      return __mcsema_undefined_ ## size (); \
+    } \
+    ALWAYS_INLINE static T U(Rn<T>) { \
+      return __mcsema_undefined_ ## size (); \
+    } \
+    ALWAYS_INLINE static T U(Mn<T>) { \
+      return __mcsema_undefined_ ## size (); \
+    } \
+    ALWAYS_INLINE static T U(In<T>) { \
+      return __mcsema_undefined_ ## size (); \
     }
 
 MAKE_ACCESSORS(uint8_t, 8)

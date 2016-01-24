@@ -49,6 +49,11 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
   std::stringstream ss;
   std::string iform_name = xed_iform_enum_t2str(
       xed_decoded_inst_get_iform_enum(xedd));
+
+  // All `LOCK` versions of instructions have their own iform, but ideally
+  // we want to express the (non-)atomic versions of instructions uniformly.
+  // For locked instructions, we inject calls to atomic intrinsics before/after
+  // the lifted instructions.
   if (xed_operand_values_has_lock_prefix(xedd)) {
     const std::string lock = "LOCK_";
     const auto idx = iform_name.find(lock);
@@ -56,11 +61,18 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
       iform_name.erase(idx, lock.size());
     }
   }
+
   ss << iform_name;
+
+  // Some instructions are "scalable", i.e. there are variants of the
+  // instruction for each effective operand size. We represent these in
+  // the semantics files with `_<size>`, so we need to look up the correct
+  // selection.
   if (xed_decoded_inst_get_attribute(xedd, XED_ATTRIBUTE_SCALABLE)) {
     ss << "_";
     ss << xed_decoded_inst_get_operand_width(xedd);
   }
+
   return ss.str();
 }
 
@@ -191,6 +203,27 @@ void Instr::LiftPC(uintptr_t next_pc) {
       ir.CreateLoad(FindVarInFunction(F, PCRegName(xedd) + "_write")));
 }
 
+namespace {
+
+static void DescribeArgTypeMismatch(const llvm::Argument &func_arg,
+                                    const llvm::Value *our_arg,
+                                    const llvm::Function *F,
+                                    const std::string &func_name) {
+  std::string arg_types_str;
+  llvm::raw_string_ostream arg_types_stream(arg_types_str);
+  arg_types_stream << "\n";
+  func_arg.print(arg_types_stream);
+  arg_types_stream << " in ";
+  F->getFunctionType()->print(arg_types_stream);
+  arg_types_stream << "\n";
+  our_arg->print(arg_types_stream);
+  LOG(ERROR)
+    << "Argument types don't match to " << func_name << ":"
+    << arg_types_str;
+}
+
+}  // namespace
+
 // Check the types of a function's argument.
 bool Instr::CheckArgumentTypes(const llvm::Function *F,
                                const std::string &func_name) {
@@ -202,24 +235,33 @@ bool Instr::CheckArgumentTypes(const llvm::Function *F,
   }
   auto i = 0;
   for (const auto &arg : F->args()) {
-    const auto arg_type = arg.getType();
-    if (arg_type != args[i]->getType()) {
-      std::string arg_types_str;
-      llvm::raw_string_ostream arg_types_stream(arg_types_str);
-      arg_types_stream << "\n";
-      arg.print(arg_types_stream);
-      arg_types_stream << " in ";
-      F->getFunctionType()->print(arg_types_stream);
-      arg_types_stream << "\n";
-      args[i]->print(arg_types_stream);
-      LOG(ERROR)
-        << "Argument types don't match to " << func_name << ":"
-        << arg_types_str;
+    if (arg.getType() != args[i]->getType()) {
+      DescribeArgTypeMismatch(arg, args[i], F, func_name);
       return false;
     }
     ++i;
   }
   return true;
+}
+
+llvm::Function *Instr::GetInstructionFunction(void) {
+  auto func_name = InstructionFunctionName(xedd);
+  llvm::Function *F = FindFunction(M, func_name);
+  llvm::GlobalVariable *FP = FindGlobaVariable(M, func_name);
+
+  if (!F && FP) {
+    CHECK(FP->isConstant() && FP->hasInitializer())
+        << "Expected a `constexpr` variable as the function pointer.";
+    llvm::Constant *FC = FP->getInitializer()->stripPointerCasts();
+    F = llvm::dyn_cast<llvm::Function>(FC);
+  }
+
+  // TODO(pag): Memory leak of `args`, `prepend_instrs`, and `append_instrs`.
+  if (F && !CheckArgumentTypes(F, func_name)) {
+    LOG(WARNING) << "Missing instruction semantics for " << func_name;
+  }
+
+  return F;
 }
 
 // Lift a generic instruction.
@@ -236,38 +278,15 @@ void Instr::LiftGeneric(const Translator &lifter) {
   // Lift the operands. This creates the arguments for us to call the
   // instruction implementation.
   auto num_operands = xed_decoded_inst_noperands(xedd);
-  auto func_name = InstructionFunctionName(xedd);
-
   for (auto i = 0U; i < num_operands; ++i) {
     LiftOperand(lifter, i);
   }
 
-  llvm::Function *F = FindFunction(M, func_name);
-  llvm::GlobalVariable *FP = FindGlobaVariable(M, func_name);
-
-  if (!F && FP) {
-    CHECK(FP->isConstant() && FP->hasInitializer())
-        << "Expected a `constexpr` variable as the function pointer.";
-    llvm::Constant *FC = FP->getInitializer()->stripPointerCasts();
-    F = llvm::dyn_cast<llvm::Function>(FC);
-  }
-
-  // Instructions that must follow the instruction function.
-  auto &IList = B->getInstList();
-  std::reverse(prepend_instrs.begin(), prepend_instrs.end());
-  for (auto instr : prepend_instrs) {
-    IList.push_back(instr);
-  }
-
-  if (F && CheckArgumentTypes(F, func_name)) {
+  if (auto F = GetInstructionFunction()) {
+    auto &IList = B->getInstList();
+    IList.insert(IList.end(), prepend_instrs.rbegin(), prepend_instrs.rend());
     IList.push_back(llvm::CallInst::Create(F, args));
-  } else {
-    LOG(WARNING) << "Missing instruction semantics for " << func_name;
-  }
-
-  // Instructions that must follow the instruction function.
-  for (auto instr : append_instrs) {
-    IList.push_back(instr);
+    IList.insert(IList.end(), append_instrs.begin(), append_instrs.end());
   }
 }
 
@@ -500,6 +519,14 @@ void Instr::LiftRegister(const xed_operand_t *xedo) {
 
   // Pass the register by reference.
   if (xed_operand_written(xedo)) {
+
+    // XMM registers have different behavior when using SSE vs. using AVX. SSE
+    // instructions operating on XMM registers on a machine with AVX will not
+    // cause zeroing of the high bits of the YMM/ZMM registers. If AVX-specific
+    // versions of the same instructions (usually prefixed with a `V`) are used
+    // then writing to an XMM register will kill the high bits of a YMM/ZMM
+    // register, thus breaking data dependencies (sort of like how writing to
+    // a 32-bit register on a 64-bit system zeroes the high bits).
     std::string legacy_suffix;
     if (XED_CATEGORY_SSE == xed_decoded_inst_get_category(xedd) &&
         XED_REG_CLASS_XMM == xed_gpr_reg_class(reg)) {
@@ -634,7 +661,7 @@ bool Instr::IsNoOp(void) const {
 }
 
 bool Instr::IsError(void) const {
-  return XED_ICLASS_HLT == iclass;
+  return XED_ICLASS_HLT == iclass || XED_ICLASS_INVALID == iclass;
 }
 
 uintptr_t Instr::TargetPC(void) const {

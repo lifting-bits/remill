@@ -185,14 +185,6 @@ DEF_ISEL_MnW_Mn_Rn(SHL_MEMv_CL_D3r6, SHL);
 DEF_ISEL_RnW_Rn_Rn(SHL_GPRv_CL_D3r6, SHL);
 
 namespace {
-/*
-620 SHRD SHRD_MEMv_GPRv_IMMb SHIFT BASE I386 ATTRIBUTES: SCALABLE
- 4
-  0 MEM0 EXPLICIT RCW IMM_CONST INT
-  1 REG0 EXPLICIT R NT_LOOKUP_FN INVALID GPRV_R
-  2 IMM0 EXPLICIT R IMM_CONST U8
-  3 REG1 SUPPRESSED CW NT_LOOKUP_FN INVALID RFLAGS
- */
 
 template <typename T>
 NEVER_INLINE static bool SHRDCarryFlag(T val, T count) {
@@ -213,7 +205,7 @@ DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 count_) {
   }
   if (kSize < count) {
     CLEAR_AFLAGS();
-    // TODO(pag): dest operand value?
+    W(dst) = U(dst);
     return;
   }
   const T src = R(src1);
