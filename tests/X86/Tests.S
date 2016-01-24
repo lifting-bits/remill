@@ -264,11 +264,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BINARY/MUL.S"
 #include "tests/X86/BINARY/MULX.S"
 #include "tests/X86/BINARY/NEG.S"
-#include "tests/X86/BINARY/ROL.S"
-#include "tests/X86/BINARY/SAR.S"
 #include "tests/X86/BINARY/SBB.S"
-#include "tests/X86/BINARY/SHL.S"
-#include "tests/X86/BINARY/SHR.S"
 #include "tests/X86/BINARY/SUB.S"
 #include "tests/X86/BINARY/XADD.S"
 
@@ -282,6 +278,12 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/LOGICAL/OR.S"
 #include "tests/X86/LOGICAL/TEST.S"
 #include "tests/X86/LOGICAL/XOR.S"
+
+#include "tests/X86/ROTATE/ROL.S"
+
+#include "tests/X86/SHIFT/SAR.S"
+#include "tests/X86/SHIFT/SHL.S"
+#include "tests/X86/SHIFT/SHR.S"
 
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"

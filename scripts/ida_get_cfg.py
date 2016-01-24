@@ -81,6 +81,7 @@ def try_mark_as_code(address, end_address=0):
 def try_mark_as_function(ea):
   if not idc.MakeFunction(ea, idc.BADADDR):
     idc.MakeUnknown(ea, 1, idc.DOUNK_SIMPLE)
+    idaapi.autoWait()
     if not idc.MakeFunction(ea, idc.BADADDR):
       debug("Unable to convert code to function:", hex(ea))
       return False

@@ -47,7 +47,16 @@ namespace {
 // Name of this instruction function.
 static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
   std::stringstream ss;
-  ss << xed_iform_enum_t2str(xed_decoded_inst_get_iform_enum(xedd));
+  std::string iform_name = xed_iform_enum_t2str(
+      xed_decoded_inst_get_iform_enum(xedd));
+  if (xed_operand_values_has_lock_prefix(xedd)) {
+    const std::string lock = "LOCK_";
+    const auto idx = iform_name.find(lock);
+    if (std::string::npos != idx) {
+      iform_name.erase(idx, lock.size());
+    }
+  }
+  ss << iform_name;
   if (xed_decoded_inst_get_attribute(xedd, XED_ATTRIBUTE_SCALABLE)) {
     ss << "_";
     ss << xed_decoded_inst_get_operand_width(xedd);

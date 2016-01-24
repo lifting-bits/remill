@@ -14,6 +14,8 @@
 #include "mcsema/Arch/X86/Semantics/FMA.h"
 #include "mcsema/Arch/X86/Semantics/LOGICAL.h"
 #include "mcsema/Arch/X86/Semantics/MISC.h"
+#include "mcsema/Arch/X86/Semantics/ROTATE.h"
+#include "mcsema/Arch/X86/Semantics/SHIFT.h"
 #include "mcsema/Arch/X86/Semantics/STACKPUSH.h"
 #include "mcsema/Arch/X86/Semantics/STACKPOP.h"
 #include "mcsema/Arch/X86/Semantics/UNCOND_BR.h"
