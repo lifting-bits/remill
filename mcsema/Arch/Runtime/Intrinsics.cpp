@@ -57,6 +57,7 @@ void __mcsema_intrinsics(void) {
   USED(__mcsema_system_return);
   USED(__mcsema_interrupt_call);
   USED(__mcsema_interrupt_return);
+  USED(__mcsema_conditional_branch);
   USED(__mcsema_undefined_block);
 
   USED(__mcsema_undefined_bool);

@@ -68,6 +68,9 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *M)
       function_return(FindIntrinsic(M, "__mcsema_function_return")),
       jump(FindIntrinsic(M, "__mcsema_jump")),
 
+      // Signaling control-flow.
+      conditional_branch(FindPureIntrinsic(M, "__mcsema_conditional_branch")),
+
       // OS interaction.
       system_call(FindIntrinsic(M, "__mcsema_system_call")),
       system_return(FindIntrinsic(M, "__mcsema_system_return")),

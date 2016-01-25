@@ -163,6 +163,11 @@ void __mcsema_jump(State &) {
   __builtin_unreachable();
 }
 
+addr_t __mcsema_conditional_branch(
+    bool cond, addr_t addr_true, addr_t addr_false) {
+  return cond ? addr_true : addr_false;
+}
+
 void __mcsema_system_call(State &) {
   __builtin_unreachable();
 }

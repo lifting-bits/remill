@@ -68,6 +68,9 @@ extern "C" {
 [[gnu::used]] extern void __mcsema_interrupt_return(State &);
 [[gnu::used]] extern void __mcsema_undefined_block(State &);
 
+[[gnu::used]] extern addr_t __mcsema_conditional_branch(
+    bool condition, addr_t if_true, addr_t if_false);
+
 // Memory barriers types, see: http://g.oswego.edu/dl/jmm/cookbook.html
 [[gnu::used]] extern void __mcsema_barrier_load_load(void);
 [[gnu::used]] extern void __mcsema_barrier_load_store(void);

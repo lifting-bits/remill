@@ -162,7 +162,10 @@ def visit_instruction(block, ea, end_ea, new_blocks, addressable_blocks):
 
   # If there's a data reference to this instruction then we'll consider it a block
   # head and split the block (as long as this ins't the first instruction).
-  if len(tuple(idautils.DataRefsTo(ea))):
+  #
+  # We do the same thing for syscall entrypoints. This is mostly for CGC-related
+  # things.
+  if len(tuple(idautils.DataRefsTo(ea))) or instr_t.itype in SYSCALL_ITYPES:
     addressable_blocks.add(ea)
     if block.address < ea:
       debug("Splitting block at", hex(ea), "to", hex(end_ea), "(reason: data ref)")
@@ -171,7 +174,7 @@ def visit_instruction(block, ea, end_ea, new_blocks, addressable_blocks):
 
   ea += instr.size
 
-  # Split this block at a calls, and mark the blocks following the calls as
+  # Split this block at calls, and mark the blocks following the calls as
   # being addressed. Only do this if the `call` isn't the last instruction in
   # the block.
   if instr_t.itype in CALL_ITYPES or instr_t.itype in SYSCALL_ITYPES:
