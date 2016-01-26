@@ -10,8 +10,7 @@ YELLOW=`tput setaf 3`
 BLUE=`tput setaf 4`
 RESET=`tput sgr0`
 
-LLVM_RELEASE_DIR=pre-releases/3.8.0/rc1
-LLVM_RELEASE=3.8.0-rc1
+
 GLOG_RELEASE=v0.3.4
 GFLAGS_RELEASE=v2.1.2
 PROTOBUF_VERSION=2.5.0
@@ -20,6 +19,8 @@ GTEST_RELEASE=release-1.7.0
 
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
     XED_VERSION=xed-install-base-2015-09-10-lin-x86-64
+    LLVM_RELEASE_DIR=pre-releases/3.8.0/rc1
+    LLVM_RELEASE=3.8.0-rc1
     LLVM_VERSION=clang+llvm-${LLVM_RELEASE}-x86_64-linux-gnu-ubuntu-14.04
     MCSEMA_OS_NAME="linux"
     LIB_EXT=so
@@ -28,6 +29,8 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
 
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     XED_VERSION=xed-install-base-2015-09-10-mac-x86-64
+    LLVM_RELEASE_DIR=releases/3.7.1
+    LLVM_RELEASE=3.7.1
     LLVM_VERSION=clang+llvm-${LLVM_RELEASE}-x86_64-apple-darwin
     MCSEMA_OS_NAME="mac"
     LIB_EXT=dylib
