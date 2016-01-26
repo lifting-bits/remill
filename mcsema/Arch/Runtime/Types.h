@@ -24,7 +24,7 @@ static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
 
 typedef long double arch_float80_t;
 
-struct alignas(16) float80_t {
+struct alignas(16) float80_t final {
   uint8_t f[16];
 } __attribute__((packed));
 static_assert(16 == sizeof(float80_t), "Invalid `float80_t` size.");
@@ -179,7 +179,7 @@ struct SingletonVectorType<float64_t> {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-private-field"
 
-union vec8_t {
+union vec8_t final {
   uint8v1_t bytes;
   uint8v1_t iwords;  // Ideal.
 
@@ -206,7 +206,7 @@ static_assert(1 == sizeof(vec8_t) &&
               1 == sizeof(vec8_t().iwords),
               "Invalid structure packing of `vec8_t`.");
 
-union vec16_t {
+union vec16_t final {
   uint8v2_t bytes;
   uint16v1_t words;
   uint16v1_t iwords;  // Ideal.
@@ -232,7 +232,7 @@ static_assert(2 == sizeof(vec16_t) &&
               2 == sizeof(vec16_t().iwords),
               "Invalid structure packing of `vec16_t`.");
 
-union vec32_t {
+union vec32_t final {
   uint8v4_t bytes;
   uint16v2_t words;
   uint32v1_t dwords;
@@ -258,7 +258,7 @@ static_assert(4 == sizeof(vec32_t) &&
               4 == sizeof(vec32_t().iwords),
               "Invalid structure packing of `vec32_t`.");
 
-union vec64_t {
+union vec64_t final {
   uint8v8_t bytes;
   uint16v4_t words;
   uint32v2_t dwords;
@@ -288,7 +288,7 @@ static_assert(8 == sizeof(vec64_t) &&
               8 == sizeof(vec64_t().iwords),
               "Invalid structure packing of `vec64_t`.");
 
-union vec128_t {
+union vec128_t final {
   ALWAYS_INLINE vec128_t(void);
   ALWAYS_INLINE vec128_t(const vec64_t &&sub_vec);
 
@@ -315,7 +315,7 @@ static_assert(16 == sizeof(vec128_t) &&
               16 == sizeof(vec128_t().iwords),
               "Invalid structure packing of `vec128_t`.");
 
-union vec256_t {
+union vec256_t final {
   ALWAYS_INLINE vec256_t(void);
   ALWAYS_INLINE vec256_t(const vec64_t &&sub_vec);
   ALWAYS_INLINE vec256_t(const vec128_t &&sub_vec);
@@ -344,7 +344,7 @@ static_assert(32 == sizeof(vec256_t) &&
               32 == sizeof(vec256_t().iwords),
               "Invalid structure packing of `vec256_t`.");
 
-union vec512_t {
+union vec512_t final {
   ALWAYS_INLINE vec512_t(void);
   ALWAYS_INLINE vec512_t(const vec64_t &&sub_vec);
   ALWAYS_INLINE vec512_t(const vec128_t &&sub_vec);
@@ -445,12 +445,12 @@ MAKE_INT_TYPE(uint64_t, uint128_t);
 #undef MAKE_INT_TYPE
 
 template <typename T>
-struct Mn {
+struct Mn final {
   addr_t addr;
 };
 
 template <typename T>
-struct MnW {
+struct MnW final {
   addr_t addr;
 };
 
@@ -461,27 +461,27 @@ struct MnW {
 //       too small, e.g. `uint8_t` or `uint16_t` in a struct, is passed as an
 //       aligned pointer to a `byval` parameter.
 template <typename T>
-struct Rn {
+struct Rn final {
   const addr_t val;
 };
 
 template <typename T>
-struct RnW {
+struct RnW final {
   T *val_ref;
 };
 
 template <typename T>
-struct In {
+struct In final {
   const addr_t val;
 };
 
 template <typename T>
-struct Vn {
+struct Vn final {
   const T *val;
 };
 
 template <typename T>
-struct VnW {
+struct VnW final {
   T *val_ref;
 };
 

@@ -31,6 +31,7 @@ GEN_DIR = os.path.join(MCSEMA_DIR, "generated")
 INCLUDE_DIR = os.path.join(MCSEMA_DIR, "third_party", "include")
 BIN_DIR = os.path.join(MCSEMA_DIR, "third_party", "bin")
 LIB_DIR = os.path.join(MCSEMA_DIR, "third_party", "lib")
+TOOLS_DIR = os.path.join(MCSEMA_DIR, "tools")
 
 try:
   import concurrent.futures
@@ -80,6 +81,7 @@ CXX_FLAGS = [
   "-D__STDC_LIMIT_MACROS",
   "-D__STDC_CONSTANT_MACROS",
   "-DGOOGLE_PROTOBUF_NO_RTTI",
+  "-DNDEBUG",
 
   # Includes.
   "-isystem", INCLUDE_DIR,
@@ -253,7 +255,8 @@ class _Target(_File):
       args.extend([
         "-Wl,-z,now",
         "-Wl,-rpath={}".format(LIB_DIR),
-        "-Wl,-gc-sections"])
+        "-Wl,-gc-sections",
+        "-Wl,-E"])
 
     elif "mac" == OS:
       args.extend([
@@ -330,7 +333,7 @@ object_files = [
 system_libraries = [
   LinkerLibrary("dl"),
   LinkerLibrary("pthread"),
-  LinkerLibrary("curses", os="mac"),
+  LinkerLibrary("curses"),
   LinkerLibrary("c++", os="mac"),
   LinkerLibrary("c++abi", os="mac")]
 
@@ -423,9 +426,6 @@ def BuildTests(arch, bits, suffix, has_avx, has_avx512):
         extra_args=macro_args+target_args),
       SourceFile(
         os.path.join(TEST_DIR, "X86", "Run.cpp"),
-        extra_args=macro_args),
-      SourceFile(
-        os.path.join(SRC_DIR, "Arch", "Runtime", "Types.cpp"),
         extra_args=macro_args)],
     object_files=[
       StaticLibrary("gflags"),
@@ -441,6 +441,21 @@ for target in [("x86", 32), ("amd64", 64)]:
     arch, bits = target
     suffix, has_avx, has_avx512 = avx
     Task(BuildTests, arch, bits, suffix, has_avx, has_avx512)
+
+decree = TargetExecutable(
+  os.path.join(BUILD_DIR, "decree"),
+  source_files=[
+    SourceFile(os.path.join(TOOLS_DIR, "CGC", "Process.cpp")),
+    SourceFile(os.path.join(TOOLS_DIR, "CGC", "Snapshot.cpp")),
+    SourceFile(os.path.join(TOOLS_DIR, "CGC", "Runtime.cpp"))],
+  object_files=[
+    StaticLibrary("gflags"),
+    StaticLibrary("glog")],
+  libraries=[
+    LinkerLibrary("dl"),
+    LinkerLibrary("pthread"),
+    LinkerLibrary("c++", os="mac"),
+    LinkerLibrary("c++abi", os="mac")])
 
 # Wait for all executors to finish.
 FinishAllTasks()

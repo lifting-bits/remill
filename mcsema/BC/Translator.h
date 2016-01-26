@@ -88,7 +88,7 @@ class Translator {
   // multiple libraries, so it's not safe to just name blocks from those CFGs
   // with their address because they might conflict. So, we give a unique
   // name to every non-exported symbol we introduce.
-  int next_symbol_id;
+  int binary_id;
 
   // Basic block template.
   llvm::Function * const basic_block;

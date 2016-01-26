@@ -40,7 +40,7 @@
 #define AVX_SEL_xyz(tail) x ## tail
 #endif
 
-union FPUStatusWord {
+union FPUStatusWord final {
   struct {
     uint16_t ie:1;  // bit 0
     uint16_t de:1;
@@ -63,7 +63,7 @@ union FPUStatusWord {
 static_assert(2 == sizeof(FPUStatusWord),
               "Invalid structure packing of `FPUFlags`.");
 
-union FPUControlWord {
+union FPUControlWord final {
   struct {
     uint16_t im:1;  // bit 0
     uint16_t dm:1;
@@ -83,13 +83,13 @@ union FPUControlWord {
 static_assert(2 == sizeof(FPUControlWord),
               "Invalid structure packing of `FPUControl`.");
 
-union FPUStackElem {
+union FPUStackElem final {
   float80_t st;
   double mmx;
 } __attribute__((packed));
 
 // FP register state that conforms with `FXSAVE`.
-struct FPU {
+struct FPU final {
   FPUControlWord cwd;
   FPUStatusWord swd;
   uint8_t ftw;
@@ -122,7 +122,7 @@ struct FPU {
 
 static_assert(512 == sizeof(FPU), "Invalid structure packing of `FPU`.");
 
-union Flags {
+union Flags final {
   struct {
     uint32_t cf:1;  // bit 0.
     uint32_t must_be_1:1;
@@ -158,7 +158,7 @@ union Flags {
 
 static_assert(8 == sizeof(Flags), "Invalid structure packing of `Flags`.");
 
-struct alignas(8) ArithFlags {
+struct alignas(8) ArithFlags final {
   bool cf;
   bool pf;
   bool af;
@@ -170,7 +170,7 @@ struct alignas(8) ArithFlags {
 
 static_assert(8 == sizeof(ArithFlags), "Invalid packing of `ArithFlags`.");
 
-struct alignas(8) Segments {
+struct alignas(8) Segments final {
   uint16_t ss;
   uint16_t es;
   uint16_t gs;
@@ -181,7 +181,7 @@ struct alignas(8) Segments {
   uint16_t _unused2;
 } __attribute__((packed));
 
-union Reg {
+union Reg final {
   alignas(1) struct {
     uint8_t low;
     uint8_t high;
@@ -203,7 +203,7 @@ static_assert(0 == __builtin_offsetof(Reg, dword),
 static_assert(0 == __builtin_offsetof(Reg, qword),
               "Invalid packing of `Reg::qword`.");
 
-union alignas(64) VectorReg {
+union alignas(64) VectorReg final {
   alignas(64) avec128_t xmm;
   alignas(64) avec256_t ymm;
   alignas(64) avec512_t zmm;
@@ -218,7 +218,7 @@ static_assert(0 == __builtin_offsetof(VectorReg, ymm),
 static_assert(0 == __builtin_offsetof(VectorReg, zmm),
               "Invalid packing of `VectorReg::zmm`.");
 
-struct alignas(8) GPR {
+struct alignas(8) GPR final {
   // Named the same way as the 64-bit version to keep names the same
   // across architectures. All registers are here, even the 64-bit ones. The
   // 64-bit ones are inaccessible in lifted 32-bit code because they will
@@ -258,7 +258,7 @@ enum : size_t {
   kNumVecRegisters = 32
 };
 
-struct alignas(64) State {
+struct alignas(64) State final {
   // Native `FXSAVE64` representation of the FPU, plus a semi-duplicate
   // representation of all vector regs (XMM, YMM, ZMM).
   FPU fpu;  // 512 bytes.

@@ -10,7 +10,8 @@ YELLOW=`tput setaf 3`
 BLUE=`tput setaf 4`
 RESET=`tput sgr0`
 
-LLVM_RELEASE=3.7.0
+LLVM_RELEASE_DIR=pre-releases/3.8.0/rc1
+LLVM_RELEASE=3.8.0-rc1
 GLOG_RELEASE=v0.3.4
 GFLAGS_RELEASE=v2.1.2
 PROTOBUF_VERSION=2.5.0
@@ -39,7 +40,7 @@ else
 fi
 
 XED_URL=https://software.intel.com/system/files/managed/58/cc/${XED_VERSION}.zip
-LLVM_URL=http://llvm.org/releases/${LLVM_RELEASE}/${LLVM_VERSION}.tar.xz
+LLVM_URL=http://llvm.org/${LLVM_RELEASE_DIR}/${LLVM_VERSION}.tar.xz
 GLOG_URL=https://github.com/google/glog/archive/${GLOG_RELEASE}.tar.gz
 GFLAGS_URL=https://github.com/gflags/gflags/archive/${GFLAGS_RELEASE}.tar.gz
 PROTOBUF_URL=https://github.com/google/protobuf/releases/download/v${PROTOBUF_VERSION}/${PROTOBUF_RELEASE}.tar.gz

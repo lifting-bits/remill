@@ -42,6 +42,20 @@ static std::string NamedSymbolMetaId(std::string func_name) {
   return "mcsema_external:" + func_name;
 }
 
+// Returns the ID for this binary. We prefix every basic block function added to
+// a module with the ID of the binary, where the ID is a number that increments
+// linearly.
+static int GetBinaryId(llvm::Module *M) {
+  for (auto i = 1; ; ++i) {
+    std::string id = "mcsema_binary:" + std::to_string(i);
+    if (!M->getNamedMetadata(id)) {
+      M->getOrInsertNamedMetadata(id);
+      return i;
+    }
+  }
+  __builtin_unreachable();
+}
+
 }  // namespace
 
 Translator::Translator(const Arch *arch_, llvm::Module *module_)
@@ -50,9 +64,10 @@ Translator::Translator(const Arch *arch_, llvm::Module *module_)
       blocks(),
       functions(),
       symbols(),
-      next_symbol_id(0),
+      binary_id(GetBinaryId(module)),
       basic_block(FindFunction(module, "__mcsema_basic_block")),
       intrinsics(new IntrinsicTable(module)) {
+
   EnableDeferredInlining();
   IdentifyExistingSymbols();
 }
@@ -90,7 +105,6 @@ void Translator::IdentifyExistingSymbols(void) {
     if (module->getNamedMetadata(NamedSymbolMetaId(name))) {
       functions[name] = &F;
     }
-    ++next_symbol_id;
   }
 
   for (auto &V : module->globals()) {
@@ -98,7 +112,6 @@ void Translator::IdentifyExistingSymbols(void) {
     if (module->getNamedMetadata(NamedSymbolMetaId(name))) {
       symbols[name] = &V;
     }
-    ++next_symbol_id;
   }
 }
 
@@ -109,7 +122,7 @@ void Translator::CreateBlocks(const cfg::Module *cfg) {
     auto &BF = blocks[block.address()];
     if (!BF) {
       std::stringstream ss;
-      ss << "__lifted_block_" << (next_symbol_id++) << "_0x"
+      ss << "__lifted_block_" << binary_id << "_0x"
          << std::hex << block.address();
       BF = llvm::dyn_cast<llvm::Function>(
           module->getOrInsertFunction(ss.str(), block_type));
