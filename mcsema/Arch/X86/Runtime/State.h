@@ -258,6 +258,18 @@ enum : size_t {
   kNumVecRegisters = 32
 };
 
+// Representing the state of an in-progress interrupt request.
+//
+// TODO(pag): This is kind of an ugly solution to there not being a particularly
+//            nice way of "configuring" interrupts for the
+//            `__mcsema_interrupt_call` intrinsic, especially in the case of
+//            conditional interrupts.
+struct alignas(sizeof(addr_t)) Interrupt {
+  addr_t vector;
+  addr_t next_pc;
+  bool trigger;
+};
+
 struct alignas(64) State final {
   // Native `FXSAVE64` representation of the FPU, plus a semi-duplicate
   // representation of all vector regs (XMM, YMM, ZMM).
@@ -274,6 +286,8 @@ struct alignas(64) State final {
 
   Segments seg;  // 12 bytes, padded to 16 bytes.
   GPR gpr;  // 136 bytes.
+
+  Interrupt interrupt;  // 2 * sizeof(addr_t) bytes.
 
   // Total: 2728 bytes, padded to 2752 bytes.
 } __attribute__((packed));
@@ -296,6 +310,7 @@ static_assert(2576 == __builtin_offsetof(State, seg),
 static_assert(2592 == __builtin_offsetof(State, gpr),
               "Invalid packing of `State::seg`.");
 
-static_assert(2752 == sizeof(State), "Invalid packing of `State`.");
+static_assert(2728 == __builtin_offsetof(State, interrupt),
+              "Invalid packing of `State::interrupt`.");
 
 #endif  // MCSEMA_ARCH_X86_RUNTIME_STATE_H_

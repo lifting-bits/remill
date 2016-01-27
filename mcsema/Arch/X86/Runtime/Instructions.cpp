@@ -12,6 +12,7 @@
 #include "mcsema/Arch/X86/Semantics/CMOV.h"
 #include "mcsema/Arch/X86/Semantics/COND_BR.h"
 #include "mcsema/Arch/X86/Semantics/DATAXFER.h"
+#include "mcsema/Arch/X86/Semantics/INTERRUPT.h"
 #include "mcsema/Arch/X86/Semantics/FMA.h"
 #include "mcsema/Arch/X86/Semantics/LOGICAL.h"
 #include "mcsema/Arch/X86/Semantics/MISC.h"

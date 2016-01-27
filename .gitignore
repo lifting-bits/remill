@@ -36,3 +36,5 @@ generated/*
 *.exe
 *.out
 *.app
+
+*.pyc

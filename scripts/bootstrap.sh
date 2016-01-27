@@ -29,8 +29,8 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
 
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     XED_VERSION=xed-install-base-2015-09-10-mac-x86-64
-    LLVM_RELEASE_DIR=releases/3.7.1
-    LLVM_RELEASE=3.7.1
+    LLVM_RELEASE_DIR=releases/3.7.0
+    LLVM_RELEASE=3.7.0
     LLVM_VERSION=clang+llvm-${LLVM_RELEASE}-x86_64-apple-darwin
     MCSEMA_OS_NAME="mac"
     LIB_EXT=dylib

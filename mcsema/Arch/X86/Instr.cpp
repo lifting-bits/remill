@@ -246,22 +246,22 @@ bool Instr::CheckArgumentTypes(const llvm::Function *F,
 
 llvm::Function *Instr::GetInstructionFunction(void) {
   auto func_name = InstructionFunctionName(xedd);
-  llvm::Function *F = FindFunction(M, func_name);
+  llvm::Function *IF = FindFunction(M, func_name);
   llvm::GlobalVariable *FP = FindGlobaVariable(M, func_name);
 
-  if (!F && FP) {
+  if (!IF && FP) {
     CHECK(FP->isConstant() && FP->hasInitializer())
         << "Expected a `constexpr` variable as the function pointer.";
     llvm::Constant *FC = FP->getInitializer()->stripPointerCasts();
-    F = llvm::dyn_cast<llvm::Function>(FC);
+    IF = llvm::dyn_cast<llvm::Function>(FC);
   }
 
   // TODO(pag): Memory leak of `args`, `prepend_instrs`, and `append_instrs`.
-  if (F && !CheckArgumentTypes(F, func_name)) {
+  if (!IF || !CheckArgumentTypes(IF, func_name)) {
     LOG(WARNING) << "Missing instruction semantics for " << func_name;
   }
 
-  return F;
+  return IF;
 }
 
 // Lift a generic instruction.
@@ -282,10 +282,10 @@ void Instr::LiftGeneric(const Translator &lifter) {
     LiftOperand(lifter, i);
   }
 
-  if (auto F = GetInstructionFunction()) {
+  if (auto IF = GetInstructionFunction()) {
     auto &IList = B->getInstList();
     IList.insert(IList.end(), prepend_instrs.rbegin(), prepend_instrs.rend());
-    IList.push_back(llvm::CallInst::Create(F, args));
+    IList.push_back(llvm::CallInst::Create(IF, args));
     IList.insert(IList.end(), append_instrs.begin(), append_instrs.end());
   }
 }
@@ -607,7 +607,8 @@ bool Instr::IsSystemReturn(void) const {
 }
 
 bool Instr::IsInterruptCall(void) const {
-  return XED_ICLASS_INT <= iclass && XED_ICLASS_INTO >= iclass;
+  return (XED_ICLASS_INT <= iclass && XED_ICLASS_INTO >= iclass) ||
+         XED_ICLASS_BOUND == iclass;
 }
 
 bool Instr::IsInterruptReturn(void) const {

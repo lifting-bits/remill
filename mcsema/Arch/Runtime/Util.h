@@ -46,6 +46,11 @@
     ALWAYS_INLINE static void name ( \
         State &state, const addr_t next_pc, ##__VA_ARGS__) noexcept
 
+// Define a semantics implementing function that is also an instruction.
+#define DEF_ISEL_SEM(name, ...) \
+    extern "C" ALWAYS_INLINE void name ( \
+        State &state, const addr_t next_pc, ##__VA_ARGS__) noexcept
+
 // An instruction where the implementation is the same for all operand sizes.
 #define DEF_ISEL_ALL(name, func) \
     DEF_ISEL(name ## _8) = func ; \

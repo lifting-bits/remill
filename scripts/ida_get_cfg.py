@@ -21,7 +21,7 @@ from generated.CFG import CFG_pb2
 CALL_ITYPES = frozenset([idaapi.NN_call, idaapi.NN_callfi, idaapi.NN_callni])
 JMP_ITYPES = frozenset([idaapi.NN_jmp, idaapi.NN_jmpfi, idaapi.NN_jmpni])
 SYSCALL_ITYPES = frozenset([idaapi.NN_int, idaapi.NN_syscall,
-                            idaapi.NN_sysenter])
+                            idaapi.NN_sysenter, idaapi.NN_bound])
 PREFIX_ITYPES = frozenset([idaapi.NN_lock, idaapi.NN_rep, idaapi.NN_repe,
                            idaapi.NN_repne])
 
