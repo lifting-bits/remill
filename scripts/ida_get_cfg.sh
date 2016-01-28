@@ -8,8 +8,15 @@ MCSEMA_DIR=$(dirname ${SCRIPTS_DIR})
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
 	IDA=`locate idal64 | head -n 1`
 	BIN=`mktemp --tmpdir=/tmp mcsema2_XXXXXXXXXX`
+
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-	IDA="/Applications/IDA Pro 6.8/IDA binaries/idal64"
+	IDA="/Applications/IDA Pro 6.9/IDA binaries/idal64"
+	if [[ ! -e $IDA ]] ; then
+		IDA="/Applications/IDA Pro 6.8/IDA binaries/idal64"
+	fi
+	if [[ ! -e $IDA ]] ; then
+		IDA="/Applications/IDA Pro 6.7/IDA binaries/idal64"
+	fi
 	BIN=`mktemp -t mcsema2_XXXXXXXXXX`
 fi
 
