@@ -6,32 +6,42 @@ DIR=$(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd ))
 RED=`tput setaf 1`
 RESET=`tput sgr0`
 
-if [[ "$OSTYPE" == "linux-gnu" ]]; then
+if [[ -z "$1" ]] ; then
+    printf "${RED}Need to specify input bitcode file as arg 1.${RESET}\n" > /dev/stderr
+    exit 1
+fi
+
+if [[ -z "$2" ]] ; then
+    printf "${RED}Need to specify output bitcode file as arg 2.${RESET}\n" > /dev/stderr
+    exit 1
+fi
+
+if [[ "$OSTYPE" == "linux-gnu" ]] ; then
     DYLIB_SUFFIX=so
 
-elif [[ "$OSTYPE" == "darwin"* ]]; then
+elif [[ "$OSTYPE" == "darwin"* ]] ; then
     DYLIB_SUFFIX=dylib
 
 else
-    printf "${RED}Unsupported platform: ${OSTYPE}${RESET}\n"
+    printf "${RED}Unsupported platform: ${OSTYPE}${RESET}\n" > /dev/stderr
     exit 1
 fi
 
 $DIR/third_party/bin/opt -O3 -o=$1.opt0.bc $1 || {
-	printf "${RED}Could not optimize $1${RESET}\n"
-	exit 1
+    printf "${RED}Could not optimize $1${RESET}\n" > /dev/stderr
+    exit 1
 }
 
 $DIR/third_party/bin/opt \
-	-load $DIR/build/libOptimize.$DYLIB_SUFFIX -deferred_inliner \
-	-o=$1.opt1.bc $1.opt0.bc || {
-	printf "${RED}Could not optimize $1.opt0.bc${RESET}\n"
-	exit 1
+    -load $DIR/build/libOptimize.$DYLIB_SUFFIX -deferred_inliner \
+    -o=$1.opt1.bc $1.opt0.bc || {
+    printf "${RED}Could not optimize $1.opt0.bc${RESET}\n" > /dev/stderr
+    exit 1
 }
 
 $DIR/third_party/bin/opt -O3 -o=$1.opt2.bc $1.opt1.bc || {
-	printf "${RED}Could not optimize $1.opt1.bc${RESET}\n"
-	exit 1
+    printf "${RED}Could not optimize $1.opt1.bc${RESET}\n" > /dev/stderr
+    exit 1
 }
 
 mv $1.opt2.bc $2

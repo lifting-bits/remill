@@ -4,6 +4,14 @@
 SCRIPTS_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 MCSEMA_DIR=$(dirname ${SCRIPTS_DIR})
 
+RED=`tput setaf 1`
+RESET=`tput sgr0`
+
+if [[ -z "$1" ]] ; then
+	printf "${RED}Please specify input binary as arg 1.${RESET}\n" > /dev/stderr
+	exit 1
+fi
+
 # Find IDA
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
 	IDA=`locate idal64 | head -n 1`
@@ -20,6 +28,11 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
 	BIN=`mktemp -t mcsema2_XXXXXXXXXX`
 fi
 
+if [[ ! -e $IDA ]] ; then
+	printf "${RED}Could not find IDA.${RESET}\n" > /dev/stderr
+	exit 1
+fi
+
 cp $1 $BIN
 
 export PYTHONPATH=${MCSEMA_DIR}:${PYTHONPATH}
@@ -32,5 +45,5 @@ export TVHEADLESS=1
 }
 
 rm $BIN
-printf "${BIN}.cfg\n"
+printf "${BIN}.cfg"
 exit 0
