@@ -22,12 +22,17 @@ DEF_SEM(RET_IMM, I16 bytes) {
   W(state.gpr.rsp) = R(state.gpr.rsp) + R(bytes) + sizeof(PC);
 }
 
+template <typename T>
+T POP(State &state) {
+  Mn<T> pop_addr = {R(state.gpr.rsp)};
+  const T pop_val = R(pop_addr);
+  W(state.gpr.rsp) = R(state.gpr.rsp) + sizeof(T);
+  return pop_val;
+}
+
 DEF_SEM(RET) {
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
-  Mn<PC> ret_addr_loc = {R(state.gpr.rsp)};
-  const PC ret_addr = R(ret_addr_loc);
-  W(state.gpr.rip) = ret_addr;
-  W(state.gpr.rsp) = R(state.gpr.rsp) + sizeof(PC);
+  W(state.gpr.rip) = POP<PC>(state);
 }
 
 }  // namespace
@@ -59,5 +64,41 @@ DEF_ISEL_32or64(RET_NEAR, RET);
 1666 IRETQ IRETQ RET LONGMODE LONGMODE ATTRIBUTES: FIXED_BASE0 NOTSX SCALABLE STACKPOP0
 1784 IRET IRET RET BASE I86 ATTRIBUTES: FIXED_BASE0 NOTSX SCALABLE STACKPOP0
 */
+
+DEF_ISEL_SEM(IRETD_32) {
+  W(state.gpr.rip) = POP<uint32_t>(state);
+  W(state.seg.cs) = static_cast<uint16_t>(POP<uint32_t>(state));
+
+  Flags flags;
+  flags.flat = POP<uint32_t>(state);
+  state.aflag.af = flags.af;
+  state.aflag.cf = flags.cf;
+  state.aflag.df = flags.df;
+  state.aflag.of = flags.of;
+  state.aflag.pf = flags.pf;
+  state.aflag.sf = flags.sf;
+  state.aflag.zf = flags.zf;
+
+  // TODO(pag): Hrmmmm.
+}
+
+#if 64 == ADDRESS_SIZE_BITS
+DEF_ISEL_SEM(IRETQ_64) {
+  W(state.gpr.rip) = POP<uint64_t>(state);
+  W(state.seg.cs) = static_cast<uint16_t>(POP<uint64_t>(state));
+
+  Flags flags;
+  flags.flat = POP<uint64_t>(state);
+  state.aflag.af = flags.af;
+  state.aflag.cf = flags.cf;
+  state.aflag.df = flags.df;
+  state.aflag.of = flags.of;
+  state.aflag.pf = flags.pf;
+  state.aflag.sf = flags.sf;
+  state.aflag.zf = flags.zf;
+
+  // TODO(pag): Hrmmmm.
+}
+#endif  // 64 == ADDRESS_SIZE_BITS
 
 #endif  // MCSEMA_ARCH_X86_SEMANTICS_CALL_RET_H_
