@@ -290,7 +290,7 @@ static_assert(8 == sizeof(vec64_t) &&
 
 union vec128_t final {
   ALWAYS_INLINE vec128_t(void);
-  ALWAYS_INLINE vec128_t(const vec64_t &&sub_vec);
+  ALWAYS_INLINE vec128_t(vec64_t sub_vec);
 
   uint8v16_t bytes;
   uint16v8_t words;
@@ -317,8 +317,8 @@ static_assert(16 == sizeof(vec128_t) &&
 
 union vec256_t final {
   ALWAYS_INLINE vec256_t(void);
-  ALWAYS_INLINE vec256_t(const vec64_t &&sub_vec);
-  ALWAYS_INLINE vec256_t(const vec128_t &&sub_vec);
+  ALWAYS_INLINE vec256_t(vec64_t sub_vec);
+  ALWAYS_INLINE vec256_t(vec128_t sub_vec);
 
   uint8v32_t bytes;
   uint16v16_t words;
@@ -346,9 +346,9 @@ static_assert(32 == sizeof(vec256_t) &&
 
 union vec512_t final {
   ALWAYS_INLINE vec512_t(void);
-  ALWAYS_INLINE vec512_t(const vec64_t &&sub_vec);
-  ALWAYS_INLINE vec512_t(const vec128_t &&sub_vec);
-  ALWAYS_INLINE vec512_t(const vec256_t &&sub_vec);
+  ALWAYS_INLINE vec512_t(vec64_t sub_vec);
+  ALWAYS_INLINE vec512_t(vec128_t sub_vec);
+  ALWAYS_INLINE vec512_t(vec256_t sub_vec);
 
   uint8v64_t bytes;
   uint16v32_t words;

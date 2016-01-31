@@ -23,7 +23,7 @@ DEF_SEM(RET_IMM, I16 bytes) {
 }
 
 template <typename T>
-T POP(State &state) {
+T PopValue(State &state) {
   Mn<T> pop_addr = {R(state.gpr.rsp)};
   const T pop_val = R(pop_addr);
   W(state.gpr.rsp) = R(state.gpr.rsp) + sizeof(T);
@@ -32,7 +32,7 @@ T POP(State &state) {
 
 DEF_SEM(RET) {
   IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
-  W(state.gpr.rip) = POP<PC>(state);
+  W(state.gpr.rip) = PopValue<PC>(state);
 }
 
 }  // namespace
@@ -66,11 +66,11 @@ DEF_ISEL_32or64(RET_NEAR, RET);
 */
 
 DEF_ISEL_SEM(IRETD_32) {
-  W(state.gpr.rip) = POP<uint32_t>(state);
-  W(state.seg.cs) = static_cast<uint16_t>(POP<uint32_t>(state));
+  W(state.gpr.rip) = PopValue<uint32_t>(state);
+  W(state.seg.cs) = static_cast<uint16_t>(PopValue<uint32_t>(state));
 
   Flags flags;
-  flags.flat = POP<uint32_t>(state);
+  flags.flat = PopValue<uint32_t>(state);
   state.aflag.af = flags.af;
   state.aflag.cf = flags.cf;
   state.aflag.df = flags.df;
@@ -84,11 +84,11 @@ DEF_ISEL_SEM(IRETD_32) {
 
 #if 64 == ADDRESS_SIZE_BITS
 DEF_ISEL_SEM(IRETQ_64) {
-  W(state.gpr.rip) = POP<uint64_t>(state);
-  W(state.seg.cs) = static_cast<uint16_t>(POP<uint64_t>(state));
+  W(state.gpr.rip) = PopValue<uint64_t>(state);
+  W(state.seg.cs) = static_cast<uint16_t>(PopValue<uint64_t>(state));
 
   Flags flags;
-  flags.flat = POP<uint64_t>(state);
+  flags.flat = PopValue<uint64_t>(state);
   state.aflag.af = flags.af;
   state.aflag.cf = flags.cf;
   state.aflag.df = flags.df;
