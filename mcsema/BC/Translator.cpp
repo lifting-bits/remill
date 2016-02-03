@@ -148,9 +148,23 @@ void Translator::CreateBlocks(const cfg::Module *cfg) {
       if (!indirect_blocks.count(block.address())) {
         BF->setLinkage(llvm::GlobalValue::PrivateLinkage);
 
-      // This is still visible in the symbol table.
+      // This should enable some inlining optimizations when they make sense
+      // to the compiler, and should also make the symbols visible externally.
       } else {
-        BF->setLinkage(llvm::GlobalValue::InternalLinkage);
+        BF->setLinkage(llvm::GlobalValue::ExternalLinkage);
+
+        // Create a new block, where the original entry block, correctly named,
+        // directly jumps to this internal block. Hopefully there will be
+        // situations where there are internal jumps to this externally visible
+        // block and we want to enable inlining optimizations in these cases.
+        ss << "__lifted_block_" << binary_id << "_intern_0x"
+           << std::hex << block.address();
+        auto BF_intern = llvm::dyn_cast<llvm::Function>(
+            module->getOrInsertFunction(ss.str(), block_type));
+        BF_intern->setLinkage(llvm::GlobalValue::PrivateLinkage);
+
+        AddTerminatingTailCall(BF, BF_intern);
+        BF = BF_intern;
       }
     }
   }
