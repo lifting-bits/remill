@@ -11,11 +11,6 @@ if [[ -z "$1" ]] ; then
     exit 1
 fi
 
-if [[ -z "$2" ]] ; then
-    printf "${RED}Need to specify output bitcode file as arg 2.${RESET}\n" > /dev/stderr
-    exit 1
-fi
-
 if [[ "$OSTYPE" == "linux-gnu" ]] ; then
     DYLIB_SUFFIX=so
 
@@ -41,12 +36,11 @@ $DIR/third_party/bin/opt \
     exit 1
 }
 
-$DIR/third_party/bin/opt -O3 -o=$BIN.opt2.bc $BIN.opt1.bc || {
+$DIR/third_party/bin/opt -O3 -o=$BIN.bc $BIN.opt1.bc || {
     printf "${RED}Could not optimize $1.opt1.bc${RESET}\n" > /dev/stderr
     exit 1
 }
 
-mv $1.opt2.bc $BIN.bc
 rm $BIN.opt1.bc
 rm $BIN.opt0.bc
 
