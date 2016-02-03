@@ -7,67 +7,23 @@
 #include <llvm/IR/Module.h>
 
 #include "mcsema/Arch/X86/Arch.h"
-#include "mcsema/Arch/X86/Instr.h"
-
-#include "mcsema/BC/Util.h"
+#include "mcsema/Arch/X86/Decode.h"
+#include "mcsema/Arch/X86/Translator.h"
+#include "mcsema/BC/Translator.h"
 #include "mcsema/CFG/CFG.h"
 
 namespace mcsema {
 namespace x86 {
-namespace {
 
-const xed_state_t kXEDState32 = {
-    XED_MACHINE_MODE_LONG_COMPAT_32,
-    XED_ADDRESS_WIDTH_32b};
+X86Arch::X86Arch(OSName os_name_, ArchName arch_name_, unsigned address_size_)
+    : Arch(os_name_, arch_name_, address_size_),
+      analysis(arch_name_) {}
 
-const xed_state_t kXEDState64 = {
-    XED_MACHINE_MODE_LONG_64,
-    XED_ADDRESS_WIDTH_64b};
-
-static bool InitXED(void) {
-  VLOG(1) << "Initializing XED tables";
-  xed_tables_init();
-  return true;
-}
-
-[[gnu::used]]
-static bool gInitXED = InitXED();
-
-}  // namespace
-
-Arch::~Arch(void) {}
-
-// Decode an instruction and invoke a visitor with the decoded instruction.
-void Arch::Decode(
-    const cfg::Instr &instr,
-    std::function<void(::mcsema::Instr &)> visitor) const {
-
-  CHECK(gInitXED)
-      << "XED must be initialized before instructions can be decoded.";
-
-  xed_decoded_inst_t xedd;
-  auto dstate = kArchX86 == arch_name ? &kXEDState32 : &kXEDState64;
-  auto num_bytes = instr.size();
-  auto bytes = reinterpret_cast<const uint8_t *>(instr.bytes().data());
-  xed_decoded_inst_zero_set_mode(&xedd, dstate);
-  xed_decoded_inst_set_input_chip(&xedd, XED_CHIP_INVALID);
-  auto err = xed_decode(&xedd, bytes, num_bytes);
-
-  CHECK(XED_ERROR_NONE == err)
-      << "Unable to decode instruction with error: "
-      << xed_error_enum_t2str(err);
-
-  CHECK(xed_decoded_inst_get_length(&xedd) == num_bytes)
-      << "Size of decoded instruction (" << xed_decoded_inst_get_length(&xedd)
-      << ") doesn't match input instruction size (" << num_bytes << ")";
-
-  ::mcsema::x86::Instr arch_instr(&instr, &xedd);
-  visitor(arch_instr);
-}
+X86Arch::~X86Arch(void) {}
 
 // Converts an LLVM module object to have the right triple / data layout
 // information for the target architecture.
-llvm::Module *Arch::ConvertModule(llvm::Module *mod) const {
+llvm::Module *X86Arch::PrepareModule(llvm::Module *mod) const {
   std::string dl;
   std::string triple;
   switch (os_name) {
@@ -96,6 +52,26 @@ llvm::Module *Arch::ConvertModule(llvm::Module *mod) const {
   mod->setDataLayout(dl);
   mod->setTargetTriple(triple);
   return mod;
+}
+
+// Decode an instruction and lift it into a basic block.
+InstructionLiftAction X86Arch::LiftInstructionIntoBlock(
+    const Translator &translator,
+    const cfg::Block &block, const cfg::Instr &instr,
+    llvm::BasicBlock *B) const {
+
+  const auto xedd = DecodeInstruction(instr, arch_name);
+  InstructionTranslator trans(analysis, block, instr, xedd);
+  if (trans.LiftIntoBlock(translator, B)) {
+    return kLiftNextInstruction;
+  } else {
+    return kTerminateBlock;
+  }
+}
+
+// Return an arch-specific CFG analyzer.
+AutoAnalysis &X86Arch::CFGAnalyzer(void) const {
+  return analysis;
 }
 
 }  // namespace x86

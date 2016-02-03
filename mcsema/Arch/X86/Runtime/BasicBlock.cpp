@@ -459,6 +459,15 @@ void __mcsema_basic_block(State &state) {
   auto &FPU_TAG_read = state.fpu.ftw;
   auto &FPU_TAG_write = state.fpu.ftw;
 
+  // Arithmetic flags. Data-flow analyses will let of clear these out ;-)
+  auto &AF_write = state.aflag.af;
+  auto &CF_write = state.aflag.cf;
+  auto &DF_write = state.aflag.df;
+  auto &OF_write = state.aflag.of;
+  auto &PF_write = state.aflag.pf;
+  auto &SF_write = state.aflag.sf;
+  auto &ZF_write = state.aflag.zf;
+
   // Lifted code will be placed here in clones versions of this function.
 }
 

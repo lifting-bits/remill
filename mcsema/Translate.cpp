@@ -79,7 +79,7 @@ extern "C" int main(int argc, char *argv[]) {
   //auto target_arch = mcsema::Arch::Create(FLAGS_target_arch);
   auto cfg = mcsema::ReadCFG(FLAGS_cfg);
   auto source_module = mcsema::LoadModuleFromFile(FLAGS_bc_in);
-  auto target_module = target_arch->ConvertModule(source_module);
+  auto target_module = target_arch->PrepareModule(source_module);
 
   mcsema::Translator lifter(source_arch, target_module);
   lifter.LiftCFG(cfg);

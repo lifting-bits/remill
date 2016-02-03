@@ -39,25 +39,6 @@ static llvm::Function *FindPureIntrinsic(const llvm::Module *M,
   return F;
 }
 
-// Replace all uses of a specific intrinsic with an undefined value.
-static void ReplaceIntrinsic(llvm::Function *F, unsigned N) {
-  if (!F) return;
-
-  std::vector<llvm::CallInst *> Cs;
-  for (auto U : F->users()) {
-    if (auto C = llvm::dyn_cast<llvm::CallInst>(U)) {
-      Cs.push_back(C);
-    }
-  }
-
-  auto Undef = llvm::UndefValue::get(llvm::Type::getIntNTy(F->getContext(), N));
-  for (auto C : Cs) {
-    C->replaceAllUsesWith(Undef);
-    C->removeFromParent();
-    delete C;
-  }
-}
-
 }  // namespace
 
 IntrinsicTable::IntrinsicTable(const llvm::Module *M)
@@ -116,19 +97,14 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *M)
       atomic_end(FindIntrinsic(M, "__mcsema_atomic_end")),
 
       // Optimization guides.
-      defer_inlining(FindIntrinsic(M, "__mcsema_defer_inlining")) {
+      defer_inlining(FindIntrinsic(M, "__mcsema_defer_inlining")),
 
-  // Remove calls to the undefined intrinsics. The goal here is to improve dead
-  // store elimination by peppering the instruction semantics with assignments
-  // to the return values of special `__mcsema_undefined_*` intrinsics. It's hard
-  // to reliably produce an `undef` LLVM value from C/C++, so we use our trick
-  // of declaring (but never defining) a special "intrinsic" and then we replace
-  // all such uses with `undef` values.
-  ReplaceIntrinsic(FindIntrinsic(M, "__mcsema_undefined_bool"), 1);
-  ReplaceIntrinsic(FindIntrinsic(M, "__mcsema_undefined_8"), 8);
-  ReplaceIntrinsic(FindIntrinsic(M, "__mcsema_undefined_16"), 16);
-  ReplaceIntrinsic(FindIntrinsic(M, "__mcsema_undefined_32"), 32);
-  ReplaceIntrinsic(FindIntrinsic(M, "__mcsema_undefined_64"), 64);
+      // Optimization enablers.
+      undefined_bool(FindPureIntrinsic(M, "__mcsema_undefined_bool")),
+      undefined_8(FindPureIntrinsic(M, "__mcsema_undefined_8")),
+      undefined_16(FindPureIntrinsic(M, "__mcsema_undefined_16")),
+      undefined_32(FindPureIntrinsic(M, "__mcsema_undefined_32")),
+      undefined_64(FindPureIntrinsic(M, "__mcsema_undefined_64")) {
 }
 
 }  // namespace mcsema

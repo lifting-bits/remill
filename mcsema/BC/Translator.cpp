@@ -1,5 +1,6 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <functional>
@@ -22,12 +23,19 @@
 #include <llvm/Transforms/Utils/ValueMapper.h>
 
 #include "mcsema/Arch/Arch.h"
-#include "mcsema/Arch/Instr.h"
 #include "mcsema/BC/IntrinsicTable.h"
 #include "mcsema/BC/Translator.h"
-#include "mcsema/BC/Util.h"
 #include "mcsema/CFG/CFG.h"
 #include "mcsema/OS/OS.h"
+
+DEFINE_int32(max_dataflow_analysis_iterations, 0,
+             "Maximum number of iterations of a data flow pass to perform "
+             "over the control-flow graph being lifted.");
+
+DEFINE_bool(aggressive_dataflow_analysis, false,
+            "Should data-flow analysis be conservative in their conclusions? "
+            "If not then the analysis will be really aggressive and make a lot "
+            "of assumptions about function call behavior.");
 
 namespace llvm {
 class ReturnInst;
@@ -117,6 +125,11 @@ void Translator::IdentifyExistingSymbols(void) {
 
 // Create functions for every block in the CFG.
 void Translator::CreateBlocks(const cfg::Module *cfg) {
+  std::set<uint64_t> indirect_blocks;
+  for (const auto &block : cfg->indirect_blocks()) {
+    indirect_blocks.insert(block.address());
+  }
+
   auto block_type = basic_block->getFunctionType();
   for (const auto &block : cfg->blocks()) {
     auto &BF = blocks[block.address()];
@@ -126,7 +139,19 @@ void Translator::CreateBlocks(const cfg::Module *cfg) {
          << std::hex << block.address();
       BF = llvm::dyn_cast<llvm::Function>(
           module->getOrInsertFunction(ss.str(), block_type));
+
       InitFunctionAttributes(BF);
+
+      // There doesn't seem to be any way for indirect control flows to reach
+      // this block, so we'll mark it as internal to the module. This improves
+      // LLVM's ability to optimize it.
+      if (!indirect_blocks.count(block.address())) {
+        BF->setLinkage(llvm::GlobalValue::PrivateLinkage);
+
+      // This is still visible in the symbol table.
+      } else {
+        BF->setLinkage(llvm::GlobalValue::InternalLinkage);
+      }
     }
   }
 }
@@ -173,6 +198,7 @@ void Translator::CreateFunctions(const cfg::Module *cfg) {
       F->addFnAttr(llvm::Attribute::NoBuiltin);
       F->addFnAttr(llvm::Attribute::OptimizeNone);
       F->addFnAttr(llvm::Attribute::NoInline);
+      F->setLinkage(llvm::GlobalValue::ExternalWeakLinkage);
     }
 
     // Mark this symbol as external. We do this so that we can pick up on it
@@ -257,7 +283,8 @@ static uint64_t FallThroughPC(const cfg::Block &block) {
 
 // Add a fall-through terminator to the block method just in case one is
 // missing.
-void Translator::TerminateBlockMethod(const cfg::Block &block, llvm::Function *BF) {
+void Translator::TerminateBlockMethod(const cfg::Block &block,
+                                      llvm::Function *BF) {
   auto &B = BF->back();
   if (B.getTerminator()) {
     return;
@@ -301,7 +328,9 @@ void Translator::LiftBlocks(const cfg::Module *cfg) {
   }
 }
 
-void Translator::LiftBlockIntoMethod(const cfg::Block &block, llvm::Function *BF) {
+void Translator::LiftBlockIntoMethod(const cfg::Block &block,
+                                     llvm::Function *BF) {
+  auto num_lifted = 0;
   for (const auto &instr : block.instructions()) {
     CHECK(0 < instr.size())
         << "Can't decode zero-sized instruction at " << instr.address();
@@ -309,19 +338,27 @@ void Translator::LiftBlockIntoMethod(const cfg::Block &block, llvm::Function *BF
     CHECK(instr.size() == instr.bytes().length())
         << "Instruction size mismatch for instruction at " << instr.address();
 
-    // Decode and lift an instruction. This may or may not finalize the block.
-    bool continue_lifting = false;
-    arch->Decode(instr, [&] (Instr &arch_instr) {
-      continue_lifting = LiftInstruction(block, instr, arch_instr, BF);
-    });
+    num_lifted += 1;
+    switch (LiftInstructionIntoBlock(block, instr, BF)) {
+      case kLiftNextInstruction:
+        break;
 
-    if (!continue_lifting) break;
+      case kTerminateBlock:
+        LOG_IF(WARNING, num_lifted < block.instructions_size())
+            << "Did not lift all instructions from block " << block.address();
+        return;
+    }
   }
+  LOG_IF(WARNING, num_lifted < block.instructions_size())
+      << "Did not lift all instructions from block " << block.address();
 }
 
-// Lift an architecture-specific instruction.
-bool Translator::LiftInstruction(const cfg::Block &block, const cfg::Instr &instr,
-                         Instr &arch_instr, llvm::Function *BF) {
+// Create a basic block for an instruction.
+InstructionLiftAction Translator::LiftInstructionIntoBlock(
+    const cfg::Block &block, const cfg::Instr &instr,
+    llvm::Function *BF) {
+
+  // Name the block according to the instruction's address.
   std::stringstream ss;
   ss << "0x" << std::hex << instr.address();
 
@@ -333,7 +370,7 @@ bool Translator::LiftInstruction(const cfg::Block &block, const cfg::Instr &inst
   llvm::IRBuilder<> ir(P);
   ir.CreateBr(B);
 
-  return arch_instr.LiftIntoBlock(*this, B);
+  return arch->LiftInstructionIntoBlock(*this, block, instr, B);
 }
 
 void Translator::LiftCFG(const cfg::Module *cfg) {
@@ -341,7 +378,35 @@ void Translator::LiftCFG(const cfg::Module *cfg) {
   CreateBlocks(cfg);
   CreateFunctions(cfg);
   LinkFunctionsToBlocks(cfg);
+  AnalyzeCFG(cfg);
   LiftBlocks(cfg);
+  OptimizeModule();
+}
+
+// Run an architecture-specific data-flow analysis on the module.
+void Translator::AnalyzeCFG(const cfg::Module *cfg) {
+  if (!FLAGS_max_dataflow_analysis_iterations) return;
+
+  AnalysisWorkList wl;
+  auto &analysis = arch->CFGAnalyzer();
+
+  for (const auto &block : cfg->blocks()) {
+    analysis.AddBlock(block);
+  }
+
+  for (const auto &func : cfg->functions()) {
+    analysis.AddFunction(func);
+  }
+
+  analysis.InitWorkList(wl);
+  for (auto i = 0;
+       wl.size() && i < FLAGS_max_dataflow_analysis_iterations; ++i) {
+    AnalysisWorkList next_wl;
+    for (auto item : wl) {
+      analysis.AnalyzeBlock(item, next_wl);
+    }
+    wl.swap(next_wl);
+  }
 }
 
 llvm::Function *Translator::GetLiftedBlockForPC(uintptr_t pc) const {
@@ -351,6 +416,43 @@ llvm::Function *Translator::GetLiftedBlockForPC(uintptr_t pc) const {
     F = intrinsics->undefined_block;
   }
   return F;
+}
+
+namespace {
+
+// Replace all uses of a specific intrinsic with an undefined value.
+static void ReplaceIntrinsic(llvm::Function *F, unsigned N) {
+  if (!F) return;
+
+  std::vector<llvm::CallInst *> Cs;
+  for (auto U : F->users()) {
+    if (auto C = llvm::dyn_cast<llvm::CallInst>(U)) {
+      Cs.push_back(C);
+    }
+  }
+
+  auto Undef = llvm::UndefValue::get(llvm::Type::getIntNTy(F->getContext(), N));
+  for (auto C : Cs) {
+    C->replaceAllUsesWith(Undef);
+    C->removeFromParent();
+    delete C;
+  }
+}
+
+}  // namespace
+
+// Remove calls to the undefined intrinsics. The goal here is to improve dead
+// store elimination by peppering the instruction semantics with assignments
+// to the return values of special `__mcsema_undefined_*` intrinsics. It's hard
+// to reliably produce an `undef` LLVM value from C/C++, so we use our trick
+// of declaring (but never defining) a special "intrinsic" and then we replace
+// all such uses with `undef` values.
+void Translator::OptimizeModule(void) {
+  ReplaceIntrinsic(intrinsics->undefined_bool, 1);
+  ReplaceIntrinsic(intrinsics->undefined_8, 8);
+  ReplaceIntrinsic(intrinsics->undefined_16, 16);
+  ReplaceIntrinsic(intrinsics->undefined_32, 32);
+  ReplaceIntrinsic(intrinsics->undefined_64, 64);
 }
 
 }  // namespace mcsema

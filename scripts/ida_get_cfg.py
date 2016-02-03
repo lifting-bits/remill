@@ -260,7 +260,7 @@ def visit_blocks(cfg, ea, seen_blocks, addressable_blocks):
 
 
 # Find functions that this code exports to the outside world.
-def find_exported_functions(cfg, exclude_blocks):
+def find_exported_functions(cfg, exclude_blocks, addressable_blocks):
   for idx, ord, ea, name in idautils.Entries():
     if address_is_code(ea):
       func = cfg.functions.add()
@@ -271,7 +271,8 @@ def find_exported_functions(cfg, exclude_blocks):
       func.is_weak = False
 
       debug("Found export:", name, "at", hex(ea))
-      visit_blocks(cfg, ea, exclude_blocks, set([ea]))
+      addressable_blocks.add(ea)
+      visit_blocks(cfg, ea, exclude_blocks, addressable_blocks)
 
     elif address_is_data(ea):
       # TODO(pag): Implement this!
@@ -474,18 +475,19 @@ def main(args):
     cfg = CFG_pb2.Module()
     cfg.binary_path = idc.GetInputFile()
     exclude_blocks = set()
+    addressable_blocks = set()
 
     debug("Finding functions...")
     find_functions()
 
     debug("Analyzing exports...")
-    find_exported_functions(cfg, exclude_blocks)
+    find_exported_functions(cfg, exclude_blocks, addressable_blocks)
 
     debug("Analyzing imports...")
     find_imported_functions(cfg, exclude_blocks)
 
     debug("Analyzing functions...")
-    addressable_blocks = set(exclude_blocks)
+    addressable_blocks.update(exclude_blocks)
     find_internal_functions(cfg, exclude_blocks, addressable_blocks)
 
     debug("Analyzing indirect entrypoints...")

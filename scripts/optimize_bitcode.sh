@@ -27,25 +27,28 @@ else
     exit 1
 fi
 
-$DIR/third_party/bin/opt -O3 -o=$1.opt0.bc $1 || {
+BIN=`mktemp -t mcsema2_XXXXXXXXXX`
+
+$DIR/third_party/bin/opt -O3 -o=$BIN.opt0.bc $1 || {
     printf "${RED}Could not optimize $1${RESET}\n" > /dev/stderr
     exit 1
 }
 
 $DIR/third_party/bin/opt \
     -load $DIR/build/libOptimize.$DYLIB_SUFFIX -deferred_inliner \
-    -o=$1.opt1.bc $1.opt0.bc || {
-    printf "${RED}Could not optimize $1.opt0.bc${RESET}\n" > /dev/stderr
+    -o=$BIN.opt1.bc $BIN.opt0.bc || {
+    printf "${RED}Could not optimize $BIN.opt0.bc${RESET}\n" > /dev/stderr
     exit 1
 }
 
-$DIR/third_party/bin/opt -O3 -o=$1.opt2.bc $1.opt1.bc || {
+$DIR/third_party/bin/opt -O3 -o=$BIN.opt2.bc $BIN.opt1.bc || {
     printf "${RED}Could not optimize $1.opt1.bc${RESET}\n" > /dev/stderr
     exit 1
 }
 
-mv $1.opt2.bc $2
-#rm $1.opt1.bc
-#rm $1.opt0.bc
+mv $1.opt2.bc $BIN.bc
+rm $BIN.opt1.bc
+rm $BIN.opt0.bc
 
+printf "${BIN}.bc"
 exit 0

@@ -11,19 +11,13 @@ if OS not in ("mac", "linux"):
   exit(1)
 
 # Find all source code.
-source_paths = []
-source_paths.append(
-  os.path.join(MCSEMA_SRC_DIR, "Translate.cpp"))
-source_paths.extend(list(
-  glob.glob(os.path.join(MCSEMA_SRC_DIR, "Arch", "*.cpp"))))
-source_paths.extend(list(
-  glob.glob(os.path.join(MCSEMA_SRC_DIR, "Arch", "X86", "*.cpp"))))
-source_paths.extend(list(
-  glob.glob(os.path.join(MCSEMA_SRC_DIR, "CFG", "*.cpp"))))
-source_paths.extend(list(
-  glob.glob(os.path.join(MCSEMA_SRC_DIR, "BC", "*.cpp"))))
-source_paths.extend(list(
-  glob.glob(os.path.join(MCSEMA_SRC_DIR, "OS", "*.cpp"))))
+source_paths = FileFinder("cpp")
+source_paths.AddFile(os.path.join(MCSEMA_SRC_DIR, "Translate.cpp"))
+source_paths.SearchDir(os.path.join(MCSEMA_SRC_DIR, "Arch"))
+source_paths.SearchDir(os.path.join(MCSEMA_SRC_DIR, "Arch", "X86"))
+source_paths.SearchDir(os.path.join(MCSEMA_SRC_DIR, "CFG"))
+source_paths.SearchDir(os.path.join(MCSEMA_SRC_DIR, "BC"))
+source_paths.SearchDir(os.path.join(MCSEMA_SRC_DIR, "OS"))
 
 # Find the pre-existing static libraries to link in.
 object_files = [

@@ -11,14 +11,12 @@
 #include <llvm/IR/Type.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include "mcsema/Arch/X86/RegisterAnalysis.h"
+#include "mcsema/Arch/X86/Translator.h"
 #include "mcsema/BC/IntrinsicTable.h"
 #include "mcsema/BC/Translator.h"
 #include "mcsema/BC/Util.h"
-
 #include "mcsema/CFG/CFG.h"
-
-#include "mcsema/Arch/X86/Instr.h"
-#include "mcsema/Arch/X86/XED.h"
 
 namespace mcsema {
 namespace x86 {
@@ -27,9 +25,14 @@ enum {
   kVectorRegAlign = 64
 };
 
-Instr::Instr(const cfg::Instr *instr_, const struct xed_decoded_inst_s *xedd_)
-    : ::mcsema::Instr(instr_),
-      xedd(xedd_),
+InstructionTranslator::InstructionTranslator(
+    RegisterAnalysis &analysis_,
+    const cfg::Block &block_, const cfg::Instr &instr_,
+    const struct xed_decoded_inst_s &xedd_)
+    : analysis(&analysis_),
+      block(&block_),
+      instr(&instr_),
+      xedd(&xedd_),
       xedi(xed_decoded_inst_inst(xedd)),
       iclass(xed_decoded_inst_get_iclass(xedd)),
       B(nullptr),
@@ -39,8 +42,6 @@ Instr::Instr(const cfg::Instr *instr_, const struct xed_decoded_inst_s *xedd_)
       args(),
       prepend_instrs(),
       append_instrs() {}
-
-Instr::~Instr(void) {}
 
 namespace {
 
@@ -92,7 +93,8 @@ static unsigned AddressSpace(xed_reg_enum_t seg, xed_operand_enum_t name) {
 
 }  // namespace
 
-bool Instr::LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *B_) {
+bool InstructionTranslator::LiftIntoBlock(const Translator &lifter,
+                                          llvm::BasicBlock *B_) {
   B = B_;
   F = B->getParent();
   M = F->getParent();
@@ -107,42 +109,50 @@ bool Instr::LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *B_) {
   } else if (IsDirectJump()) {
     auto target_pc = TargetPC();
     LiftPC(target_pc);  // loads target into `gpr.rip`.
+    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.GetLiftedBlockForPC(target_pc));
     return false;
 
   } else if (IsIndirectJump()) {
     LiftGeneric(lifter);  // loads target into `gpr.rip`.
+    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.intrinsics->jump);
     return false;
 
   } else if (IsDirectFunctionCall()) {
     LiftGeneric(lifter);  // Adjusts the stack, stores `gpr.rip` to the stack.
+    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.GetLiftedBlockForPC(TargetPC()));
     return false;
 
   } else if (IsIndirectFunctionCall()) {
     LiftGeneric(lifter);  // Adjusts the stack, loads target into `gpr.rip`.
+    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.intrinsics->function_call);
     return false;
 
   } else if (IsFunctionReturn()) {
     LiftGeneric(lifter);  // Adjusts the stack, loads target into `gpr.rip`.
+    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.intrinsics->function_return);
     return false;
 
   } else if (IsBranch()) {
     LiftGeneric(lifter);  // Conditionally loads taken target into `gpr.rip`.
+    AddTerminatingKills(lifter, B);
     LiftConditionalBranch(lifter);  // Conditional branch based on `gpr.rip`.
     return false;
 
   // Instruction implementation handles syscall emulation.
   } else if (IsSystemCall()) {
     LiftGeneric(lifter);
+    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.intrinsics->system_call);
     return false;
 
   } else if (IsSystemReturn()) {
     LiftGeneric(lifter);
+    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.intrinsics->system_return);
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
@@ -156,6 +166,7 @@ bool Instr::LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *B_) {
 
   } else if (IsInterruptReturn()) {
     LiftGeneric(lifter);
+    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.intrinsics->interrupt_return);
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
@@ -193,7 +204,7 @@ static std::string PCRegName(const xed_decoded_inst_t *xedd) {
 
 // Store the next program counter into the associated state register. This
 // lets us access this information from within instruction implementations.
-void Instr::LiftPC(uintptr_t next_pc) {
+void InstructionTranslator::LiftPC(uintptr_t next_pc) {
   auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
 
   llvm::IRBuilder<> ir(B);
@@ -225,8 +236,8 @@ static void DescribeArgTypeMismatch(const llvm::Argument &func_arg,
 }  // namespace
 
 // Check the types of a function's argument.
-bool Instr::CheckArgumentTypes(const llvm::Function *F,
-                               const std::string &func_name) {
+bool InstructionTranslator::CheckArgumentTypes(
+    const llvm::Function *F, const std::string &func_name) {
   if (F->arg_size() != args.size()) {
     LOG(ERROR)
             << "Number of arguments don't match to " << func_name << ": "
@@ -244,7 +255,7 @@ bool Instr::CheckArgumentTypes(const llvm::Function *F,
   return true;
 }
 
-llvm::Function *Instr::GetInstructionFunction(void) {
+llvm::Function *InstructionTranslator::GetInstructionFunction(void) {
   auto func_name = InstructionFunctionName(xedd);
   llvm::Function *IF = FindFunction(M, func_name);
   llvm::GlobalVariable *FP = FindGlobaVariable(M, func_name);
@@ -265,7 +276,7 @@ llvm::Function *Instr::GetInstructionFunction(void) {
 }
 
 // Lift a generic instruction.
-void Instr::LiftGeneric(const Translator &lifter) {
+void InstructionTranslator::LiftGeneric(const Translator &lifter) {
   auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
   llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
 
@@ -291,7 +302,7 @@ void Instr::LiftGeneric(const Translator &lifter) {
 }
 
 // Lift a conditional branch instruction.
-void Instr::LiftConditionalBranch(const Translator &lifter) {
+void InstructionTranslator::LiftConditionalBranch(const Translator &lifter) {
   auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
   auto target_pc = TargetPC();
 
@@ -315,7 +326,7 @@ void Instr::LiftConditionalBranch(const Translator &lifter) {
 
 // Lift an operand. The goal is to be able to pass all explicit and implicit
 // operands as arguments into a function that implements this instruction.
-void Instr::LiftOperand(const Translator &lifter, unsigned op_num) {
+void InstructionTranslator::LiftOperand(const Translator &lifter, unsigned op_num) {
   auto xedo = xed_inst_operand(xedi, op_num);
   if (XED_OPVIS_SUPPRESSED != xed_operand_operand_visibility(xedo)) {
     switch (auto op_name = xed_operand_name(xedo)) {
@@ -363,8 +374,9 @@ void Instr::LiftOperand(const Translator &lifter, unsigned op_num) {
 // A minor challenge is handling the segment register. To handle this we use
 // a GNU-specific extension by specifying an address space of the pointer type.
 // The challenge is that we don't want to have
-void Instr::LiftMemory(const Translator &lifter, const xed_operand_t *xedo,
-                       unsigned op_num) {
+void InstructionTranslator::LiftMemory(const Translator &lifter,
+                                       const xed_operand_t *xedo,
+                                       unsigned op_num) {
   auto op_name = xed_operand_name(xedo);
   auto op_width = xed_decoded_inst_get_operand_width(xedd);
   auto mem_index = (XED_OPERAND_MEM1 == op_name) ? 1 : 0;  // Handles AGEN.
@@ -460,7 +472,7 @@ void Instr::LiftMemory(const Translator &lifter, const xed_operand_t *xedo,
 
 // Convert an immediate constant into an LLVM `Value` for passing into the
 // instruction implementation.
-void Instr::LiftImmediate(xed_operand_enum_t op_name) {
+void InstructionTranslator::LiftImmediate(xed_operand_enum_t op_name) {
   auto val = 0ULL;
   auto is_signed = false;
   auto op_size = xed_decoded_inst_get_operand_width(xedd);
@@ -511,7 +523,7 @@ static bool IsVectorReg(xed_reg_enum_t reg) {
 
 // Lift a register operand. We need to handle both reads and writes. We place
 // writes first as they are the output operands.
-void Instr::LiftRegister(const xed_operand_t *xedo) {
+void InstructionTranslator::LiftRegister(const xed_operand_t *xedo) {
   auto op_name = xed_operand_name(xedo);
   auto reg = xed_decoded_inst_get_reg(xedd, op_name);
   std::string reg_name = xed_reg_enum_t2str(reg);
@@ -581,69 +593,114 @@ void Instr::LiftRegister(const xed_operand_t *xedo) {
 }
 
 // Lift a relative branch operand.
-void Instr::LiftBranchDisplacement(void) {
+void InstructionTranslator::LiftBranchDisplacement(void) {
   auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
   llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
   args.push_back(llvm::ConstantInt::get(IntPtrTy, TargetPC(), true));
 }
 
-bool Instr::IsFunctionCall(void) const {
+namespace {
+
+void KillReg(llvm::BasicBlock *B, const char *name, llvm::Function *undef) {
+  auto F = B->getParent();
+  llvm::IRBuilder<> ir(B);
+  llvm::Value *Undef = ir.CreateCall(undef);
+  llvm::LoadInst *RegAddr = ir.CreateLoad(FindVarInFunction(F, name));
+  ir.CreateStore(Undef, RegAddr);
+}
+
+}  // namespace
+
+void InstructionTranslator::AddTerminatingKills(
+    const Translator &lifter, llvm::BasicBlock *B) {
+  llvm::IRBuilder<> ir(B);
+  auto block_it = analysis->blocks.find(block->address());
+  if (block_it == analysis->blocks.end()) return;
+
+  auto res = *block_it;
+  auto reg_info = res.second;
+  auto undef_bool = lifter.intrinsics->undefined_8;
+
+  if (!reg_info->live_exit.s.af) {
+    KillReg(B, "AF_write", undef_bool);
+  }
+  if (!reg_info->live_exit.s.cf) {
+    KillReg(B, "CF_write", undef_bool);
+  }
+  if (!reg_info->live_exit.s.df) {
+    KillReg(B, "DF_write", undef_bool);
+  }
+  if (!reg_info->live_exit.s.of) {
+    KillReg(B, "OF_write", undef_bool);
+  }
+  if (!reg_info->live_exit.s.pf) {
+    KillReg(B, "PF_write", undef_bool);
+  }
+  if (!reg_info->live_exit.s.sf) {
+    KillReg(B, "SF_write", undef_bool);
+  }
+  if (!reg_info->live_exit.s.zf) {
+    KillReg(B, "ZF_write", undef_bool);
+  }
+}
+
+bool InstructionTranslator::IsFunctionCall(void) const {
   return XED_CATEGORY_CALL == xed_decoded_inst_get_category(xedd);
 }
 
-bool Instr::IsFunctionReturn(void) const {
+bool InstructionTranslator::IsFunctionReturn(void) const {
   return XED_ICLASS_RET_NEAR == iclass || XED_ICLASS_RET_FAR == iclass;
 }
 
 // TODO(pag): Should far calls be treated as syscalls or indirect calls?
-bool Instr::IsSystemCall(void) const {
+bool InstructionTranslator::IsSystemCall(void) const {
   return XED_ICLASS_SYSCALL == iclass || XED_ICLASS_SYSCALL_AMD == iclass ||
          XED_ICLASS_SYSENTER == iclass;
 }
 
-bool Instr::IsSystemReturn(void) const {
+bool InstructionTranslator::IsSystemReturn(void) const {
   return XED_ICLASS_SYSRET == iclass || XED_ICLASS_SYSRET_AMD == iclass ||
          XED_ICLASS_SYSEXIT == iclass;
 }
 
-bool Instr::IsInterruptCall(void) const {
+bool InstructionTranslator::IsInterruptCall(void) const {
   return (XED_ICLASS_INT <= iclass && XED_ICLASS_INTO >= iclass) ||
          XED_ICLASS_BOUND == iclass;
 }
 
-bool Instr::IsInterruptReturn(void) const {
+bool InstructionTranslator::IsInterruptReturn(void) const {
   return XED_ICLASS_IRET <= iclass && XED_ICLASS_IRETQ >= iclass;
 }
 
 // This includes `JRCXZ`.
-bool Instr::IsBranch(void) const {
+bool InstructionTranslator::IsBranch(void) const {
   return XED_CATEGORY_COND_BR == xed_decoded_inst_get_category(xedd);
 }
 
-bool Instr::IsJump(void) const {
+bool InstructionTranslator::IsJump(void) const {
   return XED_CATEGORY_UNCOND_BR == xed_decoded_inst_get_category(xedd);
 }
 
-bool Instr::IsDirectFunctionCall(void) const {
+bool InstructionTranslator::IsDirectFunctionCall(void) const {
   auto xedo = xed_inst_operand(xedi, 0);
   auto op_name = xed_operand_name(xedo);
   return XED_ICLASS_CALL_NEAR == iclass && XED_OPERAND_RELBR == op_name;
 }
 
-bool Instr::IsIndirectFunctionCall(void) const {
+bool InstructionTranslator::IsIndirectFunctionCall(void) const {
   auto xedo = xed_inst_operand(xedi, 0);
   auto op_name = xed_operand_name(xedo);
   return (XED_ICLASS_CALL_NEAR == iclass && XED_OPERAND_RELBR != op_name) ||
          XED_ICLASS_CALL_FAR == iclass;
 }
 
-bool Instr::IsDirectJump(void) const {
+bool InstructionTranslator::IsDirectJump(void) const {
   auto xedo = xed_inst_operand(xedi, 0);
   auto op_name = xed_operand_name(xedo);
   return XED_ICLASS_JMP == iclass && XED_OPERAND_RELBR == op_name;
 }
 
-bool Instr::IsIndirectJump(void) const {
+bool InstructionTranslator::IsIndirectJump(void) const {
   auto xedo = xed_inst_operand(xedi, 0);
   auto op_name = xed_operand_name(xedo);
   return (XED_ICLASS_JMP == iclass && XED_OPERAND_RELBR != op_name) ||
@@ -651,7 +708,7 @@ bool Instr::IsIndirectJump(void) const {
          XED_ICLASS_XEND == iclass || XED_ICLASS_XABORT == iclass;
 }
 
-bool Instr::IsNoOp(void) const {
+bool InstructionTranslator::IsNoOp(void) const {
   switch (xed_decoded_inst_get_category(xedd)) {
     case XED_CATEGORY_NOP:
     case XED_CATEGORY_WIDENOP:
@@ -661,11 +718,11 @@ bool Instr::IsNoOp(void) const {
   }
 }
 
-bool Instr::IsError(void) const {
+bool InstructionTranslator::IsError(void) const {
   return XED_ICLASS_HLT == iclass || XED_ICLASS_INVALID == iclass;
 }
 
-uintptr_t Instr::TargetPC(void) const {
+uintptr_t InstructionTranslator::TargetPC(void) const {
   CHECK(IsDirectJump() || IsDirectFunctionCall() || IsBranch())
       << "Can only get target PC of a direct jump, branch, or function call.";
   auto disp = xed_decoded_inst_get_branch_displacement(xedd);
@@ -673,7 +730,7 @@ uintptr_t Instr::TargetPC(void) const {
   return static_cast<uintptr_t>(next_pc + disp);
 }
 
-uintptr_t Instr::NextPC(void) const {
+uintptr_t InstructionTranslator::NextPC(void) const {
   return instr->address() + instr->size();
 }
 

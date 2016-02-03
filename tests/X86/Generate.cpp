@@ -77,6 +77,9 @@ static void AddFunctionToModule(mcsema::cfg::Module *module,
 
   LOG(INFO) << "Adding block for: " << test_name;
 
+  auto indirect_block = module->add_indirect_blocks();
+  indirect_block->set_address(test.test_begin);
+
   auto block = module->add_blocks();
   block->set_address(test.test_begin);
 

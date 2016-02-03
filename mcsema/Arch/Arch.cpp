@@ -33,11 +33,11 @@ const Arch *Arch::Create(OSName os_name, ArchName arch_name) {
       return nullptr;
     case kArchX86:
       VLOG(1) << "Using architecture: X86";
-      return new x86::Arch(os_name, arch_name, 32);
+      return new x86::X86Arch(os_name, arch_name, 32);
 
     case kArchAMD64:
       VLOG(1) << "Using architecture: AMD64";
-      return new x86::Arch(os_name, arch_name, 64);
+      return new x86::X86Arch(os_name, arch_name, 64);
   }
   return nullptr;
 }

@@ -4,30 +4,35 @@
 #define MCSEMA_ARCH_X86_ARCH_H_
 
 #include "mcsema/Arch/Arch.h"
+#include "mcsema/Arch/X86/AutoAnalysis.h"
 
 namespace mcsema {
 namespace x86 {
 
-typedef ::mcsema::Instr ArchInstr;
+class X86Arch : public Arch {
+ public:
+  virtual ~X86Arch(void);
 
-class Arch : public ::mcsema::Arch {
-  public:
+  virtual llvm::Module *PrepareModule(llvm::Module *mod) const override;
 
-    virtual ~Arch(void);
+  // Decode an instruction and lift it into a basic block.
+  virtual InstructionLiftAction LiftInstructionIntoBlock(
+      const Translator &translator,
+      const cfg::Block &block, const cfg::Instr &instr,
+      llvm::BasicBlock *B) const override;
 
-    virtual void Decode(
-        const cfg::Instr &instr,
-        std::function<void(::mcsema::Instr &)> visitor) const override;
+  // Return an arch-specific CFG analyzer.
+  virtual AutoAnalysis &CFGAnalyzer(void) const override;
 
-    virtual llvm::Module *ConvertModule(llvm::Module *mod) const override;
+ protected:
+  friend class Arch;
 
-  protected:
-    friend class ::mcsema::Arch;
+  X86Arch(OSName os_name_, ArchName arch_name_, unsigned address_size_);
 
-    using ::mcsema::Arch::Arch;
+ private:
+  X86Arch(void) = delete;
 
-  private:
-    Arch(void) = delete;
+  mutable RegisterAnalysis analysis;
 };
 
 }  // namespace x86

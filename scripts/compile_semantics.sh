@@ -10,6 +10,7 @@ CXXFLAGS=
 CXXFLAGS+=" -isystem ${DIR}/third_party/include"
 CXXFLAGS+=" -std=gnu++11 -g0 -O0 -fno-exceptions -fno-rtti"
 CXXFLAGS+=" -fno-asynchronous-unwind-tables -I${DIR}"
+CXXFLAGS+=" -ffreestanding -fno-common -fno-builtin "
 
 function compile_x86()
 {
@@ -34,20 +35,22 @@ function compile_x86()
     printf "${BLUE}${MESSAGE}${RESET}\n"
     
     $DIR/third_party/bin/clang++ -x c++ \
-        -emit-llvm -O0 -g3 -mtune=generic -m$1 $MACROS $CXXFLAGS \
+        -emit-llvm -O0 -g0 -m$1 -mtune=generic $MACROS $CXXFLAGS \
         -ffunction-sections -fdata-sections \
 	    -c $DIR/mcsema/Arch/X86/Runtime/Instructions.cpp \
 	    -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc
 	    
     $DIR/third_party/bin/clang++ -x c++ \
-        -emit-llvm -O0 -g3 -m$1 -mtune=generic $MACROS $CXXFLAGS \
+        -emit-llvm -O0 -g0 -m$1 -mtune=generic $MACROS $CXXFLAGS \
         -ffunction-sections -fdata-sections \
         -c $DIR/mcsema/Arch/X86/Runtime/BasicBlock.cpp \
         -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc
 
-    $DIR/third_party/bin/opt -O3 \
-        -o=$DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.opt.bc \
-        $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc
+    $DIR/third_party/bin/clang \
+        -emit-llvm -O3 -g0 -m$1 -mtune=generic \
+        -ffunction-sections -fdata-sections \
+        -c $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc \
+        -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.opt.bc
     
     $DIR/third_party/bin/llvm-link \
         -o=$DIR/generated/${FILE_NAME}.bc \

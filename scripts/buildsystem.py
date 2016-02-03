@@ -54,6 +54,7 @@ try:
 except:
   def Task(func, *args, **kargs):
     return func(*args, **kargs)
+
   def FinishAllTasks():
     pass
 
@@ -119,6 +120,30 @@ def MakeDirsForFile(file_name):
       os.makedirs(dir_name)
     except:
       pass
+
+
+def FindFiles(files_dir, extension):
+  """Find a bunch of files inside of a directory, where all
+  the files have the same extension."""
+  expr = os.path.join(files_dir, "*.{}".format(extension))
+  return list(glob.glob(expr))
+
+
+class FileFinder(object):
+  """Generic file finder class for collecting a bunch of files
+  with the same extension from multiple directories."""
+  def __init__(self, file_extension):
+    self.ext = file_extension
+    self.files = set()
+
+  def AddFile(self, file_name):
+    self.files.add(file_name)
+
+  def SearchDir(self, files_dir):
+    self.files.update(FindFiles(files_dir, self.ext))
+
+  def __iter__(self):
+    return iter(self.files)
 
 
 class FileName(object):

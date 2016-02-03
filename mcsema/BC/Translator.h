@@ -25,6 +25,11 @@ class Instr;
 class IntrinsicTable;
 class Translator;
 
+enum InstructionLiftAction : unsigned {
+  kLiftNextInstruction,
+  kTerminateBlock
+};
+
 // Lifts CFG files into a bitcode module.
 class Translator {
  public:
@@ -60,6 +65,11 @@ class Translator {
   // Lift code contained in a block into a block method.
   void LiftBlockIntoMethod(const cfg::Block &block, llvm::Function *BF);
 
+  // Create a basic block for an instruction.
+  InstructionLiftAction LiftInstructionIntoBlock(const cfg::Block &block,
+                                                 const cfg::Instr &instr,
+                                                 llvm::Function *BF);
+
   // Lift an architecture-specific instruction.
   bool LiftInstruction(const cfg::Block &block, const cfg::Instr &instr,
                        Instr &ainstr, llvm::Function *BF);
@@ -67,6 +77,12 @@ class Translator {
   // Add a fall-through terminator to the block method just in case one is
   // missing.
   void TerminateBlockMethod(const cfg::Block &block, llvm::Function *BF);
+
+  // Run an architecture-specific data-flow analysis on the module.
+  void AnalyzeCFG(const cfg::Module *cfg);
+
+  // Optimize the lifted module.
+  void OptimizeModule(void);
 
   // Architecture of the code contained within the CFG being lifted.
   const Arch * const arch;

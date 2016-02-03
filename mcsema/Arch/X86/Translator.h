@@ -1,11 +1,11 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#ifndef MCSEMA_ARCH_X86_INSTR_H_
-#define MCSEMA_ARCH_X86_INSTR_H_
+#ifndef MCSEMA_ARCH_X86_TRANSLATOR_H_
+#define MCSEMA_ARCH_X86_TRANSLATOR_H_
 
+#include <string>
 #include <vector>
 
-#include "mcsema/Arch/Instr.h"
 #include "mcsema/Arch/X86/XED.h"
 
 namespace llvm {
@@ -15,17 +15,28 @@ class Type;
 }  // namespace llvm
 
 namespace mcsema {
+namespace cfg {
+class Instr;
+}  // namespace cfg
+
+class Translator;
+
 namespace x86 {
 
-class Arch;
+class X86Arch;
+class RegisterAnalysis;
 
-class Instr : public ::mcsema::Instr {
+// Convenience class that lets us keep all the instruction-specific state
+// in on spot. This is more like a bag of sort of disorganized state that is
+// needed to lift XED operands into LLVM.
+class InstructionTranslator {
  public:
-  Instr(const cfg::Instr *, const struct xed_decoded_inst_s *xedd_);
-  virtual ~Instr(void);
+  InstructionTranslator(RegisterAnalysis &analysis_,
+                        const cfg::Block &block_,
+                        const cfg::Instr &instr_,
+                        const struct xed_decoded_inst_s &xedd_);
 
-  virtual bool LiftIntoBlock(const Translator &lifter,
-                             llvm::BasicBlock *B_) override;
+  bool LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *B_);
 
  private:
   void LiftPC(uintptr_t next_pc);
@@ -40,6 +51,8 @@ class Instr : public ::mcsema::Instr {
   void LiftImmediate(xed_operand_enum_t op_name);
   void LiftRegister(const xed_operand_t *xedo);
   void LiftBranchDisplacement(void);
+
+  void AddTerminatingKills(const Translator &lifter, llvm::BasicBlock *B);
 
   bool IsBranch(void) const;
 
@@ -65,6 +78,11 @@ class Instr : public ::mcsema::Instr {
   uintptr_t NextPC(void) const;
   uintptr_t TargetPC(void) const;
 
+  RegisterAnalysis * const analysis;
+
+  const cfg::Block *block;
+  const cfg::Instr *instr;
+
   const xed_decoded_inst_t * const xedd;
   const xed_inst_t * const xedi;
   const xed_iclass_enum_t iclass;
@@ -82,4 +100,4 @@ class Instr : public ::mcsema::Instr {
 }  // namespace x86
 }  // namespace mcsema
 
-#endif  // MCSEMA_ARCH_X86_INSTR_H_
+#endif  // MCSEMA_ARCH_X86_TRANSLATOR_H_
