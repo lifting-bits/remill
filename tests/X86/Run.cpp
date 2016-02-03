@@ -184,6 +184,26 @@ void __mcsema_interrupt_return(State &) {
   __builtin_unreachable();
 }
 
+bool __mcsema_undefined_bool(void) {
+  return false;
+}
+
+uint8_t __mcsema_undefined_8(void) {
+  return 0;
+}
+
+uint16_t __mcsema_undefined_16(void) {
+  return 0;
+}
+
+uint32_t __mcsema_undefined_32(void) {
+  return 0;
+}
+
+uint64_t __mcsema_undefined_64(void) {
+  return 0;
+}
+
 }  // extern C
 
 // The `State` structure maintains two versions of the `XMM` registers. One

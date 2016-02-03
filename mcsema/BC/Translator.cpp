@@ -393,7 +393,7 @@ void Translator::LiftCFG(const cfg::Module *cfg) {
   LinkFunctionsToBlocks(cfg);
   AnalyzeCFG(cfg);
   LiftBlocks(cfg);
-  OptimizeModule();
+  //OptimizeModule();
 }
 
 // Run an architecture-specific data-flow analysis on the module.
@@ -429,43 +429,6 @@ llvm::Function *Translator::GetLiftedBlockForPC(uintptr_t pc) const {
     F = intrinsics->undefined_block;
   }
   return F;
-}
-
-namespace {
-
-// Replace all uses of a specific intrinsic with an undefined value.
-static void ReplaceIntrinsic(llvm::Function *F, unsigned N) {
-  if (!F) return;
-
-  std::vector<llvm::CallInst *> Cs;
-  for (auto U : F->users()) {
-    if (auto C = llvm::dyn_cast<llvm::CallInst>(U)) {
-      Cs.push_back(C);
-    }
-  }
-
-  auto Undef = llvm::UndefValue::get(llvm::Type::getIntNTy(F->getContext(), N));
-  for (auto C : Cs) {
-    C->replaceAllUsesWith(Undef);
-    C->removeFromParent();
-    delete C;
-  }
-}
-
-}  // namespace
-
-// Remove calls to the undefined intrinsics. The goal here is to improve dead
-// store elimination by peppering the instruction semantics with assignments
-// to the return values of special `__mcsema_undefined_*` intrinsics. It's hard
-// to reliably produce an `undef` LLVM value from C/C++, so we use our trick
-// of declaring (but never defining) a special "intrinsic" and then we replace
-// all such uses with `undef` values.
-void Translator::OptimizeModule(void) {
-  ReplaceIntrinsic(intrinsics->undefined_bool, 1);
-  ReplaceIntrinsic(intrinsics->undefined_8, 8);
-  ReplaceIntrinsic(intrinsics->undefined_16, 16);
-  ReplaceIntrinsic(intrinsics->undefined_32, 32);
-  ReplaceIntrinsic(intrinsics->undefined_64, 64);
 }
 
 }  // namespace mcsema

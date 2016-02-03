@@ -84,6 +84,7 @@ void RegisterAnalysis::AddFunction(const cfg::Function &func) {
 
 void RegisterAnalysis::AddBlock(const cfg::Block &block) {
   auto bb = new BasicBlockRegs;
+  bb->live_anywhere.flat = 0U;
   bb->live_exit.flat = 0U;
   bb->live_entry.flat = 0U;
   bb->keep_alive.flat = 0U;
@@ -95,6 +96,13 @@ void RegisterAnalysis::AddBlock(const cfg::Block &block) {
   for (auto it = it_begin; it != it_end; ++it) {
     const auto &instr = *it;
     const auto xedd = DecodeInstruction(instr, arch_name);
+
+    if (const auto rflags = xed_decoded_inst_get_rflags_info(&xedd)) {
+      bb->live_anywhere.flat |= rflags->read.flat;
+      bb->keep_alive.flat |= rflags->written.flat;
+      bb->keep_alive.flat |= rflags->undefined.flat;
+      bb->keep_alive.flat &= ~(rflags->read.flat);
+    }
 
     if (it == it_begin) {
       const auto next_pc = instr.address() + instr.size();
@@ -124,25 +132,10 @@ void RegisterAnalysis::AddBlock(const cfg::Block &block) {
         ret_blocks[block.address()] = next_pc;
       }
     }
-
-    if (const auto rflags = xed_decoded_inst_get_rflags_info(&xedd)) {
-      bb->keep_alive.flat |= rflags->written.flat;
-      bb->keep_alive.flat |= rflags->undefined.flat;
-      bb->keep_alive.flat &= ~(rflags->read.flat);
-    }
   }
 
   bb->keep_alive.flat = ~bb->keep_alive.flat;
   bb->live_entry.flat = bb->live_exit.flat & bb->keep_alive.flat;
-
-  if (FLAGS_aggressive_dataflow_analysis) {
-    if (kFlowSysCall == bb->flow ||
-        kFlowIndirectCall == bb->flow ||
-        kFlowUnknown == bb->flow) {
-      bb->live_entry.flat = 0U;
-      bb->keep_alive.flat = 0U;
-    }
-  }
 
   blocks[block.address()] = bb;
 }
@@ -249,12 +242,29 @@ void RegisterAnalysis::InitWorkList(AnalysisWorkList &work_list) {
     }
   }
 
+  // Do some ahead-of-time work to kill any flags that are never read anywhere
+  // in the program.
+  xed_flag_set_t live_anywhere;
+  live_anywhere.flat = 0U;
+  for (auto b : blocks) {
+    if (auto block = b.second) {
+      live_anywhere.flat |= block->live_anywhere.flat;
+    }
+  }
+
   // Initialize the worklist for dead flags and register analysis across the
   // control-flow graph.
   for (auto b : blocks) {
     auto block_pc = b.first;
-    auto block = b.second;
-    work_list.insert({block->predecessors.size(), block_pc});
+    if (auto block = b.second) {
+
+      // Try to kill globally unused flags.
+      block->live_entry.flat &= ~live_anywhere.flat;
+      block->live_exit.flat &= ~live_anywhere.flat;
+      block->keep_alive.flat &= ~live_anywhere.flat;
+
+      work_list.insert({block->predecessors.size(), block_pc});
+    }
   }
 }
 
@@ -267,8 +277,16 @@ void RegisterAnalysis::AnalyzeBlock(AnalysisWorkItem item,
   // kills all the flags.
   auto incoming_live = FLAGS_aggressive_dataflow_analysis ? 0U : ~0U;
 
-  for (auto succ_pc : bb->successors) {
-    incoming_live |= LiveFlags(succ_pc);
+  // Try to collect flags across system calls.
+  if (kFlowSysCall == bb->flow) {
+    if (auto succ_pc = ret_blocks[item.pc]) {
+      incoming_live |= LiveFlags(succ_pc);
+    }
+
+  } else {
+    for (auto succ_pc : bb->successors) {
+      incoming_live |= LiveFlags(succ_pc);
+    }
   }
 
   auto live_entry = incoming_live & bb->keep_alive.flat;
@@ -290,7 +308,7 @@ uint32_t RegisterAnalysis::LiveFlags(uint64_t pc) {
   // This is basically an error case anyway, i.e. we have a direct flow that
   // we can't resolve. This will be warned about during the lifting phase.
   } else {
-    return ~0U;
+    return FLAGS_aggressive_dataflow_analysis ? 0U : ~0U;
   }
 }
 

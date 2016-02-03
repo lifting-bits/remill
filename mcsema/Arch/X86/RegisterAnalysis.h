@@ -26,6 +26,9 @@ struct BasicBlockRegs {
   uint64_t address;
   FlowType flow;
 
+  // Flags that are live anywhere in this block.
+  xed_flag_set_t live_anywhere;
+
   // Flags that are live on entry, after factoring in those flags that are
   // live from the successors.
   xed_flag_set_t live_entry;

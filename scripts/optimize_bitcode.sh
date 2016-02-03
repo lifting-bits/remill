@@ -30,7 +30,7 @@ $DIR/third_party/bin/opt -O3 -o=$BIN.opt0.bc $1 || {
 }
 
 $DIR/third_party/bin/opt \
-    -load $DIR/build/libOptimize.$DYLIB_SUFFIX -deferred_inliner \
+    -load $DIR/build/libOptimize.$DYLIB_SUFFIX -intrinsic_optimizer \
     -o=$BIN.opt1.bc $BIN.opt0.bc || {
     printf "${RED}Could not optimize $BIN.opt0.bc${RESET}\n" > /dev/stderr
     exit 1

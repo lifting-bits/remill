@@ -81,9 +81,6 @@ class Translator {
   // Run an architecture-specific data-flow analysis on the module.
   void AnalyzeCFG(const cfg::Module *cfg);
 
-  // Optimize the lifted module.
-  void OptimizeModule(void);
-
   // Architecture of the code contained within the CFG being lifted.
   const Arch * const arch;
 

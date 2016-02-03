@@ -1,9 +1,10 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#define DEBUG_TYPE "McSema2Optimizer"
+#define DEBUG_TYPE "IntrinsicOptimizer"
 
 #include <iostream>
 #include <set>
+#include <sstream>
 #include <vector>
 
 #include <llvm/Pass.h>
@@ -12,16 +13,65 @@
 #include <llvm/IR/Instructions.h>
 
 namespace mcsema {
+namespace {
+
+// Looks for a function by name. If we can't find it, try to find an underscore
+// prefixed version, just in case this is Mac or Windows.
+static llvm::Function *GetFunction(llvm::Module &M, const char *name) {
+  if (auto F = M.getFunction(name)) {
+    return F;
+  } else {
+    std::stringstream ss;
+    ss << "_" << name;
+    return M.getFunction(ss.str());
+  }
+}
+
+// Replace all uses of a specific intrinsic with an undefined value.
+static void ReplaceIntrinsic(llvm::Module &M, const char *name, unsigned N) {
+  if (auto F = GetFunction(M, name)) {
+    std::vector<llvm::CallInst *> Cs;
+    for (auto U : F->users()) {
+      if (auto C = llvm::dyn_cast<llvm::CallInst>(U)) {
+        Cs.push_back(C);
+      }
+    }
+
+    auto Undef = llvm::UndefValue::get(
+        llvm::Type::getIntNTy(F->getContext(), N));
+    for (auto C : Cs) {
+      C->replaceAllUsesWith(Undef);
+      C->removeFromParent();
+      delete C;
+    }
+  }
+}
+
+// Remove calls to the undefined intrinsics. The goal here is to improve dead
+// store elimination by peppering the instruction semantics with assignments
+// to the return values of special `__mcsema_undefined_*` intrinsics. It's hard
+// to reliably produce an `undef` LLVM value from C/C++, so we use our trick
+// of declaring (but never defining) a special "intrinsic" and then we replace
+// all such uses with `undef` values.
+void RemoveUndefinedIntrinsics(llvm::Module &M) {
+  ReplaceIntrinsic(M, "__mcsema_undefined_bool", 1);
+  ReplaceIntrinsic(M, "__mcsema_undefined_8", 8);
+  ReplaceIntrinsic(M, "__mcsema_undefined_16", 16);
+  ReplaceIntrinsic(M, "__mcsema_undefined_32", 32);
+  ReplaceIntrinsic(M, "__mcsema_undefined_64", 64);
+}
+
+}  // namespace
 
 // Implements the deferred inlining optimization. McSema2 uses a special
 // `__mcsema_defer_inlining` intrinsic to mark functions as needing to be
 // "late" inlined. The idea is that we want some functions to be optimized
 // away (flag computation functions), but the ones that stick around should
 // then be inlined into their callers for further optimization.
-class DeferredInlineOptimizer : public llvm::ModulePass {
+class IntrinsicOptimizer : public llvm::ModulePass {
  public:
-  DeferredInlineOptimizer(void);
-  ~DeferredInlineOptimizer(void);
+  IntrinsicOptimizer(void);
+  ~IntrinsicOptimizer(void);
 
   virtual const char *getPassName(void) const override;
   virtual bool runOnModule(llvm::Module &M) override;
@@ -31,17 +81,19 @@ class DeferredInlineOptimizer : public llvm::ModulePass {
  private:
 };
 
-DeferredInlineOptimizer::DeferredInlineOptimizer(void)
+IntrinsicOptimizer::IntrinsicOptimizer(void)
     : llvm::ModulePass(ID) {}
 
-DeferredInlineOptimizer::~DeferredInlineOptimizer(void) {}
+IntrinsicOptimizer::~IntrinsicOptimizer(void) {}
 
-const char *DeferredInlineOptimizer::getPassName(void) const {
-  return "DeferredInlineOptimizer";
+const char *IntrinsicOptimizer::getPassName(void) const {
+  return "IntrinsicOptimizer";
 }
 
-bool DeferredInlineOptimizer::runOnModule(llvm::Module &M) {
-  auto F = M.getFunction("__mcsema_defer_inlining");
+bool IntrinsicOptimizer::runOnModule(llvm::Module &M) {
+  RemoveUndefinedIntrinsics(M);
+
+  auto F = GetFunction(M, "__mcsema_defer_inlining");
   if (!F) {
     return false;
   }
@@ -89,11 +141,11 @@ bool DeferredInlineOptimizer::runOnModule(llvm::Module &M) {
   return changed;
 }
 
-char DeferredInlineOptimizer::ID = 0;
+char IntrinsicOptimizer::ID = 0;
 
-static llvm::RegisterPass<DeferredInlineOptimizer> X(
-    "deferred_inliner",
-    "Optimizes `__mcsema_defer_inlining` intrinsics.",
+static llvm::RegisterPass<IntrinsicOptimizer> X(
+    "intrinsic_optimizer",
+    "Removes `__mcsema_defer_inlining` and `__mcsema_undefined_*` intrinsics.",
     false,  // Only looks at CFG.
     false);  // Analysis Pass.
 
