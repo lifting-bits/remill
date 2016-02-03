@@ -110,12 +110,12 @@ NEVER_INLINE addr_t __mcsema_compute_address(const State &state, addr_t addr,
   }
 
 #define MAKE_RW_VEC_MEMORY(size) \
-  NEVER_INLINE void __mcsema_read_memory_v ## size(\
-      addr_t addr, vec ## size ## _t &out) { \
-    out = AccessMemory<vec ## size ## _t>(addr); \
+  NEVER_INLINE vec ## size ## _t __mcsema_read_memory_v ## size(\
+      addr_t addr) { \
+    return AccessMemory<vec ## size ## _t>(addr); \
   } \
   NEVER_INLINE void __mcsema_write_memory_v ## size (\
-      addr_t addr, const vec ## size ## _t &in) { \
+      addr_t addr, vec ## size ## _t in) { \
     AccessMemory<vec ## size ## _t>(addr) = in; \
   }
 

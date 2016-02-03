@@ -11,6 +11,7 @@ CXXFLAGS+=" -isystem ${DIR}/third_party/include"
 CXXFLAGS+=" -std=gnu++11 -g0 -O0 -fno-exceptions -fno-rtti"
 CXXFLAGS+=" -fno-asynchronous-unwind-tables -I${DIR}"
 CXXFLAGS+=" -ffreestanding -fno-common -fno-builtin "
+CXXFLAGS+=" -Wno-return-type-c-linkage "
 
 function compile_x86()
 {

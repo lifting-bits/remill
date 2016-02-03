@@ -138,9 +138,7 @@ struct VecWriter {
     }; \
     \
     ALWAYS_INLINE static T R(const Mn<T> mem) { \
-      T vec; \
-      __mcsema_read_memory_v ## size (mem.addr, vec); \
-      return vec; \
+      return __mcsema_read_memory_v ## size (mem.addr); \
     } \
     ALWAYS_INLINE static MemoryWriter ## T W(MnW<T> mem) { \
       return MemoryWriter ## T {mem.addr}; \

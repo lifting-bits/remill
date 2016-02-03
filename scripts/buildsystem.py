@@ -72,6 +72,7 @@ CXX_FLAGS = [
   "-Wno-gnu-zero-variadic-macro-arguments",
   "-Wno-error=unused-command-line-argument",
   "-Wno-override-module",
+  "-Wno-return-type-c-linkage",
   
   # Features.
   "-fno-omit-frame-pointer",

@@ -22,13 +22,13 @@ extern "C" {
 [[gnu::used]] extern uint32_t __mcsema_read_memory_32(addr_t);
 [[gnu::used]] extern uint64_t __mcsema_read_memory_64(addr_t);
 
-[[gnu::used]] extern void __mcsema_read_memory_v8(addr_t, vec8_t &);
-[[gnu::used]] extern void __mcsema_read_memory_v16(addr_t, vec16_t &);
-[[gnu::used]] extern void __mcsema_read_memory_v32(addr_t, vec32_t &);
-[[gnu::used]] extern void __mcsema_read_memory_v64(addr_t, vec64_t &);
-[[gnu::used]] extern void __mcsema_read_memory_v128(addr_t, vec128_t &);
-[[gnu::used]] extern void __mcsema_read_memory_v256(addr_t, vec256_t &);
-[[gnu::used]] extern void __mcsema_read_memory_v512(addr_t, vec512_t &);
+[[gnu::used]] extern vec8_t __mcsema_read_memory_v8(addr_t);
+[[gnu::used]] extern vec16_t __mcsema_read_memory_v16(addr_t);
+[[gnu::used]] extern vec32_t __mcsema_read_memory_v32(addr_t);
+[[gnu::used]] extern vec64_t __mcsema_read_memory_v64(addr_t);
+[[gnu::used]] extern vec128_t __mcsema_read_memory_v128(addr_t);
+[[gnu::used]] extern vec256_t __mcsema_read_memory_v256(addr_t);
+[[gnu::used]] extern vec512_t __mcsema_read_memory_v512(addr_t);
 
 // Memory write intrinsics.
 [[gnu::used]] extern void __mcsema_write_memory_8(addr_t, uint8_t);
@@ -36,13 +36,13 @@ extern "C" {
 [[gnu::used]] extern void __mcsema_write_memory_32(addr_t, uint32_t);
 [[gnu::used]] extern void __mcsema_write_memory_64(addr_t, uint64_t);
 
-[[gnu::used]] extern void __mcsema_write_memory_v8(addr_t, const vec8_t &);
-[[gnu::used]] extern void __mcsema_write_memory_v16(addr_t, const vec16_t &);
-[[gnu::used]] extern void __mcsema_write_memory_v32(addr_t, const vec32_t &);
-[[gnu::used]] extern void __mcsema_write_memory_v64(addr_t, const vec64_t &);
-[[gnu::used]] extern void __mcsema_write_memory_v128(addr_t, const vec128_t &);
-[[gnu::used]] extern void __mcsema_write_memory_v256(addr_t, const vec256_t &);
-[[gnu::used]] extern void __mcsema_write_memory_v512(addr_t, const vec512_t &);
+[[gnu::used]] extern void __mcsema_write_memory_v8(addr_t, vec8_t);
+[[gnu::used]] extern void __mcsema_write_memory_v16(addr_t, vec16_t);
+[[gnu::used]] extern void __mcsema_write_memory_v32(addr_t, vec32_t);
+[[gnu::used]] extern void __mcsema_write_memory_v64(addr_t, vec64_t);
+[[gnu::used]] extern void __mcsema_write_memory_v128(addr_t, vec128_t);
+[[gnu::used]] extern void __mcsema_write_memory_v256(addr_t, vec256_t);
+[[gnu::used]] extern void __mcsema_write_memory_v512(addr_t, vec512_t);
 
 [[gnu::used]] extern bool __mcsema_undefined_bool(void);
 [[gnu::used]] extern uint8_t __mcsema_undefined_8(void);
