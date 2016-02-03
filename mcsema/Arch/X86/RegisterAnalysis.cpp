@@ -59,6 +59,7 @@ static FlowType FindSuccessors(const xed_decoded_inst_t *xedd,
       return kFlowReturn;
 
     case XED_CATEGORY_SYSCALL:
+    case XED_CATEGORY_INTERRUPT:
       return kFlowSysCall;
 
     case XED_CATEGORY_SYSRET:
@@ -133,6 +134,15 @@ void RegisterAnalysis::AddBlock(const cfg::Block &block) {
 
   bb->keep_alive.flat = ~bb->keep_alive.flat;
   bb->live_entry.flat = bb->live_exit.flat & bb->keep_alive.flat;
+
+  if (FLAGS_aggressive_dataflow_analysis) {
+    if (kFlowSysCall == bb->flow ||
+        kFlowIndirectCall == bb->flow ||
+        kFlowUnknown == bb->flow) {
+      bb->live_entry.flat = 0U;
+      bb->keep_alive.flat = 0U;
+    }
+  }
 
   blocks[block.address()] = bb;
 }
