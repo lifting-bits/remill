@@ -157,8 +157,7 @@ void Translator::CreateBlocks(const cfg::Module *cfg) {
         // directly jumps to this internal block. Hopefully there will be
         // situations where there are internal jumps to this externally visible
         // block and we want to enable inlining optimizations in these cases.
-        ss << "__lifted_block_" << binary_id << "_intern_0x"
-           << std::hex << block.address();
+        ss << "_intern";
         auto BF_intern = llvm::dyn_cast<llvm::Function>(
             module->getOrInsertFunction(ss.str(), block_type));
         BF_intern->setLinkage(llvm::GlobalValue::PrivateLinkage);
