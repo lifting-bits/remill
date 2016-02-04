@@ -78,6 +78,7 @@ void AddTerminatingTailCall(llvm::BasicBlock *B, llvm::Function *To) {
   llvm::IRBuilder<> ir(B);
   llvm::Function *F = B->getParent();
   llvm::CallInst *C = ir.CreateCall(To, {FindStatePointer(F)});
+  C->setAttributes(To->getAttributes());
 
   // Make sure we tail-call from one block method to another.
   C->setTailCallKind(llvm::CallInst::TCK_MustTail);
@@ -94,13 +95,17 @@ llvm::Value *FindVarInFunction(llvm::Function *F, std::string name,
       return &I;
     }
   }
-  LOG(FATAL) << "Could not find variable " << name << " in function "
-             << F->getName().str();
+  LOG_IF(FATAL, !allow_failure)
+    << "Could not find variable " << name << " in function "
+    << F->getName().str();
   return nullptr;
 }
 
 // Find the machine state pointer.
 llvm::Value *FindStatePointer(llvm::Function *F) {
+  if (auto state = FindVarInFunction(F, "state", true)) {
+    return state;
+  }
   return &*F->getArgumentList().begin();
 }
 

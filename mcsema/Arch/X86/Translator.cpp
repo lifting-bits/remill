@@ -281,7 +281,7 @@ void InstructionTranslator::LiftGeneric(const Translator &lifter) {
   llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
 
   // First argument is the state pointer.
-  args.push_back(&*F->arg_begin());
+  args.push_back(FindStatePointer(F));
 
   // Second argument is the next program counter.
   args.push_back(llvm::ConstantInt::get(IntPtrTy, NextPC(), false));

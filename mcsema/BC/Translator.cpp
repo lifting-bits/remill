@@ -123,6 +123,28 @@ void Translator::IdentifyExistingSymbols(void) {
   }
 }
 
+namespace {
+
+void InitBlockFuncAttributes(llvm::Function *BF, const llvm::Function *TF) {
+  InitFunctionAttributes(BF);
+  BF->setAttributes(TF->getAttributes());
+  BF->arg_begin()->setName("state");
+}
+
+llvm::Function *GetBlockFunction(llvm::Module *M,
+                                 const llvm::Function *TF,
+                                 std::string name) {
+  auto func_type = TF->getFunctionType();
+  auto BF = llvm::dyn_cast<llvm::Function>(
+      M->getOrInsertFunction(name, func_type));
+  InitBlockFuncAttributes(BF, TF);
+  BF->setLinkage(llvm::GlobalValue::PrivateLinkage);
+  return BF;
+}
+
+
+}  // namespace
+
 // Create functions for every block in the CFG.
 void Translator::CreateBlocks(const cfg::Module *cfg) {
   std::set<uint64_t> indirect_blocks;
@@ -130,38 +152,22 @@ void Translator::CreateBlocks(const cfg::Module *cfg) {
     indirect_blocks.insert(block.address());
   }
 
-  auto block_type = basic_block->getFunctionType();
   for (const auto &block : cfg->blocks()) {
     auto &BF = blocks[block.address()];
     if (!BF) {
       std::stringstream ss;
       ss << "__lifted_block_" << binary_id << "_0x"
          << std::hex << block.address();
-      BF = llvm::dyn_cast<llvm::Function>(
-          module->getOrInsertFunction(ss.str(), block_type));
 
-      InitFunctionAttributes(BF);
+      BF = GetBlockFunction(module, basic_block, ss.str());
 
-      // There doesn't seem to be any way for indirect control flows to reach
-      // this block, so we'll mark it as internal to the module. This improves
-      // LLVM's ability to optimize it.
-      if (!indirect_blocks.count(block.address())) {
-        BF->setLinkage(llvm::GlobalValue::PrivateLinkage);
-
-      // This should enable some inlining optimizations when they make sense
-      // to the compiler, and should also make the symbols visible externally.
-      } else {
+      // This block is externally visible so change its linkage and make a new
+      // private block to which other blocks will refer.
+      if (indirect_blocks.count(block.address())) {
         BF->setLinkage(llvm::GlobalValue::ExternalLinkage);
 
-        // Create a new block, where the original entry block, correctly named,
-        // directly jumps to this internal block. Hopefully there will be
-        // situations where there are internal jumps to this externally visible
-        // block and we want to enable inlining optimizations in these cases.
         ss << "_intern";
-        auto BF_intern = llvm::dyn_cast<llvm::Function>(
-            module->getOrInsertFunction(ss.str(), block_type));
-        BF_intern->setLinkage(llvm::GlobalValue::PrivateLinkage);
-
+        auto BF_intern = GetBlockFunction(module, basic_block, ss.str());
         AddTerminatingTailCall(BF, BF_intern);
         BF = BF_intern;
       }
@@ -188,8 +194,6 @@ std::string CanonicalName(OSName os_name, const std::string &name) {
 
 // Create functions for every function in the CFG.
 void Translator::CreateFunctions(const cfg::Module *cfg) {
-  auto func_type = basic_block->getFunctionType();
-
   for (const auto &func : cfg->functions()) {
     if (!func.is_exported() && !func.is_imported()) continue;
 
@@ -202,10 +206,7 @@ void Translator::CreateFunctions(const cfg::Module *cfg) {
 
     llvm::Function *&F = functions[func_name];
     if (!F) {
-      F = llvm::dyn_cast<llvm::Function>(
-          module->getOrInsertFunction(func_name, func_type));
-
-      InitFunctionAttributes(F);
+      F = GetBlockFunction(module, basic_block, func_name);
 
       // To get around some issues that `opt` has.
       F->addFnAttr(llvm::Attribute::NoBuiltin);
@@ -273,7 +274,7 @@ static void CreateMethodForBlock(llvm::Function *BF, const llvm::Function *TF) {
   llvm::SmallVector<llvm::ReturnInst *, 1> returns;
   llvm::CloneFunctionInto(BF, TF, var_map, false, returns);
 
-  InitFunctionAttributes(BF);
+  InitBlockFuncAttributes(BF, TF);
 
   auto R = returns[0];
   R->removeFromParent();
@@ -393,7 +394,6 @@ void Translator::LiftCFG(const cfg::Module *cfg) {
   LinkFunctionsToBlocks(cfg);
   AnalyzeCFG(cfg);
   LiftBlocks(cfg);
-  //OptimizeModule();
 }
 
 // Run an architecture-specific data-flow analysis on the module.
