@@ -102,43 +102,50 @@ struct VecWriter {
       typedef decltype(T().floats) FloatsType; \
       typedef decltype(T().doubles) DoublesType; \
       ALWAYS_INLINE void operator=(T val) const { \
-        __mcsema_write_memory_v ## size (addr, val); \
+        __mcsema_memory_order = __mcsema_write_memory_v ## size (\
+            __mcsema_memory_order, addr, val); \
       } \
       ALWAYS_INLINE void operator=(BytesType val) const { \
         T vec; \
         vec.bytes = val; \
-        __mcsema_write_memory_v ## size (addr, vec); \
+        __mcsema_memory_order = __mcsema_write_memory_v ## size ( \
+            __mcsema_memory_order, addr, vec); \
       } \
       ALWAYS_INLINE void operator=(WordsType val) const { \
         T vec; \
         vec.words = val; \
-        __mcsema_write_memory_v ## size (addr, vec); \
+        __mcsema_memory_order = __mcsema_write_memory_v ## size ( \
+            __mcsema_memory_order, addr, vec); \
       } \
       ALWAYS_INLINE void operator=(DwordsType val) const { \
         T vec; \
         vec.dwords = val; \
-        __mcsema_write_memory_v ## size (addr, vec); \
+        __mcsema_memory_order = __mcsema_write_memory_v ## size ( \
+            __mcsema_memory_order, addr, vec); \
       } \
       ALWAYS_INLINE void operator=(QwordsType val) const { \
         T vec; \
         vec.qwords = val; \
-        __mcsema_write_memory_v ## size (addr, vec); \
+        __mcsema_memory_order = __mcsema_write_memory_v ## size ( \
+            __mcsema_memory_order, addr, vec); \
       } \
       ALWAYS_INLINE void operator=(FloatsType val) const { \
         T vec; \
         vec.floats = val; \
-        __mcsema_write_memory_v ## size (addr, vec); \
+        __mcsema_memory_order = __mcsema_write_memory_v ## size ( \
+            __mcsema_memory_order, addr, vec); \
       } \
       ALWAYS_INLINE void operator=(DoublesType val) const { \
         T vec; \
         vec.doubles = val; \
-        __mcsema_write_memory_v ## size (addr, vec); \
+        __mcsema_memory_order = __mcsema_write_memory_v ## size ( \
+            __mcsema_memory_order, addr, vec); \
       } \
       addr_t addr; \
     }; \
     \
     ALWAYS_INLINE static T R(const Mn<T> mem) { \
-      return __mcsema_read_memory_v ## size (mem.addr); \
+      return __mcsema_read_memory_v ## size (__mcsema_memory_order, mem.addr); \
     } \
     ALWAYS_INLINE static MemoryWriter ## T W(MnW<T> mem) { \
       return MemoryWriter ## T {mem.addr}; \
@@ -223,12 +230,13 @@ ALWAYS_INLINE static arch_float80_t &W(float80_t &reg) {
 #define MAKE_ACCESSORS(T, size) \
     struct MemoryWriter ## T { \
       ALWAYS_INLINE void operator=(T val) const { \
-        __mcsema_write_memory_ ## size (addr, val); \
+        __mcsema_memory_order = __mcsema_write_memory_ ## size ( \
+            __mcsema_memory_order, addr, val);\
       } \
       addr_t addr; \
     }; \
     ALWAYS_INLINE static T R(Mn<T> mem) { \
-      return __mcsema_read_memory_ ## size (mem.addr); \
+      return __mcsema_read_memory_ ## size (__mcsema_memory_order, mem.addr); \
     } \
     ALWAYS_INLINE static MemoryWriter ## T W(MnW<T> mem) { \
       return MemoryWriter ## T {mem.addr}; \

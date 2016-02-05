@@ -6,6 +6,8 @@
   (void) sym ; \
   asm("" :: "m"(sym))
 
+extern "C" order_t __mcsema_memory_order = 0;
+
 // This is just a hack to make sure all these functions appear in the bitcode
 // file!
 [[gnu::used]]

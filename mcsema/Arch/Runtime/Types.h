@@ -15,6 +15,7 @@ struct State;
 // Address in the source architecture type. We don't use a `uintptr_t` because
 // that might be specific to the destination architecture type.
 typedef IF_64BIT_ELSE(uint64_t, uint32_t) addr_t;
+typedef addr_t order_t;
 
 typedef float float32_t;
 static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");

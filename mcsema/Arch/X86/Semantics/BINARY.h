@@ -56,7 +56,7 @@ DEF_SEM(XADD, MW mdst, const M msrc_, const RW rdst, const RT rsrc_) {
   // but this instruction is a full memory barrier, even when registers are
   // accessed.
   if (IsRegister<RW>::kValue) {
-    __mcsema_barrier_store_load();
+    __mcsema_memory_order = __mcsema_barrier_store_load(__mcsema_memory_order);
   }
 
   const T src1 = R(msrc_);

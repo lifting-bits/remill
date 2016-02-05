@@ -80,6 +80,9 @@ class IntrinsicTable {
   llvm::Function *undefined_32;
   llvm::Function *undefined_64;
 
+  // Sets up a global memory ordering.
+  llvm::GlobalVariable *memory_order;
+
  private:
   IntrinsicTable(void) = delete;
 };

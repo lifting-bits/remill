@@ -177,11 +177,14 @@ bool InstructionTranslator::LiftIntoBlock(const Translator &lifter,
 
   // Not a control-flow instruction, need to add a fall-through.
   } else {
-    // TODO(pag): Should we load in the next pc? In practice, the instructions
-    //            don't need access to this information; it only matters at
-    //            control flows.
-
     LiftGeneric(lifter);
+
+    // If this is the last basic instruction in the block then we want to
+    // add the terminating kills.
+    if (instr == &(block->instructions(block->instructions_size() - 1))) {
+      AddTerminatingKills(lifter, B);
+    }
+
     return true;
   }
 }
@@ -378,7 +381,6 @@ void InstructionTranslator::LiftMemory(const Translator &lifter,
                                        const xed_operand_t *xedo,
                                        unsigned op_num) {
   auto op_name = xed_operand_name(xedo);
-  auto op_width = xed_decoded_inst_get_operand_width(xedd);
   auto mem_index = (XED_OPERAND_MEM1 == op_name) ? 1 : 0;  // Handles AGEN.
   auto seg = xed_decoded_inst_get_seg_reg(xedd, mem_index);
   auto base = xed_decoded_inst_get_base_reg(xedd, mem_index);
@@ -460,13 +462,25 @@ void InstructionTranslator::LiftMemory(const Translator &lifter,
   // semantics or with a LOCK prefix.
   if (xed_operand_values_get_atomic(xedd) ||
       xed_operand_values_has_lock_prefix(xedd)) {
-    std::vector<llvm::Value *> atomic_args;
-    atomic_args.push_back(A);
-    atomic_args.push_back(llvm::ConstantInt::get(Int32Ty, op_width, false));
-    prepend_instrs.push_back(ir.CreateCall(
-        lifter.intrinsics->atomic_begin, atomic_args));
-    append_instrs.push_back(ir.CreateCall(
-        lifter.intrinsics->atomic_end, atomic_args));
+    auto load_order1 = new llvm::LoadInst(lifter.intrinsics->memory_order);
+    auto new_order1 = llvm::CallInst::Create(lifter.intrinsics->atomic_begin,
+                                              {load_order1});
+    auto store_order1 = new llvm::StoreInst(new_order1,
+                                            lifter.intrinsics->memory_order);
+
+    auto load_order2 = new llvm::LoadInst(lifter.intrinsics->memory_order);
+    auto new_order2 = llvm::CallInst::Create(lifter.intrinsics->atomic_begin,
+                                              {load_order2});
+    auto store_order2 = new llvm::StoreInst(new_order2,
+                                            lifter.intrinsics->memory_order);
+
+    prepend_instrs.push_back(load_order1);
+    prepend_instrs.push_back(new_order1);
+    prepend_instrs.push_back(store_order1);
+
+    append_instrs.push_back(store_order2);
+    append_instrs.push_back(new_order2);
+    append_instrs.push_back(load_order2);
   }
 }
 

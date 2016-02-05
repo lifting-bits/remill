@@ -101,22 +101,25 @@ NEVER_INLINE addr_t __mcsema_compute_address(const State &state, addr_t addr,
 }
 
 #define MAKE_RW_MEMORY(size) \
-  NEVER_INLINE uint ## size ## _t  __mcsema_read_memory_ ## size(addr_t addr) {\
+  NEVER_INLINE uint ## size ## _t  __mcsema_read_memory_ ## size( \
+     order_t, addr_t addr) {\
     return AccessMemory<uint ## size ## _t>(addr); \
   } \
-  NEVER_INLINE void __mcsema_write_memory_ ## size ( \
-      addr_t addr, const uint ## size ## _t in) { \
+  NEVER_INLINE order_t __mcsema_write_memory_ ## size ( \
+      order_t, addr_t addr, const uint ## size ## _t in) { \
     AccessMemory<uint ## size ## _t>(addr) = in; \
+    return 0; \
   }
 
 #define MAKE_RW_VEC_MEMORY(size) \
   NEVER_INLINE vec ## size ## _t __mcsema_read_memory_v ## size(\
-      addr_t addr) { \
+      order_t, addr_t addr) { \
     return AccessMemory<vec ## size ## _t>(addr); \
   } \
-  NEVER_INLINE void __mcsema_write_memory_v ## size (\
-      addr_t addr, vec ## size ## _t in) { \
+  NEVER_INLINE order_t __mcsema_write_memory_v ## size (\
+      order_t, addr_t addr, vec ## size ## _t in) { \
     AccessMemory<vec ## size ## _t>(addr) = in; \
+    return 0; \
   }
 
 MAKE_RW_MEMORY(8)
@@ -132,12 +135,12 @@ MAKE_RW_VEC_MEMORY(128)
 MAKE_RW_VEC_MEMORY(256)
 MAKE_RW_VEC_MEMORY(512)
 
-void __mcsema_barrier_load_load(void) {}
-void __mcsema_barrier_load_store(void) {}
-void __mcsema_barrier_store_load(void) {}
-void __mcsema_barrier_store_store(void) {}
-void __mcsema_atomic_begin(addr_t, uint32_t) {}
-void __mcsema_atomic_end(addr_t, uint32_t) {}
+order_t __mcsema_barrier_load_load(order_t) { return 0; }
+order_t __mcsema_barrier_load_store(order_t) { return 0; }
+order_t __mcsema_barrier_store_load(order_t) { return 0; }
+order_t __mcsema_barrier_store_store(order_t) { return 0; }
+order_t __mcsema_atomic_begin(order_t) { return 0; }
+order_t __mcsema_atomic_end(order_t) { return 0; }
 
 void __mcsema_defer_inlining(void) {}
 
