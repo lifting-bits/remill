@@ -93,7 +93,7 @@ static unsigned AddressSpace(xed_reg_enum_t seg, xed_operand_enum_t name) {
 
 }  // namespace
 
-bool InstructionTranslator::LiftIntoBlock(const Translator &lifter,
+void InstructionTranslator::LiftIntoBlock(const Translator &lifter,
                                           llvm::BasicBlock *B_) {
   B = B_;
   F = B->getParent();
@@ -101,91 +101,59 @@ bool InstructionTranslator::LiftIntoBlock(const Translator &lifter,
   C = &(F->getContext());
 
   LiftPC(instr->address());
+  if (!IsNoOp()) {
+    LiftGeneric(lifter);
+  }
+
+  // Kill whatever we can at the end of this instruction.
+  //
+  // Note:  Instructions are lifted in reverse order, i.e. end of the block to
+  //        beginning of the block.
+  if (auto block_regs = analysis->blocks[block->address()]) {
+    AddTerminatingKills(lifter, block_regs, B);
+    block_regs->UpdateEntryLive(xedd);
+  }
 
   if (IsError()) {
     AddTerminatingTailCall(B, lifter.intrinsics->error);
-    return false;
 
   } else if (IsDirectJump()) {
     auto target_pc = TargetPC();
     LiftPC(target_pc);  // loads target into `gpr.rip`.
-    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.GetLiftedBlockForPC(target_pc));
-    return false;
 
   } else if (IsIndirectJump()) {
-    LiftGeneric(lifter);  // loads target into `gpr.rip`.
-    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.intrinsics->jump);
-    return false;
 
   } else if (IsDirectFunctionCall()) {
-    LiftGeneric(lifter);  // Adjusts the stack, stores `gpr.rip` to the stack.
-    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.GetLiftedBlockForPC(TargetPC()));
-    return false;
 
   } else if (IsIndirectFunctionCall()) {
-    LiftGeneric(lifter);  // Adjusts the stack, loads target into `gpr.rip`.
-    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.intrinsics->function_call);
-    return false;
 
   } else if (IsFunctionReturn()) {
-    LiftGeneric(lifter);  // Adjusts the stack, loads target into `gpr.rip`.
-    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.intrinsics->function_return);
-    return false;
 
   } else if (IsBranch()) {
-    LiftGeneric(lifter);  // Conditionally loads taken target into `gpr.rip`.
-    AddTerminatingKills(lifter, B);
-    LiftConditionalBranch(lifter);  // Conditional branch based on `gpr.rip`.
-    return false;
+    LiftConditionalBranch(lifter);
 
   // Instruction implementation handles syscall emulation.
   } else if (IsSystemCall()) {
-    LiftGeneric(lifter);
-    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.intrinsics->system_call);
-    return false;
 
   } else if (IsSystemReturn()) {
-    LiftGeneric(lifter);
-    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.intrinsics->system_return);
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
-    return false;
 
   // Instruction implementation handles syscall (x86, x32) emulation.
   } else if (IsInterruptCall()) {
-    LiftGeneric(lifter);
     AddTerminatingTailCall(B, lifter.intrinsics->interrupt_call);
-    return false;
 
   } else if (IsInterruptReturn()) {
-    LiftGeneric(lifter);
-    AddTerminatingKills(lifter, B);
     AddTerminatingTailCall(B, lifter.intrinsics->interrupt_return);
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
-    return false;
-
-  } else if (IsNoOp()) {
-    return true;
-
-  // Not a control-flow instruction, need to add a fall-through.
-  } else {
-    LiftGeneric(lifter);
-
-    // If this is the last basic instruction in the block then we want to
-    // add the terminating kills.
-    if (instr == &(block->instructions(block->instructions_size() - 1))) {
-      AddTerminatingKills(lifter, B);
-    }
-
-    return true;
   }
 }
 
@@ -626,34 +594,31 @@ void KillReg(llvm::BasicBlock *B, const char *name, llvm::Function *undef) {
 }  // namespace
 
 void InstructionTranslator::AddTerminatingKills(
-    const Translator &lifter, llvm::BasicBlock *B) {
+    const Translator &lifter, const BasicBlockRegs *regs, llvm::BasicBlock *B) {
   llvm::IRBuilder<> ir(B);
-  auto block_it = analysis->blocks.find(block->address());
-  if (block_it == analysis->blocks.end()) return;
 
-  auto res = *block_it;
-  auto reg_info = res.second;
   auto undef_bool = lifter.intrinsics->undefined_8;
+  auto live_after_instr = regs->live_entry;  // Note: repurposed.
 
-  if (!reg_info->live_exit.s.af) {
+  if (!live_after_instr.s.af) {
     KillReg(B, "AF_write", undef_bool);
   }
-  if (!reg_info->live_exit.s.cf) {
+  if (!live_after_instr.s.cf) {
     KillReg(B, "CF_write", undef_bool);
   }
-  if (!reg_info->live_exit.s.df) {
+  if (!live_after_instr.s.df) {
     KillReg(B, "DF_write", undef_bool);
   }
-  if (!reg_info->live_exit.s.of) {
+  if (!live_after_instr.s.of) {
     KillReg(B, "OF_write", undef_bool);
   }
-  if (!reg_info->live_exit.s.pf) {
+  if (!live_after_instr.s.pf) {
     KillReg(B, "PF_write", undef_bool);
   }
-  if (!reg_info->live_exit.s.sf) {
+  if (!live_after_instr.s.sf) {
     KillReg(B, "SF_write", undef_bool);
   }
-  if (!reg_info->live_exit.s.zf) {
+  if (!live_after_instr.s.zf) {
     KillReg(B, "ZF_write", undef_bool);
   }
 }

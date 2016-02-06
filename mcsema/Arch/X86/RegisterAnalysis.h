@@ -31,6 +31,10 @@ struct BasicBlockRegs {
 
   // Flags that are live on entry, after factoring in those flags that are
   // live from the successors.
+  //
+  // When our analysis is done, we will change this to `live_exit` so that when
+  // we're lifting code, we can update this as each instruction kills flags
+  // and inject the corresponding kills.
   xed_flag_set_t live_entry;
 
   // Minimal set of flags that must be kept alive.
@@ -43,6 +47,8 @@ struct BasicBlockRegs {
   // number.
   std::vector<uint64_t> predecessors;
   std::vector<uint64_t> successors;
+
+  void UpdateEntryLive(const xed_decoded_inst_t *instr);
 };
 
 }  // namespace x86

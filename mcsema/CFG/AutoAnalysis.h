@@ -33,6 +33,7 @@ class AutoAnalysis {
   virtual void InitWorkList(AnalysisWorkList &work_list) = 0;
   virtual void AnalyzeBlock(AnalysisWorkItem item,
                             AnalysisWorkList &work_list) = 0;
+  virtual void Finalize(void) = 0;
 };
 
 

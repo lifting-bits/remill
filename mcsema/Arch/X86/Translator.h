@@ -36,7 +36,7 @@ class InstructionTranslator {
                         const cfg::Instr &instr_,
                         const struct xed_decoded_inst_s &xedd_);
 
-  bool LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *B_);
+  void LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *B_);
 
  private:
   void LiftPC(uintptr_t next_pc);
@@ -52,7 +52,9 @@ class InstructionTranslator {
   void LiftRegister(const xed_operand_t *xedo);
   void LiftBranchDisplacement(void);
 
-  void AddTerminatingKills(const Translator &lifter, llvm::BasicBlock *B);
+  void AddTerminatingKills(const Translator &lifter,
+                           const BasicBlockRegs *regs,
+                           llvm::BasicBlock *B);
 
   bool IsBranch(void) const;
 

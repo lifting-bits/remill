@@ -1,6 +1,7 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
 #include <gflags/gflags.h>
+#include <glog/logging.h>
 
 #include "mcsema/Arch/X86/Decode.h"
 #include "mcsema/Arch/X86/RegisterAnalysis.h"
@@ -147,6 +148,8 @@ void RegisterAnalysis::InitWorkList(AnalysisWorkList &work_list) {
     auto block_pc = b.first;
     auto block = b.second;
 
+    if (!block) continue;
+
     // Initialize function entry points.
     if (FLAGS_aggressive_dataflow_analysis) {
       if (functions[block_pc]) {
@@ -157,6 +160,13 @@ void RegisterAnalysis::InitWorkList(AnalysisWorkList &work_list) {
     // Connect successors to predecessors.
     for (auto succ_pc : block->successors) {
       auto succ_block = blocks[succ_pc];
+      if (!succ_block) {
+        LOG(WARNING)
+            << "Block " << succ_pc << ", successor of "
+            << block_pc << " is missing.";
+        continue;
+      }
+
       succ_block->predecessors.push_back(block_pc);
 
       if (!FLAGS_aggressive_dataflow_analysis) continue;
@@ -301,6 +311,14 @@ void RegisterAnalysis::AnalyzeBlock(AnalysisWorkItem item,
   }
 }
 
+void RegisterAnalysis::Finalize(void) {
+  for (auto bp : blocks) {
+    if (auto block = bp.second) {
+      block->live_entry = block->live_exit;
+    }
+  }
+}
+
 uint32_t RegisterAnalysis::LiveFlags(uint64_t pc) {
   if (const auto block = blocks[pc]) {
     return block->live_entry.flat;
@@ -309,6 +327,13 @@ uint32_t RegisterAnalysis::LiveFlags(uint64_t pc) {
   // we can't resolve. This will be warned about during the lifting phase.
   } else {
     return FLAGS_aggressive_dataflow_analysis ? 0U : ~0U;
+  }
+}
+
+void BasicBlockRegs::UpdateEntryLive(const xed_decoded_inst_t *xedd) {
+  if (const auto rflags = xed_decoded_inst_get_rflags_info(xedd)) {
+    live_entry.flat &= ~(rflags->written.flat | rflags->undefined.flat);
+    live_entry.flat |= rflags->read.flat;
   }
 }
 

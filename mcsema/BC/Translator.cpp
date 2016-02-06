@@ -146,7 +146,7 @@ llvm::Function *GetBlockFunction(llvm::Module *M,
 }  // namespace
 
 // Create functions for every block in the CFG.
-void Translator::CreateBlocks(const cfg::Module *cfg) {
+void Translator::CreateFunctionsForBlocks(const cfg::Module *cfg) {
   std::set<uint64_t> indirect_blocks;
   for (const auto &block : cfg->indirect_blocks()) {
     indirect_blocks.insert(block.address());
@@ -193,7 +193,7 @@ std::string CanonicalName(OSName os_name, const std::string &name) {
 }  // namespace
 
 // Create functions for every function in the CFG.
-void Translator::CreateFunctions(const cfg::Module *cfg) {
+void Translator::CreateExternalFunctions(const cfg::Module *cfg) {
   for (const auto &func : cfg->functions()) {
     if (!func.is_exported() && !func.is_imported()) continue;
 
@@ -222,7 +222,7 @@ void Translator::CreateFunctions(const cfg::Module *cfg) {
 }
 
 // Link together functions and basic blocks.
-void Translator::LinkFunctionsToBlocks(const cfg::Module *cfg) {
+void Translator::LinkExternalFunctionsToBlocks(const cfg::Module *cfg) {
   for (const auto &func : cfg->functions()) {
     if (!func.is_exported() && !func.is_imported()) continue;
     if (!func.address()) continue;
@@ -263,7 +263,8 @@ namespace {
 
 // Clone the block method template `TF` into a specific method `BF` that
 // will contain lifted code.
-static void CreateMethodForBlock(llvm::Function *BF, const llvm::Function *TF) {
+static std::vector<llvm::BasicBlock *> InitBlockFunction(
+    llvm::Function *BF, const llvm::Function *TF, const cfg::Block &block) {
   llvm::ValueToValueMapTy var_map;
   auto targs = TF->arg_begin();
   auto bargs = BF->arg_begin();
@@ -279,6 +280,21 @@ static void CreateMethodForBlock(llvm::Function *BF, const llvm::Function *TF) {
   auto R = returns[0];
   R->removeFromParent();
   delete R;
+
+  std::vector<llvm::BasicBlock *> instruction_blocks;
+  instruction_blocks.reserve(block.instructions_size());
+  instruction_blocks.push_back(&(BF->back()));
+  for (const auto &instr : block.instructions()) {
+
+    // Name the block according to the instruction's address.
+    std::stringstream ss;
+    ss << "0x" << std::hex << instr.address();
+
+    // Create a block for this instruction.
+    auto B = llvm::BasicBlock::Create(BF->getContext(), ss.str(), BF);
+    instruction_blocks.push_back(B);
+  }
+  return instruction_blocks;
 }
 
 // Fall-through PC for a block.
@@ -330,10 +346,24 @@ void Translator::LiftBlocks(const cfg::Module *cfg) {
       continue;
     }
 
-    CreateMethodForBlock(BF, basic_block);
-    if (block.instructions_size()) {
-      LiftBlockIntoMethod(block, BF);
+    const auto instruction_blocks = InitBlockFunction(BF, basic_block, block);
+
+    // Lift the instructions into the block in reverse order. This helps for
+    // using the results of backward data-flow analyses.
+    for (auto i = block.instructions_size(); i--; ) {
+      const auto &instr = block.instructions(i);
+      const auto bb = instruction_blocks[i + 1];
+      LiftInstructionIntoBlock(block, instr, bb);
     }
+
+    // Connect the internal blocks together with branches.
+    if (instruction_blocks.size()) {
+      for (auto i = 1; i < instruction_blocks.size(); ++i) {
+        llvm::IRBuilder<> ir(instruction_blocks[i - 1]);
+        ir.CreateBr(instruction_blocks[i]);
+      }
+    }
+
     TerminateBlockMethod(block, BF);
 
     // Perform simple, incremental optimizations on the block functions to
@@ -342,56 +372,25 @@ void Translator::LiftBlocks(const cfg::Module *cfg) {
   }
 }
 
-void Translator::LiftBlockIntoMethod(const cfg::Block &block,
-                                     llvm::Function *BF) {
-  auto num_lifted = 0;
-  for (const auto &instr : block.instructions()) {
-    CHECK(0 < instr.size())
-        << "Can't decode zero-sized instruction at " << instr.address();
+// Lift an instruction into a basic block. This does some minor sanity checks
+// then dispatches to the arch-specific translator.
+void Translator::LiftInstructionIntoBlock(
+    const cfg::Block &block, const cfg::Instr &instr, llvm::BasicBlock *B) {
 
-    CHECK(instr.size() == instr.bytes().length())
-        << "Instruction size mismatch for instruction at " << instr.address();
+  CHECK(0 < instr.size())
+      << "Can't decode zero-sized instruction at " << instr.address();
 
-    num_lifted += 1;
-    switch (LiftInstructionIntoBlock(block, instr, BF)) {
-      case kLiftNextInstruction:
-        break;
+  CHECK(instr.size() == instr.bytes().length())
+      << "Instruction size mismatch for instruction at " << instr.address();
 
-      case kTerminateBlock:
-        LOG_IF(WARNING, num_lifted < block.instructions_size())
-            << "Did not lift all instructions from block " << block.address();
-        return;
-    }
-  }
-  LOG_IF(WARNING, num_lifted < block.instructions_size())
-      << "Did not lift all instructions from block " << block.address();
-}
-
-// Create a basic block for an instruction.
-InstructionLiftAction Translator::LiftInstructionIntoBlock(
-    const cfg::Block &block, const cfg::Instr &instr,
-    llvm::Function *BF) {
-
-  // Name the block according to the instruction's address.
-  std::stringstream ss;
-  ss << "0x" << std::hex << instr.address();
-
-  // Create a block for this instruction.
-  auto P = &(BF->back());
-  auto B = llvm::BasicBlock::Create(BF->getContext(), ss.str(), BF);
-
-  // Connect the block to its predecessor.
-  llvm::IRBuilder<> ir(P);
-  ir.CreateBr(B);
-
-  return arch->LiftInstructionIntoBlock(*this, block, instr, B);
+  arch->LiftInstructionIntoBlock(*this, block, instr, B);
 }
 
 void Translator::LiftCFG(const cfg::Module *cfg) {
   blocks.clear();  // Just in case we call `LiftCFG` multiple times.
-  CreateBlocks(cfg);
-  CreateFunctions(cfg);
-  LinkFunctionsToBlocks(cfg);
+  CreateFunctionsForBlocks(cfg);
+  CreateExternalFunctions(cfg);
+  LinkExternalFunctionsToBlocks(cfg);
   AnalyzeCFG(cfg);
   LiftBlocks(cfg);
 }
@@ -420,6 +419,7 @@ void Translator::AnalyzeCFG(const cfg::Module *cfg) {
     }
     wl.swap(next_wl);
   }
+  analysis.Finalize();
 }
 
 llvm::Function *Translator::GetLiftedBlockForPC(uintptr_t pc) const {

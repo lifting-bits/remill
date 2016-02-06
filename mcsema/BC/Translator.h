@@ -25,11 +25,6 @@ class Instr;
 class IntrinsicTable;
 class Translator;
 
-enum InstructionLiftAction : unsigned {
-  kLiftNextInstruction,
-  kTerminateBlock
-};
-
 // Lifts CFG files into a bitcode module.
 class Translator {
  public:
@@ -51,28 +46,24 @@ class Translator {
   void IdentifyExistingSymbols(void);
 
   // Create functions for every block in the CFG.
-  void CreateBlocks(const cfg::Module *cfg);
+  void CreateFunctionsForBlocks(const cfg::Module *cfg);
 
   // Create functions for every imported/exported function in the code.
-  void CreateFunctions(const cfg::Module *cfg);
+  void CreateExternalFunctions(const cfg::Module *cfg);
 
   // Link together functions and basic blocks.
-  void LinkFunctionsToBlocks(const cfg::Module *cfg);
+  void LinkExternalFunctionsToBlocks(const cfg::Module *cfg);
 
   // Lift code contained in blocks into the block methods.
   void LiftBlocks(const cfg::Module *cfg);
 
   // Lift code contained in a block into a block method.
-  void LiftBlockIntoMethod(const cfg::Block &block, llvm::Function *BF);
+  void LiftInstructionInfoBlock(const cfg::Block &block, llvm::Function *BF);
 
   // Create a basic block for an instruction.
-  InstructionLiftAction LiftInstructionIntoBlock(const cfg::Block &block,
-                                                 const cfg::Instr &instr,
-                                                 llvm::Function *BF);
-
-  // Lift an architecture-specific instruction.
-  bool LiftInstruction(const cfg::Block &block, const cfg::Instr &instr,
-                       Instr &ainstr, llvm::Function *BF);
+  void LiftInstructionIntoBlock(const cfg::Block &block,
+                                const cfg::Instr &instr,
+                                llvm::BasicBlock *B);
 
   // Add a fall-through terminator to the block method just in case one is
   // missing.

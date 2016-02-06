@@ -27,6 +27,8 @@ class RegisterAnalysis : public AutoAnalysis {
   virtual void InitWorkList(AnalysisWorkList &work_list) override;
   virtual void AnalyzeBlock(AnalysisWorkItem item,
                             AnalysisWorkList &work_list) override;
+  virtual void Finalize(void) override;
+
   const ArchName arch_name;
 
   // Maps basic blocks to information about their flags, regs, and a graph

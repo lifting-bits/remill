@@ -55,18 +55,13 @@ llvm::Module *X86Arch::PrepareModule(llvm::Module *mod) const {
 }
 
 // Decode an instruction and lift it into a basic block.
-InstructionLiftAction X86Arch::LiftInstructionIntoBlock(
+void X86Arch::LiftInstructionIntoBlock(
     const Translator &translator,
     const cfg::Block &block, const cfg::Instr &instr,
     llvm::BasicBlock *B) const {
-
   const auto xedd = DecodeInstruction(instr, arch_name);
-  InstructionTranslator trans(analysis, block, instr, xedd);
-  if (trans.LiftIntoBlock(translator, B)) {
-    return kLiftNextInstruction;
-  } else {
-    return kTerminateBlock;
-  }
+  InstructionTranslator trans(analysis, block, instr, xedd);  // Bag of state.
+  trans.LiftIntoBlock(translator, B);
 }
 
 // Return an arch-specific CFG analyzer.

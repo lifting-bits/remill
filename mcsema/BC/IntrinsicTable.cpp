@@ -97,7 +97,10 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *M)
       atomic_end(FindIntrinsic(M, "__mcsema_atomic_end")),
 
       // Optimization guides.
-      defer_inlining(FindPureIntrinsic(M, "__mcsema_defer_inlining")),
+      //
+      // Note:  NOT pure! This is a total hack: we call an unpure function
+      //        within a pure one so that it is not optimized out!
+      defer_inlining(FindIntrinsic(M, "__mcsema_defer_inlining")),
 
       // Optimization enablers.
       undefined_bool(FindPureIntrinsic(M, "__mcsema_undefined_bool")),

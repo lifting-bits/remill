@@ -25,7 +25,6 @@ enum ArchName : unsigned {
   kArchAMD64
 };
 
-enum InstructionLiftAction : unsigned;
 class Translator;
 
 class Arch {
@@ -48,7 +47,7 @@ class Arch {
   virtual llvm::Module *PrepareModule(llvm::Module *mod) const = 0;
 
   // Decode an instruction and lift it into a basic block.
-  virtual InstructionLiftAction LiftInstructionIntoBlock(
+  virtual void LiftInstructionIntoBlock(
       const Translator &translator,
       const cfg::Block &block, const cfg::Instr &instr,
       llvm::BasicBlock *B) const = 0;
