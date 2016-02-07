@@ -18,7 +18,9 @@ struct AnalysisWorkItem {
 
   // Ordered so that
   inline bool operator<(const AnalysisWorkItem &that) const {
-    return order > that.order;
+    if (order > that.order) return true;
+    if (order == that.order) return pc > that.pc;
+    return false;
   }
 };
 

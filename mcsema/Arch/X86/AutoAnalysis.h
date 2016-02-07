@@ -20,7 +20,8 @@ struct Function;
 class RegisterAnalysis : public AutoAnalysis {
  public:
   inline explicit RegisterAnalysis(ArchName arch_name_)
-      : arch_name(arch_name_) {}
+      : arch_name(arch_name_),
+        live_anywhere(~0U) {}
 
   virtual void AddBlock(const cfg::Block &block) override;
   virtual void AddFunction(const cfg::Function &block) override;
@@ -39,6 +40,9 @@ class RegisterAnalysis : public AutoAnalysis {
   RegisterAnalysis(void) = delete;
 
   uint32_t LiveFlags(uint64_t pc);
+  uint16_t LiveRegs(uint64_t pc);
+
+  uint32_t live_anywhere;
 
   // Maps basic block addresses to the functions in which they are contained.
   std::unordered_map<uint64_t, Function *> functions;

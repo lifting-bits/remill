@@ -19,6 +19,10 @@ struct Function {
 
 namespace {
 
+inline uint16_t operator "" _u16(unsigned long long value) {
+  return static_cast<uint16_t>(value);
+}
+
 // Find the successor blocks of an instruction.
 static FlowType FindSuccessors(const xed_decoded_inst_t *xedd,
                                uint64_t curr_pc, uint64_t next_pc,
@@ -72,6 +76,89 @@ static FlowType FindSuccessors(const xed_decoded_inst_t *xedd,
   }
 }
 
+static void UpdateSet(RegisterSet *regs, xed_reg_enum_t reg, bool is_live) {
+
+  // Writes of 8- and 16-bit regs don't clear all bits.
+  if (!is_live && 32 > xed_get_register_width_bits64(reg)) {
+    is_live = true;
+  }
+
+  switch (xed_get_largest_enclosing_register(reg)) {
+    case XED_REG_RAX: regs->s.rax = is_live; break;
+    case XED_REG_RCX: regs->s.rcx = is_live; break;
+    case XED_REG_RDX: regs->s.rdx = is_live; break;
+    case XED_REG_RBX: regs->s.rbx = is_live; break;
+    case XED_REG_RSP: regs->s.rsp = is_live; break;
+    case XED_REG_RBP: regs->s.rbp = is_live; break;
+    case XED_REG_RSI: regs->s.rsi = is_live; break;
+    case XED_REG_RDI: regs->s.rdi = is_live; break;
+    case XED_REG_R8: regs->s.r8 = is_live; break;
+    case XED_REG_R9: regs->s.r9 = is_live; break;
+    case XED_REG_R10: regs->s.r10 = is_live; break;
+    case XED_REG_R11: regs->s.r11 = is_live; break;
+    case XED_REG_R12: regs->s.r12 = is_live; break;
+    case XED_REG_R13: regs->s.r13 = is_live; break;
+    case XED_REG_R14: regs->s.r14 = is_live; break;
+    case XED_REG_R15: regs->s.r15 = is_live; break;
+    default: break;
+  }
+}
+
+static void VisitMemory(RegisterSet *regs, const xed_decoded_inst_t *xedd,
+                        unsigned mem_index) {
+  auto base = xed_decoded_inst_get_base_reg(xedd, mem_index);
+  auto index = xed_decoded_inst_get_index_reg(xedd, mem_index);
+  UpdateSet(regs, base, true);
+  UpdateSet(regs, index, true);
+}
+
+static void VisitRegister(RegisterSet *regs, const xed_decoded_inst_t *xedd,
+                          const xed_operand_t *xedo, unsigned op_num) {
+  auto op_name = xed_operand_name(xedo);
+  auto reg = xed_decoded_inst_get_reg(xedd, op_name);
+  UpdateSet(regs, reg, xed_operand_read(xedo));
+}
+
+static void VisitOperand(RegisterSet *regs, const xed_decoded_inst_t *xedd,
+                         unsigned op_num) {
+  auto xedi = xed_decoded_inst_inst(xedd);
+  auto xedo = xed_inst_operand(xedi, op_num);
+  switch (auto op_name = xed_operand_name(xedo)) {
+    case XED_OPERAND_AGEN:
+    case XED_OPERAND_MEM0:
+      VisitMemory(regs, xedd, 0);
+      break;
+    case XED_OPERAND_MEM1:
+      VisitMemory(regs, xedd, 1);
+      break;
+
+    case XED_OPERAND_REG:
+    case XED_OPERAND_REG0:
+    case XED_OPERAND_REG1:
+    case XED_OPERAND_REG2:
+    case XED_OPERAND_REG3:
+    case XED_OPERAND_REG4:
+    case XED_OPERAND_REG5:
+    case XED_OPERAND_REG6:
+    case XED_OPERAND_REG7:
+    case XED_OPERAND_REG8:
+      VisitRegister(regs, xedd, xedo, op_num);
+      break;
+
+    default:
+      break;
+  }
+}
+
+// Update the live registers based on the current instructions.
+static void VisitInstruction(RegisterSet *regs,
+                             const xed_decoded_inst_t *xedd) {
+  auto num_operands = xed_decoded_inst_noperands(xedd);
+  for (auto i = 0U; i < num_operands; ++i) {
+    VisitOperand(regs, xedd, i);
+  }
+}
+
 }  // namespace
 
 void RegisterAnalysis::AddFunction(const cfg::Function &func) {
@@ -85,10 +172,15 @@ void RegisterAnalysis::AddFunction(const cfg::Function &func) {
 
 void RegisterAnalysis::AddBlock(const cfg::Block &block) {
   auto bb = new BasicBlockRegs;
-  bb->live_anywhere.flat = 0U;
-  bb->live_exit.flat = 0U;
-  bb->live_entry.flat = 0U;
-  bb->keep_alive.flat = 0U;
+  bb->flags.live_anywhere.flat = 0U;
+  bb->flags.live_exit.flat = ~0U;
+  bb->flags.live_entry.flat = 0U;
+  bb->flags.keep_alive.flat = ~0U;
+
+  bb->regs.live_exit.flat = ~0_u16;
+  bb->regs.live_entry.flat = 0_u16;
+  bb->regs.keep_alive.flat = ~0_u16;
+
   bb->address = block.address();
   bb->flow = kFlowUnknown;
 
@@ -99,11 +191,13 @@ void RegisterAnalysis::AddBlock(const cfg::Block &block) {
     const auto xedd = DecodeInstruction(instr, arch_name);
 
     if (const auto rflags = xed_decoded_inst_get_rflags_info(&xedd)) {
-      bb->live_anywhere.flat |= rflags->read.flat;
-      bb->keep_alive.flat |= rflags->written.flat;
-      bb->keep_alive.flat |= rflags->undefined.flat;
-      bb->keep_alive.flat &= ~(rflags->read.flat);
+      bb->flags.live_anywhere.flat |= rflags->read.flat;
+      bb->flags.keep_alive.flat &= ~rflags->written.flat;
+      bb->flags.keep_alive.flat &= ~rflags->undefined.flat;
+      bb->flags.keep_alive.flat |= rflags->read.flat;
     }
+
+    VisitInstruction(&(bb->regs.keep_alive), &xedd);
 
     if (it == it_begin) {
       const auto next_pc = instr.address() + instr.size();
@@ -135,8 +229,8 @@ void RegisterAnalysis::AddBlock(const cfg::Block &block) {
     }
   }
 
-  bb->keep_alive.flat = ~bb->keep_alive.flat;
-  bb->live_entry.flat = bb->live_exit.flat & bb->keep_alive.flat;
+  bb->regs.live_entry = bb->regs.keep_alive;
+  bb->flags.live_entry = bb->flags.keep_alive;
 
   blocks[block.address()] = bb;
 }
@@ -254,26 +348,24 @@ void RegisterAnalysis::InitWorkList(AnalysisWorkList &work_list) {
 
   // Do some ahead-of-time work to kill any flags that are never read anywhere
   // in the program.
-  xed_flag_set_t live_anywhere;
-  live_anywhere.flat = 0U;
+  live_anywhere = 0U;
   for (auto b : blocks) {
     if (auto block = b.second) {
-      live_anywhere.flat |= block->live_anywhere.flat;
+      live_anywhere |= block->flags.live_anywhere.flat;
     }
   }
 
   // Initialize the worklist for dead flags and register analysis across the
   // control-flow graph.
   for (auto b : blocks) {
-    auto block_pc = b.first;
     if (auto block = b.second) {
 
       // Try to kill globally unused flags.
-      block->live_entry.flat &= ~live_anywhere.flat;
-      block->live_exit.flat &= ~live_anywhere.flat;
-      block->keep_alive.flat &= ~live_anywhere.flat;
+      block->flags.live_entry.flat &= live_anywhere;
+      block->flags.live_exit.flat &= live_anywhere;
+      block->flags.keep_alive.flat &= live_anywhere;
 
-      work_list.insert({block->predecessors.size(), block_pc});
+      work_list.insert({block->predecessors.size(), b.first});
     }
   }
 }
@@ -281,29 +373,48 @@ void RegisterAnalysis::InitWorkList(AnalysisWorkList &work_list) {
 void RegisterAnalysis::AnalyzeBlock(AnalysisWorkItem item,
                                     AnalysisWorkList &work_list) {
   auto bb = blocks[item.pc];
-  if (!bb) return;
+  if (!bb) {
+    return;
+  }
 
   // If we're not being conservative, then we'll assume that every indirect flow
   // kills all the flags.
-  auto incoming_live = FLAGS_aggressive_dataflow_analysis ? 0U : ~0U;
+  uint32_t incoming_flags = FLAGS_aggressive_dataflow_analysis ?
+                            0U :
+                            live_anywhere;
+  uint16_t incoming_regs = bb->successors.empty() ? ~0_u16 : 0_u16;
 
   // Try to collect flags across system calls.
   if (kFlowSysCall == bb->flow) {
     if (auto succ_pc = ret_blocks[item.pc]) {
-      incoming_live |= LiveFlags(succ_pc);
+      incoming_flags |= LiveFlags(succ_pc);
     }
 
   } else {
     for (auto succ_pc : bb->successors) {
-      incoming_live |= LiveFlags(succ_pc);
+      incoming_flags |= LiveFlags(succ_pc);
+      incoming_regs |= LiveRegs(succ_pc);
     }
   }
 
-  auto live_entry = incoming_live & bb->keep_alive.flat;
-  if (live_entry != bb->live_entry.flat) {
-    bb->live_entry.flat = live_entry;
+  auto changed = false;
+  auto new_entry_flags = incoming_flags & bb->flags.keep_alive.flat;
+  auto new_entry_regs = incoming_regs & bb->regs.keep_alive.flat;
 
-    // Update the work list.
+  bb->flags.live_exit.flat = incoming_flags;
+  if (new_entry_flags != bb->flags.live_entry.flat) {
+    bb->flags.live_entry.flat = new_entry_flags;
+    changed = true;
+  }
+
+  bb->regs.live_exit.flat = incoming_regs;
+  if (new_entry_regs != bb->regs.live_entry.flat) {
+    bb->regs.live_entry.flat = new_entry_regs;
+    changed = true;
+  }
+
+  // Update the work list.
+  if (changed) {
     for (auto pred_pc : bb->predecessors) {
       auto pred_bb = blocks[pred_pc];
       work_list.insert({pred_bb->predecessors.size(), pred_pc});
@@ -314,27 +425,38 @@ void RegisterAnalysis::AnalyzeBlock(AnalysisWorkItem item,
 void RegisterAnalysis::Finalize(void) {
   for (auto bp : blocks) {
     if (auto block = bp.second) {
-      block->live_entry = block->live_exit;
+      block->flags.live_entry = block->flags.live_exit;
+      block->regs.live_entry = block->regs.live_exit;
     }
   }
 }
 
 uint32_t RegisterAnalysis::LiveFlags(uint64_t pc) {
   if (const auto block = blocks[pc]) {
-    return block->live_entry.flat;
+    return block->flags.live_entry.flat;
 
   // This is basically an error case anyway, i.e. we have a direct flow that
   // we can't resolve. This will be warned about during the lifting phase.
   } else {
-    return FLAGS_aggressive_dataflow_analysis ? 0U : ~0U;
+    return FLAGS_aggressive_dataflow_analysis ? 0U : live_anywhere;
+  }
+}
+
+uint16_t RegisterAnalysis::LiveRegs(uint64_t pc) {
+  if (const auto block = blocks[pc]) {
+    return block->regs.live_entry.flat;
+  } else {
+    return ~0_u16;
   }
 }
 
 void BasicBlockRegs::UpdateEntryLive(const xed_decoded_inst_t *xedd) {
   if (const auto rflags = xed_decoded_inst_get_rflags_info(xedd)) {
-    live_entry.flat &= ~(rflags->written.flat | rflags->undefined.flat);
-    live_entry.flat |= rflags->read.flat;
+    flags.live_entry.flat &= ~(rflags->written.flat | rflags->undefined.flat);
+    flags.live_entry.flat |= rflags->read.flat;
   }
+
+  VisitInstruction(&(regs.live_entry), xedd);
 }
 
 }  // namespace x86
