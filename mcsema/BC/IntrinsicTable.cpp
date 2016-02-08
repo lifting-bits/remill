@@ -24,7 +24,6 @@ static llvm::Function *FindIntrinsic(const llvm::Module *M, const char *name) {
   // We don't want calls to memory intrinsics to be duplicated because then
   // they might have the wrong side effects!
   F->addFnAttr(llvm::Attribute::NoDuplicate);
-
   return F;
 }
 

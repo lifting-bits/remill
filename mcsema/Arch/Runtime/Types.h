@@ -491,6 +491,9 @@ struct BaseType {
   typedef T Type;
 };
 
+#define BASE_TYPE_OF(T) \
+  typename BaseType<T>::Type
+
 template <>
 struct BaseType<float80_t> {
   typedef arch_float80_t Type;
