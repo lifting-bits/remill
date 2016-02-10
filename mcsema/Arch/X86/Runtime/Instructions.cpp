@@ -11,6 +11,7 @@
 #include "mcsema/Arch/X86/Semantics/CALL_RET.h"
 #include "mcsema/Arch/X86/Semantics/CMOV.h"
 #include "mcsema/Arch/X86/Semantics/COND_BR.h"
+#include "mcsema/Arch/X86/Semantics/CONVERT.h"
 #include "mcsema/Arch/X86/Semantics/DATAXFER.h"
 #include "mcsema/Arch/X86/Semantics/INTERRUPT.h"
 #include "mcsema/Arch/X86/Semantics/FMA.h"

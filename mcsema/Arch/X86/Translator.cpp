@@ -102,7 +102,8 @@ void InstructionTranslator::LiftIntoBlock(const Translator &lifter,
   C = &(F->getContext());
 
   LiftPC(instr->address());
-  if (!IsNoOp()) {
+
+  if (!IsNoOp() && !IsError()) {
     LiftGeneric(lifter);
   }
 
@@ -764,7 +765,8 @@ bool InstructionTranslator::IsNoOp(void) const {
 }
 
 bool InstructionTranslator::IsError(void) const {
-  return XED_ICLASS_HLT == iclass || XED_ICLASS_INVALID == iclass;
+  return XED_ICLASS_HLT == iclass || XED_ICLASS_UD2 == iclass ||
+         XED_ICLASS_INVALID == iclass;
 }
 
 uintptr_t InstructionTranslator::TargetPC(void) const {
