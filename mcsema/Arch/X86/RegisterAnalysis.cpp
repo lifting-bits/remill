@@ -104,32 +104,37 @@ static void UpdateSet(RegisterSet *regs, xed_reg_enum_t reg, bool is_live) {
   }
 }
 
-static void VisitMemory(RegisterSet *regs, const xed_decoded_inst_t *xedd,
-                        unsigned mem_index) {
+static void VisitMemory(RegisterSet *revive, RegisterSet *kill,
+                        const xed_decoded_inst_t *xedd, unsigned mem_index) {
   auto base = xed_decoded_inst_get_base_reg(xedd, mem_index);
   auto index = xed_decoded_inst_get_index_reg(xedd, mem_index);
-  UpdateSet(regs, base, true);
-  UpdateSet(regs, index, true);
+  UpdateSet(revive, base, true);
+  UpdateSet(revive, index, true);
+
+  UpdateSet(kill, base, true);
+  UpdateSet(kill, index, true);
 }
 
-static void VisitRegister(RegisterSet *regs, const xed_decoded_inst_t *xedd,
+static void VisitRegister(RegisterSet *revive, RegisterSet *kill,
+                          const xed_decoded_inst_t *xedd,
                           const xed_operand_t *xedo, unsigned op_num) {
   auto op_name = xed_operand_name(xedo);
   auto reg = xed_decoded_inst_get_reg(xedd, op_name);
-  UpdateSet(regs, reg, xed_operand_read(xedo));
+  UpdateSet(revive, reg, xed_operand_read(xedo));
+  UpdateSet(kill, reg, xed_operand_read(xedo));
 }
 
-static void VisitOperand(RegisterSet *regs, const xed_decoded_inst_t *xedd,
-                         unsigned op_num) {
+static void VisitOperand(RegisterSet *revive, RegisterSet *kill,
+                         const xed_decoded_inst_t *xedd, unsigned op_num) {
   auto xedi = xed_decoded_inst_inst(xedd);
   auto xedo = xed_inst_operand(xedi, op_num);
   switch (auto op_name = xed_operand_name(xedo)) {
     case XED_OPERAND_AGEN:
     case XED_OPERAND_MEM0:
-      VisitMemory(regs, xedd, 0);
+      VisitMemory(revive, kill, xedd, 0);
       break;
     case XED_OPERAND_MEM1:
-      VisitMemory(regs, xedd, 1);
+      VisitMemory(revive, kill, xedd, 1);
       break;
 
     case XED_OPERAND_REG:
@@ -142,7 +147,7 @@ static void VisitOperand(RegisterSet *regs, const xed_decoded_inst_t *xedd,
     case XED_OPERAND_REG6:
     case XED_OPERAND_REG7:
     case XED_OPERAND_REG8:
-      VisitRegister(regs, xedd, xedo, op_num);
+      VisitRegister(revive, kill, xedd, xedo, op_num);
       break;
 
     default:
@@ -151,11 +156,11 @@ static void VisitOperand(RegisterSet *regs, const xed_decoded_inst_t *xedd,
 }
 
 // Update the live registers based on the current instructions.
-static void VisitInstruction(RegisterSet *regs,
+static void VisitInstruction(RegisterSet *revive, RegisterSet *kill,
                              const xed_decoded_inst_t *xedd) {
   auto num_operands = xed_decoded_inst_noperands(xedd);
   for (auto i = 0U; i < num_operands; ++i) {
-    VisitOperand(regs, xedd, i);
+    VisitOperand(revive, kill, xedd, i);
   }
 }
 
@@ -175,11 +180,13 @@ void RegisterAnalysis::AddBlock(const cfg::Block &block) {
   bb->flags.live_anywhere.flat = 0U;
   bb->flags.live_exit.flat = ~0U;
   bb->flags.live_entry.flat = 0U;
-  bb->flags.keep_alive.flat = ~0U;
+  bb->flags.kill.flat = ~0U;
+  bb->flags.revive.flat = 0U;
 
   bb->regs.live_exit.flat = ~0_u16;
   bb->regs.live_entry.flat = 0_u16;
-  bb->regs.keep_alive.flat = ~0_u16;
+  bb->regs.kill.flat = ~0_u16;
+  bb->flags.revive.flat = 0_u16;
 
   bb->address = block.address();
   bb->flow = kFlowUnknown;
@@ -192,12 +199,18 @@ void RegisterAnalysis::AddBlock(const cfg::Block &block) {
 
     if (const auto rflags = xed_decoded_inst_get_rflags_info(&xedd)) {
       bb->flags.live_anywhere.flat |= rflags->read.flat;
-      bb->flags.keep_alive.flat &= ~rflags->written.flat;
-      bb->flags.keep_alive.flat &= ~rflags->undefined.flat;
-      bb->flags.keep_alive.flat |= rflags->read.flat;
+
+      bb->flags.kill.flat &= ~rflags->written.flat;
+      bb->flags.kill.flat &= ~rflags->undefined.flat;
+      bb->flags.kill.flat |= rflags->read.flat;
+
+
+      bb->flags.revive.flat &= ~rflags->written.flat;
+      bb->flags.revive.flat &= ~rflags->undefined.flat;
+      bb->flags.revive.flat |= rflags->read.flat;
     }
 
-    VisitInstruction(&(bb->regs.keep_alive), &xedd);
+    VisitInstruction(&(bb->regs.revive), &(bb->regs.kill), &xedd);
 
     if (it == it_begin) {
       const auto next_pc = instr.address() + instr.size();
@@ -229,8 +242,8 @@ void RegisterAnalysis::AddBlock(const cfg::Block &block) {
     }
   }
 
-  bb->regs.live_entry = bb->regs.keep_alive;
-  bb->flags.live_entry = bb->flags.keep_alive;
+  bb->regs.live_entry = bb->regs.kill;
+  bb->flags.live_entry = bb->flags.kill;
 
   blocks[block.address()] = bb;
 }
@@ -363,7 +376,7 @@ void RegisterAnalysis::InitWorkList(AnalysisWorkList &work_list) {
       // Try to kill globally unused flags.
       block->flags.live_entry.flat &= live_anywhere;
       block->flags.live_exit.flat &= live_anywhere;
-      block->flags.keep_alive.flat &= live_anywhere;
+      block->flags.kill.flat &= live_anywhere;
 
       work_list.insert({block->predecessors.size(), b.first});
     }
@@ -398,10 +411,13 @@ void RegisterAnalysis::AnalyzeBlock(AnalysisWorkItem item,
   }
 
   auto changed = false;
-  auto new_entry_flags = incoming_flags & bb->flags.keep_alive.flat;
-  auto new_entry_regs = incoming_regs & bb->regs.keep_alive.flat;
+  auto new_entry_flags = (incoming_flags & bb->flags.kill.flat) |
+                         bb->flags.revive.flat;
+  auto new_entry_regs = (incoming_regs & bb->regs.kill.flat) |
+                        bb->regs.revive.flat;
 
   bb->flags.live_exit.flat = incoming_flags;
+
   if (new_entry_flags != bb->flags.live_entry.flat) {
     bb->flags.live_entry.flat = new_entry_flags;
     changed = true;
@@ -424,9 +440,14 @@ void RegisterAnalysis::AnalyzeBlock(AnalysisWorkItem item,
 
 void RegisterAnalysis::Finalize(void) {
   for (auto bp : blocks) {
+    if (0x4026c0 == bp.first) {
+      asm("nop;");
+    }
     if (auto block = bp.second) {
-      block->flags.live_entry = block->flags.live_exit;
-      block->regs.live_entry = block->regs.live_exit;
+      block->flags.revive = block->flags.live_exit;
+      block->flags.kill = block->flags.live_exit;
+      block->regs.revive = block->regs.live_exit;
+      block->regs.kill = block->regs.live_exit;
     }
   }
 }
@@ -452,11 +473,15 @@ uint16_t RegisterAnalysis::LiveRegs(uint64_t pc) {
 
 void BasicBlockRegs::UpdateEntryLive(const xed_decoded_inst_t *xedd) {
   if (const auto rflags = xed_decoded_inst_get_rflags_info(xedd)) {
-    flags.live_entry.flat &= ~(rflags->written.flat | rflags->undefined.flat);
-    flags.live_entry.flat |= rflags->read.flat;
+    flags.revive.flat &= ~(rflags->written.flat | rflags->undefined.flat);
+    flags.revive.flat |= rflags->read.flat;
+
+
+    flags.kill.flat &= ~(rflags->written.flat | rflags->undefined.flat);
+    flags.kill.flat |= rflags->read.flat;
   }
 
-  VisitInstruction(&(regs.live_entry), xedd);
+  VisitInstruction(&(regs.revive), &(regs.kill), xedd);
 }
 
 }  // namespace x86

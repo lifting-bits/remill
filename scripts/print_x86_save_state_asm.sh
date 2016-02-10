@@ -9,6 +9,7 @@ pushd /tmp
 $DIR/third_party/bin/clang++ \
     -std=gnu++11 \
     -Wno-nested-anon-types -Wno-variadic-macros -Wno-extended-offsetof \
+    -Wno-return-type-c-linkage \
     -m64 -I${DIR} \
     -DADDRESS_SIZE_BITS=64 -DHAS_FEATURE_AVX=1 -DHAS_FEATURE_AVX512=1 \
     $DIR/tests/X86/PrintSaveState.cpp

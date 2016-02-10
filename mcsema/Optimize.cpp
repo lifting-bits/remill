@@ -37,6 +37,7 @@ static void ReplaceIntrinsic(llvm::Module &M, const char *name, unsigned N) {
       }
     }
 
+    // Eliminate calls
     auto Undef = llvm::UndefValue::get(
         llvm::Type::getIntNTy(F->getContext(), N));
     for (auto C : Cs) {
@@ -59,6 +60,23 @@ void RemoveUndefinedIntrinsics(llvm::Module &M) {
   ReplaceIntrinsic(M, "__mcsema_undefined_16", 16);
   ReplaceIntrinsic(M, "__mcsema_undefined_32", 32);
   ReplaceIntrinsic(M, "__mcsema_undefined_64", 64);
+
+  // Eliminate stores of undefined values.
+  for (auto &F : M) {
+    std::vector<llvm::StoreInst *> Ss;
+    for (auto &B : F) {
+      for (auto &I : B) {
+        if (auto S = llvm::dyn_cast<llvm::StoreInst>(&I)) {
+          if (auto U = llvm::dyn_cast<llvm::UndefValue>(S->getValueOperand())) {
+            Ss.push_back(S);
+          }
+        }
+      }
+    }
+    for (auto S : Ss) {
+      S->removeFromParent();
+    }
+  }
 }
 
 }  // namespace

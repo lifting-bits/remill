@@ -54,14 +54,15 @@ struct BasicBlockRegs {
 
     // Flags that are live on entry, after factoring in those flags that are
     // live from the successors.
-    //
-    // When our analysis is done, we will change this to `live_exit` so that when
-    // we're lifting code, we can update this as each instruction kills flags
-    // and inject the corresponding kills.
     xed_flag_set_t live_entry;
 
     // Minimal set of flags that must be kept alive.
-    xed_flag_set_t keep_alive;
+    //
+    // When our analysis is done, we will change this to `live_exit` so that
+    // when we're lifting code, we can update this as each instruction
+    // revives/kills flags and inject the corresponding kills.
+    xed_flag_set_t revive;
+    xed_flag_set_t kill;
 
     // Lift flags from all successors.
     xed_flag_set_t live_exit;
@@ -70,7 +71,8 @@ struct BasicBlockRegs {
   struct {
     RegisterSet live_entry;
     RegisterSet live_exit;
-    RegisterSet keep_alive;
+    RegisterSet revive;
+    RegisterSet kill;
   } regs;
 
   // Addresses of successor blocks. Empty if there are none or an unknown

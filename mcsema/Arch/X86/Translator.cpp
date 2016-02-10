@@ -611,27 +611,27 @@ void InstructionTranslator::AddTerminatingKills(
   auto create_undef_bool = lifter.intrinsics->undefined_8;
   llvm::Value *undef_bool = nullptr;
 
-  if (!regs->flags.live_entry.s.af) {
+  if (!regs->flags.kill.s.af) {
     undef_bool = KillReg(B, "AF_write", create_undef_bool, undef_bool);
   }
-  if (!regs->flags.live_entry.s.cf) {
+  if (!regs->flags.kill.s.cf) {
     undef_bool = KillReg(B, "CF_write", create_undef_bool, undef_bool);
   }
-  if (!regs->flags.live_entry.s.df) {
+  if (!regs->flags.kill.s.df) {
     undef_bool = KillReg(B, "DF_write", create_undef_bool, undef_bool);
   }
-  if (!regs->flags.live_entry.s.of) {
+  if (!regs->flags.kill.s.of) {
     undef_bool = KillReg(B, "OF_write", create_undef_bool, undef_bool);
   }
-  if (!regs->flags.live_entry.s.pf) {
+  if (!regs->flags.kill.s.pf) {
     undef_bool = KillReg(B, "PF_write", create_undef_bool, undef_bool);
   } else {
     asm("nop;");
   }
-  if (!regs->flags.live_entry.s.sf) {
+  if (!regs->flags.kill.s.sf) {
     undef_bool = KillReg(B, "SF_write", create_undef_bool, undef_bool);
   }
-  if (!regs->flags.live_entry.s.zf) {
+  if (!regs->flags.kill.s.zf) {
     undef_bool = KillReg(B, "ZF_write", create_undef_bool, undef_bool);
   }
 
@@ -640,50 +640,50 @@ void InstructionTranslator::AddTerminatingKills(
                                      lifter.intrinsics->undefined_64 :
                                      lifter.intrinsics->undefined_32;
 
-  if (!regs->regs.live_entry.s.rax) {
+  if (!regs->regs.kill.s.rax) {
     undef_reg = KillReg(B, "EAX_write", create_undef_reg, undef_reg);
   }
-  if (!regs->regs.live_entry.s.rcx) {
+  if (!regs->regs.kill.s.rcx) {
     undef_reg = KillReg(B, "ECX_write", create_undef_reg, undef_reg);
   }
-  if (!regs->regs.live_entry.s.rdx) {
+  if (!regs->regs.kill.s.rdx) {
     undef_reg = KillReg(B, "EDX_write", create_undef_reg, undef_reg);
   }
-  if (!regs->regs.live_entry.s.rbx) {
+  if (!regs->regs.kill.s.rbx) {
     undef_reg = KillReg(B, "EBX_write", create_undef_reg, undef_reg);
   }
-  if (!regs->regs.live_entry.s.rbp) {
+  if (!regs->regs.kill.s.rbp) {
     undef_reg = KillReg(B, "EBP_write", create_undef_reg, undef_reg);
   }
-  if (!regs->regs.live_entry.s.rsi) {
+  if (!regs->regs.kill.s.rsi) {
     undef_reg = KillReg(B, "ESI_write", create_undef_reg, undef_reg);
   }
-  if (!regs->regs.live_entry.s.rdi) {
+  if (!regs->regs.kill.s.rdi) {
     undef_reg = KillReg(B, "EDI_write", create_undef_reg, undef_reg);
   }
   if (kArchAMD64 == analysis->arch_name) {
-    if (!regs->regs.live_entry.s.r8) {
+    if (!regs->regs.kill.s.r8) {
       undef_reg = KillReg(B, "R8_write", create_undef_reg, undef_reg);
     }
-    if (!regs->regs.live_entry.s.r9) {
+    if (!regs->regs.kill.s.r9) {
       undef_reg = KillReg(B, "R9_write", create_undef_reg, undef_reg);
     }
-    if (!regs->regs.live_entry.s.r10) {
+    if (!regs->regs.kill.s.r10) {
       undef_reg = KillReg(B, "R10_write", create_undef_reg, undef_reg);
     }
-    if (!regs->regs.live_entry.s.r11) {
+    if (!regs->regs.kill.s.r11) {
       undef_reg = KillReg(B, "R11_write", create_undef_reg, undef_reg);
     }
-    if (!regs->regs.live_entry.s.r12) {
+    if (!regs->regs.kill.s.r12) {
       undef_reg = KillReg(B, "R12_write", create_undef_reg, undef_reg);
     }
-    if (!regs->regs.live_entry.s.r13) {
+    if (!regs->regs.kill.s.r13) {
       undef_reg = KillReg(B, "R13_write", create_undef_reg, undef_reg);
     }
-    if (!regs->regs.live_entry.s.r14) {
+    if (!regs->regs.kill.s.r14) {
       undef_reg = KillReg(B, "R14_write", create_undef_reg, undef_reg);
     }
-    if (!regs->regs.live_entry.s.r15) {
+    if (!regs->regs.kill.s.r15) {
       undef_reg = KillReg(B, "R15_write", create_undef_reg, undef_reg);
     }
   }

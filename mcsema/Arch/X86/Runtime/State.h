@@ -160,15 +160,24 @@ static_assert(8 == sizeof(Flags), "Invalid structure packing of `Flags`.");
 
 struct alignas(8) ArithFlags final {
   bool cf;
+  volatile bool _tear0;
   bool pf;
+  volatile bool _tear1;
   bool af;
+  volatile bool _tear2;
   bool zf;
+  volatile bool _tear3;
   bool sf;
+  volatile bool _tear4;
   bool df;
+  volatile bool _tear5;
   bool of;
+  volatile bool _tear6;
+  volatile bool _tear8;
+  volatile bool _tear9;
 } __attribute__((packed));
 
-static_assert(8 == sizeof(ArithFlags), "Invalid packing of `ArithFlags`.");
+static_assert(16 == sizeof(ArithFlags), "Invalid packing of `ArithFlags`.");
 
 struct alignas(8) Segments final {
   uint16_t ss;
@@ -225,34 +234,47 @@ struct alignas(8) GPR final {
   // not be referenced by named variables in the `__mcsema_basic_block`
   // function.
   Reg rax;
+  volatile uint64_t _tear0;
   Reg rbx;
+  volatile uint64_t _tear1;
   Reg rcx;
+  volatile uint64_t _tear2;
   Reg rdx;
+  volatile uint64_t _tear3;
   Reg rsi;
+  volatile uint64_t _tear4;
   Reg rdi;
+  volatile uint64_t _tear5;
   Reg rsp;
+  volatile uint64_t _tear6;
   Reg rbp;
+  volatile uint64_t _tear7;
   Reg r8;
+  volatile uint64_t _tear8;
   Reg r9;
+  volatile uint64_t _tear9;
   Reg r10;
+  volatile uint64_t _tear10;
   Reg r11;
+  volatile uint64_t _tear11;
   Reg r12;
+  volatile uint64_t _tear12;
   Reg r13;
+  volatile uint64_t _tear13;
   Reg r14;
+  volatile uint64_t _tear14;
   Reg r15;
+  volatile uint64_t _tear15;
 
   // Program counter. In general, this represents the "next" program counter.
   // For example, before a function call, the return address is loaded into
   // `rip`. Similarly, at conditional branches, the fall-through address is
   // loaded.
   Reg rip;
+  volatile uint64_t _tear16;
 } __attribute__((packed));
 
-static_assert(0 == __builtin_offsetof(GPR, rax),
-              "Invalid structure packing of `GPR`.");
-
-static_assert((sizeof(GPR) - 8) == __builtin_offsetof(GPR, rip),
-              "Invalid structure packing of `GPR`.");
+static_assert(272 == sizeof(GPR), "Invalid structure packing of `GPR`.");
 
 enum : size_t {
   kNumVecRegisters = 32
@@ -281,11 +303,11 @@ struct alignas(64) State final {
 
   // Two representations of flags. Makes it easy to convert from native-to-
   // lifted, as well as improved the optimizability of the aflags themselves.
-  ArithFlags aflag;  // 8 bytes.
+  ArithFlags aflag;  // 16 bytes.
   Flags rflag;  // 8 bytes.
 
   Segments seg;  // 12 bytes, padded to 16 bytes.
-  GPR gpr;  // 136 bytes.
+  GPR gpr;  // 272 bytes.
 
   Interrupt interrupt;  // 2 * sizeof(addr_t) bytes.
 
@@ -301,16 +323,16 @@ static_assert(512 == __builtin_offsetof(State, vec[0]),
 static_assert(2560 == __builtin_offsetof(State, aflag),
               "Invalid packing of `State::aflag`.");
 
-static_assert(2568 == __builtin_offsetof(State, rflag),
+static_assert(2576 == __builtin_offsetof(State, rflag),
               "Invalid packing of `State::rflag`.");
 
-static_assert(2576 == __builtin_offsetof(State, seg),
+static_assert(2584 == __builtin_offsetof(State, seg),
               "Invalid packing of `State::seg`.");
 
-static_assert(2592 == __builtin_offsetof(State, gpr),
+static_assert(2600 == __builtin_offsetof(State, gpr),
               "Invalid packing of `State::seg`.");
 
-static_assert(2728 == __builtin_offsetof(State, interrupt),
+static_assert(2872 == __builtin_offsetof(State, interrupt),
               "Invalid packing of `State::interrupt`.");
 
 #endif  // MCSEMA_ARCH_X86_RUNTIME_STATE_H_

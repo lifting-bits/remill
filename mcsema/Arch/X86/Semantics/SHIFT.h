@@ -205,7 +205,7 @@ DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 count_) {
   }
   if (kSize < count) {
     CLEAR_AFLAGS();
-    W(dst) = U(dst);
+    W(dst) = U(dst);  // Store and undefined value.
     return;
   }
   const T src = R(src1);
