@@ -17,7 +17,7 @@ template <typename T>
 [[gnu::const]]
 NEVER_INLINE static bool ZeroFlag(T res) {
   __mcsema_defer_inlining();
-  return static_cast<T>(0) == res;
+  return T(0) == res;
 }
 
 // Zero flags, tells us whether or not a value is zero.
@@ -25,7 +25,7 @@ template <typename T>
 [[gnu::const]]
 NEVER_INLINE static bool NotZeroFlag(T res) {
   __mcsema_defer_inlining();
-  return static_cast<T>(0) != res;
+  return T(0) != res;
 }
 
 // Sign flag, tells us if a result is signed or unsigned.
@@ -34,7 +34,7 @@ template <typename T>
 NEVER_INLINE static bool SignFlag(T res) {
   typedef typename SignedIntegerType<T>::Type ST;
   __mcsema_defer_inlining();
-  return 0 > static_cast<ST>(res);
+  return ST(0) > static_cast<ST>(res);
 }
 
 // Auxiliary carry flag. This is used for binary coded decimal operations and
@@ -43,7 +43,7 @@ template <typename T>
 [[gnu::const]]
 NEVER_INLINE static bool AuxCarryFlag(T lhs, T rhs, T res) {
   __mcsema_defer_inlining();
-  return ((res ^ lhs ^ rhs) & static_cast<T>(0x10));
+  return ((res ^ lhs ^ rhs) & T(0x10));
 }
 
 // Auxiliary carry flag. This is used for binary coded decimal operations and
@@ -52,20 +52,20 @@ template <typename T>
 [[gnu::const]]
 NEVER_INLINE static bool AuxCarryFlag(T lhs, T rhs, T carry, T res) {
   __mcsema_defer_inlining();
-  return ((res ^ lhs ^ carry ^ rhs) & static_cast<T>(0x10));
+  return ((res ^ lhs ^ carry ^ rhs) & T(0x10));
 }
 
 // Tests whether there is an even number of bits in the low order byte.
 [[gnu::const]]
 NEVER_INLINE static bool ParityFlag(uint8_t r0) {
   __mcsema_defer_inlining();
-  auto r1 = r0 >> 1;
-  auto r2 = r1 >> 1;
-  auto r3 = r2 >> 1;
-  auto r4 = r3 >> 1;
-  auto r5 = r4 >> 1;
-  auto r6 = r5 >> 1;
-  auto r7 = r6 >> 1;
+  auto r1 = r0 >> 1_u8;
+  auto r2 = r1 >> 1_u8;
+  auto r3 = r2 >> 1_u8;
+  auto r4 = r3 >> 1_u8;
+  auto r5 = r4 >> 1_u8;
+  auto r6 = r5 >> 1_u8;
+  auto r7 = r6 >> 1_u8;
 
   return !(1 & (r0 ^ r1 ^ r2 ^ r3 ^ r4 ^ r5 ^ r6 ^ r7));
 }

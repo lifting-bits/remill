@@ -571,4 +571,35 @@ struct BaseType<VnW<T>> {
   typedef typename BaseType<T>::Type Type;
 };
 
+inline uint8_t operator "" _u8(unsigned long long value) {
+  return static_cast<uint8_t>(value);
+}
+
+inline uint16_t operator "" _u16(unsigned long long value) {
+  return static_cast<uint16_t>(value);
+}
+
+inline uint32_t operator "" _u32(unsigned long long value) {
+  return static_cast<uint32_t>(value);
+}
+
+inline uint64_t operator "" _u64(unsigned long long value) {
+  return static_cast<uint64_t>(value);
+}
+
+inline int8_t operator "" _s8(unsigned long long value) {
+  return static_cast<int8_t>(value);
+}
+
+inline int16_t operator "" _s16(unsigned long long value) {
+  return static_cast<int16_t>(value);
+}
+
+inline int32_t operator "" _s32(unsigned long long value) {
+  return static_cast<int32_t>(value);
+}
+
+inline int64_t operator "" _s64(unsigned long long value) {
+  return static_cast<int64_t>(value);
+}
 #endif  // MCSEMA_ARCH_RUNTIME_TYPES_H_

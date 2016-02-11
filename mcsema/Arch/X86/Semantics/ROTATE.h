@@ -24,7 +24,7 @@ DEF_SEM(ROL, D dst, S1 src1, S2 src2) {
   typedef typename BaseType<S1>::Type T;
   enum : T {
     kSize = 8 * sizeof(T),
-    kCountMask = 64 == kSize ? 0x3F : 0x1F
+    kCountMask = 64 == kSize ? T(0x3F) : T(0x1F)
   };
   const auto count = static_cast<T>(R(src2));
   const auto masked_count = static_cast<T>(count & kCountMask);

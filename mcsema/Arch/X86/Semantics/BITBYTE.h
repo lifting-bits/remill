@@ -270,7 +270,7 @@ DEF_SEM(BTCmem, S1, S2 src_dst_mem, S3 bit_) {
   const T mask = T(1) << bit;
   const T mem = R(src_mem);
 
-  if (0 != (mem & mask)) {
+  if (T(0) != (mem & mask)) {
     W(dst_mem) = mem & ~mask;
     __mcsema_barrier_compiler();
     state.aflag.cf = true;

@@ -12,22 +12,22 @@ struct ShiftRight {
   DEF_SEM(DO, D dst, S1 src1_, S2 src2_) {
     typedef typename BaseType<S1>::Type UT;
     typedef typename Converter<UT>::Type T;
-    enum : T {
+    enum : UT {
       // The mask is based on the REX.W prefix being used and 64-bit mode. We
       // determine this based on the source being a 64-bit operand.
       //
       // Note: The mask will be 31 even for 16- and 8-bit operands.
-      kArchMask = static_cast<T>(8 == sizeof(T) ? 0x3FU : 0x1FU),
+      kArchMask = 8 == sizeof(T) ? UT(0x3FU) : UT(0x1FU),
       kNumBits = sizeof(T) * 8
     };
 
     const UT shift = R(src2_) & kArchMask;
-    if (0 == shift) {
+    if (UT(0) == shift) {
       return;  // No flags affected.
     }
 
     const auto val = static_cast<T>(R(src1_));
-    T new_val = 0;
+    T new_val = T(0);
     auto new_of = false;
     auto new_cf = false;
 

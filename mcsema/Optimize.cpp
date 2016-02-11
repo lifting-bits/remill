@@ -67,7 +67,7 @@ void RemoveUndefinedIntrinsics(llvm::Module &M) {
     for (auto &B : F) {
       for (auto &I : B) {
         if (auto S = llvm::dyn_cast<llvm::StoreInst>(&I)) {
-          if (auto U = llvm::dyn_cast<llvm::UndefValue>(S->getValueOperand())) {
+          if (llvm::isa<llvm::UndefValue>(S->getValueOperand())) {
             Ss.push_back(S);
           }
         }

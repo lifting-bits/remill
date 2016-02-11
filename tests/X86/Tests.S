@@ -274,7 +274,10 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BITBYTE/BTS.S"
 
 #include "tests/X86/CONVERT/CBW.S"
+#include "tests/X86/CONVERT/CDQ.S"
 #include "tests/X86/CONVERT/CDQE.S"
+#include "tests/X86/CONVERT/CQO.S"
+#include "tests/X86/CONVERT/CWD.S"
 #include "tests/X86/CONVERT/CWDE.S"
 
 #include "tests/X86/LOGICAL/AND.S"

@@ -185,7 +185,7 @@ DEF_SEM(PTEST, S1 src1_, S2 src2_) {
   __mcsema_barrier_compiler();
 
   T zero;
-  zero.iwords = {0};
+  zero.iwords = {0U};
 
   T and_res;
   and_res.iwords = src1.iwords & src2.iwords;
