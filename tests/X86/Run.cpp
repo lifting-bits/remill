@@ -3,6 +3,7 @@
 #define _XOPEN_SOURCE
 
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <type_traits>
@@ -31,6 +32,7 @@ struct alignas(128) Stack {
 // after executing this code is saved in `gBackupStack`. Lifted test case
 // code executes off of the normal runtime stack, but emulates operations
 // that act on `gStack`.
+static Stack gRandomStack;
 static Stack gLiftedStack;
 static Stack gNativeStack;
 static Stack gSigStack;
@@ -275,7 +277,7 @@ static void RunWithFlags(const test::TestInfo *info,
     gRegMask64 = 0;
   }
 
-  memset(&gLiftedStack, 0, sizeof(gLiftedStack));
+  memcpy(&gLiftedStack, &gRandomStack, sizeof(gLiftedStack));
   memset(&gLiftedState, 0, sizeof(gLiftedState));
   memset(&gNativeState, 0, sizeof(gNativeState));
 
@@ -302,7 +304,7 @@ static void RunWithFlags(const test::TestInfo *info,
   // Copy out whatever was recorded on the stack so that we can compare it
   // with how the lifted program mutates the stack.
   memcpy(&gNativeStack, &gLiftedStack, sizeof(gLiftedStack));
-  memset(&gLiftedStack, 0, sizeof(gLiftedStack));
+  memcpy(&gLiftedStack, &gRandomStack, sizeof(gLiftedStack));
 
   // This will execute on our stack but the lifted code will operate on
   // `gStack`. The mechanism behind this is that `gStateBefore` is the native
@@ -500,6 +502,11 @@ int main(int argc, char **argv) {
     const auto &test = test::__x86_test_table_begin[i];
     if (&test >= &(test::__x86_test_table_end[0])) break;
     gTests.push_back(&test);
+  }
+
+  // Populate the random stack.
+  for (auto &b : gRandomStack.bytes) {
+    b = static_cast<uint8_t>(random());
   }
 
   testing::InitGoogleTest(&argc, argv);
