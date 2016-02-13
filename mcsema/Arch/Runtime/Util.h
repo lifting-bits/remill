@@ -17,19 +17,6 @@
 # define DETECT_RUNTIME_ERRORS 1
 #endif
 
-// Used to enable/disable "transparent" behaviors.
-//
-// This is hopped to enable more aggressive optimization of code that is
-// emitted by sane compilers. The idea is that the flags register is typically
-// "dead" after a conditional branch, and before an indirect jump,
-// a function/system/interrupt call, and a function/system/interrupt return.
-// In these cases, we will try to kill all the flags with the hope that the
-// compiler will see this and perform dead store elimination on all prior
-// flags computations.
-//
-// TODO(pag): Enable a switch if/when this turns out to be a bad idea.
-#define IF_NOT_TRANSPARENT(...) __VA_ARGS__
-
 // Attributes that will force inlining of specific code.
 #define ALWAYS_INLINE \
   [[gnu::always_inline, gnu::gnu_inline]] \

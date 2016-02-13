@@ -7,7 +7,6 @@ namespace {
 
 template <typename T>
 DEF_SEM(CALL, T target_pc) {
-  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   W(state.gpr.rsp) -= sizeof(R(state.gpr.rsp));
   MnW<PC> sp = {R(state.gpr.rsp)};
   W(sp) = next_pc;
@@ -15,7 +14,6 @@ DEF_SEM(CALL, T target_pc) {
 }
 
 DEF_SEM(RET_IMM, I16 bytes) {
-  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   Mn<PC> ret_addr_loc = {R(state.gpr.rsp)};
   const PC ret_addr = R(ret_addr_loc);
   W(state.gpr.rip) = ret_addr;
@@ -31,7 +29,6 @@ T PopValue(State &state) {
 }
 
 DEF_SEM(RET) {
-  IF_NOT_TRANSPARENT( CLEAR_AFLAGS(); )
   W(state.gpr.rip) = PopValue<PC>(state);
 }
 
