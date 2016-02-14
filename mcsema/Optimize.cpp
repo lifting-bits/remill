@@ -12,6 +12,8 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 
+#include <llvm/Transforms/Utils/Local.h>
+
 namespace mcsema {
 namespace {
 
@@ -63,18 +65,34 @@ void RemoveUndefinedIntrinsics(llvm::Module &M) {
 
   // Eliminate stores of undefined values.
   for (auto &F : M) {
-    std::vector<llvm::StoreInst *> Ss;
+    std::vector<llvm::Instruction *> dead_insts;
     for (auto &B : F) {
       for (auto &I : B) {
         if (auto S = llvm::dyn_cast<llvm::StoreInst>(&I)) {
           if (llvm::isa<llvm::UndefValue>(S->getValueOperand())) {
-            Ss.push_back(S);
+            dead_insts.push_back(S);
           }
         }
       }
     }
-    for (auto S : Ss) {
-      S->removeFromParent();
+
+    // Eliminate dead code.
+    while (!dead_insts.empty()) {
+      auto D = dead_insts.back();
+      dead_insts.pop_back();
+
+      for (auto i = 0U; i < D->getNumOperands(); ++i) {
+        auto O = D->getOperand(i);
+        D->setOperand(i, nullptr);
+        if (O->use_empty()) {
+          if (auto I = llvm::dyn_cast<llvm::Instruction>(O)) {
+            if (llvm::isInstructionTriviallyDead(I)) {
+              dead_insts.push_back(I);
+            }
+          }
+        }
+      }
+      D->removeFromParent();
     }
   }
 }
