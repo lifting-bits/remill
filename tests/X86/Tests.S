@@ -293,11 +293,13 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SHIFT/SHR.S"
 #include "tests/X86/SHIFT/SHRD.S"
 
-#include "tests/X86/STRINGOP/CMPS.S"
-#include "tests/X86/STRINGOP/LODS.S"
-#include "tests/X86/STRINGOP/MOVS.S"
-#include "tests/X86/STRINGOP/SCAS.S"
-#include "tests/X86/STRINGOP/STOS.S"
+#ifndef __APPLE__
+# include "tests/X86/STRINGOP/CMPS.S"
+# include "tests/X86/STRINGOP/LODS.S"
+# include "tests/X86/STRINGOP/MOVS.S"
+# include "tests/X86/STRINGOP/SCAS.S"
+# include "tests/X86/STRINGOP/STOS.S"
+#endif  // __APPLE__
 
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"
