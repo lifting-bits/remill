@@ -293,6 +293,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SHIFT/SHR.S"
 #include "tests/X86/SHIFT/SHRD.S"
 
+#include "tests/X86/STRINGOP/CMPS.S"
 #include "tests/X86/STRINGOP/LODS.S"
 #include "tests/X86/STRINGOP/MOVS.S"
 #include "tests/X86/STRINGOP/SCAS.S"
