@@ -5,12 +5,13 @@
 
 #define MAKE_STOS(name, type, read_sel) \
     DEF_ISEL_SEM(name) { \
-      MnW<type> dst = {R(state.gpr.rdi)}; \
+      const addr_t addr = R(state.gpr.rdi); \
+      MnW<type> dst = {addr}; \
       W(dst) = R(state.gpr.rax.read_sel); \
       if (!state.aflag.df) { \
-        W(state.gpr.rdi) = R(state.gpr.rdi) + sizeof(type); \
+        W(state.gpr.rdi) = addr + sizeof(type); \
       } else { \
-        W(state.gpr.rdi) = R(state.gpr.rdi) - sizeof(type); \
+        W(state.gpr.rdi) = addr - sizeof(type); \
       } \
     }
 
@@ -27,15 +28,16 @@ IF_64BIT(MAKE_STOS(STOSQ, uint64_t, qword))
 
 #define MAKE_SCAS(name, type, read_sel) \
     DEF_ISEL_SEM(name) { \
-      Mn<type> rhs_addr = {R(state.gpr.rdi)}; \
+      const addr_t addr = R(state.gpr.rdi); \
+      Mn<type> rhs_addr = {addr}; \
       const type lhs = R(state.gpr.rax.read_sel); \
       const type rhs = R(rhs_addr); \
       const type res = lhs - rhs; \
       SetFlagsAddSub<tag_sub>(state, lhs, rhs, res); \
       if (!state.aflag.df) { \
-        W(state.gpr.rdi) = R(state.gpr.rdi) + sizeof(type); \
+        W(state.gpr.rdi) = addr + sizeof(type); \
       } else { \
-        W(state.gpr.rdi) = R(state.gpr.rdi) - sizeof(type); \
+        W(state.gpr.rdi) = addr - sizeof(type); \
       } \
     }
 
@@ -48,12 +50,13 @@ IF_64BIT(MAKE_SCAS(SCASQ, uint64_t, qword))
 
 #define MAKE_LODS(name, type, write_sel) \
     DEF_ISEL_SEM(name) { \
-      Mn<type> src = {R(state.gpr.rdi)}; \
+      const addr_t addr = R(state.gpr.rsi); \
+      Mn<type> src = {addr}; \
       W(state.gpr.rax.write_sel) = R(src); \
       if (!state.aflag.df) { \
-        W(state.gpr.rdi) = R(state.gpr.rdi) + sizeof(type); \
+        W(state.gpr.rsi) = addr + sizeof(type); \
       } else { \
-        W(state.gpr.rdi) = R(state.gpr.rdi) - sizeof(type); \
+        W(state.gpr.rsi) = addr - sizeof(type); \
       } \
     }
 
@@ -66,15 +69,17 @@ IF_64BIT(MAKE_LODS(LODSQ, uint64_t, qword))
 
 #define MAKE_MOVS(name, type, read_sel) \
     DEF_ISEL_SEM(name) { \
-      MnW<type> dst = {R(state.gpr.rdi)}; \
-      Mn<type> src = {R(state.gpr.rsi)}; \
+      const addr_t src_addr = R(state.gpr.rsi); \
+      const addr_t dst_addr = R(state.gpr.rdi); \
+      MnW<type> dst = {dst_addr}; \
+      Mn<type> src = {src_addr}; \
       W(dst) = R(src); \
       if (!state.aflag.df) { \
-        W(state.gpr.rdi) = R(state.gpr.rdi) + sizeof(type); \
-        W(state.gpr.rsi) = R(state.gpr.rsi) + sizeof(type); \
+        W(state.gpr.rdi) = dst_addr + sizeof(type); \
+        W(state.gpr.rsi) = src_addr + sizeof(type); \
       } else { \
-        W(state.gpr.rdi) = R(state.gpr.rdi) - sizeof(type); \
-        W(state.gpr.rsi) = R(state.gpr.rsi) - sizeof(type); \
+        W(state.gpr.rdi) = dst_addr - sizeof(type); \
+        W(state.gpr.rsi) = src_addr - sizeof(type); \
       } \
     }
 
@@ -87,18 +92,20 @@ IF_64BIT(MAKE_MOVS(MOVSQ, uint64_t, qword))
 
 #define MAKE_CMPS(name, type) \
     DEF_ISEL_SEM(name) { \
-      Mn<type> src1 = {R(state.gpr.rsi)}; \
-      Mn<type> src2 = {R(state.gpr.rdi)}; \
+      const addr_t src1_addr = R(state.gpr.rsi); \
+      const addr_t src2_addr = R(state.gpr.rdi); \
+      Mn<type> src1 = {src1_addr}; \
+      Mn<type> src2 = {src2_addr}; \
       const type lhs = R(src1); \
       const type rhs = R(src2); \
       const type res = lhs - rhs; \
       SetFlagsAddSub<tag_sub>(state, lhs, rhs, res); \
       if (!state.aflag.df) { \
-        W(state.gpr.rdi) = R(state.gpr.rdi) + sizeof(type); \
-        W(state.gpr.rsi) = R(state.gpr.rsi) + sizeof(type); \
+        W(state.gpr.rdi) = src2_addr + sizeof(type); \
+        W(state.gpr.rsi) = src1_addr + sizeof(type); \
       } else { \
-        W(state.gpr.rdi) = R(state.gpr.rdi) - sizeof(type); \
-        W(state.gpr.rsi) = R(state.gpr.rsi) - sizeof(type); \
+        W(state.gpr.rdi) = src2_addr - sizeof(type); \
+        W(state.gpr.rsi) = src1_addr - sizeof(type); \
       } \
     }
 
