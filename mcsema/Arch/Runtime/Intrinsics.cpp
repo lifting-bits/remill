@@ -12,6 +12,8 @@ extern "C" order_t __mcsema_memory_order = 0;
 // file!
 [[gnu::used]]
 void __mcsema_intrinsics(void) {
+  USED(__mcsema_create_program_counter);
+
   USED(__mcsema_read_memory_8);
   USED(__mcsema_read_memory_16);
   USED(__mcsema_read_memory_32);

@@ -9,7 +9,7 @@ template <typename T>
 DEF_SEM(CALL, T target_pc) {
   W(state.gpr.rsp) -= sizeof(R(state.gpr.rsp));
   MnW<PC> sp = {R(state.gpr.rsp)};
-  W(sp) = next_pc;
+  W(sp) = __mcsema_create_program_counter(next_pc);
   W(state.gpr.rip) = R(target_pc);
 }
 

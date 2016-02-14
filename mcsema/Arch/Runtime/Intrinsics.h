@@ -18,6 +18,9 @@ extern order_t __mcsema_memory_order;
                                                      addr_t address,
                                                      int address_space);
 
+// Semantics, describes that some value is now a possible program counter.
+[[gnu::used]] extern addr_t __mcsema_create_program_counter(addr_t);
+
 // Memory read intrinsics.
 [[gnu::used]] extern uint8_t __mcsema_read_memory_8(order_t, addr_t);
 [[gnu::used]] extern uint16_t __mcsema_read_memory_16(order_t, addr_t);

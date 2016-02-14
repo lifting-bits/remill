@@ -102,6 +102,10 @@ NEVER_INLINE addr_t __mcsema_compute_address(const State &state, addr_t addr,
   return addr;
 }
 
+NEVER_INLINE addr_t __mcsema_create_program_counter(addr_t pc) {
+  return pc;
+}
+
 #define MAKE_RW_MEMORY(size) \
   NEVER_INLINE uint ## size ## _t  __mcsema_read_memory_ ## size( \
      order_t, addr_t addr) {\
