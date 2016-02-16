@@ -151,7 +151,7 @@ order_t __mcsema_atomic_end(order_t) { return 0; }
 void __mcsema_defer_inlining(void) {}
 
 // Control-flow intrinsics.
-void __mcsema_undefined_block(State &) {
+void __mcsema_missing_block(State &) {
   // This is where we want to end up.
 }
 

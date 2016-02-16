@@ -28,7 +28,7 @@ class IntrinsicTable {
   llvm::Function * const interrupt_return;
 
   // Block that can't be found.
-  llvm::Function * const undefined_block;
+  llvm::Function * const missing_block;
 
   // Memory read intrinsics.
   llvm::Function * const read_memory_8;
