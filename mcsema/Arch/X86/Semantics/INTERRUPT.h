@@ -19,12 +19,14 @@ DEF_SEM(BOUND, S1 idx_, S2 bounds) {
     state.interrupt.next_pc = next_pc;
     state.interrupt.trigger = false;
   }
+  W(state.gpr.rip) = __mcsema_create_program_counter(next_pc);
 }
 #endif
 
 }  // namespace
 
 DEF_ISEL_SEM(INT_IMMb, I8 num) {
+  W(state.gpr.rip) = __mcsema_create_program_counter(next_pc);
   state.interrupt.next_pc = next_pc;
   state.interrupt.vector = R(num);
   state.interrupt.trigger = true;
@@ -47,6 +49,7 @@ DEF_ISEL_SEM(INTO) {
   } else {
     state.interrupt.next_pc = next_pc;
     state.interrupt.trigger = false;
+    W(state.gpr.rip) = __mcsema_create_program_counter(next_pc);
   }
 }
 

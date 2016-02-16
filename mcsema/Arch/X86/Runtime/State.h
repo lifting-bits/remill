@@ -41,6 +41,7 @@
 #endif
 
 union FPUStatusWord final {
+  uint16_t flat;
   struct {
     uint16_t ie:1;  // bit 0
     uint16_t de:1;
@@ -57,13 +58,13 @@ union FPUStatusWord final {
     uint16_t c3:1;
     uint16_t b:1;
   } __attribute__((packed)) u;
-  uint16_t flat;
 } __attribute__((packed));
 
 static_assert(2 == sizeof(FPUStatusWord),
               "Invalid structure packing of `FPUFlags`.");
 
 union FPUControlWord final {
+  uint16_t flat;
   struct {
     uint16_t im:1;  // bit 0
     uint16_t dm:1;
@@ -77,7 +78,6 @@ union FPUControlWord final {
     uint16_t x:1;
     uint16_t _rsvd1:3;
   } __attribute__((packed)) u;
-  uint16_t flat;
 } __attribute__((packed));
 
 static_assert(2 == sizeof(FPUControlWord),
@@ -123,6 +123,7 @@ struct FPU final {
 static_assert(512 == sizeof(FPU), "Invalid structure packing of `FPU`.");
 
 union Flags final {
+  uint64_t flat;
   struct {
     uint32_t cf:1;  // bit 0.
     uint32_t must_be_1:1;
@@ -153,41 +154,45 @@ union Flags final {
     uint32_t reserved_eflags:10;  // bits 22-31.
     uint32_t reserved_rflags;  // bits 32-63.
   } __attribute__((packed));
-  uint64_t flat;
 } __attribute__((packed));
 
 static_assert(8 == sizeof(Flags), "Invalid structure packing of `Flags`.");
 
 struct alignas(8) ArithFlags final {
-  bool cf;
+  // Prevents LLVM from casting and `ArithFlags` into an `i8` to access `cf`.
   volatile bool _tear0;
-  bool pf;
+  bool cf;  // Prevents load/store coalescing.
   volatile bool _tear1;
-  bool af;
+  bool pf;
   volatile bool _tear2;
-  bool zf;
+  bool af;
   volatile bool _tear3;
-  bool sf;
+  bool zf;
   volatile bool _tear4;
-  bool df;
+  bool sf;
   volatile bool _tear5;
-  bool of;
+  bool df;
   volatile bool _tear6;
+  bool of;
+  volatile bool _tear7;
   volatile bool _tear8;
-  volatile bool _tear9;
 } __attribute__((packed));
 
 static_assert(16 == sizeof(ArithFlags), "Invalid packing of `ArithFlags`.");
 
 struct alignas(8) Segments final {
+  volatile uint16_t tear0;
   uint16_t ss;
+  volatile uint16_t tear1;
   uint16_t es;
+  volatile uint16_t tear2;
   uint16_t gs;
+  volatile uint16_t tear3;
   uint16_t fs;
+  volatile uint16_t tear4;
   uint16_t ds;
+  volatile uint16_t tear5;
   uint16_t cs;
-  uint16_t _unused1;
-  uint16_t _unused2;
 } __attribute__((packed));
 
 union Reg final {
@@ -197,6 +202,7 @@ union Reg final {
   } byte;
   alignas(2) uint16_t word; 
   alignas(4) uint32_t dword;
+  alignas(sizeof(addr_t)) addr_t aword;
   alignas(8) uint64_t qword;
 } __attribute__((packed));
 
@@ -209,6 +215,8 @@ static_assert(0 == __builtin_offsetof(Reg, word),
               "Invalid packing of `Reg::word`.");
 static_assert(0 == __builtin_offsetof(Reg, dword),
               "Invalid packing of `Reg::dword`.");
+static_assert(0 == __builtin_offsetof(Reg, aword),
+              "Invalid packing of `Reg::aword`.");
 static_assert(0 == __builtin_offsetof(Reg, qword),
               "Invalid packing of `Reg::qword`.");
 
@@ -227,51 +235,52 @@ static_assert(0 == __builtin_offsetof(VectorReg, ymm),
 static_assert(0 == __builtin_offsetof(VectorReg, zmm),
               "Invalid packing of `VectorReg::zmm`.");
 
+// Named the same way as the 64-bit version to keep names the same
+// across architectures. All registers are here, even the 64-bit ones. The
+// 64-bit ones are inaccessible in lifted 32-bit code because they will
+// not be referenced by named variables in the `__mcsema_basic_block`
+// function.
 struct alignas(8) GPR final {
-  // Named the same way as the 64-bit version to keep names the same
-  // across architectures. All registers are here, even the 64-bit ones. The
-  // 64-bit ones are inaccessible in lifted 32-bit code because they will
-  // not be referenced by named variables in the `__mcsema_basic_block`
-  // function.
-  Reg rax;
+  // Prevents LLVM from casting a `GPR` into an `i64` to access `rax`.
   volatile uint64_t _tear0;
-  Reg rbx;
+  Reg rax;
   volatile uint64_t _tear1;
-  Reg rcx;
+  Reg rbx;
   volatile uint64_t _tear2;
-  Reg rdx;
+  Reg rcx;
   volatile uint64_t _tear3;
-  Reg rsi;
+  Reg rdx;
   volatile uint64_t _tear4;
-  Reg rdi;
+  Reg rsi;
   volatile uint64_t _tear5;
-  Reg rsp;
+  Reg rdi;
   volatile uint64_t _tear6;
-  Reg rbp;
+  Reg rsp;
   volatile uint64_t _tear7;
-  Reg r8;
+  Reg rbp;
   volatile uint64_t _tear8;
-  Reg r9;
+  Reg r8;
   volatile uint64_t _tear9;
-  Reg r10;
+  Reg r9;
   volatile uint64_t _tear10;
-  Reg r11;
+  Reg r10;
   volatile uint64_t _tear11;
-  Reg r12;
+  Reg r11;
   volatile uint64_t _tear12;
-  Reg r13;
+  Reg r12;
   volatile uint64_t _tear13;
-  Reg r14;
+  Reg r13;
   volatile uint64_t _tear14;
-  Reg r15;
+  Reg r14;
   volatile uint64_t _tear15;
+  Reg r15;
+  volatile uint64_t _tear16;
 
   // Program counter. In general, this represents the "next" program counter.
   // For example, before a function call, the return address is loaded into
   // `rip`. Similarly, at conditional branches, the fall-through address is
   // loaded.
   Reg rip;
-  volatile uint64_t _tear16;
 } __attribute__((packed));
 
 static_assert(272 == sizeof(GPR), "Invalid structure packing of `GPR`.");
@@ -306,7 +315,7 @@ struct alignas(64) State final {
   ArithFlags aflag;  // 16 bytes.
   Flags rflag;  // 8 bytes.
 
-  Segments seg;  // 12 bytes, padded to 16 bytes.
+  Segments seg;  // 24 bytes.
   GPR gpr;  // 272 bytes.
 
   Interrupt interrupt;  // 2 * sizeof(addr_t) bytes.
@@ -329,10 +338,10 @@ static_assert(2576 == __builtin_offsetof(State, rflag),
 static_assert(2584 == __builtin_offsetof(State, seg),
               "Invalid packing of `State::seg`.");
 
-static_assert(2600 == __builtin_offsetof(State, gpr),
+static_assert(2608 == __builtin_offsetof(State, gpr),
               "Invalid packing of `State::seg`.");
 
-static_assert(2872 == __builtin_offsetof(State, interrupt),
+static_assert(2880 == __builtin_offsetof(State, interrupt),
               "Invalid packing of `State::interrupt`.");
 
 #endif  // MCSEMA_ARCH_X86_RUNTIME_STATE_H_

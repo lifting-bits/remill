@@ -72,4 +72,8 @@ ALWAYS_INLINE static IF_64BIT_ELSE(uint64_t, uint32_t) &W(Reg &reg) {
   return reg.IF_64BIT_ELSE(qword, dword);
 }
 
+ALWAYS_INLINE static addr_t A(const Reg &reg) {
+  return reg.aword;
+}
+
 #endif  // MCSEMA_ARCH_X86_RUNTIME_TYPES_H_

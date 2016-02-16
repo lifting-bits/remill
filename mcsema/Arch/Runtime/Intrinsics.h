@@ -61,16 +61,18 @@ extern order_t __mcsema_memory_order;
 [[gnu::used]] extern void __mcsema_defer_inlining(void);
 
 // Generic error.
-[[gnu::used]] extern void __mcsema_error(State &);
+[[gnu::used]] extern void __mcsema_error(State &, addr_t addr);
 
 // Control-flow intrinsics.
-[[gnu::used]] extern void __mcsema_function_call(State &);
-[[gnu::used]] extern void __mcsema_function_return(State &);
-[[gnu::used]] extern void __mcsema_jump(State &);
-[[gnu::used]] extern void __mcsema_system_call(State &);
-[[gnu::used]] extern void __mcsema_system_return(State &);
-[[gnu::used]] extern void __mcsema_interrupt_call(State &);
-[[gnu::used]] extern void __mcsema_interrupt_return(State &);
+[[gnu::used]] extern void __mcsema_function_call(State &, addr_t addr);
+[[gnu::used]] extern void __mcsema_function_return(State &, addr_t addr);
+[[gnu::used]] extern void __mcsema_jump(State &, addr_t addr);
+[[gnu::used]] extern void __mcsema_system_call(State &, addr_t ret_addr);
+[[gnu::used]] extern void __mcsema_system_return(State &, addr_t addr);
+[[gnu::used]] extern void __mcsema_interrupt_call(State &, addr_t ret_addr);
+[[gnu::used]] extern void __mcsema_interrupt_return(State &, addr_t addr);
+
+// Represents a known unknown block.
 [[gnu::used]] extern void __mcsema_undefined_block(State &);
 
 [[gnu::used]] extern addr_t __mcsema_conditional_branch(

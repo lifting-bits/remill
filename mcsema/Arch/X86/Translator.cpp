@@ -125,66 +125,57 @@ void InstructionTranslator::LiftIntoBlock(const Translator &lifter,
     AddTerminatingTailCall(B, lifter.GetLiftedBlockForPC(target_pc));
 
   } else if (IsIndirectJump()) {
-    AddTerminatingTailCall(B, lifter.intrinsics->jump);
+    AddTerminatingAddrCall(B, lifter.intrinsics->jump, ReadPC(B));
 
   } else if (IsDirectFunctionCall()) {
     AddTerminatingTailCall(B, lifter.GetLiftedBlockForPC(TargetPC()));
 
   } else if (IsIndirectFunctionCall()) {
-    AddTerminatingTailCall(B, lifter.intrinsics->function_call);
+    AddTerminatingAddrCall(B, lifter.intrinsics->function_call, ReadPC(B));
 
   } else if (IsFunctionReturn()) {
-    AddTerminatingTailCall(B, lifter.intrinsics->function_return);
+    AddTerminatingAddrCall(B, lifter.intrinsics->function_return, ReadPC(B));
 
   } else if (IsBranch()) {
     LiftConditionalBranch(lifter);
 
   // Instruction implementation handles syscall emulation.
   } else if (IsSystemCall()) {
-    AddTerminatingTailCall(B, lifter.intrinsics->system_call);
+    AddTerminatingAddrCall(B, lifter.intrinsics->system_call, ReadPC(B));
 
   } else if (IsSystemReturn()) {
-    AddTerminatingTailCall(B, lifter.intrinsics->system_return);
+    AddTerminatingAddrCall(B, lifter.intrinsics->system_return, ReadPC(B));
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
 
   // Instruction implementation handles syscall (x86, x32) emulation.
   } else if (IsInterruptCall()) {
-    AddTerminatingTailCall(B, lifter.intrinsics->interrupt_call);
+    AddTerminatingAddrCall(B, lifter.intrinsics->interrupt_call, ReadPC(B));
 
   } else if (IsInterruptReturn()) {
-    AddTerminatingTailCall(B, lifter.intrinsics->interrupt_return);
+    AddTerminatingAddrCall(B, lifter.intrinsics->interrupt_return, ReadPC(B));
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
   }
 }
 
-namespace {
-
-// Name of the program counter register.
-static std::string PCRegName(const xed_decoded_inst_t *xedd) {
-  switch (xed_operand_values_get_effective_address_width(xedd)) {
-    case 64: return "RIP";
-    case 32: return "EIP";
-    case 16: return "IP";
-    default:
-      LOG(ERROR) << "Unexpected address width.";
-      return "";
-  }
-}
-
-}  // namespace
-
-// Store the next program counter into the associated state register. This
+// Store the program counter into the associated state register. This
 // lets us access this information from within instruction implementations.
 void InstructionTranslator::LiftPC(uintptr_t next_pc) {
   auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
-
+  auto rip_name = kArchAMD64 == analysis->arch_name ? "RIP_write" : "EIP_write";
   llvm::IRBuilder<> ir(B);
   llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
   ir.CreateStore(
       llvm::ConstantInt::get(IntPtrTy, next_pc, false),
-      ir.CreateLoad(FindVarInFunction(F, PCRegName(xedd) + "_write")));
+      ir.CreateLoad(FindVarInFunction(F, rip_name)));
+}
+
+// Read the program counter.
+llvm::Value *InstructionTranslator::ReadPC(llvm::BasicBlock *block) {
+  auto rip_name = kArchAMD64 == analysis->arch_name ? "RIP_read" : "EIP_read";
+  llvm::IRBuilder<> ir(B);
+  return ir.CreateLoad(ir.CreateLoad(FindVarInFunction(F, rip_name)));
 }
 
 namespace {
@@ -277,11 +268,12 @@ void InstructionTranslator::LiftGeneric(const Translator &lifter) {
 // Lift a conditional branch instruction.
 void InstructionTranslator::LiftConditionalBranch(const Translator &lifter) {
   auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
+  auto rip_name = kArchAMD64 == analysis->arch_name ? "RIP_read" : "EIP_read";
   auto target_pc = TargetPC();
 
   llvm::IRBuilder<> ir(B);
   llvm::Value *DestPC = ir.CreateLoad(ir.CreateLoad(
-      FindVarInFunction(F, PCRegName(xedd) + "_read")));
+      FindVarInFunction(F, rip_name)));
   llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
   llvm::Value *BranchPC = llvm::ConstantInt::get(IntPtrTy, target_pc, false);
 

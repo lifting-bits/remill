@@ -30,6 +30,8 @@ void InitFunctionAttributes(llvm::Function *F);
 // Create a tail-call from one lifted function to another.
 void AddTerminatingTailCall(llvm::Function *From, llvm::Function *To);
 void AddTerminatingTailCall(llvm::BasicBlock *From, llvm::Function *To);
+void AddTerminatingAddrCall(llvm::BasicBlock *B, llvm::Function *To,
+                            llvm::Value *addr);
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.

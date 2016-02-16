@@ -7,29 +7,29 @@ namespace {
 
 template <typename T>
 DEF_SEM(CALL, T target_pc) {
-  W(state.gpr.rsp) -= sizeof(R(state.gpr.rsp));
-  MnW<PC> sp = {R(state.gpr.rsp)};
+  W(state.gpr.rsp) -= sizeof(A(state.gpr.rsp));
+  MnW<PC> sp = {A(state.gpr.rsp)};
   W(sp) = __mcsema_create_program_counter(next_pc);
-  W(state.gpr.rip) = R(target_pc);
+  W(state.gpr.rip) = __mcsema_create_program_counter(R(target_pc));
 }
 
 DEF_SEM(RET_IMM, I16 bytes) {
-  Mn<PC> ret_addr_loc = {R(state.gpr.rsp)};
+  Mn<PC> ret_addr_loc = {A(state.gpr.rsp)};
   const PC ret_addr = R(ret_addr_loc);
-  W(state.gpr.rip) = ret_addr;
+  W(state.gpr.rip) = __mcsema_create_program_counter(ret_addr);
   W(state.gpr.rsp) = R(state.gpr.rsp) + R(bytes) + sizeof(PC);
 }
 
 template <typename T>
 T PopValue(State &state) {
-  Mn<T> pop_addr = {R(state.gpr.rsp)};
+  Mn<T> pop_addr = {A(state.gpr.rsp)};
   const T pop_val = R(pop_addr);
   W(state.gpr.rsp) = R(state.gpr.rsp) + sizeof(T);
   return pop_val;
 }
 
 DEF_SEM(RET) {
-  W(state.gpr.rip) = PopValue<PC>(state);
+  W(state.gpr.rip) = __mcsema_create_program_counter(PopValue<PC>(state));
 }
 
 }  // namespace
@@ -63,7 +63,7 @@ DEF_ISEL_32or64(RET_NEAR, RET);
 */
 
 DEF_ISEL_SEM(IRETD_32) {
-  W(state.gpr.rip) = PopValue<uint32_t>(state);
+  W(state.gpr.rip) = __mcsema_create_program_counter(PopValue<uint32_t>(state));
   W(state.seg.cs) = static_cast<uint16_t>(PopValue<uint32_t>(state));
 
   Flags flags;
@@ -81,7 +81,7 @@ DEF_ISEL_SEM(IRETD_32) {
 
 #if 64 == ADDRESS_SIZE_BITS
 DEF_ISEL_SEM(IRETQ_64) {
-  W(state.gpr.rip) = PopValue<uint64_t>(state);
+  W(state.gpr.rip) = __mcsema_create_program_counter(PopValue<uint64_t>(state));
   W(state.seg.cs) = static_cast<uint16_t>(PopValue<uint64_t>(state));
 
   Flags flags;

@@ -4,12 +4,12 @@ namespace {
 
 template <typename T>
 DEF_SEM(JMP, T target_pc) {
-  W(state.gpr.rip) = static_cast<PC>(target_pc);
+  W(state.gpr.rip) = __mcsema_create_program_counter(target_pc);
 }
 
 template <typename T>
 DEF_SEM(INDIRECT_JMP, T target_pc) {
-  W(state.gpr.rip) = static_cast<PC>(R(target_pc));
+  W(state.gpr.rip) = __mcsema_create_program_counter(R(target_pc));
 }
 
 }  // namespace

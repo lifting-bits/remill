@@ -86,6 +86,28 @@ void AddTerminatingTailCall(llvm::BasicBlock *B, llvm::Function *To) {
   ir.CreateRetVoid();
 }
 
+void AddTerminatingAddrCall(llvm::BasicBlock *B, llvm::Function *To,
+                            llvm::Value *addr) {
+  LOG_IF(ERROR, B->getTerminator() || B->getTerminatingMustTailCall())
+      << "Block already has a terminator; not adding fall-through call to: "
+      << (To ? To->getName().str() : "<unreachable>");
+
+  LOG_IF(FATAL, !To) << "Target block does not exist!";
+
+  llvm::IRBuilder<> ir(B);
+  llvm::Function *F = B->getParent();
+  std::vector<llvm::Value *> args;
+  args.push_back(FindStatePointer(F));
+  args.push_back(addr);
+  llvm::CallInst *C = ir.CreateCall(To, args);
+  C->setAttributes(To->getAttributes());
+
+  // Make sure we tail-call from one block method to another.
+  C->setTailCallKind(llvm::CallInst::TCK_MustTail);
+  C->setCallingConv(llvm::CallingConv::Fast);
+  ir.CreateRetVoid();
+}
+
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
 llvm::Value *FindVarInFunction(llvm::Function *F, std::string name,

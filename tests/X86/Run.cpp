@@ -150,25 +150,25 @@ order_t __mcsema_atomic_end(order_t) { return 0; }
 
 void __mcsema_defer_inlining(void) {}
 
-void __mcsema_error(State &) {
-  std::cerr << "Caught error!" << std::endl;
-  siglongjmp(gJmpBuf, 0);
-}
-
 // Control-flow intrinsics.
 void __mcsema_undefined_block(State &) {
   // This is where we want to end up.
 }
 
-void __mcsema_function_call(State &) {
+void __mcsema_error(State &, addr_t) {
+  std::cerr << "Caught error!" << std::endl;
+  siglongjmp(gJmpBuf, 0);
+}
+
+void __mcsema_function_call(State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __mcsema_function_return(State &) {
+void __mcsema_function_return(State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __mcsema_jump(State &) {
+void __mcsema_jump(State &, addr_t) {
   __builtin_unreachable();
 }
 
@@ -177,19 +177,19 @@ addr_t __mcsema_conditional_branch(
   return cond ? addr_true : addr_false;
 }
 
-void __mcsema_system_call(State &) {
+void __mcsema_system_call(State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __mcsema_system_return(State &) {
+void __mcsema_system_return(State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __mcsema_interrupt_call(State &) {
+void __mcsema_interrupt_call(State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __mcsema_interrupt_return(State &) {
+void __mcsema_interrupt_return(State &, addr_t) {
   __builtin_unreachable();
 }
 

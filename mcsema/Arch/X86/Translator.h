@@ -40,6 +40,7 @@ class InstructionTranslator {
 
  private:
   void LiftPC(uintptr_t next_pc);
+  llvm::Value *ReadPC(llvm::BasicBlock *block);
   void LiftGeneric(const Translator &lifter);
   llvm::Function *GetInstructionFunction(void);
   bool CheckArgumentTypes(const llvm::Function *F,

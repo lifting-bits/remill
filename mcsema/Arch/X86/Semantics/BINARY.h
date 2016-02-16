@@ -416,7 +416,7 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
     const CWT src2 = static_cast<CT>(R(src2_));
 
     if (DETECT_RUNTIME_ERRORS && !src2) {
-      __mcsema_error(state);
+      __mcsema_error(state, A(state.gpr.rip));
       __builtin_unreachable();
     }
 
@@ -427,7 +427,7 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
     if (DETECT_RUNTIME_ERRORS &&
         quot &&
         !(!high_half || (std::is_signed<CT>::value && !~high_half))) {
-      __mcsema_error(state);
+      __mcsema_error(state, A(state.gpr.rip));
       __builtin_unreachable();
     } else {
       W(state.gpr.rax.byte.low) = static_cast<T>(quot);
@@ -452,7 +452,7 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
       const CWT src2 = static_cast<CT>(R(src2_)); \
       \
       if (DETECT_RUNTIME_ERRORS && !src2) { \
-        __mcsema_error(state); \
+        __mcsema_error(state, A(state.gpr.rip)); \
         __builtin_unreachable(); \
       } \
       \
@@ -462,7 +462,7 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
       const auto high_half = quot >> size; \
       if (DETECT_RUNTIME_ERRORS && quot && \
           !(!high_half || (std::is_signed<CT>::value && !~high_half))) { \
-        __mcsema_error(state); \
+        __mcsema_error(state, A(state.gpr.rip)); \
         __builtin_unreachable(); \
       } else { \
         W(state.gpr.rax.write_sel) = static_cast<T>(quot); \
