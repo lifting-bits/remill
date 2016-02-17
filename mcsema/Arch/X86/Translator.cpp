@@ -36,10 +36,12 @@ InstructionTranslator::InstructionTranslator(
       xedd(&xedd_),
       xedi(xed_decoded_inst_inst(xedd)),
       iclass(xed_decoded_inst_get_iclass(xedd)),
+      addr_width(kArchAMD64 == analysis->arch_name ? 64 : 32),
       B(nullptr),
       F(nullptr),
       M(nullptr),
       C(nullptr),
+      IntPtrTy(nullptr),
       args(),
       prepend_instrs(),
       append_instrs() {}
@@ -100,6 +102,7 @@ void InstructionTranslator::LiftIntoBlock(const Translator &lifter,
   F = B->getParent();
   M = F->getParent();
   C = &(F->getContext());
+  IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
 
   LiftPC(instr->address());
 
@@ -117,43 +120,47 @@ void InstructionTranslator::LiftIntoBlock(const Translator &lifter,
   }
 
   if (IsError()) {
-    AddTerminatingTailCall(B, lifter.intrinsics->error);
+    AddTerminatingTailCall(B, lifter.intrinsics->error, ReadPC(B));
 
   } else if (IsDirectJump()) {
     auto target_pc = TargetPC();
     LiftPC(target_pc);  // loads target into `gpr.rip`.
-    AddTerminatingTailCall(B, lifter.GetLiftedBlockForPC(target_pc));
+    AddTerminatingTailCall(B, lifter.GetLiftedBlockForPC(target_pc),
+                           llvm::ConstantInt::get(IntPtrTy, target_pc, false));
 
   } else if (IsIndirectJump()) {
-    AddTerminatingAddrCall(B, lifter.intrinsics->jump, ReadPC(B));
+    AddTerminatingTailCall(B, lifter.intrinsics->jump, ReadPC(B));
 
   } else if (IsDirectFunctionCall()) {
-    AddTerminatingTailCall(B, lifter.GetLiftedBlockForPC(TargetPC()));
+    auto target_pc = TargetPC();
+    LiftPC(target_pc);  // loads target into `gpr.rip`.
+    AddTerminatingTailCall(B, lifter.GetLiftedBlockForPC(target_pc),
+                           llvm::ConstantInt::get(IntPtrTy, target_pc, false));
 
   } else if (IsIndirectFunctionCall()) {
-    AddTerminatingAddrCall(B, lifter.intrinsics->function_call, ReadPC(B));
+    AddTerminatingTailCall(B, lifter.intrinsics->function_call, ReadPC(B));
 
   } else if (IsFunctionReturn()) {
-    AddTerminatingAddrCall(B, lifter.intrinsics->function_return, ReadPC(B));
+    AddTerminatingTailCall(B, lifter.intrinsics->function_return, ReadPC(B));
 
   } else if (IsBranch()) {
     LiftConditionalBranch(lifter);
 
   // Instruction implementation handles syscall emulation.
   } else if (IsSystemCall()) {
-    AddTerminatingAddrCall(B, lifter.intrinsics->system_call, ReadPC(B));
+    AddTerminatingTailCall(B, lifter.intrinsics->system_call, ReadPC(B));
 
   } else if (IsSystemReturn()) {
-    AddTerminatingAddrCall(B, lifter.intrinsics->system_return, ReadPC(B));
+    AddTerminatingTailCall(B, lifter.intrinsics->system_return, ReadPC(B));
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
 
   // Instruction implementation handles syscall (x86, x32) emulation.
   } else if (IsInterruptCall()) {
-    AddTerminatingAddrCall(B, lifter.intrinsics->interrupt_call, ReadPC(B));
+    AddTerminatingTailCall(B, lifter.intrinsics->interrupt_call, ReadPC(B));
 
   } else if (IsInterruptReturn()) {
-    AddTerminatingAddrCall(B, lifter.intrinsics->interrupt_return, ReadPC(B));
+    AddTerminatingTailCall(B, lifter.intrinsics->interrupt_return, ReadPC(B));
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
   }
@@ -162,10 +169,8 @@ void InstructionTranslator::LiftIntoBlock(const Translator &lifter,
 // Store the program counter into the associated state register. This
 // lets us access this information from within instruction implementations.
 void InstructionTranslator::LiftPC(uintptr_t next_pc) {
-  auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
   auto rip_name = kArchAMD64 == analysis->arch_name ? "RIP_write" : "EIP_write";
   llvm::IRBuilder<> ir(B);
-  llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
   ir.CreateStore(
       llvm::ConstantInt::get(IntPtrTy, next_pc, false),
       ir.CreateLoad(FindVarInFunction(F, rip_name)));
@@ -241,9 +246,6 @@ llvm::Function *InstructionTranslator::GetInstructionFunction(void) {
 
 // Lift a generic instruction.
 void InstructionTranslator::LiftGeneric(const Translator &lifter) {
-  auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
-  llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
-
   // First argument is the state pointer.
   args.push_back(FindStatePointer(F));
 
@@ -267,14 +269,13 @@ void InstructionTranslator::LiftGeneric(const Translator &lifter) {
 
 // Lift a conditional branch instruction.
 void InstructionTranslator::LiftConditionalBranch(const Translator &lifter) {
-  auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
   auto rip_name = kArchAMD64 == analysis->arch_name ? "RIP_read" : "EIP_read";
   auto target_pc = TargetPC();
+  auto fall_through_pc = NextPC();
 
   llvm::IRBuilder<> ir(B);
   llvm::Value *DestPC = ir.CreateLoad(ir.CreateLoad(
       FindVarInFunction(F, rip_name)));
-  llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
   llvm::Value *BranchPC = llvm::ConstantInt::get(IntPtrTy, target_pc, false);
 
   llvm::BasicBlock *Taken = llvm::BasicBlock::Create(
@@ -283,8 +284,12 @@ void InstructionTranslator::LiftConditionalBranch(const Translator &lifter) {
   llvm::BasicBlock *FallThrough = llvm::BasicBlock::Create(
       *C, "fall_through", F);
 
-  AddTerminatingTailCall(Taken, lifter.GetLiftedBlockForPC(target_pc));
-  AddTerminatingTailCall(FallThrough, lifter.GetLiftedBlockForPC(NextPC()));
+  AddTerminatingTailCall(
+      Taken, lifter.GetLiftedBlockForPC(target_pc),
+      llvm::ConstantInt::get(IntPtrTy, target_pc, false));
+  AddTerminatingTailCall(
+      FallThrough, lifter.GetLiftedBlockForPC(fall_through_pc),
+      llvm::ConstantInt::get(IntPtrTy, fall_through_pc, false));
 
   ir.CreateCondBr(ir.CreateICmpEQ(BranchPC, DestPC), Taken, FallThrough);
 }
@@ -355,11 +360,9 @@ void InstructionTranslator::LiftMemory(const Translator &lifter,
   auto index = xed_decoded_inst_get_index_reg(xedd, mem_index);
   auto disp = xed_decoded_inst_get_memory_displacement(xedd, mem_index);
   auto scale = xed_decoded_inst_get_scale(xedd, mem_index);
-  auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
   auto addr_space = AddressSpace(seg, op_name);
 
   llvm::IRBuilder<> ir(B);
-  llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
   llvm::Type *Int32Ty = llvm::Type::getInt32Ty(*C);
   llvm::Value *A = nullptr;  // Address (as an integer).
 
@@ -459,7 +462,6 @@ void InstructionTranslator::LiftImmediate(xed_operand_enum_t op_name) {
   auto is_signed = false;
   auto op_size = xed_decoded_inst_get_operand_width(xedd);
   auto imm_size = xed_decoded_inst_get_immediate_width_bits(xedd);
-  auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
 
   CHECK(imm_size <= op_size)
       << "Immediate size is greater than effective operand size at PC "
@@ -563,9 +565,7 @@ void InstructionTranslator::LiftRegister(const xed_operand_t *xedo) {
     // pointers). So in many cases we'll need to zero-extend the value into
     // and `addr_t`.
     } else {
-      auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
       if (xed_get_register_width_bits64(reg) < addr_width) {
-        llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
         args.push_back(ir.CreateZExt(Reg, IntPtrTy));
       } else {
         args.push_back(Reg);
@@ -576,8 +576,6 @@ void InstructionTranslator::LiftRegister(const xed_operand_t *xedo) {
 
 // Lift a relative branch operand.
 void InstructionTranslator::LiftBranchDisplacement(void) {
-  auto addr_width = xed_decoded_inst_get_machine_mode_bits(xedd);
-  llvm::Type *IntPtrTy = llvm::Type::getIntNTy(*C, addr_width);
   args.push_back(llvm::ConstantInt::get(IntPtrTy, TargetPC(), true));
 }
 

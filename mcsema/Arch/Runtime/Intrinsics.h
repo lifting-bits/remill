@@ -10,7 +10,7 @@ extern "C" {
 extern order_t __mcsema_memory_order;
 
 // The basic block "template".
-[[gnu::used]] void __mcsema_basic_block(State &state);
+[[gnu::used]] void __mcsema_basic_block(State &state, addr_t);
 
 // Address computation intrinsic. This is only used for non-zero
 // `address_space`d memory accesses.
@@ -73,7 +73,7 @@ extern order_t __mcsema_memory_order;
 [[gnu::used]] extern void __mcsema_interrupt_return(State &, addr_t addr);
 
 // Represents a known unknown block.
-[[gnu::used]] extern void __mcsema_missing_block(State &);
+[[gnu::used]] extern void __mcsema_missing_block(State &, addr_t);
 
 [[gnu::used]] extern addr_t __mcsema_conditional_branch(
     bool condition, addr_t if_true, addr_t if_false);

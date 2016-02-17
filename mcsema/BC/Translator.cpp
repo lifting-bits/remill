@@ -126,9 +126,11 @@ void Translator::IdentifyExistingSymbols(void) {
 namespace {
 
 void InitBlockFuncAttributes(llvm::Function *BF, const llvm::Function *TF) {
-  InitFunctionAttributes(BF);
   BF->setAttributes(TF->getAttributes());
-  BF->arg_begin()->setName("state");
+  InitFunctionAttributes(BF);
+  auto args = BF->arg_begin();
+  (args++)->setName("state");
+  args->setName("pc");
 }
 
 llvm::Function *GetBlockFunction(llvm::Module *M,
@@ -168,7 +170,7 @@ void Translator::CreateFunctionsForBlocks(const cfg::Module *cfg) {
 
         ss << "_intern";
         auto BF_intern = GetBlockFunction(module, basic_block, ss.str());
-        AddTerminatingTailCall(BF, BF_intern);
+        AddTerminatingTailCall(BF, BF_intern, block.address());
         BF = BF_intern;
       }
     }
@@ -241,7 +243,7 @@ void Translator::LinkExternalFunctionsToBlocks(const cfg::Module *cfg) {
       CHECK(F->isDeclaration())
           << "Function " << func_name << " is already defined!";
 
-      AddTerminatingTailCall(F, BF);
+      AddTerminatingTailCall(F, BF, func.address());
 
     // In the case of ELF binaries, we tend to see a call to something like
     // `malloc@plt` that is responsible for finding and invoking the actual
@@ -320,9 +322,10 @@ void Translator::TerminateBlockMethod(const cfg::Block &block,
     return;
   }
   if (block.instructions_size()) {
-    AddTerminatingTailCall(BF, GetLiftedBlockForPC(FallThroughPC(block)));
+    auto next_pc = FallThroughPC(block);
+    AddTerminatingTailCall(BF, GetLiftedBlockForPC(next_pc), next_pc);
   } else {
-    AddTerminatingTailCall(BF, intrinsics->error);
+    AddTerminatingTailCall(BF, intrinsics->missing_block, block.address());
   }
 }
 

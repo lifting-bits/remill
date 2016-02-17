@@ -38,11 +38,9 @@ llvm::Function *BlockMap::operator[](uintptr_t pc) const {
 
 // Initialize the attributes for a lifted function.
 void InitFunctionAttributes(llvm::Function *F) {
-  // This affects code generation. Our functions only take one argument (the
-  // machine state pointer) and they all tail-call to each-other. Therefore,
-  // it makes no sense to save/restore callee-saved registers because there
-  // are no real callers to care about!
-  //F->addFnAttr(llvm::Attribute::Naked);
+  // This affects code generation. The key thing here is to disallow dead
+  // argument elimination in LLVM's optimizer.
+  F->addFnAttr(llvm::Attribute::Naked);
 
   // Make sure functions are treated as if they return. LLVM doesn't like
   // mixing must-tail-calls with no-return.
@@ -61,38 +59,50 @@ void InitFunctionAttributes(llvm::Function *F) {
 }
 
 // Create a tail-call from one lifted function to another.
-void AddTerminatingTailCall(llvm::Function *From, llvm::Function *To) {
+void AddTerminatingTailCall(llvm::Function *From, llvm::Function *To,
+                            uintptr_t addr) {
   if (From->isDeclaration()) {
-    llvm::BasicBlock::Create(From->getContext(), "entry", From);
+    std::stringstream ss;
+    ss << "0x" << std::hex << addr;
+    llvm::BasicBlock::Create(From->getContext(), ss.str(), From);
   }
-  AddTerminatingTailCall(&(From->back()), To);
+  AddTerminatingTailCall(&(From->back()), To, addr);
 }
 
-void AddTerminatingTailCall(llvm::BasicBlock *B, llvm::Function *To) {
-  LOG_IF(ERROR, B->getTerminator() || B->getTerminatingMustTailCall())
-      << "Block already has a terminator; not adding fall-through call to: "
+void AddTerminatingTailCall(llvm::BasicBlock *B, llvm::Function *To,
+                            uintptr_t addr) {
+  LOG_IF(FATAL, !To)
+      << "Target function/block does not exist!";
+
+  auto ToTy = To->getFunctionType();
+
+  LOG_IF(FATAL, 2 != ToTy->getNumParams())
+      << "Expected one argument for call to: "
       << (To ? To->getName().str() : "<unreachable>");
 
-  LOG_IF(FATAL, !To) << "Target block does not exist!";
-
-  llvm::IRBuilder<> ir(B);
-  llvm::Function *F = B->getParent();
-  llvm::CallInst *C = ir.CreateCall(To, {FindStatePointer(F)});
-  C->setAttributes(To->getAttributes());
-
-  // Make sure we tail-call from one block method to another.
-  C->setTailCallKind(llvm::CallInst::TCK_MustTail);
-  C->setCallingConv(llvm::CallingConv::Fast);
-  ir.CreateRetVoid();
+  auto Arg2Ty = ToTy->getParamType(1);
+  if (auto IntPtrTy = llvm::dyn_cast<llvm::IntegerType>(Arg2Ty)) {
+    AddTerminatingTailCall(
+        B, To, llvm::ConstantInt::get(IntPtrTy, addr, false));
+  } else {
+    LOG(FATAL)
+        << "Expected second parameter to function " << To->getName().str()
+        << " to be an integral type.";
+  }
 }
 
-void AddTerminatingAddrCall(llvm::BasicBlock *B, llvm::Function *To,
+void AddTerminatingTailCall(llvm::BasicBlock *B, llvm::Function *To,
                             llvm::Value *addr) {
+  LOG_IF(FATAL, !To)
+      << "Target function/block does not exist!";
+
   LOG_IF(ERROR, B->getTerminator() || B->getTerminatingMustTailCall())
       << "Block already has a terminator; not adding fall-through call to: "
       << (To ? To->getName().str() : "<unreachable>");
 
-  LOG_IF(FATAL, !To) << "Target block does not exist!";
+  LOG_IF(FATAL, 2 != To->getFunctionType()->getNumParams())
+      << "Expected two arguments for call to: "
+      << (To ? To->getName().str() : "<unreachable>");
 
   llvm::IRBuilder<> ir(B);
   llvm::Function *F = B->getParent();
@@ -159,6 +169,7 @@ llvm::Module *LoadModuleFromFile(std::string file_name) {
 void StoreModuleToFile(llvm::Module *M, std::string file_name) {
   std::string error;
   llvm::raw_string_ostream error_stream(error);
+
   if (llvm::verifyModule(*M, &error_stream)) {
     LOG(FATAL)
         << "Error writing module to file " << file_name << ". " << error;

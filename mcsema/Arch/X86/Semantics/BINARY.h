@@ -417,7 +417,7 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
 
     if (DETECT_RUNTIME_ERRORS && !src2) {
       __mcsema_error(state, A(state.gpr.rip));
-      __builtin_unreachable();
+      return;
     }
 
     const CWT quot = src1 / src2;
@@ -428,7 +428,7 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
         quot &&
         !(!high_half || (std::is_signed<CT>::value && !~high_half))) {
       __mcsema_error(state, A(state.gpr.rip));
-      __builtin_unreachable();
+      return;
     } else {
       W(state.gpr.rax.byte.low) = static_cast<T>(quot);
       W(state.gpr.rax.byte.high) = static_cast<T>(rem);
@@ -453,7 +453,7 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
       \
       if (DETECT_RUNTIME_ERRORS && !src2) { \
         __mcsema_error(state, A(state.gpr.rip)); \
-        __builtin_unreachable(); \
+        return; \
       } \
       \
       const CWT quot = src1 / src2; \
@@ -463,7 +463,7 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
       if (DETECT_RUNTIME_ERRORS && quot && \
           !(!high_half || (std::is_signed<CT>::value && !~high_half))) { \
         __mcsema_error(state, A(state.gpr.rip)); \
-        __builtin_unreachable(); \
+        return; \
       } else { \
         W(state.gpr.rax.write_sel) = static_cast<T>(quot); \
         W(state.gpr.rdx.write_sel) = static_cast<T>(rem); \

@@ -11,11 +11,40 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
 
 #include <llvm/Transforms/Utils/Local.h>
 
 namespace mcsema {
 namespace {
+
+// Fixup error intrinsics that are used in the code.
+static void FixupIntrinsicUses(llvm::Function *F) {
+  for (auto U : F->users()) {
+    if (auto C = llvm::dyn_cast<llvm::CallInst>(U)) {
+      if (C->isInlineAsm()) continue;
+      if (llvm::isa<llvm::IntrinsicInst>(C)) continue;
+
+      auto caller = C->getParent()->getParent();
+      if (!caller->getName().startswith("__lifted")) continue;
+
+      llvm::Instruction *NI = &*(++(C->getIterator()));
+
+      if (llvm::isa<llvm::BranchInst>(NI)) {
+        NI->eraseFromParent();
+        llvm::ReturnInst::Create(F->getContext(), C->getParent());
+
+      } else if (!llvm::isa<llvm::ReturnInst>(NI)) {
+        continue;  // Not good :-/
+      }
+
+      C->setAttributes(F->getAttributes());
+      C->setTailCallKind(llvm::CallInst::TCK_MustTail);
+      C->setCallingConv(llvm::CallingConv::Fast);
+    }
+  }
+}
+
 
 // Looks for a function by name. If we can't find it, try to find an underscore
 // prefixed version, just in case this is Mac or Windows.
@@ -128,6 +157,15 @@ const char *IntrinsicOptimizer::getPassName(void) const {
 
 bool IntrinsicOptimizer::runOnModule(llvm::Module &M) {
   RemoveUndefinedIntrinsics(M);
+  FixupIntrinsicUses(GetFunction(M, "__mcsema_error"));
+  FixupIntrinsicUses(GetFunction(M, "__mcsema_jump"));
+  FixupIntrinsicUses(GetFunction(M, "__mcsema_function_call"));
+  FixupIntrinsicUses(GetFunction(M, "__mcsema_function_return"));
+  FixupIntrinsicUses(GetFunction(M, "__mcsema_system_call"));
+  FixupIntrinsicUses(GetFunction(M, "__mcsema_system_return"));
+  FixupIntrinsicUses(GetFunction(M, "__mcsema_interrupt_call"));
+  FixupIntrinsicUses(GetFunction(M, "__mcsema_interrupt_return"));
+  FixupIntrinsicUses(GetFunction(M, "__mcsema_missing_block"));
 
   auto F = GetFunction(M, "__mcsema_defer_inlining");
   if (!F) {

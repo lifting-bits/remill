@@ -19,6 +19,9 @@ class IntrinsicTable {
   llvm::Function * const function_call;
   llvm::Function * const function_return;
   llvm::Function * const jump;
+
+  // Semantic.
+  llvm::Function * const create_program_counter;
   llvm::Function * const conditional_branch;
 
   // OS interaction.

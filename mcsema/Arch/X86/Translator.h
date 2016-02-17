@@ -90,10 +90,13 @@ class InstructionTranslator {
   const xed_inst_t * const xedi;
   const xed_iclass_enum_t iclass;
 
+  const unsigned addr_width;
+
   llvm::BasicBlock *B;
   llvm::Function *F;
   llvm::Module *M;
   llvm::LLVMContext *C;
+  llvm::Type *IntPtrTy;
 
   std::vector<llvm::Value *> args;
   std::vector<llvm::Instruction *> prepend_instrs;

@@ -19,11 +19,11 @@ static llvm::Function *FindIntrinsic(const llvm::Module *M, const char *name) {
   llvm::Function *F = FindFunction(M, name);
   LOG_IF(FATAL, !F) << "Unable to find intrinsic: " << name;
 
-  InitFunctionAttributes(F);
-
   // We don't want calls to memory intrinsics to be duplicated because then
   // they might have the wrong side effects!
   F->addFnAttr(llvm::Attribute::NoDuplicate);
+
+  InitFunctionAttributes(F);
   return F;
 }
 
@@ -49,6 +49,7 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *M)
       jump(FindIntrinsic(M, "__mcsema_jump")),
 
       // Signaling control-flow.
+      create_program_counter(FindPureIntrinsic(M, "__mcsema_create_program_counter")),
       conditional_branch(FindPureIntrinsic(M, "__mcsema_conditional_branch")),
 
       // OS interaction.
@@ -109,7 +110,6 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *M)
       undefined_64(FindPureIntrinsic(M, "__mcsema_undefined_64")),
 
       // Used for the global ordering of memory instructions.
-      memory_order(FindGlobaVariable(M, "__mcsema_memory_order")) {
-}
+      memory_order(FindGlobaVariable(M, "__mcsema_memory_order")) {}
 
 }  // namespace mcsema
