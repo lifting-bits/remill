@@ -3,6 +3,21 @@
 #ifndef MCSEMA_ARCH_X86_RUNTIME_STATE_H_
 #define MCSEMA_ARCH_X86_RUNTIME_STATE_H_
 
+// !!! RULES FOR STATE STRUCTURE TYPES !!!
+//
+//  (1) Never use a type that has a different allocation size on a different
+//      architecture. This includes things like pointers or architecture-
+//      specific floating point types (e.g. `long double`).
+//
+//  (2) Never depend on implicit padding or alignment, even if you explicitly
+//      specify it. Always "fill" structures to the desired alignment with
+//      explicit structure fields.
+//
+//  (3) Trust but verify the `static_assert`s that try to verify the sizes of
+//      structures. Clang will LIE to you! This happens if you compile a file
+//      to bitcode for one architecture, then change its `DataLayout` to
+//      match another architecture.
+
 #include "mcsema/Arch/Runtime/Runtime.h"
 
 #ifndef HAS_FEATURE_AVX
@@ -289,18 +304,6 @@ enum : size_t {
   kNumVecRegisters = 32
 };
 
-// Representing the state of an in-progress interrupt request.
-//
-// TODO(pag): This is kind of an ugly solution to there not being a particularly
-//            nice way of "configuring" interrupts for the
-//            `__mcsema_interrupt_call` intrinsic, especially in the case of
-//            conditional interrupts.
-struct alignas(sizeof(addr_t)) Interrupt {
-  addr_t vector;
-  addr_t next_pc;
-  bool trigger;
-};
-
 struct alignas(64) State final {
   // Native `FXSAVE64` representation of the FPU, plus a semi-duplicate
   // representation of all vector regs (XMM, YMM, ZMM).
@@ -318,9 +321,10 @@ struct alignas(64) State final {
   Segments seg;  // 24 bytes.
   GPR gpr;  // 272 bytes.
 
-  Interrupt interrupt;  // 2 * sizeof(addr_t) bytes.
+  volatile uint32_t interrupt_vector;
 
-  // Total: 2728 bytes, padded to 2752 bytes.
+  uint8_t _padding[60];
+
 } __attribute__((packed));
 
 static_assert(0 == __builtin_offsetof(State, fpu),
@@ -341,7 +345,9 @@ static_assert(2584 == __builtin_offsetof(State, seg),
 static_assert(2608 == __builtin_offsetof(State, gpr),
               "Invalid packing of `State::seg`.");
 
-static_assert(2880 == __builtin_offsetof(State, interrupt),
+static_assert(2880 == __builtin_offsetof(State, interrupt_vector),
               "Invalid packing of `State::interrupt`.");
+
+static_assert(2944 == sizeof(State), "Invalid packing of `State`.");
 
 #endif  // MCSEMA_ARCH_X86_RUNTIME_STATE_H_

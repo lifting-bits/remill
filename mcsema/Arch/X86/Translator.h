@@ -73,6 +73,7 @@ class InstructionTranslator {
   bool IsSystemReturn(void) const;
 
   bool IsInterruptCall(void) const;
+  bool IsConditionalInterruptCall(void) const;
   bool IsInterruptReturn(void) const;
 
   bool IsNoOp(void) const;

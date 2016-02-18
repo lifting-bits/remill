@@ -12,44 +12,31 @@ DEF_SEM(BOUND, S1 idx_, S2 bounds) {
   const auto lb = R(bounds);
   const auto ub = R(S2{A(bounds) + sizeof(idx)});
   if (idx < lb || ub < idx) {
-    state.interrupt.next_pc = next_pc;
-    state.interrupt.vector = 5;
-    state.interrupt.trigger = true;
-  } else {
-    state.interrupt.next_pc = next_pc;
-    state.interrupt.trigger = false;
+    state.interrupt_vector = 5;
+    __mcsema_interrupt_call(state, next_pc);
   }
-  W(state.gpr.rip) = __mcsema_create_program_counter(next_pc);
 }
 #endif
 
 }  // namespace
 
 DEF_ISEL_SEM(INT_IMMb, I8 num) {
-  W(state.gpr.rip) = __mcsema_create_program_counter(next_pc);
-  state.interrupt.next_pc = next_pc;
-  state.interrupt.vector = R(num);
-  state.interrupt.trigger = true;
+  state.interrupt_vector = R(num);
 }
 
 DEF_ISEL_SEM(INT1) {
-  INT_IMMb(state, next_pc, {1});
-  state.interrupt.trigger = true;
+  state.interrupt_vector = 1;
 }
 
 DEF_ISEL_SEM(INT3) {
-  INT_IMMb(state, next_pc, {3});
-  state.interrupt.trigger = true;
+  state.interrupt_vector = 3;
 }
 
 #if 32 == ADDRESS_SIZE_BITS
 DEF_ISEL_SEM(INTO) {
   if (state.aflag.of) {
-    INT_IMMb(state, next_pc, {4});
-  } else {
-    state.interrupt.next_pc = next_pc;
-    state.interrupt.trigger = false;
-    W(state.gpr.rip) = __mcsema_create_program_counter(next_pc);
+    state.interrupt_vector = 4;
+    __mcsema_interrupt_call(state, next_pc);
   }
 }
 

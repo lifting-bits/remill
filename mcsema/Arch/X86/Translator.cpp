@@ -157,7 +157,9 @@ void InstructionTranslator::LiftIntoBlock(const Translator &lifter,
 
   // Instruction implementation handles syscall (x86, x32) emulation.
   } else if (IsInterruptCall()) {
-    AddTerminatingTailCall(B, lifter.intrinsics->interrupt_call, ReadPC(B));
+    if (!IsConditionalInterruptCall()) {
+      AddTerminatingTailCall(B, lifter.intrinsics->interrupt_call, ReadPC(B));
+    }
 
   } else if (IsInterruptReturn()) {
     AddTerminatingTailCall(B, lifter.intrinsics->interrupt_return, ReadPC(B));
@@ -702,6 +704,10 @@ bool InstructionTranslator::IsSystemReturn(void) const {
 bool InstructionTranslator::IsInterruptCall(void) const {
   return (XED_ICLASS_INT <= iclass && XED_ICLASS_INTO >= iclass) ||
          XED_ICLASS_BOUND == iclass;
+}
+
+bool InstructionTranslator::IsConditionalInterruptCall(void) const {
+  return XED_ICLASS_INTO == iclass || XED_ICLASS_BOUND == iclass;
 }
 
 bool InstructionTranslator::IsInterruptReturn(void) const {

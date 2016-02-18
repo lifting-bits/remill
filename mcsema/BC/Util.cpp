@@ -135,8 +135,10 @@ llvm::Value *FindVarInFunction(llvm::Function *F, std::string name,
 
 // Find the machine state pointer.
 llvm::Value *FindStatePointer(llvm::Function *F) {
-  if (auto state = FindVarInFunction(F, "state", true)) {
-    return state;
+  if (2 != F->arg_size()) {
+    LOG(FATAL)
+        << "Invalid block-like function. Expected two arguments: state "
+        << "pointer and program counter in function " << F->getName().str();
   }
   return &*F->getArgumentList().begin();
 }
