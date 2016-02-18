@@ -36,18 +36,29 @@ extern order_t __mcsema_memory_order;
 [[gnu::used]] extern vec512_t __mcsema_read_memory_v512(order_t, addr_t);
 
 // Memory write intrinsics.
-[[gnu::used]] extern order_t __mcsema_write_memory_8(order_t, addr_t, uint8_t);
-[[gnu::used]] extern order_t __mcsema_write_memory_16(order_t, addr_t, uint16_t);
-[[gnu::used]] extern order_t __mcsema_write_memory_32(order_t, addr_t, uint32_t);
-[[gnu::used]] extern order_t __mcsema_write_memory_64(order_t, addr_t, uint64_t);
+[[gnu::used]] extern order_t __mcsema_write_memory_8(
+    order_t, addr_t, uint8_t);
+[[gnu::used]] extern order_t __mcsema_write_memory_16(
+    order_t, addr_t, uint16_t);
+[[gnu::used]] extern order_t __mcsema_write_memory_32(
+    order_t, addr_t, uint32_t);
+[[gnu::used]] extern order_t __mcsema_write_memory_64(
+    order_t, addr_t, uint64_t);
 
-[[gnu::used]] extern order_t __mcsema_write_memory_v8(order_t, addr_t, vec8_t);
-[[gnu::used]] extern order_t __mcsema_write_memory_v16(order_t, addr_t, vec16_t);
-[[gnu::used]] extern order_t __mcsema_write_memory_v32(order_t, addr_t, vec32_t);
-[[gnu::used]] extern order_t __mcsema_write_memory_v64(order_t, addr_t, vec64_t);
-[[gnu::used]] extern order_t __mcsema_write_memory_v128(order_t, addr_t, vec128_t);
-[[gnu::used]] extern order_t __mcsema_write_memory_v256(order_t, addr_t, vec256_t);
-[[gnu::used]] extern order_t __mcsema_write_memory_v512(order_t, addr_t, vec512_t);
+[[gnu::used]] extern order_t __mcsema_write_memory_v8(
+    order_t, addr_t, vec8_t);
+[[gnu::used]] extern order_t __mcsema_write_memory_v16(
+    order_t, addr_t, vec16_t);
+[[gnu::used]] extern order_t __mcsema_write_memory_v32(
+    order_t, addr_t, vec32_t);
+[[gnu::used]] extern order_t __mcsema_write_memory_v64(
+    order_t, addr_t, vec64_t);
+[[gnu::used]] extern order_t __mcsema_write_memory_v128(
+    order_t, addr_t, vec128_t);
+[[gnu::used]] extern order_t __mcsema_write_memory_v256(
+    order_t, addr_t, vec256_t);
+[[gnu::used]] extern order_t __mcsema_write_memory_v512(
+    order_t, addr_t, vec512_t);
 
 [[gnu::used]] extern bool __mcsema_undefined_bool(void);
 [[gnu::used]] extern uint8_t __mcsema_undefined_8(void);

@@ -220,11 +220,11 @@ inline static addr_t A(MnW<T> m) {
 
 // Convert a byte array into an 80-bit floating point value.
 ALWAYS_INLINE static arch_float80_t R(const float80_t &reg) {
-  return *reinterpret_cast<const arch_float80_t *>(&(reg.f[0]));
+  return *reinterpret_cast<const arch_float80_t *>(&(reg));
 }
 
 ALWAYS_INLINE static arch_float80_t &W(float80_t &reg) {
-  return *reinterpret_cast<arch_float80_t *>(&(reg.f[0]));
+  return *reinterpret_cast<arch_float80_t *>(&(reg));
 }
 
 #define MAKE_ACCESSORS(T, size) \

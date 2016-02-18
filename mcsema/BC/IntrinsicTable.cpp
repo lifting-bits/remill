@@ -49,7 +49,8 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *M)
       jump(FindIntrinsic(M, "__mcsema_jump")),
 
       // Signaling control-flow.
-      create_program_counter(FindPureIntrinsic(M, "__mcsema_create_program_counter")),
+      create_program_counter(FindPureIntrinsic(
+          M, "__mcsema_create_program_counter")),
       conditional_branch(FindPureIntrinsic(M, "__mcsema_conditional_branch")),
 
       // OS interaction.
