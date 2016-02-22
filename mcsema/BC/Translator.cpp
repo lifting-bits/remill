@@ -144,7 +144,6 @@ llvm::Function *GetBlockFunction(llvm::Module *M,
   return BF;
 }
 
-
 }  // namespace
 
 // Create functions for every block in the CFG.
@@ -166,12 +165,13 @@ void Translator::CreateFunctionsForBlocks(const cfg::Module *cfg) {
       // This block is externally visible so change its linkage and make a new
       // private block to which other blocks will refer.
       if (indirect_blocks.count(block.address())) {
-        BF->setLinkage(llvm::GlobalValue::ExternalLinkage);
+        std::stringstream ss2;
+        ss2 << "__extern_block_" << binary_id << "_0x"
+           << std::hex << block.address();
 
-        ss << "_intern";
-        auto BF_intern = GetBlockFunction(module, basic_block, ss.str());
-        AddTerminatingTailCall(BF, BF_intern, block.address());
-        BF = BF_intern;
+        auto EF = GetBlockFunction(module, basic_block, ss2.str());
+        EF->setLinkage(llvm::GlobalValue::ExternalLinkage);
+        AddTerminatingTailCall(EF, BF, block.address());
       }
     }
   }
