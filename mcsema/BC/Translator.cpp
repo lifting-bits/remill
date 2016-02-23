@@ -14,6 +14,7 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Type.h>
@@ -144,6 +145,18 @@ llvm::Function *GetBlockFunction(llvm::Module *M,
   return BF;
 }
 
+// Add the address of the block as a special meta-data flag.
+static void SetMetaDataAddress(llvm::Module *M, const std::string &block_name,
+                               uint64_t block_address) {
+  std::stringstream ss;
+  ss << "mcsema_address:" << block_name;
+  auto &C = M->getContext();
+  auto Int64Ty = llvm::Type::getInt64Ty(C);
+  auto CI = llvm::ConstantInt::get(Int64Ty, block_address, false);
+  auto CM = llvm::ConstantAsMetadata::get(CI);
+  M->addModuleFlag(llvm::Module::Warning, ss.str(), CM);
+}
+
 }  // namespace
 
 // Create functions for every block in the CFG.
@@ -161,6 +174,7 @@ void Translator::CreateFunctionsForBlocks(const cfg::Module *cfg) {
          << std::hex << block.address();
 
       BF = GetBlockFunction(module, basic_block, ss.str());
+      SetMetaDataAddress(module, ss.str(), block.address());
 
       // This block is externally visible so change its linkage and make a new
       // private block to which other blocks will refer.
