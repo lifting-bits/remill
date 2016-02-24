@@ -243,7 +243,7 @@ ALWAYS_INLINE static arch_float80_t &W(float80_t &reg) {
     } \
     \
     ALWAYS_INLINE static T R(Rn<T> reg) { \
-      return reg.val; \
+      return static_cast<T>(reg.val); \
     } \
     ALWAYS_INLINE static T &W(RnW<T> reg) { \
       return *(reg.val_ref); \
@@ -277,6 +277,42 @@ MAKE_ACCESSORS(uint32_t, 32)
 MAKE_ACCESSORS(uint64_t, 64)
 #undef MAKE_ACCESSORS
 
+#define MAKE_FLOAT_ACCESSORS(T, IT, size) \
+    struct MemoryWriter ## T { \
+      ALWAYS_INLINE void operator=(T val) const { \
+        __mcsema_memory_order = __mcsema_write_memory_ ## size ( \
+            __mcsema_memory_order, addr, reinterpret_cast<IT &&>(val));\
+      } \
+      addr_t addr; \
+    }; \
+    ALWAYS_INLINE static T R(Mn<T> mem) { \
+      const IT ival = __mcsema_read_memory_ ## size ( \
+          __mcsema_memory_order, mem.addr); \
+      return reinterpret_cast<const T &&>(ival); \
+    } \
+    ALWAYS_INLINE static MemoryWriter ## T W(MnW<T> mem) { \
+      return MemoryWriter ## T {mem.addr}; \
+    } \
+    \
+    ALWAYS_INLINE static T R(Rn<T> reg) { \
+      const IT ival = static_cast<IT>(reg.val); \
+      return reinterpret_cast<const T &&>(ival); \
+    } \
+    ALWAYS_INLINE static T &W(RnW<T> reg) { \
+      return *reinterpret_cast<T *>(reg.val_ref); \
+    } \
+    \
+    ALWAYS_INLINE static T &W(T &ref) { \
+      return ref; \
+    } \
+    ALWAYS_INLINE static T R(T imm) { \
+      return imm; \
+    }
+
+MAKE_FLOAT_ACCESSORS(float32_t, uint32_t, 32)
+MAKE_FLOAT_ACCESSORS(float64_t, uint64_t, 64)
+
+#undef MAKE_FLOAT_ACCESSORS
 }  // namespace
 
 #endif  // MCSEMA_ARCH_RUNTIME_OPERATORS_H_

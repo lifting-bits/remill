@@ -466,6 +466,16 @@ struct RnW final {
   T *val_ref;
 };
 
+template <>
+struct RnW<float32_t> final {
+  uint32_t *val_ref;
+};
+
+template <>
+struct RnW<float64_t> final {
+  uint64_t *val_ref;
+};
+
 template <typename T>
 struct In final {
   const addr_t val;
