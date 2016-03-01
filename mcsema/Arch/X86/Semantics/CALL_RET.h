@@ -10,13 +10,12 @@ DEF_SEM(CALL, T target_pc) {
   W(state.gpr.rsp) -= sizeof(A(state.gpr.rsp));
   MnW<PC> sp = {A(state.gpr.rsp)};
   W(sp) = __mcsema_create_program_counter(next_pc);
-  W(state.gpr.rip) = __mcsema_create_program_counter(R(target_pc));
+  W(state.gpr.rip) = R(target_pc);
 }
 
 DEF_SEM(RET_IMM, I16 bytes) {
   Mn<PC> ret_addr_loc = {A(state.gpr.rsp)};
-  const PC ret_addr = R(ret_addr_loc);
-  W(state.gpr.rip) = __mcsema_create_program_counter(ret_addr);
+  W(state.gpr.rip) = R(ret_addr_loc);
   W(state.gpr.rsp) = R(state.gpr.rsp) + R(bytes) + sizeof(PC);
 }
 
@@ -29,7 +28,7 @@ T PopValue(State &state) {
 }
 
 DEF_SEM(RET) {
-  W(state.gpr.rip) = __mcsema_create_program_counter(PopValue<PC>(state));
+  W(state.gpr.rip) = PopValue<PC>(state);
 }
 
 }  // namespace
