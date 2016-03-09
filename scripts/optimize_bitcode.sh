@@ -41,7 +41,7 @@ $DIR/third_party/bin/opt -O3 -o=$BIN.opt2.bc $BIN.opt1.bc || {
     exit 1
 }
 
-$DIR/third_party/bin/opt -lowerswitch -o=$BIN.bc $BIN.opt2.bc || {
+$DIR/third_party/bin/opt -float2int -lowerswitch -mem2reg -o=$BIN.bc $BIN.opt2.bc || {
     printf "${RED}Could not optimize $1.opt1.bc${RESET}\n" > /dev/stderr
     exit 1
 }

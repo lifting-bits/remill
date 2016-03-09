@@ -120,8 +120,9 @@ static void VisitRegister(RegisterSet *revive, RegisterSet *kill,
                           const xed_operand_t *xedo, unsigned op_num) {
   auto op_name = xed_operand_name(xedo);
   auto reg = xed_decoded_inst_get_reg(xedd, op_name);
-  UpdateSet(revive, reg, xed_operand_read(xedo));
-  UpdateSet(kill, reg, xed_operand_read(xedo));
+  auto is_live = xed_operand_read(xedo) || xed_operand_conditional_write(xedo);
+  UpdateSet(revive, reg, is_live);
+  UpdateSet(kill, reg, is_live);
 }
 
 static void VisitOperand(RegisterSet *revive, RegisterSet *kill,
