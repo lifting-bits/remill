@@ -30,7 +30,9 @@ static void ForceTailCall(llvm::Function *function) {
     auto caller = call_instr->getParent()->getParent();
     if (!caller->getName().startswith("__lifted")) continue;
 
-    llvm::Instruction *next_instr = &*(++(call_instr->getIterator()));
+    auto call_instr_iter = call_instr->getIterator();
+    auto next_instr_iter = ++call_instr_iter;
+    llvm::Instruction *next_instr = &*next_instr_iter;
 
     if (llvm::isa<llvm::BranchInst>(next_instr)) {
       next_instr->eraseFromParent();

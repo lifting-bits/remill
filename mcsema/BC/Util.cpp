@@ -5,6 +5,9 @@
 #include <sstream>
 #include <system_error>
 
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
@@ -166,7 +169,8 @@ llvm::Module *LoadModuleFromFile(std::string file_name) {
   auto module = mod_ptr.get();
   mod_ptr.release();
 
-  CHECK(nullptr != module) << "Unable to parse module file: " << file_name;
+  CHECK(nullptr != module)
+      << "Unable to parse module file: " << file_name;
 
   module->materializeAll();  // Just in case.
   return module;
@@ -193,9 +197,10 @@ static int CreateOutputFd(const std::string &tmp_dir) {
       << "`PATH_MAX`-sized buffer.";
 
   strncpy(gTempOutputPath, tmp_path_str.c_str(), tmp_path_str.size());
-  auto tmp_fd = mkostemp(gTempOutputPath, 0666);
+  auto tmp_fd = mkstemp(gTempOutputPath);
+  fchmod(tmp_fd, 0666);
 
-  LOG_IF(FATAL, -1 == tmp_fd)
+  CHECK(-1 != tmp_fd)
       << "Unable to create temporary BC file: " << gTempOutputPath;
 
   return tmp_fd;
