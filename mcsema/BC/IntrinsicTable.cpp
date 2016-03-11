@@ -15,102 +15,109 @@ namespace mcsema {
 namespace {
 
 // Find a specific function.
-static llvm::Function *FindIntrinsic(const llvm::Module *M, const char *name) {
-  llvm::Function *F = FindFunction(M, name);
-  LOG_IF(FATAL, !F) << "Unable to find intrinsic: " << name;
+static llvm::Function *FindIntrinsic(const llvm::Module *module,
+                                     const char *name) {
+  auto function = FindFunction(module, name);
+  CHECK(nullptr != function)
+      << "Unable to find intrinsic: " << name;
 
   // We don't want calls to memory intrinsics to be duplicated because then
   // they might have the wrong side effects!
-  F->addFnAttr(llvm::Attribute::NoDuplicate);
+  function->addFnAttr(llvm::Attribute::NoDuplicate);
 
-  InitFunctionAttributes(F);
-  return F;
+  InitFunctionAttributes(function);
+  return function;
 }
 
 // Find a specific function.
-static llvm::Function *FindPureIntrinsic(const llvm::Module *M,
+static llvm::Function *FindPureIntrinsic(const llvm::Module *module,
                                          const char *name) {
-  auto F = FindIntrinsic(M, name);
+  auto function = FindIntrinsic(module, name);
 
   // We want memory intrinsics to be marked as not accessing memory so that
   // they don't interfere with dead store elimination.
-  F->addFnAttr(llvm::Attribute::ReadNone);
-  return F;
+  function->addFnAttr(llvm::Attribute::ReadNone);
+  return function;
 }
 
 }  // namespace
 
-IntrinsicTable::IntrinsicTable(const llvm::Module *M)
-    : error(FindIntrinsic(M, "__mcsema_error")),
+IntrinsicTable::IntrinsicTable(const llvm::Module *module)
+    : error(FindIntrinsic(module, "__mcsema_error")),
 
       // Control-flow.
-      function_call(FindIntrinsic(M, "__mcsema_function_call")),
-      function_return(FindIntrinsic(M, "__mcsema_function_return")),
-      jump(FindIntrinsic(M, "__mcsema_jump")),
+      function_call(FindIntrinsic(module, "__mcsema_function_call")),
+      function_return(FindIntrinsic(module, "__mcsema_function_return")),
+      jump(FindIntrinsic(module, "__mcsema_jump")),
 
       // Signaling control-flow.
       create_program_counter(FindPureIntrinsic(
-          M, "__mcsema_create_program_counter")),
-      conditional_branch(FindPureIntrinsic(M, "__mcsema_conditional_branch")),
+          module, "__mcsema_create_program_counter")),
+      conditional_branch(FindPureIntrinsic(
+          module, "__mcsema_conditional_branch")),
 
       // OS interaction.
-      system_call(FindIntrinsic(M, "__mcsema_system_call")),
-      system_return(FindIntrinsic(M, "__mcsema_system_return")),
-      interrupt_call(FindIntrinsic(M, "__mcsema_interrupt_call")),
-      interrupt_return(FindIntrinsic(M, "__mcsema_interrupt_return")),
+      system_call(FindIntrinsic(module, "__mcsema_system_call")),
+      system_return(FindIntrinsic(module, "__mcsema_system_return")),
+      interrupt_call(FindIntrinsic(module, "__mcsema_interrupt_call")),
+      interrupt_return(FindIntrinsic(module, "__mcsema_interrupt_return")),
 
       // Block that can't be found.
-      missing_block(FindIntrinsic(M, "__mcsema_missing_block")),
+      missing_block(FindIntrinsic(module, "__mcsema_missing_block")),
 
       // Memory access.
-      read_memory_8(FindPureIntrinsic(M, "__mcsema_read_memory_8")),
-      read_memory_16(FindPureIntrinsic(M, "__mcsema_read_memory_16")),
-      read_memory_32(FindPureIntrinsic(M, "__mcsema_read_memory_32")),
-      read_memory_64(FindPureIntrinsic(M, "__mcsema_read_memory_64")),
+      read_memory_8(FindPureIntrinsic(module, "__mcsema_read_memory_8")),
+      read_memory_16(FindPureIntrinsic(module, "__mcsema_read_memory_16")),
+      read_memory_32(FindPureIntrinsic(module, "__mcsema_read_memory_32")),
+      read_memory_64(FindPureIntrinsic(module, "__mcsema_read_memory_64")),
 
-      read_memory_v8(FindPureIntrinsic(M, "__mcsema_read_memory_v8")),
-      read_memory_v16(FindPureIntrinsic(M, "__mcsema_read_memory_v16")),
-      read_memory_v32(FindPureIntrinsic(M, "__mcsema_read_memory_v32")),
-      read_memory_v64(FindPureIntrinsic(M, "__mcsema_read_memory_v64")),
-      read_memory_v128(FindPureIntrinsic(M, "__mcsema_read_memory_v128")),
-      read_memory_v256(FindPureIntrinsic(M, "__mcsema_read_memory_v256")),
-      read_memory_v512(FindPureIntrinsic(M, "__mcsema_read_memory_v512")),
-      write_memory_8(FindPureIntrinsic(M, "__mcsema_write_memory_8")),
-      write_memory_16(FindPureIntrinsic(M, "__mcsema_write_memory_16")),
-      write_memory_32(FindPureIntrinsic(M, "__mcsema_write_memory_32")),
-      write_memory_64(FindPureIntrinsic(M, "__mcsema_write_memory_64")),
+      read_memory_v8(FindPureIntrinsic(module, "__mcsema_read_memory_v8")),
+      read_memory_v16(FindPureIntrinsic(module, "__mcsema_read_memory_v16")),
+      read_memory_v32(FindPureIntrinsic(module, "__mcsema_read_memory_v32")),
+      read_memory_v64(FindPureIntrinsic(module, "__mcsema_read_memory_v64")),
+      read_memory_v128(FindPureIntrinsic(module, "__mcsema_read_memory_v128")),
+      read_memory_v256(FindPureIntrinsic(module, "__mcsema_read_memory_v256")),
+      read_memory_v512(FindPureIntrinsic(module, "__mcsema_read_memory_v512")),
+      write_memory_8(FindPureIntrinsic(module, "__mcsema_write_memory_8")),
+      write_memory_16(FindPureIntrinsic(module, "__mcsema_write_memory_16")),
+      write_memory_32(FindPureIntrinsic(module, "__mcsema_write_memory_32")),
+      write_memory_64(FindPureIntrinsic(module, "__mcsema_write_memory_64")),
 
-      write_memory_v8(FindPureIntrinsic(M, "__mcsema_write_memory_v8")),
-      write_memory_v16(FindPureIntrinsic(M, "__mcsema_write_memory_v16")),
-      write_memory_v32(FindPureIntrinsic(M, "__mcsema_write_memory_v32")),
-      write_memory_v64(FindPureIntrinsic(M, "__mcsema_write_memory_v64")),
-      write_memory_v128(FindPureIntrinsic(M, "__mcsema_write_memory_v128")),
-      write_memory_v256(FindPureIntrinsic(M, "__mcsema_write_memory_v256")),
-      write_memory_v512(FindPureIntrinsic(M, "__mcsema_write_memory_v512")),
-      compute_address(FindPureIntrinsic(M, "__mcsema_compute_address")),
+      write_memory_v8(FindPureIntrinsic(module, "__mcsema_write_memory_v8")),
+      write_memory_v16(FindPureIntrinsic(module, "__mcsema_write_memory_v16")),
+      write_memory_v32(FindPureIntrinsic(module, "__mcsema_write_memory_v32")),
+      write_memory_v64(FindPureIntrinsic(module, "__mcsema_write_memory_v64")),
+      write_memory_v128(FindPureIntrinsic(
+          module, "__mcsema_write_memory_v128")),
+      write_memory_v256(FindPureIntrinsic(
+          module, "__mcsema_write_memory_v256")),
+      write_memory_v512(FindPureIntrinsic(
+          module, "__mcsema_write_memory_v512")),
+      compute_address(FindPureIntrinsic(module, "__mcsema_compute_address")),
 
       // Memory barriers.
-      barrier_load_load(FindIntrinsic(M, "__mcsema_barrier_load_load")),
-      barrier_load_store(FindIntrinsic(M, "__mcsema_barrier_load_store")),
-      barrier_store_load(FindIntrinsic(M, "__mcsema_barrier_store_load")),
-      barrier_store_store(FindIntrinsic(M, "__mcsema_barrier_store_store")),
-      atomic_begin(FindIntrinsic(M, "__mcsema_atomic_begin")),
-      atomic_end(FindIntrinsic(M, "__mcsema_atomic_end")),
+      barrier_load_load(FindIntrinsic(module, "__mcsema_barrier_load_load")),
+      barrier_load_store(FindIntrinsic(module, "__mcsema_barrier_load_store")),
+      barrier_store_load(FindIntrinsic(module, "__mcsema_barrier_store_load")),
+      barrier_store_store(FindIntrinsic(
+          module, "__mcsema_barrier_store_store")),
+      atomic_begin(FindIntrinsic(module, "__mcsema_atomic_begin")),
+      atomic_end(FindIntrinsic(module, "__mcsema_atomic_end")),
 
       // Optimization guides.
       //
       // Note:  NOT pure! This is a total hack: we call an unpure function
       //        within a pure one so that it is not optimized out!
-      defer_inlining(FindIntrinsic(M, "__mcsema_defer_inlining")),
+      defer_inlining(FindIntrinsic(module, "__mcsema_defer_inlining")),
 
       // Optimization enablers.
-      undefined_bool(FindPureIntrinsic(M, "__mcsema_undefined_bool")),
-      undefined_8(FindPureIntrinsic(M, "__mcsema_undefined_8")),
-      undefined_16(FindPureIntrinsic(M, "__mcsema_undefined_16")),
-      undefined_32(FindPureIntrinsic(M, "__mcsema_undefined_32")),
-      undefined_64(FindPureIntrinsic(M, "__mcsema_undefined_64")),
+      undefined_bool(FindPureIntrinsic(module, "__mcsema_undefined_bool")),
+      undefined_8(FindPureIntrinsic(module, "__mcsema_undefined_8")),
+      undefined_16(FindPureIntrinsic(module, "__mcsema_undefined_16")),
+      undefined_32(FindPureIntrinsic(module, "__mcsema_undefined_32")),
+      undefined_64(FindPureIntrinsic(module, "__mcsema_undefined_64")),
 
       // Used for the global ordering of memory instructions.
-      memory_order(FindGlobaVariable(M, "__mcsema_memory_order")) {}
+      memory_order(FindGlobaVariable(module, "__mcsema_memory_order")) {}
 
 }  // namespace mcsema

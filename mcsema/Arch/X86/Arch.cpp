@@ -58,10 +58,10 @@ llvm::Module *X86Arch::PrepareModule(llvm::Module *mod) const {
 void X86Arch::LiftInstructionIntoBlock(
     const Translator &translator,
     const cfg::Block &block, const cfg::Instr &instr,
-    llvm::BasicBlock *B) const {
+    llvm::BasicBlock *basic_block) const {
   const auto xedd = DecodeInstruction(instr, arch_name);
   InstructionTranslator trans(analysis, block, instr, xedd);  // Bag of state.
-  trans.LiftIntoBlock(translator, B);
+  trans.LiftIntoBlock(translator, basic_block);
 }
 
 // Return an arch-specific CFG analyzer.

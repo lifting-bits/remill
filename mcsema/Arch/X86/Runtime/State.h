@@ -196,17 +196,17 @@ struct alignas(8) ArithFlags final {
 static_assert(16 == sizeof(ArithFlags), "Invalid packing of `ArithFlags`.");
 
 struct alignas(8) Segments final {
-  volatile uint16_t tear0;
+  volatile uint16_t _tear0;
   uint16_t ss;
-  volatile uint16_t tear1;
+  volatile uint16_t _tear1;
   uint16_t es;
-  volatile uint16_t tear2;
+  volatile uint16_t _tear2;
   uint16_t gs;
-  volatile uint16_t tear3;
+  volatile uint16_t _tear3;
   uint16_t fs;
-  volatile uint16_t tear4;
+  volatile uint16_t _tear4;
   uint16_t ds;
-  volatile uint16_t tear5;
+  volatile uint16_t _tear5;
   uint16_t cs;
 } __attribute__((packed));
 

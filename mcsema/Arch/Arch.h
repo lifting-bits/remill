@@ -49,8 +49,9 @@ class Arch {
   // Decode an instruction and lift it into a basic block.
   virtual void LiftInstructionIntoBlock(
       const Translator &translator,
-      const cfg::Block &block, const cfg::Instr &instr,
-      llvm::BasicBlock *B) const = 0;
+      const cfg::Block &block,
+      const cfg::Instr &instr,
+      llvm::BasicBlock *basic_block) const = 0;
 
   // Return an arch-specific CFG analyzer.
   virtual AutoAnalysis &CFGAnalyzer(void) const = 0;

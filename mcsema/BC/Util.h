@@ -55,7 +55,8 @@ llvm::GlobalVariable *FindGlobaVariable(const llvm::Module *M,
 llvm::Module *LoadModuleFromFile(std::string file_name);
 
 // Store an LLVM module into a file.
-void StoreModuleToFile(llvm::Module *module, std::string file_name);
+void StoreModuleToFile(llvm::Module *module, std::string temp_dir,
+                       std::string file_name);
 
 }  // namespace mcsema
 

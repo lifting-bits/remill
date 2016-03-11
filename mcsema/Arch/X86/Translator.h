@@ -36,7 +36,7 @@ class InstructionTranslator {
                         const cfg::Instr &instr_,
                         const struct xed_decoded_inst_s &xedd_);
 
-  void LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *B_);
+  void LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *);
 
  private:
   void LiftPC(uintptr_t next_pc);
@@ -54,8 +54,7 @@ class InstructionTranslator {
   void LiftBranchDisplacement(void);
 
   void AddTerminatingKills(const Translator &lifter,
-                           const BasicBlockRegs *regs,
-                           llvm::BasicBlock *B);
+                           const BasicBlockRegs *regs);
 
   bool IsBranch(void) const;
 
@@ -93,11 +92,11 @@ class InstructionTranslator {
 
   const unsigned addr_width;
 
-  llvm::BasicBlock *B;
-  llvm::Function *F;
-  llvm::Module *M;
-  llvm::LLVMContext *C;
-  llvm::Type *IntPtrTy;
+  llvm::BasicBlock *basic_block;
+  llvm::Function *function;
+  llvm::Module *module;
+  llvm::LLVMContext *context;
+  llvm::Type *intptr_type;
 
   std::vector<llvm::Value *> args;
   std::vector<llvm::Instruction *> prepend_instrs;

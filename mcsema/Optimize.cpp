@@ -18,64 +18,72 @@
 namespace mcsema {
 namespace {
 
-// Fixup error intrinsics that are used in the code.
-static void FixupIntrinsicUses(llvm::Function *F) {
-  for (auto U : F->users()) {
-    if (auto C = llvm::dyn_cast<llvm::CallInst>(U)) {
-      if (C->isInlineAsm()) continue;
-      if (llvm::isa<llvm::IntrinsicInst>(C)) continue;
+// Require that if `function` is invoked, then it is treated as a tail call.
+static void ForceTailCall(llvm::Function *function) {
+  for (auto callers : function->users()) {
+    auto call_instr = llvm::dyn_cast<llvm::CallInst>(callers);
+    if (!call_instr) continue;
+    if (call_instr->isInlineAsm()) continue;
+    if (llvm::isa<llvm::IntrinsicInst>(call_instr)) continue;
 
-      auto caller = C->getParent()->getParent();
-      if (!caller->getName().startswith("__lifted")) continue;
+    // Make sure the caller "looks" like a lifted basic block.
+    auto caller = call_instr->getParent()->getParent();
+    if (!caller->getName().startswith("__lifted")) continue;
 
-      llvm::Instruction *NI = &*(++(C->getIterator()));
+    llvm::Instruction *next_instr = &*(++(call_instr->getIterator()));
 
-      if (llvm::isa<llvm::BranchInst>(NI)) {
-        NI->eraseFromParent();
-        llvm::ReturnInst::Create(F->getContext(), C->getParent());
+    if (llvm::isa<llvm::BranchInst>(next_instr)) {
+      next_instr->eraseFromParent();
+      llvm::ReturnInst::Create(function->getContext(), call_instr->getParent());
 
-      } else if (!llvm::isa<llvm::ReturnInst>(NI)) {
-        continue;  // Not good :-/
-      }
+    } else if (!llvm::isa<llvm::ReturnInst>(next_instr)) {
+      llvm::errs()
+          << "Call to " << function->getName() << " cannot safely be "
+          << "converted into a tail call because it is not followed by "
+          << "either a branch or a return.";
 
-      C->setAttributes(F->getAttributes());
-      C->setTailCallKind(llvm::CallInst::TCK_MustTail);
-      C->setCallingConv(llvm::CallingConv::Fast);
+      continue;  // Not good :-/
     }
+
+    call_instr->setAttributes(function->getAttributes());
+    call_instr->setTailCallKind(llvm::CallInst::TCK_MustTail);
+    call_instr->setCallingConv(llvm::CallingConv::Fast);
   }
 }
 
 
 // Looks for a function by name. If we can't find it, try to find an underscore
 // prefixed version, just in case this is Mac or Windows.
-static llvm::Function *GetFunction(llvm::Module &M, const char *name) {
-  if (auto F = M.getFunction(name)) {
-    return F;
+static llvm::Function *GetFunction(llvm::Module &module, const char *name) {
+  if (auto function = module.getFunction(name)) {
+    return function;
   } else {
     std::stringstream ss;
-    ss << "_" << name;
-    return M.getFunction(ss.str());
+    ss << "_" << name;  // Underscorilize (Mac OS X, Windows).
+    return module.getFunction(ss.str());
   }
 }
 
 // Replace all uses of a specific intrinsic with an undefined value.
-static void ReplaceIntrinsic(llvm::Module &M, const char *name, unsigned N) {
-  if (auto F = GetFunction(M, name)) {
-    std::vector<llvm::CallInst *> Cs;
-    for (auto U : F->users()) {
-      if (auto C = llvm::dyn_cast<llvm::CallInst>(U)) {
-        Cs.push_back(C);
-      }
-    }
+static void ReplaceIntrinsic(llvm::Module &module, const char *name,
+                             unsigned undef_size_bits) {
+  auto function = GetFunction(module, name);
+  if (!function) return;
 
-    // Eliminate calls
-    auto Undef = llvm::UndefValue::get(
-        llvm::Type::getIntNTy(F->getContext(), N));
-    for (auto C : Cs) {
-      C->replaceAllUsesWith(Undef);
-      C->removeFromParent();
-      delete C;
+  std::vector<llvm::CallInst *> call_instrs;
+  for (auto callers : function->users()) {
+    if (auto call_instr = llvm::dyn_cast<llvm::CallInst>(callers)) {
+      call_instrs.push_back(call_instr);
     }
+  }
+
+  // Eliminate calls
+  auto undef_val = llvm::UndefValue::get(
+      llvm::Type::getIntNTy(function->getContext(), undef_size_bits));
+  for (auto call_instr : call_instrs) {
+    call_instr->replaceAllUsesWith(undef_val);
+    call_instr->removeFromParent();
+    delete call_instr;
   }
 }
 
@@ -85,43 +93,74 @@ static void ReplaceIntrinsic(llvm::Module &M, const char *name, unsigned N) {
 // to reliably produce an `undef` LLVM value from C/C++, so we use our trick
 // of declaring (but never defining) a special "intrinsic" and then we replace
 // all such uses with `undef` values.
-void RemoveUndefinedIntrinsics(llvm::Module &M) {
-  ReplaceIntrinsic(M, "__mcsema_undefined_bool", 1);
-  ReplaceIntrinsic(M, "__mcsema_undefined_8", 8);
-  ReplaceIntrinsic(M, "__mcsema_undefined_16", 16);
-  ReplaceIntrinsic(M, "__mcsema_undefined_32", 32);
-  ReplaceIntrinsic(M, "__mcsema_undefined_64", 64);
+void RemoveUndefinedIntrinsics(llvm::Module &module) {
+  ReplaceIntrinsic(module, "__mcsema_undefined_bool", 1);
+  ReplaceIntrinsic(module, "__mcsema_undefined_8", 8);
+  ReplaceIntrinsic(module, "__mcsema_undefined_16", 16);
+  ReplaceIntrinsic(module, "__mcsema_undefined_32", 32);
+  ReplaceIntrinsic(module, "__mcsema_undefined_64", 64);
 
   // Eliminate stores of undefined values.
-  for (auto &F : M) {
-    std::vector<llvm::Instruction *> dead_insts;
-    for (auto &B : F) {
-      for (auto &I : B) {
-        if (auto S = llvm::dyn_cast<llvm::StoreInst>(&I)) {
-          if (llvm::isa<llvm::UndefValue>(S->getValueOperand())) {
-            dead_insts.push_back(S);
+  for (auto &function : module) {
+    std::vector<llvm::Instruction *> dead_instrs;
+    for (auto &basic_block : function) {
+      for (auto &instr : basic_block) {
+        if (auto store_instr = llvm::dyn_cast<llvm::StoreInst>(&instr)) {
+          if (llvm::isa<llvm::UndefValue>(store_instr->getValueOperand())) {
+            dead_instrs.push_back(store_instr);
           }
         }
       }
     }
 
-    // Eliminate dead code.
-    while (!dead_insts.empty()) {
-      auto D = dead_insts.back();
-      dead_insts.pop_back();
+    // Done after we've collected the stores so that we don't affect
+    // the iterators.
+    for (auto dead_instr : dead_instrs) {
+      llvm::RecursivelyDeleteTriviallyDeadInstructions(dead_instr);
+    }
+  }
+}
 
-      for (auto i = 0U; i < D->getNumOperands(); ++i) {
-        auto O = D->getOperand(i);
-        D->setOperand(i, nullptr);
-        if (O->use_empty()) {
-          if (auto I = llvm::dyn_cast<llvm::Instruction>(O)) {
-            if (llvm::isInstructionTriviallyDead(I)) {
-              dead_insts.push_back(I);
-            }
-          }
-        }
+// Enable inlining of functions whose inlining has been deferred.
+static void EnableInlining(llvm::Module &module) {
+  auto defer_inlining_func = GetFunction(module, "__mcsema_defer_inlining");
+  if (!defer_inlining_func) return;
+
+  std::vector<llvm::CallInst *> call_instrs;
+  std::set<llvm::Function *> processed_funcs;
+
+  // Find all calls to the inline defer intrinsic.
+  for (auto caller : defer_inlining_func->users()) {
+    if (auto call_instr = llvm::dyn_cast_or_null<llvm::CallInst>(caller)) {
+      call_instrs.push_back(call_instr);
+    }
+  }
+
+  // Remove the calls to the inline defer intrinsic, and mark the functions
+  // containing those calls as inlinable.
+  for (auto call_instr : call_instrs) {
+    auto basic_block = call_instr->getParent();
+    auto caller_func = basic_block->getParent();
+
+    processed_funcs.insert(caller_func);
+
+    caller_func->removeFnAttr(llvm::Attribute::NoInline);
+    caller_func->addFnAttr(llvm::Attribute::AlwaysInline);
+    caller_func->addFnAttr(llvm::Attribute::InlineHint);
+
+    call_instr->replaceAllUsesWith(llvm::UndefValue::get(call_instr->getType()));
+    call_instr->eraseFromParent();
+  }
+
+  // Emulate the `flatten` attribute by finding all calls to functions that
+  // containing the inline defer intrinsic, and mark the call instructions
+  // as requiring inlining.
+  for (auto function : processed_funcs) {
+    for (auto callers : function->users()) {
+      if (auto call_instr = llvm::dyn_cast_or_null<llvm::CallInst>(callers)) {
+        call_instr->addAttribute(llvm::AttributeSet::FunctionIndex,
+                                 llvm::Attribute::AlwaysInline);
       }
-      D->removeFromParent();
     }
   }
 }
@@ -139,7 +178,7 @@ class IntrinsicOptimizer : public llvm::ModulePass {
   ~IntrinsicOptimizer(void);
 
   virtual const char *getPassName(void) const override;
-  virtual bool runOnModule(llvm::Module &M) override;
+  virtual bool runOnModule(llvm::Module &) override;
 
   static char ID;
 
@@ -155,64 +194,20 @@ const char *IntrinsicOptimizer::getPassName(void) const {
   return "IntrinsicOptimizer";
 }
 
-bool IntrinsicOptimizer::runOnModule(llvm::Module &M) {
-  RemoveUndefinedIntrinsics(M);
-  FixupIntrinsicUses(GetFunction(M, "__mcsema_error"));
-  FixupIntrinsicUses(GetFunction(M, "__mcsema_jump"));
-  FixupIntrinsicUses(GetFunction(M, "__mcsema_function_call"));
-  FixupIntrinsicUses(GetFunction(M, "__mcsema_function_return"));
-  FixupIntrinsicUses(GetFunction(M, "__mcsema_system_call"));
-  FixupIntrinsicUses(GetFunction(M, "__mcsema_system_return"));
-  FixupIntrinsicUses(GetFunction(M, "__mcsema_interrupt_call"));
-  FixupIntrinsicUses(GetFunction(M, "__mcsema_interrupt_return"));
-  FixupIntrinsicUses(GetFunction(M, "__mcsema_missing_block"));
+bool IntrinsicOptimizer::runOnModule(llvm::Module &module) {
+  RemoveUndefinedIntrinsics(module);
+  ForceTailCall(GetFunction(module, "__mcsema_error"));
+  ForceTailCall(GetFunction(module, "__mcsema_jump"));
+  ForceTailCall(GetFunction(module, "__mcsema_function_call"));
+  ForceTailCall(GetFunction(module, "__mcsema_function_return"));
+  ForceTailCall(GetFunction(module, "__mcsema_system_call"));
+  ForceTailCall(GetFunction(module, "__mcsema_system_return"));
+  ForceTailCall(GetFunction(module, "__mcsema_interrupt_call"));
+  ForceTailCall(GetFunction(module, "__mcsema_interrupt_return"));
+  ForceTailCall(GetFunction(module, "__mcsema_missing_block"));
+  EnableInlining(module);
 
-  auto F = GetFunction(M, "__mcsema_defer_inlining");
-  if (!F) {
-    return false;
-  }
-
-  std::vector<llvm::CallInst *> Cs;
-  std::set<llvm::Function *> Fs;
-
-  // Find all calls to the inline defer intrinsic.
-  for (auto U : F->users()) {
-    if (auto C = llvm::dyn_cast_or_null<llvm::CallInst>(U)) {
-      Cs.push_back(C);
-    }
-  }
-
-  // Remove the calls to the inline defer intrinsic, and mark the functions
-  // containing those calls as inlinable.
-  auto changed = false;
-  for (auto C : Cs) {
-    auto B = C->getParent();
-    auto F = B->getParent();
-
-    Fs.insert(F);
-
-    F->removeFnAttr(llvm::Attribute::NoInline);
-    F->addFnAttr(llvm::Attribute::AlwaysInline);
-    F->addFnAttr(llvm::Attribute::InlineHint);
-
-    C->replaceAllUsesWith(llvm::UndefValue::get(C->getType()));
-    C->eraseFromParent();
-    changed = true;
-  }
-
-  // Emulate the `flatten` attribute by finding all calls to functions that
-  // containing the inline defer intrinsic, and mark the call instructions
-  // as requiring inlining.
-  for (auto F : Fs) {
-    for (auto U : F->users()) {
-      if (auto C = llvm::dyn_cast_or_null<llvm::CallInst>(U)) {
-        C->addAttribute(llvm::AttributeSet::FunctionIndex,
-                        llvm::Attribute::AlwaysInline);
-      }
-    }
-  }
-
-  return changed;
+  return true;
 }
 
 char IntrinsicOptimizer::ID = 0;

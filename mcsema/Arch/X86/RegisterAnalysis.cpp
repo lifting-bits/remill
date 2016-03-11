@@ -205,7 +205,6 @@ void RegisterAnalysis::AddBlock(const cfg::Block &block) {
       bb->flags.kill.flat &= ~rflags->undefined.flat;
       bb->flags.kill.flat |= rflags->read.flat;
 
-
       bb->flags.revive.flat &= ~rflags->written.flat;
       bb->flags.revive.flat &= ~rflags->undefined.flat;
       bb->flags.revive.flat |= rflags->read.flat;

@@ -35,8 +35,8 @@ DEFINE_int32(max_dataflow_analysis_iterations, 0,
 
 DEFINE_bool(aggressive_dataflow_analysis, false,
             "Should data-flow analysis be conservative in their conclusions? "
-            "If not then the analysis will be really aggressive and make a lot "
-            "of assumptions about function call behavior.");
+            "If not then the analysis will be really aggressive and make a "
+            "lot of assumptions about function call behavior.");
 
 namespace llvm {
 class ReturnInst;
@@ -54,11 +54,11 @@ static std::string NamedSymbolMetaId(std::string func_name) {
 // Returns the ID for this binary. We prefix every basic block function added to
 // a module with the ID of the binary, where the ID is a number that increments
 // linearly.
-static int GetBinaryId(llvm::Module *M) {
+static int GetBinaryId(llvm::Module *module) {
   for (auto i = 1; ; ++i) {
     std::string id = "mcsema_binary:" + std::to_string(i);
-    if (!M->getNamedMetadata(id)) {
-      M->getOrInsertNamedMetadata(id);
+    if (!module->getNamedMetadata(id)) {
+      module->getOrInsertNamedMetadata(id);
       return i;
     }
   }
@@ -83,10 +83,10 @@ Translator::Translator(const Arch *arch_, llvm::Module *module_)
 
 namespace {
 
-static void DisableInlining(llvm::Function *F) {
-  F->removeFnAttr(llvm::Attribute::AlwaysInline);
-  F->removeFnAttr(llvm::Attribute::InlineHint);
-  F->addFnAttr(llvm::Attribute::NoInline);
+static void DisableInlining(llvm::Function *function) {
+  function->removeFnAttr(llvm::Attribute::AlwaysInline);
+  function->removeFnAttr(llvm::Attribute::InlineHint);
+  function->addFnAttr(llvm::Attribute::NoInline);
 }
 
 }  // namespace
@@ -97,11 +97,11 @@ void Translator::EnableDeferredInlining(void) {
   if (!intrinsics->defer_inlining) return;
   DisableInlining(intrinsics->defer_inlining);
 
-  for (auto U : intrinsics->defer_inlining->users()) {
-    if (auto C = llvm::dyn_cast_or_null<llvm::CallInst>(U)) {
-      auto B = C->getParent();
-      auto F = B->getParent();
-      DisableInlining(F);
+  for (auto callers : intrinsics->defer_inlining->users()) {
+    if (auto call_instr = llvm::dyn_cast_or_null<llvm::CallInst>(callers)) {
+      auto bb = call_instr->getParent();
+      auto caller = bb->getParent();
+      DisableInlining(caller);
     }
   }
 }
@@ -109,52 +109,54 @@ void Translator::EnableDeferredInlining(void) {
 // Find existing exported functions and variables. This is for the sake of
 // linking functions of the same names across CFG files.
 void Translator::IdentifyExistingSymbols(void) {
-  for (auto &F : module->functions()) {
-    std::string name = F.getName();
+  for (auto &function : module->functions()) {
+    std::string name = function.getName();
     if (module->getNamedMetadata(NamedSymbolMetaId(name))) {
-      functions[name] = &F;
+      functions[name] = &function;
     }
   }
 
-  for (auto &V : module->globals()) {
-    std::string name = V.getName();
+  for (auto &value : module->globals()) {
+    std::string name = value.getName();
     if (module->getNamedMetadata(NamedSymbolMetaId(name))) {
-      symbols[name] = &V;
+      symbols[name] = &value;
     }
   }
 }
 
 namespace {
 
-void InitBlockFuncAttributes(llvm::Function *BF, const llvm::Function *TF) {
-  BF->setAttributes(TF->getAttributes());
-  InitFunctionAttributes(BF);
-  auto args = BF->arg_begin();
+void InitBlockFuncAttributes(llvm::Function *new_block_func,
+                             const llvm::Function *template_func) {
+  new_block_func->setAttributes(template_func->getAttributes());
+  InitFunctionAttributes(new_block_func);
+  auto args = new_block_func->arg_begin();
   (args++)->setName("state");
   args->setName("pc");
 }
 
-llvm::Function *GetBlockFunction(llvm::Module *M,
-                                 const llvm::Function *TF,
-                                 std::string name) {
-  auto func_type = TF->getFunctionType();
-  auto BF = llvm::dyn_cast<llvm::Function>(
-      M->getOrInsertFunction(name, func_type));
-  InitBlockFuncAttributes(BF, TF);
-  BF->setLinkage(llvm::GlobalValue::PrivateLinkage);
-  return BF;
+llvm::Function *GetOrCreateBlockFunction(llvm::Module *module,
+                                         const llvm::Function *template_func,
+                                         std::string name) {
+  auto func_type = template_func->getFunctionType();
+  auto new_block_func = llvm::dyn_cast<llvm::Function>(
+      module->getOrInsertFunction(name, func_type));
+  InitBlockFuncAttributes(new_block_func, template_func);
+  new_block_func->setLinkage(llvm::GlobalValue::PrivateLinkage);
+  return new_block_func;
 }
 
 // Add the address of the block as a special meta-data flag.
-static void SetMetaDataAddress(llvm::Module *M, const std::string &block_name,
-                               uint64_t block_address) {
+static void SetMetaDataAddress(llvm::Module *module,
+                               const std::string &block_name,
+                               uint64_t block_addr) {
   std::stringstream ss;
   ss << "mcsema_address:" << block_name;
-  auto &C = M->getContext();
-  auto Int64Ty = llvm::Type::getInt64Ty(C);
-  auto CI = llvm::ConstantInt::get(Int64Ty, block_address, false);
-  auto CM = llvm::ConstantAsMetadata::get(CI);
-  M->addModuleFlag(llvm::Module::Warning, ss.str(), CM);
+  auto &context = module->getContext();
+  auto int64_type = llvm::Type::getInt64Ty(context);
+  auto block_addr_val = llvm::ConstantInt::get(int64_type, block_addr, false);
+  auto meta = llvm::ConstantAsMetadata::get(block_addr_val);
+  module->addModuleFlag(llvm::Module::Warning, ss.str(), meta);
 }
 
 }  // namespace
@@ -167,13 +169,13 @@ void Translator::CreateFunctionsForBlocks(const cfg::Module *cfg) {
   }
 
   for (const auto &block : cfg->blocks()) {
-    auto &BF = blocks[block.address()];
-    if (!BF) {
+    auto &block_func = blocks[block.address()];
+    if (!block_func) {
       std::stringstream ss;
       ss << "__lifted_block_" << binary_id << "_0x"
          << std::hex << block.address();
 
-      BF = GetBlockFunction(module, basic_block, ss.str());
+      block_func = GetOrCreateBlockFunction(module, basic_block, ss.str());
       SetMetaDataAddress(module, ss.str(), block.address());
 
       // This block is externally visible so change its linkage and make a new
@@ -183,9 +185,10 @@ void Translator::CreateFunctionsForBlocks(const cfg::Module *cfg) {
         ss2 << "__extern_block_" << binary_id << "_0x"
            << std::hex << block.address();
 
-        auto EF = GetBlockFunction(module, basic_block, ss2.str());
-        EF->setLinkage(llvm::GlobalValue::ExternalLinkage);
-        AddTerminatingTailCall(EF, BF, block.address());
+        auto extern_block_func = GetOrCreateBlockFunction(
+            module, basic_block, ss2.str());
+        extern_block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
+        AddTerminatingTailCall(extern_block_func, block_func, block.address());
       }
     }
   }
@@ -220,15 +223,15 @@ void Translator::CreateExternalFunctions(const cfg::Module *cfg) {
     CHECK(!(func.is_exported() && func.is_imported()))
         << "Function " << func_name << " can't be imported and exported.";
 
-    llvm::Function *&F = functions[func_name];
-    if (!F) {
-      F = GetBlockFunction(module, basic_block, func_name);
+    llvm::Function *&extern_func = functions[func_name];
+    if (!extern_func) {
+      extern_func = GetOrCreateBlockFunction(module, basic_block, func_name);
 
       // To get around some issues that `opt` has.
-      F->addFnAttr(llvm::Attribute::NoBuiltin);
-      F->addFnAttr(llvm::Attribute::OptimizeNone);
-      F->addFnAttr(llvm::Attribute::NoInline);
-      F->setLinkage(llvm::GlobalValue::ExternalWeakLinkage);
+      extern_func->addFnAttr(llvm::Attribute::NoBuiltin);
+      extern_func->addFnAttr(llvm::Attribute::OptimizeNone);
+      extern_func->addFnAttr(llvm::Attribute::NoInline);
+      extern_func->setLinkage(llvm::GlobalValue::ExternalWeakLinkage);
     }
 
     // Mark this symbol as external. We do this so that we can pick up on it
@@ -244,20 +247,20 @@ void Translator::LinkExternalFunctionsToBlocks(const cfg::Module *cfg) {
     if (!func.address()) continue;
 
     auto func_name = CanonicalName(arch->os_name, func.name());
-    auto F = functions[func_name];
-    auto &BF = blocks[func.address()];
+    auto extern_func = functions[func_name];
+    auto &block_impl_func = blocks[func.address()];
 
     // In the case of an exported function, redirect the function's
     // implementation to a locally defined block.
     if (func.is_exported()) {
 
-      CHECK(nullptr != BF)
+      CHECK(nullptr != block_impl_func)
           << "Exported function " << func_name << " has no address!";
 
-      CHECK(F->isDeclaration())
+      CHECK(extern_func->isDeclaration())
           << "Function " << func_name << " is already defined!";
 
-      AddTerminatingTailCall(F, BF, func.address());
+      AddTerminatingTailCall(extern_func, block_impl_func, func.address());
 
     // In the case of ELF binaries, we tend to see a call to something like
     // `malloc@plt` that is responsible for finding and invoking the actual
@@ -266,10 +269,10 @@ void Translator::LinkExternalFunctionsToBlocks(const cfg::Module *cfg) {
     //
     // TODO(pag): What about versioned ELF symbols?
     } else if (func.is_imported()) {
-      if (!BF) {
-        BF = F;
+      if (!block_impl_func) {
+        block_impl_func = extern_func;
       } else {
-        AddTerminatingTailCall(BF, F);
+        AddTerminatingTailCall(block_impl_func, extern_func);
       }
     }
   }
@@ -280,26 +283,33 @@ namespace {
 // Clone the block method template `TF` into a specific method `BF` that
 // will contain lifted code.
 static std::vector<llvm::BasicBlock *> InitBlockFunction(
-    llvm::Function *BF, const llvm::Function *TF, const cfg::Block &block) {
+    llvm::Function *block_func,
+    const llvm::Function *template_func,
+    const cfg::Block &block) {
+
   llvm::ValueToValueMapTy var_map;
-  auto targs = TF->arg_begin();
-  auto bargs = BF->arg_begin();
-  for (; targs != TF->arg_end(); ++targs, ++bargs) {
+  auto targs = template_func->arg_begin();
+  auto bargs = block_func->arg_begin();
+  for (; targs != template_func->arg_end(); ++targs, ++bargs) {
     var_map[&*targs] = &*bargs;
   }
 
-  llvm::SmallVector<llvm::ReturnInst *, 1> returns;
-  llvm::CloneFunctionInto(BF, TF, var_map, false, returns);
+  llvm::SmallVector<llvm::ReturnInst *, 1> return_instrs;
+  llvm::CloneFunctionInto(
+      block_func, template_func, var_map, false, return_instrs);
 
-  InitBlockFuncAttributes(BF, TF);
+  InitBlockFuncAttributes(block_func, template_func);
 
-  auto R = returns[0];
-  R->removeFromParent();
-  delete R;
+  // We're cloning the function, and we want to keep all of the variables
+  // defined in the function, but it has an implicit return that we need
+  // to remove so that we can add instructions at the end.
+  auto return_instr = return_instrs[0];
+  return_instr->removeFromParent();
+  delete return_instr;
 
   std::vector<llvm::BasicBlock *> instruction_blocks;
   instruction_blocks.reserve(block.instructions_size());
-  instruction_blocks.push_back(&(BF->back()));
+  instruction_blocks.push_back(&(block_func->back()));
   for (const auto &instr : block.instructions()) {
 
     // Name the block according to the instruction's address.
@@ -307,8 +317,9 @@ static std::vector<llvm::BasicBlock *> InitBlockFunction(
     ss << "0x" << std::hex << instr.address();
 
     // Create a block for this instruction.
-    auto B = llvm::BasicBlock::Create(BF->getContext(), ss.str(), BF);
-    instruction_blocks.push_back(B);
+    auto basic_block = llvm::BasicBlock::Create(
+        block_func->getContext(), ss.str(), block_func);
+    instruction_blocks.push_back(basic_block);
   }
   return instruction_blocks;
 }
@@ -345,25 +356,26 @@ void Translator::TerminateBlockMethod(const cfg::Block &block,
 
 // Lift code contained in blocks into the block methods.
 void Translator::LiftBlocks(const cfg::Module *cfg) {
-  llvm::legacy::FunctionPassManager FPM(module);
-  FPM.add(llvm::createDeadCodeEliminationPass());
-  FPM.add(llvm::createCFGSimplificationPass());
-  FPM.add(llvm::createPromoteMemoryToRegisterPass());
-  FPM.add(llvm::createReassociatePass());
-  FPM.add(llvm::createInstructionCombiningPass());
-  FPM.add(llvm::createDeadStoreEliminationPass());
+  llvm::legacy::FunctionPassManager func_pass_manager(module);
+  func_pass_manager.add(llvm::createDeadCodeEliminationPass());
+  func_pass_manager.add(llvm::createCFGSimplificationPass());
+  func_pass_manager.add(llvm::createPromoteMemoryToRegisterPass());
+  func_pass_manager.add(llvm::createReassociatePass());
+  func_pass_manager.add(llvm::createInstructionCombiningPass());
+  func_pass_manager.add(llvm::createDeadStoreEliminationPass());
 
   for (const auto &block : cfg->blocks()) {
     LOG_IF(WARNING, !block.instructions_size())
         << "Block at " << block.address() << " has no instructions!";
 
-    auto BF = GetLiftedBlockForPC(block.address());
-    if (!BF->isDeclaration()) {
+    auto block_func = GetLiftedBlockForPC(block.address());
+    if (!block_func->isDeclaration()) {
       LOG(WARNING) << "Ignoring already lifted block at " << block.address();
       continue;
     }
 
-    const auto instruction_blocks = InitBlockFunction(BF, basic_block, block);
+    const auto instruction_blocks = InitBlockFunction(
+        block_func, basic_block, block);
 
     // Lift the instructions into the block in reverse order. This helps for
     // using the results of backward data-flow analyses.
@@ -381,18 +393,19 @@ void Translator::LiftBlocks(const cfg::Module *cfg) {
       }
     }
 
-    TerminateBlockMethod(block, BF);
+    TerminateBlockMethod(block, block_func);
 
     // Perform simple, incremental optimizations on the block functions to
     // avoid OOMs.
-    FPM.run(*BF);
+    func_pass_manager.run(*block_func);
   }
 }
 
 // Lift an instruction into a basic block. This does some minor sanity checks
 // then dispatches to the arch-specific translator.
 void Translator::LiftInstructionIntoBlock(
-    const cfg::Block &block, const cfg::Instr &instr, llvm::BasicBlock *B) {
+    const cfg::Block &block, const cfg::Instr &instr,
+    llvm::BasicBlock *instr_block) {
 
   CHECK(0 < instr.size())
       << "Can't decode zero-sized instruction at " << instr.address();
@@ -400,7 +413,7 @@ void Translator::LiftInstructionIntoBlock(
   CHECK(instr.size() == instr.bytes().length())
       << "Instruction size mismatch for instruction at " << instr.address();
 
-  arch->LiftInstructionIntoBlock(*this, block, instr, B);
+  arch->LiftInstructionIntoBlock(*this, block, instr, instr_block);
 }
 
 void Translator::LiftCFG(const cfg::Module *cfg) {
@@ -440,12 +453,16 @@ void Translator::AnalyzeCFG(const cfg::Module *cfg) {
 }
 
 llvm::Function *Translator::GetLiftedBlockForPC(uintptr_t pc) const {
-  auto F = blocks[pc];
-  if (!F) {
+  auto block_func = blocks[pc];
+
+  // Not being able the find the CFG for a block is not a fatal error, it could
+  // be that we don't know or want to know all the things up-front but instead
+  // want to resolve them lazily (in a runtime).
+  if (!block_func) {
     LOG(ERROR) << "Could not find lifted block for PC " << pc;
-    F = intrinsics->missing_block;
+    block_func = intrinsics->missing_block;
   }
-  return F;
+  return block_func;
 }
 
 }  // namespace mcsema

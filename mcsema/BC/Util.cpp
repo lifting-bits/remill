@@ -37,121 +37,126 @@ llvm::Function *BlockMap::operator[](uintptr_t pc) const {
 }
 
 // Initialize the attributes for a lifted function.
-void InitFunctionAttributes(llvm::Function *F) {
+void InitFunctionAttributes(llvm::Function *function) {
   // This affects code generation. The key thing here is to disallow dead
   // argument elimination in LLVM's optimizer.
-  F->addFnAttr(llvm::Attribute::Naked);
+  function->addFnAttr(llvm::Attribute::Naked);
 
   // Make sure functions are treated as if they return. LLVM doesn't like
   // mixing must-tail-calls with no-return.
-  F->removeFnAttr(llvm::Attribute::NoReturn);
+  function->removeFnAttr(llvm::Attribute::NoReturn);
 
   // Don't use any exception stuff.
-  F->addFnAttr(llvm::Attribute::NoUnwind);
-  F->removeFnAttr(llvm::Attribute::UWTable);
+  function->addFnAttr(llvm::Attribute::NoUnwind);
+  function->removeFnAttr(llvm::Attribute::UWTable);
 
   // To use must-tail-calls everywhere we need to use the `fast` calling
   // convention, where it's up the LLVM to decide how to pass arguments.
-  F->setCallingConv(llvm::CallingConv::Fast);
+  function->setCallingConv(llvm::CallingConv::Fast);
 
   // Mark everything for inlining, but don't require it.
-  F->addFnAttr(llvm::Attribute::InlineHint);
+  function->addFnAttr(llvm::Attribute::InlineHint);
 }
 
 // Create a tail-call from one lifted function to another.
-void AddTerminatingTailCall(llvm::Function *From, llvm::Function *To,
+void AddTerminatingTailCall(llvm::Function *source_func,
+                            llvm::Function *dest_func,
                             uintptr_t addr) {
-  if (From->isDeclaration()) {
+  if (source_func->isDeclaration()) {
     std::stringstream ss;
     ss << "0x" << std::hex << addr;
-    llvm::BasicBlock::Create(From->getContext(), ss.str(), From);
+    llvm::BasicBlock::Create(source_func->getContext(), ss.str(), source_func);
   }
-  AddTerminatingTailCall(&(From->back()), To, addr);
+  AddTerminatingTailCall(&(source_func->back()), dest_func, addr);
 }
 
-void AddTerminatingTailCall(llvm::BasicBlock *B, llvm::Function *To,
+void AddTerminatingTailCall(llvm::BasicBlock *source_block,
+                            llvm::Function *target_func,
                             uintptr_t addr) {
-  LOG_IF(FATAL, !To)
+  LOG_IF(FATAL, !target_func)
       << "Target function/block does not exist!";
 
-  auto ToTy = To->getFunctionType();
-
-  LOG_IF(FATAL, 2 != ToTy->getNumParams())
+  auto target_func_type = target_func->getFunctionType();
+  LOG_IF(FATAL, 2 != target_func_type->getNumParams())
       << "Expected one argument for call to: "
-      << (To ? To->getName().str() : "<unreachable>");
+      << (target_func ? target_func->getName().str() : "<unreachable>");
 
-  auto Arg2Ty = ToTy->getParamType(1);
-  if (auto IntPtrTy = llvm::dyn_cast<llvm::IntegerType>(Arg2Ty)) {
-    AddTerminatingTailCall(
-        B, To, llvm::ConstantInt::get(IntPtrTy, addr, false));
+  auto addr_arg = target_func_type->getParamType(1);
+  if (auto addr_type = llvm::dyn_cast<llvm::IntegerType>(addr_arg)) {
+    AddTerminatingTailCall(source_block, target_func,
+                           llvm::ConstantInt::get(addr_type, addr, false));
+
   } else {
     LOG(FATAL)
-        << "Expected second parameter to function " << To->getName().str()
-        << " to be an integral type.";
+        << "Expected second parameter to function "
+        << target_func->getName().str() << " to be an integral type.";
   }
 }
 
-void AddTerminatingTailCall(llvm::BasicBlock *B, llvm::Function *To,
+void AddTerminatingTailCall(llvm::BasicBlock *source_block,
+                            llvm::Function *target_func,
                             llvm::Value *addr) {
-  LOG_IF(FATAL, !To)
+  LOG_IF(FATAL, !target_func)
       << "Target function/block does not exist!";
 
-  LOG_IF(ERROR, B->getTerminator() || B->getTerminatingMustTailCall())
+  LOG_IF(ERROR, source_block->getTerminator() ||
+                source_block->getTerminatingMustTailCall())
       << "Block already has a terminator; not adding fall-through call to: "
-      << (To ? To->getName().str() : "<unreachable>");
+      << (target_func ? target_func->getName().str() : "<unreachable>");
 
-  LOG_IF(FATAL, 2 != To->getFunctionType()->getNumParams())
+  LOG_IF(FATAL, 2 != target_func->getFunctionType()->getNumParams())
       << "Expected two arguments for call to: "
-      << (To ? To->getName().str() : "<unreachable>");
+      << (target_func ? target_func->getName().str() : "<unreachable>");
 
-  llvm::IRBuilder<> ir(B);
-  llvm::Function *F = B->getParent();
+  llvm::IRBuilder<> ir(source_block);
+  llvm::Function *source_func = source_block->getParent();
   std::vector<llvm::Value *> args;
-  args.push_back(FindStatePointer(F));
+  args.push_back(FindStatePointer(source_func));
   args.push_back(addr);
-  llvm::CallInst *C = ir.CreateCall(To, args);
-  C->setAttributes(To->getAttributes());
+  llvm::CallInst *call_target_instr = ir.CreateCall(target_func, args);
+  call_target_instr->setAttributes(target_func->getAttributes());
 
   // Make sure we tail-call from one block method to another.
-  C->setTailCallKind(llvm::CallInst::TCK_MustTail);
-  C->setCallingConv(llvm::CallingConv::Fast);
+  call_target_instr->setTailCallKind(llvm::CallInst::TCK_MustTail);
+  call_target_instr->setCallingConv(llvm::CallingConv::Fast);
   ir.CreateRetVoid();
 }
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
-llvm::Value *FindVarInFunction(llvm::Function *F, std::string name,
+llvm::Value *FindVarInFunction(llvm::Function *function, std::string name,
                                bool allow_failure) {
-  for (auto &I : F->getEntryBlock()) {
-    if (I.getName() == name) {
-      return &I;
+  for (auto &instr : function->getEntryBlock()) {
+    if (instr.getName() == name) {
+      return &instr;
     }
   }
   LOG_IF(FATAL, !allow_failure)
     << "Could not find variable " << name << " in function "
-    << F->getName().str();
+    << function->getName().str();
   return nullptr;
 }
 
 // Find the machine state pointer.
-llvm::Value *FindStatePointer(llvm::Function *F) {
-  if (2 != F->arg_size()) {
+llvm::Value *FindStatePointer(llvm::Function *function) {
+  if (2 != function->arg_size()) {
     LOG(FATAL)
         << "Invalid block-like function. Expected two arguments: state "
-        << "pointer and program counter in function " << F->getName().str();
+        << "pointer and program counter in function "
+        << function->getName().str();
   }
-  return &*F->getArgumentList().begin();
+  return &*function->getArgumentList().begin();
 }
 
 // Find a function with name `name` in the module `M`.
-llvm::Function *FindFunction(const llvm::Module *M, std::string name) {
-  return M->getFunction(name);
+llvm::Function *FindFunction(const llvm::Module *module, std::string name) {
+  return module->getFunction(name);
 }
 
 // Find a global variable with name `name` in the module `M`.
-llvm::GlobalVariable *FindGlobaVariable(const llvm::Module *M,
+llvm::GlobalVariable *FindGlobaVariable(const llvm::Module *module,
                                         std::string name) {
-  return M->getGlobalVariable(name);
+  return module->getGlobalVariable(name);
 }
 
 // Reads an LLVM module from a file.
@@ -167,27 +172,68 @@ llvm::Module *LoadModuleFromFile(std::string file_name) {
   return module;
 }
 
+namespace {
+
+static char gTempOutputPath[PATH_MAX] = {'\0'};
+
+// Create a temporary file for storing the protocol buffer.
+static int CreateOutputFd(const std::string &tmp_dir) {
+  std::stringstream ss;
+  const char *slash = "/";
+
+  if (tmp_dir.empty() || '/' == tmp_dir[tmp_dir.size() - 1]) {
+    slash = "";
+  }
+
+  ss << tmp_dir << slash << ".mcsema2_bc_XXXXXX";
+  auto tmp_path_str = ss.str();
+
+  LOG_IF(FATAL, tmp_path_str.size() >= PATH_MAX)
+      << "Temporary path for output BC file is too long to fit into a "
+      << "`PATH_MAX`-sized buffer.";
+
+  strncpy(gTempOutputPath, tmp_path_str.c_str(), tmp_path_str.size());
+  auto tmp_fd = mkostemp(gTempOutputPath, 0666);
+
+  LOG_IF(FATAL, -1 == tmp_fd)
+      << "Unable to create temporary BC file: " << gTempOutputPath;
+
+  return tmp_fd;
+}
+
+}  // namespace
+
 // Store an LLVM module into a file.
-void StoreModuleToFile(llvm::Module *M, std::string file_name) {
+void StoreModuleToFile(llvm::Module *module,
+                       std::string temp_dir,
+                       std::string file_name) {
   std::string error;
   llvm::raw_string_ostream error_stream(error);
 
-  if (llvm::verifyModule(*M, &error_stream)) {
+  if (llvm::verifyModule(*module, &error_stream)) {
     LOG(FATAL)
         << "Error writing module to file " << file_name << ". " << error;
   }
 
-  std::error_code ec;
-  llvm::tool_output_file bc(file_name.c_str(), ec, llvm::sys::fs::F_None);
+  do {
+    std::error_code ec;
+    llvm::tool_output_file bc(file_name.c_str(), CreateOutputFd(temp_dir));
 
-  CHECK(!ec)
-      << "Unable to open output bitcode file for writing: " << file_name;
+    CHECK(!ec)
+        << "Unable to open output bitcode file for writing: " << file_name;
 
-  llvm::WriteBitcodeToFile(M, bc.os());
-  bc.keep();
+    llvm::WriteBitcodeToFile(module, bc.os());
+    bc.keep();
 
-  CHECK(!ec)
-      << "Error writing bitcode to file: " << file_name;
+    CHECK(!ec)
+        << "Error writing bitcode to file: " << file_name;
+  } while(false);
+
+  auto ret = rename(gTempOutputPath, file_name.c_str());
+  LOG_IF(FATAL, 0 != ret)
+      << "Unable to rename temporary BC file ("
+      << gTempOutputPath << ") to final BC file ("
+      << file_name << ").";
 }
 
 }  // namespace mcsema
