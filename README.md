@@ -29,7 +29,9 @@ like `/tmp/tmp.E3RWcczulG.cfg`.
 Lets assume that `/path/to/binary` is a 32-bit ELF file. Now you can do the following:
 
 ```
-./build/cfg_to_bc --arch_in=x86 --arch_out=x86 --os_in=linux --os_out=linux --bc_in=./generated/sem_x86.bc --bc_out=$BIN.bc --cfg=$CFG
+/path/to/mcsema2/build/cfg_to_bc \
+    --arch_in=x86 --arch_out=x86 --os_in=linux --os_out=linux \
+    --bc_in=/path/to/mcsema2/generated/sem_x86.bc --bc_out=$BIN.bc --cfg=$CFG
 ```
 
 For 64-bit x86 programs, specificy `--arch_in=amd64`. If you intend to run a 32-bit
@@ -38,9 +40,14 @@ Similar switching can be done for the OS. The `--bc_in` flag also needs to
 be changes to point at the AMD64 semantics bitcode file. For example, `sem_amd64.bc`.
 If your lifted code uses AVX, then you can use `sem_amd64_avx.bc`.
 
-*Note:* This arch/OS switching only affects the ABI used by the bitcode, and how
+**Note:** This arch/OS switching only affects the ABI used by the bitcode, and how
 instructions are decoded. The translator itself has no other concept of arch/OS
 types. It is up to the next tool in the pipeline to implement the desired behavior.
+
+**Note:** Always use absolute paths when specifying files to McSema2. I have
+no patience for handling paths in a 100% correct, generic way in C++. To that
+end, users of the tool should make it as easy as possible for McSema2 to do the
+right thing.
 
 #### Optimizing the bitcode
 
@@ -53,7 +60,7 @@ analysis iterations to perform. By default, the maximum number is `0` (disabled)
 For a comprehensive analysis, specify a large number, e.g.:
 
 ```
-./build/cfg_to_bc ... --max_dataflow_analysis_iterations=99999 ...
+/path/to/mcsema2/build/cfg_to_bc ... --max_dataflow_analysis_iterations=99999 ...
 ```
 
 In order to maintain correctness, the data-flow analysis is conservative.
@@ -76,12 +83,12 @@ To recompile the code, run `./scripts/build.py`. Ideally, you should install
 the `concurrent.futures` package to make the build faster, though it is not
 required.
 
-To recompile the semantics, e.g. if you add an instruction, then run `./scripts/compile_semantics.sh`.
+To recompile the semantics (if you add an instruction) then run `./scripts/compile_semantics.sh`.
 If you want to test your new semantics, then also recompile the code using the
 above command.
 
 If you make any changes to the register machine `State` structure, then
 before recompiling, run the script `./scripts/print_x86_save_state_asm.sh`.
-This produces an assembly source code file uses by the unit tests for marshaling
+This produces an assembly source code file used by the unit tests for marshaling
 the machine state to/from the `State` structure.
 
