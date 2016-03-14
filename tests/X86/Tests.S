@@ -232,10 +232,6 @@ SYMBOL(InvokeTestCase):
     SET_VEC(1)
     SET_VEC(2)
     SET_VEC(3)
-    SET_VEC(4)
-    SET_VEC(5)
-    SET_VEC(6)
-    SET_VEC(7)
 
     xchg RSP, [RIP + SYMBOL(gStackSwitcher)]  /* Switch onto recording stack. */
 # define STATE_PTR SYMBOL(gLiftedState)
@@ -303,6 +299,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/CONVERT/CWD.S"
 #include "tests/X86/CONVERT/CWDE.S"
 
+#include "tests/X86/DATAXFER/MOVAPS.S"
 #include "tests/X86/DATAXFER/MOVD.S"
 #include "tests/X86/DATAXFER/MOVQ.S"
 #include "tests/X86/DATAXFER/XCHG.S"
