@@ -253,6 +253,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/ABI.S"
 
 /* Bring in all semantic tests. */
+
 #include "tests/X86/BINARY/ADC.S"
 #include "tests/X86/BINARY/ADD.S"
 #include "tests/X86/BINARY/CMP.S"
@@ -281,6 +282,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/CONVERT/CWDE.S"
 
 #include "tests/X86/DATAXFER/MOVD.S"
+#include "tests/X86/DATAXFER/MOVQ.S"
 
 #include "tests/X86/LOGICAL/AND.S"
 #include "tests/X86/LOGICAL/NOT.S"
