@@ -299,9 +299,11 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/CONVERT/CWD.S"
 #include "tests/X86/CONVERT/CWDE.S"
 
+#include "tests/X86/DATAXFER/MOVAPD.S"
 #include "tests/X86/DATAXFER/MOVAPS.S"
 #include "tests/X86/DATAXFER/MOVD.S"
 #include "tests/X86/DATAXFER/MOVQ.S"
+#include "tests/X86/DATAXFER/MOVUPD.S"
 #include "tests/X86/DATAXFER/MOVUPS.S"
 #include "tests/X86/DATAXFER/XCHG.S"
 

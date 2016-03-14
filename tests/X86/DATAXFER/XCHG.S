@@ -1,6 +1,6 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-TEST_BEGIN(XCHGr8r8, 2)
+TEST_BEGIN(XCHGr8r8, 1)
 TEST_INPUTS(
     0,
     0x4141,
