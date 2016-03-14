@@ -523,6 +523,20 @@ static bool IsVectorReg(xed_reg_enum_t reg) {
   }
 }
 
+static bool IsSSE(const xed_decoded_inst_t *xedd) {
+  switch (xed_decoded_inst_get_extension(xedd)) {
+    case XED_EXTENSION_SSE:
+    case XED_EXTENSION_SSE2:
+    case XED_EXTENSION_SSE3:
+    case XED_EXTENSION_SSE4:
+    case XED_EXTENSION_SSE4A:
+    case XED_EXTENSION_SSSE3:
+      return true;
+    default:
+      return false;
+  }
+}
+
 }  // namespace
 
 // Lift a register operand. We need to handle both reads and writes. We place
@@ -544,8 +558,7 @@ void InstructionTranslator::LiftRegister(const xed_operand_t *xedo) {
     // register, thus breaking data dependencies (sort of like how writing to
     // a 32-bit register on a 64-bit system zeroes the high bits).
     std::string legacy_suffix;
-    if (XED_CATEGORY_SSE == xed_decoded_inst_get_category(xedd) &&
-        XED_REG_CLASS_XMM == xed_gpr_reg_class(reg)) {
+    if (XED_REG_CLASS_XMM == xed_reg_class(reg) && IsSSE(xedd)) {
       legacy_suffix = "_legacy";
     }
     llvm::LoadInst *RegAddr = ir.CreateLoad(

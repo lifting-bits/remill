@@ -16,12 +16,12 @@ struct VectorAssign;
     struct VectorAssign<base_type, VecType, IntVecType> { \
       ALWAYS_INLINE static void assign(VecType *dest, const IntVecType &src) { \
         _Pragma("unroll") \
-        for (auto i = 0UL; i < sizeof(IntVecType); ++i) { \
-          dest->sel[i] = src[i]; \
+        for (auto i = 0UL; i < (sizeof(VecType)/sizeof(base_type)); ++i) { \
+          dest->sel[i] = 0; \
         } \
         _Pragma("unroll") \
-        for (auto i = sizeof(IntVecType); i < sizeof(VecType); ++i) { \
-          dest->sel[i] = 0; \
+        for (auto i = 0UL; i < (sizeof(IntVecType)/sizeof(base_type)); ++i) { \
+          dest->sel[i] = src[i]; \
         } \
       } \
     }
@@ -87,7 +87,7 @@ struct VecWriter {
   ALWAYS_INLINE void operator=(V val) const {
     typedef typename SingletonVectorType<V>::Type VecType;
     VecType vec = {val};
-    VectorAssign<V, T, VecType>::assign(val_ref, val);
+    VectorAssign<V, T, VecType>::assign(val_ref, vec);
   }
 
   T *val_ref;
