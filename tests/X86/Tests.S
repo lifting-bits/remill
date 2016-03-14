@@ -190,7 +190,7 @@ TEST_FUNC(instr_name, num_args): ; \
       .macro IGNORE_ ## instr_name ## __LINE__
 # define TEST_END_64 \
       .endm ;
-  # define TEST_BEGIN_32(instr_name, num_args, ...) \
+# define TEST_BEGIN_32(instr_name, num_args, ...) \
     TEST_BEGIN(instr_name ## _32, num_args, B32_ ## __VA_ARGS__)
 # define TEST_END_32 TEST_END
 #endif  /* 64 == ADDRESS_SIZE_BITS */
@@ -208,6 +208,16 @@ TEST_FUNC(instr_name, num_args): ; \
     .extern SYMBOL(gStackSaveSlot)
 
     .text
+
+
+// Set all bits in a vector.
+#if HAS_FEATURE_AVX
+# define SET_VEC(num) vpcmpeqw ymm ## num , ymm ## num , ymm ## num
+#else
+# define SET_VEC(num) pcmpeqw xmm ## num , xmm ## num
+#endif
+
+
     /* This function tail-calls to the test that we want to run via the
      * `gTestToRun` pointer.
      */
@@ -215,6 +225,18 @@ TEST_FUNC(instr_name, num_args): ; \
     .globl SYMBOL(InvokeTestCase)
 SYMBOL(InvokeTestCase):
     .cfi_startproc
+
+    /* Set the bits of some of the vector regs to 1. This makes it easier to
+     * detect certain zeroing behavior. */
+    SET_VEC(0)
+    SET_VEC(1)
+    SET_VEC(2)
+    SET_VEC(3)
+    SET_VEC(4)
+    SET_VEC(5)
+    SET_VEC(6)
+    SET_VEC(7)
+
     xchg RSP, [RIP + SYMBOL(gStackSwitcher)]  /* Switch onto recording stack. */
 # define STATE_PTR SYMBOL(gLiftedState)
 # include "tests/X86/SaveState.S"
