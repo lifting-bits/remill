@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 
+DEBUG = False
 MCSEMA_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 CC = os.path.join(MCSEMA_DIR, "third_party", "bin", "clang")
@@ -105,10 +106,13 @@ def Command(*args):
   """Executes a command and waits for it to finish. If it fails
   then the command itself is printed out."""
   args = [str(a) for a in args]
+  debug_str = "{}\n\n".format(" ".join(args))
+  if DEBUG:
+    print debug_str
   try:
     return subprocess.check_output(args)
   except:
-    print "{}\n\n".format(" ".join(args))
+    print debug_str
     pass
 
 

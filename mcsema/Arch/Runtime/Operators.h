@@ -218,6 +218,51 @@ inline static addr_t A(MnW<T> m) {
   return m.addr;
 }
 
+namespace {
+template <typename T, typename U>
+inline static Vn<U> DownCastImpl(Vn<T> in) {
+  static_assert(sizeof(U) < sizeof(T), "Invalid vector down-cast.");
+  return {reinterpret_cast<U *>(in.val)};
+}
+
+template <typename T, typename U>
+inline static VnW<U> DownCastImpl(VnW<T> in) {
+  static_assert(sizeof(U) < sizeof(T), "Invalid vector down-cast.");
+  return {reinterpret_cast<U *>(in.val_ref)};
+}
+
+template <typename T, typename U>
+inline static Rn<U> DownCastImpl(Rn<T> in) {
+  static_assert(sizeof(U) < sizeof(T), "Invalid register down-cast.");
+  return {in.val};
+}
+
+template <typename T, typename U>
+inline static RnW<U> DownCastImpl(RnW<T> in) {
+  static_assert(sizeof(U) < sizeof(T), "Invalid register down-cast.");
+  return {reinterpret_cast<U *>(in.val_ref)};
+}
+
+
+template <typename T, typename U>
+inline static Mn<U> DownCastImpl(Mn<T> in) {
+  static_assert(sizeof(U) < sizeof(T), "Invalid memory down-cast.");
+  return {in.addr};
+}
+
+template <typename T, typename U>
+inline static MnW<U> DownCastImpl(MnW<T> in) {
+  static_assert(sizeof(U) < sizeof(T), "Invalid memory down-cast.");
+  return {in.addr};
+}
+}
+
+template <typename U, typename T>
+inline static U DownCast(T in) {
+  return DownCastImpl<typename BaseType<T>::Type,
+                      typename BaseType<U>::Type>(in);
+}
+
 // Convert a byte array into an 80-bit floating point value.
 ALWAYS_INLINE static arch_float80_t R(const float80_t &reg) {
   return *reinterpret_cast<const arch_float80_t *>(&(reg));

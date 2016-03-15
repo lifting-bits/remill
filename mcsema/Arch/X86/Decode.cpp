@@ -10,11 +10,11 @@ namespace mcsema {
 namespace x86 {
 namespace {
 
-const xed_state_t kXEDState32 = {
+static const xed_state_t kXEDState32 = {
     XED_MACHINE_MODE_LONG_COMPAT_32,
     XED_ADDRESS_WIDTH_32b};
 
-const xed_state_t kXEDState64 = {
+static const xed_state_t kXEDState64 = {
     XED_MACHINE_MODE_LONG_64,
     XED_ADDRESS_WIDTH_64b};
 
