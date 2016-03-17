@@ -6,11 +6,18 @@
 namespace {
 
 template <typename T>
+void PushValue(State &state, T val) {
+  W(state.gpr.rsp) = R(state.gpr.rsp) - sizeof(T);
+  MnW<T> push_addr = {A(state.gpr.rsp)};
+  W(push_addr) = val;
+}
+
+template <typename T>
 DEF_SEM(CALL, T target_pc) {
-  W(state.gpr.rsp) -= sizeof(A(state.gpr.rsp));
-  MnW<PC> sp = {A(state.gpr.rsp)};
-  W(sp) = __mcsema_create_program_counter(next_pc);
-  W(state.gpr.rip) = R(target_pc);
+  auto target = R(target_pc);
+  __mcsema_barrier_compiler();
+  PushValue<PC>(state, __mcsema_create_program_counter(next_pc));
+  W(state.gpr.rip) = target;
 }
 
 DEF_SEM(RET_IMM, I16 bytes) {
