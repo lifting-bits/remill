@@ -103,8 +103,11 @@ DEF_ISEL_SEM(LFENCE) {
   __mcsema_memory_order = __mcsema_barrier_load_load(__mcsema_memory_order);
 }
 
-DEF_ISEL_SEM(XLAT, M8 mem) {
-  W(state.gpr.rax.byte.low) = R(mem);
+DEF_ISEL_SEM(XLAT) {
+  const addr_t rbx = R(state.gpr.rbx);
+  const addr_t al = state.gpr.rax.byte.low;
+  M8 val = {rbx + al};
+  W(state.gpr.rax.byte.low) = R(val);
 }
 
 // Implemented via the `__mcsema_read_cpu_features` intrinsic.
