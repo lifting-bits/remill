@@ -259,7 +259,7 @@ SYMBOL(InvokeTestCase):
     push r13
     push r14
     push r15
-    call DoInvokeTestCase
+    call SYMBOL(DoInvokeTestCase)
     pop r15
     pop r14
     pop r13
