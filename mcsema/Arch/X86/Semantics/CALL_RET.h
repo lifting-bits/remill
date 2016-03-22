@@ -6,13 +6,6 @@
 namespace {
 
 template <typename T>
-void PushValue(State &state, T val) {
-  W(state.gpr.rsp) = R(state.gpr.rsp) - sizeof(T);
-  MnW<T> push_addr = {A(state.gpr.rsp)};
-  W(push_addr) = val;
-}
-
-template <typename T>
 DEF_SEM(CALL, T target_pc) {
   auto target = R(target_pc);
   __mcsema_barrier_compiler();
@@ -24,14 +17,6 @@ DEF_SEM(RET_IMM, I16 bytes) {
   Mn<PC> ret_addr_loc = {A(state.gpr.rsp)};
   W(state.gpr.rip) = R(ret_addr_loc);
   W(state.gpr.rsp) = R(state.gpr.rsp) + R(bytes) + sizeof(PC);
-}
-
-template <typename T>
-T PopValue(State &state) {
-  Mn<T> pop_addr = {A(state.gpr.rsp)};
-  const T pop_val = R(pop_addr);
-  W(state.gpr.rsp) = R(state.gpr.rsp) + sizeof(T);
-  return pop_val;
 }
 
 DEF_SEM(RET) {

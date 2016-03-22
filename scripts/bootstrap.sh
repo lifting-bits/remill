@@ -199,12 +199,12 @@ function download_and_extract_xed()
 {
     sub_category "Downloading and installing XED."
 
-    if [[ ! -e $DIR/blob/${XED_VERSION}.zip ]] ; then
-        error "Please download XED from ${XED_URL} and place it into ${DIR}/blob."
+    if [[ ! -e $DIR/blob/xed/${XED_VERSION}.zip ]] ; then
+        error "Please download XED from ${XED_URL} and place it into ${DIR}/blob/xed/."
     fi
 
     mkdir -p $DIR/third_party/src/xed
-    unzip $DIR/blob/${XED_VERSION}.zip -d $DIR/third_party/src/xed
+    unzip $DIR/blob/xed/${XED_VERSION}.zip -d $DIR/third_party/src/xed
 
     # 'install' XED.
     mkdir -p $DIR/third_party/include/intel

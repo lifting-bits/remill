@@ -160,6 +160,19 @@ void __mcsema_error(State &, addr_t) {
   siglongjmp(gJmpBuf, 0);
 }
 
+void __mcsema_read_cpu_features(State &state, addr_t) {
+  asm volatile(
+      "cpuid"
+      : "=a"(state.gpr.rax.dword),
+        "=b"(state.gpr.rbx.dword),
+        "=c"(state.gpr.rcx.dword),
+        "=d"(state.gpr.rdx.dword)
+      : "a"(state.gpr.rax.dword),
+        "c"(state.gpr.rcx.dword)
+      : "%rax", "%rbx", "%rcx", "%rdx"
+  );
+}
+
 void __mcsema_function_call(State &, addr_t) {
   __builtin_unreachable();
 }
@@ -292,14 +305,16 @@ static void RunWithFlags(const test::TestInfo *info,
   // the native test.
   lifted_state->rflag = flags;
 
+  // Set up the run's info.
+  gTestToRun = info->test_begin;
+  gStackSwitcher = (&gLiftedStack) + 1;
+
   // This will execute on `gStack`. The mechanism behind this is that the
   // stack pointer is swapped with `gStackSwitcher`. The idea here is that
   // we want to run the native and lifted testcases on the same stack so that
   // we can compare that they both operate on the stack in the same ways.
   auto native_test_faulted = false;
   if (!sigsetjmp(gJmpBuf, true)) {
-    gTestToRun = info->test_begin;
-    gStackSwitcher = (&gLiftedStack) + 1;
     InvokeTestCase(arg1, arg2, arg3);
   } else {
     native_test_faulted = true;

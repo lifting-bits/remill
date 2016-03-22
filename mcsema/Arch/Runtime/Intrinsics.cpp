@@ -69,4 +69,6 @@ void __mcsema_intrinsics(void) {
   USED(__mcsema_undefined_16);
   USED(__mcsema_undefined_32);
   USED(__mcsema_undefined_64);
+
+  USED(__mcsema_read_cpu_features);
 }

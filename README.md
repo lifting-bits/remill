@@ -92,3 +92,13 @@ before recompiling, run the script `./scripts/print_x86_save_state_asm.sh`.
 This produces an assembly source code file used by the unit tests for marshaling
 the machine state to/from the `State` structure.
 
+## Third-Party Dependencies
+
+### Intel XED
+
+McSema2 depends on and redistributes [Intel XED](https://software.intel.com/en-us/articles/xed-x86-encoder-decoder-software-library), a high-quality and fast x86 instruction encoded and decoder. XED is licensed under the What If pre-release license. A copy of this license can be found [here](blob/xed/LICENSE.md).
+
+### LLVM
+
+McSema2 depends on the [LLVM Compiler Infrastructure](http://llvm.org). A copy of this
+license can be found [here](http://llvm.org/releases/3.8.0/LICENSE.TXT).

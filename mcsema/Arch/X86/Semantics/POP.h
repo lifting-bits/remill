@@ -5,6 +5,14 @@
 
 namespace {
 
+template <typename T>
+T PopValue(State &state) {
+  Mn<T> pop_addr = {A(state.gpr.rsp)};
+  const T pop_val = R(pop_addr);
+  W(state.gpr.rsp) = R(state.gpr.rsp) + sizeof(T);
+  return pop_val;
+}
+
 // Note: Special handling of `dst` when it has the form `POP [xSP + ...]`
 //       is handled in the arch-specific instruction operand lifter.
 //

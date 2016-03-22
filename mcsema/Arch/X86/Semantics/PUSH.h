@@ -5,6 +5,13 @@
 
 namespace {
 
+template <typename T>
+void PushValue(State &state, T val) {
+  W(state.gpr.rsp) = R(state.gpr.rsp) - sizeof(T);
+  MnW<T> push_addr = {A(state.gpr.rsp)};
+  W(push_addr) = val;
+}
+
 template <typename S>
 DEF_SEM(PUSH, S val_) {
   typedef typename BaseType<S>::Type T;
@@ -137,8 +144,6 @@ DEF_ISEL_SEM(PUSHFQ) {
 762 PUSH PUSH_DS PUSH BASE I86 ATTRIBUTES: FIXED_BASE0 SCALABLE STACKPUSH0
 766 PUSH PUSH_FS PUSH BASE I86 ATTRIBUTES: FIXED_BASE0 SCALABLE STACKPUSH0
 767 PUSH PUSH_GS PUSH BASE I86 ATTRIBUTES: FIXED_BASE0 SCALABLE STACKPUSH0
-
-1017 ENTER ENTER_IMMw_IMMb MISC BASE I186 ATTRIBUTES: ATT_OPERAND_ORDER_EXCEPTION FIXED_BASE0 SCALABLE STACKPUSH0
 
  */
 

@@ -62,6 +62,9 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       interrupt_call(FindIntrinsic(module, "__mcsema_interrupt_call")),
       interrupt_return(FindIntrinsic(module, "__mcsema_interrupt_return")),
 
+      // Arch interaction.
+      read_cpu_features(FindIntrinsic(module, "__mcsema_read_cpu_features")),
+
       // Block that can't be found.
       missing_block(FindIntrinsic(module, "__mcsema_missing_block")),
 

@@ -100,8 +100,11 @@ extern order_t __mcsema_memory_order;
 [[gnu::used]] extern order_t __mcsema_atomic_begin(order_t);
 [[gnu::used]] extern order_t __mcsema_atomic_end(order_t);
 
-#define __mcsema_barrier_compiler()
+// Arch-specific feature lookup. Implemented as a pseudo control-flow
+// intrinsic.
+[[gnu::used]] extern void __mcsema_read_cpu_features(State &, addr_t addr);
 
+#define __mcsema_barrier_compiler()
 //  __asm__ __volatile__ ("" ::: "memory")
 
 }  // extern C

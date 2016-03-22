@@ -30,6 +30,9 @@ class IntrinsicTable {
   llvm::Function * const interrupt_call;
   llvm::Function * const interrupt_return;
 
+  // Arch interaction.
+  llvm::Function * const read_cpu_features;
+
   // Block that can't be found.
   llvm::Function * const missing_block;
 

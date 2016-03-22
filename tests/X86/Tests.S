@@ -222,8 +222,8 @@ TEST_FUNC(instr_name, num_args): ; \
      * `gTestToRun` pointer.
      */
     .align 16
-    .globl SYMBOL(InvokeTestCase)
-SYMBOL(InvokeTestCase):
+    .globl SYMBOL(DoInvokeTestCase)
+SYMBOL(DoInvokeTestCase):
     .cfi_startproc
 
     /* Set the bits of some of the vector regs to 1. This makes it easier to
@@ -239,6 +239,44 @@ SYMBOL(InvokeTestCase):
     jmp QWORD PTR DS:[RIP + SYMBOL(gTestToRun)]
     .cfi_endproc
 # undef STATE_PTR
+
+    .align 16
+    .globl SYMBOL(InvokeTestCase)
+SYMBOL(InvokeTestCase):
+    .cfi_startproc
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    push rbp
+    push r8
+    push r9
+    push r10
+    push r11
+    push r12
+    push r13
+    push r14
+    push r15
+    call DoInvokeTestCase
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop r11
+    pop r10
+    pop r9
+    pop r8
+    pop rbp
+    pop rdi
+    pop rsi
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
+    ret
+    .cfi_endproc
 
     .align 16
 SYMBOL(__x86_save_state_after):
@@ -315,6 +353,10 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/LOGICAL/OR.S"
 #include "tests/X86/LOGICAL/TEST.S"
 #include "tests/X86/LOGICAL/XOR.S"
+
+#include "tests/X86/MISC/CPUID.S"
+#include "tests/X86/MISC/ENTER.S"
+#include "tests/X86/MISC/LEA.S"
 
 #include "tests/X86/ROTATE/ROL.S"
 

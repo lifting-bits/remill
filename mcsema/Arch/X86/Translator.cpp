@@ -169,6 +169,9 @@ void InstructionTranslator::LiftIntoBlock(const Translator &lifter,
     if (!IsConditionalInterruptCall()) {
       AddTerminatingTailCall(basic_block, lifter.intrinsics->interrupt_call,
                              ReadPC(basic_block));
+    } else {
+      LOG(INFO)
+          << "Lifted program performs a conditional interrupt.";
     }
 
   } else if (IsInterruptReturn()) {
@@ -176,6 +179,13 @@ void InstructionTranslator::LiftIntoBlock(const Translator &lifter,
                            ReadPC(basic_block));
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
+
+  // CPUID. Lets a runtime or static analyzer decide what this means.
+  } else if (XED_ICLASS_CPUID == iclass) {
+    AddTerminatingTailCall(basic_block, lifter.intrinsics->read_cpu_features,
+                           NextPC());
+    LOG(INFO)
+        << "Lifted program requires access to CPU feature set.";
   }
 }
 
