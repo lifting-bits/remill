@@ -1,0 +1,6 @@
+This file is redist.txt.
+
+The files in the directories "include", "lib", "doc", "misc",
+"mbuild", and "examples" if present, are allowed to be redistributed
+subject to the terms of the license found in the LICENSE.txt file.
+
