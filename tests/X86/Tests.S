@@ -360,6 +360,9 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/MISC/LEAVE.S"
 #include "tests/X86/MISC/XLAT.S"
 
+#include "tests/X86/POP/POP.S"
+#include "tests/X86/PUSH/PUSH.S"
+
 #include "tests/X86/ROTATE/ROL.S"
 
 #include "tests/X86/SHIFT/SAR.S"

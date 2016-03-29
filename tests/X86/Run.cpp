@@ -25,7 +25,9 @@ namespace {
 typedef void (*LiftedFunc)(State *);
 
 struct alignas(128) Stack {
-  uint8_t bytes[SIGSTKSZ];
+  uint8_t _redzone1[128];
+  uint8_t bytes[(SIGSTKSZ / 128) * 128];
+  uint8_t _redzone2[128];
 };
 
 // Native test case code executes off of `gStack`. The state of the stack
@@ -40,11 +42,14 @@ static Stack gSigStack;
 static Flags gRflagsOff;
 static Flags gRflagsOn;
 
-static const auto gStackBase = reinterpret_cast<uintptr_t>(&gLiftedStack);
-static const auto gStackLimit = gStackBase + sizeof(Stack);
+static const auto gStackBase = reinterpret_cast<uintptr_t>(
+    &(gLiftedStack.bytes[0]));
+
+static const auto gStackLimit = reinterpret_cast<uintptr_t>(
+    &(gLiftedStack._redzone2[0]));
 
 template <typename T>
-ALWAYS_INLINE static T &AccessMemory(addr_t addr) {
+static T &AccessMemory(addr_t addr) {
   EXPECT_TRUE(addr > gStackBase && addr < gStackLimit);
   return *reinterpret_cast<T *>(static_cast<uintptr_t>(addr));
 }
@@ -78,7 +83,7 @@ uintptr_t gTestToRun = 0;
 // Used for swapping the stack pointer between `gStack` and the normal
 // call stack. This lets us run both native and lifted testcase code on
 // the same stack.
-Stack *gStackSwitcher = nullptr;
+uint8_t *gStackSwitcher = nullptr;
 
 // We need to capture the native flags state, and so we need a `PUSHFQ`.
 // Unfortunately, this will be done on the 'recording' stack (`gStack`) in
@@ -307,7 +312,7 @@ static void RunWithFlags(const test::TestInfo *info,
 
   // Set up the run's info.
   gTestToRun = info->test_begin;
-  gStackSwitcher = (&gLiftedStack) + 1;
+  gStackSwitcher = &(gLiftedStack._redzone2[0]);
 
   // This will execute on `gStack`. The mechanism behind this is that the
   // stack pointer is swapped with `gStackSwitcher`. The idea here is that
@@ -524,6 +529,7 @@ int main(int argc, char **argv) {
   }
 
   // Populate the random stack.
+  memset(&gRandomStack, 0, sizeof(gRandomStack));
   for (auto &b : gRandomStack.bytes) {
     b = static_cast<uint8_t>(random());
   }

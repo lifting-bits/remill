@@ -291,20 +291,32 @@ void InstructionTranslator::LiftGeneric(const Translator &lifter) {
   }
 }
 
+namespace {
+
+static std::string BlockName(uintptr_t pc) {
+  std::stringstream ss;
+  ss << "0x" << std::hex << pc;
+  return ss.str();
+}
+
+}  // namespace
+
 // Lift a conditional branch instruction.
 void InstructionTranslator::LiftConditionalBranch(const Translator &lifter) {
   auto dynamic_dest_pc_val = ReadPC(basic_block);
-  auto taken_block = llvm::BasicBlock::Create(
-      *context, "branch_taken", function);
-  auto fall_through_block = llvm::BasicBlock::Create(
-      *context, "fall_through", function);
 
   auto target_pc = TargetPC();
+  auto taken_block = llvm::BasicBlock::Create(
+      *context, BlockName(target_pc), function);
+
+  auto fall_through_pc = NextPC();
+  auto fall_through_block = llvm::BasicBlock::Create(
+      *context, BlockName(fall_through_pc), function);
+
   auto target_pc_val = llvm::ConstantInt::get(intptr_type, target_pc, false);
   AddTerminatingTailCall(
       taken_block, lifter.GetLiftedBlockForPC(target_pc), target_pc_val);
 
-  auto fall_through_pc = NextPC();
   AddTerminatingTailCall(
       fall_through_block, lifter.GetLiftedBlockForPC(fall_through_pc),
       llvm::ConstantInt::get(intptr_type, fall_through_pc, false));
@@ -424,9 +436,10 @@ void InstructionTranslator::LiftMemory(const Translator &lifter,
     // it by the stack width.
     if (XED_ICLASS_POP == iclass &&
         XED_REG_RSP == xed_get_largest_enclosing_register(base)) {
+      auto shift_size = xed_decoded_inst_get_operand_width(xedd);
       base_reg_val = ir.CreateAdd(
           base_reg_val,
-          llvm::ConstantInt::get(intptr_type, (addr_width / 8), false));
+          llvm::ConstantInt::get(intptr_type, (shift_size / 8), false));
     }
 
     llvm::Value *scale_val = llvm::ConstantInt::get(intptr_type, scale, true);
