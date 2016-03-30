@@ -255,6 +255,10 @@ static void InitFlags(void) {
   gRflagsOn.df = true;
   gRflagsOn.of = true;
 
+  gRflagsOn.tf = false;
+  gRflagsOn.ac = false;
+  gRflagsOn.nt = false;
+
   gRflagsOff.cf = false;
   gRflagsOff.pf = false;
   gRflagsOff.af = false;
@@ -262,6 +266,10 @@ static void InitFlags(void) {
   gRflagsOff.sf = false;
   gRflagsOff.df = false;
   gRflagsOff.of = false;
+
+  gRflagsOn.tf = false;
+  gRflagsOn.ac = false;
+  gRflagsOn.nt = false;
 }
 
 }  // namespace
@@ -361,6 +369,16 @@ static void RunWithFlags(const test::TestInfo *info,
   lifted_state->rflag.df = lifted_state->aflag.df;
   lifted_state->rflag.of = lifted_state->aflag.of;
 
+  lifted_state->rflag.tf = false;
+  lifted_state->rflag.rf = false;
+  lifted_state->rflag.ac = false;
+  lifted_state->rflag.nt = false;
+
+  native_state->rflag.tf = false;
+  native_state->rflag.rf = false;
+  native_state->rflag.ac = false;
+  native_state->rflag.nt = false;
+
   // No longer want to compare these.
   memset(&(native_state->aflag), 0, sizeof(native_state->aflag));
   memset(&(lifted_state->aflag), 0, sizeof(lifted_state->aflag));
@@ -426,8 +444,8 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(gTests));
 
 // Recover from a signal.
-static void RecoverFromError(int signum, siginfo_t *, void *context_) {
-  std::cerr << "Caught signal " << signum << "!" << std::endl;
+static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
+  std::cerr << "Caught signal " << sig_num << "!" << std::endl;
   memcpy(&gNativeState, &gLiftedState, sizeof(State));
 
   auto context = reinterpret_cast<ucontext_t *>(context_);
@@ -475,7 +493,10 @@ static void RecoverFromError(int signum, siginfo_t *, void *context_) {
   native_state->rflag.flat = context->uc_mcontext.gregs[REG_EFL];
 #endif  // __APPLE__
 
+  native_state->rflag.tf = false;  // Trap flag.
   native_state->rflag.rf = false;  // Resume flag.
+  native_state->rflag.ac = false;  // Alignment check flag.
+  native_state->rflag.nt = false;  // Nested task.
 
   siglongjmp(gJmpBuf, 0);
 }
@@ -485,7 +506,7 @@ static void HandleUnsupportedInstruction(int, siginfo_t *, void *) {
 }
 
 typedef void (SignalHandler) (int, siginfo_t *, void *);
-static void HandleSignal(int signum, SignalHandler *handler) {
+static void HandleSignal(int sig_num, SignalHandler *handler) {
   struct sigaction sig;
   sig.sa_sigaction = handler;
   sig.sa_flags = SA_SIGINFO | SA_ONSTACK;
@@ -493,7 +514,7 @@ static void HandleSignal(int signum, SignalHandler *handler) {
   sig.sa_restorer = nullptr;
 #endif  // __APPLE__
   sigfillset(&(sig.sa_mask));
-  sigaction(signum, &sig, nullptr);
+  sigaction(sig_num, &sig, nullptr);
 }
 
 // Set up various signal handlers.
