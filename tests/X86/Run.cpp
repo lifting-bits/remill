@@ -258,6 +258,8 @@ static void InitFlags(void) {
   gRflagsOn.tf = false;
   gRflagsOn.ac = false;
   gRflagsOn.nt = false;
+  gRflagsOn.id = false;
+  gRflagsOn.iopl = 0;
 
   gRflagsOff.cf = false;
   gRflagsOff.pf = false;
@@ -267,9 +269,25 @@ static void InitFlags(void) {
   gRflagsOff.df = false;
   gRflagsOff.of = false;
 
-  gRflagsOn.tf = false;
-  gRflagsOn.ac = false;
-  gRflagsOn.nt = false;
+  gRflagsOff.tf = false;
+  gRflagsOff.ac = false;
+  gRflagsOff.nt = false;
+  gRflagsOff.id = false;
+  gRflagsOff.iopl = 0;
+}
+
+// Resets the flags to sane defaults. This will disable the trap flag, the
+// alignment check flag, and the CPUID capability flag.
+static void ResetFlags(void) {
+  Flags flags;
+  asm("pushfq; pop %0;" : : "m"(flags));
+  flags.ac = false;
+  flags.id = false;
+  flags.tf = false;
+  flags.rf = false;
+  flags.nt = false;
+  flags.iopl = 0;
+  asm("push %0; popfq;" : : "m"(flags));
 }
 
 }  // namespace
@@ -322,6 +340,8 @@ static void RunWithFlags(const test::TestInfo *info,
   gTestToRun = info->test_begin;
   gStackSwitcher = &(gLiftedStack._redzone2[0]);
 
+  ResetFlags();
+
   // This will execute on `gStack`. The mechanism behind this is that the
   // stack pointer is swapped with `gStackSwitcher`. The idea here is that
   // we want to run the native and lifted testcases on the same stack so that
@@ -332,6 +352,8 @@ static void RunWithFlags(const test::TestInfo *info,
   } else {
     native_test_faulted = true;
   }
+
+  ResetFlags();
 
   // Copy out whatever was recorded on the stack so that we can compare it
   // with how the lifted program mutates the stack.
@@ -347,6 +369,8 @@ static void RunWithFlags(const test::TestInfo *info,
   } else {
     EXPECT_TRUE(native_test_faulted);
   }
+
+  ResetFlags();
 
   // Don't compare the program counters. The code that is lifted is equivalent
   // to the code that is tested but because they are part of separate binaries
@@ -368,16 +392,6 @@ static void RunWithFlags(const test::TestInfo *info,
   lifted_state->rflag.sf = lifted_state->aflag.sf;
   lifted_state->rflag.df = lifted_state->aflag.df;
   lifted_state->rflag.of = lifted_state->aflag.of;
-
-  lifted_state->rflag.tf = false;
-  lifted_state->rflag.rf = false;
-  lifted_state->rflag.ac = false;
-  lifted_state->rflag.nt = false;
-
-  native_state->rflag.tf = false;
-  native_state->rflag.rf = false;
-  native_state->rflag.ac = false;
-  native_state->rflag.nt = false;
 
   // No longer want to compare these.
   memset(&(native_state->aflag), 0, sizeof(native_state->aflag));
@@ -493,12 +507,14 @@ static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
   native_state->rflag.flat = context->uc_mcontext.gregs[REG_EFL];
 #endif  // __APPLE__
 
-  native_state->rflag.tf = false;  // Trap flag.
-  native_state->rflag.rf = false;  // Resume flag.
-  native_state->rflag.ac = false;  // Alignment check flag.
-  native_state->rflag.nt = false;  // Nested task.
+  native_state->rflag.nt = false;
+  native_state->rflag.rf = false;
 
   siglongjmp(gJmpBuf, 0);
+}
+
+static void ConsumeTrap(int, siginfo_t *, void *) {
+
 }
 
 static void HandleUnsupportedInstruction(int, siginfo_t *, void *) {
@@ -522,7 +538,7 @@ static void SetupSignals(void) {
   HandleSignal(SIGSEGV, RecoverFromError);
   HandleSignal(SIGBUS, RecoverFromError);
   HandleSignal(SIGFPE, RecoverFromError);
-  HandleSignal(SIGTRAP, RecoverFromError);
+  HandleSignal(SIGTRAP, ConsumeTrap);
   HandleSignal(SIGILL, HandleUnsupportedInstruction);
 #ifdef SIGSTKFLT
   HandleSignal(SIGSTKFLT, RecoverFromError);

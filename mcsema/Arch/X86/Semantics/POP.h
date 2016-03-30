@@ -70,6 +70,7 @@ DEF_ISEL_SEM(POPF) {
   state.aflag.zf = f.zf;
 
   state.rflag.tf = f.tf;
+  state.rflag.nt = f.nt;
 }
 
 #if 32 == ADDRESS_SIZE_BITS
@@ -87,6 +88,7 @@ DEF_ISEL_SEM(POPFD) {
   state.rflag.id = f.id;
   state.rflag.ac = f.ac;
   state.rflag.tf = f.tf;
+  state.rflag.nt = f.nt;
 }
 #else
 DEF_ISEL_SEM(POPFQ) {
@@ -103,6 +105,7 @@ DEF_ISEL_SEM(POPFQ) {
   state.rflag.id = f.id;
   state.rflag.ac = f.ac;
   state.rflag.tf = f.tf;
+  state.rflag.nt = f.nt;
 }
 #endif  // 32 == ADDRESS_SIZE_BITS
 

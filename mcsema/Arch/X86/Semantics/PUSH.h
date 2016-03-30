@@ -101,19 +101,19 @@ static void SerializeFlags(State &state) {
   state.rflag.must_be_0b = 0;
   state.rflag.zf = state.aflag.zf;
   state.rflag.sf = state.aflag.sf;
-  state.rflag.tf = 0;  // Trap flag (not single-stepping).
+  //state.rflag.tf = 0;  // Trap flag (not single-stepping).
   state.rflag._if = 1;  // Interrupts are enabled.
   state.rflag.df = state.aflag.df;
   state.rflag.of = state.aflag.of;
-  state.rflag.iopl = 3;  // In user-mode. TODO(pag): Configurable?
-  state.rflag.nt = 0;  // Not running in a nested task (interrupted interrupt).
+  state.rflag.iopl = 0;  // In user-mode. TODO(pag): Configurable?
+  //state.rflag.nt = 0;  // Not running in a nested task (interrupted interrupt).
   state.rflag.must_be_0c = 0;
   state.rflag.rf = 0; // Not specifying a resume from a breakpoint.
   state.rflag.vm = 0;
-  state.rflag.ac = 0;  // Assume alignment checking is disabled.
+  //state.rflag.ac = 0;  // Assume alignment checking is disabled.
   state.rflag.vif = 0;
   state.rflag.vip = 0; // No virtual interrupts are pending.
-  state.rflag.id = 0;  // Disallow `CPUID`.  TODO(pag): What is sane here?
+  //state.rflag.id = 0;  // Disallow `CPUID`.  TODO(pag): Configurable?
   state.rflag.reserved_eflags = 0;  // bits 22-31.
 }
 

@@ -364,6 +364,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/POP/POPF.S"
 
 #include "tests/X86/PUSH/PUSH.S"
+#include "tests/X86/PUSH/PUSHF.S"
 
 #include "tests/X86/ROTATE/ROL.S"
 
