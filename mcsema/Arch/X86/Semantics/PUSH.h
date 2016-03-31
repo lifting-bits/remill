@@ -69,27 +69,6 @@ DEF_ISEL_SEM(PUSHAD) {
 }
 #endif
 
-/*
- *     uint32_t cf:1;  // bit 0.
-    uint32_t must_be_1:1;
-    uint32_t pf:1;
-    uint32_t must_be_0a:1;
-
-    uint32_t af:1; // bit 4.
-    uint32_t must_be_0b:1;
-    uint32_t zf:1;
-    uint32_t sf:1;
-
-    uint32_t tf:1;  // bit 8.
-    uint32_t _if:1;  // underscore to avoid token clash.
-    uint32_t df:1;
-    uint32_t of:1;
-
-    uint32_t iopl:2; // A 2-bit field, bits 12-13.
-    uint32_t nt:1;
-    uint32_t must_be_0c:1;
- */
-
 namespace {
 
 static void SerializeFlags(State &state) {
@@ -102,16 +81,16 @@ static void SerializeFlags(State &state) {
   state.rflag.zf = state.aflag.zf;
   state.rflag.sf = state.aflag.sf;
   //state.rflag.tf = 0;  // Trap flag (not single-stepping).
-  state.rflag._if = 1;  // Interrupts are enabled.
+  state.rflag._if = 1;  // Interrupts are enabled (assumes user mode).
   state.rflag.df = state.aflag.df;
   state.rflag.of = state.aflag.of;
   state.rflag.iopl = 0;  // In user-mode. TODO(pag): Configurable?
   //state.rflag.nt = 0;  // Not running in a nested task (interrupted interrupt).
   state.rflag.must_be_0c = 0;
   state.rflag.rf = 0; // Not specifying a resume from a breakpoint.
-  state.rflag.vm = 0;
+  state.rflag.vm = 0;  // Virtual 8086 mode is disabled.
   //state.rflag.ac = 0;  // Assume alignment checking is disabled.
-  state.rflag.vif = 0;
+  state.rflag.vif = 0;  // Virtual interrupts are disabled.
   state.rflag.vip = 0; // No virtual interrupts are pending.
   //state.rflag.id = 0;  // Disallow `CPUID`.  TODO(pag): Configurable?
   state.rflag.reserved_eflags = 0;  // bits 22-31.

@@ -284,7 +284,7 @@ SYMBOL(__x86_save_state_after):
 # define STATE_PTR SYMBOL(gNativeState)
 # define AFTER_TEST_CASE
 # include "tests/X86/SaveState.S"
-    xchg rsp, [RIP + SYMBOL(gStackSwitcher)]  /* Return to the normal stack. */
+    xchg RSP, [RIP + SYMBOL(gStackSwitcher)]  /* Return to the normal stack. */
     ret
     .cfi_endproc
 # undef STATE_PTR
@@ -307,6 +307,8 @@ SYMBOL(__x86_test_table_begin):
 
 /* For argument register and return register definitions. */
 #include "tests/X86/ABI.S"
+
+#define APPLE_SAFE_TESTS (!defined(__APPLE__) || 64 == ADDRESS_SIZE_BITS)
 
 /* Bring in all semantic tests. */
 
@@ -360,11 +362,13 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/MISC/LEAVE.S"
 #include "tests/X86/MISC/XLAT.S"
 
-#include "tests/X86/POP/POP.S"
-#include "tests/X86/POP/POPF.S"
+#if APPLE_SAFE_TESTS
+# include "tests/X86/POP/POP.S"
+# include "tests/X86/POP/POPF.S"
 
-#include "tests/X86/PUSH/PUSH.S"
-#include "tests/X86/PUSH/PUSHF.S"
+# include "tests/X86/PUSH/PUSH.S"
+# include "tests/X86/PUSH/PUSHF.S"
+#endif
 
 #include "tests/X86/ROTATE/ROL.S"
 
@@ -373,7 +377,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SHIFT/SHR.S"
 #include "tests/X86/SHIFT/SHRD.S"
 
-#ifndef __APPLE__
+#if APPLE_SAFE_TESTS
 # include "tests/X86/STRINGOP/CMPS.S"
 # include "tests/X86/STRINGOP/LODS.S"
 # include "tests/X86/STRINGOP/MOVS.S"

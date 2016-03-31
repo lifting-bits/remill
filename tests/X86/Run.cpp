@@ -168,13 +168,14 @@ void __mcsema_error(State &, addr_t) {
 void __mcsema_read_cpu_features(State &state, addr_t) {
   asm volatile(
       "cpuid"
-      : "=a"(state.gpr.rax.dword),
-        "=b"(state.gpr.rbx.dword),
-        "=c"(state.gpr.rcx.dword),
-        "=d"(state.gpr.rdx.dword)
-      : "a"(state.gpr.rax.dword),
-        "c"(state.gpr.rcx.dword)
-      : "%rax", "%rbx", "%rcx", "%rdx"
+      : "=a"(state.gpr.rax.qword),
+        "=b"(state.gpr.rbx.qword),
+        "=c"(state.gpr.rcx.qword),
+        "=d"(state.gpr.rdx.qword)
+      : "a"(state.gpr.rax.qword),
+        "b"(state.gpr.rbx.qword),
+        "c"(state.gpr.rcx.qword),
+        "d"(state.gpr.rdx.qword)
   );
 }
 

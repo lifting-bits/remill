@@ -1,6 +1,6 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#ifndef __APPLE__
+#if APPLE_SAFE_TESTS
 
 TEST_BEGIN(MOVLPSv128m64, 1)
 TEST_INPUTS(
