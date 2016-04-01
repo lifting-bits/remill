@@ -58,6 +58,9 @@ struct is_unsigned<uint128_t> {
 template <typename T>
 struct VectorInfo;
 
+template <typename T>
+struct AggVectorInfo;
+
 // Forward-declaration of basic vector types.
 union vec8_t;
 union vec16_t;
@@ -170,91 +173,63 @@ struct SingletonVectorType<float64_t> {
   typedef float64v1_t Type;
 };
 
-#define UNIQUE_TYPE(size) class { uint8_t foo[size]; }
-
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-private-field"
 
 union vec8_t final {
+  ALWAYS_INLINE vec8_t(void);
+
   uint8v1_t bytes;
   uint8v1_t iwords;  // Ideal.
-
-  // Note: This is a special case for consistency in `VecWriter`. In practice
-  //       this should never be used.
-
-  UNIQUE_TYPE(1) words;
-  UNIQUE_TYPE(1) dwords;
-  UNIQUE_TYPE(1) qwords;
-  UNIQUE_TYPE(1) floats;
-  UNIQUE_TYPE(1) doubles;
-  UNIQUE_TYPE(1) dqwords;
 
 } __attribute__((packed));
 
 static_assert(1 == sizeof(vec8_t) &&
               1 == sizeof(vec8_t().bytes) &&
-              1 == sizeof(vec8_t().words) &&
-              1 == sizeof(vec8_t().dwords) &&
-              1 == sizeof(vec8_t().qwords) &&
-              1 == sizeof(vec8_t().dqwords) &&
-              1 == sizeof(vec8_t().floats) &&
-              1 == sizeof(vec8_t().doubles) &&
               1 == sizeof(vec8_t().iwords),
               "Invalid structure packing of `vec8_t`.");
 
 union vec16_t final {
+  ALWAYS_INLINE vec16_t(void);
+  ALWAYS_INLINE vec16_t(vec8_t sub_vec);
+
   uint8v2_t bytes;
   uint16v1_t words;
   uint16v1_t iwords;  // Ideal.
-
-  // Note: This is a special case for consistency in `VecWriter`. In practice
-  //       this should never be used.
-  UNIQUE_TYPE(2) dwords;
-  UNIQUE_TYPE(2) qwords;
-  UNIQUE_TYPE(2) floats;
-  UNIQUE_TYPE(2) doubles;
-  UNIQUE_TYPE(2) dqwords;
-
 } __attribute__((packed));
 
 static_assert(2 == sizeof(vec16_t) &&
               2 == sizeof(vec16_t().bytes) &&
               2 == sizeof(vec16_t().words) &&
-              2 == sizeof(vec16_t().dwords) &&
-              2 == sizeof(vec16_t().qwords) &&
-              2 == sizeof(vec16_t().dqwords) &&
-              2 == sizeof(vec16_t().floats) &&
-              2 == sizeof(vec16_t().doubles) &&
               2 == sizeof(vec16_t().iwords),
               "Invalid structure packing of `vec16_t`.");
 
 union vec32_t final {
+  ALWAYS_INLINE vec32_t(void);
+  ALWAYS_INLINE vec32_t(vec8_t sub_vec);
+  ALWAYS_INLINE vec32_t(vec16_t sub_vec);
+
   uint8v4_t bytes;
   uint16v2_t words;
   uint32v1_t dwords;
   uint32v1_t iwords;  // Ideal.
   float32v1_t floats;
-
-  // Note: This is a special case for consistency in `VecWriter`. In practice
-  //       this should never be used.
-  UNIQUE_TYPE(4) qwords;
-  UNIQUE_TYPE(4) doubles;
-  UNIQUE_TYPE(4) dqwords;
-
 } __attribute__((packed));
 
 static_assert(4 == sizeof(vec32_t) &&
               4 == sizeof(vec32_t().bytes) &&
               4 == sizeof(vec32_t().words) &&
               4 == sizeof(vec32_t().dwords) &&
-              4 == sizeof(vec32_t().qwords) &&
-              4 == sizeof(vec32_t().dqwords) &&
               4 == sizeof(vec32_t().floats) &&
-              4 == sizeof(vec32_t().doubles) &&
               4 == sizeof(vec32_t().iwords),
               "Invalid structure packing of `vec32_t`.");
 
 union vec64_t final {
+  ALWAYS_INLINE vec64_t(void);
+  ALWAYS_INLINE vec64_t(vec8_t sub_vec);
+  ALWAYS_INLINE vec64_t(vec16_t sub_vec);
+  ALWAYS_INLINE vec64_t(vec32_t sub_vec);
+
   uint8v8_t bytes;
   uint16v4_t words;
   uint32v2_t dwords;
@@ -264,11 +239,6 @@ union vec64_t final {
 
   float32v2_t floats;
   float64v1_t doubles;
-
-  // Note: This is a special case for consistency in `VecWriter`. In practice
-  //       this should never be used.
-  UNIQUE_TYPE(8) dqwords;
-
 } __attribute__((packed));
 
 #pragma clang diagnostic pop
@@ -278,7 +248,6 @@ static_assert(8 == sizeof(vec64_t) &&
               8 == sizeof(vec64_t().words) &&
               8 == sizeof(vec64_t().dwords) &&
               8 == sizeof(vec64_t().qwords) &&
-              8 == sizeof(vec64_t().dqwords) &&
               8 == sizeof(vec64_t().floats) &&
               8 == sizeof(vec64_t().doubles) &&
               8 == sizeof(vec64_t().iwords),
@@ -286,6 +255,9 @@ static_assert(8 == sizeof(vec64_t) &&
 
 union vec128_t final {
   ALWAYS_INLINE vec128_t(void);
+  ALWAYS_INLINE vec128_t(vec8_t sub_vec);
+  ALWAYS_INLINE vec128_t(vec16_t sub_vec);
+  ALWAYS_INLINE vec128_t(vec32_t sub_vec);
   ALWAYS_INLINE vec128_t(vec64_t sub_vec);
 
   uint8v16_t bytes;
@@ -313,6 +285,9 @@ static_assert(16 == sizeof(vec128_t) &&
 
 union vec256_t final {
   ALWAYS_INLINE vec256_t(void);
+  ALWAYS_INLINE vec256_t(vec8_t sub_vec);
+  ALWAYS_INLINE vec256_t(vec16_t sub_vec);
+  ALWAYS_INLINE vec256_t(vec32_t sub_vec);
   ALWAYS_INLINE vec256_t(vec64_t sub_vec);
   ALWAYS_INLINE vec256_t(vec128_t sub_vec);
 
@@ -342,6 +317,9 @@ static_assert(32 == sizeof(vec256_t) &&
 
 union vec512_t final {
   ALWAYS_INLINE vec512_t(void);
+  ALWAYS_INLINE vec512_t(vec8_t sub_vec);
+  ALWAYS_INLINE vec512_t(vec16_t sub_vec);
+  ALWAYS_INLINE vec512_t(vec32_t sub_vec);
   ALWAYS_INLINE vec512_t(vec64_t sub_vec);
   ALWAYS_INLINE vec512_t(vec128_t sub_vec);
   ALWAYS_INLINE vec512_t(vec256_t sub_vec);
@@ -370,9 +348,30 @@ static_assert(64 == sizeof(vec512_t) &&
               "Invalid structure packing of `vec512_t`.");
 
 // Aligned vector types.
+typedef vec8_t avec8_t __attribute__((aligned(64)));
+typedef vec16_t avec16_t __attribute__((aligned(64)));
+typedef vec32_t avec32_t __attribute__((aligned(64)));
+typedef vec64_t avec64_t __attribute__((aligned(64)));
 typedef vec128_t avec128_t __attribute__((aligned(64)));
 typedef vec256_t avec256_t __attribute__((aligned(64)));
 typedef vec512_t avec512_t __attribute__((aligned(64)));
+
+#define MAKE_AGG_VEC_INFO(type) \
+  template <> \
+  struct AggVectorInfo<type> { \
+    enum : size_t { \
+      kSize = sizeof(type) \
+    }; \
+    typedef type Type; \
+  }
+
+MAKE_AGG_VEC_INFO(vec8_t);
+MAKE_AGG_VEC_INFO(vec16_t);
+MAKE_AGG_VEC_INFO(vec32_t);
+MAKE_AGG_VEC_INFO(vec64_t);
+MAKE_AGG_VEC_INFO(vec128_t);
+MAKE_AGG_VEC_INFO(vec256_t);
+MAKE_AGG_VEC_INFO(vec512_t);
 
 template <typename T>
 struct NextLargerIntegerType;

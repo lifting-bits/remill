@@ -368,7 +368,7 @@ SYMBOL(__x86_test_table_begin):
 
 # include "tests/X86/PUSH/PUSH.S"
 # include "tests/X86/PUSH/PUSHF.S"
-#endif
+#endif  // APPLE_SAFE_TESTS
 
 #include "tests/X86/ROTATE/ROL.S"
 

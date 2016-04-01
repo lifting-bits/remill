@@ -18,7 +18,6 @@ TEST_INPUTS(0)
     pop QWORD PTR [rsp]
 TEST_END_64
 
-
 TEST_BEGIN_64(POPmrsp64offs, 1)
 TEST_INPUTS(0)
     lea rsp, [rsp - 16]

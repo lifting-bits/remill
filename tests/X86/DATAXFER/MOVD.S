@@ -27,6 +27,26 @@ TEST_INPUTS(
     movd ARG2_32, xmm0
 TEST_END
 
+#if APPLE_SAFE_TESTS
+TEST_BEGIN(MOVDv128m32, 1)
+TEST_INPUTS(
+    0)
+    movd xmm0, DWORD PTR [rsp - 16]  // Same encoding in 32-bit.
+TEST_END
+
+TEST_BEGIN(MOVDv128m32_4, 1)
+TEST_INPUTS(
+    0)
+    movd xmm4, DWORD PTR [rsp - 16]  // Same encoding in 32-bit.
+TEST_END
+
+TEST_BEGIN(MOVDm32v128, 1)
+TEST_INPUTS(
+    0)
+    movd DWORD PTR [rsp - 16], xmm0  // Same encoding in 32-bit.
+TEST_END
+#endif  // APPLE_SAFE_TESTS
+
 #if HAS_FEATURE_AVX
 TEST_BEGIN(VMOVDv128r32, 1)
 TEST_INPUTS(
@@ -50,4 +70,24 @@ TEST_INPUTS(
     vmovd xmm0, ARG1_32
     vmovd ARG2_32, xmm0
 TEST_END
-#endif
+
+#if APPLE_SAFE_TESTS
+TEST_BEGIN(VMOVDv128m32, 1)
+TEST_INPUTS(
+    0)
+    vmovd xmm0, DWORD PTR [rsp - 16]  // Same encoding in 32-bit.
+TEST_END
+
+TEST_BEGIN(VMOVDv128m32_4, 1)
+TEST_INPUTS(
+    0)
+    vmovd xmm4, DWORD PTR [rsp - 16]  // Same encoding in 32-bit.
+TEST_END
+
+TEST_BEGIN(VMOVDm32v128, 1)
+TEST_INPUTS(
+    0)
+    vmovd DWORD PTR [rsp - 16], xmm0  // Same encoding in 32-bit.
+TEST_END
+#endif  // APPLE_SAFE_TESTS
+#endif  // HAS_FEATURE_AVX

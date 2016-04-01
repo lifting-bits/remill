@@ -49,7 +49,7 @@ static const auto gStackLimit = reinterpret_cast<uintptr_t>(
     &(gLiftedStack._redzone2[0]));
 
 template <typename T>
-static T &AccessMemory(addr_t addr) {
+NEVER_INLINE static T &AccessMemory(addr_t addr) {
   EXPECT_TRUE(addr > gStackBase && addr < gStackLimit);
   return *reinterpret_cast<T *>(static_cast<uintptr_t>(addr));
 }
@@ -76,7 +76,7 @@ std::aligned_storage<sizeof(State), alignof(State)>::type gNativeState;
 // Address of the native test to run. The `InvokeTestCase` function saves
 // the native program state but then needs a way to figure out where to go
 // without storing that information in any register. So what we do is we
-// store it here and indrrectly `JMP` into the native test case code after
+// store it here and indirectly `JMP` into the native test case code after
 // saving the machine state to `gStateBefore`.
 uintptr_t gTestToRun = 0;
 
@@ -117,20 +117,21 @@ NEVER_INLINE addr_t __mcsema_create_program_counter(addr_t pc) {
     return AccessMemory<uint ## size ## _t>(addr); \
   } \
   NEVER_INLINE order_t __mcsema_write_memory_ ## size ( \
-      order_t, addr_t addr, const uint ## size ## _t in) { \
+      order_t order, addr_t addr, const uint ## size ## _t in) { \
     AccessMemory<uint ## size ## _t>(addr) = in; \
-    return 0; \
+    return order + 1; \
   }
 
 #define MAKE_RW_VEC_MEMORY(size) \
-  NEVER_INLINE vec ## size ## _t __mcsema_read_memory_v ## size(\
-      order_t, addr_t addr) { \
-    return AccessMemory<vec ## size ## _t>(addr); \
+  NEVER_INLINE order_t __mcsema_read_memory_v ## size( \
+      order_t order, addr_t addr, vec ## size ## _t &vec) { \
+    vec = AccessMemory<vec ## size ## _t>(addr); \
+    return order + 1; \
   } \
   NEVER_INLINE order_t __mcsema_write_memory_v ## size (\
-      order_t, addr_t addr, vec ## size ## _t in) { \
+      order_t order, addr_t addr, const vec ## size ## _t &in) { \
     AccessMemory<vec ## size ## _t>(addr) = in; \
-    return 0; \
+    return order + 1; \
   }
 
 MAKE_RW_MEMORY(8)
@@ -230,6 +231,13 @@ uint32_t __mcsema_undefined_32(void) {
 
 uint64_t __mcsema_undefined_64(void) {
   return 0;
+}
+
+// Marks `mem` as being used. This is used for making sure certain symbols are
+// kept around through optimization, and makes sure that optimization doesn't
+// perform dead-argument elimination on any of the intrinsics.
+void __mcsema_mark_as_used(void *mem) {
+  asm("" :: "m"(mem));
 }
 
 }  // extern C

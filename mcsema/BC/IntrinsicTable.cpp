@@ -74,13 +74,16 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       read_memory_32(FindPureIntrinsic(module, "__mcsema_read_memory_32")),
       read_memory_64(FindPureIntrinsic(module, "__mcsema_read_memory_64")),
 
-      read_memory_v8(FindPureIntrinsic(module, "__mcsema_read_memory_v8")),
-      read_memory_v16(FindPureIntrinsic(module, "__mcsema_read_memory_v16")),
-      read_memory_v32(FindPureIntrinsic(module, "__mcsema_read_memory_v32")),
-      read_memory_v64(FindPureIntrinsic(module, "__mcsema_read_memory_v64")),
-      read_memory_v128(FindPureIntrinsic(module, "__mcsema_read_memory_v128")),
-      read_memory_v256(FindPureIntrinsic(module, "__mcsema_read_memory_v256")),
-      read_memory_v512(FindPureIntrinsic(module, "__mcsema_read_memory_v512")),
+      // These take in a value by reference and modify it, therefore they are
+      // NOT pure.
+      read_memory_v8(FindIntrinsic(module, "__mcsema_read_memory_v8")),
+      read_memory_v16(FindIntrinsic(module, "__mcsema_read_memory_v16")),
+      read_memory_v32(FindIntrinsic(module, "__mcsema_read_memory_v32")),
+      read_memory_v64(FindIntrinsic(module, "__mcsema_read_memory_v64")),
+      read_memory_v128(FindIntrinsic(module, "__mcsema_read_memory_v128")),
+      read_memory_v256(FindIntrinsic(module, "__mcsema_read_memory_v256")),
+      read_memory_v512(FindIntrinsic(module, "__mcsema_read_memory_v512")),
+
       write_memory_8(FindPureIntrinsic(module, "__mcsema_write_memory_8")),
       write_memory_16(FindPureIntrinsic(module, "__mcsema_write_memory_16")),
       write_memory_32(FindPureIntrinsic(module, "__mcsema_write_memory_32")),

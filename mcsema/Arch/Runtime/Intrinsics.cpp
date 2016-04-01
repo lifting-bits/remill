@@ -3,10 +3,16 @@
 #include "mcsema/Arch/Runtime/Intrinsics.h"
 
 #define USED(sym) \
-  (void) sym ; \
-  asm("" :: "m"(sym))
+  __mcsema_mark_as_used(reinterpret_cast<void *>(&sym))
 
 extern "C" order_t __mcsema_memory_order = 0;
+
+// This is two big hacks:
+//    1)  This makes sure that a symbol is treated as used and prevents it
+//        from being optimized away.
+//    2)  This makes sure that some functions are marked has having their
+//        addresses taken, and so this prevents dead argument elimination.
+extern "C" void __mcsema_mark_as_used(void *);
 
 // This is just a hack to make sure all these functions appear in the bitcode
 // file!

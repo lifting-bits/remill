@@ -1,17 +1,56 @@
 #!/usr/bin/env python
 # Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved.
 
+import argparse
 import glob
 import hashlib
 import os
 import subprocess
 import sys
 
-DEBUG = False
-MCSEMA_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+PARSER = argparse.ArgumentParser()
+PARSER.add_argument(
+    "--debug",
+    action="store_true",
+    help="Print out the commands executed by the build.",
+    default=False)
 
+PARSER.add_argument(
+    "--dry_run",
+    action="store_true",
+    help="Perform a dry run, that doesn't actually execute any commands.",
+    default=False)
+
+PARSER.add_argument(
+    "--obj_dir",
+    required=False,
+    type=str,
+    help="Directory in which object files are placed.",
+    default=os.path.join(os.sep, "tmp", "build"))
+
+PARSER.add_argument(
+    "--num_workers",
+    required=False,
+    type=int,
+    help="Number of worker threads to use to build code.",
+    default=32)
+
+PARSER.add_argument(
+    "--target",
+    required=False,
+    type=str,
+    help="Build target type, `debug` or `release`.",
+    default="debug")
+
+ARGS = PARSER.parse_args()
+MCSEMA_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 CC = os.path.join(MCSEMA_DIR, "third_party", "bin", "clang")
 CXX = os.path.join(MCSEMA_DIR, "third_party", "bin", "clang++")
+
+# If we're not actually executing the commands then don't parallelize
+# anything.
+if ARGS.dry_run:
+  ARGS.num_workers = 1
 
 OS = {
   "darwin": "mac",
@@ -35,8 +74,11 @@ MCSEMA_BIN_DIR = os.path.join(MCSEMA_DIR, "third_party", "bin")
 MCSEMA_LIB_DIR = os.path.join(MCSEMA_DIR, "third_party", "lib")
 
 try:
+  if 1 >= ARGS.num_workers:
+    raise Exception()  # Don't parallelize if we aren't using multiple workers.
+
   import concurrent.futures
-  POOL = concurrent.futures.ThreadPoolExecutor(max_workers=32)
+  POOL = concurrent.futures.ThreadPoolExecutor(max_workers=ARGS.num_workers)
   TASKS = []
 
   def Task(func, *args, **kargs):
@@ -88,8 +130,7 @@ CXX_FLAGS = [
   "-D__STDC_LIMIT_MACROS",
   "-D__STDC_CONSTANT_MACROS",
   "-DGOOGLE_PROTOBUF_NO_RTTI",
-  "-DNDEBUG",
-
+  
   # Includes.
   "-isystem", MCSEMA_INCLUDE_DIR,
   "-I{}".format(MCSEMA_DIR),
@@ -97,9 +138,20 @@ CXX_FLAGS = [
   # Output info.
   "-fPIC",
   "-fpie",
-  "-g3",
   "-m64",
 ]
+
+if "debug" == ARGS.target.lower():
+  CXX_FLAGS.extend([
+      "-g3",
+      "-DNDEBUG",
+      "-O0"])
+elif "release" == ARGS.target.lower():
+  CXX_FLAGS.extend([
+      "-gline-tables-only",
+      "-O3"])
+elif ARGS.debug:
+  print "ERROR: Unknown build target `{}`.".format(ARGS.target)
 
 
 def Command(*args):
@@ -107,12 +159,12 @@ def Command(*args):
   then the command itself is printed out."""
   args = [str(a) for a in args]
   debug_str = "{}\n\n".format(" ".join(args))
-  if DEBUG:
+  if ARGS.debug:
     print debug_str
   try:
-    return subprocess.check_output(args)
+    if not ARGS.dry_run:
+      return subprocess.check_output(args)
   except:
-    print debug_str
     pass
 
 
@@ -212,7 +264,7 @@ def SourceFile(path, extra_args=[]):
 
   path = os.path.abspath(str(path))
   key = hashlib.md5("{}{}".format(path, "".join(extra_args))).hexdigest()
-  target_path = os.path.join(os.sep, "tmp", "build", "{}.o".format(key))
+  target_path = os.path.join(ARGS.obj_dir, "{}.o".format(key))
   
   if target_path not in _SourceFile.CACHE:
     _SourceFile.CACHE[target_path] = _SourceFile(
@@ -341,4 +393,3 @@ class TargetLibrary(_Target):
         "-Wl,-undefined,suppress",
         "-dynamiclib"]
     super(TargetLibrary, self).__init__(*args, **kargs)
-

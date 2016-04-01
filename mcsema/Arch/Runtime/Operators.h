@@ -5,23 +5,36 @@
 
 namespace {
 
-template <typename kBaseType, typename VecType, typename IntVecType>
+template <typename kBaseType, typename D, typename S>
 struct VectorAssign;
+
+template <typename kBaseType, typename D>
+struct VectorAssign<kBaseType, D, D> {
+  ALWAYS_INLINE static void assign(D &dest, const D &src) {
+    *dest = src;
+  }
+};
 
 // Create a smaller-to-bigger vector assignment function. This will perform
 // zero-extension, but this is not the preferred way of achieving zero-
 // extensions. Instead, one should depend on the move constructor.
 #define MAKE_VECTOR_ASSIGNER(base_type, sel) \
-    template <typename VecType, typename IntVecType> \
-    struct VectorAssign<base_type, VecType, IntVecType> { \
-      ALWAYS_INLINE static void assign(VecType *dest, const IntVecType &src) { \
-        _Pragma("unroll") \
-        for (auto i = 0UL; i < (sizeof(VecType)/sizeof(base_type)); ++i) { \
-          dest->sel[i] = 0; \
+    template <typename D, typename S> \
+    struct VectorAssign<base_type, D, S> { \
+      ALWAYS_INLINE static void assign(D &dest, const S &src) { \
+        if (sizeof(S) < sizeof(D)) { \
+          _Pragma("unroll") \
+          for (auto i = 0UL; i < (sizeof(D)/sizeof(base_type)); ++i) { \
+            dest.sel[i] = 0; \
+          } \
         } \
+        enum : size_t { \
+          kVecSize = sizeof(D) > sizeof(S) ? sizeof(S) : sizeof(D), \
+          kNumElems = kVecSize / sizeof(base_type) \
+        }; \
         _Pragma("unroll") \
-        for (auto i = 0UL; i < (sizeof(IntVecType)/sizeof(base_type)); ++i) { \
-          dest->sel[i] = src[i]; \
+        for (auto i = 0UL; i < kNumElems; ++i) { \
+          dest.sel[i] = src[i]; \
         } \
       } \
     }
@@ -38,46 +51,29 @@ MAKE_VECTOR_ASSIGNER(double, doubles);
 
 template <typename T>
 struct VecWriter {
-  typedef decltype(T().bytes) BytesType;
-  typedef decltype(T().words) WordsType;
-  typedef decltype(T().dwords) DwordsType;
-  typedef decltype(T().qwords) QwordsType;
-  typedef decltype(T().dqwords) DqwordsType;  // Special case: `vec64_t`.
-  typedef decltype(T().floats) FloatsType;
-  typedef decltype(T().doubles) DoublesType;
+
+  // Same-type assignment of an aggregate vector.
   ALWAYS_INLINE void operator=(T val) const {
     *val_ref = val;
   }
-  ALWAYS_INLINE void operator=(BytesType val) const {
-    val_ref->bytes = val;
-  }
-  ALWAYS_INLINE void operator=(WordsType val) const {
-    val_ref->words = val;
-  }
-  ALWAYS_INLINE void operator=(DwordsType val) const {
-    val_ref->dwords = val;
-  }
-  ALWAYS_INLINE void operator=(QwordsType val) const {
-    val_ref->qwords = val;
-  }
-  ALWAYS_INLINE void operator=(DqwordsType val) const {
-    val_ref->dqwords = val;
-  }
-  ALWAYS_INLINE void operator=(FloatsType val) const {
-    val_ref->floats = val;
-  }
-  ALWAYS_INLINE void operator=(DoublesType val) const {
-    val_ref->doubles = val;
+
+  // Zero-extension assignment of one type of vector into another.
+  template <typename V,
+            typename=typename AggVectorInfo<V>::Type>
+  ALWAYS_INLINE void operator=(V val) const {
+    this->operator=(val.iwords);
   }
 
-  // Fall-back for performing assignments of a smaller vector type to
-  // a larger vector type, where the smaller type is already specialized
+  // Fall-back for performing assignments of a smaller (non-aggregate) vector
+  // type to a larger vector type, where the smaller type is already specialized
   // to a specific base type, E.g. `V=uint32v4_t` (128 bits) and `T=vec256_t`.
+  //
+  // This will zero-extend the value for the assignment.
   template <typename V,
-            size_t=sizeof(typename VectorInfo<V>::VecType),
-            size_t=sizeof(typename VectorInfo<V>::BaseType)>
+            typename=typename VectorInfo<V>::VecType,
+            typename=typename VectorInfo<V>::BaseType>
   ALWAYS_INLINE void operator=(V val) const {
-    VectorAssign<typename VectorInfo<V>::BaseType, T, V>::assign(val_ref, val);
+    VectorAssign<typename VectorInfo<V>::BaseType, T, V>::assign(*val_ref, val);
   }
 
   // Fall-back for assigning a single value into a vector of a larger type.
@@ -87,7 +83,7 @@ struct VecWriter {
   ALWAYS_INLINE void operator=(V val) const {
     typedef typename SingletonVectorType<V>::Type VecType;
     VecType vec = {val};
-    VectorAssign<V, T, VecType>::assign(val_ref, vec);
+    VectorAssign<V, T, VecType>::assign(*val_ref, vec);
   }
 
   T *val_ref;
@@ -95,57 +91,28 @@ struct VecWriter {
 
 #define MAKE_VEC_ACCESSORS(T, size) \
     struct MemoryWriter ## T { \
-      typedef decltype(T().bytes) BytesType; \
-      typedef decltype(T().words) WordsType; \
-      typedef decltype(T().dwords) DwordsType; \
-      typedef decltype(T().qwords) QwordsType; \
-      typedef decltype(T().floats) FloatsType; \
-      typedef decltype(T().doubles) DoublesType; \
       ALWAYS_INLINE void operator=(T val) const { \
         __mcsema_memory_order = __mcsema_write_memory_v ## size (\
             __mcsema_memory_order, addr, val); \
       } \
-      ALWAYS_INLINE void operator=(BytesType val) const { \
+      template <typename V, \
+                typename=typename VectorInfo<V>::VecType, \
+                typename=typename VectorInfo<V>::BaseType> \
+      ALWAYS_INLINE void operator=(V val) const { \
         T vec; \
-        vec.bytes = val; \
+        VectorAssign<typename VectorInfo<V>::BaseType, T, V>::assign(vec, val);\
         __mcsema_memory_order = __mcsema_write_memory_v ## size ( \
             __mcsema_memory_order, addr, vec); \
       } \
-      ALWAYS_INLINE void operator=(WordsType val) const { \
-        T vec; \
-        vec.words = val; \
-        __mcsema_memory_order = __mcsema_write_memory_v ## size ( \
-            __mcsema_memory_order, addr, vec); \
-      } \
-      ALWAYS_INLINE void operator=(DwordsType val) const { \
-        T vec; \
-        vec.dwords = val; \
-        __mcsema_memory_order = __mcsema_write_memory_v ## size ( \
-            __mcsema_memory_order, addr, vec); \
-      } \
-      ALWAYS_INLINE void operator=(QwordsType val) const { \
-        T vec; \
-        vec.qwords = val; \
-        __mcsema_memory_order = __mcsema_write_memory_v ## size ( \
-            __mcsema_memory_order, addr, vec); \
-      } \
-      ALWAYS_INLINE void operator=(FloatsType val) const { \
-        T vec; \
-        vec.floats = val; \
-        __mcsema_memory_order = __mcsema_write_memory_v ## size ( \
-            __mcsema_memory_order, addr, vec); \
-      } \
-      ALWAYS_INLINE void operator=(DoublesType val) const { \
-        T vec; \
-        vec.doubles = val; \
-        __mcsema_memory_order = __mcsema_write_memory_v ## size ( \
-            __mcsema_memory_order, addr, vec); \
-      } \
+      \
       addr_t addr; \
     }; \
     \
     ALWAYS_INLINE static T R(const Mn<T> mem) { \
-      return __mcsema_read_memory_v ## size (__mcsema_memory_order, mem.addr); \
+      T ret_val; \
+      __mcsema_memory_order = __mcsema_read_memory_v ## size ( \
+          __mcsema_memory_order, mem.addr, ret_val); \
+      return ret_val; \
     } \
     ALWAYS_INLINE static MemoryWriter ## T W(MnW<T> mem) { \
       return MemoryWriter ## T {mem.addr}; \
@@ -219,40 +186,40 @@ inline static addr_t A(MnW<T> m) {
 }
 
 namespace {
-template <typename T, typename U>
-inline static Vn<U> DownCastImpl(Vn<T> in) {
-  static_assert(sizeof(U) < sizeof(T), "Invalid vector down-cast.");
-  return {reinterpret_cast<U *>(in.val)};
+template <typename FromT, typename ToT>
+inline static Vn<ToT> DownCastImpl(Vn<FromT> in) {
+  static_assert(sizeof(ToT) < sizeof(FromT), "Invalid vector down-cast.");
+  return {reinterpret_cast<ToT *>(in.val)};
 }
 
-template <typename T, typename U>
-inline static VnW<U> DownCastImpl(VnW<T> in) {
-  static_assert(sizeof(U) < sizeof(T), "Invalid vector down-cast.");
-  return {reinterpret_cast<U *>(in.val_ref)};
+template <typename FromT, typename ToT>
+inline static VnW<ToT> DownCastImpl(VnW<FromT> in) {
+  static_assert(sizeof(ToT) < sizeof(FromT), "Invalid vector down-cast.");
+  return {reinterpret_cast<ToT *>(in.val_ref)};
 }
 
-template <typename T, typename U>
-inline static Rn<U> DownCastImpl(Rn<T> in) {
-  static_assert(sizeof(U) < sizeof(T), "Invalid register down-cast.");
+template <typename FromT, typename ToT>
+inline static Rn<ToT> DownCastImpl(Rn<FromT> in) {
+  static_assert(sizeof(ToT) < sizeof(FromT), "Invalid register down-cast.");
   return {in.val};
 }
 
-template <typename T, typename U>
-inline static RnW<U> DownCastImpl(RnW<T> in) {
-  static_assert(sizeof(U) < sizeof(T), "Invalid register down-cast.");
-  return {reinterpret_cast<U *>(in.val_ref)};
+template <typename FromT, typename ToT>
+inline static RnW<ToT> DownCastImpl(RnW<FromT> in) {
+  static_assert(sizeof(ToT) < sizeof(FromT), "Invalid register down-cast.");
+  return {reinterpret_cast<ToT *>(in.val_ref)};
 }
 
 
-template <typename T, typename U>
-inline static Mn<U> DownCastImpl(Mn<T> in) {
-  static_assert(sizeof(U) < sizeof(T), "Invalid memory down-cast.");
+template <typename FromT, typename ToT>
+inline static Mn<ToT> DownCastImpl(Mn<FromT> in) {
+  static_assert(sizeof(ToT) < sizeof(FromT), "Invalid memory down-cast.");
   return {in.addr};
 }
 
-template <typename T, typename U>
-inline static MnW<U> DownCastImpl(MnW<T> in) {
-  static_assert(sizeof(U) < sizeof(T), "Invalid memory down-cast.");
+template <typename FromT, typename ToT>
+inline static MnW<ToT> DownCastImpl(MnW<FromT> in) {
+  static_assert(sizeof(ToT) < sizeof(FromT), "Invalid memory down-cast.");
   return {in.addr};
 }
 }

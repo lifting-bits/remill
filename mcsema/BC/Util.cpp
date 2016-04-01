@@ -41,9 +41,6 @@ llvm::Function *BlockMap::operator[](uintptr_t pc) const {
 
 // Initialize the attributes for a lifted function.
 void InitFunctionAttributes(llvm::Function *function) {
-  // This affects code generation. The key thing here is to disallow dead
-  // argument elimination in LLVM's optimizer.
-  function->addFnAttr(llvm::Attribute::Naked);
 
   // Make sure functions are treated as if they return. LLVM doesn't like
   // mixing must-tail-calls with no-return.
