@@ -11,7 +11,7 @@ struct VectorAssign;
 template <typename kBaseType, typename D>
 struct VectorAssign<kBaseType, D, D> {
   ALWAYS_INLINE static void assign(D &dest, const D &src) {
-    *dest = src;
+    dest = src;
   }
 };
 
