@@ -20,13 +20,13 @@ TEST_END
 TEST_BEGIN(MOVDQUv128m128, 1)
 TEST_INPUTS(
     0)
-    movdqu xmm0, [rsp - 128]
+    movdqu xmm0, [rsp - 16]
 TEST_END
 
 TEST_BEGIN(MOVDQUv128m128_4, 1)
 TEST_INPUTS(
     0)
-    movdqu xmm4, [rsp - 128]
+    movdqu xmm4, [rsp - 16]
 TEST_END
 #endif  // APPLE_SAFE_TESTS
 
@@ -60,13 +60,25 @@ TEST_END
 TEST_BEGIN(VMOVDQUv128m128, 1)
 TEST_INPUTS(
     0)
-    vmovdqu xmm0, [rsp - 128]
+    vmovdqu xmm0, [rsp - 16]
 TEST_END
 
 TEST_BEGIN(VMOVDQUv128m128_4, 1)
 TEST_INPUTS(
     0)
-    vmovdqu xmm4, [rsp - 128]
+    vmovdqu xmm4, [rsp - 16]
+TEST_END
+
+TEST_BEGIN(VMOVDQUv256m256, 1)
+TEST_INPUTS(
+    0)
+    vmovdqu ymm0, [rsp - 32]
+TEST_END
+
+TEST_BEGIN(VMOVDQUv256m256_4, 1)
+TEST_INPUTS(
+    0)
+    vmovdqu ymm4, [rsp - 32]
 TEST_END
 #endif  // APPLE_SAFE_TESTS
 

@@ -68,5 +68,17 @@ TEST_INPUTS(
     0)
     vmovapd xmm4, [rsp - 128]
 TEST_END
+
+TEST_BEGIN(VMOVAPDv256m256, 1)
+TEST_INPUTS(
+    0)
+    vmovapd ymm0, [rsp - 128]
+TEST_END
+
+TEST_BEGIN(VMOVAPDv256m256_4, 1)
+TEST_INPUTS(
+    0)
+    vmovapd ymm4, [rsp - 128]
+TEST_END
 #endif  // APPLE_SAFE_TESTS
 #endif  // HAS_FEATURE_AVX

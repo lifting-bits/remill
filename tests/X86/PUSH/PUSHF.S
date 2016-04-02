@@ -40,7 +40,7 @@ TEST_INPUTS(
     pushfq
     or QWORD PTR [rsp], 0x200000
     popfq
-    pushf
+    pushfq
     xor QWORD PTR [rsp], 0x200000
     popfq
 TEST_END_64

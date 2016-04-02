@@ -20,13 +20,13 @@ TEST_END
 TEST_BEGIN(MOVDQAv128m128, 1)
 TEST_INPUTS(
     0)
-    movdqa xmm0, [rsp - 128]
+    movdqa xmm0, [rsp - 16]
 TEST_END
 
 TEST_BEGIN(MOVDQAv128m128_4, 1)
 TEST_INPUTS(
     0)
-    movdqa xmm4, [rsp - 128]
+    movdqa xmm4, [rsp - 16]
 TEST_END
 #endif  // APPLE_SAFE_TESTS
 
@@ -60,13 +60,25 @@ TEST_END
 TEST_BEGIN(VMOVDQAv128m128, 1)
 TEST_INPUTS(
     0)
-    vmovdqa xmm0, [rsp - 128]
+    vmovdqa xmm0, [rsp - 16]
 TEST_END
 
 TEST_BEGIN(VMOVDQAv128m128_4, 1)
 TEST_INPUTS(
     0)
-    vmovdqa xmm4, [rsp - 128]
+    vmovdqa xmm4, [rsp - 16]
+TEST_END
+
+TEST_BEGIN(VMOVDQAv256m256, 1)
+TEST_INPUTS(
+    0)
+    vmovdqa ymm0, [rsp - 32]
+TEST_END
+
+TEST_BEGIN(VMOVDQAv256m256_4, 1)
+TEST_INPUTS(
+    0)
+    vmovdqa ymm4, [rsp - 32]
 TEST_END
 #endif  // APPLE_SAFE_TESTS
 #endif  // HAS_FEATURE_AVX
