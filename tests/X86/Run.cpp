@@ -53,7 +53,6 @@ NEVER_INLINE static T &AccessMemory(addr_t addr) {
   if (!(addr >= gStackBase && (addr + sizeof(T)) <= gStackLimit)) {
     EXPECT_TRUE(!"Memory access falls outside the valid range of the stack.");
   }
-  EXPECT_TRUE(addr >= gStackBase && (addr + sizeof(T)) <= gStackLimit);
   return *reinterpret_cast<T *>(static_cast<uintptr_t>(addr));
 }
 
