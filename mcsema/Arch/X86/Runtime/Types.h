@@ -26,6 +26,7 @@ typedef Vn<avec512_t> VV512;  // AVX512 ZMM register.
 typedef IF_AVX512_ELSE(avec512_t, IF_AVX_ELSE(avec256_t, avec128_t))
         WriteVecType;
 
+typedef VnW<vec32_t> V32W;  // Legacy MMX technology register.
 typedef VnW<vec64_t> V64W;  // Legacy MMX technology register.
 typedef VnW<avec128_t> V128W;  // Legacy (SSE) XMM register.
 
