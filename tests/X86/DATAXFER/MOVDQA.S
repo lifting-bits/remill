@@ -16,6 +16,20 @@ TEST_INPUTS(
     movdqa xmm0, xmm4
 TEST_END
 
+#if APPLE_SAFE_TESTS
+TEST_BEGIN(MOVDQAv128m128, 1)
+TEST_INPUTS(
+    0)
+    movdqa xmm0, [rsp - 128]
+TEST_END
+
+TEST_BEGIN(MOVDQAv128m128_4, 1)
+TEST_INPUTS(
+    0)
+    movdqa xmm4, [rsp - 128]
+TEST_END
+#endif  // APPLE_SAFE_TESTS
+
 #if HAS_FEATURE_AVX
 
 TEST_BEGIN(VMOVDQAv128v128_1to0, 1)
@@ -42,4 +56,17 @@ TEST_INPUTS(
     vmovdqa ymm0, ymm4
 TEST_END
 
-#endif
+#if APPLE_SAFE_TESTS
+TEST_BEGIN(VMOVDQAv128m128, 1)
+TEST_INPUTS(
+    0)
+    vmovdqa xmm0, [rsp - 128]
+TEST_END
+
+TEST_BEGIN(VMOVDQAv128m128_4, 1)
+TEST_INPUTS(
+    0)
+    vmovdqa xmm4, [rsp - 128]
+TEST_END
+#endif  // APPLE_SAFE_TESTS
+#endif  // HAS_FEATURE_AVX

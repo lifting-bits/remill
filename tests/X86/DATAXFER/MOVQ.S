@@ -16,6 +16,32 @@ TEST_INPUTS(
     movq xmm0, ARG1_64
 TEST_END_64
 
+TEST_BEGIN_64(MOVQv128r64_4, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0xFF,
+    0xFFFF,
+    0xFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF)
+
+    movq xmm4, ARG1_64
+TEST_END_64
+
+#if APPLE_SAFE_TESTS
+
+TEST_BEGIN_64(MOVQv128m64, 1)
+TEST_INPUTS(0)
+    movq xmm0, [rsp - 16]
+TEST_END_64
+
+TEST_BEGIN_64(MOVQv128m64_4, 1)
+TEST_INPUTS(0)
+    movq xmm4, [rsp - 16]
+TEST_END_64
+
+#endif  // APPLE_SAFE_TESTS
+
 TEST_BEGIN_64(MOVQr64v128, 1)
 TEST_INPUTS(
     0,
@@ -82,4 +108,19 @@ TEST_INPUTS(
     vmovq ARG2_64, xmm0
     vmovq ARG1_64, xmm1
 TEST_END_64
+
+
+#if APPLE_SAFE_TESTS
+
+TEST_BEGIN_64(VMOVQv128m64, 1)
+TEST_INPUTS(0)
+    vmovq xmm0, [rsp - 16]
+TEST_END_64
+
+TEST_BEGIN_64(VMOVQv128m64_4, 1)
+TEST_INPUTS(0)
+    vmovq xmm4, [rsp - 16]
+TEST_END_64
+
+#endif  // APPLE_SAFE_TESTS
 #endif
