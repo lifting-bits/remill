@@ -418,23 +418,24 @@ void __mcsema_basic_block(State &state, addr_t curr_pc) {
   auto &XMM31_write = AVX_SEL_XYZ(MM31_read);
 #endif  // HAS_FEATURE_AVX512
 
-  auto &ST0_read = state.fpu.st[0];
+  auto &ST0_read = state.st.element[0].val;
   auto &ST0_write =  ST0_read;
-  auto &ST1_read = state.fpu.st[1];
+  auto &ST1_read = state.st.element[1].val;
   auto &ST1_write =  ST1_read;
-  auto &ST2_read = state.fpu.st[2];
+  auto &ST2_read = state.st.element[2].val;
   auto &ST2_write =  ST2_read;
-  auto &ST3_read = state.fpu.st[3];
+  auto &ST3_read = state.st.element[3].val;
   auto &ST3_write =  ST3_read;
-  auto &ST4_read = state.fpu.st[4];
+  auto &ST4_read = state.st.element[4].val;
   auto &ST4_write =  ST4_read;
-  auto &ST5_read = state.fpu.st[5];
+  auto &ST5_read = state.st.element[5].val;
   auto &ST5_write =  ST5_read;
-  auto &ST6_read = state.fpu.st[6];
+  auto &ST6_read = state.st.element[6].val;
   auto &ST6_write =  ST6_read;
-  auto &ST7_read = state.fpu.st[7];
+  auto &ST7_read = state.st.element[7].val;
   auto &ST7_write =  ST7_read;
 
+#if 0  // TODO(pag): Don't emulate directly for now.
 #if 32 == ADDRESS_SIZE_BITS
   auto &FPU_LASTIP_read = state.fpu.u.x86.ip;
   auto &FPU_LASTIP_write = state.fpu.u.x86.ip;
@@ -450,6 +451,8 @@ void __mcsema_basic_block(State &state, addr_t curr_pc) {
   auto &FPU_LASTDP_read = state.fpu.u.amd64.dp;
   auto &FPU_LASTDP_write = state.fpu.u.amd64.dp;
 #endif
+#endif
+
   auto &FPU_OPCODE_read = state.fpu.fop;
   auto &FPU_OPCODE_write = state.fpu.fop;
   auto &FPU_CONTROL_read = state.fpu.cwd.flat;
@@ -459,7 +462,29 @@ void __mcsema_basic_block(State &state, addr_t curr_pc) {
   auto &FPU_TAG_read = state.fpu.ftw;
   auto &FPU_TAG_write = state.fpu.ftw;
 
-  // Arithmetic flags. Data-flow analyses will let of clear these out ;-)
+  // MMX technology registers. For simplicity, these are implemented separately
+  // from the FPU stack, and so they do not alias.
+  //
+  // TODO(pag): Have a "present" flag for each MMX register so that marshaling
+  //            back to native code will know what to use.
+  auto &MMX0_read = state.mmx.mmx[0].val;
+  auto &MMX0_write = MMX0_read;
+  auto &MMX1_read = state.mmx.mmx[1].val;
+  auto &MMX1_write = MMX1_read;
+  auto &MMX2_read = state.mmx.mmx[2].val;
+  auto &MMX2_write = MMX2_read;
+  auto &MMX3_read = state.mmx.mmx[3].val;
+  auto &MMX3_write = MMX3_read;
+  auto &MMX4_read = state.mmx.mmx[4].val;
+  auto &MMX4_write = MMX4_read;
+  auto &MMX5_read = state.mmx.mmx[5].val;
+  auto &MMX5_write = MMX5_read;
+  auto &MMX6_read = state.mmx.mmx[6].val;
+  auto &MMX6_write = MMX6_read;
+  auto &MMX7_read = state.mmx.mmx[7].val;
+  auto &MMX7_write = MMX7_read;
+
+  // Arithmetic flags. Data-flow analyses will clear these out ;-)
   auto &AF_write = state.aflag.af;
   auto &CF_write = state.aflag.cf;
   auto &DF_write = state.aflag.df;

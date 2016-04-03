@@ -113,7 +113,7 @@ static_assert(16 == sizeof(FPUStackElem),
               "Invalid structure packing of `FPUStackElem`.");
 
 // FP register state that conforms with `FXSAVE`.
-struct FPU final {
+struct alignas(64) FPU final {
   FPUControlWord cwd;
   FPUStatusWord swd;
   uint8_t ftw;
@@ -146,7 +146,7 @@ struct FPU final {
 
 static_assert(512 == sizeof(FPU), "Invalid structure packing of `FPU`.");
 
-union Flags final {
+union alignas(8) Flags final {
   uint64_t flat;
   struct {
     uint32_t cf:1;  // bit 0.
@@ -182,7 +182,7 @@ union Flags final {
 
 static_assert(8 == sizeof(Flags), "Invalid structure packing of `Flags`.");
 
-struct alignas(8) ArithFlags final {
+struct alignas(16) ArithFlags final {
   // Prevents LLVM from casting and `ArithFlags` into an `i8` to access `cf`.
   volatile bool _tear0;
   bool cf;  // Prevents load/store coalescing.
@@ -264,7 +264,7 @@ static_assert(0 == __builtin_offsetof(VectorReg, zmm),
 // 64-bit ones are inaccessible in lifted 32-bit code because they will
 // not be referenced by named variables in the `__mcsema_basic_block`
 // function.
-struct alignas(8) GPR final {
+struct alignas(16) GPR final {
   // Prevents LLVM from casting a `GPR` into an `i64` to access `rax`.
   volatile uint64_t _tear0;
   Reg rax;
@@ -309,6 +309,25 @@ struct alignas(8) GPR final {
 
 static_assert(272 == sizeof(GPR), "Invalid structure packing of `GPR`.");
 
+struct alignas(16) X87Stack {
+  struct alignas(16) {
+    uint8_t _tear[6];
+    float80_t val;
+  } __attribute__((packed)) element[8];
+};
+
+static_assert(128 == sizeof(X87Stack),
+              "Invalid structure packing of `X87Stack`.");
+
+struct alignas(16) MMX {
+  struct alignas(8) {
+    uint64_t _tear;
+    vec64_t val;
+  } __attribute__((packed)) mmx[8];
+};
+
+static_assert(128 == sizeof(MMX), "Invalid structure packing of `MMX`.");
+
 enum : size_t {
   kNumVecRegisters = 32
 };
@@ -326,14 +345,15 @@ struct alignas(64) State final {
   // lifted, as well as improved the optimizability of the aflags themselves.
   ArithFlags aflag;  // 16 bytes.
   Flags rflag;  // 8 bytes.
-
   Segments seg;  // 24 bytes.
   GPR gpr;  // 272 bytes.
+  X87Stack st;  // 128 bytes.
+  MMX mmx;  // 128 bytes.
 
+  // I'm not a particular fan of this approach, but oh well.
   volatile uint32_t interrupt_vector;
 
   uint8_t _padding[60];
-
 } __attribute__((packed));
 
 static_assert(0 == __builtin_offsetof(State, fpu),
@@ -354,9 +374,15 @@ static_assert(2584 == __builtin_offsetof(State, seg),
 static_assert(2608 == __builtin_offsetof(State, gpr),
               "Invalid packing of `State::seg`.");
 
-static_assert(2880 == __builtin_offsetof(State, interrupt_vector),
+static_assert(2880 == __builtin_offsetof(State, st),
+              "Invalid packing of `State::st`.");
+
+static_assert(3008 == __builtin_offsetof(State, mmx),
+              "Invalid packing of `State::mmx`.");
+
+static_assert(3136 == __builtin_offsetof(State, interrupt_vector),
               "Invalid packing of `State::interrupt`.");
 
-static_assert(2944 == sizeof(State), "Invalid packing of `State`.");
+static_assert(3200 == sizeof(State), "Invalid packing of `State`.");
 
 #endif  // MCSEMA_ARCH_X86_RUNTIME_STATE_H_
