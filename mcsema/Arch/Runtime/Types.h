@@ -17,17 +17,107 @@ struct State;
 typedef IF_64BIT_ELSE(uint64_t, uint32_t) addr_t;
 typedef addr_t order_t;
 
-typedef float float32_t;
-static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
-
-typedef double float64_t;
-static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
-
 typedef unsigned uint128_t __attribute__((mode(TI)));
 static_assert(16 == sizeof(uint128_t), "Invalid `uint128_t` size.");
 
 typedef int int128_t __attribute__((mode(TI)));
 static_assert(16 == sizeof(int128_t), "Invalid `int128_t` size.");
+
+union alignas(float) float32_t {
+  float val;
+  struct {
+    uint32_t sign:1;
+    uint32_t exponent:8;
+    uint32_t fraction:23;
+  } __attribute__((packed));
+
+  inline float32_t(void)
+      : val(0.0) {}
+
+  inline float32_t(float val_)
+      : val(val_) {}
+
+  inline float32_t &operator=(float new_val) {
+    val = new_val;
+    return *this;
+  }
+
+  inline operator float(void) const {
+    return val;
+  }
+} __attribute__((packed));
+
+static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
+
+union alignas(double) float64_t {
+  double val;
+  struct {
+    uint64_t sign:1;
+    uint64_t exponent:11;
+    uint64_t fraction:52;
+  } __attribute__((packed));
+
+  inline float64_t(void)
+      : val(0.0) {}
+
+  inline float64_t(double val_)
+      : val(val_) {}
+
+  inline float64_t &operator=(double new_val) {
+    val = new_val;
+    return *this;
+  }
+
+  inline operator double(void) const {
+    return val;
+  }
+} __attribute__((packed));
+
+static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
+
+typedef long double arch_float80_t;  // X86-specific.
+
+struct alignas(1) float80_t {
+  struct {
+    uint16_t sign:1;
+    uint16_t exponent:15;
+  } __attribute__((packed));
+  struct {
+    uint64_t integer:1;
+    uint64_t fraction:63;
+  } __attribute__((packed));
+
+  inline float80_t(void)
+      : sign(0),
+        exponent(0),
+        integer(0),
+        fraction(0) {}
+
+  inline float80_t &operator=(arch_float80_t new_val) {
+    *this = *reinterpret_cast<float80_t *>(&new_val);  // Assumes little endian.
+    return *this;
+  }
+
+  inline operator arch_float80_t(void) const {
+    arch_float80_t val = 0.0;
+    *(&val) = *reinterpret_cast<const arch_float80_t *>(this);
+    return val;
+  }
+} __attribute__((packed));
+
+static_assert(10 == sizeof(float80_t), "Invalid `float80_t` size.");
+static_assert(sizeof(arch_float80_t) >= sizeof(float80_t),
+              "Invalid definition of `arch_float80_t`.");
+
+struct float128_t {
+  struct {
+    uint16_t sign:1;
+    uint16_t exponent:15;
+  } __attribute__((packed));
+  uint128_t fraction:112;
+} __attribute__((packed));
+
+static_assert(16 == sizeof(float128_t), "Invalid `float128_t` size.");
 
 // Add in some missing type traits.
 namespace std {
@@ -73,67 +163,63 @@ union vec512_t;
 // TODO(pag): See if using the `ext_vector_type` attribute (OpenCL) produces
 //            better code. These might also work better with NEON because they
 //            support different kinds of selectors (`xyzw`).
-#define MAKE_VECTOR(base_type, nelms, vec_size_bits, width_bytes) \
-    typedef base_type ## _t base_type ## v ## nelms ## _t \
+#define MAKE_VECTOR(base_type, prefix, nelms, vec_size_bits, width_bytes) \
+    typedef base_type prefix ## v ## nelms ## _t \
         __attribute__((vector_size(width_bytes))); \
-    static_assert(width_bytes == sizeof(base_type ## v ## nelms ## _t), \
-        "Invalid definition of `" #base_type "v" #nelms "`."); \
+    static_assert(width_bytes == sizeof(prefix ## v ## nelms ## _t), \
+        "Invalid definition of `" #prefix "v" #nelms "`."); \
     static_assert((width_bytes * 8) == vec_size_bits, \
-            "Invalid definition of `" #base_type "v" #nelms "`."); \
+            "Invalid definition of `" #prefix "v" #nelms "`."); \
     template <> \
-    struct VectorInfo<base_type ## v ## nelms ## _t> { \
+    struct VectorInfo<prefix ## v ## nelms ## _t> { \
       enum { \
         kNumElms = nelms \
       }; \
-      typedef base_type ## _t BaseType; \
+      typedef base_type BaseType; \
       typedef vec ## vec_size_bits ## _t VecType; \
     }
 
-MAKE_VECTOR(uint8, 1, 8, 1);
-MAKE_VECTOR(uint8, 2, 16, 2);
-MAKE_VECTOR(uint8, 4, 32, 4);
-MAKE_VECTOR(uint8, 8, 64, 8);
-MAKE_VECTOR(uint8, 16, 128, 16);
-MAKE_VECTOR(uint8, 32, 256, 32);
-MAKE_VECTOR(uint8, 64, 512, 64);
+MAKE_VECTOR(uint8_t, uint8, 1, 8, 1);
+MAKE_VECTOR(uint8_t, uint8, 2, 16, 2);
+MAKE_VECTOR(uint8_t, uint8, 4, 32, 4);
+MAKE_VECTOR(uint8_t, uint8, 8, 64, 8);
+MAKE_VECTOR(uint8_t, uint8, 16, 128, 16);
+MAKE_VECTOR(uint8_t, uint8, 32, 256, 32);
+MAKE_VECTOR(uint8_t, uint8, 64, 512, 64);
 
-MAKE_VECTOR(uint16, 1, 16, 2);
-MAKE_VECTOR(uint16, 2, 32, 4);
-MAKE_VECTOR(uint16, 4, 64, 8);
-MAKE_VECTOR(uint16, 8, 128, 16);
-MAKE_VECTOR(uint16, 16, 256, 32);
-MAKE_VECTOR(uint16, 32, 512, 64);
+MAKE_VECTOR(uint16_t, uint16, 1, 16, 2);
+MAKE_VECTOR(uint16_t, uint16, 2, 32, 4);
+MAKE_VECTOR(uint16_t, uint16, 4, 64, 8);
+MAKE_VECTOR(uint16_t, uint16, 8, 128, 16);
+MAKE_VECTOR(uint16_t, uint16, 16, 256, 32);
+MAKE_VECTOR(uint16_t, uint16, 32, 512, 64);
 
-MAKE_VECTOR(uint32, 1, 32, 4);
-MAKE_VECTOR(uint32, 2, 64, 8);
-MAKE_VECTOR(uint32, 4, 128, 16);
-MAKE_VECTOR(uint32, 8, 256, 32);
-MAKE_VECTOR(uint32, 16, 512, 64);
+MAKE_VECTOR(uint32_t, uint32, 1, 32, 4);
+MAKE_VECTOR(uint32_t, uint32, 2, 64, 8);
+MAKE_VECTOR(uint32_t, uint32, 4, 128, 16);
+MAKE_VECTOR(uint32_t, uint32, 8, 256, 32);
+MAKE_VECTOR(uint32_t, uint32, 16, 512, 64);
 
-MAKE_VECTOR(uint64, 1, 64, 8);
-MAKE_VECTOR(uint64, 2, 128, 16);
-MAKE_VECTOR(uint64, 4, 256, 32);
-MAKE_VECTOR(uint64, 8, 512, 64);
+MAKE_VECTOR(uint64_t, uint64, 1, 64, 8);
+MAKE_VECTOR(uint64_t, uint64, 2, 128, 16);
+MAKE_VECTOR(uint64_t, uint64, 4, 256, 32);
+MAKE_VECTOR(uint64_t, uint64, 8, 512, 64);
 
-//MAKE_VECTOR(uint128, 0, 64, 8);
-MAKE_VECTOR(uint128, 1, 128, 16);
-MAKE_VECTOR(uint128, 2, 256, 32);
-MAKE_VECTOR(uint128, 4, 512, 64);
+//MAKE_VECTOR(uint128_t, uint128, 0, 64, 8);
+MAKE_VECTOR(uint128_t, uint128, 1, 128, 16);
+MAKE_VECTOR(uint128_t, uint128, 2, 256, 32);
+MAKE_VECTOR(uint128_t, uint128, 4, 512, 64);
 
-MAKE_VECTOR(float32, 1, 32, 4);
-MAKE_VECTOR(float32, 2, 64, 8);
-MAKE_VECTOR(float32, 4, 128, 16);
-MAKE_VECTOR(float32, 8, 256, 32);
-MAKE_VECTOR(float32, 16, 512, 64);
+MAKE_VECTOR(float, float32, 1, 32, 4);
+MAKE_VECTOR(float, float32, 2, 64, 8);
+MAKE_VECTOR(float, float32, 4, 128, 16);
+MAKE_VECTOR(float, float32, 8, 256, 32);
+MAKE_VECTOR(float, float32, 16, 512, 64);
 
-MAKE_VECTOR(float64, 1, 64, 8);
-MAKE_VECTOR(float64, 2, 128, 16);
-MAKE_VECTOR(float64, 4, 256, 32);
-MAKE_VECTOR(float64, 8, 512, 64);
-
-typedef long double arch_float80_t;
-typedef uint8v16_t float80_t;
-static_assert(16 == sizeof(float80_t), "Invalid `float80_t` size.");
+MAKE_VECTOR(double, float64, 1, 64, 8);
+MAKE_VECTOR(double, float64, 2, 128, 16);
+MAKE_VECTOR(double, float64, 4, 256, 32);
+MAKE_VECTOR(double, float64, 8, 512, 64);
 
 template <typename T>
 struct SingletonVectorType;

@@ -98,10 +98,19 @@ union FPUControlWord final {
 static_assert(2 == sizeof(FPUControlWord),
               "Invalid structure packing of `FPUControl`.");
 
-union FPUStackElem final {
-  float80_t st;
-  double mmx;
+struct FPUStackElem final {
+  uint8_t _rsvd[6];
+  union {
+    float80_t st;
+    struct {
+      uint16_t infinity;  // When an MMX register is used, this is all 1s.
+      vec64_t mmx;
+    } __attribute__((packed));
+  } __attribute__((packed));
 } __attribute__((packed));
+
+static_assert(16 == sizeof(FPUStackElem),
+              "Invalid structure packing of `FPUStackElem`.");
 
 // FP register state that conforms with `FXSAVE`.
 struct FPU final {
@@ -126,7 +135,7 @@ struct FPU final {
   } __attribute__((packed)) u;
   uint32_t mxcsr;
   uint32_t mxcr_mask;
-  float80_t st[8];   // 8*16 bytes for each FP reg = 128 bytes.
+  FPUStackElem st[8];   // 8*16 bytes for each FP reg = 128 bytes.
 
   // Note: This is consistent with `fxsave64`, but doesn't handle things like
   //       ZMM/YMM registers. Therefore, we use a different set of registers

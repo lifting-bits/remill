@@ -231,12 +231,13 @@ inline static U DownCast(T in) {
 }
 
 // Convert a byte array into an 80-bit floating point value.
-ALWAYS_INLINE static arch_float80_t R(const float80_t &reg) {
-  return *reinterpret_cast<const arch_float80_t *>(&(reg));
+ALWAYS_INLINE static float80_t R(const float80_t &reg) {
+  return reg;
 }
 
-ALWAYS_INLINE static arch_float80_t &W(float80_t &reg) {
-  return *reinterpret_cast<arch_float80_t *>(&(reg));
+// This is super sketchy.
+ALWAYS_INLINE static float80_t &W(float80_t &reg) {
+  return reg;
 }
 
 #define MAKE_ACCESSORS(T, size) \
