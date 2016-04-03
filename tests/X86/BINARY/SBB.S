@@ -86,7 +86,7 @@ TEST_INPUTS(
     sbb bl, al
 TEST_END
 
-TEST_BEGIN_64(SBBr8r8, 1)
+TEST_BEGIN_64(SBBr8r8, 2)
 TEST_INPUTS(
     0, 0,
     1, 0,
