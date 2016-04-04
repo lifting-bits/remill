@@ -100,21 +100,6 @@ DEF_SEM(JLE, PC target_pc) {
   W(state.gpr.rip) = __mcsema_conditional_branch(cond, target_pc, next_pc);
 }
 
-DEF_SEM(JCXZ, PC target_pc) {
-  const auto cond = !state.gpr.rcx.word;
-  W(state.gpr.rip) = __mcsema_conditional_branch(cond, target_pc, next_pc);
-}
-
-DEF_SEM(JECXZ, PC target_pc) {
-  const auto cond = !state.gpr.rcx.dword;
-  W(state.gpr.rip) = __mcsema_conditional_branch(cond, target_pc, next_pc);
-}
-
-DEF_SEM(JRCXZ, PC target_pc) {
-  const auto cond = !R(state.gpr.rcx);
-  W(state.gpr.rip) = __mcsema_conditional_branch(cond, target_pc, next_pc);
-}
-
 } // namespace
 
 DEF_ISEL(JNLE_RELBRb) = JNLE;
@@ -229,23 +214,44 @@ DEF_ISEL(JLE_RELBRz_32) = JLE;
 IF_64BIT(DEF_ISEL(JLE_RELBRz_64) = JLE;)
 DEF_ISEL(JLE_RELBRd) = JLE;
 
-DEF_ISEL(JCXZ_RELBRb) = JCXZ;
-DEF_ISEL(JECXZ_RELBRb) = JECXZ;
-DEF_ISEL(JRCXZ_RELBRb) = JRCXZ;
+DEF_ISEL_SEM(JCXZ_RELBRb, PC target_pc) {
+  const auto cond = !state.gpr.rcx.word;
+  W(state.gpr.rip) = __mcsema_conditional_branch(cond, target_pc, next_pc);
+}
+
+DEF_ISEL_SEM(JECXZ_RELBRb, PC target_pc) {
+  const auto cond = !state.gpr.rcx.dword;
+  W(state.gpr.rip) = __mcsema_conditional_branch(cond, target_pc, next_pc);
+}
+
+DEF_ISEL_SEM(JRCXZ_RELBRb, PC target_pc) {
+  const auto cond = !R(state.gpr.rcx);
+  W(state.gpr.rip) = __mcsema_conditional_branch(cond, target_pc, next_pc);
+}
+
+DEF_ISEL_SEM(LOOP_RELBRb, PC target_pc) {
+  const auto count = R(state.gpr.rcx) - 1;
+  const auto cond = 0 != count;
+  W(state.gpr.rcx) = count;
+  W(state.gpr.rip) = __mcsema_conditional_branch(cond, target_pc, next_pc);
+}
+
+DEF_ISEL_SEM(LOOPE_RELBRb, PC target_pc) {
+  const auto count = R(state.gpr.rcx) - 1;
+  const auto cond = 0 != count && state.aflag.zf;
+  W(state.gpr.rcx) = count;
+  W(state.gpr.rip) = __mcsema_conditional_branch(cond, target_pc, next_pc);
+}
+
+DEF_ISEL_SEM(LOOPNE_RELBRb, PC target_pc) {
+  const auto count = R(state.gpr.rcx) - 1;
+  const auto cond = 0 != count && !state.aflag.zf;
+  W(state.gpr.rcx) = count;
+  W(state.gpr.rip) = __mcsema_conditional_branch(cond, target_pc, next_pc);
+}
 
 /*
 522 XEND XEND COND_BR RTM RTM ATTRIBUTES:
-
-585 LOOPNE LOOPNE_RELBRb COND_BR BASE I86 ATTRIBUTES:
-586 LOOPNE LOOPNE_RELBRb COND_BR BASE I86 ATTRIBUTES:
-587 LOOPNE LOOPNE_RELBRb COND_BR BASE I86 ATTRIBUTES:
-588 LOOPNE LOOPNE_RELBRb COND_BR BASE I86 ATTRIBUTES:
-
-714 LOOP LOOP_RELBRb COND_BR BASE I86 ATTRIBUTES:
-875 LOOPE LOOPE_RELBRb COND_BR BASE I86 ATTRIBUTES:
-876 LOOPE LOOPE_RELBRb COND_BR BASE I86 ATTRIBUTES:
-877 LOOPE LOOPE_RELBRb COND_BR BASE I86 ATTRIBUTES:
-878 LOOPE LOOPE_RELBRb COND_BR BASE I86 ATTRIBUTES:
 
 1465 XBEGIN XBEGIN_RELBRz COND_BR RTM RTM ATTRIBUTES: SCALABLE
  */
