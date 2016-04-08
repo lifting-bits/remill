@@ -23,6 +23,10 @@ static_assert(16 == sizeof(uint128_t), "Invalid `uint128_t` size.");
 typedef int int128_t __attribute__((mode(TI)));
 static_assert(16 == sizeof(int128_t), "Invalid `int128_t` size.");
 
+union float32_t;
+union float64_t;
+struct float80_t;
+
 union alignas(float) float32_t {
   float val;
   struct {
@@ -31,20 +35,16 @@ union alignas(float) float32_t {
     uint32_t fraction:23;
   } __attribute__((packed));
 
-  inline float32_t(void)
-      : val(0.0) {}
-
-  inline float32_t(float val_)
-      : val(val_) {}
-
-  inline float32_t &operator=(float new_val) {
-    val = new_val;
-    return *this;
-  }
-
-  inline operator float(void) const {
-    return val;
-  }
+  ALWAYS_INLINE float32_t(void);
+  ALWAYS_INLINE float32_t(float val_);
+  ALWAYS_INLINE float32_t &operator=(float new_val);
+  ALWAYS_INLINE float32_t &operator=(double new_val);
+  ALWAYS_INLINE float32_t &operator=(const float64_t &new_val);
+  ALWAYS_INLINE float32_t &operator=(int64_t new_val);
+  ALWAYS_INLINE float32_t &operator=(int32_t new_val);
+  ALWAYS_INLINE float32_t &operator=(int16_t new_val);
+  ALWAYS_INLINE float32_t &operator=(int8_t new_val);
+  ALWAYS_INLINE operator float(void) const;
 } __attribute__((packed));
 
 static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
@@ -57,25 +57,21 @@ union alignas(double) float64_t {
     uint64_t fraction:52;
   } __attribute__((packed));
 
-  inline float64_t(void)
-      : val(0.0) {}
-
-  inline float64_t(double val_)
-      : val(val_) {}
-
-  inline float64_t &operator=(double new_val) {
-    val = new_val;
-    return *this;
-  }
-
-  inline operator double(void) const {
-    return val;
-  }
+  ALWAYS_INLINE float64_t(void);
+  ALWAYS_INLINE float64_t(double val_);
+  ALWAYS_INLINE float64_t(float val_);
+  ALWAYS_INLINE float64_t(float32_t val_);
+  ALWAYS_INLINE float64_t &operator=(double new_val);
+  ALWAYS_INLINE float64_t &operator=(float new_val);
+  ALWAYS_INLINE float64_t &operator=(float32_t new_val);
+  ALWAYS_INLINE float64_t &operator=(int64_t new_val);
+  ALWAYS_INLINE float64_t &operator=(int32_t new_val);
+  ALWAYS_INLINE float64_t &operator=(int16_t new_val);
+  ALWAYS_INLINE float64_t &operator=(int8_t new_val);
+  ALWAYS_INLINE operator double(void) const;
 } __attribute__((packed));
 
 static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
-
-typedef long double arch_float80_t;  // X86-specific.
 
 struct alignas(1) float80_t {
   struct {
@@ -87,37 +83,15 @@ struct alignas(1) float80_t {
     uint64_t fraction:63;
   } __attribute__((packed));
 
-  inline float80_t(void)
-      : sign(0),
-        exponent(0),
-        integer(0),
-        fraction(0) {}
+  ALWAYS_INLINE float80_t(void);
+  ALWAYS_INLINE float80_t(float32_t);
+  ALWAYS_INLINE float80_t(float64_t);
+  ALWAYS_INLINE float80_t &operator=(float32_t new_val);
+  ALWAYS_INLINE float80_t &operator=(float64_t new_val);
 
-  inline float80_t &operator=(arch_float80_t new_val) {
-    *this = *reinterpret_cast<float80_t *>(&new_val);  // Assumes little endian.
-    return *this;
-  }
-
-  inline operator arch_float80_t(void) const {
-    arch_float80_t val = 0.0;
-    *(&val) = *reinterpret_cast<const arch_float80_t *>(this);
-    return val;
-  }
 } __attribute__((packed));
 
 static_assert(10 == sizeof(float80_t), "Invalid `float80_t` size.");
-static_assert(sizeof(arch_float80_t) >= sizeof(float80_t),
-              "Invalid definition of `arch_float80_t`.");
-
-struct float128_t {
-  struct {
-    uint16_t sign:1;
-    uint16_t exponent:15;
-  } __attribute__((packed));
-  uint128_t fraction:112;
-} __attribute__((packed));
-
-static_assert(16 == sizeof(float128_t), "Invalid `float128_t` size.");
 
 // Add in some missing type traits.
 namespace std {
@@ -141,7 +115,6 @@ template <>
 struct is_unsigned<uint128_t> {
   static constexpr bool value = true;
 };
-
 
 }  // namespace
 
@@ -552,13 +525,23 @@ struct RnW final {
 };
 
 template <>
+struct Rn<float32_t> final {
+  const float32_t val;
+};
+
+template <>
+struct Rn<float64_t> final {
+  const float64_t val;
+};
+
+template <>
 struct RnW<float32_t> final {
-  uint32_t *val_ref;
+  float32_t *val_ref;
 };
 
 template <>
 struct RnW<float64_t> final {
-  uint64_t *val_ref;
+  float64_t *val_ref;
 };
 
 template <typename T>
@@ -585,8 +568,13 @@ struct BaseType {
   typename BaseType<T>::Type
 
 template <>
-struct BaseType<float80_t> {
-  typedef arch_float80_t Type;
+struct BaseType<float32_t> {
+  typedef float Type;
+};
+
+template <>
+struct BaseType<float64_t> {
+  typedef double Type;
 };
 
 template <typename T>

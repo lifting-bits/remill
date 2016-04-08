@@ -44,7 +44,19 @@ DEF_SEM(ROL, D dst, S1 src1, S2 src2) {
   } else {
     W(dst) = new_val;
   }
+}
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(RORX, D dst, S1 src1, S2 src2) {
+  typedef typename BaseType<S1>::Type T;
+  enum : T {
+    kSize = 8 * sizeof(T),
+    kCountMask = 64 == kSize ? T(0x3F) : T(0x1F)
+  };
+  const T val = R(src1);
+  const T count = static_cast<uint8_t>(R(src2)) & kCountMask;
+  const T new_val = (val >> count) | (val << (kSize - count));
+  W(dst) = new_val;
 }
 
 }  // namespace
@@ -62,5 +74,9 @@ DEF_ISEL(ROL_GPR8_CL) = ROL<R8W, R8, R8>;
 DEF_ISEL_MnW_Mn_Rn(ROL_MEMv_CL, ROL);
 DEF_ISEL_RnW_Rn_Rn(ROL_GPRv_CL, ROL);
 
+DEF_ISEL(RORX_VGPR32d_VGPR32d_IMMb) = RORX<R32W, R32, I8>;
+DEF_ISEL(RORX_VGPR32d_MEMd_IMMb) = RORX<R32W, M32, I8>;
+DEF_ISEL(RORX_VGPR64q_VGPR64q_IMMb) = RORX<R64W, R64, I8>;
+DEF_ISEL(RORX_VGPR64q_MEMq_IMMb) = RORX<R64W, M64, I8>;
 
 #endif  // MCSEMA_ARCH_X86_SEMANTICS_ROTATE_H_

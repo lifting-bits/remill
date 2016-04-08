@@ -99,6 +99,18 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
           module, "__mcsema_write_memory_v256")),
       write_memory_v512(FindPureIntrinsic(
           module, "__mcsema_write_memory_v512")),
+
+      read_memory_f32(FindIntrinsic(module, "__mcsema_read_memory_f32")),
+      read_memory_f64(FindIntrinsic(module, "__mcsema_read_memory_f64")),
+      read_memory_f80(FindIntrinsic(module, "__mcsema_read_memory_f80")),
+
+      write_memory_f32(FindPureIntrinsic(module, "__mcsema_write_memory_f32")),
+      write_memory_f64(FindPureIntrinsic(module, "__mcsema_write_memory_f64")),
+      write_memory_f80(FindPureIntrinsic(module, "__mcsema_write_memory_f80")),
+
+      read_f80(FindIntrinsic(module, "__mcsema_read_f80")),
+      write_f80(FindIntrinsic(module, "__mcsema_write_f80")),
+
       compute_address(FindPureIntrinsic(module, "__mcsema_compute_address")),
 
       // Memory barriers.
@@ -122,6 +134,8 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       undefined_16(FindPureIntrinsic(module, "__mcsema_undefined_16")),
       undefined_32(FindPureIntrinsic(module, "__mcsema_undefined_32")),
       undefined_64(FindPureIntrinsic(module, "__mcsema_undefined_64")),
+      undefined_f32(FindPureIntrinsic(module, "__mcsema_undefined_f32")),
+      undefined_f64(FindPureIntrinsic(module, "__mcsema_undefined_f64")),
 
       // Used for the global ordering of memory instructions.
       memory_order(FindGlobaVariable(module, "__mcsema_memory_order")) {}

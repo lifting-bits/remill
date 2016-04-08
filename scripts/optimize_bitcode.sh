@@ -30,7 +30,7 @@ $DIR/third_party/bin/opt -O3 -o=$BIN.opt0.bc $1 || {
 }
 
 $DIR/third_party/bin/opt \
-    -load $DIR/build/libOptimize.$DYLIB_SUFFIX -intrinsic_optimizer \
+    -load $DIR/build/libOptimize.$DYLIB_SUFFIX -mcsema_optimize \
     -o=$BIN.opt1.bc $BIN.opt0.bc || {
     printf "${RED}Could not optimize $BIN.opt0.bc${RESET}\n" > /dev/stderr
     exit 1
@@ -41,7 +41,8 @@ $DIR/third_party/bin/opt -O3 -o=$BIN.opt2.bc $BIN.opt1.bc || {
     exit 1
 }
 
-$DIR/third_party/bin/opt -float2int -lowerswitch -mem2reg -o=$BIN.bc $BIN.opt2.bc || {
+$DIR/third_party/bin/opt \
+    -float2int -lowerswitch -mem2reg -o=$BIN.bc $BIN.opt2.bc || {
     printf "${RED}Could not optimize $1.opt1.bc${RESET}\n" > /dev/stderr
     exit 1
 }

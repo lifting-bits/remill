@@ -69,6 +69,7 @@ MCSEMA_SRC_DIR = os.path.join(MCSEMA_DIR, "mcsema")
 MCSEMA_BUILD_DIR = os.path.join(MCSEMA_DIR, "build")
 MCSEMA_TEST_DIR = os.path.join(MCSEMA_DIR, "tests")
 MCSEMA_GEN_DIR = os.path.join(MCSEMA_DIR, "generated")
+MCSEMA_SCRIPTS_DIR = os.path.join(MCSEMA_DIR, "scripts")
 MCSEMA_INCLUDE_DIR = os.path.join(MCSEMA_DIR, "third_party", "include")
 MCSEMA_BIN_DIR = os.path.join(MCSEMA_DIR, "third_party", "bin")
 MCSEMA_LIB_DIR = os.path.join(MCSEMA_DIR, "third_party", "lib")
@@ -100,6 +101,7 @@ except:
 
   def FinishAllTasks():
     pass
+
 
 CXX_FLAGS = [
   # Enable warnings.
@@ -292,6 +294,10 @@ class StaticLibrary(_File):
             return path
     print "Warning: cannot find object file: {}".format(name)
     return name
+
+
+def OutputFileNameOfCommand(*args):
+  return _File(FileName(Task(Command, *args)))
 
 
 class ConfigLibraries(object):

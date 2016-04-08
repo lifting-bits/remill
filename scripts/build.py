@@ -52,6 +52,12 @@ libOptimize = TargetLibrary(
   source_files=[
     SourceFile(os.path.join(MCSEMA_DIR, "mcsema", "Optimize.cpp"))])
 
+# Create an LLVM plugin for optimizing lifted bitcode files.
+libFinalize = TargetLibrary(
+  os.path.join(MCSEMA_BUILD_DIR, "libFinalize.{}".format(SHARED_LIB_EXT)),
+  source_files=[
+    SourceFile(os.path.join(MCSEMA_DIR, "mcsema", "Finalize.cpp"))])
+
 # Build the test cases for a particular arch.
 def BuildTests(arch, bits, suffix, has_avx, has_avx512):
   target_args = [
@@ -111,12 +117,16 @@ def BuildTests(arch, bits, suffix, has_avx, has_avx512):
     "--bc_in={}".format(sem_file),
     "--bc_out={}.bc".format(bc_file))
 
+  final_bc_file = OutputFileNameOfCommand(
+    os.path.join(MCSEMA_SCRIPTS_DIR, "finalize_bitcode.sh"),
+    "{}.bc".format(bc_file))
+
   # Build the test runner.
   run_tests = TargetExecutable(
     os.path.join(MCSEMA_BUILD_DIR, "run_tests_{}{}".format(arch, suffix)),
     source_files=[
       SourceFile(
-        "{}.bc".format(bc_file),
+        final_bc_file,
         extra_args=["-O3", "-mno-avx", "-mno-sse"]),
       SourceFile(
         os.path.join(MCSEMA_TEST_DIR, "X86", "Tests.S"),

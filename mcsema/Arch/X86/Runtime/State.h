@@ -311,8 +311,8 @@ static_assert(272 == sizeof(GPR), "Invalid structure packing of `GPR`.");
 
 struct alignas(16) X87Stack {
   struct alignas(16) {
-    uint8_t _tear[6];
-    float80_t val;
+    uint64_t _tear;
+    float64_t val;
   } __attribute__((packed)) element[8];
 };
 

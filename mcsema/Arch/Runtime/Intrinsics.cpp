@@ -1,5 +1,8 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#ifndef MCSEMA_ARCH_SEMANTICS_INSTRINSICS_CPP_
+#define MCSEMA_ARCH_SEMANTICS_INSTRINSICS_CPP_
+
 #include "mcsema/Arch/Runtime/Intrinsics.h"
 
 #define USED(sym) \
@@ -46,6 +49,14 @@ void __mcsema_intrinsics(void) {
   USED(__mcsema_write_memory_v256);
   USED(__mcsema_write_memory_v512);
 
+  USED(__mcsema_read_memory_f32);
+  USED(__mcsema_read_memory_f64);
+  USED(__mcsema_read_memory_f80);
+
+  USED(__mcsema_write_memory_f32);
+  USED(__mcsema_write_memory_f64);
+  USED(__mcsema_write_memory_f80);
+
   USED(__mcsema_barrier_load_load);
   USED(__mcsema_barrier_load_store);
   USED(__mcsema_barrier_store_load);
@@ -75,6 +86,13 @@ void __mcsema_intrinsics(void) {
   USED(__mcsema_undefined_16);
   USED(__mcsema_undefined_32);
   USED(__mcsema_undefined_64);
+  USED(__mcsema_undefined_f32);
+  USED(__mcsema_undefined_f64);
+
+  USED(__mcsema_read_f80);
+  USED(__mcsema_write_f80);
 
   USED(__mcsema_read_cpu_features);
 }
+
+#endif  // MCSEMA_ARCH_SEMANTICS_INSTRINSICS_CPP_

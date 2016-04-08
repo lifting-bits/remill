@@ -1,6 +1,6 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#define DEBUG_TYPE "IntrinsicOptimizer"
+#define DEBUG_TYPE "mcsema_optimize"
 
 #include <iostream>
 #include <set>
@@ -53,7 +53,6 @@ static void ForceTailCall(llvm::Function *function) {
   }
 }
 
-
 // Looks for a function by name. If we can't find it, try to find an underscore
 // prefixed version, just in case this is Mac or Windows.
 static llvm::Function *GetFunction(llvm::Module &module, const char *name) {
@@ -67,26 +66,27 @@ static llvm::Function *GetFunction(llvm::Module &module, const char *name) {
 }
 
 // Replace all uses of a specific intrinsic with an undefined value.
-static void ReplaceIntrinsic(llvm::Module &module, const char *name,
-                             unsigned undef_size_bits) {
-  auto function = GetFunction(module, name);
-  if (!function) return;
-
+static void ReplaceIntrinsic(llvm::Function *function) {
   std::vector<llvm::CallInst *> call_instrs;
   for (auto callers : function->users()) {
     if (auto call_instr = llvm::dyn_cast<llvm::CallInst>(callers)) {
       call_instrs.push_back(call_instr);
     }
   }
-
-  // Eliminate calls
-  auto undef_val = llvm::UndefValue::get(
-      llvm::Type::getIntNTy(function->getContext(), undef_size_bits));
+  auto undef_val = llvm::UndefValue::get(function->getReturnType());
   for (auto call_instr : call_instrs) {
     call_instr->replaceAllUsesWith(undef_val);
     call_instr->removeFromParent();
     delete call_instr;
   }
+}
+
+// Replace all uses of a specific intrinsic with an undefined value.
+static void ReplaceIntrinsic(llvm::Module &module, const char *name) {
+  auto function = GetFunction(module, name);
+  if (!function) return;
+
+  return ReplaceIntrinsic(function);
 }
 
 // Remove calls to the undefined intrinsics. The goal here is to improve dead
@@ -96,11 +96,14 @@ static void ReplaceIntrinsic(llvm::Module &module, const char *name,
 // of declaring (but never defining) a special "intrinsic" and then we replace
 // all such uses with `undef` values.
 void RemoveUndefinedIntrinsics(llvm::Module &module) {
-  ReplaceIntrinsic(module, "__mcsema_undefined_bool", 1);
-  ReplaceIntrinsic(module, "__mcsema_undefined_8", 8);
-  ReplaceIntrinsic(module, "__mcsema_undefined_16", 16);
-  ReplaceIntrinsic(module, "__mcsema_undefined_32", 32);
-  ReplaceIntrinsic(module, "__mcsema_undefined_64", 64);
+  ReplaceIntrinsic(module, "__mcsema_undefined_bool");
+  ReplaceIntrinsic(module, "__mcsema_undefined_8");
+  ReplaceIntrinsic(module, "__mcsema_undefined_16");
+  ReplaceIntrinsic(module, "__mcsema_undefined_32");
+  ReplaceIntrinsic(module, "__mcsema_undefined_64");
+
+  ReplaceIntrinsic(module, "__mcsema_undefined_f32");
+  ReplaceIntrinsic(module, "__mcsema_undefined_f64");
 
   // Eliminate stores of undefined values.
   for (auto &function : module) {
@@ -193,7 +196,7 @@ IntrinsicOptimizer::IntrinsicOptimizer(void)
 IntrinsicOptimizer::~IntrinsicOptimizer(void) {}
 
 const char *IntrinsicOptimizer::getPassName(void) const {
-  return "IntrinsicOptimizer";
+  return DEBUG_TYPE;
 }
 
 bool IntrinsicOptimizer::runOnModule(llvm::Module &module) {
@@ -215,7 +218,7 @@ bool IntrinsicOptimizer::runOnModule(llvm::Module &module) {
 char IntrinsicOptimizer::ID = 0;
 
 static llvm::RegisterPass<IntrinsicOptimizer> X(
-    "intrinsic_optimizer",
+    DEBUG_TYPE,
     "Removes `__mcsema_defer_inlining` and `__mcsema_undefined_*` intrinsics.",
     false,  // Only looks at CFG.
     false);  // Analysis Pass.

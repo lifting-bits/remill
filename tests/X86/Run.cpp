@@ -124,6 +124,18 @@ NEVER_INLINE addr_t __mcsema_create_program_counter(addr_t pc) {
     return order + 1; \
   }
 
+#define MAKE_RW_FP_MEMORY(size) \
+  NEVER_INLINE order_t __mcsema_read_memory_f ## size( \
+      order_t order, addr_t addr, float ## size ## _t &vec) { \
+    vec = AccessMemory<float ## size ## _t>(addr); \
+    return order + 1; \
+  } \
+  NEVER_INLINE order_t __mcsema_write_memory_f ## size (\
+      order_t order, addr_t addr, const float ## size ## _t &in) { \
+    AccessMemory<float ## size ## _t>(addr) = in; \
+    return order + 1; \
+  }
+
 #define MAKE_RW_VEC_MEMORY(size) \
   NEVER_INLINE order_t __mcsema_read_memory_v ## size( \
       order_t order, addr_t addr, vec ## size ## _t &vec) { \
@@ -141,6 +153,10 @@ MAKE_RW_MEMORY(16)
 MAKE_RW_MEMORY(32)
 MAKE_RW_MEMORY(64)
 
+MAKE_RW_FP_MEMORY(32)
+MAKE_RW_FP_MEMORY(64)
+MAKE_RW_FP_MEMORY(80)
+
 MAKE_RW_VEC_MEMORY(8)
 MAKE_RW_VEC_MEMORY(16)
 MAKE_RW_VEC_MEMORY(32)
@@ -148,6 +164,7 @@ MAKE_RW_VEC_MEMORY(64)
 MAKE_RW_VEC_MEMORY(128)
 MAKE_RW_VEC_MEMORY(256)
 MAKE_RW_VEC_MEMORY(512)
+
 
 order_t __mcsema_barrier_load_load(order_t) { return 0; }
 order_t __mcsema_barrier_load_store(order_t) { return 0; }
@@ -233,6 +250,34 @@ uint32_t __mcsema_undefined_32(void) {
 
 uint64_t __mcsema_undefined_64(void) {
   return 0;
+}
+
+float32_t __mcsema_undefined_f32(void) {
+  return 0.0;
+}
+
+float64_t __mcsema_undefined_f64(void) {
+  return 0.0;
+}
+
+void __mcsema_read_f80(const float80_t &in, float64_t &out) {
+  struct alignas(16) LongDoubleStorage {
+    uint8_t bytes[16];
+  } storage;
+
+  memset(&storage, 0, sizeof(storage));
+  memcpy(&storage, &in, sizeof(in));
+  out.val = static_cast<double>(*reinterpret_cast<long double *>(&storage));
+}
+
+void __mcsema_write_f80(const float64_t &in, float80_t &out) {
+  struct alignas(16) LongDoubleStorage {
+    uint8_t bytes[16];
+  } storage;
+  auto val = static_cast<long double>(in.val);
+  memset(&storage, 0, sizeof(storage));
+  *reinterpret_cast<long double *>(&storage) = val;
+  memcpy(&out, &storage, sizeof(out));
 }
 
 // Marks `mem` as being used. This is used for making sure certain symbols are

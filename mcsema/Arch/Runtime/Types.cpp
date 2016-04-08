@@ -1,7 +1,9 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#include "mcsema/Arch/Runtime/Types.h"
-#include "mcsema/Arch/Runtime/Util.h"
+#ifndef MCSEMA_ARCH_RUNTIME_TYPES_CPP_
+#define MCSEMA_ARCH_RUNTIME_TYPES_CPP_
+
+#include "mcsema/Arch/Runtime/Intrinsics.h"
 
 vec8_t::vec8_t(void)
     : iwords{0} {}
@@ -129,3 +131,127 @@ vec512_t::vec512_t(vec256_t sub_vec)
   dqwords[0] = sub_vec.dqwords[0];
   dqwords[1] = sub_vec.dqwords[1];
 }
+
+float32_t::float32_t(void) {
+  *this = __mcsema_undefined_f32();
+}
+
+float32_t::float32_t(float val_)
+    : val(val_) {}
+
+float32_t &float32_t::operator=(float new_val) {
+  val = new_val;
+  return *this;
+}
+
+float32_t &float32_t::operator=(double new_val) {
+  val = static_cast<float>(new_val);
+  return *this;
+}
+
+float32_t &float32_t::operator=(const float64_t &new_val) {
+  val = static_cast<float>(new_val.val);
+  return *this;
+}
+
+float32_t &float32_t::operator=(int64_t new_val) {
+  val = new_val;
+  return *this;
+}
+
+float32_t &float32_t::operator=(int32_t new_val) {
+  val = new_val;
+  return *this;
+}
+
+float32_t &float32_t::operator=(int16_t new_val) {
+  val = new_val;
+  return *this;
+}
+
+float32_t &float32_t::operator=(int8_t new_val) {
+  val = new_val;
+  return *this;
+}
+
+float32_t::operator float(void) const {
+  return val;
+}
+
+float64_t::float64_t(void) {
+  *this = __mcsema_undefined_f64();
+}
+
+float64_t::float64_t(double val_)
+    : val(val_) {}
+
+float64_t::float64_t(float val_)
+    : val(val_) {}
+
+float64_t::float64_t(float32_t val_)
+    : val(val_.val) {}
+
+float64_t &float64_t::operator=(double new_val) {
+  val = new_val;
+  return *this;
+}
+
+float64_t &float64_t::operator=(float new_val) {
+  val = new_val;
+  return *this;
+}
+
+float64_t &float64_t::operator=(float32_t new_val) {
+  val = new_val.val;
+  return *this;
+}
+
+float64_t &float64_t::operator=(int64_t new_val) {
+  val = new_val;
+  return *this;
+}
+
+float64_t &float64_t::operator=(int32_t new_val) {
+  val = new_val;
+  return *this;
+}
+
+float64_t &float64_t::operator=(int16_t new_val) {
+  val = new_val;
+  return *this;
+}
+
+float64_t &float64_t::operator=(int8_t new_val) {
+  val = new_val;
+  return *this;
+}
+
+float64_t::operator double(void) const {
+  return val;
+}
+
+float80_t::float80_t(void)
+    : sign(0),
+      exponent(0),
+      integer(0),
+      fraction(0) {}
+
+float80_t::float80_t(float64_t new_val) {
+  __mcsema_write_f80(new_val, *this);
+}
+
+float80_t::float80_t(float32_t new_val)
+    : float80_t(float64_t(new_val)) {}
+
+float80_t &float80_t::operator=(float64_t new_val) {
+  __mcsema_write_f80(new_val, *this);
+  return *this;
+}
+
+float80_t &float80_t::operator=(float32_t new_val_) {
+  float64_t new_val = new_val_;
+  __mcsema_write_f80(new_val, *this);
+  return *this;
+}
+
+#endif  // MCSEMA_ARCH_RUNTIME_TYPES_CPP_

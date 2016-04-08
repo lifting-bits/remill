@@ -159,6 +159,7 @@ DEF_SEM(PANDN, D dst, S1 src1_, S2 src2_) {
   const DT src2 = R(src2_);
   W(dst) = (~src1.iwords) & src2.iwords;
 }
+
 template <typename D, typename S1, typename S2>
 DEF_SEM(POR, D dst, S1 src1_, S2 src2_) {
   typedef typename BaseType<S1>::Type T;

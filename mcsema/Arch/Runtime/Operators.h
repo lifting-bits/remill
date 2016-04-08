@@ -230,16 +230,6 @@ inline static U DownCast(T in) {
                       typename BaseType<U>::Type>(in);
 }
 
-// Convert a byte array into an 80-bit floating point value.
-ALWAYS_INLINE static float80_t R(const float80_t &reg) {
-  return reg;
-}
-
-// This is super sketchy.
-ALWAYS_INLINE static float80_t &W(float80_t &reg) {
-  return reg;
-}
-
 #define MAKE_ACCESSORS(T, size) \
     struct MemoryWriter ## T { \
       ALWAYS_INLINE void operator=(T val) const { \
@@ -290,42 +280,43 @@ MAKE_ACCESSORS(uint32_t, 32)
 MAKE_ACCESSORS(uint64_t, 64)
 #undef MAKE_ACCESSORS
 
-#define MAKE_FLOAT_ACCESSORS(T, IT, size) \
+#define MAKE_FLOAT_ACCESSORS(T, size) \
     struct MemoryWriter ## T { \
-      ALWAYS_INLINE void operator=(T val) const { \
-        __mcsema_memory_order = __mcsema_write_memory_ ## size ( \
-            __mcsema_memory_order, addr, reinterpret_cast<IT &&>(val));\
+      ALWAYS_INLINE void operator=(const T &val) const { \
+        __mcsema_memory_order = __mcsema_write_memory_f ## size ( \
+            __mcsema_memory_order, addr, val);\
       } \
       addr_t addr; \
     }; \
     ALWAYS_INLINE static T R(Mn<T> mem) { \
-      const IT ival = __mcsema_read_memory_ ## size ( \
-          __mcsema_memory_order, mem.addr); \
-      return reinterpret_cast<const T &&>(ival); \
+      T val; \
+      __mcsema_memory_order = __mcsema_read_memory_f ## size ( \
+          __mcsema_memory_order, mem.addr, val); \
+      return val; \
     } \
     ALWAYS_INLINE static MemoryWriter ## T W(MnW<T> mem) { \
       return MemoryWriter ## T {mem.addr}; \
     } \
     \
     ALWAYS_INLINE static T R(Rn<T> reg) { \
-      const IT ival = static_cast<IT>(reg.val); \
-      return reinterpret_cast<const T &&>(ival); \
+      return reg.val; \
     } \
     ALWAYS_INLINE static T &W(RnW<T> reg) { \
-      return *reinterpret_cast<T *>(reg.val_ref); \
+      return *(reg.val_ref); \
     } \
     \
     ALWAYS_INLINE static T &W(T &ref) { \
       return ref; \
     } \
-    ALWAYS_INLINE static T R(T imm) { \
-      return imm; \
+    ALWAYS_INLINE static T R(const T &val) { \
+      return val; \
     }
 
-MAKE_FLOAT_ACCESSORS(float32_t, uint32_t, 32)
-MAKE_FLOAT_ACCESSORS(float64_t, uint64_t, 64)
+MAKE_FLOAT_ACCESSORS(float32_t, 32)
+MAKE_FLOAT_ACCESSORS(float64_t, 64)
 
 #undef MAKE_FLOAT_ACCESSORS
+
 }  // namespace
 
 #endif  // MCSEMA_ARCH_RUNTIME_OPERATORS_H_

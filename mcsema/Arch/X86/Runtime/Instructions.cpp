@@ -26,3 +26,4 @@
 #include "mcsema/Arch/X86/Semantics/STRINGOP.h"
 #include "mcsema/Arch/X86/Semantics/UNCOND_BR.h"
 #include "mcsema/Arch/X86/Semantics/XOP.h"
+#include "mcsema/Arch/X86/Semantics/X87.h"

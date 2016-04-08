@@ -13,9 +13,6 @@ typedef Rn<uint16_t> R16;
 typedef Rn<uint32_t> R32;
 typedef Rn<uint64_t> R64;
 
-typedef float80_t &F80W;
-typedef float80_t F80;
-
 typedef Vn<vec64_t> V64;  // Legacy MMX technology register.
 typedef Vn<avec128_t> V128;  // Legacy (SSE) XMM register.
 
@@ -38,6 +35,14 @@ typedef MnW<uint8_t> M8W;
 typedef MnW<uint16_t> M16W;
 typedef MnW<uint32_t> M32W;
 typedef MnW<uint64_t> M64W;
+
+typedef MnW<float32_t> MF32W;
+typedef MnW<float64_t> MF64W;
+typedef MnW<float80_t> MF80W;
+
+typedef Mn<float32_t> MF32;
+typedef Mn<float64_t> MF64;
+typedef Mn<float80_t> MF80;
 
 typedef MnW<vec64_t> MV64W;
 typedef MnW<vec128_t> MV128W;
@@ -76,5 +81,49 @@ ALWAYS_INLINE static IF_64BIT_ELSE(uint64_t, uint32_t) &W(Reg &reg) {
 ALWAYS_INLINE static addr_t A(const Reg &reg) {
   return reg.aword;
 }
+
+
+typedef Rn<float32_t> RF32;
+typedef RnW<float32_t> RF32W;
+
+typedef Rn<float64_t> RF64;
+typedef RnW<float64_t> RF64W;
+
+// Internally, we boil F80s down into F64s.
+typedef Rn<float64_t> RF80;
+typedef RnW<float64_t> RF80W;
+
+struct MemoryWriterfloat80_t {
+  ALWAYS_INLINE void operator=(const float32_t &val_) const {
+    float80_t val = val_;
+    __mcsema_memory_order = __mcsema_write_memory_f80(__mcsema_memory_order,
+                                                      addr, val);
+  }
+  ALWAYS_INLINE void operator=(const float64_t &val_) const {
+    float80_t val = val_;
+    __mcsema_memory_order = __mcsema_write_memory_f80(__mcsema_memory_order,
+                                                      addr, val);
+  }
+  ALWAYS_INLINE
+  void operator=(const float80_t &val) const {
+    __mcsema_memory_order = __mcsema_write_memory_f80(__mcsema_memory_order,
+                                                      addr, val);
+  }
+  addr_t addr;
+};
+
+ALWAYS_INLINE static float64_t R(MF80 mem) {
+  float80_t val;
+  __mcsema_memory_order = __mcsema_read_memory_f80(__mcsema_memory_order,
+                                                   mem.addr, val);
+  float64_t out_val;
+  __mcsema_read_f80(val, out_val);
+  return out_val;
+}
+
+ALWAYS_INLINE static MemoryWriterfloat80_t W(MF80W mem) {
+  return MemoryWriterfloat80_t { mem.addr };
+}
+
 
 #endif  // MCSEMA_ARCH_X86_RUNTIME_TYPES_H_

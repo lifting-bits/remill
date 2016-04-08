@@ -56,6 +56,11 @@ void InitFunctionAttributes(llvm::Function *function) {
 
   // Mark everything for inlining, but don't require it.
   function->addFnAttr(llvm::Attribute::InlineHint);
+
+  // Mark everything as naked, even though we don't really want this down the
+  // line (because it changes codegen), and these functions are assumed to only
+  // use assembly. This inhibits certain buggy optimizations (e.g. deadargelim).
+  function->addFnAttr(llvm::Attribute::Naked);
 }
 
 // Create a tail-call from one lifted function to another.
