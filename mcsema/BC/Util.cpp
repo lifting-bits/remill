@@ -178,42 +178,8 @@ llvm::Module *LoadModuleFromFile(std::string file_name) {
   return module;
 }
 
-namespace {
-
-static char gTempOutputPath[PATH_MAX] = {'\0'};
-
-// Create a temporary file for storing the protocol buffer.
-static int CreateOutputFd(const std::string &tmp_dir) {
-  std::stringstream ss;
-  const char *slash = "/";
-
-  if (tmp_dir.empty() || '/' == tmp_dir[tmp_dir.size() - 1]) {
-    slash = "";
-  }
-
-  ss << tmp_dir << slash << ".mcsema2_bc_XXXXXX";
-  auto tmp_path_str = ss.str();
-
-  LOG_IF(FATAL, tmp_path_str.size() >= PATH_MAX)
-      << "Temporary path for output BC file is too long to fit into a "
-      << "`PATH_MAX`-sized buffer.";
-
-  strncpy(gTempOutputPath, tmp_path_str.c_str(), tmp_path_str.size());
-  auto tmp_fd = mkstemp(gTempOutputPath);
-  fchmod(tmp_fd, 0666);
-
-  CHECK(-1 != tmp_fd)
-      << "Unable to create temporary BC file: " << gTempOutputPath;
-
-  return tmp_fd;
-}
-
-}  // namespace
-
 // Store an LLVM module into a file.
-void StoreModuleToFile(llvm::Module *module,
-                       std::string temp_dir,
-                       std::string file_name) {
+void StoreModuleToFile(llvm::Module *module, std::string file_name) {
   std::string error;
   llvm::raw_string_ostream error_stream(error);
 
@@ -222,25 +188,17 @@ void StoreModuleToFile(llvm::Module *module,
         << "Error writing module to file " << file_name << ". " << error;
   }
 
-  do {
-    std::error_code ec;
-    llvm::tool_output_file bc(file_name.c_str(), CreateOutputFd(temp_dir));
+  std::error_code ec;
+  llvm::tool_output_file bc(file_name.c_str(), ec, llvm::sys::fs::F_RW);
 
-    CHECK(!ec)
-        << "Unable to open output bitcode file for writing: " << file_name;
+  CHECK(!ec)
+      << "Unable to open output bitcode file for writing: " << file_name;
 
-    llvm::WriteBitcodeToFile(module, bc.os());
-    bc.keep();
+  llvm::WriteBitcodeToFile(module, bc.os());
+  bc.keep();
 
-    CHECK(!ec)
-        << "Error writing bitcode to file: " << file_name;
-  } while(false);
-
-  auto ret = rename(gTempOutputPath, file_name.c_str());
-  LOG_IF(FATAL, 0 != ret)
-      << "Unable to rename temporary BC file ("
-      << gTempOutputPath << ") to final BC file ("
-      << file_name << ").";
+  CHECK(!ec)
+      << "Error writing bitcode to file: " << file_name;
 }
 
 }  // namespace mcsema

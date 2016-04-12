@@ -45,9 +45,6 @@ DEFINE_string(bc_in, "", "Input bitcode file into which code will "
 
 DEFINE_string(bc_out, "", "Output bitcode file name.");
 
-DEFINE_string(bc_tmp_path_out, "/tmp",
-              "Absolute path to where temporary BC files can be stored.");
-
 extern "C" int main(int argc, char *argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
@@ -87,7 +84,7 @@ extern "C" int main(int argc, char *argv[]) {
   mcsema::Translator lifter(source_arch, target_module);
   lifter.LiftCFG(cfg);
 
-  mcsema::StoreModuleToFile(target_module, FLAGS_bc_tmp_path_out, FLAGS_bc_out);
+  mcsema::StoreModuleToFile(target_module, FLAGS_bc_out);
 
   delete cfg;
   delete source_arch;

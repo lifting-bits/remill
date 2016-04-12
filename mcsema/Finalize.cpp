@@ -41,8 +41,21 @@ const char *NakedRemover::getPassName(void) const {
 }
 
 bool NakedRemover::runOnModule(llvm::Module &module) {
+  auto naked_attr = llvm::Attribute::get(module.getContext(),
+                                         llvm::Attribute::Naked);
   for (auto &function : module) {
     function.removeFnAttr(llvm::Attribute::Naked);
+
+    for (auto &block : function) {
+      for (auto &inst : block) {
+        if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(&inst)) {
+          if (call_inst->hasFnAttr(llvm::Attribute::Naked)) {
+            call_inst->removeAttribute(llvm::AttributeSet::FunctionIndex,
+                                       naked_attr);
+          }
+        }
+      }
+    }
   }
   return true;
 }
