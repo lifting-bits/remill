@@ -12,9 +12,9 @@ void PushValue(State &state, T val) {
   W(push_addr) = val;
 }
 
-template <typename S>
-DEF_SEM(PUSH, S val_) {
-  typedef typename BaseType<S>::Type T;
+template <typename S1>
+DEF_SEM(PUSH, S1 val_) {
+  typedef BASE_TYPE_OF(S1) T;
   const T pushed_val = R(val_);
   const addr_t sp = R(state.gpr.rsp);
   const addr_t new_sp = sp - sizeof(pushed_val);

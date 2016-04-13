@@ -32,7 +32,7 @@ NEVER_INLINE static bool NotZeroFlag(T res) {
 template <typename T>
 [[gnu::const]]
 NEVER_INLINE static bool SignFlag(T res) {
-  typedef typename SignedIntegerType<T>::Type ST;
+  typedef TO_SIGNED_INTEGER_TYPE(T) ST;
   __mcsema_defer_inlining();
   return ST(0) > static_cast<ST>(res);
 }
@@ -150,7 +150,7 @@ struct Overflow<tag_mul> {
   NEVER_INLINE static bool Flag(
       T lhs, T rhs, T res,
       typename std::enable_if<std::is_signed<T>::value,int>::type=0) {
-    typedef typename NextLargerIntegerType<T>::Type WT;
+    typedef WIDEN_INTEGER_TYPE(T) WT;
 
     __mcsema_defer_inlining();
     auto lhs_wide = static_cast<WT>(lhs);

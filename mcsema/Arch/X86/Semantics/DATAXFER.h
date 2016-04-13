@@ -751,17 +751,17 @@ namespace {
 
 template <typename S1, typename S2>
 DEF_SEM(MOVZX, S1 dst, S2 src) {
-  typedef typename BaseType<S1>::Type DestT;
+  typedef BASE_TYPE_OF(S1) DestT;
   W(dst) = static_cast<DestT>(R(src));
 }
 
 template <typename S1, typename S2, typename SignedDestT>
 DEF_SEM(MOVSX, S1 dst, S2 src) {
-  typedef typename BaseType<S2>::Type T;
-  typedef typename SignedIntegerType<T>::Type SignedT;
-  typedef typename UnsignedIntegerType<SignedDestT>::Type DestT;
-  W(dst) = static_cast<DestT>(static_cast<SignedDestT>(
-      static_cast<SignedT>(R(src))));
+  typedef BASE_TYPE_OF(S2) T;
+  typedef TO_SIGNED_INTEGER_TYPE(T) ST;
+  typedef TO_UNSIGNED_INTEGER_TYPE(SignedDestT) DT;
+  W(dst) = static_cast<DT>(static_cast<SignedDestT>(
+      static_cast<ST>(R(src))));
 }
 
 }  // namespace

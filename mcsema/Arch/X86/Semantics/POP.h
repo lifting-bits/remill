@@ -19,7 +19,7 @@ T PopValue(State &state) {
 //       The case of `POP xSP` is correctly handled without special casing.
 template <typename D>
 DEF_SEM(POP, D dst) {
-  typedef typename BaseType<D>::Type T;
+  typedef BASE_TYPE_OF(D) T;
   W(dst) = PopValue<T>(state);
 }
 

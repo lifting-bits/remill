@@ -16,7 +16,7 @@ ALWAYS_INLINE void SetFlagsLogical(State &state, T lhs, T rhs, T res) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(AND, D dst, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
+  typedef BASE_TYPE_OF(S1) T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   const T res = src1 & src2;
@@ -27,7 +27,7 @@ DEF_SEM(AND, D dst, S1 src1_, S2 src2_) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(OR, D dst, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
+  typedef BASE_TYPE_OF(S1) T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   const T res = src1 | src2;
@@ -38,7 +38,7 @@ DEF_SEM(OR, D dst, S1 src1_, S2 src2_) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(XOR, D dst, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
+  typedef BASE_TYPE_OF(S1) T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   const T res = src1 ^ src2;
@@ -54,7 +54,7 @@ DEF_SEM(NOT, D dst_src1, S1 src1_) {
 
 template <typename S1, typename S2>
 DEF_SEM(TEST, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
+  typedef BASE_TYPE_OF(S1) T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   const T res = src1 & src2;
@@ -144,8 +144,8 @@ namespace {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(PAND, D dst, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
-  typedef typename BaseType<D>::Type DT;  // Note: sizeof(DT) >= sizeof(T).
+  typedef BASE_TYPE_OF(S1) T;
+  typedef BASE_TYPE_OF(D) DT;  // Note: sizeof(DT) >= sizeof(T).
   const DT src1 = R(src1_);
   const DT src2 = R(src2_);
   W(dst) = src1.iwords & src2.iwords;
@@ -153,8 +153,8 @@ DEF_SEM(PAND, D dst, S1 src1_, S2 src2_) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(PANDN, D dst, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
-  typedef typename BaseType<D>::Type DT;  // Note: sizeof(DT) >= sizeof(T).
+  typedef BASE_TYPE_OF(S1) T;
+  typedef BASE_TYPE_OF(D) DT;  // Note: sizeof(DT) >= sizeof(T).
   const DT src1 = R(src1_);
   const DT src2 = R(src2_);
   W(dst) = (~src1.iwords) & src2.iwords;
@@ -162,16 +162,16 @@ DEF_SEM(PANDN, D dst, S1 src1_, S2 src2_) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(POR, D dst, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
-  typedef typename BaseType<D>::Type DT;  // Note: sizeof(DT) >= sizeof(T).
+  typedef BASE_TYPE_OF(S1) T;
+  typedef BASE_TYPE_OF(D) DT;  // Note: sizeof(DT) >= sizeof(T).
   const DT src1 = R(src1_);
   const DT src2 = R(src2_);
   W(dst) = src1.iwords | src2.iwords;
 }
 template <typename D, typename S1, typename S2>
 DEF_SEM(PXOR, D dst, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
-  typedef typename BaseType<D>::Type DT;  // Note: sizeof(DT) >= sizeof(T).
+  typedef BASE_TYPE_OF(S1) T;
+  typedef BASE_TYPE_OF(D) DT;  // Note: sizeof(DT) >= sizeof(T).
   const DT src1 = R(src1_);
   const DT src2 = R(src2_);
   W(dst) = src1.iwords ^ src2.iwords;
@@ -179,7 +179,7 @@ DEF_SEM(PXOR, D dst, S1 src1_, S2 src2_) {
 
 template <typename S1, typename S2>
 DEF_SEM(PTEST, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
+  typedef BASE_TYPE_OF(S1) T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
 

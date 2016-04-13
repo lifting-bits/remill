@@ -139,7 +139,7 @@ namespace {
 
 template <typename S1, typename S2>
 DEF_SEM(BTreg, S1 reg_, S2 bit_) {
-  typedef typename BaseType<S1>::Type T;
+  typedef BASE_TYPE_OF(S1) T;
   const T reg = R(reg_);
   const auto bit = R(bit_) % (8 * sizeof(T));
   state.aflag.cf = !!(reg & (T(1) << bit));
@@ -147,7 +147,7 @@ DEF_SEM(BTreg, S1 reg_, S2 bit_) {
 
 template <typename S1, typename S2>
 DEF_SEM(BTmem, S1 src_mem, S2 bit_) {
-  typedef typename BaseType<S1>::Type T;
+  typedef BASE_TYPE_OF(S1) T;
   enum : T {
     kNumBits = 8 * sizeof(T),
     kMask = kNumBits - 1
@@ -163,7 +163,7 @@ DEF_SEM(BTmem, S1 src_mem, S2 bit_) {
 
 template <typename S1, typename S2, typename S3>
 DEF_SEM(BTSreg, S1 dst, S2 reg_, S3 bit_) {
-  typedef typename BaseType<S2>::Type T;
+  typedef BASE_TYPE_OF(S2) T;
   enum : T {
     kNumBits = 8 * sizeof(T),
     kMask = kNumBits - 1
@@ -178,7 +178,7 @@ DEF_SEM(BTSreg, S1 dst, S2 reg_, S3 bit_) {
 
 template <typename S1, typename S2, typename S3>
 DEF_SEM(BTSmem, S1, S2 src_dst_mem, S3 bit_) {
-  typedef typename BaseType<S2>::Type T;
+  typedef BASE_TYPE_OF(S2) T;
   enum : T {
     kNumBits = 8 * sizeof(T),
     kMask = kNumBits - 1
@@ -199,7 +199,7 @@ DEF_SEM(BTSmem, S1, S2 src_dst_mem, S3 bit_) {
 
 template <typename S1, typename S2, typename S3>
 DEF_SEM(BTRreg, S1 dst, S2 reg_, S3 bit_) {
-  typedef typename BaseType<S2>::Type T;
+  typedef BASE_TYPE_OF(S2) T;
   enum : T {
     kNumBits = 8 * sizeof(T),
     kMask = kNumBits - 1
@@ -214,7 +214,7 @@ DEF_SEM(BTRreg, S1 dst, S2 reg_, S3 bit_) {
 
 template <typename S1, typename S2, typename S3>
 DEF_SEM(BTRmem, S1, S2 src_dst_mem, S3 bit_) {
-  typedef typename BaseType<S2>::Type T;
+  typedef BASE_TYPE_OF(S2) T;
   enum : T {
     kNumBits = 8 * sizeof(T),
     kMask = kNumBits - 1
@@ -236,7 +236,7 @@ DEF_SEM(BTRmem, S1, S2 src_dst_mem, S3 bit_) {
 
 template <typename S1, typename S2, typename S3>
 DEF_SEM(BTCreg, S1 dst, S2 reg_, S3 bit_) {
-  typedef typename BaseType<S2>::Type T;
+  typedef BASE_TYPE_OF(S2) T;
   enum : T {
     kNumBits = 8 * sizeof(T),
     kMask = kNumBits - 1
@@ -254,7 +254,7 @@ DEF_SEM(BTCreg, S1 dst, S2 reg_, S3 bit_) {
 
 template <typename S1, typename S2, typename S3>
 DEF_SEM(BTCmem, S1, S2 src_dst_mem, S3 bit_) {
-  typedef typename BaseType<S2>::Type T;
+  typedef BASE_TYPE_OF(S2) T;
   enum : T {
     kNumBits = 8 * sizeof(T),
     kMask = kNumBits - 1

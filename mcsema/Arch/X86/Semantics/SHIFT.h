@@ -10,7 +10,7 @@ template <template <typename> class Converter>
 struct ShiftRight {
   template <typename D, typename S1, typename S2>
   DEF_SEM(DO, D dst, S1 src1_, S2 src2_) {
-    typedef typename BaseType<S1>::Type UT;
+    typedef BASE_TYPE_OF(S1) UT;
     typedef typename Converter<UT>::Type T;
     enum : UT {
       // The mask is based on the REX.W prefix being used and 64-bit mode. We
@@ -76,7 +76,7 @@ struct ShiftRight {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(SHL, D dst, S1 src1_, S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
+  typedef BASE_TYPE_OF(S1) T;
   enum : T {
     // The mask is based on the REX.W prefix being used and 64-bit mode. We
     // determine this based on the source being a 64-bit operand.
@@ -194,7 +194,7 @@ NEVER_INLINE static bool SHRDCarryFlag(T val, T count) {
 
 template <typename D, typename S1, typename S2, typename S3>
 DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 count_) {
-  typedef typename BaseType<S1>::Type T;
+  typedef BASE_TYPE_OF(S1) T;
   enum : T {
     kMod = static_cast<T>(8 == sizeof(T) ? 64 : 32),
     kSize = static_cast<T>(sizeof(T) * 8)

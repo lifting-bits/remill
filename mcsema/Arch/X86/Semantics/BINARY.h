@@ -22,7 +22,7 @@ ALWAYS_INLINE void SetFlagsAddSub(State &state, T lhs, T rhs, T res) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ADD, D dst, const S1 src1_, const S2 src2_) {
-  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  typedef BASE_TYPE_OF(S1) T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   const T res = src1 + src2;
@@ -33,7 +33,7 @@ DEF_SEM(ADD, D dst, const S1 src1_, const S2 src2_) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ADD_VFP64, D dst, const S1 src1_, const S2 src2_) {
-  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  typedef BASE_TYPE_OF(S1) T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   W(dst) = src1.doubles + src2.doubles;
@@ -41,7 +41,7 @@ DEF_SEM(ADD_VFP64, D dst, const S1 src1_, const S2 src2_) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ADD_VFP32, D dst, const S1 src1_, const S2 src2_) {
-  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  typedef BASE_TYPE_OF(S1) T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   W(dst) = src1.floats + src2.floats;
@@ -50,7 +50,7 @@ DEF_SEM(ADD_VFP32, D dst, const S1 src1_, const S2 src2_) {
 // Atomic fetch-add.
 template <typename MW, typename M, typename RW, typename RT>
 DEF_SEM(XADD, MW mdst, const M msrc_, const RW rdst, const RT rsrc_) {
-  typedef typename BaseType<RT>::Type T;
+  typedef BASE_TYPE_OF(RT) T;
 
   // Our lifter only injects atomic begin/end around memory access instructions
   // but this instruction is a full memory barrier, even when registers are
@@ -157,7 +157,7 @@ namespace {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(SUB, D dst, const S1 src1_, const S2 src2_) {
-  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  typedef BASE_TYPE_OF(S1) T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   const T res = src1 - src2;
@@ -168,7 +168,7 @@ DEF_SEM(SUB, D dst, const S1 src1_, const S2 src2_) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(SUB_VFP64, D dst, const S1 src1_, const S2 src2_) {
-  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  typedef BASE_TYPE_OF(S1) T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   W(dst) = src1.doubles - src2.doubles;
@@ -176,7 +176,7 @@ DEF_SEM(SUB_VFP64, D dst, const S1 src1_, const S2 src2_) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(SUB_VFP32, D dst, const S1 src1_, const S2 src2_) {
-  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  typedef BASE_TYPE_OF(S1) T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   W(dst) = src1.floats - src2.floats;
@@ -265,7 +265,7 @@ namespace {
 
 template <typename S1, typename S2>
 DEF_SEM(CMP, const S1 src1_, const S2 src2_) {
-  typedef typename BaseType<S1>::Type T;
+  typedef BASE_TYPE_OF(S1) T;
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   const T res = src1 - src2;
@@ -320,9 +320,11 @@ struct DivMul {
   // base types.
   template <typename D, typename S1, typename S2>
   DEF_SEM(MUL, D dst, const S1 src1_, const S2 src2_) {
-    typedef typename BaseType<S1>::Type T;
+    typedef BASE_TYPE_OF(S1) T;
+    typedef WIDEN_INTEGER_TYPE(T) WT;
+
     typedef typename Converter<T>::Type CT;
-    typedef typename NextLargerIntegerType<CT>::Type CWT;
+    typedef typename Converter<WT>::Type CWT;
 
     const auto src1 = static_cast<CT>(R(src1_));
     const auto src2 = static_cast<CT>(R(src2_));
@@ -338,10 +340,10 @@ struct DivMul {
   }
 
   // Unsigned multiply without affecting flags.
-  template <typename D, typename S>
-  DEF_SEM(MULX, D dst1, D dst2, const S src2_) {
-    typedef typename BaseType<S>::Type T;
-    typedef typename NextLargerIntegerType<T>::Type WT;
+  template <typename D, typename S2>
+  DEF_SEM(MULX, D dst1, D dst2, const S2 src2_) {
+    typedef BASE_TYPE_OF(S2) T;
+    typedef WIDEN_INTEGER_TYPE(T) WT;
     enum {
       kShiftSize = sizeof(T) * 8
     };
@@ -356,8 +358,8 @@ struct DivMul {
   // `MUL8` and `IMUL8` of `AL` doesn't update `RDX`.
   template <typename S2>
   DEF_SEM(MULA_8, const S2 val) {
-    typedef typename BaseType<S2>::Type T;  // 8 bit.
-    typedef typename NextLargerIntegerType<T>::Type WT;  // 16-bit.
+    typedef BASE_TYPE_OF(S2) T;  // 8 bit.
+    typedef WIDEN_INTEGER_TYPE(T) WT;  // 16-bit.
     typedef typename Converter<T>::Type CT;
     typedef typename Converter<WT>::Type CWT;
 
@@ -378,10 +380,10 @@ struct DivMul {
 #define MAKE_MULTIPLIER(size, read_sel, write_sel) \
   template <typename S2> \
   DEF_SEM(MULAD_ ## size, const S2 src2_) { \
-    typedef typename BaseType<S2>::Type T; \
-    typedef typename NextLargerIntegerType<T>::Type WT; \
+    typedef BASE_TYPE_OF(S2) T; \
+    typedef WIDEN_INTEGER_TYPE(T) WT; \
     typedef typename Converter<T>::Type CT; \
-    typedef typename NextLargerIntegerType<CT>::Type CWT; \
+    typedef typename Converter<WT>::Type CWT; \
     \
     const auto src1 = static_cast<CT>(R(state.gpr.rax.read_sel)); \
     const auto src2 = static_cast<CT>(R(src2_)); \
@@ -406,11 +408,11 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
   template <typename S2>
   DEF_SEM(DIVA_8, const S2 src2_) {
 
-    typedef typename BaseType<S2>::Type T;
-    typedef typename NextLargerIntegerType<T>::Type WT;
+    typedef BASE_TYPE_OF(S2) T;
+    typedef WIDEN_INTEGER_TYPE(T) WT;
 
     typedef typename Converter<T>::Type CT;
-    typedef typename NextLargerIntegerType<CT>::Type CWT;
+    typedef typename Converter<WT>::Type CWT;
 
     const auto src1 = static_cast<CWT>(R(state.gpr.rax.word));
     const CWT src2 = static_cast<CT>(R(src2_));
@@ -432,8 +434,8 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
 #define MAKE_DIVIDER(size, read_sel, write_sel) \
     template <typename S2> \
     DEF_SEM(DIVA_ ## size, const S2 src2_) { \
-      typedef typename BaseType<S2>::Type T; \
-      typedef typename NextLargerIntegerType<T>::Type WT; \
+      typedef BASE_TYPE_OF(S2) T; \
+      typedef WIDEN_INTEGER_TYPE(T) WT; \
       \
       typedef typename Converter<T>::Type CT; \
       typedef typename Converter<WT>::Type CWT; \
@@ -467,7 +469,7 @@ IF_64BIT( MAKE_DIVIDER(64, qword, qword) )
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(MUL_VFP64, D dst, const S1 src1_, const S2 src2_) {
-  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  typedef BASE_TYPE_OF(S1) T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   W(dst) = src1.doubles * src2.doubles;
@@ -475,7 +477,7 @@ DEF_SEM(MUL_VFP64, D dst, const S1 src1_, const S2 src2_) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(MUL_VFP32, D dst, const S1 src1_, const S2 src2_) {
-  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  typedef BASE_TYPE_OF(S1) T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   W(dst) = src1.floats * src2.floats;
@@ -483,7 +485,7 @@ DEF_SEM(MUL_VFP32, D dst, const S1 src1_, const S2 src2_) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(DIV_VFP64, D dst, const S1 src1_, const S2 src2_) {
-  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  typedef BASE_TYPE_OF(S1) T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   W(dst) = src1.doubles / src2.doubles;
@@ -491,7 +493,7 @@ DEF_SEM(DIV_VFP64, D dst, const S1 src1_, const S2 src2_) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(DIV_VFP32, D dst, const S1 src1_, const S2 src2_) {
-  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  typedef BASE_TYPE_OF(S1) T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   W(dst) = src1.floats / src2.floats;
@@ -592,9 +594,9 @@ IF_AVX(DEF_ISEL(VDIVPD_YMMqq_YMMqq_YMMqq) = DIV_VFP64<VV256W, VV256, VV256>;)
 
 namespace {
 
-template <typename D, typename S>
-DEF_SEM(INC, D dst, const S src) {
-  typedef typename BaseType<S>::Type T;
+template <typename D, typename S1>
+DEF_SEM(INC, D dst, const S1 src) {
+  typedef BASE_TYPE_OF(S1) T;
   const T val1 = R(src);
   const T val2 = 1;
   const T res = val1 + val2;
@@ -603,9 +605,9 @@ DEF_SEM(INC, D dst, const S src) {
   SetFlagsIncDec<tag_add>(state, val1, val2, res);
 }
 
-template <typename D, typename S>
-DEF_SEM(DEC, D dst, const S src) {
-  typedef typename BaseType<S>::Type T;
+template <typename D, typename S1>
+DEF_SEM(DEC, D dst, const S1 src) {
+  typedef BASE_TYPE_OF(S1) T;
   const T val1 = R(src);
   const T val2 = 1;
   const T res = val1 - val2;
@@ -614,10 +616,10 @@ DEF_SEM(DEC, D dst, const S src) {
   SetFlagsIncDec<tag_sub>(state, val1, val2, res);
 }
 
-template <typename D, typename S>
-DEF_SEM(NEG, D dst, const S src) {
-  typedef typename BaseType<S>::Type T;
-  typedef typename SignedIntegerType<T>::Type ST;
+template <typename D, typename S1>
+DEF_SEM(NEG, D dst, const S1 src) {
+  typedef BASE_TYPE_OF(S1) T;
+  typedef TO_SIGNED_INTEGER_TYPE(T) ST;
   const auto val = R(src);
   const auto res = static_cast<T>(-static_cast<ST>(val));
   W(dst) = res;
@@ -657,7 +659,7 @@ NEVER_INLINE static bool CarryFlag(T a, T b, T ab, T c, T abc) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ADC, D dst, const S1 src1_, const S2 src2_) {
-  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  typedef BASE_TYPE_OF(S1) T;  // `D` might be wider than `S1`.
   const auto src1 = R(src1_);
   const auto src2 = R(src2_);
   const auto carry = static_cast<T>(state.aflag.cf);
@@ -671,7 +673,7 @@ DEF_SEM(ADC, D dst, const S1 src1_, const S2 src2_) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(SBB, D dst, const S1 src1_, const S2 src2_) {
-  typedef typename BaseType<S1>::Type T;  // `D` might be wider than `S1`.
+  typedef BASE_TYPE_OF(S1) T;  // `D` might be wider than `S1`.
   const T src1 = R(src1_);
   const T src2 = R(src2_);
   const T borrow = static_cast<T>(state.aflag.cf);
@@ -722,5 +724,16 @@ DEF_ISEL_RnW_Rn_Mn(ADC_GPRv_MEMv, ADC);
 DEF_ISEL_RnW_Rn_Rn(ADC_GPRv_GPRv_13, ADC);
 DEF_ISEL(ADC_AL_IMMb) = ADC<R8W, R8, I8>;
 DEF_ISEL_RnW_Rn_In(ADC_OrAX_IMMz, ADC);
+
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SUBPD, D dst, S1 src1_, S2 src2_) {
+  auto src1 = R(src1_);
+  auto src2 = R(src2_);
+  auto res = src1.doubles - src2.doubles;
+}
+
+}
 
 #endif  // MCSEMA_ARCH_X86_SEMANTICS_BINARY_H_

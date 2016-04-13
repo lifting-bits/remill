@@ -498,6 +498,15 @@ MAKE_INT_TYPE(uint64_t, uint128_t);
 #undef MAKE_SIGNED_INT_CHANGERS
 #undef MAKE_INT_TYPE
 
+#define WIDEN_INTEGER_TYPE(T) \
+  typename NextLargerIntegerType<T>::Type
+
+#define TO_SIGNED_INTEGER_TYPE(T) \
+  typename SignedIntegerType<T>::Type
+
+#define TO_UNSIGNED_INTEGER_TYPE(T) \
+  typename UnsignedIntegerType<T>::Type
+
 template <typename T>
 struct Mn final {
   addr_t addr;
@@ -567,16 +576,6 @@ struct BaseType {
 #define BASE_TYPE_OF(T) \
   typename BaseType<T>::Type
 
-template <>
-struct BaseType<float32_t> {
-  typedef float Type;
-};
-
-template <>
-struct BaseType<float64_t> {
-  typedef double Type;
-};
-
 template <typename T>
 struct IsRegister {
   static constexpr bool kValue = false;
@@ -615,24 +614,16 @@ template <typename T>
 struct BaseType<T *> : public BaseType<T> {};
 
 template <typename T>
-struct BaseType<Mn<T>> {
-  typedef typename BaseType<T>::Type Type;
-};
+struct BaseType<Mn<T>> : public BaseType<T> {};
 
 template <typename T>
-struct BaseType<MnW<T>> {
-  typedef typename BaseType<T>::Type Type;
-};
+struct BaseType<MnW<T>> : public BaseType<T> {};
 
 template <typename T>
-struct BaseType<Rn<T>> {
-  typedef typename BaseType<T>::Type Type;
-};
+struct BaseType<Rn<T>> : public BaseType<T> {};
 
 template <typename T>
-struct BaseType<RnW<T>> {
-  typedef typename BaseType<T>::Type Type;
-};
+struct BaseType<RnW<T>> : public BaseType<T> {};
 
 template <typename T>
 struct BaseType<In<T>> {

@@ -21,7 +21,7 @@ inline static constexpr unsigned RotateCount(size_t size, unsigned count) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ROL, D dst, S1 src1, S2 src2) {
-  typedef typename BaseType<S1>::Type T;
+  typedef BASE_TYPE_OF(S1) T;
   enum : T {
     kSize = 8 * sizeof(T),
     kCountMask = 64 == kSize ? T(0x3F) : T(0x1F)
@@ -48,7 +48,7 @@ DEF_SEM(ROL, D dst, S1 src1, S2 src2) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(RORX, D dst, S1 src1, S2 src2) {
-  typedef typename BaseType<S1>::Type T;
+  typedef BASE_TYPE_OF(S1) T;
   enum : T {
     kSize = 8 * sizeof(T),
     kCountMask = 64 == kSize ? T(0x3F) : T(0x1F)
