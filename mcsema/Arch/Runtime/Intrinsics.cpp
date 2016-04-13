@@ -20,7 +20,7 @@ extern "C" void __mcsema_mark_as_used(void *);
 // This is just a hack to make sure all these functions appear in the bitcode
 // file!
 [[gnu::used]]
-void __mcsema_intrinsics(void) {
+ extern "C" void __mcsema_intrinsics(void) {
   USED(__mcsema_create_program_counter);
 
   USED(__mcsema_read_memory_8);

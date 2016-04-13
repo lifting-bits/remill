@@ -64,6 +64,9 @@ static sigjmp_buf gUnsupportedInstrBuf;
 static uintptr_t gRegMask32 = 0;
 static uintptr_t gRegMask64 = 0;
 
+// Are we running in a native test case or a lifted one?
+static bool gInNativeTest = false;
+
 extern "C" {
 
 // Native state before we run the native test case. We then use this as the
@@ -404,11 +407,11 @@ static void RunWithFlags(const test::TestInfo *info,
   // we can compare that they both operate on the stack in the same ways.
   auto native_test_faulted = false;
   if (!sigsetjmp(gJmpBuf, true)) {
+    gInNativeTest = true;
     InvokeTestCase(arg1, arg2, arg3);
   } else {
     native_test_faulted = true;
   }
-
   ResetFlags();
 
   // Copy out whatever was recorded on the stack so that we can compare it
@@ -421,6 +424,7 @@ static void RunWithFlags(const test::TestInfo *info,
   // program state recorded before executing the native testcase, but after
   // swapping execution to operate on `gStack`.
   if (!sigsetjmp(gJmpBuf, true)) {
+    gInNativeTest = false;
     info->lifted_func(lifted_state);
   } else {
     EXPECT_TRUE(native_test_faulted);
@@ -515,57 +519,58 @@ INSTANTIATE_TEST_CASE_P(
 
 // Recover from a signal.
 static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
-  std::cerr << "Caught signal " << sig_num << "!" << std::endl;
-  memcpy(&gNativeState, &gLiftedState, sizeof(State));
+  if (gInNativeTest) {
+    std::cerr << "Caught signal " << sig_num << "!" << std::endl;
+    memcpy(&gNativeState, &gLiftedState, sizeof(State));
 
-  auto context = reinterpret_cast<ucontext_t *>(context_);
-  auto native_state = reinterpret_cast<State *>(&gNativeState);
+    auto context = reinterpret_cast<ucontext_t *>(context_);
+    auto native_state = reinterpret_cast<State *>(&gNativeState);
 #ifdef __APPLE__
-  const auto mcontext = context->uc_mcontext;
-  const auto &ss = mcontext->__ss;
-  native_state->gpr.rax.qword = ss.__rax & gRegMask32;
-  native_state->gpr.rbx.qword = ss.__rbx & gRegMask32;
-  native_state->gpr.rcx.qword = ss.__rcx & gRegMask32;
-  native_state->gpr.rdx.qword = ss.__rdx & gRegMask32;
-  native_state->gpr.rsi.qword = ss.__rsi & gRegMask32;
-  native_state->gpr.rdi.qword = ss.__rdi & gRegMask32;
-  native_state->gpr.rbp.qword = ss.__rbp & gRegMask32;
-  native_state->gpr.rsp.qword = ss.__rsp & gRegMask32;
-  native_state->gpr.r8.qword = ss.__r8 & gRegMask64;
-  native_state->gpr.r9.qword = ss.__r9 & gRegMask64;
-  native_state->gpr.r10.qword = ss.__r10 & gRegMask64;
-  native_state->gpr.r11.qword = ss.__r11 & gRegMask64;
-  native_state->gpr.r12.qword = ss.__r12 & gRegMask64;
-  native_state->gpr.r13.qword = ss.__r13 & gRegMask64;
-  native_state->gpr.r14.qword = ss.__r14 & gRegMask64;
-  native_state->gpr.r15.qword = ss.__r15 & gRegMask64;
-  native_state->rflag.flat = ss.__rflags;
+    const auto mcontext = context->uc_mcontext;
+    const auto &ss = mcontext->__ss;
+    native_state->gpr.rax.qword = ss.__rax & gRegMask32;
+    native_state->gpr.rbx.qword = ss.__rbx & gRegMask32;
+    native_state->gpr.rcx.qword = ss.__rcx & gRegMask32;
+    native_state->gpr.rdx.qword = ss.__rdx & gRegMask32;
+    native_state->gpr.rsi.qword = ss.__rsi & gRegMask32;
+    native_state->gpr.rdi.qword = ss.__rdi & gRegMask32;
+    native_state->gpr.rbp.qword = ss.__rbp & gRegMask32;
+    native_state->gpr.rsp.qword = ss.__rsp & gRegMask32;
+    native_state->gpr.r8.qword = ss.__r8 & gRegMask64;
+    native_state->gpr.r9.qword = ss.__r9 & gRegMask64;
+    native_state->gpr.r10.qword = ss.__r10 & gRegMask64;
+    native_state->gpr.r11.qword = ss.__r11 & gRegMask64;
+    native_state->gpr.r12.qword = ss.__r12 & gRegMask64;
+    native_state->gpr.r13.qword = ss.__r13 & gRegMask64;
+    native_state->gpr.r14.qword = ss.__r14 & gRegMask64;
+    native_state->gpr.r15.qword = ss.__r15 & gRegMask64;
+    native_state->rflag.flat = ss.__rflags;
 #else
-  const auto &mcontext = context->uc_mcontext;
+    const auto &mcontext = context->uc_mcontext;
 
-  native_state->gpr.rax.qword = mcontext.gregs[REG_RAX] & gRegMask32;
-  native_state->gpr.rbx.qword = mcontext.gregs[REG_RBX] & gRegMask32;
-  native_state->gpr.rcx.qword = mcontext.gregs[REG_RCX] & gRegMask32;
-  native_state->gpr.rdx.qword = mcontext.gregs[REG_RDX] & gRegMask32;
-  native_state->gpr.rsi.qword = mcontext.gregs[REG_RSI] & gRegMask32;
-  native_state->gpr.rdi.qword = mcontext.gregs[REG_RDI] & gRegMask32;
-  native_state->gpr.rbp.qword = mcontext.gregs[REG_RBP] & gRegMask32;
-  native_state->gpr.rsp.qword = mcontext.gregs[REG_RSP] & gRegMask32;
+    native_state->gpr.rax.qword = mcontext.gregs[REG_RAX] & gRegMask32;
+    native_state->gpr.rbx.qword = mcontext.gregs[REG_RBX] & gRegMask32;
+    native_state->gpr.rcx.qword = mcontext.gregs[REG_RCX] & gRegMask32;
+    native_state->gpr.rdx.qword = mcontext.gregs[REG_RDX] & gRegMask32;
+    native_state->gpr.rsi.qword = mcontext.gregs[REG_RSI] & gRegMask32;
+    native_state->gpr.rdi.qword = mcontext.gregs[REG_RDI] & gRegMask32;
+    native_state->gpr.rbp.qword = mcontext.gregs[REG_RBP] & gRegMask32;
+    native_state->gpr.rsp.qword = mcontext.gregs[REG_RSP] & gRegMask32;
 
-  native_state->gpr.r8.qword = mcontext.gregs[REG_R8] & gRegMask64;
-  native_state->gpr.r9.qword = mcontext.gregs[REG_R9] & gRegMask64;
-  native_state->gpr.r10.qword = mcontext.gregs[REG_R10] & gRegMask64;
-  native_state->gpr.r11.qword = mcontext.gregs[REG_R11] & gRegMask64;
-  native_state->gpr.r12.qword = mcontext.gregs[REG_R12] & gRegMask64;
-  native_state->gpr.r13.qword = mcontext.gregs[REG_R13] & gRegMask64;
-  native_state->gpr.r14.qword = mcontext.gregs[REG_R14] & gRegMask64;
-  native_state->gpr.r15.qword = mcontext.gregs[REG_R15] & gRegMask64;
-  native_state->rflag.flat = context->uc_mcontext.gregs[REG_EFL];
+    native_state->gpr.r8.qword = mcontext.gregs[REG_R8] & gRegMask64;
+    native_state->gpr.r9.qword = mcontext.gregs[REG_R9] & gRegMask64;
+    native_state->gpr.r10.qword = mcontext.gregs[REG_R10] & gRegMask64;
+    native_state->gpr.r11.qword = mcontext.gregs[REG_R11] & gRegMask64;
+    native_state->gpr.r12.qword = mcontext.gregs[REG_R12] & gRegMask64;
+    native_state->gpr.r13.qword = mcontext.gregs[REG_R13] & gRegMask64;
+    native_state->gpr.r14.qword = mcontext.gregs[REG_R14] & gRegMask64;
+    native_state->gpr.r15.qword = mcontext.gregs[REG_R15] & gRegMask64;
+    native_state->rflag.flat = context->uc_mcontext.gregs[REG_EFL];
 #endif  // __APPLE__
 
-  native_state->rflag.nt = false;
-  native_state->rflag.rf = false;
-
+    native_state->rflag.nt = false;
+    native_state->rflag.rf = false;
+  }
   siglongjmp(gJmpBuf, 0);
 }
 

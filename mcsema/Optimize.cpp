@@ -34,7 +34,8 @@ static void ForceTailCall(llvm::Function *function) {
     auto next_instr_iter = ++call_instr_iter;
     llvm::Instruction *next_instr = &*next_instr_iter;
 
-    if (llvm::isa<llvm::BranchInst>(next_instr)) {
+    if (llvm::isa<llvm::BranchInst>(next_instr) ||
+        llvm::isa<llvm::UnreachableInst>(next_instr)) {
       next_instr->eraseFromParent();
       llvm::ReturnInst::Create(function->getContext(), call_instr->getParent());
 

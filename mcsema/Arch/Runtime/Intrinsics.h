@@ -208,9 +208,9 @@ extern void __mcsema_write_f80(const float64_t &, float80_t &);
 #define __mcsema_barrier_compiler()
 //  __asm__ __volatile__ ("" ::: "memory")
 
-}  // extern C
-
 [[gnu::used]]
 extern void __mcsema_intrinsics(void);
+
+}  // extern C
 
 #endif  // MCSEMA_ARCH_SEMANTICS_INSTRINSICS_H_

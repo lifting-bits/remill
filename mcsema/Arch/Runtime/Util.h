@@ -13,10 +13,6 @@
 # define IF_64BIT_ELSE(a, b) b
 #endif
 
-#ifndef DETECT_RUNTIME_ERRORS
-# define DETECT_RUNTIME_ERRORS 1
-#endif
-
 // Attributes that will force inlining of specific code.
 #define ALWAYS_INLINE \
   [[gnu::always_inline, gnu::gnu_inline]] \

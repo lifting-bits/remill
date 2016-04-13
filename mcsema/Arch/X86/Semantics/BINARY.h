@@ -415,25 +415,18 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
     const auto src1 = static_cast<CWT>(R(state.gpr.rax.word));
     const CWT src2 = static_cast<CT>(R(src2_));
 
-    if (DETECT_RUNTIME_ERRORS && !src2) {
-      __mcsema_error(state, A(state.gpr.rip));
-      return;
-    }
-
     const CWT quot = src1 / src2;
-    const CWT rem = src1 % src2;
-    const auto high_half = quot >> 8;
 
-    if (DETECT_RUNTIME_ERRORS &&
-        quot &&
-        !(!high_half || (std::is_signed<CT>::value && !~high_half))) {
-      __mcsema_error(state, A(state.gpr.rip));
-      return;
-    } else {
-      W(state.gpr.rax.byte.low) = static_cast<T>(quot);
-      W(state.gpr.rax.byte.high) = static_cast<T>(rem);
-      CLEAR_AFLAGS();
+    if (quot != static_cast<CT>(quot)) {
+      __mcsema_error(state, R(state.gpr.rip));
+      __builtin_unreachable();
     }
+
+    W(state.gpr.rax.byte.low) = static_cast<T>(quot);
+
+    const CWT rem = src1 % src2;
+    W(state.gpr.rax.byte.high) = static_cast<T>(rem);
+    CLEAR_AFLAGS();
   }
 
 #define MAKE_DIVIDER(size, read_sel, write_sel) \
@@ -451,24 +444,18 @@ IF_64BIT(MAKE_MULTIPLIER(64, qword, qword))
       const CWT src1 = static_cast<CWT>((src1_high << size) | src1_low);\
       const CWT src2 = static_cast<CT>(R(src2_)); \
       \
-      if (DETECT_RUNTIME_ERRORS && !src2) { \
-        __mcsema_error(state, A(state.gpr.rip)); \
-        return; \
-      } \
-      \
       const CWT quot = src1 / src2; \
-      const CWT rem = src1 % src2; \
       \
-      const auto high_half = quot >> size; \
-      if (DETECT_RUNTIME_ERRORS && quot && \
-          !(!high_half || (std::is_signed<CT>::value && !~high_half))) { \
-        __mcsema_error(state, A(state.gpr.rip)); \
-        return; \
-      } else { \
-        W(state.gpr.rax.write_sel) = static_cast<T>(quot); \
-        W(state.gpr.rdx.write_sel) = static_cast<T>(rem); \
-        CLEAR_AFLAGS(); \
+      if (quot != static_cast<CT>(quot)) { \
+        __mcsema_error(state, R(state.gpr.rip)); \
+        __builtin_unreachable(); \
       } \
+      \
+      W(state.gpr.rax.write_sel) = static_cast<T>(quot); \
+      \
+      const CWT rem = src1 % src2; \
+      W(state.gpr.rdx.write_sel) = static_cast<T>(rem); \
+      CLEAR_AFLAGS(); \
     }
 
 MAKE_DIVIDER(16, word, word)
