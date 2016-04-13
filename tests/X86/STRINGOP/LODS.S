@@ -30,7 +30,7 @@ TEST_INPUTS(0)
     lodsd
 TEST_END
 
-TEST_BEGIN_64(LODSQ, 1)
+TEST_BEGIN_64(LODSQ_64, 1)
 TEST_INPUTS(0)
     lea rsi, [rsp - 8]
     lodsq

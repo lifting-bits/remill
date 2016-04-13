@@ -12,25 +12,15 @@ enum : size_t {
   kMaxInstrLen = 15
 };
 
-enum : uint32_t {
-  kFeatureMMX = (1U << 0),
-  kFeatureSSE = (1U << 1),
-  kFeatureAVX = (1U << 2),
-  kFeatureAVX512 = (1U << 3),
-  kFeature64BitOnly = (1 << 4),
-  kFeature32BitOnly = (1 << 5)
-};
-
 struct alignas(128) TestInfo {
-  uintptr_t test_begin;
-  uintptr_t test_end;
+  const uintptr_t test_begin;
+  const uintptr_t test_end;
   const char *test_name;
-  const uint64_t *args_begin;
-  const uint64_t *args_end;
-  void (*lifted_func)(State *);
-  uint32_t num_args;
-  uint32_t features;
-  uint64_t ignored_flags_mask;
+  const uint64_t * const args_begin;
+  const uint64_t * const args_end;
+  void (* const lifted_func)(State *);
+  const uint64_t num_args;
+  const uint64_t ignored_flags_mask;
 } __attribute__((packed));
 
 extern "C" {

@@ -36,7 +36,7 @@ TEST_INPUTS(0)
     cmpsd
 TEST_END
 
-TEST_BEGIN_64(CMPSQ, 1)
+TEST_BEGIN_64(CMPSQ_64, 1)
 TEST_INPUTS(0)
     lea rdi, [rsp - 8]
     lea rsi, [rsp - 8]

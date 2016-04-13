@@ -725,15 +725,4 @@ DEF_ISEL_RnW_Rn_Rn(ADC_GPRv_GPRv_13, ADC);
 DEF_ISEL(ADC_AL_IMMb) = ADC<R8W, R8, I8>;
 DEF_ISEL_RnW_Rn_In(ADC_OrAX_IMMz, ADC);
 
-namespace {
-
-template <typename D, typename S1, typename S2>
-DEF_SEM(SUBPD, D dst, S1 src1_, S2 src2_) {
-  auto src1 = R(src1_);
-  auto src2 = R(src2_);
-  auto res = src1.doubles - src2.doubles;
-}
-
-}
-
 #endif  // MCSEMA_ARCH_X86_SEMANTICS_BINARY_H_

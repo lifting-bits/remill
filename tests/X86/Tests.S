@@ -32,39 +32,6 @@
 # define SYMBOL(x) x
 #endif
 
-/* We want to be able to describe what high-level feature set is used by a
- * particular test case. This feature information is recorded in the `TestInfo`
- * structure.
- *
- * Note: This is pretty ugly but it works :-) We use macro concatenation
- *       against variadic macro arguments, hence things like `FEATURE_`,
- *       which represents a concatenation of `FEATURE_` with an empty
- *       `__VA_ARGS__`.
- */
-
-/* Features of tests that work for both 32- and 64-bit code. */
-#define FEATURE_        0
-#define FEATURE_MMX     1
-#define FEATURE_SSE     (2 | FEATURE_MMX)
-#define FEATURE_AVX     (4 | FEATURE_SSE)
-#define FEATURE_AVX512  (8 | FEATURE_AVX | FEATURE_SSE)
-#define FEATURE_64BIT   16
-#define FEATURE_32BIT   32
-
-/* Features of 64-bit only tests. */
-#define FEATURE_B64_ FEATURE_64BIT
-#define FEATURE_B64_MMX (FEATURE_64BIT | FEATURE_MMX)
-#define FEATURE_B64_SSE (FEATURE_64BIT | FEATURE_SSE)
-#define FEATURE_B64_AVX (FEATURE_64BIT | FEATURE_AVX)
-#define FEATURE_B64_AVX512 (FEATURE_64BIT | FEATURE_AVX512)
-
-/* Features of 32-bit only tests. */
-#define FEATURE_B32_ FEATURE_32BIT
-#define FEATURE_B32_MMX (FEATURE_32BIT | FEATURE_MMX)
-#define FEATURE_B32_SSE (FEATURE_32BIT | FEATURE_SSE)
-#define FEATURE_B32_AVX (FEATURE_32BIT | FEATURE_AVX)
-#define FEATURE_B32_AVX512 (FEATURE_32BIT | FEATURE_AVX512)
-
 /* In the generator build, we "stub-out" the lifted function. In the Run build,
  * we reference it as an external that will get linked in. */
 #ifdef IN_TEST_GENERATOR
@@ -100,7 +67,7 @@ LIFTED_FUNC(x, num_args): \
  * Note: These test cases must be usable in 32- and 64-bit modes. Otherwise
  *       one should use `TEST_BEGIN_32` or `TEST_BEGIN_64`.
  */
-#define TEST_BEGIN(instr_name, num_args, ...) \
+#define TEST_BEGIN(instr_name, num_args) \
     .file __FILE__ ; \
     .text ; \
     \
@@ -123,8 +90,7 @@ TEST_FUNC(instr_name, num_args): ; \
     .quad 4f ; \
     .quad 5f ; \
     .quad LIFTED_FUNC(instr_name, num_args) ; \
-    .long num_args ; \
-    .long FEATURE_ ## __VA_ARGS__ ; \
+    .quad num_args ; \
     \
     .text ; \
     3: \
@@ -178,21 +144,15 @@ TEST_FUNC(instr_name, num_args): ; \
 
 /* Specify the beginning and end of a 32- and 64-bit-specific tests. */
 #if 64 == ADDRESS_SIZE_BITS
-# define TEST_BEGIN_64(instr_name, num_args, ...) \
-    TEST_BEGIN(instr_name ## _64, num_args, B64_ ## __VA_ARGS__)
+# define TEST_BEGIN_64 TEST_BEGIN
 # define TEST_END_64 TEST_END
-# define TEST_BEGIN_32(instr_name, num_args) \
-      .macro IGNORE_ ## instr_name ## __LINE__
-# define TEST_END_32 \
-      .endm ;
+
 #else
 # define TEST_BEGIN_64(instr_name, num_args) \
       .macro IGNORE_ ## instr_name ## __LINE__
 # define TEST_END_64 \
       .endm ;
-# define TEST_BEGIN_32(instr_name, num_args, ...) \
-    TEST_BEGIN(instr_name ## _32, num_args, B32_ ## __VA_ARGS__)
-# define TEST_END_32 TEST_END
+
 #endif  /* 64 == ADDRESS_SIZE_BITS */
 
     .file __FILE__ ;
@@ -216,7 +176,6 @@ TEST_FUNC(instr_name, num_args): ; \
 #else
 # define SET_VEC(num) pcmpeqw xmm ## num , xmm ## num
 #endif
-
 
     /* This function tail-calls to the test that we want to run via the
      * `gTestToRun` pointer.

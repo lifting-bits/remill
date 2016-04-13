@@ -1,11 +1,11 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-TEST_BEGIN_64(LEAVE, 1)
+TEST_BEGIN_64(LEAVE_64, 1)
     lea rbp, [rsp - 256]
     leave
 TEST_END_64
 
-TEST_BEGIN_64(ENTER_0_0_LEAVE, 1)
+TEST_BEGIN_64(ENTER_0_0_LEAVE_64, 1)
 TEST_INPUTS(0)
     lea rsp, [rsp - 256]
     lea rbp, [rsp - 256]
@@ -13,7 +13,7 @@ TEST_INPUTS(0)
     leave
 TEST_END_64
 
-TEST_BEGIN_64(ENTER_0_1_LEAVE, 1)
+TEST_BEGIN_64(ENTER_0_1_LEAVE_64, 1)
 TEST_INPUTS(0)
     lea rsp, [rsp - 256]
     lea rbp, [rsp - 256]
@@ -21,7 +21,7 @@ TEST_INPUTS(0)
     leave
 TEST_END_64
 
-TEST_BEGIN_64(ENTER_1_0_LEAVE, 1)
+TEST_BEGIN_64(ENTER_1_0_LEAVE_64, 1)
 TEST_INPUTS(0)
     lea rsp, [rsp - 256]
     lea rbp, [rsp - 256]
@@ -29,7 +29,7 @@ TEST_INPUTS(0)
     leave
 TEST_END_64
 
-TEST_BEGIN_64(ENTER_1_1_LEAVE, 1)
+TEST_BEGIN_64(ENTER_1_1_LEAVE_64, 1)
 TEST_INPUTS(0)
     lea rsp, [rsp - 256]
     lea rbp, [rsp - 256]
@@ -37,7 +37,7 @@ TEST_INPUTS(0)
     leave
 TEST_END_64
 
-TEST_BEGIN_64(ENTER_1_32_LEAVE, 1)
+TEST_BEGIN_64(ENTER_1_32_LEAVE_64, 1)
 TEST_INPUTS(0)
     lea rsp, [rsp - 256]
     lea rbp, [rsp - 256]
@@ -45,7 +45,7 @@ TEST_INPUTS(0)
     leave
 TEST_END_64
 
-TEST_BEGIN_64(ENTER_1_31_LEAVE, 1)
+TEST_BEGIN_64(ENTER_1_31_LEAVE_64, 1)
 TEST_INPUTS(0)
     lea rsp, [rsp - 256]
     lea rbp, [rsp - 256]
@@ -53,7 +53,7 @@ TEST_INPUTS(0)
     leave
 TEST_END_64
 
-TEST_BEGIN_64(ENTER_8_31_LEAVE, 1)
+TEST_BEGIN_64(ENTER_8_31_LEAVE_64, 1)
 TEST_INPUTS(0)
     lea rsp, [rsp - 256]
     lea rbp, [rsp - 256]
@@ -61,7 +61,7 @@ TEST_INPUTS(0)
     leave
 TEST_END_64
 
-TEST_BEGIN_64(ENTER_8_8_LEAVE, 1)
+TEST_BEGIN_64(ENTER_8_8_LEAVE_64, 1)
 TEST_INPUTS(0)
     lea rsp, [rsp - 256]
     lea rbp, [rsp - 256]
@@ -69,7 +69,7 @@ TEST_INPUTS(0)
     leave
 TEST_END_64
 
-TEST_BEGIN_64(ENTER_19_8_LEAVE, 1)
+TEST_BEGIN_64(ENTER_19_8_LEAVE_64, 1)
 TEST_INPUTS(0)
     lea rsp, [rsp - 256]
     lea rbp, [rsp - 256]

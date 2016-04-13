@@ -369,6 +369,7 @@ static void RunWithFlags(const test::TestInfo *info,
                          uint64_t arg1,
                          uint64_t arg2,
                          uint64_t arg3) {
+  LOG(INFO) << "Testing instruction: " << info->test_name << ": " << desc;
   if (sigsetjmp(gUnsupportedInstrBuf, true)) {
     LOG(INFO) << "Unsupported instruction " << info->test_name;
     return;
@@ -460,18 +461,6 @@ static void RunWithFlags(const test::TestInfo *info,
   // Only compare the non-undefined flags state.
   native_state->rflag.flat |= info->ignored_flags_mask;
   lifted_state->rflag.flat |= info->ignored_flags_mask;
-
-  std::cerr << "Testing instruction: " << info->test_name << ": " << desc;
-  if (test::kFeatureMMX & info->features) std::cerr << ", MMX";
-  if (test::kFeatureSSE & info->features) std::cerr << ", SSE";
-  if (test::kFeatureAVX & info->features) std::cerr << ", AVX";
-  if (test::kFeatureAVX512 & info->features) std::cerr << ", AVX512";
-  if (test::kFeature64BitOnly & info->features) std::cerr << ", 64-bit only";
-  if (test::kFeature32BitOnly & info->features) std::cerr << ", 32-bit only";
-  if (!((test::kFeature32BitOnly | test::kFeature64BitOnly) & info->features)) {
-    std::cerr << " 32-bit (64-bit compat)";
-  }
-  std::cerr << std::endl;
 
   // Compare the register states.
   EXPECT_TRUE(lifted_state->fpu == native_state->fpu);

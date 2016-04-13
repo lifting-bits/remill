@@ -15,7 +15,7 @@ TEST_INPUTS(
     mulx edx, eax, ebx
 TEST_END
 
-TEST_BEGIN_64(MULXrdx, 2)
+TEST_BEGIN_64(MULXrdx_64, 2)
 TEST_INPUTS(
     0, 1,
     0xFFFF, 0xFFFF,

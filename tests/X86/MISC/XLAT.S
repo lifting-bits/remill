@@ -1,6 +1,6 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-TEST_BEGIN_64(XLAT, 1)
+TEST_BEGIN_64(XLAT_64, 1)
 TEST_INPUTS(
     0,
     1,

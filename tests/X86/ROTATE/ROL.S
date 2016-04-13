@@ -52,7 +52,7 @@ TEST_INPUTS(
 TEST_END
 
 /* REX-prefix encoded ROLr8i8 */
-TEST_BEGIN_64(ROLr8i8_1, 1)
+TEST_BEGIN_64(ROLr8i8_1_64, 1)
 TEST_INPUTS(
     0,
     1,
@@ -86,7 +86,7 @@ TEST_END
 
 /* Special encoding with `cl` as the reg containing the number of bits, using
  * a REX prefix to access a 64-bit dest reg. */
-TEST_BEGIN_64(ROLr8cl_1, 2)
+TEST_BEGIN_64(ROLr8cl_1_64, 2)
 TEST_INPUTS(
     0, 1,
     1, 1,
@@ -278,7 +278,7 @@ TEST_INPUTS(
     rol eax, 0xFF
 TEST_END
 
-TEST_BEGIN_64(ROLr64i8_1, 1)
+TEST_BEGIN_64(ROLr64i8_1_64, 1)
 TEST_INPUTS(
     0,
     1,
@@ -293,7 +293,7 @@ TEST_INPUTS(
     rol rax, 1
 TEST_END_64
 
-TEST_BEGIN_64(ROLr64i8_32, 1)
+TEST_BEGIN_64(ROLr64i8_32_64, 1)
 TEST_IGNORE_FLAGS(OF)
 TEST_INPUTS(
     0,
@@ -309,7 +309,7 @@ TEST_INPUTS(
     rol rax, 32
 TEST_END_64
 
-TEST_BEGIN_64(ROLr64i8_63, 1)
+TEST_BEGIN_64(ROLr64i8_63_64, 1)
 TEST_IGNORE_FLAGS(OF)
 TEST_INPUTS(
     0,
@@ -325,7 +325,7 @@ TEST_INPUTS(
     rol rax, 63
 TEST_END_64
 
-TEST_BEGIN_64(ROLr64i8_255, 1)
+TEST_BEGIN_64(ROLr64i8_255_64, 1)
 TEST_IGNORE_FLAGS(OF)
 TEST_INPUTS(
     0,
