@@ -40,6 +40,17 @@ static llvm::Function *FindPureIntrinsic(const llvm::Module *module,
   return function;
 }
 
+// Find a specific function.
+static llvm::Function *FindReadOnlyIntrinsic(const llvm::Module *module,
+                                             const char *name) {
+  auto function = FindIntrinsic(module, name);
+
+  // We want memory intrinsics to be marked as not accessing memory so that
+  // they don't interfere with dead store elimination.
+  function->addFnAttr(llvm::Attribute::ReadOnly);
+  return function;
+}
+
 }  // namespace
 
 IntrinsicTable::IntrinsicTable(const llvm::Module *module)
@@ -89,24 +100,27 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       write_memory_32(FindPureIntrinsic(module, "__mcsema_write_memory_32")),
       write_memory_64(FindPureIntrinsic(module, "__mcsema_write_memory_64")),
 
-      write_memory_v8(FindPureIntrinsic(module, "__mcsema_write_memory_v8")),
-      write_memory_v16(FindPureIntrinsic(module, "__mcsema_write_memory_v16")),
-      write_memory_v32(FindPureIntrinsic(module, "__mcsema_write_memory_v32")),
-      write_memory_v64(FindPureIntrinsic(module, "__mcsema_write_memory_v64")),
-      write_memory_v128(FindPureIntrinsic(
+      write_memory_v8(FindReadOnlyIntrinsic(module, "__mcsema_write_memory_v8")),
+      write_memory_v16(FindReadOnlyIntrinsic(module, "__mcsema_write_memory_v16")),
+      write_memory_v32(FindReadOnlyIntrinsic(module, "__mcsema_write_memory_v32")),
+      write_memory_v64(FindReadOnlyIntrinsic(module, "__mcsema_write_memory_v64")),
+      write_memory_v128(FindReadOnlyIntrinsic(
           module, "__mcsema_write_memory_v128")),
-      write_memory_v256(FindPureIntrinsic(
+      write_memory_v256(FindReadOnlyIntrinsic(
           module, "__mcsema_write_memory_v256")),
-      write_memory_v512(FindPureIntrinsic(
+      write_memory_v512(FindReadOnlyIntrinsic(
           module, "__mcsema_write_memory_v512")),
 
       read_memory_f32(FindIntrinsic(module, "__mcsema_read_memory_f32")),
       read_memory_f64(FindIntrinsic(module, "__mcsema_read_memory_f64")),
       read_memory_f80(FindIntrinsic(module, "__mcsema_read_memory_f80")),
 
-      write_memory_f32(FindPureIntrinsic(module, "__mcsema_write_memory_f32")),
-      write_memory_f64(FindPureIntrinsic(module, "__mcsema_write_memory_f64")),
-      write_memory_f80(FindPureIntrinsic(module, "__mcsema_write_memory_f80")),
+      write_memory_f32(FindReadOnlyIntrinsic(
+          module, "__mcsema_write_memory_f32")),
+      write_memory_f64(FindReadOnlyIntrinsic(
+          module, "__mcsema_write_memory_f64")),
+      write_memory_f80(FindReadOnlyIntrinsic(
+          module, "__mcsema_write_memory_f80")),
 
       read_f80(FindIntrinsic(module, "__mcsema_read_f80")),
       write_f80(FindIntrinsic(module, "__mcsema_write_f80")),
@@ -114,13 +128,16 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       compute_address(FindPureIntrinsic(module, "__mcsema_compute_address")),
 
       // Memory barriers.
-      barrier_load_load(FindIntrinsic(module, "__mcsema_barrier_load_load")),
-      barrier_load_store(FindIntrinsic(module, "__mcsema_barrier_load_store")),
-      barrier_store_load(FindIntrinsic(module, "__mcsema_barrier_store_load")),
-      barrier_store_store(FindIntrinsic(
+      barrier_load_load(FindPureIntrinsic(
+          module, "__mcsema_barrier_load_load")),
+      barrier_load_store(FindPureIntrinsic(
+          module, "__mcsema_barrier_load_store")),
+      barrier_store_load(FindPureIntrinsic(
+          module, "__mcsema_barrier_store_load")),
+      barrier_store_store(FindPureIntrinsic(
           module, "__mcsema_barrier_store_store")),
-      atomic_begin(FindIntrinsic(module, "__mcsema_atomic_begin")),
-      atomic_end(FindIntrinsic(module, "__mcsema_atomic_end")),
+      atomic_begin(FindPureIntrinsic(module, "__mcsema_atomic_begin")),
+      atomic_end(FindPureIntrinsic(module, "__mcsema_atomic_end")),
 
       // Optimization guides.
       //

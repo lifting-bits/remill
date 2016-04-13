@@ -284,6 +284,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BINARY/NEG.S"
 #include "tests/X86/BINARY/SBB.S"
 #include "tests/X86/BINARY/SUB.S"
+#include "tests/X86/BINARY/SUBPD.S"
 #include "tests/X86/BINARY/XADD.S"
 
 #include "tests/X86/BITBYTE/BT.S"
