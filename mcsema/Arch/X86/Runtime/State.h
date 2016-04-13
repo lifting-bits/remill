@@ -112,6 +112,32 @@ struct FPUStackElem final {
 static_assert(16 == sizeof(FPUStackElem),
               "Invalid structure packing of `FPUStackElem`.");
 
+union SSEControlStatus {
+  uint32_t flat;
+  struct {
+    uint32_t ie:1;  // Invalid operation.
+    uint32_t de:1;  // Denormal flag.
+    uint32_t ze:1;  // Divide by zero.
+    uint32_t oe:1;  // Overflow.
+    uint32_t ue:1;  // Underflow.
+    uint32_t pe:1;  // Precision.
+    uint32_t daz:1;  // Denormals are zero.
+    uint32_t im:1;  // Invalid operation.
+    uint32_t dm:1;  // Denormal mask.
+    uint32_t zm:1;  // Dvidide by zero mask.
+    uint32_t om:1;  // Overflow mask.
+    uint32_t um:1;  // Underflow mask.
+    uint32_t pm:1;  // Precision mask.
+    uint32_t rn:1;  // Round negative.
+    uint32_t rp:1;  // Round positive.
+    uint32_t fz:1;  // Flush to zero.
+    uint32_t _rsvd:16;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(4 == sizeof(SSEControlStatus),
+              "Invalid structure packing of `SSEControlStatus`.");
+
 // FP register state that conforms with `FXSAVE`.
 struct alignas(64) FPU final {
   FPUControlWord cwd;
@@ -133,8 +159,8 @@ struct alignas(64) FPU final {
       uint64_t dp;
     } __attribute__((packed)) amd64;
   } __attribute__((packed)) u;
-  uint32_t mxcsr;
-  uint32_t mxcr_mask;
+  SSEControlStatus mxcsr;
+  uint32_t mxcsr_mask;
   FPUStackElem st[8];   // 8*16 bytes for each FP reg = 128 bytes.
 
   // Note: This is consistent with `fxsave64`, but doesn't handle things like

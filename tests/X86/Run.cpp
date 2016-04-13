@@ -462,6 +462,9 @@ static void RunWithFlags(const test::TestInfo *info,
   native_state->rflag.flat |= info->ignored_flags_mask;
   lifted_state->rflag.flat |= info->ignored_flags_mask;
 
+  // Don't even bother with the MXCSR (SSE control/status register).
+  lifted_state->fpu.mxcsr.flat = native_state->fpu.mxcsr.flat;
+
   // Compare the register states.
   EXPECT_TRUE(lifted_state->fpu == native_state->fpu);
   for (auto i = 0UL; i < kNumVecRegisters; ++i) {

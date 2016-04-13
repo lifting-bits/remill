@@ -280,6 +280,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BINARY/IMUL.S"
 #include "tests/X86/BINARY/INC.S"
 #include "tests/X86/BINARY/MUL.S"
+#include "tests/X86/BINARY/MULPS.S"
 #include "tests/X86/BINARY/MULX.S"
 #include "tests/X86/BINARY/NEG.S"
 #include "tests/X86/BINARY/SBB.S"
