@@ -26,7 +26,7 @@ TEST_END
 
 #endif
 
-#if HAS_FEATUR_AVX
+#if HAS_FEATURE_AVX
 TEST_BEGIN(VMULPDv128v128_01, 1)
 TEST_INPUTS(0)
     vmulpd xmm0, xmm0, xmm1
@@ -46,4 +46,18 @@ TEST_BEGIN(VMULPDv256v256_45, 1)
 TEST_INPUTS(0)
     vmulpd ymm1, ymm4, ymm5
 TEST_END
+
+#if APPLE_SAFE_TESTS
+TEST_BEGIN(VMULPDv128m128_45, 1)
+TEST_INPUTS(0)
+    movdqu [rsp - 16], xmm5
+    vmulpd xmm1, xmm4, [rsp - 16]
+TEST_END
+
+TEST_BEGIN(VMULPDv256m256_45, 1)
+TEST_INPUTS(0)
+    vmovdqu [rsp - 32], ymm5
+    vmulpd ymm1, ymm4, [rsp - 32]
+TEST_END
+#endif  // APPLE_SAFE_TESTS
 #endif

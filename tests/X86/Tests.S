@@ -276,6 +276,8 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BINARY/CMP.S"
 #include "tests/X86/BINARY/DEC.S"
 #include "tests/X86/BINARY/DIV.S"
+#include "tests/X86/BINARY/DIVPD.S"
+#include "tests/X86/BINARY/DIVPS.S"
 #include "tests/X86/BINARY/IDIV.S"
 #include "tests/X86/BINARY/IMUL.S"
 #include "tests/X86/BINARY/INC.S"

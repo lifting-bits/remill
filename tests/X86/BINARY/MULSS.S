@@ -24,9 +24,9 @@ TEST_INPUTS(0)
     mulss xmm4, [rsp - 16]
 TEST_END
 
-#endif
+#endif  // APPLE_SAFE_TESTS
 
-#if HAS_FEATUR_AVX
+#if HAS_FEATURE_AVX
 TEST_BEGIN(VMULSSv128v128_01, 1)
 TEST_INPUTS(0)
     vmulss xmm0, xmm0, xmm1
@@ -37,13 +37,15 @@ TEST_INPUTS(0)
     vmulss xmm1, xmm4, xmm5
 TEST_END
 
-TEST_BEGIN(VMULSSv256v256_01, 1)
-TEST_INPUTS(0)
-    vmulss ymm0, ymm0, ymm1
-TEST_END
+#if APPLE_SAFE_TESTS
+TEST_BEGIN_64(VMULSSv128m32_45, 3)
+TEST_INPUTS(
+    0x3f800000,
+    0x40490fdb,
+    0x47c34f80)
 
-TEST_BEGIN(VMULSSv256v256_45, 1)
-TEST_INPUTS(0)
-    vmulss ymm1, ymm4, ymm5
-TEST_END
-#endif
+    mov DWORD PTR [rsp - 16], ARG1_32
+    vmulss xmm1, xmm4, DWORD PTR [rsp - 16]
+TEST_END_64
+#endif  // APPLE_SAFE_TESTS
+#endif  // HAS_FEATURE_AVX

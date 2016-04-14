@@ -24,9 +24,9 @@ TEST_INPUTS(0)
     subps xmm4, [rsp - 16]
 TEST_END
 
-#endif
+#endif  // APPLE_SAFE_TESTS
 
-#if HAS_FEATUR_AVX
+#if HAS_FEATURE_AVX
 TEST_BEGIN(VSUBPSv128v128_04, 1)
 TEST_INPUTS(0)
     vsubps xmm0, xmm1, xmm4
@@ -46,4 +46,18 @@ TEST_BEGIN(VSUBPSv256v256_40, 1)
 TEST_INPUTS(0)
     vsubps ymm1, ymm4, ymm0
 TEST_END
-#endif
+
+#if APPLE_SAFE_TESTS
+TEST_BEGIN(VSUBPSv128m128_40, 1)
+TEST_INPUTS(0)
+    movdqu [rsp - 16], xmm0
+    vsubps xmm1, xmm4, [rsp - 16]
+TEST_END
+
+TEST_BEGIN(VSUBPSv256m256_40, 1)
+TEST_INPUTS(0)
+    vmovdqu [rsp - 32], ymm0
+    vsubps ymm1, ymm4, [rsp - 32]
+TEST_END
+#endif  // APPLE_SAFE_TESTS
+#endif  // HAS_FEATURE_AVX
