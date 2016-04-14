@@ -23,6 +23,7 @@
 #include "mcsema/Arch/X86/Semantics/MISC.h"
 #include "mcsema/Arch/X86/Semantics/ROTATE.h"
 #include "mcsema/Arch/X86/Semantics/SHIFT.h"
+#include "mcsema/Arch/X86/Semantics/SSE.h"
 #include "mcsema/Arch/X86/Semantics/STRINGOP.h"
 #include "mcsema/Arch/X86/Semantics/UNCOND_BR.h"
 #include "mcsema/Arch/X86/Semantics/XOP.h"

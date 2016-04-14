@@ -142,6 +142,7 @@ llvm::Function *GetOrCreateBlockFunction(llvm::Module *module,
   auto new_block_func = llvm::dyn_cast<llvm::Function>(
       module->getOrInsertFunction(name, func_type));
   InitBlockFuncAttributes(new_block_func, template_func);
+  new_block_func->setVisibility(llvm::GlobalValue::HiddenVisibility);
   new_block_func->setLinkage(llvm::GlobalValue::PrivateLinkage);
   return new_block_func;
 }
@@ -187,7 +188,9 @@ void Translator::CreateFunctionsForBlocks(const cfg::Module *cfg) {
 
         auto extern_block_func = GetOrCreateBlockFunction(
             module, basic_block, ss2.str());
+        extern_block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
         extern_block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
+
         AddTerminatingTailCall(extern_block_func, block_func, block.address());
       }
     }
@@ -231,6 +234,8 @@ void Translator::CreateExternalFunctions(const cfg::Module *cfg) {
       extern_func->addFnAttr(llvm::Attribute::NoBuiltin);
       extern_func->addFnAttr(llvm::Attribute::OptimizeNone);
       extern_func->addFnAttr(llvm::Attribute::NoInline);
+
+      extern_func->setVibility(llvm::GlobalValue::DefaultVisibility);
       extern_func->setLinkage(llvm::GlobalValue::ExternalWeakLinkage);
     }
 

@@ -125,6 +125,31 @@ void RemoveUndefinedIntrinsics(llvm::Module &module) {
       llvm::RecursivelyDeleteTriviallyDeadInstructions(dead_instr);
     }
   }
+
+  auto mem_order = module.getGlobalVariable("__mcsema_memory_order");
+  if (!mem_order) {
+    mem_order = module.getGlobalVariable("___mcsema_memory_order");
+  }
+
+  // Remove globals that we don't need.
+  std::vector<llvm::GlobalVariable *> remove_globals;
+  for (auto &global : module.globals()) {
+    if (auto global_var = llvm::dyn_cast<llvm::GlobalVariable>(&global)) {
+      if (global_var != mem_order) {
+        if (!global_var->hasNUsesOrMore(1)) {
+          remove_globals.push_back(global_var);
+        } else {
+          global_var->setVisibility(llvm::GlobalValue::HiddenVisibility);
+          global_var->setLinkage(llvm::GlobalValue::PrivateLinkage);
+        }
+      }
+    }
+  }
+
+  for (auto global_var : remove_globals) {
+    global_var->removeFromParent();
+    delete global_var;
+  }
 }
 
 // Enable inlining of functions whose inlining has been deferred.
