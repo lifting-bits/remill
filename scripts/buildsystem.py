@@ -264,7 +264,9 @@ def SourceFile(path, extra_args=[]):
   """Memoized source file compiler. Names compiled object files
   in terms of the extra args and the path to the source file."""
 
-  path = os.path.abspath(str(path))
+  path = str(path)
+  if not path.startswith("$"):
+    path = os.path.abspath(path)
   key = hashlib.md5("{}{}".format(path, "".join(extra_args))).hexdigest()
   target_path = os.path.join(ARGS.obj_dir, "{}.o".format(key))
   
@@ -297,7 +299,14 @@ class StaticLibrary(_File):
 
 
 def OutputFileNameOfCommand(*args):
-  return _File(FileName(Task(Command, *args)))
+  if ARGS.dry_run:
+    command = " ".join(args)
+    key = "$F{}".format(hashlib.md5(command).hexdigest())
+    if ARGS.debug:
+      print "{}=$({})".format(key[1:], command)
+    return _File(key)
+  else:
+    return _File(FileName(Task(Command, *args)))
 
 
 class ConfigLibraries(object):
