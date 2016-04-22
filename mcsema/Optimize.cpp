@@ -127,9 +127,6 @@ void RemoveUndefinedIntrinsics(llvm::Module &module) {
   }
 
   auto mem_order = module.getGlobalVariable("__mcsema_memory_order");
-  if (!mem_order) {
-    mem_order = module.getGlobalVariable("___mcsema_memory_order");
-  }
 
   // Remove globals that we don't need.
   std::vector<llvm::GlobalVariable *> remove_globals;

@@ -235,7 +235,7 @@ void Translator::CreateExternalFunctions(const cfg::Module *cfg) {
       extern_func->addFnAttr(llvm::Attribute::OptimizeNone);
       extern_func->addFnAttr(llvm::Attribute::NoInline);
 
-      extern_func->setVibility(llvm::GlobalValue::DefaultVisibility);
+      extern_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
       extern_func->setLinkage(llvm::GlobalValue::ExternalWeakLinkage);
     }
 
