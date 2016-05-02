@@ -21,7 +21,7 @@ namespace {
 //              lifted program and the program itself.
 
 DEF_SEM(JNLE, PC target_pc) {
-  const auto cond = !state.aflag.zf && state.aflag.cf == state.aflag.pf;
+  const auto cond = !state.aflag.zf && state.aflag.sf == state.aflag.of;
   W(state.gpr.rip) = __mcsema_conditional_branch(cond, target_pc, next_pc);
 }
 
@@ -61,12 +61,12 @@ DEF_SEM(JNL, PC target_pc) {
 }
 
 DEF_SEM(JNBE, PC target_pc) {
-  const auto cond = !state.aflag.cf & !state.aflag.zf;
+  const auto cond = !state.aflag.cf && !state.aflag.zf;
   W(state.gpr.rip) = __mcsema_conditional_branch(cond, target_pc, next_pc);
 }
 
 DEF_SEM(JBE, PC target_pc) {
-  const auto cond = state.aflag.cf | state.aflag.zf;
+  const auto cond = state.aflag.cf || state.aflag.zf;
   W(state.gpr.rip) = __mcsema_conditional_branch(cond, target_pc, next_pc);
 }
 
@@ -96,7 +96,7 @@ DEF_SEM(JB, PC target_pc) {
 }
 
 DEF_SEM(JLE, PC target_pc) {
-  const auto cond = state.aflag.zf | (state.aflag.sf ^ state.aflag.of);
+  const auto cond = state.aflag.zf || (state.aflag.sf != state.aflag.of);
   W(state.gpr.rip) = __mcsema_conditional_branch(cond, target_pc, next_pc);
 }
 

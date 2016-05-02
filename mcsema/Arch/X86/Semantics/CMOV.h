@@ -14,7 +14,7 @@ ALWAYS_INLINE static void CMOVcc(bool cond, D dst, S1 src1) {
 
 template <typename D, typename S1>
 DEF_SEM(CMOVNLE, D dst, S1 src1) {
-  const auto cond = !state.aflag.zf && state.aflag.cf == state.aflag.pf;
+  const auto cond = !state.aflag.zf && state.aflag.sf == state.aflag.of;
   CMOVcc(cond, dst, src1);
 }
 
@@ -62,13 +62,13 @@ DEF_SEM(CMOVNL, D dst, S1 src1) {
 
 template <typename D, typename S1>
 DEF_SEM(CMOVNBE, D dst, S1 src1) {
-  const auto cond = !state.aflag.cf & !state.aflag.zf;
+  const auto cond = !state.aflag.cf && !state.aflag.zf;
   CMOVcc(cond, dst, src1);
 }
 
 template <typename D, typename S1>
 DEF_SEM(CMOVBE, D dst, S1 src1) {
-  const auto cond = state.aflag.cf | state.aflag.zf;
+  const auto cond = state.aflag.cf || state.aflag.zf;
   CMOVcc(cond, dst, src1);
 }
 
@@ -104,7 +104,7 @@ DEF_SEM(CMOVB, D dst, S1 src1) {
 
 template <typename D, typename S1>
 DEF_SEM(CMOVLE, D dst, S1 src1) {
-  const auto cond = state.aflag.zf | (state.aflag.sf ^ state.aflag.of);
+  const auto cond = state.aflag.zf || (state.aflag.sf != state.aflag.of);
   CMOVcc(cond, dst, src1);
 }
 
