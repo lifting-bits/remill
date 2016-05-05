@@ -335,6 +335,7 @@ void InstructionTranslator::LiftOperand(const Translator &lifter,
     switch (auto op_name = xed_operand_name(xedo)) {
       case XED_OPERAND_AGEN:
       case XED_OPERAND_MEM0:
+      case XED_OPERAND_MEM1:
         LiftMemory(lifter, xedo, op_num);
         break;
 
@@ -451,6 +452,15 @@ void InstructionTranslator::LiftMemory(const Translator &lifter,
     addr_val = ir.CreateAdd(
         ir.CreateAdd(base_reg_val, ir.CreateMul(index_reg_val, scale_val)),
         disp_val);
+  }
+
+  // Mask the address down to size if a addr16/addr32 prefix is being used.
+  const auto memop_addr_width = xed_decoded_inst_get_memop_address_width(
+      xedd, mem_index);
+  if (memop_addr_width < addr_width) {
+    addr_val = ir.CreateTrunc(
+        addr_val, llvm::Type::getIntNTy(*context, memop_addr_width));
+    addr_val = ir.CreateZExt(addr_val, intptr_type);
   }
 
   if (addr_space) {
