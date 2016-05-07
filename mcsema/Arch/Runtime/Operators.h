@@ -280,7 +280,7 @@ MAKE_ACCESSORS(uint32_t, 32)
 MAKE_ACCESSORS(uint64_t, 64)
 #undef MAKE_ACCESSORS
 
-#define MAKE_FLOAT_ACCESSORS(T, size) \
+#define MAKE_FLOAT_ACCESSORS(T, base_type, acc, size) \
     struct MemoryWriter ## T { \
       ALWAYS_INLINE void operator=(const T &val) const { \
         __mcsema_memory_order = __mcsema_write_memory_f ## size ( \
@@ -310,10 +310,28 @@ MAKE_ACCESSORS(uint64_t, 64)
     } \
     ALWAYS_INLINE static T R(const T &val) { \
       return val; \
-    }
+    } \
+    struct Float ## size ## VecOps { \
+      template <typename U> \
+      ALWAYS_INLINE static base_type Read0(U val) { \
+        return val.acc[0]; \
+      } \
+      template <typename U> \
+      ALWAYS_INLINE static void Write0(U &dst, base_type src) { \
+        dst.acc[0] = src; \
+      } \
+      template <typename U> \
+      ALWAYS_INLINE static auto Read(U val) -> decltype(val.acc) { \
+        return val.acc; \
+      } \
+      template <typename U, typename V> \
+      ALWAYS_INLINE static void Write(U &dst, V src) { \
+        dst.acc = src; \
+      } \
+    };
 
-MAKE_FLOAT_ACCESSORS(float32_t, 32)
-MAKE_FLOAT_ACCESSORS(float64_t, 64)
+MAKE_FLOAT_ACCESSORS(float32_t, float, floats, 32)
+MAKE_FLOAT_ACCESSORS(float64_t, double, doubles, 64)
 
 #undef MAKE_FLOAT_ACCESSORS
 

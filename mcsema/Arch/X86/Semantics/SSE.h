@@ -6,22 +6,22 @@
 namespace {
 
 // TODO(pag): Ignores distinction between quiet/signalling, and ordering.
-template <typename S1, typename S2>
-DEF_SEM(XCOMISS, S1 src1_, S2 src2_) {
-  auto src1 = R(src1_);
-  auto src2 = R(src2_);
+template <typename S1, typename S2, typename FloatAcc>
+DEF_SEM(COMISx, S1 src1_, S2 src2_) {
+  const auto src1 = FloatAcc::Read0(R(src1_));
+  const auto src2 = FloatAcc::Read0(R(src2_));
 
-  if (src1.floats[0] > src2.floats[0]) {
+  if (src1 > src2) {
     state.aflag.zf = false;
     state.aflag.pf = false;
     state.aflag.cf = false;
 
-  } else if (src1.floats[0] < src2.floats[0]) {
+  } else if (src1 < src2) {
     state.aflag.zf = false;
     state.aflag.pf = false;
     state.aflag.cf = true;
 
-  } else if (src1.floats[0] == src2.floats[0]) {
+  } else if (src1 == src2) {
     state.aflag.zf = true;
     state.aflag.pf = false;
     state.aflag.cf = false;
@@ -32,66 +32,37 @@ DEF_SEM(XCOMISS, S1 src1_, S2 src2_) {
     state.aflag.cf = true;
   }
 
-  state.aflag.of = true;
-  state.aflag.sf = true;
-  state.aflag.af = true;
-}
-
-// TODO(pag): Ignores distinction between quiet/signalling, and ordering.
-template <typename S1, typename S2>
-DEF_SEM(XCOMISD, S1 src1_, S2 src2_) {
-  auto src1 = R(src1_);
-  auto src2 = R(src2_);
-
-  if (src1.doubles[0] > src2.doubles[0]) {
-    state.aflag.zf = false;
-    state.aflag.pf = false;
-    state.aflag.cf = false;
-
-  } else if (src1.doubles[0] < src2.doubles[0]) {
-    state.aflag.zf = false;
-    state.aflag.pf = false;
-    state.aflag.cf = true;
-
-  } else if (src1.doubles[0] == src2.doubles[0]) {
-    state.aflag.zf = true;
-    state.aflag.pf = false;
-    state.aflag.cf = false;
-
-  } else {  // Unordered?
-    state.aflag.zf = true;
-    state.aflag.pf = true;
-    state.aflag.cf = true;
-  }
-
-  state.aflag.of = true;
-  state.aflag.sf = true;
-  state.aflag.af = true;
+  state.aflag.of = false;
+  state.aflag.sf = false;
+  state.aflag.af = false;
 }
 
 }  // namespace
 
-DEF_ISEL(COMISD_XMMsd_MEMsd) = XCOMISD<V128, MV64>;
-DEF_ISEL(COMISD_XMMsd_XMMsd) = XCOMISD<V128, V128>;
-DEF_ISEL(COMISS_XMMss_MEMss) = XCOMISS<V128, MV64>;
-DEF_ISEL(COMISS_XMMss_XMMss) = XCOMISS<V128, V128>;
-
-DEF_ISEL(UCOMISD_XMMsd_MEMsd) = XCOMISD<V128, MV64>;
-DEF_ISEL(UCOMISD_XMMsd_XMMsd) = XCOMISD<V128, V128>;
-DEF_ISEL(UCOMISS_XMMss_MEMss) = XCOMISS<V128, MV64>;
-DEF_ISEL(UCOMISS_XMMss_XMMss) = XCOMISS<V128, V128>;
+DEF_ISEL(COMISD_XMMsd_MEMsd) = COMISx<V128, MV64, Float64VecOps>;
+DEF_ISEL(COMISD_XMMsd_XMMsd) = COMISx<V128, V128, Float64VecOps>;
+DEF_ISEL(COMISS_XMMss_MEMss) = COMISx<V128, MV32, Float32VecOps>;
+DEF_ISEL(COMISS_XMMss_XMMss) = COMISx<V128, V128, Float32VecOps>;
 
 #if HAS_FEATURE_AVX
-DEF_ISEL(VCOMISD_XMMq_MEMq) = XCOMISD<V128, MV64>;
-DEF_ISEL(VCOMISD_XMMq_XMMq) = XCOMISD<V128, V128>;
-DEF_ISEL(VCOMISS_XMMd_MEMd) = XCOMISS<V128, MV64>;
-DEF_ISEL(VCOMISS_XMMd_XMMd) = XCOMISS<V128, V128>;
-
-DEF_ISEL(VUCOMISD_XMMdq_MEMq) = XCOMISD<V128, MV64>;
-DEF_ISEL(VUCOMISD_XMMdq_XMMq) = XCOMISD<V128, V128>;
-DEF_ISEL(VUCOMISS_XMMdq_MEMd) = XCOMISS<V128, MV64>;
-DEF_ISEL(VUCOMISS_XMMdq_XMMd) = XCOMISS<V128, V128>;
+DEF_ISEL(VCOMISD_XMMq_MEMq) = COMISx<V128, MV64, Float64VecOps>;
+DEF_ISEL(VCOMISD_XMMq_XMMq) = COMISx<V128, V128, Float64VecOps>;
+DEF_ISEL(VCOMISS_XMMd_MEMd) = COMISx<V128, MV32, Float32VecOps>;
+DEF_ISEL(VCOMISS_XMMd_XMMd) = COMISx<V128, V128, Float32VecOps>;
 #endif  // HAS_FEATURE_AVX
+
+DEF_ISEL(UCOMISD_XMMsd_MEMsd) = COMISx<V128, MV64, Float64VecOps>;
+DEF_ISEL(UCOMISD_XMMsd_XMMsd) = COMISx<V128, V128, Float64VecOps>;
+DEF_ISEL(UCOMISS_XMMss_MEMss) = COMISx<V128, MV32, Float32VecOps>;
+DEF_ISEL(UCOMISS_XMMss_XMMss) = COMISx<V128, V128, Float32VecOps>;
+
+#if HAS_FEATURE_AVX
+DEF_ISEL(VUCOMISD_XMMdq_MEMq) = COMISx<V128, MV64, Float64VecOps>;
+DEF_ISEL(VUCOMISD_XMMdq_XMMq) = COMISx<V128, V128, Float64VecOps>;
+DEF_ISEL(VUCOMISS_XMMdq_MEMd) = COMISx<V128, MV32, Float32VecOps>;
+DEF_ISEL(VUCOMISS_XMMdq_XMMd) = COMISx<V128, V128, Float32VecOps>;
+#endif  // HAS_FEATURE_AVX
+
 
 /*
 88 FCOMI FCOMI_ST0_X87 X87_ALU X87 PPRO ATTRIBUTES: NOTSX

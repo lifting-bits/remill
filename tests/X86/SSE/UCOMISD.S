@@ -1,6 +1,6 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-TEST_BEGIN_64(COMISDv128v128, 2)
+TEST_BEGIN_64(UCOMISDv128v128, 2)
 TEST_INPUTS(
     0x3ff0000000000000 /* 1.000000 */, 0x3ff0000000000000, /* 1.000000 */
     0x3ff0000000000000 /* 1.000000 */, 0x4000000000000000, /* 2.000000 */
@@ -18,10 +18,10 @@ TEST_INPUTS(
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */ )
     movq xmm0, ARG1_64
     movq xmm1, ARG2_64
-    comisd xmm0, xmm1
+    ucomisd xmm0, xmm1
 TEST_END_64
 
-TEST_BEGIN_64(COMISDv128m64, 2)
+TEST_BEGIN_64(UCOMISDv128m64, 2)
 TEST_INPUTS(
     0x3ff0000000000000 /* 1.000000 */, 0x3ff0000000000000, /* 1.000000 */
     0x3ff0000000000000 /* 1.000000 */, 0x4000000000000000, /* 2.000000 */
@@ -39,11 +39,11 @@ TEST_INPUTS(
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */ )
     push ARG2_64
     movq xmm0, ARG1_64
-    comisd xmm0, qword ptr [rsp]
+    ucomisd xmm0, qword ptr [rsp]
 TEST_END_64
 
 #if HAS_FEATURE_AVX
-TEST_BEGIN_64(VCOMISDv128v128, 2)
+TEST_BEGIN_64(VUCOMISDv128v128, 2)
 TEST_INPUTS(
     0x3ff0000000000000 /* 1.000000 */, 0x3ff0000000000000, /* 1.000000 */
     0x3ff0000000000000 /* 1.000000 */, 0x4000000000000000, /* 2.000000 */
@@ -61,10 +61,10 @@ TEST_INPUTS(
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */ )
     vmovq xmm0, ARG1_64
     vmovq xmm1, ARG2_64
-    vcomisd xmm0, xmm1
+    vucomisd xmm0, xmm1
 TEST_END_64
 
-TEST_BEGIN_64(VCOMISDv128m64, 2)
+TEST_BEGIN_64(VUCOMISDv128m64, 2)
 TEST_INPUTS(
     0x3ff0000000000000 /* 1.000000 */, 0x3ff0000000000000, /* 1.000000 */
     0x3ff0000000000000 /* 1.000000 */, 0x4000000000000000, /* 2.000000 */
@@ -82,6 +82,6 @@ TEST_INPUTS(
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */ )
     push ARG2_64
     vmovq xmm0, ARG1_64
-    vcomisd xmm0, qword ptr [rsp]
+    vucomisd xmm0, qword ptr [rsp]
 TEST_END_64
 #endif  // HAS_FEATURE_AVX
