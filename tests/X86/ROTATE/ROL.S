@@ -68,16 +68,25 @@ TEST_INPUTS(
 TEST_END_64
 
 /* Special encoding with `cl` as the reg containing the number of bits */
-TEST_BEGIN(ROLr8cl_1, 2)
+TEST_BEGIN(ROLr8cl, 2)
+TEST_IGNORE_FLAGS(OF)
 TEST_INPUTS(
-    0, 1,
-    1, 1,
-    0x80, 1,
-    0x55, 1,
-    0xAA, 1,
-    0x0F, 1,
-    0xF7, 1,
-    0xFE, 1)
+    0, 2,
+    1, 2,
+    0x80, 2,
+    0x55, 2,
+    0xAA, 2,
+    0x0F, 2,
+    0xF7, 2,
+    0xFE, 2,
+    0, 7,
+    1, 7,
+    0x80, 7,
+    0x55, 7,
+    0xAA, 7,
+    0x0F, 7,
+    0xF7, 7,
+    0xFE, 7)
 
     mov eax, ARG1_32
     mov ecx, ARG2_32
@@ -136,16 +145,25 @@ TEST_INPUTS(
     rol al, 2
 TEST_END
 
-TEST_BEGIN(ROLr16cl_1, 2)
+TEST_BEGIN(ROLr16cl, 2)
+TEST_IGNORE_FLAGS(OF)
 TEST_INPUTS(
-    0, 1,
-    1, 1,
-    0x8000, 1,
-    0x5500, 1,
-    0xAA00, 1,
-    0x0F0F, 1,
-    0xF7F7, 1,
-    0xFEFE, 1)
+    0, 8,
+    1, 8,
+    0x8000, 8,
+    0x5500, 8,
+    0xAA00, 8,
+    0x0F0F, 8,
+    0xF7F7, 8,
+    0xFEFE, 8,
+    0, 15,
+    1, 15,
+    0x8000, 15,
+    0x5500, 15,
+    0xAA00, 15,
+    0x0F0F, 15,
+    0xF7F7, 15,
+    0xFEFE, 15)
 
     mov eax, ARG1_32
     mov ecx, ARG2_32
