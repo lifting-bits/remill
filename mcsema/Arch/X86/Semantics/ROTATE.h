@@ -47,6 +47,34 @@ DEF_SEM(ROL, D dst, S1 src1, S2 src2) {
 }
 
 template <typename D, typename S1, typename S2>
+DEF_SEM(ROR, D dst, S1 src1, S2 src2) {
+  typedef BASE_TYPE_OF(S1) T;
+  enum : T {
+    kSize = 8 * sizeof(T),
+    kCountMask = 64 == kSize ? T(0x3F) : T(0x1F)
+  };
+  const T val = R(src1);
+  const auto count = static_cast<T>(R(src2));
+  const auto masked_count = static_cast<T>(count & kCountMask);
+  const auto temp_count = static_cast<T>(masked_count % kSize);
+  T new_val = val;
+  if (temp_count) {
+    new_val = (val >> temp_count) | (val << (kSize - temp_count));
+    W(dst) = new_val;
+    __mcsema_barrier_compiler();
+    state.aflag.cf = SignFlag(new_val);
+    if (1 == count) {
+      state.aflag.of = SignFlag(new_val) != state.aflag.cf;
+    } else {
+      state.aflag.of = __mcsema_undefined_bool();
+    }
+  } else {
+    W(dst) = new_val;
+  }
+
+}
+
+template <typename D, typename S1, typename S2>
 DEF_SEM(RORX, D dst, S1 src1, S2 src2) {
   typedef BASE_TYPE_OF(S1) T;
   enum : T {
@@ -73,6 +101,19 @@ DEF_ISEL(ROL_MEMb_CL) = ROL<M8W, M8, R8>;
 DEF_ISEL(ROL_GPR8_CL) = ROL<R8W, R8, R8>;
 DEF_ISEL_MnW_Mn_Rn(ROL_MEMv_CL, ROL);
 DEF_ISEL_RnW_Rn_Rn(ROL_GPRv_CL, ROL);
+
+DEF_ISEL(ROR_MEMb_IMMb) = ROR<M8W, M8, I8>;
+DEF_ISEL(ROR_GPR8_IMMb) = ROR<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(ROR_MEMv_IMMb, ROR);
+DEF_ISEL_RnW_Rn_In(ROR_GPRv_IMMb, ROR);
+DEF_ISEL(ROR_MEMb_ONE) = ROR<M8W, M8, I8>;
+DEF_ISEL(ROR_GPR8_ONE) = ROR<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(ROR_MEMv_ONE, ROR);
+DEF_ISEL_RnW_Rn_In(ROR_GPRv_ONE, ROR);
+DEF_ISEL(ROR_MEMb_CL) = ROR<M8W, M8, R8>;
+DEF_ISEL(ROR_GPR8_CL) = ROR<R8W, R8, R8>;
+DEF_ISEL_MnW_Mn_Rn(ROR_MEMv_CL, ROR);
+DEF_ISEL_RnW_Rn_Rn(ROR_GPRv_CL, ROR);
 
 DEF_ISEL(RORX_VGPR32d_VGPR32d_IMMb) = RORX<R32W, R32, I8>;
 DEF_ISEL(RORX_VGPR32d_MEMd_IMMb) = RORX<R32W, M32, I8>;
