@@ -350,6 +350,7 @@ SYMBOL(__x86_test_table_begin):
 
 #include "tests/X86/SHIFT/SAR.S"
 #include "tests/X86/SHIFT/SHL.S"
+#include "tests/X86/SHIFT/SHLD.S"
 #include "tests/X86/SHIFT/SHR.S"
 #include "tests/X86/SHIFT/SHRD.S"
 

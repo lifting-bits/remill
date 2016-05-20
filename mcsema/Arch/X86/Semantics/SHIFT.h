@@ -233,4 +233,53 @@ DEF_ISEL_RnW_Rn_Rn_In(SHRD_GPRv_GPRv_IMMb, SHRD);
 DEF_ISEL_MnW_Mn_Rn_Rn(SHRD_MEMv_GPRv_CL, SHRD);
 DEF_ISEL_RnW_Rn_Rn_Rn(SHRD_GPRv_GPRv_CL, SHRD);
 
+namespace {
+
+template <typename T>
+NEVER_INLINE static bool SHLDCarryFlag(T val, T count) {
+  __mcsema_defer_inlining();
+  return (val >> ((8 * sizeof(T)) - count)) & 1;
+}
+
+template <typename D, typename S1, typename S2, typename S3>
+DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 count_) {
+  typedef BASE_TYPE_OF(S1) T;
+  enum : T {
+    kMod = static_cast<T>(8 == sizeof(T) ? 64 : 32),
+    kSize = static_cast<T>(sizeof(T) * 8)
+  };
+  const T count = static_cast<T>(R(count_)) % kMod;
+  if (!count) {
+    return;
+  }
+  if (kSize < count) {
+    CLEAR_AFLAGS();
+    W(dst) = U(dst);  // Store and undefined value.
+    return;
+  }
+  const T src = R(src1);
+  const T left = src << count;
+  const T right = R(src2) >> (kSize - count);
+  const T res = left | right;
+  W(dst) = res;
+  __mcsema_barrier_compiler();
+  state.aflag.cf = SHLDCarryFlag(src, count);
+  state.aflag.sf = SignFlag(res);
+  state.aflag.zf = ZeroFlag(res);
+  state.aflag.pf = ParityFlag(res);
+  state.aflag.af = __mcsema_undefined_bool();
+  if (1 == count) {
+    state.aflag.of = SignFlag(src) != state.aflag.sf;
+  } else {
+    state.aflag.of = __mcsema_undefined_bool();
+  }
+}
+
+}  // namespace
+
+DEF_ISEL_MnW_Mn_Rn_In(SHLD_MEMv_GPRv_IMMb, SHLD);
+DEF_ISEL_RnW_Rn_Rn_In(SHLD_GPRv_GPRv_IMMb, SHLD);
+DEF_ISEL_MnW_Mn_Rn_Rn(SHLD_MEMv_GPRv_CL, SHLD);
+DEF_ISEL_RnW_Rn_Rn_Rn(SHLD_GPRv_GPRv_CL, SHLD);
+
 #endif  // MCSEMA_ARCH_X86_SEMANTICS_SHIFT_H_
