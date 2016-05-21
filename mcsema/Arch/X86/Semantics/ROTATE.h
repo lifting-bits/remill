@@ -22,11 +22,8 @@ DEF_SEM(ROL, D dst, S1 src1, S2 src2) {
     W(dst) = new_val;
     __mcsema_barrier_compiler();
     state.aflag.cf = new_val & 1;
-    if (1 == masked_count) {
-      state.aflag.of = SignFlag(new_val) != state.aflag.cf;
-    } else {
-      state.aflag.of = __mcsema_undefined_bool();
-    }
+    state.aflag.of = SignFlag(new_val) != state.aflag.cf;
+    // OF undefined for `1 == temp_count`.
   } else {
     W(dst) = new_val;
   }
@@ -49,11 +46,8 @@ DEF_SEM(ROR, D dst, S1 src1, S2 src2) {
     W(dst) = new_val;
     __mcsema_barrier_compiler();
     state.aflag.cf = SignFlag(new_val);
-    if (1 == count) {
-      state.aflag.of = state.aflag.cf != SignFlag<T>(new_val << 1);
-    } else {
-      state.aflag.of = __mcsema_undefined_bool();
-    }
+    state.aflag.of = state.aflag.cf != SignFlag<T>(new_val << 1);
+    // OF undefined for `1 == temp_count`.
   } else {
     W(dst) = new_val;
   }
@@ -121,18 +115,18 @@ DEF_SEM(RCL, D dst, S1 src1, S2 src2) {
   const T val = R(src1);
   const T carry = state.aflag.cf ? 1 : 0;
   T new_val = val;
+
+  // Note: we split the right shift into two to avoid UB.
   if (temp_count) {
-    new_val = (val << temp_count) |
-              (carry << (temp_count - 1)) |
-              (val >> ((kSize + 1) - temp_count));
+    const T right = val >> (kSize - temp_count);
+    new_val = T(val << temp_count) |
+              T(carry << T(temp_count - 1)) |
+              T(right >> 1);
     W(dst) = new_val;
     __mcsema_barrier_compiler();
-    state.aflag.cf = new_val & 1;
-    if (1 == masked_count) {
-      state.aflag.of = SignFlag(new_val) != state.aflag.cf;
-    } else {
-      state.aflag.of = __mcsema_undefined_bool();
-    }
+    state.aflag.cf = SignFlag<T>(val << (temp_count - 1));
+    state.aflag.of = SignFlag(new_val) != state.aflag.cf;
+    // OF undefined for `1 == temp_count`.
   } else {
     W(dst) = new_val;
   }
@@ -157,16 +151,27 @@ DEF_SEM(RCR, D dst, S1 src1, S2 src2) {
     W(dst) = new_val;
     __mcsema_barrier_compiler();
     state.aflag.cf = SignFlag(new_val);
-    if (1 == count) {
-      state.aflag.of = SignFlag(new_val) != state.aflag.cf;
-    } else {
-      state.aflag.of = __mcsema_undefined_bool();
-    }
+    state.aflag.of = SignFlag(new_val) != state.aflag.cf;
+    // OF undefined for `1 == temp_count`.
   } else {
     W(dst) = new_val;
   }
 }
 
 }  // namespace
+
+DEF_ISEL(RCL_MEMb_IMMb) = RCL<M8W, M8, I8>;
+DEF_ISEL(RCL_GPR8_IMMb) = RCL<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(RCL_MEMv_IMMb, RCL);
+DEF_ISEL_RnW_Rn_In(RCL_GPRv_IMMb, RCL);
+DEF_ISEL(RCL_MEMb_ONE) = RCL<M8W, M8, I8>;
+DEF_ISEL(RCL_GPR8_ONE) = RCL<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(RCL_MEMv_ONE, RCL);
+DEF_ISEL_RnW_Rn_In(RCL_GPRv_ONE, RCL);
+DEF_ISEL(RCL_MEMb_CL) = RCL<M8W, M8, R8>;
+DEF_ISEL(RCL_GPR8_CL) = RCL<R8W, R8, R8>;
+DEF_ISEL_MnW_Mn_Rn(RCL_MEMv_CL, RCL);
+DEF_ISEL_RnW_Rn_Rn(RCL_GPRv_CL, RCL);
+
 
 #endif  // MCSEMA_ARCH_X86_SEMANTICS_ROTATE_H_

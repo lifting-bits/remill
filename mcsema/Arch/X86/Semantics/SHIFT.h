@@ -219,11 +219,8 @@ DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 count_) {
   state.aflag.zf = ZeroFlag(res);
   state.aflag.pf = ParityFlag(res);
   state.aflag.af = __mcsema_undefined_bool();
-  if (1 == count) {
-    state.aflag.of = SignFlag(src) != state.aflag.sf;
-  } else {
-    state.aflag.of = __mcsema_undefined_bool();
-  }
+  state.aflag.of = SignFlag(src) != state.aflag.sf;
+  // OF undefined for `1 == temp_count`.
 }
 
 }  // namespace
@@ -268,11 +265,8 @@ DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 count_) {
   state.aflag.zf = ZeroFlag(res);
   state.aflag.pf = ParityFlag(res);
   state.aflag.af = __mcsema_undefined_bool();
-  if (1 == count) {
-    state.aflag.of = SignFlag(src) != state.aflag.sf;
-  } else {
-    state.aflag.of = __mcsema_undefined_bool();
-  }
+  state.aflag.of = SignFlag(src) != state.aflag.sf;
+  // OF undefined for `1 == temp_count`.
 }
 
 }  // namespace
