@@ -3,21 +3,7 @@
 #ifndef MCSEMA_ARCH_X86_SEMANTICS_ROTATE_H_
 #define MCSEMA_ARCH_X86_SEMANTICS_ROTATE_H_
 
-
 namespace {
-/*
-inline static constexpr unsigned RotateCount(size_t size, unsigned count) {
-  switch (size) {
-    case 1: return (count & 0x1F) % 9;
-    case 2: return (count & 0x1F) % 17;
-    case 4: return count & 0x1F;
-    case 8: return count & 0x3F;
-    default:
-      __builtin_unreachable();
-      return 0;
-  }
-}
-*/
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ROL, D dst, S1 src1, S2 src2) {
@@ -64,14 +50,13 @@ DEF_SEM(ROR, D dst, S1 src1, S2 src2) {
     __mcsema_barrier_compiler();
     state.aflag.cf = SignFlag(new_val);
     if (1 == count) {
-      state.aflag.of = SignFlag(new_val) != state.aflag.cf;
+      state.aflag.of = state.aflag.cf != SignFlag<T>(new_val << 1);
     } else {
       state.aflag.of = __mcsema_undefined_bool();
     }
   } else {
     W(dst) = new_val;
   }
-
 }
 
 template <typename D, typename S1, typename S2>
@@ -119,5 +104,69 @@ DEF_ISEL(RORX_VGPR32d_VGPR32d_IMMb) = RORX<R32W, R32, I8>;
 DEF_ISEL(RORX_VGPR32d_MEMd_IMMb) = RORX<R32W, M32, I8>;
 DEF_ISEL(RORX_VGPR64q_VGPR64q_IMMb) = RORX<R64W, R64, I8>;
 DEF_ISEL(RORX_VGPR64q_MEMq_IMMb) = RORX<R64W, M64, I8>;
+
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(RCL, D dst, S1 src1, S2 src2) {
+  typedef BASE_TYPE_OF(S1) T;
+  enum : T {
+    kSize = 8 * sizeof(T),
+    kCountMask = 64 == kSize ? T(0x3F) : T(0x1F),
+    kMod = kSize < 32 ? kSize + 1 : (kCountMask + 1)
+  };
+  const auto count = static_cast<T>(R(src2));
+  const auto masked_count = static_cast<T>(count & kCountMask);
+  const auto temp_count = static_cast<T>(masked_count % kMod);
+  const T val = R(src1);
+  const T carry = state.aflag.cf ? 1 : 0;
+  T new_val = val;
+  if (temp_count) {
+    new_val = (val << temp_count) |
+              (carry << (temp_count - 1)) |
+              (val >> ((kSize + 1) - temp_count));
+    W(dst) = new_val;
+    __mcsema_barrier_compiler();
+    state.aflag.cf = new_val & 1;
+    if (1 == masked_count) {
+      state.aflag.of = SignFlag(new_val) != state.aflag.cf;
+    } else {
+      state.aflag.of = __mcsema_undefined_bool();
+    }
+  } else {
+    W(dst) = new_val;
+  }
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(RCR, D dst, S1 src1, S2 src2) {
+  typedef BASE_TYPE_OF(S1) T;
+  enum : T {
+    kSize = 8 * sizeof(T),
+    kCountMask = 64 == kSize ? T(0x3F) : T(0x1F),
+    kMod = kSize < 32 ? kSize + 1 : (kCountMask + 1)
+  };
+  const T val = R(src1);
+  const T carry = state.aflag.cf ? 1 : 0;
+  const auto count = static_cast<T>(R(src2));
+  const auto masked_count = static_cast<T>(count & kCountMask);
+  const auto temp_count = static_cast<T>(masked_count % kMod);
+  T new_val = val;
+  if (temp_count) {
+    new_val = (val >> temp_count) | (val << (kSize - temp_count));
+    W(dst) = new_val;
+    __mcsema_barrier_compiler();
+    state.aflag.cf = SignFlag(new_val);
+    if (1 == count) {
+      state.aflag.of = SignFlag(new_val) != state.aflag.cf;
+    } else {
+      state.aflag.of = __mcsema_undefined_bool();
+    }
+  } else {
+    W(dst) = new_val;
+  }
+}
+
+}  // namespace
 
 #endif  // MCSEMA_ARCH_X86_SEMANTICS_ROTATE_H_
