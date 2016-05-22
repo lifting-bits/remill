@@ -147,11 +147,15 @@ DEF_SEM(RCR, D dst, S1 src1, S2 src2) {
   const auto temp_count = static_cast<T>(masked_count % kMod);
   T new_val = val;
   if (temp_count) {
-    new_val = (val >> temp_count) | (val << (kSize - temp_count));
+    const T left = (val >> (temp_count - 1));
+    const T right = val << (kSize - temp_count);
+    new_val = (left >> 1) |
+              (carry << (kSize - temp_count)) |
+              (right << 1);
     W(dst) = new_val;
     __mcsema_barrier_compiler();
-    state.aflag.cf = SignFlag(new_val);
-    state.aflag.of = SignFlag(new_val) != state.aflag.cf;
+    state.aflag.cf = left & 1;
+    state.aflag.of = SignFlag(new_val) != SignFlag<T>(new_val << 1);
     // OF undefined for `1 == temp_count`.
   } else {
     W(dst) = new_val;
@@ -173,5 +177,17 @@ DEF_ISEL(RCL_GPR8_CL) = RCL<R8W, R8, R8>;
 DEF_ISEL_MnW_Mn_Rn(RCL_MEMv_CL, RCL);
 DEF_ISEL_RnW_Rn_Rn(RCL_GPRv_CL, RCL);
 
+DEF_ISEL(RCR_MEMb_IMMb) = RCR<M8W, M8, I8>;
+DEF_ISEL(RCR_GPR8_IMMb) = RCR<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(RCR_MEMv_IMMb, RCR);
+DEF_ISEL_RnW_Rn_In(RCR_GPRv_IMMb, RCR);
+DEF_ISEL(RCR_MEMb_ONE) = RCR<M8W, M8, I8>;
+DEF_ISEL(RCR_GPR8_ONE) = RCR<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(RCR_MEMv_ONE, RCR);
+DEF_ISEL_RnW_Rn_In(RCR_GPRv_ONE, RCR);
+DEF_ISEL(RCR_MEMb_CL) = RCR<M8W, M8, R8>;
+DEF_ISEL(RCR_GPR8_CL) = RCR<R8W, R8, R8>;
+DEF_ISEL_MnW_Mn_Rn(RCR_MEMv_CL, RCR);
+DEF_ISEL_RnW_Rn_Rn(RCR_GPRv_CL, RCR);
 
 #endif  // MCSEMA_ARCH_X86_SEMANTICS_ROTATE_H_

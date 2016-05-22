@@ -347,6 +347,7 @@ SYMBOL(__x86_test_table_begin):
 #endif  // APPLE_SAFE_TESTS
 
 #include "tests/X86/ROTATE/RCL.S"
+#include "tests/X86/ROTATE/RCR.S"
 #include "tests/X86/ROTATE/ROL.S"
 #include "tests/X86/ROTATE/ROR.S"
 
