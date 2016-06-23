@@ -18,10 +18,10 @@ fi
 
 mkdir -p $PREFIX/bin
 mkdir -p $PREFIX/include
-mkdir -p $PREFIX/lib/mcsema2
-mkdir -p $PREFIX/share/mcsema2
+mkdir -p $PREFIX/lib/remill
+mkdir -p $PREFIX/share/remill
 
 cp $DIR/build/cfg_to_bc $PREFIX/bin
-cp $DIR/build/libOptimize.* $PREFIX/lib/mcsema2
-cp $DIR/generated/sem_* $PREFIX/share/mcsema2
+cp $DIR/build/libOptimize.* $PREFIX/lib/remill
+cp $DIR/generated/sem_* $PREFIX/share/remill
 

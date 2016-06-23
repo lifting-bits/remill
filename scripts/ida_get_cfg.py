@@ -11,9 +11,9 @@ import syslog
 import traceback
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-MCSEMA_DIR = os.path.dirname(SCRIPT_DIR)
+REMILL_DIR = os.path.dirname(SCRIPT_DIR)
 
-sys.path.append(MCSEMA_DIR)
+sys.path.append(REMILL_DIR)
 sys.path.append('/usr/lib/python2.7/dist-packages')
 sys.path.append('/usr/local/lib/python2.7/site-packages/protobuf-2.6.1-py2.7.egg')
 from generated.CFG import CFG_pb2

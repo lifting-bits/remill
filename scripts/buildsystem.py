@@ -43,9 +43,9 @@ PARSER.add_argument(
     default="debug")
 
 ARGS = PARSER.parse_args()
-MCSEMA_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-CC = os.path.join(MCSEMA_DIR, "third_party", "bin", "clang")
-CXX = os.path.join(MCSEMA_DIR, "third_party", "bin", "clang++")
+REMILL_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+CC = os.path.join(REMILL_DIR, "third_party", "bin", "clang")
+CXX = os.path.join(REMILL_DIR, "third_party", "bin", "clang++")
 
 # If we're not actually executing the commands then don't parallelize
 # anything.
@@ -65,14 +65,14 @@ SHARED_LIB_EXT = {
   "win": "dll",
 }[OS]
 
-MCSEMA_SRC_DIR = os.path.join(MCSEMA_DIR, "mcsema")
-MCSEMA_BUILD_DIR = os.path.join(MCSEMA_DIR, "build")
-MCSEMA_TEST_DIR = os.path.join(MCSEMA_DIR, "tests")
-MCSEMA_GEN_DIR = os.path.join(MCSEMA_DIR, "generated")
-MCSEMA_SCRIPTS_DIR = os.path.join(MCSEMA_DIR, "scripts")
-MCSEMA_INCLUDE_DIR = os.path.join(MCSEMA_DIR, "third_party", "include")
-MCSEMA_BIN_DIR = os.path.join(MCSEMA_DIR, "third_party", "bin")
-MCSEMA_LIB_DIR = os.path.join(MCSEMA_DIR, "third_party", "lib")
+REMILL_SRC_DIR = os.path.join(REMILL_DIR, "remill")
+REMILL_BUILD_DIR = os.path.join(REMILL_DIR, "build")
+REMILL_TEST_DIR = os.path.join(REMILL_DIR, "tests")
+REMILL_GEN_DIR = os.path.join(REMILL_DIR, "generated")
+REMILL_SCRIPTS_DIR = os.path.join(REMILL_DIR, "scripts")
+REMILL_INCLUDE_DIR = os.path.join(REMILL_DIR, "third_party", "include")
+REMILL_BIN_DIR = os.path.join(REMILL_DIR, "third_party", "bin")
+REMILL_LIB_DIR = os.path.join(REMILL_DIR, "third_party", "lib")
 
 try:
   if 1 >= ARGS.num_workers:
@@ -127,15 +127,15 @@ CXX_FLAGS = [
   "-std=gnu++11",
 
   # Macros.
-  '-DMCSEMA_DIR="{}"'.format(MCSEMA_DIR),
-  '-DMCSEMA_OS="{}"'.format(OS),
+  '-DREMILL_DIR="{}"'.format(REMILL_DIR),
+  '-DREMILL_OS="{}"'.format(OS),
   "-D__STDC_LIMIT_MACROS",
   "-D__STDC_CONSTANT_MACROS",
   "-DGOOGLE_PROTOBUF_NO_RTTI",
   
   # Includes.
-  "-isystem", MCSEMA_INCLUDE_DIR,
-  "-I{}".format(MCSEMA_DIR),
+  "-isystem", REMILL_INCLUDE_DIR,
+  "-I{}".format(REMILL_DIR),
 
   # Output info.
   "-fPIC",
@@ -279,7 +279,7 @@ def SourceFile(path, extra_args=[]):
 
 class StaticLibrary(_File):
   """Pre-compiled library within the source/library dirs."""
-  SEARCH_PATHS = [MCSEMA_LIB_DIR, MCSEMA_BUILD_DIR]
+  SEARCH_PATHS = [REMILL_LIB_DIR, REMILL_BUILD_DIR]
 
   def __init__(self, name):
     super(StaticLibrary, self).__init__(self._FindLib(name))
@@ -357,18 +357,18 @@ class _Target(_File):
     args.extend([
       "-o",
       path,
-      "-L{}".format(MCSEMA_LIB_DIR)])
+      "-L{}".format(REMILL_LIB_DIR)])
 
     if "linux" == OS:
       args.extend([
         "-Wl,-z,now",
-        "-Wl,-rpath={}".format(MCSEMA_LIB_DIR),
+        "-Wl,-rpath={}".format(REMILL_LIB_DIR),
         "-Wl,-gc-sections",
         "-Wl,-E"])
 
     elif "mac" == OS:
       args.extend([
-        "-Xlinker", "-rpath", "-Xlinker", MCSEMA_LIB_DIR,
+        "-Xlinker", "-rpath", "-Xlinker", REMILL_LIB_DIR,
         "-Wl,-dead_strip",])
 
     for src in source_files:

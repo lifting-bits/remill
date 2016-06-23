@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# Directory in which this script resides (i.e. McSema scripts dir).
+# Directory in which this script resides (i.e. Remill scripts dir).
 SCRIPTS_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-MCSEMA_DIR=$(dirname ${SCRIPTS_DIR})
+REMILL_DIR=$(dirname ${SCRIPTS_DIR})
 
 RED=`tput setaf 1`
 RESET=`tput sgr0`
@@ -26,7 +26,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
 	fi
 fi
 
-BIN=`mktemp -t mcsema2_XXXXXXXXXX`
+BIN=`mktemp -t remill2_XXXXXXXXXX`
 
 if [[ ! -e $IDA ]] ; then
 	printf "${RED}Could not find IDA.${RESET}\n" > /dev/stderr
@@ -35,7 +35,7 @@ fi
 
 cp $1 $BIN
 
-export PYTHONPATH=${MCSEMA_DIR}:${PYTHONPATH}
+export PYTHONPATH=${REMILL_DIR}:${PYTHONPATH}
 export TVHEADLESS=1
 
 "$IDA" -B -S"${SCRIPTS_DIR}/ida_get_cfg.py --output=${BIN}.cfg" $BIN &> /dev/null || {

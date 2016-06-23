@@ -1,4 +1,4 @@
-## mcsema2
+## remill
 [![Build Status](https://travis-ci.com/trailofbits/mcsema2.svg?token=T1UToSpCvaMxn511Cddb)](https://travis-ci.com/trailofbits/mcsema2)
 
 ### Setup
@@ -29,9 +29,9 @@ like `/tmp/tmp.E3RWcczulG.cfg`.
 Lets assume that `/path/to/binary` is a 32-bit ELF file. Now you can do the following:
 
 ```
-/path/to/mcsema2/build/cfg_to_bc \
+/path/to/remill/build/cfg_to_bc \
     --arch_in=x86 --arch_out=x86 --os_in=linux --os_out=linux \
-    --bc_in=/path/to/mcsema2/generated/sem_x86.bc --bc_out=$BIN.bc --cfg=$CFG
+    --bc_in=/path/to/remill/generated/sem_x86.bc --bc_out=$BIN.bc --cfg=$CFG
 ```
 
 For 64-bit x86 programs, specificy `--arch_in=amd64`. If you intend to run a 32-bit
@@ -52,7 +52,7 @@ right thing.
 #### Optimizing the bitcode
 
 There are a few ways to optimize the produced bitcode. The first is to tell
-mcsema2 to perform a data flow analysis and to try to kill things like dead
+remill to perform a data flow analysis and to try to kill things like dead
 registers.
 
 The data flow analyzer is enabled by specifying a maximum number of data flow
@@ -60,7 +60,7 @@ analysis iterations to perform. By default, the maximum number is `0` (disabled)
 For a comprehensive analysis, specify a large number, e.g.:
 
 ```
-/path/to/mcsema2/build/cfg_to_bc ... --max_dataflow_analysis_iterations=99999 ...
+/path/to/remill/build/cfg_to_bc ... --max_dataflow_analysis_iterations=99999 ...
 ```
 
 In order to maintain correctness, the data-flow analysis is conservative.
@@ -69,7 +69,7 @@ agressive analysis can be performed. This analysis will try to propagate
 data flow information across function returns, for instance. It is enabled
 with the `--aggressive_dataflow_analysis` flag.
 
-Once bitcode has been produced, it can be optimized using the mcsema2-specific
+Once bitcode has been produced, it can be optimized using the remill-specific
 LLVM optimization plugin. The following will produce optimized bitcode in a
 file named by `$OPT`.
 

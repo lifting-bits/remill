@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved.
 
-# Directory in which the script dir resides (i.e. McSema root dir).
+# Directory in which the script dir resides (i.e. Remill root dir).
 DIR=$(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd ))
 
 if [[ "$OSTYPE" == "linux-gnu" ]]; then

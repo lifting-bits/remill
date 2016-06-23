@@ -1,0 +1,34 @@
+
+package remill.cfg;
+
+message Instr {
+    required    uint64      address = 1;
+    required    bytes       bytes = 2;
+    required    uint64      size = 3; // For double-checking.
+}
+
+message Block {
+    required    uint64      address = 1;
+    repeated    Instr       instructions = 2;
+}
+
+message Function {
+    required    string      name = 1;
+    required    uint64      address = 2;
+    required    bool        is_imported = 3;
+    required    bool        is_exported = 4;
+    required    bool        is_weak = 5;
+}
+
+message IndirectBlock {
+    required    uint64      address = 1;
+
+    // TODO: Relocation / segment info?
+}
+
+message Module {
+    required    string          binary_path = 1;
+    repeated    Block           blocks = 2;
+    repeated    IndirectBlock   indirect_blocks = 3;
+    repeated    Function        functions = 4;
+}
