@@ -98,7 +98,7 @@ TEST_FUNC(instr_name, num_args): ; \
 
 /* Note:    The test end address is placed *before* the `RET` so that we can
  *          make sure that the end of a test marker is actually
- *          `__mcsema_error`. This is kind of a hack.
+ *          `__remill_error`. This is kind of a hack.
  */
 #ifdef IN_TEST_GENERATOR
 # define TEST_END \

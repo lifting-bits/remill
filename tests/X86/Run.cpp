@@ -18,7 +18,7 @@
 
 #include "tests/X86/Test.h"
 
-#include "mcsema/Arch/X86/Runtime/State.h"
+#include "remill/Arch/X86/Runtime/State.h"
 
 namespace {
 
@@ -105,47 +105,47 @@ extern void InvokeTestCase(uint64_t, uint64_t, uint64_t);
 
 // Address computation intrinsic. This is only used for non-zero
 // `address_space`d memory accesses.
-NEVER_INLINE addr_t __mcsema_compute_address(const State &state, addr_t addr,
+NEVER_INLINE addr_t __remill_compute_address(const State &state, addr_t addr,
                                              int address_space) {
   (void) state;
   (void) address_space;
   return addr;
 }
 
-NEVER_INLINE addr_t __mcsema_create_program_counter(addr_t pc) {
+NEVER_INLINE addr_t __remill_create_program_counter(addr_t pc) {
   return pc;
 }
 
 #define MAKE_RW_MEMORY(size) \
-  NEVER_INLINE uint ## size ## _t  __mcsema_read_memory_ ## size( \
+  NEVER_INLINE uint ## size ## _t  __remill_read_memory_ ## size( \
      order_t, addr_t addr) {\
     return AccessMemory<uint ## size ## _t>(addr); \
   } \
-  NEVER_INLINE order_t __mcsema_write_memory_ ## size ( \
+  NEVER_INLINE order_t __remill_write_memory_ ## size ( \
       order_t order, addr_t addr, const uint ## size ## _t in) { \
     AccessMemory<uint ## size ## _t>(addr) = in; \
     return order + 1; \
   }
 
 #define MAKE_RW_FP_MEMORY(size) \
-  NEVER_INLINE order_t __mcsema_read_memory_f ## size( \
+  NEVER_INLINE order_t __remill_read_memory_f ## size( \
       order_t order, addr_t addr, float ## size ## _t &vec) { \
     vec = AccessMemory<float ## size ## _t>(addr); \
     return order + 1; \
   } \
-  NEVER_INLINE order_t __mcsema_write_memory_f ## size (\
+  NEVER_INLINE order_t __remill_write_memory_f ## size (\
       order_t order, addr_t addr, const float ## size ## _t &in) { \
     AccessMemory<float ## size ## _t>(addr) = in; \
     return order + 1; \
   }
 
 #define MAKE_RW_VEC_MEMORY(size) \
-  NEVER_INLINE order_t __mcsema_read_memory_v ## size( \
+  NEVER_INLINE order_t __remill_read_memory_v ## size( \
       order_t order, addr_t addr, vec ## size ## _t &vec) { \
     vec = AccessMemory<vec ## size ## _t>(addr); \
     return order + 1; \
   } \
-  NEVER_INLINE order_t __mcsema_write_memory_v ## size (\
+  NEVER_INLINE order_t __remill_write_memory_v ## size (\
       order_t order, addr_t addr, const vec ## size ## _t &in) { \
     AccessMemory<vec ## size ## _t>(addr) = in; \
     return order + 1; \
@@ -169,26 +169,26 @@ MAKE_RW_VEC_MEMORY(256)
 MAKE_RW_VEC_MEMORY(512)
 
 
-order_t __mcsema_barrier_load_load(order_t) { return 0; }
-order_t __mcsema_barrier_load_store(order_t) { return 0; }
-order_t __mcsema_barrier_store_load(order_t) { return 0; }
-order_t __mcsema_barrier_store_store(order_t) { return 0; }
-order_t __mcsema_atomic_begin(order_t) { return 0; }
-order_t __mcsema_atomic_end(order_t) { return 0; }
+order_t __remill_barrier_load_load(order_t) { return 0; }
+order_t __remill_barrier_load_store(order_t) { return 0; }
+order_t __remill_barrier_store_load(order_t) { return 0; }
+order_t __remill_barrier_store_store(order_t) { return 0; }
+order_t __remill_atomic_begin(order_t) { return 0; }
+order_t __remill_atomic_end(order_t) { return 0; }
 
-void __mcsema_defer_inlining(void) {}
+void __remill_defer_inlining(void) {}
 
 // Control-flow intrinsics.
-void __mcsema_missing_block(State &, addr_t) {
+void __remill_missing_block(State &, addr_t) {
   // This is where we want to end up.
 }
 
-void __mcsema_error(State &, addr_t) {
+void __remill_error(State &, addr_t) {
   std::cerr << "Caught error!" << std::endl;
   siglongjmp(gJmpBuf, 0);
 }
 
-void __mcsema_read_cpu_features(State &state, addr_t) {
+void __remill_read_cpu_features(State &state, addr_t) {
   asm volatile(
       "cpuid"
       : "=a"(state.gpr.rax.qword),
@@ -202,68 +202,68 @@ void __mcsema_read_cpu_features(State &state, addr_t) {
   );
 }
 
-void __mcsema_function_call(State &, addr_t) {
+void __remill_function_call(State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __mcsema_function_return(State &, addr_t) {
+void __remill_function_return(State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __mcsema_jump(State &, addr_t) {
+void __remill_jump(State &, addr_t) {
   __builtin_unreachable();
 }
 
-addr_t __mcsema_conditional_branch(
+addr_t __remill_conditional_branch(
     bool cond, addr_t addr_true, addr_t addr_false) {
   return cond ? addr_true : addr_false;
 }
 
-void __mcsema_system_call(State &, addr_t) {
+void __remill_system_call(State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __mcsema_system_return(State &, addr_t) {
+void __remill_system_return(State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __mcsema_interrupt_call(State &, addr_t) {
+void __remill_interrupt_call(State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __mcsema_interrupt_return(State &, addr_t) {
+void __remill_interrupt_return(State &, addr_t) {
   __builtin_unreachable();
 }
 
-bool __mcsema_undefined_bool(void) {
+bool __remill_undefined_bool(void) {
   return false;
 }
 
-uint8_t __mcsema_undefined_8(void) {
+uint8_t __remill_undefined_8(void) {
   return 0;
 }
 
-uint16_t __mcsema_undefined_16(void) {
+uint16_t __remill_undefined_16(void) {
   return 0;
 }
 
-uint32_t __mcsema_undefined_32(void) {
+uint32_t __remill_undefined_32(void) {
   return 0;
 }
 
-uint64_t __mcsema_undefined_64(void) {
+uint64_t __remill_undefined_64(void) {
   return 0;
 }
 
-float32_t __mcsema_undefined_f32(void) {
+float32_t __remill_undefined_f32(void) {
   return 0.0;
 }
 
-float64_t __mcsema_undefined_f64(void) {
+float64_t __remill_undefined_f64(void) {
   return 0.0;
 }
 
-void __mcsema_read_f80(const float80_t &in, float64_t &out) {
+void __remill_read_f80(const float80_t &in, float64_t &out) {
   struct alignas(16) LongDoubleStorage {
     uint8_t bytes[16];
   } storage;
@@ -273,7 +273,7 @@ void __mcsema_read_f80(const float80_t &in, float64_t &out) {
   out.val = static_cast<double>(*reinterpret_cast<long double *>(&storage));
 }
 
-void __mcsema_write_f80(const float64_t &in, float80_t &out) {
+void __remill_write_f80(const float64_t &in, float80_t &out) {
   struct alignas(16) LongDoubleStorage {
     uint8_t bytes[16];
   } storage;
@@ -286,7 +286,7 @@ void __mcsema_write_f80(const float64_t &in, float80_t &out) {
 // Marks `mem` as being used. This is used for making sure certain symbols are
 // kept around through optimization, and makes sure that optimization doesn't
 // perform dead-argument elimination on any of the intrinsics.
-void __mcsema_mark_as_used(void *mem) {
+void __remill_mark_as_used(void *mem) {
   asm("" :: "m"(mem));
 }
 

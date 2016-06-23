@@ -8,8 +8,8 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-#include "mcsema/Arch/X86/XED.h"
-#include "mcsema/CFG/CFG.h"
+#include "remill/Arch/X86/XED.h"
+#include "remill/CFG/CFG.h"
 
 #include "tests/X86/Test.h"
 
@@ -59,7 +59,7 @@ unsigned InstructionLength(const uint8_t *bytes, unsigned num_bytes) {
 // Decode a test and add it as a basic block to the module.
 //
 // TODO(pag): Eventually handle control-flow.
-static void AddFunctionToModule(mcsema::cfg::Module *module,
+static void AddFunctionToModule(remill::cfg::Module *module,
                                 const test::TestInfo &test) {
   const char *test_name = reinterpret_cast<const char *>(test.test_name);
 
@@ -108,7 +108,7 @@ extern "C" int main(int argc, char *argv[]) {
 
   LOG(INFO) << "Generating tests.";
 
-  auto module = new mcsema::cfg::Module;
+  auto module = new remill::cfg::Module;
   module->set_binary_path(__FILE__);
 
   for (auto i = 0U; ; ++i) {

@@ -21,11 +21,11 @@ else
     exit 1
 fi
 
-BIN=`mktemp -t mcsema2_XXXXXXXXXX`
+BIN=`mktemp -t remill_XXXXXXXXXX`
 
 $DIR/third_party/bin/opt \
     -load $DIR/build/libFinalize.$DYLIB_SUFFIX \
-    -mcsema_finalize \
+    -remill_finalize \
     -o=$BIN.bc $1 || {
     printf "${RED}Could not finalize $1${RESET}\n" > /dev/stderr
     exit 1

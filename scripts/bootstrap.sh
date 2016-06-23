@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved.
 
-# Directory in which the script dir resides (i.e. McSema root dir).
+# Directory in which the script dir resides (i.e. Remill root dir).
 DIR=$(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd ))
 
 RED=`tput setaf 1`
@@ -24,7 +24,7 @@ LLVM_RELEASE_DIR=releases/${LLVM_RELEASE}
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
     XED_VERSION=xed-install-base-${XED_RELEASE}-lin-x86-64
     LLVM_VERSION=clang+llvm-${LLVM_RELEASE}-x86_64-linux-gnu-ubuntu-14.04
-    MCSEMA_OS_NAME="linux"
+    REMILL_OS_NAME="linux"
     LIB_EXT=so
     STDLIB="libstdc++"
     LIB_LINK_FLAGS=
@@ -33,7 +33,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     XED_VERSION=xed-install-base-${XED_RELEASE}-mac-x86-64
     LLVM_RELEASE=3.8.0
     LLVM_VERSION=clang+llvm-${LLVM_RELEASE}-x86_64-apple-darwin
-    MCSEMA_OS_NAME="mac"
+    REMILL_OS_NAME="mac"
     LIB_EXT=dylib
     STDLIB="libc++"
     LIB_LINK_FLAGS="-lc++ -lc++abi"
@@ -300,7 +300,7 @@ function generate_files()
     # read in CFG protobuf files and output LLVM bitcode files.
     sub_category "Generating protocol buffers."
     cd $DIR/generated/CFG
-    cp $DIR/mcsema/CFG/CFG.proto $DIR/generated/CFG
+    cp $DIR/remill/CFG/CFG.proto $DIR/generated/CFG
     $DIR/third_party/bin/protoc --cpp_out=. CFG.proto
     $DIR/third_party/bin/protoc --python_out=. CFG.proto
     
@@ -310,13 +310,13 @@ function generate_files()
     popd
 }
 
-function build_mcsema()
+function build_remill()
 {
-    category "Compiling McSema."
+    category "Compiling Remill"
     python $DIR/scripts/build.py
 }
 
 create_directory_tree
 download_dependencies
 generate_files
-build_mcsema
+build_remill

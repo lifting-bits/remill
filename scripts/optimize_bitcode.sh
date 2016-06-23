@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved.
 
-# Directory in which the script dir resides (i.e. McSema root dir).
+# Directory in which the script dir resides (i.e. Remill root dir).
 DIR=$(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd ))
 RED=`tput setaf 1`
 RESET=`tput sgr0`
@@ -22,7 +22,7 @@ else
     exit 1
 fi
 
-BIN=`mktemp -t mcsema2_XXXXXXXXXX`
+BIN=`mktemp -t remill_XXXXXXXXXX`
 
 $DIR/third_party/bin/opt -O3 -o=$BIN.opt0.bc $1 || {
     printf "${RED}Could not optimize $1${RESET}\n" > /dev/stderr
@@ -30,7 +30,7 @@ $DIR/third_party/bin/opt -O3 -o=$BIN.opt0.bc $1 || {
 }
 
 $DIR/third_party/bin/opt \
-    -load $DIR/build/libOptimize.$DYLIB_SUFFIX -mcsema_optimize \
+    -load $DIR/build/libOptimize.$DYLIB_SUFFIX -remill_optimize \
     -o=$BIN.opt1.bc $BIN.opt0.bc || {
     printf "${RED}Could not optimize $BIN.opt0.bc${RESET}\n" > /dev/stderr
     exit 1
