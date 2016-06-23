@@ -1,9 +1,9 @@
 # Remill [![Build Status](https://travis-ci.com/trailofbits/remill.svg?token=T1UToSpCvaMxn511Cddb&branch=master)](https://travis-ci.com/trailofbits/remill)
 
 Remill is a static binary translator that translates machine code into
-[LLVM bitcode](http://llvm.org/docs/LangRef.html). It supports translating
+[LLVM bitcode](http://llvm.org/docs/LangRef.html). It translates
 x86 and amd64 machine code (including AVX and
-AVX512) to LLVM bitcode.
+AVX512) into LLVM bitcode.
 
 ## Purpose
 
@@ -18,7 +18,7 @@ many decisions on how the translated bitcode should be interpreted.
 
 ## Goals
 
-Remill was designed with the following goals in mind:
+Remill was designed with the following goals in mind.
 
 - It should be easy to add new instruction implementations. Instruction
   semantics are implemented using C++. Instruction implementations should be
@@ -65,25 +65,20 @@ designed to maintain the following properties.
    [tear fields](https://github.com/trailofbits/remill/blob/master/remill/Arch/X86/Runtime/State.h#L211)
    are introduced so as to prevent load and store coalescing, and preserve the
    semantics that writes to logical units of data remain as such.
-
  - They should have a uniform size across all architecture revisions and
    generations. This permits things such as:
-
-    - Mixing bitcode translated with and without AVX support.
-   
-    - Mixing 32-bit ad 64-bit translated bitcode, or cross-compiling 32- and
+    - Mixing separately translated bitcode from two binaries, one with and one without AVX support.
+    - Mixing 32-bit ad 64-bit translated bitcode, or cross-compiling 32-bit and
       64-bit bitcode.
-
-  - They should accurately describe all register state maintained by the
+ - They should accurately describe all register state maintained by the
     emulated machine.
-
-  - It should be easy to convert to/from Remill's state structures and actual
+ - It should be easy to convert to/from Remill's state structures and actual
     machine-derived state.
 
 ### Memory Model and the Remill Runtime
 
-Remill-produced bitcode has a memory model that includes barriers and that
-explicitly distinguish loads/stores to the modelled program's memory from
+Remill-produced bitcode has a memory model that includes memory barriers and atomic region.
+It also explicitly distinguishes loads/stores to the modelled program's memory from
 loads and stores to "runtime memory."
 
 Remill-produced bitcode can be thought of as an emulator for a program.
@@ -168,7 +163,6 @@ encoder and decoder. XED is licensed under the What If pre-release license. A co
 
 Remill depends on the [LLVM Compiler Infrastructure](http://llvm.org). A copy of this license can be found [here](http://llvm.org/releases/3.8.0/LICENSE.TXT).
 
-
 ### IDA Pro
 
 Remill depends on [IDA Pro](https://www.hex-rays.com/products/ida) to
@@ -176,4 +170,4 @@ accurately disassemble program binaries.
 
 ### Binary Ninja
 
-Remill depends on [Binary Ninja](https://binary.ninja) to accurately disassemble program binaries.
+An alternative to IDA Pro is [Binary Ninja](https://binary.ninja). Remill can use Binary Ninja to accurately disassemble program binaries.
