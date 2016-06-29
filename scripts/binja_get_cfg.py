@@ -7,12 +7,97 @@ import time
 import binaryninja as binja
 import magic  # pip install python-magic
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+REMILL_DIR = os.path.dirname(SCRIPT_DIR)
+
+sys.path.append(REMILL_DIR)
+from generated.CFG import CFG_pb2
+
 DEBUG = False
 
 
 def debug(s):
     if DEBUG:
         sys.stdout.write('{}\n'.format(str(s)))
+
+
+def is_export(func):
+    # type: (binja.Function) -> bool
+    sym_type = binja.core.BNSymbolType_by_name[func.symbol.type]
+    return sym_type == binja.core.FunctionSymbol and not func.auto
+
+
+def is_import(func):
+    # type: (binja.Function) -> bool
+    sym_type = binja.core.BNSymbolType_by_name[func.symbol.type]
+    return sym_type == binja.core.ImportedFunctionSymbol
+
+
+def is_internal(func):
+    # type: (binja.Function) -> bool
+    sym_type = binja.core.BNSymbolType_by_name[func.symbol.type]
+    return sym_type == binja.core.FunctionSymbol and func.auto
+
+
+def analyze_exports(bv, pb_mod):
+    # type: (binja.BinaryView, CFG_pb2.Module) -> None
+    for func in bv.functions:
+        if is_export(func):
+            pb_func = pb_mod.functions.add()
+            pb_func.name = func.symbol.short_name
+            pb_func.address = func.start
+            pb_func.is_imported = False
+            pb_func.is_exported = True
+            pb_func.is_weak = False
+
+            debug('Adding export: {} @ {:x}'.format(pb_func.name, pb_func.address))
+
+
+def analyze_imports(bv, pb_mod):
+    # type: (binja.BinaryView, CFG_pb2.Module) -> None
+    for func in bv.functions:
+        if is_import(func):
+            pb_func = pb_mod.functions.add()
+            pb_func.name = func.symbol.short_name
+            pb_func.address = func.start
+            pb_func.is_imported = True
+            pb_func.is_exported = False
+            pb_func.is_weak = False  # TODO: see if this can be figured out
+
+            debug('Adding import: {} @ {:x}'.format(pb_func.name, pb_func.address))
+
+
+def analyze_internal_functions(bv, pb_mod):
+    # type: (binja.BinaryView, CFG_pb2.Module) -> None
+    for func in bv.functions:
+        if is_internal(func):
+            pb_func = pb_mod.functions.add()
+            pb_func.name = func.symbol.short_name  # TODO: should this be different?
+            pb_func.address = func.start
+            pb_func.is_imported = False
+            pb_func.is_exported = False
+            pb_func.is_weak = False
+
+            debug('Adding function: {} @ {:x}'.format(pb_func.name, pb_func.address))
+
+
+def recover_cfg(bv, outf):
+    # type: (binja.BinaryView, file) -> None
+    pb_mod = CFG_pb2.Module()
+    pb_mod.binary_path = bv.file.filename
+
+    debug('Analyzing exports...')
+    analyze_exports(bv, pb_mod)
+
+    debug('Analyzing imports...')
+    analyze_imports(bv, pb_mod)
+
+    debug('Analyzing internal functions...')
+    analyze_internal_functions(bv, pb_mod)
+
+    debug('Saving CFG to {}'.format(outf.name))
+    outf.write(pb_mod.SerializeToString())
+    outf.close()
 
 
 def main():
@@ -74,6 +159,8 @@ def main():
     if len(bv) == 0:
         debug('Binary could not be loaded in binja, is it linked?')
         return 1
+
+    recover_cfg(bv, outf)
 
 
 if __name__ == '__main__':
