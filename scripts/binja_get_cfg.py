@@ -14,15 +14,71 @@ from generated.CFG import CFG_pb2
 
 DEBUG = False
 
+INDIRECT_TERMINATORS = [
+    binja.core.LLIL_CALL,
+    binja.core.LLIL_SYSCALL,
+    binja.core.LLIL_TRAP,
+    binja.core.LLIL_BP
+]
+
+UNKNOWN_IL = [
+    binja.core.LLIL_UNDEF,
+    binja.core.LLIL_UNIMPL,
+    binja.core.LLIL_UNIMPL_MEM
+]
+
 
 def debug(s):
     if DEBUG:
         sys.stdout.write('{}\n'.format(str(s)))
 
 
+def is_cpuid(bv, il):
+    # type: (binja.BinaryView, binja.LowLevelILInstruction) -> bool
+    txt = get_inst_text(bv, il.address)
+    return 'cpuid' == txt[0].text.strip()
+
+
+def is_interrupt(bv, il):
+    # type: (binja.BinaryView, binja.LowLevelILInstruction) -> bool
+    txt = get_inst_text(bv, il.address)
+    return 'int' == txt[0].text.strip()
+
+
+def get_inst_text(bv, addr):
+    # type: (binja.BinaryView, int) -> list
+    data = bv.read(addr, 16)
+    return bv.arch.get_instruction_text(data, addr)[0]
+
+
+def read_inst_bytes(bv, il):
+    # type: (binja.BinaryView, binja.LowLevelILInstruction) -> str
+    inst_data = bv.read(il.address, 16)
+    inst_info = bv.arch.get_instruction_info(inst_data, il.address)
+    return inst_data[:inst_info.length]
+
+
 def process_inst(bv, pb_block, il):
-    # type: (binja.BinaryView, CFG_pb2.Block, binja.LowLevelILInstruction) -> CFG_pb2.Instr
-    pass
+    # type: (binja.BinaryView, CFG_pb2.Block, binja.LowLevelILInstruction) -> (CFG_pb2.Instr, int)
+    pb_inst = pb_block.instructions.add()
+    pb_inst.address = il.address
+    pb_inst.bytes = read_inst_bytes(bv, il)
+    pb_inst.size = len(pb_inst.bytes)
+
+    op = il.operation
+    if op in INDIRECT_TERMINATORS:
+        debug('Found indirect terminator: {} @ {:x}'.format(il.operation_name, il.address))
+        return pb_inst, True
+
+    elif op in UNKNOWN_IL:
+        if is_cpuid(bv, il):
+            debug('Found cpuid @ {:x}'.format(il.address))
+            return pb_inst, True
+        if is_interrupt(bv, il):
+            debug('Found int @ {:x}'.format(il.address))
+            return pb_inst, True
+
+    return pb_inst, False
 
 
 def create_block(pb_mod, addr):
@@ -30,6 +86,15 @@ def create_block(pb_mod, addr):
     pb_block = pb_mod.blocks.add()
     pb_block.address = addr
     return pb_block
+
+
+def create_indirect_block(pb_mod, addr):
+    # type: (CFG_pb2.Module, int) -> CFG_pb2.Block
+    """Creates a new Block and IndirectBlock at an address, returns the Block"""
+    debug('Creating indirect block @ {:x}'.format(addr))
+    pb_iblock = pb_mod.indirect_blocks.add()
+    pb_iblock.address = addr
+    return create_block(pb_mod, addr)
 
 
 def process_blocks(bv, pb_mod, func):
@@ -41,12 +106,17 @@ def process_blocks(bv, pb_mod, func):
 
         # Keep track of the current address in the block
         inst_idx = block.start
+        end_block = False
         while inst_idx < block.end:
+            # Check if the block should be split early
+            if end_block:
+                pb_block = create_indirect_block(pb_mod, inst_idx)
+
             # Get the IL at the current address
             il = ilfunc[func.get_lifted_il_at(bv.arch, inst_idx)]
 
             # Add the instruction data
-            pb_inst = process_inst(bv, pb_block, il)
+            pb_inst, end_block = process_inst(bv, pb_block, il)
             inst_idx += pb_inst.size
 
 
