@@ -2,7 +2,6 @@
 import argparse
 import os
 import sys
-import time
 
 import binaryninja as binja
 import magic  # pip install python-magic
@@ -19,6 +18,36 @@ DEBUG = False
 def debug(s):
     if DEBUG:
         sys.stdout.write('{}\n'.format(str(s)))
+
+
+def process_inst(bv, pb_block, il):
+    # type: (binja.BinaryView, CFG_pb2.Block, binja.LowLevelILInstruction) -> CFG_pb2.Instr
+    pass
+
+
+def create_block(pb_mod, addr):
+    # type: (CFG_pb2.Module, int) -> CFG_pb2.Block
+    pb_block = pb_mod.blocks.add()
+    pb_block.address = addr
+    return pb_block
+
+
+def process_blocks(bv, pb_mod, func):
+    # type: (binja.BinaryView, CFG_pb2.Module, binja.Function) -> None
+    ilfunc = func.lifted_il
+
+    for block in func:
+        pb_block = create_block(pb_mod, block.start)
+
+        # Keep track of the current address in the block
+        inst_idx = block.start
+        while inst_idx < block.end:
+            # Get the IL at the current address
+            il = ilfunc[func.get_lifted_il_at(bv.arch, inst_idx)]
+
+            # Add the instruction data
+            pb_inst = process_inst(bv, pb_block, il)
+            inst_idx += pb_inst.size
 
 
 def is_export(func):
@@ -51,6 +80,7 @@ def analyze_exports(bv, pb_mod):
             pb_func.is_weak = False
 
             debug('Adding export: {} @ {:x}'.format(pb_func.name, pb_func.address))
+            process_blocks(bv, pb_mod, func)
 
 
 def analyze_imports(bv, pb_mod):
@@ -79,6 +109,7 @@ def analyze_internal_functions(bv, pb_mod):
             pb_func.is_weak = False
 
             debug('Adding function: {} @ {:x}'.format(pb_func.name, pb_func.address))
+            process_blocks(bv, pb_mod, func)
 
 
 def recover_cfg(bv, outf):
