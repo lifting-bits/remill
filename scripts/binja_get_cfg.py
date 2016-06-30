@@ -152,8 +152,7 @@ def main():
 
     # Load and analyze the binary
     bv = bv_type.open(fpath)
-    bv.update_analysis()
-    time.sleep(0.1)
+    bv.update_analysis_and_wait()
 
     # Binja will not load a binary with no entry point
     if len(bv) == 0:
