@@ -8,8 +8,6 @@
 #define USED(sym) \
   __remill_mark_as_used(reinterpret_cast<void *>(&sym))
 
-extern "C" order_t __remill_memory_order = 0;
-
 // This is two big hacks:
 //    1)  This makes sure that a symbol is treated as used and prevents it
 //        from being optimized away.
@@ -40,14 +38,6 @@ extern "C" void __remill_mark_as_used(void *);
   USED(__remill_write_memory_16);
   USED(__remill_write_memory_32);
   USED(__remill_write_memory_64);
-
-  USED(__remill_write_memory_v8);
-  USED(__remill_write_memory_v16);
-  USED(__remill_write_memory_v32);
-  USED(__remill_write_memory_v64);
-  USED(__remill_write_memory_v128);
-  USED(__remill_write_memory_v256);
-  USED(__remill_write_memory_v512);
 
   USED(__remill_read_memory_f32);
   USED(__remill_read_memory_f64);

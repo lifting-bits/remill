@@ -1,7 +1,7 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#ifndef REMILL_ARCH_RUNTIME_UTIL_H_
-#define REMILL_ARCH_RUNTIME_UTIL_H_
+#ifndef REMILL_ARCH_RUNTIME_DEFINITIONS_H_
+#define REMILL_ARCH_RUNTIME_DEFINITIONS_H_
 
 #if 64 == ADDRESS_SIZE_BITS
 # define IF_32BIT(...)
@@ -27,12 +27,14 @@
 // Define a semantics implementing function.
 #define DEF_SEM(name, ...) \
     ALWAYS_INLINE static void name ( \
-        State &state, const addr_t next_pc, ##__VA_ARGS__) noexcept
+        State &state, Memory *&memory, \
+        const addr_t next_pc, ##__VA_ARGS__) noexcept
 
 // Define a semantics implementing function that is also an instruction.
 #define DEF_ISEL_SEM(name, ...) \
     extern "C" ALWAYS_INLINE void name ( \
-        State &state, const addr_t next_pc, ##__VA_ARGS__) noexcept
+        State &state, Memory *&memory, \
+        const addr_t next_pc, ##__VA_ARGS__) noexcept
 
 // An instruction where the implementation is the same for all operand sizes.
 #define DEF_ISEL_ALL(name, func) \
@@ -207,4 +209,5 @@
 
 #define DEF_ISEL_RnW_Rn_Rn_Rn(name, tpl_func) \
   _DEF_ISEL_XnW_Xn_Yn_Zn(R, R, R, name, tpl_func)
-#endif  // REMILL_ARCH_RUNTIME_UTIL_H_
+
+#endif  // REMILL_ARCH_RUNTIME_DEFINITIONS_H_

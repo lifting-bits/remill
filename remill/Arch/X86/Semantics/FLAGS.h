@@ -32,9 +32,8 @@ NEVER_INLINE static bool NotZeroFlag(T res) {
 template <typename T>
 [[gnu::const]]
 NEVER_INLINE static bool SignFlag(T res) {
-  typedef TO_SIGNED_INTEGER_TYPE(T) ST;
   __remill_defer_inlining();
-  return ST(0) > static_cast<ST>(res);
+  return 0 > Signed(res);
 }
 
 // Auxiliary carry flag. This is used for binary coded decimal operations and
@@ -150,12 +149,10 @@ struct Overflow<tag_mul> {
   NEVER_INLINE static bool Flag(
       T lhs, T rhs, T res,
       typename std::enable_if<std::is_signed<T>::value,int>::type=0) {
-    typedef WIDEN_INTEGER_TYPE(T) WT;
-
     __remill_defer_inlining();
-    auto lhs_wide = static_cast<WT>(lhs);
-    auto rhs_wide = static_cast<WT>(rhs);
-    return Flag<T, WT>(lhs, rhs, lhs_wide * rhs_wide);
+    auto lhs_wide = SExt(lhs);
+    auto rhs_wide = SExt(rhs);
+    return Flag<T, decltype(lhs_wide)>(lhs, rhs, lhs_wide * rhs_wide);
   }
 };
 
@@ -191,13 +188,14 @@ struct Carry<tag_sub> {
 
 }  // namespace
 
-#define CLEAR_AFLAGS() \
-    { __remill_barrier_compiler(); \
+#define ClearArithFlags() \
+    do { \
       state.aflag.cf = __remill_undefined_bool(); \
       state.aflag.pf = __remill_undefined_bool(); \
       state.aflag.af = __remill_undefined_bool(); \
       state.aflag.zf = __remill_undefined_bool(); \
       state.aflag.sf = __remill_undefined_bool(); \
-      state.aflag.of = __remill_undefined_bool(); }
+      state.aflag.of = __remill_undefined_bool(); \
+    } while (false)
 
 #endif  // REMILL_ARCH_X86_SEMANTICS_FLAGS_H_

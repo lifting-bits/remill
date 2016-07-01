@@ -5,6 +5,7 @@
 
 #include "remill/Arch/Runtime/Intrinsics.h"
 
+#if 0
 vec8_t::vec8_t(void)
     : iwords{0} {}
 
@@ -253,5 +254,6 @@ float80_t &float80_t::operator=(float32_t new_val_) {
   __remill_write_f80(new_val, *this);
   return *this;
 }
+#endif
 
 #endif  // REMILL_ARCH_RUNTIME_TYPES_CPP_

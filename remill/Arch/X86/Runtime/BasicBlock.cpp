@@ -4,6 +4,9 @@
 
 extern "C" {
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
+
 // Method that will implement a basic block. We will clone this method for
 // each basic block in the code being lifted.
 [[gnu::used]]
@@ -495,6 +498,8 @@ void __remill_basic_block(State &state, addr_t curr_pc) {
 
   // Lifted code will be placed here in clones versions of this function.
 }
+
+#pragma clang diagnostic pop
 
 }  // extern C
 

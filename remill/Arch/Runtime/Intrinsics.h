@@ -7,8 +7,6 @@
 
 extern "C" {
 
-extern order_t __remill_memory_order;
-
 // The basic block "template".
 [[gnu::used]]
 void __remill_basic_block(State &state, addr_t);
@@ -25,90 +23,68 @@ extern addr_t __remill_create_program_counter(addr_t);
 
 // Memory read intrinsics.
 [[gnu::used]]
-extern uint8_t __remill_read_memory_8(order_t, addr_t);
+extern uint8_t __remill_read_memory_8(Memory *, addr_t);
 
 [[gnu::used]]
-extern uint16_t __remill_read_memory_16(order_t, addr_t);
+extern uint16_t __remill_read_memory_16(Memory *, addr_t);
 
 [[gnu::used]]
-extern uint32_t __remill_read_memory_32(order_t, addr_t);
+extern uint32_t __remill_read_memory_32(Memory *, addr_t);
 
 [[gnu::used]]
-extern uint64_t __remill_read_memory_64(order_t, addr_t);
+extern uint64_t __remill_read_memory_64(Memory *, addr_t);
 
 [[gnu::used]]
-extern order_t __remill_read_memory_v8(order_t, addr_t, vec8_t &);
+extern Memory *__remill_read_memory_v8(Memory *, addr_t, vec8_t &);
 
 [[gnu::used]]
-extern order_t __remill_read_memory_v16(order_t, addr_t, vec16_t &);
+extern Memory *__remill_read_memory_v16(Memory *, addr_t, vec16_t &);
 
 [[gnu::used]]
-extern order_t __remill_read_memory_v32(order_t, addr_t, vec32_t &);
+extern Memory *__remill_read_memory_v32(Memory *, addr_t, vec32_t &);
 
 [[gnu::used]]
-extern order_t __remill_read_memory_v64(order_t, addr_t, vec64_t &);
+extern Memory *__remill_read_memory_v64(Memory *, addr_t, vec64_t &);
 
 [[gnu::used]]
-extern order_t __remill_read_memory_v128(order_t, addr_t, vec128_t &);
+extern Memory *__remill_read_memory_v128(Memory *, addr_t, vec128_t &);
 
 [[gnu::used]]
-extern order_t __remill_read_memory_v256(order_t, addr_t, vec256_t &);
+extern Memory *__remill_read_memory_v256(Memory *, addr_t, vec256_t &);
 
 [[gnu::used]]
-extern order_t __remill_read_memory_v512(order_t, addr_t, vec512_t &);
+extern Memory *__remill_read_memory_v512(Memory *, addr_t, vec512_t &);
 
 // Memory write intrinsics.
 [[gnu::used]]
-extern order_t __remill_write_memory_8(order_t, addr_t, uint8_t);
+extern Memory *__remill_write_memory_8(Memory *, addr_t, uint8_t);
 
 [[gnu::used]]
-extern order_t __remill_write_memory_16(order_t, addr_t, uint16_t);
+extern Memory *__remill_write_memory_16(Memory *, addr_t, uint16_t);
 
 [[gnu::used]]
-extern order_t __remill_write_memory_32(order_t, addr_t, uint32_t);
+extern Memory *__remill_write_memory_32(Memory *, addr_t, uint32_t);
 
 [[gnu::used]]
-extern order_t __remill_write_memory_64(order_t, addr_t, uint64_t);
+extern Memory *__remill_write_memory_64(Memory *, addr_t, uint64_t);
 
 [[gnu::used]]
-extern order_t __remill_write_memory_v8(order_t, addr_t, const vec8_t &);
+extern float32_t __remill_read_memory_f32(Memory *, addr_t);
 
 [[gnu::used]]
-extern order_t __remill_write_memory_v16(order_t, addr_t, const vec16_t &);
+extern float64_t __remill_read_memory_f64(Memory *, addr_t);
 
 [[gnu::used]]
-extern order_t __remill_write_memory_v32(order_t, addr_t, const vec32_t &);
+extern Memory *__remill_read_memory_f80(Memory *, addr_t, float80_t &);
 
 [[gnu::used]]
-extern order_t __remill_write_memory_v64(order_t, addr_t, const vec64_t &);
+extern Memory *__remill_write_memory_f32(Memory *, addr_t, float32_t);
 
 [[gnu::used]]
-extern order_t __remill_write_memory_v128(order_t, addr_t, const vec128_t &);
+extern Memory *__remill_write_memory_f64(Memory *, addr_t, float64_t);
 
 [[gnu::used]]
-extern order_t __remill_write_memory_v256(order_t, addr_t, const vec256_t &);
-
-[[gnu::used]]
-extern order_t __remill_write_memory_v512(order_t, addr_t, const vec512_t &);
-
-
-[[gnu::used]]
-extern order_t __remill_read_memory_f32(order_t, addr_t, float32_t &);
-
-[[gnu::used]]
-extern order_t __remill_read_memory_f64(order_t, addr_t, float64_t &);
-
-[[gnu::used]]
-extern order_t __remill_read_memory_f80(order_t, addr_t, float80_t &);
-
-[[gnu::used]]
-extern order_t __remill_write_memory_f32(order_t, addr_t, const float32_t &);
-
-[[gnu::used]]
-extern order_t __remill_write_memory_f64(order_t, addr_t, const float64_t &);
-
-[[gnu::used]]
-extern order_t __remill_write_memory_f80(order_t, addr_t, const float80_t &);
+extern Memory *__remill_write_memory_f80(Memory *, addr_t, const float80_t &);
 
 [[gnu::used]]
 extern bool __remill_undefined_bool(void);
@@ -173,24 +149,24 @@ extern addr_t __remill_conditional_branch(
 
 // Memory barriers types, see: http://g.oswego.edu/dl/jmm/cookbook.html
 [[gnu::used]]
-extern order_t __remill_barrier_load_load(order_t);
+extern Memory *__remill_barrier_load_load(Memory *);
 
 [[gnu::used]]
-extern order_t __remill_barrier_load_store(order_t);
+extern Memory *__remill_barrier_load_store(Memory *);
 
 [[gnu::used]]
-extern order_t __remill_barrier_store_load(order_t);
+extern Memory *__remill_barrier_store_load(Memory *);
 
 [[gnu::used]]
-extern order_t __remill_barrier_store_store(order_t);
+extern Memory *__remill_barrier_store_store(Memory *);
 
 // Atomic operations. The address/size are hints, but the granularity of the
 // access can be bigger. These have implicit StoreLoad semantics.
 [[gnu::used]]
-extern order_t __remill_atomic_begin(order_t);
+extern Memory *__remill_atomic_begin(Memory *);
 
 [[gnu::used]]
-extern order_t __remill_atomic_end(order_t);
+extern Memory *__remill_atomic_end(Memory *);
 
 // Arch-specific feature lookup. Implemented as a pseudo control-flow
 // intrinsic.

@@ -238,7 +238,7 @@ bool InstructionTranslator::CheckArgumentTypes(
       << "got " << args.size() << ", wanted " << instr_func->arg_size();
 
   auto i = 0;
-  for (const auto &arg : instr_func->args()) {
+  for (const llvm::Argument &arg : instr_func->args()) {
     if (arg.getType() != args[i]->getType()) {
       DescribeArgTypeMismatch(arg, args[i], instr_func, func_name);
       return false;

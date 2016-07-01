@@ -7,11 +7,14 @@ BLUE=`tput setaf 4`
 RESET=`tput sgr0`
 
 CXXFLAGS=
-CXXFLAGS+=" -isystem ${DIR}/third_party/include"
-CXXFLAGS+=" -std=gnu++11 -g0 -O0 -fno-exceptions -fno-rtti"
-CXXFLAGS+=" -fno-asynchronous-unwind-tables -I${DIR}"
-CXXFLAGS+=" -ffreestanding -fno-common -fno-builtin "
-CXXFLAGS+=" -Wno-return-type-c-linkage "
+CXXFLAGS+=" -isystem ${DIR}/third_party/include -I${DIR}"
+CXXFLAGS+=" -std=gnu++11 -g0 -O0"
+CXXFLAGS+=" -fno-exceptions -fno-rtti -fno-asynchronous-unwind-tables"
+CXXFLAGS+=" -ffreestanding -fno-common -fno-builtin"
+CXXFLAGS+=" -Wall -Werror -Wconversion -pedantic"
+CXXFLAGS+=" -Wno-gnu-anonymous-struct -Wno-return-type-c-linkage"
+CXXFLAGS+=" -Wno-gnu-zero-variadic-macro-arguments -Wno-nested-anon-types"
+CXXFLAGS+=" -Wno-extended-offsetof"
 
 function compile_x86()
 {

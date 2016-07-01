@@ -271,9 +271,9 @@ static_assert(0 == __builtin_offsetof(Reg, qword),
               "Invalid packing of `Reg::qword`.");
 
 union alignas(64) VectorReg final {
-  alignas(64) avec128_t xmm;
-  alignas(64) avec256_t ymm;
-  alignas(64) avec512_t zmm;
+  alignas(64) vec128_t xmm;
+  alignas(64) vec256_t ymm;
+  alignas(64) vec512_t zmm;
 } __attribute__((packed));
 
 static_assert(0 == __builtin_offsetof(VectorReg, xmm),
