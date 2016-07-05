@@ -85,6 +85,12 @@ def process_inst(bv, pb_block, il, indirects):
             debug('Found indirect terminator: int @ {:x}'.format(il.address))
             return pb_inst, True
 
+    elif op == binja.core.LLIL_JUMP_TO:
+        # Add all jump table entries as indirect blocks
+        ilfunc = il.function
+        for idx in il.targets:
+            indirects.add(ilfunc[idx].address)
+
     return pb_inst, False
 
 
