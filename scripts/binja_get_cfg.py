@@ -91,6 +91,19 @@ def process_inst(bv, pb_block, il, indirects):
         for idx in il.targets:
             indirects.add(ilfunc[idx].address)
 
+    else:
+        # Check if any functions are referenced here
+        # Add them as indirect blocks
+        for token in il.tokens:
+            # Try finding an address token
+            token_type = binja.core.BNInstructionTextTokenType_by_name[token.type]
+            if token_type == binja.core.PossibleAddressToken:
+                # Check if this address is a function
+                addr = int(token.text, 16)
+                if bv.get_function_at(bv.platform, addr):
+                    debug('Adding function ref as indirect block: {:x} @ {:x}'.format(addr, il.address))
+                    indirects.add(addr)
+
     return pb_inst, False
 
 
