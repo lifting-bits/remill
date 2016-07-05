@@ -33,6 +33,13 @@ def debug(s):
         sys.stdout.write('{}\n'.format(str(s)))
 
 
+def add_indirect_blocks(pb_mod, indirects):
+    # type: (CFG_pb2.Module, set) -> None
+    for addr in indirects:
+        iblock = pb_mod.indirect_blocks.add()
+        iblock.address = addr
+
+
 def is_cpuid(bv, il):
     # type: (binja.BinaryView, binja.LowLevelILInstruction) -> bool
     txt = get_inst_text(bv, il.address)
@@ -58,8 +65,8 @@ def read_inst_bytes(bv, il):
     return inst_data[:inst_info.length]
 
 
-def process_inst(bv, pb_block, il):
-    # type: (binja.BinaryView, CFG_pb2.Block, binja.LowLevelILInstruction) -> (CFG_pb2.Instr, int)
+def process_inst(bv, pb_block, il, indirects):
+    # type: (binja.BinaryView, CFG_pb2.Block, binja.LowLevelILInstruction, set) -> (CFG_pb2.Instr, bool)
     pb_inst = pb_block.instructions.add()
     pb_inst.address = il.address
     pb_inst.bytes = read_inst_bytes(bv, il)
@@ -72,10 +79,10 @@ def process_inst(bv, pb_block, il):
 
     elif op in UNKNOWN_IL:
         if is_cpuid(bv, il):
-            debug('Found cpuid @ {:x}'.format(il.address))
+            debug('Found indirect terminator: cpuid @ {:x}'.format(il.address))
             return pb_inst, True
         if is_interrupt(bv, il):
-            debug('Found int @ {:x}'.format(il.address))
+            debug('Found indirect terminator: int @ {:x}'.format(il.address))
             return pb_inst, True
 
     return pb_inst, False
@@ -88,17 +95,8 @@ def create_block(pb_mod, addr):
     return pb_block
 
 
-def create_indirect_block(pb_mod, addr):
-    # type: (CFG_pb2.Module, int) -> CFG_pb2.Block
-    """Creates a new Block and IndirectBlock at an address, returns the Block"""
-    debug('Creating indirect block @ {:x}'.format(addr))
-    pb_iblock = pb_mod.indirect_blocks.add()
-    pb_iblock.address = addr
-    return create_block(pb_mod, addr)
-
-
-def process_blocks(bv, pb_mod, func):
-    # type: (binja.BinaryView, CFG_pb2.Module, binja.Function) -> None
+def process_blocks(bv, pb_mod, func, indirects):
+    # type: (binja.BinaryView, CFG_pb2.Module, binja.Function, set) -> None
     ilfunc = func.lifted_il
 
     for block in func:
@@ -110,13 +108,14 @@ def process_blocks(bv, pb_mod, func):
         while inst_idx < block.end:
             # Check if the block should be split early
             if end_block:
-                pb_block = create_indirect_block(pb_mod, inst_idx)
+                indirects.add(inst_idx)
+                pb_block = create_block(pb_mod, inst_idx)
 
             # Get the IL at the current address
             il = ilfunc[func.get_lifted_il_at(bv.arch, inst_idx)]
 
             # Add the instruction data
-            pb_inst, end_block = process_inst(bv, pb_block, il)
+            pb_inst, end_block = process_inst(bv, pb_block, il, indirects)
             inst_idx += pb_inst.size
 
 
@@ -138,8 +137,8 @@ def is_internal(func):
     return sym_type == binja.core.FunctionSymbol and func.auto
 
 
-def analyze_exports(bv, pb_mod):
-    # type: (binja.BinaryView, CFG_pb2.Module) -> None
+def analyze_exports(bv, pb_mod, indirects):
+    # type: (binja.BinaryView, CFG_pb2.Module, set) -> None
     for func in bv.functions:
         if is_export(func):
             pb_func = pb_mod.functions.add()
@@ -150,7 +149,7 @@ def analyze_exports(bv, pb_mod):
             pb_func.is_weak = False
 
             debug('Adding export: {} @ {:x}'.format(pb_func.name, pb_func.address))
-            process_blocks(bv, pb_mod, func)
+            process_blocks(bv, pb_mod, func, indirects)
 
 
 def analyze_imports(bv, pb_mod):
@@ -167,8 +166,8 @@ def analyze_imports(bv, pb_mod):
             debug('Adding import: {} @ {:x}'.format(pb_func.name, pb_func.address))
 
 
-def analyze_internal_functions(bv, pb_mod):
-    # type: (binja.BinaryView, CFG_pb2.Module) -> None
+def analyze_internal_functions(bv, pb_mod, indirects):
+    # type: (binja.BinaryView, CFG_pb2.Module, set) -> None
     for func in bv.functions:
         if is_internal(func):
             pb_func = pb_mod.functions.add()
@@ -179,22 +178,26 @@ def analyze_internal_functions(bv, pb_mod):
             pb_func.is_weak = False
 
             debug('Adding function: {} @ {:x}'.format(pb_func.name, pb_func.address))
-            process_blocks(bv, pb_mod, func)
+            process_blocks(bv, pb_mod, func, indirects)
 
 
 def recover_cfg(bv, outf):
     # type: (binja.BinaryView, file) -> None
     pb_mod = CFG_pb2.Module()
     pb_mod.binary_path = bv.file.filename
+    indirects = set()
 
     debug('Analyzing exports...')
-    analyze_exports(bv, pb_mod)
+    analyze_exports(bv, pb_mod, indirects)
 
     debug('Analyzing imports...')
     analyze_imports(bv, pb_mod)
 
     debug('Analyzing internal functions...')
-    analyze_internal_functions(bv, pb_mod)
+    analyze_internal_functions(bv, pb_mod, indirects)
+
+    debug('Adding indirect blocks...')
+    add_indirect_blocks(pb_mod, indirects)
 
     debug('Saving CFG to {}'.format(outf.name))
     outf.write(pb_mod.SerializeToString())
