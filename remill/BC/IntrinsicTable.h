@@ -42,39 +42,22 @@ class IntrinsicTable {
   llvm::Function * const read_memory_32;
   llvm::Function * const read_memory_64;
 
-  llvm::Function * const read_memory_v8;
-  llvm::Function * const read_memory_v16;
-  llvm::Function * const read_memory_v32;
-  llvm::Function * const read_memory_v64;
-  llvm::Function * const read_memory_v128;
-  llvm::Function * const read_memory_v256;
-  llvm::Function * const read_memory_v512;
-
   // Memory write intrinsics.
   llvm::Function * const write_memory_8;
   llvm::Function * const write_memory_16;
   llvm::Function * const write_memory_32;
   llvm::Function * const write_memory_64;
 
-  llvm::Function * const write_memory_v8;
-  llvm::Function * const write_memory_v16;
-  llvm::Function * const write_memory_v32;
-  llvm::Function * const write_memory_v64;
-  llvm::Function * const write_memory_v128;
-  llvm::Function * const write_memory_v256;
-  llvm::Function * const write_memory_v512;
-
-
   llvm::Function * const read_memory_f32;
   llvm::Function * const read_memory_f64;
-  llvm::Function * const read_memory_f80;
+//  llvm::Function * const read_memory_f80;
 
   llvm::Function * const write_memory_f32;
   llvm::Function * const write_memory_f64;
-  llvm::Function * const write_memory_f80;
-
-  llvm::Function * const read_f80;
-  llvm::Function * const write_f80;
+//  llvm::Function * const write_memory_f80;
+//
+//  llvm::Function * const read_f80;
+//  llvm::Function * const write_f80;
 
   // Addressing intrinsics.
   llvm::Function * const compute_address;
@@ -99,9 +82,6 @@ class IntrinsicTable {
   llvm::Function *undefined_64;
   llvm::Function *undefined_f32;
   llvm::Function *undefined_f64;
-
-  // Sets up a global memory ordering.
-  llvm::GlobalVariable *memory_order;
 
  private:
   IntrinsicTable(void) = delete;

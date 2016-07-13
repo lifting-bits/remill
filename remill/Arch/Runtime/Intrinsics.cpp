@@ -26,14 +26,6 @@ extern "C" void __remill_mark_as_used(void *);
   USED(__remill_read_memory_32);
   USED(__remill_read_memory_64);
 
-  USED(__remill_read_memory_v8);
-  USED(__remill_read_memory_v16);
-  USED(__remill_read_memory_v32);
-  USED(__remill_read_memory_v64);
-  USED(__remill_read_memory_v128);
-  USED(__remill_read_memory_v256);
-  USED(__remill_read_memory_v512);
-
   USED(__remill_write_memory_8);
   USED(__remill_write_memory_16);
   USED(__remill_write_memory_32);
@@ -41,11 +33,11 @@ extern "C" void __remill_mark_as_used(void *);
 
   USED(__remill_read_memory_f32);
   USED(__remill_read_memory_f64);
-  USED(__remill_read_memory_f80);
+//  USED(__remill_read_memory_f80);
 
   USED(__remill_write_memory_f32);
   USED(__remill_write_memory_f64);
-  USED(__remill_write_memory_f80);
+//  USED(__remill_write_memory_f80);
 
   USED(__remill_barrier_load_load);
   USED(__remill_barrier_load_store);
@@ -79,8 +71,8 @@ extern "C" void __remill_mark_as_used(void *);
   USED(__remill_undefined_f32);
   USED(__remill_undefined_f64);
 
-  USED(__remill_read_f80);
-  USED(__remill_write_f80);
+//  USED(__remill_read_f80);
+//  USED(__remill_write_f80);
 
   USED(__remill_read_cpu_features);
 }

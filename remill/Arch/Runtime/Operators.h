@@ -3,342 +3,6 @@
 #ifndef REMILL_ARCH_RUNTIME_OPERATORS_H_
 #define REMILL_ARCH_RUNTIME_OPERATORS_H_
 
-#if 0
-namespace {
-
-template <typename kBaseType, typename D, typename S>
-struct VectorAssign;
-
-template <typename kBaseType, typename D>
-struct VectorAssign<kBaseType, D, D> {
-  ALWAYS_INLINE static void assign(D &dest, const D &src) {
-    dest = src;
-  }
-};
-
-// Create a smaller-to-bigger vector assignment function. This will perform
-// zero-extension, but this is not the preferred way of achieving zero-
-// extensions. Instead, one should depend on the move constructor.
-#define MAKE_VECTOR_ASSIGNER(base_type, sel) \
-    template <typename D, typename S> \
-    struct VectorAssign<base_type, D, S> { \
-      ALWAYS_INLINE static void assign(D &dest, const S &src) { \
-        if (sizeof(S) < sizeof(D)) { \
-          _Pragma("unroll") \
-          for (auto i = 0UL; i < (sizeof(D)/sizeof(base_type)); ++i) { \
-            dest.sel[i] = 0; \
-          } \
-        } \
-        enum : size_t { \
-          kVecSize = sizeof(D) > sizeof(S) ? sizeof(S) : sizeof(D), \
-          kNumElems = kVecSize / sizeof(base_type) \
-        }; \
-        _Pragma("unroll") \
-        for (auto i = 0UL; i < kNumElems; ++i) { \
-          dest.sel[i] = src[i]; \
-        } \
-      } \
-    }
-
-MAKE_VECTOR_ASSIGNER(uint8_t, bytes);
-MAKE_VECTOR_ASSIGNER(uint16_t, words);
-MAKE_VECTOR_ASSIGNER(uint32_t, dwords);
-MAKE_VECTOR_ASSIGNER(uint64_t, qwords);
-MAKE_VECTOR_ASSIGNER(uint128_t, dqwords);
-MAKE_VECTOR_ASSIGNER(float, floats);
-MAKE_VECTOR_ASSIGNER(double, doubles);
-
-#undef MAKE_VECTOR_ASSIGNER
-
-template <typename T>
-struct VecWriter {
-
-  // Same-type assignment of an aggregate vector.
-  ALWAYS_INLINE void operator=(T val) const {
-    *val_ref = val;
-  }
-
-  // Zero-extension assignment of one type of vector into another.
-  template <typename V,
-            typename=typename AggVectorInfo<V>::BT>
-  ALWAYS_INLINE void operator=(V val) const {
-    this->operator=(val.iwords);
-  }
-
-  // Fall-back for performing assignments of a smaller (non-aggregate) vector
-  // type to a larger vector type, where the smaller type is already specialized
-  // to a specific base type, E.g. `V=uint32v4_t` (128 bits) and `T=vec256_t`.
-  //
-  // This will zero-extend the value for the assignment.
-  template <typename V,
-            typename=typename VectorInfo<V>::VecType,
-            typename=typename VectorInfo<V>::BaseType>
-  ALWAYS_INLINE void operator=(V val) const {
-    VectorAssign<typename VectorInfo<V>::BaseType, T, V>::assign(*val_ref, val);
-  }
-
-  // Fall-back for assigning a single value into a vector of a larger type.
-  // This will assign the value as the first element in the vector.
-  template <typename V,
-            size_t=sizeof(typename SingletonVectorType<V>::BT)>
-  ALWAYS_INLINE void operator=(V val) const {
-    typedef typename SingletonVectorType<V>::BT VecType;
-    VecType vec = {val};
-    VectorAssign<V, T, VecType>::assign(*val_ref, vec);
-  }
-
-  T *val_ref;
-};
-
-#define MAKE_VEC_ACCESSORS(T, size) \
-    struct MemoryWriter ## T { \
-      ALWAYS_INLINE void operator=(T val) const { \
-        __remill_memory_order = __remill_write_memory_v ## size (\
-            __remill_memory_order, addr, val); \
-      } \
-      template <typename V, \
-                typename=typename VectorInfo<V>::VecType, \
-                typename=typename VectorInfo<V>::BaseType> \
-      ALWAYS_INLINE void operator=(V val) const { \
-        T vec; \
-        VectorAssign<typename VectorInfo<V>::BaseType, T, V>::assign(vec, val);\
-        __remill_memory_order = __remill_write_memory_v ## size ( \
-            __remill_memory_order, addr, vec); \
-      } \
-      \
-      addr_t addr; \
-    }; \
-    \
-    ALWAYS_INLINE static T R(const Mn<T> mem) { \
-      T ret_val; \
-      __remill_memory_order = __remill_read_memory_v ## size ( \
-          __remill_memory_order, mem.addr, ret_val); \
-      return ret_val; \
-    } \
-    ALWAYS_INLINE static MemoryWriter ## T W(MnW<T> mem) { \
-      return MemoryWriter ## T {mem.addr}; \
-    } \
-    ALWAYS_INLINE static VecWriter<T> W(VnW<T> vec) { \
-      return {vec.val_ref}; \
-    }
-
-
-MAKE_VEC_ACCESSORS(vec8_t, 8)
-MAKE_VEC_ACCESSORS(vec16_t, 16)
-MAKE_VEC_ACCESSORS(vec32_t, 32)
-MAKE_VEC_ACCESSORS(vec64_t, 64)
-MAKE_VEC_ACCESSORS(vec128_t, 128)
-MAKE_VEC_ACCESSORS(vec256_t, 256)
-MAKE_VEC_ACCESSORS(vec512_t, 512)
-
-// Note: We apply `static_cast<T>` for `R(In<T>)` and `R(Rn<T>)` because the
-//       internal storage type of these struct templates will be `addr_t` to
-//       avoid these structs being passed `byval` and therefore not being
-//       scalarized to their underlying types.
-
-template <typename T>
-ALWAYS_INLINE static T R(const In<T> imm) {
-  return static_cast<T>(imm.val);
-}
-
-template <typename T>
-ALWAYS_INLINE static T R(const Rn<T> reg) {
-  return static_cast<T>(reg.val);
-}
-
-template <typename T>
-ALWAYS_INLINE static T R(const Vn<T> vec) {
-  return *(vec.val);
-}
-
-// Disallow writes to read-only register values.
-template <typename T>
-[[noreturn]] inline static void W(Rn<T>) {
-  __builtin_unreachable();
-}
-
-// Disallow writes to read-only memory locations.
-template <typename T>
-[[noreturn]] inline static void W(Mn<T>) {
-  __builtin_unreachable();
-}
-
-// Disallow writes to immediate values.
-template <typename T>
-[[noreturn]] inline static void W(In<T>) {
-  __builtin_unreachable();
-}
-
-// Disallow writes to read-only vector register values.
-template <typename T>
-[[noreturn]] inline static void W(Vn<T>) {
-  __builtin_unreachable();
-}
-
-// Address of a memory operand.
-template <typename T>
-inline static addr_t A(Mn<T> m) {
-  return m.addr;
-}
-
-template <typename T>
-inline static addr_t A(MnW<T> m) {
-  return m.addr;
-}
-
-namespace {
-template <typename FromT, typename ToT>
-inline static Vn<ToT> DownCastImpl(Vn<FromT> in) {
-  static_assert(sizeof(ToT) < sizeof(FromT), "Invalid vector down-cast.");
-  return {reinterpret_cast<ToT *>(in.val)};
-}
-
-template <typename FromT, typename ToT>
-inline static VnW<ToT> DownCastImpl(VnW<FromT> in) {
-  static_assert(sizeof(ToT) < sizeof(FromT), "Invalid vector down-cast.");
-  return {reinterpret_cast<ToT *>(in.val_ref)};
-}
-
-template <typename FromT, typename ToT>
-inline static Rn<ToT> DownCastImpl(Rn<FromT> in) {
-  static_assert(sizeof(ToT) < sizeof(FromT), "Invalid register down-cast.");
-  return {in.val};
-}
-
-template <typename FromT, typename ToT>
-inline static RnW<ToT> DownCastImpl(RnW<FromT> in) {
-  static_assert(sizeof(ToT) < sizeof(FromT), "Invalid register down-cast.");
-  return {reinterpret_cast<ToT *>(in.val_ref)};
-}
-
-
-template <typename FromT, typename ToT>
-inline static Mn<ToT> DownCastImpl(Mn<FromT> in) {
-  static_assert(sizeof(ToT) < sizeof(FromT), "Invalid memory down-cast.");
-  return {in.addr};
-}
-
-template <typename FromT, typename ToT>
-inline static MnW<ToT> DownCastImpl(MnW<FromT> in) {
-  static_assert(sizeof(ToT) < sizeof(FromT), "Invalid memory down-cast.");
-  return {in.addr};
-}
-}
-
-template <typename U, typename T>
-inline static U DownCast(T in) {
-  return DownCastImpl<typename BaseType<T>::BT,
-                      typename BaseType<U>::BT>(in);
-}
-
-#define MAKE_ACCESSORS(T, size) \
-    struct MemoryWriter ## T { \
-      ALWAYS_INLINE void operator=(T val) const { \
-        __remill_memory_order = __remill_write_memory_ ## size ( \
-            __remill_memory_order, addr, val);\
-      } \
-      addr_t addr; \
-    }; \
-    ALWAYS_INLINE static T R(Mn<T> mem) { \
-      return __remill_read_memory_ ## size (__remill_memory_order, mem.addr); \
-    } \
-    ALWAYS_INLINE static MemoryWriter ## T W(MnW<T> mem) { \
-      return MemoryWriter ## T {mem.addr}; \
-    } \
-    \
-    ALWAYS_INLINE static T R(Rn<T> reg) { \
-      return static_cast<T>(reg.val); \
-    } \
-    ALWAYS_INLINE static T &W(RnW<T> reg) { \
-      return *(reg.val_ref); \
-    } \
-    \
-    ALWAYS_INLINE static T &W(T &ref) { \
-      return ref; \
-    } \
-    ALWAYS_INLINE static T R(T imm) { \
-      return imm; \
-    } \
-    ALWAYS_INLINE static T U(RnW<T>) { \
-      return __remill_undefined_ ## size (); \
-    } \
-    ALWAYS_INLINE static T U(MnW<T>) { \
-      return __remill_undefined_ ## size (); \
-    } \
-    ALWAYS_INLINE static T U(Rn<T>) { \
-      return __remill_undefined_ ## size (); \
-    } \
-    ALWAYS_INLINE static T U(Mn<T>) { \
-      return __remill_undefined_ ## size (); \
-    } \
-    ALWAYS_INLINE static T U(In<T>) { \
-      return __remill_undefined_ ## size (); \
-    }
-
-MAKE_ACCESSORS(uint8_t, 8)
-MAKE_ACCESSORS(uint16_t, 16)
-MAKE_ACCESSORS(uint32_t, 32)
-MAKE_ACCESSORS(uint64_t, 64)
-#undef MAKE_ACCESSORS
-
-#define MAKE_FLOAT_ACCESSORS(T, base_type, acc, size) \
-    struct MemoryWriter ## T { \
-      ALWAYS_INLINE void operator=(const T &val) const { \
-        __remill_memory_order = __remill_write_memory_f ## size ( \
-            __remill_memory_order, addr, val);\
-      } \
-      addr_t addr; \
-    }; \
-    ALWAYS_INLINE static T R(Mn<T> mem) { \
-      T val; \
-      __remill_memory_order = __remill_read_memory_f ## size ( \
-          __remill_memory_order, mem.addr, val); \
-      return val; \
-    } \
-    ALWAYS_INLINE static MemoryWriter ## T W(MnW<T> mem) { \
-      return MemoryWriter ## T {mem.addr}; \
-    } \
-    \
-    ALWAYS_INLINE static T R(Rn<T> reg) { \
-      return reg.val; \
-    } \
-    ALWAYS_INLINE static T &W(RnW<T> reg) { \
-      return *(reg.val_ref); \
-    } \
-    \
-    ALWAYS_INLINE static T &W(T &ref) { \
-      return ref; \
-    } \
-    ALWAYS_INLINE static T R(const T &val) { \
-      return val; \
-    } \
-    struct Float ## size ## VecOps { \
-      template <typename U> \
-      ALWAYS_INLINE static base_type Read0(U val) { \
-        return val.acc[0]; \
-      } \
-      template <typename U> \
-      ALWAYS_INLINE static void Write0(U &dst, base_type src) { \
-        dst.acc[0] = src; \
-      } \
-      template <typename U> \
-      ALWAYS_INLINE static auto Read(U val) -> decltype(val.acc) { \
-        return val.acc; \
-      } \
-      template <typename U, typename V> \
-      ALWAYS_INLINE static void Write(U &dst, V src) { \
-        dst.acc = src; \
-      } \
-    };
-
-MAKE_FLOAT_ACCESSORS(float32_t, float, floats, 32)
-MAKE_FLOAT_ACCESSORS(float64_t, double, doubles, 64)
-
-#undef MAKE_FLOAT_ACCESSORS
-
-}  // namespace
-#endif
-
 struct Memory;
 struct State;
 
@@ -349,7 +13,7 @@ struct State;
 //            communicate the error class?
 #define StopFailure() \
     do { \
-      __remill_error(state, Read(REG_XIP)); \
+      __remill_error(state, memory, Read(REG_XIP)); \
       __builtin_unreachable(); \
     } while (false)
 
@@ -392,51 +56,39 @@ T _Read(Memory *, const Rn<T> reg) {
   return static_cast<T>(reg.val);
 }
 
-template <typename T>
-ALWAYS_INLINE static
-T _Read(Memory *, const Vn<T> reg) {
-  return *reg.val;
-}
-
-// Make read operators for reading integral values from memory.
-#define MAKE_MREAD(size, ...) \
+#define MAKE_VREAD(prefix, size) \
+    template <typename T> \
     ALWAYS_INLINE static \
-    uint ## size ## _t _Read(Memory *&memory, Mn<uint ## size ## _t> op) { \
-      return __remill_read_memory_ ## size (memory, op.addr); \
+    T _ ## prefix ## ReadV ## size (Memory *, const Vn<T> reg) { \
+      return *reg.val; \
     }
 
-MAKE_MREAD(8)
-MAKE_MREAD(16)
-MAKE_MREAD(32)
-MAKE_MREAD(64)
+MAKE_VREAD(U, 8)
+MAKE_VREAD(U, 16)
+MAKE_VREAD(U, 32)
+MAKE_VREAD(U, 64)
+MAKE_VREAD(U, 128)
+MAKE_VREAD(F, 32)
+MAKE_VREAD(F, 64)
 
-#undef MAKE_MREAD
+#undef MAKE_VREAD
 
-// Make read operators for reading vectors and floating point numbers from
-// memory.
-#define MAKE_MREADV(size, type_prefix, val_prefix) \
+// Make read operators for reading integral values from memory.
+#define MAKE_MREAD(size, type_prefix, ...) \
     ALWAYS_INLINE static \
     type_prefix ## size ## _t _Read( \
         Memory *&memory, Mn<type_prefix ## size ## _t> op) { \
-      type_prefix ## size ## _t val; \
-      memory = __remill_read_memory_ ## val_prefix ## size ( \
-          memory, op.addr, val); \
-      return val; \
+      return __remill_read_memory_ ## __VA_ARGS__ ## size (memory, op.addr); \
     }
 
-MAKE_MREADV(8, vec, v)
-MAKE_MREADV(16, vec, v)
-MAKE_MREADV(32, vec, v)
-MAKE_MREADV(64, vec, v)
-MAKE_MREADV(128, vec, v)
-MAKE_MREADV(256, vec, v)
-MAKE_MREADV(512, vec, v)
+MAKE_MREAD(8, uint)
+MAKE_MREAD(16, uint)
+MAKE_MREAD(32, uint)
+MAKE_MREAD(64, uint)
+MAKE_MREAD(32, float, f)
+MAKE_MREAD(64, float, f)
 
-//MAKE_MREADV(32, float, f)
-//MAKE_MREADV(64, float, f)
-//MAKE_MREADV(80, float, f)
-
-#undef MAKE_MREADV
+#undef MAKE_MREAD
 
 // Basic write form for references.
 template <typename T>
@@ -494,16 +146,21 @@ MAKE_VWRITE(F, 64, doubles)
 #undef MAKE_VWRITE
 
 // Make write operators for writing values to memory.
-#define MAKE_MWRITE(type, size) \
+#define MAKE_MWRITE(size, type_prefix, ...) \
     ALWAYS_INLINE static \
-    Memory *_Write(Memory *memory, MnW<type> op, const type val) { \
-      return __remill_write_memory_ ## size (memory, op.addr, val); \
+    Memory *_Write( \
+        Memory *memory, MnW<type_prefix ## size ## _t> op, \
+        type_prefix ## size ## _t val) { \
+      return __remill_write_memory_ ## __VA_ARGS__ ## size (\
+          memory, op.addr, val); \
     }
 
-MAKE_MWRITE(uint8_t, 8)
-MAKE_MWRITE(uint16_t, 16)
-MAKE_MWRITE(uint32_t, 32)
-MAKE_MWRITE(uint64_t, 64)
+MAKE_MWRITE(8, uint)
+MAKE_MWRITE(16, uint)
+MAKE_MWRITE(32, uint)
+MAKE_MWRITE(64, uint)
+MAKE_MWRITE(32, float, f)
+MAKE_MWRITE(64, float, f)
 
 #undef MAKE_MWRITE
 
@@ -532,6 +189,32 @@ MAKE_MVWRITE(F, 32, f32, floats)
 MAKE_MVWRITE(F, 64, f64, doubles)
 
 #undef MAKE_MVWRITE
+
+// Make read operators for reading vectors to vector registers.
+#define MAKE_MVREAD(prefix, size, small_prefix, accessor) \
+    template <typename T> \
+    ALWAYS_INLINE static \
+    T _ ## prefix ## ReadV ## size ( \
+        Memory *memory, const Mn<T> mem) { \
+      T val; \
+      _Pragma("unroll") \
+      for (size_t i = 0UL; i < NumVectorElems(val.accessor); ++i) { \
+        val.accessor.elems[i] = __remill_read_memory_ ## small_prefix ( \
+            memory, \
+            mem.addr + (i * sizeof(val.accessor.elems[0])));\
+      } \
+      return val; \
+    }
+
+MAKE_MVREAD(U, 8, 8, bytes)
+MAKE_MVREAD(U, 16, 16, words)
+MAKE_MVREAD(U, 32, 32, dwords)
+MAKE_MVREAD(U, 64, 64, qwords)
+MAKE_MVREAD(U, 128, 128, dqwords)
+MAKE_MVREAD(F, 32, f32, floats)
+MAKE_MVREAD(F, 64, f64, doubles)
+
+#undef MAKE_MVREAD
 
 // For the sake of esthetics and hiding the small-step semantics of memory
 // operands, we use this macros to implicitly pass in the `memory` operand,
@@ -600,6 +283,28 @@ MAKE_MVWRITE(F, 64, f64, doubles)
       memory = _FWriteV64(memory, op, (val)); \
     } while (false)
 
+#define UReadV8 ReadV8
+#define SReadV8 ReadV8
+#define ReadV8(op) _UReadV8(memory, op)
+
+#define UReadV16 ReadV16
+#define SReadV16 ReadV16
+#define ReadV16(op) _UReadV16(memory, op)
+
+#define UReadV32 ReadV32
+#define SReadV32 ReadV32
+#define ReadV32(op) _UReadV32(memory, op)
+
+#define UReadV64 ReadV64
+#define SReadV64 ReadV64
+#define ReadV64(op) _UReadV64(memory, op)
+
+#define UReadV128 ReadV128
+#define SReadV128 ReadV128
+#define ReadV128(op) _UReadV128(memory, op)
+
+#define FReadV32(op) _FReadV32(memory, op)
+#define FReadV64(op) _FReadV64(memory, op)
 
 // Combine two vectors together into a third. If the second vector is smaller
 // than the first then the "top" elements in the first are preserved.
@@ -786,10 +491,12 @@ auto TruncTo(T val) -> typename IntegerType<DT>::BT {
     make_int_op(U ## name, uint16_t, op) \
     make_int_op(U ## name, uint32_t, op) \
     make_int_op(U ## name, uint64_t, op) \
+    make_int_op(U ## name, uint128_t, op) \
     make_int_op(S ## name, int8_t, op) \
     make_int_op(S ## name, int16_t, op) \
     make_int_op(S ## name, int32_t, op) \
     make_int_op(S ## name, int64_t, op) \
+    make_int_op(S ## name, int128_t, op) \
     make_float_op(F ## name, float32_t, op) \
     make_float_op(F ## name, float64_t, op)
 

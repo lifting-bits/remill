@@ -126,19 +126,15 @@ void RemoveUndefinedIntrinsics(llvm::Module &module) {
     }
   }
 
-  auto mem_order = module.getGlobalVariable("__remill_memory_order");
-
   // Remove globals that we don't need.
   std::vector<llvm::GlobalVariable *> remove_globals;
   for (auto &global : module.globals()) {
     if (auto global_var = llvm::dyn_cast<llvm::GlobalVariable>(&global)) {
-      if (global_var != mem_order) {
-        if (!global_var->hasNUsesOrMore(1)) {
-          remove_globals.push_back(global_var);
-        } else {
-          global_var->setVisibility(llvm::GlobalValue::HiddenVisibility);
-          global_var->setLinkage(llvm::GlobalValue::PrivateLinkage);
-        }
+      if (!global_var->hasNUsesOrMore(1)) {
+        remove_globals.push_back(global_var);
+      } else {
+        global_var->setVisibility(llvm::GlobalValue::HiddenVisibility);
+        global_var->setLinkage(llvm::GlobalValue::PrivateLinkage);
       }
     }
   }

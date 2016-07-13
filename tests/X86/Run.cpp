@@ -118,37 +118,24 @@ NEVER_INLINE addr_t __remill_create_program_counter(addr_t pc) {
 
 #define MAKE_RW_MEMORY(size) \
   NEVER_INLINE uint ## size ## _t  __remill_read_memory_ ## size( \
-     order_t, addr_t addr) {\
+     Memory *, addr_t addr) {\
     return AccessMemory<uint ## size ## _t>(addr); \
   } \
-  NEVER_INLINE order_t __remill_write_memory_ ## size ( \
-      order_t order, addr_t addr, const uint ## size ## _t in) { \
+  NEVER_INLINE Memory *__remill_write_memory_ ## size ( \
+      Memory *, addr_t addr, const uint ## size ## _t in) { \
     AccessMemory<uint ## size ## _t>(addr) = in; \
-    return order + 1; \
+    return nullptr; \
   }
 
 #define MAKE_RW_FP_MEMORY(size) \
-  NEVER_INLINE order_t __remill_read_memory_f ## size( \
-      order_t order, addr_t addr, float ## size ## _t &vec) { \
-    vec = AccessMemory<float ## size ## _t>(addr); \
-    return order + 1; \
+  NEVER_INLINE float ## size ## _t __remill_read_memory_f ## size( \
+      Memory *, addr_t addr) { \
+    return AccessMemory<float ## size ## _t>(addr); \
   } \
-  NEVER_INLINE order_t __remill_write_memory_f ## size (\
-      order_t order, addr_t addr, const float ## size ## _t &in) { \
+  NEVER_INLINE Memory *__remill_write_memory_f ## size (\
+      Memory *, addr_t addr, float ## size ## _t in) { \
     AccessMemory<float ## size ## _t>(addr) = in; \
-    return order + 1; \
-  }
-
-#define MAKE_RW_VEC_MEMORY(size) \
-  NEVER_INLINE order_t __remill_read_memory_v ## size( \
-      order_t order, addr_t addr, vec ## size ## _t &vec) { \
-    vec = AccessMemory<vec ## size ## _t>(addr); \
-    return order + 1; \
-  } \
-  NEVER_INLINE order_t __remill_write_memory_v ## size (\
-      order_t order, addr_t addr, const vec ## size ## _t &in) { \
-    AccessMemory<vec ## size ## _t>(addr) = in; \
-    return order + 1; \
+    return nullptr; \
   }
 
 MAKE_RW_MEMORY(8)
@@ -158,37 +145,32 @@ MAKE_RW_MEMORY(64)
 
 MAKE_RW_FP_MEMORY(32)
 MAKE_RW_FP_MEMORY(64)
-MAKE_RW_FP_MEMORY(80)
 
-MAKE_RW_VEC_MEMORY(8)
-MAKE_RW_VEC_MEMORY(16)
-MAKE_RW_VEC_MEMORY(32)
-MAKE_RW_VEC_MEMORY(64)
-MAKE_RW_VEC_MEMORY(128)
-MAKE_RW_VEC_MEMORY(256)
-MAKE_RW_VEC_MEMORY(512)
+NEVER_INLINE void __remill_read_memory_f80(Memory *, addr_t, float80_t &) {
 
+}
+//MAKE_RW_FP_MEMORY(80)
 
-order_t __remill_barrier_load_load(order_t) { return 0; }
-order_t __remill_barrier_load_store(order_t) { return 0; }
-order_t __remill_barrier_store_load(order_t) { return 0; }
-order_t __remill_barrier_store_store(order_t) { return 0; }
-order_t __remill_atomic_begin(order_t) { return 0; }
-order_t __remill_atomic_end(order_t) { return 0; }
+Memory *__remill_barrier_load_load(Memory *) { return nullptr; }
+Memory *__remill_barrier_load_store(Memory *) { return nullptr; }
+Memory *__remill_barrier_store_load(Memory *) { return nullptr; }
+Memory *__remill_barrier_store_store(Memory *) { return nullptr; }
+Memory *__remill_atomic_begin(Memory *) { return nullptr; }
+Memory *__remill_atomic_end(Memory *) { return nullptr; }
 
 void __remill_defer_inlining(void) {}
 
 // Control-flow intrinsics.
-void __remill_missing_block(State &, addr_t) {
+void __remill_missing_block(State &, Memory *, addr_t) {
   // This is where we want to end up.
 }
 
-void __remill_error(State &, addr_t) {
+void __remill_error(State &, Memory *, addr_t) {
   std::cerr << "Caught error!" << std::endl;
   siglongjmp(gJmpBuf, 0);
 }
 
-void __remill_read_cpu_features(State &state, addr_t) {
+void __remill_read_cpu_features(State &state, Memory *, addr_t) {
   asm volatile(
       "cpuid"
       : "=a"(state.gpr.rax.qword),
@@ -202,15 +184,15 @@ void __remill_read_cpu_features(State &state, addr_t) {
   );
 }
 
-void __remill_function_call(State &, addr_t) {
+void __remill_function_call(State &, Memory *, addr_t) {
   __builtin_unreachable();
 }
 
-void __remill_function_return(State &, addr_t) {
+void __remill_function_return(State &, Memory *, addr_t) {
   __builtin_unreachable();
 }
 
-void __remill_jump(State &, addr_t) {
+void __remill_jump(State &, Memory *, addr_t) {
   __builtin_unreachable();
 }
 
@@ -219,19 +201,19 @@ addr_t __remill_conditional_branch(
   return cond ? addr_true : addr_false;
 }
 
-void __remill_system_call(State &, addr_t) {
+void __remill_system_call(State &, Memory *, addr_t) {
   __builtin_unreachable();
 }
 
-void __remill_system_return(State &, addr_t) {
+void __remill_system_return(State &, Memory *, addr_t) {
   __builtin_unreachable();
 }
 
-void __remill_interrupt_call(State &, addr_t) {
+void __remill_interrupt_call(State &, Memory *, addr_t) {
   __builtin_unreachable();
 }
 
-void __remill_interrupt_return(State &, addr_t) {
+void __remill_interrupt_return(State &, Memory *, addr_t) {
   __builtin_unreachable();
 }
 
@@ -262,26 +244,26 @@ float32_t __remill_undefined_f32(void) {
 float64_t __remill_undefined_f64(void) {
   return 0.0;
 }
-
-void __remill_read_f80(const float80_t &in, float64_t &out) {
-  struct alignas(16) LongDoubleStorage {
-    uint8_t bytes[16];
-  } storage;
-
-  memset(&storage, 0, sizeof(storage));
-  memcpy(&storage, &in, sizeof(in));
-  out.val = static_cast<double>(*reinterpret_cast<long double *>(&storage));
-}
-
-void __remill_write_f80(const float64_t &in, float80_t &out) {
-  struct alignas(16) LongDoubleStorage {
-    uint8_t bytes[16];
-  } storage;
-  auto val = static_cast<long double>(in.val);
-  memset(&storage, 0, sizeof(storage));
-  *reinterpret_cast<long double *>(&storage) = val;
-  memcpy(&out, &storage, sizeof(out));
-}
+//
+//void __remill_read_f80(const float80_t &in, float64_t &out) {
+//  struct alignas(16) LongDoubleStorage {
+//    uint8_t bytes[16];
+//  } storage;
+//
+//  memset(&storage, 0, sizeof(storage));
+//  memcpy(&storage, &in, sizeof(in));
+//  out.val = static_cast<double>(*reinterpret_cast<long double *>(&storage));
+//}
+//
+//void __remill_write_f80(const float64_t &in, float80_t &out) {
+//  struct alignas(16) LongDoubleStorage {
+//    uint8_t bytes[16];
+//  } storage;
+//  auto val = static_cast<long double>(in.val);
+//  memset(&storage, 0, sizeof(storage));
+//  *reinterpret_cast<long double *>(&storage) = val;
+//  memcpy(&out, &storage, sizeof(out));
+//}
 
 // Marks `mem` as being used. This is used for making sure certain symbols are
 // kept around through optimization, and makes sure that optimization doesn't
@@ -426,7 +408,7 @@ static void RunWithFlags(const test::TestInfo *info,
   // swapping execution to operate on `gStack`.
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
-    info->lifted_func(lifted_state);
+    info->lifted_func(lifted_state, nullptr, lifted_state->gpr.rip.qword);
   } else {
     EXPECT_TRUE(native_test_faulted);
   }

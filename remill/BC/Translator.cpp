@@ -173,8 +173,7 @@ void Translator::CreateFunctionsForBlocks(const cfg::Module *cfg) {
     auto &block_func = blocks[block.address()];
     if (!block_func) {
       std::stringstream ss;
-      ss << "__lifted_block_" << binary_id << "_0x"
-         << std::hex << block.address();
+      ss << "__remill_sub_" << std::hex << block.address();
 
       block_func = GetOrCreateBlockFunction(module, basic_block, ss.str());
       SetMetaDataAddress(module, ss.str(), block.address());
@@ -182,16 +181,8 @@ void Translator::CreateFunctionsForBlocks(const cfg::Module *cfg) {
       // This block is externally visible so change its linkage and make a new
       // private block to which other blocks will refer.
       if (indirect_blocks.count(block.address())) {
-        std::stringstream ss2;
-        ss2 << "__extern_block_" << binary_id << "_0x"
-           << std::hex << block.address();
-
-        auto extern_block_func = GetOrCreateBlockFunction(
-            module, basic_block, ss2.str());
-        extern_block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
-        extern_block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
-
-        AddTerminatingTailCall(extern_block_func, block_func, block.address());
+        block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
+        block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
       }
     }
   }

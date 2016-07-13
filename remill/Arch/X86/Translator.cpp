@@ -273,7 +273,12 @@ void InstructionTranslator::LiftGeneric(const Translator &lifter) {
   // First argument is the state pointer.
   args.push_back(FindStatePointer(function));
 
-  // Second argument is the next program counter.
+  // Second argument is the memory pointer. This is actually a pointer to
+  // the memory pointer, so that instruction implementations can "update" to
+  // the new memory pointer (a la small step semantics).
+  args.push_back(FindMemoryPointer(function));
+
+  // Third argument is the next program counter.
   args.push_back(llvm::ConstantInt::get(intptr_type, NextPC(), false));
 
   // Lift the operands. This creates the arguments for us to call the
@@ -486,25 +491,25 @@ void InstructionTranslator::LiftMemory(const Translator &lifter,
   // semantics or with a LOCK prefix.
   if (xed_operand_values_get_atomic(xedd) ||
       xed_operand_values_has_lock_prefix(xedd)) {
-    auto load_order1 = new llvm::LoadInst(lifter.intrinsics->memory_order);
-    auto new_order1 = llvm::CallInst::Create(lifter.intrinsics->atomic_begin,
-                                             {load_order1});
-    auto store_order1 = new llvm::StoreInst(new_order1,
-                                            lifter.intrinsics->memory_order);
+    auto memory = FindMemoryPointer(function);
 
-    auto load_order2 = new llvm::LoadInst(lifter.intrinsics->memory_order);
-    auto new_order2 = llvm::CallInst::Create(lifter.intrinsics->atomic_begin,
-                                             {load_order2});
-    auto store_order2 = new llvm::StoreInst(new_order2,
-                                            lifter.intrinsics->memory_order);
+    auto load_mem1 = new llvm::LoadInst(memory);
+    auto new_mem1 = llvm::CallInst::Create(lifter.intrinsics->atomic_begin,
+                                             {load_mem1});
+    auto store_mem1 = new llvm::StoreInst(new_mem1, memory);
 
-    prepend_instrs.push_back(load_order1);
-    prepend_instrs.push_back(new_order1);
-    prepend_instrs.push_back(store_order1);
+    auto load_mem2 = new llvm::LoadInst(memory);
+    auto new_mem2 = llvm::CallInst::Create(lifter.intrinsics->atomic_begin,
+                                             {load_mem2});
+    auto store_mem2 = new llvm::StoreInst(new_mem2, memory);
 
-    append_instrs.push_back(store_order2);
-    append_instrs.push_back(new_order2);
-    append_instrs.push_back(load_order2);
+    prepend_instrs.push_back(load_mem1);
+    prepend_instrs.push_back(new_mem1);
+    prepend_instrs.push_back(store_mem1);
+
+    append_instrs.push_back(store_mem2);
+    append_instrs.push_back(new_mem2);
+    append_instrs.push_back(load_mem2);
   }
 }
 

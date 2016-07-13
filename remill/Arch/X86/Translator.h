@@ -49,6 +49,7 @@ class InstructionTranslator {
   void LiftOperand(const Translator &lifter, unsigned op_num);
   void LiftMemory(const Translator &lifter, const xed_operand_t *xedo,
                   unsigned op_num);
+
   void LiftImmediate(xed_operand_enum_t op_name);
   void LiftRegister(const xed_operand_t *xedo);
   void LiftBranchDisplacement(void);

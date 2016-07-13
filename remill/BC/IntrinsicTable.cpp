@@ -85,45 +85,24 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       read_memory_32(FindPureIntrinsic(module, "__remill_read_memory_32")),
       read_memory_64(FindPureIntrinsic(module, "__remill_read_memory_64")),
 
-      // These take in a value by reference and modify it, therefore they are
-      // NOT pure.
-      read_memory_v8(FindIntrinsic(module, "__remill_read_memory_v8")),
-      read_memory_v16(FindIntrinsic(module, "__remill_read_memory_v16")),
-      read_memory_v32(FindIntrinsic(module, "__remill_read_memory_v32")),
-      read_memory_v64(FindIntrinsic(module, "__remill_read_memory_v64")),
-      read_memory_v128(FindIntrinsic(module, "__remill_read_memory_v128")),
-      read_memory_v256(FindIntrinsic(module, "__remill_read_memory_v256")),
-      read_memory_v512(FindIntrinsic(module, "__remill_read_memory_v512")),
-
       write_memory_8(FindPureIntrinsic(module, "__remill_write_memory_8")),
       write_memory_16(FindPureIntrinsic(module, "__remill_write_memory_16")),
       write_memory_32(FindPureIntrinsic(module, "__remill_write_memory_32")),
       write_memory_64(FindPureIntrinsic(module, "__remill_write_memory_64")),
 
-      write_memory_v8(FindReadOnlyIntrinsic(module, "__remill_write_memory_v8")),
-      write_memory_v16(FindReadOnlyIntrinsic(module, "__remill_write_memory_v16")),
-      write_memory_v32(FindReadOnlyIntrinsic(module, "__remill_write_memory_v32")),
-      write_memory_v64(FindReadOnlyIntrinsic(module, "__remill_write_memory_v64")),
-      write_memory_v128(FindReadOnlyIntrinsic(
-          module, "__remill_write_memory_v128")),
-      write_memory_v256(FindReadOnlyIntrinsic(
-          module, "__remill_write_memory_v256")),
-      write_memory_v512(FindReadOnlyIntrinsic(
-          module, "__remill_write_memory_v512")),
-
       read_memory_f32(FindIntrinsic(module, "__remill_read_memory_f32")),
       read_memory_f64(FindIntrinsic(module, "__remill_read_memory_f64")),
-      read_memory_f80(FindIntrinsic(module, "__remill_read_memory_f80")),
+//      read_memory_f80(FindIntrinsic(module, "__remill_read_memory_f80")),
 
       write_memory_f32(FindReadOnlyIntrinsic(
           module, "__remill_write_memory_f32")),
       write_memory_f64(FindReadOnlyIntrinsic(
           module, "__remill_write_memory_f64")),
-      write_memory_f80(FindReadOnlyIntrinsic(
-          module, "__remill_write_memory_f80")),
-
-      read_f80(FindIntrinsic(module, "__remill_read_f80")),
-      write_f80(FindIntrinsic(module, "__remill_write_f80")),
+//      write_memory_f80(FindReadOnlyIntrinsic(
+//          module, "__remill_write_memory_f80")),
+//
+//      read_f80(FindIntrinsic(module, "__remill_read_f80")),
+//      write_f80(FindIntrinsic(module, "__remill_write_f80")),
 
       compute_address(FindPureIntrinsic(module, "__remill_compute_address")),
 
@@ -152,9 +131,6 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       undefined_32(FindPureIntrinsic(module, "__remill_undefined_32")),
       undefined_64(FindPureIntrinsic(module, "__remill_undefined_64")),
       undefined_f32(FindPureIntrinsic(module, "__remill_undefined_f32")),
-      undefined_f64(FindPureIntrinsic(module, "__remill_undefined_f64")),
-
-      // Used for the global ordering of memory instructions.
-      memory_order(FindGlobaVariable(module, "__remill_memory_order")) {}
+      undefined_f64(FindPureIntrinsic(module, "__remill_undefined_f64")) {}
 
 }  // namespace remill

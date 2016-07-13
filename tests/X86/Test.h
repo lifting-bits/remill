@@ -4,6 +4,7 @@
 #define TESTS_X86_TEST_H_
 
 struct State;
+struct Memory;
 
 namespace test {
 
@@ -18,7 +19,7 @@ struct alignas(128) TestInfo {
   const char *test_name;
   const uint64_t * const args_begin;
   const uint64_t * const args_end;
-  void (* const lifted_func)(State *);
+  void (* const lifted_func)(State *, Memory *, uintptr_t);
   const uint64_t num_args;
   const uint64_t ignored_flags_mask;
 } __attribute__((packed));

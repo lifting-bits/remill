@@ -9,7 +9,7 @@ extern "C" {
 
 // The basic block "template".
 [[gnu::used]]
-void __remill_basic_block(State &state, addr_t);
+void __remill_basic_block(State &state, Memory &memory, addr_t);
 
 // Address computation intrinsic. This is only used for non-zero
 // `address_space`d memory accesses.
@@ -34,27 +34,6 @@ extern uint32_t __remill_read_memory_32(Memory *, addr_t);
 [[gnu::used]]
 extern uint64_t __remill_read_memory_64(Memory *, addr_t);
 
-[[gnu::used]]
-extern Memory *__remill_read_memory_v8(Memory *, addr_t, vec8_t &);
-
-[[gnu::used]]
-extern Memory *__remill_read_memory_v16(Memory *, addr_t, vec16_t &);
-
-[[gnu::used]]
-extern Memory *__remill_read_memory_v32(Memory *, addr_t, vec32_t &);
-
-[[gnu::used]]
-extern Memory *__remill_read_memory_v64(Memory *, addr_t, vec64_t &);
-
-[[gnu::used]]
-extern Memory *__remill_read_memory_v128(Memory *, addr_t, vec128_t &);
-
-[[gnu::used]]
-extern Memory *__remill_read_memory_v256(Memory *, addr_t, vec256_t &);
-
-[[gnu::used]]
-extern Memory *__remill_read_memory_v512(Memory *, addr_t, vec512_t &);
-
 // Memory write intrinsics.
 [[gnu::used]]
 extern Memory *__remill_write_memory_8(Memory *, addr_t, uint8_t);
@@ -74,8 +53,8 @@ extern float32_t __remill_read_memory_f32(Memory *, addr_t);
 [[gnu::used]]
 extern float64_t __remill_read_memory_f64(Memory *, addr_t);
 
-[[gnu::used]]
-extern Memory *__remill_read_memory_f80(Memory *, addr_t, float80_t &);
+//[[gnu::used]]
+//extern Memory *__remill_read_memory_f80(Memory *, addr_t, float80_t &);
 
 [[gnu::used]]
 extern Memory *__remill_write_memory_f32(Memory *, addr_t, float32_t);
@@ -83,8 +62,8 @@ extern Memory *__remill_write_memory_f32(Memory *, addr_t, float32_t);
 [[gnu::used]]
 extern Memory *__remill_write_memory_f64(Memory *, addr_t, float64_t);
 
-[[gnu::used]]
-extern Memory *__remill_write_memory_f80(Memory *, addr_t, const float80_t &);
+//[[gnu::used]]
+//extern Memory *__remill_write_memory_f80(Memory *, addr_t, const float80_t &);
 
 [[gnu::used]]
 extern bool __remill_undefined_bool(void);
@@ -115,33 +94,33 @@ extern void __remill_defer_inlining(void);
 
 // Generic error.
 [[gnu::used]]
-extern void __remill_error(State &, addr_t addr);
+extern void __remill_error(State &, Memory *, addr_t addr);
 
 // Control-flow intrinsics.
 [[gnu::used]]
-extern void __remill_function_call(State &, addr_t addr);
+extern void __remill_function_call(State &, Memory *, addr_t addr);
 
 [[gnu::used]]
-extern void __remill_function_return(State &, addr_t addr);
+extern void __remill_function_return(State &, Memory *, addr_t addr);
 
 [[gnu::used]]
-extern void __remill_jump(State &, addr_t addr);
+extern void __remill_jump(State &, Memory *, addr_t addr);
 
 [[gnu::used]]
-extern void __remill_system_call(State &, addr_t ret_addr);
+extern void __remill_system_call(State &, Memory *, addr_t ret_addr);
 
 [[gnu::used]]
-extern void __remill_system_return(State &, addr_t addr);
+extern void __remill_system_return(State &, Memory *, addr_t addr);
 
 [[gnu::used]]
-extern void __remill_interrupt_call(State &, addr_t ret_addr);
+extern void __remill_interrupt_call(State &, Memory *, addr_t ret_addr);
 
 [[gnu::used]]
-extern void __remill_interrupt_return(State &, addr_t addr);
+extern void __remill_interrupt_return(State &, Memory *, addr_t);
 
 // Represents a known unknown block.
 [[gnu::used]]
-extern void __remill_missing_block(State &, addr_t);
+extern void __remill_missing_block(State &, Memory *, addr_t);
 
 [[gnu::used]]
 extern addr_t __remill_conditional_branch(
@@ -171,15 +150,15 @@ extern Memory *__remill_atomic_end(Memory *);
 // Arch-specific feature lookup. Implemented as a pseudo control-flow
 // intrinsic.
 [[gnu::used]]
-extern void __remill_read_cpu_features(State &, addr_t addr);
+extern void __remill_read_cpu_features(State &, Memory *, addr_t addr);
 
-// Arch-specific. Marshal a float80_t into a float64_t.
+//// Arch-specific. Marshal a float80_t into a float64_t.
+////
+//// TODO(pag): https://stackoverflow.com/questions/2963055/msvc-win32-convert-extended-precision-float-80-bit-to-double-64-bit
+//extern float64_t __remill_read_f80(const float80_t &);
 //
-// TODO(pag): https://stackoverflow.com/questions/2963055/msvc-win32-convert-extended-precision-float-80-bit-to-double-64-bit
-extern void __remill_read_f80(const float80_t &, float64_t &);
-
-// Arch-specific. Marshal a float64_t into a float64_t.
-extern void __remill_write_f80(const float64_t &, float80_t &);
+//// Arch-specific. Marshal a float64_t into a float64_t.
+//extern void __remill_write_f80(const float64_t, float80_t &);
 
 #define __remill_barrier_compiler()
 //  __asm__ __volatile__ ("" ::: "memory")

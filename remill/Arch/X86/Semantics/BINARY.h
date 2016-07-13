@@ -31,18 +31,18 @@ DEF_SEM(ADD, D dst, S1 src1, S2 src2) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ADDPS, D dst, S1 src1, S2 src2) {
-  FWriteV32(dst, FAddV32(Read(src1), Read(src2)));
+  FWriteV32(dst, FAddV32(FReadV32(src1), FReadV32(src2)));
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ADDPD, D dst, S1 src1, S2 src2) {
-  FWriteV64(dst, FAddV64(Read(src1), Read(src2)));
+  FWriteV64(dst, FAddV64(FReadV64(src1), FReadV64(src2)));
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ADDSS, D dst, S1 src1, S2 src2) {
-  auto lhs = Read(src1);
-  auto rhs = Read(src2);
+  auto lhs = FReadV32(src1);
+  auto rhs = FReadV32(src2);
   auto sum = FAdd(FExtractV32<0>(lhs), FExtractV32<0>(rhs));
   auto res = FInsertV32<0>(lhs, sum);
   FWriteV32(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
@@ -50,8 +50,8 @@ DEF_SEM(ADDSS, D dst, S1 src1, S2 src2) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ADDSD, D dst, S1 src1, S2 src2) {
-  auto lhs = Read(src1);
-  auto rhs = Read(src2);
+  auto lhs = FReadV64(src1);
+  auto rhs = FReadV64(src2);
   auto sum = FAdd(FExtractV64<0>(lhs), FExtractV64<0>(rhs));
   auto res = FInsertV64<0>(lhs, sum);
   FWriteV32(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
@@ -139,18 +139,18 @@ DEF_SEM(SUB, D dst, S1 src1, S2 src2) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(SUBPS, D dst, S1 src1, S2 src2) {
-  FWriteV32(dst, FSubV32(Read(src1), Read(src2)));
+  FWriteV32(dst, FSubV32(FReadV32(src1), FReadV32(src2)));
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(SUBPD, D dst, S1 src1, S2 src2) {
-  FWriteV64(dst, FSubV64(Read(src1), Read(src2)));
+  FWriteV64(dst, FSubV64(FReadV64(src1), FReadV64(src2)));
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(SUBSS, D dst, S1 src1, S2 src2) {
-  auto lhs = Read(src1);
-  auto rhs = Read(src2);
+  auto lhs = FReadV32(src1);
+  auto rhs = FReadV32(src2);
   auto sum = FSub(FExtractV32<0>(lhs), FExtractV32<0>(rhs));
   auto res = FInsertV32<0>(lhs, sum);
   FWriteV32(dst, res);
@@ -158,8 +158,8 @@ DEF_SEM(SUBSS, D dst, S1 src1, S2 src2) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(SUBSD, D dst, S1 src1, S2 src2) {
-  auto lhs = Read(src1);
-  auto rhs = Read(src2);
+  auto lhs = FReadV64(src1);
+  auto rhs = FReadV64(src2);
   auto sum = FSub(FExtractV64<0>(lhs), FExtractV64<0>(rhs));
   auto res = FInsertV64<0>(lhs, sum);
   FWriteV64(dst, res);
@@ -335,18 +335,18 @@ IF_64BIT(MAKE_IMULxax(rax, REG_RAX, REG_RAX, REG_RDX))
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(MULPS, D dst, S1 src1, S2 src2) {
-  FWriteV32(dst, FMulV32(Read(src1), Read(src2)));
+  FWriteV32(dst, FMulV32(FReadV32(src1), FReadV32(src2)));
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(MULPD, D dst, S1 src1, S2 src2) {
-  FWriteV64(dst, FMulV64(Read(src1), Read(src2)));
+  FWriteV64(dst, FMulV64(FReadV64(src1), FReadV64(src2)));
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(MULSS, D dst, S1 src1, S2 src2) {
-  auto lhs = Read(src1);
-  auto rhs = Read(src2);
+  auto lhs = FReadV32(src1);
+  auto rhs = FReadV32(src2);
   auto mul = FMul(FExtractV32<0>(lhs), FExtractV32<0>(rhs));
   auto res = FInsertV32<0>(lhs, mul);
   FWriteV32(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
@@ -354,8 +354,8 @@ DEF_SEM(MULSS, D dst, S1 src1, S2 src2) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(MULSD, D dst, S1 src1, S2 src2) {
-  auto lhs = Read(src1);
-  auto rhs = Read(src2);
+  auto lhs = FReadV64(src1);
+  auto rhs = FReadV64(src2);
   auto mul = FMul(FExtractV64<0>(lhs), FExtractV64<0>(rhs));
   auto res = FInsertV64<0>(lhs, mul);
   FWriteV32(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
@@ -512,18 +512,18 @@ namespace {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(DIVPS, D dst, S1 src1, S2 src2) {
-  FWriteV32(dst, FDivV32(Read(src1), Read(src2)));
+  FWriteV32(dst, FDivV32(FReadV32(src1), FReadV32(src2)));
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(DIVPD, D dst, const S1 src1, const S2 src2) {
-  FWriteV64(dst, FDivV64(Read(src1), Read(src2)));
+  FWriteV64(dst, FDivV64(FReadV64(src1), FReadV64(src2)));
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(DIVSS, D dst, S1 src1, S2 src2) {
-  auto lhs = Read(src1);
-  auto rhs = Read(src2);
+  auto lhs = FReadV32(src1);
+  auto rhs = FReadV32(src2);
   auto quot = FDiv(FExtractV32<0>(lhs), FExtractV32<0>(rhs));
   auto res = FInsertV32<0>(lhs, quot);
   FWriteV32(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
@@ -531,8 +531,8 @@ DEF_SEM(DIVSS, D dst, S1 src1, S2 src2) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(DIVSD, D dst, S1 src1, S2 src2) {
-  auto lhs = Read(src1);
-  auto rhs = Read(src2);
+  auto lhs = FReadV64(src1);
+  auto rhs = FReadV64(src2);
   auto quot = FDiv(FExtractV64<0>(lhs), FExtractV64<0>(rhs));
   auto res = FInsertV64<0>(lhs, quot);
   FWriteV64(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
