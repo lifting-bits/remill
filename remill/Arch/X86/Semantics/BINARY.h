@@ -132,7 +132,7 @@ template <typename D, typename S1, typename S2>
 DEF_SEM(SUB, D dst, S1 src1, S2 src2) {
   auto lhs = Read(src1);
   auto rhs = Read(src2);
-  auto sum = UAdd(lhs, rhs);
+  auto sum = USub(lhs, rhs);
   WriteZExt(dst, sum);
   WriteFlagsAddSub<tag_sub>(state, lhs, rhs, sum);
 }
@@ -590,7 +590,7 @@ DEF_SEM(NEG, D dst, S1 src) {
   auto rhs = Read(src);
   auto neg = UNeg(rhs);
   WriteZExt(dst, neg);
-  WriteFlagsIncDec<tag_sub>(state, lhs, rhs, neg);
+  WriteFlagsAddSub<tag_sub>(state, lhs, rhs, neg);
 }
 
 }  // namespace

@@ -118,6 +118,7 @@ CXX_FLAGS = [
   "-Wno-error=unused-command-line-argument",
   "-Wno-override-module",
   "-Wno-return-type-c-linkage",
+  "-Wno-c99-extensions",
   
   # Features.
   "-fno-omit-frame-pointer",

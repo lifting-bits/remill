@@ -150,7 +150,9 @@ union vec512_t;
       enum { \
         kNumElems = nelems \
       }; \
+      typedef base_type BT; \
       typedef base_type BaseType; \
+      typedef vec ## vec_size_bits ## _t T; \
       typedef vec ## vec_size_bits ## _t Type; \
     };
 
@@ -366,7 +368,6 @@ static_assert(64 == sizeof(vec512_t) &&
               64 == sizeof(vec512_t().doubles),
               "Invalid structure packing of `vec512_t`.");
 
-
 // An n-bit memory reference. This is implemented as an `addr_t`. Part of the
 // reason is because pointers have sizes that are architecture-specific, and
 // because we want to be able to pass the address through an integer register
@@ -420,6 +421,36 @@ struct RnW<float64_t> final {
 template <typename T>
 struct In final {
   const addr_t val;
+};
+
+// Okay so this is *kind of* a hack. The idea is that, in some cases, we want
+// to pass things like 32- or 64-bit GPRs to instructions taking in vectors,
+// and so it would be nice if those values could masquerade as vectors, even
+// though the translator will pass in registers.
+template <typename T>
+struct RVn;
+
+template <>
+struct RVn<vec64_t> final {
+  const addr_t val;
+};
+
+template <>
+struct RVn<vec32_t> final {
+  const addr_t val;
+};
+
+template <typename T>
+struct RVnW;
+
+template <>
+struct RVnW<vec32_t> final {
+  uint32_t * const val_ref;
+};
+
+template <>
+struct RVnW<vec64_t> final {
+  uint64_t * const val_ref;
 };
 
 template <typename T>
@@ -595,12 +626,80 @@ struct IntegerType {
   typedef typename SignedIntegerType<WBT>::BT WST;
 
   enum : size_t {
-    kNumBits = sizeof(BT)
+    kNumBits = sizeof(BT) * 8
   };
 };
 
 template <>
 struct IntegerType<bool> : public IntegerType<uint8_t> {};
+
+
+template <typename T>
+struct Tag;
+
+template <typename T>
+struct Tag<T &> : public Tag<T> {};
+
+template <typename T>
+struct Tag<T *> : public Tag<T> {};
+
+template <typename T>
+struct Tag<Rn<T>> : public Tag<T> {};
+
+template <typename T>
+struct Tag<RVn<T>> : public Tag<T> {};
+
+template <typename T>
+struct Tag<RnW<T>> : public Tag<T> {};
+
+template <typename T>
+struct Tag<Mn<T>> : public Tag<T> {};
+
+template <typename T>
+struct Tag<MnW<T>> : public Tag<T> {};
+
+template <typename T>
+struct Tag<In<T>> : public Tag<T> {};
+
+template <typename T>
+struct Tag<Vn<T>> : public Tag<T> {};
+
+template <typename T>
+struct Tag<VnW<T>> : public Tag<T> {};
+
+struct VectorTag {};
+struct NumberTag {};
+
+#define MAKE_TAG(prefix, size, tag) \
+    template <> \
+    struct Tag<prefix ## size ## _t> { \
+      static constexpr const tag kTag = {}; \
+      typedef tag Type; \
+    };
+
+MAKE_TAG(vec, 8, VectorTag)
+MAKE_TAG(vec, 16, VectorTag)
+MAKE_TAG(vec, 32, VectorTag)
+MAKE_TAG(vec, 64, VectorTag)
+MAKE_TAG(vec, 128, VectorTag)
+MAKE_TAG(vec, 256, VectorTag)
+MAKE_TAG(vec, 512, VectorTag)
+
+MAKE_TAG(uint, 8, NumberTag)
+MAKE_TAG(uint, 16, NumberTag)
+MAKE_TAG(uint, 32, NumberTag)
+MAKE_TAG(uint, 64, NumberTag)
+MAKE_TAG(uint, 128, NumberTag)
+
+MAKE_TAG(int, 8, NumberTag)
+MAKE_TAG(int, 16, NumberTag)
+MAKE_TAG(int, 32, NumberTag)
+MAKE_TAG(int, 64, NumberTag)
+MAKE_TAG(int, 128, NumberTag)
+
+MAKE_TAG(float, 32, NumberTag)
+MAKE_TAG(float, 64, NumberTag)
+#undef MAKE_TAG
 
 inline uint8_t operator "" _u8(unsigned long long value) {
   return static_cast<uint8_t>(value);

@@ -46,21 +46,47 @@ ALWAYS_INLINE static uint64_t _Read(Memory *, uint64_t val) {
 
 template <typename T>
 ALWAYS_INLINE static
-T _Read(Memory *, const In<T> imm) {
+T _Read(Memory *, In<T> imm) {
   return static_cast<T>(imm.val);
 }
 
 template <typename T>
 ALWAYS_INLINE static
-T _Read(Memory *, const Rn<T> reg) {
+T _Read(Memory *, Rn<T> reg) {
   return static_cast<T>(reg.val);
 }
+
+#define MAKE_RVREAD(prefix, size, accessor, type_prefix) \
+    template <typename T> \
+    ALWAYS_INLINE static \
+    T _ ## prefix ## ReadV ## size (Memory *, RVn<T> reg) { \
+      return {.accessor = { \
+          {static_cast<type_prefix ## size ## _t>(reg.val)}}}; \
+    } \
+    template <typename T> \
+    ALWAYS_INLINE static \
+    T _ ## prefix ## ReadV ## size (Memory *, RVnW<T> reg) { \
+      return {.accessor = { \
+          {static_cast<type_prefix ## size ## _t>(*reg.val_ref)}}}; \
+    }
+
+MAKE_RVREAD(U, 32, dwords, uint)
+MAKE_RVREAD(U, 64, qwords, uint)
+MAKE_RVREAD(F, 32, floats, float)
+MAKE_RVREAD(F, 64, doubles, float)
+
+#undef MAKE_RVREAD
 
 #define MAKE_VREAD(prefix, size) \
     template <typename T> \
     ALWAYS_INLINE static \
-    T _ ## prefix ## ReadV ## size (Memory *, const Vn<T> reg) { \
-      return *reg.val; \
+    T _ ## prefix ## ReadV ## size (Memory *, Vn<T> reg) { \
+      return *reg.val;\
+    } \
+    template <typename T> \
+    ALWAYS_INLINE static \
+    T _ ## prefix ## ReadV ## size (Memory *, VnW<T> reg) { \
+      return *reg.val_ref;\
     }
 
 MAKE_VREAD(U, 8)
@@ -68,10 +94,13 @@ MAKE_VREAD(U, 16)
 MAKE_VREAD(U, 32)
 MAKE_VREAD(U, 64)
 MAKE_VREAD(U, 128)
+MAKE_VREAD(U, 256)
+MAKE_VREAD(U, 512)
 MAKE_VREAD(F, 32)
 MAKE_VREAD(F, 64)
 
 #undef MAKE_VREAD
+
 
 // Make read operators for reading integral values from memory.
 #define MAKE_MREAD(size, type_prefix, ...) \
@@ -102,8 +131,8 @@ Memory *_Write(Memory *memory, T &dst, T src) {
 #define MAKE_RWRITE(type) \
     ALWAYS_INLINE static \
     Memory *_Write( \
-        Memory *memory, const RnW<type> reg, const type val) { \
-      *reg.val_ref = val; \
+        Memory *memory, RnW<type> reg, type val) { \
+      *(reg.val_ref) = val; \
       return memory; \
     }
 
@@ -113,37 +142,6 @@ MAKE_RWRITE(uint32_t)
 MAKE_RWRITE(uint64_t)
 
 #undef MAKE_RWRITE
-
-// Make write operators for writing vectors to vector registers.
-#define MAKE_VWRITE(prefix, size, accessor) \
-    template <typename T, typename U> \
-    ALWAYS_INLINE static \
-    Memory *_ ## prefix ## WriteV ## size ( \
-        Memory *memory, const VnW<T> reg, const U val) { \
-      enum : size_t { \
-        kNumSrcElems = NumVectorElems(val.accessor), \
-        kNumDstElems = NumVectorElems(reg.val_ref->accessor) \
-      }; \
-      _Pragma("unroll") \
-      for (size_t i = 0UL; i < kNumSrcElems; ++i) { \
-        reg.val_ref->accessor.elems[i] = val.accessor.elems[i]; \
-      } \
-      _Pragma("unroll") \
-      for (size_t i = kNumSrcElems; i < kNumDstElems; ++i) { \
-        reg.val_ref->accessor.elems[i] = 0; \
-      } \
-      return memory; \
-    }
-
-MAKE_VWRITE(U, 8, bytes)
-MAKE_VWRITE(U, 16, words)
-MAKE_VWRITE(U, 32, dwords)
-MAKE_VWRITE(U, 64, qwords)
-MAKE_VWRITE(U, 128, dqwords)
-MAKE_VWRITE(F, 32, floats)
-MAKE_VWRITE(F, 64, doubles)
-
-#undef MAKE_VWRITE
 
 // Make write operators for writing values to memory.
 #define MAKE_MWRITE(size, type_prefix, ...) \
@@ -165,37 +163,135 @@ MAKE_MWRITE(64, float, f)
 #undef MAKE_MWRITE
 
 // Make write operators for writing vectors to vector registers.
-#define MAKE_MVWRITE(prefix, size, small_prefix, accessor) \
+#define MAKE_MVWRITE(prefix, size, small_prefix, accessor, base_type_prefix) \
     template <typename T> \
     ALWAYS_INLINE static \
-    Memory *_ ## prefix ## WriteV ## size ( \
-        Memory *memory, const MnW<T> mem, const T val) { \
+    Memory *_Do ## prefix ## WriteV ## size ( \
+        Memory *memory, MnW<T> mem, T val, VectorTag) { \
       _Pragma("unroll") \
       for (size_t i = 0UL; i < NumVectorElems(val.accessor); ++i) { \
         memory = __remill_write_memory_ ## small_prefix ( \
             memory, \
             mem.addr + (i * sizeof(val.accessor.elems[0])), \
-            val.accessor.elems[i]);\
+            val.accessor.elems[i]); \
       } \
+      return memory; \
+    } \
+    template <typename T> \
+    ALWAYS_INLINE static \
+    Memory *_Do ## prefix ## WriteV ## size ( \
+        Memory *memory, MnW<T> mem, \
+        base_type_prefix ## size ## _t val, \
+        NumberTag) { \
+      memory = __remill_write_memory_ ## small_prefix (memory, mem.addr, val); \
       return memory; \
     }
 
-MAKE_MVWRITE(U, 8, 8, bytes)
-MAKE_MVWRITE(U, 16, 16, words)
-MAKE_MVWRITE(U, 32, 32, dwords)
-MAKE_MVWRITE(U, 64, 64, qwords)
-MAKE_MVWRITE(U, 128, 128, dqwords)
-MAKE_MVWRITE(F, 32, f32, floats)
-MAKE_MVWRITE(F, 64, f64, doubles)
+MAKE_MVWRITE(U, 8, 8, bytes, uint)
+MAKE_MVWRITE(U, 16, 16, words, uint)
+MAKE_MVWRITE(U, 32, 32, dwords, uint)
+MAKE_MVWRITE(U, 64, 64, qwords, uint)
+MAKE_MVWRITE(U, 128, 128, dqwords, uint)
+MAKE_MVWRITE(F, 32, f32, floats, float)
+MAKE_MVWRITE(F, 64, f64, doubles, float)
 
 #undef MAKE_MVWRITE
+
+#define MAKE_RVWRITE(prefix, size, base_type_prefix, accessor) \
+    template <typename T> \
+    ALWAYS_INLINE static \
+    Memory *_Do ## prefix ## WriteV ## size ( \
+        Memory *memory, RVnW<T> reg, \
+        base_type_prefix ## size ## _t val, \
+        NumberTag) { \
+      *reinterpret_cast<base_type_prefix ## size ## _t *>(reg.val_ref) = val; \
+      return memory; \
+    } \
+    template <typename T> \
+    ALWAYS_INLINE static \
+    Memory *_Do ## prefix ## WriteV ## size ( \
+        Memory *memory, RVnW<T> reg, \
+        vec ## size ## _t val, \
+        NumberTag) { \
+      *reinterpret_cast<base_type_prefix ## size ## _t *>(reg.val_ref) = \
+          val.accessor.elems[0]; \
+      return memory; \
+    }
+
+MAKE_RVWRITE(U, 32, uint, dwords)
+MAKE_RVWRITE(U, 64, uint, qwords)
+MAKE_RVWRITE(F, 32, float, floats)
+MAKE_RVWRITE(F, 64, float, doubles)
+
+#undef MAKE_RVWRITE
+
+// Make write operators for writing vectors to vector registers.
+#define MAKE_VWRITE(prefix, size, accessor, base_type_prefix) \
+    template <typename T, typename U> \
+    ALWAYS_INLINE static \
+    Memory *_Do ## prefix ## WriteV ## size ( \
+        Memory *memory, VnW<T> reg, U val, VectorTag) { \
+      enum : size_t { \
+        kNumSrcElems = NumVectorElems(val.accessor), \
+        kNumDstElems = NumVectorElems(reg.val_ref->accessor) \
+      }; \
+      _Pragma("unroll") \
+      for (size_t i = 0UL; i < kNumSrcElems; ++i) { \
+        reg.val_ref->accessor.elems[i] = val.accessor.elems[i]; \
+      } \
+      _Pragma("unroll") \
+      for (size_t i = kNumSrcElems; i < kNumDstElems; ++i) { \
+        reg.val_ref->accessor.elems[i] = 0; \
+      } \
+      return memory; \
+    } \
+    \
+    template <typename T> \
+    ALWAYS_INLINE static \
+    Memory *_Do ## prefix ## WriteV ## size ( \
+        Memory *memory, VnW<T> reg, \
+        base_type_prefix ## size ## _t val, \
+        NumberTag) { \
+      return _Do ## prefix ## WriteV ## size( \
+          memory, reg, vec ## size ## _t{.accessor = {{val}}}, VectorTag()); \
+    } \
+    \
+    template <typename T, typename U> \
+    ALWAYS_INLINE static \
+    Memory *_ ## prefix ## WriteV ## size ( \
+        Memory *memory, T dst, U src) { \
+      return _Do ## prefix ## WriteV ## size (memory, dst, src, Tag<U>::kTag); \
+    }
+
+MAKE_VWRITE(U, 8, bytes, uint)
+MAKE_VWRITE(U, 16, words, uint)
+MAKE_VWRITE(U, 32, dwords, uint)
+MAKE_VWRITE(U, 64, qwords, uint)
+MAKE_VWRITE(U, 128, dqwords, uint)
+MAKE_VWRITE(F, 32, floats, float)
+MAKE_VWRITE(F, 64, doubles, float)
+
+#undef MAKE_VWRITE
 
 // Make read operators for reading vectors to vector registers.
 #define MAKE_MVREAD(prefix, size, small_prefix, accessor) \
     template <typename T> \
     ALWAYS_INLINE static \
     T _ ## prefix ## ReadV ## size ( \
-        Memory *memory, const Mn<T> mem) { \
+        Memory *memory, Mn<T> mem) { \
+      T val; \
+      _Pragma("unroll") \
+      for (size_t i = 0UL; i < NumVectorElems(val.accessor); ++i) { \
+        val.accessor.elems[i] = __remill_read_memory_ ## small_prefix ( \
+            memory, \
+            mem.addr + (i * sizeof(val.accessor.elems[0])));\
+      } \
+      return val; \
+    } \
+    template <typename T> \
+    ALWAYS_INLINE static \
+    T _ ## prefix ## ReadV ## size ( \
+        Memory *memory, MnW<T> mem) { \
       T val; \
       _Pragma("unroll") \
       for (size_t i = 0UL; i < NumVectorElems(val.accessor); ++i) { \
@@ -306,83 +402,6 @@ MAKE_MVREAD(F, 64, f64, doubles)
 #define FReadV32(op) _FReadV32(memory, op)
 #define FReadV64(op) _FReadV64(memory, op)
 
-// Combine two vectors together into a third. If the second vector is smaller
-// than the first then the "top" elements in the first are preserved.
-#define MAKE_VUPDATE(base_type, size, accessor, prefix) \
-    template <typename T, typename S> \
-    ALWAYS_INLINE static \
-    Memory *_UpdateV ## prefix ## size( \
-        Memory *memory, const VnW<T> vec1, const S vec2) { \
-      static_assert(sizeof(vec2) <= sizeof(vec1), \
-                    "Second vector must be no larger than the first."); \
-      _Pragma("unroll") \
-      for (auto i = 0UL; i < NumVectorElems(vec2.accessor); ++i) { \
-        vec1.val_ref->accessor.elems[i] = vec2.accessor.elems[i]; \
-      } \
-      return memory; \
-    } \
-    \
-    template <typename T> \
-    ALWAYS_INLINE static \
-    Memory *_UpdateV ## prefix ## size( \
-        Memory *memory, const VnW<T> vec1, base_type val) { \
-      vec1.val_ref->accessor.elems[0] = val; \
-      return memory; \
-    } \
-    \
-    template <typename T> \
-    ALWAYS_INLINE static \
-    Memory *_UpdateV ## prefix ## size( \
-        Memory *memory, const MnW<T> dst, const T src) { \
-      return _WriteV ## prefix ## size(memory, dst, src); \
-    }
-
-MAKE_VUPDATE(uint8_t, 8, bytes, U)
-MAKE_VUPDATE(uint16_t, 16, words, U)
-MAKE_VUPDATE(uint32_t, 32, dwords, U)
-MAKE_VUPDATE(uint64_t, 64, qwords, U)
-MAKE_VUPDATE(uint128_t, 128, dqwords, U)
-MAKE_VUPDATE(float32_t, 32, floats, F)
-MAKE_VUPDATE(float64_t, 64, doubles, F)
-
-#undef MAKE_VUPDATE
-
-#define UpdateVU8(vec, val) \
-    do { \
-      memory = _UpdateVU8(memory, vec, (val)); \
-    } while (false)
-
-#define UpdateVU16(vec, val) \
-    do { \
-      memory = _UpdateVU16(memory, vec, (val)); \
-    } while (false)
-
-#define UpdateVU32(vec, val) \
-    do { \
-      memory = _UpdateVU32(memory, vec, (val)); \
-    } while (false)
-
-#define UpdateVU64(vec, val) \
-    do { \
-      memory = _UpdateVU64(memory, vec, (val)); \
-    } while (false)
-
-#define UpdateVU128(vec, val) \
-    do { \
-      memory = _UpdateVU128(memory, vec, (val)); \
-    } while (false)
-
-#define UpdateVF32(vec, val) \
-    do { \
-      memory = _UpdateVF32(memory, vec, (val)); \
-    } while (false)
-
-#define UpdateVF64(vec, val) \
-    do { \
-      memory = _UpdateVF64(memory, vec, (val)); \
-    } while (false)
-
-
 template <typename T>
 ALWAYS_INLINE static constexpr
 auto SizeOf(T) -> typename IntegerType<T>::UT {
@@ -476,13 +495,13 @@ auto TruncTo(T val) -> typename IntegerType<DT>::BT {
 
 // Unary operator.
 #define MAKE_UOP(name, type, op) \
-    ALWAYS_INLINE type name(const type R) { \
+    ALWAYS_INLINE type name(type R) { \
       return static_cast<type>(op R); \
     }
 
 // Binary operator.
 #define MAKE_BINOP(name, type, op) \
-    ALWAYS_INLINE type name(const type L, const type R) { \
+    ALWAYS_INLINE type name(type L, type R) { \
       return static_cast<type>(L op R); \
     }
 
@@ -523,7 +542,7 @@ MAKE_OPS(Not, ~, MAKE_UOP, MAKE_NOP)
 #define MAKE_BIN_BROADCAST(op, size, accessor, in, out) \
     template <typename T> \
     ALWAYS_INLINE static \
-    T op ## V ## size(T L, const T R) { \
+    T op ## V ## size(T L, T R) { \
       _Pragma("unroll") \
       for (auto i = 0UL; i < NumVectorElems(L.accessor); ++i) { \
         L.accessor.elems[i] = out(op(in(L.accessor.elems[i]), \
@@ -629,6 +648,28 @@ MAKE_INSERT(32, float32_t, floats, Identity, F)
 MAKE_INSERT(64, float64_t, doubles, Identity, F)
 #undef MAKE_EXTRACT
 
+// Binary broadcast operator.
+#define MAKE_VCLEAR(prefix, accessor, size) \
+    template <typename T> \
+    ALWAYS_INLINE static \
+    T prefix ## ClearV ## size(T vec) { \
+      _Pragma("unroll") \
+      for (auto i = 0UL; i < NumVectorElems(vec.accessor); ++i) { \
+        vec.accessor.elems[i] = 0; \
+      } \
+      return vec; \
+    }
+
+MAKE_VCLEAR(U, bytes, 8)
+MAKE_VCLEAR(U, words, 16)
+MAKE_VCLEAR(U, dwords, 32)
+MAKE_VCLEAR(U, qwords, 64)
+MAKE_VCLEAR(U, dqwords, 128)
+MAKE_VCLEAR(F, floats, 32)
+MAKE_VCLEAR(F, doubles, 64)
+
+#undef MAKE_VCLEAR
+
 // Esthetically pleasing names that hide the implicit small-step semantics
 // of the memory pointer.
 #define BarrierLoadLoad() \
@@ -650,8 +691,6 @@ MAKE_INSERT(64, float64_t, doubles, Identity, F)
     do { \
       memory = __remill_barrier_store_store(memory); \
     } while (false)
-
-
 
 // Make a predicate for querying the type of an operand.
 #define MAKE_PRED(name, X, val) \

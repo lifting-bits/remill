@@ -167,19 +167,26 @@ TEST_FUNC(instr_name, num_args): ; \
     .extern SYMBOL(gTestEnd)
     .extern SYMBOL(gStackSaveSlot)
 
-    .text
-
+    .data
+    .align 16
+SYMBOL(vec_data):
+    .long 0x41414141, 0xabababab, 0xcdcdcdcd, 0xefefefef
+    .long 0x29292929, 0x38383838, 0x47474747, 0x56565656
+    .long 0x37373737, 0x82828282, 0x1a1a1a1a, 0x2b2b2b2b
+    .long 0x96969696, 0x35353535, 0xaeaeaeae, 0xc4c4c4c4
+    .long 0x3d3d3d3d, 0x21212121, 0x11223344, 0x55667788
 
 // Set all bits in a vector.
 #if HAS_FEATURE_AVX
-# define SET_VEC(num) vpcmpeqw ymm ## num , ymm ## num , ymm ## num
+# define SET_VEC(num) vmovdqu ymm ## num , [RIP + SYMBOL(vec_data) + (num*16)]
 #else
-# define SET_VEC(num) pcmpeqw xmm ## num , xmm ## num
+# define SET_VEC(num) movdqu xmm ## num , [RIP + SYMBOL(vec_data) + (num*16)]
 #endif
 
     /* This function tail-calls to the test that we want to run via the
      * `gTestToRun` pointer.
      */
+    .text
     .align 16
     .globl SYMBOL(DoInvokeTestCase)
 SYMBOL(DoInvokeTestCase):
@@ -269,7 +276,28 @@ SYMBOL(__x86_test_table_begin):
 
 #define APPLE_SAFE_TESTS (!defined(__APPLE__) || 64 == ADDRESS_SIZE_BITS)
 
-/* Bring in all semantic tests. */
+
+/* Bring in the data transfer tests. These basically HAVE to pass before
+ * anything else can ;-)  */
+#include "tests/X86/DATAXFER/MOV.S"
+#include "tests/X86/DATAXFER/MOVAPD.S"
+#include "tests/X86/DATAXFER/MOVAPS.S"
+#include "tests/X86/DATAXFER/MOVD.S"
+#include "tests/X86/DATAXFER/MOVDQA.S"
+#include "tests/X86/DATAXFER/MOVDQU.S"
+#include "tests/X86/DATAXFER/MOVLPD.S"
+#include "tests/X86/DATAXFER/MOVLPS.S"
+#include "tests/X86/DATAXFER/MOVQ.S"
+#include "tests/X86/DATAXFER/MOVSD.S"
+#include "tests/X86/DATAXFER/MOVSS.S"
+#include "tests/X86/DATAXFER/MOVSX.S"
+#include "tests/X86/DATAXFER/MOVUPD.S"
+#include "tests/X86/DATAXFER/MOVUPS.S"
+#include "tests/X86/DATAXFER/MOVZX.S"
+#include "tests/X86/DATAXFER/XCHG.S"
+
+
+/* Bring in the rest of the semantic tests. */
 
 #include "tests/X86/BINARY/ADC.S"
 #include "tests/X86/BINARY/ADD.S"
@@ -300,6 +328,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BINARY/SUBSS.S"
 #include "tests/X86/BINARY/XADD.S"
 
+/*
 #include "tests/X86/BITBYTE/BT.S"
 #include "tests/X86/BITBYTE/BTC.S"
 #include "tests/X86/BITBYTE/BTR.S"
@@ -311,20 +340,6 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/CONVERT/CQO.S"
 #include "tests/X86/CONVERT/CWD.S"
 #include "tests/X86/CONVERT/CWDE.S"
-
-#include "tests/X86/DATAXFER/MOVAPD.S"
-#include "tests/X86/DATAXFER/MOVAPS.S"
-#include "tests/X86/DATAXFER/MOVD.S"
-#include "tests/X86/DATAXFER/MOVDQA.S"
-#include "tests/X86/DATAXFER/MOVDQU.S"
-#include "tests/X86/DATAXFER/MOVLPD.S"
-#include "tests/X86/DATAXFER/MOVLPS.S"
-#include "tests/X86/DATAXFER/MOVQ.S"
-#include "tests/X86/DATAXFER/MOVSD.S"
-#include "tests/X86/DATAXFER/MOVSS.S"
-#include "tests/X86/DATAXFER/MOVUPD.S"
-#include "tests/X86/DATAXFER/MOVUPS.S"
-#include "tests/X86/DATAXFER/XCHG.S"
 
 #include "tests/X86/LOGICAL/AND.S"
 #include "tests/X86/LOGICAL/NOT.S"
@@ -369,7 +384,7 @@ SYMBOL(__x86_test_table_begin):
 # include "tests/X86/STRINGOP/SCAS.S"
 # include "tests/X86/STRINGOP/STOS.S"
 #endif  // __APPLE__
-
+*/
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"
     .globl SYMBOL(__x86_test_table_end)

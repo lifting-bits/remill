@@ -22,13 +22,13 @@ TEST_END
 
 #endif  // APPLE_SAFE_TESTS
 
-TEST_BEGIN(MOVSDv12v128, 1)
+TEST_BEGIN(MOVSDv128v128, 1)
 TEST_INPUTS(
     0)
     movsd xmm0, xmm4
 TEST_END
 
-TEST_BEGIN(MOVSDv12v128_4, 1)
+TEST_BEGIN(MOVSDv128v128_4, 1)
 TEST_INPUTS(
     0)
     movsd xmm4, xmm0
@@ -40,13 +40,13 @@ TEST_END
 TEST_BEGIN(VMOVSDv128m64, 1)
 TEST_INPUTS(
     0)
-    vmovsd xmm0,QWORD PTR [rsp - 8]
+    vmovsd xmm0, QWORD PTR [rsp - 8]
 TEST_END
 
 TEST_BEGIN(VMOVSDv128m64_4, 1)
 TEST_INPUTS(
     0)
-    vmovsd xmm4,QWORD PTR [rsp - 8]
+    vmovsd xmm4, QWORD PTR [rsp - 8]
 TEST_END
 
 TEST_BEGIN(VMOVSDm64v128, 1)

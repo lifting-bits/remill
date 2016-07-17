@@ -4,6 +4,7 @@
 #define REMILL_ARCH_SEMANTICS_INSTRINSICS_CPP_
 
 #include "remill/Arch/Runtime/Intrinsics.h"
+#include "remill/Arch/Runtime/Operators.h"
 
 #define USED(sym) \
   __remill_mark_as_used(reinterpret_cast<void *>(&sym))
@@ -75,6 +76,22 @@ extern "C" void __remill_mark_as_used(void *);
 //  USED(__remill_write_f80);
 
   USED(__remill_read_cpu_features);
+}
+
+// TODO(pag): Assumes little-endian.
+uint128_t __remill_read_memory_128(Memory *mem, addr_t addr) {
+  uint128_t low_qword = ZExt(__remill_read_memory_64(mem, addr));
+  uint128_t high_qword = ZExt(__remill_read_memory_64(mem, addr + 8));
+  return UOr(UShl(high_qword, 64), low_qword);
+}
+
+// TODO(pag): Assumes little-endian.
+Memory *__remill_write_memory_128(Memory *mem, addr_t addr, uint128_t val) {
+  uint64_t low_qword = Trunc(val);
+  uint64_t high_qword = Trunc(UShr(val, 64));
+  mem = __remill_write_memory_64(mem, addr, low_qword);
+  mem = __remill_write_memory_64(mem, addr + 8, high_qword);
+  return mem;
 }
 
 #endif  // REMILL_ARCH_SEMANTICS_INSTRINSICS_CPP_

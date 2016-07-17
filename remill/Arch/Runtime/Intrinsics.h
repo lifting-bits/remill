@@ -152,6 +152,19 @@ extern Memory *__remill_atomic_end(Memory *);
 [[gnu::used]]
 extern void __remill_read_cpu_features(State &, Memory *, addr_t addr);
 
+// "Fake" intrinsics, implemented in terms of other intrinsics. Why use these
+// fake intrinsics? When we go to bitcode, we don't want LLVM to introduce
+// struct returns (i.e. passing a pointer to the function that will act
+// as the destination of the return value). We don't really want that because
+// it means that some of the intrinsics will be non-uniform, and special
+// cases are annoying.
+[[gnu::used]]
+uint128_t __remill_read_memory_128(Memory *, addr_t);
+
+
+[[gnu::used]]
+Memory *__remill_write_memory_128(Memory *, addr_t, uint128_t);
+
 //// Arch-specific. Marshal a float80_t into a float64_t.
 ////
 //// TODO(pag): https://stackoverflow.com/questions/2963055/msvc-win32-convert-extended-precision-float-80-bit-to-double-64-bit

@@ -11,7 +11,7 @@ TEST_END
 TEST_BEGIN(MOVLPSv128m64_4, 1)
 TEST_INPUTS(
     0)
-    movlps xmm4,QWORD PTR [rsp - 8]
+    movlps xmm4, QWORD PTR [rsp - 8]
 TEST_END
 
 TEST_BEGIN(MOVLPSm64v128, 1)
@@ -28,16 +28,28 @@ TEST_END
 
 #if HAS_FEATURE_AVX
 
-TEST_BEGIN(VMOVLPSv128m64, 1)
+TEST_BEGIN(VMOVLPSvv128v128m64_0_1, 1)
 TEST_INPUTS(
-    0)
+    0,
+    0x3de353f8,
+    0x411ffbe73de353f8)
     vmovlps xmm0, xmm1, QWORD PTR [rsp - 8]
 TEST_END
 
-TEST_BEGIN(VMOVLPSv128m64_4, 1)
+TEST_BEGIN(VMOVLPSvv128v128m64_4_1, 1)
 TEST_INPUTS(
-    0)
+    0,
+    0x3de353f8,
+    0x411ffbe73de353f8)
     vmovlps xmm4, xmm1, QWORD PTR [rsp - 8]
+TEST_END
+
+TEST_BEGIN(VMOVLPSvv128v128m64_1_4, 1)
+TEST_INPUTS(
+    0,
+    0x3de353f8,
+    0x411ffbe73de353f8)
+    vmovlps xmm1, xmm4, QWORD PTR [rsp - 8]
 TEST_END
 
 TEST_BEGIN(VMOVLPSm64v128, 1)

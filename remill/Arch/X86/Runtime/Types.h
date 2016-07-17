@@ -16,9 +16,16 @@ typedef Rn<uint16_t> R16;
 typedef Rn<uint32_t> R32;
 typedef Rn<uint64_t> R64;
 
-typedef Vn<vec64_t> V64;  // Legacy MMX technology register.
-typedef Vn<vec128_t> V128;  // Legacy (SSE) XMM register.
+// What's this `RVn` (and `RVnW` later)? The idea here is that some instructions
+// that operate on vectors also operate on MMX technology registers, or just
+// plain old GPRs. We don't want to have to create a special version of those
+// instruction implementations, so we "fake" the 32- and 64-bit vector types
+// to be more register-like (passed as an `addr_t`), and hide the vectorization
+// of those values in the operators for reading/writing to vectors.
+typedef RVn<vec32_t> V32;  // GPR holding a vector.
+typedef RVn<vec64_t> V64;  // MMX technology register, or GPR holding a vector.
 
+typedef Vn<vec128_t> V128;  // Legacy (SSE) XMM register.
 typedef Vn<vec128_t> VV128;  // AVX VEX.128-encoded XMM register.
 typedef Vn<vec256_t> VV256;  // AVX YMM register.
 typedef Vn<vec512_t> VV512;  // AVX512 ZMM register.
@@ -30,9 +37,8 @@ typedef Vn<vec512_t> VV512;  // AVX512 ZMM register.
 // extended AVX(512) register like YMM or ZMM.
 typedef IF_AVX512_ELSE(vec512_t, IF_AVX_ELSE(vec256_t, vec128_t))
         WriteVecType;
-
-typedef VnW<vec32_t> V32W;  // Legacy MMX technology register.
-typedef VnW<vec64_t> V64W;  // Legacy MMX technology register.
+typedef RVnW<IF_64BIT_ELSE(vec64_t, vec32_t)> V32W;  // GPR with vector.
+typedef RVnW<vec64_t> V64W;  // MMX technology register, or GPR with vector.
 typedef VnW<vec128_t> V128W;  // Legacy (SSE) XMM register.
 
 typedef VnW<WriteVecType> VV128W;  // AVX VEX.128-encoded XMM register.
@@ -52,6 +58,7 @@ typedef Mn<float32_t> MF32;
 typedef Mn<float64_t> MF64;
 typedef Mn<float80_t> MF80;
 
+typedef MnW<vec32_t> MV32W;
 typedef MnW<vec64_t> MV64W;
 typedef MnW<vec128_t> MV128W;
 typedef MnW<vec256_t> MV256W;

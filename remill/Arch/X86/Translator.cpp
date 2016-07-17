@@ -248,6 +248,10 @@ bool InstructionTranslator::CheckArgumentTypes(
   return true;
 }
 
+// Finds the function that implements this particular decoded instruction,
+// using the XED iform name as the main way of finding the function, and if
+// the instruction is scalable, then appending on the operand size of the
+// function (e.g. `_32`).
 llvm::Function *InstructionTranslator::GetInstructionFunction(void) {
   auto func_name = InstructionFunctionName(xedd);
   llvm::Function *instr_func = FindFunction(module, func_name);
