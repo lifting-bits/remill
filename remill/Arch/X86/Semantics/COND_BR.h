@@ -21,83 +21,73 @@ namespace {
 //              lifted program and the program itself.
 
 DEF_SEM(JNLE, PC target_pc) {
-  const auto cond = !state.aflag.zf && state.aflag.sf == state.aflag.of;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(
+      BAnd(BNot(FLAG_ZF), BXnor(FLAG_SF, FLAG_OF)),
+      target_pc,
+      next_pc));
 }
 
 DEF_SEM(JNS, PC target_pc) {
-  const auto cond = !state.aflag.sf;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(BNot(FLAG_SF), target_pc, next_pc));
 }
 
 DEF_SEM(JL, PC target_pc) {
-  const auto cond = state.aflag.sf != state.aflag.of;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(BXor(FLAG_SF, FLAG_OF), target_pc, next_pc));
 }
 
 DEF_SEM(JNP, PC target_pc) {
-  const auto cond = !state.aflag.pf;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(BNot(FLAG_PF), target_pc, next_pc));
 }
 
 DEF_SEM(JNZ, PC target_pc) {
-  const auto cond = !state.aflag.zf;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(BNot(FLAG_ZF), target_pc, next_pc));
 }
 
 DEF_SEM(JNB, PC target_pc) {
-  const auto cond = !state.aflag.cf;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(BNot(FLAG_CF), target_pc, next_pc));
 }
 
 DEF_SEM(JNO, PC target_pc) {
-  const auto cond = !state.aflag.of;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(BNot(FLAG_OF), target_pc, next_pc));
 }
 
 DEF_SEM(JNL, PC target_pc) {
-  const auto cond = state.aflag.sf == state.aflag.of;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(BXnor(FLAG_SF, FLAG_OF), target_pc, next_pc));
 }
 
 DEF_SEM(JNBE, PC target_pc) {
-  const auto cond = !state.aflag.cf && !state.aflag.zf;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(BNot(BOr(FLAG_CF, FLAG_ZF)), target_pc, next_pc));
 }
 
 DEF_SEM(JBE, PC target_pc) {
-  const auto cond = state.aflag.cf || state.aflag.zf;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(BOr(FLAG_CF, FLAG_ZF), target_pc, next_pc));
 }
 
 DEF_SEM(JZ, PC target_pc) {
-  const auto cond = state.aflag.zf;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(FLAG_ZF, target_pc, next_pc));
 }
 
 DEF_SEM(JP, PC target_pc) {
-  const auto cond = state.aflag.pf;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(FLAG_PF, target_pc, next_pc));
 }
 
 DEF_SEM(JS, PC target_pc) {
-  const auto cond = state.aflag.sf;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(FLAG_SF, target_pc, next_pc));
 }
 
 DEF_SEM(JO, PC target_pc) {
-  const auto cond = state.aflag.of;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(FLAG_OF, target_pc, next_pc));
 }
 
 DEF_SEM(JB, PC target_pc) {
-  const auto cond = state.aflag.cf;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(FLAG_CF, target_pc, next_pc));
 }
 
 DEF_SEM(JLE, PC target_pc) {
-  const auto cond = state.aflag.zf || (state.aflag.sf != state.aflag.of);
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(
+      BOr(FLAG_ZF, BXor(FLAG_SF, FLAG_OF)),
+      target_pc,
+      next_pc));
 }
 
 } // namespace
@@ -215,39 +205,36 @@ IF_64BIT(DEF_ISEL(JLE_RELBRz_64) = JLE;)
 DEF_ISEL(JLE_RELBRd) = JLE;
 
 DEF_ISEL_SEM(JCXZ_RELBRb, PC target_pc) {
-  const auto cond = !state.gpr.rcx.word;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(UCmpEq(REG_CX, 0_u16), target_pc, next_pc));
 }
 
 DEF_ISEL_SEM(JECXZ_RELBRb, PC target_pc) {
-  const auto cond = !state.gpr.rcx.dword;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(UCmpEq(REG_ECX, 0_u32), target_pc, next_pc));
 }
 
 DEF_ISEL_SEM(JRCXZ_RELBRb, PC target_pc) {
-  const auto cond = !R(state.gpr.rcx);
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  Write(REG_PC, SelectPC(UCmpEq(REG_RCX, 0_u64), target_pc, next_pc));
 }
 
 DEF_ISEL_SEM(LOOP_RELBRb, PC target_pc) {
-  const auto count = R(state.gpr.rcx) - 1;
-  const auto cond = 0 != count;
-  W(state.gpr.rcx) = count;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  auto count = USub(REG_XCX, addr_t(1));
+  auto cond = UCmpNeq(count, addr_t(0));
+  Write(REG_XCX, count);
+  Write(REG_PC, SelectPC(cond, target_pc, next_pc));
 }
 
 DEF_ISEL_SEM(LOOPE_RELBRb, PC target_pc) {
-  const auto count = R(state.gpr.rcx) - 1;
-  const auto cond = 0 != count && state.aflag.zf;
-  W(state.gpr.rcx) = count;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  auto count = USub(REG_XCX, addr_t(1));
+  auto cond = BAnd(UCmpNeq(count, addr_t(0)), FLAG_ZF);
+  Write(REG_XCX, count);
+  Write(REG_PC, SelectPC(cond, target_pc, next_pc));
 }
 
 DEF_ISEL_SEM(LOOPNE_RELBRb, PC target_pc) {
-  const auto count = R(state.gpr.rcx) - 1;
-  const auto cond = 0 != count && !state.aflag.zf;
-  W(state.gpr.rcx) = count;
-  W(state.gpr.rip) = __remill_conditional_branch(cond, target_pc, next_pc);
+  auto count = USub(REG_XCX, addr_t(1));
+  auto cond = BAnd(UCmpNeq(count, addr_t(0)), BNot(FLAG_ZF));
+  Write(REG_XCX, count);
+  Write(REG_PC, SelectPC(cond, target_pc, next_pc));
 }
 
 /*

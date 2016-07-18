@@ -42,6 +42,7 @@
 #define REG_RDI state.gpr.rdi.qword
 
 #if 64 == ADDRESS_SIZE_BITS
+# define REG_PC REG_RIP
 # define REG_XIP REG_RIP
 # define REG_XAX REG_RAX
 # define REG_XDX REG_RDX
@@ -49,6 +50,7 @@
 # define REG_XSI REG_RSI
 # define REG_XDI REG_RDI
 #else
+# define REG_PC REG_EIP
 # define REG_XIP REG_EIP
 # define REG_XAX REG_EAX
 # define REG_XDX REG_EDX
@@ -74,7 +76,7 @@
 #include "remill/Arch/X86/Semantics/BITBYTE.h"
 //#include "remill/Arch/X86/Semantics/CALL_RET.h"
 //#include "remill/Arch/X86/Semantics/CMOV.h"
-//#include "remill/Arch/X86/Semantics/COND_BR.h"
+#include "remill/Arch/X86/Semantics/COND_BR.h"
 //#include "remill/Arch/X86/Semantics/CONVERT.h"
 #include "remill/Arch/X86/Semantics/DATAXFER.h"
 //#include "remill/Arch/X86/Semantics/INTERRUPT.h"

@@ -722,6 +722,10 @@ inline uint64_t operator "" _u64(unsigned long long value) {
   return static_cast<uint64_t>(value);
 }
 
+inline uint64_t operator "" _addr_t(unsigned long long value) {
+  return static_cast<addr_t>(value);
+}
+
 inline uint128_t operator "" _u128(unsigned long long value) {
   return static_cast<uint128_t>(value);
 }
