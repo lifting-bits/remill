@@ -328,11 +328,13 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BINARY/SUBSS.S"
 #include "tests/X86/BINARY/XADD.S"
 
-/*
 #include "tests/X86/BITBYTE/BT.S"
 #include "tests/X86/BITBYTE/BTC.S"
 #include "tests/X86/BITBYTE/BTR.S"
 #include "tests/X86/BITBYTE/BTS.S"
+#include "tests/X86/BITBYTE/SETcc.S"
+
+/*
 
 #include "tests/X86/CONVERT/CBW.S"
 #include "tests/X86/CONVERT/CDQ.S"

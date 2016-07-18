@@ -312,6 +312,22 @@ MAKE_MVREAD(F, 64, f64, doubles)
 
 #undef MAKE_MVREAD
 
+#define MAKE_WRITE_REF(type) \
+    ALWAYS_INLINE static Memory *_Write(Memory *memory, type &ref, type val) { \
+      ref = val; \
+      return memory; \
+    }
+
+MAKE_WRITE_REF(bool)
+MAKE_WRITE_REF(uint8_t)
+MAKE_WRITE_REF(uint16_t)
+MAKE_WRITE_REF(uint32_t)
+MAKE_WRITE_REF(uint64_t)
+MAKE_WRITE_REF(float32_t)
+MAKE_WRITE_REF(float64_t)
+
+#undef MAKE_WRITE_REF
+
 // For the sake of esthetics and hiding the small-step semantics of memory
 // operands, we use this macros to implicitly pass in the `memory` operand,
 // which we know will be defined in semantics functions.
@@ -328,7 +344,10 @@ MAKE_MVREAD(F, 64, f64, doubles)
     } while (false)
 
 // Handle writes of N-bit values to M-bit values with N <= M. If N < M then the
-// source value will be zero-extended to the dest value type.
+// source value will be zero-extended to the dest value type. This is useful
+// on x86-64 where writes to 32-bit registers zero-extend to 64-bits. In a
+// 64-bit build of Remill, the `R32W` type used in the X86 architecture
+// runtime actually aliases `R64W`.
 #define WriteZExt(op, val) \
     do { \
       Write(op, ZExtTo<decltype(op)>(val)); \
@@ -404,7 +423,7 @@ MAKE_MVREAD(F, 64, f64, doubles)
 
 template <typename T>
 ALWAYS_INLINE static constexpr
-auto SizeOf(T) -> typename IntegerType<T>::UT {
+auto ByteSizeOf(T) -> typename IntegerType<T>::UT {
   return static_cast<typename IntegerType<T>::UT>(
       sizeof(typename BaseType<T>::BT));
 }
@@ -422,6 +441,7 @@ ALWAYS_INLINE static
 auto Unsigned(T val) -> typename IntegerType<T>::UT {
   return static_cast<typename IntegerType<T>::UT>(val);
 }
+
 // Convert the input value into a signed integer.
 template <typename T>
 ALWAYS_INLINE static
@@ -436,6 +456,14 @@ template <typename T>
 ALWAYS_INLINE static
 T Identity(T val) {
   return val;
+}
+
+// Convert an integer to some other type. This is important for
+// integer literals, whose type are `int`.
+template <typename T>
+ALWAYS_INLINE static
+auto Literal(int val) -> typename IntegerType<T>::UT {
+  return static_cast<typename IntegerType<T>::UT>(val);
 }
 
 // Zero-extend an integer to twice its current width.
@@ -494,30 +522,39 @@ auto TruncTo(T val) -> typename IntegerType<DT>::BT {
 #define MAKE_NOP(...)
 
 // Unary operator.
-#define MAKE_UOP(name, type, op) \
+#define MAKE_UOP(name, type, widen_type, op) \
     ALWAYS_INLINE type name(type R) { \
-      return static_cast<type>(op R); \
+      return static_cast<type>(op static_cast<widen_type>(R)); \
     }
 
 // Binary operator.
-#define MAKE_BINOP(name, type, op) \
+#define MAKE_BINOP(name, type, widen_type, op) \
     ALWAYS_INLINE type name(type L, type R) { \
-      return static_cast<type>(L op R); \
+      return static_cast<type>( \
+        static_cast<widen_type>(L) op static_cast<widen_type>(R)); \
     }
 
+#define MAKE_BOOLBINOP(name, type, widen_type, op) \
+    ALWAYS_INLINE bool name(type L, type R) { \
+      return L op R; \
+    }
+
+// The purpose of the widening type is that Clang/LLVM will already extend
+// the types of the inputs to their "natural" machine size, so we'll just
+// make that explicit, where `addr_t` encodes the natural machine word.
 #define MAKE_OPS(name, op, make_int_op, make_float_op) \
-    make_int_op(U ## name, uint8_t, op) \
-    make_int_op(U ## name, uint16_t, op) \
-    make_int_op(U ## name, uint32_t, op) \
-    make_int_op(U ## name, uint64_t, op) \
-    make_int_op(U ## name, uint128_t, op) \
-    make_int_op(S ## name, int8_t, op) \
-    make_int_op(S ## name, int16_t, op) \
-    make_int_op(S ## name, int32_t, op) \
-    make_int_op(S ## name, int64_t, op) \
-    make_int_op(S ## name, int128_t, op) \
-    make_float_op(F ## name, float32_t, op) \
-    make_float_op(F ## name, float64_t, op)
+    make_int_op(U ## name, uint8_t, addr_t, op) \
+    make_int_op(U ## name, uint16_t, addr_t, op) \
+    make_int_op(U ## name, uint32_t, addr_t, op) \
+    make_int_op(U ## name, uint64_t, uint64_t, op) \
+    make_int_op(U ## name, uint128_t, uint128_t, op) \
+    make_int_op(S ## name, int8_t, addr_diff_t, op) \
+    make_int_op(S ## name, int16_t, addr_diff_t, op) \
+    make_int_op(S ## name, int32_t, addr_diff_t, op) \
+    make_int_op(S ## name, int64_t, int64_t, op) \
+    make_int_op(S ## name, int128_t, int128_t, op) \
+    make_float_op(F ## name, float32_t, float32_t, op) \
+    make_float_op(F ## name, float64_t, float64_t, op)
 
 MAKE_OPS(Add, +, MAKE_BINOP, MAKE_BINOP)
 MAKE_OPS(Sub, -, MAKE_BINOP, MAKE_BINOP)
@@ -533,10 +570,36 @@ MAKE_OPS(Shl, <<, MAKE_BINOP, MAKE_NOP)
 MAKE_OPS(Neg, -, MAKE_UOP, MAKE_UOP)
 MAKE_OPS(Not, ~, MAKE_UOP, MAKE_NOP)
 
+MAKE_OPS(CmpEq, ==, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
+MAKE_OPS(CmpNeq, !=, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
+MAKE_OPS(CmpLt, <, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
+MAKE_OPS(CmpLte, <=, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
+MAKE_OPS(CmpGt, >, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
+MAKE_OPS(CmpGte, >=, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
+
 #undef MAKE_UNOP
 #undef MAKE_BINOP
 #undef MAKE_OPS
 
+ALWAYS_INLINE static bool BAnd(bool a, bool b) {
+  return a && b;
+}
+
+ALWAYS_INLINE static bool BOr(bool a, bool b) {
+  return a || b;
+}
+
+ALWAYS_INLINE static bool BXor(bool a, bool b) {
+  return a != b;
+}
+
+ALWAYS_INLINE static bool BXNor(bool a, bool b) {
+  return a == b;
+}
+
+ALWAYS_INLINE static bool BNot(bool a) {
+  return !a;
+}
 
 // Binary broadcast operator.
 #define MAKE_BIN_BROADCAST(op, size, accessor, in, out) \
@@ -740,6 +803,16 @@ MAKE_PRED(Immediate, uint32_t, true)
 MAKE_PRED(Immediate, uint64_t, true)
 
 #undef MAKE_PRED
+
+template <typename T>
+ALWAYS_INLINE static Mn<T> GetElementPtr(Mn<T> addr, T index) {
+  return {addr.addr + (index * static_cast<addr_t>(ByteSizeOf(addr)))};
+}
+
+template <typename T>
+ALWAYS_INLINE static MnW<T> GetElementPtr(MnW<T> addr, T index) {
+  return {addr.addr + (index * static_cast<addr_t>(ByteSizeOf(addr)))};
+}
 
 }  // namespace
 

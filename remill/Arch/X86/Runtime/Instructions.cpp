@@ -71,7 +71,7 @@
 //
 #include "remill/Arch/X86/Semantics/FLAGS.h"
 #include "remill/Arch/X86/Semantics/BINARY.h"
-//#include "remill/Arch/X86/Semantics/BITBYTE.h"
+#include "remill/Arch/X86/Semantics/BITBYTE.h"
 //#include "remill/Arch/X86/Semantics/CALL_RET.h"
 //#include "remill/Arch/X86/Semantics/CMOV.h"
 //#include "remill/Arch/X86/Semantics/COND_BR.h"

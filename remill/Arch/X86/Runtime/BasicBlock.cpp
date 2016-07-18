@@ -14,6 +14,7 @@ void __remill_basic_block(State &state, Memory &memory, addr_t curr_pc) {
 
   auto &STATE = state;
   auto &MEMORY = memory;
+  auto &PC = state.gpr.rip.IF_64BIT_ELSE(qword, dword);
 
   // Define read- and write-specific aliases of each register. We will
   // reference these variables from the bitcode side of things so that,

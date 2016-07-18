@@ -192,11 +192,10 @@ void InstructionTranslator::LiftIntoBlock(const Translator &lifter,
 // Store the program counter into the associated state register. This
 // lets us access this information from within instruction implementations.
 void InstructionTranslator::LiftPC(uintptr_t next_pc) {
-  auto rip_name = kArchAMD64 == analysis->arch_name ? "RIP_write" : "EIP_write";
   llvm::IRBuilder<> ir(basic_block);
   ir.CreateStore(
       llvm::ConstantInt::get(intptr_type, next_pc, false),
-      ir.CreateLoad(FindVarInFunction(function, rip_name)));
+      ir.CreateLoad(FindVarInFunction(function, "PC")));
 }
 
 // Read the program counter. The program counter is updated before each

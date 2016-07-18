@@ -7,98 +7,82 @@ namespace {
 
 template <typename D>
 DEF_SEM(SETNLE, D dst) {
-  const auto cond = !state.aflag.zf && state.aflag.cf == state.aflag.pf;
-  W(dst) = cond;
+  Write(dst, BAnd(BNot(FLAG_ZF), BXNor(FLAG_CF, FLAG_PF)));
 }
 
 template <typename D>
 DEF_SEM(SETNS, D dst) {
-  const auto cond = !state.aflag.sf;
-  W(dst) = cond;
+  Write(dst, BNot(FLAG_SF));
 }
 
 template <typename D>
 DEF_SEM(SETL, D dst) {
-  const auto cond = state.aflag.sf != state.aflag.of;
-  W(dst) = cond;
+  Write(dst, BXor(FLAG_SF, FLAG_OF));
 }
 
 template <typename D>
 DEF_SEM(SETNP, D dst) {
-  const auto cond = !state.aflag.pf;
-  W(dst) = cond;
+  Write(dst, BNot(FLAG_PF));
 }
 
 template <typename D>
 DEF_SEM(SETNZ, D dst) {
-  const auto cond = !state.aflag.zf;
-  W(dst) = cond;
+  Write(dst, BNot(FLAG_ZF));
 }
 
 template <typename D>
 DEF_SEM(SETNB, D dst) {
-  const auto cond = !state.aflag.cf;
-  W(dst) = cond;
+  Write(dst, BNot(FLAG_CF));
 }
 
 template <typename D>
 DEF_SEM(SETNO, D dst) {
-  const auto cond = !state.aflag.of;
-  W(dst) = cond;
+  Write(dst, BNot(FLAG_OF));
 }
 
 template <typename D>
 DEF_SEM(SETNL, D dst) {
-  const auto cond = state.aflag.sf == state.aflag.of;
-  W(dst) = cond;
+  Write(dst, BXNor(FLAG_SF, FLAG_OF));
 }
 
 template <typename D>
 DEF_SEM(SETNBE, D dst) {
-  const auto cond = !state.aflag.cf & !state.aflag.zf;
-  W(dst) = cond;
+  Write(dst, BNot(BOr(FLAG_DF, FLAG_ZF)));
 }
 
 template <typename D>
 DEF_SEM(SETBE, D dst) {
-  const auto cond = state.aflag.cf | state.aflag.zf;
-  W(dst) = cond;
+  Write(dst, BOr(FLAG_CF, FLAG_ZF));
 }
 
 template <typename D>
 DEF_SEM(SETZ, D dst) {
-  const auto cond = state.aflag.zf;
-  W(dst) = cond;
+  Write(dst, FLAG_ZF);
 }
 
 template <typename D>
 DEF_SEM(SETP, D dst) {
-  const auto cond = state.aflag.pf;
-  W(dst) = cond;
+  Write(dst, FLAG_PF);
 }
 
 template <typename D>
 DEF_SEM(SETS, D dst) {
-  const auto cond = state.aflag.sf;
-  W(dst) = cond;
+  Write(dst, FLAG_SF);
 }
 
 template <typename D>
 DEF_SEM(SETO, D dst) {
-  const auto cond = state.aflag.of;
-  W(dst) = cond;
+  Write(dst, FLAG_OF);
 }
 
 template <typename D>
 DEF_SEM(SETB, D dst) {
-  const auto cond = state.aflag.cf;
-  W(dst) = cond;
+  Write(dst, FLAG_CF);
 }
 
 template <typename D>
 DEF_SEM(SETLE, D dst) {
-  const auto cond = state.aflag.zf | (state.aflag.sf ^ state.aflag.of);
-  W(dst) = cond;
+  Write(dst, BOr(FLAG_ZF, BXor(FLAG_SF, FLAG_OF)));
 }
 
 }  // namespace
@@ -138,147 +122,77 @@ DEF_ISEL(SETBE_GPR8) = SETBE<R8W>;
 namespace {
 
 template <typename S1, typename S2>
-DEF_SEM(BTreg, S1 reg_, S2 bit_) {
-  typedef BASE_TYPE_OF(S1) T;
-  const T reg = R(reg_);
-  const auto bit = R(bit_) % (8 * sizeof(T));
-  state.aflag.cf = !!(reg & (T(1) << bit));
+DEF_SEM(BTreg, S1 src1, S2 src2) {
+  auto val = Read(src1);
+  auto bit = ZExtTo<S1>(Read(src2));
+  auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(src1)));
+  Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
 }
 
 template <typename S1, typename S2>
-DEF_SEM(BTmem, S1 src_mem, S2 bit_) {
-  typedef BASE_TYPE_OF(S1) T;
-  enum : T {
-    kNumBits = 8 * sizeof(T),
-    kMask = kNumBits - 1
-  };
-  const auto addr = A(src_mem);
-  const auto bitoffset = R(bit_);
-  const auto bit = bitoffset & kMask;
-  const auto byte = sizeof(T) * (bitoffset / kNumBits);
-
-  Mn<T> byte_mem = {addr + byte};
-  state.aflag.cf = !!(R(byte_mem) & (T(1) << bit));
+DEF_SEM(BTmem, S1 src1, S2 src2) {
+  auto bit = ZExtTo<S1>(Read(src2));
+  auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(src1)));
+  auto index = UDiv(bit, BitSizeOf(src1));
+  auto val = Read(GetElementPtr(src1, index));
+  Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
 }
 
-template <typename S1, typename S2, typename S3>
-DEF_SEM(BTSreg, S1 dst, S2 reg_, S3 bit_) {
-  typedef BASE_TYPE_OF(S2) T;
-  enum : T {
-    kNumBits = 8 * sizeof(T),
-    kMask = kNumBits - 1
-  };
-  const auto bitoffset = R(bit_);
-  const auto bit = bitoffset & kMask;
-  const T reg = R(reg_);
-  const T mask = T(1) << bit;
-  state.aflag.cf = !!(reg & mask);
-  W(dst) = reg | mask;
+template <typename D, typename S1, typename S2>
+DEF_SEM(BTSreg, D dst, S1 src1, S2 src2) {
+  auto val = Read(src1);
+  auto bit = ZExtTo<S1>(Read(src2));
+  auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(val)));
+  WriteZExt(dst, UOr(val, bit_mask));
+  Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
 }
 
-template <typename S1, typename S2, typename S3>
-DEF_SEM(BTSmem, S1, S2 src_dst_mem, S3 bit_) {
-  typedef BASE_TYPE_OF(S2) T;
-  enum : T {
-    kNumBits = 8 * sizeof(T),
-    kMask = kNumBits - 1
-  };
-  const auto bitoffset = R(bit_);
-  const auto bit = bitoffset & kMask;
-  const auto byte = sizeof(T) * (bitoffset / kNumBits);
-
-  const addr_t src_dst_addr = A(src_dst_mem) + byte;
-  Mn<T> src_mem = {src_dst_addr};
-  MnW<T> dst_mem = {src_dst_addr};
-
-  const T mask = T(1) << bit;
-  const T mem = R(src_mem);
-  state.aflag.cf = !!(mem & mask);
-  W(dst_mem) = mem | mask;
+template <typename D, typename S1, typename S2>
+DEF_SEM(BTSmem, D dst, S1 src1, S2 src2) {
+  auto bit = ZExtTo<S1>(Read(src2));
+  auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(src1)));
+  auto index = UDiv(bit, BitSizeOf(src1));
+  auto val = Read(GetElementPtr(src1, index));
+  Write(GetElementPtr(dst, index), UOr(val, bit_mask));
+  Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
 }
 
-template <typename S1, typename S2, typename S3>
-DEF_SEM(BTRreg, S1 dst, S2 reg_, S3 bit_) {
-  typedef BASE_TYPE_OF(S2) T;
-  enum : T {
-    kNumBits = 8 * sizeof(T),
-    kMask = kNumBits - 1
-  };
-  const auto bitoffset = R(bit_);
-  const auto bit = bitoffset & kMask;
-  const T mask = T(1) << bit;
-  const T reg = R(reg_);
-  state.aflag.cf = !!(reg & mask);
-  W(dst) = reg & ~mask;
+template <typename D, typename S1, typename S2>
+DEF_SEM(BTRreg, D dst, S1 src1, S2 src2) {
+  auto val = Read(src1);
+  auto bit = ZExtTo<S1>(Read(src2));
+  auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(src1)));
+  WriteZExt(dst, UAnd(val, UNot(bit_mask)));
+  Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
 }
 
-template <typename S1, typename S2, typename S3>
-DEF_SEM(BTRmem, S1, S2 src_dst_mem, S3 bit_) {
-  typedef BASE_TYPE_OF(S2) T;
-  enum : T {
-    kNumBits = 8 * sizeof(T),
-    kMask = kNumBits - 1
-  };
-  const auto bitoffset = R(bit_);
-  const auto bit = bitoffset & kMask;
-  const auto byte = sizeof(T) * (bitoffset / kNumBits);
-
-  const addr_t src_dst_addr = A(src_dst_mem) + byte;
-  Mn<T> src_mem = {src_dst_addr};
-  MnW<T> dst_mem = {src_dst_addr};
-
-  const T mask = T(1) << bit;
-  const T mem = R(src_mem);
-  state.aflag.cf = !!(mem & mask);
-  W(dst_mem) = mem & ~mask;
+template <typename D, typename S1, typename S2>
+DEF_SEM(BTRmem, D dst, S1 src1, S2 src2) {
+  auto bit = ZExtTo<S1>(Read(src2));
+  auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(src1)));
+  auto index = UDiv(bit, BitSizeOf(src1));
+  auto val = Read(GetElementPtr(src1, index));
+  Write(GetElementPtr(dst, index), UAnd(val, UNot(bit_mask)));
+  Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
 }
 
-
-template <typename S1, typename S2, typename S3>
-DEF_SEM(BTCreg, S1 dst, S2 reg_, S3 bit_) {
-  typedef BASE_TYPE_OF(S2) T;
-  enum : T {
-    kNumBits = 8 * sizeof(T),
-    kMask = kNumBits - 1
-  };
-  const auto bit = R(bit_) % (8 * sizeof(T));
-  const T mask = T(1) << bit;
-  const T reg = R(reg_);
-  state.aflag.cf = !!(reg & mask);
-  if (state.aflag.cf) {
-    W(dst) = reg & ~mask;
-  } else {
-    W(dst) = reg | mask;
-  }
+template <typename D, typename S1, typename S2>
+DEF_SEM(BTCreg, D dst, S1 src1, S2 src2) {
+  auto val = Read(src1);
+  auto bit = ZExtTo<S1>(Read(src2));
+  auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(val)));
+  WriteZExt(dst, UXor(val, bit_mask));
+  Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
 }
 
-template <typename S1, typename S2, typename S3>
-DEF_SEM(BTCmem, S1, S2 src_dst_mem, S3 bit_) {
-  typedef BASE_TYPE_OF(S2) T;
-  enum : T {
-    kNumBits = 8 * sizeof(T),
-    kMask = kNumBits - 1
-  };
-  const auto bitoffset = R(bit_);
-  const auto bit = bitoffset & kMask;
-  const auto byte = sizeof(T) * (bitoffset / kNumBits);
-
-  const addr_t src_dst_addr = A(src_dst_mem) + byte;
-  Mn<T> src_mem = {src_dst_addr};
-  MnW<T> dst_mem = {src_dst_addr};
-
-  const T mask = T(1) << bit;
-  const T mem = R(src_mem);
-
-  if (T(0) != (mem & mask)) {
-    W(dst_mem) = mem & ~mask;
-    __remill_barrier_compiler();
-    state.aflag.cf = true;
-  } else {
-    W(dst_mem) = mem | mask;
-    __remill_barrier_compiler();
-    state.aflag.cf = false;
-  }
+template <typename D, typename S1, typename S2>
+DEF_SEM(BTCmem, D dst, S1 src1, S2 src2) {
+  auto bit = ZExtTo<S1>(Read(src2));
+  auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(src1)));
+  auto index = UDiv(bit, BitSizeOf(src1));
+  auto val = Read(GetElementPtr(src1, index));
+  Write(GetElementPtr(dst, index), UXor(val, bit_mask));
+  Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
 }
 
 }  // namespace

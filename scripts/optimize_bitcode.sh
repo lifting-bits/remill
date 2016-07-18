@@ -23,8 +23,9 @@ else
 fi
 
 BIN=`mktemp -t remill_XXXXXXXXXX`
+O3_NOVEC="-O3 -fno-vectorize -fno-slp-vectorize"
 
-$DIR/third_party/bin/opt -O3 -o=$BIN.opt0.bc $1 || {
+$DIR/third_party/bin/opt $O3_NOVEC -o=$BIN.opt0.bc $1 || {
     printf "${RED}Could not optimize $1${RESET}\n" > /dev/stderr
     exit 1
 }
@@ -36,7 +37,7 @@ $DIR/third_party/bin/opt \
     exit 1
 }
 
-$DIR/third_party/bin/opt -O3 -o=$BIN.opt2.bc $BIN.opt1.bc || {
+$DIR/third_party/bin/opt $O3_NOVEC -o=$BIN.opt2.bc $BIN.opt1.bc || {
     printf "${RED}Could not optimize $1.opt1.bc${RESET}\n" > /dev/stderr
     exit 1
 }

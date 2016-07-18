@@ -43,22 +43,22 @@ static void RemoveFunction(llvm::Module &module, const char *name) {
   }
 }
 
-static void RemoveNakedAttribute(llvm::Function &function) {
-  auto naked_attr = llvm::Attribute::get(function.getContext(),
-                                         llvm::Attribute::Naked);
-
-  function.removeFnAttr(llvm::Attribute::Naked);
-  for (auto &block : function) {
-    for (auto &inst : block) {
-      if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(&inst)) {
-        if (call_inst->hasFnAttr(llvm::Attribute::Naked)) {
-          call_inst->removeAttribute(llvm::AttributeSet::FunctionIndex,
-                                     naked_attr);
-        }
-      }
-    }
-  }
-}
+//static void RemoveNakedAttribute(llvm::Function &function) {
+//  auto naked_attr = llvm::Attribute::get(function.getContext(),
+//                                         llvm::Attribute::Naked);
+//
+//  function.removeFnAttr(llvm::Attribute::Naked);
+//  for (auto &block : function) {
+//    for (auto &inst : block) {
+//      if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(&inst)) {
+//        if (call_inst->hasFnAttr(llvm::Attribute::Naked)) {
+//          call_inst->removeAttribute(llvm::AttributeSet::FunctionIndex,
+//                                     naked_attr);
+//        }
+//      }
+//    }
+//  }
+//}
 
 }  // namespace
 
@@ -83,9 +83,9 @@ const char *FinalizeModulePass::getPassName(void) const {
 }
 
 bool FinalizeModulePass::runOnModule(llvm::Module &module) {
-  for (llvm::Function &function : module) {
-    RemoveNakedAttribute(function);
-  }
+//  for (llvm::Function &function : module) {
+//    RemoveNakedAttribute(function);
+//  }
   RemoveFunction(module, "__remill_intrinsics");
   RemoveFunction(module, "__remill_mark_as_used");
   RemoveFunction(module, "__remill_defer_inlining");

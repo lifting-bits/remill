@@ -16,6 +16,7 @@ struct Memory;
 // Address in the source architecture type. We don't use a `uintptr_t` because
 // that might be specific to the destination architecture type.
 typedef IF_64BIT_ELSE(uint64_t, uint32_t) addr_t;
+typedef IF_64BIT_ELSE(int64_t, int32_t) addr_diff_t;
 
 typedef unsigned uint128_t __attribute__((mode(TI)));
 static_assert(16 == sizeof(uint128_t), "Invalid `uint128_t` size.");
@@ -502,6 +503,10 @@ struct BaseType<Vn<T>> : public BaseType<T> {};
 
 template <typename T>
 struct BaseType<VnW<T>> : public BaseType<T> {};
+
+template <typename T>
+struct BaseType<RVn<T>> : public BaseType<T> {};
+
 
 //template <typename T>
 //struct AggVectorType;

@@ -15,6 +15,7 @@ CXXFLAGS+=" -Wall -Werror -Wconversion -pedantic"
 CXXFLAGS+=" -Wno-gnu-anonymous-struct -Wno-return-type-c-linkage"
 CXXFLAGS+=" -Wno-gnu-zero-variadic-macro-arguments -Wno-nested-anon-types"
 CXXFLAGS+=" -Wno-extended-offsetof -Wno-c99-extensions"
+CXXFLAGS+=" -fno-vectorize -fno-slp-vectorize"
 
 function compile_x86()
 {
