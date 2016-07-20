@@ -56,6 +56,12 @@ T _Read(Memory *, Rn<T> reg) {
   return static_cast<T>(reg.val);
 }
 
+template <typename T>
+ALWAYS_INLINE static
+T _Read(Memory *, RnW<T> reg) {
+  return static_cast<T>(*(reg.val_ref));
+}
+
 #define MAKE_RVREAD(prefix, size, accessor, type_prefix) \
     template <typename T> \
     ALWAYS_INLINE static \
@@ -101,12 +107,17 @@ MAKE_VREAD(F, 64)
 
 #undef MAKE_VREAD
 
-
 // Make read operators for reading integral values from memory.
 #define MAKE_MREAD(size, type_prefix, ...) \
     ALWAYS_INLINE static \
     type_prefix ## size ## _t _Read( \
         Memory *&memory, Mn<type_prefix ## size ## _t> op) { \
+      return __remill_read_memory_ ## __VA_ARGS__ ## size (memory, op.addr); \
+    } \
+    \
+    ALWAYS_INLINE static \
+    type_prefix ## size ## _t _Read( \
+        Memory *&memory, MnW<type_prefix ## size ## _t> op) { \
       return __remill_read_memory_ ## __VA_ARGS__ ## size (memory, op.addr); \
     }
 
@@ -140,6 +151,8 @@ MAKE_RWRITE(uint8_t)
 MAKE_RWRITE(uint16_t)
 MAKE_RWRITE(uint32_t)
 MAKE_RWRITE(uint64_t)
+MAKE_RWRITE(float32_t)
+MAKE_RWRITE(float64_t)
 
 #undef MAKE_RWRITE
 
@@ -817,6 +830,11 @@ ALWAYS_INLINE static MnW<T> GetElementPtr(MnW<T> addr, T index) {
 ALWAYS_INLINE static addr_t SelectPC(
     bool cond, addr_t if_true, addr_t if_false) {
   return __remill_conditional_branch(cond, if_true, if_false);
+}
+
+template <typename T>
+ALWAYS_INLINE static T Select(bool cond, T if_true, T if_false) {
+  return cond ? if_true : if_false;
 }
 
 }  // namespace

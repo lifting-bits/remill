@@ -334,6 +334,23 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BITBYTE/BTS.S"
 #include "tests/X86/BITBYTE/SETcc.S"
 
+#include "tests/X86/CMOV/CMOVB.S"
+#include "tests/X86/CMOV/CMOVBE.S"
+#include "tests/X86/CMOV/CMOVL.S"
+#include "tests/X86/CMOV/CMOVLE.S"
+#include "tests/X86/CMOV/CMOVNB.S"
+#include "tests/X86/CMOV/CMOVNBE.S"
+#include "tests/X86/CMOV/CMOVNL.S"
+#include "tests/X86/CMOV/CMOVNLE.S"
+#include "tests/X86/CMOV/CMOVNO.S"
+#include "tests/X86/CMOV/CMOVNP.S"
+#include "tests/X86/CMOV/CMOVNS.S"
+#include "tests/X86/CMOV/CMOVNZ.S"
+#include "tests/X86/CMOV/CMOVO.S"
+#include "tests/X86/CMOV/CMOVP.S"
+#include "tests/X86/CMOV/CMOVS.S"
+#include "tests/X86/CMOV/CMOVZ.S"
+
 /*
 
 #include "tests/X86/CONVERT/CBW.S"

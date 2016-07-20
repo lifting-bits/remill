@@ -40,16 +40,16 @@ static llvm::Function *FindPureIntrinsic(const llvm::Module *module,
   return function;
 }
 
-// Find a specific function.
-static llvm::Function *FindReadOnlyIntrinsic(const llvm::Module *module,
-                                             const char *name) {
-  auto function = FindIntrinsic(module, name);
-
-  // We want memory intrinsics to be marked as not accessing memory so that
-  // they don't interfere with dead store elimination.
-  function->addFnAttr(llvm::Attribute::ReadOnly);
-  return function;
-}
+//// Find a specific function.
+//static llvm::Function *FindReadOnlyIntrinsic(const llvm::Module *module,
+//                                             const char *name) {
+//  auto function = FindIntrinsic(module, name);
+//
+//  // We want memory intrinsics to be marked as not accessing memory so that
+//  // they don't interfere with dead store elimination.
+//  function->addFnAttr(llvm::Attribute::ReadOnly);
+//  return function;
+//}
 
 }  // namespace
 
