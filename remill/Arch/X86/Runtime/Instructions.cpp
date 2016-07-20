@@ -77,7 +77,7 @@
 //#include "remill/Arch/X86/Semantics/CALL_RET.h"
 #include "remill/Arch/X86/Semantics/CMOV.h"
 #include "remill/Arch/X86/Semantics/COND_BR.h"
-//#include "remill/Arch/X86/Semantics/CONVERT.h"
+#include "remill/Arch/X86/Semantics/CONVERT.h"
 #include "remill/Arch/X86/Semantics/DATAXFER.h"
 //#include "remill/Arch/X86/Semantics/INTERRUPT.h"
 //#include "remill/Arch/X86/Semantics/FMA.h"
