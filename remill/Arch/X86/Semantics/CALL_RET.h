@@ -7,21 +7,20 @@ namespace {
 
 template <typename T>
 DEF_SEM(CALL, T target_pc) {
-
-  auto target = R(target_pc);
-  __remill_barrier_compiler();
-  PushValue<PC>(state, __remill_create_program_counter(next_pc));
-  W(state.gpr.rip) = target;
+  addr_t next_sp = USub(REG_XSP, ADDRESS_SIZE_BYTES);
+  Write(WritePtr<PC>(next_sp), REG_PC);  // May fault.
+  Write(REG_XSP, next_sp);
+  Write(REG_PC, ZExtTo<PC>(Read(target_pc)));
 }
 
 DEF_SEM(RET_IMM, I16 bytes) {
-  Mn<PC> ret_addr_loc = {A(state.gpr.rsp)};
-  W(state.gpr.rip) = R(ret_addr_loc);
-  W(state.gpr.rsp) = R(state.gpr.rsp) + R(bytes) + sizeof(PC);
+  Write(REG_PC, Read(ReadPtr<PC>(REG_XSP)));  // May fault.
+  Write(REG_XSP, UAdd(UAdd(REG_XSP, ZExtTo<PC>(Read(bytes))), ADDRESS_SIZE_BYTES));
 }
 
 DEF_SEM(RET) {
-  W(state.gpr.rip) = PopValue<PC>(state);
+  Write(REG_PC, Read(ReadPtr<PC>(REG_XSP)));  // May fault.
+    Write(REG_XSP, UAdd(REG_XSP, ADDRESS_SIZE_BYTES));
 }
 
 }  // namespace
@@ -53,41 +52,41 @@ DEF_ISEL_32or64(RET_NEAR, RET);
 1666 IRETQ IRETQ RET LONGMODE LONGMODE ATTRIBUTES: FIXED_BASE0 NOTSX SCALABLE STACKPOP0
 1784 IRET IRET RET BASE I86 ATTRIBUTES: FIXED_BASE0 NOTSX SCALABLE STACKPOP0
 */
-
-DEF_ISEL_SEM(IRETD_32) {
-  W(state.gpr.rip) = __remill_create_program_counter(PopValue<uint32_t>(state));
-  W(state.seg.cs) = static_cast<uint16_t>(PopValue<uint32_t>(state));
-
-  Flags flags;
-  flags.flat = PopValue<uint32_t>(state);
-  state.aflag.af = flags.af;
-  state.aflag.cf = flags.cf;
-  state.aflag.df = flags.df;
-  state.aflag.of = flags.of;
-  state.aflag.pf = flags.pf;
-  state.aflag.sf = flags.sf;
-  state.aflag.zf = flags.zf;
-
-  // TODO(pag): Hrmmmm.
-}
-
-#if 64 == ADDRESS_SIZE_BITS
-DEF_ISEL_SEM(IRETQ_64) {
-  W(state.gpr.rip) = __remill_create_program_counter(PopValue<uint64_t>(state));
-  W(state.seg.cs) = static_cast<uint16_t>(PopValue<uint64_t>(state));
-
-  Flags flags;
-  flags.flat = PopValue<uint64_t>(state);
-  state.aflag.af = flags.af;
-  state.aflag.cf = flags.cf;
-  state.aflag.df = flags.df;
-  state.aflag.of = flags.of;
-  state.aflag.pf = flags.pf;
-  state.aflag.sf = flags.sf;
-  state.aflag.zf = flags.zf;
-
-  // TODO(pag): Hrmmmm.
-}
-#endif  // 64 == ADDRESS_SIZE_BITS
+//
+//DEF_ISEL_SEM(IRETD_32) {
+//  W(state.gpr.rip) = __remill_create_program_counter(PopValue<uint32_t>(state));
+//  W(state.seg.cs) = static_cast<uint16_t>(PopValue<uint32_t>(state));
+//
+//  Flags flags;
+//  flags.flat = PopValue<uint32_t>(state);
+//  state.aflag.af = flags.af;
+//  state.aflag.cf = flags.cf;
+//  state.aflag.df = flags.df;
+//  state.aflag.of = flags.of;
+//  state.aflag.pf = flags.pf;
+//  state.aflag.sf = flags.sf;
+//  state.aflag.zf = flags.zf;
+//
+//  // TODO(pag): Hrmmmm.
+//}
+//
+//#if 64 == ADDRESS_SIZE_BITS
+//DEF_ISEL_SEM(IRETQ_64) {
+//  W(state.gpr.rip) = __remill_create_program_counter(PopValue<uint64_t>(state));
+//  W(state.seg.cs) = static_cast<uint16_t>(PopValue<uint64_t>(state));
+//
+//  Flags flags;
+//  flags.flat = PopValue<uint64_t>(state);
+//  state.aflag.af = flags.af;
+//  state.aflag.cf = flags.cf;
+//  state.aflag.df = flags.df;
+//  state.aflag.of = flags.of;
+//  state.aflag.pf = flags.pf;
+//  state.aflag.sf = flags.sf;
+//  state.aflag.zf = flags.zf;
+//
+//  // TODO(pag): Hrmmmm.
+//}
+//#endif  // 64 == ADDRESS_SIZE_BITS
 
 #endif  // REMILL_ARCH_X86_SEMANTICS_CALL_RET_H_

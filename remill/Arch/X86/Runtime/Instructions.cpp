@@ -13,6 +13,9 @@
 #define REG_EIP state.gpr.rip.dword
 #define REG_RIP state.gpr.rip.qword
 
+#define REG_ESP state.gpr.rsp.dword
+#define REG_RSP state.gpr.rsp.qword
+
 #define REG_AL state.gpr.rax.byte.low
 #define REG_AH state.gpr.rax.byte.high
 #define REG_AX state.gpr.rax.word
@@ -49,6 +52,7 @@
 # define REG_XCX REG_RCX
 # define REG_XSI REG_RSI
 # define REG_XDI REG_RDI
+# define REG_XSP REG_RSP
 #else
 # define REG_PC REG_EIP
 # define REG_XIP REG_EIP
@@ -57,6 +61,7 @@
 # define REG_XCX REG_ECX
 # define REG_XSI REG_ESI
 # define REG_XDI REG_EDI
+# define REG_XSP REG_ESP
 #endif  // 64 == ADDRESS_SIZE_BITS
 
 #define FLAG_CF state.aflag.cf
@@ -76,7 +81,7 @@
 #include "remill/Arch/X86/Semantics/FLAGS.h"
 #include "remill/Arch/X86/Semantics/BINARY.h"
 #include "remill/Arch/X86/Semantics/BITBYTE.h"
-//#include "remill/Arch/X86/Semantics/CALL_RET.h"
+#include "remill/Arch/X86/Semantics/CALL_RET.h"
 #include "remill/Arch/X86/Semantics/CMOV.h"
 #include "remill/Arch/X86/Semantics/COND_BR.h"
 #include "remill/Arch/X86/Semantics/CONVERT.h"

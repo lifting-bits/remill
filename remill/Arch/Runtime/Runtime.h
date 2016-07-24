@@ -4,7 +4,11 @@
 #define REMILL_ARCH_RUNTIME_RUNTIME_H_
 
 #ifndef ADDRESS_SIZE_BITS
-# define ADDRESS_SIZE_BITS 64
+# define ADDRESS_SIZE_BITS 64UL
+#endif
+
+#ifndef ADDRESS_SIZE_BYTES
+# define ADDRESS_SIZE_BYTES (ADDRESS_SIZE_BITS / 8UL)
 #endif
 
 #include "remill/Arch/Runtime/Intrinsics.h"
