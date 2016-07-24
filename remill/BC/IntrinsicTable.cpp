@@ -61,12 +61,6 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       function_return(FindIntrinsic(module, "__remill_function_return")),
       jump(FindIntrinsic(module, "__remill_jump")),
 
-      // Signaling control-flow.
-      create_program_counter(FindPureIntrinsic(
-          module, "__remill_create_program_counter")),
-      conditional_branch(FindPureIntrinsic(
-          module, "__remill_conditional_branch")),
-
       // OS interaction.
       system_call(FindIntrinsic(module, "__remill_system_call")),
       system_return(FindIntrinsic(module, "__remill_system_return")),

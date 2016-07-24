@@ -3,6 +3,9 @@
 #ifndef REMILL_BC_ABI_H_
 #define REMILL_BC_ABI_H_
 
+namespace llvm {
+class Function;
+}  // namespace
 namespace remill {
 
 // Describes the arguments to a basic block function.

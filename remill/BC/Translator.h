@@ -5,6 +5,7 @@
 
 #include <string>
 
+#include "remill/BC/ABI.h"
 #include "remill/BC/Util.h"
 
 namespace llvm {
@@ -67,7 +68,7 @@ class Translator {
 
   // Add a fall-through terminator to the block method just in case one is
   // missing.
-  void TerminateBlockMethod(const cfg::Block &block, llvm::Function *BF);
+  void TryTerminateBlockMethod(const cfg::Block &block, llvm::Function *BF);
 
   // Run an architecture-specific data-flow analysis on the module.
   void AnalyzeCFG(const cfg::Module *cfg);
@@ -99,10 +100,10 @@ class Translator {
 
  public:
 
-  llvm::Function *GetLiftedBlockForPC(uintptr_t pc) const;
-
   // Set of intrinsics.
   const IntrinsicTable * const intrinsics;
+
+  llvm::Function *GetLiftedBlockForPC(uintptr_t pc) const;
 };
 
 }  // namespace remill

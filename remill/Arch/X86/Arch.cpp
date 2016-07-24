@@ -13,6 +13,12 @@
 #include "remill/CFG/CFG.h"
 
 namespace remill {
+
+const Arch *Arch::CreateX86(
+    OSName os_name_, ArchName arch_name_, unsigned address_size_) {
+  return new x86::X86Arch(os_name_, arch_name_, address_size_);
+}
+
 namespace x86 {
 
 X86Arch::X86Arch(OSName os_name_, ArchName arch_name_, unsigned address_size_)
@@ -57,11 +63,13 @@ llvm::Module *X86Arch::PrepareModule(llvm::Module *mod) const {
 // Decode an instruction and lift it into a basic block.
 void X86Arch::LiftInstructionIntoBlock(
     const Translator &translator,
-    const cfg::Block &block, const cfg::Instr &instr,
+    const cfg::Block &block,
+    const cfg::Instr &instr,
     llvm::BasicBlock *basic_block) const {
   const auto xedd = DecodeInstruction(instr, arch_name);
-  InstructionTranslator trans(analysis, block, instr, xedd);  // Bag of state.
-  trans.LiftIntoBlock(translator, basic_block);
+  InstructionTranslator trans(
+      translator, analysis, basic_block, block, instr, xedd);  // Bag of state.
+  trans.LiftIntoBlock();
 }
 
 // Return an arch-specific CFG analyzer.

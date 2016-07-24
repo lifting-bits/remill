@@ -76,7 +76,6 @@ extern "C" int main(int argc, char *argv[]) {
   auto source_arch = remill::Arch::Create(source_os, FLAGS_arch_in);
   auto target_arch = remill::Arch::Create(target_os, FLAGS_arch_out);
 
-  //auto target_arch = remill::Arch::Create(FLAGS_target_arch);
   auto cfg = remill::ReadCFG(FLAGS_cfg);
   auto source_module = remill::LoadModuleFromFile(FLAGS_bc_in);
   auto target_module = target_arch->PrepareModule(source_module);

@@ -11,6 +11,8 @@ namespace x86 {
 
 class X86Arch : public Arch {
  public:
+  X86Arch(OSName os_name_, ArchName arch_name_, unsigned address_size_);
+
   virtual ~X86Arch(void);
 
   virtual llvm::Module *PrepareModule(llvm::Module *mod) const override;
@@ -24,11 +26,6 @@ class X86Arch : public Arch {
 
   // Return an arch-specific CFG analyzer.
   virtual AutoAnalysis &CFGAnalyzer(void) const override;
-
- protected:
-  friend class Arch;
-
-  X86Arch(OSName os_name_, ArchName arch_name_, unsigned address_size_);
 
  private:
   X86Arch(void) = delete;

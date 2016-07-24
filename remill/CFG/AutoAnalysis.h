@@ -38,7 +38,6 @@ class AutoAnalysis {
   virtual void Finalize(void) = 0;
 };
 
-
 }  // namespace remill
 
 #endif  // REMILL_CFG_AUTOANALYSIS_H_

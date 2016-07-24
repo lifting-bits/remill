@@ -196,10 +196,10 @@ void __remill_jump(State &, Memory *, addr_t) {
   __builtin_unreachable();
 }
 
-addr_t __remill_conditional_branch(
-    bool cond, addr_t addr_true, addr_t addr_false) {
-  return cond ? addr_true : addr_false;
-}
+//addr_t __remill_conditional_branch(
+//    bool cond, addr_t addr_true, addr_t addr_false) {
+//  return cond ? addr_true : addr_false;
+//}
 
 void __remill_system_call(State &, Memory *, addr_t) {
   __builtin_unreachable();

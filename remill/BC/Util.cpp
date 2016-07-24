@@ -60,84 +60,58 @@ void InitFunctionAttributes(llvm::Function *function) {
   function->addFnAttr(llvm::Attribute::InlineHint);
 }
 
-namespace {
-
-// Create an entry block for a block function. This will initialize the `MEMORY`
-// meta-variable for accessing the program's memory.
-static void CreateEntryBlock(llvm::Function *func, uintptr_t addr) {
-  std::stringstream ss;
-  ss << "0x" << std::hex << addr;
-  auto block = llvm::BasicBlock::Create(
-      func->getContext(), ss.str(), func);
-
-  std::vector<llvm::Value *> func_args;
-  for (auto &arg : func->getArgumentList()) {
-    func_args.push_back(&arg);
-  }
-
-  auto mem_arg = func_args[kMemoryPointerArgNum];
-  auto mem_type = mem_arg->getType();
-  auto mem = new llvm::AllocaInst(mem_type, "MEMORY", block);
-  new llvm::StoreInst(mem_arg, mem, block);
-}
-
-}  // namespace
-
 // Create a tail-call from one lifted function to another.
 void AddTerminatingTailCall(llvm::Function *source_func,
-                            llvm::Function *dest_func,
-                            uintptr_t addr) {
+                            llvm::Function *dest_func) {
+  CHECK(source_func->arg_size() == dest_func->arg_size());
+
   if (source_func->isDeclaration()) {
-    CreateEntryBlock(source_func, addr);
+    llvm::IRBuilder<> ir(llvm::BasicBlock::Create(
+        source_func->getContext(), "", source_func));
+
+    std::vector<llvm::Value *> args;
+    for (auto &arg : source_func->args()) {
+      args.push_back(&arg);
+    }
+
+    llvm::CallInst *call_target_instr = ir.CreateCall(dest_func, args);
+    call_target_instr->setAttributes(dest_func->getAttributes());
+
+    // Make sure we tail-call from one block method to another.
+    call_target_instr->setTailCallKind(llvm::CallInst::TCK_MustTail);
+    call_target_instr->setCallingConv(llvm::CallingConv::Fast);
+    ir.CreateRetVoid();
+
+  } else {
+    AddTerminatingTailCall(&(source_func->back()), dest_func);
   }
-  AddTerminatingTailCall(&(source_func->back()), dest_func, addr);
 }
 
 void AddTerminatingTailCall(llvm::BasicBlock *source_block,
-                            llvm::Function *target_func,
-                            uintptr_t addr) {
-  LOG_IF(FATAL, !target_func)
-      << "Target function/block does not exist!";
-
-  auto target_func_type = target_func->getFunctionType();
-  LOG_IF(FATAL,
-         kNumBlockArgs != target_func_type->getNumParams())
-      << "Expected " << size_t(kNumBlockArgs) << " arguments for call to: "
-      << (target_func ? target_func->getName().str() : "<unreachable>");
-
-  auto addr_arg = target_func_type->getParamType(kPCArgNum);
-  auto addr_type = llvm::dyn_cast<llvm::IntegerType>(addr_arg);
-  AddTerminatingTailCall(source_block, target_func,
-                         llvm::ConstantInt::get(addr_type, addr, false));
-}
-
-void AddTerminatingTailCall(llvm::BasicBlock *source_block,
-                            llvm::Function *target_func,
-                            llvm::Value *addr) {
-  LOG_IF(FATAL, !target_func)
+                            llvm::Function *dest_func) {
+  CHECK(nullptr != dest_func)
       << "Target function/block does not exist!";
 
   LOG_IF(ERROR, source_block->getTerminator() ||
                 source_block->getTerminatingMustTailCall())
       << "Block already has a terminator; not adding fall-through call to: "
-      << (target_func ? target_func->getName().str() : "<unreachable>");
+      << (dest_func ? dest_func->getName().str() : "<unreachable>");
 
-  LOG_IF(FATAL, kNumBlockArgs != target_func->getFunctionType()->getNumParams())
+  CHECK(kNumBlockArgs == dest_func->getFunctionType()->getNumParams())
       << "Expected " << size_t(kNumBlockArgs) << " arguments for call to: "
-      << (target_func ? target_func->getName().str() : "<unreachable>");
-
-  auto mem = new llvm::LoadInst(
-      FindMemoryPointer(source_block), "", source_block);
+      << (dest_func ? dest_func->getName().str() : "<unreachable>");
 
   llvm::IRBuilder<> ir(source_block);
-  llvm::Function *source_func = source_block->getParent();
+
+  // Set up arguments according to our ABI.
   std::vector<llvm::Value *> args;
   args.resize(kNumBlockArgs);
-  args[kStatePointerArgNum] = FindStatePointer(source_func);
-  args[kMemoryPointerArgNum] = mem;
-  args[kPCArgNum] = addr;
-  llvm::CallInst *call_target_instr = ir.CreateCall(target_func, args);
-  call_target_instr->setAttributes(target_func->getAttributes());
+  args[kStatePointerArgNum] = LoadStatePointer(source_block);
+  args[kMemoryPointerArgNum] = LoadMemoryPointer(source_block);
+  args[kPCArgNum] = LoadProgramCounter(source_block);
+
+  llvm::CallInst *call_target_instr = ir.CreateCall(dest_func, args);
+  call_target_instr->setAttributes(dest_func->getAttributes());
 
   // Make sure we tail-call from one block method to another.
   call_target_instr->setTailCallKind(llvm::CallInst::TCK_MustTail);
@@ -154,36 +128,46 @@ llvm::Value *FindVarInFunction(llvm::Function *function, std::string name,
       return &instr;
     }
   }
-  LOG_IF(FATAL, !allow_failure)
+  function->dump();
+  CHECK(allow_failure)
     << "Could not find variable " << name << " in function "
     << function->getName().str();
   return nullptr;
 }
 
 // Find the machine state pointer.
-llvm::Value *FindStatePointer(llvm::Function *function) {
-  LOG_IF(FATAL, kNumBlockArgs != function->arg_size())
+llvm::Value *LoadStatePointer(llvm::Function *function) {
+  CHECK(kNumBlockArgs == function->arg_size())
       << "Invalid block-like function. Expected two arguments: state "
       << "pointer and program counter in function "
       << function->getName().str();
-  return &(function->getArgumentList().front());
+
+  auto curr_arg_num = 0;
+  for (llvm::Argument &arg : function->getArgumentList()) {
+    if (kStatePointerArgNum == curr_arg_num++) {
+      return &arg;
+    }
+  }
+
+  return nullptr;
 }
 
-llvm::Value *FindStatePointer(llvm::BasicBlock *block) {
-  return FindStatePointer(block->getParent());
+llvm::Value *LoadStatePointer(llvm::BasicBlock *block) {
+  return LoadStatePointer(block->getParent());
 }
 
-// Find the machine memory pointer.
-llvm::Value *FindMemoryPointer(llvm::Function *function) {
-  LOG_IF(FATAL, kNumBlockArgs != function->arg_size())
-      << "Invalid block-like function. Expected two arguments: state "
-      << "pointer and program counter in function "
-      << function->getName().str();
-  return FindVarInFunction(function, "MEMORY");
+// Return the current program counter.
+llvm::Value *LoadProgramCounter(llvm::BasicBlock *block) {
+  llvm::IRBuilder<> ir(block);
+  return ir.CreateLoad(ir.CreateLoad(FindVarInFunction(
+      block->getParent(), "PC")));
 }
 
-llvm::Value *FindMemoryPointer(llvm::BasicBlock *block) {
-  return FindMemoryPointer(block->getParent());
+// Return the pointer to the current value of the memory pointer.
+llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block) {
+  llvm::IRBuilder<> ir(block);
+  return ir.CreateLoad(FindVarInFunction(
+      block->getParent(), "MEMORY"));
 }
 
 // Find a function with name `name` in the module `M`.

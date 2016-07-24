@@ -15,6 +15,15 @@ void __remill_basic_block(State &state, Memory &memory, addr_t curr_pc) {
   auto &STATE = state;
   auto &MEMORY = memory;
   auto &PC = state.gpr.rip.IF_64BIT_ELSE(qword, dword);
+  auto &BRANCH_TAKEN = state.conditional_branch_taken;
+
+  // Start by updating the current program counter to be `curr_pc`. This
+  // makes sure that `curr_pc` is always used (and therefore not optimized
+  // away by dead-argument elimination). It also lets us kind of handle
+  // relocation. That is, if we lift a relocatable binary, then the
+  // offsets within IDA or Binary Ninja might not reflect the final addresses
+  // of things at run-time.
+  PC = curr_pc;
 
   // Define read- and write-specific aliases of each register. We will
   // reference these variables from the bitcode side of things so that,

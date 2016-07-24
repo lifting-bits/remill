@@ -22,6 +22,12 @@ PARSER.add_argument(
     default=False)
 
 PARSER.add_argument(
+    "--stop_on_error",
+    action="store_true",
+    help="Stop the build at the first sign of an error",
+    default=False)
+
+PARSER.add_argument(
     "--obj_dir",
     required=False,
     type=str,
@@ -168,7 +174,8 @@ def Command(*args):
     if not ARGS.dry_run:
       return subprocess.check_output(args)
   except:
-    pass
+    if ARGS.stop_on_error:
+      exit(1)
 
 
 def MakeDirsForFile(file_name):

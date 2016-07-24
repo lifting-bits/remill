@@ -376,10 +376,22 @@ struct alignas(64) State final {
   X87Stack st;  // 128 bytes.
   MMX mmx;  // 128 bytes.
 
-  // I'm not a particular fan of this approach, but oh well.
+  // Used to communicate the interrupt vector number to an intrinsic. The
+  // issue is that the interrupt number is part of an instruction, and our
+  // generic three-operand block/intrinsic form (state, mem, pc) doesn't
+  // have room to hold a vector number.
+  //
+  // TODO(pag): I'm not particular fond of this approach, but oh well.
   volatile uint32_t interrupt_vector;
 
-  uint8_t _padding[60];
+  // Use to communicate to `Translator.cpp` that the conditional branch should
+  // be taken or not-taken.
+  //
+  // TODO(pag): This is kind of ugly, but enables PC-specific independence
+  //            (to handle things like relocatable binaries).
+  volatile bool conditional_branch_taken;
+
+  uint8_t _padding[59];
 } __attribute__((packed));
 
 static_assert(0 == __builtin_offsetof(State, fpu),

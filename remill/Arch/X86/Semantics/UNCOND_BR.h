@@ -4,12 +4,7 @@ namespace {
 
 template <typename T>
 DEF_SEM(JMP, T target_pc) {
-  W(state.gpr.rip) = target_pc;
-}
-
-template <typename T>
-DEF_SEM(INDIRECT_JMP, T target_pc) {
-  W(state.gpr.rip) = R(target_pc);
+  WriteZExt(REG_PC, Read(target_pc));
 }
 
 }  // namespace
@@ -19,14 +14,14 @@ DEF_ISEL(JMP_RELBRb) = JMP<PC>;
 DEF_ISEL_32or64(JMP_RELBRz, JMP<PC>);
 
 #if 64 == ADDRESS_SIZE_BITS
-DEF_ISEL(JMP_MEMv_64) = INDIRECT_JMP<M64>;
-DEF_ISEL(JMP_GPRv_64) = INDIRECT_JMP<R64>;
+DEF_ISEL(JMP_MEMv_64) = JMP<M64>;
+DEF_ISEL(JMP_GPRv_64) = JMP<R64>;
 #else
-DEF_ISEL(JMP_MEMv_16) = INDIRECT_JMP<M16>;
-DEF_ISEL(JMP_MEMv_32) = INDIRECT_JMP<M32>;
+DEF_ISEL(JMP_MEMv_16) = JMP<M16>;
+DEF_ISEL(JMP_MEMv_32) = JMP<M32>;
 
-DEF_ISEL(JMP_GPRv_16) = INDIRECT_JMP<R16>;
-DEF_ISEL(JMP_GPRv_32) = INDIRECT_JMP<R32>;
+DEF_ISEL(JMP_GPRv_16) = JMP<R16>;
+DEF_ISEL(JMP_GPRv_32) = JMP<R32>;
 #endif
 
 /*

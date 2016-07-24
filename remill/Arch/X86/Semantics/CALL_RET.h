@@ -7,6 +7,7 @@ namespace {
 
 template <typename T>
 DEF_SEM(CALL, T target_pc) {
+
   auto target = R(target_pc);
   __remill_barrier_compiler();
   PushValue<PC>(state, __remill_create_program_counter(next_pc));

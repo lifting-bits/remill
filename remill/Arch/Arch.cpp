@@ -3,19 +3,6 @@
 #include <glog/logging.h>
 
 #include "remill/Arch/Arch.h"
-#include "remill/Arch/X86/Arch.h"
-
-#ifndef _WIN64
-# define _WIN64 0
-#endif
-
-#ifndef __amd64__
-# define __amd64__ 0
-#endif
-
-#ifndef __x86_64__
-# define __x86_64__ 0
-#endif
 
 namespace remill {
 
@@ -26,18 +13,18 @@ Arch::Arch(OSName os_name_, ArchName arch_name_, unsigned address_size_)
 
 Arch::~Arch(void) {}
 
-const Arch *Arch::Create(OSName os_name, ArchName arch_name) {
-  switch (arch_name) {
+const Arch *Arch::Create(OSName os_name_, ArchName arch_name_) {
+  switch (arch_name_) {
     case kArchInvalid:
       LOG(FATAL) << "Cannot create arch for unrecognized OS.";
       return nullptr;
     case kArchX86:
       VLOG(1) << "Using architecture: X86";
-      return new x86::X86Arch(os_name, arch_name, 32);
+      return CreateX86(os_name_, arch_name_, 32);
 
     case kArchAMD64:
       VLOG(1) << "Using architecture: AMD64";
-      return new x86::X86Arch(os_name, arch_name, 64);
+      return CreateX86(os_name_, arch_name_, 64);
   }
   return nullptr;
 }

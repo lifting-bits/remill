@@ -65,6 +65,11 @@ class Arch {
   Arch(OSName os_name_, ArchName arch_name_, unsigned address_size_);
 
  private:
+
+  // Defined in `remill/Arch/X86/Arch.cpp`.
+  static const Arch *CreateX86(
+      OSName os, ArchName arch_name, unsigned address_size_);
+
   Arch(void) = delete;
 };
 

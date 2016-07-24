@@ -132,6 +132,7 @@ void InitBlockFuncAttributes(llvm::Function *new_block_func,
   InitFunctionAttributes(new_block_func);
   auto args = new_block_func->arg_begin();
   (args++)->setName("state");
+  (args++)->setName("memory");
   args->setName("pc");
 }
 
@@ -145,19 +146,6 @@ llvm::Function *GetOrCreateBlockFunction(llvm::Module *module,
   new_block_func->setVisibility(llvm::GlobalValue::HiddenVisibility);
   new_block_func->setLinkage(llvm::GlobalValue::PrivateLinkage);
   return new_block_func;
-}
-
-// Add the address of the block as a special meta-data flag.
-static void SetMetaDataAddress(llvm::Module *module,
-                               const std::string &block_name,
-                               uint64_t block_addr) {
-  std::stringstream ss;
-  ss << "remill_address:" << block_name;
-  auto &context = module->getContext();
-  auto int64_type = llvm::Type::getInt64Ty(context);
-  auto block_addr_val = llvm::ConstantInt::get(int64_type, block_addr, false);
-  auto meta = llvm::ConstantAsMetadata::get(block_addr_val);
-  module->addModuleFlag(llvm::Module::Warning, ss.str(), meta);
 }
 
 }  // namespace
@@ -176,7 +164,6 @@ void Translator::CreateFunctionsForBlocks(const cfg::Module *cfg) {
       ss << "__remill_sub_" << std::hex << block.address();
 
       block_func = GetOrCreateBlockFunction(module, basic_block, ss.str());
-      SetMetaDataAddress(module, ss.str(), block.address());
 
       // This block is externally visible so change its linkage and make a new
       // private block to which other blocks will refer.
@@ -215,7 +202,7 @@ void Translator::CreateExternalFunctions(const cfg::Module *cfg) {
         << "Module contains unnamed function at address " << func.address();
 
     CHECK(!(func.is_exported() && func.is_imported()))
-        << "Function " << func_name << " can't be imported and exported.";
+        << "Function " << func_name << " can't be both imported and exported.";
 
     llvm::Function *&extern_func = functions[func_name];
     if (!extern_func) {
@@ -256,7 +243,7 @@ void Translator::LinkExternalFunctionsToBlocks(const cfg::Module *cfg) {
       CHECK(extern_func->isDeclaration())
           << "Function " << func_name << " is already defined!";
 
-      AddTerminatingTailCall(extern_func, block_impl_func, func.address());
+      AddTerminatingTailCall(extern_func, block_impl_func);
 
     // In the case of ELF binaries, we tend to see a call to something like
     // `malloc@plt` that is responsible for finding and invoking the actual
@@ -278,6 +265,9 @@ namespace {
 
 // Clone the block method template `TF` into a specific method `BF` that
 // will contain lifted code.
+//
+// This will create one basic block per instruction-to-lift, where these
+// instructions are listed out in `block`.
 static std::vector<llvm::BasicBlock *> InitBlockFunction(
     llvm::Function *block_func,
     const llvm::Function *template_func,
@@ -336,17 +326,16 @@ static uint64_t FallThroughPC(const cfg::Block &block) {
 
 // Add a fall-through terminator to the block method just in case one is
 // missing.
-void Translator::TerminateBlockMethod(const cfg::Block &block,
+void Translator::TryTerminateBlockMethod(const cfg::Block &block,
                                       llvm::Function *BF) {
   auto &B = BF->back();
   if (B.getTerminator()) {
     return;
   }
   if (block.instructions_size()) {
-    auto next_pc = FallThroughPC(block);
-    AddTerminatingTailCall(BF, GetLiftedBlockForPC(next_pc), next_pc);
+    AddTerminatingTailCall(BF, GetLiftedBlockForPC(FallThroughPC(block)));
   } else {
-    AddTerminatingTailCall(BF, intrinsics->missing_block, block.address());
+    AddTerminatingTailCall(BF, intrinsics->missing_block);
   }
 }
 
@@ -389,7 +378,11 @@ void Translator::LiftBlocks(const cfg::Module *cfg) {
       }
     }
 
-    TerminateBlockMethod(block, block_func);
+    // Terminate blocks that end in a fall-through to their next blocks. This
+    // only happens if the arch-specific code didn't already add a terminator.
+    // The arch-specific code is in the best position to know when and what
+    // type of terminators are needed.
+    TryTerminateBlockMethod(block, block_func);
 
     // Perform simple, incremental optimizations on the block functions to
     // avoid OOMs.
@@ -412,6 +405,7 @@ void Translator::LiftInstructionIntoBlock(
   arch->LiftInstructionIntoBlock(*this, block, instr, instr_block);
 }
 
+// Lift the control-flow graph specified by `cfg` into this bitcode module.
 void Translator::LiftCFG(const cfg::Module *cfg) {
   blocks.clear();  // Just in case we call `LiftCFG` multiple times.
   CreateFunctionsForBlocks(cfg);

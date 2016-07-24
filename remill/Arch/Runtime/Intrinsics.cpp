@@ -20,7 +20,6 @@ extern "C" void __remill_mark_as_used(void *);
 // file!
 [[gnu::used]]
  extern "C" void __remill_intrinsics(void) {
-  USED(__remill_create_program_counter);
 
   USED(__remill_read_memory_8);
   USED(__remill_read_memory_16);
@@ -61,7 +60,7 @@ extern "C" void __remill_mark_as_used(void *);
   USED(__remill_system_return);
   USED(__remill_interrupt_call);
   USED(__remill_interrupt_return);
-  USED(__remill_conditional_branch);
+//  USED(__remill_conditional_branch);
   USED(__remill_missing_block);
 
   USED(__remill_undefined_bool);

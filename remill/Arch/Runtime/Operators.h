@@ -827,11 +827,6 @@ ALWAYS_INLINE static MnW<T> GetElementPtr(MnW<T> addr, T index) {
   return {addr.addr + (index * static_cast<addr_t>(ByteSizeOf(addr)))};
 }
 
-ALWAYS_INLINE static addr_t SelectPC(
-    bool cond, addr_t if_true, addr_t if_false) {
-  return __remill_conditional_branch(cond, if_true, if_false);
-}
-
 template <typename T>
 ALWAYS_INLINE static T Select(bool cond, T if_true, T if_false) {
   return cond ? if_true : if_false;

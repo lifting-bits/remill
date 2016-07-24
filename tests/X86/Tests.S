@@ -296,7 +296,6 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/DATAXFER/MOVZX.S"
 #include "tests/X86/DATAXFER/XCHG.S"
 
-
 /* Bring in the rest of the semantic tests. */
 
 #include "tests/X86/BINARY/ADC.S"

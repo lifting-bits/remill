@@ -20,6 +20,7 @@ class Instr;
 }  // namespace cfg
 
 class Translator;
+class IntrinsicTable;
 
 namespace x86 {
 
@@ -29,33 +30,39 @@ class RegisterAnalysis;
 // Convenience class that lets us keep all the instruction-specific state
 // in on spot. This is more like a bag of sort of disorganized state that is
 // needed to lift XED operands into LLVM.
+//
+// TODO(pag): This is super ugly and no better than a bunch of global variables.
+//            Global variables may even be better. Alternatively, combining
+//            this with `X86Arch` could be an improvement. Find a way to
+//            clean up this mess.
 class InstructionTranslator {
  public:
-  InstructionTranslator(RegisterAnalysis &analysis_,
+  InstructionTranslator(const Translator &lifter,
+                        RegisterAnalysis &analysis_,
+                        llvm::BasicBlock *basic_block_,
                         const cfg::Block &block_,
                         const cfg::Instr &instr_,
                         const struct xed_decoded_inst_s &xedd_);
 
-  void LiftIntoBlock(const Translator &lifter, llvm::BasicBlock *);
+  void LiftIntoBlock(void);
 
  private:
-  void LiftPC(uintptr_t next_pc);
-  llvm::Value *ReadPC(llvm::BasicBlock *block);
-  void LiftGeneric(const Translator &lifter);
+  void SetNextPC(uintptr_t next_pc);
+  void UpdatePC(llvm::Value *increment);
+
+  void LiftGeneric(void);
   llvm::Function *GetInstructionFunction(void);
   bool CheckArgumentTypes(const llvm::Function *F,
                           const std::string &func_name);
-  void LiftConditionalBranch(const Translator &lifter);
-  void LiftOperand(const Translator &lifter, unsigned op_num);
-  void LiftMemory(const Translator &lifter, const xed_operand_t *xedo,
-                  unsigned op_num);
+  void LiftConditionalBranch(void);
+  void LiftOperand(unsigned op_num);
+  void LiftMemory(const xed_operand_t *xedo, unsigned op_num);
 
   void LiftImmediate(xed_operand_enum_t op_name);
   void LiftRegister(const xed_operand_t *xedo);
-  void LiftBranchDisplacement(void);
+  llvm::Value *GetBranchTarget(void);
 
-  void AddTerminatingKills(const Translator &lifter,
-                           const BasicBlockRegs *regs);
+  void AddTerminatingKills(const BasicBlockRegs *regs);
 
   bool IsBranch(void) const;
 
@@ -82,6 +89,8 @@ class InstructionTranslator {
   uintptr_t NextPC(void) const;
   uintptr_t TargetPC(void) const;
 
+  const Translator * const translator;
+  const IntrinsicTable * const intrinsics;
   RegisterAnalysis * const analysis;
 
   const cfg::Block *block;
@@ -99,6 +108,10 @@ class InstructionTranslator {
   llvm::LLVMContext *context;
   llvm::Type *intptr_type;
 
+  // We incrementally build up arguments to pass into the instruction semantics
+  // function. Sometimes the computation or semantics of the arguments involves
+  // some setup and tear-down code that surrounds the call to the instruction
+  // function.
   std::vector<llvm::Value *> args;
   std::vector<llvm::Instruction *> prepend_instrs;
   std::vector<llvm::Instruction *> append_instrs;

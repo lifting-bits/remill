@@ -28,12 +28,10 @@ class BlockMap : public std::unordered_map<uintptr_t, llvm::Function *> {
 void InitFunctionAttributes(llvm::Function *F);
 
 // Create a tail-call from one lifted function to another.
-void AddTerminatingTailCall(llvm::Function *From, llvm::Function *To,
-                            uintptr_t addr=0);
-void AddTerminatingTailCall(llvm::BasicBlock *From, llvm::Function *To,
-                            uintptr_t addr=0);
-void AddTerminatingTailCall(llvm::BasicBlock *B, llvm::Function *To,
-                            llvm::Value *addr);
+void AddTerminatingTailCall(llvm::Function *source_func,
+                            llvm::Function *dest_func);
+void AddTerminatingTailCall(llvm::BasicBlock *source_block,
+                            llvm::Function *dest_func);
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
@@ -42,12 +40,14 @@ llvm::Value *FindVarInFunction(llvm::Function *F, std::string name,
 
 // Find the machine state pointer. The machine state pointer is, by convention,
 // passed as the first argument to every lifted function.
-llvm::Value *FindStatePointer(llvm::Function *function);
-llvm::Value *FindStatePointer(llvm::BasicBlock *block);
+llvm::Value *LoadStatePointer(llvm::Function *function);
+llvm::Value *LoadStatePointer(llvm::BasicBlock *block);
 
-// Find the machine memory pointer.
-llvm::Value *FindMemoryPointer(llvm::Function *function);
-llvm::Value *FindMemoryPointer(llvm::BasicBlock *block);
+// Return the current program counter.
+llvm::Value *LoadProgramCounter(llvm::BasicBlock *block);
+
+// Return the pointer to the current value of the memory pointer.
+llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block);
 
 // Find a function with name `name` in the module `M`.
 llvm::Function *FindFunction(const llvm::Module *M, std::string name);

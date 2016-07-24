@@ -27,22 +27,26 @@ enum {
 };
 
 InstructionTranslator::InstructionTranslator(
+    const Translator &translator_,
     RegisterAnalysis &analysis_,
+    llvm::BasicBlock *basic_block_,
     const cfg::Block &block_,
     const cfg::Instr &instr_,
     const struct xed_decoded_inst_s &xedd_)
-    : analysis(&analysis_),
+    : translator(&translator_),
+      intrinsics(translator_.intrinsics),
+      analysis(&analysis_),
       block(&block_),
       instr(&instr_),
       xedd(&xedd_),
       xedi(xed_decoded_inst_inst(xedd)),
       iclass(xed_decoded_inst_get_iclass(xedd)),
       addr_width(kArchAMD64 == analysis->arch_name ? 64 : 32),
-      basic_block(nullptr),
-      function(nullptr),
-      module(nullptr),
-      context(nullptr),
-      intptr_type(nullptr),
+      basic_block(basic_block_),
+      function(basic_block->getParent()),
+      module(function->getParent()),
+      context(&(function->getContext())),
+      intptr_type(llvm::Type::getIntNTy(*context, addr_width)),
       args(),
       prepend_instrs(),
       append_instrs() {}
@@ -97,18 +101,13 @@ static unsigned AddressSpace(xed_reg_enum_t seg, xed_operand_enum_t name) {
 
 }  // namespace
 
-void InstructionTranslator::LiftIntoBlock(const Translator &lifter,
-                                          llvm::BasicBlock *basic_block_) {
-  basic_block = basic_block_;
-  function = basic_block->getParent();
-  module = function->getParent();
-  context = &(function->getContext());
-  intptr_type = llvm::Type::getIntNTy(*context, addr_width);
-
-  LiftPC(instr->address());
+void InstructionTranslator::LiftIntoBlock(void) {
+  // Increment the program counter to that the instruction observes the next
+  // PC.
+  UpdatePC(llvm::ConstantInt::get(intptr_type, instr->size(), false));
 
   if (!IsNoOp() && !IsError()) {
-    LiftGeneric(lifter);
+    LiftGeneric();
   }
 
   // Kill whatever we can at the end of this instruction.
@@ -116,74 +115,61 @@ void InstructionTranslator::LiftIntoBlock(const Translator &lifter,
   // Note:  Instructions are lifted in reverse order, i.e. end of the block to
   //        beginning of the block.
   if (auto block_regs = analysis->blocks[block->address()]) {
-    AddTerminatingKills(lifter, block_regs);
+    AddTerminatingKills(block_regs);
     block_regs->UpdateEntryLive(xedd);
   }
 
   if (IsError()) {
-    AddTerminatingTailCall(basic_block, lifter.intrinsics->error,
-                           ReadPC(basic_block));
+    AddTerminatingTailCall(basic_block, intrinsics->error);
 
   } else if (IsDirectJump()) {
-    auto target_pc = TargetPC();
-    LiftPC(target_pc);  // loads target into `gpr.rip`.
+    auto target_pc = static_cast<intptr_t>(TargetPC());
     AddTerminatingTailCall(
-        basic_block, lifter.GetLiftedBlockForPC(target_pc),
-        llvm::ConstantInt::get(intptr_type, target_pc, false));
+        basic_block, translator->GetLiftedBlockForPC(target_pc));
 
   } else if (IsIndirectJump()) {
-    AddTerminatingTailCall(basic_block, lifter.intrinsics->jump,
-                           ReadPC(basic_block));
+    AddTerminatingTailCall(basic_block, intrinsics->jump);
 
   } else if (IsDirectFunctionCall()) {
     auto target_pc = TargetPC();
-    LiftPC(target_pc);  // loads target into `gpr.rip`.
     AddTerminatingTailCall(
-        basic_block, lifter.GetLiftedBlockForPC(target_pc),
-        llvm::ConstantInt::get(intptr_type, target_pc, false));
+        basic_block, translator->GetLiftedBlockForPC(target_pc));
 
   } else if (IsIndirectFunctionCall()) {
-    AddTerminatingTailCall(basic_block, lifter.intrinsics->function_call,
-                           ReadPC(basic_block));
+    AddTerminatingTailCall(basic_block, intrinsics->function_call);
 
   } else if (IsFunctionReturn()) {
-    AddTerminatingTailCall(basic_block, lifter.intrinsics->function_return,
-                           ReadPC(basic_block));
+    AddTerminatingTailCall(basic_block, intrinsics->function_return);
 
   } else if (IsBranch()) {
-    LiftConditionalBranch(lifter);
+    LiftConditionalBranch();
 
   // Instruction implementation handles syscall emulation.
   } else if (IsSystemCall()) {
-    AddTerminatingTailCall(basic_block, lifter.intrinsics->system_call,
-                           ReadPC(basic_block));
+    AddTerminatingTailCall(basic_block, intrinsics->system_call);
 
   } else if (IsSystemReturn()) {
-    AddTerminatingTailCall(basic_block, lifter.intrinsics->system_return,
-                           ReadPC(basic_block));
+    AddTerminatingTailCall(basic_block, intrinsics->system_return);
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
 
   // Instruction implementation handles syscall (x86, x32) emulation.
   } else if (IsInterruptCall()) {
     if (!IsConditionalInterruptCall()) {
-      AddTerminatingTailCall(basic_block, lifter.intrinsics->interrupt_call,
-                             ReadPC(basic_block));
+      AddTerminatingTailCall(basic_block, intrinsics->interrupt_call);
     } else {
       LOG(INFO)
           << "Lifted program performs a conditional interrupt.";
     }
 
   } else if (IsInterruptReturn()) {
-    AddTerminatingTailCall(basic_block, lifter.intrinsics->interrupt_return,
-                           ReadPC(basic_block));
+    AddTerminatingTailCall(basic_block, intrinsics->interrupt_return);
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
 
   // CPUID. Lets a runtime or static analyzer decide what this means.
   } else if (XED_ICLASS_CPUID == iclass) {
-    AddTerminatingTailCall(basic_block, lifter.intrinsics->read_cpu_features,
-                           NextPC());
+    AddTerminatingTailCall(basic_block, intrinsics->read_cpu_features);
     LOG(INFO)
         << "Lifted program requires access to CPU feature set.";
   }
@@ -191,20 +177,22 @@ void InstructionTranslator::LiftIntoBlock(const Translator &lifter,
 
 // Store the program counter into the associated state register. This
 // lets us access this information from within instruction implementations.
-void InstructionTranslator::LiftPC(uintptr_t next_pc) {
+void InstructionTranslator::SetNextPC(uintptr_t next_pc) {
   llvm::IRBuilder<> ir(basic_block);
   ir.CreateStore(
       llvm::ConstantInt::get(intptr_type, next_pc, false),
       ir.CreateLoad(FindVarInFunction(function, "PC")));
 }
 
-// Read the program counter. The program counter is updated before each
-// lifted instruction, and needs to be passed along to all basic block
-// and control-flow functions.
-llvm::Value *InstructionTranslator::ReadPC(llvm::BasicBlock *block) {
-  auto rip_name = kArchAMD64 == analysis->arch_name ? "RIP_read" : "EIP_read";
+
+// Update the program counter by adding the instruction's size to the current
+// value.
+void InstructionTranslator::UpdatePC(llvm::Value *increment) {
   llvm::IRBuilder<> ir(basic_block);
-  return ir.CreateLoad(ir.CreateLoad(FindVarInFunction(function, rip_name)));
+  auto pc_ptr = ir.CreateLoad(FindVarInFunction(function, "PC"));
+  auto pc = ir.CreateLoad(pc_ptr);
+  auto next_pc = ir.CreateAdd(pc, increment);
+  ir.CreateStore(next_pc, pc_ptr);
 }
 
 namespace {
@@ -272,23 +260,20 @@ llvm::Function *InstructionTranslator::GetInstructionFunction(void) {
 }
 
 // Lift a generic instruction.
-void InstructionTranslator::LiftGeneric(const Translator &lifter) {
+void InstructionTranslator::LiftGeneric(void) {
   // First argument is the state pointer.
-  args.push_back(FindStatePointer(function));
+  args.push_back(LoadStatePointer(basic_block));
 
   // Second argument is the memory pointer. This is actually a pointer to
   // the memory pointer, so that instruction implementations can "update" to
   // the new memory pointer (a la small step semantics).
-  args.push_back(FindMemoryPointer(function));
-
-  // Third argument is the next program counter.
-  args.push_back(llvm::ConstantInt::get(intptr_type, NextPC(), false));
+  args.push_back(FindVarInFunction(function, "MEMORY"));
 
   // Lift the operands. This creates the arguments for us to call the
   // instruction implementation.
   auto num_operands = xed_decoded_inst_noperands(xedd);
   for (auto i = 0U; i < num_operands; ++i) {
-    LiftOperand(lifter, i);
+    LiftOperand(i);
   }
 
   if (auto IF = GetInstructionFunction()) {
@@ -310,9 +295,7 @@ static std::string BlockName(uintptr_t pc) {
 }  // namespace
 
 // Lift a conditional branch instruction.
-void InstructionTranslator::LiftConditionalBranch(const Translator &lifter) {
-  auto dynamic_dest_pc_val = ReadPC(basic_block);
-
+void InstructionTranslator::LiftConditionalBranch(void) {
   auto target_pc = TargetPC();
   auto taken_block = llvm::BasicBlock::Create(
       *context, BlockName(target_pc), function);
@@ -321,30 +304,48 @@ void InstructionTranslator::LiftConditionalBranch(const Translator &lifter) {
   auto fall_through_block = llvm::BasicBlock::Create(
       *context, BlockName(fall_through_pc), function);
 
-  auto target_pc_val = llvm::ConstantInt::get(intptr_type, target_pc, false);
-  AddTerminatingTailCall(
-      taken_block, lifter.GetLiftedBlockForPC(target_pc), target_pc_val);
+  // TODO(pag): This is a bit ugly. The idea here is that, from the semantics
+  //            code, we need a way to communicate what direction of the
+  //            conditional branch should be followed. It turns out to be
+  //            easiest just to write to a special variable :-)
+  auto branch_taken = FindVarInFunction(function, "BRANCH_TAKEN");
+
+  llvm::IRBuilder<> cond_ir(basic_block);
+  auto cond_addr = cond_ir.CreateLoad(branch_taken);
+  auto cond = cond_ir.CreateLoad(cond_addr);
+  auto undef = cond_ir.CreateCall(intrinsics->undefined_8);
+  cond_ir.CreateCondBr(
+      cond_ir.CreateICmpEQ(
+          cond,
+          llvm::ConstantInt::get(cond->getType(), 1)),
+      taken_block,
+      fall_through_block);
+
+  // Encourage dead-store elimination to the `BRANCH_TAKEN` variable by
+  // adding in stores of the `__mcsema_undefined_bool` value down each side.
+  llvm::IRBuilder<> taken_ir(taken_block);
+  taken_ir.CreateStore(undef, cond_addr);
+
+  llvm::IRBuilder<> not_taken_ir(fall_through_block);
+  not_taken_ir.CreateStore(undef, cond_addr);
 
   AddTerminatingTailCall(
-      fall_through_block, lifter.GetLiftedBlockForPC(fall_through_pc),
-      llvm::ConstantInt::get(intptr_type, fall_through_pc, false));
+      taken_block, translator->GetLiftedBlockForPC(target_pc));
 
-  llvm::IRBuilder<> ir(basic_block);
-  ir.CreateCondBr(ir.CreateICmpEQ(target_pc_val, dynamic_dest_pc_val),
-                  taken_block, fall_through_block);
+  AddTerminatingTailCall(
+      fall_through_block, translator->GetLiftedBlockForPC(fall_through_pc));
 }
 
 // Lift an operand. The goal is to be able to pass all explicit and implicit
 // operands as arguments into a function that implements this instruction.
-void InstructionTranslator::LiftOperand(const Translator &lifter,
-                                        unsigned op_num) {
+void InstructionTranslator::LiftOperand(unsigned op_num) {
   auto xedo = xed_inst_operand(xedi, op_num);
   if (XED_OPVIS_SUPPRESSED != xed_operand_operand_visibility(xedo)) {
     switch (auto op_name = xed_operand_name(xedo)) {
       case XED_OPERAND_AGEN:
       case XED_OPERAND_MEM0:
       case XED_OPERAND_MEM1:
-        LiftMemory(lifter, xedo, op_num);
+        LiftMemory(xedo, op_num);
         break;
 
       case XED_OPERAND_IMM0SIGNED:
@@ -372,7 +373,7 @@ void InstructionTranslator::LiftOperand(const Translator &lifter,
         break;
 
       case XED_OPERAND_RELBR:
-        LiftBranchDisplacement();
+        args.push_back(GetBranchTarget());
         break;
 
       default:
@@ -392,8 +393,7 @@ void InstructionTranslator::LiftOperand(const Translator &lifter,
 // A minor challenge is handling the segment register. To handle this we use
 // a GNU-specific extension by specifying an address space of the pointer type.
 // The challenge is that we don't want to have
-void InstructionTranslator::LiftMemory(const Translator &lifter,
-                                       const xed_operand_t *xedo,
+void InstructionTranslator::LiftMemory(const xed_operand_t *xedo,
                                        unsigned op_num) {
   auto op_name = xed_operand_name(xedo);
   auto mem_index = (XED_OPERAND_MEM1 == op_name) ? 1 : 0;  // Handles AGEN.
@@ -412,12 +412,6 @@ void InstructionTranslator::LiftMemory(const Translator &lifter,
   if (XED_REG_INVALID == base && XED_REG_INVALID == index) {
     addr_val = llvm::ConstantInt::get(
         intptr_type, static_cast<uint64_t>(disp), false);
-
-  // PC-relative address.
-  } else if (XED_REG_RIP == base) {
-    auto next_pc = static_cast<intptr_t>(NextPC());
-    addr_val = llvm::ConstantInt::get(
-        intptr_type, static_cast<uint64_t>(next_pc + disp), false);
 
   // Need to to compute the address as `B + (I * S) + D`.
   } else {
@@ -473,10 +467,10 @@ void InstructionTranslator::LiftMemory(const Translator &lifter,
 
   if (addr_space) {
     std::vector<llvm::Value *> args = {
-        FindStatePointer(function),  // Machine state.
+        LoadStatePointer(function),  // Machine state.
         addr_val,  // Address.
         llvm::ConstantInt::get(int32_type, addr_space, true)};
-    addr_val = ir.CreateCall(lifter.intrinsics->compute_address, args);
+    addr_val = ir.CreateCall(translator->intrinsics->compute_address, args);
   }
 
   // We always pass destination operands first, then sources. Memory operands
@@ -494,16 +488,16 @@ void InstructionTranslator::LiftMemory(const Translator &lifter,
   // semantics or with a LOCK prefix.
   if (xed_operand_values_get_atomic(xedd) ||
       xed_operand_values_has_lock_prefix(xedd)) {
-    auto memory = FindMemoryPointer(function);
+    auto memory = LoadMemoryPointer(basic_block);
 
     auto load_mem1 = new llvm::LoadInst(memory);
-    auto new_mem1 = llvm::CallInst::Create(lifter.intrinsics->atomic_begin,
-                                             {load_mem1});
+    auto new_mem1 = llvm::CallInst::Create(intrinsics->atomic_begin,
+                                           {load_mem1});
     auto store_mem1 = new llvm::StoreInst(new_mem1, memory);
 
     auto load_mem2 = new llvm::LoadInst(memory);
-    auto new_mem2 = llvm::CallInst::Create(lifter.intrinsics->atomic_begin,
-                                             {load_mem2});
+    auto new_mem2 = llvm::CallInst::Create(intrinsics->atomic_begin,
+                                           {load_mem2});
     auto store_mem2 = new llvm::StoreInst(new_mem2, memory);
 
     prepend_instrs.push_back(load_mem1);
@@ -649,8 +643,15 @@ void InstructionTranslator::LiftRegister(const xed_operand_t *xedo) {
 }
 
 // Lift a relative branch operand.
-void InstructionTranslator::LiftBranchDisplacement(void) {
-  args.push_back(llvm::ConstantInt::get(intptr_type, TargetPC(), true));
+llvm::Value *InstructionTranslator::GetBranchTarget(void) {
+  llvm::IRBuilder<> ir(basic_block);
+  auto pc_ptr = ir.CreateLoad(FindVarInFunction(function, "PC"));
+  auto pc = ir.CreateLoad(pc_ptr);
+  auto disp = xed_decoded_inst_get_branch_displacement(xedd);
+  auto disp_sext = static_cast<uintptr_t>(static_cast<intptr_t>(disp));
+  return ir.CreateAdd(
+      pc,
+      llvm::ConstantInt::get(intptr_type, disp_sext, true));
 }
 
 namespace {
@@ -669,11 +670,10 @@ llvm::Value *KillReg(llvm::BasicBlock *basic_block, const char *name,
 
 }  // namespace
 
-void InstructionTranslator::AddTerminatingKills(
-    const Translator &lifter, const BasicBlockRegs *regs) {
+void InstructionTranslator::AddTerminatingKills(const BasicBlockRegs *regs) {
   llvm::IRBuilder<> ir(basic_block);
 
-  auto create_undef_bool = lifter.intrinsics->undefined_8;
+  auto create_undef_bool = intrinsics->undefined_8;
   llvm::Value *undef_bool = nullptr;
 
   if (!regs->flags.kill.s.af) {
@@ -695,8 +695,6 @@ void InstructionTranslator::AddTerminatingKills(
   if (!regs->flags.kill.s.pf) {
     undef_bool = KillReg(basic_block, "PF_write",
                          create_undef_bool, undef_bool);
-  } else {
-    asm("nop;");
   }
   if (!regs->flags.kill.s.sf) {
     undef_bool = KillReg(basic_block, "SF_write",
@@ -709,8 +707,8 @@ void InstructionTranslator::AddTerminatingKills(
 
   llvm::Value *undef_reg = nullptr;
   llvm::Function *create_undef_reg = kArchAMD64 == analysis->arch_name ?
-                                     lifter.intrinsics->undefined_64 :
-                                     lifter.intrinsics->undefined_32;
+                                     intrinsics->undefined_64 :
+                                     intrinsics->undefined_32;
 
   if (!regs->regs.kill.s.rax) {
     undef_reg = KillReg(basic_block, "EAX_write", create_undef_reg, undef_reg);

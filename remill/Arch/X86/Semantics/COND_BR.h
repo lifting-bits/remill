@@ -6,88 +6,98 @@
 namespace {
 
 // TODO(pag): Evaluate branch-free variants. Things to evaluate:
-//            - Do branch-free conditionals lead to better native code
+//            - Do branch-free BRANCH_TAKENitionals lead to better native code
 //              generation?
-//            - Do branch-free conditionals lead to better flag lifetime
+//            - Do branch-free BRANCH_TAKENitionals lead to better flag lifetime
 //              analysis.
-//            - Do branch-free conditionals make it easier or harder to
-//              reason about the path condition using an SMT solver (e.g.
+//            - Do branch-free BRANCH_TAKENitionals make it easier or harder to
+//              reason about the path BRANCH_TAKENition using an SMT solver (e.g.
 //              XOR operations might make things harder rather than easier).
 //
-// TODO(pag): - Add in an conditional branch intrinsic, e.g.
-//                  W(state.gpr.rip) = __remill_conditional_branch(a, b, c);
+// TODO(pag): - Add in an BRANCH_TAKENitional branch intrinsic, e.g.
+//                  W(state.gpr.rip) = __remill_BRANCH_TAKENitional_branch(a, b, c);
 //              The goal here would be to informa a concolic/symbolic executor
-//              about the difference between a conditional branch within the
+//              about the difference between a BRANCH_TAKENitional branch within the
 //              lifted program and the program itself.
 
 DEF_SEM(JNLE, PC target_pc) {
-  Write(REG_PC, SelectPC(
-      BAnd(BNot(FLAG_ZF), BXnor(FLAG_SF, FLAG_OF)),
-      target_pc,
-      next_pc));
+  BRANCH_TAKEN = BAnd(BNot(FLAG_ZF), BXnor(FLAG_SF, FLAG_OF));
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_SEM(JNS, PC target_pc) {
-  Write(REG_PC, SelectPC(BNot(FLAG_SF), target_pc, next_pc));
+  BRANCH_TAKEN = BNot(FLAG_SF);
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_SEM(JL, PC target_pc) {
-  Write(REG_PC, SelectPC(BXor(FLAG_SF, FLAG_OF), target_pc, next_pc));
+  BRANCH_TAKEN = BXor(FLAG_SF, FLAG_OF);
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_SEM(JNP, PC target_pc) {
-  Write(REG_PC, SelectPC(BNot(FLAG_PF), target_pc, next_pc));
+  BRANCH_TAKEN = BNot(FLAG_PF);
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_SEM(JNZ, PC target_pc) {
-  Write(REG_PC, SelectPC(BNot(FLAG_ZF), target_pc, next_pc));
+  BRANCH_TAKEN = BNot(FLAG_ZF);
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_SEM(JNB, PC target_pc) {
-  Write(REG_PC, SelectPC(BNot(FLAG_CF), target_pc, next_pc));
+  BRANCH_TAKEN = BNot(FLAG_CF);
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_SEM(JNO, PC target_pc) {
-  Write(REG_PC, SelectPC(BNot(FLAG_OF), target_pc, next_pc));
+  BRANCH_TAKEN = BNot(FLAG_OF);
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_SEM(JNL, PC target_pc) {
-  Write(REG_PC, SelectPC(BXnor(FLAG_SF, FLAG_OF), target_pc, next_pc));
+  BRANCH_TAKEN = BXnor(FLAG_SF, FLAG_OF);
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_SEM(JNBE, PC target_pc) {
-  Write(REG_PC, SelectPC(BNot(BOr(FLAG_CF, FLAG_ZF)), target_pc, next_pc));
+  BRANCH_TAKEN = BNot(BOr(FLAG_CF, FLAG_ZF));
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_SEM(JBE, PC target_pc) {
-  Write(REG_PC, SelectPC(BOr(FLAG_CF, FLAG_ZF), target_pc, next_pc));
+  BRANCH_TAKEN = BOr(FLAG_CF, FLAG_ZF);
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_SEM(JZ, PC target_pc) {
-  Write(REG_PC, SelectPC(FLAG_ZF, target_pc, next_pc));
+  BRANCH_TAKEN = FLAG_ZF;
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_SEM(JP, PC target_pc) {
-  Write(REG_PC, SelectPC(FLAG_PF, target_pc, next_pc));
+  BRANCH_TAKEN = FLAG_PF;
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_SEM(JS, PC target_pc) {
-  Write(REG_PC, SelectPC(FLAG_SF, target_pc, next_pc));
+  BRANCH_TAKEN = FLAG_SF;
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_SEM(JO, PC target_pc) {
-  Write(REG_PC, SelectPC(FLAG_OF, target_pc, next_pc));
+  BRANCH_TAKEN = FLAG_OF;
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_SEM(JB, PC target_pc) {
-  Write(REG_PC, SelectPC(FLAG_CF, target_pc, next_pc));
+  BRANCH_TAKEN = FLAG_CF;
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_SEM(JLE, PC target_pc) {
-  Write(REG_PC, SelectPC(
-      BOr(FLAG_ZF, BXor(FLAG_SF, FLAG_OF)),
-      target_pc,
-      next_pc));
+  BRANCH_TAKEN = BOr(FLAG_ZF, BXor(FLAG_SF, FLAG_OF));
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 } // namespace
@@ -205,36 +215,39 @@ IF_64BIT(DEF_ISEL(JLE_RELBRz_64) = JLE;)
 DEF_ISEL(JLE_RELBRd) = JLE;
 
 DEF_ISEL_SEM(JCXZ_RELBRb, PC target_pc) {
-  Write(REG_PC, SelectPC(UCmpEq(REG_CX, 0_u16), target_pc, next_pc));
+  BRANCH_TAKEN = UCmpEq(REG_CX, 0_u16);
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_ISEL_SEM(JECXZ_RELBRb, PC target_pc) {
-  Write(REG_PC, SelectPC(UCmpEq(REG_ECX, 0_u32), target_pc, next_pc));
+  BRANCH_TAKEN = UCmpEq(REG_ECX, 0_u32);
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_ISEL_SEM(JRCXZ_RELBRb, PC target_pc) {
-  Write(REG_PC, SelectPC(UCmpEq(REG_RCX, 0_u64), target_pc, next_pc));
+  BRANCH_TAKEN = UCmpEq(REG_RCX, 0_u64);
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_ISEL_SEM(LOOP_RELBRb, PC target_pc) {
-  auto count = USub(REG_XCX, addr_t(1));
-  auto cond = UCmpNeq(count, addr_t(0));
+  addr_t count = USub(REG_XCX, addr_t(1));
+  BRANCH_TAKEN = UCmpNeq(count, addr_t(0));
   Write(REG_XCX, count);
-  Write(REG_PC, SelectPC(cond, target_pc, next_pc));
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_ISEL_SEM(LOOPE_RELBRb, PC target_pc) {
-  auto count = USub(REG_XCX, addr_t(1));
-  auto cond = BAnd(UCmpNeq(count, addr_t(0)), FLAG_ZF);
+  addr_t count = USub(REG_XCX, addr_t(1));
+  BRANCH_TAKEN = BAnd(UCmpNeq(count, addr_t(0)), FLAG_ZF);
   Write(REG_XCX, count);
-  Write(REG_PC, SelectPC(cond, target_pc, next_pc));
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 DEF_ISEL_SEM(LOOPNE_RELBRb, PC target_pc) {
-  auto count = USub(REG_XCX, addr_t(1));
-  auto cond = BAnd(UCmpNeq(count, addr_t(0)), BNot(FLAG_ZF));
+  addr_t count = USub(REG_XCX, addr_t(1));
+  BRANCH_TAKEN = BAnd(UCmpNeq(count, addr_t(0)), BNot(FLAG_ZF));
   Write(REG_XCX, count);
-  Write(REG_PC, SelectPC(cond, target_pc, next_pc));
+  Write(REG_PC, Select<addr_t>(BRANCH_TAKEN, target_pc, REG_PC));
 }
 
 /*

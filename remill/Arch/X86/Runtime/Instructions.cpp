@@ -67,6 +67,8 @@
 #define FLAG_OF state.aflag.of
 #define FLAG_DF state.aflag.df
 
+#define BRANCH_TAKEN state.conditional_branch_taken
+
 // Define the `PushValue` and `PopValue` helpers.
 //#include "remill/Arch/X86/Semantics/POP.h"
 //#include "remill/Arch/X86/Semantics/PUSH.h"
@@ -87,6 +89,6 @@
 //#include "remill/Arch/X86/Semantics/SHIFT.h"
 //#include "remill/Arch/X86/Semantics/SSE.h"
 //#include "remill/Arch/X86/Semantics/STRINGOP.h"
-//#include "remill/Arch/X86/Semantics/UNCOND_BR.h"
+#include "remill/Arch/X86/Semantics/UNCOND_BR.h"
 //#include "remill/Arch/X86/Semantics/XOP.h"
 //#include "remill/Arch/X86/Semantics/X87.h"
