@@ -357,13 +357,13 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/CONVERT/CWD.S"
 #include "tests/X86/CONVERT/CWDE.S"
 
-/*
 #include "tests/X86/LOGICAL/AND.S"
 #include "tests/X86/LOGICAL/NOT.S"
 #include "tests/X86/LOGICAL/OR.S"
 #include "tests/X86/LOGICAL/TEST.S"
 #include "tests/X86/LOGICAL/XOR.S"
 
+/*
 #include "tests/X86/MISC/CPUID.S"
 #include "tests/X86/MISC/ENTER.S"
 #include "tests/X86/MISC/LEA.S"

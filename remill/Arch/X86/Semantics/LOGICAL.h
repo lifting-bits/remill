@@ -15,50 +15,43 @@ ALWAYS_INLINE void SetFlagsLogical(State &state, T lhs, T rhs, T res) {
 }
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(AND, D dst, S1 src1_, S2 src2_) {
-  typedef BASE_TYPE_OF(S1) T;
-  const T src1 = R(src1_);
-  const T src2 = R(src2_);
-  const T res = src1 & src2;
-  W(dst) = res;
-  __remill_barrier_compiler();
-  SetFlagsLogical(state, src1, src2, res);
+DEF_SEM(AND, D dst, S1 src1, S2 src2) {
+  auto lhs = Read(src1);
+  auto rhs = Read(src2);
+  auto res = UAnd(lhs, rhs);
+  WriteZExt(dst, res);
+  SetFlagsLogical(state, lhs, rhs, res);
 }
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(OR, D dst, S1 src1_, S2 src2_) {
-  typedef BASE_TYPE_OF(S1) T;
-  const T src1 = R(src1_);
-  const T src2 = R(src2_);
-  const T res = src1 | src2;
-  W(dst) = res;
-  __remill_barrier_compiler();
-  SetFlagsLogical(state, src1, src2, res);
+DEF_SEM(OR, D dst, S1 src1, S2 src2) {
+  auto lhs = Read(src1);
+  auto rhs = Read(src2);
+  auto res = UOr(lhs, rhs);
+  WriteZExt(dst, res);
+  SetFlagsLogical(state, lhs, rhs, res);
 }
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(XOR, D dst, S1 src1_, S2 src2_) {
-  typedef BASE_TYPE_OF(S1) T;
-  const T src1 = R(src1_);
-  const T src2 = R(src2_);
-  const T res = src1 ^ src2;
-  W(dst) = res;
-  __remill_barrier_compiler();
-  SetFlagsLogical(state, src1, src2, res);
+DEF_SEM(XOR, D dst, S1 src1, S2 src2) {
+  auto lhs = Read(src1);
+  auto rhs = Read(src2);
+  auto res = UXor(lhs, rhs);
+  WriteZExt(dst, res);
+  SetFlagsLogical(state, lhs, rhs, res);
 }
 
 template <typename D, typename S1>
-DEF_SEM(NOT, D dst_src1, S1 src1_) {
-  W(dst_src1) = ~R(src1_);
+DEF_SEM(NOT, D dst, S1 src1) {
+  WriteZExt(dst, UNot(Read(src1)));
 }
 
 template <typename S1, typename S2>
-DEF_SEM(TEST, S1 src1_, S2 src2_) {
-  typedef BASE_TYPE_OF(S1) T;
-  const T src1 = R(src1_);
-  const T src2 = R(src2_);
-  const T res = src1 & src2;
-  SetFlagsLogical(state, src1, src2, res);
+DEF_SEM(TEST, S1 src1, S2 src2) {
+  auto lhs = Read(src1);
+  auto rhs = Read(src2);
+  auto res = UAnd(lhs, rhs);
+  SetFlagsLogical(state, lhs, rhs, res);
 }
 
 }  // namespace
@@ -143,91 +136,95 @@ DEF_ISEL_Rn_In(TEST_OrAX_IMMz, TEST);
 namespace {
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(PAND, D dst, S1 src1_, S2 src2_) {
-  typedef BASE_TYPE_OF(S1) T;
-  typedef BASE_TYPE_OF(D) DT;  // Note: sizeof(DT) >= sizeof(T).
-  const DT src1 = R(src1_);
-  const DT src2 = R(src2_);
-  W(dst) = src1.iwords & src2.iwords;
+DEF_SEM(PAND_64, D dst, S1 src1, S2 src2) {
+  UWriteV64(dst, UAndV64(UReadV64(src1), UReadV64(src2)));
 }
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(PANDN, D dst, S1 src1_, S2 src2_) {
-  typedef BASE_TYPE_OF(S1) T;
-  typedef BASE_TYPE_OF(D) DT;  // Note: sizeof(DT) >= sizeof(T).
-  const DT src1 = R(src1_);
-  const DT src2 = R(src2_);
-  W(dst) = (~src1.iwords) & src2.iwords;
+DEF_SEM(PAND, D dst, S1 src1, S2 src2) {
+  UWriteV32(dst, UAndV32(UReadV32(src1), UReadV32(src2)));
 }
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(POR, D dst, S1 src1_, S2 src2_) {
-  typedef BASE_TYPE_OF(S1) T;
-  typedef BASE_TYPE_OF(D) DT;  // Note: sizeof(DT) >= sizeof(T).
-  const DT src1 = R(src1_);
-  const DT src2 = R(src2_);
-  W(dst) = src1.iwords | src2.iwords;
+DEF_SEM(PANDN_64, D dst, S1 src1, S2 src2) {
+  UWriteV64(dst, UAndNV64(UReadV64(src1), UReadV64(src2)));
 }
+
 template <typename D, typename S1, typename S2>
-DEF_SEM(PXOR, D dst, S1 src1_, S2 src2_) {
-  typedef BASE_TYPE_OF(S1) T;
-  typedef BASE_TYPE_OF(D) DT;  // Note: sizeof(DT) >= sizeof(T).
-  const DT src1 = R(src1_);
-  const DT src2 = R(src2_);
-  W(dst) = src1.iwords ^ src2.iwords;
+DEF_SEM(PANDN, D dst, S1 src1, S2 src2) {
+  UWriteV32(dst, UAndNV32(UReadV32(src1), UReadV32(src2)));
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(POR_64, D dst, S1 src1, S2 src2) {
+  UWriteV64(dst, UOrV64(UReadV64(src1), UReadV64(src2)));
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(POR, D dst, S1 src1, S2 src2) {
+  UWriteV32(dst, UOrV32(UReadV32(src1), UReadV32(src2)));
+}
+
+DEF_SEM(aPXOR_64, V64W dst, V64 src1, MV64 src2) {
+  do {
+    memory = _UWriteV64(
+        memory, dst,
+        (UXorV64(_UReadV64(memory, src1), _UReadV64(memory, src2))));
+  } while (false);
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PXOR_64, D dst, S1 src1, S2 src2) {
+  UWriteV64(dst, UXorV64(UReadV64(src1), UReadV64(src2)));
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PXOR, D dst, S1 src1, S2 src2) {
+  UWriteV32(dst, UXorV32(UReadV32(src1), UReadV32(src2)));
 }
 
 template <typename S1, typename S2>
-DEF_SEM(PTEST, S1 src1_, S2 src2_) {
-  typedef BASE_TYPE_OF(S1) T;
-  const T src1 = R(src1_);
-  const T src2 = R(src2_);
-
-  __remill_barrier_compiler();
-
-  T zero;
-  zero.iwords = {0U};
-
-  T and_res;
-  and_res.iwords = src1.iwords & src2.iwords;
-  //state.aflag.zf = and_res.iwords == zero.iwords;
-
-  T andn_res;
-  andn_res.iwords = (~src1.iwords) & src2.iwords;
-  //state.aflag.cf = andn_res.iwords == zero.iwords;
-
-  state.aflag.pf = false;
-  state.aflag.af = false;
-  state.aflag.sf = false;
-  state.aflag.of = false;
+DEF_SEM(PTEST, S1 src1, S2 src2) {
+  auto lhs = UReadV32(src1);
+  auto rhs = UReadV32(src2);
+  auto res_and = UAndV32(lhs, rhs);
+  auto res_andn = UAndNV32(lhs, rhs);
+  auto res_and_ax = AccumulateUOrV32(res_and);
+  auto res_andn_ax = AccumulateUOrV32(res_andn);
+  FLAG_ZF = UCmpEq(res_and_ax, 0_u32);
+  FLAG_CF = UCmpEq(res_andn_ax, 0_u32);
+  FLAG_PF = false;
+  FLAG_AF = false;
+  FLAG_SF = false;
+  FLAG_OF = false;
 }
 
 }  // namespace
 
-DEF_ISEL(PXORq_MEMq) = PXOR<V64W, V64, MV64>;
-DEF_ISEL(PXORqq) = PXOR<V64W, V64, V64>;
-DEF_ISEL(PXOR_XMMdq_MEMdq) = PXOR<V128W, V128, MV128>;
-DEF_ISEL(PXOR_XMMdq_XMMdq) = PXOR<V128W, V128, V128>;
+DEF_ISEL(PXOR_MMXq_MEMq) = PXOR_64<V64W, V64, MV64>;
+DEF_ISEL(PXOR_MMXq_MMXq) = PXOR_64<V64W, V64, V64>;
+DEF_ISEL(PXOR_XMMdq_MEMdq) = PXOR_64<V128W, V128, MV128>;
+DEF_ISEL(PXOR_XMMdq_XMMdq) = PXOR_64<V128W, V128, V128>;
 IF_AVX( DEF_ISEL(VPXOR_XMMdq_XMMdq_MEMdq) = PXOR<VV128W, VV128, MV128>; )
 IF_AVX( DEF_ISEL(VPXOR_XMMdq_XMMdq_XMMdq) = PXOR<VV128W, VV128, VV128>; )
 IF_AVX( DEF_ISEL(VPXOR_YMMqq_YMMqq_MEMqq) = PXOR<VV256W, VV256, MV256>; )
 IF_AVX( DEF_ISEL(VPXOR_YMMqq_YMMqq_YMMqq) = PXOR<VV256W, VV256, VV256>; )
 
-DEF_ISEL(XORPD_XMMpd_MEMpd) = PXOR<V128W, V128, MV128>;
-DEF_ISEL(XORPD_XMMpd_XMMpd) = PXOR<V128W, V128, V128>;
+DEF_ISEL(XORPD_XMMpd_MEMpd) = PXOR_64<V128W, V128, MV128>;
+DEF_ISEL(XORPD_XMMpd_XMMpd) = PXOR_64<V128W, V128, V128>;
 DEF_ISEL(XORPS_XMMps_MEMps) = PXOR<V128W, V128, MV128>;
 DEF_ISEL(XORPS_XMMps_XMMps) = PXOR<V128W, V128, V128>;
-IF_AVX( DEF_ISEL(VXORPD_XMMdq_XMMdq_MEMdq) = PXOR<VV128W, VV128, MV128>; )
-IF_AVX( DEF_ISEL(VXORPD_XMMdq_XMMdq_XMMdq) = PXOR<VV128W, VV128, VV128>; )
-IF_AVX( DEF_ISEL(VXORPD_YMMqq_YMMqq_MEMqq) = PXOR<VV256W, VV256, MV256>; )
-IF_AVX( DEF_ISEL(VXORPD_YMMqq_YMMqq_YMMqq) = PXOR<VV256W, VV256, VV256>; )
+IF_AVX( DEF_ISEL(VXORPD_XMMdq_XMMdq_MEMdq) = PXOR_64<VV128W, VV128, MV128>; )
+IF_AVX( DEF_ISEL(VXORPD_XMMdq_XMMdq_XMMdq) = PXOR_64<VV128W, VV128, VV128>; )
+IF_AVX( DEF_ISEL(VXORPD_YMMqq_YMMqq_MEMqq) = PXOR_64<VV256W, VV256, MV256>; )
+IF_AVX( DEF_ISEL(VXORPD_YMMqq_YMMqq_YMMqq) = PXOR_64<VV256W, VV256, VV256>; )
 IF_AVX( DEF_ISEL(VXORPS_XMMdq_XMMdq_MEMdq) = PXOR<VV128W, VV128, MV128>; )
 IF_AVX( DEF_ISEL(VXORPS_XMMdq_XMMdq_XMMdq) = PXOR<VV128W, VV128, VV128>; )
 IF_AVX( DEF_ISEL(VXORPS_YMMqq_YMMqq_MEMqq) = PXOR<VV256W, VV256, MV256>; )
 IF_AVX( DEF_ISEL(VXORPS_YMMqq_YMMqq_YMMqq) = PXOR<VV256W, VV256, VV256>; )
 
-DEF_ISEL(PANDq_MEMq) = PAND<V64W, V64, MV64>;
-DEF_ISEL(PANDqq) = PAND<V64W, V64, V64>;
+DEF_ISEL(PAND_MMXq_MEMq) = PAND_64<V64W, V64, MV64>;
+DEF_ISEL(PAND_MMXq_MMXq) = PAND_64<V64W, V64, V64>;
 DEF_ISEL(PAND_XMMdq_MEMdq) = PAND<V128W, V128, MV128>;
 DEF_ISEL(PAND_XMMdq_XMMdq) = PAND<V128W, V128, V128>;
 IF_AVX( DEF_ISEL(VPAND_XMMdq_XMMdq_MEMdq) = PAND<VV128W, VV128, MV128>; )
@@ -235,21 +232,21 @@ IF_AVX( DEF_ISEL(VPAND_XMMdq_XMMdq_XMMdq) = PAND<VV128W, VV128, VV128>; )
 IF_AVX( DEF_ISEL(VPAND_YMMqq_YMMqq_MEMqq) = PAND<VV256W, VV256, MV256>; )
 IF_AVX( DEF_ISEL(VPAND_YMMqq_YMMqq_YMMqq) = PAND<VV256W, VV256, VV256>; )
 
-DEF_ISEL(ANDPD_XMMpd_MEMpd) = PAND<V128W, V128, MV128>;
-DEF_ISEL(ANDPD_XMMpd_XMMpd) = PAND<V128W, V128, V128>;
+DEF_ISEL(ANDPD_XMMpd_MEMpd) = PAND_64<V128W, V128, MV128>;
+DEF_ISEL(ANDPD_XMMpd_XMMpd) = PAND_64<V128W, V128, V128>;
 DEF_ISEL(ANDPS_XMMps_MEMps) = PAND<V128W, V128, MV128>;
 DEF_ISEL(ANDPS_XMMps_XMMps) = PAND<V128W, V128, V128>;
-IF_AVX( DEF_ISEL(VANDPD_XMMdq_XMMdq_MEMdq) = PAND<VV128W, VV128, MV128>; )
-IF_AVX( DEF_ISEL(VANDPD_XMMdq_XMMdq_XMMdq) = PAND<VV128W, VV128, VV128>; )
-IF_AVX( DEF_ISEL(VANDPD_YMMqq_YMMqq_MEMqq) = PAND<VV256W, VV256, MV256>; )
-IF_AVX( DEF_ISEL(VANDPD_YMMqq_YMMqq_YMMqq) = PAND<VV256W, VV256, VV256>; )
+IF_AVX( DEF_ISEL(VANDPD_XMMdq_XMMdq_MEMdq) = PAND_64<VV128W, VV128, MV128>; )
+IF_AVX( DEF_ISEL(VANDPD_XMMdq_XMMdq_XMMdq) = PAND_64<VV128W, VV128, VV128>; )
+IF_AVX( DEF_ISEL(VANDPD_YMMqq_YMMqq_MEMqq) = PAND_64<VV256W, VV256, MV256>; )
+IF_AVX( DEF_ISEL(VANDPD_YMMqq_YMMqq_YMMqq) = PAND_64<VV256W, VV256, VV256>; )
 IF_AVX( DEF_ISEL(VANDPS_XMMdq_XMMdq_MEMdq) = PAND<VV128W, VV128, MV128>; )
 IF_AVX( DEF_ISEL(VANDPS_XMMdq_XMMdq_XMMdq) = PAND<VV128W, VV128, VV128>; )
 IF_AVX( DEF_ISEL(VANDPS_YMMqq_YMMqq_MEMqq) = PAND<VV256W, VV256, MV256>; )
 IF_AVX( DEF_ISEL(VANDPS_YMMqq_YMMqq_YMMqq) = PAND<VV256W, VV256, VV256>; )
 
-DEF_ISEL(PANDNq_MEMq) = PANDN<V64W, V64, MV64>;
-DEF_ISEL(PANDNqq) = PANDN<V64W, V64, V64>;
+DEF_ISEL(PANDN_MMXq_MEMq) = PANDN_64<V64W, V64, MV64>;
+DEF_ISEL(PANDN_MMXq_MMXq) = PANDN_64<V64W, V64, V64>;
 DEF_ISEL(PANDN_XMMdq_MEMdq) = PANDN<V128W, V128, MV128>;
 DEF_ISEL(PANDN_XMMdq_XMMdq) = PANDN<V128W, V128, V128>;
 IF_AVX( DEF_ISEL(VPANDN_XMMdq_XMMdq_MEMdq) = PANDN<VV128W, VV128, MV128>; )
@@ -257,21 +254,21 @@ IF_AVX( DEF_ISEL(VPANDN_XMMdq_XMMdq_XMMdq) = PANDN<VV128W, VV128, VV128>; )
 IF_AVX( DEF_ISEL(VPANDN_YMMqq_YMMqq_MEMqq) = PANDN<VV256W, VV256, MV256>; )
 IF_AVX( DEF_ISEL(VPANDN_YMMqq_YMMqq_YMMqq) = PANDN<VV256W, VV256, VV256>; )
 
-DEF_ISEL(ANDNPD_XMMpd_MEMpd) = PANDN<V128W, V128, MV128>;
-DEF_ISEL(ANDNPD_XMMpd_XMMpd) = PANDN<V128W, V128, V128>;
+DEF_ISEL(ANDNPD_XMMpd_MEMpd) = PANDN_64<V128W, V128, MV128>;
+DEF_ISEL(ANDNPD_XMMpd_XMMpd) = PANDN_64<V128W, V128, V128>;
 DEF_ISEL(ANDNPS_XMMps_MEMps) = PANDN<V128W, V128, MV128>;
 DEF_ISEL(ANDNPS_XMMps_XMMps) = PANDN<V128W, V128, V128>;
-IF_AVX( DEF_ISEL(VANDNPD_XMMdq_XMMdq_MEMdq) = PANDN<VV128W, VV128, MV128>; )
-IF_AVX( DEF_ISEL(VANDNPD_XMMdq_XMMdq_XMMdq) = PANDN<VV128W, VV128, VV128>; )
-IF_AVX( DEF_ISEL(VANDNPD_YMMqq_YMMqq_MEMqq) = PANDN<VV256W, VV256, MV256>; )
-IF_AVX( DEF_ISEL(VANDNPD_YMMqq_YMMqq_YMMqq) = PANDN<VV256W, VV256, VV256>; )
+IF_AVX( DEF_ISEL(VANDNPD_XMMdq_XMMdq_MEMdq) = PANDN_64<VV128W, VV128, MV128>; )
+IF_AVX( DEF_ISEL(VANDNPD_XMMdq_XMMdq_XMMdq) = PANDN_64<VV128W, VV128, VV128>; )
+IF_AVX( DEF_ISEL(VANDNPD_YMMqq_YMMqq_MEMqq) = PANDN_64<VV256W, VV256, MV256>; )
+IF_AVX( DEF_ISEL(VANDNPD_YMMqq_YMMqq_YMMqq) = PANDN_64<VV256W, VV256, VV256>; )
 IF_AVX( DEF_ISEL(VANDNPS_XMMdq_XMMdq_MEMdq) = PANDN<VV128W, VV128, MV128>; )
 IF_AVX( DEF_ISEL(VANDNPS_XMMdq_XMMdq_XMMdq) = PANDN<VV128W, VV128, VV128>; )
 IF_AVX( DEF_ISEL(VANDNPS_YMMqq_YMMqq_MEMqq) = PANDN<VV256W, VV256, MV256>; )
 IF_AVX( DEF_ISEL(VANDNPS_YMMqq_YMMqq_YMMqq) = PANDN<VV256W, VV256, VV256>; )
 
-DEF_ISEL(PORq_MEMq) = POR<V64W, V64, MV64>;
-DEF_ISEL(PORqq) = POR<V64W, V64, V64>;
+DEF_ISEL(POR_MMXq_MEMq) = POR_64<V64W, V64, MV64>;
+DEF_ISEL(POR_MMXq_MMXq) = POR_64<V64W, V64, V64>;
 DEF_ISEL(POR_XMMdq_MEMdq) = POR<V128W, V128, MV128>;
 DEF_ISEL(POR_XMMdq_XMMdq) = POR<V128W, V128, V128>;
 IF_AVX( DEF_ISEL(VPOR_XMMdq_XMMdq_MEMdq) = POR<VV128W, VV128, MV128>; )
@@ -279,14 +276,14 @@ IF_AVX( DEF_ISEL(VPOR_XMMdq_XMMdq_XMMdq) = POR<VV128W, VV128, VV128>; )
 IF_AVX( DEF_ISEL(VPOR_YMMqq_YMMqq_MEMqq) = POR<VV256W, VV256, MV256>; )
 IF_AVX( DEF_ISEL(VPOR_YMMqq_YMMqq_YMMqq) = POR<VV256W, VV256, VV256>; )
 
-DEF_ISEL(ORPD_XMMpd_MEMpd) = POR<V128W, V128, MV128>;
-DEF_ISEL(ORPD_XMMpd_XMMpd) = POR<V128W, V128, V128>;
+DEF_ISEL(ORPD_XMMpd_MEMpd) = POR_64<V128W, V128, MV128>;
+DEF_ISEL(ORPD_XMMpd_XMMpd) = POR_64<V128W, V128, V128>;
 DEF_ISEL(ORPS_XMMps_MEMps) = POR<V128W, V128, MV128>;
 DEF_ISEL(ORPS_XMMps_XMMps) = POR<V128W, V128, V128>;
-IF_AVX( DEF_ISEL(VORPD_XMMdq_XMMdq_MEMdq) = POR<VV128W, VV128, MV128>; )
-IF_AVX( DEF_ISEL(VORPD_XMMdq_XMMdq_XMMdq) = POR<VV128W, VV128, VV128>; )
-IF_AVX( DEF_ISEL(VORPD_YMMqq_YMMqq_MEMqq) = POR<VV256W, VV256, MV256>; )
-IF_AVX( DEF_ISEL(VORPD_YMMqq_YMMqq_YMMqq) = POR<VV256W, VV256, VV256>; )
+IF_AVX( DEF_ISEL(VORPD_XMMdq_XMMdq_MEMdq) = POR_64<VV128W, VV128, MV128>; )
+IF_AVX( DEF_ISEL(VORPD_XMMdq_XMMdq_XMMdq) = POR_64<VV128W, VV128, VV128>; )
+IF_AVX( DEF_ISEL(VORPD_YMMqq_YMMqq_MEMqq) = POR_64<VV256W, VV256, MV256>; )
+IF_AVX( DEF_ISEL(VORPD_YMMqq_YMMqq_YMMqq) = POR_64<VV256W, VV256, VV256>; )
 IF_AVX( DEF_ISEL(VORPS_XMMdq_XMMdq_MEMdq) = POR<VV128W, VV128, MV128>; )
 IF_AVX( DEF_ISEL(VORPS_XMMdq_XMMdq_XMMdq) = POR<VV128W, VV128, VV128>; )
 IF_AVX( DEF_ISEL(VORPS_YMMqq_YMMqq_MEMqq) = POR<VV256W, VV256, MV256>; )

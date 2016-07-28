@@ -73,6 +73,8 @@
 #define FLAG_DF state.aflag.df
 
 #define BRANCH_TAKEN state.conditional_branch_taken
+#define INTERRUPT_VECTOR state.interrupt_vector
+#define INTERRUPT_TAKEN state.interrupt_taken
 
 // Define the `PushValue` and `PopValue` helpers.
 //#include "remill/Arch/X86/Semantics/POP.h"
@@ -86,9 +88,9 @@
 #include "remill/Arch/X86/Semantics/COND_BR.h"
 #include "remill/Arch/X86/Semantics/CONVERT.h"
 #include "remill/Arch/X86/Semantics/DATAXFER.h"
-//#include "remill/Arch/X86/Semantics/INTERRUPT.h"
-//#include "remill/Arch/X86/Semantics/FMA.h"
-//#include "remill/Arch/X86/Semantics/LOGICAL.h"
+#include "remill/Arch/X86/Semantics/INTERRUPT.h"
+#include "remill/Arch/X86/Semantics/FMA.h"
+#include "remill/Arch/X86/Semantics/LOGICAL.h"
 //#include "remill/Arch/X86/Semantics/MISC.h"
 //#include "remill/Arch/X86/Semantics/ROTATE.h"
 //#include "remill/Arch/X86/Semantics/SHIFT.h"

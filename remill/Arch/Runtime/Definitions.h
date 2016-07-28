@@ -29,6 +29,9 @@
     ALWAYS_INLINE static void name ( \
         State &state, Memory *&memory, ##__VA_ARGS__) noexcept
 
+// Define a semantics implementing function.
+#define DEF_HELPER(name, ...) DEF_SEM(name, ##__VA_ARGS__)
+
 // Define a semantics implementing function that is also an instruction.
 #define DEF_ISEL_SEM(name, ...) \
     extern "C" ALWAYS_INLINE void name ( \

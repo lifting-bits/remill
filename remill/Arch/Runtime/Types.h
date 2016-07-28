@@ -24,50 +24,8 @@ static_assert(16 == sizeof(uint128_t), "Invalid `uint128_t` size.");
 typedef int int128_t __attribute__((mode(TI)));
 static_assert(16 == sizeof(int128_t), "Invalid `int128_t` size.");
 
-//union alignas(float) float32_t {
-//  float val;
-//  struct {
-//    uint32_t sign:1;
-//    uint32_t exponent:8;
-//    uint32_t fraction:23;
-//  } __attribute__((packed));
-//
-//  ALWAYS_INLINE float32_t(void);
-//  ALWAYS_INLINE float32_t(float val_);
-//  ALWAYS_INLINE float32_t &operator=(float new_val);
-//  ALWAYS_INLINE float32_t &operator=(double new_val);
-//  ALWAYS_INLINE float32_t &operator=(const float64_t &new_val);
-//  ALWAYS_INLINE float32_t &operator=(int64_t new_val);
-//  ALWAYS_INLINE float32_t &operator=(int32_t new_val);
-//  ALWAYS_INLINE float32_t &operator=(int16_t new_val);
-//  ALWAYS_INLINE float32_t &operator=(int8_t new_val);
-//  ALWAYS_INLINE operator float(void) const;
-//} __attribute__((packed));
-
 typedef float float32_t;
 static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
-
-//union alignas(double) float64_t {
-//  double val;
-//  struct {
-//    uint64_t sign:1;
-//    uint64_t exponent:11;
-//    uint64_t fraction:52;
-//  } __attribute__((packed));
-//
-//  ALWAYS_INLINE float64_t(void);
-//  ALWAYS_INLINE float64_t(double val_);
-//  ALWAYS_INLINE float64_t(float val_);
-//  ALWAYS_INLINE float64_t(float32_t val_);
-//  ALWAYS_INLINE float64_t &operator=(double new_val);
-//  ALWAYS_INLINE float64_t &operator=(float new_val);
-//  ALWAYS_INLINE float64_t &operator=(float32_t new_val);
-//  ALWAYS_INLINE float64_t &operator=(int64_t new_val);
-//  ALWAYS_INLINE float64_t &operator=(int32_t new_val);
-//  ALWAYS_INLINE float64_t &operator=(int16_t new_val);
-//  ALWAYS_INLINE float64_t &operator=(int8_t new_val);
-//  ALWAYS_INLINE operator double(void) const;
-//} __attribute__((packed));
 
 typedef double float64_t;
 static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
@@ -82,11 +40,13 @@ struct alignas(1) float80_t {
     uint64_t fraction:63;
   } __attribute__((packed));
 
+#if 0
   ALWAYS_INLINE float80_t(void);
   ALWAYS_INLINE float80_t(float32_t);
   ALWAYS_INLINE float80_t(float64_t);
   ALWAYS_INLINE float80_t &operator=(float32_t new_val);
   ALWAYS_INLINE float80_t &operator=(float64_t new_val);
+#endif
 
 } __attribute__((packed));
 
@@ -206,11 +166,7 @@ MAKE_VECTOR(double, float64, 8, 512, 64);
 #pragma clang diagnostic ignored "-Wunused-private-field"
 
 union vec8_t final {
-//  ALWAYS_INLINE vec8_t(void);
-
   uint8v1_t bytes;
-//  uint8v1_t iwords;  // Ideal.
-
 } __attribute__((packed));
 
 static_assert(1 == sizeof(vec8_t) &&
@@ -218,12 +174,8 @@ static_assert(1 == sizeof(vec8_t) &&
               "Invalid structure packing of `vec8_t`.");
 
 union vec16_t final {
-//  ALWAYS_INLINE vec16_t(void);
-//  ALWAYS_INLINE vec16_t(vec8_t sub_vec);
-
   uint8v2_t bytes;
   uint16v1_t words;
-//  uint16v1_t iwords;  // Ideal.
 } __attribute__((packed));
 
 static_assert(2 == sizeof(vec16_t) &&
@@ -232,14 +184,9 @@ static_assert(2 == sizeof(vec16_t) &&
               "Invalid structure packing of `vec16_t`.");
 
 union vec32_t final {
-//  ALWAYS_INLINE vec32_t(void);
-//  ALWAYS_INLINE vec32_t(vec8_t sub_vec);
-//  ALWAYS_INLINE vec32_t(vec16_t sub_vec);
-
   uint8v4_t bytes;
   uint16v2_t words;
   uint32v1_t dwords;
-//  uint32v1_t iwords;  // Ideal.
   float32v1_t floats;
 } __attribute__((packed));
 
@@ -251,18 +198,10 @@ static_assert(4 == sizeof(vec32_t) &&
               "Invalid structure packing of `vec32_t`.");
 
 union vec64_t final {
-//  ALWAYS_INLINE vec64_t(void);
-//  ALWAYS_INLINE vec64_t(vec8_t sub_vec);
-//  ALWAYS_INLINE vec64_t(vec16_t sub_vec);
-//  ALWAYS_INLINE vec64_t(vec32_t sub_vec);
-
   uint8v8_t bytes;
   uint16v4_t words;
   uint32v2_t dwords;
   uint64v1_t qwords;
-
-//  IF_64BIT_ELSE(uint64v1_t, uint32v2_t) iwords;  // Ideal.
-
   float32v2_t floats;
   float64v1_t doubles;
 } __attribute__((packed));
@@ -279,19 +218,10 @@ static_assert(8 == sizeof(vec64_t) &&
               "Invalid structure packing of `vec64_t`.");
 
 union vec128_t final {
-//  ALWAYS_INLINE vec128_t(void);
-//  ALWAYS_INLINE vec128_t(vec8_t sub_vec);
-//  ALWAYS_INLINE vec128_t(vec16_t sub_vec);
-//  ALWAYS_INLINE vec128_t(vec32_t sub_vec);
-//  ALWAYS_INLINE vec128_t(vec64_t sub_vec);
-
   uint8v16_t bytes;
   uint16v8_t words;
   uint32v4_t dwords;
   uint64v2_t qwords;
-
-//  IF_64BIT_ELSE(uint64v2_t, uint32v4_t) iwords;  // Ideal.
-
   uint128v1_t dqwords;
   float32v4_t floats;
   float64v2_t doubles;
@@ -308,25 +238,14 @@ static_assert(16 == sizeof(vec128_t) &&
               "Invalid structure packing of `vec128_t`.");
 
 union vec256_t final {
-//  ALWAYS_INLINE vec256_t(void);
-//  ALWAYS_INLINE vec256_t(vec8_t sub_vec);
-//  ALWAYS_INLINE vec256_t(vec16_t sub_vec);
-//  ALWAYS_INLINE vec256_t(vec32_t sub_vec);
-//  ALWAYS_INLINE vec256_t(vec64_t sub_vec);
-//  ALWAYS_INLINE vec256_t(vec128_t sub_vec);
-
   uint8v32_t bytes;
   uint16v16_t words;
   uint32v8_t dwords;
   uint64v4_t qwords;
   uint128v2_t dqwords;
-
-//  IF_64BIT_ELSE(uint64v4_t, uint32v8_t) iwords;  // Ideal.
-
   float32v8_t floats;
   float64v4_t doubles;
 } __attribute__((packed));
-
 
 static_assert(32 == sizeof(vec256_t) &&
               32 == sizeof(vec256_t().bytes) &&
@@ -339,22 +258,11 @@ static_assert(32 == sizeof(vec256_t) &&
               "Invalid structure packing of `vec256_t`.");
 
 union vec512_t final {
-//  ALWAYS_INLINE vec512_t(void);
-//  ALWAYS_INLINE vec512_t(vec8_t sub_vec);
-//  ALWAYS_INLINE vec512_t(vec16_t sub_vec);
-//  ALWAYS_INLINE vec512_t(vec32_t sub_vec);
-//  ALWAYS_INLINE vec512_t(vec64_t sub_vec);
-//  ALWAYS_INLINE vec512_t(vec128_t sub_vec);
-//  ALWAYS_INLINE vec512_t(vec256_t sub_vec);
-
   uint8v64_t bytes;
   uint16v32_t words;
   uint32v16_t dwords;
   uint64v8_t qwords;
   uint128v4_t dqwords;
-
-//  uint128v4_t iwords;  // Ideal.
-
   float32v16_t floats;
   float64v8_t doubles;
 } __attribute__((packed));

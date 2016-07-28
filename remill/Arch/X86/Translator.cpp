@@ -153,14 +153,13 @@ void InstructionTranslator::LiftIntoBlock(void) {
     LOG(WARNING)
         << "Unsupported instruction (system return) at PC " << instr->address();
 
-  // Instruction implementation handles syscall (x86, x32) emulation.
+  // Instruction implementation handles syscall (x86, x32) emulation. This is
+  // invoked even for conditional interrupt, where a special flag is used to
+  // denote that the interrupt should happen.
   } else if (IsInterruptCall()) {
-    if (!IsConditionalInterruptCall()) {
-      AddTerminatingTailCall(basic_block, intrinsics->interrupt_call);
-    } else {
-      LOG(INFO)
-          << "Lifted program performs a conditional interrupt.";
-    }
+    LOG_IF(INFO, IsConditionalInterruptCall())
+        << "Lifted program performs a conditional interrupt.";
+    AddTerminatingTailCall(basic_block, intrinsics->interrupt_call);
 
   } else if (IsInterruptReturn()) {
     AddTerminatingTailCall(basic_block, intrinsics->interrupt_return);

@@ -7,37 +7,36 @@ namespace {
 
 #if 32 == ADDRESS_SIZE_BITS
 template <typename S1, typename S2>
-DEF_SEM(BOUND, S1 idx_, S2 bounds) {
-  const auto idx = R(idx_);
-  const auto lb = R(bounds);
-  const auto ub = R(S2{A(bounds) + sizeof(idx)});
-  if (idx < lb || ub < idx) {
-    state.interrupt_vector = 5;
-    __remill_interrupt_call(state, next_pc);
-  }
+DEF_SEM(BOUND, S1 src1, S2 src2) {
+  auto index = Read(src1);
+  auto lower_bound = Read(src2);
+  auto upper_bound = Read(GetElementPtr(src2, Literal<S2>(1)));
+  INTERRUPT_VECTOR = 5;
+  INTERRUPT_TAKEN = BOr(UCmpLt(index, lower_bound), UCmpLt(upper_bound, index));
 }
 #endif
 
 }  // namespace
 
 DEF_ISEL_SEM(INT_IMMb, I8 num) {
-  state.interrupt_vector = R(num);
+  INTERRUPT_VECTOR = Read(num);
+  INTERRUPT_TAKEN = true;
 }
 
 DEF_ISEL_SEM(INT1) {
-  state.interrupt_vector = 1;
+  INTERRUPT_VECTOR = 1;
+  INTERRUPT_TAKEN = true;
 }
 
 DEF_ISEL_SEM(INT3) {
-  state.interrupt_vector = 3;
+  INTERRUPT_VECTOR = 3;
+  INTERRUPT_TAKEN = true;
 }
 
 #if 32 == ADDRESS_SIZE_BITS
 DEF_ISEL_SEM(INTO) {
-  if (state.aflag.of) {
-    state.interrupt_vector = 4;
-    __remill_interrupt_call(state, next_pc);
-  }
+  INTERRUPT_TAKEN = FLAG_OF;
+  INTERRUPT_VECTOR = 4;
 }
 
 DEF_ISEL(BOUND_GPRv_MEMa16_16) = BOUND<R16, M16>;

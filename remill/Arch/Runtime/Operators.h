@@ -211,6 +211,15 @@ MAKE_MVWRITE(F, 64, f64, doubles, float)
 #undef MAKE_MVWRITE
 
 #define MAKE_RVWRITE(prefix, size, base_type_prefix, accessor) \
+    template <typename T, typename U> \
+    ALWAYS_INLINE static \
+    Memory *_Do ## prefix ## WriteV ## size ( \
+        Memory *memory, RVnW<T> reg, U val, VectorTag) { \
+      *reinterpret_cast<base_type_prefix ## size ## _t *>(reg.val_ref) = \
+          val.accessor.elems[0]; \
+      return memory; \
+    } \
+    \
     template <typename T> \
     ALWAYS_INLINE static \
     Memory *_Do ## prefix ## WriteV ## size ( \
@@ -220,6 +229,7 @@ MAKE_MVWRITE(F, 64, f64, doubles, float)
       *reinterpret_cast<base_type_prefix ## size ## _t *>(reg.val_ref) = val; \
       return memory; \
     } \
+    \
     template <typename T> \
     ALWAYS_INLINE static \
     Memory *_Do ## prefix ## WriteV ## size ( \
@@ -666,6 +676,29 @@ MAKE_BROADCASTS(Neg, MAKE_UN_BROADCAST, MAKE_NOP)
 MAKE_BROADCASTS(Not, MAKE_UN_BROADCAST, MAKE_NOP)
 
 #undef MAKE_BIN_BROADCAST
+#undef MAKE_UN_BROADCAST
+
+// Binary broadcast operator.
+#define MAKE_ACCUMULATE(op, size, accessor, in, out) \
+    template <typename T> \
+    ALWAYS_INLINE static \
+    auto Accumulate ## op ## V ## size(T R) \
+        -> decltype(out(R.accessor.elems[0])) { \
+      auto L = in(R.accessor.elems[0]); \
+      _Pragma("unroll") \
+      for (auto i = 1UL; i < NumVectorElems(R.accessor); ++i) { \
+        L = out(op(L, in(R.accessor.elems[i]))); \
+      } \
+      return L; \
+    }
+
+MAKE_BROADCASTS(Add, MAKE_ACCUMULATE, MAKE_ACCUMULATE)
+MAKE_BROADCASTS(And, MAKE_ACCUMULATE, MAKE_NOP)
+MAKE_BROADCASTS(AndN, MAKE_ACCUMULATE, MAKE_NOP)
+MAKE_BROADCASTS(Or, MAKE_ACCUMULATE, MAKE_NOP)
+MAKE_BROADCASTS(Xor, MAKE_ACCUMULATE, MAKE_NOP)
+
+#undef MAKE_ACCUMULATE
 #undef MAKE_UN_BROADCAST
 #undef MAKE_BROADCASTS
 #undef MAKE_NOP

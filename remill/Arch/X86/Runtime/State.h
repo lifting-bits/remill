@@ -380,18 +380,23 @@ struct alignas(64) State final {
   // issue is that the interrupt number is part of an instruction, and our
   // generic three-operand block/intrinsic form (state, mem, pc) doesn't
   // have room to hold a vector number.
-  //
-  // TODO(pag): I'm not particular fond of this approach, but oh well.
+
+  uint32_t _tear_0;
   volatile uint32_t interrupt_vector;
+
+  uint8_t _tear_1;
+  uint8_t _tear_2;
+  volatile bool interrupt_taken;
 
   // Use to communicate to `Translator.cpp` that the conditional branch should
   // be taken or not-taken.
   //
   // TODO(pag): This is kind of ugly, but enables PC-specific independence
   //            (to handle things like relocatable binaries).
+  uint8_t _tear_4;
   volatile bool conditional_branch_taken;
 
-  uint8_t _padding[59];
+  uint8_t _padding[51];
 } __attribute__((packed));
 
 static_assert(0 == __builtin_offsetof(State, fpu),
@@ -418,8 +423,14 @@ static_assert(2880 == __builtin_offsetof(State, st),
 static_assert(3008 == __builtin_offsetof(State, mmx),
               "Invalid packing of `State::mmx`.");
 
-static_assert(3136 == __builtin_offsetof(State, interrupt_vector),
-              "Invalid packing of `State::interrupt`.");
+static_assert(3140 == __builtin_offsetof(State, interrupt_vector),
+              "Invalid packing of `State::interrupt_vector`.");
+
+static_assert(3146 == __builtin_offsetof(State, interrupt_taken),
+              "Invalid packing of `State::interrupt_taken`.");
+
+static_assert(3148 == __builtin_offsetof(State, conditional_branch_taken),
+              "Invalid packing of `State::conditional_branch_taken`.");
 
 static_assert(3200 == sizeof(State), "Invalid packing of `State`.");
 
