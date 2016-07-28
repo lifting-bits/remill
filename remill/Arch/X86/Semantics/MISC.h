@@ -7,26 +7,24 @@ namespace {
 
 template <typename D, typename S>
 DEF_SEM(LEA, D dst, S src) {
-  W(dst) = A(src);  // `src` will be a memory type.
+  WriteZExt(dst, AddressOf(src));
 }
 
 DEF_SEM(LEAVE_16BIT) {
-  const auto prev_bp = R(state.gpr.rbp);
-  Mn<uint16_t> bp_addr = {prev_bp};
-
-  state.gpr.rbp.word = R(bp_addr);
-  W(state.gpr.rsp) = prev_bp + sizeof(uint16_t);
+  addr_t op_size = 2;
+  addr_t link_pointer = Read(REG_XBP);
+  addr_t base_pointer = Read(ReadPtr<addr_t>(link_pointer));
+  Write(REG_XBP, base_pointer);
+  Write(REG_XSP, UAdd(link_pointer, op_size));
 }
 
 template <typename T>
 DEF_SEM(LEAVE_FULL) {
-  static_assert(sizeof(T) == sizeof(R(state.gpr.rbp)),
-                "Invalid specialization of `LEAVE_FULL`.");
-  const auto prev_bp = R(state.gpr.rbp);
-  Mn<T> bp_addr = {prev_bp};
-
-  W(state.gpr.rbp) = R(bp_addr);
-  W(state.gpr.rsp) = prev_bp + sizeof(T);
+  addr_t op_size = TruncTo<addr_t>(sizeof(T));
+  addr_t link_pointer = Read(REG_XBP);
+  addr_t base_pointer = Read(ReadPtr<addr_t>(link_pointer));
+  Write(REG_XBP, base_pointer);
+  Write(REG_XSP, UAdd(link_pointer, op_size));
 }
 
 }  // namespace
@@ -42,38 +40,52 @@ namespace {
 // TODO(pag): Handle the case where the operand size and address size disagree.
 //            This can happen when using the 66H or 67H prefixes to override the
 //            operand or address sizes. For example, and operand size of 32 with
-//            an address size of 16 will read `[BP]` instead of `[EBP]`.
+//            an address size of 16 will read `[BP]` instead of `[EBP]`, but the
+//            stack pointer will decrement by `4`.
 template <typename T>
-DEF_SEM(ENTER, I16 alloc_size_, I8 nesting_level_) {
-  const auto alloc_size = R(alloc_size_);
-  const auto nesting_level = R(nesting_level_) % 32;
-  auto frame_temp = R(state.gpr.rsp) - sizeof(T);
+DEF_SEM(ENTER, I16 src1, I8 src2) {
+  addr_t op_size = sizeof(T);
+  addr_t alloc_size = ZExtTo<addr_t>(Read(src1));
+  addr_t nesting_level = ZExtTo<addr_t>(URem(Read(src2), 32_u8));
+  addr_t xsp_temp = Read(REG_XSP);
+  addr_t frame_temp = USub(xsp_temp, op_size);
+  addr_t next_xsp = USub(
+      USub(frame_temp, UMul(op_size, nesting_level)),
+      alloc_size);
 
   // Detect failure. This should really happen at the end of `ENTER` but we
   // do it here. This is why `frame_temp` is created before the `PUSH` of
   // `RBP`, but displaced to mimick the `PUSH`.
-  auto next_rsp = frame_temp - (sizeof(T) * (nesting_level)) - alloc_size;
-  Mn<T> next_read = {next_rsp};
-  MnW<T> next_write = {next_rsp};
-  W(next_write) = R(next_read);
+  Write(WritePtr<T>(next_xsp), Read(ReadPtr<T>(next_xsp)));
 
-  __remill_barrier_compiler();
-
-  auto rbp_temp = R(state.gpr.rbp);
-  PushValue<T>(state, static_cast<T>(rbp_temp));
+  // Push `XBP`.
+  addr_t xbp_temp = Read(REG_XBP);
+  addr_t xsp_after_push = USub(xsp_temp, op_size);
+  Write(REG_XSP, xsp_after_push);
+  Write(WritePtr<T>(xsp_after_push), TruncTo<T>(xbp_temp));
+  xsp_temp = xsp_after_push;
 
   if (nesting_level) {
     if (1 < nesting_level) {
-      for (auto i = 1; i <= (nesting_level - 1); ++i) {
-        rbp_temp -= sizeof(T);  // TODO(pag): Should be affected by 67H prefix.
-        Mn<T> display_entry = {rbp_temp};
-        PushValue<T>(state, R(display_entry));
+      _Pragma("unroll")
+      for (addr_t i = 1; i <= (nesting_level - 1); ++i) {
+        xbp_temp = USub(xbp_temp, op_size); // TODO(pag): Handle 67H prefix.
+
+        // Copy the display entry to the stack.
+        xsp_after_push = USub(xsp_temp, op_size);
+        Write(WritePtr<T>(xsp_after_push), Read(ReadPtr<T>(xbp_temp)));
+        xsp_temp = xsp_after_push;
       }
     }
-    PushValue<T>(state, frame_temp);
+
+    xsp_temp = xsp_after_push;
+    xsp_after_push = USub(xsp_temp, op_size);
+    Write(WritePtr<addr_t>(xsp_after_push), frame_temp);
+    xsp_temp = xsp_after_push;
   }
-  W(state.gpr.rbp) = frame_temp;
-  W(state.gpr.rsp) = R(state.gpr.rsp) - alloc_size;
+
+  Write(REG_XBP, frame_temp);
+  Write(REG_XSP, USub(xsp_temp, alloc_size));
 }
 
 }  // namespace
@@ -92,28 +104,25 @@ DEF_ISEL_SEM(CLFLUSH_MEMmprefetch, M8) {}
 // http://g.oswego.edu/dl/jmm/cookbook.html
 
 DEF_ISEL_SEM(MFENCE) {
-  __remill_memory_order = __remill_barrier_store_load(__remill_memory_order);
+  BarrierStoreLoad();
 }
 
 DEF_ISEL_SEM(SFENCE) {
-  __remill_memory_order = __remill_barrier_store_store(__remill_memory_order);
+  BarrierStoreStore();
 }
 
 DEF_ISEL_SEM(LFENCE) {
-  __remill_memory_order = __remill_barrier_load_load(__remill_memory_order);
+  BarrierLoadLoad();
 }
 
 DEF_ISEL_SEM(XLAT) {
-  const addr_t rbx = R(state.gpr.rbx);
-  const addr_t al = state.gpr.rax.byte.low;
-  M8 val = {rbx + al};
-  W(state.gpr.rax.byte.low) = R(val);
+  addr_t base = Read(REG_XBX);
+  addr_t offset = ZExtTo<addr_t>(Read(REG_AL));
+  Write(REG_AL, Read(ReadPtr<uint8_t>(UAdd(base, offset))));
 }
 
 // Implemented via the `__remill_read_cpu_features` intrinsic.
-DEF_ISEL_SEM(CPUID) {
-  W(state.gpr.rip) = R(next_pc);
-}
+DEF_ISEL_SEM(CPUID) {}
 
 /*
 230 INVPCID INVPCID_GPR64_MEMdq MISC INVPCID INVPCID ATTRIBUTES: NOTSX RING0

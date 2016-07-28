@@ -483,9 +483,9 @@ T Identity(T val) {
 
 // Convert an integer to some other type. This is important for
 // integer literals, whose type are `int`.
-template <typename T>
+template <typename T, typename U>
 ALWAYS_INLINE static
-auto Literal(int val) -> typename IntegerType<T>::UT {
+auto Literal(U val) -> typename IntegerType<T>::UT {
   return static_cast<typename IntegerType<T>::UT>(val);
 }
 
@@ -868,6 +868,16 @@ ALWAYS_INLINE static Mn<T> ReadPtr(addr_t addr) {
 template <typename T>
 ALWAYS_INLINE static MnW<T> WritePtr(addr_t addr) {
   return {addr};
+}
+
+template <typename T>
+ALWAYS_INLINE static addr_t AddressOf(Mn<T> addr) {
+  return addr.addr;
+}
+
+template <typename T>
+ALWAYS_INLINE static addr_t AddressOf(MnW<T> addr) {
+  return addr.addr;
 }
 
 template <typename T>

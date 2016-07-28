@@ -363,13 +363,13 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/LOGICAL/TEST.S"
 #include "tests/X86/LOGICAL/XOR.S"
 
-/*
 #include "tests/X86/MISC/CPUID.S"
 #include "tests/X86/MISC/ENTER.S"
 #include "tests/X86/MISC/LEA.S"
 #include "tests/X86/MISC/LEAVE.S"
 #include "tests/X86/MISC/XLAT.S"
 
+/*
 #if APPLE_SAFE_TESTS
 # include "tests/X86/POP/POP.S"
 # include "tests/X86/POP/POPF.S"

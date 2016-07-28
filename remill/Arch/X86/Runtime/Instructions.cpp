@@ -16,11 +16,20 @@
 #define REG_ESP state.gpr.rsp.dword
 #define REG_RSP state.gpr.rsp.qword
 
+#define REG_EBP state.gpr.rbp.dword
+#define REG_RBP state.gpr.rbp.qword
+
 #define REG_AL state.gpr.rax.byte.low
 #define REG_AH state.gpr.rax.byte.high
 #define REG_AX state.gpr.rax.word
 #define REG_EAX state.gpr.rax.dword
 #define REG_RAX state.gpr.rax.qword
+
+#define REG_BL state.gpr.rbx.byte.low
+#define REG_BH state.gpr.rbx.byte.high
+#define REG_BX state.gpr.rbx.word
+#define REG_EBX state.gpr.rbx.dword
+#define REG_RBX state.gpr.rbx.qword
 
 #define REG_DL state.gpr.rdx.bytes.low
 #define REG_DH state.gpr.rdx.bytes.high
@@ -53,6 +62,8 @@
 # define REG_XSI REG_RSI
 # define REG_XDI REG_RDI
 # define REG_XSP REG_RSP
+# define REG_XBP REG_RBP
+# define REG_XBX REG_RBX
 #else
 # define REG_PC REG_EIP
 # define REG_XIP REG_EIP
@@ -62,6 +73,8 @@
 # define REG_XSI REG_ESI
 # define REG_XDI REG_EDI
 # define REG_XSP REG_ESP
+# define REG_XBP REG_EBP
+# define REG_XBX REG_EBX
 #endif  // 64 == ADDRESS_SIZE_BITS
 
 #define FLAG_CF state.aflag.cf
@@ -91,7 +104,7 @@
 #include "remill/Arch/X86/Semantics/INTERRUPT.h"
 #include "remill/Arch/X86/Semantics/FMA.h"
 #include "remill/Arch/X86/Semantics/LOGICAL.h"
-//#include "remill/Arch/X86/Semantics/MISC.h"
+#include "remill/Arch/X86/Semantics/MISC.h"
 //#include "remill/Arch/X86/Semantics/ROTATE.h"
 //#include "remill/Arch/X86/Semantics/SHIFT.h"
 //#include "remill/Arch/X86/Semantics/SSE.h"
