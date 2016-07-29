@@ -210,7 +210,6 @@ function download_and_extract_xed()
     mkdir -p $DIR/third_party/include/intel
     cp -r $DIR/third_party/src/xed/kits/${XED_VERSION}/lib/* $DIR/third_party/lib
     cp -r $DIR/third_party/src/xed/kits/${XED_VERSION}/include/* $DIR/third_party/include/intel
-    fix_library xed
 }
 
 function create_directory_tree()
