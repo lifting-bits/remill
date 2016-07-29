@@ -275,7 +275,7 @@ function download_dependencies()
         download_and_install_gtest
     fi;
     
-    if [[ -e $DIR/third_party/lib/libxed.$LIB_EXT ]] ; then
+    if [[ -e $DIR/third_party/lib/libxed.$LIB_EXT || -e $DIR/third_party/lib/libxed.a ]] ; then
         notice "${BLUE}XED FOUND!"
     else
         download_and_extract_xed
