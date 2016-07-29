@@ -38,6 +38,10 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     STDLIB="libc++"
     LIB_LINK_FLAGS="-lc++ -lc++abi"
 
+    if [ -z "$SDKROOT" ]; then
+      export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
+    fi
+
 else
     printf "${RED}Unsupported platform: ${OSTYPE}${RESET}\n"
     exit 1
