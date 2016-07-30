@@ -55,7 +55,7 @@ DEF_SEM(ENTER, I16 src1, I8 src2) {
 
   // Detect failure. This should really happen at the end of `ENTER` but we
   // do it here. This is why `frame_temp` is created before the `PUSH` of
-  // `RBP`, but displaced to mimick the `PUSH`.
+  // `RBP`, but displaced to mimic the `PUSH`.
   Write(WritePtr<T>(next_xsp), Read(ReadPtr<T>(next_xsp)));
 
   // Push `XBP`.

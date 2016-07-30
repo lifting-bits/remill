@@ -41,6 +41,7 @@ static Stack gSigStack;
 
 static Flags gRflagsOff;
 static Flags gRflagsOn;
+static Flags gRflagsInitial;
 
 static const auto gStackBase = reinterpret_cast<uintptr_t>(
     &(gLiftedStack.bytes[0]));
@@ -286,7 +287,17 @@ static void CopyXMMRegsIntoFPU(State *state) {
 static std::vector<const test::TestInfo *> gTests;
 
 static void InitFlags(void) {
-  asm("pushfq; pushfq; pop %0; pop %1;" : : "m"(gRflagsOn), "m"(gRflagsOff));
+  asm(
+      "pushfq;"
+      "pushfq;"
+      "pushfq;"
+      "pop %0;"
+      "pop %1;"
+      "pop %2;"
+      :
+      : "m"(gRflagsOn),
+        "m"(gRflagsOff),
+        "m"(gRflagsInitial));
 
   gRflagsOn.cf = true;
   gRflagsOn.pf = true;
@@ -296,12 +307,6 @@ static void InitFlags(void) {
   gRflagsOn.df = true;
   gRflagsOn.of = true;
 
-  gRflagsOn.tf = false;
-  gRflagsOn.ac = false;
-  gRflagsOn.nt = false;
-  gRflagsOn.id = false;
-  gRflagsOn.iopl = 0;
-
   gRflagsOff.cf = false;
   gRflagsOff.pf = false;
   gRflagsOff.af = false;
@@ -309,26 +314,12 @@ static void InitFlags(void) {
   gRflagsOff.sf = false;
   gRflagsOff.df = false;
   gRflagsOff.of = false;
-
-  gRflagsOff.tf = false;
-  gRflagsOff.ac = false;
-  gRflagsOff.nt = false;
-  gRflagsOff.id = false;
-  gRflagsOff.iopl = 0;
 }
 
 // Resets the flags to sane defaults. This will disable the trap flag, the
 // alignment check flag, and the CPUID capability flag.
 static void ResetFlags(void) {
-  Flags flags;
-  asm("pushfq; pop %0;" : : "m"(flags));
-  flags.ac = false;
-  flags.id = false;
-  flags.tf = false;
-  flags.rf = false;
-  flags.nt = false;
-  flags.iopl = 0;
-  asm("push %0; popfq;" : : "m"(flags));
+  asm("push %0; popfq;" : : "m"(gRflagsInitial));
 }
 
 }  // namespace
@@ -443,6 +434,10 @@ static void RunWithFlags(const test::TestInfo *info,
   // Only compare the non-undefined flags state.
   native_state->rflag.flat |= info->ignored_flags_mask;
   lifted_state->rflag.flat |= info->ignored_flags_mask;
+
+  // Only compare generic flags.
+  native_state->rflag.flat &= 0x0ED7UL;
+  lifted_state->rflag.flat &= 0x0ED7UL;
 
   // Don't even bother with the MXCSR (SSE control/status register).
   lifted_state->fpu.mxcsr.flat = native_state->fpu.mxcsr.flat;

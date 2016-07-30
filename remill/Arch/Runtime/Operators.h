@@ -861,12 +861,14 @@ ALWAYS_INLINE static MnW<T> GetElementPtr(MnW<T> addr, T index) {
 }
 
 template <typename T>
-ALWAYS_INLINE static Mn<T> ReadPtr(addr_t addr) {
+ALWAYS_INLINE static
+auto ReadPtr(addr_t addr) -> Mn<typename BaseType<T>::BT> {
   return {addr};
 }
 
 template <typename T>
-ALWAYS_INLINE static MnW<T> WritePtr(addr_t addr) {
+ALWAYS_INLINE static
+auto WritePtr(addr_t addr) -> MnW<typename BaseType<T>::BT> {
   return {addr};
 }
 

@@ -5,7 +5,7 @@ TEST_INPUTS(
     0,
     0xfffffffffffafeff)
     push ARG1_16
-    .byte 0x66, 0x92;  // POPF (word)
+    .byte 0x66, 0x9D;  // POPF (word)
 TEST_END
 
 TEST_BEGIN_64(POPFQ_64, 1)

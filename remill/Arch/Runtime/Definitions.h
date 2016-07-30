@@ -30,7 +30,9 @@
         State &state, Memory *&memory, ##__VA_ARGS__) noexcept
 
 // Define a semantics implementing function.
-#define DEF_HELPER(name, ...) DEF_SEM(name, ##__VA_ARGS__)
+#define DEF_HELPER(name, ...) \
+  ALWAYS_INLINE static auto name ( \
+      State &state, Memory *&memory, ##__VA_ARGS__) noexcept
 
 // Define a semantics implementing function that is also an instruction.
 #define DEF_ISEL_SEM(name, ...) \

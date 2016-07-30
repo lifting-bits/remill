@@ -183,7 +183,6 @@ void InstructionTranslator::SetNextPC(uintptr_t next_pc) {
       ir.CreateLoad(FindVarInFunction(function, "PC")));
 }
 
-
 // Update the program counter by adding the instruction's size to the current
 // value.
 void InstructionTranslator::UpdatePC(llvm::Value *increment) {

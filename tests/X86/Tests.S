@@ -369,7 +369,6 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/MISC/LEAVE.S"
 #include "tests/X86/MISC/XLAT.S"
 
-/*
 #if APPLE_SAFE_TESTS
 # include "tests/X86/POP/POP.S"
 # include "tests/X86/POP/POPF.S"
@@ -377,6 +376,8 @@ SYMBOL(__x86_test_table_begin):
 # include "tests/X86/PUSH/PUSH.S"
 # include "tests/X86/PUSH/PUSHF.S"
 #endif  // APPLE_SAFE_TESTS
+
+/*
 
 #include "tests/X86/ROTATE/RCL.S"
 #include "tests/X86/ROTATE/RCR.S"

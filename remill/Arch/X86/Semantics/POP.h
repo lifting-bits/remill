@@ -6,11 +6,13 @@
 namespace {
 
 template <typename T>
-T PopValue(State &state) {
-  Mn<T> pop_addr = {A(state.gpr.rsp)};
-  const T pop_val = R(pop_addr);
-  W(state.gpr.rsp) = R(state.gpr.rsp) + sizeof(T);
-  return pop_val;
+DEF_HELPER(PopFromStack) -> T {
+  addr_t op_size = TruncTo<addr_t>(sizeof(T));
+  addr_t old_xsp = Read(REG_XSP);
+  addr_t new_xsp = UAdd(old_xsp, op_size);
+  T val = Read(ReadPtr<T>(old_xsp));
+  Write(REG_XSP, new_xsp);
+  return val;
 }
 
 // Note: Special handling of `dst` when it has the form `POP [xSP + ...]`
@@ -19,8 +21,11 @@ T PopValue(State &state) {
 //       The case of `POP xSP` is correctly handled without special casing.
 template <typename D>
 DEF_SEM(POP, D dst) {
-  typedef BASE_TYPE_OF(D) T;
-  W(dst) = PopValue<T>(state);
+  addr_t op_size = ZExtTo<D>(ByteSizeOf(dst));
+  addr_t old_xsp = Read(REG_XSP);
+  addr_t new_xsp = UAdd(old_xsp, op_size);
+  WriteZExt(dst, Read(ReadPtr<D>(old_xsp)));
+  Write(REG_XSP, new_xsp);
 }
 
 }  // namespace
@@ -36,31 +41,31 @@ DEF_ISEL_M32or64W(POP_MEMv, POP);
 
 #if 32 == ADDRESS_SIZE_BITS
 DEF_ISEL_SEM(POPA) {
-  W(state.gpr.rdi.word) = PopValue<uint16_t>(state);
-  W(state.gpr.rsi.word) = PopValue<uint16_t>(state);
-  W(state.gpr.rbp.word) = PopValue<uint16_t>(state);
-  (void) PopValue<uint16_t>(state);  // Ignore SP.
-  W(state.gpr.rbx.word) = PopValue<uint16_t>(state);
-  W(state.gpr.rdx.word) = PopValue<uint16_t>(state);
-  W(state.gpr.rcx.word) = PopValue<uint16_t>(state);
-  W(state.gpr.rax.word) = PopValue<uint16_t>(state);
-
+  Write(REG_DI, PopFromStack<uint16_t>(state, memory));
+  Write(REG_SI, PopFromStack<uint16_t>(state, memory));
+  Write(REG_BP, PopFromStack<uint16_t>(state, memory));
+  (void) PopFromStack<uint16_t>(state, memory);  // Ignore SP.
+  Write(REG_BX, PopFromStack<uint16_t>(state, memory));
+  Write(REG_DX, PopFromStack<uint16_t>(state, memory));
+  Write(REG_CX, PopFromStack<uint16_t>(state, memory));
+  Write(REG_AX, PopFromStack<uint16_t>(state, memory));
 }
 DEF_ISEL_SEM(POPAD) {
-  W(state.gpr.rdi) = PopValue<uint32_t>(state);
-  W(state.gpr.rsi) = PopValue<uint32_t>(state);
-  W(state.gpr.rbp) = PopValue<uint32_t>(state);
-  (void) PopValue<uint32_t>(state);  // Ignore ESP.
-  W(state.gpr.rbx) = PopValue<uint32_t>(state);
-  W(state.gpr.rdx) = PopValue<uint32_t>(state);
-  W(state.gpr.rcx) = PopValue<uint32_t>(state);
-  W(state.gpr.rax) = PopValue<uint32_t>(state);
+  Write(REG_EDI, PopFromStack<uint32_t>(state, memory));
+  Write(REG_ESI, PopFromStack<uint32_t>(state, memory));
+  Write(REG_EBP, PopFromStack<uint32_t>(state, memory));
+  (void) PopFromStack<uint32_t>(state, memory);  // Ignore ESP.
+  Write(REG_EBX, PopFromStack<uint32_t>(state, memory));
+  Write(REG_EDX, PopFromStack<uint32_t>(state, memory));
+  Write(REG_ECX, PopFromStack<uint32_t>(state, memory));
+  Write(REG_EAX, PopFromStack<uint32_t>(state, memory));
 }
 #endif
 
+// TODO(pag): Make behaviour conditional on `rflag.cpl`.
 DEF_ISEL_SEM(POPF) {
   Flags f;
-  f.flat = PopValue<uint16_t>(state);
+  f.flat = ZExt(ZExt(PopFromStack<uint16_t>(state, memory)));
   state.aflag.af = f.af;
   state.aflag.cf = f.cf;
   state.aflag.df = f.df;
@@ -68,15 +73,12 @@ DEF_ISEL_SEM(POPF) {
   state.aflag.pf = f.pf;
   state.aflag.sf = f.sf;
   state.aflag.zf = f.zf;
-
-  state.rflag.tf = f.tf;
-  state.rflag.nt = f.nt;
 }
 
 #if 32 == ADDRESS_SIZE_BITS
 DEF_ISEL_SEM(POPFD) {
   Flags f;
-  f.flat = PopValue<uint32_t>(state);
+  f.flat = ZExt(PopFromStack<uint32_t>(state, memory));
   state.aflag.af = f.af;
   state.aflag.cf = f.cf;
   state.aflag.df = f.df;
@@ -86,14 +88,14 @@ DEF_ISEL_SEM(POPFD) {
   state.aflag.zf = f.zf;
 
   state.rflag.id = f.id;
-  state.rflag.ac = f.ac;
-  state.rflag.tf = f.tf;
-  state.rflag.nt = f.nt;
+//  state.rflag.ac = f.ac;
+//  state.rflag.tf = f.tf;
+//  state.rflag.nt = f.nt;
 }
 #else
 DEF_ISEL_SEM(POPFQ) {
   Flags f;
-  f.flat = PopValue<uint64_t>(state);
+  f.flat = PopFromStack<uint64_t>(state, memory);
   state.aflag.af = f.af;
   state.aflag.cf = f.cf;
   state.aflag.df = f.df;
@@ -103,9 +105,9 @@ DEF_ISEL_SEM(POPFQ) {
   state.aflag.zf = f.zf;
 
   state.rflag.id = f.id;
-  state.rflag.ac = f.ac;
-  state.rflag.tf = f.tf;
-  state.rflag.nt = f.nt;
+//  state.rflag.ac = f.ac;
+//  state.rflag.tf = f.tf;
+//  state.rflag.nt = f.nt;
 }
 #endif  // 32 == ADDRESS_SIZE_BITS
 

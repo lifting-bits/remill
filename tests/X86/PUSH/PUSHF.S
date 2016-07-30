@@ -16,7 +16,7 @@ TEST_BEGIN(PUSHF_POPF, 1)
 TEST_INPUTS(
     0)
     .byte 0x66, 0x9C;  // PUSHF (word)
-    .byte 0x66, 0x92;  // POPF (word)
+    .byte 0x66, 0x9D;  // POPF (word)
 TEST_END
 
 TEST_BEGIN_64(PUSHFQ_POPFQ_64, 1)

@@ -141,7 +141,11 @@ OPT=$(./scripts/optimize_bitcode.sh $BIN.bc)
 
 ### Miscellaneous
 
-To recompile the code, run `./scripts/build.py`. Ideally, you should install the `concurrent.futures` package to make the build faster, though it is not required.
+To recompile the code, run `./scripts/build.py`. Ideally, you should install the `concurrent.futures` package to make the build faster, though it is not required. If you want to see what the build script is doing to compile the code, then run the following:
+
+```
+./scripts/build.py --debug --num_workers 1 --stop_on_error
+```
 
 To recompile the semantics (if you add an instruction) then run `./scripts/compile_semantics.sh`. If you want to test your new semantics, then also recompile the code using the above command.
 

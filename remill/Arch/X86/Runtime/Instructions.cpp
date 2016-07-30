@@ -10,12 +10,15 @@
 #include "remill/Arch/X86/Runtime/Operators.h"
 
 
+#define REG_IP state.gpr.rip.word
 #define REG_EIP state.gpr.rip.dword
 #define REG_RIP state.gpr.rip.qword
 
+#define REG_SP state.gpr.rsp.word
 #define REG_ESP state.gpr.rsp.dword
 #define REG_RSP state.gpr.rsp.qword
 
+#define REG_BP state.gpr.rbp.word
 #define REG_EBP state.gpr.rbp.dword
 #define REG_RBP state.gpr.rbp.qword
 
@@ -89,10 +92,6 @@
 #define INTERRUPT_VECTOR state.interrupt_vector
 #define INTERRUPT_TAKEN state.interrupt_taken
 
-// Define the `PushValue` and `PopValue` helpers.
-//#include "remill/Arch/X86/Semantics/POP.h"
-//#include "remill/Arch/X86/Semantics/PUSH.h"
-//
 #include "remill/Arch/X86/Semantics/FLAGS.h"
 #include "remill/Arch/X86/Semantics/BINARY.h"
 #include "remill/Arch/X86/Semantics/BITBYTE.h"
@@ -105,6 +104,8 @@
 #include "remill/Arch/X86/Semantics/FMA.h"
 #include "remill/Arch/X86/Semantics/LOGICAL.h"
 #include "remill/Arch/X86/Semantics/MISC.h"
+#include "remill/Arch/X86/Semantics/POP.h"
+#include "remill/Arch/X86/Semantics/PUSH.h"
 //#include "remill/Arch/X86/Semantics/ROTATE.h"
 //#include "remill/Arch/X86/Semantics/SHIFT.h"
 //#include "remill/Arch/X86/Semantics/SSE.h"
