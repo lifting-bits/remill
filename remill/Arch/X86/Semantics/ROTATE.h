@@ -7,63 +7,66 @@ namespace {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ROL, D dst, S1 src1, S2 src2) {
-  typedef BASE_TYPE_OF(S1) T;
-  enum : T {
-    kSize = 8 * sizeof(T),
-    kCountMask = 64 == kSize ? T(0x3F) : T(0x1F)
-  };
-  const auto count = static_cast<T>(R(src2));
-  const auto masked_count = static_cast<T>(count & kCountMask);
-  const auto temp_count = static_cast<T>(masked_count % kSize);
-  const T val = R(src1);
-  T new_val = val;
+  auto val = Read(src1);
+  auto count = ZExtTo<S1>(Read(src2));
+  auto one = Literal<S1>(1);
+  auto long_mask = Literal<S1>(0x3F);
+  auto short_mask = Literal<S1>(0x1F);
+  auto op_size = BitSizeOf(src1);
+  auto count_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
+  auto masked_count = UAnd(count, count_mask);
+  auto temp_count = URem(masked_count, op_size);
   if (temp_count) {
-    new_val = (val << temp_count) | (val >> (kSize - temp_count));
-    W(dst) = new_val;
-    __remill_barrier_compiler();
-    state.aflag.cf = new_val & 1;
-    state.aflag.of = SignFlag(new_val) != state.aflag.cf;
+    auto new_val = UOr(
+        UShl(val, temp_count),
+        UShr(val, USub(op_size, temp_count)));
+    WriteZExt(dst, new_val);
+    Write(FLAG_CF, UCmpEq(UAnd(new_val, one), one));
+    Write(FLAG_OF, BXor(FLAG_CF, SignFlag(new_val)));
     // OF undefined for `1 == temp_count`.
   } else {
-    W(dst) = new_val;
+    WriteZExt(dst, val);
   }
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ROR, D dst, S1 src1, S2 src2) {
-  typedef BASE_TYPE_OF(S1) T;
-  enum : T {
-    kSize = 8 * sizeof(T),
-    kCountMask = 64 == kSize ? T(0x3F) : T(0x1F)
-  };
-  const T val = R(src1);
-  const auto count = static_cast<T>(R(src2));
-  const auto masked_count = static_cast<T>(count & kCountMask);
-  const auto temp_count = static_cast<T>(masked_count % kSize);
-  T new_val = val;
+  auto val = Read(src1);
+  auto count = ZExtTo<S1>(Read(src2));
+  auto one = Literal<S1>(1);
+  auto long_mask = Literal<S1>(0x3F);
+  auto short_mask = Literal<S1>(0x1F);
+  auto op_size = BitSizeOf(src1);
+  auto count_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
+  auto masked_count = UAnd(count, count_mask);
+  auto temp_count = URem(masked_count, op_size);
   if (temp_count) {
-    new_val = (val >> temp_count) | (val << (kSize - temp_count));
-    W(dst) = new_val;
-    __remill_barrier_compiler();
-    state.aflag.cf = SignFlag(new_val);
-    state.aflag.of = state.aflag.cf != SignFlag<T>(new_val << 1);
+    auto new_val = UOr(
+        UShr(val, temp_count),
+        UShl(val, USub(op_size, temp_count)));
+    WriteZExt(dst, new_val);
+    Write(FLAG_CF, SignFlag(new_val));
+    Write(FLAG_OF, BXor(FLAG_CF, SignFlag(UShl(new_val, one))));
     // OF undefined for `1 == temp_count`.
   } else {
-    W(dst) = new_val;
+    WriteZExt(dst, val);
   }
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(RORX, D dst, S1 src1, S2 src2) {
-  typedef BASE_TYPE_OF(S1) T;
-  enum : T {
-    kSize = 8 * sizeof(T),
-    kCountMask = 64 == kSize ? T(0x3F) : T(0x1F)
-  };
-  const T val = R(src1);
-  const T count = static_cast<uint8_t>(R(src2)) & kCountMask;
-  const T new_val = (val >> count) | (val << (kSize - count));
-  W(dst) = new_val;
+  auto val = Read(src1);
+  auto count = ZExtTo<S1>(Read(src2));
+  auto long_mask = Literal<S1>(0x3F);
+  auto short_mask = Literal<S1>(0x1F);
+  auto op_size = BitSizeOf(src1);
+  auto count_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
+  auto masked_count = UAnd(count, count_mask);
+  auto temp_count = URem(masked_count, op_size);
+  auto new_val = UOr(
+      UShr(val, temp_count),
+      UShl(val, USub(op_size, temp_count)));
+  WriteZExt(dst, new_val);
 }
 
 }  // namespace
@@ -103,62 +106,70 @@ namespace {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(RCL, D dst, S1 src1, S2 src2) {
-  typedef BASE_TYPE_OF(S1) T;
-  enum : T {
-    kSize = 8 * sizeof(T),
-    kCountMask = 64 == kSize ? T(0x3F) : T(0x1F),
-    kMod = kSize < 32 ? kSize + 1 : (kCountMask + 1)
-  };
-  const auto count = static_cast<T>(R(src2));
-  const auto masked_count = static_cast<T>(count & kCountMask);
-  const auto temp_count = static_cast<T>(masked_count % kMod);
-  const T val = R(src1);
-  const T carry = state.aflag.cf ? 1 : 0;
-  T new_val = val;
+  auto val = Read(src1);
+  auto count = ZExtTo<S1>(Read(src2));
+  auto zero = Literal<S1>(0);
+  auto one = Literal<S1>(1);
+  auto long_mask = Literal<S1>(0x3F);
+  auto short_mask = Literal<S1>(0x1F);
+  auto op_size = BitSizeOf(src1);
+  auto count_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
+  auto count_mod = Select(
+      UCmpLt(op_size, 32),
+      UAdd(op_size, one),
+      UAdd(count_mask, one));
 
-  // Note: we split the right shift into two to avoid UB.
+  auto masked_count = UAnd(count, count_mask);
+  auto temp_count = URem(masked_count, count_mod);
+  auto carry = Select(FLAG_CF, one, zero);
+
   if (temp_count) {
-    const T right = val >> (kSize - temp_count);
-    new_val = T(val << temp_count) |
-              T(carry << T(temp_count - 1)) |
-              T(right >> 1);
-    W(dst) = new_val;
-    __remill_barrier_compiler();
-    state.aflag.cf = SignFlag<T>(val << (temp_count - 1));
-    state.aflag.of = SignFlag(new_val) != state.aflag.cf;
+    auto right = UShr(val, USub(op_size, temp_count));
+    auto new_val = UOr(UOr(
+        UShl(val, temp_count),
+        UShl(carry, USub(temp_count, one))),
+        UShr(right, one));
+    WriteZExt(dst, new_val);
+    Write(FLAG_CF, SignFlag(UShl(val, USub(temp_count, one))));
+    Write(FLAG_OF, BXor(FLAG_CF, SignFlag(new_val)));
     // OF undefined for `1 == temp_count`.
   } else {
-    W(dst) = new_val;
+    WriteZExt(dst, val);
   }
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(RCR, D dst, S1 src1, S2 src2) {
-  typedef BASE_TYPE_OF(S1) T;
-  enum : T {
-    kSize = 8 * sizeof(T),
-    kCountMask = 64 == kSize ? T(0x3F) : T(0x1F),
-    kMod = kSize < 32 ? kSize + 1 : (kCountMask + 1)
-  };
-  const T val = R(src1);
-  const T carry = state.aflag.cf ? 1 : 0;
-  const auto count = static_cast<T>(R(src2));
-  const auto masked_count = static_cast<T>(count & kCountMask);
-  const auto temp_count = static_cast<T>(masked_count % kMod);
-  T new_val = val;
+  auto val = Read(src1);
+  auto count = ZExtTo<S1>(Read(src2));
+  auto one = Literal<S1>(1);
+  auto zero = Literal<S1>(0);
+  auto long_mask = Literal<S1>(0x3F);
+  auto short_mask = Literal<S1>(0x1F);
+  auto op_size = BitSizeOf(src1);
+  auto count_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
+  auto count_mod = Select(
+      UCmpLt(op_size, 32),
+      UAdd(op_size, one),
+      UAdd(count_mask, one));
+
+  auto masked_count = UAnd(count, count_mask);
+  auto temp_count = URem(masked_count, count_mod);
+  auto carry = Select(FLAG_CF, one, zero);
+
   if (temp_count) {
-    const T left = (val >> (temp_count - 1));
-    const T right = val << (kSize - temp_count);
-    new_val = (left >> 1) |
-              (carry << (kSize - temp_count)) |
-              (right << 1);
-    W(dst) = new_val;
-    __remill_barrier_compiler();
-    state.aflag.cf = left & 1;
-    state.aflag.of = SignFlag(new_val) != SignFlag<T>(new_val << 1);
+    auto left = UShr(val, USub(temp_count, one));
+    auto right = UShl(val, USub(op_size, temp_count));
+    auto new_val = UOr(UOr(
+        UShr(left, one),
+        UShl(carry, USub(op_size, temp_count))),
+        UShl(right, one));
+    WriteZExt(dst, new_val);
+    Write(FLAG_CF, UCmpNeq(UAnd(left, one), zero));
+    Write(FLAG_OF, BXor(SignFlag(UShl(new_val, one)), SignFlag(new_val)));
     // OF undefined for `1 == temp_count`.
   } else {
-    W(dst) = new_val;
+    WriteZExt(dst, val);
   }
 }
 

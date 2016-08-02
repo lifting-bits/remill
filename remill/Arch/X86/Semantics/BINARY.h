@@ -7,16 +7,16 @@ namespace {
 
 template <typename Tag, typename T>
 ALWAYS_INLINE static void WriteFlagsIncDec(State &state, T lhs, T rhs, T res) {
-  state.aflag.pf = ParityFlag(res);
-  state.aflag.af = AuxCarryFlag(lhs, rhs, res);
-  state.aflag.zf = ZeroFlag(res);
-  state.aflag.sf = SignFlag(res);
-  state.aflag.of = Overflow<Tag>::Flag(lhs, rhs, res);
+  FLAG_PF = ParityFlag(res);
+  FLAG_AF = AuxCarryFlag(lhs, rhs, res);
+  FLAG_ZF = ZeroFlag(res);
+  FLAG_SF = SignFlag(res);
+  FLAG_OF = Overflow<Tag>::Flag(lhs, rhs, res);
 }
 
 template <typename Tag, typename T>
 ALWAYS_INLINE static void WriteFlagsAddSub(State &state, T lhs, T rhs, T res) {
-  state.aflag.cf = Carry<Tag>::Flag(lhs, rhs, res);
+  FLAG_CF = Carry<Tag>::Flag(lhs, rhs, res);
   WriteFlagsIncDec<Tag>(state, lhs, rhs, res);
 }
 
@@ -433,9 +433,9 @@ namespace {
     DEF_SEM(DIV ## name, S3 src3) { \
       auto lhs_low = ZExt(Read(src1)); \
       auto lhs_high = ZExt(Read(src2)); \
+      auto rhs = ZExt(Read(src3)); \
       auto shift = ZExt(BitSizeOf(src3)); \
       auto lhs = UOr(UShl(lhs_high, shift), lhs_low); \
-      auto rhs = ZExt(Read(src3)); \
       auto quot = UDiv(lhs, rhs); \
       auto rem = URem(lhs, rhs); \
       auto quot_trunc = Trunc(quot); \
@@ -462,9 +462,9 @@ IF_64BIT(MAKE_DIVxax(rdxrax, REG_RAX, REG_RDX, REG_RAX, REG_RDX))
     DEF_SEM(IDIV ## name, S3 src3) { \
       auto lhs_low = ZExt(Read(src1)); \
       auto lhs_high = ZExt(Read(src2)); \
+      auto rhs = SExt(Read(src3)); \
       auto shift = ZExt(BitSizeOf(src3)); \
       auto lhs = Signed(UOr(UShl(lhs_high, shift), lhs_low)); \
-      auto rhs = SExt(Read(src3)); \
       auto quot = SDiv(lhs, rhs); \
       auto rem = SRem(lhs, rhs); \
       auto quot_trunc = Trunc(quot); \

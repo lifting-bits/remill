@@ -106,7 +106,7 @@
 #include "remill/Arch/X86/Semantics/MISC.h"
 #include "remill/Arch/X86/Semantics/POP.h"
 #include "remill/Arch/X86/Semantics/PUSH.h"
-//#include "remill/Arch/X86/Semantics/ROTATE.h"
+#include "remill/Arch/X86/Semantics/ROTATE.h"
 //#include "remill/Arch/X86/Semantics/SHIFT.h"
 //#include "remill/Arch/X86/Semantics/SSE.h"
 //#include "remill/Arch/X86/Semantics/STRINGOP.h"
