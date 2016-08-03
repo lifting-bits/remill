@@ -6,61 +6,91 @@
 namespace {
 
 // TODO(pag): Ignores distinction between quiet/signalling, and ordering.
-template <typename S1, typename S2, typename FloatAcc>
-DEF_SEM(COMISx, S1 src1_, S2 src2_) {
-  const auto src1 = FloatAcc::Read0(R(src1_));
-  const auto src2 = FloatAcc::Read0(R(src2_));
+template <typename S1, typename S2>
+DEF_SEM(COMISS, S1 src1, S2 src2) {
+  auto left = FExtractV32<0>(FReadV32(src1));
+  auto right = FExtractV32<0>(FReadV32(src2));
 
-  if (src1 > src2) {
-    state.aflag.zf = false;
-    state.aflag.pf = false;
-    state.aflag.cf = false;
+  if (FCmpGt(left, right)) {
+    Write(FLAG_ZF, false);
+    Write(FLAG_PF, false);
+    Write(FLAG_CF, false);
+  } else if (FCmpLt(left, right)) {
+    Write(FLAG_ZF, false);
+    Write(FLAG_PF, false);
+    Write(FLAG_CF, true);
 
-  } else if (src1 < src2) {
-    state.aflag.zf = false;
-    state.aflag.pf = false;
-    state.aflag.cf = true;
-
-  } else if (src1 == src2) {
-    state.aflag.zf = true;
-    state.aflag.pf = false;
-    state.aflag.cf = false;
+  } else if (FCmpEq(left, right)) {
+    Write(FLAG_ZF, true);
+    Write(FLAG_PF, false);
+    Write(FLAG_CF, false);
 
   } else {  // Unordered?
-    state.aflag.zf = true;
-    state.aflag.pf = true;
-    state.aflag.cf = true;
+    Write(FLAG_ZF, true);
+    Write(FLAG_PF, true);
+    Write(FLAG_CF, true);
   }
 
-  state.aflag.of = false;
-  state.aflag.sf = false;
-  state.aflag.af = false;
+  Write(FLAG_OF, false);
+  Write(FLAG_SF, false);
+  Write(FLAG_AF, false);
+}
+
+
+template <typename S1, typename S2>
+DEF_SEM(COMISD, S1 src1, S2 src2) {
+  auto left = FExtractV64<0>(FReadV64(src1));
+  auto right = FExtractV64<0>(FReadV64(src2));
+
+  if (FCmpGt(left, right)) {
+    Write(FLAG_ZF, false);
+    Write(FLAG_PF, false);
+    Write(FLAG_CF, false);
+  } else if (FCmpLt(left, right)) {
+    Write(FLAG_ZF, false);
+    Write(FLAG_PF, false);
+    Write(FLAG_CF, true);
+
+  } else if (FCmpEq(left, right)) {
+    Write(FLAG_ZF, true);
+    Write(FLAG_PF, false);
+    Write(FLAG_CF, false);
+
+  } else {  // Unordered?
+    Write(FLAG_ZF, true);
+    Write(FLAG_PF, true);
+    Write(FLAG_CF, true);
+  }
+
+  Write(FLAG_OF, false);
+  Write(FLAG_SF, false);
+  Write(FLAG_AF, false);
 }
 
 }  // namespace
 
-DEF_ISEL(COMISD_XMMsd_MEMsd) = COMISx<V128, MV64, Float64VecOps>;
-DEF_ISEL(COMISD_XMMsd_XMMsd) = COMISx<V128, V128, Float64VecOps>;
-DEF_ISEL(COMISS_XMMss_MEMss) = COMISx<V128, MV32, Float32VecOps>;
-DEF_ISEL(COMISS_XMMss_XMMss) = COMISx<V128, V128, Float32VecOps>;
+DEF_ISEL(COMISD_XMMsd_MEMsd) = COMISD<V128, MV64>;
+DEF_ISEL(COMISD_XMMsd_XMMsd) = COMISD<V128, V128>;
+DEF_ISEL(COMISS_XMMss_MEMss) = COMISS<V128, MV32>;
+DEF_ISEL(COMISS_XMMss_XMMss) = COMISS<V128, V128>;
 
 #if HAS_FEATURE_AVX
-DEF_ISEL(VCOMISD_XMMq_MEMq) = COMISx<V128, MV64, Float64VecOps>;
-DEF_ISEL(VCOMISD_XMMq_XMMq) = COMISx<V128, V128, Float64VecOps>;
-DEF_ISEL(VCOMISS_XMMd_MEMd) = COMISx<V128, MV32, Float32VecOps>;
-DEF_ISEL(VCOMISS_XMMd_XMMd) = COMISx<V128, V128, Float32VecOps>;
+DEF_ISEL(VCOMISD_XMMq_MEMq) = COMISD<V128, MV64>;
+DEF_ISEL(VCOMISD_XMMq_XMMq) = COMISD<V128, V128>;
+DEF_ISEL(VCOMISS_XMMd_MEMd) = COMISS<V128, MV32>;
+DEF_ISEL(VCOMISS_XMMd_XMMd) = COMISS<V128, V128>;
 #endif  // HAS_FEATURE_AVX
 
-DEF_ISEL(UCOMISD_XMMsd_MEMsd) = COMISx<V128, MV64, Float64VecOps>;
-DEF_ISEL(UCOMISD_XMMsd_XMMsd) = COMISx<V128, V128, Float64VecOps>;
-DEF_ISEL(UCOMISS_XMMss_MEMss) = COMISx<V128, MV32, Float32VecOps>;
-DEF_ISEL(UCOMISS_XMMss_XMMss) = COMISx<V128, V128, Float32VecOps>;
+DEF_ISEL(UCOMISD_XMMsd_MEMsd) = COMISD<V128, MV64>;
+DEF_ISEL(UCOMISD_XMMsd_XMMsd) = COMISD<V128, V128>;
+DEF_ISEL(UCOMISS_XMMss_MEMss) = COMISS<V128, MV32>;
+DEF_ISEL(UCOMISS_XMMss_XMMss) = COMISS<V128, V128>;
 
 #if HAS_FEATURE_AVX
-DEF_ISEL(VUCOMISD_XMMdq_MEMq) = COMISx<V128, MV64, Float64VecOps>;
-DEF_ISEL(VUCOMISD_XMMdq_XMMq) = COMISx<V128, V128, Float64VecOps>;
-DEF_ISEL(VUCOMISS_XMMdq_MEMd) = COMISx<V128, MV32, Float32VecOps>;
-DEF_ISEL(VUCOMISS_XMMdq_XMMd) = COMISx<V128, V128, Float32VecOps>;
+DEF_ISEL(VUCOMISD_XMMdq_MEMq) = COMISD<V128, MV64>;
+DEF_ISEL(VUCOMISD_XMMdq_XMMq) = COMISD<V128, V128>;
+DEF_ISEL(VUCOMISS_XMMdq_MEMd) = COMISS<V128, MV32>;
+DEF_ISEL(VUCOMISS_XMMdq_XMMd) = COMISS<V128, V128>;
 #endif  // HAS_FEATURE_AVX
 
 

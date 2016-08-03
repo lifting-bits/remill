@@ -3,161 +3,172 @@
 #ifndef REMILL_ARCH_X86_SEMANTICS_SHIFT_H_
 #define REMILL_ARCH_X86_SEMANTICS_SHIFT_H_
 
-
 namespace {
 
-template <template <typename> class Converter>
-struct ShiftRight {
-  template <typename D, typename S1, typename S2>
-  DEF_SEM(DO, D dst, S1 src1_, S2 src2_) {
-    typedef BASE_TYPE_OF(S1) UT;
-    typedef typename Converter<UT>::Type T;
-    enum : UT {
-      // The mask is based on the REX.W prefix being used and 64-bit mode. We
-      // determine this based on the source being a 64-bit operand.
-      //
-      // Note: The mask will be 31 even for 16- and 8-bit operands.
-      kArchMask = 8 == sizeof(T) ? UT(0x3FU) : UT(0x1FU),
-      kNumBits = sizeof(T) * 8
-    };
-
-    const UT shift = R(src2_) & kArchMask;
-    if (UT(0) == shift) {
-      return;  // No flags affected.
-    }
-
-    const auto val = static_cast<T>(R(src1_));
-    T new_val = T(0);
-    auto new_of = false;
-    auto new_cf = false;
-
-    if (1 == shift) {
-      if (std::is_signed<T>::value) {
-        new_of = false;
-      } else {
-        new_of = SignFlag(val);
-      }
-      new_cf = val & 1;
-      new_val = val >> 1;
-
-    } else if (shift < kNumBits) {
-      const T res = val >> (shift - 1);
-
-      new_of = __remill_undefined_bool();
-      new_cf = res & 1;
-      new_val = res >> 1;
-
-    } else {
-      new_of = __remill_undefined_bool();
-      new_cf = __remill_undefined_bool();
-      if (std::is_signed<T>::value) {
-        if (SignFlag(val)) {
-          new_val = static_cast<T>(std::numeric_limits<UT>::max());
-        } else {
-          new_val = 0;
-        }
-      } else {
-        new_val = 0;
-      }
-    }
-
-    W(dst) = static_cast<UT>(new_val);
-
-    __remill_barrier_compiler();
-
-    state.aflag.cf = new_cf;
-    state.aflag.pf = ParityFlag(new_val);
-    state.aflag.af = __remill_undefined_bool();
-    state.aflag.zf = ZeroFlag(new_val);
-    state.aflag.sf = std::is_signed<T>::value ? SignFlag(new_val) : false;
-    state.aflag.of = new_of;
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHR, D dst, S1 src1, S2 src2) {
+  auto val = Read(src1);
+  auto shift = Read(src2);
+  auto long_mask = Literal<S1>(0x3F);
+  auto short_mask = Literal<S1>(0x1F);
+  auto op_size = BitSizeOf(src1);
+  auto shift_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
+  auto masked_shift = UAnd(shift, shift_mask);
+  if (UCmpEq(masked_shift, 0)) {
+    return;  // No flags affected.
   }
-};
+  auto new_val = val;
+  auto new_of = false;
+  auto new_cf = false;
+
+  if (UCmpEq(masked_shift, 1)) {
+    new_of = SignFlag(val);
+    new_cf = UCmpEq(UAnd(val, 1), 1);
+    new_val = UShr(val, 1);
+
+  } else if (UCmpLt(masked_shift, op_size)) {
+    auto res = UShr(val, USub(masked_shift, 1));
+    new_of = BUndefined();
+    new_cf = UCmpEq(UAnd(res, 1), 1);
+    new_val = UShr(res, 1);
+
+  } else {
+    new_of = BUndefined();
+    new_cf = BUndefined();
+    new_val = 0;
+  }
+  WriteZExt(dst, new_val);
+  Write(FLAG_CF, new_cf);
+  Write(FLAG_PF, ParityFlag(new_val));
+  Write(FLAG_AF, BUndefined());
+  Write(FLAG_ZF, ZeroFlag(new_val));
+  Write(FLAG_SF, false);
+  Write(FLAG_OF, new_of);
+}
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(SHL, D dst, S1 src1_, S2 src2_) {
-  typedef BASE_TYPE_OF(S1) T;
-  enum : T {
-    // The mask is based on the REX.W prefix being used and 64-bit mode. We
-    // determine this based on the source being a 64-bit operand.
-    //
-    // Note: The mask will be 31 even for 16- and 8-bit operands.
-    kArchMask = static_cast<T>(8 == sizeof(T) ? 0x3FU : 0x1FU),
-    kNumBits = sizeof(T) * 8
-  };
+DEF_SEM(SAR, D dst, S1 src1, S2 src2) {
+  auto uval = Read(src1);
+  auto shift = Read(src2);
+  auto val = Signed(uval);
+  auto one = SLiteral<S1>(1);
+  auto long_mask = Literal<S1>(0x3F);
+  auto short_mask = Literal<S1>(0x1F);
+  auto op_size = BitSizeOf(src1);
+  auto shift_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
+  auto masked_shift = UAnd(shift, shift_mask);
+  if (UCmpEq(masked_shift, 0)) {
+    return;  // No flags affected.
+  }
+  auto new_val = uval;
+  auto new_of = false;
+  auto new_cf = false;
 
-  const T shift = R(src2_) & kArchMask;
-  if (0 == shift) {
+  if (UCmpEq(masked_shift, 1)) {
+    new_of = false;
+    new_cf = UCmpEq(UAnd(uval, 1), 1);
+    new_val = Unsigned(SShr(val, one));
+
+  } else if (UCmpLt(masked_shift, op_size)) {
+    auto res = SShr(val, Signed(USub(masked_shift, 1)));
+    new_of = BUndefined();
+    new_cf = SCmpEq(SAnd(res, one), one);
+    new_val = Unsigned(SShr(res, one));
+
+  } else {
+    new_of = BUndefined();
+    new_cf = BUndefined();
+    if (SignFlag(val)) {
+      new_val = Maximize(uval);
+    } else {
+      new_val = 0;
+    }
+  }
+
+  WriteZExt(dst, new_val);
+  Write(FLAG_CF, new_cf);
+  Write(FLAG_PF, ParityFlag(new_val));
+  Write(FLAG_AF, BUndefined());
+  Write(FLAG_ZF, ZeroFlag(new_val));
+  Write(FLAG_SF, SignFlag(new_val));
+  Write(FLAG_OF, new_of);
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHL, D dst, S1 src1, S2 src2) {
+  auto val = Read(src1);
+  auto shift = Read(src2);
+
+  auto long_mask = Literal<S1>(0x3F);
+  auto short_mask = Literal<S1>(0x1F);
+  auto op_size = BitSizeOf(src1);
+  auto shift_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
+  auto masked_shift = UAnd(shift, shift_mask);
+
+  if (UCmpEq(masked_shift, 0)) {
     return;  // No flags affected.
   }
 
-  const auto val = R(src1_);
-  T new_val = 0;
-  auto new_cf = false;
+  auto new_val = val;
   auto new_of = false;
+  auto new_cf = false;
 
-  if (1 == shift) {
-    const T res = val << 1;
-    const auto msb = SignFlag(val);
-    const auto new_msb = SignFlag(res);
+  if (UCmpEq(masked_shift, 1)) {
+    auto res = UShl(val, 1);
+    auto msb = SignFlag(val);
+    auto new_msb = SignFlag(res);
 
-    new_of = msb != new_msb;
+    new_of = BXor(msb, new_msb);
     new_cf = msb;
     new_val = res;
 
-  } else if (shift < kNumBits) {
-    const T res = val << (shift - 1);
+  } else if (UCmpLt(masked_shift, op_size)) {
+    auto res = UShl(val, USub(masked_shift, 1));
     const auto msb = SignFlag(res);
-
-    new_of = __remill_undefined_bool();
+    new_of = BUndefined();
     new_cf = msb;
-    new_val = res << 1;
-
+    new_val = UShl(res, 1);
   } else {
-    new_of = __remill_undefined_bool();
-    new_cf = __remill_undefined_bool();
+    new_of = BUndefined();
+    new_cf = BUndefined();
     new_val = 0;
   }
 
-  W(dst) = new_val;
-
-  __remill_barrier_compiler();
-
-  state.aflag.cf = new_cf;
-  state.aflag.pf = ParityFlag(new_val);
-  state.aflag.af = __remill_undefined_bool();
-  state.aflag.zf = ZeroFlag(new_val);
-  state.aflag.sf = SignFlag(new_val);
-  state.aflag.of = new_of;
+  WriteZExt(dst, new_val);
+  Write(FLAG_CF, new_cf);
+  Write(FLAG_PF, ParityFlag(new_val));
+  Write(FLAG_AF, BUndefined());
+  Write(FLAG_ZF, ZeroFlag(new_val));
+  Write(FLAG_SF, SignFlag(new_val));
+  Write(FLAG_OF, new_of);
 }
-
 }  // namespace
 
-DEF_ISEL(SHR_MEMb_IMMb) = ShiftRight<UnsignedIntegerType>::DO<M8W, M8, I8>;
-DEF_ISEL(SHR_GPR8_IMMb) = ShiftRight<UnsignedIntegerType>::DO<R8W, R8, I8>;
-DEF_ISEL_MnW_Mn_In(SHR_MEMv_IMMb, ShiftRight<UnsignedIntegerType>::DO);
-DEF_ISEL_RnW_Rn_In(SHR_GPRv_IMMb, ShiftRight<UnsignedIntegerType>::DO);
-DEF_ISEL(SHR_MEMb_ONE) = ShiftRight<UnsignedIntegerType>::DO<M8W, M8, I8>;
-DEF_ISEL(SHR_GPR8_ONE) = ShiftRight<UnsignedIntegerType>::DO<R8W, R8, I8>;
-DEF_ISEL_MnW_Mn_In(SHR_MEMv_ONE, ShiftRight<UnsignedIntegerType>::DO);
-DEF_ISEL_RnW_Rn_In(SHR_GPRv_ONE, ShiftRight<UnsignedIntegerType>::DO);
-DEF_ISEL(SHR_MEMb_CL) = ShiftRight<UnsignedIntegerType>::DO<M8W, M8, R8>;
-DEF_ISEL(SHR_GPR8_CL) = ShiftRight<UnsignedIntegerType>::DO<R8W, R8, R8>;
-DEF_ISEL_MnW_Mn_Rn(SHR_MEMv_CL, ShiftRight<UnsignedIntegerType>::DO);
-DEF_ISEL_RnW_Rn_Rn(SHR_GPRv_CL, ShiftRight<UnsignedIntegerType>::DO);
+DEF_ISEL(SHR_MEMb_IMMb) = SHR<M8W, M8, I8>;
+DEF_ISEL(SHR_GPR8_IMMb) = SHR<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(SHR_MEMv_IMMb, SHR);
+DEF_ISEL_RnW_Rn_In(SHR_GPRv_IMMb, SHR);
+DEF_ISEL(SHR_MEMb_ONE) = SHR<M8W, M8, I8>;
+DEF_ISEL(SHR_GPR8_ONE) = SHR<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(SHR_MEMv_ONE, SHR);
+DEF_ISEL_RnW_Rn_In(SHR_GPRv_ONE, SHR);
+DEF_ISEL(SHR_MEMb_CL) = SHR<M8W, M8, R8>;
+DEF_ISEL(SHR_GPR8_CL) = SHR<R8W, R8, R8>;
+DEF_ISEL_MnW_Mn_Rn(SHR_MEMv_CL, SHR);
+DEF_ISEL_RnW_Rn_Rn(SHR_GPRv_CL, SHR);
 
-DEF_ISEL(SAR_MEMb_IMMb) = ShiftRight<SignedIntegerType>::DO<M8W, M8, I8>;
-DEF_ISEL(SAR_GPR8_IMMb) = ShiftRight<SignedIntegerType>::DO<R8W, R8, I8>;
-DEF_ISEL_MnW_Mn_In(SAR_MEMv_IMMb, ShiftRight<SignedIntegerType>::DO);
-DEF_ISEL_RnW_Rn_In(SAR_GPRv_IMMb, ShiftRight<SignedIntegerType>::DO);
-DEF_ISEL(SAR_MEMb_ONE) = ShiftRight<SignedIntegerType>::DO<M8W, M8, I8>;
-DEF_ISEL(SAR_GPR8_ONE) = ShiftRight<SignedIntegerType>::DO<R8W, R8, I8>;
-DEF_ISEL_MnW_Mn_In(SAR_MEMv_ONE, ShiftRight<SignedIntegerType>::DO);
-DEF_ISEL_RnW_Rn_In(SAR_GPRv_ONE, ShiftRight<SignedIntegerType>::DO);
-DEF_ISEL(SAR_MEMb_CL) = ShiftRight<SignedIntegerType>::DO<M8W, M8, R8>;
-DEF_ISEL(SAR_GPR8_CL) = ShiftRight<SignedIntegerType>::DO<R8W, R8, R8>;
-DEF_ISEL_MnW_Mn_Rn(SAR_MEMv_CL, ShiftRight<SignedIntegerType>::DO);
-DEF_ISEL_RnW_Rn_Rn(SAR_GPRv_CL, ShiftRight<SignedIntegerType>::DO);
+DEF_ISEL(SAR_MEMb_IMMb) = SAR<M8W, M8, I8>;
+DEF_ISEL(SAR_GPR8_IMMb) = SAR<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(SAR_MEMv_IMMb, SAR);
+DEF_ISEL_RnW_Rn_In(SAR_GPRv_IMMb, SAR);
+DEF_ISEL(SAR_MEMb_ONE) = SAR<M8W, M8, I8>;
+DEF_ISEL(SAR_GPR8_ONE) = SAR<R8W, R8, I8>;
+DEF_ISEL_MnW_Mn_In(SAR_MEMv_ONE, SAR);
+DEF_ISEL_RnW_Rn_In(SAR_GPRv_ONE, SAR);
+DEF_ISEL(SAR_MEMb_CL) = SAR<M8W, M8, R8>;
+DEF_ISEL(SAR_GPR8_CL) = SAR<R8W, R8, R8>;
+DEF_ISEL_MnW_Mn_Rn(SAR_MEMv_CL, SAR);
+DEF_ISEL_RnW_Rn_Rn(SAR_GPRv_CL, SAR);
 
 DEF_ISEL(SHL_MEMb_IMMb_C0r4) = SHL<M8W, M8, I8>;
 DEF_ISEL(SHL_GPR8_IMMb_C0r4) = SHL<R8W, R8, I8>;
@@ -189,37 +200,45 @@ namespace {
 template <typename T>
 NEVER_INLINE static bool SHRDCarryFlag(T val, T count) {
   __remill_defer_inlining();
-  return (val >> (count - 1)) & 1;
+  return UCmpEq(UAnd(UShr(val, USub(count, 1)), 1), 1);
 }
 
 template <typename D, typename S1, typename S2, typename S3>
-DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 count_) {
-  typedef BASE_TYPE_OF(S1) T;
-  enum : T {
-    kMod = static_cast<T>(8 == sizeof(T) ? 64 : 32),
-    kSize = static_cast<T>(sizeof(T) * 8)
-  };
-  const T count = static_cast<T>(R(count_)) % kMod;
-  if (!count) {
+DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 src3) {
+  auto val1 = Read(src1);
+  auto val2 = Read(src2);
+  auto shift = Read(src3);
+
+  auto long_mask = Literal<S1>(0x3F);
+  auto short_mask = Literal<S1>(0x1F);
+  auto op_size = BitSizeOf(src1);
+  auto shift_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
+  auto masked_shift = UAnd(shift, shift_mask);
+
+  if (UCmpEq(masked_shift, 0)) {
+    return;
+
+  } else if (UCmpLt(op_size, masked_shift)) {
+    ClearArithFlags();
+    // `dst` is undefined; leave as-is.
+    //
+    // TODO(pag): Update `dst` anyway because it may be readable but not
+    //            writable?
     return;
   }
-  if (kSize < count) {
-    CLEAR_AFLAGS();
-    W(dst) = U(dst);  // Store and undefined value.
-    return;
-  }
-  const T src = R(src1);
-  const T right = src >> count;
-  const T left = R(src2) << (kSize - count);
-  const T res = left | right;
-  W(dst) = res;
-  __remill_barrier_compiler();
-  state.aflag.cf = SHRDCarryFlag(src, count);
-  state.aflag.sf = SignFlag(res);
-  state.aflag.zf = ZeroFlag(res);
-  state.aflag.pf = ParityFlag(res);
-  state.aflag.af = __remill_undefined_bool();
-  state.aflag.of = SignFlag(src) != state.aflag.sf;
+
+  auto left = UShl(val2, USub(op_size, masked_shift));
+  auto right = UShr(val1, masked_shift);
+  auto res = UOr(left, right);
+
+  WriteZExt(dst, res);
+
+  Write(FLAG_CF, SHRDCarryFlag(val1, masked_shift));
+  Write(FLAG_PF, ParityFlag(res));
+  Write(FLAG_AF, BUndefined());
+  Write(FLAG_ZF, ZeroFlag(res));
+  Write(FLAG_SF, SignFlag(res));
+  Write(FLAG_OF, BXor(SignFlag(val1), FLAG_SF));
   // OF undefined for `1 == temp_count`.
 }
 
@@ -235,37 +254,45 @@ namespace {
 template <typename T>
 NEVER_INLINE static bool SHLDCarryFlag(T val, T count) {
   __remill_defer_inlining();
-  return (val >> ((8 * sizeof(T)) - count)) & 1;
+  return UCmpEq(UAnd(UShr(val, USub(BitSizeOf(count), count)), 1), 1);
 }
 
 template <typename D, typename S1, typename S2, typename S3>
-DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 count_) {
-  typedef BASE_TYPE_OF(S1) T;
-  enum : T {
-    kMod = static_cast<T>(8 == sizeof(T) ? 64 : 32),
-    kSize = static_cast<T>(sizeof(T) * 8)
-  };
-  const T count = static_cast<T>(R(count_)) % kMod;
-  if (!count) {
+DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 src3) {
+  auto val1 = Read(src1);
+  auto val2 = Read(src2);
+  auto shift = Read(src3);
+
+  auto long_mask = Literal<S1>(0x3F);
+  auto short_mask = Literal<S1>(0x1F);
+  auto op_size = BitSizeOf(src1);
+  auto shift_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
+  auto masked_shift = UAnd(shift, shift_mask);
+
+  if (UCmpEq(masked_shift, 0)) {
+    return;
+
+  } else if (UCmpLt(op_size, masked_shift)) {
+    ClearArithFlags();
+    // `dst` is undefined; leave as-is.
+    //
+    // TODO(pag): Update `dst` anyway because it may be readable but not
+    //            writable?
     return;
   }
-  if (kSize < count) {
-    CLEAR_AFLAGS();
-    W(dst) = U(dst);  // Store and undefined value.
-    return;
-  }
-  const T src = R(src1);
-  const T left = src << count;
-  const T right = R(src2) >> (kSize - count);
-  const T res = left | right;
-  W(dst) = res;
-  __remill_barrier_compiler();
-  state.aflag.cf = SHLDCarryFlag(src, count);
-  state.aflag.sf = SignFlag(res);
-  state.aflag.zf = ZeroFlag(res);
-  state.aflag.pf = ParityFlag(res);
-  state.aflag.af = __remill_undefined_bool();
-  state.aflag.of = SignFlag(src) != state.aflag.sf;
+
+  auto left = UShl(val1, masked_shift);
+  auto right = UShr(val2, USub(op_size, masked_shift));
+  auto res = UOr(left, right);
+
+  WriteZExt(dst, res);
+
+  Write(FLAG_CF, SHLDCarryFlag(val1, masked_shift));
+  Write(FLAG_PF, ParityFlag(res));
+  Write(FLAG_AF, BUndefined());
+  Write(FLAG_ZF, ZeroFlag(res));
+  Write(FLAG_SF, SignFlag(res));
+  Write(FLAG_OF, BXor(SignFlag(val1), FLAG_SF));
   // OF undefined for `1 == temp_count`.
 }
 

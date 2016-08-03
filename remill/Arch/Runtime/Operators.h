@@ -472,6 +472,16 @@ auto Signed(T val) -> typename IntegerType<T>::ST {
   return static_cast<typename IntegerType<T>::ST>(val);
 }
 
+template <typename T>
+ALWAYS_INLINE static T Maximize(T val) {
+  return std::numeric_limits<T>::max();
+}
+
+template <typename T>
+ALWAYS_INLINE static T Minimize(T val) {
+  return std::numeric_limits<T>::min();
+}
+
 // Return the value as-is. This is useful when making many accessors using
 // macros, because it lets us decide to pull out values as-is, as unsigned
 // integers, or as signed integers.
@@ -485,9 +495,22 @@ T Identity(T val) {
 // integer literals, whose type are `int`.
 template <typename T, typename U>
 ALWAYS_INLINE static
-auto Literal(U val) -> typename IntegerType<T>::UT {
+auto Literal(U val) -> typename IntegerType<T>::BT {
+  return static_cast<typename IntegerType<T>::BT>(val);
+}
+
+template <typename T, typename U>
+ALWAYS_INLINE static
+auto ULiteral(U val) -> typename IntegerType<T>::UT {
   return static_cast<typename IntegerType<T>::UT>(val);
 }
+
+template <typename T, typename U>
+ALWAYS_INLINE static
+auto SLiteral(U val) -> typename IntegerType<T>::ST {
+  return static_cast<typename IntegerType<T>::ST>(val);
+}
+
 
 // Zero-extend an integer to twice its current width.
 template <typename T>
@@ -886,6 +909,12 @@ template <typename T>
 ALWAYS_INLINE static T Select(bool cond, T if_true, T if_false) {
   return cond ? if_true : if_false;
 }
+
+#define BUndefined __remill_undefined_bool
+#define UUndefined8 __remill_undefined_8
+#define UUndefined16 __remill_undefined_16
+#define UUndefined32 __remill_undefined_32
+#define UUndefined64 __remill_undefined_64
 
 }  // namespace
 
