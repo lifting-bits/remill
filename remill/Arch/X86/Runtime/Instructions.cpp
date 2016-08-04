@@ -109,7 +109,7 @@
 #include "remill/Arch/X86/Semantics/ROTATE.h"
 #include "remill/Arch/X86/Semantics/SHIFT.h"
 #include "remill/Arch/X86/Semantics/SSE.h"
-//#include "remill/Arch/X86/Semantics/STRINGOP.h"
+#include "remill/Arch/X86/Semantics/STRINGOP.h"
 #include "remill/Arch/X86/Semantics/UNCOND_BR.h"
 //#include "remill/Arch/X86/Semantics/XOP.h"
 //#include "remill/Arch/X86/Semantics/X87.h"

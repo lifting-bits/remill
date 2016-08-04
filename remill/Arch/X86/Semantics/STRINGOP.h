@@ -5,14 +5,15 @@
 
 #define MAKE_STOS(name, type, read_sel) \
     DEF_ISEL_SEM(name) { \
-      const addr_t addr = R(state.gpr.rdi); \
-      MnW<type> dst = {addr}; \
-      W(dst) = R(state.gpr.rax.read_sel); \
-      if (!state.aflag.df) { \
-        W(state.gpr.rdi) = addr + sizeof(type); \
+      const addr_t addr = Read(REG_XDI); \
+      Write(WritePtr<type>(addr), Read(state.gpr.rax.read_sel)); \
+      addr_t next_addr = 0; \
+      if (BNot(FLAG_DF)) { \
+        next_addr = UAdd(addr, sizeof(type)); \
       } else { \
-        W(state.gpr.rdi) = addr - sizeof(type); \
+        next_addr = USub(addr, sizeof(type)); \
       } \
+      Write(REG_XDI, next_addr); \
     }
 
 MAKE_STOS(STOSB, uint8_t, byte.low)
@@ -28,17 +29,18 @@ IF_64BIT(MAKE_STOS(STOSQ, uint64_t, qword))
 
 #define MAKE_SCAS(name, type, read_sel) \
     DEF_ISEL_SEM(name) { \
-      const addr_t addr = R(state.gpr.rdi); \
-      Mn<type> rhs_addr = {addr}; \
-      const type lhs = R(state.gpr.rax.read_sel); \
-      const type rhs = R(rhs_addr); \
-      const type res = lhs - rhs; \
-      SetFlagsAddSub<tag_sub>(state, lhs, rhs, res); \
-      if (!state.aflag.df) { \
-        W(state.gpr.rdi) = addr + sizeof(type); \
+      const addr_t addr = Read(REG_XDI); \
+      const type lhs = Read(state.gpr.rax.read_sel); \
+      const type rhs = Read(ReadPtr<type>(addr)); \
+      const type res = USub(lhs, rhs); \
+      WriteFlagsAddSub<tag_sub>(state, lhs, rhs, res); \
+      addr_t next_addr = 0; \
+      if (BNot(FLAG_DF)) { \
+        next_addr = UAdd(addr, sizeof(type)); \
       } else { \
-        W(state.gpr.rdi) = addr - sizeof(type); \
+        next_addr = USub(addr, sizeof(type)); \
       } \
+      Write(REG_XDI, next_addr); \
     }
 
 MAKE_SCAS(SCASB, uint8_t, byte.low)
@@ -50,14 +52,15 @@ IF_64BIT(MAKE_SCAS(SCASQ, uint64_t, qword))
 
 #define MAKE_LODS(name, type, write_sel) \
     DEF_ISEL_SEM(name) { \
-      const addr_t addr = R(state.gpr.rsi); \
-      Mn<type> src = {addr}; \
-      W(state.gpr.rax.write_sel) = R(src); \
-      if (!state.aflag.df) { \
-        W(state.gpr.rsi) = addr + sizeof(type); \
+      const addr_t addr = Read(REG_XSI); \
+      WriteZExt(state.gpr.rax.write_sel, Read(ReadPtr<type>(addr))); \
+      addr_t next_addr = 0; \
+      if (BNot(FLAG_DF)) { \
+        next_addr = UAdd(addr, sizeof(type)); \
       } else { \
-        W(state.gpr.rsi) = addr - sizeof(type); \
+        next_addr = USub(addr, sizeof(type)); \
       } \
+      Write(REG_XSI, next_addr); \
     }
 
 MAKE_LODS(LODSB, uint8_t, byte.low)
@@ -69,18 +72,20 @@ IF_64BIT(MAKE_LODS(LODSQ, uint64_t, qword))
 
 #define MAKE_MOVS(name, type, read_sel) \
     DEF_ISEL_SEM(name) { \
-      const addr_t src_addr = R(state.gpr.rsi); \
-      const addr_t dst_addr = R(state.gpr.rdi); \
-      MnW<type> dst = {dst_addr}; \
-      Mn<type> src = {src_addr}; \
-      W(dst) = R(src); \
-      if (!state.aflag.df) { \
-        W(state.gpr.rdi) = dst_addr + sizeof(type); \
-        W(state.gpr.rsi) = src_addr + sizeof(type); \
+      const addr_t src_addr = Read(REG_XSI); \
+      const addr_t dst_addr = Read(REG_XDI); \
+      Write(WritePtr<type>(dst_addr), Read(ReadPtr<type>(src_addr))); \
+      addr_t next_dst_addr = 0; \
+      addr_t next_src_addr = 0; \
+      if (BNot(FLAG_DF)) { \
+        next_dst_addr = UAdd(dst_addr, sizeof(type)); \
+        next_src_addr = UAdd(src_addr, sizeof(type)); \
       } else { \
-        W(state.gpr.rdi) = dst_addr - sizeof(type); \
-        W(state.gpr.rsi) = src_addr - sizeof(type); \
+        next_dst_addr = USub(dst_addr, sizeof(type)); \
+        next_src_addr = USub(src_addr, sizeof(type)); \
       } \
+      Write(REG_XDI, next_dst_addr); \
+      Write(REG_XSI, next_src_addr); \
     }
 
 MAKE_MOVS(MOVSB, uint8_t, byte.low)
@@ -92,21 +97,23 @@ IF_64BIT(MAKE_MOVS(MOVSQ, uint64_t, qword))
 
 #define MAKE_CMPS(name, type) \
     DEF_ISEL_SEM(name) { \
-      const addr_t src1_addr = R(state.gpr.rsi); \
-      const addr_t src2_addr = R(state.gpr.rdi); \
-      Mn<type> src1 = {src1_addr}; \
-      Mn<type> src2 = {src2_addr}; \
-      const type lhs = R(src1); \
-      const type rhs = R(src2); \
-      const type res = lhs - rhs; \
-      SetFlagsAddSub<tag_sub>(state, lhs, rhs, res); \
-      if (!state.aflag.df) { \
-        W(state.gpr.rdi) = src2_addr + sizeof(type); \
-        W(state.gpr.rsi) = src1_addr + sizeof(type); \
+      const addr_t src1_addr = Read(REG_XSI); \
+      const addr_t src2_addr = Read(REG_XDI); \
+      const type lhs = Read(ReadPtr<type>(src1_addr)); \
+      const type rhs = Read(ReadPtr<type>(src2_addr)); \
+      const type res = USub(lhs, rhs); \
+      WriteFlagsAddSub<tag_sub>(state, lhs, rhs, res); \
+      addr_t next_src1_addr = 0; \
+      addr_t next_src2_addr = 0; \
+      if (BNot(FLAG_DF)) { \
+        next_src1_addr = UAdd(src1_addr, sizeof(type)); \
+        next_src2_addr = UAdd(src2_addr, sizeof(type)); \
       } else { \
-        W(state.gpr.rdi) = src2_addr - sizeof(type); \
-        W(state.gpr.rsi) = src1_addr - sizeof(type); \
+        next_src1_addr = USub(src1_addr, sizeof(type)); \
+        next_src2_addr = USub(src2_addr, sizeof(type)); \
       } \
+      Write(REG_XDI, next_src2_addr); \
+      Write(REG_XSI, next_src1_addr); \
     }
 
 MAKE_CMPS(CMPSB, uint8_t)
@@ -118,11 +125,11 @@ IF_64BIT(MAKE_CMPS(CMPSQ, uint64_t))
 
 #define MAKE_REP(base) \
     DEF_ISEL_SEM(REP_ ## base) { \
-      auto count_reg = R(state.gpr.rcx); \
-      while (count_reg) { \
-        base(state, next_pc); \
-        count_reg = count_reg - 1; \
-        W(state.gpr.rcx) = count_reg; \
+      auto count_reg = Read(REG_XCX); \
+      while (UCmpNeq(count_reg, 0)) { \
+        base(state, memory); \
+        count_reg = USub(count_reg, 1); \
+        Write(REG_XCX, count_reg); \
       } \
     }
 
@@ -144,13 +151,13 @@ IF_64BIT(MAKE_REP(STOSQ))
 
 #define MAKE_REPE(base) \
     DEF_ISEL_SEM(REPE_ ## base) { \
-      auto count_reg = R(state.gpr.rcx); \
-      if (!count_reg) return; \
+      auto count_reg = Read(REG_XCX); \
+      if (UCmpEq(count_reg, 0)) return; \
       do { \
-        base(state, next_pc); \
-        count_reg = count_reg - 1; \
-        W(state.gpr.rcx) = count_reg; \
-      } while (count_reg && state.aflag.zf); \
+        base(state, memory); \
+        count_reg = USub(count_reg, 1); \
+        Write(REG_XCX, count_reg); \
+      } while (BAnd(UCmpNeq(count_reg, 0), FLAG_ZF)); \
     }
 
 MAKE_REPE(CMPSB)
@@ -167,13 +174,13 @@ IF_64BIT(MAKE_REPE(SCASQ))
 
 #define MAKE_REPNE(base) \
     DEF_ISEL_SEM(REPNE_ ## base) { \
-      auto count_reg = R(state.gpr.rcx); \
-      if (!count_reg) return; \
+      auto count_reg = Read(REG_XCX); \
+      if (UCmpEq(count_reg, 0)) return; \
       do { \
-        base(state, next_pc); \
-        count_reg = count_reg - 1; \
-        W(state.gpr.rcx) = count_reg; \
-      } while (count_reg && !state.aflag.zf); \
+        base(state, memory); \
+        count_reg = USub(count_reg, 1); \
+        Write(REG_XCX, count_reg); \
+      } while (BAnd(UCmpNeq(count_reg, 0), BNot(FLAG_ZF))); \
     }
 
 MAKE_REPNE(CMPSB)

@@ -393,9 +393,6 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/UCOMISD.S"
 #include "tests/X86/SSE/UCOMISS.S"
 
-/*
-
-
 #if APPLE_SAFE_TESTS
 # include "tests/X86/STRINGOP/CMPS.S"
 # include "tests/X86/STRINGOP/LODS.S"
@@ -403,7 +400,7 @@ SYMBOL(__x86_test_table_begin):
 # include "tests/X86/STRINGOP/SCAS.S"
 # include "tests/X86/STRINGOP/STOS.S"
 #endif  // __APPLE__
-*/
+
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"
     .globl SYMBOL(__x86_test_table_end)
