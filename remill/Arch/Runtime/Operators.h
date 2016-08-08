@@ -108,25 +108,26 @@ MAKE_VREAD(F, 64)
 #undef MAKE_VREAD
 
 // Make read operators for reading integral values from memory.
-#define MAKE_MREAD(size, type_prefix, ...) \
+#define MAKE_MREAD(size, ret_size, type_prefix, access_suffix) \
     ALWAYS_INLINE static \
-    type_prefix ## size ## _t _Read( \
+    type_prefix ## ret_size ## _t _Read( \
         Memory *&memory, Mn<type_prefix ## size ## _t> op) { \
-      return __remill_read_memory_ ## __VA_ARGS__ ## size (memory, op.addr); \
+      return __remill_read_memory_ ## access_suffix (memory, op.addr); \
     } \
     \
     ALWAYS_INLINE static \
-    type_prefix ## size ## _t _Read( \
+    type_prefix ## ret_size ## _t _Read( \
         Memory *&memory, MnW<type_prefix ## size ## _t> op) { \
-      return __remill_read_memory_ ## __VA_ARGS__ ## size (memory, op.addr); \
+      return __remill_read_memory_ ## access_suffix (memory, op.addr); \
     }
 
-MAKE_MREAD(8, uint)
-MAKE_MREAD(16, uint)
-MAKE_MREAD(32, uint)
-MAKE_MREAD(64, uint)
-MAKE_MREAD(32, float, f)
-MAKE_MREAD(64, float, f)
+MAKE_MREAD(8, 8, uint, 8)
+MAKE_MREAD(16, 16, uint, 16)
+MAKE_MREAD(32, 32, uint, 32)
+MAKE_MREAD(64, 64, uint, 64)
+MAKE_MREAD(32, 32, float, f32)
+MAKE_MREAD(64, 64, float, f64)
+MAKE_MREAD(80, 64, float, f80)
 
 #undef MAKE_MREAD
 
@@ -157,21 +158,22 @@ MAKE_RWRITE(float64_t)
 #undef MAKE_RWRITE
 
 // Make write operators for writing values to memory.
-#define MAKE_MWRITE(size, type_prefix, ...) \
+#define MAKE_MWRITE(size, write_size, type_prefix, access_suffix) \
     ALWAYS_INLINE static \
     Memory *_Write( \
         Memory *memory, MnW<type_prefix ## size ## _t> op, \
-        type_prefix ## size ## _t val) { \
-      return __remill_write_memory_ ## __VA_ARGS__ ## size (\
+        type_prefix ## write_size ## _t val) { \
+      return __remill_write_memory_ ## access_suffix (\
           memory, op.addr, val); \
     }
 
-MAKE_MWRITE(8, uint)
-MAKE_MWRITE(16, uint)
-MAKE_MWRITE(32, uint)
-MAKE_MWRITE(64, uint)
-MAKE_MWRITE(32, float, f)
-MAKE_MWRITE(64, float, f)
+MAKE_MWRITE(8, 8, uint, 8)
+MAKE_MWRITE(16, 16, uint, 16)
+MAKE_MWRITE(32, 32, uint, 32)
+MAKE_MWRITE(64, 64, uint, 64)
+MAKE_MWRITE(32, 32, float, f32)
+MAKE_MWRITE(64, 64, float, f64)
+MAKE_MWRITE(80, 64, float, f80)
 
 #undef MAKE_MWRITE
 
@@ -472,14 +474,28 @@ auto Signed(T val) -> typename IntegerType<T>::ST {
   return static_cast<typename IntegerType<T>::ST>(val);
 }
 
+// Return the largest possible value assignable to `val`.
 template <typename T>
 ALWAYS_INLINE static T Maximize(T val) {
   return std::numeric_limits<T>::max();
 }
 
+// Return the smallest possible value assignable to `val`.
 template <typename T>
 ALWAYS_INLINE static T Minimize(T val) {
   return std::numeric_limits<T>::min();
+}
+
+// Convert value to a double.
+template <typename T>
+ALWAYS_INLINE static float64_t Float64(T val) {
+  return static_cast<float64_t>(val);
+}
+
+// Convert value to a float.
+template <typename T>
+ALWAYS_INLINE static float32_t Float32(T val) {
+  return static_cast<float32_t>(val);
 }
 
 // Return the value as-is. This is useful when making many accessors using

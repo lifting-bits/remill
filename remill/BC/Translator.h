@@ -46,11 +46,19 @@ class Translator {
   // therefore be used as a target for linking.
   void IdentifyExistingSymbols(void);
 
+  // Create functions for every imported/exported function.
+  void CreateFunctionsForExternals(const cfg::Module *cfg);
+
   // Create functions for every block in the CFG.
   void CreateFunctionsForBlocks(const cfg::Module *cfg);
 
-  // Create functions for every imported/exported function in the code.
-  void CreateExternalFunctions(const cfg::Module *cfg);
+  // Create functions for every exported function in the code.
+  llvm::Function *CreateExportedFunction(
+      const std::string &name, uintptr_t addr);
+
+  // Create functions for every imported function in the code.
+  llvm::Function *CreateImportedFunction(
+      const std::string &name, uintptr_t addr);
 
   // Link together functions and basic blocks.
   void LinkExternalFunctionsToBlocks(const cfg::Module *cfg);
@@ -88,12 +96,6 @@ class Translator {
 
   // Named variables present within the module.
   SymbolMap symbols;
-
-  // ID of the next symbol to add. We want to be able to merge CFGs from
-  // multiple libraries, so it's not safe to just name blocks from those CFGs
-  // with their address because they might conflict. So, we give a unique
-  // name to every non-exported symbol we introduce.
-  int binary_id;
 
   // Basic block template.
   llvm::Function * const basic_block;

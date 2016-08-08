@@ -88,6 +88,15 @@
 #define FLAG_OF state.aflag.of
 #define FLAG_DF state.aflag.df
 
+#define X87_ST0 state.st.element[0].val
+#define X87_ST1 state.st.element[1].val
+#define X87_ST2 state.st.element[2].val
+#define X87_ST3 state.st.element[3].val
+#define X87_ST4 state.st.element[4].val
+#define X87_ST5 state.st.element[5].val
+#define X87_ST6 state.st.element[6].val
+#define X87_ST7 state.st.element[7].val
+
 #define BRANCH_TAKEN state.conditional_branch_taken
 #define INTERRUPT_VECTOR state.interrupt_vector
 #define INTERRUPT_TAKEN state.interrupt_taken
@@ -111,5 +120,5 @@
 #include "remill/Arch/X86/Semantics/SSE.h"
 #include "remill/Arch/X86/Semantics/STRINGOP.h"
 #include "remill/Arch/X86/Semantics/UNCOND_BR.h"
-//#include "remill/Arch/X86/Semantics/XOP.h"
-//#include "remill/Arch/X86/Semantics/X87.h"
+#include "remill/Arch/X86/Semantics/XOP.h"
+#include "remill/Arch/X86/Semantics/X87.h"

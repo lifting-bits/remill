@@ -68,6 +68,16 @@ static uintptr_t gRegMask64 = 0;
 // Are we running in a native test case or a lifted one?
 static bool gInNativeTest = false;
 
+// Long doubles may be represented as 16-byte values depending on LLVM's
+// `DataLayout`, so we marshal into this format.
+struct alignas(16) LongDoubleStorage {
+  float80_t val;
+  uint16_t padding;
+} __attribute__((packed));
+
+static_assert(16 == sizeof(LongDoubleStorage),
+              "Invalid structure packing of `LongDoubleStorage`");
+
 extern "C" {
 
 // Native state before we run the native test case. We then use this as the
@@ -147,10 +157,21 @@ MAKE_RW_MEMORY(64)
 MAKE_RW_FP_MEMORY(32)
 MAKE_RW_FP_MEMORY(64)
 
-NEVER_INLINE void __remill_read_memory_f80(Memory *, addr_t, float80_t &) {
-
+NEVER_INLINE float64_t __remill_read_memory_f80(Memory *, addr_t addr) {
+  LongDoubleStorage storage;
+  storage.val = AccessMemory<float80_t>(addr);
+  auto val_long = *reinterpret_cast<long double *>(&storage);
+  return static_cast<float64_t>(val_long);
 }
-//MAKE_RW_FP_MEMORY(80)
+
+NEVER_INLINE Memory *__remill_write_memory_f80(
+    Memory *memory, addr_t addr, float64_t val) {
+  LongDoubleStorage storage;
+  auto val_long = static_cast<long double>(val);
+  memcpy(&storage, &val_long, sizeof(val_long));
+  AccessMemory<float80_t>(addr) = storage.val;
+  return memory;
+}
 
 Memory *__remill_barrier_load_load(Memory *) { return nullptr; }
 Memory *__remill_barrier_load_store(Memory *) { return nullptr; }
@@ -162,7 +183,7 @@ Memory *__remill_atomic_end(Memory *) { return nullptr; }
 void __remill_defer_inlining(void) {}
 
 // Control-flow intrinsics.
-void __remill_missing_block(State &, Memory *, addr_t) {
+void __remill_detach(State &, Memory *, addr_t) {
   // This is where we want to end up.
 }
 
@@ -245,26 +266,6 @@ float32_t __remill_undefined_f32(void) {
 float64_t __remill_undefined_f64(void) {
   return 0.0;
 }
-//
-//void __remill_read_f80(const float80_t &in, float64_t &out) {
-//  struct alignas(16) LongDoubleStorage {
-//    uint8_t bytes[16];
-//  } storage;
-//
-//  memset(&storage, 0, sizeof(storage));
-//  memcpy(&storage, &in, sizeof(in));
-//  out.val = static_cast<double>(*reinterpret_cast<long double *>(&storage));
-//}
-//
-//void __remill_write_f80(const float64_t &in, float80_t &out) {
-//  struct alignas(16) LongDoubleStorage {
-//    uint8_t bytes[16];
-//  } storage;
-//  auto val = static_cast<long double>(in.val);
-//  memset(&storage, 0, sizeof(storage));
-//  *reinterpret_cast<long double *>(&storage) = val;
-//  memcpy(&out, &storage, sizeof(out));
-//}
 
 // Marks `mem` as being used. This is used for making sure certain symbols are
 // kept around through optimization, and makes sure that optimization doesn't

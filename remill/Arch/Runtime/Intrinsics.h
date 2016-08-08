@@ -49,8 +49,8 @@ extern float32_t __remill_read_memory_f32(Memory *, addr_t);
 [[gnu::used, gnu::const]]
 extern float64_t __remill_read_memory_f64(Memory *, addr_t);
 
-//[[gnu::used]]
-//extern Memory *__remill_read_memory_f80(Memory *, addr_t, float80_t &);
+[[gnu::used]]
+extern float64_t __remill_read_memory_f80(Memory *, addr_t);
 
 [[gnu::used, gnu::const]]
 extern Memory *__remill_write_memory_f32(Memory *, addr_t, float32_t);
@@ -58,8 +58,8 @@ extern Memory *__remill_write_memory_f32(Memory *, addr_t, float32_t);
 [[gnu::used, gnu::const]]
 extern Memory *__remill_write_memory_f64(Memory *, addr_t, float64_t);
 
-//[[gnu::used]]
-//extern Memory *__remill_write_memory_f80(Memory *, addr_t, const float80_t &);
+[[gnu::used]]
+extern Memory *__remill_write_memory_f80(Memory *, addr_t, float64_t);
 
 [[gnu::used, gnu::const]]
 extern bool __remill_undefined_bool(void);
@@ -114,9 +114,13 @@ extern void __remill_interrupt_call(State &, Memory *, addr_t ret_addr);
 [[gnu::used]]
 extern void __remill_interrupt_return(State &, Memory *, addr_t);
 
-// Represents a known unknown block.
+// Transition to "native", unmodelled code from Remill-lifted code.
 [[gnu::used]]
-extern void __remill_missing_block(State &, Memory *, addr_t);
+extern void __remill_detach(State &, Memory *, addr_t);
+
+// Transition from native, unmodelled code into Remill-lifted code.
+[[gnu::used]]
+extern void __remill_attach(State &, Memory *, addr_t);
 
 //[[gnu::used]]
 //extern bool __remill_conditional_branch(
@@ -160,14 +164,6 @@ uint128_t __remill_read_memory_128(Memory *, addr_t);
 
 [[gnu::used, gnu::const]]
 Memory *__remill_write_memory_128(Memory *, addr_t, uint128_t);
-
-//// Arch-specific. Marshal a float80_t into a float64_t.
-////
-//// TODO(pag): https://stackoverflow.com/questions/2963055/msvc-win32-convert-extended-precision-float-80-bit-to-double-64-bit
-//extern float64_t __remill_read_f80(const float80_t &);
-//
-//// Arch-specific. Marshal a float64_t into a float64_t.
-//extern void __remill_write_f80(const float64_t, float80_t &);
 
 #define __remill_barrier_compiler()
 //  __asm__ __volatile__ ("" ::: "memory")

@@ -39,15 +39,6 @@ struct alignas(1) float80_t {
     uint64_t integer:1;
     uint64_t fraction:63;
   } __attribute__((packed));
-
-#if 0
-  ALWAYS_INLINE float80_t(void);
-  ALWAYS_INLINE float80_t(float32_t);
-  ALWAYS_INLINE float80_t(float64_t);
-  ALWAYS_INLINE float80_t &operator=(float32_t new_val);
-  ALWAYS_INLINE float80_t &operator=(float64_t new_val);
-#endif
-
 } __attribute__((packed));
 
 static_assert(10 == sizeof(float80_t), "Invalid `float80_t` size.");

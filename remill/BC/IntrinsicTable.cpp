@@ -40,17 +40,6 @@ static llvm::Function *FindPureIntrinsic(const llvm::Module *module,
   return function;
 }
 
-//// Find a specific function.
-//static llvm::Function *FindReadOnlyIntrinsic(const llvm::Module *module,
-//                                             const char *name) {
-//  auto function = FindIntrinsic(module, name);
-//
-//  // We want memory intrinsics to be marked as not accessing memory so that
-//  // they don't interfere with dead store elimination.
-//  function->addFnAttr(llvm::Attribute::ReadOnly);
-//  return function;
-//}
-
 }  // namespace
 
 IntrinsicTable::IntrinsicTable(const llvm::Module *module)
@@ -70,8 +59,9 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       // Arch interaction.
       read_cpu_features(FindIntrinsic(module, "__remill_read_cpu_features")),
 
-      // Block that can't be found.
-      missing_block(FindIntrinsic(module, "__remill_missing_block")),
+      // Transition to/from native/lifted code.
+      detach(FindIntrinsic(module, "__remill_detach")),
+      attach(FindIntrinsic(module, "__remill_attach")),
 
       // Memory access.
       read_memory_8(FindPureIntrinsic(module, "__remill_read_memory_8")),
@@ -86,15 +76,12 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
 
       read_memory_f32(FindPureIntrinsic(module, "__remill_read_memory_f32")),
       read_memory_f64(FindPureIntrinsic(module, "__remill_read_memory_f64")),
-//      read_memory_f80(FindIntrinsic(module, "__remill_read_memory_f80")),
+      read_memory_f80(FindPureIntrinsic(module, "__remill_read_memory_f80")),
 
       write_memory_f32(FindPureIntrinsic(module, "__remill_write_memory_f32")),
       write_memory_f64(FindPureIntrinsic(module, "__remill_write_memory_f64")),
-//      write_memory_f80(FindReadOnlyIntrinsic(
-//          module, "__remill_write_memory_f80")),
-//
-//      read_f80(FindIntrinsic(module, "__remill_read_f80")),
-//      write_f80(FindIntrinsic(module, "__remill_write_f80")),
+      write_memory_f80(FindPureIntrinsic(
+          module, "__remill_write_memory_f80")),
 
       compute_address(FindPureIntrinsic(module, "__remill_compute_address")),
 

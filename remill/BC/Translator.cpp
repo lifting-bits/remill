@@ -43,29 +43,6 @@ class ReturnInst;
 }  // namespace
 
 namespace remill {
-namespace {
-
-// Name of some meta-data that we use to distinguish between external symbols
-// and private symbols.
-static std::string NamedSymbolMetaId(std::string func_name) {
-  return "remill_external:" + func_name;
-}
-
-// Returns the ID for this binary. We prefix every basic block function added to
-// a module with the ID of the binary, where the ID is a number that increments
-// linearly.
-static int GetBinaryId(llvm::Module *module) {
-  for (auto i = 1; ; ++i) {
-    std::string id = "remill_binary:" + std::to_string(i);
-    if (!module->getNamedMetadata(id)) {
-      module->getOrInsertNamedMetadata(id);
-      return i;
-    }
-  }
-  __builtin_unreachable();
-}
-
-}  // namespace
 
 Translator::Translator(const Arch *arch_, llvm::Module *module_)
     : arch(arch_),
@@ -73,7 +50,6 @@ Translator::Translator(const Arch *arch_, llvm::Module *module_)
       blocks(),
       functions(),
       symbols(),
-      binary_id(GetBinaryId(module)),
       basic_block(FindFunction(module, "__remill_basic_block")),
       intrinsics(new IntrinsicTable(module)) {
 
@@ -83,49 +59,30 @@ Translator::Translator(const Arch *arch_, llvm::Module *module_)
 
 namespace {
 
+// Make sure that a function cannot be inlined by the optimizer. We use this
+// as a way of ensuring that code that should be inlined later (i.e. invokes
+// `__remill_defer_inlining`) definitely have the no-inline attributes set.
 static void DisableInlining(llvm::Function *function) {
   function->removeFnAttr(llvm::Attribute::AlwaysInline);
   function->removeFnAttr(llvm::Attribute::InlineHint);
   function->addFnAttr(llvm::Attribute::NoInline);
 }
 
-}  // namespace
-
-// Enable deferred inlining. The goal is to support better dead-store
-// elimination for flags.
-void Translator::EnableDeferredInlining(void) {
-  if (!intrinsics->defer_inlining) return;
-  DisableInlining(intrinsics->defer_inlining);
-
-  for (auto callers : intrinsics->defer_inlining->users()) {
-    if (auto call_instr = llvm::dyn_cast_or_null<llvm::CallInst>(callers)) {
-      auto bb = call_instr->getParent();
-      auto caller = bb->getParent();
-      DisableInlining(caller);
-    }
+// On Mac this strips off leading the underscore on symbol names.
+//
+// TODO(pag): This is really ugly and is probably incorrect. The expectation is
+//            that the leading underscore will be re-added when this code is
+//            compiled.
+std::string CanonicalName(OSName os_name, const std::string &name) {
+  if (kOSMacOSX == os_name && name.length() && '_' == name[0]) {
+    return name.substr(1);
+  } else {
+    return name;
   }
 }
 
-// Find existing exported functions and variables. This is for the sake of
-// linking functions of the same names across CFG files.
-void Translator::IdentifyExistingSymbols(void) {
-  for (auto &function : module->functions()) {
-    std::string name = function.getName();
-    if (module->getNamedMetadata(NamedSymbolMetaId(name))) {
-      functions[name] = &function;
-    }
-  }
-
-  for (auto &value : module->globals()) {
-    std::string name = value.getName();
-    if (module->getNamedMetadata(NamedSymbolMetaId(name))) {
-      symbols[name] = &value;
-    }
-  }
-}
-
-namespace {
-
+// Initialize some attributes that are common to all newly created block
+// functions. Also, give pretty names to the arguments of block functions.
 void InitBlockFuncAttributes(llvm::Function *new_block_func,
                              const llvm::Function *template_func) {
   new_block_func->setAttributes(template_func->getAttributes());
@@ -149,6 +106,75 @@ llvm::Function *GetOrCreateBlockFunction(llvm::Module *module,
 }
 
 }  // namespace
+
+// Enable deferred inlining. The goal is to support better dead-store
+// elimination for flags.
+void Translator::EnableDeferredInlining(void) {
+  if (!intrinsics->defer_inlining) return;
+  DisableInlining(intrinsics->defer_inlining);
+
+  for (auto callers : intrinsics->defer_inlining->users()) {
+    if (auto call_instr = llvm::dyn_cast_or_null<llvm::CallInst>(callers)) {
+      auto bb = call_instr->getParent();
+      auto caller = bb->getParent();
+      DisableInlining(caller);
+    }
+  }
+}
+
+// Find existing exported functions and variables. This is for the sake of
+// linking functions of the same names across CFG files.
+void Translator::IdentifyExistingSymbols(void) {
+  for (llvm::Function &function : module->functions()) {
+    std::string name = function.getName();
+    functions[name] = &function;
+  }
+
+  for (llvm::GlobalVariable &value : module->globals()) {
+    std::string name = value.getName();
+    symbols[name] = &value;
+  }
+}
+
+// Create functions for every block in the CFG.
+void Translator::CreateFunctionsForExternals(const cfg::Module *cfg) {
+  for (const auto &func : cfg->functions()) {
+    CHECK(!func.name().empty())
+        << "Module contains unnamed exported function at address "
+        << func.address() << ".";
+
+    auto func_name = CanonicalName(arch->os_name, func.name());
+    auto &extern_func = functions[func_name];
+
+    if (!extern_func) {
+
+      // Function is exported; what we need to do is expose the function name,
+      // create a new states and memory objects, and then "enter" remill code.
+      //
+      // TODO(pag): What about returns from native-to-Remill-lifted code? This
+      //            is mostly relevant for compiling lifted code.
+      if (func.is_exported()) {
+        CHECK(!func.is_imported())
+            << "Function " << func_name
+            << " cannot be both imported and exported.";
+
+        extern_func = CreateExportedFunction(func_name, func.address());
+
+      // Function is imported; create a detach point for it.
+      } else if (func.is_imported()) {
+        extern_func = CreateImportedFunction(func_name, func.address());
+
+        if (func.address()) {
+          blocks[func.address()] = extern_func;
+        } else {
+          LOG(WARNING)
+              << "Imported function " << func_name << " has no address; "
+              << "lifted code will have no way of reaching it.";
+        }
+      }
+    }
+  }
+}
 
 // Create functions for every block in the CFG.
 void Translator::CreateFunctionsForBlocks(const cfg::Module *cfg) {
@@ -177,50 +203,60 @@ void Translator::CreateFunctionsForBlocks(const cfg::Module *cfg) {
 
 namespace {
 
-// On Mac this strips off leading the underscore on symbol names.
-//
-// TODO(pag): This is really ugly and is probably incorrect. The expectation is
-//            that the leading underscore will be re-added when this code is
-//            compiled.
-std::string CanonicalName(OSName os_name, const std::string &name) {
-  if (kOSMacOSX == os_name && name.length() && '_' == name[0]) {
-    return name.substr(1);
-  } else {
-    return name;
-  }
+static llvm::Function *CreateExternFunc(llvm::Module *module,
+                                        const std::string &name) {
+  auto unknown_func_type = llvm::FunctionType::get(
+      llvm::Type::getVoidTy(module->getContext()), false);
+
+  auto extern_func = llvm::Function::Create(
+      unknown_func_type,
+      llvm::GlobalValue::ExternalLinkage,
+      name);
+
+  extern_func->addFnAttr(llvm::Attribute::NoBuiltin);
+
+  return extern_func;
 }
 
 }  // namespace
 
-// Create functions for every function in the CFG.
-void Translator::CreateExternalFunctions(const cfg::Module *cfg) {
-  for (const auto &func : cfg->functions()) {
-    if (!func.is_exported() && !func.is_imported()) continue;
+// Create functions for every exported function in the CFG.
+//
+// TODO(pag): Perhaps what this shouldn't be handled here at all.
+llvm::Function *Translator::CreateExportedFunction(
+    const std::string &name, uintptr_t addr) {
 
-    auto func_name = CanonicalName(arch->os_name, func.name());
-    CHECK(!func_name.empty())
-        << "Module contains unnamed function at address " << func.address();
+  LOG(INFO)
+      << "Ignoring exported function " << name << " at " << addr
+      << " until more decisions are made.";
 
-    CHECK(!(func.is_exported() && func.is_imported()))
-        << "Function " << func_name << " can't be both imported and exported.";
+  return nullptr;
+}
 
-    llvm::Function *&extern_func = functions[func_name];
-    if (!extern_func) {
-      extern_func = GetOrCreateBlockFunction(module, basic_block, func_name);
+// Create functions for every imported function in the CFG.
+llvm::Function *Translator::CreateImportedFunction(
+    const std::string &name, uintptr_t addr) {
 
-      // To get around some issues that `opt` has.
-      extern_func->addFnAttr(llvm::Attribute::NoBuiltin);
-      extern_func->addFnAttr(llvm::Attribute::OptimizeNone);
-      extern_func->addFnAttr(llvm::Attribute::NoInline);
+  CHECK(!name.empty())
+      << "Module contains unnamed imported function at address "
+      << addr << ".";
 
-      extern_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
-      extern_func->setLinkage(llvm::GlobalValue::ExternalWeakLinkage);
-    }
+  auto imported_func = CreateExternFunc(module, name);
 
-    // Mark this symbol as external. We do this so that we can pick up on it
-    // if we merge another CFG into this bitcode module.
-    module->getOrInsertNamedMetadata(NamedSymbolMetaId(func_name));
-  }
+  // Create a block function
+  std::stringstream ss;
+  ss << "__remill_detach_" << name;
+  auto func = GetOrCreateBlockFunction(module, basic_block, ss.str());
+  llvm::IRBuilder<> ir(llvm::BasicBlock::Create(
+      func->getContext(), name, func));
+
+  auto pc_addr = ir.CreateLoad(FindVarInFunction(func, "PC"));
+  auto pc_type = pc_addr->getType()->getContainedType(0);
+  auto native_pc = ir.CreatePtrToInt(imported_func, pc_type, "native_addr");
+  ir.CreateStore(native_pc, pc_addr);
+  AddTerminatingTailCall(func, intrinsics->detach);
+
+  return func;
 }
 
 // Link together functions and basic blocks.
@@ -229,7 +265,11 @@ void Translator::LinkExternalFunctionsToBlocks(const cfg::Module *cfg) {
     if (!func.is_exported() && !func.is_imported()) continue;
     if (!func.address()) continue;
 
-    auto func_name = CanonicalName(arch->os_name, func.name());
+    std::stringstream ss;
+    ss << "__remill_extern_";
+    ss << CanonicalName(arch->os_name, func.name());
+
+    auto func_name = ss.str();
     auto extern_func = functions[func_name];
     auto &block_impl_func = blocks[func.address()];
 
@@ -327,7 +367,7 @@ static uint64_t FallThroughPC(const cfg::Block &block) {
 // Add a fall-through terminator to the block method just in case one is
 // missing.
 void Translator::TryTerminateBlockMethod(const cfg::Block &block,
-                                      llvm::Function *BF) {
+                                         llvm::Function *BF) {
   auto &B = BF->back();
   if (B.getTerminator()) {
     return;
@@ -335,7 +375,7 @@ void Translator::TryTerminateBlockMethod(const cfg::Block &block,
   if (block.instructions_size()) {
     AddTerminatingTailCall(BF, GetLiftedBlockForPC(FallThroughPC(block)));
   } else {
-    AddTerminatingTailCall(BF, intrinsics->missing_block);
+    AddTerminatingTailCall(BF, intrinsics->detach);
   }
 }
 
@@ -408,8 +448,9 @@ void Translator::LiftInstructionIntoBlock(
 // Lift the control-flow graph specified by `cfg` into this bitcode module.
 void Translator::LiftCFG(const cfg::Module *cfg) {
   blocks.clear();  // Just in case we call `LiftCFG` multiple times.
+
+  CreateFunctionsForExternals(cfg);
   CreateFunctionsForBlocks(cfg);
-  CreateExternalFunctions(cfg);
   LinkExternalFunctionsToBlocks(cfg);
   AnalyzeCFG(cfg);
   LiftBlocks(cfg);
@@ -450,7 +491,7 @@ llvm::Function *Translator::GetLiftedBlockForPC(uintptr_t pc) const {
   // want to resolve them lazily (in a runtime).
   if (!block_func) {
     LOG(ERROR) << "Could not find lifted block for PC " << pc;
-    block_func = intrinsics->missing_block;
+    block_func = intrinsics->detach;
   }
   return block_func;
 }
