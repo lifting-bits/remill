@@ -27,20 +27,6 @@
 
 namespace remill {
 
-llvm::Function *&BlockMap::operator[](uintptr_t pc) {
-  return this->std::unordered_map<uintptr_t, llvm::Function *>::operator[](pc);
-}
-
-llvm::Function *BlockMap::operator[](uintptr_t pc) const {
-  const auto block_it = this->find(pc);
-  if (this->end() == block_it) {
-    LOG(WARNING) << "No block associated with PC " << pc;
-    return nullptr;
-  } else {
-    return block_it->second;
-  }
-}
-
 // Initialize the attributes for a lifted function.
 void InitFunctionAttributes(llvm::Function *function) {
 
@@ -54,9 +40,14 @@ void InitFunctionAttributes(llvm::Function *function) {
 
   // To use must-tail-calls everywhere we need to use the `fast` calling
   // convention, where it's up the LLVM to decide how to pass arguments.
+  //
+  // TODO(pag): This may end up being finicky down the line when trying to
+  //            integrate lifted code function with normal C/C++-defined
+  //            intrinsics.
   function->setCallingConv(llvm::CallingConv::Fast);
 
-  // Mark everything for inlining, but don't require it.
+  // Mark everything for inlining.
+  function->addFnAttr(llvm::Attribute::AlwaysInline);
   function->addFnAttr(llvm::Attribute::InlineHint);
 }
 
@@ -121,6 +112,14 @@ void AddTerminatingTailCall(llvm::BasicBlock *source_block,
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
+llvm::Value *FindVarInFunction(llvm::BasicBlock *block,
+                               std::string name,
+                               bool allow_failure) {
+  return FindVarInFunction(block->getParent(), name, allow_failure);
+}
+
+// Find a local variable defined in the entry block of the function. We use
+// this to find register variables.
 llvm::Value *FindVarInFunction(llvm::Function *function, std::string name,
                                bool allow_failure) {
   for (auto &instr : function->getEntryBlock()) {
@@ -128,10 +127,10 @@ llvm::Value *FindVarInFunction(llvm::Function *function, std::string name,
       return &instr;
     }
   }
-  function->dump();
+
   CHECK(allow_failure)
-    << "Could not find variable " << name << " in function "
-    << function->getName().str();
+      << "Could not find variable " << name << " in function "
+      << function->getName().str();
   return nullptr;
 }
 
@@ -142,14 +141,10 @@ llvm::Value *LoadStatePointer(llvm::Function *function) {
       << "pointer and program counter in function "
       << function->getName().str();
 
-  auto curr_arg_num = 0;
-  for (llvm::Argument &arg : function->getArgumentList()) {
-    if (kStatePointerArgNum == curr_arg_num++) {
-      return &arg;
-    }
-  }
+  static_assert(0 == kStatePointerArgNum,
+                "Expected state pointer to be the first operand.");
 
-  return nullptr;
+  return &function->getArgumentList().front();
 }
 
 llvm::Value *LoadStatePointer(llvm::BasicBlock *block) {
@@ -189,9 +184,15 @@ llvm::Module *LoadModuleFromFile(std::string file_name) {
   mod_ptr.release();
 
   CHECK(nullptr != module)
-      << "Unable to parse module file: " << file_name;
+      << "Unable to parse module file: " << file_name << ".";
 
   module->materializeAll();  // Just in case.
+
+  std::string error;
+  llvm::raw_string_ostream error_stream(error);
+  CHECK(!llvm::verifyModule(*module, &error_stream))
+      << "Error reading module from file " << file_name << ". " << error << ".";
+
   return module;
 }
 
@@ -200,22 +201,20 @@ void StoreModuleToFile(llvm::Module *module, std::string file_name) {
   std::string error;
   llvm::raw_string_ostream error_stream(error);
 
-  if (llvm::verifyModule(*module, &error_stream)) {
-    LOG(FATAL)
-        << "Error writing module to file " << file_name << ". " << error;
-  }
+  CHECK(!llvm::verifyModule(*module, &error_stream))
+      << "Error writing module to file " << file_name << ". " << error << ".";
 
   std::error_code ec;
   llvm::tool_output_file bc(file_name.c_str(), ec, llvm::sys::fs::F_RW);
 
   CHECK(!ec)
-      << "Unable to open output bitcode file for writing: " << file_name;
+      << "Unable to open output bitcode file for writing: " << file_name << ".";
 
   llvm::WriteBitcodeToFile(module, bc.os());
   bc.keep();
 
   CHECK(!ec)
-      << "Error writing bitcode to file: " << file_name;
+      << "Error writing bitcode to file: " << file_name << ".";
 }
 
 }  // namespace remill

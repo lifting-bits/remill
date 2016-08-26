@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <map>
+#include <string>
 #include <type_traits>
 #include <vector>
 
@@ -116,10 +118,8 @@ extern void InvokeTestCase(uint64_t, uint64_t, uint64_t);
 
 // Address computation intrinsic. This is only used for non-zero
 // `address_space`d memory accesses.
-NEVER_INLINE addr_t __remill_compute_address(const State &state, addr_t addr,
-                                             int address_space) {
-  (void) state;
-  (void) address_space;
+NEVER_INLINE addr_t __remill_compute_address(addr_t addr, addr_t segment) {
+  (void) segment;
   return addr;
 }
 
@@ -181,6 +181,11 @@ Memory *__remill_atomic_begin(Memory *) { return nullptr; }
 Memory *__remill_atomic_end(Memory *) { return nullptr; }
 
 void __remill_defer_inlining(void) {}
+
+//// Control-flow intrinsics.
+//void __remill_attach(State &, Memory *, addr_t) {
+//
+//}
 
 // Control-flow intrinsics.
 void __remill_detach(State &, Memory *, addr_t) {
@@ -275,6 +280,9 @@ void __remill_mark_as_used(void *mem) {
 }
 
 }  // extern C
+
+// Mapping of test name to translated function.
+static std::map<std::string, const NamedBlock *> gTranslatedFuncs;
 
 // The `State` structure maintains two versions of the `XMM` registers. One
 // version (used by lifted code) is consistent with AVX and AVX512. The other
@@ -394,18 +402,35 @@ static void RunWithFlags(const test::TestInfo *info,
   memcpy(&gNativeStack, &gLiftedStack, sizeof(gLiftedStack));
   memcpy(&gLiftedStack, &gRandomStack, sizeof(gLiftedStack));
 
+  auto lifted_func = gTranslatedFuncs[info->test_name]->lifted_func;
+
   // This will execute on our stack but the lifted code will operate on
   // `gStack`. The mechanism behind this is that `gStateBefore` is the native
   // program state recorded before executing the native testcase, but after
   // swapping execution to operate on `gStack`.
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
-    info->lifted_func(lifted_state, nullptr, lifted_state->gpr.rip.qword);
+    lifted_func(*lifted_state, nullptr, lifted_state->gpr.rip.qword);
   } else {
     EXPECT_TRUE(native_test_faulted);
   }
 
   ResetFlags();
+
+  // If we're trying to compare MMX values instead of FPU values, then we
+  // need to ignore the FPU itself. This is a hack around a super dumb design
+  // by AMD, and our way of changing the semantics for the sake of code gen.
+  if(info->fpu_compare_mmx) {
+    memset(&(native_state->st), 0, sizeof((native_state->st)));
+    memset(&(lifted_state->st), 0, sizeof((lifted_state->st)));
+  } else {
+    memset(&(native_state->mmx), 0, sizeof((native_state->mmx)));
+    memset(&(lifted_state->mmx), 0, sizeof((lifted_state->mmx)));
+  }
+
+  // We don't really want to compare the 80-bit FPU vals.
+  memset(&(native_state->fpu.st), 0, sizeof((native_state->fpu.st)));
+  memset(&(lifted_state->fpu.st), 0, sizeof((lifted_state->fpu.st)));
 
   // Don't compare the program counters. The code that is lifted is equivalent
   // to the code that is tested but because they are part of separate binaries
@@ -457,6 +482,9 @@ static void RunWithFlags(const test::TestInfo *info,
   }
   if (gLiftedStack != gNativeStack) {
     EXPECT_TRUE(!"Lifted and native stacks did not match.");
+  }
+  if(info->fpu_compare_mmx) {
+    asm("nop;");
   }
 }
 
@@ -600,6 +628,10 @@ int main(int argc, char **argv) {
   memset(&gRandomStack, 0, sizeof(gRandomStack));
   for (auto &b : gRandomStack.bytes) {
     b = static_cast<uint8_t>(random());
+  }
+
+  for (auto test = &(__remill_exported_blocks[0]); test->name; ++test) {
+    gTranslatedFuncs[test->name] = test;
   }
 
   testing::InitGoogleTest(&argc, argv);

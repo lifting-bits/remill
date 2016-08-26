@@ -4,8 +4,10 @@
 #define REMILL_BC_INTRINSICTABLE_H_
 
 namespace llvm {
+class ConstantArray;
 class Function;
 class Module;
+class Value;
 }  // namespace llvm
 namespace remill {
 
@@ -36,7 +38,7 @@ class IntrinsicTable {
   //            case where you detach on a function call, and want to attach
   //            on return.
   llvm::Function * const detach;
-  llvm::Function * const attach;
+//  llvm::Function * const attach;
 
   // Memory read intrinsics.
   llvm::Function * const read_memory_8;
@@ -81,7 +83,9 @@ class IntrinsicTable {
   llvm::Function *undefined_64;
   llvm::Function *undefined_f32;
   llvm::Function *undefined_f64;
-
+//
+//  llvm::ConstantArray *indirect_blocks;
+//  llvm::ConstantArray *exported_blocks;
  private:
   IntrinsicTable(void) = delete;
 };

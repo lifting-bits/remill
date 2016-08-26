@@ -18,25 +18,35 @@ const Arch *Arch::Create(OSName os_name_, ArchName arch_name_) {
     case kArchInvalid:
       LOG(FATAL) << "Cannot create arch for unrecognized OS.";
       return nullptr;
+
     case kArchX86:
-      VLOG(1) << "Using architecture: X86";
+      DLOG(INFO) << "Using architecture: X86";
       return CreateX86(os_name_, arch_name_, 32);
 
     case kArchAMD64:
-      VLOG(1) << "Using architecture: AMD64";
+      DLOG(INFO) << "Using architecture: AMD64";
       return CreateX86(os_name_, arch_name_, 64);
   }
   return nullptr;
 }
 
 ArchName Arch::GetName(const std::string &arch_name) {
-  if (arch_name == "x86") {
+  if (arch_name == "x86" ||
+      arch_name == "x86_32" ||
+      arch_name == "x86-32") {
     return kArchX86;
-  } else if (arch_name == "amd64") {
+
+  } else if (arch_name == "amd64" ||
+             arch_name == "x86_64" ||
+             arch_name == "x86-64" ||
+             arch_name == "x64" ||
+             arch_name == "intel64" ||
+             arch_name == "emt64") {
     return kArchAMD64;
+
   } else {
     LOG(ERROR)
-        << "Unrecognized architecture: " << arch_name;
+        << "Unrecognized architecture: " << arch_name << ".";
     return kArchInvalid;
   }
 }

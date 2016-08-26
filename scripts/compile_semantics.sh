@@ -16,6 +16,7 @@ CXXFLAGS+=" -Wno-gnu-anonymous-struct -Wno-return-type-c-linkage"
 CXXFLAGS+=" -Wno-gnu-zero-variadic-macro-arguments -Wno-nested-anon-types"
 CXXFLAGS+=" -Wno-extended-offsetof -Wno-gnu-statement-expression"
 CXXFLAGS+=" -Wno-c99-extensions -fno-vectorize -fno-slp-vectorize"
+CXXFLAGS+=" -Wno-zero-length-array"
 
 function compile_x86()
 {

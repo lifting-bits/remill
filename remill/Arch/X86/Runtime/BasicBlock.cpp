@@ -12,18 +12,14 @@ extern "C" {
 [[gnu::used]]
 void __remill_basic_block(State &state, Memory &memory, addr_t curr_pc) {
 
+  bool branch_taken = false;
+
+  // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
   auto &MEMORY = memory;
-  auto &PC = state.gpr.rip.IF_64BIT_ELSE(qword, dword);
-  auto &BRANCH_TAKEN = state.conditional_branch_taken;
-
-  // Start by updating the current program counter to be `curr_pc`. This
-  // makes sure that `curr_pc` is always used (and therefore not optimized
-  // away by dead-argument elimination). It also lets us kind of handle
-  // relocation. That is, if we lift a relocatable binary, then the
-  // offsets within IDA or Binary Ninja might not reflect the final addresses
-  // of things at run-time.
-  PC = curr_pc;
+  auto &PC = curr_pc;
+  auto &NEXT_PC = state.gpr.rip.IF_64BIT_ELSE(qword, dword);
+  auto &BRANCH_TAKEN = branch_taken;
 
   // Define read- and write-specific aliases of each register. We will
   // reference these variables from the bitcode side of things so that,
@@ -479,25 +475,29 @@ void __remill_basic_block(State &state, Memory &memory, addr_t curr_pc) {
   auto &FPU_TAG_write = state.fpu.ftw;
 
   // MMX technology registers. For simplicity, these are implemented separately
-  // from the FPU stack, and so they do not alias.
+  // from the FPU stack, and so they do not alias. This makes some things
+  // easier and some things harder. Marshaling native/lifted state becomes
+  // harder, but generating and optimizing bitcode becomes simpler. The trade-
+  // off is that analysis and native states will diverge in strange ways
+  // with code that mixes the two (X87 FPU ops, MMX ops).
   //
   // TODO(pag): Have a "present" flag for each MMX register so that marshaling
   //            back to native code will know what to use.
-  auto &MMX0_read = state.mmx.mmx[0].val;
+  auto &MMX0_read = state.mmx.mmx[0].val.qwords.elems[0];
   auto &MMX0_write = MMX0_read;
-  auto &MMX1_read = state.mmx.mmx[1].val;
+  auto &MMX1_read = state.mmx.mmx[1].val.qwords.elems[0];
   auto &MMX1_write = MMX1_read;
-  auto &MMX2_read = state.mmx.mmx[2].val;
+  auto &MMX2_read = state.mmx.mmx[2].val.qwords.elems[0];
   auto &MMX2_write = MMX2_read;
-  auto &MMX3_read = state.mmx.mmx[3].val;
+  auto &MMX3_read = state.mmx.mmx[3].val.qwords.elems[0];
   auto &MMX3_write = MMX3_read;
-  auto &MMX4_read = state.mmx.mmx[4].val;
+  auto &MMX4_read = state.mmx.mmx[4].val.qwords.elems[0];
   auto &MMX4_write = MMX4_read;
-  auto &MMX5_read = state.mmx.mmx[5].val;
+  auto &MMX5_read = state.mmx.mmx[5].val.qwords.elems[0];
   auto &MMX5_write = MMX5_read;
-  auto &MMX6_read = state.mmx.mmx[6].val;
+  auto &MMX6_read = state.mmx.mmx[6].val.qwords.elems[0];
   auto &MMX6_write = MMX6_read;
-  auto &MMX7_read = state.mmx.mmx[7].val;
+  auto &MMX7_read = state.mmx.mmx[7].val.qwords.elems[0];
   auto &MMX7_write = MMX7_read;
 
   // Arithmetic flags. Data-flow analyses will clear these out ;-)

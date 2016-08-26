@@ -7,6 +7,7 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
 
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Util.h"
@@ -61,7 +62,7 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
 
       // Transition to/from native/lifted code.
       detach(FindIntrinsic(module, "__remill_detach")),
-      attach(FindIntrinsic(module, "__remill_attach")),
+//      attach(FindIntrinsic(module, "__remill_attach")),
 
       // Memory access.
       read_memory_8(FindPureIntrinsic(module, "__remill_read_memory_8")),
@@ -110,6 +111,17 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       undefined_32(FindPureIntrinsic(module, "__remill_undefined_32")),
       undefined_64(FindPureIntrinsic(module, "__remill_undefined_64")),
       undefined_f32(FindPureIntrinsic(module, "__remill_undefined_f32")),
-      undefined_f64(FindPureIntrinsic(module, "__remill_undefined_f64")) {}
+      undefined_f64(FindPureIntrinsic(module, "__remill_undefined_f64")) {
+//
+//      indirect_blocks(llvm::dyn_cast<llvm::ConstantArray>(
+//          module->getGlobalVariable(
+//              "__remill_indirect_blocks")->getInitializer())),
+//      exported_blocks(llvm::dyn_cast<llvm::ConstantArray>(
+//          module->getGlobalVariable(
+//              "__remill_exported_blocks")->getInitializer())) {
+
+//  attach->addFnAttr(llvm::Attribute::Naked);
+  detach->addFnAttr(llvm::Attribute::Naked);
+}
 
 }  // namespace remill

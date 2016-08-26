@@ -30,15 +30,9 @@ static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
 typedef double float64_t;
 static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
 
-struct alignas(1) float80_t {
-  struct {
-    uint16_t sign:1;
-    uint16_t exponent:15;
-  } __attribute__((packed));
-  struct {
-    uint64_t integer:1;
-    uint64_t fraction:63;
-  } __attribute__((packed));
+// TODO(pag): Assumes little endian.
+struct float80_t final {
+  uint8_t data[10];
 } __attribute__((packed));
 
 static_assert(10 == sizeof(float80_t), "Invalid `float80_t` size.");
@@ -332,12 +326,12 @@ struct RVn;
 
 template <>
 struct RVn<vec64_t> final {
-  const addr_t val;
+  const uint64_t val;  // Must be 64 bits.
 };
 
 template <>
 struct RVn<vec32_t> final {
-  const addr_t val;
+  const addr_t val;  // Scales to "natural" machine word length.
 };
 
 template <typename T>
@@ -355,12 +349,12 @@ struct RVnW<vec64_t> final {
 
 template <typename T>
 struct Vn final {
-  const T * const val;
+  const void * const val;
 };
 
 template <typename T>
 struct VnW final {
-  T * const val_ref;
+  void * const val_ref;
 };
 
 // Used to figure out the "base type" of an aggregate type (e.g. vector of BT)
@@ -405,27 +399,6 @@ struct BaseType<VnW<T>> : public BaseType<T> {};
 
 template <typename T>
 struct BaseType<RVn<T>> : public BaseType<T> {};
-
-
-//template <typename T>
-//struct AggVectorType;
-//
-//#define MAKE_AGG_VEC_INFO(type) \
-//  template <> \
-//  struct AggVectorType<type> { \
-//    enum : size_t { \
-//      kSize = sizeof(type) \
-//    }; \
-//    typedef type Type; \
-//  }
-//
-//MAKE_AGG_VEC_INFO(vec8_t);
-//MAKE_AGG_VEC_INFO(vec16_t);
-//MAKE_AGG_VEC_INFO(vec32_t);
-//MAKE_AGG_VEC_INFO(vec64_t);
-//MAKE_AGG_VEC_INFO(vec128_t);
-//MAKE_AGG_VEC_INFO(vec256_t);
-//MAKE_AGG_VEC_INFO(vec512_t);
 
 template <typename T>
 struct NextLargerIntegerType;

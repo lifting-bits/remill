@@ -4,7 +4,6 @@
 #define REMILL_BC_UTIL_H_
 
 #include <string>
-#include <unordered_map>
 
 namespace llvm {
 class BasicBlock;
@@ -13,16 +12,8 @@ class GlobalVariable;
 class Module;
 class Value;
 }  // namespace llvm
+
 namespace remill {
-
-using FunctionMap = std::unordered_map<std::string, llvm::Function *>;
-using SymbolMap = std::unordered_map<std::string, llvm::GlobalVariable *>;
-
-class BlockMap : public std::unordered_map<uintptr_t, llvm::Function *> {
- public:
-  llvm::Function *&operator[](uintptr_t key);
-  llvm::Function *operator[](uintptr_t key) const;
-};
 
 // Initialize the attributes for a lifted function.
 void InitFunctionAttributes(llvm::Function *F);
@@ -35,7 +26,14 @@ void AddTerminatingTailCall(llvm::BasicBlock *source_block,
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
-llvm::Value *FindVarInFunction(llvm::Function *F, std::string name,
+llvm::Value *FindVarInFunction(llvm::BasicBlock *block,
+                               std::string name,
+                               bool allow_failure=false);
+
+// Find a local variable defined in the entry block of the function. We use
+// this to find register variables.
+llvm::Value *FindVarInFunction(llvm::Function *func,
+                               std::string name,
                                bool allow_failure=false);
 
 // Find the machine state pointer. The machine state pointer is, by convention,

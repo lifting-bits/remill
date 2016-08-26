@@ -8,7 +8,7 @@ namespace remill {
 
 OSName GetOSName(std::string name) {
   if (name == "mac") {
-    return kOSMacOSX;
+    return kOSmacOS;
   } else if (name == "linux") {
     return kOSLinux;
   } else {

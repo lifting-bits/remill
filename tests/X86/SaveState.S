@@ -5,6 +5,27 @@ fxsave64 [RIP + STATE_PTR + 0]
 #else
 fxsave [RIP + STATE_PTR + 0]
 #endif
+fstp QWORD PTR [RIP + STATE_PTR + 2888]
+fstp QWORD PTR [RIP + STATE_PTR + 2904]
+fstp QWORD PTR [RIP + STATE_PTR + 2920]
+fstp QWORD PTR [RIP + STATE_PTR + 2936]
+fstp QWORD PTR [RIP + STATE_PTR + 2952]
+fstp QWORD PTR [RIP + STATE_PTR + 2968]
+fstp QWORD PTR [RIP + STATE_PTR + 2984]
+fstp QWORD PTR [RIP + STATE_PTR + 3000]
+movq [RIP + STATE_PTR + 3016], MM0
+movq [RIP + STATE_PTR + 3032], MM1
+movq [RIP + STATE_PTR + 3048], MM2
+movq [RIP + STATE_PTR + 3064], MM3
+movq [RIP + STATE_PTR + 3080], MM4
+movq [RIP + STATE_PTR + 3096], MM5
+movq [RIP + STATE_PTR + 3112], MM6
+movq [RIP + STATE_PTR + 3128], MM7
+#if 64 == ADDRESS_SIZE_BITS
+fxrstor64 [RIP + STATE_PTR + 0]
+#else
+fxrstor [RIP + STATE_PTR + 0]
+#endif
 lea RSP, [RSP - 8]
 pop QWORD PTR [RIP + SYMBOL(gStackSaveSlot)]
 #ifdef AFTER_TEST_CASE

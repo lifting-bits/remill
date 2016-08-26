@@ -313,7 +313,7 @@ function generate_files()
 function build_remill()
 {
     category "Compiling Remill"
-    python $DIR/scripts/build.py
+    python $DIR/scripts/build.py --debug --num_workers 1 --stop_on_error
 }
 
 create_directory_tree

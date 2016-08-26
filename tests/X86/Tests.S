@@ -32,28 +32,11 @@
 # define SYMBOL(x) x
 #endif
 
-/* In the generator build, we "stub-out" the lifted function. In the Run build,
- * we reference it as an external that will get linked in. */
-#ifdef IN_TEST_GENERATOR
-# define DECLARE_LIFTED_FUNC(x, num_args) \
-    .globl LIFTED_FUNC(x, num_args) ; \
-LIFTED_FUNC(x, num_args): \
-    nop ;
-#else
-# define DECLARE_LIFTED_FUNC(x, num_args) \
-    .extern LIFTED_FUNC(x, num_args) ;
-#endif
-
 #define FUNC_NAME(instr_name, num_args) \
     CAT3(instr_name, _, num_args)
 
 /* This is the name of the function that will be generated. */
-#define TEST_FUNC(instr_name, num_args) \
-    SYMBOL(CAT3(X86_TEST, _, FUNC_NAME(instr_name, num_args)))
-
-/* This is the name what we will give to the lifted function. */
-#define LIFTED_FUNC(instr_name, num_args) \
-    SYMBOL(CAT3(X86_LIFTED, _, FUNC_NAME(instr_name, num_args)))
+#define TEST_FUNC FUNC_NAME
 
 /* Defines the beginning of a test function. The key detail is that tests
  * register themselves into data structures located in a special section of
@@ -71,8 +54,6 @@ LIFTED_FUNC(x, num_args): \
     .file __FILE__ ; \
     .text ; \
     \
-    DECLARE_LIFTED_FUNC(instr_name, num_args) ; \
-    \
     .align 16 ; \
     .globl TEST_FUNC(instr_name, num_args) ; \
     \
@@ -89,7 +70,6 @@ TEST_FUNC(instr_name, num_args): ; \
     .quad 1b ; \
     .quad 4f ; \
     .quad 5f ; \
-    .quad LIFTED_FUNC(instr_name, num_args) ; \
     .quad num_args ; \
     \
     .text ; \
@@ -98,7 +78,7 @@ TEST_FUNC(instr_name, num_args): ; \
 
 /* Note:    The test end address is placed *before* the `RET` so that we can
  *          make sure that the end of a test marker is actually
- *          `__remill_error`. This is kind of a hack.
+ *          `__remill_detach`. This is kind of a hack.
  */
 #ifdef IN_TEST_GENERATOR
 # define TEST_END \
@@ -128,6 +108,11 @@ TEST_FUNC(instr_name, num_args): ; \
 #define TEST_IGNORE_FLAGS(...) \
     .section "__x86_test_table", "a" ; \
     .quad 0 __VA_ARGS__ ; \
+    .text ;
+
+#define TEST_USE_X87_MMX \
+    .section "__x86_test_table", "a" ; \
+    .quad 1 ; \
     .text ;
 
 /* Defines the possible inputs to provide test. We add an extra 3 null inputs
@@ -192,6 +177,21 @@ SYMBOL(vec_data):
 SYMBOL(DoInvokeTestCase):
     .cfi_startproc
 
+    /* Reset the FPU, and fill the stack with +0.0.
+     *
+     * Note:    The FPU reset defaults to overflow/underflow exceptions being
+     *          masked so we can "safely" push/pop beyond what we should be able
+     *          to reasonably do. */
+    fninit
+    fldz
+    fldz
+    fldz
+    fldz
+    fldz
+    fldz
+    fldz
+    fldz
+
     /* Set the bits of some of the vector regs to 1. This makes it easier to
      * detect certain zeroing behavior. */
     SET_VEC(0)
@@ -200,11 +200,18 @@ SYMBOL(DoInvokeTestCase):
     SET_VEC(3)
 
     xchg RSP, [RIP + SYMBOL(gStackSwitcher)]  /* Switch onto recording stack. */
+
+/* Save the native state into the lifted state structure. The native state
+ * will go on to execute, and then at the end of the native testcase, the
+ * native state will be saved into `gNativeState`, so that it can later be
+ * compared with the end result of executing lifted code against
+ * `gLiftedState`. */
 # define STATE_PTR SYMBOL(gLiftedState)
 # include "tests/X86/SaveState.S"
+# undef STATE_PTR
+
     jmp QWORD PTR DS:[RIP + SYMBOL(gTestToRun)]
     .cfi_endproc
-# undef STATE_PTR
 
     .align 16
     .globl SYMBOL(InvokeTestCase)

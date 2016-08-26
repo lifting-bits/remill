@@ -3,7 +3,10 @@
 #ifndef REMILL_BC_TRANSLATOR_H_
 #define REMILL_BC_TRANSLATOR_H_
 
+#include <map>
 #include <string>
+
+#include "remill/Arch/Instruction.h"
 
 #include "remill/BC/ABI.h"
 #include "remill/BC/Util.h"
@@ -12,19 +15,17 @@ namespace llvm {
 class Function;
 class Module;
 class GlobalVariable;
+class IntegerType;
 }  // namespace llvm
 
 namespace remill {
 namespace cfg {
 class Block;
-class Instr;
 class Module;
 }  // namespace cfg
 
 class Arch;
-class Instr;
 class IntrinsicTable;
-class Translator;
 
 // Lifts CFG files into a bitcode module.
 class Translator {
@@ -42,44 +43,67 @@ class Translator {
   // elimination for flags.
   void EnableDeferredInlining(void);
 
-  // Identify symbols that are already present in the bitcode and can
-  // therefore be used as a target for linking.
-  void IdentifyExistingSymbols(void);
+  // Identify functions that are already exported by this module.
+  void GetNamedBlocks(
+      std::map<std::string, llvm::Function *> &table,
+      const char *table_name);
 
-  // Create functions for every imported/exported function.
-  void CreateFunctionsForExternals(const cfg::Module *cfg);
+  // Recreate a global table of named blocks.
+  void SetNamedBlocks(
+      std::map<std::string, llvm::Function *> &table,
+      const char *table_name);
+
+  // Identify the already lifted basic blocks.
+  void GetIndirectBlocks(void);
+
+  // Recreate the global table of indirectly addressible blocks.
+  void SetIndirectBlocks(void);
+
+  // Create functions for every exported and imported function.
+  void CreateNamedBlocks(const cfg::Module *cfg);
 
   // Create functions for every block in the CFG.
-  void CreateFunctionsForBlocks(const cfg::Module *cfg);
+  void CreateBlocks(const cfg::Module *cfg);
 
-  // Create functions for every exported function in the code.
-  llvm::Function *CreateExportedFunction(
-      const std::string &name, uintptr_t addr);
+  // Create a function for a single block.
+  llvm::Function *GetOrCreateBlock(uint64_t address);
 
   // Create functions for every imported function in the code.
   llvm::Function *CreateImportedFunction(
       const std::string &name, uintptr_t addr);
 
-  // Link together functions and basic blocks.
-  void LinkExternalFunctionsToBlocks(const cfg::Module *cfg);
-
   // Lift code contained in blocks into the block methods.
   void LiftBlocks(const cfg::Module *cfg);
 
-  // Lift code contained in a block into a block method.
-  void LiftInstructionInfoBlock(const cfg::Block &block, llvm::Function *BF);
+  // Lift code contained within a single block.
+  llvm::Function *LiftBlock(const cfg::Block *block);
 
-  // Create a basic block for an instruction.
-  void LiftInstructionIntoBlock(const cfg::Block &block,
-                                const cfg::Instr &instr,
-                                llvm::BasicBlock *B);
+  // Lift the last instruction of a block as a block terminator.
+  void LiftTerminator(llvm::BasicBlock *block,
+                      const Instruction *instr);
 
-  // Add a fall-through terminator to the block method just in case one is
-  // missing.
-  void TryTerminateBlockMethod(const cfg::Block &block, llvm::Function *BF);
+  // Lift a single instruction into a basic block.
+  llvm::BasicBlock *LiftInstruction(llvm::Function *block,
+                                    const Instruction *instr);
 
-  // Run an architecture-specific data-flow analysis on the module.
-  void AnalyzeCFG(const cfg::Module *cfg);
+  // Lift an operand to an instruction.
+  llvm::Value *LiftOperand(llvm::BasicBlock *block,
+                           llvm::Type *op_type,
+                           const Operand &op);
+
+  // Lift a register operand to a value.
+  llvm::Value *LiftRegisterOperand(llvm::BasicBlock *block,
+                                   llvm::Type *arg_type,
+                                   const Operand::Register &reg);
+
+  // Lift an immediate operand.
+  llvm::Value *LiftImmediateOperand(llvm::BasicBlock *block,
+                                    llvm::Type *arg_type,
+                                    const Operand &op);
+
+  // Lift an indirect memory operand to a value.
+  llvm::Value *LiftMemoryOperand(llvm::BasicBlock *block,
+                                 const Operand::Address &mem);
 
   // Architecture of the code contained within the CFG being lifted.
   const Arch * const arch;
@@ -88,24 +112,23 @@ class Translator {
   llvm::Module * const module;
 
   // Blocks that we've added, indexed by their entry address.
-  BlockMap blocks;
+  std::map<uint64_t, llvm::Function *> blocks;
+  std::map<uint64_t, llvm::Function *> indirect_blocks;
 
-  // Named functions present in the module. These may be defined or only
-  // declared.
-  FunctionMap functions;
-
-  // Named variables present within the module.
-  SymbolMap symbols;
+  // Named functions present in the module.
+  std::map<std::string, llvm::Function *> exported_blocks;
+  std::map<std::string, llvm::Function *> imported_blocks;
 
   // Basic block template.
   llvm::Function * const basic_block;
+
+  // Machine word type for this architecture.
+  llvm::IntegerType *word_type;
 
  public:
 
   // Set of intrinsics.
   const IntrinsicTable * const intrinsics;
-
-  llvm::Function *GetLiftedBlockForPC(uintptr_t pc) const;
 };
 
 }  // namespace remill

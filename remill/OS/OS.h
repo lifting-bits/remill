@@ -9,7 +9,7 @@ namespace remill {
 
 enum OSName {
   kOSInvalid,
-  kOSMacOSX,
+  kOSmacOS,
   kOSLinux
 };
 
