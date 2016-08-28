@@ -87,12 +87,12 @@ MAKE_RVREAD(F, 64, doubles, float)
     template <typename T> \
     ALWAYS_INLINE static \
     T _ ## prefix ## ReadV ## size (Memory *, Vn<T> reg) { \
-      return *reg.val;\
+      return *reinterpret_cast<const T *>(reg.val);\
     } \
     template <typename T> \
     ALWAYS_INLINE static \
     T _ ## prefix ## ReadV ## size (Memory *, VnW<T> reg) { \
-      return *reg.val_ref;\
+      return *reinterpret_cast<T *>(reg.val_ref);\
     }
 
 MAKE_VREAD(U, 8)
@@ -258,15 +258,17 @@ MAKE_RVWRITE(F, 64, float, doubles)
         Memory *memory, VnW<T> reg, U val, VectorTag) { \
       enum : size_t { \
         kNumSrcElems = NumVectorElems(val.accessor), \
-        kNumDstElems = NumVectorElems(reg.val_ref->accessor) \
+        kNumDstElems = NumVectorElems( \
+            reinterpret_cast<T *>(reg.val_ref)->accessor) \
       }; \
       _Pragma("unroll") \
       for (size_t i = 0UL; i < kNumSrcElems; ++i) { \
-        reg.val_ref->accessor.elems[i] = val.accessor.elems[i]; \
+        reinterpret_cast<T *>(reg.val_ref)->accessor.elems[i] = \
+            val.accessor.elems[i]; \
       } \
       _Pragma("unroll") \
       for (size_t i = kNumSrcElems; i < kNumDstElems; ++i) { \
-        reg.val_ref->accessor.elems[i] = 0; \
+        reinterpret_cast<T *>(reg.val_ref)->accessor.elems[i] = 0; \
       } \
       return memory; \
     } \

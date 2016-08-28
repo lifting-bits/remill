@@ -76,14 +76,15 @@ extern "C" int main(int argc, char *argv[]) {
   auto source_arch = remill::Arch::Create(source_os, FLAGS_arch_in);
   auto target_arch = remill::Arch::Create(target_os, FLAGS_arch_out);
 
-  auto cfg = remill::ReadCFG(FLAGS_cfg);
-  auto source_module = remill::LoadModuleFromFile(FLAGS_bc_in);
-  auto target_module = target_arch->PrepareModule(source_module);
+  auto module = remill::LoadModuleFromFile(FLAGS_bc_in);
+  target_arch->PrepareModule(module);
 
-  remill::Translator lifter(source_arch, target_module);
+  remill::Translator lifter(source_arch, module);
+
+  auto cfg = remill::ReadCFG(FLAGS_cfg);
   lifter.LiftCFG(cfg);
 
-  remill::StoreModuleToFile(target_module, FLAGS_bc_out);
+  remill::StoreModuleToFile(module, FLAGS_bc_out);
 
   delete cfg;
   delete source_arch;

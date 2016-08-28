@@ -29,6 +29,36 @@ int main(void) {
   printf("fxsave [RIP + STATE_PTR + %lu]\n", offsetof(State, fpu));
   printf("#endif\n");
 
+  // Save the FPU stack state as doubles. This will pop the whole stack.
+  //
+  // Note:  `finit` is performed for resetting the FPU, and all entries are
+  //        loaded with zero before entering the native case.
+  printf("fstp QWORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, st.element[0].val));
+  printf("fstp QWORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, st.element[1].val));
+  printf("fstp QWORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, st.element[2].val));
+  printf("fstp QWORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, st.element[3].val));
+  printf("fstp QWORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, st.element[4].val));
+  printf("fstp QWORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, st.element[5].val));
+  printf("fstp QWORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, st.element[6].val));
+  printf("fstp QWORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, st.element[7].val));
+
+  // Save the MMX state as qwords.
+  printf("movq [RIP + STATE_PTR + %lu], MM0\n", offsetof(State, mmx.mmx[0].val));
+  printf("movq [RIP + STATE_PTR + %lu], MM1\n", offsetof(State, mmx.mmx[1].val));
+  printf("movq [RIP + STATE_PTR + %lu], MM2\n", offsetof(State, mmx.mmx[2].val));
+  printf("movq [RIP + STATE_PTR + %lu], MM3\n", offsetof(State, mmx.mmx[3].val));
+  printf("movq [RIP + STATE_PTR + %lu], MM4\n", offsetof(State, mmx.mmx[4].val));
+  printf("movq [RIP + STATE_PTR + %lu], MM5\n", offsetof(State, mmx.mmx[5].val));
+  printf("movq [RIP + STATE_PTR + %lu], MM6\n", offsetof(State, mmx.mmx[6].val));
+  printf("movq [RIP + STATE_PTR + %lu], MM7\n", offsetof(State, mmx.mmx[7].val));
+
+  // Restore the FPU state; accessing the MMX state will clobber things, and
+  // when we popped stuff, that also changed the FPU.
+  printf("#if 64 == ADDRESS_SIZE_BITS\n");
+  printf("fxrstor64 [RIP + STATE_PTR + %lu]\n", offsetof(State, fpu));
+  printf("#else\n");
+  printf("fxrstor [RIP + STATE_PTR + %lu]\n", offsetof(State, fpu));
+  printf("#endif\n");
 
   // Save the flags. This first saves whatever is on the stack that would get
   // clobbered by the `PUSHFQ`.
@@ -65,7 +95,7 @@ int main(void) {
   printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, aflag.of));
 
   // Before the native test case this will set the flags from `gFlags`, but
-  // after the test case this will safe the flags to the `rflag` field.
+  // after the test case this will save the flags to the `rflag` field.
   printf("#ifdef AFTER_TEST_CASE\n");
   printf("pop QWORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, rflag));
   printf("#else\n");

@@ -19,9 +19,9 @@ struct alignas(128) TestInfo {
   const char *test_name;
   const uint64_t * const args_begin;
   const uint64_t * const args_end;
-  void (* const lifted_func)(State *, Memory *, uintptr_t);
   const uint64_t num_args;
   const uint64_t ignored_flags_mask;
+  const uint64_t fpu_compare_mmx;
 } __attribute__((packed));
 
 extern "C" {

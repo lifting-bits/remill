@@ -5,7 +5,6 @@
 
 #include <string>
 
-#include "remill/CFG/AutoAnalysis.h"
 #include "remill/OS/OS.h"
 
 namespace llvm {
@@ -15,17 +14,14 @@ class Function;
 }  // namespace llvm.
 
 namespace remill {
-namespace cfg {
-class Instr;
-}  // namespace cfg
+
+class Instruction;
 
 enum ArchName : unsigned {
   kArchInvalid,
   kArchX86,
   kArchAMD64
 };
-
-class Translator;
 
 class Arch {
  public:
@@ -44,17 +40,12 @@ class Arch {
 
   // Converts an LLVM module object to have the right triple / data layout
   // information for the target architecture.
-  virtual llvm::Module *PrepareModule(llvm::Module *mod) const = 0;
+  virtual void PrepareModule(llvm::Module *mod) const = 0;
 
-  // Decode an instruction and lift it into a basic block.
-  virtual void LiftInstructionIntoBlock(
-      const Translator &translator,
-      const cfg::Block &block,
-      const cfg::Instr &instr,
-      llvm::BasicBlock *basic_block) const = 0;
-
-  // Return an arch-specific CFG analyzer.
-  virtual AutoAnalysis &CFGAnalyzer(void) const = 0;
+  // Decode an instruction.
+  virtual Instruction *DecodeInstruction(
+      uint64_t address,
+      const std::string &instr_bytes) const = 0;
 
   // Number of bits in an address.
   const OSName os_name;

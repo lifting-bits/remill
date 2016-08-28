@@ -43,22 +43,26 @@ static void RemoveFunction(llvm::Module &module, const char *name) {
   }
 }
 
-//static void RemoveNakedAttribute(llvm::Function &function) {
-//  auto naked_attr = llvm::Attribute::get(function.getContext(),
-//                                         llvm::Attribute::Naked);
-//
-//  function.removeFnAttr(llvm::Attribute::Naked);
-//  for (auto &block : function) {
-//    for (auto &inst : block) {
-//      if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(&inst)) {
-//        if (call_inst->hasFnAttr(llvm::Attribute::Naked)) {
-//          call_inst->removeAttribute(llvm::AttributeSet::FunctionIndex,
-//                                     naked_attr);
-//        }
-//      }
-//    }
-//  }
-//}
+
+// Create a tail-call from one lifted function to another.
+static void AddTerminatingTailCall(llvm::Function *source_func,
+                                   llvm::Function *dest_func) {
+  llvm::IRBuilder<> ir(llvm::BasicBlock::Create(
+      source_func->getContext(), "", source_func));
+
+  std::vector<llvm::Value *> args;
+  for (auto &arg : source_func->args()) {
+    args.push_back(&arg);
+  }
+
+  llvm::CallInst *call_target_instr = ir.CreateCall(dest_func, args);
+  call_target_instr->setAttributes(dest_func->getAttributes());
+
+  // Make sure we tail-call from one block method to another.
+  call_target_instr->setTailCallKind(llvm::CallInst::TCK_MustTail);
+  call_target_instr->setCallingConv(llvm::CallingConv::Fast);
+  ir.CreateRetVoid();
+}
 
 }  // namespace
 
@@ -83,9 +87,13 @@ const char *FinalizeModulePass::getPassName(void) const {
 }
 
 bool FinalizeModulePass::runOnModule(llvm::Module &module) {
-//  for (llvm::Function &function : module) {
-//    RemoveNakedAttribute(function);
-//  }
+  auto detach = module.getFunction("__remill_detach");
+  for (llvm::Function &function : module) {
+    if (function.isDeclaration() &&
+        function.getName().startswith("__remill_sub")) {
+      AddTerminatingTailCall(&function, detach);
+    }
+  }
   RemoveFunction(module, "__remill_intrinsics");
   RemoveFunction(module, "__remill_mark_as_used");
   RemoveFunction(module, "__remill_defer_inlining");

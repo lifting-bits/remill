@@ -97,7 +97,6 @@
 #define X87_ST6 state.st.element[6].val
 #define X87_ST7 state.st.element[7].val
 
-#define BRANCH_TAKEN state.conditional_branch_taken
 #define INTERRUPT_VECTOR state.interrupt_vector
 #define INTERRUPT_TAKEN state.interrupt_taken
 

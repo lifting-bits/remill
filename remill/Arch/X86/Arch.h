@@ -4,10 +4,8 @@
 #define REMILL_ARCH_X86_ARCH_H_
 
 #include "remill/Arch/Arch.h"
-#include "remill/Arch/X86/AutoAnalysis.h"
 
 namespace remill {
-namespace x86 {
 
 class X86Arch : public Arch {
  public:
@@ -15,25 +13,17 @@ class X86Arch : public Arch {
 
   virtual ~X86Arch(void);
 
-  virtual llvm::Module *PrepareModule(llvm::Module *mod) const override;
+  virtual void PrepareModule(llvm::Module *mod) const override;
 
-  // Decode an instruction and lift it into a basic block.
-  virtual void LiftInstructionIntoBlock(
-      const Translator &translator,
-      const cfg::Block &block,
-      const cfg::Instr &instr,
-      llvm::BasicBlock *basic_block) const override;
-
-  // Return an arch-specific CFG analyzer.
-  virtual AutoAnalysis &CFGAnalyzer(void) const override;
+  // Decode an instruction.
+  virtual Instruction *DecodeInstruction(
+      uint64_t address,
+      const std::string &instr_bytes) const override;
 
  private:
   X86Arch(void) = delete;
-
-  mutable RegisterAnalysis analysis;
 };
 
-}  // namespace x86
 }  // namespace remill
 
 #endif  // REMILL_ARCH_X86_ARCH_H_

@@ -5,7 +5,23 @@
 
 #include "remill/Arch/Runtime/Types.h"
 
+struct IndirectBlock final {
+  const uint64_t lifted_address;
+  void (* const lifted_func)(State &, Memory *, addr_t);
+};
+
+// TODO(pag): Add a `lifted_address` field in here for extra cross-checking?
+struct NamedBlock final {
+  const char * const name;
+  void (* const lifted_func)(State &, Memory *, addr_t);
+  void (* const native_func)(void);
+};
+
 extern "C" {
+
+extern const IndirectBlock __remill_indirect_blocks[];
+extern const NamedBlock __remill_exported_blocks[];
+extern const NamedBlock __remill_imported_blocks[];
 
 // The basic block "template".
 [[gnu::used]]
@@ -14,8 +30,7 @@ void __remill_basic_block(State &state, Memory &memory, addr_t);
 // Address computation intrinsic. This is only used for non-zero
 // `address_space`d memory accesses.
 [[gnu::used, gnu::const]]
-extern addr_t __remill_compute_address(
-    const State &state, addr_t address, int address_space);
+extern addr_t __remill_compute_address(addr_t address, addr_t segment);
 
 // Memory read intrinsics.
 [[gnu::used, gnu::const]]
@@ -118,9 +133,12 @@ extern void __remill_interrupt_return(State &, Memory *, addr_t);
 [[gnu::used]]
 extern void __remill_detach(State &, Memory *, addr_t);
 
-// Transition from native, unmodelled code into Remill-lifted code.
+// Transition from native code into Remill-lifted code.
+//
+// Note:  It is possible to transition between two independent Remill-lifted
+//        modules via a `__remill_detach` and `__remill_attach`.
 [[gnu::used]]
-extern void __remill_attach(State &, Memory *, addr_t);
+extern void __remill_attach(void);
 
 //[[gnu::used]]
 //extern bool __remill_conditional_branch(

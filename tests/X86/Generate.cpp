@@ -64,24 +64,20 @@ static void AddFunctionToModule(remill::cfg::Module *module,
   const char *test_name = reinterpret_cast<const char *>(test.test_name);
 
   std::stringstream ss;
-  ss << SYMBOL_PREFIX << "X86_LIFTED_" << test_name;
+  ss << SYMBOL_PREFIX << test_name;
 
-  LOG(INFO) << "Adding function for: " << test_name;
+  LOG(INFO) << "Adding named exported block for: " << test_name;
 
-  auto func = module->add_functions();
+  auto func = module->add_named_blocks();
   func->set_address(test.test_begin);
   func->set_name(ss.str());
-  func->set_is_exported(true);
-  func->set_is_imported(false);
-  func->set_is_weak(false);
+  func->set_visibility(remill::cfg::EXPORTED);
 
   LOG(INFO) << "Adding block for: " << test_name;
 
-  auto indirect_block = module->add_indirect_blocks();
-  indirect_block->set_address(test.test_begin);
-
   auto block = module->add_blocks();
   block->set_address(test.test_begin);
+  block->set_is_addressable(false);
 
   auto addr = test.test_begin;
   while (addr < test.test_end) {
@@ -90,9 +86,7 @@ static void AddFunctionToModule(remill::cfg::Module *module,
         bytes, std::min<unsigned>(test::kMaxInstrLen, test.test_end - addr));
 
     auto instr = block->add_instructions();
-    instr->set_address(addr);
-    instr->set_size(ilen);
-    instr->set_bytes(bytes, ilen);
+    instr->assign(bytes, bytes + ilen);
     addr += ilen;
   }
 }
@@ -109,7 +103,6 @@ extern "C" int main(int argc, char *argv[]) {
   LOG(INFO) << "Generating tests.";
 
   auto module = new remill::cfg::Module;
-  module->set_binary_path(__FILE__);
 
   for (auto i = 0U; ; ++i) {
     const auto &test = test::__x86_test_table_begin[i];
