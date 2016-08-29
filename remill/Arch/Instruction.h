@@ -63,7 +63,7 @@ class Operand {
     Register segment_reg;
     Register base_reg;
     Register index_reg;
-    uint64_t scale;
+    int64_t scale;
     int64_t displacement;
     uint64_t address_size;
   } addr;

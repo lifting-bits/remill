@@ -86,7 +86,8 @@ static void AddFunctionToModule(remill::cfg::Module *module,
         bytes, std::min<unsigned>(test::kMaxInstrLen, test.test_end - addr));
 
     auto instr = block->add_instructions();
-    instr->assign(bytes, bytes + ilen);
+    instr->set_bytes(bytes, ilen);
+    instr->set_address(addr);
     addr += ilen;
   }
 }

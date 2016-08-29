@@ -21,6 +21,7 @@ class IntegerType;
 namespace remill {
 namespace cfg {
 class Block;
+class Instr;
 class Module;
 }  // namespace cfg
 

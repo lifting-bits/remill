@@ -155,7 +155,6 @@ DEF_ISEL_SEM(FCOMPP_ST0_ST1, RF80 src1, RF80 src2) {
 DEF_ISEL_SEM(FUCOMI_ST0_X87, RF80 src1, RF80 src2) {
   auto lhs = Read(src1);
   auto rhs = Read(src2);
-  uint16_t mask = 0;
   if (__builtin_isunordered(lhs, rhs)) {
     Write(FLAG_ZF, true);
     Write(FLAG_PF, true);

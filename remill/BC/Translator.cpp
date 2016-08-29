@@ -124,8 +124,13 @@ static llvm::Function *CreateExternalFunction(llvm::Module *module,
                                               const std::string &name) {
   auto unknown_func_type = llvm::FunctionType::get(
       llvm::Type::getVoidTy(module->getContext()), false);
-  return llvm::dyn_cast<llvm::Function>(
+  auto func = llvm::dyn_cast<llvm::Function>(
       module->getOrInsertFunction(name, unknown_func_type));
+
+  // Don't want these to conflict with things like `__builtin_sin`.
+  func->addFnAttr(llvm::Attribute::NoBuiltin);
+
+  return func;
 }
 
 // Clone the block method template `TF` into a specific method `BF` that
@@ -535,12 +540,12 @@ void Translator::LiftBlocks(const cfg::Module *cfg) {
 }
 
 // Lift code contained within a single block.
-llvm::Function *Translator::LiftBlock(const cfg::Block *block) {
-  auto block_func = GetOrCreateBlock(block->address());
+llvm::Function *Translator::LiftBlock(const cfg::Block *cfg_block) {
+  auto block_func = GetOrCreateBlock(cfg_block->address());
   if (!block_func->isDeclaration()) {
     DLOG(WARNING)
         << "Not going to lift duplicate block at "
-        << std::hex << block->address() << ".";
+        << std::hex << cfg_block->address() << ".";
     return block_func;
   }
 
@@ -548,9 +553,15 @@ llvm::Function *Translator::LiftBlock(const cfg::Block *block) {
 
   // Create a block for each instruction.
   auto last_block = &block_func->back();
-  auto instr_addr = block->address();
+  auto instr_addr = cfg_block->address();
   Instruction *instr = nullptr;
-  for (const auto &instr_bytes : block->instructions()) {
+  for (const auto &cfg_instr : cfg_block->instructions()) {
+    CHECK(cfg_instr.address() == instr_addr)
+        << "CFG Instr address " << std::hex << cfg_instr.address()
+        << " doesn't match implied instruction address ("
+        << std::hex << instr_addr << ") based on CFG Block structure.";
+
+    auto instr_bytes = cfg_instr.bytes();
 
     // Check and delete the last instruction lifted.
     if (instr) {
@@ -973,16 +984,26 @@ llvm::Value *Translator::LiftMemoryOperand(
       << "Memory index register " << mem.base_reg.name << " is wider than "
       << "the machine word size.";
 
-  auto base = LoadWordRegValOrZero(block, mem.base_reg.name, zero);
+  auto addr = LoadWordRegValOrZero(block, mem.base_reg.name, zero);
   auto index = LoadWordRegValOrZero(block, mem.index_reg.name, zero);
-  auto scale = llvm::ConstantInt::get(word_type, mem.scale);
-  auto displacement = llvm::ConstantInt::get(word_type, mem.displacement);
+  auto scale = llvm::ConstantInt::get(
+      word_type,
+      static_cast<uint64_t>(mem.scale),
+      true);
   auto segment = LoadWordRegValOrZero(block, mem.segment_reg.name, zero);
 
   llvm::IRBuilder<> ir(block);
-  auto addr = ir.CreateAdd(
-      ir.CreateAdd(base, ir.CreateMul(index, scale)),
-      displacement);
+  addr = ir.CreateAdd(addr, ir.CreateMul(index, scale));
+
+  if (0 > mem.displacement) {
+    addr = ir.CreateAdd(addr, llvm::ConstantInt::get(
+        word_type,
+        static_cast<uint64_t>(mem.displacement)));
+  } else {
+    addr = ir.CreateSub(addr, llvm::ConstantInt::get(
+        word_type,
+        static_cast<uint64_t>(-mem.displacement)));
+  }
 
   // Memory address is smaller than the machine word size (e.g. 32-bit address
   // used in 64-bit).

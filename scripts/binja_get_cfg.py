@@ -70,7 +70,6 @@ def process_inst(bv, pb_block, il, indirects):
     pb_inst = pb_block.instructions.add()
     pb_inst.address = il.address
     pb_inst.bytes = read_inst_bytes(bv, il)
-    pb_inst.size = len(pb_inst.bytes)
 
     op = il.operation
     if op in INDIRECT_TERMINATORS:

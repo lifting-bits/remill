@@ -333,7 +333,7 @@ static void DecodeMemory(Instruction *instr,
   op.addr.segment_reg = ReadReg(segment);
   op.addr.base_reg = ReadReg(base);
   op.addr.index_reg = ReadReg(index);
-  op.addr.scale = scale;
+  op.addr.scale = static_cast<int64_t>(scale);
   op.addr.displacement = disp;
 
   // Rename the base register to use `NEXT_PC` as the register name.
