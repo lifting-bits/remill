@@ -3,6 +3,7 @@
 #include <glog/logging.h>
 
 #include <sstream>
+#include <string>
 
 #include <llvm/IR/Module.h>
 
@@ -256,7 +257,11 @@ static std::string WriteRegName(xed_reg_enum_t reg) {
 static Operand::Register ReadReg(xed_reg_enum_t reg) {
   Operand::Register reg_op;
   reg_op.name = ReadRegName(reg);
-  reg_op.size = xed_get_register_width_bits64(reg);
+  if (XED_REG_X87_FIRST <= reg && XED_REG_X87_LAST >= reg) {
+    reg_op.size = 64;
+  } else {
+    reg_op.size = xed_get_register_width_bits64(reg);
+  }
   return reg_op;
 }
 
@@ -264,7 +269,11 @@ static Operand::Register ReadReg(xed_reg_enum_t reg) {
 static Operand::Register WriteReg(xed_reg_enum_t reg) {
   Operand::Register reg_op;
   reg_op.name = WriteRegName(reg);
-  reg_op.size = xed_get_register_width_bits64(reg);
+  if (XED_REG_X87_FIRST <= reg && XED_REG_X87_LAST >= reg) {
+    reg_op.size = 64;
+  } else {
+    reg_op.size = xed_get_register_width_bits64(reg);
+  }
   return reg_op;
 }
 

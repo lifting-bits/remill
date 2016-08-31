@@ -35,9 +35,8 @@ def debug(s):
 
 def add_indirect_blocks(pb_mod, indirects):
     # type: (CFG_pb2.Module, set) -> None
-    for addr in indirects:
-        iblock = pb_mod.indirect_blocks.add()
-        iblock.address = addr
+    for block in pb_mod.blocks:
+        block.is_addressable = block.address in indirects
 
 
 def is_cpuid(bv, il):
@@ -134,7 +133,7 @@ def process_blocks(bv, pb_mod, func, indirects):
 
             # Add the instruction data
             pb_inst, end_block = process_inst(bv, pb_block, il, indirects)
-            inst_idx += pb_inst.size
+            inst_idx += len(pb_inst.bytes)
 
 
 def is_export(func):
@@ -159,12 +158,10 @@ def analyze_exports(bv, pb_mod, indirects):
     # type: (binja.BinaryView, CFG_pb2.Module, set) -> None
     for func in bv.functions:
         if is_export(func):
-            pb_func = pb_mod.functions.add()
+            pb_func = pb_mod.named_blocks.add()
             pb_func.name = func.symbol.short_name
             pb_func.address = func.start
-            pb_func.is_imported = False
-            pb_func.is_exported = True
-            pb_func.is_weak = False
+            pb_func.visibility = CFG_pb2.EXPORTED
 
             debug('Adding export: {} @ {:x}'.format(pb_func.name, pb_func.address))
             process_blocks(bv, pb_mod, func, indirects)
@@ -174,12 +171,10 @@ def analyze_imports(bv, pb_mod):
     # type: (binja.BinaryView, CFG_pb2.Module) -> None
     for func in bv.functions:
         if is_import(func):
-            pb_func = pb_mod.functions.add()
+            pb_func = pb_mod.named_blocks.add()
             pb_func.name = func.symbol.short_name
             pb_func.address = func.start
-            pb_func.is_imported = True
-            pb_func.is_exported = False
-            pb_func.is_weak = False  # TODO: see if this can be figured out
+            pb_func.visibility = CFG_pb2.IMPORTED
 
             debug('Adding import: {} @ {:x}'.format(pb_func.name, pb_func.address))
 
@@ -188,21 +183,16 @@ def analyze_internal_functions(bv, pb_mod, indirects):
     # type: (binja.BinaryView, CFG_pb2.Module, set) -> None
     for func in bv.functions:
         if is_internal(func):
-            pb_func = pb_mod.functions.add()
-            pb_func.name = func.symbol.short_name  # TODO: should this be different?
-            pb_func.address = func.start
-            pb_func.is_imported = False
-            pb_func.is_exported = False
-            pb_func.is_weak = False
+            name = func.symbol.short_name  # TODO: should this be different?
+            address = func.start
 
-            debug('Adding function: {} @ {:x}'.format(pb_func.name, pb_func.address))
+            debug('Adding function: {} @ {:x}'.format(name, address))
             process_blocks(bv, pb_mod, func, indirects)
 
 
 def recover_cfg(bv, outf):
     # type: (binja.BinaryView, file) -> None
     pb_mod = CFG_pb2.Module()
-    pb_mod.binary_path = bv.file.filename
     indirects = set()
 
     debug('Analyzing exports...')
@@ -282,6 +272,7 @@ def main():
         return 1
 
     recover_cfg(bv, outf)
+    return 0
 
 
 if __name__ == '__main__':

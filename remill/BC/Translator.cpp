@@ -1,10 +1,10 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#undef NDEBUG
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <functional>
+#include <ios>
 #include <set>
 #include <string>
 #include <sstream>

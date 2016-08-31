@@ -18,12 +18,13 @@ PROTOBUF_RELEASE=protobuf-${PROTOBUF_VERSION}
 GTEST_RELEASE=release-1.7.0
 XED_RELEASE=2016-02-02
 
-LLVM_RELEASE=3.8.0
+LLVM_RELEASE=3.8.1
 LLVM_RELEASE_DIR=releases/${LLVM_RELEASE}
 
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
     XED_VERSION=xed-install-base-${XED_RELEASE}-lin-x86-64
-    LLVM_VERSION=clang+llvm-${LLVM_RELEASE}-x86_64-linux-gnu-ubuntu-14.04
+    UBUNTU_VERSION=`lsb_release -r -s`
+    LLVM_VERSION=clang+llvm-${LLVM_RELEASE}-x86_64-linux-gnu-ubuntu-${UBUNTU_VERSION}
     REMILL_OS_NAME="linux"
     LIB_EXT=so
     STDLIB="libstdc++"
