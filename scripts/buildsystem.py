@@ -126,6 +126,7 @@ CXX_FLAGS = [
   "-Wno-override-module",
   "-Wno-return-type-c-linkage",
   "-Wno-c99-extensions",
+  "-Wno-ignored-attributes",
   
   # Features.
   "-fno-omit-frame-pointer",
