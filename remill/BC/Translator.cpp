@@ -37,6 +37,9 @@ DEFINE_bool(lift_calls_as_calls, false,
             "in the lifted code. This induces a call graph on the lifted code "
             "that may be helpful to static analysis.");
 
+DEFINE_bool(pc_specific_intrinsics, false,
+            "Create a PC-specific variable for each intrinsic use.");
+
 namespace llvm {
 class ReturnInst;
 }  // namespace
@@ -155,6 +158,39 @@ static void AddBlockInitializationCode(llvm::Function *block_func,
   // defined in the function, but it has an implicit return that we need
   // to remove so that we can add instructions at the end.
   return_instrs[0]->eraseFromParent();
+}
+
+// Wrap an intrinsic. This will make something like `__remill_indirect_jump`
+// into `__remill_indirect_jump_f00` as a way of saying that at PC `0xf00`,
+// an indirect jump is being performed.
+//
+// The idea here is that Remill is a simplistic code generator, and sometimes
+// we'll want to add in "smarter" handling of things. For example, what
+// Remill sees as an indirect jump, another smarter tool may see as a use
+// of a jump table. That smart tool may want to change Remill-generated code
+// to do this, and wrapping allows this other tool to pinpoint where changes
+// need to be made.
+static llvm::Constant *WrapIntrinsic(llvm::Function *intrinsic,
+                                     uint64_t address) {
+  if (!FLAGS_pc_specific_intrinsics) {
+    return intrinsic;
+  }
+
+  std::stringstream ss;
+  ss << intrinsic->getName().str() << "_" << std::hex << address;
+
+  llvm::Module *module = intrinsic->getParent();
+  auto var = llvm::dyn_cast<llvm::GlobalVariable>(
+      module->getOrInsertGlobal(ss.str(), intrinsic->getType()));
+
+  if (!var->hasInitializer()) {
+    DLOG(INFO)
+        << "Creating intrinsic wrapper " << ss.str() << ".";
+
+    var->setInitializer(intrinsic);
+  }
+
+  return var;
 }
 
 }  // namespace
@@ -411,7 +447,11 @@ void Translator::CreateNamedBlocks(const cfg::Module *cfg) {
 
     if (is_imported) {
       if (named_block->isDeclaration()) {
-        AddTerminatingTailCall(named_block, intrinsics->detach);
+        AddTerminatingTailCall(
+            named_block,
+            WrapIntrinsic(intrinsics->detach,
+                          static_cast<uint64_t>(func.address())));
+
         DLOG(INFO)
             << "Imported function " << func_name << " is implemented by "
             << impl_name << ".";
@@ -653,74 +693,100 @@ void Translator::LiftTerminator(llvm::BasicBlock *block,
     case Instruction::kCategoryNormal:
     case Instruction::kCategoryNoOp:
       AddTerminatingTailCall(
-          block, GetOrCreateBlock(arch_instr->next_pc));
+          block,
+          GetOrCreateBlock(arch_instr->next_pc));
       break;
 
     case Instruction::kCategoryError:
-      AddTerminatingTailCall(block, intrinsics->error);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->error, arch_instr->pc));
       break;
 
     case Instruction::kCategoryDirectJump:
       AddTerminatingTailCall(
-          block, GetOrCreateBlock(arch_instr->branch_taken_pc));
+          block,
+          GetOrCreateBlock(arch_instr->branch_taken_pc));
       break;
 
     case Instruction::kCategoryIndirectJump:
-      AddTerminatingTailCall(block, intrinsics->jump);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->jump, arch_instr->pc));
       break;
 
     case Instruction::kCategoryDirectFunctionCall:
       AddTerminatingTailCall(
-          block, GetOrCreateBlock(arch_instr->branch_taken_pc));
+          block,
+          GetOrCreateBlock(arch_instr->branch_taken_pc));
 
       if (FLAGS_lift_calls_as_calls) {
         auto term_call = block->getTerminatingMustTailCall();
         term_call->setTailCallKind(llvm::CallInst::TCK_NoTail);
         block->getTerminator()->eraseFromParent();
         AddTerminatingTailCall(
-            block, GetOrCreateBlock(arch_instr->next_pc));
+            block,
+            GetOrCreateBlock(arch_instr->next_pc));
       }
       break;
 
     case Instruction::kCategoryIndirectFunctionCall:
-      AddTerminatingTailCall(block, intrinsics->function_call);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->function_call, arch_instr->pc));
+
       if (FLAGS_lift_calls_as_calls) {
         auto term_call = block->getTerminatingMustTailCall();
         term_call->setTailCallKind(llvm::CallInst::TCK_NoTail);
         block->getTerminator()->eraseFromParent();
+
         AddTerminatingTailCall(
-            block, GetOrCreateBlock(arch_instr->next_pc));
+            block,
+            GetOrCreateBlock(arch_instr->next_pc));
       }
       break;
 
     case Instruction::kCategoryFunctionReturn:
-      AddTerminatingTailCall(block, intrinsics->function_return);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->function_return, arch_instr->pc));
       break;
 
     case Instruction::kCategoryConditionalBranch:
       LiftConditionalBranch(
-          block, GetOrCreateBlock(arch_instr->branch_taken_pc),
+          block,
+          GetOrCreateBlock(arch_instr->branch_taken_pc),
           GetOrCreateBlock(arch_instr->branch_not_taken_pc));
       break;
 
     case Instruction::kCategorySystemCall:
-      AddTerminatingTailCall(block, intrinsics->system_call);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->system_call, arch_instr->pc));
       break;
 
     case Instruction::kCategorySystemReturn:
-      AddTerminatingTailCall(block, intrinsics->system_return);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->system_return, arch_instr->pc));
       break;
 
     case Instruction::kCategoryInterruptCall:
-      AddTerminatingTailCall(block, intrinsics->interrupt_call);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->interrupt_call, arch_instr->pc));
       break;
 
     case Instruction::kCategoryInterruptReturn:
-      AddTerminatingTailCall(block, intrinsics->interrupt_return);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->interrupt_return, arch_instr->pc));
       break;
 
     case Instruction::kCategoryReadCPUFeatures:
-      AddTerminatingTailCall(block, intrinsics->read_cpu_features);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->read_cpu_features, arch_instr->pc));
       break;
   }
 }
@@ -981,45 +1047,45 @@ llvm::Value *Translator::LiftImmediateOperand(llvm::BasicBlock *block,
 
 // Zero-extend a value to be the machine word size.
 llvm::Value *Translator::LiftAddressOperand(
-    llvm::BasicBlock *block, const Operand::Address &arc_addr) {
+    llvm::BasicBlock *block, const Operand::Address &arch_addr) {
 
   auto zero = llvm::ConstantInt::get(word_type, 0, false);
   auto word_size = word_type->getBitWidth();
 
-  CHECK(word_size >= arc_addr.base_reg.size)
-      << "Memory base register " << arc_addr.base_reg.name
+  CHECK(word_size >= arch_addr.base_reg.size)
+      << "Memory base register " << arch_addr.base_reg.name
       << " is wider than the machine word size.";
 
-  CHECK(word_size >= arc_addr.index_reg.size)
-      << "Memory index register " << arc_addr.base_reg.name
+  CHECK(word_size >= arch_addr.index_reg.size)
+      << "Memory index register " << arch_addr.base_reg.name
       << " is wider than the machine word size.";
 
-  auto addr = LoadWordRegValOrZero(block, arc_addr.base_reg.name, zero);
-  auto index = LoadWordRegValOrZero(block, arc_addr.index_reg.name, zero);
+  auto addr = LoadWordRegValOrZero(block, arch_addr.base_reg.name, zero);
+  auto index = LoadWordRegValOrZero(block, arch_addr.index_reg.name, zero);
   auto scale = llvm::ConstantInt::get(
       word_type,
-      static_cast<uint64_t>(arc_addr.scale),
+      static_cast<uint64_t>(arch_addr.scale),
       true);
-  auto segment = LoadWordRegValOrZero(block, arc_addr.segment_reg.name, zero);
+  auto segment = LoadWordRegValOrZero(block, arch_addr.segment_reg.name, zero);
 
   llvm::IRBuilder<> ir(block);
   addr = ir.CreateAdd(addr, ir.CreateMul(index, scale));
 
-  if (0 > arc_addr.displacement) {
+  if (0 > arch_addr.displacement) {
     addr = ir.CreateAdd(addr, llvm::ConstantInt::get(
         word_type,
-        static_cast<uint64_t>(arc_addr.displacement)));
+        static_cast<uint64_t>(arch_addr.displacement)));
   } else {
     addr = ir.CreateSub(addr, llvm::ConstantInt::get(
         word_type,
-        static_cast<uint64_t>(-arc_addr.displacement)));
+        static_cast<uint64_t>(-arch_addr.displacement)));
   }
 
   // Memory address is smaller than the machine word size (e.g. 32-bit address
   // used in 64-bit).
-  if (arc_addr.address_size < word_size) {
+  if (arch_addr.address_size < word_size) {
     auto addr_type = llvm::Type::getIntNTy(
-        block->getContext(), arc_addr.address_size);
+        block->getContext(), arch_addr.address_size);
 
     addr = ir.CreateZExt(
         ir.CreateTrunc(addr, addr_type),

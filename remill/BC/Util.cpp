@@ -53,43 +53,22 @@ void InitFunctionAttributes(llvm::Function *function) {
 
 // Create a tail-call from one lifted function to another.
 void AddTerminatingTailCall(llvm::Function *source_func,
-                            llvm::Function *dest_func) {
-  CHECK(source_func->arg_size() == dest_func->arg_size());
-
+                            llvm::Value *dest_func) {
   if (source_func->isDeclaration()) {
     llvm::IRBuilder<> ir(llvm::BasicBlock::Create(
         source_func->getContext(), "", source_func));
-
-    std::vector<llvm::Value *> args;
-    for (auto &arg : source_func->args()) {
-      args.push_back(&arg);
-    }
-
-    llvm::CallInst *call_target_instr = ir.CreateCall(dest_func, args);
-    call_target_instr->setAttributes(dest_func->getAttributes());
-
-    // Make sure we tail-call from one block method to another.
-    call_target_instr->setTailCallKind(llvm::CallInst::TCK_MustTail);
-    call_target_instr->setCallingConv(llvm::CallingConv::Fast);
-    ir.CreateRetVoid();
-
-  } else {
-    AddTerminatingTailCall(&(source_func->back()), dest_func);
   }
+  AddTerminatingTailCall(&(source_func->back()), dest_func);
 }
 
 void AddTerminatingTailCall(llvm::BasicBlock *source_block,
-                            llvm::Function *dest_func) {
+                            llvm::Value *dest_func) {
   CHECK(nullptr != dest_func)
       << "Target function/block does not exist!";
 
   LOG_IF(ERROR, source_block->getTerminator() ||
                 source_block->getTerminatingMustTailCall())
       << "Block already has a terminator; not adding fall-through call to: "
-      << (dest_func ? dest_func->getName().str() : "<unreachable>");
-
-  CHECK(kNumBlockArgs == dest_func->getFunctionType()->getNumParams())
-      << "Expected " << size_t(kNumBlockArgs) << " arguments for call to: "
       << (dest_func ? dest_func->getName().str() : "<unreachable>");
 
   llvm::IRBuilder<> ir(source_block);
@@ -101,8 +80,13 @@ void AddTerminatingTailCall(llvm::BasicBlock *source_block,
   args[kMemoryPointerArgNum] = LoadMemoryPointer(source_block);
   args[kPCArgNum] = LoadProgramCounter(source_block);
 
+  if (!llvm::isa<llvm::Function>(dest_func)) {
+    dest_func = ir.CreateLoad(dest_func);
+//    dest_func->dump();
+//    exit(1);
+  }
+
   llvm::CallInst *call_target_instr = ir.CreateCall(dest_func, args);
-  call_target_instr->setAttributes(dest_func->getAttributes());
 
   // Make sure we tail-call from one block method to another.
   call_target_instr->setTailCallKind(llvm::CallInst::TCK_MustTail);
