@@ -115,10 +115,70 @@ IF_AVX(DEF_ISEL(VCVTTPD2DQ_XMMdq_XMMdq) = CVTTPD2DQ<VV128W, V128>;)
 IF_AVX(DEF_ISEL(VCVTTPD2DQ_XMMdq_MEMqq) = CVTTPD2DQ_AVX<VV128W, MV256>;)
 IF_AVX(DEF_ISEL(VCVTTPD2DQ_XMMdq_YMMqq) = CVTTPD2DQ_AVX<VV128W, VV256>;)
 
+namespace {
+
+template <typename D, typename S1>
+DEF_SEM(CVTTPS2DQ, D dst, S1 src) {
+  auto src_vec = FReadV32(src);
+  auto a = Unsigned(Int32(FExtractV32<0>(src_vec)));
+  auto b = Unsigned(Int32(FExtractV32<1>(src_vec)));
+  auto c = Unsigned(Int32(FExtractV32<2>(src_vec)));
+  auto d = Unsigned(Int32(FExtractV32<3>(src_vec)));
+  auto dst_vec = UClearV32(UReadV32(dst));
+  UWriteV32(dst,
+            UInsertV32<3>(
+                UInsertV32<2>(
+                    UInsertV32<1>(
+                        UInsertV32<0>(
+                            dst_vec,
+                            a),
+                        b),
+                    c),
+                d));
+}
+
+template <typename D, typename S1>
+DEF_SEM(CVTTPS2DQ_AVX, D dst, S1 src) {
+  auto src_vec = FReadV32(src);
+  auto a = Unsigned(Int32(FExtractV32<0>(src_vec)));
+  auto b = Unsigned(Int32(FExtractV32<1>(src_vec)));
+  auto c = Unsigned(Int32(FExtractV32<2>(src_vec)));
+  auto d = Unsigned(Int32(FExtractV32<3>(src_vec)));
+  auto e = Unsigned(Int32(FExtractV32<4>(src_vec)));
+  auto f = Unsigned(Int32(FExtractV32<5>(src_vec)));
+  auto g = Unsigned(Int32(FExtractV32<6>(src_vec)));
+  auto h = Unsigned(Int32(FExtractV32<7>(src_vec)));
+  auto dst_vec = UClearV32(UReadV32(dst));
+  UWriteV32(dst,
+            UInsertV32<7>(
+                UInsertV32<6>(
+                    UInsertV32<5>(
+                        UInsertV32<4>(
+                            UInsertV32<3>(
+                                UInsertV32<2>(
+                                    UInsertV32<1>(
+                                        UInsertV32<0>(
+                                            dst_vec,
+                                            a),
+                                        b),
+                                    c),
+                                d),
+                            e),
+                        f),
+                    g),
+                h));
+}
+
+}  // namespace
+
+DEF_ISEL(CVTTPS2DQ_XMMdq_MEMps) = CVTTPS2DQ<V128W, MV128>;
+DEF_ISEL(CVTTPS2DQ_XMMdq_XMMps) = CVTTPS2DQ<V128W, V128>;
+IF_AVX(DEF_ISEL(VCVTTPS2DQ_XMMdq_MEMdq) = CVTTPS2DQ<VV128W, MV128>;)
+IF_AVX(DEF_ISEL(VCVTTPS2DQ_XMMdq_XMMdq) = CVTTPS2DQ<VV128W, V128>;)
+IF_AVX(DEF_ISEL(VCVTTPS2DQ_YMMqq_MEMqq) = CVTTPS2DQ_AVX<VV256W, MV256>;)
+IF_AVX(DEF_ISEL(VCVTTPS2DQ_YMMqq_YMMqq) = CVTTPS2DQ_AVX<VV256W, VV256>;)
 /*
 
-124 CVTTPS2DQ CVTTPS2DQ_XMMdq_MEMps CONVERT SSE2 SSE2 ATTRIBUTES: MXCSR REQUIRES_ALIGNMENT SIMD_PACKED_ALIGNMENT
-125 CVTTPS2DQ CVTTPS2DQ_XMMdq_XMMps CONVERT SSE2 SSE2 ATTRIBUTES: MXCSR REQUIRES_ALIGNMENT SIMD_PACKED_ALIGNMENT
 223 CVTPI2PD CVTPI2PD_XMMpd_MEMq CONVERT SSE2 SSE2 ATTRIBUTES: MMX_EXCEPT MXCSR NOTSX
 224 CVTPI2PD CVTPI2PD_XMMpd_MMXq CONVERT SSE2 SSE2 ATTRIBUTES: MMX_EXCEPT MXCSR NOTSX
 233 CVTPI2PS CVTPI2PS_XMMq_MEMq CONVERT SSE SSE ATTRIBUTES: MMX_EXCEPT MXCSR NOTSX
@@ -196,10 +256,6 @@ IF_AVX(DEF_ISEL(VCVTTPD2DQ_XMMdq_YMMqq) = CVTTPD2DQ_AVX<VV128W, VV256>;)
 2639 VCVTTSS2SI VCVTTSS2SI_GPR32d_XMMd CONVERT AVX AVX ATTRIBUTES: MXCSR SIMD_SCALAR
 2640 VCVTTSS2SI VCVTTSS2SI_GPR64q_MEMd CONVERT AVX AVX ATTRIBUTES: MXCSR SIMD_SCALAR
 2641 VCVTTSS2SI VCVTTSS2SI_GPR64q_XMMd CONVERT AVX AVX ATTRIBUTES: MXCSR SIMD_SCALAR
-2841 VCVTTPS2DQ VCVTTPS2DQ_XMMdq_MEMdq CONVERT AVX AVX ATTRIBUTES: MXCSR
-2842 VCVTTPS2DQ VCVTTPS2DQ_XMMdq_XMMdq CONVERT AVX AVX ATTRIBUTES: MXCSR
-2843 VCVTTPS2DQ VCVTTPS2DQ_YMMqq_MEMqq CONVERT AVX AVX ATTRIBUTES: MXCSR
-2844 VCVTTPS2DQ VCVTTPS2DQ_YMMqq_YMMqq CONVERT AVX AVX ATTRIBUTES: MXCSR
 2912 VCVTSS2SI VCVTSS2SI_GPR32d_MEMd CONVERT AVX AVX ATTRIBUTES: MXCSR SIMD_SCALAR
 2913 VCVTSS2SI VCVTSS2SI_GPR32d_XMMd CONVERT AVX AVX ATTRIBUTES: MXCSR SIMD_SCALAR
 2914 VCVTSS2SI VCVTSS2SI_GPR32d_MEMd CONVERT AVX AVX ATTRIBUTES: MXCSR SIMD_SCALAR
