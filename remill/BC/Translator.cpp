@@ -578,7 +578,8 @@ llvm::Function *Translator::LiftBlock(const cfg::Block *cfg_block) {
         << "Cannot decode instruction at " << std::hex << instr_addr << ".";
 
     DLOG(INFO)
-        << "Lifting instruction " << instr->Debug();
+        << "Lifting instruction '" << instr->disassembly
+        << "' as " << instr->Debug();
 
     if (auto curr_block = LiftInstruction(block_func, instr)) {
       llvm::IRBuilder<> ir(last_block);

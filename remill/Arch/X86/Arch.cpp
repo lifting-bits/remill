@@ -667,6 +667,24 @@ Instruction *X86Arch::DecodeInstruction(
     }
   }
 
+#ifndef NDEBUG
+
+  char buffer[256] = {'\0'};
+  xed_print_info_t info;
+  info.blen = 256;
+  info.buf = &(buffer[0]);
+  info.context = nullptr;
+  info.disassembly_callback = nullptr;
+  info.format_options_valid = 0;
+  info.p = xedd;
+  info.runtime_address = instr->pc;
+  info.syntax = XED_SYNTAX_INTEL;
+  if (xed_format_generic(&info)) {
+    instr->disassembly.assign(&(buffer[0]));
+  }
+
+#endif  // NDEBUG
+
   return instr;
 }
 

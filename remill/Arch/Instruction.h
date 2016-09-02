@@ -79,6 +79,10 @@ class Instruction {
   // Name of semantics function that implements this instruction.
   std::string function;
 
+  // The disassembly of this instruction. Only filled out if the
+  // `NDEBUG` macro is not defined.
+  std::string disassembly;
+
   // Program counter for this instruction and the next instruction.
   uint64_t pc;
   uint64_t next_pc;

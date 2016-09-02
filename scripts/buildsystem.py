@@ -155,12 +155,14 @@ CXX_FLAGS = [
 if "debug" == ARGS.target.lower():
   CXX_FLAGS.extend([
       "-g3",
-      "-DNDEBUG",
       "-O0"])
+
 elif "release" == ARGS.target.lower():
   CXX_FLAGS.extend([
       "-gline-tables-only",
+      "-DNDEBUG",
       "-O3"])
+  
 elif ARGS.debug:
   print "ERROR: Unknown build target `{}`.".format(ARGS.target)
 

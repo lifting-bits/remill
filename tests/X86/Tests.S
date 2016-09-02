@@ -361,6 +361,8 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/CONVERT/CDQ.S"
 #include "tests/X86/CONVERT/CDQE.S"
 #include "tests/X86/CONVERT/CQO.S"
+#include "tests/X86/CONVERT/CVTDQ2PD.S"
+#include "tests/X86/CONVERT/CVTTPD2DQ.S"
 #include "tests/X86/CONVERT/CWD.S"
 #include "tests/X86/CONVERT/CWDE.S"
 

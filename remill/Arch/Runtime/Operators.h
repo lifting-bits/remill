@@ -488,17 +488,25 @@ ALWAYS_INLINE static T Minimize(T val) {
   return std::numeric_limits<T>::min();
 }
 
-// Convert value to a double.
-template <typename T>
-ALWAYS_INLINE static float64_t Float64(T val) {
-  return static_cast<float64_t>(val);
-}
+#define MAKE_CONVERT(dest_type, name) \
+    template <typename T> \
+    ALWAYS_INLINE static \
+    dest_type name(T val) { \
+      return static_cast<dest_type>(val); \
+    }
 
-// Convert value to a float.
-template <typename T>
-ALWAYS_INLINE static float32_t Float32(T val) {
-  return static_cast<float32_t>(val);
-}
+MAKE_CONVERT(int8_t, Int8)
+MAKE_CONVERT(int16_t, Int16)
+MAKE_CONVERT(int32_t, Int32)
+MAKE_CONVERT(int64_t, Int64)
+MAKE_CONVERT(uint8_t, UInt8)
+MAKE_CONVERT(uint16_t, UInt16)
+MAKE_CONVERT(uint32_t, UInt32)
+MAKE_CONVERT(uint64_t, UInt64)
+MAKE_CONVERT(float32_t, Float32)
+MAKE_CONVERT(float64_t, Float64)
+
+#undef MAKE_CONVERT
 
 // Return the value as-is. This is useful when making many accessors using
 // macros, because it lets us decide to pull out values as-is, as unsigned
