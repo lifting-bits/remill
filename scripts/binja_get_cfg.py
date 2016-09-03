@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Copyright 2016 Kareem El-Faramawi (elfark@rpi.edu), all rights reserved.
+
 import argparse
 import os
 import sys
