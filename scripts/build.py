@@ -30,7 +30,7 @@ object_files = [
 system_libraries = [
   LinkerLibrary("dl"),
   LinkerLibrary("pthread"),
-  LinkerLibrary("curses"),
+  LinkerLibrary("ncurses"),
   LinkerLibrary("c++", os="mac"),
   LinkerLibrary("c++abi", os="mac")]
 
