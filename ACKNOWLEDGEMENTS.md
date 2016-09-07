@@ -1,4 +1,4 @@
-# Contributors
+# Acknowledgements
 
 ## Individuals
 
@@ -8,6 +8,7 @@ Remill:
   - [Peter Goodman](https://github.com/pgoodman)
   - [Kareem El-Faramawi](https://github.com/krx)
   - [Yan Ivnitskiy](https://github.com/yan)
+  - [Ryan Govostes](https://github.com/rgov)
 
 ## Companies
 
