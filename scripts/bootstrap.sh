@@ -127,7 +127,7 @@ function download_and_install_gflags()
         -DCMAKE_INSTALL_PREFIX:STRING=$DIR/third_party \
         -DGFLAGS_NAMESPACE:STRING=google \
         -DBUILD_SHARED_LIBS=ON \
-        -DBUILD_STATIC_LIBS=OFF \
+        -DBUILD_STATIC_LIBS=ON \
         ..
     make
     make install
@@ -148,12 +148,15 @@ function download_and_install_glog()
     popd
 
     pushd $DIR/third_party/src/glog
+    
     ./configure \
         --prefix=$DIR/third_party \
         --libdir=$DIR/third_party/lib \
-        --disable-static \
+        --enable-static \
         --enable-shared \
-        --disable-rtti
+        --disable-rtti \
+        --disable-backtrace
+
     make
     make install
     fix_library glog
@@ -173,10 +176,13 @@ function download_and_install_protobuf()
 
     pushd $DIR/third_party/src/protobuf
 
-    CXXFLAGS="${CXXFLAGS} -DGOOGLE_PROTOBUF_NO_RTTI"
+    CXXFLAGS="${CXXFLAGS} -DGOOGLE_PROTOBUF_NO_RTTI" \
     ./configure \
         --prefix=$DIR/third_party \
-        --libdir=$DIR/third_party/lib
+        --libdir=$DIR/third_party/lib \
+        --enable-static \
+        --enable-shared \
+        --disable-rtti
     make
     make install
     fix_library protobuf

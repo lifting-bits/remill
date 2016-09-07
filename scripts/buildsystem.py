@@ -301,7 +301,7 @@ class StaticLibrary(_File):
     if os.path.exists(abs_path):
       return abs_path
     for where in self.SEARCH_PATHS:
-      for ext in ("o", "bc", "so", "dylib", "a"):
+      for ext in ("o", "bc", "so", "dylib", "a", "la"):
         for prefix in ("lib", ""):
           path = os.path.join(where, "{}{}.{}".format(prefix, name, ext))
           if os.path.exists(path):
