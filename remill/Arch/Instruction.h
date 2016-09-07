@@ -63,7 +63,7 @@ class Operand {
     Register segment_reg;
     Register base_reg;
     Register index_reg;
-    uint64_t scale;
+    int64_t scale;
     int64_t displacement;
     uint64_t address_size;
   } addr;
@@ -78,6 +78,10 @@ class Instruction {
 
   // Name of semantics function that implements this instruction.
   std::string function;
+
+  // The disassembly of this instruction. Only filled out if the
+  // `NDEBUG` macro is not defined.
+  std::string disassembly;
 
   // Program counter for this instruction and the next instruction.
   uint64_t pc;

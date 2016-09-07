@@ -21,6 +21,7 @@ class IntegerType;
 namespace remill {
 namespace cfg {
 class Block;
+class Instr;
 class Module;
 }  // namespace cfg
 
@@ -102,7 +103,7 @@ class Translator {
                                     const Operand &op);
 
   // Lift an indirect memory operand to a value.
-  llvm::Value *LiftMemoryOperand(llvm::BasicBlock *block,
+  llvm::Value *LiftAddressOperand(llvm::BasicBlock *block,
                                  const Operand::Address &mem);
 
   // Architecture of the code contained within the CFG being lifted.

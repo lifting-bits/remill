@@ -18,18 +18,30 @@ PROTOBUF_RELEASE=protobuf-${PROTOBUF_VERSION}
 GTEST_RELEASE=release-1.7.0
 XED_RELEASE=2016-02-02
 
-LLVM_RELEASE=3.8.0
+LLVM_RELEASE=3.8.1
 LLVM_RELEASE_DIR=releases/${LLVM_RELEASE}
 
-if [[ "$OSTYPE" == "linux-gnu" ]]; then
+if [[ "$OSTYPE" == "linux"* ]] ; then
+    FLAVOR=`grep -P '^NAME=' /etc/os-release`
     XED_VERSION=xed-install-base-${XED_RELEASE}-lin-x86-64
-    LLVM_VERSION=clang+llvm-${LLVM_RELEASE}-x86_64-linux-gnu-ubuntu-14.04
     REMILL_OS_NAME="linux"
     LIB_EXT=so
     STDLIB="libstdc++"
     LIB_LINK_FLAGS=
 
-elif [[ "$OSTYPE" == "darwin"* ]]; then
+    if [[ "$FLAVOR" == *"Ubuntu"* ]] ; then
+        UBUNTU_VERSION=`lsb_release -r -s`
+        LLVM_VERSION=clang+llvm-${LLVM_RELEASE}-x86_64-linux-gnu-ubuntu-${UBUNTU_VERSION}
+    
+    elif [[ "$FLAVOR" == *"openSUSE"* ]] ; then
+        LLVM_VERSION=clang+llvm-3.8.1-x86_64-opensuse13.2
+
+    else
+        printf "${RED}Unsupported Linux flavor ${FLAVOR}${RESET}\n"
+        exit 1
+    fi;
+
+elif [[ "$OSTYPE" == "darwin"* ]] ; then
     XED_VERSION=xed-install-base-${XED_RELEASE}-mac-x86-64
     LLVM_RELEASE=3.8.0
     LLVM_VERSION=clang+llvm-${LLVM_RELEASE}-x86_64-apple-darwin
@@ -41,7 +53,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
 else
     printf "${RED}Unsupported platform: ${OSTYPE}${RESET}\n"
     exit 1
-fi
+fi;
 
 XED_URL=https://software.intel.com/system/files/managed/58/cc/${XED_VERSION}.zip
 LLVM_URL=http://llvm.org/${LLVM_RELEASE_DIR}/${LLVM_VERSION}.tar.xz
@@ -52,9 +64,9 @@ GTEST_URL=https://github.com/google/googletest/archive/${GTEST_RELEASE}.tar.gz
 
 function fix_library()
 {
-    if [[ "$OSTYPE" == "darwin"* ]]; then
+    if [[ "$OSTYPE" == "darwin"* ]] ; then
         install_name_tool -id $DIR/third_party/lib/lib$1.dylib $DIR/third_party/lib/lib$1.dylib
-    fi
+    fi;
 }
 
 function category()
@@ -115,7 +127,7 @@ function download_and_install_gflags()
         -DCMAKE_INSTALL_PREFIX:STRING=$DIR/third_party \
         -DGFLAGS_NAMESPACE:STRING=google \
         -DBUILD_SHARED_LIBS=ON \
-        -DBUILD_STATIC_LIBS=OFF \
+        -DBUILD_STATIC_LIBS=ON \
         ..
     make
     make install
@@ -136,11 +148,15 @@ function download_and_install_glog()
     popd
 
     pushd $DIR/third_party/src/glog
+    
     ./configure \
         --prefix=$DIR/third_party \
-        --disable-static \
+        --libdir=$DIR/third_party/lib \
+        --enable-static \
         --enable-shared \
-        --disable-rtti
+        --disable-rtti \
+        --disable-backtrace
+
     make
     make install
     fix_library glog
@@ -160,9 +176,13 @@ function download_and_install_protobuf()
 
     pushd $DIR/third_party/src/protobuf
 
-    CXXFLAGS="${CXXFLAGS} -DGOOGLE_PROTOBUF_NO_RTTI"
+    CXXFLAGS="${CXXFLAGS} -DGOOGLE_PROTOBUF_NO_RTTI" \
     ./configure \
-        --prefix=$DIR/third_party
+        --prefix=$DIR/third_party \
+        --libdir=$DIR/third_party/lib \
+        --enable-static \
+        --enable-shared \
+        --disable-rtti
     make
     make install
     fix_library protobuf
@@ -201,7 +221,7 @@ function download_and_extract_xed()
 
     if [[ ! -e $DIR/blob/xed/${XED_VERSION}.zip ]] ; then
         error "Please download XED from ${XED_URL} and place it into ${DIR}/blob/xed/."
-    fi
+    fi;
 
     mkdir -p $DIR/third_party/src/xed
     unzip $DIR/blob/xed/${XED_VERSION}.zip -d $DIR/third_party/src/xed
@@ -244,7 +264,7 @@ function download_dependencies()
 {
     category "Checking dependencies."
     
-    if [[ -e $DIR/third_party/bin/clang ]]; then
+    if [[ -e $DIR/third_party/bin/clang ]] ; then
         notice "LLVM and clang FOUND!"
     else
         download_and_install_llvm
@@ -252,25 +272,25 @@ function download_dependencies()
     
     change_compiler_to_llvm
 
-    if [[ -e $DIR/third_party/lib/libgflags.$LIB_EXT ]]; then
+    if [[ -e $DIR/third_party/lib/libgflags.$LIB_EXT ]] ; then
         notice "gflags FOUND!"
     else
         download_and_install_gflags
     fi;
     
-    if [[ -e $DIR/third_party/lib/libglog.$LIB_EXT ]]; then
+    if [[ -e $DIR/third_party/lib/libglog.$LIB_EXT ]] ; then
         notice "${BLUE}glog FOUND!"
     else
         download_and_install_glog
     fi;
     
-    if [[ -e $DIR/third_party/bin/protoc ]]; then
+    if [[ -e $DIR/third_party/bin/protoc ]] ; then
         notice "${BLUE}protobuf FOUND!"
     else
         download_and_install_protobuf
     fi;
     
-    if [[ -e $DIR/third_party/lib/libgtest.$LIB_EXT ]]; then
+    if [[ -e $DIR/third_party/lib/libgtest.$LIB_EXT ]] ; then
         notice "${BLUE}googletest FOUND!"
     else
         download_and_install_gtest

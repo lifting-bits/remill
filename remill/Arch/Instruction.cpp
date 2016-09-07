@@ -1,5 +1,7 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+#include <glog/logging.h>
+
 #include <sstream>
 
 #include "remill/Arch/Arch.h"
@@ -55,7 +57,24 @@ std::string Operand::Debug(void) const {
       break;
 
     case Operand::kTypeAddress:
-      ss << "(ADDR " << size << " " << addr.address_size;
+      ss << "(ADDR_" << addr.address_size << " ";
+
+      // Nice version of the memory size.
+      switch (size) {
+        case 8: ss << "BYTE"; break;
+        case 16: ss << "WORD"; break;
+        case 32: ss << "DWORD"; break;
+        case 64: ss << "QWORD"; break;
+        case 128: ss << "OWORD"; break;
+        case 256: ss << "DOWORD"; break;
+        case 512: ss << "QOWORD"; break;
+        default:
+          CHECK((size / 8) == (8 * (size / 8)))
+              << "Memory operand size must be divisible by 8; got "
+              << size << " bits.";
+          ss << std::dec << (size / 8) << "_BYTES"; break;
+      }
+
       if (!addr.segment_reg.name.empty()) {
         ss << " (SEGMENT " << addr.segment_reg.name << ")";
       }
@@ -66,9 +85,9 @@ std::string Operand::Debug(void) const {
       }
       if (addr.displacement) {
         if (0 > addr.displacement) {
-          ss << " - " << std::hex << (-addr.displacement) << std::dec;
+          ss << " - 0x" << std::hex << (-addr.displacement) << std::dec;
         } else {
-          ss << " + " << std::hex << addr.displacement << std::dec;
+          ss << " + 0x" << std::hex << addr.displacement << std::dec;
         }
       }
       ss << "))";
@@ -101,13 +120,14 @@ std::string Instruction::Debug(void) const {
       ss << "X86_";
       break;
   }
-  ss << "INSTR " << std::hex << pc << " " << std::dec << (next_pc - pc) << " ";
+  ss << "INSTR 0x" << std::hex << pc << " "
+     << std::dec << (next_pc - pc) << " ";
   if (is_atomic_read_modify_write) {
     ss << "ATOMIC ";
   }
   ss << function;
   for (const auto &op : operands) {
-    ss << std::endl << op.Debug();
+    ss << " " << op.Debug();
   }
   ss << ")";
   return ss.str();

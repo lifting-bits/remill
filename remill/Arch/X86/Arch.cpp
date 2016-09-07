@@ -3,6 +3,7 @@
 #include <glog/logging.h>
 
 #include <sstream>
+#include <string>
 
 #include <llvm/IR/Module.h>
 
@@ -256,7 +257,11 @@ static std::string WriteRegName(xed_reg_enum_t reg) {
 static Operand::Register ReadReg(xed_reg_enum_t reg) {
   Operand::Register reg_op;
   reg_op.name = ReadRegName(reg);
-  reg_op.size = xed_get_register_width_bits64(reg);
+  if (XED_REG_X87_FIRST <= reg && XED_REG_X87_LAST >= reg) {
+    reg_op.size = 64;
+  } else {
+    reg_op.size = xed_get_register_width_bits64(reg);
+  }
   return reg_op;
 }
 
@@ -264,7 +269,11 @@ static Operand::Register ReadReg(xed_reg_enum_t reg) {
 static Operand::Register WriteReg(xed_reg_enum_t reg) {
   Operand::Register reg_op;
   reg_op.name = WriteRegName(reg);
-  reg_op.size = xed_get_register_width_bits64(reg);
+  if (XED_REG_X87_FIRST <= reg && XED_REG_X87_LAST >= reg) {
+    reg_op.size = 64;
+  } else {
+    reg_op.size = xed_get_register_width_bits64(reg);
+  }
   return reg_op;
 }
 
@@ -333,7 +342,7 @@ static void DecodeMemory(Instruction *instr,
   op.addr.segment_reg = ReadReg(segment);
   op.addr.base_reg = ReadReg(base);
   op.addr.index_reg = ReadReg(index);
-  op.addr.scale = scale;
+  op.addr.scale = static_cast<int64_t>(scale);
   op.addr.displacement = disp;
 
   // Rename the base register to use `NEXT_PC` as the register name.
@@ -657,6 +666,24 @@ Instruction *X86Arch::DecodeInstruction(
       DecodeOperand(instr, xedd, xedo);
     }
   }
+
+#ifndef NDEBUG
+
+  char buffer[256] = {'\0'};
+  xed_print_info_t info;
+  info.blen = 256;
+  info.buf = &(buffer[0]);
+  info.context = nullptr;
+  info.disassembly_callback = nullptr;
+  info.format_options_valid = 0;
+  info.p = xedd;
+  info.runtime_address = instr->pc;
+  info.syntax = XED_SYNTAX_INTEL;
+  if (xed_format_generic(&info)) {
+    instr->disassembly.assign(&(buffer[0]));
+  }
+
+#endif  // NDEBUG
 
   return instr;
 }

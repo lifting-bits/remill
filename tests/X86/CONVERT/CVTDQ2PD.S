@@ -1,0 +1,77 @@
+/* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+
+#if APPLE_SAFE_TESTS
+
+TEST_BEGIN(CVTDQ2PDv128m64_0, 1)
+TEST_INPUTS(0)
+    cvtdq2pd xmm0, QWORD PTR [rsp - 8]
+TEST_END
+
+TEST_BEGIN(CVTDQ2PDv128m64_4, 1)
+TEST_INPUTS(0)
+    cvtdq2pd xmm4, QWORD PTR [rsp - 8]
+TEST_END
+
+#endif  // APPLE_SAFE_TESTS
+
+TEST_BEGIN(CVTDQ2PDv128v128_0, 1)
+TEST_INPUTS(0)
+    cvtdq2pd xmm0, xmm4
+TEST_END
+
+TEST_BEGIN(CVTDQ2PDv128v128_4, 1)
+TEST_INPUTS(0)
+    cvtdq2pd xmm4, xmm0
+TEST_END
+
+#if HAS_FEATURE_AVX
+
+#if APPLE_SAFE_TESTS
+
+TEST_BEGIN(VCVTDQ2PDv128m64_0, 1)
+TEST_INPUTS(0)
+    vcvtdq2pd xmm0, QWORD PTR [rsp - 8]
+TEST_END
+
+TEST_BEGIN(VCVTDQ2PDv128m64_4, 1)
+TEST_INPUTS(0)
+    vcvtdq2pd xmm4, QWORD PTR [rsp - 8]
+TEST_END
+
+#endif  // APPLE_SAFE_TESTS
+
+TEST_BEGIN(VCVTDQ2PDv128v128_0, 1)
+TEST_INPUTS(0)
+    vcvtdq2pd xmm0, xmm4
+TEST_END
+
+TEST_BEGIN(VCVTDQ2PDv128v128_4, 1)
+TEST_INPUTS(0)
+    vcvtdq2pd xmm4, xmm0
+TEST_END
+
+#if APPLE_SAFE_TESTS
+
+TEST_BEGIN(VCVTDQ2PDv256m128_0, 1)
+TEST_INPUTS(0)
+    vcvtdq2pd ymm0, XMMWORD PTR [rsp - 16]
+TEST_END
+
+TEST_BEGIN(VCVTDQ2PDv256m128_1, 1)
+TEST_INPUTS(0)
+    vcvtdq2pd ymm4, XMMWORD PTR [rsp - 16]
+TEST_END
+
+#endif  // APPLE_SAFE_TESTS
+
+TEST_BEGIN(VCVTDQ2PDv256v128_0, 1)
+TEST_INPUTS(0)
+    vcvtdq2pd ymm0, xmm4
+TEST_END
+
+TEST_BEGIN(VCVTDQ2PDv256v128_4, 1)
+TEST_INPUTS(0)
+    vcvtdq2pd ymm4, xmm0
+TEST_END
+
+#endif  // HAS_FEATURE_AVX

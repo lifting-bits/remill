@@ -89,6 +89,7 @@ with respect to memory accesses.
 ```sh
 sudo apt-get install libunwind8 libunwind8-dev
 sudo pip install futures
+sudo pip install python-magic
 ```
 
 ## Generic

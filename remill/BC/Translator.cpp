@@ -1,10 +1,10 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#undef NDEBUG
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <functional>
+#include <ios>
 #include <set>
 #include <string>
 #include <sstream>
@@ -36,6 +36,9 @@ DEFINE_bool(lift_calls_as_calls, false,
             "Treat function calls in the binary code as being function calls "
             "in the lifted code. This induces a call graph on the lifted code "
             "that may be helpful to static analysis.");
+
+DEFINE_bool(pc_specific_intrinsics, false,
+            "Create a PC-specific variable for each intrinsic use.");
 
 namespace llvm {
 class ReturnInst;
@@ -124,14 +127,19 @@ static llvm::Function *CreateExternalFunction(llvm::Module *module,
                                               const std::string &name) {
   auto unknown_func_type = llvm::FunctionType::get(
       llvm::Type::getVoidTy(module->getContext()), false);
-  return llvm::dyn_cast<llvm::Function>(
+  auto func = llvm::dyn_cast<llvm::Function>(
       module->getOrInsertFunction(name, unknown_func_type));
+
+  // Don't want these to conflict with things like `__builtin_sin`.
+  func->addFnAttr(llvm::Attribute::NoBuiltin);
+
+  return func;
 }
 
 // Clone the block method template `TF` into a specific method `BF` that
 // will contain lifted code.
 static void AddBlockInitializationCode(llvm::Function *block_func,
-                               const llvm::Function *template_func) {
+                                       const llvm::Function *template_func) {
 
   llvm::ValueToValueMapTy var_map;
   auto targs = template_func->arg_begin();
@@ -150,6 +158,39 @@ static void AddBlockInitializationCode(llvm::Function *block_func,
   // defined in the function, but it has an implicit return that we need
   // to remove so that we can add instructions at the end.
   return_instrs[0]->eraseFromParent();
+}
+
+// Wrap an intrinsic. This will make something like `__remill_indirect_jump`
+// into `__remill_indirect_jump_f00` as a way of saying that at PC `0xf00`,
+// an indirect jump is being performed.
+//
+// The idea here is that Remill is a simplistic code generator, and sometimes
+// we'll want to add in "smarter" handling of things. For example, what
+// Remill sees as an indirect jump, another smarter tool may see as a use
+// of a jump table. That smart tool may want to change Remill-generated code
+// to do this, and wrapping allows this other tool to pinpoint where changes
+// need to be made.
+static llvm::Constant *WrapIntrinsic(llvm::Function *intrinsic,
+                                     uint64_t address) {
+  if (!FLAGS_pc_specific_intrinsics) {
+    return intrinsic;
+  }
+
+  std::stringstream ss;
+  ss << intrinsic->getName().str() << "_" << std::hex << address;
+
+  llvm::Module *module = intrinsic->getParent();
+  auto var = llvm::dyn_cast<llvm::GlobalVariable>(
+      module->getOrInsertGlobal(ss.str(), intrinsic->getType()));
+
+  if (!var->hasInitializer()) {
+    DLOG(INFO)
+        << "Creating intrinsic wrapper " << ss.str() << ".";
+
+    var->setInitializer(intrinsic);
+  }
+
+  return var;
 }
 
 }  // namespace
@@ -406,7 +447,11 @@ void Translator::CreateNamedBlocks(const cfg::Module *cfg) {
 
     if (is_imported) {
       if (named_block->isDeclaration()) {
-        AddTerminatingTailCall(named_block, intrinsics->detach);
+        AddTerminatingTailCall(
+            named_block,
+            WrapIntrinsic(intrinsics->detach,
+                          static_cast<uint64_t>(func.address())));
+
         DLOG(INFO)
             << "Imported function " << func_name << " is implemented by "
             << impl_name << ".";
@@ -455,13 +500,13 @@ llvm::Function *Translator::GetOrCreateBlock(uint64_t addr) {
 
 // Create functions for every block in the CFG. We do this before lifting so
 // that we can easily reference those blocks.
-void Translator::CreateBlocks(const cfg::Module *cfg) {
-  for (const auto &block : cfg->blocks()) {
-    CHECK(block.instructions_size())
-        << "Block at address " << std::hex << block.address()
+void Translator::CreateBlocks(const cfg::Module *cfg_module) {
+  for (const auto &cfg_block : cfg_module->blocks()) {
+    CHECK(cfg_block.instructions_size())
+        << "Block at address " << std::hex << cfg_block.address()
         << " has no instructions.";
 
-    auto block_func = GetOrCreateBlock(block.address());
+    auto block_func = GetOrCreateBlock(cfg_block.address());
 
     // For now, mark the block as external linkage if we don't have an
     // implementation of it. When we implement it, we can change it
@@ -470,19 +515,19 @@ void Translator::CreateBlocks(const cfg::Module *cfg) {
       block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
     }
 
-    if (block.is_addressable()) {
-      auto &indirect_block_func = indirect_blocks[block.address()];
+    if (cfg_block.is_addressable()) {
+      auto &indirect_block_func = indirect_blocks[cfg_block.address()];
 
       CHECK(block_func == indirect_block_func || !indirect_block_func)
-          << "Multiply defined addressable block at "
-          << std::hex << block.address() << ".";
+          << "Multiply defined addressable cfg_block at "
+          << std::hex << cfg_block.address() << ".";
 
       indirect_block_func = block_func;
     }
   }
 
-  for (const auto &block_addr : cfg->referenced_blocks()) {
-    auto block_func = GetOrCreateBlock(block_addr);
+  for (const auto cfg_ref_block_addr : cfg_module->referenced_blocks()) {
+    auto block_func = GetOrCreateBlock(cfg_ref_block_addr);
     if (block_func->isDeclaration()) {
       block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
     }
@@ -490,7 +535,7 @@ void Translator::CreateBlocks(const cfg::Module *cfg) {
 }
 
 // Lift the control-flow graph specified by `cfg` into this bitcode module.
-void Translator::LiftCFG(const cfg::Module *cfg) {
+void Translator::LiftCFG(const cfg::Module *cfg_module) {
   blocks.clear();
   indirect_blocks.clear();
   exported_blocks.clear();
@@ -499,8 +544,8 @@ void Translator::LiftCFG(const cfg::Module *cfg) {
   GetNamedBlocks(exported_blocks, "__remill_exported_blocks");
   GetNamedBlocks(imported_blocks, "__remill_imported_blocks");
   GetIndirectBlocks();
-  CreateNamedBlocks(cfg);
-  CreateBlocks(cfg);
+  CreateNamedBlocks(cfg_module);
+  CreateBlocks(cfg_module);
 
   // Sanity check to make sure conflicting versions of a named block don't
   // appear.
@@ -514,11 +559,11 @@ void Translator::LiftCFG(const cfg::Module *cfg) {
   SetNamedBlocks(imported_blocks, "__remill_imported_blocks");
   SetIndirectBlocks();
 
-  LiftBlocks(cfg);
+  LiftBlocks(cfg_module);
 }
 
 // Lift code contained in blocks into the block methods.
-void Translator::LiftBlocks(const cfg::Module *cfg) {
+void Translator::LiftBlocks(const cfg::Module *cfg_module) {
   llvm::legacy::FunctionPassManager func_pass_manager(module);
   func_pass_manager.add(llvm::createDeadCodeEliminationPass());
   func_pass_manager.add(llvm::createCFGSimplificationPass());
@@ -528,19 +573,19 @@ void Translator::LiftBlocks(const cfg::Module *cfg) {
   func_pass_manager.add(llvm::createDeadStoreEliminationPass());
 
   func_pass_manager.doInitialization();
-  for (const auto &block : cfg->blocks()) {
+  for (const auto &block : cfg_module->blocks()) {
     func_pass_manager.run(*LiftBlock(&block));
   }
   func_pass_manager.doFinalization();
 }
 
 // Lift code contained within a single block.
-llvm::Function *Translator::LiftBlock(const cfg::Block *block) {
-  auto block_func = GetOrCreateBlock(block->address());
+llvm::Function *Translator::LiftBlock(const cfg::Block *cfg_block) {
+  auto block_func = GetOrCreateBlock(cfg_block->address());
   if (!block_func->isDeclaration()) {
     DLOG(WARNING)
         << "Not going to lift duplicate block at "
-        << std::hex << block->address() << ".";
+        << std::hex << cfg_block->address() << ".";
     return block_func;
   }
 
@@ -548,9 +593,15 @@ llvm::Function *Translator::LiftBlock(const cfg::Block *block) {
 
   // Create a block for each instruction.
   auto last_block = &block_func->back();
-  auto instr_addr = block->address();
+  auto instr_addr = cfg_block->address();
   Instruction *instr = nullptr;
-  for (const auto &instr_bytes : block->instructions()) {
+  for (const auto &cfg_instr : cfg_block->instructions()) {
+    CHECK(cfg_instr.address() == instr_addr)
+        << "CFG Instr address " << std::hex << cfg_instr.address()
+        << " doesn't match implied instruction address ("
+        << std::hex << instr_addr << ") based on CFG Block structure.";
+
+    auto instr_bytes = cfg_instr.bytes();
 
     // Check and delete the last instruction lifted.
     if (instr) {
@@ -567,7 +618,8 @@ llvm::Function *Translator::LiftBlock(const cfg::Block *block) {
         << "Cannot decode instruction at " << std::hex << instr_addr << ".";
 
     DLOG(INFO)
-        << "Lifting instruction " << instr->Debug();
+        << "Lifting instruction '" << instr->disassembly
+        << "' as " << instr->Debug();
 
     if (auto curr_block = LiftInstruction(block_func, instr)) {
       llvm::IRBuilder<> ir(last_block);
@@ -631,8 +683,8 @@ static void LiftConditionalBranch(llvm::BasicBlock *source,
 
 // Lift the last instruction of a block as a block terminator.
 void Translator::LiftTerminator(llvm::BasicBlock *block,
-                                const Instruction *instr) {
-  switch (instr->category) {
+                                const Instruction *arch_instr) {
+  switch (arch_instr->category) {
     case Instruction::kCategoryInvalid:
       LOG(FATAL)
           << "Invalid instruction category.";
@@ -640,68 +692,101 @@ void Translator::LiftTerminator(llvm::BasicBlock *block,
 
     case Instruction::kCategoryNormal:
     case Instruction::kCategoryNoOp:
-      AddTerminatingTailCall(block, GetOrCreateBlock(instr->next_pc));
+      AddTerminatingTailCall(
+          block,
+          GetOrCreateBlock(arch_instr->next_pc));
       break;
 
     case Instruction::kCategoryError:
-      AddTerminatingTailCall(block, intrinsics->error);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->error, arch_instr->pc));
       break;
 
     case Instruction::kCategoryDirectJump:
-      AddTerminatingTailCall(block, GetOrCreateBlock(instr->branch_taken_pc));
+      AddTerminatingTailCall(
+          block,
+          GetOrCreateBlock(arch_instr->branch_taken_pc));
       break;
 
     case Instruction::kCategoryIndirectJump:
-      AddTerminatingTailCall(block, intrinsics->jump);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->jump, arch_instr->pc));
       break;
 
     case Instruction::kCategoryDirectFunctionCall:
-      AddTerminatingTailCall(block, GetOrCreateBlock(instr->branch_taken_pc));
+      AddTerminatingTailCall(
+          block,
+          GetOrCreateBlock(arch_instr->branch_taken_pc));
+
       if (FLAGS_lift_calls_as_calls) {
         auto term_call = block->getTerminatingMustTailCall();
         term_call->setTailCallKind(llvm::CallInst::TCK_NoTail);
         block->getTerminator()->eraseFromParent();
-        AddTerminatingTailCall(block, GetOrCreateBlock(instr->next_pc));
+        AddTerminatingTailCall(
+            block,
+            GetOrCreateBlock(arch_instr->next_pc));
       }
       break;
 
     case Instruction::kCategoryIndirectFunctionCall:
-      AddTerminatingTailCall(block, intrinsics->function_call);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->function_call, arch_instr->pc));
+
       if (FLAGS_lift_calls_as_calls) {
         auto term_call = block->getTerminatingMustTailCall();
         term_call->setTailCallKind(llvm::CallInst::TCK_NoTail);
         block->getTerminator()->eraseFromParent();
-        AddTerminatingTailCall(block, GetOrCreateBlock(instr->next_pc));
+
+        AddTerminatingTailCall(
+            block,
+            GetOrCreateBlock(arch_instr->next_pc));
       }
       break;
 
     case Instruction::kCategoryFunctionReturn:
-      AddTerminatingTailCall(block, intrinsics->function_return);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->function_return, arch_instr->pc));
       break;
 
     case Instruction::kCategoryConditionalBranch:
-      LiftConditionalBranch(block, GetOrCreateBlock(instr->branch_taken_pc),
-                            GetOrCreateBlock(instr->branch_not_taken_pc));
+      LiftConditionalBranch(
+          block,
+          GetOrCreateBlock(arch_instr->branch_taken_pc),
+          GetOrCreateBlock(arch_instr->branch_not_taken_pc));
       break;
 
     case Instruction::kCategorySystemCall:
-      AddTerminatingTailCall(block, intrinsics->system_call);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->system_call, arch_instr->pc));
       break;
 
     case Instruction::kCategorySystemReturn:
-      AddTerminatingTailCall(block, intrinsics->system_return);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->system_return, arch_instr->pc));
       break;
 
     case Instruction::kCategoryInterruptCall:
-      AddTerminatingTailCall(block, intrinsics->interrupt_call);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->interrupt_call, arch_instr->pc));
       break;
 
     case Instruction::kCategoryInterruptReturn:
-      AddTerminatingTailCall(block, intrinsics->interrupt_return);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->interrupt_return, arch_instr->pc));
       break;
 
     case Instruction::kCategoryReadCPUFeatures:
-      AddTerminatingTailCall(block, intrinsics->read_cpu_features);
+      AddTerminatingTailCall(
+          block,
+          WrapIntrinsic(intrinsics->read_cpu_features, arch_instr->pc));
       break;
   }
 }
@@ -740,12 +825,12 @@ static std::string LLVMThingToString(T *thing) {
 
 // Lift a single instruction into a basic block.
 llvm::BasicBlock *Translator::LiftInstruction(llvm::Function *block_func,
-                                              const Instruction *instr) {
-  auto isel_func = GetInstructionFunction(module, instr->function);
+                                              const Instruction *arch_instr) {
+  auto isel_func = GetInstructionFunction(module, arch_instr->function);
   if (!isel_func) {
     LOG(ERROR)
-        << "Cannot lift instruction at " << std::hex << instr->pc << ", "
-        << instr->function << " doesn't exist.";
+        << "Cannot lift instruction at " << std::hex << arch_instr->pc << ", "
+        << arch_instr->function << " doesn't exist.";
     return nullptr;
   }
 
@@ -766,18 +851,19 @@ llvm::BasicBlock *Translator::LiftInstruction(llvm::Function *block_func,
   ir.CreateStore(
       ir.CreateAdd(
           ir.CreateLoad(pc_ptr),
-          llvm::ConstantInt::get(word_type, instr->next_pc - instr->pc)),
+          llvm::ConstantInt::get(
+              word_type, arch_instr->next_pc - arch_instr->pc)),
       next_pc_ptr);
 
   // Begin an atomic block.
-  if (instr->is_atomic_read_modify_write) {
+  if (arch_instr->is_atomic_read_modify_write) {
     ir.CreateStore(
         ir.CreateCall(intrinsics->atomic_begin, {ir.CreateLoad(mem_ptr)}),
         mem_ptr);
   }
 
   std::vector<llvm::Value *> args;
-  args.reserve(instr->operands.size() + 2);
+  args.reserve(arch_instr->operands.size() + 2);
 
   // First two arguments to an instruction semantics function are the
   // state pointer, and a pointer to the memory pointer.
@@ -787,9 +873,9 @@ llvm::BasicBlock *Translator::LiftInstruction(llvm::Function *block_func,
   auto isel_func_type = isel_func->getFunctionType();
   auto arg_num = 2U;
 
-  for (auto &op : instr->operands) {
+  for (auto &op : arch_instr->operands) {
     CHECK(arg_num < isel_func_type->getNumParams())
-        << "Function " << instr->function << " should have at least "
+        << "Function " << arch_instr->function << " should have at least "
         << arg_num << " arguments.";
 
     auto arg_type = isel_func_type->getParamType(arg_num++);
@@ -797,7 +883,7 @@ llvm::BasicBlock *Translator::LiftInstruction(llvm::Function *block_func,
     auto op_type = operand->getType();
     CHECK(op_type == arg_type)
         << "Lifted operand " << op.Debug() << " to "
-        << instr->function << " does not have the correct type. Expected "
+        << arch_instr->function << " does not have the correct type. Expected "
         << LLVMThingToString(arg_type) << " but got "
         << LLVMThingToString(op_type) << ".";
 
@@ -808,7 +894,7 @@ llvm::BasicBlock *Translator::LiftInstruction(llvm::Function *block_func,
   ir.CreateCall(isel_func, args);
 
   // End an atomic block.
-  if (instr->is_atomic_read_modify_write) {
+  if (arch_instr->is_atomic_read_modify_write) {
     ir.CreateStore(
         ir.CreateCall(intrinsics->atomic_end, {ir.CreateLoad(mem_ptr)}),
         mem_ptr);
@@ -872,10 +958,10 @@ static llvm::Value *LoadWordRegValOrZero(llvm::BasicBlock *block,
 llvm::Value *Translator::LiftRegisterOperand(
     llvm::BasicBlock *block,
     llvm::Type *arg_type,
-    const Operand::Register &reg) {
+    const Operand::Register &arch_reg) {
 
   if (auto ptr_type = llvm::dyn_cast_or_null<llvm::PointerType>(arg_type)) {
-    auto val = LoadRegAddress(block, reg.name);
+    auto val = LoadRegAddress(block, arch_reg.name);
     auto val_ptr_type = llvm::dyn_cast<llvm::PointerType>(val->getType());
 
     // Vectors are passed as void pointers because on something like x86,
@@ -887,28 +973,28 @@ llvm::Value *Translator::LiftRegisterOperand(
 
   } else {
     CHECK(arg_type->isIntegerTy() || arg_type->isFloatingPointTy())
-        << "Expected " << reg.name << " to be an integral or float type.";
+        << "Expected " << arch_reg.name << " to be an integral or float type.";
 
-    auto val = LoadRegValue(block, reg.name);
+    auto val = LoadRegValue(block, arch_reg.name);
 
-    llvm::DataLayout DL(module);
+    const llvm::DataLayout data_layout(module);
     auto val_type = val->getType();
-    auto val_size = DL.getTypeAllocSizeInBits(val_type);
-    auto arg_size = DL.getTypeAllocSizeInBits(arg_type);
-    auto word_size = DL.getTypeAllocSizeInBits(word_type);
+    auto val_size = data_layout.getTypeAllocSizeInBits(val_type);
+    auto arg_size = data_layout.getTypeAllocSizeInBits(arg_type);
+    auto word_size = data_layout.getTypeAllocSizeInBits(word_type);
 
     CHECK(val_size <= arg_size)
-        << "Size of " << reg.name << " (" << val_size << " bits) is too big; "
-        << "expected a " << arg_size << "-bit value.";
+        << "Size of " << arch_reg.name << " (" << val_size
+        << " bits) is too big; expected a " << arg_size << "-bit value.";
 
-    CHECK(val_size == reg.size)
-        << "Expected " << reg.name << " to be " << reg.size << " bits "
-        << "but block function defines it as " << val_size << " bits.";
+    CHECK(val_size == arch_reg.size)
+        << "Expected " << arch_reg.name << " to be " << arch_reg.size
+        << " bits but block function defines it as " << val_size << " bits.";
 
     if (val_size < arg_size) {
       if (arg_type->isIntegerTy()) {
         CHECK(val_type->isIntegerTy())
-            << "Expected " << reg.name << " to be an integral type.";
+            << "Expected " << arch_reg.name << " to be an integral type.";
 
         CHECK(word_size == arg_size)
             << "Expected integer argument to be machine word size ("
@@ -918,7 +1004,7 @@ llvm::Value *Translator::LiftRegisterOperand(
 
       } else if (arg_type->isFloatingPointTy()) {
         CHECK(val_type->isFloatingPointTy())
-            << "Expected " << reg.name << " to be a floating point type.";
+            << "Expected " << arch_reg.name << " to be a floating point type.";
 
         val = new llvm::FPExtInst(val, arg_type, "", block);
       }
@@ -931,64 +1017,75 @@ llvm::Value *Translator::LiftRegisterOperand(
 // Lift an immediate operand.
 llvm::Value *Translator::LiftImmediateOperand(llvm::BasicBlock *block,
                                               llvm::Type *arg_type,
-                                              const Operand &op) {
+                                              const Operand &arch_op) {
 
-  if (op.size > word_type->getBitWidth()) {
-    CHECK(arg_type->isIntegerTy(op.size))
+  if (arch_op.size > word_type->getBitWidth()) {
+    CHECK(arg_type->isIntegerTy(arch_op.size))
         << "Argument to semantics function is not an integer. This may "
         << "not be surprising because the immediate operand is " <<
-        op.size << " bits, but the machine word size is "
+        arch_op.size << " bits, but the machine word size is "
         << word_type->getBitWidth() << " bits.";
 
-    CHECK(op.size <= 64)
+    CHECK(arch_op.size <= 64)
         << "Decode error! Immediate operands can be at most 64 bits! "
-        << "Operand structure encodes a truncated " << op.size << " bit "
+        << "Operand structure encodes a truncated " << arch_op.size << " bit "
         << "value.";
 
-    return llvm::ConstantInt::get(arg_type, op.imm.val, op.imm.is_signed);
+    return llvm::ConstantInt::get(
+        arg_type, arch_op.imm.val, arch_op.imm.is_signed);
 
   } else {
     CHECK(arg_type->isIntegerTy(word_type->getBitWidth()))
-        << "Bad semantics function implementation. Immediates that are "
+        << "Bad semantics function implementation. Integer constants that are "
         << "smaller than the machine word size should be represented as "
         << "machine word sized arguments to semantics functions.";
 
     return llvm::ConstantInt::get(
-        word_type, op.imm.val, op.imm.is_signed);
+        word_type, arch_op.imm.val, arch_op.imm.is_signed);
   }
 }
 
 // Zero-extend a value to be the machine word size.
-llvm::Value *Translator::LiftMemoryOperand(
-    llvm::BasicBlock *block, const Operand::Address &mem) {
+llvm::Value *Translator::LiftAddressOperand(
+    llvm::BasicBlock *block, const Operand::Address &arch_addr) {
 
   auto zero = llvm::ConstantInt::get(word_type, 0, false);
   auto word_size = word_type->getBitWidth();
 
-  CHECK(word_size >= mem.base_reg.size)
-      << "Memory base register " << mem.base_reg.name << " is wider than "
-      << "the machine word size.";
+  CHECK(word_size >= arch_addr.base_reg.size)
+      << "Memory base register " << arch_addr.base_reg.name
+      << " is wider than the machine word size.";
 
-  CHECK(word_size >= mem.index_reg.size)
-      << "Memory index register " << mem.base_reg.name << " is wider than "
-      << "the machine word size.";
+  CHECK(word_size >= arch_addr.index_reg.size)
+      << "Memory index register " << arch_addr.base_reg.name
+      << " is wider than the machine word size.";
 
-  auto base = LoadWordRegValOrZero(block, mem.base_reg.name, zero);
-  auto index = LoadWordRegValOrZero(block, mem.index_reg.name, zero);
-  auto scale = llvm::ConstantInt::get(word_type, mem.scale);
-  auto displacement = llvm::ConstantInt::get(word_type, mem.displacement);
-  auto segment = LoadWordRegValOrZero(block, mem.segment_reg.name, zero);
+  auto addr = LoadWordRegValOrZero(block, arch_addr.base_reg.name, zero);
+  auto index = LoadWordRegValOrZero(block, arch_addr.index_reg.name, zero);
+  auto scale = llvm::ConstantInt::get(
+      word_type,
+      static_cast<uint64_t>(arch_addr.scale),
+      true);
+  auto segment = LoadWordRegValOrZero(block, arch_addr.segment_reg.name, zero);
 
   llvm::IRBuilder<> ir(block);
-  auto addr = ir.CreateAdd(
-      ir.CreateAdd(base, ir.CreateMul(index, scale)),
-      displacement);
+  addr = ir.CreateAdd(addr, ir.CreateMul(index, scale));
+
+  if (0 > arch_addr.displacement) {
+    addr = ir.CreateAdd(addr, llvm::ConstantInt::get(
+        word_type,
+        static_cast<uint64_t>(arch_addr.displacement)));
+  } else {
+    addr = ir.CreateSub(addr, llvm::ConstantInt::get(
+        word_type,
+        static_cast<uint64_t>(-arch_addr.displacement)));
+  }
 
   // Memory address is smaller than the machine word size (e.g. 32-bit address
   // used in 64-bit).
-  if (mem.address_size < word_size) {
+  if (arch_addr.address_size < word_size) {
     auto addr_type = llvm::Type::getIntNTy(
-        block->getContext(), mem.address_size);
+        block->getContext(), arch_addr.address_size);
 
     addr = ir.CreateZExt(
         ir.CreateTrunc(addr, addr_type),
@@ -1008,33 +1105,33 @@ llvm::Value *Translator::LiftMemoryOperand(
 // Lift an operand for use by the instruction.
 llvm::Value *Translator::LiftOperand(llvm::BasicBlock *block,
                                      llvm::Type *arg_type,
-                                     const Operand &op) {
-  switch (op.type) {
+                                     const Operand &arch_op) {
+  switch (arch_op.type) {
     case Operand::kTypeInvalid:
       LOG(FATAL)
           << "Decode error! Cannot lift invalid operand.";
       return nullptr;
 
     case Operand::kTypeRegister:
-      CHECK(op.size == op.reg.size)
+      CHECK(arch_op.size == arch_op.reg.size)
           << "Operand size and register size must match for register "
-          << op.reg.name << ".";
+          << arch_op.reg.name << ".";
 
-      return LiftRegisterOperand(block, arg_type, op.reg);
+      return LiftRegisterOperand(block, arg_type, arch_op.reg);
 
     case Operand::kTypeImmediate:
-      return LiftImmediateOperand(block, arg_type, op);
+      return LiftImmediateOperand(block, arg_type, arch_op);
 
     case Operand::kTypeAddress:
       CHECK(arg_type == word_type)
           << "Expected that a memory operand should be represented by machine "
           << "word type.";
 
-      return LiftMemoryOperand(block, op.addr);
+      return LiftAddressOperand(block, arch_op.addr);
   }
 
   LOG(FATAL)
-      << "Got a Operand type of " << static_cast<int>(op.type) << ".";
+      << "Got a Operand type of " << static_cast<int>(arch_op.type) << ".";
 
   return nullptr;
 }
