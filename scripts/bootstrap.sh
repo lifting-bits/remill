@@ -50,6 +50,10 @@ elif [[ "$OSTYPE" == "darwin"* ]] ; then
     STDLIB="libc++"
     LIB_LINK_FLAGS="-lc++ -lc++abi"
 
+    if [ -z "$SDKROOT" ]; then
+      export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
+    fi
+
 else
     printf "${RED}Unsupported platform: ${OSTYPE}${RESET}\n"
     exit 1
@@ -230,7 +234,6 @@ function download_and_extract_xed()
     mkdir -p $DIR/third_party/include/intel
     cp -r $DIR/third_party/src/xed/kits/${XED_VERSION}/lib/* $DIR/third_party/lib
     cp -r $DIR/third_party/src/xed/kits/${XED_VERSION}/include/* $DIR/third_party/include/intel
-    fix_library xed
 }
 
 function create_directory_tree()
@@ -296,7 +299,7 @@ function download_dependencies()
         download_and_install_gtest
     fi;
     
-    if [[ -e $DIR/third_party/lib/libxed.$LIB_EXT ]] ; then
+    if [[ -e $DIR/third_party/lib/libxed.$LIB_EXT || -e $DIR/third_party/lib/libxed.a ]] ; then
         notice "${BLUE}XED FOUND!"
     else
         download_and_extract_xed
