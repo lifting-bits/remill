@@ -1,10 +1,11 @@
 # Remill
 [![Build Status](https://travis-ci.org/trailofbits/remill.svg?branch=master)](https://travis-ci.org/trailofbits/remill)
 
-Remill is a static binary translator that translates machine code into
-[LLVM bitcode](http://llvm.org/docs/LangRef.html). It translates
-x86 and amd64 machine code (including AVX and
-AVX512) into LLVM bitcode.
+Remill is a static binary translator that translates machine code into [LLVM bitcode](http://llvm.org/docs/LangRef.html). It translates x86 and amd64 machine code (including AVX and AVX512) into LLVM bitcode.
+
+## Documentation
+
+Please consult the [documentation](docs/README.md), which describes the goals, design, and inner workings of Remill.
 
 ## Purpose
 
