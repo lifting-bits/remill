@@ -55,7 +55,7 @@ Module {
 
 Remill's unit of translation is a [basic block](https://en.wikipedia.org/wiki/Basic_block). Whereas [McSema](https://github.com/trailofbits/mcsema) translates a function in a binary into an LLVM bitcode function, Remill translates each basic block of code into an LLVM bitcode function.
 
-The translator creates an LLVM function for every `Block` in the CFG protocol buffer's `Module` message. In this example, Remill will create the function `__remill_sub_804b7a3`. This function will be a clone of the [`__remill_basic_block`](remill/Arch/X86/Runtime/BasicBlock.h) function.
+The translator creates an LLVM function for every `Block` in the CFG protocol buffer's `Module` message. In this example, Remill will create the function `__remill_sub_804b7a3`. This function will be a clone of the [`__remill_basic_block`](/remill/Arch/X86/Runtime/BasicBlock.h) function.
 
 ### The `__remill_basic_block` function
 
@@ -80,7 +80,7 @@ void __remill_basic_block(State &state, Memory &memory, addr_t curr_pc) {
 
 Remill is designed to be able to translate arbitrary machine code to LLVM bitcode. As of this writing, only the x86 and x64 architectures are supported. Nevertheless, there needs to be a kind of "common language" that the architecture-neutral LLVM side of things, and the architecture-specific semantics functions and machine instruction decoders can use to negotiate the translation process. This common language is variable names within the `__remill_basic_block` function.
 
-Ideally, we don't want the LLVM translation side to understand machine registers. And yet, if you take a look at the [`Instruction`](remill/Arch/Instruction.h) data structure, then you will see something like the following:
+Ideally, we don't want the LLVM translation side to understand machine registers. And yet, if you take a look at the [`Instruction`](/remill/Arch/Instruction.h) data structure, then you will see something like the following:
 
 ```C++
 class Register {
@@ -91,7 +91,7 @@ class Register {
 };
 ```
 
-If we look deep into the bowels of [`DecodeRegister`](remill/Arch/X86/Arch.cpp#L406), the function that pulls out architecture-specific register operand information from [Intel's XED](https://software.intel.com/en-us/articles/xed-x86-encoder-decoder-software-library), we find that that a register operand can be built as follows:
+If we look deep into the bowels of [`DecodeRegister`](/remill/Arch/X86/Arch.cpp#L406), the function that pulls out architecture-specific register operand information from [Intel's XED](https://software.intel.com/en-us/articles/xed-x86-encoder-decoder-software-library), we find that that a register operand can be built as follows:
 
 ```C++
   if (xed_operand_read(xedo)) {
@@ -107,9 +107,9 @@ In the case of the `push ebx` instruction from our example block, `ReadReg` will
 
 The previous section described how the architecture-specific instruction decoder can communicate things like registers to the higher-level translation system. The decoder tells the translator to look for specific variables representing register values, knowing that those variables will be available to each block function.
 
-The "[How to add a new instruction](ADD_AN_INSTRUCTION.md)" document describes the different between *SEM*s, functions implementing instruction semantics, and *ISEL*s, specialisations of those functions that are specific to an instruction form or encoding. The instruction decoder knows about the names of *ISEL*s, and it uses these names to [direct the translator](remill/Arch/Instruction.h#L79-L80) to find and call the right function for each instruction being lifted.
+The "[How to add a new instruction](ADD_AN_INSTRUCTION.md)" document describes the different between *SEM*s, functions implementing instruction semantics, and *ISEL*s, specialisations of those functions that are specific to an instruction form or encoding. The instruction decoder knows about the names of *ISEL*s, and it uses these names to [direct the translator](/remill/Arch/Instruction.h#L79-L80) to find and call the right function for each instruction being lifted.
 
-The [operands](remill/Arch/Instruction.h#L123) of the instruction data structure tell the translator how to find and compute values to pass as arguments to the semantics functions. In the last section, we showed how the `ebx` register in `push ebx` is represented as a register operand, whose variable name is `EBX_read`. The translator loads this value and passes it as an argument to the [`PUSH_GPRv_32`](remill/Arch/X86/Semantics/PUSH.h#L28) *ISEL* function, as implemented by the [`PUSH`](remill/Arch/X86/Semantics/PUSH.h#L17-L20) *SEM* function.
+The [operands](/remill/Arch/Instruction.h#L123) of the instruction data structure tell the translator how to find and compute values to pass as arguments to the semantics functions. In the last section, we showed how the `ebx` register in `push ebx` is represented as a register operand, whose variable name is `EBX_read`. The translator loads this value and passes it as an argument to the [`PUSH_GPRv_32`](/remill/Arch/X86/Semantics/PUSH.h#L28) *ISEL* function, as implemented by the [`PUSH`](/remill/Arch/X86/Semantics/PUSH.h#L17-L20) *SEM* function.
 
 Here's what the unoptimised bitcode for the example basic block looks like:
 
@@ -191,7 +191,7 @@ void __remill_sub_804b7a3(State *state, Memory *memory, addr_t pc) {
 
 This is somewhat better. We can see that some of the mechanics of instructions happen outside of the instruction semantics function calls. Specifically, we see the program counter incremented before each semantics function call.
 
-There `State *state` parameter to `__remill_sub_804b7a3` holds all [machine register state](remill/Arch/X86/Runtime/State.h). The `Memory *memory` parameter is curious. It is passed to each semantics function by pointer, implying that it is updated within. The `Memory` type is never actually defined, but it is crucial to Remill's [memory model](https://en.wikipedia.org/wiki/Memory_model_(programming)) and enforcing [memory ordering](https://en.wikipedia.org/wiki/Memory_ordering). We can see more of this when we apply and [inlining](https://en.wikipedia.org/wiki/Inline_expansion) optimisation.
+There `State *state` parameter to `__remill_sub_804b7a3` holds all [machine register state](/remill/Arch/X86/Runtime/State.h). The `Memory *memory` parameter is curious. It is passed to each semantics function by pointer, implying that it is updated within. The `Memory` type is never actually defined, but it is crucial to Remill's [memory model](https://en.wikipedia.org/wiki/Memory_model_(programming)) and enforcing [memory ordering](https://en.wikipedia.org/wiki/Memory_ordering). We can see more of this when we apply and [inlining](https://en.wikipedia.org/wiki/Inline_expansion) optimisation.
 
 ```llvm
 
