@@ -14,7 +14,7 @@ We use the following nomenclature:
 
 #### Choosing an instruction
 
-Start by finding your instruction within the [XED tables document](/trailofbits/remill/master/blob/xed/xed.txt).
+Start by finding your instruction within the [XED tables document](/blob/xed/xed.txt).
 We will use `AND` as a running example.
 
 To start off, here are two entries from the tables document:
@@ -34,7 +34,7 @@ To start off, here are two entries from the tables document:
 
 There entries contain a lot of information and are quite dense. Below are descriptions of the salient parts.
  - `AND`: The name of the instruction. This is typically the opcode, though sometimes it will be more specific. In general, there is a one-to-one correspondence between an instruction name and its *SEM*: a generic function that you will define that implements the variants of this instruction.
- - `LOGICAL`: This is the category of the instruction. This will generally tell you where to put your instruction code. In this case, we would implement the instruction in the [LOGICAL.h](/trailofbits/remill/blob/master/remill/Arch/X86/Semantics/LOGICAL.h) file.
+ - `LOGICAL`: This is the category of the instruction. This will generally tell you where to put your instruction code. In this case, we would implement the instruction in the [LOGICAL.h](/remill/Arch/X86/Semantics/LOGICAL.h) file.
  - `AND_GPRv_MEMv`: This is the *ISEL*: an instantiation of your instruction's semantics functions.
  - `SCALABLE`: This tells you that a particular *ISEL* can actually relate to a number of different operand sizes. We have short forms and naming conventions for writing one *ISEL* for all the operand sizes; however, this can be done manually as well. One XED convention is that if you see a `z` or `v` within the *ISEL* then the instruction is probably scalable.
  - `EXPLICIT`: This is an explicit operand. If you were to try to type out this instruction and assemble it, then an explicit operand is one that you need to write out. In Remill, your semantics functions will have at least one argument for each explicit operand.
@@ -122,7 +122,7 @@ At a high level, we see the following conventions:
     32-bit integers.
  - `UWriteV32` writes to `dst` a vector of unsigned, 32-bit integers.
 
-The "types" of the operators must always match. If you intend to implement new vector instructions, then start by looking at some existing, more complicated [examples](/trailofbits/remill/blob/master/remill/Arch/X86/Semantics/CONVERT.h).
+The "types" of the operators must always match. If you intend to implement new vector instructions, then start by looking at some existing, more complicated [examples](/remill/Arch/X86/Semantics/CONVERT.h).
 
 ### Testing instructions
 
@@ -131,7 +131,7 @@ You must implement instruction test cases before committing making a pull reques
 #### Writing your first tests
 
 We will revisit the above example of the `AND` instruction. We start by creating
-[`AND.S`](/trailofbits/remill/blob/master/tests/X86/LOGICAL/AND.S) within the category- and architecture-specific sub-directory of the [tests](/trailofbits/remill/tests) directory.
+[`AND.S`](/tests/X86/LOGICAL/AND.S) within the category- and architecture-specific sub-directory of the [tests](/tests) directory.
 
 Each *ISEL* should be tested separately. For example, a test for the `AND_GPRv_GPRv_32`
 *ISEL* would be:

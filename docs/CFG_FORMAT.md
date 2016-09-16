@@ -2,7 +2,7 @@
 
 This document describes one of the main inputs to Remill, a control-flow graph
 formatted and stored as a protocol buffer. The file format is described in the
-[CFG.proto](/trailofbits/remill/master/remill/CFG/CFG.proto) file.
+[CFG.proto](/remill/CFG/CFG.proto) file.
 
 ## Instructions
 
@@ -25,7 +25,7 @@ In the above example from Binary Ninja, an `Instr` data structure for the `call 
  - `bytes` as `"\xe8\xa3\xd2\xff\xff"`
  - `address` as `0804b798`
 
-In practice, the `address` field is really just an offset from the beginning of an binary. The location at which binaries can be loaded varies according to the OS, as well as the current execution of the binary. For example, a shared library is likely to be loaded at different runtime memory addresses during different program executions when [ASLR](https://en.wikipedia.org/wiki/Address_space_layout_randomization) is enabled.
+In practice, the `address` field is really just an offset from the beginning of a binary. The location at which binaries can be loaded varies according to the OS, as well as the current execution of the binary. For example, a shared library is likely to be loaded at different runtime memory addresses during different program executions when [ASLR](https://en.wikipedia.org/wiki/Address_space_layout_randomization) is enabled.
 
 ## Basic blocks
 
@@ -54,7 +54,7 @@ The `is_addressable` field in the `Block` message is more subtle and exposes a d
 
 Each `Block` message in the CFG protocol buffer is represented by a distinct LLVM function in the lifted bitcode. Control-flow between basic blocks in the machine code is represented as function [tail calls](https://en.wikipedia.org/wiki/Tail_call) between between lifted block functions. This raises the following question: how are "indirect" control-flows (`ret`, `jmp reg`, `jmp mem`, `call reg`, and `call mem`) represented in the LLVM bitcode?
 
-The transfer of control for indirect control-flows are modelled using the following Remill [intrinsics](INTRINSICS.md). These instrinsics do not encode the mechanics of the control flows, however. For example, a function call instruction on x86 (`call`) modifies the stack and then jumps to the target. The [semantics functions](/trailofbits/remill/master/remill/Arch/X86/Semantics/CALL_RET.h) are responsible for performing the stack manipulations of the call and modifying the instruction pointer. The intrinsics are responsible for the actual "transfer" of control to another lifted basic block.
+The transfer of control for indirect control-flows are modelled using the following Remill [intrinsics](INTRINSICS.md). These instrinsics do not encode the mechanics of the control flows, however. For example, a function call instruction on x86 (`call`) modifies the stack and then jumps to the target. The [semantics functions](/remill/Arch/X86/Semantics/CALL_RET.h) are responsible for performing the stack manipulations of the call and modifying the instruction pointer. The intrinsics are responsible for the actual "transfer" of control to another lifted basic block.
 
  - `jmp reg/mem` is represented as a tail-call to `__remill_jump`
  - `call reg/mem` is represented as a tail-call to `__remill_function_call`
