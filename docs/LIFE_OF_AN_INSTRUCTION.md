@@ -238,8 +238,7 @@ After inlining, the bitcode starts to show off its memory model. Again, lets see
 void __remill_sub_804b7a3(State *state, Memory *memory, addr_t pc) {
   auto &EIP = state.gpr.rip.dword;
   auto &EAX = state.gpr.rax.dword;
-  auto &EBX_read = state.gpr.rbx.dword;
-  auto &EBX_write = state.gpr.rbx.dword;
+  auto &EBX = state.gpr.rbx.dword;
   auto &ESP = state.gpr.rsp.dword;
   auto &SS = state.seg.ss;
 
