@@ -103,7 +103,7 @@ If we look deep into the bowels of [`DecodeRegister`](/remill/Arch/X86/Arch.cpp#
 
 In the case of the `push ebx` instruction from our example block, `ReadReg` will actually return the string `"EBX_read"`. Recall that each basic block of machine code is lifted into an LLVM function, and that function is a clone of `__remill_basic_block`. This means that the LLVM function implementing the basic block will have `EBX_read` defined. So, the translator doesn't actually know what `ebx` is, it just understands variable names, and the instruction decoder will produce variable names for registers, knowing that those variables are defined in `__remill_basic_block`, and therefore will be available within all of its clones.
 
-# Step 3: Calling semantics functions for each `Instr`
+## Step 3: Calling semantics functions for each `Instr`
 
 The previous section described how the architecture-specific instruction decoder can communicate things like registers to the higher-level translation system. The decoder tells the translator to look for specific variables representing register values, knowing that those variables will be available to each block function.
 
@@ -193,6 +193,107 @@ This is somewhat better. We can see that some of the mechanics of instructions h
 
 There `State *state` parameter to `__remill_sub_804b7a3` holds all [machine register state](/remill/Arch/X86/Runtime/State.h). The `Memory *memory` parameter is curious. It is passed to each semantics function by pointer, implying that it is updated within. The `Memory` type is never actually defined, but it is crucial to Remill's [memory model](https://en.wikipedia.org/wiki/Memory_model_(programming)) and enforcing [memory ordering](https://en.wikipedia.org/wiki/Memory_ordering). We can see more of this when we apply and [inlining](https://en.wikipedia.org/wiki/Inline_expansion) optimisation.
 
-```llvm
+## Step 4: Optimizing the bitcode
 
+```llvm
+; Function Attrs: alwaysinline inlinehint nounwind
+define private fastcc void @__remill_sub_804b7a3(%struct.State* dereferenceable(3200) %state, %struct.Memory* nonnull %memory, i32 %pc) #8 {
+  %1 = getelementptr inbounds %struct.State, %struct.State* %state, i64 0, i32 5, i32 33
+  %2 = bitcast %union.Flags* %1 to i32*
+  %3 = getelementptr inbounds %struct.State, %struct.State* %state, i64 0, i32 5, i32 1
+  %4 = bitcast %union.Flags* %3 to i32*
+  %5 = getelementptr inbounds %struct.State, %struct.State* %state, i64 0, i32 5, i32 3
+  %6 = bitcast %union.Flags* %5 to i32*
+  %7 = getelementptr inbounds %struct.State, %struct.State* %state, i64 0, i32 5, i32 13
+  %8 = bitcast %union.Flags* %7 to i32*
+  %9 = getelementptr inbounds %struct.State, %struct.State* %state, i64 0, i32 4, i32 1
+  store i32 1, i32* %4, align 4
+  %10 = load i32, i32* %6, align 4
+  %11 = load i32, i32* %8, align 8
+  %12 = add i32 %11, -4
+  %13 = load i16, i16* %9, align 2
+  %14 = zext i16 %13 to i32
+  %15 = tail call i32 @__remill_compute_address(i32 %12, i32 %14) #15
+  %16 = tail call %struct.Memory* @__remill_write_memory_32(%struct.Memory* nonnull %memory, i32 %15, i32 %10) #15
+  store i32 %12, i32* %8, align 4
+  %17 = add i32 %11, 4
+  %18 = tail call i32 @__remill_compute_address(i32 %17, i32 %14)
+  %19 = tail call i32 @__remill_read_memory_32(%struct.Memory* %16, i32 %18) #15
+  store i32 %19, i32* %6, align 4
+  %20 = add i32 %pc, 12
+  store i32 %20, i32* %2, align 4
+  %21 = getelementptr inbounds %struct.State, %struct.State* %state, i64 0, i32 9
+  store volatile i32 128, i32* %21, align 4
+  %22 = getelementptr inbounds %struct.State, %struct.State* %state, i64 0, i32 12
+  store volatile i8 1, i8* %22, align 2
+  %23 = load i32, i32* %2, align 4
+  musttail call fastcc void @__remill_interrupt_call(%struct.State* nonnull %state, %struct.Memory* %16, i32 %23)
+  ret void
+}
 ```
+
+After inlining, the bitcode starts to show off its memory model. Again, lets see what things would look like if we translated this code into C++.
+
+```C++
+void __remill_sub_804b7a3(State *state, Memory *memory, addr_t pc) {
+  auto &EIP = state.gpr.rip.dword;
+  auto &EAX = state.gpr.rax.dword;
+  auto &EBX_read = state.gpr.rbx.dword;
+  auto &EBX_write = state.gpr.rbx.dword;
+  auto &ESP = state.gpr.rsp.dword;
+  auto &SS = state.seg.ss;
+
+  // mov    eax, 0x1
+  EAX = 1;
+  
+  // push   ebx
+  ESP -= 4;
+  addr_t push_addr = __remill_compute_address(ESP, SS);
+  memory = __remill_write_memory_32(memory, push_addr, EBX);
+
+  // mov    ebx, dword [esp+0x8]
+  addr_t read_addr = __remill_compute_address(ESP + 0x8, SS);
+  EBX = __remill_read_memory_32(memory, read_addr);
+
+  // int    0x80
+  state.interrupt_vector = 0x80;  // This is a wart. See Issue #53.
+
+  EIP = pc + 12;
+
+  return __remill_interrupt_call(state, memory, EIP)
+}
+```
+
+### The Remill runtime exposed
+
+In the case of Remill, we want to be explicit about accesses to the "modelled program's memory", and to the "runtime's memory". Take another look above at the optimized bitcode. We can see many `load` and `store` instructions. These instruction's are LLVM's way of representing memory reads and writes. Conceptually, the `State` structure is not part of a program's memory -- if you ran the program natively, then our `State` structure would not be present. In Remill, we consider the "runtime" to be made of the following:
+
+1. Memory accesses to `alloca`'d space: local variables needed to support more elaborate computations.
+2. Memory accesses to the `State` structure. The `State` structure is passed by pointer, so it must be accessed via `load` and `store` instructions.
+3. All of the various intrinsics, e.g. `__remill_interrupt_call`, `__remill_read_memory_32`, etc.
+
+The naming of "runtime" does not mean that the bitcode itself needs to be executed, nor does it mean that the intrinsics must be implemented in any specific way. Remill's intrinsics provide semantic value (in terms of their naming). A user of Remill bitcode can do anything they want with these intrinsics. For example, they could convert all of the memory intrinsics into LLVM `load` and `store` instructions.
+
+Anyway, back to the memory model and memory ordering. Notice that the `memory` pointer is passed into every memory access intrinsic. The `memory` pointer is also replaced in the case of memory write intrinsics. This is to enforce a total order across all memory writes, and a partial order between memory reads and writes.
+
+The `__remill_interrupt_call` and `__remill_compute_address` intrinsics are examples of lower level abstractions that cannot be directly modelled by Remill.
+
+The `__remill_compute_address` is used to model [memory segmentation](https://en.wikipedia.org/wiki/Memory_segmentation#x86_architecture). In x86 (32-bit) code, segmentation is widespread -- this intrinsic rarely shows up in x64 code. Memory segmentation is supported by the [local](https://en.wikipedia.org/wiki/Global_Descriptor_Table#Local_Descriptor_Table) and [global](https://en.wikipedia.org/wiki/Global_Descriptor_Table) descriptor tables.
+
+The `__remill_interrupt_call` instruction instructs the "runtime" that an explicit [interrupt](https://en.wikipedia.org/wiki/Interrupt) (`int 0x80`) happens. Again, Remill has no way of knowing what this actually means or how it works -- that falls under the purview of the operating system kernel. What Remill *does* know is that an interrupt is a kind of ["indirect" control flow](https://en.wikipedia.org/wiki/Indirect_branch), and so it models is like all other indirect control flows.
+
+All Remill control-flow intrinsics and Remill lifted basic block functions share the same argument structure:
+
+1. A pointer to the `State` structure.
+2. A pointer to the opaque `Memory` structure.
+3. The program counter on entry to the lifted basic block.
+
+In the case of the `__remill_interrupt_call`, the third argument, the program counter address, is computed to be the address following the `int 0x80` instruction.
+
+## Concluding remarks
+
+Remill has a lot of moving parts, and it takes a lot to go from machine code to bitcode. The end result produces predictably structured bitcode that models enough of the machine behaviour to be accurate.
+
+A key goal of Remill is to be explicit about control flows, memory ordering, and memory accesses. This isn't always obvious when looked at from the perspective of implementing instruction semantics. However, the bitcode doesn't lie.
+
+The design of the intrinsics is such that a user of the bitcode isn't overly pigeonholed into a specific use case. Remill *has* been designed for certain use cases and not others, but in most cases, one can do as they please when it comes to implementing, removing, or changing the intrinsics. They are not defined for a reason!

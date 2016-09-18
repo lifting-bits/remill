@@ -918,8 +918,20 @@ auto ReadPtr(addr_t addr) -> Mn<typename BaseType<T>::BT> {
 
 template <typename T>
 ALWAYS_INLINE static
+auto ReadPtr(addr_t addr, addr_t seg) -> Mn<typename BaseType<T>::BT> {
+  return {__remill_compute_address(addr, seg)};
+}
+
+template <typename T>
+ALWAYS_INLINE static
 auto WritePtr(addr_t addr) -> MnW<typename BaseType<T>::BT> {
   return {addr};
+}
+
+template <typename T>
+ALWAYS_INLINE static
+auto WritePtr(addr_t addr, addr_t seg) -> MnW<typename BaseType<T>::BT> {
+  return {__remill_compute_address(addr, seg)};
 }
 
 template <typename T>

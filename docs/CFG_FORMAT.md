@@ -1,4 +1,4 @@
-# Control-flow graph format
+# How Remill reads code: the control-flow graph format
 
 This document describes one of the main inputs to Remill, a control-flow graph
 formatted and stored as a protocol buffer. The file format is described in the

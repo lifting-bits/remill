@@ -21,6 +21,9 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Type.h>
+#include <llvm/IR/Verifier.h>
+
+#include <llvm/Support/raw_ostream.h>
 
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/Cloning.h>
@@ -574,7 +577,19 @@ void Translator::LiftBlocks(const cfg::Module *cfg_module) {
 
   func_pass_manager.doInitialization();
   for (const auto &block : cfg_module->blocks()) {
-    func_pass_manager.run(*LiftBlock(&block));
+    auto func = LiftBlock(&block);
+    if (func->isDeclaration()) {
+      continue;
+    }
+
+    // Make sure the translation is good before optimizing.
+    std::string error;
+    llvm::raw_string_ostream error_stream(error);
+    CHECK(!llvm::verifyFunction(*func, &error_stream))
+        << "Unable to verify function " << func->getName().str()
+        << ". " << error << ".";
+
+    func_pass_manager.run(*func);
   }
   func_pass_manager.doFinalization();
 }

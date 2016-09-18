@@ -103,6 +103,7 @@ void __remill_basic_block(State &state, Memory &memory, addr_t curr_pc) {
 #endif  // 64 == ADDRESS_SIZE_BITS
   auto &IP_read = state.gpr.rip.word;
   auto &IP_write =  IP_read;
+
   auto &EAX_read = state.gpr.rax.dword;
   auto &EAX_write = state.gpr.rax.IF_64BIT_ELSE(qword, dword);
   auto &EBX_read = state.gpr.rbx.dword;

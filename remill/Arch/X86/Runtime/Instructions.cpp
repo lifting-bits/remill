@@ -97,6 +97,13 @@
 #define X87_ST6 state.st.element[6].val
 #define X87_ST7 state.st.element[7].val
 
+#define REG_SS state.seg.ss
+#define REG_ES state.seg.es
+#define REG_DS state.seg.ds
+#define REG_FS state.seg.fs
+#define REG_GS state.seg.gs
+#define REG_CS state.seg.cs
+
 #define INTERRUPT_VECTOR state.interrupt_vector
 #define INTERRUPT_TAKEN state.interrupt_taken
 

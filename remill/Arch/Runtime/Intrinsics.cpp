@@ -38,10 +38,6 @@ extern "C" void __remill_mark_as_used(const void *);
 [[gnu::used]]
  extern "C" void __remill_intrinsics(void) {
 
-  USED(__remill_indirect_blocks);
-  USED(__remill_exported_blocks);
-  USED(__remill_imported_blocks);
-
   USED(__remill_read_memory_8);
   USED(__remill_read_memory_16);
   USED(__remill_read_memory_32);

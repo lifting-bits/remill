@@ -8,18 +8,19 @@ namespace {
 template <typename T>
 DEF_SEM(CALL, T target_pc) {
   addr_t next_sp = USub(REG_XSP, ADDRESS_SIZE_BYTES);
-  Write(WritePtr<PC>(next_sp), REG_PC);  // May fault.
+  Write(WritePtr<PC>(next_sp _IF_32BIT(REG_SS)), REG_PC);  // May fault.
   Write(REG_XSP, next_sp);
   Write(REG_PC, ZExtTo<PC>(Read(target_pc)));
 }
 
 DEF_SEM(RET_IMM, I16 bytes) {
-  Write(REG_PC, Read(ReadPtr<PC>(REG_XSP)));  // May fault.
-  Write(REG_XSP, UAdd(UAdd(REG_XSP, ZExtTo<PC>(Read(bytes))), ADDRESS_SIZE_BYTES));
+  Write(REG_PC, Read(ReadPtr<PC>(REG_XSP _IF_32BIT(REG_SS))));  // May fault.
+  Write(REG_XSP,
+        UAdd(UAdd(REG_XSP, ZExtTo<PC>(Read(bytes))), ADDRESS_SIZE_BYTES));
 }
 
 DEF_SEM(RET) {
-  Write(REG_PC, Read(ReadPtr<PC>(REG_XSP)));  // May fault.
+  Write(REG_PC, Read(ReadPtr<PC>(REG_XSP _IF_32BIT(REG_SS))));  // May fault.
     Write(REG_XSP, UAdd(REG_XSP, ADDRESS_SIZE_BYTES));
 }
 

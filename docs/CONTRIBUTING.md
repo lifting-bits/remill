@@ -4,7 +4,7 @@
 
 Please follow the below steps when contributing to Remill.
 
-1. Create an [GitHub issue](/trailofbits/remill/issues/new)
+1. Create an [GitHub issue](https://github.com/trailofbits/remill/issues/new)
    describing the goals and milestones of your contribution. For example, if
    you want to implement a particular class of instructions, then create a
    checkbox list within your issue for each instruction.
