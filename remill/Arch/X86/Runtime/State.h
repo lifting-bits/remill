@@ -199,7 +199,7 @@ union alignas(8) Flags final {
 
     uint32_t rf:1; // bit 16.
     uint32_t vm:1;
-    uint32_t ac:1;
+    uint32_t ac:1;  // Alignment check.
     uint32_t vif:1;
 
     uint32_t vip:1; // bit 20.

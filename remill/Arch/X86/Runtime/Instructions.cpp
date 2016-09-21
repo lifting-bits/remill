@@ -116,6 +116,7 @@
 #include "remill/Arch/X86/Semantics/CONVERT.h"
 #include "remill/Arch/X86/Semantics/DATAXFER.h"
 #include "remill/Arch/X86/Semantics/INTERRUPT.h"
+#include "remill/Arch/X86/Semantics/FLAGOP.h"
 #include "remill/Arch/X86/Semantics/FMA.h"
 #include "remill/Arch/X86/Semantics/LOGICAL.h"
 #include "remill/Arch/X86/Semantics/MISC.h"
