@@ -553,7 +553,6 @@ struct NumberTag {};
 #define MAKE_TAG(prefix, size, tag) \
     template <> \
     struct Tag<prefix ## size ## _t> { \
-      static constexpr const tag kTag = {}; \
       typedef tag Type; \
     };
 

@@ -287,7 +287,8 @@ MAKE_RVWRITE(F, 64, float, doubles)
     ALWAYS_INLINE static \
     Memory *_ ## prefix ## WriteV ## size ( \
         Memory *memory, T dst, U src) { \
-      return _Do ## prefix ## WriteV ## size (memory, dst, src, Tag<U>::kTag); \
+      constexpr typename Tag<U>::Type tag{}; \
+      return _Do ## prefix ## WriteV ## size (memory, dst, src, tag); \
     }
 
 MAKE_VWRITE(U, 8, bytes, uint)

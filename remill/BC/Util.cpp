@@ -57,8 +57,20 @@ void AddTerminatingTailCall(llvm::Function *source_func,
   if (source_func->isDeclaration()) {
     llvm::IRBuilder<> ir(llvm::BasicBlock::Create(
         source_func->getContext(), "", source_func));
+
+    std::vector<llvm::Value *> args;
+    for (llvm::Argument &arg : source_func->args()) {
+      args.push_back(&arg);
+    }
+    llvm::CallInst *call_target_instr = ir.CreateCall(dest_func, args);
+
+    // Make sure we tail-call from one block method to another.
+    call_target_instr->setTailCallKind(llvm::CallInst::TCK_MustTail);
+    call_target_instr->setCallingConv(llvm::CallingConv::Fast);
+    ir.CreateRetVoid();
+  } else {
+    AddTerminatingTailCall(&(source_func->back()), dest_func);
   }
-  AddTerminatingTailCall(&(source_func->back()), dest_func);
 }
 
 void AddTerminatingTailCall(llvm::BasicBlock *source_block,
