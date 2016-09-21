@@ -205,7 +205,7 @@ static void DecodeXED(xed_decoded_inst_t *xedd,
   auto bytes = reinterpret_cast<const uint8_t *>(instr_bytes.data());
   xed_decoded_inst_zero_set_mode(xedd, mode);
   xed_decoded_inst_set_input_chip(xedd, XED_CHIP_INVALID);
-  auto err = xed_decode(xedd, bytes, num_bytes);
+  auto err = xed_decode(xedd, bytes, static_cast<uint32_t>(num_bytes));
 
   CHECK(XED_ERROR_NONE == err)
       << "Unable to decode instruction at " << std::hex << address

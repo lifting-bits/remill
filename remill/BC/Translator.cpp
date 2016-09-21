@@ -89,6 +89,7 @@ static void DisableInlining(llvm::Function *function) {
 //
 // TODO(pag): What about on Windows?
 static std::string CanonicalName(OSName os_name, const std::string &name) {
+  (void) os_name;
   return name;
 //  if (kOSmacOS == os_name && name.length() && '_' == name[0]) {
 //    return name.substr(1);
@@ -859,9 +860,6 @@ llvm::BasicBlock *Translator::LiftInstruction(llvm::Function *block_func,
   auto pc_ptr = ir.CreateLoad(FindVarInFunction(block, "PC"));
   auto next_pc_ptr = ir.CreateLoad(FindVarInFunction(block, "NEXT_PC"));
 
-  // Machine word-sized type. Think of this as `intptr_t`.
-  auto word_type = llvm::Type::getIntNTy(context, arch->address_size);
-
   // Update the next program counter.
   ir.CreateStore(
       ir.CreateAdd(
@@ -1030,12 +1028,11 @@ llvm::Value *Translator::LiftRegisterOperand(
 }
 
 // Lift an immediate operand.
-llvm::Value *Translator::LiftImmediateOperand(llvm::BasicBlock *block,
-                                              llvm::Type *arg_type,
+llvm::Value *Translator::LiftImmediateOperand(llvm::Type *arg_type,
                                               const Operand &arch_op) {
 
   if (arch_op.size > word_type->getBitWidth()) {
-    CHECK(arg_type->isIntegerTy(arch_op.size))
+    CHECK(arg_type->isIntegerTy(static_cast<uint32_t>(arch_op.size)))
         << "Argument to semantics function is not an integer. This may "
         << "not be surprising because the immediate operand is " <<
         arch_op.size << " bits, but the machine word size is "
@@ -1100,7 +1097,7 @@ llvm::Value *Translator::LiftAddressOperand(
   // used in 64-bit).
   if (arch_addr.address_size < word_size) {
     auto addr_type = llvm::Type::getIntNTy(
-        block->getContext(), arch_addr.address_size);
+        block->getContext(), static_cast<unsigned>(arch_addr.address_size));
 
     addr = ir.CreateZExt(
         ir.CreateTrunc(addr, addr_type),
@@ -1135,7 +1132,7 @@ llvm::Value *Translator::LiftOperand(llvm::BasicBlock *block,
       return LiftRegisterOperand(block, arg_type, arch_op.reg);
 
     case Operand::kTypeImmediate:
-      return LiftImmediateOperand(block, arg_type, arch_op);
+      return LiftImmediateOperand(arg_type, arch_op);
 
     case Operand::kTypeAddress:
       CHECK(arg_type == word_type)

@@ -98,8 +98,7 @@ class Translator {
                                    const Operand::Register &reg);
 
   // Lift an immediate operand.
-  llvm::Value *LiftImmediateOperand(llvm::BasicBlock *block,
-                                    llvm::Type *arg_type,
+  llvm::Value *LiftImmediateOperand(llvm::Type *arg_type,
                                     const Operand &op);
 
   // Lift an indirect memory operand to a value.

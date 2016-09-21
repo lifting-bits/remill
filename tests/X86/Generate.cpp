@@ -83,7 +83,9 @@ static void AddFunctionToModule(remill::cfg::Module *module,
   while (addr < test.test_end) {
     auto bytes = reinterpret_cast<const uint8_t *>(addr);
     auto ilen = InstructionLength(
-        bytes, std::min<unsigned>(test::kMaxInstrLen, test.test_end - addr));
+        bytes, std::min<unsigned>(
+            test::kMaxInstrLen,
+            static_cast<unsigned>(test.test_end - addr)));
 
     auto instr = block->add_instructions();
     instr->set_bytes(bytes, ilen);

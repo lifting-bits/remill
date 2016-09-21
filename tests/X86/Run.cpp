@@ -410,7 +410,8 @@ static void RunWithFlags(const test::TestInfo *info,
   // swapping execution to operate on `gStack`.
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
-    lifted_func(*lifted_state, nullptr, lifted_state->gpr.rip.qword);
+    lifted_func(*lifted_state, nullptr,
+                static_cast<addr_t>(lifted_state->gpr.rip.qword));
   } else {
     EXPECT_TRUE(native_test_faulted);
   }

@@ -5,8 +5,10 @@
 
 #include <string>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshorten-64-to-32"
 #include "generated/CFG/CFG.pb.h"
-
+#pragma clang diagnostic pop
 class Module;
 
 namespace llvm {

@@ -18,6 +18,9 @@
 //      to bitcode for one architecture, then change its `DataLayout` to
 //      match another architecture.
 
+#pragma clang diagnostic push
+#pragma clang diagnostic fatal "-Wpadded"
+
 #include "remill/Arch/Runtime/Runtime.h"
 
 #ifndef HAS_FEATURE_AVX
@@ -422,5 +425,7 @@ static_assert(3146 == __builtin_offsetof(State, interrupt_taken),
               "Invalid packing of `State::interrupt_taken`.");
 
 static_assert(3200 == sizeof(State), "Invalid packing of `State`.");
+
+#pragma clang diagnostic pop
 
 #endif  // REMILL_ARCH_X86_RUNTIME_STATE_H_

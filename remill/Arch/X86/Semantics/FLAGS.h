@@ -149,6 +149,7 @@ struct Overflow<tag_mul> {
   NEVER_INLINE static bool Flag(
       T lhs, T rhs, T res,
       typename std::enable_if<std::is_signed<T>::value,int>::type=0) {
+    (void) res;
     __remill_defer_inlining();
     auto lhs_wide = SExt(lhs);
     auto rhs_wide = SExt(rhs);

@@ -8,6 +8,9 @@
 #include <limits>
 #include <type_traits>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic fatal "-Wpadded"
+
 #include "remill/Arch/Runtime/Definitions.h"
 
 struct State;
@@ -624,5 +627,7 @@ inline int128_t operator "" _s128(unsigned long long value) {
 }
 
 #define auto_t(T) typename BaseType<T>::BT
+
+#pragma clang diagnostic pop
 
 #endif  // REMILL_ARCH_RUNTIME_TYPES_H_

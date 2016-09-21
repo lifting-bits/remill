@@ -112,10 +112,16 @@ except:
 CXX_FLAGS = [
   # Enable warnings.
   "-Wall",
+  "-Wextra",
+  "-Wshadow",
   "-Werror",
   "-pedantic",
 
+  "-Wshorten-64-to-32",
+
   # Disable specific warnings.
+  "-Wno-c++98-compat",
+  "-Wno-unreachable-code-return",
   "-Wno-nested-anon-types",
   "-Wno-extended-offsetof",
   "-Wno-gnu-anonymous-struct",

@@ -478,13 +478,13 @@ auto Signed(T val) -> typename IntegerType<T>::ST {
 
 // Return the largest possible value assignable to `val`.
 template <typename T>
-ALWAYS_INLINE static T Maximize(T val) {
+ALWAYS_INLINE static T Maximize(T) {
   return std::numeric_limits<T>::max();
 }
 
 // Return the smallest possible value assignable to `val`.
 template <typename T>
-ALWAYS_INLINE static T Minimize(T val) {
+ALWAYS_INLINE static T Minimize(T) {
   return std::numeric_limits<T>::min();
 }
 

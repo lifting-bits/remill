@@ -22,4 +22,7 @@ const cfg::Module *ReadCFG(std::string cfg_file_name) {
 
 }  // namespace remill
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshorten-64-to-32"
 #include "generated/CFG/CFG.pb.cc"
+#pragma clang diagnostic pop

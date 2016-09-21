@@ -113,7 +113,7 @@ DEF_SEM(JB, R8W cond, PC taken_pc, PC not_taken_pc) {
 DEF_SEM(JLE, R8W cond, PC taken_pc, PC not_taken_pc) {
   auto take_branch = BOr(FLAG_ZF, BXor(FLAG_SF, FLAG_OF));
   Write(cond, take_branch);
-  Write(REG_PC, Select<addr_t>(take_branch, taken_pc, REG_PC));
+  Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
 }
 
 } // namespace
