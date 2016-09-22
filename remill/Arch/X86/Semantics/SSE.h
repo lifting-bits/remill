@@ -8,8 +8,8 @@ namespace {
 // TODO(pag): Ignores distinction between quiet/signalling, and ordering.
 template <typename S1, typename S2>
 DEF_SEM(COMISS, S1 src1, S2 src2) {
-  auto left = FExtractV32<0>(FReadV32(src1));
-  auto right = FExtractV32<0>(FReadV32(src2));
+  auto left = FExtractV32(FReadV32(src1), 0);
+  auto right = FExtractV32(FReadV32(src2), 0);
 
   if (FCmpGt(left, right)) {
     Write(FLAG_ZF, false);
@@ -39,8 +39,8 @@ DEF_SEM(COMISS, S1 src1, S2 src2) {
 
 template <typename S1, typename S2>
 DEF_SEM(COMISD, S1 src1, S2 src2) {
-  auto left = FExtractV64<0>(FReadV64(src1));
-  auto right = FExtractV64<0>(FReadV64(src2));
+  auto left = FExtractV64(FReadV64(src1), 0);
+  auto right = FExtractV64(FReadV64(src2), 0);
 
   if (FCmpGt(left, right)) {
     Write(FLAG_ZF, false);

@@ -20,12 +20,12 @@ DEF_SEM(XCHG, D1 dst, S1 dst_val, D2 src, S2 src_val) {
 
 template <typename D, typename S>
 DEF_SEM(MOVQ, D dst, S src) {
-  UWriteV64(dst, UExtractV64<0>(UReadV64(src)));
+  UWriteV64(dst, UExtractV64(UReadV64(src), 0));
 }
 
 template <typename D, typename S>
 DEF_SEM(MOVD, D dst, S src) {
-  UWriteV32(dst, UExtractV32<0>(UReadV32(src)));
+  UWriteV32(dst, UExtractV32(UReadV32(src), 0));
 }
 
 template <typename D, typename S>
@@ -46,14 +46,14 @@ DEF_SEM(MOVDQx, D dst, S src) {
 template <typename D, typename S>
 DEF_SEM(MOVLPS, D dst, S src) {
   auto src_vec = FReadV32(src);
-  auto low1 = FExtractV32<0>(src_vec);
-  auto low2 = FExtractV32<1>(src_vec);
-  FWriteV32(dst, FInsertV32<1>(FInsertV32<0>(FReadV32(dst), low1), low2));
+  auto low1 = FExtractV32(src_vec, 0);
+  auto low2 = FExtractV32(src_vec, 1);
+  FWriteV32(dst, FInsertV32(FInsertV32(FReadV32(dst), 0, low1), 1, low2));
 }
 
 template <typename D, typename S>
 DEF_SEM(MOVLPD, D dst, S src) {
-  FWriteV64(dst, FInsertV64<0>(FReadV64(dst), FExtractV64<0>(FReadV64(src))));
+  FWriteV64(dst, FInsertV64(FReadV64(dst), 0, FExtractV64(FReadV64(src), 0)));
 }
 
 }  // namespace
@@ -302,16 +302,19 @@ DEF_ISEL(VMOVDQA_YMMqq_YMMqq_7F) = MOVDQx<VV256W, VV256>;
 
 DEF_ISEL(MOVLPS_MEMq_XMMps) = MOVLPS<MV64W, V128>;
 DEF_ISEL(MOVLPS_XMMq_MEMq) = MOVLPS<V128W, MV64>;
+
 #if HAS_FEATURE_AVX
 DEF_ISEL(VMOVLPS_MEMq_XMMq) = MOVLPS<MV64W, VV128>;
 DEF_ISEL_SEM(VMOVLPS_XMMdq_XMMdq_MEMq, VV128W dst, V128 src1, MV64 src2) {
   auto low_vec = FReadV32(src2);
   FWriteV32(dst,
-      FInsertV32<1>(
-          FInsertV32<0>(
+      FInsertV32(
+          FInsertV32(
               FReadV32(src1),
-              FExtractV32<0>(low_vec)),
-          FExtractV32<1>(low_vec)));
+              0,
+              FExtractV32(low_vec, 0)),
+          1,
+          FExtractV32(low_vec, 1)));
 }
 
 #if HAS_FEATURE_AVX512
@@ -326,10 +329,10 @@ DEF_ISEL(MOVLPD_MEMq_XMMsd) = MOVLPD<MV64W, V128>;
 DEF_ISEL(VMOVLPD_MEMq_XMMq) = MOVLPD<MV64W, VV128>;
 DEF_ISEL_SEM(VMOVLPD_XMMdq_XMMdq_MEMq, VV128W dst, V128 src1, MV64 src2) {
   FWriteV64(dst,
-      FInsertV64<0>(
+      FInsertV64(
           FReadV64(src1),
-          FExtractV64<0>(
-              FReadV64(src2))));
+          0,
+          FExtractV64(FReadV64(src2), 0)));
 }
 #if HAS_FEATURE_AVX512
 //4599 VMOVLPD VMOVLPD_XMMf64_XMMf64_MEMf64_AVX512 DATAXFER AVX512EVEX AVX512F_128N ATTRIBUTES: DISP8_SCALAR
@@ -341,26 +344,26 @@ namespace {
 
 template <typename D, typename S>
 DEF_SEM(MOVSD_MEM, D dst, S src) {
-  FWriteV64(dst, FExtractV64<0>(FReadV64(src)));
+  FWriteV64(dst, FExtractV64(FReadV64(src), 0));
 }
 
 }  // namespace
 
 DEF_ISEL_SEM(MOVSD_XMM_XMMsd_XMMsd_0F10, V128W dst, V128 src) {
   FWriteV64(dst,
-      FInsertV64<0>(
+      FInsertV64(
           FReadV64(dst),
-          FExtractV64<0>(
-              FReadV64(src))));
+          0,
+          FExtractV64(FReadV64(src), 0)));
 }
 
 // Basically the same as `VMOVLPD`.
 DEF_ISEL_SEM(VMOVSD_XMMdq_XMMdq_XMMq_10, VV128W dst, V128 src1, V128 src2) {
   FWriteV64(dst,
-      FInsertV64<1>(
+      FInsertV64(
           FReadV64(src2),
-          FExtractV64<1>(
-              FReadV64(src1))));
+          1,
+          FExtractV64(FReadV64(src1), 1)));
 }
 
 DEF_ISEL(MOVSD_XMM_XMMdq_MEMsd) = MOVSD_MEM<V128W, MV64>;
@@ -382,24 +385,25 @@ namespace {
 
 template <typename D, typename S>
 DEF_SEM(MOVSS_MEM, D dst, S src) {
-  FWriteV32(dst, FExtractV32<0>(FReadV32(src)));
+  FWriteV32(dst, FExtractV32(FReadV32(src), 0));
 }
 
 }  // namespace
 
 DEF_ISEL_SEM(MOVSS_XMMss_XMMss_0F10, V128W dst, V128 src) {
   FWriteV32(dst,
-      FInsertV32<0>(
+      FInsertV32(
           FReadV32(dst),
-          FExtractV32<0>(
-              FReadV32(src))));
+          0,
+          FExtractV32(FReadV32(src), 0)));
 }
 
 DEF_ISEL_SEM(VMOVSS_XMMdq_XMMdq_XMMd_10, VV128W dst, V128 src1, V128 src2) {
   FWriteV32(dst,
-      FInsertV32<0>(
+      FInsertV32(
           FReadV32(src1),
-          FExtractV32<0>(FReadV32(src2))));
+          0,
+          FExtractV32(FReadV32(src2), 0)));
 }
 
 DEF_ISEL(MOVSS_XMMdq_MEMss) = MOVSS_MEM<V128W, MV32>;

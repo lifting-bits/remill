@@ -40,30 +40,22 @@ namespace {
 template <typename D, typename S1>
 DEF_SEM(CVTDQ2PD, D dst, S1 src) {
   auto src_vec = UReadV32(src);
-  auto a = Float64(Signed(UExtractV32<0>(src_vec)));
-  auto b = Float64(Signed(UExtractV32<1>(src_vec)));
+  auto a = Float64(Signed(UExtractV32(src_vec, 0)));
+  auto b = Float64(Signed(UExtractV32(src_vec, 1)));
   auto dst_vec = FClearV64(FReadV64(dst));
-  FWriteV64(dst, FInsertV64<1>(FInsertV64<0>(dst_vec, a), b));
+  FWriteV64(dst, FInsertV64(FInsertV64(dst_vec, 0, a), 1, b));
 }
 
 template <typename D, typename S1>
 DEF_SEM(CVTDQ2PD_AVX, D dst, S1 src) {
   auto src_vec = UReadV32(src);
-  auto a = Float64(Signed(UExtractV32<0>(src_vec)));
-  auto b = Float64(Signed(UExtractV32<1>(src_vec)));
-  auto c = Float64(Signed(UExtractV32<2>(src_vec)));
-  auto d = Float64(Signed(UExtractV32<3>(src_vec)));
   auto dst_vec = FClearV64(FReadV64(dst));
-  FWriteV64(dst,
-            FInsertV64<3>(
-                FInsertV64<2>(
-                    FInsertV64<1>(
-                        FInsertV64<0>(
-                            dst_vec,
-                            a),
-                        b),
-                    c),
-                d));
+  _Pragma("unroll")
+  for (size_t i = 0; i < 4UL; ++i) {
+    auto entry = Float64(Signed(UExtractV32(src_vec, i)));
+    dst_vec = FInsertV64(dst_vec, i, entry);
+  }
+  FWriteV64(dst, dst_vec);
 }
 
 }  // namespace
@@ -80,30 +72,22 @@ namespace {
 template <typename D, typename S1>
 DEF_SEM(CVTTPD2DQ, D dst, S1 src) {
   auto src_vec = FReadV64(src);
-  auto a = Unsigned(Int32(FExtractV64<0>(src_vec)));
-  auto b = Unsigned(Int32(FExtractV64<1>(src_vec)));
+  auto a = Unsigned(Int32(FExtractV64(src_vec, 0)));
+  auto b = Unsigned(Int32(FExtractV64(src_vec, 1)));
   auto dst_vec = UClearV32(UReadV32(dst));
-  UWriteV32(dst, UInsertV32<1>(UInsertV32<0>(dst_vec, a), b));
+  UWriteV32(dst, UInsertV32(UInsertV32(dst_vec, 0, a), 1, b));
 }
 
 template <typename D, typename S1>
 DEF_SEM(CVTTPD2DQ_AVX, D dst, S1 src) {
   auto src_vec = FReadV64(src);
-  auto a = Unsigned(Int32(FExtractV64<0>(src_vec)));
-  auto b = Unsigned(Int32(FExtractV64<1>(src_vec)));
-  auto c = Unsigned(Int32(FExtractV64<2>(src_vec)));
-  auto d = Unsigned(Int32(FExtractV64<3>(src_vec)));
   auto dst_vec = UClearV32(UReadV32(dst));
-  UWriteV32(dst,
-            UInsertV32<3>(
-                UInsertV32<2>(
-                    UInsertV32<1>(
-                        UInsertV32<0>(
-                            dst_vec,
-                            a),
-                        b),
-                    c),
-                d));
+  _Pragma("unroll")
+  for (size_t i = 0; i < 4UL; ++i) {
+    auto entry = Unsigned(Int32(FExtractV64(src_vec, i)));
+    dst_vec = UInsertV32(dst_vec, i, entry);
+  }
+  UWriteV32(dst, dst_vec);
 }
 
 }  // namespace
@@ -120,53 +104,25 @@ namespace {
 template <typename D, typename S1>
 DEF_SEM(CVTTPS2DQ, D dst, S1 src) {
   auto src_vec = FReadV32(src);
-  auto a = Unsigned(Int32(FExtractV32<0>(src_vec)));
-  auto b = Unsigned(Int32(FExtractV32<1>(src_vec)));
-  auto c = Unsigned(Int32(FExtractV32<2>(src_vec)));
-  auto d = Unsigned(Int32(FExtractV32<3>(src_vec)));
   auto dst_vec = UClearV32(UReadV32(dst));
-  UWriteV32(dst,
-            UInsertV32<3>(
-                UInsertV32<2>(
-                    UInsertV32<1>(
-                        UInsertV32<0>(
-                            dst_vec,
-                            a),
-                        b),
-                    c),
-                d));
+  _Pragma("unroll")
+  for (size_t i = 0; i < 4UL; ++i) {
+    auto entry = Unsigned(Int32(FExtractV32(src_vec, i)));
+    dst_vec = UInsertV32(dst_vec, i, entry);
+  }
+  UWriteV32(dst, dst_vec);
 }
 
 template <typename D, typename S1>
 DEF_SEM(CVTTPS2DQ_AVX, D dst, S1 src) {
   auto src_vec = FReadV32(src);
-  auto a = Unsigned(Int32(FExtractV32<0>(src_vec)));
-  auto b = Unsigned(Int32(FExtractV32<1>(src_vec)));
-  auto c = Unsigned(Int32(FExtractV32<2>(src_vec)));
-  auto d = Unsigned(Int32(FExtractV32<3>(src_vec)));
-  auto e = Unsigned(Int32(FExtractV32<4>(src_vec)));
-  auto f = Unsigned(Int32(FExtractV32<5>(src_vec)));
-  auto g = Unsigned(Int32(FExtractV32<6>(src_vec)));
-  auto h = Unsigned(Int32(FExtractV32<7>(src_vec)));
   auto dst_vec = UClearV32(UReadV32(dst));
-  UWriteV32(dst,
-            UInsertV32<7>(
-                UInsertV32<6>(
-                    UInsertV32<5>(
-                        UInsertV32<4>(
-                            UInsertV32<3>(
-                                UInsertV32<2>(
-                                    UInsertV32<1>(
-                                        UInsertV32<0>(
-                                            dst_vec,
-                                            a),
-                                        b),
-                                    c),
-                                d),
-                            e),
-                        f),
-                    g),
-                h));
+  _Pragma("unroll")
+  for (size_t i = 0; i < 8UL; ++i) {
+    auto entry = Unsigned(Int32(FExtractV32(src_vec, i)));
+    dst_vec = UInsertV32(dst_vec, i, entry);
+  }
+  UWriteV32(dst, dst_vec);
 }
 
 }  // namespace
@@ -182,12 +138,12 @@ namespace {
 
 template <typename S>
 DEF_SEM(CVTTSS2SI_32, R32W dst, S src) {
-  WriteZExt(dst, Unsigned(Int32(FExtractV32<0>(FReadV32(src)))));
+  WriteZExt(dst, Unsigned(Int32(FExtractV32(FReadV32(src), 0))));
 }
 
 template <typename S>
 DEF_SEM(CVTTSS2SI_64, R64W dst, S src) {
-  Write(dst, Unsigned(Int64(FExtractV32<0>(FReadV32(src)))));
+  Write(dst, Unsigned(Int64(FExtractV32(FReadV32(src), 0))));
 }
 
 }  // namespace
@@ -206,9 +162,9 @@ namespace {
 template <typename S>
 DEF_SEM(CVTPI2PD, V128W dst, S src) {
   auto src_vec = UReadV32(src);
-  auto a = Float64(Signed(UExtractV32<0>(src_vec)));
-  auto b = Float64(Signed(UExtractV32<1>(src_vec)));
-  FWriteV64(dst, FInsertV64<1>(FInsertV64<0>(FReadV64(dst), a), b));
+  auto a = Float64(Signed(UExtractV32(src_vec, 0)));
+  auto b = Float64(Signed(UExtractV32(src_vec, 1)));
+  FWriteV64(dst, FInsertV64(FInsertV64(FReadV64(dst), 0, a), 1, b));
 }
 
 }  // namespace

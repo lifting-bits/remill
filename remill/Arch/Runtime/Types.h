@@ -96,7 +96,7 @@ union vec512_t;
     \
     template <> \
     struct VectorType<prefix ## v ## nelems ## _t> { \
-      enum { \
+      enum : size_t { \
         kNumElems = nelems \
       }; \
       typedef base_type BT; \
@@ -148,7 +148,7 @@ MAKE_VECTOR(double, float64, 4, 256, 32);
 MAKE_VECTOR(double, float64, 8, 512, 64);
 
 #define NumVectorElems(val) \
-    VectorType<decltype(val)>::kNumElems
+    static_cast<size_t>(VectorType<decltype(val)>::kNumElems)
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-private-field"

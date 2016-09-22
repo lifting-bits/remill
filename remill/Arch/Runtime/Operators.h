@@ -754,19 +754,15 @@ MAKE_BROADCASTS(Xor, MAKE_ACCUMULATE, MAKE_NOP)
 #undef MAKE_BROADCASTS
 #undef MAKE_NOP
 
-template <size_t n, typename T>
-auto NthVectorElem(const T &vec) -> typename VectorType<T>::BaseType {
-  static_assert(n <= NumVectorElems(vec),
-                "Cannot access beyond end of vector.");
+template <typename T>
+auto NthVectorElem(const T &vec, size_t n) -> typename VectorType<T>::BaseType {
   return vec[n];
 }
 
 // Access the Nth element of an aggregate vector.
 #define MAKE_EXTRACT(size, base_type, accessor, out, prefix) \
-    template <size_t n, typename T> \
-    base_type prefix ## ExtractV ## size(const T &vec) { \
-      static_assert(n <= NumVectorElems(vec.accessor), \
-                    "Cannot access beyond end of vector."); \
+    template <typename T> \
+    base_type prefix ## ExtractV ## size(const T &vec, size_t n) { \
       return out(vec.accessor.elems[n]); \
     }
 
@@ -786,10 +782,8 @@ MAKE_EXTRACT(64, float64_t, doubles, Identity, F)
 
 // Access the Nth element of an aggregate vector.
 #define MAKE_INSERT(size, base_type, accessor, out, prefix) \
-    template <size_t n, typename T> \
-    T prefix ## InsertV ## size(T vec, base_type val) { \
-      static_assert(n <= NumVectorElems(vec.accessor), \
-                    "Cannot access beyond end of vector."); \
+    template <typename T> \
+    T prefix ## InsertV ## size(T vec, size_t n, base_type val) { \
       vec.accessor.elems[n] = out(val); \
       return vec; \
     }
