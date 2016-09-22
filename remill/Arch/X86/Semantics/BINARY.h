@@ -54,7 +54,7 @@ DEF_SEM(ADDSD, D dst, S1 src1, S2 src2) {
   auto rhs = FReadV64(src2);
   auto sum = FAdd(FExtractV64(lhs, 0), FExtractV64(rhs, 0));
   auto res = FInsertV64(lhs, 0, sum);
-  FWriteV32(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  FWriteV64(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
 }
 
 // Atomic fetch-add.
@@ -358,7 +358,7 @@ DEF_SEM(MULSD, D dst, S1 src1, S2 src2) {
   auto rhs = FReadV64(src2);
   auto mul = FMul(FExtractV64(lhs, 0), FExtractV64(rhs, 0));
   auto res = FInsertV64(lhs, 0, mul);
-  FWriteV32(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  FWriteV64(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
 }
 
 }  // namespace

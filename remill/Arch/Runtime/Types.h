@@ -92,7 +92,7 @@ union vec512_t;
         "Invalid definition of `" #prefix "v" #nelems "`."); \
     \
     static_assert((width_bytes * 8) == vec_size_bits, \
-            "Invalid definition of `" #prefix "v" #nelems "`."); \
+        "Invalid definition of `" #prefix "v" #nelems "`."); \
     \
     template <> \
     struct VectorType<prefix ## v ## nelems ## _t> { \
@@ -275,7 +275,17 @@ struct Mn final {
 };
 
 template <typename T>
+struct MVn final {
+  addr_t addr;
+};
+
+template <typename T>
 struct MnW final {
+  addr_t addr;
+};
+
+template <typename T>
+struct MVnW final {
   addr_t addr;
 };
 
@@ -386,6 +396,12 @@ template <typename T>
 struct BaseType<MnW<T>> : public BaseType<T> {};
 
 template <typename T>
+struct BaseType<MVn<T>> : public BaseType<T> {};
+
+template <typename T>
+struct BaseType<MVnW<T>> : public BaseType<T> {};
+
+template <typename T>
 struct BaseType<Rn<T>> : public BaseType<T> {};
 
 template <typename T>
@@ -402,6 +418,9 @@ struct BaseType<VnW<T>> : public BaseType<T> {};
 
 template <typename T>
 struct BaseType<RVn<T>> : public BaseType<T> {};
+
+template <typename T>
+struct BaseType<RVnW<T>> : public BaseType<T> {};
 
 template <typename T>
 struct NextLargerIntegerType;

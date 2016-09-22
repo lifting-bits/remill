@@ -58,24 +58,24 @@ typedef Mn<float32_t> MF32;
 typedef Mn<float64_t> MF64;
 typedef Mn<float80_t> MF80;
 
-typedef MnW<vec32_t> MV32W;
-typedef MnW<vec64_t> MV64W;
-typedef MnW<vec128_t> MV128W;
-typedef MnW<vec256_t> MV256W;
-typedef MnW<vec512_t> MV512W;
+typedef MVnW<vec32_t> MV32W;
+typedef MVnW<vec64_t> MV64W;
+typedef MVnW<vec128_t> MV128W;
+typedef MVnW<vec256_t> MV256W;
+typedef MVnW<vec512_t> MV512W;
 
 typedef Mn<uint8_t> M8;
 typedef Mn<uint16_t> M16;
 typedef Mn<uint32_t> M32;
 typedef Mn<uint64_t> M64;
 
-typedef Mn<vec8_t> MV8;
-typedef Mn<vec16_t> MV16;
-typedef Mn<vec32_t> MV32;
-typedef Mn<vec64_t> MV64;
-typedef Mn<vec128_t> MV128;
-typedef Mn<vec256_t> MV256;
-typedef Mn<vec512_t> MV512;
+typedef MVn<vec8_t> MV8;
+typedef MVn<vec16_t> MV16;
+typedef MVn<vec32_t> MV32;
+typedef MVn<vec64_t> MV64;
+typedef MVn<vec128_t> MV128;
+typedef MVn<vec256_t> MV256;
+typedef MVn<vec512_t> MV512;
 
 typedef In<uint8_t> I8;
 typedef In<uint16_t> I16;
