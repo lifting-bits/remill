@@ -23,6 +23,7 @@ DEF_ISEL(PUNPCKHBW_MMXq_MMXd) = PUNPCKHBW<V64W, V64, V32>;
 
 namespace {
 #if 0
+
 template <typename D, typename S>
 DEF_SEM(PUNPCKHWD, D dst, S1 src1, S2 src2) {
     auto bit_width = 16; // XXX erhlee-bird: What's the best way to say 16?
@@ -71,6 +72,7 @@ DEF_SEM(PUNPCKHQDQ, D dst, S1 src1, S2 src2) {
 
 //DEF_ISEL(PUNPCKHDQ_MMXq_MEMq) = PUNPCKHDQ<V64W, V64, MV64>;
 //DEF_ISEL(PUNPCKHDQ_MMXq_MMXd) = PUNPCKHDQ<V64W, V64, V32>;
+
 
 // 565:117 PHSUBD PHSUBD_MMXq_MEMq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
 // 569:118 PHSUBD PHSUBD_MMXq_MMXq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
