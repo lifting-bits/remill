@@ -5,18 +5,24 @@ namespace {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(PUNPCKHBW, D dst, S1 src1, S2 src2) {
-    auto bit_width = 8; // XXX erhlee-bird: What's the best way to say 8?
-    auto op_size = BitSizeOf(src2);
-    auto vec_entries = op_size / bit_width;
-    for (auto i = 0; i < vec_entries; ++i) {
-        if (i % 2 == 0)
-            upper_bytes = UExtractV8<(i / 2) * 2 + vec_entries / 2>(src1);
-        else
-            upper_bytes = UExtractV8<(i / 2) * 2 + vec_entries / 2>(src2);
-        UInsertV8<i>(dst, upper_bytes);
-    }
+  auto src1_vec = UReadV8(src1);
+  auto src2_vec = UReadV8(src2);
+  auto dst_vec = UClearV8(UReadV8(dst));
+  auto num_elems = NumVectorElems(src2_vec);
+  for (size_t i = 0, j = num_elems; i < (num_elems / 2); ++i, j -= 2) {
+    dst_vec = UInsertV8(dst_vec, j - 1, UExtractV8(src1_vec, j - 1));
+    dst_vec = UInsertV8(dst_vec, j - 2, UExtractV8(src2_vec, j - 2));
+  }
+  UWriteV8(dst, dst_vec);
 }
 
+}  // namespace
+
+DEF_ISEL(PUNPCKHBW_MMXq_MEMq) = PUNPCKHBW<V64W, V64, MV64>;
+DEF_ISEL(PUNPCKHBW_MMXq_MMXd) = PUNPCKHBW<V64W, V64, V32>;
+
+namespace {
+#if 0
 template <typename D, typename S>
 DEF_SEM(PUNPCKHWD, D dst, S1 src1, S2 src2) {
     auto bit_width = 16; // XXX erhlee-bird: What's the best way to say 16?
@@ -58,12 +64,14 @@ DEF_SEM(PUNPCKHQDQ, D dst, S1 src1, S2 src2) {
         UInsertV64<i>(dst, upper_bytes);
     }
 }
+#endif  // 0
 
 } // namespace
 
 
-DEF_ISEL(PUNPCKHDQ_MMXq_MEMq) = PUNPCKHDQ<V64W, V64, MV64>
-DEF_ISEL(PUNPCKHDQ_MMXq_MMXd) = PUNPCKHDQ<V64W, V64, V32>
+//DEF_ISEL(PUNPCKHDQ_MMXq_MEMq) = PUNPCKHDQ<V64W, V64, MV64>;
+//DEF_ISEL(PUNPCKHDQ_MMXq_MMXd) = PUNPCKHDQ<V64W, V64, V32>;
+
 // 565:117 PHSUBD PHSUBD_MMXq_MEMq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
 // 569:118 PHSUBD PHSUBD_MMXq_MMXq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
 // 639:135 PMULHRSW PMULHRSW_MMXq_MEMq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
@@ -199,8 +207,7 @@ DEF_ISEL(PUNPCKHDQ_MMXq_MMXd) = PUNPCKHDQ<V64W, V64, V32>
 // 6956:1497 PSUBQ PSUBQ_MMXq_MEMq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 6960:1498 PSUBQ PSUBQ_MMXq_MMXq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 7020:1511 EMMS EMMS MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX X87_MMX_STATE_W
-DEF_ISEL(PUNPCKHBW_MMXq_MEMq) = PUNPCKHBW<V64W, V64, MV64>;
-DEF_ISEL(PUNPCKHBW_MMXq_MMXd) = PUNPCKHBW<V64W, V64, V32>;
+
 // 7126:1536 PHADDW PHADDW_MMXq_MEMq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
 // 7130:1537 PHADDW PHADDW_MMXq_MMXq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
 // 7448:1602 PMULUDQ PMULUDQ_MMXq_MEMq MMX SSE2 SSE2 ATTRIBUTES: NOTSX
@@ -212,8 +219,10 @@ DEF_ISEL(PUNPCKHBW_MMXq_MMXd) = PUNPCKHBW<V64W, V64, V32>;
 // 7609:1636 PAND PAND_MMXq_MMXq LOGICAL MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 7669:1650 PMAXUB PMAXUB_MMXq_MEMq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 7673:1651 PMAXUB PMAXUB_MMXq_MMXq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
-DEF_ISEL(PUNPCKHWD_MMXq_MEMq) = PUNPCKHBW<V64W, V64, MV64>;
-DEF_ISEL(PUNPCKHWD_MMXq_MMXd) = PUNPCKHBW<V64W, V64, V32>;
+
+//DEF_ISEL(PUNPCKHWD_MMXq_MEMq) = PUNPCKHBW<V64W, V64, MV64>;
+//DEF_ISEL(PUNPCKHWD_MMXq_MMXd) = PUNPCKHBW<V64W, V64, V32>;
+
 // 8028:1731 PMINUB PMINUB_MMXq_MEMq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 8032:1732 PMINUB PMINUB_MMXq_MMXq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 8050:1736 PINSRW PINSRW_MMXq_MEMw_IMMb MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX UNALIGNED

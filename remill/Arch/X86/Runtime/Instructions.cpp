@@ -120,6 +120,7 @@
 #include "remill/Arch/X86/Semantics/FMA.h"
 #include "remill/Arch/X86/Semantics/LOGICAL.h"
 #include "remill/Arch/X86/Semantics/MISC.h"
+#include "remill/Arch/X86/Semantics/MMX.h"
 #include "remill/Arch/X86/Semantics/NOP.h"
 #include "remill/Arch/X86/Semantics/POP.h"
 #include "remill/Arch/X86/Semantics/PUSH.h"
