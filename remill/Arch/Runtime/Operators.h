@@ -142,12 +142,11 @@ MAKE_MWRITE(80, 64, float, f80)
     template <typename T> \
     ALWAYS_INLINE auto _ ## prefix ## ReadV ## size ( \
         Memory *, RVn<T> vec) -> decltype(T().accessor) { \
-      decltype(T().accessor) ret_vec{}; \
-      ret_vec.elems[0] = *reinterpret_cast<const base_type ## size ## _t *>( \
-          &vec.val); \
-      return ret_vec; \
+      return reinterpret_cast<const T *>(&vec.val)->accessor; \
     }
 
+MAKE_READRV(U, 8, bytes, uint)
+MAKE_READRV(U, 16, words, uint)
 MAKE_READRV(U, 32, dwords, uint)
 MAKE_READRV(U, 64, qwords, uint)
 MAKE_READRV(F, 32, floats, float)
@@ -784,9 +783,11 @@ MAKE_INSERTV(64, float64_t, doubles, Identity, F)
 #undef MAKE_INSERTV
 
 template <typename T>
-ALWAYS_INLINE T _ClearV(const T &) {
+ALWAYS_INLINE constexpr T _EmptyVec(void) {
   return {};
 }
+
+#define _ClearV(...) _EmptyVec<decltype(__VA_ARGS__)>()
 
 #define UClearV8 _ClearV
 #define UClearV16 _ClearV
