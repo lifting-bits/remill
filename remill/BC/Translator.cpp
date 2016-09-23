@@ -103,7 +103,7 @@ static std::string CanonicalName(OSName os_name, const std::string &name) {
 static void InitBlockFunctionAttributes(llvm::Function *new_block_func,
                                         const llvm::Function *template_func) {
 
-  new_block_func->setAttributes(template_func->getAttributes());
+  new_block_func->copyAttributesFrom(template_func);
   new_block_func->setLinkage(llvm::GlobalValue::PrivateLinkage);
   new_block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
 
@@ -146,10 +146,12 @@ static void AddBlockInitializationCode(llvm::Function *block_func,
                                        const llvm::Function *template_func) {
 
   llvm::ValueToValueMapTy var_map;
-  auto targs = template_func->arg_begin();
-  auto bargs = block_func->arg_begin();
-  for (; targs != template_func->arg_end(); ++targs, ++bargs) {
-    var_map[&*targs] = &*bargs;
+  var_map[template_func] = block_func;
+
+  auto block_args = block_func->arg_begin();
+  for (const llvm::Argument &arg : template_func->args()) {
+    var_map[&arg] = &*block_args;
+    ++block_args;
   }
 
   llvm::SmallVector<llvm::ReturnInst *, 1> return_instrs;
@@ -490,7 +492,7 @@ llvm::Function *Translator::GetOrCreateBlock(uint64_t addr) {
     block_func = llvm::dyn_cast<llvm::Function>(
         module->getOrInsertFunction(func_name, func_type));
 
-    // Initializze the generic attributes, but change the linkage into
+    // Initialize the generic attributes, but change the linkage into
     // external until the block is implemented.
     InitBlockFunctionAttributes(block_func, basic_block);
     block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
