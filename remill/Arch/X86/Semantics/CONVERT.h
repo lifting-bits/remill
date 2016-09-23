@@ -39,20 +39,20 @@ namespace {
 
 template <typename D, typename S1>
 DEF_SEM(CVTDQ2PD, D dst, S1 src) {
-  auto src_vec = UReadV32(src);
-  auto a = Float64(Signed(UExtractV32(src_vec, 0)));
-  auto b = Float64(Signed(UExtractV32(src_vec, 1)));
+  auto src_vec = SReadV32(src);
+  auto a = Float64(SExtractV32(src_vec, 0));
+  auto b = Float64(SExtractV32(src_vec, 1));
   auto dst_vec = FClearV64(FReadV64(dst));
   FWriteV64(dst, FInsertV64(FInsertV64(dst_vec, 0, a), 1, b));
 }
 
 template <typename D, typename S1>
 DEF_SEM(CVTDQ2PD_AVX, D dst, S1 src) {
-  auto src_vec = UReadV32(src);
+  auto src_vec = SReadV32(src);
   auto dst_vec = FClearV64(FReadV64(dst));
   _Pragma("unroll")
   for (size_t i = 0; i < 4UL; ++i) {
-    auto entry = Float64(Signed(UExtractV32(src_vec, i)));
+    auto entry = Float64(SExtractV32(src_vec, i));
     dst_vec = FInsertV64(dst_vec, i, entry);
   }
   FWriteV64(dst, dst_vec);
@@ -72,22 +72,22 @@ namespace {
 template <typename D, typename S1>
 DEF_SEM(CVTTPD2DQ, D dst, S1 src) {
   auto src_vec = FReadV64(src);
-  auto a = Unsigned(Int32(FExtractV64(src_vec, 0)));
-  auto b = Unsigned(Int32(FExtractV64(src_vec, 1)));
-  auto dst_vec = UClearV32(UReadV32(dst));
-  UWriteV32(dst, UInsertV32(UInsertV32(dst_vec, 0, a), 1, b));
+  auto a = Int32(FExtractV64(src_vec, 0));
+  auto b = Int32(FExtractV64(src_vec, 1));
+  auto dst_vec = SClearV32(SReadV32(dst));
+  SWriteV32(dst, SInsertV32(SInsertV32(dst_vec, 0, a), 1, b));
 }
 
 template <typename D, typename S1>
 DEF_SEM(CVTTPD2DQ_AVX, D dst, S1 src) {
   auto src_vec = FReadV64(src);
-  auto dst_vec = UClearV32(UReadV32(dst));
+  auto dst_vec = SClearV32(SReadV32(dst));
   _Pragma("unroll")
   for (size_t i = 0; i < 4UL; ++i) {
-    auto entry = Unsigned(Int32(FExtractV64(src_vec, i)));
-    dst_vec = UInsertV32(dst_vec, i, entry);
+    auto entry = Int32(FExtractV64(src_vec, i));
+    dst_vec = SInsertV32(dst_vec, i, entry);
   }
-  UWriteV32(dst, dst_vec);
+  SWriteV32(dst, dst_vec);
 }
 
 }  // namespace
@@ -162,8 +162,8 @@ namespace {
 template <typename S>
 DEF_SEM(CVTPI2PD, V128W dst, S src) {
   auto src_vec = UReadV32(src);
-  auto a = Float64(Signed(UExtractV32(src_vec, 0)));
-  auto b = Float64(Signed(UExtractV32(src_vec, 1)));
+  auto a = Float64(SExtractV32(src_vec, 0));
+  auto b = Float64(SExtractV32(src_vec, 1));
   FWriteV64(dst, FInsertV64(FInsertV64(FReadV64(dst), 0, a), 1, b));
 }
 

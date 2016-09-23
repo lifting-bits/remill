@@ -136,6 +136,37 @@ MAKE_VECTOR(uint128_t, uint128, 1, 128, 16)
 MAKE_VECTOR(uint128_t, uint128, 2, 256, 32)
 MAKE_VECTOR(uint128_t, uint128, 4, 512, 64)
 
+MAKE_VECTOR(int8_t, int8, 1, 8, 1)
+MAKE_VECTOR(int8_t, int8, 2, 16, 2)
+MAKE_VECTOR(int8_t, int8, 4, 32, 4)
+MAKE_VECTOR(int8_t, int8, 8, 64, 8)
+MAKE_VECTOR(int8_t, int8, 16, 128, 16)
+MAKE_VECTOR(int8_t, int8, 32, 256, 32)
+MAKE_VECTOR(int8_t, int8, 64, 512, 64)
+
+MAKE_VECTOR(int16_t, int16, 1, 16, 2)
+MAKE_VECTOR(int16_t, int16, 2, 32, 4)
+MAKE_VECTOR(int16_t, int16, 4, 64, 8)
+MAKE_VECTOR(int16_t, int16, 8, 128, 16)
+MAKE_VECTOR(int16_t, int16, 16, 256, 32)
+MAKE_VECTOR(int16_t, int16, 32, 512, 64)
+
+MAKE_VECTOR(int32_t, int32, 1, 32, 4)
+MAKE_VECTOR(int32_t, int32, 2, 64, 8)
+MAKE_VECTOR(int32_t, int32, 4, 128, 16)
+MAKE_VECTOR(int32_t, int32, 8, 256, 32)
+MAKE_VECTOR(int32_t, int32, 16, 512, 64)
+
+MAKE_VECTOR(int64_t, int64, 1, 64, 8)
+MAKE_VECTOR(int64_t, int64, 2, 128, 16)
+MAKE_VECTOR(int64_t, int64, 4, 256, 32)
+MAKE_VECTOR(int64_t, int64, 8, 512, 64)
+
+//MAKE_VECTOR(int128_t, int128, 0, 64, 8);
+MAKE_VECTOR(int128_t, int128, 1, 128, 16)
+MAKE_VECTOR(int128_t, int128, 2, 256, 32)
+MAKE_VECTOR(int128_t, int128, 4, 512, 64)
+
 MAKE_VECTOR(float, float32, 1, 32, 4)
 MAKE_VECTOR(float, float32, 2, 64, 8)
 MAKE_VECTOR(float, float32, 4, 128, 16)
@@ -155,20 +186,21 @@ MAKE_VECTOR(double, float64, 8, 512, 64);
 
 union vec8_t final {
   uint8v1_t bytes;
+  int8v1_t sbytes;
 } __attribute__((packed));
 
-static_assert(1 == sizeof(vec8_t) &&
-              1 == sizeof(vec8_t().bytes),
+static_assert(1 == sizeof(vec8_t),
               "Invalid structure packing of `vec8_t`.");
 
 union vec16_t final {
   uint8v2_t bytes;
   uint16v1_t words;
+
+  int8v2_t sbytes;
+  int16v1_t swords;
 } __attribute__((packed));
 
-static_assert(2 == sizeof(vec16_t) &&
-              2 == sizeof(vec16_t().bytes) &&
-              2 == sizeof(vec16_t().words),
+static_assert(2 == sizeof(vec16_t),
               "Invalid structure packing of `vec16_t`.");
 
 union vec32_t final {
@@ -176,13 +208,13 @@ union vec32_t final {
   uint16v2_t words;
   uint32v1_t dwords;
   float32v1_t floats;
+
+  int8v4_t sbytes;
+  int16v2_t swords;
+  int32v1_t sdwords;
 } __attribute__((packed));
 
-static_assert(4 == sizeof(vec32_t) &&
-              4 == sizeof(vec32_t().bytes) &&
-              4 == sizeof(vec32_t().words) &&
-              4 == sizeof(vec32_t().dwords) &&
-              4 == sizeof(vec32_t().floats),
+static_assert(4 == sizeof(vec32_t),
               "Invalid structure packing of `vec32_t`.");
 
 union vec64_t final {
@@ -192,17 +224,16 @@ union vec64_t final {
   uint64v1_t qwords;
   float32v2_t floats;
   float64v1_t doubles;
+
+  int8v8_t sbytes;
+  int16v4_t swords;
+  int32v2_t sdwords;
+  int64v1_t sqwords;
 } __attribute__((packed));
 
 #pragma clang diagnostic pop
 
-static_assert(8 == sizeof(vec64_t) &&
-              8 == sizeof(vec64_t().bytes) &&
-              8 == sizeof(vec64_t().words) &&
-              8 == sizeof(vec64_t().dwords) &&
-              8 == sizeof(vec64_t().qwords) &&
-              8 == sizeof(vec64_t().floats) &&
-              8 == sizeof(vec64_t().doubles),
+static_assert(8 == sizeof(vec64_t),
               "Invalid structure packing of `vec64_t`.");
 
 union vec128_t final {
@@ -213,16 +244,15 @@ union vec128_t final {
   uint128v1_t dqwords;
   float32v4_t floats;
   float64v2_t doubles;
+
+  int8v16_t sbytes;
+  int16v8_t swords;
+  int32v4_t sdwords;
+  int64v2_t sqwords;
+  int128v1_t sdqwords;
 } __attribute__((packed));
 
-static_assert(16 == sizeof(vec128_t) &&
-              16 == sizeof(vec128_t().bytes) &&
-              16 == sizeof(vec128_t().words) &&
-              16 == sizeof(vec128_t().dwords) &&
-              16 == sizeof(vec128_t().qwords) &&
-              16 == sizeof(vec128_t().dqwords) &&
-              16 == sizeof(vec128_t().floats) &&
-              16 == sizeof(vec128_t().doubles),
+static_assert(16 == sizeof(vec128_t),
               "Invalid structure packing of `vec128_t`.");
 
 union vec256_t final {
@@ -233,16 +263,15 @@ union vec256_t final {
   uint128v2_t dqwords;
   float32v8_t floats;
   float64v4_t doubles;
+
+  int8v32_t sbytes;
+  int16v16_t swords;
+  int32v8_t sdwords;
+  int64v4_t sqwords;
+  int128v2_t sdqwords;
 } __attribute__((packed));
 
-static_assert(32 == sizeof(vec256_t) &&
-              32 == sizeof(vec256_t().bytes) &&
-              32 == sizeof(vec256_t().words) &&
-              32 == sizeof(vec256_t().dwords) &&
-              32 == sizeof(vec256_t().qwords) &&
-              32 == sizeof(vec256_t().dqwords) &&
-              32 == sizeof(vec256_t().floats) &&
-              32 == sizeof(vec256_t().doubles),
+static_assert(32 == sizeof(vec256_t),
               "Invalid structure packing of `vec256_t`.");
 
 union vec512_t final {
@@ -253,6 +282,12 @@ union vec512_t final {
   uint128v4_t dqwords;
   float32v16_t floats;
   float64v8_t doubles;
+
+  int8v64_t sbytes;
+  int16v32_t swords;
+  int32v16_t sdwords;
+  int64v8_t sqwords;
+  int128v4_t sdqwords;
 } __attribute__((packed));
 
 static_assert(64 == sizeof(vec512_t) &&
@@ -531,73 +566,6 @@ struct IntegerType {
 
 template <>
 struct IntegerType<bool> : public IntegerType<uint8_t> {};
-
-
-template <typename T>
-struct Tag;
-
-template <typename T>
-struct Tag<T &> : public Tag<T> {};
-
-template <typename T>
-struct Tag<T *> : public Tag<T> {};
-
-template <typename T>
-struct Tag<Rn<T>> : public Tag<T> {};
-
-template <typename T>
-struct Tag<RVn<T>> : public Tag<T> {};
-
-template <typename T>
-struct Tag<RnW<T>> : public Tag<T> {};
-
-template <typename T>
-struct Tag<Mn<T>> : public Tag<T> {};
-
-template <typename T>
-struct Tag<MnW<T>> : public Tag<T> {};
-
-template <typename T>
-struct Tag<In<T>> : public Tag<T> {};
-
-template <typename T>
-struct Tag<Vn<T>> : public Tag<T> {};
-
-template <typename T>
-struct Tag<VnW<T>> : public Tag<T> {};
-
-struct VectorTag {};
-struct NumberTag {};
-
-#define MAKE_TAG(prefix, size, tag) \
-    template <> \
-    struct Tag<prefix ## size ## _t> { \
-      typedef tag Type; \
-    };
-
-MAKE_TAG(vec, 8, VectorTag)
-MAKE_TAG(vec, 16, VectorTag)
-MAKE_TAG(vec, 32, VectorTag)
-MAKE_TAG(vec, 64, VectorTag)
-MAKE_TAG(vec, 128, VectorTag)
-MAKE_TAG(vec, 256, VectorTag)
-MAKE_TAG(vec, 512, VectorTag)
-
-MAKE_TAG(uint, 8, NumberTag)
-MAKE_TAG(uint, 16, NumberTag)
-MAKE_TAG(uint, 32, NumberTag)
-MAKE_TAG(uint, 64, NumberTag)
-MAKE_TAG(uint, 128, NumberTag)
-
-MAKE_TAG(int, 8, NumberTag)
-MAKE_TAG(int, 16, NumberTag)
-MAKE_TAG(int, 32, NumberTag)
-MAKE_TAG(int, 64, NumberTag)
-MAKE_TAG(int, 128, NumberTag)
-
-MAKE_TAG(float, 32, NumberTag)
-MAKE_TAG(float, 64, NumberTag)
-#undef MAKE_TAG
 
 inline uint8_t operator "" _u8(unsigned long long value) {
   return static_cast<uint8_t>(value);
