@@ -7,8 +7,6 @@ BLUE=`tput setaf 4`
 RESET=`tput sgr0`
 
 CXXFLAGS=
-CXXFLAGS+=" -isystem ${DIR}/third_party/include"
-CXXFLAGS+=" -isystem ${DIR}/third_party/include/c++/v1"
 CXXFLAGS+=" -I${DIR}"
 CXXFLAGS+=" -std=gnu++11 -g0 -O0"
 CXXFLAGS+=" -fno-exceptions -fno-rtti -fno-asynchronous-unwind-tables"
@@ -42,25 +40,25 @@ function compile_x86()
     
     printf "${BLUE}${MESSAGE}${RESET}\n"
     
-    $DIR/third_party/bin/clang++ -x c++ \
+    clang++-3.8 -x c++ \
         -emit-llvm -O0 -g0 -m$1 -mtune=generic $MACROS $CXXFLAGS \
         -ffunction-sections -fdata-sections \
 	    -c $DIR/remill/Arch/X86/Runtime/Instructions.cpp \
 	    -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc
 	    
-    $DIR/third_party/bin/clang++ -x c++ \
+    clang++-3.8 -x c++ \
         -emit-llvm -O0 -g0 -m$1 -mtune=generic $MACROS $CXXFLAGS \
         -ffunction-sections -fdata-sections \
         -c $DIR/remill/Arch/X86/Runtime/BasicBlock.cpp \
         -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc
 
-    $DIR/third_party/bin/clang \
+    clang-3.8 \
         -emit-llvm -O3 -g0 -m$1 -mtune=generic \
         -ffunction-sections -fdata-sections \
         -c $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc \
         -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.opt.bc
     
-    $DIR/third_party/bin/llvm-link \
+    llvm-link-3.8 \
         -o=$DIR/generated/${FILE_NAME}.bc \
         $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc \
         $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.opt.bc
