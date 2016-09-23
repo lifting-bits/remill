@@ -86,16 +86,18 @@ void AddTerminatingTailCall(llvm::BasicBlock *source_block,
   llvm::IRBuilder<> ir(source_block);
 
   // Set up arguments according to our ABI.
-  std::vector<llvm::Value *> args;
-  args.resize(kNumBlockArgs);
+  std::vector<llvm::Value *> args(kNumBlockArgs);
   args[kStatePointerArgNum] = LoadStatePointer(source_block);
   args[kMemoryPointerArgNum] = LoadMemoryPointer(source_block);
   args[kPCArgNum] = LoadProgramCounter(source_block);
 
+  // We may introduce variables like `__remill_jump_0xf00` that boils down to
+  // meaning the `__remill_jump` at offset `0xf00` within the lifted binary.
+  // Being able to know what jump in the lifted bitcode corresponds with a
+  // jump as a specific area in the binary is useful for introducing things
+  // switch instructions to handle statically known jump tables.
   if (!llvm::isa<llvm::Function>(dest_func)) {
     dest_func = ir.CreateLoad(dest_func);
-//    dest_func->dump();
-//    exit(1);
   }
 
   llvm::CallInst *call_target_instr = ir.CreateCall(dest_func, args);
