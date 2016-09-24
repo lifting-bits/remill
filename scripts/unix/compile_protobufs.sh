@@ -3,6 +3,7 @@
 
 DIR=$(dirname $(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )))
 
+mkdir -p $DIR/remill/CFG/CFG
 cd $DIR/generated/CFG
 cp $DIR/remill/CFG/CFG.proto $DIR/generated/CFG
 
