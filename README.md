@@ -32,11 +32,12 @@ We are actively working on porting Remill to macOS.
 | Name | Version | 
 | ---- | ------- |
 | [Git](https://git-scm.com/) | Latest |
+| [CMake](https://cmake.org/) | 2.8+ |
 | [Google Log](https://github.com/google/glog) | 0.3.3 |
 | [Google Test](https://github.com/google/googletest) | 1.6.0 |
 | [Google Protobuf](https://github.com/google/protobuf) | 2.4.1 |
-| [LLVM](http://llvm.org/) | 3.8 |
-| [Clang](http://clang.llvm.org/) | 3.8 |
+| [LLVM](http://llvm.org/) | 3.9 |
+| [Clang](http://clang.llvm.org/) | 3.9 |
 | [Intel XED](https://software.intel.com/en-us/articles/xed-x86-encoder-decoder-software-library) | 2016-02-02 |
 | [Python](https://www.python.org/) | 2.7 | 
 | [Python Package Index](https://pypi.python.org/pypi) | Latest |
@@ -50,21 +51,41 @@ We are actively working on porting Remill to macOS.
 
 ### Step 1: Install dependencies
 
-#### On Linux
+#### Ubuntu 14.04 and 16.04
+
+##### Setting up LLVM repositories
+
+> Note: Installing LLVM on Ubuntu in such a way that it works for CMake can be tricky. We use LLVM 3.9. What I have found works is to start by removing all versions of all LLVM-related packages. Then, add in the official LLVM repositories (as shown below). Finally, install `llvm-3.9-dev`. If you also need older versions of LLVM-related tools, then re-install them after installing LLVM 3.9.
 
 ```shell
+UBUNTU_RELEASE=`lsb_release -sc`
+
+wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE} main"
+sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.8 main"
+sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.9 main"
+```
+
+##### Install packages
+
+```shell
+sudo apt-get update
+sudo apt-get upgrade
+
 sudo apt-get install \
     git \
+    cmake \
     libgoogle-glog-dev \
     libgtest-dev \
     libprotoc-dev \
     libprotobuf-dev \
-    llvm-3.8-dev \
-    clang-3.8 \
     python2.7 \
-    python-pip
+    python-pip \
+    llvm-3.9-dev \
+    clang-3.9
 
 sudo pip install --upgrade pip
+
 sudo pip install \
     futures \
     python-magic \

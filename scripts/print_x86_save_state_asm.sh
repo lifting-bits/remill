@@ -6,7 +6,7 @@
 DIR=$(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd ))
 
 pushd /tmp
-clang++-3.8 \
+clang++-3.9 \
     -std=gnu++11 \
     -Wno-nested-anon-types -Wno-variadic-macros -Wno-extended-offsetof \
     -Wno-return-type-c-linkage \

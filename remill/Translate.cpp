@@ -6,6 +6,7 @@
 #include <fstream>
 #include <sstream>
 
+#include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/CommandLine.h>
 
@@ -76,7 +77,8 @@ extern "C" int main(int argc, char *argv[]) {
   auto source_arch = remill::Arch::Create(source_os, FLAGS_arch_in);
   auto target_arch = remill::Arch::Create(target_os, FLAGS_arch_out);
 
-  auto module = remill::LoadModuleFromFile(FLAGS_bc_in);
+  auto context = new llvm::LLVMContext;
+  auto module = remill::LoadModuleFromFile(context, FLAGS_bc_in);
   target_arch->PrepareModule(module);
 
   remill::Translator lifter(source_arch, module);

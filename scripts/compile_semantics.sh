@@ -40,25 +40,25 @@ function compile_x86()
     
     printf "${BLUE}${MESSAGE}${RESET}\n"
     
-    clang++-3.8 -x c++ \
+    clang++-3.9 -x c++ \
         -emit-llvm -O0 -g0 -m$1 -mtune=generic $MACROS $CXXFLAGS \
         -ffunction-sections -fdata-sections \
 	    -c $DIR/remill/Arch/X86/Runtime/Instructions.cpp \
 	    -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc
 	    
-    clang++-3.8 -x c++ \
+    clang++-3.9 -x c++ \
         -emit-llvm -O0 -g0 -m$1 -mtune=generic $MACROS $CXXFLAGS \
         -ffunction-sections -fdata-sections \
         -c $DIR/remill/Arch/X86/Runtime/BasicBlock.cpp \
         -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc
 
-    clang-3.8 \
+    clang-3.9 \
         -emit-llvm -O3 -g0 -m$1 -mtune=generic \
         -ffunction-sections -fdata-sections \
         -c $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.bc \
         -o $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.opt.bc
     
-    llvm-link-3.8 \
+    llvm-link-3.9 \
         -o=$DIR/generated/${FILE_NAME}.bc \
         $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_block.bc \
         $DIR/generated/Arch/X86/Runtime/${FILE_NAME}_instr.opt.bc

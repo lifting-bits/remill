@@ -55,18 +55,20 @@ fi;
 
 notice "Unpacking XED into third_party/xed"
 mkdir -p $DIR/third_party/xed
-rm -r $DIR/third_party/xed/*
+sudo rm -rf $DIR/third_party/xed/
 unzip $DIR/blob/xed/${XED_VERSION}.zip -d $DIR/third_party/xed
 
-sub_category "Installing XED into ${$INSTALL_DIR}"
+sub_category "Installing XED into ${INSTALL_DIR}"
 
 notice "Installing XED headers to ${INSTALL_INCLUDE_DIR}"
 sudo mkdir -p $INSTALL_INCLUDE_DIR
-sudo cp -r $DIR/third_party/xed/kits/${XED_VERSION}/include/* $INSTALL_INCLUDE_DIR
+sudo cp $DIR/third_party/xed/kits/${XED_VERSION}/include/*.h $INSTALL_INCLUDE_DIR
+sudo chmod a+r $INSTALL_INCLUDE_DIR/*.h
 
 notice "Installing XED libraries to ${INSTALL_LIB_DIR}"
 sudo mkdir -p $INSTALL_LIB_DIR
-sudo cp -r $DIR/third_party/xed/kits/${XED_VERSION}/lib/* $INSTALL_LIB_DIR
+sudo chmod a+rx $DIR/third_party/xed/kits/${XED_VERSION}/lib/*
+sudo cp $DIR/third_party/xed/kits/${XED_VERSION}/lib/* $INSTALL_LIB_DIR
 
 category "Installed XED"
 exit 0

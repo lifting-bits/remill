@@ -11,6 +11,7 @@ class Function;
 class GlobalVariable;
 class Module;
 class Value;
+class LLVMContext;
 }  // namespace llvm
 
 namespace remill {
@@ -56,7 +57,8 @@ llvm::GlobalVariable *FindGlobaVariable(const llvm::Module *M,
                                         std::string name);
 
 // Parses and loads a bitcode file into memory.
-llvm::Module *LoadModuleFromFile(std::string file_name);
+llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
+                                 std::string file_name);
 
 // Store an LLVM module into a file.
 void StoreModuleToFile(llvm::Module *module, std::string file_name);

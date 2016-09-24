@@ -42,16 +42,9 @@ function error()
 function create_directory_tree()
 {
     mkdir -p $DIR/third_party
-    mkdir -p $DIR/third_party/bin
-    mkdir -p $DIR/third_party/lib
-    mkdir -p $DIR/third_party/include
-    mkdir -p $DIR/third_party/src
-    mkdir -p $DIR/third_party/share
-    
     mkdir -p $DIR/generated
     mkdir -p $DIR/generated/Arch
     mkdir -p $DIR/generated/CFG
-    
     touch $DIR/generated/__init__.py
     touch $DIR/generated/CFG/__init__.py
 }
