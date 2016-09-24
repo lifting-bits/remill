@@ -3,16 +3,18 @@
 # This script is a convenience script for generating some assembly code that
 # is a template for saving the machine state to a `State` structure.
 
-DIR=$(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd ))
+DIR=$(dirname $(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )))
 
 pushd /tmp
 clang++-3.9 \
     -std=gnu++11 \
+    -stdlib=libc++ \
     -Wno-nested-anon-types -Wno-variadic-macros -Wno-extended-offsetof \
     -Wno-return-type-c-linkage \
     -m64 -I${DIR} \
     -DADDRESS_SIZE_BITS=64 -DHAS_FEATURE_AVX=1 -DHAS_FEATURE_AVX512=1 \
     $DIR/tests/X86/PrintSaveState.cpp
     
-./a.out > $DIR/tests/X86/SaveState.S
+./a.out > $DIR/generated/Arch/X86/SaveState.S
+rm ./a.out
 popd

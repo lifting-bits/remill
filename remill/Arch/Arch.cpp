@@ -23,26 +23,49 @@ const Arch *Arch::Create(OSName os_name_, ArchName arch_name_) {
       DLOG(INFO) << "Using architecture: X86";
       return CreateX86(os_name_, arch_name_, 32);
 
+    case kArchX86_AVX:
+      DLOG(INFO) << "Using architecture: X86, feature set: AVX";
+      return CreateX86(os_name_, arch_name_, 32);
+
+    case kArchX86_AVX512:
+      DLOG(INFO) << "Using architecture: X86, feature set: AVX512";
+      return CreateX86(os_name_, arch_name_, 32);
+
     case kArchAMD64:
       DLOG(INFO) << "Using architecture: AMD64";
+      return CreateX86(os_name_, arch_name_, 64);
+
+    case kArchAMD64_AVX:
+      DLOG(INFO) << "Using architecture: AMD64, feature set: AVX";
+      return CreateX86(os_name_, arch_name_, 64);
+
+    case kArchAMD64_AVX512:
+      DLOG(INFO) << "Using architecture: AMD64, feature set: AVX512";
       return CreateX86(os_name_, arch_name_, 64);
   }
   return nullptr;
 }
 
+
 ArchName Arch::GetName(const std::string &arch_name) {
-  if (arch_name == "x86" ||
-      arch_name == "x86_32" ||
-      arch_name == "x86-32") {
+
+  if (arch_name == "x86") {
     return kArchX86;
 
-  } else if (arch_name == "amd64" ||
-             arch_name == "x86_64" ||
-             arch_name == "x86-64" ||
-             arch_name == "x64" ||
-             arch_name == "intel64" ||
-             arch_name == "emt64") {
+  } else if (arch_name == "x86_avx") {
+    return kArchX86_AVX;
+
+  } else if (arch_name == "x86_avx512") {
+    return kArchX86_AVX512;
+
+  } else if (arch_name == "amd64") {
     return kArchAMD64;
+
+  } else if (arch_name == "amd64_avx") {
+    return kArchAMD64_AVX;
+
+  } else if (arch_name == "amd64_avx512") {
+    return kArchAMD64_AVX512;
 
   } else {
     LOG(ERROR)

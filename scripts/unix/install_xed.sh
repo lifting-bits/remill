@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved.
 
-# Directory in which the script dir resides (i.e. Remill root dir).
-DIR=$(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd ))
+DIR=$(dirname $(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )))
 
 RED=`tput setaf 1`
 GREEN=`tput setaf 2`

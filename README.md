@@ -23,7 +23,7 @@ If you are experiencing undocumented problems with Remill then ask for help in t
 
 ## Supported Platforms
 
-Remill is supported on Linux platforms and has been tested on Ubuntu 16.04 and openSUSE 13.2.
+Remill is supported on Linux platforms and has been tested on Ubuntu 46.04 and Ubuntu 16.04.
 
 We are actively working on porting Remill to macOS.
 
@@ -51,32 +51,38 @@ We are actively working on porting Remill to macOS.
 
 ### Step 1: Install dependencies
 
-#### On Ubuntu 14.04 and 16.04
+#### On Linux
 
-##### Setting up LLVM repositories
+The first step is to update Aptitude to find the latest LLVM packages.
 
 > Note: Installing LLVM on Ubuntu in such a way that it works for CMake can be tricky. We use LLVM 3.9. What I have found works is to start by removing all versions of all LLVM-related packages. Then, add in the official LLVM repositories (as shown below). Finally, install `llvm-3.9-dev`. If you also need older versions of LLVM-related tools, then re-install them after installing LLVM 3.9.
 
 ```shell
 UBUNTU_RELEASE=`lsb_release -sc`
 
-wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+wget -qO - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
 
 sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE} main"
 sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.8 main"
 sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.9 main"
 ```
 
-##### Install packages
+The next step is to update Aptitude, and then fetch all the packages needed to build Remill.
 
 ```shell
 sudo apt-get update
 sudo apt-get upgrade
 
-sudo apt-get install git cmake build-essential libgoogle-glog-dev \
-     libgtest-dev libprotoc-dev libprotobuf-dev libprotobuf-dev \
-     protobuf-compiler python2.7 python-pip llvm-3.9-dev clang-3.9 \
-     libc++-dev libc++-dev:i386 libc-dev libc-dev:i386 unzip
+sudo apt-get install \
+     git \
+     cmake \
+     libgoogle-glog-dev \
+     libgtest-dev \
+     libprotoc-dev libprotobuf-dev libprotobuf-dev protobuf-compiler \
+     python2.7 python-pip \
+     llvm-3.9-dev clang-3.9 \
+     libc++-dev libc++-dev:i386 \
+     libc6-dev libc6-dev:i386 unzip
 
 sudo pip install --upgrade pip
 
@@ -96,29 +102,23 @@ cd remill
 
 ### Step 3: Install Intel XED
 
+#### On Linux and macOS
+
 This script will unpack and install Intel XED. It will require `sudo`er permissions. The XED library will be installed into `/usr/local/lib`, and the headers will be installed into `/usr/local/include/intel`.
 
 ```shell
-sudo ./scripts/install_xed.sh
+sudo ./scripts/unix/install_xed.sh
 ```
-
-### Step 4: Create auto-generated files
-
-This will compile instruction semantics into bitcode files, and auto-generate protocol buffer files.
-
-```shell
-./scripts/bootstrap.sh
-```
-
-### Step 5: Build the code
+### Step 4: Run a Basic Build
 
 ```
 mkdir build
 cd build
-cmake \
-    -DCMAKE_C_COMPILER=clang-3.9 \
-    -DCMAKE_CXX_COMPILER=clang++-3.9 \
-    ..
+cmake ..
+
+make semantics
+make all
+sudo make install
 ```
 
 ## Try it Out

@@ -114,9 +114,13 @@ std::string Instruction::Debug(void) const {
     case kArchInvalid:
       break;
     case kArchAMD64:
+    case kArchAMD64_AVX:
+    case kArchAMD64_AVX512:
       ss << "AMD64_";
       break;
     case kArchX86:
+    case kArchX86_AVX:
+    case kArchX86_AVX512:
       ss << "X86_";
       break;
   }

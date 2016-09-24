@@ -5,6 +5,7 @@
 
 #include <fstream>
 #include <sstream>
+#include <unistd.h>
 
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
@@ -23,13 +24,24 @@
 # endif
 #endif
 
+#ifndef BUILD_SEMANTICS_DIR
+# error "Macro `BUILD_SEMANTICS_DIR` must be defined."
+#endif  // BUILD_SEMANTICS_DIR
+
+#ifndef INSTALL_SEMANTICS_DIR
+# error "Macro `INSTALL_SEMANTICS_DIR` must be defined."
+#endif  // INSTALL_SEMANTICS_DIR
+
+
 // TODO(pag): Support separate source and target architectures?
 DEFINE_string(arch_in, "", "Architecture of the code being translated. "
-                           "Valid architectures: x86, amd64.");
+                           "Valid architectures: x86, amd64 (with or without "
+                           "`_avx` or `_avx512` appended).");
 
 DEFINE_string(arch_out, "", "Architecture of the target architecture on "
-                            "which the translated code will run. Valid "
-                            "architectures: x86, amd64.");
+                            "which the translated code will run. "
+                            "Valid architectures: x86, amd64 (with or without "
+                            "`_avx` or `_avx512` appended).");
 
 DEFINE_string(os_in, REMILL_OS, "Source OS. Valid OSes: linux, mac.");
 DEFINE_string(os_out, REMILL_OS, "Target OS. Valid OSes: linux, mac.");
@@ -39,14 +51,14 @@ DEFINE_string(cfg, "", "Path to the CFG file containing code to lift.");
 DEFINE_string(bc_in, "", "Input bitcode file into which code will "
                          "be lifted. This should either be a semantics file "
                          "associated with `--arch_in`, or it should be "
-                         "a bitcode file produced by `cfg_to_bc`. Chaining "
-                         "bitcode files produces by `cfg_to_bc` can be "
+                         "a bitcode file produced by `remill-lift`. Chaining "
+                         "bitcode files produces by `remill-lift` can be "
                          "used to iteratively link in libraries to lifted "
                          "code.");
 
 DEFINE_string(bc_out, "", "Output bitcode file name.");
 
-extern "C" int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
@@ -65,7 +77,7 @@ extern "C" int main(int argc, char *argv[]) {
   CHECK(!FLAGS_cfg.empty())
       << "Must specify CFG file with --cfg.";
 
-  CHECK(!FLAGS_bc_out.empty())
+  CHECK(!FLAGS_bc_in.empty())
       << "Please specify an input bitcode file with --bc_in.";
 
   CHECK(!FLAGS_bc_out.empty())
@@ -76,6 +88,27 @@ extern "C" int main(int argc, char *argv[]) {
 
   auto source_arch = remill::Arch::Create(source_os, FLAGS_arch_in);
   auto target_arch = remill::Arch::Create(target_os, FLAGS_arch_out);
+
+  if (FLAGS_bc_in.empty()) {
+    std::stringstream build_ss;
+    std::stringstream install_ss;
+
+    build_ss << BUILD_SEMANTICS_DIR << FLAGS_arch_in << ".bc";
+    install_ss << INSTALL_SEMANTICS_DIR << FLAGS_arch_in  << ".bc";
+
+    auto build_sem_path = build_ss.str();
+    auto install_sem_path = install_ss.str();
+
+    if (!access(build_sem_path.c_str(), F_OK)) {
+      FLAGS_bc_in = build_sem_path;
+    } else if (!access(install_sem_path.c_str(), F_OK)) {
+      FLAGS_bc_in = install_sem_path;
+    } else {
+      LOG(FATAL)
+          << "Must specify `--bc_in`. Tried to use " << build_sem_path
+          << " and " << install_sem_path << " but neither file existed.";
+    }
+  }
 
   auto context = new llvm::LLVMContext;
   auto module = remill::LoadModuleFromFile(context, FLAGS_bc_in);
