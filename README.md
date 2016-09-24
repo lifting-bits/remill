@@ -41,8 +41,8 @@ We are actively working on porting Remill to macOS.
 | [Intel XED](https://software.intel.com/en-us/articles/xed-x86-encoder-decoder-software-library) | 2016-02-02 |
 | [Python](https://www.python.org/) | 2.7 | 
 | [Python Package Index](https://pypi.python.org/pypi) | Latest |
-| [concurrent.futures](https://pypi.python.org/pypi/futures) | Latest |
 | [python-magic](https://pypi.python.org/pypi/python-magic) | Latest |
+| Unzip | Latest |
 | [python-protobuf](https://pypi.python.org/pypi/protobuf) | 2.4.1 |
 | [Binary Ninja](https://binary.ninja) | Latest |
 | [IDA Pro](https://www.hex-rays.com/products/ida) | 6.7+ |
@@ -72,15 +72,11 @@ sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolcha
 sudo apt-get update
 sudo apt-get upgrade
 
-sudo apt-get install --reinstall \
-    git cmake libgoogle-glog-dev libgtest-dev libprotoc-dev libprotobuf-dev libprotobuf-dev python2.7 python-pip llvm-3.9-dev clang-3.9
+sudo apt-get install --reinstall git cmake build-essential libgoogle-glog-dev libgtest-dev libprotoc-dev libprotobuf-dev libprotobuf-dev protobuf-compiler python2.7 python-pip llvm-3.9-dev clang-3.9 libstdc++-4.8-dev libstdc++-4.8-dev:i386 unzip
 
 sudo pip install --upgrade pip
 
-sudo pip install \
-    futures \
-    python-magic \
-    'protobuf==2.4.1'
+sudo pip install python-magic 'protobuf==2.4.1'
 ```
 
 #### On macOS (experimental)
@@ -91,6 +87,7 @@ sudo pip install \
 
 ```shell
 git clone git@github.com:trailofbits/remill.git
+cd remill
 ```
 
 ### Step 3: Install XED
@@ -107,7 +104,11 @@ git clone git@github.com:trailofbits/remill.git
 
 ### Step 4: Build the code
 
-**TODO(pag):** Make `cmake` work.
+```
+mkdir build
+cd build
+cmake ..
+```
 
 ## Try it Out
 
