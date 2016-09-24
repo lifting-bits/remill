@@ -82,7 +82,8 @@ sudo apt-get install \
      python2.7 python-pip \
      llvm-3.9-dev clang-3.9 \
      libc++-dev libc++-dev:i386 \
-     libc6-dev libc6-dev:i386 unzip
+     libc6-dev libc6-dev:i386 \
+     unzip
 
 sudo pip install --upgrade pip
 
@@ -109,7 +110,16 @@ This script will unpack and install Intel XED. It will require `sudo`er permissi
 ```shell
 sudo ./scripts/unix/install_xed.sh
 ```
-### Step 4: Run a Basic Build
+
+### Step 4: Compile Protocol Buffers
+
+#### On Linux and macOS
+
+```shell
+sudo ./scripts/unix/compile_protobufs.sh
+```
+
+### Step 5: Run a Basic Build
 
 ```
 mkdir build
