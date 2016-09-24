@@ -3,9 +3,11 @@
 project(remill)
 cmake_minimum_required (VERSION 2.8)
 
+enable_language(ASM)
+set(CMAKE_ASM_COMPILER clang-3.9)
+
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-enable_language(ASM)
 
 # Third-party libraries.
 set(LLVM_DIR "/usr/lib/llvm-3.9/lib/cmake/llvm/")
@@ -23,10 +25,6 @@ include_directories("${PROTOBUF_INCLUDE_DIRS}")
 include_directories("${CMAKE_CURRENT_LIST_DIR}")
 
 add_definitions(${LLVM_DEFINITIONS})
-
-set(CMAKE_C_COMPILER "clang-3.9")
-set(CMAKE_CXX_COMPILER "clang++-3.9")
-set(CMAKE_ASM_COMPILER "clang-3.9")
 
 # Generic compiler options.
 add_compile_options(
@@ -56,6 +54,7 @@ add_compile_options(
       
     -fno-omit-frame-pointer
     -fvisibility-inlines-hidden
+
     -std=gnu++11
 
     -fPIC

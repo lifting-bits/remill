@@ -51,7 +51,7 @@ We are actively working on porting Remill to macOS.
 
 ### Step 1: Install dependencies
 
-#### Ubuntu 14.04 and 16.04
+#### On Ubuntu 14.04 and 16.04
 
 ##### Setting up LLVM repositories
 
@@ -61,6 +61,7 @@ We are actively working on porting Remill to macOS.
 UBUNTU_RELEASE=`lsb_release -sc`
 
 wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+
 sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE} main"
 sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.8 main"
 sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.9 main"
@@ -72,7 +73,10 @@ sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolcha
 sudo apt-get update
 sudo apt-get upgrade
 
-sudo apt-get install --reinstall git cmake build-essential libgoogle-glog-dev libgtest-dev libprotoc-dev libprotobuf-dev libprotobuf-dev protobuf-compiler python2.7 python-pip llvm-3.9-dev clang-3.9 libstdc++-4.8-dev libstdc++-4.8-dev:i386 unzip
+sudo apt-get install git cmake build-essential libgoogle-glog-dev \
+     libgtest-dev libprotoc-dev libprotobuf-dev libprotobuf-dev \
+     protobuf-compiler python2.7 python-pip llvm-3.9-dev clang-3.9 \
+     libc++-dev libc++-dev:i386 libc-dev libc-dev:i386 unzip
 
 sudo pip install --upgrade pip
 
@@ -81,7 +85,7 @@ sudo pip install python-magic 'protobuf==2.4.1'
 
 #### On macOS (experimental)
 
-**TODO(withzombies):** Make mac work.
+Instructions for building on macOS are not yet available.
 
 ### Step 2: Clone the repository
 
@@ -90,24 +94,31 @@ git clone git@github.com:trailofbits/remill.git
 cd remill
 ```
 
-### Step 3: Install XED
+### Step 3: Install Intel XED
+
+This script will unpack and install Intel XED. It will require `sudo`er permissions. The XED library will be installed into `/usr/local/lib`, and the headers will be installed into `/usr/local/include/intel`.
 
 ```shell
-./scripts/install_xed.sh
+sudo ./scripts/install_xed.sh
 ```
 
 ### Step 4: Create auto-generated files
+
+This will compile instruction semantics into bitcode files, and auto-generate protocol buffer files.
 
 ```shell
 ./scripts/bootstrap.sh
 ```
 
-### Step 4: Build the code
+### Step 5: Build the code
 
 ```
 mkdir build
 cd build
-cmake ..
+cmake \
+    -DCMAKE_C_COMPILER=clang-3.9 \
+    -DCMAKE_CXX_COMPILER=clang++-3.9 \
+    ..
 ```
 
 ## Try it Out

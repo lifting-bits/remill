@@ -8,7 +8,7 @@ RESET=`tput sgr0`
 
 CXXFLAGS=
 CXXFLAGS+=" -I${DIR}"
-CXXFLAGS+=" -std=gnu++11 -g0 -O0"
+CXXFLAGS+=" -std=gnu++11 -stdlib=libc++ -g0 -O0"
 CXXFLAGS+=" -fno-exceptions -fno-rtti -fno-asynchronous-unwind-tables"
 CXXFLAGS+=" -ffreestanding -fno-common -fno-builtin"
 CXXFLAGS+=" -Wall -Werror -Wshadow -Wconversion -Wshorten-64-to-32 -pedantic"
