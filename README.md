@@ -113,6 +113,8 @@ sudo ./scripts/unix/install_xed.sh
 
 ### Step 4: Compile Protocol Buffers
 
+Remill represents disassembled binaries using a [protocol buffer format](docs/CFG_FORMAT.md). This step compiles that format into files that can be used by `remill-lift`.
+
 #### On Linux and macOS
 
 ```shell
@@ -121,7 +123,7 @@ sudo ./scripts/unix/compile_protobufs.sh
 
 ### Step 5: Run a Basic Build
 
-```
+```shell
 mkdir build
 cd build
 cmake ..
@@ -130,6 +132,10 @@ make semantics
 make all
 sudo make install
 ```
+
+ > Note 1: The `semantics` target must be built before `install`ing.
+
+ > Note 2: If you are implementing new instruction semantics, then the `semantics` target can be rebuilt and should take effect, even without re`install`ing. 
 
 ## Try it Out
 
