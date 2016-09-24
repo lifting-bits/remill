@@ -10,14 +10,6 @@ YELLOW=`tput setaf 3`
 BLUE=`tput setaf 4`
 RESET=`tput sgr0`
 
-
-function fix_library()
-{
-    if [[ "$OSTYPE" == "darwin"* ]] ; then
-        install_name_tool -id $DIR/third_party/lib/lib$1.dylib $DIR/third_party/lib/lib$1.dylib
-    fi;
-}
-
 function category()
 {
     printf "\n${GREEN}${1}${RESET}\n"

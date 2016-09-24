@@ -55,22 +55,15 @@ add_compile_options(
     -Wno-ignored-attributes
       
     -fno-omit-frame-pointer
-    -fno-rtti
-    -fno-exceptions
     -fvisibility-inlines-hidden
     -std=gnu++11
 
-    -D__STDC_LIMIT_MACROS
-    -D__STDC_CONSTANT_MACROS
-    -DGOOGLE_PROTOBUF_NO_RTTI
-    -D_GLIBCXX_USE_CXX11_ABI=0
-      
     -fPIC
     -fpie
     -m64
 )
 
-add_executable(remill-translate
+add_executable(remill-lift
     remill/Translate.cpp
     remill/Arch/X86/Arch.cpp
     remill/Arch/Arch.cpp
@@ -82,10 +75,10 @@ add_executable(remill-translate
     remill/OS/OS.cpp
 )
 
-target_link_libraries(remill-translate
+target_link_libraries(remill-lift
+    ${GFLAGS_LIBRARIES}
+    ${GLOG_LIBRARIES}
+    ${XED_LIBRARIES}
+    ${PROTOBUF_LIBRARIES}
     LLVM
-    glog
-    gflags
-    protobuf
-    xed
 )

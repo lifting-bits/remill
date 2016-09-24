@@ -47,7 +47,7 @@ if (UNIX)
 endif (UNIX)
 
 if (APPLE)
-  _FIND_XED_LIBRARIES(XED_LIBRARIES libxed.dylib)
+  _FIND_XED_LIBRARIES(XED_LIBRARIES libxed.a libxed-ild.a)
 endif (APPLE)
 
 set(XED_INCLUDE_DIRS ${XED_INCLUDE_DIR})

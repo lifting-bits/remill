@@ -72,17 +72,8 @@ sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolcha
 sudo apt-get update
 sudo apt-get upgrade
 
-sudo apt-get install \
-    git \
-    cmake \
-    libgoogle-glog-dev \
-    libgtest-dev \
-    libprotoc-dev \
-    libprotobuf-dev \
-    python2.7 \
-    python-pip \
-    llvm-3.9-dev \
-    clang-3.9
+sudo apt-get install --reinstall \
+    git cmake libgoogle-glog-dev libgtest-dev libprotoc-dev libprotobuf-dev libprotobuf-dev python2.7 python-pip llvm-3.9-dev clang-3.9
 
 sudo pip install --upgrade pip
 
