@@ -6,12 +6,12 @@ UBUNTU_RELEASE=`lsb_release -sc`
 wget -qO - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
 
 # For LLVM.
-sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE} main"
-sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.8 main"
-sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.9 main"
+sudo add-apt-repository -y "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE} main"
+sudo add-apt-repository -y "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.8 main"
+sudo add-apt-repository -y "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.9 main"
 
 # For CMake
-sudo add-apt-repository ppa:george-edison55/cmake-3.x
+sudo add-apt-repository -y ppa:george-edison55/cmake-3.x
 
 sudo apt-get update
 sudo apt-get upgrade
