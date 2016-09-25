@@ -54,6 +54,9 @@ target_compile_options(remill-lift PRIVATE
     -Wextra
     -Werror
     -pedantic
+
+    -g3
+    -O0
     
     # LLVM headers break these :-(
     #-Wshadow
