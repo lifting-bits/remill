@@ -28,16 +28,12 @@ if [[ ! -e $DIR/blob/xed/${XED_VERSION}.zip ]] ; then
     error "Please download XED from ${XED_URL} and place it into ${DIR}/blob/xed/."
 fi;
 
-mkdir -p $DIR/third_party/xed
-sudo rm -rf $DIR/third_party/xed/
+mkdir -p $DIR/third_party
+rm -r $DIR/third_party/xed
+mkdir -p $INSTALL_INCLUDE_DIR
 unzip $DIR/blob/xed/${XED_VERSION}.zip -d $DIR/third_party/xed
 
-sudo mkdir -p $INSTALL_INCLUDE_DIR
-sudo cp $DIR/third_party/xed/kits/${XED_VERSION}/include/*.h $INSTALL_INCLUDE_DIR
-sudo chmod a+r $INSTALL_INCLUDE_DIR/*.h
-
-sudo mkdir -p $INSTALL_LIB_DIR
-sudo chmod a+rx $DIR/third_party/xed/kits/${XED_VERSION}/lib/*
-sudo cp $DIR/third_party/xed/kits/${XED_VERSION}/lib/* $INSTALL_LIB_DIR
+sudo install -t $INSTALL_LIB_DIR $DIR/third_party/xed/kits/${XED_VERSION}/lib/*
+sudo install -t $INSTALL_INCLUDE_DIR $DIR/third_party/xed/kits/${XED_VERSION}/include/* 
 
 exit 0
