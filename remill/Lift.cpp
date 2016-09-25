@@ -77,9 +77,6 @@ int main(int argc, char *argv[]) {
   CHECK(!FLAGS_cfg.empty())
       << "Must specify CFG file with --cfg.";
 
-  CHECK(!FLAGS_bc_in.empty())
-      << "Please specify an input bitcode file with --bc_in.";
-
   CHECK(!FLAGS_bc_out.empty())
       << "Please specify an output bitcode file with --bc_out.";
 
