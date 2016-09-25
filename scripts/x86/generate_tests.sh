@@ -28,7 +28,7 @@ function generate_tests()
         -lglog \
         -lprotobuf
     
-    ./a.out > $DIR/generated/Arch/X86/tests/${4}.cfg
+    ./a.out > $DIR/generated/Arch/X86/Tests/${4}.cfg
     rm ./a.out
     popd
 }
