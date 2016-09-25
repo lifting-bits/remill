@@ -73,6 +73,136 @@ DEF_SEM(PUNPCKHQDQ, D dst, S1 src1, S2 src2) {
 //DEF_ISEL(PUNPCKHDQ_MMXq_MEMq) = PUNPCKHDQ<V64W, V64, MV64>;
 //DEF_ISEL(PUNPCKHDQ_MMXq_MMXd) = PUNPCKHDQ<V64W, V64, V32>;
 
+// Adding new MMX Instructions
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PADDB, D dst, S1 src1, S2 src2) {
+	auto lhs_vec = UReadV8(src1);
+	auto rhs_vec = UReadV8(src2);
+	auto dst_vec = UAddV8(lhs_vec, rhs_vec);
+	UWriteV8(dst, dst_vec);
+}
+
+DEF_ISEL(PADDB_MMXq_MMXq) = PADDB<V64W, V64, V64>;
+DEF_ISEL(PADDB_MMXq_MEMq) = PADDB<V64W, V64, MV64>;
+
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PADDW, D dst, S1 src1, S2 src2) {
+	auto lhs_vec = UReadV16(src1);
+	auto rhs_vec = UReadV16(src2);
+	auto dst_vec = UAddV16(lhs_vec, rhs_vec);
+	UWriteV16(dst, dst_vec);
+}
+
+DEF_ISEL(PADDW_MMXq_MMXq) = PADDW<V64W, V64, V64>;
+DEF_ISEL(PADDW_MMXq_MEMq) = PADDW<V64W, V64, MV64>;
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PADDD, D dst, S1 src1, S2 src2) {
+	auto lhs_vec = UReadV32(src1);
+	auto rhs_vec = UReadV32(src2);
+	auto dst_vec = UAddV32(lhs_vec, rhs_vec);
+	UWriteV32(dst, dst_vec);
+}
+
+DEF_ISEL(PADDD_MMXq_MMXq) = PADDD<V64W, V64, V64>;
+DEF_ISEL(PADDD_MMXq_MEMq) = PADDD<V64W, V64, MV64>;
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PADDQ, D dst, S1 src1, S2 src2) {
+	auto lhs_vec = UReadV64(src1);
+	auto rhs_vec = UReadV64(src2);
+	auto dst_vec = UAddV64(lhs_vec, rhs_vec);
+	UWriteV64(dst, dst_vec);
+}
+
+DEF_ISEL(PADDQ_MMXq_MMXq) = PADDQ<V64W, V64, V64>;
+DEF_ISEL(PADDQ_MMXq_MEMq) = PADDQ<V64W, V64, MV64>;
+
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PADDSB, D dst, S1 src1, S2 src2) {
+	auto lhs_vec = SReadV8(src1);
+	auto rhs_vec = SReadV8(src2);
+	auto dst_vec = SAddV8(lhs_vec, rhs_vec);
+	SWriteV8(dst, dst_vec);
+}
+
+DEF_ISEL(PADDSB_MMXq_MMXq) = PADDSB<V64W, V64, V64>;
+DEF_ISEL(PADDSB_MMXq_MEMq) = PADDSB<V64W, V64, MV64>;
+
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PADDSW, D dst, S1 src1, S2 src2) {
+	auto lhs_vec = SReadV16(src1);
+	auto rhs_vec = SReadV16(src2);
+	auto dst_vec = SAddV16(lhs_vec, rhs_vec);
+	SWriteV16(dst, dst_vec);
+}
+
+DEF_ISEL(PADDSW_MMXq_MMXq) = PADDSB<V64W, V64, V64>;
+DEF_ISEL(PADDSW_MMXq_MEMq) = PADDSB<V64W, V64, MV64>;
+
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSUBB, D dst, S1 src1, S2 src2) {
+	auto lhs_vec = SReadV8(src1);
+	auto rhs_vec = SReadV8(src2);
+	auto dst_vec = SSubV8(lhs_vec, rhs_vec);
+	SWriteV8(dst, dst_vec);
+}
+
+DEF_ISEL(PSUBB_MMXq_MMXq) = PSUBB<V64W, V64, V64>;
+DEF_ISEL(PSUBB_MMXq_MEMq) = PSUBB<V64W, V64, MV64>;
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSUBW, D dst, S1 src1, S2 src2) {
+	auto lhs_vec = SReadV16(src1);
+	auto rhs_vec = SReadV16(src2);
+	auto dst_vec = SSubV16(lhs_vec, rhs_vec);
+	SWriteV16(dst, dst_vec);
+}
+
+DEF_ISEL(PSUBW_MMXq_MMXq) = PSUBW<V64W, V64, V64>;
+DEF_ISEL(PSUBW_MMXq_MEMq) = PSUBW<V64W, V64, MV64>;
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSUBD, D dst, S1 src1, S2 src2) {
+	auto lhs_vec = SReadV32(src1);
+	auto rhs_vec = SReadV32(src2);
+	auto dst_vec = SSubV32(lhs_vec, rhs_vec);
+	SWriteV32(dst, dst_vec);
+}
+
+DEF_ISEL(PSUBD_MMXq_MMXq) = PSUBD<V64W, V64, V64>;
+DEF_ISEL(PSUBD_MMXq_MEMq) = PSUBD<V64W, V64, MV64>;
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSUBUSB, D dst, S1 src1, S2 src2) {
+	auto lhs_vec = UReadV8(src1);
+	auto rhs_vec = UReadV8(src2);
+	auto dst_vec = USubV8(lhs_vec, rhs_vec);
+	UWriteV8(dst, dst_vec);
+}
+
+DEF_ISEL(PSUBUSB_MMXq_MMXq) = PSUBUSB<V64W, V64, V64>;
+DEF_ISEL(PSUBUSB_MMXq_MEMq) = PSUBUSB<V64W, V64, MV64>;
+
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSUBUSW, D dst, S1 src1, S2 src2) {
+	auto lhs_vec = UReadV16(src1);
+	auto rhs_vec = UReadV16(src2);
+	auto dst_vec = USubV16(lhs_vec, rhs_vec);
+	UWriteV16(dst, dst_vec);
+}
+
+DEF_ISEL(PSUBUSW_MMXq_MMXq) = PSUBUSB<V64W, V64, V64>;
+DEF_ISEL(PSUBUSW_MMXq_MEMq) = PSUBUSB<V64W, V64, MV64>;
+
+} // namespace
 
 // 565:117 PHSUBD PHSUBD_MMXq_MEMq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
 // 569:118 PHSUBD PHSUBD_MMXq_MMXq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
