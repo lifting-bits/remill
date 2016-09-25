@@ -7,7 +7,7 @@ set(CMAKE_ASM_COMPILER clang-3.9)
 set(CMAKE_LLVM_LINK llvm-link-3.9)
 
 project(remill)
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required (VERSION 3.2)
 
 enable_language(ASM)
 

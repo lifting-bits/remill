@@ -7,7 +7,8 @@ Remill is a static binary translator that translates machine code into [LLVM bit
 
 |       | master |
 | ----- | ------ |
-| Linux | [![Build Status](https://travis-ci.org/trailofbits/remill.svg?branch=master&os=linux)](https://travis-ci.org/trailofbits/remill) |
+| Linux | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/linux)](https://travis-ci.org/trailofbits/remill) |
+| macOS | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/osx)](https://travis-ci.org/trailofbits/remill) |
 
 ## Additional Documentation
  
@@ -23,7 +24,7 @@ If you are experiencing undocumented problems with Remill then ask for help in t
 
 ## Supported Platforms
 
-Remill is supported on Linux platforms and has been tested on Ubuntu 46.04 and Ubuntu 16.04.
+Remill is supported on Linux platforms and has been tested on Ubuntu 16.04.
 
 We are actively working on porting Remill to macOS.
 
@@ -32,7 +33,7 @@ We are actively working on porting Remill to macOS.
 | Name | Version | 
 | ---- | ------- |
 | [Git](https://git-scm.com/) | Latest |
-| [CMake](https://cmake.org/) | 2.8+ |
+| [CMake](https://cmake.org/) | 3.2+ |
 | [Google Log](https://github.com/google/glog) | 0.3.3 |
 | [Google Test](https://github.com/google/googletest) | 1.6.0 |
 | [Google Protobuf](https://github.com/google/protobuf) | 2.4.1 |
@@ -55,7 +56,7 @@ We are actively working on porting Remill to macOS.
 
 The first step is to update Aptitude to find the latest LLVM packages.
 
-> Note: Installing LLVM on Ubuntu in such a way that it works for CMake can be tricky. We use LLVM 3.9. What I have found works is to start by removing all versions of all LLVM-related packages. Then, add in the official LLVM repositories (as shown below). Finally, install `llvm-3.9-dev`. If you also need older versions of LLVM-related tools, then re-install them after installing LLVM 3.9.
+> **Note:** Installing LLVM on Ubuntu in such a way that it works for CMake can be tricky. We use LLVM 3.9. What I have found works is to start by removing all versions of all LLVM-related packages. Then, add in the official LLVM repositories (as shown below). Finally, install `llvm-3.9-dev`. If you also need older versions of LLVM-related tools, then re-install them after installing LLVM 3.9.
 
 ```shell
 UBUNTU_RELEASE=`lsb_release -sc`
@@ -67,7 +68,7 @@ sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolcha
 sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.9 main"
 ```
 
-The next step is to update Aptitude, and then fetch all the packages needed to build Remill.
+The next step is to update set up the system and install packages needed by Remill.
 
 ```shell
 sudo apt-get update
@@ -90,14 +91,18 @@ sudo pip install --upgrade pip
 sudo pip install python-magic 'protobuf==2.4.1'
 ```
 
+ > **Note:** Users wishing to run Remill on Ubuntu 14.04 should [upgrade their version of CMake](http://askubuntu.com/questions/610291/how-to-install-cmake-3-2-on-ubuntu-14-04).
+
+
 #### On macOS (experimental)
 
 Instructions for building on macOS are not yet available.
 
-### Step 2: Clone the repository
+### Step 2: Clone and Enter the Repository
 
 ```shell
 git clone git@github.com:trailofbits/remill.git
+
 cd remill
 ```
 
@@ -108,7 +113,9 @@ cd remill
 This script will unpack and install Intel XED. It will require `sudo`er permissions. The XED library will be installed into `/usr/local/lib`, and the headers will be installed into `/usr/local/include/intel`.
 
 ```shell
-sudo ./scripts/unix/install_xed.sh
+./scripts/unix/install_xed.sh
+
+sudo ldconfig
 ```
 
 ### Step 4: Compile Protocol Buffers
@@ -133,9 +140,11 @@ make all
 sudo make install
 ```
 
- > Note 1: The `semantics` target must be built before `install`ing.
+ > **Note 1:** The `semantics` target must be built before `install`ing.
 
- > Note 2: If you are implementing new instruction semantics, then the `semantics` target can be rebuilt and should take effect, even without re`install`ing. 
+ > **Note 2:** If you are implementing new instruction semantics, then the `semantics` target can be rebuilt and should take effect, even without re`install`ing. 
+
+#### 
 
 ## Try it Out
 

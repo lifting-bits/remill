@@ -29,10 +29,10 @@ if [[ ! -e $DIR/blob/xed/${XED_VERSION}.zip ]] ; then
 fi;
 
 mkdir -p $DIR/third_party
-rm -r $DIR/third_party/xed
-mkdir -p $INSTALL_INCLUDE_DIR
+rm -rf $DIR/third_party/xed
 unzip $DIR/blob/xed/${XED_VERSION}.zip -d $DIR/third_party/xed
 
+sudo mkdir -p $INSTALL_INCLUDE_DIR
 sudo install -t $INSTALL_LIB_DIR $DIR/third_party/xed/kits/${XED_VERSION}/lib/*
 sudo install -t $INSTALL_INCLUDE_DIR $DIR/third_party/xed/kits/${XED_VERSION}/include/* 
 
