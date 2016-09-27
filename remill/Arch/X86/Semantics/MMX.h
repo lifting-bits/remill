@@ -121,12 +121,32 @@ DEF_SEM(PADDQ, D dst, S1 src1, S2 src2) {
 DEF_ISEL(PADDQ_MMXq_MMXq) = PADDQ<V64W, V64, V64>;
 DEF_ISEL(PADDQ_MMXq_MEMq) = PADDQ<V64W, V64, MV64>;
 
+/*
+ * signed saturation arithematic for PADDS
+ * int8 res = a + b;
+ * int8 tmp = (res & ~(a | b)) < 0 ? 0x7f : res;
+ * int8 c = (~res & (a & b)) < 0 ? 0x80 : tmp;
+ * 
+ */
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(PADDSB, D dst, S1 src1, S2 src2) {
-	auto lhs_vec = SReadV8(src1);
-	auto rhs_vec = SReadV8(src2);
-	auto dst_vec = SAddV8(lhs_vec, rhs_vec);
+	auto src1_vec = SReadV8(src1);
+	auto src2_vec = SReadV8(src2);
+	auto add_vec = SAddV8(src1_vec, src2_vec);
+	auto or_vec = SOrV8(src1_vec, src2_vec);
+	auto and_vec = SAndV8(src1_vec, src2_vec);
+	
+	//Compute signed saturation arithematic on each bytes
+    auto dst_vec = SClearV8(SReadV8(dst));
+	for (size_t index = 0; index < NumVectorElems(add_vec); index++) {
+		auto add_elem = SExtractV8(add_vec, index);
+		auto or_elem = SExtractV8(or_vec, index);
+		auto and_elem = SExtractV8(and_vec, index);
+		auto tmp = Select(SCmpLt(SAnd(add_elem, SNot(or_elem)), decltype(add_elem)(0)), decltype(add_elem)(0x7F), add_elem);
+		auto value = Select(SCmpLt(SAnd(SNot(add_elem), and_elem), decltype(add_elem)(0)), decltype(add_elem)(0x80), tmp);
+		dst_vec = SInsertV8(dst_vec, index, value);
+	}
 	SWriteV8(dst, dst_vec);
 }
 
@@ -136,14 +156,27 @@ DEF_ISEL(PADDSB_MMXq_MEMq) = PADDSB<V64W, V64, MV64>;
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(PADDSW, D dst, S1 src1, S2 src2) {
-	auto lhs_vec = SReadV16(src1);
-	auto rhs_vec = SReadV16(src2);
-	auto dst_vec = SAddV16(lhs_vec, rhs_vec);
+	auto src1_vec = SReadV16(src1);
+	auto src2_vec = SReadV16(src2);
+	auto add_vec = SAddV16(src1_vec, src2_vec);
+	auto or_vec = SOrV16(src1_vec, src2_vec);
+	auto and_vec = SAndV16(src1_vec, src2_vec);
+	
+	//Compute signed saturation arithematic on each bytes
+    auto dst_vec = SClearV16(SReadV16(dst));
+	for (size_t index = 0; index < NumVectorElems(add_vec); index++) {
+		auto add_elem = SExtractV16(add_vec, index);
+		auto or_elem = SExtractV16(or_vec, index);
+		auto and_elem = SExtractV16(and_vec, index);
+		auto tmp = Select(SCmpLt(SAnd(add_elem, SNot(or_elem)), decltype(add_elem)(0)), decltype(add_elem)(0x7FFF), add_elem);
+		auto value = Select(SCmpLt(SAnd(SNot(add_elem), and_elem), decltype(add_elem)(0)), decltype(add_elem)(0x8000), tmp);
+		dst_vec = SInsertV16(dst_vec, index, value);
+	}
 	SWriteV16(dst, dst_vec);
 }
 
-DEF_ISEL(PADDSW_MMXq_MMXq) = PADDSB<V64W, V64, V64>;
-DEF_ISEL(PADDSW_MMXq_MEMq) = PADDSB<V64W, V64, MV64>;
+DEF_ISEL(PADDSW_MMXq_MMXq) = PADDSW<V64W, V64, V64>;
+DEF_ISEL(PADDSW_MMXq_MEMq) = PADDSW<V64W, V64, MV64>;
 
 
 template <typename D, typename S1, typename S2>
@@ -183,7 +216,14 @@ template <typename D, typename S1, typename S2>
 DEF_SEM(PSUBUSB, D dst, S1 src1, S2 src2) {
 	auto lhs_vec = UReadV8(src1);
 	auto rhs_vec = UReadV8(src2);
-	auto dst_vec = USubV8(lhs_vec, rhs_vec);
+	auto dst_vec = UClearV8(UReadV8(dst));
+	
+	for(size_t i = 0; i < NumVectorElems(dst_vec); i++){
+		auto src1_elem = UExtractV8(lhs_vec, i);
+		auto src2_elem = UExtractV8(rhs_vec, i);
+		auto sub_val = Select(UCmpGt(src1_elem, src2_elem), USub(src1_elem, src2_elem), decltype(src1_elem)(0x0));
+		dst_vec = UInsertV8(dst_vec, i, sub_val);
+	}
 	UWriteV8(dst, dst_vec);
 }
 
@@ -195,7 +235,14 @@ template <typename D, typename S1, typename S2>
 DEF_SEM(PSUBUSW, D dst, S1 src1, S2 src2) {
 	auto lhs_vec = UReadV16(src1);
 	auto rhs_vec = UReadV16(src2);
-	auto dst_vec = USubV16(lhs_vec, rhs_vec);
+	auto dst_vec = UClearV16(UReadV16(dst));
+	
+	for(size_t i = 0; i < NumVectorElems(dst_vec); i++){
+		auto src1_elem = UExtractV16(lhs_vec, i);
+		auto src2_elem = UExtractV16(rhs_vec, i);
+		auto sub_val = Select(UCmpGt(src1_elem, src2_elem), USub(src1_elem, src2_elem), decltype(src1_elem)(0x0));
+		dst_vec = UInsertV16(dst_vec, i, sub_val);
+	}
 	UWriteV16(dst, dst_vec);
 }
 
@@ -286,6 +333,142 @@ DEF_SEM(PMULHRSW, D dst, S1 src1, S2 src2) {
 DEF_ISEL(PMULHRSW_MMXq_MMXq) = PMULHRSW<V64W, V64, V64>;
 DEF_ISEL(PMULHRSW_MMXq_MEMq) = PMULHRSW<V64W, V64, MV64>;
 
+template <typename D, typename S1>
+DEF_SEM(PABSB, D dst, S1 src1) {
+	auto src_vec = SReadV8(src1);
+	auto dst_vec = SClearV8(SReadV8(dst));
+	auto vec_count = NumVectorElems(src_vec);
+	for(size_t i = 0; i < vec_count; i++) {
+		auto src_entry = SExtractV8(src_vec, i);
+		auto mask = SShr(src_entry, decltype(src_entry)(7));
+		auto abs_value = SSub(SXor(src_entry, mask), mask);
+		dst_vec = SInsertV8(dst_vec, i, abs_value);
+	}
+	SWriteV8(dst, dst_vec);
+}
+DEF_ISEL(PABSB_MMXq_MMXq) = PABSB<V64W, V64>;
+DEF_ISEL(PABSB_MMXq_MEMq) = PABSB<V64W, MV64>;
+
+template <typename D, typename S1>
+DEF_SEM(PABSW, D dst, S1 src1) {
+	auto src_vec = SReadV16(src1);
+	auto dst_vec = SClearV16(SReadV16(dst));
+	auto vec_count = NumVectorElems(src_vec);
+	for(size_t i = 0; i < vec_count; i++) {
+		auto src_entry = SExtractV16(src_vec, i);
+		auto mask = SShr(src_entry, decltype(src_entry)(7));
+		auto abs_value = SSub(SXor(src_entry, mask), mask);
+		dst_vec = SInsertV16(dst_vec, i, abs_value);
+	}
+	SWriteV16(dst, dst_vec);
+}
+DEF_ISEL(PABSW_MMXq_MMXq) = PABSW<V64W, V64>;
+DEF_ISEL(PABSW_MMXq_MEMq) = PABSW<V64W, MV64>;
+
+template <typename D, typename S1>
+DEF_SEM(PABSD, D dst, S1 src1) {
+	auto src_vec = SReadV32(src1);
+	auto dst_vec = SClearV32(SReadV32(dst));
+	auto vec_count = NumVectorElems(src_vec);
+	for(size_t i = 0; i < vec_count; i++) {
+		auto src_entry = SExtractV32(src_vec, i);
+		auto mask = SShr(src_entry, decltype(src_entry)(7));
+		auto abs_value = SSub(SXor(src_entry, mask), mask);
+		dst_vec = SInsertV32(dst_vec, i, abs_value);
+	}
+	SWriteV32(dst, dst_vec);
+}
+DEF_ISEL(PABSD_MMXq_MMXq) = PABSD<V64W, V64>;
+DEF_ISEL(PABSD_MMXq_MEMq) = PABSD<V64W, MV64>;
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PACKSSWB, D dst, S1 src1, S2 src2) {
+	size_t j = 0;
+    auto src1_vec = SReadV16(src1);
+	auto src2_vec = SReadV16(src2);
+	auto dst_vec = SClearV8(SReadV8(dst));
+	// Convert signed word to signed byte
+	for(size_t i = 0; i < NumVectorElems(src1_vec); i++) {
+		auto signed_byte = Int8(SExtractV16(src1_vec, i));
+		dst_vec = SInsertV8(dst_vec, j++, signed_byte);
+	}
+	for(size_t i = 0; i < NumVectorElems(src2_vec); i++) {
+		auto signed_byte = Int8(SExtractV16(src2_vec, i));
+		dst_vec = SInsertV8(dst_vec, j++, signed_byte);
+	}
+	SWriteV8(dst, dst_vec);
+}
+DEF_ISEL(PACKSSWB_MMXq_MMXq) = PACKSSWB<V64W, V64, V64>;
+DEF_ISEL(PACKSSWB_MMXq_MEMq) = PACKSSWB<V64W, V64, MV64>;
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PACKSSDW, D dst, S1 src1, S2 src2) {
+	size_t j = 0;
+    auto src1_vec = SReadV32(src1);
+	auto src2_vec = SReadV32(src2);
+	auto dst_vec = SClearV16(SReadV16(dst));
+	// Convert signed word to signed byte
+	for(size_t i = 0; i < NumVectorElems(src1_vec); i++) {
+		auto signed_byte = Int16(SExtractV32(src1_vec, i));
+		dst_vec = SInsertV16(dst_vec, j++, signed_byte);
+	}
+	for(size_t i = 0; i < NumVectorElems(src2_vec); i++) {
+		auto signed_byte = Int16(SExtractV32(src2_vec, i));
+		dst_vec = SInsertV16(dst_vec, j++, signed_byte);
+	}
+	SWriteV16(dst, dst_vec);
+}
+DEF_ISEL(PACKSSDW_MMXq_MMXq) = PACKSSDW<V64W, V64, V64>;
+DEF_ISEL(PACKSSDW_MMXq_MEMq) = PACKSSDW<V64W, V64, MV64>;
+
+#if 0
+template <typename D, typename S1, typename S2, typename S3>
+DEF_SEM(PALIGNR, D dst, S1 src1, S2 src2, S3 imm1) {
+	auto op_size = BitSizeOf(src1);
+	
+	switch(op_size){
+		case 64:
+		{
+			uint64v2_t concat_vec;
+			auto src1_vec = UReadV64(src1);
+			auto src2_vec = UReadV64(src2);
+			auto dst_vec = UClearV64(UReadV64(dst));
+			// Concat src and dst
+			concat_vec = UInsertV64(concat_vec, 0, UExtractV64(src2_vec, 0));
+			concat_vec = UInsertV64(concat_vec, 1, UExtractV64(src1_vec, 0));
+			dst_vec = UInsertV64(dst_vec, 0, UExtractV64(concat_vec, 0));
+			UWriteV64(dst, dst_vec);
+		}
+		break;
+		case 128:
+		{
+			uint64v4_t concat_vec;
+			auto src1_vec = UReadV64(src1);
+			auto src2_vec = UReadV64(src2);
+			auto dst_vec = UClearV64(UReadV64(dst));
+			auto src2_vec_count = NumVectorElems(src2_vec);
+			// Concat src and dst
+			for(size_t index = 0; index < src2_vec_count; index++){
+				concat_vec = UInsertV64(concat_vec, index, UExtractV128(src2_vec, index));
+			}
+			
+			for(size_t index = 0; index < NumVectorElems(src1_vec); index++){
+				concat_vec = UInsertV64(concat_vec, index + src2_vec_count, UExtractV128(src1_vec, index));
+			}
+			
+			//dst_vec = UInsertV128(dst_vec, 0, UExtractV128(concat_vec, 0));
+			UWriteV128(dst, dst_vec);
+		}
+		break;
+		default:
+		break;
+	}
+}
+
+DEF_ISEL(PALIGNR_MMXq_MMXq_IMMb) = PALIGNR<V64W, V64, V64, I8>;
+DEF_ISEL(PALIGNR_MMXq_MEMq_IMMb) = PALIGNR<V64W, V64, MV64, I8>;
+#endif
+
 #if 0
 template <typename D, typename S1, typename S2>
 DEF_SEM(PCMPGTB, D dst, S1 src1, S2 src2) {
@@ -304,6 +487,8 @@ DEF_SEM(PCMPGTB, D dst, S1 src1, S2 src2) {
 DEF_ISEL(PCMPGTB_MMXq_MMXq) = PCMPGTB<V64W, V64, V64>;
 DEF_ISEL(PCMPGTB_MMXq_MEMq) = PCMPGTB<V64W, V64, MV64>;
 #endif
+
+DEF_ISEL_SEM(EMMS) {}
 
 
 } // namespace

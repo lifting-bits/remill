@@ -10,7 +10,7 @@ if [[ -z "$1" ]] ; then
     exit 1
 fi
 
-if [[ "$OSTYPE" == "linux-gnu" ]] ; then
+if [[ "$OSTYPE" == "linux"* ]] ; then
     DYLIB_SUFFIX=so
 
 elif [[ "$OSTYPE" == "darwin"* ]] ; then

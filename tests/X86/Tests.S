@@ -305,6 +305,9 @@ SYMBOL(__x86_test_table_begin):
 
 /* Bring in the rest of the semantic tests. */
 
+#include "tests/X86/MMX/PADD.S"
+#include "tests/X86/MMX/PSUB.S"
+
 #include "tests/X86/BINARY/ADC.S"
 #include "tests/X86/BINARY/ADD.S"
 #include "tests/X86/BINARY/ADDPD.S"
@@ -381,6 +384,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/MISC/LEAVE.S"
 #include "tests/X86/MISC/XLAT.S"
 
+
 #if APPLE_SAFE_TESTS
 # include "tests/X86/POP/POP.S"
 # include "tests/X86/POP/POPF.S"
@@ -404,6 +408,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/COMISS.S"
 #include "tests/X86/SSE/UCOMISD.S"
 #include "tests/X86/SSE/UCOMISS.S"
+
 
 #if APPLE_SAFE_TESTS
 # include "tests/X86/STRINGOP/CMPS.S"
