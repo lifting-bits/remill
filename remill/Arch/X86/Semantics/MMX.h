@@ -384,6 +384,8 @@ DEF_SEM(PABSD, D dst, S1 src1) {
 DEF_ISEL(PABSD_MMXq_MMXq) = PABSD<V64W, V64>;
 DEF_ISEL(PABSD_MMXq_MEMq) = PABSD<V64W, MV64>;
 
+// Need a better solution for handling PACKSS;
+// Soln : Sign extension and compare
 template <typename D, typename S1, typename S2>
 DEF_SEM(PACKSSWB, D dst, S1 src1, S2 src2) {
     auto src1_vec = SReadV8(src1);
@@ -392,20 +394,28 @@ DEF_SEM(PACKSSWB, D dst, S1 src1, S2 src2) {
 
 	// Convert signed word to saturated signed byte
 	auto vec_count = NumVectorElems(src1_vec);
-	for(size_t i = 0; i < vec_count; i = i+2) {
+	for(size_t i = 0; i < vec_count; i += 2) {
 		auto byte1 = SExtractV8(src1_vec, i);
 		auto byte2 = SExtractV8(src1_vec, i+1);
-		byte1 = Select(SCmpLt(byte1, decltype(byte1)(0)), decltype(byte1)(0x7F), byte1);
-		byte1 = Select(SCmpLt(byte2, decltype(byte2)(0)), decltype(byte1)(0x80), byte1);
-		byte1 = Select(SCmpGt(byte2, decltype(byte2)(0)), decltype(byte1)(0x7F), byte1);
+		if (SCmpGt(byte2, decltype(byte2)(0))) {
+			byte1 = decltype(byte1)(0x7F);
+		}else if (SCmpEq(byte2, decltype(byte2)(0)) && SCmpLt(byte1, decltype(byte1)(0))) {
+			byte1 = decltype(byte1)(0x7F);
+		} else if (SCmpLt(byte2, decltype(byte2)(-1))){
+			byte1 = decltype(byte1)(0x80);
+		}
 		dst_vec = SInsertV8(dst_vec, i/2, byte1);
 	}
 	for(size_t i = 0; i < NumVectorElems(src2_vec); i += 2) {
-        auto byte1 = SExtractV8(src2_vec, i);
-        auto byte2 = SExtractV8(src2_vec, i+1);
-        byte1 = Select(SCmpLt(byte1, decltype(byte1)(0)), decltype(byte1)(0x7F), byte1);
-        byte1 = Select(SCmpLt(byte2, decltype(byte2)(0)), decltype(byte1)(0x80), byte1);
-        byte1 = Select(SCmpGt(byte2, decltype(byte2)(0)), decltype(byte1)(0x7F), byte1);
+		auto byte1 = SExtractV8(src2_vec, i);
+		auto byte2 = SExtractV8(src2_vec, i+1);
+		if (SCmpGt(byte2, decltype(byte2)(0))) {
+			byte1 = decltype(byte1)(0x7F);
+		}else if (SCmpEq(byte2, decltype(byte2)(0)) && SCmpLt(byte1, decltype(byte1)(0))) {
+			byte1 = decltype(byte1)(0x7F);
+		} else if (SCmpLt(byte2, decltype(byte2)(-1))){
+			byte1 = decltype(byte1)(0x80);
+		}
         dst_vec = SInsertV8(dst_vec, (i+vec_count)/2, byte1);
 	}
 	SWriteV8(dst, dst_vec);
@@ -415,6 +425,81 @@ DEF_ISEL(PACKSSWB_MMXq_MEMq) = PACKSSWB<V64W, V64, MV64>;
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(PACKSSDW, D dst, S1 src1, S2 src2) {
+    auto src1_vec = SReadV16(src1);
+	auto src2_vec = SReadV16(src2);
+	auto dst_vec = SClearV16(SReadV16(dst));
+    // Convert signed word to saturated signed byte
+    auto vec_count = NumVectorElems(src1_vec);
+	for(size_t i = 0; i < vec_count; i += 2) {
+		auto byte1 = SExtractV16(src1_vec, i);
+		auto byte2 = SExtractV16(src1_vec, i+1);
+		if (SCmpGt(byte2, decltype(byte2)(0))) {
+			byte1 = decltype(byte1)(0x7FFF);
+		}else if (SCmpEq(byte2, decltype(byte2)(0)) && SCmpLt(byte1, decltype(byte1)(0))) {
+			byte1 = decltype(byte1)(0x7FFF);
+		} else if (SCmpLt(byte2, decltype(byte2)(-1))){
+			byte1 = decltype(byte1)(0x8000);
+		}
+		dst_vec = SInsertV16(dst_vec, i/2, byte1);
+	}
+	for(size_t i = 0; i < NumVectorElems(src2_vec); i += 2) {
+		auto byte1 = SExtractV16(src2_vec, i);
+		auto byte2 = SExtractV16(src2_vec, i+1);
+		if (SCmpGt(byte2, decltype(byte2)(0))) {
+			byte1 = decltype(byte1)(0x7FFF);
+		}else if (SCmpEq(byte2, decltype(byte2)(0)) && SCmpLt(byte1, decltype(byte1)(0))) {
+			byte1 = decltype(byte1)(0x7FFF);
+		} else if (SCmpLt(byte2, decltype(byte2)(-1))){
+			byte1 = decltype(byte1)(0x8000);
+		}
+        dst_vec = SInsertV16(dst_vec, (i+vec_count)/2, byte1);
+	}
+   /* for(size_t i = 0; i < vec_count; i += 2) {
+        auto byte1 = SExtractV16(src1_vec, i);
+        auto byte2 = SExtractV16(src1_vec, i+1);
+        byte1 = Select(SCmpLt(byte1, decltype(byte1)(0)), decltype(byte1)(0x7FFF), byte1);
+        byte1 = Select(SCmpLt(byte2, decltype(byte2)(0)), decltype(byte1)(0x8000), byte1);
+        byte1 = Select(SCmpGt(byte2, decltype(byte2)(0)), decltype(byte1)(0x7FFF), byte1);
+        dst_vec = SInsertV16(dst_vec, i/2, byte1);
+    }
+    for(size_t i = 0; i < NumVectorElems(src2_vec); i += 2) {
+        auto byte1 = SExtractV16(src2_vec, i);
+        auto byte2 = SExtractV16(src2_vec, i+1);
+        byte1 = Select(SCmpLt(byte1, decltype(byte1)(0)), decltype(byte1)(0x7FFF), byte1);
+        byte1 = Select(SCmpLt(byte2, decltype(byte2)(0)), decltype(byte1)(0x8000), byte1);
+        byte1 = Select(SCmpGt(byte2, decltype(byte2)(0)), decltype(byte1)(0x7FFF), byte1);
+        dst_vec = SInsertV16(dst_vec, (i+vec_count)/2, byte1);
+    }*/
+	SWriteV16(dst, dst_vec);
+}
+DEF_ISEL(PACKSSDW_MMXq_MMXq) = PACKSSDW<V64W, V64, V64>;
+DEF_ISEL(PACKSSDW_MMXq_MEMq) = PACKSSDW<V64W, V64, MV64>;
+
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSRAW, D dst, S1 src1, S2 src2) {
+	// extract 8 byte and check if > 15; if yes set floor value;
+	auto src1_vec = SReadV16(src1);
+	auto src2_vec = SReadV16(src2);
+	auto dst_vec = SClearV16(SReadV16(dst));
+	
+    // Arithematic right shift of each word; Shr is implementation dependent
+    auto vec_count = NumVectorElems(src1_vec);
+    for(size_t i = 0; i < vec_count; i++) {
+		auto count = SExtractV16(src2_vec, 0);
+		auto src1_elem = SExtractV16(src1_vec, i);
+		auto shift = SShr(src1_elem, count);
+        dst_vec = SInsertV16(dst_vec, i, shift);
+    }
+	SWriteV16(dst, dst_vec);
+}
+DEF_ISEL(PSRAW_MMXq_MMXq) = PSRAW<V64W, V64, V64>;
+DEF_ISEL(PSRAW_MMXq_MEMq) = PSRAW<V64W, V64, MV64>;
+//DEF_ISEL(PSRAW_MMXq_IMMbq) = PSRAW<V64W, V64, I64>;
+
+#if 0
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSRAD, D dst, S1 src1, S2 src2) {
     auto src1_vec = SReadV16(src1);
 	auto src2_vec = SReadV16(src2);
 	auto dst_vec = SClearV16(SReadV16(dst));
@@ -438,9 +523,10 @@ DEF_SEM(PACKSSDW, D dst, S1 src1, S2 src2) {
     }
 	SWriteV16(dst, dst_vec);
 }
-DEF_ISEL(PACKSSDW_MMXq_MMXq) = PACKSSDW<V64W, V64, V64>;
-DEF_ISEL(PACKSSDW_MMXq_MEMq) = PACKSSDW<V64W, V64, MV64>;
-
+DEF_ISEL(PSRAD_MMXq_MMXq) = PSRAD<V64W, V64, V64>;
+DEF_ISEL(PSRAD_MMXq_MEMq) = PSRAD<V64W, V64, MV64>;
+DEF_ISEL(PSRAD_MMXq_MEMq) = PSRAD<V64W, V64, I8>;
+#endif
 #if 0
 template <typename D, typename S1, typename S2, typename S3>
 DEF_SEM(PALIGNR, D dst, S1 src1, S2 src2, S3 imm1) {
