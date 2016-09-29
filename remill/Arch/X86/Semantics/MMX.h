@@ -178,6 +178,76 @@ DEF_SEM(PADDSW, D dst, S1 src1, S2 src2) {
 DEF_ISEL(PADDSW_MMXq_MMXq) = PADDSW<V64W, V64, V64>;
 DEF_ISEL(PADDSW_MMXq_MEMq) = PADDSW<V64W, V64, MV64>;
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(PHADDW, D dst, S1 src1, S2 src2) {
+	auto lhs_vec = SReadV16(src1);
+	auto rhs_vec = SReadV16(src2);
+	auto dst_vec = SClearV16(SReadV16(dst));
+	
+	// Compute the horizontal packing
+	auto vec_count = NumVectorElems(lhs_vec);
+	for(size_t index = 0; index < vec_count; index += 2) {
+		dst_vec = SInsertV16(dst_vec, index/2, SAdd(SExtractV16(lhs_vec, index), SExtractV16(lhs_vec, index+1)));
+	}
+	for(size_t index = 0; index < NumVectorElems(rhs_vec); index += 2) {
+		dst_vec = SInsertV16(dst_vec, (index + vec_count)/2, SAdd(SExtractV16(rhs_vec, index), SExtractV16(rhs_vec, index+1)));
+	}
+	SWriteV16(dst, dst_vec);
+}
+
+DEF_ISEL(PHADDW_MMXq_MMXq) = PHADDW<V64W, V64, V64>;
+DEF_ISEL(PHADDW_MMXq_MEMq) = PHADDW<V64W, V64, MV64>;
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PHADDD, D dst, S1 src1, S2 src2) {
+	auto lhs_vec = SReadV32(src1);
+	auto rhs_vec = SReadV32(src2);
+	auto dst_vec = SClearV32(SReadV32(dst));
+	
+	// Compute the horizontal packing
+	auto vec_count = NumVectorElems(lhs_vec);
+	for(size_t index = 0; index < vec_count; index += 2) {
+		dst_vec = SInsertV32(dst_vec, index/2, SAdd(SExtractV32(lhs_vec, index), SExtractV32(lhs_vec, index+1)));
+	}
+	for(size_t index = 0; index < NumVectorElems(rhs_vec); index += 2) {
+		dst_vec = SInsertV32(dst_vec, (index + vec_count)/2, SAdd(SExtractV32(rhs_vec, index), SExtractV32(rhs_vec, index+1)));
+	}
+	SWriteV32(dst, dst_vec);
+}
+
+DEF_ISEL(PHADDD_MMXq_MMXq) = PHADDD<V64W, V64, V64>;
+DEF_ISEL(PHADDD_MMXq_MEMq) = PHADDD<V64W, V64, MV64>;
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PHADDSW, D dst, S1 src1, S2 src2) {
+	auto src1_vec = SReadV16(src1);
+	auto src2_vec = SReadV16(src2);
+	auto dst_vec = SClearV16(SReadV16(dst));
+
+	
+	auto vec_count = NumVectorElems(src1_vec);
+	for(size_t index = 0; index < vec_count; index += 2) {
+		auto add_elem = SAdd(SExtractV16(src1_vec, index), SExtractV16(src1_vec, index+1));
+		auto or_elem = SOr(SExtractV16(src1_vec, index), SExtractV16(src1_vec, index+1));
+		auto and_elem = SAnd(SExtractV16(src1_vec, index), SExtractV16(src1_vec, index+1));
+		auto tmp = Select(SCmpLt(SAnd(add_elem, SNot(or_elem)), decltype(add_elem)(0)), decltype(add_elem)(0x7FFF), add_elem);
+		auto value = Select(SCmpLt(SAnd(SNot(add_elem), and_elem), decltype(add_elem)(0)), decltype(add_elem)(0x8000), tmp);
+		dst_vec = SInsertV16(dst_vec, index/2, value);
+	}
+	
+	for(size_t index = 0; index < NumVectorElems(src2_vec); index += 2) {
+		auto add_elem = SAdd(SExtractV16(src2_vec, index), SExtractV16(src2_vec, index+1));
+		auto or_elem = SOr(SExtractV16(src2_vec, index), SExtractV16(src2_vec, index+1));
+		auto and_elem = SAnd(SExtractV16(src2_vec, index), SExtractV16(src2_vec, index+1));
+		auto tmp = Select(SCmpLt(SAnd(add_elem, SNot(or_elem)), decltype(add_elem)(0)), decltype(add_elem)(0x7FFF), add_elem);
+		auto value = Select(SCmpLt(SAnd(SNot(add_elem), and_elem), decltype(add_elem)(0)), decltype(add_elem)(0x8000), tmp);
+		dst_vec = SInsertV16(dst_vec, (index+vec_count)/2, value);
+	}
+	SWriteV16(dst, dst_vec);
+}
+
+DEF_ISEL(PHADDSW_MMXq_MMXq) = PHADDSW<V64W, V64, V64>;
+DEF_ISEL(PHADDSW_MMXq_MEMq) = PHADDSW<V64W, V64, MV64>;
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(PSUBB, D dst, S1 src1, S2 src2) {
