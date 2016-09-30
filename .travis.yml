@@ -16,7 +16,7 @@ matrix:
  allow_failures:
    - os: osx
 install:
-  - if [ "$TRAVIS_OS_NAME" = "linux" ] ; then ./scripts/travis/install_linux.sh ; fi 
+  - if [ "$TRAVIS_OS_NAME" = "linux" ] ; then /usr/bin/bash -x ./scripts/travis/install_linux.sh ; fi 
   - if [ "$TRAVIS_OS_NAME" = "osx" ] ; then ./scripts/travis/install_macos.sh ; fi 
 script:
   - "./scripts/x86/generate_tests.sh"

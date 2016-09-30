@@ -4,6 +4,7 @@
 #include <glog/logging.h>
 
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <unistd.h>
 
@@ -26,10 +27,12 @@
 
 #ifndef BUILD_SEMANTICS_DIR
 # error "Macro `BUILD_SEMANTICS_DIR` must be defined."
+# define BUILD_SEMANTICS_DIR
 #endif  // BUILD_SEMANTICS_DIR
 
 #ifndef INSTALL_SEMANTICS_DIR
 # error "Macro `INSTALL_SEMANTICS_DIR` must be defined."
+# define INSTALL_SEMANTICS_DIR
 #endif  // INSTALL_SEMANTICS_DIR
 
 
@@ -58,27 +61,97 @@ DEFINE_string(bc_in, "", "Input bitcode file into which code will "
 
 DEFINE_string(bc_out, "", "Output bitcode file name.");
 
+namespace {
+
+static const char *gSearchPaths[] = {
+    BUILD_SEMANTICS_DIR "\0",
+    INSTALL_SEMANTICS_DIR "\0",
+    "/usr/local/share/remill/semantics/",
+    "/usr/share/remill/semantics/",
+    "/opt/local/share/remill/semantics/",
+    "/opt/share/remill/semantics/",
+    "/opt/remill/semantics/"
+};
+
+static bool CheckPath(const std::string &path) {
+  return !path.empty() && !access(path.c_str(), F_OK);
+}
+
+static std::string InputBCPath(void) {
+  if (!FLAGS_bc_in.empty()) {
+    return FLAGS_bc_in;
+  }
+
+  for (auto path : gSearchPaths) {
+    std::stringstream ss;
+    if ('/' != path[0]) {
+      ss << "./";
+    }
+    ss << path;
+    if ('/' != path[strlen(path) - 1]) {
+      ss << "/";
+    }
+    ss << FLAGS_arch_in << ".bc";
+    auto sem_path = ss.str();
+    if (CheckPath(sem_path)) {
+      return sem_path;
+    }
+  }
+
+  LOG(FATAL) << "Cannot deduce path to " << FLAGS_arch_in
+             << " semantics bitcode file.";
+}
+
+}  // namespace
+
 int main(int argc, char *argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
   // GFlags will have removed everything that it recognized from argc/argv.
-  llvm::cl::ParseCommandLineOptions(argc, argv, "Remill CFG to LLVM");
+  llvm::cl::ParseCommandLineOptions(argc, argv, "Remill: Lift CFG to LLVM");
 
-  CHECK(!FLAGS_os_out.empty())
-      << "Need to specify a target operating system with --os.";
+  if (FLAGS_os_in.empty()) {
+    std::cerr
+        << "Need to specify a source operating system with --os_in."
+        << std::endl;
+    return EXIT_FAILURE;
+  }
 
-  CHECK(!FLAGS_arch_in.empty())
-      << "Need to specify a source architecture with --arch_in.";
+  if (FLAGS_os_out.empty()) {
+    std::cerr
+        << "Need to specify a target operating system with --os_out."
+        << std::endl;
+    return EXIT_FAILURE;
+  }
 
-  CHECK(!FLAGS_arch_out.empty())
-      << "Need to specify a target architecture with --arch_out.";
+  if (FLAGS_arch_in.empty()) {
+    std::cerr
+        << "Need to specify a source architecture with --arch_in."
+        << std::endl;
+    return EXIT_FAILURE;
+  }
 
-  CHECK(!FLAGS_cfg.empty())
-      << "Must specify CFG file with --cfg.";
+  if (FLAGS_arch_out.empty()) {
+    std::cerr
+        << "Need to specify a target architecture with --arch_out."
+        << std::endl;
+    return EXIT_FAILURE;
+  }
 
-  CHECK(!FLAGS_bc_out.empty())
-      << "Please specify an output bitcode file with --bc_out.";
+  if (FLAGS_cfg.empty()) {
+    std::cerr
+        << "Must specify CFG file with --cfg."
+        << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  if (FLAGS_bc_out.empty()) {
+    std::cerr
+        << "Please specify an output bitcode file with --bc_out."
+        << std::endl;
+    return EXIT_FAILURE;
+  }
 
   auto source_os = remill::GetOSName(FLAGS_os_in);
   auto target_os = remill::GetOSName(FLAGS_os_out);
@@ -86,25 +159,21 @@ int main(int argc, char *argv[]) {
   auto source_arch = remill::Arch::Create(source_os, FLAGS_arch_in);
   auto target_arch = remill::Arch::Create(target_os, FLAGS_arch_out);
 
-  if (FLAGS_bc_in.empty()) {
-    std::stringstream build_ss;
-    std::stringstream install_ss;
+  if (!CheckPath(FLAGS_cfg)) {
+    std::cerr
+        << "Must specify valid path for `--cfg`. CFG file " << FLAGS_cfg
+        << " cannot be opened."
+        << std::endl;
+    return EXIT_FAILURE;
+  }
 
-    build_ss << BUILD_SEMANTICS_DIR << FLAGS_arch_in << ".bc";
-    install_ss << INSTALL_SEMANTICS_DIR << FLAGS_arch_in  << ".bc";
-
-    auto build_sem_path = build_ss.str();
-    auto install_sem_path = install_ss.str();
-
-    if (!access(build_sem_path.c_str(), F_OK)) {
-      FLAGS_bc_in = build_sem_path;
-    } else if (!access(install_sem_path.c_str(), F_OK)) {
-      FLAGS_bc_in = install_sem_path;
-    } else {
-      LOG(FATAL)
-          << "Must specify `--bc_in`. Tried to use " << build_sem_path
-          << " and " << install_sem_path << " but neither file existed.";
-    }
+  FLAGS_bc_in = InputBCPath();
+  if (!CheckPath(FLAGS_bc_in)) {
+    std::cerr
+        << "Must specify valid path for `--bc_in`. Bitcode file "
+        << FLAGS_bc_in << " cannot be opened."
+        << std::endl;
+    return EXIT_FAILURE;
   }
 
   auto context = new llvm::LLVMContext;

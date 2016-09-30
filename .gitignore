@@ -3,6 +3,7 @@
 third_party/*
 build/*
 generated/*
+gtest_build/*
 
 *.o
 *.ll

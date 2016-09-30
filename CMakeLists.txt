@@ -1,10 +1,6 @@
 # Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved.
 
-
-set(CMAKE_C_COMPILER clang-3.9)
-set(CMAKE_CXX_COMPILER clang++-3.9)
-set(CMAKE_ASM_COMPILER clang-3.9)
-set(CMAKE_LLVM_LINK llvm-link-3.9)
+set(CMAKE_ASM_COMPILER ${CMAKE_CXX_COMPILER})
 
 project(remill)
 cmake_minimum_required (VERSION 3.2)
@@ -27,6 +23,22 @@ include_directories("${GFLAGS_INCLUDE_DIRS}")
 include_directories("${PROTOBUF_INCLUDE_DIRS}")
 include_directories("${CMAKE_CURRENT_LIST_DIR}")
 
+if(NOT DEFINED CMAKE_C_COMPILER)
+    set(CMAKE_C_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang-3.9")
+endif()
+
+if(NOT DEFINED CMAKE_CXX_COMPILER)
+    set(CMAKE_CXX_COMPILER ${CMAKE_C_COMPILER})
+endif()
+
+if(NOT DEFINED CMAKE_ASM_COMPILER)
+    set(CMAKE_ASM_COMPILER ${CMAKE_C_COMPILER})
+endif()
+
+if(NOT DEFINED CMAKE_LLVM_LINK)
+    set(CMAKE_LLVM_LINK "${LLVM_INSTALL_PREFIX}/bin/llvm-link")
+endif()
+
 add_definitions(${LLVM_DEFINITIONS})
 
 add_executable(remill-lift
@@ -46,10 +58,16 @@ target_link_libraries(remill-lift
     ${GLOG_LIBRARIES}
     ${XED_LIBRARIES}
     ${PROTOBUF_LIBRARIES}
-    LLVM
+    
+    LLVMIRReader LLVMBitReader LLVMBitWriter
+    LLVMTransformUtils
+    LLVMScalarOpts
+    LLVMSupport
 )
 
 target_compile_options(remill-lift PRIVATE
+    -x c++
+
     -Wall
     -Wextra
     -Werror
@@ -80,6 +98,9 @@ target_compile_options(remill-lift PRIVATE
     -fno-omit-frame-pointer
     -fvisibility-inlines-hidden
 
+    -fno-rtti
+    -DGOOGLE_PROTOBUF_NO_RTTI
+
     -std=gnu++11
 
     -fPIC
@@ -105,7 +126,6 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
         -stdlib=libc++
         
         -g0
-        -O3
         -m${address_size}
         
         -Wall
@@ -146,6 +166,7 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
     add_custom_target(Instructions.${name}.bc
         COMMAND ${CMAKE_CXX_COMPILER}
                 ${SEMANTICS_CXX_FLAGS}
+                -O3
                 -c ${PROJECT_SOURCE_DIR}/remill/Arch/X86/Runtime/Instructions.cpp
                 -o Instructions.${name}.bc
         SOURCES remill/Arch/X86/Runtime/Instructions.cpp

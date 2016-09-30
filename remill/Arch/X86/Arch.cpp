@@ -637,7 +637,7 @@ Instruction *X86Arch::DecodeInstruction(
     const std::string &instr_bytes) const {
   xed_decoded_inst_t xedd_;
   xed_decoded_inst_t *xedd = &xedd_;
-  auto mode = kArchX86 == arch_name ? &kXEDState32 : &kXEDState64;
+  auto mode = 32 == address_size ? &kXEDState32 : &kXEDState64;
 
   DecodeXED(xedd, mode, instr_bytes, address);
 

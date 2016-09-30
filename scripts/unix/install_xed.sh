@@ -36,4 +36,6 @@ sudo mkdir -p $INSTALL_INCLUDE_DIR
 sudo install -t $INSTALL_LIB_DIR $DIR/third_party/xed/kits/${XED_VERSION}/lib/*
 sudo install -t $INSTALL_INCLUDE_DIR $DIR/third_party/xed/kits/${XED_VERSION}/include/* 
 
+sudo ldconfig
+
 exit 0

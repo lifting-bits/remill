@@ -32,17 +32,28 @@ sudo pip install --upgrade pip
 
 sudo pip install python-magic 'protobuf==2.4.1'
 
+# Unpack and install Intel XED.
 ./scripts/unix/install_xed.sh
 
-sudo ldconfig
+# Compile and install Google Test.
+./scripts/unix/install_gtest.sh
 
+# Compile .proto files into C++ and python files.
 ./scripts/unix/compile_protobufs.sh
 
-mkdir build
-cd build
-cmake ..
+# Build and install Remill.
+mkdir remill_build
+pushd remill_build
+cmake \
+-DCMAKE_C_COMPILER=clang-3.9 \
+-DCMAKE_CXX_COMPILER=clang++-3.9 \
+-DCMAKE_LLVM_LINK=llvm-link-3.9 \
+..
 
 make semantics
 make all
 sudo make install
+popd
 
+./scripts/x86/generate_tests.sh
+./scripts/x86/run_tests.sh

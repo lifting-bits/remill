@@ -3,12 +3,35 @@
 
 DIR=$(dirname $(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )))
 
+if [[ "$OSTYPE" == "linux-gnu" ]] ; then
+    OS_NAME=linux
+
+elif [[ "$OSTYPE" == "darwin"* ]] ; then
+    OS_NAME=macos
+
+else
+    printf "Unsupported platform: ${OSTYPE}${RESET}\n" > /dev/stderr
+    exit 1
+fi
+
+
+printf "Found OS ${OS_NAME}\n"
+
+CXX=$(which clang++-3.9)
+if [[ $? -ne 0 ]] ; then
+    CXX=$(which clang++)
+fi
+
+printf "Found C++ compiler ${CXX}\n"
+
 function generate_tests()
 {
     printf "Generating tests for ${4}\n"
-    clang++-3.9 \
+    ${CXX} \
         -I${DIR} \
         -std=gnu++11 \
+        -fno-rtti \
+        -fno-exceptions \
         -Wno-nested-anon-types \
         -Wno-variadic-macros \
         -Wno-extended-offsetof \
@@ -20,6 +43,7 @@ function generate_tests()
         -DADDRESS_SIZE_BITS=${1} \
         -DHAS_FEATURE_AVX=${2} \
         -DHAS_FEATURE_AVX512=${3} \
+        -DGOOGLE_PROTOBUF_NO_RTTI \
         $DIR/tests/X86/Tests.S \
         $DIR/tests/X86/Generate.cpp \
         $DIR/remill/CFG/CFG.cpp \
@@ -36,6 +60,7 @@ function lift_tests()
 {
     printf "Lifting tests for ${1}\n"
     remill-lift --cfg $DIR/generated/Arch/X86/Tests/${1}.cfg \
+                --os_in ${OS_NAME} --os_out ${OS_NAME} \
                 --arch_in ${1} --arch_out amd64 \
                 --bc_out $DIR/generated/Arch/X86/Tests/${1}.cfg.bc
 }
@@ -43,9 +68,11 @@ function lift_tests()
 function compile_tests()
 {
     printf "Compiling tests for ${4}\n"
-    clang++-3.9 \
+    ${CXX} \
         -I${DIR} \
         -std=gnu++11 \
+        -fno-rtti \
+        -fno-exceptions \
         -Wno-nested-anon-types \
         -Wno-variadic-macros \
         -Wno-extended-offsetof \
@@ -56,11 +83,14 @@ function compile_tests()
         -DADDRESS_SIZE_BITS=${1} \
         -DHAS_FEATURE_AVX=${2} \
         -DHAS_FEATURE_AVX512=${3} \
+        -DGOOGLE_PROTOBUF_NO_RTTI \
         $DIR/tests/X86/Tests.S \
         $DIR/tests/X86/Run.cpp \
-        $DIR/generated/Arch/X86/Tests/${1}.cfg.bc \
+        $DIR/generated/Arch/X86/Tests/${4}.cfg.bc \
         -lgflags \
-        -lglog 
+        -lglog \
+        -lgtest \
+        -lpthread
     
     ./a.out > $DIR/generated/Arch/X86/Tests/${4}
     rm ./a.out

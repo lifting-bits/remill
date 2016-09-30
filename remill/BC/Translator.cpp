@@ -143,7 +143,7 @@ static llvm::Function *CreateExternalFunction(llvm::Module *module,
 // Clone the block method template `TF` into a specific method `BF` that
 // will contain lifted code.
 static void AddBlockInitializationCode(llvm::Function *block_func,
-                                       const llvm::Function *template_func) {
+                                       llvm::Function *template_func) {
 
   llvm::ValueToValueMapTy var_map;
   var_map[template_func] = block_func;

@@ -100,9 +100,13 @@ Instructions for building on macOS are not yet available.
 
 ### Step 2: Clone and Enter the Repository
 
+#### Clone the repository
 ```shell
 git clone git@github.com:trailofbits/remill.git
+```
 
+#### Enter the repository
+```shell
 cd remill
 ```
 
@@ -114,8 +118,6 @@ This script will unpack and install Intel XED. It will require `sudo`er permissi
 
 ```shell
 ./scripts/unix/install_xed.sh
-
-sudo ldconfig
 ```
 
 ### Step 4: Compile Protocol Buffers
@@ -130,10 +132,23 @@ Remill represents disassembled binaries using a [protocol buffer format](docs/CF
 
 ### Step 5: Run a Basic Build
 
+#### Create a build location
+
 ```shell
 mkdir build
 cd build
-cmake ..
+```
+
+#### Compile the code
+
+Now the code must be compiled. It is best to manually specify the paths to the LLVM 3.9 and Clang 3.9 binaries. By default, Remill installs its files into `/usr/local`. An alternative installation directory prefix can be specified with `-DCMAKE_INSTALL_PREFIX=/path/to/prefix`.
+
+```shell
+cmake \
+-DCMAKE_C_COMPILER=/path/to/clang-3.9 \
+-DCMAKE_CXX_COMPILER=/path/to/clang++-3.9 \
+-DCMAKE_LLVM_LINK=/path/to/llvm-link-3.9 \
+..
 
 make semantics
 make all
@@ -144,7 +159,24 @@ sudo make install
 
  > **Note 2:** If you are implementing new instruction semantics, then the `semantics` target can be rebuilt and should take effect, even without re`install`ing. 
 
-#### 
+## Building and Running the Test Suite
+
+### Build Google Test
+
+#### On Linux
+
+This script will build and install the Google Test framework. It will request administrator permissions.
+
+```shell
+./scripts/linux/install_gtest.sh
+```
+
+### Generate and Run the Test Cases
+
+```shell
+./scripts/x86/generate_tests.sh
+./scripts/x86/run_tests.sh
+```
 
 ## Try it Out
 

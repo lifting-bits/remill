@@ -5,8 +5,14 @@
 
 DIR=$(dirname $(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )))
 
+CXX=$(which clang++-3.9)
+if [[ $? -ne 0 ]] ; then
+    CXX=$(which clang++)
+fi
+
 pushd /tmp
-clang++-3.9 \
+${CXX} \
+    -x c++ \
     -std=gnu++11 \
     -stdlib=libc++ \
     -Wno-nested-anon-types -Wno-variadic-macros -Wno-extended-offsetof \
