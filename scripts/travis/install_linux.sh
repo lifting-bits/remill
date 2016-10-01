@@ -32,8 +32,12 @@ sudo apt-get install -y python2.7
 sudo apt-get install -y python-pip
 sudo apt-get install -y llvm-3.9-dev
 sudo apt-get install -y clang-3.9
+sudo apt-get install -y libc6-dev
+sudo apt-get install -y libc6-dev:i386
+sudo apt-get install -y libc6-dev-x32
 sudo apt-get install -y libstdc++-4.8-dev
 sudo apt-get install -y libstdc++-4.8-dev:i386
+sudo apt-get install -y libx32stdc++-4.8-dev
 sudo apt-get install -y unzip
 sudo apt-get install -y cmake
 
