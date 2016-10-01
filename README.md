@@ -67,8 +67,7 @@ sudo apt-get install \
      libgtest-dev \
      libprotoc-dev libprotobuf-dev libprotobuf-dev protobuf-compiler \
      python2.7 python-pip \
-     libc6-dev libc6-dev:i386 libc6-dev-x32 \
-     libstdc++-4.8-dev libstdc++-4.8-dev:i386 libx32stdc++-4.8-dev \
+     g++-multilib \
      unzip \
      software-properties-common
 
