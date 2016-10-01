@@ -3,6 +3,20 @@
 
 UBUNTU_RELEASE=`lsb_release -sc`
 
+sudo apt-get update
+sudo apt-get upgrade -y
+
+sudo apt-get install -y \
+     git \
+     libgoogle-glog-dev \
+     libgtest-dev \
+     libprotoc-dev libprotobuf-dev libprotobuf-dev protobuf-compiler \
+     python2.7 python-pip \
+     libc++-dev libc++-dev:i386 \
+     libc6-dev libc6-dev:i386 \
+     unzip \
+     software-properties-common
+
 wget -qO - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
 
 # For LLVM.
@@ -14,19 +28,8 @@ sudo add-apt-repository -y "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-tool
 sudo add-apt-repository -y ppa:george-edison55/cmake-3.x
 
 sudo apt-get update
-sudo apt-get upgrade
-
-sudo apt-get install \
-     git \
-     cmake \
-     libgoogle-glog-dev \
-     libgtest-dev \
-     libprotoc-dev libprotobuf-dev libprotobuf-dev protobuf-compiler \
-     python2.7 python-pip \
-     llvm-3.9-dev clang-3.9 \
-     libc++-dev libc++-dev:i386 \
-     libc6-dev libc6-dev:i386 \
-     unzip
+sudo apt-get upgrade -y
+sudo apt-get install -y llvm-3.9-dev clang-3.9 cmake
 
 sudo pip install --upgrade pip
 

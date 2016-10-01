@@ -125,7 +125,6 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
         -std=gnu++11
         -stdlib=libc++
         
-        -g0
         -m${address_size}
         
         -Wall
@@ -155,9 +154,13 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
         -fno-asynchronous-unwind-tables
     )
 
+    # Note: `-O0 -g3` is significant here. We need to make sure that we can
+    #       recover variables names within `__remill_basic_block` that may have
+    #       been lost when the code was compiled.
     add_custom_target(BasicBlock.${name}.bc
         COMMAND ${CMAKE_CXX_COMPILER}
                 ${SEMANTICS_CXX_FLAGS}
+                -O0 -g3
                 -c ${PROJECT_SOURCE_DIR}/remill/Arch/X86/Runtime/BasicBlock.cpp
                 -o BasicBlock.${name}.bc
         SOURCES remill/Arch/X86/Runtime/BasicBlock.cpp
@@ -166,7 +169,7 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
     add_custom_target(Instructions.${name}.bc
         COMMAND ${CMAKE_CXX_COMPILER}
                 ${SEMANTICS_CXX_FLAGS}
-                -O3
+                -O3 -g0
                 -c ${PROJECT_SOURCE_DIR}/remill/Arch/X86/Runtime/Instructions.cpp
                 -o Instructions.${name}.bc
         SOURCES remill/Arch/X86/Runtime/Instructions.cpp

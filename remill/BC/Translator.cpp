@@ -14,8 +14,10 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
@@ -48,6 +50,41 @@ class ReturnInst;
 }  // namespace
 
 namespace remill {
+namespace {
+
+// These variables must always be defined within `__remill_basic_block`.
+static bool BlockHasSpecialVars(llvm::Function *basic_block) {
+  return FindVarInFunction(basic_block, "STATE", true) &&
+         FindVarInFunction(basic_block, "MEMORY", true) &&
+         FindVarInFunction(basic_block, "PC", true) &&
+         FindVarInFunction(basic_block, "NEXT_PC", true) &&
+         FindVarInFunction(basic_block, "BRANCH_TAKEN", true);
+}
+
+// Clang isn't guaranteed to play nice and name the LLVM values within the
+// `__remill_basic_block` instrinsic with the same names as we find in the
+// C++ definition of that function. However, we compile that function with
+// debug information, and so we will try to recover the variables names for
+// later lookup.
+static void FixupBasicBlockVariables(llvm::Function *basic_block) {
+  if (BlockHasSpecialVars(basic_block)) {
+    return;
+  }
+
+  for (auto &block : *basic_block) {
+    for (auto &inst : block) {
+      if (auto decl_inst = llvm::dyn_cast<llvm::DbgDeclareInst>(&inst)) {
+        auto addr = decl_inst->getAddress();
+        addr->setName(decl_inst->getVariable()->getName());
+      }
+    }
+  }
+
+  CHECK(BlockHasSpecialVars(basic_block))
+      << "Unable to locate required variables in `__remill_basic_block`.";
+}
+
+}  // namespace
 
 Translator::Translator(const Arch *arch_, llvm::Module *module_)
     : arch(arch_),
@@ -63,6 +100,7 @@ Translator::Translator(const Arch *arch_, llvm::Module *module_)
   CHECK(nullptr != basic_block)
       << "Unable to find __remill_basic_block.";
 
+  FixupBasicBlockVariables(basic_block);
   EnableDeferredInlining();
 }
 

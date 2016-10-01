@@ -54,21 +54,7 @@ We are actively working on porting Remill to macOS.
 
 #### On Linux
 
-The first step is to update Aptitude to find the latest LLVM packages.
-
-> **Note:** Installing LLVM on Ubuntu in such a way that it works for CMake can be tricky. We use LLVM 3.9. What I have found works is to start by removing all versions of all LLVM-related packages. Then, add in the official LLVM repositories (as shown below). Finally, install `llvm-3.9-dev`. If you also need older versions of LLVM-related tools, then re-install them after installing LLVM 3.9.
-
-```shell
-UBUNTU_RELEASE=`lsb_release -sc`
-
-wget -qO - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-
-sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE} main"
-sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.8 main"
-sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.9 main"
-```
-
-The next step is to update set up the system and install packages needed by Remill.
+##### Install Dependencies
 
 ```shell
 sudo apt-get update
@@ -81,18 +67,43 @@ sudo apt-get install \
      libgtest-dev \
      libprotoc-dev libprotobuf-dev libprotobuf-dev protobuf-compiler \
      python2.7 python-pip \
-     llvm-3.9-dev clang-3.9 \
      libc++-dev libc++-dev:i386 \
      libc6-dev libc6-dev:i386 \
-     unzip
+     unzip \
+     software-properties-common
 
 sudo pip install --upgrade pip
 
 sudo pip install python-magic 'protobuf==2.4.1'
 ```
 
- > **Note:** Users wishing to run Remill on Ubuntu 14.04 should [upgrade their version of CMake](http://askubuntu.com/questions/610291/how-to-install-cmake-3-2-on-ubuntu-14-04).
+##### Upgrade CMake (Ubuntu 14.04)
 
+Users wishing to run Remill on Ubuntu 14.04 should upgrade their version of CMake.
+
+```shell
+sudo add-apt-repository -y ppa:george-edison55/cmake-3.x
+sudo apt-get update
+sudo apt-get upgrade
+sudo apt-get install cmake
+```
+
+##### Install LLVM 3.9
+
+> **Note:** Installing LLVM on Ubuntu in such a way that it works for CMake can be tricky. We use LLVM 3.9. What I have found works is to start by removing all versions of all LLVM-related packages. Then, add in the official LLVM repositories (as shown below). Finally, install `llvm-3.9-dev`. If you also need older versions of LLVM-related tools, then re-install them after installing LLVM 3.9.
+
+```shell
+UBUNTU_RELEASE=`lsb_release -sc`
+
+wget -qO - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+
+sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE} main"
+sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.8 main"
+sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.9 main"
+
+sudo apt-get update
+sudo apt-get install llvm-3.9-dev clang-3.9
+```
 
 #### On macOS (experimental)
 
