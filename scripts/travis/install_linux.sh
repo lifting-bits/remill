@@ -4,10 +4,10 @@
 DIR=$(dirname $(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )))
 UBUNTU_RELEASE=`lsb_release -sc`
 
-sudo apt-get update
-sudo apt-get upgrade -y
+sudo apt-get update -qq
+#sudo apt-get upgrade -yqq
 
-sudo apt-get install -y \
+sudo apt-get install -yqq \
      git \
      libgoogle-glog-dev \
      libgtest-dev \
@@ -28,9 +28,9 @@ sudo add-apt-repository -y "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-tool
 # For CMake
 sudo add-apt-repository -y ppa:george-edison55/cmake-3.x
 
-sudo apt-get update
-sudo apt-get upgrade -y
-sudo apt-get install -y llvm-3.9-dev clang-3.9 cmake
+sudo apt-get update -qq
+#sudo apt-get upgrade -yqq
+sudo apt-get install -yqq llvm-3.9-dev clang-3.9 cmake
 
 sudo pip install --upgrade pip
 
