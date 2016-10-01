@@ -8,6 +8,8 @@ UBUNTU_RELEASE=`lsb_release -sc`
 sudo apt-get update -qq
 sudo apt-get upgrade -yqq
 sudo apt-get install -y software-properties-common
+sudo apt-get install -y build-essential
+sudo apt-get install -y libstdc++-4.8-dev
 
 # Add the LLVM repositories and keys.
 wget -qO - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
