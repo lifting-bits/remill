@@ -6,6 +6,7 @@ UBUNTU_RELEASE=`lsb_release -sc`
 
 # Make sure we have `add-apt-repository`.
 sudo apt-get update -qq
+sudo apt-get upgrade -yqq
 sudo apt-get install -yqq software-properties-common
 
 # Add the LLVM repositories and keys.

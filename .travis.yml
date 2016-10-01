@@ -5,13 +5,14 @@ language: generic
 os: 
  - linux
  - osx
-compiler: 
+compiler:
+ - gcc
  - clang
 matrix:
  exclude:
    - compiler: gcc
      os: osx
-   - compiler: gcc
+   - compiler: clang
      os: linux
  allow_failures:
    - os: osx

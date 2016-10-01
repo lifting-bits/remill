@@ -3,7 +3,11 @@
 
 DIR=$(dirname $(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )))
 
-if [[ "${TRAVIS_OS_NAME}" = "linux" ]] ; then 
+if [[ "${TRAVIS_OS_NAME}" = "linux" ]] ; then
+    
+    sudo apt-get --force-yes purge isc-dhcp-client
+    sudo apt-get install -y isc-dhcp-client
+    
     $DIR/scripts/travis/install_linux.sh
 fi 
 
