@@ -64,13 +64,24 @@ DEFINE_string(bc_out, "", "Output bitcode file name.");
 namespace {
 
 static const char *gSearchPaths[] = {
+    // Derived from the build.
     BUILD_SEMANTICS_DIR "\0",
     INSTALL_SEMANTICS_DIR "\0",
+
+    // Linux.
     "/usr/local/share/remill/semantics/",
     "/usr/share/remill/semantics/",
+
+    // Other?
     "/opt/local/share/remill/semantics/",
     "/opt/share/remill/semantics/",
-    "/opt/remill/semantics/"
+    "/opt/remill/semantics/",
+
+    // FreeBSD.
+    "/usr/share/compat/linux/remill/semantics",
+    "/usr/local/share/compat/linux/remill/semantics",
+    "/compat/linux/usr/share/remill/semantics",
+    "/compat/linux/usr/local/share/remill/semantics",
 };
 
 static bool CheckPath(const std::string &path) {

@@ -87,13 +87,11 @@ function compile_tests()
         $DIR/tests/X86/Tests.S \
         $DIR/tests/X86/Run.cpp \
         $DIR/generated/Arch/X86/Tests/${4}.cfg.bc \
+        -o $DIR/generated/Arch/X86/Tests/${4} \
         -lgflags \
         -lglog \
         -lgtest \
         -lpthread
-    
-    ./a.out > $DIR/generated/Arch/X86/Tests/${4}
-    rm ./a.out
 }
 
 mkdir -p $DIR/generated/Arch/X86/Tests

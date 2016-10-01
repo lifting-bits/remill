@@ -24,7 +24,7 @@ If you are experiencing undocumented problems with Remill then ask for help in t
 
 ## Supported Platforms
 
-Remill is supported on Linux platforms and has been tested on Ubuntu 16.04.
+Remill is supported on Linux platforms and has been tested on Ubuntu 14.04 and 16.04.
 
 We are actively working on porting Remill to macOS.
 
