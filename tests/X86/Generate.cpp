@@ -92,6 +92,8 @@ static void AddFunctionToModule(remill::cfg::Module *module,
     instr->set_address(addr);
     addr += ilen;
   }
+
+  module->add_referenced_blocks(test.test_end);
 }
 
 }  // namespace

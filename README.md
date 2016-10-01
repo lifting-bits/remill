@@ -1,174 +1,193 @@
 # Remill
-[![Build Status](https://travis-ci.org/trailofbits/remill.svg?branch=master)](https://travis-ci.org/trailofbits/remill)
+
 
 Remill is a static binary translator that translates machine code into [LLVM bitcode](http://llvm.org/docs/LangRef.html). It translates x86 and amd64 machine code (including AVX and AVX512) into LLVM bitcode.
 
-## Documentation
+## Build Status
 
-Please consult the [documentation](docs/README.md), which describes the goals, design, and inner workings of Remill.
+|       | master |
+| ----- | ------ |
+| Linux | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/linux)](https://travis-ci.org/trailofbits/remill) |
+| macOS | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/osx)](https://travis-ci.org/trailofbits/remill) |
 
-## Purpose
+## Additional Documentation
+ 
+ - [How to contribute](docs/CONTRIBUTING.md)
+ - [How to implement the semantics of an instruction](docs/ADD_AN_INSTRUCTION.md)
+ - [How instructions are lifted](docs/LIFE_OF_AN_INSTRUCTION.md)
+ - [How binaries are represented](docs/CFG_FORMAT.md)
+ - [The design and architecture of Remill](docs/DESIGN.md)
 
-Remill translates machine code, and *only* machine code, into LLVM bitcode. Remill's translation approach is inspired by [dynamic](https://software.intel.com/en-us/articles/pin-a-dynamic-binary-instrumentation-tool)
-[binary](https://github.com/DynamoRIO/dynamorio) [translators](https://github.com/Granary/granary2). Remill translates one [basic block](https://en.wikipedia.org/wiki/Basic_block) of machine code into LLVM bitcode at a time. The translation process defers many decisions to downstream consumers on how the translated bitcode should be interpreted.
+## Getting Help
 
-## Goals
+If you are experiencing undocumented problems with Remill then ask for help in the `#tool-remill` channel of the [Empire Hacking Slack](https://empireslacking.herokuapp.com/).
 
-Remill was designed with the following goals in mind.
+## Supported Platforms
 
-- It should be easy to add new instruction implementations. Instruction
-  semantics are implemented using C++. Instruction implementations should be
-  thoroughly tested.
+Remill is supported on Linux platforms and has been tested on Ubuntu 14.04 and 16.04.
 
-- Remill-produced bitcode should achieve the sometimes conflicting goals of
-  maintaining the semantics of the translated machine code and enabling
-  aggressive optimization of the produced bitcode.
+We are actively working on porting Remill to macOS.
 
-- Decisions affecting the use of the produced bitcode should be deferred via
-  intrinsics. Remill-produced bitcode should not commit a consumer of that
-  bitcode to one use case.
+## Dependencies
 
-## Design
+| Name | Version | 
+| ---- | ------- |
+| [Git](https://git-scm.com/) | Latest |
+| [CMake](https://cmake.org/) | 3.2+ |
+| [Google Log](https://github.com/google/glog) | 0.3.3 |
+| [Google Test](https://github.com/google/googletest) | 1.6.0 |
+| [Google Protobuf](https://github.com/google/protobuf) | 2.4.1 |
+| [LLVM](http://llvm.org/) | 3.9 |
+| [Clang](http://clang.llvm.org/) | 3.9 |
+| [Intel XED](https://software.intel.com/en-us/articles/xed-x86-encoder-decoder-software-library) | 2016-02-02 |
+| [Python](https://www.python.org/) | 2.7 | 
+| [Python Package Index](https://pypi.python.org/pypi) | Latest |
+| [python-magic](https://pypi.python.org/pypi/python-magic) | Latest |
+| Unzip | Latest |
+| [python-protobuf](https://pypi.python.org/pypi/protobuf) | 2.4.1 |
+| [Binary Ninja](https://binary.ninja) | Latest |
+| [IDA Pro](https://www.hex-rays.com/products/ida) | 6.7+ |
 
-### Intrinsics
+## Getting and Building the Code
 
-Remill defers the "implementation" of memory accesses and certain types of
-control flows to the consumers of the produced bitcode. Deferral in this takes
-the form of Remill [intrinsics](remill/Arch/Runtime/Intrinsics.h).
+### Step 1: Install dependencies
 
-For example, the `__remill_read_memory_8` intrinsic function represents the
-action of reading 8 bits of memory. Via this and similar intrinsics, downstream
-tools can distinguish between LLVM `load` and `store` instructions from accesses
-to the modelled program's memory. Downstream tools can, of course, implement
-memory intrinsics using LLVM's own memory access instructions. 
+#### On Linux
 
-### Instruction Semantics
+##### Install Dependencies
 
-Instruction semantics are implemented using C++, and tested against their
-native counterparts. Often, the high-level semantics of an instruction are
-implemented using a C++ function template. This template is then instantiated
-for each possible encoding of the modelled instruction.
+```shell
+sudo apt-get update
+sudo apt-get upgrade
 
-### Machine State
+sudo apt-get install \
+     git \
+     cmake \
+     libgoogle-glog-dev \
+     libgtest-dev \
+     libprotoc-dev libprotobuf-dev libprotobuf-dev protobuf-compiler \
+     python2.7 python-pip \
+     g++-multilib \
+     unzip \
+     software-properties-common
 
-The register state of a machine is represented by a single `State` structure.
-For example, the x86/amd64 state structure is defined in
-[State.h](remill/Arch/X86/Runtime/State.h). State structures are carefully
-designed to maintain the following properties.
+sudo pip install --upgrade pip
 
- - They should actively prevent certain compiler optimizations that obscure the
-   semantics of the translated machine code. For example, special
-   [tear fields](https://github.com/trailofbits/remill/blob/master/remill/Arch/X86/Runtime/State.h#L211)
-   are introduced so as to prevent load and store coalescing, and preserve the
-   semantics that writes to logical units of data remain as such.
- - They should have a uniform size across all architecture revisions and
-   generations. This permits things such as:
-    - Mixing separately translated bitcode from two binaries, one with and one without AVX support.
-    - Mixing 32-bit ad 64-bit translated bitcode, or cross-compiling 32-bit and
-      64-bit bitcode.
- - They should accurately describe all register state maintained by the
-    emulated machine.
- - It should be easy to convert to/from Remill's state structures and actual
-    machine-derived state.
-
-### Memory Model and the Remill Runtime
-
-Remill-produced bitcode has a memory model that includes memory barriers and atomic region.
-It also explicitly distinguishes loads/stores to the modelled program's memory from
-loads and stores to "runtime memory."
-
-Remill-produced bitcode can be thought of as an emulator for a program.
-Through this lens, the memory used to store a `State` structure or any local
-variables (`alloca`s in LLVM) needed to support the emulation must be treated
-as distinct from the modelled program's memory itself. This separation enables
-Remill to maintain [transparency](http://www.burningcutlery.com/derek/docs/transparency-VEE12.pdf)
-with respect to memory accesses.
-
-# Setup
-
-## Linux-specific
-```sh
-sudo apt-get install libunwind8 libunwind8-dev
-sudo pip install futures
-sudo pip install python-magic
+sudo pip install python-magic 'protobuf==2.4.1'
 ```
 
-## Generic
-```sh
-./scripts/bootstrap.sh
+##### Upgrade CMake (Ubuntu 14.04)
+
+Users wishing to run Remill on Ubuntu 14.04 should upgrade their version of CMake.
+
+```shell
+sudo add-apt-repository -y ppa:george-edison55/cmake-3.x
+sudo apt-get update
+sudo apt-get upgrade
+sudo apt-get install cmake
 ```
 
-### Example
+##### Install LLVM 3.9
 
-First, extract the control-flow graph information from your binary.
+> **Note:** Installing LLVM on Ubuntu in such a way that it works for CMake can be tricky. We use LLVM 3.9. What I have found works is to start by removing all versions of all LLVM-related packages. Then, add in the official LLVM repositories (as shown below). Finally, install `llvm-3.9-dev`. If you also need older versions of LLVM-related tools, then re-install them after installing LLVM 3.9.
 
-```sh
-BIN=/path/to/binary
-CFG=$(./scripts/ida_get_cfg.sh $BIN)
+```shell
+UBUNTU_RELEASE=`lsb_release -sc`
+
+wget -qO - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+
+sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE} main"
+sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.8 main"
+sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_RELEASE}/ llvm-toolchain-${UBUNTU_RELEASE}-3.9 main"
+
+sudo apt-get update
+sudo apt-get install llvm-3.9-dev clang-3.9
 ```
 
-This script will tell you where it puts the CFG. For example, it might output something like `/tmp/tmp.E3RWcczulG.cfg`.
+#### On macOS (experimental)
 
-Lets assume that `/path/to/binary` is a 32-bit ELF file. Now you can do the following:
+Instructions for building on macOS are not yet available.
 
-```sh
-/path/to/remill/build/cfg_to_bc \
-    --arch_in=x86 --arch_out=x86 --os_in=linux --os_out=linux \
-    --bc_in=/path/to/remill/generated/sem_x86.bc --bc_out=$BIN.bc --cfg=$CFG
+### Step 2: Clone and Enter the Repository
+
+#### Clone the repository
+```shell
+git clone git@github.com:trailofbits/remill.git
 ```
 
-For 64-bit x86 programs, specificy `--arch_in=amd64`. If you intend to run a 32-bit binary as a 64-bit program then specify `--arch_in=x86 --arch_out=amd64`. Similar switching can be done for the OS. The `--bc_in` flag also needs to be changes to point at the AMD64 semantics bitcode file. For example, `sem_amd64.bc`. If your lifted code uses AVX, then you can use `sem_amd64_avx.bc`.
-
-**Note:** This arch/OS switching only affects the ABI used by the bitcode, and how instructions are decoded. The translator itself has no other concept of arch/OS types. It is up to the next tool in the pipeline to implement the desired behavior.
-
-**Note:** Always use absolute paths when specifying files to Remill. I have no patience for handling paths in a 100% correct, generic way in C++. To that end, users of the tool should make it as easy as possible for Remill to do the right thing.
-
-#### Optimizing the bitcode
-
-There are a few ways to optimize the produced bitcode. The first is to tell remill to perform a data flow analysis and to try to kill things like dead registers.
-
-The data flow analyzer is enabled by specifying a maximum number of data flow analysis iterations to perform. By default, the maximum number is `0` (disabled). For a comprehensive analysis, specify a large number, e.g.:
-
-```sh
-/path/to/remill/build/cfg_to_bc ... --max_dataflow_analysis_iterations=99999 ...
+#### Enter the repository
+```shell
+cd remill
 ```
 
-In order to maintain correctness, the data-flow analysis is conservative. However, if all code is avaiable for analysis within the CFG file, then a more agressive analysis can be performed. This analysis will try to propagate data flow information across function returns, for instance. It is enabled with the `--aggressive_dataflow_analysis` flag.
+### Step 3: Install Intel XED
 
-Once bitcode has been produced, it can be optimized using the remill-specific LLVM optimization plugin. The following will produce optimized bitcode in a file named by `$OPT`.
+#### On Linux and macOS
 
-```sh
-OPT=$(./scripts/optimize_bitcode.sh $BIN.bc)
+This script will unpack and install Intel XED. It will require `sudo`er permissions. The XED library will be installed into `/usr/local/lib`, and the headers will be installed into `/usr/local/include/intel`.
+
+```shell
+./scripts/unix/install_xed.sh
 ```
 
-### Miscellaneous
+### Step 4: Compile Protocol Buffers
 
-To recompile the code, run `./scripts/build.py`. Ideally, you should install the `concurrent.futures` package to make the build faster, though it is not required. If you want to see what the build script is doing to compile the code, then run the following:
+Remill represents disassembled binaries using a [protocol buffer format](docs/CFG_FORMAT.md). This step compiles that format into files that can be used by `remill-lift`.
 
+#### On Linux and macOS
+
+```shell
+./scripts/unix/compile_protobufs.sh
 ```
-./scripts/build.py --debug --num_workers 1 --stop_on_error
+
+### Step 5: Run a Basic Build
+
+#### Create a build location
+
+```shell
+mkdir build
+cd build
 ```
 
-To recompile the semantics (if you add an instruction) then run `./scripts/compile_semantics.sh`. If you want to test your new semantics, then also recompile the code using the above command.
+#### Compile the code
 
-If you make any changes to the register machine `State` structure, then before recompiling, run the script `./scripts/print_x86_save_state_asm.sh`. This produces an assembly source code file used by the unit tests for marshaling the machine state to/from the `State` structure.
+Now the code must be compiled. It is best to manually specify the paths to the LLVM 3.9 and Clang 3.9 binaries. By default, Remill installs its files into `/usr/local`. An alternative installation directory prefix can be specified with `-DCMAKE_INSTALL_PREFIX=/path/to/prefix`.
 
-## Third-Party Dependencies
+```shell
+cmake \
+-DCMAKE_C_COMPILER=/path/to/clang-3.9 \
+-DCMAKE_CXX_COMPILER=/path/to/clang++-3.9 \
+-DCMAKE_LLVM_LINK=/path/to/llvm-link-3.9 \
+..
 
-### Intel XED
+make semantics
+make all
+sudo make install
+```
 
-Remill depends on and redistributes [Intel XED](https://software.intel.com/en-us/articles/xed-x86-encoder-decoder-software-library), the highest-quality x86 instruction
-encoder and decoder. XED is licensed under the What If pre-release license. A copy of this license can be found [here](blob/xed/LICENSE.md).
+ > **Note 1:** The `semantics` target must be built before `install`ing.
 
-### LLVM
+ > **Note 2:** If you are implementing new instruction semantics, then the `semantics` target can be rebuilt and should take effect, even without re`install`ing. 
 
-Remill depends on the [LLVM Compiler Infrastructure](http://llvm.org). A copy of this license can be found [here](http://llvm.org/releases/3.8.0/LICENSE.TXT).
+## Building and Running the Test Suite
 
-### IDA Pro
+### Build Google Test
 
-Remill depends on [IDA Pro](https://www.hex-rays.com/products/ida) to
-accurately disassemble program binaries.
+#### On Linux
 
-### Binary Ninja
+This script will build and install the Google Test framework. It will request administrator permissions.
 
-An alternative to IDA Pro is [Binary Ninja](https://binary.ninja). Remill can use Binary Ninja to accurately disassemble program binaries.
+```shell
+./scripts/linux/install_gtest.sh
+```
+
+### Generate and Run the Test Cases
+
+```shell
+./scripts/x86/generate_tests.sh
+./scripts/x86/run_tests.sh
+```
+
+## Try it Out
+
+**TODO(pag):** Make `remill-lift`.

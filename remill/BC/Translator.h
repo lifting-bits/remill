@@ -69,6 +69,11 @@ class Translator {
   // Create a function for a single block.
   llvm::Function *GetOrCreateBlock(uint64_t address);
 
+  // Create a function for a single block. This block appears as the target
+  // of some control-flow instruction. Make sure that it has a default detach-
+  // based implementation.
+  llvm::Function *GetOrCreateTargetBlock(uint64_t address);
+
   // Create functions for every imported function in the code.
   llvm::Function *CreateImportedFunction(
       const std::string &name, uintptr_t addr);
