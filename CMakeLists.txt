@@ -123,7 +123,6 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
         -DHAS_FEATURE_AVX512=${has_avx512}
 
         -std=gnu++11
-        -stdlib=libc++
         
         -m${address_size}
         

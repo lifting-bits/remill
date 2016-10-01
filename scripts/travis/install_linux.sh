@@ -9,7 +9,6 @@ sudo apt-get update -qq
 sudo apt-get upgrade -yqq
 sudo apt-get install -y software-properties-common
 sudo apt-get install -y build-essential
-sudo apt-get install -y libstdc++-4.8-dev
 
 # Add the LLVM repositories and keys.
 wget -qO - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
@@ -33,10 +32,8 @@ sudo apt-get install -y python2.7
 sudo apt-get install -y python-pip
 sudo apt-get install -y llvm-3.9-dev
 sudo apt-get install -y clang-3.9
-sudo apt-get install -y libc++-dev
-sudo apt-get install -y libc++-dev:i386
-sudo apt-get install -y libc6-dev
-sudo apt-get install -y libc6-dev:i386
+sudo apt-get install -y libstdc++-4.8-dev
+sudo apt-get install -y libstdc++-4.8-dev:i386
 sudo apt-get install -y unzip
 sudo apt-get install -y cmake
 
