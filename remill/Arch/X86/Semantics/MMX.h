@@ -514,7 +514,6 @@ DEF_SEM(PMAXUB, D dst, S1 src1, S2 src2) {
     auto max = Select(UCmpGt(UExtractV8(lhs_vec, i), UExtractV8(rhs_vec, i)), UExtractV8(lhs_vec, i), UExtractV8(rhs_vec, i));
     dst_vec = UInsertV8(dst_vec, i, max);
   }
-  :w
   UWriteV8(dst, dst_vec);
 }
 DEF_ISEL(PMAXUB_MMXq_MMXq) = PMAXUB<V64W, V64, V64>;
