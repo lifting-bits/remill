@@ -38,6 +38,10 @@ sudo apt-get install -y libc6-dev-x32
 sudo apt-get install -y libstdc++-4.8-dev
 sudo apt-get install -y libstdc++-4.8-dev:i386
 sudo apt-get install -y libx32stdc++-4.8-dev
+sudo apt-get install -y libc++-dev
+sudo apt-get install -y libc++-dev:i386
+sudo apt-get install -y libc++abi-dev
+sudo apt-get install -y libc++abi-dev:i386
 sudo apt-get install -y unzip
 sudo apt-get install -y cmake
 
@@ -64,8 +68,8 @@ cmake \
 -DCMAKE_LLVM_LINK=llvm-link-3.9 \
 ..
 
-make semantics
-make all
+make semantics VERBOSE=1
+make all VERBOSE=1
 sudo make install
 popd
 

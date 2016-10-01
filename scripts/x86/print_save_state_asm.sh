@@ -12,9 +12,7 @@ fi
 
 pushd /tmp
 ${CXX} \
-    -x c++ \
     -std=gnu++11 \
-    -stdlib=libc++ \
     -Wno-nested-anon-types -Wno-variadic-macros -Wno-extended-offsetof \
     -Wno-return-type-c-linkage \
     -m64 -I${DIR} \
