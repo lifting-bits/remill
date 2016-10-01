@@ -7,7 +7,7 @@ UBUNTU_RELEASE=`lsb_release -sc`
 # Make sure we have `add-apt-repository`.
 sudo apt-get update -qq
 sudo apt-get upgrade -yqq
-sudo apt-get install -yqq software-properties-common
+sudo apt-get install -y software-properties-common
 
 # Add the LLVM repositories and keys.
 wget -qO - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
@@ -20,7 +20,7 @@ sudo add-apt-repository -y ppa:george-edison55/cmake-3.x
 
 # Update sources list, and then install needed packages.
 sudo apt-get update -qq
-sudo apt-get install -yq \
+sudo apt-get install -y \
      git \
      libgoogle-glog-dev \
      libgtest-dev \
