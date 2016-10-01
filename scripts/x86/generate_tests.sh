@@ -30,8 +30,6 @@ function generate_tests()
     ${CXX} \
         -I${DIR} \
         -std=gnu++11 \
-        -fno-rtti \
-        -fno-exceptions \
         -Wno-nested-anon-types \
         -Wno-variadic-macros \
         -Wno-extended-offsetof \
@@ -71,13 +69,12 @@ function compile_tests()
     ${CXX} \
         -I${DIR} \
         -std=gnu++11 \
-        -fno-rtti \
-        -fno-exceptions \
         -Wno-nested-anon-types \
         -Wno-variadic-macros \
         -Wno-extended-offsetof \
         -Wno-return-type-c-linkage \
         -Wno-expansion-to-defined \
+        -Wno-override-module \
         -m64 \
         -I${DIR} \
         -DADDRESS_SIZE_BITS=${1} \
