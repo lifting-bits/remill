@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved.
+# Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved.
 
+DIR=$(dirname $(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )))
 UBUNTU_RELEASE=`lsb_release -sc`
 
 sudo apt-get update
@@ -36,13 +37,13 @@ sudo pip install --upgrade pip
 sudo pip install python-magic 'protobuf==2.4.1'
 
 # Unpack and install Intel XED.
-./scripts/unix/install_xed.sh
+$DIR/scripts/unix/install_xed.sh
 
 # Compile and install Google Test.
-./scripts/unix/install_gtest.sh
+$DIR/scripts/unix/install_gtest.sh
 
 # Compile .proto files into C++ and python files.
-./scripts/unix/compile_protobufs.sh
+$DIR/scripts/unix/compile_protobufs.sh
 
 # Build and install Remill.
 mkdir remill_build
@@ -58,5 +59,5 @@ make all
 sudo make install
 popd
 
-./scripts/x86/generate_tests.sh
-./scripts/x86/run_tests.sh
+$DIR/scripts/x86/generate_tests.sh
+$DIR/scripts/x86/run_tests.sh
