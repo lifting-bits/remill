@@ -20,21 +20,28 @@ sudo add-apt-repository -y ppa:george-edison55/cmake-3.x
 
 # Update sources list, and then install needed packages.
 sudo apt-get update -qq
-sudo apt-get install -y \
-     git \
-     libgoogle-glog-dev \
-     libgtest-dev \
-     libprotoc-dev libprotobuf-dev libprotobuf-dev protobuf-compiler \
-     python2.7 python-pip \
-     llvm-3.9-dev clang-3.9 \
-     libc++-dev libc++-dev:i386 \
-     libc6-dev libc6-dev:i386 \
-     unzip \
-     cmake
+sudo apt-get install -y git
+sudo apt-get install -y libgoogle-glog-dev
+sudo apt-get install -y libgtest-dev
+sudo apt-get install -y libprotoc-dev
+sudo apt-get install -y libprotobuf-dev
+sudo apt-get install -y libprotobuf-dev
+sudo apt-get install -y protobuf-compiler
+sudo apt-get install -y python2.7
+sudo apt-get install -y python-pip
+sudo apt-get install -y llvm-3.9-dev
+sudo apt-get install -y clang-3.9
+sudo apt-get install -y libc++-dev
+sudo apt-get install -y libc++-dev:i386
+sudo apt-get install -y libc6-dev
+sudo apt-get install -y libc6-dev:i386
+sudo apt-get install -y unzip
+sudo apt-get install -y cmake
 
 # Upgrade PIP and install the python bindings for protocol buffers.
 sudo pip install --upgrade pip
-sudo pip install python-magic 'protobuf==2.4.1'
+sudo pip install python-magic
+sudo pip install 'protobuf==2.4.1'
 
 # Unpack and install Intel XED.
 $DIR/scripts/unix/install_xed.sh
