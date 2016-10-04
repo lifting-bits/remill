@@ -1,239 +1,220 @@
 /* Auto-generated file! Don't modify! */
 
+#ifdef AFTER_TEST_CASE
 #if 64 == ADDRESS_SIZE_BITS
-fxsave64 [RIP + STATE_PTR + 0]
+fxsave64 [RIP + gFPU]
 #else
-fxsave [RIP + STATE_PTR + 0]
+fxsave [RIP + gFPU]
 #endif
-fstp QWORD PTR [RIP + STATE_PTR + 2888]
-fstp QWORD PTR [RIP + STATE_PTR + 2904]
-fstp QWORD PTR [RIP + STATE_PTR + 2920]
-fstp QWORD PTR [RIP + STATE_PTR + 2936]
-fstp QWORD PTR [RIP + STATE_PTR + 2952]
-fstp QWORD PTR [RIP + STATE_PTR + 2968]
-fstp QWORD PTR [RIP + STATE_PTR + 2984]
-fstp QWORD PTR [RIP + STATE_PTR + 3000]
-movq [RIP + STATE_PTR + 3016], MM0
-movq [RIP + STATE_PTR + 3032], MM1
-movq [RIP + STATE_PTR + 3048], MM2
-movq [RIP + STATE_PTR + 3064], MM3
-movq [RIP + STATE_PTR + 3080], MM4
-movq [RIP + STATE_PTR + 3096], MM5
-movq [RIP + STATE_PTR + 3112], MM6
-movq [RIP + STATE_PTR + 3128], MM7
-#if 64 == ADDRESS_SIZE_BITS
-fxrstor64 [RIP + STATE_PTR + 0]
-#else
-fxrstor [RIP + STATE_PTR + 0]
 #endif
 lea RSP, [RSP - 8]
 pop QWORD PTR [RIP + SYMBOL(gStackSaveSlot)]
 #ifdef AFTER_TEST_CASE
 pushfq
 #else
-push QWORD PTR [RIP + STATE_PTR + 2576]
+push QWORD PTR [RIP + STATE_PTR + 2128]
 #endif
 bt QWORD PTR [RSP], 0
-adc BYTE PTR [RIP + STATE_PTR + 2561], 0
+adc BYTE PTR [RIP + STATE_PTR + 2113], 0
 bt QWORD PTR [RSP], 2
-adc BYTE PTR [RIP + STATE_PTR + 2563], 0
+adc BYTE PTR [RIP + STATE_PTR + 2115], 0
 bt QWORD PTR [RSP], 4
-adc BYTE PTR [RIP + STATE_PTR + 2565], 0
+adc BYTE PTR [RIP + STATE_PTR + 2117], 0
 bt QWORD PTR [RSP], 6
-adc BYTE PTR [RIP + STATE_PTR + 2567], 0
+adc BYTE PTR [RIP + STATE_PTR + 2119], 0
 bt QWORD PTR [RSP], 7
-adc BYTE PTR [RIP + STATE_PTR + 2569], 0
+adc BYTE PTR [RIP + STATE_PTR + 2121], 0
 bt QWORD PTR [RSP], 10
-adc BYTE PTR [RIP + STATE_PTR + 2571], 0
+adc BYTE PTR [RIP + STATE_PTR + 2123], 0
 bt QWORD PTR [RSP], 11
-adc BYTE PTR [RIP + STATE_PTR + 2573], 0
+adc BYTE PTR [RIP + STATE_PTR + 2125], 0
 #ifdef AFTER_TEST_CASE
-pop QWORD PTR [RIP + STATE_PTR + 2576]
+pop QWORD PTR [RIP + STATE_PTR + 2128]
 #else
 popfq
 #endif
 push QWORD PTR [RIP + SYMBOL(gStackSaveSlot)]
 lea RSP, [RSP + 8]
-mov [RIP + STATE_PTR + 2617], AH
-mov [RIP + STATE_PTR + 2633], BH
-mov [RIP + STATE_PTR + 2649], CH
-mov [RIP + STATE_PTR + 2665], DH
-mov [RIP + STATE_PTR + 2616], AL
-mov [RIP + STATE_PTR + 2632], BL
-mov [RIP + STATE_PTR + 2648], CL
-mov [RIP + STATE_PTR + 2664], DL
+mov [RIP + STATE_PTR + 2169], AH
+mov [RIP + STATE_PTR + 2185], BH
+mov [RIP + STATE_PTR + 2201], CH
+mov [RIP + STATE_PTR + 2217], DH
+mov [RIP + STATE_PTR + 2168], AL
+mov [RIP + STATE_PTR + 2184], BL
+mov [RIP + STATE_PTR + 2200], CL
+mov [RIP + STATE_PTR + 2216], DL
 #if 64 == ADDRESS_SIZE_BITS
-mov [RIP + STATE_PTR + 2680], SIL
-mov [RIP + STATE_PTR + 2696], DIL
-mov [RIP + STATE_PTR + 2712], SPL
-mov [RIP + STATE_PTR + 2728], BPL
-mov [RIP + STATE_PTR + 2744], R8B
-mov [RIP + STATE_PTR + 2760], R9B
-mov [RIP + STATE_PTR + 2776], R10B
-mov [RIP + STATE_PTR + 2792], R11B
-mov [RIP + STATE_PTR + 2808], R12B
-mov [RIP + STATE_PTR + 2824], R13B
-mov [RIP + STATE_PTR + 2840], R14B
-mov [RIP + STATE_PTR + 2856], R15B
+mov [RIP + STATE_PTR + 2232], SIL
+mov [RIP + STATE_PTR + 2248], DIL
+mov [RIP + STATE_PTR + 2264], SPL
+mov [RIP + STATE_PTR + 2280], BPL
+mov [RIP + STATE_PTR + 2296], R8B
+mov [RIP + STATE_PTR + 2312], R9B
+mov [RIP + STATE_PTR + 2328], R10B
+mov [RIP + STATE_PTR + 2344], R11B
+mov [RIP + STATE_PTR + 2360], R12B
+mov [RIP + STATE_PTR + 2376], R13B
+mov [RIP + STATE_PTR + 2392], R14B
+mov [RIP + STATE_PTR + 2408], R15B
 #endif  /* 64 == ADDRESS_SIZE_BITS */
-mov [RIP + STATE_PTR + 2616], AX
-mov [RIP + STATE_PTR + 2632], BX
-mov [RIP + STATE_PTR + 2648], CX
-mov [RIP + STATE_PTR + 2664], DX
-mov [RIP + STATE_PTR + 2680], SI
-mov [RIP + STATE_PTR + 2696], DI
-mov [RIP + STATE_PTR + 2712], SP
-mov [RIP + STATE_PTR + 2728], BP
+mov [RIP + STATE_PTR + 2168], AX
+mov [RIP + STATE_PTR + 2184], BX
+mov [RIP + STATE_PTR + 2200], CX
+mov [RIP + STATE_PTR + 2216], DX
+mov [RIP + STATE_PTR + 2232], SI
+mov [RIP + STATE_PTR + 2248], DI
+mov [RIP + STATE_PTR + 2264], SP
+mov [RIP + STATE_PTR + 2280], BP
 #if 64 == ADDRESS_SIZE_BITS
-mov [RIP + STATE_PTR + 2744], R8W
-mov [RIP + STATE_PTR + 2760], R9W
-mov [RIP + STATE_PTR + 2776], R10W
-mov [RIP + STATE_PTR + 2792], R11W
-mov [RIP + STATE_PTR + 2808], R12W
-mov [RIP + STATE_PTR + 2824], R13W
-mov [RIP + STATE_PTR + 2840], R14W
-mov [RIP + STATE_PTR + 2856], R15W
+mov [RIP + STATE_PTR + 2296], R8W
+mov [RIP + STATE_PTR + 2312], R9W
+mov [RIP + STATE_PTR + 2328], R10W
+mov [RIP + STATE_PTR + 2344], R11W
+mov [RIP + STATE_PTR + 2360], R12W
+mov [RIP + STATE_PTR + 2376], R13W
+mov [RIP + STATE_PTR + 2392], R14W
+mov [RIP + STATE_PTR + 2408], R15W
 #endif  /* 64 == ADDRESS_SIZE_BITS */
-mov WORD PTR [RIP + STATE_PTR + 2872], 0
-mov [RIP + STATE_PTR + 2616], EAX
-mov [RIP + STATE_PTR + 2632], EBX
-mov [RIP + STATE_PTR + 2648], ECX
-mov [RIP + STATE_PTR + 2664], EDX
-mov [RIP + STATE_PTR + 2680], ESI
-mov [RIP + STATE_PTR + 2696], EDI
-mov [RIP + STATE_PTR + 2712], ESP
-mov [RIP + STATE_PTR + 2728], EBP
+mov WORD PTR [RIP + STATE_PTR + 2424], 0
+mov [RIP + STATE_PTR + 2168], EAX
+mov [RIP + STATE_PTR + 2184], EBX
+mov [RIP + STATE_PTR + 2200], ECX
+mov [RIP + STATE_PTR + 2216], EDX
+mov [RIP + STATE_PTR + 2232], ESI
+mov [RIP + STATE_PTR + 2248], EDI
+mov [RIP + STATE_PTR + 2264], ESP
+mov [RIP + STATE_PTR + 2280], EBP
 #if 64 == ADDRESS_SIZE_BITS
-mov [RIP + STATE_PTR + 2744], R8D
-mov [RIP + STATE_PTR + 2760], R9D
-mov [RIP + STATE_PTR + 2776], R10D
-mov [RIP + STATE_PTR + 2792], R11D
-mov [RIP + STATE_PTR + 2808], R12D
-mov [RIP + STATE_PTR + 2824], R13D
-mov [RIP + STATE_PTR + 2840], R14D
-mov [RIP + STATE_PTR + 2856], R15D
-mov [RIP + STATE_PTR + 2616], RAX
-mov [RIP + STATE_PTR + 2632], RBX
-mov [RIP + STATE_PTR + 2648], RCX
-mov [RIP + STATE_PTR + 2664], RDX
-mov [RIP + STATE_PTR + 2680], RSI
-mov [RIP + STATE_PTR + 2696], RDI
-mov [RIP + STATE_PTR + 2712], RSP
-mov [RIP + STATE_PTR + 2728], RBP
-mov [RIP + STATE_PTR + 2744], R8
-mov [RIP + STATE_PTR + 2760], R9
-mov [RIP + STATE_PTR + 2776], R10
-mov [RIP + STATE_PTR + 2792], R11
-mov [RIP + STATE_PTR + 2808], R12
-mov [RIP + STATE_PTR + 2824], R13
-mov [RIP + STATE_PTR + 2840], R14
-mov [RIP + STATE_PTR + 2856], R15
+mov [RIP + STATE_PTR + 2296], R8D
+mov [RIP + STATE_PTR + 2312], R9D
+mov [RIP + STATE_PTR + 2328], R10D
+mov [RIP + STATE_PTR + 2344], R11D
+mov [RIP + STATE_PTR + 2360], R12D
+mov [RIP + STATE_PTR + 2376], R13D
+mov [RIP + STATE_PTR + 2392], R14D
+mov [RIP + STATE_PTR + 2408], R15D
+mov [RIP + STATE_PTR + 2168], RAX
+mov [RIP + STATE_PTR + 2184], RBX
+mov [RIP + STATE_PTR + 2200], RCX
+mov [RIP + STATE_PTR + 2216], RDX
+mov [RIP + STATE_PTR + 2232], RSI
+mov [RIP + STATE_PTR + 2248], RDI
+mov [RIP + STATE_PTR + 2264], RSP
+mov [RIP + STATE_PTR + 2280], RBP
+mov [RIP + STATE_PTR + 2296], R8
+mov [RIP + STATE_PTR + 2312], R9
+mov [RIP + STATE_PTR + 2328], R10
+mov [RIP + STATE_PTR + 2344], R11
+mov [RIP + STATE_PTR + 2360], R12
+mov [RIP + STATE_PTR + 2376], R13
+mov [RIP + STATE_PTR + 2392], R14
+mov [RIP + STATE_PTR + 2408], R15
 #endif  /* 64 == ADDRESS_SIZE_BITS */
 #if HAS_FEATURE_AVX
 #if HAS_FEATURE_AVX512
-vmovdqu [RIP + STATE_PTR + 512], ZMM0
-vmovdqu [RIP + STATE_PTR + 576], ZMM1
-vmovdqu [RIP + STATE_PTR + 640], ZMM2
-vmovdqu [RIP + STATE_PTR + 704], ZMM3
-vmovdqu [RIP + STATE_PTR + 768], ZMM4
-vmovdqu [RIP + STATE_PTR + 832], ZMM5
-vmovdqu [RIP + STATE_PTR + 896], ZMM6
-vmovdqu [RIP + STATE_PTR + 960], ZMM7
-vmovdqu [RIP + STATE_PTR + 1024], ZMM8
-vmovdqu [RIP + STATE_PTR + 1088], ZMM9
-vmovdqu [RIP + STATE_PTR + 1152], ZMM10
-vmovdqu [RIP + STATE_PTR + 1216], ZMM11
-vmovdqu [RIP + STATE_PTR + 1280], ZMM12
-vmovdqu [RIP + STATE_PTR + 1344], ZMM13
-vmovdqu [RIP + STATE_PTR + 1408], ZMM14
-vmovdqu [RIP + STATE_PTR + 1472], ZMM15
-vmovdqu [RIP + STATE_PTR + 1536], ZMM16
-vmovdqu [RIP + STATE_PTR + 1600], ZMM17
-vmovdqu [RIP + STATE_PTR + 1664], ZMM18
-vmovdqu [RIP + STATE_PTR + 1728], ZMM19
-vmovdqu [RIP + STATE_PTR + 1792], ZMM20
-vmovdqu [RIP + STATE_PTR + 1856], ZMM21
-vmovdqu [RIP + STATE_PTR + 1920], ZMM22
-vmovdqu [RIP + STATE_PTR + 1984], ZMM23
-vmovdqu [RIP + STATE_PTR + 2048], ZMM24
-vmovdqu [RIP + STATE_PTR + 2112], ZMM25
-vmovdqu [RIP + STATE_PTR + 2176], ZMM26
-vmovdqu [RIP + STATE_PTR + 2240], ZMM27
-vmovdqu [RIP + STATE_PTR + 2304], ZMM28
-vmovdqu [RIP + STATE_PTR + 2368], ZMM29
-vmovdqu [RIP + STATE_PTR + 2432], ZMM30
-vmovdqu [RIP + STATE_PTR + 2496], ZMM31
+vmovdqu [RIP + STATE_PTR + 64], ZMM0
+vmovdqu [RIP + STATE_PTR + 128], ZMM1
+vmovdqu [RIP + STATE_PTR + 192], ZMM2
+vmovdqu [RIP + STATE_PTR + 256], ZMM3
+vmovdqu [RIP + STATE_PTR + 320], ZMM4
+vmovdqu [RIP + STATE_PTR + 384], ZMM5
+vmovdqu [RIP + STATE_PTR + 448], ZMM6
+vmovdqu [RIP + STATE_PTR + 512], ZMM7
+vmovdqu [RIP + STATE_PTR + 576], ZMM8
+vmovdqu [RIP + STATE_PTR + 640], ZMM9
+vmovdqu [RIP + STATE_PTR + 704], ZMM10
+vmovdqu [RIP + STATE_PTR + 768], ZMM11
+vmovdqu [RIP + STATE_PTR + 832], ZMM12
+vmovdqu [RIP + STATE_PTR + 896], ZMM13
+vmovdqu [RIP + STATE_PTR + 960], ZMM14
+vmovdqu [RIP + STATE_PTR + 1024], ZMM15
+vmovdqu [RIP + STATE_PTR + 1088], ZMM16
+vmovdqu [RIP + STATE_PTR + 1152], ZMM17
+vmovdqu [RIP + STATE_PTR + 1216], ZMM18
+vmovdqu [RIP + STATE_PTR + 1280], ZMM19
+vmovdqu [RIP + STATE_PTR + 1344], ZMM20
+vmovdqu [RIP + STATE_PTR + 1408], ZMM21
+vmovdqu [RIP + STATE_PTR + 1472], ZMM22
+vmovdqu [RIP + STATE_PTR + 1536], ZMM23
+vmovdqu [RIP + STATE_PTR + 1600], ZMM24
+vmovdqu [RIP + STATE_PTR + 1664], ZMM25
+vmovdqu [RIP + STATE_PTR + 1728], ZMM26
+vmovdqu [RIP + STATE_PTR + 1792], ZMM27
+vmovdqu [RIP + STATE_PTR + 1856], ZMM28
+vmovdqu [RIP + STATE_PTR + 1920], ZMM29
+vmovdqu [RIP + STATE_PTR + 1984], ZMM30
+vmovdqu [RIP + STATE_PTR + 2048], ZMM31
 #endif  /* HAS_FEATURE_AVX512 */
-vmovdqu [RIP + STATE_PTR + 512], YMM0
-vmovdqu [RIP + STATE_PTR + 576], YMM1
-vmovdqu [RIP + STATE_PTR + 640], YMM2
-vmovdqu [RIP + STATE_PTR + 704], YMM3
-vmovdqu [RIP + STATE_PTR + 768], YMM4
-vmovdqu [RIP + STATE_PTR + 832], YMM5
-vmovdqu [RIP + STATE_PTR + 896], YMM6
-vmovdqu [RIP + STATE_PTR + 960], YMM7
+vmovdqu [RIP + STATE_PTR + 64], YMM0
+vmovdqu [RIP + STATE_PTR + 128], YMM1
+vmovdqu [RIP + STATE_PTR + 192], YMM2
+vmovdqu [RIP + STATE_PTR + 256], YMM3
+vmovdqu [RIP + STATE_PTR + 320], YMM4
+vmovdqu [RIP + STATE_PTR + 384], YMM5
+vmovdqu [RIP + STATE_PTR + 448], YMM6
+vmovdqu [RIP + STATE_PTR + 512], YMM7
 #if HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
-vmovdqu [RIP + STATE_PTR + 1024], YMM8
-vmovdqu [RIP + STATE_PTR + 1088], YMM9
-vmovdqu [RIP + STATE_PTR + 1152], YMM10
-vmovdqu [RIP + STATE_PTR + 1216], YMM11
-vmovdqu [RIP + STATE_PTR + 1280], YMM12
-vmovdqu [RIP + STATE_PTR + 1344], YMM13
-vmovdqu [RIP + STATE_PTR + 1408], YMM14
-vmovdqu [RIP + STATE_PTR + 1472], YMM15
+vmovdqu [RIP + STATE_PTR + 576], YMM8
+vmovdqu [RIP + STATE_PTR + 640], YMM9
+vmovdqu [RIP + STATE_PTR + 704], YMM10
+vmovdqu [RIP + STATE_PTR + 768], YMM11
+vmovdqu [RIP + STATE_PTR + 832], YMM12
+vmovdqu [RIP + STATE_PTR + 896], YMM13
+vmovdqu [RIP + STATE_PTR + 960], YMM14
+vmovdqu [RIP + STATE_PTR + 1024], YMM15
 #endif  /* HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS */
 #if HAS_FEATURE_AVX512
-vmovdqu [RIP + STATE_PTR + 1536], YMM16
-vmovdqu [RIP + STATE_PTR + 1600], YMM17
-vmovdqu [RIP + STATE_PTR + 1664], YMM18
-vmovdqu [RIP + STATE_PTR + 1728], YMM19
-vmovdqu [RIP + STATE_PTR + 1792], YMM20
-vmovdqu [RIP + STATE_PTR + 1856], YMM21
-vmovdqu [RIP + STATE_PTR + 1920], YMM22
-vmovdqu [RIP + STATE_PTR + 1984], YMM23
-vmovdqu [RIP + STATE_PTR + 2048], YMM24
-vmovdqu [RIP + STATE_PTR + 2112], YMM25
-vmovdqu [RIP + STATE_PTR + 2176], YMM26
-vmovdqu [RIP + STATE_PTR + 2240], YMM27
-vmovdqu [RIP + STATE_PTR + 2304], YMM28
-vmovdqu [RIP + STATE_PTR + 2368], YMM29
-vmovdqu [RIP + STATE_PTR + 2432], YMM30
-vmovdqu [RIP + STATE_PTR + 2496], YMM31
+vmovdqu [RIP + STATE_PTR + 1088], YMM16
+vmovdqu [RIP + STATE_PTR + 1152], YMM17
+vmovdqu [RIP + STATE_PTR + 1216], YMM18
+vmovdqu [RIP + STATE_PTR + 1280], YMM19
+vmovdqu [RIP + STATE_PTR + 1344], YMM20
+vmovdqu [RIP + STATE_PTR + 1408], YMM21
+vmovdqu [RIP + STATE_PTR + 1472], YMM22
+vmovdqu [RIP + STATE_PTR + 1536], YMM23
+vmovdqu [RIP + STATE_PTR + 1600], YMM24
+vmovdqu [RIP + STATE_PTR + 1664], YMM25
+vmovdqu [RIP + STATE_PTR + 1728], YMM26
+vmovdqu [RIP + STATE_PTR + 1792], YMM27
+vmovdqu [RIP + STATE_PTR + 1856], YMM28
+vmovdqu [RIP + STATE_PTR + 1920], YMM29
+vmovdqu [RIP + STATE_PTR + 1984], YMM30
+vmovdqu [RIP + STATE_PTR + 2048], YMM31
 #endif  /* HAS_FEATURE_AVX512 */
 #endif  /* HAS_FEATURE_AVX */
-movdqu [RIP + STATE_PTR + 512], XMM0
-movdqu [RIP + STATE_PTR + 576], XMM1
-movdqu [RIP + STATE_PTR + 640], XMM2
-movdqu [RIP + STATE_PTR + 704], XMM3
-movdqu [RIP + STATE_PTR + 768], XMM4
-movdqu [RIP + STATE_PTR + 832], XMM5
-movdqu [RIP + STATE_PTR + 896], XMM6
-movdqu [RIP + STATE_PTR + 960], XMM7
+movdqu [RIP + STATE_PTR + 64], XMM0
+movdqu [RIP + STATE_PTR + 128], XMM1
+movdqu [RIP + STATE_PTR + 192], XMM2
+movdqu [RIP + STATE_PTR + 256], XMM3
+movdqu [RIP + STATE_PTR + 320], XMM4
+movdqu [RIP + STATE_PTR + 384], XMM5
+movdqu [RIP + STATE_PTR + 448], XMM6
+movdqu [RIP + STATE_PTR + 512], XMM7
 #if HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
-movdqu [RIP + STATE_PTR + 1024], XMM8
-movdqu [RIP + STATE_PTR + 1088], XMM9
-movdqu [RIP + STATE_PTR + 1152], XMM10
-movdqu [RIP + STATE_PTR + 1216], XMM11
-movdqu [RIP + STATE_PTR + 1280], XMM12
-movdqu [RIP + STATE_PTR + 1344], XMM13
-movdqu [RIP + STATE_PTR + 1408], XMM14
-movdqu [RIP + STATE_PTR + 1472], XMM15
+movdqu [RIP + STATE_PTR + 576], XMM8
+movdqu [RIP + STATE_PTR + 640], XMM9
+movdqu [RIP + STATE_PTR + 704], XMM10
+movdqu [RIP + STATE_PTR + 768], XMM11
+movdqu [RIP + STATE_PTR + 832], XMM12
+movdqu [RIP + STATE_PTR + 896], XMM13
+movdqu [RIP + STATE_PTR + 960], XMM14
+movdqu [RIP + STATE_PTR + 1024], XMM15
 #endif  /* HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS */
 #if HAS_FEATURE_AVX512
-movdqu [RIP + STATE_PTR + 1536], XMM16
-movdqu [RIP + STATE_PTR + 1600], XMM17
-movdqu [RIP + STATE_PTR + 1664], XMM18
-movdqu [RIP + STATE_PTR + 1728], XMM19
-movdqu [RIP + STATE_PTR + 1792], XMM20
-movdqu [RIP + STATE_PTR + 1856], XMM21
-movdqu [RIP + STATE_PTR + 1920], XMM22
-movdqu [RIP + STATE_PTR + 1984], XMM23
-movdqu [RIP + STATE_PTR + 2048], XMM24
-movdqu [RIP + STATE_PTR + 2112], XMM25
-movdqu [RIP + STATE_PTR + 2176], XMM26
-movdqu [RIP + STATE_PTR + 2240], XMM27
-movdqu [RIP + STATE_PTR + 2304], XMM28
-movdqu [RIP + STATE_PTR + 2368], XMM29
-movdqu [RIP + STATE_PTR + 2432], XMM30
-movdqu [RIP + STATE_PTR + 2496], XMM31
+movdqu [RIP + STATE_PTR + 1088], XMM16
+movdqu [RIP + STATE_PTR + 1152], XMM17
+movdqu [RIP + STATE_PTR + 1216], XMM18
+movdqu [RIP + STATE_PTR + 1280], XMM19
+movdqu [RIP + STATE_PTR + 1344], XMM20
+movdqu [RIP + STATE_PTR + 1408], XMM21
+movdqu [RIP + STATE_PTR + 1472], XMM22
+movdqu [RIP + STATE_PTR + 1536], XMM23
+movdqu [RIP + STATE_PTR + 1600], XMM24
+movdqu [RIP + STATE_PTR + 1664], XMM25
+movdqu [RIP + STATE_PTR + 1728], XMM26
+movdqu [RIP + STATE_PTR + 1792], XMM27
+movdqu [RIP + STATE_PTR + 1856], XMM28
+movdqu [RIP + STATE_PTR + 1920], XMM29
+movdqu [RIP + STATE_PTR + 1984], XMM30
+movdqu [RIP + STATE_PTR + 2048], XMM31
 #endif  // HAS_FEATURE_AVX512

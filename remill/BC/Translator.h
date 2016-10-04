@@ -27,11 +27,12 @@ class Module;
 
 class Arch;
 class IntrinsicTable;
+class AssemblyWriter;
 
 // Lifts CFG files into a bitcode module.
 class Translator {
  public:
-  Translator(const Arch *arch_, llvm::Module *module_);
+  Translator(const Arch *arch_, llvm::Module *module_, AssemblyWriter *src_);
 
   // Lift the control-flow graph specified by `cfg` into this bitcode module.
   void LiftCFG(const cfg::Module *cfg);
@@ -45,8 +46,7 @@ class Translator {
   void EnableDeferredInlining(void);
 
   // Identify functions that are already exported by this module.
-  void GetNamedBlocks(
-      std::map<std::string, llvm::Function *> &table,
+  std::map<std::string, llvm::Function *> GetNamedBlocks(
       const char *table_name);
 
   // Recreate a global table of named blocks.
@@ -115,6 +115,10 @@ class Translator {
 
   // Module into which code is lifted.
   llvm::Module * const module;
+
+  // Output source writer for producing an assembly source code file, and
+  // generating debug information for associating bitcode to the source file.
+  AssemblyWriter *asm_source_writer;
 
   // Blocks that we've added, indexed by their entry address.
   std::map<uint64_t, llvm::Function *> blocks;

@@ -47,17 +47,6 @@
 #define IF_AVX512_ELSE(a, b) b
 #endif
 
-#if HAS_FEATURE_AVX && HAS_FEATURE_AVX512
-#define AVX_SEL_XYZ(tail) Z ## tail
-#define AVX_SEL_xyz(tail) z ## tail
-#elif HAS_FEATURE_AVX
-#define AVX_SEL_XYZ(tail) Y ## tail
-#define AVX_SEL_xyz(tail) y ## tail
-#else
-#define AVX_SEL_XYZ(tail) X ## tail
-#define AVX_SEL_xyz(tail) x ## tail
-#endif
-
 union FPUStatusWord final {
   uint16_t flat;
   struct {
@@ -75,7 +64,7 @@ union FPUStatusWord final {
     uint16_t top:3;
     uint16_t c3:1;
     uint16_t b:1;
-  } __attribute__((packed)) u;
+  } __attribute__((packed));
 } __attribute__((packed));
 
 static_assert(2 == sizeof(FPUStatusWord),
@@ -95,27 +84,39 @@ union FPUControlWord final {
     uint16_t rc:2;
     uint16_t x:1;
     uint16_t _rsvd1:3;
-  } __attribute__((packed)) u;
+  } __attribute__((packed));
 } __attribute__((packed));
 
 static_assert(2 == sizeof(FPUControlWord),
               "Invalid structure packing of `FPUControl`.");
 
 struct FPUStackElem final {
-  uint8_t _rsvd[6];
   union {
     float80_t st;
     struct {
+      uint64_t mmx;
       uint16_t infinity;  // When an MMX register is used, this is all 1s.
-      vec64_t mmx;
     } __attribute__((packed));
   } __attribute__((packed));
+  uint8_t _rsvd[6];
 } __attribute__((packed));
+
+static_assert(0 == __builtin_offsetof(FPUStackElem, st),
+              "Invalid structure packing of `FPUStackElem::st`.");
+
+static_assert(0 == __builtin_offsetof(FPUStackElem, mmx),
+              "Invalid structure packing of `FPUStackElem::mmx`.");
+
+static_assert(8 == __builtin_offsetof(FPUStackElem, infinity),
+              "Invalid structure packing of `FPUStackElem::st`.");
+
+static_assert(10 == __builtin_offsetof(FPUStackElem, _rsvd[0]),
+              "Invalid structure packing of `FPUStackElem::st`.");
 
 static_assert(16 == sizeof(FPUStackElem),
               "Invalid structure packing of `FPUStackElem`.");
 
-union SSEControlStatus {
+union FPUControlStatus {
   uint32_t flat;
   struct {
     uint32_t ie:1;  // Invalid operation.
@@ -138,15 +139,61 @@ union SSEControlStatus {
   } __attribute__((packed));
 } __attribute__((packed));
 
-static_assert(4 == sizeof(SSEControlStatus),
+static_assert(4 == sizeof(FPUControlStatus),
               "Invalid structure packing of `SSEControlStatus`.");
+
+enum FPUTag : uint16_t {
+  kFPUTagNonZero,
+  kFPUTagZero,
+  kFPUTagSpecial,
+  kFPUTagEmpty
+};
+
+enum FPUAbridgedTag : uint8_t {
+  kFPUAbridgedTagEmpty,
+  kFPUAbridgedTagValid
+};
+
+// Note: Stored in top-of-stack order.
+struct FPUTagWord final {
+  FPUTag tag0:2;
+  FPUTag tag1:2;
+  FPUTag tag2:2;
+  FPUTag tag3:2;
+  FPUTag tag4:2;
+  FPUTag tag5:2;
+  FPUTag tag6:2;
+  FPUTag tag7:2;
+} __attribute__((packed));
+
+static_assert(sizeof(FPUTagWord) == 2,
+              "Invalid structure packing of `TagWord`.");
+
+// Note: Stored in physical order.
+struct FPUAbridgedTagWord final {
+  FPUAbridgedTag r0:1;
+  FPUAbridgedTag r1:1;
+  FPUAbridgedTag r2:1;
+  FPUAbridgedTag r3:1;
+  FPUAbridgedTag r4:1;
+  FPUAbridgedTag r5:1;
+  FPUAbridgedTag r6:1;
+  FPUAbridgedTag r7:1;
+};
 
 // FP register state that conforms with `FXSAVE`.
 struct alignas(64) FPU final {
   FPUControlWord cwd;
   FPUStatusWord swd;
-  uint8_t ftw;
-  uint8_t _rsvd0;
+  union {
+    struct {
+      FPUAbridgedTagWord abridged_ftw;
+      uint8_t _rsvd0;
+    } __attribute__((packed)) fxsave;
+    struct {
+      FPUTagWord ftw;
+    } __attribute__((packed)) fsave;
+  } __attribute__((packed));
   uint16_t fop;
   union {
     struct {
@@ -161,9 +208,9 @@ struct alignas(64) FPU final {
       uint64_t ip;
       uint64_t dp;
     } __attribute__((packed)) amd64;
-  } __attribute__((packed)) u;
-  SSEControlStatus mxcsr;
-  uint32_t mxcsr_mask;
+  } __attribute__((packed));
+  FPUControlStatus mxcsr;
+  FPUControlStatus mxcsr_mask;
   FPUStackElem st[8];   // 8*16 bytes for each FP reg = 128 bytes.
 
   // Note: This is consistent with `fxsave64`, but doesn't handle things like
@@ -183,7 +230,7 @@ union alignas(8) Flags final {
     uint32_t pf:1;
     uint32_t must_be_0a:1;
 
-    uint32_t af:1; // bit 4.
+    uint32_t af:1;  // bit 4.
     uint32_t must_be_0b:1;
     uint32_t zf:1;
     uint32_t sf:1;
@@ -193,16 +240,16 @@ union alignas(8) Flags final {
     uint32_t df:1;
     uint32_t of:1;
 
-    uint32_t iopl:2; // A 2-bit field, bits 12-13.
+    uint32_t iopl:2;  // A 2-bit field, bits 12-13.
     uint32_t nt:1;
     uint32_t must_be_0c:1;
 
-    uint32_t rf:1; // bit 16.
+    uint32_t rf:1;  // bit 16.
     uint32_t vm:1;
     uint32_t ac:1;  // Alignment check.
     uint32_t vif:1;
 
-    uint32_t vip:1; // bit 20.
+    uint32_t vip:1;  // bit 20.
     uint32_t id:1;   // bit 21.
     uint32_t reserved_eflags:10;  // bits 22-31.
     uint32_t reserved_rflags;  // bits 32-63.
@@ -253,7 +300,7 @@ union Reg final {
     uint8_t low;
     uint8_t high;
   } byte;
-  alignas(2) uint16_t word; 
+  alignas(2) uint16_t word;
   alignas(4) uint32_t dword;
   alignas(sizeof(addr_t)) addr_t aword;
   alignas(8) uint64_t qword;
@@ -342,7 +389,7 @@ struct alignas(16) X87Stack {
   struct alignas(16) {
     uint64_t _tear;
     float64_t val;
-  } __attribute__((packed)) element[8];
+  } __attribute__((packed)) elems[8];
 };
 
 static_assert(128 == sizeof(X87Stack),
@@ -352,7 +399,7 @@ struct alignas(16) MMX {
   struct alignas(8) {
     uint64_t _tear;
     vec64_t val;
-  } __attribute__((packed)) mmx[8];
+  } __attribute__((packed)) elems[8];
 };
 
 static_assert(128 == sizeof(MMX), "Invalid structure packing of `MMX`.");
@@ -362,9 +409,14 @@ enum : size_t {
 };
 
 struct alignas(64) State final {
-  // Native `FXSAVE64` representation of the FPU, plus a semi-duplicate
-  // representation of all vector regs (XMM, YMM, ZMM).
-  FPU fpu;  // 512 bytes.
+
+  // State that isn't specific to any architecture.
+  //
+  // Note:  This *must* be first. The positioning is to emulate inheritance
+  //        while maintaining that `State` is a POD type.
+  ArchState generic;
+
+  uint8_t _padding0[56];
 
   // AVX512 has 32 vector registers, so we always include them all here for
   // consistency across the various state structures.
@@ -379,52 +431,8 @@ struct alignas(64) State final {
   X87Stack st;  // 128 bytes.
   MMX mmx;  // 128 bytes.
 
-  // Used to communicate the interrupt vector number to an intrinsic. The
-  // issue is that the interrupt number is part of an instruction, and our
-  // generic three-operand block/intrinsic form (state, mem, pc) doesn't
-  // have room to hold a vector number.
-
-  uint32_t _tear_0;
-  volatile uint32_t interrupt_vector;
-
-  uint8_t _tear_1;
-  uint8_t _tear_2;
-  volatile bool interrupt_taken;
-
-  uint8_t _padding[53];
+//  uint8_t _padding[53];
 } __attribute__((packed));
-
-static_assert(0 == __builtin_offsetof(State, fpu),
-              "Invalid packing of `State::fpu`.");
-
-static_assert(512 == __builtin_offsetof(State, vec[0]),
-              "Invalid packing of `State::vec`.");
-
-static_assert(2560 == __builtin_offsetof(State, aflag),
-              "Invalid packing of `State::aflag`.");
-
-static_assert(2576 == __builtin_offsetof(State, rflag),
-              "Invalid packing of `State::rflag`.");
-
-static_assert(2584 == __builtin_offsetof(State, seg),
-              "Invalid packing of `State::seg`.");
-
-static_assert(2608 == __builtin_offsetof(State, gpr),
-              "Invalid packing of `State::seg`.");
-
-static_assert(2880 == __builtin_offsetof(State, st),
-              "Invalid packing of `State::st`.");
-
-static_assert(3008 == __builtin_offsetof(State, mmx),
-              "Invalid packing of `State::mmx`.");
-
-static_assert(3140 == __builtin_offsetof(State, interrupt_vector),
-              "Invalid packing of `State::interrupt_vector`.");
-
-static_assert(3146 == __builtin_offsetof(State, interrupt_taken),
-              "Invalid packing of `State::interrupt_taken`.");
-
-static_assert(3200 == sizeof(State), "Invalid packing of `State`.");
 
 #pragma clang diagnostic pop
 

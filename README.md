@@ -178,7 +178,7 @@ sudo make install
 This script will build and install the Google Test framework. It will request administrator permissions.
 
 ```shell
-./scripts/linux/install_gtest.sh
+./scripts/unix/install_gtest.sh
 ```
 
 ### Generate and Run the Test Cases
