@@ -606,24 +606,49 @@ void X86Arch::PrepareModule(llvm::Module *mod) const {
   std::string triple;
   switch (os_name) {
     case kOSInvalid:
-      LOG(FATAL) << "Cannot convert module for an unrecognized operating system.";
+      LOG(FATAL) << "Cannot convert module for an unrecognized OS.";
       break;
     case kOSLinux:
-      if (kArchAMD64 == arch_name) {
-        dl = "e-m:e-i64:64-f80:128-n8:16:32:64-S128";
-        triple = "x86_64-unknown-linux-gnu";
-      } else {
-        dl = "e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128";
-        triple = "i386-unknown-linux-gnu";
+      switch (arch_name) {
+        case kArchInvalid:
+          LOG(FATAL)
+              << "Cannot convert module for an unrecognized architecture.";
+            break;
+
+        case kArchAMD64:
+        case kArchAMD64_AVX:
+        case kArchAMD64_AVX512:
+          dl = "e-m:e-i64:64-f80:128-n8:16:32:64-S128";
+          triple = "x86_64-pc-linux-gnu";
+          break;
+        case kArchX86:
+        case kArchX86_AVX:
+        case kArchX86_AVX512:
+          dl = "e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128";
+          triple = "i386-pc-linux-gnu";
+          break;
       }
       break;
+
     case kOSmacOS:
-      if (kArchAMD64 == arch_name) {
-        dl = "e-m:o-i64:64-f80:128-n8:16:32:64-S128";
-        triple = "x86_64-apple-macosx10.10.0";
-      } else {
-        dl = "e-m:o-p:32:32-f64:32:64-f80:128-n8:16:32-S128";
-        triple = "i386-apple-macosx10.10.0";
+      switch (arch_name) {
+        case kArchInvalid:
+          LOG(FATAL)
+              << "Cannot convert module for an unrecognized architecture.";
+          break;
+
+        case kArchAMD64:
+        case kArchAMD64_AVX:
+        case kArchAMD64_AVX512:
+          dl = "e-m:o-i64:64-f80:128-n8:16:32:64-S128";
+          triple = "x86_64-apple-macosx10.10.0";
+          break;
+        case kArchX86:
+        case kArchX86_AVX:
+        case kArchX86_AVX512:
+          dl = "e-m:o-p:32:32-f64:32:64-f80:128-n8:16:32-S128";
+          triple = "i386-apple-macosx10.10.0";
+          break;
       }
       break;
   }
@@ -637,7 +662,7 @@ Instruction *X86Arch::DecodeInstruction(
     const std::string &instr_bytes) const {
   xed_decoded_inst_t xedd_;
   xed_decoded_inst_t *xedd = &xedd_;
-  auto mode = kArchX86 == arch_name ? &kXEDState32 : &kXEDState64;
+  auto mode = 32 == address_size ? &kXEDState32 : &kXEDState64;
 
   DecodeXED(xedd, mode, instr_bytes, address);
 

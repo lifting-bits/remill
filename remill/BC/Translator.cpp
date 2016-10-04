@@ -14,8 +14,10 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
@@ -48,6 +50,41 @@ class ReturnInst;
 }  // namespace
 
 namespace remill {
+namespace {
+
+// These variables must always be defined within `__remill_basic_block`.
+static bool BlockHasSpecialVars(llvm::Function *basic_block) {
+  return FindVarInFunction(basic_block, "STATE", true) &&
+         FindVarInFunction(basic_block, "MEMORY", true) &&
+         FindVarInFunction(basic_block, "PC", true) &&
+         FindVarInFunction(basic_block, "NEXT_PC", true) &&
+         FindVarInFunction(basic_block, "BRANCH_TAKEN", true);
+}
+
+// Clang isn't guaranteed to play nice and name the LLVM values within the
+// `__remill_basic_block` instrinsic with the same names as we find in the
+// C++ definition of that function. However, we compile that function with
+// debug information, and so we will try to recover the variables names for
+// later lookup.
+static void FixupBasicBlockVariables(llvm::Function *basic_block) {
+  if (BlockHasSpecialVars(basic_block)) {
+    return;
+  }
+
+  for (auto &block : *basic_block) {
+    for (auto &inst : block) {
+      if (auto decl_inst = llvm::dyn_cast<llvm::DbgDeclareInst>(&inst)) {
+        auto addr = decl_inst->getAddress();
+        addr->setName(decl_inst->getVariable()->getName());
+      }
+    }
+  }
+
+  CHECK(BlockHasSpecialVars(basic_block))
+      << "Unable to locate required variables in `__remill_basic_block`.";
+}
+
+}  // namespace
 
 Translator::Translator(const Arch *arch_, llvm::Module *module_)
     : arch(arch_),
@@ -63,6 +100,7 @@ Translator::Translator(const Arch *arch_, llvm::Module *module_)
   CHECK(nullptr != basic_block)
       << "Unable to find __remill_basic_block.";
 
+  FixupBasicBlockVariables(basic_block);
   EnableDeferredInlining();
 }
 
@@ -143,7 +181,7 @@ static llvm::Function *CreateExternalFunction(llvm::Module *module,
 // Clone the block method template `TF` into a specific method `BF` that
 // will contain lifted code.
 static void AddBlockInitializationCode(llvm::Function *block_func,
-                                       const llvm::Function *template_func) {
+                                       llvm::Function *template_func) {
 
   llvm::ValueToValueMapTy var_map;
   var_map[template_func] = block_func;
@@ -504,6 +542,17 @@ llvm::Function *Translator::GetOrCreateBlock(uint64_t addr) {
   return block_func;
 }
 
+// Create a function for a single block. This block appears as the target
+// of some control-flow instruction. Make sure that it has a default detach-
+// based implementation.
+llvm::Function *Translator::GetOrCreateTargetBlock(uint64_t address) {
+  auto block_func = GetOrCreateBlock(address);
+  if (block_func->isDeclaration()) {
+    AddTerminatingTailCall(block_func, intrinsics->detach);
+  }
+  return block_func;
+}
+
 // Create functions for every block in the CFG. We do this before lifting so
 // that we can easily reference those blocks.
 void Translator::CreateBlocks(const cfg::Module *cfg_module) {
@@ -533,7 +582,7 @@ void Translator::CreateBlocks(const cfg::Module *cfg_module) {
   }
 
   for (const auto cfg_ref_block_addr : cfg_module->referenced_blocks()) {
-    auto block_func = GetOrCreateBlock(cfg_ref_block_addr);
+    auto block_func = GetOrCreateTargetBlock(cfg_ref_block_addr);
     if (block_func->isDeclaration()) {
       block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
     }
@@ -581,9 +630,10 @@ void Translator::LiftBlocks(const cfg::Module *cfg_module) {
   func_pass_manager.doInitialization();
   for (const auto &block : cfg_module->blocks()) {
     auto func = LiftBlock(&block);
-    if (func->isDeclaration()) {
-      continue;
-    }
+
+    CHECK(!func->isDeclaration())
+        << "Lifted block function " << func->getName().str()
+        << " should have an implementation.";
 
     // Make sure the translation is good before optimizing.
     std::string error;
@@ -597,14 +647,49 @@ void Translator::LiftBlocks(const cfg::Module *cfg_module) {
   func_pass_manager.doFinalization();
 }
 
+namespace {
+
+// Returns `true` if a basic block function looks empty, i.e. it tail-calls to
+// the `__remill_detach` intrinsics. This means that a previous call to
+// `remill-lift` didn't have the implementation of this block available, so
+// defaulted it to detaching instead.
+static bool IsBlockEmpty(const llvm::Function *func,
+                         const llvm::Function *detach_func) {
+  const auto &entry_block = func->front();
+  if (auto term = entry_block.getTerminatingMustTailCall()) {
+    return term->getCalledFunction() == detach_func &&
+           entry_block.size() == 2;
+  } else {
+    return false;
+  }
+}
+
+// Delete a basic block.
+static void DeleteBlock(llvm::BasicBlock *block) {
+  while (block->size()) {
+    block->getInstList().pop_back();
+  }
+  block->eraseFromParent();
+}
+
+}  // namespace
+
 // Lift code contained within a single block.
 llvm::Function *Translator::LiftBlock(const cfg::Block *cfg_block) {
   auto block_func = GetOrCreateBlock(cfg_block->address());
   if (!block_func->isDeclaration()) {
-    DLOG(WARNING)
-        << "Not going to lift duplicate block at "
-        << std::hex << cfg_block->address() << ".";
-    return block_func;
+    if (IsBlockEmpty(block_func, intrinsics->detach)) {
+      DeleteBlock(&block_func->front());
+      CHECK(block_func->isDeclaration())
+          << "Unable to delete blocks from previously detaching block function"
+          << block_func->getName().str() << ".";
+
+    } else {
+      DLOG(WARNING)
+          << "Not going to lift duplicate block at "
+          << std::hex << cfg_block->address() << ".";
+      return block_func;
+    }
   }
 
   AddBlockInitializationCode(block_func, basic_block);
@@ -712,7 +797,7 @@ void Translator::LiftTerminator(llvm::BasicBlock *block,
     case Instruction::kCategoryNoOp:
       AddTerminatingTailCall(
           block,
-          GetOrCreateBlock(arch_instr->next_pc));
+          GetOrCreateTargetBlock(arch_instr->next_pc));
       break;
 
     case Instruction::kCategoryError:
@@ -724,7 +809,7 @@ void Translator::LiftTerminator(llvm::BasicBlock *block,
     case Instruction::kCategoryDirectJump:
       AddTerminatingTailCall(
           block,
-          GetOrCreateBlock(arch_instr->branch_taken_pc));
+          GetOrCreateTargetBlock(arch_instr->branch_taken_pc));
       break;
 
     case Instruction::kCategoryIndirectJump:
@@ -736,7 +821,7 @@ void Translator::LiftTerminator(llvm::BasicBlock *block,
     case Instruction::kCategoryDirectFunctionCall:
       AddTerminatingTailCall(
           block,
-          GetOrCreateBlock(arch_instr->branch_taken_pc));
+          GetOrCreateTargetBlock(arch_instr->branch_taken_pc));
 
       if (FLAGS_lift_calls_as_calls) {
         auto term_call = block->getTerminatingMustTailCall();
@@ -744,7 +829,7 @@ void Translator::LiftTerminator(llvm::BasicBlock *block,
         block->getTerminator()->eraseFromParent();
         AddTerminatingTailCall(
             block,
-            GetOrCreateBlock(arch_instr->next_pc));
+            GetOrCreateTargetBlock(arch_instr->next_pc));
       }
       break;
 
@@ -760,7 +845,7 @@ void Translator::LiftTerminator(llvm::BasicBlock *block,
 
         AddTerminatingTailCall(
             block,
-            GetOrCreateBlock(arch_instr->next_pc));
+            GetOrCreateTargetBlock(arch_instr->next_pc));
       }
       break;
 
@@ -773,8 +858,8 @@ void Translator::LiftTerminator(llvm::BasicBlock *block,
     case Instruction::kCategoryConditionalBranch:
       LiftConditionalBranch(
           block,
-          GetOrCreateBlock(arch_instr->branch_taken_pc),
-          GetOrCreateBlock(arch_instr->branch_not_taken_pc));
+          GetOrCreateTargetBlock(arch_instr->branch_taken_pc),
+          GetOrCreateTargetBlock(arch_instr->branch_not_taken_pc));
       break;
 
     case Instruction::kCategorySystemCall:

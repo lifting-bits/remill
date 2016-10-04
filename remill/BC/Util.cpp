@@ -175,9 +175,10 @@ llvm::GlobalVariable *FindGlobaVariable(const llvm::Module *module,
 }
 
 // Reads an LLVM module from a file.
-llvm::Module *LoadModuleFromFile(std::string file_name) {
+llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
+                                 std::string file_name) {
   llvm::SMDiagnostic err;
-  auto mod_ptr = llvm::parseIRFile(file_name, err, llvm::getGlobalContext());
+  auto mod_ptr = llvm::parseIRFile(file_name, err, *context);
   auto module = mod_ptr.get();
   mod_ptr.release();
 

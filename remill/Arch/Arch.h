@@ -20,7 +20,11 @@ class Instruction;
 enum ArchName : unsigned {
   kArchInvalid,
   kArchX86,
-  kArchAMD64
+  kArchX86_AVX,
+  kArchX86_AVX512,
+  kArchAMD64,
+  kArchAMD64_AVX,
+  kArchAMD64_AVX512
 };
 
 class Arch {
