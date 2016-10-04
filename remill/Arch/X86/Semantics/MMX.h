@@ -713,6 +713,8 @@ DEF_SEM(PACKSSWB, D dst, S1 src1, S2 src2) {
   auto src2_vec = SReadV8(src2);
   auto dst_vec = SClearV8(SReadV8(dst));
 
+  (void) src2_vec;  // TODO(akshay): This variable isn't used below.
+
   // Convert signed word to saturated signed byte
   auto vec_count = NumVectorElems(src1_vec);
   _Pragma("unroll")
@@ -983,9 +985,16 @@ DEF_ISEL(PCMPGTW_MMXq_MEMq) = PCMPGTW<V64W, V64, MV64>;
 DEF_ISEL(PCMPGTD_MMXq_MMXq) = PCMPGTD<V64W, V64, V64>;
 DEF_ISEL(PCMPGTD_MMXq_MEMq) = PCMPGTD<V64W, V64, MV64>;
 
-DEF_ISEL_SEM(EMMS) {}
-
-} // namespace
+DEF_ISEL_SEM(EMMS) {
+  state.mmx.mmx[0].val.qwords.elems[0] = __remill_undefined_64();
+  state.mmx.mmx[1].val.qwords.elems[0] = __remill_undefined_64();
+  state.mmx.mmx[2].val.qwords.elems[0] = __remill_undefined_64();
+  state.mmx.mmx[3].val.qwords.elems[0] = __remill_undefined_64();
+  state.mmx.mmx[4].val.qwords.elems[0] = __remill_undefined_64();
+  state.mmx.mmx[5].val.qwords.elems[0] = __remill_undefined_64();
+  state.mmx.mmx[6].val.qwords.elems[0] = __remill_undefined_64();
+  state.mmx.mmx[7].val.qwords.elems[0] = __remill_undefined_64();
+}
 
 // 565:117 PHSUBD PHSUBD_MMXq_MEMq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
 // 569:118 PHSUBD PHSUBD_MMXq_MMXq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
