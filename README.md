@@ -123,7 +123,7 @@ brew install \
 
 ```shell
 wget http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz
-unzip clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz
+tax xzf clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz
 ```
 
 ### Step 2: Clone and Enter the Repository
