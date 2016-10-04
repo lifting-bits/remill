@@ -6,18 +6,35 @@
 struct Memory;
 struct State;
 
-// Something has gone terribly wrong and we need to stop because there is
-// an error.
-//
-// TODO(pag): What happens if there's a signal handler? How should we
-//            communicate the error class?
-#define StopFailure() \
-    do { \
-      __remill_error(state, memory, Read(REG_XIP)); \
-      __builtin_unreachable(); \
-    } while (false)
-
 namespace {
+
+ALWAYS_INLINE static
+uint128_t __remill_read_memory_128(Memory *mem, addr_t addr);
+
+ALWAYS_INLINE static
+Memory *__remill_write_memory_128(Memory *mem, addr_t addr, uint128_t val);
+
+
+#define MAKE_SIGNED_MEM_ACCESS(size) \
+    ALWAYS_INLINE static \
+    int ## size ## _t __remill_read_memory_s ## size( \
+        Memory *mem, addr_t addr) { \
+      return static_cast<int ## size ## _t>( \
+          __remill_read_memory_ ## size(mem, addr)); \
+    } \
+    \
+    ALWAYS_INLINE static \
+    Memory *  __remill_write_memory_s ## size( \
+        Memory *mem, addr_t addr, int ## size ## _t val) { \
+      return __remill_write_memory_ ## size( \
+          mem, addr, static_cast<uint ## size ## _t>(val)); \
+    }
+
+MAKE_SIGNED_MEM_ACCESS(8)
+MAKE_SIGNED_MEM_ACCESS(16)
+MAKE_SIGNED_MEM_ACCESS(32)
+MAKE_SIGNED_MEM_ACCESS(64)
+MAKE_SIGNED_MEM_ACCESS(128)
 
 // Read a value directly.
 ALWAYS_INLINE static bool _Read(Memory *, bool val) {
@@ -80,6 +97,7 @@ MAKE_MREAD(8, 8, uint, 8)
 MAKE_MREAD(16, 16, uint, 16)
 MAKE_MREAD(32, 32, uint, 32)
 MAKE_MREAD(64, 64, uint, 64)
+
 MAKE_MREAD(32, 32, float, f32)
 MAKE_MREAD(64, 64, float, f64)
 MAKE_MREAD(80, 64, float, f80)
@@ -113,22 +131,23 @@ MAKE_RWRITE(float64_t)
 #undef MAKE_RWRITE
 
 // Make write operators for writing values to memory.
-#define MAKE_MWRITE(size, write_size, type_prefix, access_suffix) \
+#define MAKE_MWRITE(size, write_size, mem_prefix, type_prefix, access_suffix) \
     ALWAYS_INLINE static \
     Memory *_Write( \
-        Memory *memory, MnW<type_prefix ## size ## _t> op, \
+        Memory *memory, MnW<mem_prefix ## size ## _t> op, \
         type_prefix ## write_size ## _t val) { \
       return __remill_write_memory_ ## access_suffix (\
           memory, op.addr, val); \
     }
 
-MAKE_MWRITE(8, 8, uint, 8)
-MAKE_MWRITE(16, 16, uint, 16)
-MAKE_MWRITE(32, 32, uint, 32)
-MAKE_MWRITE(64, 64, uint, 64)
-MAKE_MWRITE(32, 32, float, f32)
-MAKE_MWRITE(64, 64, float, f64)
-MAKE_MWRITE(80, 64, float, f80)
+MAKE_MWRITE(8, 8, uint, uint, 8)
+MAKE_MWRITE(16, 16, uint, uint, 16)
+MAKE_MWRITE(32, 32, uint, uint, 32)
+MAKE_MWRITE(64, 64, uint, uint, 64)
+
+MAKE_MWRITE(32, 32, float, float, f32)
+MAKE_MWRITE(64, 64, float, float, f64)
+MAKE_MWRITE(80, 64, float, float, f80)
 
 #undef MAKE_MWRITE
 
@@ -145,12 +164,18 @@ MAKE_MWRITE(80, 64, float, f80)
       return reinterpret_cast<const T *>(&vec.val)->accessor; \
     }
 
-MAKE_READRV(U, 8, bytes, uint)
-MAKE_READRV(U, 16, words, uint)
-MAKE_READRV(U, 32, dwords, uint)
-MAKE_READRV(U, 64, qwords, uint)
-MAKE_READRV(F, 32, floats, float)
-MAKE_READRV(F, 64, doubles, float)
+MAKE_READRV(U, 8, bytes, uint8_t)
+MAKE_READRV(U, 16, words, uint16_t)
+MAKE_READRV(U, 32, dwords, uint32_t)
+MAKE_READRV(U, 64, qwords, uint64_t)
+
+MAKE_READRV(S, 8, sbytes, int8_t)
+MAKE_READRV(S, 16, swords, int16_t)
+MAKE_READRV(S, 32, sdwords, int32_t)
+MAKE_READRV(S, 64, sqwords, int64_t)
+
+MAKE_READRV(F, 32, floats, float32_t)
+MAKE_READRV(F, 64, doubles, float64_t)
 
 #undef MAKE_READRV
 
@@ -172,6 +197,13 @@ MAKE_READV(U, 16, words)
 MAKE_READV(U, 32, dwords)
 MAKE_READV(U, 64, qwords)
 MAKE_READV(U, 128, dqwords)
+
+MAKE_READV(S, 8, sbytes)
+MAKE_READV(S, 16, swords)
+MAKE_READV(S, 32, sdwords)
+MAKE_READV(S, 64, sqwords)
+MAKE_READV(S, 128, sdqwords)
+
 MAKE_READV(F, 32, floats)
 MAKE_READV(F, 64, doubles)
 
@@ -207,6 +239,13 @@ MAKE_MREADV(U, 16, words, 16)
 MAKE_MREADV(U, 32, dwords, 32)
 MAKE_MREADV(U, 64, qwords, 64)
 MAKE_MREADV(U, 128, dqwords, 128)
+
+MAKE_MREADV(S, 8, sbytes, s8)
+MAKE_MREADV(S, 16, swords, s16)
+MAKE_MREADV(S, 32, sdwords, s32)
+MAKE_MREADV(S, 64, sqwords, s64)
+MAKE_MREADV(S, 128, sdqwords, s128)
+
 MAKE_MREADV(F, 32, floats, f32)
 MAKE_MREADV(F, 64, doubles, f64)
 
@@ -251,6 +290,13 @@ MAKE_WRITEV(U, 16, words, VnW, uint16_t)
 MAKE_WRITEV(U, 32, dwords, VnW, uint32_t)
 MAKE_WRITEV(U, 64, qwords, VnW, uint64_t)
 MAKE_WRITEV(U, 128, dqwords, VnW, uint128_t)
+
+MAKE_WRITEV(S, 8, sbytes, VnW, int8_t)
+MAKE_WRITEV(S, 16, swords, VnW, int16_t)
+MAKE_WRITEV(S, 32, sdwords, VnW, int32_t)
+MAKE_WRITEV(S, 64, sqwords, VnW, int64_t)
+MAKE_WRITEV(S, 128, sdqwords, VnW, int128_t)
+
 MAKE_WRITEV(F, 32, floats, VnW, float32_t)
 MAKE_WRITEV(F, 64, doubles, VnW, float64_t)
 
@@ -258,6 +304,12 @@ MAKE_WRITEV(U, 8, bytes, RVnW, uint8_t)
 MAKE_WRITEV(U, 16, words, RVnW, uint16_t)
 MAKE_WRITEV(U, 32, dwords, RVnW, uint32_t)
 MAKE_WRITEV(U, 64, qwords, RVnW, uint64_t)
+
+MAKE_WRITEV(S, 8, sbytes, RVnW, int8_t)
+MAKE_WRITEV(S, 16, swords, RVnW, int16_t)
+MAKE_WRITEV(S, 32, sdwords, RVnW, int32_t)
+MAKE_WRITEV(S, 64, sqwords, RVnW, int64_t)
+
 MAKE_WRITEV(F, 32, floats, RVnW, float32_t)
 MAKE_WRITEV(F, 64, doubles, RVnW, float64_t)
 
@@ -303,6 +355,13 @@ MAKE_MWRITEV(U, 16, words, 16, uint16_t)
 MAKE_MWRITEV(U, 32, dwords, 32, uint32_t)
 MAKE_MWRITEV(U, 64, qwords, 64, uint64_t)
 MAKE_MWRITEV(U, 128, dqwords, 128, uint128_t)
+
+MAKE_MWRITEV(S, 8, sbytes, s8, int8_t)
+MAKE_MWRITEV(S, 16, swords, s16, int16_t)
+MAKE_MWRITEV(S, 32, sdwords, s32, int32_t)
+MAKE_MWRITEV(S, 64, sqwords, s64, int64_t)
+MAKE_MWRITEV(S, 128, sdqwords, s128, int128_t)
+
 MAKE_MWRITEV(F, 32, floats, f32, float32_t)
 MAKE_MWRITEV(F, 64, doubles, f64, float64_t)
 
@@ -330,7 +389,7 @@ MAKE_WRITE_REF(float64_t)
 #define Read(op) _Read(memory, op)
 
 // Write a source value to a destination operand, where the sizes of the
-// valyes must match.
+// values must match.
 #define Write(op, val) \
     do { \
       static_assert( \
@@ -339,84 +398,6 @@ MAKE_WRITE_REF(float64_t)
       memory = _Write(memory, op, (val)); \
     } while (false)
 
-// Handle writes of N-bit values to M-bit values with N <= M. If N < M then the
-// source value will be zero-extended to the dest value type. This is useful
-// on x86-64 where writes to 32-bit registers zero-extend to 64-bits. In a
-// 64-bit build of Remill, the `R32W` type used in the X86 architecture
-// runtime actually aliases `R64W`.
-#define WriteZExt(op, val) \
-    do { \
-      Write(op, ZExtTo<decltype(op)>(val)); \
-    } while (false)
-
-#define UWriteV8 WriteV8
-#define SWriteV8 WriteV8
-#define WriteV8(op, val) \
-    do { \
-      memory = _UWriteV8(memory, op, (val)); \
-    } while (false)
-
-#define UWriteV16 WriteV16
-#define SWriteV16 WriteV16
-#define WriteV16(op, val) \
-    do { \
-      memory = _UWriteV16(memory, op, (val)); \
-    } while (false)
-
-#define UWriteV32 WriteV32
-#define SWriteV32 WriteV32
-#define WriteV32(op, val) \
-    do { \
-      memory = _UWriteV32(memory, op, (val)); \
-    } while (false)
-
-#define UWriteV64 WriteV64
-#define SWriteV64 WriteV64
-#define WriteV64(op, val) \
-    do { \
-      memory = _UWriteV64(memory, op, (val)); \
-    } while (false)
-
-#define UWriteV128 WriteV128
-#define SWriteV128 WriteV128
-#define WriteV128(op, val) \
-    do { \
-      memory = _UWriteV128(memory, op, (val)); \
-    } while (false)
-
-#define FWriteV32(op, val) \
-    do { \
-      memory = _FWriteV32(memory, op, (val)); \
-    } while (false)
-
-#define FWriteV64(op, val) \
-    do { \
-      memory = _FWriteV64(memory, op, (val)); \
-    } while (false)
-
-
-#define UReadV8 ReadV8
-#define SReadV8 ReadV8
-#define ReadV8(op) _UReadV8(memory, op)
-
-#define UReadV16 ReadV16
-#define SReadV16 ReadV16
-#define ReadV16(op) _UReadV16(memory, op)
-
-#define UReadV32 ReadV32
-#define SReadV32 ReadV32
-#define ReadV32(op) _UReadV32(memory, op)
-
-#define UReadV64 ReadV64
-#define SReadV64 ReadV64
-#define ReadV64(op) _UReadV64(memory, op)
-
-#define UReadV128 ReadV128
-#define SReadV128 ReadV128
-#define ReadV128(op) _UReadV128(memory, op)
-
-#define FReadV32(op) _FReadV32(memory, op)
-#define FReadV64(op) _FReadV64(memory, op)
 
 template <typename T>
 ALWAYS_INLINE static constexpr
@@ -481,11 +462,7 @@ MAKE_CONVERT(float64_t, Float64)
 // Return the value as-is. This is useful when making many accessors using
 // macros, because it lets us decide to pull out values as-is, as unsigned
 // integers, or as signed integers.
-template <typename T>
-ALWAYS_INLINE static
-T Identity(T val) {
-  return val;
-}
+#define Identity(...) __VA_ARGS__
 
 // Convert an integer to some other type. This is important for
 // integer literals, whose type are `int`.
@@ -506,7 +483,6 @@ ALWAYS_INLINE static
 auto SLiteral(U val) -> typename IntegerType<T>::ST {
   return static_cast<typename IntegerType<T>::ST>(val);
 }
-
 
 // Zero-extend an integer to twice its current width.
 template <typename T>
@@ -559,6 +535,95 @@ auto TruncTo(T val) -> typename IntegerType<DT>::BT {
                 "Bad truncation.");
   return static_cast<typename IntegerType<DT>::BT>(val);
 }
+
+// Handle writes of N-bit values to M-bit values with N <= M. If N < M then the
+// source value will be zero-extended to the dest value type. This is useful
+// on x86-64 where writes to 32-bit registers zero-extend to 64-bits. In a
+// 64-bit build of Remill, the `R32W` type used in the X86 architecture
+// runtime actually aliases `R64W`.
+#define WriteZExt(op, val) \
+    do { \
+      Write(op, ZExtTo<decltype(op)>(val)); \
+    } while (false)
+
+#define SWriteV8(op, val) \
+    do { \
+      memory = _SWriteV8(memory, op, (val)); \
+    } while (false)
+
+#define UWriteV8(op, val) \
+    do { \
+      memory = _UWriteV8(memory, op, (val)); \
+    } while (false)
+
+#define SWriteV16(op, val) \
+    do { \
+      memory = _SWriteV16(memory, op, (val)); \
+    } while (false)
+
+#define UWriteV16(op, val) \
+    do { \
+      memory = _UWriteV16(memory, op, (val)); \
+    } while (false)
+
+#define SWriteV32(op, val) \
+    do { \
+      memory = _SWriteV32(memory, op, (val)); \
+    } while (false)
+
+#define UWriteV32(op, val) \
+    do { \
+      memory = _UWriteV32(memory, op, (val)); \
+    } while (false)
+
+#define SWriteV64(op, val) \
+    do { \
+      memory = _SWriteV64(memory, op, (val)); \
+    } while (false)
+
+#define UWriteV64(op, val) \
+    do { \
+      memory = _UWriteV64(memory, op, (val)); \
+    } while (false)
+
+#define SWriteV128(op, val) \
+    do { \
+      memory = _SWriteV128(memory, op, (val)); \
+    } while (false)
+
+#define UWriteV128(op, val) \
+    do { \
+      memory = _UWriteV128(memory, op, (val)); \
+    } while (false)
+
+#define FWriteV32(op, val) \
+    do { \
+      memory = _FWriteV32(memory, op, (val)); \
+    } while (false)
+
+#define FWriteV64(op, val) \
+    do { \
+      memory = _FWriteV64(memory, op, (val)); \
+    } while (false)
+
+
+#define SReadV8(op) _SReadV8(memory, op)
+#define UReadV8(op) _UReadV8(memory, op)
+
+#define SReadV16(op) _SReadV16(memory, op)
+#define UReadV16(op) _UReadV16(memory, op)
+
+#define SReadV32(op) _SReadV32(memory, op)
+#define UReadV32(op) _UReadV32(memory, op)
+
+#define SReadV64(op) _SReadV64(memory, op)
+#define UReadV64(op) _UReadV64(memory, op)
+
+#define SReadV128(op) _SReadV128(memory, op)
+#define UReadV128(op) _UReadV128(memory, op)
+
+#define FReadV32(op) _FReadV32(memory, op)
+#define FReadV64(op) _FReadV64(memory, op)
 
 // Useful for stubbing out an operator.
 #define MAKE_NOP(...)
@@ -645,43 +710,42 @@ ALWAYS_INLINE static bool BNot(bool a) {
 }
 
 // Binary broadcast operator.
-#define MAKE_BIN_BROADCAST(op, size, accessor, in, out) \
+#define MAKE_BIN_BROADCAST(op, size, accessor) \
     template <typename T> \
     ALWAYS_INLINE static \
     T op ## V ## size(const T &L, const T &R) { \
       T ret{}; \
       _Pragma("unroll") \
       for (auto i = 0UL; i < NumVectorElems(L); ++i) { \
-        ret.elems[i] = out(op(in(L.elems[i]), \
-                            in(R.elems[i]))); \
+        ret.elems[i] = op(L.elems[i], R.elems[i]); \
       } \
       return ret; \
     }
 
 // Unary broadcast operator.
-#define MAKE_UN_BROADCAST(op, size, accessor, in, out) \
+#define MAKE_UN_BROADCAST(op, size, accessor) \
     template <typename T> \
     ALWAYS_INLINE static \
     T op ## V ## size(const T &R) { \
       T ret{}; \
       _Pragma("unroll") \
       for (auto i = 0UL; i < NumVectorElems(R); ++i) { \
-        ret.elems[i] = out(op(in(R.elems[i]))); \
+        ret.elems[i] = op(R.elems[i]); \
       } \
       return ret; \
     }
 
 #define MAKE_BROADCASTS(op, make_int_broadcast, make_float_broadcast) \
-    make_int_broadcast(U ## op, 8, bytes, Unsigned, Unsigned) \
-    make_int_broadcast(U ## op, 16, words, Unsigned, Unsigned) \
-    make_int_broadcast(U ## op, 32, dwords, Unsigned, Unsigned) \
-    make_int_broadcast(U ## op, 64, qwords, Unsigned, Unsigned) \
-    make_int_broadcast(S ## op, 8, bytes, Signed, Unsigned) \
-    make_int_broadcast(S ## op, 16, words, Signed, Unsigned) \
-    make_int_broadcast(S ## op, 32, dwords, Signed, Unsigned) \
-    make_int_broadcast(S ## op, 64, qwords, Signed, Unsigned) \
-    make_float_broadcast(F ## op, 32, floats, Identity, Identity) \
-    make_float_broadcast(F ## op, 64, doubles, Identity, Identity) \
+    make_int_broadcast(U ## op, 8, bytes) \
+    make_int_broadcast(U ## op, 16, words) \
+    make_int_broadcast(U ## op, 32, dwords) \
+    make_int_broadcast(U ## op, 64, qwords) \
+    make_int_broadcast(S ## op, 8, sbytes) \
+    make_int_broadcast(S ## op, 16, swords) \
+    make_int_broadcast(S ## op, 32, sdwords) \
+    make_int_broadcast(S ## op, 64, sqwords) \
+    make_float_broadcast(F ## op, 32, floats) \
+    make_float_broadcast(F ## op, 64, doubles) \
 
 MAKE_BROADCASTS(Add, MAKE_BIN_BROADCAST, MAKE_BIN_BROADCAST)
 MAKE_BROADCASTS(Sub, MAKE_BIN_BROADCAST, MAKE_BIN_BROADCAST)
@@ -701,15 +765,15 @@ MAKE_BROADCASTS(Not, MAKE_UN_BROADCAST, MAKE_NOP)
 #undef MAKE_UN_BROADCAST
 
 // Binary broadcast operator.
-#define MAKE_ACCUMULATE(op, size, accessor, in, out) \
+#define MAKE_ACCUMULATE(op, size, accessor) \
     template <typename T> \
     ALWAYS_INLINE static \
     auto Accumulate ## op ## V ## size(T R) \
-        -> decltype(out(R.elems[0])) { \
-      auto L = in(R.elems[0]); \
+        -> decltype(R.elems[0] | R.elems[1]) { \
+      auto L = R.elems[0]; \
       _Pragma("unroll") \
       for (auto i = 1UL; i < NumVectorElems(R); ++i) { \
-        L = out(op(L, in(R.elems[i]))); \
+        L = op(L, R.elems[i]); \
       } \
       return L; \
     }
@@ -757,50 +821,67 @@ MAKE_EXTRACTV(64, float64_t, doubles, Identity, F)
 #undef MAKE_EXTRACTV
 
 // Access the Nth element of an aggregate vector.
-#define MAKE_INSERTV(size, base_type, accessor, in, prefix) \
+#define MAKE_INSERTV(prefix, size, base_type, accessor) \
     template <typename T> \
     T prefix ## InsertV ## size(T vec, size_t n, base_type val) { \
       static_assert( \
           sizeof(base_type) == sizeof(typename VectorType<T>::BT), \
           "Invalid extract"); \
-      vec.elems[n] = in(val); \
+      vec.elems[n] = val; \
       return vec; \
     }
 
-MAKE_INSERTV(8, uint8_t, bytes, Unsigned, U)
-MAKE_INSERTV(16, uint16_t, words, Unsigned, U)
-MAKE_INSERTV(32, uint32_t, dwords, Unsigned, U)
-MAKE_INSERTV(64, uint64_t, qwords, Unsigned, U)
-MAKE_INSERTV(128, uint128_t, dqwords, Unsigned, U)
-MAKE_INSERTV(8, int8_t, bytes, Unsigned, S)
-MAKE_INSERTV(16, int16_t, words, Unsigned, S)
-MAKE_INSERTV(32, int32_t, dwords, Unsigned, S)
-MAKE_INSERTV(64, int64_t, qwords, Unsigned, S)
-MAKE_INSERTV(128, int128_t, dqwords, Unsigned, S)
-MAKE_INSERTV(32, float32_t, floats, Identity, F)
-MAKE_INSERTV(64, float64_t, doubles, Identity, F)
+MAKE_INSERTV(U, 8, uint8_t, bytes)
+MAKE_INSERTV(U, 16, uint16_t, words)
+MAKE_INSERTV(U, 32, uint32_t, dwords)
+MAKE_INSERTV(U, 64, uint64_t, qwords)
+MAKE_INSERTV(U, 128, uint128_t, dqwords)
+
+MAKE_INSERTV(S, 8, int8_t, sbytes)
+MAKE_INSERTV(S, 16, int16_t, swords)
+MAKE_INSERTV(S, 32, int32_t, sdwords)
+MAKE_INSERTV(S, 64, int64_t, sqwords)
+MAKE_INSERTV(S, 128, int128_t, sdqwords)
+
+MAKE_INSERTV(F, 32, float32_t, floats)
+MAKE_INSERTV(F, 64, float64_t, doubles)
 
 #undef MAKE_INSERTV
 
-template <typename T>
-ALWAYS_INLINE constexpr T _EmptyVec(void) {
+template <typename U, typename T>
+ALWAYS_INLINE constexpr T _ZeroVec(void) {
+  static_assert(std::is_same<U, typename VectorType<T>::BT>::value,
+                "Vector type and base don't match.");
   return {};
 }
 
-#define _ClearV(...) _EmptyVec<decltype(__VA_ARGS__)>()
+#define _ClearV(base_type, ...)
 
-#define UClearV8 _ClearV
-#define UClearV16 _ClearV
-#define UClearV32 _ClearV
-#define UClearV64 _ClearV
-#define UClearV128 _ClearV
-#define SClearV8 _ClearV
-#define SClearV16 _ClearV
-#define SClearV32 _ClearV
-#define SClearV64 _ClearV
-#define SClearV128 _ClearV
-#define FClearV32 _ClearV
-#define FClearV64 _ClearV
+#define UClearV8(...) _ZeroVec<uint8_t, decltype(__VA_ARGS__)>()
+#define UClearV16(...) _ZeroVec<uint16_t, decltype(__VA_ARGS__)>()
+#define UClearV32(...) _ZeroVec<uint32_t, decltype(__VA_ARGS__)>()
+#define UClearV64(...) _ZeroVec<uint64_t, decltype(__VA_ARGS__)>()
+#define UClearV128(...) _ZeroVec<uint128_t, decltype(__VA_ARGS__)>()
+
+#define SClearV8(...) _ZeroVec<int8_t, decltype(__VA_ARGS__)>()
+#define SClearV16(...) _ZeroVec<int16_t, decltype(__VA_ARGS__)>()
+#define SClearV32(...) _ZeroVec<int32_t, decltype(__VA_ARGS__)>()
+#define SClearV64(...) _ZeroVec<int64_t, decltype(__VA_ARGS__)>()
+#define SClearV128(...) _ZeroVec<int128_t, decltype(__VA_ARGS__)>()
+
+#define FClearV32(...) _ZeroVec<float32_t, decltype(__VA_ARGS__)>()
+#define FClearV64(...) _ZeroVec<float64_t, decltype(__VA_ARGS__)>()
+
+// Something has gone terribly wrong and we need to stop because there is
+// an error.
+//
+// TODO(pag): What happens if there's a signal handler? How should we
+//            communicate the error class?
+#define StopFailure() \
+    do { \
+      __remill_error(state, memory, Read(REG_XIP)); \
+      __builtin_unreachable(); \
+    } while (false)
 
 // Esthetically pleasing names that hide the implicit small-step semantics
 // of the memory pointer.
@@ -822,6 +903,13 @@ ALWAYS_INLINE constexpr T _EmptyVec(void) {
 #define BarrierStoreStore() \
     do { \
       memory = __remill_barrier_store_store(memory); \
+    } while (false)
+
+// A 'compiler' barrier that prevents reordering of instructions across the
+// barrier.
+#define BarrierReorder() \
+    do { \
+      __asm__ __volatile__ ("" ::: "memory"); \
     } while (false)
 
 // Make a predicate for querying the type of an operand.
@@ -933,6 +1021,25 @@ ALWAYS_INLINE static T Select(bool cond, T if_true, T if_false) {
 #define UUndefined16 __remill_undefined_16
 #define UUndefined32 __remill_undefined_32
 #define UUndefined64 __remill_undefined_64
+
+
+// TODO(pag): Assumes little-endian.
+ALWAYS_INLINE static
+uint128_t __remill_read_memory_128(Memory *mem, addr_t addr) {
+  uint128_t low_qword = ZExt(__remill_read_memory_64(mem, addr));
+  uint128_t high_qword = ZExt(__remill_read_memory_64(mem, addr + 8));
+  return UOr(UShl(high_qword, 64), low_qword);
+}
+
+// TODO(pag): Assumes little-endian.
+ALWAYS_INLINE static
+Memory *__remill_write_memory_128(Memory *mem, addr_t addr, uint128_t val) {
+  uint64_t low_qword = Trunc(val);
+  uint64_t high_qword = Trunc(UShr(val, 64));
+  mem = __remill_write_memory_64(mem, addr, low_qword);
+  mem = __remill_write_memory_64(mem, addr + 8, high_qword);
+  return mem;
+}
 
 }  // namespace
 

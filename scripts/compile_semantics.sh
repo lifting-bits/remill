@@ -7,7 +7,9 @@ BLUE=`tput setaf 4`
 RESET=`tput sgr0`
 
 CXXFLAGS=
-CXXFLAGS+=" -isystem ${DIR}/third_party/include -I${DIR}"
+CXXFLAGS+=" -isystem ${DIR}/third_party/include"
+CXXFLAGS+=" -isystem ${DIR}/third_party/include/c++/v1"
+CXXFLAGS+=" -I${DIR}"
 CXXFLAGS+=" -std=gnu++11 -g0 -O0"
 CXXFLAGS+=" -fno-exceptions -fno-rtti -fno-asynchronous-unwind-tables"
 CXXFLAGS+=" -ffreestanding -fno-common -fno-builtin"
