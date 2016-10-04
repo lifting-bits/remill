@@ -104,9 +104,27 @@ sudo apt-get update
 sudo apt-get install llvm-3.9-dev clang-3.9
 ```
 
-#### On macOS (experimental)
+#### On OS X
 
-Instructions for building on macOS are not yet available.
+##### Install Dependencies
+
+```shell
+brew install \
+     git \
+     cmake \
+     glog \
+     protobuf \
+     python \
+     coreutils \
+     unzip
+```
+
+##### Install LLVM 3.9
+
+```shell
+wget http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz
+unzip clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz
+```
 
 ### Step 2: Clone and Enter the Repository
 
