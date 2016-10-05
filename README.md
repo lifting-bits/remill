@@ -122,7 +122,9 @@ brew install \
 ##### Install LLVM 3.9
 
 ```shell
-wget http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz
+mkdir build
+cd build
+curl -0 http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz
 tax xzf clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz
 ```
 
