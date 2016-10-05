@@ -312,6 +312,8 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/MMX/PCMP.S"
 #include "tests/X86/MMX/PMUL.S"
 #include "tests/X86/MMX/PUNPCK.S"
+#include "tests/X86/MMX/PSRL.S"
+#include "tests/X86/MMX/PSLL.S"
 
 #include "tests/X86/BINARY/ADC.S"
 #include "tests/X86/BINARY/ADD.S"
