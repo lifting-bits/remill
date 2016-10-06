@@ -353,10 +353,11 @@ DEF_SEM(PSUBUSB, D dst, S1 src1, S2 src2) {
 
   _Pragma("unroll")
   for(size_t i = 0; i < NumVectorElems(dst_vec); i++){
-    auto src1_elem = UExtractV8(lhs_vec, i);
-    auto src2_elem = UExtractV8(rhs_vec, i);
+    auto v1 = UExtractV8(lhs_vec, i);
+    auto v2 = UExtractV8(rhs_vec, i);
+    auto sub = USub(v1, v2);
     // TODO(akshay): Break up this line into smaller parts.
-    auto sub_val = Select(UCmpGt(src1_elem, src2_elem), USub(src1_elem, src2_elem), Minimize(src1_elem));
+    auto sub_val = Select(UCmpGt(v1, v2), sub, Minimize(v1));
     dst_vec = UInsertV8(dst_vec, i, sub_val);
   }
   UWriteV8(dst, dst_vec);
@@ -370,10 +371,11 @@ DEF_SEM(PSUBUSW, D dst, S1 src1, S2 src2) {
 
   _Pragma("unroll")
   for(size_t i = 0; i < NumVectorElems(dst_vec); i++){
-    auto src1_elem = UExtractV16(lhs_vec, i);
-    auto src2_elem = UExtractV16(rhs_vec, i);
+    auto v1 = UExtractV16(lhs_vec, i);
+    auto v2 = UExtractV16(rhs_vec, i);
+    auto sub = USub(v1, v2);
     // TODO(akshay): Break up this line into smaller parts.
-    auto sub_val = Select(UCmpGt(src1_elem, src2_elem), USub(src1_elem, src2_elem), Minimize(src1_elem));
+    auto sub_val = Select(UCmpGt(v1, v2), sub, Minimize(v1));
     dst_vec = UInsertV16(dst_vec, i, sub_val);
   }
   UWriteV16(dst, dst_vec);
@@ -418,10 +420,12 @@ DEF_SEM(PAVGW, D dst, S1 src1, S2 src2) {
   auto vec_count = NumVectorElems(lhs_vec);
   _Pragma("unroll")
   for(size_t i = 0; i < vec_count; i++){
+    auto v1 = ZExt(UExtractV16(lhs_vec, i));
+    auto v2 = ZExt(UExtractV16(rhs_vec, i));
     // TODO(akshay): Break up this line into smaller parts.
-    auto sum_elem = UAdd(UInt32(UExtractV16(lhs_vec, i)), UInt32(UExtractV16(rhs_vec, i))) ;
+    auto sum_elem = UAdd(v1, v2);
     auto sum = UAdd(sum_elem, decltype(sum_elem)(1));
-    dst_vec = UInsertV16(dst_vec, i, UInt16(UShr(sum, decltype(sum)(1))));
+    dst_vec = UInsertV16(dst_vec, i, Trunc(UShr(sum, decltype(sum)(1))));
   }
   UWriteV16(dst, dst_vec);
 }
@@ -444,14 +448,20 @@ DEF_SEM(PHSUBW, D dst, S1 src1, S2 src2) {
   auto vec_count = NumVectorElems(lhs_vec);
   _Pragma("unroll")
   for(size_t i = 0; i < vec_count; i = i+2) {
+    auto v1 = SExtractV16(lhs_vec, i);
+    auto v2 = SExtractV16(lhs_vec, i+1);
+    auto index = UDiv(i, 2);
     // TODO(akshay): Break up this line into smaller parts.
     // TODO(akshay): Use one of UDiv or SDiv instead of `/`.
     // TODO(akshay): Use one of UAdd or SAdd instead of `+`.
-    dst_vec = SInsertV16(dst_vec, i/2, SSub(SExtractV16(lhs_vec, i), SExtractV16(lhs_vec, i+1)));
+    dst_vec = SInsertV16(dst_vec, index, SSub(v1, v2));
   }
   _Pragma("unroll")
   for(size_t i = 0; i < NumVectorElems(rhs_vec); i = i+2) {
-    dst_vec = SInsertV16(dst_vec, (i+vec_count)/2, SSub(SExtractV16(rhs_vec, i), SExtractV16(rhs_vec, i+1)));
+    auto v1 = SExtractV16(rhs_vec, i);
+    auto v2 = SExtractV16(rhs_vec, i+1);
+    auto index = UDiv(UAdd(i, vec_count), 2);
+    dst_vec = SInsertV16(dst_vec, index, SSub(v1, v2));
   }
   SWriteV16(dst, dst_vec);
 }
