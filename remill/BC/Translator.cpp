@@ -880,6 +880,13 @@ void Translator::LiftTerminator(llvm::BasicBlock *block,
           WrapIntrinsic(intrinsics->interrupt_call, arch_instr->pc));
       break;
 
+    case Instruction::kCategoryConditionalInterruptCall:
+      LiftConditionalBranch(
+          block,
+          intrinsics->interrupt_call,
+          GetOrCreateTargetBlock(arch_instr->next_pc));
+      break;
+
     case Instruction::kCategoryInterruptReturn:
       AddTerminatingTailCall(
           block,

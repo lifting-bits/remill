@@ -1,0 +1,36 @@
+/* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+
+TEST_BEGIN(FLD1, 1)
+TEST_INPUTS(0)
+    fld1
+TEST_END
+
+TEST_BEGIN(FLD2T, 1)
+TEST_INPUTS(0)
+    fldl2t
+TEST_END
+
+TEST_BEGIN(FLD2E, 1)
+TEST_INPUTS(0)
+    fldl2e
+TEST_END
+
+TEST_BEGIN(FLDPI, 1)
+TEST_INPUTS(0)
+    fldpi
+TEST_END
+
+TEST_BEGIN(FLDLG2, 1)
+TEST_INPUTS(0)
+    fldlg2
+TEST_END
+
+TEST_BEGIN(FLDLN2, 1)
+TEST_INPUTS(0)
+    fldln2
+TEST_END
+
+TEST_BEGIN(FLDZ, 1)
+TEST_INPUTS(0)
+    fldz
+TEST_END

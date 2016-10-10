@@ -67,6 +67,8 @@ function compile_tests()
 {
     printf "Compiling tests for ${4}\n"
     ${CXX} \
+        -O0 \
+        -g3 \
         -I${DIR} \
         -std=gnu++11 \
         -Wno-nested-anon-types \

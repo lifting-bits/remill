@@ -115,6 +115,7 @@ class Instruction {
     kCategoryConditionalBranch,
     kCategorySystemCall,
     kCategorySystemReturn,
+    kCategoryConditionalInterruptCall,
     kCategoryInterruptCall,
     kCategoryInterruptReturn,
     kCategoryReadCPUFeatures,

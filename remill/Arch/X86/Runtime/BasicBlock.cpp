@@ -466,15 +466,6 @@ void __remill_basic_block(State &state, Memory &memory, addr_t curr_pc) {
 #endif
 #endif
 
-  auto &FPU_OPCODE_read = state.fpu.fop;
-  auto &FPU_OPCODE_write = state.fpu.fop;
-  auto &FPU_CONTROL_read = state.fpu.cwd.flat;
-  auto &FPU_CONTROL_write = state.fpu.cwd.flat;
-  auto &FPU_STATUS_read = state.fpu.swd.flat;
-  auto &FPU_STATUS_write = state.fpu.swd.flat;
-  auto &FPU_TAG_read = state.fpu.ftw;
-  auto &FPU_TAG_write = state.fpu.ftw;
-
   // MMX technology registers. For simplicity, these are implemented separately
   // from the FPU stack, and so they do not alias. This makes some things
   // easier and some things harder. Marshaling native/lifted state becomes

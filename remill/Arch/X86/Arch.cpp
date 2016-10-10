@@ -43,8 +43,13 @@ static bool IsSystemReturn(const xed_decoded_inst_t *xedd) {
 
 static bool IsInterruptCall(const xed_decoded_inst_t *xedd) {
   auto iclass = xed_decoded_inst_get_iclass(xedd);
-  return (XED_ICLASS_INT <= iclass && XED_ICLASS_INTO >= iclass) ||
-         XED_ICLASS_BOUND == iclass;
+  return XED_ICLASS_INT == iclass || XED_ICLASS_INT1 == iclass ||
+         XED_ICLASS_INT3 == iclass;
+}
+
+static bool IsConditionalInterruptCall(const xed_decoded_inst_t *xedd) {
+  auto iclass = xed_decoded_inst_get_iclass(xedd);
+  return XED_ICLASS_INTO == iclass || XED_ICLASS_BOUND == iclass;
 }
 
 static bool IsInterruptReturn(const xed_decoded_inst_t *xedd) {
@@ -147,6 +152,9 @@ static Instruction::Category CreateCategory(const xed_decoded_inst_t *xedd) {
   // denote that the interrupt should happen.
   } else if (IsInterruptCall(xedd)) {
     return Instruction::kCategoryInterruptCall;
+
+  } else if (IsConditionalInterruptCall(xedd)) {
+    return Instruction::kCategoryConditionalInterruptCall;
 
   } else if (IsInterruptReturn(xedd)) {
     return Instruction::kCategoryInterruptReturn;
@@ -459,6 +467,16 @@ static void DecodeRegister(Instruction *instr,
   }
 }
 
+static void DecodeConditionalInterrupt(Instruction *instr) {
+  // Condition variable.
+  Operand cond_op;
+  cond_op.action = Operand::kActionWrite;
+  cond_op.type = Operand::kTypeRegister;
+  cond_op.reg.name = "BRANCH_TAKEN";
+  cond_op.reg.size = 8;
+  cond_op.size = 8;
+  instr->operands.push_back(cond_op);
+}
 
 // Decode a relative branch target.
 static void DecodeConditionalBranch(Instruction *instr,
@@ -679,6 +697,10 @@ Instruction *X86Arch::DecodeInstruction(
   if (xed_operand_values_get_atomic(xedd) ||
       xed_operand_values_has_lock_prefix(xedd)) {
     instr->is_atomic_read_modify_write = true;
+  }
+
+  if (Instruction::kCategoryConditionalInterruptCall == instr->category) {
+    DecodeConditionalInterrupt(instr);
   }
 
   // Lift the operands. This creates the arguments for us to call the
