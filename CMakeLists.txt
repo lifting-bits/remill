@@ -9,13 +9,23 @@ enable_language(ASM)
 
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-set(LLVM_DIR "/usr/lib/llvm-3.9/lib/cmake/llvm/")
-find_package(LLVM 3.9 REQUIRED)
 find_package(XED REQUIRED)
 find_package(GLOG REQUIRED)
 find_package(GFLAGS REQUIRED)
 find_package(Protobuf REQUIRED)
 
+set (LLVM_ROOT "" CACHE PATH "Root of LLVM install")
+
+set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+find_package(LLVM 3.9 REQUIRED)
+
+list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+include (HandleLLVMOptions)
+include (AddLLVM)
+
+######
+# LLVM local CMake modules
+set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 include_directories("${LLVM_INCLUDE_DIRS}")
 include_directories("${XED_INCLUDE_DIRS}")
 include_directories("${GLOG_INCLUDE_DIRS}")
