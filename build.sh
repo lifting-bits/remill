@@ -57,7 +57,7 @@ LLVM_DIR=build/$LLVM_DIR
 LLVM_DIR=$(realpath $LLVM_DIR)
 BINDIR=$LLVM_DIR/bin
 LLVM_DIR=$LLVM_DIR/lib/cmake/llvm
-cmake -DCMAKE_C_COMPILER=${BINDIR}/clang -DCMAKE_CXX_COMPILER=${BINDIR}/clang++ -DCMAKE_LLVM_LINK=${BINDIR}/llvm-link -DLLVM_DIR=$LLVM_DIR
+cmake -DCMAKE_C_COMPILER=${BINDIR}/clang -DCMAKE_CXX_COMPILER=${BINDIR}/clang++ -DCMAKE_LLVM_LINK=${BINDIR}/llvm-link
 echo "[+] Building semantics"
 make semantics
 echo "[+] Building remill"
