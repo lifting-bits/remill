@@ -19,5 +19,5 @@ if [[ "${TRAVIS_OS_NAME}" = "linux" ]] ; then
 fi 
 
 if [[ "${TRAVIS_OS_NAME}" = "osx" ]] ; then 
-    $DIR/travis/install_macos.sh
+    $DIR/scripts/travis/install_macos.sh
 fi
