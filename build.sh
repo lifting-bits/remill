@@ -50,7 +50,10 @@ if [ ! -d ${LLVM_DIR} ]; then
   mkdir ${LLVM_DIR}
   tar xf ${FILE} -C ${LLVM_DIR} --strip-components=1 
 fi
-
+echo "[+] Installing Xed"
+./scripts/unix/install_xed.sh
+echo "[+] Compiling protobufs"
+./scripts/unix/compile_protobufs.sh
 echo "[+] Running cmake"
 cd ..
 LLVM_DIR=build/$LLVM_DIR

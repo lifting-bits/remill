@@ -99,29 +99,10 @@ git clone git@github.com:trailofbits/remill.git
 cd remill
 ```
 
-### Step 3: Install Intel XED
-
-#### On Linux and macOS
-
-This script will unpack and install Intel XED. It will require `sudo`er permissions. The XED library will be installed into `/usr/local/lib`, and the headers will be installed into `/usr/local/include/intel`.
-
+#### Run the Build Script
 ```shell
-./scripts/unix/install_xed.sh
+./build.sh
 ```
-
-### Step 4: Compile Protocol Buffers
-
-Remill represents disassembled binaries using a [protocol buffer format](docs/CFG_FORMAT.md). This step compiles that format into files that can be used by `remill-lift`.
-
-#### On Linux and macOS
-
-```shell
-./scripts/unix/compile_protobufs.sh
-```
-
-### Step 4: Download LLVM and Build the Project
-
-Run `./build.sh`
 
 ## Building and Running the Test Suite
 
