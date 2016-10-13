@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BUILD_DIR=$(dirname $0)/build
 LLVM_DIR=llvm
 
@@ -51,9 +52,9 @@ if [ ! -d ${LLVM_DIR} ]; then
   tar xf ${FILE} -C ${LLVM_DIR} --strip-components=1 
 fi
 echo "[+] Installing Xed"
-./scripts/unix/install_xed.sh
+$DIR/scripts/unix/install_xed.sh
 echo "[+] Compiling protobufs"
-./scripts/unix/compile_protobufs.sh
+$DIR/scripts/unix/compile_protobufs.sh
 echo "[+] Running cmake"
 cd ..
 LLVM_DIR=build/$LLVM_DIR
