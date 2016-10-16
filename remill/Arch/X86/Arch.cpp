@@ -714,8 +714,6 @@ Instruction *X86Arch::DecodeInstruction(
     }
   }
 
-#ifndef NDEBUG
-
   char buffer[256] = {'\0'};
   xed_print_info_t info;
   info.blen = 256;
@@ -729,8 +727,6 @@ Instruction *X86Arch::DecodeInstruction(
   if (xed_format_generic(&info)) {
     instr->disassembly.assign(&(buffer[0]));
   }
-
-#endif  // NDEBUG
 
   return instr;
 }

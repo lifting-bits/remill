@@ -6,15 +6,17 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <string>
 #include <unistd.h>
 
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/CommandLine.h>
 
+#include "remill/Arch/Arch.h"
+#include "remill/Arch/AssemblyWriter.h"
 #include "remill/BC/Translator.h"
 #include "remill/BC/Util.h"
-#include "remill/Arch/Arch.h"
 #include "remill/CFG/CFG.h"
 
 #ifndef REMILL_OS
@@ -61,6 +63,11 @@ DEFINE_string(bc_in, "", "Input bitcode file into which code will "
 
 DEFINE_string(bc_out, "", "Output bitcode file name.");
 
+DEFINE_string(asm_out, "", "Output disassembly file name. This is produced "
+                           "by the translator and contains disassembled "
+                           "instructions. Debug information references this "
+                           "file.");
+
 namespace {
 
 static const char *gSearchPaths[] = {
@@ -69,13 +76,13 @@ static const char *gSearchPaths[] = {
     INSTALL_SEMANTICS_DIR "\0",
 
     // Linux.
-    "/usr/local/share/remill/semantics/",
-    "/usr/share/remill/semantics/",
+    "/usr/local/share/remill/semantics",
+    "/usr/share/remill/semantics",
 
     // Other?
-    "/opt/local/share/remill/semantics/",
-    "/opt/share/remill/semantics/",
-    "/opt/remill/semantics/",
+    "/opt/local/share/remill/semantics",
+    "/opt/share/remill/semantics",
+    "/opt/remill/semantics",
 
     // FreeBSD.
     "/usr/share/compat/linux/remill/semantics",
@@ -95,22 +102,15 @@ static std::string InputBCPath(void) {
 
   for (auto path : gSearchPaths) {
     std::stringstream ss;
-    if ('/' != path[0]) {
-      ss << "./";
-    }
-    ss << path;
-    if ('/' != path[strlen(path) - 1]) {
-      ss << "/";
-    }
-    ss << FLAGS_arch_in << ".bc";
+    ss << path << "/" << FLAGS_arch_in << ".bc";
     auto sem_path = ss.str();
     if (CheckPath(sem_path)) {
       return sem_path;
     }
   }
 
-  LOG(FATAL) << "Cannot deduce path to " << FLAGS_arch_in
-             << " semantics bitcode file.";
+  LOG(FATAL)
+      << "Cannot find path to " << FLAGS_arch_in << " semantics bitcode file.";
 }
 
 }  // namespace
@@ -198,17 +198,24 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
+
   auto context = new llvm::LLVMContext;
   auto module = remill::LoadModuleFromFile(context, FLAGS_bc_in);
   target_arch->PrepareModule(module);
 
-  remill::Translator lifter(source_arch, module);
+  remill::AssemblyWriter *asm_writer = nullptr;
+  if (!FLAGS_asm_out.empty()) {
+    asm_writer = new remill::AssemblyWriter(module, FLAGS_asm_out);
+  }
+
+  remill::Translator lifter(source_arch, module, asm_writer);
 
   auto cfg = remill::ReadCFG(FLAGS_cfg);
   lifter.LiftCFG(cfg);
 
   remill::StoreModuleToFile(module, FLAGS_bc_out);
 
+  delete asm_writer;
   delete cfg;
   delete source_arch;
 

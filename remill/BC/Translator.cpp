@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 #include <sstream>
+#include <vector>
 
 #include <llvm/ADT/SmallVector.h>
 
@@ -32,6 +33,7 @@
 #include <llvm/Transforms/Utils/ValueMapper.h>
 
 #include "remill/Arch/Arch.h"
+#include "remill/Arch/AssemblyWriter.h"
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Translator.h"
 #include "remill/CFG/CFG.h"
@@ -47,10 +49,24 @@ DEFINE_bool(pc_specific_intrinsics, false,
 
 namespace llvm {
 class ReturnInst;
-}  // namespace
+}  // namespace llvm
 
 namespace remill {
 namespace {
+
+// Initialize some attributes that are common to all newly created block
+// functions. Also, give pretty names to the arguments of block functions.
+static void InitBlockFunctionAttributes(llvm::Function *block_func) {
+
+  block_func->setLinkage(llvm::GlobalValue::PrivateLinkage);
+  block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
+
+  auto args = block_func->arg_begin();
+  (args++)->setName("state");
+  (args++)->setName("memory");
+  args->setName("pc");
+
+}
 
 // These variables must always be defined within `__remill_basic_block`.
 static bool BlockHasSpecialVars(llvm::Function *basic_block) {
@@ -86,9 +102,11 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
 
 }  // namespace
 
-Translator::Translator(const Arch *arch_, llvm::Module *module_)
+Translator::Translator(const Arch *arch_, llvm::Module *module_,
+                       AssemblyWriter *src_)
     : arch(arch_),
       module(module_),
+      asm_source_writer(src_),
       blocks(),
       indirect_blocks(),
       exported_blocks(),
@@ -102,6 +120,8 @@ Translator::Translator(const Arch *arch_, llvm::Module *module_)
 
   FixupBasicBlockVariables(basic_block);
   EnableDeferredInlining();
+  InitFunctionAttributes(basic_block);
+  InitBlockFunctionAttributes(basic_block);
 }
 
 namespace {
@@ -134,23 +154,6 @@ static std::string CanonicalName(OSName os_name, const std::string &name) {
 //  } else {
 //    return name;
 //  }
-}
-
-// Initialize some attributes that are common to all newly created block
-// functions. Also, give pretty names to the arguments of block functions.
-static void InitBlockFunctionAttributes(llvm::Function *new_block_func,
-                                        const llvm::Function *template_func) {
-
-  new_block_func->copyAttributesFrom(template_func);
-  new_block_func->setLinkage(llvm::GlobalValue::PrivateLinkage);
-  new_block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
-
-  InitFunctionAttributes(new_block_func);
-
-  auto args = new_block_func->arg_begin();
-  (args++)->setName("state");
-  (args++)->setName("memory");
-  args->setName("pc");
 }
 
 // Pull the `name` out of a `NamedBlock`.
@@ -196,7 +199,7 @@ static void AddBlockInitializationCode(llvm::Function *block_func,
   llvm::CloneFunctionInto(
       block_func, template_func, var_map, false, return_instrs);
 
-  InitBlockFunctionAttributes(block_func, template_func);
+  block_func->clearMetadata();
 
   // We're cloning the function, and we want to keep all of the variables
   // defined in the function, but it has an implicit return that we need
@@ -255,13 +258,13 @@ void Translator::EnableDeferredInlining(void) {
 
 // Find existing exported functions. This is for the sake of linking functions
 // of the same names across CFG files.
-void Translator::GetNamedBlocks(
-    std::map<std::string, llvm::Function *> &table,
+std::map<std::string, llvm::Function *> Translator::GetNamedBlocks(
     const char *table_name) {
+  std::map<std::string, llvm::Function *> table;
   auto table_var = module->getGlobalVariable(table_name);
   auto init = table_var->getInitializer();
   if (llvm::isa<llvm::ConstantAggregateZero>(init)) {
-    return;
+    return table;
   }
   auto entries = llvm::dyn_cast<llvm::ConstantArray>(init);
   DLOG(INFO)
@@ -286,6 +289,8 @@ void Translator::GetNamedBlocks(
         exported_block->getOperand(1));
     table[func_name] = lifted_func;
   }
+
+  return table;
 }
 
 // Recreate a global table of named blocks.
@@ -532,8 +537,13 @@ llvm::Function *Translator::GetOrCreateBlock(uint64_t addr) {
 
     // Initialize the generic attributes, but change the linkage into
     // external until the block is implemented.
-    InitBlockFunctionAttributes(block_func, basic_block);
+    block_func->copyAttributesFrom(basic_block);
     block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
+
+//    block_func->clearMetadata();
+//    block_func->copyMetadata(basic_block, 0);
+//    //auto md = basic_block->getMetadata(llvm::LLVMContext::MD_dbg);
+//    //auto tmd = md->clone();
 
     DLOG(INFO)
         << "Created function " << func_name
@@ -591,13 +601,11 @@ void Translator::CreateBlocks(const cfg::Module *cfg_module) {
 
 // Lift the control-flow graph specified by `cfg` into this bitcode module.
 void Translator::LiftCFG(const cfg::Module *cfg_module) {
+  exported_blocks = GetNamedBlocks("__remill_exported_blocks");
+  imported_blocks = GetNamedBlocks("__remill_imported_blocks");
+
   blocks.clear();
   indirect_blocks.clear();
-  exported_blocks.clear();
-  imported_blocks.clear();
-
-  GetNamedBlocks(exported_blocks, "__remill_exported_blocks");
-  GetNamedBlocks(imported_blocks, "__remill_imported_blocks");
   GetIndirectBlocks();
   CreateNamedBlocks(cfg_module);
   CreateBlocks(cfg_module);
@@ -634,6 +642,8 @@ void Translator::LiftBlocks(const cfg::Module *cfg_module) {
     CHECK(!func->isDeclaration())
         << "Lifted block function " << func->getName().str()
         << " should have an implementation.";
+
+    module->dump();
 
     // Make sure the translation is good before optimizing.
     std::string error;
@@ -694,6 +704,10 @@ llvm::Function *Translator::LiftBlock(const cfg::Block *cfg_block) {
 
   AddBlockInitializationCode(block_func, basic_block);
 
+  if (asm_source_writer) {
+    asm_source_writer->WriteBlock(block_func);
+  }
+
   // Create a block for each instruction.
   auto last_block = &block_func->back();
   auto instr_addr = cfg_block->address();
@@ -721,10 +735,15 @@ llvm::Function *Translator::LiftBlock(const cfg::Block *cfg_block) {
         << "Cannot decode instruction at " << std::hex << instr_addr << ".";
 
     DLOG(INFO)
-        << "Lifting instruction '" << instr->disassembly
-        << "' as " << instr->Debug();
+        << "Lifting instruction '" << instr->Serialize();
 
     if (auto curr_block = LiftInstruction(block_func, instr)) {
+
+      // Add debug info to all instructions added.
+      if (asm_source_writer) {
+        asm_source_writer->WriteInstruction(curr_block, instr);
+      }
+
       llvm::IRBuilder<> ir(last_block);
       ir.CreateBr(curr_block);
       last_block = curr_block;
@@ -1056,7 +1075,7 @@ static llvm::Value *LoadWordRegValOrZero(llvm::BasicBlock *block,
   return val;
 }
 
-} // namespace
+}  // namespace
 
 // Load a register operand. This deals uniformly with write- and read-operands
 // for registers. In the case of write operands, the argument type is always

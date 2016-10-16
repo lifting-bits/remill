@@ -44,6 +44,7 @@ add_definitions(${LLVM_DEFINITIONS})
 add_executable(remill-lift
     remill/Lift.cpp
     remill/Arch/X86/Arch.cpp
+    remill/Arch/AssemblyWriter.cpp
     remill/Arch/Arch.cpp
     remill/Arch/Instruction.cpp
     remill/CFG/CFG.cpp

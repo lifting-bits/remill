@@ -107,7 +107,7 @@ Instruction::Instruction(void)
       is_atomic_read_modify_write(false),
       category(Instruction::kCategoryInvalid) {}
 
-std::string Instruction::Debug(void) const {
+std::string Instruction::Serialize(void) const {
   std::stringstream ss;
   ss << "(";
   switch (arch_name) {
