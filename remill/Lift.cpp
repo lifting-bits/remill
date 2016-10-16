@@ -116,6 +116,19 @@ static std::string InputBCPath(void) {
 }  // namespace
 
 int main(int argc, char *argv[]) {
+  std::stringstream ss;
+  ss << std::endl << std::endl
+     << "  " << argv[0] << " \\" << std::endl
+     << "    [--bc_in INPUT_BC_FILE] \\" << std::endl
+     << "    --bc_out OUTPUT_BC_FILE \\" << std::endl
+     << "    --arch_in SOURCE_ARCH_NAME \\" << std::endl
+     << "    [--arch_out TARGET_ARCH_NAME] \\" << std::endl
+     << "    --os_in SOURCE_OS_NAME \\" << std::endl
+     << "    [--os_our TARGET_OS_NAME] \\" << std::endl
+     << "    --cfg CFG_FILE"
+     << std::endl;
+
+  google::SetUsageMessage(ss.str());
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
@@ -130,6 +143,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (FLAGS_os_out.empty()) {
+    FLAGS_os_out = FLAGS_os_in;
     std::cerr
         << "Need to specify a target operating system with --os_out."
         << std::endl;
@@ -144,10 +158,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (FLAGS_arch_out.empty()) {
-    std::cerr
-        << "Need to specify a target architecture with --arch_out."
-        << std::endl;
-    return EXIT_FAILURE;
+    FLAGS_arch_out = FLAGS_arch_in;
   }
 
   if (FLAGS_cfg.empty()) {
