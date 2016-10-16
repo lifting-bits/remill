@@ -53,6 +53,8 @@ if [ ! -d ${LLVM_DIR} ]; then
 fi
 echo "[+] Installing Xed"
 $DIR/scripts/unix/install_xed.sh
+echo "[+] Installing gtest"
+$DIR/scripts/unix/install_gtest.sh
 echo "[+] Compiling protobufs"
 $DIR/scripts/unix/compile_protobufs.sh
 echo "[+] Running cmake"
@@ -61,7 +63,7 @@ LLVM_DIR=build/$LLVM_DIR
 LLVM_DIR=$(realpath $LLVM_DIR)
 BINDIR=$LLVM_DIR/bin
 LLVM_DIR=$LLVM_DIR/lib/cmake/llvm
-cmake -DCMAKE_C_COMPILER=${BINDIR}/clang -DCMAKE_CXX_COMPILER=${BINDIR}/clang++ -DCMAKE_LLVM_LINK=${BINDIR}/llvm-link
+cmake -DLLVM_DIR=${LLVM_DIR} -DCMAKE_C_COMPILER=${BINDIR}/clang -DCMAKE_CXX_COMPILER=${BINDIR}/clang++ -DCMAKE_LLVM_LINK=${BINDIR}/llvm-link
 echo "[+] Building semantics"
 make semantics
 echo "[+] Building remill"

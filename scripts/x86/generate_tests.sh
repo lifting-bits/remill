@@ -17,10 +17,7 @@ fi
 
 printf "Found OS ${OS_NAME}\n"
 
-CXX=$(which clang++-3.9)
-if [[ $? -ne 0 ]] ; then
-    CXX=$(which clang++)
-fi
+CXX=$DIR/build/llvm/bin/clang++
 
 printf "Found C++ compiler ${CXX}\n"
 

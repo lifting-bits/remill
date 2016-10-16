@@ -23,6 +23,7 @@ sudo apt-get install -y clang-3.9
 sudo apt-get install -y g++-multilib
 sudo apt-get install -y unzip
 sudo apt-get install -y cmake
+sudo apt-get install -y realpath
 
 # Upgrade PIP and install the python bindings for protocol buffers.
 sudo pip install --upgrade pip
