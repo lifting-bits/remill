@@ -99,8 +99,7 @@ TEST_INPUTS(
     0xFF,
     0xFFFF,
     0xFFFFFFFF)
-TEST_IGNORE_FLAGS()
-TEST_USE_X87_MMX
+
     movd mm0, ARG1_32
 TEST_END
 
@@ -111,8 +110,7 @@ TEST_INPUTS(
     0xFF,
     0xFFFF,
     0xFFFFFFFF)
-TEST_IGNORE_FLAGS()
-TEST_USE_X87_MMX
+
     push ARG1_64
     movd mm0, DWORD PTR [rsp]
 TEST_END
@@ -124,8 +122,7 @@ TEST_INPUTS(
     0xFF,
     0xFFFF,
     0xFFFFFFFF)
-TEST_IGNORE_FLAGS()
-TEST_USE_X87_MMX
+
     movd mm0, ARG1_32
     movd [rsp - 16], mm0
 TEST_END

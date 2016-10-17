@@ -181,6 +181,25 @@ static llvm::Function *CreateExternalFunction(llvm::Module *module,
   return func;
 }
 
+static void RemoveDebugInfo(llvm::Function *block_func) {
+  block_func->clearMetadata();
+
+  std::vector<llvm::Instruction *> to_remove;
+  for (auto &bb : *block_func) {
+    for (auto &inst : bb) {
+      if (llvm::isa<llvm::CallInst>(inst)) {
+        to_remove.push_back(&inst);
+      } else {
+        inst.setDebugLoc(llvm::DebugLoc());
+      }
+    }
+  }
+
+  for (auto call_inst : to_remove) {
+    call_inst->eraseFromParent();
+  }
+}
+
 // Clone the block method template `TF` into a specific method `BF` that
 // will contain lifted code.
 static void AddBlockInitializationCode(llvm::Function *block_func,
@@ -199,7 +218,7 @@ static void AddBlockInitializationCode(llvm::Function *block_func,
   llvm::CloneFunctionInto(
       block_func, template_func, var_map, false, return_instrs);
 
-  block_func->clearMetadata();
+  RemoveDebugInfo(block_func);
 
   // We're cloning the function, and we want to keep all of the variables
   // defined in the function, but it has an implicit return that we need
@@ -501,6 +520,10 @@ void Translator::CreateNamedBlocks(const cfg::Module *cfg) {
             WrapIntrinsic(intrinsics->detach,
                           static_cast<uint64_t>(func.address())));
 
+        if (asm_source_writer) {
+          asm_source_writer->WriteBlock(named_block);
+        }
+
         DLOG(INFO)
             << "Imported function " << func_name << " is implemented by "
             << impl_name << ".";
@@ -559,6 +582,9 @@ llvm::Function *Translator::GetOrCreateTargetBlock(uint64_t address) {
   auto block_func = GetOrCreateBlock(address);
   if (block_func->isDeclaration()) {
     AddTerminatingTailCall(block_func, intrinsics->detach);
+    if (asm_source_writer) {
+      asm_source_writer->WriteBlock(block_func);
+    }
   }
   return block_func;
 }
@@ -601,11 +627,12 @@ void Translator::CreateBlocks(const cfg::Module *cfg_module) {
 
 // Lift the control-flow graph specified by `cfg` into this bitcode module.
 void Translator::LiftCFG(const cfg::Module *cfg_module) {
+  blocks.clear();
+  indirect_blocks.clear();
+
   exported_blocks = GetNamedBlocks("__remill_exported_blocks");
   imported_blocks = GetNamedBlocks("__remill_imported_blocks");
 
-  blocks.clear();
-  indirect_blocks.clear();
   GetIndirectBlocks();
   CreateNamedBlocks(cfg_module);
   CreateBlocks(cfg_module);
@@ -643,7 +670,9 @@ void Translator::LiftBlocks(const cfg::Module *cfg_module) {
         << "Lifted block function " << func->getName().str()
         << " should have an implementation.";
 
-    module->dump();
+    if (asm_source_writer) {
+      asm_source_writer->Flush();
+    }
 
     // Make sure the translation is good before optimizing.
     std::string error;
@@ -727,7 +756,14 @@ llvm::Function *Translator::LiftBlock(const cfg::Block *cfg_block) {
           << "Predecessor of instruction at " << std::hex << instr_addr
           << " must be a normal or no-op instruction, and not one that"
           << " should end a block.";
+
+      // Add debug info to all previously added instructions.
+      if (asm_source_writer) {
+        asm_source_writer->WriteInstruction(block_func, instr);
+      }
+
       delete instr;
+      instr = nullptr;
     }
 
     instr = arch->DecodeInstruction(instr_addr, instr_bytes);
@@ -738,12 +774,6 @@ llvm::Function *Translator::LiftBlock(const cfg::Block *cfg_block) {
         << "Lifting instruction '" << instr->Serialize();
 
     if (auto curr_block = LiftInstruction(block_func, instr)) {
-
-      // Add debug info to all instructions added.
-      if (asm_source_writer) {
-        asm_source_writer->WriteInstruction(curr_block, instr);
-      }
-
       llvm::IRBuilder<> ir(last_block);
       ir.CreateBr(curr_block);
       last_block = curr_block;
@@ -754,16 +784,22 @@ llvm::Function *Translator::LiftBlock(const cfg::Block *cfg_block) {
     //
     // TODO(pag): Add an intrinsic for this particular case.
     } else {
-      delete instr;
       AddTerminatingTailCall(last_block, intrinsics->error);
-      return block_func;
+      break;
     }
   }
 
   CHECK(nullptr != instr)
       << "Logic error: must lift at least one instruction.";
 
-  LiftTerminator(last_block, instr);
+  if (!last_block->getTerminator()) {
+    LiftTerminator(last_block, instr);
+  }
+
+  if (asm_source_writer) {
+    asm_source_writer->WriteInstruction(block_func, instr);
+  }
+
   delete instr;
   return block_func;
 }

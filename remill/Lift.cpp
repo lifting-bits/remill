@@ -213,9 +213,13 @@ int main(int argc, char *argv[]) {
   auto cfg = remill::ReadCFG(FLAGS_cfg);
   lifter.LiftCFG(cfg);
 
+  if (asm_writer) {
+    delete asm_writer;
+    asm_writer = nullptr;
+  }
+
   remill::StoreModuleToFile(module, FLAGS_bc_out);
 
-  delete asm_writer;
   delete cfg;
   delete source_arch;
 

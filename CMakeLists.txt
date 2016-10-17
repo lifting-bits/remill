@@ -165,11 +165,15 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
                 -o BasicBlock.${name}.bc
         SOURCES remill/Arch/X86/Runtime/BasicBlock.cpp
     )
-
+    
+    # Note: Some debug info *must* be preserved. This is so that we can have
+    #       debug info on lifted blocks that call these inlinable instruction
+    #       functions, without LLVM going and complaining about calling an
+    #       inlineable function with debug info.
     add_custom_target(Instructions.${name}.bc
         COMMAND ${CMAKE_CXX_COMPILER}
                 ${SEMANTICS_CXX_FLAGS}
-                -O3 -g0
+                -O3 -g
                 -c ${PROJECT_SOURCE_DIR}/remill/Arch/X86/Runtime/Instructions.cpp
                 -o Instructions.${name}.bc
         SOURCES remill/Arch/X86/Runtime/Instructions.cpp

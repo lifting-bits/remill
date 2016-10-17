@@ -27,15 +27,17 @@ class AssemblyWriter {
  public:
   explicit AssemblyWriter(llvm::Module *module,
                           const std::string &file_name_);
+  ~AssemblyWriter(void);
 
   void WriteBlock(llvm::Function *func);
-  void WriteInstruction(llvm::BasicBlock *block, const Instruction *instr);
+  void WriteInstruction(llvm::Function *func, const Instruction *instr);
+  void Flush(void);
 
  private:
   AssemblyWriter(void) = delete;
   AssemblyWriter(const AssemblyWriter &) = delete;
 
-  const std::string file_name;
+  const std::string path;
   std::ofstream output;
   llvm::DIBuilder * const dib;
   llvm::DIFile *file_scope;
