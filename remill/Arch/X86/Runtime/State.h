@@ -389,7 +389,7 @@ struct alignas(16) X87Stack {
   struct alignas(16) {
     uint64_t _tear;
     float64_t val;
-  } __attribute__((packed)) element[8];
+  } __attribute__((packed)) elems[8];
 };
 
 static_assert(128 == sizeof(X87Stack),
@@ -399,7 +399,7 @@ struct alignas(16) MMX {
   struct alignas(8) {
     uint64_t _tear;
     vec64_t val;
-  } __attribute__((packed)) mmx[8];
+  } __attribute__((packed)) elems[8];
 };
 
 static_assert(128 == sizeof(MMX), "Invalid structure packing of `MMX`.");

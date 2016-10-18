@@ -165,14 +165,6 @@ DEF_SEM(POR, D dst, S1 src1, S2 src2) {
   UWriteV32(dst, UOrV32(UReadV32(src1), UReadV32(src2)));
 }
 
-DEF_SEM(aPXOR_64, V64W dst, V64 src1, MV64 src2) {
-  do {
-    memory = _UWriteV64(
-        memory, dst,
-        (UXorV64(_UReadV64(memory, src1), _UReadV64(memory, src2))));
-  } while (false);
-}
-
 template <typename D, typename S1, typename S2>
 DEF_SEM(PXOR_64, D dst, S1 src1, S2 src2) {
   UWriteV64(dst, UXorV64(UReadV64(src1), UReadV64(src2)));

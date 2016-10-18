@@ -227,14 +227,14 @@ void __remill_basic_block(State &state, Memory &memory, addr_t curr_pc) {
 
 #endif  // HAS_FEATURE_AVX512
 
-  auto &ST0 = state.st.element[0].val;
-  auto &ST1 = state.st.element[1].val;
-  auto &ST2 = state.st.element[2].val;
-  auto &ST3 = state.st.element[3].val;
-  auto &ST4 = state.st.element[4].val;
-  auto &ST5 = state.st.element[5].val;
-  auto &ST6 = state.st.element[6].val;
-  auto &ST7 = state.st.element[7].val;
+  auto &ST0 = state.st.elems[0].val;
+  auto &ST1 = state.st.elems[1].val;
+  auto &ST2 = state.st.elems[2].val;
+  auto &ST3 = state.st.elems[3].val;
+  auto &ST4 = state.st.elems[4].val;
+  auto &ST5 = state.st.elems[5].val;
+  auto &ST6 = state.st.elems[6].val;
+  auto &ST7 = state.st.elems[7].val;
 
 #if 0  // TODO(pag): Don't emulate directly for now.
 #if 32 == ADDRESS_SIZE_BITS
@@ -260,14 +260,14 @@ void __remill_basic_block(State &state, Memory &memory, addr_t curr_pc) {
   // harder, but generating and optimizing bitcode becomes simpler. The trade-
   // off is that analysis and native states will diverge in strange ways
   // with code that mixes the two (X87 FPU ops, MMX ops).
-  auto &MMX0 = state.mmx.mmx[0].val.qwords.elems[0];
-  auto &MMX1 = state.mmx.mmx[1].val.qwords.elems[0];
-  auto &MMX2 = state.mmx.mmx[2].val.qwords.elems[0];
-  auto &MMX3 = state.mmx.mmx[3].val.qwords.elems[0];
-  auto &MMX4 = state.mmx.mmx[4].val.qwords.elems[0];
-  auto &MMX5 = state.mmx.mmx[5].val.qwords.elems[0];
-  auto &MMX6 = state.mmx.mmx[6].val.qwords.elems[0];
-  auto &MMX7 = state.mmx.mmx[7].val.qwords.elems[0];
+  auto &MMX0 = state.mmx.elems[0].val.qwords.elems[0];
+  auto &MMX1 = state.mmx.elems[1].val.qwords.elems[0];
+  auto &MMX2 = state.mmx.elems[2].val.qwords.elems[0];
+  auto &MMX3 = state.mmx.elems[3].val.qwords.elems[0];
+  auto &MMX4 = state.mmx.elems[4].val.qwords.elems[0];
+  auto &MMX5 = state.mmx.elems[5].val.qwords.elems[0];
+  auto &MMX6 = state.mmx.elems[6].val.qwords.elems[0];
+  auto &MMX7 = state.mmx.elems[7].val.qwords.elems[0];
 
   // Arithmetic flags. Data-flow analyses will clear these out ;-)
   auto &AF = state.aflag.af;

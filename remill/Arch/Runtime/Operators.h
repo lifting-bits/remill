@@ -176,10 +176,10 @@ MAKE_READRV(U, 16, words, uint16_t)
 MAKE_READRV(U, 32, dwords, uint32_t)
 MAKE_READRV(U, 64, qwords, uint64_t)
 
-MAKE_READRV(S, 8, bytes, int8_t)
-MAKE_READRV(S, 16, words, int16_t)
-MAKE_READRV(S, 32, dwords, int32_t)
-MAKE_READRV(S, 64, qwords, int64_t)
+MAKE_READRV(S, 8, sbytes, int8_t)
+MAKE_READRV(S, 16, swords, int16_t)
+MAKE_READRV(S, 32, sdwords, int32_t)
+MAKE_READRV(S, 64, sqwords, int64_t)
 
 MAKE_READRV(F, 32, floats, float32_t)
 MAKE_READRV(F, 64, doubles, float64_t)
@@ -624,7 +624,7 @@ auto TruncTo(T val) -> typename IntegerType<DT>::BT {
     } while (false)
 
 
-#define SReadV8 _SReadV8
+#define SReadV8(op) _SReadV8(memory, op)
 #define UReadV8(op) _UReadV8(memory, op)
 
 #define SReadV16(op) _SReadV16(memory, op)

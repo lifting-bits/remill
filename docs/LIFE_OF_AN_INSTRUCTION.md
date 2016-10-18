@@ -104,7 +104,7 @@ The previous section described how the architecture-specific instruction decoder
 
 The "[How to add a new instruction](ADD_AN_INSTRUCTION.md)" document describes the different between *SEM*s, functions implementing instruction semantics, and *ISEL*s, specialisations of those functions that are specific to an instruction form or encoding. The instruction decoder knows about the names of *ISEL*s, and it uses these names to [direct the translator](/remill/Arch/Instruction.h#L79-L80) to find and call the right function for each instruction being lifted.
 
-The [operands](/remill/Arch/Instruction.h#L123) of the instruction data structure tell the translator how to find and compute values to pass as arguments to the semantics functions. In the last section, we showed how the `ebx` register in `push ebx` is represented as a register operand, whose variable name is `EBX`. The translator loads this value and passes it as an argument to the [`PUSH_GPRv_32`](/remill/Arch/X86/Semantics/PUSH.h#L28) *ISEL* function, as implemented by the [`PUSH`](/remill/Arch/X86/Semantics/PUSH.h#L17-L20) *SEM* function.
+The [operands](/remill/Arch/Instruction.h#L123) of the instruction data structure tell the translator how to find and compute values to pass as arguments to the semantics functions. In the last section, we showed how the `ebx` register in `push ebx` is represented as a register operand, whose variable name is `EBX`. The translator loads this value and passes it as an argument to the [`PUSH_GPRv_32`](/remill/Arch/X86/Semantics/PUSH.cpp#L28) *ISEL* function, as implemented by the [`PUSH`](/remill/Arch/X86/Semantics/PUSH.cpp#L17-L20) *SEM* function.
 
 Here's what the unoptimised bitcode for the example basic block looks like:
 

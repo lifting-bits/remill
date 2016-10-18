@@ -4,25 +4,25 @@
 #define REMILL_ARCH_X86_SEMANTICS_X87_H_
 
 #define PUSH_X87_STACK(x) \
-  state.st.element[7].val = state.st.element[6].val ; \
-  state.st.element[6].val = state.st.element[5].val ; \
-  state.st.element[5].val = state.st.element[4].val ; \
-  state.st.element[4].val = state.st.element[3].val ; \
-  state.st.element[3].val = state.st.element[2].val ; \
-  state.st.element[2].val = state.st.element[1].val ; \
-  state.st.element[1].val = state.st.element[0].val ; \
-  state.st.element[0].val = x
+  state.st.elems[7].val = state.st.elems[6].val ; \
+  state.st.elems[6].val = state.st.elems[5].val ; \
+  state.st.elems[5].val = state.st.elems[4].val ; \
+  state.st.elems[4].val = state.st.elems[3].val ; \
+  state.st.elems[3].val = state.st.elems[2].val ; \
+  state.st.elems[2].val = state.st.elems[1].val ; \
+  state.st.elems[1].val = state.st.elems[0].val ; \
+  state.st.elems[0].val = x
 
 #define POP_X87_STACK(x) ({\
-  auto x = state.st.element[0].val ; \
-  state.st.element[0].val = state.st.element[1].val ; \
-  state.st.element[1].val = state.st.element[2].val ; \
-  state.st.element[2].val = state.st.element[3].val ; \
-  state.st.element[3].val = state.st.element[4].val ; \
-  state.st.element[4].val = state.st.element[5].val ; \
-  state.st.element[5].val = state.st.element[6].val ; \
-  state.st.element[6].val = state.st.element[7].val ; \
-  state.st.element[7].val = __remill_undefined_f64(); \
+  auto x = state.st.elems[0].val ; \
+  state.st.elems[0].val = state.st.elems[1].val ; \
+  state.st.elems[1].val = state.st.elems[2].val ; \
+  state.st.elems[2].val = state.st.elems[3].val ; \
+  state.st.elems[3].val = state.st.elems[4].val ; \
+  state.st.elems[4].val = state.st.elems[5].val ; \
+  state.st.elems[5].val = state.st.elems[6].val ; \
+  state.st.elems[6].val = state.st.elems[7].val ; \
+  state.st.elems[7].val = __remill_undefined_f64(); \
   x; })
 
 DEF_ISEL_SEM(FILD_ST0_MEMmem16int, RF80W, M16 src1) {

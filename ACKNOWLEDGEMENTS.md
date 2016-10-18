@@ -5,10 +5,11 @@
 The following individuals have graciously contributed their time to improving
 Remill:
 
-  - [Peter Goodman](https://github.com/pgoodman)
+  - [Akshay Kumar](https://github.com/kumarak)
   - [Kareem El-Faramawi](https://github.com/krx)
-  - [Yan Ivnitskiy](https://github.com/yan)
+  - [Peter Goodman](https://github.com/pgoodman)
   - [Ryan Govostes](https://github.com/rgov)
+  - [Yan Ivnitskiy](https://github.com/yan)
 
 ## Companies
 

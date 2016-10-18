@@ -339,7 +339,7 @@ static void ImportX87State(State *state) {
     // value looks like its infinity.
     for (size_t i = 0; i < 8; ++i) {
       if (static_cast<uint16_t>(0xFFFFU) == gFPU.st[i].infinity) {
-        state->mmx.mmx[i].val.qwords.elems[0] = gFPU.st[i].mmx;
+        state->mmx.elems[i].val.qwords.elems[0] = gFPU.st[i].mmx;
       }
     }
 
@@ -350,7 +350,7 @@ static void ImportX87State(State *state) {
     auto top = static_cast<size_t>(gFPU.swd.top);
     for (size_t i = 0; i < 8; ++i) {
       auto st = *reinterpret_cast<long double *>(&(gFPU.st[i].st));
-      state->st.element[i].val = static_cast<float64_t>(st);
+      state->st.elems[i].val = static_cast<float64_t>(st);
     }
   }
 }
