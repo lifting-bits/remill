@@ -104,8 +104,7 @@
 #define REG_GS state.seg.gs
 #define REG_CS state.seg.cs
 
-#define INTERRUPT_VECTOR state.interrupt_vector
-#define INTERRUPT_TAKEN state.interrupt_taken
+#define INTERRUPT_VECTOR state.generic.interrupt_vector
 
 #include "remill/Arch/X86/Semantics/FLAGS.h"
 #include "remill/Arch/X86/Semantics/BINARY.h"

@@ -14,6 +14,7 @@
 #include "remill/Arch/Runtime/Intrinsics.h"
 #include "remill/Arch/Runtime/Operators.h"
 #include "remill/Arch/Runtime/Types.h"
+#include "remill/Arch/Runtime/State.h"
 #include "Definitions.h"
 
 #endif  // REMILL_ARCH_RUNTIME_RUNTIME_H_

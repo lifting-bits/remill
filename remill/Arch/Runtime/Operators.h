@@ -37,27 +37,32 @@ MAKE_SIGNED_MEM_ACCESS(64)
 MAKE_SIGNED_MEM_ACCESS(128)
 
 // Read a value directly.
-ALWAYS_INLINE static bool _Read(Memory *, bool val) {
+ALWAYS_INLINE static
+bool _Read(Memory *, bool val) {
   return val;
 }
 
 // Read a value directly.
-ALWAYS_INLINE static uint8_t _Read(Memory *, uint8_t val) {
+ALWAYS_INLINE static
+uint8_t _Read(Memory *, uint8_t val) {
   return val;
 }
 
 // Read a value directly.
-ALWAYS_INLINE static uint16_t _Read(Memory *, uint16_t val) {
+ALWAYS_INLINE static
+uint16_t _Read(Memory *, uint16_t val) {
   return val;
 }
 
 // Read a value directly.
-ALWAYS_INLINE static uint32_t _Read(Memory *, uint32_t val) {
+ALWAYS_INLINE static
+uint32_t _Read(Memory *, uint32_t val) {
   return val;
 }
 
 // Read a value directly.
-ALWAYS_INLINE static uint64_t _Read(Memory *, uint64_t val) {
+ALWAYS_INLINE static
+uint64_t _Read(Memory *, uint64_t val) {
   return val;
 }
 
@@ -153,13 +158,15 @@ MAKE_MWRITE(80, 64, float, float, f80)
 
 #define MAKE_READRV(prefix, size, accessor, base_type) \
     template <typename T> \
-    ALWAYS_INLINE auto _ ## prefix ## ReadV ## size ( \
+    ALWAYS_INLINE static \
+    auto _ ## prefix ## ReadV ## size( \
         Memory *, RVnW<T> vec) -> decltype(T().accessor) { \
       return reinterpret_cast<T *>(vec.val_ref)->accessor.elems; \
     } \
     \
     template <typename T> \
-    ALWAYS_INLINE auto _ ## prefix ## ReadV ## size ( \
+    ALWAYS_INLINE static \
+    auto _ ## prefix ## ReadV ## size( \
         Memory *, RVn<T> vec) -> decltype(T().accessor) { \
       return reinterpret_cast<const T *>(&vec.val)->accessor; \
     }
@@ -181,13 +188,15 @@ MAKE_READRV(F, 64, doubles, float64_t)
 
 #define MAKE_READV(prefix, size, accessor) \
     template <typename T> \
-    ALWAYS_INLINE auto _ ## prefix ## ReadV ## size ( \
+    ALWAYS_INLINE static \
+    auto _ ## prefix ## ReadV ## size( \
         Memory *, VnW<T> vec) -> decltype(T().accessor) { \
       return reinterpret_cast<T *>(vec.val_ref)->accessor; \
     } \
     \
     template <typename T> \
-    ALWAYS_INLINE auto _ ## prefix ## ReadV ## size ( \
+    ALWAYS_INLINE static \
+    auto _ ## prefix ## ReadV ## size( \
         Memory *, Vn<T> vec) -> decltype(T().accessor) { \
       return reinterpret_cast<const T *>(vec.val)->accessor; \
     }
@@ -211,7 +220,8 @@ MAKE_READV(F, 64, doubles)
 
 #define MAKE_MREADV(prefix, size, vec_accessor, mem_accessor) \
     template <typename T> \
-    ALWAYS_INLINE auto _ ## prefix ## ReadV ## size( \
+    ALWAYS_INLINE static \
+    auto _ ## prefix ## ReadV ## size( \
         Memory *memory, MVn<T> mem) -> decltype(T().vec_accessor) { \
       decltype(T().vec_accessor) vec; \
       _Pragma("unroll") \
@@ -223,7 +233,8 @@ MAKE_READV(F, 64, doubles)
     } \
     \
     template <typename T> \
-    ALWAYS_INLINE auto _ ## prefix ## ReadV ## size( \
+    ALWAYS_INLINE static \
+    auto _ ## prefix ## ReadV ## size( \
         Memory *memory, MVnW<T> mem) -> decltype(T().vec_accessor) { \
       decltype(T().vec_accessor) vec; \
       _Pragma("unroll") \
@@ -253,7 +264,8 @@ MAKE_MREADV(F, 64, doubles, f64)
 
 #define MAKE_WRITEV(prefix, size, accessor, kind, base_type) \
     template <typename T> \
-    ALWAYS_INLINE Memory *_ ## prefix ## WriteV ## size( \
+    ALWAYS_INLINE static \
+    Memory *_ ## prefix ## WriteV ## size( \
         Memory *memory, kind<T> vec, base_type val) { \
       auto &sub_vec = reinterpret_cast<T *>(vec.val_ref)->accessor; \
       sub_vec.elems[0] = val; \
@@ -265,7 +277,8 @@ MAKE_MREADV(F, 64, doubles, f64)
     } \
     \
     template <typename T, typename V> \
-    ALWAYS_INLINE Memory *_ ## prefix ## WriteV ## size( \
+    ALWAYS_INLINE static \
+    Memory *_ ## prefix ## WriteV ## size( \
         Memory *memory, kind<T> vec, const V &val) { \
       static_assert(sizeof(T) >= sizeof(V), \
                     "Object to WriteV is too big."); \
@@ -317,7 +330,8 @@ MAKE_WRITEV(F, 64, doubles, RVnW, float64_t)
 
 #define MAKE_MWRITEV(prefix, size, vec_accessor, mem_accessor, base_type) \
     template <typename T> \
-    ALWAYS_INLINE Memory *_ ## prefix ## WriteV ## size( \
+    ALWAYS_INLINE static \
+    Memory *_ ## prefix ## WriteV ## size( \
         Memory *memory, MVnW<T> mem, base_type val) { \
       T vec{}; \
       vec.vec_accessor.elems[0] = val; \
@@ -332,7 +346,8 @@ MAKE_WRITEV(F, 64, doubles, RVnW, float64_t)
     } \
     \
     template <typename T, typename V> \
-    ALWAYS_INLINE Memory *_ ## prefix ## WriteV ## size( \
+    ALWAYS_INLINE static \
+    Memory *_ ## prefix ## WriteV ## size( \
         Memory *memory, MVnW<T> mem, const V &val) { \
       static_assert(sizeof(T) == sizeof(V), \
                     "Invalid value size for MVnW."); \
@@ -368,7 +383,8 @@ MAKE_MWRITEV(F, 64, doubles, f64, float64_t)
 #undef MAKE_MWRITEV
 
 #define MAKE_WRITE_REF(type) \
-    ALWAYS_INLINE static Memory *_Write(Memory *memory, type &ref, type val) { \
+    ALWAYS_INLINE static \
+    Memory *_Write(Memory *memory, type &ref, type val) { \
       ref = val; \
       return memory; \
     }
@@ -435,7 +451,8 @@ ALWAYS_INLINE static T Maximize(T) {
 
 // Return the smallest possible value assignable to `val`.
 template <typename T>
-ALWAYS_INLINE static T Minimize(T) {
+ALWAYS_INLINE static
+T Minimize(T) {
   return std::numeric_limits<T>::min();
 }
 
@@ -630,19 +647,22 @@ auto TruncTo(T val) -> typename IntegerType<DT>::BT {
 
 // Unary operator.
 #define MAKE_UOP(name, type, widen_type, op) \
-    ALWAYS_INLINE type name(type R) { \
+    ALWAYS_INLINE static \
+    type name(type R) { \
       return static_cast<type>(op static_cast<widen_type>(R)); \
     }
 
 // Binary operator.
 #define MAKE_BINOP(name, type, widen_type, op) \
-    ALWAYS_INLINE type name(type L, type R) { \
+    ALWAYS_INLINE static \
+    type name(type L, type R) { \
       return static_cast<type>( \
         static_cast<widen_type>(L) op static_cast<widen_type>(R)); \
     }
 
 #define MAKE_BOOLBINOP(name, type, widen_type, op) \
-    ALWAYS_INLINE bool name(type L, type R) { \
+    ALWAYS_INLINE static \
+    bool name(type L, type R) { \
       return L op R; \
     }
 
@@ -689,23 +709,28 @@ MAKE_OPS(CmpGte, >=, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
 #undef MAKE_BINOP
 #undef MAKE_OPS
 
-ALWAYS_INLINE static bool BAnd(bool a, bool b) {
+ALWAYS_INLINE static
+bool BAnd(bool a, bool b) {
   return a && b;
 }
 
-ALWAYS_INLINE static bool BOr(bool a, bool b) {
+ALWAYS_INLINE static
+bool BOr(bool a, bool b) {
   return a || b;
 }
 
-ALWAYS_INLINE static bool BXor(bool a, bool b) {
+ALWAYS_INLINE static
+bool BXor(bool a, bool b) {
   return a != b;
 }
 
-ALWAYS_INLINE static bool BXnor(bool a, bool b) {
+ALWAYS_INLINE static
+bool BXnor(bool a, bool b) {
   return a == b;
 }
 
-ALWAYS_INLINE static bool BNot(bool a) {
+ALWAYS_INLINE static
+bool BNot(bool a) {
   return !a;
 }
 
@@ -790,6 +815,7 @@ MAKE_BROADCASTS(Xor, MAKE_ACCUMULATE, MAKE_NOP)
 #undef MAKE_NOP
 
 template <typename T>
+ALWAYS_INLINE static
 auto NthVectorElem(const T &vec, size_t n) -> typename VectorType<T>::BaseType {
   return vec[n];
 }
@@ -797,7 +823,8 @@ auto NthVectorElem(const T &vec, size_t n) -> typename VectorType<T>::BaseType {
 // Access the Nth element of an aggregate vector.
 #define MAKE_EXTRACTV(size, base_type, accessor, out, prefix) \
     template <typename T> \
-    ALWAYS_INLINE base_type prefix ## ExtractV ## size( \
+    ALWAYS_INLINE static \
+    base_type prefix ## ExtractV ## size( \
         const T &vec, size_t n) { \
       static_assert( \
           sizeof(base_type) == sizeof(typename VectorType<T>::BT), \
@@ -823,6 +850,7 @@ MAKE_EXTRACTV(64, float64_t, doubles, Identity, F)
 // Access the Nth element of an aggregate vector.
 #define MAKE_INSERTV(prefix, size, base_type, accessor) \
     template <typename T> \
+    ALWAYS_INLINE static \
     T prefix ## InsertV ## size(T vec, size_t n, base_type val) { \
       static_assert( \
           sizeof(base_type) == sizeof(typename VectorType<T>::BT), \
@@ -849,7 +877,8 @@ MAKE_INSERTV(F, 64, float64_t, doubles)
 #undef MAKE_INSERTV
 
 template <typename U, typename T>
-ALWAYS_INLINE constexpr T _ZeroVec(void) {
+ALWAYS_INLINE static constexpr
+T _ZeroVec(void) {
   static_assert(std::is_same<U, typename VectorType<T>::BT>::value,
                 "Vector type and base don't match.");
   return {};
@@ -951,7 +980,8 @@ MAKE_PRED(Immediate, In, true)
 
 #undef MAKE_PRED
 #define MAKE_PRED(name, T, val) \
-    ALWAYS_INLINE static constexpr bool Is ## name(T) { \
+    ALWAYS_INLINE static constexpr \
+    bool Is ## name(T) { \
       return val; \
     }
 
@@ -968,12 +998,14 @@ MAKE_PRED(Immediate, uint64_t, true)
 #undef MAKE_PRED
 
 template <typename T>
-ALWAYS_INLINE static Mn<T> GetElementPtr(Mn<T> addr, T index) {
+ALWAYS_INLINE static
+Mn<T> GetElementPtr(Mn<T> addr, T index) {
   return {addr.addr + (index * static_cast<addr_t>(ByteSizeOf(addr)))};
 }
 
 template <typename T>
-ALWAYS_INLINE static MnW<T> GetElementPtr(MnW<T> addr, T index) {
+ALWAYS_INLINE static
+MnW<T> GetElementPtr(MnW<T> addr, T index) {
   return {addr.addr + (index * static_cast<addr_t>(ByteSizeOf(addr)))};
 }
 
@@ -1002,17 +1034,20 @@ auto WritePtr(addr_t addr, addr_t seg) -> MnW<typename BaseType<T>::BT> {
 }
 
 template <typename T>
-ALWAYS_INLINE static addr_t AddressOf(Mn<T> addr) {
+ALWAYS_INLINE static
+addr_t AddressOf(Mn<T> addr) {
   return addr.addr;
 }
 
 template <typename T>
-ALWAYS_INLINE static addr_t AddressOf(MnW<T> addr) {
+ALWAYS_INLINE static
+addr_t AddressOf(MnW<T> addr) {
   return addr.addr;
 }
 
 template <typename T>
-ALWAYS_INLINE static T Select(bool cond, T if_true, T if_false) {
+ALWAYS_INLINE static
+T Select(bool cond, T if_true, T if_false) {
   return cond ? if_true : if_false;
 }
 
