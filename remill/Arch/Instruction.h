@@ -79,8 +79,7 @@ class Instruction {
   // Name of semantics function that implements this instruction.
   std::string function;
 
-  // The disassembly of this instruction. Only filled out if the
-  // `NDEBUG` macro is not defined.
+  // The disassembly of this instruction.
   std::string disassembly;
 
   // Program counter for this instruction and the next instruction.
@@ -123,7 +122,7 @@ class Instruction {
 
   std::vector<Operand> operands;
 
-  std::string Debug(void) const;
+  std::string Serialize(void) const;
 
  private:
   friend class X86Arch;

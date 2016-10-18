@@ -23,6 +23,11 @@ static const xed_state_t kXEDState64 = {
     XED_MACHINE_MODE_LONG_64,
     XED_ADDRESS_WIDTH_64b};
 
+static bool Is64Bit(ArchName arch_name) {
+  return kArchAMD64 == arch_name || kArchAMD64_AVX == arch_name ||
+         kArchAMD64_AVX == arch_name;
+}
+
 static bool IsFunctionReturn(const xed_decoded_inst_t *xedd) {
   auto iclass = xed_decoded_inst_get_iclass(xedd);
   return XED_ICLASS_RET_NEAR == iclass || XED_ICLASS_RET_FAR == iclass;
@@ -225,62 +230,32 @@ static void DecodeXED(xed_decoded_inst_t *xedd,
       << ") doesn't match input instruction size (" << num_bytes << ").";
 }
 
-// Returns true if this instruction is part of the SSE instruction
-// set extensions.
-static bool IsSSE(const xed_decoded_inst_t *xedd) {
-  switch (xed_decoded_inst_get_extension(xedd)) {
-    case XED_EXTENSION_SSE:
-    case XED_EXTENSION_SSE2:
-    case XED_EXTENSION_SSE3:
-    case XED_EXTENSION_SSE4:
-    case XED_EXTENSION_SSE4A:
-    case XED_EXTENSION_SSSE3:
-      return true;
-    default:
-      return false;
-  }
-}
-
-// Variable name for a read register. This needs to correspond to something
-// in the X86-runtime implementation of `__remill_basic_block`.
-static std::string ReadRegName(xed_reg_enum_t reg) {
-  if (XED_REG_INVALID == reg) {
-    return "";
-  } else {
-    return std::string(xed_reg_enum_t2str(reg)) + "_read";
-  }
-}
-
-// Variable name for a write register. This needs to correspond to something
-// in the X86-runtime implementation of `__remill_basic_block`.
-static std::string WriteRegName(xed_reg_enum_t reg) {
-  if (XED_REG_INVALID == reg) {
-    return "";
-  } else {
-    return std::string(xed_reg_enum_t2str(reg)) + "_write";
-  }
-}
+//// Returns true if this instruction is part of the SSE instruction
+//// set extensions.
+//static bool IsSSE(const xed_decoded_inst_t *xedd) {
+//  switch (xed_decoded_inst_get_extension(xedd)) {
+//    case XED_EXTENSION_SSE:
+//    case XED_EXTENSION_SSE2:
+//    case XED_EXTENSION_SSE3:
+//    case XED_EXTENSION_SSE4:
+//    case XED_EXTENSION_SSE4A:
+//    case XED_EXTENSION_SSSE3:
+//      return true;
+//    default:
+//      return false;
+//  }
+//}
 
 // Variable operand for a read register.
-static Operand::Register ReadReg(xed_reg_enum_t reg) {
+static Operand::Register RegOp(xed_reg_enum_t reg) {
   Operand::Register reg_op;
-  reg_op.name = ReadRegName(reg);
-  if (XED_REG_X87_FIRST <= reg && XED_REG_X87_LAST >= reg) {
-    reg_op.size = 64;
-  } else {
-    reg_op.size = xed_get_register_width_bits64(reg);
-  }
-  return reg_op;
-}
-
-// Variable operand for a write register.
-static Operand::Register WriteReg(xed_reg_enum_t reg) {
-  Operand::Register reg_op;
-  reg_op.name = WriteRegName(reg);
-  if (XED_REG_X87_FIRST <= reg && XED_REG_X87_LAST >= reg) {
-    reg_op.size = 64;
-  } else {
-    reg_op.size = xed_get_register_width_bits64(reg);
+  if (XED_REG_INVALID != reg) {
+    reg_op.name = xed_reg_enum_t2str(reg);
+    if (XED_REG_X87_FIRST <= reg && XED_REG_X87_LAST >= reg) {
+      reg_op.size = 64;
+    } else {
+      reg_op.size = xed_get_register_width_bits64(reg);
+    }
   }
   return reg_op;
 }
@@ -309,7 +284,7 @@ static void DecodeMemory(Instruction *instr,
   // Address is in the displacement. Take the absolute address and turn it
   // into a PC-relative address.
   } else if (XED_REG_INVALID == base && XED_REG_INVALID == index) {
-    base = kArchAMD64 == instr->arch_name ? XED_REG_RIP : XED_REG_EIP;
+    base = Is64Bit(instr->arch_name) ? XED_REG_RIP : XED_REG_EIP;
     disp -= static_cast<int64_t>(instr->next_pc);
     base_wide = XED_REG_RIP;
   }
@@ -323,8 +298,7 @@ static void DecodeMemory(Instruction *instr,
   }
 
   // On AMD64, only the `FS` and `GS` segments are non-zero.
-  if (kArchAMD64 == instr->arch_name &&
-      XED_REG_FS != segment &&
+  if (Is64Bit(instr->arch_name) && XED_REG_FS != segment &&
       XED_REG_GS != segment) {
     segment = XED_REG_INVALID;
 
@@ -347,9 +321,9 @@ static void DecodeMemory(Instruction *instr,
   op.addr.address_size = xed_decoded_inst_get_memop_address_width(
       xedd, mem_index);
 
-  op.addr.segment_reg = ReadReg(segment);
-  op.addr.base_reg = ReadReg(base);
-  op.addr.index_reg = ReadReg(index);
+  op.addr.segment_reg = RegOp(segment);
+  op.addr.base_reg = RegOp(base);
+  op.addr.index_reg = RegOp(index);
   op.addr.scale = static_cast<int64_t>(scale);
   op.addr.displacement = disp;
 
@@ -417,6 +391,8 @@ static void DecodeRegister(Instruction *instr,
                            const xed_operand_t *xedo,
                            xed_operand_enum_t op_name) {
   auto reg = xed_decoded_inst_get_reg(xedd, op_name);
+  CHECK(XED_REG_INVALID != reg)
+      << "Cannot get name of invalid register.";
 
   Operand op;
   op.type = Operand::kTypeRegister;
@@ -431,28 +407,29 @@ static void DecodeRegister(Instruction *instr,
   if (xed_operand_written(xedo)) {
 
     op.action = Operand::kActionWrite;
-    op.reg = WriteReg(reg);
-
-    // XMM registers have different behavior when using SSE vs. using AVX. SSE
-    // instructions operating on XMM registers on a machine with AVX will not
-    // cause zeroing of the high bits of the YMM/ZMM registers. If AVX-specific
-    // versions of the same instructions (usually prefixed with a `V`) are used
-    // then writing to an XMM register will kill the high bits of a YMM/ZMM
-    // register, thus breaking data dependencies (sort of like how writing to
-    // a 32-bit register on a 64-bit system zeroes the high bits).
-    if (XED_REG_CLASS_XMM == xed_reg_class(reg) && IsSSE(xedd)) {
-      op.reg.name += "_legacy";
-    }
+    op.reg = RegOp(reg);
 
     // Note:  In `BasicBlock.cpp`, we alias things like `EAX_write` into
     //        `RAX_write` on 64-bit builds, so we just want to notify that
     //        the operand size is 64 bits, but the register's width itself
     //        is still 32.
-    if (XED_REG_GPR32_FIRST <= reg && XED_REG_GPR32_LAST > reg) {
-      if (kArchAMD64 == instr->arch_name) {
+    if (Is64Bit(instr->arch_name)) {
+      if (XED_REG_GPR32_FIRST <= reg && XED_REG_GPR32_LAST > reg) {
         op.reg.name[0] = 'R';  // Convert things like `EAX` into `RAX`.
         op.size = 64;
         op.reg.size = 64;
+
+      } else if (XED_REG_XMM_FIRST <= reg && XED_REG_ZMM_LAST >= reg) {
+        if (kArchAMD64_AVX512 == instr->arch_name) {
+          op.reg.name[0] = 'Z';  // Convert things like `XMM` into `ZMM`.
+          op.reg.size = 512;
+          op.size = 512;
+
+        } else if (kArchAMD64_AVX == instr->arch_name) {
+          op.reg.name[0] = 'Y';  // Convert things like `XMM` into `YMM`.
+          op.reg.size = 256;
+          op.size = 256;
+        }
       }
     }
 
@@ -462,7 +439,7 @@ static void DecodeRegister(Instruction *instr,
   if (xed_operand_read(xedo)) {
     op.action = Operand::kActionRead;
     op.size = xed_get_register_width_bits64(reg);
-    op.reg = ReadReg(reg);
+    op.reg = RegOp(reg);
     instr->operands.push_back(op);
   }
 }
@@ -481,7 +458,7 @@ static void DecodeConditionalInterrupt(Instruction *instr) {
 // Decode a relative branch target.
 static void DecodeConditionalBranch(Instruction *instr,
                                     const xed_decoded_inst_t *xedd) {
-  auto pc_reg = kArchAMD64 == instr->arch_name ? XED_REG_RIP : XED_REG_EIP;
+  auto pc_reg = Is64Bit(instr->arch_name) ? XED_REG_RIP : XED_REG_EIP;
   auto pc_width = xed_get_register_width_bits64(pc_reg);
   auto disp = static_cast<int64_t>(
       xed_decoded_inst_get_branch_displacement(xedd));
@@ -523,7 +500,7 @@ static void DecodeConditionalBranch(Instruction *instr,
 // Decode a relative branch target.
 static void DecodeRelativeBranch(Instruction *instr,
                                  const xed_decoded_inst_t *xedd) {
-  auto pc_reg = kArchAMD64 == instr->arch_name ? XED_REG_RIP : XED_REG_EIP;
+  auto pc_reg = Is64Bit(instr->arch_name) ? XED_REG_RIP : XED_REG_EIP;
   auto pc_width = xed_get_register_width_bits64(pc_reg);
   auto disp = static_cast<int64_t>(
       xed_decoded_inst_get_branch_displacement(xedd));
@@ -714,8 +691,6 @@ Instruction *X86Arch::DecodeInstruction(
     }
   }
 
-#ifndef NDEBUG
-
   char buffer[256] = {'\0'};
   xed_print_info_t info;
   info.blen = 256;
@@ -729,8 +704,6 @@ Instruction *X86Arch::DecodeInstruction(
   if (xed_format_generic(&info)) {
     instr->disassembly.assign(&(buffer[0]));
   }
-
-#endif  // NDEBUG
 
   return instr;
 }

@@ -145,7 +145,33 @@ TEST_END_64
 
 #endif  // APPLE_SAFE_TESTS
 
-TEST_BEGIN_64(MOVQv64r64, 1)
+TEST_BEGIN_64(MOVWmm64r64, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0xFF,
+    0xFFFF,
+    0xFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF)
+    movq mm0, ARG1_64
+TEST_END_64
+
+#if APPLE_SAFE_TESTS
+
+TEST_BEGIN_64(MOVQmm64m64, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0xFF,
+    0xFFFF,
+    0xFFFFFFFF,
+    0xFFFFFFFFFFFFFFFF)
+
+    push ARG1_64
+    movq mm0, QWORD PTR [rsp]
+TEST_END_64
+
+TEST_BEGIN_64(MOVQm64mm64, 1)
 TEST_INPUTS(
     0,
     1,
@@ -155,16 +181,7 @@ TEST_INPUTS(
     0xFFFFFFFFFFFFFFFF)
 
     movq mm0, ARG1_64
+    movq [rsp - 16], mm0
 TEST_END_64
 
-TEST_BEGIN_64(MOVQv64v64, 1)
-TEST_INPUTS(
-    0,
-    1,
-    0xFF,
-    0xFFFF,
-    0xFFFFFFFF,
-    0xFFFFFFFFFFFFFFFF)
-    movq mm5, ARG1_64
-    movq mm0, mm5
-TEST_END_64
+#endif  // APPLE_SAFE_TESTS

@@ -86,7 +86,9 @@ TEST_FUNC(instr_name, num_args): ; \
     .cfi_endproc ; \
     .section "__x86_test_table", "a" ; \
     .quad 0 ; \
-    .text ;
+    .text ; \
+    ud2 ;
+
 #else
 # define TEST_END \
     6: \
@@ -94,7 +96,8 @@ TEST_FUNC(instr_name, num_args): ; \
     .cfi_endproc ; \
     .section "__x86_test_table", "a" ; \
     .quad 0 ; \
-    .text ;
+    .text ; \
+    ud2 ;
 #endif
 
 #define CF | (1 << 0)
@@ -372,6 +375,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/CONVERT/CQO.S"
 #include "tests/X86/CONVERT/CVTDQ2PD.S"
 #include "tests/X86/CONVERT/CVTPI2PD.S"
+#include "tests/X86/CONVERT/CVTPI2PS.S"
 #include "tests/X86/CONVERT/CVTTPD2DQ.S"
 #include "tests/X86/CONVERT/CVTTPS2DQ.S"
 #include "tests/X86/CONVERT/CVTTSS2SI.S"

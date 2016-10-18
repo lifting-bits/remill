@@ -47,17 +47,6 @@
 #define IF_AVX512_ELSE(a, b) b
 #endif
 
-#if HAS_FEATURE_AVX && HAS_FEATURE_AVX512
-#define AVX_SEL_XYZ(tail) Z ## tail
-#define AVX_SEL_xyz(tail) z ## tail
-#elif HAS_FEATURE_AVX
-#define AVX_SEL_XYZ(tail) Y ## tail
-#define AVX_SEL_xyz(tail) y ## tail
-#else
-#define AVX_SEL_XYZ(tail) X ## tail
-#define AVX_SEL_xyz(tail) x ## tail
-#endif
-
 union FPUStatusWord final {
   uint16_t flat;
   struct {
@@ -241,7 +230,7 @@ union alignas(8) Flags final {
     uint32_t pf:1;
     uint32_t must_be_0a:1;
 
-    uint32_t af:1; // bit 4.
+    uint32_t af:1;  // bit 4.
     uint32_t must_be_0b:1;
     uint32_t zf:1;
     uint32_t sf:1;
@@ -251,16 +240,16 @@ union alignas(8) Flags final {
     uint32_t df:1;
     uint32_t of:1;
 
-    uint32_t iopl:2; // A 2-bit field, bits 12-13.
+    uint32_t iopl:2;  // A 2-bit field, bits 12-13.
     uint32_t nt:1;
     uint32_t must_be_0c:1;
 
-    uint32_t rf:1; // bit 16.
+    uint32_t rf:1;  // bit 16.
     uint32_t vm:1;
     uint32_t ac:1;  // Alignment check.
     uint32_t vif:1;
 
-    uint32_t vip:1; // bit 20.
+    uint32_t vip:1;  // bit 20.
     uint32_t id:1;   // bit 21.
     uint32_t reserved_eflags:10;  // bits 22-31.
     uint32_t reserved_rflags;  // bits 32-63.
@@ -311,7 +300,7 @@ union Reg final {
     uint8_t low;
     uint8_t high;
   } byte;
-  alignas(2) uint16_t word; 
+  alignas(2) uint16_t word;
   alignas(4) uint32_t dword;
   alignas(sizeof(addr_t)) addr_t aword;
   alignas(8) uint64_t qword;
@@ -444,38 +433,6 @@ struct alignas(64) State final {
 
 //  uint8_t _padding[53];
 } __attribute__((packed));
-
-//static_assert(0 == __builtin_offsetof(State, fpu),
-//              "Invalid packing of `State::fpu`.");
-//
-//static_assert(512 == __builtin_offsetof(State, vec[0]),
-//              "Invalid packing of `State::vec`.");
-//
-//static_assert(2560 == __builtin_offsetof(State, aflag),
-//              "Invalid packing of `State::aflag`.");
-//
-//static_assert(2576 == __builtin_offsetof(State, rflag),
-//              "Invalid packing of `State::rflag`.");
-//
-//static_assert(2584 == __builtin_offsetof(State, seg),
-//              "Invalid packing of `State::seg`.");
-//
-//static_assert(2608 == __builtin_offsetof(State, gpr),
-//              "Invalid packing of `State::seg`.");
-//
-//static_assert(2880 == __builtin_offsetof(State, st),
-//              "Invalid packing of `State::st`.");
-//
-//static_assert(3008 == __builtin_offsetof(State, mmx),
-//              "Invalid packing of `State::mmx`.");
-//
-//static_assert(3140 == __builtin_offsetof(State, interrupt_vector),
-//              "Invalid packing of `State::interrupt_vector`.");
-//
-//static_assert(3146 == __builtin_offsetof(State, interrupt_taken),
-//              "Invalid packing of `State::interrupt_taken`.");
-//
-//static_assert(3200 == sizeof(State), "Invalid packing of `State`.");
 
 #pragma clang diagnostic pop
 
