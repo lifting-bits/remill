@@ -197,7 +197,6 @@ void __remill_detach(State &, Memory *, addr_t) {
 }
 
 void __remill_error(State &, Memory *, addr_t) {
-  std::cerr << "Caught error!" << std::endl;
   siglongjmp(gJmpBuf, 0);
 }
 
@@ -528,7 +527,6 @@ INSTANTIATE_TEST_CASE_P(
 // Recover from a signal.
 static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
   if (gInNativeTest) {
-    std::cerr << "Caught signal " << sig_num << "!" << std::endl;
     memcpy(&gNativeState, &gLiftedState, sizeof(State));
 
     auto context = reinterpret_cast<ucontext_t *>(context_);

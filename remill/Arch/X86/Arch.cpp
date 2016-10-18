@@ -230,22 +230,6 @@ static void DecodeXED(xed_decoded_inst_t *xedd,
       << ") doesn't match input instruction size (" << num_bytes << ").";
 }
 
-//// Returns true if this instruction is part of the SSE instruction
-//// set extensions.
-//static bool IsSSE(const xed_decoded_inst_t *xedd) {
-//  switch (xed_decoded_inst_get_extension(xedd)) {
-//    case XED_EXTENSION_SSE:
-//    case XED_EXTENSION_SSE2:
-//    case XED_EXTENSION_SSE3:
-//    case XED_EXTENSION_SSE4:
-//    case XED_EXTENSION_SSE4A:
-//    case XED_EXTENSION_SSSE3:
-//      return true;
-//    default:
-//      return false;
-//  }
-//}
-
 // Variable operand for a read register.
 static Operand::Register RegOp(xed_reg_enum_t reg) {
   Operand::Register reg_op;
