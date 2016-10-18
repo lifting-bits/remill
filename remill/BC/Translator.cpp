@@ -1145,14 +1145,6 @@ llvm::Value *Translator::LiftRegisterOperand(
     auto arg_size = data_layout.getTypeAllocSizeInBits(arg_type);
     auto word_size = data_layout.getTypeAllocSizeInBits(word_type);
 
-    CHECK(val_size <= arg_size)
-        << "Size of " << arch_reg.name << " (" << val_size
-        << " bits) is too big; expected a " << arg_size << "-bit value.";
-
-    CHECK(val_size == arch_reg.size)
-        << "Expected " << arch_reg.name << " to be " << arch_reg.size
-        << " bits but block function defines it as " << val_size << " bits.";
-
     if (val_size < arg_size) {
       if (arg_type->isIntegerTy()) {
         CHECK(val_type->isIntegerTy())
@@ -1169,6 +1161,24 @@ llvm::Value *Translator::LiftRegisterOperand(
             << "Expected " << arch_reg.name << " to be a floating point type.";
 
         val = new llvm::FPExtInst(val, arg_type, "", block);
+      }
+
+    } else if (val_size > arg_size) {
+      if (arg_type->isIntegerTy()) {
+        CHECK(val_type->isIntegerTy())
+            << "Expected " << arch_reg.name << " to be an integral type.";
+
+        CHECK(word_size == arg_size)
+            << "Expected integer argument to be machine word size ("
+            << word_size << " bits) but is is " << arg_size << " instead.";
+
+        val = new llvm::TruncInst(val, arg_type, "", block);
+
+      } else if (arg_type->isFloatingPointTy()) {
+        CHECK(val_type->isFloatingPointTy())
+            << "Expected " << arch_reg.name << " to be a floating point type.";
+
+        val = new llvm::FPTruncInst(val, arg_type, "", block);
       }
     }
 

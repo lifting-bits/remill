@@ -86,7 +86,9 @@ TEST_FUNC(instr_name, num_args): ; \
     .cfi_endproc ; \
     .section "__x86_test_table", "a" ; \
     .quad 0 ; \
-    .text ;
+    .text ; \
+    ud2 ;
+
 #else
 # define TEST_END \
     6: \
@@ -94,7 +96,8 @@ TEST_FUNC(instr_name, num_args): ; \
     .cfi_endproc ; \
     .section "__x86_test_table", "a" ; \
     .quad 0 ; \
-    .text ;
+    .text ; \
+    ud2 ;
 #endif
 
 #define CF | (1 << 0)

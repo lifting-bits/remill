@@ -156,6 +156,8 @@ TEST_INPUTS(
     movq mm0, ARG1_64
 TEST_END_64
 
+#if APPLE_SAFE_TESTS
+
 TEST_BEGIN_64(MOVQmm64m64, 1)
 TEST_INPUTS(
     0,
@@ -181,3 +183,5 @@ TEST_INPUTS(
     movq mm0, ARG1_64
     movq [rsp - 16], mm0
 TEST_END_64
+
+#endif  // APPLE_SAFE_TESTS
