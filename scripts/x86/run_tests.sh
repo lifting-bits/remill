@@ -7,7 +7,7 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
     HAS_AVX=`cat /proc/cpuinfo | grep -o 'avx ' | wc -w`
 
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-	HAS_AVX=`sysctl -n machdep.cpu.features | grep -o 'AVX ' | wc -w`
+    HAS_AVX=`sysctl -n machdep.cpu.features | grep -o 'AVX ' | wc -w`
 
 else
     printf "${RED}Unsupported platform: ${OSTYPE}${RESET}\n"
@@ -16,12 +16,12 @@ fi
 
 EXIT_CODE=0
 
-$DIR/generated/Arch/X86/Tests/x86 || { EXIT_CODE=1 ; }
-$DIR/generated/Arch/X86/Tests/amd64 || { EXIT_CODE=1 ; }
+$DIR/generated/Arch/X86/Tests/x86 --minloglevel 1 || { EXIT_CODE=1 ; }
+$DIR/generated/Arch/X86/Tests/amd64 --minloglevel 1 || { EXIT_CODE=1 ; }
 
 if [[ 0 -lt $HAS_AVX ]] ; then
-	$DIR/generated/Arch/X86/Tests/x86_avx || { EXIT_CODE=1 ; }
-	$DIR/generated/Arch/X86/Tests/amd64_avx || { EXIT_CODE=1 ; }
+    $DIR/generated/Arch/X86/Tests/x86_avx --minloglevel 1 || { EXIT_CODE=1 ; }
+    $DIR/generated/Arch/X86/Tests/amd64_avx --minloglevel 1 || { EXIT_CODE=1 ; }
 fi
 
 exit $EXIT_CODE

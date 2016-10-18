@@ -178,7 +178,7 @@ DEF_SEM(PADDSB, D dst, S1 src1, S2 src2) {
     auto sum = SAdd(SExt(v1), SExt(v2));
     auto upper_limit = Select(SCmpLt(sum, max), sum, max);
     auto lower_limit = Select(SCmpGte(sum, min), sum, min);
-    sum = Select(SCmpLt(sum, decltype(sum)(0)), lower_limit, upper_limit);  
+    sum = Select(SCmpLt(sum, decltype(sum)(0)), lower_limit, upper_limit);
     dst_vec = SInsertV8(dst_vec, index, Trunc(sum));
   }
   SWriteV8(dst, dst_vec);
@@ -205,7 +205,6 @@ DEF_SEM(PADDSW, D dst, S1 src1, S2 src2) {
   }
   SWriteV16(dst, dst_vec);
 }
-
 }  // namespace
 
 DEF_ISEL(PADDSB_MMXq_MMXq) = PADDSB<V64W, V64, V64>;
@@ -261,8 +260,7 @@ DEF_SEM(PHADDD, D dst, S1 src1, S2 src2) {
   for(size_t index = 0; index < NumVectorElems(rhs_vec); index += 2) {
     auto v1 = SExtractV32(rhs_vec, index);
     auto v2 = SExtractV32(rhs_vec, index+1);
-    auto i = UAdd(index, vec_count);
-    i = UDiv(i, 2);  // TODO(akshay): Why not `auto i = UDiv(UAdd(...), 2);`?
+    auto i = UDiv(UAdd(index, vec_count), 2);
     dst_vec = SInsertV32(dst_vec, i, SAdd(v1, v2));
   }
   SWriteV32(dst, dst_vec);
@@ -355,10 +353,11 @@ DEF_SEM(PSUBUSB, D dst, S1 src1, S2 src2) {
 
   _Pragma("unroll")
   for(size_t i = 0; i < NumVectorElems(dst_vec); i++){
-    auto src1_elem = UExtractV8(lhs_vec, i);
-    auto src2_elem = UExtractV8(rhs_vec, i);
+    auto v1 = UExtractV8(lhs_vec, i);
+    auto v2 = UExtractV8(rhs_vec, i);
+    auto sub = USub(v1, v2);
     // TODO(akshay): Break up this line into smaller parts.
-    auto sub_val = Select(UCmpGt(src1_elem, src2_elem), USub(src1_elem, src2_elem), Minimize(src1_elem));
+    auto sub_val = Select(UCmpGt(v1, v2), sub, Minimize(v1));
     dst_vec = UInsertV8(dst_vec, i, sub_val);
   }
   UWriteV8(dst, dst_vec);
@@ -372,10 +371,11 @@ DEF_SEM(PSUBUSW, D dst, S1 src1, S2 src2) {
 
   _Pragma("unroll")
   for(size_t i = 0; i < NumVectorElems(dst_vec); i++){
-    auto src1_elem = UExtractV16(lhs_vec, i);
-    auto src2_elem = UExtractV16(rhs_vec, i);
+    auto v1 = UExtractV16(lhs_vec, i);
+    auto v2 = UExtractV16(rhs_vec, i);
+    auto sub = USub(v1, v2);
     // TODO(akshay): Break up this line into smaller parts.
-    auto sub_val = Select(UCmpGt(src1_elem, src2_elem), USub(src1_elem, src2_elem), Minimize(src1_elem));
+    auto sub_val = Select(UCmpGt(v1, v2), sub, Minimize(v1));
     dst_vec = UInsertV16(dst_vec, i, sub_val);
   }
   UWriteV16(dst, dst_vec);
@@ -420,10 +420,12 @@ DEF_SEM(PAVGW, D dst, S1 src1, S2 src2) {
   auto vec_count = NumVectorElems(lhs_vec);
   _Pragma("unroll")
   for(size_t i = 0; i < vec_count; i++){
+    auto v1 = ZExt(UExtractV16(lhs_vec, i));
+    auto v2 = ZExt(UExtractV16(rhs_vec, i));
     // TODO(akshay): Break up this line into smaller parts.
-    auto sum_elem = UAdd(UInt32(UExtractV16(lhs_vec, i)), UInt32(UExtractV16(rhs_vec, i))) ;
+    auto sum_elem = UAdd(v1, v2);
     auto sum = UAdd(sum_elem, decltype(sum_elem)(1));
-    dst_vec = UInsertV16(dst_vec, i, UInt16(UShr(sum, decltype(sum)(1))));
+    dst_vec = UInsertV16(dst_vec, i, Trunc(UShr(sum, decltype(sum)(1))));
   }
   UWriteV16(dst, dst_vec);
 }
@@ -446,14 +448,20 @@ DEF_SEM(PHSUBW, D dst, S1 src1, S2 src2) {
   auto vec_count = NumVectorElems(lhs_vec);
   _Pragma("unroll")
   for(size_t i = 0; i < vec_count; i = i+2) {
+    auto v1 = SExtractV16(lhs_vec, i);
+    auto v2 = SExtractV16(lhs_vec, i+1);
+    auto index = UDiv(i, 2);
     // TODO(akshay): Break up this line into smaller parts.
     // TODO(akshay): Use one of UDiv or SDiv instead of `/`.
     // TODO(akshay): Use one of UAdd or SAdd instead of `+`.
-    dst_vec = SInsertV16(dst_vec, i/2, SSub(SExtractV16(lhs_vec, i), SExtractV16(lhs_vec, i+1)));
+    dst_vec = SInsertV16(dst_vec, index, SSub(v1, v2));
   }
   _Pragma("unroll")
   for(size_t i = 0; i < NumVectorElems(rhs_vec); i = i+2) {
-    dst_vec = SInsertV16(dst_vec, (i+vec_count)/2, SSub(SExtractV16(rhs_vec, i), SExtractV16(rhs_vec, i+1)));
+    auto v1 = SExtractV16(rhs_vec, i);
+    auto v2 = SExtractV16(rhs_vec, i+1);
+    auto index = UDiv(UAdd(i, vec_count), 2);
+    dst_vec = SInsertV16(dst_vec, index, SSub(v1, v2));
   }
   SWriteV16(dst, dst_vec);
 }
@@ -709,26 +717,37 @@ namespace {
 // Soln : Sign extension and compare
 template <typename D, typename S1, typename S2>
 DEF_SEM(PACKSSWB, D dst, S1 src1, S2 src2) {
-  auto src1_vec = SReadV8(src1);
-  auto src2_vec = SReadV8(src2);
+  auto src1_vec = SReadV16(src1);
+  auto src2_vec = SReadV16(src2);
   auto dst_vec = SClearV8(SReadV8(dst));
-
-  (void) src2_vec;  // TODO(akshay): This variable isn't used below.
 
   // Convert signed word to saturated signed byte
   auto vec_count = NumVectorElems(src1_vec);
   _Pragma("unroll")
-  for(size_t i = 0; i < vec_count; i += 2) {
-    auto byte1 = SExtractV8(src1_vec, i);
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = SExtractV16(src1_vec, i);
+    auto v2 = SExtractV8(dst_vec, i);
+    auto value = Select(SCmpGt(v1, SExt(Maximize(v2))), Maximize(v2), Trunc(v1));
+    value = Select(SCmpLt(v1, SExt(Minimize(v2))), Minimize(v2), value);
+    dst_vec = SInsertV8(dst_vec, i, value);
+/*
     auto byte2 = SExtractV8(src1_vec, i+1);
     if (SCmpGt(byte2, decltype(byte2)(0))) {
-      byte1 = Maximize(byte1);
+      byte1 = decltype(byte1)(0x7F);
     }else if (SCmpEq(byte2, decltype(byte2)(0)) && SCmpLt(byte1, decltype(byte1)(0))) {
-      byte1 = Maximize(byte1);
+      byte1 = decltype(byte1)(0x7F);
     } else if (SCmpLt(byte2, decltype(byte2)(-1))){
-      byte1 = Minimize(byte1);
+      byte1 = decltype(byte1)(0x80);
     }
-    dst_vec = SInsertV8(dst_vec, i/2, byte1);
+    dst_vec = SInsertV8(dst_vec, i/2, byte1);*/
+  }
+  _Pragma("unroll")
+  for(size_t i = 0; i < NumVectorElems(src2_vec); i++) {
+    auto v1 = SExtractV16(src2_vec, i);
+    auto v2 = SExtractV8(dst_vec, i);
+    auto value = Select(SCmpGt(v1, SExt(Maximize(v2))), Maximize(v2), Trunc(v1));
+    value = Select(SCmpLt(v1, SExt(Minimize(v2))), Minimize(v2), value);
+    dst_vec = SInsertV8(dst_vec, i+vec_count, value);
   }
   SWriteV8(dst, dst_vec);
 }
@@ -740,12 +759,39 @@ DEF_ISEL(PACKSSWB_MMXq_MEMq) = PACKSSWB<V64W, V64, MV64>;
 namespace {
 template <typename D, typename S1, typename S2>
 DEF_SEM(PACKSSDW, D dst, S1 src1, S2 src2) {
-  auto src1_vec = SReadV16(src1);
-  auto src2_vec = SReadV16(src2);
+  auto src1_vec = SReadV32(src1);
+  auto src2_vec = SReadV32(src2);
   auto dst_vec = SClearV16(SReadV16(dst));
   // Convert signed word to saturated signed byte
   auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = SExtractV32(src1_vec, i);
+    auto v2 = SExtractV16(dst_vec, i);
+    auto value = Select(SCmpGt(v1, SExt(Maximize(v2))), Maximize(v2), Trunc(v1));
+    value = Select(SCmpLt(v1, SExt(Minimize(v2))), Minimize(v2), value);
+    dst_vec = SInsertV16(dst_vec, i, value);
+/*
+    auto byte2 = SExtractV8(src1_vec, i+1);
+    if (SCmpGt(byte2, decltype(byte2)(0))) {
+      byte1 = decltype(byte1)(0x7F);
+    }else if (SCmpEq(byte2, decltype(byte2)(0)) && SCmpLt(byte1, decltype(byte1)(0))) {
+      byte1 = decltype(byte1)(0x7F);
+    } else if (SCmpLt(byte2, decltype(byte2)(-1))){
+      byte1 = decltype(byte1)(0x80);
+    }
+    dst_vec = SInsertV8(dst_vec, i/2, byte1);*/
+  }
+  _Pragma("unroll")
+  for(size_t i = 0; i < NumVectorElems(src2_vec); i++) {
+    auto v1 = SExtractV32(src2_vec, i);
+    auto v2 = SExtractV16(dst_vec, i);
+    auto value = Select(SCmpGt(v1, SExt(Maximize(v2))), Maximize(v2), Trunc(v1));
+    value = Select(SCmpLt(v1, SExt(Minimize(v2))), Minimize(v2), value);
+    dst_vec = SInsertV16(dst_vec, i+vec_count, value);
+  }
 
+#if 0
   _Pragma("unroll")
   for(size_t i = 0; i < NumVectorElems(src2_vec); i += 2) {
     auto byte1 = SExtractV16(src2_vec, i);
@@ -759,6 +805,7 @@ DEF_SEM(PACKSSDW, D dst, S1 src1, S2 src2) {
     }
     dst_vec = SInsertV16(dst_vec, (i+vec_count)/2, byte1);
   }
+#endif
   SWriteV16(dst, dst_vec);
 }
 }  // namespace
@@ -779,6 +826,7 @@ DEF_SEM(PEXTRW, D dst, S1 src1, S2 src2) {
 
 DEF_ISEL(PEXTRW_GPR32_MMXq_IMMb) = PEXTRW<R32W, V64, I8>;
 
+#if 0
 namespace {
 template <typename D, typename S1, typename S2>
 DEF_SEM(PSRAW, D dst, S1 src1, S2 src2) {
@@ -803,7 +851,7 @@ DEF_ISEL(PSRAW_MMXq_MMXq) = PSRAW<V64W, V64, V64>;
 DEF_ISEL(PSRAW_MMXq_MEMq) = PSRAW<V64W, V64, MV64>;
 //DEF_ISEL(PSRAW_MMXq_IMMbq) = PSRAW<V64W, V64, I64>;
 
-#if 0
+
 namespace {
 template <typename D, typename S1, typename S2>
 DEF_SEM(PSRAD, D dst, S1 src1, S2 src2) {
@@ -967,7 +1015,7 @@ DEF_SEM(PCMPGTD, D dst, S1 src1, S2 src2) {
   _Pragma("unroll")
   for(size_t i = 0; i < vec_count; i++) {
     auto v1 = SExtractV32(lhs_vec, i);
-  auto v2 = SExtractV32(rhs_vec, i);
+    auto v2 = SExtractV32(rhs_vec, i);
     auto temp = Select(SCmpGt(v1, v2), Int32(0xFFFFFFFF), Int32(0x00));
     dst_vec = SInsertV32(dst_vec, i, temp);
   }
@@ -985,6 +1033,465 @@ DEF_ISEL(PCMPGTW_MMXq_MEMq) = PCMPGTW<V64W, V64, MV64>;
 DEF_ISEL(PCMPGTD_MMXq_MMXq) = PCMPGTD<V64W, V64, V64>;
 DEF_ISEL(PCMPGTD_MMXq_MEMq) = PCMPGTD<V64W, V64, MV64>;
 
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSRLW, D dst, S1 src1, S2 src2) {
+  auto src1_vec = UReadV16(src1);
+  auto count = Read(src2);
+  auto dst_vec = UClearV16(UReadV16(dst));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = UExtractV16(src1_vec, i);
+    auto temp = Select(UCmpGt(count, static_cast<decltype(count)>(15)), static_cast<decltype(v1)>(0), UShr(v1, static_cast<decltype(v1)>(count)));
+    dst_vec = UInsertV16(dst_vec, i, temp);
+  }
+  UWriteV16(dst, dst_vec);
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSRLD, D dst, S1 src1, S2 src2) {
+  auto src1_vec = UReadV32(src1);
+  auto count = Read(src2);
+  auto dst_vec = UClearV32(UReadV32(dst));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = UExtractV32(src1_vec, i);
+    auto temp = Select(UCmpGt(count, static_cast<decltype(count)>(31)), static_cast<decltype(v1)>(0), UShr(v1, static_cast<decltype(v1)>(count)));
+    dst_vec = UInsertV32(dst_vec, i, temp);
+  }
+  UWriteV32(dst, dst_vec);
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSRLQ, D dst, S1 src1, S2 src2) {
+  auto src1_vec = UReadV64(src1);
+  auto count = Read(src2);
+  auto dst_vec = UClearV64(UReadV64(dst));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = UExtractV64(src1_vec, i);
+    auto temp = Select(UCmpGt(count, static_cast<decltype(count)>(63)), static_cast<decltype(v1)>(0), UShr(v1, static_cast<decltype(v1)>(count)));
+    dst_vec = UInsertV64(dst_vec, i, temp);
+  }
+  UWriteV64(dst, dst_vec);
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSRAW, D dst, S1 src1, S2 src2) {
+  auto src1_vec = SReadV16(src1);
+  auto count = Read(src2);
+  auto dst_vec = SClearV16(SReadV16(dst));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = SExtractV16(src1_vec, i);
+    count = Select(UCmpGt(count, static_cast<decltype(count)>(15)), static_cast<decltype(count)>(16), count);
+    dst_vec = SInsertV16(dst_vec, i, SShr(v1, static_cast<decltype(v1)>(count)));
+  }
+  SWriteV16(dst, dst_vec);
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSRAD, D dst, S1 src1, S2 src2) {
+  auto src1_vec = SReadV32(src1);
+  auto count = Read(src2);
+  auto dst_vec = SClearV32(SReadV32(dst));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = SExtractV32(src1_vec, i);
+    count = Select(UCmpGt(count, static_cast<decltype(count)>(31)), static_cast<decltype(count)>(32), count);
+    dst_vec = SInsertV32(dst_vec, i, SShr(v1, static_cast<decltype(v1)>(count)));
+  }
+  SWriteV32(dst, dst_vec);
+}
+
+} // namespace
+
+DEF_ISEL(PSRLW_MMXq_IMMb) = PSRLW<V64W, V64, I8>;
+DEF_ISEL(PSRLW_MMXq_MMXq) = PSRLW<V64W, V64, R64>;
+DEF_ISEL(PSRLW_MMXq_MEMq) = PSRLW<V64W, V64, M64>;
+
+DEF_ISEL(PSRLD_MMXq_IMMb) = PSRLD<V64W, V64, I8>;
+DEF_ISEL(PSRLD_MMXq_MMXq) = PSRLD<V64W, V64, R64>;
+DEF_ISEL(PSRLD_MMXq_MEMq) = PSRLD<V64W, V64, M64>;
+
+DEF_ISEL(PSRLQ_MMXq_IMMb) = PSRLQ<V64W, V64, I8>;
+DEF_ISEL(PSRLQ_MMXq_MMXq) = PSRLQ<V64W, V64, R64>;
+DEF_ISEL(PSRLQ_MMXq_MEMq) = PSRLQ<V64W, V64, M64>;
+
+DEF_ISEL(PSRAW_MMXq_IMMb) = PSRAW<V64W, V64, I8>;
+DEF_ISEL(PSRAW_MMXq_MMXq) = PSRAW<V64W, V64, R64>;
+DEF_ISEL(PSRAW_MMXq_MEMq) = PSRAW<V64W, V64, M64>;
+
+DEF_ISEL(PSRAD_MMXq_IMMb) = PSRAD<V64W, V64, I8>;
+DEF_ISEL(PSRAD_MMXq_MMXq) = PSRAD<V64W, V64, R64>;
+DEF_ISEL(PSRAD_MMXq_MEMq) = PSRAD<V64W, V64, M64>;
+
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSLLW, D dst, S1 src1, S2 src2) {
+  auto src1_vec = SReadV16(src1);
+  auto count = Read(src2);
+  auto dst_vec = SClearV16(SReadV16(dst));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = SExtractV16(src1_vec, i);
+    auto temp = Select(UCmpGt(count, static_cast<decltype(count)>(15)), static_cast<decltype(v1)>(0), SShl(v1, static_cast<decltype(v1)>(count)));
+    dst_vec = SInsertV16(dst_vec, i, temp);
+  }
+  SWriteV16(dst, dst_vec);
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSLLD, D dst, S1 src1, S2 src2) {
+  auto src1_vec = SReadV32(src1);
+  auto count = Read(src2);
+  auto dst_vec = SClearV32(SReadV32(dst));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = SExtractV32(src1_vec, i);
+    auto temp = Select(UCmpGt(count, static_cast<decltype(count)>(31)), static_cast<decltype(v1)>(0), SShl(v1, static_cast<decltype(v1)>(count)));
+    dst_vec = SInsertV32(dst_vec, i, temp);
+  }
+  SWriteV32(dst, dst_vec);
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSLLQ, D dst, S1 src1, S2 src2) {
+  auto src1_vec = SReadV64(src1);
+  auto count = Read(src2);
+  auto dst_vec = SClearV64(SReadV64(dst));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = SExtractV64(src1_vec, i);
+    auto temp = Select(UCmpGt(count, static_cast<decltype(count)>(63)), static_cast<decltype(v1)>(0), SShl(v1, static_cast<decltype(v1)>(count)));
+    dst_vec = SInsertV64(dst_vec, i, temp);
+  }
+  SWriteV64(dst, dst_vec);
+}
+
+} // namespace
+
+DEF_ISEL(PSLLW_MMXq_IMMb) = PSLLW<V64W, V64, I8>;
+DEF_ISEL(PSLLW_MMXq_MMXq) = PSLLW<V64W, V64, R64>;
+DEF_ISEL(PSLLW_MMXq_MEMq) = PSLLW<V64W, V64, M64>;
+
+DEF_ISEL(PSLLD_MMXq_IMMb) = PSLLD<V64W, V64, I8>;
+DEF_ISEL(PSLLD_MMXq_MMXq) = PSLLD<V64W, V64, R64>;
+DEF_ISEL(PSLLD_MMXq_MEMq) = PSLLD<V64W, V64, M64>;
+
+DEF_ISEL(PSLLQ_MMXq_IMMb) = PSLLQ<V64W, V64, I8>;
+DEF_ISEL(PSLLQ_MMXq_MMXq) = PSLLQ<V64W, V64, R64>;
+DEF_ISEL(PSLLQ_MMXq_MEMq) = PSLLQ<V64W, V64, M64>;
+
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSIGNB, D dst, S1 src1, S2 src2) {
+  auto src1_vec = SReadV8(src1);
+  auto src2_vec = SReadV8(src1);
+  auto dst_vec = SClearV8(SReadV8(dst));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = SExtractV8(src1_vec, i);
+    auto v2 = SExtractV8(src2_vec, i);
+    auto value = Select(SCmpGte(v2, static_cast<decltype(v2)>(0)), v1, SNeg(v1));
+    value = Select(SCmpEq(v2, static_cast<decltype(v2)>(0)), static_cast<decltype(value)>(0), value);
+    dst_vec = SInsertV8(dst_vec, i, value);
+  }
+  SWriteV8(dst, dst_vec);
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSIGNW, D dst, S1 src1, S2 src2) {
+  auto src1_vec = SReadV16(src1);
+  auto src2_vec = SReadV16(src1);
+  auto dst_vec = SClearV16(SReadV16(dst));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = SExtractV16(src1_vec, i);
+    auto v2 = SExtractV16(src2_vec, i);
+    auto value = Select(SCmpGte(v2, static_cast<decltype(v2)>(0)), v1, SNeg(v1));
+    value = Select(SCmpEq(v2, static_cast<decltype(v2)>(0)), static_cast<decltype(value)>(0), value);
+    dst_vec = SInsertV16(dst_vec, i, value);
+  }
+  SWriteV16(dst, dst_vec);
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSIGND, D dst, S1 src1, S2 src2) {
+  auto src1_vec = SReadV32(src1);
+  auto src2_vec = SReadV32(src1);
+  auto dst_vec = SClearV32(SReadV32(dst));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = SExtractV32(src1_vec, i);
+    auto v2 = SExtractV32(src2_vec, i);
+    auto value = Select(SCmpGte(v2, static_cast<decltype(v2)>(0)), v1, SNeg(v1));
+    value = Select(SCmpEq(v2, static_cast<decltype(v2)>(0)), static_cast<decltype(value)>(0), value);
+    dst_vec = SInsertV32(dst_vec, i, value);
+  }
+  SWriteV32(dst, dst_vec);
+}
+
+} // namespace
+
+DEF_ISEL(PSIGNB_MMXq_MMXq) = PSIGNB<V64W, V64, V64>;
+DEF_ISEL(PSIGNB_MMXq_MEMq) = PSIGNB<V64W, V64, MV64>;
+
+DEF_ISEL(PSIGNW_MMXq_MMXq) = PSIGNW<V64W, V64, V64>;
+DEF_ISEL(PSIGNW_MMXq_MEMq) = PSIGNW<V64W, V64, MV64>;
+
+DEF_ISEL(PSIGND_MMXq_MMXq) = PSIGND<V64W, V64, V64>;
+DEF_ISEL(PSIGND_MMXq_MEMq) = PSIGND<V64W, V64, MV64>;
+
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSHUFB, D dst, S1 src1, S2 src2) {
+  auto src1_vec = UReadV8(src1);
+  auto src2_vec = UReadV8(src1);
+  auto dst_vec = UClearV8(UReadV8(dst));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = UExtractV8(src2_vec, i);
+    auto index = UAnd(v1, static_cast<decltype(v1)>(0x7));
+    auto v2 = UExtractV8(src1_vec, index);
+    auto mask = UShr(v1, static_cast<decltype(v1)>(0x7));
+    auto value = Select(UCmpEq(mask, decltype(mask)(0)), v2, decltype(v2)(0));
+    dst_vec = UInsertV8(dst_vec, i, value);
+  }
+  UWriteV8(dst, dst_vec);
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSHUFW, D dst, S1 src1, S2 src2) {
+  auto src_vec = UReadV16(src1);
+  auto order = Read(src2);
+  auto dst_vec = UClearV16(UReadV16(dst));
+
+  auto vec_count = NumVectorElems(dst_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto mask = UAnd(UShr(order, static_cast<decltype(order)>(i)), static_cast<decltype(order)>(0x3));
+    auto v1 = UExtractV16(src_vec, mask);
+    dst_vec = UInsertV16(dst_vec, i, v1);
+  }
+  UWriteV16(dst, dst_vec);
+}
+
+} // namespace
+
+DEF_ISEL(PSHUFB_MMXq_MMXq) = PSHUFB<V64W, V64, V64>;
+DEF_ISEL(PSHUFB_MMXq_MEMq) = PSHUFB<V64W, V64, MV64>;
+
+DEF_ISEL(PSHUFW_MMXq_MMXq) = PSHUFW<V64W, V64, I8>;
+DEF_ISEL(PSHUFW_MMXq_MEMq) = PSHUFW<V64W, MV64, I8>;
+
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PSADBW, D dst, S1 src1, S2 src2) {
+  auto src1_vec = UReadV8(src1);
+  auto src2_vec = UReadV8(src2);
+  auto dst_vec = UClearV16(UReadV16(dst));
+  auto entry0 =  UExtractV16(dst_vec, 0);
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = UExtractV8(src1_vec, i);
+    auto v2 = UExtractV8(src2_vec, i);
+    auto value = Select(UCmpGte(v1, v2), USub(v1, v2), USub(v2, v1));
+    entry0 += ZExt(value);
+  }
+  dst_vec = UInsertV16(dst_vec, 0, entry0);
+  UWriteV16(dst, dst_vec);
+}
+
+} // namespace
+
+DEF_ISEL(PSADBW_MMXq_MMXq) = PSADBW<V64W, V64, V64>;
+DEF_ISEL(PSADBW_MMXq_MEMq) = PSADBW<V64W, V64, MV64>;
+
+namespace {
+template <typename D, typename S1, typename S2>
+DEF_SEM(PMULUDQ, D dst, S1 src1, S2 src2) {
+  auto src1_vec = UReadV32(src1);
+  auto src2_vec = UReadV32(src2);
+  auto dst_vec = UClearV64(UReadV64(dst));
+  auto v1 = ZExt(UExtractV32(src1_vec, 0));
+  auto v2 = ZExt(UExtractV32(src2_vec, 0));
+  auto mul = UMul(v1, v2);
+  dst_vec = UInsertV64(dst_vec, 0, mul);
+  UWriteV64(dst, dst_vec);
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PMULLW, D dst, S1 src1, S2 src2) {
+  auto src1_vec = SReadV16(src1);
+  auto src2_vec = SReadV16(src2);
+  auto dst_vec = SClearV16(SReadV16(dst));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = SExtractV16(src1_vec, i);
+    auto v2 = SExtractV16(src2_vec, i);
+    auto mul = SMul(SExt(v1), SExt(v2));
+    dst_vec = SInsertV16(dst_vec, i, Trunc(mul));
+  }
+  SWriteV16(dst, dst_vec);
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PMULHW, D dst, S1 src1, S2 src2) {
+  auto src1_vec = SReadV16(src1);
+  auto src2_vec = SReadV16(src2);
+  auto dst_vec = SClearV16(SReadV16(dst));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = SExtractV16(src1_vec, i);
+    auto v2 = SExtractV16(src2_vec, i);
+    auto mul = SMul(SExt(v1), SExt(v2));
+    dst_vec = SInsertV16(dst_vec, i, Trunc(SShr(mul, decltype(mul)(16))));
+  }
+  SWriteV16(dst, dst_vec);
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PMULHUW, D dst, S1 src1, S2 src2) {
+  auto src1_vec = UReadV16(src1);
+  auto src2_vec = UReadV16(src2);
+  auto dst_vec = UClearV16(UReadV16(dst));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = UExtractV16(src1_vec, i);
+    auto v2 = UExtractV16(src2_vec, i);
+    auto mul = UMul(ZExt(v1), ZExt(v2));
+    dst_vec = UInsertV16(dst_vec, i, Trunc(UShr(mul, decltype(mul)(16))));
+  }
+  UWriteV16(dst, dst_vec);
+}
+
+
+} // namespace
+
+DEF_ISEL(PMULUDQ_MMXq_MMXq) = PMULUDQ<V64W, V64, V64>;
+DEF_ISEL(PMULUDQ_MMXq_MEMq) = PMULUDQ<V64W, V64, MV64>;
+
+DEF_ISEL(PMULLW_MMXq_MMXq) = PMULLW<V64W, V64, V64>;
+DEF_ISEL(PMULLW_MMXq_MEMq) = PMULLW<V64W, V64, MV64>;
+
+DEF_ISEL(PMULHW_MMXq_MMXq) = PMULHW<V64W, V64, V64>;
+DEF_ISEL(PMULHW_MMXq_MEMq) = PMULHW<V64W, V64, MV64>;
+
+DEF_ISEL(PMULHUW_MMXq_MMXq) = PMULHUW<V64W, V64, V64>;
+DEF_ISEL(PMULHUW_MMXq_MEMq) = PMULHUW<V64W, V64, MV64>;
+
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PMOVMSKB, D dst, S1 src1, S2 src2) {
+  auto src_vec = UReadV8(src2);
+  auto r32 = Read(src1);
+  // reset all bits to zero
+  r32 = static_cast<decltype(r32)>(0x0);
+  auto vec_count = NumVectorElems(src_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = UExtractV8(src_vec, i);
+    auto mask_bit = UAnd(UShr(v1, decltype(v1)(vec_count-1-i)), UShl(decltype(v1)(0x1), decltype(v1)(i)));
+    r32 = UOr(r32, decltype(r32)(mask_bit));
+  }
+  WriteZExt(dst, r32);
+}
+
+}  // namespace
+
+DEF_ISEL(PMOVMSKB_GPR32_MMXq) = PMOVMSKB<R32W, R32, V64>;
+
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PINSRW, D dst, S1 src1, S2 src2) {
+  auto dst_vec = UClearV16(UReadV16(dst));
+  auto value = Read(src1);
+  auto index = Read(src2);
+  dst_vec = UInsertV16(dst_vec, index, UInt16(value));
+  UWriteV16(dst, dst_vec);
+}
+
+}  // namespace
+
+DEF_ISEL(PINSRW_MMXq_MEMw_IMMb) = PINSRW<V64W, M16, I8>;
+DEF_ISEL(PINSRW_MMXq_GPR32_IMMb) = PINSRW<V64W, R32, I8>;
+
+namespace {
+
+template <typename D, typename S1>
+DEF_SEM(MOVNTQ, D dst, S1 src1) {
+  auto src_val = Read(src1);
+  Write(dst, src_val);
+}
+
+}  // namespace
+
+DEF_ISEL(MOVNTQ_MEMq_MMXq) = MOVNTQ<M64W, R64>;
+
+namespace {
+template <typename S1, typename S2>
+DEF_SEM(MASKMOVQ, S1 src1, S2 src2) {
+  auto src1_vec = UReadV8(src1);
+  auto src2_vec = UReadV8(src2);
+  auto xdi = Read(REG_XDI);
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for(size_t i = 0; i < vec_count; i++) {
+    auto v1 = UExtractV8(src1_vec, i);
+    auto v2 = UExtractV8(src2_vec, i);
+    auto dst_addr = UAdd(xdi, decltype(xdi)(sizeof(v1)*i));
+    if(UCmpEq(UShl(v2, decltype(v2)(0x7)), decltype(v2)(0x1))){
+      Write(WritePtr<decltype(v1)>(dst_addr _IF_32BIT(REG_DS)), v1);
+    }
+  }
+}
+
+}  // namespace
+
+DEF_ISEL(MASKMOVQ_MMXq_MMXq) = MASKMOVQ<V64, V64>;
+
+
 DEF_ISEL_SEM(EMMS) {
   state.mmx.mmx[0].val.qwords.elems[0] = __remill_undefined_64();
   state.mmx.mmx[1].val.qwords.elems[0] = __remill_undefined_64();
@@ -994,7 +1501,9 @@ DEF_ISEL_SEM(EMMS) {
   state.mmx.mmx[5].val.qwords.elems[0] = __remill_undefined_64();
   state.mmx.mmx[6].val.qwords.elems[0] = __remill_undefined_64();
   state.mmx.mmx[7].val.qwords.elems[0] = __remill_undefined_64();
+  //state.fpu.st[7].val.qwords.elems[0] = __remill_undefined_64();
 }
+
 
 // 565:117 PHSUBD PHSUBD_MMXq_MEMq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
 // 569:118 PHSUBD PHSUBD_MMXq_MMXq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX

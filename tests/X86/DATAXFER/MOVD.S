@@ -91,3 +91,42 @@ TEST_INPUTS(
 TEST_END
 #endif  // APPLE_SAFE_TESTS
 #endif  // HAS_FEATURE_AVX
+
+TEST_BEGIN(MOVDmm64r32, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0xFF,
+    0xFFFF,
+    0xFFFFFFFF)
+
+    movd mm0, ARG1_32
+TEST_END
+
+#if APPLE_SAFE_TESTS
+
+TEST_BEGIN_64(MOVDmm64m32, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0xFF,
+    0xFFFF,
+    0xFFFFFFFF)
+
+    push ARG1_64
+    movd mm0, DWORD PTR [rsp]
+TEST_END_64
+
+TEST_BEGIN(MOVDm64mm64, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0xFF,
+    0xFFFF,
+    0xFFFFFFFF)
+
+    movd mm0, ARG1_32
+    movd [rsp - 16], mm0
+TEST_END
+
+#endif  // APPLE_SAFE_TESTS

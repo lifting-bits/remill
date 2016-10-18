@@ -86,7 +86,9 @@ TEST_FUNC(instr_name, num_args): ; \
     .cfi_endproc ; \
     .section "__x86_test_table", "a" ; \
     .quad 0 ; \
-    .text ;
+    .text ; \
+    ud2 ;
+
 #else
 # define TEST_END \
     6: \
@@ -94,7 +96,8 @@ TEST_FUNC(instr_name, num_args): ; \
     .cfi_endproc ; \
     .section "__x86_test_table", "a" ; \
     .quad 0 ; \
-    .text ;
+    .text ; \
+    ud2 ;
 #endif
 
 #define CF | (1 << 0)
@@ -151,6 +154,7 @@ TEST_FUNC(instr_name, num_args): ; \
     .extern SYMBOL(gStackSwitcher)
     .extern SYMBOL(gTestEnd)
     .extern SYMBOL(gStackSaveSlot)
+    .extern SYMBOL(gFPU)
 
     .data
     .align 16
@@ -181,7 +185,14 @@ SYMBOL(DoInvokeTestCase):
      *
      * Note:    The FPU reset defaults to overflow/underflow exceptions being
      *          masked so we can "safely" push/pop beyond what we should be able
-     *          to reasonably do. */
+     *          to reasonably do.
+     *
+     * Note:    The second `fninit` is because the first one won't overwrite
+     *          the data stored in the ST(n) regs. So, we reset to deal with
+     *          overflow, then clear out the entries, then reset again to deal
+     *          with the tag word. Resetting the tag word lets us distinguish
+     *          (not very well) between MMX- and X87-using tests.
+     */
     fninit
     fldz
     fldz
@@ -191,6 +202,7 @@ SYMBOL(DoInvokeTestCase):
     fldz
     fldz
     fldz
+    fninit
 
     /* Set the bits of some of the vector regs to 1. This makes it easier to
      * detect certain zeroing behavior. */
@@ -207,7 +219,7 @@ SYMBOL(DoInvokeTestCase):
  * compared with the end result of executing lifted code against
  * `gLiftedState`. */
 # define STATE_PTR SYMBOL(gLiftedState)
-# include "tests/X86/SaveState.S"
+# include "generated/Arch/X86/SaveState.S"
 # undef STATE_PTR
 
     jmp QWORD PTR DS:[RIP + SYMBOL(gTestToRun)]
@@ -256,7 +268,7 @@ SYMBOL(__x86_save_state_after):
     .cfi_startproc
 # define STATE_PTR SYMBOL(gNativeState)
 # define AFTER_TEST_CASE
-# include "tests/X86/SaveState.S"
+# include "generated/Arch/X86/SaveState.S"
     xchg RSP, [RIP + SYMBOL(gStackSwitcher)]  /* Return to the normal stack. */
     ret
     .cfi_endproc
@@ -312,6 +324,8 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/MMX/PCMP.S"
 #include "tests/X86/MMX/PMUL.S"
 #include "tests/X86/MMX/PUNPCK.S"
+#include "tests/X86/MMX/PSRL.S"
+#include "tests/X86/MMX/PSLL.S"
 
 #include "tests/X86/BINARY/ADC.S"
 #include "tests/X86/BINARY/ADD.S"
@@ -371,6 +385,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/CONVERT/CQO.S"
 #include "tests/X86/CONVERT/CVTDQ2PD.S"
 #include "tests/X86/CONVERT/CVTPI2PD.S"
+#include "tests/X86/CONVERT/CVTPI2PS.S"
 #include "tests/X86/CONVERT/CVTTPD2DQ.S"
 #include "tests/X86/CONVERT/CVTTPS2DQ.S"
 #include "tests/X86/CONVERT/CVTTSS2SI.S"
@@ -422,6 +437,9 @@ SYMBOL(__x86_test_table_begin):
 # include "tests/X86/STRINGOP/SCAS.S"
 # include "tests/X86/STRINGOP/STOS.S"
 #endif  // __APPLE__
+
+
+# include "tests/X86/X87/FLD.S"
 
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"
