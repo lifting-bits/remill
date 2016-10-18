@@ -7,8 +7,8 @@ Remill is a static binary translator that translates machine code into [LLVM bit
 
 |       | master |
 | ----- | ------ |
-| Linux | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/linux)](https://travis-ci.org/trailofbits/remill) |
-| macOS | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/osx)](https://travis-ci.org/trailofbits/remill) |
+| Linux | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/linux/)](https://travis-ci.org/trailofbits/remill) |
+| macOS | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/osx/)](https://travis-ci.org/trailofbits/remill) |
 
 ## Additional Documentation
  
