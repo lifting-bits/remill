@@ -39,3 +39,10 @@ gtest_build/*
 *.app
 
 *.pyc
+
+# IDA Pro
+*.idb
+*.i64
+*.nam
+*.id1
+*.til
