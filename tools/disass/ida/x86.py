@@ -3,6 +3,7 @@
 import idautils
 import idaapi
 import idc
+
 import log
 import program
 

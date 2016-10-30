@@ -9,7 +9,11 @@ import tempfile
 import traceback
 
 
-if "__main__" == __name__:
+def main(args=None):
+  disass_dir = os.path.dirname(os.path.abspath(__file__))
+  os.chdir(disass_dir)
+  sys.path.append(disass_dir)
+
   arg_parser = argparse.ArgumentParser()
   arg_parser.add_argument(
       '--disassembler',
@@ -41,11 +45,11 @@ if "__main__" == __name__:
   if not os.path.isfile(args.binary):
     arg_parser.error("{} passed to --binary is not a valid file.".format(
         args.binary))
-    exit(1)
+    return 1
 
   if args.arch not in ('x86', 'amd64'):
     arg_parser.error("{} passed it --arch is not supported.".format(args.arch))
-    exit(1)
+    return 1
 
   workspace_dir = tempfile.mkdtemp()
   temp_bin_path = os.path.join(workspace_dir, os.path.basename(args.binary))
@@ -55,8 +59,8 @@ if "__main__" == __name__:
   ret = 1
   try:
     if 'ida' in args.disassembler:
-      import disass.ida
-      ret = disass.ida.execute(args, command_args)
+      import ida.disass
+      ret = ida.disass.execute(args, command_args)
 
     else:
       arg_parser.error("{} passed to --disassembler is not known.".format(
@@ -65,4 +69,8 @@ if "__main__" == __name__:
   finally:
     shutil.rmtree(workspace_dir)
 
-  exit(ret)
+  return ret
+
+
+if "__main__" == __name__:
+  exit(main())

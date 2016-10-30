@@ -5,6 +5,15 @@ build/*
 generated/*
 gtest_build/*
 
+tools/build/*
+tools/dist/*
+tools/remill_disass.egg-info/*
+tools/disass/CFG.proto
+tools/disass/CFG_pb2.py
+
+dist/*
+remill_disass.egg-info/*
+
 *.o
 *.ll
 *.bc
@@ -44,5 +53,6 @@ gtest_build/*
 *.idb
 *.i64
 *.nam
+*.id0
 *.id1
 *.til

@@ -169,6 +169,13 @@ sudo make install
 
  > **Note 2:** If you are implementing new instruction semantics, then the `semantics` target can be rebuilt and should take effect, even without re`install`ing. 
 
+### Step 6: Install the disassembler
+
+```shell
+cd ..
+sudo python tools/setup.py install
+```
+
 ## Building and Running the Test Suite
 
 ### Build Google Test

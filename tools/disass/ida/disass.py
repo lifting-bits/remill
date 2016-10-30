@@ -3,12 +3,13 @@
 
 import argparse
 import collections
-import log
 import os
-import program
 import subprocess
 import sys
 import traceback
+
+import log
+import program
 
 
 # If we're in the IDA script, then we can use the IDA Python APIs.
@@ -34,9 +35,9 @@ def init(arch):
 
   log.info("Initialising for architecture {}.".format(arch))
   if arch in ('x86', 'amd64'):
-    import ida_x86
-    decode_instruction = ida_x86.decode_instruction
-    get_instruction_personality = ida_x86.get_instruction_personality
+    import x86
+    decode_instruction = x86.decode_instruction
+    get_instruction_personality = x86.get_instruction_personality
   else:
     raise Exception("Unsupported architecture {}".format(arch))
 
@@ -120,11 +121,17 @@ def get_static_successors(inst):
   elif inst.is_direct_jump():
     yield get_direct_branch_target(inst.ea)
 
+  elif inst.is_indirect_jump():
+    si = idaapi.get_switch_info_ex(inst.ea)
+    if si:
+      for case_ea in idautils.CodeRefsFrom(inst.ea, True):
+        yield case_ea
+
   elif inst.is_fall_through():
     yield inst.next_ea
 
   else:
-    log.info("No static successors of {:08x}".format(inst.ea))
+    log.debug("No static successors of {:08x}".format(inst.ea))
 
 
 def analyse_block(sub, block):
@@ -165,6 +172,9 @@ def analyse_subroutine(sub):
   if f:
     for b in idaapi.FlowChart(f):
       block_head_eas.add(b.startEA)
+
+    for chunk_start_ea, chunk_end_ea in idautils.Chunks(sub.ea):
+      block_head_eas.add(chunk_start_ea)
   else:
     log.warning("IDA does not recognise subroutine at {:08x}".format(sub.ea))
 
@@ -207,7 +217,7 @@ def analyse_subroutine(sub):
   blocks.sort(key=lambda b: b.ea)
   for block in blocks:
     analyse_block(sub, block)
-    log.info("Block at {:08x} has {} instructions".format(
+    log.debug("Block at {:08x} has {} instructions".format(
         block.ea, len(block.instructions)))
 
 
@@ -216,22 +226,16 @@ def analyse_subroutines():
   discovers."""
 
   log.info("Analysing initial subroutines identified by IDA")
-  ea = idc.BeginEA()
-  min_ea, max_ea = idc.SegStart(ea), idc.SegEnd(ea)
-  sub_eas = set(idautils.Functions(min_ea, max_ea))  # Work list.
+   
   subs = set()
+  sub_eas = set()  # Work list.
+
+  for seg_ea in idautils.Segments():
+    min_ea, max_ea = idc.SegStart(seg_ea), idc.SegEnd(seg_ea)
+    sub_eas.update(idautils.Functions(min_ea, max_ea))
+
   while len(sub_eas):
     sub_ea = sub_eas.pop()
-    
-    # It's possible that our analysis, especially as it relates to the below
-    # code of scanning for direct function calls, mis-identifies some code
-    # and adds in a bad address. This is a simplistic way of dealing with this
-    # issue.
-    if min_ea > sub_ea or max_ea <= sub_ea:
-      log.warning("Cannot analyse out-of-bounds subroutine at {:08x}".format(
-          sub_ea))
-      continue
-
     sub = program.get_subroutine(sub_ea)
     if sub in subs:
       log.debug("Skipping {:08x}; already analysed.".format(sub_ea))
@@ -248,8 +252,12 @@ def analyse_subroutines():
       term_inst = block.terminator
       if term_inst.is_direct_function_call():
         called_sub_ea = get_direct_branch_target(term_inst.ea)
-        log.debug("Subroutine {:08x} directly calls subroutine {:08x}".format(
-            sub_ea, called_sub_ea))
+        if called_sub_ea in sub_eas:
+          continue
+
+        if program.has_subroutine(called_sub_ea):
+          continue
+        
         sub_eas.add(called_sub_ea)
 
   return subs
@@ -269,28 +277,34 @@ def analyse_data(pointer_size):
   """Go through the data sections and look for possible tables of
   code pointers."""
   log.info("Analysing the data section for simple code refs.")
-  for n in range(idaapi.get_segm_qty()):
-    seg = idaapi.getnseg(n)
-    ea = seg.startEA
-    seg_type = idc.GetSegmentAttr(ea, idc.SEGATTR_TYPE)
+  for seg_ea in idautils.Segments():
+    seg_type = idc.GetSegmentAttr(seg_ea, idc.SEGATTR_TYPE)
     if seg_type != idc.SEG_DATA:
       continue
 
-    begin_ea = idc.SegStart(ea)
-    end_ea = idc.SegEnd(ea)
+    min_ea, max_ea = idc.SegStart(seg_ea), idc.SegEnd(seg_ea)
     if 8 == pointer_size:
-      scan_data_for_code_refs(begin_ea, end_ea, idc.Qword, 8)
-    scan_data_for_code_refs(begin_ea, end_ea, idc.Dword, 4)
+      scan_data_for_code_refs(min_ea, max_ea, idc.Qword, 8)
+    scan_data_for_code_refs(min_ea, max_ea, idc.Dword, 4)
 
 
-def analyse_jump_table(block, jump_inst):
-  log.info("Block {:08x} ends with indirect jump at {:08x}".format(
-      block.ea, jump_inst.ea))
+def analyse_indirect_jump(block, jump_inst, blocks):
+  """Analyse an indirect jump and try to determine its targets."""
+  log.info("Analysing indirect jump at {:08x}".format(jump_inst.ea))
+  si = idaapi.get_switch_info_ex(jump_inst.ea)
+  target_eas = set()
+  if si:
+    num_targets = si.get_jtable_size()
+    log.info("IDA identified a jump table at {:08x} with {} targets".format(
+        jump_inst.ea, num_targets))
+    target_eas.update(idautils.CodeRefsFrom(jump_inst.ea, True))
 
 
-def analyse_jump_tables():
+
+def analyse_indirect_jumps():
   """Scan through the code looking for jump tables."""
-  blocks = program.basic_blocks()
+  log.info("Analysing indirect jump instructions.")
+  blocks = set(program.basic_blocks())
   seen = set()
   while len(blocks):
     block = blocks.pop()
@@ -300,7 +314,7 @@ def analyse_jump_tables():
     seen.add(block)
     term_inst = block.terminator
     if term_inst.is_indirect_jump():
-      analyse_jump_table(block, term_inst)
+      analyse_indirect_jump(block, term_inst, blocks)
 
 
 def execute(args, command_args):
@@ -309,22 +323,36 @@ def execute(args, command_args):
   down into the IDA script. `command_args` contains unparsed arguments passed
   to `remill-lift`. This script may handle extra arguments."""
 
+  ida_disass_path = os.path.abspath(__file__)
+  ida_dir = os.path.dirname(ida_disass_path)
+
   env = {}
   env["IDALOG"] = os.devnull
   env["TVHEADLESS"] = "1"
   env["HOME"] = os.path.expanduser('~')
   env["IDA_PATH"] = os.path.dirname(args.disassembler)
+  env["PYTHONPATH"] = os.path.dirname(ida_dir)
 
-  cmd = [
-      args.disassembler,  # Path to IDA.
-      "-B",  # Batch mode.
-      "-S\"{} --output {} --log_file {} --arch {} {} \"".format(
-          __file__.rstrip("c"),  # Make sure we don't pass the `.pyc`.
-          args.output,
-          args.log_file,
-          args.arch,
-          " ".join(command_args)),
-      args.binary]
+  script_cmd = []
+  script_cmd.append(ida_disass_path.rstrip("c"))  # (This) script file name.
+  script_cmd.append("--output")
+  script_cmd.append(args.output)
+  script_cmd.append("--log_file")
+  script_cmd.append(args.log_file)
+  script_cmd.append("--arch")
+  script_cmd.append(args.arch)
+  script_cmd.extend(command_args)  # Extra, script-specific arguments.
+
+  cmd = []
+  cmd.append(args.disassembler)  # Path to IDA.
+  cmd.append("-B")  # Batch mode.
+  cmd.append("-S\"{}\"".format(" ".join(script_cmd)))
+  cmd.append(args.binary)
+
+  log.init(args.log_file)
+  log.info("Executing {} {}".format(
+      " ".join("{}={}".format(*e) for e in env.items()),
+      " ".join(cmd)))
 
   try:
     with open(os.devnull, "w") as devnull:
@@ -334,7 +362,8 @@ def execute(args, command_args):
           stdin=None, 
           stdout=devnull,  # Necessary.
           stderr=sys.stderr,  # For enabling `--log_file /dev/stderr`.
-          shell=True)  # Necessary.
+          shell=True,  # Necessary.
+          cwd=os.path.dirname(__file__))
 
   except subprocess.CalledProcessError as e:
     sys.stderr.write(traceback.format_exc())
@@ -383,7 +412,7 @@ if "__main__" == __name__:
 
     analyse_data(ADDRESS_SIZE[args.arch])
     analyse_subroutines()
-    analyse_jump_tables()
+    analyse_indirect_jumps()
 
     log.info("Done.")
     idc.Exit(0)

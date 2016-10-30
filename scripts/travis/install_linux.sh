@@ -6,7 +6,7 @@ UBUNTU_RELEASE=`lsb_release -sc`
 
 # Make sure we have `add-apt-repository`.
 sudo apt-get update -qq
-sudo apt-get upgrade -yqq
+#sudo apt-get upgrade -yqq
 sudo apt-get install -y software-properties-common
 sudo apt-get install -y build-essential
 

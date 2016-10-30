@@ -152,6 +152,11 @@ def get_subroutine(ea):
   return _SUBROUTINES[ea]
 
 
+def has_subroutine(ea):
+  global _SUBROUTINES
+  return ea in _SUBROUTINES
+
+
 def get_basic_block(ea):
   global _BASIC_BLOCKS
   return _BASIC_BLOCKS[ea]
@@ -176,7 +181,13 @@ def instruction_is_valid(ea):
 
 
 def basic_blocks():
-  return set(_BASIC_BLOCKS.values())
+  global _BASIC_BLOCKS
+  return iter(_BASIC_BLOCKS.values())
+
+
+def subroutines():
+  global _BASIC_BLOCKS
+  return iter(_SUBROUTINES.values())
 
 # class JumpTable(object):
 #   __slots__ = ('ea', 'personality', 'targets')
