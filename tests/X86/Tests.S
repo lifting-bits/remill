@@ -330,6 +330,7 @@ SYMBOL(__x86_test_table_begin):
 
 /* Bring in the rest of the semantic tests. */
 
+#include "tests/X86/MMX/INPUTS.S"
 #include "tests/X86/MMX/PADD.S"
 #include "tests/X86/MMX/PSUB.S"
 #include "tests/X86/MMX/MISC.S"
