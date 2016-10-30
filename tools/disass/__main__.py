@@ -31,6 +31,13 @@ def main(args=None):
       help='Where to write the log file.')
 
   arg_parser.add_argument(
+      '--log_level',
+      default=2,
+      type=int,
+      help='Lower bound on the verbosity of logging. '
+           '0=DEBUG, 1=INFO, 2=WARNING, 3=ERROR')
+
+  arg_parser.add_argument(
       '--output',
       help='The output control flow graph recovered from this file',
       required=True)

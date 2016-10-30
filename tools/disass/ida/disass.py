@@ -29,7 +29,7 @@ decode_instruction = None
 get_instruction_personality = None
 
 
-def init(arch):
+def init_for_arch(arch):
   """Initialize the program analyser for the architecture named by `arch`."""
   global decode_instruction, get_instruction_personality
 
@@ -339,6 +339,8 @@ def execute(args, command_args):
   script_cmd.append(args.output)
   script_cmd.append("--log_file")
   script_cmd.append(args.log_file)
+  script_cmd.append("--log_level")
+  script_cmd.append(str(args.log_level))
   script_cmd.append("--arch")
   script_cmd.append(args.arch)
   script_cmd.extend(command_args)  # Extra, script-specific arguments.
@@ -349,7 +351,8 @@ def execute(args, command_args):
   cmd.append("-S\"{}\"".format(" ".join(script_cmd)))
   cmd.append(args.binary)
 
-  log.init(args.log_file)
+  log.init(output_file=args.log_file, log_level=args.log_level)
+
   log.info("Executing {} {}".format(
       " ".join("{}={}".format(*e) for e in env.items()),
       " ".join(cmd)))
@@ -379,30 +382,25 @@ ADDRESS_SIZE = {
 if "__main__" == __name__:
   arg_parser = argparse.ArgumentParser()
   arg_parser.add_argument(
-      '--log_file',
-      type=argparse.FileType('w'),
-      help='Where to write the log file.',
-      required=True)
+      '--log_file', type=argparse.FileType('w'), required=True)
 
   arg_parser.add_argument(
-      '--arch',
-      help='Name of the architecture. Valid names are x86, amd64.',
-      required=True)
+      '--log_level', type=int, required=True)
 
   arg_parser.add_argument(
-      '--output',
-      type=argparse.FileType('w'),
-      help='The output control flow graph recovered from this file',
-      required=True)
+      '--arch', required=True)
+
+  arg_parser.add_argument(
+      '--output', type=argparse.FileType('w'), required=True)
 
   try:
     args = arg_parser.parse_args(args=idc.ARGV[1:])
-    log.init(args.log_file)
+    log.init(output_stream=args.log_file, log_level=args.log_level)
 
     if args.arch not in ADDRESS_SIZE:
       arg_parser.error("{} is not recognized by `--arch`.".format(args.arch))
 
-    init(args.arch)
+    init_for_arch(args.arch)
 
     log.info("Analysing {}.".format(idc.GetInputFile()))
 
