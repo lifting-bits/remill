@@ -15,12 +15,17 @@ class _AddressedDictionary(collections.defaultdict):
 
 
 class Subroutine(object):
-  __slots__ = ('name', 'ea', 'blocks')
+  __slots__ = ('name', 'ea', 'blocks', 'visibility')
+
+  VISIBILITY_INTERNAL = 0
+  VISIBILITY_EXPORTED = 1
+  VISIBILITY_IMPORTED = 2
 
   def __init__(self):
     self.name = ""
     self.ea = 0
     self.blocks = set()
+    self.visibility = Subroutine.VISIBILITY_INTERNAL
 
   def get_block(self, block_ea):
     block = get_basic_block(block_ea)
@@ -34,8 +39,7 @@ class Subroutine(object):
 
 class BasicBlock(object):
   __slots__ = ('ea', 'end_ea', 'instructions', 'is_addressable',
-               'subroutines', 'terminator', 'indirect_jumps',
-               'successor_eas')
+               'subroutines', 'terminator', 'successor_eas')
   
   def __init__(self):
     self.ea = 0
@@ -44,7 +48,6 @@ class BasicBlock(object):
     self.is_addressable = False
     self.subroutines = set()
     self.terminator = None  # Last instruction of this block.
-    self.indirect_jumps = set()  # Likely jump tables.
     self.successor_eas = set()
 
   def get_instruction(self, inst_ea):
@@ -54,7 +57,9 @@ class BasicBlock(object):
     return inst
 
   def __iter__(self):
-    return iter(self.instructions)
+    insts = list(self.instructions)
+    insts.sort(key=lambda i: i.ea)
+    return iter(insts)
 
 
 class Instruction(object):

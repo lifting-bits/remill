@@ -111,7 +111,19 @@ def get_static_successors(inst):
   """Returns the statically known successors of an instruction."""
   branch_flows = tuple(idautils.CodeRefsFrom(inst.ea, False))
 
-  if inst.is_call():  # Function call or system call.
+  # Direct function call. The successor will be the fall-through instruction
+  # unless the target of the function call looks like a `noreturn` function.
+  if inst.is_direct_function_call():
+    called_ea = get_direct_branch_target(inst.ea)
+    flags = idc.GetFunctionFlags(called_ea)
+
+    if 0 < flags and (flags & idaapi.FUNC_NORET):
+      log.debug("Call to noreturn function {:08x} at {:08x}".format(
+          called_ea, inst.ea))
+    else:
+      yield inst.next_ea  # Not recognised as a `noreturn` function.
+
+  if inst.is_call():  # Indirect function call, system call.
     yield inst.next_ea
 
   elif inst.is_conditional_branch():
@@ -145,17 +157,11 @@ def analyse_block(sub, block):
   inst = block.get_instruction(block.ea)
   while not inst.is_block_terminator():
     assert inst.is_valid()
-    
-    # # If the next instruction is a block head then this instruction
-    # # is the block terminator.
-    # next_ea = inst.next_ea
-    # if program.has_basic_block(next_ea):
-    #   break
-
     inst = block.get_instruction(inst.next_ea)
 
   inst.mark_as_terminator()  # Just in case!
   block.terminator = inst
+  block.successor_eas.update(get_static_successors(inst))
 
 
 def analyse_subroutine(sub):
@@ -188,6 +194,12 @@ def analyse_subroutine(sub):
       continue
 
     found_block_eas.add(block_head_ea)
+
+    # Try to make sure that analysis will terminate if we accidentally 
+    # walk through a noreturn call.
+    if block_head_ea != sub.ea and program.has_subroutine(block_head_ea):
+      continue
+
     log.debug("Found block head at {:08x}".format(block_head_ea))
     
     if program.has_basic_block(block_head_ea):
@@ -210,8 +222,12 @@ def analyse_subroutine(sub):
   # head that the prior analysis discovered.
   blocks = []
   for block_head_ea in found_block_eas:
+    if block_head_ea != sub.ea and program.has_subroutine(block_head_ea):
+      continue
     block = sub.get_block(block_head_ea)
     blocks.append(block)
+
+  log.debug("Subroutine {:08x} has {} blocks".format(sub.ea, len(blocks)))
 
   # Analyse the blocks
   blocks.sort(key=lambda b: b.ea)
@@ -221,18 +237,76 @@ def analyse_subroutine(sub):
         block.ea, len(block.instructions)))
 
 
+def find_exported_eas():
+  """Find the address of all exported functions. Exported functions are
+  entrypoints into this program that external code can execute."""
+  exported_eas = set()
+  for index, ordinal, ea, name in idautils.Entries():
+    if idc.hasName(ea):
+      exported_eas.add(ea)
+    else:
+      log.error("Exported subroutine {:08x} has no name.".format(ea))
+  return exported_eas
+
+
+def find_imported_eas():
+  """Find the address of all imported functions."""
+  num_imports = idaapi.get_import_module_qty()
+  imported_eas = set()
+  named_imported_eas = set()
+
+  for i in xrange(num_imports):
+    idaapi.enum_import_names(i, lambda ea, name, ord: imported_eas.add(ea))
+
+  for ea in imported_eas:
+    if idc.hasName(ea):
+      named_imported_eas.add(ea)
+    else:
+      log.error("Imported subroutine {:08x} has no name.".format(ea))
+
+  # TODO(pag):  This is not finding most thunks. Perhaps go over all identified
+  #             functions and test them.
+
+  return named_imported_eas
+
+
+def get_called_subroutines(sub):
+  """Finds all functions directly called by `sub`."""
+  called_sub_eas = set()
+  for block in sub:
+    term_inst = block.terminator
+    assert term_inst
+    if term_inst.is_direct_function_call():
+      called_sub_eas.add(get_direct_branch_target(term_inst.ea))
+  return called_sub_eas
+
+
 def analyse_subroutines():
   """Goes through all the subroutines that IDA's initial auto analysis
   discovers."""
 
   log.info("Analysing initial subroutines identified by IDA")
-   
+ 
+  exported_eas = find_exported_eas()
+  log.info("IDA identified {} exported functions".format(len(exported_eas)))
+
+  imported_eas = find_imported_eas()
+  log.info("IDA identified {} imported functions".format(len(imported_eas)))
+
   subs = set()
   sub_eas = set()  # Work list.
+  sub_eas.update(exported_eas)
+  sub_eas.update(imported_eas)
 
+  # Get all subroutines that IDA recognised.
   for seg_ea in idautils.Segments():
     min_ea, max_ea = idc.SegStart(seg_ea), idc.SegEnd(seg_ea)
     sub_eas.update(idautils.Functions(min_ea, max_ea))
+
+  log.info("IDA identified {} functions".format(len(sub_eas)))
+
+  for sub_ea in sub_eas:
+    sub = program.get_subroutine(sub_ea)  # Mark `ea` as a subroutine.
 
   while len(sub_eas):
     sub_ea = sub_eas.pop()
@@ -241,24 +315,22 @@ def analyse_subroutines():
       log.debug("Skipping {:08x}; already analysed.".format(sub_ea))
       continue
 
-    sub.name = idc.GetFunctionName(sub_ea)
+    subs.add(sub)
+
+    if idc.hasName(sub_ea):
+      sub.name = idc.GetFunctionName(sub_ea)
+    
+    # Mark this subroutine as exported.
+    if sub_ea in exported_eas:
+      sub.visibility = program.Subroutine.VISIBILITY_EXPORTED
+
+    # Mark this subroutine as imported.
+    elif sub_ea in imported_eas:
+      sub.visibility = program.Subroutine.VISIBILITY_IMPORTED
+      continue  # Don't analyse subroutine (e.g. PLT table entry).
+
     analyse_subroutine(sub)
-
-    # Look for direct function calls in the just-analysed subroutine. If we find
-    # any then add them to the analysis work list. It's possible that our more
-    # aggressive handling of basic blocks reveals previously unidentified
-    # functions.
-    for block in sub:
-      term_inst = block.terminator
-      if term_inst.is_direct_function_call():
-        called_sub_ea = get_direct_branch_target(term_inst.ea)
-        if called_sub_ea in sub_eas:
-          continue
-
-        if program.has_subroutine(called_sub_ea):
-          continue
-        
-        sub_eas.add(called_sub_ea)
+    sub_eas.update(get_called_subroutines(sub))
 
   return subs
 
@@ -298,7 +370,6 @@ def analyse_indirect_jump(block, jump_inst, blocks):
     log.info("IDA identified a jump table at {:08x} with {} targets".format(
         jump_inst.ea, num_targets))
     target_eas.update(idautils.CodeRefsFrom(jump_inst.ea, True))
-
 
 
 def analyse_indirect_jumps():
