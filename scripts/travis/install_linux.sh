@@ -5,7 +5,7 @@ DIR=$(dirname $(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )))
 UBUNTU_RELEASE=`lsb_release -sc`
 
 # Make sure we have `add-apt-repository`.
-sudo apt-get update -qq
+sudo apt-get update -yqq
 sudo apt-get upgrade -yqq
 sudo apt-get install -y software-properties-common
 sudo apt-get install -y build-essential
