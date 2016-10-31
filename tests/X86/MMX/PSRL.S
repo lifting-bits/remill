@@ -553,4 +553,3 @@ TEST_USE_X87_MMX
     movq mm0, ARG1_64
 	psrad mm0, 0xA
 TEST_END_64
-
