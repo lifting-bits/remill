@@ -9,6 +9,7 @@ import sys
 import traceback
 
 import log
+import cfg
 import program
 
 
@@ -42,6 +43,16 @@ def init_for_arch(arch):
     raise Exception("Unsupported architecture {}".format(arch))
 
 
+def has_segment_type(ea, expected_seg_type):
+  """Returns true if the segment containing `ea` has the type `seg_type`."""
+  seg = idc.SegStart(ea)
+  if seg == idc.BADADDR:
+    return False
+
+  seg_type = idc.GetSegmentAttr(seg, idc.SEGATTR_TYPE)
+  return seg_type == expected_seg_type
+
+
 def get_instruction(ea):
   """Gets the instruction located at `ea`. If we haven't initialized an
   `Instruction` data structure for the instruction at `ea`, then we decode
@@ -56,7 +67,7 @@ def get_instruction(ea):
     inst.personality = program.Instruction.PERSONALITY_TERMINATOR
     return inst
 
-  inst.bytes = decoded_bytes
+  inst.bytes = "".join(decoded_bytes)
   inst.personality = get_instruction_personality(decoded_inst)
   return inst
 
@@ -224,7 +235,7 @@ def analyse_subroutine(sub):
   for block_head_ea in found_block_eas:
     if block_head_ea != sub.ea and program.has_subroutine(block_head_ea):
       continue
-    block = sub.get_block(block_head_ea)
+    block = sub.get_basic_block(block_head_ea)
     blocks.append(block)
 
   log.debug("Subroutine {:08x} has {} blocks".format(sub.ea, len(blocks)))
@@ -237,37 +248,93 @@ def analyse_subroutine(sub):
         block.ea, len(block.instructions)))
 
 
+def find_imported_subroutines():
+  """Find the address of all imported functions."""
+
+  # Collect addresses of imported code.
+  imported_eas = set()
+  num_imports = idaapi.get_import_module_qty()
+  for i in xrange(num_imports):
+    idaapi.enum_import_names(i, lambda ea, name, ord: imported_eas.add(ea))
+
+  # Mark IDA-identified stuff imported stuff as imported.
+  for ea in imported_eas:
+    if not program.has_subroutine(ea):
+      log.error("No subroutine associated with import {:08x}.".format(ea))
+      continue
+    sub = program.get_subroutine(ea)
+    sub.visibility = program.Subroutine.VISIBILITY_IMPORTED
+
+  # Mark functions in code sections marked as external as being imported.
+  for sub in program.subroutines():
+    if program.Subroutine.VISIBILITY_INTERNAL != sub.visibility:
+      continue
+
+    if has_segment_type(sub.ea, idc.SEG_XTRN):
+      log.debug("Subroutine {:08x} is imported".format(sub.ea))
+      sub.visibility = program.Subroutine.VISIBILITY_IMPORTED
+      if sub.name:
+        log.info("Found imported subroutine {} at {:08x}".format(
+            sub.name, sub.ea))
+
+
 def find_exported_eas():
   """Find the address of all exported functions. Exported functions are
   entrypoints into this program that external code can execute."""
   exported_eas = set()
   for index, ordinal, ea, name in idautils.Entries():
-    if idc.hasName(ea):
-      exported_eas.add(ea)
-    else:
-      log.error("Exported subroutine {:08x} has no name.".format(ea))
+    
+    # Not sure how this happens, but IDA seemed to treat
+    # `obstack_alloc_failed_handler` in `call cs:[obstack_alloc_failed_handler]`
+    # as an entrypoint.
+    num_data_refs = len(tuple(idautils.DataRefsTo(ea)))
+    num_code_refs = len(tuple(idautils.CodeRefsTo(ea, True)))
+    num_code_refs += len(tuple(idautils.CodeRefsTo(ea, True)))
+    if num_data_refs and not num_code_refs:
+      log.warning(
+          "Ignoring entrypoint {:08x}, it's only referenced by data".format(ea))
+      continue
+
+    if not has_segment_type(ea, idc.SEG_CODE):
+      log.warning(
+          "Ignoring entrypoint {:08x}, it is not in a code segment".format(ea))
+      continue
+
+    if not idc.hasName(ea):
+      old_name = name
+      if name.startswith("."):
+        name = idc.GetCommentEx(ea, 0)
+      
+      log.info("Renaming `{}` at {:08x} to `{}`".format(old_name, ea, name))
+      idc.MakeName(ea, name)
+
   return exported_eas
 
 
-def find_imported_eas():
-  """Find the address of all imported functions."""
-  num_imports = idaapi.get_import_module_qty()
-  imported_eas = set()
-  named_imported_eas = set()
+def mark_entry_block_address_taken(sub):
+  """Mark the first block of a subroutine as having its address taken."""
+  if program.has_basic_block(sub.ea):
+      entry_block = sub.get_basic_block(sub.ea)
+      entry_block.address_is_taken = True
 
-  for i in xrange(num_imports):
-    idaapi.enum_import_names(i, lambda ea, name, ord: imported_eas.add(ea))
 
-  for ea in imported_eas:
-    if idc.hasName(ea):
-      named_imported_eas.add(ea)
-    else:
-      log.error("Imported subroutine {:08x} has no name.".format(ea))
+def find_exported_subroutines():
+  """Find the functions that are exported to other binaries."""
+  exported_eas = find_exported_eas()
+  for ea in exported_eas:
+    if not program.has_subroutine(ea):
+      continue
 
-  # TODO(pag):  This is not finding most thunks. Perhaps go over all identified
-  #             functions and test them.
+    sub = program.get_subroutine(ea)
+    if program.Subroutine.VISIBILITY_INTERNAL != sub.visibility:
+      continue 
 
-  return named_imported_eas
+    sub.visibility = program.Subroutine.VISIBILITY_EXPORTED
+    if sub.name:
+      log.info("Found exported subroutine {} at {:08x}".format(
+          sub.name, sub.ea))
+
+    mark_entry_block_address_taken(sub)
 
 
 def get_called_subroutines(sub):
@@ -285,18 +352,14 @@ def analyse_subroutines():
   """Goes through all the subroutines that IDA's initial auto analysis
   discovers."""
 
-  log.info("Analysing initial subroutines identified by IDA")
+  log.info("Analysing subroutines")
  
   exported_eas = find_exported_eas()
   log.info("IDA identified {} exported functions".format(len(exported_eas)))
 
-  imported_eas = find_imported_eas()
-  log.info("IDA identified {} imported functions".format(len(imported_eas)))
-
   subs = set()
   sub_eas = set()  # Work list.
   sub_eas.update(exported_eas)
-  sub_eas.update(imported_eas)
 
   # Get all subroutines that IDA recognised.
   for seg_ea in idautils.Segments():
@@ -304,12 +367,22 @@ def analyse_subroutines():
     sub_eas.update(idautils.Functions(min_ea, max_ea))
 
   log.info("IDA identified {} functions".format(len(sub_eas)))
-
+  bad_sub_eas = set()
   for sub_ea in sub_eas:
-    sub = program.get_subroutine(sub_ea)  # Mark `ea` as a subroutine.
+    if has_segment_type(sub_ea, idc.SEG_CODE):
+      sub = program.get_subroutine(sub_ea)  # Mark `ea` as a subroutine.
 
+  # Iteratively analyse the blocks in subroutines. This may discover new
+  # subroutines because our block analysis can be more aggressive than what
+  # IDA finds.
   while len(sub_eas):
     sub_ea = sub_eas.pop()
+
+    if not has_segment_type(sub_ea, idc.SEG_CODE):
+      log.warning(
+          "Not analysing subroutine at non-code address {:08x}".format(sub_ea))
+      continue
+
     sub = program.get_subroutine(sub_ea)
     if sub in subs:
       log.debug("Skipping {:08x}; already analysed.".format(sub_ea))
@@ -323,11 +396,6 @@ def analyse_subroutines():
     # Mark this subroutine as exported.
     if sub_ea in exported_eas:
       sub.visibility = program.Subroutine.VISIBILITY_EXPORTED
-
-    # Mark this subroutine as imported.
-    elif sub_ea in imported_eas:
-      sub.visibility = program.Subroutine.VISIBILITY_IMPORTED
-      continue  # Don't analyse subroutine (e.g. PLT table entry).
 
     analyse_subroutine(sub)
     sub_eas.update(get_called_subroutines(sub))
@@ -348,7 +416,7 @@ def scan_data_for_code_refs(begin_ea, end_ea, read_func, read_size):
 def analyse_data(pointer_size):
   """Go through the data sections and look for possible tables of
   code pointers."""
-  log.info("Analysing the data section for simple code refs.")
+  log.info("Analysing the data section for simple code refs")
   for seg_ea in idautils.Segments():
     seg_type = idc.GetSegmentAttr(seg_ea, idc.SEGATTR_TYPE)
     if seg_type != idc.SEG_DATA:
@@ -371,10 +439,14 @@ def analyse_indirect_jump(block, jump_inst, blocks):
         jump_inst.ea, num_targets))
     target_eas.update(idautils.CodeRefsFrom(jump_inst.ea, True))
 
+  for target_ea in target_eas:
+    block = program.get_basic_block(target_ea)
+    block.address_is_taken = True
+
 
 def analyse_indirect_jumps():
   """Scan through the code looking for jump tables."""
-  log.info("Analysing indirect jump instructions.")
+  log.info("Analysing indirect jump instructions")
   blocks = set(program.basic_blocks())
   seen = set()
   while len(blocks):
@@ -386,6 +458,36 @@ def analyse_indirect_jumps():
     term_inst = block.terminator
     if term_inst.is_indirect_jump():
       analyse_indirect_jump(block, term_inst, blocks)
+
+
+def analyse_function_returns():
+  """Find all function call instructions, and mark the blocks associated
+  with their return addresses as having their addresses taken."""
+  log.info("Analysing targets of function call return instructions")
+  for block in program.basic_blocks():
+    term_inst = block.terminator
+    if not term_inst or not term_inst.is_function_call():
+      continue
+    return_target_block = program.get_basic_block(term_inst.next_ea)
+    return_target_block.address_is_taken = True
+
+
+def analyse_callbacks():
+  """Analyse functions that are used as callbacks."""
+  global POSSIBLE_CODE_REFS
+  log.info("Analysing callbacks")
+  for ea in POSSIBLE_CODE_REFS:
+    if program.has_basic_block(ea):
+      block = program.get_basic_block(ea)
+      if not block.address_is_taken:
+        block.address_is_taken = True
+        log.info("Block {:08x} is a callback".format(ea))
+
+  for block in program.basic_blocks():
+    if not block.address_is_taken:
+      if len(tuple(idautils.DataRefsTo(block.ea))):
+        block.address_is_taken = True
+        log.info("Block {:08x} is a callback".format(block.ea))
 
 
 def execute(args, command_args):
@@ -476,14 +578,21 @@ if "__main__" == __name__:
     log.info("Analysing {}.".format(idc.GetInputFile()))
 
     # Wait for auto-analysis to finish.
-    log.info("Waiting for IDA to finish its auto-analysis.")
+    log.info("Waiting for IDA to finish its auto-analysis")
     idaapi.autoWait()
 
     analyse_data(ADDRESS_SIZE[args.arch])
     analyse_subroutines()
+    find_imported_subroutines()
+    find_exported_subroutines()
     analyse_indirect_jumps()
+    analyse_function_returns()
+    analyse_callbacks()
 
-    log.info("Done.")
+    log.info("Saving CFG to {}".format(args.output.name))
+    cfg.save_to_stream(args.output)
+
+    log.info("Done")
     idc.Exit(0)
 
   except SystemExit as e:

@@ -10,7 +10,7 @@ if [[ "${TRAVIS_OS_NAME}" = "linux" ]] ; then
     uname -a
     lsb_release -a
 
-    sudo apt-get update -qq
+    sudo apt-get update -yqq
     sudo apt-get --force-yes purge isc-dhcp-client
     sudo apt-get install -y isc-dhcp-client
     #sudo apt-get upgrade -yqq

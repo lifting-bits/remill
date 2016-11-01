@@ -27,7 +27,7 @@ class Subroutine(object):
     self.blocks = set()
     self.visibility = Subroutine.VISIBILITY_INTERNAL
 
-  def get_block(self, block_ea):
+  def get_basic_block(self, block_ea):
     block = get_basic_block(block_ea)
     block.subroutines.add(self)
     self.blocks.add(block)
@@ -39,7 +39,8 @@ class Subroutine(object):
 
 class BasicBlock(object):
   __slots__ = ('ea', 'end_ea', 'instructions', 'is_addressable',
-               'subroutines', 'terminator', 'successor_eas')
+               'subroutines', 'terminator', 'successor_eas',
+               'address_is_taken')
   
   def __init__(self):
     self.ea = 0
@@ -49,6 +50,7 @@ class BasicBlock(object):
     self.subroutines = set()
     self.terminator = None  # Last instruction of this block.
     self.successor_eas = set()
+    self.address_is_taken = False
 
   def get_instruction(self, inst_ea):
     global _INSTRUCTIONS
