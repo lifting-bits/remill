@@ -217,14 +217,19 @@ def recover_cfg(bv, outf):
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-d', '--debug', action='store_true',
-                        help='Enable verbose debugging mode')
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='Enable verbose debugging mode')
 
-    parser.add_argument('-o', '--output',
-                        type=str, default=None,
-                        help='The output control flow graph recovered from this file')
+    parser.add_argument(
+        '--output',
+        type=str, default=None,
+        help='The output control flow graph recovered from this file')
 
-    parser.add_argument('file', help='Binary to recover control flow graph from')
+    parser.add_argument(
+        '--binary',
+        help='Binary to recover control flow graph from')
 
     args = parser.parse_args(sys.argv[1:])
 
