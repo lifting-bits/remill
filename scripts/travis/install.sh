@@ -13,7 +13,7 @@ if [[ "${TRAVIS_OS_NAME}" = "linux" ]] ; then
     sudo apt-get update -qq
     sudo apt-get --force-yes purge isc-dhcp-client
     sudo apt-get install -y isc-dhcp-client
-    sudo apt-get upgrade -yqq
+    #sudo apt-get upgrade -yqq
     
     $DIR/scripts/travis/install_linux.sh
 fi 
