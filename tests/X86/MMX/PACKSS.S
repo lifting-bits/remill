@@ -1,8 +1,6 @@
 
 TEST_BEGIN_64(PACKSSWBr64r64, 2)
 TEST_INPUTS_MMX_2()
-TEST_IGNORE_FLAGS()
-TEST_USE_X87_MMX
     movq mm0, ARG1_64
     movq mm1, ARG2_64
     packsswb mm0, mm1
@@ -10,8 +8,6 @@ TEST_END_64
 
 TEST_BEGIN_64(PACKSSWBr64m64, 2)
 TEST_INPUTS_MMX_2()
-TEST_IGNORE_FLAGS()
-TEST_USE_X87_MMX
     push ARG2_64
     movq mm0, ARG1_64
     packsswb mm0, qword ptr [rsp]
@@ -19,8 +15,6 @@ TEST_END_64
 
 TEST_BEGIN_64(PACKSSWBv128v128, 2)
 TEST_INPUTS_MMX_2()
-TEST_IGNORE_FLAGS()
-TEST_USE_X87_MMX
     movq xmm0, ARG1_64
     movq xmm1, ARG2_64
     packsswb xmm0, xmm1
@@ -28,8 +22,6 @@ TEST_END_64
 
 TEST_BEGIN_64(PACKSSWBv128m128, 2)
 TEST_INPUTS_MMX_2()
-TEST_IGNORE_FLAGS()
-TEST_USE_X87_MMX
 	push 0
     push ARG2_64
     movq xmm0, ARG1_64
@@ -38,8 +30,6 @@ TEST_END_64
 
 TEST_BEGIN_64(PACKSSDWr64r64, 2)
 TEST_INPUTS_MMX_2()
-TEST_IGNORE_FLAGS()
-TEST_USE_X87_MMX
     movq mm0, ARG1_64
     movq mm1, ARG2_64
 	packssdw mm0, mm1
@@ -47,8 +37,6 @@ TEST_END_64
 
 TEST_BEGIN_64(PACKSSDWr64m64, 2)
 TEST_INPUTS_MMX_2()
-TEST_IGNORE_FLAGS()
-TEST_USE_X87_MMX
     push ARG2_64
     movq mm0, ARG1_64
     packssdw mm0, qword ptr [rsp]
@@ -56,8 +44,6 @@ TEST_END_64
 
 TEST_BEGIN_64(PACKSSDWv128v128, 2)
 TEST_INPUTS_MMX_2()
-TEST_IGNORE_FLAGS()
-TEST_USE_X87_MMX
     movq xmm0, ARG1_64
     movq xmm1, ARG2_64
 	packssdw xmm0, xmm1
@@ -65,8 +51,6 @@ TEST_END_64
 
 TEST_BEGIN_64(PACKSSDWv128m128, 2)
 TEST_INPUTS_MMX_2()
-TEST_IGNORE_FLAGS()
-TEST_USE_X87_MMX
 	push 0
     push ARG2_64
     movq xmm0, ARG1_64
