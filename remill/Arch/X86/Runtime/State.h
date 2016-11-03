@@ -416,7 +416,7 @@ struct alignas(64) State final {
   //        while maintaining that `State` is a POD type.
   ArchState generic;
 
-  uint8_t _padding0[56];
+  uint8_t _padding0[48];
 
   // AVX512 has 32 vector registers, so we always include them all here for
   // consistency across the various state structures.

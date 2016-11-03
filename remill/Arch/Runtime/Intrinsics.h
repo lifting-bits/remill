@@ -1,7 +1,7 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#ifndef REMILL_ARCH_SEMANTICS_INSTRINSICS_H_
-#define REMILL_ARCH_SEMANTICS_INSTRINSICS_H_
+#ifndef REMILL_ARCH_RUNTIME_INTRINSICS_H_
+#define REMILL_ARCH_RUNTIME_INTRINSICS_H_
 
 #include "remill/Arch/Runtime/Types.h"
 
@@ -15,6 +15,34 @@ struct NamedBlock final {
   const char * const name;
   void (* const lifted_func)(State &, Memory *, addr_t);
   void (* const native_func)(void);
+};
+
+enum class SyncHyperCall : uint32_t {
+  kInvalid,
+  kX86CPUID,
+  kX86ReadTSC,
+  kX86ReadTSCP
+};
+
+enum class AsynchHyperCall : uint32_t {
+  kInvalid,
+
+  // Interrupts calls.
+  kX86Int1,
+  kX86Int3,
+  kX86IntO,
+  kX86IntN,
+  kX86Bound,
+
+  // Interrupt returns.
+  kX86IRet,
+
+  // System calls.
+  kX86SysCall,
+  kX86SysRet,
+
+  kX86SysEnter,
+  kX86SysExit,
 };
 
 extern "C" {
@@ -118,16 +146,10 @@ extern void __remill_function_return(State &, Memory *, addr_t addr);
 extern void __remill_jump(State &, Memory *, addr_t addr);
 
 [[gnu::used]]
-extern void __remill_system_call(State &, Memory *, addr_t ret_addr);
+extern void __remill_async_hyper_call(State &, Memory *, addr_t ret_addr);
 
-[[gnu::used]]
-extern void __remill_system_return(State &, Memory *, addr_t addr);
-
-[[gnu::used]]
-extern void __remill_interrupt_call(State &, Memory *, addr_t ret_addr);
-
-[[gnu::used]]
-extern void __remill_interrupt_return(State &, Memory *, addr_t);
+[[gnu::used, gnu::const]]
+extern Memory *__remill_sync_hyper_call(State &, Memory *, SyncHyperCall);
 
 // Transition to "native", unmodelled code from Remill-lifted code.
 [[gnu::used]]
@@ -170,4 +192,4 @@ extern void __remill_intrinsics(void);
 
 }  // extern C
 
-#endif  // REMILL_ARCH_SEMANTICS_INSTRINSICS_H_
+#endif  // REMILL_ARCH_RUNTIME_INTRINSICS_H_

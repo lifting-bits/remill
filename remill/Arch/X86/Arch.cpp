@@ -143,22 +143,22 @@ static Instruction::Category CreateCategory(const xed_decoded_inst_t *xedd) {
 
   // Instruction implementation handles syscall emulation.
   } else if (IsSystemCall(xedd)) {
-    return Instruction::kCategorySystemCall;
+    return Instruction::kCategoryAsyncHyperCall;
 
   } else if (IsSystemReturn(xedd)) {
-    return Instruction::kCategorySystemReturn;
+    return Instruction::kCategoryAsyncHyperCall;
 
   // Instruction implementation handles syscall (x86, x32) emulation. This is
   // invoked even for conditional interrupt, where a special flag is used to
   // denote that the interrupt should happen.
   } else if (IsInterruptCall(xedd)) {
-    return Instruction::kCategoryInterruptCall;
+    return Instruction::kCategoryAsyncHyperCall;
 
   } else if (IsConditionalInterruptCall(xedd)) {
-    return Instruction::kCategoryConditionalInterruptCall;
+    return Instruction::kCategoryConditionalAsyncHyperCall;
 
   } else if (IsInterruptReturn(xedd)) {
-    return Instruction::kCategoryInterruptReturn;
+    return Instruction::kCategoryAsyncHyperCall;
 
   } else if (IsNoOp(xedd)) {
     return Instruction::kCategoryNoOp;
@@ -644,7 +644,7 @@ Instruction *X86Arch::DecodeInstruction(
     instr->is_atomic_read_modify_write = true;
   }
 
-  if (Instruction::kCategoryConditionalInterruptCall == instr->category) {
+  if (Instruction::kCategoryConditionalAsyncHyperCall == instr->category) {
     DecodeConditionalInterrupt(instr);
   }
 

@@ -52,10 +52,7 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       jump(FindIntrinsic(module, "__remill_jump")),
 
       // OS interaction.
-      system_call(FindIntrinsic(module, "__remill_system_call")),
-      system_return(FindIntrinsic(module, "__remill_system_return")),
-      interrupt_call(FindIntrinsic(module, "__remill_interrupt_call")),
-      interrupt_return(FindIntrinsic(module, "__remill_interrupt_return")),
+      async_hyper_call(FindIntrinsic(module, "__remill_async_hyper_call")),
 
       // Transition to/from native/lifted code.
       detach(FindIntrinsic(module, "__remill_detach")),

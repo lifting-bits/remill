@@ -123,8 +123,9 @@ DEF_ISEL_SEM(XLAT) {
   Write(REG_AL, Read(ReadPtr<uint8_t>(UAdd(base, offset) _IF_32BIT(REG_DS))));
 }
 
-// Implemented via the `__remill_read_cpu_features` intrinsic.
-DEF_ISEL_SEM(CPUID) {}
+DEF_ISEL_SEM(CPUID) {
+  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86CPUID);
+}
 
 DEF_ISEL_SEM(UD2) {}
 

@@ -23,10 +23,7 @@ class IntrinsicTable {
   llvm::Function * const jump;
 
   // OS interaction.
-  llvm::Function * const system_call;
-  llvm::Function * const system_return;
-  llvm::Function * const interrupt_call;
-  llvm::Function * const interrupt_return;
+  llvm::Function * const async_hyper_call;
 
   // Transition to/from native/lifted code.
   //

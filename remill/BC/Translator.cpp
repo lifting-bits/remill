@@ -917,35 +917,17 @@ void Translator::LiftTerminator(llvm::BasicBlock *block,
           GetOrCreateTargetBlock(arch_instr->branch_not_taken_pc));
       break;
 
-    case Instruction::kCategorySystemCall:
+    case Instruction::kCategoryAsyncHyperCall:
       AddTerminatingTailCall(
           block,
-          WrapIntrinsic(intrinsics->system_call, arch_instr->pc));
+          WrapIntrinsic(intrinsics->async_hyper_call, arch_instr->pc));
       break;
 
-    case Instruction::kCategorySystemReturn:
-      AddTerminatingTailCall(
-          block,
-          WrapIntrinsic(intrinsics->system_return, arch_instr->pc));
-      break;
-
-    case Instruction::kCategoryInterruptCall:
-      AddTerminatingTailCall(
-          block,
-          WrapIntrinsic(intrinsics->interrupt_call, arch_instr->pc));
-      break;
-
-    case Instruction::kCategoryConditionalInterruptCall:
+    case Instruction::kCategoryConditionalAsyncHyperCall:
       LiftConditionalBranch(
           block,
-          intrinsics->interrupt_call,
+          intrinsics->async_hyper_call,
           GetOrCreateTargetBlock(arch_instr->next_pc));
-      break;
-
-    case Instruction::kCategoryInterruptReturn:
-      AddTerminatingTailCall(
-          block,
-          WrapIntrinsic(intrinsics->interrupt_return, arch_instr->pc));
       break;
   }
 }
