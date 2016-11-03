@@ -947,12 +947,6 @@ void Translator::LiftTerminator(llvm::BasicBlock *block,
           block,
           WrapIntrinsic(intrinsics->interrupt_return, arch_instr->pc));
       break;
-
-    case Instruction::kCategoryReadCPUFeatures:
-      AddTerminatingTailCall(
-          block,
-          WrapIntrinsic(intrinsics->read_cpu_features, arch_instr->pc));
-      break;
   }
 }
 

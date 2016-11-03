@@ -117,7 +117,6 @@ class Instruction {
     kCategoryConditionalInterruptCall,
     kCategoryInterruptCall,
     kCategoryInterruptReturn,
-    kCategoryReadCPUFeatures,
   } category;
 
   std::vector<Operand> operands;

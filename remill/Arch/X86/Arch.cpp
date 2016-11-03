@@ -118,10 +118,6 @@ static bool IsError(const xed_decoded_inst_t *xedd) {
          XED_ICLASS_INVALID == iclass;
 }
 
-static bool IsReadCPUFeatures(const xed_decoded_inst_t *xedd) {
-  return XED_ICLASS_CPUID == xed_decoded_inst_get_iclass(xedd);
-}
-
 // Return the category of this instruction.
 static Instruction::Category CreateCategory(const xed_decoded_inst_t *xedd) {
   if (IsError(xedd)) {
@@ -166,10 +162,6 @@ static Instruction::Category CreateCategory(const xed_decoded_inst_t *xedd) {
 
   } else if (IsNoOp(xedd)) {
     return Instruction::kCategoryNoOp;
-
-  // CPUID. Lets a runtime or static analyzer decide what this means.
-  } else if (IsReadCPUFeatures(xedd)) {
-    return Instruction::kCategoryReadCPUFeatures;
 
   } else {
     return Instruction::kCategoryNormal;
@@ -380,18 +372,12 @@ static void DecodeRegister(Instruction *instr,
 
   Operand op;
   op.type = Operand::kTypeRegister;
-  op.size = xed_get_register_width_bits64(reg);
-
-  // In remill, we represent X87 floating point registers using `double`s.
-  if (XED_REG_X87_FIRST <= reg && XED_REG_X87_LAST >= reg) {
-    op.size = 64;
-  }
+  op.reg = RegOp(reg);
+  op.size = op.reg.size;
 
   // Pass the register by reference.
   if (xed_operand_written(xedo)) {
-
     op.action = Operand::kActionWrite;
-    op.reg = RegOp(reg);
 
     // Note:  In `BasicBlock.cpp`, we alias things like `EAX_write` into
     //        `RAX_write` on 64-bit builds, so we just want to notify that
@@ -422,8 +408,6 @@ static void DecodeRegister(Instruction *instr,
 
   if (xed_operand_read(xedo)) {
     op.action = Operand::kActionRead;
-    op.size = xed_get_register_width_bits64(reg);
-    op.reg = RegOp(reg);
     instr->operands.push_back(op);
   }
 }

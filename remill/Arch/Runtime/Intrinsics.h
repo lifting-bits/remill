@@ -165,11 +165,6 @@ extern Memory *__remill_atomic_begin(Memory *);
 [[gnu::used, gnu::const]]
 extern Memory *__remill_atomic_end(Memory *);
 
-// Arch-specific feature lookup. Implemented as a pseudo control-flow
-// intrinsic.
-[[gnu::used]]
-extern void __remill_read_cpu_features(State &, Memory *, addr_t addr);
-
 [[gnu::used]]
 extern void __remill_intrinsics(void);
 

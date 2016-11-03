@@ -28,9 +28,6 @@ class IntrinsicTable {
   llvm::Function * const interrupt_call;
   llvm::Function * const interrupt_return;
 
-  // Arch interaction.
-  llvm::Function * const read_cpu_features;
-
   // Transition to/from native/lifted code.
   //
   // TODO(pag): This is not really the best abstraction as it covers less than
