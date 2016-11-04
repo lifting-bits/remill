@@ -7,8 +7,8 @@ Remill is a static binary translator that translates machine code into [LLVM bit
 
 |       | master |
 | ----- | ------ |
-| Linux | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/linux)](https://travis-ci.org/trailofbits/remill) |
-| macOS | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/osx)](https://travis-ci.org/trailofbits/remill) |
+| Linux | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/linux/)](https://travis-ci.org/trailofbits/remill) |
+| macOS | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/osx/)](https://travis-ci.org/trailofbits/remill) |
 
 ## Additional Documentation
  
@@ -87,6 +87,15 @@ sudo apt-get upgrade
 sudo apt-get install cmake
 ```
 
+#### On OS X
+
+##### Install Dependencies
+
+```
+brew install glog
+brew install protobuf
+```
+
 ### Step 2: Clone and Enter the Repository
 
 #### Clone the repository
@@ -104,6 +113,13 @@ cd remill
 ./build.sh
 ```
 
+### Step 3: Install the disassembler
+
+```shell
+cd ..
+sudo python tools/setup.py install
+```
+
 ## Building and Running the Test Suite
 
 ### Build Google Test
@@ -113,7 +129,7 @@ cd remill
 This script will build and install the Google Test framework. It will request administrator permissions.
 
 ```shell
-./scripts/linux/install_gtest.sh
+./scripts/unix/install_gtest.sh
 ```
 
 ### Generate and Run the Test Cases

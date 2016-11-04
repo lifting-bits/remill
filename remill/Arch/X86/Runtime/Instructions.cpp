@@ -1,7 +1,5 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-//#include "remill/Arch/Runtime/Types.cpp"
-
 #include "remill/Arch/Runtime/Intrinsics.h"
 #include "remill/Arch/Runtime/Operators.h"
 
@@ -104,29 +102,29 @@
 #define REG_GS state.seg.gs
 #define REG_CS state.seg.cs
 
-#define INTERRUPT_VECTOR state.interrupt_vector
-#define INTERRUPT_TAKEN state.interrupt_taken
+#define INTERRUPT_VECTOR state.generic.interrupt_vector
 
-#include "remill/Arch/X86/Semantics/FLAGS.h"
-#include "remill/Arch/X86/Semantics/BINARY.h"
-#include "remill/Arch/X86/Semantics/BITBYTE.h"
-#include "remill/Arch/X86/Semantics/CALL_RET.h"
-#include "remill/Arch/X86/Semantics/CMOV.h"
-#include "remill/Arch/X86/Semantics/COND_BR.h"
-#include "remill/Arch/X86/Semantics/CONVERT.h"
-#include "remill/Arch/X86/Semantics/DATAXFER.h"
-#include "remill/Arch/X86/Semantics/INTERRUPT.h"
-#include "remill/Arch/X86/Semantics/FLAGOP.h"
-#include "remill/Arch/X86/Semantics/FMA.h"
-#include "remill/Arch/X86/Semantics/LOGICAL.h"
-#include "remill/Arch/X86/Semantics/MISC.h"
-#include "remill/Arch/X86/Semantics/NOP.h"
-#include "remill/Arch/X86/Semantics/POP.h"
-#include "remill/Arch/X86/Semantics/PUSH.h"
-#include "remill/Arch/X86/Semantics/ROTATE.h"
-#include "remill/Arch/X86/Semantics/SHIFT.h"
-#include "remill/Arch/X86/Semantics/SSE.h"
-#include "remill/Arch/X86/Semantics/STRINGOP.h"
-#include "remill/Arch/X86/Semantics/UNCOND_BR.h"
-#include "remill/Arch/X86/Semantics/XOP.h"
-#include "remill/Arch/X86/Semantics/X87.h"
+#include "remill/Arch/X86/Semantics/FLAGS.cpp"
+#include "remill/Arch/X86/Semantics/BINARY.cpp"
+#include "remill/Arch/X86/Semantics/BITBYTE.cpp"
+#include "remill/Arch/X86/Semantics/CALL_RET.cpp"
+#include "remill/Arch/X86/Semantics/CMOV.cpp"
+#include "remill/Arch/X86/Semantics/COND_BR.cpp"
+#include "remill/Arch/X86/Semantics/CONVERT.cpp"
+#include "remill/Arch/X86/Semantics/DATAXFER.cpp"
+#include "remill/Arch/X86/Semantics/INTERRUPT.cpp"
+#include "remill/Arch/X86/Semantics/FLAGOP.cpp"
+#include "remill/Arch/X86/Semantics/FMA.cpp"
+#include "remill/Arch/X86/Semantics/LOGICAL.cpp"
+#include "remill/Arch/X86/Semantics/MISC.cpp"
+#include "remill/Arch/X86/Semantics/MMX.cpp"
+#include "remill/Arch/X86/Semantics/NOP.cpp"
+#include "remill/Arch/X86/Semantics/POP.cpp"
+#include "remill/Arch/X86/Semantics/PUSH.cpp"
+#include "remill/Arch/X86/Semantics/ROTATE.cpp"
+#include "remill/Arch/X86/Semantics/SHIFT.cpp"
+#include "remill/Arch/X86/Semantics/SSE.cpp"
+#include "remill/Arch/X86/Semantics/STRINGOP.cpp"
+#include "remill/Arch/X86/Semantics/UNCOND_BR.cpp"
+#include "remill/Arch/X86/Semantics/XOP.cpp"
+#include "remill/Arch/X86/Semantics/X87.cpp"

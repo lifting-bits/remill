@@ -24,6 +24,6 @@ elif [[ "$OSTYPE" == "darwin"* ]] ; then
     popd
 
 else
-    printf "Unsupported platform: ${OSTYPE}${RESET}\n" > /dev/stderr
+    printf "Unsupported platform: ${OSTYPE}\n" > /dev/stderr
     exit 1
 fi

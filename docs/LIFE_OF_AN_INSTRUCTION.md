@@ -59,7 +59,7 @@ The translator creates an LLVM function for every `Block` in the CFG protocol bu
 
 ### The `__remill_basic_block` function
 
-The `__remill_basic_block` function is very important. There are *a lot* of variables defined in this function, and the comments are mildy useful. For now, we will focus on the variable definitions that relate to machine code registers. Specifically, we will look at how the translator maps `ebx` from `push ebx` into `EBX_read`.
+The `__remill_basic_block` function is very important. There are *a lot* of variables defined in this function, and the comments are mildy useful. For now, we will focus on the variable definitions that relate to machine code registers. Specifically, we will look at how the translator maps `ebx` from `push ebx` into `EBX`.
 
 ```C++
 // Method that will implement a basic block. We will clone this method for
@@ -67,13 +67,8 @@ The `__remill_basic_block` function is very important. There are *a lot* of vari
 [[gnu::used]]
 void __remill_basic_block(State &state, Memory &memory, addr_t curr_pc) {
   ...
-  // Define read- and write-specific aliases of each register. We will
-  // reference these variables from the bitcode side of things so that,
-  // given a decoded register name and an operation type (read or write),
-  // we can map the register to a specific field in the State structure.
-  ...
-  auto &EBX_read = state.gpr.rbx.dword;
-  auto &EBX_write = state.gpr.rbx.IF_64BIT_ELSE(qword, dword);
+  auto &EAX = state.gpr.rax.dword;
+  auto &EBX = state.gpr.rbx.dword;
   ...
 }
 ```
@@ -96,12 +91,12 @@ If we look deep into the bowels of [`DecodeRegister`](/remill/Arch/X86/Arch.cpp#
 ```C++
   if (xed_operand_read(xedo)) {
     ...
-    op.reg = ReadReg(reg);  // Returns `EBX_read`.
+    op.reg = ReadOp(reg);  // Returns `EBX`.
     instr->operands.push_back(op);
   }
 ```
 
-In the case of the `push ebx` instruction from our example block, `ReadReg` will actually return the string `"EBX_read"`. Recall that each basic block of machine code is lifted into an LLVM function, and that function is a clone of `__remill_basic_block`. This means that the LLVM function implementing the basic block will have `EBX_read` defined. So, the translator doesn't actually know what `ebx` is, it just understands variable names, and the instruction decoder will produce variable names for registers, knowing that those variables are defined in `__remill_basic_block`, and therefore will be available within all of its clones.
+In the case of the `push ebx` instruction from our example block, `ReadOp` will actually return the string `"EBX"`. Recall that each basic block of machine code is lifted into an LLVM function, and that function is a clone of `__remill_basic_block`. This means that the LLVM function implementing the basic block will have `EBX` defined. So, the translator doesn't actually know what `ebx` is, it just understands variable names, and the instruction decoder will produce variable names for registers, knowing that those variables are defined in `__remill_basic_block`, and therefore will be available within all of its clones.
 
 ## Step 3: Calling semantics functions for each `Instr`
 
@@ -109,7 +104,7 @@ The previous section described how the architecture-specific instruction decoder
 
 The "[How to add a new instruction](ADD_AN_INSTRUCTION.md)" document describes the different between *SEM*s, functions implementing instruction semantics, and *ISEL*s, specialisations of those functions that are specific to an instruction form or encoding. The instruction decoder knows about the names of *ISEL*s, and it uses these names to [direct the translator](/remill/Arch/Instruction.h#L79-L80) to find and call the right function for each instruction being lifted.
 
-The [operands](/remill/Arch/Instruction.h#L123) of the instruction data structure tell the translator how to find and compute values to pass as arguments to the semantics functions. In the last section, we showed how the `ebx` register in `push ebx` is represented as a register operand, whose variable name is `EBX_read`. The translator loads this value and passes it as an argument to the [`PUSH_GPRv_32`](/remill/Arch/X86/Semantics/PUSH.h#L28) *ISEL* function, as implemented by the [`PUSH`](/remill/Arch/X86/Semantics/PUSH.h#L17-L20) *SEM* function.
+The [operands](/remill/Arch/Instruction.h#L123) of the instruction data structure tell the translator how to find and compute values to pass as arguments to the semantics functions. In the last section, we showed how the `ebx` register in `push ebx` is represented as a register operand, whose variable name is `EBX`. The translator loads this value and passes it as an argument to the [`PUSH_GPRv_32`](/remill/Arch/X86/Semantics/PUSH.cpp#L28) *ISEL* function, as implemented by the [`PUSH`](/remill/Arch/X86/Semantics/PUSH.cpp#L17-L20) *SEM* function.
 
 Here's what the unoptimised bitcode for the example basic block looks like:
 
@@ -161,31 +156,29 @@ Yikes! That is a lot of code. Here's what it would look like if it was written d
 
 ```C++
 void __remill_sub_804b7a3(State *state, Memory *memory, addr_t pc) {
-  auto &EIP_read = state.gpr.rip.dword;
-  auto &EIP_write = state.gpr.rip.dword;
-  auto &EAX_write = state.gpr.rax.dword;
-  auto &EBX_read = state.gpr.rbx.dword;
-  auto &EBX_write = state.gpr.rbx.dword;
-  auto &ESP_read = state.gpr.rsp.dword;
+  auto &EIP = state.gpr.rip.dword;
+  auto &EAX = state.gpr.rax.dword;
+  auto &EBX = state.gpr.rbx.dword;
+  auto &ESP = state.gpr.rsp.dword;
 
   // mov    eax, 0x1
   pc += 5;
-  EIP_write = pc;
-  MOV<R32W, I32>(state, &memory, &EAX_write, 1);
+  EIP = pc;
+  MOV<R32W, I32>(state, &memory, &EAX, 1);
   
   // push   ebx
-  EIP_write += 1;
-  PUSH<R32>(state, &memory, EBX_read);
+  EIP += 1;
+  PUSH<R32>(state, &memory, EBX);
 
   // mov    ebx, dword [esp+0x8]
-  EIP_write += 4;
-  MOV<R32W, M32>(state, &memory, &EBX_write, ESP_read + 0x8);
+  EIP += 4;
+  MOV<R32W, M32>(state, &memory, &EBX, ESP + 0x8);
 
   // int    0x80
-  EIP_write += 2;
+  EIP += 2;
   INT_IMMb<I8>(state, &memory, 0x80);
 
-  return __remill_interrupt_call(state, memory, EIP_read)
+  return __remill_interrupt_call(state, memory, EIP)
 }
 ```
 
