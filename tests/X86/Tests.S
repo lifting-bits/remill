@@ -143,6 +143,22 @@ TEST_FUNC(instr_name, num_args): ; \
 
 #endif  /* 64 == ADDRESS_SIZE_BITS */
 
+#ifdef __APPLE__
+# define TEST_BEGIN_MEM_64(instr_name, num_args) \
+      .macro IGNORE_ ## instr_name ## __LINE__
+# define TEST_END_MEM_64 \
+      .endm ;
+# define TEST_BEGIN_MEM(instr_name, num_args) \
+      .macro IGNORE_ ## instr_name ## __LINE__
+# define TEST_END_MEM \
+      .endm ;
+#else
+# define TEST_BEGIN_MEM TEST_BEGIN
+# define TEST_END_MEM TEST_END
+# define TEST_BEGIN_MEM_64 TEST_BEGIN_64
+# define TEST_END_MEM_64 TEST_END_64
+#endif
+
     .file __FILE__ ;
     .intel_syntax noprefix ;
 
@@ -293,9 +309,6 @@ SYMBOL(__x86_test_table_begin):
 /* For argument register and return register definitions. */
 #include "tests/X86/ABI.S"
 
-#define APPLE_SAFE_TESTS (!defined(__APPLE__) || 64 == ADDRESS_SIZE_BITS)
-
-
 /* Bring in the data transfer tests. These basically HAVE to pass before
  * anything else can ;-)  */
 #include "tests/X86/DATAXFER/MOV.S"
@@ -404,14 +417,11 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/MISC/LEAVE.S"
 #include "tests/X86/MISC/XLAT.S"
 
+#include "tests/X86/POP/POP.S"
+#include "tests/X86/POP/POPF.S"
 
-#if APPLE_SAFE_TESTS
-# include "tests/X86/POP/POP.S"
-# include "tests/X86/POP/POPF.S"
-
-# include "tests/X86/PUSH/PUSH.S"
-# include "tests/X86/PUSH/PUSHF.S"
-#endif  // APPLE_SAFE_TESTS
+#include "tests/X86/PUSH/PUSH.S"
+#include "tests/X86/PUSH/PUSHF.S"
 
 #include "tests/X86/ROTATE/RCL.S"
 #include "tests/X86/ROTATE/RCR.S"
@@ -429,15 +439,11 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/UCOMISD.S"
 #include "tests/X86/SSE/UCOMISS.S"
 
-
-#if APPLE_SAFE_TESTS
-# include "tests/X86/STRINGOP/CMPS.S"
-# include "tests/X86/STRINGOP/LODS.S"
-# include "tests/X86/STRINGOP/MOVS.S"
-# include "tests/X86/STRINGOP/SCAS.S"
-# include "tests/X86/STRINGOP/STOS.S"
-#endif  // __APPLE__
-
+#include "tests/X86/STRINGOP/CMPS.S"
+#include "tests/X86/STRINGOP/LODS.S"
+#include "tests/X86/STRINGOP/MOVS.S"
+#include "tests/X86/STRINGOP/SCAS.S"
+#include "tests/X86/STRINGOP/STOS.S"
 
 # include "tests/X86/X87/FLD.S"
 

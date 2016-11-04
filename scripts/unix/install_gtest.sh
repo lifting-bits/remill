@@ -13,8 +13,15 @@ if [[ "$OSTYPE" == "linux-gnu" ]] ; then
     sudo ldconfig
     popd
 
-# elif [[ "$OSTYPE" == "darwin"* ]] ; then
-#     OS_NAME=macos
+elif [[ "$OSTYPE" == "darwin"* ]] ; then
+    git clone https://github.com/google/googletest
+    mkdir gtest_build
+    pushd gtest_build
+    cmake ../googletest/googletest
+    make
+    sudo cp *.a /usr/local/lib
+    rm -rf googletest
+    popd
 
 else
     printf "Unsupported platform: ${OSTYPE}\n" > /dev/stderr
