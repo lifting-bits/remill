@@ -299,14 +299,14 @@ DEF_SEM(PHADDW, D dst, S1 src1, S2 src2) {
   for (std::size_t index = 0; index < vec_count; index += 2) {
     auto v1 = SExtractV16(lhs_vec, index);
     auto v2 = SExtractV16(lhs_vec, index+1);
-    auto i = UDiv(index, std::size_t(2));
+    auto i = UDiv(UInt32(index), UInt32(2));
     dst_vec = SInsertV16(dst_vec, i, SAdd(v1, v2));
   }
   _Pragma("unroll")
   for (std::size_t index = 0; index < NumVectorElems(rhs_vec); index += 2) {
     auto v1 = SExtractV16(rhs_vec, index);
     auto v2 = SExtractV16(rhs_vec, index+1);
-    auto i = UAdd(index, std::size_t(vec_count));
+    auto i = UAdd(UInt32(index), UInt32(vec_count));
     i = UDiv(i, 2);
     dst_vec = SInsertV16(dst_vec, i, SAdd(v1, v2));
   }
@@ -325,14 +325,14 @@ DEF_SEM(PHADDD, D dst, S1 src1, S2 src2) {
   for (std::size_t index = 0; index < vec_count; index += 2) {
     auto v1 = SExtractV32(lhs_vec, index);
     auto v2 = SExtractV32(lhs_vec, index+1);
-    auto i = UDiv(index, std::size_t(2));
+    auto i = UDiv(UInt32(index), UInt32(2));
     dst_vec = SInsertV32(dst_vec, i, SAdd(v1, v2));
   }
   _Pragma("unroll")
   for (std::size_t index = 0; index < NumVectorElems(rhs_vec); index += 2) {
     auto v1 = SExtractV32(rhs_vec, index);
     auto v2 = SExtractV32(rhs_vec, index+1);
-    auto i = UDiv(UAdd(index, vec_count), std::size_t(2));
+    auto i = UDiv(UAdd(UInt32(index), UInt32(vec_count)), UInt32(2));
     dst_vec = SInsertV32(dst_vec, i, SAdd(v1, v2));
   }
   SWriteV32(dst, dst_vec);
@@ -571,14 +571,14 @@ DEF_SEM(PHSUBW, D dst, S1 src1, S2 src2) {
   for (std::size_t i = 0; i < vec_count; i = i+2) {
     auto v1 = SExtractV16(lhs_vec, i);
     auto v2 = SExtractV16(lhs_vec, i+1);
-    auto index = UDiv(i, std::size_t(2));
+    auto index = UDiv(UInt32(i), UInt32(2));
     dst_vec = SInsertV16(dst_vec, index, SSub(v1, v2));
   }
   _Pragma("unroll")
   for (std::size_t i = 0; i < NumVectorElems(rhs_vec); i = i+2) {
     auto v1 = SExtractV16(rhs_vec, i);
     auto v2 = SExtractV16(rhs_vec, i+1);
-    auto index = UDiv(UAdd(i, vec_count), std::size_t(2));
+    auto index = UDiv(UAdd(UInt32(i), UInt32(vec_count)), UInt32(2));
     dst_vec = SInsertV16(dst_vec, index, SSub(v1, v2));
   }
   SWriteV16(dst, dst_vec);
@@ -968,7 +968,7 @@ DEF_SEM(PEXTRW, D dst, S1 src1, S2 src2) {
   auto src1_vec = UReadV16(src1);
   auto count = Read(src2);
   auto vec_count = NumVectorElems(src1_vec);
-  auto sel_index = UAnd(count, UInt8(USub(vec_count, decltype(vec_count)(1))));
+  auto sel_index = UAnd(count, UInt8(USub(UInt32(vec_count), UInt32(1))));
   auto word = UExtractV16(src1_vec, sel_index);
   WriteZExt(dst, word);
 }
