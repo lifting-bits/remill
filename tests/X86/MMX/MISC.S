@@ -3,7 +3,7 @@ TEST_BEGIN_64(PAVGBr64r64, 2)
 TEST_INPUTS_MMX_2()
     movq mm0, ARG1_64
     movq mm1, ARG2_64
-	pavgb mm0, mm1
+    pavgb mm0, mm1
 TEST_END_64
 
 TEST_BEGIN_64(PAVGBr64m64, 2)
@@ -17,12 +17,12 @@ TEST_BEGIN_64(PAVGBv128v128, 2)
 TEST_INPUTS_MMX_2()
     movq xmm0, ARG1_64
     movq xmm1, ARG2_64
-	pavgb xmm0, xmm1
+    pavgb xmm0, xmm1
 TEST_END_64
 
 TEST_BEGIN_64(PAVGBv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pavgb xmm0, xmmword ptr [rsp]
@@ -32,7 +32,7 @@ TEST_BEGIN_64(PAVGWr64r64, 2)
 TEST_INPUTS_MMX_2()
     movq mm0, ARG1_64
     movq mm1, ARG2_64
-	pavgw mm0, mm1
+    pavgw mm0, mm1
 TEST_END_64
 
 TEST_BEGIN_64(PAVGWr64m64, 2)
@@ -46,12 +46,12 @@ TEST_BEGIN_64(PAVGWv128v128, 2)
 TEST_INPUTS_MMX_2()
     movq xmm0, ARG1_64
     movq xmm1, ARG2_64
-	pavgw xmm0, xmm1
+    pavgw xmm0, xmm1
 TEST_END_64
 
 TEST_BEGIN_64(PAVGWv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pavgw xmm0, xmmword ptr [rsp]
@@ -80,7 +80,7 @@ TEST_END_64
 
 TEST_BEGIN_64(PABSBv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pabsb xmm0, xmmword ptr [rsp]
@@ -109,7 +109,7 @@ TEST_END_64
 
 TEST_BEGIN_64(PABSWv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pabsw xmm0, xmmword ptr [rsp]
@@ -138,7 +138,7 @@ TEST_END_64
 
 TEST_BEGIN_64(PAVGDv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pabsd xmm0, xmmword ptr [rsp]
@@ -167,7 +167,7 @@ TEST_END_64
 
 TEST_BEGIN_64(PMAXSWv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pmaxsw xmm0, xmmword ptr [rsp]
@@ -196,7 +196,7 @@ TEST_END_64
 
 TEST_BEGIN_64(PMAXUBv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pmaxub xmm0, xmmword ptr [rsp]
@@ -225,7 +225,7 @@ TEST_END_64
 
 TEST_BEGIN_64(PMINSWv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pminsw xmm0, xmmword ptr [rsp]
@@ -254,7 +254,7 @@ TEST_END_64
 
 TEST_BEGIN_64(PMINUBv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pminub xmm0, xmmword ptr [rsp]

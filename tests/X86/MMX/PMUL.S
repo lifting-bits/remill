@@ -3,7 +3,7 @@ TEST_BEGIN_64(PMADDUBSWr64r64, 2)
 TEST_INPUTS_MMX_2()
     movq mm0, ARG1_64
     movq mm1, ARG2_64
-	pmaddubsw mm0, mm1
+    pmaddubsw mm0, mm1
 TEST_END_64
 
 TEST_BEGIN_64(PMADDUBSWr64m64, 2)
@@ -17,12 +17,12 @@ TEST_BEGIN_64(PMADDUBSWv128v128, 2)
 TEST_INPUTS_MMX_2()
     movq xmm0, ARG1_64
     movq xmm1, ARG2_64
-	pmaddubsw xmm0, xmm1
+    pmaddubsw xmm0, xmm1
 TEST_END_64
 
 TEST_BEGIN_64(PMADDUBSWv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pmaddubsw xmm0, xmmword ptr [rsp]
@@ -32,7 +32,7 @@ TEST_BEGIN_64(PMADDWDr64r64, 2)
 TEST_INPUTS_MMX_2()
     movq mm0, ARG1_64
     movq mm1, ARG2_64
-	pmaddwd mm0, mm1
+    pmaddwd mm0, mm1
 TEST_END_64
 
 TEST_BEGIN_64(PMADDWDr64m64, 2)
@@ -46,12 +46,12 @@ TEST_BEGIN_64(PMADDWDv128v128, 2)
 TEST_INPUTS_MMX_2()
     movq xmm0, ARG1_64
     movq xmm1, ARG2_64
-	pmaddwd xmm0, xmm1
+    pmaddwd xmm0, xmm1
 TEST_END_64
 
 TEST_BEGIN_64(PMADDWDv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pmaddwd xmm0, xmmword ptr [rsp]
@@ -80,7 +80,7 @@ TEST_END_64
 
 TEST_BEGIN_64(PMULUDQv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pmuludq xmm0, xmmword ptr [rsp]
@@ -109,7 +109,7 @@ TEST_END_64
 
 TEST_BEGIN_64(PMULLWv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pmullw xmm0, xmmword ptr [rsp]
@@ -137,7 +137,7 @@ TEST_END_64
 
 TEST_BEGIN_64(PMULHWv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pmulhw xmm0, xmmword ptr [rsp]
@@ -166,7 +166,7 @@ TEST_END_64
 
 TEST_BEGIN_64(PMULHUWv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pmulhuw xmm0, xmmword ptr [rsp]
@@ -195,7 +195,7 @@ TEST_END_64
 
 TEST_BEGIN_64(PMULHRSWv128m128, 2)
 TEST_INPUTS_MMX_2()
-	push 0
+    push 0
     push ARG2_64
     movq xmm0, ARG1_64
     pmulhrsw xmm0, xmmword ptr [rsp]
