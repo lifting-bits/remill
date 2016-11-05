@@ -124,6 +124,10 @@ Translator::Translator(const Arch *arch_, llvm::Module *module_,
   InitBlockFunctionAttributes(basic_block);
 }
 
+Translator::~Translator(void) {
+  delete intrinsics;
+}
+
 namespace {
 
 // Make sure that a function cannot be inlined by the optimizer. We use this
@@ -673,14 +677,6 @@ void Translator::LiftBlocks(const cfg::Module *cfg_module) {
     if (asm_source_writer) {
       asm_source_writer->Flush();
     }
-
-    // Make sure the translation is good before optimizing.
-    std::string error;
-    llvm::raw_string_ostream error_stream(error);
-    CHECK(!llvm::verifyFunction(*func, &error_stream))
-        << "Unable to verify function " << func->getName().str()
-        << ". " << error << ".";
-
     func_pass_manager.run(*func);
   }
   func_pass_manager.doFinalization();

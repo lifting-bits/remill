@@ -208,20 +208,29 @@ int main(int argc, char *argv[]) {
     asm_writer = new remill::AssemblyWriter(module, FLAGS_asm_out);
   }
 
-  remill::Translator lifter(source_arch, module, asm_writer);
-
+  auto translator = new remill::Translator(source_arch, module, asm_writer);
   auto cfg = remill::ReadCFG(FLAGS_cfg);
-  lifter.LiftCFG(cfg);
-
+  translator->LiftCFG(cfg);
+  delete cfg;
+  delete translator;
+  delete source_arch;
+  delete target_arch;
   if (asm_writer) {
     delete asm_writer;
     asm_writer = nullptr;
   }
 
-  remill::StoreModuleToFile(module, FLAGS_bc_out);
+  cfg = nullptr;
+  translator = nullptr;
+  source_arch = nullptr;
+  target_arch = nullptr;
 
-  delete cfg;
-  delete source_arch;
+  remill::StoreModuleToFile(module, FLAGS_bc_out);
+  delete module;
+  delete context;
+
+  module = nullptr;
+  context = nullptr;
 
   google::ShutdownGoogleLogging();
   return EXIT_SUCCESS;
