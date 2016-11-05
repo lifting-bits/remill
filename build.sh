@@ -58,12 +58,12 @@ $DIR/scripts/unix/install_gtest.sh
 echo "[+] Compiling protobufs"
 $DIR/scripts/unix/compile_protobufs.sh
 echo "[+] Running cmake"
-cd ..
-LLVM_DIR=build/$LLVM_DIR
+
+LLVM_DIR=${BUILD_DIR}/$LLVM_DIR
 LLVM_DIR=$(realpath $LLVM_DIR)
 BINDIR=$LLVM_DIR/bin
 LLVM_DIR=$LLVM_DIR/lib/cmake/llvm
-cmake -DLLVM_DIR=${LLVM_DIR} -DCMAKE_C_COMPILER=${BINDIR}/clang -DCMAKE_CXX_COMPILER=${BINDIR}/clang++ -DCMAKE_LLVM_LINK=${BINDIR}/llvm-link
+cmake -DLLVM_DIR=${LLVM_DIR} -DCMAKE_C_COMPILER=${BINDIR}/clang -DCMAKE_CXX_COMPILER=${BINDIR}/clang++ -DCMAKE_LLVM_LINK=${BINDIR}/llvm-link ${DIR}
 echo "[+] Building semantics"
 make semantics
 echo "[+] Building remill"
