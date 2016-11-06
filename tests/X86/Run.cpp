@@ -200,18 +200,28 @@ void __remill_error(State &, Memory *, addr_t) {
   siglongjmp(gJmpBuf, 0);
 }
 
-void __remill_read_cpu_features(State &state, Memory *, addr_t) {
-  asm volatile(
-      "cpuid"
-      : "=a"(state.gpr.rax.qword),
-        "=b"(state.gpr.rbx.qword),
-        "=c"(state.gpr.rcx.qword),
-        "=d"(state.gpr.rdx.qword)
-      : "a"(state.gpr.rax.qword),
-        "b"(state.gpr.rbx.qword),
-        "c"(state.gpr.rcx.qword),
-        "d"(state.gpr.rdx.qword)
-  );
+Memory *__remill_sync_hyper_call(
+    State &state, Memory *mem, SyncHyperCall call) {
+  switch (call) {
+    case SyncHyperCall::kX86CPUID:
+      asm volatile(
+          "cpuid"
+          : "=a"(state.gpr.rax.qword),
+            "=b"(state.gpr.rbx.qword),
+            "=c"(state.gpr.rcx.qword),
+            "=d"(state.gpr.rdx.qword)
+          : "a"(state.gpr.rax.qword),
+            "b"(state.gpr.rbx.qword),
+            "c"(state.gpr.rcx.qword),
+            "d"(state.gpr.rdx.qword)
+      );
+      break;
+
+    default:
+      __builtin_unreachable();
+  }
+
+  return mem;
 }
 
 void __remill_function_call(State &, Memory *, addr_t) {
@@ -226,24 +236,7 @@ void __remill_jump(State &, Memory *, addr_t) {
   __builtin_unreachable();
 }
 
-//addr_t __remill_conditional_branch(
-//    bool cond, addr_t addr_true, addr_t addr_false) {
-//  return cond ? addr_true : addr_false;
-//}
-
-void __remill_system_call(State &, Memory *, addr_t) {
-  __builtin_unreachable();
-}
-
-void __remill_system_return(State &, Memory *, addr_t) {
-  __builtin_unreachable();
-}
-
-void __remill_interrupt_call(State &, Memory *, addr_t) {
-  __builtin_unreachable();
-}
-
-void __remill_interrupt_return(State &, Memory *, addr_t) {
+void __remill_async_hyper_call(State &, Memory *, addr_t) {
   __builtin_unreachable();
 }
 

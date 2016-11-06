@@ -102,6 +102,7 @@
 #define REG_GS state.seg.gs
 #define REG_CS state.seg.cs
 
+#define HYPER_CALL state.generic.hyper_call
 #define INTERRUPT_VECTOR state.generic.interrupt_vector
 
 #include "remill/Arch/X86/Semantics/FLAGS.cpp"
@@ -125,6 +126,8 @@
 #include "remill/Arch/X86/Semantics/SHIFT.cpp"
 #include "remill/Arch/X86/Semantics/SSE.cpp"
 #include "remill/Arch/X86/Semantics/STRINGOP.cpp"
+#include "remill/Arch/X86/Semantics/SYSCALL.cpp"
+#include "remill/Arch/X86/Semantics/SYSTEM.cpp"
 #include "remill/Arch/X86/Semantics/UNCOND_BR.cpp"
 #include "remill/Arch/X86/Semantics/XOP.cpp"
 #include "remill/Arch/X86/Semantics/X87.cpp"

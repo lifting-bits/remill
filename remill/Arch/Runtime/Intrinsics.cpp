@@ -73,13 +73,11 @@ extern "C" void __remill_mark_as_used(const void *);
   USED(__remill_function_call);
   USED(__remill_function_return);
   USED(__remill_jump);
-  USED(__remill_system_call);
-  USED(__remill_system_return);
-  USED(__remill_interrupt_call);
-  USED(__remill_interrupt_return);
-//  USED(__remill_conditional_branch);
 
-//  USED(__remill_attach);
+  USED(__remill_async_hyper_call);
+  USED(__remill_sync_hyper_call);
+
+  // USED(__remill_attach);
   USED(__remill_detach);
 
   USED(__remill_undefined_bool);
@@ -89,8 +87,6 @@ extern "C" void __remill_mark_as_used(const void *);
   USED(__remill_undefined_64);
   USED(__remill_undefined_f32);
   USED(__remill_undefined_f64);
-
-  USED(__remill_read_cpu_features);
 }
 
 #endif  // REMILL_ARCH_SEMANTICS_INSTRINSICS_CPP_
