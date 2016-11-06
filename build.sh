@@ -70,3 +70,4 @@ echo "[+] Building remill"
 make all
 echo "[+] Installing"
 sudo make install
+sudo python ${DIR}/tools/setup.py install
