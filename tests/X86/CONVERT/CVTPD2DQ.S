@@ -1,6 +1,6 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-TEST_BEGIN_64(CVTPPD2DQv128m128, 2)
+TEST_BEGIN_64(CVTPD2DQv128m128, 2)
 TEST_INPUTS(
     0x0010000000000000,  // std::numeric_limits<double>::min()
     0x7fefffffffffffff,  // std::numeric_limits<double>::max()
@@ -15,10 +15,10 @@ TEST_INPUTS(
 
     push ARG1_64
     push ARG2_64
-    cvttpd2dq xmm0, XMMWORD PTR [rsp]
+    cvtpd2dq xmm0, XMMWORD PTR [rsp]
 TEST_END_64
 
-TEST_BEGIN_64(CVTPPD2DQv128v128, 2)
+TEST_BEGIN_64(CVTPD2DQv128v128, 2)
 TEST_INPUTS(
     0x10000000000000,  // std::numeric_limits<double>::min()
     0x7fefffffffffffff,  // std::numeric_limits<double>::max()
@@ -34,12 +34,12 @@ TEST_INPUTS(
     push ARG1_64
     push ARG2_64
     movdqu xmm4, [rsp]
-    cvttpd2dq xmm0, xmm4
+    cvtpd2dq xmm0, xmm4
 TEST_END_64
 
 #if HAS_FEATURE_AVX
 
-TEST_BEGIN_64(VCVTPPD2DQv128m128, 2)
+TEST_BEGIN_64(VCVTPD2DQv128m128, 2)
 TEST_INPUTS(
     0x10000000000000,  // std::numeric_limits<double>::min()
     0x7fefffffffffffff,  // std::numeric_limits<double>::max()
@@ -54,10 +54,10 @@ TEST_INPUTS(
 
     push ARG1_64
     push ARG2_64
-    .byte 0xc5, 0xfb, 0xe6, 0x04, 0x24  // vcvttpd2dq xmm0, XMMWORD PTR [rsp]
+    .byte 0xc5, 0xfb, 0xe6, 0x04, 0x24  // vcvtpd2dq xmm0, XMMWORD PTR [rsp]
 TEST_END_64
 
-TEST_BEGIN_64(VCVTPPD2DQv128v128, 2)
+TEST_BEGIN_64(VCVTPD2DQv128v128, 2)
 TEST_INPUTS(
     0x10000000000000,  // std::numeric_limits<double>::min()
     0x7fefffffffffffff,  // std::numeric_limits<double>::max()
@@ -73,11 +73,11 @@ TEST_INPUTS(
     push ARG1_64
     push ARG2_64
     movdqu xmm4, XMMWORD PTR [rsp]
-    vcvttpd2dq xmm0, xmm4
+    vcvtpd2dq xmm0, xmm4
 TEST_END_64
 
 
-TEST_BEGIN_64(VCVTPPD2DQv128m256, 2)
+TEST_BEGIN_64(VCVTPD2DQv128m256, 2)
 TEST_INPUTS(
     0x10000000000000,  // std::numeric_limits<double>::min()
     0x7fefffffffffffff,  // std::numeric_limits<double>::max()
@@ -94,10 +94,10 @@ TEST_INPUTS(
     push ARG2_64
     push ARG1_64
     push ARG2_64
-    vcvttpd2dq xmm0, YMMWORD PTR [rsp]
+    vcvtpd2dq xmm0, YMMWORD PTR [rsp]
 TEST_END_64
 
-TEST_BEGIN_64(VCVTPPD2DQv128v256, 2)
+TEST_BEGIN_64(VCVTPD2DQv128v256, 2)
 TEST_INPUTS(
     0x10000000000000,  // std::numeric_limits<double>::min()
     0x7fefffffffffffff,  // std::numeric_limits<double>::max()
@@ -115,7 +115,7 @@ TEST_INPUTS(
     push ARG1_64
     push ARG2_64
     vmovdqu ymm4, YMMWORD PTR [rsp]
-    vcvttpd2dq xmm0, ymm4
+    vcvtpd2dq xmm0, ymm4
 TEST_END_64
 
 #endif  // HAS_FEATURE_AVX
