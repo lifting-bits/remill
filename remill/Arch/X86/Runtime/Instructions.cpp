@@ -121,6 +121,7 @@
 #include "remill/Arch/X86/Semantics/MMX.cpp"
 #include "remill/Arch/X86/Semantics/NOP.cpp"
 #include "remill/Arch/X86/Semantics/POP.cpp"
+#include "remill/Arch/X86/Semantics/PREFETCH.cpp"
 #include "remill/Arch/X86/Semantics/PUSH.cpp"
 #include "remill/Arch/X86/Semantics/ROTATE.cpp"
 #include "remill/Arch/X86/Semantics/SHIFT.cpp"
