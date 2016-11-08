@@ -548,10 +548,6 @@ void Translator::CreateNamedBlocks(const cfg::Module *cfg) {
 
 // Create a function for a single block.
 llvm::Function *Translator::GetOrCreateBlock(uint64_t addr) {
-  CHECK(addr >= 4096U)
-      << "Cannot have basic block within zero page ("
-      << std::hex << addr << ").";
-
   auto &block_func = blocks[addr];
   if (!block_func) {
     std::stringstream ss;
