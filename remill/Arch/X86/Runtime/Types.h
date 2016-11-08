@@ -27,7 +27,9 @@ typedef RVn<vec64_t> V64;  // MMX technology register, or GPR holding a vector.
 
 typedef Vn<vec128_t> V128;  // Legacy (SSE) XMM register.
 typedef Vn<vec128_t> VV128;  // AVX VEX.128-encoded XMM register.
+typedef Vn<vec256_t> V256;  // AVX YMM register.
 typedef Vn<vec256_t> VV256;  // AVX YMM register.
+typedef Vn<vec512_t> V512;  // AVX512 ZMM register.
 typedef Vn<vec512_t> VV512;  // AVX512 ZMM register.
 
 // What's going on here? If we're using AVX or AVX512, then writes to XMM

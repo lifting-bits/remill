@@ -847,6 +847,26 @@ MAKE_EXTRACTV(64, float64_t, doubles, Identity, F)
 
 #undef MAKE_EXTRACTV
 
+ALWAYS_INLINE static float32_t FAbs(float32_t val) {
+  return __builtin_fabsf(val);
+}
+
+ALWAYS_INLINE static float64_t FAbs(float64_t val) {
+  return __builtin_fabs(val);
+}
+
+template <typename T>
+ALWAYS_INLINE static
+auto SAbs(typename IntegerType<T>::ST val) -> typename IntegerType<T>::ST {
+  return Select(SLt(val, 0), SNeg(val), val);
+}
+
+template <typename T>
+ALWAYS_INLINE static
+auto UAbs(typename IntegerType<T>::UT val) -> typename IntegerType<T>::UT {
+  return val;
+}
+
 // Access the Nth element of an aggregate vector.
 #define MAKE_INSERTV(prefix, size, base_type, accessor) \
     template <typename T> \
