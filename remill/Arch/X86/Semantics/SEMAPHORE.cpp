@@ -47,10 +47,10 @@ DEF_ISEL_SEM(CMPXCHG8B_MEMq, M64W dst, M64 src1) {
   auto check_val = UOr(UShl(ZExt(xdx), 32), ZExt(xax));
   auto cmp_res = USub(check_val, curr_val);
   auto replace = UCmpEq(cmp_res, 0);
-  WriteFlagsAddSub<tag_sub>(state, check_val, curr_val, cmp_res);
+  Write(FLAG_ZF, replace);
   Write(dst, Select(replace, desired_val, curr_val));
   Write(REG_EDX, Select(replace, xdx, Trunc(UShr(curr_val, 32))));
-  Write(REG_EAX, Select(replace, xax, Trunc(UShr(curr_val, 32))));
+  Write(REG_EAX, Select(replace, xax, Trunc(curr_val)));
 }
 
 #if 64 == ADDRESS_SIZE_BITS
@@ -64,10 +64,10 @@ DEF_ISEL_SEM(CMPXCHG16B_MEMdq, M128W dst, M128 src1) {
   auto check_val = UOr(UShl(ZExt(xdx), 64), ZExt(xax));
   auto cmp_res = USub(check_val, curr_val);
   auto replace = UCmpEq(cmp_res, 0);
-  WriteFlagsAddSub<tag_sub>(state, check_val, curr_val, cmp_res);
+  Write(FLAG_ZF, replace);
   Write(dst, Select(replace, desired_val, curr_val));
   Write(REG_RDX, Select(replace, xdx, Trunc(UShr(curr_val, 64))));
-  Write(REG_RAX, Select(replace, xax, Trunc(UShr(curr_val, 64))));
+  Write(REG_RAX, Select(replace, xax, Trunc(curr_val)));
 }
 #endif  // 64 == ADDRESS_SIZE_BITS
 
