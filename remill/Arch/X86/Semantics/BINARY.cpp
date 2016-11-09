@@ -57,25 +57,6 @@ DEF_SEM(ADDSD, D dst, S1 src1, S2 src2) {
   FWriteV64(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
 }
 
-// Atomic fetch-add.
-template <typename D1, typename S1, typename D2, typename S2>
-DEF_SEM(XADD, D1 dst1, S1 src1, D2 dst2, S2 src2) {
-
-  // Our lifter only injects atomic begin/end around memory access instructions
-  // but this instruction is a full memory barrier, even when registers are
-  // accessed.
-  if (IsRegister(dst1)) {
-    BarrierStoreLoad();
-  }
-
-  auto lhs = Read(src1);
-  auto rhs = Read(src2);
-  auto sum = UAdd(lhs, rhs);
-  WriteZExt(dst1, sum);
-  WriteZExt(dst2, lhs);
-  WriteFlagsAddSub<tag_add>(state, lhs, rhs, sum);
-}
-
 }  // namespace
 
 DEF_ISEL(ADD_MEMb_IMMb_80r0) = ADD<M8W, M8, I8>;
@@ -96,11 +77,6 @@ DEF_ISEL_RnW_Rn_Mn(ADD_GPRv_MEMv, ADD);
 DEF_ISEL_RnW_Rn_Rn(ADD_GPRv_GPRv_03, ADD);
 DEF_ISEL(ADD_AL_IMMb) = ADD<R8W, R8, I8>;
 DEF_ISEL_RnW_Rn_In(ADD_OrAX_IMMz, ADD);
-
-DEF_ISEL(XADD_MEMb_GPR8) = XADD<M8W, M8, R8W, R8>;
-DEF_ISEL(XADD_GPR8_GPR8) = XADD<R8W, R8, R8W, R8>;
-DEF_ISEL_MnW_Mn_RnW_Rn(XADD_MEMv_GPRv, XADD);
-DEF_ISEL_RnW_Rn_RnW_Rn(XADD_GPRv_GPRv, XADD);
 
 DEF_ISEL(ADDPS_XMMps_MEMps) = ADDPS<V128W, V128, MV128>;
 DEF_ISEL(ADDPS_XMMps_XMMps) = ADDPS<V128W, V128, V128>;
