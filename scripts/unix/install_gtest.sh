@@ -17,7 +17,7 @@ elif [[ "$OSTYPE" == "darwin"* ]] ; then
     git clone https://github.com/google/googletest
     cp -R googletest/googletest/include/gtest .
     rm -rf googletest
-    popd
+    ls gtest
 
 else
     printf "Unsupported platform: ${OSTYPE}\n" > /dev/stderr
