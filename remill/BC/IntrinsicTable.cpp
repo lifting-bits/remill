@@ -52,17 +52,11 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       jump(FindIntrinsic(module, "__remill_jump")),
 
       // OS interaction.
-      system_call(FindIntrinsic(module, "__remill_system_call")),
-      system_return(FindIntrinsic(module, "__remill_system_return")),
-      interrupt_call(FindIntrinsic(module, "__remill_interrupt_call")),
-      interrupt_return(FindIntrinsic(module, "__remill_interrupt_return")),
-
-      // Arch interaction.
-      read_cpu_features(FindIntrinsic(module, "__remill_read_cpu_features")),
+      async_hyper_call(FindIntrinsic(module, "__remill_async_hyper_call")),
 
       // Transition to/from native/lifted code.
       detach(FindIntrinsic(module, "__remill_detach")),
-//      attach(FindIntrinsic(module, "__remill_attach")),
+      // attach(FindIntrinsic(module, "__remill_attach")),
 
       // Memory access.
       read_memory_8(FindPureIntrinsic(module, "__remill_read_memory_8")),
@@ -112,15 +106,8 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       undefined_64(FindPureIntrinsic(module, "__remill_undefined_64")),
       undefined_f32(FindPureIntrinsic(module, "__remill_undefined_f32")),
       undefined_f64(FindPureIntrinsic(module, "__remill_undefined_f64")) {
-//
-//      indirect_blocks(llvm::dyn_cast<llvm::ConstantArray>(
-//          module->getGlobalVariable(
-//              "__remill_indirect_blocks")->getInitializer())),
-//      exported_blocks(llvm::dyn_cast<llvm::ConstantArray>(
-//          module->getGlobalVariable(
-//              "__remill_exported_blocks")->getInitializer())) {
 
-//  attach->addFnAttr(llvm::Attribute::Naked);
+  // attach->addFnAttr(llvm::Attribute::Naked);
   detach->addFnAttr(llvm::Attribute::Naked);
 }
 

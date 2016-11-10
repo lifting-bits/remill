@@ -50,39 +50,58 @@
 union FPUStatusWord final {
   uint16_t flat;
   struct {
-    uint16_t ie:1;  // bit 0
-    uint16_t de:1;
-    uint16_t ze:1;
-    uint16_t oe:1;
-    uint16_t ue:1;  // bit 4
-    uint16_t pe:1;
-    uint16_t sf:1;
-    uint16_t es:1;
-    uint16_t c0:1;  // bit 8
-    uint16_t c1:1;
-    uint16_t c2:1;
-    uint16_t top:3;
-    uint16_t c3:1;
-    uint16_t b:1;
+    uint16_t ie:1;  // Invalid operation.
+    uint16_t de:1;  // Denormal operand.
+    uint16_t ze:1;  // Zero divide.
+    uint16_t oe:1;  // Overflow.
+    uint16_t ue:1;  // Underflow.
+    uint16_t pe:1;  // Precision.
+    uint16_t sf:1;  // Stack fault.
+    uint16_t es:1;  // Error summary status.
+    uint16_t c0:1;  // Part of condition code.
+    uint16_t c1:1;  // Used for a whole lot of stuff.
+    uint16_t c2:1;  // Part of condition code.
+    uint16_t top:3;  // Stack pointer.
+    uint16_t c3:1;  // Part of condition code.
+    uint16_t b:1;  // Busy.
   } __attribute__((packed));
 } __attribute__((packed));
 
 static_assert(2 == sizeof(FPUStatusWord),
               "Invalid structure packing of `FPUFlags`.");
 
+enum FPUPrecisionControl : uint16_t {
+  kPrecisionSingle,
+  kPrecisionReserved,
+  kPrecisionDouble,
+  kPrecisionExtended
+};
+
+enum FPURoundingControl : uint16_t {
+  kFPURoundToNearestEven,
+  kFPURoundDownNegInf,
+  kFPURoundUpInf,
+  kFPURoundToZero
+};
+
+enum FPUInfinityControl : uint16_t {
+  kInfinityProjective,
+  kInfinityAffine
+};
+
 union FPUControlWord final {
   uint16_t flat;
   struct {
-    uint16_t im:1;  // bit 0
-    uint16_t dm:1;
-    uint16_t zm:1;
-    uint16_t om:1;
-    uint16_t um:1;  // bit 4
-    uint16_t pm:1;
+    uint16_t im:1;  // Invalid Operation.
+    uint16_t dm:1;  // Denormalized Operand.
+    uint16_t zm:1;  // Zero Divide.
+    uint16_t om:1;  // Overflow.
+    uint16_t um:1;  // Underflow.
+    uint16_t pm:1;  // Precision.
     uint16_t _rsvd0:2;
-    uint16_t pc:2;  // bit 8
-    uint16_t rc:2;
-    uint16_t x:1;
+    FPUPrecisionControl pc:2;  // bit 8
+    FPURoundingControl rc:2;
+    FPUInfinityControl x:1;
     uint16_t _rsvd1:3;
   } __attribute__((packed));
 } __attribute__((packed));
@@ -416,7 +435,7 @@ struct alignas(64) State final {
   //        while maintaining that `State` is a POD type.
   ArchState generic;
 
-  uint8_t _padding0[56];
+  uint8_t _padding0[48];
 
   // AVX512 has 32 vector registers, so we always include them all here for
   // consistency across the various state structures.

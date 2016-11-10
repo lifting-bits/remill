@@ -113,11 +113,6 @@ TEST_FUNC(instr_name, num_args): ; \
     .quad 0 __VA_ARGS__ ; \
     .text ;
 
-#define TEST_USE_X87_MMX \
-    .section "__x86_test_table", "a" ; \
-    .quad 1 ; \
-    .text ;
-
 /* Defines the possible inputs to provide test. We add an extra 3 null inputs
  * at the end so that we can purposely 'overflow' when accessing the array so
  * that we can always specify 3 inputs, even if the program uses fewer. */
@@ -330,15 +325,16 @@ SYMBOL(__x86_test_table_begin):
 
 /* Bring in the rest of the semantic tests. */
 
-#include "tests/X86/MMX/PADD.S"
-#include "tests/X86/MMX/PSUB.S"
+#include "tests/X86/MMX/INPUTS.S"
 #include "tests/X86/MMX/MISC.S"
 #include "tests/X86/MMX/PACKSS.S"
+#include "tests/X86/MMX/PADD.S"
 #include "tests/X86/MMX/PCMP.S"
 #include "tests/X86/MMX/PMUL.S"
-#include "tests/X86/MMX/PUNPCK.S"
-#include "tests/X86/MMX/PSRL.S"
 #include "tests/X86/MMX/PSLL.S"
+#include "tests/X86/MMX/PSRL.S"
+#include "tests/X86/MMX/PSUB.S"
+#include "tests/X86/MMX/PUNPCK.S"
 
 #include "tests/X86/BINARY/ADC.S"
 #include "tests/X86/BINARY/ADD.S"
@@ -397,10 +393,16 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/CONVERT/CDQE.S"
 #include "tests/X86/CONVERT/CQO.S"
 #include "tests/X86/CONVERT/CVTDQ2PD.S"
+#include "tests/X86/CONVERT/CVTDQ2PS.S"
+#include "tests/X86/CONVERT/CVTPD2DQ.S"
 #include "tests/X86/CONVERT/CVTPI2PD.S"
 #include "tests/X86/CONVERT/CVTPI2PS.S"
+#include "tests/X86/CONVERT/CVTPS2DQ.S"
+#include "tests/X86/CONVERT/CVTSD2SI.S"
+#include "tests/X86/CONVERT/CVTSS2SI.S"
 #include "tests/X86/CONVERT/CVTTPD2DQ.S"
 #include "tests/X86/CONVERT/CVTTPS2DQ.S"
+#include "tests/X86/CONVERT/CVTTSD2SI.S"
 #include "tests/X86/CONVERT/CVTTSS2SI.S"
 #include "tests/X86/CONVERT/CWD.S"
 #include "tests/X86/CONVERT/CWDE.S"

@@ -112,12 +112,8 @@ class Instruction {
     kCategoryIndirectFunctionCall,
     kCategoryFunctionReturn,
     kCategoryConditionalBranch,
-    kCategorySystemCall,
-    kCategorySystemReturn,
-    kCategoryConditionalInterruptCall,
-    kCategoryInterruptCall,
-    kCategoryInterruptReturn,
-    kCategoryReadCPUFeatures,
+    kCategoryAsyncHyperCall,
+    kCategoryConditionalAsyncHyperCall,
   } category;
 
   std::vector<Operand> operands;

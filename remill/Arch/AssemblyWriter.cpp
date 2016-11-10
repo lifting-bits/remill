@@ -42,6 +42,7 @@ AssemblyWriter::AssemblyWriter(llvm::Module *module,
 }
 
 AssemblyWriter::~AssemblyWriter(void) {
+  dib->finalize();
   delete dib;
 }
 
@@ -93,7 +94,6 @@ void AssemblyWriter::WriteInstruction(llvm::Function *func,
 
 void AssemblyWriter::Flush(void) {
   output.flush();
-  dib->finalize();
 }
 
 }  // namespace remill

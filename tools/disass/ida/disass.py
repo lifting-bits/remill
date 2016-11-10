@@ -3,6 +3,7 @@
 
 import argparse
 import collections
+import itertools
 import os
 import subprocess
 import sys
@@ -407,7 +408,11 @@ def scan_data_for_code_refs(begin_ea, end_ea, read_func, read_size):
   """Read in 4- or 8-byte chunks of data, and try to see if they look like
   pointers into the code."""
   global POSSIBLE_CODE_REFS
-  for ea in xrange(begin_ea, end_ea, read_size):
+  log.info("Scanning for code refs in range [{:08x}, {:08x})".format(
+      begin_ea, end_ea))
+  for ea in itertools.count(start=begin_ea, step=read_size):
+    if ea >= end_ea:
+      break
     qword = read_func(ea)
     if idc.isCode(idc.GetFlags(qword)):
       POSSIBLE_CODE_REFS.add(qword)

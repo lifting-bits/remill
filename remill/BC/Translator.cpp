@@ -124,6 +124,10 @@ Translator::Translator(const Arch *arch_, llvm::Module *module_,
   InitBlockFunctionAttributes(basic_block);
 }
 
+Translator::~Translator(void) {
+  delete intrinsics;
+}
+
 namespace {
 
 // Make sure that a function cannot be inlined by the optimizer. We use this
@@ -544,10 +548,6 @@ void Translator::CreateNamedBlocks(const cfg::Module *cfg) {
 
 // Create a function for a single block.
 llvm::Function *Translator::GetOrCreateBlock(uint64_t addr) {
-  CHECK(addr >= 4096U)
-      << "Cannot have basic block within zero page ("
-      << std::hex << addr << ").";
-
   auto &block_func = blocks[addr];
   if (!block_func) {
     std::stringstream ss;
@@ -673,14 +673,6 @@ void Translator::LiftBlocks(const cfg::Module *cfg_module) {
     if (asm_source_writer) {
       asm_source_writer->Flush();
     }
-
-    // Make sure the translation is good before optimizing.
-    std::string error;
-    llvm::raw_string_ostream error_stream(error);
-    CHECK(!llvm::verifyFunction(*func, &error_stream))
-        << "Unable to verify function " << func->getName().str()
-        << ". " << error << ".";
-
     func_pass_manager.run(*func);
   }
   func_pass_manager.doFinalization();
@@ -917,41 +909,17 @@ void Translator::LiftTerminator(llvm::BasicBlock *block,
           GetOrCreateTargetBlock(arch_instr->branch_not_taken_pc));
       break;
 
-    case Instruction::kCategorySystemCall:
+    case Instruction::kCategoryAsyncHyperCall:
       AddTerminatingTailCall(
           block,
-          WrapIntrinsic(intrinsics->system_call, arch_instr->pc));
+          WrapIntrinsic(intrinsics->async_hyper_call, arch_instr->pc));
       break;
 
-    case Instruction::kCategorySystemReturn:
-      AddTerminatingTailCall(
-          block,
-          WrapIntrinsic(intrinsics->system_return, arch_instr->pc));
-      break;
-
-    case Instruction::kCategoryInterruptCall:
-      AddTerminatingTailCall(
-          block,
-          WrapIntrinsic(intrinsics->interrupt_call, arch_instr->pc));
-      break;
-
-    case Instruction::kCategoryConditionalInterruptCall:
+    case Instruction::kCategoryConditionalAsyncHyperCall:
       LiftConditionalBranch(
           block,
-          intrinsics->interrupt_call,
+          intrinsics->async_hyper_call,
           GetOrCreateTargetBlock(arch_instr->next_pc));
-      break;
-
-    case Instruction::kCategoryInterruptReturn:
-      AddTerminatingTailCall(
-          block,
-          WrapIntrinsic(intrinsics->interrupt_return, arch_instr->pc));
-      break;
-
-    case Instruction::kCategoryReadCPUFeatures:
-      AddTerminatingTailCall(
-          block,
-          WrapIntrinsic(intrinsics->read_cpu_features, arch_instr->pc));
       break;
   }
 }

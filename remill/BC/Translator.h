@@ -29,10 +29,12 @@ class Arch;
 class IntrinsicTable;
 class AssemblyWriter;
 
-// Lifts CFG files into a bitcode module.
+// Lifts CFG files into a bitcode module. This is mostly a big bag of state
+// needed for all the parts of of lifting to coordinate.
 class Translator {
  public:
   Translator(const Arch *arch_, llvm::Module *module_, AssemblyWriter *src_);
+  ~Translator(void);
 
   // Lift the control-flow graph specified by `cfg` into this bitcode module.
   void LiftCFG(const cfg::Module *cfg);
@@ -118,7 +120,7 @@ class Translator {
 
   // Output source writer for producing an assembly source code file, and
   // generating debug information for associating bitcode to the source file.
-  AssemblyWriter *asm_source_writer;
+  AssemblyWriter * const asm_source_writer;
 
   // Blocks that we've added, indexed by their entry address.
   std::map<uint64_t, llvm::Function *> blocks;
@@ -132,7 +134,7 @@ class Translator {
   llvm::Function * const basic_block;
 
   // Machine word type for this architecture.
-  llvm::IntegerType *word_type;
+  llvm::IntegerType * const word_type;
 
  public:
 

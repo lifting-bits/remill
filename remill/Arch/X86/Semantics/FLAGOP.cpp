@@ -15,6 +15,10 @@ DEF_ISEL_SEM(CLC) {
   FLAG_CF = false;
 }
 
+DEF_ISEL_SEM(CMC) {
+  FLAG_CF = BNot(FLAG_CF);
+}
+
 DEF_ISEL_SEM(STC) {
   FLAG_CF = BNot(FLAG_CF);
 }

@@ -1,4 +1,7 @@
-# Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved.
+# Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved.
+
+install_manifest.txt
+Makefile
 
 third_party/*
 build/*
