@@ -4,6 +4,7 @@ TEST_BEGIN(CMPr8r8, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
+    1, 0,
     1, 1,
     0, 0xFF,
     0x10, 0, /* AF */
@@ -18,6 +19,7 @@ TEST_BEGIN(CMPr16r16, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
+    1, 0,
     1, 1,
     0, 0xFFFF,
     0x10, 0, /* AF */
@@ -40,6 +42,7 @@ TEST_BEGIN(CMPr32r32, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
+    1, 0,
     1, 1,
     0, 0xFFFFFFFF,
     0x10, 0, /* AF */
@@ -60,7 +63,9 @@ TEST_END
 
 TEST_BEGIN_64(CMPr64r64_64, 2)
 TEST_INPUTS(
+    0, 0,
     0, 1,
+    1, 0,
     1, 1,
     0, 0xFFFFFFFFFFFFFFFF,
     1, 0xFFFFFFFFFFFFFFFF,

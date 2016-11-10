@@ -124,6 +124,7 @@
 #include "remill/Arch/X86/Semantics/PREFETCH.cpp"
 #include "remill/Arch/X86/Semantics/PUSH.cpp"
 #include "remill/Arch/X86/Semantics/ROTATE.cpp"
+#include "remill/Arch/X86/Semantics/SEMAPHORE.cpp"
 #include "remill/Arch/X86/Semantics/SHIFT.cpp"
 #include "remill/Arch/X86/Semantics/SSE.cpp"
 #include "remill/Arch/X86/Semantics/STRINGOP.cpp"

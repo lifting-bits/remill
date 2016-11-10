@@ -51,6 +51,7 @@ typedef MnW<uint8_t> M8W;
 typedef MnW<uint16_t> M16W;
 typedef MnW<uint32_t> M32W;
 typedef MnW<uint64_t> M64W;
+typedef MnW<uint128_t> M128W;
 
 typedef MnW<float32_t> MF32W;
 typedef MnW<float64_t> MF64W;
@@ -70,6 +71,7 @@ typedef Mn<uint8_t> M8;
 typedef Mn<uint16_t> M16;
 typedef Mn<uint32_t> M32;
 typedef Mn<uint64_t> M64;
+typedef Mn<uint128_t> M128;
 
 typedef MVn<vec8_t> MV8;
 typedef MVn<vec16_t> MV16;

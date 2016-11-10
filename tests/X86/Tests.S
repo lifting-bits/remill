@@ -363,7 +363,6 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BINARY/SUBPS.S"
 #include "tests/X86/BINARY/SUBSD.S"
 #include "tests/X86/BINARY/SUBSS.S"
-#include "tests/X86/BINARY/XADD.S"
 
 #include "tests/X86/BITBYTE/BT.S"
 #include "tests/X86/BITBYTE/BTC.S"
@@ -429,6 +428,11 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/ROTATE/RCR.S"
 #include "tests/X86/ROTATE/ROL.S"
 #include "tests/X86/ROTATE/ROR.S"
+
+#include "tests/X86/SEMAPHORE/CMPXCHG.S"
+#include "tests/X86/SEMAPHORE/CMPXCHG16B.S"
+#include "tests/X86/SEMAPHORE/CMPXCHG8B.S"
+#include "tests/X86/SEMAPHORE/XADD.S"
 
 #include "tests/X86/SHIFT/SAR.S"
 #include "tests/X86/SHIFT/SHL.S"
