@@ -10,10 +10,6 @@ import traceback
 
 
 def main(args=None):
-  disass_dir = os.path.dirname(os.path.abspath(__file__))
-  os.chdir(disass_dir)
-  sys.path.append(disass_dir)
-
   arg_parser = argparse.ArgumentParser()
   arg_parser.add_argument(
       '--disassembler',
@@ -48,7 +44,15 @@ def main(args=None):
       required=True)
 
   args, command_args = arg_parser.parse_known_args()
-  
+
+  args.binary = os.path.abspath(args.binary)
+  args.output = os.path.abspath(args.output)
+  args.log_file = os.path.abspath(args.log_file)
+
+  disass_dir = os.path.dirname(os.path.abspath(__file__))
+  os.chdir(disass_dir)
+  sys.path.append(disass_dir)
+
   if not os.path.isfile(args.binary):
     arg_parser.error("{} passed to --binary is not a valid file.".format(
         args.binary))
