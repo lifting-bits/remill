@@ -30,6 +30,7 @@ def save_to_stream(output_stream):
 
     if not len(block.instructions):
       referenced_blocks.add(block)
+      log.error("Block {:08x} has no instructions.".format(block.ea))
       continue
 
     num_blocks += 1

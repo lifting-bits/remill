@@ -54,6 +54,10 @@ def has_segment_type(ea, expected_seg_type):
   return seg_type == expected_seg_type
 
 
+def is_code(ea):
+  return has_segment_type(ea, idc.SEG_CODE)
+
+
 def get_instruction(ea):
   """Gets the instruction located at `ea`. If we haven't initialized an
   `Instruction` data structure for the instruction at `ea`, then we decode
@@ -160,6 +164,8 @@ def get_static_successors(inst):
 
 def analyse_block(sub, block):
   """Find the instructions of a basic block."""
+  assert is_code(block.ea)
+
   log.info("Analysing basic block {:08x} of subroutine {:08x}".format(
       block.ea, sub.ea))
 
@@ -205,6 +211,10 @@ def analyse_subroutine(sub):
     if block_head_ea in found_block_eas:
       continue
 
+    if not is_code(block_head_ea):
+      log.error("Block head at {:08x} is not code.".format(block_head_ea))
+      continue
+
     found_block_eas.add(block_head_ea)
 
     # Try to make sure that analysis will terminate if we accidentally 
@@ -213,7 +223,7 @@ def analyse_subroutine(sub):
       continue
 
     log.debug("Found block head at {:08x}".format(block_head_ea))
-    
+
     if program.has_basic_block(block_head_ea):
       existing_block = program.get_basic_block(block_head_ea)
       term_inst = existing_block.terminator
@@ -296,7 +306,7 @@ def find_exported_eas():
           "Ignoring entrypoint {:08x}, it's only referenced by data".format(ea))
       continue
 
-    if not has_segment_type(ea, idc.SEG_CODE):
+    if not is_code(ea):
       log.warning(
           "Ignoring entrypoint {:08x}, it is not in a code segment".format(ea))
       continue
@@ -370,7 +380,7 @@ def analyse_subroutines():
   log.info("IDA identified {} functions".format(len(sub_eas)))
   bad_sub_eas = set()
   for sub_ea in sub_eas:
-    if has_segment_type(sub_ea, idc.SEG_CODE):
+    if is_code(sub_ea):
       sub = program.get_subroutine(sub_ea)  # Mark `ea` as a subroutine.
 
   # Iteratively analyse the blocks in subroutines. This may discover new
@@ -379,7 +389,7 @@ def analyse_subroutines():
   while len(sub_eas):
     sub_ea = sub_eas.pop()
 
-    if not has_segment_type(sub_ea, idc.SEG_CODE):
+    if not is_code(sub_ea):
       log.warning(
           "Not analysing subroutine at non-code address {:08x}".format(sub_ea))
       continue
@@ -486,13 +496,13 @@ def analyse_callbacks():
       block = program.get_basic_block(ea)
       if not block.address_is_taken:
         block.address_is_taken = True
-        log.info("Block {:08x} is a callback".format(ea))
+        log.info("Block {:08x} is a callback (1)".format(ea))
 
   for block in program.basic_blocks():
     if not block.address_is_taken:
       if len(tuple(idautils.DataRefsTo(block.ea))):
         block.address_is_taken = True
-        log.info("Block {:08x} is a callback".format(block.ea))
+        log.info("Block {:08x} is a callback (2)".format(block.ea))
 
 
 def execute(args, command_args):

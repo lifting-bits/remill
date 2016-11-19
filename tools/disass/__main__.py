@@ -45,14 +45,6 @@ def main(args=None):
 
   args, command_args = arg_parser.parse_known_args()
 
-  args.binary = os.path.abspath(args.binary)
-  args.output = os.path.abspath(args.output)
-  args.log_file = os.path.abspath(args.log_file)
-
-  disass_dir = os.path.dirname(os.path.abspath(__file__))
-  os.chdir(disass_dir)
-  sys.path.append(disass_dir)
-
   if not os.path.isfile(args.binary):
     arg_parser.error("{} passed to --binary is not a valid file.".format(
         args.binary))
@@ -61,6 +53,14 @@ def main(args=None):
   if args.arch not in ('x86', 'amd64'):
     arg_parser.error("{} passed it --arch is not supported.".format(args.arch))
     return 1
+
+  args.binary = os.path.abspath(args.binary)
+  args.output = os.path.abspath(args.output)
+  args.log_file = os.path.abspath(args.log_file)
+
+  disass_dir = os.path.dirname(os.path.abspath(__file__))
+  os.chdir(disass_dir)
+  sys.path.append(disass_dir)
 
   workspace_dir = tempfile.mkdtemp()
   temp_bin_path = os.path.join(workspace_dir, os.path.basename(args.binary))
