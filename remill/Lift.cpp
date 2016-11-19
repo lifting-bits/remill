@@ -91,7 +91,7 @@ static const char *gSearchPaths[] = {
     "/compat/linux/usr/local/share/remill/semantics",
 };
 
-static bool CheckPath(const std::string &path) {
+static bool FilePathExists(const std::string &path) {
   return !path.empty() && !access(path.c_str(), F_OK);
 }
 
@@ -104,7 +104,7 @@ static std::string InputBCPath(void) {
     std::stringstream ss;
     ss << path << "/" << FLAGS_arch_in << ".bc";
     auto sem_path = ss.str();
-    if (CheckPath(sem_path)) {
+    if (FilePathExists(sem_path)) {
       return sem_path;
     }
   }
@@ -135,69 +135,53 @@ int main(int argc, char *argv[]) {
   // GFlags will have removed everything that it recognized from argc/argv.
   llvm::cl::ParseCommandLineOptions(argc, argv, "Remill: Lift CFG to LLVM");
 
-  if (FLAGS_os_in.empty()) {
-    std::cerr
-        << "Need to specify a source operating system with --os_in."
-        << std::endl;
-    return EXIT_FAILURE;
-  }
+  CHECK(!FLAGS_os_in.empty())
+      << "Need to specify a source operating system with --os_in.";
 
   if (FLAGS_os_out.empty()) {
     FLAGS_os_out = FLAGS_os_in;
-    std::cerr
-        << "Need to specify a target operating system with --os_out."
-        << std::endl;
-    return EXIT_FAILURE;
   }
 
-  if (FLAGS_arch_in.empty()) {
-    std::cerr
-        << "Need to specify a source architecture with --arch_in."
-        << std::endl;
-    return EXIT_FAILURE;
-  }
+  CHECK(!FLAGS_arch_in.empty())
+      << "Need to specify a source architecture with --arch_in.";
 
   if (FLAGS_arch_out.empty()) {
     FLAGS_arch_out = FLAGS_arch_in;
   }
 
-  if (FLAGS_cfg.empty()) {
-    std::cerr
-        << "Must specify CFG file with --cfg."
-        << std::endl;
-    return EXIT_FAILURE;
-  }
+  CHECK(!FLAGS_cfg.empty())
+      << "Must specify CFG file with --cfg.";
 
-  if (FLAGS_bc_out.empty()) {
-    std::cerr
-        << "Please specify an output bitcode file with --bc_out."
-        << std::endl;
-    return EXIT_FAILURE;
-  }
+  CHECK(!FLAGS_bc_out.empty())
+      << "Please specify an output bitcode file with --bc_out.";
 
   auto source_os = remill::GetOSName(FLAGS_os_in);
+  CHECK(remill::kOSInvalid != source_os)
+      << "Unsupported operating system for --os_in: " << FLAGS_os_in;
+
   auto target_os = remill::GetOSName(FLAGS_os_out);
+  CHECK(remill::kOSInvalid != source_os)
+      << "Unsupported operating system for --os_out: " << FLAGS_os_out;
 
-  auto source_arch = remill::Arch::Create(source_os, FLAGS_arch_in);
-  auto target_arch = remill::Arch::Create(target_os, FLAGS_arch_out);
+  auto source_arch_name = remill::Arch::GetName(FLAGS_arch_in);
+  CHECK(remill::kArchInvalid != source_arch_name)
+      << "Unrecognized architecture for --arch_in: " << FLAGS_arch_in << ".";
 
-  if (!CheckPath(FLAGS_cfg)) {
-    std::cerr
-        << "Must specify valid path for `--cfg`. CFG file " << FLAGS_cfg
-        << " cannot be opened."
-        << std::endl;
-    return EXIT_FAILURE;
-  }
+  auto target_arch_name = remill::Arch::GetName(FLAGS_arch_out);
+  CHECK(remill::kArchInvalid != target_arch_name)
+      << "Unrecognized architecture for --arch_out: " << FLAGS_arch_out << ".";
+
+  auto source_arch = remill::Arch::Create(source_os, source_arch_name);
+  auto target_arch = remill::Arch::Create(target_os, target_arch_name);
+
+  CHECK(FilePathExists(FLAGS_cfg))
+      << "Must specify valid path for --cfg. CFG file "
+      << FLAGS_cfg << " cannot be opened.";
 
   FLAGS_bc_in = InputBCPath();
-  if (!CheckPath(FLAGS_bc_in)) {
-    std::cerr
-        << "Must specify valid path for `--bc_in`. Bitcode file "
-        << FLAGS_bc_in << " cannot be opened."
-        << std::endl;
-    return EXIT_FAILURE;
-  }
-
+  CHECK(FilePathExists(FLAGS_bc_in))
+      << "Must specify valid path for --bc_in. Bitcode file "
+      << FLAGS_bc_in << " cannot be opened.";
 
   auto context = new llvm::LLVMContext;
   auto module = remill::LoadModuleFromFile(context, FLAGS_bc_in);

@@ -17,7 +17,7 @@ namespace remill {
 
 class Instruction;
 
-enum ArchName : unsigned {
+enum ArchName : uint32_t {
   kArchInvalid,
   kArchX86,
   kArchX86_AVX,
@@ -30,10 +30,6 @@ enum ArchName : unsigned {
 class Arch {
  public:
   virtual ~Arch(void);
-
-  inline static const Arch *Create(OSName os, const std::string &arch_name) {
-    return Create(os, GetName(arch_name));
-  }
 
   // Factory method for loading the correct architecture class for a given
   // operating system and architecture class.
@@ -70,4 +66,4 @@ class Arch {
 
 }  // namespace remill
 
-#endif  // MC_SEMA_ARCH_ARCH_H_
+#endif  // REMILL_ARCH_ARCH_H_

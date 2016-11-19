@@ -15,7 +15,9 @@ const cfg::Module *ReadCFG(std::string cfg_file_name) {
 
   auto cfg_pb = new cfg::Module;
   auto parsed = cfg_pb->ParseFromIstream(&cfg);
-  CHECK(parsed) << "Unable to parse CFG file: " << cfg_file_name;
+  CHECK(parsed)
+      << "Unable to parse CFG file: " << cfg_file_name
+      << " with error " << cfg_pb->DebugString();
 
   return cfg_pb;
 }

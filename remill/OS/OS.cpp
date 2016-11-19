@@ -12,7 +12,6 @@ OSName GetOSName(std::string name) {
   } else if (name == "linux") {
     return kOSLinux;
   } else {
-    LOG(FATAL) << "Unsupported operating system: " << name;
     return kOSInvalid;
   }
 }

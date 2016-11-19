@@ -46,7 +46,6 @@ const Arch *Arch::Create(OSName os_name_, ArchName arch_name_) {
   return nullptr;
 }
 
-
 ArchName Arch::GetName(const std::string &arch_name) {
 
   if (arch_name == "x86") {
@@ -68,10 +67,8 @@ ArchName Arch::GetName(const std::string &arch_name) {
     return kArchAMD64_AVX512;
 
   } else {
-    LOG(ERROR)
-        << "Unrecognized architecture: " << arch_name << ".";
     return kArchInvalid;
   }
 }
 
-}  // namespace
+}  // namespace remill

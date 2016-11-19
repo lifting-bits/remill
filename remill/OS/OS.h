@@ -7,7 +7,7 @@
 
 namespace remill {
 
-enum OSName {
+enum OSName : uint32_t {
   kOSInvalid,
   kOSmacOS,
   kOSLinux
