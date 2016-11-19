@@ -69,7 +69,8 @@ sudo apt-get install \
      python2.7 python-pip \
      g++-multilib \
      unzip \
-     software-properties-common
+     software-properties-common \
+     realpath
 
 sudo pip install --upgrade pip
 
