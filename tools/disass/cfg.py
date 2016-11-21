@@ -24,6 +24,7 @@ def save_to_stream(output_stream):
   log.debug("Not serializing {} blocks".format(len(exclude_blocks)))
 
   referenced_blocks = set()
+  addressed_blocks = set()
   for block in program.basic_blocks():
     if block in exclude_blocks:
       continue
@@ -38,7 +39,9 @@ def save_to_stream(output_stream):
     log.info("Serializing block {:08x}.".format(block.ea))
     b = mod.blocks.add()
     b.address = block.ea
-    b.is_addressable = block.address_is_taken
+    
+    if block.address_is_taken:
+      addressed_blocks.add(block)
 
     for inst in block:
       i = b.instructions.add()
@@ -46,8 +49,11 @@ def save_to_stream(output_stream):
       i.bytes = inst.bytes
       num_insts += 1
 
+  for block in addressed_blocks:
+    mod.addressed_blocks.append(block.ea)
+
   for block in referenced_blocks:
-    mod.referenced_blocks.add(block.ea)
+    mod.referenced_blocks.append(block.ea)
 
   for sub in program.subroutines():
     if not sub.name:

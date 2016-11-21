@@ -1,4 +1,4 @@
-// Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved.
+// Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved.
 
 package remill.cfg;
 
@@ -9,8 +9,7 @@ message Instr {
 
 message Block {
     required    uint64      address = 1;
-    required    bool        is_addressable = 2;
-    repeated    Instr       instructions = 3;
+    repeated    Instr       instructions = 2;
 }
 
 enum Visibility {
@@ -28,4 +27,5 @@ message Module {
     repeated    Block       blocks = 1;
     repeated    NamedBlock  named_blocks = 2;
     repeated    uint64      referenced_blocks = 3;
+    repeated    uint64      addressed_blocks = 4;
 }

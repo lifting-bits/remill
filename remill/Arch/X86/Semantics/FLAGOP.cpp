@@ -37,7 +37,7 @@ DEF_ISEL_SEM(SAHF) {
 }
 
 DEF_ISEL_SEM(LAHF) {
-  Flags flags{};
+  Flags flags = {0};
   flags.cf = Unsigned(FLAG_CF);
   flags.must_be_1 = 1;
   flags.pf = Unsigned(FLAG_PF);

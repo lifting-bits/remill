@@ -77,7 +77,6 @@ static void AddFunctionToModule(remill::cfg::Module *module,
 
   auto block = module->add_blocks();
   block->set_address(test.test_begin);
-  block->set_is_addressable(false);
 
   auto addr = test.test_begin;
   while (addr < test.test_end) {

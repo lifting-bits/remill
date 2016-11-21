@@ -1,3 +1,4 @@
+/* Copyright 2016 Akshay Kumar (iit.akshay@gmail.com), all rights reserved. */
 
 TEST_BEGIN_64(PACKSSWBr64r64, 2)
 TEST_INPUTS_MMX_2()

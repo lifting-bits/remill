@@ -418,10 +418,11 @@ namespace {
       auto rem_trunc = Trunc(rem); \
       if (quot != ZExt(quot_trunc)) { \
         StopFailure(); \
+      } else { \
+        WriteZExt(dst1, quot_trunc); \
+        WriteZExt(dst2, rem_trunc); \
+        ClearArithFlags(); \
       } \
-      WriteZExt(dst1, quot_trunc); \
-      WriteZExt(dst2, rem_trunc); \
-      ClearArithFlags(); \
     }
 
 MAKE_DIVxax(ax, REG_AL, REG_AH, REG_AL, REG_AH)
@@ -447,10 +448,11 @@ IF_64BIT(MAKE_DIVxax(rdxrax, REG_RAX, REG_RDX, REG_RAX, REG_RDX))
       auto rem_trunc = Trunc(rem); \
       if (quot != SExt(quot_trunc)) { \
         StopFailure(); \
+      } else { \
+        WriteZExt(dst1, Unsigned(quot_trunc)); \
+        WriteZExt(dst2, Unsigned(rem_trunc)); \
+        ClearArithFlags(); \
       } \
-      WriteZExt(dst1, Unsigned(quot_trunc)); \
-      WriteZExt(dst2, Unsigned(rem_trunc)); \
-      ClearArithFlags(); \
     }
 
 MAKE_IDIVxax(ax, REG_AL, REG_AH, REG_AL, REG_AH)

@@ -113,8 +113,7 @@
 #define INTERRUPT_VECTOR state.interrupt_vector
 
 // Takes the place of an unsupported instruction.
-DEF_ISEL_SEM(UNSUPPORTED_INSTRUCTION, PC curr_pc) {
-  Write(REG_XIP, Read(curr_pc));
+DEF_ISEL_SEM(UNSUPPORTED_INSTRUCTION) {
   memory = __remill_sync_hyper_call(
       memory, state, IF_64BIT_ELSE(SyncHyperCall::kAMD64EmulateInstruction,
                                    SyncHyperCall::kX86EmulateInstruction));
@@ -139,6 +138,7 @@ DEF_ISEL_SEM(UNSUPPORTED_INSTRUCTION, PC curr_pc) {
 #include "remill/Arch/X86/Semantics/PREFETCH.cpp"
 #include "remill/Arch/X86/Semantics/PUSH.cpp"
 #include "remill/Arch/X86/Semantics/ROTATE.cpp"
+#include "remill/Arch/X86/Semantics/RTM.cpp"
 #include "remill/Arch/X86/Semantics/SEMAPHORE.cpp"
 #include "remill/Arch/X86/Semantics/SHIFT.cpp"
 #include "remill/Arch/X86/Semantics/SSE.cpp"

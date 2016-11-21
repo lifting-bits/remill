@@ -114,8 +114,8 @@ void __remill_basic_block(Memory &memory, State &state, addr_t curr_pc) {
 
   auto &SS_BASE = zero;
   auto &ES_BASE = zero;
-  auto &GS_BASE = state.addr.gs_base;
-  auto &FS_BASE = state.addr.fs_base;
+  auto &GS_BASE = state.addr.gs_base.IF_64BIT_ELSE(qword, dword);
+  auto &FS_BASE = state.addr.fs_base.IF_64BIT_ELSE(qword, dword);
   auto &DS_BASE = zero;
   auto &CS_BASE = zero;
 

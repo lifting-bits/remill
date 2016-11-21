@@ -1,3 +1,4 @@
+/* Copyright 2016 Akshay Kumar (iit.akshay@gmail.com), all rights reserved. */
 
 TEST_BEGIN_64(PCMPEQBr64r64, 2)
 TEST_INPUTS_MMX_2()
@@ -24,8 +25,9 @@ TEST_BEGIN_64(PCMPEQBv128m128, 2)
 TEST_INPUTS_MMX_2()
     push 0
     push ARG2_64
-    movq xmm0, ARG1_64
     pcmpeqb xmm0, xmmword ptr [rsp]
+    movq xmm1, ARG1_64
+    pcmpeqb xmm1, xmmword ptr [rsp]
 TEST_END_64
 
 TEST_BEGIN_64(PCMPEQWr64r64, 2)

@@ -366,6 +366,7 @@ void Translator::GetIndirectBlocks(void) {
   if (llvm::isa<llvm::ConstantAggregateZero>(init)) {
     return;
   }
+
   auto entries = llvm::dyn_cast<llvm::ConstantArray>(init);
   DLOG(INFO)
       << "Indirect block table has " << entries->getNumOperands()
@@ -557,16 +558,6 @@ void Translator::CreateBlocks(const cfg::Module *cfg_module) {
     if (block_func->isDeclaration()) {
       block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
     }
-
-    if (cfg_block.is_addressable()) {
-      auto &indirect_block_func = indirect_blocks[cfg_block.address()];
-
-      CHECK(block_func == indirect_block_func || !indirect_block_func)
-          << "Multiply defined addressable cfg_block at "
-          << std::hex << cfg_block.address() << ".";
-
-      indirect_block_func = block_func;
-    }
   }
 
   for (const auto cfg_ref_block_addr : cfg_module->referenced_blocks()) {
@@ -574,6 +565,17 @@ void Translator::CreateBlocks(const cfg::Module *cfg_module) {
     if (block_func->isDeclaration()) {
       block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
     }
+  }
+
+  for (const uint64_t cfg_addr_block_addr : cfg_module->addressed_blocks()) {
+    auto block_func = GetOrCreateTargetBlock(cfg_addr_block_addr);
+    auto &indirect_block_func = indirect_blocks[cfg_addr_block_addr];
+
+    CHECK(block_func == indirect_block_func || !indirect_block_func)
+        << "Multiply defined addressable cfg_block at "
+        << std::hex << cfg_addr_block_addr << ".";
+
+    indirect_block_func = block_func;
   }
 }
 
@@ -711,8 +713,11 @@ llvm::Function *Translator::LiftBlock(const cfg::Block *cfg_block) {
     }
 
     instr = arch->DecodeInstruction(instr_addr, instr_bytes);
-    CHECK(Instruction::kCategoryInvalid != instr->category)
-        << "Cannot decode instruction at " << std::hex << instr_addr << ".";
+    DLOG_IF(WARNING, instr_bytes.size() != instr->NumBytes())
+        << "Size of decoded instruction at " << std::hex << instr_addr
+        << " (" << std::dec << instr->NumBytes()
+        << ") doesn't match input instruction size ("
+        << instr_bytes.size() << ").";
 
     DLOG(INFO)
         << "Lifting instruction '" << instr->Serialize();
@@ -867,17 +872,6 @@ llvm::Function *GetInstructionFunction(llvm::Module *module,
   return isel_func;
 }
 
-// Create a PC operand to pass to the code implementing an unsupported
-// instruction.
-static Operand CreateUnsupportedInstrPC(unsigned addr_size) {
-  Operand op = {};
-  op.type = Operand::kTypeRegister;
-  op.reg.name = "PC";
-  op.reg.size = addr_size;
-  op.size = addr_size;
-  return op;
-}
-
 }  // namespace
 
 // Lift a single instruction into a basic block.
@@ -897,15 +891,7 @@ llvm::BasicBlock *Translator::LiftInstruction(llvm::Function *block_func,
       return nullptr;
     }
 
-    // This is kind of a hack, but it lets us better support unsupported
-    // instructions. The idea is that we want to make sure we pass the
-    // current program counter to the instruction so that we can tell the
-    // hypercall, via the `State` structure, where to find the unsupported
-    // instruction in memory.
     arch_instr->operands.clear();
-    arch_instr->operand_size = arch->address_size;
-    arch_instr->operands.push_back(
-        CreateUnsupportedInstrPC(arch->address_size));
   }
 
   auto &context = block_func->getContext();
@@ -936,7 +922,8 @@ llvm::BasicBlock *Translator::LiftInstruction(llvm::Function *block_func,
 
   for (auto &op : arch_instr->operands) {
     CHECK(arg_num < isel_func_type->getNumParams())
-        << "Function " << arch_instr->function << " should have at least "
+        << "Function " << arch_instr->function << ", implemented by "
+        << isel_func->getName().str() << ", should have at least "
         << arg_num << " arguments.";
 
     auto arg_type = isel_func_type->getParamType(arg_num++);
@@ -1144,14 +1131,19 @@ llvm::Value *Translator::LiftAddressOperand(
       block, arch_addr.segment_base_reg.name, zero);
 
   llvm::IRBuilder<> ir(block);
-  addr = ir.CreateAdd(addr, ir.CreateMul(index, scale));
 
-  if (0 > arch_addr.displacement) {
-    addr = ir.CreateAdd(addr, llvm::ConstantInt::get(
-        word_type, static_cast<uint64_t>(arch_addr.displacement)));
-  } else {
-    addr = ir.CreateSub(addr, llvm::ConstantInt::get(
-        word_type, static_cast<uint64_t>(-arch_addr.displacement)));
+  if (zero != index) {
+    addr = ir.CreateAdd(addr, ir.CreateMul(index, scale));
+  }
+
+  if (arch_addr.displacement) {
+    if (0 < arch_addr.displacement) {
+      addr = ir.CreateAdd(addr, llvm::ConstantInt::get(
+          word_type, static_cast<uint64_t>(arch_addr.displacement)));
+    } else {
+      addr = ir.CreateSub(addr, llvm::ConstantInt::get(
+          word_type, static_cast<uint64_t>(-arch_addr.displacement)));
+    }
   }
 
   // Compute the segmented address.
@@ -1194,9 +1186,13 @@ llvm::Value *Translator::LiftOperand(llvm::BasicBlock *block,
       return LiftImmediateOperand(arg_type, arch_op);
 
     case Operand::kTypeAddress:
-      CHECK(arg_type == word_type)
-          << "Expected that a memory operand should be represented by machine "
-          << "word type.";
+      if (arg_type != word_type) {
+        LOG(FATAL)
+            << "Expected that a memory operand should be represented by "
+            << "machine word type. Argument type is "
+            << LLVMThingToString(arg_type) << " and word type is "
+            << LLVMThingToString(word_type);
+      }
 
       return LiftAddressOperand(block, arch_op.addr);
   }

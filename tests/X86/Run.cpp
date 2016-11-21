@@ -198,7 +198,7 @@ void __remill_error(Memory *, State &, addr_t) {
 }
 
 Memory *__remill_sync_hyper_call(
-    Memory *mem, State &state, SyncHyperCall call) {
+    Memory *mem, State &state, SyncHyperCall::Name call) {
   switch (call) {
     case SyncHyperCall::kX86CPUID:
       asm volatile(

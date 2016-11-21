@@ -306,3 +306,12 @@ TEST_INPUTS(
 
     xor ARG1_64, ARG2_64
 TEST_END_64
+
+TEST_BEGIN(PXORr64r64_64, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS()
+
+    pxor xmm0, xmm1
+    pxor xmm2, xmm3
+    pxor xmm4, xmm5
+TEST_END

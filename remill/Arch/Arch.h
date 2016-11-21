@@ -35,11 +35,6 @@ class Arch {
       uint64_t address,
       const std::string &instr_bytes) const = 0;
 
-  // Partially decode an instruction. This won't decode operands.
-  virtual Instruction *DecodeInstructionFast(
-      uint64_t address,
-      const std::string &instr_bytes) const = 0;
-
   // Number of bits in an address.
   const OSName os_name;
   const ArchName arch_name;
