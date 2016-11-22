@@ -14,8 +14,14 @@ if [[ "$OSTYPE" == "linux-gnu" ]] ; then
     popd
 
 elif [[ "$OSTYPE" == "darwin"* ]] ; then
+    mkdir gtest_build
+    pushd gtest_build
     git clone https://github.com/google/googletest
-    cp -R googletest/googletest/include/gtest .
+    cmake googletest/googletest
+    make
+    ls *.a
+    sudo cp *.a /usr/local/lib
+    cp -R googletest/googletest/include/gtest ../..
     rm -rf googletest
     popd
 

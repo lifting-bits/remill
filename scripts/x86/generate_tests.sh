@@ -8,6 +8,8 @@ if [[ "$OSTYPE" == "linux-gnu" ]] ; then
 
 elif [[ "$OSTYPE" == "darwin"* ]] ; then
     OS_NAME=macos
+    echo "Skipping generating tests since we're on a Mac"
+    exit 0
 
 else
     printf "Unsupported platform: ${OSTYPE}${RESET}\n" > /dev/stderr

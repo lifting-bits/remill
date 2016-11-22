@@ -8,6 +8,8 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
 
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     HAS_AVX=`sysctl -n machdep.cpu.features | grep -o 'AVX ' | wc -w`
+    echo "Skipping running tests since we're on a Mac"
+    exit 0
 
 else
     printf "${RED}Unsupported platform: ${OSTYPE}${RESET}\n"
