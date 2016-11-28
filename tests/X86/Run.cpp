@@ -598,7 +598,7 @@ static void SetupSignals(void) {
 }
 
 int main(int argc, char **argv) {
-  GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
   InitFlags();
