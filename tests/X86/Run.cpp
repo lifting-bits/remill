@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <string>
 #include <type_traits>
@@ -20,7 +21,10 @@
 
 #include "tests/X86/Test.h"
 
+#include "remill/Arch/Runtime/Runtime.h"
 #include "remill/Arch/X86/Runtime/State.h"
+
+#define aword IF_64BIT_ELSE(qword, dword)
 
 namespace {
 
@@ -62,10 +66,6 @@ NEVER_INLINE static T &AccessMemory(addr_t addr) {
 // Used to handle exceptions in instructions.
 static sigjmp_buf gJmpBuf;
 static sigjmp_buf gUnsupportedInstrBuf;
-
-// Used to mask the registers from a signal context when we've caught an error.
-static uintptr_t gRegMask32 = 0;
-static uintptr_t gRegMask64 = 0;
 
 // Are we running in a native test case or a lifted one?
 static bool gInNativeTest = false;
@@ -186,11 +186,6 @@ Memory *__remill_atomic_end(Memory *) { return nullptr; }
 
 void __remill_defer_inlining(void) {}
 
-//// Control-flow intrinsics.
-//void __remill_attach(State &, Memory *, addr_t) {
-//
-//}
-
 // Control-flow intrinsics.
 void __remill_detach(State &, Memory *, addr_t) {
   // This is where we want to end up.
@@ -206,14 +201,14 @@ Memory *__remill_sync_hyper_call(
     case SyncHyperCall::kX86CPUID:
       asm volatile(
           "cpuid"
-          : "=a"(state.gpr.rax.qword),
-            "=b"(state.gpr.rbx.qword),
-            "=c"(state.gpr.rcx.qword),
-            "=d"(state.gpr.rdx.qword)
-          : "a"(state.gpr.rax.qword),
-            "b"(state.gpr.rbx.qword),
-            "c"(state.gpr.rcx.qword),
-            "d"(state.gpr.rdx.qword)
+          : "=a"(state.gpr.rax.dword),
+            "=b"(state.gpr.rbx.dword),
+            "=c"(state.gpr.rcx.dword),
+            "=d"(state.gpr.rdx.dword)
+          : "a"(state.gpr.rax.dword),
+            "b"(state.gpr.rbx.dword),
+            "c"(state.gpr.rcx.dword),
+            "d"(state.gpr.rdx.dword)
       );
       break;
 
@@ -317,19 +312,18 @@ static void InitFlags(void) {
 static void ImportX87State(State *state) {
 
   // Looks like MMX state.
-  if (kFPUAbridgedTagValid == gFPU.fxsave.abridged_ftw.r0 &&
-      kFPUAbridgedTagValid == gFPU.fxsave.abridged_ftw.r1 &&
-      kFPUAbridgedTagValid == gFPU.fxsave.abridged_ftw.r2 &&
-      kFPUAbridgedTagValid == gFPU.fxsave.abridged_ftw.r3 &&
-      kFPUAbridgedTagValid == gFPU.fxsave.abridged_ftw.r4 &&
-      kFPUAbridgedTagValid == gFPU.fxsave.abridged_ftw.r5 &&
-      kFPUAbridgedTagValid == gFPU.fxsave.abridged_ftw.r6 &&
-      kFPUAbridgedTagValid == gFPU.fxsave.abridged_ftw.r7) {
-
-    LOG(INFO) << "Importing MMX state.";
+  if (kFPUAbridgedTagValid == gFPU.ftw.fxsave.abridged.r0 &&
+      kFPUAbridgedTagValid == gFPU.ftw.fxsave.abridged.r1 &&
+      kFPUAbridgedTagValid == gFPU.ftw.fxsave.abridged.r2 &&
+      kFPUAbridgedTagValid == gFPU.ftw.fxsave.abridged.r3 &&
+      kFPUAbridgedTagValid == gFPU.ftw.fxsave.abridged.r4 &&
+      kFPUAbridgedTagValid == gFPU.ftw.fxsave.abridged.r5 &&
+      kFPUAbridgedTagValid == gFPU.ftw.fxsave.abridged.r6 &&
+      kFPUAbridgedTagValid == gFPU.ftw.fxsave.abridged.r7) {
 
     // Copy over the MMX data. A good guess for MMX data is that the the
     // value looks like its infinity.
+    LOG(INFO) << "Importing MMX state.";
     for (size_t i = 0; i < 8; ++i) {
       if (static_cast<uint16_t>(0xFFFFU) == gFPU.st[i].infinity) {
         state->mmx.elems[i].val.qwords.elems[0] = gFPU.st[i].mmx;
@@ -339,8 +333,6 @@ static void ImportX87State(State *state) {
   // Looks like X87 state.
   } else {
     LOG(INFO) << "Importing FPU state.";
-
-    auto top = static_cast<size_t>(gFPU.swd.top);
     for (size_t i = 0; i < 8; ++i) {
       auto st = *reinterpret_cast<long double *>(&(gFPU.st[i].st));
       state->st.elems[i].val = static_cast<float64_t>(st);
@@ -378,16 +370,6 @@ static void RunWithFlags(const test::TestInfo *info,
   if (sigsetjmp(gUnsupportedInstrBuf, true)) {
     LOG(INFO) << "Unsupported instruction " << info->test_name;
     return;
-  }
-
-  // Set up the GPR mask just in case an error occurs when we execute this
-  // instruction.
-  if (64 == ADDRESS_SIZE_BITS) {
-    gRegMask32 = std::numeric_limits<uint64_t>::max();
-    gRegMask64 = gRegMask32;
-  } else {
-    gRegMask32 = std::numeric_limits<uint32_t>::max();
-    gRegMask64 = 0;
   }
 
   memcpy(&gLiftedStack, &gRandomStack, sizeof(gLiftedStack));
@@ -436,7 +418,7 @@ static void RunWithFlags(const test::TestInfo *info,
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
     lifted_func(*lifted_state, nullptr,
-                static_cast<addr_t>(lifted_state->gpr.rip.qword));
+                static_cast<addr_t>(lifted_state->gpr.rip.aword));
   } else {
     EXPECT_TRUE(native_test_faulted);
   }
@@ -450,8 +432,8 @@ static void RunWithFlags(const test::TestInfo *info,
   // This also lets us compare 32-bit-only lifted code with 32-bit only
   // testcases, where the native 32-bit code actually emulates the 32-bit
   // behavior in 64-bit (because all of this code is compiled as 64-bit).
-  lifted_state->gpr.rip.qword = 0;
-  native_state->gpr.rip.qword = 0;
+  lifted_state->gpr.rip.aword = 0;
+  native_state->gpr.rip.aword = 0;
 
   // Copy the aflags state back into the rflags state.
   lifted_state->rflag.cf = lifted_state->aflag.cf;
@@ -507,8 +489,10 @@ TEST_P(InstrTest, SemanticsMatchNative) {
       ss << ";" << std::dec;
     }
     auto desc = ss.str();
-    RunWithFlags(info, gRflagsOn, desc + " aflags on", args[0], args[1], args[2]);
-    RunWithFlags(info, gRflagsOff, desc + " aflags off", args[0], args[1], args[2]);
+    RunWithFlags(info, gRflagsOn, desc + " aflags on",
+                 args[0], args[1], args[2]);
+    RunWithFlags(info, gRflagsOff, desc + " aflags off",
+                 args[0], args[1], args[2]);
   }
 }
 
@@ -527,44 +511,44 @@ static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
 #ifdef __APPLE__
     const auto mcontext = context->uc_mcontext;
     const auto &ss = mcontext->__ss;
-    native_state->gpr.rax.qword = ss.__rax & gRegMask32;
-    native_state->gpr.rbx.qword = ss.__rbx & gRegMask32;
-    native_state->gpr.rcx.qword = ss.__rcx & gRegMask32;
-    native_state->gpr.rdx.qword = ss.__rdx & gRegMask32;
-    native_state->gpr.rsi.qword = ss.__rsi & gRegMask32;
-    native_state->gpr.rdi.qword = ss.__rdi & gRegMask32;
-    native_state->gpr.rbp.qword = ss.__rbp & gRegMask32;
-    native_state->gpr.rsp.qword = ss.__rsp & gRegMask32;
-    native_state->gpr.r8.qword = ss.__r8 & gRegMask64;
-    native_state->gpr.r9.qword = ss.__r9 & gRegMask64;
-    native_state->gpr.r10.qword = ss.__r10 & gRegMask64;
-    native_state->gpr.r11.qword = ss.__r11 & gRegMask64;
-    native_state->gpr.r12.qword = ss.__r12 & gRegMask64;
-    native_state->gpr.r13.qword = ss.__r13 & gRegMask64;
-    native_state->gpr.r14.qword = ss.__r14 & gRegMask64;
-    native_state->gpr.r15.qword = ss.__r15 & gRegMask64;
+    native_state->gpr.rax.aword = static_cast<addr_t>(ss.__rax);
+    native_state->gpr.rbx.aword = static_cast<addr_t>(ss.__rbx);
+    native_state->gpr.rcx.aword = static_cast<addr_t>(ss.__rcx);
+    native_state->gpr.rdx.aword = static_cast<addr_t>(ss.__rdx);
+    native_state->gpr.rsi.aword = static_cast<addr_t>(ss.__rsi);
+    native_state->gpr.rdi.aword = static_cast<addr_t>(ss.__rdi);
+    native_state->gpr.rbp.aword = static_cast<addr_t>(ss.__rbp);
+    native_state->gpr.rsp.aword = static_cast<addr_t>(ss.__rsp);
+    native_state->gpr.r8.aword = static_cast<addr_t>(ss.__r8);
+    native_state->gpr.r9.aword = static_cast<addr_t>(ss.__r9);
+    native_state->gpr.r10.aword = static_cast<addr_t>(ss.__r10);
+    native_state->gpr.r11.aword = static_cast<addr_t>(ss.__r11);
+    native_state->gpr.r12.aword = static_cast<addr_t>(ss.__r12);
+    native_state->gpr.r13.aword = static_cast<addr_t>(ss.__r13);
+    native_state->gpr.r14.aword = static_cast<addr_t>(ss.__r14);
+    native_state->gpr.r15.aword = static_cast<addr_t>(ss.__r15);
     native_state->rflag.flat = ss.__rflags;
     memcpy(&gFPU, &(mcontext->__fs), sizeof(gFPU));
 #else
     const auto &mcontext = context->uc_mcontext;
 
-    native_state->gpr.rax.qword = mcontext.gregs[REG_RAX] & gRegMask32;
-    native_state->gpr.rbx.qword = mcontext.gregs[REG_RBX] & gRegMask32;
-    native_state->gpr.rcx.qword = mcontext.gregs[REG_RCX] & gRegMask32;
-    native_state->gpr.rdx.qword = mcontext.gregs[REG_RDX] & gRegMask32;
-    native_state->gpr.rsi.qword = mcontext.gregs[REG_RSI] & gRegMask32;
-    native_state->gpr.rdi.qword = mcontext.gregs[REG_RDI] & gRegMask32;
-    native_state->gpr.rbp.qword = mcontext.gregs[REG_RBP] & gRegMask32;
-    native_state->gpr.rsp.qword = mcontext.gregs[REG_RSP] & gRegMask32;
+    native_state->gpr.rax.aword = static_cast<addr_t>(mcontext.gregs[REG_RAX]);
+    native_state->gpr.rbx.aword = static_cast<addr_t>(mcontext.gregs[REG_RBX]);
+    native_state->gpr.rcx.aword = static_cast<addr_t>(mcontext.gregs[REG_RCX]);
+    native_state->gpr.rdx.aword = static_cast<addr_t>(mcontext.gregs[REG_RDX]);
+    native_state->gpr.rsi.aword = static_cast<addr_t>(mcontext.gregs[REG_RSI]);
+    native_state->gpr.rdi.aword = static_cast<addr_t>(mcontext.gregs[REG_RDI]);
+    native_state->gpr.rbp.aword = static_cast<addr_t>(mcontext.gregs[REG_RBP]);
+    native_state->gpr.rsp.aword = static_cast<addr_t>(mcontext.gregs[REG_RSP]);
+    native_state->gpr.r8.aword = static_cast<addr_t>(mcontext.gregs[REG_R8]);
+    native_state->gpr.r9.aword = static_cast<addr_t>(mcontext.gregs[REG_R9]);
+    native_state->gpr.r10.aword = static_cast<addr_t>(mcontext.gregs[REG_R10]);
+    native_state->gpr.r11.aword = static_cast<addr_t>(mcontext.gregs[REG_R11]);
+    native_state->gpr.r12.aword = static_cast<addr_t>(mcontext.gregs[REG_R12]);
+    native_state->gpr.r13.aword = static_cast<addr_t>(mcontext.gregs[REG_R13]);
+    native_state->gpr.r14.aword = static_cast<addr_t>(mcontext.gregs[REG_R14]);
+    native_state->gpr.r15.aword = static_cast<addr_t>(mcontext.gregs[REG_R15]);
 
-    native_state->gpr.r8.qword = mcontext.gregs[REG_R8] & gRegMask64;
-    native_state->gpr.r9.qword = mcontext.gregs[REG_R9] & gRegMask64;
-    native_state->gpr.r10.qword = mcontext.gregs[REG_R10] & gRegMask64;
-    native_state->gpr.r11.qword = mcontext.gregs[REG_R11] & gRegMask64;
-    native_state->gpr.r12.qword = mcontext.gregs[REG_R12] & gRegMask64;
-    native_state->gpr.r13.qword = mcontext.gregs[REG_R13] & gRegMask64;
-    native_state->gpr.r14.qword = mcontext.gregs[REG_R14] & gRegMask64;
-    native_state->gpr.r15.qword = mcontext.gregs[REG_R15] & gRegMask64;
     native_state->rflag.flat = context->uc_mcontext.gregs[REG_EFL];
     memcpy(&gFPU, context->uc_mcontext.fpregs, sizeof(gFPU));
 #endif  // __APPLE__
@@ -614,7 +598,7 @@ static void SetupSignals(void) {
 }
 
 int main(int argc, char **argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
   InitFlags();

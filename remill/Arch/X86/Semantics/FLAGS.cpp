@@ -58,15 +58,16 @@ NEVER_INLINE static bool AuxCarryFlag(T lhs, T rhs, T carry, T res) {
 [[gnu::const]]
 NEVER_INLINE static bool ParityFlag(uint8_t r0) {
   __remill_defer_inlining();
-  auto r1 = r0 >> 1_u8;
-  auto r2 = r1 >> 1_u8;
-  auto r3 = r2 >> 1_u8;
-  auto r4 = r3 >> 1_u8;
-  auto r5 = r4 >> 1_u8;
-  auto r6 = r5 >> 1_u8;
-  auto r7 = r6 >> 1_u8;
-
-  return !(1 & (r0 ^ r1 ^ r2 ^ r3 ^ r4 ^ r5 ^ r6 ^ r7));
+  return !__builtin_parity(static_cast<unsigned>(r0));
+//  auto r1 = r0 >> 1_u8;
+//  auto r2 = r1 >> 1_u8;
+//  auto r3 = r2 >> 1_u8;
+//  auto r4 = r3 >> 1_u8;
+//  auto r5 = r4 >> 1_u8;
+//  auto r6 = r5 >> 1_u8;
+//  auto r7 = r6 >> 1_u8;
+//
+//  return !(1 & (r0 ^ r1 ^ r2 ^ r3 ^ r4 ^ r5 ^ r6 ^ r7));
 }
 
 // Tests whether there is an even number of bits or not.
@@ -147,9 +148,8 @@ struct Overflow<tag_mul> {
   template <typename T>
   [[gnu::const]]
   NEVER_INLINE static bool Flag(
-      T lhs, T rhs, T res,
+      T lhs, T rhs, T,
       typename std::enable_if<std::is_signed<T>::value,int>::type=0) {
-    (void) res;
     __remill_defer_inlining();
     auto lhs_wide = SExt(lhs);
     auto rhs_wide = SExt(rhs);
@@ -191,12 +191,12 @@ struct Carry<tag_sub> {
 
 #define ClearArithFlags() \
     do { \
-      state.aflag.cf = __remill_undefined_bool(); \
-      state.aflag.pf = __remill_undefined_bool(); \
-      state.aflag.af = __remill_undefined_bool(); \
-      state.aflag.zf = __remill_undefined_bool(); \
-      state.aflag.sf = __remill_undefined_bool(); \
-      state.aflag.of = __remill_undefined_bool(); \
+      state.aflag.cf = __remill_undefined_8(); \
+      state.aflag.pf = __remill_undefined_8(); \
+      state.aflag.af = __remill_undefined_8(); \
+      state.aflag.zf = __remill_undefined_8(); \
+      state.aflag.sf = __remill_undefined_8(); \
+      state.aflag.of = __remill_undefined_8(); \
     } while (false)
 
 #endif  // REMILL_ARCH_X86_SEMANTICS_FLAGS_H_

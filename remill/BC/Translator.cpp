@@ -36,16 +36,11 @@
 #include "remill/Arch/AssemblyWriter.h"
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Translator.h"
+#include "remill/BC/Util.h"
 #include "remill/CFG/CFG.h"
 #include "remill/OS/OS.h"
 
-DEFINE_bool(lift_calls_as_calls, false,
-            "Treat function calls in the binary code as being function calls "
-            "in the lifted code. This induces a call graph on the lifted code "
-            "that may be helpful to static analysis.");
-
-DEFINE_bool(pc_specific_intrinsics, false,
-            "Create a PC-specific variable for each intrinsic use.");
+DECLARE_bool(define_unimplemented);
 
 namespace llvm {
 class ReturnInst;
@@ -228,39 +223,6 @@ static void AddBlockInitializationCode(llvm::Function *block_func,
   // defined in the function, but it has an implicit return that we need
   // to remove so that we can add instructions at the end.
   return_instrs[0]->eraseFromParent();
-}
-
-// Wrap an intrinsic. This will make something like `__remill_indirect_jump`
-// into `__remill_indirect_jump_f00` as a way of saying that at PC `0xf00`,
-// an indirect jump is being performed.
-//
-// The idea here is that Remill is a simplistic code generator, and sometimes
-// we'll want to add in "smarter" handling of things. For example, what
-// Remill sees as an indirect jump, another smarter tool may see as a use
-// of a jump table. That smart tool may want to change Remill-generated code
-// to do this, and wrapping allows this other tool to pinpoint where changes
-// need to be made.
-static llvm::Constant *WrapIntrinsic(llvm::Function *intrinsic,
-                                     uint64_t address) {
-  if (!FLAGS_pc_specific_intrinsics) {
-    return intrinsic;
-  }
-
-  std::stringstream ss;
-  ss << intrinsic->getName().str() << "_" << std::hex << address;
-
-  llvm::Module *module = intrinsic->getParent();
-  auto var = llvm::dyn_cast<llvm::GlobalVariable>(
-      module->getOrInsertGlobal(ss.str(), intrinsic->getType()));
-
-  if (!var->hasInitializer()) {
-    DLOG(INFO)
-        << "Creating intrinsic wrapper " << ss.str() << ".";
-
-    var->setInitializer(intrinsic);
-  }
-
-  return var;
 }
 
 }  // namespace
@@ -517,12 +479,9 @@ void Translator::CreateNamedBlocks(const cfg::Module *cfg) {
 
     auto impl_name = named_block->getName().str();
 
-    if (is_imported) {
+    if (is_imported && FLAGS_define_unimplemented) {
       if (named_block->isDeclaration()) {
-        AddTerminatingTailCall(
-            named_block,
-            WrapIntrinsic(intrinsics->detach,
-                          static_cast<uint64_t>(func.address())));
+        AddTerminatingTailCall(named_block, intrinsics->detach);
 
         if (asm_source_writer) {
           asm_source_writer->WriteBlock(named_block);
@@ -531,6 +490,7 @@ void Translator::CreateNamedBlocks(const cfg::Module *cfg) {
         DLOG(INFO)
             << "Imported function " << func_name << " is implemented by "
             << impl_name << ".";
+
       } else {
         auto term = named_block->back().getTerminatingMustTailCall();
         CHECK(term && intrinsics->detach != term->getCalledFunction())
@@ -541,7 +501,6 @@ void Translator::CreateNamedBlocks(const cfg::Module *cfg) {
       DLOG(INFO)
           << "Exported function " << func_name << " is implemented by "
           << impl_name << ".";
-
     }
   }
 }
@@ -580,7 +539,7 @@ llvm::Function *Translator::GetOrCreateBlock(uint64_t addr) {
 // based implementation.
 llvm::Function *Translator::GetOrCreateTargetBlock(uint64_t address) {
   auto block_func = GetOrCreateBlock(address);
-  if (block_func->isDeclaration()) {
+  if (block_func->isDeclaration() && FLAGS_define_unimplemented) {
     AddTerminatingTailCall(block_func, intrinsics->detach);
     if (asm_source_writer) {
       asm_source_writer->WriteBlock(block_func);
@@ -661,6 +620,7 @@ void Translator::LiftBlocks(const cfg::Module *cfg_module) {
   func_pass_manager.add(llvm::createReassociatePass());
   func_pass_manager.add(llvm::createInstructionCombiningPass());
   func_pass_manager.add(llvm::createDeadStoreEliminationPass());
+  func_pass_manager.add(llvm::createDeadCodeEliminationPass());
 
   func_pass_manager.doInitialization();
   for (const auto &block : cfg_module->blocks()) {
@@ -848,9 +808,7 @@ void Translator::LiftTerminator(llvm::BasicBlock *block,
       break;
 
     case Instruction::kCategoryError:
-      AddTerminatingTailCall(
-          block,
-          WrapIntrinsic(intrinsics->error, arch_instr->pc));
+      AddTerminatingTailCall(block, intrinsics->error);
       break;
 
     case Instruction::kCategoryDirectJump:
@@ -860,46 +818,21 @@ void Translator::LiftTerminator(llvm::BasicBlock *block,
       break;
 
     case Instruction::kCategoryIndirectJump:
-      AddTerminatingTailCall(
-          block,
-          WrapIntrinsic(intrinsics->jump, arch_instr->pc));
+      AddTerminatingTailCall(block, intrinsics->jump);
       break;
 
     case Instruction::kCategoryDirectFunctionCall:
       AddTerminatingTailCall(
           block,
           GetOrCreateTargetBlock(arch_instr->branch_taken_pc));
-
-      if (FLAGS_lift_calls_as_calls) {
-        auto term_call = block->getTerminatingMustTailCall();
-        term_call->setTailCallKind(llvm::CallInst::TCK_NoTail);
-        block->getTerminator()->eraseFromParent();
-        AddTerminatingTailCall(
-            block,
-            GetOrCreateTargetBlock(arch_instr->next_pc));
-      }
       break;
 
     case Instruction::kCategoryIndirectFunctionCall:
-      AddTerminatingTailCall(
-          block,
-          WrapIntrinsic(intrinsics->function_call, arch_instr->pc));
-
-      if (FLAGS_lift_calls_as_calls) {
-        auto term_call = block->getTerminatingMustTailCall();
-        term_call->setTailCallKind(llvm::CallInst::TCK_NoTail);
-        block->getTerminator()->eraseFromParent();
-
-        AddTerminatingTailCall(
-            block,
-            GetOrCreateTargetBlock(arch_instr->next_pc));
-      }
+      AddTerminatingTailCall(block, intrinsics->function_call);
       break;
 
     case Instruction::kCategoryFunctionReturn:
-      AddTerminatingTailCall(
-          block,
-          WrapIntrinsic(intrinsics->function_return, arch_instr->pc));
+      AddTerminatingTailCall(block, intrinsics->function_return);
       break;
 
     case Instruction::kCategoryConditionalBranch:
@@ -910,9 +843,7 @@ void Translator::LiftTerminator(llvm::BasicBlock *block,
       break;
 
     case Instruction::kCategoryAsyncHyperCall:
-      AddTerminatingTailCall(
-          block,
-          WrapIntrinsic(intrinsics->async_hyper_call, arch_instr->pc));
+      AddTerminatingTailCall(block, intrinsics->async_hyper_call);
       break;
 
     case Instruction::kCategoryConditionalAsyncHyperCall:
@@ -944,27 +875,45 @@ llvm::Function *GetInstructionFunction(llvm::Module *module,
   return isel_func;
 }
 
-// Convert an LLVM thing (e.g. `llvm::Value` or `llvm::Type`) into
-// an `std::string`.
-template <typename T>
-static std::string LLVMThingToString(T *thing) {
-  std::string str;
-  llvm::raw_string_ostream str_stream(str);
-  thing->print(str_stream);
-  return str;
+// Create a PC operand to pass to the code implementing an unsupported
+// instruction.
+static Operand CreateUnsupportedInstrPC(unsigned addr_size) {
+  Operand op = {};
+  op.type = Operand::kTypeRegister;
+  op.reg.name = "PC";
+  op.reg.size = addr_size;
+  op.size = addr_size;
+  return op;
 }
 
 }  // namespace
 
 // Lift a single instruction into a basic block.
 llvm::BasicBlock *Translator::LiftInstruction(llvm::Function *block_func,
-                                              const Instruction *arch_instr) {
+                                              Instruction *arch_instr) {
   auto isel_func = GetInstructionFunction(module, arch_instr->function);
   if (!isel_func) {
     LOG(ERROR)
         << "Cannot lift instruction at " << std::hex << arch_instr->pc << ", "
         << arch_instr->function << " doesn't exist.";
-    return nullptr;
+
+    isel_func = GetInstructionFunction(module, "UNSUPPORTED_INSTRUCTION");
+    if (!isel_func) {
+      LOG(ERROR)
+          << "UNSUPPORTED_INSTRUCTION doesn't exist; not using it in place of "
+          << arch_instr->function;
+      return nullptr;
+    }
+
+    // This is kind of a hack, but it lets us better support unsupported
+    // instructions. The idea is that we want to make sure we pass the
+    // current program counter to the instruction so that we can tell the
+    // hypercall, via the `State` structure, where to find the unsupported
+    // instruction in memory.
+    arch_instr->operands.clear();
+    arch_instr->operand_size = arch->address_size;
+    arch_instr->operands.push_back(
+        CreateUnsupportedInstrPC(arch->address_size));
   }
 
   auto &context = block_func->getContext();
@@ -1202,22 +1151,24 @@ llvm::Value *Translator::LiftAddressOperand(
   auto addr = LoadWordRegValOrZero(block, arch_addr.base_reg.name, zero);
   auto index = LoadWordRegValOrZero(block, arch_addr.index_reg.name, zero);
   auto scale = llvm::ConstantInt::get(
-      word_type,
-      static_cast<uint64_t>(arch_addr.scale),
-      true);
-  auto segment = LoadWordRegValOrZero(block, arch_addr.segment_reg.name, zero);
+      word_type, static_cast<uint64_t>(arch_addr.scale), true);
+  auto segment = LoadWordRegValOrZero(
+      block, arch_addr.segment_base_reg.name, zero);
 
   llvm::IRBuilder<> ir(block);
   addr = ir.CreateAdd(addr, ir.CreateMul(index, scale));
 
   if (0 > arch_addr.displacement) {
     addr = ir.CreateAdd(addr, llvm::ConstantInt::get(
-        word_type,
-        static_cast<uint64_t>(arch_addr.displacement)));
+        word_type, static_cast<uint64_t>(arch_addr.displacement)));
   } else {
     addr = ir.CreateSub(addr, llvm::ConstantInt::get(
-        word_type,
-        static_cast<uint64_t>(-arch_addr.displacement)));
+        word_type, static_cast<uint64_t>(-arch_addr.displacement)));
+  }
+
+  // Compute the segmented address.
+  if (zero != segment) {
+    addr = ir.CreateAdd(addr, segment);
   }
 
   // Memory address is smaller than the machine word size (e.g. 32-bit address
@@ -1229,13 +1180,6 @@ llvm::Value *Translator::LiftAddressOperand(
     addr = ir.CreateZExt(
         ir.CreateTrunc(addr, addr_type),
         word_type);
-  }
-
-  // Compute the segmented address.
-  if (zero != segment) {
-    addr = ir.CreateCall(
-        intrinsics->compute_address,
-        std::initializer_list<llvm::Value *>({addr, segment}));
   }
 
   return addr;

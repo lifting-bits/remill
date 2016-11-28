@@ -1842,7 +1842,7 @@ DEF_SEM(MASKMOVQ, S1 src1, S2 src2) {
     auto v2 = UExtractV8(src2_vec, i);
     auto dst_addr = UAdd(xdi, decltype(xdi)(sizeof(v1)*i));
     if (UCmpEq(UShl(v2, decltype(v2)(0x7)), decltype(v2)(0x1))) {
-      Write(WritePtr<decltype(v1)>(dst_addr _IF_32BIT(REG_DS)), v1);
+      Write(WritePtr<decltype(v1)>(dst_addr _IF_32BIT(REG_DS_BASE)), v1);
     }
   }
 }

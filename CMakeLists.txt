@@ -1,4 +1,4 @@
-# Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved.
+# Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved.
 
 set(CMAKE_ASM_COMPILER ${CMAKE_CXX_COMPILER})
 
@@ -38,6 +38,10 @@ if(NOT DEFINED CMAKE_LLVM_LINK)
     set(CMAKE_LLVM_LINK "${LLVM_INSTALL_PREFIX}/bin/llvm-link")
 endif()
 
+if(UNIX AND NOT APPLE)
+    set(LINUX TRUE)
+endif()
+
 add_definitions(${LLVM_DEFINITIONS})
 
 add_executable(remill-lift
@@ -46,11 +50,20 @@ add_executable(remill-lift
     remill/Arch/AssemblyWriter.cpp
     remill/Arch/Arch.cpp
     remill/Arch/Instruction.cpp
+    remill/Arch/Name.cpp
     remill/CFG/CFG.cpp
     remill/BC/Translator.cpp
     remill/BC/Util.cpp
     remill/BC/IntrinsicTable.cpp
+    remill/OS/FileSystem.cpp
     remill/OS/OS.cpp
+)
+
+set(LLVM_LIBS
+    LLVMIRReader LLVMBitReader LLVMBitWriter
+    LLVMTransformUtils
+    LLVMScalarOpts
+    LLVMSupport
 )
 
 target_link_libraries(remill-lift
@@ -58,14 +71,25 @@ target_link_libraries(remill-lift
     ${GLOG_LIBRARIES}
     ${XED_LIBRARIES}
     ${PROTOBUF_LIBRARIES}
-    
-    LLVMIRReader LLVMBitReader LLVMBitWriter
-    LLVMTransformUtils
-    LLVMScalarOpts
-    LLVMSupport
+    ${LLVM_LIBS}
 )
 
-target_compile_options(remill-lift PRIVATE
+add_executable(remill-opt
+    remill/Optimize.cpp
+    remill/BC/Util.cpp
+    remill/BC/IntrinsicTable.cpp
+    remill/OS/FileSystem.cpp
+    remill/OS/OS.cpp
+)
+
+target_link_libraries(remill-opt
+    ${GFLAGS_LIBRARIES}
+    ${GLOG_LIBRARIES}
+    ${LLVM_LIBS}
+    LLVMLTO
+)
+
+set(COMMON_CXX_FLAGS
     -x c++
 
     -Wall
@@ -75,10 +99,6 @@ target_compile_options(remill-lift PRIVATE
 
     -g3
     -O0
-    
-    # LLVM headers break these :-(
-    #-Wshadow
-    #-Wshorten-64-to-32
 
     -Wno-unused-parameter
     -Wno-c++98-compat
@@ -89,24 +109,29 @@ target_compile_options(remill-lift PRIVATE
     -Wno-variadic-macros
     -Wno-gnu-zero-variadic-macro-arguments
     -Wno-gnu-statement-expression
-    -Wno-error=unused-command-line-argument
-    -Wno-override-module
     -Wno-return-type-c-linkage
     -Wno-c99-extensions
     -Wno-ignored-attributes
-      
+    
     -fno-omit-frame-pointer
     -fvisibility-inlines-hidden
 
     -fno-rtti
-    -DGOOGLE_PROTOBUF_NO_RTTI
-
     -std=gnu++11
-
     -fPIC
     -fpie
     -m64
+)
 
+target_compile_options(remill-lift PRIVATE
+    ${COMMON_CXX_FLAGS}
+    -DGOOGLE_PROTOBUF_NO_RTTI
+    -DINSTALL_SEMANTICS_DIR="${CMAKE_INSTALL_PREFIX}/share/remill/semantics/"
+    -DBUILD_SEMANTICS_DIR="${CMAKE_CURRENT_BINARY_DIR}/"
+)
+
+target_compile_options(remill-opt PRIVATE
+    ${COMMON_CXX_FLAGS}
     -DINSTALL_SEMANTICS_DIR="${CMAKE_INSTALL_PREFIX}/share/remill/semantics/"
     -DBUILD_SEMANTICS_DIR="${CMAKE_CURRENT_BINARY_DIR}/"
 )
@@ -130,6 +155,7 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
         -Werror
         -Wshadow
         -Wconversion
+        -Wpadded
         -pedantic
         
         -Wshorten-64-to-32
@@ -143,9 +169,14 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
         -Wno-ignored-attributes
 
         -ffreestanding
-
+    
+        # All of these are needed to disable vectorization, both in the LLVM
+        # optimizer, and in the Clang front-end.
+        -mtune=generic
         -fno-vectorize
         -fno-slp-vectorize
+        -mno-sse -mno-avx -mno-3dnow
+        
         -fno-common
         -fno-builtin
         -fno-exceptions
@@ -202,8 +233,11 @@ COMPILE_X86_SEMANTICS(amd64 64 0 0)
 COMPILE_X86_SEMANTICS(amd64_avx 64 1 0)
 COMPILE_X86_SEMANTICS(amd64_avx512 64 1 1)
 
+# Bring in the tools.
+add_subdirectory(${PROJECT_SOURCE_DIR}/tools)
+
 install(
-    TARGETS remill-lift
+    TARGETS remill-lift remill-opt
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
 )

@@ -13,7 +13,8 @@ DEF_SEM(LEA, D dst, S src) {
 DEF_SEM(LEAVE_16BIT) {
   addr_t op_size = 2;
   addr_t link_pointer = Read(REG_XBP);
-  addr_t base_pointer = Read(ReadPtr<addr_t>(link_pointer _IF_32BIT(REG_SS)));
+  addr_t base_pointer = Read(
+      ReadPtr<addr_t>(link_pointer _IF_32BIT(REG_SS_BASE)));
   Write(REG_XBP, base_pointer);
   Write(REG_XSP, UAdd(link_pointer, op_size));
 }
@@ -22,7 +23,8 @@ template <typename T>
 DEF_SEM(LEAVE_FULL) {
   addr_t op_size = TruncTo<addr_t>(sizeof(T));
   addr_t link_pointer = Read(REG_XBP);
-  addr_t base_pointer = Read(ReadPtr<addr_t>(link_pointer _IF_32BIT(REG_SS)));
+  addr_t base_pointer = Read(
+      ReadPtr<addr_t>(link_pointer _IF_32BIT(REG_SS_BASE)));
   Write(REG_XBP, base_pointer);
   Write(REG_XSP, UAdd(link_pointer, op_size));
 }
@@ -56,14 +58,15 @@ DEF_SEM(ENTER, I16 src1, I8 src2) {
   // Detect failure. This should really happen at the end of `ENTER` but we
   // do it here. This is why `frame_temp` is created before the `PUSH` of
   // `RBP`, but displaced to mimic the `PUSH`.
-  Write(WritePtr<T>(next_xsp _IF_32BIT(REG_SS)),
-        Read(ReadPtr<T>(next_xsp _IF_32BIT(REG_SS))));
+  Write(WritePtr<T>(next_xsp _IF_32BIT(REG_SS_BASE)),
+        Read(ReadPtr<T>(next_xsp _IF_32BIT(REG_SS_BASE))));
 
   // Push `XBP`.
   addr_t xbp_temp = Read(REG_XBP);
   addr_t xsp_after_push = USub(xsp_temp, op_size);
   Write(REG_XSP, xsp_after_push);
-  Write(WritePtr<T>(xsp_after_push _IF_32BIT(REG_SS)), TruncTo<T>(xbp_temp));
+  Write(WritePtr<T>(xsp_after_push _IF_32BIT(REG_SS_BASE)),
+        TruncTo<T>(xbp_temp));
   xsp_temp = xsp_after_push;
 
   if (nesting_level) {
@@ -74,15 +77,15 @@ DEF_SEM(ENTER, I16 src1, I8 src2) {
 
         // Copy the display entry to the stack.
         xsp_after_push = USub(xsp_temp, op_size);
-        Write(WritePtr<T>(xsp_after_push _IF_32BIT(REG_SS)),
-              Read(ReadPtr<T>(xbp_temp _IF_32BIT(REG_SS))));
+        Write(WritePtr<T>(xsp_after_push _IF_32BIT(REG_SS_BASE)),
+              Read(ReadPtr<T>(xbp_temp _IF_32BIT(REG_SS_BASE))));
         xsp_temp = xsp_after_push;
       }
     }
 
     xsp_temp = xsp_after_push;
     xsp_after_push = USub(xsp_temp, op_size);
-    Write(WritePtr<addr_t>(xsp_after_push _IF_32BIT(REG_SS)), frame_temp);
+    Write(WritePtr<addr_t>(xsp_after_push _IF_32BIT(REG_SS_BASE)), frame_temp);
     xsp_temp = xsp_after_push;
   }
 
@@ -120,7 +123,8 @@ DEF_ISEL_SEM(LFENCE) {
 DEF_ISEL_SEM(XLAT) {
   addr_t base = Read(REG_XBX);
   addr_t offset = ZExtTo<addr_t>(Read(REG_AL));
-  Write(REG_AL, Read(ReadPtr<uint8_t>(UAdd(base, offset) _IF_32BIT(REG_DS))));
+  Write(REG_AL, Read(
+      ReadPtr<uint8_t>(UAdd(base, offset) _IF_32BIT(REG_DS_BASE))));
 }
 
 DEF_ISEL_SEM(CPUID) {

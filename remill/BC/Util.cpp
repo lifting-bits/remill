@@ -24,6 +24,7 @@
 
 #include "remill/BC/ABI.h"
 #include "remill/BC/Util.h"
+#include "remill/OS/FileSystem.h"
 
 namespace remill {
 
@@ -214,6 +215,61 @@ void StoreModuleToFile(llvm::Module *module, std::string file_name) {
 
   CHECK(!ec)
       << "Error writing bitcode to file: " << file_name << ".";
+}
+
+namespace {
+
+#ifndef BUILD_SEMANTICS_DIR
+# error "Macro `BUILD_SEMANTICS_DIR` must be defined."
+# define BUILD_SEMANTICS_DIR
+#endif  // BUILD_SEMANTICS_DIR
+
+#ifndef INSTALL_SEMANTICS_DIR
+# error "Macro `INSTALL_SEMANTICS_DIR` must be defined."
+# define INSTALL_SEMANTICS_DIR
+#endif  // INSTALL_SEMANTICS_DIR
+
+static const char *gSearchPaths[] = {
+    // Derived from the build.
+    BUILD_SEMANTICS_DIR "\0",
+    INSTALL_SEMANTICS_DIR "\0",
+
+    // Linux.
+    "/usr/local/share/remill/semantics",
+    "/usr/share/remill/semantics",
+
+    // Other?
+    "/opt/local/share/remill/semantics",
+    "/opt/share/remill/semantics",
+    "/opt/remill/semantics",
+
+    // FreeBSD.
+    "/usr/share/compat/linux/remill/semantics",
+    "/usr/local/share/compat/linux/remill/semantics",
+    "/compat/linux/usr/share/remill/semantics",
+    "/compat/linux/usr/local/share/remill/semantics",
+};
+
+}  // namespace
+
+// Find the path to the semantics bitcode file.
+std::string FindSemanticsBitcodeFile(const std::string &path,
+                                     const std::string &arch) {
+  if (!path.empty()) {
+    return path;
+  }
+
+  for (auto path : gSearchPaths) {
+    std::stringstream ss;
+    ss << path << "/" << arch << ".bc";
+    auto sem_path = ss.str();
+    if (FileExists(sem_path)) {
+      return sem_path;
+    }
+  }
+
+  LOG(FATAL)
+      << "Cannot find path to " << arch << " semantics bitcode file.";
 }
 
 }  // namespace remill

@@ -5,6 +5,7 @@
 
 #include <string>
 
+#include "remill/Arch/Name.h"
 #include "remill/OS/OS.h"
 
 namespace llvm {
@@ -17,16 +18,6 @@ namespace remill {
 
 class Instruction;
 
-enum ArchName : uint32_t {
-  kArchInvalid,
-  kArchX86,
-  kArchX86_AVX,
-  kArchX86_AVX512,
-  kArchAMD64,
-  kArchAMD64_AVX,
-  kArchAMD64_AVX512
-};
-
 class Arch {
  public:
   virtual ~Arch(void);
@@ -35,15 +26,17 @@ class Arch {
   // operating system and architecture class.
   static const Arch *Create(OSName os, ArchName arch_name);
 
-  // Convert the string name of an architecture into a canonical form.
-  static ArchName GetName(const std::string &arch_name);
-
   // Converts an LLVM module object to have the right triple / data layout
   // information for the target architecture.
   virtual void PrepareModule(llvm::Module *mod) const = 0;
 
   // Decode an instruction.
   virtual Instruction *DecodeInstruction(
+      uint64_t address,
+      const std::string &instr_bytes) const = 0;
+
+  // Partially decode an instruction. This won't decode operands.
+  virtual Instruction *DecodeInstructionFast(
       uint64_t address,
       const std::string &instr_bytes) const = 0;
 

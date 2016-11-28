@@ -5,6 +5,8 @@
 
 #include <string>
 
+#include <llvm/Support/raw_ostream.h>
+
 namespace llvm {
 class BasicBlock;
 class Function;
@@ -62,6 +64,20 @@ llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
 
 // Store an LLVM module into a file.
 void StoreModuleToFile(llvm::Module *module, std::string file_name);
+
+// Find the path to the semantics bitcode file.
+std::string FindSemanticsBitcodeFile(const std::string &path,
+                                     const std::string &arch);
+
+// Convert an LLVM thing (e.g. `llvm::Value` or `llvm::Type`) into
+// a `std::string`.
+template <typename T>
+inline static std::string LLVMThingToString(T *thing) {
+  std::string str;
+  llvm::raw_string_ostream str_stream(str);
+  thing->print(str_stream);
+  return str;
+}
 
 }  // namespace remill
 

@@ -21,7 +21,7 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic fatal "-Wpadded"
 
-#include "remill/Arch/Runtime/Runtime.h"
+#include "remill/Arch/Runtime/State.h"
 
 #ifndef HAS_FEATURE_AVX
 # define HAS_FEATURE_AVX 1
@@ -206,13 +206,13 @@ struct alignas(64) FPU final {
   FPUStatusWord swd;
   union {
     struct {
-      FPUAbridgedTagWord abridged_ftw;
+      FPUAbridgedTagWord abridged;
       uint8_t _rsvd0;
     } __attribute__((packed)) fxsave;
     struct {
-      FPUTagWord ftw;
+      FPUTagWord full;
     } __attribute__((packed)) fsave;
-  } __attribute__((packed));
+  } __attribute__((packed)) ftw;
   uint16_t fop;
   union {
     struct {
@@ -222,12 +222,12 @@ struct alignas(64) FPU final {
       uint32_t dp;
       uint16_t ds;
       uint16_t _rsvd2;
-    } __attribute__((packed)) x86;
+    } __attribute__((packed)) fxsave;
     struct {
       uint64_t ip;
       uint64_t dp;
-    } __attribute__((packed)) amd64;
-  } __attribute__((packed));
+    } __attribute__((packed)) fxsave64;
+  } __attribute__((packed)) code_data;
   FPUControlStatus mxcsr;
   FPUControlStatus mxcsr_mask;
   FPUStackElem st[8];   // 8*16 bytes for each FP reg = 128 bytes.
@@ -277,7 +277,7 @@ union alignas(8) Flags final {
 
 static_assert(8 == sizeof(Flags), "Invalid structure packing of `Flags`.");
 
-struct alignas(16) ArithFlags final {
+struct alignas(8) ArithFlags final {
   // Prevents LLVM from casting and `ArithFlags` into an `i8` to access `cf`.
   volatile bool _tear0;
   bool cf;  // Prevents load/store coalescing.
@@ -314,18 +314,46 @@ struct alignas(8) Segments final {
   uint16_t cs;
 } __attribute__((packed));
 
-union Reg final {
-  alignas(1) struct {
-    uint8_t low;
-    uint8_t high;
-  } byte;
-  alignas(2) uint16_t word;
-  alignas(4) uint32_t dword;
-  alignas(sizeof(addr_t)) addr_t aword;
-  alignas(8) uint64_t qword;
+static_assert(24 == sizeof(Segments), "Invalid packing of `struct Segments`.");
+
+struct alignas(8) AddressSpace final {
+#if 64 == ADDRESS_SIZE_BITS
+  volatile uint64_t _tear0;
+  addr_t fs_base;
+  volatile uint64_t _tear1;
+  addr_t gs_base;
+#else
+  volatile uint64_t _tear0;
+  volatile uint32_t _tear1;
+  addr_t fs_base;
+  volatile uint64_t _tear2;
+  volatile uint32_t _tear3;
+  addr_t gs_base;
+#endif
+} __attribute__((packed));
+
+static_assert(32 == sizeof(AddressSpace),
+              "Invalid packing of `struct AddressSpace`.");
+
+// For remill-opt's register alias analysis, we don't want 32-bit lifted
+// code to look like operations on 64-bit registers, because then every
+// (bitcasted from 64 bit) store of a 32-bit value will look like a false-
+// dependency on the (bitcasted from 64 bit) full 64-bit quantity.
+struct Reg final {
+  union {
+    alignas(1) struct {
+      uint8_t low;
+      uint8_t high;
+    } byte;
+    alignas(2) uint16_t word;
+    alignas(4) uint32_t dword;
+    IF_64BIT(alignas(8) uint64_t qword;)
+  } __attribute__((packed));
+  IF_32BIT(uint32_t _padding0;)
 } __attribute__((packed));
 
 static_assert(sizeof(uint64_t) == sizeof(Reg), "Invalid packing of `Reg`.");
+
 static_assert(0 == __builtin_offsetof(Reg, byte.low),
               "Invalid packing of `Reg::low`.");
 static_assert(1 == __builtin_offsetof(Reg, byte.high),
@@ -334,15 +362,13 @@ static_assert(0 == __builtin_offsetof(Reg, word),
               "Invalid packing of `Reg::word`.");
 static_assert(0 == __builtin_offsetof(Reg, dword),
               "Invalid packing of `Reg::dword`.");
-static_assert(0 == __builtin_offsetof(Reg, aword),
-              "Invalid packing of `Reg::aword`.");
-static_assert(0 == __builtin_offsetof(Reg, qword),
-              "Invalid packing of `Reg::qword`.");
+IF_64BIT(static_assert(0 == __builtin_offsetof(Reg, qword),
+              "Invalid packing of `Reg::qword`.");)
 
-union alignas(64) VectorReg final {
-  alignas(64) vec128_t xmm;
-  alignas(64) vec256_t ymm;
-  alignas(64) vec512_t zmm;
+union alignas(16) VectorReg final {
+  alignas(16) vec128_t xmm;
+  alignas(16) vec256_t ymm;
+  alignas(16) vec512_t zmm;
 } __attribute__((packed));
 
 static_assert(0 == __builtin_offsetof(VectorReg, xmm),
@@ -354,12 +380,15 @@ static_assert(0 == __builtin_offsetof(VectorReg, ymm),
 static_assert(0 == __builtin_offsetof(VectorReg, zmm),
               "Invalid packing of `VectorReg::zmm`.");
 
+static_assert(64 == sizeof(VectorReg),
+              "Invalid packing of `struct VectorReg`.");
+
 // Named the same way as the 64-bit version to keep names the same
 // across architectures. All registers are here, even the 64-bit ones. The
 // 64-bit ones are inaccessible in lifted 32-bit code because they will
 // not be referenced by named variables in the `__remill_basic_block`
 // function.
-struct alignas(16) GPR final {
+struct alignas(8) GPR final {
   // Prevents LLVM from casting a `GPR` into an `i64` to access `rax`.
   volatile uint64_t _tear0;
   Reg rax;
@@ -404,8 +433,8 @@ struct alignas(16) GPR final {
 
 static_assert(272 == sizeof(GPR), "Invalid structure packing of `GPR`.");
 
-struct alignas(16) X87Stack {
-  struct alignas(16) {
+struct alignas(8) X87Stack final {
+  struct alignas(8) {
     uint64_t _tear;
     float64_t val;
   } __attribute__((packed)) elems[8];
@@ -414,7 +443,7 @@ struct alignas(16) X87Stack {
 static_assert(128 == sizeof(X87Stack),
               "Invalid structure packing of `X87Stack`.");
 
-struct alignas(16) MMX {
+struct alignas(8) MMX final {
   struct alignas(8) {
     uint64_t _tear;
     vec64_t val;
@@ -427,15 +456,8 @@ enum : size_t {
   kNumVecRegisters = 32
 };
 
-struct alignas(64) State final {
-
-  // State that isn't specific to any architecture.
-  //
-  // Note:  This *must* be first. The positioning is to emulate inheritance
-  //        while maintaining that `State` is a POD type.
-  ArchState generic;
-
-  uint8_t _padding0[48];
+struct alignas(16) State final : public ArchState {
+  // ArchState occupies 16 bytes.
 
   // AVX512 has 32 vector registers, so we always include them all here for
   // consistency across the various state structures.
@@ -446,12 +468,15 @@ struct alignas(64) State final {
   ArithFlags aflag;  // 16 bytes.
   Flags rflag;  // 8 bytes.
   Segments seg;  // 24 bytes.
+  AddressSpace addr;  // 32 bytes.
   GPR gpr;  // 272 bytes.
   X87Stack st;  // 128 bytes.
   MMX mmx;  // 128 bytes.
 
-//  uint8_t _padding[53];
 } __attribute__((packed));
+
+static_assert((2656 + 16) == sizeof(State),
+              "Invalid packing of `struct State`");
 
 #pragma clang diagnostic pop
 

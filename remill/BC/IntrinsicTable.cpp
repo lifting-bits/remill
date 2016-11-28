@@ -78,8 +78,6 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       write_memory_f80(FindPureIntrinsic(
           module, "__remill_write_memory_f80")),
 
-      compute_address(FindPureIntrinsic(module, "__remill_compute_address")),
-
       // Memory barriers.
       barrier_load_load(FindPureIntrinsic(
           module, "__remill_barrier_load_load")),
@@ -99,7 +97,6 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       defer_inlining(FindIntrinsic(module, "__remill_defer_inlining")),
 
       // Optimization enablers.
-      undefined_bool(FindPureIntrinsic(module, "__remill_undefined_bool")),
       undefined_8(FindPureIntrinsic(module, "__remill_undefined_8")),
       undefined_16(FindPureIntrinsic(module, "__remill_undefined_16")),
       undefined_32(FindPureIntrinsic(module, "__remill_undefined_32")),

@@ -13,6 +13,7 @@ extern "C" {
 void __remill_basic_block(State &state, Memory &memory, addr_t curr_pc) {
 
   bool branch_taken = false;
+  addr_t zero = 0;
 
   // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
@@ -111,6 +112,13 @@ void __remill_basic_block(State &state, Memory &memory, addr_t curr_pc) {
   auto &FS = state.seg.fs;
   auto &DS = state.seg.ds;
   auto &CS = state.seg.cs;
+
+  auto &SS_BASE = zero;
+  auto &ES_BASE = zero;
+  auto &GS_BASE = state.addr.gs_base;
+  auto &FS_BASE = state.addr.fs_base;
+  auto &DS_BASE = zero;
+  auto &CS_BASE = zero;
 
 #if HAS_FEATURE_AVX
 #if HAS_FEATURE_AVX512

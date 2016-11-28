@@ -223,14 +223,14 @@ template <typename T, typename U, typename V>
 ALWAYS_INLINE static
 void WriteFlagsMul(State &state, T lhs, T rhs, U res, V res_trunc) {
   const auto new_of = Overflow<tag_mul>::Flag(lhs, rhs, res);
-  state.aflag.cf = new_of;
-  state.aflag.pf = __remill_undefined_bool();
-  state.aflag.af = __remill_undefined_bool();
-  state.aflag.zf = __remill_undefined_bool();
-  state.aflag.sf = std::is_signed<T>::value ?
+  FLAG_CF = new_of;
+  FLAG_PF = BUndefined();
+  FLAG_AF = BUndefined();
+  FLAG_ZF = BUndefined();
+  FLAG_SF = std::is_signed<T>::value ?
       SignFlag(res_trunc) :
-      __remill_undefined_bool();
-  state.aflag.of = new_of;
+      BUndefined();
+  FLAG_OF = new_of;
 }
 
 // 2-operand and 3-operand multipliers truncate their results down to their
@@ -255,7 +255,7 @@ DEF_SEM(MULX, D dst1, D dst2, const S2 src2) {
   // Kind of tricky: in 64-bit, for a 32-bit MULX, we read RDX, but we need
   // to truncate it down into EDX before extending it back up to "double" its
   // width.
-  auto rhs = ZExt(TruncTo<S2>(Read(REG_RDX)));
+  auto rhs = ZExt(TruncTo<S2>(Read(REG_XDX)));
   auto res = UMul(lhs, rhs);
   auto res_high = UShr(res, ZExt(BitSizeOf(src2)));
 
@@ -283,7 +283,7 @@ DEF_SEM(MULX, D dst1, D dst2, const S2 src2) {
 MAKE_MULxax(al, REG_AL, REG_AL, REG_AH)
 MAKE_MULxax(ax, REG_AX, REG_AX, REG_DX)
 MAKE_MULxax(eax, REG_EAX, REG_XAX, REG_XDX)
-MAKE_MULxax(rax, REG_RAX, REG_RAX, REG_RDX)
+IF_64BIT(MAKE_MULxax(rax, REG_RAX, REG_RAX, REG_RDX))
 
 #undef MAKE_MULxax
 

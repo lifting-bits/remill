@@ -62,14 +62,19 @@ def get_instruction(ea):
   """Gets the instruction located at `ea`. If we haven't initialized an
   `Instruction` data structure for the instruction at `ea`, then we decode
   the instruction and fill in the missing data."""
-  inst = program.get_instruction(ea)
-  if inst.is_valid():
-    return inst
+  if program.has_instruction(ea):
+    return program.get_instruction(ea)
+
+  if program.instruction_is_valid(ea):
+    return None
 
   decoded_inst, decoded_bytes = decode_instruction(ea)
   if not decoded_inst:
     log.error("Unable to decode instruction at {:08x}".format(ea))
-    inst.personality = program.Instruction.PERSONALITY_TERMINATOR
+    return None
+
+  inst = program.get_instruction(ea)
+  if inst.is_valid():
     return inst
 
   inst.bytes = "".join(decoded_bytes)
@@ -93,8 +98,15 @@ def find_linear_terminator(ea, max_num=256):
   associating the instructions with the block. This scans linearly until
   we find something that is definitely a basic block terminator. This does
   not consider the case of intermediate blocks."""
+  prev_term = None
   for i in xrange(max_num):
     term_inst = get_instruction(ea)
+    if not term_inst:
+      log.warning("Unable to decode linear terminator at {:08x}".format(ea))
+      term_inst = prev_term
+      break
+
+    prev_term = term_inst
     if term_inst.is_block_terminator() or not term_inst.is_valid():
       break
 
@@ -104,7 +116,9 @@ def find_linear_terminator(ea, max_num=256):
     if program.instruction_is_valid(ea) or instruction_is_referenced(ea):
       break
 
-  term_inst.mark_as_terminator()
+  if term_inst:
+    term_inst.mark_as_terminator()
+  
   return term_inst
 
 
@@ -230,6 +244,11 @@ def analyse_subroutine(sub):
       assert term_inst is not None
     else:
       term_inst = find_linear_terminator(block_head_ea)
+
+    if not term_inst:
+      log.error("Block at {:08x} has no terminator!".format(block_head_ea))
+      found_block_eas.remove(block_head_ea)
+      continue
 
     log.debug("Linear terminator of {:08x} is {:08x}".format(
         block_head_ea, term_inst.ea))

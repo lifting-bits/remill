@@ -3,9 +3,10 @@
 #ifndef REMILL_ARCH_RUNTIME_STATE_H_
 #define REMILL_ARCH_RUNTIME_STATE_H_
 
-#include "remill/Arch/Runtime/Intrinsics.h"
+#include "remill/Arch/Runtime/Types.h"
+#include "remill/Arch/Runtime/HyperCall.h"
 
-struct ArchState final {
+struct ArchState {
  public:
   AsynchHyperCall hyper_call;
   uint32_t _tear0;
@@ -17,5 +18,8 @@ struct ArchState final {
   uint32_t interrupt_vector;
   uint32_t _tear1;
 } __attribute__((packed));
+
+static_assert(16 == sizeof(ArchState),
+              "Invalid packing of `struct ArchState`.");
 
 #endif  // REMILL_ARCH_RUNTIME_STATE_H_

@@ -92,7 +92,7 @@ class Translator {
 
   // Lift a single instruction into a basic block.
   llvm::BasicBlock *LiftInstruction(llvm::Function *block,
-                                    const Instruction *instr);
+                                    Instruction *instr);
 
   // Lift an operand to an instruction.
   llvm::Value *LiftOperand(llvm::BasicBlock *block,

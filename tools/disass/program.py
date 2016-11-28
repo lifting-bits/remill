@@ -179,6 +179,11 @@ def get_instruction(ea):
   return _INSTRUCTIONS[ea]
 
 
+def has_instruction(ea):
+  global _INSTRUCTIONS
+  return ea in _INSTRUCTIONS
+
+
 def instruction_is_valid(ea):
   global _INSTRUCTIONS
   if ea not in _INSTRUCTIONS:

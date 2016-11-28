@@ -86,8 +86,7 @@ typedef In<uint16_t> I16;
 typedef In<uint32_t> I32;
 typedef In<uint64_t> I64;
 
-typedef addr_t PC;
-typedef addr_t ADDR;
+typedef In<addr_t> PC;
 
 typedef Rn<float32_t> RF32;
 typedef RnW<float32_t> RF32W;
