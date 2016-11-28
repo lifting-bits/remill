@@ -834,11 +834,35 @@ static void ReplaceUndefIntrinsic(llvm::Function *function) {
       call_insts.push_back(call_inst);
     }
   }
+  std::set<llvm::User *> work_list;
   auto undef_val = llvm::UndefValue::get(function->getReturnType());
   for (auto call_inst : call_insts) {
+    work_list.insert(call_inst->user_begin(), call_inst->user_end());
     call_inst->replaceAllUsesWith(undef_val);
     call_inst->removeFromParent();
     delete call_inst;
+  }
+
+  // Try to propagate `undef` values produced from our intrinsics all the way
+  // to store instructions, and treat them as dead stores to be eliminated.
+  std::vector<llvm::StoreInst *> dead_stores;
+  while (work_list.size()) {
+    std::set<llvm::User *> next_work_list;
+    for (auto inst : work_list) {
+      if (llvm::isa<llvm::CmpInst>(inst) ||
+          llvm::isa<llvm::CastInst>(inst)) {
+        next_work_list.insert(inst->user_begin(), inst->user_end());
+        auto undef_val = llvm::UndefValue::get(inst->getType());
+        inst->replaceAllUsesWith(undef_val);
+      } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
+        dead_stores.push_back(store_inst);
+      }
+    }
+    work_list.swap(next_work_list);
+  }
+
+  for (auto dead_store : dead_stores) {
+    dead_store->eraseFromParent();
   }
 }
 

@@ -49,6 +49,8 @@ static Flags gRflagsOff;
 static Flags gRflagsOn;
 static Flags gRflagsInitial;
 
+static const addr_t g64BitMask = IF_64BIT_ELSE(~0UL, 0UL);
+
 static const auto gStackBase = reinterpret_cast<uintptr_t>(
     &(gLiftedStack.bytes[0]));
 
@@ -233,10 +235,6 @@ void __remill_jump(State &, Memory *, addr_t) {
 
 void __remill_async_hyper_call(State &, Memory *, addr_t) {
   __builtin_unreachable();
-}
-
-bool __remill_undefined_bool(void) {
-  return false;
 }
 
 uint8_t __remill_undefined_8(void) {
@@ -465,9 +463,17 @@ static void RunWithFlags(const test::TestInfo *info,
   EXPECT_TRUE(lifted_state->seg == native_state->seg);
   EXPECT_TRUE(lifted_state->gpr == native_state->gpr);
   if (gLiftedState != gNativeState) {
+    LOG(ERROR)
+        << "States did not match for " << info->test_name
+        << " with arguments " << std::hex << arg1 << ", "
+        << std::hex << arg2 << ", " << std::hex << arg3;
     EXPECT_TRUE(!"Lifted and native states did not match.");
   }
   if (gLiftedStack != gNativeStack) {
+    LOG(ERROR)
+        << "Stacks did not match for " << info->test_name
+        << " with arguments " << std::hex << arg1 << ", "
+        << std::hex << arg2 << ", " << std::hex << arg3;
     EXPECT_TRUE(!"Lifted and native stacks did not match.");
   }
 }
@@ -508,46 +514,46 @@ static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
 
     auto context = reinterpret_cast<ucontext_t *>(context_);
     auto native_state = reinterpret_cast<State *>(&gNativeState);
+    auto &gpr = native_state->gpr;
 #ifdef __APPLE__
     const auto mcontext = context->uc_mcontext;
     const auto &ss = mcontext->__ss;
-    native_state->gpr.rax.aword = static_cast<addr_t>(ss.__rax);
-    native_state->gpr.rbx.aword = static_cast<addr_t>(ss.__rbx);
-    native_state->gpr.rcx.aword = static_cast<addr_t>(ss.__rcx);
-    native_state->gpr.rdx.aword = static_cast<addr_t>(ss.__rdx);
-    native_state->gpr.rsi.aword = static_cast<addr_t>(ss.__rsi);
-    native_state->gpr.rdi.aword = static_cast<addr_t>(ss.__rdi);
-    native_state->gpr.rbp.aword = static_cast<addr_t>(ss.__rbp);
-    native_state->gpr.rsp.aword = static_cast<addr_t>(ss.__rsp);
-    native_state->gpr.r8.aword = static_cast<addr_t>(ss.__r8);
-    native_state->gpr.r9.aword = static_cast<addr_t>(ss.__r9);
-    native_state->gpr.r10.aword = static_cast<addr_t>(ss.__r10);
-    native_state->gpr.r11.aword = static_cast<addr_t>(ss.__r11);
-    native_state->gpr.r12.aword = static_cast<addr_t>(ss.__r12);
-    native_state->gpr.r13.aword = static_cast<addr_t>(ss.__r13);
-    native_state->gpr.r14.aword = static_cast<addr_t>(ss.__r14);
-    native_state->gpr.r15.aword = static_cast<addr_t>(ss.__r15);
+    gpr.rax.aword = static_cast<addr_t>(ss.__rax);
+    gpr.rbx.aword = static_cast<addr_t>(ss.__rbx);
+    gpr.rcx.aword = static_cast<addr_t>(ss.__rcx);
+    gpr.rdx.aword = static_cast<addr_t>(ss.__rdx);
+    gpr.rsi.aword = static_cast<addr_t>(ss.__rsi);
+    gpr.rdi.aword = static_cast<addr_t>(ss.__rdi);
+    gpr.rbp.aword = static_cast<addr_t>(ss.__rbp);
+    gpr.rsp.aword = static_cast<addr_t>(ss.__rsp);
+    gpr.r8.aword = static_cast<addr_t>(ss.__r8) & g64BitMask;
+    gpr.r9.aword = static_cast<addr_t>(ss.__r9) & g64BitMask;
+    gpr.r10.aword = static_cast<addr_t>(ss.__r10) & g64BitMask;
+    gpr.r11.aword = static_cast<addr_t>(ss.__r11) & g64BitMask;
+    gpr.r12.aword = static_cast<addr_t>(ss.__r12) & g64BitMask;
+    gpr.r13.aword = static_cast<addr_t>(ss.__r13) & g64BitMask;
+    gpr.r14.aword = static_cast<addr_t>(ss.__r14) & g64BitMask;
+    gpr.r15.aword = static_cast<addr_t>(ss.__r15) & g64BitMask;
     native_state->rflag.flat = ss.__rflags;
     memcpy(&gFPU, &(mcontext->__fs), sizeof(gFPU));
 #else
     const auto &mcontext = context->uc_mcontext;
-
-    native_state->gpr.rax.aword = static_cast<addr_t>(mcontext.gregs[REG_RAX]);
-    native_state->gpr.rbx.aword = static_cast<addr_t>(mcontext.gregs[REG_RBX]);
-    native_state->gpr.rcx.aword = static_cast<addr_t>(mcontext.gregs[REG_RCX]);
-    native_state->gpr.rdx.aword = static_cast<addr_t>(mcontext.gregs[REG_RDX]);
-    native_state->gpr.rsi.aword = static_cast<addr_t>(mcontext.gregs[REG_RSI]);
-    native_state->gpr.rdi.aword = static_cast<addr_t>(mcontext.gregs[REG_RDI]);
-    native_state->gpr.rbp.aword = static_cast<addr_t>(mcontext.gregs[REG_RBP]);
-    native_state->gpr.rsp.aword = static_cast<addr_t>(mcontext.gregs[REG_RSP]);
-    native_state->gpr.r8.aword = static_cast<addr_t>(mcontext.gregs[REG_R8]);
-    native_state->gpr.r9.aword = static_cast<addr_t>(mcontext.gregs[REG_R9]);
-    native_state->gpr.r10.aword = static_cast<addr_t>(mcontext.gregs[REG_R10]);
-    native_state->gpr.r11.aword = static_cast<addr_t>(mcontext.gregs[REG_R11]);
-    native_state->gpr.r12.aword = static_cast<addr_t>(mcontext.gregs[REG_R12]);
-    native_state->gpr.r13.aword = static_cast<addr_t>(mcontext.gregs[REG_R13]);
-    native_state->gpr.r14.aword = static_cast<addr_t>(mcontext.gregs[REG_R14]);
-    native_state->gpr.r15.aword = static_cast<addr_t>(mcontext.gregs[REG_R15]);
+    gpr.rax.aword = static_cast<addr_t>(mcontext.gregs[REG_RAX]);
+    gpr.rbx.aword = static_cast<addr_t>(mcontext.gregs[REG_RBX]);
+    gpr.rcx.aword = static_cast<addr_t>(mcontext.gregs[REG_RCX]);
+    gpr.rdx.aword = static_cast<addr_t>(mcontext.gregs[REG_RDX]);
+    gpr.rsi.aword = static_cast<addr_t>(mcontext.gregs[REG_RSI]);
+    gpr.rdi.aword = static_cast<addr_t>(mcontext.gregs[REG_RDI]);
+    gpr.rbp.aword = static_cast<addr_t>(mcontext.gregs[REG_RBP]);
+    gpr.rsp.aword = static_cast<addr_t>(mcontext.gregs[REG_RSP]);
+    gpr.r8.aword = static_cast<addr_t>(mcontext.gregs[REG_R8]) & g64BitMask;
+    gpr.r9.aword = static_cast<addr_t>(mcontext.gregs[REG_R9]) & g64BitMask;
+    gpr.r10.aword = static_cast<addr_t>(mcontext.gregs[REG_R10]) & g64BitMask;
+    gpr.r11.aword = static_cast<addr_t>(mcontext.gregs[REG_R11]) & g64BitMask;
+    gpr.r12.aword = static_cast<addr_t>(mcontext.gregs[REG_R12]) & g64BitMask;
+    gpr.r13.aword = static_cast<addr_t>(mcontext.gregs[REG_R13]) & g64BitMask;
+    gpr.r14.aword = static_cast<addr_t>(mcontext.gregs[REG_R14]) & g64BitMask;
+    gpr.r15.aword = static_cast<addr_t>(mcontext.gregs[REG_R15]) & g64BitMask;
 
     native_state->rflag.flat = context->uc_mcontext.gregs[REG_EFL];
     memcpy(&gFPU, context->uc_mcontext.fpregs, sizeof(gFPU));
