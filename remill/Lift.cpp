@@ -80,8 +80,8 @@ int main(int argc, char *argv[]) {
      << std::endl;
 
   google::InitGoogleLogging(argv[0]);
-  GFLAGS_NAMESPACE::SetUsageMessage(ss.str());
-  GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  google::SetUsageMessage(ss.str());
+  google::ParseCommandLineFlags(&argc, &argv, true);
 
   CHECK(!FLAGS_os_in.empty())
       << "Need to specify a source operating system with --os_in.";
@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
     delete context;
   } while (FLAGS_server);
 
-  GFLAGS_NAMESPACE::ShutDownCommandLineFlags();
+  google::ShutDownCommandLineFlags();
   google::ShutdownGoogleLogging();
   return EXIT_SUCCESS;
 }
