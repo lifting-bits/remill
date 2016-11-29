@@ -41,31 +41,31 @@ DEF_ISEL_M32or64W(POP_MEMv, POP);
 
 #if 32 == ADDRESS_SIZE_BITS
 DEF_ISEL_SEM(POPA) {
-  Write(REG_DI, PopFromStack<uint16_t>(state, memory));
-  Write(REG_SI, PopFromStack<uint16_t>(state, memory));
-  Write(REG_BP, PopFromStack<uint16_t>(state, memory));
-  (void) PopFromStack<uint16_t>(state, memory);  // Ignore SP.
-  Write(REG_BX, PopFromStack<uint16_t>(state, memory));
-  Write(REG_DX, PopFromStack<uint16_t>(state, memory));
-  Write(REG_CX, PopFromStack<uint16_t>(state, memory));
-  Write(REG_AX, PopFromStack<uint16_t>(state, memory));
+  Write(REG_DI, PopFromStack<uint16_t>(memory, state));
+  Write(REG_SI, PopFromStack<uint16_t>(memory, state));
+  Write(REG_BP, PopFromStack<uint16_t>(memory, state));
+  (void) PopFromStack<uint16_t>(memory, state);  // Ignore SP.
+  Write(REG_BX, PopFromStack<uint16_t>(memory, state));
+  Write(REG_DX, PopFromStack<uint16_t>(memory, state));
+  Write(REG_CX, PopFromStack<uint16_t>(memory, state));
+  Write(REG_AX, PopFromStack<uint16_t>(memory, state));
 }
 DEF_ISEL_SEM(POPAD) {
-  Write(REG_EDI, PopFromStack<uint32_t>(state, memory));
-  Write(REG_ESI, PopFromStack<uint32_t>(state, memory));
-  Write(REG_EBP, PopFromStack<uint32_t>(state, memory));
-  (void) PopFromStack<uint32_t>(state, memory);  // Ignore ESP.
-  Write(REG_EBX, PopFromStack<uint32_t>(state, memory));
-  Write(REG_EDX, PopFromStack<uint32_t>(state, memory));
-  Write(REG_ECX, PopFromStack<uint32_t>(state, memory));
-  Write(REG_EAX, PopFromStack<uint32_t>(state, memory));
+  Write(REG_EDI, PopFromStack<uint32_t>(memory, state));
+  Write(REG_ESI, PopFromStack<uint32_t>(memory, state));
+  Write(REG_EBP, PopFromStack<uint32_t>(memory, state));
+  (void) PopFromStack<uint32_t>(memory, state);  // Ignore ESP.
+  Write(REG_EBX, PopFromStack<uint32_t>(memory, state));
+  Write(REG_EDX, PopFromStack<uint32_t>(memory, state));
+  Write(REG_ECX, PopFromStack<uint32_t>(memory, state));
+  Write(REG_EAX, PopFromStack<uint32_t>(memory, state));
 }
 #endif
 
 // TODO(pag): Make behaviour conditional on `rflag.cpl`.
 DEF_ISEL_SEM(POPF) {
   Flags f;
-  f.flat = ZExt(ZExt(PopFromStack<uint16_t>(state, memory)));
+  f.flat = ZExt(ZExt(PopFromStack<uint16_t>(memory, state)));
   state.aflag.af = f.af;
   state.aflag.cf = f.cf;
   state.aflag.df = f.df;
@@ -78,7 +78,7 @@ DEF_ISEL_SEM(POPF) {
 #if 32 == ADDRESS_SIZE_BITS
 DEF_ISEL_SEM(POPFD) {
   Flags f;
-  f.flat = ZExt(PopFromStack<uint32_t>(state, memory));
+  f.flat = ZExt(PopFromStack<uint32_t>(memory, state));
   state.aflag.af = f.af;
   state.aflag.cf = f.cf;
   state.aflag.df = f.df;
@@ -95,7 +95,7 @@ DEF_ISEL_SEM(POPFD) {
 #else
 DEF_ISEL_SEM(POPFQ) {
   Flags f;
-  f.flat = PopFromStack<uint64_t>(state, memory);
+  f.flat = PopFromStack<uint64_t>(memory, state);
   state.aflag.af = f.af;
   state.aflag.cf = f.cf;
   state.aflag.df = f.df;

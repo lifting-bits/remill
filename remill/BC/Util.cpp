@@ -88,8 +88,8 @@ void AddTerminatingTailCall(llvm::BasicBlock *source_block,
 
   // Set up arguments according to our ABI.
   std::vector<llvm::Value *> args(kNumBlockArgs);
-  args[kStatePointerArgNum] = LoadStatePointer(source_block);
   args[kMemoryPointerArgNum] = LoadMemoryPointer(source_block);
+  args[kStatePointerArgNum] = LoadStatePointer(source_block);
   args[kPCArgNum] = LoadProgramCounter(source_block);
 
   // We may introduce variables like `__remill_jump_0xf00` that boils down to
@@ -140,10 +140,10 @@ llvm::Value *LoadStatePointer(llvm::Function *function) {
       << "pointer and program counter in function "
       << function->getName().str();
 
-  static_assert(0 == kStatePointerArgNum,
+  static_assert(1 == kStatePointerArgNum,
                 "Expected state pointer to be the first operand.");
 
-  return &function->getArgumentList().front();
+  return &*++function->arg_begin();
 }
 
 llvm::Value *LoadStatePointer(llvm::BasicBlock *block) {

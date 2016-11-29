@@ -10,7 +10,7 @@ extern "C" {
 // Method that will implement a basic block. We will clone this method for
 // each basic block in the code being lifted.
 [[gnu::used]]
-void __remill_basic_block(State &state, Memory &memory, addr_t curr_pc) {
+void __remill_basic_block(Memory &memory, State &state, addr_t curr_pc) {
 
   bool branch_taken = false;
   addr_t zero = 0;

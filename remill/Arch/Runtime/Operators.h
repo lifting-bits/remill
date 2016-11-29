@@ -931,7 +931,7 @@ T _ZeroVec(void) {
 //            communicate the error class?
 #define StopFailure() \
     do { \
-      __remill_error(state, memory, Read(REG_XIP)); \
+      __remill_error(memory, state, Read(REG_XIP)); \
       __builtin_unreachable(); \
     } while (false)
 

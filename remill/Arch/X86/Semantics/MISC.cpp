@@ -128,7 +128,7 @@ DEF_ISEL_SEM(XLAT) {
 }
 
 DEF_ISEL_SEM(CPUID) {
-  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86CPUID);
+  memory = __remill_sync_hyper_call(memory, state, SyncHyperCall::kX86CPUID);
 }
 
 DEF_ISEL_SEM(UD2) {}

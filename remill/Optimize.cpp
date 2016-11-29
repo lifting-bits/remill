@@ -26,6 +26,7 @@
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/Local.h>
 
+#include "remill/BC/ABI.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/FileSystem.h"
 
@@ -43,6 +44,11 @@ DEFINE_bool(server, false, "Run the optimizer as a server. This will allow "
                            "remill-opt to receive bitcode from remill-lift.");
 
 DEFINE_bool(strip, false, "Strip out all debug information.");
+
+DEFINE_bool(lower_memops, false, "Lower memory access intrinsics into "
+                                 "LLVM load and store instructions. "
+                                 "Note: the memory class pointer is replaced "
+                                 "with a i8 pointer.");
 
 namespace {
 enum : size_t {
@@ -267,7 +273,7 @@ size_t StateMap::GetGEPIndexSeq(const llvm::GetElementPtrInst *gep_inst) {
 void StateMap::AssignRegisters(llvm::Function *func) {
   inst_to_reg.clear();
 
-  auto state_ptr = &(*func->arg_begin());
+  auto state_ptr = &(*++func->arg_begin());
   auto func_name = func->getName().str();
   std::queue<llvm::Instruction *> work_list;
   std::set<llvm::Instruction *> seen;
@@ -435,7 +441,7 @@ void StateMap::AssignRegisters(llvm::Function *func) {
 }
 
 void StateMap::ReassociateRegisters(llvm::Function *func) {
-  auto state_ptr = &(*func->arg_begin());
+  auto state_ptr = &(*++func->arg_begin());
 
   std::vector<llvm::GetElementPtrInst *> to_move;
   for (auto &block : *func) {
@@ -701,7 +707,7 @@ static llvm::Type *GetStateType(llvm::Module *module) {
 
   auto bb_func_type = bb_func->getFunctionType();
   auto state_ptr_type = llvm::dyn_cast<llvm::PointerType>(
-      bb_func_type->getParamType(0));
+      bb_func_type->getParamType(remill::kStatePointerArgNum));
 
   CHECK(nullptr != state_ptr_type)
       << "First argument to lifted block function must be a pointer to "
@@ -928,6 +934,43 @@ static void EnableDeferredInlining(llvm::Module *module) {
   }
 }
 
+void LowerMemOps(llvm::Module *module) {
+  (void) module;
+//  llvm::Function *accessors[] = {
+//      module->getFunction("__remill_read_memory_8"),
+//      module->getFunction("__remill_read_memory_16"),
+//      module->getFunction("__remill_read_memory_32"),
+//      module->getFunction("__remill_read_memory_64"),
+//      module->getFunction("__remill_write_memory_8"),
+//      module->getFunction("__remill_write_memory_16"),
+//      module->getFunction("__remill_write_memory_32"),
+//      module->getFunction("__remill_write_memory_64"),
+//      module->getFunction("__remill_read_memory_f32"),
+//      module->getFunction("__remill_read_memory_f64"),
+//      module->getFunction("__remill_read_memory_f80"),
+//      module->getFunction("__remill_write_memory_f32"),
+//      module->getFunction("__remill_write_memory_f64"),
+//      module->getFunction("__remill_write_memory_f80"),
+//  };
+//  auto &context = module->getContext();
+//  auto new_mem_ptr_type = llvm::Type::getInt8PtrTy(context, 0);
+//  for (auto &func : *module) {
+//    llvm::Argument *mem_ptr = nullptr;
+//    auto &func_name = func.getName();
+//    if (func_name.startswith("__remill_")) {
+//      if (func_name.startswith("__remill_barrier") ||
+//          func_name.startswith("__remill_atomic")) {
+//
+//      } else {
+//
+//      }
+//    }
+//  }
+//  auto mem_ptr = &(*++accessors[0]->arg_begin());
+//  auto mem_ptr_type = memory_ptr->getType();
+//  memory_ptr_type->
+}
+
 }  // namespace
 
 int main(int argc, char *argv[]) {
@@ -967,6 +1010,9 @@ int main(int argc, char *argv[]) {
     RemoveDeadIntrinsics(module);
     RemoveUnusedSemantics(module);
     StripDebugInfo(module);
+    if (FLAGS_lower_memops) {
+      LowerMemOps(module);
+    }
     remill::StoreModuleToFile(module, FLAGS_bc_out);
     delete module;
     delete context;

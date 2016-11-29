@@ -8,13 +8,13 @@
 
 struct IndirectBlock final {
   const uint64_t lifted_address;
-  void (* const lifted_func)(State &, Memory *, addr_t);
+  void (* const lifted_func)(Memory *, State &, addr_t);
 };
 
 // TODO(pag): Add a `lifted_address` field in here for extra cross-checking?
 struct NamedBlock final {
   const char * const name;
-  void (* const lifted_func)(State &, Memory *, addr_t);
+  void (* const lifted_func)(Memory *, State &, addr_t);
   void (* const native_func)(void);
 };
 
@@ -26,7 +26,7 @@ extern const NamedBlock __remill_imported_blocks[];
 
 // The basic block "template".
 [[gnu::used]]
-void __remill_basic_block(State &state, Memory &memory, addr_t);
+void __remill_basic_block(Memory &memory, State &state, addr_t);
 
 // Memory read intrinsics.
 [[gnu::used, gnu::const]]
@@ -98,27 +98,27 @@ extern void __remill_defer_inlining(void);
 
 // Generic error.
 [[gnu::used]]
-extern void __remill_error(State &, Memory *, addr_t addr);
+extern void __remill_error(Memory *, State &, addr_t addr);
 
 // Control-flow intrinsics.
 [[gnu::used]]
-extern void __remill_function_call(State &, Memory *, addr_t addr);
+extern void __remill_function_call(Memory *, State &, addr_t addr);
 
 [[gnu::used]]
-extern void __remill_function_return(State &, Memory *, addr_t addr);
+extern void __remill_function_return(Memory *, State &, addr_t addr);
 
 [[gnu::used]]
-extern void __remill_jump(State &, Memory *, addr_t addr);
+extern void __remill_jump(Memory *, State &, addr_t addr);
 
 [[gnu::used]]
-extern void __remill_async_hyper_call(State &, Memory *, addr_t ret_addr);
+extern void __remill_async_hyper_call(Memory *, State &, addr_t ret_addr);
 
 [[gnu::used]]
-extern Memory *__remill_sync_hyper_call(State &, Memory *, SyncHyperCall);
+extern Memory *__remill_sync_hyper_call(Memory *, State &, SyncHyperCall);
 
 // Transition to "native", unmodelled code from Remill-lifted code.
 [[gnu::used]]
-extern void __remill_detach(State &, Memory *, addr_t);
+extern void __remill_detach(Memory *, State &, addr_t);
 
 // Transition from native code into Remill-lifted code.
 //

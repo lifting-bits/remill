@@ -57,8 +57,8 @@ static void InitBlockFunctionAttributes(llvm::Function *block_func) {
   block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
 
   auto args = block_func->arg_begin();
-  (args++)->setName("state");
   (args++)->setName("memory");
+  (args++)->setName("state");
   args->setName("pc");
 
 }
@@ -265,7 +265,7 @@ std::map<std::string, llvm::Function *> Translator::GetNamedBlocks(
     // Note: Each `entry` has the following type:
     //    struct NamedBlock final {
     //      const char * const name;
-    //      void (* const lifted_func)(State &, Memory &, addr_t);
+    //      void (* const lifted_func)(Memory &, State &, addr_t);
     //      void (* const native_func)(void);
     //    };
     auto exported_block = llvm::dyn_cast<llvm::ConstantStruct>(entry.get());
@@ -344,7 +344,7 @@ void Translator::SetNamedBlocks(
     // Note: Each entry has the following type:
     //    struct NamedBlock final {
     //      const char * const name;
-    //      void (* const lifted_func)(State &, Memory &, addr_t);
+    //      void (* const lifted_func)(Memory &, State &, addr_t);
     //      void (* const native_func)(void);
     //    };
     entries.push_back(llvm::ConstantStruct::get(
@@ -380,7 +380,7 @@ void Translator::GetIndirectBlocks(void) {
     // Note: Each `entry` has the following type:
     //    struct IndirectBlock final {
     //      const addr_t lifted_address;
-    //      void (* const lifted_func)(State &, Memory &, addr_t);
+    //      void (* const lifted_func)(Memory &, State &, addr_t);
     //    };
     auto indirect_block = llvm::dyn_cast<llvm::ConstantStruct>(entry.get());
     auto block_addr = llvm::dyn_cast<llvm::ConstantInt>(
@@ -522,11 +522,6 @@ llvm::Function *Translator::GetOrCreateBlock(uint64_t addr) {
     block_func->copyAttributesFrom(basic_block);
     block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
 
-//    block_func->clearMetadata();
-//    block_func->copyMetadata(basic_block, 0);
-//    //auto md = basic_block->getMetadata(llvm::LLVMContext::MD_dbg);
-//    //auto tmd = md->clone();
-
     DLOG(INFO)
         << "Created function " << func_name
         << " for block at " << std::hex << addr << ".";
@@ -625,7 +620,6 @@ void Translator::LiftBlocks(const cfg::Module *cfg_module) {
   func_pass_manager.doInitialization();
   for (const auto &block : cfg_module->blocks()) {
     auto func = LiftBlock(&block);
-
     CHECK(!func->isDeclaration())
         << "Lifted block function " << func->getName().str()
         << " should have an implementation.";
@@ -946,8 +940,8 @@ llvm::BasicBlock *Translator::LiftInstruction(llvm::Function *block_func,
 
   // First two arguments to an instruction semantics function are the
   // state pointer, and a pointer to the memory pointer.
-  args.push_back(state_ptr);
   args.push_back(mem_ptr);
+  args.push_back(state_ptr);
 
   auto isel_func_type = isel_func->getFunctionType();
   auto arg_num = 2U;

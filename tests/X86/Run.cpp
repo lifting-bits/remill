@@ -189,16 +189,16 @@ Memory *__remill_atomic_end(Memory *) { return nullptr; }
 void __remill_defer_inlining(void) {}
 
 // Control-flow intrinsics.
-void __remill_detach(State &, Memory *, addr_t) {
+void __remill_detach(Memory *, State &, addr_t) {
   // This is where we want to end up.
 }
 
-void __remill_error(State &, Memory *, addr_t) {
+void __remill_error(Memory *, State &, addr_t) {
   siglongjmp(gJmpBuf, 0);
 }
 
 Memory *__remill_sync_hyper_call(
-    State &state, Memory *mem, SyncHyperCall call) {
+    Memory *mem, State &state, SyncHyperCall call) {
   switch (call) {
     case SyncHyperCall::kX86CPUID:
       asm volatile(
@@ -221,19 +221,19 @@ Memory *__remill_sync_hyper_call(
   return mem;
 }
 
-void __remill_function_call(State &, Memory *, addr_t) {
+void __remill_function_call(Memory *, State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __remill_function_return(State &, Memory *, addr_t) {
+void __remill_function_return(Memory *, State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __remill_jump(State &, Memory *, addr_t) {
+void __remill_jump(Memory *, State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __remill_async_hyper_call(State &, Memory *, addr_t) {
+void __remill_async_hyper_call(Memory *, State &, addr_t) {
   __builtin_unreachable();
 }
 
@@ -415,7 +415,7 @@ static void RunWithFlags(const test::TestInfo *info,
   // swapping execution to operate on `gStack`.
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
-    lifted_func(*lifted_state, nullptr,
+    lifted_func(nullptr, *lifted_state,
                 static_cast<addr_t>(lifted_state->gpr.rip.aword));
   } else {
     EXPECT_TRUE(native_test_faulted);

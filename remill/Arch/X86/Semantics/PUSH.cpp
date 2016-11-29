@@ -16,7 +16,7 @@ DEF_HELPER(PushToStack, T val) -> void {
 
 template <typename S1>
 DEF_SEM(PUSH, S1 src1) {
-  PushToStack(state, memory, Read(src1));
+  PushToStack(memory, state, Read(src1));
 }
 
 }  // namespace
@@ -41,26 +41,26 @@ DEF_ISEL_M32or64(PUSH_MEMv, PUSH);
 
 DEF_ISEL_SEM(PUSHA) {
   uint16_t sp = Read(REG_SP);
-  PushToStack<uint16_t>(state, memory, Read(REG_AX));
-  PushToStack<uint16_t>(state, memory, Read(REG_CX));
-  PushToStack<uint16_t>(state, memory, Read(REG_DX));
-  PushToStack<uint16_t>(state, memory, Read(REG_BX));
-  PushToStack<uint16_t>(state, memory, sp);
-  PushToStack<uint16_t>(state, memory, Read(REG_BP));
-  PushToStack<uint16_t>(state, memory, Read(REG_SI));
-  PushToStack<uint16_t>(state, memory, Read(REG_DI));
+  PushToStack<uint16_t>(memory, state, Read(REG_AX));
+  PushToStack<uint16_t>(memory, state, Read(REG_CX));
+  PushToStack<uint16_t>(memory, state, Read(REG_DX));
+  PushToStack<uint16_t>(memory, state, Read(REG_BX));
+  PushToStack<uint16_t>(memory, state, sp);
+  PushToStack<uint16_t>(memory, state, Read(REG_BP));
+  PushToStack<uint16_t>(memory, state, Read(REG_SI));
+  PushToStack<uint16_t>(memory, state, Read(REG_DI));
 }
 
 DEF_ISEL_SEM(PUSHAD) {
   uint32_t esp = Read(REG_ESP);
-  PushToStack<uint32_t>(state, memory, Read(REG_EAX));
-  PushToStack<uint32_t>(state, memory, Read(REG_ECX));
-  PushToStack<uint32_t>(state, memory, Read(REG_EDX));
-  PushToStack<uint32_t>(state, memory, Read(REG_EBX));
-  PushToStack<uint32_t>(state, memory, esp);
-  PushToStack<uint32_t>(state, memory, Read(REG_EBP));
-  PushToStack<uint32_t>(state, memory, Read(REG_ESI));
-  PushToStack<uint32_t>(state, memory, Read(REG_EDI));
+  PushToStack<uint32_t>(memory, state, Read(REG_EAX));
+  PushToStack<uint32_t>(memory, state, Read(REG_ECX));
+  PushToStack<uint32_t>(memory, state, Read(REG_EDX));
+  PushToStack<uint32_t>(memory, state, Read(REG_EBX));
+  PushToStack<uint32_t>(memory, state, esp);
+  PushToStack<uint32_t>(memory, state, Read(REG_EBP));
+  PushToStack<uint32_t>(memory, state, Read(REG_ESI));
+  PushToStack<uint32_t>(memory, state, Read(REG_EDI));
 }
 #endif
 
@@ -95,18 +95,18 @@ static void SerializeFlags(State &state) {
 
 DEF_ISEL_SEM(PUSHF) {
   SerializeFlags(state);
-  PushToStack<uint16_t>(state, memory, TruncTo<uint16_t>(state.rflag.flat));
+  PushToStack<uint16_t>(memory, state, TruncTo<uint16_t>(state.rflag.flat));
 }
 
 #if 32 == ADDRESS_SIZE_BITS
 DEF_ISEL_SEM(PUSHFD) {
   SerializeFlags(state);
-  PushToStack<uint32_t>(state, memory, TruncTo<uint32_t>(state.rflag.flat));
+  PushToStack<uint32_t>(memory, state, TruncTo<uint32_t>(state.rflag.flat));
 }
 #else
 DEF_ISEL_SEM(PUSHFQ) {
   SerializeFlags(state);
-  PushToStack<uint64_t>(state, memory, state.rflag.flat);
+  PushToStack<uint64_t>(memory, state, state.rflag.flat);
 }
 #endif  // 32 == ADDRESS_SIZE_BITS
 

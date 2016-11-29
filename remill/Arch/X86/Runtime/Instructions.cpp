@@ -116,7 +116,7 @@
 DEF_ISEL_SEM(UNSUPPORTED_INSTRUCTION, PC curr_pc) {
   Write(REG_XIP, Read(curr_pc));
   memory = __remill_sync_hyper_call(
-      state, memory, IF_64BIT_ELSE(SyncHyperCall::kAMD64EmulateInstruction,
+      memory, state, IF_64BIT_ELSE(SyncHyperCall::kAMD64EmulateInstruction,
                                    SyncHyperCall::kX86EmulateInstruction));
 }
 
