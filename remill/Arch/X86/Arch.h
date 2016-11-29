@@ -20,6 +20,12 @@ class X86Arch : public Arch {
       uint64_t address,
       const std::string &instr_bytes) const override;
 
+  // Partially decode an instruction. This won't decode operands, or the
+  // instruction name.
+  virtual Instruction *DecodeInstructionFast(
+      uint64_t address,
+      const std::string &instr_bytes) const override;
+
  private:
   X86Arch(void) = delete;
 };

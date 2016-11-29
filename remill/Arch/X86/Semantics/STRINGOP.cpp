@@ -6,7 +6,7 @@
 #define MAKE_STOS(name, type, read_sel) \
     DEF_ISEL_SEM(name) { \
       const addr_t addr = Read(REG_XDI); \
-      Write(WritePtr<type>(addr _IF_32BIT(REG_ES)), \
+      Write(WritePtr<type>(addr _IF_32BIT(REG_ES_BASE)), \
             Read(state.gpr.rax.read_sel)); \
       addr_t next_addr = 0; \
       if (BNot(FLAG_DF)) { \
@@ -32,7 +32,7 @@ IF_64BIT(MAKE_STOS(STOSQ, uint64_t, qword))
     DEF_ISEL_SEM(name) { \
       const addr_t addr = Read(REG_XDI); \
       const type lhs = Read(state.gpr.rax.read_sel); \
-      const type rhs = Read(ReadPtr<type>(addr _IF_32BIT(REG_ES))); \
+      const type rhs = Read(ReadPtr<type>(addr _IF_32BIT(REG_ES_BASE))); \
       const type res = USub(lhs, rhs); \
       WriteFlagsAddSub<tag_sub>(state, lhs, rhs, res); \
       addr_t next_addr = 0; \
@@ -55,7 +55,7 @@ IF_64BIT(MAKE_SCAS(SCASQ, uint64_t, qword))
     DEF_ISEL_SEM(name) { \
       const addr_t addr = Read(REG_XSI); \
       WriteZExt(state.gpr.rax.write_sel, \
-                Read(ReadPtr<type>(addr _IF_32BIT(REG_DS)))); \
+                Read(ReadPtr<type>(addr _IF_32BIT(REG_DS_BASE)))); \
       addr_t next_addr = 0; \
       if (BNot(FLAG_DF)) { \
         next_addr = UAdd(addr, sizeof(type)); \
@@ -76,8 +76,8 @@ IF_64BIT(MAKE_LODS(LODSQ, uint64_t, qword))
     DEF_ISEL_SEM(name) { \
       const addr_t src_addr = Read(REG_XSI); \
       const addr_t dst_addr = Read(REG_XDI); \
-      Write(WritePtr<type>(dst_addr _IF_32BIT(REG_ES)), \
-            Read(ReadPtr<type>(src_addr _IF_32BIT(REG_DS)))); \
+      Write(WritePtr<type>(dst_addr _IF_32BIT(REG_ES_BASE)), \
+            Read(ReadPtr<type>(src_addr _IF_32BIT(REG_DS_BASE)))); \
       addr_t next_dst_addr = 0; \
       addr_t next_src_addr = 0; \
       if (BNot(FLAG_DF)) { \
@@ -102,8 +102,8 @@ IF_64BIT(MAKE_MOVS(MOVSQ, uint64_t, qword))
     DEF_ISEL_SEM(name) { \
       const addr_t src1_addr = Read(REG_XSI); \
       const addr_t src2_addr = Read(REG_XDI); \
-      const type lhs = Read(ReadPtr<type>(src1_addr _IF_32BIT(REG_DS))); \
-      const type rhs = Read(ReadPtr<type>(src2_addr _IF_32BIT(REG_ES))); \
+      const type lhs = Read(ReadPtr<type>(src1_addr _IF_32BIT(REG_DS_BASE))); \
+      const type rhs = Read(ReadPtr<type>(src2_addr _IF_32BIT(REG_ES_BASE))); \
       const type res = USub(lhs, rhs); \
       WriteFlagsAddSub<tag_sub>(state, lhs, rhs, res); \
       addr_t next_src1_addr = 0; \

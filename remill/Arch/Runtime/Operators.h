@@ -1040,8 +1040,8 @@ auto ReadPtr(addr_t addr) -> Mn<typename BaseType<T>::BT> {
 
 template <typename T>
 ALWAYS_INLINE static
-auto ReadPtr(addr_t addr, addr_t seg) -> Mn<typename BaseType<T>::BT> {
-  return {__remill_compute_address(addr, seg)};
+auto ReadPtr(addr_t addr, addr_t seg_base) -> Mn<typename BaseType<T>::BT> {
+  return {addr + seg_base};
 }
 
 template <typename T>
@@ -1052,8 +1052,8 @@ auto WritePtr(addr_t addr) -> MnW<typename BaseType<T>::BT> {
 
 template <typename T>
 ALWAYS_INLINE static
-auto WritePtr(addr_t addr, addr_t seg) -> MnW<typename BaseType<T>::BT> {
-  return {__remill_compute_address(addr, seg)};
+auto WritePtr(addr_t addr, addr_t seg_base) -> MnW<typename BaseType<T>::BT> {
+  return {addr + seg_base};
 }
 
 template <typename T>
@@ -1074,7 +1074,7 @@ T Select(bool cond, T if_true, T if_false) {
   return cond ? if_true : if_false;
 }
 
-#define BUndefined __remill_undefined_bool
+#define BUndefined __remill_undefined_8
 #define UUndefined8 __remill_undefined_8
 #define UUndefined16 __remill_undefined_16
 #define UUndefined32 __remill_undefined_32

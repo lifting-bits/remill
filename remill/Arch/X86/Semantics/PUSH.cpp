@@ -10,7 +10,7 @@ DEF_HELPER(PushToStack, T val) -> void {
   addr_t op_size = ZExtTo<addr_t>(ByteSizeOf(val));
   addr_t old_xsp = Read(REG_XSP);
   addr_t new_xsp = USub(old_xsp, op_size);
-  Write(WritePtr<T>(new_xsp _IF_32BIT(REG_SS)), val);
+  Write(WritePtr<T>(new_xsp _IF_32BIT(REG_SS_BASE)), val);
   Write(REG_XSP, new_xsp);
 }
 

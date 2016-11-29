@@ -64,8 +64,6 @@ extern "C" void __remill_mark_as_used(const void *);
   USED(__remill_atomic_begin);
   USED(__remill_atomic_end);
 
-  USED(__remill_compute_address);  // Used for segmented addresses.
-
   USED(__remill_defer_inlining);
 
   USED(__remill_error);
@@ -80,7 +78,6 @@ extern "C" void __remill_mark_as_used(const void *);
   // USED(__remill_attach);
   USED(__remill_detach);
 
-  USED(__remill_undefined_bool);
   USED(__remill_undefined_8);
   USED(__remill_undefined_16);
   USED(__remill_undefined_32);

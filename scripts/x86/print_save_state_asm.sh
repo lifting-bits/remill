@@ -14,6 +14,7 @@ pushd /tmp
 ${CXX} \
     -std=gnu++11 \
     -Wno-nested-anon-types -Wno-variadic-macros -Wno-extended-offsetof \
+    -Wno-invalid-offsetof \
     -Wno-return-type-c-linkage \
     -m64 -I${DIR} \
     -DADDRESS_SIZE_BITS=64 -DHAS_FEATURE_AVX=1 -DHAS_FEATURE_AVX512=1 \

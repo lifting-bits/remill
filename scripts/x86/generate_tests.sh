@@ -60,7 +60,8 @@ function lift_tests()
                 --os_in ${OS_NAME} --os_out ${OS_NAME} \
                 --arch_in ${1} --arch_out amd64 \
                 --bc_out $DIR/generated/Arch/X86/Tests/${1}.cfg.bc \
-                --asm_out $DIR/generated/Arch/X86/Tests/${1}.S
+                --asm_out $DIR/generated/Arch/X86/Tests/${1}.S \
+                --define_unimplemented
 }
 
 function compile_tests()
@@ -78,6 +79,7 @@ function compile_tests()
         -Wno-expansion-to-defined \
         -Wno-override-module \
         -m64 \
+        -mtune=native \
         -I${DIR} \
         -DADDRESS_SIZE_BITS=${1} \
         -DHAS_FEATURE_AVX=${2} \

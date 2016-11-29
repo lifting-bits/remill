@@ -9,7 +9,6 @@
 #include <llvm/IR/Module.h>
 
 #include "remill/Arch/Instruction.h"
-
 #include "remill/Arch/X86/Arch.h"
 #include "remill/Arch/X86/XED.h"
 
@@ -299,6 +298,16 @@ static Operand::Register RegOp(xed_reg_enum_t reg) {
   return reg_op;
 }
 
+static Operand::Register SegBaseRegOp(xed_reg_enum_t reg,
+                                      unsigned addr_size) {
+  auto op = RegOp(reg);
+  if (XED_REG_INVALID != reg) {
+    op.name += "_BASE";
+    op.size = addr_size;
+  }
+  return op;
+}
+
 // Decode a memory operand.
 static void DecodeMemory(Instruction *instr,
                          const xed_decoded_inst_t *xedd,
@@ -337,7 +346,8 @@ static void DecodeMemory(Instruction *instr,
   }
 
   // On AMD64, only the `FS` and `GS` segments are non-zero.
-  if (Is64Bit(instr->arch_name) && XED_REG_FS != segment &&
+  if (Is64Bit(instr->arch_name) &&
+      XED_REG_FS != segment &&
       XED_REG_GS != segment) {
     segment = XED_REG_INVALID;
 
@@ -360,7 +370,7 @@ static void DecodeMemory(Instruction *instr,
   op.addr.address_size = xed_decoded_inst_get_memop_address_width(
       xedd, mem_index);
 
-  op.addr.segment_reg = RegOp(segment);
+  op.addr.segment_base_reg = SegBaseRegOp(segment, op.addr.address_size);
   op.addr.base_reg = RegOp(base);
   op.addr.index_reg = RegOp(index);
   op.addr.scale = static_cast<int64_t>(scale);
@@ -678,8 +688,21 @@ void X86Arch::PrepareModule(llvm::Module *mod) const {
       }
       break;
   }
+
   mod->setDataLayout(dl);
   mod->setTargetTriple(triple);
+
+  // Go and remove compile-time attributes added into the semantics. These
+  // can screw up later compilation.
+  auto &context = mod->getContext();
+  for (llvm::Function &func : *mod) {
+    auto attribs = func.getAttributes();
+    attribs = attribs.removeAttribute(
+        context, llvm::AttributeSet::FunctionIndex, "target-features");
+    attribs = attribs.removeAttribute(
+        context, llvm::AttributeSet::FunctionIndex, "target-cpu");
+    func.setAttributes(attribs);
+  }
 }
 
 // Decode an instruction.
@@ -735,6 +758,27 @@ Instruction *X86Arch::DecodeInstruction(
   if (xed_format_generic(&info)) {
     instr->disassembly.assign(&(buffer[0]));
   }
+
+  return instr;
+}
+
+// Partially decode an instruction. This won't decode operands, or the
+// instruction name.
+Instruction *X86Arch::DecodeInstructionFast(
+    uint64_t address,
+    const std::string &instr_bytes) const {
+  xed_decoded_inst_t xedd_;
+  xed_decoded_inst_t *xedd = &xedd_;
+  auto mode = 32 == address_size ? &kXEDState32 : &kXEDState64;
+
+  DecodeXED(xedd, mode, instr_bytes, address);
+
+  auto instr = new Instruction;
+  instr->arch_name = arch_name;
+  instr->operand_size = xed_decoded_inst_get_operand_width(xedd);
+  instr->category = CreateCategory(xedd);
+  instr->pc = address;
+  instr->next_pc = address + instr_bytes.size();
 
   return instr;
 }

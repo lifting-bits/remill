@@ -54,9 +54,6 @@ class IntrinsicTable {
   llvm::Function * const write_memory_f64;
   llvm::Function * const write_memory_f80;
 
-  // Addressing intrinsics.
-  llvm::Function * const compute_address;
-
   // Memory barriers.
   llvm::Function * const barrier_load_load;
   llvm::Function * const barrier_load_store;
@@ -70,7 +67,6 @@ class IntrinsicTable {
   llvm::Function * const defer_inlining;
 
   // Optimization enabling.
-  llvm::Function *undefined_bool;
   llvm::Function *undefined_8;
   llvm::Function *undefined_16;
   llvm::Function *undefined_32;

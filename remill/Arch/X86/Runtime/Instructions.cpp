@@ -102,8 +102,23 @@
 #define REG_GS state.seg.gs
 #define REG_CS state.seg.cs
 
-#define HYPER_CALL state.generic.hyper_call
-#define INTERRUPT_VECTOR state.generic.interrupt_vector
+#define REG_SS_BASE 0
+#define REG_ES_BASE 0
+#define REG_DS_BASE 0
+#define REG_FS_BASE state.addr.fs_base
+#define REG_GS_BASE state.addr.gs_base
+#define REG_CS_BASE 0
+
+#define HYPER_CALL state.hyper_call
+#define INTERRUPT_VECTOR state.interrupt_vector
+
+// Takes the place of an unsupported instruction.
+DEF_ISEL_SEM(UNSUPPORTED_INSTRUCTION, PC curr_pc) {
+  Write(REG_XIP, Read(curr_pc));
+  memory = __remill_sync_hyper_call(
+      state, memory, IF_64BIT_ELSE(SyncHyperCall::kAMD64EmulateInstruction,
+                                   SyncHyperCall::kX86EmulateInstruction));
+}
 
 #include "remill/Arch/X86/Semantics/FLAGS.cpp"
 #include "remill/Arch/X86/Semantics/BINARY.cpp"

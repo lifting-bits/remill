@@ -4,6 +4,7 @@
 #define REMILL_ARCH_RUNTIME_INTRINSICS_H_
 
 #include "remill/Arch/Runtime/Types.h"
+#include "remill/Arch/Runtime/HyperCall.h"
 
 struct IndirectBlock final {
   const uint64_t lifted_address;
@@ -17,34 +18,6 @@ struct NamedBlock final {
   void (* const native_func)(void);
 };
 
-enum class SyncHyperCall : uint32_t {
-  kInvalid,
-  kX86CPUID,
-  kX86ReadTSC,
-  kX86ReadTSCP
-};
-
-enum class AsynchHyperCall : uint32_t {
-  kInvalid,
-
-  // Interrupts calls.
-  kX86Int1,
-  kX86Int3,
-  kX86IntO,
-  kX86IntN,
-  kX86Bound,
-
-  // Interrupt returns.
-  kX86IRet,
-
-  // System calls.
-  kX86SysCall,
-  kX86SysRet,
-
-  kX86SysEnter,
-  kX86SysExit,
-};
-
 extern "C" {
 
 extern const IndirectBlock __remill_indirect_blocks[];
@@ -54,11 +27,6 @@ extern const NamedBlock __remill_imported_blocks[];
 // The basic block "template".
 [[gnu::used]]
 void __remill_basic_block(State &state, Memory &memory, addr_t);
-
-// Address computation intrinsic. This is only used for non-zero
-// `address_space`d memory accesses.
-[[gnu::used, gnu::const]]
-extern addr_t __remill_compute_address(addr_t address, addr_t segment);
 
 // Memory read intrinsics.
 [[gnu::used, gnu::const]]
@@ -105,9 +73,6 @@ extern Memory *__remill_write_memory_f64(Memory *, addr_t, float64_t);
 extern Memory *__remill_write_memory_f80(Memory *, addr_t, float64_t);
 
 [[gnu::used, gnu::const]]
-extern bool __remill_undefined_bool(void);
-
-[[gnu::used, gnu::const]]
 extern uint8_t __remill_undefined_8(void);
 
 [[gnu::used, gnu::const]]
@@ -148,7 +113,7 @@ extern void __remill_jump(State &, Memory *, addr_t addr);
 [[gnu::used]]
 extern void __remill_async_hyper_call(State &, Memory *, addr_t ret_addr);
 
-[[gnu::used, gnu::const]]
+[[gnu::used]]
 extern Memory *__remill_sync_hyper_call(State &, Memory *, SyncHyperCall);
 
 // Transition to "native", unmodelled code from Remill-lifted code.

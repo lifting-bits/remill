@@ -60,7 +60,7 @@ class Operand {
     Address(void);
     ~Address(void) = default;
 
-    Register segment_reg;
+    Register segment_base_reg;
     Register base_reg;
     Register index_reg;
     int64_t scale;
