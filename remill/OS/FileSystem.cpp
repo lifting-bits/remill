@@ -9,6 +9,14 @@
 
 #include "remill/OS/FileSystem.h"
 
+#ifdef __APPLE__
+# ifndef _DARWIN_USE_64_BIT_INODE
+#   define _DARWIN_USE_64_BIT_INODE 1
+# endif
+# define stat64 stat
+# define fstat64 fstat
+#endif
+
 namespace remill {
 
 // Try to create a directory. Returns `true` if the directory was created or
