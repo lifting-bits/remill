@@ -48,8 +48,14 @@ llvm::Value *LoadStatePointer(llvm::BasicBlock *block);
 // Return the current program counter.
 llvm::Value *LoadProgramCounter(llvm::BasicBlock *block);
 
-// Return the pointer to the current value of the memory pointer.
+// Return a reference to the current program counter.
+llvm::Value *LoadProgramCounterRef(llvm::BasicBlock *block);
+
+// Return the current memory pointer.
 llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block);
+
+// Return a reference to the memory pointer.
+llvm::Value *LoadMemoryPointerRef(llvm::BasicBlock *block);
 
 // Find a function with name `name` in the module `M`.
 llvm::Function *FindFunction(const llvm::Module *M, std::string name);
@@ -68,6 +74,9 @@ void StoreModuleToFile(llvm::Module *module, std::string file_name);
 // Find the path to the semantics bitcode file.
 std::string FindSemanticsBitcodeFile(const std::string &path,
                                      const std::string &arch);
+
+// Return a pointer to the Nth argument (N=0 is the first argument).
+llvm::Argument *NthArgument(llvm::Function *func, size_t index);
 
 // Convert an LLVM thing (e.g. `llvm::Value` or `llvm::Type`) into
 // a `std::string`.

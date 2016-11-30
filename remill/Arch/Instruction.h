@@ -120,6 +120,32 @@ class Instruction {
 
   std::string Serialize(void) const;
 
+  inline bool IsControlFlow(void) const {
+    switch (category) {
+      case kCategoryInvalid:
+      case kCategoryNormal:
+      case kCategoryNoOp:
+        return false;
+      default:
+        return true;
+    }
+  }
+
+  inline bool IsFunctionCall(void) const {
+    switch (category) {
+      case kCategoryDirectFunctionCall:
+      case kCategoryIndirectFunctionCall:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  // Length, in bytes, of the instruction.
+  inline uint64_t NumBytes(void) const {
+    return next_pc - pc;
+  }
+
  private:
   friend class X86Arch;
 

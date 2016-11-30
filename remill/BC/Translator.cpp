@@ -56,10 +56,9 @@ static void InitBlockFunctionAttributes(llvm::Function *block_func) {
   block_func->setLinkage(llvm::GlobalValue::PrivateLinkage);
   block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
 
-  auto args = block_func->arg_begin();
-  (args++)->setName("memory");
-  (args++)->setName("state");
-  args->setName("pc");
+  remill::NthArgument(block_func, kMemoryPointerArgNum)->setName("memory");
+  remill::NthArgument(block_func, kStatePointerArgNum)->setName("state");
+  remill::NthArgument(block_func, kPCArgNum)->setName("pc");
 
 }
 
@@ -68,7 +67,6 @@ static bool BlockHasSpecialVars(llvm::Function *basic_block) {
   return FindVarInFunction(basic_block, "STATE", true) &&
          FindVarInFunction(basic_block, "MEMORY", true) &&
          FindVarInFunction(basic_block, "PC", true) &&
-         FindVarInFunction(basic_block, "NEXT_PC", true) &&
          FindVarInFunction(basic_block, "BRANCH_TAKEN", true);
 }
 
@@ -914,19 +912,9 @@ llvm::BasicBlock *Translator::LiftInstruction(llvm::Function *block_func,
   auto block = llvm::BasicBlock::Create(context, "", block_func);
 
   llvm::IRBuilder<> ir(block);
-  auto mem_ptr = FindVarInFunction(block->getParent(), "MEMORY");
-  auto state_ptr = ir.CreateLoad(
-      FindVarInFunction(block->getParent(), "STATE"));
-  auto pc_ptr = ir.CreateLoad(FindVarInFunction(block, "PC"));
-  auto next_pc_ptr = ir.CreateLoad(FindVarInFunction(block, "NEXT_PC"));
-
-  // Update the next program counter.
-  ir.CreateStore(
-      ir.CreateAdd(
-          ir.CreateLoad(pc_ptr),
-          llvm::ConstantInt::get(
-              word_type, arch_instr->next_pc - arch_instr->pc)),
-      next_pc_ptr);
+  auto mem_ptr = LoadMemoryPointerRef(block);
+  auto state_ptr = LoadStatePointer(block);
+  auto pc_ptr = LoadProgramCounterRef(block);
 
   // Begin an atomic block.
   if (arch_instr->is_atomic_read_modify_write) {
@@ -974,7 +962,13 @@ llvm::BasicBlock *Translator::LiftInstruction(llvm::Function *block_func,
   }
 
   // Update the current program counter.
-  ir.CreateStore(ir.CreateLoad(next_pc_ptr), pc_ptr);
+  if (!arch_instr->IsControlFlow()) {
+      ir.CreateStore(
+          ir.CreateAdd(
+              ir.CreateLoad(pc_ptr),
+              llvm::ConstantInt::get(word_type, arch_instr->NumBytes())),
+          pc_ptr);
+  }
 
   return block;
 }

@@ -424,10 +424,7 @@ struct alignas(8) GPR final {
   Reg r15;
   volatile uint64_t _tear16;
 
-  // Program counter. In general, this represents the "next" program counter.
-  // For example, before a function call, the return address is loaded into
-  // `rip`. Similarly, at conditional branches, the fall-through address is
-  // loaded.
+  // Program counter of the CURRENT instruction!
   Reg rip;
 } __attribute__((packed));
 

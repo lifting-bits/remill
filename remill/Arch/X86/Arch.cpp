@@ -376,9 +376,10 @@ static void DecodeMemory(Instruction *instr,
   op.addr.scale = static_cast<int64_t>(scale);
   op.addr.displacement = disp;
 
-  // Rename the base register to use `NEXT_PC` as the register name.
+  // Rename the base register to use `PC` as the register name.
   if (XED_REG_RIP == base_wide) {
-    op.addr.base_reg.name = "NEXT_PC";
+    op.addr.base_reg.name = "PC";
+    op.addr.displacement += static_cast<int64_t>(instr->NumBytes());
   }
 
   // We always pass destination operands first, then sources. Memory operands
@@ -496,6 +497,26 @@ static void DecodeConditionalInterrupt(Instruction *instr) {
   instr->operands.push_back(cond_op);
 }
 
+// Operand representing the fall-through PC, which is the not-taken branch of
+// a conditional jump, or the return address for a function call.
+static void DecodeFallThroughPC(Instruction *instr,
+                                const xed_decoded_inst_t *xedd) {
+  auto pc_reg = Is64Bit(instr->arch_name) ? XED_REG_RIP : XED_REG_EIP;
+  auto pc_width = xed_get_register_width_bits64(pc_reg);
+
+  Operand not_taken_op;
+  not_taken_op.action = Operand::kActionRead;
+  not_taken_op.type = Operand::kTypeAddress;
+  not_taken_op.size = pc_width;
+  not_taken_op.addr.address_size = pc_width;
+  not_taken_op.addr.base_reg.name = "PC";
+  not_taken_op.addr.base_reg.size = pc_width;
+  not_taken_op.addr.displacement = static_cast<int64_t>(instr->NumBytes());
+  instr->operands.push_back(not_taken_op);
+
+  instr->branch_not_taken_pc = instr->next_pc;
+}
+
 // Decode a relative branch target.
 static void DecodeConditionalBranch(Instruction *instr,
                                     const xed_decoded_inst_t *xedd) {
@@ -518,24 +539,16 @@ static void DecodeConditionalBranch(Instruction *instr,
   taken_op.action = Operand::kActionRead;
   taken_op.type = Operand::kTypeAddress;
   taken_op.size = pc_width;
-  taken_op.addr.base_reg.name = "NEXT_PC";
+  taken_op.addr.address_size = pc_width;
+  taken_op.addr.base_reg.name = "PC";
   taken_op.addr.base_reg.size = pc_width;
-  taken_op.addr.displacement = disp;
+  taken_op.addr.displacement = disp + static_cast<int64_t>(instr->NumBytes());
   instr->operands.push_back(taken_op);
 
   instr->branch_taken_pc = static_cast<uint64_t>(
       static_cast<int64_t>(instr->next_pc) + disp);
 
-  // Not taken branch.
-  Operand not_taken_op;
-  not_taken_op.action = Operand::kActionRead;
-  not_taken_op.type = Operand::kTypeRegister;
-  not_taken_op.size = pc_width;
-  not_taken_op.reg.name = "NEXT_PC";
-  not_taken_op.reg.size = pc_width;
-  instr->operands.push_back(not_taken_op);
-
-  instr->branch_not_taken_pc = instr->next_pc;
+  DecodeFallThroughPC(instr, xedd);
 }
 
 // Decode a relative branch target.
@@ -549,11 +562,13 @@ static void DecodeRelativeBranch(Instruction *instr,
   // Taken branch.
   Operand taken_op;
   taken_op.action = Operand::kActionRead;
+  taken_op.action = Operand::kActionRead;
   taken_op.type = Operand::kTypeAddress;
   taken_op.size = pc_width;
-  taken_op.addr.base_reg.name = "NEXT_PC";
+  taken_op.addr.address_size = pc_width;
+  taken_op.addr.base_reg.name = "PC";
   taken_op.addr.base_reg.size = pc_width;
-  taken_op.addr.displacement = disp;
+  taken_op.addr.displacement = disp + static_cast<int64_t>(instr->NumBytes());
   instr->operands.push_back(taken_op);
 
   instr->branch_taken_pc = static_cast<uint64_t>(
@@ -743,6 +758,10 @@ Instruction *X86Arch::DecodeInstruction(
     if (XED_OPVIS_SUPPRESSED != xed_operand_operand_visibility(xedo)) {
       DecodeOperand(instr, xedd, xedo);
     }
+  }
+
+  if (instr->IsFunctionCall()) {
+    DecodeFallThroughPC(instr, xedd);
   }
 
   char buffer[256] = {'\0'};
