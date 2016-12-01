@@ -118,12 +118,12 @@ DEF_ISEL(FICOM_ST0_MEMmem16int) = FICOM_ST0_int<M16>;
 DEF_ISEL(FICOM_ST0_MEMmem32int) = FICOM_ST0_int<M32>;
 
 DEF_ISEL_SEM(FICOMP_ST0_MEMmem16int, RF80 src1, M16 src2) {
-  FICOM_ST0_int<M16>(state, memory, src1, src2);
+  FICOM_ST0_int<M16>(memory, state, src1, src2);
   (void) POP_X87_STACK(_);
 }
 
 DEF_ISEL_SEM(FICOMP_ST0_MEMmem32int, RF80 src1, M32 src2) {
-  FICOM_ST0_int<M32>(state, memory, src1, src2);
+  FICOM_ST0_int<M32>(memory, state, src1, src2);
   (void) POP_X87_STACK(_);
 }
 
@@ -148,12 +148,12 @@ DEF_ISEL_SEM(FUCOM_ST0_X87, RF80 src1, RF80 src2) {
 }
 
 DEF_ISEL_SEM(FUCOMP_ST0_X87, RF80 src1, RF80 src2) {
-  FUCOM_ST0_X87(state, memory, src1, src2);
+  FUCOM_ST0_X87(memory, state, src1, src2);
   (void) POP_X87_STACK(_);
 }
 
 DEF_ISEL_SEM(FCOMPP_ST0_ST1, RF80 src1, RF80 src2) {
-  FUCOM_ST0_X87(state, memory, src1, src2);
+  FUCOM_ST0_X87(memory, state, src1, src2);
   (void) POP_X87_STACK(_);
   (void) POP_X87_STACK(_);
 }
@@ -183,7 +183,7 @@ DEF_ISEL_SEM(FUCOMI_ST0_X87, RF80 src1, RF80 src2) {
 }
 
 DEF_ISEL_SEM(FUCOMIP_ST0_X87, RF80 src1, RF80 src2) {
-  FUCOMI_ST0_X87(state, memory, src1, src2);
+  FUCOMI_ST0_X87(memory, state, src1, src2);
   (void) POP_X87_STACK(_);
 }
 

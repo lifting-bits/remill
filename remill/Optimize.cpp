@@ -26,6 +26,7 @@
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/Local.h>
 
+#include "remill/BC/ABI.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/FileSystem.h"
 
@@ -43,6 +44,11 @@ DEFINE_bool(server, false, "Run the optimizer as a server. This will allow "
                            "remill-opt to receive bitcode from remill-lift.");
 
 DEFINE_bool(strip, false, "Strip out all debug information.");
+
+DEFINE_bool(lower_mem, false, "Lower memory access intrinsics into "
+                              "LLVM load and store instructions. "
+                              "Note: the memory class pointer is replaced "
+                              "with a i8 pointer.");
 
 namespace {
 enum : size_t {
@@ -267,7 +273,7 @@ size_t StateMap::GetGEPIndexSeq(const llvm::GetElementPtrInst *gep_inst) {
 void StateMap::AssignRegisters(llvm::Function *func) {
   inst_to_reg.clear();
 
-  auto state_ptr = &(*func->arg_begin());
+  auto state_ptr = NthArgument(func, remill::kStatePointerArgNum);
   auto func_name = func->getName().str();
   std::queue<llvm::Instruction *> work_list;
   std::set<llvm::Instruction *> seen;
@@ -435,7 +441,7 @@ void StateMap::AssignRegisters(llvm::Function *func) {
 }
 
 void StateMap::ReassociateRegisters(llvm::Function *func) {
-  auto state_ptr = &(*func->arg_begin());
+  auto state_ptr = NthArgument(func, remill::kStatePointerArgNum);
 
   std::vector<llvm::GetElementPtrInst *> to_move;
   for (auto &block : *func) {
@@ -701,7 +707,7 @@ static llvm::Type *GetStateType(llvm::Module *module) {
 
   auto bb_func_type = bb_func->getFunctionType();
   auto state_ptr_type = llvm::dyn_cast<llvm::PointerType>(
-      bb_func_type->getParamType(0));
+      bb_func_type->getParamType(remill::kStatePointerArgNum));
 
   CHECK(nullptr != state_ptr_type)
       << "First argument to lifted block function must be a pointer to "
@@ -928,6 +934,111 @@ static void EnableDeferredInlining(llvm::Module *module) {
   }
 }
 
+// Lower a memory read intrinsic into a `load` instruction.
+static void ReplaceMemReadOp(llvm::Module *module, const char *name,
+                               llvm::Type *val_type) {
+  auto func = module->getFunction(name);
+  CHECK(func->isDeclaration())
+      << "Cannot lower already implemented memory intrinsic " << name;
+
+  std::vector<llvm::CallInst *> callers;
+  for (auto user : func->users()) {
+    if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(user)) {
+      if (call_inst->getCalledFunction() == func) {
+        callers.push_back(call_inst);
+      }
+    }
+  }
+
+  for (auto call_inst : callers) {
+    auto mem_ptr = call_inst->getArgOperand(0);
+    auto addr = call_inst->getArgOperand(1);
+    llvm::Value *indexes[] = {addr};
+    llvm::IRBuilder<> ir(call_inst);
+    auto gep = ir.CreateInBoundsGEP(mem_ptr, indexes);
+    auto ptr = ir.CreatePointerCast(gep, llvm::PointerType::get(val_type, 0));
+    llvm::Value *val = ir.CreateLoad(ptr);
+    if (val_type->isX86_FP80Ty()) {
+      val = ir.CreateFPTrunc(val, func->getReturnType());
+    }
+    call_inst->replaceAllUsesWith(val);
+  }
+}
+
+// Lower a memory write intrinsic into a `store` instruction.
+static void ReplaceMemWriteOp(llvm::Module *module, const char *name,
+                               llvm::Type *val_type) {
+  auto func = module->getFunction(name);
+  CHECK(func->isDeclaration())
+      << "Cannot lower already implemented memory intrinsic " << name;
+
+  std::vector<llvm::CallInst *> callers;
+  for (auto user : func->users()) {
+    if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(user)) {
+      if (call_inst->getCalledFunction() == func) {
+        callers.push_back(call_inst);
+      }
+    }
+  }
+
+  for (auto call_inst : callers) {
+    auto mem_ptr = call_inst->getArgOperand(0);
+    auto addr = call_inst->getArgOperand(1);
+    auto val = call_inst->getArgOperand(2);
+
+    llvm::Value *indexes[] = {addr};
+    llvm::IRBuilder<> ir(call_inst);
+    auto gep = ir.CreateInBoundsGEP(mem_ptr, indexes);
+    auto ptr = ir.CreatePointerCast(gep, llvm::PointerType::get(val_type, 0));
+    if (val_type->isX86_FP80Ty()) {
+      val = ir.CreateFPExt(val, func->getReturnType());
+    }
+    ir.CreateStore(val, ptr);
+    call_inst->replaceAllUsesWith(mem_ptr);
+  }
+}
+
+
+static void LowerMemOps(llvm::Module *module) {
+  auto &context = module->getContext();
+  auto mem_func = module->getFunction("__remill_write_memory_8");
+  auto mem_ptr_type = llvm::dyn_cast<llvm::PointerType>(
+      mem_func->getReturnType());
+  auto mem_type = llvm::dyn_cast<llvm::StructType>(
+      mem_ptr_type->getElementType());
+  mem_type->setBody(llvm::Type::getInt8Ty(context), nullptr, nullptr);
+
+  ReplaceMemReadOp(module, "__remill_read_memory_8",
+                   llvm::Type::getInt8Ty(context));
+  ReplaceMemReadOp(module, "__remill_read_memory_16",
+                   llvm::Type::getInt16Ty(context));
+  ReplaceMemReadOp(module, "__remill_read_memory_32",
+                   llvm::Type::getInt32Ty(context));
+  ReplaceMemReadOp(module, "__remill_read_memory_64",
+                   llvm::Type::getInt64Ty(context));
+  ReplaceMemReadOp(module, "__remill_read_memory_f32",
+                   llvm::Type::getFloatTy(context));
+  ReplaceMemReadOp(module, "__remill_read_memory_f64",
+                   llvm::Type::getDoubleTy(context));
+  ReplaceMemReadOp(module, "__remill_read_memory_f80",
+                   llvm::Type::getX86_FP80Ty(context));
+
+  ReplaceMemWriteOp(module, "__remill_write_memory_8",
+                    llvm::Type::getInt8Ty(context));
+  ReplaceMemWriteOp(module, "__remill_write_memory_16",
+                    llvm::Type::getInt16Ty(context));
+  ReplaceMemWriteOp(module, "__remill_write_memory_32",
+                    llvm::Type::getInt32Ty(context));
+  ReplaceMemWriteOp(module, "__remill_write_memory_64",
+                    llvm::Type::getInt64Ty(context));
+  ReplaceMemWriteOp(module, "__remill_write_memory_f32",
+                    llvm::Type::getFloatTy(context));
+  ReplaceMemWriteOp(module, "__remill_write_memory_f64",
+                    llvm::Type::getDoubleTy(context));
+  ReplaceMemWriteOp(module, "__remill_write_memory_f80",
+                    llvm::Type::getX86_FP80Ty(context));
+}
+
 }  // namespace
 
 int main(int argc, char *argv[]) {
@@ -963,6 +1074,9 @@ int main(int argc, char *argv[]) {
     InterProceduralDeadStoreElimination(module);
     RemoveUndefFuncCalls(module);
     EnableDeferredInlining(module);
+    if (FLAGS_lower_mem) {
+      LowerMemOps(module);
+    }
     Optimize(module);
     RemoveDeadIntrinsics(module);
     RemoveUnusedSemantics(module);

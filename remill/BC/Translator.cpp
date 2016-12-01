@@ -56,10 +56,9 @@ static void InitBlockFunctionAttributes(llvm::Function *block_func) {
   block_func->setLinkage(llvm::GlobalValue::PrivateLinkage);
   block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
 
-  auto args = block_func->arg_begin();
-  (args++)->setName("state");
-  (args++)->setName("memory");
-  args->setName("pc");
+  remill::NthArgument(block_func, kMemoryPointerArgNum)->setName("memory");
+  remill::NthArgument(block_func, kStatePointerArgNum)->setName("state");
+  remill::NthArgument(block_func, kPCArgNum)->setName("pc");
 
 }
 
@@ -68,7 +67,6 @@ static bool BlockHasSpecialVars(llvm::Function *basic_block) {
   return FindVarInFunction(basic_block, "STATE", true) &&
          FindVarInFunction(basic_block, "MEMORY", true) &&
          FindVarInFunction(basic_block, "PC", true) &&
-         FindVarInFunction(basic_block, "NEXT_PC", true) &&
          FindVarInFunction(basic_block, "BRANCH_TAKEN", true);
 }
 
@@ -265,7 +263,7 @@ std::map<std::string, llvm::Function *> Translator::GetNamedBlocks(
     // Note: Each `entry` has the following type:
     //    struct NamedBlock final {
     //      const char * const name;
-    //      void (* const lifted_func)(State &, Memory &, addr_t);
+    //      void (* const lifted_func)(Memory &, State &, addr_t);
     //      void (* const native_func)(void);
     //    };
     auto exported_block = llvm::dyn_cast<llvm::ConstantStruct>(entry.get());
@@ -344,7 +342,7 @@ void Translator::SetNamedBlocks(
     // Note: Each entry has the following type:
     //    struct NamedBlock final {
     //      const char * const name;
-    //      void (* const lifted_func)(State &, Memory &, addr_t);
+    //      void (* const lifted_func)(Memory &, State &, addr_t);
     //      void (* const native_func)(void);
     //    };
     entries.push_back(llvm::ConstantStruct::get(
@@ -380,7 +378,7 @@ void Translator::GetIndirectBlocks(void) {
     // Note: Each `entry` has the following type:
     //    struct IndirectBlock final {
     //      const addr_t lifted_address;
-    //      void (* const lifted_func)(State &, Memory &, addr_t);
+    //      void (* const lifted_func)(Memory &, State &, addr_t);
     //    };
     auto indirect_block = llvm::dyn_cast<llvm::ConstantStruct>(entry.get());
     auto block_addr = llvm::dyn_cast<llvm::ConstantInt>(
@@ -522,11 +520,6 @@ llvm::Function *Translator::GetOrCreateBlock(uint64_t addr) {
     block_func->copyAttributesFrom(basic_block);
     block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
 
-//    block_func->clearMetadata();
-//    block_func->copyMetadata(basic_block, 0);
-//    //auto md = basic_block->getMetadata(llvm::LLVMContext::MD_dbg);
-//    //auto tmd = md->clone();
-
     DLOG(INFO)
         << "Created function " << func_name
         << " for block at " << std::hex << addr << ".";
@@ -625,7 +618,6 @@ void Translator::LiftBlocks(const cfg::Module *cfg_module) {
   func_pass_manager.doInitialization();
   for (const auto &block : cfg_module->blocks()) {
     auto func = LiftBlock(&block);
-
     CHECK(!func->isDeclaration())
         << "Lifted block function " << func->getName().str()
         << " should have an implementation.";
@@ -920,19 +912,9 @@ llvm::BasicBlock *Translator::LiftInstruction(llvm::Function *block_func,
   auto block = llvm::BasicBlock::Create(context, "", block_func);
 
   llvm::IRBuilder<> ir(block);
-  auto mem_ptr = FindVarInFunction(block->getParent(), "MEMORY");
-  auto state_ptr = ir.CreateLoad(
-      FindVarInFunction(block->getParent(), "STATE"));
-  auto pc_ptr = ir.CreateLoad(FindVarInFunction(block, "PC"));
-  auto next_pc_ptr = ir.CreateLoad(FindVarInFunction(block, "NEXT_PC"));
-
-  // Update the next program counter.
-  ir.CreateStore(
-      ir.CreateAdd(
-          ir.CreateLoad(pc_ptr),
-          llvm::ConstantInt::get(
-              word_type, arch_instr->next_pc - arch_instr->pc)),
-      next_pc_ptr);
+  auto mem_ptr = LoadMemoryPointerRef(block);
+  auto state_ptr = LoadStatePointer(block);
+  auto pc_ptr = LoadProgramCounterRef(block);
 
   // Begin an atomic block.
   if (arch_instr->is_atomic_read_modify_write) {
@@ -946,8 +928,8 @@ llvm::BasicBlock *Translator::LiftInstruction(llvm::Function *block_func,
 
   // First two arguments to an instruction semantics function are the
   // state pointer, and a pointer to the memory pointer.
-  args.push_back(state_ptr);
   args.push_back(mem_ptr);
+  args.push_back(state_ptr);
 
   auto isel_func_type = isel_func->getFunctionType();
   auto arg_num = 2U;
@@ -980,7 +962,13 @@ llvm::BasicBlock *Translator::LiftInstruction(llvm::Function *block_func,
   }
 
   // Update the current program counter.
-  ir.CreateStore(ir.CreateLoad(next_pc_ptr), pc_ptr);
+  if (!arch_instr->IsControlFlow()) {
+      ir.CreateStore(
+          ir.CreateAdd(
+              ir.CreateLoad(pc_ptr),
+              llvm::ConstantInt::get(word_type, arch_instr->NumBytes())),
+          pc_ptr);
+  }
 
   return block;
 }

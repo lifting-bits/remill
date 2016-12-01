@@ -130,7 +130,7 @@ IF_64BIT(MAKE_CMPS(CMPSQ, uint64_t))
     DEF_ISEL_SEM(REP_ ## base) { \
       auto count_reg = Read(REG_XCX); \
       while (UCmpNeq(count_reg, 0)) { \
-        base(state, memory); \
+        base(memory, state); \
         count_reg = USub(count_reg, 1); \
         Write(REG_XCX, count_reg); \
       } \
@@ -157,7 +157,7 @@ IF_64BIT(MAKE_REP(STOSQ))
       auto count_reg = Read(REG_XCX); \
       if (UCmpEq(count_reg, 0)) return; \
       do { \
-        base(state, memory); \
+        base(memory, state); \
         count_reg = USub(count_reg, 1); \
         Write(REG_XCX, count_reg); \
       } while (BAnd(UCmpNeq(count_reg, 0), FLAG_ZF)); \
@@ -180,7 +180,7 @@ IF_64BIT(MAKE_REPE(SCASQ))
       auto count_reg = Read(REG_XCX); \
       if (UCmpEq(count_reg, 0)) return; \
       do { \
-        base(state, memory); \
+        base(memory, state); \
         count_reg = USub(count_reg, 1); \
         Write(REG_XCX, count_reg); \
       } while (BAnd(UCmpNeq(count_reg, 0), BNot(FLAG_ZF))); \

@@ -10,7 +10,7 @@ extern "C" {
 // Method that will implement a basic block. We will clone this method for
 // each basic block in the code being lifted.
 [[gnu::used]]
-void __remill_basic_block(State &state, Memory &memory, addr_t curr_pc) {
+void __remill_basic_block(Memory &memory, State &state, addr_t curr_pc) {
 
   bool branch_taken = false;
   addr_t zero = 0;
@@ -18,8 +18,7 @@ void __remill_basic_block(State &state, Memory &memory, addr_t curr_pc) {
   // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
   auto &MEMORY = memory;
-  auto &PC = curr_pc;
-  auto &NEXT_PC = state.gpr.rip.IF_64BIT_ELSE(qword, dword);
+  auto &PC = state.gpr.rip.IF_64BIT_ELSE(qword, dword);
   auto &BRANCH_TAKEN = branch_taken;
 
   // We will reference these variables from the bitcode side of things so that,

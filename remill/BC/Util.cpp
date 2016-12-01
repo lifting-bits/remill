@@ -4,6 +4,7 @@
 
 #include <sstream>
 #include <system_error>
+#include <vector>
 
 #include <sys/stat.h>
 #include <unistd.h>
@@ -88,8 +89,8 @@ void AddTerminatingTailCall(llvm::BasicBlock *source_block,
 
   // Set up arguments according to our ABI.
   std::vector<llvm::Value *> args(kNumBlockArgs);
-  args[kStatePointerArgNum] = LoadStatePointer(source_block);
   args[kMemoryPointerArgNum] = LoadMemoryPointer(source_block);
+  args[kStatePointerArgNum] = LoadStatePointer(source_block);
   args[kPCArgNum] = LoadProgramCounter(source_block);
 
   // We may introduce variables like `__remill_jump_0xf00` that boils down to
@@ -140,10 +141,10 @@ llvm::Value *LoadStatePointer(llvm::Function *function) {
       << "pointer and program counter in function "
       << function->getName().str();
 
-  static_assert(0 == kStatePointerArgNum,
+  static_assert(1 == kStatePointerArgNum,
                 "Expected state pointer to be the first operand.");
 
-  return &function->getArgumentList().front();
+  return NthArgument(function, kStatePointerArgNum);
 }
 
 llvm::Value *LoadStatePointer(llvm::BasicBlock *block) {
@@ -153,15 +154,24 @@ llvm::Value *LoadStatePointer(llvm::BasicBlock *block) {
 // Return the current program counter.
 llvm::Value *LoadProgramCounter(llvm::BasicBlock *block) {
   llvm::IRBuilder<> ir(block);
-  return ir.CreateLoad(ir.CreateLoad(FindVarInFunction(
-      block->getParent(), "PC")));
+  return ir.CreateLoad(LoadProgramCounterRef(block));
 }
 
-// Return the pointer to the current value of the memory pointer.
+// Return a reference to the current program counter.
+llvm::Value *LoadProgramCounterRef(llvm::BasicBlock *block) {
+  llvm::IRBuilder<> ir(block);
+  return ir.CreateLoad(FindVarInFunction(block->getParent(), "PC"));
+}
+
+// Return the current memory pointer.
 llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block) {
   llvm::IRBuilder<> ir(block);
-  return ir.CreateLoad(FindVarInFunction(
-      block->getParent(), "MEMORY"));
+  return ir.CreateLoad(LoadMemoryPointerRef(block));
+}
+
+// Return a reference to the memory pointer.
+llvm::Value *LoadMemoryPointerRef(llvm::BasicBlock *block) {
+  return FindVarInFunction(block->getParent(), "MEMORY");
 }
 
 // Find a function with name `name` in the module `M`.
@@ -270,6 +280,14 @@ std::string FindSemanticsBitcodeFile(const std::string &path,
 
   LOG(FATAL)
       << "Cannot find path to " << arch << " semantics bitcode file.";
+}
+
+llvm::Argument *NthArgument(llvm::Function *func, size_t index) {
+  auto it = func->arg_begin();
+  for (size_t i = 0; i < index; ++i) {
+    ++it;
+  }
+  return &*it;
 }
 
 }  // namespace remill

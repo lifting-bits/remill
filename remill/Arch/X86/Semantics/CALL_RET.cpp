@@ -6,27 +6,27 @@
 namespace {
 
 template <typename T>
-DEF_SEM(CALL, T target_pc) {
+DEF_SEM(CALL, T target_pc, PC return_pc) {
   if (IsRegister(target_pc) || IsMemory(target_pc)) {
     ClearArithFlags();  // TODO(pag): Is this too aggressive?
   }
 
   addr_t next_sp = USub(REG_XSP, ADDRESS_SIZE_BYTES);
-  Write(WritePtr<PC>(next_sp _IF_32BIT(REG_SS_BASE)), REG_PC);
+  Write(WritePtr<addr_t>(next_sp _IF_32BIT(REG_SS_BASE)), Read(return_pc));
   Write(REG_XSP, next_sp);
-  Write(REG_PC, ZExtTo<PC>(Read(target_pc)));
+  Write(REG_PC, ZExtTo<addr_t>(Read(target_pc)));
 }
 
 DEF_SEM(RET_IMM, I16 bytes) {
   ClearArithFlags();  // TODO(pag): Is this too aggressive?
-  Write(REG_PC, Read(ReadPtr<PC>(REG_XSP _IF_32BIT(REG_SS_BASE))));
+  Write(REG_PC, Read(ReadPtr<addr_t>(REG_XSP _IF_32BIT(REG_SS_BASE))));
   Write(REG_XSP,
-        UAdd(UAdd(REG_XSP, ZExtTo<PC>(Read(bytes))), ADDRESS_SIZE_BYTES));
+        UAdd(UAdd(REG_XSP, ZExtTo<addr_t>(Read(bytes))), ADDRESS_SIZE_BYTES));
 }
 
 DEF_SEM(RET) {
   ClearArithFlags();  // TODO(pag): Is this too aggressive?
-  Write(REG_PC, Read(ReadPtr<PC>(REG_XSP _IF_32BIT(REG_SS_BASE))));
+  Write(REG_PC, Read(ReadPtr<addr_t>(REG_XSP _IF_32BIT(REG_SS_BASE))));
     Write(REG_XSP, UAdd(REG_XSP, ADDRESS_SIZE_BYTES));
 }
 
