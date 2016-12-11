@@ -114,7 +114,7 @@ extern void __remill_jump(Memory *, State &, addr_t addr);
 extern void __remill_async_hyper_call(Memory *, State &, addr_t ret_addr);
 
 [[gnu::used]]
-extern Memory *__remill_sync_hyper_call(Memory *, State &, SyncHyperCall);
+extern Memory *__remill_sync_hyper_call(Memory *, State &, SyncHyperCall::Name);
 
 // Transition to "native", unmodelled code from Remill-lifted code.
 [[gnu::used]]

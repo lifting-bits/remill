@@ -279,61 +279,42 @@ static_assert(8 == sizeof(Flags), "Invalid structure packing of `Flags`.");
 
 struct alignas(8) ArithFlags final {
   // Prevents LLVM from casting and `ArithFlags` into an `i8` to access `cf`.
-  volatile bool _tear0;
+  volatile bool _0;
   bool cf;  // Prevents load/store coalescing.
-  volatile bool _tear1;
+  volatile bool _1;
   bool pf;
-  volatile bool _tear2;
+  volatile bool _2;
   bool af;
-  volatile bool _tear3;
+  volatile bool _3;
   bool zf;
-  volatile bool _tear4;
+  volatile bool _4;
   bool sf;
-  volatile bool _tear5;
+  volatile bool _5;
   bool df;
-  volatile bool _tear6;
+  volatile bool _6;
   bool of;
-  volatile bool _tear7;
-  volatile bool _tear8;
+  volatile bool _7;
+  volatile bool _8;
 } __attribute__((packed));
 
 static_assert(16 == sizeof(ArithFlags), "Invalid packing of `ArithFlags`.");
 
 struct alignas(8) Segments final {
-  volatile uint16_t _tear0;
+  volatile uint16_t _0;
   uint16_t ss;
-  volatile uint16_t _tear1;
+  volatile uint16_t _1;
   uint16_t es;
-  volatile uint16_t _tear2;
+  volatile uint16_t _2;
   uint16_t gs;
-  volatile uint16_t _tear3;
+  volatile uint16_t _3;
   uint16_t fs;
-  volatile uint16_t _tear4;
+  volatile uint16_t _4;
   uint16_t ds;
-  volatile uint16_t _tear5;
+  volatile uint16_t _5;
   uint16_t cs;
 } __attribute__((packed));
 
 static_assert(24 == sizeof(Segments), "Invalid packing of `struct Segments`.");
-
-struct alignas(8) AddressSpace final {
-#if 64 == ADDRESS_SIZE_BITS
-  volatile uint64_t _tear0;
-  addr_t fs_base;
-  volatile uint64_t _tear1;
-  addr_t gs_base;
-#else
-  volatile uint64_t _tear0;
-  volatile uint32_t _tear1;
-  addr_t fs_base;
-  volatile uint64_t _tear2;
-  volatile uint32_t _tear3;
-  addr_t gs_base;
-#endif
-} __attribute__((packed));
-
-static_assert(32 == sizeof(AddressSpace),
-              "Invalid packing of `struct AddressSpace`.");
 
 // For remill-opt's register alias analysis, we don't want 32-bit lifted
 // code to look like operations on 64-bit registers, because then every
@@ -383,6 +364,16 @@ static_assert(0 == __builtin_offsetof(VectorReg, zmm),
 static_assert(64 == sizeof(VectorReg),
               "Invalid packing of `struct VectorReg`.");
 
+struct alignas(8) AddressSpace final {
+  volatile uint64_t _0;
+  Reg fs_base;
+  volatile uint64_t _1;
+  Reg gs_base;
+} __attribute__((packed));
+
+static_assert(32 == sizeof(AddressSpace),
+              "Invalid packing of `struct AddressSpace`.");
+
 // Named the same way as the 64-bit version to keep names the same
 // across architectures. All registers are here, even the 64-bit ones. The
 // 64-bit ones are inaccessible in lifted 32-bit code because they will
@@ -390,39 +381,39 @@ static_assert(64 == sizeof(VectorReg),
 // function.
 struct alignas(8) GPR final {
   // Prevents LLVM from casting a `GPR` into an `i64` to access `rax`.
-  volatile uint64_t _tear0;
+  volatile uint64_t _0;
   Reg rax;
-  volatile uint64_t _tear1;
+  volatile uint64_t _1;
   Reg rbx;
-  volatile uint64_t _tear2;
+  volatile uint64_t _2;
   Reg rcx;
-  volatile uint64_t _tear3;
+  volatile uint64_t _3;
   Reg rdx;
-  volatile uint64_t _tear4;
+  volatile uint64_t _4;
   Reg rsi;
-  volatile uint64_t _tear5;
+  volatile uint64_t _5;
   Reg rdi;
-  volatile uint64_t _tear6;
+  volatile uint64_t _6;
   Reg rsp;
-  volatile uint64_t _tear7;
+  volatile uint64_t _7;
   Reg rbp;
-  volatile uint64_t _tear8;
+  volatile uint64_t _8;
   Reg r8;
-  volatile uint64_t _tear9;
+  volatile uint64_t _9;
   Reg r9;
-  volatile uint64_t _tear10;
+  volatile uint64_t _10;
   Reg r10;
-  volatile uint64_t _tear11;
+  volatile uint64_t _11;
   Reg r11;
-  volatile uint64_t _tear12;
+  volatile uint64_t _12;
   Reg r12;
-  volatile uint64_t _tear13;
+  volatile uint64_t _13;
   Reg r13;
-  volatile uint64_t _tear14;
+  volatile uint64_t _14;
   Reg r14;
-  volatile uint64_t _tear15;
+  volatile uint64_t _15;
   Reg r15;
-  volatile uint64_t _tear16;
+  volatile uint64_t _16;
 
   // Program counter of the CURRENT instruction!
   Reg rip;
@@ -432,7 +423,7 @@ static_assert(272 == sizeof(GPR), "Invalid structure packing of `GPR`.");
 
 struct alignas(8) X87Stack final {
   struct alignas(8) {
-    uint64_t _tear;
+    uint64_t _0;
     float64_t val;
   } __attribute__((packed)) elems[8];
 };
@@ -442,7 +433,7 @@ static_assert(128 == sizeof(X87Stack),
 
 struct alignas(8) MMX final {
   struct alignas(8) {
-    uint64_t _tear;
+    uint64_t _0;
     vec64_t val;
   } __attribute__((packed)) elems[8];
 };

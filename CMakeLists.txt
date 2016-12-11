@@ -44,6 +44,46 @@ endif()
 
 add_definitions(${LLVM_DEFINITIONS})
 
+add_compile_options(
+    -x c++
+
+    -Wall
+    -Wextra
+    -Werror
+    -pedantic
+
+    -g3
+    -O0
+
+    -Wno-unused-parameter
+    -Wno-c++98-compat
+    -Wno-unreachable-code-return
+    -Wno-nested-anon-types
+    -Wno-extended-offsetof
+    -Wno-gnu-anonymous-struct
+    -Wno-gnu-designator
+    -Wno-variadic-macros
+    -Wno-gnu-zero-variadic-macro-arguments
+    -Wno-gnu-statement-expression
+    -Wno-return-type-c-linkage
+    -Wno-c99-extensions
+    -Wno-ignored-attributes
+    -Wno-unused-local-typedef
+    
+    -fno-omit-frame-pointer
+    -fvisibility-inlines-hidden
+
+    -fno-rtti
+    -std=gnu++11
+    -fPIC
+    -fpie
+    -m64
+
+    -DINSTALL_SEMANTICS_DIR="${CMAKE_INSTALL_PREFIX}/share/remill/semantics/"
+    -DBUILD_SEMANTICS_DIR="${CMAKE_CURRENT_BINARY_DIR}/"
+    -DGOOGLE_PROTOBUF_NO_RTTI
+)
+
 add_executable(remill-lift
     remill/Lift.cpp
     remill/Arch/X86/Arch.cpp
@@ -87,53 +127,6 @@ target_link_libraries(remill-opt
     ${GLOG_LIBRARIES}
     ${LLVM_LIBS}
     LLVMLTO
-)
-
-set(COMMON_CXX_FLAGS
-    -x c++
-
-    -Wall
-    -Wextra
-    -Werror
-    -pedantic
-
-    -g3
-    -O0
-
-    -Wno-unused-parameter
-    -Wno-c++98-compat
-    -Wno-unreachable-code-return
-    -Wno-nested-anon-types
-    -Wno-extended-offsetof
-    -Wno-gnu-anonymous-struct
-    -Wno-variadic-macros
-    -Wno-gnu-zero-variadic-macro-arguments
-    -Wno-gnu-statement-expression
-    -Wno-return-type-c-linkage
-    -Wno-c99-extensions
-    -Wno-ignored-attributes
-    
-    -fno-omit-frame-pointer
-    -fvisibility-inlines-hidden
-
-    -fno-rtti
-    -std=gnu++11
-    -fPIC
-    -fpie
-    -m64
-)
-
-target_compile_options(remill-lift PRIVATE
-    ${COMMON_CXX_FLAGS}
-    -DGOOGLE_PROTOBUF_NO_RTTI
-    -DINSTALL_SEMANTICS_DIR="${CMAKE_INSTALL_PREFIX}/share/remill/semantics/"
-    -DBUILD_SEMANTICS_DIR="${CMAKE_CURRENT_BINARY_DIR}/"
-)
-
-target_compile_options(remill-opt PRIVATE
-    ${COMMON_CXX_FLAGS}
-    -DINSTALL_SEMANTICS_DIR="${CMAKE_INSTALL_PREFIX}/share/remill/semantics/"
-    -DBUILD_SEMANTICS_DIR="${CMAKE_CURRENT_BINARY_DIR}/"
 )
 
 add_custom_target(semantics)

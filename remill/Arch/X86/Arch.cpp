@@ -264,7 +264,7 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
 }
 
 // Decode an instruction into the XED instruction format.
-static void DecodeXED(xed_decoded_inst_t *xedd,
+static bool DecodeXED(xed_decoded_inst_t *xedd,
                       const xed_state_t *mode,
                       const std::string &instr_bytes,
                       uint64_t address) {
@@ -274,14 +274,14 @@ static void DecodeXED(xed_decoded_inst_t *xedd,
   xed_decoded_inst_set_input_chip(xedd, XED_CHIP_INVALID);
   auto err = xed_decode(xedd, bytes, static_cast<uint32_t>(num_bytes));
 
-  CHECK(XED_ERROR_NONE == err)
-      << "Unable to decode instruction at " << std::hex << address
-      << " with error: " << xed_error_enum_t2str(err) << ".";
+  if (XED_ERROR_NONE != err) {
+    LOG(ERROR)
+        << "Unable to decode instruction at " << std::hex << address
+        << " with error: " << xed_error_enum_t2str(err) << ".";
+    return false;
+  }
 
-  CHECK(xed_decoded_inst_get_length(xedd) == num_bytes)
-      << "Size of decoded instruction at " << std::hex << address <<
-      "(" << std::dec << xed_decoded_inst_get_length(xedd)
-      << ") doesn't match input instruction size (" << num_bytes << ").";
+  return true;
 }
 
 // Variable operand for a read register.
@@ -328,13 +328,6 @@ static void DecodeMemory(Instruction *instr,
   // PC-relative memory accesses are relative to the next PC.
   if (XED_REG_RIP == base_wide) {
     disp += static_cast<int64_t>(instr_size);
-
-  // Address is in the displacement. Take the absolute address and turn it
-  // into a PC-relative address.
-  } else if (XED_REG_INVALID == base && XED_REG_INVALID == index) {
-    base = Is64Bit(instr->arch_name) ? XED_REG_RIP : XED_REG_EIP;
-    disp -= static_cast<int64_t>(instr->next_pc);
-    base_wide = XED_REG_RIP;
   }
 
   // Deduce the implicit segment register if it is absent.
@@ -727,16 +720,18 @@ Instruction *X86Arch::DecodeInstruction(
   xed_decoded_inst_t xedd_;
   xed_decoded_inst_t *xedd = &xedd_;
   auto mode = 32 == address_size ? &kXEDState32 : &kXEDState64;
-
-  DecodeXED(xedd, mode, instr_bytes, address);
-
   auto instr = new Instruction;
+
+  if (!DecodeXED(xedd, mode, instr_bytes, address)) {
+    return instr;
+  }
+
   instr->arch_name = arch_name;
   instr->operand_size = xed_decoded_inst_get_operand_width(xedd);
   instr->function = InstructionFunctionName(xedd);
   instr->category = CreateCategory(xedd);
   instr->pc = address;
-  instr->next_pc = address + instr_bytes.size();
+  instr->next_pc = address + xed_decoded_inst_get_length(xedd);
 
   // Wrap an instruction in atomic begin/end if it accesses memory with RMW
   // semantics or with a LOCK prefix.
@@ -777,27 +772,6 @@ Instruction *X86Arch::DecodeInstruction(
   if (xed_format_generic(&info)) {
     instr->disassembly.assign(&(buffer[0]));
   }
-
-  return instr;
-}
-
-// Partially decode an instruction. This won't decode operands, or the
-// instruction name.
-Instruction *X86Arch::DecodeInstructionFast(
-    uint64_t address,
-    const std::string &instr_bytes) const {
-  xed_decoded_inst_t xedd_;
-  xed_decoded_inst_t *xedd = &xedd_;
-  auto mode = 32 == address_size ? &kXEDState32 : &kXEDState64;
-
-  DecodeXED(xedd, mode, instr_bytes, address);
-
-  auto instr = new Instruction;
-  instr->arch_name = arch_name;
-  instr->operand_size = xed_decoded_inst_get_operand_width(xedd);
-  instr->category = CreateCategory(xedd);
-  instr->pc = address;
-  instr->next_pc = address + instr_bytes.size();
 
   return instr;
 }

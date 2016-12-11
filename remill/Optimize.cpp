@@ -1,4 +1,4 @@
-/* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+/* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -11,6 +11,8 @@
 #include <sstream>
 #include <unordered_map>
 #include <vector>
+
+#include <llvm/Analysis/TargetLibraryInfo.h>
 
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
@@ -108,10 +110,6 @@ class StateMap {
   // or `store` of a register covers the whole register or just part of it.
   std::vector<size_t> reg_to_size;
 
-  // Maps a register to a sequence of offsets that can be used in a GEP
-  // instruction.
-  std::vector<std::vector<llvm::Value *>> reg_to_index_seq;
-
   // Maps a register to its LLVM type.
   std::vector<llvm::Type *> reg_to_type;
 
@@ -133,10 +131,14 @@ class StateMap {
 
   void AssignReg(size_t offset, size_t size, int reg, llvm::Type *type);
 
+  // Get the size of a type or value.
   size_t SizeOfType(llvm::Type *) const;
   size_t SizeOfValue(const llvm::Value *) const;
+
+  // Recursively visit the architecture-specific `State` structure and assign
+  // register IDs to each thing in there.
   size_t IndexType(llvm::Type *, size_t offset);
-  size_t GetGEPIndexSeq(const llvm::GetElementPtrInst *gep_inst);
+  size_t GetOffsetFromBasePtr(const llvm::GetElementPtrInst *gep_inst);
 
   void ApplyInstructionTransferFunction(llvm::Instruction *inst,
                                         RegUses *transfer) const;
@@ -199,9 +201,8 @@ void StateMap::AssignReg(size_t offset, size_t size, int reg,
   }
 }
 
-// Recursively visit the values store within the system state structure, and
-// assign a register to each value. The registers assigned are stored in the
-// `system_regs` map according to their offset within the state structure.
+// Recursively visit the architecture-specific `State` structure and assign
+// register IDs to each thing in there.
 size_t StateMap::IndexType(llvm::Type *type, size_t offset) {
 
   auto size = SizeOfType(type);
@@ -255,11 +256,11 @@ size_t StateMap::IndexType(llvm::Type *type, size_t offset) {
   return size;
 }
 
-// Get the index sequence of a GEP instuction. For GEPs that access the system
+// Get the index sequence of a GEP instruction. For GEPs that access the system
 // register state, this allows us to index into the `system_regs` map in order
 // to find the correct system register. In cases where we're operating on a
 // bitcast system register, this lets us find the offset into that register.
-size_t StateMap::GetGEPIndexSeq(const llvm::GetElementPtrInst *gep_inst) {
+size_t StateMap::GetOffsetFromBasePtr(const llvm::GetElementPtrInst *gep_inst) {
   llvm::APInt offset(64, 0);
   const auto found_offset = gep_inst->accumulateConstantOffset(
       data_layout, offset);
@@ -290,10 +291,10 @@ void StateMap::AssignRegisters(llvm::Function *func) {
       // state structure.
       if (auto gep_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(&inst)) {
         if (state_ptr == gep_inst->getPointerOperand()) {
-          auto reg = offset_to_reg[GetGEPIndexSeq(gep_inst)];
+          auto reg = offset_to_reg[GetOffsetFromBasePtr(gep_inst)];
           CHECK(0 != reg)
               << "Unable to locate system register associated with a "
-              << "`getelementptr` instuction in function "
+              << "`getelementptr` instruction in function "
               << func_name << ".";
 
           inst_to_reg[gep_inst] = reg;
@@ -337,106 +338,101 @@ void StateMap::AssignRegisters(llvm::Function *func) {
   // registers. Ideally, every pointer should be formed from a register in
   // the machine state structure.
   while (!work_list.empty()) {
-    std::queue<llvm::Instruction *> next_work_list;
+    auto inst = work_list.front();
+    work_list.pop();
 
-    while (!work_list.empty()) {
-      auto inst = work_list.front();
-      work_list.pop();
+    if (seen.count(inst)) {
+      continue;  // Already processed.
+    }
 
-      if (seen.count(inst)) {
-        continue;  // Already processed.
-      }
+    if (auto gep_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(inst)) {
+      auto base_ptr = gep_inst->getPointerOperand();
 
-      if (auto gep_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(inst)) {
-        auto base_ptr = gep_inst->getPointerOperand();
-
-        if (base_ptr == state_ptr) {
-          LOG(FATAL)
-              << "GEPs that directly access the State structure should already "
-              << "have been handled in function " << func_name << ": "
-              << remill::LLVMThingToString(inst);
-        }
-
-        if (auto reg = inst_to_reg[base_ptr]) {
-          seen.insert(gep_inst);
-          inst_to_reg[gep_inst] = reg;
-        } else {
-          next_work_list.push(gep_inst);
-        }
-
-      // (Most) Bitcast instructions operate as aliases to things.
-      } else if (auto cast_inst = llvm::dyn_cast<llvm::BitCastInst>(inst)) {
-        if (auto reg = inst_to_reg[cast_inst->getOperand(0)]) {
-          seen.insert(cast_inst);
-          inst_to_reg[cast_inst] = reg;
-        } else {
-          next_work_list.push(cast_inst);
-        }
-
-      } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(inst)) {
-        auto source_ptr = load_inst->getPointerOperand();
-        auto source_inst = llvm::dyn_cast<llvm::Instruction>(source_ptr);
-
-        if (auto reg = inst_to_reg[source_ptr]) {
-          seen.insert(load_inst);
-
-        } else if (source_inst) {
-          next_work_list.push(source_inst);
-        }
-
-      } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
-        auto dest_ptr = store_inst->getPointerOperand();
-        if (!inst_to_reg[dest_ptr]) {
-          auto dest_inst = llvm::dyn_cast<llvm::Instruction>(dest_ptr);
-          if (!dest_inst) {
-            LOG(FATAL)
-                << "Storing to a non-instruction in function "
-                << func_name << ": " << remill::LLVMThingToString(inst);
-          }
-          next_work_list.push(dest_inst);
-        }
-
-      // PHI node.
-      } else if (auto phi = llvm::dyn_cast<llvm::PHINode>(inst)) {
-        auto &phi_reg = inst_to_reg[phi];
-        auto need_more = false;
-        for (auto &use : phi->incoming_values()) {
-          auto val = llvm::dyn_cast<llvm::Instruction>(use.get());
-          if (!val) {
-            LOG(FATAL)
-                << "Cannot allocate register for PHI node in function "
-                << func_name << " whose incoming values are not instructions: "
-                << remill::LLVMThingToString(phi);
-          }
-
-          if (auto reg = inst_to_reg[val]) {
-            if (!phi_reg) {
-              phi_reg = reg;
-
-            } else if (phi_reg != reg) {
-              LOG(FATAL)
-                  << "PHI node must join the same register in function "
-                  << func_name << ": " << remill::LLVMThingToString(inst);
-            }
-          } else {
-            next_work_list.push(val);
-            need_more = true;
-          }
-        }
-
-        if (need_more) {
-          next_work_list.push(phi);
-        }
-
-      // Shouldn't be possible.
-      } else {
+      if (base_ptr == state_ptr) {
         LOG(FATAL)
-            << "Got to an impossible state when assigning registers "
-            << "in function " << func_name << ": "
+            << "GEPs that directly access the State structure should already "
+            << "have been handled in function " << func_name << ": "
             << remill::LLVMThingToString(inst);
       }
+
+      if (auto reg = inst_to_reg[base_ptr]) {
+        seen.insert(gep_inst);
+        inst_to_reg[gep_inst] = reg;
+      } else {
+        work_list.push(gep_inst);
+      }
+
+    // (Most) Bitcast instructions operate as aliases to things.
+    } else if (auto cast_inst = llvm::dyn_cast<llvm::BitCastInst>(inst)) {
+      if (auto reg = inst_to_reg[cast_inst->getOperand(0)]) {
+        seen.insert(cast_inst);
+        inst_to_reg[cast_inst] = reg;
+      } else {
+        work_list.push(cast_inst);
+      }
+
+    } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(inst)) {
+      auto source_ptr = load_inst->getPointerOperand();
+      auto source_inst = llvm::dyn_cast<llvm::Instruction>(source_ptr);
+
+      if (auto reg = inst_to_reg[source_ptr]) {
+        seen.insert(load_inst);
+
+      } else if (source_inst) {
+        work_list.push(source_inst);
+      }
+
+    } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
+      auto dest_ptr = store_inst->getPointerOperand();
+      if (!inst_to_reg[dest_ptr]) {
+        auto dest_inst = llvm::dyn_cast<llvm::Instruction>(dest_ptr);
+        if (!dest_inst) {
+          LOG(FATAL)
+              << "Storing to a non-instruction in function "
+              << func_name << ": " << remill::LLVMThingToString(inst);
+        }
+        work_list.push(dest_inst);
+      }
+
+    // PHI node.
+    } else if (auto phi = llvm::dyn_cast<llvm::PHINode>(inst)) {
+      auto &phi_reg = inst_to_reg[phi];
+      auto need_more = false;
+      for (auto &use : phi->incoming_values()) {
+        auto val = llvm::dyn_cast<llvm::Instruction>(use.get());
+        if (!val) {
+          LOG(FATAL)
+              << "Cannot allocate register for PHI node in function "
+              << func_name << " whose incoming values are not instructions: "
+              << remill::LLVMThingToString(phi);
+        }
+
+        if (auto reg = inst_to_reg[val]) {
+          if (!phi_reg) {
+            phi_reg = reg;
+
+          } else if (phi_reg != reg) {
+            LOG(FATAL)
+                << "PHI node must join the same register in function "
+                << func_name << ": " << remill::LLVMThingToString(inst);
+          }
+        } else {
+          work_list.push(val);
+          need_more = true;
+        }
+      }
+
+      if (need_more) {
+        work_list.push(phi);
+      }
+
+    // Shouldn't be possible.
+    } else {
+      LOG(FATAL)
+          << "Got to an impossible state when assigning registers "
+          << "in function " << func_name << ": "
+          << remill::LLVMThingToString(inst);
     }
-    work_list.swap(next_work_list);
   }
 }
 
@@ -461,7 +457,7 @@ void StateMap::ReassociateRegisters(llvm::Function *func) {
   // Sort the GEP instructions by the offset being accessed.
   std::sort(to_move.begin(), to_move.end(),
             [=] (llvm::GetElementPtrInst *a, llvm::GetElementPtrInst *b) {
-                return GetGEPIndexSeq(a) < GetGEPIndexSeq(b);
+                return GetOffsetFromBasePtr(a) < GetOffsetFromBasePtr(b);
             });
 
   // Move all GEPs into the beginning of the entry block.
@@ -471,7 +467,7 @@ void StateMap::ReassociateRegisters(llvm::Function *func) {
   llvm::GetElementPtrInst *last_gep_inst = nullptr;
 
   for (auto gep_inst : to_move) {
-    auto offset = GetGEPIndexSeq(gep_inst);
+    auto offset = GetOffsetFromBasePtr(gep_inst);
     if (last_gep_inst && offset == last_offset &&
         last_gep_inst->getType() == gep_inst->getType()) {  // Deduplicate.
       gep_inst->replaceAllUsesWith(last_gep_inst);
@@ -663,10 +659,14 @@ static void Optimize(llvm::Module *module) {
   llvm::legacy::FunctionPassManager func_manager(module);
   llvm::legacy::PassManager module_manager;
 
+  auto TLI = new llvm::TargetLibraryInfoImpl;
+  TLI->disableAllFunctions();
+
   llvm::PassManagerBuilder builder;
   builder.OptLevel = 3;  // -O3.
   builder.SizeLevel = 2;  // -Oz
   builder.Inliner = llvm::createFunctionInliningPass(128);
+  builder.LibraryInfo = TLI;
   builder.DisableTailCalls = false;  // Enable tail calls.
   builder.DisableUnrollLoops = false;  // Unroll loops!
   builder.DisableUnitAtATime = false;
@@ -690,6 +690,18 @@ static void Optimize(llvm::Module *module) {
 
   func_manager.doFinalization();
   module_manager.run(*module);
+}
+
+// Lower switch statements, and try to keep things in registers.
+static void LowerSwitches(llvm::Module *module) {
+  llvm::legacy::FunctionPassManager func_manager(module);
+  func_manager.add(llvm::createLowerSwitchPass());
+  func_manager.add(llvm::createPromoteMemoryToRegisterPass());
+  func_manager.doInitialization();
+  for (auto &func : *module) {
+    func_manager.run(func);
+  }
+  func_manager.doFinalization();
 }
 
 // Gets the state structure type from this module.
@@ -1078,6 +1090,7 @@ int main(int argc, char *argv[]) {
       LowerMemOps(module);
     }
     Optimize(module);
+    LowerSwitches(module);
     RemoveDeadIntrinsics(module);
     RemoveUnusedSemantics(module);
     StripDebugInfo(module);

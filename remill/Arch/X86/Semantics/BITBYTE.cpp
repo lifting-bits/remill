@@ -1,8 +1,5 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_BITBYTE_H_
-#define REMILL_ARCH_X86_SEMANTICS_BITBYTE_H_
-
 namespace {
 
 template <typename D>
@@ -217,4 +214,22 @@ DEF_ISEL_RnW_Rn_In(BTC_GPRv_IMMb, BTCreg);
 DEF_ISEL_MnW_Mn_Rn(BTC_MEMv_GPRv, BTCmem);
 DEF_ISEL_RnW_Rn_Rn(BTC_GPRv_GPRv, BTCreg);
 
-#endif  // REMILL_ARCH_X86_SEMANTICS_BITBYTE_H_
+DEF_ISEL_SEM(BSWAP_GPRv_32, R32W dst, R32 src) {
+//  auto val = Read(src);
+//  auto d = UAnd(val, 0xff);
+//  auto c = UAnd(UShr(val, 8), 0xff);
+//  auto b = UAnd(UShr(val, 16), 0xff);
+//  auto a = UAnd(UShr(val, 24), 0xff);
+//  auto new_a = UShl(d, 24);
+//  auto new_b = UShl(c, 16);
+//  auto new_c = UShl(b, 8);
+//  auto new_d = a;
+//  WriteZExt(dst, UOr(UOr(new_a, new_b), UOr(new_c, new_d)));
+  WriteZExt(dst, __builtin_bswap32(Read(src)));
+}
+
+#if 64 == ADDRESS_SIZE_BITS
+DEF_ISEL_SEM(BSWAP_GPRv_64, R64W dst, R64 src) {
+  Write(dst, __builtin_bswap64(Read(src)));
+}
+#endif  // 64 == ADDRESS_SIZE_BITS

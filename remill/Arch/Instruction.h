@@ -141,6 +141,10 @@ class Instruction {
     }
   }
 
+  inline bool IsValid(void) const {
+    return kCategoryInvalid != category;
+  }
+
   // Length, in bytes, of the instruction.
   inline uint64_t NumBytes(void) const {
     return next_pc - pc;

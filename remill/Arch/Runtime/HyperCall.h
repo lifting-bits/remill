@@ -3,35 +3,41 @@
 #ifndef REMILL_ARCH_RUNTIME_HYPERCALL_H_
 #define REMILL_ARCH_RUNTIME_HYPERCALL_H_
 
-enum class SyncHyperCall : uint32_t {
-  kInvalid,
-  kX86CPUID,
-  kX86ReadTSC,
-  kX86ReadTSCP,
+class SyncHyperCall {
+ public:
+  enum Name : uint32_t {
+    kInvalid,
+    kX86CPUID,
+    kX86ReadTSC,
+    kX86ReadTSCP,
 
-  kX86EmulateInstruction,
-  kAMD64EmulateInstruction
-};
+    kX86EmulateInstruction,
+    kAMD64EmulateInstruction
+  };
+} __attribute__((packed));
 
-enum class AsynchHyperCall : uint32_t {
-  kInvalid,
+class AsyncHyperCall {
+ public:
+  enum Name : uint32_t {
+    kInvalid,
 
-  // Interrupts calls.
-  kX86Int1,
-  kX86Int3,
-  kX86IntO,
-  kX86IntN,
-  kX86Bound,
+    // Interrupts calls.
+    kX86Int1,
+    kX86Int3,
+    kX86IntO,
+    kX86IntN,
+    kX86Bound,
 
-  // Interrupt returns.
-  kX86IRet,
+    // Interrupt returns.
+    kX86IRet,
 
-  // System calls.
-  kX86SysCall,
-  kX86SysRet,
+    // System calls.
+    kX86SysCall,
+    kX86SysRet,
 
-  kX86SysEnter,
-  kX86SysExit,
+    kX86SysEnter,
+    kX86SysExit,
+  } __attribute__((packed));
 };
 
 #endif  // REMILL_ARCH_RUNTIME_HYPERCALL_H_

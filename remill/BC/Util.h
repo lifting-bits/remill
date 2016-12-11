@@ -8,6 +8,7 @@
 #include <llvm/Support/raw_ostream.h>
 
 namespace llvm {
+class Argument;
 class BasicBlock;
 class Function;
 class GlobalVariable;
@@ -82,10 +83,14 @@ llvm::Argument *NthArgument(llvm::Function *func, size_t index);
 // a `std::string`.
 template <typename T>
 inline static std::string LLVMThingToString(T *thing) {
-  std::string str;
-  llvm::raw_string_ostream str_stream(str);
-  thing->print(str_stream);
-  return str;
+  if (thing) {
+    std::string str;
+    llvm::raw_string_ostream str_stream(str);
+    thing->print(str_stream);
+    return str;
+  } else {
+    return "(null)";
+  }
 }
 
 }  // namespace remill

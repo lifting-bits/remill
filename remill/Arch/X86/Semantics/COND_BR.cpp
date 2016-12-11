@@ -1,7 +1,4 @@
-/* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
-
-#ifndef REMILL_ARCH_X86_SEMANTICS_COND_BR_H_
-#define REMILL_ARCH_X86_SEMANTICS_COND_BR_H_
+/* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
 namespace {
 
@@ -303,10 +300,3 @@ DEF_ISEL_SEM(LOOPNE_RELBRb, R8W cond, PC taken, PC not_taken) {
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
 }
 
-/*
-522 XEND XEND COND_BR RTM RTM ATTRIBUTES:
-
-1465 XBEGIN XBEGIN_RELBRz COND_BR RTM RTM ATTRIBUTES: SCALABLE
- */
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_COND_BR_H_
