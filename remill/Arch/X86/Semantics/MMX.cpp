@@ -1759,6 +1759,7 @@ DEF_SEM(PSADBW, D dst, S1 src1, S2 src2) {
   _Pragma("unroll")
   for (std::size_t i = 0, k = 0; i < vec_count; i++) {
     uint16_t sum = 0;
+    _Pragma("unroll")
     for (std::size_t j = 0; j < 8UL; ++j, ++k) {
       uint8_t v1 = UExtractV8(src1_vec, k);
       uint8_t v2 = UExtractV8(src2_vec, k);
