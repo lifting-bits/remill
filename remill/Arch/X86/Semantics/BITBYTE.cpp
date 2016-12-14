@@ -233,3 +233,60 @@ DEF_ISEL_SEM(BSWAP_GPRv_64, R64W dst, R64 src) {
   Write(dst, __builtin_bswap64(Read(src)));
 }
 #endif  // 64 == ADDRESS_SIZE_BITS
+
+namespace {
+
+template <typename D, typename S>
+DEF_SEM(TZCNT, D dst, S src) {
+  auto val = Read(src);
+  auto count = CountTrailingZeros(val);
+  ClearArithFlags();
+  Write(FLAG_ZF, UCmpEq(UAnd(val, 1), 1));
+  Write(FLAG_CF, UCmpEq(val, 0));
+  WriteZExt(dst, Select(FLAG_CF, BitSizeOf(src), count));
+}
+
+template <typename D, typename S>
+DEF_SEM(LZCNT, D dst, S src) {
+  auto val = Read(src);
+  auto count = CountLeadingZeros(val);
+  ClearArithFlags();
+  Write(FLAG_ZF, SignFlag(val));
+  Write(FLAG_CF, UCmpEq(val, 0));
+  WriteZExt(dst, Select(FLAG_CF, BitSizeOf(src), count));
+}
+
+}  // namespace
+
+DEF_ISEL_RnW_Mn(TZCNT_GPRv_MEMv, TZCNT);
+DEF_ISEL_RnW_Rn(TZCNT_GPRv_GPRv, TZCNT);
+
+DEF_ISEL_RnW_Mn(LZCNT_GPRv_MEMv, LZCNT);
+DEF_ISEL_RnW_Rn(LZCNT_GPRv_GPRv, LZCNT);
+
+namespace {
+template <typename D, typename S>
+DEF_SEM(BSR, D dst, S src) {
+  auto val = Read(src);
+  auto count = CountLeadingZeros(val);
+  auto index = USub(USub(BitSizeOf(src), count), Literal<S>(1));
+  ClearArithFlags();
+  Write(FLAG_ZF, UCmpEq(val, 0));
+  Write(dst, Select(FLAG_ZF, Read(dst), ZExtTo<D>(index)));
+}
+
+template <typename D, typename S>
+DEF_SEM(BSF, D dst, S src) {
+  auto val = Read(src);
+  ClearArithFlags();
+  Write(FLAG_ZF, UCmpEq(val, 0));
+  Write(dst, Select(FLAG_ZF, Read(dst), ZExtTo<D>(CountTrailingZeros(val))));
+}
+
+}  // namespace
+
+DEF_ISEL_RnW_Mn(BSR_GPRv_MEMv, BSR);
+DEF_ISEL_RnW_Rn(BSR_GPRv_GPRv, BSR);
+
+DEF_ISEL_RnW_Mn(BSF_GPRv_MEMv, BSF);
+DEF_ISEL_RnW_Rn(BSF_GPRv_GPRv, BSF);

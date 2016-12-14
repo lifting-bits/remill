@@ -1,3 +1,4 @@
+/* Copyright 2016 Akshay Kumar (iit.akshay@gmail.com), all rights reserved. */
 
 #define TEST_INPUTS_MMX_BYTE \
     0, 0,                    \

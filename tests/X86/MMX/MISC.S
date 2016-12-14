@@ -1,3 +1,4 @@
+/* Copyright 2016 Akshay Kumar (iit.akshay@gmail.com), all rights reserved. */
 
 TEST_BEGIN_64(PAVGBr64r64, 2)
 TEST_INPUTS_MMX_2()
@@ -260,11 +261,81 @@ TEST_INPUTS_MMX_2()
     pminub xmm0, xmmword ptr [rsp]
 TEST_END_64
 
-TEST_BEGIN_64(PALIGNR_64r64r64i8, 2)
+TEST_BEGIN_64(PALIGNR_64r64r64i8_0, 2)
+TEST_INPUTS_MMX_2()
+    movq mm0, ARG1_64
+    movq mm1, ARG2_64
+    palignr mm0, mm1, 0
+TEST_END_64
+
+TEST_BEGIN_64(PALIGNR_64r64r64i8_1, 2)
 TEST_INPUTS_MMX_2()
     movq mm0, ARG1_64
     movq mm1, ARG2_64
     palignr mm0, mm1, 1
+TEST_END_64
+
+TEST_BEGIN_64(PALIGNR_64r64r64i8_2, 2)
+TEST_INPUTS_MMX_2()
+    movq mm0, ARG1_64
+    movq mm1, ARG2_64
+    palignr mm0, mm1, 2
+TEST_END_64
+
+TEST_BEGIN_64(PALIGNR_64r64r64i8_7, 2)
+TEST_INPUTS_MMX_2()
+    movq mm0, ARG1_64
+    movq mm1, ARG2_64
+    palignr mm0, mm1, 7
+TEST_END_64
+
+TEST_BEGIN_64(PALIGNR_64r64r64i8_8, 2)
+TEST_INPUTS_MMX_2()
+    movq mm0, ARG1_64
+    movq mm1, ARG2_64
+    palignr mm0, mm1, 8
+TEST_END_64
+
+TEST_BEGIN_64(PALIGNR_64r64m64i8_1, 2)
+TEST_INPUTS_MMX_2()
+    push ARG2_64
+    movq mm0, ARG1_64
+    palignr mm0, qword ptr [rsp], 1
+TEST_END_64
+
+TEST_BEGIN_64(PALIGNR_128v128v128i8_0, 1)
+TEST_INPUTS()
+    palignr xmm4, xmm1, 1
+TEST_END_64
+
+TEST_BEGIN_64(PALIGNR_128v128v128i8_1, 1)
+TEST_INPUTS()
+    palignr xmm4, xmm1, 1
+TEST_END_64
+
+TEST_BEGIN_64(PALIGNR_128v128v128i8_4, 1)
+TEST_INPUTS()
+    palignr xmm4, xmm1, 4
+TEST_END_64
+
+TEST_BEGIN_64(PALIGNR_128v128v128i8_7, 1)
+TEST_INPUTS()
+    palignr xmm4, xmm1, 7
+TEST_END_64
+
+TEST_BEGIN_64(PALIGNR_128v128v128i8_8, 1)
+TEST_INPUTS()
+    palignr xmm4, xmm1, 8
+TEST_END_64
+
+TEST_BEGIN_64(PALIGNR_128v128v128i8_15, 1)
+TEST_INPUTS()
+    palignr xmm4, xmm1, 15
+TEST_END_64
+
+TEST_BEGIN_64(PALIGNR_128v128v128i8_16, 1)
+TEST_INPUTS()
+    palignr xmm4, xmm1, 16
 TEST_END_64
 
 TEST_BEGIN_64(PALIGNR_64r64m64i8, 2)
@@ -278,5 +349,6 @@ TEST_BEGIN_64(MASKMOVQr64r64, 2)
 TEST_INPUTS_MMX_2()
     movq mm0, ARG1_64
     movq mm1, ARG2_64
+    lea rdi, [rsp - 8]
     maskmovq mm0, mm1
 TEST_END_64

@@ -14,6 +14,29 @@ uint128_t __remill_read_memory_128(Memory *mem, addr_t addr);
 ALWAYS_INLINE static
 Memory *__remill_write_memory_128(Memory *mem, addr_t addr, uint128_t val);
 
+#define MAKE_UNDEF(n) \
+  ALWAYS_INLINE static uint ## n ## _t Undefined(uint ## n ## _t) { \
+    return __remill_undefined_ ## n (); \
+  } \
+  ALWAYS_INLINE static uint ## n ## _t Undefined(Rn<uint ## n ## _t>) { \
+    return __remill_undefined_ ## n (); \
+  } \
+  ALWAYS_INLINE static uint ## n ## _t Undefined(RnW<uint ## n ## _t>) { \
+    return __remill_undefined_ ## n (); \
+  } \
+  ALWAYS_INLINE static uint ## n ## _t Undefined(Mn<uint ## n ## _t>) { \
+    return __remill_undefined_ ## n (); \
+  } \
+  ALWAYS_INLINE static uint ## n ## _t Undefined(MnW<uint ## n ## _t>) { \
+    return __remill_undefined_ ## n (); \
+  }
+
+MAKE_UNDEF(8)
+MAKE_UNDEF(16)
+MAKE_UNDEF(32)
+MAKE_UNDEF(64)
+
+#undef MAKE_UNDEF
 
 #define MAKE_SIGNED_MEM_ACCESS(size) \
     ALWAYS_INLINE static \
@@ -163,7 +186,7 @@ MAKE_MWRITE(80, 64, float, float, f80)
     ALWAYS_INLINE static \
     auto _ ## prefix ## ReadV ## size( \
         Memory *, RVnW<T> vec) -> decltype(T().accessor) { \
-      return reinterpret_cast<T *>(vec.val_ref)->accessor.elems; \
+      return reinterpret_cast<T *>(vec.val_ref)->accessor; \
     } \
     \
     template <typename T> \
@@ -1058,6 +1081,30 @@ auto WritePtr(addr_t addr, addr_t seg_base) -> MnW<typename BaseType<T>::BT> {
 
 template <typename T>
 ALWAYS_INLINE static
+auto VReadPtr(addr_t addr) -> MVn<T> {
+  return {addr};
+}
+
+template <typename T>
+ALWAYS_INLINE static
+auto VReadPtr(addr_t addr, addr_t seg_base) -> MVn<T> {
+  return {addr + seg_base};
+}
+
+template <typename T>
+ALWAYS_INLINE static
+auto VWritePtr(addr_t addr) -> MVnW<T> {
+  return {addr};
+}
+
+template <typename T>
+ALWAYS_INLINE static
+auto VWritePtr(addr_t addr, addr_t seg_base) -> MVnW<T> {
+  return {addr + seg_base};
+}
+
+template <typename T>
+ALWAYS_INLINE static
 addr_t AddressOf(Mn<T> addr) {
   return addr.addr;
 }
@@ -1098,6 +1145,25 @@ Memory *__remill_write_memory_128(Memory *mem, addr_t addr, uint128_t val) {
   mem = __remill_write_memory_64(mem, addr + 8, high_qword);
   return mem;
 }
+
+#define MAKE_BUILTIN(name, size, input_size, builtin, disp) \
+    ALWAYS_INLINE static uint ## size ## _t name(uint ## size ## _t val) { \
+      return static_cast<uint ## size ## _t>( \
+          builtin(static_cast<uint ## input_size ## _t>(val))) - \
+          static_cast<uint ## input_size ## _t>(disp); \
+    }
+
+MAKE_BUILTIN(CountLeadingZeros, 8, 32, __builtin_clz, 24)
+MAKE_BUILTIN(CountLeadingZeros, 16, 32, __builtin_clz, 16)
+MAKE_BUILTIN(CountLeadingZeros, 32, 32, __builtin_clz, 0)
+MAKE_BUILTIN(CountLeadingZeros, 64, 64, __builtin_clzll, 0)
+
+MAKE_BUILTIN(CountTrailingZeros, 8, 32, __builtin_ctz, 0)
+MAKE_BUILTIN(CountTrailingZeros, 16, 32, __builtin_ctz, 0)
+MAKE_BUILTIN(CountTrailingZeros, 32, 32, __builtin_ctz, 0)
+MAKE_BUILTIN(CountTrailingZeros, 64, 64, __builtin_ctzll, 0)
+
+#undef MAKE_BUILTIN
 
 }  // namespace
 
