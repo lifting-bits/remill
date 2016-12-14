@@ -1753,21 +1753,22 @@ template <typename D, typename S1, typename S2>
 DEF_SEM(PSADBW, D dst, S1 src1, S2 src2) {
   auto src1_vec = UReadV8(src1);
   auto src2_vec = UReadV8(src2);
-  auto dst_vec = UClearV16(UReadV16(dst));
-  auto vec_count = NumVectorElems(src1_vec);
+  auto dst_vec = UClearV64(UReadV64(dst));
+  auto vec_count = NumVectorElems(dst_vec);
 
   _Pragma("unroll")
-  for (std::size_t i = 0, k = 0; i < (vec_count / 8UL); i++) {
+  for (std::size_t i = 0, k = 0; i < vec_count; i++) {
     uint16_t sum = 0;
+    _Pragma("unroll")
     for (std::size_t j = 0; j < 8UL; ++j, ++k) {
       uint8_t v1 = UExtractV8(src1_vec, k);
       uint8_t v2 = UExtractV8(src2_vec, k);
       uint8_t abs_diff = Select(UCmpGte(v1, v2), USub(v1, v2), USub(v2, v1));
       sum = UAdd(sum, ZExt(abs_diff));
     }
-    dst_vec = UInsertV16(dst_vec, i, sum);
+    dst_vec = UInsertV64(dst_vec, i, UInt64(sum));
   }
-  UWriteV16(dst, dst_vec);
+  UWriteV64(dst, dst_vec);
 }
 
 }  // namespace
