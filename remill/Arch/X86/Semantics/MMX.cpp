@@ -1754,17 +1754,20 @@ DEF_SEM(PSADBW, D dst, S1 src1, S2 src2) {
   auto src1_vec = UReadV8(src1);
   auto src2_vec = UReadV8(src2);
   auto dst_vec = UClearV16(UReadV16(dst));
-  auto entry0 =  UExtractV16(dst_vec, 0);
-
   auto vec_count = NumVectorElems(src1_vec);
+
   _Pragma("unroll")
-  for (std::size_t i = 0; i < vec_count; i++) {
-    auto v1 = UExtractV8(src1_vec, i);
-    auto v2 = UExtractV8(src2_vec, i);
-    auto value = Select(UCmpGte(v1, v2), USub(v1, v2), USub(v2, v1));
-    entry0 += ZExt(value);
+  for (std::size_t i = 0, k = 0; i < (vec_count / 8UL); i++) {
+    uint16_t sum = 0;
+    for (std::size_t j = 0; j < 8UL; ++j, ++k) {
+      uint8_t v1 = UExtractV8(src1_vec, k);
+      uint8_t v2 = UExtractV8(src2_vec, k);
+      uint8_t abs_diff = Select(UCmpGte(v1, v2), USub(v1, v2), USub(v2, v1));
+      sum = UAdd(sum, ZExt(abs_diff));
+    }
+    dst_vec = UInsertV16(dst_vec, i, sum);
   }
-  UWriteV16(dst, UInsertV16(dst_vec, 0, entry0));
+  UWriteV16(dst, dst_vec);
 }
 
 }  // namespace
@@ -1773,6 +1776,11 @@ DEF_ISEL(PSADBW_MMXq_MMXq) = PSADBW<V64W, V64, V64>;
 DEF_ISEL(PSADBW_MMXq_MEMq) = PSADBW<V64W, V64, MV64>;
 DEF_ISEL(PSADBW_XMMdq_XMMdq) = PSADBW<V128W, V128, V128>;
 DEF_ISEL(PSADBW_XMMdq_MEMdq) = PSADBW<V128W, V128, MV128>;
+
+IF_AVX(DEF_ISEL(VPSADBW_XMMdq_XMMdq_MEMdq) = PSADBW<V128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VPSADBW_XMMdq_XMMdq_XMMdq) = PSADBW<V128W, V128, V128>;)
+IF_AVX(DEF_ISEL(VPSADBW_YMMqq_YMMqq_MEMqq) = PSADBW<VV256W, V256, MV256>;)
+IF_AVX(DEF_ISEL(VPSADBW_YMMqq_YMMqq_YMMqq) = PSADBW<VV256W, V256, V256>;)
 
 namespace {
 template <typename D, typename S1, typename S2>
