@@ -4,6 +4,7 @@
 #define TOOLS_VMILL_BC_TRANSLATOR_H_
 
 #include "tools/vmill/BC/Callback.h"
+#include "tools/vmill/Emulator/Emulator.h"
 
 namespace llvm {
 class Function;
@@ -20,7 +21,7 @@ class Translator {
   // Create a new translation engine for a given version of the code in
   // memory. Code version changes happen due to self-modifying code, or
   // runtime code loading.
-  static Translator *Create(uint64_t code_version_);
+  static Translator *Create(CodeVersion code_version_);
 
   // Execute a callback function on the module lifted by this translation.
   virtual void WithLiftedModule(
@@ -29,13 +30,13 @@ class Translator {
       LiftedModuleCallback on_module) = 0;
 
  protected:
-  explicit Translator(uint64_t code_version_);
+  explicit Translator(CodeVersion code_version_);
 
   // An abstract version number for code handled by this translation engine.
   // Runtime code modification change the version, and so a higher-level
   // system is responsible for creating a new translator to handle the
   // modified code.
-  uint64_t code_version;
+  CodeVersion code_version;
 };
 
 }  // namespace vmill

@@ -6,7 +6,7 @@
 namespace remill {
 namespace vmill {
 
-Emulator::Emulator(uint64_t code_version_)
+Emulator::Emulator(CodeVersion code_version_)
     : translator(Translator::Create(code_version_)),
       code_version(code_version_) {}
 

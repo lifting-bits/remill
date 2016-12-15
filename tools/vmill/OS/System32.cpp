@@ -1,5 +1,5 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
-#include <sys/syscall.h>
+
 #include <glog/logging.h>
 
 #include <cerrno>
@@ -51,7 +51,7 @@ Process32 *Process32::Create(const Snapshot *snapshot) {
   return new Process32(snapshot, memory, thread);
 }
 
-uint64_t Process32::CodeVersion(void) {
+CodeVersion Process32::CodeVersion(void) {
   return 0;  // TODO(pag): Implement me!
 }
 
@@ -83,9 +83,51 @@ Thread32 *Process32::NextThread(void) {
 
 // Try to read the byte at address `addr` in the process memory. This will
 // return false if the byte is not readable or is not executable.
-bool Process32::TryReadExecutableByte(uint32_t addr, uint8_t *byte_val) const {
-  *byte_val = *memory->RawByteAddress(addr);
+bool Process32::TryReadExecutableByte(Addr32 addr, uint8_t *byte_val) const {
+  *byte_val = *memory->UnsafeBytePtr(addr);
   return true;  // TODO(pag): Handle fault recovery.
+}
+
+// Read data from the emulated process.
+bool Process32::TryReadByte(Addr32 addr, uint8_t *byte_val) const {
+  *byte_val = *memory->UnsafeBytePtr(addr);
+  return true;
+}
+
+bool Process32::TryReadWord(Addr32 addr, uint16_t *word_val) const {
+  *word_val = *memory->UnsafeWordPtr(addr);
+  return true;
+}
+
+bool Process32::TryReadDword(Addr32 addr, uint32_t *dword_val) const {
+  *dword_val = *memory->UnsafeDwordPtr(addr);
+  return true;
+}
+
+bool Process32::TryReadQword(Addr32 addr, uint64_t *qword_val) const {
+  *qword_val = *memory->UnsafeQwordPtr(addr);
+  return true;
+}
+
+// Write data to the emulated process.
+bool Process32::TryWriteByte(Addr32 addr, uint8_t byte_val) const {
+  *memory->UnsafeBytePtr(addr) = byte_val;
+  return true;
+}
+
+bool Process32::TryWriteWord(Addr32 addr, uint16_t word_val) const {
+  *memory->UnsafeWordPtr(addr) = word_val;
+  return true;
+}
+
+bool Process32::TryWriteDword(Addr32 addr, uint32_t dword_val) const {
+  *memory->UnsafeDwordPtr(addr) = dword_val;
+  return true;
+}
+
+bool Process32::TryWriteQword(Addr32 addr, uint64_t qword_val) const {
+  *memory->UnsafeQwordPtr(addr) = qword_val;
+  return true;
 }
 
 // Process an asynchronous hypercall for the thread `thread`.
@@ -119,13 +161,6 @@ void Process32::ProcessAsyncHyperCall(Thread32 *thread) {
   }
 }
 
-void Process32::DoSystemCall(SystemCall32 &syscall) {
-  std::cout
-      << "Syscall number: " << syscall.GetSystemCallNum() << std::endl;
-  Kill();
-
-}
-
 
 Thread32::~Thread32(void) {}
 
@@ -157,11 +192,6 @@ Thread32 *Thread32::Create(const Snapshot *snapshot) {
 Memory32 *Memory32::Create(const Snapshot *snapshot) {
   snapshot->ValidatePageInfo(k4GiB);
 
-  auto addr = mmap(nullptr, k4GiB, PROT_NONE,
-                   MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
-  CHECK(nullptr != addr)
-      << "Could not allocate 32-bit address space: " << strerror(errno);
-
   std::vector<MemoryMap32> maps;
   maps.reserve(SnapshotFile::kMaxNumPageInfos + 1);
   maps.push_back({0, 4096, 0, 0, 0, 0, 0, 0, 0});  // Zero page.
@@ -189,9 +219,8 @@ Memory32 *Memory32::Create(const Snapshot *snapshot) {
         break;
     }
 
-    auto flags = MAP_PRIVATE | MAP_FILE | MAP_FIXED | MAP_NORESERVE;
-    auto range_addr = reinterpret_cast<void *>(
-        reinterpret_cast<uintptr_t>(addr) + page_info.base_address);
+    auto flags = MAP_PRIVATE | MAP_FILE | MAP_FIXED | MAP_NORESERVE | MAP_32BIT;
+    auto range_addr = reinterpret_cast<void *>(page_info.base_address);
     auto range_size = page_info.limit_address - page_info.base_address;
     auto mapped_addr = mmap64(
         range_addr, range_size, prot, flags, snapshot->fd,
@@ -226,23 +255,32 @@ Memory32 *Memory32::Create(const Snapshot *snapshot) {
         << ("-w")[map.can_write] << ("-x")[map.can_exec];
   }
 
-  return new Memory32(addr, maps);
+  return new Memory32(maps);
 }
 
-Memory32::Memory32(void *addr, const std::vector<MemoryMap32> &maps_)
-    : base_address(reinterpret_cast<uintptr_t>(addr)),
-      limit_address(base_address + k4GiB),
-      maps(maps_) {
-
-  LOG(INFO)
-      << "Created 32-bit address space in memory at ["
-      << std::hex << base_address << ", " << std::hex
-      << limit_address << ")";
-}
+Memory32::Memory32(const std::vector<MemoryMap32> &maps_)
+    : maps(maps_) {}
 
 Memory32::~Memory32(void) {
-  CHECK(!munmap(reinterpret_cast<void *>(base_address), k4GiB))
+  CHECK(!munmap(reinterpret_cast<void *>(4096 * 16), k4GiB - (4096 * 16)))
       << "Could not free 32-bit address space: " << strerror(errno);
+}
+
+SystemCall32::~SystemCall32(void) {}
+
+int32_t SystemCall32::GetInt32(int arg_num) const {
+  int32_t val = 0;
+  CHECK(TryGetInt32(arg_num, &val))
+      << "Unable to read 32-bit integer system call argument " << arg_num;
+  return val;
+}
+
+uint32_t SystemCall32::GetUInt32(int arg_num) const {
+  uint32_t val = 0;
+  CHECK(TryGetUInt32(arg_num, &val))
+      << "Unable to read 32-bit unsigned integer system call argument "
+      << arg_num;
+  return val;
 }
 
 }  // namespace vmill

@@ -38,7 +38,7 @@ class Process32 {
   // Return a version number for the code. This version number is used to
   // represent the state of executable memory. If the contents of executable
   // memory change, then so should the code version.
-  uint64_t CodeVersion(void);
+  CodeVersion CodeVersion(void);
 
   // Currently execution thread.
   Thread32 *CurrentThread(void) const;
@@ -48,7 +48,19 @@ class Process32 {
 
   // Try to read the byte at address `addr` in the process memory. This will
   // return false if the byte is not readable or is not executable.
-  bool TryReadExecutableByte(uint32_t addr, uint8_t *byte_val) const;
+  bool TryReadExecutableByte(Addr32 addr, uint8_t *byte_val) const;
+
+  // Read data from the emulated process.
+  bool TryReadByte(Addr32 addr, uint8_t *byte_val) const;
+  bool TryReadWord(Addr32 addr, uint16_t *word_val) const;
+  bool TryReadDword(Addr32 addr, uint32_t *dword_val) const;
+  bool TryReadQword(Addr32 addr, uint64_t *qword_val) const;
+
+  // Write data to the emulated process.
+  bool TryWriteByte(Addr32 addr, uint8_t byte_val) const;
+  bool TryWriteWord(Addr32 addr, uint16_t word_val) const;
+  bool TryWriteDword(Addr32 addr, uint32_t dword_val) const;
+  bool TryWriteQword(Addr32 addr, uint64_t qword_val) const;
 
   Memory32 * const memory;
 
@@ -124,34 +136,27 @@ class Memory32 final {
 
   ~Memory32(void);
 
-  inline uint8_t *RawByteAddress(uint64_t addr) const {
-    return reinterpret_cast<uint8_t *>(
-        base_address + static_cast<uintptr_t>(static_cast<uint32_t>(addr)));
+  inline uint8_t *UnsafeBytePtr(Addr32 addr) const {
+    return reinterpret_cast<uint8_t *>(addr);
   }
 
-  inline uint16_t *RawWordAddress(uint64_t addr) const {
-    return reinterpret_cast<uint16_t *>(
-        base_address + static_cast<uintptr_t>(static_cast<uint32_t>(addr)));
+  inline uint16_t *UnsafeWordPtr(Addr32 addr) const {
+    return reinterpret_cast<uint16_t *>(addr);
   }
 
-  inline uint32_t *RawDwordAddress(uint64_t addr) const {
-    return reinterpret_cast<uint32_t *>(
-        base_address + static_cast<uintptr_t>(static_cast<uint32_t>(addr)));
+  inline uint32_t *UnsafeDwordPtr(Addr32 addr) const {
+    return reinterpret_cast<uint32_t *>(addr);
   }
 
-  inline uint64_t *RawQwordAddress(uint64_t addr) const {
-    return reinterpret_cast<uint64_t *>(
-        base_address + static_cast<uintptr_t>(static_cast<uint32_t>(addr)));
+  inline uint64_t *UnsafeQwordPtr(Addr32 addr) const {
+    return reinterpret_cast<uint64_t *>(addr);
   }
 
  protected:
   friend class Process32;
   friend class Thread32;
 
-  explicit Memory32(void *addr, const std::vector<MemoryMap32> &maps_);
-
-  const uintptr_t base_address;
-  const uintptr_t limit_address;
+  explicit Memory32(const std::vector<MemoryMap32> &maps_);
 
   std::vector<MemoryMap32> maps;
 
@@ -161,7 +166,7 @@ class Memory32 final {
 
 class SystemCall32 {
  public:
-  virtual ~SystemCall32(void) {}
+  virtual ~SystemCall32(void);
 
   virtual void SetReturn(int ret_val) const = 0;
 
@@ -175,13 +180,8 @@ class SystemCall32 {
     return TryGetArgValue(arg_num, sizeof(uint32_t), val);
   }
 
-  inline bool TryGetInt64(int arg_num, int64_t *val) const {
-    return TryGetArgValue(arg_num, sizeof(int64_t), val);
-  }
-
-  inline bool TryGetUInt64(int arg_num, uint64_t *val) const {
-    return TryGetArgValue(arg_num, sizeof(uint64_t), val);
-  }
+  int32_t GetInt32(int arg_num) const;
+  uint32_t GetUInt32(int arg_num) const;
 
  protected:
   virtual bool TryGetArgValue(

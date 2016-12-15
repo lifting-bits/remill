@@ -4,6 +4,7 @@ add_executable(vmill-snapshot
     ${PROJECT_SOURCE_DIR}/tools/vmill/Snapshot.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/Arch/X86/System32.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/Snapshot/Snapshot.cpp
+    ${PROJECT_SOURCE_DIR}/tools/vmill/OS/Linux32.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/OS/System32.cpp
     
     ${PROJECT_SOURCE_DIR}/remill/Arch/Name.cpp
@@ -28,23 +29,30 @@ add_executable(vmill-exec32
     ${PROJECT_SOURCE_DIR}/tools/vmill/Arch/X86/System32.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/BC/Lifter.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/BC/Translator.cpp
-    ${PROJECT_SOURCE_DIR}/tools/vmill/Emulator/ByteCode/Cache.cpp
-    ${PROJECT_SOURCE_DIR}/tools/vmill/Emulator/ByteCode/Compiler.cpp
-    ${PROJECT_SOURCE_DIR}/tools/vmill/Emulator/ByteCode/Interpreter.cpp
-    ${PROJECT_SOURCE_DIR}/tools/vmill/Emulator/ByteCode/Operation.cpp
-    ${PROJECT_SOURCE_DIR}/tools/vmill/Emulator/ByteCode/VM.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/Emulator/Emulator.cpp
+    ${PROJECT_SOURCE_DIR}/tools/vmill/Emulator/NativeExec/Emulator.cpp
+    ${PROJECT_SOURCE_DIR}/tools/vmill/Emulator/NativeExec/Compile.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/Execute32.cpp
+    ${PROJECT_SOURCE_DIR}/tools/vmill/OS/Linux32.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/OS/System32.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/Snapshot/Snapshot.cpp
 )
 
 target_link_libraries(vmill-exec32
+    "-pie"
     ${GFLAGS_LIBRARIES}
     ${GLOG_LIBRARIES}
     ${XED_LIBRARIES}
     ${PROTOBUF_LIBRARIES}
     ${LLVM_LIBS}
+    
+    LLVMMC
+    LLVMTarget
+    LLVMCodeGen
+    LLVMX86Info
+    LLVMX86Utils
+    LLVMX86CodeGen
+    LLVMX86AsmPrinter
 )
 
 install(

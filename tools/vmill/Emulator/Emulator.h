@@ -12,6 +12,10 @@ class Process32;
 class Thread32;
 class Translator;
 
+using Addr32 = uint32_t;
+using Addr64 = uint64_t;
+using CodeVersion = uint64_t;
+
 class Emulator {
  public:
   enum Status {
@@ -27,10 +31,10 @@ class Emulator {
   virtual Status Emulate(Process32 *process, Thread32 *thread) = 0;
 
  protected:
-  explicit Emulator(uint64_t code_version_);
+  explicit Emulator(CodeVersion code_version_);
 
   Translator * const translator;
-  const uint64_t code_version;
+  const CodeVersion code_version;
 };
 
 }  // namespace vmill

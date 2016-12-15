@@ -15,7 +15,7 @@
 #include "remill/OS/FileSystem.h"
 #include "remill/OS/OS.h"
 
-#include "tools/vmill/Emulator/ByteCode/VM.h"
+#include "tools/vmill/Emulator/NativeExec/Emulator.h"
 
 #include "tools/vmill/OS/System32.h"
 #include "tools/vmill/Snapshot/Snapshot.h"
@@ -82,21 +82,22 @@ int main(int argc, char **argv) {
         << "Unable to create 32-bit process.";
 
     auto code_version = process->CodeVersion();
-    auto emulator = ByteCodeVM::Create(code_version);
+//    auto emulator = ByteCodeVM::Create(code_version);
+    auto emulator = new NativeExecutor(code_version);
 
     while (auto thread = process->NextThread()) {
       DLOG(INFO)
           << "Scheduling virtual thread with TID " << thread->tid;
 
-      // Runtime code modification; swap to a new translator.
-      if (process->CodeVersion() != code_version) {
-        DLOG(WARNING)
-            << "The code version number has changed!";
-
-        delete emulator;
-        code_version = process->CodeVersion();
-        emulator = ByteCodeVM::Create(code_version);
-      }
+//      // Runtime code modification; swap to a new translator.
+//      if (process->CodeVersion() != code_version) {
+//        DLOG(WARNING)
+//            << "The code version number has changed!";
+//
+//        delete emulator;
+//        code_version = process->CodeVersion();
+//        emulator = ByteCodeVM::Create(code_version);
+//      }
 
       switch (emulator->Emulate(process, thread)) {
         case Emulator::kCannotContinue:

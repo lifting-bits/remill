@@ -76,7 +76,7 @@ add_compile_options(
     -fno-rtti
     -std=gnu++11
     -fPIC
-    -fpie
+    -fPIE
     -m64
 
     -DINSTALL_SEMANTICS_DIR="${CMAKE_INSTALL_PREFIX}/share/remill/semantics/"
@@ -100,7 +100,9 @@ add_executable(remill-lift
 )
 
 set(LLVM_LIBS
-    LLVMIRReader LLVMBitReader LLVMBitWriter
+    LLVMIRReader
+    LLVMBitReader
+    LLVMBitWriter
     LLVMTransformUtils
     LLVMScalarOpts
     LLVMSupport

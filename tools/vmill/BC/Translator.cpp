@@ -58,7 +58,7 @@ static_assert (16 == sizeof(PersistentFunction),
                "Invalid packing of struct PersistentFunction");
 
 // Get the path to the code version-specific bitcode cache directory.
-static std::string GetBitcodeDir(uint64_t code_version) {
+static std::string GetBitcodeDir(CodeVersion code_version) {
   std::stringstream ss;
   ss << FLAGS_workspace << "/bitcode.cache/";
   CHECK(TryCreateDirectory(ss.str()))
@@ -91,7 +91,7 @@ static std::string ReadInstructionBytes(uint64_t pc,
 // Handles translating binary code to bitcode, and caching that bitcode.
 class TE final : public Translator {
  public:
-  explicit TE(uint64_t code_version_);
+  explicit TE(CodeVersion code_version_);
   virtual ~TE(void);
 
   // Execute a callback function on the module lifted by this translation.
@@ -143,7 +143,7 @@ class TE final : public Translator {
   uint32_t next_file_id;
 };
 
-Translator::Translator(uint64_t code_version_)
+Translator::Translator(CodeVersion code_version_)
     : code_version(code_version_) {}
 
 Translator::~Translator(void) {}
@@ -151,7 +151,7 @@ Translator::~Translator(void) {}
 // Create a new translation engine for a given version of the code in
 // memory. Code version changes happen due to self-modifying code, or
 // runtime code loading.
-Translator *Translator::Create(uint64_t code_version_) {
+Translator *Translator::Create(CodeVersion code_version_) {
   DLOG(INFO)
       << "Creating machine code to bitcode translator.";
   auto translator = new TE(code_version_);
@@ -160,7 +160,7 @@ Translator *Translator::Create(uint64_t code_version_) {
 }
 
 // Initialize the translation engine.
-TE::TE(uint64_t code_version_)
+TE::TE(CodeVersion code_version_)
     : Translator(code_version_),
       arch(Arch::Create(GetOSName(FLAGS_os), GetArchName(FLAGS_arch))),
       context(new llvm::LLVMContext),
