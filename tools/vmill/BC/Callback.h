@@ -11,11 +11,14 @@ class Function;
 class Module;
 }  // namespace llvm
 namespace remill {
+namespace cfg {
+class Module;
+}  // namespace cfg
 namespace vmill {
 
-using ByteReaderCallback = std::function<bool(uint64_t, uint8_t *)>;
+using CFGCallback = std::function<void(const cfg::Module *)>;
 
-using LiftedFunctionCallback = std::function<void(uint64_t, llvm::Function *)>;
+using ByteReaderCallback = std::function<bool(uint64_t, uint8_t *)>;
 
 using LiftedModuleCallback = std::function<void(llvm::Module *)>;
 

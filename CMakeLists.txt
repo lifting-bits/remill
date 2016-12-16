@@ -91,7 +91,7 @@ add_executable(remill-lift
     remill/Arch/Instruction.cpp
     remill/Arch/Name.cpp
     remill/CFG/CFG.cpp
-    remill/BC/Translator.cpp
+    remill/BC/Lifter.cpp
     remill/BC/Util.cpp
     remill/BC/IntrinsicTable.cpp
     remill/OS/FileSystem.cpp

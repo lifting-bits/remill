@@ -290,4 +290,97 @@ llvm::Argument *NthArgument(llvm::Function *func, size_t index) {
   return &*it;
 }
 
+void ForEachIndirectBlock(
+    llvm::Module *module,
+    IndirectBlockCallback on_each_function) {
+  auto table_var = module->getGlobalVariable("__remill_indirect_blocks");
+  auto init = table_var->getInitializer();
+  auto module_id = module->getModuleIdentifier();
+
+  if (llvm::isa<llvm::ConstantAggregateZero>(init)) {
+    return;
+  }
+
+
+  // Read in the addressable blocks from the indirect blocks table. Below,
+  // the translator marks every decoded basic block in the CFG as being
+  // addressable, so we expect all of them to be in the table.
+  auto entries = llvm::dyn_cast<llvm::ConstantArray>(init);
+  for (const auto &entry : entries->operands()) {
+    if (llvm::isa<llvm::ConstantAggregateZero>(entry)) {
+      continue;  // Sentinel.
+    }
+
+    auto indirect_block = llvm::dyn_cast<llvm::ConstantStruct>(entry.get());
+    auto block_pc = llvm::dyn_cast<llvm::ConstantInt>(
+        indirect_block->getOperand(0))->getZExtValue();
+    auto lifted_func = llvm::dyn_cast<llvm::Function>(
+        indirect_block->getOperand(1));
+
+    on_each_function(block_pc, lifted_func);
+  }
+}
+
+namespace {
+
+// Pull the `name` out of a `NamedBlock`.
+static std::string GetSubroutineName(llvm::ConstantStruct *exported_block) {
+  auto name_gep = exported_block->getOperand(0);
+  auto name_var = llvm::dyn_cast<llvm::GlobalVariable>(
+      name_gep->getOperand(0));
+  auto name_arr = llvm::dyn_cast<llvm::ConstantDataArray>(
+      name_var->getOperand(0));
+  return name_arr->getAsCString();
+}
+
+// Run a callback function for every named block entry in a remill-lifted
+// bitcode module.
+static void ForEachNamedBlock(llvm::Module *module, const char *table_name,
+                              NamedBlockCallback on_each_function) {
+  auto table_var = module->getGlobalVariable(table_name);
+  auto init = table_var->getInitializer();
+
+  if (llvm::isa<llvm::ConstantAggregateZero>(init)) {
+    return;
+  }
+
+  auto entries = llvm::dyn_cast<llvm::ConstantArray>(init);
+  for (const auto &entry : entries->operands()) {
+    if (llvm::isa<llvm::ConstantAggregateZero>(entry)) {
+      continue;
+    }
+
+    // Note: Each `entry` has the following type:
+    //    struct NamedBlock final {
+    //      const char * const name;
+    //      void (* const lifted_func)(Memory &, State &, addr_t);
+    //      void (* const native_func)(void);
+    //    };
+    auto exported_block = llvm::dyn_cast<llvm::ConstantStruct>(entry.get());
+    auto func_name = GetSubroutineName(exported_block);
+    auto lifted_func = llvm::dyn_cast<llvm::Function>(
+        exported_block->getOperand(1));
+    auto native_func = llvm::dyn_cast<llvm::Function>(
+        exported_block->getOperand(2));
+
+    on_each_function(func_name, lifted_func, native_func);
+  }
+}
+
+}  // namespace
+
+// Run a callback function for every exported block entry in a remill-lifted
+// bitcode module.
+void ForEachExportedBlock(
+    llvm::Module *module, NamedBlockCallback on_each_function) {
+  ForEachNamedBlock(module, "__remill_exported_blocks", on_each_function);
+}
+
+// Run a callback function for every imported block entry in a remill-lifted
+// bitcode module.
+void ForEachImportedBlock(
+    llvm::Module *module, NamedBlockCallback on_each_function) {
+  ForEachNamedBlock(module, "__remill_imported_blocks", on_each_function);
+}
+
 }  // namespace remill

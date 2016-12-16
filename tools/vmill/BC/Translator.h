@@ -3,14 +3,17 @@
 #ifndef TOOLS_VMILL_BC_TRANSLATOR_H_
 #define TOOLS_VMILL_BC_TRANSLATOR_H_
 
+#include "../Executor/Executor.h"
 #include "tools/vmill/BC/Callback.h"
-#include "tools/vmill/Emulator/Emulator.h"
 
 namespace llvm {
 class Function;
 class Module;
 }  // namespace llvm
 namespace remill {
+namespace cfg {
+class Module;
+}  // namespace cfg
 namespace vmill {
 
 // Handles translating binary code to bitcode, and caching that bitcode.
@@ -21,22 +24,27 @@ class Translator {
   // Create a new translation engine for a given version of the code in
   // memory. Code version changes happen due to self-modifying code, or
   // runtime code loading.
-  static Translator *Create(CodeVersion code_version_);
+  static Translator *Create(
+      CodeVersion code_version_, const Arch *source_arch_);
+
+  // Returns true if the block a
+  virtual bool HaveLiftedFunctionFor(uint64_t pc) const = 0;
 
   // Execute a callback function on the module lifted by this translation.
-  virtual void WithLiftedModule(
-      const uint64_t pc,
-      ByteReaderCallback byte_reader,
-      LiftedModuleCallback on_module) = 0;
+  virtual void LiftCFG(const cfg::Module *cfg,
+                       LiftedModuleCallback with_module) = 0;
 
  protected:
-  explicit Translator(CodeVersion code_version_);
+  Translator(CodeVersion code_version_, const Arch *source_arch_);
 
   // An abstract version number for code handled by this translation engine.
   // Runtime code modification change the version, and so a higher-level
   // system is responsible for creating a new translator to handle the
   // modified code.
-  CodeVersion code_version;
+  const CodeVersion code_version;
+
+  // Arch of the code to be lifted.
+  const Arch * const source_arch;
 };
 
 }  // namespace vmill

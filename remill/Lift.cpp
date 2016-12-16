@@ -14,7 +14,7 @@
 #include <llvm/Support/CommandLine.h>
 
 #include "remill/Arch/Arch.h"
-#include "remill/BC/Translator.h"
+#include "remill/BC/Lifter.h"
 #include "remill/BC/Util.h"
 #include "remill/CFG/CFG.h"
 #include "remill/OS/FileSystem.h"
@@ -54,9 +54,6 @@ DEFINE_string(bc_out, "", "Output bitcode file name.");
 
 DEFINE_bool(server, false, "Run the lifter as a server. This will allow "
                            "remill-lift to receive CFG files over time.");
-
-DEFINE_bool(define_unimplemented, false, "Define unimplemented blocks as "
-                                         "invoking the detach intrinsic.");
 
 int main(int argc, char *argv[]) {
   std::stringstream ss;
@@ -130,7 +127,7 @@ int main(int argc, char *argv[]) {
     auto module = remill::LoadModuleFromFile(context, FLAGS_bc_in);
     target_arch->PrepareModule(module);
 
-    auto translator = new remill::Translator(source_arch, module);
+    auto translator = new remill::Lifter(source_arch, module);
     auto cfg = remill::ReadCFG(FLAGS_cfg);
     translator->LiftCFG(cfg);
     delete cfg;

@@ -3,8 +3,6 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-#include <llvm/IR/Function.h>
-
 #include <csignal>
 #include <cstdlib>
 #include <iostream>
@@ -15,8 +13,7 @@
 #include "remill/OS/FileSystem.h"
 #include "remill/OS/OS.h"
 
-#include "tools/vmill/Emulator/NativeExec/Emulator.h"
-
+#include "tools/vmill/Executor/Executor.h"
 #include "tools/vmill/OS/System32.h"
 #include "tools/vmill/Snapshot/Snapshot.h"
 
@@ -82,45 +79,29 @@ int main(int argc, char **argv) {
         << "Unable to create 32-bit process.";
 
     auto code_version = process->CodeVersion();
-//    auto emulator = ByteCodeVM::Create(code_version);
-    auto emulator = new NativeExecutor(code_version);
+    auto executor = Executor::CreateNativeExecutor(code_version);
 
     while (auto thread = process->NextThread()) {
       DLOG(INFO)
           << "Scheduling virtual thread with TID " << thread->tid;
 
-//      // Runtime code modification; swap to a new translator.
-//      if (process->CodeVersion() != code_version) {
-//        DLOG(WARNING)
-//            << "The code version number has changed!";
-//
-//        delete emulator;
-//        code_version = process->CodeVersion();
-//        emulator = ByteCodeVM::Create(code_version);
-//      }
-
-      switch (emulator->Emulate(process, thread)) {
-        case Emulator::kCannotContinue:
-        case Emulator::kStoppedAtError:
+      switch (executor->Execute(process, thread)) {
+        case Executor::kCannotContinue:
+        case Executor::kStoppedAtError:
           process->Kill();
           break;
 
-        case Emulator::kStoppedAtAsyncHyperCall:
+        case Executor::kStoppedAtAsyncHyperCall:
           std::cout << "async hyper call!" << std::endl;
           process->ProcessAsyncHyperCall(thread);
           break;
 
-        case Emulator::kStoppedAtSyncHyperCall:
-          std::cout << "sync hyper call!" << std::endl;
-          process->Kill();
-          break;
-
-        case Emulator::kPaused:
+        case Executor::kPaused:
           break;
       }
     }
 
-    delete emulator;
+    delete executor;
     delete process;
   } while (false);
 

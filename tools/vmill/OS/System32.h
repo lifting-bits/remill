@@ -7,8 +7,9 @@
 #include <functional>
 #include <vector>
 
-#include "tools/vmill/Emulator/Emulator.h"
 #include "remill/Arch/Runtime/HyperCall.h"
+
+#include "tools/vmill/Executor/Executor.h"
 
 namespace remill {
 namespace vmill {
