@@ -54,6 +54,13 @@ Lifter *Lifter::Create(void) {
   DLOG(INFO)
       << "Creating CFG lifting and optimization pipeline.";
 
+  auto semantics = FLAGS_workspace + "/semantics";
+  unlink(semantics.c_str());  // Remove it if it exists.
+  CHECK(!mknod(semantics.c_str(), S_IFIFO | 0666, 0))
+      << "Unable to create FIFO " << semantics
+      << "for " << FLAGS_arch << " semantics bitcode files: "
+      << strerror(errno);
+
   auto cfg_to_lift = FLAGS_workspace + "/cfg_to_lift";
   unlink(cfg_to_lift.c_str());  // Remove it if it exists.
   CHECK(!mknod(cfg_to_lift.c_str(), S_IFIFO | 0666, 0))
@@ -78,21 +85,23 @@ Lifter *Lifter::Create(void) {
       "--os_in", FLAGS_os.c_str(),
       "--os_out", "linux",  // vmill is pretty Linux-specific.
       "--cfg", cfg_to_lift.c_str(),
-      "--bc_out", lifted_bitcode.c_str(),
+      "--bc_in", semantics.c_str(),
+      "--bc_out", optimized_bitcode.c_str(),  // lifted_bitcode.c_str(),
       "--server",
       nullptr
   };
 
-  const char *opt_args[] = {
-      "remill-opt",
-      "--bc_in", lifted_bitcode.c_str(),
-      "--bc_out", optimized_bitcode.c_str(),
-      "--strip",
-      "--server",
-      nullptr
-  };
+//  const char *opt_args[] = {
+//      "remill-opt",
+//      "--bc_in", lifted_bitcode.c_str(),
+//      "--bc_out", optimized_bitcode.c_str(),
+//      "--lower_mem",
+//      "--lower_fp_mem",
+//      "--server",
+//      nullptr
+//  };
 
-  return new Lifter(RunServer(lift_args), RunServer(opt_args));
+  return new Lifter(RunServer(lift_args), -1 /* RunServer(opt_args) */);
 }
 
 Lifter::~Lifter(void) {

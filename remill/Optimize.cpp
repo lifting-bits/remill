@@ -52,6 +52,10 @@ DEFINE_bool(lower_mem, false, "Lower memory access intrinsics into "
                               "Note: the memory class pointer is replaced "
                               "with a i8 pointer.");
 
+DEFINE_bool(lower_fp_mem, false, "Lower floating-point memory access "
+                                 "intrinsics into LLVM load and store "
+                                 "instructions.");
+
 namespace {
 enum : size_t {
   kMaxNumRegs = 192UL
@@ -636,8 +640,7 @@ static void RemoveUnusedSemantics(llvm::Module *module) {
   }
   for (auto func : to_remove) {
     if (!func->hasNUsesOrMore(1)) {
-      func->removeFromParent();
-      delete func;
+      func->eraseFromParent();
     }
   }
 }
@@ -659,7 +662,8 @@ static void Optimize(llvm::Module *module) {
   llvm::legacy::FunctionPassManager func_manager(module);
   llvm::legacy::PassManager module_manager;
 
-  auto TLI = new llvm::TargetLibraryInfoImpl;
+  auto TLI = new llvm::TargetLibraryInfoImpl(
+      llvm::Triple(module->getTargetTriple()));
   TLI->disableAllFunctions();
 
   llvm::PassManagerBuilder builder;
@@ -1032,8 +1036,6 @@ static void LowerMemOps(llvm::Module *module) {
                    llvm::Type::getFloatTy(context));
   ReplaceMemReadOp(module, "__remill_read_memory_f64",
                    llvm::Type::getDoubleTy(context));
-  ReplaceMemReadOp(module, "__remill_read_memory_f80",
-                   llvm::Type::getX86_FP80Ty(context));
 
   ReplaceMemWriteOp(module, "__remill_write_memory_8",
                     llvm::Type::getInt8Ty(context));
@@ -1047,8 +1049,13 @@ static void LowerMemOps(llvm::Module *module) {
                     llvm::Type::getFloatTy(context));
   ReplaceMemWriteOp(module, "__remill_write_memory_f64",
                     llvm::Type::getDoubleTy(context));
-  ReplaceMemWriteOp(module, "__remill_write_memory_f80",
-                    llvm::Type::getX86_FP80Ty(context));
+
+  if (FLAGS_lower_fp_mem) {
+    ReplaceMemReadOp(module, "__remill_read_memory_f80",
+                     llvm::Type::getX86_FP80Ty(context));
+    ReplaceMemWriteOp(module, "__remill_write_memory_f80",
+                      llvm::Type::getX86_FP80Ty(context));
+  }
 }
 
 }  // namespace

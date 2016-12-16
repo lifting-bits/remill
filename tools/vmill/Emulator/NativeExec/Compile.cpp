@@ -27,6 +27,7 @@
 
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Host.h>
+#include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/ToolOutputFile.h>
@@ -68,6 +69,10 @@ static llvm::tool_output_file *CreateOutputFile(const std::string &dest_path) {
 
 }  // namespace
 
+void call_foo(void) {
+  asm("nop;");
+}
+
 // Compile an LLVM module into a shared library.
 void CompileToSharedObject(llvm::Module *module, const std::string &dest_path) {
   LLVMInitializeX86TargetInfo();
@@ -107,7 +112,7 @@ void CompileToSharedObject(llvm::Module *module, const std::string &dest_path) {
       feature_str,
       target_options,
       llvm::Reloc::PIC_,
-      llvm::CodeModel::Large,
+      llvm::CodeModel::Medium,
       llvm::CodeGenOpt::Default);
 
   CHECK(nullptr != target_machine)
@@ -116,58 +121,62 @@ void CompileToSharedObject(llvm::Module *module, const std::string &dest_path) {
       << llvm::sys::getHostCPUName().str() << " and feature set "
       << feature_str;
 
-  llvm::MCContext mc_context(
-      target_machine->getMCAsmInfo(), target_machine->getMCRegisterInfo(),
-      target_machine->getObjFileLowering(), nullptr, false);
+//  llvm::MCContext mc_context(
+//      target_machine->getMCAsmInfo(), target_machine->getMCRegisterInfo(),
+//      target_machine->getObjFileLowering(), nullptr, false);
 
-  auto machine_code_emitter = target->createMCCodeEmitter(
-      *target_machine->getMCInstrInfo(),
-      *target_machine->getMCRegisterInfo(),
-      mc_context);
-
-  CHECK(nullptr != machine_code_emitter)
-      << "Unable to create machine code emitter.";
-
-  auto asm_backend = target->createMCAsmBackend(
-      *target_machine->getMCRegisterInfo(),
-      target_triple.getTriple(),
-      llvm::sys::getHostCPUName());
-
-  CHECK(nullptr != asm_backend)
-      << "Unable to create an ASM backend.";
+//  auto machine_code_emitter = target->createMCCodeEmitter(
+//      *target_machine->getMCInstrInfo(),
+//      *target_machine->getMCRegisterInfo(),
+//      mc_context);
+//
+//  CHECK(nullptr != machine_code_emitter)
+//      << "Unable to create machine code emitter.";
+//
+//  auto asm_backend = target->createMCAsmBackend(
+//      *target_machine->getMCRegisterInfo(),
+//      target_triple.getTriple(),
+//      llvm::sys::getHostCPUName());
+//
+//  CHECK(nullptr != asm_backend)
+//      << "Unable to create an ASM backend.";
 
   auto output_file = CreateOutputFile(dest_path);
   auto output_file_stream = &output_file->os();
-
-  std::unique_ptr<llvm::MCStreamer> asm_streamer(
-      target->createMCObjectStreamer(
-          target_triple, mc_context, *asm_backend, *output_file_stream,
-          machine_code_emitter, *target_machine->getMCSubtargetInfo(),
-          true /* RelaxAll */, true /* IncrementalLinkerCompatible */,
-          false  /* DWARFMustBeAtTheEnd */));
-
-
-//  llvm::TargetRegistry::RegisterAsmPrinter(*target);
-  auto printer = target->createAsmPrinter(
-      *target_machine, std::move(asm_streamer));
-
-  CHECK(nullptr != printer)
-        << "Unable to create assembly printer pass for target triple "
-        << target_triple.getTriple() << " using CPU "
-        << llvm::sys::getHostCPUName().str() << " and feature set "
-        << feature_str;
+//  llvm::SmallVector<char, 0> byte_buffer;
+//  llvm::raw_svector_ostream byte_buffer_stream(byte_buffer);
+//  std::unique_ptr<llvm::MCStreamer> asm_streamer(
+//      target->createMCObjectStreamer(
+//          target_triple, mc_context, *asm_backend, *output_file_stream,
+//          machine_code_emitter, *target_machine->getMCSubtargetInfo(),
+//          true /* RelaxAll */, true /* IncrementalLinkerCompatible */,
+//          false  /* DWARFMustBeAtTheEnd */));
+//
+//
+////  llvm::TargetRegistry::RegisterAsmPrinter(*target);
+//  auto printer = target->createAsmPrinter(
+//      *target_machine, std::move(asm_streamer));
+//
+//  CHECK(nullptr != printer)
+//        << "Unable to create assembly printer pass for target triple "
+//        << target_triple.getTriple() << " using CPU "
+//        << llvm::sys::getHostCPUName().str() << " and feature set "
+//        << feature_str;
 
   llvm::legacy::PassManager pm;
-  pm.add(new llvm::TargetLibraryInfoWrapperPass(tli));
-  pm.add(printer);
+//  llvm::MCContext *mc_context = nullptr;
+  target_machine->addPassesToEmitFile(
+      pm, *output_file_stream, llvm::TargetMachine::CGFT_ObjectFile);
+  //, mc_context, output_file_stream);
+//  pm.add(new llvm::TargetLibraryInfoWrapperPass(tli));
+//  pm.add(printer);
 //  pm.add(llvm::createFreeMachineFunctionPass());
 
   // Compile it?
   module->setTargetTriple(target_triple.getTriple());
   module->setDataLayout(target_machine->createDataLayout());
   pm.run(*module);
-
-//  target_machine->addPassesToEmitMC(pm, mc_context, *output_file_stream);
+  call_foo();
 //  auto &llvmtm = static_cast<llvm::LLVMTargetMachine &>(*target_machine);
 //  auto &target_pass_config = *llvmtm.createPassConfig(pm);
 

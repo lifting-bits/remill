@@ -8,6 +8,8 @@
 #include <set>
 #include <string>
 #include <sstream>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <llvm/ADT/SmallVector.h>
@@ -33,7 +35,6 @@
 #include <llvm/Transforms/Utils/ValueMapper.h>
 
 #include "remill/Arch/Arch.h"
-#include "remill/Arch/AssemblyWriter.h"
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Translator.h"
 #include "remill/BC/Util.h"
@@ -95,11 +96,9 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
 
 }  // namespace
 
-Translator::Translator(const Arch *arch_, llvm::Module *module_,
-                       AssemblyWriter *src_)
+Translator::Translator(const Arch *arch_, llvm::Module *module_)
     : arch(arch_),
       module(module_),
-      asm_source_writer(src_),
       blocks(),
       indirect_blocks(),
       exported_blocks(),
@@ -178,49 +177,66 @@ static llvm::Function *CreateExternalFunction(llvm::Module *module,
   return func;
 }
 
-static void RemoveDebugInfo(llvm::Function *block_func) {
-  block_func->clearMetadata();
-
-  std::vector<llvm::Instruction *> to_remove;
-  for (auto &bb : *block_func) {
-    for (auto &inst : bb) {
-      if (llvm::isa<llvm::CallInst>(inst)) {
-        to_remove.push_back(&inst);
-      } else {
-        inst.setDebugLoc(llvm::DebugLoc());
-      }
-    }
-  }
-
-  for (auto call_inst : to_remove) {
-    call_inst->eraseFromParent();
-  }
-}
-
 // Clone the block method template `TF` into a specific method `BF` that
 // will contain lifted code.
+//
+// This mimick's LLVM's `CloneFunctionInto`, although it is simpler, and in
+// a `Debug+Asserts` build of LLVM, an assertion is triggered that is otherwise
+// irrelevant to the correctness of the produced code.
 static void AddBlockInitializationCode(llvm::Function *block_func,
                                        llvm::Function *template_func) {
 
-  llvm::ValueToValueMapTy var_map;
-  var_map[template_func] = block_func;
+  auto entry_block = llvm::BasicBlock::Create(
+      block_func->getContext(), "", block_func);
 
+  std::unordered_map<llvm::Value *, llvm::Value *> value_map;
+
+  // Map template arguments to arguments in our new block.
   auto block_args = block_func->arg_begin();
-  for (const llvm::Argument &arg : template_func->args()) {
-    var_map[&arg] = &*block_args;
+  for (llvm::Argument &arg : template_func->args()) {
+    value_map[&arg] = &*block_args;
     ++block_args;
   }
 
-  llvm::SmallVector<llvm::ReturnInst *, 1> return_instrs;
-  llvm::CloneFunctionInto(
-      block_func, template_func, var_map, false, return_instrs);
+  llvm::SmallVector<std::pair<unsigned, llvm::MDNode *>, 4> mds;
 
-  RemoveDebugInfo(block_func);
+  auto &new_insts = entry_block->getInstList();
+  for (auto &old_inst : template_func->front()) {
+    if (old_inst.isTerminator()) {
+      break;
+    } else if (llvm::isa<llvm::CallInst>(old_inst)) {
+      continue;
+    }
 
-  // We're cloning the function, and we want to keep all of the variables
-  // defined in the function, but it has an implicit return that we need
-  // to remove so that we can add instructions at the end.
-  return_instrs[0]->eraseFromParent();
+    auto new_inst = old_inst.clone();
+    value_map[&old_inst] = new_inst;
+    new_insts.push_back(new_inst);
+
+    // Clear out all metadata from the new instruction.
+    new_inst->getAllMetadata(mds);
+    for (auto md_info : mds) {
+      new_inst->setMetadata(md_info.first, nullptr);
+    }
+
+    new_inst->setDebugLoc(llvm::DebugLoc());
+    new_inst->setName(old_inst.getName());
+
+    for (auto &new_op : new_inst->operands()) {
+      auto old_op_val = new_op.get();
+      if (llvm::isa<llvm::Constant>(old_op_val)) {
+        continue;
+      }
+
+      if (!value_map.count(old_op_val)) {
+        LOG(FATAL)
+            << "Could not find " << LLVMThingToString(old_op_val)
+            << " in our value map for cloning the "
+            << "`__remill_basic_block` function.";
+      }
+
+      new_op.set(value_map[old_op_val]);
+    }
+  }
 }
 
 }  // namespace
@@ -482,10 +498,6 @@ void Translator::CreateNamedBlocks(const cfg::Module *cfg) {
       if (named_block->isDeclaration()) {
         AddTerminatingTailCall(named_block, intrinsics->detach);
 
-        if (asm_source_writer) {
-          asm_source_writer->WriteBlock(named_block);
-        }
-
         DLOG(INFO)
             << "Imported function " << func_name << " is implemented by "
             << impl_name << ".";
@@ -535,9 +547,6 @@ llvm::Function *Translator::GetOrCreateTargetBlock(uint64_t address) {
   auto block_func = GetOrCreateBlock(address);
   if (block_func->isDeclaration() && FLAGS_define_unimplemented) {
     AddTerminatingTailCall(block_func, intrinsics->detach);
-    if (asm_source_writer) {
-      asm_source_writer->WriteBlock(block_func);
-    }
   }
   return block_func;
 }
@@ -623,10 +632,6 @@ void Translator::LiftBlocks(const cfg::Module *cfg_module) {
     CHECK(!func->isDeclaration())
         << "Lifted block function " << func->getName().str()
         << " should have an implementation.";
-
-    if (asm_source_writer) {
-      asm_source_writer->Flush();
-    }
     func_pass_manager.run(*func);
   }
   func_pass_manager.doFinalization();
@@ -679,10 +684,6 @@ llvm::Function *Translator::LiftBlock(const cfg::Block *cfg_block) {
 
   AddBlockInitializationCode(block_func, basic_block);
 
-  if (asm_source_writer) {
-    asm_source_writer->WriteBlock(block_func);
-  }
-
   // Create a block for each instruction.
   auto last_block = &block_func->back();
   auto instr_addr = cfg_block->address();
@@ -702,11 +703,6 @@ llvm::Function *Translator::LiftBlock(const cfg::Block *cfg_block) {
           << "Predecessor of instruction at " << std::hex << instr_addr
           << " must be a normal or no-op instruction, and not one that"
           << " should end a block.";
-
-      // Add debug info to all previously added instructions.
-      if (asm_source_writer) {
-        asm_source_writer->WriteInstruction(block_func, instr);
-      }
 
       delete instr;
       instr = nullptr;
@@ -743,10 +739,6 @@ llvm::Function *Translator::LiftBlock(const cfg::Block *cfg_block) {
 
   if (!last_block->getTerminator()) {
     LiftTerminator(last_block, instr);
-  }
-
-  if (asm_source_writer) {
-    asm_source_writer->WriteInstruction(block_func, instr);
   }
 
   delete instr;

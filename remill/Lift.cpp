@@ -14,7 +14,6 @@
 #include <llvm/Support/CommandLine.h>
 
 #include "remill/Arch/Arch.h"
-#include "remill/Arch/AssemblyWriter.h"
 #include "remill/BC/Translator.h"
 #include "remill/BC/Util.h"
 #include "remill/CFG/CFG.h"
@@ -52,11 +51,6 @@ DEFINE_string(bc_in, "", "Input bitcode file into which code will "
                          "code.");
 
 DEFINE_string(bc_out, "", "Output bitcode file name.");
-
-DEFINE_string(asm_out, "", "Output disassembly file name. This is produced "
-                           "by the translator and contains disassembled "
-                           "instructions. Debug information references this "
-                           "file.");
 
 DEFINE_bool(server, false, "Run the lifter as a server. This will allow "
                            "remill-lift to receive CFG files over time.");
@@ -136,20 +130,11 @@ int main(int argc, char *argv[]) {
     auto module = remill::LoadModuleFromFile(context, FLAGS_bc_in);
     target_arch->PrepareModule(module);
 
-    remill::AssemblyWriter *asm_writer = nullptr;
-    if (!FLAGS_asm_out.empty()) {
-      asm_writer = new remill::AssemblyWriter(module, FLAGS_asm_out);
-    }
-
-    auto translator = new remill::Translator(source_arch, module, asm_writer);
+    auto translator = new remill::Translator(source_arch, module);
     auto cfg = remill::ReadCFG(FLAGS_cfg);
     translator->LiftCFG(cfg);
     delete cfg;
     delete translator;
-    if (asm_writer) {
-      delete asm_writer;
-      asm_writer = nullptr;
-    }
 
     remill::StoreModuleToFile(module, FLAGS_bc_out);
     delete module;

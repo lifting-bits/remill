@@ -87,7 +87,6 @@ add_compile_options(
 add_executable(remill-lift
     remill/Lift.cpp
     remill/Arch/X86/Arch.cpp
-    remill/Arch/AssemblyWriter.cpp
     remill/Arch/Arch.cpp
     remill/Arch/Instruction.cpp
     remill/Arch/Name.cpp
@@ -100,12 +99,15 @@ add_executable(remill-lift
 )
 
 set(LLVM_LIBS
+    LLVMCore
+    LLVMSupport
+    LLVMAnalysis
+    LLVMipo
     LLVMIRReader
     LLVMBitReader
     LLVMBitWriter
     LLVMTransformUtils
     LLVMScalarOpts
-    LLVMSupport
 )
 
 target_link_libraries(remill-lift
@@ -198,7 +200,7 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
     add_custom_target(Instructions.${name}.bc
         COMMAND ${CMAKE_CXX_COMPILER}
                 ${SEMANTICS_CXX_FLAGS}
-                -O3 -g
+                -O3 -g0
                 -c ${PROJECT_SOURCE_DIR}/remill/Arch/X86/Runtime/Instructions.cpp
                 -o Instructions.${name}.bc
         SOURCES remill/Arch/X86/Runtime/Instructions.cpp
