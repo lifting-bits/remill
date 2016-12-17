@@ -538,49 +538,14 @@ void Lifter::LiftBlocks(const cfg::Module *cfg_module) {
   func_pass_manager.doFinalization();
 }
 
-namespace {
-
-// Returns `true` if a basic block function looks empty, i.e. it tail-calls to
-// the `__remill_detach` intrinsics. This means that a previous call to
-// `remill-lift` didn't have the implementation of this block available, so
-// defaulted it to detaching instead.
-static bool IsBlockEmpty(const llvm::Function *func,
-                         const llvm::Function *detach_func) {
-  const auto &entry_block = func->front();
-  if (auto term = entry_block.getTerminatingMustTailCall()) {
-    return term->getCalledFunction() == detach_func &&
-           entry_block.size() == 2;
-  } else {
-    return false;
-  }
-}
-
-// Delete a basic block.
-static void DeleteBlock(llvm::BasicBlock *block) {
-  while (block->size()) {
-    block->getInstList().pop_back();
-  }
-  block->eraseFromParent();
-}
-
-}  // namespace
-
 // Lift code contained within a single block.
 llvm::Function *Lifter::LiftBlock(const cfg::Block *cfg_block) {
   auto block_func = GetOrCreateBlock(cfg_block->address());
   if (!block_func->isDeclaration()) {
-    if (IsBlockEmpty(block_func, intrinsics->detach)) {
-      DeleteBlock(&block_func->front());
-      CHECK(block_func->isDeclaration())
-          << "Unable to delete blocks from previously detaching block function"
-          << block_func->getName().str() << ".";
-
-    } else {
-      DLOG(WARNING)
-          << "Not going to lift duplicate block at "
-          << std::hex << cfg_block->address() << ".";
-      return block_func;
-    }
+    DLOG(WARNING)
+        << "Not going to lift duplicate block at "
+        << std::hex << cfg_block->address();
+    return block_func;
   }
 
   AddBlockInitializationCode(block_func, basic_block);
@@ -627,8 +592,6 @@ llvm::Function *Lifter::LiftBlock(const cfg::Block *cfg_block) {
 
     // Unable to lift the instruction; likely because the instruction
     // semantics are not implemented.
-    //
-    // TODO(pag): Add an intrinsic for this particular case.
     } else {
       AddTerminatingTailCall(last_block, intrinsics->error);
       break;
@@ -831,6 +794,14 @@ llvm::BasicBlock *Lifter::LiftInstruction(llvm::Function *block_func,
     args.push_back(operand);
   }
 
+  // Update the current program counter. Control-flow instructions may update
+  // the program counter in the semantics code.
+  ir.CreateStore(
+      ir.CreateAdd(
+          ir.CreateLoad(pc_ptr),
+          llvm::ConstantInt::get(word_type, arch_instr->NumBytes())),
+      pc_ptr);
+
   // Call the function that implements the instruction semantics.
   ir.CreateCall(isel_func, args);
 
@@ -839,15 +810,6 @@ llvm::BasicBlock *Lifter::LiftInstruction(llvm::Function *block_func,
     ir.CreateStore(
         ir.CreateCall(intrinsics->atomic_end, {ir.CreateLoad(mem_ptr)}),
         mem_ptr);
-  }
-
-  // Update the current program counter.
-  if (!arch_instr->IsControlFlow()) {
-      ir.CreateStore(
-          ir.CreateAdd(
-              ir.CreateLoad(pc_ptr),
-              llvm::ConstantInt::get(word_type, arch_instr->NumBytes())),
-          pc_ptr);
   }
 
   return block;

@@ -75,9 +75,6 @@ extern "C" void __remill_mark_as_used(const void *);
   USED(__remill_async_hyper_call);
   USED(__remill_sync_hyper_call);
 
-  // USED(__remill_attach);
-  USED(__remill_detach);
-
   USED(__remill_undefined_8);
   USED(__remill_undefined_16);
   USED(__remill_undefined_32);

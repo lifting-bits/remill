@@ -155,10 +155,9 @@ void TE::LiftCFG(const cfg::Module *cfg, LiftedModuleCallback with_module) {
   UpdateIndex();
   auto new_num_blocks = index.size();
   if (old_num_blocks < new_num_blocks) {
-
     StoreModuleToFile(module, bitcode_file_path);
-    with_module(module);
   }
+  with_module(module);
 }
 
 // Update our internal indexes with the functions found in a module. Returns
@@ -177,6 +176,8 @@ void TE::UpdateIndex(void) {
               << module_id << " but not available in the global index.";
           return;
         }
+
+        lifted_func->setLinkage(llvm::GlobalValue::PrivateLinkage);
 
         CHECK(!in_index)
             << "Function " << func_name << " is defined in "

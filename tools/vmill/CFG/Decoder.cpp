@@ -142,11 +142,10 @@ void InstructionDecoder::DecodeToCFG(
     delete instr;
   }
 
-  if (cfg_module->blocks_size()) {
-    DLOG(INFO)
-        << "Decoded " << cfg_module->blocks_size() << " basic blocks.";
-    with_cfg(cfg_module);
-  }
+  DLOG(INFO)
+      << "Decoded " << cfg_module->blocks_size() << " basic blocks.";
+  with_cfg(cfg_module);
+
   delete cfg_module;
 }
 

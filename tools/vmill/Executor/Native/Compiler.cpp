@@ -1,10 +1,10 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#include "../Native/Compiler.h"
-
 #include <glog/logging.h>
 
+#include <cstdlib>
 #include <memory>
+#include <string>
 #include <system_error>
 #include <utility>
 
@@ -37,6 +37,8 @@
 #include <llvm/Target/TargetLoweringObjectFile.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Target/TargetSubtargetInfo.h>
+
+#include "tools/vmill/Executor/Native/Compiler.h"
 
 namespace remill {
 namespace vmill {
@@ -87,7 +89,23 @@ static const llvm::Target *GetTarget(llvm::Triple target_triple) {
 static llvm::TargetOptions GetTargetOptions(void) {
   llvm::TargetOptions target_options;
   target_options.GuaranteedTailCallOpt = true;
+  target_options.FunctionSections = true;
   return target_options;
+}
+
+static void RunLD(const std::string &source_file,
+                  const std::string &dest_file) {
+  std::stringstream ss;
+  ss << "ld -z now -shared -nostdlib --strip-debug --gc-sections --discard-all";
+  ss << " -o " << dest_file << " " << source_file;
+  auto status = system(ss.str().c_str());
+  if (-1 == status) {
+    LOG(FATAL)
+        << "Error invoking LD: " << strerror(errno);
+  } else {
+    CHECK(!status)
+        << "LD exited with status " << status;
+  }
 }
 
 class CC final : public Compiler {
@@ -128,7 +146,7 @@ CC::CC(void)
           feature_str,
           target_options,
           llvm::Reloc::PIC_,
-          llvm::CodeModel::Large,
+          llvm::CodeModel::Default,
           llvm::CodeGenOpt::Default)) {
 
   CHECK(nullptr != target_machine)
@@ -142,6 +160,9 @@ CC::CC(void)
 void CC::CompileToSharedObject(
     llvm::Module *module, const std::string &dest_path) {
 
+  std::stringstream ss;
+  ss << dest_path << ".o";
+  auto dest_object_path = ss.str();
 
 //  llvm::MCContext mc_context(
 //      target_machine->getMCAsmInfo(), target_machine->getMCRegisterInfo(),
@@ -163,7 +184,7 @@ void CC::CompileToSharedObject(
 //  CHECK(nullptr != asm_backend)
 //      << "Unable to create an ASM backend.";
 
-  auto output_file = CreateOutputFile(dest_path);
+  auto output_file = CreateOutputFile(dest_object_path);
   auto output_file_stream = &output_file->os();
 //  llvm::SmallVector<char, 0> byte_buffer;
 //  llvm::raw_svector_ostream byte_buffer_stream(byte_buffer);
@@ -194,10 +215,12 @@ void CC::CompileToSharedObject(
 //  pm.add(printer);
 //  pm.add(llvm::createFreeMachineFunctionPass());
 
-  // Compile it?
+  // Compile it to an object file.
   module->setTargetTriple(target_triple.getTriple());
   module->setDataLayout(target_machine->createDataLayout());
   pm.run(*module);
+
+  RunLD(dest_object_path, dest_path);
 
 //  auto &llvmtm = static_cast<llvm::LLVMTargetMachine &>(*target_machine);
 //  auto &target_pass_config = *llvmtm.createPassConfig(pm);

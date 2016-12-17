@@ -57,12 +57,15 @@ uint64_t FileSize(const std::string &path, int fd) {
   return static_cast<uint64_t>(file_info.st_size);
 }
 
-
 uint64_t FileSize(const std::string &path) {
   struct stat64 file_info;
   CHECK(!stat64(path.c_str(), &file_info))
       << "Cannot stat " << path << ": " << strerror(errno);
   return static_cast<uint64_t>(file_info.st_size);
+}
+
+void RemoveFile(const std::string &path) {
+  unlink(path.c_str());
 }
 
 }  // namespace remill

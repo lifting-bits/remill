@@ -63,6 +63,28 @@ class Process32 {
   bool TryWriteDword(Addr32 addr, uint32_t dword_val) const;
   bool TryWriteQword(Addr32 addr, uint64_t qword_val) const;
 
+  template <typename T>
+  bool TryRead(Addr32 addr, T *val) const {
+    auto val_bytes = reinterpret_cast<uint8_t *>(val);
+    for (Addr32 i = 0; i < sizeof(T); ++i) {
+      if (!TryReadByte(addr + i, &(val_bytes[i]))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  template <typename T>
+  bool TryWrite(Addr32 addr, const T &val) const {
+    auto val_bytes = reinterpret_cast<const uint8_t *>(&val);
+    for (Addr32 i = 0; i < sizeof(T); ++i) {
+      if (!TryWriteByte(addr + i, val_bytes[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   Memory32 * const memory;
 
  protected:
@@ -84,7 +106,7 @@ class Thread32 {
   virtual ~Thread32(void);
 
   virtual uint64_t ProgramCounter(void) const = 0;
-  virtual uint8_t *MachineState(void) = 0;
+  virtual void *MachineState(void) = 0;
 
   const pid_t pid;
   const pid_t tid;

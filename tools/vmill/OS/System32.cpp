@@ -134,27 +134,25 @@ bool Process32::TryWriteQword(Addr32 addr, uint64_t qword_val) const {
 void Process32::ProcessAsyncHyperCall(Thread32 *thread) {
 
   switch (auto hypercall = thread->GetHyperCall()) {
+    case AsyncHyperCall::kX86SysCall:
     case AsyncHyperCall::kX86SysEnter:
+    case AsyncHyperCall::kX86IntN:
       thread->DoSystemCall(
           hypercall, std::bind(
               &Process32::DoSystemCall, this, std::placeholders::_1));
       break;
+
     case AsyncHyperCall::kInvalid:
 
     // Interrupts calls.
     case AsyncHyperCall::kX86Int1:
     case AsyncHyperCall::kX86Int3:
     case AsyncHyperCall::kX86IntO:
-    case AsyncHyperCall::kX86IntN:
+      Kill();
+      break;
     case AsyncHyperCall::kX86Bound:
-
-    // Interrupt returns.
     case AsyncHyperCall::kX86IRet:
-
-    // System calls.
-    case AsyncHyperCall::kX86SysCall:
     case AsyncHyperCall::kX86SysRet:
-
     case AsyncHyperCall::kX86SysExit:
       Kill();
       break;

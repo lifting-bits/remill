@@ -92,7 +92,6 @@ int main(int argc, char **argv) {
           break;
 
         case Executor::kStoppedAtAsyncHyperCall:
-          std::cout << "async hyper call!" << std::endl;
           process->ProcessAsyncHyperCall(thread);
           break;
 

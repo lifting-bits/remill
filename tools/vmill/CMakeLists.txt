@@ -34,6 +34,7 @@ add_executable(vmill-exec32
     ${PROJECT_SOURCE_DIR}/tools/vmill/Executor/Executor.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/Executor/Native/Executor.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/Executor/Native/Compiler.cpp
+    ${PROJECT_SOURCE_DIR}/tools/vmill/Executor/Native/Runtime.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/Execute32.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/OS/Linux32.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/OS/System32.cpp
@@ -42,6 +43,7 @@ add_executable(vmill-exec32
 
 target_link_libraries(vmill-exec32
     "-pie"
+    dl
     ${GFLAGS_LIBRARIES}
     ${GLOG_LIBRARIES}
     ${XED_LIBRARIES}

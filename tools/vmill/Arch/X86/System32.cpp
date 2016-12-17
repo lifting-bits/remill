@@ -24,13 +24,13 @@ namespace {
 
 static const uint8_t gZeroData[4096] = {};
 
-class SysEnter32 : public SystemCall32 {
+class Int0x80SystemCall : public SystemCall32 {
  public:
-  explicit SysEnter32(State *state_)
+  explicit Int0x80SystemCall(State *state_)
      : state(state_) {}
 
 
-  virtual ~SysEnter32(void) {}
+  virtual ~Int0x80SystemCall(void) {}
 
   void SetReturn(int ret_val) const override {
     state->gpr.rax.dword = static_cast<uint32_t>(ret_val);
@@ -60,13 +60,16 @@ class SysEnter32 : public SystemCall32 {
       case 4:
         memcpy(value, &(state->gpr.rdi.dword), 4);
         return true;
+      case 5:
+        memcpy(value, &(state->gpr.rbp.dword), 4);
+        return true;
       default:
         return false;
     }
   }
 
  private:
-  SysEnter32(void) = delete;
+  Int0x80SystemCall(void) = delete;
 
   State *state;
 };
@@ -183,8 +186,8 @@ class X86Thread32 final : public Thread32 {
     return static_cast<uint64_t>(state.gpr.rip.dword);
   }
 
-  uint8_t *MachineState(void) override {
-    return reinterpret_cast<uint8_t *>(&state);
+  void *MachineState(void) override {
+    return &state;
   }
  protected:
   AsyncHyperCall::Name GetHyperCall(void) const override {
@@ -194,19 +197,29 @@ class X86Thread32 final : public Thread32 {
     return state.interrupt_vector;
   }
 
-  void DoSystemCall(AsyncHyperCall::Name name,
-                    SystemCallHandler handler) override {
-    if (AsyncHyperCall::kX86SysEnter == name) {
-      SysEnter32 abi(&state);
-      handler(abi);
-    } else {
-      LOG(FATAL)
-          << "Unable to handle system call type.";
-    }
-  }
+  void DoSystemCall(
+      AsyncHyperCall::Name name, SystemCallHandler handler) override;
  private:
   State state;
 };
+
+void X86Thread32::DoSystemCall(AsyncHyperCall::Name name,
+                               SystemCallHandler handler) {
+
+  if (AsyncHyperCall::kX86SysEnter == name) {
+    // TODO(pag): Suppress `sysenter` in the hopes that there is an
+    //            `int 0x80` following it.
+
+  } else if (AsyncHyperCall::kX86IntN == name &&
+             0x80 == state.interrupt_vector) {
+    Int0x80SystemCall abi(&state);
+    handler(abi);
+
+  } else {
+    LOG(FATAL)
+        << "Unable to handle system call type.";
+  }
+}
 
 Thread32 *CreateThread32(const Snapshot *snapshot) {
   auto state_mmap = mmap(nullptr, StateSize(), PROT_READ,

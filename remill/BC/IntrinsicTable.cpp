@@ -54,10 +54,6 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       // OS interaction.
       async_hyper_call(FindIntrinsic(module, "__remill_async_hyper_call")),
 
-      // Transition to/from native/lifted code.
-      detach(FindIntrinsic(module, "__remill_detach")),
-      // attach(FindIntrinsic(module, "__remill_attach")),
-
       // Memory access.
       read_memory_8(FindPureIntrinsic(module, "__remill_read_memory_8")),
       read_memory_16(FindPureIntrinsic(module, "__remill_read_memory_16")),
@@ -102,10 +98,6 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       undefined_32(FindPureIntrinsic(module, "__remill_undefined_32")),
       undefined_64(FindPureIntrinsic(module, "__remill_undefined_64")),
       undefined_f32(FindPureIntrinsic(module, "__remill_undefined_f32")),
-      undefined_f64(FindPureIntrinsic(module, "__remill_undefined_f64")) {
-
-  // attach->addFnAttr(llvm::Attribute::Naked);
-  detach->addFnAttr(llvm::Attribute::Naked);
-}
+      undefined_f64(FindPureIntrinsic(module, "__remill_undefined_f64")) {}
 
 }  // namespace remill
