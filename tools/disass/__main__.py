@@ -72,6 +72,9 @@ def main(args=None):
     if 'ida' in args.disassembler:
       import ida.disass
       ret = ida.disass.execute(args, command_args)
+    elif 'radare2' in args.disassembler:
+      import radare2.disass
+      ret = radare2.disass.execute(args, command_args)
 
     else:
       arg_parser.error("{} passed to --disassembler is not known.".format(
