@@ -1,18 +1,4 @@
 
-#
-# The process I used in scripts was to:
-#  radare $prog
-#  > aa
-#  > afl
-# ... parse to make function list ...
-#  for each $function:
-#  > af@$function
-#  > pdfj@$function
-# ... handle the json output ...
-# 
-# Go through the json, put into protobuf form,
-# and output the Module class you've made
-# 
 import json
 import os
 import subprocess
@@ -20,56 +6,77 @@ import sys
 import tempfile
 import traceback
 
+try:
+    import r2pipe
+except:
+    print("Install the radare2 python bindings. (https://github.com/radare/radare2-r2pipe)")
+
+
 def execute(args, command_args):
-
+    # This is really not used. r2pipe expects that
+    # radare2 is in your $PATH.
     radare2_disassembler = args.disassembler
-    target_binary = args.binary
 
-    r2script = tempfile.NamedTemporaryFile(delete=False)
-    r2script.write("aa\r\nafl\r\n")
-    r2script.close()
-    cmd = []
-    cmd.append(radare2_disassembler)
-    cmd.append("-q")
-    cmd.append("-i")
-    cmd.append(r2script.name)
-    cmd.append(target_binary)
-    print("cmd: {}".format(" ".join(cmd)))
-    # Each entry is { "name" : "....", "address" : }
-    functions = []
-    try:
-        fn_list_raw = subprocess.check_output(cmd)
-        print("RAW: {}".format(fn_list_raw))
-        fn_list_raw = fn_list_raw.split("\n")
-        for fe in fn_list_raw:
-            fe = fe.split(" ")
-            if fe[-1] != "" and fe[0] != "":
-                functions.append({"name" : fe[-1], "address" : fe[0]})
-                print("Adding {}, {}".format(fe[-1], fe[0]))
-    except subprocess.CalledProcessError as e:
-        sys.stderr.write(traceback.format_exc())
-        return 1
-    os.remove(r2script.name)
+    r2 = r2pipe.open(args.binary)
 
-    r2script = tempfile.NamedTemporaryFile(delete=False)
-    r2script.write("aa\r\n")
-    for fentry in functions:
-        r2script.write("af@{0}\r\npdfj@{0}\r\n".format(fentry["name"]))
-    r2script.close()
-    cmd = []
-    cmd.append(radare2_disassembler)
-    cmd.append("-q")
-    cmd.append("-i")
-    cmd.append(r2script.name)
-    cmd.append(target_binary)
-    fd_json = [] 
-    try:
-       fnd_json_raw = subprocess.check_output(cmd)
-       fnd_json_raw = fnd_json_raw.split("\n")[0:-1]
-       print fnd_json_raw
-       fd_json = [json.loads(x) for x in fnd_json_raw]
-    except subprocess.CalledProcessError as e:
-       sys.stderr.write(traceback.format_exc())
-       return 1
-    os.remove(r2script.name)
+    # Analyze all
+    r2.cmd("aa")
+
+    # Get list of json dicts that have function information.
+    # An entry in the list is like:
+    # {
+    #   "offset":4196100,
+    #   "name":"sym._fini",
+    #   "size":9,
+    #   "realsz":9,
+    #   "cc":1,
+    #   "nbbs":1,
+    #   "edges":0,
+    #   "ebbs":1,
+    #   "calltype":"amd64",
+    #   "type":"sym",
+    #   "diff":"NEW",
+    #   "callrefs":[{ "address":"", "type" : "", "at" : ""},...],
+    #   "datarefs":[NNN, NNN...],
+    #   "codexrefs":[],
+    #   "dataxrefs":[],
+    #   "difftype":"new",
+    #   "indegree":0,
+    #   "outdegree":0,
+    #   "nargs":0,
+    #   "nlocals":0
+    # }
+    fn_list = r2.cmdj("aflj")
+    for fne in fn_list:
+        name = fne["name"]
+
+        # Analyze the current function
+        r2.cmd("af@{0}".format(name))
+
+        # Disassemble function and return in json, which 
+        # will look like:
+        # {
+        #   "name":"sym.main",
+        #   "size":261,
+        #   "addr":4195709,
+        #   "ops": [
+        #      {
+        #        "offset":4195709,
+        #        "esil":"rbp,8,rsp,-=,rsp,=[8]",
+        #        "refptr":false,
+        #        "fcn_addr":4195709,
+        #        "fcn_last":4195969,
+        #        "size":1,
+        #        "opcode":"push rbp",
+        #        "bytes":"55",
+        #        "family":"cpu",
+        #        "type":"upush",
+        #        "type_num":12,
+        #        "type2_num":0,
+        #        "flags":["main","sym.main"],
+        #        "xrefs":[{"addr":4195501,"type":"DATA"}]
+        #      }, ... ]
+        # }
+        dis = r2.cmdj("pdfj@{0}".format(name))
+   
     return 0
