@@ -93,15 +93,11 @@ def execute(args, command_args):
         dis = r2.cmdj("pdfj@{0}".format(name))
         for op in dis["ops"]:
             if new_block == True:
-                print "new Block"
                 if "bytes" not in op.keys():
-                    print "Skipp"
                     continue
                 blk = CFG_pb2.Block()
                 blk.address = op["offset"]
                 new_block = False
-            else:
-                print "old Block"
            
             if "bytes" not in op.keys():
                 if new_block == False:
@@ -124,6 +120,7 @@ def execute(args, command_args):
             # also, my jump check may be "too loose". 
             if op["opcode"].startswith("call") == True or \
                op["opcode"].startswith("ret") == True or \
+               op["opcode"].startswith("int ") == True or \
                op["opcode"].startswith("j") == True:
                 mod.blocks.extend([blk])
                 new_block = True
