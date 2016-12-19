@@ -111,8 +111,7 @@ def execute(args, command_args):
             # I was using python3 before so had bytes.fromhex() API call,
             # but I believe this is the correct juju for Python2
             btmp = [op["bytes"][i:i+2] for i in range(0, len(op["bytes"]), 2)]
-            btmp = [int(x, 16) for x in btmp]
-            ii.bytes = ''.join(chr(x) for x in btmp)
+            ii.bytes = ''.join([chr(int(x, 16)) for x in btmp])
             ii.address = op["offset"]    
             blk.instructions.extend([ii])
            
