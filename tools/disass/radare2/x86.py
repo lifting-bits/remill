@@ -98,16 +98,13 @@ def analyze(r2):
             ii.bytes = ''.join([chr(int(x, 16)) for x in btmp])
             ii.address = op["offset"]    
             blk.instructions.extend([ii])
-           
-            # XXX: Unsure if want new block after a jump.
-            # also, my jump check may be "too loose". 
+          
+            blk_terminators = ["call", "ret", "int", "jmp", "iret", "hlt" ]
             oc = op["opcode"]
-            if oc.startswith("call") == True or \
-               oc.startswith("ret") == True or \
-               oc.startswith("int ") == True or \
-               oc.startswith("j") == True:
-                mod.blocks.extend([blk])
-                new_block = True
-                blk = None
-                continue
+            for bt in blk_terminators: 
+                if oc.startswith(bt) == True:
+                    mod.blocks.extend([blk])
+                    new_block = True
+                    blk = None
+                    break
     return mod
