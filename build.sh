@@ -3,6 +3,7 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BUILD_DIR=$(dirname $0)/build
+BUILD_DIR=$(realpath $BUILD_DIR)
 LLVM_DIR=llvm
 
 ARCH=$(uname -m)
