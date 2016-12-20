@@ -75,6 +75,10 @@ def analyze(r2):
         #      }, ... ]
         # }
         dis = r2.cmdj("pdfj@{0}".format(name))
+        if dis is None:
+            print("Unable to disassemble {0}".format(name))
+            continue
+
         for op in dis["ops"]:
             if new_block == True:
                 if "bytes" not in op.keys():
@@ -97,11 +101,16 @@ def analyze(r2):
             btmp = [op["bytes"][i:i+2] for i in range(0, len(op["bytes"]), 2)]
             ii.bytes = ''.join([chr(int(x, 16)) for x in btmp])
             ii.address = op["offset"]    
-            blk.instructions.extend([ii])
-    
-            # Is "j" too loose? I think is ok.     
-            blk_terminators = ["call", "ret", "int", "j", "iret", "hlt" ]
             oc = op["opcode"]
+            if oc.startswith("ud2") == True:
+                print("Undefined (ud2) {1}@{0}. Ignoring block, skipping to next function!".format(op["offset"], name))
+                new_block = True
+                blk = None
+                break
+
+            blk.instructions.extend([ii])
+            blk_terminators = ["call", "ret", "int", "j", "iret", "hlt", "nop", \
+              "lcall", "ljmp", "syscall" ]
             for bt in blk_terminators: 
                 if oc.startswith(bt) == True:
                     mod.blocks.extend([blk])
