@@ -98,8 +98,9 @@ def analyze(r2):
             ii.bytes = ''.join([chr(int(x, 16)) for x in btmp])
             ii.address = op["offset"]    
             blk.instructions.extend([ii])
-          
-            blk_terminators = ["call", "ret", "int", "jmp", "iret", "hlt" ]
+    
+            # Is "j" too loose? I think is ok.     
+            blk_terminators = ["call", "ret", "int", "j", "iret", "hlt" ]
             oc = op["opcode"]
             for bt in blk_terminators: 
                 if oc.startswith(bt) == True:
