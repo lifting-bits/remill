@@ -8,8 +8,9 @@
 
 #include "remill/Arch/Name.h"
 
-#include "tools/vmill/Arch/X86/System32.h"
-#include "tools/vmill/OS/System32.h"
+#include "tools/vmill/OS/Linux32/System.h"
+
+#include "tools/vmill/Arch/X86/Linux32.h"
 #include "tools/vmill/Snapshot/File.h"
 #include "tools/vmill/Snapshot/Snapshot.h"
 
@@ -29,7 +30,8 @@ Process32::~Process32(void) {
 
 Process32::Process32(const Snapshot *snapshot_, Memory32 *memory_,
                      Thread32 *main_thread_)
-    : memory(memory_),
+    : Process(),
+      memory(memory_),
       snapshot(snapshot_),
       threads{main_thread_} {
   (void) snapshot;
@@ -73,7 +75,7 @@ Thread32 *Process32::CurrentThread(void) const {
 }
 
 // Schedule the next runnable thread, and return it.
-Thread32 *Process32::NextThread(void) {
+Thread32 *Process32::ScheduleNextThread(void) {
   if (threads.size()) {
     return threads[0];
   } else {
@@ -81,11 +83,28 @@ Thread32 *Process32::NextThread(void) {
   }
 }
 
-// Try to read the byte at address `addr` in the process memory. This will
-// return false if the byte is not readable or is not executable.
-bool Process32::TryReadExecutableByte(Addr32 addr, uint8_t *byte_val) const {
-  *byte_val = *memory->UnsafeBytePtr(addr);
-  return true;  // TODO(pag): Handle fault recovery.
+// Return a function that can be used to try to read executable bytes from
+// a process's memory.
+ByteReaderCallback Process32::ExecutableByteReader(void) {
+  return [=] (Addr64 addr, uint8_t *bytes) {
+    *bytes = *memory->UnsafeBytePtr(addr);
+    return true;  // TODO(pag): Handle fault recovery.
+  };
+}
+
+// Return the next program counter of code to execute.
+uint64_t Process32::ProgramCounter(void) {
+  return CurrentThread()->ProgramCounter();
+}
+
+
+// Return the machine state to be executed.
+void *Process32::MachineState(void) {
+  return CurrentThread()->MachineState();
+}
+
+void *Process32::Memory(void) {
+  return memory;
 }
 
 // Read data from the emulated process.

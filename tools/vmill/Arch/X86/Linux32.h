@@ -1,12 +1,11 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#ifndef TOOLS_VMILL_ARCH_X86_SYSTEM32_H_
-#define TOOLS_VMILL_ARCH_X86_SYSTEM32_H_
+#ifndef TOOLS_VMILL_ARCH_X86_LINUX32_H_
+#define TOOLS_VMILL_ARCH_X86_LINUX32_H_
 
 #include <unistd.h>
 
 #include "remill/Arch/Runtime/HyperCall.h"
-#include "tools/vmill/OS/System32.h"
 
 namespace remill {
 
@@ -37,4 +36,4 @@ Thread32 *CreateThread32(const Snapshot *snapshot);
 }  // namespace vmill
 }  // namespace remill
 
-#endif  // TOOLS_VMILL_ARCH_X86_SYSTEM32_H_
+#endif  // TOOLS_VMILL_ARCH_X86_LINUX32_H_

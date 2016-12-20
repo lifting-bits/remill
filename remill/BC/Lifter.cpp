@@ -475,11 +475,6 @@ void Lifter::CreateBlocks(const cfg::Module *cfg_module) {
 
 // Lift the control-flow graph specified by `cfg` into this bitcode module.
 void Lifter::LiftCFG(const cfg::Module *cfg_module) {
-  blocks.clear();
-  indirect_blocks.clear();
-  exported_blocks.clear();
-  imported_blocks.clear();
-
   ForEachIndirectBlock(module,
       [this] (uintptr_t pc, llvm::Function *func) {
         blocks[pc] = func;
@@ -514,6 +509,11 @@ void Lifter::LiftCFG(const cfg::Module *cfg_module) {
   SetIndirectBlocks();
 
   LiftBlocks(cfg_module);
+
+  blocks.clear();
+  indirect_blocks.clear();
+  exported_blocks.clear();
+  imported_blocks.clear();
 }
 
 // Lift code contained in blocks into the block methods.

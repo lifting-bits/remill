@@ -12,7 +12,8 @@
 
 #include "tools/vmill/Snapshot/File.h"
 #include "tools/vmill/Snapshot/Snapshot.h"
-#include "../Arch/X86/System32.h"
+
+#include "../Arch/X86/Linux32.h"
 
 namespace remill {
 namespace vmill {

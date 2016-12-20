@@ -75,19 +75,12 @@ class TE final : public Translator {
 
   virtual ~TE(void);
 
-  // Returns true if the block a
-  bool HaveLiftedFunctionFor(uint64_t pc) const override;
+  void LiftCFG(const cfg::Module *cfg) override;
 
-  void LiftCFG(
-      const cfg::Module *cfg, LiftedModuleCallback with_module) override;
+  // Run a callback on the lifted module code.
+  void VisitModule(LiftedModuleCallback callback) override;
 
  private:
-  // Update our internal indexes with the functions found in a module.
-  void UpdateIndex(void);
-
-  // Architecture of the code that we will produce.
-  const Arch * const target_arch;
-
   // Path to our cached bitcode file.
   const std::string bitcode_file_path;
 
@@ -99,10 +92,6 @@ class TE final : public Translator {
 
   // Remill's CFG to bitcode lifter.
   Lifter lifter;
-
-  // The index of function PCs and the IDs of the bitcode files containing
-  // those functions.
-  std::unordered_set<uintptr_t> index;
 };
 
 Translator::Translator(CodeVersion code_version_, const Arch *source_arch_)
@@ -124,67 +113,27 @@ Translator *Translator::Create(CodeVersion code_version_,
 // Initialize the translation engine.
 TE::TE(CodeVersion code_version_, const Arch *source_arch_)
     : Translator(code_version_, source_arch_),
-      target_arch(Arch::Create(GetOSName("linux"), GetArchName("amd64"))),
       bitcode_file_path(GetBitcodeFile(code_version)),
       context(new llvm::LLVMContext),
       module(LoadModuleFromFile(context, bitcode_file_path)),
-      lifter(source_arch, module),
-      index() {
-
-  target_arch->PrepareModule(module);
-
-  UpdateIndex();
-  DLOG(INFO)
-      << "Bitcode code cache contains " << index.size() << " lifted blocks.";
+      lifter(source_arch, module) {
+  source_arch->PrepareModule(module);
 }
 
 // Destroy the translation engine.
 TE::~TE(void) {
+  StoreModuleToFile(module, bitcode_file_path);
   delete module;
   delete context;
-  delete target_arch;
 }
 
-bool TE::HaveLiftedFunctionFor(uint64_t pc) const {
-  return 0 != index.count(pc);
-}
-
-void TE::LiftCFG(const cfg::Module *cfg, LiftedModuleCallback with_module) {
+void TE::LiftCFG(const cfg::Module *cfg) {
   lifter.LiftCFG(cfg);
-  auto old_num_blocks = index.size();
-  UpdateIndex();
-  auto new_num_blocks = index.size();
-  if (old_num_blocks < new_num_blocks) {
-    StoreModuleToFile(module, bitcode_file_path);
-  }
-  with_module(module);
 }
 
-// Update our internal indexes with the functions found in a module. Returns
-// the number of functions added into the index.
-void TE::UpdateIndex(void) {
-  const auto &module_id = module->getModuleIdentifier();
-  index.clear();
-  ForEachIndirectBlock(module,
-      [&module_id, this] (uint64_t block_pc, llvm::Function *lifted_func) {
-        auto func_name = lifted_func->getName().str();
-        auto in_index = HaveLiftedFunctionFor(block_pc);
-
-        if (lifted_func->isDeclaration()) {
-          CHECK(in_index)
-              << "Function " << func_name << " is declared in "
-              << module_id << " but not available in the global index.";
-          return;
-        }
-
-        lifted_func->setLinkage(llvm::GlobalValue::PrivateLinkage);
-
-        CHECK(!in_index)
-            << "Function " << func_name << " is defined in "
-            << module_id << " but has a conflicting entry in the global index.";
-
-        index.insert(block_pc);
-      });
+// Run a callback on the lifted module code.
+void TE::VisitModule(LiftedModuleCallback callback) {
+  callback(module);
 }
 
 }  // namespace vmill

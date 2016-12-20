@@ -3,11 +3,10 @@
 #ifndef TOOLS_VMILL_BC_TRANSLATOR_H_
 #define TOOLS_VMILL_BC_TRANSLATOR_H_
 
-#include "../Executor/Executor.h"
+#include "tools/vmill/Executor/Executor.h"
 #include "tools/vmill/BC/Callback.h"
 
 namespace llvm {
-class Function;
 class Module;
 }  // namespace llvm
 namespace remill {
@@ -16,23 +15,23 @@ class Module;
 }  // namespace cfg
 namespace vmill {
 
-// Handles translating binary code to bitcode, and caching that bitcode.
+// Lifts CFG structures into LLVM bitcode. This is a thin wrapper around
+// Remill's lifter, that caches the lifted bitcode to disk.
 class Translator {
  public:
   virtual ~Translator(void);
 
-  // Create a new translation engine for a given version of the code in
+  // Returns the translation engine for a given version of the code in
   // memory. Code version changes happen due to self-modifying code, or
   // runtime code loading.
-  static Translator *Create(
-      CodeVersion code_version_, const Arch *source_arch_);
-
-  // Returns true if the block a
-  virtual bool HaveLiftedFunctionFor(uint64_t pc) const = 0;
+  static Translator *Create(CodeVersion code_version_,
+                            const Arch *source_arch_);
 
   // Execute a callback function on the module lifted by this translation.
-  virtual void LiftCFG(const cfg::Module *cfg,
-                       LiftedModuleCallback with_module) = 0;
+  virtual void LiftCFG(const cfg::Module *cfg) = 0;
+
+  // Run a callback on the lifted module code.
+  virtual void VisitModule(LiftedModuleCallback callback) = 0;
 
  protected:
   Translator(CodeVersion code_version_, const Arch *source_arch_);

@@ -1,7 +1,7 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#ifndef TOOLS_VMILL_OS_SYSTEM32_H_
-#define TOOLS_VMILL_OS_SYSTEM32_H_
+#ifndef TOOLS_VMILL_OS_LINUX32_SYSTEM_H_
+#define TOOLS_VMILL_OS_LINUX32_SYSTEM_H_
 
 #include <cstdint>
 #include <functional>
@@ -10,6 +10,7 @@
 #include "remill/Arch/Runtime/HyperCall.h"
 
 #include "tools/vmill/Executor/Executor.h"
+#include "tools/vmill/OS/System.h"
 
 namespace remill {
 namespace vmill {
@@ -23,12 +24,26 @@ class Thread32;
 using SystemCallHandler = std::function<void(SystemCall32 &)>;
 
 // 32-bit process abstraction/manager.
-class Process32 {
+class Process32 : public Process {
  public:
-  ~Process32(void);
+  virtual ~Process32(void);
 
   // Create a process from a snapshot.
   static Process32 *Create(const Snapshot *snapshot);
+
+  // Return a function that can be used to try to read executable bytes from
+  // a process's memory.
+  ByteReaderCallback ExecutableByteReader(void) override;
+
+  // Return the next program counter of code to execute.
+  uint64_t ProgramCounter(void) override;
+
+  // Return the machine state to be executed.
+  void *MachineState(void) override;
+
+  // Return an opaque pointer to memory, which can be used for implementing
+  // memory access.
+  void *Memory(void) override;
 
   // Process an asynchronous hypercall for the thread `thread`.
   void ProcessAsyncHyperCall(Thread32 *thread);
@@ -45,7 +60,7 @@ class Process32 {
   Thread32 *CurrentThread(void) const;
 
   // Schedule the next runnable thread, and return it.
-  Thread32 *NextThread(void);
+  Thread32 *ScheduleNextThread(void);
 
   // Try to read the byte at address `addr` in the process memory. This will
   // return false if the byte is not readable or is not executable.

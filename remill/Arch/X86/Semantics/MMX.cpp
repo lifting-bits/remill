@@ -630,6 +630,7 @@ DEF_SEM(PMAXSW, D dst, S1 src1, S2 src2) {
 
     // Compute MAX of words
   auto vec_count = NumVectorElems(lhs_vec);
+  _Pragma("unroll")
   for (std::size_t i = 0; i < vec_count; i++) {
     auto max = Select(
         SCmpGt(SExtractV16(lhs_vec, i), SExtractV16(rhs_vec, i)),
@@ -657,6 +658,7 @@ DEF_SEM(PMAXUB, D dst, S1 src1, S2 src2) {
 
   // Compute MAX of bytes
   auto vec_count = NumVectorElems(lhs_vec);
+  _Pragma("unroll")
   for (std::size_t i = 0; i < vec_count; i++) {
     auto max = Select(
         UCmpGt(UExtractV8(lhs_vec, i), UExtractV8(rhs_vec, i)),
@@ -684,6 +686,7 @@ DEF_SEM(PMINSW, D dst, S1 src1, S2 src2) {
 
   // Compute MIN of words
   auto vec_count = NumVectorElems(lhs_vec);
+  _Pragma("unroll")
   for (std::size_t i = 0; i < vec_count; i++) {
     auto max = Select(
         SCmpLt(SExtractV16(lhs_vec, i), SExtractV16(rhs_vec, i)),
@@ -711,6 +714,8 @@ DEF_SEM(PMINUB, D dst, S1 src1, S2 src2) {
 
   // Compute MIN of bytes
   auto vec_count = NumVectorElems(lhs_vec);
+
+  _Pragma("unroll")
   for (std::size_t i = 0; i < vec_count; i++) {
     auto max = Select(
         UCmpLt(UExtractV8(lhs_vec, i), UExtractV8(rhs_vec, i)),

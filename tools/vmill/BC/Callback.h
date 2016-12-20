@@ -7,7 +7,6 @@
 #include <functional>
 
 namespace llvm {
-class Function;
 class Module;
 }  // namespace llvm
 namespace remill {

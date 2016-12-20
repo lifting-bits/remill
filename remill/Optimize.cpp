@@ -269,8 +269,12 @@ size_t StateMap::GetOffsetFromBasePtr(const llvm::GetElementPtrInst *gep_inst) {
   const auto found_offset = gep_inst->accumulateConstantOffset(
       data_layout, offset);
 
-  CHECK(found_offset)
-      << "Index operands to GEPs must be constant.";
+  if (!found_offset) {
+    gep_inst->getParent()->getParent()->dump();
+    LOG(FATAL)
+        << "Index operands to GEPs must be constant:"
+        << remill::LLVMThingToString(gep_inst);
+  }
 
   return offset.getZExtValue();
 }
@@ -279,9 +283,23 @@ void StateMap::AssignRegisters(llvm::Function *func) {
   inst_to_reg.clear();
 
   auto state_ptr = NthArgument(func, remill::kStatePointerArgNum);
+  auto mem_ptr = NthArgument(func, remill::kMemoryPointerArgNum);
   auto func_name = func->getName().str();
-  std::queue<llvm::Instruction *> work_list;
-  std::set<llvm::Instruction *> seen;
+  std::queue<llvm::Value *> work_list;
+  std::set<llvm::Value *> seen;
+  std::unordered_map<llvm::Value *, int> inst_to_offset;
+
+  inst_to_reg[state_ptr] = -2;
+  inst_to_offset[state_ptr] = 0;
+
+  inst_to_reg[mem_ptr] = -1;
+  inst_to_offset[mem_ptr] = 0;
+
+  seen.insert(state_ptr);
+  seen.insert(mem_ptr);
+
+  DLOG(INFO)
+      << "Performing alias analysis of registers in " << func_name;
 
   // Auto-assign registers for GEPs and LOADs, and BITCASTs.
   for (auto &basic_block : *func) {
@@ -295,28 +313,27 @@ void StateMap::AssignRegisters(llvm::Function *func) {
       // state structure.
       if (auto gep_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(&inst)) {
         if (state_ptr == gep_inst->getPointerOperand()) {
-          auto reg = offset_to_reg[GetOffsetFromBasePtr(gep_inst)];
+          auto offset = GetOffsetFromBasePtr(gep_inst);
+          auto reg = offset_to_reg[offset];
           CHECK(0 != reg)
               << "Unable to locate system register associated with a "
               << "`getelementptr` instruction in function "
               << func_name << ".";
 
           inst_to_reg[gep_inst] = reg;
+          inst_to_offset[gep_inst] = offset;
           seen.insert(&inst);
         } else {
           work_list.push(&inst);
         }
 
-      // Wait until we have most pointers already resolved.
-      } else if (auto cast_inst = llvm::dyn_cast<llvm::BitCastInst>(&inst)) {
+      // Pointer-to-pointer bitcasts, inttoptr, and ptrtoint.
+      } else if (auto cast_inst = llvm::dyn_cast<llvm::CastInst>(&inst)) {
         auto dest_is_ptr = cast_inst->getType()->isPointerTy();
         auto src_is_ptr = cast_inst->getSrcTy()->isPointerTy();
-        if (dest_is_ptr) {
-          if (!src_is_ptr) {
-            LOG(FATAL)
-                << "Found non pointer-to-pointer cast in function " << func_name
-                << ": " << remill::LLVMThingToString(&inst);
-          }
+
+        if (dest_is_ptr || src_is_ptr) {
+          work_list.push(cast_inst->getOperand(0));
           work_list.push(&inst);
         }
 
@@ -333,6 +350,7 @@ void StateMap::AssignRegisters(llvm::Function *func) {
       // ID as > 0.
       } else if (llvm::isa<llvm::AllocaInst>(&inst)) {
         inst_to_reg[&inst] = -1;
+        inst_to_offset[&inst] = 0;  // Dummy value.
         seen.insert(&inst);
       }
     }
@@ -351,7 +369,6 @@ void StateMap::AssignRegisters(llvm::Function *func) {
 
     if (auto gep_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(inst)) {
       auto base_ptr = gep_inst->getPointerOperand();
-
       if (base_ptr == state_ptr) {
         LOG(FATAL)
             << "GEPs that directly access the State structure should already "
@@ -360,19 +377,96 @@ void StateMap::AssignRegisters(llvm::Function *func) {
       }
 
       if (auto reg = inst_to_reg[base_ptr]) {
+        if (!inst_to_offset.count(base_ptr)) {
+          LOG(FATAL)
+              << "Don't have the offset for the source pointer of the GEP "
+              << "in function " << func_name << ": "
+              << remill::LLVMThingToString(inst);
+        }
+
+        auto offset = GetOffsetFromBasePtr(gep_inst);
         seen.insert(gep_inst);
         inst_to_reg[gep_inst] = reg;
+        inst_to_offset[gep_inst] = offset + inst_to_offset[base_ptr];
       } else {
+        work_list.push(base_ptr);
         work_list.push(gep_inst);
       }
 
-    // (Most) Bitcast instructions operate as aliases to things.
-    } else if (auto cast_inst = llvm::dyn_cast<llvm::BitCastInst>(inst)) {
-      if (auto reg = inst_to_reg[cast_inst->getOperand(0)]) {
-        seen.insert(cast_inst);
-        inst_to_reg[cast_inst] = reg;
+    // Bitcasts, intotoptr, and ptrtoint all maintain the pointer value, so
+    // are mostly identity transformations.
+    } else if (auto cast_inst = llvm::dyn_cast<llvm::CastInst>(inst)) {
+      auto src = cast_inst->getOperand(0);
+      if (auto reg = inst_to_reg[src]) {
+        if (!inst_to_offset.count(src)) {
+          LOG(FATAL)
+              << "Don't have the offset for the source pointer of the "
+              << "cast instruction in function " << func_name << ": "
+              << remill::LLVMThingToString(inst);
+        }
+
+        seen.insert(inst);
+        inst_to_reg[inst] = reg;
+        inst_to_offset[inst] = inst_to_offset[src];
       } else {
-        work_list.push(cast_inst);
+        work_list.push(src);
+        work_list.push(inst);
+      }
+
+    // Try to handle binary arithmetic on inttoptr values.
+    } else if (auto binop = llvm::dyn_cast<llvm::BinaryOperator>(inst)) {
+      auto lhs = binop->getOperand(0);
+      auto rhs = llvm::dyn_cast<llvm::ConstantInt>(binop->getOperand(1));
+
+      if (auto reg = inst_to_reg[lhs]) {
+        if (-1 == reg) {
+          seen.insert(binop);
+          inst_to_reg[binop] = reg;
+          inst_to_offset[binop] = 0;
+          // Weird stuff to the memory pointer, e.g. casting it and doing
+          // a mask to "force" the pointer to be a 32-bit value??
+          continue;
+        }
+
+        if (!rhs) {
+          LOG(FATAL)
+              << "Expected right-hand side of binary operator related to "
+              << "memory accesses to be a constant integer in function "
+              << func_name << ": " << remill::LLVMThingToString(inst);
+        }
+        if (!inst_to_offset.count(lhs)) {
+          LOG(FATAL)
+              << "Don't have the offset for the source pointer of the "
+              << "binary operator in function " << func_name << ": "
+              << remill::LLVMThingToString(inst);
+        }
+
+        if (llvm::BinaryOperator::Add == binop->getOpcode()) {
+          auto offset = rhs->getSExtValue();
+          auto total_offset = inst_to_offset[lhs] + offset;
+
+          if (static_cast<size_t>(total_offset) >= offset_to_reg.size()) {
+            LOG(FATAL)
+                << "Cannot map offset " << total_offset
+                << " to a register in function" << func_name << ": "
+                << remill::LLVMThingToString(inst);
+          }
+
+          seen.insert(inst);
+          inst_to_reg[binop] = offset_to_reg[total_offset];
+          inst_to_offset[binop] = total_offset;
+        } else {
+          LOG(FATAL)
+              << "Unsupported binary operator related to memory access in "
+              << "function " << func_name << ": "
+              << remill::LLVMThingToString(inst);
+        }
+      } else {
+        work_list.push(lhs);
+        if (rhs) {
+          work_list.push(rhs);
+        }
+        work_list.push(binop);
       }
 
     } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(inst)) {
@@ -380,40 +474,43 @@ void StateMap::AssignRegisters(llvm::Function *func) {
       auto source_inst = llvm::dyn_cast<llvm::Instruction>(source_ptr);
 
       if (auto reg = inst_to_reg[source_ptr]) {
-        seen.insert(load_inst);
+        inst_to_reg[inst] = reg;
+        inst_to_offset[inst] = inst_to_offset[source_ptr];
+        seen.insert(inst);
 
       } else if (source_inst) {
-        work_list.push(source_inst);
+        work_list.push(source_ptr);
+        work_list.push(inst);
       }
 
     } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
       auto dest_ptr = store_inst->getPointerOperand();
-      if (!inst_to_reg[dest_ptr]) {
+      if (auto reg = inst_to_reg[dest_ptr]) {
+        inst_to_reg[inst] = reg;
+        inst_to_offset[inst] = inst_to_offset[dest_ptr];
+        seen.insert(inst);
+      } else {
         auto dest_inst = llvm::dyn_cast<llvm::Instruction>(dest_ptr);
         if (!dest_inst) {
           LOG(FATAL)
               << "Storing to a non-instruction in function "
               << func_name << ": " << remill::LLVMThingToString(inst);
         }
-        work_list.push(dest_inst);
+        work_list.push(dest_ptr);
+        work_list.push(inst);
       }
 
     // PHI node.
     } else if (auto phi = llvm::dyn_cast<llvm::PHINode>(inst)) {
       auto &phi_reg = inst_to_reg[phi];
       auto need_more = false;
-      for (auto &use : phi->incoming_values()) {
-        auto val = llvm::dyn_cast<llvm::Instruction>(use.get());
-        if (!val) {
-          LOG(FATAL)
-              << "Cannot allocate register for PHI node in function "
-              << func_name << " whose incoming values are not instructions: "
-              << remill::LLVMThingToString(phi);
-        }
 
+      for (auto &use : phi->incoming_values()) {
+        auto val = use.get();
         if (auto reg = inst_to_reg[val]) {
           if (!phi_reg) {
             phi_reg = reg;
+            inst_to_offset[phi] = inst_to_offset[val];
 
           } else if (phi_reg != reg) {
             LOG(FATAL)
@@ -428,6 +525,27 @@ void StateMap::AssignRegisters(llvm::Function *func) {
 
       if (need_more) {
         work_list.push(phi);
+      } else {
+        seen.insert(phi);
+      }
+
+    } else if (llvm::isa<llvm::Constant>(inst) ||
+               llvm::isa<llvm::Argument>(inst)) {
+      seen.insert(inst);
+      continue;
+
+    // Likely call to an intrinsic for memory access.
+    } else if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(inst)) {
+      auto called_func = call_inst->getCalledFunction();
+      if (called_func && called_func->getName().startswith("__remill")) {
+        inst_to_reg[inst] = -1;
+        inst_to_offset[inst] = 0;  // Dummy value.
+        seen.insert(inst);
+      } else {
+        LOG(FATAL)
+            << "Got to an impossible state when assigning registers "
+            << "in function " << func_name << ": "
+            << remill::LLVMThingToString(inst);
       }
 
     // Shouldn't be possible.
@@ -645,6 +763,14 @@ static void RemoveUnusedSemantics(llvm::Module *module) {
   }
 }
 
+static void DisableReoptimization(llvm::Module *module) {
+  for (auto &func : *module) {
+    if (func.getName().startswith("__remill")) {
+      func.addFnAttr(llvm::Attribute::OptimizeNone);
+    }
+  }
+}
+
 static void DisableBlockInlining(llvm::Module *module) {
   for (auto &func : *module) {
     if (!func.getName().startswith("__remill_sub")) {
@@ -686,7 +812,8 @@ static void Optimize(llvm::Module *module) {
 
   func_manager.doInitialization();
   for (auto &func : *module) {
-    if (!func.getName().startswith("__remill")) {
+    if (!func.getName().startswith("__remill_sub") ||
+        func.hasFnAttribute(llvm::Attribute::OptimizeNone)) {
       continue;
     }
     func_manager.run(func);
@@ -776,7 +903,8 @@ static void GetBlockSuccessors(llvm::BasicBlock *block,
 static void InterProceduralDeadStoreElimination(llvm::Module *module) {
   StateMap map(module, GetStateType(module));
   for (auto &func : *module) {
-    if (func.getName().startswith("__remill_sub")) {
+    auto func_name = func.getName();
+    if (func_name.startswith("__remill_sub")) {
       map.ReassociateRegisters(&func);
       map.AssignRegisters(&func);
       map.InitBlockTransferFunctions(&func);
@@ -1085,22 +1213,41 @@ int main(int argc, char *argv[]) {
   do {
     auto context = new llvm::LLVMContext;
     auto module = remill::LoadModuleFromFile(context, FLAGS_bc_in);
-
+    auto module_id = module->getModuleIdentifier();
     StripDebugInfo(module);
     RemoveISelVars(module);
     DisableBlockInlining(module);
+    DLOG(INFO)
+        << "Running -O3 on " << module_id;
     Optimize(module);
+
+    DLOG(INFO)
+        << "Doing inter-procedural dead store elimination on " << module_id;
     InterProceduralDeadStoreElimination(module);
+
+    DLOG(INFO)
+        << "Removing undefined function calls.";
     RemoveUndefFuncCalls(module);
+
+    DLOG(INFO)
+        << "Enabling the deferring inlining optimization.";
     EnableDeferredInlining(module);
     if (FLAGS_lower_mem) {
       LowerMemOps(module);
     }
+
+    DLOG(INFO)
+        << "Rerunning -O3 on " << module_id;
     Optimize(module);
+    DLOG(INFO)
+        << "Finalizing optimizations of " << module_id;
     LowerSwitches(module);
     RemoveDeadIntrinsics(module);
-    RemoveUnusedSemantics(module);
-    StripDebugInfo(module);
+    if (false) {
+      RemoveUnusedSemantics(module);
+      StripDebugInfo(module);
+      DisableReoptimization(module);
+    }
     remill::StoreModuleToFile(module, FLAGS_bc_out);
     delete module;
     delete context;

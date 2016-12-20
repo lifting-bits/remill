@@ -10,11 +10,12 @@
 #include <sys/prctl.h>
 
 #include "remill/Arch/Arch.h"
+#include "remill/Arch/Name.h"
 #include "remill/OS/FileSystem.h"
 #include "remill/OS/OS.h"
 
 #include "tools/vmill/Executor/Executor.h"
-#include "tools/vmill/OS/System32.h"
+#include "tools/vmill/OS/Linux32/System.h"
 #include "tools/vmill/Snapshot/Snapshot.h"
 
 DEFINE_string(workspace, "", "Path to workspace in which the snapshot file is "
@@ -25,7 +26,6 @@ DEFINE_string(arch, "", "Architecture of the code in the snapshot.");
 DEFINE_string(os, "", "OS of the code in the snapshot.");
 
 int main(int argc, char **argv) {
-  using namespace std::placeholders;
   using namespace remill;
   using namespace vmill;
 
@@ -73,29 +73,30 @@ int main(int argc, char **argv) {
   // Try to make sure that the remill-lift and remill-opt servers are killed.
   prctl(PR_SET_PDEATHSIG, SIGKILL);
 
+  auto arch = Arch::Create(os_name, arch_name);
   do {
     auto process = Process32::Create(snapshot);
     CHECK(nullptr != process)
         << "Unable to create 32-bit process.";
 
     auto code_version = process->CodeVersion();
-    auto executor = Executor::CreateNativeExecutor(code_version);
+    auto executor = Executor::CreateNativeExecutor(arch, code_version);
 
-    while (auto thread = process->NextThread()) {
+    while (auto thread = process->ScheduleNextThread()) {
       DLOG(INFO)
           << "Scheduling virtual thread with TID " << thread->tid;
 
-      switch (executor->Execute(process, thread)) {
-        case Executor::kCannotContinue:
-        case Executor::kStoppedAtError:
+      switch (executor->Execute(process)) {
+        case Executor::kStatusCannotContinue:
+        case Executor::kStatusStoppedAtError:
           process->Kill();
           break;
 
-        case Executor::kStoppedAtAsyncHyperCall:
+        case Executor::kStatusStoppedAtAsyncHyperCall:
           process->ProcessAsyncHyperCall(thread);
           break;
 
-        case Executor::kPaused:
+        case Executor::kStatusPaused:
           break;
       }
     }

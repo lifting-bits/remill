@@ -8,7 +8,8 @@
 #include <sys/ptrace.h>
 #include <sys/user.h>
 
-#include "tools/vmill/Arch/X86/System32.h"
+#include "tools/vmill/Arch/X86/Linux32.h"
+#include "tools/vmill/OS/Linux32/System.h"
 #include "tools/vmill/Snapshot/File.h"
 #include "tools/vmill/Snapshot/Snapshot.h"
 

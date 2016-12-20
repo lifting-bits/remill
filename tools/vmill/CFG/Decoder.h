@@ -9,18 +9,17 @@ namespace remill {
 class Arch;
 namespace vmill {
 
-class Translator;
-
-class InstructionDecoder {
+// Uses an `Arch` to decode instructions, organize them into basic blocks,
+// and packages those into a CFG data structure.
+class Decoder {
  public:
-  explicit InstructionDecoder(const Arch *arch_, const Translator *translator_);
+  explicit Decoder(const Arch *arch_);
 
   void DecodeToCFG(uint64_t start_pc, ByteReaderCallback byte_reader,
                    CFGCallback with_cfg) const;
 
  private:
   const Arch * const arch;
-  const Translator * const translator;
 };
 
 }  // namespace vmill

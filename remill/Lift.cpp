@@ -14,10 +14,15 @@
 #include <llvm/Support/CommandLine.h>
 
 #include "remill/Arch/Arch.h"
+#include "remill/Arch/Name.h"
+
 #include "remill/BC/Lifter.h"
 #include "remill/BC/Util.h"
+
 #include "remill/CFG/CFG.h"
+
 #include "remill/OS/FileSystem.h"
+#include "remill/OS/OS.h"
 
 #ifndef REMILL_OS
 # if defined(__APPLE__)

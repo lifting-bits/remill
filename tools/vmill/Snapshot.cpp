@@ -23,7 +23,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-#include "Arch/X86/System32.h"
+#include "Arch/X86/Linux32.h"
 #include "remill/Arch/Name.h"
 #include "remill/OS/FileSystem.h"
 #include "remill/OS/OS.h"

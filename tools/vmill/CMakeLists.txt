@@ -2,10 +2,11 @@
 
 add_executable(vmill-snapshot
     ${PROJECT_SOURCE_DIR}/tools/vmill/Snapshot.cpp
-    ${PROJECT_SOURCE_DIR}/tools/vmill/Arch/X86/System32.cpp
+    ${PROJECT_SOURCE_DIR}/tools/vmill/Arch/X86/Linux32.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/Snapshot/Snapshot.cpp
-    ${PROJECT_SOURCE_DIR}/tools/vmill/OS/Linux32.cpp
-    ${PROJECT_SOURCE_DIR}/tools/vmill/OS/System32.cpp
+    ${PROJECT_SOURCE_DIR}/tools/vmill/OS/Linux32/System.cpp
+    ${PROJECT_SOURCE_DIR}/tools/vmill/OS/Linux32/SystemCall.cpp
+    ${PROJECT_SOURCE_DIR}/tools/vmill/OS/System.cpp
     
     ${PROJECT_SOURCE_DIR}/remill/Arch/Name.cpp
     ${PROJECT_SOURCE_DIR}/remill/OS/FileSystem.cpp
@@ -28,16 +29,16 @@ add_executable(vmill-exec32
     ${PROJECT_SOURCE_DIR}/remill/CFG/CFG.cpp
     ${PROJECT_SOURCE_DIR}/remill/OS/FileSystem.cpp
     ${PROJECT_SOURCE_DIR}/remill/OS/OS.cpp
-    ${PROJECT_SOURCE_DIR}/tools/vmill/Arch/X86/System32.cpp
+    ${PROJECT_SOURCE_DIR}/tools/vmill/Arch/X86/Linux32.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/BC/Translator.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/CFG/Decoder.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/Executor/Executor.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/Executor/Native/Executor.cpp
-    ${PROJECT_SOURCE_DIR}/tools/vmill/Executor/Native/Compiler.cpp
-    ${PROJECT_SOURCE_DIR}/tools/vmill/Executor/Native/Runtime.cpp
+    ${PROJECT_SOURCE_DIR}/tools/vmill/Executor/Runtime.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/Execute32.cpp
-    ${PROJECT_SOURCE_DIR}/tools/vmill/OS/Linux32.cpp
-    ${PROJECT_SOURCE_DIR}/tools/vmill/OS/System32.cpp
+    ${PROJECT_SOURCE_DIR}/tools/vmill/OS/Linux32/System.cpp
+    ${PROJECT_SOURCE_DIR}/tools/vmill/OS/Linux32/SystemCall.cpp
+    ${PROJECT_SOURCE_DIR}/tools/vmill/OS/System.cpp
     ${PROJECT_SOURCE_DIR}/tools/vmill/Snapshot/Snapshot.cpp
 )
 
@@ -57,6 +58,8 @@ target_link_libraries(vmill-exec32
     LLVMX86Utils
     LLVMX86CodeGen
     LLVMX86AsmPrinter
+    LLVMRuntimeDyld
+    LLVMMCJIT
 )
 
 install(

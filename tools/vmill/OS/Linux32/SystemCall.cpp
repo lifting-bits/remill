@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 
-#include "tools/vmill/OS/System32.h"
+#include "tools/vmill/OS/Linux32/System.h"
 
 namespace remill {
 namespace vmill {

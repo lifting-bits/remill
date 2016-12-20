@@ -6,6 +6,7 @@
 
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Instruction.h"
+#include "remill/Arch/Name.h"
 
 namespace remill {
 
