@@ -27,20 +27,8 @@ DEF_SEM(POP, D dst) {
   WriteZExt(dst, Read(ReadPtr<D>(old_xsp _IF_32BIT(REG_SS_BASE))));
   Write(REG_XSP, new_xsp);
 }
-
-}  // namespace
-
-DEF_ISEL(POP_GPRv_8F_16) = POP<R16W>;
-DEF_ISEL_R32or64W(POP_GPRv_8F, POP);
-
-DEF_ISEL(POP_GPRv_51_16) = POP<R16W>;
-DEF_ISEL_R32or64W(POP_GPRv_51, POP);
-
-DEF_ISEL(POP_MEMv_16) = POP<M16W>;
-DEF_ISEL_M32or64W(POP_MEMv, POP);
-
 #if 32 == ADDRESS_SIZE_BITS
-DEF_ISEL_SEM(POPA) {
+DEF_SEM(DoPOPA) {
   Write(REG_DI, PopFromStack<uint16_t>(memory, state));
   Write(REG_SI, PopFromStack<uint16_t>(memory, state));
   Write(REG_BP, PopFromStack<uint16_t>(memory, state));
@@ -50,7 +38,7 @@ DEF_ISEL_SEM(POPA) {
   Write(REG_CX, PopFromStack<uint16_t>(memory, state));
   Write(REG_AX, PopFromStack<uint16_t>(memory, state));
 }
-DEF_ISEL_SEM(POPAD) {
+DEF_SEM(DoPOPAD) {
   Write(REG_EDI, PopFromStack<uint32_t>(memory, state));
   Write(REG_ESI, PopFromStack<uint32_t>(memory, state));
   Write(REG_EBP, PopFromStack<uint32_t>(memory, state));
@@ -62,21 +50,8 @@ DEF_ISEL_SEM(POPAD) {
 }
 #endif
 
-// TODO(pag): Make behaviour conditional on `rflag.cpl`.
-DEF_ISEL_SEM(POPF) {
-  Flags f;
-  f.flat = ZExt(ZExt(PopFromStack<uint16_t>(memory, state)));
-  state.aflag.af = f.af;
-  state.aflag.cf = f.cf;
-  state.aflag.df = f.df;
-  state.aflag.of = f.of;
-  state.aflag.pf = f.pf;
-  state.aflag.sf = f.sf;
-  state.aflag.zf = f.zf;
-}
-
 #if 32 == ADDRESS_SIZE_BITS
-DEF_ISEL_SEM(POPFD) {
+DEF_SEM(DoPOPFD) {
   Flags f;
   f.flat = ZExt(PopFromStack<uint32_t>(memory, state));
   state.aflag.af = f.af;
@@ -93,7 +68,7 @@ DEF_ISEL_SEM(POPFD) {
 //  state.rflag.nt = f.nt;
 }
 #else
-DEF_ISEL_SEM(POPFQ) {
+DEF_SEM(DoPOPFQ) {
   Flags f;
   f.flat = PopFromStack<uint64_t>(memory, state);
   state.aflag.af = f.af;
@@ -109,6 +84,43 @@ DEF_ISEL_SEM(POPFQ) {
 //  state.rflag.tf = f.tf;
 //  state.rflag.nt = f.nt;
 }
+#endif  // 32 == ADDRESS_SIZE_BITS
+
+// TODO(pag): Make behaviour conditional on `rflag.cpl`.
+DEF_SEM(DoPOPF) {
+  Flags f;
+  f.flat = ZExt(ZExt(PopFromStack<uint16_t>(memory, state)));
+  state.aflag.af = f.af;
+  state.aflag.cf = f.cf;
+  state.aflag.df = f.df;
+  state.aflag.of = f.of;
+  state.aflag.pf = f.pf;
+  state.aflag.sf = f.sf;
+  state.aflag.zf = f.zf;
+}
+}  // namespace
+
+DEF_ISEL(POP_GPRv_8F_16) = POP<R16W>;
+DEF_ISEL_R32or64W(POP_GPRv_8F, POP);
+
+DEF_ISEL(POP_GPRv_51_16) = POP<R16W>;
+DEF_ISEL_R32or64W(POP_GPRv_51, POP);
+
+DEF_ISEL(POP_MEMv_16) = POP<M16W>;
+DEF_ISEL_M32or64W(POP_MEMv, POP);
+
+#if 32 == ADDRESS_SIZE_BITS
+DEF_ISEL(POPA) = DoPOPA;
+
+DEF_ISEL(POPAD) = DoPOPAD;
+#endif
+
+DEF_ISEL(POPF) = DoPOPF;
+
+#if 32 == ADDRESS_SIZE_BITS
+DEF_ISEL(POPFD) = DoPOPFD;
+#else
+DEF_ISEL(POPFQ) = DoPOPFQ;
 #endif  // 32 == ADDRESS_SIZE_BITS
 
 /*

@@ -25,66 +25,96 @@
   state.st.elems[7].val = __remill_undefined_f64(); \
   x; })
 
-DEF_ISEL_SEM(FILD_ST0_MEMmem16int, RF80W, M16 src1) {
+namespace {
+DEF_SEM(DoFILD_ST0_MEMmem16int, RF80W, M16 src1) {
   PUSH_X87_STACK(Float64(Signed(Read(src1))));
 }
 
-DEF_ISEL_SEM(FILD_ST0_MEMmem32int, RF80W, M32 src1) {
+DEF_SEM(DoFILD_ST0_MEMmem32int, RF80W, M32 src1) {
   PUSH_X87_STACK(Float64(Signed(Read(src1))));
 }
 
-DEF_ISEL_SEM(FILD_ST0_MEMm64int, RF80W, M64 src1) {
+DEF_SEM(DoFILD_ST0_MEMm64int, RF80W, M64 src1) {
   PUSH_X87_STACK(Float64(Signed(Read(src1))));
 }
 
-DEF_ISEL_SEM(FLD_ST0_MEMmem32real, RF80W, MF32 src1) {
+DEF_SEM(DoFLD_ST0_MEMmem32real, RF80W, MF32 src1) {
   PUSH_X87_STACK(Float64(Read(src1)));
 }
 
-DEF_ISEL_SEM(FLD_ST0_MEMm64real, RF80W, MF64 src1) {
+DEF_SEM(DoFLD_ST0_MEMm64real, RF80W, MF64 src1) {
   PUSH_X87_STACK(Float64(Read(src1)));
 }
 
-DEF_ISEL_SEM(FLD_ST0_MEMmem80real, RF80W, MF80 src1) {
+DEF_SEM(DoFLD_ST0_MEMmem80real, RF80W, MF80 src1) {
   PUSH_X87_STACK(Read(src1));
 }
 
-DEF_ISEL_SEM(FLDLN2_ST0, RF80) {
+DEF_SEM(DoFLDLN2_ST0, RF80) {
   uint64_t ln_2 = 0x3fe62e42fefa39efULL;
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(ln_2));
 }
 
-DEF_ISEL_SEM(FLD1_ST0, RF80) {
+DEF_SEM(DoFLD1_ST0, RF80) {
   PUSH_X87_STACK(1.0);  // +1.0.
 }
 
-DEF_ISEL_SEM(FLDZ_ST0, RF80) {
+DEF_SEM(DoFLDZ_ST0, RF80) {
   PUSH_X87_STACK(0.0);  // +0.0.
 }
 
-DEF_ISEL_SEM(FLDLG2_ST0, RF80) {
+DEF_SEM(DoFLDLG2_ST0, RF80) {
   uint64_t log10_2 = 0x3fd34413509f79ffULL;
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(log10_2));
 }
 
-DEF_ISEL_SEM(FLDL2T_ST0, RF80) {
+DEF_SEM(DoFLDL2T_ST0, RF80) {
   uint64_t log2_10 = 0x400a934f0979a371ULL;
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(log2_10));
 }
 
-DEF_ISEL_SEM(FLDL2E_ST0, RF80) {
+DEF_SEM(DoFLDL2E_ST0, RF80) {
   uint64_t log2_e = 0x3ff71547652b82feULL;
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(log2_e));
 }
 
-DEF_ISEL_SEM(FLDPI_ST0, RF80) {
+DEF_SEM(DoFLDPI_ST0, RF80) {
   uint64_t pi = 0x400921fb54442d18ULL;
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(pi));
 }
 
-DEF_ISEL_SEM(FCHS_ST0, RF80W dst, RF80 src) {
+DEF_SEM(DoFCHS_ST0, RF80W dst, RF80 src) {
   Write(dst, FNeg(Read(src)));
 }
+}  // namespace
+
+DEF_ISEL(FILD_ST0_MEMmem16int) = DoFILD_ST0_MEMmem16int;
+
+DEF_ISEL(FILD_ST0_MEMmem32int) = DoFILD_ST0_MEMmem32int;
+
+DEF_ISEL(FILD_ST0_MEMm64int) = DoFILD_ST0_MEMm64int;
+
+DEF_ISEL(FLD_ST0_MEMmem32real) = DoFLD_ST0_MEMmem32real;
+
+DEF_ISEL(FLD_ST0_MEMm64real) = DoFLD_ST0_MEMm64real;
+
+DEF_ISEL(FLD_ST0_MEMmem80real) = DoFLD_ST0_MEMmem80real;
+
+DEF_ISEL(FLDLN2_ST0) = DoFLDLN2_ST0;
+
+DEF_ISEL(FLD1_ST0) = DoFLD1_ST0;
+
+DEF_ISEL(FLDZ_ST0) = DoFLDZ_ST0;
+
+DEF_ISEL(FLDLG2_ST0) = DoFLDLG2_ST0;
+
+DEF_ISEL(FLDL2T_ST0) = DoFLDL2T_ST0;
+
+DEF_ISEL(FLDL2E_ST0) = DoFLDL2E_ST0;
+
+DEF_ISEL(FLDPI_ST0) = DoFLDPI_ST0;
+
+DEF_ISEL(FCHS_ST0) = DoFCHS_ST0;
 
 #if 0
 DEF_ISEL_SEM(FLDCW_MEMmem16, M16 src1) {

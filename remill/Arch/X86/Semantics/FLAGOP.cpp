@@ -3,31 +3,32 @@
 #ifndef REMILL_ARCH_X86_SEMANTICS_FLAGOP_H_
 #define REMILL_ARCH_X86_SEMANTICS_FLAGOP_H_
 
-DEF_ISEL_SEM(CLD) {
+namespace {
+DEF_SEM(DoCLD) {
   FLAG_DF = false;
 }
 
-DEF_ISEL_SEM(STD) {
+DEF_SEM(DoSTD) {
   FLAG_DF = true;
 }
 
-DEF_ISEL_SEM(CLC) {
+DEF_SEM(DoCLC) {
   FLAG_CF = false;
 }
 
-DEF_ISEL_SEM(CMC) {
+DEF_SEM(DoCMC) {
   FLAG_CF = BNot(FLAG_CF);
 }
 
-DEF_ISEL_SEM(STC) {
+DEF_SEM(DoSTC) {
   FLAG_CF = BNot(FLAG_CF);
 }
 
-DEF_ISEL_SEM(SALC) {
+DEF_SEM(DoSALC) {
   Write(REG_AL, Unsigned(FLAG_CF));
 }
 
-DEF_ISEL_SEM(SAHF) {
+DEF_SEM(DoSAHF) {
   Flags flags = {ZExtTo<uint64_t>(Read(REG_AH))};
   FLAG_CF = UCmpEq(1, flags.cf);
   FLAG_PF = UCmpEq(1, flags.pf);
@@ -36,7 +37,7 @@ DEF_ISEL_SEM(SAHF) {
   FLAG_ZF = UCmpEq(1, flags.zf);
 }
 
-DEF_ISEL_SEM(LAHF) {
+DEF_SEM(DoLAHF) {
   Flags flags = {0};
   flags.cf = Unsigned(FLAG_CF);
   flags.must_be_1 = 1;
@@ -50,23 +51,36 @@ DEF_ISEL_SEM(LAHF) {
 }
 
 // TODO(pag): This is a ring-0 instruction.
-DEF_ISEL_SEM(CLAC) {
+DEF_SEM(DoCLAC) {
   state.rflag.ac = false;
 }
 
 // TODO(pag): This is a ring-0 instruction.
-DEF_ISEL_SEM(STAC) {
+DEF_SEM(DoSTAC) {
   state.rflag.ac = true;
 }
 
 // TODO(pag): This is a ring-0 instruction.
-DEF_ISEL_SEM(CLI) {
+DEF_SEM(DoCLI) {
   state.rflag._if = false;
 }
 
 // TODO(pag): This is a ring-0 instruction.
-DEF_ISEL_SEM(STI) {
+DEF_SEM(DoSTI) {
   state.rflag._if = true;
 }
+}  // namespace
 
+DEF_ISEL(CLD) = DoCLD;
+DEF_ISEL(STD) = DoSTD;
+DEF_ISEL(CLC) = DoCLC;
+DEF_ISEL(CMC) = DoCMC;
+DEF_ISEL(STC) = DoSTC;
+DEF_ISEL(SALC) = DoSALC;
+DEF_ISEL(SAHF) = DoSAHF;
+DEF_ISEL(LAHF) = DoLAHF;
+DEF_ISEL(CLAC) = DoCLAC;
+DEF_ISEL(STAC) = DoSTAC;
+DEF_ISEL(CLI) = DoCLI;
+DEF_ISEL(STI) = DoSTI;
 #endif  // REMILL_ARCH_X86_SEMANTICS_FLAGOP_H_

@@ -17,30 +17,37 @@ DEF_SEM(BOUND, R8W cond, S1 src1, S2 src2) {
 }
 #endif
 
-}  // namespace
-
-DEF_ISEL_SEM(INT_IMMb, I8 num) {
+DEF_SEM(DoINT_IMMb, I8 num) {
   INTERRUPT_VECTOR = Read(num);
   HYPER_CALL = AsyncHyperCall::kX86IntN;
 }
 
-DEF_ISEL_SEM(INT1) {
+DEF_SEM(DoINT1) {
   INTERRUPT_VECTOR = 1;
   HYPER_CALL = AsyncHyperCall::kX86Int1;
 }
 
-DEF_ISEL_SEM(INT3) {
+DEF_SEM(DoINT3) {
   INTERRUPT_VECTOR = 3;
   HYPER_CALL = AsyncHyperCall::kX86Int3;
 }
 
 #if 32 == ADDRESS_SIZE_BITS
-DEF_ISEL_SEM(INTO, R8W cond) {
+DEF_SEM(DoINTO, R8W cond) {
   Write(cond, FLAG_OF);
   INTERRUPT_VECTOR = 4;
   HYPER_CALL = AsyncHyperCall::kX86IntO;
 }
 
+#endif  // 32 == ADDRESS_SIZE_BITS
+}  // namespace
+
+DEF_ISEL(INT_IMMb) = DoINT_IMMb;
+DEF_ISEL(INT1) = DoINT1;
+DEF_ISEL(INT3) = DoINT3;
+
+#if 32 == ADDRESS_SIZE_BITS
+DEF_ISEL(INTO) = DoINTO;
 DEF_ISEL(BOUND_GPRv_MEMa16_16) = BOUND<R16, M16>;
 DEF_ISEL(BOUND_GPRv_MEMa32_32) = BOUND<R32, M32>;
 #endif  // 32 == ADDRESS_SIZE_BITS
