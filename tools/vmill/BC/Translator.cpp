@@ -38,13 +38,19 @@
 DECLARE_string(arch);
 DECLARE_string(workspace);
 
+DEFINE_uint64(bitcode_save_interval, 256,
+              "How many new functions need to be lifted into the bitcode "
+              "file before it is cached to disk.");
+
+DEFINE_bool(delete_old_saved_bitcode, false,
+            "Should stale cached bitcode files be deleted from disk?");
+
+DEFINE_bool(disable_optimizer, false,
+            "Should the lifted bitcode optimizer be disabled?");
+
 namespace remill {
 namespace vmill {
 namespace {
-
-enum : size_t {
-  kSerializeInterval = 4096ULL
-};
 
 // Get the path to the code version-specific bitcode cache directory. If the
 // file doesn't exist, or is empty, then use the semantics bitcode file
@@ -151,7 +157,7 @@ TE::~TE(void) {
   //            marks externally available globals with initializers as having
   //            available externally linkage to prevent recompilation.
   for (auto &global : module->globals()) {
-    if (!global.isDeclaration() && global.hasAvailableExternallyLinkage()) {
+    if (global.hasAvailableExternallyLinkage()) {
       global.setLinkage(llvm::GlobalValue::ExternalLinkage);
     }
   }
@@ -165,33 +171,60 @@ void TE::LiftCFG(const cfg::Module *cfg) {
   // The native executor uses `AvailableExternallyLinkage` to avoid recompiling
   // the same code twice, but that will play havoc with the optimizer, so
   // we need to undo some of that here, then re-do it :-/
-  std::set<llvm::GlobalValue *> externs;
+  std::unordered_set<llvm::GlobalValue *> externs;
   for (auto &func : *module) {
-    if (!func.isDeclaration() && func.hasAvailableExternallyLinkage()) {
+    if (func.hasAvailableExternallyLinkage()) {
       externs.insert(&func);
       func.setLinkage(llvm::GlobalValue::PrivateLinkage);
     }
   }
 
   for (auto &global : module->globals()) {
-    if (!global.isDeclaration() && global.hasAvailableExternallyLinkage()) {
+    if (global.hasAvailableExternallyLinkage()) {
       externs.insert(&global);
       global.setLinkage(llvm::GlobalValue::ExternalLinkage);
     }
   }
 
+  // Lift and optimize.
   lifter.LiftCFG(cfg);
-  optimizer->Optimize();
-
-  auto new_num_funcs = module->getFunctionList().size();
-  if ((new_num_funcs - last_serialize_count) >= kSerializeInterval) {
-    DLOG(INFO)
-        << "Serializing " << module->getModuleIdentifier() << " to disk.";
-    StoreModuleToFile(module, bitcode_file_path);
+  if (!FLAGS_disable_optimizer) {
+    optimizer->Optimize();
   }
 
-  for (auto val : externs) {
-    val->setLinkage(llvm::GlobalValue::AvailableExternallyLinkage);
+  // Cache the module to disk if we've added enough new things to it since
+  // our last save.
+  auto new_num_funcs = module->getFunctionList().size();
+  if ((new_num_funcs - last_serialize_count) >= FLAGS_bitcode_save_interval) {
+    DLOG(INFO)
+        << "Serializing " << module->getModuleIdentifier() << " to disk.";
+    last_serialize_count = new_num_funcs;
+
+    std::stringstream ss;
+    ss << bitcode_file_path << "." << new_num_funcs;
+    auto temp_path = ss.str();
+
+    StoreModuleToFile(module, temp_path);
+    HardLinkOrCopy(temp_path, bitcode_file_path);
+
+    if (FLAGS_delete_old_saved_bitcode) {
+      RemoveFile(temp_path);
+    }
+  }
+
+  // Undo the above changes. We can't operate directly on what's in the set
+  // because some of those entries may have been removed.
+
+  for (auto &func : *module) {
+    if (externs.count(&func)) {
+      func.setLinkage(llvm::GlobalValue::AvailableExternallyLinkage);
+    }
+  }
+
+  for (auto &global : module->globals()) {
+    if (externs.count(&global)) {
+      global.setLinkage(llvm::GlobalValue::AvailableExternallyLinkage);
+    }
   }
 }
 

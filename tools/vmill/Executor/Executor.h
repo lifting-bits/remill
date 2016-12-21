@@ -83,7 +83,7 @@ class Executor {
   // machine code instructions into basic blocks. The CFG is sent to the
   // `translator`, which lifts the basic blocks into LLVM bitcode (by using
   // Remill's lifter).
-  const Decoder * const decoder;
+  Decoder * const decoder;
 
   // Lifts CFG structures into LLVM bitcode. This is a thin wrapper around
   // Remill's lifter, that caches the lifted bitcode to disk.

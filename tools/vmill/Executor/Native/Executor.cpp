@@ -193,7 +193,7 @@ static const llvm::Target *GetTarget(llvm::Triple target_triple) {
 static llvm::TargetOptions GetTargetOptions(void) {
   llvm::TargetOptions target_options;
   target_options.GuaranteedTailCallOpt = true;
-  target_options.FunctionSections = true;
+  target_options.EnableFastISel = true;
   return target_options;
 }
 
@@ -250,10 +250,8 @@ class JITExecutor : public NativeExecutor,
   void FinalizeModuleForCodeGen(llvm::Module *);
 
   llvm::Triple target_triple;
-  llvm::TargetLibraryInfoImpl tli;
   const llvm::Target *target;
   llvm::TargetMachine *target_machine;
-  llvm::MCAsmBackend *asm_backend;
 
   std::unordered_map<uint64_t, LiftedFunc *> funcs;
 
@@ -276,7 +274,6 @@ JITExecutor::JITExecutor(const Runtime *runtime_,
                          CodeVersion code_version_)
     : NativeExecutor(runtime_, arch_, code_version_),
       target_triple(GetTriple()),
-      tli(target_triple),
       target(GetTarget(target_triple)),
       target_machine(target->createTargetMachine(
           target_triple.getTriple(),
@@ -284,12 +281,8 @@ JITExecutor::JITExecutor(const Runtime *runtime_,
           GetNativeFeatureString(),
           GetTargetOptions(),
           llvm::Reloc::PIC_,
-          llvm::CodeModel::Default,
-          llvm::CodeGenOpt::Aggressive)),
-      asm_backend(target_machine->getTarget().createMCAsmBackend(
-          *target_machine->getMCRegisterInfo(),
-          target_triple.getTriple(),
-          llvm::sys::getHostCPUName())) {
+          llvm::CodeModel::JITDefault,
+          llvm::CodeGenOpt::None)) {
   llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
 }
 
@@ -303,13 +296,12 @@ void JITExecutor::CollapseCache(llvm::Module *module) {
 
   for (auto &func : *module) {
     if (func.hasAvailableExternallyLinkage()) {
-      func.setLinkage(llvm::GlobalValue::PrivateLinkage);
+      func.setLinkage(llvm::GlobalValue::ExternalLinkage);
     }
   }
 
   for (auto &global : module->getGlobalList()) {
-    if (global.hasInitializer() && global.hasAvailableExternallyLinkage() &&
-        llvm::isa<llvm::Constant>(global)) {
+    if (global.hasAvailableExternallyLinkage()) {
       global.setLinkage(llvm::GlobalValue::ExternalLinkage);
     }
   }
@@ -330,7 +322,7 @@ void JITExecutor::InitializeModuleForCodeGen(llvm::Module *module) {
   // so that they don't get recompiled.
   auto num_funcs_to_compile = 0;
   for (auto &func : *module) {
-    if (func.hasPrivateLinkage() && !func.isDeclaration()) {
+    if (!func.isDeclaration() && !func.hasAvailableExternallyLinkage()) {
       func.setLinkage(llvm::GlobalValue::ExternalLinkage);
       ++num_funcs_to_compile;
       jited_funcs.insert(&func);
@@ -411,7 +403,6 @@ void JITExecutor::Compile(llvm::Module *module) {
 
   module->setTargetTriple(target_triple.getTriple());
   module->setDataLayout(target_machine->createDataLayout());
-  pm.add(new llvm::TargetLibraryInfoWrapperPass(tli));
   pm.run(*module);
 
   std::unique_ptr<llvm::ObjectMemoryBuffer> obj_buff(

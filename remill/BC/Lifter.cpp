@@ -41,7 +41,6 @@
 #include "remill/CFG/CFG.h"
 #include "remill/OS/OS.h"
 
-
 namespace llvm {
 class ReturnInst;
 }  // namespace llvm

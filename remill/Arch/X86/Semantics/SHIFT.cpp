@@ -198,7 +198,7 @@ DEF_ISEL_RnW_Rn_Rn(SHL_GPRv_CL_D3r6, SHL);
 namespace {
 
 template <typename T>
-NEVER_INLINE static bool SHRDCarryFlag(T val, T count) {
+NEVER_INLINE static uint8_t SHRDCarryFlag(T val, T count) {
   __remill_defer_inlining();
   return UCmpEq(UAnd(UShr(val, USub(count, 1)), 1), 1);
 }
@@ -252,7 +252,7 @@ DEF_ISEL_RnW_Rn_Rn_Rn(SHRD_GPRv_GPRv_CL, SHRD);
 namespace {
 
 template <typename T>
-NEVER_INLINE static bool SHLDCarryFlag(T val, T count) {
+NEVER_INLINE static uint8_t SHLDCarryFlag(T val, T count) {
   __remill_defer_inlining();
   return UCmpEq(UAnd(UShr(val, USub(BitSizeOf(count), count)), 1), 1);
 }

@@ -83,7 +83,13 @@ static void AddEntries(const Instruction *instr, DecoderWorkList &work_list) {
   switch (instr->category) {
     case Instruction::kCategoryInvalid:
     case Instruction::kCategoryError:
+      break;
+
     case Instruction::kCategoryIndirectJump:
+    case Instruction::kCategoryIndirectFunctionCall:
+    case Instruction::kCategoryFunctionReturn:
+    case Instruction::kCategoryAsyncHyperCall:
+      work_list.insert({instr->next_pc, WorkListItem::kScanLinear});
       break;
 
     case Instruction::kCategoryNormal:
@@ -102,32 +108,22 @@ static void AddEntries(const Instruction *instr, DecoderWorkList &work_list) {
       break;
 
     case Instruction::kCategoryDirectFunctionCall:
-      work_list.insert(  // Return address / not taken target.
-          {instr->next_pc, WorkListItem::kScanLinear});
       work_list.insert(
           {instr->branch_taken_pc, WorkListItem::kScanRecursive});
+      work_list.insert(  // Return address.
+          {instr->next_pc, WorkListItem::kScanLinear});
       break;
 
     case Instruction::kCategoryConditionalBranch:
-      work_list.insert(  // Return address / not taken target.
-          {instr->next_pc, WorkListItem::kScanRecursive});
       work_list.insert(
           {instr->branch_taken_pc, WorkListItem::kScanRecursive});
-      break;
-
-    case Instruction::kCategoryIndirectFunctionCall:
-      work_list.insert(  // Return address.
-          {instr->next_pc, WorkListItem::kScanLinear});
+      work_list.insert(  // Not-taken path.
+          {instr->next_pc, WorkListItem::kScanRecursive});
       break;
 
     case Instruction::kCategoryConditionalAsyncHyperCall:
       work_list.insert(  // Return address.
           {instr->next_pc, WorkListItem::kScanRecursive});
-      break;
-
-    case Instruction::kCategoryFunctionReturn:
-    case Instruction::kCategoryAsyncHyperCall:
-      work_list.insert({instr->next_pc, WorkListItem::kScanLinear});
       break;
   }
 }
@@ -138,12 +134,9 @@ Decoder::Decoder(const Arch *arch_)
     : arch(arch_) {}
 
 void Decoder::DecodeToCFG(
-    uint64_t start_pc, ByteReaderCallback byte_reader,
-    CFGCallback with_cfg) const {
+    uint64_t start_pc, ByteReaderCallback byte_reader, CFGCallback with_cfg) {
 
   auto cfg_module = new cfg::Module;
-
-  std::unordered_set<uint64_t> seen_blocks;
   DecoderWorkList work_list;
 
   DLOG(INFO)
@@ -154,8 +147,8 @@ void Decoder::DecodeToCFG(
 
   auto min_recursive_pc = std::numeric_limits<uint64_t>::max();
   auto max_recursive_pc = std::numeric_limits<uint64_t>::min();
-
   auto expected_num_lifted_blocks = 0U;
+
   while (!work_list.empty()) {
     auto entry_it = work_list.begin();
     const auto entry = *entry_it;
@@ -167,6 +160,8 @@ void Decoder::DecodeToCFG(
     if (seen_blocks.count(block_pc)) {
       continue;  // We've already decoded this block.
     }
+
+    seen_blocks.insert(block_pc);
 
     if (WorkListItem::kScanRecursive == scan_type) {
       min_recursive_pc = std::min(min_recursive_pc, block_pc);
@@ -191,8 +186,6 @@ void Decoder::DecodeToCFG(
       break;
     }
 
-    seen_blocks.insert(block_pc);
-
     DLOG(INFO)
         << "Decoding basic block at " << std::hex << block_pc;
 
@@ -211,6 +204,9 @@ void Decoder::DecodeToCFG(
 
       // End this block early; the subsequent block already exists.
       if (cfg_block->instructions_size() && seen_blocks.count(block_pc)) {
+        DLOG(INFO)
+            << "Stopping block early at " << std::hex << block_pc
+            << "; a block at this PC has been decoded.";
         break;
       }
 
@@ -229,6 +225,9 @@ void Decoder::DecodeToCFG(
       // byte boundaries, and the alignment may sometimes use NOPs.
       if (WorkListItem::kScanLinear == scan_type &&
           1 == cfg_block->instructions_size() && instr->IsNoOp()) {
+        DLOG(INFO)
+            << "Stopping linearly decoded block " << std::hex << block_pc
+            << " at NO-OP.";
         break;
       }
 

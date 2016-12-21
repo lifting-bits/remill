@@ -69,10 +69,13 @@ class Opt : public Optimizer {
 
   // Initialize the flows within the function.
   void InitBlockTransferFunctions(llvm::Function *func);
+  void InitDeoptBlockTransferFunctions(llvm::Function *func);
 
   // Re-associate registers. This does some basic deduplication of GEPs, and
   // moves things like GEPs and pointer bitcasts up into the entry block.
-  void ReassociateRegisters(llvm::Function *func);
+  //
+  // Returns `false` if there are any GEPs with non-constant indices.
+  bool ReassociateRegisters(llvm::Function *func);
 
   // Removes dead stores from within a functions.
   void EliminateDeadStores(llvm::Function *func) const;
@@ -126,6 +129,8 @@ class Opt : public Optimizer {
   // register IDs to each thing in there.
   size_t IndexType(llvm::Type *, size_t offset);
   size_t GetOffsetFromBasePtr(const llvm::GetElementPtrInst *gep_inst);
+  size_t GetOffsetFromBasePtr(const llvm::GetElementPtrInst *gep_inst,
+                              bool &failed);
 
   void ApplyInstructionTransferFunction(llvm::Instruction *inst,
                                         RegUses *transfer) const;
@@ -269,22 +274,27 @@ size_t Opt::IndexType(llvm::Type *type, size_t offset) {
   return size;
 }
 
-// Get the index sequence of a GEP instruction. For GEPs that access the system
-// register state, this allows us to index into the `system_regs` map in order
-// to find the correct system register. In cases where we're operating on a
-// bitcast system register, this lets us find the offset into that register.
 size_t Opt::GetOffsetFromBasePtr(const llvm::GetElementPtrInst *gep_inst) {
-  llvm::APInt offset(64, 0);
-  const auto found_offset = gep_inst->accumulateConstantOffset(
-      data_layout, offset);
-
-  if (!found_offset) {
-    gep_inst->getParent()->getParent()->dump();
+  bool failed = false;
+  auto ret = GetOffsetFromBasePtr(gep_inst, failed);
+  if (failed) {
     LOG(FATAL)
         << "Index operands to GEPs must be constant:"
         << remill::LLVMThingToString(gep_inst);
   }
+  return ret;
+}
 
+// Get the index sequence of a GEP instruction. For GEPs that access the system
+// register state, this allows us to index into the `system_regs` map in order
+// to find the correct system register. In cases where we're operating on a
+// bitcast system register, this lets us find the offset into that register.
+size_t Opt::GetOffsetFromBasePtr(const llvm::GetElementPtrInst *gep_inst,
+                                 bool &failed) {
+  llvm::APInt offset(64, 0);
+  const auto found_offset = gep_inst->accumulateConstantOffset(
+      data_layout, offset);
+  failed = !found_offset;
   return offset.getZExtValue();
 }
 
@@ -567,13 +577,17 @@ void Opt::AssignRegisters(llvm::Function *func) {
   }
 }
 
-void Opt::ReassociateRegisters(llvm::Function *func) {
+bool Opt::ReassociateRegisters(llvm::Function *func) {
   auto state_ptr = NthArgument(func, remill::kStatePointerArgNum);
-
+  bool failed = false;
   std::vector<llvm::GetElementPtrInst *> to_move;
   for (auto &block : *func) {
     for (auto &inst : block) {
       if (auto gep_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(&inst)) {
+        (void) GetOffsetFromBasePtr(gep_inst, failed);
+        if (failed) {
+          return false;
+        }
         if (gep_inst->getPointerOperand() == state_ptr) {
           to_move.push_back(gep_inst);
         }
@@ -582,7 +596,7 @@ void Opt::ReassociateRegisters(llvm::Function *func) {
   }
 
   if (to_move.empty()) {
-    return;
+    return true;
   }
 
   // Sort the GEP instructions by the offset being accessed.
@@ -611,6 +625,7 @@ void Opt::ReassociateRegisters(llvm::Function *func) {
       last_offset = offset;
     }
   }
+  return true;
 }
 
 void Opt::EliminateDeadStores(llvm::Function *func) const {
@@ -713,6 +728,15 @@ void Opt::InitBlockTransferFunctions(llvm::Function *func) {
   }
 }
 
+void Opt::InitDeoptBlockTransferFunctions(llvm::Function *func) {
+  for (auto &block : *func) {
+    auto &transfer = block_transfer_functions[&block];
+    transfer.incoming_live.set();
+    transfer.local_dead.set();
+    transfer.local_live.set();
+  }
+}
+
 static void DisableReoptimization(llvm::Module *module) {
   for (auto &func : *module) {
     if (func.getName().startswith("__remill")) {
@@ -758,8 +782,8 @@ static void RunO3(llvm::Module *module) {
 
   llvm::PassManagerBuilder builder;
   builder.OptLevel = 3;  // -O3.
-  builder.SizeLevel = 2;  // -Oz
-  builder.Inliner = llvm::createFunctionInliningPass(3, 2);
+  builder.SizeLevel = 0;  // -Oz
+  builder.Inliner = llvm::createFunctionInliningPass(999);
   builder.LibraryInfo = TLI;
   builder.DisableTailCalls = false;  // Enable tail calls.
   builder.DisableUnrollLoops = false;  // Unroll loops!
@@ -768,15 +792,17 @@ static void RunO3(llvm::Module *module) {
   builder.LoopVectorize = false;  // Don't produce vector operations.
   builder.LoadCombine = false;  // Don't coalesce loads.
   builder.MergeFunctions = false;  // Try to deduplicate functions.
-  builder.VerifyInput = true;  // Sanity checking.
-  builder.VerifyOutput = true;  // Sanity checking.
+  builder.VerifyInput = false;
+  builder.VerifyOutput = false;
 
   builder.populateFunctionPassManager(func_manager);
   builder.populateModulePassManager(module_manager);
 
   func_manager.doInitialization();
   for (auto &func : *module) {
-    if (!func.getName().startswith("__remill_sub")) {
+    if (func.hasFnAttribute(llvm::Attribute::OptimizeNone) ||
+        func.hasAvailableExternallyLinkage() ||
+        !func.getName().startswith("__remill_sub")) {
       continue;
     }
     func_manager.run(func);
@@ -784,18 +810,6 @@ static void RunO3(llvm::Module *module) {
 
   func_manager.doFinalization();
   module_manager.run(*module);
-}
-
-// Lower switch statements, and try to keep things in registers.
-static void LowerSwitches(llvm::Module *module) {
-  llvm::legacy::FunctionPassManager func_manager(module);
-  func_manager.add(llvm::createLowerSwitchPass());
-  func_manager.add(llvm::createPromoteMemoryToRegisterPass());
-  func_manager.doInitialization();
-  for (auto &func : *module) {
-    func_manager.run(func);
-  }
-  func_manager.doFinalization();
 }
 
 // Get all predecessors of a basic block. This will cross function boundaries.
@@ -834,6 +848,11 @@ static void GetBlockSuccessors(llvm::BasicBlock *block,
 // structure.
 void Opt::InterProceduralDeadStoreElimination(void) {
   size_t num_blocks = 0;
+  std::set<llvm::BasicBlock *> work_list;
+  std::set<llvm::BasicBlock *> avoid;
+  std::vector<llvm::BasicBlock *> preds;
+  std::vector<llvm::BasicBlock *> succs;
+
   for (llvm::Function &func : *module) {
     if (!func.isDeclaration() && !func_transfer_functions.count(&func)) {
       num_blocks += func.size();
@@ -843,21 +862,30 @@ void Opt::InterProceduralDeadStoreElimination(void) {
   block_transfer_functions.clear();
   block_transfer_functions.reserve(num_blocks);
 
+  // Initialize the block transfer functions for every basic block in every
+  // lifted subroutine.
   for (auto &func : *module) {
     auto func_name = func.getName();
     if (func_name.startswith("__remill_sub")) {
       if (!func_transfer_functions.count(&func)) {
-        ReassociateRegisters(&func);
-        AssignRegisters(&func);
-        InitBlockTransferFunctions(&func);
+        if (ReassociateRegisters(&func)) {
+          AssignRegisters(&func);
+          InitBlockTransferFunctions(&func);
+
+        // There exists a GEP with a non-constant index, and so we treat this
+        // block as non-optimizable (in terms of DSE). We can add these blocks
+        // to the avoid set, kind of like how incremental optimization happens.
+        } else {
+          DLOG(WARNING)
+              << "Treating function " << func_name.str()
+              << " as unoptimizable; it has a GEP with a non-constant index.";
+          InitDeoptBlockTransferFunctions(&func);
+          func_transfer_functions[&func] =
+              block_transfer_functions[&(func.front())];
+        }
       }
     }
   }
-
-  std::set<llvm::BasicBlock *> work_list;
-  std::set<llvm::BasicBlock *> avoid;
-  std::vector<llvm::BasicBlock *> preds;
-  std::vector<llvm::BasicBlock *> succs;
 
   // Propagate dead register analysis results from a prior run to the
   // current run.
@@ -1062,7 +1090,7 @@ static void EnableDeferredInlining(llvm::Module *module) {
     for (auto callers : function->users()) {
       if (auto call_inst = llvm::dyn_cast_or_null<llvm::CallInst>(callers)) {
         call_inst->addAttribute(llvm::AttributeSet::FunctionIndex,
-                                 llvm::Attribute::AlwaysInline);
+                                llvm::Attribute::AlwaysInline);
       }
     }
   }
@@ -1089,12 +1117,17 @@ void Opt::Optimize(void) {
 
   EnableBlockInlining(module);
 
-  DLOG(INFO)<< "Rerunning -O3 on " << module_id;
+  DLOG(INFO)
+      << "Rerunning -O3 on " << module_id;
   RunO3(module);
 
-  DLOG(INFO)<< "Finalizing optimizations of " << module_id;
-  LowerSwitches(module);
+  DLOG(INFO)
+      << "Finalizing optimizations of " << module_id;
+
   DisableReoptimization(module);
+
+  DLOG(INFO)
+      << "Optimized bitcode.";
 }
 
 }  // namespace

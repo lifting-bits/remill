@@ -1643,8 +1643,8 @@ DEF_SEM(PSIGNB, D dst, S1 src1, S2 src2) {
   for (std::size_t i = 0; i < vec_count; i++) {
     auto v1 = SExtractV8(src1_vec, i);
     auto v2 = SExtractV8(src2_vec, i);
-    bool is_neg = SignFlag(v2);
-    bool is_zero = ZeroFlag(v2);
+    auto is_neg = SignFlag(v2);
+    auto is_zero = ZeroFlag(v2);
     auto value = Select(is_zero, 0_s8, Select(is_neg, SNeg(v1), v1));
     dst_vec = SInsertV8(dst_vec, i, value);
   }
@@ -1662,8 +1662,8 @@ DEF_SEM(PSIGNW, D dst, S1 src1, S2 src2) {
   for (std::size_t i = 0; i < vec_count; i++) {
     auto v1 = SExtractV16(src1_vec, i);
     auto v2 = SExtractV16(src2_vec, i);
-    bool is_neg = SignFlag(v2);
-    bool is_zero = ZeroFlag(v2);
+    auto is_neg = SignFlag(v2);
+    auto is_zero = ZeroFlag(v2);
     auto value = Select(is_zero, 0_s16, Select(is_neg, SNeg(v1), v1));
     dst_vec = SInsertV16(dst_vec, i, value);
   }
@@ -1681,8 +1681,8 @@ DEF_SEM(PSIGND, D dst, S1 src1, S2 src2) {
   for (std::size_t i = 0; i < vec_count; i++) {
     auto v1 = SExtractV32(src1_vec, i);
     auto v2 = SExtractV32(src2_vec, i);
-    bool is_neg = SignFlag(v2);
-    bool is_zero = ZeroFlag(v2);
+    auto is_neg = SignFlag(v2);
+    auto is_zero = ZeroFlag(v2);
     auto value = Select(is_zero, 0_s32, Select(is_neg, SNeg(v1), v1));
     dst_vec = SInsertV32(dst_vec, i, value);
   }

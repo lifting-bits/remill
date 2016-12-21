@@ -53,8 +53,8 @@ add_compile_options(
     -pedantic
 
     -g3
-    -O3
-
+    -O0
+    
     -Wno-unused-parameter
     -Wno-c++98-compat
     -Wno-unreachable-code-return

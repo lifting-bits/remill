@@ -200,31 +200,45 @@ llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
 
   std::string error;
   llvm::raw_string_ostream error_stream(error);
-  CHECK(!llvm::verifyModule(*module, &error_stream))
-      << "Error reading module from file " << file_name << ". " << error << ".";
+  if (llvm::verifyModule(*module, &error_stream)) {
+    error_stream.flush();
+    LOG(FATAL)
+        << "Error reading module from file " << file_name << ": " << error;
+  }
 
   return module;
 }
 
 // Store an LLVM module into a file.
 void StoreModuleToFile(llvm::Module *module, std::string file_name) {
+  std::stringstream ss;
+  ss << file_name << ".tmp." << getpid();
+  auto tmp_name = ss.str();
+
   std::string error;
   llvm::raw_string_ostream error_stream(error);
 
-  CHECK(!llvm::verifyModule(*module, &error_stream))
-      << "Error writing module to file " << file_name << ". " << error << ".";
+  if (llvm::verifyModule(*module, &error_stream)) {
+    error_stream.flush();
+    LOG(FATAL)
+        << "Error writing module to file " << file_name << ": " << error;
+  }
 
   std::error_code ec;
-  llvm::tool_output_file bc(file_name.c_str(), ec, llvm::sys::fs::F_RW);
+  llvm::tool_output_file bc(tmp_name.c_str(), ec, llvm::sys::fs::F_RW);
 
   CHECK(!ec)
-      << "Unable to open output bitcode file for writing: " << file_name << ".";
+      << "Unable to open output bitcode file for writing: " << tmp_name;
 
   llvm::WriteBitcodeToFile(module, bc.os());
   bc.keep();
-
-  CHECK(!ec)
-      << "Error writing bitcode to file: " << file_name << ".";
+  if (!ec) {
+    RenameFile(tmp_name, file_name);
+  } else {
+    RemoveFile(tmp_name);
+    LOG(FATAL)
+        << "Error writing bitcode to file: " << file_name << ".";
+  }
 }
 
 namespace {
@@ -301,22 +315,38 @@ void ForEachIndirectBlock(
     return;
   }
 
-
   // Read in the addressable blocks from the indirect blocks table. Below,
   // the translator marks every decoded basic block in the CFG as being
   // addressable, so we expect all of them to be in the table.
   auto entries = llvm::dyn_cast<llvm::ConstantArray>(init);
+  if (!entries) {
+    LOG(FATAL)
+        << "No entries in __remill_indirect_blocks (0x" << std::hex
+        << reinterpret_cast<uintptr_t>(init) << "): "
+        << LLVMThingToString(table_var);
+  }
+
+  std::vector<llvm::ConstantStruct *> recorded_entries;
+  recorded_entries.reserve(entries->getNumOperands());
+
   for (const auto &entry : entries->operands()) {
     if (llvm::isa<llvm::ConstantAggregateZero>(entry)) {
       continue;  // Sentinel.
     }
-
     auto indirect_block = llvm::dyn_cast<llvm::ConstantStruct>(entry.get());
+    recorded_entries.push_back(indirect_block);
+  }
+
+  for (auto indirect_block : recorded_entries) {
+    // Note: Each entry has the following type:
+    //    struct IndirectBlock final {
+    //      const uint64_t lifted_address;
+    //      void (* const lifted_func)(State &, Memory &, addr_t);
+    //    };
     auto block_pc = llvm::dyn_cast<llvm::ConstantInt>(
         indirect_block->getOperand(0))->getZExtValue();
     auto lifted_func = llvm::dyn_cast<llvm::Function>(
         indirect_block->getOperand(1));
-
     on_each_function(block_pc, lifted_func);
   }
 }
@@ -345,18 +375,31 @@ static void ForEachNamedBlock(llvm::Module *module, const char *table_name,
   }
 
   auto entries = llvm::dyn_cast<llvm::ConstantArray>(init);
+  if (!entries) {
+    LOG(FATAL)
+        << "No entries in " << table_name << " (0x" << std::hex
+        << reinterpret_cast<uintptr_t>(init) << "): "
+        << LLVMThingToString(table_var);
+  }
+
+  std::vector<llvm::ConstantStruct *> recorded_entries;
+  recorded_entries.reserve(entries->getNumOperands());
+
   for (const auto &entry : entries->operands()) {
     if (llvm::isa<llvm::ConstantAggregateZero>(entry)) {
       continue;
     }
+    auto exported_block = llvm::dyn_cast<llvm::ConstantStruct>(entry.get());
+    recorded_entries.push_back(exported_block);
+  }
 
+  for (auto exported_block : recorded_entries) {
     // Note: Each `entry` has the following type:
     //    struct NamedBlock final {
     //      const char * const name;
     //      void (* const lifted_func)(Memory &, State &, addr_t);
     //      void (* const native_func)(void);
     //    };
-    auto exported_block = llvm::dyn_cast<llvm::ConstantStruct>(entry.get());
     auto func_name = GetSubroutineName(exported_block);
     auto lifted_func = llvm::dyn_cast<llvm::Function>(
         exported_block->getOperand(1));

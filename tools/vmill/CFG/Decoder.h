@@ -3,6 +3,8 @@
 #ifndef TOOLS_VMILL_CFG_DECODER_H_
 #define TOOLS_VMILL_CFG_DECODER_H_
 
+#include <unordered_set>
+
 #include "tools/vmill/BC/Callback.h"
 
 namespace remill {
@@ -16,10 +18,12 @@ class Decoder {
   explicit Decoder(const Arch *arch_);
 
   void DecodeToCFG(uint64_t start_pc, ByteReaderCallback byte_reader,
-                   CFGCallback with_cfg) const;
+                   CFGCallback with_cfg);
 
  private:
   const Arch * const arch;
+
+  std::unordered_set<uint64_t> seen_blocks;
 };
 
 }  // namespace vmill
