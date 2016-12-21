@@ -33,10 +33,14 @@ extern "C" const NamedBlock __remill_imported_blocks[1] = {};
 //        addresses taken, and so this prevents dead argument elimination.
 extern "C" void __remill_mark_as_used(const void *);
 
+extern "C" void __remill_basic_block(Memory &, State &, addr_t);
+
 // This is just a hack to make sure all these functions appear in the bitcode
 // file!
 [[gnu::used]]
- extern "C" void __remill_intrinsics(void) {
+extern "C" void __remill_intrinsics(void) {
+
+  USED(__remill_basic_block);
 
   USED(__remill_read_memory_8);
   USED(__remill_read_memory_16);

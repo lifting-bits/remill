@@ -133,9 +133,6 @@ extern Memory *__remill_atomic_begin(Memory *);
 [[gnu::used, gnu::const]]
 extern Memory *__remill_atomic_end(Memory *);
 
-[[gnu::used]]
-extern void __remill_intrinsics(void);
-
 }  // extern C
 
 #endif  // REMILL_ARCH_RUNTIME_INTRINSICS_H_

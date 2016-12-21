@@ -115,7 +115,7 @@ void Snapshot::ValidatePageInfo(uint64_t max_address) const {
     CHECK(info.offset_in_file == next_offset)
         << "Memory for PageInfo entry is not at the right place in " << path;
 
-    LOG(INFO)
+    DLOG(INFO)
         << "Found memory for range [" << std::hex << info.base_address << ", "
         << std::hex << info.limit_address << ") at file offset "
         << std::dec << info.offset_in_file << " with " << range_size

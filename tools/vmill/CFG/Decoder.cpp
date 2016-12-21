@@ -102,6 +102,12 @@ static void AddEntries(const Instruction *instr, DecoderWorkList &work_list) {
       break;
 
     case Instruction::kCategoryDirectFunctionCall:
+      work_list.insert(  // Return address / not taken target.
+          {instr->next_pc, WorkListItem::kScanLinear});
+      work_list.insert(
+          {instr->branch_taken_pc, WorkListItem::kScanRecursive});
+      break;
+
     case Instruction::kCategoryConditionalBranch:
       work_list.insert(  // Return address / not taken target.
           {instr->next_pc, WorkListItem::kScanRecursive});
@@ -110,6 +116,10 @@ static void AddEntries(const Instruction *instr, DecoderWorkList &work_list) {
       break;
 
     case Instruction::kCategoryIndirectFunctionCall:
+      work_list.insert(  // Return address.
+          {instr->next_pc, WorkListItem::kScanLinear});
+      break;
+
     case Instruction::kCategoryConditionalAsyncHyperCall:
       work_list.insert(  // Return address.
           {instr->next_pc, WorkListItem::kScanRecursive});

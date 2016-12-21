@@ -53,7 +53,7 @@ add_compile_options(
     -pedantic
 
     -g3
-    -O0
+    -O3
 
     -Wno-unused-parameter
     -Wno-c++98-compat
@@ -72,6 +72,10 @@ add_compile_options(
     
     -fno-omit-frame-pointer
     -fvisibility-inlines-hidden
+
+    -fno-exceptions
+    -fno-rtti
+    -fno-asynchronous-unwind-tables
 
     -fno-rtti
     -std=gnu++11
@@ -122,6 +126,7 @@ add_executable(remill-opt
     remill/Optimize.cpp
     remill/BC/Util.cpp
     remill/BC/IntrinsicTable.cpp
+    remill/BC/Optimizer.cpp
     remill/OS/FileSystem.cpp
     remill/OS/OS.cpp
 )

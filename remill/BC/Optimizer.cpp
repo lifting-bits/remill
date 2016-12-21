@@ -201,7 +201,7 @@ void Opt::AssignReg(size_t offset, size_t size, int reg,
       << "Too many registers for bitmap! Change kMaxNumRegs and recompile.";
 
   if (reg > 0) {
-    LOG(INFO)
+    DLOG(INFO)
         << "Register " << reg << " covers [" << offset
         << ", " << (offset + size) << ")";
 
@@ -901,7 +901,7 @@ void Opt::InterProceduralDeadStoreElimination(void) {
   // Iterate towards a fixed point until the work list empties or until we
   // reach the maximum number of iterations of the data flow algorithm.
   for (auto i = 0ULL; i < kNumFixPointIterations && !work_list.empty(); ++i) {
-    LOG(INFO)
+    DLOG(INFO)
         << "Work list size is " << work_list.size();
 
     std::set<llvm::BasicBlock *> next_work_list;

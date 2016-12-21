@@ -23,10 +23,12 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Verifier.h>
 
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Instruction.h"
 #include "remill/BC/Lifter.h"
+#include "remill/BC/Optimizer.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/FileSystem.h"
 #include "remill/OS/OS.h"
@@ -39,6 +41,10 @@ DECLARE_string(workspace);
 namespace remill {
 namespace vmill {
 namespace {
+
+enum : size_t {
+  kSerializeInterval = 4096ULL
+};
 
 // Get the path to the code version-specific bitcode cache directory. If the
 // file doesn't exist, or is empty, then use the semantics bitcode file
@@ -92,6 +98,11 @@ class TE final : public Translator {
 
   // Remill's CFG to bitcode lifter.
   Lifter lifter;
+
+  Optimizer * const optimizer;
+
+  // Number of functions in the bitcode module when we last saved to disk.
+  size_t last_serialize_count;
 };
 
 Translator::Translator(CodeVersion code_version_, const Arch *source_arch_)
@@ -116,19 +127,72 @@ TE::TE(CodeVersion code_version_, const Arch *source_arch_)
       bitcode_file_path(GetBitcodeFile(code_version)),
       context(new llvm::LLVMContext),
       module(LoadModuleFromFile(context, bitcode_file_path)),
-      lifter(source_arch, module) {
+      lifter(source_arch, module),
+      optimizer(Optimizer::Create(module)),
+      last_serialize_count(module->getFunctionList().size()) {
   source_arch->PrepareModule(module);
 }
 
 // Destroy the translation engine.
 TE::~TE(void) {
+
+  delete optimizer;
+
+  // TODO(pag): This isn't all that nice. The native executor's JIT compiler
+  //            marks private functions as externally available to prevent
+  //            recompilation.
+  for (auto &func : *module) {
+    if (func.hasAvailableExternallyLinkage()) {
+      func.setLinkage(llvm::GlobalValue::PrivateLinkage);
+    }
+  }
+
+  // TODO(pag): This isn't all that nice. The native executor's JIT compiler
+  //            marks externally available globals with initializers as having
+  //            available externally linkage to prevent recompilation.
+  for (auto &global : module->globals()) {
+    if (!global.isDeclaration() && global.hasAvailableExternallyLinkage()) {
+      global.setLinkage(llvm::GlobalValue::ExternalLinkage);
+    }
+  }
+
   StoreModuleToFile(module, bitcode_file_path);
   delete module;
   delete context;
 }
 
 void TE::LiftCFG(const cfg::Module *cfg) {
+  // The native executor uses `AvailableExternallyLinkage` to avoid recompiling
+  // the same code twice, but that will play havoc with the optimizer, so
+  // we need to undo some of that here, then re-do it :-/
+  std::set<llvm::GlobalValue *> externs;
+  for (auto &func : *module) {
+    if (!func.isDeclaration() && func.hasAvailableExternallyLinkage()) {
+      externs.insert(&func);
+      func.setLinkage(llvm::GlobalValue::PrivateLinkage);
+    }
+  }
+
+  for (auto &global : module->globals()) {
+    if (!global.isDeclaration() && global.hasAvailableExternallyLinkage()) {
+      externs.insert(&global);
+      global.setLinkage(llvm::GlobalValue::ExternalLinkage);
+    }
+  }
+
   lifter.LiftCFG(cfg);
+  optimizer->Optimize();
+
+  auto new_num_funcs = module->getFunctionList().size();
+  if ((new_num_funcs - last_serialize_count) >= kSerializeInterval) {
+    DLOG(INFO)
+        << "Serializing " << module->getModuleIdentifier() << " to disk.";
+    StoreModuleToFile(module, bitcode_file_path);
+  }
+
+  for (auto val : externs) {
+    val->setLinkage(llvm::GlobalValue::AvailableExternallyLinkage);
+  }
 }
 
 // Run a callback on the lifted module code.

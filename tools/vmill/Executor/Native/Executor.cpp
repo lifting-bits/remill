@@ -46,6 +46,7 @@
 
 #include "remill/Arch/Runtime/HyperCall.h"
 #include "remill/Arch/Runtime/Types.h"
+#include "remill/BC/Util.h"
 
 #include "tools/vmill/BC/Callback.h"
 #include "tools/vmill/BC/Translator.h"
@@ -57,6 +58,10 @@
 namespace remill {
 namespace vmill {
 namespace {
+
+enum {
+  kMaxNumLibs = 64
+};
 
 #define MAKE_READ_WRITE_MEM(suffix, type, intern_type) \
     static type \
@@ -210,6 +215,9 @@ class DynamicLib {
   DynamicLib(void) = delete;
 };
 
+// Type of a compiled lifted function.
+using LiftedFunc = Executor::Flow(void *, void *, uint32_t);
+
 // Implements a function-at-a-time JIT compiler using LLVM's ORC JIT compiler
 // infrastructure.
 class JITExecutor : public NativeExecutor,
@@ -217,7 +225,9 @@ class JITExecutor : public NativeExecutor,
  public:
   virtual ~JITExecutor(void);
 
-  JITExecutor(const Arch * const arch_, CodeVersion code_version_);
+  JITExecutor(const Runtime *runtime_,
+              const Arch * const arch_,
+              CodeVersion code_version_);
 
   llvm::RuntimeDyld::SymbolInfo findSymbolInLogicalDylib(
       const std::string &name) override;
@@ -232,8 +242,12 @@ class JITExecutor : public NativeExecutor,
  private:
   JITExecutor(void) = delete;
 
-  // Recompile a module, partially or fully.
-  void Compile(llvm::Function *);
+  void CollapseCache(llvm::Module *module);
+
+  LiftedFunc *GetLiftedFunc(llvm::Function *func, uint64_t pc);
+  void Compile(llvm::Module *);
+  void InitializeModuleForCodeGen(llvm::Module *);
+  void FinalizeModuleForCodeGen(llvm::Module *);
 
   llvm::Triple target_triple;
   llvm::TargetLibraryInfoImpl tli;
@@ -241,19 +255,26 @@ class JITExecutor : public NativeExecutor,
   llvm::TargetMachine *target_machine;
   llvm::MCAsmBackend *asm_backend;
 
+  std::unordered_map<uint64_t, LiftedFunc *> funcs;
+
   // Loaded dynamic libraries.
   std::vector<std::unique_ptr<DynamicLib>> libs;
 
   // Cache of symbols used during dynamic symbol resolution.
   std::unordered_map<std::string, uintptr_t> syms;
+
+  // Set of functions that we're planning to JIT compile.
+  std::set<llvm::Function *> jited_funcs;
 };
 
 JITExecutor::~JITExecutor(void) {
   delete target_machine;
 }
 
-JITExecutor::JITExecutor(const Arch * const arch_, CodeVersion code_version_)
-    : NativeExecutor(&kRuntime, arch_, code_version_),
+JITExecutor::JITExecutor(const Runtime *runtime_,
+                         const Arch * const arch_,
+                         CodeVersion code_version_)
+    : NativeExecutor(runtime_, arch_, code_version_),
       target_triple(GetTriple()),
       tli(target_triple),
       target(GetTarget(target_triple)),
@@ -272,8 +293,114 @@ JITExecutor::JITExecutor(const Arch * const arch_, CodeVersion code_version_)
   llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
 }
 
-// Request that `func`'s bitcode be compiled.s
-void JITExecutor::Compile(llvm::Function *func) {
+void JITExecutor::CollapseCache(llvm::Module *module) {
+  DLOG(INFO)
+      << "Collapsing " << libs.size() << " cached shared libraries.";
+
+  funcs.clear();
+  libs.clear();
+  syms.clear();
+
+  for (auto &func : *module) {
+    if (func.hasAvailableExternallyLinkage()) {
+      func.setLinkage(llvm::GlobalValue::PrivateLinkage);
+    }
+  }
+
+  for (auto &global : module->getGlobalList()) {
+    if (global.hasInitializer() && global.hasAvailableExternallyLinkage() &&
+        llvm::isa<llvm::Constant>(global)) {
+      global.setLinkage(llvm::GlobalValue::ExternalLinkage);
+    }
+  }
+}
+
+
+// Mark externally available globals with initializers as having available
+// externally linkage to prevent them (semantics ISELs, indirect/exported/
+// imported block tables) from being recompiled.
+//
+// TODO(pag): This isn't ideal but oh well. We reverse this in `TE::~TE`.
+void JITExecutor::InitializeModuleForCodeGen(llvm::Module *module) {
+  // We're going to compile lifted functions (ideally), and probably semantics
+  // functions on the first pass. We want those functions to be available for
+  // lookup by the `Execute` method, but not to be recompiled. So initially
+  // we mark them all external, so that they will be available for lookup, but
+  // after JITing them, we mark them as available externally (which is true!)
+  // so that they don't get recompiled.
+  auto num_funcs_to_compile = 0;
+  for (auto &func : *module) {
+    if (func.hasPrivateLinkage() && !func.isDeclaration()) {
+      func.setLinkage(llvm::GlobalValue::ExternalLinkage);
+      ++num_funcs_to_compile;
+      jited_funcs.insert(&func);
+    }
+  }
+
+  DLOG(INFO)
+      << "Going to JIT compile " << num_funcs_to_compile << " functions";
+
+  if (!libs.empty()) {
+    return;
+  }
+
+  auto num_marked_globals = 0;
+  for (auto &global : module->getGlobalList()) {
+    if (global.hasInitializer() && global.hasExternalLinkage() &&
+        llvm::isa<llvm::Constant>(global)) {
+      global.setLinkage(llvm::GlobalValue::AvailableExternallyLinkage);
+      ++num_marked_globals;
+    }
+  }
+
+  DLOG(INFO)
+      << "Marked " << num_marked_globals << " globals to not be recompiled";
+}
+
+// Mark now-compiled lifted functions as externally available. The next
+// time we try to compile the module, marked functions will be ignored
+// during code generation (see llvm::MachineFunctionPass::runOnFunction).
+//
+// This isn't ideal, and is reversed in `TE::~TE` to make sure the cached
+// module, if/when revived, can be JIT-compiled "properly".
+void JITExecutor::FinalizeModuleForCodeGen(llvm::Module *module) {
+  if (auto intrinsics = module->getFunction("__remill_intrinsics")) {
+    intrinsics->setLinkage(llvm::GlobalValue::ExternalLinkage);
+  }
+
+  if (auto basic_block = module->getFunction("__remill_basic_block")) {
+    basic_block->setLinkage(llvm::GlobalValue::ExternalLinkage);
+  }
+
+  auto num_compiled_functions = 0;
+  for (auto jited_func : jited_funcs) {
+    jited_func->setLinkage(llvm::GlobalValue::AvailableExternallyLinkage);
+    ++num_compiled_functions;
+  }
+  jited_funcs.clear();
+
+  DLOG(INFO)
+      << "JIT-compiled " << num_compiled_functions << " functions";
+}
+
+// Compile everything in `module` into a dynamic library. This will library
+// representing this module onto the `libs` stack.
+void JITExecutor::Compile(llvm::Module *module) {
+
+  if (libs.size() >= kMaxNumLibs) {
+    CollapseCache(module);
+  }
+
+  if (auto intrinsics = module->getFunction("__remill_intrinsics")) {
+    intrinsics->setLinkage(llvm::GlobalValue::AvailableExternallyLinkage);
+  }
+
+  if (auto basic_block = module->getFunction("__remill_basic_block")) {
+    basic_block->setLinkage(llvm::GlobalValue::AvailableExternallyLinkage);
+  }
+
+  InitializeModuleForCodeGen(module);
+
   llvm::SmallVector<char, 0> byte_buff;
   llvm::raw_svector_ostream byte_buff_stream(byte_buff);
 
@@ -282,7 +409,6 @@ void JITExecutor::Compile(llvm::Function *func) {
   target_machine->addPassesToEmitMC(
       pm, machine_context, byte_buff_stream, false /* DisableVerify */);
 
-  auto module = func->getParent();
   module->setTargetTriple(target_triple.getTriple());
   module->setDataLayout(target_machine->createDataLayout());
   pm.add(new llvm::TargetLibraryInfoWrapperPass(tli));
@@ -319,6 +445,8 @@ void JITExecutor::Compile(llvm::Function *func) {
   libs.back()->loader.resolveRelocations();
   CHECK(!libs.back()->mman.finalizeMemory(&error))
       << "Unable to finalize JITed code memory: " << error;
+
+  FinalizeModuleForCodeGen(module);
 }
 
 // Defer to the SectionMemoryManager on the top of the library stack to find
@@ -360,9 +488,27 @@ llvm::RuntimeDyld::SymbolInfo JITExecutor::findSymbol(const std::string &name) {
   }
 
   LOG_IF(WARNING, !sym)
-      << "Unable to find symbol " << name;
+      << "Unable to find symbol " << name << "; it may not be compiled yet";
 
   return {reinterpret_cast<uintptr_t>(sym), llvm::JITSymbolFlags::None};
+}
+
+LiftedFunc *JITExecutor::GetLiftedFunc(llvm::Function *func, uint64_t pc) {
+  auto func_name = func->getName().str();
+  auto func_sym = findSymbol(func_name);
+  if (!func_sym) {
+    DLOG(INFO)
+        << "Beginning new incremental JIT compile to be able to execute "
+        << "lifted code for PC " << std::hex << pc;
+
+    Compile(func->getParent());
+    func_sym = findSymbol(func_name);
+    CHECK(func_sym.getAddress())
+        << "Unable to find JIT compiled code for " << func_name
+        << " implementing code at PC " << std::hex << pc;
+  }
+
+  return reinterpret_cast<LiftedFunc *>(func_sym.getAddress());
 }
 
 // Execute the LLVM function `func` representing code in `process` at
@@ -371,49 +517,14 @@ Executor::Flow JITExecutor::Execute(Process *process, llvm::Function *func) {
   auto memory = process->Memory();
   auto state = process->MachineState();
   auto pc = process->ProgramCounter();
+  auto &jited_func = funcs[pc];
 
-  auto func_name = func->getName().str();
-  auto func_sym = findSymbol(func_name);
-  if (!func_sym) {
-    Compile(func);
-    func_sym = findSymbol(func_name);
-    CHECK(func_sym.getAddress())
-        << "Unable to find JIT compiled code for " << func_name
-        << " implementing code at PC " << std::hex << pc;
+  if (!jited_func) {
+    jited_func = GetLiftedFunc(func, pc);
   }
 
-  using LiftedFunc = Executor::Flow(void *, void *, uint32_t);
-  return reinterpret_cast<LiftedFunc *>(func_sym.getAddress())(
-      memory, state, static_cast<uint32_t>(pc));
+  return jited_func(memory, state, static_cast<uint32_t>(pc));
 }
-
-//
-//// The ORC JIT compiler operates at the granularity of a "partition". For
-//// purely dynamic compilation, a partition can be made up of only a single
-//// LLVM function. In our case, Remill-lifted bitcode is "trace-based", that
-//// is, one lifted block calls another lifted block calls another, etc. So,
-//// when ORC needs to compile something new on-demand, we recursively build
-//// up the trace induced by the bitcode.
-//std::set<llvm::Function *> TracingJIT::PartitionTrace(llvm::Function &entry) {
-//  std::set<llvm::Function *> trace;
-//  std::vector<llvm::Function *> work_list;
-//  work_list.push_back(&entry);
-//
-//  while (!work_list.empty()) {
-//    llvm::Function *func = work_list.pop_back();
-//    trace.insert(func);
-//
-//    for (auto &block : *func) {
-//      if (auto term = block.getTerminatingMustTailCall()) {
-//        auto called_func = term->getCalledFunction();
-//        if (!trace.count(called_func)) {
-//          work_list.push_back(called_func);
-//        }
-//      }
-//    }
-//  }
-//  return trace;
-//}
 
 }  // namespace
 
@@ -426,7 +537,7 @@ Executor *Executor::CreateNativeExecutor(const Arch * const arch_,
   LLVMInitializeX86Target();
   LLVMInitializeX86TargetMC();
   LLVMInitializeX86AsmPrinter();
-  return new JITExecutor(arch_, code_version_);
+  return new JITExecutor(&kRuntime, arch_, code_version_);
 }
 
 

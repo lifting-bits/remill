@@ -159,7 +159,7 @@ void CopyTraceeState(pid_t pid, int fd) {
 
   write(fd, &state, sizeof(State));
 
-  LOG(INFO)
+  DLOG(INFO)
       << "Wrote " << sizeof(State) << "-byte State struct to snapshot file";
 
   // Pad the file out to be a multiple of the page size.
@@ -168,7 +168,7 @@ void CopyTraceeState(pid_t pid, int fd) {
     auto missing_size = total_size - sizeof(State);
     write(fd, &(gZeroData[0]), missing_size);
 
-    LOG(INFO)
+    DLOG(INFO)
         << "Write " << missing_size << " padding bytes to snapshot file.";
   }
 }

@@ -313,7 +313,7 @@ static void ImportX87State(State *state) {
 
     // Copy over the MMX data. A good guess for MMX data is that the the
     // value looks like its infinity.
-    LOG(INFO) << "Importing MMX state.";
+    DLOG(INFO) << "Importing MMX state.";
     for (size_t i = 0; i < 8; ++i) {
       if (static_cast<uint16_t>(0xFFFFU) == gFPU.st[i].infinity) {
         state->mmx.elems[i].val.qwords.elems[0] = gFPU.st[i].mmx;
@@ -322,7 +322,7 @@ static void ImportX87State(State *state) {
 
   // Looks like X87 state.
   } else {
-    LOG(INFO) << "Importing FPU state.";
+    DLOG(INFO) << "Importing FPU state.";
     for (size_t i = 0; i < 8; ++i) {
       auto st = *reinterpret_cast<long double *>(&(gFPU.st[i].st));
       state->st.elems[i].val = static_cast<float64_t>(st);
@@ -356,9 +356,9 @@ static void RunWithFlags(const test::TestInfo *info,
                          uint64_t arg1,
                          uint64_t arg2,
                          uint64_t arg3) {
-  LOG(INFO) << "Testing instruction: " << info->test_name << ": " << desc;
+  DLOG(INFO) << "Testing instruction: " << info->test_name << ": " << desc;
   if (sigsetjmp(gUnsupportedInstrBuf, true)) {
-    LOG(INFO) << "Unsupported instruction " << info->test_name;
+    DLOG(INFO) << "Unsupported instruction " << info->test_name;
     return;
   }
 

@@ -59,7 +59,6 @@ static void InitBlockFunctionAttributes(llvm::Function *block_func) {
   remill::NthArgument(block_func, kMemoryPointerArgNum)->setName("memory");
   remill::NthArgument(block_func, kStatePointerArgNum)->setName("state");
   remill::NthArgument(block_func, kPCArgNum)->setName("pc");
-
 }
 
 // These variables must always be defined within `__remill_basic_block`.
@@ -71,7 +70,7 @@ static bool BlockHasSpecialVars(llvm::Function *basic_block) {
 }
 
 // Clang isn't guaranteed to play nice and name the LLVM values within the
-// `__remill_basic_block` instrinsic with the same names as we find in the
+// `__remill_basic_block` intrinsic with the same names as we find in the
 // C++ definition of that function. However, we compile that function with
 // debug information, and so we will try to recover the variables names for
 // later lookup.
@@ -109,10 +108,16 @@ Lifter::Lifter(const Arch *arch_, llvm::Module *module_)
   CHECK(nullptr != basic_block)
       << "Unable to find __remill_basic_block.";
 
-  FixupBasicBlockVariables(basic_block);
   EnableDeferredInlining();
   InitFunctionAttributes(basic_block);
   InitBlockFunctionAttributes(basic_block);
+  FixupBasicBlockVariables(basic_block);
+
+  basic_block->addFnAttr(llvm::Attribute::OptimizeNone);
+  basic_block->removeFnAttr(llvm::Attribute::AlwaysInline);
+  basic_block->removeFnAttr(llvm::Attribute::InlineHint);
+  basic_block->addFnAttr(llvm::Attribute::NoInline);
+  basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
 }
 
 Lifter::~Lifter(void) {
@@ -424,9 +429,7 @@ llvm::Function *Lifter::GetOrCreateBlock(uint64_t addr) {
     block_func = llvm::dyn_cast<llvm::Function>(
         module->getOrInsertFunction(func_name, func_type));
 
-    // Initialize the generic attributes, but change the linkage into
-    // external until the block is implemented.
-    block_func->copyAttributesFrom(basic_block);
+    InitFunctionAttributes(block_func);
     block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
 
     DLOG(INFO)
@@ -519,13 +522,11 @@ void Lifter::LiftCFG(const cfg::Module *cfg_module) {
 // Lift code contained in blocks into the block methods.
 void Lifter::LiftBlocks(const cfg::Module *cfg_module) {
   llvm::legacy::FunctionPassManager func_pass_manager(module);
-  func_pass_manager.add(llvm::createDeadCodeEliminationPass());
   func_pass_manager.add(llvm::createCFGSimplificationPass());
   func_pass_manager.add(llvm::createPromoteMemoryToRegisterPass());
   func_pass_manager.add(llvm::createReassociatePass());
   func_pass_manager.add(llvm::createInstructionCombiningPass());
-  func_pass_manager.add(llvm::createDeadStoreEliminationPass());
-  func_pass_manager.add(llvm::createDeadCodeEliminationPass());
+  func_pass_manager.add(llvm::createAggressiveDCEPass());
 
   func_pass_manager.doInitialization();
   for (const auto &block : cfg_module->blocks()) {
@@ -533,7 +534,9 @@ void Lifter::LiftBlocks(const cfg::Module *cfg_module) {
     CHECK(!func->isDeclaration())
         << "Lifted block function " << func->getName().str()
         << " should have an implementation.";
+
     func_pass_manager.run(*func);
+    func->setLinkage(llvm::GlobalValue::PrivateLinkage);
   }
   func_pass_manager.doFinalization();
 }
@@ -713,19 +716,20 @@ namespace {
 // Try to find the function that implements this semantics.
 llvm::Function *GetInstructionFunction(llvm::Module *module,
                                        const std::string &function) {
-  auto isel_func = FindFunction(module, function);
-  if (!isel_func) {
-    if (auto instr_func_alt = FindGlobaVariable(module, function)) {
-
-      CHECK(instr_func_alt->isConstant() && instr_func_alt->hasInitializer())
-          << "Expected a `constexpr` variable as the function pointer for "
-          << "instruction semantic function " << function << ".";
-
-      isel_func = llvm::dyn_cast_or_null<llvm::Function>(
-          instr_func_alt->getInitializer()->stripPointerCasts());
-    }
+  auto isel = FindGlobaVariable(module, function);
+  if (!isel) {
+    return nullptr;  // Falls back on `UNIMPLEMENTED_INSTRUCTION`.
   }
-  return isel_func;
+
+  if (!isel->isConstant() || !isel->hasInitializer()) {
+    LOG(FATAL)
+        << "Expected a `constexpr` variable as the function pointer for "
+        << "instruction semantic function " << function
+        << ": " << LLVMThingToString(isel);
+  }
+
+  auto sem = isel->getInitializer()->stripPointerCasts();
+  return llvm::dyn_cast_or_null<llvm::Function>(sem);
 }
 
 }  // namespace

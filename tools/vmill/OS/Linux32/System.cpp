@@ -264,7 +264,7 @@ Memory32 *Memory32::Create(const Snapshot *snapshot) {
     map.can_exec = map.is_exec;
     maps.push_back(map);
 
-    LOG(INFO)
+    DLOG(INFO)
         << "Adding page [" << std::hex << map.base_address << ", "
         << std::hex << map.limit_address << ") with permissions "
         << ("-r")[map.is_read] << ("-w")[map.is_write] << ("-x")[map.is_exec]

@@ -25,6 +25,7 @@ add_executable(vmill-exec32
     ${PROJECT_SOURCE_DIR}/remill/Arch/X86/Arch.cpp
     ${PROJECT_SOURCE_DIR}/remill/BC/IntrinsicTable.cpp
     ${PROJECT_SOURCE_DIR}/remill/BC/Lifter.cpp
+    ${PROJECT_SOURCE_DIR}/remill/BC/Optimizer.cpp
     ${PROJECT_SOURCE_DIR}/remill/BC/Util.cpp
     ${PROJECT_SOURCE_DIR}/remill/CFG/CFG.cpp
     ${PROJECT_SOURCE_DIR}/remill/OS/FileSystem.cpp

@@ -101,7 +101,7 @@ static void LogPrepareExec(void) {
       ss << gTraceeArgv[i] << " ";
     }
   }
-  LOG(INFO)
+  DLOG(INFO)
       << "Preparing to execute tracee: " << ss.str();
 }
 
@@ -151,7 +151,7 @@ static void TraceSubprocess(pid_t pid) {
               << "Unable to acquire control of tracee; it exited with signal "
               << WSTOPSIG(status);
         } else {
-          LOG(INFO)
+          DLOG(INFO)
               << "Still trying to acquire control of tracee; "
               << "it stopped with signal " << WSTOPSIG(status);
         }
@@ -165,7 +165,7 @@ static void TraceSubprocess(pid_t pid) {
             << "Unable to acquire control of tracee; it terminated with signal "
             << WTERMSIG(status);
       } else {
-        LOG(INFO)
+        DLOG(INFO)
             << "Unrecognized status " << status
             << " while trying to acquire control of tracee.";
       }
@@ -202,7 +202,7 @@ static void RunUntilAfterExec(pid_t pid) {
               << "Tracee exited with signal " << WSTOPSIG(status)
               << " while doing exec of " << gTraceeArgv[0];
         } else {
-          LOG(INFO)
+          DLOG(INFO)
               << "Tracee stopped with signal " << WSTOPSIG(status)
               << " while doing exec of " << gTraceeArgv[0];
         }
@@ -218,7 +218,7 @@ static void RunUntilAfterExec(pid_t pid) {
             << "Maybe an invalid program was specified?";
 
       } else {
-        LOG(INFO)
+        DLOG(INFO)
             << "Unrecognized status " << status
             << " while doing exec of " << gTraceeArgv[0];
       }
@@ -246,7 +246,7 @@ static void RunUntilInTracee(pid_t pid) {
     if (res == pid) {
       if (WIFSTOPPED(status)) {
         if ((status >> 8) == (SIGTRAP | (PTRACE_EVENT_EXEC << 8))) {
-          LOG(INFO)
+          DLOG(INFO)
               << "Preparing to execute " << gTraceeArgv[0];
           RunUntilAfterExec(pid);
           return;
@@ -256,7 +256,7 @@ static void RunUntilInTracee(pid_t pid) {
               << "Tracee exited with signal " << WSTOPSIG(status)
               << " before doing exec of " << gTraceeArgv[0];
         } else {
-          LOG(INFO)
+          DLOG(INFO)
               << "Tracee stopped with signal " << WSTOPSIG(status)
               << " before doing exec of " << gTraceeArgv[0];
         }
@@ -271,7 +271,7 @@ static void RunUntilInTracee(pid_t pid) {
             << "Tracee received signal " << WTERMSIG(status)
             << " before doing exec of " << gTraceeArgv[0];
       } else {
-        LOG(INFO)
+        DLOG(INFO)
             << "Unrecognized status " << status << " received doing exec of "
             << gTraceeArgv[0];
       }
@@ -292,7 +292,7 @@ static void RunUntilInTracee(pid_t pid) {
 
 // Set a breakpoint on an address within the tracee.
 static void RunUntilBreakpoint(pid_t pid) {
-  LOG(INFO)
+  DLOG(INFO)
       << "Setting breakpoint at " << std::hex << FLAGS_breakpoint;
 
   errno = 0;
@@ -331,7 +331,7 @@ static void RunUntilBreakpoint(pid_t pid) {
               << "Tracee exited with signal " << WSTOPSIG(status)
               << " before the breakpoint was hit.";
         } else {
-          LOG(INFO)
+          DLOG(INFO)
               << "Tracee " << gTraceeArgv[0] << " received signal "
               << WSTOPSIG(status) << " before the breakpoint was hit.";
         }
@@ -344,7 +344,7 @@ static void RunUntilBreakpoint(pid_t pid) {
             << "Tracee " << gTraceeArgv[0]
             << " exited before breakpoint was hit";
       } else {
-        LOG(INFO)
+        DLOG(INFO)
             << "Unrecognized status " << status << " received before "
             << "hitting breakpoint in " << gTraceeArgv[0];
       }
@@ -380,7 +380,7 @@ static bool ReadPageInfoLine(const std::string &line, PageInfo *info) {
     return false;
   }
 
-  LOG(INFO)
+  DLOG(INFO)
       << "Page info: " << line;
 
   info->base_address = begin;
@@ -423,17 +423,17 @@ static bool ReadPageInfoLine(const std::string &line, PageInfo *info) {
 
     struct rlimit limit;
     getrlimit(RLIMIT_STACK, &limit);
-    LOG(INFO)
+    DLOG(INFO)
         << "Current stack size limit is " << limit.rlim_cur;
 
-    LOG(INFO)
+    DLOG(INFO)
         << "Absolute maximum stack size is " << limit.rlim_max;
 
     limit.rlim_max = std::min<rlim_t>(limit.rlim_cur, 16UL << 20UL);
     limit.rlim_max = std::max<rlim_t>(
         limit.rlim_cur, info->limit_address - info->base_address);
 
-    LOG(INFO)
+    DLOG(INFO)
         << "New stack size is " << limit.rlim_max;
     info->base_address = info->limit_address - limit.rlim_max;
   }
@@ -546,7 +546,7 @@ static void CopyTraceeMemory(pid_t pid, int snapshot_fd) {
         reinterpret_cast<uintptr_t>(data) + memory_copied);
     auto size_to_copy = info.limit_address - base_addr;
 
-    LOG(INFO)
+    DLOG(INFO)
         << "Copying " << size_to_copy << " bytes from the tracee's memory from "
         << std::hex << base_addr << " to " << std::hex << info.limit_address
         << " into the snapshot file.";
@@ -584,7 +584,7 @@ static void SnapshotTracee(pid_t pid) {
 
   ReadTraceePageMaps(pid);
 
-  LOG(INFO)
+  DLOG(INFO)
       << "Writing memory map info into " << gSnapshotPath;
 
   write(fd, &gFileInfo, sizeof(gFileInfo));
@@ -596,7 +596,7 @@ static void SnapshotTracee(pid_t pid) {
     case kArchAMD64:
     case kArchAMD64_AVX:
     case kArchAMD64_AVX512:
-      LOG(INFO)
+      DLOG(INFO)
           << "Writing X86 register state into " << gSnapshotPath;
       x86::CopyTraceeState(pid, fd);
       break;
@@ -607,7 +607,7 @@ static void SnapshotTracee(pid_t pid) {
           << FLAGS_arch;
   }
 
-  LOG(INFO)
+  DLOG(INFO)
       << "Copying tracee memory into " << gSnapshotPath;
   CopyTraceeMemory(pid, fd);
 
@@ -643,7 +643,7 @@ static void CloseFdsOnExec(void) {
       case STDERR_FILENO:
         break;
       default:
-        LOG(INFO)
+        DLOG(INFO)
             << "Setting fd " << fd << " to close on exec.";
 
         CHECK(!fcntl(fd, F_SETFD, FD_CLOEXEC))
@@ -706,7 +706,7 @@ static CoreFileLocation GetCoreFileLocation(void) {
   CHECK('|' != pattern[0])
       << "Core files are piped to programs; won't find core file.";
 
-  LOG(INFO)
+  DLOG(INFO)
       << "System core file pattern is: " << pattern;
 
   ReplaceInString(pattern, "%p", "%d");  // PID.
@@ -730,10 +730,10 @@ static CoreFileLocation GetCoreFileLocation(void) {
     loc.pattern = pattern;
   }
 
-  LOG(INFO)
+  DLOG(INFO)
       << "Core files are stored in: " << loc.dir;
 
-  LOG(INFO)
+  DLOG(INFO)
       << "Will search for files using the pattern: " << loc.pattern;
 
   return loc;
@@ -778,12 +778,12 @@ static void CreateCoreFile(pid_t pid, const CoreFileLocation &where) {
       if (WIFSTOPPED(status) || WIFEXITED(status) || WIFSIGNALED(status)) {
         break;
       } else {
-        LOG(INFO)
+        DLOG(INFO)
             << "Unrecognized status " << status
             << " while waiting for a core dump of the tracee to be produced.";
       }
     } else if (ESRCH == err || ECHILD == err) {
-      LOG(INFO)
+      DLOG(INFO)
           << "Tracee has correctly died from abort signal.";
       break;
 
@@ -820,7 +820,7 @@ static void CreateCoreFile(pid_t pid, const CoreFileLocation &where) {
     ss << where.dir << "/" << dirent->d_name;
     auto core_file_path = ss.str();
 
-    LOG(INFO)
+    DLOG(INFO)
         << "Checking to see if " << core_file_path
         << " looks like a core file.";
 
@@ -835,7 +835,7 @@ static void CreateCoreFile(pid_t pid, const CoreFileLocation &where) {
       continue;
     }
 
-    LOG(INFO)
+    DLOG(INFO)
         << "Matched file " << core_file_path << " as a core dump candidate.";
 
     struct stat core_file_info = {};
@@ -851,7 +851,7 @@ static void CreateCoreFile(pid_t pid, const CoreFileLocation &where) {
 
     if (created_lower_bound_ms > created_time_ms &&
         100LL < (created_lower_bound_ms - created_time_ms)) {  // Slack.
-      LOG(INFO)
+      DLOG(INFO)
           << "Core file candidate " << core_file_path
           << " ignored; it is too old.";
       continue;
@@ -859,7 +859,7 @@ static void CreateCoreFile(pid_t pid, const CoreFileLocation &where) {
 
     if (created_time_ms > created_upper_bound_ms &&
         100LL < (created_time_ms - created_upper_bound_ms)) {  // Slack.
-      LOG(INFO)
+      DLOG(INFO)
           << "Core file candidate " << core_file_path
           << " ignored; it is too new.";
       continue;
@@ -901,35 +901,35 @@ static void SnapshotProgram(ArchName arch, OSName os) {
     CHECK(-1 != pid)
         << "Could not fork process.";
 
-    LOG(INFO)
+    DLOG(INFO)
         << "Acquiring control of tracee with pid " << pid;
 
     TraceSubprocess(pid);
-    LOG(INFO)
+    DLOG(INFO)
         << "Acquired control of tracee with pid " << pid;
 
     RunUntilInTracee(pid);
-    LOG(INFO)
+    DLOG(INFO)
         << "Tracee with pid " << pid << " is now running " << gTraceeArgv[0];
 
     RunUntilBreakpoint(pid);
-    LOG(INFO)
+    DLOG(INFO)
         << "Hit breakpoint at "
         << std::setw(16) << std::hex << std::setfill('0') << FLAGS_breakpoint
         << " in " << gTraceeArgv[0];
 
-    LOG(INFO)
+    DLOG(INFO)
         << "Snapshotting " << gTraceeArgv[0];
 
     gFileInfo.arch_name = arch;
     gFileInfo.os_name = os;
     SnapshotTracee(pid);
 
-    LOG(INFO)
+    DLOG(INFO)
         << "Aborting " << gTraceeArgv[0] << " to produce core dump.";
     CreateCoreFile(pid, core_loc);
 
-    LOG(INFO)
+    DLOG(INFO)
         << "Snapshot file saved to " << gSnapshotPath
         << " and core file saved to " << gCorePath;
 
