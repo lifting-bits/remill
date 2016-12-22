@@ -9,6 +9,9 @@
 #include <string>
 #include <sys/prctl.h>
 
+#include <llvm/Support/CommandLine.h>
+#include <llvm/Support/ManagedStatic.h>
+
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Name.h"
 #include "remill/OS/FileSystem.h"
@@ -25,6 +28,17 @@ DEFINE_string(arch, "", "Architecture of the code in the snapshot.");
 
 DEFINE_string(os, "", "OS of the code in the snapshot.");
 
+namespace {
+
+static const char *fakeArgV[] = {
+  "vmill-exec32",
+  "-disable-debug-info-print",
+  "-regalloc=fast",
+  nullptr
+};
+
+}  // namespace
+
 int main(int argc, char **argv) {
   using namespace remill;
   using namespace vmill;
@@ -39,6 +53,8 @@ int main(int argc, char **argv) {
   google::InitGoogleLogging(argv[0]);
   GFLAGS_NAMESPACE::SetUsageMessage(ss.str());
   GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+
+  llvm::cl::ParseCommandLineOptions(3, fakeArgV, "");
 
   if (FLAGS_workspace.empty()) {
     FLAGS_workspace = CurrentWorkingDirectory();
@@ -107,6 +123,8 @@ int main(int argc, char **argv) {
 
   DLOG(INFO)
       << "Shutting down, have a nice day!";
+
+  llvm::llvm_shutdown();
 
   GFLAGS_NAMESPACE::ShutDownCommandLineFlags();
   google::ShutdownGoogleLogging();

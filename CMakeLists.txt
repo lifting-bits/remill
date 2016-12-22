@@ -103,6 +103,7 @@ add_executable(remill-lift
 )
 
 set(LLVM_LIBS
+    curses
     LLVMCore
     LLVMSupport
     LLVMAnalysis

@@ -2,6 +2,10 @@
 
 #include <glog/logging.h>
 
+#include <fcntl.h>
+#include <unistd.h>
+
+#include <ctime>
 #include <functional>
 #include <memory>
 #include <set>
@@ -281,7 +285,7 @@ JITExecutor::JITExecutor(const Runtime *runtime_,
           GetNativeFeatureString(),
           GetTargetOptions(),
           llvm::Reloc::PIC_,
-          llvm::CodeModel::JITDefault,
+          llvm::CodeModel::Default,
           llvm::CodeGenOpt::None)) {
   llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
 }
@@ -314,6 +318,18 @@ void JITExecutor::CollapseCache(llvm::Module *module) {
 //
 // TODO(pag): This isn't ideal but oh well. We reverse this in `TE::~TE`.
 void JITExecutor::InitializeModuleForCodeGen(llvm::Module *module) {
+  if (auto intrinsics = module->getFunction("__remill_intrinsics")) {
+    intrinsics->setLinkage(llvm::GlobalValue::AvailableExternallyLinkage);
+  }
+
+  if (auto basic_block = module->getFunction("__remill_basic_block")) {
+    basic_block->setLinkage(llvm::GlobalValue::AvailableExternallyLinkage);
+  }
+
+  if (auto used = module->getGlobalVariable("llvm.used")) {
+    used->eraseFromParent();
+  }
+
   // We're going to compile lifted functions (ideally), and probably semantics
   // functions on the first pass. We want those functions to be available for
   // lookup by the `Execute` method, but not to be recompiled. So initially
@@ -332,13 +348,12 @@ void JITExecutor::InitializeModuleForCodeGen(llvm::Module *module) {
   DLOG(INFO)
       << "Going to JIT compile " << num_funcs_to_compile << " functions";
 
-  if (!libs.empty()) {
-    return;
-  }
-
+  // Mark globals as available externally. The idea here is to mark the ISELs
+  // and the various basic block tables to not be JITed.
   auto num_marked_globals = 0;
   for (auto &global : module->getGlobalList()) {
-    if (global.hasInitializer() && global.hasExternalLinkage() &&
+    if (global.hasExternalLinkage() &&
+        global.hasInitializer() &&
         llvm::isa<llvm::Constant>(global)) {
       global.setLinkage(llvm::GlobalValue::AvailableExternallyLinkage);
       ++num_marked_globals;
@@ -383,27 +398,35 @@ void JITExecutor::Compile(llvm::Module *module) {
     CollapseCache(module);
   }
 
-  if (auto intrinsics = module->getFunction("__remill_intrinsics")) {
-    intrinsics->setLinkage(llvm::GlobalValue::AvailableExternallyLinkage);
-  }
-
-  if (auto basic_block = module->getFunction("__remill_basic_block")) {
-    basic_block->setLinkage(llvm::GlobalValue::AvailableExternallyLinkage);
-  }
-
   InitializeModuleForCodeGen(module);
 
-  llvm::SmallVector<char, 0> byte_buff;
+//  auto block_index = module->getGlobalVariable("__remill_indirect_blocks");
+//  CHECK(nullptr != block_index)
+//      << "Unable to find __remill_indirect_blocks in module.";
+//  block_index->removeFromParent();  // Hack!
+
+  llvm::SmallVector<char, 4096> byte_buff;
   llvm::raw_svector_ostream byte_buff_stream(byte_buff);
 
   llvm::legacy::PassManager pm;
   llvm::MCContext *machine_context = nullptr;
   target_machine->addPassesToEmitMC(
-      pm, machine_context, byte_buff_stream, false /* DisableVerify */);
+      pm, machine_context, byte_buff_stream, true /* DisableVerify */);
 
   module->setTargetTriple(target_triple.getTriple());
   module->setDataLayout(target_machine->createDataLayout());
+
+  auto codegen_start = time(nullptr);
   pm.run(*module);
+  auto dyld_start = time(nullptr);
+  DLOG(INFO)
+      << "Spent " << (dyld_start - codegen_start) << "s compiling bitcode.";
+
+//  static int i = 0;
+//  std::stringstream ss;
+//  ss << "/tmp/obj." << i++ << ".o";
+//  auto o = ss.str();
+//  write(open(o.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666), byte_buff.data(), byte_buff.size_in_bytes());
 
   std::unique_ptr<llvm::ObjectMemoryBuffer> obj_buff(
       new llvm::ObjectMemoryBuffer(std::move(byte_buff)));
@@ -436,6 +459,10 @@ void JITExecutor::Compile(llvm::Module *module) {
   libs.back()->loader.resolveRelocations();
   CHECK(!libs.back()->mman.finalizeMemory(&error))
       << "Unable to finalize JITed code memory: " << error;
+
+  auto dyld_end = time(nullptr);
+  DLOG(INFO)
+      << "Spent " << (dyld_end - dyld_start) << "s loading compiled code.";
 
   FinalizeModuleForCodeGen(module);
 }

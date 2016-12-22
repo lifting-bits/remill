@@ -286,6 +286,10 @@ void Process32::DoSystemCall(SystemCall32 &syscall) {
       DoSocketCall(this, syscall);
       break;
 
+    case 122:
+      PassThrough1(syscall, SYS_uname);
+      break;
+
     case 125:
       PassThrough3(syscall, SYS_mprotect);
       break;

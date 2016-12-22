@@ -6,6 +6,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
+#include <ctime>
 #include <fcntl.h>
 #include <sys/sendfile.h>
 #include <sys/types.h>
@@ -185,11 +186,19 @@ void TE::LiftCFG(const cfg::Module *cfg) {
       global.setLinkage(llvm::GlobalValue::ExternalLinkage);
     }
   }
-
+  auto start_lift = time(nullptr);
   // Lift and optimize.
   lifter.LiftCFG(cfg);
+
+  auto start_opt = time(nullptr);
+  LOG(INFO)
+      << "Spent " << (start_opt - start_lift) << "s lifting.";
+
   if (!FLAGS_disable_optimizer) {
     optimizer->Optimize();
+    auto end_opt = time(nullptr);
+    LOG(INFO)
+        << "Spent " << (end_opt - start_opt) << "s optimizing.";
   }
 
   // Cache the module to disk if we've added enough new things to it since

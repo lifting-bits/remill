@@ -161,8 +161,6 @@ void Decoder::DecodeToCFG(
       continue;  // We've already decoded this block.
     }
 
-    seen_blocks.insert(block_pc);
-
     if (WorkListItem::kScanRecursive == scan_type) {
       min_recursive_pc = std::min(min_recursive_pc, block_pc);
       max_recursive_pc = std::max(max_recursive_pc, block_pc);
@@ -185,6 +183,8 @@ void Decoder::DecodeToCFG(
       work_list.clear();
       break;
     }
+
+    seen_blocks.insert(block_pc);
 
     DLOG(INFO)
         << "Decoding basic block at " << std::hex << block_pc;
