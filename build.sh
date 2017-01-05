@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
+set -e
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-BUILD_DIR=$(dirname $0)/build
+BUILD_DIR=${DIR}/build
 LLVM_DIR=llvm
 
 ARCH=$(uname -m)
@@ -31,7 +32,7 @@ esac
 
 echo "[+] Creating '${BUILD_DIR}'"
 mkdir -p ${BUILD_DIR}
-cd ${BUILD_DIR}
+pushd ${BUILD_DIR}
 
 if [ ! -f ${FILE} ]; then
   echo "[+] Downloading Clang+LLVM.."
@@ -59,10 +60,11 @@ echo "[+] Compiling protobufs"
 $DIR/scripts/unix/compile_protobufs.sh
 echo "[+] Running cmake"
 
-LLVM_DIR=${BUILD_DIR}/$LLVM_DIR
-LLVM_DIR=$(realpath $LLVM_DIR)
-BINDIR=$LLVM_DIR/bin
-LLVM_DIR=$LLVM_DIR/lib/cmake/llvm
+LLVM_DIR=${BUILD_DIR}/${LLVM_DIR}
+LLVM_DIR=$(realpath ${LLVM_DIR})
+BINDIR=${LLVM_DIR}/bin
+LLVM_DIR=${LLVM_DIR}/lib/cmake/llvm
+
 cmake -DLLVM_DIR=${LLVM_DIR} -DCMAKE_C_COMPILER=${BINDIR}/clang -DCMAKE_CXX_COMPILER=${BINDIR}/clang++ -DCMAKE_LLVM_LINK=${BINDIR}/llvm-link ${DIR}
 echo "[+] Building semantics"
 make semantics
