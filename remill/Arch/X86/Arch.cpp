@@ -9,8 +9,10 @@
 #include <llvm/IR/Module.h>
 
 #include "remill/Arch/Instruction.h"
+#include "remill/Arch/Name.h"
 #include "remill/Arch/X86/Arch.h"
 #include "remill/Arch/X86/XED.h"
+#include "remill/OS/OS.h"
 
 namespace remill {
 namespace {

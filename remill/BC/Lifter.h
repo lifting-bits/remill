@@ -1,9 +1,9 @@
 /* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#ifndef REMILL_BC_TRANSLATOR_H_
-#define REMILL_BC_TRANSLATOR_H_
+#ifndef REMILL_BC_LIFTER_H_
+#define REMILL_BC_LIFTER_H_
 
-#include <map>
+#include <unordered_map>
 #include <string>
 
 #include "remill/Arch/Instruction.h"
@@ -27,37 +27,29 @@ class Module;
 
 class Arch;
 class IntrinsicTable;
-class AssemblyWriter;
 
 // Lifts CFG files into a bitcode module. This is mostly a big bag of state
 // needed for all the parts of of lifting to coordinate.
-class Translator {
+class Lifter {
  public:
-  Translator(const Arch *arch_, llvm::Module *module_, AssemblyWriter *src_);
-  ~Translator(void);
+  Lifter(const Arch *arch_, llvm::Module *module_);
+  ~Lifter(void);
 
   // Lift the control-flow graph specified by `cfg` into this bitcode module.
   void LiftCFG(const cfg::Module *cfg);
 
  private:
-  Translator(void) = delete;
-  Translator(const Translator &) = delete;
+  Lifter(void) = delete;
+  Lifter(const Lifter &) = delete;
 
   // Enable deferred inlining. The goal is to support better dead-store
   // elimination for flags.
   void EnableDeferredInlining(void);
 
-  // Identify functions that are already exported by this module.
-  std::map<std::string, llvm::Function *> GetNamedBlocks(
-      const char *table_name);
-
   // Recreate a global table of named blocks.
   void SetNamedBlocks(
-      std::map<std::string, llvm::Function *> &table,
+      std::unordered_map<std::string, llvm::Function *> &table,
       const char *table_name);
-
-  // Identify the already lifted basic blocks.
-  void GetIndirectBlocks(void);
 
   // Recreate the global table of indirectly addressible blocks.
   void SetIndirectBlocks(void);
@@ -70,11 +62,6 @@ class Translator {
 
   // Create a function for a single block.
   llvm::Function *GetOrCreateBlock(uint64_t address);
-
-  // Create a function for a single block. This block appears as the target
-  // of some control-flow instruction. Make sure that it has a default detach-
-  // based implementation.
-  llvm::Function *GetOrCreateTargetBlock(uint64_t address);
 
   // Create functions for every imported function in the code.
   llvm::Function *CreateImportedFunction(
@@ -118,17 +105,13 @@ class Translator {
   // Module into which code is lifted.
   llvm::Module * const module;
 
-  // Output source writer for producing an assembly source code file, and
-  // generating debug information for associating bitcode to the source file.
-  AssemblyWriter * const asm_source_writer;
-
   // Blocks that we've added, indexed by their entry address.
-  std::map<uint64_t, llvm::Function *> blocks;
-  std::map<uint64_t, llvm::Function *> indirect_blocks;
+  std::unordered_map<uint64_t, llvm::Function *> blocks;
+  std::unordered_map<uint64_t, llvm::Function *> indirect_blocks;
 
   // Named functions present in the module.
-  std::map<std::string, llvm::Function *> exported_blocks;
-  std::map<std::string, llvm::Function *> imported_blocks;
+  std::unordered_map<std::string, llvm::Function *> exported_blocks;
+  std::unordered_map<std::string, llvm::Function *> imported_blocks;
 
   // Basic block template.
   llvm::Function * const basic_block;
@@ -144,4 +127,4 @@ class Translator {
 
 }  // namespace remill
 
-#endif  // REMILL_BC_TRANSLATOR_H_
+#endif  // REMILL_BC_LIFTER_H_

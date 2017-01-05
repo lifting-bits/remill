@@ -4,7 +4,8 @@
 #define REMILL_ARCH_X86_SEMANTICS_STRINGOP_H_
 
 #define MAKE_STOS(name, type, read_sel) \
-    DEF_ISEL_SEM(name) { \
+    namespace { \
+    DEF_SEM(Do ## name) { \
       const addr_t addr = Read(REG_XDI); \
       Write(WritePtr<type>(addr _IF_32BIT(REG_ES_BASE)), \
             Read(state.gpr.rax.read_sel)); \
@@ -15,7 +16,9 @@
         next_addr = USub(addr, sizeof(type)); \
       } \
       Write(REG_XDI, next_addr); \
-    }
+    } \
+    } \
+    DEF_ISEL(name) = Do ## name;
 
 MAKE_STOS(STOSB, uint8_t, byte.low)
 MAKE_STOS(STOSW, uint16_t, word)
@@ -29,7 +32,8 @@ IF_64BIT(MAKE_STOS(STOSQ, uint64_t, qword))
 //            could lead to some problems if `RDI != ZExtend(EDI)`.
 
 #define MAKE_SCAS(name, type, read_sel) \
-    DEF_ISEL_SEM(name) { \
+    namespace { \
+    DEF_SEM(Do ## name) { \
       const addr_t addr = Read(REG_XDI); \
       const type lhs = Read(state.gpr.rax.read_sel); \
       const type rhs = Read(ReadPtr<type>(addr _IF_32BIT(REG_ES_BASE))); \
@@ -42,7 +46,9 @@ IF_64BIT(MAKE_STOS(STOSQ, uint64_t, qword))
         next_addr = USub(addr, sizeof(type)); \
       } \
       Write(REG_XDI, next_addr); \
-    }
+    } \
+    } \
+    DEF_ISEL(name) = Do ## name;
 
 MAKE_SCAS(SCASB, uint8_t, byte.low)
 MAKE_SCAS(SCASW, uint16_t, word)
@@ -52,7 +58,8 @@ IF_64BIT(MAKE_SCAS(SCASQ, uint64_t, qword))
 #undef MAKE_LODS
 
 #define MAKE_LODS(name, type, write_sel) \
-    DEF_ISEL_SEM(name) { \
+    namespace { \
+    DEF_SEM(Do ## name) { \
       const addr_t addr = Read(REG_XSI); \
       WriteZExt(state.gpr.rax.write_sel, \
                 Read(ReadPtr<type>(addr _IF_32BIT(REG_DS_BASE)))); \
@@ -63,7 +70,9 @@ IF_64BIT(MAKE_SCAS(SCASQ, uint64_t, qword))
         next_addr = USub(addr, sizeof(type)); \
       } \
       Write(REG_XSI, next_addr); \
-    }
+    } \
+    } \
+    DEF_ISEL(name) = Do ## name;
 
 MAKE_LODS(LODSB, uint8_t, byte.low)
 MAKE_LODS(LODSW, uint16_t, word)
@@ -73,7 +82,8 @@ IF_64BIT(MAKE_LODS(LODSQ, uint64_t, qword))
 #undef MAKE_LODS
 
 #define MAKE_MOVS(name, type, read_sel) \
-    DEF_ISEL_SEM(name) { \
+    namespace { \
+    DEF_SEM(Do ## name) { \
       const addr_t src_addr = Read(REG_XSI); \
       const addr_t dst_addr = Read(REG_XDI); \
       Write(WritePtr<type>(dst_addr _IF_32BIT(REG_ES_BASE)), \
@@ -89,7 +99,9 @@ IF_64BIT(MAKE_LODS(LODSQ, uint64_t, qword))
       } \
       Write(REG_XDI, next_dst_addr); \
       Write(REG_XSI, next_src_addr); \
-    }
+    } \
+    } \
+    DEF_ISEL(name) = Do ## name;
 
 MAKE_MOVS(MOVSB, uint8_t, byte.low)
 MAKE_MOVS(MOVSW, uint16_t, word)
@@ -99,7 +111,8 @@ IF_64BIT(MAKE_MOVS(MOVSQ, uint64_t, qword))
 #undef MAKE_CMPS
 
 #define MAKE_CMPS(name, type) \
-    DEF_ISEL_SEM(name) { \
+    namespace { \
+    DEF_SEM(Do ## name) { \
       const addr_t src1_addr = Read(REG_XSI); \
       const addr_t src2_addr = Read(REG_XDI); \
       const type lhs = Read(ReadPtr<type>(src1_addr _IF_32BIT(REG_DS_BASE))); \
@@ -117,7 +130,9 @@ IF_64BIT(MAKE_MOVS(MOVSQ, uint64_t, qword))
       } \
       Write(REG_XDI, next_src2_addr); \
       Write(REG_XSI, next_src1_addr); \
-    }
+    } \
+    } \
+    DEF_ISEL(name) = Do ## name;
 
 MAKE_CMPS(CMPSB, uint8_t)
 MAKE_CMPS(CMPSW, uint16_t)
@@ -127,14 +142,17 @@ IF_64BIT(MAKE_CMPS(CMPSQ, uint64_t))
 #undef MAKE_MOVS
 
 #define MAKE_REP(base) \
-    DEF_ISEL_SEM(REP_ ## base) { \
+    namespace { \
+    DEF_SEM(Do ## REP_ ## base) { \
       auto count_reg = Read(REG_XCX); \
       while (UCmpNeq(count_reg, 0)) { \
-        base(memory, state); \
+        Do ## base(memory, state); \
         count_reg = USub(count_reg, 1); \
         Write(REG_XCX, count_reg); \
       } \
-    }
+    } \
+    } \
+    DEF_ISEL(REP_ ## base) = Do ## REP_ ## base;
 
 MAKE_REP(LODSB)
 MAKE_REP(LODSW)
@@ -153,15 +171,18 @@ IF_64BIT(MAKE_REP(STOSQ))
 #undef MAKE_REP
 
 #define MAKE_REPE(base) \
-    DEF_ISEL_SEM(REPE_ ## base) { \
+    namespace { \
+    DEF_SEM(Do ## REPE_ ## base) { \
       auto count_reg = Read(REG_XCX); \
       if (UCmpEq(count_reg, 0)) return; \
       do { \
-        base(memory, state); \
+        Do ## base(memory, state); \
         count_reg = USub(count_reg, 1); \
         Write(REG_XCX, count_reg); \
       } while (BAnd(UCmpNeq(count_reg, 0), FLAG_ZF)); \
-    }
+    } \
+    } \
+    DEF_ISEL(REPE_ ## base) = Do ## REPE_ ## base;
 
 MAKE_REPE(CMPSB)
 MAKE_REPE(CMPSW)
@@ -176,15 +197,18 @@ IF_64BIT(MAKE_REPE(SCASQ))
 #undef MAKE_REPE
 
 #define MAKE_REPNE(base) \
-    DEF_ISEL_SEM(REPNE_ ## base) { \
+    namespace { \
+    DEF_SEM(Do ## REPNE_ ## base) { \
       auto count_reg = Read(REG_XCX); \
       if (UCmpEq(count_reg, 0)) return; \
       do { \
-        base(memory, state); \
+        Do ## base(memory, state); \
         count_reg = USub(count_reg, 1); \
         Write(REG_XCX, count_reg); \
       } while (BAnd(UCmpNeq(count_reg, 0), BNot(FLAG_ZF))); \
-    }
+    } \
+    } \
+    DEF_ISEL(REPNE_ ## base) = Do ## REPNE_ ## base;
 
 MAKE_REPNE(CMPSB)
 MAKE_REPNE(CMPSW)

@@ -17,6 +17,10 @@ bool FileExists(const std::string &path);
 uint64_t FileSize(const std::string &path, int fd);
 uint64_t FileSize(const std::string &path);
 
+void RemoveFile(const std::string &path);
+void RenameFile(const std::string &from_path, const std::string &to_path);
+void HardLinkOrCopy(const std::string &from_path, const std::string &to_path);
+
 }  // namespace remill
 
 #endif  // REMILL_OS_FILESYSTEM_H_

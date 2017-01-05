@@ -27,6 +27,14 @@ static llvm::Function *FindIntrinsic(const llvm::Module *module,
   function->addFnAttr(llvm::Attribute::NoDuplicate);
 
   InitFunctionAttributes(function);
+
+  function->setLinkage(llvm::GlobalValue::ExternalLinkage);
+
+  function->addFnAttr(llvm::Attribute::OptimizeNone);
+  function->removeFnAttr(llvm::Attribute::AlwaysInline);
+  function->removeFnAttr(llvm::Attribute::InlineHint);
+  function->addFnAttr(llvm::Attribute::NoInline);
+
   return function;
 }
 
@@ -53,10 +61,6 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
 
       // OS interaction.
       async_hyper_call(FindIntrinsic(module, "__remill_async_hyper_call")),
-
-      // Transition to/from native/lifted code.
-      detach(FindIntrinsic(module, "__remill_detach")),
-      // attach(FindIntrinsic(module, "__remill_attach")),
 
       // Memory access.
       read_memory_8(FindPureIntrinsic(module, "__remill_read_memory_8")),
@@ -104,8 +108,9 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       undefined_f32(FindPureIntrinsic(module, "__remill_undefined_f32")),
       undefined_f64(FindPureIntrinsic(module, "__remill_undefined_f64")) {
 
-  // attach->addFnAttr(llvm::Attribute::Naked);
-  detach->addFnAttr(llvm::Attribute::Naked);
+  // Make sure to set the correct attributes on this to make sure that
+  // it's never optimized away.
+  (void) FindIntrinsic(module, "__remill_intrinsics");
 }
 
 }  // namespace remill

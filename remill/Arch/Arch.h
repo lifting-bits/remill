@@ -5,16 +5,15 @@
 
 #include <string>
 
-#include "remill/Arch/Name.h"
-#include "remill/OS/OS.h"
-
 namespace llvm {
 class Module;
 class BasicBlock;
 class Function;
 }  // namespace llvm.
-
 namespace remill {
+
+enum OSName : uint32_t;
+enum ArchName : uint32_t;
 
 class Instruction;
 

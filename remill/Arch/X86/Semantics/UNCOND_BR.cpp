@@ -4,9 +4,6 @@ namespace {
 
 template <typename T>
 DEF_SEM(JMP, T target_pc) {
-  if (IsRegister(target_pc) || IsMemory(target_pc)) {
-    ClearArithFlags();  // TODO(pag): Is this too aggressive?
-  }
   WriteZExt(REG_PC, Read(target_pc));
 }
 

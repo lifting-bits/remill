@@ -112,12 +112,17 @@
 #define HYPER_CALL state.hyper_call
 #define INTERRUPT_VECTOR state.interrupt_vector
 
+namespace {
 // Takes the place of an unsupported instruction.
-DEF_ISEL_SEM(UNSUPPORTED_INSTRUCTION) {
+DEF_SEM(HandleUnsupported) {
   memory = __remill_sync_hyper_call(
       memory, state, IF_64BIT_ELSE(SyncHyperCall::kAMD64EmulateInstruction,
                                    SyncHyperCall::kX86EmulateInstruction));
 }
+}  // namespace
+
+// Takes the place of an unsupported instruction.
+DEF_ISEL(UNSUPPORTED_INSTRUCTION) = HandleUnsupported;
 
 #include "remill/Arch/X86/Semantics/FLAGS.cpp"
 #include "remill/Arch/X86/Semantics/BINARY.cpp"

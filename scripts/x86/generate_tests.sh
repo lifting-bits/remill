@@ -59,9 +59,7 @@ function lift_tests()
     remill-lift --cfg $DIR/generated/Arch/X86/Tests/${1}.cfg \
                 --os_in ${OS_NAME} --os_out ${OS_NAME} \
                 --arch_in ${1} --arch_out amd64 \
-                --bc_out $DIR/generated/Arch/X86/Tests/${1}.cfg.bc \
-                --asm_out $DIR/generated/Arch/X86/Tests/${1}.S \
-                --define_unimplemented
+                --bc_out $DIR/generated/Arch/X86/Tests/${1}.cfg.bc 
 }
 
 function compile_tests()

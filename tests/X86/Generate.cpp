@@ -50,7 +50,7 @@ unsigned InstructionLength(const uint8_t *bytes, unsigned num_bytes) {
   CHECK(XED_ICLASS_INVALID != iclass)
       << "Unable to decode instruction.";
 
-  LOG(INFO)
+  DLOG(INFO)
       << "Decoded: " << xed_iclass_enum_t2str(iclass);
 
   return xed_decoded_inst_get_length(&xedd);
@@ -66,14 +66,14 @@ static void AddFunctionToModule(remill::cfg::Module *module,
   std::stringstream ss;
   ss << SYMBOL_PREFIX << test_name;
 
-  LOG(INFO) << "Adding named exported block for: " << test_name;
+  DLOG(INFO) << "Adding named exported block for: " << test_name;
 
   auto func = module->add_named_blocks();
   func->set_address(test.test_begin);
   func->set_name(ss.str());
   func->set_visibility(remill::cfg::EXPORTED);
 
-  LOG(INFO) << "Adding block for: " << test_name;
+  DLOG(INFO) << "Adding block for: " << test_name;
 
   auto block = module->add_blocks();
   block->set_address(test.test_begin);
@@ -104,7 +104,7 @@ extern "C" int main(int argc, char *argv[]) {
 
   xed_tables_init();
 
-  LOG(INFO) << "Generating tests.";
+  DLOG(INFO) << "Generating tests.";
 
   auto module = new remill::cfg::Module;
 
@@ -119,9 +119,9 @@ extern "C" int main(int argc, char *argv[]) {
   CHECK(out.is_open())
       << "Unable to open file: " << FLAGS_cfg_out;
 
-  LOG(INFO) << "Serializing CFG to " << FLAGS_cfg_out;
+  DLOG(INFO) << "Serializing CFG to " << FLAGS_cfg_out;
   module->SerializeToOstream(&out);
-  LOG(INFO) << "Done.";
+  DLOG(INFO) << "Done.";
 
   return 0;
 }

@@ -150,6 +150,10 @@ class Instruction {
     return next_pc - pc;
   }
 
+  inline bool IsNoOp(void) const {
+    return kCategoryNoOp == category;
+  }
+
  private:
   friend class X86Arch;
 

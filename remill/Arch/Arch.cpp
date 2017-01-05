@@ -3,6 +3,7 @@
 #include <glog/logging.h>
 
 #include "remill/Arch/Arch.h"
+#include "remill/Arch/Name.h"
 
 namespace remill {
 

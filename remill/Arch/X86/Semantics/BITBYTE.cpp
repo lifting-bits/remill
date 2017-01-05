@@ -214,7 +214,8 @@ DEF_ISEL_RnW_Rn_In(BTC_GPRv_IMMb, BTCreg);
 DEF_ISEL_MnW_Mn_Rn(BTC_MEMv_GPRv, BTCmem);
 DEF_ISEL_RnW_Rn_Rn(BTC_GPRv_GPRv, BTCreg);
 
-DEF_ISEL_SEM(BSWAP_GPRv_32, R32W dst, R32 src) {
+namespace {
+DEF_SEM(BSWAP_32, R32W dst, R32 src) {
 //  auto val = Read(src);
 //  auto d = UAnd(val, 0xff);
 //  auto c = UAnd(UShr(val, 8), 0xff);
@@ -229,12 +230,10 @@ DEF_ISEL_SEM(BSWAP_GPRv_32, R32W dst, R32 src) {
 }
 
 #if 64 == ADDRESS_SIZE_BITS
-DEF_ISEL_SEM(BSWAP_GPRv_64, R64W dst, R64 src) {
+DEF_SEM(BSWAP_64, R64W dst, R64 src) {
   Write(dst, __builtin_bswap64(Read(src)));
 }
 #endif  // 64 == ADDRESS_SIZE_BITS
-
-namespace {
 
 template <typename D, typename S>
 DEF_SEM(TZCNT, D dst, S src) {
@@ -257,6 +256,9 @@ DEF_SEM(LZCNT, D dst, S src) {
 }
 
 }  // namespace
+
+DEF_ISEL(BSWAP_GPRv_32) = BSWAP_32;
+IF_64BIT(DEF_ISEL(BSWAP_GPRv_64) = BSWAP_64;)
 
 DEF_ISEL_RnW_Mn(TZCNT_GPRv_MEMv, TZCNT);
 DEF_ISEL_RnW_Rn(TZCNT_GPRv_GPRv, TZCNT);

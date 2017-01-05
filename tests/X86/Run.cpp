@@ -84,6 +84,9 @@ static_assert(16 == sizeof(LongDoubleStorage),
 
 extern "C" {
 
+// List of names for exported blocks.
+extern "C" const NamedBlock __remill_exported_blocks[];
+
 // Used to record the FPU. We will use this to migrate native X87 or MMX
 // state into the `State` structure.
 FPU gFPU = {};
@@ -121,17 +124,6 @@ uint64_t gStackSaveSlot = 0;
 // state before and after executing the test in `gStateBefore` and
 // `gStateAfter`, respectively.
 extern void InvokeTestCase(uint64_t, uint64_t, uint64_t);
-
-// Address computation intrinsic. This is only used for non-zero
-// `address_space`d memory accesses.
-NEVER_INLINE addr_t __remill_compute_address(addr_t addr, addr_t segment) {
-  (void) segment;
-  return addr;
-}
-
-NEVER_INLINE addr_t __remill_create_program_counter(addr_t pc) {
-  return pc;
-}
 
 #define MAKE_RW_MEMORY(size) \
   NEVER_INLINE uint ## size ## _t  __remill_read_memory_ ## size( \
@@ -190,7 +182,7 @@ void __remill_defer_inlining(void) {}
 
 // Control-flow intrinsics.
 void __remill_detach(Memory *, State &, addr_t) {
-  // This is where we want to end up.
+  __builtin_unreachable();
 }
 
 void __remill_error(Memory *, State &, addr_t) {
@@ -234,7 +226,7 @@ void __remill_jump(Memory *, State &, addr_t) {
 }
 
 void __remill_async_hyper_call(Memory *, State &, addr_t) {
-  __builtin_unreachable();
+  return;
 }
 
 uint8_t __remill_undefined_8(void) {
@@ -321,7 +313,7 @@ static void ImportX87State(State *state) {
 
     // Copy over the MMX data. A good guess for MMX data is that the the
     // value looks like its infinity.
-    LOG(INFO) << "Importing MMX state.";
+    DLOG(INFO) << "Importing MMX state.";
     for (size_t i = 0; i < 8; ++i) {
       if (static_cast<uint16_t>(0xFFFFU) == gFPU.st[i].infinity) {
         state->mmx.elems[i].val.qwords.elems[0] = gFPU.st[i].mmx;
@@ -330,7 +322,7 @@ static void ImportX87State(State *state) {
 
   // Looks like X87 state.
   } else {
-    LOG(INFO) << "Importing FPU state.";
+    DLOG(INFO) << "Importing FPU state.";
     for (size_t i = 0; i < 8; ++i) {
       auto st = *reinterpret_cast<long double *>(&(gFPU.st[i].st));
       state->st.elems[i].val = static_cast<float64_t>(st);
@@ -364,9 +356,9 @@ static void RunWithFlags(const test::TestInfo *info,
                          uint64_t arg1,
                          uint64_t arg2,
                          uint64_t arg3) {
-  LOG(INFO) << "Testing instruction: " << info->test_name << ": " << desc;
+  DLOG(INFO) << "Testing instruction: " << info->test_name << ": " << desc;
   if (sigsetjmp(gUnsupportedInstrBuf, true)) {
-    LOG(INFO) << "Unsupported instruction " << info->test_name;
+    DLOG(INFO) << "Unsupported instruction " << info->test_name;
     return;
   }
 
@@ -453,6 +445,11 @@ static void RunWithFlags(const test::TestInfo *info,
   // Only compare generic flags.
   native_state->rflag.flat &= 0x0ED7UL;
   lifted_state->rflag.flat &= 0x0ED7UL;
+
+  native_state->interrupt_vector = 0;
+  lifted_state->interrupt_vector = 0;
+  native_state->hyper_call = AsyncHyperCall::kInvalid;
+  lifted_state->hyper_call = AsyncHyperCall::kInvalid;
 
   // Compare the register states.
   for (auto i = 0UL; i < kNumVecRegisters; ++i) {

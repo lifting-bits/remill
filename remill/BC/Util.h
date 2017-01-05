@@ -3,6 +3,7 @@
 #ifndef REMILL_BC_UTIL_H_
 #define REMILL_BC_UTIL_H_
 
+#include <functional>
 #include <string>
 
 #include <llvm/Support/raw_ostream.h>
@@ -92,6 +93,34 @@ inline static std::string LLVMThingToString(T *thing) {
     return "(null)";
   }
 }
+
+using IndirectBlockCallback = std::function<void(uintptr_t, llvm::Function *)>;
+
+// Run a callback function for every indirect block entry in a remill-lifted
+// bitcode module.
+void ForEachIndirectBlock(
+    llvm::Module *module, IndirectBlockCallback on_each_function);
+
+
+using NamedBlockCallback = std::function<
+    void(const std::string &, llvm::Function *, llvm::Function *)>;
+
+// Run a callback function for every exported block entry in a remill-lifted
+// bitcode module.
+void ForEachExportedBlock(
+    llvm::Module *module, NamedBlockCallback on_each_function);
+
+// Run a callback function for every imported block entry in a remill-lifted
+// bitcode module.
+void ForEachImportedBlock(
+    llvm::Module *module, NamedBlockCallback on_each_function);
+
+// Clone function `source_func` into `dest_func`. This will strip out debug
+// info during the clone.
+//
+// Note: this will try to clone globals referenced from the module of
+//       `source_func` into the module of `dest_func`.
+void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func);
 
 }  // namespace remill
 

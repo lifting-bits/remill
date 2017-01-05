@@ -630,6 +630,7 @@ DEF_SEM(PMAXSW, D dst, S1 src1, S2 src2) {
 
     // Compute MAX of words
   auto vec_count = NumVectorElems(lhs_vec);
+  _Pragma("unroll")
   for (std::size_t i = 0; i < vec_count; i++) {
     auto max = Select(
         SCmpGt(SExtractV16(lhs_vec, i), SExtractV16(rhs_vec, i)),
@@ -657,6 +658,7 @@ DEF_SEM(PMAXUB, D dst, S1 src1, S2 src2) {
 
   // Compute MAX of bytes
   auto vec_count = NumVectorElems(lhs_vec);
+  _Pragma("unroll")
   for (std::size_t i = 0; i < vec_count; i++) {
     auto max = Select(
         UCmpGt(UExtractV8(lhs_vec, i), UExtractV8(rhs_vec, i)),
@@ -684,6 +686,7 @@ DEF_SEM(PMINSW, D dst, S1 src1, S2 src2) {
 
   // Compute MIN of words
   auto vec_count = NumVectorElems(lhs_vec);
+  _Pragma("unroll")
   for (std::size_t i = 0; i < vec_count; i++) {
     auto max = Select(
         SCmpLt(SExtractV16(lhs_vec, i), SExtractV16(rhs_vec, i)),
@@ -711,6 +714,8 @@ DEF_SEM(PMINUB, D dst, S1 src1, S2 src2) {
 
   // Compute MIN of bytes
   auto vec_count = NumVectorElems(lhs_vec);
+
+  _Pragma("unroll")
   for (std::size_t i = 0; i < vec_count; i++) {
     auto max = Select(
         UCmpLt(UExtractV8(lhs_vec, i), UExtractV8(rhs_vec, i)),
@@ -1638,8 +1643,8 @@ DEF_SEM(PSIGNB, D dst, S1 src1, S2 src2) {
   for (std::size_t i = 0; i < vec_count; i++) {
     auto v1 = SExtractV8(src1_vec, i);
     auto v2 = SExtractV8(src2_vec, i);
-    bool is_neg = SignFlag(v2);
-    bool is_zero = ZeroFlag(v2);
+    auto is_neg = SignFlag(v2);
+    auto is_zero = ZeroFlag(v2);
     auto value = Select(is_zero, 0_s8, Select(is_neg, SNeg(v1), v1));
     dst_vec = SInsertV8(dst_vec, i, value);
   }
@@ -1657,8 +1662,8 @@ DEF_SEM(PSIGNW, D dst, S1 src1, S2 src2) {
   for (std::size_t i = 0; i < vec_count; i++) {
     auto v1 = SExtractV16(src1_vec, i);
     auto v2 = SExtractV16(src2_vec, i);
-    bool is_neg = SignFlag(v2);
-    bool is_zero = ZeroFlag(v2);
+    auto is_neg = SignFlag(v2);
+    auto is_zero = ZeroFlag(v2);
     auto value = Select(is_zero, 0_s16, Select(is_neg, SNeg(v1), v1));
     dst_vec = SInsertV16(dst_vec, i, value);
   }
@@ -1676,8 +1681,8 @@ DEF_SEM(PSIGND, D dst, S1 src1, S2 src2) {
   for (std::size_t i = 0; i < vec_count; i++) {
     auto v1 = SExtractV32(src1_vec, i);
     auto v2 = SExtractV32(src2_vec, i);
-    bool is_neg = SignFlag(v2);
-    bool is_zero = ZeroFlag(v2);
+    auto is_neg = SignFlag(v2);
+    auto is_zero = ZeroFlag(v2);
     auto value = Select(is_zero, 0_s32, Select(is_neg, SNeg(v1), v1));
     dst_vec = SInsertV32(dst_vec, i, value);
   }
@@ -1902,25 +1907,11 @@ DEF_SEM(PINSRW, D dst, S1 src1, S2 src2, I8 src3) {
   UWriteV16(dst, UInsertV16(dst_vec, index, value));
 }
 
-}  // namespace
-
-DEF_ISEL(PINSRW_MMXq_MEMw_IMMb) = PINSRW<V64W, V64, M16>;
-DEF_ISEL(PINSRW_MMXq_GPR32_IMMb) = PINSRW<V64W, V64, R32>;
-DEF_ISEL(PINSRW_XMMdq_MEMw_IMMb) = PINSRW<V128W, V128, M16>;
-DEF_ISEL(PINSRW_XMMdq_GPR32_IMMb) = PINSRW<V128W, V128, R32>;
-IF_AVX(DEF_ISEL(VPINSRW_XMMdq_XMMdq_MEMw_IMMb) = PINSRW<VV128W, V128, M16>);
-IF_AVX(DEF_ISEL(VPINSRW_XMMdq_XMMdq_GPR32d_IMMb) = PINSRW<VV128W, V128, R32>);
-
-/*
-5547 VPINSRW VPINSRW_XMMu16_XMMu16_GPR32u16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_128N ATTRIBUTES:
-5548 VPINSRW VPINSRW_XMMu16_XMMu16_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_128N ATTRIBUTES: DISP8_GPR_READER_WORD
- */
-
-DEF_ISEL_SEM(MOVNTQ_MEMq_MMXq, MV64W dst, V64 src1) {
+DEF_SEM(DoMOVNTQ_MEMq_MMXq, MV64W dst, V64 src1) {
   UWriteV64(dst, UReadV64(src1));
 }
 
-DEF_ISEL_SEM(MASKMOVQ_MMXq_MMXq, V64 src1, V64 src2) {
+DEF_SEM(DoMASKMOVQ_MMXq_MMXq, V64 src1, V64 src2) {
   auto dst = VWritePtr<vec64_t>(Read(REG_XDI));
   auto dst_vec = UReadV8(dst);
   auto src1_vec = UReadV8(src1);
@@ -1937,7 +1928,7 @@ DEF_ISEL_SEM(MASKMOVQ_MMXq_MMXq, V64 src1, V64 src2) {
   UWriteV8(dst, dst_vec);
 }
 
-DEF_ISEL_SEM(EMMS) {
+DEF_SEM(DoEMMS) {
   state.mmx.elems[0].val.qwords.elems[0] = __remill_undefined_64();
   state.mmx.elems[1].val.qwords.elems[0] = __remill_undefined_64();
   state.mmx.elems[2].val.qwords.elems[0] = __remill_undefined_64();
@@ -1959,8 +1950,27 @@ DEF_ISEL_SEM(EMMS) {
   // TODO(pag): Add FPU tag word stuff to the `State` structure, and reset
   //            it here.
 }
+}  // namespace
 
-DEF_ISEL(FEMMS) = EMMS;
+DEF_ISEL(PINSRW_MMXq_MEMw_IMMb) = PINSRW<V64W, V64, M16>;
+DEF_ISEL(PINSRW_MMXq_GPR32_IMMb) = PINSRW<V64W, V64, R32>;
+DEF_ISEL(PINSRW_XMMdq_MEMw_IMMb) = PINSRW<V128W, V128, M16>;
+DEF_ISEL(PINSRW_XMMdq_GPR32_IMMb) = PINSRW<V128W, V128, R32>;
+IF_AVX(DEF_ISEL(VPINSRW_XMMdq_XMMdq_MEMw_IMMb) = PINSRW<VV128W, V128, M16>);
+IF_AVX(DEF_ISEL(VPINSRW_XMMdq_XMMdq_GPR32d_IMMb) = PINSRW<VV128W, V128, R32>);
+
+/*
+5547 VPINSRW VPINSRW_XMMu16_XMMu16_GPR32u16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_128N ATTRIBUTES:
+5548 VPINSRW VPINSRW_XMMu16_XMMu16_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_128N ATTRIBUTES: DISP8_GPR_READER_WORD
+ */
+
+DEF_ISEL(MOVNTQ_MEMq_MMXq) = DoMOVNTQ_MEMq_MMXq;
+
+DEF_ISEL(MASKMOVQ_MMXq_MMXq) = DoMASKMOVQ_MMXq_MMXq;
+
+DEF_ISEL(EMMS) = DoEMMS;
+
+DEF_ISEL(FEMMS) = DoEMMS;
 
 // 565:117 PHSUBD PHSUBD_MMXq_MEMq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
 // 569:118 PHSUBD PHSUBD_MMXq_MMXq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX

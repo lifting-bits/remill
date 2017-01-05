@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/sendfile.h>
 #include <unistd.h>
 
 #include "remill/OS/FileSystem.h"
@@ -57,12 +58,49 @@ uint64_t FileSize(const std::string &path, int fd) {
   return static_cast<uint64_t>(file_info.st_size);
 }
 
-
 uint64_t FileSize(const std::string &path) {
   struct stat64 file_info;
   CHECK(!stat64(path.c_str(), &file_info))
       << "Cannot stat " << path << ": " << strerror(errno);
   return static_cast<uint64_t>(file_info.st_size);
 }
+
+void RemoveFile(const std::string &path) {
+  unlink(path.c_str());
+}
+
+void RenameFile(const std::string &from_path, const std::string &to_path) {
+  rename(from_path.c_str(), to_path.c_str());
+}
+
+void HardLinkOrCopy(const std::string &from_path, const std::string &to_path) {
+  unlink(to_path.c_str());
+  if (!link(from_path.c_str(), to_path.c_str())) {
+    return;
+  }
+
+  DLOG(WARNING)
+      << "Unable to link " << to_path << " to "
+      << from_path << ": " << strerror(errno);
+
+  auto from_fd = open(from_path.c_str(), O_RDONLY);
+  auto to_fd = open(to_path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0666);
+  off_t offset = 0;
+  auto file_size = FileSize(from_path);
+
+  do {
+    auto num_copied = sendfile(to_fd, from_fd, &offset, file_size);
+    if (-1 == num_copied) {
+      close(from_fd);
+      close(to_fd);
+      unlink(to_path.c_str());
+      LOG(FATAL)
+          << "Unable to copy data from " << from_path << " to " << to_path;
+    }
+
+    file_size -= static_cast<size_t>(num_copied);
+  } while (file_size);
+}
+
 
 }  // namespace remill
