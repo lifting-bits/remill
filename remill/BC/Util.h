@@ -115,6 +115,13 @@ void ForEachExportedBlock(
 void ForEachImportedBlock(
     llvm::Module *module, NamedBlockCallback on_each_function);
 
+// Clone function `source_func` into `dest_func`. This will strip out debug
+// info during the clone.
+//
+// Note: this will try to clone globals referenced from the module of
+//       `source_func` into the module of `dest_func`.
+void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func);
+
 }  // namespace remill
 
 #endif  // REMILL_BC_UTIL_H_

@@ -4,15 +4,20 @@
 
 #include <sstream>
 #include <system_error>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <llvm/ADT/SmallVector.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/DebugLoc.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
@@ -424,6 +429,149 @@ void ForEachExportedBlock(
 void ForEachImportedBlock(
     llvm::Module *module, NamedBlockCallback on_each_function) {
   ForEachNamedBlock(module, "__remill_imported_blocks", on_each_function);
+}
+
+// Clone function `source_func` into `dest_func`. This will strip out debug
+// info during the clone.
+void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
+  auto func_name = source_func->getName().str();
+  auto source_mod = source_func->getParent();
+  auto dest_mod = dest_func->getParent();
+  auto new_args = dest_func->arg_begin();
+
+  dest_func->setAttributes(source_func->getAttributes());
+  dest_func->setLinkage(source_func->getLinkage());
+  dest_func->setVisibility(source_func->getVisibility());
+  dest_func->setCallingConv(source_func->getCallingConv());
+  dest_func->setIsMaterializable(source_func->isMaterializable());
+
+  std::unordered_map<llvm::Value *, llvm::Value *> value_map;
+  for (llvm::Argument &old_arg : source_func->args()) {
+    new_args->setName(old_arg.getName());
+    value_map[&old_arg] = &*new_args;
+    ++new_args;
+  }
+
+  // Clone the basic blocks and their instructions.
+  std::unordered_map<llvm::BasicBlock *, llvm::BasicBlock *> block_map;
+  for (auto &old_block : *source_func) {
+    auto new_block = llvm::BasicBlock::Create(
+        dest_func->getContext(), old_block.getName(), dest_func);
+    value_map[&old_block] = new_block;
+    block_map[&old_block] = new_block;
+
+    auto &new_insts = new_block->getInstList();
+    for (auto &old_inst : old_block) {
+      if (llvm::isa<llvm::DbgInfoIntrinsic>(old_inst)) {
+        continue;
+      }
+
+      auto new_inst = old_inst.clone();
+      new_insts.push_back(new_inst);
+      value_map[&old_inst] = new_inst;
+    }
+  }
+
+  llvm::SmallVector<std::pair<unsigned, llvm::MDNode *>, 4> mds;
+
+  // Fixup the references in the cloned instructions so that they point into
+  // the cloned function, or point to declared globals in the module containing
+  // `dest_func`.
+  for (auto &old_block : *source_func) {
+    for (auto &old_inst : old_block) {
+      if (llvm::isa<llvm::DbgInfoIntrinsic>(old_inst)) {
+        continue;
+      }
+
+      auto new_inst = llvm::dyn_cast<llvm::Instruction>(value_map[&old_inst]);
+
+      // Clear out all metadata from the new instruction.
+      old_inst.getAllMetadata(mds);
+      for (auto md_info : mds) {
+        new_inst->setMetadata(md_info.first, nullptr);
+      }
+
+      new_inst->setDebugLoc(llvm::DebugLoc());
+      new_inst->setName(old_inst.getName());
+
+      for (auto &new_op : new_inst->operands()) {
+        auto old_op_val = new_op.get();
+
+        if (llvm::isa<llvm::Constant>(old_op_val) &&
+            !llvm::isa<llvm::GlobalValue>(old_op_val)) {
+          continue;  // Don't clone constants.
+        }
+
+        // Already cloned the value, replace the old with the new.
+        auto new_op_val_it = value_map.find(old_op_val);
+        if (value_map.end() != new_op_val_it) {
+          new_op.set(new_op_val_it->second);
+          continue;
+        }
+
+        // At this point, all we should have is a global.
+        auto global_val = llvm::dyn_cast<llvm::GlobalValue>(old_op_val);
+        if (!global_val) {
+          LOG(FATAL)
+              << "Cannot clone value " << LLVMThingToString(old_op_val)
+              << " into function " << func_name << " because it isn't "
+              << "a global value.";
+        }
+
+        // If it's a global and we're in the same module, then use it.
+        if (global_val && dest_mod == source_mod) {
+          value_map[global_val] = global_val;
+          new_op.set(global_val);
+          continue;
+        }
+
+        // Declare the global in the new module.
+        llvm::GlobalValue *new_global_val = nullptr;
+        if (llvm::isa<llvm::Function>(global_val)) {
+          new_global_val = llvm::dyn_cast<llvm::GlobalValue>(
+              dest_mod->getOrInsertFunction(
+                  global_val->getName(),
+                  llvm::dyn_cast<llvm::FunctionType>(
+                      global_val->getValueType())));
+
+        } else if (llvm::isa<llvm::GlobalVariable>(global_val)) {
+          new_global_val = llvm::dyn_cast<llvm::GlobalValue>(
+              dest_mod->getOrInsertGlobal(
+                  global_val->getName(), global_val->getValueType()));
+
+        } else {
+          LOG(FATAL)
+              << "Cannot clone value " << LLVMThingToString(old_op_val)
+              << " into new module for function " << func_name;
+        }
+
+        auto old_name = global_val->getName().str();
+        auto new_name = new_global_val->getName().str();
+
+        CHECK(new_global_val->getName() == global_val->getName())
+            << "Name of cloned global value declaration for " << old_name
+            << "does not match global value definition of " << new_name
+            << " in the source module. The cloned value probably has the "
+            << "same name as another value in the dest module, but with a "
+            << "different type.";
+
+        // Mark the global as extern, so that it can link back to the old
+        // module.
+        new_global_val->setLinkage(llvm::GlobalValue::ExternalLinkage);
+        new_global_val->setVisibility(llvm::GlobalValue::DefaultVisibility);
+
+        value_map[global_val] = new_global_val;
+        new_op.set(new_global_val);
+      }
+
+      // Remap PHI node predecessor blocks.
+      if (auto phi = llvm::dyn_cast<llvm::PHINode>(new_inst)) {
+        for (auto i = 0UL; i < phi->getNumIncomingValues(); ++i) {
+          phi->setIncomingBlock(i, block_map[phi->getIncomingBlock(i)]);
+        }
+      }
+    }
+  }
 }
 
 }  // namespace remill

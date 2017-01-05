@@ -1,4 +1,5 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+
 #include <gflags/gflags.h>
 
 #include <glog/logging.h>
@@ -86,7 +87,6 @@ static void AddEntries(const Instruction *instr, DecoderWorkList &work_list) {
       break;
 
     case Instruction::kCategoryIndirectJump:
-    case Instruction::kCategoryIndirectFunctionCall:
     case Instruction::kCategoryFunctionReturn:
     case Instruction::kCategoryAsyncHyperCall:
       work_list.insert({instr->next_pc, WorkListItem::kScanLinear});
@@ -107,11 +107,16 @@ static void AddEntries(const Instruction *instr, DecoderWorkList &work_list) {
       work_list.insert({instr->next_pc, WorkListItem::kScanLinear});
       break;
 
+    case Instruction::kCategoryIndirectFunctionCall:
+      work_list.insert(  // Return address.
+          {instr->next_pc, WorkListItem::kScanRecursive});
+      break;
+
     case Instruction::kCategoryDirectFunctionCall:
       work_list.insert(
           {instr->branch_taken_pc, WorkListItem::kScanRecursive});
       work_list.insert(  // Return address.
-          {instr->next_pc, WorkListItem::kScanLinear});
+          {instr->next_pc, WorkListItem::kScanRecursive});
       break;
 
     case Instruction::kCategoryConditionalBranch:
@@ -147,7 +152,6 @@ void Decoder::DecodeToCFG(
 
   auto min_recursive_pc = std::numeric_limits<uint64_t>::max();
   auto max_recursive_pc = std::numeric_limits<uint64_t>::min();
-  auto expected_num_lifted_blocks = 0U;
 
   while (!work_list.empty()) {
     auto entry_it = work_list.begin();
@@ -174,7 +178,7 @@ void Decoder::DecodeToCFG(
     } else if (min_recursive_pc > block_pc || max_recursive_pc <= block_pc) {
       DLOG(INFO)
           << "Stopping linear decoding; block at " << std::hex << block_pc
-          << " it outside of recursively discovered bounds ["
+          << " is outside of recursively discovered bounds ["
           << min_recursive_pc << ", " << max_recursive_pc << ")";
       work_list.clear();
       break;
@@ -184,17 +188,11 @@ void Decoder::DecodeToCFG(
       break;
     }
 
-    seen_blocks.insert(block_pc);
-
     DLOG(INFO)
         << "Decoding basic block at " << std::hex << block_pc;
 
-    ++expected_num_lifted_blocks;
-
     Instruction *instr = nullptr;
-    auto cfg_block = cfg_module->add_blocks();
-    cfg_block->set_address(block_pc);
-    cfg_module->add_addressed_blocks(block_pc);
+    cfg::Block *cfg_block = nullptr;
 
     do {
       if (instr) {
@@ -203,7 +201,7 @@ void Decoder::DecodeToCFG(
       }
 
       // End this block early; the subsequent block already exists.
-      if (cfg_block->instructions_size() && seen_blocks.count(block_pc)) {
+      if (seen_blocks.count(block_pc)) {
         DLOG(INFO)
             << "Stopping block early at " << std::hex << block_pc
             << "; a block at this PC has been decoded.";
@@ -216,21 +214,29 @@ void Decoder::DecodeToCFG(
         instr_bytes = instr_bytes.substr(0, instr->NumBytes());
       }
 
+      if (!cfg_block) {
+
+        // If we're doing a linear scan and we find a NOP then split the block
+        // early. The idea here is that some functions are aligned to certain
+        // byte boundaries, and the alignment may sometimes use NOPs. The net
+        // effect is that NOPs will only be included in recursively decoded
+        // blocks, and will otherwise be skipped.
+        if (WorkListItem::kScanLinear == scan_type && instr->IsNoOp()) {
+          DLOG(INFO)
+              << "Skipping block starting with a NOP at "
+              << std::hex << block_pc;
+          break;
+        }
+
+        cfg_block = cfg_module->add_blocks();
+        cfg_block->set_address(block_pc);
+        cfg_module->add_addressed_blocks(block_pc);
+        seen_blocks.insert(block_pc);
+      }
+
       auto cfg_instr = cfg_block->add_instructions();
       cfg_instr->set_address(block_pc);
       cfg_instr->set_bytes(instr_bytes);
-
-      // If we're doing a linear scan and we find a NOP then split the block
-      // early. The idea here is that some functions are aligned to certain
-      // byte boundaries, and the alignment may sometimes use NOPs.
-      if (WorkListItem::kScanLinear == scan_type &&
-          1 == cfg_block->instructions_size() && instr->IsNoOp()) {
-        DLOG(INFO)
-            << "Stopping linearly decoded block " << std::hex << block_pc
-            << " at NO-OP.";
-        break;
-      }
-
       block_pc += instr->NumBytes();
 
     } while (instr->IsValid() && !instr->IsControlFlow());
@@ -238,6 +244,7 @@ void Decoder::DecodeToCFG(
     if (instr) {
       AddEntries(instr, work_list);
       delete instr;
+      instr = nullptr;
     }
   }
 

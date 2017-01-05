@@ -142,52 +142,16 @@ TE::TE(CodeVersion code_version_, const Arch *source_arch_)
 
 // Destroy the translation engine.
 TE::~TE(void) {
+  StoreModuleToFile(module, bitcode_file_path);
 
   delete optimizer;
-
-  // TODO(pag): This isn't all that nice. The native executor's JIT compiler
-  //            marks private functions as externally available to prevent
-  //            recompilation.
-  for (auto &func : *module) {
-    if (func.hasAvailableExternallyLinkage()) {
-      func.setLinkage(llvm::GlobalValue::PrivateLinkage);
-    }
-  }
-
-  // TODO(pag): This isn't all that nice. The native executor's JIT compiler
-  //            marks externally available globals with initializers as having
-  //            available externally linkage to prevent recompilation.
-  for (auto &global : module->globals()) {
-    if (global.hasAvailableExternallyLinkage()) {
-      global.setLinkage(llvm::GlobalValue::ExternalLinkage);
-    }
-  }
-
-  StoreModuleToFile(module, bitcode_file_path);
   delete module;
   delete context;
 }
 
 void TE::LiftCFG(const cfg::Module *cfg) {
-  // The native executor uses `AvailableExternallyLinkage` to avoid recompiling
-  // the same code twice, but that will play havoc with the optimizer, so
-  // we need to undo some of that here, then re-do it :-/
-  std::unordered_set<llvm::GlobalValue *> externs;
-  for (auto &func : *module) {
-    if (func.hasAvailableExternallyLinkage()) {
-      externs.insert(&func);
-      func.setLinkage(llvm::GlobalValue::PrivateLinkage);
-    }
-  }
 
-  for (auto &global : module->globals()) {
-    if (global.hasAvailableExternallyLinkage()) {
-      externs.insert(&global);
-      global.setLinkage(llvm::GlobalValue::ExternalLinkage);
-    }
-  }
   auto start_lift = time(nullptr);
-  // Lift and optimize.
   lifter.LiftCFG(cfg);
 
   auto start_opt = time(nullptr);
@@ -218,21 +182,6 @@ void TE::LiftCFG(const cfg::Module *cfg) {
 
     if (FLAGS_delete_old_saved_bitcode) {
       RemoveFile(temp_path);
-    }
-  }
-
-  // Undo the above changes. We can't operate directly on what's in the set
-  // because some of those entries may have been removed.
-
-  for (auto &func : *module) {
-    if (externs.count(&func)) {
-      func.setLinkage(llvm::GlobalValue::AvailableExternallyLinkage);
-    }
-  }
-
-  for (auto &global : module->globals()) {
-    if (externs.count(&global)) {
-      global.setLinkage(llvm::GlobalValue::AvailableExternallyLinkage);
     }
   }
 }

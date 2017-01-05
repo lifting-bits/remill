@@ -781,10 +781,10 @@ static void RunO3(llvm::Module *module) {
   TLI->disableAllFunctions();
 
   llvm::PassManagerBuilder builder;
-  builder.OptLevel = 1;  // -O3.
-  builder.SizeLevel = 0;  // -Oz
+  builder.OptLevel = 3;  // -O3.
+  builder.SizeLevel = 2;  // -Oz
   builder.Inliner = llvm::createFunctionInliningPass(999);
-  builder.LibraryInfo = TLI;
+  builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
   builder.DisableTailCalls = false;  // Enable tail calls.
   builder.DisableUnrollLoops = false;  // Unroll loops!
   builder.DisableUnitAtATime = false;
@@ -801,7 +801,6 @@ static void RunO3(llvm::Module *module) {
   func_manager.doInitialization();
   for (auto &func : *module) {
     if (func.hasFnAttribute(llvm::Attribute::OptimizeNone) ||
-        func.hasAvailableExternallyLinkage() ||
         !func.getName().startswith("__remill_sub")) {
       continue;
     }

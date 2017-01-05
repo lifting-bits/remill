@@ -52,7 +52,7 @@ namespace {
 // functions. Also, give pretty names to the arguments of block functions.
 static void InitBlockFunctionAttributes(llvm::Function *block_func) {
 
-  block_func->setLinkage(llvm::GlobalValue::PrivateLinkage);
+  block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
   block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
 
   remill::NthArgument(block_func, kMemoryPointerArgNum)->setName("memory");
@@ -106,6 +106,10 @@ Lifter::Lifter(const Arch *arch_, llvm::Module *module_)
 
   CHECK(nullptr != basic_block)
       << "Unable to find __remill_basic_block.";
+
+  CHECK(1 == basic_block->size())
+      << "Basic block template function " << basic_block->getName().str()
+      << " should only have one basic block.";
 
   EnableDeferredInlining();
   InitFunctionAttributes(basic_block);
@@ -172,64 +176,16 @@ static llvm::Function *CreateExternalFunction(llvm::Module *module,
 
 // Clone the block method template `TF` into a specific method `BF` that
 // will contain lifted code.
-//
-// This mimick's LLVM's `CloneFunctionInto`, although it is simpler, and in
-// a `Debug+Asserts` build of LLVM, an assertion is triggered that is otherwise
-// irrelevant to the correctness of the produced code.
 static void AddBlockInitializationCode(llvm::Function *block_func,
                                        llvm::Function *template_func) {
+  CloneFunctionInto(template_func, block_func);
 
-  auto entry_block = llvm::BasicBlock::Create(
-      block_func->getContext(), "", block_func);
+  // Remove the `return` in `__remill_basic_block`.
+  auto &entry = block_func->front();
+  auto term = entry.getTerminator();
+  term->eraseFromParent();
 
-  std::unordered_map<llvm::Value *, llvm::Value *> value_map;
-
-  // Map template arguments to arguments in our new block.
-  auto block_args = block_func->arg_begin();
-  for (llvm::Argument &arg : template_func->args()) {
-    value_map[&arg] = &*block_args;
-    ++block_args;
-  }
-
-  llvm::SmallVector<std::pair<unsigned, llvm::MDNode *>, 4> mds;
-
-  auto &new_insts = entry_block->getInstList();
-  for (auto &old_inst : template_func->front()) {
-    if (old_inst.isTerminator()) {
-      break;
-    } else if (llvm::isa<llvm::CallInst>(old_inst)) {
-      continue;
-    }
-
-    auto new_inst = old_inst.clone();
-    value_map[&old_inst] = new_inst;
-    new_insts.push_back(new_inst);
-
-    // Clear out all metadata from the new instruction.
-    new_inst->getAllMetadata(mds);
-    for (auto md_info : mds) {
-      new_inst->setMetadata(md_info.first, nullptr);
-    }
-
-    new_inst->setDebugLoc(llvm::DebugLoc());
-    new_inst->setName(old_inst.getName());
-
-    for (auto &new_op : new_inst->operands()) {
-      auto old_op_val = new_op.get();
-      if (llvm::isa<llvm::Constant>(old_op_val)) {
-        continue;
-      }
-
-      if (!value_map.count(old_op_val)) {
-        LOG(FATAL)
-            << "Could not find " << LLVMThingToString(old_op_val)
-            << " in our value map for cloning the "
-            << "`__remill_basic_block` function.";
-      }
-
-      new_op.set(value_map[old_op_val]);
-    }
-  }
+  block_func->removeFnAttr(llvm::Attribute::OptimizeNone);
 }
 
 }  // namespace
@@ -429,7 +385,6 @@ llvm::Function *Lifter::GetOrCreateBlock(uint64_t addr) {
         module->getOrInsertFunction(func_name, func_type));
 
     InitFunctionAttributes(block_func);
-    block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
 
     DLOG(INFO)
         << "Created function " << func_name
@@ -525,11 +480,12 @@ void Lifter::LiftBlocks(const cfg::Module *cfg_module) {
   func_pass_manager.add(llvm::createPromoteMemoryToRegisterPass());
   func_pass_manager.add(llvm::createReassociatePass());
   func_pass_manager.add(llvm::createInstructionCombiningPass());
-  func_pass_manager.add(llvm::createAggressiveDCEPass());
+  func_pass_manager.add(llvm::createDeadStoreEliminationPass());
+  func_pass_manager.add(llvm::createDeadCodeEliminationPass());
 
   func_pass_manager.doInitialization();
-  for (const auto &block : cfg_module->blocks()) {
-    auto func = LiftBlock(&block);
+  for (const auto &cfg_block : cfg_module->blocks()) {
+    auto func = LiftBlock(&cfg_block);
     CHECK(!func->isDeclaration())
         << "Lifted block function " << func->getName().str()
         << " should have an implementation.";
@@ -537,6 +493,7 @@ void Lifter::LiftBlocks(const cfg::Module *cfg_module) {
     func_pass_manager.run(*func);
     func->setLinkage(llvm::GlobalValue::PrivateLinkage);
   }
+
   func_pass_manager.doFinalization();
 }
 
