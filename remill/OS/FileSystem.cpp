@@ -2,10 +2,10 @@
 
 #include <glog/logging.h>
 
+#include <algorithm>
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/sendfile.h>
 #include <unistd.h>
 
 #include "remill/OS/FileSystem.h"
@@ -73,6 +73,14 @@ void RenameFile(const std::string &from_path, const std::string &to_path) {
   rename(from_path.c_str(), to_path.c_str());
 }
 
+namespace {
+enum : size_t {
+  kCopyDataSize = 4096ULL
+};
+
+static uint8_t gCopyData[kCopyDataSize];
+}  // namespace
+
 void HardLinkOrCopy(const std::string &from_path, const std::string &to_path) {
   unlink(to_path.c_str());
   if (!link(from_path.c_str(), to_path.c_str())) {
@@ -84,23 +92,46 @@ void HardLinkOrCopy(const std::string &from_path, const std::string &to_path) {
       << from_path << ": " << strerror(errno);
 
   auto from_fd = open(from_path.c_str(), O_RDONLY);
+  CHECK(-1 != from_fd)
+      << "Unable to open source file " << from_path
+      << " for copying: " << strerror(errno);
+
   auto to_fd = open(to_path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0666);
-  off_t offset = 0;
+  CHECK(-1 != to_fd)
+      << "Unable to open destination file " << to_path
+      << " for copying: " << strerror(errno);
+
   auto file_size = FileSize(from_path);
+  int errno_copy = 0;
 
   do {
-    auto num_copied = sendfile(to_fd, from_fd, &offset, file_size);
-    if (-1 == num_copied) {
-      close(from_fd);
-      close(to_fd);
-      unlink(to_path.c_str());
-      LOG(FATAL)
-          << "Unable to copy data from " << from_path << " to " << to_path;
+    auto num_read = read(
+        from_fd, &(gCopyData[0]), std::min<size_t>(kCopyDataSize, file_size));
+    if (-1 == num_read) {
+      errno_copy = errno;
+      break;
     }
 
-    file_size -= static_cast<size_t>(num_copied);
-  } while (file_size);
-}
+    auto num_written = write(
+        to_fd, &(gCopyData[0]), static_cast<size_t>(num_read));
 
+    if (num_written != num_read) {
+      errno_copy = errno;
+      break;
+    }
+
+    file_size -= static_cast<size_t>(num_written);
+  } while (file_size);
+
+  close(from_fd);
+  close(to_fd);
+
+  if (errno_copy) {
+    unlink(to_path.c_str());
+    LOG(FATAL)
+        << "Unable to copy all data read from " << from_path
+        << " to " << to_path << ": " << strerror(errno_copy);
+  }
+}
 
 }  // namespace remill
