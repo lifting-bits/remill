@@ -3,37 +3,47 @@
 #ifndef REMILL_ARCH_X86_SEMANTICS_CONVERT_H_
 #define REMILL_ARCH_X86_SEMANTICS_CONVERT_H_
 
-DEF_ISEL_SEM(CBW) {
+namespace {
+
+DEF_SEM(CBW_AL) {
   Write(REG_AX, Unsigned(SExt(REG_AL)));
 }
 
 // Note: Need to write to the whole register so that high bits of RAX are
 //       cleared even though the write is to EAX.
-DEF_ISEL_SEM(CWDE) {
+DEF_SEM(CWDE_AX) {
   WriteZExt(REG_XAX, SExt(REG_AX));
 }
 
 #if 64 == ADDRESS_SIZE_BITS
-DEF_ISEL_SEM(CDQE) {
+DEF_SEM(CDQE_EAX) {
   WriteZExt(REG_RAX, SExt(REG_EAX));
 }
 #endif
 
-DEF_ISEL_SEM(CWD) {
+DEF_SEM(CWD_AX) {
   Write(REG_DX, Trunc(UShr(Unsigned(SExt(REG_AX)), 16_u32)));
 }
 
 // Note: Need to write to the whole register so that high bits of RDX are
 //       cleared even though the write is to EDX.
-DEF_ISEL_SEM(CDQ) {
+DEF_SEM(CDQ_EAX) {
   WriteZExt(REG_XDX, Trunc(UShr(Unsigned(SExt(REG_EAX)), 32_u64)));
 }
 
 #if 64 == ADDRESS_SIZE_BITS
-DEF_ISEL_SEM(CQO) {
+DEF_SEM(CQO_RAX) {
   Write(REG_RDX, UNot(USub(UShr(REG_RAX, 63_u64), 1_u64)));
 }
 #endif
+}  // namespace
+
+DEF_ISEL(CBW) = CBW_AL;
+DEF_ISEL(CWDE) = CWDE_AX;
+IF_64BIT(DEF_ISEL(CDQE) = CDQE_EAX;)
+DEF_ISEL(CWD) = CWD_AX;
+DEF_ISEL(CDQ) = CDQ_EAX;
+IF_64BIT(DEF_ISEL(CQO) = CQO_RAX;)
 
 namespace {
 

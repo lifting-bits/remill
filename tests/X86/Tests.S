@@ -82,6 +82,7 @@ TEST_FUNC(instr_name, num_args): ; \
  */
 #ifdef IN_TEST_GENERATOR
 # define TEST_END \
+    int3 ; \
     6: \
     .cfi_endproc ; \
     .section "__x86_test_table", "a" ; \
@@ -187,6 +188,7 @@ SYMBOL(vec_data):
      * `gTestToRun` pointer.
      */
     .text
+    .extern SYMBOL(__remill_detach)
     .align 16
     .globl SYMBOL(DoInvokeTestCase)
 SYMBOL(DoInvokeTestCase):

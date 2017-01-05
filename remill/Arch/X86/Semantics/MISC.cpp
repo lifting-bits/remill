@@ -93,6 +93,36 @@ DEF_SEM(ENTER, I16 src1, I8 src2) {
   Write(REG_XSP, USub(xsp_temp, alloc_size));
 }
 
+DEF_SEM(DoNothing) {}
+
+DEF_SEM(DoCLFLUSH_MEMmprefetch, M8) {}
+
+
+// Good reference for memory barriers and their relationships to instructions:
+// http://g.oswego.edu/dl/jmm/cookbook.html
+
+DEF_SEM(DoMFENCE) {
+  BarrierStoreLoad();
+}
+
+DEF_SEM(DoSFENCE) {
+  BarrierStoreStore();
+}
+
+DEF_SEM(DoLFENCE) {
+  BarrierLoadLoad();
+}
+
+DEF_SEM(DoXLAT) {
+  addr_t base = Read(REG_XBX);
+  addr_t offset = ZExtTo<addr_t>(Read(REG_AL));
+  Write(REG_AL, Read(
+      ReadPtr<uint8_t>(UAdd(base, offset) _IF_32BIT(REG_DS_BASE))));
+}
+
+DEF_SEM(DoCPUID) {
+  memory = __remill_sync_hyper_call(memory, state, SyncHyperCall::kX86CPUID);
+}
 }  // namespace
 
 DEF_ISEL(ENTER_IMMw_IMMb_16) = ENTER<uint16_t>;
@@ -100,40 +130,24 @@ IF_32BIT(DEF_ISEL(ENTER_IMMw_IMMb_32) = ENTER<uint32_t>;)
 IF_64BIT(DEF_ISEL(ENTER_IMMw_IMMb_64) = ENTER<uint64_t>;)
 
 // A `NOP` with a `REP` prefix for hinting. Used for busy-wait loops.
-DEF_ISEL_SEM(PAUSE) {}
+DEF_ISEL(PAUSE) = DoNothing;
 
 // A kind of NOP.
-DEF_ISEL_SEM(CLFLUSH_MEMmprefetch, M8) {}
+DEF_ISEL(CLFLUSH_MEMmprefetch) = DoCLFLUSH_MEMmprefetch;
 
-// Good reference for memory barriers and their relationships to instructions:
-// http://g.oswego.edu/dl/jmm/cookbook.html
+DEF_ISEL(MFENCE) = DoMFENCE;
 
-DEF_ISEL_SEM(MFENCE) {
-  BarrierStoreLoad();
-}
+DEF_ISEL(SFENCE) = DoSFENCE;
 
-DEF_ISEL_SEM(SFENCE) {
-  BarrierStoreStore();
-}
+DEF_ISEL(LFENCE) = DoLFENCE;
 
-DEF_ISEL_SEM(LFENCE) {
-  BarrierLoadLoad();
-}
+DEF_ISEL(XLAT) = DoXLAT;
 
-DEF_ISEL_SEM(XLAT) {
-  addr_t base = Read(REG_XBX);
-  addr_t offset = ZExtTo<addr_t>(Read(REG_AL));
-  Write(REG_AL, Read(
-      ReadPtr<uint8_t>(UAdd(base, offset) _IF_32BIT(REG_DS_BASE))));
-}
+DEF_ISEL(CPUID) = DoCPUID;
 
-DEF_ISEL_SEM(CPUID) {
-  memory = __remill_sync_hyper_call(memory, state, SyncHyperCall::kX86CPUID);
-}
+DEF_ISEL(UD2) = DoNothing;
 
-DEF_ISEL_SEM(UD2) {}
-
-DEF_ISEL_SEM(HLT) {}
+DEF_ISEL(HLT) = DoNothing;
 
 /*
 230 INVPCID INVPCID_GPR64_MEMdq MISC INVPCID INVPCID ATTRIBUTES: NOTSX RING0

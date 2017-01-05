@@ -54,7 +54,7 @@ add_compile_options(
 
     -g3
     -O0
-
+    
     -Wno-unused-parameter
     -Wno-c++98-compat
     -Wno-unreachable-code-return
@@ -73,10 +73,14 @@ add_compile_options(
     -fno-omit-frame-pointer
     -fvisibility-inlines-hidden
 
+    -fno-exceptions
+    -fno-rtti
+    -fno-asynchronous-unwind-tables
+
     -fno-rtti
     -std=gnu++11
     -fPIC
-    -fpie
+    -fPIE
     -m64
 
     -DINSTALL_SEMANTICS_DIR="${CMAKE_INSTALL_PREFIX}/share/remill/semantics/"
@@ -87,12 +91,11 @@ add_compile_options(
 add_executable(remill-lift
     remill/Lift.cpp
     remill/Arch/X86/Arch.cpp
-    remill/Arch/AssemblyWriter.cpp
     remill/Arch/Arch.cpp
     remill/Arch/Instruction.cpp
     remill/Arch/Name.cpp
     remill/CFG/CFG.cpp
-    remill/BC/Translator.cpp
+    remill/BC/Lifter.cpp
     remill/BC/Util.cpp
     remill/BC/IntrinsicTable.cpp
     remill/OS/FileSystem.cpp
@@ -100,10 +103,16 @@ add_executable(remill-lift
 )
 
 set(LLVM_LIBS
-    LLVMIRReader LLVMBitReader LLVMBitWriter
+    curses
+    LLVMCore
+    LLVMSupport
+    LLVMAnalysis
+    LLVMipo
+    LLVMIRReader
+    LLVMBitReader
+    LLVMBitWriter
     LLVMTransformUtils
     LLVMScalarOpts
-    LLVMSupport
 )
 
 target_link_libraries(remill-lift
@@ -118,6 +127,7 @@ add_executable(remill-opt
     remill/Optimize.cpp
     remill/BC/Util.cpp
     remill/BC/IntrinsicTable.cpp
+    remill/BC/Optimizer.cpp
     remill/OS/FileSystem.cpp
     remill/OS/OS.cpp
 )
@@ -196,7 +206,7 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
     add_custom_target(Instructions.${name}.bc
         COMMAND ${CMAKE_CXX_COMPILER}
                 ${SEMANTICS_CXX_FLAGS}
-                -O3 -g
+                -O3 -g0
                 -c ${PROJECT_SOURCE_DIR}/remill/Arch/X86/Runtime/Instructions.cpp
                 -o Instructions.${name}.bc
         SOURCES remill/Arch/X86/Runtime/Instructions.cpp

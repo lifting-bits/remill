@@ -1,4 +1,4 @@
-/* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+/* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
 #ifndef REMILL_ARCH_RUNTIME_INTRINSICS_H_
 #define REMILL_ARCH_RUNTIME_INTRINSICS_H_
@@ -19,10 +19,6 @@ struct NamedBlock final {
 };
 
 extern "C" {
-
-extern const IndirectBlock __remill_indirect_blocks[];
-extern const NamedBlock __remill_exported_blocks[];
-extern const NamedBlock __remill_imported_blocks[];
 
 // The basic block "template".
 [[gnu::used]]
@@ -116,21 +112,6 @@ extern void __remill_async_hyper_call(Memory *, State &, addr_t ret_addr);
 [[gnu::used]]
 extern Memory *__remill_sync_hyper_call(Memory *, State &, SyncHyperCall::Name);
 
-// Transition to "native", unmodelled code from Remill-lifted code.
-[[gnu::used]]
-extern void __remill_detach(Memory *, State &, addr_t);
-
-// Transition from native code into Remill-lifted code.
-//
-// Note:  It is possible to transition between two independent Remill-lifted
-//        modules via a `__remill_detach` and `__remill_attach`.
-[[gnu::used]]
-extern void __remill_attach(void);
-
-//[[gnu::used]]
-//extern bool __remill_conditional_branch(
-//    bool condition, addr_t if_true, addr_t if_false);
-
 // Memory barriers types, see: http://g.oswego.edu/dl/jmm/cookbook.html
 [[gnu::used, gnu::const]]
 extern Memory *__remill_barrier_load_load(Memory *);
@@ -151,9 +132,6 @@ extern Memory *__remill_atomic_begin(Memory *);
 
 [[gnu::used, gnu::const]]
 extern Memory *__remill_atomic_end(Memory *);
-
-[[gnu::used]]
-extern void __remill_intrinsics(void);
 
 }  // extern C
 

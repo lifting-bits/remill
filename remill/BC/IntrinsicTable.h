@@ -25,15 +25,6 @@ class IntrinsicTable {
   // OS interaction.
   llvm::Function * const async_hyper_call;
 
-  // Transition to/from native/lifted code.
-  //
-  // TODO(pag): This is not really the best abstraction as it covers less than
-  //            it implies. For example, there is no representation for the
-  //            case where you detach on a function call, and want to attach
-  //            on return.
-  llvm::Function * const detach;
-//  llvm::Function * const attach;
-
   // Memory read intrinsics.
   llvm::Function * const read_memory_8;
   llvm::Function * const read_memory_16;

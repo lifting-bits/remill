@@ -280,19 +280,19 @@ static_assert(8 == sizeof(Flags), "Invalid structure packing of `Flags`.");
 struct alignas(8) ArithFlags final {
   // Prevents LLVM from casting and `ArithFlags` into an `i8` to access `cf`.
   volatile bool _0;
-  bool cf;  // Prevents load/store coalescing.
+  uint8_t cf;  // Prevents load/store coalescing.
   volatile bool _1;
-  bool pf;
+  uint8_t pf;
   volatile bool _2;
-  bool af;
+  uint8_t af;
   volatile bool _3;
-  bool zf;
+  uint8_t zf;
   volatile bool _4;
-  bool sf;
+  uint8_t sf;
   volatile bool _5;
-  bool df;
+  uint8_t df;
   volatile bool _6;
-  bool of;
+  uint8_t of;
   volatile bool _7;
   volatile bool _8;
 } __attribute__((packed));
