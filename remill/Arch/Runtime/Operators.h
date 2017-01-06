@@ -1167,6 +1167,62 @@ MAKE_BUILTIN(CountTrailingZeros, 64, 64, __builtin_ctzll, 0)
 
 #undef MAKE_BUILTIN
 
+ALWAYS_INLINE static
+int16_t Float64ToInt16(float64_t val) {
+  auto max_int = Float64(Maximize(Int16(0)));
+  return Select(FCmpLt(max_int, FAbs(val)), 0x8000_s16, Int16(val));
+}
+
+ALWAYS_INLINE static
+int32_t Float64ToInt32(float64_t val) {
+  auto max_int = Float64(Maximize(Int32(0)));
+  return Select(FCmpLt(max_int, FAbs(val)), 0x80000000_s32, Int32(val));
+}
+
+ALWAYS_INLINE static
+int16_t Float32ToInt16(float32_t val) {
+  auto max_int = Float32(Maximize(Int32(0)));
+  return Select(FCmpLt(max_int, FAbs(val)), 0x8000_s16, Int16(val));
+}
+
+ALWAYS_INLINE static
+int32_t Float32ToInt32(float32_t val) {
+  auto max_int = Float32(Maximize(Int32(0)));
+  return Select(FCmpLt(max_int, FAbs(val)), 0x80000000_s32, Int32(val));
+}
+
+ALWAYS_INLINE static
+int64_t Float32ToInt64(float32_t val) {
+  return Int64(val);
+}
+
+ALWAYS_INLINE static
+int64_t Float64ToInt64(float64_t val) {
+  auto max_int = Float64(Maximize(Int64(0)));
+  return Select(FCmpLt(max_int, FAbs(val)), 0x8000000000000000_s64, Int64(val));
+}
+
+
+ALWAYS_INLINE static
+float32_t FRoundNearest32(float32_t val) {
+  return __builtin_nearbyintf(val);
+}
+
+ALWAYS_INLINE static
+float32_t FTrunc32(float32_t val) {
+  return __builtin_truncf(val);
+}
+
+ALWAYS_INLINE static
+float64_t FRoundNearest64(float64_t val) {
+  return __builtin_nearbyint(val);
+}
+
+ALWAYS_INLINE static
+float64_t FTrunc64(float64_t val) {
+  return __builtin_trunc(val);
+}
+
 }  // namespace
 
 #endif  // REMILL_ARCH_RUNTIME_OPERATORS_H_
