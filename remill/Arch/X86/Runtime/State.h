@@ -241,6 +241,20 @@ struct alignas(64) FPU final {
 
 static_assert(512 == sizeof(FPU), "Invalid structure packing of `FPU`.");
 
+struct FPUStatusFlags final {
+  uint8_t _0;
+  uint8_t c0;
+  uint8_t _1;
+  uint8_t c1;
+  uint8_t _2;
+  uint8_t c2;
+  uint8_t _3;
+  uint8_t c3;
+} __attribute__((packed));
+
+static_assert(8 == sizeof(FPUStatusFlags),
+              "Invalid packing of `FPUStatusFlags`.");
+
 union alignas(8) Flags final {
   uint64_t flat;
   struct {
@@ -460,10 +474,11 @@ struct alignas(16) State final : public ArchState {
   GPR gpr;  // 272 bytes.
   X87Stack st;  // 128 bytes.
   MMX mmx;  // 128 bytes.
-
+  FPUStatusFlags sw;  // 8 bytes
+  uint8_t _0[8];
 } __attribute__((packed));
 
-static_assert((2656 + 16) == sizeof(State),
+static_assert((2672 + 16) == sizeof(State),
               "Invalid packing of `struct State`");
 
 #pragma clang diagnostic pop

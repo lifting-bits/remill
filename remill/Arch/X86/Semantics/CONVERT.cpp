@@ -77,29 +77,6 @@ DEF_ISEL(CVTPI2PS_XMMq_MMXq) = CVTPI2PS<V64>;
 
 namespace {
 
-ALWAYS_INLINE static
-int32_t Float64ToInt32(float64_t val) {
-  auto max_int = Float64(Maximize(Int32(0)));
-  return Select(FCmpLt(max_int, FAbs(val)), 0x80000000_s32, Int32(val));
-}
-
-ALWAYS_INLINE static
-int32_t Float32ToInt32(float32_t val) {
-  auto max_int = Float32(Maximize(Int32(0)));
-  return Select(FCmpLt(max_int, FAbs(val)), 0x80000000_s32, Int32(val));
-}
-
-ALWAYS_INLINE static
-int64_t Float32ToInt64(float32_t val) {
-  return Int64(val);
-}
-
-ALWAYS_INLINE static
-int64_t Float64ToInt64(float64_t val) {
-  auto max_int = Float64(Maximize(Int64(0)));
-  return Select(FCmpLt(max_int, FAbs(val)), 0x8000000000000000_s64, Int64(val));
-}
-
 template <typename D, typename S1, size_t num_to_convert>
 DEF_SEM(CVTDQ2PD, D dst, S1 src) {
   auto src_vec = SReadV32(src);
@@ -110,26 +87,6 @@ DEF_SEM(CVTDQ2PD, D dst, S1 src) {
     dst_vec = FInsertV64(dst_vec, i, entry);
   }
   FWriteV64(dst, dst_vec);
-}
-
-ALWAYS_INLINE static
-float32_t FRoundNearest32(float32_t val) {
-  return __builtin_nearbyintf(val);
-}
-
-ALWAYS_INLINE static
-float32_t FTrunc32(float32_t val) {
-  return __builtin_truncf(val);
-}
-
-ALWAYS_INLINE static
-float64_t FRoundNearest64(float64_t val) {
-  return __builtin_nearbyint(val);
-}
-
-ALWAYS_INLINE static
-float64_t FTrunc64(float64_t val) {
-  return __builtin_trunc(val);
 }
 
 typedef float32_t (*FloatConv32)(float32_t);

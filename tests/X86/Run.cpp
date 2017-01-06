@@ -328,7 +328,13 @@ static void ImportX87State(State *state) {
       state->st.elems[i].val = static_cast<float64_t>(st);
     }
   }
+
+  state->sw.c0 = gFPU.swd.c0;
+//  state->sw.c1 = gFPU.swd.c1;
+  state->sw.c2 = gFPU.swd.c2;
+  state->sw.c3 = gFPU.swd.c3;
 }
+
 
 // Resets the flags to sane defaults. This will disable the trap flag, the
 // alignment check flag, and the CPUID capability flag.

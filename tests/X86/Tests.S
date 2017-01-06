@@ -170,6 +170,10 @@ TEST_FUNC(instr_name, num_args): ; \
 
     .data
     .align 16
+SYMBOL(fpu_cwd):
+    .long 0x27F  /* Default is 0x37F */
+
+    .align 16
 SYMBOL(vec_data):
     .long 0x41414141, 0xabababab, 0xcdcdcdcd, 0xefefefef
     .long 0x29292929, 0x38383838, 0x47474747, 0x56565656
@@ -207,6 +211,11 @@ SYMBOL(DoInvokeTestCase):
      *          (not very well) between MMX- and X87-using tests.
      */
     fninit
+
+    /* Change the precision to double precision (as opposed to the default
+     * extended precision) */
+    fldcw [RIP + SYMBOL(fpu_cwd)]
+
     fldz
     fldz
     fldz
@@ -465,7 +474,12 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/STRINGOP/SCAS.S"
 #include "tests/X86/STRINGOP/STOS.S"
 
-# include "tests/X86/X87/FLD.S"
+#include "tests/X86/X87/FADD.S"
+#include "tests/X86/X87/FDIV.S"
+#include "tests/X86/X87/FLD.S"
+#include "tests/X86/X87/FMUL.S"
+#include "tests/X86/X87/FSUB.S"
+#include "tests/X86/X87/FST.S"
 
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"
