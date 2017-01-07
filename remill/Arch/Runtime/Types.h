@@ -424,6 +424,9 @@ struct BaseType {
   typedef T BT;
 };
 
+template <>
+struct BaseType<float80_t> : public BaseType<float64_t> {};
+
 template <typename T>
 struct BaseType<volatile T> : public BaseType<T> {};
 
