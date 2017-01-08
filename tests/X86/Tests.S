@@ -480,6 +480,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/X87/FMUL.S"
 #include "tests/X86/X87/FSUB.S"
 #include "tests/X86/X87/FST.S"
+#include "tests/X86/X87/MISC.S"
 
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"

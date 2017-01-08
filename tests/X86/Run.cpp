@@ -2,6 +2,7 @@
 
 #define _XOPEN_SOURCE
 
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -456,6 +457,17 @@ static void RunWithFlags(const test::TestInfo *info,
   lifted_state->interrupt_vector = 0;
   native_state->hyper_call = AsyncHyperCall::kInvalid;
   lifted_state->hyper_call = AsyncHyperCall::kInvalid;
+
+  // Compare the FPU states.
+  for (auto i = 0U; i < 8U; ++i) {
+    auto &lifted_st = lifted_state->st.elems[i].val;
+    auto &native_st = native_state->st.elems[i].val;
+    if (lifted_st != native_st) {
+      if (fabs(lifted_st - native_st) <= 1e-14) {
+        lifted_st = native_st;  // Hide the inconsistency.
+      }
+    }
+  }
 
   // Compare the register states.
   for (auto i = 0UL; i < kNumVecRegisters; ++i) {
