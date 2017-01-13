@@ -44,7 +44,10 @@ def analyze(r2):
         named_block = CFG_pb2.NamedBlock()
         named_block.name = name
         named_block.address = fne["offset"]
-        named_block.visibility = 1	# XXX: Ehm; must revisit.
+	if name.startswith("sym.imp.") == True:
+		named_block.visibility = 1
+	else:
+	        named_block.visibility = 0
         mod.named_blocks.extend([named_block])
 
         # Analyze the current function
@@ -117,4 +120,8 @@ def analyze(r2):
                     new_block = True
                     blk = None
                     break
+        if blk:
+            print("Reach non-block terminated set of instructions... inserting block anyway")
+            mod.blocks.extend([blk])
+
     return mod
