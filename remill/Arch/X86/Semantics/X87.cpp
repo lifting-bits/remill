@@ -3,15 +3,20 @@
 #ifndef REMILL_ARCH_X86_SEMANTICS_X87_H_
 #define REMILL_ARCH_X86_SEMANTICS_X87_H_
 
+#include <cfenv>
+
 #define PUSH_X87_STACK(x) \
-  state.st.elems[7].val = state.st.elems[6].val ; \
-  state.st.elems[6].val = state.st.elems[5].val ; \
-  state.st.elems[5].val = state.st.elems[4].val ; \
-  state.st.elems[4].val = state.st.elems[3].val ; \
-  state.st.elems[3].val = state.st.elems[2].val ; \
-  state.st.elems[2].val = state.st.elems[1].val ; \
-  state.st.elems[1].val = state.st.elems[0].val ; \
-  state.st.elems[0].val = x
+  do { \
+    auto __x = x; \
+    state.st.elems[7].val = state.st.elems[6].val ; \
+    state.st.elems[6].val = state.st.elems[5].val ; \
+    state.st.elems[5].val = state.st.elems[4].val ; \
+    state.st.elems[4].val = state.st.elems[3].val ; \
+    state.st.elems[3].val = state.st.elems[2].val ; \
+    state.st.elems[2].val = state.st.elems[1].val ; \
+    state.st.elems[1].val = state.st.elems[0].val ; \
+    state.st.elems[0].val = __x;\
+  } while (false)
 
 
 // Ideally we'd want to assign `__remill_undefined_f64` to the last element,
@@ -73,10 +78,78 @@ DEF_SEM(FLDPI, RF80W) {
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(pi));
 }
 
+DEF_SEM(FABS, RF80W dst, RF80 src) {
+  Write(dst, FAbs(Read(src)));
+}
+
 DEF_SEM(FCHS, RF80W dst, RF80 src) {
   Write(dst, FNeg(Read(src)));
 }
 
+DEF_SEM(FCOS, RF80W dst, RF80 src) {
+  Write(dst, __builtin_cos(Read(src)));
+}
+
+DEF_SEM(FSIN, RF80W dst, RF80 src) {
+  Write(dst, __builtin_sin(Read(src)));
+}
+
+DEF_SEM(FPTAN, RF80W dst, RF80 src, RF80W) {
+  Write(dst, __builtin_tan(Read(src)));
+  PUSH_X87_STACK(1.0);
+}
+
+DEF_SEM(FPATAN, RF80 st0, RF80W st1_dst, RF80 st1) {
+  Write(st1_dst, __builtin_atan(FDiv(Read(st1), Read(st0))));
+  (void) POP_X87_STACK();
+}
+
+DEF_SEM(FSQRT, RF80W dst, RF80 src) {
+  Write(dst, __builtin_sqrt(Read(src)));
+}
+
+DEF_SEM(FSINCOS, RF80W dst, RF80 src, RF80W) {
+  auto val = Read(src);
+  Write(dst, __builtin_sin(val));
+  PUSH_X87_STACK(__builtin_cos(val));
+}
+
+DEF_SEM(FSCALE, RF80W dst, RF80 st0, RF80 st1) {
+  auto st1_int = __builtin_trunc(Read(st1));  // Round toward zero.
+  auto shift = __builtin_exp2(st1_int);
+  Write(dst, FMul(Read(st0), shift));
+}
+
+DEF_SEM(F2XM1, RF80W dst, RF80 src) {
+  Write(dst, FSub(__builtin_exp2(Read(src)), 1.0));
+}
+
+DEF_SEM(FPREM, RF80W dst, RF80 src1, RF80 src2) {
+  float64_t st0 = Read(src1);
+  float64_t st1 = Read(src2);
+  auto rem = __builtin_fmod(st0, st1);
+  Write(dst, rem);
+
+  auto quot = Int64(FTruncTowardZero64(FDiv(st0, st1)));
+  auto quot_lsb = TruncTo<uint8_t>(UInt64(SAbs(quot)));
+  state.sw.c0 = UAnd(UShr(quot_lsb, 2_u8), 1_u8);  // Q2.
+  state.sw.c2 = 0;  // Assumes it's not a partial remainder.
+  state.sw.c1 = UAnd(UShr(quot_lsb, 0_u8), 1_u8);  // Q0.
+  state.sw.c3 = UAnd(UShr(quot_lsb, 1_u8), 1_u8);  // Q1.
+}
+
+DEF_SEM(FPREM1, RF80W dst, RF80 src1, RF80 src2) {
+  float64_t st0 = Read(src1);
+  float64_t st1 = Read(src2);
+  auto rem = __builtin_remainder(st0, st1);
+  Write(dst, rem);
+  auto quot = Float64ToInt64(FDiv(st0, st1));
+  auto quot_lsb = TruncTo<uint8_t>(UInt64(SAbs(quot)));
+  state.sw.c0 = UAnd(UShr(quot_lsb, 2_u8), 1_u8);  // Q2.
+  state.sw.c2 = 0;  // Assumes it's not a partial remainder.
+  state.sw.c1 = UAnd(UShr(quot_lsb, 0_u8), 1_u8);  // Q0.
+  state.sw.c3 = UAnd(UShr(quot_lsb, 1_u8), 1_u8);  // Q1.
+}
 
 //DEF_SEM(FLDCW, M16 cwd) {
 //  (void) Read(cwd);
@@ -88,12 +161,19 @@ DEF_SEM(FCHS, RF80W dst, RF80 src) {
 
 DEF_SEM(FPU_NOP) {}
 
+DEF_SEM(DoFWAIT) {
+  feraiseexcept(fetestexcept(FE_ALL_EXCEPT));
+}
+
+DEF_SEM(DoFNCLEX) {
+  feclearexcept(FE_ALL_EXCEPT);
+}
+
 }  // namespace
 
 //DEF_ISEL(FLDCW_MEMmem16) = FLDCW;
 //DEF_ISEL(FNSTCW_MEMmem16) = FSTCW;
 
-DEF_ISEL(FNOP) = FPU_NOP;
 
 DEF_ISEL(FILD_ST0_MEMmem16int) = FILD<M16>;
 DEF_ISEL(FILD_ST0_MEMmem32int) = FILD<M32>;
@@ -111,8 +191,22 @@ DEF_ISEL(FLDLG2_ST0) = FLDLG2;
 DEF_ISEL(FLDL2T_ST0) = FLDL2T;
 DEF_ISEL(FLDL2E_ST0) = FLDL2E;
 DEF_ISEL(FLDPI_ST0) = FLDPI;
+
+DEF_ISEL(FNOP) = FPU_NOP;
+DEF_ISEL(FWAIT) = DoFWAIT;
+DEF_ISEL(FNCLEX) = DoFNCLEX;
+DEF_ISEL(FABS_ST0) = FABS;
 DEF_ISEL(FCHS_ST0) = FCHS;
-DEF_ISEL(FWAIT) = FPU_NOP;
+DEF_ISEL(FCOS_ST0) = FCOS;
+DEF_ISEL(FSIN_ST0) = FSIN;
+DEF_ISEL(FPTAN_ST0_ST1) = FPTAN;
+DEF_ISEL(FPATAN_ST0_ST1) = FPATAN;
+DEF_ISEL(FSQRT_ST0) = FSQRT;
+DEF_ISEL(FSINCOS_ST0_ST1) = FSINCOS;
+DEF_ISEL(FSCALE_ST0_ST1) = FSCALE;
+DEF_ISEL(F2XM1_ST0) = F2XM1;
+DEF_ISEL(FPREM_ST0_ST1) = FPREM;
+DEF_ISEL(FPREM1_ST0_ST1) = FPREM1;
 
 namespace {
 
@@ -278,9 +372,6 @@ DEF_ISEL(FIDIVR_ST0_MEMmem32int) = FIDIVR<M32>;
 DEF_ISEL(FIDIVR_ST0_MEMmem16int) = FIDIVR<M16>;
 
 namespace {
-DEF_SEM(FABS, RF80W dst, RF80 src) {
-  Write(dst, FAbs(Read(src)));
-}
 
 template <typename T>
 DEF_SEM(FST, T dst, RF80 src) {
@@ -295,11 +386,11 @@ DEF_SEM(FSTP, T dst, RF80 src) {
 }
 
 DEF_SEM(FISTm16, M16W dst, RF80 src) {
-  Write(dst, Unsigned(Float64ToInt16(FRoundNearest64(Read(src)))));
+  Write(dst, Unsigned(Float64ToInt16(FRoundUsingMode64(Read(src)))));
 }
 
 DEF_SEM(FISTm32, M32W dst, RF80 src) {
-  Write(dst, Unsigned(Float64ToInt32(FRoundNearest64(Read(src)))));
+  Write(dst, Unsigned(Float64ToInt32(FRoundUsingMode64(Read(src)))));
 }
 
 DEF_SEM(FISTPm16, M16W dst, RF80 src) {
@@ -313,13 +404,19 @@ DEF_SEM(FISTPm32, M32W dst, RF80 src) {
 }
 
 DEF_SEM(FISTPm64, M64W dst, RF80 src) {
-  Write(dst, Unsigned(Float64ToInt64(FRoundNearest64(Read(src)))));
+  Write(dst, Unsigned(Float64ToInt64(FRoundUsingMode64(Read(src)))));
   (void) POP_X87_STACK();
 }
 
-}  // namespace
+DEF_SEM(DoFINCSTP) {
+  (void) POP_X87_STACK();
+}
 
-DEF_ISEL(FABS_ST0) = FABS;
+DEF_SEM(DoFDECSTP) {
+  PUSH_X87_STACK(X87_ST7);
+}
+
+}  // namespace
 
 DEF_ISEL(FSTP_MEMmem32real_ST0) = FSTP<MF32W>;
 DEF_ISEL(FSTP_MEMmem80real_ST0) = FSTP<MF80W>;
@@ -335,7 +432,11 @@ DEF_ISEL(FIST_MEMmem32int_ST0) = FISTm32;
 DEF_ISEL(FISTP_MEMmem16int_ST0) = FISTPm16;
 DEF_ISEL(FISTP_MEMmem32int_ST0) = FISTPm32;
 DEF_ISEL(FISTP_MEMm64int_ST0) = FISTPm64;
+DEF_ISEL(FDECSTP) = DoFDECSTP;
+DEF_ISEL(FINCSTP) = DoFINCSTP;
 
+// TODO(pag): According to XED: empty top of stack behavior differs from FSTP
+IF_32BIT(DEF_ISEL(FSTPNCE_X87_ST0) = FSTP<RF80W>;)
 
 #if 0
 
@@ -468,42 +569,28 @@ DEF_ISEL(FCOMIP_ST0_X87) = FUCOMIP_ST0_X87;
 529 FYL2XP1 FYL2XP1_ST0_ST1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 538 FRNDINT FRNDINT_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 546 FSETPM287_NOP FSETPM287_NOP X87_ALU X87 X87 ATTRIBUTES: NOP NOTSX
-595 FNCLEX FNCLEX X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_NOWAIT
-613 FPTAN FPTAN_ST0_ST1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
-699 FCOS FCOS_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
-718 FSCALE FSCALE_ST0_ST1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 747 FXAM FXAM_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 761 FFREE FFREE_X87 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
 762 FFREEP FFREEP_X87 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
-769 FPREM1 FPREM1_ST0_ST1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 817 FNINIT FNINIT X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_MMX_STATE_W X87_NOWAIT
 942 FNSTSW FNSTSW_MEMmem16 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_NOWAIT
 943 FNSTSW FNSTSW_AX X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_NOWAIT
-1040 FSTPNCE FSTPNCE_X87_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
-1110 F2XM1 F2XM1_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
-1115 FPREM FPREM_ST0_ST1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
-1148 FINCSTP FINCSTP X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
 1172 FTST FTST_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1200 FLDENV FLDENV_MEMmem14 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
 1201 FLDENV FLDENV_MEMmem28 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
-1239 FPATAN FPATAN_ST0_ST1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1261 FDIVRP FDIVRP_X87_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1262 FBLD FBLD_ST0_MEMmem80dec X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1286 FDISI8087_NOP FDISI8087_NOP X87_ALU X87 X87 ATTRIBUTES: NOP NOTSX
-1398 FSIN FSIN_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1404 FLDCW FLDCW_MEMmem16 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
-1418 FSQRT FSQRT_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1593 FRSTOR FRSTOR_MEMmem94 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_MMX_STATE_W
 1594 FRSTOR FRSTOR_MEMmem108 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_MMX_STATE_W
 1606 FXCH FXCH_ST0_X87 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1607 FXCH FXCH_ST0_X87_DFC1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1608 FXCH FXCH_ST0_X87_DDC1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
-1684 FDECSTP FDECSTP X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
 1735 FBSTP FBSTP_MEMmem80dec_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1743 FUCOMPP FUCOMPP_ST0_ST1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1762 FNSTENV FNSTENV_MEMmem14 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_NOWAIT
 1763 FNSTENV FNSTENV_MEMmem28 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_NOWAIT
-1860 FSINCOS FSINCOS_ST0_ST1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1891 FNSTCW FNSTCW_MEMmem16 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_NOWAIT
  */
 
