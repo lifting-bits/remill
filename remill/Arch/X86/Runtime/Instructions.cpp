@@ -86,14 +86,14 @@
 #define FLAG_OF state.aflag.of
 #define FLAG_DF state.aflag.df
 
-#define X87_ST0 state.st.element[0].val
-#define X87_ST1 state.st.element[1].val
-#define X87_ST2 state.st.element[2].val
-#define X87_ST3 state.st.element[3].val
-#define X87_ST4 state.st.element[4].val
-#define X87_ST5 state.st.element[5].val
-#define X87_ST6 state.st.element[6].val
-#define X87_ST7 state.st.element[7].val
+#define X87_ST0 state.st.elems[0].val
+#define X87_ST1 state.st.elems[1].val
+#define X87_ST2 state.st.elems[2].val
+#define X87_ST3 state.st.elems[3].val
+#define X87_ST4 state.st.elems[4].val
+#define X87_ST5 state.st.elems[5].val
+#define X87_ST6 state.st.elems[6].val
+#define X87_ST7 state.st.elems[7].val
 
 #define REG_SS state.seg.ss
 #define REG_ES state.seg.es

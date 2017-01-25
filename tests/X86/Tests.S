@@ -211,11 +211,6 @@ SYMBOL(DoInvokeTestCase):
      *          (not very well) between MMX- and X87-using tests.
      */
     fninit
-
-    /* Change the precision to double precision (as opposed to the default
-     * extended precision) */
-    fldcw [RIP + SYMBOL(fpu_cwd)]
-
     fldz
     fldz
     fldz
@@ -225,6 +220,10 @@ SYMBOL(DoInvokeTestCase):
     fldz
     fldz
     fninit
+
+    /* Change the precision to double precision (as opposed to the default
+     * extended precision) */
+    fldcw [RIP + SYMBOL(fpu_cwd)]
 
     /* Set the bits of some of the vector regs to 1. This makes it easier to
      * detect certain zeroing behavior. */
@@ -292,6 +291,7 @@ SYMBOL(__x86_save_state_after):
 # define AFTER_TEST_CASE
 # include "generated/Arch/X86/SaveState.S"
     xchg RSP, [RIP + SYMBOL(gStackSwitcher)]  /* Return to the normal stack. */
+    fninit  /* Go back to a sane FPU */
     ret
     .cfi_endproc
 # undef STATE_PTR
