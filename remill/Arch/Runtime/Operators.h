@@ -875,6 +875,22 @@ MAKE_EXTRACTV(64, float64_t, doubles, Identity, F)
 
 #undef MAKE_EXTRACTV
 
+ALWAYS_INLINE static int8_t SAbs(int8_t val) {
+  return val < 0 ? -val : val;
+}
+
+ALWAYS_INLINE static int16_t SAbs(int16_t val) {
+  return val < 0 ? -val : val;
+}
+
+ALWAYS_INLINE static int32_t SAbs(int32_t val) {
+  return val < 0 ? -val : val;
+}
+
+ALWAYS_INLINE static int64_t SAbs(int64_t val) {
+  return val < 0 ? -val : val;
+}
+
 ALWAYS_INLINE static float32_t FAbs(float32_t val) {
   return __builtin_fabsf(val);
 }
@@ -1202,25 +1218,72 @@ int64_t Float64ToInt64(float64_t val) {
   return Select(FCmpLt(max_int, FAbs(val)), 0x8000000000000000_s64, Int64(val));
 }
 
-
 ALWAYS_INLINE static
-float32_t FRoundNearest32(float32_t val) {
+float32_t FRoundUsingMode32(float32_t val) {
   return __builtin_nearbyintf(val);
 }
 
 ALWAYS_INLINE static
-float32_t FTrunc32(float32_t val) {
-  return __builtin_truncf(val);
-}
-
-ALWAYS_INLINE static
-float64_t FRoundNearest64(float64_t val) {
+float64_t FRoundUsingMode64(float64_t val) {
   return __builtin_nearbyint(val);
 }
 
 ALWAYS_INLINE static
-float64_t FTrunc64(float64_t val) {
+float32_t FTruncTowardZero32(float32_t val) {
+  return __builtin_truncf(val);
+}
+
+ALWAYS_INLINE static
+float64_t FTruncTowardZero64(float64_t val) {
   return __builtin_trunc(val);
+}
+
+ALWAYS_INLINE static
+float32_t FRoundAwayFromZero32(float32_t val) {
+  return __builtin_roundf(val);
+}
+
+ALWAYS_INLINE static
+float64_t FRoundAwayFromZero64(float64_t val) {
+  return __builtin_round(val);
+}
+
+ALWAYS_INLINE static
+float32_t FRoundToNearestEven32(float32_t val) {
+  auto abs_val = __builtin_fabsf(val);
+  auto sign = (val / abs_val);
+  auto floor_val = __builtin_floorf(abs_val);
+  auto ceil_val = __builtin_ceilf(abs_val);
+  auto halfway_val = floor_val + 0.5;
+  if (halfway_val == abs_val) {  // Half-way case.
+    auto floor_val_int = Float32ToInt64(floor_val);
+    if (floor_val_int % 2) {
+      return ceil_val * sign;
+    } else {
+      return floor_val * sign;
+    }
+  } else {
+    return __builtin_roundf(val);
+  }
+}
+
+ALWAYS_INLINE static
+float64_t FRoundToNearestEven64(float64_t val) {
+  auto abs_val = __builtin_fabs(val);
+  auto sign = (val / abs_val);
+  auto floor_val = __builtin_floor(abs_val);
+  auto ceil_val = __builtin_ceil(abs_val);
+  auto halfway_val = floor_val + 0.5;
+  if (halfway_val == abs_val) {  // Half-way case.
+    auto floor_val_int = Float64ToInt64(floor_val);
+    if (floor_val_int % 2) {
+      return ceil_val * sign;
+    } else {
+      return floor_val * sign;
+    }
+  } else {
+    return __builtin_round(val);
+  }
 }
 
 }  // namespace
