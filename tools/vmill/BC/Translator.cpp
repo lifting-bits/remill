@@ -155,13 +155,13 @@ void TE::LiftCFG(const cfg::Module *cfg) {
   lifter.LiftCFG(cfg);
 
   auto start_opt = time(nullptr);
-  LOG(INFO)
+  DLOG(INFO)
       << "Spent " << (start_opt - start_lift) << "s lifting.";
 
   if (!FLAGS_disable_optimizer) {
     optimizer->Optimize();
     auto end_opt = time(nullptr);
-    LOG(INFO)
+    DLOG(INFO)
         << "Spent " << (end_opt - start_opt) << "s optimizing.";
   }
 
