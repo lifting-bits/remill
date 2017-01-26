@@ -11,6 +11,10 @@
         0xbfe0000000000000,  /* -0.5 */ \
         0x3ff0000000000000,  /* 1.0 */ \
         0xbff0000000000000,  /* -1.0 */ \
+        0x3fd999999999999a,  /* 0.400000 */ \
+        0x3fe3333333333333,  /* 0.600000 */ \
+        0xbfd999999999999a,  /* -0.400000 */ \
+        0xbfe3333333333333,  /* -0.600000 */ \
         0x4058ff5c28f5c28f,  /* 99.99 */ \
         0xc058ff5c28f5c28f)  /* -99.99 */
 
@@ -104,4 +108,40 @@ FST_INPUTS
     fld QWORD PTR [rsp]
     lea rsp, [rsp - 8]
     fistp DWORD PTR [rsp]
+TEST_END_64
+
+TEST_BEGIN_64(FISTPm64, 1)
+FST_INPUTS
+
+    push ARG1_64
+    fld QWORD PTR [rsp]
+    lea rsp, [rsp - 8]
+    fistp QWORD PTR [rsp]
+TEST_END_64
+
+TEST_BEGIN_64(FISTTPm16, 1)
+FST_INPUTS
+
+    push ARG1_64
+    fld QWORD PTR [rsp]
+    lea rsp, [rsp - 8]
+    fisttp WORD PTR [rsp]
+TEST_END_64
+
+TEST_BEGIN_64(FISTTPm32, 1)
+FST_INPUTS
+
+    push ARG1_64
+    fld QWORD PTR [rsp]
+    lea rsp, [rsp - 8]
+    fisttp DWORD PTR [rsp]
+TEST_END_64
+
+TEST_BEGIN_64(FISTTPm64, 1)
+FST_INPUTS
+
+    push ARG1_64
+    fld QWORD PTR [rsp]
+    lea rsp, [rsp - 8]
+    fisttp QWORD PTR [rsp]
 TEST_END_64

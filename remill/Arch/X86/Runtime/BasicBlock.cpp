@@ -21,6 +21,11 @@ void __remill_basic_block(Memory &memory, State &state, addr_t curr_pc) {
   auto &PC = state.gpr.rip.IF_64BIT_ELSE(qword, dword);
   auto &BRANCH_TAKEN = branch_taken;
 
+  // `PC` should already have the correct value, but it's nice to make sure
+  // that `curr_pc` is used throughout, as it helps with certain downstream
+  // uses to be able to depend on the optimizer not eliminating `curr_pc`.
+  PC = curr_pc;
+
   // We will reference these variables from the bitcode side of things so that,
   // given a decoded register name and an operation type (read or write),
   // we can map the register to a specific field in the State structure.
