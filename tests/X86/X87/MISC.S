@@ -153,3 +153,26 @@ TEST_INPUTS(0)
     fldlg2
     fincstp
 TEST_END
+
+/* Note: We don't test these denormals because, by the time they get into the
+ *       FPU, the fact that they were denormal as 64-bit floats has been lost
+ *       to the higher precision of the FPU.
+ *
+ *     0x0008000000000000,  // std::numeric_limits<double>::min() / 2.0
+ *     0x8008000000000000,  // std::numeric_limits<double>::min() / -2.0 */
+
+TEST_BEGIN_64(FXAM, 1)
+TEST_INPUTS(
+    0x7ff0000000000000,  /* +inf */
+    0xfff0000000000000,  /* -inf */
+    0xfff8000000000000,  /* -nan */
+    0x7ff8000000000000,  /* nan */
+    0x0010000000000000,  /* std::numeric_limits<double>::min() */
+    0x7fefffffffffffff,  /* std::numeric_limits<double>::max() */
+    0x0000000000000000,  /* +0 */
+    0x8000000000000000) /* -0 */
+
+    push ARG1_64
+    fld QWORD PTR [rsp]
+    fxam
+TEST_END_64

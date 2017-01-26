@@ -4,6 +4,7 @@
 #define REMILL_ARCH_X86_SEMANTICS_X87_H_
 
 #include <cfenv>
+#include <cmath>
 
 #define PUSH_X87_STACK(x) \
   do { \
@@ -438,11 +439,103 @@ DEF_ISEL(FINCSTP) = DoFINCSTP;
 // TODO(pag): According to XED: empty top of stack behavior differs from FSTP
 IF_32BIT(DEF_ISEL(FSTPNCE_X87_ST0) = FSTP<RF80W>;)
 
-#if 0
+namespace {
+DEF_SEM(FISTTPm16, M16W dst, RF80 src) {
+  Write(dst, Unsigned(Float64ToInt16(FTruncTowardZero64(Read(src)))));
+  (void) POP_X87_STACK();
+}
 
-1085 FISTTP FISTTP_MEMmem32int_ST0 X87_ALU SSE3 SSE3 ATTRIBUTES: NOTSX
-1086 FISTTP FISTTP_MEMm64int_ST0 X87_ALU SSE3 SSE3 ATTRIBUTES: NOTSX UNALIGNED
-1087 FISTTP FISTTP_MEMmem16int_ST0 X87_ALU SSE3 SSE3 ATTRIBUTES: NOTSX
+DEF_SEM(FISTTPm32, M32W dst, RF80 src) {
+  Write(dst, Unsigned(Float64ToInt32(FTruncTowardZero64(Read(src)))));
+  (void) POP_X87_STACK();
+}
+
+DEF_SEM(FISTTPm64, M64W dst, RF80 src) {
+  Write(dst, Unsigned(Float64ToInt64(FTruncTowardZero64(Read(src)))));
+  (void) POP_X87_STACK();
+}
+
+}  // namespace
+
+DEF_ISEL(FISTTP_MEMmem16int_ST0) = FISTTPm16;
+DEF_ISEL(FISTTP_MEMmem32int_ST0) = FISTTPm32;
+DEF_ISEL(FISTTP_MEMm64int_ST0) = FISTTPm64;
+
+namespace {
+
+DEF_SEM(FXCH, RF80W dst1, RF80 src1, RF80W dst2, RF80 src2) {
+  auto st0 = Read(src1);
+  auto sti = Read(src2);
+  Write(dst1, sti);
+  Write(dst2, st0);
+}
+
+}  // namespace
+
+DEF_ISEL(FXCH_ST0_X87) = FXCH;
+DEF_ISEL(FXCH_ST0_X87_DFC1) = FXCH;
+DEF_ISEL(FXCH_ST0_X87_DDC1) = FXCH;
+
+namespace {
+
+DEF_SEM(FXAM, RF80W, RF80 src) {
+  auto st0 = Read(src);
+
+  uint8_t sign = __builtin_signbit(st0) == 0 ? 0_u8 : 1_u8;
+  auto c = __builtin_fpclassify(FP_NAN, FP_INFINITE, FP_NORMAL, FP_SUBNORMAL,
+                                FP_ZERO, st0);
+  switch (c) {
+    case FP_NAN:
+      state.sw.c0 = 1;
+      state.sw.c1 = 0;  // Weird.
+      state.sw.c2 = 0;
+      state.sw.c3 = 0;
+      break;
+
+    case FP_INFINITE:
+      state.sw.c0 = 1;
+      state.sw.c1 = 0;  // Weird.
+      state.sw.c2 = 1;
+      state.sw.c3 = 0;
+      break;
+
+    case FP_ZERO:
+      state.sw.c0 = 0;
+      state.sw.c1 = 0;  // Weird.
+      state.sw.c2 = 0;
+      state.sw.c3 = 1;
+      break;
+
+    case FP_SUBNORMAL:
+      state.sw.c0 = 0;
+      state.sw.c1 = sign;
+      state.sw.c2 = 1;
+      state.sw.c3 = 1;
+      break;
+
+    case FP_NORMAL:
+      state.sw.c0 = 0;
+      state.sw.c1 = sign;
+      state.sw.c2 = 1;
+      state.sw.c3 = 0;
+      break;
+
+    // Using empty or unsupported is valid here, though we use unsupported
+    // because we don't actually model empty FPU stack slots.
+    default:
+      state.sw.c0 = 0;
+      state.sw.c1 = 0;  // Maybe??
+      state.sw.c2 = 0;
+      state.sw.c3 = 0;
+      break;
+  }
+}
+
+}  // namespace
+
+DEF_ISEL(FXAM_ST0) = FXAM;
+
+#if 0
 
 namespace {
 
@@ -569,7 +662,6 @@ DEF_ISEL(FCOMIP_ST0_X87) = FUCOMIP_ST0_X87;
 529 FYL2XP1 FYL2XP1_ST0_ST1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 538 FRNDINT FRNDINT_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 546 FSETPM287_NOP FSETPM287_NOP X87_ALU X87 X87 ATTRIBUTES: NOP NOTSX
-747 FXAM FXAM_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 761 FFREE FFREE_X87 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
 762 FFREEP FFREEP_X87 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
 817 FNINIT FNINIT X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_MMX_STATE_W X87_NOWAIT
@@ -584,9 +676,6 @@ DEF_ISEL(FCOMIP_ST0_X87) = FUCOMIP_ST0_X87;
 1404 FLDCW FLDCW_MEMmem16 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
 1593 FRSTOR FRSTOR_MEMmem94 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_MMX_STATE_W
 1594 FRSTOR FRSTOR_MEMmem108 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_MMX_STATE_W
-1606 FXCH FXCH_ST0_X87 X87_ALU X87 X87 ATTRIBUTES: NOTSX
-1607 FXCH FXCH_ST0_X87_DFC1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
-1608 FXCH FXCH_ST0_X87_DDC1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1735 FBSTP FBSTP_MEMmem80dec_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1743 FUCOMPP FUCOMPP_ST0_ST1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1762 FNSTENV FNSTENV_MEMmem14 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_NOWAIT
