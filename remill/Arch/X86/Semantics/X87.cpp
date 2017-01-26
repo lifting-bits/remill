@@ -531,129 +531,129 @@ DEF_SEM(FXAM, RF80W, RF80 src) {
   }
 }
 
+DEF_HELPER(UnorderedCompare, float64_t src1, float64_t src2) -> void {
+  if (__builtin_isunordered(src1, src2)) {
+    state.sw.c0 = 1;
+    state.sw.c2 = 1;
+    state.sw.c3 = 1;
+  } else if (__builtin_isless(src1, src2)) {
+    state.sw.c0 = 1;
+    state.sw.c2 = 0;
+    state.sw.c3 = 0;
+
+  } else if (__builtin_isgreater(src1, src2)) {
+    state.sw.c0 = 0;
+    state.sw.c2 = 0;
+    state.sw.c3 = 0;
+
+  } else {  // Equal.
+    state.sw.c0 = 0;
+    state.sw.c2 = 0;
+    state.sw.c3 = 1;
+  }
+}
+
+DEF_SEM(FTST, RF80W, RF80 src1) {
+  auto st0 = Read(src1);
+  state.sw.c1 = 0;
+  UnorderedCompare(memory, state, st0, 0.0);
+}
+
+template <typename S2>
+DEF_SEM(FUCOM, RF80 src1, S2 src2) {
+  auto st0 = Read(src1);
+  auto sti = Float64(Read(src2));
+  // Note:  Don't modify c1. The docs only state that c1=0 if there was a
+  //        stack underflow.
+  UnorderedCompare(memory, state, st0, sti);
+}
+
+template <typename S2>
+DEF_SEM(FUCOMP, RF80 src1, S2 src2) {
+  FUCOM<S2>(memory, state, src1, src2);
+  (void) POP_X87_STACK();
+}
+
+DEF_SEM(FUCOMPP, RF80 src1, RF80 src2) {
+  FUCOM<RF80>(memory, state, src1, src2);
+  (void) POP_X87_STACK();
+  (void) POP_X87_STACK();
+}
+
+DEF_HELPER(UnorderedCompareEflags, float64_t src1, float64_t src2) -> void {
+  if (__builtin_isunordered(src1, src2)) {
+    FLAG_CF = 1;
+    FLAG_PF = 1;
+    FLAG_ZF = 1;
+  } else if (__builtin_isless(src1, src2)) {
+    FLAG_CF = 1;
+    FLAG_PF = 0;
+    FLAG_ZF = 0;
+
+  } else if (__builtin_isgreater(src1, src2)) {
+    FLAG_CF = 0;
+    FLAG_PF = 0;
+    FLAG_ZF = 0;
+
+  } else {  // Equal.
+    FLAG_CF = 0;
+    FLAG_PF = 0;
+    FLAG_ZF = 1;
+  }
+}
+
+DEF_SEM(FUCOMI, RF80 src1, RF80 src2) {
+  auto st0 = Read(src1);
+  auto sti = Read(src2);
+  state.sw.c1 = 0;
+  FLAG_OF = 0;
+  FLAG_SF = 0;
+  FLAG_AF = 0;
+  UnorderedCompareEflags(memory, state, st0, sti);
+}
+
+DEF_SEM(FUCOMIP, RF80 src1, RF80 src2) {
+  FUCOMI(memory, state, src1, src2);
+  (void) POP_X87_STACK();
+}
+
 }  // namespace
 
 DEF_ISEL(FXAM_ST0) = FXAM;
+DEF_ISEL(FTST_ST0) = FTST;
 
-#if 0
+DEF_ISEL(FUCOM_ST0_X87) = FUCOM<RF80>;
+DEF_ISEL(FUCOMP_ST0_X87) = FUCOMP<RF80>;
+DEF_ISEL(FUCOMPP_ST0_ST1) = FUCOMPP;
 
-namespace {
+DEF_ISEL(FUCOMI_ST0_X87) = FUCOMI;
+DEF_ISEL(FUCOMIP_ST0_X87) = FUCOMIP;
 
-template <typename T>
-DEF_SEM(FICOM_ST0_int, RF80 src1, T src2) {
-  auto lhs = Read(src1);
-  auto rhs = Float64(Signed(Read(src2)));
-  uint16_t mask = 0;
-  if (__builtin_isunordered(lhs, rhs)) {
-    mask = 0x4500_u16;
-  } else if (FCmpGt(lhs, rhs)) {
-    mask = 0;
-  } else if (FCmpLt(lhs, rhs)) {
-    mask = 0x0100_u16;
-  } else if (FCmpEq(lhs, rhs)) {
-    mask = 0x4000_u16;
-  } else {
-    // TODO(pag): Hrmmm.
-  }
-  Write(state.fpu.swd.flat, UOr(mask, UAnd(state.fpu.swd.flat, 0xb8ff_u16)));
-}
+DEF_ISEL(FCOMI_ST0_X87) = FUCOMI;
+DEF_ISEL(FCOMIP_ST0_X87) = FUCOMIP;
 
-}  // namespace
+DEF_ISEL(FCOM_ST0_X87) = FUCOM<RF80>;
+DEF_ISEL(FCOM_ST0_X87_DCD0) = FUCOM<RF80>;
+DEF_ISEL(FCOM_ST0_MEMmem32real) = FUCOM<MF32>;
+DEF_ISEL(FCOM_ST0_MEMm64real) = FUCOM<MF64>;
 
-DEF_ISEL(FICOM_ST0_MEMmem16int) = FICOM_ST0_int<M16>;
-DEF_ISEL(FICOM_ST0_MEMmem32int) = FICOM_ST0_int<M32>;
-
-DEF_ISEL_SEM(FICOMP_ST0_MEMmem16int, RF80 src1, M16 src2) {
-  FICOM_ST0_int<M16>(memory, state, src1, src2);
-  (void) POP_X87_STACK(_);
-}
-
-DEF_ISEL_SEM(FICOMP_ST0_MEMmem32int, RF80 src1, M32 src2) {
-  FICOM_ST0_int<M32>(memory, state, src1, src2);
-  (void) POP_X87_STACK(_);
-}
-
-DEF_ISEL_SEM(FUCOM_ST0_X87, RF80 src1, RF80 src2) {
-  auto lhs = Read(src1);
-  auto rhs = Read(src2);
-  uint16_t mask = 0;
-  if (__builtin_isunordered(lhs, rhs)) {
-    mask = 0x4500_u16;
-  } else if (FCmpGt(lhs, rhs)) {
-    mask = 0;
-  } else if (FCmpLt(lhs, rhs)) {
-    mask = 0x0100_u16;
-  } else if (FCmpEq(lhs, rhs)) {
-    mask = 0x4000_u16;
-  } else {
-    // TODO(pag): Hrmmm.
-  }
-
-  // TODO(pag): Currently ignore stack underflow detection.
-  Write(state.fpu.swd.flat, UOr(mask, UAnd(state.fpu.swd.flat, 0xbaff_u16)));
-}
-
-DEF_ISEL_SEM(FUCOMP_ST0_X87, RF80 src1, RF80 src2) {
-  FUCOM_ST0_X87(memory, state, src1, src2);
-  (void) POP_X87_STACK(_);
-}
-
-DEF_ISEL_SEM(FCOMPP_ST0_ST1, RF80 src1, RF80 src2) {
-  FUCOM_ST0_X87(memory, state, src1, src2);
-  (void) POP_X87_STACK(_);
-  (void) POP_X87_STACK(_);
-}
-
-DEF_ISEL_SEM(FUCOMI_ST0_X87, RF80 src1, RF80 src2) {
-  auto lhs = Read(src1);
-  auto rhs = Read(src2);
-  if (__builtin_isunordered(lhs, rhs)) {
-    Write(FLAG_ZF, true);
-    Write(FLAG_PF, true);
-    Write(FLAG_CF, true);
-  } else if (FCmpGt(lhs, rhs)) {
-    Write(FLAG_ZF, false);
-    Write(FLAG_PF, false);
-    Write(FLAG_CF, false);
-  } else if (FCmpLt(lhs, rhs)) {
-    Write(FLAG_ZF, false);
-    Write(FLAG_PF, false);
-    Write(FLAG_CF, true);
-  } else if (FCmpEq(lhs, rhs)) {
-    Write(FLAG_ZF, true);
-    Write(FLAG_PF, false);
-    Write(FLAG_CF, false);
-  } else {
-    // TODO(pag): Hrmmm.
-  }
-}
-
-DEF_ISEL_SEM(FUCOMIP_ST0_X87, RF80 src1, RF80 src2) {
-  FUCOMI_ST0_X87(memory, state, src1, src2);
-  (void) POP_X87_STACK(_);
-}
-
-// TODO(pag): This is wrong but hopefully right enough.
-DEF_ISEL(FCOMI_ST0_X87) = FUCOMI_ST0_X87;
-DEF_ISEL(FCOMIP_ST0_X87) = FUCOMIP_ST0_X87;
-
-#endif
+DEF_ISEL(FCOMP_ST0_X87) = FUCOMP<RF80>;
+DEF_ISEL(FCOMP_ST0_MEMmem32real) = FUCOMP<MF32>;
+DEF_ISEL(FCOMP_ST0_MEMm64real) = FUCOMP<MF64>;
+DEF_ISEL(FCOMP_ST0_X87_DCD1) = FUCOMP<RF80>;
+DEF_ISEL(FCOMP_ST0_X87_DED0) = FUCOMP<RF80>;
+DEF_ISEL(FCOMPP_ST0_ST1) = FUCOMPP;
 
 /*
+
+23 FICOMP FICOMP_ST0_MEMmem32int X87_ALU X87 X87 ATTRIBUTES: NOTSX
+24 FICOMP FICOMP_ST0_MEMmem16int X87_ALU X87 X87 ATTRIBUTES: NOTSX
+889 FICOM FICOM_ST0_MEMmem32int X87_ALU X87 X87 ATTRIBUTES: NOTSX
+890 FICOM FICOM_ST0_MEMmem16int X87_ALU X87 X87 ATTRIBUTES: NOTSX
+
+
 1200 FLDENV FLDENV_MEMmem14 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
 1201 FLDENV FLDENV_MEMmem28 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
-88 FCOMI  X87_ALU X87 PPRO ATTRIBUTES: NOTSX
-232 FCOMIP  X87_ALU X87 PPRO ATTRIBUTES: NOTSX
-366 FCOMPP  X87_ALU X87 X87 ATTRIBUTES: NOTSX
-394 FCOMP FCOMP_ST0_MEMmem32real X87_ALU X87 X87 ATTRIBUTES: NOTSX
-395 FCOMP FCOMP_ST0_X87 X87_ALU X87 X87 ATTRIBUTES: NOTSX
-396 FCOMP FCOMP_ST0_X87_DCD1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
-397 FCOMP FCOMP_ST0_X87_DED0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
-398 FCOMP FCOMP_ST0_MEMm64real X87_ALU X87 X87 ATTRIBUTES: NOTSX
-734 FCOM FCOM_ST0_MEMmem32real X87_ALU X87 X87 ATTRIBUTES: NOTSX
-735 FCOM FCOM_ST0_MEMm64real X87_ALU X87 X87 ATTRIBUTES: NOTSX
-736 FCOM FCOM_ST0_X87 X87_ALU X87 X87 ATTRIBUTES: NOTSX
-737 FCOM FCOM_ST0_X87_DCD0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 102 FNSAVE FNSAVE_MEMmem94 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_MMX_STATE_R X87_MMX_STATE_W X87_NOWAIT
 103 FNSAVE FNSAVE_MEMmem108 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_MMX_STATE_R X87_MMX_STATE_W X87_NOWAIT
 194 FYL2X FYL2X_ST0_ST1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
@@ -667,7 +667,6 @@ DEF_ISEL(FCOMIP_ST0_X87) = FUCOMIP_ST0_X87;
 817 FNINIT FNINIT X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_MMX_STATE_W X87_NOWAIT
 942 FNSTSW FNSTSW_MEMmem16 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_NOWAIT
 943 FNSTSW FNSTSW_AX X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_NOWAIT
-1172 FTST FTST_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1200 FLDENV FLDENV_MEMmem14 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
 1201 FLDENV FLDENV_MEMmem28 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
 1261 FDIVRP FDIVRP_X87_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
@@ -677,7 +676,6 @@ DEF_ISEL(FCOMIP_ST0_X87) = FUCOMIP_ST0_X87;
 1593 FRSTOR FRSTOR_MEMmem94 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_MMX_STATE_W
 1594 FRSTOR FRSTOR_MEMmem108 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_MMX_STATE_W
 1735 FBSTP FBSTP_MEMmem80dec_ST0 X87_ALU X87 X87 ATTRIBUTES: NOTSX
-1743 FUCOMPP FUCOMPP_ST0_ST1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 1762 FNSTENV FNSTENV_MEMmem14 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_NOWAIT
 1763 FNSTENV FNSTENV_MEMmem28 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_NOWAIT
 1891 FNSTCW FNSTCW_MEMmem16 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_NOWAIT
