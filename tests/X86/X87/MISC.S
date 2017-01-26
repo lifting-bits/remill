@@ -196,3 +196,31 @@ TEST_INPUTS(
     fld QWORD PTR [rsp]
     ftst
 TEST_END_64
+
+TEST_BEGIN_64(FRNDINT, 1)
+TEST_INPUTS(
+    0x401199999999999a,  /* 4.4 */
+    0x4012000000000000,  /* 4.5 */
+    0x4012666666666666,  /* 4.6 */
+    0xc01199999999999a,  /* -4.4 */
+    0xc012000000000000,  /* -4.5 */
+    0xc012666666666666)  /* -4.6 */
+
+    push ARG1_64
+    fld QWORD PTR [rsp]
+    frndint
+TEST_END_64
+
+TEST_BEGIN(FY2LX, 1)
+TEST_INPUTS(0)
+    fldpi
+    fldlg2
+    fyl2x
+TEST_END
+
+TEST_BEGIN(FY2LXP1, 1)
+TEST_INPUTS(0)
+    fldpi
+    fldlg2
+    fyl2xp1
+TEST_END
