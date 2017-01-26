@@ -475,11 +475,14 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/STRINGOP/STOS.S"
 
 #include "tests/X86/X87/FADD.S"
+#include "tests/X86/X87/FCOM.S"
 #include "tests/X86/X87/FDIV.S"
 #include "tests/X86/X87/FLD.S"
 #include "tests/X86/X87/FMUL.S"
 #include "tests/X86/X87/FSUB.S"
 #include "tests/X86/X87/FST.S"
+#include "tests/X86/X87/FUCOM.S"
+#include "tests/X86/X87/FXCH.S"
 #include "tests/X86/X87/MISC.S"
 
     /* Create a symbol that represents the end of the test information table. */
