@@ -117,9 +117,23 @@ static Executor::Flow AsyncHyperCall(void *, void *, uint32_t) {
   return Executor::kFlowAsyncHyperCall;
 }
 
-static void *SyncHyperCall(void *, void *, SyncHyperCall::Name) {
-  __builtin_unreachable();
-  return nullptr;
+static void *SyncHyperCall(void *memory, void *state,
+                           SyncHyperCall::Name name) {
+  (void) state;
+  switch (name) {
+    case SyncHyperCall::kX86EmulateInstruction:
+      LOG(ERROR)
+          << "Skipping unimplemented x86 instruction!";
+      break;
+    case SyncHyperCall::kAMD64EmulateInstruction:
+      LOG(ERROR)
+          << "Skipping unimplemented amd64 instruction!";
+      break;
+    default:
+      __builtin_unreachable();
+      break;
+  }
+  return memory;
 }
 
 static const struct Runtime kRuntime = {
