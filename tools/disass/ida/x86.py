@@ -108,6 +108,19 @@ _PERSONALITIES = {
   idaapi.NN_js: program.Instruction.PERSONALITY_CONDITIONAL_BRANCH,
   idaapi.NN_jz: program.Instruction.PERSONALITY_CONDITIONAL_BRANCH,
   idaapi.NN_xbegin: program.Instruction.PERSONALITY_CONDITIONAL_BRANCH,
+
+  idaapi.NN_loopw: program.Instruction.PERSONALITY_CONDITIONAL_BRANCH,
+  idaapi.NN_loop: program.Instruction.PERSONALITY_CONDITIONAL_BRANCH,
+  idaapi.NN_loopd: program.Instruction.PERSONALITY_CONDITIONAL_BRANCH,
+  idaapi.NN_loopq: program.Instruction.PERSONALITY_CONDITIONAL_BRANCH,
+  idaapi.NN_loopwe: program.Instruction.PERSONALITY_CONDITIONAL_BRANCH,
+  idaapi.NN_loope: program.Instruction.PERSONALITY_CONDITIONAL_BRANCH,
+  idaapi.NN_loopde: program.Instruction.PERSONALITY_CONDITIONAL_BRANCH,
+  idaapi.NN_loopqe: program.Instruction.PERSONALITY_CONDITIONAL_BRANCH,
+  idaapi.NN_loopwne: program.Instruction.PERSONALITY_CONDITIONAL_BRANCH,
+  idaapi.NN_loopne: program.Instruction.PERSONALITY_CONDITIONAL_BRANCH,
+  idaapi.NN_loopdne: program.Instruction.PERSONALITY_CONDITIONAL_BRANCH,
+  idaapi.NN_loopqne: program.Instruction.PERSONALITY_CONDITIONAL_BRANCH,
 }
 
 
