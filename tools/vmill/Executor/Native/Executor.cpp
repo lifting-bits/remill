@@ -2,6 +2,7 @@
 
 #include <glog/logging.h>
 
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -216,10 +217,8 @@ static llvm::TargetOptions GetTargetOptions(void) {
 // Packages up all things related to dynamically generated shared libraries.
 class DynamicLib {
  public:
-  DynamicLib(llvm::Module *module,
-             llvm::RuntimeDyld::SymbolResolver &resolver)
-      : loader(mman, resolver),
-        mod(module) {
+  explicit DynamicLib(llvm::RuntimeDyld::SymbolResolver &resolver)
+      : loader(mman, resolver) {
 
     // Don't allocate memory for sections that aren't needed for execution.
     loader.setProcessAllSections(false);
@@ -229,7 +228,6 @@ class DynamicLib {
   llvm::RuntimeDyld loader;
   std::unique_ptr<llvm::ObjectMemoryBuffer> buff;
   std::unique_ptr<llvm::object::ObjectFile> file;
-  std::unique_ptr<llvm::Module> mod;
 
  private:
   DynamicLib(void) = delete;
@@ -264,6 +262,7 @@ class JITExecutor : public Executor,
 
   LiftedFunc *GetLiftedFunc(llvm::Function *func, uint64_t pc);
 
+  void Compile(llvm::Module *module);
   void Compile(llvm::Function *func);
 
   llvm::Module *CloneCodeIntoNewModule(llvm::Function *func);
@@ -386,12 +385,9 @@ llvm::Module *JITExecutor::CloneCodeIntoNewModule(llvm::Function *entry_func) {
 
   return new_module;
 }
-// Compile everything in `module` into a dynamic library. This will library
-// representing this module onto the `libs` stack.
-void JITExecutor::Compile(llvm::Function *func) {
-  auto new_module = CloneCodeIntoNewModule(func);
-  new_module->setTargetTriple(target_triple.getTriple());
-  new_module->setDataLayout(target_machine->createDataLayout());
+
+// Compile everything in `module` into a dynamic library.
+void JITExecutor::Compile(llvm::Module *module) {
 
   llvm::SmallVector<char, 4096> byte_buff;
   llvm::raw_svector_ostream byte_buff_stream(byte_buff);
@@ -402,7 +398,7 @@ void JITExecutor::Compile(llvm::Function *func) {
       pm, machine_context, byte_buff_stream, true /* DisableVerify */);
 
   auto codegen_start = time(nullptr);
-  pm.run(*new_module);
+  pm.run(*module);
   auto dyld_start = time(nullptr);
   DLOG(INFO)
       << "Spent " << (dyld_start - codegen_start) << "s compiling bitcode.";
@@ -430,7 +426,7 @@ void JITExecutor::Compile(llvm::Function *func) {
         << "Failed to load JIT-compiled object file from memory: " << error;
   }
 
-  std::unique_ptr<DynamicLib> lib(new DynamicLib(new_module, *this));
+  std::unique_ptr<DynamicLib> lib(new DynamicLib(*this));
   lib->file = std::move(*obj_file_exp);
   lib->buff = std::move(obj_buff);
 
@@ -451,6 +447,39 @@ void JITExecutor::Compile(llvm::Function *func) {
       << "Spent " << (dyld_end - dyld_start) << "s loading compiled code.";
 }
 
+// Compile every function reachable from `func` into a dynamic library.
+void JITExecutor::Compile(llvm::Function *func) {
+  if (libs.empty()) {
+
+    // TODO(pag): This is ugly. Need this to handle switch tables and such.
+    auto module = func->getParent();
+    for (auto &var : module->globals()) {
+      if (var.hasPrivateLinkage()) {
+        var.setLinkage(llvm::GlobalValue::ExternalLinkage);
+        var.setVisibility(llvm::GlobalValue::DefaultVisibility);
+      }
+    }
+
+    for (auto &sub : *module) {
+      if (func_to_pc.count(&sub)) {
+        sub.setLinkage(llvm::GlobalValue::ExternalLinkage);
+        sub.setVisibility(llvm::GlobalValue::DefaultVisibility);
+      }
+    }
+
+    module->setTargetTriple(target_triple.getTriple());
+    module->setDataLayout(target_machine->createDataLayout());
+    Compile(module);
+
+  } else {
+    auto new_module = CloneCodeIntoNewModule(func);
+    new_module->setTargetTriple(target_triple.getTriple());
+    new_module->setDataLayout(target_machine->createDataLayout());
+    Compile(new_module);
+    delete new_module;
+  }
+}
+
 // Defer to the SectionMemoryManager on the top of the library stack to find
 // local symbols.
 llvm::RuntimeDyld::SymbolInfo JITExecutor::findSymbolInLogicalDylib(
@@ -458,14 +487,14 @@ llvm::RuntimeDyld::SymbolInfo JITExecutor::findSymbolInLogicalDylib(
   return libs.back()->mman.findSymbolInLogicalDylib(name);
 }
 
-// Use the runtime
+// Find compiled symbols.
 llvm::RuntimeDyld::SymbolInfo JITExecutor::findSymbol(const std::string &name) {
   auto &sym = syms[name];
   if (sym) {
-    return {reinterpret_cast<uintptr_t>(sym), llvm::JITSymbolFlags::None};
-  }
+    return {sym, llvm::JITSymbolFlags::None};
 
-  if (auto runtime_func = runtime->GetImplementation(name)) {
+  // See if this symbol is a Remill-specific runtime function.
+  } else if (auto runtime_func = runtime->GetImplementation(name)) {
     sym = reinterpret_cast<uintptr_t>(runtime_func);
 
   // Go down the stack of loaded libs and find the symbol.
@@ -487,12 +516,19 @@ llvm::RuntimeDyld::SymbolInfo JITExecutor::findSymbol(const std::string &name) {
         break;
       }
     }
+
+    // The symbol isn't exposed in one of the compiled modules; try to find
+    // it as a global symbol within the program itself.
+    if (!sym) {
+      sym = reinterpret_cast<uintptr_t>(dlsym(nullptr, name.c_str()));
+    }
   }
+
 
   LOG_IF(WARNING, !sym)
       << "Unable to find symbol " << name << "; it may not be compiled yet";
 
-  return {reinterpret_cast<uintptr_t>(sym), llvm::JITSymbolFlags::None};
+  return {sym, llvm::JITSymbolFlags::None};
 }
 
 LiftedFunc *JITExecutor::GetLiftedFunc(llvm::Function *func, uint64_t pc) {

@@ -46,6 +46,7 @@ add_executable(vmill-exec32
 target_link_libraries(vmill-exec32
     "-pie"
     dl
+    m
     ${GFLAGS_LIBRARIES}
     ${GLOG_LIBRARIES}
     ${XED_LIBRARIES}
