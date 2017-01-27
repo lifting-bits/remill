@@ -58,9 +58,7 @@ def has_segment_type(ea, expected_seg_type):
 
 def is_code(ea):
   global JUMP_TABLE_EAS
-  if ea in JUMP_TABLE_EAS:
-    return False
-  return has_segment_type(ea, idc.SEG_CODE)
+  return ea not in JUMP_TABLE_EAS and has_segment_type(ea, idc.SEG_CODE)
 
 
 def get_instruction(ea):
