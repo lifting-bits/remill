@@ -647,12 +647,47 @@ DEF_SEM(FNSTSW, D dst) {
 
 DEF_SEM(FNSTCW, M16W dst) {
   FPUControlWord cw = {};
-  cw.flat = 0x027F_u16;
+  cw.flat = 0x027F_u16;  // Our default, with double-precision.
+  switch (fegetround()) {
+    default:
+    case FE_TONEAREST:
+      cw.rc = kFPURoundToNearestEven;
+      break;
+    case FE_DOWNWARD:
+      cw.rc = kFPURoundDownNegInf;
+      break;
+    case FE_UPWARD:
+      cw.rc = kFPURoundUpInf;
+      break;
+    case FE_TOWARDZERO:
+      cw.rc = kFPURoundToZero;
+      break;
+  }
   Write(dst, cw.flat);
 }
 
 DEF_SEM(FLDCW, M16 cwd) {
-  (void) Read(cwd);
+  FPUControlWord cw = {};
+  cw.flat = Read(cwd);
+  int rounding_mode = FE_TONEAREST;
+  switch (cw.rc) {
+    case kFPURoundToNearestEven:
+      rounding_mode = FE_TONEAREST;
+      break;
+
+    case kFPURoundDownNegInf:
+      rounding_mode = FE_DOWNWARD;
+      break;
+
+    case kFPURoundUpInf:
+      rounding_mode = FE_UPWARD;
+      break;
+
+    case kFPURoundToZero:
+      rounding_mode = FE_TOWARDZERO;
+      break;
+  }
+  fesetround(rounding_mode);
 }
 
 }  // namespace
@@ -703,13 +738,11 @@ DEF_ISEL(FFREE_X87) = FFREE;
 DEF_ISEL(FFREEP_X87) = FFREEP;
 
 /*
-529 FYL2XP1  X87_ALU X87 X87 ATTRIBUTES: NOTSX
 
 23 FICOMP FICOMP_ST0_MEMmem32int X87_ALU X87 X87 ATTRIBUTES: NOTSX
 24 FICOMP FICOMP_ST0_MEMmem16int X87_ALU X87 X87 ATTRIBUTES: NOTSX
 889 FICOM FICOM_ST0_MEMmem32int X87_ALU X87 X87 ATTRIBUTES: NOTSX
 890 FICOM FICOM_ST0_MEMmem16int X87_ALU X87 X87 ATTRIBUTES: NOTSX
-
 
 1200 FLDENV FLDENV_MEMmem14 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
 1201 FLDENV FLDENV_MEMmem28 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
