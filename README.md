@@ -77,7 +77,7 @@ sudo pip install --upgrade pip
 sudo pip install python-magic 'protobuf==2.6.1'
 ```
 
-###### Using IDA on 64 bit Ubuntu
+##### Using IDA on 64 bit Ubuntu
 
 If your IDA install does not use the system's Python, you can add the `protobuf` library manually to IDA's zip of modules.
 
