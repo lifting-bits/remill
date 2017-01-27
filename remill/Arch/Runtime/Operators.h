@@ -1250,40 +1250,62 @@ float64_t FRoundAwayFromZero64(float64_t val) {
 
 ALWAYS_INLINE static
 float32_t FRoundToNearestEven32(float32_t val) {
-  auto abs_val = __builtin_fabsf(val);
-  auto sign = (val / abs_val);
-  auto floor_val = __builtin_floorf(abs_val);
-  auto ceil_val = __builtin_ceilf(abs_val);
-  auto halfway_val = floor_val + 0.5;
-  if (halfway_val == abs_val) {  // Half-way case.
-    auto floor_val_int = Float32ToInt64(floor_val);
-    if (floor_val_int % 2) {
-      return ceil_val * sign;
-    } else {
-      return floor_val * sign;
-    }
-  } else {
-    return __builtin_roundf(val);
-  }
+  return FRoundUsingMode32(val);
+//  auto abs_val = __builtin_fabsf(val);
+//  auto sign = (val / abs_val);
+//  auto floor_val = __builtin_floorf(abs_val);
+//  auto ceil_val = __builtin_ceilf(abs_val);
+//  auto halfway_val = floor_val + 0.5;
+//  if (halfway_val == abs_val) {  // Half-way case.
+//    auto floor_val_int = Float32ToInt64(floor_val);
+//    if (floor_val_int % 2) {
+//      return ceil_val * sign;
+//    } else {
+//      return floor_val * sign;
+//    }
+//  } else {
+//    return __builtin_roundf(val);
+//  }
 }
 
 ALWAYS_INLINE static
 float64_t FRoundToNearestEven64(float64_t val) {
-  auto abs_val = __builtin_fabs(val);
-  auto sign = (val / abs_val);
-  auto floor_val = __builtin_floor(abs_val);
-  auto ceil_val = __builtin_ceil(abs_val);
-  auto halfway_val = floor_val + 0.5;
-  if (halfway_val == abs_val) {  // Half-way case.
-    auto floor_val_int = Float64ToInt64(floor_val);
-    if (floor_val_int % 2) {
-      return ceil_val * sign;
-    } else {
-      return floor_val * sign;
-    }
-  } else {
-    return __builtin_round(val);
-  }
+  return FRoundUsingMode64(val);
+//  auto abs_val = __builtin_fabs(val);
+//  auto sign = (val / abs_val);
+//  auto floor_val = __builtin_floor(abs_val);
+//  auto ceil_val = __builtin_ceil(abs_val);
+//  auto halfway_val = floor_val + 0.5;
+//  if (halfway_val == abs_val) {  // Half-way case.
+//    auto floor_val_int = Float64ToInt64(floor_val);
+//    if (floor_val_int % 2) {
+//      return ceil_val * sign;
+//    } else {
+//      return floor_val * sign;
+//    }
+//  } else {
+//    return __builtin_round(val);
+//  }
+}
+
+ALWAYS_INLINE static
+float32_t FRoundToPositiveInfinity32(float32_t val) {
+  return __builtin_ceilf(val);
+}
+
+ALWAYS_INLINE static
+float64_t FRoundToPositiveInfinity64(float64_t val) {
+  return __builtin_ceil(val);
+}
+
+ALWAYS_INLINE static
+float32_t FRoundToNegativeInfinity32(float32_t val) {
+  return __builtin_floorf(val);
+}
+
+ALWAYS_INLINE static
+float64_t FRoundToNegativeInfinity64(float64_t val) {
+  return __builtin_floor(val);
 }
 
 }  // namespace
