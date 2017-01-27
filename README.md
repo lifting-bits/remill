@@ -74,7 +74,18 @@ sudo apt-get install \
 
 sudo pip install --upgrade pip
 
-sudo pip install python-magic 'protobuf==2.4.1'
+sudo pip install python-magic 'protobuf==2.6.1'
+```
+
+###### Using IDA on 64 bit Ubuntu
+
+If your IDA install does not use the system's Python, you can add the `protobuf` library manually to IDA's zip of modules.
+
+```
+touch /path/to/python2.7/dist-packages/google/__init__.py               # generally /usr/lib or /usr/local/lib
+cd /path/to/lib/python2.7/dist-packages/              
+sudo zip -rv /path/to/ida-6.X/python/lib/python27.zip google/
+sudo chown your_user:your_user /home/taxicat/ida-6.7/python/lib/python27.zip
 ```
 
 ##### Upgrade CMake (Ubuntu 14.04)
@@ -117,7 +128,6 @@ cd remill
 ### Step 3: Install the disassembler
 
 ```shell
-cd ..
 sudo python tools/setup.py install
 ```
 
