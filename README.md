@@ -153,4 +153,20 @@ This script will build and install the Google Test framework. It will request ad
 
 ## Try it Out
 
-**TODO(pag):** Make `remill-lift`.
+If you had a 64 bit dll, you could get started with the following commands. First, you recover control flow graph information using `remill-disass`, this can use either IDA Pro or Binary Ninja as the disassembler.
+
+```
+remill-disass --disassembler /path/to/ida/idal64 --arch amd64 --output target.cfg --binary libsomething.dll
+```
+
+Once you have the control flow graph information, you can lift the target binary using `remill-lift`.
+
+```
+remill-lift -arch_in=amd64 libsomething.dll --cfg target.cfg --bc_out target.bc
+```
+
+When the bitcode has been recovered by `remill-lift`, it is a good idea to optimize it using `remill-opt`.
+
+```
+remill-opt --bc_in target.bc --bc_out opt_target.bc
+```
