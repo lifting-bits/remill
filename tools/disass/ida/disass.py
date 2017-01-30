@@ -27,7 +27,8 @@ except:
 
 
 POSSIBLE_CODE_REFS = set()
-
+# Stores all addresses contained in jump tables.
+JUMP_TABLE_EAS = set()
 
 # Architecture-specific functions.
 decode_instruction = None
@@ -139,87 +140,6 @@ def get_direct_branch_target(branch_inst_ea):
         branch_inst_ea, target_ea))
     return target_ea
 
-# source: http://reverseengineering.stackexchange.com/a/1648/4197
-# Wrapper to operate on sorted basic blocks.
-class BBWrapper(object):
-  def __init__(self, ea, bb):
-    self.ea_ = ea
-    self.bb_ = bb
-
-  def get_bb(self):
-    return self.bb_
-
-  def __lt__(self, other):
-    return self.ea_ < other.ea_
-
-# Creates a basic block cache for all basic blocks in the given function.
-class BBCache(object):
-  def __init__(self, f):
-    self.bb_cache_ = []
-    for bb in idaapi.FlowChart(f):
-      self.bb_cache_.append(BBWrapper(bb.startEA, bb))
-    self.bb_cache_ = sorted(self.bb_cache_)
-
-  def find_block(self, ea):
-    i = bisect_right(self.bb_cache_, BBWrapper(ea, None))
-    if i:
-      return self.bb_cache_[i-1].get_bb()
-    else:
-      return None
-
-# keep a cache of BBCaches, 5 in length
-bb_caches = []
-bb_cache_lookup = []
-
-# retrieve cache of basic blocks for function
-def get_cache(func):
-  if func.startEA in bb_cache_lookup:
-    idx = bb_cache_lookup.index(func.startEA)
-    cache = bb_caches[idx]
-
-    # cache not last, move to end / 'refresh'
-    if cache != bb_caches[-1]:
-      bb_cache_lookup.pop(idx)
-      bb_caches.pop(idx)
-      bb_cache_lookup.append(func.startEA)
-      bb_caches.append(cache)
-  else:
-    # if holding 5 bb_caches drop lru off front
-    if len(bb_caches) == 5:
-      bb_cache_lookup.pop(0)
-      bb_caches.pop(0)
-    # create cache
-    cache = BBCache(func)
-    # add to back of bb_caches
-    bb_cache_lookup.append(func.startEA)
-    bb_caches.append(cache)
-
-  return cache
-
-# retrieve bb
-def get_bb(ea):
-    func = idaapi.get_func(ea)
-    if not func:
-        return None
-
-    bb_cache = get_cache(func)
-    bb = bb_cache.find_block(ea)
-
-    return bb
-
-# use IDA to find if an indirect call terminates bb
-# eg. call cs:longjmp
-def inst_terminates_bb(inst):
-  ea = inst.ea
-  bb = get_bb(ea)
-
-  if bb is not None:
-    last = bb.endEA == ea + ItemSize(ea)
-    succ_count = len(list(bb.succs()))
-    if last and succ_count == 0:
-        return True
-
-  return False
 
 def get_static_successors(inst):
   """Returns the statically known successors of an instruction."""
@@ -238,11 +158,7 @@ def get_static_successors(inst):
       yield inst.next_ea  # Not recognised as a `noreturn` function.
 
   if inst.is_call():  # Indirect function call, system call.
-    if inst_terminates(inst):
-      log.debug("Indirect call or syscall terminates basic block at {:08x}"
-        .format(inst.ea))
-    else:
-      yield inst.next_ea
+    yield inst.next_ea
 
   elif inst.is_conditional_branch():
     yield inst.next_ea
@@ -281,7 +197,10 @@ def analyse_block(sub, block):
 
   inst.mark_as_terminator()  # Just in case!
   block.terminator = inst
-  block.successor_eas.update(get_static_successors(inst))
+  successors = get_static_successors(inst)
+  successors = [succ for succ in successors if is_code(succ)]
+  block.successor_eas.update(successors)
+
 
 def analyse_subroutine(sub):
   """Goes through the basic blocks of an identified function."""
@@ -340,7 +259,9 @@ def analyse_subroutine(sub):
     log.debug("Linear terminator of {:08x} is {:08x}".format(
         block_head_ea, term_inst.ea))
     
-    succ_eas = tuple(get_static_successors(term_inst))
+    successors = get_static_successors(term_inst)
+    successors = [succ for succ in successors if is_code(succ)]
+    succ_eas = tuple(successors)
     if succ_eas:
       log.debug("Static successors of {:08x} are {}".format(
           term_inst.ea, ", ".join("{:08x}".format(sea) for sea in succ_eas)))
@@ -464,34 +385,43 @@ def get_called_subroutines(sub):
       called_sub_eas.add(get_direct_branch_target(term_inst.ea))
   return called_sub_eas
 
+
 # Python 2.7 doesn't range on longs
 def lrange(start, end):
+  """Duplicate of the range() function for long integers."""
   num = long(start)
   while num < end:
     yield num
     num += 1L
 
-# source: http://reverseengineering.stackexchange.com/a/13472/4197
+
 def init_jump_table_eas():
+  '''Creates a set of all bytes contained within jump tables in the text section.'''
   global JUMP_TABLE_EAS
-  JUMP_TABLE_EAS = set()
+
   text_seg = idaapi.get_segm_by_name('.text')
 
-  for head_ea in idautils.Heads(text_seg.startEA, text_seg.endEA):
-    if idc.isCode(idc.GetFlags(head_ea)):
-      switch_info = idaapi.get_switch_info_ex(head_ea)
-      if (switch_info and switch_info.jumps != 0):
-        loc = switch_info.jumps
+  for head in idautils.Heads(text_seg.startEA, text_seg.endEA):
+    if idc.isCode(idc.GetFlags(head)):
+      switch_info = idaapi.get_switch_info_ex(head)
+      # if the block contains switch info
+      if switch_info and switch_info.jumps != 0:
+        # get the start of the jump table
+        start = switch_info.jumps
+        # count of elements in the table
         element_num = switch_info.get_jtable_size()
+        # size of each element
         element_size = switch_info.get_jtable_element_size()
-        end = loc + element_num * element_size
-        JUMP_TABLE_EAS.update(lrange(loc, end))
+        # calculate the end of the table
+        end = start + element_num * element_size
+        # store the byte range
+        JUMP_TABLE_EAS.update(lrange(start, end))
+
 
 def analyse_subroutines():
   """Goes through all the subroutines that IDA's initial auto analysis
   discovers."""
 
-  # JUMP_TABLE_EAS holds all bytes in jump tables
   init_jump_table_eas()
 
   log.info("Analysing subroutines")

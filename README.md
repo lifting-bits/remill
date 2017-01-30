@@ -82,7 +82,8 @@ sudo pip install python-magic 'protobuf==2.6.1'
 If your IDA install does not use the system's Python, you can add the `protobuf` library manually to IDA's zip of modules.
 
 ```
-touch /path/to/python2.7/dist-packages/google/__init__.py               # generally /usr/lib or /usr/local/lib
+# Python module dir is generally in /usr/lib or /usr/local/lib
+touch /path/to/python2.7/dist-packages/google/__init__.py
 cd /path/to/lib/python2.7/dist-packages/              
 sudo zip -rv /path/to/ida-6.X/python/lib/python27.zip google/
 sudo chown your_user:your_user /home/taxicat/ida-6.7/python/lib/python27.zip
