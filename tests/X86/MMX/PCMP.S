@@ -30,6 +30,18 @@ TEST_INPUTS_MMX_2()
     pcmpeqb xmm1, xmmword ptr [rsp]
 TEST_END_64
 
+#if HAS_FEATURE_AVX
+TEST_BEGIN_64(VPCMPEQBv128v128v128, 1)
+TEST_INPUTS(0)
+    vpcmpeqb xmm2, xmm1, xmm0
+TEST_END_64
+
+TEST_BEGIN_64(VPCMPEQBv256v256v256, 1)
+TEST_INPUTS(0)
+    vpcmpeqb xmm2, xmm1, xmm0
+TEST_END_64
+#endif  // HAS_FEATURE_AVX
+
 TEST_BEGIN_64(PCMPEQWr64r64, 2)
 TEST_INPUTS_MMX_2()
     movq mm0, ARG1_64
@@ -58,6 +70,18 @@ TEST_INPUTS_MMX_2()
     movq xmm0, ARG1_64
     pcmpeqw xmm0, xmmword ptr [rsp]
 TEST_END_64
+
+#if HAS_FEATURE_AVX
+TEST_BEGIN_64(VPCMPEQWv128v128v128, 1)
+TEST_INPUTS(0)
+    vpcmpeqw xmm2, xmm1, xmm0
+TEST_END_64
+
+TEST_BEGIN_64(VPCMPEQWv256v256v256, 1)
+TEST_INPUTS(0)
+    vpcmpeqw xmm2, xmm1, xmm0
+TEST_END_64
+#endif  // HAS_FEATURE_AVX
 
 TEST_BEGIN_64(PCMPEQDr64r64, 2)
 TEST_INPUTS_MMX_2()
@@ -88,6 +112,45 @@ TEST_INPUTS_MMX_2()
     pcmpeqd xmm0, xmmword ptr [rsp]
 TEST_END_64
 
+#if HAS_FEATURE_AVX
+TEST_BEGIN_64(VPCMPEQDv128v128v128, 1)
+TEST_INPUTS(0)
+    vpcmpeqd xmm2, xmm1, xmm0
+TEST_END_64
+
+TEST_BEGIN_64(VPCMPEQDv256v256v256, 1)
+TEST_INPUTS(0)
+    vpcmpeqd xmm2, xmm1, xmm0
+TEST_END_64
+#endif  // HAS_FEATURE_AVX
+
+TEST_BEGIN_64(PCMPEQQv128v128, 2)
+TEST_INPUTS_MMX_2()
+    movq xmm0, ARG1_64
+    movq xmm1, ARG2_64
+    pcmpeqq xmm0, xmm1
+TEST_END_64
+
+TEST_BEGIN_64(PCMPEQQv128m128, 2)
+TEST_INPUTS_MMX_2()
+    push 0
+    push ARG2_64
+    movq xmm0, ARG1_64
+    pcmpeqq xmm0, xmmword ptr [rsp]
+TEST_END_64
+
+#if HAS_FEATURE_AVX
+TEST_BEGIN_64(VPCMPEQQv128v128v128, 1)
+TEST_INPUTS(0)
+    vpcmpeqq xmm2, xmm1, xmm0
+TEST_END_64
+
+TEST_BEGIN_64(VPCMPEQQv256v256v256, 1)
+TEST_INPUTS(0)
+    vpcmpeqq xmm2, xmm1, xmm0
+TEST_END_64
+#endif  // HAS_FEATURE_AVX
+
 TEST_BEGIN_64(PCMPGTBr64r64, 2)
 TEST_INPUTS_MMX_2()
     movq mm0, ARG1_64
@@ -116,6 +179,18 @@ TEST_INPUTS_MMX_2()
     movq xmm0, ARG1_64
     pcmpgtb xmm0, xmmword ptr [rsp]
 TEST_END_64
+
+#if HAS_FEATURE_AVX
+TEST_BEGIN_64(VPCMPGTBv128v128v128, 1)
+TEST_INPUTS(0)
+    vpcmpgtb xmm2, xmm1, xmm0
+TEST_END_64
+
+TEST_BEGIN_64(VPCMPGTBv256v256v256, 1)
+TEST_INPUTS(0)
+    vpcmpgtb xmm2, xmm1, xmm0
+TEST_END_64
+#endif  // HAS_FEATURE_AVX
 
 TEST_BEGIN_64(PCMPGTWr64r64, 2)
 TEST_INPUTS_MMX_2()
@@ -146,6 +221,18 @@ TEST_INPUTS_MMX_2()
     pcmpgtw xmm0, xmmword ptr [rsp]
 TEST_END_64
 
+#if HAS_FEATURE_AVX
+TEST_BEGIN_64(VPCMPGTWv128v128v128, 1)
+TEST_INPUTS(0)
+    vpcmpgtw xmm2, xmm1, xmm0
+TEST_END_64
+
+TEST_BEGIN_64(VPCMPGTWv256v256v256, 1)
+TEST_INPUTS(0)
+    vpcmpgtw xmm2, xmm1, xmm0
+TEST_END_64
+#endif  // HAS_FEATURE_AVX
+
 TEST_BEGIN_64(PCMPGTDr64r64, 2)
 TEST_INPUTS_MMX_2()
     movq mm0, ARG1_64
@@ -174,3 +261,42 @@ TEST_INPUTS_MMX_2()
     movq xmm0, ARG1_64
     pcmpgtd xmm0, xmmword ptr [rsp]
 TEST_END_64
+
+#if HAS_FEATURE_AVX
+TEST_BEGIN_64(VPCMPGTDv128v128v128, 1)
+TEST_INPUTS(0)
+    vpcmpgtd xmm2, xmm1, xmm0
+TEST_END_64
+
+TEST_BEGIN_64(VPCMPGTDv256v256v256, 1)
+TEST_INPUTS(0)
+    vpcmpgtd xmm2, xmm1, xmm0
+TEST_END_64
+#endif  // HAS_FEATURE_AVX
+
+TEST_BEGIN_64(PCMPGTQv128v128, 2)
+TEST_INPUTS_MMX_2()
+    movq xmm0, ARG1_64
+    movq xmm1, ARG2_64
+    pcmpgtq xmm0, xmm1
+TEST_END_64
+
+TEST_BEGIN_64(PCMPGTQv128m128, 2)
+TEST_INPUTS_MMX_2()
+    push 0
+    push ARG2_64
+    movq xmm0, ARG1_64
+    pcmpgtq xmm0, xmmword ptr [rsp]
+TEST_END_64
+
+#if HAS_FEATURE_AVX
+TEST_BEGIN_64(VPCMPGTQv128v128v128, 1)
+TEST_INPUTS(0)
+    vpcmpgtq xmm2, xmm1, xmm0
+TEST_END_64
+
+TEST_BEGIN_64(VPCMPGTQv256v256v256, 1)
+TEST_INPUTS(0)
+    vpcmpgtq xmm2, xmm1, xmm0
+TEST_END_64
+#endif  // HAS_FEATURE_AVX
