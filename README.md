@@ -74,7 +74,19 @@ sudo apt-get install \
 
 sudo pip install --upgrade pip
 
-sudo pip install python-magic 'protobuf==2.4.1'
+sudo pip install python-magic 'protobuf==2.6.1'
+```
+
+##### Using IDA on 64 bit Ubuntu
+
+If your IDA install does not use the system's Python, you can add the `protobuf` library manually to IDA's zip of modules.
+
+```
+# Python module dir is generally in /usr/lib or /usr/local/lib
+touch /path/to/python2.7/dist-packages/google/__init__.py
+cd /path/to/lib/python2.7/dist-packages/              
+sudo zip -rv /path/to/ida-6.X/python/lib/python27.zip google/
+sudo chown your_user:your_user /home/taxicat/ida-6.7/python/lib/python27.zip
 ```
 
 ##### Upgrade CMake (Ubuntu 14.04)
@@ -117,7 +129,6 @@ cd remill
 ### Step 3: Install the disassembler
 
 ```shell
-cd ..
 sudo python tools/setup.py install
 ```
 
@@ -142,4 +153,20 @@ This script will build and install the Google Test framework. It will request ad
 
 ## Try it Out
 
-**TODO(pag):** Make `remill-lift`.
+If you had a 64 bit dll, you could get started with the following commands. First, you recover control flow graph information using `remill-disass`, this can use either IDA Pro or Binary Ninja as the disassembler.
+
+```
+remill-disass --disassembler /path/to/ida/idal64 --arch amd64 --output target.cfg --binary libsomething.dll
+```
+
+Once you have the control flow graph information, you can lift the target binary using `remill-lift`.
+
+```
+remill-lift -arch_in=amd64 libsomething.dll --cfg target.cfg --bc_out target.bc
+```
+
+When the bitcode has been recovered by `remill-lift`, it is a good idea to optimize it using `remill-opt`.
+
+```
+remill-opt --bc_in target.bc --bc_out opt_target.bc
+```

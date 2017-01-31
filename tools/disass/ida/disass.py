@@ -9,6 +9,8 @@ import subprocess
 import sys
 import traceback
 
+# Import modules from parent directory
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
 import log
 import cfg
 import program
@@ -24,7 +26,8 @@ except:
 
 
 POSSIBLE_CODE_REFS = set()
-
+# Stores all addresses contained in jump tables.
+JUMP_TABLE_EAS = set()
 
 # Architecture-specific functions.
 decode_instruction = None
@@ -53,9 +56,9 @@ def has_segment_type(ea, expected_seg_type):
   seg_type = idc.GetSegmentAttr(seg, idc.SEGATTR_TYPE)
   return seg_type == expected_seg_type
 
-
 def is_code(ea):
-  return has_segment_type(ea, idc.SEG_CODE)
+  global JUMP_TABLE_EAS
+  return ea not in JUMP_TABLE_EAS and has_segment_type(ea, idc.SEG_CODE)
 
 
 def get_instruction(ea):
@@ -193,7 +196,9 @@ def analyse_block(sub, block):
 
   inst.mark_as_terminator()  # Just in case!
   block.terminator = inst
-  block.successor_eas.update(get_static_successors(inst))
+  successors = get_static_successors(inst)
+  successors = [succ for succ in successors if is_code(succ)]
+  block.successor_eas.update(successors)
 
 
 def analyse_subroutine(sub):
@@ -253,7 +258,9 @@ def analyse_subroutine(sub):
     log.debug("Linear terminator of {:08x} is {:08x}".format(
         block_head_ea, term_inst.ea))
     
-    succ_eas = tuple(get_static_successors(term_inst))
+    successors = get_static_successors(term_inst)
+    successors = [succ for succ in successors if is_code(succ)]
+    succ_eas = tuple(successors)
     if succ_eas:
       log.debug("Static successors of {:08x} are {}".format(
           term_inst.ea, ", ".join("{:08x}".format(sea) for sea in succ_eas)))
@@ -378,9 +385,43 @@ def get_called_subroutines(sub):
   return called_sub_eas
 
 
+# Python 2.7 doesn't range on longs
+def lrange(start, end):
+  """Duplicate of the range() function for long integers."""
+  num = long(start)
+  while num < end:
+    yield num
+    num += 1L
+
+
+def init_jump_table_eas():
+  '''Creates a set of all bytes contained within jump tables in the text section.'''
+  global JUMP_TABLE_EAS
+
+  text_seg = idaapi.get_segm_by_name('.text')
+
+  for head in idautils.Heads(text_seg.startEA, text_seg.endEA):
+    if idc.isCode(idc.GetFlags(head)):
+      switch_info = idaapi.get_switch_info_ex(head)
+      # if the block contains switch info
+      if switch_info and switch_info.jumps != 0:
+        # get the start of the jump table
+        start = switch_info.jumps
+        # count of elements in the table
+        element_num = switch_info.get_jtable_size()
+        # size of each element
+        element_size = switch_info.get_jtable_element_size()
+        # calculate the end of the table
+        end = start + element_num * element_size
+        # store the byte range
+        JUMP_TABLE_EAS.update(lrange(start, end))
+
+
 def analyse_subroutines():
   """Goes through all the subroutines that IDA's initial auto analysis
   discovers."""
+
+  init_jump_table_eas()
 
   log.info("Analysing subroutines")
  
