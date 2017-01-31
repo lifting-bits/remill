@@ -7,6 +7,8 @@
 #include "remill/Arch/X86/Runtime/Types.h"
 #include "remill/Arch/X86/Runtime/Operators.h"
 
+#include <fenv.h>
+#include <math.h>
 
 #define REG_IP state.gpr.rip.word
 #define REG_EIP state.gpr.rip.dword
