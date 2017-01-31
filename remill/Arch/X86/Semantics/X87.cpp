@@ -3,9 +3,6 @@
 #ifndef REMILL_ARCH_X86_SEMANTICS_X87_H_
 #define REMILL_ARCH_X86_SEMANTICS_X87_H_
 
-#include <cfenv>
-#include <cmath>
-
 #define PUSH_X87_STACK(x) \
   do { \
     auto __x = x; \
