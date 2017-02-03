@@ -781,7 +781,7 @@ static void RunO3(llvm::Module *module) {
   TLI->disableAllFunctions();
 
   llvm::PassManagerBuilder builder;
-  builder.OptLevel = 0;  // -O3.
+  builder.OptLevel = 0;  // -O0.
   builder.SizeLevel = 0;  // -Oz
   builder.Inliner = llvm::createFunctionInliningPass(999);
   builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
