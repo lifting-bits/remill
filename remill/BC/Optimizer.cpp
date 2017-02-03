@@ -781,8 +781,8 @@ static void RunO3(llvm::Module *module) {
   TLI->disableAllFunctions();
 
   llvm::PassManagerBuilder builder;
-  builder.OptLevel = 3;  // -O3.
-  builder.SizeLevel = 2;  // -Oz
+  builder.OptLevel = 0;  // -O0.
+  builder.SizeLevel = 0;  // -Oz
   builder.Inliner = llvm::createFunctionInliningPass(999);
   builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
   builder.DisableTailCalls = false;  // Enable tail calls.
@@ -798,6 +798,13 @@ static void RunO3(llvm::Module *module) {
   builder.populateFunctionPassManager(func_manager);
   builder.populateModulePassManager(module_manager);
 
+  func_manager.add(llvm::createCFGSimplificationPass());
+  func_manager.add(llvm::createPromoteMemoryToRegisterPass());
+  func_manager.add(llvm::createReassociatePass());
+  func_manager.add(llvm::createInstructionCombiningPass());
+  func_manager.add(llvm::createDeadStoreEliminationPass());
+  func_manager.add(llvm::createDeadCodeEliminationPass());
+  
   func_manager.doInitialization();
   for (auto &func : *module) {
     if (func.hasFnAttribute(llvm::Attribute::OptimizeNone) ||
@@ -841,6 +848,13 @@ static void GetBlockSuccessors(llvm::BasicBlock *block,
       }
     }
   }
+}
+
+// Get a function's front or a null pointer if no front available. 
+static llvm::BasicBlock *GetFuncFrontOrNull(llvm::Function &func) {
+  if(func.isDeclaration() || func.size() == 0)
+    return nullptr;
+  return &(func.front());
 }
 
 // Perform inter-procedural dead store elimination on accesses to the `State`
@@ -969,12 +983,15 @@ void Opt::InterProceduralDeadStoreElimination(void) {
     work_list.swap(next_work_list);
   }
 
+  block_transfer_functions[nullptr].local_live.set();
+  block_transfer_functions[nullptr].local_dead.set();
+
   // Eliminate dead stores.
   for (auto &func : *module) {
     if (func.getName().startswith("__remill_sub") &&
         !func_transfer_functions.count(&func)) {
       func_transfer_functions[&func] =
-          block_transfer_functions.at(&(func.front()));
+          block_transfer_functions.at(GetFuncFrontOrNull(func));
       AssignRegisters(&func);
       EliminateDeadStores(&func);
     }
