@@ -850,7 +850,7 @@ static void GetBlockSuccessors(llvm::BasicBlock *block,
   }
 }
 
-// Get a functions front or a null pointer if no front available. 
+// Get a function's front or a null pointer if no front available. 
 static llvm::BasicBlock *GetFuncFrontOrNull(llvm::Function &func) {
   if(func.isDeclaration() || func.size() == 0)
     return nullptr;
