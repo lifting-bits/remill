@@ -36,7 +36,7 @@ We are actively working on porting Remill to macOS.
 | [CMake](https://cmake.org/) | 3.2+ |
 | [Google Log](https://github.com/google/glog) | 0.3.3 |
 | [Google Test](https://github.com/google/googletest) | 1.6.0 |
-| [Google Protobuf](https://github.com/google/protobuf) | 2.4.1 |
+| [Google Protobuf](https://github.com/google/protobuf) | 2.6.1 |
 | [LLVM](http://llvm.org/) | 3.9 |
 | [Clang](http://clang.llvm.org/) | 3.9 |
 | [Intel XED](https://software.intel.com/en-us/articles/xed-x86-encoder-decoder-software-library) | 2016-02-02 |
@@ -44,7 +44,7 @@ We are actively working on porting Remill to macOS.
 | [Python Package Index](https://pypi.python.org/pypi) | Latest |
 | [python-magic](https://pypi.python.org/pypi/python-magic) | Latest |
 | Unzip | Latest |
-| [python-protobuf](https://pypi.python.org/pypi/protobuf) | 2.4.1 |
+| [python-protobuf](https://pypi.python.org/pypi/protobuf) | 2.6.1 |
 | [Binary Ninja](https://binary.ninja) | Latest |
 | [IDA Pro](https://www.hex-rays.com/products/ida) | 6.7+ |
 
@@ -153,20 +153,20 @@ This script will build and install the Google Test framework. It will request ad
 
 ## Try it Out
 
-If you had a 64 bit dll, you could get started with the following commands. First, you recover control flow graph information using `remill-disass`, this can use either IDA Pro or Binary Ninja as the disassembler.
+If you have a 64 bit dll, you can get started with the following commands. First, you recover control flow graph information using `remill-disass`, this can use either IDA Pro or Binary Ninja as the disassembler.
 
-```
+```shell
 remill-disass --disassembler /path/to/ida/idal64 --arch amd64 --output target.cfg --binary libsomething.dll
 ```
 
 Once you have the control flow graph information, you can lift the target binary using `remill-lift`.
 
-```
-remill-lift -arch_in=amd64 libsomething.dll --cfg target.cfg --bc_out target.bc
+```shell
+remill-lift --arch_in amd64 --os_in linux --cfg target.cfg --bc_out target.bc
 ```
 
 When the bitcode has been recovered by `remill-lift`, it is a good idea to optimize it using `remill-opt`.
 
-```
+```shell
 remill-opt --bc_in target.bc --bc_out opt_target.bc
 ```
