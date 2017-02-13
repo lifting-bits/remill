@@ -11,8 +11,8 @@ gtest_build/*
 tools/build/*
 tools/dist/*
 tools/remill_disass.egg-info/*
-tools/disass/CFG.proto
-tools/disass/CFG_pb2.py
+tools/remill_disass/CFG.proto
+tools/remill_disass/CFG_pb2.py
 
 dist/*
 remill_disass.egg-info/*

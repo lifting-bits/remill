@@ -71,8 +71,7 @@ int main(int argc, char *argv[]) {
      << "    --os_in SOURCE_OS_NAME \\" << std::endl
      << "    [--os_out TARGET_OS_NAME] \\" << std::endl
      << "    --cfg CFG_FILE \\" << std::endl
-     << "    [--server] \\" << std::endl
-     << "    [--define_unimplemented]" << std::endl
+     << "    [--server]" << std::endl
      << std::endl;
 
   google::InitGoogleLogging(argv[0]);

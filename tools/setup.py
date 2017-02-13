@@ -13,8 +13,8 @@ setup(name="remill-disass",
       author="Peter Goodman",
       author_email="peter@trailofbits.com",
       license="Apache-2.0",
-      packages=['disass', 'disass.ida'],
+      packages=['remill_disass', 'remill_disass.ida'],
       entry_points={
         "console_scripts": [
-          "remill-disass = disass.__main__:main"
+          "remill-disass = remill_disass.__main__:main"
         ]})
