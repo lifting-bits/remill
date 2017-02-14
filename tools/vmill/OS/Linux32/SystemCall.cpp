@@ -3,10 +3,12 @@
 #include <glog/logging.h>
 
 #include <cerrno>
+#include <ctime>
 #include <linux/net.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/time.h>
 
 #include "tools/vmill/OS/Linux32/System.h"
 
@@ -206,6 +208,49 @@ static void DoMMap(SystemCall32 &abi, int num) {
   abi.SetReturn(ret);
 }
 
+// int _llseek(unsigned int fd, unsigned long offset_high,
+//             unsigned long offset_low, loff_t *result,
+//             unsigned int whence);
+static void DoLlseek(Process32 *process, SystemCall32 &abi) {
+  auto fd = abi.GetInt32(0);
+  auto offset_high = static_cast<uint64_t>(abi.GetUInt32(1));
+  auto offset_low = static_cast<uint64_t>(abi.GetUInt32(2));
+  auto offset = (offset_high << 32) | offset_low;
+  auto result_ptr = abi.GetUInt32(3);
+  auto whence = abi.GetInt32(4);
+  auto res = lseek64(fd, offset, whence);
+  if (-1 == res) {
+    abi.SetReturn(-errno);
+  } else if (!process->TryWriteQword(result_ptr, static_cast<uint64_t>(res))) {
+    abi.SetReturn(-EFAULT);
+  } else {
+    abi.SetReturn(0);
+  }
+}
+
+
+static void DoGetTimeOfDay(Process32 *process, SystemCall32 &abi) {
+  struct compat_timeval {
+    uint32_t tv_sec;
+    uint32_t tv_usec;
+  } compat_time = {};
+  struct timeval curr_time = {};
+  auto tz_addr = static_cast<uintptr_t>(abi.GetUInt32(1));
+  if (gettimeofday(&curr_time, reinterpret_cast<struct timezone *>(tz_addr))) {
+    abi.SetReturn(-errno);
+    return;
+  }
+
+  compat_time.tv_sec = static_cast<uint32_t>(curr_time.tv_sec);
+  compat_time.tv_usec = static_cast<uint32_t>(curr_time.tv_usec);
+  auto tv_addr = abi.GetUInt32(0);
+  if (tv_addr && !process->TryWrite(tv_addr, compat_time)) {
+    abi.SetReturn(-EFAULT);
+  } else {
+    abi.SetReturn(0);
+  }
+}
+
 static void PassThrough0(SystemCall32 &abi, int num) {
   abi.SetReturn(syscall(num));
 }
@@ -225,21 +270,24 @@ static void PassThrough3(SystemCall32 &abi, int num) {
   abi.SetReturn(static_cast<int>(ret));
 }
 
+//static void PassThrough4(SystemCall32 &abi, int num) {
+//  auto ret = syscall(num, abi.GetUInt32(0), abi.GetUInt32(1), abi.GetUInt32(2),
+//                     abi.GetUInt32(3));
+//  abi.SetReturn(static_cast<int>(ret));
+//}
+//
+//static void PassThrough5(SystemCall32 &abi, int num) {
+//  auto ret = syscall(num, abi.GetUInt32(0), abi.GetUInt32(1), abi.GetUInt32(2),
+//                     abi.GetUInt32(3), abi.GetUInt32(4));
+//  abi.SetReturn(static_cast<int>(ret));
+//}
+
 static void PassThrough6(SystemCall32 &abi, int num) {
   auto ret = syscall(num, abi.GetUInt32(0), abi.GetUInt32(1), abi.GetUInt32(2),
                      abi.GetUInt32(3), abi.GetUInt32(4), abi.GetUInt32(5));
   abi.SetReturn(static_cast<int>(ret));
 }
 
-
-/*
-
-static void PassThrough4(SystemCall32 &abi, int num) {
-  auto ret = syscall(num, abi.GetUInt32(0), abi.GetUInt32(1), abi.GetUInt32(2),
-                     abi.GetUInt32(3));
-  abi.SetReturn(static_cast<int>(ret));
-}
-*/
 }  // namespace
 
 void Process32::DoSystemCall(SystemCall32 &syscall) {
@@ -278,6 +326,14 @@ void Process32::DoSystemCall(SystemCall32 &syscall) {
       PassThrough6(syscall, SYS_ioctl);
       break;
 
+    case 74:  // __NR_sethostname
+      PassThrough2(syscall, SYS_sethostname);
+      break;
+
+    case 78:  // __NR_gettimeofday
+      DoGetTimeOfDay(this, syscall);
+      break;
+
     case 91:
       PassThrough2(syscall, SYS_munmap);
       break;
@@ -292,6 +348,10 @@ void Process32::DoSystemCall(SystemCall32 &syscall) {
 
     case 125:
       PassThrough3(syscall, SYS_mprotect);
+      break;
+
+    case 140:  // __NR__llseek.
+      DoLlseek(this, syscall);
       break;
 
     case 174:  // SYS_sys_rt_sigaction, don't handle for now.
