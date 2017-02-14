@@ -60,7 +60,7 @@ The transfer of control for indirect control-flows are modelled using the follow
  - `call reg/mem` is represented as a tail-call to `__remill_function_call`
  - `ret` is represented as a tail-call to `__remill_function_return`
 
-Getting back to the `is_addressable` field. The idea here is that any basic block that *could* be targeted by an indirect control-flow should has its corresponding `Block` marked as `is_addressible`. To that end, the block following a `call` instruction is addressable because it is likely to be the target of a `ret` instruction. The block beginning an exported function is addressable because it is exposed to the outside world. The entry blocks associated with function pointers stored in [vtables](https://en.wikipedia.org/wiki/Virtual_method_table) in the `.data` section are addressable because they are likely to be the targets of indirect `call`s.
+Getting back to the `is_addressable` field. The idea here is that any basic block that *could* be targeted by an indirect control-flow should have its corresponding `Block` marked as `is_addressible`. To that end, the block following a `call` instruction is addressable because it is likely to be the target of a `ret` instruction. The block beginning an exported function is addressable because it is exposed to the outside world. The entry blocks associated with function pointers stored in [vtables](https://en.wikipedia.org/wiki/Virtual_method_table) in the `.data` section are addressable because they are likely to be the targets of indirect `call`s.
 
 Finally, the `instructions` list is as you would expect: a list of `Instr` messages, each corresponding to a machine code instruction within the block.
 
