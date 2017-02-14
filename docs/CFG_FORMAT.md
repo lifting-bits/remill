@@ -50,7 +50,7 @@ In Remill, all basic blocks end at control-flow instructions, or at fall-through
 
 The `address`es of the individual `Block`s are  `0804b793` (red), `0804b798` (green), and `0804b79d` (blue), respectively.
 
-The `is_addressable` field in the `Block` message is more subtle and exposes a detail about how control-flow in Remill is represented. Remill is a block-based binary translator. Whereas [McSema](/trailofbits/mcsema) translates whole functions at a time, Remill only translates one block at a time.
+The `is_addressable` field in the `Block` message is more subtle and exposes a detail about how control-flow in Remill is represented. Remill is a block-based binary translator. Whereas [McSema](https://github.com/trailofbits/mcsema) translates whole functions at a time, Remill only translates one block at a time.
 
 Each `Block` message in the CFG protocol buffer is represented by a distinct LLVM function in the lifted bitcode. Control-flow between basic blocks in the machine code is represented as function [tail calls](https://en.wikipedia.org/wiki/Tail_call) between between lifted block functions. This raises the following question: how are "indirect" control-flows (`ret`, `jmp reg`, `jmp mem`, `call reg`, and `call mem`) represented in the LLVM bitcode?
 
