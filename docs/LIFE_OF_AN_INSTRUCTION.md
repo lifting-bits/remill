@@ -55,7 +55,7 @@ Module {
 
 Remill's unit of translation is a [basic block](https://en.wikipedia.org/wiki/Basic_block). Whereas [McSema](https://github.com/trailofbits/mcsema) translates a function in a binary into an LLVM bitcode function, Remill translates each basic block of code into an LLVM bitcode function.
 
-The translator creates an LLVM function for every `Block` in the CFG protocol buffer's `Module` message. In this example, Remill will create the function `__remill_sub_804b7a3`. This function will be a copy of the [`__remill_basic_block`](/remill/Arch/X86/Runtime/BasicBlock.h) function. What this means is that all of the code and variable definitions within `__remill_basic_block` will also be in `__remill_sub_804b7a3`.
+The translator creates an LLVM function for every `Block` in the CFG protocol buffer's `Module` message. In this example, Remill will create the function `__remill_sub_804b7a3`. This function will be a copy of the [`__remill_basic_block`](https://github.com/trailofbits/remill/blob/master/remill/Arch/X86/Runtime/BasicBlock.cpp) function. What this means is that all of the code and variable definitions within `__remill_basic_block` will also be in `__remill_sub_804b7a3`.
 
 ### The `__remill_basic_block` function
 
