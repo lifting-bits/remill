@@ -545,9 +545,6 @@ static_assert(1 == sizeof(StringCompareControl),
 template <size_t x, size_t y>
 class BitMatrix : std::bitset<x * y> {
  public:
-//  ALWAYS_INLINE BitMatrix(void)
-//      : rows{} {}
-
   ALWAYS_INLINE bool Test(size_t i, size_t j) const {
     return this->operator[]((x * i) + j);
   }

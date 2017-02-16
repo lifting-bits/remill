@@ -53,8 +53,6 @@ TEST_END_64
     lahf ; \
     push rax ;
 
-//
-
 #define MAKE_TEST(name, i) \
     TEST_BEGIN_64(name, 1) ; \
     TEST_INPUTS(0) ; \
@@ -68,18 +66,6 @@ TEST_END_64
         C(6, 0, i) C(6, 1, i) C(6, 2, i) C(6, 3, i) C(6, 4, i) C(6, 5, i) C(6, 6, i) C(6, 7, i) \
         C(7, 0, i) C(7, 1, i) C(7, 2, i) C(7, 3, i) C(7, 4, i) C(7, 5, i) C(7, 6, i) C(7, 7, i) \
     TEST_END_64
-
-/*
-        C(0, 0, i) C(0, 1, i) C(0, 2, i) C(0, 3, i) C(0, 4, i) C(0, 5, i) C(0, 6, i) C(0, 7, i) \
-        C(1, 0, i) C(1, 1, i) C(1, 2, i) C(1, 3, i) C(1, 4, i) C(1, 5, i) C(1, 6, i) C(1, 7, i) \
-        C(2, 0, i) C(2, 1, i) C(2, 2, i) C(2, 3, i) C(2, 4, i) C(2, 5, i) C(2, 6, i) C(2, 7, i) \
-        C(3, 0, i) C(3, 1, i) C(3, 2, i) C(3, 3, i) C(3, 4, i) C(3, 5, i) C(3, 6, i) C(3, 7, i) \
-        C(4, 0, i) C(4, 1, i) C(4, 2, i) C(4, 3, i) C(4, 4, i) C(4, 5, i) C(4, 6, i) C(4, 7, i) \
-        C(5, 0, i) C(5, 1, i) C(5, 2, i) C(5, 3, i) C(5, 4, i) C(5, 5, i) C(5, 6, i) C(5, 7, i) \
-        C(6, 0, i) C(6, 1, i) C(6, 2, i) C(6, 3, i) C(6, 4, i) C(6, 5, i) C(6, 6, i) C(6, 7, i) \
-        C(7, 0, i) C(7, 1, i) C(7, 2, i) C(7, 3, i) C(7, 4, i) C(7, 5, i) C(7, 6, i) C(7, 7, i) ; \
-
-*/
 
 MAKE_TEST(PCMPISTRIv128v128i8_0, 0)
 MAKE_TEST(PCMPISTRIv128v128i8_1, 1)
