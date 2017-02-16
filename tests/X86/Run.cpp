@@ -13,6 +13,7 @@
 #include <type_traits>
 #include <vector>
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 

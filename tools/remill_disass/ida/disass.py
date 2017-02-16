@@ -121,7 +121,7 @@ def find_linear_terminator(ea, max_num=256):
 
   if term_inst:
     term_inst.mark_as_terminator()
-  
+
   return term_inst
 
 
@@ -236,7 +236,7 @@ def analyse_subroutine(sub):
 
     found_block_eas.add(block_head_ea)
 
-    # Try to make sure that analysis will terminate if we accidentally 
+    # Try to make sure that analysis will terminate if we accidentally
     # walk through a noreturn call.
     if block_head_ea != sub.ea and program.has_subroutine(block_head_ea):
       continue
@@ -257,7 +257,7 @@ def analyse_subroutine(sub):
 
     log.debug("Linear terminator of {:08x} is {:08x}".format(
         block_head_ea, term_inst.ea))
-    
+
     successors = get_static_successors(term_inst)
     successors = [succ for succ in successors if is_code(succ)]
     succ_eas = tuple(successors)
@@ -320,7 +320,7 @@ def find_exported_eas():
   entrypoints into this program that external code can execute."""
   exported_eas = set()
   for index, ordinal, ea, name in idautils.Entries():
-    
+
     # Not sure how this happens, but IDA seemed to treat
     # `obstack_alloc_failed_handler` in `call cs:[obstack_alloc_failed_handler]`
     # as an entrypoint.
@@ -341,7 +341,7 @@ def find_exported_eas():
       old_name = name
       if name.startswith("."):
         name = idc.GetCommentEx(ea, 0)
-      
+
       log.info("Renaming `{}` at {:08x} to `{}`".format(old_name, ea, name))
       idc.MakeName(ea, name)
 
@@ -364,7 +364,7 @@ def find_exported_subroutines():
 
     sub = program.get_subroutine(ea)
     if program.Subroutine.VISIBILITY_INTERNAL != sub.visibility:
-      continue 
+      continue
 
     sub.visibility = program.Subroutine.VISIBILITY_EXPORTED
     if sub.name:
@@ -391,7 +391,7 @@ def lrange(start, end):
   num = long(start)
   while num < end:
     yield num
-    num += 1L
+    num += 1
 
 
 def init_jump_table_eas():
@@ -424,7 +424,7 @@ def analyse_subroutines():
   init_jump_table_eas()
 
   log.info("Analysing subroutines")
- 
+
   exported_eas = find_exported_eas()
   log.info("IDA identified {} exported functions".format(len(exported_eas)))
 
@@ -463,7 +463,7 @@ def analyse_subroutines():
 
     if idc.hasName(sub_ea):
       sub.name = idc.GetFunctionName(sub_ea)
-    
+
     # Mark this subroutine as exported.
     if sub_ea in exported_eas:
       sub.visibility = program.Subroutine.VISIBILITY_EXPORTED
@@ -609,8 +609,8 @@ def execute(args, command_args):
     with open(os.devnull, "w") as devnull:
       return subprocess.check_call(
           " ".join(cmd),
-          env=env, 
-          stdin=None, 
+          env=env,
+          stdin=None,
           stdout=devnull,  # Necessary.
           stderr=sys.stderr,  # For enabling `--log_file /dev/stderr`.
           shell=True,  # Necessary.
