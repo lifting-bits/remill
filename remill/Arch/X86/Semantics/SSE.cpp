@@ -112,6 +112,55 @@ ALWAYS_INLINE static bool CompareFloats(FloatCompareOperator op, T v1, T v2) {
   }
 }
 
+#ifndef issignaling
+
+union nan32_t {
+  float32_t f;
+  struct {
+    uint32_t mantissa:22;
+    uint32_t is_quiet_nan:1;
+    uint32_t exponent:8;
+    uint32_t is_negative:1;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(sizeof(float32_t) == sizeof(nan32_t),
+              "Invalid packing of `nan32_t`.");
+
+union nan64_t {
+  float64_t d;
+  struct {
+    uint64_t mantissa_low:32;
+    uint64_t mantissa_high:19;
+    uint64_t is_quiet_nan:1;
+    uint64_t exponent:11;
+    uint64_t is_negative:1;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(sizeof(float64_t) == sizeof(nan64_t),
+              "Invalid packing of `nan64_t`.");
+
+ALWAYS_INLINE bool issignaling(float32_t x) {
+  if (!std::isnan(x)) {
+    return false;
+  }
+
+  nan32_t x_nan = {x};
+  return !x_nan.is_quiet_nan;
+}
+
+ALWAYS_INLINE bool issignaling(float64_t x) {
+  if (!std::isnan(x)) {
+    return false;
+  }
+
+  nan64_t x_nan = {x};
+  return !x_nan.is_quiet_nan;
+}
+
+#endif
+
 template <typename S1, typename S2>
 DEF_SEM(COMISS, S1 src1, S2 src2) {
   auto left = FExtractV32(FReadV32(src1), 0);
