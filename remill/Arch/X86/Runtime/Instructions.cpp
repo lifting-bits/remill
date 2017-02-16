@@ -7,6 +7,8 @@
 #include "remill/Arch/X86/Runtime/Types.h"
 #include "remill/Arch/X86/Runtime/Operators.h"
 
+#include <algorithm>
+#include <bitset>
 #include <fenv.h>
 #include <math.h>
 

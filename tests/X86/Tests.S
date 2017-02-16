@@ -180,6 +180,12 @@ SYMBOL(vec_data):
     .long 0x37373737, 0x82828282, 0x1a1a1a1a, 0x2b2b2b2b
     .long 0x96969696, 0x35353535, 0xaeaeaeae, 0xc4c4c4c4
     .long 0x3d3d3d3d, 0x21212121, 0x11223344, 0x55667788
+    .long 0x00414243, 0x41004243, 0x41420043, 0x41424300
+    .long 0x00abcdef, 0xab00cdef, 0xabcd00ef, 0xabcdef00
+    .long 0x00001111, 0x22222222, 0x33333333, 0x44444444
+    .long 0xaaaa0000, 0xbbbbbbbb, 0xcccccccc, 0xdddddddd
+    .long 0x55555555, 0x00006666, 0x77777777, 0x77777777
+    .long 0xabababab, 0xcdcd0000, 0xefefefef, 0x12121212
 
 // Set all bits in a vector.
 #if HAS_FEATURE_AVX
@@ -231,6 +237,10 @@ SYMBOL(DoInvokeTestCase):
     SET_VEC(1)
     SET_VEC(2)
     SET_VEC(3)
+    SET_VEC(4)
+    SET_VEC(5)
+    SET_VEC(6)
+    SET_VEC(7)
 
     xchg RSP, [RIP + SYMBOL(gStackSwitcher)]  /* Switch onto recording stack. */
 
@@ -471,6 +481,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/CMPSS.S"
 #include "tests/X86/SSE/COMISD.S"
 #include "tests/X86/SSE/COMISS.S"
+#include "tests/X86/SSE/PCMPISTRI.S"
 #include "tests/X86/SSE/PSHUFD.S"
 #include "tests/X86/SSE/UCOMISD.S"
 #include "tests/X86/SSE/UCOMISS.S"
@@ -491,6 +502,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/X87/FUCOM.S"
 #include "tests/X86/X87/FXCH.S"
 #include "tests/X86/X87/MISC.S"
+
 
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"
