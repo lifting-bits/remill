@@ -248,11 +248,12 @@ MAKE_READV(F, 64, doubles)
     ALWAYS_INLINE static \
     auto _ ## prefix ## ReadV ## size( \
         Memory *memory, MVn<T> mem) -> decltype(T().vec_accessor) { \
-      decltype(T().vec_accessor) vec; \
+      decltype(T().vec_accessor) vec = {}; \
+      const addr_t el_size = sizeof(vec.elems[0]); \
       _Pragma("unroll") \
-      for (size_t i = 0; i < NumVectorElems(vec); ++i) { \
+      for (addr_t i = 0; i < NumVectorElems(vec); ++i) { \
         vec.elems[i] = __remill_read_memory_ ## mem_accessor( \
-            memory, mem.addr + (i * sizeof(vec.elems[0]))); \
+            memory, mem.addr + (i * el_size)); \
       } \
       return vec; \
     } \
@@ -261,11 +262,12 @@ MAKE_READV(F, 64, doubles)
     ALWAYS_INLINE static \
     auto _ ## prefix ## ReadV ## size( \
         Memory *memory, MVnW<T> mem) -> decltype(T().vec_accessor) { \
-      decltype(T().vec_accessor) vec; \
+      decltype(T().vec_accessor) vec = {}; \
+      const addr_t el_size = sizeof(vec.elems[0]); \
       _Pragma("unroll") \
-      for (size_t i = 0; i < NumVectorElems(vec); ++i) { \
+      for (addr_t i = 0; i < NumVectorElems(vec); ++i) { \
         vec.elems[i] = __remill_read_memory_ ## mem_accessor( \
-            memory, mem.addr + (i * sizeof(vec.elems[0]))); \
+            memory, mem.addr + (i * el_size)); \
       } \
       return vec; \
     }
@@ -295,7 +297,7 @@ MAKE_MREADV(F, 64, doubles, f64)
       auto &sub_vec = reinterpret_cast<T *>(vec.val_ref)->accessor; \
       sub_vec.elems[0] = val; \
       _Pragma("unroll") \
-      for (size_t i = 1; i < NumVectorElems(sub_vec); ++i) { \
+      for (addr_t i = 1; i < NumVectorElems(sub_vec); ++i) { \
         sub_vec.elems[i] = 0; \
       } \
       return memory; \
@@ -313,11 +315,11 @@ MAKE_MREADV(F, 64, doubles, f64)
                     "Incompatible types to a write to a vector register"); \
       auto &sub_vec = reinterpret_cast<T *>(vec.val_ref)->accessor; \
       _Pragma("unroll") \
-      for (size_t i = 0; i < NumVectorElems(val); ++i) { \
+      for (addr_t i = 0; i < NumVectorElems(val); ++i) { \
         sub_vec.elems[i] = val.elems[i]; \
       } \
       _Pragma("unroll") \
-      for (size_t i = NumVectorElems(val); i < NumVectorElems(sub_vec); ++i) {\
+      for (addr_t i = NumVectorElems(val); i < NumVectorElems(sub_vec); ++i) {\
         sub_vec.elems[i] = 0; \
       } \
       return memory; \
@@ -359,12 +361,13 @@ MAKE_WRITEV(F, 64, doubles, RVnW, float64_t)
     Memory *_ ## prefix ## WriteV ## size( \
         Memory *memory, MVnW<T> mem, base_type val) { \
       T vec{}; \
+      const addr_t el_size = sizeof(base_type); \
       vec.vec_accessor.elems[0] = val; \
       _Pragma("unroll") \
-      for (size_t i = 0; i < NumVectorElems(vec.vec_accessor); ++i) { \
+      for (addr_t i = 0; i < NumVectorElems(vec.vec_accessor); ++i) { \
         memory = __remill_write_memory_ ## mem_accessor( \
             memory, \
-            mem.addr + (i * sizeof(base_type)), \
+            mem.addr + (i * el_size), \
             vec.vec_accessor.elems[i]); \
       } \
       return memory; \
@@ -380,11 +383,12 @@ MAKE_WRITEV(F, 64, doubles, RVnW, float64_t)
       typedef decltype(V()) VT; \
       static_assert(std::is_same<BT, VT>::value, \
                     "Incompatible types to a write to a vector register"); \
+      const addr_t el_size = sizeof(base_type); \
       _Pragma("unroll") \
-      for (size_t i = 0; i < NumVectorElems(val); ++i) { \
+      for (addr_t i = 0; i < NumVectorElems(val); ++i) { \
         memory = __remill_write_memory_ ## mem_accessor( \
             memory, \
-            mem.addr + (i * sizeof(base_type)), \
+            mem.addr + (i * el_size), \
             val.elems[i]); \
       } \
       return memory; \

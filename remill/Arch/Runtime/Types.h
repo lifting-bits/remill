@@ -179,7 +179,7 @@ MAKE_VECTOR(double, float64, 4, 256, 32);
 MAKE_VECTOR(double, float64, 8, 512, 64);
 
 #define NumVectorElems(val) \
-    static_cast<size_t>(VectorType<decltype(val)>::kNumElems)
+    static_cast<addr_t>(VectorType<decltype(val)>::kNumElems)
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-private-field"
