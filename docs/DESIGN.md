@@ -8,7 +8,7 @@ Remill translates machine code, and *only* machine code, into LLVM bitcode. Remi
 
 Remill defers the "implementation" of memory accesses and certain types of
 control flows to the consumers of the produced bitcode. Deferral in this takes
-the form of Remill [intrinsics](remill/Arch/Runtime/Intrinsics.h).
+the form of Remill [intrinsics](https://github.com/trailofbits/remill/blob/master/remill/Arch/Runtime/Intrinsics.h).
 
 For example, the `__remill_read_memory_8` intrinsic function represents the
 action of reading 8 bits of memory. Via this and similar intrinsics, downstream
@@ -27,7 +27,7 @@ for each possible encoding of the modelled instruction.
 
 The register state of a machine is represented by a single `State` structure.
 For example, the x86/amd64 state structure is defined in
-[State.h](remill/Arch/X86/Runtime/State.h). State structures are carefully
+[State.h](https://github.com/trailofbits/remill/blob/master/remill/Arch/X86/Runtime/State.h). State structures are carefully
 designed to maintain the following properties.
 
  - They should actively prevent certain compiler optimizations that obscure the
