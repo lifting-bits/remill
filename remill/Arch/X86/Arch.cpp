@@ -665,7 +665,7 @@ void X86Arch::PrepareModule(llvm::Module *mod) const {
         case kArchAMD64_AVX:
         case kArchAMD64_AVX512:
           dl = "e-m:e-i64:64-f80:128-n8:16:32:64-S128";
-          triple = "x86_64-pc-linux-gnu";
+          triple = "x86_64-unknown-linux-gnu";
           break;
         case kArchX86:
         case kArchX86_AVX:

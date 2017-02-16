@@ -490,6 +490,18 @@ static void RunWithFlags(const test::TestInfo *info,
         << "Stacks did not match for " << info->test_name
         << " with arguments " << std::hex << arg1 << ", "
         << std::hex << arg2 << ", " << std::hex << arg3;
+
+    for (size_t i = 0; i < sizeof(gLiftedStack.bytes); ++i) {
+      if (gLiftedStack.bytes[i] != gNativeStack.bytes[i]) {
+        LOG(ERROR)
+            << "Lifted stack at 0x" << std::hex
+            << reinterpret_cast<uintptr_t>(&(gLiftedStack.bytes[i]))
+            << " does not match native stack at 0x" << std::hex
+            << reinterpret_cast<uintptr_t>(&(gNativeStack.bytes[i]))
+            << std::endl;
+      }
+    }
+
     EXPECT_TRUE(!"Lifted and native stacks did not match.");
   }
 }

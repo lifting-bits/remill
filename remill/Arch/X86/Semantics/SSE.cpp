@@ -42,11 +42,11 @@ enum FloatCompareOperator {
 
 template <typename T>
 ALWAYS_INLINE static bool CompareFloats(FloatCompareOperator op, T v1, T v2) {
-  auto is_unordered = isunordered(v1, v2);
+  auto is_unordered = __builtin_isunordered(v1, v2);
   auto is_ordered = !is_unordered;
   switch (op) {
     case kEqOrderedQuiet:
-      return !islessgreater(v1, v2) && is_ordered;
+      return !__builtin_islessgreater(v1, v2) && is_ordered;
     case kLtOrderedSignal:
       return v1 < v2 && is_ordered;
     case kLeOrderedSignal:
@@ -54,7 +54,7 @@ ALWAYS_INLINE static bool CompareFloats(FloatCompareOperator op, T v1, T v2) {
     case kUnorderedQuiet:
       return is_unordered;
     case kNeUnorderedQuiet:
-      return islessgreater(v1, v2) || is_unordered;
+      return __builtin_islessgreater(v1, v2) || is_unordered;
     case kNltUnorderedSignal:
       return !(v1 < v2) || is_unordered;
     case kNleUnorderedSignal:
@@ -62,7 +62,7 @@ ALWAYS_INLINE static bool CompareFloats(FloatCompareOperator op, T v1, T v2) {
     case kOrderedQuiet:
       return is_ordered;
     case kEqUnorderedQuiet:
-      return !islessgreater(v1, v2);
+      return !__builtin_islessgreater(v1, v2);
     case kNgeUnorderedSignal:
       return !(v1 >= v2) || is_unordered;
     case kNgtUnorderedSignal:
@@ -70,7 +70,7 @@ ALWAYS_INLINE static bool CompareFloats(FloatCompareOperator op, T v1, T v2) {
     case kFalseOrderedQuiet:
       return false;
     case kNeOrderedQuiet:
-      return islessgreater(v1, v2);
+      return __builtin_islessgreater(v1, v2);
     case kGeOrderedSignal:
       return v1 >= v2 && is_ordered;
     case kGtOrderedSignal:
@@ -80,44 +80,93 @@ ALWAYS_INLINE static bool CompareFloats(FloatCompareOperator op, T v1, T v2) {
     case kEqOrderedSignal:
       return v1 == v2 && is_ordered;
     case kLtOrderedQuiet:
-      return isless(v1, v2);
+      return __builtin_isless(v1, v2);
     case kLeOrderedQuiet:
-      return islessequal(v1, v2);
+      return __builtin_islessequal(v1, v2);
     case kUnorderedSignal:
       return is_unordered;
     case kNeUnorderedSignal:
       return v1 != v2 || is_unordered;
     case kNltUnorderedQuiet:
-      return !isless(v1, v2);
+      return !__builtin_isless(v1, v2);
     case kNleUnorderedQuiet:
-      return !islessequal(v1, v2);
+      return !__builtin_islessequal(v1, v2);
     case kOrderedSignal:
       return is_ordered;
     case kEqUnorderedSignal:
       return v1 == v2 || is_unordered;
     case kNgeUnorderedQuiet:
-      return !isgreaterequal(v1, v2);
+      return !__builtin_isgreaterequal(v1, v2);
     case kNgtUnorderedQuiet:
-      return !isgreater(v1, v2);
+      return !__builtin_isgreater(v1, v2);
     case kFalseOrderedSignal:
       return false;
     case kNeOrderedSignal:
       return !(v1 == v2) && is_ordered;
     case kGeOrderedQuiet:
-      return isgreaterequal(v1, v2);
+      return __builtin_isgreaterequal(v1, v2);
     case kGtOrderedQuiet:
-      return isgreater(v1, v2);
+      return __builtin_isgreater(v1, v2);
     case kTrueUnorderedSignal:
       return true;
   }
 }
+
+#ifndef issignaling
+
+union nan32_t {
+  float32_t f;
+  struct {
+    uint32_t mantissa:22;
+    uint32_t is_quiet_nan:1;
+    uint32_t exponent:8;
+    uint32_t is_negative:1;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(sizeof(float32_t) == sizeof(nan32_t),
+              "Invalid packing of `nan32_t`.");
+
+union nan64_t {
+  float64_t d;
+  struct {
+    uint64_t mantissa_low:32;
+    uint64_t mantissa_high:19;
+    uint64_t is_quiet_nan:1;
+    uint64_t exponent:11;
+    uint64_t is_negative:1;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(sizeof(float64_t) == sizeof(nan64_t),
+              "Invalid packing of `nan64_t`.");
+
+ALWAYS_INLINE bool issignaling(float32_t x) {
+  if (!std::isnan(x)) {
+    return false;
+  }
+
+  nan32_t x_nan = {x};
+  return !x_nan.is_quiet_nan;
+}
+
+ALWAYS_INLINE bool issignaling(float64_t x) {
+  if (!std::isnan(x)) {
+    return false;
+  }
+
+  nan64_t x_nan = {x};
+  return !x_nan.is_quiet_nan;
+}
+
+#endif
 
 template <typename S1, typename S2>
 DEF_SEM(COMISS, S1 src1, S2 src2) {
   auto left = FExtractV32(FReadV32(src1), 0);
   auto right = FExtractV32(FReadV32(src2), 0);
 
-  if (isunordered(left, right)) {
+  if (__builtin_isunordered(left, right)) {
     if (issignaling(left + right)) {
       StopFailure();
     }
@@ -151,7 +200,7 @@ DEF_SEM(COMISD, S1 src1, S2 src2) {
   auto left = FExtractV64(FReadV64(src1), 0);
   auto right = FExtractV64(FReadV64(src2), 0);
 
-  if (isunordered(left, right)) {
+  if (__builtin_isunordered(left, right)) {
     if (issignaling(left + right)) {
       StopFailure();
     }
@@ -500,6 +549,310 @@ DEF_ISEL(VCMPPD_YMMqq_YMMqq_MEMqq_IMMb) = CMPPD<VV256W, V256, MV256>;
 DEF_ISEL(VCMPPD_YMMqq_YMMqq_YMMqq_IMMb) = CMPPD<VV256W, V256, V256>;
 #endif  // HAS_FEATURE_AVX
 
+namespace {
+
+enum InputFormat : uint8_t {
+  kUInt8 = 0,
+  kUInt16 = 1,
+  kInt8 = 2,
+  kInt16 = 3
+};
+
+enum AggregationOperation : uint8_t {
+  kEqualAny = 0,
+  kRanges = 1,
+  kEqualEach = 2,
+  kEqualOrdered = 3
+};
+
+enum Polarity : uint8_t {
+  kPositive = 0,
+  kNegative = 1,
+  kMaskedPositive = 2,
+  kMaskedNegative = 3
+};
+
+enum OutputSelection : uint8_t {
+  kLeastSignificantIndex = 0,
+  kMostSignificantIndex = 1
+};
+
+union StringCompareControl {
+  uint8_t flat;
+  struct {
+    uint8_t input_format:2;
+    uint8_t agg_operation:2;
+    uint8_t polarity:2;
+    uint8_t output_selection:1;
+    uint8_t should_be_0:1;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(1 == sizeof(StringCompareControl),
+              "Invalid packing of `StringCompareControl`.");
+
+template <size_t x, size_t y>
+class BitMatrix : std::bitset<x * y> {
+ public:
+  ALWAYS_INLINE bool Test(size_t i, size_t j) const {
+    return this->operator[]((x * i) + j);
+  }
+
+  ALWAYS_INLINE void Set(size_t i, size_t j, bool val) {
+    this->operator[]((x * i) + j) = val;
+  }
+
+ private:
+  bool rows[x][y];
+};
+
+// src1 is a char set, src2 is a string. We set a bit of `int_res_1` to `1`
+// when a char in `src2` belongs to the char set `src1`.
+template <size_t num_elems>
+ALWAYS_INLINE static uint16_t AggregateEqualAny(
+    const BitMatrix<num_elems, num_elems> &bool_res,
+    const size_t src1_len, const size_t src2_len) {
+
+  uint16_t int_res_1 = 0;
+  uint16_t bit = 1;
+  for (size_t j = 0; j < src2_len; ++j, bit <<= 1) {
+
+    _Pragma("unroll")
+    for (size_t i = 0; i < src1_len; ++i) {
+      if (bool_res.Test(i, j)) {
+        int_res_1 |= bit;
+        break;  // src2_j is in src1, at position src1_i.
+      }
+    }
+  }
+  return int_res_1;
+}
+
+// `src2` is a string, and `src1` is kind of like a the ranges of regular
+// expression character classes.
+template <size_t num_elems>
+ALWAYS_INLINE static uint16_t AggregateRanges(
+    const BitMatrix<num_elems, num_elems> &bool_res,
+    const size_t src1_len, const size_t src2_len) {
+
+  uint16_t int_res_1 = 0;
+  uint16_t bit = 1;
+
+  for (size_t j = 0; j < src2_len; ++j, bit <<= 1)  {
+
+    _Pragma("unroll")
+    for (size_t i = 0; i < (src1_len - 1); i += 2) {
+      const auto geq_lower_bound = bool_res.Test(i, j);
+      const auto leq_upper_bound = bool_res.Test(i + 1, j);
+      if (geq_lower_bound && leq_upper_bound) {
+        int_res_1 |= bit;  // src2_j is in the range [src1_i, src1_i+1]
+        break;
+      }
+    }
+  }
+  return int_res_1;
+}
+
+template <size_t num_elems>
+ALWAYS_INLINE static uint16_t AggregateEqualEach(
+    const BitMatrix<num_elems, num_elems> &bool_res,
+    const size_t src1_len, const size_t src2_len) {
+
+  uint16_t int_res_1 = 0;
+  uint16_t bit = 1;
+
+  _Pragma("unroll")
+  for (size_t i = 0; i < num_elems; ++i, bit <<= 1) {
+    const bool in_str1 = i < src1_len;
+    const bool in_str2 = i < src2_len;
+    if (in_str1 && in_str2) {
+      if (bool_res.Test(i, i)) {
+        int_res_1 |= bit;
+      }
+    } else if (!in_str1 && !in_str2) {
+      int_res_1 |= bit;
+    }
+  }
+  return int_res_1;
+}
+
+// This is really `strstr`, i.e. searching for `src1` in `src2`.
+template <size_t num_elems>
+ALWAYS_INLINE static uint16_t AggregateEqualOrdered(
+    const BitMatrix<num_elems, num_elems> &bool_res,
+    const size_t src1_len, const size_t src2_len) {
+
+  if (src1_len > src2_len) {
+    return 0;
+  }
+
+  uint16_t int_res_1 = (0xFFFF_u16 >> (16 - num_elems));
+  uint16_t bit = 1;
+
+  for (size_t j = 0; j < num_elems; ++j, bit <<= 1) {
+
+    _Pragma("unroll")
+    for (size_t i = 0, k = j; i < (num_elems - j) && k < num_elems; ++i, ++k) {
+      auto needle_valid = i < src1_len;
+      auto haystack_valid = k < src2_len;
+
+      if (!needle_valid) {
+        break;
+      } else if (!haystack_valid || !bool_res.Test(i, k)) {
+        int_res_1 ^= bit;
+        break;
+      }
+    }
+  }
+
+  return int_res_1;
+}
+
+template <typename V, size_t num_elems>
+DEF_SEM(DoPCMPISTRI, const V &src1, const V &src2,
+        StringCompareControl control) {
+  BitMatrix<num_elems, num_elems> bool_res;
+  size_t src1_len = num_elems;
+  size_t src2_len = num_elems;
+
+  const auto agg_operation = static_cast<AggregationOperation>(
+      control.agg_operation);
+
+  const auto polarity = static_cast<Polarity>(control.polarity);
+  const auto output_selection = static_cast<OutputSelection>(
+      control.output_selection);
+
+  _Pragma("unroll")
+  for (size_t i = 0; i < num_elems; ++i) {
+    if (!src1.elems[i]) {
+      src1_len = std::min<size_t>(src1_len, i);
+    }
+    if (!src2.elems[i]) {
+      src2_len = std::min<size_t>(src2_len, i);
+    }
+  }
+
+  for (size_t n = 0; n < num_elems; ++n) {
+    const auto reg = src1.elems[n];
+
+    _Pragma("unroll")
+    for (size_t m = 0; m < num_elems; ++m) {
+      const auto reg_mem = src2.elems[m];
+
+      switch (agg_operation) {
+        case kEqualAny:
+        case kEqualEach:
+        case kEqualOrdered:
+          bool_res.Set(n, m, reg == reg_mem);
+          break;
+
+        // Checking is `src2[m]` is in the range of `src1[n]` and `src1[n+1]`.
+        case kRanges:
+          if (n & 1U) {  // Odd.
+            bool_res.Set(n, m, reg_mem <= reg);  // `z` and `Z` in `azAZ`.
+          } else {  // Even.
+            bool_res.Set(n, m, reg_mem >= reg);  // `a` and `A` in `azAZ`.
+          }
+          break;
+      }
+    }
+  }
+
+  uint16_t int_res_1 = 0;
+
+  switch (agg_operation) {
+    case kEqualAny:
+      int_res_1 = AggregateEqualAny<num_elems>(bool_res, src1_len, src2_len);
+      break;
+    case kRanges:
+      int_res_1 = AggregateRanges<num_elems>(bool_res, src1_len, src2_len);
+      break;
+    case kEqualEach:
+      int_res_1 = AggregateEqualEach<num_elems>(bool_res, src1_len, src2_len);
+      break;
+    case kEqualOrdered:
+      int_res_1 = AggregateEqualOrdered<num_elems>(
+          bool_res, src1_len, src2_len);
+      break;
+  }
+
+  uint16_t int_res_2 = 0;
+  switch (polarity) {
+    case kPositive:
+      int_res_2 = int_res_1;
+      break;
+    case kNegative:
+      int_res_2 = (0xFFFF_u16 >> (16 - num_elems)) ^ int_res_1;
+      break;
+    case kMaskedPositive:
+      int_res_2 = int_res_1;
+      break;
+    case kMaskedNegative:
+      int_res_2 = int_res_1;
+      _Pragma("unroll")
+      for (size_t i = 0; i < num_elems; ++i) {
+        auto mask = static_cast<uint16_t>(1_u16 << i);
+        if (i < src2_len) {
+          int_res_2 ^= mask;
+        }
+      }
+      break;
+  }
+
+  uint16_t index = num_elems;
+  switch (output_selection) {
+    case kLeastSignificantIndex:
+      if (auto lsb_index = __builtin_ffs(int_res_2)) {
+        index = static_cast<uint16_t>(lsb_index - 1);
+      }
+      break;
+    case kMostSignificantIndex:
+      if (int_res_2) {
+        uint16_t count = CountLeadingZeros(int_res_2) - (16_u16 - num_elems);
+        index = num_elems - count - 1;
+      }
+      break;
+  }
+
+  Write(REG_XCX, static_cast<addr_t>(index));
+  Write(FLAG_CF, int_res_2 != 0_u16);
+  Write(FLAG_ZF, src2_len < num_elems);
+  Write(FLAG_SF, src1_len < num_elems);
+  Write(FLAG_OF, 0_u16 != (int_res_2 & 1_u16));
+  Write(FLAG_AF, false);
+  Write(FLAG_PF, false);
+}
+
+template <typename S2>
+DEF_SEM(PCMPISTRI, V128 src1, S2 src2, I8 src3) {
+  const StringCompareControl control = {.flat = Read(src3)};
+  switch (static_cast<InputFormat>(control.input_format)) {
+    case kUInt8:
+      DoPCMPISTRI<uint8v16_t, 16>(memory, state, UReadV8(src1),
+                                  UReadV8(src2), control);
+      break;
+    case kUInt16:
+      DoPCMPISTRI<uint16v8_t, 8>(memory, state, UReadV16(src1),
+                                 UReadV16(src2), control);
+      break;
+    case kInt8:
+      DoPCMPISTRI<int8v16_t, 16>(memory, state, SReadV8(src1),
+                                 SReadV8(src2), control);
+      break;
+    case kInt16:
+      DoPCMPISTRI<int16v8_t, 8>(memory, state, SReadV16(src1),
+                                SReadV16(src2), control);
+      break;
+  }
+}
+
+}  // namespace
+
+DEF_ISEL(PCMPISTRI_XMMdq_XMMdq_IMMb) = PCMPISTRI<V128>;
+DEF_ISEL(PCMPISTRI_XMMdq_MEMdq_IMMb) = PCMPISTRI<MV128>;
+IF_AVX(DEF_ISEL(VPCMPISTRI_XMMdq_XMMdq_IMMb) = PCMPISTRI<V128>;)
+IF_AVX(DEF_ISEL(VPCMPISTRI_XMMdq_MEMdq_IMMb) = PCMPISTRI<MV128>;)
+
 /*
 
 288 PCMPISTRM PCMPISTRM_XMMdq_MEMdq_IMMb SSE SSE4 SSE42 ATTRIBUTES: UNALIGNED
@@ -512,10 +865,6 @@ DEF_ISEL(VCMPPD_YMMqq_YMMqq_YMMqq_IMMb) = CMPPD<VV256W, V256, V256>;
 1057 PCMPESTRM PCMPESTRM_XMMdq_XMMdq_IMMb SSE SSE4 SSE42 ATTRIBUTES: UNALIGNED
 1058 PCMPESTRM PCMPESTRM_XMMdq_MEMdq_IMMb SSE SSE4 SSE42 ATTRIBUTES: UNALIGNED
 1059 PCMPESTRM PCMPESTRM_XMMdq_XMMdq_IMMb SSE SSE4 SSE42 ATTRIBUTES: UNALIGNED
-1540 PCMPISTRI PCMPISTRI_XMMdq_MEMdq_IMMb SSE SSE4 SSE42 ATTRIBUTES: UNALIGNED
-1541 PCMPISTRI PCMPISTRI_XMMdq_XMMdq_IMMb SSE SSE4 SSE42 ATTRIBUTES: UNALIGNED
-1542 PCMPISTRI PCMPISTRI_XMMdq_MEMdq_IMMb SSE SSE4 SSE42 ATTRIBUTES: UNALIGNED
-1543 PCMPISTRI PCMPISTRI_XMMdq_XMMdq_IMMb SSE SSE4 SSE42 ATTRIBUTES: UNALIGNED
 
 2974 VPCMPESTRI VPCMPESTRI_XMMdq_MEMdq_IMMb STTNI AVX AVX ATTRIBUTES:
 2975 VPCMPESTRI VPCMPESTRI_XMMdq_XMMdq_IMMb STTNI AVX AVX ATTRIBUTES:
@@ -531,12 +880,6 @@ DEF_ISEL(VCMPPD_YMMqq_YMMqq_YMMqq_IMMb) = CMPPD<VV256W, V256, V256>;
 2985 VPCMPESTRM VPCMPESTRM_XMMdq_XMMdq_IMMb STTNI AVX AVX ATTRIBUTES:
 3103 VPCMPISTRM VPCMPISTRM_XMMdq_MEMdq_IMMb STTNI AVX AVX ATTRIBUTES:
 3104 VPCMPISTRM VPCMPISTRM_XMMdq_XMMdq_IMMb STTNI AVX AVX ATTRIBUTES:
-3105 VPCMPISTRI VPCMPISTRI_XMMdq_MEMdq_IMMb STTNI AVX AVX ATTRIBUTES:
-3106 VPCMPISTRI VPCMPISTRI_XMMdq_XMMdq_IMMb STTNI AVX AVX ATTRIBUTES:
-3107 VPCMPISTRI VPCMPISTRI_XMMdq_MEMdq_IMMb STTNI AVX AVX ATTRIBUTES:
-3108 VPCMPISTRI VPCMPISTRI_XMMdq_XMMdq_IMMb STTNI AVX AVX ATTRIBUTES:
-3109 VPCMPISTRI VPCMPISTRI_XMMdq_MEMdq_IMMb STTNI AVX AVX ATTRIBUTES:
-3110 VPCMPISTRI VPCMPISTRI_XMMdq_XMMdq_IMMb STTNI AVX AVX ATTRIBUTES:
 
 3925 VPCMPEQQ VPCMPEQQ_MASKmskw_MASKmskw_ZMMu64_ZMMu64_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX
 3926 VPCMPEQQ VPCMPEQQ_MASKmskw_MASKmskw_ZMMu64_MEMu64_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX MEMORY_FAULT_SUPPRESSION

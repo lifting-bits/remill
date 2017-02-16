@@ -8,7 +8,7 @@
 #endif
 
 #ifndef ADDRESS_SIZE_BYTES
-# define ADDRESS_SIZE_BYTES (ADDRESS_SIZE_BITS / 8UL)
+# define ADDRESS_SIZE_BYTES static_cast<addr_t>(ADDRESS_SIZE_BITS / 8)
 #endif
 
 #if 64 == ADDRESS_SIZE_BITS
