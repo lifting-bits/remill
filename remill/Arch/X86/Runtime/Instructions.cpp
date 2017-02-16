@@ -1,4 +1,4 @@
-/* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+/* Copyright 2017 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
 #include "remill/Arch/Runtime/Intrinsics.h"
 #include "remill/Arch/Runtime/Operators.h"
@@ -7,8 +7,10 @@
 #include "remill/Arch/X86/Runtime/Types.h"
 #include "remill/Arch/X86/Runtime/Operators.h"
 
+#include <algorithm>
+#include <bitset>
 #include <fenv.h>
-#include <math.h>
+#include <cmath>
 
 #define REG_IP state.gpr.rip.word
 #define REG_EIP state.gpr.rip.dword
