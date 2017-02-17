@@ -37,6 +37,9 @@ class AsyncHyperCall {
 
     kX86SysEnter,
     kX86SysExit,
+
+    // Invalid instruction.
+    kInvalidInstruction
   } __attribute__((packed));
 };
 
