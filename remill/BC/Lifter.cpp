@@ -608,8 +608,7 @@ void Lifter::LiftTerminator(llvm::BasicBlock *block,
                                 const Instruction *arch_instr) {
   switch (arch_instr->category) {
     case Instruction::kCategoryInvalid:
-      LOG(FATAL)
-          << "Invalid instruction category.";
+      AddTerminatingTailCall(block, intrinsics->async_hyper_call);
       break;
 
     case Instruction::kCategoryNormal:
@@ -694,6 +693,11 @@ llvm::Function *GetInstructionFunction(llvm::Module *module,
 llvm::BasicBlock *Lifter::LiftInstruction(llvm::Function *block_func,
                                               Instruction *arch_instr) {
   auto isel_func = GetInstructionFunction(module, arch_instr->function);
+
+  if(arch_instr->category == Instruction::kCategoryInvalid) {
+    isel_func = GetInstructionFunction(module, "INVALID_INSTRUCTION");
+  }
+
   if (!isel_func) {
     LOG(ERROR)
         << "Cannot lift instruction at " << std::hex << arch_instr->pc << ", "

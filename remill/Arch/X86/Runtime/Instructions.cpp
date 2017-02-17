@@ -123,10 +123,17 @@ DEF_SEM(HandleUnsupported) {
       memory, state, IF_64BIT_ELSE(SyncHyperCall::kAMD64EmulateInstruction,
                                    SyncHyperCall::kX86EmulateInstruction));
 }
+
+// Takes the place of an invalid instruction.
+DEF_SEM(HandleInvalidInstruction) {
+    HYPER_CALL = AsyncHyperCall::kInvalidInstruction;
+}
+
 }  // namespace
 
 // Takes the place of an unsupported instruction.
 DEF_ISEL(UNSUPPORTED_INSTRUCTION) = HandleUnsupported;
+DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 
 #include "remill/Arch/X86/Semantics/FLAGS.cpp"
 #include "remill/Arch/X86/Semantics/BINARY.cpp"
