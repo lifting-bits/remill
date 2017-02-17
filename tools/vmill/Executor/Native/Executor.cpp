@@ -130,6 +130,11 @@ static void *SyncHyperCall(void *memory, void *state,
       LOG(ERROR)
           << "Skipping unimplemented amd64 instruction!";
       break;
+    case SyncHyperCall::kDebugBreakpoint:
+      DLOG(INFO)
+          << "Semantics code invoked a debug hyper call.";
+      break;
+
     default:
       __builtin_unreachable();
       break;

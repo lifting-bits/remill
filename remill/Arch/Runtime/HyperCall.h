@@ -12,7 +12,9 @@ class SyncHyperCall {
     kX86ReadTSCP,
 
     kX86EmulateInstruction,
-    kAMD64EmulateInstruction
+    kAMD64EmulateInstruction,
+
+    kDebugBreakpoint
   };
 } __attribute__((packed));
 
