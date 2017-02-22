@@ -8,9 +8,6 @@
 #include "remill/Arch/Runtime/HyperCall.h"
 
 namespace remill {
-
-struct ArchState;
-
 namespace vmill {
 
 class Snapshot;

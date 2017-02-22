@@ -12,6 +12,7 @@ ALWAYS_INLINE void SetFlagsLogical(State &state, T lhs, T rhs, T res) {
   state.aflag.zf = ZeroFlag(res);
   state.aflag.sf = SignFlag(res);
   state.aflag.of = false;
+  state.aflag.af = false;  // Undefined, but ends up being `0`.
 }
 
 template <typename D, typename S1, typename S2>
@@ -179,12 +180,12 @@ template <typename S1, typename S2>
 DEF_SEM(PTEST, S1 src1, S2 src2) {
   auto lhs = UReadV32(src1);
   auto rhs = UReadV32(src2);
-  auto res_and = UAndV32(lhs, rhs);
-  auto res_andn = UAndNV32(lhs, rhs);
+  auto res_and = UAndV32(rhs, lhs);
+  auto res_andn = UAndNV32(rhs, lhs);
   auto res_and_ax = AccumulateUOrV32(res_and);
   auto res_andn_ax = AccumulateUOrV32(res_andn);
-  FLAG_ZF = UCmpEq(res_and_ax, 0_u32);
-  FLAG_CF = UCmpEq(res_andn_ax, 0_u32);
+  FLAG_ZF = ZeroFlag(res_and_ax);
+  FLAG_CF = ZeroFlag(res_andn_ax);
   FLAG_PF = false;
   FLAG_AF = false;
   FLAG_SF = false;

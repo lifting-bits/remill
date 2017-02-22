@@ -4,6 +4,7 @@
 
 #include <cerrno>
 #include <iostream>
+#include <limits>
 #include <sys/mman.h>
 
 #include "remill/Arch/Name.h"
@@ -30,15 +31,11 @@ Process32::~Process32(void) {
 
 Process32::Process32(const Snapshot *snapshot_, Memory32 *memory_,
                      Thread32 *main_thread_)
-    : Process(),
-      memory(memory_),
-      snapshot(snapshot_),
-      threads{main_thread_} {
-  (void) snapshot;
-}
+    : Process(snapshot_, main_thread_),
+      memory(memory_) {}
 
 // Create a process from a snapshot.
-Process32 *Process32::Create(const Snapshot *snapshot) {
+Process *Process32::Create(const Snapshot *snapshot) {
   auto memory = Memory32::Create(snapshot);
   if (!memory) {
     return nullptr;
@@ -57,46 +54,46 @@ CodeVersion Process32::CodeVersion(void) {
   return 0;  // TODO(pag): Implement me!
 }
 
-// Kill this process; this destroys its current threads.
-void Process32::Kill(void) {
-  for (auto &thread : threads) {
-    delete thread;
-  }
-  threads.clear();
-}
-
-// Currently execution thread;
-Thread32 *Process32::CurrentThread(void) const {
-  if (threads.size()) {
-    return threads[0];
-  } else {
-    return nullptr;
-  }
-}
-
-// Schedule the next runnable thread, and return it.
-Thread32 *Process32::ScheduleNextThread(void) {
-  if (threads.size()) {
-    return threads[0];
-  } else {
-    return nullptr;
-  }
-}
-
 // Return a function that can be used to try to read executable bytes from
 // a process's memory.
 ByteReaderCallback Process32::ExecutableByteReader(void) {
   return [=] (Addr64 addr, uint8_t *bytes) {
-    *bytes = *memory->UnsafeBytePtr(addr);
-    return true;  // TODO(pag): Handle fault recovery.
+
+    // TODO(pag): Check memory access permissions.
+    return TryReadByte(static_cast<uintptr_t>(addr), bytes);
   };
 }
 
-// Return the next program counter of code to execute.
-uint64_t Process32::ProgramCounter(void) {
-  return CurrentThread()->ProgramCounter();
+namespace {
+
+static inline bool CheckInBounds(uintptr_t addr, size_t num_bytes) {
+  auto max_addr = static_cast<uintptr_t>(std::numeric_limits<Addr32>::max());
+  return (addr + num_bytes) < max_addr;
 }
 
+}  // namespace
+
+bool Process32::TryReadBytes(uintptr_t addr, void *val,
+                             size_t num_bytes) const {
+  if (!CheckInBounds(addr, num_bytes)) {
+    return false;
+  }
+
+  // TODO(pag): Handle faults.
+  memcpy(val, memory->UnsafeBytePtr(static_cast<Addr32>(addr)), num_bytes);
+  return true;
+}
+
+bool Process32::TryWriteBytes(uintptr_t addr, const void *val,
+                              size_t num_bytes) const {
+  if (!CheckInBounds(addr, num_bytes)) {
+    return false;
+  }
+
+  // TODO(pag): Handle faults.
+  memcpy(memory->UnsafeBytePtr(static_cast<Addr32>(addr)), val, num_bytes);
+  return true;
+}
 
 // Return the machine state to be executed.
 void *Process32::MachineState(void) {
@@ -107,52 +104,18 @@ void *Process32::Memory(void) {
   return memory;
 }
 
-// Read data from the emulated process.
-bool Process32::TryReadByte(Addr32 addr, uint8_t *byte_val) const {
-  *byte_val = *memory->UnsafeBytePtr(addr);
-  return true;
-}
-
-bool Process32::TryReadWord(Addr32 addr, uint16_t *word_val) const {
-  *word_val = *memory->UnsafeWordPtr(addr);
-  return true;
-}
-
-bool Process32::TryReadDword(Addr32 addr, uint32_t *dword_val) const {
-  *dword_val = *memory->UnsafeDwordPtr(addr);
-  return true;
-}
-
-bool Process32::TryReadQword(Addr32 addr, uint64_t *qword_val) const {
-  *qword_val = *memory->UnsafeQwordPtr(addr);
-  return true;
-}
-
-// Write data to the emulated process.
-bool Process32::TryWriteByte(Addr32 addr, uint8_t byte_val) const {
-  *memory->UnsafeBytePtr(addr) = byte_val;
-  return true;
-}
-
-bool Process32::TryWriteWord(Addr32 addr, uint16_t word_val) const {
-  *memory->UnsafeWordPtr(addr) = word_val;
-  return true;
-}
-
-bool Process32::TryWriteDword(Addr32 addr, uint32_t dword_val) const {
-  *memory->UnsafeDwordPtr(addr) = dword_val;
-  return true;
-}
-
-bool Process32::TryWriteQword(Addr32 addr, uint64_t qword_val) const {
-  *memory->UnsafeQwordPtr(addr) = qword_val;
-  return true;
-}
-
 // Process an asynchronous hypercall for the thread `thread`.
-void Process32::ProcessAsyncHyperCall(Thread32 *thread) {
-
-  switch (auto hypercall = thread->GetHyperCall()) {
+//
+// TODO(pag): I don't particularly like this setup, especially not the cast
+//            below. This has come through some API refactorings, and some
+//            more are needed to really flesh out the structure of processes
+//            and how they interact with the executor. In some sense, the
+//            executor should have a lot to do with the handling of hypercalls.
+void Process32::HandleAsyncHyperCall(Thread *thread_) {
+  Process::gCurrent = this;
+  auto thread = reinterpret_cast<Thread32 *>(thread_);
+  auto pc = thread->NextProgramCounter();
+  switch (auto hypercall = thread->PendingHyperCall()) {
     case AsyncHyperCall::kX86SysCall:
     case AsyncHyperCall::kX86SysEnter:
     case AsyncHyperCall::kX86IntN:
@@ -162,6 +125,10 @@ void Process32::ProcessAsyncHyperCall(Thread32 *thread) {
       break;
 
     case AsyncHyperCall::kInvalid:
+      LOG(FATAL)
+          << "Executing invalid asynchronous hyper call at " << std::hex << pc;
+      Kill();
+      break;
 
     // Interrupts calls.
     case AsyncHyperCall::kX86Int1:
@@ -169,21 +136,25 @@ void Process32::ProcessAsyncHyperCall(Thread32 *thread) {
     case AsyncHyperCall::kX86IntO:
       Kill();
       break;
+
     case AsyncHyperCall::kX86Bound:
     case AsyncHyperCall::kX86IRet:
     case AsyncHyperCall::kX86SysRet:
     case AsyncHyperCall::kX86SysExit:
       Kill();
       break;
+
+    case AsyncHyperCall::kInvalidInstruction:
+      LOG(FATAL)
+          << "Executing invalid instruction at " << std::hex << pc;
+      Kill();
+      break;
   }
+  Process::gCurrent = nullptr;
 }
 
 
 Thread32::~Thread32(void) {}
-
-Thread32::Thread32(pid_t pid_, pid_t tid_)
-    : pid(pid_),
-      tid(tid_) {}
 
 Thread32 *Thread32::Create(const Snapshot *snapshot) {
   switch (snapshot->GetArch()) {
@@ -219,20 +190,32 @@ Memory32 *Memory32::Create(const Snapshot *snapshot) {
     }
 
     uint64_t prot = PROT_NONE;
+    bool can_read = false;
+    bool can_write = false;
+    bool can_exec = false;
 
     switch (page_info.perms) {
       case PagePerms::kInvalid:
         break;
       case PagePerms::kWriteOnly:
         prot = PROT_WRITE;
+        can_write = true;
         break;
       case PagePerms::kReadOnly:
-      case PagePerms::kReadExec:
-      case PagePerms::kReadWriteExec:
         prot = PROT_READ;
+        can_read = true;
+        can_exec = false;
+        break;
+      case PagePerms::kReadExec:
+        prot = PROT_READ;
+        can_read = true;
+        can_exec = true;
         break;
       case PagePerms::kReadWrite:
+      case PagePerms::kReadWriteExec:
         prot = PROT_READ | PROT_WRITE;
+        can_read = true;
+        can_write = true;
         break;
     }
 
@@ -254,9 +237,9 @@ Memory32 *Memory32::Create(const Snapshot *snapshot) {
         PagePerms::kWriteOnly != perms,
         PagePerms::kReadOnly != perms,
         PagePerms::kReadExec == perms || PagePerms::kReadWriteExec == perms,
-        0,
-        0,
-        0,
+        can_read,
+        can_write,
+        can_exec,
         0};
 
     map.can_read = map.is_read;

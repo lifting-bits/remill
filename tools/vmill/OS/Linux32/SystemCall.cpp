@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
+#include <sys/types.h>
 
 #include "tools/vmill/OS/Linux32/System.h"
 
@@ -135,76 +136,131 @@ static void DoSocketCall(Process32 *process, SystemCall32 &abi) {
   abi.SetReturn(static_cast<int>(ret));
 }
 
-static void DoFStat(Process32 *process, SystemCall32 &abi, int num) {
-  struct stat64_32 {
-    uint64_t /* __dev_t */ st_dev;
-    uint32_t /* unsigned int */ __pad1;
-    uint32_t /* __ino_t */ __st_ino;
-    uint32_t /* __mode_t */ st_mode;
-    uint32_t /* __nlink_t */ st_nlink;
-    uint32_t /* __uid_t */ st_uid;
-    uint32_t /* __gid_t */ st_gid;
-    uint64_t /* __dev_t */ st_rdev;
-    uint32_t /* unsigned int */ __pad2;
-    uint64_t /* __off64_t */ st_size;
-    uint32_t /* __blksize_t */ st_blksize;
-    uint64_t /* __blkcnt64_t */ st_blocks;
-    struct timespec32 {
-      uint32_t tv_sec;
-      uint32_t tv_nsec;
-    } /* struct timespec */ st_atim;
-    timespec32 /* struct timespec */ st_mtim;
-    timespec32 /* struct timespec */ st_ctim;
-    uint64_t /* __ino64_t */ st_ino;
-  } file_info32;
+struct linux32_timespec {
+  int32_t tv_sec;
+  int32_t tv_nsec;
+};
 
-  // Make sure that we can read in the data structure from the user.
-  auto file_info32_addr = abi.GetUInt32(1);
-  if (!process->TryRead<stat64_32>(file_info32_addr, &file_info32)) {
+struct linux32_stat {
+  uint64_t st_dev;
+  uint16_t __pad1;
+  uint32_t st_mode;
+  uint32_t st_nlink;
+  uint32_t st_uid;
+  uint32_t st_gid;
+  uint64_t st_rdev;
+  uint16_t __pad2;
+  int64_t st_size;
+  int32_t st_blksize;
+  int64_t st_blocks;
+  struct linux32_timespec st_atim;
+  struct linux32_timespec st_mtim;
+  struct linux32_timespec st_ctim;
+  uint64_t st_ino;
+} __attribute__((packed));
+
+static_assert(sizeof(linux32_stat) == 88,
+              "Invalid packing of `struct linux32_stat`.");
+
+struct linux32_stat64 {
+  uint64_t st_dev;
+  uint32_t __pad1;
+  uint32_t __st_ino;
+  uint32_t st_mode;
+  uint32_t st_nlink;
+  uint32_t st_uid;
+  uint32_t st_gid;
+  uint64_t st_rdev;
+  uint32_t __pad2;
+  int64_t st_size;
+  int32_t st_blksize;
+  int64_t st_blocks;
+  struct linux32_timespec st_atim;
+  struct linux32_timespec st_mtim;
+  struct linux32_timespec st_ctim;
+  uint64_t st_ino;
+} __attribute__((packed));
+
+static_assert(sizeof(linux32_stat64) == 96,
+              "Invalid packing of `struct linux32_stat64`.");
+
+static void SetInodeNumber(linux32_stat *info32, const struct stat *info) {
+  info32->st_ino = info->st_ino;
+}
+
+static void SetInodeNumber(linux32_stat64 *info32, const struct stat *info) {
+  info32->__st_ino = static_cast<uint32_t>(info->st_ino);
+  info32->st_ino = info->st_ino;
+}
+
+template <typename T>
+void CopyStat(Process32 *process, SystemCall32 &abi, struct stat &info) {
+  T info32 = {};
+  Addr32 info32_addr = abi.GetUInt32(1);
+  if (!process->TryRead(info32_addr, &info32)) {
     abi.SetReturn(-EFAULT);
     return;
   }
 
-  struct stat64 file_info;
-  auto res = syscall(num, abi.GetInt32(0), &file_info);
-  abi.SetReturn(static_cast<int>(res));
-  if (res) {
-    return;  // Something went wrong!
-  }
+  SetInodeNumber(&info32, &info);
 
-  // Adapt the 64-bit stat64 struct into a 32-bit stat64 struct.
-  file_info32.st_dev = file_info.st_dev;
-  file_info32.__st_ino = static_cast<uint32_t>(file_info.st_ino);
-  file_info32.st_mode = file_info.st_mode;
-  file_info32.st_nlink = file_info.st_nlink;
-  file_info32.st_uid = file_info.st_uid;
-  file_info32.st_gid = file_info.st_gid;
-  file_info32.st_rdev = file_info.st_rdev;
-  file_info32.st_size = file_info.st_size;
-  file_info32.st_blksize = file_info.st_blksize;
-  file_info32.st_blocks = file_info.st_blocks;
+  info32.st_dev = info.st_dev;
+  info32.st_mode = info.st_mode;
+  info32.st_nlink = info.st_nlink;
+  info32.st_uid = info.st_uid;
+  info32.st_gid = info.st_gid;
+  info32.st_rdev = info.st_rdev;
+  info32.st_size = info.st_size;
+  info32.st_blksize = info.st_blksize;
+  info32.st_blocks = info.st_blocks;
 
-  file_info32.st_atim.tv_sec = static_cast<uint32_t>(file_info.st_atim.tv_sec);
-  file_info32.st_mtim.tv_sec = static_cast<uint32_t>(file_info.st_mtim.tv_sec);
-  file_info32.st_ctim.tv_sec = static_cast<uint32_t>(file_info.st_ctim.tv_sec);
+  info32.st_atim.tv_sec = static_cast<uint32_t>(info.st_atim.tv_sec);
+  info32.st_atim.tv_nsec = static_cast<uint32_t>(info.st_atim.tv_nsec);
 
-  file_info32.st_atim.tv_nsec =
-      static_cast<uint32_t>(file_info.st_atim.tv_nsec);
-  file_info32.st_mtim.tv_nsec =
-      static_cast<uint32_t>(file_info.st_mtim.tv_nsec);
-  file_info32.st_ctim.tv_nsec =
-      static_cast<uint32_t>(file_info.st_ctim.tv_nsec);
+  info32.st_mtim.tv_sec = static_cast<uint32_t>(info.st_mtim.tv_sec);
+  info32.st_mtim.tv_nsec = static_cast<uint32_t>(info.st_mtim.tv_nsec);
 
-  if (!process->TryWrite(file_info32_addr, file_info32)) {
+  info32.st_ctim.tv_sec = static_cast<uint32_t>(info.st_ctim.tv_sec);
+  info32.st_ctim.tv_nsec = static_cast<uint32_t>(info.st_ctim.tv_nsec);
+
+  if (!process->TryWrite(info32_addr, info32)) {
     abi.SetReturn(-EFAULT);
+    return;
   }
+  abi.SetReturn(0);
 }
 
+template <typename T>
+static void DoLStat(Process32 *process, SystemCall32 &abi) {
+  struct stat info = {};
+  auto path = reinterpret_cast<const char *>(
+      static_cast<uintptr_t>(abi.GetUInt32(0)));
+  if (lstat(path, &info)) {
+    abi.SetReturn(-errno);
+    return;
+  }
+  CopyStat<T>(process, abi, info);
+}
+
+template <typename T>
+static void DoFStat(Process32 *process, SystemCall32 &abi) {
+  auto fd = abi.GetInt32(0);
+  struct stat info = {};
+
+  if (fstat(fd, &info)) {
+    abi.SetReturn(-errno);
+    return;
+  }
+  CopyStat<T>(process, abi, info);
+}
+
+// void *mmap (void *__addr, size_t __len, int __prot,
+//             int __flags, int __fd, __off_t __offset);
 static void DoMMap(SystemCall32 &abi, int num) {
-  auto fd = abi.GetInt32(4);
   auto ret = syscall(
       num, abi.GetUInt32(0), abi.GetUInt32(1), abi.GetUInt32(2),
-      abi.GetUInt32(3) | MAP_32BIT, fd, (-1 == fd) ? 0 : abi.GetUInt32(5));
+      abi.GetUInt32(3) | MAP_32BIT, abi.GetInt32(4),
+      static_cast<uint64_t>(abi.GetUInt32(5) /* zero-extend */ ));
   abi.SetReturn(ret);
 }
 
@@ -342,6 +398,18 @@ void Process32::DoSystemCall(SystemCall32 &syscall) {
       DoSocketCall(this, syscall);
       break;
 
+    case 106:  // __NR__stat
+      DoFStat<linux32_stat>(this, syscall);
+      break;
+
+    case 107:  // __NR__lstat
+      DoLStat<linux32_stat>(this, syscall);
+      break;
+
+    case 108:  // __NR__fstat
+      DoFStat<linux32_stat>(this, syscall);
+      break;
+
     case 122:
       PassThrough1(syscall, SYS_uname);
       break;
@@ -363,16 +431,16 @@ void Process32::DoSystemCall(SystemCall32 &syscall) {
       DoMMap(syscall, SYS_mmap);
       break;
 
-    case 195:
-      DoFStat(this, syscall, SYS_stat);
+    case 195:  // __NR__stat64
+      DoFStat<linux32_stat64>(this, syscall);
       break;
 
-    case 196:
-      DoFStat(this, syscall, SYS_lstat);
+    case 196:  // __NR__lstat64
+      DoLStat<linux32_stat64>(this, syscall);
       break;
 
-    case 197:
-      DoFStat(this, syscall, SYS_fstat);
+    case 197:  // __NR__fstat64
+      DoFStat<linux32_stat64>(this, syscall);
       break;
 
     case 199:

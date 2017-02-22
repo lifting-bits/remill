@@ -241,7 +241,7 @@ DEF_SEM(TZCNT, D dst, S src) {
   auto count = CountTrailingZeros(val);
   ClearArithFlags();
   Write(FLAG_ZF, UCmpEq(UAnd(val, 1), 1));
-  Write(FLAG_CF, UCmpEq(val, 0));
+  Write(FLAG_CF, ZeroFlag(val));
   WriteZExt(dst, Select(FLAG_CF, BitSizeOf(src), count));
 }
 
@@ -272,17 +272,27 @@ DEF_SEM(BSR, D dst, S src) {
   auto val = Read(src);
   auto count = CountLeadingZeros(val);
   auto index = USub(USub(BitSizeOf(src), count), Literal<S>(1));
-  ClearArithFlags();
-  Write(FLAG_ZF, UCmpEq(val, 0));
-  Write(dst, Select(FLAG_ZF, Read(dst), ZExtTo<D>(index)));
+  Write(FLAG_ZF, ZeroFlag(val));
+  auto index_ret = Select(FLAG_ZF, Read(dst), ZExtTo<D>(index));
+  Write(FLAG_OF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_SF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_PF, ParityFlag(index));  // Undefined, but experimentally 1.
+  Write(FLAG_AF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_CF, false);  // Undefined, but experimentally 0.
+  Write(dst, index_ret);
 }
 
 template <typename D, typename S>
 DEF_SEM(BSF, D dst, S src) {
   auto val = Read(src);
-  ClearArithFlags();
-  Write(FLAG_ZF, UCmpEq(val, 0));
-  Write(dst, Select(FLAG_ZF, Read(dst), ZExtTo<D>(CountTrailingZeros(val))));
+  Write(FLAG_ZF, ZeroFlag(val));
+  auto index = Select(FLAG_ZF, Read(dst), ZExtTo<D>(CountTrailingZeros(val)));
+  Write(FLAG_OF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_SF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_PF, ParityFlag(index));
+  Write(FLAG_AF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_CF, false);  // Undefined, but experimentally 0.
+  Write(dst, index);
 }
 
 }  // namespace

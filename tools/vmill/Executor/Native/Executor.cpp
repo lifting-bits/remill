@@ -1,5 +1,11 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
+
+#define HAS_FEATURE_AVX 1
+#define HAS_FEATURE_AVX512 1
+#define ADDRESS_SIZE_BITS 32
+#include "remill/Arch/X86/Runtime/State.h"
+
 #include <glog/logging.h>
 
 #include <dlfcn.h>
@@ -62,18 +68,21 @@
 #include "tools/vmill/Executor/Runtime.h"
 #include "tools/vmill/OS/System.h"
 
+struct Memory;
+struct State;
+
 namespace remill {
 namespace vmill {
 namespace {
 
 #define MAKE_READ_WRITE_MEM(suffix, type, intern_type) \
     static type \
-    ReadMem ## suffix(void *, uint32_t addr) { \
+    ReadMem ## suffix(Memory *, uint32_t addr) { \
       return static_cast<type>(*reinterpret_cast<intern_type *>( \
           static_cast<uintptr_t>(addr))); \
     } \
-    static void * \
-    WriteMem ## suffix(void *mem, uint32_t addr, type val) { \
+    static Memory * \
+    WriteMem ## suffix(Memory *mem, uint32_t addr, type val) { \
       *reinterpret_cast<intern_type *>( \
           static_cast<uintptr_t>(addr)) = static_cast<intern_type>(val); \
       return mem; \
@@ -87,7 +96,7 @@ MAKE_READ_WRITE_MEM(FP32, float32_t, float32_t)
 MAKE_READ_WRITE_MEM(FP64, float64_t, float64_t)
 MAKE_READ_WRITE_MEM(FP80, float64_t, long double)
 
-static void *MemNoOp(void *mem) {
+static Memory *MemNoOp(Memory *mem) {
   return mem;
 }
 
@@ -99,46 +108,70 @@ static T Undef(void) {
 static void DeferInlining(void) {}
 static void MarkAsUsed(void *) {}
 
-static Executor::Flow Error(void *, void *, uint32_t) {
+static Executor::Flow Error(Memory *, State *, uint32_t) {
   return Executor::kFlowError;
 }
-static Executor::Flow IndirectFunctionCall(void *, void *, uint32_t) {
+static Executor::Flow IndirectFunctionCall(Memory *, State *, uint32_t) {
   return Executor::kFlowFunctionCall;
 }
 
-static Executor::Flow FunctionReturn(void *, void *, uint32_t) {
+static Executor::Flow FunctionReturn(Memory *, State *, uint32_t) {
   return Executor::kFlowFunctionReturn;
 }
 
-static Executor::Flow IndirectJump(void *, void *, uint32_t) {
+static Executor::Flow IndirectJump(Memory *, State *, uint32_t) {
   return Executor::kFlowJump;
 }
 
-static Executor::Flow AsyncHyperCall(void *, void *, uint32_t) {
+static Executor::Flow AsyncHyperCall(Memory *, State *, uint32_t) {
   return Executor::kFlowAsyncHyperCall;
 }
 
-static void *SyncHyperCall(void *memory, void *state,
-                           SyncHyperCall::Name name) {
-  (void) state;
+static Memory *SyncHyperCall(Memory *memory, State *state,
+                             SyncHyperCall::Name name) {
+  auto pc = Process::gCurrent->NextProgramCounter();
+
   switch (name) {
     case SyncHyperCall::kX86EmulateInstruction:
-      LOG(ERROR)
-          << "Skipping unimplemented x86 instruction!";
+      LOG(FATAL)
+          << "Unable to execute 32-bit instruction at " << std::hex << pc;
       break;
+
     case SyncHyperCall::kAMD64EmulateInstruction:
-      LOG(ERROR)
-          << "Skipping unimplemented amd64 instruction!";
+      LOG(FATAL)
+          << "Unable to execute 64-bit instruction at " << std::hex << pc;
       break;
+
     case SyncHyperCall::kDebugBreakpoint:
-      DLOG(INFO)
-          << "Semantics code invoked a debug hyper call.";
+      if (false) {
+        printf("eip=%x eax=%x ebx=%x ecx=%x edx=%x esi=%x edi=%x ebp=%x esp=%x\n",
+               state->gpr.rip.dword,
+               state->gpr.rax.dword,
+               state->gpr.rbx.dword,
+               state->gpr.rcx.dword,
+               state->gpr.rdx.dword,
+               state->gpr.rsi.dword,
+               state->gpr.rdi.dword,
+               state->gpr.rbp.dword,
+               state->gpr.rsp.dword);
+        printf("cf=%d pf=%d af=%d zf=%d sf=%d df=%d of=%d\n\n",
+               state->aflag.cf,
+               state->aflag.pf,
+               state->aflag.af,
+               state->aflag.zf,
+               state->aflag.sf,
+               state->aflag.df,
+               state->aflag.of);
+
+//        fflush(stdout);
+      }
       break;
 
     default:
       __builtin_unreachable();
       break;
   }
+
   return memory;
 }
 
@@ -557,9 +590,10 @@ LiftedFunc *JITExecutor::GetLiftedFunc(llvm::Function *func, uint64_t pc) {
 // Execute the LLVM function `func` representing code in `process` at
 // the current program counter.
 Executor::Flow JITExecutor::Execute(Process *process, llvm::Function *func) {
+
   auto memory = process->Memory();
   auto state = process->MachineState();
-  auto pc = process->ProgramCounter();
+  auto pc = process->NextProgramCounter();
   auto &jited_func = pc_to_jit_code[pc];
 
   if (!jited_func) {

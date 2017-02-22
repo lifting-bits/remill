@@ -124,20 +124,21 @@ DEF_SEM(SHL, D dst, S1 src1, S2 src2) {
 
   } else if (UCmpLt(masked_shift, op_size)) {
     auto res = UShl(val, USub(masked_shift, 1));
-    const auto msb = SignFlag(res);
-    new_of = BUndefined();
+    auto msb = SignFlag(res);
+    new_of = BUndefined();  // Undefined, hard to understand possible values.
     new_cf = msb;
     new_val = UShl(res, 1);
+
   } else {
-    new_of = BUndefined();
-    new_cf = BUndefined();
+    new_of = 1;  // Undefined, probably 1.
+    new_cf = 0;  // Undefined, probably 0.
     new_val = 0;
   }
 
   WriteZExt(dst, new_val);
   Write(FLAG_CF, new_cf);
   Write(FLAG_PF, ParityFlag(new_val));
-  Write(FLAG_AF, BUndefined());
+  Write(FLAG_AF, false);  // Undefined, experimentally 0.
   Write(FLAG_ZF, ZeroFlag(new_val));
   Write(FLAG_SF, SignFlag(new_val));
   Write(FLAG_OF, new_of);

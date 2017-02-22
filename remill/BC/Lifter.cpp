@@ -41,6 +41,11 @@
 #include "remill/CFG/CFG.h"
 #include "remill/OS/OS.h"
 
+DEFINE_bool(add_breakpoints, false,
+            "Add calls to the `BREAKPOINT_INSTRUCTION` before every lifted "
+            "instruction. The semantics for this instruction call into a "
+            "breakpoint hyper call.");
+
 namespace llvm {
 class ReturnInst;
 }  // namespace llvm
@@ -736,6 +741,13 @@ llvm::BasicBlock *Lifter::LiftInstruction(llvm::Function *block_func,
   // state pointer, and a pointer to the memory pointer.
   args.push_back(mem_ptr);
   args.push_back(state_ptr);
+
+  // Call out to a special 'breakpoint' instruction function, that lets us
+  // interpose on the machine state just before every lifted instruction.
+  if (FLAGS_add_breakpoints) {
+    ir.CreateCall(
+        GetInstructionFunction(module, "BREAKPOINT_INSTRUCTION"), args);
+  }
 
   auto isel_func_type = isel_func->getFunctionType();
   auto arg_num = 2U;

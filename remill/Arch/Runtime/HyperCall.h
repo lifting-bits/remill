@@ -42,7 +42,7 @@ class AsyncHyperCall {
 
     // Invalid instruction.
     kInvalidInstruction
-  } __attribute__((packed));
-};
+  };
+} __attribute__((packed));
 
 #endif  // REMILL_ARCH_RUNTIME_HYPERCALL_H_

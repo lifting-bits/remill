@@ -18,7 +18,7 @@
 #include "remill/OS/OS.h"
 
 #include "tools/vmill/Executor/Executor.h"
-#include "tools/vmill/OS/Linux32/System.h"
+#include "tools/vmill/OS/System.h"
 #include "tools/vmill/Snapshot/Snapshot.h"
 
 DEFINE_string(workspace, "", "Path to workspace in which the snapshot file is "
@@ -30,7 +30,7 @@ DEFINE_string(os, "", "OS of the code in the snapshot.");
 
 namespace {
 
-static const char *fakeArgV[] = {
+static const char *kFakeArgV[] = {
   "vmill-exec32",
   "-disable-debug-info-print",
   "-regalloc=fast",
@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
   GFLAGS_NAMESPACE::SetUsageMessage(ss.str());
   GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
-  llvm::cl::ParseCommandLineOptions(3, fakeArgV, "");
+  llvm::cl::ParseCommandLineOptions(3, kFakeArgV, "");
 
   if (FLAGS_workspace.empty()) {
     FLAGS_workspace = CurrentWorkingDirectory();
@@ -91,9 +91,9 @@ int main(int argc, char **argv) {
 
   auto arch = Arch::Create(os_name, arch_name);
   do {
-    auto process = Process32::Create(snapshot);
+    auto process = Process::Create(snapshot);
     CHECK(nullptr != process)
-        << "Unable to create 32-bit process.";
+        << "Unable to create process.";
 
     auto code_version = process->CodeVersion();
     auto executor = Executor::CreateNativeExecutor(arch, code_version);
@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
           break;
 
         case Executor::kStatusStoppedAtAsyncHyperCall:
-          process->ProcessAsyncHyperCall(thread);
+          process->HandleAsyncHyperCall(thread);
           break;
 
         case Executor::kStatusPaused:

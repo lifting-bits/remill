@@ -22,7 +22,11 @@ DEF_SEM(ROL, D dst, S1 src1, S2 src2) {
         UShr(val, USub(op_size, temp_count)));
     WriteZExt(dst, new_val);
     Write(FLAG_CF, UCmpEq(UAnd(new_val, one), one));
-    Write(FLAG_OF, BXor(FLAG_CF, SignFlag(new_val)));
+    if (1 == temp_count) {
+      Write(FLAG_OF, BXor(FLAG_CF, SignFlag(new_val)));
+    } else {
+      Write(FLAG_OF, false);
+    }
     // OF undefined for `1 == temp_count`.
   } else {
     WriteZExt(dst, val);

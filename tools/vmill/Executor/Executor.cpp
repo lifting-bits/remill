@@ -32,7 +32,7 @@ Executor::~Executor(void) {
 // Compiles or recompiles the bitcode in order to satisfy a new execution
 // request for code that we don't yet have lifted.
 void Executor::LiftCodeAtProgramCounter(Process *process) {
-  auto curr_pc = process->ProgramCounter();
+  auto curr_pc = process->NextProgramCounter();
   if (pc_to_func.count(curr_pc)) {
     return;  // Already lifted.
   }
@@ -54,7 +54,8 @@ void Executor::LiftCodeAtProgramCounter(Process *process) {
 
 Executor::Status Executor::Execute(Process *process) {
   while (true) {
-    auto pc = process->ProgramCounter();
+    Process::gCurrent = process;
+    auto pc = process->NextProgramCounter();
     auto func_it = pc_to_func.find(pc);
 
     // If we don't have the lifted code, then go lift it!
@@ -66,7 +67,10 @@ Executor::Status Executor::Execute(Process *process) {
           << "Unable to find code associated with PC " << std::hex << pc;
     }
 
-    switch (Execute(process, func_it->second)) {
+    const auto exec_flow = Execute(process, func_it->second);
+    Process::gCurrent = nullptr;
+
+    switch (exec_flow) {
       case kFlowAsyncHyperCall:
         return Executor::kStatusStoppedAtAsyncHyperCall;
 

@@ -572,6 +572,7 @@ static void CopyTraceeMemory(pid_t pid, int snapshot_fd) {
   munmap(data, memory_size);
   close(fd);
 }
+
 // Create a snapshot file of the tracee.
 static void SnapshotTracee(pid_t pid) {
   auto fd = open64(
@@ -944,6 +945,13 @@ static void SnapshotProgram(ArchName arch, OSName os) {
     // Tell the tracee to load in all shared libraries as soon as possible.
     CHECK(!setenv("LD_BIND_NOW", "1", true))
         << "Unable to set LD_BIND_NOW=1 for tracee: " << strerror(errno);
+
+    // Ideally speed up calls to `localtime`.
+    if (!getenv("TZ")) {
+      CHECK(!setenv("TZ", ":/etc/localtime", true))
+          << "Unable to set TZ=\":/etc/localtime\" for tracee: "
+          << strerror(errno);
+    }
 
     CHECK(!execvpe(gTraceeArgv[0], gTraceeArgv, __environ))
         << "Unable to exec tracee: " << strerror(errno);

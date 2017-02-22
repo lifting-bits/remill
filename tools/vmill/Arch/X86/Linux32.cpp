@@ -15,7 +15,7 @@
 
 #define HAS_FEATURE_AVX 1
 #define HAS_FEATURE_AVX512 1
-#define ADDRESS_SIZE_BITS 64
+#define ADDRESS_SIZE_BITS 64  // ptrace process state will be 64 bit.
 #include "remill/Arch/X86/Runtime/State.h"
 
 namespace remill {
@@ -75,6 +75,60 @@ class Int0x80SystemCall : public SystemCall32 {
   State *state;
 };
 
+class SysEnterSystemCall : public SystemCall32 {
+ public:
+  explicit SysEnterSystemCall(State *state_)
+     : state(state_) {}
+
+  virtual ~SysEnterSystemCall(void) {}
+
+  void SetReturn(int ret_val) const override {
+    state->gpr.rax.dword = static_cast<uint32_t>(ret_val);
+  }
+
+  int GetSystemCallNum(void) const override {
+    return static_cast<int>(state->gpr.rax.dword);
+  }
+
+ protected:
+  bool TryGetArgValue(int arg_num, size_t value_size,
+                      void *value) const override {
+    uint32_t arg_val = 0;
+    switch (arg_num) {
+      case 0:
+        arg_val = state->gpr.rbx.dword;
+        break;
+      case 1:
+        arg_val = state->gpr.rcx.dword;
+        break;
+      case 2:
+        arg_val = state->gpr.rdx.dword;
+        break;
+      case 3:
+        arg_val = state->gpr.rsi.dword;
+        break;
+      case 4:
+        arg_val = state->gpr.rdi.dword;
+        break;
+      case 5:
+        if (!Process::gCurrent->TryRead(state->gpr.rbp.dword, &arg_val)) {
+          return false;
+        }
+        break;
+      default:
+        return false;
+    }
+
+    memcpy(value, &arg_val, value_size);
+    return true;
+  }
+
+ private:
+  SysEnterSystemCall(void) = delete;
+
+  State *state;
+};
+
 }  // namespace
 
 // Returns the size of the `State` structure for all X86 variants. This is
@@ -93,6 +147,16 @@ void CopyTraceeState(pid_t pid, int fd) {
   struct user_regs_struct regs;
   ptrace(PTRACE_GETREGS, pid, NULL, &regs);
 
+  // Copy in the flags.
+  state.rflag.flat = regs.eflags;
+  state.aflag.pf = state.rflag.pf;
+  state.aflag.af = state.rflag.af;
+  state.aflag.zf = state.rflag.zf;
+  state.aflag.sf = state.rflag.sf;
+  state.aflag.df = state.rflag.df;
+  state.aflag.of = state.rflag.of;
+
+  // Copy in the general-purpose registers.
   auto &gpr = state.gpr;
   gpr.rax.qword = regs.rax;
   gpr.rbx.qword = regs.rbx;
@@ -112,6 +176,7 @@ void CopyTraceeState(pid_t pid, int fd) {
   gpr.r15.qword = regs.r15;
   gpr.rip.qword = regs.rip - 1;  // Subtract off size of `int3`.
 
+  // Copy in the segments.
   auto &seg = state.seg;
   seg.cs = regs.cs;
   seg.ds = regs.ds;
@@ -169,8 +234,29 @@ void CopyTraceeState(pid_t pid, int fd) {
     write(fd, &(gZeroData[0]), missing_size);
 
     DLOG(INFO)
-        << "Write " << missing_size << " padding bytes to snapshot file.";
+        << "Wrote " << missing_size << " padding bytes to snapshot file.";
   }
+
+  LOG(INFO)
+      << "Copying register state" << std::endl
+      << "Register state:" << std::endl
+      << "  rax = " << std::hex << gpr.rax.qword << std::endl
+      << "  rbx = " << std::hex << gpr.rbx.qword << std::endl
+      << "  rcx = " << std::hex << gpr.rcx.qword << std::endl
+      << "  rdx = " << std::hex << gpr.rdx.qword << std::endl
+      << "  rsi = " << std::hex << gpr.rsi.qword << std::endl
+      << "  rdi = " << std::hex << gpr.rdi.qword << std::endl
+      << "  rsp = " << std::hex << gpr.rsp.qword << std::endl
+      << "  rbp = " << std::hex << gpr.rbp.qword << std::endl
+      << "  r8  = " << std::hex << gpr.r8.qword << std::endl
+      << "  r9  = " << std::hex << gpr.r9.qword << std::endl
+      << "  r10 = " << std::hex << gpr.r10.qword << std::endl
+      << "  r11 = " << std::hex << gpr.r11.qword << std::endl
+      << "  r12 = " << std::hex << gpr.r12.qword << std::endl
+      << "  r13 = " << std::hex << gpr.r13.qword << std::endl
+      << "  r14 = " << std::hex << gpr.r14.qword << std::endl
+      << "  r15 = " << std::hex << gpr.r15.qword << std::endl
+      << "  rip = " << std::hex << gpr.rip.qword;
 }
 
 // 32-bit x86 thread state structure.
@@ -183,7 +269,7 @@ class X86Thread32 final : public Thread32 {
 
   virtual ~X86Thread32(void) = default;
 
-  uint64_t ProgramCounter(void) const override {
+  uint64_t NextProgramCounter(void) const override {
     return static_cast<uint64_t>(state.gpr.rip.dword);
   }
 
@@ -191,10 +277,10 @@ class X86Thread32 final : public Thread32 {
     return &state;
   }
  protected:
-  AsyncHyperCall::Name GetHyperCall(void) const override {
+  AsyncHyperCall::Name PendingHyperCall(void) const override {
     return state.hyper_call;
   }
-  int GetInterruptVector(void) const override {
+  int PendingInterruptVector(void) const override {
     return state.interrupt_vector;
   }
 
@@ -204,21 +290,61 @@ class X86Thread32 final : public Thread32 {
   State state;
 };
 
+namespace {
+
+// One example of this in practice:
+//  0xf7fd8be0 <+0>:    push   ecx
+//  0xf7fd8be1 <+1>:    push   edx
+//  0xf7fd8be2 <+2>:    push   ebp
+//  0xf7fd8be3 <+3>:    mov    ebp,esp
+//  0xf7fd8be5 <+5>:    sysenter
+//  0xf7fd8be7 <+7>:    int    0x80
+//  0xf7fd8be9 <+9>:    pop    ebp
+//  0xf7fd8bea <+10>:   pop    edx
+//  0xf7fd8beb <+11>:   pop    ecx
+//  0xf7fd8bec <+12>:   ret
+
+static Addr32 FindVDSO32SysEnterReturn(void) {
+  auto pc = static_cast<Addr32>(Process::gCurrent->NextProgramCounter());
+  auto reader = Process::gCurrent->ExecutableByteReader();
+  uint8_t bytes[] = {0, 0};
+
+  // Search forward for some NOPs. These may be used to align the `int 0x80`
+  // (the restart point) to a reasonable place.
+  for (Addr32 i = 0; i < 7; ++i, ++pc) {
+    if (!reader(pc, &(bytes[0])) || 0x90 != bytes[0]) {
+      break;
+    }
+  }
+
+  // Now try to find the `int 0x80`, which is the backup/restart path.
+  if (reader(pc, &(bytes[0])) && reader(pc + 1, &(bytes[1]))) {
+    if (0xcd == bytes[0] && 0x80 == bytes[1]) {
+      return pc + 2;
+    }
+  }
+
+  return pc;
+}
+
+}  // namespace
+
 void X86Thread32::DoSystemCall(AsyncHyperCall::Name name,
                                SystemCallHandler handler) {
+  auto pc = NextProgramCounter();
 
-  if (AsyncHyperCall::kX86SysEnter == name) {
-    // TODO(pag): Suppress `sysenter` in the hopes that there is an
-    //            `int 0x80` following it.
-
-  } else if (AsyncHyperCall::kX86IntN == name &&
-             0x80 == state.interrupt_vector) {
+  if (AsyncHyperCall::kX86IntN == name && 0x80 == state.interrupt_vector) {
     Int0x80SystemCall abi(&state);
     handler(abi);
 
+  } else if (AsyncHyperCall::kX86SysEnter == name) {
+    SysEnterSystemCall abi(&state);
+    handler(abi);
+    state.gpr.rip.dword = FindVDSO32SysEnterReturn();
+
   } else {
     LOG(FATAL)
-        << "Unable to handle system call type.";
+        << "Unable to handle system call at " << std::hex << pc;
   }
 }
 

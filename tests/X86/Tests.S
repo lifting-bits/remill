@@ -483,6 +483,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/COMISS.S"
 #include "tests/X86/SSE/PCMPISTRI.S"
 #include "tests/X86/SSE/PSHUFD.S"
+#include "tests/X86/SSE/PSRLDQ.S"
 #include "tests/X86/SSE/UCOMISD.S"
 #include "tests/X86/SSE/UCOMISS.S"
 
