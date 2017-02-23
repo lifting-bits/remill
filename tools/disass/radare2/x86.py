@@ -8,12 +8,6 @@ except:
     log.critical("Install the radare2 python bindings. (https://github.com/radare/radare2-r2pipe)")
 
 #
-# I have concerns on performance in large executable scenarios.
-# I do not have faith.. Qapla'
-#
-
-
-#
 # r2 is a r2pipe.open instance
 #
 def analyze(r2):
@@ -51,10 +45,9 @@ def analyze(r2):
     #
     # Should investigate using:
     #   aaaa is experimental
-    log.warning("Fuck you")
     prep_analyses = {
       "aa" : "alias for 'af@@ sym.*;af@entry0;afva'",
-      "aaa" : " autoname functions after aa (see afna)",
+      "aaa" : "autoname functions after aa (see afna)",
       "aab" : "analyze blocks over text section",
       "aac" : "analyze function calls",
       "aad" : "analyze data references to code",
@@ -80,9 +73,9 @@ def analyze(r2):
         # XXX: I am a bit confused on the meaning of the 1 and 0 for
         # visibility. I am setting the imported symbols to visibility 1.
         if name.startswith("sym.imp.") == True:
-            named_block.visibility = 1
+            named_block.visibility = CFG_pb2.IMPORTED
         else:
-            named_block.visibility = 0
+            named_block.visibility = CFG_pb2.EXPORTED
         mod.named_blocks.extend([named_block])
 
         # Analyze the current function
@@ -140,20 +133,20 @@ def analyze(r2):
             ii.address = op["offset"]    
             oc = op["opcode"]
 
-            #
-            # Unsure if this is the behavior that is desired
-            # further, perhaps the json dumping should be a verbose option.
-            if oc.startswith("ud2") == True:
-                log.warning("Undefined (ud2) {1}@{0}. Ignoring block, skipping to next function! ".format(op["offset"], name))
-                log.debug("Disassembling function: {}".format(name))
-                log.debug("{}".format(json.dumps(dis, sort_keys=False, indent=4, separators=(",", ": "))))
-                new_block = True
-                blk = None
-                break
-
             blk.instructions.extend([ii])
-            blk_terminators = ["call", "ret", "int", "j", "iret", "hlt", "nop", \
-              "lcall", "ljmp", "syscall" ]
+            blk_terminators = [ 
+              "call",
+              "ret",
+              "hlt",
+              "int",
+              "iret",
+              "nop",
+              "j",
+              "lcall",
+              "ljmp",
+              "syscall",
+              "ud2"
+            ] 
             for bt in blk_terminators: 
                 if oc.startswith(bt) == True:
                     mod.blocks.extend([blk])
@@ -161,7 +154,7 @@ def analyze(r2):
                     blk = None
                     break
         if blk:
-            log.warning("Reach non-block terminated set of instructions... inserting block anyway")
+            log.warning("Reached non-terminated block...inserting block anyway")
             mod.blocks.extend([blk])
 
     return mod
