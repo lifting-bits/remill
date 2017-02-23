@@ -64,14 +64,12 @@ def analyze(r2):
     for fne in fn_list:
         name = fne["name"]
         new_block = True
+        new_fn_block = True
 
-        # Having each function be a named block. Is enough?
         named_block = CFG_pb2.NamedBlock()
         named_block.name = name
         named_block.address = fne["offset"]
 
-        # XXX: I am a bit confused on the meaning of the 1 and 0 for
-        # visibility. I am setting the imported symbols to visibility 1.
         if name.startswith("sym.imp.") == True:
             named_block.visibility = CFG_pb2.IMPORTED
         else:
@@ -133,6 +131,20 @@ def analyze(r2):
             ii.address = op["offset"]    
             oc = op["opcode"]
 
+            # TODO(roachspray) determine complete list
+            addressed_causing = [
+              "call",
+              "lcall",
+              "sysenter",
+              "syscall",
+              "int"
+            ]
+            for ac in addressed_causing: 
+                if oc.startswith(ac) == True:
+                    # re-use new_fn_block since both add to addressed_blocks
+                    new_fn_block = True
+                    break
+
             blk.instructions.extend([ii])
             blk_terminators = [ 
               "call",
@@ -150,11 +162,17 @@ def analyze(r2):
             for bt in blk_terminators: 
                 if oc.startswith(bt) == True:
                     mod.blocks.extend([blk])
+                    if new_fn_block == True:
+                      mod.addressed_blocks.extend([blk.address])
+                      new_fn_block = False
                     new_block = True
                     blk = None
                     break
         if blk:
             log.warning("Reached non-terminated block...inserting block anyway")
             mod.blocks.extend([blk])
+            if new_fn_block == True:
+                mod.addressed_blocks.extend([blk.address])
+                new_fn_block = False
 
     return mod
