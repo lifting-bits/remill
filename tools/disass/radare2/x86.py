@@ -1,8 +1,17 @@
+import json
+import log
+
 import CFG_pb2
 try:
     import r2pipe
 except:
-    print("Install the radare2 python bindings. (https://github.com/radare/radare2-r2pipe)")
+    log.critical("Install the radare2 python bindings. (https://github.com/radare/radare2-r2pipe)")
+
+#
+# I have concerns on performance in large executable scenarios.
+# I do not have faith.. Qapla'
+#
+
 
 #
 # r2 is a r2pipe.open instance
@@ -33,6 +42,29 @@ def analyze(r2):
     #   "nargs":0,
     #   "nlocals":0
     # }
+
+    #
+    # The purpose of running these is to get the executable
+    # analyzed so the representation given from radare2 is 
+    # in a form that is useful to being remill-ingested.
+    # I am sure there are improvements to be made here.
+    #
+    # Should investigate using:
+    #   aaaa is experimental
+    log.warning("Fuck you")
+    prep_analyses = {
+      "aa" : "alias for 'af@@ sym.*;af@entry0;afva'",
+      "aaa" : " autoname functions after aa (see afna)",
+      "aab" : "analyze blocks over text section",
+      "aac" : "analyze function calls",
+      "aad" : "analyze data references to code",
+      "aae" : "analyze references with ESIL",
+      "aap" : "analyze function preludes"
+    }
+    for x,y in prep_analyses.iteritems():
+        log.info("running command for: {}".format(y))
+        r2.cmd(x)
+    
     fn_list = r2.cmdj("aflj")
 
     mod = CFG_pb2.Module()
@@ -44,15 +76,17 @@ def analyze(r2):
         named_block = CFG_pb2.NamedBlock()
         named_block.name = name
         named_block.address = fne["offset"]
-	if name.startswith("sym.imp.") == True:
-		named_block.visibility = 1
-	else:
-	        named_block.visibility = 0
+
+        # XXX: I am a bit confused on the meaning of the 1 and 0 for
+        # visibility. I am setting the imported symbols to visibility 1.
+        if name.startswith("sym.imp.") == True:
+            named_block.visibility = 1
+        else:
+            named_block.visibility = 0
         mod.named_blocks.extend([named_block])
 
         # Analyze the current function
         r2.cmd("af@{0}".format(name))
-
         # Disassemble function and return in json, which 
         # will look like:
         # {
@@ -79,7 +113,7 @@ def analyze(r2):
         # }
         dis = r2.cmdj("pdfj@{0}".format(name))
         if dis is None:
-            print("Unable to disassemble {0}".format(name))
+            log.warning("Unable to disassemble {0}".format(name))
             continue
 
         for op in dis["ops"]:
@@ -105,8 +139,14 @@ def analyze(r2):
             ii.bytes = ''.join([chr(int(x, 16)) for x in btmp])
             ii.address = op["offset"]    
             oc = op["opcode"]
+
+            #
+            # Unsure if this is the behavior that is desired
+            # further, perhaps the json dumping should be a verbose option.
             if oc.startswith("ud2") == True:
-                print("Undefined (ud2) {1}@{0}. Ignoring block, skipping to next function!".format(op["offset"], name))
+                log.warning("Undefined (ud2) {1}@{0}. Ignoring block, skipping to next function! ".format(op["offset"], name))
+                log.debug("Disassembling function: {}".format(name))
+                log.debug("{}".format(json.dumps(dis, sort_keys=False, indent=4, separators=(",", ": "))))
                 new_block = True
                 blk = None
                 break
@@ -121,7 +161,7 @@ def analyze(r2):
                     blk = None
                     break
         if blk:
-            print("Reach non-block terminated set of instructions... inserting block anyway")
+            log.warning("Reach non-block terminated set of instructions... inserting block anyway")
             mod.blocks.extend([blk])
 
     return mod
