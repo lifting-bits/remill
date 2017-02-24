@@ -152,7 +152,15 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
 
         -std=gnu++11
         
-        -m${address_size}
+        # TODO(pag): This should be what I do, but I've observed strange LLVM
+        #            code gen issues, where 32-bit code whose data layout is
+        #            converted to 64-bit code will sometimes miscompile pointers
+        #            as 32-bit. This is, of course, in bitcode that doesn't
+        #            do any ptrtoint or inttoptr casts! And this issue doesn't
+        #            show up when certain amounts of very aggressive
+        #            optimizations are performed to the file before converting
+        #            to 32-bit >:-(
+        # -m${address_size}
         
         -Wall
         -Werror
@@ -171,20 +179,24 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
         -Wno-c99-extensions
         -Wno-ignored-attributes
 
-        -ffreestanding
-    
         # All of these are needed to disable vectorization, both in the LLVM
         # optimizer, and in the Clang front-end.
         -mtune=generic
+        -mno-sse
+        -mno-avx
+        -mno-3dnow
         -fno-vectorize
         -fno-slp-vectorize
-        -mno-sse -mno-avx -mno-3dnow
         
+        -ffreestanding
         -fno-common
         -fno-builtin
         -fno-exceptions
         -fno-rtti
         -fno-asynchronous-unwind-tables
+
+        -Wno-unneeded-internal-declaration
+        -Wno-unused-function
     )
 
     # Note: `-O0 -g3` is significant here. We need to make sure that we can

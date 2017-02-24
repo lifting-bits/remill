@@ -7,13 +7,14 @@
     namespace { \
     DEF_SEM(Do ## name) { \
       const addr_t addr = Read(REG_XDI); \
+      const addr_t num_bytes = sizeof(type); \
       Write(WritePtr<type>(addr _IF_32BIT(REG_ES_BASE)), \
             Read(state.gpr.rax.read_sel)); \
       addr_t next_addr = 0; \
       if (BNot(FLAG_DF)) { \
-        next_addr = UAdd(addr, sizeof(type)); \
+        next_addr = UAdd(addr, num_bytes); \
       } else { \
-        next_addr = USub(addr, sizeof(type)); \
+        next_addr = USub(addr, num_bytes); \
       } \
       Write(REG_XDI, next_addr); \
     } \
@@ -35,15 +36,16 @@ IF_64BIT(MAKE_STOS(STOSQ, uint64_t, qword))
     namespace { \
     DEF_SEM(Do ## name) { \
       const addr_t addr = Read(REG_XDI); \
+      const addr_t num_bytes = sizeof(type); \
       const type lhs = Read(state.gpr.rax.read_sel); \
       const type rhs = Read(ReadPtr<type>(addr _IF_32BIT(REG_ES_BASE))); \
       const type res = USub(lhs, rhs); \
       WriteFlagsAddSub<tag_sub>(state, lhs, rhs, res); \
       addr_t next_addr = 0; \
       if (BNot(FLAG_DF)) { \
-        next_addr = UAdd(addr, sizeof(type)); \
+        next_addr = UAdd(addr, num_bytes); \
       } else { \
-        next_addr = USub(addr, sizeof(type)); \
+        next_addr = USub(addr, num_bytes); \
       } \
       Write(REG_XDI, next_addr); \
     } \
@@ -61,13 +63,14 @@ IF_64BIT(MAKE_SCAS(SCASQ, uint64_t, qword))
     namespace { \
     DEF_SEM(Do ## name) { \
       const addr_t addr = Read(REG_XSI); \
+      const addr_t num_bytes = sizeof(type); \
       WriteZExt(state.gpr.rax.write_sel, \
                 Read(ReadPtr<type>(addr _IF_32BIT(REG_DS_BASE)))); \
       addr_t next_addr = 0; \
       if (BNot(FLAG_DF)) { \
-        next_addr = UAdd(addr, sizeof(type)); \
+        next_addr = UAdd(addr, num_bytes); \
       } else { \
-        next_addr = USub(addr, sizeof(type)); \
+        next_addr = USub(addr, num_bytes); \
       } \
       Write(REG_XSI, next_addr); \
     } \
@@ -86,16 +89,17 @@ IF_64BIT(MAKE_LODS(LODSQ, uint64_t, qword))
     DEF_SEM(Do ## name) { \
       const addr_t src_addr = Read(REG_XSI); \
       const addr_t dst_addr = Read(REG_XDI); \
+      const addr_t num_bytes = sizeof(type); \
       Write(WritePtr<type>(dst_addr _IF_32BIT(REG_ES_BASE)), \
             Read(ReadPtr<type>(src_addr _IF_32BIT(REG_DS_BASE)))); \
       addr_t next_dst_addr = 0; \
       addr_t next_src_addr = 0; \
       if (BNot(FLAG_DF)) { \
-        next_dst_addr = UAdd(dst_addr, sizeof(type)); \
-        next_src_addr = UAdd(src_addr, sizeof(type)); \
+        next_dst_addr = UAdd(dst_addr, num_bytes); \
+        next_src_addr = UAdd(src_addr, num_bytes); \
       } else { \
-        next_dst_addr = USub(dst_addr, sizeof(type)); \
-        next_src_addr = USub(src_addr, sizeof(type)); \
+        next_dst_addr = USub(dst_addr, num_bytes); \
+        next_src_addr = USub(src_addr, num_bytes); \
       } \
       Write(REG_XDI, next_dst_addr); \
       Write(REG_XSI, next_src_addr); \
@@ -115,6 +119,7 @@ IF_64BIT(MAKE_MOVS(MOVSQ, uint64_t, qword))
     DEF_SEM(Do ## name) { \
       const addr_t src1_addr = Read(REG_XSI); \
       const addr_t src2_addr = Read(REG_XDI); \
+      const addr_t num_bytes = sizeof(type); \
       const type lhs = Read(ReadPtr<type>(src1_addr _IF_32BIT(REG_DS_BASE))); \
       const type rhs = Read(ReadPtr<type>(src2_addr _IF_32BIT(REG_ES_BASE))); \
       const type res = USub(lhs, rhs); \
@@ -122,11 +127,11 @@ IF_64BIT(MAKE_MOVS(MOVSQ, uint64_t, qword))
       addr_t next_src1_addr = 0; \
       addr_t next_src2_addr = 0; \
       if (BNot(FLAG_DF)) { \
-        next_src1_addr = UAdd(src1_addr, sizeof(type)); \
-        next_src2_addr = UAdd(src2_addr, sizeof(type)); \
+        next_src1_addr = UAdd(src1_addr, num_bytes); \
+        next_src2_addr = UAdd(src2_addr, num_bytes); \
       } else { \
-        next_src1_addr = USub(src1_addr, sizeof(type)); \
-        next_src2_addr = USub(src2_addr, sizeof(type)); \
+        next_src1_addr = USub(src1_addr, num_bytes); \
+        next_src2_addr = USub(src2_addr, num_bytes); \
       } \
       Write(REG_XDI, next_src2_addr); \
       Write(REG_XSI, next_src1_addr); \

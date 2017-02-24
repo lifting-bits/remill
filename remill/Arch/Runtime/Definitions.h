@@ -8,7 +8,7 @@
 #endif
 
 #ifndef ADDRESS_SIZE_BYTES
-# define ADDRESS_SIZE_BYTES (ADDRESS_SIZE_BITS / 8UL)
+# define ADDRESS_SIZE_BYTES static_cast<addr_t>(ADDRESS_SIZE_BITS / 8)
 #endif
 
 #if 64 == ADDRESS_SIZE_BITS
@@ -62,8 +62,8 @@
 // An instruction with no explicit destination operand that reads either a
 // 32- or a 64-bit register or immediate value.
 #define DEF_ISEL_RI32or64(name, func) \
-    IF_32BIT( DEF_ISEL(name ## _32) = func<uint32_t> ) \
-    IF_64BIT( DEF_ISEL(name ## _64) = func<uint64_t> )
+    IF_32BIT( DEF_ISEL(name ## _32) = func<I32> ) \
+    IF_64BIT( DEF_ISEL(name ## _64) = func<I64> )
 
 // An instruction with a single 32- or 64-bit register destination operand.
 #define DEF_ISEL_R32or64W(name, func) \

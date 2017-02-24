@@ -1,4 +1,4 @@
-/* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+/* Copyright 2017 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
 #include "remill/Arch/Runtime/Intrinsics.h"
 #include "remill/Arch/Runtime/Operators.h"
@@ -7,8 +7,10 @@
 #include "remill/Arch/X86/Runtime/Types.h"
 #include "remill/Arch/X86/Runtime/Operators.h"
 
+#include <algorithm>
+#include <bitset>
 #include <fenv.h>
-#include <math.h>
+#include <cmath>
 
 #define REG_IP state.gpr.rip.word
 #define REG_EIP state.gpr.rip.dword
@@ -121,10 +123,17 @@ DEF_SEM(HandleUnsupported) {
       memory, state, IF_64BIT_ELSE(SyncHyperCall::kAMD64EmulateInstruction,
                                    SyncHyperCall::kX86EmulateInstruction));
 }
+
+// Takes the place of an invalid instruction.
+DEF_SEM(HandleInvalidInstruction) {
+    HYPER_CALL = AsyncHyperCall::kInvalidInstruction;
+}
+
 }  // namespace
 
 // Takes the place of an unsupported instruction.
 DEF_ISEL(UNSUPPORTED_INSTRUCTION) = HandleUnsupported;
+DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 
 #include "remill/Arch/X86/Semantics/FLAGS.cpp"
 #include "remill/Arch/X86/Semantics/BINARY.cpp"
