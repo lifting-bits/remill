@@ -11,6 +11,7 @@ Remill:
   - [Peter Goodman](https://github.com/pgoodman)
   - [Ryan Govostes](https://github.com/rgov)
   - [Yan Ivnitskiy](https://github.com/yan)
+  - [Andrew R. Reiter](https://github.com/roachspray)
 
 ## Companies
 
