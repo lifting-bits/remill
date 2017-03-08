@@ -147,8 +147,8 @@ This script will build and install the Google Test framework. It will request ad
 ### Generate and Run the Test Cases
 
 ```shell
-./scripts/x86/generate_tests.sh
-./scripts/x86/run_tests.sh
+sudo make build_x86_tests
+ctest
 ```
 
 ## Try it Out

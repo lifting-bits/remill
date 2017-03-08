@@ -1,7 +1,5 @@
 # Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved.
 
-set(CMAKE_ASM_COMPILER ${CMAKE_CXX_COMPILER})
-
 project(remill)
 cmake_minimum_required (VERSION 3.2)
 
@@ -22,6 +20,8 @@ include_directories("${GLOG_INCLUDE_DIRS}")
 include_directories("${GFLAGS_INCLUDE_DIRS}")
 include_directories("${PROTOBUF_INCLUDE_DIRS}")
 include_directories("${CMAKE_CURRENT_LIST_DIR}")
+
+set(CMAKE_ASM_COMPILER ${CMAKE_CXX_COMPILER})
 
 if(NOT DEFINED CMAKE_C_COMPILER)
     set(CMAKE_C_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang-3.9")
@@ -200,31 +200,6 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
         -Wno-unused-function
     )
 
-    # Note: `-O0 -g3` is significant here. We need to make sure that we can
-    #       recover variables names within `__remill_basic_block` that may have
-    #       been lost when the code was compiled.
-    add_custom_target(BasicBlock.${name}.bc
-        COMMAND ${CMAKE_CXX_COMPILER}
-                ${SEMANTICS_CXX_FLAGS}
-                -O0 -g3
-                -c ${PROJECT_SOURCE_DIR}/remill/Arch/X86/Runtime/BasicBlock.cpp
-                -o BasicBlock.${name}.bc
-        SOURCES remill/Arch/X86/Runtime/BasicBlock.cpp
-    )
-    
-    # Note: Some debug info *must* be preserved. This is so that we can have
-    #       debug info on lifted blocks that call these inlinable instruction
-    #       functions, without LLVM going and complaining about calling an
-    #       inlineable function with debug info.
-    add_custom_target(Instructions.${name}.bc
-        COMMAND ${CMAKE_CXX_COMPILER}
-                ${SEMANTICS_CXX_FLAGS}
-                -O3 -g0
-                -c ${PROJECT_SOURCE_DIR}/remill/Arch/X86/Runtime/Instructions.cpp
-                -o Instructions.${name}.bc
-        SOURCES remill/Arch/X86/Runtime/Instructions.cpp
-    )
-
     add_custom_target(${name}.bc
         COMMAND ${CMAKE_LLVM_LINK}
                 BasicBlock.${name}.bc
@@ -232,6 +207,33 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
                 -o ${name}.bc
         DEPENDS BasicBlock.${name}.bc
                 Instructions.${name}.bc
+    )
+
+    # Note: `-O0 -g3` is significant here. We need to make sure that we can
+    #       recover variables names within `__remill_basic_block` that may have
+    #       been lost when the code was compiled.
+    add_custom_command(
+        OUTPUT  BasicBlock.${name}.bc
+        COMMAND ${CMAKE_CXX_COMPILER}
+                ${SEMANTICS_CXX_FLAGS}
+                -O0 -g3
+                -c ${PROJECT_SOURCE_DIR}/remill/Arch/X86/Runtime/BasicBlock.cpp
+                -o BasicBlock.${name}.bc
+        DEPENDS remill/Arch/X86/Runtime/BasicBlock.cpp
+    )
+    
+    # Note: Some debug info *must* be preserved. This is so that we can have
+    #       debug info on lifted blocks that call these inlinable instruction
+    #       functions, without LLVM going and complaining about calling an
+    #       inlineable function with debug info.
+    add_custom_command(
+        OUTPUT  Instructions.${name}.bc
+        COMMAND ${CMAKE_CXX_COMPILER}
+                ${SEMANTICS_CXX_FLAGS}
+                -O3 -g0
+                -c ${PROJECT_SOURCE_DIR}/remill/Arch/X86/Runtime/Instructions.cpp
+                -o Instructions.${name}.bc
+        DEPENDS remill/Arch/X86/Runtime/Instructions.cpp
     )
 
     add_dependencies(semantics ${name}.bc)
@@ -249,12 +251,17 @@ COMPILE_X86_SEMANTICS(amd64 64 0 0)
 COMPILE_X86_SEMANTICS(amd64_avx 64 1 0)
 COMPILE_X86_SEMANTICS(amd64_avx512 64 1 1)
 
+add_dependencies(remill-lift
+    semantics
+)
+
+add_subdirectory(${PROJECT_SOURCE_DIR}/tests/X86)
+
 install(
     TARGETS remill-lift remill-opt
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
 )
 
-add_subdirectory(${PROJECT_SOURCE_DIR}/tests/X86)
 #add_subdirectory(${PROJECT_SOURCE_DIR}/tools)
 

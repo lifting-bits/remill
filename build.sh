@@ -67,9 +67,7 @@ BINDIR=${LLVM_DIR}/bin
 LLVM_DIR=${LLVM_DIR}/lib/cmake/llvm
 
 cmake -DLLVM_DIR=${LLVM_DIR} -DCMAKE_C_COMPILER=${BINDIR}/clang -DCMAKE_CXX_COMPILER=${BINDIR}/clang++ -DCMAKE_LLVM_LINK=${BINDIR}/llvm-link ${DIR}
-echo "[+] Building semantics"
-make semantics
-echo "[+] Building remill"
-make all
-echo "[+] Installing"
+echo "[+] Building"
+make
+echo "[+] installing"
 sudo make install

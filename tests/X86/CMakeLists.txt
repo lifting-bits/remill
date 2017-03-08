@@ -2,12 +2,12 @@
 
 find_package(GTEST REQUIRED)
 
-add_custom_target(tests)
+enable_testing()
+
+add_custom_target(build_x86_tests)
 
 macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
-    
-    set(FAKE tests_${name}.S)
-    
+        
     set(X86_TEST_FLAGS
         -I${PROJECT_SOURCE_DIR}
         -DADDRESS_SIZE_BITS=${address_size}
@@ -70,7 +70,7 @@ macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
         COMMAND lift-${name}-tests
                 --arch ${name}
                 --bc_out tests_${name}.bc
-        DEPENDS lift-${name}-tests
+        DEPENDS lift-${name}-tests semantics
     )
     
     add_custom_command(
@@ -95,13 +95,15 @@ macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
         PRIVATE ${X86_TEST_FLAGS}
     )
     
-    add_dependencies(tests lift-${name}-tests run-${name}-tests)
+    add_dependencies(build_x86_tests
+        lift-${name}-tests
+        run-${name}-tests
+    )
     
+    add_test(${name} run-${name}-tests)
 endmacro()
 
-if(LINUX)
-    COMPILE_X86_TESTS(x86 32 0 0)
-    COMPILE_X86_TESTS(x86_avx 32 1 0)
-    COMPILE_X86_TESTS(amd64 64 0 0)
-    COMPILE_X86_TESTS(amd64_avx 64 1 0)
-endif(LINUX)
+COMPILE_X86_TESTS(x86 32 0 0)
+COMPILE_X86_TESTS(x86_avx 32 1 0)
+COMPILE_X86_TESTS(amd64 64 0 0)
+COMPILE_X86_TESTS(amd64_avx 64 1 0)
