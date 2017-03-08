@@ -14,6 +14,7 @@ enum OSName : uint32_t {
 };
 
 OSName GetOSName(std::string name_);
+std::string GetOSName(OSName name);
 
 }  // namespace remill
 

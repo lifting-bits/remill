@@ -52,6 +52,13 @@ bool FileExists(const std::string &path) {
           S_ISFIFO(file_info.st_mode));
 }
 
+uint64_t FileSize(int fd) {
+  struct stat64 file_info;
+  CHECK(!fstat64(fd, &file_info))
+      << "Cannot stat FD " << fd << ": " << strerror(errno);
+  return static_cast<uint64_t>(file_info.st_size);
+}
+
 uint64_t FileSize(const std::string &path, int fd) {
   struct stat64 file_info;
   CHECK(!fstat64(fd, &file_info))

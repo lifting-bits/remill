@@ -21,6 +21,7 @@ class IntrinsicTable {
   llvm::Function * const function_call;
   llvm::Function * const function_return;
   llvm::Function * const jump;
+  llvm::Function * const missing_block;
 
   // OS interaction.
   llvm::Function * const async_hyper_call;

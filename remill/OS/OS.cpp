@@ -16,4 +16,15 @@ OSName GetOSName(std::string name) {
   }
 }
 
+std::string GetOSName(OSName name) {
+  switch (name) {
+    case kOSInvalid:
+      return "invalid";
+    case kOSmacOS:
+      return "macos";
+    case kOSLinux:
+      return "linux";
+  }
+}
+
 }  // namespace remill

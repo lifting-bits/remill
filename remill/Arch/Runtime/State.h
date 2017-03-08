@@ -3,7 +3,6 @@
 #ifndef REMILL_ARCH_RUNTIME_STATE_H_
 #define REMILL_ARCH_RUNTIME_STATE_H_
 
-#include "remill/Arch/Runtime/Types.h"
 #include "remill/Arch/Runtime/HyperCall.h"
 
 struct ArchState {

@@ -58,6 +58,7 @@ IntrinsicTable::IntrinsicTable(const llvm::Module *module)
       function_call(FindIntrinsic(module, "__remill_function_call")),
       function_return(FindIntrinsic(module, "__remill_function_return")),
       jump(FindIntrinsic(module, "__remill_jump")),
+      missing_block(FindIntrinsic(module, "__remill_missing_block")),
 
       // OS interaction.
       async_hyper_call(FindIntrinsic(module, "__remill_async_hyper_call")),

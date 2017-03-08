@@ -24,7 +24,9 @@ struct Memory;
 
 // Address in the source architecture type. We don't use a `uintptr_t` because
 // that might be specific to the destination architecture type.
-typedef IF_64BIT_ELSE(uint64_t, uint32_t) addr_t;
+typedef uint32_t addr32_t;
+typedef uint64_t addr64_t;
+typedef IF_64BIT_ELSE(addr64_t, addr32_t) addr_t;
 typedef IF_64BIT_ELSE(int64_t, int32_t) addr_diff_t;
 
 #if COMPILING_WITH_GCC && !defined(__x86_64__)

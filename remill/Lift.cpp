@@ -114,8 +114,8 @@ int main(int argc, char *argv[]) {
   CHECK(remill::kArchInvalid != target_arch_name)
       << "Unrecognized architecture for --arch_out: " << FLAGS_arch_out << ".";
 
-  auto source_arch = remill::Arch::Create(source_os, source_arch_name);
-  auto target_arch = remill::Arch::Create(target_os, target_arch_name);
+  auto source_arch = remill::Arch::Get(source_os, source_arch_name);
+  auto target_arch = remill::Arch::Get(target_os, target_arch_name);
 
   CHECK(remill::FileExists(FLAGS_cfg))
       << "Must specify valid path for --cfg. CFG file "

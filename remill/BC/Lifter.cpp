@@ -38,6 +38,7 @@
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Lifter.h"
 #include "remill/BC/Util.h"
+#include "remill/CFG/BlockHasher.h"
 #include "remill/CFG/CFG.h"
 #include "remill/OS/OS.h"
 
@@ -45,10 +46,6 @@ DEFINE_bool(add_breakpoints, false,
             "Add calls to the `BREAKPOINT_INSTRUCTION` before every lifted "
             "instruction. The semantics for this instruction call into a "
             "breakpoint hyper call.");
-
-namespace llvm {
-class ReturnInst;
-}  // namespace llvm
 
 namespace remill {
 namespace {
@@ -101,9 +98,7 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
 Lifter::Lifter(const Arch *arch_, llvm::Module *module_)
     : arch(arch_),
       module(module_),
-      blocks(),
-      indirect_blocks(),
-      exported_blocks(),
+      pc_to_block(),
       basic_block(FindFunction(module, "__remill_basic_block")),
       word_type(llvm::Type::getIntNTy(
           module->getContext(), arch->address_size)),
@@ -143,42 +138,6 @@ static void DisableInlining(llvm::Function *function) {
   function->addFnAttr(llvm::Attribute::NoInline);
 }
 
-// On Mac this strips off leading the underscore on symbol names.
-//
-// TODO(pag): This is really ugly and is probably incorrect. The expectation is
-//            that the leading underscore will be re-added when this code is
-//            compiled.
-//
-// TODO(pag): `main` on macOS.
-//
-// TODO(pag): AMD64 C++ name mangling.
-//
-// TODO(pag): What about on Windows?
-static std::string CanonicalName(OSName os_name, const std::string &name) {
-  (void) os_name;
-  return name;
-//  if (kOSmacOS == os_name && name.length() && '_' == name[0]) {
-//    return name.substr(1);
-//  } else {
-//    return name;
-//  }
-}
-
-// Create an external function given a function name. These will be used to
-// reference imports and exports.
-static llvm::Function *CreateExternalFunction(llvm::Module *module,
-                                              const std::string &name) {
-  auto unknown_func_type = llvm::FunctionType::get(
-      llvm::Type::getVoidTy(module->getContext()), false);
-  auto func = llvm::dyn_cast<llvm::Function>(
-      module->getOrInsertFunction(name, unknown_func_type));
-
-  // Don't want these to conflict with things like `__builtin_sin`.
-  func->addFnAttr(llvm::Attribute::NoBuiltin);
-
-  return func;
-}
-
 // Clone the block method template `TF` into a specific method `BF` that
 // will contain lifted code.
 static void AddBlockInitializationCode(llvm::Function *block_func,
@@ -209,273 +168,90 @@ void Lifter::EnableDeferredInlining(void) {
   }
 }
 
-// Recreate a global table of named blocks.
-void Lifter::SetNamedBlocks(
-    std::unordered_map<std::string, llvm::Function *> &table,
-    const char *table_name) {
-  auto table_var = module->getGlobalVariable(table_name);
+namespace {
 
-  // Yank out the type of the table and of its entries.
-  llvm::ArrayType *array_type = llvm::dyn_cast<llvm::ArrayType>(
-      table_var->getValueType());
-  llvm::StructType *entry_type = llvm::dyn_cast<llvm::StructType>(
-      array_type->getArrayElementType());
+static uint64_t GetBlockId(const cfg::Block &cfg_block) {
+  if (cfg_block.has_id()) {
+    return cfg_block.id();
+  } else {
+    return BlockHasher().HashBlock(cfg_block);
+  }
+}
 
-  auto new_array_type = llvm::ArrayType::get(
-      entry_type, table.size() + 1);
+}  // namespace
 
-  // Replace the old one.
-  table_var->eraseFromParent();
-  table_var = new llvm::GlobalVariable(
-        *module,
-        new_array_type,
-        true,
-        llvm::GlobalValue::ExternalLinkage,
-        nullptr,
-        table_name);
+// Create a function for a single decoded block.
+void Lifter::CreateBlock(const cfg::Block &cfg_block) {
+  auto id = GetBlockId(cfg_block);
+  auto pc = cfg_block.address();
 
-  auto &context = module->getContext();
-  auto char_type = llvm::Type::getInt8Ty(context);
-  auto int_type = llvm::Type::getInt32Ty(context);
-  auto zero = llvm::ConstantInt::get(int_type, 0);
+  auto id_it = id_to_block.find(id);
+  if (id_it != id_to_block.end()) {
+    pc_to_block[pc] = id_it->second;
+  }
 
-  std::vector<llvm::Constant *> entries;
-
-  // Need to make a GEP that gets the address of the first character in a string
-  // with a function's name. First index is going through the global variable
-  // pointer, second is to get the first character.
-  std::vector<llvm::Value *> index_list;
-  index_list.push_back(zero);
-  index_list.push_back(zero);
-
-  for (const auto &kv : table) {
-    auto block_func = kv.second;
-
-    // We create a kind of dummy function for every imported/exported symbol.
-    // The hope is that this will make it easier for downstream tools to use
-    // this table.
-    auto extern_func = CreateExternalFunction(module, kv.first);
-
-    // We want to avoid making the same function name string over and over
-    // again so we'll make a variable with the name of the string itself and
-    // just never use this special variable naming scheme for anything else.
+  auto &block_func = pc_to_block[pc];
+  if (!block_func) {
     std::stringstream ss;
-    ss << "__remill_string_" << kv.first;
-    auto str_type = llvm::ArrayType::get(char_type, kv.first.size() + 1);
-    auto block_name_const = module->getOrInsertGlobal(ss.str(), str_type);
-    auto block_name_var = llvm::dyn_cast<llvm::GlobalVariable>(
-        block_name_const);
+    ss << "__remill_sub_" << std::hex << id;
 
-    if (!block_name_var->hasInitializer()) {
-      auto block_name = llvm::ConstantDataArray::getString(
-          context, kv.first, true);
-      block_name_var->setInitializer(block_name);
+    auto func_type = basic_block->getFunctionType();
+    block_func = llvm::Function::Create(
+        func_type, llvm::GlobalValue::ExternalLinkage, ss.str(), module);
+    InitFunctionAttributes(block_func);
+    SetBlockPC(block_func, pc);
+    SetBlockId(block_func, id);
+
+    id_to_block[id] = block_func;
+
+    if (cfg_block.has_name()) {
+      DLOG(INFO)
+          << "Block at " << std::hex << pc << " has name " << cfg_block.name();
+      SetBlockName(block_func, cfg_block.name());
     }
 
-    // Note: Each entry has the following type:
-    //    struct NamedBlock final {
-    //      const char * const name;
-    //      void (* const lifted_func)(Memory &, State &, addr_t);
-    //      void (* const native_func)(void);
-    //    };
-    entries.push_back(llvm::ConstantStruct::get(
-        entry_type,
-        llvm::ConstantExpr::getGetElementPtr(
-            str_type, block_name_var, index_list),
-        block_func,
-        extern_func,
-        nullptr));
-  }
-
-  entries.push_back(llvm::ConstantAggregateZero::get(entry_type));
-  table_var->setInitializer(llvm::ConstantArray::get(new_array_type, entries));
-}
-
-// Recreate the global table of indirectly addressible blocks.
-void Lifter::SetIndirectBlocks(void) {
-  if (indirect_blocks.empty()) {
-    return;
-  }
-
-  auto table_var = module->getGlobalVariable("__remill_indirect_blocks");
-
-  // Yank out the type of the table and of its entries.
-  llvm::ArrayType *array_type = llvm::dyn_cast<llvm::ArrayType>(
-      table_var->getValueType());
-  llvm::StructType *entry_type = llvm::dyn_cast<llvm::StructType>(
-      array_type->getArrayElementType());
-
-  auto new_array_type = llvm::ArrayType::get(
-      entry_type, indirect_blocks.size() + 1);
-
-  // Replace the old one.
-  table_var->eraseFromParent();
-  table_var = new llvm::GlobalVariable(
-        *module,
-        new_array_type,
-        true,
-        llvm::GlobalValue::ExternalLinkage,
-        nullptr,
-        "__remill_indirect_blocks");
-
-  auto &context = module->getContext();
-  auto long_type = llvm::Type::getInt64Ty(context);
-
-  std::vector<llvm::Constant *> entries;
-  for (const auto &kv : indirect_blocks) {
-    // Note: Each entry has the following type:
-    //    struct IndirectBlock final {
-    //      const uint64_t lifted_address;
-    //      void (* const lifted_func)(State &, Memory &, addr_t);
-    //    };
-
-    entries.push_back(llvm::ConstantStruct::get(
-        entry_type,
-        llvm::ConstantInt::get(long_type, kv.first),
-        kv.second,
-        nullptr));
-  }
-
-  entries.push_back(llvm::ConstantAggregateZero::get(entry_type));
-  table_var->setInitializer(llvm::ConstantArray::get(new_array_type, entries));
-}
-
-// Create functions for every exported function in the CFG.
-void Lifter::CreateNamedBlocks(const cfg::Module *cfg) {
-  for (const auto &func : cfg->named_blocks()) {
-
-    CHECK(func.name().size())
-        << "Unnamed block at address " << std::hex << func.address();
-
-    auto func_name = CanonicalName(arch->os_name, func.name());
-    CHECK(func.address())
-        << "Named block " << func_name << " has no address.";
-
-    auto is_imported = cfg::Visibility::IMPORTED == func.visibility();
-    auto &indirect_block = indirect_blocks[func.address()];
-    auto &named_block = (is_imported ? imported_blocks :
-                                       exported_blocks)[func_name];
-
-    if (named_block && indirect_block) {
-      CHECK(named_block == indirect_block)
-          << "Both " << named_block->getName().str() << " and "
-          << indirect_block->getName().str() << " implement " << func_name
-          << " at address " << std::hex << func.address() << ".";
-
-    } else if (!named_block && indirect_block) {
-      named_block = indirect_block;
-
-    } else if (named_block && !indirect_block) {
-      indirect_block = named_block;
-      blocks[func.address()] = indirect_block;
-
+  } else {
+    uint64_t other_id = 0;
+    if (!TryGetBlockId(block_func, other_id) || other_id != id) {
+      DLOG(FATAL)
+          << "Duplicate cfg_block at PC " << std::hex << pc << " exists in "
+          << "the CFG proto. There should only be one version of each block "
+          << "in a given CFG Module.";
     } else {
-      named_block = GetOrCreateBlock(func.address());
-      indirect_block = named_block;
-      blocks[func.address()] = indirect_block;
+      DLOG(ERROR)
+          << "Duplicate cfg_block at PC " << std::hex << pc << " exists in "
+          << "the CFG Module, but they both have the same ID.";
     }
   }
 }
 
 // Create a function for a single block.
-llvm::Function *Lifter::GetOrCreateBlock(uint64_t addr) {
-  auto &block_func = blocks[addr];
+llvm::Function *Lifter::GetBlock(uint64_t addr) {
+  auto &block_func = pc_to_block[addr];
   if (!block_func) {
-    std::stringstream ss;
-    ss << "__remill_sub_" << std::hex << addr;
-    auto func_name = ss.str();
-
-    auto func_type = basic_block->getFunctionType();
-    block_func = llvm::dyn_cast<llvm::Function>(
-        module->getOrInsertFunction(func_name, func_type));
-
-    InitFunctionAttributes(block_func);
-
-    DLOG(INFO)
-        << "Created function " << func_name
-        << " for block at " << std::hex << addr << ".";
+    LOG(WARNING)
+        << "Unable find block for PC " << std::hex << addr
+        << " reverting to `__remill_missing_block`.";
+    block_func = intrinsics->missing_block;
   }
   return block_func;
 }
 
-// Create functions for every block in the CFG. We do this before lifting so
-// that we can easily reference those blocks.
-void Lifter::CreateBlocks(const cfg::Module *cfg_module) {
-  for (const auto &cfg_block : cfg_module->blocks()) {
-    CHECK(cfg_block.instructions_size())
-        << "Block at address " << std::hex << cfg_block.address()
-        << " has no instructions.";
-
-    auto block_func = GetOrCreateBlock(cfg_block.address());
-
-    // For now, mark the block as external linkage if we don't have an
-    // implementation of it. When we implement it, we can change it
-    // to have internal linkage.
-    if (block_func->isDeclaration()) {
-      block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
-    }
-  }
-
-  for (const auto cfg_ref_block_addr : cfg_module->referenced_blocks()) {
-    auto block_func = GetOrCreateBlock(cfg_ref_block_addr);
-    if (block_func->isDeclaration()) {
-      block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
-    }
-  }
-
-  for (const uint64_t cfg_addr_block_addr : cfg_module->addressed_blocks()) {
-    auto block_func = GetOrCreateBlock(cfg_addr_block_addr);
-    auto &indirect_block_func = indirect_blocks[cfg_addr_block_addr];
-
-    CHECK(block_func == indirect_block_func || !indirect_block_func)
-        << "Multiply defined addressable cfg_block at "
-        << std::hex << cfg_addr_block_addr << ".";
-
-    indirect_block_func = block_func;
-  }
-}
-
 // Lift the control-flow graph specified by `cfg` into this bitcode module.
 void Lifter::LiftCFG(const cfg::Module *cfg_module) {
-  ForEachIndirectBlock(module,
-      [this] (uintptr_t pc, llvm::Function *func) {
-        blocks[pc] = func;
-        indirect_blocks[pc] = func;
-      });
+  ForEachBlock(module,
+      [this] (uint64_t pc, uint64_t id, llvm::Function *func) {
+    id_to_block[id] = func;
+  });
 
-  ForEachExportedBlock(module,
-      [this] (const std::string &name, llvm::Function *lifted_func,
-          llvm::Function *native_func) {
-        exported_blocks[name] = lifted_func;
-      });
-
-  ForEachImportedBlock(module,
-      [this] (const std::string &name, llvm::Function *lifted_func,
-          llvm::Function *native_func) {
-        imported_blocks[name] = lifted_func;
-      });
-
-  CreateNamedBlocks(cfg_module);
-  CreateBlocks(cfg_module);
-
-  // Sanity check to make sure conflicting versions of a named block don't
-  // appear.
-  for (const auto &entry : exported_blocks) {
-    CHECK(!imported_blocks.count(entry.first))
-        << "Subroutine " << entry.first << " cannot be both exported "
-        << "and imported.";
+  for (auto &cfg_block : cfg_module->blocks()) {
+    CreateBlock(cfg_block);
   }
-
-  SetNamedBlocks(exported_blocks, "__remill_exported_blocks");
-  SetNamedBlocks(imported_blocks, "__remill_imported_blocks");
-  SetIndirectBlocks();
 
   LiftBlocks(cfg_module);
 
-  blocks.clear();
-  indirect_blocks.clear();
-  exported_blocks.clear();
-  imported_blocks.clear();
+  pc_to_block.clear();
+  id_to_block.clear();
 }
 
 // Lift code contained in blocks into the block methods.
@@ -490,25 +266,21 @@ void Lifter::LiftBlocks(const cfg::Module *cfg_module) {
 
   func_pass_manager.doInitialization();
   for (const auto &cfg_block : cfg_module->blocks()) {
-    auto func = LiftBlock(&cfg_block);
+    auto func = LiftBlock(cfg_block);
     CHECK(!func->isDeclaration())
         << "Lifted block function " << func->getName().str()
         << " should have an implementation.";
 
     func_pass_manager.run(*func);
-    func->setLinkage(llvm::GlobalValue::PrivateLinkage);
   }
 
   func_pass_manager.doFinalization();
 }
 
 // Lift code contained within a single block.
-llvm::Function *Lifter::LiftBlock(const cfg::Block *cfg_block) {
-  auto block_func = GetOrCreateBlock(cfg_block->address());
+llvm::Function *Lifter::LiftBlock(const cfg::Block &cfg_block) {
+  auto block_func = GetBlock(cfg_block.address());
   if (!block_func->isDeclaration()) {
-    DLOG(WARNING)
-        << "Not going to lift duplicate block at "
-        << std::hex << cfg_block->address();
     return block_func;
   }
 
@@ -516,9 +288,9 @@ llvm::Function *Lifter::LiftBlock(const cfg::Block *cfg_block) {
 
   // Create a block for each instruction.
   auto last_block = &block_func->back();
-  auto instr_addr = cfg_block->address();
+  auto instr_addr = cfg_block.address();
   Instruction *instr = nullptr;
-  for (const auto &cfg_instr : cfg_block->instructions()) {
+  for (const auto &cfg_instr : cfg_block.instructions()) {
     CHECK(cfg_instr.address() == instr_addr)
         << "CFG Instr address " << std::hex << cfg_instr.address()
         << " doesn't match implied instruction address ("
@@ -620,7 +392,7 @@ void Lifter::LiftTerminator(llvm::BasicBlock *block,
     case Instruction::kCategoryNoOp:
       AddTerminatingTailCall(
           block,
-          GetOrCreateBlock(arch_instr->next_pc));
+          GetBlock(arch_instr->next_pc));
       break;
 
     case Instruction::kCategoryError:
@@ -630,7 +402,7 @@ void Lifter::LiftTerminator(llvm::BasicBlock *block,
     case Instruction::kCategoryDirectJump:
       AddTerminatingTailCall(
           block,
-          GetOrCreateBlock(arch_instr->branch_taken_pc));
+          GetBlock(arch_instr->branch_taken_pc));
       break;
 
     case Instruction::kCategoryIndirectJump:
@@ -640,7 +412,7 @@ void Lifter::LiftTerminator(llvm::BasicBlock *block,
     case Instruction::kCategoryDirectFunctionCall:
       AddTerminatingTailCall(
           block,
-          GetOrCreateBlock(arch_instr->branch_taken_pc));
+          GetBlock(arch_instr->branch_taken_pc));
       break;
 
     case Instruction::kCategoryIndirectFunctionCall:
@@ -654,8 +426,8 @@ void Lifter::LiftTerminator(llvm::BasicBlock *block,
     case Instruction::kCategoryConditionalBranch:
       LiftConditionalBranch(
           block,
-          GetOrCreateBlock(arch_instr->branch_taken_pc),
-          GetOrCreateBlock(arch_instr->branch_not_taken_pc));
+          GetBlock(arch_instr->branch_taken_pc),
+          GetBlock(arch_instr->branch_not_taken_pc));
       break;
 
     case Instruction::kCategoryAsyncHyperCall:
@@ -666,7 +438,7 @@ void Lifter::LiftTerminator(llvm::BasicBlock *block,
       LiftConditionalBranch(
           block,
           intrinsics->async_hyper_call,
-          GetOrCreateBlock(arch_instr->next_pc));
+          GetBlock(arch_instr->next_pc));
       break;
   }
 }
@@ -699,7 +471,7 @@ llvm::BasicBlock *Lifter::LiftInstruction(llvm::Function *block_func,
                                               Instruction *arch_instr) {
   auto isel_func = GetInstructionFunction(module, arch_instr->function);
 
-  if(arch_instr->category == Instruction::kCategoryInvalid) {
+  if (Instruction::kCategoryInvalid == arch_instr->category) {
     isel_func = GetInstructionFunction(module, "INVALID_INSTRUCTION");
   }
 

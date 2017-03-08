@@ -3,6 +3,8 @@
 #ifndef REMILL_ARCH_RUNTIME_HYPERCALL_H_
 #define REMILL_ARCH_RUNTIME_HYPERCALL_H_
 
+#include <cstdint>
+
 class SyncHyperCall {
  public:
   enum Name : uint32_t {

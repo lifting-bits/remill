@@ -22,6 +22,7 @@
 #pragma clang diagnostic fatal "-Wpadded"
 
 #include "remill/Arch/Runtime/State.h"
+#include "remill/Arch/Runtime/Types.h"
 
 #ifndef HAS_FEATURE_AVX
 # define HAS_FEATURE_AVX 1
@@ -46,6 +47,8 @@
 #define IF_AVX512(...)
 #define IF_AVX512_ELSE(a, b) b
 #endif
+
+#define aword IF_64BIT_ELSE(qword, dword)
 
 union FPUStatusWord final {
   uint16_t flat;

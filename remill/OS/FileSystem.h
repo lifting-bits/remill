@@ -14,6 +14,7 @@ std::string CurrentWorkingDirectory(void);
 
 bool FileExists(const std::string &path);
 
+uint64_t FileSize(int fd);
 uint64_t FileSize(const std::string &path, int fd);
 uint64_t FileSize(const std::string &path);
 

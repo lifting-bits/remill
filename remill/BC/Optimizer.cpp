@@ -1066,10 +1066,10 @@ static void RemoveUndefFuncCalls(llvm::Module *module) {
 }
 
 // Enable inlining of functions whose inlining has been deferred.
-static void EnableDeferredInlining(llvm::Module *module) {
+static bool EnableDeferredInlining(llvm::Module *module) {
   auto defer_inlining_func = module->getFunction("__remill_defer_inlining");
   if (!defer_inlining_func) {
-    return;
+    return false;
   }
 
   std::vector<llvm::CallInst *> call_insts;
@@ -1080,6 +1080,10 @@ static void EnableDeferredInlining(llvm::Module *module) {
     if (auto call_inst = llvm::dyn_cast_or_null<llvm::CallInst>(caller)) {
       call_insts.push_back(call_inst);
     }
+  }
+
+  if (call_insts.empty()) {
+    return false;
   }
 
   // Remove the calls to the inline defer intrinsic, and mark the functions
@@ -1110,6 +1114,8 @@ static void EnableDeferredInlining(llvm::Module *module) {
       }
     }
   }
+
+  return true;
 }
 
 void Opt::Optimize(void) {
@@ -1129,16 +1135,17 @@ void Opt::Optimize(void) {
 
   DLOG(INFO)
       << "Enabling the deferring inlining optimization.";
-  EnableDeferredInlining(module);
+  if (EnableDeferredInlining(module)) {
 
-  EnableBlockInlining(module);
+    EnableBlockInlining(module);
 
-  DLOG(INFO)
-      << "Rerunning -O3 on " << module_id;
-  RunO3(module);
+    DLOG(INFO)
+        << "Rerunning -O3 on " << module_id;
+    RunO3(module);
 
-  DLOG(INFO)
-      << "Finalizing optimizations of " << module_id;
+    DLOG(INFO)
+        << "Finalizing optimizations of " << module_id;
+  }
 
   DisableReoptimization(module);
 

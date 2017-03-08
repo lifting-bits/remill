@@ -15,6 +15,7 @@ find_package(GLOG REQUIRED)
 find_package(GFLAGS REQUIRED)
 find_package(Protobuf REQUIRED)
 
+include_directories("${PROJECT_SOURCE_DIR}")
 include_directories("${LLVM_INCLUDE_DIRS}")
 include_directories("${XED_INCLUDE_DIRS}")
 include_directories("${GLOG_INCLUDE_DIRS}")
@@ -45,8 +46,6 @@ endif()
 add_definitions(${LLVM_DEFINITIONS})
 
 add_compile_options(
-    -x c++
-
     -Wall
     -Wextra
     -Werror
@@ -94,12 +93,14 @@ add_executable(remill-lift
     remill/Arch/Arch.cpp
     remill/Arch/Instruction.cpp
     remill/Arch/Name.cpp
+    remill/CFG/BlockHasher.cpp
     remill/CFG/CFG.cpp
     remill/BC/Lifter.cpp
     remill/BC/Util.cpp
     remill/BC/IntrinsicTable.cpp
     remill/OS/FileSystem.cpp
     remill/OS/OS.cpp
+    third_party/murmurhash/MurmurHash2.cpp
 )
 
 set(LLVM_LIBS
@@ -248,11 +249,12 @@ COMPILE_X86_SEMANTICS(amd64 64 0 0)
 COMPILE_X86_SEMANTICS(amd64_avx 64 1 0)
 COMPILE_X86_SEMANTICS(amd64_avx512 64 1 1)
 
-# Bring in the tools.
-add_subdirectory(${PROJECT_SOURCE_DIR}/tools)
-
 install(
     TARGETS remill-lift remill-opt
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
 )
+
+add_subdirectory(${PROJECT_SOURCE_DIR}/tests/X86)
+#add_subdirectory(${PROJECT_SOURCE_DIR}/tools)
+

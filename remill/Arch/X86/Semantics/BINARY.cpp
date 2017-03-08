@@ -593,10 +593,9 @@ DEF_ISEL_RnW_Rn(NEG_GPRv, NEG);
 namespace {
 
 template <typename TagT, typename T>
-NEVER_INLINE static bool CarryFlag(T a, T b, T ab, T c, T abc) {
+ALWAYS_INLINE static bool CarryFlag(T a, T b, T ab, T c, T abc) {
   static_assert(std::is_unsigned<T>::value,
                 "Invalid specialization of `CarryFlag` for addition.");
-  __remill_defer_inlining();
   return Carry<TagT>::Flag(a, b, ab) || Carry<TagT>::Flag(ab, c, abc);
 }
 
