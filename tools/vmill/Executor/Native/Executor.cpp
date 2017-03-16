@@ -1,9 +1,9 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-
 #define HAS_FEATURE_AVX 1
 #define HAS_FEATURE_AVX512 1
 #define ADDRESS_SIZE_BITS 32
+
 #include "remill/Arch/X86/Runtime/State.h"
 
 #include <glog/logging.h>
@@ -58,9 +58,11 @@
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Target/TargetSubtargetInfo.h>
 
+#include "remill/Arch/Name.h"
 #include "remill/Arch/Runtime/HyperCall.h"
 #include "remill/Arch/Runtime/Types.h"
 #include "remill/BC/Util.h"
+#include "remill/OS/OS.h"
 
 #include "tools/vmill/BC/Callback.h"
 #include "tools/vmill/BC/Translator.h"
@@ -74,6 +76,8 @@ struct State;
 namespace remill {
 namespace vmill {
 namespace {
+
+static thread_local Executor::Flow gFlow = Executor::kFlowError;
 
 #define MAKE_READ_WRITE_MEM(suffix, type, intern_type) \
     static type \
@@ -108,28 +112,29 @@ static T Undef(void) {
 static void DeferInlining(void) {}
 static void MarkAsUsed(void *) {}
 
-static Executor::Flow Error(Memory *, State *, uint32_t) {
-  return Executor::kFlowError;
+static void Error(Memory *, ArchState *, uint32_t) {
+  gFlow = Executor::kFlowError;
 }
-static Executor::Flow IndirectFunctionCall(Memory *, State *, uint32_t) {
-  return Executor::kFlowFunctionCall;
-}
-
-static Executor::Flow FunctionReturn(Memory *, State *, uint32_t) {
-  return Executor::kFlowFunctionReturn;
+static void IndirectFunctionCall(Memory *, ArchState *, uint32_t) {
+  gFlow = Executor::kFlowFunctionCall;
 }
 
-static Executor::Flow IndirectJump(Memory *, State *, uint32_t) {
-  return Executor::kFlowJump;
+static void FunctionReturn(Memory *, ArchState *, uint32_t) {
+  gFlow = Executor::kFlowFunctionReturn;
 }
 
-static Executor::Flow AsyncHyperCall(Memory *, State *, uint32_t) {
-  return Executor::kFlowAsyncHyperCall;
+static void IndirectJump(Memory *, ArchState *, uint32_t) {
+  gFlow = Executor::kFlowJump;
 }
 
-static Memory *SyncHyperCall(Memory *memory, State *state,
+static void AsyncHyperCall(Memory *, ArchState *, uint32_t) {
+  gFlow = Executor::kFlowAsyncHyperCall;
+}
+
+static Memory *SyncHyperCall(Memory *memory, ArchState *state_,
                              SyncHyperCall::Name name) {
-  auto pc = Process::gCurrent->NextProgramCounter();
+  auto state = reinterpret_cast<State *>(state_);
+  auto pc = state->gpr.rip.dword;
 
   switch (name) {
     case SyncHyperCall::kX86EmulateInstruction:
@@ -144,16 +149,17 @@ static Memory *SyncHyperCall(Memory *memory, State *state,
 
     case SyncHyperCall::kDebugBreakpoint:
       if (false) {
-        printf("eip=%x eax=%x ebx=%x ecx=%x edx=%x esi=%x edi=%x ebp=%x esp=%x\n",
-               state->gpr.rip.dword,
-               state->gpr.rax.dword,
-               state->gpr.rbx.dword,
-               state->gpr.rcx.dword,
-               state->gpr.rdx.dword,
-               state->gpr.rsi.dword,
-               state->gpr.rdi.dword,
-               state->gpr.rbp.dword,
-               state->gpr.rsp.dword);
+        printf(
+            "eip=%x eax=%x ebx=%x ecx=%x edx=%x esi=%x edi=%x ebp=%x esp=%x\n",
+             state->gpr.rip.dword,
+             state->gpr.rax.dword,
+             state->gpr.rbx.dword,
+             state->gpr.rcx.dword,
+             state->gpr.rdx.dword,
+             state->gpr.rsi.dword,
+             state->gpr.rdi.dword,
+             state->gpr.rbp.dword,
+             state->gpr.rsp.dword);
         printf("cf=%d pf=%d af=%d zf=%d sf=%d df=%d of=%d\n\n",
                state->aflag.cf,
                state->aflag.pf,
@@ -272,7 +278,7 @@ class DynamicLib {
 };
 
 // Type of a compiled lifted function.
-using LiftedFunc = Executor::Flow(void *, void *, uint32_t);
+using LiftedFunc = void(Memory *, ArchState *, uint32_t);
 
 // Implements a function-at-a-time JIT compiler using LLVM's ORC JIT compiler
 // infrastructure.
@@ -282,8 +288,10 @@ class JITExecutor : public Executor,
   virtual ~JITExecutor(void);
 
   JITExecutor(const Runtime *runtime_,
-              const Arch * const arch_,
-              CodeVersion code_version_);
+              const Arch * const arch_);
+
+  // Create a process structure that is compatible with this executor.
+  std::unique_ptr<Process> CreateProcess(const Snapshot *snapshot) override;
 
   llvm::RuntimeDyld::SymbolInfo findSymbolInLogicalDylib(
       const std::string &name) override;
@@ -293,7 +301,7 @@ class JITExecutor : public Executor,
  protected:
   // Execute the LLVM function `func` representing code in `process` at
   // the current program counter.
-  Flow Execute(Process *process, llvm::Function *func) override;
+  Flow Execute(Process *process, Thread *thread, llvm::Function *func) override;
 
  private:
   JITExecutor(void) = delete;
@@ -326,9 +334,8 @@ JITExecutor::~JITExecutor(void) {
 }
 
 JITExecutor::JITExecutor(const Runtime *runtime_,
-                         const Arch * const arch_,
-                         CodeVersion code_version_)
-    : Executor(runtime_, arch_, code_version_),
+                         const Arch * const arch_)
+    : Executor(runtime_, arch_),
       target_triple(GetTriple()),
       target(GetTarget(target_triple)),
       target_machine(target->createTargetMachine(
@@ -589,32 +596,50 @@ LiftedFunc *JITExecutor::GetLiftedFunc(llvm::Function *func, uint64_t pc) {
 
 // Execute the LLVM function `func` representing code in `process` at
 // the current program counter.
-Executor::Flow JITExecutor::Execute(Process *process, llvm::Function *func) {
-
-  auto memory = process->Memory();
-  auto state = process->MachineState();
-  auto pc = process->NextProgramCounter();
+Executor::Flow JITExecutor::Execute(Process *process, Thread *thread,
+                                    llvm::Function *func) {
+  auto memory = process->MachineMemory();
+  auto state = thread->MachineState();
+  auto pc = thread->NextProgramCounter();
   auto &jited_func = pc_to_jit_code[pc];
 
   if (!jited_func) {
     jited_func = GetLiftedFunc(func, pc);
   }
 
-  return jited_func(memory, state, static_cast<uint32_t>(pc));
+  jited_func(memory, state, static_cast<uint32_t>(pc));
+
+  return gFlow;
+}
+
+// Create a process structure that is compatible with this executor.
+std::unique_ptr<Process> JITExecutor::CreateProcess(const Snapshot *snapshot) {
+  switch (snapshot->GetOS()) {
+    case kOSInvalid:
+      LOG(FATAL)
+          << "Cannot emulate process for an invalid OS.";
+      return nullptr;
+
+    case kOSLinux:
+      return Process::CreateNativeLinux(snapshot);
+
+    case kOSmacOS:
+      LOG(FATAL)
+          << "Cannot emulate a macOS process.";
+      return nullptr;
+  }
 }
 
 }  // namespace
 
 // Create a native code executor. This is a kind-of JIT compiler.
-Executor *Executor::CreateNativeExecutor(const Arch * const arch_,
-                                         CodeVersion code_version_) {
+Executor *Executor::CreateNativeExecutor(const Arch * const arch_) {
   LLVMInitializeX86TargetInfo();
   LLVMInitializeX86Target();
   LLVMInitializeX86TargetMC();
   LLVMInitializeX86AsmPrinter();
-  return new JITExecutor(&kRuntime, arch_, code_version_);
+  return new JITExecutor(&kRuntime, arch_);
 }
-
 
 }  // namespace vmill
 }  // namespace remill

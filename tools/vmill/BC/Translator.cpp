@@ -53,16 +53,10 @@ namespace remill {
 namespace vmill {
 namespace {
 
-// Get the path to the code version-specific bitcode cache directory. If the
-// file doesn't exist, or is empty, then use the semantics bitcode file
-// instead.
-static std::string GetBitcodeFile(CodeVersion code_version) {
+// Get the path to the bitcode cache file.
+static std::string GetBitcodeFile(void) {
   std::stringstream ss;
-  ss << FLAGS_workspace << "/bitcode.cache";
-  CHECK(TryCreateDirectory(ss.str()))
-      << "Unable to create the " << ss.str() << " directory.";
-
-  ss << "/" << code_version << ".bc";
+  ss << FLAGS_workspace << "/cache.bc";
   auto file_name = ss.str();
 
   if (!FileExists(file_name) || !FileSize(file_name)) {
@@ -84,7 +78,7 @@ static std::string GetBitcodeFile(CodeVersion code_version) {
 // Handles translating binary code to bitcode, and caching that bitcode.
 class TE final : public Translator {
  public:
-  explicit TE(CodeVersion code_version_, const Arch *source_arch_);
+  explicit TE(const Arch *source_arch_);
 
   virtual ~TE(void);
 
@@ -112,26 +106,24 @@ class TE final : public Translator {
   size_t last_serialize_count;
 };
 
-Translator::Translator(CodeVersion code_version_, const Arch *source_arch_)
-    : code_version(code_version_),
-      source_arch(source_arch_) {}
+Translator::Translator(const Arch *source_arch_)
+    : source_arch(source_arch_) {}
 
 Translator::~Translator(void) {}
 
 // Create a new translation engine for a given version of the code in
 // memory. Code version changes happen due to self-modifying code, or
 // runtime code loading.
-Translator *Translator::Create(CodeVersion code_version_,
-                               const Arch *source_arch_) {
+Translator *Translator::Create(const Arch *source_arch_) {
   DLOG(INFO)
       << "Creating machine code to bitcode translator.";
-  return new TE(code_version_, source_arch_);
+  return new TE(source_arch_);
 }
 
 // Initialize the translation engine.
-TE::TE(CodeVersion code_version_, const Arch *source_arch_)
-    : Translator(code_version_, source_arch_),
-      bitcode_file_path(GetBitcodeFile(code_version)),
+TE::TE(const Arch *source_arch_)
+    : Translator(source_arch_),
+      bitcode_file_path(GetBitcodeFile()),
       context(new llvm::LLVMContext),
       module(LoadModuleFromFile(context, bitcode_file_path)),
       lifter(source_arch, module),
@@ -143,7 +135,6 @@ TE::TE(CodeVersion code_version_, const Arch *source_arch_)
 // Destroy the translation engine.
 TE::~TE(void) {
   StoreModuleToFile(module, bitcode_file_path);
-
   delete optimizer;
   delete module;
   delete context;

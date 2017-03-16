@@ -4,6 +4,7 @@
 #define TOOLS_VMILL_EXECUTOR_EXECUTOR_H_
 
 #include <cstdint>
+#include <memory>
 #include <unordered_map>
 
 namespace llvm {
@@ -17,18 +18,18 @@ namespace vmill {
 
 class Decoder;
 class Process;
-struct Runtime;
+class Snapshot;
+class Thread;
 class Translator;
+
+struct Runtime;
 
 using Addr32 = uint32_t;
 using Addr64 = uint64_t;
-using CodeVersion = uint64_t;
 
 class Executor {
  public:
   enum Status {
-    kStatusCannotContinue,
-    kStatusPaused,
     kStatusStoppedAtAsyncHyperCall,
     kStatusStoppedAtError
   };
@@ -43,21 +44,23 @@ class Executor {
 
   virtual ~Executor(void);
 
+  // Create a process structure that is compatible with this executor.
+  virtual std::unique_ptr<Process> CreateProcess(const Snapshot *snapshot) = 0;
+
   // Execute some code in `process`.
   Status Execute(Process *process);
 
   // Create a native code executor. This is a kind-of JIT compiler.
-  static Executor *CreateNativeExecutor(const Arch * const arch_,
-                                        CodeVersion code_version_);
+  static Executor *CreateNativeExecutor(const Arch * const arch_);
 
  protected:
   explicit Executor(const Runtime *runtime_,
-                    const Arch * const arch_,
-                    CodeVersion code_version_);
+                    const Arch * const arch_);
 
   // Execute the LLVM function `func` representing code in `process` at
   // the current program counter.
-  virtual Flow Execute(Process *process, llvm::Function *func) = 0;
+  virtual Flow Execute(Process *process, Thread *thread,
+                       llvm::Function *func) = 0;
 
   // Lifted functions associated with each PC of native code.
   std::unordered_map<uint64_t, llvm::Function *> pc_to_func;
@@ -88,9 +91,6 @@ class Executor {
   // Lifts CFG structures into LLVM bitcode. This is a thin wrapper around
   // Remill's lifter, that caches the lifted bitcode to disk.
   Translator * const translator;
-
-  // Version of the code managed by this executor.
-  const CodeVersion code_version;
 };
 
 }  // namespace vmill

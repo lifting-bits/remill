@@ -159,6 +159,8 @@ static void ReadTraceePageMaps(pid_t pid) {
 
 // Copy memory from the tracee into the snapshot file.
 static void CopyTraceeMemory(pid_t pid, int snapshot_fd) {
+  std::cerr
+      << "Copying tracee memory into " << gSnapshotPath << std::endl;
 
   // Figure out how much memory we want to snapshot.
   uint64_t memory_size = 0;
@@ -272,7 +274,6 @@ static void CopyTraceeState(CONTEXT *ctx, int fd) {
   if (0 != (sizeof(State) % 4096)) {
     auto missing_size = kAlignedStateSize - sizeof(State);
     write(fd, &(gZeroData[0]), missing_size);
-
     std::cerr
         << "Wrote " << missing_size << " padding bytes to snapshot file."
         << std::endl;
@@ -314,14 +315,8 @@ static void SnapshotTracee(pid_t pid, CONTEXT *ctx) {
   gFileInfo.os_name = remill::kOSLinux;
 
   write(fd, &gFileInfo, sizeof(gFileInfo));
-
-  // TODO(pag): copy regs!!
-  CopyTraceeState(ctx, fd);
-
-  std::cerr
-      << "Copying tracee memory into " << gSnapshotPath << std::endl;
-
   CopyTraceeMemory(pid, fd);
+  CopyTraceeState(ctx, fd);
   close(fd);
 }
 

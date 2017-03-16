@@ -1,7 +1,5 @@
 /* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
 
-#include <gflags/gflags.h>
-
 #include <glog/logging.h>
 
 #include <algorithm>
@@ -16,14 +14,13 @@
 #include "remill/CFG/CFG.h"
 
 #include "tools/vmill/BC/Translator.h"
+#include "tools/vmill/CFG/BlockHasher.h"
 #include "tools/vmill/CFG/Decoder.h"
-
-DEFINE_bool(enable_linear_decode, false, "Enable linear scanning within "
-                                         "the basic block decoder.");
 
 namespace remill {
 namespace vmill {
 namespace {
+
 enum : uint64_t {
   kMaxNumInstrBytes = 15ULL,
 };
@@ -135,13 +132,15 @@ static void AddEntries(const Instruction *instr, DecoderWorkList &work_list) {
 
 }  // namespace
 
-Decoder::Decoder(const Arch *arch_)
-    : arch(arch_) {}
+Decoder::Decoder(const Arch *arch_, DecodeMode mode_)
+    : arch(arch_),
+      mode(mode_) {}
 
-void Decoder::DecodeToCFG(
-    uint64_t start_pc, ByteReaderCallback byte_reader, CFGCallback with_cfg) {
+std::unique_ptr<cfg::Module> Decoder::DecodeToCFG(
+    uint64_t start_pc, ByteReaderCallback byte_reader,
+    BlockHasher &hasher) {
 
-  auto cfg_module = new cfg::Module;
+  std::unique_ptr<cfg::Module> cfg_module(new cfg::Module);
   DecoderWorkList work_list;
 
   DLOG(INFO)
@@ -162,7 +161,7 @@ void Decoder::DecodeToCFG(
     auto block_pc = static_cast<uint64_t>(entry.address  /* sign extends */);
 
     if (seen_blocks.count(block_pc)) {
-      continue;  // We've already decoded this block.
+      continue;
     }
 
     if (WorkListItem::kScanRecursive == scan_type) {
@@ -183,16 +182,14 @@ void Decoder::DecodeToCFG(
       work_list.clear();
       break;
 
-    } else if (!FLAGS_enable_linear_decode) {
+    } else if (kDecodeRecursive == mode) {
       work_list.clear();
       break;
     }
 
-    DLOG(INFO)
-        << "Decoding basic block at " << std::hex << block_pc;
-
     Instruction *instr = nullptr;
     cfg::Block *cfg_block = nullptr;
+    hasher.Reset();
 
     do {
       if (instr) {
@@ -202,9 +199,6 @@ void Decoder::DecodeToCFG(
 
       // End this block early; the subsequent block already exists.
       if (seen_blocks.count(block_pc)) {
-        DLOG(INFO)
-            << "Stopping block early at " << std::hex << block_pc
-            << "; a block at this PC has been decoded.";
         break;
       }
 
@@ -213,6 +207,8 @@ void Decoder::DecodeToCFG(
       if (instr_bytes.size() != instr->NumBytes()) {
         instr_bytes = instr_bytes.substr(0, instr->NumBytes());
       }
+
+      hasher.AddInstruction(block_pc, instr_bytes);
 
       if (!cfg_block) {
 
@@ -230,7 +226,6 @@ void Decoder::DecodeToCFG(
 
         cfg_block = cfg_module->add_blocks();
         cfg_block->set_address(block_pc);
-        cfg_module->add_addressed_blocks(block_pc);
         seen_blocks.insert(block_pc);
       }
 
@@ -241,18 +236,22 @@ void Decoder::DecodeToCFG(
 
     } while (instr->IsValid() && !instr->IsControlFlow());
 
-    if (instr) {
-      AddEntries(instr, work_list);
-      delete instr;
-      instr = nullptr;
+    if (cfg_block) {
+      cfg_block->set_id(hasher.Finalize());
+      if (instr) {
+        AddEntries(instr, work_list);
+        delete instr;
+        instr = nullptr;
+      }
     }
   }
 
+  seen_blocks.clear();
+
   DLOG(INFO)
       << "Decoded " << cfg_module->blocks_size() << " basic blocks.";
-  with_cfg(cfg_module);
 
-  delete cfg_module;
+  return cfg_module;
 }
 
 }  // namespace vmill

@@ -25,7 +25,7 @@ The following is an example of how to use this tool.
 LD_LIBRARY_PATH=/tmp/php ./vmill-pinshot --arch x86 --workspace /tmp/php --breakpoint 0x8401260 --trace_file /tmp/native_trace -- /tmp/php /tmp/php/input.php
 ```
 
-This tool uses PIN to instrument the program `/tmp/php` on the input file `/tmp/php/input.php`. The toll produces a snapshot file when execution first reaches the instruction at the address `0x8401260`. The snapshot file contains the contents of memory and the machine registers, and is saved into the `/tmp/php` directory.
+This tool uses PIN to instrument the program `/tmp/php` on the input file `/tmp/php/input.php`. The tool produces a snapshot file when execution first reaches the instruction at the address `0x8401260`. The snapshot file contains the contents of memory and the machine registers, and is saved into the `/tmp/php` directory.
 
 After producing the snapshot file, the tool proceeds to print out the values of all registers before every executed instruction. This register trace is saved into the `/tmp/native_trace` file.
 

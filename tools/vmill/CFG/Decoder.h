@@ -3,25 +3,42 @@
 #ifndef TOOLS_VMILL_CFG_DECODER_H_
 #define TOOLS_VMILL_CFG_DECODER_H_
 
+#include <memory>
 #include <unordered_set>
 
 #include "tools/vmill/BC/Callback.h"
 
 namespace remill {
 class Arch;
+namespace cfg {
+class Module;
+}  // namespace cfg
 namespace vmill {
+
+enum DecodeMode {
+  kDecodeRecursive,
+  kDecodeLinear
+};
+
+class BlockHasher;
 
 // Uses an `Arch` to decode instructions, organize them into basic blocks,
 // and packages those into a CFG data structure.
 class Decoder {
  public:
-  explicit Decoder(const Arch *arch_);
+  Decoder(const Arch *arch_, DecodeMode mode_);
 
-  void DecodeToCFG(uint64_t start_pc, ByteReaderCallback byte_reader,
-                   CFGCallback with_cfg);
+  // Starting from `start_pc`, read executable bytes out of a memory region
+  // using `byte_reader`, and return a CFG.proto module for lifting. The blocks
+  // in the module are labelled using IDs produced by `hasher`, which permits
+  // higher level systems to support self-modifying code.
+  std::unique_ptr<cfg::Module> DecodeToCFG(
+      uint64_t start_pc, ByteReaderCallback byte_reader,
+      BlockHasher &hasher);
 
  private:
   const Arch * const arch;
+  const DecodeMode mode;
 
   std::unordered_set<uint64_t> seen_blocks;
 };

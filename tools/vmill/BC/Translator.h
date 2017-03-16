@@ -21,11 +21,7 @@ class Translator {
  public:
   virtual ~Translator(void);
 
-  // Returns the translation engine for a given version of the code in
-  // memory. Code version changes happen due to self-modifying code, or
-  // runtime code loading.
-  static Translator *Create(CodeVersion code_version_,
-                            const Arch *source_arch_);
+  static Translator *Create(const Arch *source_arch_);
 
   // Execute a callback function on the module lifted by this translation.
   virtual void LiftCFG(const cfg::Module *cfg) = 0;
@@ -34,13 +30,7 @@ class Translator {
   virtual void VisitModule(LiftedModuleCallback callback) = 0;
 
  protected:
-  Translator(CodeVersion code_version_, const Arch *source_arch_);
-
-  // An abstract version number for code handled by this translation engine.
-  // Runtime code modification change the version, and so a higher-level
-  // system is responsible for creating a new translator to handle the
-  // modified code.
-  const CodeVersion code_version;
+  explicit Translator(const Arch *source_arch_);
 
   // Arch of the code to be lifted.
   const Arch * const source_arch;

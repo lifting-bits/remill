@@ -23,11 +23,11 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-#include "Arch/X86/Linux32.h"
 #include "remill/Arch/Name.h"
 #include "remill/OS/FileSystem.h"
 #include "remill/OS/OS.h"
 
+#include "tools/vmill/Arch/X86/Snapshot.h"
 #include "tools/vmill/Snapshot/File.h"
 
 DEFINE_uint64(breakpoint, 0, "Address of where to inject a breakpoint.");
@@ -441,23 +441,6 @@ static bool ReadPageInfoLine(const std::string &line, PageInfo *info) {
   return true;
 }
 
-// Get the size of the snapshot header, include the architecture-specific
-// state structure.
-static uint64_t HeaderSize(void) {
-  switch (gFileInfo.arch_name) {
-    case kArchX86:
-    case kArchX86_AVX:
-    case kArchX86_AVX512:
-    case kArchAMD64:
-    case kArchAMD64_AVX:
-    case kArchAMD64_AVX512:
-      return sizeof(SnapshotFile) + x86::StateSize();
-
-    default:
-      return 0;
-  }
-}
-
 // Read out the ranges of mapped pages.
 static void ReadTraceePageMaps(pid_t pid) {
   std::stringstream ss;
@@ -466,7 +449,7 @@ static void ReadTraceePageMaps(pid_t pid) {
   std::ifstream maps_file(ss.str());
   std::string line;
   auto i = 0;
-  auto file_size = HeaderSize();
+  auto file_size = sizeof(SnapshotFile);
   while (std::getline(maps_file, line)) {
     CHECK(i < SnapshotFile::kMaxNumPageInfos)
         << "Too many pages ranges in memory map!";
@@ -590,6 +573,10 @@ static void SnapshotTracee(pid_t pid) {
 
   write(fd, &gFileInfo, sizeof(gFileInfo));
 
+  DLOG(INFO)
+      << "Copying tracee memory into " << gSnapshotPath;
+  CopyTraceeMemory(pid, fd);
+
   switch (gFileInfo.arch_name) {
     case kArchX86:
     case kArchX86_AVX:
@@ -607,10 +594,6 @@ static void SnapshotTracee(pid_t pid) {
           << "Cannot copy tracee register state for unsupported architecture "
           << FLAGS_arch;
   }
-
-  DLOG(INFO)
-      << "Copying tracee memory into " << gSnapshotPath;
-  CopyTraceeMemory(pid, fd);
 
   close(fd);
 }

@@ -4,7 +4,10 @@
 #define TOOLS_VMILL_SNAPSHOT_SNAPSHOT_H_
 
 #include <cstdint>
+#include <memory>
 #include <string>
+
+struct ArchState;
 
 namespace remill {
 
@@ -13,7 +16,23 @@ enum OSName : uint32_t;
 
 namespace vmill {
 
+class Snapshot;
 struct SnapshotFile;
+
+// A snapshot of the arch state from a snapshot file.
+class ArchStateSnapshot {
+ public:
+  ~ArchStateSnapshot(void);
+
+  const ArchState * const state;
+  const size_t size;
+
+ private:
+  friend class Snapshot;
+
+  explicit ArchStateSnapshot(const ArchState *state_, size_t size_);
+  ArchStateSnapshot(void) = delete;
+};
 
 // Program snapshot loaded from disk.
 class Snapshot {
@@ -21,11 +40,13 @@ class Snapshot {
   ~Snapshot(void);
 
   // Open a snapshot from a file.
-  static Snapshot *Open(const std::string &path);
+  static std::unique_ptr<Snapshot> Open(const std::string &path);
 
   ArchName GetArch(void) const;
 
   OSName GetOS(void) const;
+
+  std::unique_ptr<ArchStateSnapshot> GetState(void) const;
 
   // Check to see if there is any corruption in the recorded page info
   // entries in the snapshot file.
@@ -36,11 +57,6 @@ class Snapshot {
   const int fd;
 
  private:
-
-  // Returns the size of the `SnapshotFile` struct and the arch-specific
-  // `State` struct that make up the header of the snapshot file.
-  uint64_t HeaderSize(void) const;
-
   Snapshot(void) = delete;
   Snapshot(const std::string &path_, const SnapshotFile *file_, int fd_);
 };

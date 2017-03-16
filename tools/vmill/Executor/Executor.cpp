@@ -13,13 +13,11 @@
 namespace remill {
 namespace vmill {
 
-Executor::Executor(const Runtime *runtime_, const Arch * const arch_,
-                   CodeVersion code_version_)
+Executor::Executor(const Runtime *runtime_, const Arch * const arch_)
     : runtime(runtime_),
       arch(arch_),
       decoder(new Decoder(arch)),
-      translator(Translator::Create(code_version_, arch)),
-      code_version(code_version_) {
+      translator(Translator::Create(arch)) {
   UpdateFunctionIndex();
 }
 
@@ -32,10 +30,9 @@ Executor::~Executor(void) {
 // Compiles or recompiles the bitcode in order to satisfy a new execution
 // request for code that we don't yet have lifted.
 void Executor::LiftCodeAtProgramCounter(Process *process) {
+
+  auto memory = process->MachineMemory();
   auto curr_pc = process->NextProgramCounter();
-  if (pc_to_func.count(curr_pc)) {
-    return;  // Already lifted.
-  }
 
   DLOG(INFO)
       << "Lifting code for " << std::hex << curr_pc;
@@ -44,7 +41,15 @@ void Executor::LiftCodeAtProgramCounter(Process *process) {
     translator->LiftCFG(cfg);
   };
 
-  auto byte_reader = process->ExecutableByteReader();
+  ByteReaderCallback byte_reader = [=] (uint64_t addr, uint8_t *byte) {
+    AddressRange info = {};
+    if (memory->QueryMemory(addr, &info) && info.can_read && info.can_exec) {
+      return memory->TryRead(addr, byte);
+    } else {
+      return false;
+    }
+  };
+
   decoder->DecodeToCFG(curr_pc, byte_reader, lift_cfg);
   UpdateFunctionIndex();
 
@@ -53,9 +58,8 @@ void Executor::LiftCodeAtProgramCounter(Process *process) {
 }
 
 Executor::Status Executor::Execute(Process *process) {
-  while (true) {
-    Process::gCurrent = process;
-    auto pc = process->NextProgramCounter();
+  while (auto thread = process->ScheduleNextThread()) {
+    auto pc = thread->NextProgramCounter();
     auto func_it = pc_to_func.find(pc);
 
     // If we don't have the lifted code, then go lift it!
@@ -67,8 +71,7 @@ Executor::Status Executor::Execute(Process *process) {
           << "Unable to find code associated with PC " << std::hex << pc;
     }
 
-    const auto exec_flow = Execute(process, func_it->second);
-    Process::gCurrent = nullptr;
+    const auto exec_flow = Execute(process, thread, func_it->second);
 
     switch (exec_flow) {
       case kFlowAsyncHyperCall:
@@ -87,7 +90,7 @@ Executor::Status Executor::Execute(Process *process) {
   CHECK(false)
       << "Fell off end of executor!";
 
-  return Executor::kStatusCannotContinue;
+  return Executor::kStatusStoppedAtError;
 }
 
 // Updates `func_index` with whatever is in the lifted module.

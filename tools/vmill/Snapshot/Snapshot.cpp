@@ -2,6 +2,7 @@
 
 #include <glog/logging.h>
 
+#include <algorithm>
 #include <cerrno>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -10,13 +11,33 @@
 
 #include "remill/OS/FileSystem.h"
 
+#include "tools/vmill/Arch/X86/Snapshot.h"
 #include "tools/vmill/Snapshot/File.h"
 #include "tools/vmill/Snapshot/Snapshot.h"
 
-#include "../Arch/X86/Linux32.h"
-
 namespace remill {
 namespace vmill {
+namespace {
+
+static size_t BeginOfMachineState(const Snapshot *snapshot) {
+  size_t end = sizeof(SnapshotFile);
+  for (auto &map : snapshot->file->pages) {
+    auto end_in_file = map.offset_in_file +
+        (map.limit_address - map.base_address);
+    end = std::max(end, end_in_file);
+  }
+  return end;
+}
+
+}  // namespace
+
+ArchStateSnapshot::ArchStateSnapshot(const ArchState *state_, size_t size_)
+    : state(state_),
+      size(size_) {}
+
+ArchStateSnapshot::~ArchStateSnapshot(void) {
+  munmap(const_cast<ArchState *>(state), size);
+}
 
 Snapshot::~Snapshot(void) {
   munmap(const_cast<SnapshotFile *>(file), sizeof(SnapshotFile));
@@ -28,7 +49,7 @@ Snapshot::Snapshot(const std::string &path_, const SnapshotFile *file_, int fd_)
       file(file_),
       fd(fd_) {}
 
-Snapshot *Snapshot::Open(const std::string &path) {
+std::unique_ptr<Snapshot> Snapshot::Open(const std::string &path) {
   const auto snapshot_fd = open(path.c_str(), O_RDONLY);
   CHECK(-1 != snapshot_fd)
       << "Unable to open snapshot file " << path
@@ -49,7 +70,7 @@ Snapshot *Snapshot::Open(const std::string &path) {
       << "Magic bytes of snapshot don't match expected values; "
       << "expected " << kMagic << " but got " << snapshot->magic;
 
-  return new Snapshot(path, snapshot, snapshot_fd);
+  return std::unique_ptr<Snapshot>(new Snapshot(path, snapshot, snapshot_fd));
 }
 
 ArchName Snapshot::GetArch(void) const {
@@ -60,16 +81,39 @@ OSName Snapshot::GetOS(void) const {
   return file->os_name;
 }
 
+std::unique_ptr<ArchStateSnapshot> Snapshot::GetState(void) const {
+  auto state_offset = BeginOfMachineState(this);
+  auto file_size = FileSize(path, fd);
+
+  CHECK(!(file_size % 4096))
+      << "Snapshot file " << path << " size must be a multiple of 4096 bytes.";
+
+  auto state_size = file_size - state_offset;
+  CHECK(!(state_size % 4096))
+      << "State size in snapshot file " << path
+      << " must be a multiple of 4096 bytes.";
+
+  auto state_mmap = mmap(nullptr, state_size, PROT_READ,
+                         MAP_PRIVATE | MAP_FILE, fd,
+                         state_offset);
+  CHECK(MAP_FAILED != state_mmap)
+      << "Could not mmap state structure from snapshot "
+      << path << ": " << strerror(errno);
+
+  auto state = reinterpret_cast<const ArchState *>(state_mmap);
+  return std::unique_ptr<ArchStateSnapshot>(
+      new ArchStateSnapshot(state, state_size));
+}
+
 // Check to see if there is any corruption in the recorded page info
 // entries in the snapshot file.
 void Snapshot::ValidatePageInfo(uint64_t max_address) const {
-
   const auto perm_min = static_cast<uint64_t>(PagePerms::kInvalid);
   const auto perm_max = static_cast<uint64_t>(PagePerms::kReadWriteExec);
   auto seen_last = false;
   auto next_address_min = 4096ULL;
   auto memory_size = 0ULL;
-  auto header_size = HeaderSize();
+  auto header_size = sizeof(SnapshotFile);
   auto next_offset = header_size;
 
   for (const auto &info : file->pages) {
@@ -139,21 +183,6 @@ void Snapshot::ValidatePageInfo(uint64_t max_address) const {
       << "Snapshot " << path << " is not the right size. Header size is "
       << header_size << ", memory size is " << memory_size
       << ", and file size is " << file_size;
-}
-
-uint64_t Snapshot::HeaderSize(void) const {
-  switch (GetArch()) {
-    case kArchX86:
-    case kArchX86_AVX:
-    case kArchX86_AVX512:
-    case kArchAMD64:
-    case kArchAMD64_AVX:
-    case kArchAMD64_AVX512:
-      return sizeof(SnapshotFile) + x86::StateSize();
-
-    default:
-      return 0;
-  }
 }
 
 }  // namespace vmill

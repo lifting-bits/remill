@@ -3,6 +3,9 @@
 install_manifest.txt
 Makefile
 
+bin/*
+lib/*
+
 third_party/*
 build/*
 generated/*
