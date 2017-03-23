@@ -19,7 +19,7 @@ matrix:
 install:
   - ./scripts/travis/install.sh
 before_script:
-  - chdir build
+  - cd build
   - make build_x86_tests
 script:
   - ctest
