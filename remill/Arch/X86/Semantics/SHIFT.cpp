@@ -15,7 +15,7 @@ DEF_SEM(SHR, D dst, S1 src1, S2 src2) {
   auto shift_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
   auto masked_shift = UAnd(shift, shift_mask);
   if (UCmpEq(masked_shift, 0)) {
-    return;  // No flags affected.
+    return memory;  // No flags affected.
   }
   auto new_val = val;
   auto new_of = false;
@@ -44,6 +44,7 @@ DEF_SEM(SHR, D dst, S1 src1, S2 src2) {
   Write(FLAG_ZF, ZeroFlag(new_val));
   Write(FLAG_SF, false);
   Write(FLAG_OF, new_of);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -58,7 +59,7 @@ DEF_SEM(SAR, D dst, S1 src1, S2 src2) {
   auto shift_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
   auto masked_shift = UAnd(shift, shift_mask);
   if (UCmpEq(masked_shift, 0)) {
-    return;  // No flags affected.
+    return memory;  // No flags affected.
   }
   auto new_val = uval;
   auto new_of = false;
@@ -92,6 +93,7 @@ DEF_SEM(SAR, D dst, S1 src1, S2 src2) {
   Write(FLAG_ZF, ZeroFlag(new_val));
   Write(FLAG_SF, SignFlag(new_val));
   Write(FLAG_OF, new_of);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -106,7 +108,7 @@ DEF_SEM(SHL, D dst, S1 src1, S2 src2) {
   auto masked_shift = UAnd(shift, shift_mask);
 
   if (UCmpEq(masked_shift, 0)) {
-    return;  // No flags affected.
+    return memory;  // No flags affected.
   }
 
   auto new_val = val;
@@ -124,23 +126,25 @@ DEF_SEM(SHL, D dst, S1 src1, S2 src2) {
 
   } else if (UCmpLt(masked_shift, op_size)) {
     auto res = UShl(val, USub(masked_shift, 1));
-    const auto msb = SignFlag(res);
-    new_of = BUndefined();
+    auto msb = SignFlag(res);
+    new_of = BUndefined();  // Undefined, hard to understand possible values.
     new_cf = msb;
     new_val = UShl(res, 1);
+
   } else {
-    new_of = BUndefined();
-    new_cf = BUndefined();
+    new_of = 1;  // Undefined, probably 1.
+    new_cf = 0;  // Undefined, probably 0.
     new_val = 0;
   }
 
   WriteZExt(dst, new_val);
   Write(FLAG_CF, new_cf);
   Write(FLAG_PF, ParityFlag(new_val));
-  Write(FLAG_AF, BUndefined());
+  Write(FLAG_AF, false);  // Undefined, experimentally 0.
   Write(FLAG_ZF, ZeroFlag(new_val));
   Write(FLAG_SF, SignFlag(new_val));
   Write(FLAG_OF, new_of);
+  return memory;
 }
 }  // namespace
 
@@ -198,8 +202,7 @@ DEF_ISEL_RnW_Rn_Rn(SHL_GPRv_CL_D3r6, SHL);
 namespace {
 
 template <typename T>
-NEVER_INLINE static uint8_t SHRDCarryFlag(T val, T count) {
-  __remill_defer_inlining();
+ALWAYS_INLINE static uint8_t SHRDCarryFlag(T val, T count) {
   return UCmpEq(UAnd(UShr(val, USub(count, 1)), 1), 1);
 }
 
@@ -216,7 +219,7 @@ DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 src3) {
   auto masked_shift = UAnd(shift, shift_mask);
 
   if (UCmpEq(masked_shift, 0)) {
-    return;
+    return memory;
 
   } else if (UCmpLt(op_size, masked_shift)) {
     ClearArithFlags();
@@ -224,7 +227,7 @@ DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 src3) {
     //
     // TODO(pag): Update `dst` anyway because it may be readable but not
     //            writable?
-    return;
+    return memory;
   }
 
   auto left = UShl(val2, USub(op_size, masked_shift));
@@ -240,6 +243,7 @@ DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 src3) {
   Write(FLAG_SF, SignFlag(res));
   Write(FLAG_OF, BXor(SignFlag(val1), FLAG_SF));
   // OF undefined for `1 == temp_count`.
+  return memory;
 }
 
 }  // namespace
@@ -252,8 +256,7 @@ DEF_ISEL_RnW_Rn_Rn_Rn(SHRD_GPRv_GPRv_CL, SHRD);
 namespace {
 
 template <typename T>
-NEVER_INLINE static uint8_t SHLDCarryFlag(T val, T count) {
-  __remill_defer_inlining();
+ALWAYS_INLINE static uint8_t SHLDCarryFlag(T val, T count) {
   return UCmpEq(UAnd(UShr(val, USub(BitSizeOf(count), count)), 1), 1);
 }
 
@@ -270,7 +273,7 @@ DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 src3) {
   auto masked_shift = UAnd(shift, shift_mask);
 
   if (UCmpEq(masked_shift, 0)) {
-    return;
+    return memory;
 
   } else if (UCmpLt(op_size, masked_shift)) {
     ClearArithFlags();
@@ -278,7 +281,7 @@ DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 src3) {
     //
     // TODO(pag): Update `dst` anyway because it may be readable but not
     //            writable?
-    return;
+    return memory;
   }
 
   auto left = UShl(val1, masked_shift);
@@ -294,6 +297,7 @@ DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 src3) {
   Write(FLAG_SF, SignFlag(res));
   Write(FLAG_OF, BXor(SignFlag(val1), FLAG_SF));
   // OF undefined for `1 == temp_count`.
+  return memory;
 }
 
 }  // namespace

@@ -26,7 +26,9 @@ DEF_SEM(POP, D dst) {
   addr_t new_xsp = UAdd(old_xsp, op_size);
   WriteZExt(dst, Read(ReadPtr<D>(old_xsp _IF_32BIT(REG_SS_BASE))));
   Write(REG_XSP, new_xsp);
+  return memory;
 }
+
 #if 32 == ADDRESS_SIZE_BITS
 DEF_SEM(DoPOPA) {
   Write(REG_DI, PopFromStack<uint16_t>(memory, state));
@@ -37,7 +39,9 @@ DEF_SEM(DoPOPA) {
   Write(REG_DX, PopFromStack<uint16_t>(memory, state));
   Write(REG_CX, PopFromStack<uint16_t>(memory, state));
   Write(REG_AX, PopFromStack<uint16_t>(memory, state));
+  return memory;
 }
+
 DEF_SEM(DoPOPAD) {
   Write(REG_EDI, PopFromStack<uint32_t>(memory, state));
   Write(REG_ESI, PopFromStack<uint32_t>(memory, state));
@@ -47,6 +51,7 @@ DEF_SEM(DoPOPAD) {
   Write(REG_EDX, PopFromStack<uint32_t>(memory, state));
   Write(REG_ECX, PopFromStack<uint32_t>(memory, state));
   Write(REG_EAX, PopFromStack<uint32_t>(memory, state));
+  return memory;
 }
 #endif
 
@@ -66,8 +71,11 @@ DEF_SEM(DoPOPFD) {
 //  state.rflag.ac = f.ac;
 //  state.rflag.tf = f.tf;
 //  state.rflag.nt = f.nt;
+  return memory;
 }
 #else
+
+// TODO(pag): Privileged mode flags.
 DEF_SEM(DoPOPFQ) {
   Flags f;
   f.flat = PopFromStack<uint64_t>(memory, state);
@@ -83,6 +91,7 @@ DEF_SEM(DoPOPFQ) {
 //  state.rflag.ac = f.ac;
 //  state.rflag.tf = f.tf;
 //  state.rflag.nt = f.nt;
+  return memory;
 }
 #endif  // 32 == ADDRESS_SIZE_BITS
 
@@ -97,6 +106,7 @@ DEF_SEM(DoPOPF) {
   state.aflag.pf = f.pf;
   state.aflag.sf = f.sf;
   state.aflag.zf = f.zf;
+  return memory;
 }
 }  // namespace
 

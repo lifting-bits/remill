@@ -4,18 +4,22 @@ namespace {
 
 DEF_SEM(DoSYSCALL) {
   HYPER_CALL = AsyncHyperCall::kX86SysCall;
+  return memory;
 }
 
 DEF_SEM(DoSYSCALL_AMD) {
   HYPER_CALL = AsyncHyperCall::kX86SysCall;
+  return memory;
 }
 
 DEF_SEM(DoSYSENTER) {
   HYPER_CALL = AsyncHyperCall::kX86SysEnter;
+  return memory;
 }
 
 DEF_SEM(DoSYSEXIT) {
   HYPER_CALL = AsyncHyperCall::kX86SysExit;
+  return memory;
 }
 }  // namespace
 

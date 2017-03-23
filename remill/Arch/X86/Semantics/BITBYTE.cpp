@@ -5,81 +5,97 @@ namespace {
 template <typename D>
 DEF_SEM(SETNLE, D dst) {
   Write(dst, BAnd(BNot(FLAG_ZF), BXnor(FLAG_CF, FLAG_PF)));
+  return memory;
 }
 
 template <typename D>
 DEF_SEM(SETNS, D dst) {
   Write(dst, BNot(FLAG_SF));
+  return memory;
 }
 
 template <typename D>
 DEF_SEM(SETL, D dst) {
   Write(dst, BXor(FLAG_SF, FLAG_OF));
+  return memory;
 }
 
 template <typename D>
 DEF_SEM(SETNP, D dst) {
   Write(dst, BNot(FLAG_PF));
+  return memory;
 }
 
 template <typename D>
 DEF_SEM(SETNZ, D dst) {
   Write(dst, BNot(FLAG_ZF));
+  return memory;
 }
 
 template <typename D>
 DEF_SEM(SETNB, D dst) {
   Write(dst, BNot(FLAG_CF));
+  return memory;
 }
 
 template <typename D>
 DEF_SEM(SETNO, D dst) {
   Write(dst, BNot(FLAG_OF));
+  return memory;
 }
 
 template <typename D>
 DEF_SEM(SETNL, D dst) {
   Write(dst, BXnor(FLAG_SF, FLAG_OF));
+  return memory;
 }
 
 template <typename D>
 DEF_SEM(SETNBE, D dst) {
   Write(dst, BNot(BOr(FLAG_DF, FLAG_ZF)));
+  return memory;
 }
 
 template <typename D>
 DEF_SEM(SETBE, D dst) {
   Write(dst, BOr(FLAG_CF, FLAG_ZF));
+  return memory;
 }
 
 template <typename D>
 DEF_SEM(SETZ, D dst) {
   Write(dst, FLAG_ZF);
+  return memory;
 }
 
 template <typename D>
 DEF_SEM(SETP, D dst) {
   Write(dst, FLAG_PF);
+  return memory;
 }
 
 template <typename D>
 DEF_SEM(SETS, D dst) {
   Write(dst, FLAG_SF);
+  return memory;
 }
 
 template <typename D>
 DEF_SEM(SETO, D dst) {
   Write(dst, FLAG_OF);
+  return memory;
 }
 
 template <typename D>
 DEF_SEM(SETB, D dst) {
   Write(dst, FLAG_CF);
+  return memory;
 }
 
 template <typename D>
 DEF_SEM(SETLE, D dst) {
   Write(dst, BOr(FLAG_ZF, BXor(FLAG_SF, FLAG_OF)));
+  return memory;
 }
 
 }  // namespace
@@ -124,6 +140,7 @@ DEF_SEM(BTreg, S1 src1, S2 src2) {
   auto bit = ZExtTo<S1>(Read(src2));
   auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(src1)));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  return memory;
 }
 
 template <typename S1, typename S2>
@@ -133,6 +150,7 @@ DEF_SEM(BTmem, S1 src1, S2 src2) {
   auto index = UDiv(bit, BitSizeOf(src1));
   auto val = Read(GetElementPtr(src1, index));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -142,6 +160,7 @@ DEF_SEM(BTSreg, D dst, S1 src1, S2 src2) {
   auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(val)));
   WriteZExt(dst, UOr(val, bit_mask));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -152,6 +171,7 @@ DEF_SEM(BTSmem, D dst, S1 src1, S2 src2) {
   auto val = Read(GetElementPtr(src1, index));
   Write(GetElementPtr(dst, index), UOr(val, bit_mask));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -161,6 +181,7 @@ DEF_SEM(BTRreg, D dst, S1 src1, S2 src2) {
   auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(src1)));
   WriteZExt(dst, UAnd(val, UNot(bit_mask)));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -171,6 +192,7 @@ DEF_SEM(BTRmem, D dst, S1 src1, S2 src2) {
   auto val = Read(GetElementPtr(src1, index));
   Write(GetElementPtr(dst, index), UAnd(val, UNot(bit_mask)));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -180,6 +202,7 @@ DEF_SEM(BTCreg, D dst, S1 src1, S2 src2) {
   auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(val)));
   WriteZExt(dst, UXor(val, bit_mask));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -190,6 +213,7 @@ DEF_SEM(BTCmem, D dst, S1 src1, S2 src2) {
   auto val = Read(GetElementPtr(src1, index));
   Write(GetElementPtr(dst, index), UXor(val, bit_mask));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  return memory;
 }
 
 }  // namespace
@@ -227,11 +251,13 @@ DEF_SEM(BSWAP_32, R32W dst, R32 src) {
 //  auto new_d = a;
 //  WriteZExt(dst, UOr(UOr(new_a, new_b), UOr(new_c, new_d)));
   WriteZExt(dst, __builtin_bswap32(Read(src)));
+  return memory;
 }
 
 #if 64 == ADDRESS_SIZE_BITS
 DEF_SEM(BSWAP_64, R64W dst, R64 src) {
   Write(dst, __builtin_bswap64(Read(src)));
+  return memory;
 }
 #endif  // 64 == ADDRESS_SIZE_BITS
 
@@ -241,8 +267,9 @@ DEF_SEM(TZCNT, D dst, S src) {
   auto count = CountTrailingZeros(val);
   ClearArithFlags();
   Write(FLAG_ZF, UCmpEq(UAnd(val, 1), 1));
-  Write(FLAG_CF, UCmpEq(val, 0));
+  Write(FLAG_CF, ZeroFlag(val));
   WriteZExt(dst, Select(FLAG_CF, BitSizeOf(src), count));
+  return memory;
 }
 
 template <typename D, typename S>
@@ -253,6 +280,7 @@ DEF_SEM(LZCNT, D dst, S src) {
   Write(FLAG_ZF, SignFlag(val));
   Write(FLAG_CF, UCmpEq(val, 0));
   WriteZExt(dst, Select(FLAG_CF, BitSizeOf(src), count));
+  return memory;
 }
 
 }  // namespace
@@ -272,17 +300,29 @@ DEF_SEM(BSR, D dst, S src) {
   auto val = Read(src);
   auto count = CountLeadingZeros(val);
   auto index = USub(USub(BitSizeOf(src), count), Literal<S>(1));
-  ClearArithFlags();
-  Write(FLAG_ZF, UCmpEq(val, 0));
-  Write(dst, Select(FLAG_ZF, Read(dst), ZExtTo<D>(index)));
+  Write(FLAG_ZF, ZeroFlag(val));
+  auto index_ret = Select(FLAG_ZF, Read(dst), ZExtTo<D>(index));
+  Write(FLAG_OF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_SF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_PF, ParityFlag(index));  // Undefined, but experimentally 1.
+  Write(FLAG_AF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_CF, false);  // Undefined, but experimentally 0.
+  Write(dst, index_ret);
+  return memory;
 }
 
 template <typename D, typename S>
 DEF_SEM(BSF, D dst, S src) {
   auto val = Read(src);
-  ClearArithFlags();
-  Write(FLAG_ZF, UCmpEq(val, 0));
-  Write(dst, Select(FLAG_ZF, Read(dst), ZExtTo<D>(CountTrailingZeros(val))));
+  Write(FLAG_ZF, ZeroFlag(val));
+  auto index = Select(FLAG_ZF, Read(dst), ZExtTo<D>(CountTrailingZeros(val)));
+  Write(FLAG_OF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_SF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_PF, ParityFlag(index));
+  Write(FLAG_AF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_CF, false);  // Undefined, but experimentally 0.
+  Write(dst, index);
+  return memory;
 }
 
 }  // namespace

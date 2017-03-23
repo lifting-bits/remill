@@ -35,9 +35,6 @@
 #define FUNC_NAME(instr_name, num_args) \
     CAT3(instr_name, _, num_args)
 
-/* This is the name of the function that will be generated. */
-#define TEST_FUNC FUNC_NAME
-
 /* Defines the beginning of a test function. The key detail is that tests
  * register themselves into data structures located in a special section of
  * the binary.
@@ -55,9 +52,9 @@
     .text ; \
     \
     .align 16 ; \
-    .globl TEST_FUNC(instr_name, num_args) ; \
+    .globl SYMBOL(FUNC_NAME(instr_name, num_args)) ; \
     \
-TEST_FUNC(instr_name, num_args): ; \
+SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .data ; \
     1: \
     .asciz TO_STRING(FUNC_NAME(instr_name, num_args)) ; \
@@ -82,7 +79,6 @@ TEST_FUNC(instr_name, num_args): ; \
  */
 #ifdef IN_TEST_GENERATOR
 # define TEST_END \
-    int3 ; \
     6: \
     .cfi_endproc ; \
     .section "__x86_test_table", "a" ; \
@@ -483,6 +479,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/COMISS.S"
 #include "tests/X86/SSE/PCMPISTRI.S"
 #include "tests/X86/SSE/PSHUFD.S"
+#include "tests/X86/SSE/PSRLDQ.S"
 #include "tests/X86/SSE/UCOMISD.S"
 #include "tests/X86/SSE/UCOMISS.S"
 

@@ -8,10 +8,19 @@
 
 #include <llvm/IR/Module.h>
 
+#undef HAS_FEATURE_AVX
+#undef HAS_FEATURE_AVX512
+#undef ADDRESS_SIZE_BITS
+
+#define HAS_FEATURE_AVX 1
+#define HAS_FEATURE_AVX512 1
+#define ADDRESS_SIZE_BITS 64
+
 #include "remill/Arch/Instruction.h"
 #include "remill/Arch/Name.h"
 #include "remill/Arch/X86/Arch.h"
 #include "remill/Arch/X86/XED.h"
+#include "remill/Arch/X86/Runtime/State.h"
 #include "remill/OS/OS.h"
 
 namespace remill {
@@ -627,13 +636,14 @@ static void DecodeOperand(Instruction *instr,
 
 }  // namespace
 
-const Arch *Arch::CreateX86(
-    OSName os_name_, ArchName arch_name_, unsigned address_size_) {
-  return new X86Arch(os_name_, arch_name_, address_size_);
+// TODO(pag): We pretend that these are singletons, but they aren't really!
+const Arch *Arch::GetX86(
+    OSName os_name_, ArchName arch_name_) {
+  return new X86Arch(os_name_, arch_name_);
 }
 
-X86Arch::X86Arch(OSName os_name_, ArchName arch_name_, unsigned address_size_)
-    : Arch(os_name_, arch_name_, address_size_) {
+X86Arch::X86Arch(OSName os_name_, ArchName arch_name_)
+    : Arch(os_name_, arch_name_) {
 
   static bool xed_is_initialized = false;
   if (!xed_is_initialized) {
@@ -776,6 +786,15 @@ Instruction *X86Arch::DecodeInstruction(
   }
 
   return instr;
+}
+
+uint64_t X86Arch::ProgramCounter(const ArchState *state_) const {
+  auto state = reinterpret_cast<const State *>(state_);
+  if (32 == address_size) {
+    return state->gpr.rip.dword;
+  } else {
+    return state->gpr.rip.qword;
+  }
 }
 
 }  // namespace remill

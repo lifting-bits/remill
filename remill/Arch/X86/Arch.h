@@ -9,16 +9,17 @@ namespace remill {
 
 class X86Arch : public Arch {
  public:
-  X86Arch(OSName os_name_, ArchName arch_name_, unsigned address_size_);
+  X86Arch(OSName os_name_, ArchName arch_name_);
 
   virtual ~X86Arch(void);
 
-  virtual void PrepareModule(llvm::Module *mod) const override;
+  void PrepareModule(llvm::Module *mod) const override;
+
+  uint64_t ProgramCounter(const ArchState *state) const override;
 
   // Decode an instruction.
-  virtual Instruction *DecodeInstruction(
-      uint64_t address,
-      const std::string &instr_bytes) const override;
+  Instruction *DecodeInstruction(
+      uint64_t address, const std::string &instr_bytes) const override;
 
  private:
   X86Arch(void) = delete;

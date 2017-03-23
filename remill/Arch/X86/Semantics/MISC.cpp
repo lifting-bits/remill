@@ -8,6 +8,7 @@ namespace {
 template <typename D, typename S>
 DEF_SEM(LEA, D dst, S src) {
   WriteZExt(dst, AddressOf(src));
+  return memory;
 }
 
 DEF_SEM(LEAVE_16BIT) {
@@ -17,6 +18,7 @@ DEF_SEM(LEAVE_16BIT) {
       ReadPtr<addr_t>(link_pointer _IF_32BIT(REG_SS_BASE)));
   Write(REG_XBP, base_pointer);
   Write(REG_XSP, UAdd(link_pointer, op_size));
+  return memory;
 }
 
 template <typename T>
@@ -27,6 +29,7 @@ DEF_SEM(LEAVE_FULL) {
       ReadPtr<addr_t>(link_pointer _IF_32BIT(REG_SS_BASE)));
   Write(REG_XBP, base_pointer);
   Write(REG_XSP, UAdd(link_pointer, op_size));
+  return memory;
 }
 
 }  // namespace
@@ -91,11 +94,16 @@ DEF_SEM(ENTER, I16 src1, I8 src2) {
 
   Write(REG_XBP, frame_temp);
   Write(REG_XSP, USub(xsp_temp, alloc_size));
+  return memory;
 }
 
-DEF_SEM(DoNothing) {}
+DEF_SEM(DoNothing) {
+  return memory;
+}
 
-DEF_SEM(DoCLFLUSH_MEMmprefetch, M8) {}
+DEF_SEM(DoCLFLUSH_MEMmprefetch, M8) {
+  return memory;
+}
 
 
 // Good reference for memory barriers and their relationships to instructions:
@@ -103,14 +111,17 @@ DEF_SEM(DoCLFLUSH_MEMmprefetch, M8) {}
 
 DEF_SEM(DoMFENCE) {
   BarrierStoreLoad();
+  return memory;
 }
 
 DEF_SEM(DoSFENCE) {
   BarrierStoreStore();
+  return memory;
 }
 
 DEF_SEM(DoLFENCE) {
   BarrierLoadLoad();
+  return memory;
 }
 
 DEF_SEM(DoXLAT) {
@@ -118,10 +129,11 @@ DEF_SEM(DoXLAT) {
   addr_t offset = ZExtTo<addr_t>(Read(REG_AL));
   Write(REG_AL, Read(
       ReadPtr<uint8_t>(UAdd(base, offset) _IF_32BIT(REG_DS_BASE))));
+  return memory;
 }
 
 DEF_SEM(DoCPUID) {
-  memory = __remill_sync_hyper_call(memory, state, SyncHyperCall::kX86CPUID);
+  return __remill_sync_hyper_call(memory, state, SyncHyperCall::kX86CPUID);
 }
 }  // namespace
 

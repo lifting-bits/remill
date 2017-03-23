@@ -15,24 +15,21 @@ enum : uint32_t {
 // Zero flags, tells us whether or not a value is zero.
 template <typename T>
 [[gnu::const]]
-NEVER_INLINE static bool ZeroFlag(T res) {
-  __remill_defer_inlining();
+ALWAYS_INLINE static bool ZeroFlag(T res) {
   return T(0) == res;
 }
 
 // Zero flags, tells us whether or not a value is zero.
 template <typename T>
 [[gnu::const]]
-NEVER_INLINE static bool NotZeroFlag(T res) {
-  __remill_defer_inlining();
+ALWAYS_INLINE static bool NotZeroFlag(T res) {
   return T(0) != res;
 }
 
 // Sign flag, tells us if a result is signed or unsigned.
 template <typename T>
 [[gnu::const]]
-NEVER_INLINE static bool SignFlag(T res) {
-  __remill_defer_inlining();
+ALWAYS_INLINE static bool SignFlag(T res) {
   return 0 > Signed(res);
 }
 
@@ -40,8 +37,7 @@ NEVER_INLINE static bool SignFlag(T res) {
 // is the 5th bit (where each binary decimal is 4 bits).
 template <typename T>
 [[gnu::const]]
-NEVER_INLINE static bool AuxCarryFlag(T lhs, T rhs, T res) {
-  __remill_defer_inlining();
+ALWAYS_INLINE static bool AuxCarryFlag(T lhs, T rhs, T res) {
   return ((res ^ lhs ^ rhs) & T(0x10));
 }
 
@@ -49,15 +45,13 @@ NEVER_INLINE static bool AuxCarryFlag(T lhs, T rhs, T res) {
 // is the 5th bit (where each binary decimal is 4 bits).
 template <typename T>
 [[gnu::const]]
-NEVER_INLINE static bool AuxCarryFlag(T lhs, T rhs, T carry, T res) {
-  __remill_defer_inlining();
+ALWAYS_INLINE static bool AuxCarryFlag(T lhs, T rhs, T carry, T res) {
   return ((res ^ lhs ^ carry ^ rhs) & T(0x10));
 }
 
 // Tests whether there is an even number of bits in the low order byte.
 [[gnu::const]]
-NEVER_INLINE static bool ParityFlag(uint8_t r0) {
-  __remill_defer_inlining();
+ALWAYS_INLINE static bool ParityFlag(uint8_t r0) {
   return !__builtin_parity(static_cast<unsigned>(r0));
 //  auto r1 = r0 >> 1_u8;
 //  auto r2 = r1 >> 1_u8;
@@ -91,14 +85,13 @@ template <>
 struct Overflow<tag_add> {
   template <typename T>
   [[gnu::const]]
-  NEVER_INLINE static bool Flag(T lhs, T rhs, T res) {
+  ALWAYS_INLINE static bool Flag(T lhs, T rhs, T res) {
     static_assert(std::is_unsigned<T>::value,
                   "Invalid specialization of `Overflow::Flag` for addition.");
     enum {
       kSignShift = sizeof(T) * 8 - 1
     };
 
-    __remill_defer_inlining();
     const T sign_lhs = lhs >> kSignShift;
     const T sign_rhs = rhs >> kSignShift;
     const T sign_res = res >> kSignShift;
@@ -111,7 +104,7 @@ template <>
 struct Overflow<tag_sub> {
   template <typename T>
   [[gnu::const]]
-  NEVER_INLINE static bool Flag(T lhs, T rhs, T res) {
+  ALWAYS_INLINE static bool Flag(T lhs, T rhs, T res) {
   static_assert(std::is_unsigned<T>::value,
                   "Invalid specialization of `Overflow::Flag` for "
                   "subtraction.");
@@ -119,7 +112,6 @@ struct Overflow<tag_sub> {
       kSignShift = sizeof(T) * 8 - 1
     };
 
-    __remill_defer_inlining();
     const T sign_lhs = lhs >> kSignShift;
     const T sign_rhs = rhs >> kSignShift;
     const T sign_res = res >> kSignShift;
@@ -135,11 +127,10 @@ struct Overflow<tag_mul> {
   // the operands.
   template <typename T, typename R>
   [[gnu::const]]
-  NEVER_INLINE static bool Flag(
+  ALWAYS_INLINE static bool Flag(
       T, T, R res,
       typename std::enable_if<sizeof(T) < sizeof(R),int>::type=0) {
 
-    __remill_defer_inlining();
     return static_cast<R>(static_cast<T>(res)) != res;
   }
 
@@ -147,10 +138,9 @@ struct Overflow<tag_mul> {
   // truncated to the size of the operands.
   template <typename T>
   [[gnu::const]]
-  NEVER_INLINE static bool Flag(
+  ALWAYS_INLINE static bool Flag(
       T lhs, T rhs, T,
       typename std::enable_if<std::is_signed<T>::value,int>::type=0) {
-    __remill_defer_inlining();
     auto lhs_wide = SExt(lhs);
     auto rhs_wide = SExt(rhs);
     return Flag<T, decltype(lhs_wide)>(lhs, rhs, lhs_wide * rhs_wide);
@@ -166,10 +156,9 @@ template <>
 struct Carry<tag_add> {
   template <typename T>
   [[gnu::const]]
-  NEVER_INLINE static bool Flag(T lhs, T rhs, T res) {
+  ALWAYS_INLINE static bool Flag(T lhs, T rhs, T res) {
     static_assert(std::is_unsigned<T>::value,
                   "Invalid specialization of `Carry::Flag` for addition.");
-    __remill_defer_inlining();
     return res < lhs || res < rhs;
   }
 };
@@ -179,10 +168,9 @@ template <>
 struct Carry<tag_sub> {
   template <typename T>
   [[gnu::const]]
-  NEVER_INLINE static bool Flag(T lhs, T rhs, T) {
+  ALWAYS_INLINE static bool Flag(T lhs, T rhs, T) {
     static_assert(std::is_unsigned<T>::value,
                   "Invalid specialization of `Carry::Flag` for addition.");
-    __remill_defer_inlining();
     return lhs < rhs;
   }
 };

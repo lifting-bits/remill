@@ -23,14 +23,11 @@ def save_to_stream(output_stream):
 
   log.debug("Not serializing {} blocks".format(len(exclude_blocks)))
 
-  referenced_blocks = set()
-  addressed_blocks = set()
   for block in program.basic_blocks():
     if block in exclude_blocks:
       continue
 
     if not len(block.instructions):
-      referenced_blocks.add(block)
       log.error("Block {:08x} has no instructions.".format(block.ea))
       continue
 
@@ -39,9 +36,11 @@ def save_to_stream(output_stream):
     log.info("Serializing block {:08x}.".format(block.ea))
     b = mod.blocks.add()
     b.address = block.ea
-    
-    if block.address_is_taken:
-      addressed_blocks.add(block)
+
+    if program.has_subroutine(block.ea):
+      func_of_block = program.get_subroutine(block.ea)
+      if func_of_block.name:
+        b.name = func_of_block.name
 
     for inst in block:
       i = b.instructions.add()
@@ -49,29 +48,6 @@ def save_to_stream(output_stream):
       i.bytes = inst.bytes
       num_insts += 1
 
-  for block in addressed_blocks:
-    mod.addressed_blocks.append(block.ea)
-
-  for block in referenced_blocks:
-    mod.referenced_blocks.append(block.ea)
-
-  for sub in program.subroutines():
-    if not sub.name:
-      continue
-
-    if program.Subroutine.VISIBILITY_INTERNAL == sub.visibility:
-      continue
-
-    nb = mod.named_blocks.add()
-    nb.name = sub.name
-    nb.address = sub.ea
-
-    if program.Subroutine.VISIBILITY_IMPORTED == sub.visibility:
-      nb.visibility = CFG_pb2.IMPORTED
-    elif program.Subroutine.VISIBILITY_EXPORTED == sub.visibility:
-      nb.visibility = CFG_pb2.EXPORTED
-
-  log.info("Serializing {} subroutines".format(num_subs))
   log.info("Serializing {} blocks".format(num_blocks))
   log.info("Serializing {} instructions".format(num_insts))
   output_stream.write(mod.SerializeToString())

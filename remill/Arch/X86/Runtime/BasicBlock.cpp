@@ -10,14 +10,14 @@ extern "C" {
 // Method that will implement a basic block. We will clone this method for
 // each basic block in the code being lifted.
 [[gnu::used]]
-void __remill_basic_block(Memory &memory, State &state, addr_t curr_pc) {
+Memory *__remill_basic_block(Memory *memory, State &state, addr_t curr_pc) {
 
   bool branch_taken = false;
   addr_t zero = 0;
 
   // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
-  auto &MEMORY = memory;
+  auto &MEMORY = *memory;
   auto &PC = state.gpr.rip.IF_64BIT_ELSE(qword, dword);
   auto &BRANCH_TAKEN = branch_taken;
 
@@ -291,6 +291,7 @@ void __remill_basic_block(Memory &memory, State &state, addr_t curr_pc) {
   auto &ZF = state.aflag.zf;
 
   // Lifted code will be placed here in clones versions of this function.
+  return nullptr;
 }
 
 #pragma clang diagnostic pop

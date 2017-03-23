@@ -2,3 +2,10 @@
 
 install(CODE
     "execute_process(COMMAND python ${PROJECT_SOURCE_DIR}/tools/setup.py install -f --prefix=${CMAKE_INSTALL_PREFIX})")
+
+add_subdirectory(${PROJECT_SOURCE_DIR}/tools/remill_lift)
+add_subdirectory(${PROJECT_SOURCE_DIR}/tools/remill_opt)
+
+if (LINUX)
+    add_subdirectory(${PROJECT_SOURCE_DIR}/tools/vmill)
+endif(LINUX)

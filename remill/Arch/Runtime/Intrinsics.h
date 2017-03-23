@@ -6,23 +6,11 @@
 #include "remill/Arch/Runtime/Types.h"
 #include "remill/Arch/Runtime/HyperCall.h"
 
-struct IndirectBlock final {
-  const uint64_t lifted_address;
-  void (* const lifted_func)(Memory *, State &, addr_t);
-};
-
-// TODO(pag): Add a `lifted_address` field in here for extra cross-checking?
-struct NamedBlock final {
-  const char * const name;
-  void (* const lifted_func)(Memory *, State &, addr_t);
-  void (* const native_func)(void);
-};
-
 extern "C" {
 
 // The basic block "template".
 [[gnu::used]]
-void __remill_basic_block(Memory &memory, State &state, addr_t);
+Memory *__remill_basic_block(Memory *memory, State &state, addr_t);
 
 // Memory read intrinsics.
 [[gnu::used, gnu::const]]
@@ -94,20 +82,23 @@ extern void __remill_defer_inlining(void);
 
 // Generic error.
 [[gnu::used]]
-extern void __remill_error(Memory *, State &, addr_t addr);
+extern Memory *__remill_error(Memory *, State &, addr_t addr);
 
 // Control-flow intrinsics.
 [[gnu::used]]
-extern void __remill_function_call(Memory *, State &, addr_t addr);
+extern Memory *__remill_function_call(Memory *, State &, addr_t addr);
 
 [[gnu::used]]
-extern void __remill_function_return(Memory *, State &, addr_t addr);
+extern Memory *__remill_function_return(Memory *, State &, addr_t addr);
 
 [[gnu::used]]
-extern void __remill_jump(Memory *, State &, addr_t addr);
+extern Memory *__remill_jump(Memory *, State &, addr_t addr);
 
 [[gnu::used]]
-extern void __remill_async_hyper_call(Memory *, State &, addr_t ret_addr);
+extern Memory *__remill_missing_block(Memory *, State &, addr_t addr);
+
+[[gnu::used]]
+extern Memory *__remill_async_hyper_call(Memory *, State &, addr_t ret_addr);
 
 [[gnu::used]]
 extern Memory *__remill_sync_hyper_call(Memory *, State &, SyncHyperCall::Name);

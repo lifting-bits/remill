@@ -3,6 +3,8 @@
 #ifndef REMILL_BC_OPTIMIZER_H_
 #define REMILL_BC_OPTIMIZER_H_
 
+#include <memory>
+
 namespace llvm {
 class Function;
 class Module;
@@ -13,7 +15,7 @@ class Optimizer {
  public:
   virtual ~Optimizer(void);
 
-  static Optimizer *Create(llvm::Module *module_);
+  static std::unique_ptr<Optimizer> Create(llvm::Module *module_);
 
   virtual void Optimize(void) = 0;
 

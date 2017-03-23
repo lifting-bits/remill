@@ -6,7 +6,9 @@
 namespace {
 
 template <typename...Types>
-DEF_SEM(NOP_IMPL, Types...) {}
+DEF_SEM(NOP_IMPL, Types...) {
+  return memory;
+}
 
 }  // namespace
 
