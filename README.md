@@ -147,8 +147,8 @@ This script will build and install the Google Test framework. It will request ad
 ### Generate and Run the Test Cases
 
 ```shell
-./scripts/x86/generate_tests.sh
-./scripts/x86/run_tests.sh
+sudo make build_x86_tests
+ctest
 ```
 
 ## Try it Out
@@ -162,7 +162,7 @@ remill-disass --disassembler /path/to/ida/idal64 --arch amd64 --output target.cf
 Once you have the control flow graph information, you can lift the target binary using `remill-lift`.
 
 ```shell
-remill-lift --arch_in amd64 --os_in linux --cfg target.cfg --bc_out target.bc
+remill-lift --arch amd64 --os linux --cfg target.cfg --bc_out target.bc
 ```
 
 When the bitcode has been recovered by `remill-lift`, it is a good idea to optimize it using `remill-opt`.

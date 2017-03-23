@@ -5,6 +5,8 @@
 
 #include <string>
 
+struct ArchState;
+
 namespace llvm {
 class Module;
 class BasicBlock;
@@ -23,7 +25,7 @@ class Arch {
 
   // Factory method for loading the correct architecture class for a given
   // operating system and architecture class.
-  static const Arch *Create(OSName os, ArchName arch_name);
+  static const Arch *Get(OSName os, ArchName arch_name);
 
   // Converts an LLVM module object to have the right triple / data layout
   // information for the target architecture.
@@ -34,22 +36,25 @@ class Arch {
       uint64_t address,
       const std::string &instr_bytes) const = 0;
 
+  virtual uint64_t ProgramCounter(const ArchState *state) const = 0;
+
   // Number of bits in an address.
   const OSName os_name;
   const ArchName arch_name;
   const unsigned address_size;
 
  protected:
-  Arch(OSName os_name_, ArchName arch_name_, unsigned address_size_);
+  Arch(OSName os_name_, ArchName arch_name_);
 
  private:
 
   // Defined in `remill/Arch/X86/Arch.cpp`.
-  static const Arch *CreateX86(
-      OSName os, ArchName arch_name, unsigned address_size_);
+  static const Arch *GetX86(OSName os, ArchName arch_name);
 
   Arch(void) = delete;
 };
+
+const Arch *GetGlobalArch(void);
 
 }  // namespace remill
 

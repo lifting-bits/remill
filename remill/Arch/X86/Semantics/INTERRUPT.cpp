@@ -14,22 +14,26 @@ DEF_SEM(BOUND, R8W cond, S1 src1, S2 src2) {
   HYPER_CALL = AsyncHyperCall::kX86Bound;
   INTERRUPT_VECTOR = 5;
   Write(cond, BOr(UCmpLt(index, lower_bound), UCmpLt(upper_bound, index)));
+  return memory;
 }
 #endif
 
 DEF_SEM(DoINT_IMMb, I8 num) {
   INTERRUPT_VECTOR = Read(num);
   HYPER_CALL = AsyncHyperCall::kX86IntN;
+  return memory;
 }
 
 DEF_SEM(DoINT1) {
   INTERRUPT_VECTOR = 1;
   HYPER_CALL = AsyncHyperCall::kX86Int1;
+  return memory;
 }
 
 DEF_SEM(DoINT3) {
   INTERRUPT_VECTOR = 3;
   HYPER_CALL = AsyncHyperCall::kX86Int3;
+  return memory;
 }
 
 #if 32 == ADDRESS_SIZE_BITS
@@ -37,6 +41,7 @@ DEF_SEM(DoINTO, R8W cond) {
   Write(cond, FLAG_OF);
   INTERRUPT_VECTOR = 4;
   HYPER_CALL = AsyncHyperCall::kX86IntO;
+  return memory;
 }
 
 #endif  // 32 == ADDRESS_SIZE_BITS

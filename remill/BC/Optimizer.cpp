@@ -39,6 +39,8 @@ enum : size_t {
   kNumFixPointIterations = 1000
 };
 
+#if 0
+
 using RegBitMap = std::bitset<kMaxNumRegs>;
 
 struct RegUses {
@@ -55,6 +57,7 @@ struct RegUses {
 
   RegBitMap incoming_live;
 };
+#endif
 
 class Opt : public Optimizer {
  public:
@@ -63,6 +66,7 @@ class Opt : public Optimizer {
 
   void Optimize(void) override;
 
+#if 0
   // Assign register numbers to every load, store, GEP, pointer bitcast, and
   // alloca.
   void AssignRegisters(llvm::Function *func);
@@ -136,19 +140,15 @@ class Opt : public Optimizer {
                                         RegUses *transfer) const;
 
   void InitBlockTransferFunction(llvm::BasicBlock *block, RegUses *transfer);
+#endif
 };
 
+#if 0
 // Gets the state structure type from this module.
 static llvm::StructType *GetStateType(llvm::Module *module) {
   llvm::Function *bb_func = module->getFunction("__remill_basic_block");
-  if (!bb_func) {
-    for (auto &func : *module) {
-      if (func.getName().startswith("__remill_sub")) {
-        bb_func = &func;
-        break;
-      }
-    }
-  }
+  CHECK(nullptr != bb_func)
+      << "Unable to find `__remill_basic_block` function.";
 
   CHECK(nullptr != bb_func)
       << "Cannot find state structure type.";
@@ -170,7 +170,12 @@ static llvm::StructType *GetStateType(llvm::Module *module) {
 
   return state_type;
 }
+#endif
 
+Opt::Opt(llvm::Module *module_)
+    : Optimizer(module_) {}
+
+#if 0
 Opt::Opt(llvm::Module *module_)
     : Optimizer(module_),
       state_type(GetStateType(module)),
@@ -737,87 +742,6 @@ void Opt::InitDeoptBlockTransferFunctions(llvm::Function *func) {
   }
 }
 
-static void DisableReoptimization(llvm::Module *module) {
-  for (auto &func : *module) {
-    if (func.getName().startswith("__remill")) {
-      func.addFnAttr(llvm::Attribute::OptimizeNone);
-      func.removeFnAttr(llvm::Attribute::AlwaysInline);
-      func.removeFnAttr(llvm::Attribute::InlineHint);
-      func.addFnAttr(llvm::Attribute::NoInline);
-    }
-  }
-}
-
-static void DisableBlockInlining(llvm::Module *module) {
-  for (auto &func : *module) {
-    if (!func.getName().startswith("__remill_sub")) {
-      continue;
-    }
-
-    // Don't inline across calls to block functions.
-    func.removeFnAttr(llvm::Attribute::AlwaysInline);
-    func.removeFnAttr(llvm::Attribute::InlineHint);
-    func.addFnAttr(llvm::Attribute::NoInline);
-  }
-}
-
-static void EnableBlockInlining(llvm::Module *module) {
-  for (auto &func : *module) {
-    if (!func.getName().startswith("__remill_sub")) {
-      continue;
-    }
-
-    func.removeFnAttr(llvm::Attribute::NoInline);
-    func.addFnAttr(llvm::Attribute::InlineHint);
-  }
-}
-
-static void RunO3(llvm::Module *module) {
-  llvm::legacy::FunctionPassManager func_manager(module);
-  llvm::legacy::PassManager module_manager;
-
-  auto TLI = new llvm::TargetLibraryInfoImpl(
-      llvm::Triple(module->getTargetTriple()));
-  TLI->disableAllFunctions();
-
-  llvm::PassManagerBuilder builder;
-  builder.OptLevel = 0;  // -O0.
-  builder.SizeLevel = 0;  // -Oz
-  builder.Inliner = llvm::createFunctionInliningPass(999);
-  builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
-  builder.DisableTailCalls = false;  // Enable tail calls.
-  builder.DisableUnrollLoops = false;  // Unroll loops!
-  builder.DisableUnitAtATime = false;
-  builder.SLPVectorize = false;  // Don't produce vector operations.
-  builder.LoopVectorize = false;  // Don't produce vector operations.
-  builder.LoadCombine = false;  // Don't coalesce loads.
-  builder.MergeFunctions = false;  // Try to deduplicate functions.
-  builder.VerifyInput = false;
-  builder.VerifyOutput = false;
-
-  builder.populateFunctionPassManager(func_manager);
-  builder.populateModulePassManager(module_manager);
-
-  func_manager.add(llvm::createCFGSimplificationPass());
-  func_manager.add(llvm::createPromoteMemoryToRegisterPass());
-  func_manager.add(llvm::createReassociatePass());
-  func_manager.add(llvm::createInstructionCombiningPass());
-  func_manager.add(llvm::createDeadStoreEliminationPass());
-  func_manager.add(llvm::createDeadCodeEliminationPass());
-  
-  func_manager.doInitialization();
-  for (auto &func : *module) {
-    if (func.hasFnAttribute(llvm::Attribute::OptimizeNone) ||
-        !func.getName().startswith("__remill_sub")) {
-      continue;
-    }
-    func_manager.run(func);
-  }
-
-  func_manager.doFinalization();
-  module_manager.run(*module);
-}
-
 // Get all predecessors of a basic block. This will cross function boundaries.
 static void GetBlockPredecessors(llvm::BasicBlock *block,
                                  std::vector<llvm::BasicBlock *> &preds) {
@@ -850,11 +774,12 @@ static void GetBlockSuccessors(llvm::BasicBlock *block,
   }
 }
 
-// Get a function's front or a null pointer if no front available. 
-static llvm::BasicBlock *GetFuncFrontOrNull(llvm::Function &func) {
-  if(func.isDeclaration() || func.size() == 0)
+// Get a function's front or a null pointer if no front available.
+static llvm::BasicBlock *GetFuncFrontOrNull(llvm::Function *func) {
+  if (func->isDeclaration() || func->size() == 0) {
     return nullptr;
-  return &(func.front());
+  }
+  return &(func->front());
 }
 
 // Perform inter-procedural dead store elimination on accesses to the `State`
@@ -877,28 +802,26 @@ void Opt::InterProceduralDeadStoreElimination(void) {
 
   // Initialize the block transfer functions for every basic block in every
   // lifted subroutine.
-  for (auto &func : *module) {
-    auto func_name = func.getName();
-    if (func_name.startswith("__remill_sub")) {
-      if (!func_transfer_functions.count(&func)) {
-        if (ReassociateRegisters(&func)) {
-          AssignRegisters(&func);
-          InitBlockTransferFunctions(&func);
+  ForEachBlock(module, [&] (uint64_t, uint64_t, llvm::Function *func) {
+    auto func_name = func->getName();
+    if (!func_transfer_functions.count(func)) {
+      if (ReassociateRegisters(func)) {
+        AssignRegisters(func);
+        InitBlockTransferFunctions(func);
 
-        // There exists a GEP with a non-constant index, and so we treat this
-        // block as non-optimizable (in terms of DSE). We can add these blocks
-        // to the avoid set, kind of like how incremental optimization happens.
-        } else {
-          DLOG(WARNING)
-              << "Treating function " << func_name.str()
-              << " as unoptimizable; it has a GEP with a non-constant index.";
-          InitDeoptBlockTransferFunctions(&func);
-          func_transfer_functions[&func] =
-              block_transfer_functions[&(func.front())];
-        }
+      // There exists a GEP with a non-constant index, and so we treat this
+      // block as non-optimizable (in terms of DSE). We can add these blocks
+      // to the avoid set, kind of like how incremental optimization happens.
+      } else {
+        DLOG(WARNING)
+            << "Treating function " << func_name.str()
+            << " as unoptimizable; it has a GEP with a non-constant index.";
+        InitDeoptBlockTransferFunctions(func);
+        func_transfer_functions[func] =
+            block_transfer_functions[&(func->front())];
       }
     }
-  }
+  });
 
   // Propagate dead register analysis results from a prior run to the
   // current run.
@@ -987,21 +910,72 @@ void Opt::InterProceduralDeadStoreElimination(void) {
   block_transfer_functions[nullptr].local_dead.set();
 
   // Eliminate dead stores.
-  for (auto &func : *module) {
-    if (func.getName().startswith("__remill_sub") &&
-        !func_transfer_functions.count(&func)) {
-      func_transfer_functions[&func] =
+  ForEachBlock(module, [&] (uint64_t, uint64_t, llvm::Function *func) {
+    if (!func_transfer_functions.count(func)) {
+      AssignRegisters(func);
+      EliminateDeadStores(func);
+      func_transfer_functions[func] =
           block_transfer_functions.at(GetFuncFrontOrNull(func));
-      AssignRegisters(&func);
-      EliminateDeadStores(&func);
     }
-  }
+  });
 
   // Clear it out.
   decltype(block_transfer_functions) empty;
   block_transfer_functions.clear();
   block_transfer_functions.swap(empty);
   empty.clear();
+}
+
+#endif  // 0
+
+static void DisableReoptimization(llvm::Module *module) {
+  ForEachBlock(module, [&] (uint64_t, uint64_t, llvm::Function *func) {
+    func->addFnAttr(llvm::Attribute::OptimizeNone);
+  });
+}
+
+static void RunO3(llvm::Module *module) {
+  llvm::legacy::FunctionPassManager func_manager(module);
+  llvm::legacy::PassManager module_manager;
+
+  auto TLI = new llvm::TargetLibraryInfoImpl(
+      llvm::Triple(module->getTargetTriple()));
+  TLI->disableAllFunctions();
+
+  llvm::PassManagerBuilder builder;
+  builder.OptLevel = 0;  // -O0.
+  builder.SizeLevel = 0;  // -Oz
+  builder.Inliner = llvm::createFunctionInliningPass(999);
+  builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
+  builder.DisableTailCalls = false;  // Enable tail calls.
+  builder.DisableUnrollLoops = false;  // Unroll loops!
+  builder.DisableUnitAtATime = false;
+  builder.SLPVectorize = false;  // Don't produce vector operations.
+  builder.LoopVectorize = false;  // Don't produce vector operations.
+  builder.LoadCombine = false;  // Don't coalesce loads.
+  builder.MergeFunctions = false;  // Try to deduplicate functions.
+  builder.VerifyInput = false;
+  builder.VerifyOutput = false;
+
+  builder.populateFunctionPassManager(func_manager);
+  builder.populateModulePassManager(module_manager);
+
+  func_manager.add(llvm::createCFGSimplificationPass());
+  func_manager.add(llvm::createPromoteMemoryToRegisterPass());
+  func_manager.add(llvm::createReassociatePass());
+  func_manager.add(llvm::createInstructionCombiningPass());
+  func_manager.add(llvm::createDeadStoreEliminationPass());
+  func_manager.add(llvm::createDeadCodeEliminationPass());
+
+  func_manager.doInitialization();
+  ForEachBlock(module, [&] (uint64_t, uint64_t, llvm::Function *func) {
+    if (!func->hasFnAttribute(llvm::Attribute::OptimizeNone)) {
+      func_manager.run(*func);
+    }
+  });
+
+  func_manager.doFinalization();
+  module_manager.run(*module);
 }
 
 // Replace all uses of a specific intrinsic with an undefined value.
@@ -1066,10 +1040,10 @@ static void RemoveUndefFuncCalls(llvm::Module *module) {
 }
 
 // Enable inlining of functions whose inlining has been deferred.
-static void EnableDeferredInlining(llvm::Module *module) {
+static bool EnableDeferredInlining(llvm::Module *module) {
   auto defer_inlining_func = module->getFunction("__remill_defer_inlining");
   if (!defer_inlining_func) {
-    return;
+    return false;
   }
 
   std::vector<llvm::CallInst *> call_insts;
@@ -1080,6 +1054,10 @@ static void EnableDeferredInlining(llvm::Module *module) {
     if (auto call_inst = llvm::dyn_cast_or_null<llvm::CallInst>(caller)) {
       call_insts.push_back(call_inst);
     }
+  }
+
+  if (call_insts.empty()) {
+    return false;
   }
 
   // Remove the calls to the inline defer intrinsic, and mark the functions
@@ -1110,18 +1088,20 @@ static void EnableDeferredInlining(llvm::Module *module) {
       }
     }
   }
+
+  return true;
 }
 
 void Opt::Optimize(void) {
   auto module_id = module->getModuleIdentifier();
-  DisableBlockInlining(module);
+
   DLOG(INFO)
       << "Running -O3 on " << module_id;
   RunO3(module);
 
-  DLOG(INFO)
-      << "Doing inter-procedural dead store elimination on " << module_id;
-  InterProceduralDeadStoreElimination();
+//  DLOG(INFO)
+//      << "Doing inter-procedural dead store elimination on " << module_id;
+//  InterProceduralDeadStoreElimination();
 
   DLOG(INFO)
       << "Removing undefined function calls.";
@@ -1129,16 +1109,14 @@ void Opt::Optimize(void) {
 
   DLOG(INFO)
       << "Enabling the deferring inlining optimization.";
-  EnableDeferredInlining(module);
+  if (EnableDeferredInlining(module)) {
+    DLOG(INFO)
+        << "Rerunning -O3 on " << module_id;
+    RunO3(module);
 
-  EnableBlockInlining(module);
-
-  DLOG(INFO)
-      << "Rerunning -O3 on " << module_id;
-  RunO3(module);
-
-  DLOG(INFO)
-      << "Finalizing optimizations of " << module_id;
+    DLOG(INFO)
+        << "Finalizing optimizations of " << module_id;
+  }
 
   DisableReoptimization(module);
 
@@ -1153,8 +1131,8 @@ Optimizer::~Optimizer(void) {}
 Optimizer::Optimizer(llvm::Module *module_)
     : module(module_) {}
 
-Optimizer *Optimizer::Create(llvm::Module *module_) {
-  return new Opt(module_);
+std::unique_ptr<Optimizer> Optimizer::Create(llvm::Module *module_) {
+  return std::unique_ptr<Optimizer>(new Opt(module_));
 }
 
 }  // namespace remill

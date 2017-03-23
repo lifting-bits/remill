@@ -1,0 +1,86 @@
+#!/usr/bin/env python
+# Copyright 2017 Peter Goodman (peter@trailofbits.com), all rights reserved.
+
+import argparse
+import os
+import subprocess
+
+def is_exe(fpath):
+  return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+if "__main__" == __name__:
+  arg_parser = argparse.ArgumentParser()
+  arg_parser.add_argument(
+      '--breakpoint',
+      help='Address of where to inject a breakpoint.',
+      default=0,
+      required=True)
+
+  arg_parser.add_argument(
+      '--workspace',
+      help="Path to a directory in which the snapshot files are placed.",
+      default=os.getcwd())
+
+  arg_parser.add_argument(
+      '--arch',
+      help="Architecture.",
+      default=os.getcwd())
+
+  arg_parser.add_argument(
+      '--trace_file',
+      help="Output file of execution trace.",
+      default=os.getcwd())
+
+  args, command_args = arg_parser.parse_known_args()
+
+  pin_root = os.environ.get('PIN_ROOT', '/opt/pin-3.2-81205-gcc-linux/')
+  pin_exe = os.path.join(pin_root, "pin")
+  if not is_exe(pin_exe):
+    arg_parser.error(
+      "Path to PIN {} doesn't exist. Please specify a correct PIN_ROOT "
+      "environment variable.".format(pin_root))
+
+  workspace = os.path.abspath(args.workspace)
+  if not os.path.isdir(args.workspace):
+    os.makedirs(workspace)
+
+  arch_to_target = {
+    "x86": "ia32",
+    "x86_avx": "ia32",
+    "x86_avx512": "ia32",
+    "amd64": "intel64",
+    "amd64_avx": "intel64",
+    "amd64_avx512": "intel64"
+  }
+
+  target = arch_to_target.get(args.arch, None)
+  if not target:
+    arg_parser.error("Invalid architecture name passed to --arch.")
+
+  obj_dir_name = "obj-{}".format(target)
+  tool_obj_dir = os.path.join(os.path.dirname(__file__), obj_dir_name)
+  tool_dll = os.path.join(tool_obj_dir, "Snapshot.so")
+
+  if not is_exe(tool_dll):
+    arg_parser.error(
+        "Tool DLL {} is missing or not executable.".format(tool_dll))
+
+  args = [
+      pin_exe,
+      "-t", tool_dll,
+      "-breakpoint", args.breakpoint,  # 0x8401260
+      "-workspace", workspace,
+      "-trace_file", args.trace_file]
+
+  try:
+    program_index = command_args.index("--")
+    args.extend(command_args[program_index:])
+  except:
+    arg_parser.error(
+        "Expected a program invocation to follow a -- in the command line.")
+
+  env = dict(os.environ)
+  env['LD_BIND_NOW'] = '1'
+  env['TZ'] = env.get('TZ', ':/etc/localtime')
+
+  subprocess.call(args, env=env)

@@ -27,16 +27,19 @@ DEF_SEM(ADD, D dst, S1 src1, S2 src2) {
   auto sum = UAdd(lhs, rhs);
   WriteZExt(dst, sum);
   WriteFlagsAddSub<tag_add>(state, lhs, rhs, sum);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ADDPS, D dst, S1 src1, S2 src2) {
   FWriteV32(dst, FAddV32(FReadV32(src1), FReadV32(src2)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ADDPD, D dst, S1 src1, S2 src2) {
   FWriteV64(dst, FAddV64(FReadV64(src1), FReadV64(src2)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -46,6 +49,7 @@ DEF_SEM(ADDSS, D dst, S1 src1, S2 src2) {
   auto sum = FAdd(FExtractV32(lhs, 0), FExtractV32(rhs, 0));
   auto res = FInsertV32(lhs, 0, sum);
   FWriteV32(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -55,6 +59,7 @@ DEF_SEM(ADDSD, D dst, S1 src1, S2 src2) {
   auto sum = FAdd(FExtractV64(lhs, 0), FExtractV64(rhs, 0));
   auto res = FInsertV64(lhs, 0, sum);
   FWriteV64(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
 }
 
 }  // namespace
@@ -111,16 +116,19 @@ DEF_SEM(SUB, D dst, S1 src1, S2 src2) {
   auto sum = USub(lhs, rhs);
   WriteZExt(dst, sum);
   WriteFlagsAddSub<tag_sub>(state, lhs, rhs, sum);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(SUBPS, D dst, S1 src1, S2 src2) {
   FWriteV32(dst, FSubV32(FReadV32(src1), FReadV32(src2)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(SUBPD, D dst, S1 src1, S2 src2) {
   FWriteV64(dst, FSubV64(FReadV64(src1), FReadV64(src2)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -130,6 +138,7 @@ DEF_SEM(SUBSS, D dst, S1 src1, S2 src2) {
   auto sum = FSub(FExtractV32(lhs, 0), FExtractV32(rhs, 0));
   auto res = FInsertV32(lhs, 0, sum);
   FWriteV32(dst, res);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -139,6 +148,7 @@ DEF_SEM(SUBSD, D dst, S1 src1, S2 src2) {
   auto sum = FSub(FExtractV64(lhs, 0), FExtractV64(rhs, 0));
   auto res = FInsertV64(lhs, 0, sum);
   FWriteV64(dst, res);
+  return memory;
 }
 
 }  // namespace
@@ -194,6 +204,7 @@ DEF_SEM(CMP, S1 src1, S2 src2) {
   auto rhs = Read(src2);
   auto sum = USub(lhs, rhs);
   WriteFlagsAddSub<tag_sub>(state, lhs, rhs, sum);
+  return memory;
 }
 
 }  // namespace
@@ -224,7 +235,7 @@ ALWAYS_INLINE static
 void WriteFlagsMul(State &state, T lhs, T rhs, U res, V res_trunc) {
   const auto new_of = Overflow<tag_mul>::Flag(lhs, rhs, res);
   FLAG_CF = new_of;
-  FLAG_PF = BUndefined();
+  FLAG_PF = ParityFlag(res);  // Technically undefined.
   FLAG_AF = BUndefined();
   FLAG_ZF = BUndefined();
   FLAG_SF = std::is_signed<T>::value ?
@@ -245,6 +256,7 @@ DEF_SEM(IMUL, D dst, S1 src1, S2 src2) {
   auto res_trunc = TruncTo<S2>(res);
   WriteZExt(dst, res_trunc);  // E.g. write to EAX can overwrite RAX.
   WriteFlagsMul(state, lhs, rhs, res, res_trunc);
+  return memory;
 }
 
 // Unsigned multiply without affecting flags.
@@ -263,6 +275,7 @@ DEF_SEM(MULX, D dst1, D dst2, const S2 src2) {
   // write version of the reg will be the 64-bit version.
   WriteZExt(dst1, TruncTo<S2>(res_high));  // High N bits.
   WriteZExt(dst2, TruncTo<S2>(res));  // Low N bits.
+  return memory;
 }
 
 #define MAKE_MULxax(name, src1, dst1, dst2) \
@@ -278,6 +291,7 @@ DEF_SEM(MULX, D dst1, D dst2, const S2 src2) {
       WriteZExt(dst1, res_trunc); \
       WriteZExt(dst2, Trunc(UShr(res, shift))); \
       WriteFlagsMul(state, lhs, rhs, res, res_trunc); \
+      return memory; \
     }
 
 MAKE_MULxax(al, REG_AL, REG_AL, REG_AH)
@@ -300,6 +314,7 @@ IF_64BIT(MAKE_MULxax(rax, REG_RAX, REG_RAX, REG_RDX))
       WriteZExt(dst1, Unsigned(res_trunc)); \
       WriteZExt(dst2, Trunc(UShr(Unsigned(res), shift))); \
       WriteFlagsMul(state, lhs, rhs, res, res_trunc); \
+      return memory; \
     }
 
 MAKE_IMULxax(al, REG_AL, REG_AL, REG_AH)
@@ -312,11 +327,13 @@ IF_64BIT(MAKE_IMULxax(rax, REG_RAX, REG_RAX, REG_RDX))
 template <typename D, typename S1, typename S2>
 DEF_SEM(MULPS, D dst, S1 src1, S2 src2) {
   FWriteV32(dst, FMulV32(FReadV32(src1), FReadV32(src2)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(MULPD, D dst, S1 src1, S2 src2) {
   FWriteV64(dst, FMulV64(FReadV64(src1), FReadV64(src2)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -326,6 +343,7 @@ DEF_SEM(MULSS, D dst, S1 src1, S2 src2) {
   auto mul = FMul(FExtractV32(lhs, 0), FExtractV32(rhs, 0));
   auto res = FInsertV32(lhs, 0, mul);
   FWriteV32(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -335,6 +353,7 @@ DEF_SEM(MULSD, D dst, S1 src1, S2 src2) {
   auto mul = FMul(FExtractV64(lhs, 0), FExtractV64(rhs, 0));
   auto res = FInsertV64(lhs, 0, mul);
   FWriteV64(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
 }
 
 }  // namespace
@@ -422,6 +441,7 @@ namespace {
         WriteZExt(dst1, quot_trunc); \
         WriteZExt(dst2, rem_trunc); \
         ClearArithFlags(); \
+        return memory; \
       } \
     }
 
@@ -452,6 +472,7 @@ IF_64BIT(MAKE_DIVxax(rdxrax, REG_RAX, REG_RDX, REG_RAX, REG_RDX))
         WriteZExt(dst1, Unsigned(quot_trunc)); \
         WriteZExt(dst2, Unsigned(rem_trunc)); \
         ClearArithFlags(); \
+        return memory; \
       } \
     }
 
@@ -491,11 +512,13 @@ namespace {
 template <typename D, typename S1, typename S2>
 DEF_SEM(DIVPS, D dst, S1 src1, S2 src2) {
   FWriteV32(dst, FDivV32(FReadV32(src1), FReadV32(src2)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(DIVPD, D dst, const S1 src1, const S2 src2) {
   FWriteV64(dst, FDivV64(FReadV64(src1), FReadV64(src2)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -505,6 +528,7 @@ DEF_SEM(DIVSS, D dst, S1 src1, S2 src2) {
   auto quot = FDiv(FExtractV32(lhs, 0), FExtractV32(rhs, 0));
   auto res = FInsertV32(lhs, 0, quot);
   FWriteV32(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -514,6 +538,7 @@ DEF_SEM(DIVSD, D dst, S1 src1, S2 src2) {
   auto quot = FDiv(FExtractV64(lhs, 0), FExtractV64(rhs, 0));
   auto res = FInsertV64(lhs, 0, quot);
   FWriteV64(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
 }
 
 }  // namespace
@@ -551,6 +576,7 @@ DEF_SEM(INC, D dst, S1 src) {
   auto sum = UAdd(lhs, rhs);
   WriteZExt(dst, sum);
   WriteFlagsIncDec<tag_add>(state, lhs, rhs, sum);
+  return memory;
 }
 
 template <typename D, typename S1>
@@ -560,6 +586,7 @@ DEF_SEM(DEC, D dst, S1 src) {
   auto sum = USub(lhs, rhs);
   WriteZExt(dst, sum);
   WriteFlagsIncDec<tag_sub>(state, lhs, rhs, sum);
+  return memory;
 }
 
 template <typename D, typename S1>
@@ -569,6 +596,7 @@ DEF_SEM(NEG, D dst, S1 src) {
   auto neg = UNeg(rhs);
   WriteZExt(dst, neg);
   WriteFlagsAddSub<tag_sub>(state, lhs, rhs, neg);
+  return memory;
 }
 
 }  // namespace
@@ -593,10 +621,9 @@ DEF_ISEL_RnW_Rn(NEG_GPRv, NEG);
 namespace {
 
 template <typename TagT, typename T>
-NEVER_INLINE static bool CarryFlag(T a, T b, T ab, T c, T abc) {
+ALWAYS_INLINE static bool CarryFlag(T a, T b, T ab, T c, T abc) {
   static_assert(std::is_unsigned<T>::value,
                 "Invalid specialization of `CarryFlag` for addition.");
-  __remill_defer_inlining();
   return Carry<TagT>::Flag(a, b, ab) || Carry<TagT>::Flag(ab, c, abc);
 }
 
@@ -610,6 +637,7 @@ DEF_SEM(ADC, D dst, S1 src1, S2 src2) {
   WriteZExt(dst, res);
   Write(FLAG_CF, CarryFlag<tag_add>(lhs, rhs, sum, carry, res));
   WriteFlagsIncDec<tag_add>(state, lhs, rhs, res);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -622,6 +650,7 @@ DEF_SEM(SBB, D dst, S1 src1, S2 src2) {
   WriteZExt(dst, res);
   Write(FLAG_CF, CarryFlag<tag_sub>(lhs, rhs, sum, borrow, res));
   WriteFlagsIncDec<tag_sub>(state, lhs, rhs, res);
+  return memory;
 }
 
 }  // namespace

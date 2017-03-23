@@ -46,32 +46,17 @@ class Lifter {
   // elimination for flags.
   void EnableDeferredInlining(void);
 
-  // Recreate a global table of named blocks.
-  void SetNamedBlocks(
-      std::unordered_map<std::string, llvm::Function *> &table,
-      const char *table_name);
-
-  // Recreate the global table of indirectly addressible blocks.
-  void SetIndirectBlocks(void);
-
-  // Create functions for every exported and imported function.
-  void CreateNamedBlocks(const cfg::Module *cfg);
-
-  // Create functions for every block in the CFG.
-  void CreateBlocks(const cfg::Module *cfg);
+  // Create a function for a single decoded block.
+  void CreateBlock(const cfg::Block &block);
 
   // Create a function for a single block.
-  llvm::Function *GetOrCreateBlock(uint64_t address);
-
-  // Create functions for every imported function in the code.
-  llvm::Function *CreateImportedFunction(
-      const std::string &name, uintptr_t addr);
+  llvm::Function *GetBlock(uint64_t address);
 
   // Lift code contained in blocks into the block methods.
   void LiftBlocks(const cfg::Module *cfg);
 
   // Lift code contained within a single block.
-  llvm::Function *LiftBlock(const cfg::Block *block);
+  llvm::Function *LiftBlock(const cfg::Block &block);
 
   // Lift the last instruction of a block as a block terminator.
   void LiftTerminator(llvm::BasicBlock *block,
@@ -105,13 +90,9 @@ class Lifter {
   // Module into which code is lifted.
   llvm::Module * const module;
 
-  // Blocks that we've added, indexed by their entry address.
-  std::unordered_map<uint64_t, llvm::Function *> blocks;
-  std::unordered_map<uint64_t, llvm::Function *> indirect_blocks;
-
-  // Named functions present in the module.
-  std::unordered_map<std::string, llvm::Function *> exported_blocks;
-  std::unordered_map<std::string, llvm::Function *> imported_blocks;
+  // Blocks that we've added, indexed by their entry address and their ID.
+  std::unordered_map<uint64_t, llvm::Function *> pc_to_block;
+  std::unordered_map<uint64_t, llvm::Function *> id_to_block;
 
   // Basic block template.
   llvm::Function * const basic_block;

@@ -7,33 +7,39 @@ namespace {
 
 DEF_SEM(CBW_AL) {
   Write(REG_AX, Unsigned(SExt(REG_AL)));
+  return memory;
 }
 
 // Note: Need to write to the whole register so that high bits of RAX are
 //       cleared even though the write is to EAX.
 DEF_SEM(CWDE_AX) {
   WriteZExt(REG_XAX, SExt(REG_AX));
+  return memory;
 }
 
 #if 64 == ADDRESS_SIZE_BITS
 DEF_SEM(CDQE_EAX) {
   WriteZExt(REG_RAX, SExt(REG_EAX));
+  return memory;
 }
 #endif
 
 DEF_SEM(CWD_AX) {
   Write(REG_DX, Trunc(UShr(Unsigned(SExt(REG_AX)), 16_u32)));
+  return memory;
 }
 
 // Note: Need to write to the whole register so that high bits of RDX are
 //       cleared even though the write is to EDX.
 DEF_SEM(CDQ_EAX) {
   WriteZExt(REG_XDX, Trunc(UShr(Unsigned(SExt(REG_EAX)), 32_u64)));
+  return memory;
 }
 
 #if 64 == ADDRESS_SIZE_BITS
 DEF_SEM(CQO_RAX) {
   Write(REG_RDX, UNot(USub(UShr(REG_RAX, 63_u64), 1_u64)));
+  return memory;
 }
 #endif
 }  // namespace
@@ -53,6 +59,7 @@ DEF_SEM(CVTPI2PD, V128W dst, S src) {
   auto a = Float64(SExtractV32(src_vec, 0));
   auto b = Float64(SExtractV32(src_vec, 1));
   FWriteV64(dst, FInsertV64(FInsertV64(FReadV64(dst), 0, a), 1, b));
+  return memory;
 }
 
 }  // namespace
@@ -68,6 +75,7 @@ DEF_SEM(CVTPI2PS, V128W dst, S src) {
   auto a = Float32(SExtractV32(src_vec, 0));
   auto b = Float32(SExtractV32(src_vec, 1));
   FWriteV32(dst, FInsertV32(FInsertV32(FReadV32(dst), 0, a), 1, b));
+  return memory;
 }
 
 }  // namespace
@@ -87,6 +95,7 @@ DEF_SEM(CVTDQ2PD, D dst, S1 src) {
     dst_vec = FInsertV64(dst_vec, i, entry);
   }
   FWriteV64(dst, dst_vec);
+  return memory;
 }
 
 typedef float32_t (*FloatConv32)(float32_t);
@@ -113,6 +122,7 @@ DEF_SEM(CVTDQ2PS, D dst, S1 src) {
     dst_vec = FInsertV32(dst_vec, i, entry);
   }
   FWriteV32(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -138,6 +148,7 @@ DEF_SEM(CVTPD2DQ, D dst, S1 src) {
     dst_vec = SInsertV32(dst_vec, i, entry);
   }
   SWriteV32(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -169,6 +180,7 @@ DEF_SEM(CVTPS2DQ, D dst, S1 src) {
     dst_vec = SInsertV32(dst_vec, i, Float32ToInt32(rounded_elem));
   }
   SWriteV32(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -193,6 +205,7 @@ template <typename S, FloatConv32 FRound=FRoundUsingMode32>
 DEF_SEM(CVTSS2SI_32, R32W dst, S src) {
   float32_t rounded_val = FRound(FExtractV32(FReadV32(src), 0));
   WriteZExt(dst, Unsigned(Float32ToInt32(rounded_val)));
+  return memory;
 }
 
 #if 64 == ADDRESS_SIZE_BITS
@@ -200,6 +213,7 @@ template <typename S, FloatConv32 FRound=FRoundUsingMode32>
 DEF_SEM(CVTSS2SI_64, R64W dst, S src) {
   float32_t rounded_val = FRound(FExtractV32(FReadV32(src), 0));
   Write(dst, Unsigned(Float32ToInt64(rounded_val)));
+  return memory;
 }
 #endif  // ADDRESS_SIZE_BITS
 
@@ -229,6 +243,7 @@ template <typename S, FloatConv64 FRound=FRoundUsingMode64>
 DEF_SEM(CVTSD2SI_32, R32W dst, S src) {
   auto rounded_val = FRound(FExtractV64(FReadV64(src), 0));
   WriteZExt(dst, Unsigned(Float64ToInt32(rounded_val)));
+  return memory;
 }
 
 #if 64 == ADDRESS_SIZE_BITS
@@ -236,6 +251,7 @@ template <typename S, FloatConv64 FRound=FRoundUsingMode64>
 DEF_SEM(CVTSD2SI_64, R64W dst, S src) {
   auto rounded_val = FRound(FExtractV64(FReadV64(src), 0));
   Write(dst, Unsigned(Float64ToInt64(rounded_val)));
+  return memory;
 }
 #endif  // ADDRESS_SIZE_BITS
 }  // namespace
@@ -265,6 +281,7 @@ template <typename S1>
 DEF_SEM(CVTSD2SS, V128W dst, S1 src) {
   FWriteV32(dst, FInsertV32(
       FReadV32(dst), 0, Float32(FExtractV64(FReadV64(src), 0))));
+  return memory;
 }
 
 #if HAS_FEATURE_AVX
@@ -274,6 +291,7 @@ DEF_SEM(VCVTSD2SS, VV128W dst, V128W src1, S2 src2) {
   auto src2_vec = FReadV64(src2);
   auto dst_vec = FInsertV32(src1_vec, 0, Float32(FExtractV64(src2_vec, 0)));
   FWriteV32(dst, dst_vec);
+  return memory;
 }
 #endif  // HAS_FEATURE_AVX
 
@@ -290,6 +308,7 @@ DEF_SEM(CVTSI2SS, V128W dst_src1, S2 src2) {
   auto src1_vec = FReadV32(dst_src1);
   auto conv_val = Float32(Signed(Read(src2)));
   FWriteV32(dst_src1, FInsertV32(src1_vec, 0, conv_val));
+  return memory;
 }
 
 template <typename S2>
@@ -297,6 +316,7 @@ DEF_SEM(CVTSI2SD, V128W dst_src1, S2 src2) {
   auto src1_vec = FReadV64(dst_src1);
   auto conv_val = Float64(Signed(Read(src2)));
   FWriteV64(dst_src1, FInsertV64(src1_vec, 0, conv_val));
+  return memory;
 }
 
 template <typename S2>
@@ -305,6 +325,7 @@ DEF_SEM(CVTSS2SD, VV128W dst_src1, S2 src2) {
   auto src2_vec = FReadV32(src2);
   auto conv_val = Float64(FExtractV32(src2_vec, 0));
   FWriteV64(dst_src1, FInsertV64(src1_vec, 0, conv_val));
+  return memory;
 }
 
 #if HAS_FEATURE_AVX
@@ -313,6 +334,7 @@ DEF_SEM(VCVTSI2SS, VV128W dst, V128 src1, S2 src2) {
   auto src1_vec = FReadV32(src1);
   auto conv_val = Float32(Signed(Read(src2)));
   FWriteV32(dst, FInsertV32(src1_vec, 0, conv_val));
+  return memory;
 }
 
 template <typename S2>
@@ -320,6 +342,7 @@ DEF_SEM(VCVTSI2SD, VV128W dst, V128 src1, S2 src2) {
   auto src1_vec = FReadV64(src1);
   auto conv_val = Float64(Signed(Read(src2)));
   FWriteV64(dst, FInsertV64(src1_vec, 0, conv_val));
+  return memory;
 }
 
 template <typename S2>
@@ -328,6 +351,7 @@ DEF_SEM(VCVTSS2SD, VV128W dst, V128 src1, S2 src2) {
   auto src2_vec = FReadV32(src2);
   auto conv_val = Float64(FExtractV32(src2_vec, 0));
   FWriteV64(dst, FInsertV64(src1_vec, 0, conv_val));
+  return memory;
 }
 #endif  // HAS_FEATURE_AVX
 }  // namespace
@@ -368,6 +392,7 @@ DEF_SEM(CVTPS2PD, D dst, S1 src) {
     dst_vec = FInsertV64(dst_vec, i, conv_val);
   }
   FWriteV64(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, size_t vec_count>
@@ -380,6 +405,7 @@ DEF_SEM(CVTPD2PS, D dst, S1 src) {
     dst_vec = FInsertV32(dst_vec, i, conv_val);
   }
   FWriteV32(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace

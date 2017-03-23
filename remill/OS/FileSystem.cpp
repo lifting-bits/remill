@@ -51,6 +51,13 @@ bool FileExists(const std::string &path) {
           S_ISFIFO(file_info.st_mode));
 }
 
+uint64_t FileSize(int fd) {
+  struct stat64 file_info;
+  CHECK(!fstat64(fd, &file_info))
+      << "Cannot stat FD " << fd << ": " << strerror(errno);
+  return static_cast<uint64_t>(file_info.st_size);
+}
+
 uint64_t FileSize(const std::string &path, int fd) {
   struct stat64 file_info;
   CHECK(!fstat64(fd, &file_info))
@@ -81,16 +88,8 @@ enum : size_t {
 static uint8_t gCopyData[kCopyDataSize];
 }  // namespace
 
-void HardLinkOrCopy(const std::string &from_path, const std::string &to_path) {
+void CopyFile(const std::string &from_path, const std::string &to_path) {
   unlink(to_path.c_str());
-  if (!link(from_path.c_str(), to_path.c_str())) {
-    return;
-  }
-
-  DLOG(WARNING)
-      << "Unable to link " << to_path << " to "
-      << from_path << ": " << strerror(errno);
-
   auto from_fd = open(from_path.c_str(), O_RDONLY);
   CHECK(-1 != from_fd)
       << "Unable to open source file " << from_path
@@ -132,6 +131,20 @@ void HardLinkOrCopy(const std::string &from_path, const std::string &to_path) {
         << "Unable to copy all data read from " << from_path
         << " to " << to_path << ": " << strerror(errno_copy);
   }
+}
+
+void HardLinkOrCopyFile(const std::string &from_path,
+                        const std::string &to_path) {
+  unlink(to_path.c_str());
+  if (!link(from_path.c_str(), to_path.c_str())) {
+    return;
+  }
+
+  DLOG(WARNING)
+      << "Unable to link " << to_path << " to "
+      << from_path << ": " << strerror(errno);
+
+  CopyFile(from_path, to_path);
 }
 
 }  // namespace remill

@@ -12,6 +12,7 @@ namespace llvm {
 class Argument;
 class BasicBlock;
 class Function;
+class GlobalObject;
 class GlobalVariable;
 class Module;
 class Value;
@@ -94,26 +95,11 @@ inline static std::string LLVMThingToString(T *thing) {
   }
 }
 
-using IndirectBlockCallback = std::function<void(uintptr_t, llvm::Function *)>;
+using BlockCallback = std::function<void(uint64_t, uint64_t, llvm::Function *)>;
 
 // Run a callback function for every indirect block entry in a remill-lifted
 // bitcode module.
-void ForEachIndirectBlock(
-    llvm::Module *module, IndirectBlockCallback on_each_function);
-
-
-using NamedBlockCallback = std::function<
-    void(const std::string &, llvm::Function *, llvm::Function *)>;
-
-// Run a callback function for every exported block entry in a remill-lifted
-// bitcode module.
-void ForEachExportedBlock(
-    llvm::Module *module, NamedBlockCallback on_each_function);
-
-// Run a callback function for every imported block entry in a remill-lifted
-// bitcode module.
-void ForEachImportedBlock(
-    llvm::Module *module, NamedBlockCallback on_each_function);
+void ForEachBlock(llvm::Module *module, BlockCallback callback);
 
 // Clone function `source_func` into `dest_func`. This will strip out debug
 // info during the clone.
@@ -121,6 +107,25 @@ void ForEachImportedBlock(
 // Note: this will try to clone globals referenced from the module of
 //       `source_func` into the module of `dest_func`.
 void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func);
+
+// Try to get the address of a block.
+bool TryGetBlockPC(llvm::GlobalObject *func, uint64_t &pc);
+
+// Try to get the ID of this block. This may be the same as the block's PC.
+bool TryGetBlockId(llvm::GlobalObject *func, uint64_t &id);
+
+// Try to get the ID of this block. This may be the same as the block's PC.
+bool TryGetBlockName(llvm::Function *func, std::string &name);
+
+// Set the PC of a block.
+void SetBlockPC(llvm::GlobalObject *func, uint64_t pc);
+
+// Set the ID of a block.
+void SetBlockId(llvm::GlobalObject *func, uint64_t id);
+
+// Set the name of a block. This associates some high-level name, e.g. `malloc`
+// with the metadata of some block function.
+void SetBlockName(llvm::Function *func, const std::string &name);
 
 }  // namespace remill
 

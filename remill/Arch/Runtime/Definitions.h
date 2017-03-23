@@ -38,8 +38,8 @@
 
 // Define a semantics implementing function.
 #define DEF_SEM(name, ...) \
-    ALWAYS_INLINE static void name ( \
-        Memory *&memory, State &state, ##__VA_ARGS__) noexcept
+    ALWAYS_INLINE static Memory *name ( \
+        Memory *memory, State &state, ##__VA_ARGS__) noexcept
 
 // Define a semantics implementing function.
 #define DEF_HELPER(name, ...) \

@@ -12,6 +12,7 @@ ALWAYS_INLINE void SetFlagsLogical(State &state, T lhs, T rhs, T res) {
   state.aflag.zf = ZeroFlag(res);
   state.aflag.sf = SignFlag(res);
   state.aflag.of = false;
+  state.aflag.af = false;  // Undefined, but ends up being `0`.
 }
 
 template <typename D, typename S1, typename S2>
@@ -21,6 +22,7 @@ DEF_SEM(AND, D dst, S1 src1, S2 src2) {
   auto res = UAnd(lhs, rhs);
   WriteZExt(dst, res);
   SetFlagsLogical(state, lhs, rhs, res);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -30,6 +32,7 @@ DEF_SEM(OR, D dst, S1 src1, S2 src2) {
   auto res = UOr(lhs, rhs);
   WriteZExt(dst, res);
   SetFlagsLogical(state, lhs, rhs, res);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -39,11 +42,13 @@ DEF_SEM(XOR, D dst, S1 src1, S2 src2) {
   auto res = UXor(lhs, rhs);
   WriteZExt(dst, res);
   SetFlagsLogical(state, lhs, rhs, res);
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(NOT, D dst, S1 src1) {
   WriteZExt(dst, UNot(Read(src1)));
+  return memory;
 }
 
 template <typename S1, typename S2>
@@ -52,6 +57,7 @@ DEF_SEM(TEST, S1 src1, S2 src2) {
   auto rhs = Read(src2);
   auto res = UAnd(lhs, rhs);
   SetFlagsLogical(state, lhs, rhs, res);
+  return memory;
 }
 
 }  // namespace
@@ -138,57 +144,66 @@ namespace {
 template <typename D, typename S1, typename S2>
 DEF_SEM(PAND_64, D dst, S1 src1, S2 src2) {
   UWriteV64(dst, UAndV64(UReadV64(src1), UReadV64(src2)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(PAND, D dst, S1 src1, S2 src2) {
   UWriteV32(dst, UAndV32(UReadV32(src1), UReadV32(src2)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(PANDN_64, D dst, S1 src1, S2 src2) {
   UWriteV64(dst, UAndNV64(UReadV64(src1), UReadV64(src2)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(PANDN, D dst, S1 src1, S2 src2) {
   UWriteV32(dst, UAndNV32(UReadV32(src1), UReadV32(src2)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(POR_64, D dst, S1 src1, S2 src2) {
   UWriteV64(dst, UOrV64(UReadV64(src1), UReadV64(src2)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(POR, D dst, S1 src1, S2 src2) {
   UWriteV32(dst, UOrV32(UReadV32(src1), UReadV32(src2)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(PXOR_64, D dst, S1 src1, S2 src2) {
   UWriteV64(dst, UXorV64(UReadV64(src1), UReadV64(src2)));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(PXOR, D dst, S1 src1, S2 src2) {
   UWriteV32(dst, UXorV32(UReadV32(src1), UReadV32(src2)));
+  return memory;
 }
 
 template <typename S1, typename S2>
 DEF_SEM(PTEST, S1 src1, S2 src2) {
   auto lhs = UReadV32(src1);
   auto rhs = UReadV32(src2);
-  auto res_and = UAndV32(lhs, rhs);
-  auto res_andn = UAndNV32(lhs, rhs);
+  auto res_and = UAndV32(rhs, lhs);
+  auto res_andn = UAndNV32(rhs, lhs);
   auto res_and_ax = AccumulateUOrV32(res_and);
   auto res_andn_ax = AccumulateUOrV32(res_andn);
-  FLAG_ZF = UCmpEq(res_and_ax, 0_u32);
-  FLAG_CF = UCmpEq(res_andn_ax, 0_u32);
+  FLAG_ZF = ZeroFlag(res_and_ax);
+  FLAG_CF = ZeroFlag(res_andn_ax);
   FLAG_PF = false;
   FLAG_AF = false;
   FLAG_SF = false;
   FLAG_OF = false;
+  return memory;
 }
 
 }  // namespace

@@ -20,6 +20,8 @@ enum ArchName : uint32_t {
 // Convert the string name of an architecture into a canonical form.
 ArchName GetArchName(const std::string &arch_name);
 
+std::string GetArchName(ArchName);
+
 }  // namespace remill
 
 #endif  // REMILL_ARCH_NAME_H_

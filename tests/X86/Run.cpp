@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <dlfcn.h>
 #include <iostream>
 #include <limits>
 #include <map>
@@ -26,11 +27,10 @@
 #include "remill/Arch/Runtime/Runtime.h"
 #include "remill/Arch/X86/Runtime/State.h"
 
-#define aword IF_64BIT_ELSE(qword, dword)
+DEFINE_string(arch, "", "");
+DEFINE_string(os, "", "");
 
 namespace {
-
-typedef void (*LiftedFunc)(State *);
 
 struct alignas(128) Stack {
   uint8_t _redzone1[128];
@@ -86,9 +86,6 @@ static_assert(16 == sizeof(LongDoubleStorage),
 
 extern "C" {
 
-// List of names for exported blocks.
-extern "C" const NamedBlock __remill_exported_blocks[];
-
 // Used to record the FPU. We will use this to migrate native X87 or MMX
 // state into the `State` structure.
 FPU gFPU = {};
@@ -132,7 +129,7 @@ extern void InvokeTestCase(uint64_t, uint64_t, uint64_t);
      Memory *, addr_t addr) {\
     return AccessMemory<uint ## size ## _t>(addr); \
   } \
-  NEVER_INLINE Memory *__remill_write_memory_ ## size ( \
+  NEVER_INLINE Memory *__remill_write_memory_ ## size( \
       Memory *, addr_t addr, const uint ## size ## _t in) { \
     AccessMemory<uint ## size ## _t>(addr) = in; \
     return nullptr; \
@@ -143,7 +140,7 @@ extern void InvokeTestCase(uint64_t, uint64_t, uint64_t);
       Memory *, addr_t addr) { \
     return AccessMemory<float ## size ## _t>(addr); \
   } \
-  NEVER_INLINE Memory *__remill_write_memory_f ## size (\
+  NEVER_INLINE Memory *__remill_write_memory_f ## size(\
       Memory *, addr_t addr, float ## size ## _t in) { \
     AccessMemory<float ## size ## _t>(addr) = in; \
     return nullptr; \
@@ -182,13 +179,12 @@ Memory *__remill_atomic_end(Memory *) { return nullptr; }
 
 void __remill_defer_inlining(void) {}
 
-// Control-flow intrinsics.
-void __remill_detach(Memory *, State &, addr_t) {
-  __builtin_unreachable();
+Memory *__remill_error(Memory *, State &, addr_t) {
+  siglongjmp(gJmpBuf, 0);
 }
 
-void __remill_error(Memory *, State &, addr_t) {
-  siglongjmp(gJmpBuf, 0);
+Memory *__remill_missing_block(Memory *memory, State &, addr_t) {
+  return memory;
 }
 
 Memory *__remill_sync_hyper_call(
@@ -215,20 +211,20 @@ Memory *__remill_sync_hyper_call(
   return mem;
 }
 
-void __remill_function_call(Memory *, State &, addr_t) {
+Memory *__remill_function_call(Memory *, State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __remill_function_return(Memory *, State &, addr_t) {
+Memory *__remill_function_return(Memory *, State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __remill_jump(Memory *, State &, addr_t) {
+Memory *__remill_jump(Memory *, State &, addr_t) {
   __builtin_unreachable();
 }
 
-void __remill_async_hyper_call(Memory *, State &, addr_t) {
-  return;
+Memory *__remill_async_hyper_call(Memory *, State &, addr_t) {
+  __builtin_unreachable();
 }
 
 uint8_t __remill_undefined_8(void) {
@@ -264,8 +260,10 @@ void __remill_mark_as_used(void *mem) {
 
 }  // extern C
 
+typedef Memory *(LiftedFunc)(Memory *, State &, addr_t);
+
 // Mapping of test name to translated function.
-static std::map<std::string, const NamedBlock *> gTranslatedFuncs;
+static std::map<uint64_t, LiftedFunc *> gTranslatedFuncs;
 
 static std::vector<const test::TestInfo *> gTests;
 
@@ -407,7 +405,7 @@ static void RunWithFlags(const test::TestInfo *info,
   memcpy(&gNativeStack, &gLiftedStack, sizeof(gLiftedStack));
   memcpy(&gLiftedStack, &gRandomStack, sizeof(gLiftedStack));
 
-  auto lifted_func = gTranslatedFuncs[info->test_name]->lifted_func;
+  auto lifted_func = gTranslatedFuncs[info->test_begin];
 
   // This will execute on our stack but the lifted code will operate on
   // `gStack`. The mechanism behind this is that `gStateBefore` is the native
@@ -415,8 +413,9 @@ static void RunWithFlags(const test::TestInfo *info,
   // swapping execution to operate on `gStack`.
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
-    lifted_func(nullptr, *lifted_state,
-                static_cast<addr_t>(lifted_state->gpr.rip.aword));
+    (void) lifted_func(
+        nullptr, *lifted_state,
+        static_cast<addr_t>(lifted_state->gpr.rip.aword));
   } else {
     EXPECT_TRUE(native_test_faulted);
   }
@@ -637,21 +636,32 @@ int main(int argc, char **argv) {
 
   InitFlags();
 
+  auto this_exe = dlopen(nullptr, RTLD_NOW);
+
   // Populate the tests vector.
   for (auto i = 0U; ; ++i) {
     const auto &test = test::__x86_test_table_begin[i];
     if (&test >= &(test::__x86_test_table_end[0])) break;
     gTests.push_back(&test);
+
+    std::stringstream ss;
+    ss << test.test_name << "_lifted";
+    auto sym_func = dlsym(this_exe, ss.str().c_str());
+    if (!sym_func) {
+      sym_func = dlsym(this_exe, (std::string("_") + ss.str()).c_str());
+    }
+
+    CHECK(nullptr != sym_func)
+        << "Could not find code for test case " << test.test_name;
+
+    auto lifted_func = reinterpret_cast<LiftedFunc *>(sym_func);
+    gTranslatedFuncs[test.test_begin] = lifted_func;
   }
 
   // Populate the random stack.
   memset(&gRandomStack, 0, sizeof(gRandomStack));
   for (auto &b : gRandomStack.bytes) {
     b = static_cast<uint8_t>(random());
-  }
-
-  for (auto test = &(__remill_exported_blocks[0]); test->name; ++test) {
-    gTranslatedFuncs[test->name] = test;
   }
 
   testing::InitGoogleTest(&argc, argv);

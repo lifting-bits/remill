@@ -17,6 +17,7 @@
         next_addr = USub(addr, num_bytes); \
       } \
       Write(REG_XDI, next_addr); \
+      return memory; \
     } \
     } \
     DEF_ISEL(name) = Do ## name;
@@ -48,6 +49,7 @@ IF_64BIT(MAKE_STOS(STOSQ, uint64_t, qword))
         next_addr = USub(addr, num_bytes); \
       } \
       Write(REG_XDI, next_addr); \
+      return memory; \
     } \
     } \
     DEF_ISEL(name) = Do ## name;
@@ -73,6 +75,7 @@ IF_64BIT(MAKE_SCAS(SCASQ, uint64_t, qword))
         next_addr = USub(addr, num_bytes); \
       } \
       Write(REG_XSI, next_addr); \
+      return memory; \
     } \
     } \
     DEF_ISEL(name) = Do ## name;
@@ -103,6 +106,7 @@ IF_64BIT(MAKE_LODS(LODSQ, uint64_t, qword))
       } \
       Write(REG_XDI, next_dst_addr); \
       Write(REG_XSI, next_src_addr); \
+      return memory; \
     } \
     } \
     DEF_ISEL(name) = Do ## name;
@@ -135,6 +139,7 @@ IF_64BIT(MAKE_MOVS(MOVSQ, uint64_t, qword))
       } \
       Write(REG_XDI, next_src2_addr); \
       Write(REG_XSI, next_src1_addr); \
+      return memory; \
     } \
     } \
     DEF_ISEL(name) = Do ## name;
@@ -151,10 +156,11 @@ IF_64BIT(MAKE_CMPS(CMPSQ, uint64_t))
     DEF_SEM(Do ## REP_ ## base) { \
       auto count_reg = Read(REG_XCX); \
       while (UCmpNeq(count_reg, 0)) { \
-        Do ## base(memory, state); \
+        memory = Do ## base(memory, state); \
         count_reg = USub(count_reg, 1); \
         Write(REG_XCX, count_reg); \
       } \
+      return memory; \
     } \
     } \
     DEF_ISEL(REP_ ## base) = Do ## REP_ ## base;
@@ -179,12 +185,15 @@ IF_64BIT(MAKE_REP(STOSQ))
     namespace { \
     DEF_SEM(Do ## REPE_ ## base) { \
       auto count_reg = Read(REG_XCX); \
-      if (UCmpEq(count_reg, 0)) return; \
+      if (UCmpEq(count_reg, 0)) { \
+        return memory; \
+      } \
       do { \
-        Do ## base(memory, state); \
+        memory = Do ## base(memory, state); \
         count_reg = USub(count_reg, 1); \
         Write(REG_XCX, count_reg); \
       } while (BAnd(UCmpNeq(count_reg, 0), FLAG_ZF)); \
+      return memory; \
     } \
     } \
     DEF_ISEL(REPE_ ## base) = Do ## REPE_ ## base;
@@ -205,12 +214,15 @@ IF_64BIT(MAKE_REPE(SCASQ))
     namespace { \
     DEF_SEM(Do ## REPNE_ ## base) { \
       auto count_reg = Read(REG_XCX); \
-      if (UCmpEq(count_reg, 0)) return; \
+      if (UCmpEq(count_reg, 0)) { \
+        return memory; \
+      } \
       do { \
-        Do ## base(memory, state); \
+        memory = Do ## base(memory, state); \
         count_reg = USub(count_reg, 1); \
         Write(REG_XCX, count_reg); \
       } while (BAnd(UCmpNeq(count_reg, 0), BNot(FLAG_ZF))); \
+      return memory; \
     } \
     } \
     DEF_ISEL(REPNE_ ## base) = Do ## REPNE_ ## base;

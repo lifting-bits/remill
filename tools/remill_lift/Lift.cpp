@@ -33,17 +33,11 @@
 #endif
 
 // TODO(pag): Support separate source and target architectures?
-DEFINE_string(arch_in, "", "Architecture of the code being translated. "
-                           "Valid architectures: x86, amd64 (with or without "
-                           "`_avx` or `_avx512` appended).");
+DEFINE_string(arch, "", "Architecture of the code being translated. "
+                         "Valid architectures: x86, amd64 (with or without "
+                         "`_avx` or `_avx512` appended).");
 
-DEFINE_string(arch_out, "", "Architecture of the target architecture on "
-                            "which the translated code will run. "
-                            "Valid architectures: x86, amd64 (with or without "
-                            "`_avx` or `_avx512` appended).");
-
-DEFINE_string(os_in, REMILL_OS, "Source OS. Valid OSes: linux, mac.");
-DEFINE_string(os_out, REMILL_OS, "Target OS. Valid OSes: linux, mac.");
+DEFINE_string(os, REMILL_OS, "Source OS. Valid OSes: linux, mac.");
 
 DEFINE_string(cfg, "", "Path to the CFG file containing code to lift.");
 
@@ -66,10 +60,8 @@ int main(int argc, char *argv[]) {
      << "  " << argv[0] << " \\" << std::endl
      << "    [--bc_in INPUT_BC_FILE] \\" << std::endl
      << "    --bc_out OUTPUT_BC_FILE \\" << std::endl
-     << "    --arch_in SOURCE_ARCH_NAME \\" << std::endl
-     << "    [--arch_out TARGET_ARCH_NAME] \\" << std::endl
-     << "    --os_in SOURCE_OS_NAME \\" << std::endl
-     << "    [--os_out TARGET_OS_NAME] \\" << std::endl
+     << "    --arch ARCH_NAME \\" << std::endl
+     << "    --os OS_NAME \\" << std::endl
      << "    --cfg CFG_FILE \\" << std::endl
      << "    [--server]" << std::endl
      << std::endl;
@@ -78,19 +70,12 @@ int main(int argc, char *argv[]) {
   google::SetUsageMessage(ss.str());
   google::ParseCommandLineFlags(&argc, &argv, true);
 
-  CHECK(!FLAGS_os_in.empty())
+  CHECK(!FLAGS_os.empty())
       << "Need to specify a source operating system with --os_in.";
 
-  if (FLAGS_os_out.empty()) {
-    FLAGS_os_out = FLAGS_os_in;
-  }
-
-  CHECK(!FLAGS_arch_in.empty())
+  CHECK(!FLAGS_arch.empty())
       << "Need to specify a source architecture with --arch_in.";
 
-  if (FLAGS_arch_out.empty()) {
-    FLAGS_arch_out = FLAGS_arch_in;
-  }
 
   CHECK(!FLAGS_cfg.empty())
       << "Must specify CFG file with --cfg.";
@@ -98,30 +83,21 @@ int main(int argc, char *argv[]) {
   CHECK(!FLAGS_bc_out.empty())
       << "Please specify an output bitcode file with --bc_out.";
 
-  auto source_os = remill::GetOSName(FLAGS_os_in);
+  auto source_os = remill::GetOSName(FLAGS_os);
   CHECK(remill::kOSInvalid != source_os)
-      << "Unsupported operating system for --os_in: " << FLAGS_os_in;
+      << "Unsupported operating system for --os_in: " << FLAGS_os;
 
-  auto target_os = remill::GetOSName(FLAGS_os_out);
-  CHECK(remill::kOSInvalid != source_os)
-      << "Unsupported operating system for --os_out: " << FLAGS_os_out;
-
-  auto source_arch_name = remill::GetArchName(FLAGS_arch_in);
+  auto source_arch_name = remill::GetArchName(FLAGS_arch);
   CHECK(remill::kArchInvalid != source_arch_name)
-      << "Unrecognized architecture for --arch_in: " << FLAGS_arch_in << ".";
+      << "Unrecognized architecture for --arch_in: " << FLAGS_arch << ".";
 
-  auto target_arch_name = remill::GetArchName(FLAGS_arch_out);
-  CHECK(remill::kArchInvalid != target_arch_name)
-      << "Unrecognized architecture for --arch_out: " << FLAGS_arch_out << ".";
-
-  auto source_arch = remill::Arch::Create(source_os, source_arch_name);
-  auto target_arch = remill::Arch::Create(target_os, target_arch_name);
+  auto source_arch = remill::Arch::Get(source_os, source_arch_name);
 
   CHECK(remill::FileExists(FLAGS_cfg))
       << "Must specify valid path for --cfg. CFG file "
       << FLAGS_cfg << " cannot be opened.";
 
-  FLAGS_bc_in = remill::FindSemanticsBitcodeFile(FLAGS_bc_in, FLAGS_arch_in);
+  FLAGS_bc_in = remill::FindSemanticsBitcodeFile(FLAGS_bc_in, FLAGS_arch);
   CHECK(remill::FileExists(FLAGS_bc_in))
       << "Must specify valid path for --bc_in. Bitcode file "
       << FLAGS_bc_in << " cannot be opened.";
@@ -129,7 +105,7 @@ int main(int argc, char *argv[]) {
   do {
     auto context = new llvm::LLVMContext;
     auto module = remill::LoadModuleFromFile(context, FLAGS_bc_in);
-    target_arch->PrepareModule(module);
+    source_arch->PrepareModule(module);
 
     auto translator = new remill::Lifter(source_arch, module);
     auto cfg = remill::ReadCFG(FLAGS_cfg);

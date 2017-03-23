@@ -6,23 +6,6 @@
 #include "remill/Arch/Runtime/Intrinsics.h"
 #include "remill/Arch/Runtime/Operators.h"
 
-// List of basic blocks that can be externally referenced.
-//
-// Note:  This should be a superset of `__remill_exported_blocks` insofar as
-//        every `lifted_func` in an `IndirectBlock` should match up with a
-//        `lifted_func` in an `ExportedBlock`.
-//
-// Note:  This will be represented by a `llvm::ConstantAggregateZero` before
-//        any blocks are lifted. Each time a CFG is lifted, the translator will
-//        rebuild this table.
-extern "C" const IndirectBlock __remill_indirect_blocks[1] = {};
-
-// List of names for exported blocks.
-extern "C" const NamedBlock __remill_exported_blocks[1] = {};
-
-// List of names for imported blocks.
-extern "C" const NamedBlock __remill_imported_blocks[1] = {};
-
 #define USED(sym) \
   __remill_mark_as_used(reinterpret_cast<const void *>(&sym))
 
@@ -32,8 +15,6 @@ extern "C" const NamedBlock __remill_imported_blocks[1] = {};
 //    2)  This makes sure that some functions are marked has having their
 //        addresses taken, and so this prevents dead argument elimination.
 extern "C" void __remill_mark_as_used(const void *);
-
-extern "C" void __remill_basic_block(Memory &, State &, addr_t);
 
 // This is just a hack to make sure all these functions appear in the bitcode
 // file!
@@ -75,6 +56,7 @@ extern "C" void __remill_intrinsics(void) {
   USED(__remill_function_call);
   USED(__remill_function_return);
   USED(__remill_jump);
+  USED(__remill_missing_block);
 
   USED(__remill_async_hyper_call);
   USED(__remill_sync_hyper_call);

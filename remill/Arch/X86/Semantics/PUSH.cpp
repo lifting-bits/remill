@@ -46,6 +46,7 @@ DEF_HELPER(PushToStack, T val) -> void {
 template <typename S1>
 DEF_SEM(PUSH, S1 src1) {
   PushToStack(memory, state, Read(src1));
+  return memory;
 }
 
 #if 32 == ADDRESS_SIZE_BITS || 1
@@ -60,6 +61,7 @@ DEF_SEM(DoPUSHA) {
   PushToStack<uint16_t>(memory, state, Read(REG_BP));
   PushToStack<uint16_t>(memory, state, Read(REG_SI));
   PushToStack<uint16_t>(memory, state, Read(REG_DI));
+  return memory;
 }
 
 DEF_SEM(DoPUSHAD) {
@@ -72,23 +74,27 @@ DEF_SEM(DoPUSHAD) {
   PushToStack<uint32_t>(memory, state, Read(REG_EBP));
   PushToStack<uint32_t>(memory, state, Read(REG_ESI));
   PushToStack<uint32_t>(memory, state, Read(REG_EDI));
+  return memory;
 }
 #endif
 
 DEF_SEM(DoPUSHF) {
   SerializeFlags(state);
   PushToStack<uint16_t>(memory, state, TruncTo<uint16_t>(state.rflag.flat));
+  return memory;
 }
 
 #if 32 == ADDRESS_SIZE_BITS
 DEF_SEM(DoPUSHFD) {
   SerializeFlags(state);
   PushToStack<uint32_t>(memory, state, TruncTo<uint32_t>(state.rflag.flat));
+  return memory;
 }
 #else
 DEF_SEM(DoPUSHFQ) {
   SerializeFlags(state);
   PushToStack<uint64_t>(memory, state, state.rflag.flat);
+  return memory;
 }
 #endif  // 32 == ADDRESS_SIZE_BITS
 
@@ -136,4 +142,3 @@ DEF_ISEL(PUSHFQ) = DoPUSHFQ;
  */
 
 #endif  // REMILL_ARCH_X86_SEMANTICS_PUSH_H_
-

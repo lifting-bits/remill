@@ -5,6 +5,7 @@ namespace {
 template <typename T>
 DEF_SEM(JMP, T target_pc) {
   WriteZExt(REG_PC, Read(target_pc));
+  return memory;
 }
 
 }  // namespace

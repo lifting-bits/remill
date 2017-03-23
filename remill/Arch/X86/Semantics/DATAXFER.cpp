@@ -8,6 +8,7 @@ namespace {
 template <typename D, typename S>
 DEF_SEM(MOV, D dst, const S src) {
   WriteZExt(dst, Read(src));
+  return memory;
 }
 
 template <typename D1, typename S1, typename D2, typename S2>
@@ -16,31 +17,37 @@ DEF_SEM(XCHG, D1 dst, S1 dst_val, D2 src, S2 src_val) {
   auto old_src = Read(src_val);
   WriteZExt(dst, old_src);
   WriteZExt(src, old_dst);
+  return memory;
 }
 
 template <typename D, typename S>
 DEF_SEM(MOVQ, D dst, S src) {
   UWriteV64(dst, UExtractV64(UReadV64(src), 0));
+  return memory;
 }
 
 template <typename D, typename S>
 DEF_SEM(MOVD, D dst, S src) {
   UWriteV32(dst, UExtractV32(UReadV32(src), 0));
+  return memory;
 }
 
 template <typename D, typename S>
 DEF_SEM(MOVxPS, D dst, S src) {
   FWriteV32(dst, FReadV32(src));
+  return memory;
 }
 
 template <typename D, typename S>
 DEF_SEM(MOVxPD, D dst, S src) {
   FWriteV64(dst, FReadV64(src));
+  return memory;
 }
 
 template <typename D, typename S>
 DEF_SEM(MOVDQx, D dst, S src) {
   UWriteV128(dst, UReadV128(src));
+  return memory;
 }
 
 template <typename D, typename S>
@@ -49,11 +56,13 @@ DEF_SEM(MOVLPS, D dst, S src) {
   auto low1 = FExtractV32(src_vec, 0);
   auto low2 = FExtractV32(src_vec, 1);
   FWriteV32(dst, FInsertV32(FInsertV32(FReadV32(dst), 0, low1), 1, low2));
+  return memory;
 }
 
 template <typename D, typename S>
 DEF_SEM(MOVLPD, D dst, S src) {
   FWriteV64(dst, FInsertV64(FReadV64(dst), 0, FExtractV64(FReadV64(src), 0)));
+  return memory;
 }
 
 #if HAS_FEATURE_AVX
@@ -68,6 +77,7 @@ DEF_SEM(VMOVLPS, VV128W dst, V128 src1, MV64 src2) {
               FExtractV32(low_vec, 0)),
           1,
           FExtractV32(low_vec, 1)));
+  return memory;
 }
 
 DEF_SEM(VMOVLPD, VV128W dst, V128 src1, MV64 src2) {
@@ -76,6 +86,7 @@ DEF_SEM(VMOVLPD, VV128W dst, V128 src1, MV64 src2) {
           FReadV64(src1),
           0,
           FExtractV64(FReadV64(src2), 0)));
+  return memory;
 }
 
 #endif  // HAS_FEATURE_AVX
@@ -362,13 +373,16 @@ namespace {
 template <typename D, typename S>
 DEF_SEM(MOVSD_MEM, D dst, S src) {
   FWriteV64(dst, FExtractV64(FReadV64(src), 0));
+  return memory;
 }
+
 DEF_SEM(MOVSD, V128W dst, V128 src) {
   FWriteV64(dst,
       FInsertV64(
           FReadV64(dst),
           0,
           FExtractV64(FReadV64(src), 0)));
+  return memory;
 }
 #if HAS_FEATURE_AVX
 // Basically the same as `VMOVLPD`.
@@ -378,6 +392,7 @@ DEF_SEM(VMOVSD, VV128W dst, V128 src1, V128 src2) {
           FReadV64(src2),
           1,
           FExtractV64(FReadV64(src1), 1)));
+  return memory;
 }
 #endif  // HAS_FEATURE_AVX
 }  // namespace
@@ -404,14 +419,18 @@ namespace {
 template <typename D, typename S>
 DEF_SEM(MOVSS_MEM, D dst, S src) {
   FWriteV32(dst, FExtractV32(FReadV32(src), 0));
+  return memory;
 }
+
 DEF_SEM(MOVSS, V128W dst, V128 src) {
   FWriteV32(dst,
       FInsertV32(
           FReadV32(dst),
           0,
           FExtractV32(FReadV32(src), 0)));
+  return memory;
 }
+
 #if HAS_FEATURE_AVX
 DEF_SEM(VMOVSS, VV128W dst, V128 src1, V128 src2) {
   FWriteV32(dst,
@@ -419,6 +438,7 @@ DEF_SEM(VMOVSS, VV128W dst, V128 src1, V128 src2) {
           FReadV32(src1),
           0,
           FExtractV32(FReadV32(src2), 0)));
+  return memory;
 }
 #endif  // HAS_FEATURE_AVX
 }  // namespace
@@ -843,11 +863,13 @@ namespace {
 template <typename D, typename S>
 DEF_SEM(MOVZX, D dst, S src) {
   WriteZExt(dst, Read(src));
+  return memory;
 }
 
 template <typename D, typename S, typename SextT>
 DEF_SEM(MOVSX, D dst, S src) {
   WriteZExt(dst, SExtTo<SextT>(Read(src)));
+  return memory;
 }
 
 }  // namespace

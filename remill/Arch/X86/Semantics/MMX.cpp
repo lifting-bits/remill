@@ -19,6 +19,7 @@ DEF_SEM(PUNPCKHBW, D dst, S1 src1, S2 src2) {
         dst_vec, j - 2, UExtractV8(src1_vec, (num_elems-1) - i));
   }
   UWriteV8(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -35,6 +36,7 @@ DEF_SEM(PUNPCKHWD, D dst, S1 src1, S2 src2) {
         dst_vec, j - 2, UExtractV16(src1_vec, (num_elems-1) - i));
   }
   UWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -51,6 +53,7 @@ DEF_SEM(PUNPCKHDQ, D dst, S1 src1, S2 src2) {
         dst_vec, j - 2, UExtractV32(src1_vec, (num_elems-1) - i));
   }
   UWriteV32(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -67,6 +70,7 @@ DEF_SEM(PUNPCKHQDQ, D dst, S1 src1, S2 src2) {
         dst_vec, j - 2, UExtractV64(src1_vec, (num_elems-1) - i));
   }
   UWriteV64(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -81,6 +85,7 @@ DEF_SEM(PUNPCKLBW, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV8(dst_vec, j+1, UExtractV8(src2_vec, i));
   }
   UWriteV8(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -95,6 +100,7 @@ DEF_SEM(PUNPCKLWD, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV16(dst_vec, j+1, UExtractV16(src2_vec, i));
   }
   UWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -109,6 +115,7 @@ DEF_SEM(PUNPCKLDQ, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV32(dst_vec, j + 1, UExtractV32(src2_vec, i));
   }
   UWriteV32(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -123,6 +130,7 @@ DEF_SEM(PUNPCKLQDQ, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV64(dst_vec, j + 1, UExtractV64(src2_vec, i));
   }
   UWriteV64(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -172,6 +180,7 @@ DEF_SEM(PADDB, D dst, S1 src1, S2 src2) {
   auto rhs_vec = UReadV8(src2);
   auto dst_vec = UAddV8(lhs_vec, rhs_vec);
   UWriteV8(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -180,6 +189,7 @@ DEF_SEM(PADDW, D dst, S1 src1, S2 src2) {
   auto rhs_vec = UReadV16(src2);
   auto dst_vec = UAddV16(lhs_vec, rhs_vec);
   UWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -188,6 +198,7 @@ DEF_SEM(PADDD, D dst, S1 src1, S2 src2) {
   auto rhs_vec = UReadV32(src2);
   auto dst_vec = UAddV32(lhs_vec, rhs_vec);
   UWriteV32(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -196,6 +207,7 @@ DEF_SEM(PADDQ, D dst, S1 src1, S2 src2) {
   auto rhs_vec = UReadV64(src2);
   auto dst_vec = UAddV64(lhs_vec, rhs_vec);
   UWriteV64(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -250,6 +262,7 @@ DEF_SEM(PADDSB, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV8(dst_vec, index, Trunc(sum));
   }
   SWriteV8(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -272,6 +285,7 @@ DEF_SEM(PADDSW, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV16(dst_vec, index, Trunc(sum));
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 }  // namespace
 
@@ -311,6 +325,7 @@ DEF_SEM(PHADDW, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV16(dst_vec, i, SAdd(v1, v2));
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -336,6 +351,7 @@ DEF_SEM(PHADDD, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV32(dst_vec, i, SAdd(v1, v2));
   }
   SWriteV32(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -395,6 +411,7 @@ DEF_SEM(PHADDSW, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV16(dst_vec, (index+vec_count)/2, value);
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 DEF_ISEL(PHADDSW_MMXq_MMXq) = PHADDSW<V64W, V64, V64>;
@@ -410,6 +427,7 @@ DEF_SEM(PSUBB, D dst, S1 src1, S2 src2) {
   auto rhs_vec = SReadV8(src2);
   auto dst_vec = SSubV8(lhs_vec, rhs_vec);
   SWriteV8(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -418,6 +436,7 @@ DEF_SEM(PSUBW, D dst, S1 src1, S2 src2) {
   auto rhs_vec = SReadV16(src2);
   auto dst_vec = SSubV16(lhs_vec, rhs_vec);
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -426,6 +445,7 @@ DEF_SEM(PSUBD, D dst, S1 src1, S2 src2) {
   auto rhs_vec = SReadV32(src2);
   auto dst_vec = SSubV32(lhs_vec, rhs_vec);
   SWriteV32(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -434,6 +454,7 @@ DEF_SEM(PSUBQ, D dst, S1 src1, S2 src2) {
   auto rhs_vec = SReadV64(src2);
   auto dst_vec = SSubV64(lhs_vec, rhs_vec);
   SWriteV64(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -475,6 +496,7 @@ DEF_SEM(PSUBUSB, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV8(dst_vec, i, sub_val);
   }
   UWriteV8(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -492,6 +514,7 @@ DEF_SEM(PSUBUSW, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV16(dst_vec, i, sub_val);
   }
   UWriteV16(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -525,6 +548,7 @@ DEF_SEM(PAVGB, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV8(dst_vec, i, UInt8(UShr(sum, decltype(sum)(1))));
   }
   UWriteV8(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -544,6 +568,7 @@ DEF_SEM(PAVGW, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV16(dst_vec, i, Trunc(UShr(sum, decltype(sum)(1))));
   }
   UWriteV16(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -581,6 +606,7 @@ DEF_SEM(PHSUBW, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV16(dst_vec, index, SSub(v1, v2));
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -606,6 +632,7 @@ DEF_SEM(PHSUBD, D dst, S1 src1, S2 src2) {
              SExtractV32(rhs_vec, i+1)));
   }
   SWriteV32(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -639,6 +666,7 @@ DEF_SEM(PMAXSW, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV16(dst_vec, i, max);
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -667,6 +695,7 @@ DEF_SEM(PMAXUB, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV8(dst_vec, i, max);
   }
   UWriteV8(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -695,6 +724,7 @@ DEF_SEM(PMINSW, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV16(dst_vec, i, max);
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -724,6 +754,7 @@ DEF_SEM(PMINUB, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV8(dst_vec, i, max);
   }
   UWriteV8(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -750,6 +781,7 @@ DEF_SEM(PMULHRSW, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV16(dst_vec, i, Int16(temp));
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -778,6 +810,7 @@ DEF_SEM(PMADDWD, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV32(dst_vec, i/2, SAdd(mul1, mul2));
   }
   SWriteV32(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -817,6 +850,7 @@ DEF_SEM(PMADDUBSW, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV16(dst_vec, i/2, value);
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -841,6 +875,7 @@ DEF_SEM(PABSB, D dst, S1 src1) {
     dst_vec = SInsertV8(dst_vec, i, abs_value);
   }
   SWriteV8(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1>
@@ -856,6 +891,7 @@ DEF_SEM(PABSW, D dst, S1 src1) {
     dst_vec = SInsertV16(dst_vec, i, abs_value);
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1>
@@ -871,6 +907,7 @@ DEF_SEM(PABSD, D dst, S1 src1) {
     dst_vec = SInsertV32(dst_vec, i, abs_value);
   }
   SWriteV32(dst, dst_vec);
+  return memory;
 }
 }  // namespace
 
@@ -921,6 +958,7 @@ DEF_SEM(PACKSSWB, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV8(dst_vec, i+vec_count, value);
   }
   SWriteV8(dst, dst_vec);
+  return memory;
 }
 }  // namespace
 
@@ -958,6 +996,7 @@ DEF_SEM(PACKSSDW, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV16(dst_vec, i+vec_count, value);
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 }  // namespace
 
@@ -975,6 +1014,7 @@ DEF_SEM(PEXTRB, D dst, S1 src1, I8 src2) {
   auto sel_index = URem(count, vec_count);
   auto word = UExtractV8(src1_vec, sel_index);
   WriteZExt(dst, word);
+  return memory;
 }
 
 template <typename D, typename S1>
@@ -985,6 +1025,7 @@ DEF_SEM(PEXTRW, D dst, S1 src1, I8 src2) {
   auto sel_index = URem(count, vec_count);
   auto word = UExtractV16(src1_vec, sel_index);
   WriteZExt(dst, word);
+  return memory;
 }
 
 template <typename D, typename S1>
@@ -995,6 +1036,7 @@ DEF_SEM(PEXTRD, D dst, S1 src1, I8 src2) {
   auto sel_index = URem(count, vec_count);
   auto word = UExtractV32(src1_vec, sel_index);
   WriteZExt(dst, word);
+  return memory;
 }
 
 #if 64 == ADDRESS_SIZE_BITS
@@ -1006,6 +1048,7 @@ DEF_SEM(PEXTRQ, D dst, S1 src1, I8 src2) {
   auto sel_index = URem(count, vec_count);
   auto word = UExtractV64(src1_vec, sel_index);
   WriteZExt(dst, word);
+  return memory;
 }
 #endif  // 64 == ADDRESS_SIZE_BITS
 
@@ -1073,6 +1116,7 @@ DEF_SEM(PALIGNR_64, V64W dst, V64 src1, S2 src2, I8 imm1) {
 
   auto combined = UOr(src1_elem_high, src2_elem_low);
   UWriteV64(dst, UInsertV64(dst_vec, 0, combined));
+  return memory;
 }
 
 template <typename S2>
@@ -1095,6 +1139,7 @@ DEF_SEM(PALIGNR_128, V128W dst, V128 src1, S2 src2, I8 imm1) {
 
   auto combined = UOr(src1_elem_high, src2_elem_low);
   UWriteV128(dst, UInsertV128(dst_vec, 0, combined));
+  return memory;
 }
 
 }  // namespace
@@ -1123,6 +1168,7 @@ DEF_SEM(PSRLW, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV16(dst_vec, i, temp);
   }
   UWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1143,6 +1189,7 @@ DEF_SEM(PSRLW_V, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV16(dst_vec, i, temp);
   }
   UWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1162,6 +1209,7 @@ DEF_SEM(PSRLD, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV32(dst_vec, i, temp);
   }
   UWriteV32(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1182,6 +1230,7 @@ DEF_SEM(PSRLD_V, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV32(dst_vec, i, temp);
   }
   UWriteV32(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1201,6 +1250,7 @@ DEF_SEM(PSRLQ, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV64(dst_vec, i, temp);
   }
   UWriteV64(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1221,6 +1271,7 @@ DEF_SEM(PSRLQ_V, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV64(dst_vec, i, temp);
   }
   UWriteV64(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1241,6 +1292,7 @@ DEF_SEM(PSRAW, D dst, S1 src1, S2 src2) {
         dst_vec, i, SShr(v1, static_cast<decltype(v1)>(count)));
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1262,6 +1314,7 @@ DEF_SEM(PSRAW_V, D dst, S1 src1, S2 src2) {
         dst_vec, i, SShr(v1, static_cast<decltype(v1)>(count)));
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1282,6 +1335,7 @@ DEF_SEM(PSRAD, D dst, S1 src1, S2 src2) {
         dst_vec, i, SShr(v1, static_cast<decltype(v1)>(count)));
   }
   SWriteV32(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1303,6 +1357,7 @@ DEF_SEM(PSRAD_V, D dst, S1 src1, S2 src2) {
         dst_vec, i, SShr(v1, static_cast<decltype(v1)>(count)));
   }
   SWriteV32(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -1361,6 +1416,7 @@ DEF_SEM(PSLLW, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV16(dst_vec, i, temp);
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1381,6 +1437,7 @@ DEF_SEM(PSLLW_V, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV16(dst_vec, i, temp);
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1400,6 +1457,7 @@ DEF_SEM(PSLLD, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV32(dst_vec, i, temp);
   }
   SWriteV32(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1420,6 +1478,7 @@ DEF_SEM(PSLLD_V, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV32(dst_vec, i, temp);
   }
   SWriteV32(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1439,6 +1498,7 @@ DEF_SEM(PSLLQ, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV64(dst_vec, i, temp);
   }
   SWriteV64(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1459,6 +1519,7 @@ DEF_SEM(PSLLQ_V, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV64(dst_vec, i, temp);
   }
   SWriteV64(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -1503,6 +1564,7 @@ DEF_SEM(PSIGNB, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV8(dst_vec, i, value);
   }
   SWriteV8(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1522,6 +1584,7 @@ DEF_SEM(PSIGNW, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV16(dst_vec, i, value);
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1541,6 +1604,7 @@ DEF_SEM(PSIGND, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV32(dst_vec, i, value);
   }
   SWriteV32(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -1578,6 +1642,7 @@ DEF_SEM(PSHUFB, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV8(dst_vec, i, value);
   }
   UWriteV8(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1>
@@ -1594,6 +1659,7 @@ DEF_SEM(PSHUFW, D dst, S1 src1, I8 src2) {
     dst_vec = UInsertV16(dst_vec, i, v1);
   }
   UWriteV16(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -1628,6 +1694,7 @@ DEF_SEM(PSADBW, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV64(dst_vec, i, UInt64(sum));
   }
   UWriteV64(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -1652,6 +1719,7 @@ DEF_SEM(PMULUDQ, D dst, S1 src1, S2 src2) {
   auto v2 = ZExt(UExtractV32(src2_vec, 0));
   auto mul = UMul(v1, v2);
   UWriteV64(dst, UInsertV64(dst_vec, 0, mul));
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1669,6 +1737,7 @@ DEF_SEM(PMULLW, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV16(dst_vec, i, Trunc(mul));
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1686,6 +1755,7 @@ DEF_SEM(PMULHW, D dst, S1 src1, S2 src2) {
     dst_vec = SInsertV16(dst_vec, i, Trunc(SShr(mul, 16_s32)));
   }
   SWriteV16(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -1703,8 +1773,8 @@ DEF_SEM(PMULHUW, D dst, S1 src1, S2 src2) {
     dst_vec = UInsertV16(dst_vec, i, Trunc(UShr(mul, 16_u32)));
   }
   UWriteV16(dst, dst_vec);
+  return memory;
 }
-
 
 }  // namespace
 
@@ -1742,6 +1812,7 @@ DEF_SEM(PMOVMSKB, D dst, S src2) {
     r32 = UOr(UShl(r32, 1_u32), static_cast<uint32_t>(UShr(v1, 7_u8)));
   }
   WriteZExt(dst, r32);
+  return memory;
 }
 
 }  // namespace
@@ -1759,10 +1830,12 @@ DEF_SEM(PINSRW, D dst, S1 src1, S2 src2, I8 src3) {
   auto value = UInt16(Read(src2));
   auto index = URem(Read(src3), UInt8(NumVectorElems(dst_vec)));
   UWriteV16(dst, UInsertV16(dst_vec, index, value));
+  return memory;
 }
 
 DEF_SEM(DoMOVNTQ_MEMq_MMXq, MV64W dst, V64 src1) {
   UWriteV64(dst, UReadV64(src1));
+  return memory;
 }
 
 DEF_SEM(DoMASKMOVQ_MMXq_MMXq, V64 src1, V64 src2) {
@@ -1780,6 +1853,7 @@ DEF_SEM(DoMASKMOVQ_MMXq_MMXq, V64 src1, V64 src2) {
     dst_vec = UInsertV8(dst_vec, i, new_byte);
   }
   UWriteV8(dst, dst_vec);
+  return memory;
 }
 
 DEF_SEM(DoEMMS) {
@@ -1803,6 +1877,7 @@ DEF_SEM(DoEMMS) {
 
   // TODO(pag): Add FPU tag word stuff to the `State` structure, and reset
   //            it here.
+  return memory;
 }
 }  // namespace
 

@@ -22,6 +22,7 @@
 #pragma clang diagnostic fatal "-Wpadded"
 
 #include "remill/Arch/Runtime/State.h"
+#include "remill/Arch/Runtime/Types.h"
 
 #ifndef HAS_FEATURE_AVX
 # define HAS_FEATURE_AVX 1
@@ -47,6 +48,8 @@
 #define IF_AVX512_ELSE(a, b) b
 #endif
 
+#define aword IF_64BIT_ELSE(qword, dword)
+
 union FPUStatusWord final {
   uint16_t flat;
   struct {
@@ -70,6 +73,11 @@ union FPUStatusWord final {
 static_assert(2 == sizeof(FPUStatusWord),
               "Invalid structure packing of `FPUFlags`.");
 
+#if COMPILING_WITH_GCC
+using FPUPrecisionControl = uint16_t;
+using FPURoundingControl = uint16_t;
+using FPUInfinityControl = uint16_t;
+#else
 enum FPUPrecisionControl : uint16_t {
   kPrecisionSingle,
   kPrecisionReserved,
@@ -88,6 +96,7 @@ enum FPUInfinityControl : uint16_t {
   kInfinityProjective,
   kInfinityAffine
 };
+#endif
 
 union FPUControlWord final {
   uint16_t flat;
@@ -161,6 +170,10 @@ union FPUControlStatus {
 static_assert(4 == sizeof(FPUControlStatus),
               "Invalid structure packing of `SSEControlStatus`.");
 
+#if COMPILING_WITH_GCC
+using FPUTag = uint16_t;
+using FPUAbridgedTag = uint8_t;
+#else
 enum FPUTag : uint16_t {
   kFPUTagNonZero,
   kFPUTagZero,
@@ -172,6 +185,7 @@ enum FPUAbridgedTag : uint8_t {
   kFPUAbridgedTagEmpty,
   kFPUAbridgedTagValid
 };
+#endif
 
 // Note: Stored in top-of-stack order.
 struct FPUTagWord final {

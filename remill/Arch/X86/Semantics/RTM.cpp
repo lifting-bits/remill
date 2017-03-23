@@ -6,10 +6,12 @@ DEF_SEM(XBEGIN, R8W cond, PC taken, PC not_taken) {
   Write(cond, true);
   Write(REG_PC, Read(taken));
   WriteZExt(REG_XAX, static_cast<addr_t>(8));
+  return memory;
 }
 
 DEF_SEM(DoXTEST) {
   Write(FLAG_ZF, true);
+  return memory;
 }
 }  // namespace
 

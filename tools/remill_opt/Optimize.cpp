@@ -42,14 +42,14 @@ DEFINE_bool(server, false, "Run the optimizer as a server. This will allow "
 
 DEFINE_bool(strip, false, "Strip out all debug information.");
 
-DEFINE_bool(lower_mem, false, "Lower memory access intrinsics into "
-                              "LLVM load and store instructions. "
-                              "Note: the memory class pointer is replaced "
-                              "with a i8 pointer.");
+//DEFINE_bool(lower_mem, false, "Lower memory access intrinsics into "
+//                              "LLVM load and store instructions. "
+//                              "Note: the memory class pointer is replaced "
+//                              "with a i8 pointer.");
 
-DEFINE_bool(lower_fp_mem, false, "Lower floating-point memory access "
-                                 "intrinsics into LLVM load and store "
-                                 "instructions.");
+//DEFINE_bool(lower_fp_mem, false, "Lower floating-point memory access "
+//                                 "intrinsics into LLVM load and store "
+//                                 "instructions.");
 
 namespace {
 
@@ -112,6 +112,7 @@ static void RemoveUnusedSemantics(llvm::Module *module) {
   }
 }
 
+#if 0
 // Lower a memory read intrinsic into a `load` instruction.
 static void ReplaceMemReadOp(llvm::Module *module, const char *name,
                                llvm::Type *val_type) {
@@ -218,7 +219,7 @@ static void LowerMemOps(llvm::Module *module) {
                       llvm::Type::getX86_FP80Ty(context));
   }
 }
-
+#endif
 }  // namespace
 
 int main(int argc, char *argv[]) {
@@ -251,9 +252,9 @@ int main(int argc, char *argv[]) {
     StripDebugInfo(module);
     RemoveISelVars(module);
 
-    if (FLAGS_lower_mem) {
-      LowerMemOps(module);
-    }
+//    if (FLAGS_lower_mem) {
+//      LowerMemOps(module);
+//    }
 
     optimizer->Optimize();
 

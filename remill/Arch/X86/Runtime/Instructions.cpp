@@ -119,14 +119,20 @@
 namespace {
 // Takes the place of an unsupported instruction.
 DEF_SEM(HandleUnsupported) {
-  memory = __remill_sync_hyper_call(
+  return __remill_sync_hyper_call(
       memory, state, IF_64BIT_ELSE(SyncHyperCall::kAMD64EmulateInstruction,
                                    SyncHyperCall::kX86EmulateInstruction));
 }
 
 // Takes the place of an invalid instruction.
 DEF_SEM(HandleInvalidInstruction) {
-    HYPER_CALL = AsyncHyperCall::kInvalidInstruction;
+  HYPER_CALL = AsyncHyperCall::kInvalidInstruction;
+  return memory;
+}
+
+DEF_SEM(HandleBreakpoint) {
+  return __remill_sync_hyper_call(
+      memory, state, SyncHyperCall::kDebugBreakpoint);
 }
 
 }  // namespace
@@ -134,6 +140,7 @@ DEF_SEM(HandleInvalidInstruction) {
 // Takes the place of an unsupported instruction.
 DEF_ISEL(UNSUPPORTED_INSTRUCTION) = HandleUnsupported;
 DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
+DEF_ISEL(BREAKPOINT_INSTRUCTION) = HandleBreakpoint;
 
 #include "remill/Arch/X86/Semantics/FLAGS.cpp"
 #include "remill/Arch/X86/Semantics/BINARY.cpp"

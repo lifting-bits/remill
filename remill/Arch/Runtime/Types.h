@@ -8,6 +8,12 @@
 #include <limits>
 #include <type_traits>
 
+#if defined(__GNUG__) && !defined(__clang__)
+# define COMPILING_WITH_GCC 1
+#else
+# define COMPILING_WITH_GCC 0
+#endif
+
 #pragma clang diagnostic push
 #pragma clang diagnostic fatal "-Wpadded"
 
@@ -18,14 +24,25 @@ struct Memory;
 
 // Address in the source architecture type. We don't use a `uintptr_t` because
 // that might be specific to the destination architecture type.
-typedef IF_64BIT_ELSE(uint64_t, uint32_t) addr_t;
+typedef uint32_t addr32_t;
+typedef uint64_t addr64_t;
+typedef IF_64BIT_ELSE(addr64_t, addr32_t) addr_t;
 typedef IF_64BIT_ELSE(int64_t, int32_t) addr_diff_t;
 
+#if COMPILING_WITH_GCC && !defined(__x86_64__)
+struct uint128_t {
+  uint8_t elems[16];
+};
+struct int128_t {
+  int8_t elems[16];
+};
+#else
 typedef unsigned uint128_t __attribute__((mode(TI)));
 static_assert(16 == sizeof(uint128_t), "Invalid `uint128_t` size.");
 
 typedef int int128_t __attribute__((mode(TI)));
 static_assert(16 == sizeof(int128_t), "Invalid `int128_t` size.");
+#endif
 
 typedef float float32_t;
 static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
@@ -40,8 +57,26 @@ struct float80_t final {
 
 static_assert(10 == sizeof(float80_t), "Invalid `float80_t` size.");
 
-// Add in some missing type traits.
-namespace std {
+// Note: We are re-defining the `std::is_signed` type trait because we can't
+//       always explicitly specialize it inside of the `std` namespace.
+
+template <typename T>
+struct is_signed {
+#ifdef __PIN__
+  static constexpr bool value = std::tr1::is_signed<T>::value;
+#else
+  static constexpr bool value = std::is_signed<T>::value;
+#endif
+};
+
+template <typename T>
+struct is_unsigned {
+#ifdef __PIN__
+  static constexpr bool value = std::tr1::is_unsigned<T>::value;
+#else
+  static constexpr bool value = std::is_unsigned<T>::value;
+#endif
+};
 
 template <>
 struct is_signed<int128_t> {
@@ -62,8 +97,6 @@ template <>
 struct is_unsigned<uint128_t> {
   static constexpr bool value = true;
 };
-
-}  // namespace std
 
 template <typename T>
 struct VectorType;
@@ -487,8 +520,8 @@ struct UnsignedIntegerType;
 #define MAKE_SIGNED_INT_CHANGERS(signed_type, unsigned_type) \
     static_assert(sizeof(signed_type) == sizeof(unsigned_type), \
                   "Invalid int changer type type."); \
-    static_assert(std::is_signed<signed_type>::value != \
-                  std::is_signed<unsigned_type>::value, \
+    static_assert(is_signed<signed_type>::value != \
+                  is_signed<unsigned_type>::value, \
                   "Sign match between int type and next int type."); \
     template <> \
     struct SignedIntegerType<unsigned_type> { \
@@ -510,7 +543,7 @@ struct UnsignedIntegerType;
 #define MAKE_INT_TYPE(cur, next) \
     static_assert(sizeof(next) == (2 * sizeof(cur)), \
                   "Invalid next int type."); \
-    static_assert(std::is_signed<cur>::value == std::is_signed<next>::value, \
+    static_assert(is_signed<cur>::value == is_signed<next>::value, \
                   "Sign mismatch between int type and next int type."); \
     template <> \
     struct NextLargerIntegerType<cur> { \
@@ -582,6 +615,8 @@ struct IntegerType {
 template <>
 struct IntegerType<bool> : public IntegerType<uint8_t> {};
 
+#if !COMPILING_WITH_GCC
+
 inline uint8_t operator "" _u8(unsigned long long value) {
   return static_cast<uint8_t>(value);
 }
@@ -628,6 +663,8 @@ inline int128_t operator "" _s128(unsigned long long value) {
 }
 
 #define auto_t(T) typename BaseType<T>::BT
+
+#endif  // COMPILING_WITH_GCC
 
 #pragma clang diagnostic pop
 

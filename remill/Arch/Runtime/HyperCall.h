@@ -3,6 +3,8 @@
 #ifndef REMILL_ARCH_RUNTIME_HYPERCALL_H_
 #define REMILL_ARCH_RUNTIME_HYPERCALL_H_
 
+#include <cstdint>
+
 class SyncHyperCall {
  public:
   enum Name : uint32_t {
@@ -12,7 +14,11 @@ class SyncHyperCall {
     kX86ReadTSCP,
 
     kX86EmulateInstruction,
-    kAMD64EmulateInstruction
+    kAMD64EmulateInstruction,
+
+    kAssertPrivileged,
+
+    kDebugBreakpoint
   };
 } __attribute__((packed));
 
@@ -40,7 +46,7 @@ class AsyncHyperCall {
 
     // Invalid instruction.
     kInvalidInstruction
-  } __attribute__((packed));
-};
+  };
+} __attribute__((packed));
 
 #endif  // REMILL_ARCH_RUNTIME_HYPERCALL_H_

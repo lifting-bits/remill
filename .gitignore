@@ -3,6 +3,9 @@
 install_manifest.txt
 Makefile
 
+bin/*
+lib/*
+
 third_party/*
 build/*
 generated/*
@@ -59,3 +62,8 @@ remill_disass.egg-info/*
 *.id0
 *.id1
 *.til
+
+# PIN
+*.log
+obj-ia32/*
+obj-intel64/*
