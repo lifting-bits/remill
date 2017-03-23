@@ -6,7 +6,6 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/sendfile.h>
 #include <unistd.h>
 
 #include "remill/OS/FileSystem.h"

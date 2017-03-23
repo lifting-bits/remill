@@ -9,6 +9,8 @@ endif()
 
 enable_language(ASM)
 
+include(CTest)
+
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 find_package(LLVM 3.9 REQUIRED)
@@ -111,7 +113,6 @@ target_link_libraries(remill
     ${GLOG_LIBRARIES}
     ${XED_LIBRARIES}
     ${PROTOBUF_LIBRARIES}
-    curses
     LLVMCore
     LLVMSupport
     LLVMAnalysis
