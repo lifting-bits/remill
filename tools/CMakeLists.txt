@@ -5,4 +5,7 @@ install(CODE
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/tools/remill_lift)
 add_subdirectory(${PROJECT_SOURCE_DIR}/tools/remill_opt)
-add_subdirectory(${PROJECT_SOURCE_DIR}/tools/vmill)
+
+if (LINUX)
+    add_subdirectory(${PROJECT_SOURCE_DIR}/tools/vmill)
+endif(LINUX)
