@@ -646,8 +646,15 @@ int main(int argc, char **argv) {
 
     std::stringstream ss;
     ss << test.test_name << "_lifted";
-    auto lifted_func = reinterpret_cast<LiftedFunc *>(
-        dlsym(this_exe, ss.str().c_str()));
+    auto sym_func = dlsym(this_exe, ss.str().c_str());
+    if (!sym_func) {
+      sym_func = dlsym(this_exe, (std::string("_") + ss.str()).c_str());
+    }
+
+    CHECK(nullptr != sym_func)
+        << "Could not find code for test case " << test.test_name;
+
+    auto lifted_func = reinterpret_cast<LiftedFunc *>(sym_func);
     gTranslatedFuncs[test.test_begin] = lifted_func;
   }
 
