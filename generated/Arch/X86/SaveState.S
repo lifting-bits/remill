@@ -2,9 +2,9 @@
 
 #ifdef AFTER_TEST_CASE
 #if 64 == ADDRESS_SIZE_BITS
-fxsave64 [RIP + gFPU]
+fxsave64 [RIP + SYMBOL(gFPU)]
 #else
-fxsave [RIP + gFPU]
+fxsave [RIP + SYMBOL(gFPU)]
 #endif
 #endif
 lea RSP, [RSP - 8]

@@ -25,9 +25,9 @@ int main(void) {
   // Save the native post-test FPU state.
   printf("#ifdef AFTER_TEST_CASE\n");
   printf("#if 64 == ADDRESS_SIZE_BITS\n");
-  printf("fxsave64 [RIP + gFPU]\n");
+  printf("fxsave64 [RIP + SYMBOL(gFPU)]\n");
   printf("#else\n");
-  printf("fxsave [RIP + gFPU]\n");
+  printf("fxsave [RIP + SYMBOL(gFPU)]\n");
   printf("#endif\n");
   printf("#endif\n");
 
