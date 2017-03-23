@@ -7,8 +7,6 @@
 #include <memory>
 #include <unordered_map>
 
-#include "tools/vmill/Context/Intercept.h"
-
 struct Memory;
 
 namespace remill {

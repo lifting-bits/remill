@@ -961,9 +961,8 @@ int main(int argc, char **argv) {
      << "    -- PROGRAM ..." << std::endl;
 
   google::InitGoogleLogging(argv[0]);
-
-  GFLAGS_NAMESPACE::SetUsageMessage(ss.str());
-  GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  google::SetUsageMessage(ss.str());
+  google::ParseCommandLineFlags(&argc, &argv, true);
 
   CHECK(got_tracee_args)
       << "Unable to extract arguments to tracee. Make sure to provide "
@@ -998,7 +997,7 @@ int main(int argc, char **argv) {
 
   remill::vmill::SnapshotProgram(arch_name, os_name);
 
-  GFLAGS_NAMESPACE::ShutDownCommandLineFlags();
+  google::ShutDownCommandLineFlags();
   google::ShutdownGoogleLogging();
   return EXIT_SUCCESS;
 }
