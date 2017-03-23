@@ -13,6 +13,8 @@ macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
         -DADDRESS_SIZE_BITS=${address_size}
         -DHAS_FEATURE_AVX=${has_avx}
         -DHAS_FEATURE_AVX512=${has_avx512}
+        -DGTEST_HAS_RTTI=0
+        -DGTEST_HAS_TR1_TUPLE=0
     )
     
     add_executable(lift-${name}-tests
