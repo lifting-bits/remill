@@ -10,13 +10,32 @@
 namespace remill {
 namespace vmill {
 
-enum class PagePerms : uint64_t {
-  kInvalid,
-  kReadOnly,
-  kWriteOnly,
-  kReadWrite,
-  kReadExec,
-  kReadWriteExec
+class PagePerms {
+ public:
+  enum Set : uint64_t {
+    kInvalid,
+    kReadOnly,
+    kWriteOnly,
+    kReadWrite,
+    kReadExec,
+    kReadWriteExec
+  };
+
+  inline static bool CanRead(Set perms) {
+    return kInvalid != perms && kWriteOnly != perms;
+  }
+
+  inline static bool CanWrite(Set perms) {
+    return kWriteOnly == perms || kReadWrite == perms ||
+           kReadWriteExec == perms;
+  }
+
+  inline static bool CanExec(Set perms) {
+    return kReadExec == perms || kReadWriteExec == perms;
+  }
+
+ private:
+  PagePerms(void) = delete;
 };
 
 #pragma clang diagnostic push
@@ -26,7 +45,23 @@ struct PageInfo {
   uint64_t base_address;
   uint64_t limit_address;
   uint64_t offset_in_file;
-  PagePerms perms;
+  PagePerms::Set perms;
+
+  inline uint64_t Size(void) const {
+    return limit_address - base_address;
+  }
+
+  inline bool CanRead(void) const {
+    return PagePerms::CanRead(perms);
+  }
+
+  inline bool CanWrite(void) const {
+    return PagePerms::CanWrite(perms);
+  }
+
+  inline bool CanExec(void) const {
+    return PagePerms::CanExec(perms);
+  }
 };
 
 static_assert(32 == sizeof(PageInfo), "Invalid packing of `PageInfo`.");

@@ -119,18 +119,19 @@
 namespace {
 // Takes the place of an unsupported instruction.
 DEF_SEM(HandleUnsupported) {
-  memory = __remill_sync_hyper_call(
+  return __remill_sync_hyper_call(
       memory, state, IF_64BIT_ELSE(SyncHyperCall::kAMD64EmulateInstruction,
                                    SyncHyperCall::kX86EmulateInstruction));
 }
 
 // Takes the place of an invalid instruction.
 DEF_SEM(HandleInvalidInstruction) {
-    HYPER_CALL = AsyncHyperCall::kInvalidInstruction;
+  HYPER_CALL = AsyncHyperCall::kInvalidInstruction;
+  return memory;
 }
 
 DEF_SEM(HandleBreakpoint) {
-  memory = __remill_sync_hyper_call(
+  return __remill_sync_hyper_call(
       memory, state, SyncHyperCall::kDebugBreakpoint);
 }
 

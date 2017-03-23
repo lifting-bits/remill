@@ -194,13 +194,22 @@ void Lifter::CreateBlock(const cfg::Block &cfg_block) {
   if (!block_func) {
     std::stringstream ss;
     ss << "__remill_sub_" << std::hex << id;
-
+    auto func_name = ss.str();
     auto func_type = basic_block->getFunctionType();
+
     block_func = llvm::Function::Create(
-        func_type, llvm::GlobalValue::ExternalLinkage, ss.str(), module);
+        func_type, llvm::GlobalValue::PrivateLinkage, ".", module);
+
+    auto block_var = new llvm::GlobalVariable(
+        *module, llvm::PointerType::get(func_type, 0), true,
+        llvm::GlobalValue::ExternalLinkage, block_func, func_name);
+
+    CHECK(block_var->getName() == func_name)
+        << "Duplicate block for " << func_name;
+
     InitFunctionAttributes(block_func);
-    SetBlockPC(block_func, pc);
-    SetBlockId(block_func, id);
+    SetBlockPC(block_var, pc);
+    SetBlockId(block_var, id);
 
     id_to_block[id] = block_func;
 
@@ -511,14 +520,16 @@ llvm::BasicBlock *Lifter::LiftInstruction(llvm::Function *block_func,
 
   // First two arguments to an instruction semantics function are the
   // state pointer, and a pointer to the memory pointer.
-  args.push_back(mem_ptr);
+  args.push_back(nullptr);
   args.push_back(state_ptr);
 
   // Call out to a special 'breakpoint' instruction function, that lets us
   // interpose on the machine state just before every lifted instruction.
   if (FLAGS_add_breakpoints) {
-    ir.CreateCall(
-        GetInstructionFunction(module, "BREAKPOINT_INSTRUCTION"), args);
+    ir.CreateStore(
+        ir.CreateCall(GetInstructionFunction(module, "BREAKPOINT_INSTRUCTION"),
+                      args),
+        mem_ptr);
   }
 
   auto isel_func_type = isel_func->getFunctionType();
@@ -550,8 +561,11 @@ llvm::BasicBlock *Lifter::LiftInstruction(llvm::Function *block_func,
           llvm::ConstantInt::get(word_type, arch_instr->NumBytes())),
       pc_ptr);
 
+  // Pass in current value of the memory pointer.
+  args[0] = ir.CreateLoad(mem_ptr);
+
   // Call the function that implements the instruction semantics.
-  ir.CreateCall(isel_func, args);
+  ir.CreateStore(ir.CreateCall(isel_func, args), mem_ptr);
 
   // End an atomic block.
   if (arch_instr->is_atomic_read_modify_write) {

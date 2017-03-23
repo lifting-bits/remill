@@ -27,6 +27,9 @@
 #include "remill/Arch/Runtime/Runtime.h"
 #include "remill/Arch/X86/Runtime/State.h"
 
+DEFINE_string(arch, "", "");
+DEFINE_string(os, "", "");
+
 namespace {
 
 struct alignas(128) Stack {

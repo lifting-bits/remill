@@ -28,19 +28,18 @@ enum : uint64_t {
 
 static const AddressRange kZeroRange = {};
 
-static inline uint64_t AlignDownToPage(uint64_t addr) {
+static constexpr inline uint64_t AlignDownToPage(uint64_t addr) {
   return addr & kPageMask;
 }
 
-static inline uint64_t RoundUpToPage(uint64_t size) {
+static constexpr inline uint64_t RoundUpToPage(uint64_t size) {
   return (size + kPageShift) & kPageMask;
 }
 
 }  // namespace
 
 // Backing store for some region of mapped memory within an address space.
-class MemoryMap : protected std::enable_shared_from_this<MemoryMap>,
-                  protected AddressRange {
+class MemoryMap : public AddressRange {
  public:
   explicit MemoryMap(const AddressRange &info);
   ~MemoryMap(void);
@@ -71,21 +70,25 @@ class MemoryMap : protected std::enable_shared_from_this<MemoryMap>,
   // the current range, then we return the current memory map. The ideal
   // scenario is that we reduce the amount of actual cloning that needs to
   // happen.
-  MemoryMapPtr CloneOrKeepRange(uint64_t cut_base, uint64_t cut_limit);
+  MemoryMapPtr CloneOrKeepRange(const MemoryMapPtr &self,
+                                uint64_t cut_base, uint64_t cut_limit);
 
-  typedef bool (MemoryMap::*ReadFuncType)(uint64_t, uint8_t *);
-  typedef bool (MemoryMap::*WriteFuncType)(uint64_t, uint8_t );
+  using ReadFuncType = bool (MemoryMap::*)(uint64_t, uint8_t *);
+  using WriteFuncType = bool (MemoryMap::*)(uint64_t, uint8_t);
 
   // Read bytes from a memory range.
   [[gnu::always_inline, gnu::gnu_inline]]
   inline bool Read(uint64_t addr, uint8_t *val) {
-    return this->*do_read(addr, val);
+    return (this->*do_read)(addr, val);
   }
 
   // Write bytes to a memory range.
-  [[gnu::always_inline, gnu::gnu_inline, gnu::naked]]
+  [[gnu::always_inline, gnu::gnu_inline]]
   inline bool Write(uint64_t addr, uint8_t val) {
-    return this->*do_write(addr, val);
+    if (addr == 0x877a43d) {
+      asm("nop;");
+    }
+    return (this->*do_write)(addr, val);
   }
 
   // Read a byte as an executable byte. This is used for instruction decoding.
@@ -93,7 +96,6 @@ class MemoryMap : protected std::enable_shared_from_this<MemoryMap>,
 
  private:
   MemoryMap(void) = delete;
-  MemoryMap(const MemoryMap &) = delete;
 
   bool ReadZero(uint64_t addr, uint8_t *val);
   bool ReadFromParent(uint64_t addr, uint8_t *val);
@@ -105,8 +107,6 @@ class MemoryMap : protected std::enable_shared_from_this<MemoryMap>,
   bool WriteToMem(uint64_t addr, uint8_t val);
   bool WriteFail(uint64_t addr, uint8_t val);
 
-  // Get a shared pointer to this memory map or the parent memory map.
-  MemoryMapPtr Link(void);
 
   // Pointer to the parent memory map. This is used for copy-on-write
   // mappings.
@@ -129,7 +129,7 @@ class MemoryMap : protected std::enable_shared_from_this<MemoryMap>,
 
 MemoryMap::~MemoryMap(void) {
   if (base) {
-    delete base;
+    delete[] base;
   }
 }
 
@@ -137,19 +137,11 @@ MemoryMap::MemoryMap(const AddressRange &info)
     : AddressRange(info),
       parent(nullptr),
       base(nullptr),
-      do_read(CanRead() ? ReadZero : ReadFail),
-      do_write(CanWrite() ? WriteInit : WriteFail),
+      do_read(CanRead() ? &MemoryMap::ReadZero : &MemoryMap::ReadFail),
+      do_write(CanWrite() ? &MemoryMap::WriteInit : &MemoryMap::WriteFail),
       seen_write_since_exec(false),
       seen_exec(false),
       version(0) {}
-
-MemoryMapPtr MemoryMap::Link(void) {
-  if (parent) {
-    return parent;
-  } else {
-    return shared_from_this();
-  }
-}
 
 bool MemoryMap::ReadZero(uint64_t, uint8_t *val) {
   *val = 0;
@@ -157,7 +149,7 @@ bool MemoryMap::ReadZero(uint64_t, uint8_t *val) {
 }
 
 bool MemoryMap::ReadFromParent(uint64_t addr, uint8_t *val) {
-  return parent->*do_read(addr, val);
+  return (parent.get()->*do_read)(addr, val);
 }
 
 bool MemoryMap::ReadFromMem(uint64_t addr, uint8_t *val) {
@@ -171,8 +163,9 @@ bool MemoryMap::ReadFail(uint64_t, uint8_t *) {
 
 bool MemoryMap::WriteInit(uint64_t addr, uint8_t val) {
   base = new uint8_t[Size()];
-  do_write = WriteToMem;
-  do_read = ReadFromMem;
+  memset(base, 0, Size());
+  do_write = &MemoryMap::WriteToMem;
+  do_read = &MemoryMap::ReadFromMem;
   return WriteToMem(addr, val);
 }
 
@@ -180,8 +173,8 @@ bool MemoryMap::WriteCopyParent(uint64_t addr, uint8_t val) {
   base = new uint8_t[Size()];
   memcpy(base, parent->base, Size());
   parent.reset();
-  do_write = WriteToMem;
-  do_read = ReadFromMem;
+  do_write = &MemoryMap::WriteToMem;
+  do_read = &MemoryMap::ReadFromMem;
   return WriteToMem(addr, val);
 }
 
@@ -201,17 +194,35 @@ bool MemoryMap::ReadExecutable(uint64_t addr, uint8_t *val,
     return false;
   }
 
-  if (seen_write_since_exec && seen_exec) {
+  if (seen_write_since_exec || !seen_exec) {
+    auto old_version = version;
     version = MurmurHash64A(
         base,
         Size(),
         (base_address % kPageSize) * (limit_address % kPageSize));
 
+    if (seen_write_since_exec) {
+      DLOG(WARNING)
+          << "  ReadExecutable: Self-modifying code detected in range ["
+          << std::hex << base_address << ", "
+          << std::hex << limit_address << "). Old version "
+          << std::hex << old_version << ", new version "
+          << std::hex << version;
+    } else {
+      DLOG(INFO)
+        << "  ReadExecutable: Initial possible code exec for range ["
+        << std::hex << base_address << ", "
+        << std::hex << limit_address << "). New version "
+        << std::hex << version;
+    }
+
     seen_write_since_exec = false;
   }
 
   seen_exec = true;
-  *version_out = version;
+  if (version_out) {
+    *version_out = version;
+  }
   return Read(addr, val);
 }
 
@@ -221,7 +232,7 @@ MemoryMapPtr MemoryMap::Clone(void) {
   // and steal this page's memory, putting it into the new parent, making this
   // page a copy-on-write version of the parent.
   if (base) {
-    auto reparent = new MemoryMap(*this);
+    auto reparent = std::make_shared<MemoryMap>(*this);
     reparent->base = base;
     reparent->version = version;
     reparent->do_read = do_read;
@@ -230,35 +241,39 @@ MemoryMapPtr MemoryMap::Clone(void) {
     reparent->seen_write_since_exec = seen_write_since_exec;
 
     base = nullptr;
-    parent = reparent->Link();
-    do_read = CanRead() ? ReadFromParent : ReadFail;
-    do_write = CanWrite() ? WriteCopyParent : WriteFail;
+    parent = reparent;
+    do_read = CanRead() ? &MemoryMap::ReadFromParent : &MemoryMap::ReadFail;
+    do_write = CanWrite() ? &MemoryMap::WriteCopyParent : &MemoryMap::WriteFail;
   }
 
   // This is a copy-on-write page that passes through from its parent.
   if (parent) {
-    auto copy = new MemoryMap(*this);
-    copy->parent = parent;
-    copy->do_read = do_read;
-    copy->do_write = do_write;
-    copy->version = version;
-    copy->seen_exec = seen_exec;
-    copy->seen_write_since_exec = seen_write_since_exec;
-    return copy->Link();
+    auto ret = std::make_shared<MemoryMap>(*this);
+    ret->parent = parent;
+    ret->do_read = do_read;
+    ret->do_write = do_write;
+    ret->version = version;
+    ret->seen_exec = seen_exec;
+    ret->seen_write_since_exec = seen_write_since_exec;
+    return ret;
 
   // This is an empty page that isn't yet initialized; cloning it should just
   // produce a new such empty page.
   } else {
-    return (new MemoryMap(*this))->Link();
+    return std::make_shared<MemoryMap>(*this);
   }
 }
 
 MemoryMapPtr MemoryMap::CloneOrKeepRange(
-    uint64_t cut_base, uint64_t cut_limit) {
+    const MemoryMapPtr &self, uint64_t cut_base, uint64_t cut_limit) {
 
   // The sub-range and this range are the same; return this range.
   if (cut_base == base_address && cut_limit == limit_address) {
-    return Link();
+    if (parent) {
+      return parent;
+    } else {
+      return self;
+    }
 
   // Copy-on-write of a parent; take a slice of the parent.
   } else if (parent) {
@@ -279,7 +294,7 @@ MemoryMapPtr MemoryMap::CloneOrKeepRange(
 
   // Copy a slice of of the parent.
   } else if (base) {
-    auto ret = new MemoryMap(*this);
+    auto ret = std::make_shared<MemoryMap>(*this);
     ret->base_address = std::max(cut_base, base_address);
     ret->limit_address = std::min(cut_limit, limit_address);
     ret->base = new uint8_t[ret->Size()];
@@ -292,14 +307,14 @@ MemoryMapPtr MemoryMap::CloneOrKeepRange(
     }
 
     memcpy(ret->base, &(base[ret->base_address - base_address]), ret->Size());
-    return ret->Link();
+    return ret;
 
   // This range is empty, so return a new empty range.
   } else {
-    auto ret = new MemoryMap(*this);
+    auto ret = std::make_shared<MemoryMap>(*this);
     ret->base_address = cut_base;
     ret->limit_address = cut_limit;
-    return ret->Link();
+    return ret;
   }
 }
 
@@ -310,19 +325,19 @@ void MemoryMap::SetCanRead(bool new_can_read) {
 
   // Going from readable -> not readable
   if (!new_can_read) {
-    do_read = ReadFail;
+    do_read = &MemoryMap::ReadFail;
 
   // Copy-on-write, going from not readable -> readable
   } else if (parent) {
-    do_read = ReadFromParent;
+    do_read = &MemoryMap::ReadFromParent;
 
   // Memory backed, going from not readable -> readable
   } else if (base) {
-    do_read = ReadFromMem;
+    do_read = &MemoryMap::ReadFromMem;
 
   // Uninitialized, going from not readable -> readable
   } else {
-    do_read = ReadZero;
+    do_read = &MemoryMap::ReadZero;
   }
 
   can_read = new_can_read;
@@ -335,31 +350,38 @@ void MemoryMap::SetCanWrite(bool new_can_write) {
 
   // Going from writable -> not writable
   if (!new_can_write) {
-    do_read = WriteFail;
+    do_write = &MemoryMap::WriteFail;
 
   // Copy-on-write, going from not writable -> writable
   } else if (parent) {
-    do_read = WriteCopyParent;
+    do_write = &MemoryMap::WriteCopyParent;
 
   // Memory backed, going from not readable -> readable
   } else if (base) {
-    do_read = WriteToMem;
+    do_write = &MemoryMap::WriteToMem;
 
   // Uninitialized, going from not readable -> readable
   } else {
-    do_read = WriteInit;
+    do_write = &MemoryMap::WriteInit;
   }
 
   can_write = new_can_write;
 }
 
-// Note: Intentionally doesn't update `seen_write_since_exec` or `seen_exec`.
 void MemoryMap::SetCanExecute(bool new_can_exec) {
   can_exec = new_can_exec;
+
+  if (!seen_exec && can_exec) {
+    seen_write_since_exec = false;
+  }
 }
 
 AddressSpace::AddressSpace(void)
-    : invalid_map(new MemoryMap(kZeroRange)),
+    : invalid_map(std::make_shared<MemoryMap>(kZeroRange)),
+      last_map(invalid_map),
+      last_map_base(0),
+      last_map_limit(0),
+      page_to_map(256),
       is_dead(false) {}
 
 AddressSpace::AddressSpace(const AddressSpace &parent)
@@ -367,8 +389,8 @@ AddressSpace::AddressSpace(const AddressSpace &parent)
   is_dead = parent.is_dead;
 
   if (!is_dead) {
-    for (const auto &range : parent.ranges) {
-      ranges.push_back(range->Clone());
+    for (const auto &range : parent.maps) {
+      maps.push_back(range->Clone());
     }
     CreateIndex();
   }
@@ -376,10 +398,10 @@ AddressSpace::AddressSpace(const AddressSpace &parent)
 
 // Clear out the contents of this address space.
 void AddressSpace::Kill(void) {
-  ranges.clear();
-  page_to_range.clear();
-  range_base_to_index.clear();
-  range_limit_to_index.clear();
+  maps.clear();
+  page_to_map.clear();
+  map_base_to_index.clear();
+  map_limit_to_index.clear();
   is_dead = true;
 }
 
@@ -420,24 +442,58 @@ std::vector<MemoryMapPtr> RemoveRange(
   std::vector<MemoryMapPtr> new_ranges;
   new_ranges.reserve(ranges.size() + 1);
 
+  DLOG(INFO)
+      << "  RemoveRange: [" << std::hex << base << ", "
+      << std::hex << limit << ")";
+
   for (auto &map : ranges) {
 
     // No overlap between `map` and the range to remove.
     if (map->limit_address <= base || map->base_address >= limit) {
+      DLOG(INFO)
+          << "    Keeping with no overlap ["
+          << std::hex << map->base_address << ", "
+          << std::hex << map->limit_address << ")";
       new_ranges.push_back(map);
 
     // `map` is fully contained in the range to remove.
     } else if (map->base_address >= base && map->limit_address <= limit) {
+      DLOG(INFO)
+          << "    Removing with full containment ["
+          << std::hex << map->base_address << ", "
+          << std::hex << map->limit_address << ")";
       continue;
 
     // The range to remove is fully contained in `map`.
     } else if (map->base_address < base && map->limit_address > limit) {
-      new_ranges.push_back(map->CloneOrKeepRange(map->base_address, base));
-      new_ranges.push_back(map->CloneOrKeepRange(limit, map->limit_address));
+      DLOG(INFO)
+          << "    Splitting with overlap ["
+          << std::hex << map->base_address << ", "
+          << std::hex << map->limit_address << ") into "
+          << "[" << std::hex << map->base_address << ", "
+          << std::hex << base << ") and ["
+          << std::hex << limit << ", " << std::hex << map->limit_address << ")";
+      new_ranges.push_back(map->CloneOrKeepRange(
+          map, map->base_address, base));
+      new_ranges.push_back(map->CloneOrKeepRange(
+          map, limit, map->limit_address));
 
-    // The range to remove contains either a prefix or suffix of `map`.
+    // The range to remove is a prefix of `map`.
+    } else if (map->base_address == base) {
+      DLOG(INFO)
+          << "    Keeping prefix [" << std::hex << limit << ", "
+          << std::hex << map->limit_address << ")";
+      new_ranges.push_back(map->CloneOrKeepRange(
+          map, limit, map->limit_address));
+
+    // The range to remove is a suffix of `map`.
     } else {
-      new_ranges.push_back(map->CloneOrKeepRange(base, limit));
+      DLOG(INFO)
+          << "    Keeping suffix ["
+          << std::hex << map->base_address << ", "
+          << std::hex << base << ")";
+      new_ranges.push_back(map->CloneOrKeepRange(
+          map, map->base_address, base));
     }
   }
 
@@ -452,11 +508,24 @@ std::vector<MemoryMapPtr> KeepRange(
   std::vector<MemoryMapPtr> new_ranges;
   new_ranges.reserve(2);
 
+  DLOG(INFO)
+      << "  KeepRange: [" << std::hex << base << ", "
+      << std::hex << limit << ")";
+
   for (auto &map : ranges) {
     if (map->limit_address <= base || map->base_address >= limit) {
+      DLOG(INFO)
+          << "    Not keeping [" << std::hex << base << ", "
+          << std::hex << limit << ")";
       continue;
     } else {
-      new_ranges.push_back(map->CloneOrKeepRange(base, limit));
+      auto sub_range = map->CloneOrKeepRange(map, base, limit);
+      DLOG(INFO)
+          << "    Keeping sub range [" << std::hex << sub_range->base_address
+          << ", " << std::hex << sub_range->limit_address << ") of ["
+          << std::hex << map->base_address << ", " << std::hex
+          << map->limit_address << ")";
+      new_ranges.push_back(sub_range);
     }
   }
 
@@ -470,6 +539,33 @@ void AddressSpace::SetPermissions(uint64_t base_, size_t size, bool can_read,
   auto base = AlignDownToPage(base_);
   auto limit = base + RoundUpToPage(size);
 
+  DLOG(INFO)
+      << "SetPermissions: [" << std::hex << base << ", "
+      << std::hex << limit << ") to "
+      << "can_read=" << can_read << " can_write="
+      << can_write << " can_exec=" << can_exec;
+
+  // Check to see if the exact range already exists before splitting.
+  auto &existing_range = FindRange(base);
+  if (existing_range->base_address == base &&
+      existing_range->limit_address == limit) {
+
+    if (existing_range->can_read == can_read &&
+        existing_range->can_write == can_write &&
+        existing_range->can_exec == can_exec) {
+      DLOG(INFO)
+          << "  Existing range already has correct permissions";
+    } else {
+      DLOG(INFO)
+          << "  Set permissions on existing range";
+
+      existing_range->SetCanRead(can_read);
+      existing_range->SetCanWrite(can_write);
+      existing_range->SetCanExecute(can_exec);
+    }
+    return;
+  }
+
   if (is_dead) {
     LOG(ERROR)
         << "Trying to set permissions on range ["
@@ -477,8 +573,9 @@ void AddressSpace::SetPermissions(uint64_t base_, size_t size, bool can_read,
         << ") in destroyed address space.";
     return;
   }
-  auto old_ranges = RemoveRange(ranges, base, limit);
-  auto new_ranges = KeepRange(ranges, base, limit);
+
+  auto old_ranges = RemoveRange(maps, base, limit);
+  auto new_ranges = KeepRange(maps, base, limit);
 
   CheckRanges(old_ranges, true);
   CheckRanges(new_ranges, true);
@@ -489,10 +586,10 @@ void AddressSpace::SetPermissions(uint64_t base_, size_t size, bool can_read,
     range->SetCanExecute(can_exec);
   }
 
-  ranges.swap(old_ranges);
-  ranges.insert(ranges.end(), new_ranges.begin(), new_ranges.end());
+  maps.swap(old_ranges);
+  maps.insert(maps.end(), new_ranges.begin(), new_ranges.end());
 
-  CheckRanges(ranges, false);
+  CheckRanges(maps, false);
   CreateIndex();
 }
 
@@ -508,18 +605,24 @@ void AddressSpace::AddMap(uint64_t base_, size_t size) {
     return;
   }
 
-  auto old_ranges = RemoveRange(ranges, base, limit);
+  DLOG(INFO)
+      << "AddMap: [" << std::hex << base << ", " << std::hex << limit << ")";
+
+  auto old_ranges = RemoveRange(maps, base, limit);
   CheckRanges(old_ranges, true);
   AddressRange new_range = {base, limit, true, true, false};
-  ranges.swap(old_ranges);
-  ranges.push_back((new MemoryMap(new_range))->Link());
-  CheckRanges(ranges, false);
+  maps.swap(old_ranges);
+  maps.push_back(std::make_shared<MemoryMap>(new_range));
+  CheckRanges(maps, false);
   CreateIndex();
 }
 
 void AddressSpace::RemoveMap(uint64_t base_, size_t size) {
   auto base = AlignDownToPage(base_);
   auto limit = base + RoundUpToPage(size);
+
+  DLOG(INFO)
+      << "RemoveMap: [" << std::hex << base << ", " << std::hex << limit << ")";
 
   if (is_dead) {
     LOG(ERROR)
@@ -529,8 +632,8 @@ void AddressSpace::RemoveMap(uint64_t base_, size_t size) {
     return;
   }
 
-  ranges = RemoveRange(ranges, base, limit);
-  CheckRanges(ranges, true);
+  maps = RemoveRange(maps, base, limit);
+  CheckRanges(maps, true);
   CreateIndex();
 }
 
@@ -547,14 +650,14 @@ void AddressSpace::NearestMemoryMap(
     return;
   }
 
-  auto lower_bound = range_base_to_index.lower_bound(find);
-  auto upper_bound = range_limit_to_index.upper_bound(find);
+  auto lower_bound = map_base_to_index.lower_bound(find);
+  auto upper_bound = map_limit_to_index.upper_bound(find);
 
-  if (lower_bound != range_base_to_index.end()) {
+  if (lower_bound != map_base_to_index.end()) {
     *glb = lower_bound->first;
   }
 
-  if (upper_bound != range_limit_to_index.end()) {
+  if (upper_bound != map_limit_to_index.end()) {
     *lub = upper_bound->first;
   }
 }
@@ -598,52 +701,97 @@ void AddressSpace::CheckRanges(std::vector<MemoryMapPtr> &r, bool is_sorted) {
 }
 
 void AddressSpace::CreateIndex(void) {
-  page_to_range.clear();
-  range_base_to_index.clear();
-  range_limit_to_index.clear();
+  last_map = invalid_map;
+  last_map_base = 0;
+  last_map_limit = 0;
+  page_to_map.clear();
+  map_base_to_index.clear();
+  map_limit_to_index.clear();
+
+  if (maps.empty()) {
+    return;
+  }
 
   unsigned i = 0;
-  for (const auto &range : ranges) {
-    range_base_to_index[range->base_address] = i;
-    range_limit_to_index[range->limit_address] = i;
+  for (const auto &range : maps) {
+    map_base_to_index[range->limit_address - 1] = i;
+    map_limit_to_index[range->base_address] = i;
     ++i;
   }
 }
 
 MemoryMapPtr &AddressSpace::FindRange(uint64_t addr) {
   auto page_addr = AlignDownToPage(addr);
-  auto &range = page_to_range[page_addr];
+
+  // First level cache; depends on data locality.
+  if (last_map_base <= addr && addr < last_map_limit) {
+    return last_map;
+  }
+
+  // Second level cache, depends on prior lookups.
+  auto &range = page_to_map[page_addr];
   if (is_dead) {
     LOG(ERROR)
         << "Trying to find memory map associated with address "
         << std::hex << addr << " in destroyed address space.";
-    range = invalid_map->Link();  // Backup invalid map.
+    range = invalid_map;  // Backup invalid map.
   }
 
   if (range) {
+    last_map = range;
+    last_map_base = range->base_address;
+    last_map_limit = range->limit_address;
     return range;
   }
 
-  // See if locality is a good guess to find this page range based on a
-  // previous one.
-  auto prev_range_it = page_to_range.find(page_addr - kPageSize);
-  if (prev_range_it != page_to_range.end() &&
+  // Third-level cache; depends on locality and crossing pages.
+  auto prev_range_it = page_to_map.find(page_addr - kPageSize);
+  if (prev_range_it != page_to_map.end() &&
       addr < prev_range_it->second->limit_address) {
-    range = *prev_range_it;
+    range = prev_range_it->second;
     return range;
   }
 
-  range = invalid_map->Link();  // Backup invalid map.
+  range = invalid_map;  // Backup invalid map.
+  if (maps.empty()) {
+    LOG(ERROR)
+        << "Cannot find range for address 0x" << std::hex << addr
+        << " in empty address space";
+    return range;
+  }
 
-  auto lower_bound = range_base_to_index.lower_bound(addr);
-  if (lower_bound != range_base_to_index.end()) {
-    auto &lb_range = ranges[lower_bound->second];
+  // Last level, do a full search, using the index map to find the right range.
+  auto found = false;
+  auto lower_bound = map_base_to_index.lower_bound(addr);
+  if (lower_bound != map_base_to_index.end()) {
+    auto &lb_range = maps[lower_bound->second];
     if (lb_range->base_address <= addr && addr < lb_range->limit_address) {
       range = lb_range;
+      last_map = range;
+      last_map_base = range->base_address;
+      last_map_limit = range->limit_address;
+      found = true;
     }
   }
 
+  DLOG_IF(WARNING, !found)
+      << "Did not find valid page range for address 0x" << std::hex << addr;
+
   return range;
+}
+
+// Log out the current state of the memory maps.
+void AddressSpace::LogMaps(void) {
+  CheckRanges(maps, false);
+  LOG(INFO)
+      << "Memory maps:";
+  for (const auto &range : maps) {
+    LOG(INFO)
+        << "  [" << std::hex << range->base_address << ", "
+        << std::hex << range->limit_address << ") with permissions "
+        << "can_read=" << range->can_read << " can_write="
+        << range->can_write << " can_exec=" << range->can_exec;
+  }
 }
 
 }  // namespace vmill

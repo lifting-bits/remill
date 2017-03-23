@@ -76,6 +76,9 @@ class AddressSpace {
   // Removes a memory mapping.
   void RemoveMap(uint64_t base, size_t size);
 
+  // Log out the current state of the memory maps.
+  void LogMaps(void);
+
   // Does a query and produces:
   //
   //  Into `glb`: The base address of the nearest mapped memory range whose
@@ -121,14 +124,19 @@ class AddressSpace {
   MemoryMapPtr invalid_map;
 
   // List of mapped memory page ranges.
-  std::vector<MemoryMapPtr> ranges;
+  std::vector<MemoryMapPtr> maps;
 
   // Maps base/limits into the `ranges` vector.
-  std::map<uint64_t, unsigned> range_base_to_index;
-  std::map<uint64_t, unsigned> range_limit_to_index;
+  std::map<uint64_t, unsigned> map_base_to_index;
+  std::map<uint64_t, unsigned> map_limit_to_index;
+
+  // First-level cache.
+  MemoryMapPtr last_map;
+  uint64_t last_map_base;
+  uint64_t last_map_limit;
 
   // A cache mapping pages accessed to the range.
-  std::unordered_map<uint64_t, MemoryMapPtr> page_to_range;
+  std::unordered_map<uint64_t, MemoryMapPtr> page_to_map;
 
   // Is the address space dead? This means that all operations on it
   // will be muted.

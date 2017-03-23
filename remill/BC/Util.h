@@ -12,6 +12,7 @@ namespace llvm {
 class Argument;
 class BasicBlock;
 class Function;
+class GlobalObject;
 class GlobalVariable;
 class Module;
 class Value;
@@ -108,21 +109,22 @@ void ForEachBlock(llvm::Module *module, BlockCallback callback);
 void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func);
 
 // Try to get the address of a block.
-bool TryGetBlockPC(llvm::Function *func, uint64_t &pc);
+bool TryGetBlockPC(llvm::GlobalObject *func, uint64_t &pc);
 
 // Try to get the ID of this block. This may be the same as the block's PC.
-bool TryGetBlockId(llvm::Function *func, uint64_t &id);
+bool TryGetBlockId(llvm::GlobalObject *func, uint64_t &id);
 
 // Try to get the ID of this block. This may be the same as the block's PC.
 bool TryGetBlockName(llvm::Function *func, std::string &name);
 
 // Set the PC of a block.
-void SetBlockPC(llvm::Function *func, uint64_t pc);
+void SetBlockPC(llvm::GlobalObject *func, uint64_t pc);
 
 // Set the ID of a block.
-void SetBlockId(llvm::Function *func, uint64_t id);
+void SetBlockId(llvm::GlobalObject *func, uint64_t id);
 
-// Set the ID of a block.
+// Set the name of a block. This associates some high-level name, e.g. `malloc`
+// with the metadata of some block function.
 void SetBlockName(llvm::Function *func, const std::string &name);
 
 }  // namespace remill

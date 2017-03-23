@@ -15,7 +15,7 @@ DEF_SEM(SHR, D dst, S1 src1, S2 src2) {
   auto shift_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
   auto masked_shift = UAnd(shift, shift_mask);
   if (UCmpEq(masked_shift, 0)) {
-    return;  // No flags affected.
+    return memory;  // No flags affected.
   }
   auto new_val = val;
   auto new_of = false;
@@ -44,6 +44,7 @@ DEF_SEM(SHR, D dst, S1 src1, S2 src2) {
   Write(FLAG_ZF, ZeroFlag(new_val));
   Write(FLAG_SF, false);
   Write(FLAG_OF, new_of);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -58,7 +59,7 @@ DEF_SEM(SAR, D dst, S1 src1, S2 src2) {
   auto shift_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
   auto masked_shift = UAnd(shift, shift_mask);
   if (UCmpEq(masked_shift, 0)) {
-    return;  // No flags affected.
+    return memory;  // No flags affected.
   }
   auto new_val = uval;
   auto new_of = false;
@@ -92,6 +93,7 @@ DEF_SEM(SAR, D dst, S1 src1, S2 src2) {
   Write(FLAG_ZF, ZeroFlag(new_val));
   Write(FLAG_SF, SignFlag(new_val));
   Write(FLAG_OF, new_of);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -106,7 +108,7 @@ DEF_SEM(SHL, D dst, S1 src1, S2 src2) {
   auto masked_shift = UAnd(shift, shift_mask);
 
   if (UCmpEq(masked_shift, 0)) {
-    return;  // No flags affected.
+    return memory;  // No flags affected.
   }
 
   auto new_val = val;
@@ -142,6 +144,7 @@ DEF_SEM(SHL, D dst, S1 src1, S2 src2) {
   Write(FLAG_ZF, ZeroFlag(new_val));
   Write(FLAG_SF, SignFlag(new_val));
   Write(FLAG_OF, new_of);
+  return memory;
 }
 }  // namespace
 
@@ -216,7 +219,7 @@ DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 src3) {
   auto masked_shift = UAnd(shift, shift_mask);
 
   if (UCmpEq(masked_shift, 0)) {
-    return;
+    return memory;
 
   } else if (UCmpLt(op_size, masked_shift)) {
     ClearArithFlags();
@@ -224,7 +227,7 @@ DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 src3) {
     //
     // TODO(pag): Update `dst` anyway because it may be readable but not
     //            writable?
-    return;
+    return memory;
   }
 
   auto left = UShl(val2, USub(op_size, masked_shift));
@@ -240,6 +243,7 @@ DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 src3) {
   Write(FLAG_SF, SignFlag(res));
   Write(FLAG_OF, BXor(SignFlag(val1), FLAG_SF));
   // OF undefined for `1 == temp_count`.
+  return memory;
 }
 
 }  // namespace
@@ -269,7 +273,7 @@ DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 src3) {
   auto masked_shift = UAnd(shift, shift_mask);
 
   if (UCmpEq(masked_shift, 0)) {
-    return;
+    return memory;
 
   } else if (UCmpLt(op_size, masked_shift)) {
     ClearArithFlags();
@@ -277,7 +281,7 @@ DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 src3) {
     //
     // TODO(pag): Update `dst` anyway because it may be readable but not
     //            writable?
-    return;
+    return memory;
   }
 
   auto left = UShl(val1, masked_shift);
@@ -293,6 +297,7 @@ DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 src3) {
   Write(FLAG_SF, SignFlag(res));
   Write(FLAG_OF, BXor(SignFlag(val1), FLAG_SF));
   // OF undefined for `1 == temp_count`.
+  return memory;
 }
 
 }  // namespace

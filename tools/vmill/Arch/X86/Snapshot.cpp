@@ -123,7 +123,7 @@ void CopyTraceeState(pid_t pid, int fd) {
         << "Wrote " << missing_size << " padding bytes to snapshot file.";
   }
 
-  LOG(INFO)
+  DLOG(INFO)
       << "Copying register state" << std::endl
       << "Register state:" << std::endl
       << "  rax = " << std::hex << gpr.rax.qword << std::endl

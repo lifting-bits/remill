@@ -70,26 +70,28 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
     # Note: `-O0 -g3` is significant here. We need to make sure that we can
     #       recover variables names within `__remill_basic_block` that may have
     #       been lost when the code was compiled.
-    add_custom_target(BasicBlock.${name}.bc
+    add_custom_command(
+        OUTPUT  BasicBlock.${name}.bc
         COMMAND ${CMAKE_CXX_COMPILER}
                 ${SEMANTICS_CXX_FLAGS}
                 -O0 -g3
                 -c ${CMAKE_CURRENT_SOURCE_DIR}/BasicBlock.cpp
                 -o BasicBlock.${name}.bc
-        SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/BasicBlock.cpp
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/BasicBlock.cpp
     )
     
     # Note: Some debug info *must* be preserved. This is so that we can have
     #       debug info on lifted blocks that call these inlinable instruction
     #       functions, without LLVM going and complaining about calling an
     #       inlineable function with debug info.
-    add_custom_target(Instructions.${name}.bc
+    add_custom_command(
+        OUTPUT  Instructions.${name}.bc
         COMMAND ${CMAKE_CXX_COMPILER}
                 ${SEMANTICS_CXX_FLAGS}
                 -O3 -g0
                 -c ${CMAKE_CURRENT_SOURCE_DIR}/Instructions.cpp
                 -o Instructions.${name}.bc
-        SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/Instructions.cpp
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Instructions.cpp
     )
 
     add_dependencies(semantics ${name}.bc)

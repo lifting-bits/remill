@@ -193,6 +193,7 @@ DEF_SEM(COMISS, S1 src1, S2 src2) {
   Write(FLAG_OF, false);
   Write(FLAG_SF, false);
   Write(FLAG_AF, false);
+  return memory;
 }
 
 template <typename S1, typename S2>
@@ -227,6 +228,7 @@ DEF_SEM(COMISD, S1 src1, S2 src2) {
   Write(FLAG_OF, false);
   Write(FLAG_SF, false);
   Write(FLAG_AF, false);
+  return memory;
 }
 
 }  // namespace
@@ -296,6 +298,7 @@ DEF_SEM(PSHUFD, D dst, S1 src1, I8 src2) {
     }
   }
   UWriteV32(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -334,6 +337,7 @@ namespace {
         dst_vec = SInsertV ## size(dst_vec, i, res); \
       } \
       SWriteV ## size(dst, dst_vec); \
+      return memory; \
     }
 
 MAKE_PCMP(GTQ, 64, SCmpGt)
@@ -436,6 +440,7 @@ DEF_SEM(CMPSS, D dst, S1 src1, S2 src2, I8 src3) {
   dst_vec = UInsertV32(dst_vec, 0, Select<uint32_t>(cond, ~0_u32, 0_u32));
 
   UWriteV32(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -455,6 +460,7 @@ DEF_SEM(CMPSD, D dst, S1 src1, S2 src2, I8 src3) {
   dst_vec = UInsertV64(dst_vec, 0, Select<uint64_t>(cond, ~0_u64, 0_u64));
 
   UWriteV64(dst, dst_vec);
+  return memory;
 }
 
 
@@ -500,6 +506,7 @@ DEF_SEM(CMPPS, D dst, S1 src1, S2 src2, I8 src3) {
     dst_vec = UInsertV32(dst_vec, i, res);
   }
   UWriteV32(dst, dst_vec);
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -525,6 +532,7 @@ DEF_SEM(CMPPD, D dst, S1 src1, S2 src2, I8 src3) {
     dst_vec = UInsertV64(dst_vec, i, res);
   }
   UWriteV64(dst, dst_vec);
+  return memory;
 }
 
 }  // namespace
@@ -821,6 +829,7 @@ DEF_SEM(DoPCMPISTRI, const V &src1, const V &src2,
   Write(FLAG_OF, 0_u16 != (int_res_2 & 1_u16));
   Write(FLAG_AF, false);
   Write(FLAG_PF, false);
+  return memory;
 }
 
 template <typename S2>
@@ -828,22 +837,19 @@ DEF_SEM(PCMPISTRI, V128 src1, S2 src2, I8 src3) {
   const StringCompareControl control = {.flat = Read(src3)};
   switch (static_cast<InputFormat>(control.input_format)) {
     case kUInt8:
-      DoPCMPISTRI<uint8v16_t, 16>(memory, state, UReadV8(src1),
+      return DoPCMPISTRI<uint8v16_t, 16>(memory, state, UReadV8(src1),
                                   UReadV8(src2), control);
-      break;
     case kUInt16:
-      DoPCMPISTRI<uint16v8_t, 8>(memory, state, UReadV16(src1),
+      return DoPCMPISTRI<uint16v8_t, 8>(memory, state, UReadV16(src1),
                                  UReadV16(src2), control);
-      break;
     case kInt8:
-      DoPCMPISTRI<int8v16_t, 16>(memory, state, SReadV8(src1),
+      return DoPCMPISTRI<int8v16_t, 16>(memory, state, SReadV8(src1),
                                  SReadV8(src2), control);
-      break;
     case kInt16:
-      DoPCMPISTRI<int16v8_t, 8>(memory, state, SReadV16(src1),
+      return DoPCMPISTRI<int16v8_t, 8>(memory, state, SReadV16(src1),
                                 SReadV16(src2), control);
-      break;
   }
+  return memory;
 }
 
 }  // namespace
@@ -865,6 +871,7 @@ DEF_SEM(PSRLDQ, D dst, S src1, I8 src2) {
     new_vec = UInsertV8(new_vec, j, UExtractV8(vec, i));
   }
   UWriteV8(dst, new_vec);
+  return memory;
 }
 
 #if 1 || HAS_FEATURE_AVX
@@ -885,6 +892,7 @@ DEF_SEM(VPSRLDQ, D dst, S src1, I8 src2) {
   }
 
   UWriteV8(dst, new_vec);
+  return memory;
 }
 
 #endif  // HAS_FEATURE_AVX

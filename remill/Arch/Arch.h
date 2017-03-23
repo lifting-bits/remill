@@ -54,6 +54,8 @@ class Arch {
   Arch(void) = delete;
 };
 
+const Arch *GetGlobalArch(void);
+
 }  // namespace remill
 
 #endif  // REMILL_ARCH_ARCH_H_

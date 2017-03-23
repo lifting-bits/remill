@@ -16,6 +16,8 @@ class SyncHyperCall {
     kX86EmulateInstruction,
     kAMD64EmulateInstruction,
 
+    kAssertPrivileged,
+
     kDebugBreakpoint
   };
 } __attribute__((packed));

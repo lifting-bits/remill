@@ -89,16 +89,8 @@ enum : size_t {
 static uint8_t gCopyData[kCopyDataSize];
 }  // namespace
 
-void HardLinkOrCopy(const std::string &from_path, const std::string &to_path) {
+void CopyFile(const std::string &from_path, const std::string &to_path) {
   unlink(to_path.c_str());
-  if (!link(from_path.c_str(), to_path.c_str())) {
-    return;
-  }
-
-  DLOG(WARNING)
-      << "Unable to link " << to_path << " to "
-      << from_path << ": " << strerror(errno);
-
   auto from_fd = open(from_path.c_str(), O_RDONLY);
   CHECK(-1 != from_fd)
       << "Unable to open source file " << from_path
@@ -140,6 +132,20 @@ void HardLinkOrCopy(const std::string &from_path, const std::string &to_path) {
         << "Unable to copy all data read from " << from_path
         << " to " << to_path << ": " << strerror(errno_copy);
   }
+}
+
+void HardLinkOrCopyFile(const std::string &from_path,
+                        const std::string &to_path) {
+  unlink(to_path.c_str());
+  if (!link(from_path.c_str(), to_path.c_str())) {
+    return;
+  }
+
+  DLOG(WARNING)
+      << "Unable to link " << to_path << " to "
+      << from_path << ": " << strerror(errno);
+
+  CopyFile(from_path, to_path);
 }
 
 }  // namespace remill

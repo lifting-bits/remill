@@ -8,6 +8,7 @@ DEF_SEM(JNLE, R8W cond, PC taken, PC not_taken) {
   auto take_branch = BAnd(BNot(FLAG_ZF), BXnor(FLAG_SF, FLAG_OF));
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JNS, R8W cond, PC taken, PC not_taken) {
@@ -16,6 +17,7 @@ DEF_SEM(JNS, R8W cond, PC taken, PC not_taken) {
   auto take_branch = BNot(FLAG_SF);
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JL, R8W cond, PC taken, PC not_taken) {
@@ -24,6 +26,7 @@ DEF_SEM(JL, R8W cond, PC taken, PC not_taken) {
   auto take_branch = BXor(FLAG_SF, FLAG_OF);
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JNP, R8W cond, PC taken, PC not_taken) {
@@ -32,6 +35,7 @@ DEF_SEM(JNP, R8W cond, PC taken, PC not_taken) {
   auto take_branch = BNot(FLAG_PF);
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JNZ, R8W cond, PC taken, PC not_taken) {
@@ -40,6 +44,7 @@ DEF_SEM(JNZ, R8W cond, PC taken, PC not_taken) {
   auto take_branch = BNot(FLAG_ZF);
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JNB, R8W cond, PC taken, PC not_taken) {
@@ -48,6 +53,7 @@ DEF_SEM(JNB, R8W cond, PC taken, PC not_taken) {
   auto take_branch = BNot(FLAG_CF);
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JNO, R8W cond, PC taken, PC not_taken) {
@@ -56,6 +62,7 @@ DEF_SEM(JNO, R8W cond, PC taken, PC not_taken) {
   auto take_branch = BNot(FLAG_OF);
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JNL, R8W cond, PC taken, PC not_taken) {
@@ -64,6 +71,7 @@ DEF_SEM(JNL, R8W cond, PC taken, PC not_taken) {
   auto take_branch = BXnor(FLAG_SF, FLAG_OF);
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JNBE, R8W cond, PC taken, PC not_taken) {
@@ -72,6 +80,7 @@ DEF_SEM(JNBE, R8W cond, PC taken, PC not_taken) {
   auto take_branch = BNot(BOr(FLAG_CF, FLAG_ZF));
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JBE, R8W cond, PC taken, PC not_taken) {
@@ -80,6 +89,7 @@ DEF_SEM(JBE, R8W cond, PC taken, PC not_taken) {
   auto take_branch = BOr(FLAG_CF, FLAG_ZF);
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JZ, R8W cond, PC taken, PC not_taken) {
@@ -88,6 +98,7 @@ DEF_SEM(JZ, R8W cond, PC taken, PC not_taken) {
   auto take_branch = FLAG_ZF;
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JP, R8W cond, PC taken, PC not_taken) {
@@ -96,6 +107,7 @@ DEF_SEM(JP, R8W cond, PC taken, PC not_taken) {
   auto take_branch = FLAG_PF;
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JS, R8W cond, PC taken, PC not_taken) {
@@ -104,6 +116,7 @@ DEF_SEM(JS, R8W cond, PC taken, PC not_taken) {
   auto take_branch = FLAG_SF;
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JO, R8W cond, PC taken, PC not_taken) {
@@ -112,6 +125,7 @@ DEF_SEM(JO, R8W cond, PC taken, PC not_taken) {
   auto take_branch = FLAG_OF;
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JB, R8W cond, PC taken, PC not_taken) {
@@ -120,6 +134,7 @@ DEF_SEM(JB, R8W cond, PC taken, PC not_taken) {
   auto take_branch = FLAG_CF;
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JLE, R8W cond, PC taken, PC not_taken) {
@@ -128,6 +143,7 @@ DEF_SEM(JLE, R8W cond, PC taken, PC not_taken) {
   auto take_branch = BOr(FLAG_ZF, BXor(FLAG_SF, FLAG_OF));
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 }  // namespace
@@ -252,6 +268,7 @@ DEF_SEM(JCXZ, R8W cond, PC taken, PC not_taken) {
   auto take_branch = UCmpEq(REG_CX, 0_u16);
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(JECXZ, R8W cond, PC taken, PC not_taken) {
@@ -260,6 +277,7 @@ DEF_SEM(JECXZ, R8W cond, PC taken, PC not_taken) {
   auto take_branch = UCmpEq(REG_ECX, 0_u32);
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 #if 64 == ADDRESS_SIZE_BITS
@@ -269,6 +287,7 @@ DEF_SEM(JRCXZ, R8W cond, PC taken, PC not_taken) {
   auto take_branch = UCmpEq(REG_RCX, 0_u64);
   Write(cond, take_branch);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 #endif  // 64 == ADDRESS_SIZE_BITS
 
@@ -280,6 +299,7 @@ DEF_SEM(LOOP, R8W cond, PC taken, PC not_taken) {
   Write(cond, take_branch);
   Write(REG_XCX, count);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(LOOPE, R8W cond, PC taken, PC not_taken) {
@@ -290,6 +310,7 @@ DEF_SEM(LOOPE, R8W cond, PC taken, PC not_taken) {
   Write(cond, take_branch);
   Write(REG_XCX, count);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 DEF_SEM(LOOPNE, R8W cond, PC taken, PC not_taken) {
@@ -300,6 +321,7 @@ DEF_SEM(LOOPNE, R8W cond, PC taken, PC not_taken) {
   Write(cond, take_branch);
   Write(REG_XCX, count);
   Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
 }
 
 }  // namespace

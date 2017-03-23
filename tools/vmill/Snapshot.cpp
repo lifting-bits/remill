@@ -896,11 +896,13 @@ static void SnapshotProgram(ArchName arch, OSName os) {
     DLOG(INFO)
         << "Tracee with pid " << pid << " is now running " << gTraceeArgv[0];
 
-    RunUntilBreakpoint(pid);
-    DLOG(INFO)
-        << "Hit breakpoint at "
-        << std::setw(16) << std::hex << std::setfill('0') << FLAGS_breakpoint
-        << " in " << gTraceeArgv[0];
+    if (FLAGS_breakpoint) {
+      RunUntilBreakpoint(pid);
+      DLOG(INFO)
+          << "Hit breakpoint at "
+          << std::setw(16) << std::hex << std::setfill('0') << FLAGS_breakpoint
+          << " in " << gTraceeArgv[0];
+    }
 
     DLOG(INFO)
         << "Snapshotting " << gTraceeArgv[0];
@@ -967,9 +969,6 @@ int main(int argc, char **argv) {
       << "Unable to extract arguments to tracee. Make sure to provide "
       << "the program and command-line arguments to that program after "
       << "a '--'.";
-
-  CHECK(0 != FLAGS_breakpoint)
-      << "Must specify non-zero value to --breakpoint.";
 
   if (FLAGS_workspace.empty()) {
     FLAGS_workspace = remill::CurrentWorkingDirectory();

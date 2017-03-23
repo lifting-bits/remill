@@ -19,9 +19,9 @@ namespace remill {
 namespace vmill {
 namespace {
 
-static size_t BeginOfMachineState(const Snapshot *snapshot) {
+static size_t BeginOfMachineState(const SnapshotFile *snapshot_file) {
   size_t end = sizeof(SnapshotFile);
-  for (auto &map : snapshot->file->pages) {
+  for (auto &map : snapshot_file->pages) {
     auto end_in_file = map.offset_in_file +
         (map.limit_address - map.base_address);
     end = std::max(end, end_in_file);
@@ -65,12 +65,14 @@ std::unique_ptr<Snapshot> Snapshot::Open(const std::string &path) {
       << ": " << strerror(errno);
 
   // Load in and validate the snapshot file header.
-  auto snapshot = reinterpret_cast<SnapshotFile *>(snapshot_file_addr);
-  CHECK(!memcmp(kMagic, snapshot->magic, sizeof(kMagic)))
+  auto snapshot_file = reinterpret_cast<SnapshotFile *>(snapshot_file_addr);
+  CHECK(!memcmp(kMagic, snapshot_file->magic, sizeof(kMagic)))
       << "Magic bytes of snapshot don't match expected values; "
-      << "expected " << kMagic << " but got " << snapshot->magic;
+      << "expected " << kMagic << " but got " << snapshot_file->magic;
 
-  return std::unique_ptr<Snapshot>(new Snapshot(path, snapshot, snapshot_fd));
+  auto snapshot = new Snapshot(path, snapshot_file, snapshot_fd);
+  snapshot->ValidatePageInfo();
+  return std::unique_ptr<Snapshot>(snapshot);
 }
 
 ArchName Snapshot::GetArch(void) const {
@@ -82,7 +84,7 @@ OSName Snapshot::GetOS(void) const {
 }
 
 std::unique_ptr<ArchStateSnapshot> Snapshot::GetState(void) const {
-  auto state_offset = BeginOfMachineState(this);
+  auto state_offset = BeginOfMachineState(file);
   auto file_size = FileSize(path, fd);
 
   CHECK(!(file_size % 4096))
@@ -107,7 +109,7 @@ std::unique_ptr<ArchStateSnapshot> Snapshot::GetState(void) const {
 
 // Check to see if there is any corruption in the recorded page info
 // entries in the snapshot file.
-void Snapshot::ValidatePageInfo(uint64_t max_address) const {
+void Snapshot::ValidatePageInfo(void) const {
   const auto perm_min = static_cast<uint64_t>(PagePerms::kInvalid);
   const auto perm_max = static_cast<uint64_t>(PagePerms::kReadWriteExec);
   auto seen_last = false;
@@ -115,6 +117,9 @@ void Snapshot::ValidatePageInfo(uint64_t max_address) const {
   auto memory_size = 0ULL;
   auto header_size = sizeof(SnapshotFile);
   auto next_offset = header_size;
+
+  DLOG(INFO)
+      << "Page ranges contained in snapshot:";
 
   for (const auto &info : file->pages) {
 
@@ -145,11 +150,6 @@ void Snapshot::ValidatePageInfo(uint64_t max_address) const {
         << "Found PageInfo describing empty or negative sized page range "
         << "in " << path;
 
-    CHECK(info.limit_address <= max_address)
-        << "Found PageInfo entry whose limit address " << info.limit_address
-        << " exceeds the maximum allowed address " << max_address << " in "
-        << path;
-
     auto range_size = info.limit_address - info.base_address;
 
     CHECK(0 == (range_size % 4096))
@@ -160,7 +160,7 @@ void Snapshot::ValidatePageInfo(uint64_t max_address) const {
         << "Memory for PageInfo entry is not at the right place in " << path;
 
     DLOG(INFO)
-        << "Found memory for range [" << std::hex << info.base_address << ", "
+        << "  [" << std::hex << info.base_address << ", "
         << std::hex << info.limit_address << ") at file offset "
         << std::dec << info.offset_in_file << " with " << range_size
         << " bytes";
@@ -171,18 +171,6 @@ void Snapshot::ValidatePageInfo(uint64_t max_address) const {
 
   CHECK(0 < memory_size)
       << "No memory saved in snapshot " << path;
-
-  const auto file_size = FileSize(path, fd);
-  CHECK(file_size < max_address)
-      << "Snapshot file " << path << " is somehow too big.";
-
-  CHECK(file_size == next_offset)
-      << "Snapshot " << path << " is not the right size.";
-
-  CHECK(file_size == (header_size + memory_size))
-      << "Snapshot " << path << " is not the right size. Header size is "
-      << header_size << ", memory size is " << memory_size
-      << ", and file size is " << file_size;
 }
 
 }  // namespace vmill

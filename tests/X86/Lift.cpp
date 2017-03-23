@@ -27,10 +27,20 @@
 # define SYMBOL_PREFIX ""
 #endif
 
+#ifndef REMILL_OS
+# if defined(__APPLE__)
+#   define REMILL_OS "mac"
+# elif defined(__linux__)
+#   define REMILL_OS "linux"
+# endif
+#endif
+
 DEFINE_string(bc_out, "",
               "Name of the file in which to place the generated bitcode.");
 
 DEFINE_string(arch, "", "Architecture of the code to be lifted.");
+
+DEFINE_string(os, "", "");
 
 namespace {
 
@@ -106,6 +116,8 @@ extern "C" int main(int argc, char *argv[]) {
     CHECK(remill::TryGetBlockName(func, name))
         << "Unable to get the name of the block at PC " << std::hex << pc;
     func->setName(name);
+    func->setLinkage(llvm::GlobalValue::ExternalLinkage);
+    func->setVisibility(llvm::GlobalValue::DefaultVisibility);
   });
 
   DLOG(INFO) << "Serializing bitcode to " << FLAGS_bc_out;

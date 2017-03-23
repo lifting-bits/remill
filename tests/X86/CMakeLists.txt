@@ -19,18 +19,6 @@ macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
         EXCLUDE_FROM_ALL
         Lift.cpp
         Tests.S
-        ${PROJECT_SOURCE_DIR}/remill/Arch/X86/Arch.cpp
-        ${PROJECT_SOURCE_DIR}/remill/Arch/Arch.cpp
-        ${PROJECT_SOURCE_DIR}/remill/Arch/Instruction.cpp
-        ${PROJECT_SOURCE_DIR}/remill/Arch/Name.cpp
-        ${PROJECT_SOURCE_DIR}/remill/CFG/BlockHasher.cpp
-        ${PROJECT_SOURCE_DIR}/remill/CFG/CFG.cpp
-        ${PROJECT_SOURCE_DIR}/remill/BC/Lifter.cpp
-        ${PROJECT_SOURCE_DIR}/remill/BC/Util.cpp
-        ${PROJECT_SOURCE_DIR}/remill/BC/IntrinsicTable.cpp
-        ${PROJECT_SOURCE_DIR}/remill/OS/FileSystem.cpp
-        ${PROJECT_SOURCE_DIR}/remill/OS/OS.cpp
-        ${PROJECT_SOURCE_DIR}/third_party/murmurhash/MurmurHash2.cpp
     )
     
     target_compile_options(lift-${name}-tests
@@ -39,11 +27,7 @@ macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
     )
 
     target_link_libraries(lift-${name}-tests
-        ${GFLAGS_LIBRARIES}
-        ${GLOG_LIBRARIES}
-        ${XED_LIBRARIES}
-        ${PROTOBUF_LIBRARIES}
-        ${LLVM_LIBS}
+        remill
     )
     
     add_executable(run-${name}-tests
@@ -51,18 +35,6 @@ macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
         Run.cpp
         Tests.S
         tests_${name}.S
-        ${PROJECT_SOURCE_DIR}/remill/Arch/X86/Arch.cpp
-        ${PROJECT_SOURCE_DIR}/remill/Arch/Arch.cpp
-        ${PROJECT_SOURCE_DIR}/remill/Arch/Instruction.cpp
-        ${PROJECT_SOURCE_DIR}/remill/Arch/Name.cpp
-        ${PROJECT_SOURCE_DIR}/remill/CFG/BlockHasher.cpp
-        ${PROJECT_SOURCE_DIR}/remill/CFG/CFG.cpp
-        ${PROJECT_SOURCE_DIR}/remill/BC/Lifter.cpp
-        ${PROJECT_SOURCE_DIR}/remill/BC/Util.cpp
-        ${PROJECT_SOURCE_DIR}/remill/BC/IntrinsicTable.cpp
-        ${PROJECT_SOURCE_DIR}/remill/OS/FileSystem.cpp
-        ${PROJECT_SOURCE_DIR}/remill/OS/OS.cpp
-        ${PROJECT_SOURCE_DIR}/third_party/murmurhash/MurmurHash2.cpp
     )
     
     add_custom_command(
@@ -83,12 +55,8 @@ macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
     )
     
     target_link_libraries(run-${name}-tests
-        ${GFLAGS_LIBRARIES}
-        ${GLOG_LIBRARIES}
         ${GTEST_LIBRARIES}
-        ${XED_LIBRARIES}
-        ${PROTOBUF_LIBRARIES}
-        ${LLVM_LIBS}
+        remill
     )
     
     target_compile_options(run-${name}-tests

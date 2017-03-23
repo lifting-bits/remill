@@ -13,6 +13,7 @@ namespace {
       WriteFlagsAddSub<tag_sub>(state, check_val, curr_val, cmp_res); \
       WriteZExt(dst, Select(replace, desired_val, curr_val)); \
       WriteZExt(REG_ ## xax, Select(replace, check_val, curr_val)); \
+      return memory; \
     }
 
 MAKE_CMPXCHG_XAX(AL)
@@ -34,7 +35,9 @@ DEF_SEM(DoCMPXCHG8B_MEMq, M64W dst, M64 src1) {
   Write(dst, Select(replace, desired_val, curr_val));
   Write(REG_EDX, Select(replace, xdx, Trunc(UShr(curr_val, 32))));
   Write(REG_EAX, Select(replace, xax, Trunc(curr_val)));
+  return memory;
 }
+
 #if 64 == ADDRESS_SIZE_BITS
 DEF_SEM(DoCMPXCHG16B_MEMdq, M128W dst, M128 src1) {
   auto curr_val = Read(src1);
@@ -50,6 +53,7 @@ DEF_SEM(DoCMPXCHG16B_MEMdq, M128W dst, M128 src1) {
   Write(dst, Select(replace, desired_val, curr_val));
   Write(REG_RDX, Select(replace, xdx, Trunc(UShr(curr_val, 64))));
   Write(REG_RAX, Select(replace, xax, Trunc(curr_val)));
+  return memory;
 }
 #endif  // 64 == ADDRESS_SIZE_BITS
 }  // namespace
@@ -94,6 +98,7 @@ DEF_SEM(XADD, D1 dst1, S1 src1, D2 dst2, S2 src2) {
   WriteZExt(dst1, sum);
   WriteZExt(dst2, lhs);
   WriteFlagsAddSub<tag_add>(state, lhs, rhs, sum);
+  return memory;
 }
 
 }  // namespace

@@ -53,8 +53,6 @@ void InitFunctionAttributes(llvm::Function *function) {
   //            intrinsics.
   function->setCallingConv(llvm::CallingConv::Fast);
 
-  // Mark everything for inlining.
-  function->addFnAttr(llvm::Attribute::AlwaysInline);
   function->addFnAttr(llvm::Attribute::InlineHint);
 }
 
@@ -258,25 +256,10 @@ namespace {
 # define INSTALL_SEMANTICS_DIR
 #endif  // INSTALL_SEMANTICS_DIR
 
-static const char *gSearchPaths[] = {
+static const char *gSemanticsSearchPaths[] = {
     // Derived from the build.
     BUILD_SEMANTICS_DIR "\0",
     INSTALL_SEMANTICS_DIR "\0",
-
-    // Linux.
-    "/usr/local/share/remill/semantics",
-    "/usr/share/remill/semantics",
-
-    // Other?
-    "/opt/local/share/remill/semantics",
-    "/opt/share/remill/semantics",
-    "/opt/remill/semantics",
-
-    // FreeBSD.
-    "/usr/share/compat/linux/remill/semantics",
-    "/usr/local/share/compat/linux/remill/semantics",
-    "/compat/linux/usr/share/remill/semantics",
-    "/compat/linux/usr/local/share/remill/semantics",
 };
 
 }  // namespace
@@ -288,9 +271,9 @@ std::string FindSemanticsBitcodeFile(const std::string &path,
     return path;
   }
 
-  for (auto path : gSearchPaths) {
+  for (auto sem_dir : gSemanticsSearchPaths) {
     std::stringstream ss;
-    ss << path << "/" << arch << ".bc";
+    ss << sem_dir << "/" << arch << ".bc";
     auto sem_path = ss.str();
     if (FileExists(sem_path)) {
       return sem_path;
@@ -312,16 +295,22 @@ llvm::Argument *NthArgument(llvm::Function *func, size_t index) {
 // Run a callback function for every indirect block entry in a remill-lifted
 // bitcode module.
 void ForEachBlock(llvm::Module *module, BlockCallback on_each_function) {
-  for (auto &func : *module) {
+  for (auto &global_var : module->globals()) {
     uint64_t pc = 0;
     uint64_t id = 0;
-    if (!TryGetBlockPC(&func, pc)) {
+    if (!TryGetBlockPC(&global_var, pc)) {
       continue;
     }
-    if (!TryGetBlockId(&func, id)) {
+    if (!TryGetBlockId(&global_var, id)) {
       id = pc;
     }
-    on_each_function(pc, id, &func);
+
+    auto func = llvm::dyn_cast<llvm::Function>(global_var.getInitializer());
+    CHECK(func != nullptr)
+        << "Global variable " << global_var.getName().str()
+        << " should be initialized with a function.";
+
+    on_each_function(pc, id, func);
   }
 }
 
@@ -470,7 +459,7 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
 
 namespace {
 
-static bool TryGetBlockInt(llvm::Function *func, uint64_t &pc,
+static bool TryGetBlockInt(llvm::GlobalObject *func, uint64_t &pc,
                            const char *name) {
   auto md = func->getMetadata(name);
   if (!md) {
@@ -488,7 +477,7 @@ static bool TryGetBlockInt(llvm::Function *func, uint64_t &pc,
   return true;
 }
 
-static void SetBlockMeta(llvm::Function *func, const char *name, uint64_t val) {
+static void SetBlockMeta(llvm::GlobalObject *func, const char *name, uint64_t val) {
   auto &context = func->getContext();
   auto int_type = llvm::Type::getInt64Ty(context);
   auto const_val = llvm::ConstantInt::get(int_type, val);
@@ -499,12 +488,12 @@ static void SetBlockMeta(llvm::Function *func, const char *name, uint64_t val) {
 }  // namespace
 
 // Try to get the address of a block.
-bool TryGetBlockPC(llvm::Function *func, uint64_t &pc) {
+bool TryGetBlockPC(llvm::GlobalObject *func, uint64_t &pc) {
   return TryGetBlockInt(func, pc, "pc");
 }
 
 // Try to get the ID of this block. This may be the same as the block's PC.
-bool TryGetBlockId(llvm::Function *func, uint64_t &id) {
+bool TryGetBlockId(llvm::GlobalObject *func, uint64_t &id) {
   return TryGetBlockInt(func, id, "id");
 }
 
@@ -527,12 +516,12 @@ bool TryGetBlockName(llvm::Function *func, std::string &name) {
 }
 
 // Set the PC of a block.
-void SetBlockPC(llvm::Function *func, uint64_t pc) {
+void SetBlockPC(llvm::GlobalObject *func, uint64_t pc) {
   SetBlockMeta(func, "pc", pc);
 }
 
 // Set the ID of a block.
-void SetBlockId(llvm::Function *func, uint64_t id) {
+void SetBlockId(llvm::GlobalObject *func, uint64_t id) {
   SetBlockMeta(func, "id", id);
 }
 

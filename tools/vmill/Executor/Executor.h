@@ -17,9 +17,6 @@ class Arch;
 namespace vmill {
 
 class Decoder;
-class Process;
-class Snapshot;
-class Thread;
 class Translator;
 
 struct Runtime;

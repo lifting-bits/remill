@@ -11,10 +11,10 @@
 
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Instruction.h"
+#include "remill/CFG/BlockHasher.h"
 #include "remill/CFG/CFG.h"
 
 #include "tools/vmill/BC/Translator.h"
-#include "tools/vmill/CFG/BlockHasher.h"
 #include "tools/vmill/CFG/Decoder.h"
 
 namespace remill {
@@ -132,6 +132,10 @@ static void AddEntries(const Instruction *instr, DecoderWorkList &work_list) {
 
 }  // namespace
 
+std::unique_ptr<Decoder> Decoder::Create(const Arch *arch_, DecodeMode mode_) {
+  return std::unique_ptr<Decoder>(new Decoder(arch_, mode_));
+}
+
 Decoder::Decoder(const Arch *arch_, DecodeMode mode_)
     : arch(arch_),
       mode(mode_) {}
@@ -189,7 +193,6 @@ std::unique_ptr<cfg::Module> Decoder::DecodeToCFG(
 
     Instruction *instr = nullptr;
     cfg::Block *cfg_block = nullptr;
-    hasher.Reset();
 
     do {
       if (instr) {
@@ -207,8 +210,6 @@ std::unique_ptr<cfg::Module> Decoder::DecodeToCFG(
       if (instr_bytes.size() != instr->NumBytes()) {
         instr_bytes = instr_bytes.substr(0, instr->NumBytes());
       }
-
-      hasher.AddInstruction(block_pc, instr_bytes);
 
       if (!cfg_block) {
 
@@ -237,7 +238,7 @@ std::unique_ptr<cfg::Module> Decoder::DecodeToCFG(
     } while (instr->IsValid() && !instr->IsControlFlow());
 
     if (cfg_block) {
-      cfg_block->set_id(hasher.Finalize());
+      cfg_block->set_id(hasher.HashBlock(*cfg_block));
       if (instr) {
         AddEntries(instr, work_list);
         delete instr;

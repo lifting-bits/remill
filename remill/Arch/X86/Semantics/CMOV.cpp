@@ -10,11 +10,13 @@ DEF_SEM(CMOVNLE, D dst, S1 src1) {
       BAnd(BNot(FLAG_ZF), BXnor(FLAG_SF, FLAG_OF)),
       Read(src1),
       TruncTo<S1>(Read(dst))));
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(CMOVNS, D dst, S1 src1) {
   WriteZExt(dst, Select(BNot(FLAG_SF), Read(src1), TruncTo<S1>(Read(dst))));
+  return memory;
 }
 
 template <typename D, typename S1>
@@ -23,41 +25,49 @@ DEF_SEM(CMOVL, D dst, S1 src1) {
       BXor(FLAG_SF, FLAG_OF),
       Read(src1),
       TruncTo<S1>(Read(dst))));
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(CMOVNP, D dst, S1 src1) {
   WriteZExt(dst, Select(BNot(FLAG_PF), Read(src1), TruncTo<S1>(Read(dst))));
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(FCMOVNP, D dst, S1 src1) {
   Write(dst, Select(BNot(FLAG_PF), Read(src1), Read(dst)));
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(CMOVNZ, D dst, S1 src1) {
   WriteZExt(dst, Select(BNot(FLAG_ZF), Read(src1), TruncTo<S1>(Read(dst))));
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(FCMOVNZ, D dst, S1 src1) {
   Write(dst, Select(BNot(FLAG_ZF), Read(src1), Read(dst)));
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(CMOVNB, D dst, S1 src1) {
   WriteZExt(dst, Select(BNot(FLAG_CF), Read(src1), TruncTo<S1>(Read(dst))));
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(FCMOVNB, D dst, S1 src1) {
   Write(dst, Select(BNot(FLAG_CF), Read(src1), Read(dst)));
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(CMOVNO, D dst, S1 src1) {
   WriteZExt(dst, Select(BNot(FLAG_OF), Read(src1), TruncTo<S1>(Read(dst))));
+  return memory;
 }
 
 template <typename D, typename S1>
@@ -66,6 +76,7 @@ DEF_SEM(CMOVNL, D dst, S1 src1) {
       BXnor(FLAG_SF, FLAG_OF),
       Read(src1),
       TruncTo<S1>(Read(dst))));
+  return memory;
 }
 
 template <typename D, typename S1>
@@ -74,6 +85,7 @@ DEF_SEM(CMOVNBE, D dst, S1 src1) {
       BNot(BOr(FLAG_CF, FLAG_ZF)),
       Read(src1),
       TruncTo<S1>(Read(dst))));
+  return memory;
 }
 
 template <typename D, typename S1>
@@ -82,6 +94,7 @@ DEF_SEM(FCMOVNBE, D dst, S1 src1) {
       BNot(BOr(FLAG_CF, FLAG_ZF)),
       Read(src1),
       Read(dst)));
+  return memory;
 }
 
 template <typename D, typename S1>
@@ -90,6 +103,7 @@ DEF_SEM(CMOVBE, D dst, S1 src1) {
       BOr(FLAG_CF, FLAG_ZF),
       Read(src1),
       TruncTo<S1>(Read(dst))));
+  return memory;
 }
 
 template <typename D, typename S1>
@@ -98,47 +112,55 @@ DEF_SEM(FCMOVBE, D dst, S1 src1) {
       BOr(FLAG_CF, FLAG_ZF),
       Read(src1),
       Read(dst)));
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(CMOVZ, D dst, S1 src1) {
   WriteZExt(dst, Select(FLAG_ZF, Read(src1), TruncTo<S1>(Read(dst))));
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(FCMOVZ, D dst, S1 src1) {
   Write(dst, Select(FLAG_ZF, Read(src1), Read(dst)));
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(CMOVP, D dst, S1 src1) {
   WriteZExt(dst, Select(FLAG_PF, Read(src1), TruncTo<S1>(Read(dst))));
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(FCMOVP, D dst, S1 src1) {
   Write(dst, Select(FLAG_PF, Read(src1), Read(dst)));
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(CMOVS, D dst, S1 src1) {
   WriteZExt(dst, Select(FLAG_SF, Read(src1), TruncTo<S1>(Read(dst))));
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(CMOVO, D dst, S1 src1) {
   WriteZExt(dst, Select(FLAG_OF, Read(src1), TruncTo<S1>(Read(dst))));
+  return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(CMOVB, D dst, S1 src1) {
   WriteZExt(dst, Select(FLAG_CF, Read(src1), TruncTo<S1>(Read(dst))));
+  return memory;
 }
-
 
 template <typename D, typename S1>
 DEF_SEM(FCMOVB, D dst, S1 src1) {
   Write(dst, Select(FLAG_CF, Read(src1), Read(dst)));
+  return memory;
 }
 
 template <typename D, typename S1>
@@ -147,6 +169,7 @@ DEF_SEM(CMOVLE, D dst, S1 src1) {
       BOr(FLAG_ZF, BXor(FLAG_SF, FLAG_OF)),
       Read(src1),
       TruncTo<S1>(Read(dst))));
+  return memory;
 }
 
 }  // namespace

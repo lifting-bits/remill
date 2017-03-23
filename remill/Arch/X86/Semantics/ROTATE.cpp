@@ -31,6 +31,7 @@ DEF_SEM(ROL, D dst, S1 src1, S2 src2) {
   } else {
     WriteZExt(dst, val);
   }
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -55,6 +56,7 @@ DEF_SEM(ROR, D dst, S1 src1, S2 src2) {
   } else {
     WriteZExt(dst, val);
   }
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -71,6 +73,7 @@ DEF_SEM(RORX, D dst, S1 src1, S2 src2) {
       UShr(val, temp_count),
       UShl(val, USub(op_size, temp_count)));
   WriteZExt(dst, new_val);
+  return memory;
 }
 
 }  // namespace
@@ -140,6 +143,7 @@ DEF_SEM(RCL, D dst, S1 src1, S2 src2) {
   } else {
     WriteZExt(dst, val);
   }
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
@@ -175,6 +179,7 @@ DEF_SEM(RCR, D dst, S1 src1, S2 src2) {
   } else {
     WriteZExt(dst, val);
   }
+  return memory;
 }
 
 }  // namespace

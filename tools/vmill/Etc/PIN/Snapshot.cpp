@@ -326,7 +326,8 @@ VOID TakeSnapshot(CONTEXT *ctx) {
     return;
   }
 
-  if (PIN_GetContextReg(ctx, LEVEL_BASE::REG_EIP) != gBreakpoint.Value()) {
+  if (gBreakpoint.Value() &&
+      PIN_GetContextReg(ctx, LEVEL_BASE::REG_EIP) != gBreakpoint.Value()) {
     return;
   }
 

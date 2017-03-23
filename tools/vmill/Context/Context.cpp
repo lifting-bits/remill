@@ -37,6 +37,14 @@ inline static uintptr_t ToAddress(AddressSpace *space) {
 
 }  // namespace
 
+std::unique_ptr<Context> Context::Create(void) {
+  return std::unique_ptr<Context>(new Context);
+}
+
+std::unique_ptr<Context> Context::Clone(const std::unique_ptr<Context> &that) {
+  return std::unique_ptr<Context>(new Context(*that));
+}
+
 Context::Context(void) {
   if (!gDeadAddressSpace) {
     gDeadAddressSpace = new AddressSpace;
@@ -84,7 +92,7 @@ Memory *Context::CreateAddressSpace(void) {
 // clone.
 Memory *Context::CloneAddressSpace(Memory *handle) {
   auto new_handle = reinterpret_cast<Memory *>(gNextMemoryHandle++);
-  auto parent = AddressSpaceOf(handle);
+  auto parent = AddressSpaceOf(handle).space;
   if (parent == gDeadAddressSpace) {
     LOG(ERROR)
         << "Cloning a nonexistent or destroyed address space with handle "
@@ -98,7 +106,7 @@ Memory *Context::CloneAddressSpace(Memory *handle) {
 
 // Destroys an address space.
 void Context::DestroyAddressSpace(Memory *handle) {
-  auto space = AddressSpaceOf(handle);
+  auto space = AddressSpaceOf(handle).space;
   if (space == gDeadAddressSpace) {
     LOG(ERROR)
         << "Double destroy, or trying to destroy invalid address space "
@@ -109,8 +117,8 @@ void Context::DestroyAddressSpace(Memory *handle) {
   }
 }
 
-AddressSpace *Context::AddressSpaceOf(Memory *handle) {
-  return ToAddressSpace(address_spaces[handle]);
+AddressSpacePtr Context::AddressSpaceOf(Memory *handle) {
+  return AddressSpacePtr(ToAddressSpace(address_spaces[handle]));
 }
 
 }  // namespace vmill

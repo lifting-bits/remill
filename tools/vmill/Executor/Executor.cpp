@@ -50,6 +50,7 @@ void Executor::LiftCodeAtProgramCounter(Process *process) {
     }
   };
 
+  auto cfg = decoder->DecodeToCFG(curr_pc, byte_reader);
   decoder->DecodeToCFG(curr_pc, byte_reader, lift_cfg);
   UpdateFunctionIndex();
 

@@ -36,90 +36,109 @@ namespace {
 template <typename T>
 DEF_SEM(FILD, RF80W, T src1) {
   PUSH_X87_STACK(Float64(Signed(Read(src1))));
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FLD, RF80W, T src1) {
   PUSH_X87_STACK(Float64(Read(src1)));
+  return memory;
 }
 
 DEF_SEM(FLDLN2, RF80W) {
   uint64_t ln_2 = 0x3fe62e42fefa39efULL;
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(ln_2));
+  return memory;
 }
 
 DEF_SEM(FLD1, RF80W) {
   PUSH_X87_STACK(1.0);  // +1.0.
+  return memory;
 }
 
 DEF_SEM(FLDZ, RF80W) {
   PUSH_X87_STACK(0.0);  // +0.0.
+  return memory;
 }
 
 DEF_SEM(FLDLG2, RF80W) {
   uint64_t log10_2 = 0x3fd34413509f79ffULL;
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(log10_2));
+  return memory;
 }
 
 DEF_SEM(FLDL2T, RF80W) {
   uint64_t log2_10 = 0x400a934f0979a371ULL;
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(log2_10));
+  return memory;
 }
 
 DEF_SEM(FLDL2E, RF80W) {
   uint64_t log2_e = 0x3ff71547652b82feULL;
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(log2_e));
+  return memory;
 }
 
 DEF_SEM(FLDPI, RF80W) {
   uint64_t pi = 0x400921fb54442d18ULL;
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(pi));
+  return memory;
 }
 
 DEF_SEM(FABS, RF80W dst, RF80 src) {
   Write(dst, FAbs(Read(src)));
+  return memory;
 }
 
 DEF_SEM(FCHS, RF80W dst, RF80 src) {
   Write(dst, FNeg(Read(src)));
+  return memory;
 }
 
 DEF_SEM(FCOS, RF80W dst, RF80 src) {
   Write(dst, __builtin_cos(Read(src)));
+  return memory;
 }
 
 DEF_SEM(FSIN, RF80W dst, RF80 src) {
   Write(dst, __builtin_sin(Read(src)));
+  return memory;
 }
 
 DEF_SEM(FPTAN, RF80W dst, RF80 src, RF80W) {
   Write(dst, __builtin_tan(Read(src)));
   PUSH_X87_STACK(1.0);
+  return memory;
 }
 
 DEF_SEM(FPATAN, RF80 st0, RF80W st1_dst, RF80 st1) {
   Write(st1_dst, __builtin_atan(FDiv(Read(st1), Read(st0))));
   (void) POP_X87_STACK();
+  return memory;
 }
 
 DEF_SEM(FSQRT, RF80W dst, RF80 src) {
   Write(dst, __builtin_sqrt(Read(src)));
+  return memory;
 }
 
 DEF_SEM(FSINCOS, RF80W dst, RF80 src, RF80W) {
   auto val = Read(src);
   Write(dst, __builtin_sin(val));
   PUSH_X87_STACK(__builtin_cos(val));
+  return memory;
 }
 
 DEF_SEM(FSCALE, RF80W dst, RF80 st0, RF80 st1) {
   auto st1_int = __builtin_trunc(Read(st1));  // Round toward zero.
   auto shift = __builtin_exp2(st1_int);
   Write(dst, FMul(Read(st0), shift));
+  return memory;
 }
 
 DEF_SEM(F2XM1, RF80W dst, RF80 src) {
   Write(dst, FSub(__builtin_exp2(Read(src)), 1.0));
+  return memory;
 }
 
 DEF_SEM(FPREM, RF80W dst, RF80 src1, RF80 src2) {
@@ -134,6 +153,7 @@ DEF_SEM(FPREM, RF80W dst, RF80 src1, RF80 src2) {
   state.sw.c2 = 0;  // Assumes it's not a partial remainder.
   state.sw.c1 = UAnd(UShr(quot_lsb, 0_u8), 1_u8);  // Q0.
   state.sw.c3 = UAnd(UShr(quot_lsb, 1_u8), 1_u8);  // Q1.
+  return memory;
 }
 
 DEF_SEM(FPREM1, RF80W dst, RF80 src1, RF80 src2) {
@@ -147,16 +167,21 @@ DEF_SEM(FPREM1, RF80W dst, RF80 src1, RF80 src2) {
   state.sw.c2 = 0;  // Assumes it's not a partial remainder.
   state.sw.c1 = UAnd(UShr(quot_lsb, 0_u8), 1_u8);  // Q0.
   state.sw.c3 = UAnd(UShr(quot_lsb, 1_u8), 1_u8);  // Q1.
+  return memory;
 }
 
-DEF_SEM(FPU_NOP) {}
+DEF_SEM(FPU_NOP) {
+  return memory;
+}
 
 DEF_SEM(DoFWAIT) {
   feraiseexcept(fetestexcept(FE_ALL_EXCEPT));
+  return memory;
 }
 
 DEF_SEM(DoFNCLEX) {
   feclearexcept(FE_ALL_EXCEPT);
+  return memory;
 }
 
 }  // namespace
@@ -200,33 +225,39 @@ namespace {
 template <typename T>
 DEF_SEM(FSUB, RF80W dst, RF80 src1, T src2) {
   Write(dst, Read(src1) - Float64(Read(src2)));
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FSUBP, RF80W dst, RF80 src1, T src2) {
-  FSUB<T>(memory, state, dst, src1, src2);
+  memory = FSUB<T>(memory, state, dst, src1, src2);
   (void) POP_X87_STACK();
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FISUB, RF80W dst, RF80 src1, T src2) {
   Write(dst, Read(src1) - Float64(Signed(Read(src2))));
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FSUBR, RF80W dst, RF80 src1, T src2) {
   Write(dst, Float64(Read(src2) - Read(src1)));
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FSUBRP, RF80W dst, RF80 src1, T src2) {
-  FSUBR<T>(memory, state, dst, src1, src2);
+  memory = FSUBR<T>(memory, state, dst, src1, src2);
   (void) POP_X87_STACK();
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FISUBR, RF80W dst, RF80 src1, T src2) {
   Write(dst, Float64(Signed(Read(src2))) - Read(src1));
+  return memory;
 }
 }  // namespace
 
@@ -255,17 +286,20 @@ DEF_SEM(FADD, RF80W dst, RF80 src1, T src2) {
   state.sw.c0 = UUndefined8();
   state.sw.c2 = UUndefined8();
   state.sw.c3 = UUndefined8();
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FADDP, RF80W dst, RF80 src1, T src2) {
-  FADD<T>(memory, state, dst, src1, src2);
+  memory = FADD<T>(memory, state, dst, src1, src2);
   (void) POP_X87_STACK();
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FIADD, RF80W dst, RF80 src1, T src2) {
   Write(dst, Read(src1) + Float64(Signed(Read(src2))));
+  return memory;
 }
 
 }  // namespace
@@ -282,17 +316,20 @@ namespace {
 template <typename T>
 DEF_SEM(FMUL, RF80W dst, RF80 src1, T src2) {
   Write(dst, Read(src1) * Float64(Read(src2)));
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FMULP, RF80W dst, RF80 src1, T src2) {
-  FMUL<T>(memory, state, dst, src1, src2);
+  memory = FMUL<T>(memory, state, dst, src1, src2);
   (void) POP_X87_STACK();
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FIMUL, RF80W dst, RF80 src1, T src2) {
   Write(dst, Read(src1) * Float64(Signed(Read(src2))));
+  return memory;
 }
 
 }  // namespace
@@ -310,33 +347,39 @@ namespace {
 template <typename T>
 DEF_SEM(FDIV, RF80W dst, RF80 src1, T src2) {
   Write(dst, Read(src1) / Float64(Read(src2)));
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FDIVP, RF80W dst, RF80 src1, T src2) {
-  FDIV<T>(memory, state, dst, src1, src2);
+  memory = FDIV<T>(memory, state, dst, src1, src2);
   (void) POP_X87_STACK();
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FIDIV, RF80W dst, RF80 src1, T src2) {
   Write(dst, Read(src1) / Float64(Signed(Read(src2))));
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FDIVR, RF80W dst, RF80 src1, T src2) {
   Write(dst, Float64(Read(src2) / Read(src1)));
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FDIVRP, RF80W dst, RF80 src1, T src2) {
-  FDIVR<T>(memory, state, dst, src1, src2);
+  memory = FDIVR<T>(memory, state, dst, src1, src2);
   (void) POP_X87_STACK();
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FIDIVR, RF80W dst, RF80 src1, T src2) {
   Write(dst, Float64(Signed(Read(src2))) / Read(src1));
+  return memory;
 }
 
 }  // namespace
@@ -364,43 +407,52 @@ template <typename T>
 DEF_SEM(FST, T dst, RF80 src) {
   typedef typename BaseType<T>::BT BT;
   Write(dst, BT(Read(src)));
+  return memory;
 }
 
 template <typename T>
 DEF_SEM(FSTP, T dst, RF80 src) {
-  FST<T>(memory, state, dst, src);
+  memory = FST<T>(memory, state, dst, src);
   (void) POP_X87_STACK();
+  return memory;
 }
 
 DEF_SEM(FISTm16, M16W dst, RF80 src) {
   Write(dst, Unsigned(Float64ToInt16(FRoundUsingMode64(Read(src)))));
+  return memory;
 }
 
 DEF_SEM(FISTm32, M32W dst, RF80 src) {
   Write(dst, Unsigned(Float64ToInt32(FRoundUsingMode64(Read(src)))));
+  return memory;
 }
 
 DEF_SEM(FISTPm16, M16W dst, RF80 src) {
-  FISTm16(memory, state, dst, src);
+  memory = FISTm16(memory, state, dst, src);
   (void) POP_X87_STACK();
+  return memory;
 }
 
 DEF_SEM(FISTPm32, M32W dst, RF80 src) {
-  FISTm32(memory, state, dst, src);
+  memory = FISTm32(memory, state, dst, src);
   (void) POP_X87_STACK();
+  return memory;
 }
 
 DEF_SEM(FISTPm64, M64W dst, RF80 src) {
   Write(dst, Unsigned(Float64ToInt64(FRoundUsingMode64(Read(src)))));
   (void) POP_X87_STACK();
+  return memory;
 }
 
 DEF_SEM(DoFINCSTP) {
   (void) POP_X87_STACK();
+  return memory;
 }
 
 DEF_SEM(DoFDECSTP) {
   PUSH_X87_STACK(X87_ST7);
+  return memory;
 }
 
 }  // namespace
@@ -429,16 +481,19 @@ namespace {
 DEF_SEM(FISTTPm16, M16W dst, RF80 src) {
   Write(dst, Unsigned(Float64ToInt16(FTruncTowardZero64(Read(src)))));
   (void) POP_X87_STACK();
+  return memory;
 }
 
 DEF_SEM(FISTTPm32, M32W dst, RF80 src) {
   Write(dst, Unsigned(Float64ToInt32(FTruncTowardZero64(Read(src)))));
   (void) POP_X87_STACK();
+  return memory;
 }
 
 DEF_SEM(FISTTPm64, M64W dst, RF80 src) {
   Write(dst, Unsigned(Float64ToInt64(FTruncTowardZero64(Read(src)))));
   (void) POP_X87_STACK();
+  return memory;
 }
 
 }  // namespace
@@ -454,6 +509,7 @@ DEF_SEM(FXCH, RF80W dst1, RF80 src1, RF80W dst2, RF80 src2) {
   auto sti = Read(src2);
   Write(dst1, sti);
   Write(dst2, st0);
+  return memory;
 }
 
 }  // namespace
@@ -515,6 +571,7 @@ DEF_SEM(FXAM, RF80W, RF80 src) {
       state.sw.c3 = 0;
       break;
   }
+  return memory;
 }
 
 DEF_HELPER(UnorderedCompare, float64_t src1, float64_t src2) -> void {
@@ -543,6 +600,7 @@ DEF_SEM(FTST, RF80W, RF80 src1) {
   auto st0 = Read(src1);
   state.sw.c1 = 0;
   UnorderedCompare(memory, state, st0, 0.0);
+  return memory;
 }
 
 template <typename S2>
@@ -552,18 +610,21 @@ DEF_SEM(FUCOM, RF80 src1, S2 src2) {
   // Note:  Don't modify c1. The docs only state that c1=0 if there was a
   //        stack underflow.
   UnorderedCompare(memory, state, st0, sti);
+  return memory;
 }
 
 template <typename S2>
 DEF_SEM(FUCOMP, RF80 src1, S2 src2) {
-  FUCOM<S2>(memory, state, src1, src2);
+  memory = FUCOM<S2>(memory, state, src1, src2);
   (void) POP_X87_STACK();
+  return memory;
 }
 
 DEF_SEM(FUCOMPP, RF80 src1, RF80 src2) {
-  FUCOM<RF80>(memory, state, src1, src2);
+  memory = FUCOM<RF80>(memory, state, src1, src2);
   (void) POP_X87_STACK();
   (void) POP_X87_STACK();
+  return memory;
 }
 
 DEF_HELPER(UnorderedCompareEflags, float64_t src1, float64_t src2) -> void {
@@ -596,11 +657,13 @@ DEF_SEM(FUCOMI, RF80 src1, RF80 src2) {
   FLAG_SF = 0;
   FLAG_AF = 0;
   UnorderedCompareEflags(memory, state, st0, sti);
+  return memory;
 }
 
 DEF_SEM(FUCOMIP, RF80 src1, RF80 src2) {
-  FUCOMI(memory, state, src1, src2);
+  memory = FUCOMI(memory, state, src1, src2);
   (void) POP_X87_STACK();
+  return memory;
 }
 
 }  // namespace
@@ -640,6 +703,7 @@ DEF_SEM(FNSTSW, D dst) {
   sw.c2 = state.sw.c2;
   sw.c3 = state.sw.c3;
   Write(dst, sw.flat);
+  return memory;
 }
 
 DEF_SEM(FNSTCW, M16W dst) {
@@ -661,6 +725,7 @@ DEF_SEM(FNSTCW, M16W dst) {
       break;
   }
   Write(dst, cw.flat);
+  return memory;
 }
 
 DEF_SEM(FLDCW, M16 cwd) {
@@ -685,6 +750,7 @@ DEF_SEM(FLDCW, M16 cwd) {
       break;
   }
   fesetround(rounding_mode);
+  return memory;
 }
 
 }  // namespace
@@ -701,6 +767,7 @@ DEF_SEM(FRNDINT, RF80W dst, RF80 src) {
   auto rounded = FRoundUsingMode64(st0);
   // state.sw.c1 = __builtin_isgreater(FAbs(rounded), FAbs(st0)) ? 1_u8 : 0_u8;
   Write(dst, rounded);
+  return memory;
 }
 
 DEF_SEM(FYL2X, RF80 src1, RF80W dst2, RF80 src2) {
@@ -708,6 +775,7 @@ DEF_SEM(FYL2X, RF80 src1, RF80W dst2, RF80 src2) {
   auto st1 = Read(src2);
   Write(dst2, FMul(st1, __builtin_log2(st0)));
   (void) POP_X87_STACK();
+  return memory;
 }
 
 DEF_SEM(FYL2XP1, RF80 src1, RF80W dst2, RF80 src2) {
@@ -715,14 +783,16 @@ DEF_SEM(FYL2XP1, RF80 src1, RF80W dst2, RF80 src2) {
   auto st1 = Read(src2);
   Write(dst2, FMul(st1, __builtin_log2(FAdd(st0, 1.0))));
   (void) POP_X87_STACK();
+  return memory;
 }
 
 DEF_SEM(FFREE, RF80) {
-
+  return memory;
 }
 
 DEF_SEM(FFREEP, RF80) {
   (void) POP_X87_STACK();
+  return memory;
 }
 
 }  // namespace

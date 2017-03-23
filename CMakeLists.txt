@@ -3,6 +3,10 @@
 project(remill)
 cmake_minimum_required (VERSION 3.2)
 
+if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "Remill and its tools are 64-bit only tools.")
+endif()
+
 enable_language(ASM)
 
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
@@ -80,32 +84,33 @@ add_compile_options(
 
     -fno-rtti
     -std=gnu++11
-    -fPIC
-    -fPIE
     -m64
 
     -DINSTALL_SEMANTICS_DIR="${CMAKE_INSTALL_PREFIX}/share/remill/semantics/"
-    -DBUILD_SEMANTICS_DIR="${CMAKE_CURRENT_BINARY_DIR}/"
+    -DBUILD_SEMANTICS_DIR="${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/X86/Runtime/"
     -DGOOGLE_PROTOBUF_NO_RTTI
 )
 
-add_executable(remill-lift
-    remill/Lift.cpp
+add_library(remill STATIC
     remill/Arch/X86/Arch.cpp
     remill/Arch/Arch.cpp
     remill/Arch/Instruction.cpp
     remill/Arch/Name.cpp
     remill/CFG/BlockHasher.cpp
     remill/CFG/CFG.cpp
-    remill/BC/Lifter.cpp
-    remill/BC/Util.cpp
     remill/BC/IntrinsicTable.cpp
+    remill/BC/Lifter.cpp
+    remill/BC/Optimizer.cpp
+    remill/BC/Util.cpp
     remill/OS/FileSystem.cpp
     remill/OS/OS.cpp
-    third_party/murmurhash/MurmurHash2.cpp
-)
+    third_party/murmurhash/MurmurHash2.cpp)
 
-set(LLVM_LIBS
+target_link_libraries(remill
+    ${GFLAGS_LIBRARIES}
+    ${GLOG_LIBRARIES}
+    ${XED_LIBRARIES}
+    ${PROTOBUF_LIBRARIES}
     curses
     LLVMCore
     LLVMSupport
@@ -116,43 +121,17 @@ set(LLVM_LIBS
     LLVMBitWriter
     LLVMTransformUtils
     LLVMScalarOpts
-)
-
-target_link_libraries(remill-lift
-    ${GFLAGS_LIBRARIES}
-    ${GLOG_LIBRARIES}
-    ${XED_LIBRARIES}
-    ${PROTOBUF_LIBRARIES}
-    ${LLVM_LIBS}
-)
-
-add_executable(remill-opt
-    remill/Optimize.cpp
-    remill/BC/Util.cpp
-    remill/BC/IntrinsicTable.cpp
-    remill/BC/Optimizer.cpp
-    remill/OS/FileSystem.cpp
-    remill/OS/OS.cpp
-)
-
-target_link_libraries(remill-opt
-    ${GFLAGS_LIBRARIES}
-    ${GLOG_LIBRARIES}
-    ${LLVM_LIBS}
     LLVMLTO
+)
+
+install(
+    TARGETS remill
+    ARCHIVE DESTINATION lib
 )
 
 add_custom_target(semantics)
 add_subdirectory(remill/Arch/X86/Runtime)
-add_dependencies(remill-lift semantics)
-
-add_subdirectory(tests/X86)
-
-install(
-    TARGETS remill-lift remill-opt
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-)
 
 add_subdirectory(tools)
 
+add_subdirectory(tests/X86)

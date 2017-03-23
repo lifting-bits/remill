@@ -7,9 +7,6 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
-#include <fcntl.h>
-#include <sys/sendfile.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -36,15 +33,13 @@
 
 #include "tools/vmill/BC/Translator.h"
 
-DECLARE_string(arch);
-DECLARE_string(workspace);
+#ifndef BUILD_RUNTIME_DIR
+# define BUILD_RUNTIME_DIR
+#endif  // BUILD_RUNTIME_DIR
 
-DEFINE_uint64(bitcode_save_interval, 256,
-              "How many new functions need to be lifted into the bitcode "
-              "file before it is cached to disk.");
-
-DEFINE_bool(delete_old_saved_bitcode, false,
-            "Should stale cached bitcode files be deleted from disk?");
+#ifndef INSTALL_RUNTIME_DIR
+# define INSTALL_RUNTIME_DIR
+#endif  // INSTALL_RUNTIME_DIR
 
 DEFINE_bool(disable_optimizer, false,
             "Should the lifted bitcode optimizer be disabled?");
@@ -53,92 +48,52 @@ namespace remill {
 namespace vmill {
 namespace {
 
-// Get the path to the bitcode cache file.
-static std::string GetBitcodeFile(void) {
-  std::stringstream ss;
-  ss << FLAGS_workspace << "/cache.bc";
-  auto file_name = ss.str();
-
-  if (!FileExists(file_name) || !FileSize(file_name)) {
-    auto sem_path = FindSemanticsBitcodeFile("", FLAGS_arch);
-    auto sem_fd = open(sem_path.c_str(), O_RDONLY);
-    auto bc_fd = open(file_name.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
-    auto sem_file_size = FileSize(sem_path);
-    CHECK(-1 != sendfile(bc_fd, sem_fd, nullptr, sem_file_size))
-        << "Unable to copy semantics bitcode file " << sem_path
-        << " to " << sem_path << ": " << strerror(errno);
-    close(sem_fd);
-    close(bc_fd);
-  }
-
-  return file_name;
-}
 }  // namespace
 
 // Handles translating binary code to bitcode, and caching that bitcode.
 class TE final : public Translator {
  public:
-  explicit TE(const Arch *source_arch_);
+  explicit TE(llvm::Module *module_);
 
   virtual ~TE(void);
 
   void LiftCFG(const cfg::Module *cfg) override;
 
-  // Run a callback on the lifted module code.
-  void VisitModule(LiftedModuleCallback callback) override;
-
  private:
-  // Path to our cached bitcode file.
-  const std::string bitcode_file_path;
-
-  // Context in which all translated code modules are stored.
-  llvm::LLVMContext * const context;
-
   // Module containing lifted code and/or semantics.
   llvm::Module * const module;
 
   // Remill's CFG to bitcode lifter.
   Lifter lifter;
 
-  Optimizer * const optimizer;
-
-  // Number of functions in the bitcode module when we last saved to disk.
-  size_t last_serialize_count;
+  const std::unique_ptr<Optimizer> optimizer;
 };
 
-Translator::Translator(const Arch *source_arch_)
-    : source_arch(source_arch_) {}
+Translator::Translator(void)
+    : source_arch(GetGlobalArch()) {}
 
 Translator::~Translator(void) {}
 
 // Create a new translation engine for a given version of the code in
 // memory. Code version changes happen due to self-modifying code, or
 // runtime code loading.
-Translator *Translator::Create(const Arch *source_arch_) {
+std::unique_ptr<Translator> Translator::Create(llvm::Module *module_) {
   DLOG(INFO)
       << "Creating machine code to bitcode translator.";
-  return new TE(source_arch_);
+  return std::unique_ptr<Translator>(new TE(module_));
 }
 
 // Initialize the translation engine.
-TE::TE(const Arch *source_arch_)
-    : Translator(source_arch_),
-      bitcode_file_path(GetBitcodeFile()),
-      context(new llvm::LLVMContext),
-      module(LoadModuleFromFile(context, bitcode_file_path)),
+TE::TE(llvm::Module *module_)
+    : Translator(),
+      module(module_),
       lifter(source_arch, module),
-      optimizer(Optimizer::Create(module)),
-      last_serialize_count(module->getFunctionList().size()) {
+      optimizer(Optimizer::Create(module)) {
   source_arch->PrepareModule(module);
 }
 
 // Destroy the translation engine.
-TE::~TE(void) {
-  StoreModuleToFile(module, bitcode_file_path);
-  delete optimizer;
-  delete module;
-  delete context;
-}
+TE::~TE(void) {}
 
 void TE::LiftCFG(const cfg::Module *cfg) {
 
@@ -155,31 +110,6 @@ void TE::LiftCFG(const cfg::Module *cfg) {
     DLOG(INFO)
         << "Spent " << (end_opt - start_opt) << "s optimizing.";
   }
-
-  // Cache the module to disk if we've added enough new things to it since
-  // our last save.
-  auto new_num_funcs = module->getFunctionList().size();
-  if ((new_num_funcs - last_serialize_count) >= FLAGS_bitcode_save_interval) {
-    DLOG(INFO)
-        << "Serializing " << module->getModuleIdentifier() << " to disk.";
-    last_serialize_count = new_num_funcs;
-
-    std::stringstream ss;
-    ss << bitcode_file_path << "." << new_num_funcs;
-    auto temp_path = ss.str();
-
-    StoreModuleToFile(module, temp_path);
-    HardLinkOrCopy(temp_path, bitcode_file_path);
-
-    if (FLAGS_delete_old_saved_bitcode) {
-      RemoveFile(temp_path);
-    }
-  }
-}
-
-// Run a callback on the lifted module code.
-void TE::VisitModule(LiftedModuleCallback callback) {
-  callback(module);
 }
 
 }  // namespace vmill

@@ -48,10 +48,6 @@ class Snapshot {
 
   std::unique_ptr<ArchStateSnapshot> GetState(void) const;
 
-  // Check to see if there is any corruption in the recorded page info
-  // entries in the snapshot file.
-  void ValidatePageInfo(uint64_t max_addr) const;
-
   const std::string path;
   const SnapshotFile * const file;
   const int fd;
@@ -59,6 +55,10 @@ class Snapshot {
  private:
   Snapshot(void) = delete;
   Snapshot(const std::string &path_, const SnapshotFile *file_, int fd_);
+
+  // Check to see if there is any corruption in the recorded page info
+  // entries in the snapshot file.
+  void ValidatePageInfo(void) const;
 };
 
 }  // namespace vmill
