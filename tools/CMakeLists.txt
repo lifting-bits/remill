@@ -6,6 +6,10 @@ install(CODE
 add_subdirectory(${PROJECT_SOURCE_DIR}/tools/remill_lift)
 add_subdirectory(${PROJECT_SOURCE_DIR}/tools/remill_opt)
 
+if (EXISTS ${PROJECT_SOURCE_DIR}/tools/mcsema)
+    add_subdirectory(${PROJECT_SOURCE_DIR}/tools/mcsema)
+endif()
+
 if (LINUX)
     add_subdirectory(${PROJECT_SOURCE_DIR}/tools/vmill)
 endif(LINUX)

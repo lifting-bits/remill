@@ -127,6 +127,9 @@ void SetBlockId(llvm::GlobalObject *func, uint64_t id);
 // with the metadata of some block function.
 void SetBlockName(llvm::Function *func, const std::string &name);
 
+// Make `func` a clone of the `__remill_basic_block` function.
+void CloneBlockFunctionInto(llvm::Function *func);
+
 }  // namespace remill
 
 #endif  // REMILL_BC_UTIL_H_

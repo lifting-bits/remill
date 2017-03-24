@@ -27,6 +27,7 @@ class Module;
 
 class Arch;
 class IntrinsicTable;
+class InstructionLifter;
 
 // Lifts CFG files into a bitcode module. This is mostly a big bag of state
 // needed for all the parts of of lifting to coordinate.
@@ -64,7 +65,8 @@ class Lifter {
 
   // Lift a single instruction into a basic block.
   llvm::BasicBlock *LiftInstruction(llvm::Function *block,
-                                    Instruction *instr);
+                                    Instruction *instr,
+                                    InstructionLifter &lifter);
 
   // Lift an operand to an instruction.
   llvm::Value *LiftOperand(llvm::BasicBlock *block,
@@ -104,6 +106,49 @@ class Lifter {
 
   // Set of intrinsics.
   const IntrinsicTable * const intrinsics;
+};
+
+// Wraps the process of lifting an instruction into a block. This resolves
+// the intended instruction target to a function, and ensures that the function
+// is called with the appropriate arguments.
+class InstructionLifter {
+ public:
+  virtual ~InstructionLifter(void);
+
+  InstructionLifter(llvm::IntegerType *word_type_,
+                    const IntrinsicTable *intrinsics_);
+
+  // Lift a single instruction into a basic block.
+  virtual bool LiftIntoBlock(Instruction *instr,
+                             llvm::BasicBlock *block);
+
+  // Machine word type for this architecture.
+  llvm::IntegerType * const word_type;
+
+  // Set of intrinsics.
+  const IntrinsicTable * const intrinsics;
+
+ protected:
+  // Lift an operand to an instruction.
+  virtual llvm::Value *LiftOperand(llvm::BasicBlock *block,
+                                   llvm::Type *op_type,
+                                   const Operand &op);
+
+  // Lift a register operand to a value.
+  virtual llvm::Value *LiftRegisterOperand(llvm::BasicBlock *block,
+                                           llvm::Type *arg_type,
+                                           const Operand::Register &reg);
+
+  // Lift an immediate operand.
+  virtual llvm::Value *LiftImmediateOperand(llvm::Type *arg_type,
+                                            const Operand &op);
+
+  // Lift an indirect memory operand to a value.
+  virtual llvm::Value *LiftAddressOperand(llvm::BasicBlock *block,
+                                          const Operand::Address &mem);
+
+ private:
+  InstructionLifter(void) = delete;
 };
 
 }  // namespace remill

@@ -55,60 +55,60 @@ const Arch *Arch::Get(OSName os_name_, ArchName arch_name_) {
       return nullptr;
 
     case kArchX86: {
-      DLOG(INFO) << "Using architecture: X86";
       static ArchCache gArchX86;
       auto &arch = gArchX86[os_name_];
       if (!arch) {
+        DLOG(INFO) << "Using architecture: X86";
         arch = ArchPtr(GetX86(os_name_, arch_name_));
       }
       return arch.get();
     }
 
     case kArchX86_AVX: {
-      DLOG(INFO) << "Using architecture: X86, feature set: AVX";
       static ArchCache gArchX86_AVX;
       auto &arch = gArchX86_AVX[os_name_];
       if (!arch) {
+        DLOG(INFO) << "Using architecture: X86, feature set: AVX";
         arch = ArchPtr(GetX86(os_name_, arch_name_));
       }
       return arch.get();
     }
 
     case kArchX86_AVX512: {
-      DLOG(INFO) << "Using architecture: X86, feature set: AVX512";
       static ArchCache gArchX86_AVX512;
       auto &arch = gArchX86_AVX512[os_name_];
       if (!arch) {
+        DLOG(INFO) << "Using architecture: X86, feature set: AVX512";
         arch = ArchPtr(GetX86(os_name_, arch_name_));
       }
       return arch.get();
     }
 
     case kArchAMD64: {
-      DLOG(INFO) << "Using architecture: AMD64";
       static ArchCache gArchAMD64;
       auto &arch = gArchAMD64[os_name_];
       if (!arch) {
+        DLOG(INFO) << "Using architecture: AMD64";
         arch = ArchPtr(GetX86(os_name_, arch_name_));
       }
       return arch.get();
     }
 
     case kArchAMD64_AVX: {
-      DLOG(INFO) << "Using architecture: AMD64, feature set: AVX";
       static ArchCache gArchAMD64_AVX;
       auto &arch = gArchAMD64_AVX[os_name_];
       if (!arch) {
+        DLOG(INFO) << "Using architecture: AMD64, feature set: AVX";
         arch = ArchPtr(GetX86(os_name_, arch_name_));
       }
       return arch.get();
     }
 
     case kArchAMD64_AVX512: {
-      DLOG(INFO) << "Using architecture: AMD64, feature set: AVX512";
       static ArchCache gArchAMD64_AVX512;
       auto &arch = gArchAMD64_AVX512[os_name_];
       if (!arch) {
+        DLOG(INFO) << "Using architecture: AMD64, feature set: AVX512";
         arch = ArchPtr(GetX86(os_name_, arch_name_));
       }
       return arch.get();

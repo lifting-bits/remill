@@ -48,52 +48,7 @@ DEFINE_bool(add_breakpoints, false,
             "breakpoint hyper call.");
 
 namespace remill {
-namespace {
 
-// Initialize some attributes that are common to all newly created block
-// functions. Also, give pretty names to the arguments of block functions.
-static void InitBlockFunctionAttributes(llvm::Function *block_func) {
-
-  block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
-  block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
-
-  remill::NthArgument(block_func, kMemoryPointerArgNum)->setName("memory");
-  remill::NthArgument(block_func, kStatePointerArgNum)->setName("state");
-  remill::NthArgument(block_func, kPCArgNum)->setName("pc");
-}
-
-// These variables must always be defined within `__remill_basic_block`.
-static bool BlockHasSpecialVars(llvm::Function *basic_block) {
-  return FindVarInFunction(basic_block, "STATE", true) &&
-         FindVarInFunction(basic_block, "MEMORY", true) &&
-         FindVarInFunction(basic_block, "PC", true) &&
-         FindVarInFunction(basic_block, "BRANCH_TAKEN", true);
-}
-
-// Clang isn't guaranteed to play nice and name the LLVM values within the
-// `__remill_basic_block` intrinsic with the same names as we find in the
-// C++ definition of that function. However, we compile that function with
-// debug information, and so we will try to recover the variables names for
-// later lookup.
-static void FixupBasicBlockVariables(llvm::Function *basic_block) {
-  if (BlockHasSpecialVars(basic_block)) {
-    return;
-  }
-
-  for (auto &block : *basic_block) {
-    for (auto &inst : block) {
-      if (auto decl_inst = llvm::dyn_cast<llvm::DbgDeclareInst>(&inst)) {
-        auto addr = decl_inst->getAddress();
-        addr->setName(decl_inst->getVariable()->getName());
-      }
-    }
-  }
-
-  CHECK(BlockHasSpecialVars(basic_block))
-      << "Unable to locate required variables in `__remill_basic_block`.";
-}
-
-}  // namespace
 
 Lifter::Lifter(const Arch *arch_, llvm::Module *module_)
     : arch(arch_),
@@ -112,15 +67,6 @@ Lifter::Lifter(const Arch *arch_, llvm::Module *module_)
       << " should only have one basic block.";
 
   EnableDeferredInlining();
-  InitFunctionAttributes(basic_block);
-  InitBlockFunctionAttributes(basic_block);
-  FixupBasicBlockVariables(basic_block);
-
-  basic_block->addFnAttr(llvm::Attribute::OptimizeNone);
-  basic_block->removeFnAttr(llvm::Attribute::AlwaysInline);
-  basic_block->removeFnAttr(llvm::Attribute::InlineHint);
-  basic_block->addFnAttr(llvm::Attribute::NoInline);
-  basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
 }
 
 Lifter::~Lifter(void) {
@@ -136,20 +82,6 @@ static void DisableInlining(llvm::Function *function) {
   function->removeFnAttr(llvm::Attribute::AlwaysInline);
   function->removeFnAttr(llvm::Attribute::InlineHint);
   function->addFnAttr(llvm::Attribute::NoInline);
-}
-
-// Clone the block method template `TF` into a specific method `BF` that
-// will contain lifted code.
-static void AddBlockInitializationCode(llvm::Function *block_func,
-                                       llvm::Function *template_func) {
-  CloneFunctionInto(template_func, block_func);
-
-  // Remove the `return` in `__remill_basic_block`.
-  auto &entry = block_func->front();
-  auto term = entry.getTerminator();
-  term->eraseFromParent();
-
-  block_func->removeFnAttr(llvm::Attribute::OptimizeNone);
 }
 
 }  // namespace
@@ -293,7 +225,9 @@ llvm::Function *Lifter::LiftBlock(const cfg::Block &cfg_block) {
     return block_func;
   }
 
-  AddBlockInitializationCode(block_func, basic_block);
+  CloneBlockFunctionInto(block_func);
+
+  InstructionLifter lifter(word_type, intrinsics);
 
   // Create a block for each instruction.
   auto last_block = &block_func->back();
@@ -329,7 +263,7 @@ llvm::Function *Lifter::LiftBlock(const cfg::Block &cfg_block) {
 //    DLOG(INFO)
 //        << "Lifting instruction '" << instr->Serialize();
 
-    if (auto curr_block = LiftInstruction(block_func, instr)) {
+    if (auto curr_block = LiftInstruction(block_func, instr, lifter)) {
       llvm::IRBuilder<> ir(last_block);
       ir.CreateBr(curr_block);
       last_block = curr_block;
@@ -352,6 +286,19 @@ llvm::Function *Lifter::LiftBlock(const cfg::Block &cfg_block) {
 
   delete instr;
   return block_func;
+}
+
+// Lift a single instruction into a basic block.
+llvm::BasicBlock *Lifter::LiftInstruction(llvm::Function *block_func,
+                                          Instruction *instr,
+                                          InstructionLifter &lifter) {
+  auto &context = block_func->getContext();
+  auto block = llvm::BasicBlock::Create(context, "", block_func);
+  if (!lifter.LiftIntoBlock(instr, block)) {
+    block->eraseFromParent();
+    return nullptr;
+  }
+  return block;
 }
 
 namespace {
@@ -475,9 +422,18 @@ llvm::Function *GetInstructionFunction(llvm::Module *module,
 
 }  // namespace
 
+InstructionLifter::~InstructionLifter(void) {}
+
+InstructionLifter::InstructionLifter(llvm::IntegerType *word_type_,
+                                     const IntrinsicTable *intrinsics_)
+    : word_type(word_type_),
+      intrinsics(intrinsics_) {}
+
 // Lift a single instruction into a basic block.
-llvm::BasicBlock *Lifter::LiftInstruction(llvm::Function *block_func,
-                                              Instruction *arch_instr) {
+bool InstructionLifter::LiftIntoBlock(
+    Instruction *arch_instr, llvm::BasicBlock *block) {
+
+  auto module = block->getModule();
   auto isel_func = GetInstructionFunction(module, arch_instr->function);
 
   if (Instruction::kCategoryInvalid == arch_instr->category) {
@@ -494,14 +450,11 @@ llvm::BasicBlock *Lifter::LiftInstruction(llvm::Function *block_func,
       LOG(ERROR)
           << "UNSUPPORTED_INSTRUCTION doesn't exist; not using it in place of "
           << arch_instr->function;
-      return nullptr;
+      return false;
     }
 
     arch_instr->operands.clear();
   }
-
-  auto &context = block_func->getContext();
-  auto block = llvm::BasicBlock::Create(context, "", block_func);
 
   llvm::IRBuilder<> ir(block);
   auto mem_ptr = LoadMemoryPointerRef(block);
@@ -574,7 +527,7 @@ llvm::BasicBlock *Lifter::LiftInstruction(llvm::Function *block_func,
         mem_ptr);
   }
 
-  return block;
+  return true;
 }
 
 namespace {
@@ -626,7 +579,7 @@ static llvm::Value *LoadWordRegValOrZero(llvm::BasicBlock *block,
 // for registers. In the case of write operands, the argument type is always
 // a pointer. In the case of read operands, the argument type is sometimes
 // a pointer (e.g. when passing a vector to an instruction semantics function).
-llvm::Value *Lifter::LiftRegisterOperand(
+llvm::Value *InstructionLifter::LiftRegisterOperand(
     llvm::BasicBlock *block,
     llvm::Type *arg_type,
     const Operand::Register &arch_reg) {
@@ -648,7 +601,7 @@ llvm::Value *Lifter::LiftRegisterOperand(
 
     auto val = LoadRegValue(block, arch_reg.name);
 
-    const llvm::DataLayout data_layout(module);
+    const llvm::DataLayout data_layout(block->getModule());
     auto val_type = val->getType();
     auto val_size = data_layout.getTypeAllocSizeInBits(val_type);
     auto arg_size = data_layout.getTypeAllocSizeInBits(arg_type);
@@ -696,8 +649,8 @@ llvm::Value *Lifter::LiftRegisterOperand(
 }
 
 // Lift an immediate operand.
-llvm::Value *Lifter::LiftImmediateOperand(llvm::Type *arg_type,
-                                              const Operand &arch_op) {
+llvm::Value *InstructionLifter::LiftImmediateOperand(llvm::Type *arg_type,
+                                                     const Operand &arch_op) {
 
   if (arch_op.size > word_type->getBitWidth()) {
     CHECK(arg_type->isIntegerTy(static_cast<uint32_t>(arch_op.size)))
@@ -726,7 +679,7 @@ llvm::Value *Lifter::LiftImmediateOperand(llvm::Type *arg_type,
 }
 
 // Zero-extend a value to be the machine word size.
-llvm::Value *Lifter::LiftAddressOperand(
+llvm::Value *InstructionLifter::LiftAddressOperand(
     llvm::BasicBlock *block, const Operand::Address &arch_addr) {
 
   auto zero = llvm::ConstantInt::get(word_type, 0, false);
@@ -783,9 +736,9 @@ llvm::Value *Lifter::LiftAddressOperand(
 }
 
 // Lift an operand for use by the instruction.
-llvm::Value *Lifter::LiftOperand(llvm::BasicBlock *block,
-                                     llvm::Type *arg_type,
-                                     const Operand &arch_op) {
+llvm::Value *InstructionLifter::LiftOperand(llvm::BasicBlock *block,
+                                            llvm::Type *arg_type,
+                                            const Operand &arch_op) {
   switch (arch_op.type) {
     case Operand::kTypeInvalid:
       LOG(FATAL)

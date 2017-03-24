@@ -12,17 +12,23 @@
 #include <unistd.h>
 
 #include <llvm/ADT/SmallVector.h>
+
 #include <llvm/Bitcode/ReaderWriter.h>
+
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/DebugLoc.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Verifier.h>
+
 #include <llvm/IRReader/IRReader.h>
+
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/SourceMgr.h>
@@ -531,6 +537,82 @@ void SetBlockName(llvm::Function *func, const std::string &name) {
       context, name, false  /* AddNull */);
   auto addr_md = llvm::ValueAsMetadata::get(const_val);
   func->setMetadata("name", llvm::MDNode::get(context, addr_md));
+}
+
+namespace {
+
+// Initialize some attributes that are common to all newly created block
+// functions. Also, give pretty names to the arguments of block functions.
+static void InitBlockFunctionAttributes(llvm::Function *block_func) {
+
+  block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
+  block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
+
+  remill::NthArgument(block_func, kMemoryPointerArgNum)->setName("memory");
+  remill::NthArgument(block_func, kStatePointerArgNum)->setName("state");
+  remill::NthArgument(block_func, kPCArgNum)->setName("pc");
+}
+
+// These variables must always be defined within `__remill_basic_block`.
+static bool BlockHasSpecialVars(llvm::Function *basic_block) {
+  return FindVarInFunction(basic_block, "STATE", true) &&
+         FindVarInFunction(basic_block, "MEMORY", true) &&
+         FindVarInFunction(basic_block, "PC", true) &&
+         FindVarInFunction(basic_block, "BRANCH_TAKEN", true);
+}
+
+// Clang isn't guaranteed to play nice and name the LLVM values within the
+// `__remill_basic_block` intrinsic with the same names as we find in the
+// C++ definition of that function. However, we compile that function with
+// debug information, and so we will try to recover the variables names for
+// later lookup.
+static void FixupBasicBlockVariables(llvm::Function *basic_block) {
+  if (BlockHasSpecialVars(basic_block)) {
+    return;
+  }
+
+  for (auto &block : *basic_block) {
+    for (auto &inst : block) {
+      if (auto decl_inst = llvm::dyn_cast<llvm::DbgDeclareInst>(&inst)) {
+        auto addr = decl_inst->getAddress();
+        addr->setName(decl_inst->getVariable()->getName());
+      }
+    }
+  }
+
+  CHECK(BlockHasSpecialVars(basic_block))
+      << "Unable to locate required variables in `__remill_basic_block`.";
+}
+
+}  // namespace
+
+// Make `func` a clone of the `__remill_basic_block` function.
+void CloneBlockFunctionInto(llvm::Function *func) {
+  auto module = func->getParent();
+  auto basic_block = module->getFunction("__remill_basic_block");
+  CHECK(nullptr != basic_block)
+      << "Unable to find __remill_basic_block in module "
+      << module->getName().str();
+
+  if (!BlockHasSpecialVars(basic_block)) {
+    InitFunctionAttributes(basic_block);
+    FixupBasicBlockVariables(basic_block);
+    InitBlockFunctionAttributes(basic_block);
+
+    basic_block->addFnAttr(llvm::Attribute::OptimizeNone);
+    basic_block->removeFnAttr(llvm::Attribute::AlwaysInline);
+    basic_block->removeFnAttr(llvm::Attribute::InlineHint);
+    basic_block->addFnAttr(llvm::Attribute::NoInline);
+    basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
+  }
+
+  CloneFunctionInto(basic_block, func);
+
+  // Remove the `return` in `__remill_basic_block`.
+  auto &entry = func->front();
+  auto term = entry.getTerminator();
+  term->eraseFromParent();
+  func->removeFnAttr(llvm::Attribute::OptimizeNone);
 }
 
 }  // namespace remill

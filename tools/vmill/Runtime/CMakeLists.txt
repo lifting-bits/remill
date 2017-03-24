@@ -12,7 +12,7 @@ set(RUNTIME_CXX_FLAGS
     -Wshadow
     -Wconversion
     -pedantic
-    
+
     -Wshorten-64-to-32
     -Wno-gnu-anonymous-struct
     -Wno-return-type-c-linkage
