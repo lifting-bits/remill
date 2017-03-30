@@ -391,11 +391,17 @@ static void DecodeMemory(Instruction *instr,
   // accessed via intrinsics.
   if (xed_operand_written(xedo)) {
     op.action = Operand::kActionWrite;
+    op.addr.kind = Operand::Address::kMemoryWrite;
     instr->operands.push_back(op);
   }
 
   if (xed_operand_read(xedo)) {
     op.action = Operand::kActionRead;
+    if (XED_OPERAND_AGEN == op_name) {
+      op.addr.kind = Operand::Address::kAddressCalculation;
+    } else {
+      op.addr.kind = Operand::Address::kMemoryRead;
+    }
     instr->operands.push_back(op);
   }
 }
@@ -516,6 +522,7 @@ static void DecodeFallThroughPC(Instruction *instr,
   not_taken_op.addr.base_reg.name = "PC";
   not_taken_op.addr.base_reg.size = pc_width;
   not_taken_op.addr.displacement = static_cast<int64_t>(instr->NumBytes());
+  not_taken_op.addr.kind = Operand::Address::kControlFlowTarget;
   instr->operands.push_back(not_taken_op);
 
   instr->branch_not_taken_pc = instr->next_pc;
@@ -547,6 +554,7 @@ static void DecodeConditionalBranch(Instruction *instr,
   taken_op.addr.base_reg.name = "PC";
   taken_op.addr.base_reg.size = pc_width;
   taken_op.addr.displacement = disp + static_cast<int64_t>(instr->NumBytes());
+  taken_op.addr.kind = Operand::Address::kControlFlowTarget;
   instr->operands.push_back(taken_op);
 
   instr->branch_taken_pc = static_cast<uint64_t>(
@@ -573,6 +581,7 @@ static void DecodeRelativeBranch(Instruction *instr,
   taken_op.addr.base_reg.name = "PC";
   taken_op.addr.base_reg.size = pc_width;
   taken_op.addr.displacement = disp + static_cast<int64_t>(instr->NumBytes());
+  taken_op.addr.kind = Operand::Address::kControlFlowTarget;
   instr->operands.push_back(taken_op);
 
   instr->branch_taken_pc = static_cast<uint64_t>(

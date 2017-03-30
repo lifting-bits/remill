@@ -290,6 +290,32 @@ std::string FindSemanticsBitcodeFile(const std::string &path,
       << "Cannot find path to " << arch << " semantics bitcode file.";
 }
 
+namespace {
+
+// Convert an LLVM thing (e.g. `llvm::Value` or `llvm::Type`) into
+// a `std::string`.
+template <typename T>
+inline static std::string DoLLVMThingToString(T *thing) {
+  if (thing) {
+    std::string str;
+    llvm::raw_string_ostream str_stream(str);
+    thing->print(str_stream);
+    return str;
+  } else {
+    return "(null)";
+  }
+}
+
+}  // namespace
+
+std::string LLVMThingToString(llvm::Value *thing) {
+  return DoLLVMThingToString(thing);
+}
+
+std::string LLVMThingToString(llvm::Type *thing) {
+  return DoLLVMThingToString(thing);
+}
+
 llvm::Argument *NthArgument(llvm::Function *func, size_t index) {
   auto it = func->arg_begin();
   for (size_t i = 0; i < index; ++i) {

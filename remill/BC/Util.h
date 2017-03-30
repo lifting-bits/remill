@@ -81,19 +81,9 @@ std::string FindSemanticsBitcodeFile(const std::string &path,
 // Return a pointer to the Nth argument (N=0 is the first argument).
 llvm::Argument *NthArgument(llvm::Function *func, size_t index);
 
-// Convert an LLVM thing (e.g. `llvm::Value` or `llvm::Type`) into
-// a `std::string`.
-template <typename T>
-inline static std::string LLVMThingToString(T *thing) {
-  if (thing) {
-    std::string str;
-    llvm::raw_string_ostream str_stream(str);
-    thing->print(str_stream);
-    return str;
-  } else {
-    return "(null)";
-  }
-}
+// Serialize an LLVM object into a string.
+std::string LLVMThingToString(llvm::Value *thing);
+std::string LLVMThingToString(llvm::Type *thing);
 
 using BlockCallback = std::function<void(uint64_t, uint64_t, llvm::Function *)>;
 

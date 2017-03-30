@@ -20,7 +20,8 @@ Operand::Immediate::Immediate(void)
 Operand::Address::Address(void)
     : scale(0),
       displacement(0),
-      address_size(0) {}
+      address_size(0),
+      kind(kInvalid) {}
 
 Operand::Operand(void)
     : type(Operand::kTypeInvalid),

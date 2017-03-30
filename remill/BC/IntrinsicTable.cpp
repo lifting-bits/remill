@@ -49,19 +49,32 @@ static llvm::Function *FindPureIntrinsic(const llvm::Module *module,
   return function;
 }
 
+// Find a specific function.
+static llvm::Function *FindArgMemOnlyIntrinsic(const llvm::Module *module,
+                                               const char *name) {
+  auto function = FindIntrinsic(module, name);
+
+  // We want memory intrinsics to be marked as not accessing memory so that
+  // they don't interfere with dead store elimination.
+  function->addFnAttr(llvm::Attribute::ArgMemOnly);
+  return function;
+}
+
 }  // namespace
 
 IntrinsicTable::IntrinsicTable(const llvm::Module *module)
     : error(FindIntrinsic(module, "__remill_error")),
 
       // Control-flow.
-      function_call(FindIntrinsic(module, "__remill_function_call")),
-      function_return(FindIntrinsic(module, "__remill_function_return")),
-      jump(FindIntrinsic(module, "__remill_jump")),
-      missing_block(FindIntrinsic(module, "__remill_missing_block")),
+      function_call(FindArgMemOnlyIntrinsic(module, "__remill_function_call")),
+      function_return(FindArgMemOnlyIntrinsic(
+          module, "__remill_function_return")),
+      jump(FindArgMemOnlyIntrinsic(module, "__remill_jump")),
+      missing_block(FindArgMemOnlyIntrinsic(module, "__remill_missing_block")),
 
       // OS interaction.
-      async_hyper_call(FindIntrinsic(module, "__remill_async_hyper_call")),
+      async_hyper_call(FindArgMemOnlyIntrinsic(
+          module, "__remill_async_hyper_call")),
 
       // Memory access.
       read_memory_8(FindPureIntrinsic(module, "__remill_read_memory_8")),

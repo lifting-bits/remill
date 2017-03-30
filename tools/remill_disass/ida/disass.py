@@ -124,7 +124,6 @@ def find_linear_terminator(ea, max_num=256):
 
   return term_inst
 
-
 def get_direct_branch_target(branch_inst_ea):
   """Tries to 'force' get the target of a direct or conditional branch.
   IDA can't always get code refs for flows from an instruction that appears

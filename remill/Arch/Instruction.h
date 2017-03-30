@@ -57,6 +57,14 @@ class Operand {
 
   // kTypeAddress.
   struct Address {
+    enum Kind {
+      kInvalid,
+      kMemoryRead,
+      kMemoryWrite,
+      kAddressCalculation,
+      kControlFlowTarget
+    };
+
     Address(void);
     ~Address(void) = default;
 
@@ -66,6 +74,19 @@ class Operand {
     int64_t scale;
     int64_t displacement;
     uint64_t address_size;
+    Kind kind;
+
+    inline bool IsMemoryAccess(void) const {
+      return kMemoryRead == kind || kMemoryWrite == kind;
+    }
+
+    inline bool IsAddressCalculation(void) const {
+      return kAddressCalculation == kind;
+    }
+
+    inline bool IsControlFlowTarget(void) const {
+      return kControlFlowTarget == kind;
+    }
   } addr;
 
   std::string Debug(void) const;
@@ -131,6 +152,35 @@ class Instruction {
     }
   }
 
+  inline bool IsDirectControlFlow(void) const {
+    switch (category) {
+      case kCategoryDirectFunctionCall:
+      case kCategoryDirectJump:
+      case kCategoryConditionalBranch:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  inline bool IsIndirectControlFlow(void) const {
+    switch (category) {
+      case kCategoryIndirectFunctionCall:
+      case kCategoryIndirectJump:
+      case kCategoryConditionalBranch:
+      case kCategoryAsyncHyperCall:
+      case kCategoryConditionalAsyncHyperCall:
+      case kCategoryFunctionReturn:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  inline bool IsConditionalBranch(void) const {
+    return kCategoryConditionalBranch == category;
+  }
+
   inline bool IsFunctionCall(void) const {
     switch (category) {
       case kCategoryDirectFunctionCall:
@@ -139,6 +189,10 @@ class Instruction {
       default:
         return false;
     }
+  }
+
+  inline bool IsFunctionReturn(void) const {
+    return kCategoryFunctionReturn == category;
   }
 
   inline bool IsValid(void) const {

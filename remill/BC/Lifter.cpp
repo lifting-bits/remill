@@ -456,6 +456,8 @@ bool InstructionLifter::LiftIntoBlock(
     arch_instr->operands.clear();
   }
 
+  isel_func->addFnAttr(llvm::Attribute::ArgMemOnly);
+
   llvm::IRBuilder<> ir(block);
   auto mem_ptr = LoadMemoryPointerRef(block);
   auto state_ptr = LoadStatePointer(block);
@@ -495,7 +497,7 @@ bool InstructionLifter::LiftIntoBlock(
         << arg_num << " arguments.";
 
     auto arg_type = isel_func_type->getParamType(arg_num++);
-    auto operand = LiftOperand(block, arg_type, op);
+    auto operand = LiftOperand(arch_instr, block, arg_type, op);
     auto op_type = operand->getType();
     CHECK(op_type == arg_type)
         << "Lifted operand " << op.Debug() << " to "
@@ -580,9 +582,9 @@ static llvm::Value *LoadWordRegValOrZero(llvm::BasicBlock *block,
 // a pointer. In the case of read operands, the argument type is sometimes
 // a pointer (e.g. when passing a vector to an instruction semantics function).
 llvm::Value *InstructionLifter::LiftRegisterOperand(
-    llvm::BasicBlock *block,
-    llvm::Type *arg_type,
-    const Operand::Register &arch_reg) {
+    Instruction *, llvm::BasicBlock *block,
+    llvm::Type *arg_type, Operand &op) {
+  auto &arch_reg = op.reg;
 
   if (auto ptr_type = llvm::dyn_cast_or_null<llvm::PointerType>(arg_type)) {
     auto val = LoadRegAddress(block, arch_reg.name);
@@ -649,8 +651,10 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(
 }
 
 // Lift an immediate operand.
-llvm::Value *InstructionLifter::LiftImmediateOperand(llvm::Type *arg_type,
-                                                     const Operand &arch_op) {
+llvm::Value *InstructionLifter::LiftImmediateOperand(Instruction *,
+                                                     llvm::BasicBlock *,
+                                                     llvm::Type *arg_type,
+                                                     Operand &arch_op) {
 
   if (arch_op.size > word_type->getBitWidth()) {
     CHECK(arg_type->isIntegerTy(static_cast<uint32_t>(arch_op.size)))
@@ -680,8 +684,8 @@ llvm::Value *InstructionLifter::LiftImmediateOperand(llvm::Type *arg_type,
 
 // Zero-extend a value to be the machine word size.
 llvm::Value *InstructionLifter::LiftAddressOperand(
-    llvm::BasicBlock *block, const Operand::Address &arch_addr) {
-
+    Instruction *, llvm::BasicBlock *block, Operand &op) {
+  auto &arch_addr = op.addr;
   auto zero = llvm::ConstantInt::get(word_type, 0, false);
   auto word_size = word_type->getBitWidth();
 
@@ -736,9 +740,10 @@ llvm::Value *InstructionLifter::LiftAddressOperand(
 }
 
 // Lift an operand for use by the instruction.
-llvm::Value *InstructionLifter::LiftOperand(llvm::BasicBlock *block,
+llvm::Value *InstructionLifter::LiftOperand(Instruction *instr,
+                                            llvm::BasicBlock *block,
                                             llvm::Type *arg_type,
-                                            const Operand &arch_op) {
+                                            Operand &arch_op) {
   switch (arch_op.type) {
     case Operand::kTypeInvalid:
       LOG(FATAL)
@@ -750,10 +755,10 @@ llvm::Value *InstructionLifter::LiftOperand(llvm::BasicBlock *block,
           << "Operand size and register size must match for register "
           << arch_op.reg.name << ".";
 
-      return LiftRegisterOperand(block, arg_type, arch_op.reg);
+      return LiftRegisterOperand(instr, block, arg_type, arch_op);
 
     case Operand::kTypeImmediate:
-      return LiftImmediateOperand(arg_type, arch_op);
+      return LiftImmediateOperand(instr, block, arg_type, arch_op);
 
     case Operand::kTypeAddress:
       if (arg_type != word_type) {
@@ -764,7 +769,7 @@ llvm::Value *InstructionLifter::LiftOperand(llvm::BasicBlock *block,
             << LLVMThingToString(word_type);
       }
 
-      return LiftAddressOperand(block, arch_op.addr);
+      return LiftAddressOperand(instr, block, arch_op);
   }
 
   LOG(FATAL)

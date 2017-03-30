@@ -130,22 +130,27 @@ class InstructionLifter {
 
  protected:
   // Lift an operand to an instruction.
-  virtual llvm::Value *LiftOperand(llvm::BasicBlock *block,
+  virtual llvm::Value *LiftOperand(Instruction *instr,
+                                   llvm::BasicBlock *block,
                                    llvm::Type *op_type,
-                                   const Operand &op);
+                                   Operand &op);
 
   // Lift a register operand to a value.
-  virtual llvm::Value *LiftRegisterOperand(llvm::BasicBlock *block,
+  virtual llvm::Value *LiftRegisterOperand(Instruction *instr,
+                                           llvm::BasicBlock *block,
                                            llvm::Type *arg_type,
-                                           const Operand::Register &reg);
+                                           Operand &reg);
 
   // Lift an immediate operand.
-  virtual llvm::Value *LiftImmediateOperand(llvm::Type *arg_type,
-                                            const Operand &op);
+  virtual llvm::Value *LiftImmediateOperand(Instruction *instr,
+                                            llvm::BasicBlock *block,
+                                            llvm::Type *arg_type,
+                                            Operand &op);
 
   // Lift an indirect memory operand to a value.
-  virtual llvm::Value *LiftAddressOperand(llvm::BasicBlock *block,
-                                          const Operand::Address &mem);
+  virtual llvm::Value *LiftAddressOperand(Instruction *instr,
+                                          llvm::BasicBlock *block,
+                                          Operand &mem);
 
  private:
   InstructionLifter(void) = delete;
