@@ -960,12 +960,11 @@ static void RunO3(llvm::Module *module) {
   builder.populateFunctionPassManager(func_manager);
   builder.populateModulePassManager(module_manager);
 
-  func_manager.add(llvm::createCFGSimplificationPass());
-  func_manager.add(llvm::createPromoteMemoryToRegisterPass());
-  func_manager.add(llvm::createReassociatePass());
-  func_manager.add(llvm::createInstructionCombiningPass());
-  func_manager.add(llvm::createDeadStoreEliminationPass());
-  func_manager.add(llvm::createDeadCodeEliminationPass());
+//  func_manager.add(llvm::createCFGSimplificationPass());
+//  func_manager.add(llvm::createPromoteMemoryToRegisterPass());
+//  func_manager.add(llvm::createReassociatePass());
+//  func_manager.add(llvm::createDeadStoreEliminationPass());
+//  func_manager.add(llvm::createDeadCodeEliminationPass());
 
   func_manager.doInitialization();
   ForEachBlock(module, [&] (uint64_t, uint64_t, llvm::Function *func) {

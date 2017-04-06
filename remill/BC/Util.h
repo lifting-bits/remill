@@ -11,6 +11,7 @@
 namespace llvm {
 class Argument;
 class BasicBlock;
+class CallInst;
 class Function;
 class GlobalObject;
 class GlobalVariable;
@@ -25,11 +26,11 @@ namespace remill {
 void InitFunctionAttributes(llvm::Function *F);
 
 // Create a tail-call from one lifted function to another.
-void AddTerminatingTailCall(llvm::Function *source_func,
-                            llvm::Value *dest_func);
+llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
+                                       llvm::Value *dest_func);
 
-void AddTerminatingTailCall(llvm::BasicBlock *source_block,
-                            llvm::Value *dest_func);
+llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
+                                       llvm::Value *dest_func);
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.

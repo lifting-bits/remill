@@ -63,8 +63,8 @@ void InitFunctionAttributes(llvm::Function *function) {
 }
 
 // Create a tail-call from one lifted function to another.
-void AddTerminatingTailCall(llvm::Function *source_func,
-                            llvm::Value *dest_func) {
+llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
+                                       llvm::Value *dest_func) {
   if (source_func->isDeclaration()) {
     llvm::IRBuilder<> ir(llvm::BasicBlock::Create(
         source_func->getContext(), "", source_func));
@@ -79,13 +79,14 @@ void AddTerminatingTailCall(llvm::Function *source_func,
     call_target_instr->setTailCallKind(llvm::CallInst::TCK_MustTail);
     call_target_instr->setCallingConv(llvm::CallingConv::Fast);
     ir.CreateRet(call_target_instr);
+    return call_target_instr;
   } else {
-    AddTerminatingTailCall(&(source_func->back()), dest_func);
+    return AddTerminatingTailCall(&(source_func->back()), dest_func);
   }
 }
 
-void AddTerminatingTailCall(llvm::BasicBlock *source_block,
-                            llvm::Value *dest_func) {
+llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
+                                       llvm::Value *dest_func) {
   CHECK(nullptr != dest_func)
       << "Target function/block does not exist!";
 
@@ -117,6 +118,7 @@ void AddTerminatingTailCall(llvm::BasicBlock *source_block,
   call_target_instr->setTailCallKind(llvm::CallInst::TCK_MustTail);
   call_target_instr->setCallingConv(llvm::CallingConv::Fast);
   ir.CreateRet(call_target_instr);
+  return call_target_instr;
 }
 
 // Find a local variable defined in the entry block of the function. We use

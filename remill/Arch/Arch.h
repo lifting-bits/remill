@@ -41,7 +41,7 @@ class Arch {
   // Number of bits in an address.
   const OSName os_name;
   const ArchName arch_name;
-  const unsigned address_size;
+  const uint64_t address_size;
 
  protected:
   Arch(OSName os_name_, ArchName arch_name_);

@@ -53,9 +53,6 @@ static llvm::Function *FindPureIntrinsic(const llvm::Module *module,
 static llvm::Function *FindArgMemOnlyIntrinsic(const llvm::Module *module,
                                                const char *name) {
   auto function = FindIntrinsic(module, name);
-
-  // We want memory intrinsics to be marked as not accessing memory so that
-  // they don't interfere with dead store elimination.
   function->addFnAttr(llvm::Attribute::ArgMemOnly);
   return function;
 }

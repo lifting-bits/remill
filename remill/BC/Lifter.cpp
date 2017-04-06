@@ -201,7 +201,6 @@ void Lifter::LiftBlocks(const cfg::Module *cfg_module) {
   func_pass_manager.add(llvm::createCFGSimplificationPass());
   func_pass_manager.add(llvm::createPromoteMemoryToRegisterPass());
   func_pass_manager.add(llvm::createReassociatePass());
-  func_pass_manager.add(llvm::createInstructionCombiningPass());
   func_pass_manager.add(llvm::createDeadStoreEliminationPass());
   func_pass_manager.add(llvm::createDeadCodeEliminationPass());
 

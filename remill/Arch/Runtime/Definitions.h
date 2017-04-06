@@ -38,12 +38,12 @@
 
 // Define a semantics implementing function.
 #define DEF_SEM(name, ...) \
-    ALWAYS_INLINE static Memory *name ( \
+    ALWAYS_INLINE __attribute__((flatten)) static Memory *name ( \
         Memory *memory, State &state, ##__VA_ARGS__) noexcept
 
 // Define a semantics implementing function.
 #define DEF_HELPER(name, ...) \
-  ALWAYS_INLINE static auto name ( \
+  ALWAYS_INLINE __attribute__((flatten)) static auto name ( \
       Memory *&memory, State &state, ##__VA_ARGS__) noexcept
 
 // An instruction where the implementation is the same for all operand sizes.
