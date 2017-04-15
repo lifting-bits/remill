@@ -1,4 +1,18 @@
-/* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+/*
+ * Copyright (c) 2017 Trail of Bits, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <glog/logging.h>
 
@@ -6,6 +20,8 @@
 #include <sstream>
 #include <string>
 
+#include <llvm/IR/Attributes.h>
+#include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
 
 #undef HAS_FEATURE_AVX
@@ -21,6 +37,7 @@
 #include "remill/Arch/X86/Arch.h"
 #include "remill/Arch/X86/XED.h"
 #include "remill/Arch/X86/Runtime/State.h"
+#include "remill/BC/Version.h"
 #include "remill/OS/OS.h"
 
 namespace remill {
@@ -722,14 +739,24 @@ void X86Arch::PrepareModule(llvm::Module *mod) const {
   mod->setTargetTriple(triple);
 
   // Go and remove compile-time attributes added into the semantics. These
-  // can screw up later compilation.
+  // can screw up later compilation. We purposefully compile semantics with
+  // things like auto-vectorization disabled so that it keeps the bitcode
+  // to a simpler subset of the available LLVM instruction set. If/when we
+  // compile this bitcode back into machine code, we may want to use those
+  // features, and clang will complain if we try to do so if these metadata
+  // remain present.
   auto &context = mod->getContext();
+
+  llvm::AttributeSet target_attribs;
+  target_attribs = target_attribs.addAttribute(
+      context, llvm::AttributeSet::FunctionIndex, "target-features");
+  target_attribs = target_attribs.addAttribute(
+      context, llvm::AttributeSet::FunctionIndex, "target-cpu");
+
   for (llvm::Function &func : *mod) {
     auto attribs = func.getAttributes();
-    attribs = attribs.removeAttribute(
-        context, llvm::AttributeSet::FunctionIndex, "target-features");
-    attribs = attribs.removeAttribute(
-        context, llvm::AttributeSet::FunctionIndex, "target-cpu");
+    attribs = attribs.removeAttributes(
+        context, llvm::AttributeSet::FunctionIndex, target_attribs);
     func.setAttributes(attribs);
   }
 }

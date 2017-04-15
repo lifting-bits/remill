@@ -1,4 +1,18 @@
-/* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+/*
+ * Copyright (c) 2017 Trail of Bits, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <glog/logging.h>
 
@@ -49,28 +63,20 @@ static llvm::Function *FindPureIntrinsic(const llvm::Module *module,
   return function;
 }
 
-// Find a specific function.
-static llvm::Function *FindArgMemOnlyIntrinsic(const llvm::Module *module,
-                                               const char *name) {
-  auto function = FindIntrinsic(module, name);
-  function->addFnAttr(llvm::Attribute::ArgMemOnly);
-  return function;
-}
-
 }  // namespace
 
 IntrinsicTable::IntrinsicTable(const llvm::Module *module)
     : error(FindIntrinsic(module, "__remill_error")),
 
       // Control-flow.
-      function_call(FindArgMemOnlyIntrinsic(module, "__remill_function_call")),
-      function_return(FindArgMemOnlyIntrinsic(
+      function_call(FindIntrinsic(module, "__remill_function_call")),
+      function_return(FindIntrinsic(
           module, "__remill_function_return")),
-      jump(FindArgMemOnlyIntrinsic(module, "__remill_jump")),
-      missing_block(FindArgMemOnlyIntrinsic(module, "__remill_missing_block")),
+      jump(FindIntrinsic(module, "__remill_jump")),
+      missing_block(FindIntrinsic(module, "__remill_missing_block")),
 
       // OS interaction.
-      async_hyper_call(FindArgMemOnlyIntrinsic(
+      async_hyper_call(FindIntrinsic(
           module, "__remill_async_hyper_call")),
 
       // Memory access.

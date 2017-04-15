@@ -1,4 +1,18 @@
-/* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+/*
+ * Copyright (c) 2017 Trail of Bits, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <glog/logging.h>
 
@@ -25,7 +39,6 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
-#include <llvm/IR/Verifier.h>
 
 #include <llvm/IRReader/IRReader.h>
 
@@ -35,6 +48,7 @@
 #include <llvm/Support/ToolOutputFile.h>
 
 #include "remill/BC/ABI.h"
+#include "remill/BC/Compat/Verifier.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/FileSystem.h"
 
@@ -76,7 +90,7 @@ llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
     llvm::CallInst *call_target_instr = ir.CreateCall(dest_func, args);
 
     // Make sure we tail-call from one block method to another.
-    call_target_instr->setTailCallKind(llvm::CallInst::TCK_MustTail);
+    call_target_instr->setTailCallKind(llvm::CallInst::TCK_Tail);
     call_target_instr->setCallingConv(llvm::CallingConv::Fast);
     ir.CreateRet(call_target_instr);
     return call_target_instr;
@@ -90,8 +104,7 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
   CHECK(nullptr != dest_func)
       << "Target function/block does not exist!";
 
-  LOG_IF(ERROR, source_block->getTerminator() ||
-                source_block->getTerminatingMustTailCall())
+  LOG_IF(ERROR, source_block->getTerminator())
       << "Block already has a terminator; not adding fall-through call to: "
       << (dest_func ? dest_func->getName().str() : "<unreachable>");
 
@@ -115,7 +128,7 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
   llvm::CallInst *call_target_instr = ir.CreateCall(dest_func, args);
 
   // Make sure we tail-call from one block method to another.
-  call_target_instr->setTailCallKind(llvm::CallInst::TCK_MustTail);
+  call_target_instr->setTailCallKind(llvm::CallInst::TCK_Tail);
   call_target_instr->setCallingConv(llvm::CallingConv::Fast);
   ir.CreateRet(call_target_instr);
   return call_target_instr;
@@ -193,7 +206,7 @@ llvm::Function *FindFunction(const llvm::Module *module, std::string name) {
 // Find a global variable with name `name` in the module `M`.
 llvm::GlobalVariable *FindGlobaVariable(const llvm::Module *module,
                                         std::string name) {
-  return module->getGlobalVariable(name);
+  return module->getGlobalVariable(name, true);
 }
 
 // Reads an LLVM module from a file.
@@ -290,6 +303,7 @@ std::string FindSemanticsBitcodeFile(const std::string &path,
 
   LOG(FATAL)
       << "Cannot find path to " << arch << " semantics bitcode file.";
+  return "";
 }
 
 namespace {
@@ -324,28 +338,6 @@ llvm::Argument *NthArgument(llvm::Function *func, size_t index) {
     ++it;
   }
   return &*it;
-}
-
-// Run a callback function for every indirect block entry in a remill-lifted
-// bitcode module.
-void ForEachBlock(llvm::Module *module, BlockCallback on_each_function) {
-  for (auto &global_var : module->globals()) {
-    uint64_t pc = 0;
-    uint64_t id = 0;
-    if (!TryGetBlockPC(&global_var, pc)) {
-      continue;
-    }
-    if (!TryGetBlockId(&global_var, id)) {
-      id = pc;
-    }
-
-    auto func = llvm::dyn_cast<llvm::Function>(global_var.getInitializer());
-    CHECK(func != nullptr)
-        << "Global variable " << global_var.getName().str()
-        << " should be initialized with a function.";
-
-    on_each_function(pc, id, func);
-  }
 }
 
 // Clone function `source_func` into `dest_func`. This will strip out debug
@@ -493,86 +485,9 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
 
 namespace {
 
-static bool TryGetBlockInt(llvm::GlobalObject *func, uint64_t &pc,
-                           const char *name) {
-  auto md = func->getMetadata(name);
-  if (!md) {
-    return false;
-  }
-  auto val = llvm::dyn_cast<llvm::ValueAsMetadata>(md->getOperand(0).get());
-  if (!val) {
-    return false;
-  }
-  auto pc_val = llvm::dyn_cast<llvm::ConstantInt>(val->getValue());
-  if (!pc_val) {
-    return false;
-  }
-  pc = pc_val->getZExtValue();
-  return true;
-}
-
-static void SetBlockMeta(llvm::GlobalObject *func, const char *name, uint64_t val) {
-  auto &context = func->getContext();
-  auto int_type = llvm::Type::getInt64Ty(context);
-  auto const_val = llvm::ConstantInt::get(int_type, val);
-  auto md = llvm::ValueAsMetadata::get(const_val);
-  func->setMetadata(name, llvm::MDNode::get(context, md));
-}
-
-}  // namespace
-
-// Try to get the address of a block.
-bool TryGetBlockPC(llvm::GlobalObject *func, uint64_t &pc) {
-  return TryGetBlockInt(func, pc, "pc");
-}
-
-// Try to get the ID of this block. This may be the same as the block's PC.
-bool TryGetBlockId(llvm::GlobalObject *func, uint64_t &id) {
-  return TryGetBlockInt(func, id, "id");
-}
-
-// Try to get the ID of this block. This may be the same as the block's PC.
-bool TryGetBlockName(llvm::Function *func, std::string &name) {
-  auto md = func->getMetadata("name");
-  if (!md) {
-    return false;
-  }
-  auto val = llvm::dyn_cast<llvm::ValueAsMetadata>(md->getOperand(0).get());
-  if (!val) {
-    return false;
-  }
-  auto name_val = llvm::dyn_cast<llvm::ConstantDataArray>(val->getValue());
-  if (!name_val) {
-    return false;
-  }
-  name = name_val->getAsString().str();
-  return true;
-}
-
-// Set the PC of a block.
-void SetBlockPC(llvm::GlobalObject *func, uint64_t pc) {
-  SetBlockMeta(func, "pc", pc);
-}
-
-// Set the ID of a block.
-void SetBlockId(llvm::GlobalObject *func, uint64_t id) {
-  SetBlockMeta(func, "id", id);
-}
-
-void SetBlockName(llvm::Function *func, const std::string &name) {
-  auto &context = func->getContext();
-  auto const_val = llvm::ConstantDataArray::getString(
-      context, name, false  /* AddNull */);
-  auto addr_md = llvm::ValueAsMetadata::get(const_val);
-  func->setMetadata("name", llvm::MDNode::get(context, addr_md));
-}
-
-namespace {
-
 // Initialize some attributes that are common to all newly created block
 // functions. Also, give pretty names to the arguments of block functions.
 static void InitBlockFunctionAttributes(llvm::Function *block_func) {
-
   block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
   block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
 
@@ -616,7 +531,7 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
 
 // Make `func` a clone of the `__remill_basic_block` function.
 void CloneBlockFunctionInto(llvm::Function *func) {
-  auto module = func->getParent();
+  llvm::Module *module = func->getParent();
   auto basic_block = module->getFunction("__remill_basic_block");
   CHECK(nullptr != basic_block)
       << "Unable to find __remill_basic_block in module "

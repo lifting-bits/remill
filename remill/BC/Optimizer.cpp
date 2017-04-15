@@ -1,4 +1,18 @@
-/* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+/*
+ * Copyright (c) 2017 Trail of Bits, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <glog/logging.h>
 
@@ -11,7 +25,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <llvm/Analysis/TargetLibraryInfo.h>
+#include <llvm/ADT/Triple.h>
 
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
@@ -28,8 +42,10 @@
 #include <llvm/Transforms/Utils/Local.h>
 
 #include "remill/BC/ABI.h"
+#include "remill/BC/Compat/TargetLibraryInfo.h"
 #include "remill/BC/Optimizer.h"
 #include "remill/BC/Util.h"
+
 #include "remill/OS/FileSystem.h"
 
 namespace remill {
@@ -937,9 +953,14 @@ static void DisableReoptimization(llvm::Module *module) {
 static void RunO3(llvm::Module *module) {
   llvm::legacy::FunctionPassManager func_manager(module);
   llvm::legacy::PassManager module_manager;
+  llvm::Triple triple(module->getTargetTriple());
 
-  auto TLI = new llvm::TargetLibraryInfoImpl(
-      llvm::Triple(module->getTargetTriple()));
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 8)
+  auto TLI = new llvm::TargetLibraryInfoImpl(triple);
+#else
+  auto TLI = new llvm::TargetLibraryInfo(triple);
+#endif
+
   TLI->disableAllFunctions();
 
   llvm::PassManagerBuilder builder;
@@ -947,24 +968,25 @@ static void RunO3(llvm::Module *module) {
   builder.SizeLevel = 0;  // -Oz
   builder.Inliner = llvm::createFunctionInliningPass(999);
   builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
-  builder.DisableTailCalls = false;  // Enable tail calls.
   builder.DisableUnrollLoops = false;  // Unroll loops!
   builder.DisableUnitAtATime = false;
   builder.SLPVectorize = false;  // Don't produce vector operations.
   builder.LoopVectorize = false;  // Don't produce vector operations.
+
+  builder.DisableTailCalls = false;  // Enable tail calls.
   builder.LoadCombine = false;  // Don't coalesce loads.
   builder.MergeFunctions = false;  // Try to deduplicate functions.
   builder.VerifyInput = false;
   builder.VerifyOutput = false;
-
   builder.populateFunctionPassManager(func_manager);
+
   builder.populateModulePassManager(module_manager);
 
-//  func_manager.add(llvm::createCFGSimplificationPass());
-//  func_manager.add(llvm::createPromoteMemoryToRegisterPass());
-//  func_manager.add(llvm::createReassociatePass());
-//  func_manager.add(llvm::createDeadStoreEliminationPass());
-//  func_manager.add(llvm::createDeadCodeEliminationPass());
+  func_manager.add(llvm::createCFGSimplificationPass());
+  func_manager.add(llvm::createPromoteMemoryToRegisterPass());
+  func_manager.add(llvm::createReassociatePass());
+  func_manager.add(llvm::createDeadStoreEliminationPass());
+  func_manager.add(llvm::createDeadCodeEliminationPass());
 
   func_manager.doInitialization();
   ForEachBlock(module, [&] (uint64_t, uint64_t, llvm::Function *func) {
@@ -979,7 +1001,8 @@ static void RunO3(llvm::Module *module) {
 
 // Replace all uses of a specific intrinsic with an undefined value.
 static void ReplaceUndefIntrinsic(llvm::Function *function) {
-  auto intrinsics = function->getParent()->getFunction("__remill_intrinsics");
+  auto module = function->getParent();
+  auto intrinsics = module->getFunction("__remill_intrinsics");
 
   std::vector<llvm::CallInst *> call_insts;
   for (auto callers : function->users()) {

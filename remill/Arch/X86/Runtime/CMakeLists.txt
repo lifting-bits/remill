@@ -68,7 +68,7 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
     )
 
     # Note: `-O0 -g3` is significant here. We need to make sure that we can
-    #       recover variables names within `__remill_basic_block` that may have
+    #       recover variables names within `_remill_basic_block` that may have
     #       been lost when the code was compiled.
     add_custom_command(
         OUTPUT  BasicBlock.${name}.bc
@@ -105,6 +105,11 @@ endmacro()
 COMPILE_X86_SEMANTICS(x86 32 0 0)
 COMPILE_X86_SEMANTICS(x86_avx 32 1 0)
 COMPILE_X86_SEMANTICS(x86_avx512 32 1 1)
-COMPILE_X86_SEMANTICS(amd64 64 0 0)
-COMPILE_X86_SEMANTICS(amd64_avx 64 1 0)
-COMPILE_X86_SEMANTICS(amd64_avx512 64 1 1)
+
+# only do 64-bit binaries on 64-bit platforms
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    COMPILE_X86_SEMANTICS(amd64 64 0 0)
+    COMPILE_X86_SEMANTICS(amd64_avx 64 1 0)
+    COMPILE_X86_SEMANTICS(amd64_avx512 64 1 1)
+endif()
+
