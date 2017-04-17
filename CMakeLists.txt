@@ -91,8 +91,8 @@ find_package(LLVM 3.9 REQUIRED CONFIG)
 llvm_map_components_to_libnames(LLVM_LIBRARIES support core irreader ipo bitreader bitwriter analysis transformutils lto scalaropts)
 list(APPEND PROJECT_LIBRARIES ${LLVM_LIBRARIES})
 
-list(APPEND PROJECT_INCLUDEDIRECTORIES ${LLVM_INCLUDE_DIRS})
 list(APPEND PROJECT_DEFINITIONS ${LLVM_DEFINITIONS})
+list(APPEND PROJECT_INCLUDEDIRECTORIES ${LLVM_INCLUDE_DIRS})
 
 # xed
 find_package(XED REQUIRED)
@@ -101,8 +101,8 @@ list(APPEND PROJECT_INCLUDEDIRECTORIES ${XED_INCLUDE_DIRS})
 
 # google gtest
 find_package(gtest REQUIRED)
-list(APPEND PROJECT_LIBRARIES ${gtest_INCLUDE_DIRS})
-list(APPEND PROJECT_INCLUDEDIRECTORIES ${gtest_LIBRARIES})
+list(APPEND PROJECT_LIBRARIES ${gtest_LIBRARIES})
+list(APPEND PROJECT_INCLUDEDIRECTORIES ${gtest_INCLUDE_DIRS})
 
 # google log module
 find_package(glog REQUIRED)
