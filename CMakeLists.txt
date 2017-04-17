@@ -15,10 +15,6 @@
 project(remill LANGUAGES C CXX ASM)
 cmake_minimum_required (VERSION 3.2)
 
-if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-    message(FATAL_ERROR "Remill is only supported on 64-bit architectures.")
-endif ()
-
 #
 # compiler selection
 #
@@ -29,10 +25,9 @@ endif ()
 
 if (DEFINED LLVM_INSTALL_PREFIX)
     set(CMAKE_LLVM_LINK "${LLVM_INSTALL_PREFIX}/bin/llvm-link")
-
-    set(CMAKE_C_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang-3.9")
-    set(CMAKE_CXX_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang-3.9")
-    set(CMAKE_ASM_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang-3.9")
+    set(CMAKE_C_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang")
+    set(CMAKE_CXX_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang++")
+    set(CMAKE_ASM_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang")
 endif ()
 
 if (NOT DEFINED CMAKE_C_COMPILER)
@@ -64,7 +59,7 @@ if (NOT WIN32)
 endif ()
 
 # warnings and compiler settings
-set(PROJECT_CXXWARNINGS "-Wall -Wextra -Werror -pedantic -Wno-unused-parameter -Wno-c++98-compat -Wno-unreachable-code-return -Wno-nested-anon-types -Wno-extended-offsetof -Wno-gnu-anonymous-struct -Wno-gnu-designator -Wno-variadic-macros -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-statement-expression -Wno-return-type-c-linkage -Wno-c99-extensions -Wno-ignored-attributes -Wno-unused-local-typedef")
+set(PROJECT_CXXWARNINGS "-Wall -Wextra -Werror -Wconversion -pedantic -Wno-unused-parameter -Wno-c++98-compat -Wno-unreachable-code-return -Wno-nested-anon-types -Wno-extended-offsetof -Wno-gnu-anonymous-struct -Wno-gnu-designator -Wno-variadic-macros -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-statement-expression -Wno-return-type-c-linkage -Wno-c99-extensions -Wno-ignored-attributes -Wno-unused-local-typedef")
 set(PROJECT_CXXFLAGS "${PROJECT_CXXFLAGS} -Wno-unknown-warning-option ${PROJECT_CXXWARNINGS} -fPIC -fno-omit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fno-asynchronous-unwind-tables -fno-rtti")
 
 # default build type
@@ -99,7 +94,7 @@ else ()
 endif ()
 
 # llvm
-find_package(LLVM 3.9 REQUIRED CONFIG)
+find_package(LLVM REQUIRED CONFIG HINTS "${LLVM_INSTALL_PREFIX}/lib/cmake/llvm/" "${LLVM_INSTALL_PREFIX}/share/llvm/cmake/")
 
 llvm_map_components_to_libnames(LLVM_LIBRARIES support core irreader ipo bitreader bitwriter analysis transformutils lto scalaropts)
 list(APPEND PROJECT_LIBRARIES ${LLVM_LIBRARIES})
@@ -132,18 +127,6 @@ list(APPEND PROJECT_INCLUDEDIRECTORIES ${Protobuf_INCLUDE_DIR})
 list(APPEND PROJECT_DEFINITIONS "GOOGLE_PROTOBUF_NO_RTTI")
 
 #
-# protobuf file generation 
-#
-
-# this function can't be told where to store the output files! we have to add the whole binary directory
-# to the include directories (or change it and lose compatibility with the system libraries)
-protobuf_generate_cpp(PROJECT_PROTOBUFSOURCEFILES PROJECT_PROTOBUFHEADERFILES "${CMAKE_SOURCE_DIR}/remill/CFG/CFG.proto")
-list(APPEND PROJECT_INCLUDEDIRECTORIES ${CMAKE_CURRENT_BINARY_DIR})
-
-protobuf_generate_python(PROJECT_PROTOBUFPYTHONMODULE "${CMAKE_SOURCE_DIR}/remill/CFG/CFG.proto")
-add_custom_target(protobuf_python_module DEPENDS ${PROJECT_PROTOBUFPYTHONMODULE})
-
-#
 # target settings
 #
 
@@ -165,12 +148,7 @@ add_library(${PROJECT_NAME} STATIC
 
     remill/OS/FileSystem.cpp
     remill/OS/OS.cpp
-
-    ${PROJECT_PROTOBUFSOURCEFILES}
-    ${PROJECT_PROTOBUFHEADERFILES}
 )
-
-add_dependencies(${PROJECT_NAME} protobuf_python_module)
 
 # add everything as public; the remill_lift executable will inherit all settings from us
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_LIBRARIES})
@@ -189,10 +167,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 install(DIRECTORY DESTINATION "share/remill")
 install(DIRECTORY DESTINATION "share/remill/disassembler")
 
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/tools/remill_disass" DESTINATION "share/remill/disassembler")
-install(FILES "${CMAKE_SOURCE_DIR}/tools/setup.py" DESTINATION "share/remill/disassembler")
-install(FILES "${PROJECT_PROTOBUFPYTHONMODULE}" DESTINATION "share/remill/disassembler/remill_disass")
-
 #
 # additional targets
 #
@@ -201,4 +175,10 @@ add_custom_target(semantics)
 
 add_subdirectory(remill/Arch/X86/Runtime)
 add_subdirectory(tools)
-add_subdirectory(tests/X86)
+
+if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+    if(UNIX AND NOT APPLE)
+      set(LINUX TRUE)
+      add_subdirectory(tests/X86)
+  endif ()
+endif ()
