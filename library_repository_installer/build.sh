@@ -495,13 +495,7 @@ function InstallCMakeModules
 
     printf " > Copying...\n"
     rm "$LOG_FILE" 2> /dev/null
-    cp -rp modules "$install_directory" >> "$LOG_FILE" 2>&1
-    if [ $? -ne 0 ] ; then
-        ShowLog
-        return 1
-    fi
-
-    cp repository.cmake "$install_directory" >> "$LOG_FILE" 2>&1
+    cp -rp cmake "$install_directory" >> "$LOG_FILE" 2>&1
     if [ $? -ne 0 ] ; then
         ShowLog
         return 1
