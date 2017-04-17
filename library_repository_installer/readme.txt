@@ -1,0 +1,2 @@
+Just run the ./build.sh script with a destination and it will build a repository with all the libraries that are needed by both remill and mcsema.
+The new cmake files will export all settings automatically to any target linking to remill.

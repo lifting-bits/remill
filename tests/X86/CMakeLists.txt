@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_package(GTEST REQUIRED)
-include_directories("${GTEST_INCLUDE_DIRS}")
+find_package(gtest REQUIRED)
 
 enable_testing()
 

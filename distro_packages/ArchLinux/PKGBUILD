@@ -1,0 +1,39 @@
+pkgname=remill
+pkgver=20170417_35c6221
+pkgrel=0
+arch=('x86_64')
+
+pkgdesc="Machine code to LLVM binary translator."
+url="https://github.com/trailofbits/remill"
+license=('Apache')
+
+makedepends=('git')
+
+provides=('remill')
+conflicts=('remill')
+
+source=("${pkgname}::git+https://github.com/trailofbits/remill.git#branch=alessandro/refactor/cmake")
+sha1sums=('SKIP')
+
+pkgver() {
+    cd "${srcdir}/${pkgname}"
+    git log -1 --date=format:%Y%m%d --pretty=format:%ad_%h
+}
+
+build() {
+    if [ ! -d build ] ; then
+        mkdir build
+        cd build
+    else
+        cd build
+        make clean
+    fi
+
+    cmake -DCMAKE_INSTALL_PREFIX=${pkgdir} ${srcdir}/${pkgname}
+    make -j `nproc`
+}
+
+package() {
+    cd build
+    make install
+}
