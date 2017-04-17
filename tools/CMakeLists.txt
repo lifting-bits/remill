@@ -10,6 +10,10 @@ if (EXISTS ${PROJECT_SOURCE_DIR}/tools/mcsema)
     add_subdirectory(${PROJECT_SOURCE_DIR}/tools/mcsema)
 endif()
 
+if(UNIX AND NOT APPLE)
+    set(LINUX TRUE)
+endif()
+
 # if (LINUX)
 #     add_subdirectory(${PROJECT_SOURCE_DIR}/tools/vmill)
 # endif(LINUX)

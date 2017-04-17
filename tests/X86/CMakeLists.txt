@@ -1,6 +1,6 @@
 # Copyright 2017 Peter Goodman (peter@trailofbits.com), all rights reserved.
 
-find_package(GTEST REQUIRED)
+find_package(gtest REQUIRED)
 
 enable_testing()
 
