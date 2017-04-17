@@ -6,6 +6,6 @@ add_dependencies(remill-lift semantics)
 
 install(
     TARGETS remill-lift
-    RUNTIME DESTINATION usr/bin
-    LIBRARY DESTINATION usr/lib
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
 )

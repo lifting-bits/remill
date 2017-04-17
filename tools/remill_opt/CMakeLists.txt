@@ -7,6 +7,6 @@ add_dependencies(remill-opt semantics)
 
 install(
     TARGETS remill-opt
-    RUNTIME DESTINATION usr/bin
-    LIBRARY DESTINATION usr/lib
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
 )

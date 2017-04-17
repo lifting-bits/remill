@@ -134,8 +134,10 @@ add_custom_target(protobuf_python_module DEPENDS ${PROJECT_PROTOBUFPYTHONMODULE}
 # target settings
 #
 
-list(APPEND PROJECT_DEFINITIONS "INSTALL_SEMANTICS_DIR=\"${CMAKE_INSTALL_PREFIX}/share/remill/semantics/\"")
+list(APPEND PROJECT_DEFINITIONS "INSTALL_SEMANTICS_DIR=\"${CMAKE_INSTALL_PREFIX}share/remill/semantics/\"")
 list(APPEND PROJECT_DEFINITIONS "BUILD_SEMANTICS_DIR=\"${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/X86/Runtime/\"")
+
+MESSAGE(STATUS "DEBUG: ${CMAKE_INSTALL_PREFIX}share/remill/semantics")
 
 add_library(${PROJECT_NAME} STATIC
     remill/Arch/X86/Arch.cpp
@@ -176,9 +178,12 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # install directives
 #
 
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/tools/remill_disass" DESTINATION "usr/share/remill/disassembler")
-install(FILES "${CMAKE_SOURCE_DIR}/tools/setup.py" DESTINATION "usr/share/remill/disassembler")
-install(FILES "${PROJECT_PROTOBUFPYTHONMODULE}" DESTINATION "usr/share/remill/disassembler/remill_disass")
+install(DIRECTORY DESTINATION "share/remill")
+install(DIRECTORY DESTINATION "share/remill/disassembler")
+
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/tools/remill_disass" DESTINATION "share/remill/disassembler")
+install(FILES "${CMAKE_SOURCE_DIR}/tools/setup.py" DESTINATION "share/remill/disassembler")
+install(FILES "${PROJECT_PROTOBUFPYTHONMODULE}" DESTINATION "share/remill/disassembler/remill_disass")
 
 #
 # additional targets
