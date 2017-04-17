@@ -119,13 +119,25 @@ list(APPEND PROJECT_INCLUDEDIRECTORIES ${Protobuf_INCLUDE_DIR})
 list(APPEND PROJECT_DEFINITIONS "GOOGLE_PROTOBUF_NO_RTTI")
 
 #
+# protobuf file generation 
+#
+
+# this function can't be told where to store the output files! we have to add the whole binary directory
+# to the include directories (or change it and lose compatibility with the system libraries)
+protobuf_generate_cpp(PROJECT_PROTOBUFSOURCEFILES PROJECT_PROTOBUFHEADERFILES "${CMAKE_SOURCE_DIR}/remill/CFG/CFG.proto")
+list(APPEND PROJECT_INCLUDEDIRECTORIES ${CMAKE_CURRENT_BINARY_DIR})
+
+protobuf_generate_python(PROJECT_PROTOBUFPYTHONMODULE "${CMAKE_SOURCE_DIR}/remill/CFG/CFG.proto")
+add_custom_target(protobuf_python_module DEPENDS ${PROJECT_PROTOBUFPYTHONMODULE})
+
+#
 # target settings
 #
 
 list(APPEND PROJECT_DEFINITIONS "INSTALL_SEMANTICS_DIR=\"${CMAKE_INSTALL_PREFIX}/share/remill/semantics/\"")
 list(APPEND PROJECT_DEFINITIONS "BUILD_SEMANTICS_DIR=\"${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/X86/Runtime/\"")
 
-add_library(remill STATIC
+add_library(${PROJECT_NAME} STATIC
     remill/Arch/X86/Arch.cpp
     remill/Arch/Arch.cpp
     remill/Arch/Instruction.cpp
@@ -143,7 +155,12 @@ add_library(remill STATIC
     remill/OS/OS.cpp
 
     third_party/murmurhash/MurmurHash2.cpp
+
+    ${PROJECT_PROTOBUFSOURCEFILES}
+    ${PROJECT_PROTOBUFHEADERFILES}
 )
+
+add_dependencies(${PROJECT_NAME} protobuf_python_module)
 
 # add everything as public; the remill_lift executable will inherit all settings from us
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_LIBRARIES})
@@ -155,7 +172,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS ${PROJECT_CXXFLAG
 # also be set to PUBLIC since remill-lift includes some files directly
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-install(TARGETS ${PROJECT_NAME} ARCHIVE DESTINATION lib)
+#
+# install directives
+#
+
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/tools/remill_disass" DESTINATION "usr/share/remill/disassembler")
+install(FILES "${CMAKE_SOURCE_DIR}/tools/setup.py" DESTINATION "usr/share/remill/disassembler")
+install(FILES "${PROJECT_PROTOBUFPYTHONMODULE}" DESTINATION "usr/share/remill/disassembler/remill_disass")
 
 #
 # additional targets

@@ -7,7 +7,10 @@
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshorten-64-to-32"
-#include "generated/CFG/CFG.pb.h"
+
+// this is copied inside the build directory by the protobuf macros
+#include <CFG.pb.h>
+
 #pragma clang diagnostic pop
 class Module;
 
