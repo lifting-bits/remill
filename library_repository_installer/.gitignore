@@ -1,0 +1,17 @@
+gflags
+gflags-build
+
+glog
+glog-build
+
+googletest
+googletest-build
+
+llvm
+llvm-build
+
+mbuild
+xed
+
+protobuf
+

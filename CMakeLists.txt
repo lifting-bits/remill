@@ -39,7 +39,7 @@ if (NOT DEFINED CMAKE_LLVM_LINK)
 endif ()
 
 #
-# compiler setings
+# compiler settings
 #
 
 # enable the gnu extensions
