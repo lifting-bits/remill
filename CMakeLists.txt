@@ -165,15 +165,15 @@ add_library(${PROJECT_NAME} STATIC
     remill/OS/OS.cpp
 )
 
+# this is needed for the #include directives with absolutes paths to work correctly; it must
+# also be set to PUBLIC since remill-lift includes some files directly
+list(APPEND PROJECT_INCLUDEDIRECTORIES ${CMAKE_SOURCE_DIR})
+
 # add everything as public; the remill_lift executable will inherit all settings from us
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_INCLUDEDIRECTORIES})
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_DEFINITIONS})
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS ${PROJECT_CXXFLAGS})
-
-# this is needed for the #include directives with absolutes paths to work correctly; it must
-# also be set to PUBLIC since remill-lift includes some files directly
-target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 #
 # install directives
