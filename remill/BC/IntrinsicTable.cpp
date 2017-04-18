@@ -30,7 +30,7 @@ namespace remill {
 namespace {
 
 // Find a specific function.
-static llvm::Function *FindIntrinsic(const llvm::Module *module,
+static llvm::Function *FindIntrinsic(llvm::Module *module,
                                      const char *name) {
   auto function = FindFunction(module, name);
   CHECK(nullptr != function)
@@ -53,7 +53,7 @@ static llvm::Function *FindIntrinsic(const llvm::Module *module,
 }
 
 // Find a specific function.
-static llvm::Function *FindPureIntrinsic(const llvm::Module *module,
+static llvm::Function *FindPureIntrinsic(llvm::Module *module,
                                          const char *name) {
   auto function = FindIntrinsic(module, name);
 
@@ -65,7 +65,7 @@ static llvm::Function *FindPureIntrinsic(const llvm::Module *module,
 
 }  // namespace
 
-IntrinsicTable::IntrinsicTable(const llvm::Module *module)
+IntrinsicTable::IntrinsicTable(llvm::Module *module)
     : error(FindIntrinsic(module, "__remill_error")),
 
       // Control-flow.

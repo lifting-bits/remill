@@ -64,37 +64,6 @@ DEFINE_bool(add_breakpoints, false,
 namespace remill {
 namespace {
 
-// Lift both targets of a conditional branch into a branch in the bitcode,
-// where each side of the branch tail-calls to the functions associated with
-// the lifted blocks for those branch targets.
-static void LiftConditionalBranch(llvm::BasicBlock *source,
-                                  llvm::Function *dest_true,
-                                  llvm::Function *dest_false) {
-  auto &context = source->getContext();
-  auto function = source->getParent();
-  auto block_true = llvm::BasicBlock::Create(context, "", function);
-  auto block_false = llvm::BasicBlock::Create(context, "", function);
-
-  // TODO(pag): This is a bit ugly. The idea here is that, from the semantics
-  //            code, we need a way to communicate what direction of the
-  //            conditional branch should be followed. It turns out to be
-  //            easiest just to write to a special variable :-)
-  auto branch_taken = FindVarInFunction(function, "BRANCH_TAKEN");
-
-  llvm::IRBuilder<> cond_ir(source);
-  auto cond_addr = cond_ir.CreateLoad(branch_taken);
-  auto cond = cond_ir.CreateLoad(cond_addr);
-  cond_ir.CreateCondBr(
-      cond_ir.CreateICmpEQ(
-          cond,
-          llvm::ConstantInt::get(cond->getType(), 1)),
-          block_true,
-          block_false);
-
-  AddTerminatingTailCall(block_true, dest_true);
-  AddTerminatingTailCall(block_false, dest_false);
-}
-
 // Try to find the function that implements this semantics.
 llvm::Function *GetInstructionFunction(llvm::Module *module,
                                        const std::string &function) {
@@ -158,8 +127,9 @@ bool InstructionLifter::LiftIntoBlock(
 
   // Begin an atomic block.
   if (arch_instr->is_atomic_read_modify_write) {
+    std::vector<llvm::Value *> args = {ir.CreateLoad(mem_ptr)};
     ir.CreateStore(
-        ir.CreateCall(intrinsics->atomic_begin, {ir.CreateLoad(mem_ptr)}),
+        ir.CreateCall(intrinsics->atomic_begin, args),
         mem_ptr);
   }
 
@@ -217,8 +187,9 @@ bool InstructionLifter::LiftIntoBlock(
 
   // End an atomic block.
   if (arch_instr->is_atomic_read_modify_write) {
+    std::vector<llvm::Value *> args = {ir.CreateLoad(mem_ptr)};
     ir.CreateStore(
-        ir.CreateCall(intrinsics->atomic_end, {ir.CreateLoad(mem_ptr)}),
+        ir.CreateCall(intrinsics->atomic_end, args),
         mem_ptr);
   }
 

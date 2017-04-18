@@ -27,7 +27,7 @@ namespace remill {
 
 class IntrinsicTable {
  public:
-  IntrinsicTable(const llvm::Module *M);
+  IntrinsicTable(llvm::Module *M);
 
   llvm::Function * const error;
 

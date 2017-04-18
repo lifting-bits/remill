@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_COMPAT_VERIFIER_H_
-#define REMILL_BC_COMPAT_VERIFIER_H_
+#ifndef REMILL_BC_COMPAT_DEBUGINFO_H_
+#define REMILL_BC_COMPAT_DEBUGINFO_H_
 
 #include "remill/BC/Version.h"
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 5)
-# include <llvm/IR/Verifier.h>
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 7)
+# include <llvm/IR/DebugInfoMetadata.h>
 #else
-# include <llvm/Analysis/Verifier.h>
+# include <llvm/IR/DebugInfo.h>
 #endif
 
-#endif  // REMILL_BC_COMPAT_VERIFIER_H_
+#include <llvm/IR/DebugLoc.h>
+
+#endif  // REMILL_BC_COMPAT_DEBUGINFO_H_

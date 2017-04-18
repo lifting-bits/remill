@@ -75,12 +75,15 @@ llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block);
 // Return a reference to the memory pointer.
 llvm::Value *LoadMemoryPointerRef(llvm::BasicBlock *block);
 
+// Return an `llvm::Value *` that is an `i1` (bool type) representing whether
+// or not a conditional branch is taken.
+llvm::Value *LoadBranchTaken(llvm::BasicBlock *block);
+
 // Find a function with name `name` in the module `M`.
-llvm::Function *FindFunction(const llvm::Module *M, std::string name);
+llvm::Function *FindFunction(llvm::Module *M, std::string name);
 
 // Find a global variable with name `name` in the module `M`.
-llvm::GlobalVariable *FindGlobaVariable(const llvm::Module *M,
-                                        std::string name);
+llvm::GlobalVariable *FindGlobaVariable(llvm::Module *M, std::string name);
 
 // Parses and loads a bitcode file into memory.
 llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
@@ -100,14 +103,14 @@ llvm::Argument *NthArgument(llvm::Function *func, size_t index);
 std::string LLVMThingToString(llvm::Value *thing);
 std::string LLVMThingToString(llvm::Type *thing);
 
-// Apply a callback function to every semantics bitcode function.
-using SemCallback = std::function<void(llvm::Function *)>;
-void ForEachSem(llvm::Module *module, SemCallback callback);
-
-// Apply a callback function to every instruction selection function.
-using IselCallback = std::function<
-    void(const std::string &, llvm::GlobalVariable *, llvm::Function *)>;
-void ForEachIsel(llvm::Module *module, IselCallback callback);
+//// Apply a callback function to every semantics bitcode function.
+//using SemCallback = std::function<void(llvm::Function *)>;
+//void ForEachSem(llvm::Module *module, SemCallback callback);
+//
+//// Apply a callback function to every instruction selection function.
+//using IselCallback = std::function<
+//    void(const std::string &, llvm::GlobalVariable *, llvm::Function *)>;
+//void ForEachIsel(llvm::Module *module, IselCallback callback);
 
 // Clone function `source_func` into `dest_func`. This will strip out debug
 // info during the clone.

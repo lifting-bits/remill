@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-project(remill LANGUAGES C CXX ASM)
+project(REMILL LANGUAGES C CXX ASM)
 cmake_minimum_required (VERSION 3.2)
 
 #
@@ -59,7 +59,7 @@ if (NOT WIN32)
 endif ()
 
 # warnings and compiler settings
-set(PROJECT_CXXWARNINGS "-Wall -Wextra -Werror -Wconversion -pedantic -Wno-unused-parameter -Wno-c++98-compat -Wno-unreachable-code-return -Wno-nested-anon-types -Wno-extended-offsetof -Wno-gnu-anonymous-struct -Wno-gnu-designator -Wno-variadic-macros -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-statement-expression -Wno-return-type-c-linkage -Wno-c99-extensions -Wno-ignored-attributes -Wno-unused-local-typedef")
+set(PROJECT_CXXWARNINGS "-Wall -Wextra -Werror -pedantic -Wno-unused-parameter -Wno-c++98-compat -Wno-unreachable-code-return -Wno-nested-anon-types -Wno-extended-offsetof -Wno-gnu-anonymous-struct -Wno-gnu-designator -Wno-variadic-macros -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-statement-expression -Wno-return-type-c-linkage -Wno-c99-extensions -Wno-ignored-attributes -Wno-unused-local-typedef")
 set(PROJECT_CXXFLAGS "${PROJECT_CXXFLAGS} -Wno-unknown-warning-option ${PROJECT_CXXWARNINGS} -fPIC -fno-omit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fno-asynchronous-unwind-tables -fno-rtti")
 
 # default build type
@@ -94,7 +94,7 @@ else ()
 endif ()
 
 # llvm
-find_package(LLVM REQUIRED CONFIG HINTS "${LLVM_INSTALL_PREFIX}/lib/cmake/llvm/" "${LLVM_INSTALL_PREFIX}/share/llvm/cmake/")
+find_package(LLVM REQUIRED CONFIG)
 
 llvm_map_components_to_libnames(LLVM_LIBRARIES support core irreader ipo bitreader bitwriter analysis transformutils lto scalaropts)
 list(APPEND PROJECT_LIBRARIES ${LLVM_LIBRARIES})
@@ -143,7 +143,6 @@ add_library(${PROJECT_NAME} STATIC
 
     remill/BC/IntrinsicTable.cpp
     remill/BC/Lifter.cpp
-    remill/BC/Optimizer.cpp
     remill/BC/Util.cpp
 
     remill/OS/FileSystem.cpp

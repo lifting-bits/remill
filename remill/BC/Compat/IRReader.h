@@ -14,15 +14,27 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_COMPAT_VERIFIER_H_
-#define REMILL_BC_COMPAT_VERIFIER_H_
+#ifndef REMILL_BC_COMPAT_IRREADER_H_
+#define REMILL_BC_COMPAT_IRREADER_H_
+
+#include <memory>
 
 #include "remill/BC/Version.h"
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 5)
-# include <llvm/IR/Verifier.h>
-#else
-# include <llvm/Analysis/Verifier.h>
+#include <llvm/IRReader/IRReader.h>
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 6)
+
+namespace llvm {
+class Module;
+
+template <typename ...Args>
+inline static std::unique_ptr<Module> parseIRFile(Args&... args) {
+  return std::unique_ptr<Module>(ParseIRFile(args...));
+}
+
+}  // namespace llvm
+
 #endif
 
-#endif  // REMILL_BC_COMPAT_VERIFIER_H_
+#endif  // REMILL_BC_COMPAT_IRREADER_H_

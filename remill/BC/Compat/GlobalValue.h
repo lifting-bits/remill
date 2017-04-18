@@ -14,34 +14,22 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_OPTIMIZER_H_
-#define REMILL_BC_OPTIMIZER_H_
+#ifndef REMILL_BC_COMPAT_GLOBALVALUE_H_
+#define REMILL_BC_COMPAT_GLOBALVALUE_H_
+#include "remill/BC/Version.h"
 
-#include <memory>
+#include <llvm/IR/GlobalValue.h>
 
-namespace llvm {
-class Function;
-class Module;
-
-}  // namespace llvm
 namespace remill {
-class Optimizer {
- public:
-  virtual ~Optimizer(void);
 
-  static std::unique_ptr<Optimizer> Create(llvm::Module *module_);
+inline static llvm::Type *GetValueType(llvm::GlobalValue *global) {
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 7)
+  return global->getType()->getElementType();
+#else
+  return global->getValueType();
+#endif
+}
 
-  virtual void Optimize(void) = 0;
-
- protected:
-  explicit Optimizer(llvm::Module *module_);
-
-  llvm::Module *module;
-
- private:
-  Optimizer(void) = delete;
-
-};
 }  // namespace remill
 
-#endif  // REMILL_BC_OPTIMIZER_H_
+#endif  // REMILL_BC_COMPAT_GLOBALVALUE_H_
