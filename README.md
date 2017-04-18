@@ -90,7 +90,8 @@ brew install glog
 
 #### Clone the repository
 ```shell
-git clone git@github.com:trailofbits/remill.git
+This will also clone the cxx_common module (used to generate a library repository) and mcsema.
+git clone --resursive git@github.com:trailofbits/remill.git
 ```
 
 #### Enter the repository

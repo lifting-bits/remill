@@ -94,7 +94,14 @@ else ()
 endif ()
 
 # llvm
-find_package(LLVM REQUIRED CONFIG)
+if (DEFINED LLVM_INSTALL_PREFIX)
+    list(APPEND FINDPACKAGE_LLVM_HINTS "${LLVM_INSTALL_PREFIX}/lib/cmake/llvm/")
+    list(APPEND FINDPACKAGE_LLVM_HINTS "${LLVM_INSTALL_PREFIX}/share/llvm/cmake/")
+
+    message(STATUS "Using LLVM_INSTALL_PREFIX hints for find_package(LLVM): ${FINDPACKAGE_LLVM_HINTS}")
+endif ()
+
+find_package(LLVM REQUIRED CONFIG HINTS ${FINDPACKAGE_LLVM_HINTS})
 
 llvm_map_components_to_libnames(LLVM_LIBRARIES support core irreader ipo bitreader bitwriter analysis transformutils lto scalaropts)
 list(APPEND PROJECT_LIBRARIES ${LLVM_LIBRARIES})
@@ -132,8 +139,6 @@ list(APPEND PROJECT_DEFINITIONS "GOOGLE_PROTOBUF_NO_RTTI")
 
 list(APPEND PROJECT_DEFINITIONS "INSTALL_SEMANTICS_DIR=\"${CMAKE_INSTALL_PREFIX}share/remill/semantics/\"")
 list(APPEND PROJECT_DEFINITIONS "BUILD_SEMANTICS_DIR=\"${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/X86/Runtime/\"")
-
-MESSAGE(STATUS "DEBUG: ${CMAKE_INSTALL_PREFIX}share/remill/semantics")
 
 add_library(${PROJECT_NAME} STATIC
     remill/Arch/X86/Arch.cpp
