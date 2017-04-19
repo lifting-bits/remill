@@ -171,7 +171,7 @@ list(APPEND PROJECT_INCLUDEDIRECTORIES ${CMAKE_SOURCE_DIR})
 
 # add everything as public; the remill_lift executable will inherit all settings from us
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_LIBRARIES})
-target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_INCLUDEDIRECTORIES})
+target_include_directories(${PROJECT_NAME} PUBLIC SYSTEM ${PROJECT_INCLUDEDIRECTORIES})
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_DEFINITIONS})
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS ${PROJECT_CXXFLAGS})
 
@@ -187,10 +187,16 @@ install(DIRECTORY DESTINATION "share/remill/disassembler")
 #
 
 add_custom_target(semantics)
-
 add_subdirectory(remill/Arch/X86/Runtime)
-add_subdirectory(tools)
 
+# mcsema is stored in a git submodule; make sure it has been initialized
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/tools/mcsema)
+    message(FATAL_ERROR "It looks like you didn't initialize the git module for mcsema! Run git submodule init && git submodule update --recursive")
+endif ()
+
+add_subdirectory(tools/mcsema)
+
+# only enable tests when compiling under x64
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
     if(UNIX AND NOT APPLE)
       set(LINUX TRUE)
