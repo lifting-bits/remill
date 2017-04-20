@@ -59,5 +59,9 @@ TEST_INPUTS(
     0x70000000, 0xFFFFFFFFFFFFFFFF,
     0x80000000, 0xFFFFFFFFFFFFFFFF)
 
-    movsx ARG2_64, ARG1_32
+    mov edi, ARG1_32
+
+    // movsx rsi, edi
+    .byte 0x48, 0x63, 0xf7
+
 TEST_END_64

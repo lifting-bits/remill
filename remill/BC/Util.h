@@ -112,6 +112,10 @@ std::string LLVMThingToString(llvm::Type *thing);
 //    void(const std::string &, llvm::GlobalVariable *, llvm::Function *)>;
 //void ForEachIsel(llvm::Module *module, IselCallback callback);
 
+// Declare a lifted function of the correct type.
+llvm::Function *DeclareLiftedFunction(llvm::Module *module,
+                                      const std::string &name);
+
 // Clone function `source_func` into `dest_func`. This will strip out debug
 // info during the clone.
 //

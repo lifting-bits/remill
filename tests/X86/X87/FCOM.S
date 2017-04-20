@@ -83,5 +83,6 @@ TEST_INPUTS(TEST_INPUTS_MMX_QWORD)
     fld QWORD PTR [rsp]
     push ARG2_64
     fld QWORD PTR [rsp]
-    fcomip st(2)
+    //fcomip st(2)
+    .byte 0xdf, 0xf2
 TEST_END_64

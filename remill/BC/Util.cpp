@@ -356,6 +356,26 @@ llvm::Argument *NthArgument(llvm::Function *func, size_t index) {
   return &*it;
 }
 
+// Declare a lifted function of the correct type.
+llvm::Function *DeclareLiftedFunction(llvm::Module *module,
+                                      const std::string &name) {
+  auto bb = module->getFunction("__remill_basic_block");
+  CHECK(nullptr != bb)
+      << "Cannot declare lifted function " << name << " because the "
+      << " intrinsics __remill_basic_block cannot be found.";
+  auto func_type = bb->getFunctionType();
+
+  auto func = llvm::dyn_cast<llvm::Function>(
+      module->getOrInsertFunction(name, func_type));
+
+  CHECK(nullptr != func)
+      << "Could not insert function " << name << " into module";
+
+  InitFunctionAttributes(func);
+
+  return func;
+}
+
 // Clone function `source_func` into `dest_func`. This will strip out debug
 // info during the clone.
 void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {

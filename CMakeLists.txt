@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-project(REMILL LANGUAGES C CXX ASM)
+project(REMILL LANGUAGES)
 cmake_minimum_required (VERSION 3.2)
 
 #
@@ -56,6 +56,10 @@ if (NOT DEFINED CMAKE_LLVM_LINK)
         set(CMAKE_LLVM_LINK "llvm-link")
     endif ()
 endif ()
+
+enable_language(C)
+enable_language(CXX)
+enable_language(ASM)
 
 #
 # compiler settings
@@ -125,11 +129,6 @@ find_package(XED REQUIRED)
 list(APPEND PROJECT_LIBRARIES ${XED_LIBRARIES})
 list(APPEND PROJECT_INCLUDEDIRECTORIES ${XED_INCLUDE_DIRS})
 
-# google gtest
-find_package(gtest REQUIRED)
-list(APPEND PROJECT_LIBRARIES ${gtest_LIBRARIES})
-list(APPEND PROJECT_INCLUDEDIRECTORIES ${gtest_INCLUDE_DIRS})
-
 # google log module
 find_package(glog REQUIRED)
 list(APPEND PROJECT_LIBRARIES glog::glog)
@@ -137,12 +136,6 @@ list(APPEND PROJECT_LIBRARIES glog::glog)
 # gflags
 find_package(gflags REQUIRED)
 list(APPEND PROJECT_LIBRARIES gflags)
-
-# protobuf
-find_package(Protobuf REQUIRED)
-list(APPEND PROJECT_LIBRARIES ${Protobuf_LIBRARIES})
-list(APPEND PROJECT_INCLUDEDIRECTORIES ${Protobuf_INCLUDE_DIR})
-list(APPEND PROJECT_DEFINITIONS "GOOGLE_PROTOBUF_NO_RTTI")
 
 #
 # target settings

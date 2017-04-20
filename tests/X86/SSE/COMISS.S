@@ -53,7 +53,8 @@ TEST_INPUTS(
     0x7fc00000 /* nan */, 0x7f800000 /* inf */ )
     push ARG2_64
     movd xmm0, ARG1_32
-    comiss xmm0, dword ptr [rsp]
+    //comiss xmm0, dword ptr [rsp]
+    .byte 0x0f, 0x2f, 0x04, 0x24
 TEST_END_64
 
 #if HAS_FEATURE_AVX
@@ -96,6 +97,7 @@ TEST_INPUTS(
     0x7fc00000 /* nan */, 0x7f800000 /* inf */ )
     push ARG2_64
     vmovd xmm0, ARG1_32
-    vcomiss xmm0, dword ptr [rsp]
+    // vcomiss xmm0, dword ptr [rsp]
+    .byte 0xc5, 0xf8, 0x2f, 0x04, 0x24
 TEST_END_64
 #endif  // HAS_FEATURE_AVX

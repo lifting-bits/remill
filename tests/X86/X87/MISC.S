@@ -21,7 +21,8 @@ TEST_END
 
 TEST_BEGIN(FWAIT, 1)
 TEST_INPUTS(0)
-    fwait
+    // fwait
+    .byte 0x9b
 TEST_END
 
 TEST_BEGIN(FNCLEX, 1)

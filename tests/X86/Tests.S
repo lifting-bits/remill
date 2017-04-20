@@ -518,7 +518,5 @@ SYMBOL(__x86_test_table_begin):
     .globl SYMBOL(__x86_test_table_end)
 SYMBOL(__x86_test_table_end):
 
-    /* Reset */
-    .att_syntax prefix
 
 #endif  /* TESTS_X86_TESTS_S_ */

@@ -14,6 +14,12 @@
 
 find_package(gtest REQUIRED)
 
+
+# google gtest
+find_package(gtest REQUIRED)
+list(APPEND PROJECT_LIBRARIES ${gtest_LIBRARIES})
+list(APPEND PROJECT_INCLUDEDIRECTORIES ${gtest_INCLUDE_DIRS})
+
 enable_testing()
 
 add_custom_target(build_x86_tests)
@@ -40,9 +46,9 @@ macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
                 -DIN_TEST_GENERATOR
     )
 
-    target_link_libraries(lift-${name}-tests
-        remill
-    )
+    target_link_libraries(lift-${name}-tests PUBLIC ${PROJECT_LIBRARIES})
+    target_include_directories(lift-${name}-tests PUBLIC ${PROJECT_INCLUDEDIRECTORIES})
+    target_compile_definitions(lift-${name}-tests PUBLIC ${PROJECT_DEFINITIONS})
     
     add_executable(run-${name}-tests
         EXCLUDE_FROM_ALL
