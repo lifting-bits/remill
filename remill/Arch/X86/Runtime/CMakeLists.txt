@@ -3,7 +3,7 @@
 macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
     set(SEMANTICS_CXX_FLAGS
 
-        -I${PROJECT_SOURCE_DIR}
+        -I${CMAKE_SOURCE_DIR}
         -emit-llvm
         -DADDRESS_SIZE_BITS=${address_size}
         -DHAS_FEATURE_AVX=${has_avx}
@@ -20,6 +20,8 @@ macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
         #            optimizations are performed to the file before converting
         #            to 32-bit >:-(
         # -m${address_size}
+
+        -Wno-unknown-warning-option
         
         -Wall
         -Werror

@@ -27,7 +27,7 @@ add_custom_target(build_x86_tests)
 macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
         
     set(X86_TEST_FLAGS
-        -I${PROJECT_SOURCE_DIR}
+        -I${CMAKE_SOURCE_DIR}
         -DADDRESS_SIZE_BITS=${address_size}
         -DHAS_FEATURE_AVX=${has_avx}
         -DHAS_FEATURE_AVX512=${has_avx512}
