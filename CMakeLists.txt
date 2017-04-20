@@ -118,7 +118,7 @@ endif ()
 
 find_package(LLVM REQUIRED CONFIG HINTS ${FINDPACKAGE_LLVM_HINTS})
 
-llvm_map_components_to_libnames(LLVM_LIBRARIES support core irreader ipo bitreader bitwriter analysis transformutils lto scalaropts)
+set(LLVM_LIBRARIES LLVMCore LLVMSupport LLVMAnalysis LLVMipo LLVMIRReader LLVMBitReader LLVMBitWriter LLVMTransformUtils LLVMScalarOpts LLVMLTO)
 list(APPEND PROJECT_LIBRARIES ${LLVM_LIBRARIES})
 
 list(APPEND PROJECT_DEFINITIONS ${LLVM_DEFINITIONS})
