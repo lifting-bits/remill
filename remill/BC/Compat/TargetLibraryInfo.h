@@ -26,26 +26,6 @@
 
 namespace llvm {
 
-class TargetLibraryInfoImpl : public TargetLibraryInfo {
- public:
-  bool DisableTailCalls;
-  bool DisableUnitAtATime;
-  bool DisableUnrollLoops;
-  bool BBVectorize;
-  bool SLPVectorize;
-  bool LoopVectorize;
-  bool RerollLoops;
-  bool LoadCombine;
-  bool DisableGVNLoadPRE;
-  bool VerifyInput;
-  bool VerifyOutput;
-  bool MergeFunctions;
-  bool PrepareForLTO;
-
-  template <typename T>
-  inline void populateFunctionPassManager(T &) { }
-};
-
 using TargetLibraryInfoImpl = TargetLibraryInfo;
 
 }  // namespace llvm

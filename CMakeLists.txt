@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-project(REMILL LANGUAGES)
+project(remill LANGUAGES)
 cmake_minimum_required (VERSION 3.2)
 
 #
