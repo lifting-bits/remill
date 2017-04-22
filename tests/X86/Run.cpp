@@ -41,8 +41,8 @@
 #include "remill/Arch/Runtime/Runtime.h"
 #include "remill/Arch/X86/Runtime/State.h"
 
-DEFINE_string(arch, "", "");
-DEFINE_string(os, "", "");
+DECLARE_string(arch);
+DECLARE_string(os);
 
 namespace {
 

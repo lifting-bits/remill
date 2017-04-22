@@ -57,9 +57,8 @@
 DEFINE_string(bc_out, "",
               "Name of the file in which to place the generated bitcode.");
 
-DEFINE_string(arch, "", "Architecture of the code to be lifted.");
-
-DEFINE_string(os, "", "");
+DECLARE_string(arch);
+DECLARE_string(os);
 
 namespace {
 
@@ -100,9 +99,19 @@ static void AddFunctionToModule(llvm::Module *module,
     CHECK(inst->IsValid())
         << "Can't decode test instruction in " << test.test_name;
 
-    if (!lifter.LiftIntoBlock(inst.get(), block)) {
-      remill::AddTerminatingTailCall(block, intrinsics.error);
-      return;
+    switch (auto status = lifter.LiftIntoBlock(inst.get(), block)) {
+      case remill::LiftStatus::kError:
+      case remill::LiftStatus::kInvalid:
+        LOG(ERROR)
+            << "Not lifting " << inst->Serialize();
+        remill::AddTerminatingTailCall(block, intrinsics.error);
+        return;
+      case remill::LiftStatus::kUnsupported:
+        LOG(ERROR)
+            << "Unsupported instruction: " << inst->Serialize();
+        break;
+      default:
+        break;
     }
 
     addr += inst->NumBytes();

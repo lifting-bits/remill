@@ -14,7 +14,6 @@
 
 find_package(gtest REQUIRED)
 
-
 # google gtest
 find_package(gtest REQUIRED)
 list(APPEND PROJECT_LIBRARIES ${gtest_LIBRARIES})
@@ -46,7 +45,7 @@ macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
                 -DIN_TEST_GENERATOR
     )
 
-    target_link_libraries(lift-${name}-tests PUBLIC ${PROJECT_LIBRARIES})
+    target_link_libraries(lift-${name}-tests PUBLIC remill ${PROJECT_LIBRARIES})
     target_include_directories(lift-${name}-tests PUBLIC ${PROJECT_INCLUDEDIRECTORIES})
     target_compile_definitions(lift-${name}-tests PUBLIC ${PROJECT_DEFINITIONS})
     
@@ -54,7 +53,7 @@ macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
         EXCLUDE_FROM_ALL
         Run.cpp
         Tests.S
-        tests_${name}.bc
+        tests_${name}.S
     )
     
     add_custom_command(
@@ -73,11 +72,10 @@ macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
                 -o tests_${name}.S
         DEPENDS tests_${name}.bc
     )
-    
-    target_link_libraries(run-${name}-tests
-        ${GTEST_LIBRARIES}
-        remill
-    )
+
+    target_link_libraries(run-${name}-tests PUBLIC remill ${PROJECT_LIBRARIES})
+    target_include_directories(run-${name}-tests PUBLIC ${PROJECT_INCLUDEDIRECTORIES})
+    target_compile_definitions(run-${name}-tests PUBLIC ${PROJECT_DEFINITIONS})
     
     target_compile_options(run-${name}-tests
         PRIVATE ${X86_TEST_FLAGS}

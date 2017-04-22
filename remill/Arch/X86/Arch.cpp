@@ -316,7 +316,35 @@ static bool DecodeXED(xed_decoded_inst_t *xedd,
 static Operand::Register RegOp(xed_reg_enum_t reg) {
   Operand::Register reg_op;
   if (XED_REG_INVALID != reg) {
-    reg_op.name = xed_reg_enum_t2str(reg);
+    switch (reg) {
+      case XED_REG_ST0:
+        reg_op.name = "ST0";
+        break;
+      case XED_REG_ST1:
+        reg_op.name = "ST1";
+        break;
+      case XED_REG_ST2:
+        reg_op.name = "ST2";
+        break;
+      case XED_REG_ST3:
+        reg_op.name = "ST3";
+        break;
+      case XED_REG_ST4:
+        reg_op.name = "ST4";
+        break;
+      case XED_REG_ST5:
+        reg_op.name = "ST5";
+        break;
+      case XED_REG_ST6:
+        reg_op.name = "ST6";
+        break;
+      case XED_REG_ST7:
+        reg_op.name = "ST7";
+        break;
+      default:
+        reg_op.name = xed_reg_enum_t2str(reg);
+        break;
+    }
     if (XED_REG_X87_FIRST <= reg && XED_REG_X87_LAST >= reg) {
       reg_op.size = 64;
     } else {

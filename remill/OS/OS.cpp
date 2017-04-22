@@ -15,8 +15,24 @@
  */
 
 #include <glog/logging.h>
+#include <gflags/gflags.h>
 
 #include "remill/OS/OS.h"
+
+#ifndef REMILL_OS
+# if defined(__APPLE__)
+#   define REMILL_OS "mac"
+# elif defined(__linux__)
+#   define REMILL_OS "linux"
+# elif defined(_WIN32)
+#   define REMILL_OS "windows"
+# else
+#   define REMILL_OS ""
+# endif
+#endif
+
+
+DEFINE_string(os, REMILL_OS, "Source OS. Valid OSes: linux, mac, windows.");
 
 namespace remill {
 

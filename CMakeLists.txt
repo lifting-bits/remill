@@ -19,6 +19,23 @@ cmake_minimum_required (VERSION 3.2)
 # compiler selection
 #
 
+if (DEFINED ENV{TRAILOFBITS_LIBRARIES})
+    set(LIBRARY_REPOSITORY_ROOT $ENV{TRAILOFBITS_LIBRARIES})
+    include("${LIBRARY_REPOSITORY_ROOT}/cmake/repository.cmake")
+
+    message(STATUS "Using the following library repository: ${LIBRARY_REPOSITORY_ROOT}")
+else ()
+    message(STATUS "Using system libraries")
+endif ()
+
+# llvm
+if (DEFINED LLVM_INSTALL_PREFIX)
+    list(APPEND FINDPACKAGE_LLVM_HINTS "${LLVM_INSTALL_PREFIX}/lib/cmake/llvm/")
+    list(APPEND FINDPACKAGE_LLVM_HINTS "${LLVM_INSTALL_PREFIX}/share/llvm/cmake/")
+
+    message(STATUS "Using LLVM_INSTALL_PREFIX hints for find_package(LLVM): ${FINDPACKAGE_LLVM_HINTS}")
+endif ()
+
 if (DEFINED ENV{LLVM_INSTALL_PREFIX})
     set(LLVM_INSTALL_PREFIX $ENV{LLVM_INSTALL_PREFIX})
 endif ()
@@ -98,23 +115,6 @@ endif ()
 #
 # libraries
 #
-
-if (DEFINED ENV{TRAILOFBITS_LIBRARIES})
-    set(LIBRARY_REPOSITORY_ROOT $ENV{TRAILOFBITS_LIBRARIES})
-    include("${LIBRARY_REPOSITORY_ROOT}/cmake/repository.cmake")
-
-    message(STATUS "Using the following library repository: ${LIBRARY_REPOSITORY_ROOT}")
-else ()
-    message(STATUS "Using system libraries")
-endif ()
-
-# llvm
-if (DEFINED LLVM_INSTALL_PREFIX)
-    list(APPEND FINDPACKAGE_LLVM_HINTS "${LLVM_INSTALL_PREFIX}/lib/cmake/llvm/")
-    list(APPEND FINDPACKAGE_LLVM_HINTS "${LLVM_INSTALL_PREFIX}/share/llvm/cmake/")
-
-    message(STATUS "Using LLVM_INSTALL_PREFIX hints for find_package(LLVM): ${FINDPACKAGE_LLVM_HINTS}")
-endif ()
 
 find_package(LLVM REQUIRED CONFIG HINTS ${FINDPACKAGE_LLVM_HINTS})
 

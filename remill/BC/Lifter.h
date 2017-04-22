@@ -30,6 +30,13 @@ class Instruction;
 class IntrinsicTable;
 class Operand;
 
+enum class LiftStatus {
+  kLifted,
+  kInvalid,
+  kUnsupported,
+  kError
+};
+
 // Wraps the process of lifting an instruction into a block. This resolves
 // the intended instruction target to a function, and ensures that the function
 // is called with the appropriate arguments.
@@ -41,7 +48,7 @@ class InstructionLifter {
                     const IntrinsicTable *intrinsics_);
 
   // Lift a single instruction into a basic block.
-  virtual bool LiftIntoBlock(
+  virtual LiftStatus LiftIntoBlock(
       Instruction *instr, llvm::BasicBlock *block);
 
   // Machine word type for this architecture.

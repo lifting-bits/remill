@@ -93,15 +93,17 @@ InstructionLifter::InstructionLifter(llvm::IntegerType *word_type_,
       intrinsics(intrinsics_) {}
 
 // Lift a single instruction into a basic block.
-bool InstructionLifter::LiftIntoBlock(
+LiftStatus InstructionLifter::LiftIntoBlock(
     Instruction *arch_instr, llvm::BasicBlock *block) {
 
   llvm::Function *func = block->getParent();
   llvm::Module *module = func->getParent();
   auto isel_func = GetInstructionFunction(module, arch_instr->function);
+  auto status = LiftStatus::kLifted;
 
   if (Instruction::kCategoryInvalid == arch_instr->category) {
     isel_func = GetInstructionFunction(module, "INVALID_INSTRUCTION");
+    status = LiftStatus::kInvalid;
   }
 
   if (!isel_func) {
@@ -114,9 +116,10 @@ bool InstructionLifter::LiftIntoBlock(
       LOG(ERROR)
           << "UNSUPPORTED_INSTRUCTION doesn't exist; not using it in place of "
           << arch_instr->function;
-      return false;
+      return LiftStatus::kError;
     }
 
+    status = LiftStatus::kUnsupported;
     arch_instr->operands.clear();
   }
 
@@ -193,7 +196,7 @@ bool InstructionLifter::LiftIntoBlock(
         mem_ptr);
   }
 
-  return true;
+  return status;
 }
 
 namespace {

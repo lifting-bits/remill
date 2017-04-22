@@ -59,107 +59,107 @@ DEF_SEM(FLD, RF80W, T src1) {
   return memory;
 }
 
-DEF_SEM(FLDLN2, RF80W) {
+DEF_SEM(DoFLDLN2) {
   uint64_t ln_2 = 0x3fe62e42fefa39efULL;
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(ln_2));
   return memory;
 }
 
-DEF_SEM(FLD1, RF80W) {
+DEF_SEM(DoFLD1) {
   PUSH_X87_STACK(1.0);  // +1.0.
   return memory;
 }
 
-DEF_SEM(FLDZ, RF80W) {
+DEF_SEM(DoFLDZ) {
   PUSH_X87_STACK(0.0);  // +0.0.
   return memory;
 }
 
-DEF_SEM(FLDLG2, RF80W) {
+DEF_SEM(DoFLDLG2) {
   uint64_t log10_2 = 0x3fd34413509f79ffULL;
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(log10_2));
   return memory;
 }
 
-DEF_SEM(FLDL2T, RF80W) {
+DEF_SEM(DoFLDL2T) {
   uint64_t log2_10 = 0x400a934f0979a371ULL;
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(log2_10));
   return memory;
 }
 
-DEF_SEM(FLDL2E, RF80W) {
+DEF_SEM(DoFLDL2E) {
   uint64_t log2_e = 0x3ff71547652b82feULL;
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(log2_e));
   return memory;
 }
 
-DEF_SEM(FLDPI, RF80W) {
+DEF_SEM(DoFLDPI) {
   uint64_t pi = 0x400921fb54442d18ULL;
   PUSH_X87_STACK(reinterpret_cast<float64_t &>(pi));
   return memory;
 }
 
-DEF_SEM(FABS, RF80W dst, RF80 src) {
-  Write(dst, FAbs(Read(src)));
+DEF_SEM(DoFABS) {
+  Write(X87_ST0, FAbs(Read(X87_ST0)));
   return memory;
 }
 
-DEF_SEM(FCHS, RF80W dst, RF80 src) {
-  Write(dst, FNeg(Read(src)));
+DEF_SEM(DoFCHS) {
+  Write(X87_ST0, FNeg(Read(X87_ST0)));
   return memory;
 }
 
-DEF_SEM(FCOS, RF80W dst, RF80 src) {
-  Write(dst, __builtin_cos(Read(src)));
+DEF_SEM(DoFCOS) {
+  Write(X87_ST0, __builtin_cos(Read(X87_ST0)));
   return memory;
 }
 
-DEF_SEM(FSIN, RF80W dst, RF80 src) {
-  Write(dst, __builtin_sin(Read(src)));
+DEF_SEM(DoFSIN) {
+  Write(X87_ST0, __builtin_sin(Read(X87_ST0)));
   return memory;
 }
 
-DEF_SEM(FPTAN, RF80W dst, RF80 src, RF80W) {
-  Write(dst, __builtin_tan(Read(src)));
+DEF_SEM(DoFPTAN) {
+  Write(X87_ST0, __builtin_tan(Read(X87_ST0)));
   PUSH_X87_STACK(1.0);
   return memory;
 }
 
-DEF_SEM(FPATAN, RF80 st0, RF80W st1_dst, RF80 st1) {
-  Write(st1_dst, __builtin_atan(FDiv(Read(st1), Read(st0))));
+DEF_SEM(DoFPATAN) {
+  Write(X87_ST1, __builtin_atan(FDiv(Read(X87_ST1), Read(X87_ST0))));
   (void) POP_X87_STACK();
   return memory;
 }
 
-DEF_SEM(FSQRT, RF80W dst, RF80 src) {
-  Write(dst, __builtin_sqrt(Read(src)));
+DEF_SEM(DoFSQRT) {
+  Write(X87_ST0, __builtin_sqrt(Read(X87_ST0)));
   return memory;
 }
 
-DEF_SEM(FSINCOS, RF80W dst, RF80 src, RF80W) {
-  auto val = Read(src);
-  Write(dst, __builtin_sin(val));
+DEF_SEM(DoFSINCOS) {
+  auto val = Read(X87_ST0);
+  Write(X87_ST0, __builtin_sin(val));
   PUSH_X87_STACK(__builtin_cos(val));
   return memory;
 }
 
-DEF_SEM(FSCALE, RF80W dst, RF80 st0, RF80 st1) {
-  auto st1_int = __builtin_trunc(Read(st1));  // Round toward zero.
+DEF_SEM(DoFSCALE) {
+  auto st1_int = __builtin_trunc(Read(X87_ST1));  // Round toward zero.
   auto shift = __builtin_exp2(st1_int);
-  Write(dst, FMul(Read(st0), shift));
+  Write(X87_ST0, FMul(Read(X87_ST0), shift));
   return memory;
 }
 
-DEF_SEM(F2XM1, RF80W dst, RF80 src) {
-  Write(dst, FSub(__builtin_exp2(Read(src)), 1.0));
+DEF_SEM(DoF2XM1) {
+  Write(X87_ST0, FSub(__builtin_exp2(Read(X87_ST0)), 1.0));
   return memory;
 }
 
-DEF_SEM(FPREM, RF80W dst, RF80 src1, RF80 src2) {
-  float64_t st0 = Read(src1);
-  float64_t st1 = Read(src2);
+DEF_SEM(DoFPREM) {
+  float64_t st0 = Read(X87_ST0);
+  float64_t st1 = Read(X87_ST1);
   auto rem = __builtin_fmod(st0, st1);
-  Write(dst, rem);
+  Write(X87_ST0, rem);
 
   auto quot = Int64(FTruncTowardZero64(FDiv(st0, st1)));
   auto quot_lsb = TruncTo<uint8_t>(UInt64(SAbs(quot)));
@@ -170,11 +170,11 @@ DEF_SEM(FPREM, RF80W dst, RF80 src1, RF80 src2) {
   return memory;
 }
 
-DEF_SEM(FPREM1, RF80W dst, RF80 src1, RF80 src2) {
-  float64_t st0 = Read(src1);
-  float64_t st1 = Read(src2);
+DEF_SEM(DoFPREM1) {
+  float64_t st0 = Read(X87_ST0);
+  float64_t st1 = Read(X87_ST1);
   auto rem = __builtin_remainder(st0, st1);
-  Write(dst, rem);
+  Write(X87_ST0, rem);
   auto quot = Float64ToInt64(FDiv(st0, st1));
   auto quot_lsb = TruncTo<uint8_t>(UInt64(SAbs(quot)));
   state.sw.c0 = UAnd(UShr(quot_lsb, 2_u8), 1_u8);  // Q2.
@@ -210,29 +210,29 @@ DEF_ISEL(FLD_ST0_X87) = FLD<RF80>;
 DEF_ISEL(FLD_ST0_MEMm64real) = FLD<MF64>;
 DEF_ISEL(FLD_ST0_MEMmem80real) = FLD<MF80>;
 
-DEF_ISEL(FLDLN2_ST0) = FLDLN2;
-DEF_ISEL(FLD1_ST0) = FLD1;
-DEF_ISEL(FLDZ_ST0) = FLDZ;
-DEF_ISEL(FLDLG2_ST0) = FLDLG2;
-DEF_ISEL(FLDL2T_ST0) = FLDL2T;
-DEF_ISEL(FLDL2E_ST0) = FLDL2E;
-DEF_ISEL(FLDPI_ST0) = FLDPI;
+DEF_ISEL(FLDLN2) = DoFLDLN2;
+DEF_ISEL(FLD1) = DoFLD1;
+DEF_ISEL(FLDZ) = DoFLDZ;
+DEF_ISEL(FLDLG2) = DoFLDLG2;
+DEF_ISEL(FLDL2T) = DoFLDL2T;
+DEF_ISEL(FLDL2E) = DoFLDL2E;
+DEF_ISEL(FLDPI) = DoFLDPI;
 
 DEF_ISEL(FNOP) = FPU_NOP;
 DEF_ISEL(FWAIT) = DoFWAIT;
 DEF_ISEL(FNCLEX) = DoFNCLEX;
-DEF_ISEL(FABS_ST0) = FABS;
-DEF_ISEL(FCHS_ST0) = FCHS;
-DEF_ISEL(FCOS_ST0) = FCOS;
-DEF_ISEL(FSIN_ST0) = FSIN;
-DEF_ISEL(FPTAN_ST0_ST1) = FPTAN;
-DEF_ISEL(FPATAN_ST0_ST1) = FPATAN;
-DEF_ISEL(FSQRT_ST0) = FSQRT;
-DEF_ISEL(FSINCOS_ST0_ST1) = FSINCOS;
-DEF_ISEL(FSCALE_ST0_ST1) = FSCALE;
-DEF_ISEL(F2XM1_ST0) = F2XM1;
-DEF_ISEL(FPREM_ST0_ST1) = FPREM;
-DEF_ISEL(FPREM1_ST0_ST1) = FPREM1;
+DEF_ISEL(FABS) = DoFABS;
+DEF_ISEL(FCHS) = DoFCHS;
+DEF_ISEL(FCOS) = DoFCOS;
+DEF_ISEL(FSIN) = DoFSIN;
+DEF_ISEL(FPTAN) = DoFPTAN;
+DEF_ISEL(FPATAN) = DoFPATAN;
+DEF_ISEL(FSQRT) = DoFSQRT;
+DEF_ISEL(FSINCOS) = DoFSINCOS;
+DEF_ISEL(FSCALE) = DoFSCALE;
+DEF_ISEL(F2XM1) = DoF2XM1;
+DEF_ISEL(FPREM) = DoFPREM;
+DEF_ISEL(FPREM1) = DoFPREM1;
 
 namespace {
 
@@ -534,8 +534,8 @@ DEF_ISEL(FXCH_ST0_X87_DDC1) = FXCH;
 
 namespace {
 
-DEF_SEM(FXAM, RF80W, RF80 src) {
-  auto st0 = Read(src);
+DEF_SEM(DoFXAM) {
+  auto st0 = Read(X87_ST0);
 
   uint8_t sign = __builtin_signbit(st0) == 0 ? 0_u8 : 1_u8;
   auto c = __builtin_fpclassify(FP_NAN, FP_INFINITE, FP_NORMAL, FP_SUBNORMAL,
@@ -610,8 +610,8 @@ DEF_HELPER(UnorderedCompare, float64_t src1, float64_t src2) -> void {
   }
 }
 
-DEF_SEM(FTST, RF80W, RF80 src1) {
-  auto st0 = Read(src1);
+DEF_SEM(DoFTST) {
+  auto st0 = Read(X87_ST0);
   state.sw.c1 = 0;
   UnorderedCompare(memory, state, st0, 0.0);
   return memory;
@@ -634,8 +634,10 @@ DEF_SEM(FUCOMP, RF80 src1, S2 src2) {
   return memory;
 }
 
-DEF_SEM(FUCOMPP, RF80 src1, RF80 src2) {
-  memory = FUCOM<RF80>(memory, state, src1, src2);
+DEF_SEM(DoFUCOMPP) {
+  RF80 st0 = {X87_ST0};
+  RF80 st1 = {X87_ST1};
+  memory = FUCOM<RF80>(memory, state, st0, st1);
   (void) POP_X87_STACK();
   (void) POP_X87_STACK();
   return memory;
@@ -682,12 +684,12 @@ DEF_SEM(FUCOMIP, RF80 src1, RF80 src2) {
 
 }  // namespace
 
-DEF_ISEL(FXAM_ST0) = FXAM;
-DEF_ISEL(FTST_ST0) = FTST;
+DEF_ISEL(FXAM) = DoFXAM;
+DEF_ISEL(FTST) = DoFTST;
 
 DEF_ISEL(FUCOM_ST0_X87) = FUCOM<RF80>;
 DEF_ISEL(FUCOMP_ST0_X87) = FUCOMP<RF80>;
-DEF_ISEL(FUCOMPP_ST0_ST1) = FUCOMPP;
+DEF_ISEL(FUCOMPP) = DoFUCOMPP;
 
 DEF_ISEL(FUCOMI_ST0_X87) = FUCOMI;
 DEF_ISEL(FUCOMIP_ST0_X87) = FUCOMIP;
@@ -705,7 +707,7 @@ DEF_ISEL(FCOMP_ST0_MEMmem32real) = FUCOMP<MF32>;
 DEF_ISEL(FCOMP_ST0_MEMm64real) = FUCOMP<MF64>;
 DEF_ISEL(FCOMP_ST0_X87_DCD1) = FUCOMP<RF80>;
 DEF_ISEL(FCOMP_ST0_X87_DED0) = FUCOMP<RF80>;
-DEF_ISEL(FCOMPP_ST0_ST1) = FUCOMPP;
+DEF_ISEL(FCOMPP) = DoFUCOMPP;
 
 namespace {
 
@@ -776,26 +778,26 @@ DEF_ISEL(FLDCW_MEMmem16) = FLDCW;
 
 namespace {
 
-DEF_SEM(FRNDINT, RF80W dst, RF80 src) {
-  auto st0 = Read(src);
+DEF_SEM(DoFRNDINT) {
+  auto st0 = Read(X87_ST0);
   auto rounded = FRoundUsingMode64(st0);
   // state.sw.c1 = __builtin_isgreater(FAbs(rounded), FAbs(st0)) ? 1_u8 : 0_u8;
-  Write(dst, rounded);
+  Write(X87_ST0, rounded);
   return memory;
 }
 
-DEF_SEM(FYL2X, RF80 src1, RF80W dst2, RF80 src2) {
-  auto st0 = Read(src1);
-  auto st1 = Read(src2);
-  Write(dst2, FMul(st1, __builtin_log2(st0)));
+DEF_SEM(DoFYL2X) {
+  auto st0 = Read(X87_ST0);
+  auto st1 = Read(X87_ST1);
+  Write(X87_ST1, FMul(st1, __builtin_log2(st0)));
   (void) POP_X87_STACK();
   return memory;
 }
 
-DEF_SEM(FYL2XP1, RF80 src1, RF80W dst2, RF80 src2) {
-  auto st0 = Read(src1);
-  auto st1 = Read(src2);
-  Write(dst2, FMul(st1, __builtin_log2(FAdd(st0, 1.0))));
+DEF_SEM(DoFYL2XP1) {
+  auto st0 = Read(X87_ST0);
+  auto st1 = Read(X87_ST1);
+  Write(X87_ST1, FMul(st1, __builtin_log2(FAdd(st0, 1.0))));
   (void) POP_X87_STACK();
   return memory;
 }
@@ -811,9 +813,9 @@ DEF_SEM(FFREEP, RF80) {
 
 }  // namespace
 
-DEF_ISEL(FRNDINT_ST0) = FRNDINT;
-DEF_ISEL(FYL2X_ST0_ST1) = FYL2X;
-DEF_ISEL(FYL2XP1_ST0_ST1) = FYL2XP1;
+DEF_ISEL(FRNDINT) = DoFRNDINT;
+DEF_ISEL(FYL2X) = DoFYL2X;
+DEF_ISEL(FYL2XP1) = DoFYL2XP1;
 
 DEF_ISEL(FFREE_X87) = FFREE;
 DEF_ISEL(FFREEP_X87) = FFREEP;

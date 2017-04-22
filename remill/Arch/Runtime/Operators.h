@@ -103,6 +103,18 @@ uint64_t _Read(Memory *, uint64_t val) {
   return val;
 }
 
+// Read a value directly.
+ALWAYS_INLINE static
+float32_t _Read(Memory *, float32_t val) {
+  return val;
+}
+
+// Read a value directly.
+ALWAYS_INLINE static
+float64_t _Read(Memory *, float64_t val) {
+  return val;
+}
+
 template <typename T>
 ALWAYS_INLINE static
 T _Read(Memory *, In<T> imm) {

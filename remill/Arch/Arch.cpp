@@ -24,7 +24,10 @@
 #include "remill/Arch/Name.h"
 #include "remill/OS/OS.h"
 
-DECLARE_string(arch);
+DEFINE_string(arch, "", "Architecture of the code being translated. "
+                        "Valid architectures: x86, amd64 (with or without "
+                        "`_avx` or `_avx512` appended).");
+
 DECLARE_string(os);
 
 namespace remill {
