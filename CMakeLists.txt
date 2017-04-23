@@ -173,7 +173,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS ${PROJECT_CXXFLAG
 #
 
 install(DIRECTORY DESTINATION "share/remill")
-install(DIRECTORY DESTINATION "share/remill/disassembler")
 
 #
 # additional targets
