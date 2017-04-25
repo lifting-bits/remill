@@ -58,10 +58,8 @@ sudo apt-get upgrade
 sudo apt-get install \
      git \
      cmake \
-     libgoogle-glog-dev \
-     libgtest-dev \
      python2.7 python-pip \
-     g++-multilib \
+     build-essential \
      unzip \
      software-properties-common \
      realpath

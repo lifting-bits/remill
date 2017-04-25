@@ -37,18 +37,14 @@ sudo apt-get update -qq
 sudo apt-get install -y git
 sudo apt-get install -y libgoogle-glog-dev
 sudo apt-get install -y libgtest-dev
-sudo apt-get install -y libprotoc-dev
-sudo apt-get install -y libprotobuf-dev
-sudo apt-get install -y libprotobuf-dev
-sudo apt-get install -y protobuf-compiler
 sudo apt-get install -y python2.7
 sudo apt-get install -y python-pip
 sudo apt-get install -y llvm-3.9-dev
 sudo apt-get install -y clang-3.9
-sudo apt-get install -y g++-multilib
 sudo apt-get install -y unzip
 sudo apt-get install -y cmake
 sudo apt-get install -y realpath
+sudo apt-get install -y git
 
 # Upgrade PIP and install the python bindings for protocol buffers. Ubuntu's
 # protobuf-compiler package uses libproto 2.6.1, but facepalmingly, its

@@ -29,15 +29,15 @@ else ()
 endif ()
 
 # llvm
+if (DEFINED ENV{LLVM_INSTALL_PREFIX})
+    set(LLVM_INSTALL_PREFIX $ENV{LLVM_INSTALL_PREFIX})
+endif ()
+
 if (DEFINED LLVM_INSTALL_PREFIX)
     list(APPEND FINDPACKAGE_LLVM_HINTS "${LLVM_INSTALL_PREFIX}/lib/cmake/llvm/")
     list(APPEND FINDPACKAGE_LLVM_HINTS "${LLVM_INSTALL_PREFIX}/share/llvm/cmake/")
 
     message(STATUS "Using LLVM_INSTALL_PREFIX hints for find_package(LLVM): ${FINDPACKAGE_LLVM_HINTS}")
-endif ()
-
-if (DEFINED ENV{LLVM_INSTALL_PREFIX})
-    set(LLVM_INSTALL_PREFIX $ENV{LLVM_INSTALL_PREFIX})
 endif ()
 
 # it is important to avoid re-defining these variables if they have been already
