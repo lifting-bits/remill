@@ -20,7 +20,7 @@ Remill is a static binary translator that translates machine code into [LLVM bit
 
 ## Getting Help
 
-If you are experiencing undocumented problems with Remill then ask for help in the `#tool-remill` channel of the [Empire Hacking Slack](https://empireslacking.herokuapp.com/).
+If you are experiencing undocumented problems with Remill then ask for help in the `#binary-lifting` channel of the [Empire Hacking Slack](https://empireslacking.herokuapp.com/).
 
 ## Supported Platforms
 
