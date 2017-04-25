@@ -1,8 +1,7 @@
 
 # Design and architecture of Remill
 
-Remill translates machine code, and *only* machine code, into LLVM bitcode. Remill's translation approach is inspired by [dynamic](https://software.intel.com/en-us/articles/pin-a-dynamic-binary-instrumentation-tool)
-[binary](https://github.com/DynamoRIO/dynamorio) [translators](https://github.com/Granary/granary2). Remill translates one [basic block](https://en.wikipedia.org/wiki/Basic_block) of machine code into LLVM bitcode at a time. The translation process defers many decisions to downstream consumers on how the translated bitcode should be interpreted.
+Remill translates machine code, and *only* machine code, into LLVM bitcode. The translation process defers many decisions to downstream consumers on how the translated bitcode should be interpreted.
 
 ## Intrinsics
 

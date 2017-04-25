@@ -70,7 +70,7 @@ export LLVM_INSTALL_PREFIX=${LLVM_DIR}
 
 if [ ! -d ${BUILD_DIR}/cxx-common ]; then
   echo "[+] Getting cxx-common"
-  git clone git@github.com:trailofbits/cxx-common.git
+  git clone https://github.com/trailofbits/cxx-common.git
 fi
 
 echo "[+] Installing cxx-common"
