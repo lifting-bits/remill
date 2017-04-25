@@ -1,7 +1,3 @@
 [submodule "cxx-common"]
 	path = cxx-common
 	url = https://github.com/trailofbits/cxx-common
-[submodule "tools/mcsema"]
-	path = tools/mcsema
-	url = git@github.com:trailofbits/mcsema.git
-	branch = alessandro/refactor/remill-semantics-cmake
