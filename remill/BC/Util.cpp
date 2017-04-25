@@ -27,8 +27,6 @@
 
 #include <llvm/ADT/SmallVector.h>
 
-#include <llvm/Bitcode/ReaderWriter.h>
-
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -44,6 +42,7 @@
 #include <llvm/Support/ToolOutputFile.h>
 
 #include "remill/BC/ABI.h"
+#include "remill/BC/Compat/BitcodeReaderWriter.h"
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/IRReader.h"
@@ -205,8 +204,8 @@ llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block) {
 // or not a conditional branch is taken.
 llvm::Value *LoadBranchTaken(llvm::BasicBlock *block) {
   llvm::IRBuilder<> ir(block);
-  auto cond = ir.CreateLoad(
-      FindVarInFunction(block->getParent(), "BRANCH_TAKEN"));
+  auto cond = ir.CreateLoad(ir.CreateLoad(
+      FindVarInFunction(block->getParent(), "BRANCH_TAKEN")));
   auto true_val = llvm::ConstantInt::get(cond->getType(), 1);
   return ir.CreateICmpEQ(cond, true_val);
 }
@@ -238,7 +237,9 @@ llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
   CHECK(nullptr != module)
       << "Unable to parse module file: " << file_name << ".";
 
-  module->materializeAll();  // Just in case.
+  auto ec = module->materializeAll();  // Just in case.
+  CHECK(!ec)
+      << "Unable to materialize everything from " << file_name;
 
   std::string error;
   llvm::raw_string_ostream error_stream(error);

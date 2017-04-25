@@ -181,12 +181,11 @@ install(DIRECTORY DESTINATION "share/remill")
 add_custom_target(semantics)
 add_subdirectory(remill/Arch/X86/Runtime)
 
-# mcsema is stored in a git submodule; make sure it has been initialized
-if (NOT EXISTS ${CMAKE_SOURCE_DIR}/tools/mcsema)
-    message(FATAL_ERROR "It looks like you didn't initialize the git module for mcsema! Run git submodule init && git submodule update --recursive")
+# mcsema needs to be manually cloned into this repo.
+if (EXISTS ${CMAKE_SOURCE_DIR}/tools/mcsema)
+    add_subdirectory(tools/mcsema)
 endif ()
 
-add_subdirectory(tools/mcsema)
 
 # only enable tests when compiling under x64
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
