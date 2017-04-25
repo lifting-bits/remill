@@ -15,7 +15,7 @@
 
 set -e
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+DIR=$(dirname $(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )))
 BUILD_DIR=${DIR}/build
 LLVM_DIR=llvm
 
@@ -42,9 +42,6 @@ case $(uname -s) in
     ;;
 esac
 
-echo "[+] Getting cxx-common"
-git clone git@github.com:trailofbits/cxx-common.git
-
 echo "[+] Creating '${BUILD_DIR}'"
 mkdir -p ${BUILD_DIR}
 pushd ${BUILD_DIR}
@@ -67,23 +64,27 @@ if [ ! -d ${LLVM_DIR} ]; then
   tar xf ${FILE} -C ${LLVM_DIR} --strip-components=1 
 fi
 
-echo "[+] Installing XED"
-mkdir libraries
-export TRAILOFBITS_LIBRARIES=${BUILD_DIR}/libraries
-./cxx-common/build.sh --targets xed ${TRAILOFBITS_LIBRARIES}
-
-
 LLVM_DIR=${BUILD_DIR}/${LLVM_DIR}
 LLVM_DIR=$(realpath ${LLVM_DIR})
 export LLVM_INSTALL_PREFIX=${LLVM_DIR}
 
-# Clear these out, just in case.
+if [ ! -d ${BUILD_DIR}/cxx-common ]; then
+  echo "[+] Getting cxx-common"
+  git clone git@github.com:trailofbits/cxx-common.git
+fi
+
+echo "[+] Installing cxx-common"
+export TRAILOFBITS_LIBRARIES=${BUILD_DIR}/libraries
+mkdir -p ${TRAILOFBITS_LIBRARIES}
+export CC=${LLVM_INSTALL_PREFIX}/bin/clang
+export CXX=${LLVM_INSTALL_PREFIX}/bin/clang++
+${BUILD_DIR}/cxx-common/build.sh --targets xed,glog,gflags,gtest ${TRAILOFBITS_LIBRARIES}
+
+
 export CC=
 export CXX=
 
 echo "[+] Running cmake"
 cmake ${DIR}
 echo "[+] Building"
-make
-echo "[+] installing"
-sudo make install
+make build_x86_tests

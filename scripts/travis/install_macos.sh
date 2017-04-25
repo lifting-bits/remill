@@ -13,9 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-DIR=$(dirname $(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )))
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 brew install glog
-brew install protobuf
 
 $DIR/build.sh
