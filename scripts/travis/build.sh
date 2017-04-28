@@ -70,7 +70,7 @@ export LLVM_INSTALL_PREFIX=${LLVM_DIR}
 
 if [ ! -d ${BUILD_DIR}/cxx-common ]; then
   echo "[+] Getting cxx-common"
-  git clone https://github.com/trailofbits/cxx-common.git
+  git clone git@github.com:trailofbits/cxx-common.git
 fi
 
 echo "[+] Installing cxx-common"
@@ -80,11 +80,15 @@ export CC=${LLVM_INSTALL_PREFIX}/bin/clang
 export CXX=${LLVM_INSTALL_PREFIX}/bin/clang++
 ${BUILD_DIR}/cxx-common/build.sh --targets xed,glog,gflags,gtest ${TRAILOFBITS_LIBRARIES}
 
-
 export CC=
 export CXX=
 
 echo "[+] Running cmake"
 cmake ${DIR}
+
 echo "[+] Building"
 make build_x86_tests
+
+echo "[+] Testing"
+make tests
+ctest
