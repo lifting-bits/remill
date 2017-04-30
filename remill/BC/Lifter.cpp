@@ -67,7 +67,11 @@ namespace {
 // Try to find the function that implements this semantics.
 llvm::Function *GetInstructionFunction(llvm::Module *module,
                                        const std::string &function) {
-  auto isel = FindGlobaVariable(module, function);
+  std::stringstream ss;
+  ss << "ISEL_" << function;
+  auto isel_name = ss.str();
+
+  auto isel = FindGlobaVariable(module, isel_name);
   if (!isel) {
     return nullptr;  // Falls back on `UNIMPLEMENTED_INSTRUCTION`.
   }

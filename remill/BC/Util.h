@@ -106,14 +106,10 @@ llvm::Argument *NthArgument(llvm::Function *func, size_t index);
 std::string LLVMThingToString(llvm::Value *thing);
 std::string LLVMThingToString(llvm::Type *thing);
 
-//// Apply a callback function to every semantics bitcode function.
-//using SemCallback = std::function<void(llvm::Function *)>;
-//void ForEachSem(llvm::Module *module, SemCallback callback);
-//
-//// Apply a callback function to every instruction selection function.
-//using IselCallback = std::function<
-//    void(const std::string &, llvm::GlobalVariable *, llvm::Function *)>;
-//void ForEachIsel(llvm::Module *module, IselCallback callback);
+// Apply a callback function to every semantics bitcode function.
+using ISelCallback = std::function<
+    void(llvm::GlobalVariable *, llvm::Function *)>;
+void ForEachISel(llvm::Module *module, ISelCallback callback);
 
 // Declare a lifted function of the correct type.
 llvm::Function *DeclareLiftedFunction(llvm::Module *module,

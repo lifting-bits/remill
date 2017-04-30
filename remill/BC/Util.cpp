@@ -365,6 +365,20 @@ llvm::Argument *NthArgument(llvm::Function *func, size_t index) {
   return &*it;
 }
 
+// Apply a callback function to every semantics bitcode function.
+void ForEachISel(llvm::Module *module, ISelCallback callback) {
+  for (auto &global : module->globals()) {
+    if (!global.hasInitializer() || !global.getName().startswith("ISEL_")) {
+      continue;
+    }
+
+    auto sem = llvm::dyn_cast<llvm::Function>(
+        global.getInitializer()->stripPointerCasts());
+
+    callback(&global, sem);
+  }
+}
+
 // Declare a lifted function of the correct type.
 llvm::Function *DeclareLiftedFunction(llvm::Module *module,
                                       const std::string &name) {

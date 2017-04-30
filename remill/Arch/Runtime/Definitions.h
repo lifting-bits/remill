@@ -48,7 +48,7 @@
 
 // Define a specific instruction selection variable.
 #define DEF_ISEL(name) \
-  extern "C" constexpr auto name [[gnu::used]]
+  extern "C" constexpr auto ISEL_ ## name [[gnu::used]]
 
 // Define a semantics implementing function.
 #define DEF_SEM(name, ...) \

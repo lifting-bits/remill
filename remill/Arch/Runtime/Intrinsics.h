@@ -88,11 +88,11 @@ extern float32_t __remill_undefined_f32(void);
 [[gnu::used, gnu::const]]
 extern float64_t __remill_undefined_f64(void);
 
-// Inlining control. The idea here is that sometimes we want to defer inlining
-// until a later time, and we need to communicate what should eventually be
-// inlined, even if it's not currently inlined.
-[[gnu::used]]
-extern void __remill_defer_inlining(void);
+//// Inlining control. The idea here is that sometimes we want to defer inlining
+//// until a later time, and we need to communicate what should eventually be
+//// inlined, even if it's not currently inlined.
+//[[gnu::used]]
+//extern void __remill_defer_inlining(void);
 
 // Generic error.
 [[gnu::used]]

@@ -111,11 +111,11 @@ IntrinsicTable::IntrinsicTable(llvm::Module *module)
       atomic_begin(FindPureIntrinsic(module, "__remill_atomic_begin")),
       atomic_end(FindPureIntrinsic(module, "__remill_atomic_end")),
 
-      // Optimization guides.
-      //
-      // Note:  NOT pure! This is a total hack: we call an unpure function
-      //        within a pure one so that it is not optimized out!
-      defer_inlining(FindIntrinsic(module, "__remill_defer_inlining")),
+//      // Optimization guides.
+//      //
+//      // Note:  NOT pure! This is a total hack: we call an unpure function
+//      //        within a pure one so that it is not optimized out!
+//      defer_inlining(FindIntrinsic(module, "__remill_defer_inlining")),
 
       // Optimization enablers.
       undefined_8(FindPureIntrinsic(module, "__remill_undefined_8")),

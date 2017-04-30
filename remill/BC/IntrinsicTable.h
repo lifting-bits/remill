@@ -69,8 +69,8 @@ class IntrinsicTable {
   llvm::Function * const atomic_begin;
   llvm::Function * const atomic_end;
 
-  // Optimization control.
-  llvm::Function * const defer_inlining;
+//  // Optimization control.
+//  llvm::Function * const defer_inlining;
 
   // Optimization enabling.
   llvm::Function *undefined_8;
