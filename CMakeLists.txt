@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-project(remill LANGUAGES)
+project(remill)
 cmake_minimum_required (VERSION 3.2)
 
 include(CTest)
+
+set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 
 #
 # compiler selection

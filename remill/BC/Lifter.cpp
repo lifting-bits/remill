@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <functional>
@@ -55,11 +54,6 @@
 #include "remill/BC/Util.h"
 
 #include "remill/OS/OS.h"
-
-DEFINE_bool(add_breakpoints, false,
-            "Add calls to the `BREAKPOINT_INSTRUCTION` before every lifted "
-            "instruction. The semantics for this instruction call into a "
-            "breakpoint hyper call.");
 
 namespace remill {
 namespace {
@@ -147,15 +141,6 @@ LiftStatus InstructionLifter::LiftIntoBlock(
   // state pointer, and a pointer to the memory pointer.
   args.push_back(nullptr);
   args.push_back(state_ptr);
-
-  // Call out to a special 'breakpoint' instruction function, that lets us
-  // interpose on the machine state just before every lifted instruction.
-  if (FLAGS_add_breakpoints) {
-    ir.CreateStore(
-        ir.CreateCall(GetInstructionFunction(module, "BREAKPOINT_INSTRUCTION"),
-                      args),
-        mem_ptr);
-  }
 
   auto isel_func_type = isel_func->getFunctionType();
   auto arg_num = 2U;

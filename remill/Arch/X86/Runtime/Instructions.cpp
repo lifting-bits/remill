@@ -144,17 +144,11 @@ DEF_SEM(HandleInvalidInstruction) {
   return memory;
 }
 
-DEF_SEM(HandleBreakpoint) {
-  return __remill_sync_hyper_call(
-      memory, state, SyncHyperCall::kDebugBreakpoint);
-}
-
 }  // namespace
 
 // Takes the place of an unsupported instruction.
 DEF_ISEL(UNSUPPORTED_INSTRUCTION) = HandleUnsupported;
 DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
-DEF_ISEL(BREAKPOINT_INSTRUCTION) = HandleBreakpoint;
 
 #include "remill/Arch/X86/Semantics/FLAGS.cpp"
 #include "remill/Arch/X86/Semantics/BINARY.cpp"
