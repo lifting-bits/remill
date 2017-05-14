@@ -1,11 +1,11 @@
-set(DEFAULT_BC_COMPILER_FLAGS "-emit-llvm -std=gnu++11 -O0 -g3 -Wno-unknown-warning-option -Wall -Werror -Wshadow -Wpadded -Wshorten-64-to-32 -Wno-gnu-anonymous-struct -Wno-return-type-c-linkage -Wno-gnu-zero-variadic-macro-arguments -Wno-nested-anon-types -Wno-extended-offsetof -Wno-gnu-statement-expression -Wno-c99-extensions -Wno-ignored-attributes -mtune=generic -mno-sse -mno-avx -mno-3dnow -fno-vectorize -fno-slp-vectorize -ffreestanding -fno-common -fno-builtin -fno-exceptions -fno-rtti -fno-asynchronous-unwind-tables -Wno-unneeded-internal-declaration -Wno-unused-function")
+set(DEFAULT_BC_COMPILER_FLAGS "-std=gnu++11 -emit-llvm -Wno-unknown-warning-option -Werror -Wall -Wshadow -Wconversion -Wpadded -pedantic -Wshorten-64-to-32 -Wno-gnu-anonymous-struct -Wno-return-type-c-linkage -Wno-gnu-zero-variadic-macro-arguments -Wno-nested-anon-types -Wno-extended-offsetof -Wno-gnu-statement-expression -Wno-c99-extensions -Wno-ignored-attributes -mtune=generic -fno-vectorize -fno-slp-vectorize -ffreestanding -fno-common -fno-builtin -fno-exceptions -fno-rtti -fno-asynchronous-unwind-tables -Wno-unneeded-internal-declaration -Wno-unused-function")
 
 if (NOT CMAKE_BC_COMPILE_OBJECT)
     if (NOT DEFINED CMAKE_BC_COMPILER)
         message(SEND_ERROR "The bitcode compiler was not found!")
     endif ()
 
-    set(CMAKE_BC_COMPILE_OBJECT "${CMAKE_BC_COMPILER} <DEFINES> -I<INCLUDES> ${DEFAULT_BC_COMPILER_FLAGS} <FLAGS> -c <SOURCE> -o <OBJECT>")
+    set(CMAKE_BC_COMPILE_OBJECT "${CMAKE_BC_COMPILER} <DEFINES> <INCLUDES> ${DEFAULT_BC_COMPILER_FLAGS} <FLAGS> -c <SOURCE> -o <OBJECT>")
 endif ()
 
 if (NOT CMAKE_BC_LINK_EXECUTABLE)
@@ -16,8 +16,12 @@ if (NOT CMAKE_BC_LINK_EXECUTABLE)
     set(CMAKE_BC_LINK_EXECUTABLE "${CMAKE_BC_LINKER} <OBJECTS> -o <TARGET>")
 endif ()
 
+if (NOT CMAKE_INCLUDE_FLAG_BC)
+    set(CMAKE_INCLUDE_FLAG_BC -I)
+endif ()
+
 # this is the runtime target generator, used in a similar way to add_executable
-set(add_runtime_usage "add_runtime(target_name SOURCES <source file list> ADDRESS_SIZE <size> DEFINITIONS <definition list>")
+set(add_runtime_usage "add_runtime(target_name SOURCES <source file list> ADDRESS_SIZE <size>")
 
 function (add_runtime target_name)
     foreach (macro_parameter ${ARGN})
@@ -26,10 +30,6 @@ function (add_runtime target_name)
             continue ()
 
         elseif ("${macro_parameter}" STREQUAL "ADDRESS_SIZE")
-            set(state "${macro_parameter}")
-            continue ()
-
-        elseif ("${macro_parameter}" STREQUAL "DEFINITIONS")
             set(state "${macro_parameter}")
             continue ()
         endif ()
@@ -45,9 +45,6 @@ function (add_runtime target_name)
 
             list(APPEND definitions "ADDRESS_SIZE_BITS=${macro_parameter}")
             set(address_size_bits_found True)
-
-        elseif ("${state}" STREQUAL "DEFINITIONS")
-            list(APPEND definitions "${macro_parameter}")
 
         else ()
             message(SEND_ERROR "Syntax error. Usage: ${add_runtime_usage}")

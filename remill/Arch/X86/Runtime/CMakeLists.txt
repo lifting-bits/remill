@@ -6,16 +6,23 @@ set(X86RUNTIME_SOURCEFILES
     BasicBlock.cpp
 )
 
+set(X86RUNTIME_COMPILEOPTIONS
+    -mno-sse
+    -mno-avx
+    -mno-3dnow
+)
+
 set(X86RUNTIME_INCLUDEDIRECTORIES ${CMAKE_SOURCE_DIR})
 
 function (add_runtime_helper target_name address_bit_size enable_avx enable_avx512)
     message(" > Generating target: ${target_name}")
 
-    list(APPEND definitions "HAS_FEATURE_AVX=${enable_avx}")
-    list(APPEND definitions "HAS_FEATURE_AVX512=${enable_avx512}")
+    add_runtime(${target_name} SOURCES ${X86RUNTIME_SOURCEFILES} ADDRESS_SIZE ${address_bit_size})
 
-    add_runtime(${target_name} SOURCES ${X86RUNTIME_SOURCEFILES} ADDRESS_SIZE ${address_bit_size} DEFINITIONS ${definitions})
-    target_include_directories(${target_name} PRIVATE "${X86RUNTIME_INCLUDEDIRECTORIES}")
+    target_include_directories(${target_name} PRIVATE ${X86RUNTIME_INCLUDEDIRECTORIES})
+    target_compile_options(${target_name} PRIVATE ${X86RUNTIME_COMPILEOPTIONS})
+    target_compile_definitions(${target_name} PRIVATE "HAS_FEATURE_AVX=${enable_avx}")
+    target_compile_definitions(${target_name} PRIVATE "HAS_FEATURE_AVX512=${enable_avx512}")
 endfunction ()
 
 add_runtime_helper(x86 32 0 0)
