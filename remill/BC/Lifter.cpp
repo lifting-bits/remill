@@ -1,6 +1,19 @@
-/* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+/*
+ * Copyright (c) 2017 Trail of Bits, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <functional>
@@ -17,7 +30,6 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
-#include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
@@ -26,7 +38,6 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Type.h>
-#include <llvm/IR/Verifier.h>
 
 #include <llvm/Support/raw_ostream.h>
 
@@ -35,375 +46,26 @@
 #include <llvm/Transforms/Utils/ValueMapper.h>
 
 #include "remill/Arch/Arch.h"
+#include "remill/Arch/Instruction.h"
+
+#include "remill/BC/ABI.h"
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Lifter.h"
 #include "remill/BC/Util.h"
-#include "remill/CFG/BlockHasher.h"
-#include "remill/CFG/CFG.h"
+
 #include "remill/OS/OS.h"
 
-DEFINE_bool(add_breakpoints, false,
-            "Add calls to the `BREAKPOINT_INSTRUCTION` before every lifted "
-            "instruction. The semantics for this instruction call into a "
-            "breakpoint hyper call.");
-
 namespace remill {
-
-
-Lifter::Lifter(const Arch *arch_, llvm::Module *module_)
-    : arch(arch_),
-      module(module_),
-      pc_to_block(),
-      basic_block(FindFunction(module, "__remill_basic_block")),
-      word_type(llvm::Type::getIntNTy(
-          module->getContext(), arch->address_size)),
-      intrinsics(new IntrinsicTable(module)) {
-
-  CHECK(nullptr != basic_block)
-      << "Unable to find __remill_basic_block.";
-
-  CHECK(1 == basic_block->size())
-      << "Basic block template function " << basic_block->getName().str()
-      << " should only have one basic block.";
-
-  EnableDeferredInlining();
-}
-
-Lifter::~Lifter(void) {
-  delete intrinsics;
-}
-
-namespace {
-
-// Make sure that a function cannot be inlined by the optimizer. We use this
-// as a way of ensuring that code that should be inlined later (i.e. invokes
-// `__remill_defer_inlining`) definitely have the no-inline attributes set.
-static void DisableInlining(llvm::Function *function) {
-  function->removeFnAttr(llvm::Attribute::AlwaysInline);
-  function->removeFnAttr(llvm::Attribute::InlineHint);
-  function->addFnAttr(llvm::Attribute::NoInline);
-}
-
-}  // namespace
-
-// Enable deferred inlining. The goal is to support better dead-store
-// elimination for flags.
-void Lifter::EnableDeferredInlining(void) {
-  DisableInlining(intrinsics->defer_inlining);
-
-  for (auto callers : intrinsics->defer_inlining->users()) {
-    if (auto call_instr = llvm::dyn_cast_or_null<llvm::CallInst>(callers)) {
-      auto bb = call_instr->getParent();
-      auto caller = bb->getParent();
-      DisableInlining(caller);
-    }
-  }
-}
-
-namespace {
-
-static uint64_t GetBlockId(const cfg::Block &cfg_block) {
-  if (cfg_block.has_id()) {
-    return cfg_block.id();
-  } else {
-    return BlockHasher().HashBlock(cfg_block);
-  }
-}
-
-}  // namespace
-
-// Create a function for a single decoded block.
-void Lifter::CreateBlock(const cfg::Block &cfg_block) {
-  auto id = GetBlockId(cfg_block);
-  auto pc = cfg_block.address();
-
-  auto id_it = id_to_block.find(id);
-  if (id_it != id_to_block.end()) {
-    pc_to_block[pc] = id_it->second;
-  }
-
-  auto &block_func = pc_to_block[pc];
-  if (!block_func) {
-    std::stringstream ss;
-    ss << "__remill_sub_" << std::hex << id;
-    auto func_name = ss.str();
-    auto func_type = basic_block->getFunctionType();
-
-    block_func = llvm::Function::Create(
-        func_type, llvm::GlobalValue::PrivateLinkage, ".", module);
-
-    auto block_var = new llvm::GlobalVariable(
-        *module, llvm::PointerType::get(func_type, 0), true,
-        llvm::GlobalValue::ExternalLinkage, block_func, func_name);
-
-    CHECK(block_var->getName() == func_name)
-        << "Duplicate block for " << func_name;
-
-    InitFunctionAttributes(block_func);
-    SetBlockPC(block_var, pc);
-    SetBlockId(block_var, id);
-
-    id_to_block[id] = block_func;
-
-    if (cfg_block.has_name()) {
-      DLOG(INFO)
-          << "Block at " << std::hex << pc << " has name " << cfg_block.name();
-      SetBlockName(block_func, cfg_block.name());
-    }
-
-  } else {
-    uint64_t other_id = 0;
-    if (!TryGetBlockId(block_func, other_id) || other_id != id) {
-      DLOG(FATAL)
-          << "Duplicate cfg_block at PC " << std::hex << pc << " exists in "
-          << "the CFG proto. There should only be one version of each block "
-          << "in a given CFG Module.";
-    } else {
-      DLOG(ERROR)
-          << "Duplicate cfg_block at PC " << std::hex << pc << " exists in "
-          << "the CFG Module, but they both have the same ID.";
-    }
-  }
-}
-
-// Create a function for a single block.
-llvm::Function *Lifter::GetBlock(uint64_t addr) {
-  auto &block_func = pc_to_block[addr];
-  if (!block_func) {
-    LOG(WARNING)
-        << "Unable find block for PC " << std::hex << addr
-        << " reverting to `__remill_missing_block`.";
-    block_func = intrinsics->missing_block;
-  }
-  return block_func;
-}
-
-// Lift the control-flow graph specified by `cfg` into this bitcode module.
-void Lifter::LiftCFG(const cfg::Module *cfg_module) {
-  ForEachBlock(module,
-      [this] (uint64_t pc, uint64_t id, llvm::Function *func) {
-    id_to_block[id] = func;
-  });
-
-  for (auto &cfg_block : cfg_module->blocks()) {
-    CreateBlock(cfg_block);
-  }
-
-  LiftBlocks(cfg_module);
-
-  pc_to_block.clear();
-  id_to_block.clear();
-}
-
-// Lift code contained in blocks into the block methods.
-void Lifter::LiftBlocks(const cfg::Module *cfg_module) {
-  llvm::legacy::FunctionPassManager func_pass_manager(module);
-  func_pass_manager.add(llvm::createCFGSimplificationPass());
-  func_pass_manager.add(llvm::createPromoteMemoryToRegisterPass());
-  func_pass_manager.add(llvm::createReassociatePass());
-  func_pass_manager.add(llvm::createDeadStoreEliminationPass());
-  func_pass_manager.add(llvm::createDeadCodeEliminationPass());
-
-  func_pass_manager.doInitialization();
-  for (const auto &cfg_block : cfg_module->blocks()) {
-    auto func = LiftBlock(cfg_block);
-    CHECK(!func->isDeclaration())
-        << "Lifted block function " << func->getName().str()
-        << " should have an implementation.";
-
-    func_pass_manager.run(*func);
-  }
-
-  func_pass_manager.doFinalization();
-}
-
-// Lift code contained within a single block.
-llvm::Function *Lifter::LiftBlock(const cfg::Block &cfg_block) {
-  auto block_func = GetBlock(cfg_block.address());
-  if (!block_func->isDeclaration()) {
-    return block_func;
-  }
-
-  CloneBlockFunctionInto(block_func);
-
-  InstructionLifter lifter(word_type, intrinsics);
-
-  // Create a block for each instruction.
-  auto last_block = &block_func->back();
-  auto instr_addr = cfg_block.address();
-  Instruction *instr = nullptr;
-  for (const auto &cfg_instr : cfg_block.instructions()) {
-    CHECK(cfg_instr.address() == instr_addr)
-        << "CFG Instr address " << std::hex << cfg_instr.address()
-        << " doesn't match implied instruction address ("
-        << std::hex << instr_addr << ") based on CFG Block structure.";
-
-    auto instr_bytes = cfg_instr.bytes();
-
-    // Check and delete the last instruction lifted.
-    if (instr) {
-      CHECK(Instruction::kCategoryNoOp == instr->category ||
-            Instruction::kCategoryNormal == instr->category)
-          << "Predecessor of instruction at " << std::hex << instr_addr
-          << " must be a normal or no-op instruction, and not one that"
-          << " should end a block.";
-
-      delete instr;
-      instr = nullptr;
-    }
-
-    instr = arch->DecodeInstruction(instr_addr, instr_bytes);
-    DLOG_IF(WARNING, instr_bytes.size() != instr->NumBytes())
-        << "Size of decoded instruction at " << std::hex << instr_addr
-        << " (" << std::dec << instr->NumBytes()
-        << ") doesn't match input instruction size ("
-        << instr_bytes.size() << ").";
-
-//    DLOG(INFO)
-//        << "Lifting instruction '" << instr->Serialize();
-
-    if (auto curr_block = LiftInstruction(block_func, instr, lifter)) {
-      llvm::IRBuilder<> ir(last_block);
-      ir.CreateBr(curr_block);
-      last_block = curr_block;
-      instr_addr += instr_bytes.size();
-
-    // Unable to lift the instruction; likely because the instruction
-    // semantics are not implemented.
-    } else {
-      AddTerminatingTailCall(last_block, intrinsics->error);
-      break;
-    }
-  }
-
-  CHECK(nullptr != instr)
-      << "Logic error: must lift at least one instruction.";
-
-  if (!last_block->getTerminator()) {
-    LiftTerminator(last_block, instr);
-  }
-
-  delete instr;
-  return block_func;
-}
-
-// Lift a single instruction into a basic block.
-llvm::BasicBlock *Lifter::LiftInstruction(llvm::Function *block_func,
-                                          Instruction *instr,
-                                          InstructionLifter &lifter) {
-  auto &context = block_func->getContext();
-  auto block = llvm::BasicBlock::Create(context, "", block_func);
-  if (!lifter.LiftIntoBlock(instr, block)) {
-    block->eraseFromParent();
-    return nullptr;
-  }
-  return block;
-}
-
-namespace {
-
-// Lift both targets of a conditional branch into a branch in the bitcode,
-// where each side of the branch tail-calls to the functions associated with
-// the lifted blocks for those branch targets.
-static void LiftConditionalBranch(llvm::BasicBlock *source,
-                                  llvm::Function *dest_true,
-                                  llvm::Function *dest_false) {
-  auto &context = source->getContext();
-  auto function = source->getParent();
-  auto block_true = llvm::BasicBlock::Create(context, "", function);
-  auto block_false = llvm::BasicBlock::Create(context, "", function);
-
-  // TODO(pag): This is a bit ugly. The idea here is that, from the semantics
-  //            code, we need a way to communicate what direction of the
-  //            conditional branch should be followed. It turns out to be
-  //            easiest just to write to a special variable :-)
-  auto branch_taken = FindVarInFunction(function, "BRANCH_TAKEN");
-
-  llvm::IRBuilder<> cond_ir(source);
-  auto cond_addr = cond_ir.CreateLoad(branch_taken);
-  auto cond = cond_ir.CreateLoad(cond_addr);
-  cond_ir.CreateCondBr(
-      cond_ir.CreateICmpEQ(
-          cond,
-          llvm::ConstantInt::get(cond->getType(), 1)),
-          block_true,
-          block_false);
-
-  AddTerminatingTailCall(block_true, dest_true);
-  AddTerminatingTailCall(block_false, dest_false);
-}
-
-}  // namespace
-
-// Lift the last instruction of a block as a block terminator.
-void Lifter::LiftTerminator(llvm::BasicBlock *block,
-                                const Instruction *arch_instr) {
-  switch (arch_instr->category) {
-    case Instruction::kCategoryInvalid:
-      AddTerminatingTailCall(block, intrinsics->async_hyper_call);
-      break;
-
-    case Instruction::kCategoryNormal:
-    case Instruction::kCategoryNoOp:
-      AddTerminatingTailCall(
-          block,
-          GetBlock(arch_instr->next_pc));
-      break;
-
-    case Instruction::kCategoryError:
-      AddTerminatingTailCall(block, intrinsics->error);
-      break;
-
-    case Instruction::kCategoryDirectJump:
-      AddTerminatingTailCall(
-          block,
-          GetBlock(arch_instr->branch_taken_pc));
-      break;
-
-    case Instruction::kCategoryIndirectJump:
-      AddTerminatingTailCall(block, intrinsics->jump);
-      break;
-
-    case Instruction::kCategoryDirectFunctionCall:
-      AddTerminatingTailCall(
-          block,
-          GetBlock(arch_instr->branch_taken_pc));
-      break;
-
-    case Instruction::kCategoryIndirectFunctionCall:
-      AddTerminatingTailCall(block, intrinsics->function_call);
-      break;
-
-    case Instruction::kCategoryFunctionReturn:
-      AddTerminatingTailCall(block, intrinsics->function_return);
-      break;
-
-    case Instruction::kCategoryConditionalBranch:
-      LiftConditionalBranch(
-          block,
-          GetBlock(arch_instr->branch_taken_pc),
-          GetBlock(arch_instr->branch_not_taken_pc));
-      break;
-
-    case Instruction::kCategoryAsyncHyperCall:
-      AddTerminatingTailCall(block, intrinsics->async_hyper_call);
-      break;
-
-    case Instruction::kCategoryConditionalAsyncHyperCall:
-      LiftConditionalBranch(
-          block,
-          intrinsics->async_hyper_call,
-          GetBlock(arch_instr->next_pc));
-      break;
-  }
-}
-
 namespace {
 
 // Try to find the function that implements this semantics.
 llvm::Function *GetInstructionFunction(llvm::Module *module,
                                        const std::string &function) {
-  auto isel = FindGlobaVariable(module, function);
+  std::stringstream ss;
+  ss << "ISEL_" << function;
+  auto isel_name = ss.str();
+
+  auto isel = FindGlobaVariable(module, isel_name);
   if (!isel) {
     return nullptr;  // Falls back on `UNIMPLEMENTED_INSTRUCTION`.
   }
@@ -429,14 +91,17 @@ InstructionLifter::InstructionLifter(llvm::IntegerType *word_type_,
       intrinsics(intrinsics_) {}
 
 // Lift a single instruction into a basic block.
-bool InstructionLifter::LiftIntoBlock(
+LiftStatus InstructionLifter::LiftIntoBlock(
     Instruction *arch_instr, llvm::BasicBlock *block) {
 
-  auto module = block->getModule();
+  llvm::Function *func = block->getParent();
+  llvm::Module *module = func->getParent();
   auto isel_func = GetInstructionFunction(module, arch_instr->function);
+  auto status = LiftStatus::kLifted;
 
   if (Instruction::kCategoryInvalid == arch_instr->category) {
     isel_func = GetInstructionFunction(module, "INVALID_INSTRUCTION");
+    status = LiftStatus::kInvalid;
   }
 
   if (!isel_func) {
@@ -449,13 +114,12 @@ bool InstructionLifter::LiftIntoBlock(
       LOG(ERROR)
           << "UNSUPPORTED_INSTRUCTION doesn't exist; not using it in place of "
           << arch_instr->function;
-      return false;
+      return LiftStatus::kError;
     }
 
+    status = LiftStatus::kUnsupported;
     arch_instr->operands.clear();
   }
-
-  isel_func->addFnAttr(llvm::Attribute::ArgMemOnly);
 
   llvm::IRBuilder<> ir(block);
   auto mem_ptr = LoadMemoryPointerRef(block);
@@ -464,8 +128,9 @@ bool InstructionLifter::LiftIntoBlock(
 
   // Begin an atomic block.
   if (arch_instr->is_atomic_read_modify_write) {
+    std::vector<llvm::Value *> args = {ir.CreateLoad(mem_ptr)};
     ir.CreateStore(
-        ir.CreateCall(intrinsics->atomic_begin, {ir.CreateLoad(mem_ptr)}),
+        ir.CreateCall(intrinsics->atomic_begin, args),
         mem_ptr);
   }
 
@@ -476,15 +141,6 @@ bool InstructionLifter::LiftIntoBlock(
   // state pointer, and a pointer to the memory pointer.
   args.push_back(nullptr);
   args.push_back(state_ptr);
-
-  // Call out to a special 'breakpoint' instruction function, that lets us
-  // interpose on the machine state just before every lifted instruction.
-  if (FLAGS_add_breakpoints) {
-    ir.CreateStore(
-        ir.CreateCall(GetInstructionFunction(module, "BREAKPOINT_INSTRUCTION"),
-                      args),
-        mem_ptr);
-  }
 
   auto isel_func_type = isel_func->getFunctionType();
   auto arg_num = 2U;
@@ -523,12 +179,13 @@ bool InstructionLifter::LiftIntoBlock(
 
   // End an atomic block.
   if (arch_instr->is_atomic_read_modify_write) {
+    std::vector<llvm::Value *> args = {ir.CreateLoad(mem_ptr)};
     ir.CreateStore(
-        ir.CreateCall(intrinsics->atomic_end, {ir.CreateLoad(mem_ptr)}),
+        ir.CreateCall(intrinsics->atomic_end, args),
         mem_ptr);
   }
 
-  return true;
+  return status;
 }
 
 namespace {
@@ -583,6 +240,9 @@ static llvm::Value *LoadWordRegValOrZero(llvm::BasicBlock *block,
 llvm::Value *InstructionLifter::LiftRegisterOperand(
     Instruction *, llvm::BasicBlock *block,
     llvm::Type *arg_type, Operand &op) {
+
+  llvm::Function *func = block->getParent();
+  llvm::Module *module = func->getParent();
   auto &arch_reg = op.reg;
 
   if (auto ptr_type = llvm::dyn_cast_or_null<llvm::PointerType>(arg_type)) {
@@ -602,7 +262,7 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(
 
     auto val = LoadRegValue(block, arch_reg.name);
 
-    const llvm::DataLayout data_layout(block->getModule());
+    const llvm::DataLayout data_layout(module);
     auto val_type = val->getType();
     auto val_size = data_layout.getTypeAllocSizeInBits(val_type);
     auto arg_size = data_layout.getTypeAllocSizeInBits(arg_type);

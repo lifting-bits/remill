@@ -1,4 +1,18 @@
-/* Copyright 2016 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+/*
+ * Copyright (c) 2017 Trail of Bits, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef REMILL_ARCH_RUNTIME_INTRINSICS_H_
 #define REMILL_ARCH_RUNTIME_INTRINSICS_H_
@@ -74,11 +88,11 @@ extern float32_t __remill_undefined_f32(void);
 [[gnu::used, gnu::const]]
 extern float64_t __remill_undefined_f64(void);
 
-// Inlining control. The idea here is that sometimes we want to defer inlining
-// until a later time, and we need to communicate what should eventually be
-// inlined, even if it's not currently inlined.
-[[gnu::used]]
-extern void __remill_defer_inlining(void);
+//// Inlining control. The idea here is that sometimes we want to defer inlining
+//// until a later time, and we need to communicate what should eventually be
+//// inlined, even if it's not currently inlined.
+//[[gnu::used]]
+//extern void __remill_defer_inlining(void);
 
 // Generic error.
 [[gnu::used]]

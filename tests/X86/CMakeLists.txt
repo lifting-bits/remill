@@ -1,6 +1,23 @@
-# Copyright 2017 Peter Goodman (peter@trailofbits.com), all rights reserved.
+# Copyright (c) 2017 Trail of Bits, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-find_package(GTEST REQUIRED)
+find_package(gtest REQUIRED)
+
+# google gtest
+find_package(gtest REQUIRED)
+list(APPEND PROJECT_LIBRARIES ${gtest_LIBRARIES})
+list(APPEND PROJECT_INCLUDEDIRECTORIES ${gtest_INCLUDE_DIRS})
 
 enable_testing()
 
@@ -9,7 +26,7 @@ add_custom_target(build_x86_tests)
 macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
         
     set(X86_TEST_FLAGS
-        -I${PROJECT_SOURCE_DIR}
+        -I${CMAKE_SOURCE_DIR}
         -DADDRESS_SIZE_BITS=${address_size}
         -DHAS_FEATURE_AVX=${has_avx}
         -DHAS_FEATURE_AVX512=${has_avx512}
@@ -28,9 +45,9 @@ macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
                 -DIN_TEST_GENERATOR
     )
 
-    target_link_libraries(lift-${name}-tests
-        remill
-    )
+    target_link_libraries(lift-${name}-tests PUBLIC remill ${PROJECT_LIBRARIES})
+    target_include_directories(lift-${name}-tests PUBLIC ${PROJECT_INCLUDEDIRECTORIES})
+    target_compile_definitions(lift-${name}-tests PUBLIC ${PROJECT_DEFINITIONS})
     
     add_executable(run-${name}-tests
         EXCLUDE_FROM_ALL
@@ -50,16 +67,15 @@ macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
     add_custom_command(
         OUTPUT  tests_${name}.S
         COMMAND ${CMAKE_CXX_COMPILER}
-                -S -O0 -g3
+                -S -O0 -g0
                 -c tests_${name}.bc
                 -o tests_${name}.S
         DEPENDS tests_${name}.bc
     )
-    
-    target_link_libraries(run-${name}-tests
-        ${GTEST_LIBRARIES}
-        remill
-    )
+
+    target_link_libraries(run-${name}-tests PUBLIC remill ${PROJECT_LIBRARIES})
+    target_include_directories(run-${name}-tests PUBLIC ${PROJECT_INCLUDEDIRECTORIES})
+    target_compile_definitions(run-${name}-tests PUBLIC ${PROJECT_DEFINITIONS})
     
     target_compile_options(run-${name}-tests
         PRIVATE ${X86_TEST_FLAGS}

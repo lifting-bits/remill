@@ -20,7 +20,6 @@ install:
   - ./scripts/travis/install.sh
 before_script:
   - cd build
-  - if [[ "${TRAVIS_OS_NAME}" == "linux" ]] ; then make build_x86_tests ; fi
 script:
   - if [[ "${TRAVIS_OS_NAME}" == "linux" ]] ; then ctest ; fi
 notifications:

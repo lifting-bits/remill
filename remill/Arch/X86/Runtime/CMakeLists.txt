@@ -1,110 +1,39 @@
-# Copyright 2017 Peter Goodman (peter@trailofbits.com), all rights reserved.
+cmake_minimum_required (VERSION 3.2)
+project(x86_runtime BC)
 
-macro(COMPILE_X86_SEMANTICS name address_size has_avx has_avx512)
-    set(SEMANTICS_CXX_FLAGS
+set(X86RUNTIME_SOURCEFILES
+    Instructions.cpp
+    BasicBlock.cpp
+)
 
-        -I${PROJECT_SOURCE_DIR}
-        -emit-llvm
-        -DADDRESS_SIZE_BITS=${address_size}
-        -DHAS_FEATURE_AVX=${has_avx}
-        -DHAS_FEATURE_AVX512=${has_avx512}
+set_source_files_properties(Instructions.cpp PROPERTIES COMPILE_FLAGS "-O3 -g0")
+set_source_files_properties(BasicBlock.cpp PROPERTIES COMPILE_FLAGS "-O0 -g3")
 
-        -std=gnu++11
-        
-        # TODO(pag): This should be what I do, but I've observed strange LLVM
-        #            code gen issues, where 32-bit code whose data layout is
-        #            converted to 64-bit code will sometimes miscompile pointers
-        #            as 32-bit. This is, of course, in bitcode that doesn't
-        #            do any ptrtoint or inttoptr casts! And this issue doesn't
-        #            show up when certain amounts of very aggressive
-        #            optimizations are performed to the file before converting
-        #            to 32-bit >:-(
-        # -m${address_size}
-        
-        -Wall
-        -Werror
-        -Wshadow
-        -Wconversion
-        -Wpadded
-        -pedantic
-        
-        -Wshorten-64-to-32
-        -Wno-gnu-anonymous-struct
-        -Wno-return-type-c-linkage
-        -Wno-gnu-zero-variadic-macro-arguments
-        -Wno-nested-anon-types
-        -Wno-extended-offsetof
-        -Wno-gnu-statement-expression
-        -Wno-c99-extensions
-        -Wno-ignored-attributes
+set(X86RUNTIME_COMPILEOPTIONS
+    -mno-sse
+    -mno-avx
+    -mno-3dnow
+)
 
-        # All of these are needed to disable vectorization, both in the LLVM
-        # optimizer, and in the Clang front-end.
-        -mtune=generic
-        -mno-sse
-        -mno-avx
-        -mno-3dnow
-        -fno-vectorize
-        -fno-slp-vectorize
-        
-        -ffreestanding
-        -fno-common
-        -fno-builtin
-        -fno-exceptions
-        -fno-rtti
-        -fno-asynchronous-unwind-tables
+set(X86RUNTIME_INCLUDEDIRECTORIES ${CMAKE_SOURCE_DIR})
 
-        -Wno-unneeded-internal-declaration
-        -Wno-unused-function
-    )
+function (add_runtime_helper target_name address_bit_size enable_avx enable_avx512)
+    message(" > Generating runtime target: ${target_name}")
 
-    add_custom_target(${name}.bc
-        COMMAND ${CMAKE_LLVM_LINK}
-                BasicBlock.${name}.bc
-                Instructions.${name}.bc
-                -o ${name}.bc
-        DEPENDS BasicBlock.${name}.bc
-                Instructions.${name}.bc
-    )
+    add_runtime(${target_name} SOURCES ${X86RUNTIME_SOURCEFILES} ADDRESS_SIZE ${address_bit_size})
 
-    # Note: `-O0 -g3` is significant here. We need to make sure that we can
-    #       recover variables names within `__remill_basic_block` that may have
-    #       been lost when the code was compiled.
-    add_custom_command(
-        OUTPUT  BasicBlock.${name}.bc
-        COMMAND ${CMAKE_CXX_COMPILER}
-                ${SEMANTICS_CXX_FLAGS}
-                -O0 -g3
-                -c ${CMAKE_CURRENT_SOURCE_DIR}/BasicBlock.cpp
-                -o BasicBlock.${name}.bc
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/BasicBlock.cpp
-    )
-    
-    # Note: Some debug info *must* be preserved. This is so that we can have
-    #       debug info on lifted blocks that call these inlinable instruction
-    #       functions, without LLVM going and complaining about calling an
-    #       inlineable function with debug info.
-    add_custom_command(
-        OUTPUT  Instructions.${name}.bc
-        COMMAND ${CMAKE_CXX_COMPILER}
-                ${SEMANTICS_CXX_FLAGS}
-                -O3 -g0
-                -c ${CMAKE_CURRENT_SOURCE_DIR}/Instructions.cpp
-                -o Instructions.${name}.bc
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Instructions.cpp
-    )
+    target_include_directories(${target_name} PRIVATE ${X86RUNTIME_INCLUDEDIRECTORIES})
+    target_compile_options(${target_name} PRIVATE ${X86RUNTIME_COMPILEOPTIONS})
+    target_compile_definitions(${target_name} PRIVATE "HAS_FEATURE_AVX=${enable_avx}")
+    target_compile_definitions(${target_name} PRIVATE "HAS_FEATURE_AVX512=${enable_avx512}")
+endfunction ()
 
-    add_dependencies(semantics ${name}.bc)
-    install(
-        FILES       ${CMAKE_CURRENT_BINARY_DIR}/${name}.bc
-        DESTINATION share/remill/semantics
-    )
+add_runtime_helper(x86 32 0 0)
+add_runtime_helper(x86_avx 32 1 0)
+add_runtime_helper(x86_avx512 32 1 1)
 
-endmacro()
-
-COMPILE_X86_SEMANTICS(x86 32 0 0)
-COMPILE_X86_SEMANTICS(x86_avx 32 1 0)
-COMPILE_X86_SEMANTICS(x86_avx512 32 1 1)
-COMPILE_X86_SEMANTICS(amd64 64 0 0)
-COMPILE_X86_SEMANTICS(amd64_avx 64 1 0)
-COMPILE_X86_SEMANTICS(amd64_avx512 64 1 1)
+if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+    add_runtime_helper(amd64 64 0 0)
+    add_runtime_helper(amd64_avx 64 1 0)
+    add_runtime_helper(amd64_avx512 64 1 1)
+endif ()

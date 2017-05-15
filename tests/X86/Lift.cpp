@@ -1,22 +1,41 @@
-/* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+/*
+ * Copyright (c) 2017 Trail of Bits, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <algorithm>
 #include <cstdint>
 #include <fstream>
+#include <memory>
 #include <sstream>
 #include <string>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <llvm/IR/Function.h>
+#include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
 
 #include "remill/Arch/Arch.h"
+#include "remill/Arch/Instruction.h"
 #include "remill/Arch/Name.h"
+#include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Lifter.h"
 #include "remill/BC/Util.h"
-#include "remill/CFG/CFG.h"
 #include "remill/OS/OS.h"
 
 #include "tests/X86/Test.h"
@@ -38,26 +57,35 @@
 DEFINE_string(bc_out, "",
               "Name of the file in which to place the generated bitcode.");
 
-DEFINE_string(arch, "", "Architecture of the code to be lifted.");
-
-DEFINE_string(os, "", "");
+DECLARE_string(arch);
+DECLARE_string(os);
 
 namespace {
 
 // Decode a test and add it as a basic block to the module.
 //
 // TODO(pag): Eventually handle control-flow.
-static void AddFunctionToModule(remill::cfg::Module *module,
+static void AddFunctionToModule(llvm::Module *module,
                                 const remill::Arch *arch,
                                 const test::TestInfo &test) {
+  DLOG(INFO)
+      << "Adding block for: " << test.test_name;
+
   std::stringstream ss;
   ss << SYMBOL_PREFIX << test.test_name << "_lifted";
 
-  DLOG(INFO) << "Adding block for: " << test.test_name;
+  auto word_type = llvm::Type::getIntNTy(module->getContext(),
+                                         arch->address_size);
+  auto func = remill::DeclareLiftedFunction(module, ss.str());
+  remill::CloneBlockFunctionInto(func);
 
-  auto block = module->add_blocks();
-  block->set_address(test.test_begin);
-  block->set_name(ss.str());
+  func->setLinkage(llvm::GlobalValue::ExternalLinkage);
+  func->setVisibility(llvm::GlobalValue::DefaultVisibility);
+
+  remill::IntrinsicTable intrinsics(module);
+  remill::InstructionLifter lifter(word_type, &intrinsics);
+
+  auto block = &(func->front());
 
   auto addr = test.test_begin;
   while (addr < test.test_end) {
@@ -65,20 +93,31 @@ static void AddFunctionToModule(remill::cfg::Module *module,
     auto bytes = reinterpret_cast<const char *>(addr);
     instr_bytes.insert(instr_bytes.end(), bytes, bytes + 15);
 
-    auto inst = arch->DecodeInstruction(addr, instr_bytes);
+    std::unique_ptr<remill::Instruction> inst(
+        arch->DecodeInstruction(addr, instr_bytes));
+
     CHECK(inst->IsValid())
         << "Can't decode test instruction in " << test.test_name;
 
-    instr_bytes.clear();
-    instr_bytes.insert(instr_bytes.end(), bytes, bytes + inst->NumBytes());
+    switch (auto status = lifter.LiftIntoBlock(inst.get(), block)) {
+      case remill::LiftStatus::kError:
+      case remill::LiftStatus::kInvalid:
+        LOG(ERROR)
+            << "Not lifting " << inst->Serialize();
+        remill::AddTerminatingTailCall(block, intrinsics.error);
+        return;
+      case remill::LiftStatus::kUnsupported:
+        LOG(ERROR)
+            << "Unsupported instruction: " << inst->Serialize();
+        break;
+      default:
+        break;
+    }
 
-    auto instr = block->add_instructions();
-    instr->set_bytes(instr_bytes);
-    instr->set_address(addr);
     addr += inst->NumBytes();
-
-    delete inst;
   }
+
+  remill::AddTerminatingTailCall(block, intrinsics.missing_block);
 }
 
 }  // namespace
@@ -95,30 +134,15 @@ extern "C" int main(int argc, char *argv[]) {
 
   DLOG(INFO) << "Generating tests.";
 
-  auto cfg = new remill::cfg::Module;
-  for (auto i = 0U; ; ++i) {
-    const auto &test = test::__x86_test_table_begin[i];
-    if (&test >= &(test::__x86_test_table_end[0])) break;
-    AddFunctionToModule(cfg, arch, test);
-  }
-
   auto context = new llvm::LLVMContext;
   auto bc_file = remill::FindSemanticsBitcodeFile("", FLAGS_arch);
   auto module = remill::LoadModuleFromFile(context, bc_file);
   target_arch->PrepareModule(module);
-  auto translator = new remill::Lifter(arch, module);
-  translator->LiftCFG(cfg);
-
-  // Rename all the lifted blocks to have the same name as their test cases.
-  remill::ForEachBlock(module,
-                       [=] (uint64_t pc, uint64_t, llvm::Function *func) {
-    std::string name;
-    CHECK(remill::TryGetBlockName(func, name))
-        << "Unable to get the name of the block at PC " << std::hex << pc;
-    func->setName(name);
-    func->setLinkage(llvm::GlobalValue::ExternalLinkage);
-    func->setVisibility(llvm::GlobalValue::DefaultVisibility);
-  });
+  for (auto i = 0U; ; ++i) {
+    const auto &test = test::__x86_test_table_begin[i];
+    if (&test >= &(test::__x86_test_table_end[0])) break;
+    AddFunctionToModule(module, arch, test);
+  }
 
   DLOG(INFO) << "Serializing bitcode to " << FLAGS_bc_out;
   remill::StoreModuleToFile(module, FLAGS_bc_out);

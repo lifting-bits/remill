@@ -1,4 +1,18 @@
-/* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+/*
+ * Copyright (c) 2017 Trail of Bits, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <glog/logging.h>
 
@@ -6,6 +20,8 @@
 #include <sstream>
 #include <string>
 
+#include <llvm/IR/Attributes.h>
+#include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
 
 #undef HAS_FEATURE_AVX
@@ -21,6 +37,7 @@
 #include "remill/Arch/X86/Arch.h"
 #include "remill/Arch/X86/XED.h"
 #include "remill/Arch/X86/Runtime/State.h"
+#include "remill/BC/Version.h"
 #include "remill/OS/OS.h"
 
 namespace remill {
@@ -299,7 +316,35 @@ static bool DecodeXED(xed_decoded_inst_t *xedd,
 static Operand::Register RegOp(xed_reg_enum_t reg) {
   Operand::Register reg_op;
   if (XED_REG_INVALID != reg) {
-    reg_op.name = xed_reg_enum_t2str(reg);
+    switch (reg) {
+      case XED_REG_ST0:
+        reg_op.name = "ST0";
+        break;
+      case XED_REG_ST1:
+        reg_op.name = "ST1";
+        break;
+      case XED_REG_ST2:
+        reg_op.name = "ST2";
+        break;
+      case XED_REG_ST3:
+        reg_op.name = "ST3";
+        break;
+      case XED_REG_ST4:
+        reg_op.name = "ST4";
+        break;
+      case XED_REG_ST5:
+        reg_op.name = "ST5";
+        break;
+      case XED_REG_ST6:
+        reg_op.name = "ST6";
+        break;
+      case XED_REG_ST7:
+        reg_op.name = "ST7";
+        break;
+      default:
+        reg_op.name = xed_reg_enum_t2str(reg);
+        break;
+    }
     if (XED_REG_X87_FIRST <= reg && XED_REG_X87_LAST >= reg) {
       reg_op.size = 64;
     } else {
@@ -722,14 +767,24 @@ void X86Arch::PrepareModule(llvm::Module *mod) const {
   mod->setTargetTriple(triple);
 
   // Go and remove compile-time attributes added into the semantics. These
-  // can screw up later compilation.
+  // can screw up later compilation. We purposefully compile semantics with
+  // things like auto-vectorization disabled so that it keeps the bitcode
+  // to a simpler subset of the available LLVM instruction set. If/when we
+  // compile this bitcode back into machine code, we may want to use those
+  // features, and clang will complain if we try to do so if these metadata
+  // remain present.
   auto &context = mod->getContext();
+
+  llvm::AttributeSet target_attribs;
+  target_attribs = target_attribs.addAttribute(
+      context, llvm::AttributeSet::FunctionIndex, "target-features");
+  target_attribs = target_attribs.addAttribute(
+      context, llvm::AttributeSet::FunctionIndex, "target-cpu");
+
   for (llvm::Function &func : *mod) {
     auto attribs = func.getAttributes();
-    attribs = attribs.removeAttribute(
-        context, llvm::AttributeSet::FunctionIndex, "target-features");
-    attribs = attribs.removeAttribute(
-        context, llvm::AttributeSet::FunctionIndex, "target-cpu");
+    attribs = attribs.removeAttributes(
+        context, llvm::AttributeSet::FunctionIndex, target_attribs);
     func.setAttributes(attribs);
   }
 }

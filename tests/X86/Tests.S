@@ -1,4 +1,18 @@
-/* Copyright 2015 Peter Goodman (peter@trailofbits.com), all rights reserved. */
+/*
+ * Copyright (c) 2017 Trail of Bits, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef TESTS_X86_TESTS_S_
 #define TESTS_X86_TESTS_S_
@@ -48,7 +62,6 @@
  *       one should use `TEST_BEGIN_32` or `TEST_BEGIN_64`.
  */
 #define TEST_BEGIN(instr_name, num_args) \
-    .file __FILE__ ; \
     .text ; \
     \
     .align 16 ; \
@@ -151,7 +164,6 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
 # define TEST_END_MEM_64 TEST_END_64
 #endif
 
-    .file __FILE__ ;
     .intel_syntax noprefix ;
 
 #ifndef IN_TEST_GENERATOR
@@ -506,7 +518,5 @@ SYMBOL(__x86_test_table_begin):
     .globl SYMBOL(__x86_test_table_end)
 SYMBOL(__x86_test_table_end):
 
-    /* Reset */
-    .att_syntax prefix
 
 #endif  /* TESTS_X86_TESTS_S_ */
