@@ -68,6 +68,6 @@ function (add_runtime target_name)
     set_target_properties("${target_name}" PROPERTIES SUFFIX ".bc")
 
     foreach (source_file ${sourcefile_list})
-      add_dependencies("${target_name}" "${source_file}")
+        add_dependencies("${target_name}" "${source_file}")
     endforeach ()
 endfunction ()
