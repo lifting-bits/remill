@@ -66,4 +66,8 @@ function (add_runtime target_name)
     add_executable("${target_name}" ${source_file_list})
     target_compile_definitions("${target_name}" PRIVATE ${definitions})
     set_target_properties("${target_name}" PROPERTIES SUFFIX ".bc")
+
+    foreach (source_file ${sourcefile_list})
+        add_dependencies("${target_name}" "${source_file}")
+    endforeach ()
 endfunction ()
