@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Copyright (c) 2017 Trail of Bits, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+# test tools
+#add_subdirectory(testdec)
 
-brew install glog
-
-$DIR/build.sh
+# mcsema needs to be manually cloned into this repo.
+if (EXISTS ${CMAKE_SOURCE_DIR}/tools/mcsema)
+    add_subdirectory(mcsema)
+endif ()

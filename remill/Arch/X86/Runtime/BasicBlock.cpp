@@ -32,7 +32,7 @@ Memory *__remill_basic_block(Memory *memory, State &state, addr_t curr_pc) {
   // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
   auto &MEMORY = *memory;
-  auto &PC = state.gpr.rip.IF_64BIT_ELSE(qword, dword);
+  auto &PC = state.gpr.rip.aword;
   auto &BRANCH_TAKEN = branch_taken;
 
   // `PC` should already have the correct value, but it's nice to make sure
@@ -305,7 +305,7 @@ Memory *__remill_basic_block(Memory *memory, State &state, addr_t curr_pc) {
   auto &ZF = state.aflag.zf;
 
   // Lifted code will be placed here in clones versions of this function.
-  return nullptr;
+  return memory;
 }
 
 #pragma clang diagnostic pop

@@ -15,6 +15,12 @@
 install_manifest.txt
 Makefile
 
+CMakeLists.txt.user
+.vscode
+.idea
+cmake-build-debug
+cmake-build-release
+
 bin/*
 lib/*
 

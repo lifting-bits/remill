@@ -86,35 +86,20 @@ static void AddFunctionToModule(llvm::Module *module,
   remill::InstructionLifter lifter(word_type, &intrinsics);
 
   auto block = &(func->front());
-
   auto addr = test.test_begin;
   while (addr < test.test_end) {
     std::string instr_bytes;
     auto bytes = reinterpret_cast<const char *>(addr);
     instr_bytes.insert(instr_bytes.end(), bytes, bytes + 15);
 
-    std::unique_ptr<remill::Instruction> inst(
-        arch->DecodeInstruction(addr, instr_bytes));
-
-    CHECK(inst->IsValid())
+    remill::Instruction inst;
+    CHECK(arch->DecodeInstruction(addr, instr_bytes, inst))
         << "Can't decode test instruction in " << test.test_name;
 
-    switch (auto status = lifter.LiftIntoBlock(inst.get(), block)) {
-      case remill::LiftStatus::kError:
-      case remill::LiftStatus::kInvalid:
-        LOG(ERROR)
-            << "Not lifting " << inst->Serialize();
-        remill::AddTerminatingTailCall(block, intrinsics.error);
-        return;
-      case remill::LiftStatus::kUnsupported:
-        LOG(ERROR)
-            << "Unsupported instruction: " << inst->Serialize();
-        break;
-      default:
-        break;
-    }
+    CHECK(lifter.LiftIntoBlock(inst, block))
+        << "Can't lift test instruction in " << test.test_name;
 
-    addr += inst->NumBytes();
+    addr += inst.NumBytes();
   }
 
   remill::AddTerminatingTailCall(block, intrinsics.missing_block);

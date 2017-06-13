@@ -29,17 +29,17 @@
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
-#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 
 #include <llvm/Support/FileSystem.h>
-#include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/ToolOutputFile.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include "remill/BC/ABI.h"
 #include "remill/BC/Compat/BitcodeReaderWriter.h"
@@ -55,7 +55,6 @@ namespace remill {
 
 // Initialize the attributes for a lifted function.
 void InitFunctionAttributes(llvm::Function *function) {
-
   // Make sure functions are treated as if they return. LLVM doesn't like
   // mixing must-tail-calls with no-return.
   function->removeFnAttr(llvm::Attribute::NoReturn);
@@ -79,8 +78,8 @@ void InitFunctionAttributes(llvm::Function *function) {
 llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
                                        llvm::Value *dest_func) {
   if (source_func->isDeclaration()) {
-    llvm::IRBuilder<> ir(llvm::BasicBlock::Create(
-        source_func->getContext(), "", source_func));
+    llvm::IRBuilder<> ir(
+        llvm::BasicBlock::Create(source_func->getContext(), "", source_func));
 
     std::vector<llvm::Value *> args;
     for (llvm::Argument &arg : source_func->args()) {
@@ -100,8 +99,7 @@ llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
 
 llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
                                        llvm::Value *dest_func) {
-  CHECK(nullptr != dest_func)
-      << "Target function/block does not exist!";
+  CHECK(nullptr != dest_func) << "Target function/block does not exist!";
 
   LOG_IF(ERROR, source_block->getTerminator())
       << "Block already has a terminator; not adding fall-through call to: "
@@ -135,8 +133,7 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
-llvm::Value *FindVarInFunction(llvm::BasicBlock *block,
-                               std::string name,
+llvm::Value *FindVarInFunction(llvm::BasicBlock *block, std::string name,
                                bool allow_failure) {
   return FindVarInFunction(block->getParent(), name, allow_failure);
 }
@@ -151,9 +148,8 @@ llvm::Value *FindVarInFunction(llvm::Function *function, std::string name,
     }
   }
 
-  CHECK(allow_failure)
-      << "Could not find variable " << name << " in function "
-      << function->getName().str();
+  CHECK(allow_failure) << "Could not find variable " << name << " in function "
+                       << function->getName().str();
   return nullptr;
 }
 
@@ -190,8 +186,8 @@ llvm::Value *LoadProgramCounterRef(llvm::BasicBlock *block) {
 void StoreProgramCounter(llvm::BasicBlock *block, uint64_t pc) {
   auto pc_ptr = LoadProgramCounterRef(block);
   auto type = llvm::dyn_cast<llvm::PointerType>(pc_ptr->getType());
-  (void) new llvm::StoreInst(
-      llvm::ConstantInt::get(type->getElementType(), pc), pc_ptr, block);
+  (void)new llvm::StoreInst(llvm::ConstantInt::get(type->getElementType(), pc),
+                            pc_ptr, block);
 }
 
 // Return the current memory pointer.
@@ -204,8 +200,8 @@ llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block) {
 // or not a conditional branch is taken.
 llvm::Value *LoadBranchTaken(llvm::BasicBlock *block) {
   llvm::IRBuilder<> ir(block);
-  auto cond = ir.CreateLoad(ir.CreateLoad(
-      FindVarInFunction(block->getParent(), "BRANCH_TAKEN")));
+  auto cond = ir.CreateLoad(
+      ir.CreateLoad(FindVarInFunction(block->getParent(), "BRANCH_TAKEN")));
   auto true_val = llvm::ConstantInt::get(cond->getType(), 1);
   return ir.CreateICmpEQ(cond, true_val);
 }
@@ -234,19 +230,18 @@ llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
   auto module = mod_ptr.get();
   mod_ptr.release();
 
-  CHECK(nullptr != module)
-      << "Unable to parse module file: " << file_name << ".";
+  CHECK(nullptr != module) << "Unable to parse module file: " << file_name
+                           << ".";
 
   auto ec = module->materializeAll();  // Just in case.
-  CHECK(!ec)
-      << "Unable to materialize everything from " << file_name;
+  CHECK(!ec) << "Unable to materialize everything from " << file_name;
 
   std::string error;
   llvm::raw_string_ostream error_stream(error);
   if (llvm::verifyModule(*module, &error_stream)) {
     error_stream.flush();
-    LOG(FATAL)
-        << "Error reading module from file " << file_name << ": " << error;
+    LOG(FATAL) << "Error reading module from file " << file_name << ": "
+               << error;
   }
 
   return module;
@@ -263,20 +258,18 @@ void StoreModuleToFile(llvm::Module *module, std::string file_name) {
 
   if (llvm::verifyModule(*module, &error_stream)) {
     error_stream.flush();
-    LOG(FATAL)
-        << "Error writing module to file " << file_name << ": " << error;
+    LOG(FATAL) << "Error writing module to file " << file_name << ": " << error;
   }
 
 #if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 5)
   std::error_code ec;
   llvm::tool_output_file bc(tmp_name.c_str(), ec, llvm::sys::fs::F_RW);
-  CHECK(!ec)
-      << "Unable to open output bitcode file for writing: " << tmp_name;
+  CHECK(!ec) << "Unable to open output bitcode file for writing: " << tmp_name;
 #else
   llvm::tool_output_file bc(tmp_name.c_str(), error, llvm::sys::fs::F_RW);
   CHECK(error.empty() && !bc.os().has_error())
-      << "Unable to open output bitcode file for writing: " << tmp_name
-      << ": " << error;
+      << "Unable to open output bitcode file for writing: " << tmp_name << ": "
+      << error;
 #endif
 
   llvm::WriteBitcodeToFile(module, bc.os());
@@ -285,26 +278,31 @@ void StoreModuleToFile(llvm::Module *module, std::string file_name) {
     RenameFile(tmp_name, file_name);
   } else {
     RemoveFile(tmp_name);
-    LOG(FATAL)
-        << "Error writing bitcode to file: " << file_name << ".";
+    LOG(FATAL) << "Error writing bitcode to file: " << file_name << ".";
   }
 }
 
 namespace {
 
 #ifndef BUILD_SEMANTICS_DIR
-# error "Macro `BUILD_SEMANTICS_DIR` must be defined."
-# define BUILD_SEMANTICS_DIR
+#error "Macro `BUILD_SEMANTICS_DIR` must be defined."
+#define BUILD_SEMANTICS_DIR
+#endif  // BUILD_SEMANTICS_DIR
+
+#ifndef BUILD_SEMANTICS_DIR_ARM
+#error \
+    "Macro `BUILD_SEMANTICS_DIR_ARM` must be defined to support ARM architecture."
+#define BUILD_SEMANTICS_DIR_ARM
 #endif  // BUILD_SEMANTICS_DIR
 
 #ifndef INSTALL_SEMANTICS_DIR
-# error "Macro `INSTALL_SEMANTICS_DIR` must be defined."
-# define INSTALL_SEMANTICS_DIR
+#error "Macro `INSTALL_SEMANTICS_DIR` must be defined."
+#define INSTALL_SEMANTICS_DIR
 #endif  // INSTALL_SEMANTICS_DIR
 
 static const char *gSemanticsSearchPaths[] = {
     // Derived from the build.
-    BUILD_SEMANTICS_DIR "\0",
+    BUILD_SEMANTICS_DIR "\0", BUILD_SEMANTICS_DIR_ARM "\0",
     INSTALL_SEMANTICS_DIR "\0",
 };
 
@@ -326,8 +324,7 @@ std::string FindSemanticsBitcodeFile(const std::string &path,
     }
   }
 
-  LOG(FATAL)
-      << "Cannot find path to " << arch << " semantics bitcode file.";
+  LOG(FATAL) << "Cannot find path to " << arch << " semantics bitcode file.";
   return "";
 }
 
@@ -383,16 +380,16 @@ void ForEachISel(llvm::Module *module, ISelCallback callback) {
 llvm::Function *DeclareLiftedFunction(llvm::Module *module,
                                       const std::string &name) {
   auto bb = module->getFunction("__remill_basic_block");
-  CHECK(nullptr != bb)
-      << "Cannot declare lifted function " << name << " because the "
-      << " intrinsics __remill_basic_block cannot be found.";
+  CHECK(nullptr != bb) << "Cannot declare lifted function " << name
+                       << " because the "
+                       << " intrinsics __remill_basic_block cannot be found.";
   auto func_type = bb->getFunctionType();
 
   auto func = llvm::dyn_cast<llvm::Function>(
       module->getOrInsertFunction(name, func_type));
 
-  CHECK(nullptr != func)
-      << "Could not insert function " << name << " into module";
+  CHECK(nullptr != func) << "Could not insert function " << name
+                         << " into module";
 
   InitFunctionAttributes(func);
 
@@ -426,8 +423,8 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
   // Clone the basic blocks and their instructions.
   std::unordered_map<llvm::BasicBlock *, llvm::BasicBlock *> block_map;
   for (auto &old_block : *source_func) {
-    auto new_block = llvm::BasicBlock::Create(
-        dest_func->getContext(), old_block.getName(), dest_func);
+    auto new_block = llvm::BasicBlock::Create(dest_func->getContext(),
+                                              old_block.getName(), dest_func);
     value_map[&old_block] = new_block;
     block_map[&old_block] = new_block;
 
@@ -483,10 +480,9 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
         // At this point, all we should have is a global.
         auto global_val = llvm::dyn_cast<llvm::GlobalValue>(old_op_val);
         if (!global_val) {
-          LOG(FATAL)
-              << "Cannot clone value " << LLVMThingToString(old_op_val)
-              << " into function " << func_name << " because it isn't "
-              << "a global value.";
+          LOG(FATAL) << "Cannot clone value " << LLVMThingToString(old_op_val)
+                     << " into function " << func_name << " because it isn't "
+                     << "a global value.";
         }
 
         // If it's a global and we're in the same module, then use it.
@@ -499,21 +495,19 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
         // Declare the global in the new module.
         llvm::GlobalValue *new_global_val = nullptr;
         if (llvm::isa<llvm::Function>(global_val)) {
-          new_global_val = llvm::dyn_cast<llvm::GlobalValue>(
-              dest_mod->getOrInsertFunction(
-                  global_val->getName(),
-                  llvm::dyn_cast<llvm::FunctionType>(
-                      GetValueType(global_val))));
+          new_global_val =
+              llvm::dyn_cast<llvm::GlobalValue>(dest_mod->getOrInsertFunction(
+                  global_val->getName(), llvm::dyn_cast<llvm::FunctionType>(
+                                             GetValueType(global_val))));
 
         } else if (llvm::isa<llvm::GlobalVariable>(global_val)) {
-          new_global_val = llvm::dyn_cast<llvm::GlobalValue>(
-              dest_mod->getOrInsertGlobal(
+          new_global_val =
+              llvm::dyn_cast<llvm::GlobalValue>(dest_mod->getOrInsertGlobal(
                   global_val->getName(), GetValueType(global_val)));
 
         } else {
-          LOG(FATAL)
-              << "Cannot clone value " << LLVMThingToString(old_op_val)
-              << " into new module for function " << func_name;
+          LOG(FATAL) << "Cannot clone value " << LLVMThingToString(old_op_val)
+                     << " into new module for function " << func_name;
         }
 
         auto old_name = global_val->getName().str();

@@ -23,7 +23,6 @@
 namespace remill {
 
 class Arch;
-class X86Arch;
 
 enum ArchName : unsigned;
 
@@ -36,6 +35,7 @@ class Operand {
   enum Type {
     kTypeInvalid,
     kTypeRegister,
+    kTypeShiftRegister,
     kTypeImmediate,
     kTypeAddress
   } type;
@@ -56,8 +56,33 @@ class Operand {
     ~Register(void) = default;
 
     std::string name;
-    size_t size;
+    size_t size;  // In bits.
   } reg;
+
+  class ShiftRegister {
+   public:
+    ShiftRegister(void);
+
+    Register reg;
+    uint64_t shift_size;
+    uint64_t extract_size;
+
+    enum Shift : unsigned {
+      kShiftInvalid,
+      kShiftLeftWithZeroes,  // Shift left, filling low order bits with zero.
+      kShiftLeftWithOnes,  // Shift left, filling low order bits with one.
+      kShiftUnsignedRight,  // Also know as logical shift right.
+      kShiftSignedRight,  // Also know as arithmetic shift right.
+      kShiftRightAround  // Rotate right.
+    } shift_op;
+
+    enum Extend : unsigned {
+      kExtendInvalid,
+      kExtendUnsigned,
+      kExtendSigned,
+    } extend_op;
+
+  } shift_reg;
 
   // kTypeImmediate.
   class Immediate {
@@ -86,8 +111,8 @@ class Operand {
     Register base_reg;
     Register index_reg;
     int64_t scale;
-    int64_t displacement;
-    uint64_t address_size;
+    int64_t displacement;  // In bytes.
+    uint64_t address_size;  // In bits.
     Kind kind;
 
     inline bool IsMemoryAccess(void) const {
@@ -110,12 +135,15 @@ class Operand {
 class Instruction {
  public:
   ~Instruction(void) = default;
+  Instruction(void);
+
+  void Reset(void);
 
   // Name of semantics function that implements this instruction.
   std::string function;
 
-  // The disassembly of this instruction.
-  std::string disassembly;
+//  // The disassembly of this instruction.
+//  std::string disassembly;
 
   // Program counter for this instruction and the next instruction.
   uint64_t pc;
@@ -221,14 +249,8 @@ class Instruction {
   inline bool IsNoOp(void) const {
     return kCategoryNoOp == category;
   }
-
- private:
-  friend class X86Arch;
-
-  Instruction(void);
 };
 
 }  // namespace remill
-
 
 #endif  // REMILL_ARCH_INSTRUCTION_H_

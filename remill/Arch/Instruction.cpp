@@ -27,6 +27,12 @@ namespace remill {
 Operand::Register::Register(void)
     : size(0) {}
 
+Operand::ShiftRegister::ShiftRegister(void)
+    : shift_size(0),
+      extract_size(0),
+      shift_op(Operand::ShiftRegister::kShiftInvalid),
+      extend_op(Operand::ShiftRegister::kExtendInvalid) {}
+
 Operand::Immediate::Immediate(void)
     : val(0),
       is_signed(false) {}
@@ -62,6 +68,52 @@ std::string Operand::Debug(void) const {
 
     case Operand::kTypeRegister:
       ss << "(REG_" << reg.size << " " << reg.name << ")";
+      break;
+
+    case Operand::kTypeShiftRegister:
+      ss << "(REG_" << reg.size << " ";
+      switch (shift_reg.extend_op) {
+        case Operand::ShiftRegister::kExtendInvalid:
+          ss << reg.name;
+          break;
+
+        case Operand::ShiftRegister::kExtendSigned:
+          ss << "sext(" << reg.name << "[" << (shift_reg.extract_size - 1)
+             << ":0])";
+          break;
+
+        case Operand::ShiftRegister::kExtendUnsigned:
+          ss << "zext(" << reg.name << "[" << (shift_reg.extract_size - 1)
+             << ":0])";
+          break;
+      }
+
+      switch (shift_reg.shift_op) {
+        case Operand::ShiftRegister::kShiftInvalid:
+          break;
+
+        case Operand::ShiftRegister::kShiftLeftWithZeroes:
+          ss << "<<0";
+          break;
+
+        case Operand::ShiftRegister::kShiftLeftWithOnes:
+          ss << "<<1";
+          break;
+
+        case Operand::ShiftRegister::kShiftUnsignedRight:
+          ss << "u>>";
+          break;
+
+        case Operand::ShiftRegister::kShiftSignedRight:
+          ss << "s>>";
+          break;
+
+        case Operand::ShiftRegister::kShiftRightAround:
+          ss << "ror";
+          break;
+      }
+
+      ss << " " << shift_reg.shift_size << ")";
       break;
 
     case Operand::kTypeImmediate:
@@ -123,6 +175,18 @@ Instruction::Instruction(void)
       is_atomic_read_modify_write(false),
       category(Instruction::kCategoryInvalid) {}
 
+void Instruction::Reset(void) {
+  pc = 0;
+  next_pc = 0;
+  branch_taken_pc = 0;
+  branch_not_taken_pc = 0;
+  arch_name = kArchInvalid;
+  operand_size = 0;
+  is_atomic_read_modify_write = false;
+  category = Instruction::kCategoryInvalid;
+  operands.clear();
+}
+
 std::string Instruction::Serialize(void) const {
   std::stringstream ss;
   ss << "(";
@@ -139,9 +203,20 @@ std::string Instruction::Serialize(void) const {
     case kArchX86_AVX512:
       ss << "X86_";
       break;
+    case kArchMips32:
+      ss << "MIPS32_";
+      break;
+    case kArchMips64:
+      ss << "MIPS64_";
+      break;
+    case kArchAArch64LittleEndian:
+      ss << "AArch64_";
+      break;
   }
-  ss << "INSTR 0x" << std::hex << pc << " "
+
+  ss << "INSTR " << std::hex << pc << " "
      << std::dec << (next_pc - pc) << " ";
+
   if (is_atomic_read_modify_write) {
     ss << "ATOMIC ";
   }

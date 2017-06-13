@@ -621,6 +621,11 @@ auto TruncTo(T val) -> typename IntegerType<DT>::BT {
       Write(op, ZExtTo<decltype(op)>(val)); \
     } while (false)
 
+#define WriteSExt(op, val) \
+    do { \
+      Write(op, SExtTo<decltype(op)>(val)); \
+    } while (false)
+
 #define SWriteV8(op, val) \
     do { \
       memory = _SWriteV8(memory, op, (val)); \
@@ -1158,6 +1163,42 @@ template <typename T>
 ALWAYS_INLINE static
 addr_t AddressOf(MnW<T> addr) {
   return addr.addr;
+}
+
+template <typename T>
+ALWAYS_INLINE static
+addr_t AddressOf(MVn<T> addr) {
+  return addr.addr;
+}
+
+template <typename T>
+ALWAYS_INLINE static
+addr_t AddressOf(MVnW<T> addr) {
+  return addr.addr;
+}
+
+template <typename T>
+ALWAYS_INLINE static
+Mn<T> DisplaceAddress(Mn<T> addr, addr_t disp) {
+  return Mn<T>{addr.addr + disp};
+}
+
+template <typename T>
+ALWAYS_INLINE static
+MnW<T> DisplaceAddress(MnW<T> addr, addr_t disp) {
+  return MnW<T>{addr.addr + disp};
+}
+
+template <typename T>
+ALWAYS_INLINE static
+MVn<T> DisplaceAddress(MVn<T> addr, addr_t disp) {
+  return MVn<T>{addr.addr + disp};
+}
+
+template <typename T>
+ALWAYS_INLINE static
+MVnW<T> DisplaceAddress(MVnW<T> addr, addr_t disp) {
+  return MVnW<T>{addr.addr + disp};
 }
 
 template <typename T>

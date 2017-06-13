@@ -30,13 +30,6 @@ class Instruction;
 class IntrinsicTable;
 class Operand;
 
-enum class LiftStatus {
-  kLifted,
-  kInvalid,
-  kUnsupported,
-  kError
-};
-
 // Wraps the process of lifting an instruction into a block. This resolves
 // the intended instruction target to a function, and ensures that the function
 // is called with the appropriate arguments.
@@ -48,8 +41,8 @@ class InstructionLifter {
                     const IntrinsicTable *intrinsics_);
 
   // Lift a single instruction into a basic block.
-  virtual LiftStatus LiftIntoBlock(
-      Instruction *instr, llvm::BasicBlock *block);
+  virtual bool LiftIntoBlock(
+      Instruction &inst, llvm::BasicBlock *block);
 
   // Machine word type for this architecture.
   llvm::IntegerType * const word_type;
@@ -59,25 +52,31 @@ class InstructionLifter {
 
  protected:
   // Lift an operand to an instruction.
-  virtual llvm::Value *LiftOperand(Instruction *instr,
+  virtual llvm::Value *LiftOperand(Instruction &inst,
                                    llvm::BasicBlock *block,
                                    llvm::Type *op_type,
                                    Operand &op);
 
   // Lift a register operand to a value.
-  virtual llvm::Value *LiftRegisterOperand(Instruction *instr,
+  virtual llvm::Value *LiftShiftRegisterOperand(Instruction &inst,
+                                                llvm::BasicBlock *block,
+                                                llvm::Type *arg_type,
+                                                Operand &reg);
+
+  // Lift a register operand to a value.
+  virtual llvm::Value *LiftRegisterOperand(Instruction &inst,
                                            llvm::BasicBlock *block,
                                            llvm::Type *arg_type,
                                            Operand &reg);
 
   // Lift an immediate operand.
-  virtual llvm::Value *LiftImmediateOperand(Instruction *instr,
+  virtual llvm::Value *LiftImmediateOperand(Instruction &inst,
                                             llvm::BasicBlock *block,
                                             llvm::Type *arg_type,
                                             Operand &op);
 
   // Lift an indirect memory operand to a value.
-  virtual llvm::Value *LiftAddressOperand(Instruction *instr,
+  virtual llvm::Value *LiftAddressOperand(Instruction &inst,
                                           llvm::BasicBlock *block,
                                           Operand &mem);
 
