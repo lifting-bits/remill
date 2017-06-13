@@ -144,9 +144,6 @@ list(APPEND PROJECT_LIBRARIES glog::glog)
 find_package(gflags REQUIRED)
 list(APPEND PROJECT_LIBRARIES gflags)
 
-# todo: capstone
-list(APPEND PROJECT_LIBRARIES capstone)
-
 #
 # target settings
 #
