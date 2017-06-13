@@ -67,15 +67,22 @@ esac
 LIBRARY_VERSION=libraries-${LLVM_VERSION}-${OS_VERSION}
 
 # Download CMake.
-wget https://cmake.org/files/v3.2/cmake-3.2.0-Linux-x86_64.sh
-yes | /bin/bash cmake-3.2.0-Linux-x86_64.sh &>/dev/null
-CMAKE_BIN_DIR=${BUILD_DIR}/cmake-3.2.0-Linux-x86_64/bin
+if [[ ! -d "${BUILD_DIR}/cmake-3.2.0-Linux-x86_64" ]] ; then
+  wget https://cmake.org/files/v3.2/cmake-3.2.0-Linux-x86_64.sh
+  yes | /bin/bash cmake-3.2.0-Linux-x86_64.sh &>/dev/null
+  CMAKE_BIN_DIR=${BUILD_DIR}/cmake-3.2.0-Linux-x86_64/bin
+fi
 
 # Download pre-compiled version of cxx-common for this OS. This has things like
 # google protobuf, gflags, glog, gtest, capstone, and llvm in it.
-wget https://s3.amazonaws.com/cxx-common/${LIBRARY_VERSION}.tar.gz
-tar xf ${LIBRARY_VERSION}.tar.gz --warning=no-timestamp
-rm ${LIBRARY_VERSION}.tar.gz
+if [[ ! -d "${BUILD_DIR}/libraries" ]] ; then
+  wget https://s3.amazonaws.com/cxx-common/${LIBRARY_VERSION}.tar.gz
+  tar xf ${LIBRARY_VERSION}.tar.gz --warning=no-timestamp
+  rm ${LIBRARY_VERSION}.tar.gz
+
+  # Make sure modification times are not in the future.
+  find ${BUILD_DIR}/libraries -type f -exec touch {} \;
+fi
 
 # Tell the remill CMakeLists.txt where the extracted libraries are. 
 export TRAILOFBITS_LIBRARIES=${BUILD_DIR}/libraries
