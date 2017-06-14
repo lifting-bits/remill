@@ -13,9 +13,9 @@
 # limitations under the License.
 
 cmake_minimum_required (VERSION 3.2)
-project(x86_runtime BC)
+project(arm_runtime BC)
 
-set(X86RUNTIME_SOURCEFILES
+set(ARMRUNTIME_SOURCEFILES
     Instructions.cpp
     BasicBlock.cpp
 )
@@ -23,31 +23,22 @@ set(X86RUNTIME_SOURCEFILES
 set_source_files_properties(Instructions.cpp PROPERTIES COMPILE_FLAGS "-O3 -g0")
 set_source_files_properties(BasicBlock.cpp PROPERTIES COMPILE_FLAGS "-O0 -g3")
 
-set(X86RUNTIME_COMPILEOPTIONS
-    -mno-sse
-    -mno-avx
-    -mno-3dnow
-)
+set(ARMRUNTIME_INCLUDEDIRECTORIES ${CMAKE_SOURCE_DIR})
 
-set(X86RUNTIME_INCLUDEDIRECTORIES ${CMAKE_SOURCE_DIR})
-
-function (add_runtime_helper target_name address_bit_size enable_avx enable_avx512)
+function (add_runtime_helper target_name address_bit_size little_endian)
     message(" > Generating runtime target: ${target_name}")
 
-    add_runtime(${target_name} SOURCES ${X86RUNTIME_SOURCEFILES} ADDRESS_SIZE ${address_bit_size})
+    add_runtime(${target_name} SOURCES ${ARMRUNTIME_SOURCEFILES} ADDRESS_SIZE ${address_bit_size})
+    target_include_directories(${target_name} PRIVATE ${ARMRUNTIME_INCLUDEDIRECTORIES})
 
-    target_include_directories(${target_name} PRIVATE ${X86RUNTIME_INCLUDEDIRECTORIES})
-    target_compile_options(${target_name} PRIVATE ${X86RUNTIME_COMPILEOPTIONS})
-    target_compile_definitions(${target_name} PRIVATE "HAS_FEATURE_AVX=${enable_avx}")
-    target_compile_definitions(${target_name} PRIVATE "HAS_FEATURE_AVX512=${enable_avx512}")
+    if (little_endian)
+        target_compile_definitions(${target_name} PRIVATE "LITTLE_ENDIAN=1")
+    else ()
+        target_compile_definitions(${target_name} PRIVATE "LITTLE_ENDIAN=0")
+    endif ()
 endfunction ()
 
-add_runtime_helper(x86 32 0 0)
-add_runtime_helper(x86_avx 32 1 0)
-add_runtime_helper(x86_avx512 32 1 1)
-
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-    add_runtime_helper(amd64 64 0 0)
-    add_runtime_helper(amd64_avx 64 1 0)
-    add_runtime_helper(amd64_avx512 64 1 1)
+    # add_runtime_helper(aarch64be 64 0)
+    add_runtime_helper(aarch64 64 1)
 endif ()

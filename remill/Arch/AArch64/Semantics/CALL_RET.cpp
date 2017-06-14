@@ -14,31 +14,20 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_ARCH_H_
-#define REMILL_ARCH_X86_ARCH_H_
+namespace {
 
-#include "remill/Arch/Arch.h"
+DEF_SEM(CALL, R64 target_addr, PC ret_addr) {
+  Write(REG_LP, Read(ret_addr));
+  Write(REG_PC, Read(target_addr));
+  return memory;
+}
 
-namespace remill {
+DEF_SEM(RET, R64 target_pc) {
+  Write(REG_PC, Read(target_pc));
+  return memory;
+}
 
-class X86Arch : public Arch {
- public:
-  X86Arch(OSName os_name_, ArchName arch_name_);
+}  // namespace
 
-  virtual ~X86Arch(void);
-
-  void PrepareModule(llvm::Module *mod) const override;
-
-  uint64_t ProgramCounter(const ArchState *state) const override;
-
-  // Decode an instruction.
-  Instruction *DecodeInstruction(
-      uint64_t address, const std::string &instr_bytes) const override;
-
- private:
-  X86Arch(void) = delete;
-};
-
-}  // namespace remill
-
-#endif  // REMILL_ARCH_X86_ARCH_H_
+DEF_ISEL(RET_64R_BRANCH_REG) = RET;
+DEF_ISEL(BLR_64_BRANCH_REG) = CALL;

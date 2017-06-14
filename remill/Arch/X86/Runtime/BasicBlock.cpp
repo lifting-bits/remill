@@ -32,7 +32,7 @@ Memory *__remill_basic_block(Memory *memory, State &state, addr_t curr_pc) {
   // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
   auto &MEMORY = *memory;
-  auto &PC = state.gpr.rip.IF_64BIT_ELSE(qword, dword);
+  auto &PC = state.gpr.rip.aword;
   auto &BRANCH_TAKEN = branch_taken;
 
   // `PC` should already have the correct value, but it's nice to make sure
@@ -40,9 +40,9 @@ Memory *__remill_basic_block(Memory *memory, State &state, addr_t curr_pc) {
   // uses to be able to depend on the optimizer not eliminating `curr_pc`.
   PC = curr_pc;
 
-  // We will reference these variables from the bitcode side of things so that,
-  // given a decoded register name and an operation type (read or write),
-  // we can map the register to a specific field in the State structure.
+  // We will reference these variables from the bitcode side of things so that
+  // we can map the name of a decoded register to a specific field in the
+  // `State` structure.
   auto &AH = state.gpr.rax.byte.high;
   auto &BH = state.gpr.rbx.byte.high;
   auto &CH = state.gpr.rcx.byte.high;
@@ -305,7 +305,7 @@ Memory *__remill_basic_block(Memory *memory, State &state, addr_t curr_pc) {
   auto &ZF = state.aflag.zf;
 
   // Lifted code will be placed here in clones versions of this function.
-  return nullptr;
+  return memory;
 }
 
 #pragma clang diagnostic pop

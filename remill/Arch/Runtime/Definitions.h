@@ -50,15 +50,19 @@
 #define DEF_ISEL(name) \
   extern "C" constexpr auto ISEL_ ## name [[gnu::used]]
 
+// Define a conditional execution function.
+#define DEF_COND(name) \
+  extern "C" constexpr auto COND_ ## name [[gnu::used]]
+
 // Define a semantics implementing function.
 #define DEF_SEM(name, ...) \
     ALWAYS_INLINE __attribute__((flatten)) static Memory *name ( \
-        Memory *memory, State &state, ##__VA_ARGS__) noexcept
+        Memory *memory, State &state, ##__VA_ARGS__)
 
 // Define a semantics implementing function.
 #define DEF_HELPER(name, ...) \
   ALWAYS_INLINE __attribute__((flatten)) static auto name ( \
-      Memory *&memory, State &state, ##__VA_ARGS__) noexcept
+      Memory *&memory, State &state, ##__VA_ARGS__)
 
 // An instruction where the implementation is the same for all operand sizes.
 #define DEF_ISEL_ALL(name, func) \

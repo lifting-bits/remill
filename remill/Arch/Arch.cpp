@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <glog/logging.h>
 #include <gflags/gflags.h>
+#include <glog/logging.h>
 
 #include <memory>
 #include <unordered_map>
@@ -24,9 +24,11 @@
 #include "remill/Arch/Name.h"
 #include "remill/OS/OS.h"
 
-DEFINE_string(arch, "", "Architecture of the code being translated. "
-                        "Valid architectures: x86, amd64 (with or without "
-                        "`_avx` or `_avx512` appended).");
+DEFINE_string(arch, "",
+              "Architecture of the code being translated. "
+              "Valid architectures: x86, amd64 (with or without "
+              "`_avx` or `_avx512` appended), aarch64, "
+              "mips32, mips64");
 
 DECLARE_string(os);
 
@@ -36,16 +38,18 @@ namespace {
 static unsigned AddressSize(ArchName arch_name) {
   switch (arch_name) {
     case kArchInvalid:
-      LOG(FATAL)
-          << "Cannot get address size for invalid arch.";
+      LOG(FATAL) << "Cannot get address size for invalid arch.";
       return 0;
     case kArchX86:
     case kArchX86_AVX:
     case kArchX86_AVX512:
+    case kArchMips32:
       return 32;
     case kArchAMD64:
     case kArchAMD64_AVX:
     case kArchAMD64_AVX512:
+    case kArchMips64:
+    case kArchAArch64LittleEndian:
       return 64;
   }
 }
@@ -71,12 +75,42 @@ const Arch *Arch::Get(OSName os_name_, ArchName arch_name_) {
       LOG(FATAL) << "Unrecognized architecture.";
       return nullptr;
 
+    case kArchAArch64LittleEndian: {
+      static ArchCache gArchAArch64LE;
+      auto &arch = gArchAArch64LE[os_name_];
+      if (!arch) {
+        DLOG(INFO) << "Using architecture: AArch64, feature set: Little Endian";
+        arch = ArchPtr(GetAArch64(os_name_, arch_name_));
+      }
+      return arch.get();
+    }
+
     case kArchX86: {
       static ArchCache gArchX86;
       auto &arch = gArchX86[os_name_];
       if (!arch) {
         DLOG(INFO) << "Using architecture: X86";
         arch = ArchPtr(GetX86(os_name_, arch_name_));
+      }
+      return arch.get();
+    }
+
+    case kArchMips32: {
+      static ArchCache gArchMips;
+      auto &arch = gArchMips[os_name_];
+      if (!arch) {
+        DLOG(INFO) << "Using architecture: 32-bit MIPS";
+        arch = ArchPtr(GetMips(os_name_, arch_name_));
+      }
+      return arch.get();
+    }
+
+    case kArchMips64: {
+      static ArchCache gArchMips64;
+      auto &arch = gArchMips64[os_name_];
+      if (!arch) {
+        DLOG(INFO) << "Using architecture: 64-bit MIPS";
+        arch = ArchPtr(GetMips(os_name_, arch_name_));
       }
       return arch.get();
     }
@@ -131,6 +165,10 @@ const Arch *Arch::Get(OSName os_name_, ArchName arch_name_) {
       return arch.get();
     }
   }
+  return nullptr;
+}
+
+const Arch *Arch::GetMips(OSName, ArchName) {
   return nullptr;
 }
 

@@ -1,6 +1,6 @@
 # Remill
 
-Remill is a static binary translator that translates machine code into [LLVM bitcode](http://llvm.org/docs/LangRef.html). It translates x86 and amd64 machine code (including AVX and AVX512) into LLVM bitcode.
+Remill is a static binary translator that translates machine code instructions into [LLVM bitcode](http://llvm.org/docs/LangRef.html). It translates x86 and amd64 machine code (including AVX and AVX512) into LLVM bitcode. AArch64 support is underway.
 
 Remill focuses on accurately lifting instructions. It is meant to be used as a library for other tools, e.g. [McSema](https://github.com/trailofbits/mcsema).
 
@@ -9,7 +9,6 @@ Remill focuses on accurately lifting instructions. It is meant to be used as a l
 |       | master |
 | ----- | ------ |
 | Linux | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/linux/)](https://travis-ci.org/trailofbits/remill) |
-| macOS | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/osx/)](https://travis-ci.org/trailofbits/remill) |
 
 ## Additional Documentation
  
@@ -30,6 +29,8 @@ We are actively working on porting Remill to macOS.
 
 ## Dependencies
 
+Most of Remill's dependencies can be provided by the [cxx-common](https://github.com/trailofbits/cxx-common) repository. Trail of Bits hosts downloadable, pre-built versions of cxx-common, which makes it substantially easier to get up and running with Remill. Nonetheless, the following table represents most of Remill's dependencies.
+
 | Name | Version | 
 | ---- | ------- |
 | [Git](https://git-scm.com/) | Latest |
@@ -45,11 +46,9 @@ We are actively working on porting Remill to macOS.
 
 ## Getting and Building the Code
 
-### Step 1: Install dependencies
+### On Linux
 
-#### On Linux
-
-##### Install Dependencies
+First, update aptitude and get install the baseline dependencies.
 
 ```shell
 sudo apt-get update
@@ -57,70 +56,41 @@ sudo apt-get upgrade
 
 sudo apt-get install \
      git \
-     cmake \
-     python2.7 python-pip \
+     python-pip \
      build-essential \
-     unzip \
-     software-properties-common \
      realpath
 ```
 
-##### Upgrade CMake (Ubuntu 14.04)
-
-Users wishing to run Remill on Ubuntu 14.04 should upgrade their version of CMake.
+Next, clone the repository. This will clone the code into the `remill` directory.
 
 ```shell
-sudo add-apt-repository -y ppa:george-edison55/cmake-3.x
-sudo apt-get update
-sudo apt-get upgrade
-sudo apt-get install cmake
+git clone git@github.com:trailofbits/remill.git
 ```
 
-#### On OS X
-
-##### Install Dependencies
-
-```
-brew install glog
-```
-
-### Step 2: Clone and Enter the Repository
-
-#### Clone the repository
-```shell
-This will also clone the cxx_common module (used to generate a library repository) and mcsema.
-git clone --resursive git@github.com:trailofbits/remill.git
-```
-
-#### Enter the repository
-```shell
-cd remill
-```
-
-#### Build the code.
-```shell
-./build.sh
-```
-
-## Building and Running the Test Suite
-
-### Build Google Test
-
-#### On Linux
-
-This script will build and install the Google Test framework. It will request administrator permissions.
+Next, we build Remill. This script will create another directory, `remill-build`
+at the same level as the `remill` directory. All remaining dependencies needed
+by Remill will be built in the `remill-build` directory.
 
 ```shell
-./scripts/unix/install_gtest.sh
+./remill/scripts/build.sh
 ```
 
-### Generate and Run the Test Cases
+Next, we can install Remill. Remill itself is a library, and so there is no real way
+to try it. However, you can head on over to the [McSema](https://github.com/trailofbits/mcsema) repository, which uses Remill for lifting instructions.
 
 ```shell
-sudo make build_x86_tests
-ctest
+cd ./remill-build
+sudo make install
 ```
 
-## Try it Out
+We can also build and run Remill's test suite.
 
-Remill is a library, and so there is no single way to try it. However, you can head on over to the [McSema](https://github.com/trailofbits/mcsema) repository and try that!
+```shell
+cd ./remill-build
+make build_x86_tests
+./cmake-3.2.0-Linux-x86_64/bin/ctest
+```
+
+
+
+

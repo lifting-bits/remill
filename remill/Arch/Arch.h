@@ -46,11 +46,9 @@ class Arch {
   virtual void PrepareModule(llvm::Module *mod) const = 0;
 
   // Decode an instruction.
-  virtual Instruction *DecodeInstruction(
-      uint64_t address,
-      const std::string &instr_bytes) const = 0;
-
-  virtual uint64_t ProgramCounter(const ArchState *state) const = 0;
+  virtual bool DecodeInstruction(
+      uint64_t address, const std::string &instr_bytes,
+      Instruction &inst) const = 0;
 
   // Number of bits in an address.
   const OSName os_name;
@@ -61,9 +59,14 @@ class Arch {
   Arch(OSName os_name_, ArchName arch_name_);
 
  private:
-
   // Defined in `remill/Arch/X86/Arch.cpp`.
   static const Arch *GetX86(OSName os, ArchName arch_name);
+
+  // Defined in `remill/Arch/Mips/Arch.cpp`.
+  static const Arch *GetMips(OSName os, ArchName arch_name);
+
+  // Defined in `remill/Arch/AArch64/Arch.cpp`.
+  static const Arch *GetAArch64(OSName os, ArchName arch_name);
 
   Arch(void) = delete;
 };

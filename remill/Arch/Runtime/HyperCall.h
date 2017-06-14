@@ -29,8 +29,14 @@ class SyncHyperCall {
 
     kX86EmulateInstruction,
     kAMD64EmulateInstruction,
+    kMipsEmulateInstruction,
+
+    // TODO(pag): How to distinguish litte- and big-endian?
+    kAArch64EmulateInstruction,
 
     kAssertPrivileged,
+
+    kIntegerOverflow  // MIPS-specific.
   };
 } __attribute__((packed));
 

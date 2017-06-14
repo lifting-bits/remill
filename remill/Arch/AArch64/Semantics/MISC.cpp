@@ -14,35 +14,24 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_NAME_H_
-#define REMILL_ARCH_NAME_H_
+namespace {
 
-#include <string>
+DEF_SEM(DoNOP) {
+  return memory;
+}
 
-namespace remill {
+// In the case of remill, the `addr` is already shifted and/or masked.
+// In the case of McSema, the address is already resolved and the cross-
+// reference information includes the masking of the high or low bits
+// so that the result mirrors the goal.
+DEF_SEM(AddToAddress, R64W dst, I64 addr) {
+  Write(dst, Read(addr));
+  return memory;
+}
 
-enum ArchName : uint32_t {
-  kArchInvalid,
+}  // namespace
 
-  kArchX86,
-  kArchX86_AVX,
-  kArchX86_AVX512,
+DEF_ISEL(NOP) = DoNOP;
 
-  kArchAMD64,
-  kArchAMD64_AVX,
-  kArchAMD64_AVX512,
-
-  kArchMips32,
-  kArchMips64,
-
-  kArchAArch64LittleEndian
-};
-
-// Convert the string name of an architecture into a canonical form.
-ArchName GetArchName(const std::string &arch_name);
-
-std::string GetArchName(ArchName);
-
-}  // namespace remill
-
-#endif  // REMILL_ARCH_NAME_H_
+DEF_ISEL(ADRP_R64W_U) = AddToAddress;
+DEF_ISEL(ADR_R64W_U) = AddToAddress;
