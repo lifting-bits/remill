@@ -18,7 +18,7 @@
 
 # Update sources list, and then install needed packages.
 sudo apt-get update -yqq
-sudo apt-get dist-upgrade -y
+
 sudo apt-get install -y git
 sudo apt-get install -y python2.7
 sudo apt-get install -y wget
@@ -28,8 +28,7 @@ sudo apt-get install -y software-properties-common
 sudo apt-get install -y build-essential
 sudo apt-get install -y g++-4.9-multilib
 sudo apt-get install -y gcc-4.9-multilib
-
-apt-get clean
+sudo apt-get install -y libtinfo-dev
 
 # General directory structure:
 #   /path/to/home/remill
@@ -96,10 +95,3 @@ ${CMAKE_BIN_DIR}/cmake \
 
 # Build remill.
 make
-
-# Install remill.
-sudo make install
-
-# Build and run the x86 test suite.
-make build_x86_tests
-

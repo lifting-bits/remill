@@ -21,12 +21,10 @@ extern "C" {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-variable"
 
-// Method that will implement a basic block. We will clone this method for
-// each basic block in the code being lifted.
+// Instructions will be lifted into clones of this function.
 [[gnu::used]] Memory *__remill_basic_block(Memory *memory, State &state,
                                            addr_t curr_pc) {
   bool branch_taken = false;
-  addr_t zero = 0;
 
   // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
@@ -38,12 +36,8 @@ extern "C" {
   // that `curr_pc` is used throughout, as it helps with certain downstream
   // uses to be able to depend on the optimizer not eliminating `curr_pc`.
   PC = curr_pc;
-
   auto &WPC = state.gpr.PC.dword;
 
-  // We will reference these variables from the bitcode side of things so that,
-  // given a decoded register name and an operation type (read or write),
-  // we can map the register to a specific field in the State structure.
   auto &W0 = state.gpr.X0.dword;
   auto &W1 = state.gpr.X1.dword;
   auto &W2 = state.gpr.X2.dword;
@@ -121,9 +115,6 @@ extern "C" {
   auto &X28 = state.gpr.X28.qword;
   auto &X29 = state.gpr.X29.qword;
   auto &X30 = state.gpr.X30.qword;
-
-  auto &XZR = state.gpr.X31.qword;
-  auto &WZR = state.gpr.X31.dword;
 
   auto &FP = state.gpr.X29.qword;
   auto &WFP = state.gpr.X29.qword;

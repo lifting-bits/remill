@@ -27,7 +27,6 @@ extern "C" {
 Memory *__remill_basic_block(Memory *memory, State &state, addr_t curr_pc) {
 
   bool branch_taken = false;
-  addr_t zero = 0;
 
   // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
@@ -40,9 +39,9 @@ Memory *__remill_basic_block(Memory *memory, State &state, addr_t curr_pc) {
   // uses to be able to depend on the optimizer not eliminating `curr_pc`.
   PC = curr_pc;
 
-  // We will reference these variables from the bitcode side of things so that,
-  // given a decoded register name and an operation type (read or write),
-  // we can map the register to a specific field in the State structure.
+  // We will reference these variables from the bitcode side of things so that
+  // we can map the name of a decoded register to a specific field in the
+  // `State` structure.
   auto &AH = state.gpr.rax.byte.high;
   auto &BH = state.gpr.rbx.byte.high;
   auto &CH = state.gpr.rcx.byte.high;
