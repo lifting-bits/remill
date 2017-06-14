@@ -67,7 +67,7 @@ Next, clone the repository. This will clone the code into the `remill` directory
 git clone git@github.com:trailofbits/remill.git
 ```
 
-Finally, build remill. This script will create another directory, `remill-build`
+Next, we build Remill. This script will create another directory, `remill-build`
 at the same level as the `remill` directory. All remaining dependencies needed
 by Remill will be built in the `remill-build` directory.
 
@@ -75,45 +75,22 @@ by Remill will be built in the `remill-build` directory.
 ./remill/scripts/build.sh
 ```
 
-
-
-### On OS X
-
-##### Install Dependencies
-
-```
-brew install glog
-```
-
-### Step 2: Clone and Enter the Repository
-
-#### Clone the repository
-
-
-
-#### Build the code.
-
-
-
-## Building and Running the Test Suite
-
-### Build Google Test
-
-#### On Linux
-
-This script will build and install the Google Test framework. It will request administrator permissions.
+Next, we can install Remill. Remill itself is a library, and so there is no real way
+to try it. However, you can head on over to the [McSema](https://github.com/trailofbits/mcsema) repository, which uses Remill for lifting instructions.
 
 ```shell
-./scripts/unix/install_gtest.sh
+cd ./remill-build
+sudo make install
 ```
 
-### Generate and Run the Test Cases
+We can also build and run Remill's test suite.
 
 ```shell
+cd ./remill-build
 make build_x86_tests
-ctest
+./cmake-3.2.0-Linux-x86_64/bin/ctest
 ```
 
-## Try it Out
 
-Remill is a library, and so there is no single way to try it. However, you can head on over to the [McSema](https://github.com/trailofbits/mcsema) repository and try that!
+
+

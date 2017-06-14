@@ -27,6 +27,7 @@ extern "C" {
 Memory *__remill_basic_block(Memory *memory, State &state, addr_t curr_pc) {
 
   bool branch_taken = false;
+  addr_t zero = 0;
 
   // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
