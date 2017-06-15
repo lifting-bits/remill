@@ -1,10 +1,16 @@
+cache:
+  timeout: 660
+  pip: true
+  custom_install: true
+  directories:
+    - remill-build/libraries
 sudo: required
 dist: trusty
 language: generic
 os: 
- - linux
+  - linux
 compiler:
- - gcc
+  - gcc
 install:
   - ./scripts/build_ubuntu.sh
 before_script:

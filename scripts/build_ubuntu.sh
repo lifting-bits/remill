@@ -23,11 +23,7 @@ sudo apt-get install -y git
 sudo apt-get install -y python2.7
 sudo apt-get install -y wget
 sudo apt-get install -y realpath
-sudo apt-get install -y zlib1g-dev
-sudo apt-get install -y software-properties-common
 sudo apt-get install -y build-essential
-sudo apt-get install -y g++-4.9-multilib
-sudo apt-get install -y gcc-4.9-multilib
 sudo apt-get install -y libtinfo-dev
 
 # General directory structure:
