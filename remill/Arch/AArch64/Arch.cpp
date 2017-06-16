@@ -188,10 +188,9 @@ enum RegClass {
 static const char * const kPrefixX = "X\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X"
                                      "\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X"
                                      "\0X\0X\0X\0\0\0\0\0";
-static const char * const kPrefixW = "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW";
 
 static const char *RegPrefix(RegClass size, uint32_t number) {
-  return kRegX == size ? &(kPrefixX[number * 2]) : &(kPrefixW[number]);
+  return kRegX == size ? &(kPrefixX[number * 2]) : "W";
 }
 
 static const char * const kNumberName[] = {
@@ -478,6 +477,24 @@ bool TryDecodeSTP_64_LDSTPAIR_POST(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// STP  <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}]
+bool TryDecodeSTP_32_LDSTPAIR_OFF(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegW, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegW, data.Rt2);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 64, data.Rn,
+                         static_cast<uint64_t>(data.imm7.simm7) << 2);
+  return true;
+}
+
+// STP  <Xt1>, <Xt2>, [<Xn|SP>{, #<imm>}]
+bool TryDecodeSTP_64_LDSTPAIR_OFF(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegX, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegX, data.Rt2);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 128, data.Rn,
+                         static_cast<uint64_t>(data.imm7.simm7) << 3);
+  return true;
+}
+
 // LDP  <Wt1>, <Wt2>, [<Xn|SP>], #<imm>
 bool TryDecodeLDP_32_LDSTPAIR_POST(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegW, data.Rt);
@@ -585,79 +602,283 @@ bool TryDecodeLDR_64_LOADLIT(const InstData &data, Instruction &inst) {
   return true;
 }
 
-// LDR LDR_32_ldst_regoff:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 x S        0
-//  13 x option   0
-//  14 x option   1
-//  15 x option   2
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 1 opc      0
-//  23 0 opc      1
-//  24 0
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 1
-//  29 1
-//  30 0 size     0
-//  31 1 size     1
+// Note: Order is significant; extracted bits may be casted to this type.
+enum Extend : uint8_t {
+  kExtendUXTB,  // 0b000
+  kExtendUXTH,  // 0b001
+  kExtendUXTW,  // 0b010
+  kExtendUXTX,  // 0b011
+  kExtendSXTB,  // 0b100
+  kExtendSXTH,  // 0b101
+  kExtendSXTW,  // 0b110
+  kExtendSXTX  // 0b110
+};
+
+static uint64_t BaseSizeInBits(Extend extend) {
+  switch (extend) {
+    case kExtendUXTB: return 8;
+    case kExtendUXTH: return 16;
+    case kExtendUXTW: return 32;
+    case kExtendUXTX: return 64;
+    case kExtendSXTB: return 8;
+    case kExtendSXTH: return 16;
+    case kExtendSXTW: return 32;
+    case kExtendSXTX: return 64;
+  }
+}
+
+static Operand::ShiftRegister::Extend ShiftRegExtendType(Extend extend) {
+  switch (extend) {
+    case kExtendUXTB:
+    case kExtendUXTH:
+    case kExtendUXTW:
+    case kExtendUXTX:
+      return Operand::ShiftRegister::kExtendUnsigned;
+    case kExtendSXTB:
+    case kExtendSXTH:
+    case kExtendSXTW:
+    case kExtendSXTX:
+      return Operand::ShiftRegister::kExtendUnsigned;
+  }
+}
+
+// Note: Order is significant; extracted bits may be casted to this type.
+enum Shift : uint8_t {
+  kShiftLSL,
+  kShiftLSR,
+  kShiftASR,
+  kShiftROR
+};
+
+static bool TryDecodeLDR_n_LDST_REGOFF(
+    const InstData &data, Instruction &inst, RegClass val_class) {
+  if (!(data.option & 2)) {
+    return false;  // Sub word indexing, "unallocated encoding."
+  }
+
+  auto extend_type = static_cast<Extend>(data.option);
+  auto amount = data.S ? data.size : 0U;
+  auto index_class = (data.option & 1) ? kRegX : kRegW;
+
+  Operand op;
+  op.type = Operand::kTypeShiftRegister;
+  op.size = 64;  // The result is pointer-sized.
+  op.action = Operand::kActionRead;
+  op.shift_reg.reg = Reg(kActionRead, index_class, data.Rm);
+  op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
+  op.shift_reg.shift_size = amount;
+
+  if (kExtendUXTX != extend_type) {
+    op.shift_reg.extract_size = BaseSizeInBits(extend_type);
+    op.shift_reg.extend_op = ShiftRegExtendType(extend_type);
+  }
+
+  AddRegOperand(inst, kActionWrite, val_class, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 8U << data.size, data.Rn, 0);
+  inst.operands.push_back(op);
+
+  return true;
+}
+
 // LDR  <Wt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
-bool TryDecodeLDR_32_LDST_REGOFF(const InstData &, Instruction &) {
+bool TryDecodeLDR_32_LDST_REGOFF(const InstData &data, Instruction &inst) {
+  return TryDecodeLDR_n_LDST_REGOFF(data, inst, kRegW);
+}
+
+// LDR  <Xt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
+bool TryDecodeLDR_64_LDST_REGOFF(const InstData &data, Instruction &inst) {
+  return TryDecodeLDR_n_LDST_REGOFF(data, inst, kRegX);
+}
+
+// MOV  <Wd|WSP>, <Wn|WSP>
+bool TryDecodeMOV_ADD_32_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegW, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, data.Rn);
+  return true;
+}
+
+// MOV  <Xd|SP>, <Xn|SP>
+bool TryDecodeMOV_ADD_64_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, data.Rn);
+  return true;
+}
+
+// MOV  <Wd>, <Wm>
+bool TryDecodeMOV_ORR_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegW, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, data.Rm);
+  return true;
+}
+
+// MOV  <Xd>, <Xm>
+bool TryDecodeMOV_ORR_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, data.Rm);
+  return true;
+}
+
+// STR  <Wt>, [<Xn|SP>], #<simm>
+bool TryDecodeSTR_32_LDST_IMMPOST(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegW, data.Rt);
+  uint64_t offset = static_cast<uint64_t>(data.imm9.simm9);
+  AddPostIndexMemOp(inst, kActionWrite, 32, data.Rn, offset << 2);
+  return true;
+}
+
+// STR  <Xt>, [<Xn|SP>], #<simm>
+bool TryDecodeSTR_64_LDST_IMMPOST(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegX, data.Rt);
+  uint64_t offset = static_cast<uint64_t>(data.imm9.simm9);
+  AddPostIndexMemOp(inst, kActionWrite, 64, data.Rn, offset << 2);
+  return true;
+}
+
+// STR  <Wt>, [<Xn|SP>, #<simm>]!
+bool TryDecodeSTR_32_LDST_IMMPRE(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegW, data.Rt);
+  uint64_t offset = static_cast<uint64_t>(data.imm9.simm9);
+  AddPreIndexMemOp(inst, kActionWrite, 32, data.Rn, offset << 2);
+  return true;
+}
+
+// STR  <Xt>, [<Xn|SP>, #<simm>]!
+bool TryDecodeSTR_64_LDST_IMMPRE(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegX, data.Rt);
+  uint64_t offset = static_cast<uint64_t>(data.imm9.simm9);
+  AddPreIndexMemOp(inst, kActionWrite, 64, data.Rn, offset << 2);
+  return true;
+}
+
+// STR  <Wt>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeSTR_32_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegW, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 32, data.Rn,
+                         data.imm12.uimm << 2 /* size = 2 */);
+  return true;
+}
+
+// STR  <Xt>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeSTR_64_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegX, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 64, data.Rn,
+                         data.imm12.uimm << 3 /* size = 3 */);
+  return true;
+}
+
+static bool TryDecodeSTR_n_LDST_REGOFF(
+    const InstData &data, Instruction &inst, RegClass val_class) {
+  if (!(data.option & 2)) {
+    return false;  // Sub word indexing, "unallocated encoding."
+  }
+
+  auto extend_type = static_cast<Extend>(data.option);
+  auto amount = data.S ? data.size : 0U;
+  auto index_class = (data.option & 1) ? kRegX : kRegW;
+
+  Operand op;
+  op.type = Operand::kTypeShiftRegister;
+  op.size = 64;  // The result is pointer-sized.
+  op.action = Operand::kActionRead;
+  op.shift_reg.reg = Reg(kActionRead, index_class, data.Rm);
+  op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
+  op.shift_reg.shift_size = amount;
+
+  if (kExtendUXTX != extend_type) {
+    op.shift_reg.extract_size = BaseSizeInBits(extend_type);
+    op.shift_reg.extend_op = ShiftRegExtendType(extend_type);
+  }
+
+  AddRegOperand(inst, kActionRead, val_class, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 8U << data.size, data.Rn, 0);
+  inst.operands.push_back(op);
+
+  return true;
+}
+
+// STR  <Wt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
+bool TryDecodeSTR_32_LDST_REGOFF(const InstData &data, Instruction &inst) {
+  return TryDecodeSTR_n_LDST_REGOFF(data, inst, kRegW);
+}
+
+// STR  <Xt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
+bool TryDecodeSTR_64_LDST_REGOFF(const InstData &data, Instruction &inst) {
+  return TryDecodeSTR_n_LDST_REGOFF(data, inst, kRegX);
+}
+
+// MOVZ MOV_MOVZ_32_movewide:
+//   0 x Rd       0
+//   1 x Rd       1
+//   2 x Rd       2
+//   3 x Rd       3
+//   4 x Rd       4
+//   5 x imm16    0
+//   6 x imm16    1
+//   7 x imm16    2
+//   8 x imm16    3
+//   9 x imm16    4
+//  10 x imm16    5
+//  11 x imm16    6
+//  12 x imm16    7
+//  13 x imm16    8
+//  14 x imm16    9
+//  15 x imm16    10
+//  16 x imm16    11
+//  17 x imm16    12
+//  18 x imm16    13
+//  19 x imm16    14
+//  20 x imm16    15
+//  21 x hw       0
+//  22 x hw       1
+//  23 1
+//  24 0
+//  25 1
+//  26 0
+//  27 0
+//  28 1
+//  29 0 opc      0
+//  30 1 opc      1
+//  31 0 sf       0
+// MOV  <Wd>, #<imm>
+bool TryDecodeMOV_MOVZ_32_MOVEWIDE(const InstData &, Instruction &) {
   return false;
 }
 
-// LDR LDR_64_ldst_regoff:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 x S        0
-//  13 x option   0
-//  14 x option   1
-//  15 x option   2
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 1 opc      0
-//  23 0 opc      1
+// MOVZ MOV_MOVZ_64_movewide:
+//   0 x Rd       0
+//   1 x Rd       1
+//   2 x Rd       2
+//   3 x Rd       3
+//   4 x Rd       4
+//   5 x imm16    0
+//   6 x imm16    1
+//   7 x imm16    2
+//   8 x imm16    3
+//   9 x imm16    4
+//  10 x imm16    5
+//  11 x imm16    6
+//  12 x imm16    7
+//  13 x imm16    8
+//  14 x imm16    9
+//  15 x imm16    10
+//  16 x imm16    11
+//  17 x imm16    12
+//  18 x imm16    13
+//  19 x imm16    14
+//  20 x imm16    15
+//  21 x hw       0
+//  22 x hw       1
+//  23 1
 //  24 0
-//  25 0
-//  26 0 V        0
-//  27 1
+//  25 1
+//  26 0
+//  27 0
 //  28 1
-//  29 1
-//  30 1 size     0
-//  31 1 size     1
-// LDR  <Xt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
-bool TryDecodeLDR_64_LDST_REGOFF(const InstData &, Instruction &) {
+//  29 0 opc      0
+//  30 1 opc      1
+//  31 1 sf       0
+// MOV  <Xd>, #<imm>
+bool TryDecodeMOV_MOVZ_64_MOVEWIDE(const InstData &, Instruction &) {
   return false;
 }
 
