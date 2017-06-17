@@ -62,11 +62,12 @@ esac
 LIBRARY_VERSION=libraries-${LLVM_VERSION}-${OS_VERSION}
 
 # Download CMake.
-if [[ ! -d "${BUILD_DIR}/cmake-3.2.0-Linux-x86_64" ]] ; then
+CMAKE_BIN=${BUILD_DIR}/cmake-3.2.0-Linux-x86_64/bin/cmake
+if [[ ! -e "${CMAKE_BIN}" ]] ; then
   wget https://cmake.org/files/v3.2/cmake-3.2.0-Linux-x86_64.sh
   yes | /bin/bash cmake-3.2.0-Linux-x86_64.sh &>/dev/null
-  CMAKE_BIN_DIR=${BUILD_DIR}/cmake-3.2.0-Linux-x86_64/bin
 fi
+
 
 # Download pre-compiled version of cxx-common for this OS. This has things like
 # google protobuf, gflags, glog, gtest, capstone, and llvm in it.
@@ -84,7 +85,7 @@ export TRAILOFBITS_LIBRARIES=${BUILD_DIR}/libraries
 
 # Configure the remill build, specifying that it should use the pre-built
 # Clang compiler binaries.
-${CMAKE_BIN_DIR}/cmake \
+${CMAKE_BIN} \
     -DCMAKE_C_COMPILER=${BUILD_DIR}/libraries/llvm/bin/clang \
     -DCMAKE_CXX_COMPILER=${BUILD_DIR}/libraries/llvm/bin/clang++ \
     ${SRC_DIR}

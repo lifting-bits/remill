@@ -273,6 +273,23 @@ static void AddRegOperand(Instruction &inst, Action action,
   }
 }
 
+enum ImmType {
+  kUnsigned,
+  kSigned
+};
+
+static void AddImmOperand(Instruction &inst, uint64_t val,
+                          ImmType signedness=kUnsigned,
+                          unsigned size=64) {
+  Operand op;
+  op.type = Operand::kTypeImmediate;
+  op.action = Operand::kActionRead;
+  op.size = size;
+  op.imm.is_signed = signedness == kUnsigned ? false : true;
+  op.imm.val = val;
+  inst.operands.push_back(op);
+}
+
 static void AddNextPC(Instruction &inst) {
   Operand op;
   op.type = Operand::kTypeAddress;
@@ -806,80 +823,24 @@ bool TryDecodeSTR_64_LDST_REGOFF(const InstData &data, Instruction &inst) {
   return TryDecodeSTR_n_LDST_REGOFF(data, inst, kRegX);
 }
 
-// MOVZ MOV_MOVZ_32_movewide:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x imm16    0
-//   6 x imm16    1
-//   7 x imm16    2
-//   8 x imm16    3
-//   9 x imm16    4
-//  10 x imm16    5
-//  11 x imm16    6
-//  12 x imm16    7
-//  13 x imm16    8
-//  14 x imm16    9
-//  15 x imm16    10
-//  16 x imm16    11
-//  17 x imm16    12
-//  18 x imm16    13
-//  19 x imm16    14
-//  20 x imm16    15
-//  21 x hw       0
-//  22 x hw       1
-//  23 1
-//  24 0
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 0 sf       0
 // MOV  <Wd>, #<imm>
-bool TryDecodeMOV_MOVZ_32_MOVEWIDE(const InstData &, Instruction &) {
-  return false;
+bool TryDecodeMOV_MOVZ_32_MOVEWIDE(const InstData &data, Instruction &inst) {
+  if (data.hw & 2) {  // Also if `sf` is zero (specifies 32-bit operands).
+    return false;
+  }
+  auto shift = static_cast<uint64_t>(data.hw) << 4U;
+  AddRegOperand(inst, kActionWrite, kRegW, data.Rd);
+  AddImmOperand(inst, static_cast<uint32_t>(data.imm16.uimm << shift),
+                kUnsigned, 32);
+  return true;
 }
 
-// MOVZ MOV_MOVZ_64_movewide:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x imm16    0
-//   6 x imm16    1
-//   7 x imm16    2
-//   8 x imm16    3
-//   9 x imm16    4
-//  10 x imm16    5
-//  11 x imm16    6
-//  12 x imm16    7
-//  13 x imm16    8
-//  14 x imm16    9
-//  15 x imm16    10
-//  16 x imm16    11
-//  17 x imm16    12
-//  18 x imm16    13
-//  19 x imm16    14
-//  20 x imm16    15
-//  21 x hw       0
-//  22 x hw       1
-//  23 1
-//  24 0
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 1 sf       0
 // MOV  <Xd>, #<imm>
-bool TryDecodeMOV_MOVZ_64_MOVEWIDE(const InstData &, Instruction &) {
-  return false;
+bool TryDecodeMOV_MOVZ_64_MOVEWIDE(const InstData &data, Instruction &inst) {
+  auto shift = static_cast<uint64_t>(data.hw) << 4U;
+  AddRegOperand(inst, kActionWrite, kRegX, data.Rd);
+  AddImmOperand(inst, (data.imm16.uimm << shift));
+  return true;
 }
 
 }  // namespace aarch64
