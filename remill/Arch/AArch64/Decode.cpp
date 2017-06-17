@@ -35472,82 +35472,6 @@ bool TryDecodeCMHS_ASIMDSAME_ONLY(const InstData &, Instruction &) {
   return false;
 }
 
-// MOVZ MOVZ_32_movewide:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x imm16    0
-//   6 x imm16    1
-//   7 x imm16    2
-//   8 x imm16    3
-//   9 x imm16    4
-//  10 x imm16    5
-//  11 x imm16    6
-//  12 x imm16    7
-//  13 x imm16    8
-//  14 x imm16    9
-//  15 x imm16    10
-//  16 x imm16    11
-//  17 x imm16    12
-//  18 x imm16    13
-//  19 x imm16    14
-//  20 x imm16    15
-//  21 x hw       0
-//  22 x hw       1
-//  23 1
-//  24 0
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 0 sf       0
-// MOVZ  <Wd>, #<imm>{, LSL #<shift>}
-bool TryDecodeMOVZ_32_MOVEWIDE(const InstData &, Instruction &) {
-  return false;
-}
-
-// MOVZ MOVZ_64_movewide:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x imm16    0
-//   6 x imm16    1
-//   7 x imm16    2
-//   8 x imm16    3
-//   9 x imm16    4
-//  10 x imm16    5
-//  11 x imm16    6
-//  12 x imm16    7
-//  13 x imm16    8
-//  14 x imm16    9
-//  15 x imm16    10
-//  16 x imm16    11
-//  17 x imm16    12
-//  18 x imm16    13
-//  19 x imm16    14
-//  20 x imm16    15
-//  21 x hw       0
-//  22 x hw       1
-//  23 1
-//  24 0
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 1 sf       0
-// MOVZ  <Xd>, #<imm>{, LSL #<shift>}
-bool TryDecodeMOVZ_64_MOVEWIDE(const InstData &, Instruction &) {
-  return false;
-}
-
 // SADDW SADDW_asimddiff_W:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -43829,82 +43753,6 @@ bool TryDecodeFMINV_ASIMDALL_ONLY_H(const InstData &, Instruction &) {
 //  31 0
 // FMINV  <V><d>, <Vn>.<T>
 bool TryDecodeFMINV_ASIMDALL_ONLY_SD(const InstData &, Instruction &) {
-  return false;
-}
-
-// ORR MOV_ORR_32_log_imm:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 1 Rn       0
-//   6 1 Rn       1
-//   7 1 Rn       2
-//   8 1 Rn       3
-//   9 1 Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 0 N        0
-//  23 0
-//  24 0
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 1 opc      0
-//  30 0 opc      1
-//  31 0 sf       0
-// MOV  <Wd|WSP>, #<imm>
-bool TryDecodeMOV_ORR_32_LOG_IMM(const InstData &, Instruction &) {
-  return false;
-}
-
-// ORR MOV_ORR_64_log_imm:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 1 Rn       0
-//   6 1 Rn       1
-//   7 1 Rn       2
-//   8 1 Rn       3
-//   9 1 Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 x N        0
-//  23 0
-//  24 0
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 1 opc      0
-//  30 0 opc      1
-//  31 1 sf       0
-// MOV  <Xd|SP>, #<imm>
-bool TryDecodeMOV_ORR_64_LOG_IMM(const InstData &, Instruction &) {
   return false;
 }
 
@@ -59881,6 +59729,7 @@ static bool (* const kDecoder[])(const InstData &data, Instruction &inst) = {
   TryDecodeMOVI_ASIMDIMM_M_SM,
   TryDecodeMOVI_ASIMDIMM_N_B,
   TryDecodeMOVK_32_MOVEWIDE,
+  TryDecodeMOVK_64_MOVEWIDE,
   TryDecodeMOVN_32_MOVEWIDE,
   TryDecodeMOVN_64_MOVEWIDE,
   TryDecodeMOVZ_32_MOVEWIDE,
