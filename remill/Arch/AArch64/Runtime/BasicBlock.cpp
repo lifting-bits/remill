@@ -125,6 +125,14 @@ extern "C" {
   auto &SP = state.gpr.X31.qword;
   auto &WSP = state.gpr.X31.dword;
 
+  addr_t zero = 0;
+  auto &WZR = reinterpret_cast<uint32_t &>(zero);
+  auto &XZR = zero;
+
+  addr_t ignored = 0;
+  auto &IGNORE_WRITE_TO_WZR = reinterpret_cast<uint32_t &>(ignored);
+  auto &IGNORE_WRITE_TO_XZR = ignored;
+
   // Lifted code will be placed here in clones versions of this function.
   return memory;
 }

@@ -185,33 +185,39 @@ enum RegClass {
   kRegW
 };
 
-static const char * const kPrefixX = "X\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X"
-                                     "\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X\0X"
-                                     "\0X\0X\0X\0\0\0\0\0";
-
-static const char *RegPrefix(RegClass size, uint32_t number) {
-  return kRegX == size ? &(kPrefixX[number * 2]) : "W";
-}
-
-static const char * const kNumberName[] = {
-    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-    "10", "11", "12", "13", "14", "15", "16", "17", "18", "19",
-    "20", "21", "22", "23", "24", "25", "26", "27", "28", "29",
-    "LP", "SP"
-};
-
-
 using RegNum = uint8_t;
 
-static const char *RegNumberName(RegNum number) {
-  CHECK_LE(number, 31U);
-  return kNumberName[number];
-}
+enum RegUsage {
+  kUseAsAddress,
+  kUseAsValue
+};
 
-static std::string RegName(RegClass rclass, RegNum number) {
+enum Action {
+  kActionRead,
+  kActionWrite,
+  kActionReadWrite
+};
+
+// Get the name of a register.
+static std::string RegName(Action action, RegClass rclass, RegUsage rtype,
+                           RegNum number) {
+  CHECK_LE(number, 31U);
+
   std::stringstream ss;
-  ss << RegPrefix(rclass, number);
-  ss << RegNumberName(number);
+
+  if (31 == number) {
+    if (rtype == kUseAsValue) {
+      auto zr_reg_name = (rclass == kRegX ? "XZR" : "WZR");
+      if (action == kActionWrite) {
+        ss << "IGNORE_WRITE_TO_";
+      }
+      ss << zr_reg_name;
+    } else {
+      ss << (rclass == kRegX ? "SP" : "WSP");
+    }
+  } else {
+    ss << (rclass == kRegX ? "X" : "W") << static_cast<unsigned>(number);
+  }
   return ss.str();
 }
 
@@ -232,19 +238,17 @@ static size_t WriteRegSize(RegClass rclass) {
   }
 }
 
-enum Action {
-  kActionRead,
-  kActionWrite,
-  kActionReadWrite
-};
-
-static Operand::Register Reg(Action action, RegClass rclass, RegNum reg_num) {
+// This gives us a register operand. If we have an operand like `<Xn|SP>`,
+// then the usage is `kTypeUsage`, otherwise (i.e. `<Xn>`), the usage is
+// a `kTypeValue`.
+static Operand::Register Reg(Action action, RegClass rclass, RegUsage rtype,
+                             RegNum reg_num) {
   Operand::Register reg;
   if (kActionWrite == action) {
-    reg.name = RegName(rclass, reg_num);
+    reg.name = RegName(action, rclass, rtype, reg_num);
     reg.size = WriteRegSize(rclass);
   } else if (kActionRead == action) {
-    reg.name = RegName(rclass, reg_num);
+    reg.name = RegName(action, rclass, rtype, reg_num);
     reg.size = ReadRegSize(rclass);
   } else {
     LOG(FATAL)
@@ -254,19 +258,20 @@ static Operand::Register Reg(Action action, RegClass rclass, RegNum reg_num) {
 }
 
 static void AddRegOperand(Instruction &inst, Action action,
-                          RegClass rclass, RegNum reg_num) {
+                          RegClass rclass, RegUsage rtype,
+                          RegNum reg_num) {
   Operand op;
   op.type = Operand::kTypeRegister;
 
   if (kActionWrite == action || kActionReadWrite == action) {
-    op.reg = Reg(kActionWrite, rclass, reg_num);
+    op.reg = Reg(kActionWrite, rclass, rtype, reg_num);
     op.size = op.reg.size;
     op.action = Operand::kActionWrite;
     inst.operands.push_back(op);
   }
 
   if (kActionRead == action || kActionReadWrite == action) {
-    op.reg = Reg(kActionRead, rclass, reg_num);
+    op.reg = Reg(kActionRead, rclass, rtype, reg_num);
     op.size = op.reg.size;
     op.action = Operand::kActionRead;
     inst.operands.push_back(op);
@@ -319,7 +324,7 @@ static void AddBasePlusOffsetMemOp(Instruction &inst, Action action,
   op.type = Operand::kTypeAddress;
   op.size = access_size;
   op.addr.address_size = 64;
-  op.addr.base_reg = Reg(kActionRead, kRegX, base_reg);
+  op.addr.base_reg = Reg(kActionRead, kRegX, kUseAsAddress, base_reg);
   op.addr.displacement = disp;
 
   if (kActionWrite == action || kActionReadWrite == action) {
@@ -357,13 +362,13 @@ static void AddPreIndexMemOp(Instruction &inst, Action action,
   Operand reg_op;
   reg_op.type = Operand::kTypeRegister;
   reg_op.action = Operand::kActionWrite;
-  reg_op.reg = Reg(kActionWrite, kRegX, base_reg);
+  reg_op.reg = Reg(kActionWrite, kRegX, kUseAsAddress, base_reg);
   reg_op.size = reg_op.reg.size;
   inst.operands.push_back(reg_op);
 
   addr_op.addr.kind = Operand::Address::kAddressCalculation;
   addr_op.addr.address_size = 64;
-  addr_op.addr.base_reg = Reg(kActionRead, kRegX, base_reg);
+  addr_op.addr.base_reg = Reg(kActionRead, kRegX, kUseAsAddress, base_reg);
   addr_op.addr.displacement *= 2;
   inst.operands.push_back(addr_op);
 }
@@ -390,13 +395,13 @@ static void AddPostIndexMemOp(Instruction &inst, Action action,
   Operand reg_op;
   reg_op.type = Operand::kTypeRegister;
   reg_op.action = Operand::kActionWrite;
-  reg_op.reg = Reg(kActionWrite, kRegX, base_reg);
+  reg_op.reg = Reg(kActionWrite, kRegX, kUseAsAddress, base_reg);
   reg_op.size = reg_op.reg.size;
   inst.operands.push_back(reg_op);
 
   addr_op.addr.kind = Operand::Address::kAddressCalculation;
   addr_op.addr.address_size = 64;
-  addr_op.addr.base_reg = Reg(kActionRead, kRegX, base_reg);
+  addr_op.addr.base_reg = Reg(kActionRead, kRegX, kUseAsAddress, base_reg);
   addr_op.addr.displacement = disp;
   inst.operands.push_back(addr_op);
 }
@@ -417,15 +422,15 @@ bool AArch64Arch::DecodeInstruction(
   inst.next_pc = address + kInstructionSize;
 
   if (kInstructionSize != inst_bytes.size()) {
-    inst.function = "INVALID_SIZE";
+    inst.category = Instruction::kCategoryError;
     return false;
 
   } else if (0 != (address % kInstructionSize)) {
-    inst.function = "INVALID_UNALIGNED";
+    inst.category = Instruction::kCategoryError;
     return false;
 
   } else if (!aarch64::TryExtract(bytes, dinst)) {
-    inst.function = "INVALID_ENCODING";
+    inst.category = Instruction::kCategoryInvalid;
     return false;
   }
 
@@ -433,7 +438,7 @@ bool AArch64Arch::DecodeInstruction(
   inst.function = aarch64::InstFormToString(dinst.iform);
 
   if (!aarch64::TryDecode(dinst, inst)) {
-    inst.category = Instruction::kCategoryInvalid;
+    inst.category = Instruction::kCategoryError;
     return false;
   }
 
@@ -446,22 +451,22 @@ namespace aarch64 {
 
 // RET  {<Xn>}
 bool TryDecodeRET_64R_BRANCH_REG(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegX, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
   return true;
 }
 
 
 // BLR  <Xn>
 bool TryDecodeBLR_64_BRANCH_REG(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegX, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
   AddNextPC(inst);
   return true;
 }
 
 // STP  <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]!
 bool TryDecodeSTP_32_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegW, data.Rt);
-  AddRegOperand(inst, kActionRead, kRegW, data.Rt2);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt2);
   uint64_t offset = static_cast<uint64_t>(data.imm7.simm7);
   AddPreIndexMemOp(inst, kActionWrite, 64, data.Rn, offset << 2);
   return true;
@@ -469,8 +474,8 @@ bool TryDecodeSTP_32_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
 
 // STP  <Xt1>, <Xt2>, [<Xn|SP>, #<imm>]!
 bool TryDecodeSTP_64_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegX, data.Rt);
-  AddRegOperand(inst, kActionRead, kRegX, data.Rt2);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt2);
   uint64_t offset = static_cast<uint64_t>(data.imm7.simm7);
   AddPreIndexMemOp(inst, kActionWrite, 128, data.Rn, offset << 3);
   return true;
@@ -478,8 +483,8 @@ bool TryDecodeSTP_64_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
 
 // STP  <Wt1>, <Wt2>, [<Xn|SP>], #<imm>
 bool TryDecodeSTP_32_LDSTPAIR_POST(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegW, data.Rt);
-  AddRegOperand(inst, kActionRead, kRegW, data.Rt2);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt2);
   uint64_t offset = static_cast<uint64_t>(data.imm7.simm7);
   AddPostIndexMemOp(inst, kActionWrite, 64, data.Rn, offset << 2);
   return true;
@@ -487,8 +492,8 @@ bool TryDecodeSTP_32_LDSTPAIR_POST(const InstData &data, Instruction &inst) {
 
 // STP  <Xt1>, <Xt2>, [<Xn|SP>], #<imm>
 bool TryDecodeSTP_64_LDSTPAIR_POST(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegX, data.Rt);
-  AddRegOperand(inst, kActionRead, kRegX, data.Rt2);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt2);
   uint64_t offset = static_cast<uint64_t>(data.imm7.simm7);
   AddPostIndexMemOp(inst, kActionWrite, 128, data.Rn, offset << 3);
   return true;
@@ -496,8 +501,8 @@ bool TryDecodeSTP_64_LDSTPAIR_POST(const InstData &data, Instruction &inst) {
 
 // STP  <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}]
 bool TryDecodeSTP_32_LDSTPAIR_OFF(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegW, data.Rt);
-  AddRegOperand(inst, kActionRead, kRegW, data.Rt2);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt2);
   AddBasePlusOffsetMemOp(inst, kActionWrite, 64, data.Rn,
                          static_cast<uint64_t>(data.imm7.simm7) << 2);
   return true;
@@ -505,8 +510,8 @@ bool TryDecodeSTP_32_LDSTPAIR_OFF(const InstData &data, Instruction &inst) {
 
 // STP  <Xt1>, <Xt2>, [<Xn|SP>{, #<imm>}]
 bool TryDecodeSTP_64_LDSTPAIR_OFF(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegX, data.Rt);
-  AddRegOperand(inst, kActionRead, kRegX, data.Rt2);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt2);
   AddBasePlusOffsetMemOp(inst, kActionWrite, 128, data.Rn,
                          static_cast<uint64_t>(data.imm7.simm7) << 3);
   return true;
@@ -514,8 +519,8 @@ bool TryDecodeSTP_64_LDSTPAIR_OFF(const InstData &data, Instruction &inst) {
 
 // LDP  <Wt1>, <Wt2>, [<Xn|SP>], #<imm>
 bool TryDecodeLDP_32_LDSTPAIR_POST(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegW, data.Rt);
-  AddRegOperand(inst, kActionWrite, kRegW, data.Rt2);
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt2);
   AddPostIndexMemOp(inst, kActionRead, 64, data.Rn,
                     static_cast<uint64_t>(data.imm7.simm7) << 2);
   return true;
@@ -523,8 +528,8 @@ bool TryDecodeLDP_32_LDSTPAIR_POST(const InstData &data, Instruction &inst) {
 
 // LDP  <Xt1>, <Xt2>, [<Xn|SP>], #<imm>
 bool TryDecodeLDP_64_LDSTPAIR_POST(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegX, data.Rt);
-  AddRegOperand(inst, kActionWrite, kRegX, data.Rt2);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt2);
   AddPostIndexMemOp(inst, kActionRead, 128, data.Rn,
                     static_cast<uint64_t>(data.imm7.simm7) << 3);
   return true;
@@ -532,8 +537,8 @@ bool TryDecodeLDP_64_LDSTPAIR_POST(const InstData &data, Instruction &inst) {
 
 // LDP  <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]!
 bool TryDecodeLDP_32_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegW, data.Rt);
-  AddRegOperand(inst, kActionWrite, kRegW, data.Rt2);
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt2);
   AddPreIndexMemOp(inst, kActionRead, 64, data.Rn,
                    static_cast<uint64_t>(data.imm7.simm7) << 2);
   return true;
@@ -541,8 +546,8 @@ bool TryDecodeLDP_32_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
 
 // LDP  <Xt1>, <Xt2>, [<Xn|SP>, #<imm>]!
 bool TryDecodeLDP_64_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegX, data.Rt);
-  AddRegOperand(inst, kActionWrite, kRegX, data.Rt2);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt2);
   AddPreIndexMemOp(inst, kActionRead, 128, data.Rn,
                    static_cast<uint64_t>(data.imm7.simm7) << 3);
   return true;
@@ -550,8 +555,8 @@ bool TryDecodeLDP_64_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
 
 // LDP  <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}]
 bool TryDecodeLDP_32_LDSTPAIR_OFF(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegW, data.Rt);
-  AddRegOperand(inst, kActionWrite, kRegW, data.Rt2);
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt2);
   AddBasePlusOffsetMemOp(inst, kActionRead, 64, data.Rn,
                          static_cast<uint64_t>(data.imm7.simm7) << 2);
   return true;
@@ -559,8 +564,8 @@ bool TryDecodeLDP_32_LDSTPAIR_OFF(const InstData &data, Instruction &inst) {
 
 // LDP  <Xt1>, <Xt2>, [<Xn|SP>{, #<imm>}]
 bool TryDecodeLDP_64_LDSTPAIR_OFF(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegX, data.Rt);
-  AddRegOperand(inst, kActionWrite, kRegX, data.Rt2);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt2);
   AddBasePlusOffsetMemOp(inst, kActionRead, 128, data.Rn,
                          static_cast<uint64_t>(data.imm7.simm7) << 3);
   return true;
@@ -568,7 +573,7 @@ bool TryDecodeLDP_64_LDSTPAIR_OFF(const InstData &data, Instruction &inst) {
 
 // LDR  <Wt>, [<Xn|SP>{, #<pimm>}]
 bool TryDecodeLDR_32_LDST_POS(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegW, data.Rt);
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionRead, 32, data.Rn,
                          data.imm12.uimm << 2);
   return true;
@@ -576,7 +581,7 @@ bool TryDecodeLDR_32_LDST_POS(const InstData &data, Instruction &inst) {
 
 // LDR  <Xt>, [<Xn|SP>{, #<pimm>}]
 bool TryDecodeLDR_64_LDST_POS(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegX, data.Rt);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionRead, 64, data.Rn,
                          data.imm12.uimm << 3);
   return true;
@@ -605,7 +610,7 @@ static void AddPCRegMemOp(Instruction &inst, Action action, uint64_t disp) {
 
 // LDR  <Wt>, <label>
 bool TryDecodeLDR_32_LOADLIT(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegW, data.Rt);
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
   AddPCRegMemOp(inst, kActionRead,
                 static_cast<uint64_t>(data.imm19.simm19) << 2ULL);
   return false;
@@ -613,7 +618,7 @@ bool TryDecodeLDR_32_LOADLIT(const InstData &data, Instruction &inst) {
 
 // LDR  <Xt>, <label>
 bool TryDecodeLDR_64_LOADLIT(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegX, data.Rt);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
   AddPCRegMemOp(inst, kActionRead,
                 static_cast<uint64_t>(data.imm19.simm19) << 2ULL);
   return true;
@@ -681,7 +686,7 @@ static bool TryDecodeLDR_n_LDST_REGOFF(
   op.type = Operand::kTypeShiftRegister;
   op.size = 64;  // The result is pointer-sized.
   op.action = Operand::kActionRead;
-  op.shift_reg.reg = Reg(kActionRead, index_class, data.Rm);
+  op.shift_reg.reg = Reg(kActionRead, index_class, kUseAsValue, data.Rm);
   op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
   op.shift_reg.shift_size = amount;
 
@@ -690,7 +695,7 @@ static bool TryDecodeLDR_n_LDST_REGOFF(
     op.shift_reg.extend_op = ShiftRegExtendType(extend_type);
   }
 
-  AddRegOperand(inst, kActionWrite, val_class, data.Rt);
+  AddRegOperand(inst, kActionWrite, val_class, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionRead, 8U << data.size, data.Rn, 0);
   inst.operands.push_back(op);
 
@@ -709,35 +714,35 @@ bool TryDecodeLDR_64_LDST_REGOFF(const InstData &data, Instruction &inst) {
 
 // MOV  <Wd|WSP>, <Wn|WSP>
 bool TryDecodeMOV_ADD_32_ADDSUB_IMM(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegW, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegW, data.Rn);
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsAddress, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsAddress, data.Rn);
   return true;
 }
 
 // MOV  <Xd|SP>, <Xn|SP>
 bool TryDecodeMOV_ADD_64_ADDSUB_IMM(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegX, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegX, data.Rn);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsAddress, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
   return true;
 }
 
 // MOV  <Wd>, <Wm>
 bool TryDecodeMOV_ORR_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegW, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegW, data.Rm);
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rm);
   return true;
 }
 
 // MOV  <Xd>, <Xm>
 bool TryDecodeMOV_ORR_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegX, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegX, data.Rm);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rm);
   return true;
 }
 
 // STR  <Wt>, [<Xn|SP>], #<simm>
 bool TryDecodeSTR_32_LDST_IMMPOST(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegW, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
   uint64_t offset = static_cast<uint64_t>(data.imm9.simm9);
   AddPostIndexMemOp(inst, kActionWrite, 32, data.Rn, offset << 2);
   return true;
@@ -745,7 +750,7 @@ bool TryDecodeSTR_32_LDST_IMMPOST(const InstData &data, Instruction &inst) {
 
 // STR  <Xt>, [<Xn|SP>], #<simm>
 bool TryDecodeSTR_64_LDST_IMMPOST(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegX, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
   uint64_t offset = static_cast<uint64_t>(data.imm9.simm9);
   AddPostIndexMemOp(inst, kActionWrite, 64, data.Rn, offset << 2);
   return true;
@@ -753,7 +758,7 @@ bool TryDecodeSTR_64_LDST_IMMPOST(const InstData &data, Instruction &inst) {
 
 // STR  <Wt>, [<Xn|SP>, #<simm>]!
 bool TryDecodeSTR_32_LDST_IMMPRE(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegW, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
   uint64_t offset = static_cast<uint64_t>(data.imm9.simm9);
   AddPreIndexMemOp(inst, kActionWrite, 32, data.Rn, offset << 2);
   return true;
@@ -761,7 +766,7 @@ bool TryDecodeSTR_32_LDST_IMMPRE(const InstData &data, Instruction &inst) {
 
 // STR  <Xt>, [<Xn|SP>, #<simm>]!
 bool TryDecodeSTR_64_LDST_IMMPRE(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegX, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
   uint64_t offset = static_cast<uint64_t>(data.imm9.simm9);
   AddPreIndexMemOp(inst, kActionWrite, 64, data.Rn, offset << 2);
   return true;
@@ -769,7 +774,7 @@ bool TryDecodeSTR_64_LDST_IMMPRE(const InstData &data, Instruction &inst) {
 
 // STR  <Wt>, [<Xn|SP>{, #<pimm>}]
 bool TryDecodeSTR_32_LDST_POS(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegW, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionWrite, 32, data.Rn,
                          data.imm12.uimm << 2 /* size = 2 */);
   return true;
@@ -777,7 +782,7 @@ bool TryDecodeSTR_32_LDST_POS(const InstData &data, Instruction &inst) {
 
 // STR  <Xt>, [<Xn|SP>{, #<pimm>}]
 bool TryDecodeSTR_64_LDST_POS(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegX, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionWrite, 64, data.Rn,
                          data.imm12.uimm << 3 /* size = 3 */);
   return true;
@@ -797,7 +802,7 @@ static bool TryDecodeSTR_n_LDST_REGOFF(
   op.type = Operand::kTypeShiftRegister;
   op.size = 64;  // The result is pointer-sized.
   op.action = Operand::kActionRead;
-  op.shift_reg.reg = Reg(kActionRead, index_class, data.Rm);
+  op.shift_reg.reg = Reg(kActionRead, index_class, kUseAsAddress, data.Rm);
   op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
   op.shift_reg.shift_size = amount;
 
@@ -806,7 +811,7 @@ static bool TryDecodeSTR_n_LDST_REGOFF(
     op.shift_reg.extend_op = ShiftRegExtendType(extend_type);
   }
 
-  AddRegOperand(inst, kActionRead, val_class, data.Rt);
+  AddRegOperand(inst, kActionRead, val_class, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionWrite, 8U << data.size, data.Rn, 0);
   inst.operands.push_back(op);
 
@@ -839,7 +844,7 @@ bool TryDecodeMOVZ_32_MOVEWIDE(const InstData &data, Instruction &inst) {
     return false;
   }
   auto shift = static_cast<uint64_t>(data.hw) << 4U;
-  AddRegOperand(inst, kActionWrite, kRegW, data.Rd);
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
   AddImmOperand(inst, static_cast<uint32_t>(data.imm16.uimm << shift),
                 kUnsigned, 32);
   return true;
@@ -849,10 +854,16 @@ bool TryDecodeMOVZ_32_MOVEWIDE(const InstData &data, Instruction &inst) {
 bool TryDecodeMOVZ_64_MOVEWIDE(const InstData &data, Instruction &inst) {
 
   auto shift = static_cast<uint64_t>(data.hw) << 4U;
-  AddRegOperand(inst, kActionWrite, kRegX, data.Rd);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddImmOperand(inst, (data.imm16.uimm << shift));
   return true;
 }
+
+//static unsigned DecodeBitMasks(uint64_t N, uint64_t imms, uint64_t immr,
+//                               bool is_immediate) {
+//  uint64_t tmask = 0;
+//  uint64_t wmask = 0;
+//}
 
 // ORR MOV_ORR_32_log_imm:
 //   0 x Rd       0
@@ -889,6 +900,7 @@ bool TryDecodeMOVZ_64_MOVEWIDE(const InstData &data, Instruction &inst) {
 //  31 0 sf       0
 // MOV  <Wd|WSP>, #<imm>
 bool TryDecodeMOV_ORR_32_LOG_IMM(const InstData &, Instruction &) {
+//  auto imm = data.imms;
   return false;
 }
 
