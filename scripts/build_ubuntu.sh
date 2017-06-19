@@ -42,6 +42,9 @@ UBUNTU_RELEASE=`lsb_release -sc`
 # will use to produce bitcode. It's good to match these up.
 LLVM_VERSION=llvm40
 
+# Max available procs
+NPROC=$( nproc )
+
 mkdir -p ${BUILD_DIR}
 cd ${BUILD_DIR}
 
@@ -91,4 +94,4 @@ ${CMAKE_BIN} \
     ${SRC_DIR}
 
 # Build remill.
-make
+make -j${NPROC}
