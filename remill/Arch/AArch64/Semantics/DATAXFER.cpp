@@ -180,3 +180,20 @@ DEF_ISEL(MOV_ORR_64_LOG_SHIFT) = Load<R64W, R64>;
 
 DEF_ISEL(MOV_MOVZ_32_MOVEWIDE) = Load<R32W, I32>;
 DEF_ISEL(MOV_MOVZ_64_MOVEWIDE) = Load<R64W, I64>;
+
+
+namespace {
+
+DEF_SEM(LoadAddress64, R64W dst, PC label) {
+   addr_t label_addr = Read(label);
+
+   // clear the bottom 12 bits of label_addr
+   // to make this page aligned
+   // the Post decoding already made the label page aligned
+   // and added the label to PC
+   // the semantics just needs to fix up for PC not being page aligned
+   auto label_page = UAnd(UNot(4095), label_addr);
+   Write(dst, label_page);
+}
+
+DEF_ISEL(ADRP_only_pcreladdr) = LoadAddress64;
