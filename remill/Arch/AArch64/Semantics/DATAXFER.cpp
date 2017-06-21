@@ -192,8 +192,11 @@ DEF_SEM(LoadAddress64, R64W dst, PC label) {
    // the Post decoding already made the label page aligned
    // and added the label to PC
    // the semantics just needs to fix up for PC not being page aligned
-   auto label_page = UAnd(UNot(4095), label_addr);
+   auto label_page = UAnd(UNot(static_cast<uint64_t>(4095)), label_addr);
    Write(dst, label_page);
+   return memory;
 }
 
-DEF_ISEL(ADRP_only_pcreladdr) = LoadAddress64;
+} // namespace
+
+DEF_ISEL(ADRP_ONLY_PCRELADDR) = LoadAddress64;
