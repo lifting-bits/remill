@@ -872,7 +872,7 @@ bool TryDecodeADRP_ONLY_PCRELADDR(const InstData &data, Instruction &inst) {
 
   // the label is shifted left with 12 bits of zero
   // and then added to $PC
-  AddPCDisp(inst, static_cast<uint64_t>(data.imm19.simm20) << 12ULL);
+  AddPCDisp(inst, static_cast<uint64_t>(data.immhi_immlo.simm20) << 12ULL);
   return true;
 }
 
