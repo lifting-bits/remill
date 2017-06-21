@@ -876,6 +876,12 @@ bool TryDecodeADRP_ONLY_PCRELADDR(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// B  <label>
+bool TryDecodeB_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
+  AddPCDisp(inst, static_cast<uint64_t>(data.imm26.simm26) << 4ULL);
+  return memory;
+}
+
 //static unsigned DecodeBitMasks(uint64_t N, uint64_t imms, uint64_t immr,
 //                               bool is_immediate) {
 //  uint64_t tmask = 0;

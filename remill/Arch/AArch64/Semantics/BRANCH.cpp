@@ -124,6 +124,7 @@ DEF_SEM(CBNZ, R8W cond, S src, PC taken, PC not_taken) {
 }  // namespace
 
 DEF_ISEL(B_U) = DoDirectBranch;
+DEF_ISEL(B_ONLY_BRANCH_IMM) = DoDirectBranch;
 
 DEF_ISEL(B_LS_R8W_U_U) = DirectCondBranch<NotCond<CondHI>>;
 
