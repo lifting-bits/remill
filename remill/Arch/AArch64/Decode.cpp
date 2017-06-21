@@ -49836,44 +49836,6 @@ bool TryDecodeLDRSH_64_LDST_REGOFF(const InstData &, Instruction &) {
   return false;
 }
 
-// ADRP ADRP_only_pcreladdr:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x immhi    0
-//   6 x immhi    1
-//   7 x immhi    2
-//   8 x immhi    3
-//   9 x immhi    4
-//  10 x immhi    5
-//  11 x immhi    6
-//  12 x immhi    7
-//  13 x immhi    8
-//  14 x immhi    9
-//  15 x immhi    10
-//  16 x immhi    11
-//  17 x immhi    12
-//  18 x immhi    13
-//  19 x immhi    14
-//  20 x immhi    15
-//  21 x immhi    16
-//  22 x immhi    17
-//  23 x immhi    18
-//  24 0
-//  25 0
-//  26 0
-//  27 0
-//  28 1
-//  29 x immlo    0
-//  30 x immlo    1
-//  31 1 op       0
-// ADRP  <Xd>, <label>
-bool TryDecodeADRP_ONLY_PCRELADDR(const InstData &, Instruction &) {
-  return false;
-}
-
 // DUP DUP_asimdins_DR_r:
 //   0 x Rd       0
 //   1 x Rd       1
