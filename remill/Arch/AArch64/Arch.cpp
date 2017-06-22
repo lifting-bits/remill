@@ -990,6 +990,63 @@ bool TryDecodeBR_64_BRANCH_REG(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// ADD ADD_64_addsub_imm:
+//   0 x Rd       0
+//   1 x Rd       1
+//   2 x Rd       2
+//   3 x Rd       3
+//   4 x Rd       4
+//   5 x Rn       0
+//   6 x Rn       1
+//   7 x Rn       2
+//   8 x Rn       3
+//   9 x Rn       4
+//  10 x imm12    0
+//  11 x imm12    1
+//  12 x imm12    2
+//  13 x imm12    3
+//  14 x imm12    4
+//  15 x imm12    5
+//  16 x imm12    6
+//  17 x imm12    7
+//  18 x imm12    8
+//  19 x imm12    9
+//  20 x imm12    10
+//  21 x imm12    11
+//  22 x shift    0
+//  23 x shift    1
+//  24 1
+//  25 0
+//  26 0
+//  27 0
+//  28 1
+//  29 0 S        0
+//  30 0 op       0
+//  31 1 sf       0
+// ADD  <Xd|SP>, <Xn|SP>, #<imm>{, <shift>}
+bool TryDecodeADD_64_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsAddress, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
+  auto imm = data.imm12.uimm;
+  switch(data.shift) {
+      case 0:
+          // shift 0 to left
+          break;
+      case 1:
+          // shift left 12 bits
+          imm = imm << 12;
+          break;
+      default:
+          LOG(ERROR) << "Decoding reserved bit for shit value";
+          return false;
+          break;
+  }
+
+  AddImmOperand(inst, imm);
+
+  return true;
+}
+
 //static unsigned DecodeBitMasks(uint64_t N, uint64_t imms, uint64_t immr,
 //                               bool is_immediate) {
 //  uint64_t tmask = 0;
