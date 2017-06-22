@@ -295,7 +295,7 @@ static void AddImmOperand(Instruction &inst, uint64_t val,
   inst.operands.push_back(op);
 }
 
-static void AddPCRegOp(Instruction &inst, Operand::Action action, uint64_t disp, Operand::Address::Kind opKind) {
+static void AddPCRegOp(Instruction &inst, Operand::Action action, int64_t disp, Operand::Address::Kind opKind) {
   Operand op;
   op.type = Operand::kTypeAddress;
   op.size = 64;
@@ -309,7 +309,7 @@ static void AddPCRegOp(Instruction &inst, Operand::Action action, uint64_t disp,
 }
 
 // emit a memory read or write of [PC+disp]
-static void AddPCRegMemOp(Instruction &inst, Action action, uint64_t disp) {
+static void AddPCRegMemOp(Instruction &inst, Action action, int64_t disp) {
   if (kActionRead == action) {
       AddPCRegOp(inst, Operand::kActionRead, disp, Operand::Address::kMemoryRead);
   } else if (kActionWrite == action) {
@@ -321,7 +321,7 @@ static void AddPCRegMemOp(Instruction &inst, Action action, uint64_t disp) {
 }
 
 // emit an address operand that computes [PC + disp]
-static void AddPCDisp(Instruction &inst, uint64_t disp) {
+static void AddPCDisp(Instruction &inst, int64_t disp) {
   AddPCRegOp(inst,
           Operand::kActionRead, // This instruction reads $PC
           disp,
@@ -872,7 +872,10 @@ bool TryDecodeADRP_ONLY_PCRELADDR(const InstData &data, Instruction &inst) {
 
   // the label is shifted left with 12 bits of zero
   // and then added to $PC
-  AddPCDisp(inst, static_cast<uint64_t>(data.immhi_immlo.simm20) << 12ULL);
+  // TODO(artem): per conversation with pag, we may not need to shift 
+  //              this but instead leave it as-is since mcsema will take
+  //              care of dealing with the reference.
+  AddPCDisp(inst, static_cast<int64_t>(data.immhi_immlo.simm21) << 12ULL);
   return true;
 }
 
