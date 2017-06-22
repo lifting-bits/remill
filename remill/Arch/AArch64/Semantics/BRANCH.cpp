@@ -86,6 +86,7 @@ DEF_SEM(DoDirectBranch, PC target_pc) {
   return memory;
 }
 
+
 DEF_SEM(DoIndirectBranch, PC dst) {
   Write(REG_PC, Read(dst));
   return memory;
@@ -141,6 +142,8 @@ DEF_ISEL(BR_R64) = DoIndirectBranch;
 
 DEF_ISEL(CBZ_R8W_R64_U_U) = CBZ<R64>;
 DEF_ISEL(CBZ_R8W_R32_U_U) = CBZ<R32>;
+DEF_ISEL(CBZ_64_COMPBRANCH) = CBZ<R64>;
+DEF_ISEL(CBZ_32_COMPBRANCH) = CBZ<R32>;
 
 DEF_ISEL(CBNZ_R8W_R64_U_U) = CBNZ<R64>;
 DEF_ISEL(CBNZ_R8W_R32_U_U) = CBNZ<R32>;

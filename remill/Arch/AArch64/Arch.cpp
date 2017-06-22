@@ -36,6 +36,14 @@
 #include "remill/BC/Version.h"
 #include "remill/OS/OS.h"
 
+namespace aarch64 {
+
+const int kInstructionSize = 4;  // Number of bytes in an instruction.
+const int kPCWidth = 64; //  PC width in bits
+
+}
+
+
 namespace remill {
 namespace {
 
@@ -333,7 +341,7 @@ static void AddPCDisp(Instruction &inst, int64_t disp) {
 static void AddNextPC(Instruction &inst) {
   // add +4 as the PC displacement
   // emit an address computation operand
-  AddPCDisp(inst, 4);
+  AddPCDisp(inst, ::aarch64::kInstructionSize);
 }
 
 // Base+offset memory operands are equivalent to indexing into an array.
@@ -433,10 +441,6 @@ static void AddPostIndexMemOp(Instruction &inst, Action action,
   inst.operands.push_back(addr_op);
 }
 
-enum {
-  kInstructionSize = 4  // Number of bytes in an instruction.
-};
-
 bool AArch64Arch::DecodeInstruction(
     uint64_t address, const std::string &inst_bytes,
     Instruction &inst) const {
@@ -446,13 +450,13 @@ bool AArch64Arch::DecodeInstruction(
 
   inst.arch_name = arch_name;
   inst.pc = address;
-  inst.next_pc = address + kInstructionSize;
+  inst.next_pc = address + ::aarch64::kInstructionSize;
 
-  if (kInstructionSize != inst_bytes.size()) {
+  if (::aarch64::kInstructionSize != inst_bytes.size()) {
     inst.category = Instruction::kCategoryError;
     return false;
 
-  } else if (0 != (address % kInstructionSize)) {
+  } else if (0 != (address % ::aarch64::kInstructionSize)) {
     inst.category = Instruction::kCategoryError;
     return false;
 
@@ -690,7 +694,7 @@ static bool TryDecodeLDR_n_LDST_REGOFF(
 
   Operand op;
   op.type = Operand::kTypeShiftRegister;
-  op.size = 64;  // The result is pointer-sized.
+  op.size = ::aarch64::kPCWidth;  // The result is pointer-sized.
   op.action = Operand::kActionRead;
   op.shift_reg.reg = Reg(kActionRead, index_class, kUseAsValue, data.Rm);
   op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
@@ -806,7 +810,7 @@ static bool TryDecodeSTR_n_LDST_REGOFF(
 
   Operand op;
   op.type = Operand::kTypeShiftRegister;
-  op.size = 64;  // The result is pointer-sized.
+  op.size = ::aarch64::kPCWidth;  // The result is pointer-sized.
   op.action = Operand::kActionRead;
   op.shift_reg.reg = Reg(kActionRead, index_class, kUseAsAddress, data.Rm);
   op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
@@ -888,10 +892,10 @@ bool TryDecodeB_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
   Operand taken_op = {};
   taken_op.action = Operand::kActionRead;
   taken_op.type = Operand::kTypeAddress;
-  taken_op.size = 64;
-  taken_op.addr.address_size = 64;
+  taken_op.size = ::aarch64::kPCWidth;
+  taken_op.addr.address_size = ::aarch64::kPCWidth;
   taken_op.addr.base_reg.name = "PC";
-  taken_op.addr.base_reg.size = 64;
+  taken_op.addr.base_reg.size = ::aarch64::kPCWidth;
   taken_op.addr.displacement = disp;
   taken_op.addr.kind = Operand::Address::kControlFlowTarget;
 
@@ -900,6 +904,71 @@ bool TryDecodeB_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
 
   inst.operands.push_back(taken_op);
 
+  return true;
+}
+
+static void DecodeFallThroughPC(Instruction &inst) {
+  Operand not_taken_op = {};
+  not_taken_op.action = Operand::kActionRead;
+  not_taken_op.type = Operand::kTypeAddress;
+  not_taken_op.size = ::aarch64::kPCWidth;
+  not_taken_op.addr.address_size = ::aarch64::kPCWidth;
+  not_taken_op.addr.base_reg.name = "PC";
+  not_taken_op.addr.base_reg.size = ::aarch64::kPCWidth;
+  not_taken_op.addr.displacement = ::aarch64::kInstructionSize;
+  not_taken_op.addr.kind = Operand::Address::kControlFlowTarget;
+  inst.operands.push_back(not_taken_op);
+
+  inst.branch_not_taken_pc = inst.next_pc;
+}
+
+// Decode a relative branch target.
+static void DecodeConditionalBranch(Instruction &inst, int64_t disp) {
+
+  // Condition variable.
+  Operand cond_op = {};
+  cond_op.action = Operand::kActionWrite;
+  cond_op.type = Operand::kTypeRegister;
+  cond_op.reg.name = "BRANCH_TAKEN";
+  cond_op.reg.size = 8;
+  cond_op.size = 8;
+  inst.operands.push_back(cond_op);
+
+  // Taken branch.
+  Operand taken_op = {};
+  taken_op.action = Operand::kActionRead;
+  taken_op.type = Operand::kTypeAddress;
+  taken_op.size = ::aarch64::kPCWidth;
+  taken_op.addr.address_size = ::aarch64::kPCWidth;
+  taken_op.addr.base_reg.name = "PC";
+  taken_op.addr.base_reg.size = ::aarch64::kPCWidth;
+  taken_op.addr.displacement = disp;
+  taken_op.addr.kind = Operand::Address::kControlFlowTarget;
+  inst.operands.push_back(taken_op);
+
+  inst.branch_taken_pc = static_cast<uint64_t>(
+      static_cast<int64_t>(inst.pc) + disp);
+
+  DecodeFallThroughPC(inst);
+} 
+
+// CBZ  <Xt>, <label>
+bool TryDecodeCBZ_64_COMPBRANCH(const InstData &data, Instruction &inst) {
+  // set up branch condition operands
+  auto imm = data.imm19.simm19 << 2;
+  DecodeConditionalBranch(inst, imm);
+  // set up source register for comparison
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
+  return true;
+}
+
+// CBZ  <Wt>, <label>
+bool TryDecodeCBZ_32_COMPBRANCH(const InstData &data, Instruction &inst) {
+  // set up branch condition operands
+  auto imm = data.imm19.simm19 << 2;
+  DecodeConditionalBranch(inst, imm);
+  // set up source register for comparison
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
   return true;
 }
 
