@@ -954,24 +954,34 @@ static void DecodeConditionalBranch(Instruction &inst, int64_t disp) {
   DecodeFallThroughPC(inst);
 } 
 
-// CBZ  <Xt>, <label>
-bool TryDecodeCBZ_64_COMPBRANCH(const InstData &data, Instruction &inst) {
+template <RegClass rc>
+static bool DecodeBranchRegLabel(const InstData &data, Instruction &inst) {
   // set up branch condition operands
   auto imm = data.imm19.simm19 << 2;
   DecodeConditionalBranch(inst, imm);
   // set up source register for comparison
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionRead, rc, kUseAsValue, data.Rt);
   return true;
+}
+
+// CBZ  <Xt>, <label>
+bool TryDecodeCBZ_64_COMPBRANCH(const InstData &data, Instruction &inst) {
+  return DecodeBranchRegLabel<kRegX>(data, inst);
 }
 
 // CBZ  <Wt>, <label>
 bool TryDecodeCBZ_32_COMPBRANCH(const InstData &data, Instruction &inst) {
-  // set up branch condition operands
-  auto imm = data.imm19.simm19 << 2;
-  DecodeConditionalBranch(inst, imm);
-  // set up source register for comparison
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
-  return true;
+  return DecodeBranchRegLabel<kRegW>(data, inst);
+}
+
+// CBNZ  <Wt>, <label>
+bool TryDecodeCBNZ_32_COMPBRANCH(const InstData &data, Instruction &inst) {
+  return DecodeBranchRegLabel<kRegW>(data, inst);
+}
+
+// CBNZ  <Xt>, <label>
+bool TryDecodeCBNZ_64_COMPBRANCH(const InstData &data, Instruction &inst) {
+  return DecodeBranchRegLabel<kRegX>(data, inst);
 }
 
 // BL  <label>
