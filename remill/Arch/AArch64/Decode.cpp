@@ -14762,44 +14762,6 @@ bool TryDecodeLD2_ASISDLSOP_DX2_R2D(const InstData &, Instruction &) {
   return false;
 }
 
-// BR BR_64_branch_reg:
-//   0 0 op4      0
-//   1 0 op4      1
-//   2 0 op4      2
-//   3 0 op4      3
-//   4 0 op4      4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0 op3      0
-//  11 0 op3      1
-//  12 0 op3      2
-//  13 0 op3      3
-//  14 0 op3      4
-//  15 0 op3      5
-//  16 1 op2      0
-//  17 1 op2      1
-//  18 1 op2      2
-//  19 1 op2      3
-//  20 1 op2      4
-//  21 0 op       0
-//  22 0 op       1
-//  23 0 opc      2
-//  24 0 opc      3
-//  25 1
-//  26 1
-//  27 0
-//  28 1
-//  29 0
-//  30 1
-//  31 1
-// BR  <Xn>
-bool TryDecodeBR_64_BRANCH_REG(const InstData &, Instruction &) {
-  return false;
-}
-
 // FCVTZU FCVTZU_asisdmiscfp16_R:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -24335,44 +24297,6 @@ bool TryDecodeSTCLRH_32S_MEMOP(const InstData &, Instruction &) {
 //  31 0 size     1
 // STCLRLH  <Ws>, [<Xn|SP>]
 bool TryDecodeSTCLRLH_32S_MEMOP(const InstData &, Instruction &) {
-  return false;
-}
-
-// BL BL_only_branch_imm:
-//   0 x imm26    0
-//   1 x imm26    1
-//   2 x imm26    2
-//   3 x imm26    3
-//   4 x imm26    4
-//   5 x imm26    5
-//   6 x imm26    6
-//   7 x imm26    7
-//   8 x imm26    8
-//   9 x imm26    9
-//  10 x imm26    10
-//  11 x imm26    11
-//  12 x imm26    12
-//  13 x imm26    13
-//  14 x imm26    14
-//  15 x imm26    15
-//  16 x imm26    16
-//  17 x imm26    17
-//  18 x imm26    18
-//  19 x imm26    19
-//  20 x imm26    20
-//  21 x imm26    21
-//  22 x imm26    22
-//  23 x imm26    23
-//  24 x imm26    24
-//  25 x imm26    25
-//  26 1
-//  27 0
-//  28 1
-//  29 0
-//  30 0
-//  31 1 op       0
-// BL  <label>
-bool TryDecodeBL_ONLY_BRANCH_IMM(const InstData &, Instruction &) {
   return false;
 }
 

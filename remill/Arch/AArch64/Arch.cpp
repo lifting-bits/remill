@@ -883,11 +883,8 @@ bool TryDecodeADRP_ONLY_PCRELADDR(const InstData &data, Instruction &inst) {
   return true;
 }
 
-// B  <label>
-bool TryDecodeB_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
 
-  auto disp = static_cast<int64_t>(data.imm26.simm26) << 2ULL;
-
+static void DecodeUnconditionalBranch(Instruction &inst, int64_t displacement) {
   // copied form X86 relative branch
   Operand taken_op = {};
   taken_op.action = Operand::kActionRead;
@@ -896,14 +893,19 @@ bool TryDecodeB_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
   taken_op.addr.address_size = ::aarch64::kPCWidth;
   taken_op.addr.base_reg.name = "PC";
   taken_op.addr.base_reg.size = ::aarch64::kPCWidth;
-  taken_op.addr.displacement = disp;
+  taken_op.addr.displacement = displacement;
   taken_op.addr.kind = Operand::Address::kControlFlowTarget;
 
   inst.branch_taken_pc = static_cast<uint64_t>(
-      static_cast<int64_t>(inst.pc) + disp);
+      static_cast<int64_t>(inst.pc) + displacement);
 
   inst.operands.push_back(taken_op);
+}
 
+// B  <label>
+bool TryDecodeB_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
+  auto disp = static_cast<int64_t>(data.imm26.simm26) << 2ULL;
+  DecodeUnconditionalBranch(inst, disp);
   return true;
 }
 
@@ -969,6 +971,22 @@ bool TryDecodeCBZ_32_COMPBRANCH(const InstData &data, Instruction &inst) {
   DecodeConditionalBranch(inst, imm);
   // set up source register for comparison
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
+  return true;
+}
+
+// BL  <label>
+bool TryDecodeBL_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
+  auto disp = static_cast<int64_t>(data.imm26.simm26) << 2ULL;
+  // decodes the call target
+  DecodeUnconditionalBranch(inst, disp);
+  // decodes the return address
+  AddNextPC(inst);
+  return true;
+}
+
+// BR  <Xn>
+bool TryDecodeBR_64_BRANCH_REG(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
   return true;
 }
 
