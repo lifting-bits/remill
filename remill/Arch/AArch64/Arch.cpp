@@ -324,7 +324,7 @@ static void AddPCRegMemOp(Instruction &inst, Action action, uint64_t disp) {
 static void AddPCDisp(Instruction &inst, uint64_t disp) {
   AddPCRegOp(inst,
           Operand::kActionRead, // This instruction reads $PC
-          disp, // add +4 as the PC displacement
+          disp,
           // emit an address computation operand
           Operand::Address::kAddressCalculation
   );
@@ -867,7 +867,7 @@ bool TryDecodeMOVZ_64_MOVEWIDE(const InstData &data, Instruction &inst) {
 
 // ADRP  <Xd>, <label>
 bool TryDecodeADRP_ONLY_PCRELADDR(const InstData &data, Instruction &inst) {
-    // writes to a register
+  // writes to a register
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
 
   // the label is shifted left with 12 bits of zero
@@ -878,8 +878,26 @@ bool TryDecodeADRP_ONLY_PCRELADDR(const InstData &data, Instruction &inst) {
 
 // B  <label>
 bool TryDecodeB_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
-  AddPCDisp(inst, static_cast<uint64_t>(data.imm26.simm26) << 4ULL);
-  return memory;
+
+  auto disp = static_cast<int64_t>(data.imm26.simm26) << 2ULL;
+
+  // copied form X86 relative branch
+  Operand taken_op = {};
+  taken_op.action = Operand::kActionRead;
+  taken_op.type = Operand::kTypeAddress;
+  taken_op.size = 64;
+  taken_op.addr.address_size = 64;
+  taken_op.addr.base_reg.name = "PC";
+  taken_op.addr.base_reg.size = 64;
+  taken_op.addr.displacement = disp;
+  taken_op.addr.kind = Operand::Address::kControlFlowTarget;
+
+  inst.branch_taken_pc = static_cast<uint64_t>(
+      static_cast<int64_t>(inst.pc) + disp);
+
+  inst.operands.push_back(taken_op);
+
+  return true;
 }
 
 //static unsigned DecodeBitMasks(uint64_t N, uint64_t imms, uint64_t immr,
