@@ -682,6 +682,53 @@ enum Shift : uint8_t {
   kShiftROR
 };
 
+
+//template <typename T>
+//typename std::enable_if<std::is_unsigned<T>::value, bool>::type
+//static T doASR(T value, uint64_t count) {
+//    auto v64 = static_cast<uint64_t>(value);
+//    return static_cast<T>(v64 >> count);
+//}
+//
+//
+//template <typename T>
+//typename std::enable_if<!std::is_unsigned<T>::value, bool>::type
+//static T doASR(T value, uint64_t count) {
+//    auto shifted = value >> count;
+//    if (value < 0) {
+//        shifted |= ~(~0ULL >> count);
+//    }
+//    return static_cast<T>(shifted);
+//}
+//
+//template <typename T>
+//static T doShiftOp(T value, uint64_t count) {
+//    if(count > (sizeof(T) * 8)-1) {
+//        LOG(FATAL) << "Want to shift by more than the bitwidth allows:"
+//                   << "Shift count: " << count << "; width: " << sizeof(T)*8;
+//    }
+//
+//    switch(sType) {
+//        case kShiftLSL:
+//            return T << count;
+//        case kShiftLSR:
+//            {
+//              auto v64 = static_cast<uint64_t>(value);
+//              return static_cast<T>(v64 >> count);
+//            }
+//        case kShiftASR:
+//            {
+//                return doASR<T>(value, count);
+//            }
+//        case kShiftROR:
+//            {
+//                auto v1 = doASR<T>(value, count);
+//                auto v2 = T << (sizeof(T)*8 - count);
+//                return v1 | v2;
+//            }
+//    }
+//}
+
 static bool TryDecodeLDR_n_LDST_REGOFF(
     const InstData &data, Instruction &inst, RegClass val_class) {
   if (!(data.option & 2)) {
@@ -996,7 +1043,7 @@ bool TryDecodeBL_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
 
 // BR  <Xn>
 bool TryDecodeBR_64_BRANCH_REG(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
   return true;
 }
 
@@ -1035,8 +1082,8 @@ bool TryDecodeBR_64_BRANCH_REG(const InstData &data, Instruction &inst) {
 //  31 1 sf       0
 // ADD  <Xd|SP>, <Xn|SP>, #<imm>{, <shift>}
 bool TryDecodeADD_64_ADDSUB_IMM(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegX, kUseAsAddress, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
   auto imm = data.imm12.uimm;
   switch(data.shift) {
       case 0:
@@ -1054,6 +1101,66 @@ bool TryDecodeADD_64_ADDSUB_IMM(const InstData &data, Instruction &inst) {
 
   AddImmOperand(inst, imm);
 
+  return true;
+}
+
+// SUB SUB_64_addsub_shift:
+//   0 x Rd       0
+//   1 x Rd       1
+//   2 x Rd       2
+//   3 x Rd       3
+//   4 x Rd       4
+//   5 x Rn       0
+//   6 x Rn       1
+//   7 x Rn       2
+//   8 x Rn       3
+//   9 x Rn       4
+//  10 x imm6     0
+//  11 x imm6     1
+//  12 x imm6     2
+//  13 x imm6     3
+//  14 x imm6     4
+//  15 x imm6     5
+//  16 x Rm       0
+//  17 x Rm       1
+//  18 x Rm       2
+//  19 x Rm       3
+//  20 x Rm       4
+//  21 0
+//  22 x shift    0
+//  23 x shift    1
+//  24 1
+//  25 1
+//  26 0
+//  27 1
+//  28 0
+//  29 0 S        0
+//  30 1 op       0
+//  31 1 sf       0
+// SUB  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeSUB_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
+//integer d = UInt(Rd);
+//integer n = UInt(Rn);
+//integer m = UInt(Rm);
+//integer datasize = if sf == '1' then 64 else 32;
+//
+//if shift == '11' then ReservedValue();
+//if sf == '0' && imm6<5> == '1' then ReservedValue();
+//
+//ShiftType shift_type = DecodeShift(shift);
+//integer shift_amount = UInt(imm6);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rm);
+
+  Shift shift_type = static_cast<Shift>(data.shift);
+  // shift type '11' is a reserved value
+  if(shift_type == kShiftROR) {
+      LOG(ERROR) << "Trying to use reserved value '11' in a shift";
+      return false;
+  }
+  AddImmOperand(inst, shift_type);
+  
   return true;
 }
 

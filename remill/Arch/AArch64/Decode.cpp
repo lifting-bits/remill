@@ -46682,44 +46682,6 @@ bool TryDecodeSUB_32_ADDSUB_SHIFT(const InstData &, Instruction &) {
   return false;
 }
 
-// SUB SUB_64_addsub_shift:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm6     0
-//  11 x imm6     1
-//  12 x imm6     2
-//  13 x imm6     3
-//  14 x imm6     4
-//  15 x imm6     5
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0
-//  22 x shift    0
-//  23 x shift    1
-//  24 1
-//  25 1
-//  26 0
-//  27 1
-//  28 0
-//  29 0 S        0
-//  30 1 op       0
-//  31 1 sf       0
-// SUB  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
-bool TryDecodeSUB_64_ADDSUB_SHIFT(const InstData &, Instruction &) {
-  return false;
-}
-
 // SRI SRI_asisdshf_R:
 //   0 x Rd       0
 //   1 x Rd       1
