@@ -41780,44 +41780,6 @@ bool TryDecodeUSHR_ASIMDSHF_R(const InstData &, Instruction &) {
   return false;
 }
 
-// B B_only_branch_imm:
-//   0 x imm26    0
-//   1 x imm26    1
-//   2 x imm26    2
-//   3 x imm26    3
-//   4 x imm26    4
-//   5 x imm26    5
-//   6 x imm26    6
-//   7 x imm26    7
-//   8 x imm26    8
-//   9 x imm26    9
-//  10 x imm26    10
-//  11 x imm26    11
-//  12 x imm26    12
-//  13 x imm26    13
-//  14 x imm26    14
-//  15 x imm26    15
-//  16 x imm26    16
-//  17 x imm26    17
-//  18 x imm26    18
-//  19 x imm26    19
-//  20 x imm26    20
-//  21 x imm26    21
-//  22 x imm26    22
-//  23 x imm26    23
-//  24 x imm26    24
-//  25 x imm26    25
-//  26 1
-//  27 0
-//  28 1
-//  29 0
-//  30 0
-//  31 0 op       0
-// B  <label>
-bool TryDecodeB_ONLY_BRANCH_IMM(const InstData &, Instruction &) {
-  return false;
-}
-
 // FCMEQ FCMEQ_asisdmiscfp16_FZ:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -49833,44 +49795,6 @@ bool TryDecodeLDRSH_32_LDST_REGOFF(const InstData &, Instruction &) {
 //  31 0 size     1
 // LDRSH  <Xt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
 bool TryDecodeLDRSH_64_LDST_REGOFF(const InstData &, Instruction &) {
-  return false;
-}
-
-// ADRP ADRP_only_pcreladdr:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x immhi    0
-//   6 x immhi    1
-//   7 x immhi    2
-//   8 x immhi    3
-//   9 x immhi    4
-//  10 x immhi    5
-//  11 x immhi    6
-//  12 x immhi    7
-//  13 x immhi    8
-//  14 x immhi    9
-//  15 x immhi    10
-//  16 x immhi    11
-//  17 x immhi    12
-//  18 x immhi    13
-//  19 x immhi    14
-//  20 x immhi    15
-//  21 x immhi    16
-//  22 x immhi    17
-//  23 x immhi    18
-//  24 0
-//  25 0
-//  26 0
-//  27 0
-//  28 1
-//  29 x immlo    0
-//  30 x immlo    1
-//  31 1 op       0
-// ADRP  <Xd>, <label>
-bool TryDecodeADRP_ONLY_PCRELADDR(const InstData &, Instruction &) {
   return false;
 }
 

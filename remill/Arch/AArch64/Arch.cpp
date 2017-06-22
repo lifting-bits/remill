@@ -295,18 +295,45 @@ static void AddImmOperand(Instruction &inst, uint64_t val,
   inst.operands.push_back(op);
 }
 
-static void AddNextPC(Instruction &inst) {
+static void AddPCRegOp(Instruction &inst, Operand::Action action, int64_t disp, Operand::Address::Kind opKind) {
   Operand op;
   op.type = Operand::kTypeAddress;
   op.size = 64;
   op.addr.address_size = 64;
   op.addr.base_reg.name = "PC";
   op.addr.base_reg.size = 64;
-  op.addr.displacement = 4;
-
-  op.action = Operand::kActionRead;
-  op.addr.kind = Operand::Address::kAddressCalculation;
+  op.addr.displacement = disp;
+  op.addr.kind = opKind;
+  op.action = action;
   inst.operands.push_back(op);
+}
+
+// emit a memory read or write of [PC+disp]
+static void AddPCRegMemOp(Instruction &inst, Action action, int64_t disp) {
+  if (kActionRead == action) {
+      AddPCRegOp(inst, Operand::kActionRead, disp, Operand::Address::kMemoryRead);
+  } else if (kActionWrite == action) {
+      AddPCRegOp(inst, Operand::kActionWrite, disp, Operand::Address::kMemoryWrite);
+  } else {
+    LOG(FATAL)
+        << __FUNCTION__ << " only accepts simple operand actions.";
+  }
+}
+
+// emit an address operand that computes [PC + disp]
+static void AddPCDisp(Instruction &inst, int64_t disp) {
+  AddPCRegOp(inst,
+          Operand::kActionRead, // This instruction reads $PC
+          disp,
+          // emit an address computation operand
+          Operand::Address::kAddressCalculation
+  );
+}
+
+static void AddNextPC(Instruction &inst) {
+  // add +4 as the PC displacement
+  // emit an address computation operand
+  AddPCDisp(inst, 4);
 }
 
 // Base+offset memory operands are equivalent to indexing into an array.
@@ -587,27 +614,6 @@ bool TryDecodeLDR_64_LDST_POS(const InstData &data, Instruction &inst) {
   return true;
 }
 
-static void AddPCRegMemOp(Instruction &inst, Action action, uint64_t disp) {
-  Operand op;
-  op.type = Operand::kTypeAddress;
-  op.size = 64;
-  op.addr.address_size = 64;
-  op.addr.base_reg.name = "PC";
-  op.addr.base_reg.size = 64;
-  op.addr.displacement = disp;
-  if (kActionRead == action) {
-    op.action = Operand::kActionRead;
-    op.addr.kind = Operand::Address::kMemoryRead;
-  } else if (kActionWrite == action) {
-    op.action = Operand::kActionWrite;
-    op.addr.kind = Operand::Address::kMemoryWrite;
-  } else {
-    LOG(FATAL)
-        << "AddPCRegMemOp only accepts simple operand actions.";
-  }
-  inst.operands.push_back(op);
-}
-
 // LDR  <Wt>, <label>
 bool TryDecodeLDR_32_LOADLIT(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
@@ -856,6 +862,44 @@ bool TryDecodeMOVZ_64_MOVEWIDE(const InstData &data, Instruction &inst) {
   auto shift = static_cast<uint64_t>(data.hw) << 4U;
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddImmOperand(inst, (data.imm16.uimm << shift));
+  return true;
+}
+
+// ADRP  <Xd>, <label>
+bool TryDecodeADRP_ONLY_PCRELADDR(const InstData &data, Instruction &inst) {
+  // writes to a register
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+
+  // the label is shifted left with 12 bits of zero
+  // and then added to $PC
+  // TODO(artem): per conversation with pag, we may not need to shift 
+  //              this but instead leave it as-is since mcsema will take
+  //              care of dealing with the reference.
+  AddPCDisp(inst, static_cast<int64_t>(data.immhi_immlo.simm21) << 12ULL);
+  return true;
+}
+
+// B  <label>
+bool TryDecodeB_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
+
+  auto disp = static_cast<int64_t>(data.imm26.simm26) << 2ULL;
+
+  // copied form X86 relative branch
+  Operand taken_op = {};
+  taken_op.action = Operand::kActionRead;
+  taken_op.type = Operand::kTypeAddress;
+  taken_op.size = 64;
+  taken_op.addr.address_size = 64;
+  taken_op.addr.base_reg.name = "PC";
+  taken_op.addr.base_reg.size = 64;
+  taken_op.addr.displacement = disp;
+  taken_op.addr.kind = Operand::Address::kControlFlowTarget;
+
+  inst.branch_taken_pc = static_cast<uint64_t>(
+      static_cast<int64_t>(inst.pc) + disp);
+
+  inst.operands.push_back(taken_op);
+
   return true;
 }
 
