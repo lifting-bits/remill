@@ -36,6 +36,14 @@
 #include "remill/BC/Version.h"
 #include "remill/OS/OS.h"
 
+namespace aarch64 {
+
+const int kInstructionSize = 4;  // Number of bytes in an instruction.
+const int kPCWidth = 64; //  PC width in bits
+
+}
+
+
 namespace remill {
 namespace {
 
@@ -295,18 +303,45 @@ static void AddImmOperand(Instruction &inst, uint64_t val,
   inst.operands.push_back(op);
 }
 
-static void AddNextPC(Instruction &inst) {
+static void AddPCRegOp(Instruction &inst, Operand::Action action, int64_t disp, Operand::Address::Kind opKind) {
   Operand op;
   op.type = Operand::kTypeAddress;
   op.size = 64;
   op.addr.address_size = 64;
   op.addr.base_reg.name = "PC";
   op.addr.base_reg.size = 64;
-  op.addr.displacement = 4;
-
-  op.action = Operand::kActionRead;
-  op.addr.kind = Operand::Address::kAddressCalculation;
+  op.addr.displacement = disp;
+  op.addr.kind = opKind;
+  op.action = action;
   inst.operands.push_back(op);
+}
+
+// emit a memory read or write of [PC+disp]
+static void AddPCRegMemOp(Instruction &inst, Action action, int64_t disp) {
+  if (kActionRead == action) {
+      AddPCRegOp(inst, Operand::kActionRead, disp, Operand::Address::kMemoryRead);
+  } else if (kActionWrite == action) {
+      AddPCRegOp(inst, Operand::kActionWrite, disp, Operand::Address::kMemoryWrite);
+  } else {
+    LOG(FATAL)
+        << __FUNCTION__ << " only accepts simple operand actions.";
+  }
+}
+
+// emit an address operand that computes [PC + disp]
+static void AddPCDisp(Instruction &inst, int64_t disp) {
+  AddPCRegOp(inst,
+          Operand::kActionRead, // This instruction reads $PC
+          disp,
+          // emit an address computation operand
+          Operand::Address::kAddressCalculation
+  );
+}
+
+static void AddNextPC(Instruction &inst) {
+  // add +4 as the PC displacement
+  // emit an address computation operand
+  AddPCDisp(inst, ::aarch64::kInstructionSize);
 }
 
 // Base+offset memory operands are equivalent to indexing into an array.
@@ -406,10 +441,6 @@ static void AddPostIndexMemOp(Instruction &inst, Action action,
   inst.operands.push_back(addr_op);
 }
 
-enum {
-  kInstructionSize = 4  // Number of bytes in an instruction.
-};
-
 bool AArch64Arch::DecodeInstruction(
     uint64_t address, const std::string &inst_bytes,
     Instruction &inst) const {
@@ -419,13 +450,13 @@ bool AArch64Arch::DecodeInstruction(
 
   inst.arch_name = arch_name;
   inst.pc = address;
-  inst.next_pc = address + kInstructionSize;
+  inst.next_pc = address + ::aarch64::kInstructionSize;
 
-  if (kInstructionSize != inst_bytes.size()) {
+  if (::aarch64::kInstructionSize != inst_bytes.size()) {
     inst.category = Instruction::kCategoryError;
     return false;
 
-  } else if (0 != (address % kInstructionSize)) {
+  } else if (0 != (address % ::aarch64::kInstructionSize)) {
     inst.category = Instruction::kCategoryError;
     return false;
 
@@ -587,27 +618,6 @@ bool TryDecodeLDR_64_LDST_POS(const InstData &data, Instruction &inst) {
   return true;
 }
 
-static void AddPCRegMemOp(Instruction &inst, Action action, uint64_t disp) {
-  Operand op;
-  op.type = Operand::kTypeAddress;
-  op.size = 64;
-  op.addr.address_size = 64;
-  op.addr.base_reg.name = "PC";
-  op.addr.base_reg.size = 64;
-  op.addr.displacement = disp;
-  if (kActionRead == action) {
-    op.action = Operand::kActionRead;
-    op.addr.kind = Operand::Address::kMemoryRead;
-  } else if (kActionWrite == action) {
-    op.action = Operand::kActionWrite;
-    op.addr.kind = Operand::Address::kMemoryWrite;
-  } else {
-    LOG(FATAL)
-        << "AddPCRegMemOp only accepts simple operand actions.";
-  }
-  inst.operands.push_back(op);
-}
-
 // LDR  <Wt>, <label>
 bool TryDecodeLDR_32_LOADLIT(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
@@ -672,6 +682,69 @@ enum Shift : uint8_t {
   kShiftROR
 };
 
+
+// translate a shift encoding into an operand shift type
+// used by the shift register class
+static Operand::ShiftRegister::Shift getOperandShift(Shift s) {
+    switch(s) {
+        case kShiftLSL:
+            return Operand::ShiftRegister::kShiftLeftWithZeroes;
+        case kShiftLSR:
+            return Operand::ShiftRegister::kShiftUnsignedRight;
+        case kShiftASR:
+            return Operand::ShiftRegister::kShiftSignedRight;
+        case kShiftROR:
+            return Operand::ShiftRegister::kShiftRightAround;
+    }
+}
+
+
+//template <typename T>
+//typename std::enable_if<std::is_unsigned<T>::value, bool>::type
+//static T doASR(T value, uint64_t count) {
+//    auto v64 = static_cast<uint64_t>(value);
+//    return static_cast<T>(v64 >> count);
+//}
+//
+//
+//template <typename T>
+//typename std::enable_if<!std::is_unsigned<T>::value, bool>::type
+//static T doASR(T value, uint64_t count) {
+//    auto shifted = value >> count;
+//    if (value < 0) {
+//        shifted |= ~(~0ULL >> count);
+//    }
+//    return static_cast<T>(shifted);
+//}
+//
+//template <typename T>
+//static T doShiftOp(T value, uint64_t count) {
+//    if(count > (sizeof(T) * 8)-1) {
+//        LOG(FATAL) << "Want to shift by more than the bitwidth allows:"
+//                   << "Shift count: " << count << "; width: " << sizeof(T)*8;
+//    }
+//
+//    switch(sType) {
+//        case kShiftLSL:
+//            return T << count;
+//        case kShiftLSR:
+//            {
+//              auto v64 = static_cast<uint64_t>(value);
+//              return static_cast<T>(v64 >> count);
+//            }
+//        case kShiftASR:
+//            {
+//                return doASR<T>(value, count);
+//            }
+//        case kShiftROR:
+//            {
+//                auto v1 = doASR<T>(value, count);
+//                auto v2 = T << (sizeof(T)*8 - count);
+//                return v1 | v2;
+//            }
+//    }
+//}
+
 static bool TryDecodeLDR_n_LDST_REGOFF(
     const InstData &data, Instruction &inst, RegClass val_class) {
   if (!(data.option & 2)) {
@@ -684,7 +757,7 @@ static bool TryDecodeLDR_n_LDST_REGOFF(
 
   Operand op;
   op.type = Operand::kTypeShiftRegister;
-  op.size = 64;  // The result is pointer-sized.
+  op.size = ::aarch64::kPCWidth;  // The result is pointer-sized.
   op.action = Operand::kActionRead;
   op.shift_reg.reg = Reg(kActionRead, index_class, kUseAsValue, data.Rm);
   op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
@@ -800,7 +873,7 @@ static bool TryDecodeSTR_n_LDST_REGOFF(
 
   Operand op;
   op.type = Operand::kTypeShiftRegister;
-  op.size = 64;  // The result is pointer-sized.
+  op.size = ::aarch64::kPCWidth;  // The result is pointer-sized.
   op.action = Operand::kActionRead;
   op.shift_reg.reg = Reg(kActionRead, index_class, kUseAsAddress, data.Rm);
   op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
@@ -856,6 +929,232 @@ bool TryDecodeMOVZ_64_MOVEWIDE(const InstData &data, Instruction &inst) {
   auto shift = static_cast<uint64_t>(data.hw) << 4U;
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddImmOperand(inst, (data.imm16.uimm << shift));
+  return true;
+}
+
+// ADRP  <Xd>, <label>
+bool TryDecodeADRP_ONLY_PCRELADDR(const InstData &data, Instruction &inst) {
+  // writes to a register
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+
+  // the label is shifted left with 12 bits of zero
+  // and then added to $PC
+  // TODO(artem): per conversation with pag, we may not need to shift 
+  //              this but instead leave it as-is since mcsema will take
+  //              care of dealing with the reference.
+  AddPCDisp(inst, static_cast<int64_t>(data.immhi_immlo.simm21) << 12ULL);
+  return true;
+}
+
+
+static void DecodeUnconditionalBranch(Instruction &inst, int64_t displacement) {
+  // copied form X86 relative branch
+  Operand taken_op = {};
+  taken_op.action = Operand::kActionRead;
+  taken_op.type = Operand::kTypeAddress;
+  taken_op.size = ::aarch64::kPCWidth;
+  taken_op.addr.address_size = ::aarch64::kPCWidth;
+  taken_op.addr.base_reg.name = "PC";
+  taken_op.addr.base_reg.size = ::aarch64::kPCWidth;
+  taken_op.addr.displacement = displacement;
+  taken_op.addr.kind = Operand::Address::kControlFlowTarget;
+
+  inst.branch_taken_pc = static_cast<uint64_t>(
+      static_cast<int64_t>(inst.pc) + displacement);
+
+  inst.operands.push_back(taken_op);
+}
+
+// B  <label>
+bool TryDecodeB_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
+  auto disp = static_cast<int64_t>(data.imm26.simm26) << 2ULL;
+  DecodeUnconditionalBranch(inst, disp);
+  return true;
+}
+
+static void DecodeFallThroughPC(Instruction &inst) {
+  Operand not_taken_op = {};
+  not_taken_op.action = Operand::kActionRead;
+  not_taken_op.type = Operand::kTypeAddress;
+  not_taken_op.size = ::aarch64::kPCWidth;
+  not_taken_op.addr.address_size = ::aarch64::kPCWidth;
+  not_taken_op.addr.base_reg.name = "PC";
+  not_taken_op.addr.base_reg.size = ::aarch64::kPCWidth;
+  not_taken_op.addr.displacement = ::aarch64::kInstructionSize;
+  not_taken_op.addr.kind = Operand::Address::kControlFlowTarget;
+  inst.operands.push_back(not_taken_op);
+
+  inst.branch_not_taken_pc = inst.next_pc;
+}
+
+// Decode a relative branch target.
+static void DecodeConditionalBranch(Instruction &inst, int64_t disp) {
+
+  // Condition variable.
+  Operand cond_op = {};
+  cond_op.action = Operand::kActionWrite;
+  cond_op.type = Operand::kTypeRegister;
+  cond_op.reg.name = "BRANCH_TAKEN";
+  cond_op.reg.size = 8;
+  cond_op.size = 8;
+  inst.operands.push_back(cond_op);
+
+  // Taken branch.
+  Operand taken_op = {};
+  taken_op.action = Operand::kActionRead;
+  taken_op.type = Operand::kTypeAddress;
+  taken_op.size = ::aarch64::kPCWidth;
+  taken_op.addr.address_size = ::aarch64::kPCWidth;
+  taken_op.addr.base_reg.name = "PC";
+  taken_op.addr.base_reg.size = ::aarch64::kPCWidth;
+  taken_op.addr.displacement = disp;
+  taken_op.addr.kind = Operand::Address::kControlFlowTarget;
+  inst.operands.push_back(taken_op);
+
+  inst.branch_taken_pc = static_cast<uint64_t>(
+      static_cast<int64_t>(inst.pc) + disp);
+
+  DecodeFallThroughPC(inst);
+} 
+
+template <RegClass rc>
+static bool DecodeBranchRegLabel(const InstData &data, Instruction &inst) {
+  // set up branch condition operands
+  auto imm = data.imm19.simm19 << 2;
+  DecodeConditionalBranch(inst, imm);
+  // set up source register for comparison
+  AddRegOperand(inst, kActionRead, rc, kUseAsValue, data.Rt);
+  return true;
+}
+
+// CBZ  <Xt>, <label>
+bool TryDecodeCBZ_64_COMPBRANCH(const InstData &data, Instruction &inst) {
+  return DecodeBranchRegLabel<kRegX>(data, inst);
+}
+
+// CBZ  <Wt>, <label>
+bool TryDecodeCBZ_32_COMPBRANCH(const InstData &data, Instruction &inst) {
+  return DecodeBranchRegLabel<kRegW>(data, inst);
+}
+
+// CBNZ  <Wt>, <label>
+bool TryDecodeCBNZ_32_COMPBRANCH(const InstData &data, Instruction &inst) {
+  return DecodeBranchRegLabel<kRegW>(data, inst);
+}
+
+// CBNZ  <Xt>, <label>
+bool TryDecodeCBNZ_64_COMPBRANCH(const InstData &data, Instruction &inst) {
+  return DecodeBranchRegLabel<kRegX>(data, inst);
+}
+
+// BL  <label>
+bool TryDecodeBL_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
+  auto disp = static_cast<int64_t>(data.imm26.simm26) << 2ULL;
+  // decodes the call target
+  DecodeUnconditionalBranch(inst, disp);
+  // decodes the return address
+  AddNextPC(inst);
+  return true;
+}
+
+// BR  <Xn>
+bool TryDecodeBR_64_BRANCH_REG(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
+  return true;
+}
+
+template <typename S>
+static bool shiftImmediate(S& value, uint8_t shift) {
+  switch(shift) {
+      case 0:
+          // shift 0 to left
+          break;
+      case 1:
+          // shift left 12 bits
+          value = value << 12;
+          break;
+      default:
+          LOG(ERROR) << "Decoding reserved bit for shit value";
+          return false;
+  }
+
+  return true;
+}
+
+// ADD  <Xd|SP>, <Xn|SP>, #<imm>{, <shift>}
+bool TryDecodeADD_64_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+
+  auto imm = data.imm12.uimm;
+  if(!shiftImmediate<decltype(imm)>(imm, data.shift)) {
+      return false;
+  }
+
+  AddImmOperand(inst, imm);
+
+  return true;
+}
+
+// SUB  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeSUB_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+
+  Shift shift_type = static_cast<Shift>(data.shift);
+  // shift type '11' is a reserved value
+  if(shift_type == kShiftROR) {
+      LOG(ERROR) << "Trying to use reserved value '11' in a shift";
+      return false;
+  }
+
+  // create a shift register operand for the second source value
+  Operand op;
+  op.type = Operand::kTypeShiftRegister;
+  op.size = ::aarch64::kPCWidth;
+  op.action = Operand::kActionRead;
+  op.shift_reg.reg = Reg(kActionRead, kRegX, kUseAsValue, data.Rm);
+  op.shift_reg.shift_op = getOperandShift(shift_type);
+  op.shift_reg.shift_size = data.imm6.uimm;
+  inst.operands.push_back(op);
+
+  return true;
+}
+
+// CMP  <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeCMP_SUBS_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+
+  Shift shift_type = static_cast<Shift>(data.shift);
+  // shift type '11' is a reserved value
+  if(shift_type == kShiftROR) {
+      LOG(ERROR) << "Trying to use reserved value '11' in a shift";
+      return false;
+  }
+
+  // create a shift register operand for the second source value
+  Operand op;
+  op.type = Operand::kTypeShiftRegister;
+  op.size = ::aarch64::kPCWidth;
+  op.action = Operand::kActionRead;
+  op.shift_reg.reg = Reg(kActionRead, kRegX, kUseAsValue, data.Rm);
+  op.shift_reg.shift_op = getOperandShift(shift_type);
+  op.shift_reg.shift_size = data.imm6.uimm;
+  inst.operands.push_back(op);
+
+  return true;
+}
+
+// CMP  <Xn|SP>, #<imm>{, <shift>}
+bool TryDecodeCMP_SUBS_64S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+
+  auto imm = data.imm12.uimm;
+  if(!shiftImmediate<decltype(imm)>(imm, data.shift)) {
+      return false;
+  }
+
+  AddImmOperand(inst, imm);
   return true;
 }
 

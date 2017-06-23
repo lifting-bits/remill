@@ -86,7 +86,9 @@ DEF_SEM(DoDirectBranch, PC target_pc) {
   return memory;
 }
 
-DEF_SEM(DoIndirectBranch, PC dst) {
+
+template <typename S>
+DEF_SEM(DoIndirectBranch, S dst) {
   Write(REG_PC, Read(dst));
   return memory;
 }
@@ -124,6 +126,7 @@ DEF_SEM(CBNZ, R8W cond, S src, PC taken, PC not_taken) {
 }  // namespace
 
 DEF_ISEL(B_U) = DoDirectBranch;
+DEF_ISEL(B_ONLY_BRANCH_IMM) = DoDirectBranch;
 
 DEF_ISEL(B_LS_R8W_U_U) = DirectCondBranch<NotCond<CondHI>>;
 
@@ -136,10 +139,15 @@ DEF_ISEL(B_GT_R8W_U_U) = DirectCondBranch<CondGT>;
 DEF_ISEL(B_LE_R8W_U_U) = DirectCondBranch<CondLE>;
 DEF_ISEL(B_LT_R8W_U_U) = DirectCondBranch<CondLT>;
 
-DEF_ISEL(BR_R64) = DoIndirectBranch;
+DEF_ISEL(BR_R64) = DoIndirectBranch<PC>;
+DEF_ISEL(BR_64_BRANCH_REG) = DoIndirectBranch<R64>;
 
 DEF_ISEL(CBZ_R8W_R64_U_U) = CBZ<R64>;
 DEF_ISEL(CBZ_R8W_R32_U_U) = CBZ<R32>;
+DEF_ISEL(CBZ_64_COMPBRANCH) = CBZ<R64>;
+DEF_ISEL(CBZ_32_COMPBRANCH) = CBZ<R32>;
 
 DEF_ISEL(CBNZ_R8W_R64_U_U) = CBNZ<R64>;
 DEF_ISEL(CBNZ_R8W_R32_U_U) = CBNZ<R32>;
+DEF_ISEL(CBNZ_64_COMPBRANCH) = CBNZ<R64>;
+DEF_ISEL(CBNZ_32_COMPBRANCH) = CBNZ<R32>;

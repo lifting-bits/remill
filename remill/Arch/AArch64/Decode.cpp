@@ -6630,82 +6630,6 @@ bool TryDecodeSQDMLAL_ASIMDDIFF_L(const InstData &, Instruction &) {
   return false;
 }
 
-// CBNZ CBNZ_32_compbranch:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x imm19    0
-//   6 x imm19    1
-//   7 x imm19    2
-//   8 x imm19    3
-//   9 x imm19    4
-//  10 x imm19    5
-//  11 x imm19    6
-//  12 x imm19    7
-//  13 x imm19    8
-//  14 x imm19    9
-//  15 x imm19    10
-//  16 x imm19    11
-//  17 x imm19    12
-//  18 x imm19    13
-//  19 x imm19    14
-//  20 x imm19    15
-//  21 x imm19    16
-//  22 x imm19    17
-//  23 x imm19    18
-//  24 1 op       0
-//  25 0
-//  26 1
-//  27 0
-//  28 1
-//  29 1
-//  30 0
-//  31 0 sf       0
-// CBNZ  <Wt>, <label>
-bool TryDecodeCBNZ_32_COMPBRANCH(const InstData &, Instruction &) {
-  return false;
-}
-
-// CBNZ CBNZ_64_compbranch:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x imm19    0
-//   6 x imm19    1
-//   7 x imm19    2
-//   8 x imm19    3
-//   9 x imm19    4
-//  10 x imm19    5
-//  11 x imm19    6
-//  12 x imm19    7
-//  13 x imm19    8
-//  14 x imm19    9
-//  15 x imm19    10
-//  16 x imm19    11
-//  17 x imm19    12
-//  18 x imm19    13
-//  19 x imm19    14
-//  20 x imm19    15
-//  21 x imm19    16
-//  22 x imm19    17
-//  23 x imm19    18
-//  24 1 op       0
-//  25 0
-//  26 1
-//  27 0
-//  28 1
-//  29 1
-//  30 0
-//  31 1 sf       0
-// CBNZ  <Xt>, <label>
-bool TryDecodeCBNZ_64_COMPBRANCH(const InstData &, Instruction &) {
-  return false;
-}
-
 // SEVL SEVL_HI_system:
 //   0 1 Rt       0
 //   1 1 Rt       1
@@ -14759,44 +14683,6 @@ bool TryDecodeLD2_ASISDLSOP_D2_I2D(const InstData &, Instruction &) {
 //  31 0
 // LD2  { <Vt>.D, <Vt2>.D }[<index>], [<Xn|SP>], <Xm>
 bool TryDecodeLD2_ASISDLSOP_DX2_R2D(const InstData &, Instruction &) {
-  return false;
-}
-
-// BR BR_64_branch_reg:
-//   0 0 op4      0
-//   1 0 op4      1
-//   2 0 op4      2
-//   3 0 op4      3
-//   4 0 op4      4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0 op3      0
-//  11 0 op3      1
-//  12 0 op3      2
-//  13 0 op3      3
-//  14 0 op3      4
-//  15 0 op3      5
-//  16 1 op2      0
-//  17 1 op2      1
-//  18 1 op2      2
-//  19 1 op2      3
-//  20 1 op2      4
-//  21 0 op       0
-//  22 0 op       1
-//  23 0 opc      2
-//  24 0 opc      3
-//  25 1
-//  26 1
-//  27 0
-//  28 1
-//  29 0
-//  30 1
-//  31 1
-// BR  <Xn>
-bool TryDecodeBR_64_BRANCH_REG(const InstData &, Instruction &) {
   return false;
 }
 
@@ -23540,44 +23426,6 @@ bool TryDecodeADD_32_ADDSUB_IMM(const InstData &, Instruction &) {
   return false;
 }
 
-// ADD ADD_64_addsub_imm:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm12    0
-//  11 x imm12    1
-//  12 x imm12    2
-//  13 x imm12    3
-//  14 x imm12    4
-//  15 x imm12    5
-//  16 x imm12    6
-//  17 x imm12    7
-//  18 x imm12    8
-//  19 x imm12    9
-//  20 x imm12    10
-//  21 x imm12    11
-//  22 x shift    0
-//  23 x shift    1
-//  24 1
-//  25 0
-//  26 0
-//  27 0
-//  28 1
-//  29 0 S        0
-//  30 0 op       0
-//  31 1 sf       0
-// ADD  <Xd|SP>, <Xn|SP>, #<imm>{, <shift>}
-bool TryDecodeADD_64_ADDSUB_IMM(const InstData &, Instruction &) {
-  return false;
-}
-
 // RBIT RBIT_32_dp_1src:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -24335,44 +24183,6 @@ bool TryDecodeSTCLRH_32S_MEMOP(const InstData &, Instruction &) {
 //  31 0 size     1
 // STCLRLH  <Ws>, [<Xn|SP>]
 bool TryDecodeSTCLRLH_32S_MEMOP(const InstData &, Instruction &) {
-  return false;
-}
-
-// BL BL_only_branch_imm:
-//   0 x imm26    0
-//   1 x imm26    1
-//   2 x imm26    2
-//   3 x imm26    3
-//   4 x imm26    4
-//   5 x imm26    5
-//   6 x imm26    6
-//   7 x imm26    7
-//   8 x imm26    8
-//   9 x imm26    9
-//  10 x imm26    10
-//  11 x imm26    11
-//  12 x imm26    12
-//  13 x imm26    13
-//  14 x imm26    14
-//  15 x imm26    15
-//  16 x imm26    16
-//  17 x imm26    17
-//  18 x imm26    18
-//  19 x imm26    19
-//  20 x imm26    20
-//  21 x imm26    21
-//  22 x imm26    22
-//  23 x imm26    23
-//  24 x imm26    24
-//  25 x imm26    25
-//  26 1
-//  27 0
-//  28 1
-//  29 0
-//  30 0
-//  31 1 op       0
-// BL  <label>
-bool TryDecodeBL_ONLY_BRANCH_IMM(const InstData &, Instruction &) {
   return false;
 }
 
@@ -41780,44 +41590,6 @@ bool TryDecodeUSHR_ASIMDSHF_R(const InstData &, Instruction &) {
   return false;
 }
 
-// B B_only_branch_imm:
-//   0 x imm26    0
-//   1 x imm26    1
-//   2 x imm26    2
-//   3 x imm26    3
-//   4 x imm26    4
-//   5 x imm26    5
-//   6 x imm26    6
-//   7 x imm26    7
-//   8 x imm26    8
-//   9 x imm26    9
-//  10 x imm26    10
-//  11 x imm26    11
-//  12 x imm26    12
-//  13 x imm26    13
-//  14 x imm26    14
-//  15 x imm26    15
-//  16 x imm26    16
-//  17 x imm26    17
-//  18 x imm26    18
-//  19 x imm26    19
-//  20 x imm26    20
-//  21 x imm26    21
-//  22 x imm26    22
-//  23 x imm26    23
-//  24 x imm26    24
-//  25 x imm26    25
-//  26 1
-//  27 0
-//  28 1
-//  29 0
-//  30 0
-//  31 0 op       0
-// B  <label>
-bool TryDecodeB_ONLY_BRANCH_IMM(const InstData &, Instruction &) {
-  return false;
-}
-
 // FCMEQ FCMEQ_asisdmiscfp16_FZ:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -44744,82 +44516,6 @@ bool TryDecodeADDS_64S_ADDSUB_EXT(const InstData &, Instruction &) {
   return false;
 }
 
-// CBZ CBZ_32_compbranch:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x imm19    0
-//   6 x imm19    1
-//   7 x imm19    2
-//   8 x imm19    3
-//   9 x imm19    4
-//  10 x imm19    5
-//  11 x imm19    6
-//  12 x imm19    7
-//  13 x imm19    8
-//  14 x imm19    9
-//  15 x imm19    10
-//  16 x imm19    11
-//  17 x imm19    12
-//  18 x imm19    13
-//  19 x imm19    14
-//  20 x imm19    15
-//  21 x imm19    16
-//  22 x imm19    17
-//  23 x imm19    18
-//  24 0 op       0
-//  25 0
-//  26 1
-//  27 0
-//  28 1
-//  29 1
-//  30 0
-//  31 0 sf       0
-// CBZ  <Wt>, <label>
-bool TryDecodeCBZ_32_COMPBRANCH(const InstData &, Instruction &) {
-  return false;
-}
-
-// CBZ CBZ_64_compbranch:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x imm19    0
-//   6 x imm19    1
-//   7 x imm19    2
-//   8 x imm19    3
-//   9 x imm19    4
-//  10 x imm19    5
-//  11 x imm19    6
-//  12 x imm19    7
-//  13 x imm19    8
-//  14 x imm19    9
-//  15 x imm19    10
-//  16 x imm19    11
-//  17 x imm19    12
-//  18 x imm19    13
-//  19 x imm19    14
-//  20 x imm19    15
-//  21 x imm19    16
-//  22 x imm19    17
-//  23 x imm19    18
-//  24 0 op       0
-//  25 0
-//  26 1
-//  27 0
-//  28 1
-//  29 1
-//  30 0
-//  31 1 sf       0
-// CBZ  <Xt>, <label>
-bool TryDecodeCBZ_64_COMPBRANCH(const InstData &, Instruction &) {
-  return false;
-}
-
 // URSHL URSHL_asisdsame_only:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -46983,44 +46679,6 @@ bool TryDecodeLDURH_32_LDST_UNSCALED(const InstData &, Instruction &) {
 //  31 0 sf       0
 // SUB  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
 bool TryDecodeSUB_32_ADDSUB_SHIFT(const InstData &, Instruction &) {
-  return false;
-}
-
-// SUB SUB_64_addsub_shift:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm6     0
-//  11 x imm6     1
-//  12 x imm6     2
-//  13 x imm6     3
-//  14 x imm6     4
-//  15 x imm6     5
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0
-//  22 x shift    0
-//  23 x shift    1
-//  24 1
-//  25 1
-//  26 0
-//  27 1
-//  28 0
-//  29 0 S        0
-//  30 1 op       0
-//  31 1 sf       0
-// SUB  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
-bool TryDecodeSUB_64_ADDSUB_SHIFT(const InstData &, Instruction &) {
   return false;
 }
 
@@ -49833,44 +49491,6 @@ bool TryDecodeLDRSH_32_LDST_REGOFF(const InstData &, Instruction &) {
 //  31 0 size     1
 // LDRSH  <Xt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
 bool TryDecodeLDRSH_64_LDST_REGOFF(const InstData &, Instruction &) {
-  return false;
-}
-
-// ADRP ADRP_only_pcreladdr:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x immhi    0
-//   6 x immhi    1
-//   7 x immhi    2
-//   8 x immhi    3
-//   9 x immhi    4
-//  10 x immhi    5
-//  11 x immhi    6
-//  12 x immhi    7
-//  13 x immhi    8
-//  14 x immhi    9
-//  15 x immhi    10
-//  16 x immhi    11
-//  17 x immhi    12
-//  18 x immhi    13
-//  19 x immhi    14
-//  20 x immhi    15
-//  21 x immhi    16
-//  22 x immhi    17
-//  23 x immhi    18
-//  24 0
-//  25 0
-//  26 0
-//  27 0
-//  28 1
-//  29 x immlo    0
-//  30 x immlo    1
-//  31 1 op       0
-// ADRP  <Xd>, <label>
-bool TryDecodeADRP_ONLY_PCRELADDR(const InstData &, Instruction &) {
   return false;
 }
 

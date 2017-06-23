@@ -16,7 +16,8 @@
 
 namespace {
 
-DEF_SEM(CALL, R64 target_addr, PC ret_addr) {
+template <typename S>
+DEF_SEM(CALL, S target_addr, PC ret_addr) {
   Write(REG_LP, Read(ret_addr));
   Write(REG_PC, Read(target_addr));
   return memory;
@@ -30,4 +31,5 @@ DEF_SEM(RET, R64 target_pc) {
 }  // namespace
 
 DEF_ISEL(RET_64R_BRANCH_REG) = RET;
-DEF_ISEL(BLR_64_BRANCH_REG) = CALL;
+DEF_ISEL(BLR_64_BRANCH_REG) = CALL<R64>;
+DEF_ISEL(BL_ONLY_BRANCH_IMM) = CALL<PC>;
