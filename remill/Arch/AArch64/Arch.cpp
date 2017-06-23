@@ -683,6 +683,22 @@ enum Shift : uint8_t {
 };
 
 
+// translate a shift encoding into an operand shift type
+// used by the shift register class
+static Operand::ShiftRegister::Shift getOperandShift(Shift s) {
+    switch(s) {
+        case kShiftLSL:
+            return Operand::ShiftRegister::kShiftLeftWithZeroes;
+        case kShiftLSR:
+            return Operand::ShiftRegister::kShiftUnsignedRight;
+        case kShiftASR:
+            return Operand::ShiftRegister::kShiftSignedRight;
+        case kShiftROR:
+            return Operand::ShiftRegister::kShiftRightAround;
+    }
+}
+
+
 //template <typename T>
 //typename std::enable_if<std::is_unsigned<T>::value, bool>::type
 //static T doASR(T value, uint64_t count) {
@@ -1151,7 +1167,6 @@ bool TryDecodeSUB_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
 //integer shift_amount = UInt(imm6);
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rm);
 
   Shift shift_type = static_cast<Shift>(data.shift);
   // shift type '11' is a reserved value
@@ -1159,7 +1174,17 @@ bool TryDecodeSUB_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
       LOG(ERROR) << "Trying to use reserved value '11' in a shift";
       return false;
   }
-  AddImmOperand(inst, shift_type);
+
+  // create a shift register operand for the second source value
+  Operand op;
+  op.type = Operand::kTypeShiftRegister;
+  op.size = ::aarch64::kPCWidth;
+  op.action = Operand::kActionRead;
+  op.shift_reg.reg = Reg(kActionRead, kRegX, kUseAsValue, data.Rm);
+  op.shift_reg.shift_op = getOperandShift(shift_type);
+  op.shift_reg.shift_size = data.imm6.uimm;
+  inst.operands.push_back(op);
+
   
   return true;
 }
