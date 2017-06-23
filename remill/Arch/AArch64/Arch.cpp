@@ -1063,56 +1063,32 @@ bool TryDecodeBR_64_BRANCH_REG(const InstData &data, Instruction &inst) {
   return true;
 }
 
-// ADD ADD_64_addsub_imm:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm12    0
-//  11 x imm12    1
-//  12 x imm12    2
-//  13 x imm12    3
-//  14 x imm12    4
-//  15 x imm12    5
-//  16 x imm12    6
-//  17 x imm12    7
-//  18 x imm12    8
-//  19 x imm12    9
-//  20 x imm12    10
-//  21 x imm12    11
-//  22 x shift    0
-//  23 x shift    1
-//  24 1
-//  25 0
-//  26 0
-//  27 0
-//  28 1
-//  29 0 S        0
-//  30 0 op       0
-//  31 1 sf       0
-// ADD  <Xd|SP>, <Xn|SP>, #<imm>{, <shift>}
-bool TryDecodeADD_64_ADDSUB_IMM(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
-  auto imm = data.imm12.uimm;
-  switch(data.shift) {
+template <typename S>
+static bool shiftImmediate(S& value, uint8_t shift) {
+  switch(shift) {
       case 0:
           // shift 0 to left
           break;
       case 1:
           // shift left 12 bits
-          imm = imm << 12;
+          value = value << 12;
           break;
       default:
           LOG(ERROR) << "Decoding reserved bit for shit value";
           return false;
-          break;
+  }
+
+  return true;
+}
+
+// ADD  <Xd|SP>, <Xn|SP>, #<imm>{, <shift>}
+bool TryDecodeADD_64_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+
+  auto imm = data.imm12.uimm;
+  if(!shiftImmediate<decltype(imm)>(imm, data.shift)) {
+      return false;
   }
 
   AddImmOperand(inst, imm);
@@ -1120,51 +1096,8 @@ bool TryDecodeADD_64_ADDSUB_IMM(const InstData &data, Instruction &inst) {
   return true;
 }
 
-// SUB SUB_64_addsub_shift:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm6     0
-//  11 x imm6     1
-//  12 x imm6     2
-//  13 x imm6     3
-//  14 x imm6     4
-//  15 x imm6     5
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0
-//  22 x shift    0
-//  23 x shift    1
-//  24 1
-//  25 1
-//  26 0
-//  27 1
-//  28 0
-//  29 0 S        0
-//  30 1 op       0
-//  31 1 sf       0
 // SUB  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
 bool TryDecodeSUB_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
-//integer d = UInt(Rd);
-//integer n = UInt(Rn);
-//integer m = UInt(Rm);
-//integer datasize = if sf == '1' then 64 else 32;
-//
-//if shift == '11' then ReservedValue();
-//if sf == '0' && imm6<5> == '1' then ReservedValue();
-//
-//ShiftType shift_type = DecodeShift(shift);
-//integer shift_amount = UInt(imm6);
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
 
@@ -1185,7 +1118,43 @@ bool TryDecodeSUB_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
   op.shift_reg.shift_size = data.imm6.uimm;
   inst.operands.push_back(op);
 
-  
+  return true;
+}
+
+// CMP  <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeCMP_SUBS_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+
+  Shift shift_type = static_cast<Shift>(data.shift);
+  // shift type '11' is a reserved value
+  if(shift_type == kShiftROR) {
+      LOG(ERROR) << "Trying to use reserved value '11' in a shift";
+      return false;
+  }
+
+  // create a shift register operand for the second source value
+  Operand op;
+  op.type = Operand::kTypeShiftRegister;
+  op.size = ::aarch64::kPCWidth;
+  op.action = Operand::kActionRead;
+  op.shift_reg.reg = Reg(kActionRead, kRegX, kUseAsValue, data.Rm);
+  op.shift_reg.shift_op = getOperandShift(shift_type);
+  op.shift_reg.shift_size = data.imm6.uimm;
+  inst.operands.push_back(op);
+
+  return true;
+}
+
+// CMP  <Xn|SP>, #<imm>{, <shift>}
+bool TryDecodeCMP_SUBS_64S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+
+  auto imm = data.imm12.uimm;
+  if(!shiftImmediate<decltype(imm)>(imm, data.shift)) {
+      return false;
+  }
+
+  AddImmOperand(inst, imm);
   return true;
 }
 
