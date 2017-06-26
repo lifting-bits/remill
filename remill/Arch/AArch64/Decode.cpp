@@ -6136,44 +6136,6 @@ bool TryDecodeSTRH_32_LDST_IMMPRE(const InstData &, Instruction &) {
   return false;
 }
 
-// STRH STRH_32_ldst_pos:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm12    0
-//  11 x imm12    1
-//  12 x imm12    2
-//  13 x imm12    3
-//  14 x imm12    4
-//  15 x imm12    5
-//  16 x imm12    6
-//  17 x imm12    7
-//  18 x imm12    8
-//  19 x imm12    9
-//  20 x imm12    10
-//  21 x imm12    11
-//  22 0 opc      0
-//  23 0 opc      1
-//  24 1
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 1
-//  29 1
-//  30 1 size     0
-//  31 0 size     1
-// STRH  <Wt>, [<Xn|SP>{, #<pimm>}]
-bool TryDecodeSTRH_32_LDST_POS(const InstData &, Instruction &) {
-  return false;
-}
-
 // SCVTF SCVTF_H32_float2int:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -56369,44 +56331,6 @@ bool TryDecodeCMTST_ASIMDSAME_ONLY(const InstData &, Instruction &) {
 //  31 0
 // UADDL{2}  <Vd>.<Ta>, <Vn>.<Tb>, <Vm>.<Tb>
 bool TryDecodeUADDL_ASIMDDIFF_L(const InstData &, Instruction &) {
-  return false;
-}
-
-// MOVN MOV_MOVN_32_movewide:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x imm16    0
-//   6 x imm16    1
-//   7 x imm16    2
-//   8 x imm16    3
-//   9 x imm16    4
-//  10 x imm16    5
-//  11 x imm16    6
-//  12 x imm16    7
-//  13 x imm16    8
-//  14 x imm16    9
-//  15 x imm16    10
-//  16 x imm16    11
-//  17 x imm16    12
-//  18 x imm16    13
-//  19 x imm16    14
-//  20 x imm16    15
-//  21 x hw       0
-//  22 x hw       1
-//  23 1
-//  24 0
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 0 opc      1
-//  31 0 sf       0
-// MOV  <Wd>, #<imm>
-bool TryDecodeMOV_MOVN_32_MOVEWIDE(const InstData &, Instruction &) {
   return false;
 }
 
