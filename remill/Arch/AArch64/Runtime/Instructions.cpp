@@ -106,3 +106,4 @@ DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 #include "remill/Arch/AArch64/Semantics/CALL_RET.cpp"
 #include "remill/Arch/AArch64/Semantics/DATAXFER.cpp"
 #include "remill/Arch/AArch64/Semantics/MISC.cpp"
+#include "remill/Arch/AArch64/Semantics/SHIFT.cpp"
