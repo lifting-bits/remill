@@ -17384,44 +17384,6 @@ bool TryDecodeCMP_SUBS_32_ADDSUB_SHIFT(const InstData &, Instruction &) {
   return false;
 }
 
-// SUBS CMP_SUBS_64_addsub_shift:
-//   0 1 Rd       0
-//   1 1 Rd       1
-//   2 1 Rd       2
-//   3 1 Rd       3
-//   4 1 Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm6     0
-//  11 x imm6     1
-//  12 x imm6     2
-//  13 x imm6     3
-//  14 x imm6     4
-//  15 x imm6     5
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0
-//  22 x shift    0
-//  23 x shift    1
-//  24 1
-//  25 1
-//  26 0
-//  27 1
-//  28 0
-//  29 1 S        0
-//  30 1 op       0
-//  31 1 sf       0
-// CMP  <Xn>, <Xm>{, <shift> #<amount>}
-bool TryDecodeCMP_SUBS_64_ADDSUB_SHIFT(const InstData &, Instruction &) {
-  return false;
-}
-
 // STR STR_B_ldst_immpost:
 //   0 x Rt       0
 //   1 x Rt       1
@@ -28705,44 +28667,6 @@ bool TryDecodeUHADD_ASIMDSAME_ONLY(const InstData &, Instruction &) {
 //  31 0 sf       0
 // CMP  <Wn|WSP>, #<imm>{, <shift>}
 bool TryDecodeCMP_SUBS_32S_ADDSUB_IMM(const InstData &, Instruction &) {
-  return false;
-}
-
-// SUBS CMP_SUBS_64S_addsub_imm:
-//   0 1 Rd       0
-//   1 1 Rd       1
-//   2 1 Rd       2
-//   3 1 Rd       3
-//   4 1 Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm12    0
-//  11 x imm12    1
-//  12 x imm12    2
-//  13 x imm12    3
-//  14 x imm12    4
-//  15 x imm12    5
-//  16 x imm12    6
-//  17 x imm12    7
-//  18 x imm12    8
-//  19 x imm12    9
-//  20 x imm12    10
-//  21 x imm12    11
-//  22 x shift    0
-//  23 x shift    1
-//  24 1
-//  25 0
-//  26 0
-//  27 0
-//  28 1
-//  29 1 S        0
-//  30 1 op       0
-//  31 1 sf       0
-// CMP  <Xn|SP>, #<imm>{, <shift>}
-bool TryDecodeCMP_SUBS_64S_ADDSUB_IMM(const InstData &, Instruction &) {
   return false;
 }
 
@@ -56141,44 +56065,6 @@ bool TryDecodeFABD_ASIMDSAMEFP16_ONLY(const InstData &, Instruction &) {
 //  31 0
 // FABD  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
 bool TryDecodeFABD_ASIMDSAME_ONLY(const InstData &, Instruction &) {
-  return false;
-}
-
-// B B_only_condbranch:
-//   0 x cond     0
-//   1 x cond     1
-//   2 x cond     2
-//   3 x cond     3
-//   4 0 o0       0
-//   5 x imm19    0
-//   6 x imm19    1
-//   7 x imm19    2
-//   8 x imm19    3
-//   9 x imm19    4
-//  10 x imm19    5
-//  11 x imm19    6
-//  12 x imm19    7
-//  13 x imm19    8
-//  14 x imm19    9
-//  15 x imm19    10
-//  16 x imm19    11
-//  17 x imm19    12
-//  18 x imm19    13
-//  19 x imm19    14
-//  20 x imm19    15
-//  21 x imm19    16
-//  22 x imm19    17
-//  23 x imm19    18
-//  24 0 o1       0
-//  25 0
-//  26 1
-//  27 0
-//  28 1
-//  29 0
-//  30 1
-//  31 0
-// B.<cond>  <label>
-bool TryDecodeB_ONLY_CONDBRANCH(const InstData &, Instruction &) {
   return false;
 }
 

@@ -57,6 +57,57 @@ static bool NotCond(const State &state) {
   return !check_cond(state);
 }
 
+static inline bool CheckCondState(const State &state, uint8_t cond) {
+    // conditions are in bits 3:1, last bit negates
+    auto true_cond = cond & 0xE;
+    auto negate = cond & 0x1;
+    bool result = false;
+
+
+    switch(true_cond) {
+        //        when '000' result = (PSTATE.Z == '1');                          // EQ or NE
+        case 0x0 << 1:
+            result = CondEQ(state);
+            break;
+        case 0x1 << 1:
+        //        when '001' result = (PSTATE.C == '1');                          // CS or CC
+            result = CondCS(state);
+            break;
+        case 0x2 << 1:
+        //        when '010' result = (PSTATE.N == '1');                          // MI or PL
+            result = CondMI(state);
+            break;
+        case 0x3 << 1:
+        //        when '011' result = (PSTATE.V == '1');                          // VS or VC
+            result = CondVS(state);
+            break;
+        case 0x4 << 1:
+        //        when '100' result = (PSTATE.C == '1' && PSTATE.Z == '0');       // HI or LS
+            result = CondHI(state);
+            break;
+        case 0x5 << 1:
+        //        when '101' result = (PSTATE.N == PSTATE.V);                     // GE or LT
+            result = CondGE(state);
+            break;
+        case 0x6 << 1:
+        //        when '110' result = (PSTATE.N == PSTATE.V && PSTATE.Z == '0');  // GT or LE
+            result = CondGT(state);
+            break;
+        case 0x7 << 1:
+        //        when '111' result = TRUE;                                       // AL
+            // always true
+            return true;
+            break;
+    }
+
+    if(negate) {
+        return !result;
+    } else {
+        return result;
+    }
+
+}
+
 }  // namespace
 
 DEF_COND(GE) = CondGE;
@@ -123,10 +174,21 @@ DEF_SEM(CBNZ, R8W cond, S src, PC taken, PC not_taken) {
   return memory;
 }
 
+DEF_SEM(DirectCondBranchImm, I8 cond, R8W branch_track, PC taken, PC not_taken) {
+  addr_t taken_pc = Read(taken);
+  addr_t not_taken_pc = Read(not_taken);
+  uint8_t cond_c = Read(cond);
+  uint8_t take_branch = CheckCondState(state, cond_c);
+  Write(branch_track, take_branch);
+  Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(B_U) = DoDirectBranch;
 DEF_ISEL(B_ONLY_BRANCH_IMM) = DoDirectBranch;
+DEF_ISEL(B_ONLY_CONDBRANCH) = DirectCondBranchImm;
 
 DEF_ISEL(B_LS_R8W_U_U) = DirectCondBranch<NotCond<CondHI>>;
 

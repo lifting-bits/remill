@@ -1158,6 +1158,48 @@ bool TryDecodeCMP_SUBS_64S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// B B_only_condbranch:
+//   0 x cond     0
+//   1 x cond     1
+//   2 x cond     2
+//   3 x cond     3
+//   4 0 o0       0
+//   5 x imm19    0
+//   6 x imm19    1
+//   7 x imm19    2
+//   8 x imm19    3
+//   9 x imm19    4
+//  10 x imm19    5
+//  11 x imm19    6
+//  12 x imm19    7
+//  13 x imm19    8
+//  14 x imm19    9
+//  15 x imm19    10
+//  16 x imm19    11
+//  17 x imm19    12
+//  18 x imm19    13
+//  19 x imm19    14
+//  20 x imm19    15
+//  21 x imm19    16
+//  22 x imm19    17
+//  23 x imm19    18
+//  24 0 o1       0
+//  25 0
+//  26 1
+//  27 0
+//  28 1
+//  29 0
+//  30 1
+//  31 0
+// B.<cond>  <label>
+bool TryDecodeB_ONLY_CONDBRANCH(const InstData &data, Instruction &inst) {
+  auto imm = data.imm19.simm19 << 2;
+  uint8_t cond = static_cast<uint8_t>(data.cond);
+  AddImmOperand(inst, cond, kUnsigned, 8);
+  DecodeConditionalBranch(inst, imm);
+  return true;
+}
+
 //static unsigned DecodeBitMasks(uint64_t N, uint64_t imms, uint64_t immr,
 //                               bool is_immediate) {
 //  uint64_t tmask = 0;

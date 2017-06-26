@@ -49,6 +49,8 @@ typedef MVn<vec32_t> MV32;
 typedef MVn<vec64_t> MV64;
 typedef MVn<vec128_t> MV128;
 
+typedef In<uint8_t> I8;
+typedef In<uint16_t> I16;
 typedef In<uint32_t> I32;
 typedef In<uint64_t> I64;
 
