@@ -99,6 +99,7 @@ Instruction::Category InstCategory(const aarch64::InstData &inst) {
     case aarch64::InstName::SYSL:
       return Instruction::kCategoryAsyncHyperCall;
 
+    case aarch64::InstName::HINT:
     case aarch64::InstName::NOP:
       return Instruction::kCategoryNoOp;
 
@@ -1342,6 +1343,28 @@ bool TryDecodeMOV_ORR_64_LOG_IMM(const InstData &, Instruction &) {
 }
 
 }  // namespace aarch64
+
+namespace aarch64 {
+// TODO(artme): verify these are nops
+// HINT  #<imm>
+bool TryDecodeHINT_1(const InstData &, Instruction &) {
+    // NOP
+  return true;
+}
+
+// HINT  #<imm>
+bool TryDecodeHINT_2(const InstData &, Instruction &) {
+    // NOP
+  return true;
+}
+
+// HINT  #<imm>
+bool TryDecodeHINT_3(const InstData &, Instruction &) {
+    // NOP
+  return true;
+}
+
+}
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
 const Arch *Arch::GetAArch64(
