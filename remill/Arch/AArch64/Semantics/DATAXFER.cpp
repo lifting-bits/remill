@@ -75,6 +75,8 @@ DEF_ISEL(STR_64_LDST_IMMPOST) = StoreUpdateIndex<R64, M64W>;
 
 DEF_ISEL(STR_32_LDST_POS) = Store<R32, M32W>;
 DEF_ISEL(STR_64_LDST_POS) = Store<R64, M64W>;
+DEF_ISEL(STRB_32_LDST_POS) = Store<R8, M8W>;
+DEF_ISEL(STRH_32_LDST_POS) = Store<R16, M16W>;
 
 DEF_ISEL(STR_32_LDST_REGOFF) = STR_BASE_OFFSET<R32, M32W>;
 DEF_ISEL(STR_64_LDST_REGOFF) = STR_BASE_OFFSET<R64, M64W>;
@@ -165,6 +167,7 @@ DEF_SEM(LDR_BASE_OFFSET, D dst, M base, ADDR offset) {
 
 DEF_ISEL(LDR_32_LDST_POS) = Load<R32W, M32>;
 DEF_ISEL(LDR_64_LDST_POS) = Load<R64W, M64>;
+DEF_ISEL(LDRB_32_LDST_POS) = Load<R8W, M8>;
 
 DEF_ISEL(LDR_32_LOADLIT) = Load<R32W, M32>;
 DEF_ISEL(LDR_64_LOADLIT) = Load<R64W, M64>;
@@ -180,3 +183,25 @@ DEF_ISEL(MOV_ORR_64_LOG_SHIFT) = Load<R64W, R64>;
 
 DEF_ISEL(MOV_MOVZ_32_MOVEWIDE) = Load<R32W, I32>;
 DEF_ISEL(MOV_MOVZ_64_MOVEWIDE) = Load<R64W, I64>;
+
+DEF_ISEL(MOV_MOVN_32_MOVEWIDE) = Load<R32W, I32>;
+
+
+namespace {
+
+DEF_SEM(LoadAddress64, R64W dst, PC label) {
+   addr_t label_addr = Read(label);
+
+   // clear the bottom 12 bits of label_addr
+   // to make this page aligned
+   // the Post decoding already made the label page aligned
+   // and added the label to PC
+   // the semantics just needs to fix up for PC not being page aligned
+   auto label_page = UAnd(UNot(static_cast<uint64_t>(4095)), label_addr);
+   Write(dst, label_page);
+   return memory;
+}
+
+} // namespace
+
+DEF_ISEL(ADRP_ONLY_PCRELADDR) = LoadAddress64;
