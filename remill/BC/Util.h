@@ -19,8 +19,7 @@
 
 #include <functional>
 #include <string>
-
-#include <llvm/Support/raw_ostream.h>
+#include <vector>
 
 namespace llvm {
 class Argument;
@@ -29,7 +28,10 @@ class CallInst;
 class Function;
 class GlobalObject;
 class GlobalVariable;
+class IntegerType;
 class Module;
+class PointerType;
+class Type;
 class Value;
 class LLVMContext;
 }  // namespace llvm
@@ -102,6 +104,10 @@ std::string FindSemanticsBitcodeFile(const std::string &path,
 // Return a pointer to the Nth argument (N=0 is the first argument).
 llvm::Argument *NthArgument(llvm::Function *func, size_t index);
 
+// Return a vector of arguments to pass to a lifted function, where the
+// arguments are derived from `block`.
+std::vector<llvm::Value *> LiftedFunctionArgs(llvm::BasicBlock *block);
+
 // Serialize an LLVM object into a string.
 std::string LLVMThingToString(llvm::Value *thing);
 std::string LLVMThingToString(llvm::Type *thing);
@@ -114,6 +120,15 @@ void ForEachISel(llvm::Module *module, ISelCallback callback);
 // Declare a lifted function of the correct type.
 llvm::Function *DeclareLiftedFunction(llvm::Module *module,
                                       const std::string &name);
+
+// Returns the type of a state pointer.
+llvm::PointerType *StatePointerType(llvm::Module *module);
+
+// Returns the type of a state pointer.
+llvm::PointerType *MemoryPointerType(llvm::Module *module);
+
+// Returns the type of an address (addr_t in the State.h).
+llvm::IntegerType *AddressType(llvm::Module *module);
 
 // Clone function `source_func` into `dest_func`. This will strip out debug
 // info during the clone.

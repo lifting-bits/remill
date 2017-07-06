@@ -176,4 +176,30 @@ const Arch *GetGlobalArch(void) {
   return Arch::Get(GetOSName(FLAGS_os), GetArchName(FLAGS_arch));
 }
 
+bool Arch::IsX86(void) const {
+  switch (arch_name) {
+    case remill::kArchX86:
+    case remill::kArchX86_AVX:
+    case remill::kArchX86_AVX512:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool Arch::IsAMD64(void) const {
+  switch (arch_name) {
+    case remill::kArchAMD64:
+    case remill::kArchAMD64_AVX:
+    case remill::kArchAMD64_AVX512:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool Arch::IsAArch64(void) const {
+  return remill::kArchAArch64LittleEndian == arch_name;
+}
+
 }  // namespace remill

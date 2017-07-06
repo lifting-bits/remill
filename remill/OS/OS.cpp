@@ -41,6 +41,8 @@ OSName GetOSName(std::string name) {
     return kOSmacOS;
   } else if (name == "linux") {
     return kOSLinux;
+  } else if (name == "windows") {
+    return kOSWindows;
   } else {
     return kOSInvalid;
   }
@@ -54,6 +56,8 @@ std::string GetOSName(OSName name) {
       return "macos";
     case kOSLinux:
       return "linux";
+    case kOSWindows:
+      return "windows";
   }
 }
 

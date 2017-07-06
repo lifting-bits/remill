@@ -107,12 +107,6 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
 
   llvm::IRBuilder<> ir(source_block);
 
-  // Set up arguments according to our ABI.
-  std::vector<llvm::Value *> args(kNumBlockArgs);
-  args[kMemoryPointerArgNum] = LoadMemoryPointer(source_block);
-  args[kStatePointerArgNum] = LoadStatePointer(source_block);
-  args[kPCArgNum] = LoadProgramCounter(source_block);
-
   // We may introduce variables like `__remill_jump_0xf00` that boils down to
   // meaning the `__remill_jump` at offset `0xf00` within the lifted binary.
   // Being able to know what jump in the lifted bitcode corresponds with a
@@ -122,7 +116,8 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
     dest_func = ir.CreateLoad(dest_func);
   }
 
-  llvm::CallInst *call_target_instr = ir.CreateCall(dest_func, args);
+  llvm::CallInst *call_target_instr = ir.CreateCall(
+      dest_func, LiftedFunctionArgs(source_block));
 
   // Make sure we tail-call from one block method to another.
   call_target_instr->setTailCallKind(llvm::CallInst::TCK_Tail);
@@ -362,6 +357,27 @@ llvm::Argument *NthArgument(llvm::Function *func, size_t index) {
   return &*it;
 }
 
+// Return a vector of arguments to pass to a lifted function, where the
+// arguments are derived from `block`.
+std::vector<llvm::Value *> LiftedFunctionArgs(llvm::BasicBlock *block) {
+  auto func = block->getParent();
+
+  // Set up arguments according to our ABI.
+  std::vector<llvm::Value *> args(kNumBlockArgs);
+
+  if (FindVarInFunction(func, "PC", true)) {
+    args[kMemoryPointerArgNum] = LoadMemoryPointer(block);
+    args[kStatePointerArgNum] = LoadStatePointer(block);
+    args[kPCArgNum] = LoadProgramCounter(block);
+  } else {
+    args[kMemoryPointerArgNum] = NthArgument(func, kMemoryPointerArgNum);
+    args[kStatePointerArgNum] = NthArgument(func, kStatePointerArgNum);
+    args[kPCArgNum] = NthArgument(func, kPCArgNum);
+  }
+
+  return args;
+}
+
 // Apply a callback function to every semantics bitcode function.
 void ForEachISel(llvm::Module *module, ISelCallback callback) {
   for (auto &global : module->globals()) {
@@ -394,6 +410,30 @@ llvm::Function *DeclareLiftedFunction(llvm::Module *module,
   InitFunctionAttributes(func);
 
   return func;
+}
+
+// Returns the type of a state pointer.
+llvm::PointerType *StatePointerType(llvm::Module *module) {
+  auto bb = module->getFunction("__remill_basic_block");
+  CHECK(nullptr != bb);
+  return llvm::dyn_cast<llvm::PointerType>(
+      bb->getFunctionType()->getParamType(kStatePointerArgNum));
+}
+
+// Returns the type of a state pointer.
+llvm::PointerType *MemoryPointerType(llvm::Module *module) {
+  auto bb = module->getFunction("__remill_basic_block");
+  CHECK(nullptr != bb);
+  return llvm::dyn_cast<llvm::PointerType>(
+      bb->getFunctionType()->getParamType(kMemoryPointerArgNum));
+}
+
+// Returns the type of an address (addr_t in the State.h).
+llvm::IntegerType *AddressType(llvm::Module *module) {
+  auto bb = module->getFunction("__remill_basic_block");
+  CHECK(nullptr != bb);
+  return llvm::dyn_cast<llvm::IntegerType>(
+      bb->getFunctionType()->getParamType(kPCArgNum));
 }
 
 // Clone function `source_func` into `dest_func`. This will strip out debug

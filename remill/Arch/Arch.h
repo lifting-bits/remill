@@ -55,6 +55,10 @@ class Arch {
   const ArchName arch_name;
   const uint64_t address_size;
 
+  bool IsX86(void) const;
+  bool IsAMD64(void) const;
+  bool IsAArch64(void) const;
+
  protected:
   Arch(OSName os_name_, ArchName arch_name_);
 

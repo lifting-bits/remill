@@ -24,10 +24,12 @@ namespace remill {
 enum OSName : uint32_t {
   kOSInvalid,
   kOSmacOS,
-  kOSLinux
+  kOSLinux,
+  kOSWindows
 };
 
 OSName GetOSName(std::string name_);
+
 std::string GetOSName(OSName name);
 
 }  // namespace remill

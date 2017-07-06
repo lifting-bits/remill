@@ -777,6 +777,33 @@ void X86Arch::PrepareModule(llvm::Module *mod) const {
               << GetArchName(arch_name);
       }
       break;
+
+    case kOSWindows:
+      triple.setOS(llvm::Triple::Win32);
+      triple.setEnvironment(llvm::Triple::MSVC);
+      triple.setVendor(llvm::Triple::UnknownVendor);
+      triple.setObjectFormat(llvm::Triple::COFF);
+      switch (arch_name) {
+        case kArchAMD64:
+        case kArchAMD64_AVX:
+        case kArchAMD64_AVX512:
+          dl = "e-m:e-i64:64-f80:128-n8:16:32:64-S128";
+          triple.setArch(llvm::Triple::x86_64);
+          break;
+        case kArchX86:
+        case kArchX86_AVX:
+        case kArchX86_AVX512:
+          dl = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:"
+               "32:32-f64:64:64-f80:128:128-v64:64:64-v128:128:128-a0:0:64-f80:"
+               "32:32-n8:16:32-S32";
+          triple.setArch(llvm::Triple::x86);
+          break;
+        default:
+          LOG(FATAL)
+              << "Cannot prepare module for non-x86 architecture "
+              << GetArchName(arch_name);
+      }
+      break;
   }
 
   mod->setDataLayout(dl);
