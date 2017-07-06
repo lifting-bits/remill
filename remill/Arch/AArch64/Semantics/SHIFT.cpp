@@ -16,20 +16,16 @@
 
 namespace {
 
-template <typename S>
-DEF_SEM(CALL, S target_addr, PC ret_addr) {
-  Write(REG_LP, Read(ret_addr));
-  Write(REG_PC, Read(target_addr));
+template <typename D, typename S>
+DEF_SEM(ASR, D dst, S src, I8 count) {
+  auto sval = Signed(Read(src));
+  uint64_t scount = Read(count);
+  Write(dst, Unsigned(SShr(sval, Signed(scount))));
   return memory;
 }
 
-DEF_SEM(RET, R64 target_pc) {
-  Write(REG_PC, Read(target_pc));
-  return memory;
 }
 
-}  // namespace
 
-DEF_ISEL(RET_64R_BRANCH_REG) = RET;
-DEF_ISEL(BLR_64_BRANCH_REG) = CALL<R64>;
-DEF_ISEL(BL_ONLY_BRANCH_IMM) = CALL<PC>;
+
+DEF_ISEL(ASR_SBFM_64M_BITFIELD) = ASR<R64W, R64>;

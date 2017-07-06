@@ -14,22 +14,15 @@
  * limitations under the License.
  */
 
+
 namespace {
 
-template <typename S>
-DEF_SEM(CALL, S target_addr, PC ret_addr) {
-  Write(REG_LP, Read(ret_addr));
-  Write(REG_PC, Read(target_addr));
-  return memory;
-}
-
-DEF_SEM(RET, R64 target_pc) {
-  Write(REG_PC, Read(target_pc));
+DEF_SEM(NOP_IMPL) {
   return memory;
 }
 
 }  // namespace
 
-DEF_ISEL(RET_64R_BRANCH_REG) = RET;
-DEF_ISEL(BLR_64_BRANCH_REG) = CALL<R64>;
-DEF_ISEL(BL_ONLY_BRANCH_IMM) = CALL<PC>;
+DEF_ISEL(HINT_1) = NOP_IMPL;
+DEF_ISEL(HINT_2) = NOP_IMPL;
+DEF_ISEL(HINT_3) = NOP_IMPL;
