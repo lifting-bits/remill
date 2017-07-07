@@ -16,119 +16,104 @@
 
 namespace {
 
+// when '101' result = (PSTATE.N == PSTATE.V); // GE or LT
 static inline bool CondGE(const State &state) {
-  return UCmpNeq(state.state.GE, 0);
+  return state.pstate.N == state.pstate.V;
 }
 
+// when '101' result = (PSTATE.N == PSTATE.V); // GE or LT
 static inline bool CondLT(const State &state) {
-  return !CondGE(state);
+  return state.pstate.N != state.pstate.V;
 }
 
+// when '000' result = (PSTATE.Z == '1'); // EQ or NE
 static inline bool CondEQ(const State &state) {
-  return UCmpNeq(state.state.Z, 0);
+  return state.pstate.Z;
 }
 
+// when '000' result = (PSTATE.Z == '1'); // EQ or NE
+static inline bool CondNE(const State &state) {
+  return !state.pstate.Z;
+}
+
+// when '110' result = (PSTATE.N == PSTATE.V && PSTATE.Z == '0'); // GT or LE
 static inline bool CondGT(const State &state) {
-  return CondGE(state) && !CondEQ(state);
+  return (state.pstate.N == state.pstate.V) && !state.pstate.Z;
 }
 
+// when '110' result = (PSTATE.N == PSTATE.V && PSTATE.Z == '0'); // GT or LE
 static inline bool CondLE(const State &state) {
-  return CondLT(state) || CondEQ(state);
+  return (state.pstate.N != state.pstate.V) || state.pstate.Z;
 }
 
+// when '001' result = (PSTATE.C == '1'); // CS or CC
 static inline bool CondCS(const State &state) {
-  return UCmpNeq(state.state.C, 0);
+  return state.pstate.C;
 }
 
+// when '001' result = (PSTATE.C == '1'); // CS or CC
+static inline bool CondCC(const State &state) {
+  return !state.pstate.C;
+}
+
+// when '010' result = (PSTATE.N == '1'); // MI or PL
 static inline bool CondMI(const State &state) {
-  return UCmpNeq(state.state.N, 0);
+  return state.pstate.N;
 }
 
+// when '010' result = (PSTATE.N == '1'); // MI or PL
+static inline bool CondPL(const State &state) {
+  return !state.pstate.N;
+}
+
+// when '011' result = (PSTATE.V == '1'); // VS or VC
 static inline bool CondVS(const State &state) {
-  return UCmpNeq(state.state.V, 0);
+  return state.pstate.V;
 }
 
+// when '011' result = (PSTATE.V == '1'); // VS or VC
+static inline bool CondVC(const State &state) {
+  return !state.pstate.V;
+}
+
+// when '100' result = (PSTATE.C == '1' && PSTATE.Z == '0'); // HI or LS
 static inline bool CondHI(const State &state) {
-  return CondCS(state) && !CondEQ(state);
+  return state.pstate.C && !state.pstate.Z;
 }
 
-template <bool (*check_cond)(const State &)>
-static bool NotCond(const State &state) {
-  return !check_cond(state);
+// when '100' result = (PSTATE.C == '1' && PSTATE.Z == '0'); // HI or LS
+static inline bool CondLS(const State &state) {
+  return !state.pstate.C || state.pstate.Z;
 }
 
-static inline bool CheckCondState(const State &state, uint8_t cond) {
-    // conditions are in bits 3:1, last bit negates
-    auto true_cond = cond & 0xE;
-    auto negate = cond & 0x1;
-    bool result = false;
-
-
-    switch(true_cond) {
-        //        when '000' result = (PSTATE.Z == '1');                          // EQ or NE
-        case 0x0 << 1:
-            result = CondEQ(state);
-            break;
-        case 0x1 << 1:
-        //        when '001' result = (PSTATE.C == '1');                          // CS or CC
-            result = CondCS(state);
-            break;
-        case 0x2 << 1:
-        //        when '010' result = (PSTATE.N == '1');                          // MI or PL
-            result = CondMI(state);
-            break;
-        case 0x3 << 1:
-        //        when '011' result = (PSTATE.V == '1');                          // VS or VC
-            result = CondVS(state);
-            break;
-        case 0x4 << 1:
-        //        when '100' result = (PSTATE.C == '1' && PSTATE.Z == '0');       // HI or LS
-            result = CondHI(state);
-            break;
-        case 0x5 << 1:
-        //        when '101' result = (PSTATE.N == PSTATE.V);                     // GE or LT
-            result = CondGE(state);
-            break;
-        case 0x6 << 1:
-        //        when '110' result = (PSTATE.N == PSTATE.V && PSTATE.Z == '0');  // GT or LE
-            result = CondGT(state);
-            break;
-        case 0x7 << 1:
-        //        when '111' result = TRUE;                                       // AL
-            // always true
-            return true;
-            break;
-    }
-
-    if(negate) {
-        return !result;
-    } else {
-        return result;
-    }
-
+static inline bool CondAL(const State &state) {
+  return true;
 }
 
 }  // namespace
 
 DEF_COND(GE) = CondGE;
 DEF_COND(GT) = CondGT;
+
 DEF_COND(LE) = CondLE;
 DEF_COND(LT) = CondLT;
 
 DEF_COND(EQ) = CondEQ;
-DEF_COND(NE) = NotCond<CondEQ>;
+DEF_COND(NE) = CondNE;
 
 DEF_COND(CS) = CondCS;
-DEF_COND(CC) = NotCond<CondCS>;
+DEF_COND(CC) = CondCC;
 
 DEF_COND(MI) = CondMI;
-DEF_COND(PL) = NotCond<CondMI>;
+DEF_COND(PL) = CondPL;
 
 DEF_COND(VS) = CondVS;
-DEF_COND(VC) = NotCond<CondVS>;
+DEF_COND(VC) = CondVC;
 
 DEF_COND(HI) = CondHI;
-DEF_COND(LS) = NotCond<CondHI>;
+DEF_COND(LS) = CondLS;
+
+DEF_COND(AL) = CondAL;
 
 namespace {
 
@@ -136,7 +121,6 @@ DEF_SEM(DoDirectBranch, PC target_pc) {
   Write(REG_PC, Read(target_pc));
   return memory;
 }
-
 
 template <typename S>
 DEF_SEM(DoIndirectBranch, S dst) {
@@ -174,42 +158,30 @@ DEF_SEM(CBNZ, R8W cond, S src, PC taken, PC not_taken) {
   return memory;
 }
 
-DEF_SEM(DirectCondBranchImm, I8 cond, R8W branch_track, PC taken, PC not_taken) {
-  addr_t taken_pc = Read(taken);
-  addr_t not_taken_pc = Read(not_taken);
-  uint8_t cond_c = Read(cond);
-  uint8_t take_branch = CheckCondState(state, cond_c);
-  Write(branch_track, take_branch);
-  Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
-  return memory;
-}
-
 }  // namespace
 
-DEF_ISEL(B_U) = DoDirectBranch;
-DEF_ISEL(B_ONLY_BRANCH_IMM) = DoDirectBranch;
-DEF_ISEL(B_ONLY_CONDBRANCH) = DirectCondBranchImm;
-
-DEF_ISEL(B_LS_R8W_U_U) = DirectCondBranch<NotCond<CondHI>>;
-
-DEF_ISEL(B_EQ_R8W_U_U) = DirectCondBranch<CondEQ>;
-DEF_ISEL(B_NE_R8W_U_U) = DirectCondBranch<NotCond<CondEQ>>;
-
-DEF_ISEL(B_GE_R8W_U_U) = DirectCondBranch<CondGE>;
-DEF_ISEL(B_GT_R8W_U_U) = DirectCondBranch<CondGT>;
-
-DEF_ISEL(B_LE_R8W_U_U) = DirectCondBranch<CondLE>;
-DEF_ISEL(B_LT_R8W_U_U) = DirectCondBranch<CondLT>;
-
-DEF_ISEL(BR_R64) = DoIndirectBranch<PC>;
 DEF_ISEL(BR_64_BRANCH_REG) = DoIndirectBranch<R64>;
 
-DEF_ISEL(CBZ_R8W_R64_U_U) = CBZ<R64>;
-DEF_ISEL(CBZ_R8W_R32_U_U) = CBZ<R32>;
+DEF_ISEL(B_ONLY_BRANCH_IMM) = DoDirectBranch;
+
+DEF_ISEL(B_ONLY_CONDBRANCH_EQ) = DirectCondBranch<CondEQ>;
+DEF_ISEL(B_ONLY_CONDBRANCH_NE) = DirectCondBranch<CondNE>;
+DEF_ISEL(B_ONLY_CONDBRANCH_CS) = DirectCondBranch<CondCS>;
+DEF_ISEL(B_ONLY_CONDBRANCH_CC) = DirectCondBranch<CondCC>;
+DEF_ISEL(B_ONLY_CONDBRANCH_MI) = DirectCondBranch<CondMI>;
+DEF_ISEL(B_ONLY_CONDBRANCH_PL) = DirectCondBranch<CondPL>;
+DEF_ISEL(B_ONLY_CONDBRANCH_VS) = DirectCondBranch<CondVS>;
+DEF_ISEL(B_ONLY_CONDBRANCH_VC) = DirectCondBranch<CondVC>;
+DEF_ISEL(B_ONLY_CONDBRANCH_HI) = DirectCondBranch<CondHI>;
+DEF_ISEL(B_ONLY_CONDBRANCH_LS) = DirectCondBranch<CondLS>;
+DEF_ISEL(B_ONLY_CONDBRANCH_GE) = DirectCondBranch<CondGE>;
+DEF_ISEL(B_ONLY_CONDBRANCH_LT) = DirectCondBranch<CondLT>;
+DEF_ISEL(B_ONLY_CONDBRANCH_GT) = DirectCondBranch<CondGT>;
+DEF_ISEL(B_ONLY_CONDBRANCH_LE) = DirectCondBranch<CondLE>;
+DEF_ISEL(B_ONLY_CONDBRANCH_AL) = DirectCondBranch<CondAL>;
+
 DEF_ISEL(CBZ_64_COMPBRANCH) = CBZ<R64>;
 DEF_ISEL(CBZ_32_COMPBRANCH) = CBZ<R32>;
 
-DEF_ISEL(CBNZ_R8W_R64_U_U) = CBNZ<R64>;
-DEF_ISEL(CBNZ_R8W_R32_U_U) = CBNZ<R32>;
 DEF_ISEL(CBNZ_64_COMPBRANCH) = CBNZ<R64>;
 DEF_ISEL(CBNZ_32_COMPBRANCH) = CBNZ<R32>;

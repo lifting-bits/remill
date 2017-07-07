@@ -159,13 +159,13 @@ static_assert(8 == sizeof(NativeProcState),
 
 struct alignas(8) ProcState final {
   uint8_t _0;
-  uint8_t N;  //  Negative condition flag.
+  bool N;  //  Negative condition flag.
   uint8_t _1;
-  uint8_t Z;  //  Zero condition flag
+  bool Z;  //  Zero condition flag
   uint8_t _2;
-  uint8_t C;  //  Carry condition flag
+  bool C;  //  Carry condition flag
   uint8_t _3;
-  uint8_t V;  //  Overflow condition flag
+  bool V;  //  Overflow condition flag
   uint8_t _4;
   uint8_t D;  //  Debug mask bit [AArch64 only]
   uint8_t _5;
@@ -206,7 +206,7 @@ static_assert(40 == sizeof(ProcState),
 
 struct alignas(16) State final : public ArchState {
   NativeProcState native_state;  // 8 bytes.
-  ProcState state;  // 40 bytes.
+  ProcState pstate;  // 40 bytes.
   GPR gpr;  // 528 bytes.
 } __attribute__((packed));
 
