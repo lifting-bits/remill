@@ -677,7 +677,7 @@ enum Shift : uint8_t {
 
 // Translate a shift encoding into an operand shift type used by the shift
 // register class.
-static Operand::ShiftRegister::Shift getOperandShift(Shift s) {
+static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
   switch (s) {
     case kShiftLSL:
       return Operand::ShiftRegister::kShiftLeftWithZeroes;
@@ -877,6 +877,47 @@ bool TryDecodeMOVZ_64_MOVEWIDE(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// MOVK  <Wd>, #<imm>{, LSL #<shift>}
+bool TryDecodeMOVK_32_MOVEWIDE(const InstData &data, Instruction &inst) {
+  if ((data.hw >> 1) & 1) {
+    return false;  // if sf == '0' && hw<1> == '1' then UnallocatedEncoding();
+  }
+
+  AddRegOperand(inst, kActionReadWrite, kRegW, kUseAsValue, data.Rd);
+  AddImmOperand(inst, data.imm16.uimm);
+  AddImmOperand(inst, data.hw << 4, kUnsigned, 8);  // pos = UInt(hw:'0000');
+  return true;
+}
+
+// MOVK  <Xd>, #<imm>{, LSL #<shift>}
+bool TryDecodeMOVK_64_MOVEWIDE(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionReadWrite, kRegX, kUseAsValue, data.Rd);
+  AddImmOperand(inst, data.imm16.uimm);
+  AddImmOperand(inst, data.hw << 4, kUnsigned, 8);  // pos = UInt(hw:'0000');
+  return true;
+}
+
+// MOVN  <Wd>, #<imm>{, LSL #<shift>}
+bool TryDecodeMOVN_32_MOVEWIDE(const InstData &data, Instruction &inst) {
+  if ((data.hw >> 1) & 1) {
+    return false;  // if sf == '0' && hw<1> == '1' then UnallocatedEncoding();
+  }
+  auto shift = static_cast<uint64_t>(data.hw << 4);
+  auto imm = data.imm16.uimm << shift;
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddImmOperand(inst, static_cast<uint64_t>(static_cast<uint32_t>(~imm)));
+  return true;
+}
+
+// MOVN  <Xd>, #<imm>{, LSL #<shift>}
+bool TryDecodeMOVN_64_MOVEWIDE(const InstData &data, Instruction &inst) {
+  auto shift = static_cast<uint64_t>(data.hw << 4);
+  auto imm = data.imm16.uimm << shift;
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddImmOperand(inst, ~imm);
+  return true;
+}
+
 // ADRP  <Xd>, <label>
 bool TryDecodeADRP_ONLY_PCRELADDR(const InstData &data, Instruction &inst) {
   // writes to a register
@@ -1053,7 +1094,7 @@ bool TryDecodeSUB_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
   op.size = kPCWidth;
   op.action = Operand::kActionRead;
   op.shift_reg.reg = Reg(kActionRead, kRegX, kUseAsValue, data.Rm);
-  op.shift_reg.shift_op = getOperandShift(shift_type);
+  op.shift_reg.shift_op = GetOperandShift(shift_type);
   op.shift_reg.shift_size = data.imm6.uimm;
   inst.operands.push_back(op);
 
@@ -1077,7 +1118,7 @@ bool TryDecodeCMP_SUBS_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) 
   op.size = kPCWidth;
   op.action = Operand::kActionRead;
   op.shift_reg.reg = Reg(kActionRead, kRegX, kUseAsValue, data.Rm);
-  op.shift_reg.shift_op = getOperandShift(shift_type);
+  op.shift_reg.shift_op = GetOperandShift(shift_type);
   op.shift_reg.shift_size = data.imm6.uimm;
   inst.operands.push_back(op);
 
@@ -1159,10 +1200,8 @@ bool TryDecodeADD_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
 
   Shift shift_type = static_cast<Shift>(data.shift);
-  // shift type '11' is a reserved value
-  if(shift_type == kShiftROR) {
-      LOG(ERROR) << "Trying to use reserved value '11' in a shift";
-      return false;
+  if (shift_type == kShiftROR) {
+    return false;  // Shift type '11' is a reserved value.
   }
 
   // create a shift register operand for the second source value
@@ -1171,7 +1210,7 @@ bool TryDecodeADD_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
   op.size = kPCWidth;
   op.action = Operand::kActionRead;
   op.shift_reg.reg = Reg(kActionRead, kRegX, kUseAsValue, data.Rm);
-  op.shift_reg.shift_op = getOperandShift(shift_type);
+  op.shift_reg.shift_op = GetOperandShift(shift_type);
   op.shift_reg.shift_size = data.imm6.uimm;
   inst.operands.push_back(op);
 
@@ -1179,24 +1218,23 @@ bool TryDecodeADD_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
 }
 
 template <typename S>
-S shiftNotImmediate(S input, S count) {
-    S result = 0;
-    result = static_cast<S>(input << count);
-    return ~result;
+S ShiftNotImmediate(S input, S count) {
+  S result = 0;
+  result = static_cast<S>(input << count);
+  return ~result;
 }
+
 // MOV  <Wd>, #<imm>
 bool TryDecodeMOV_MOVN_32_MOVEWIDE(const InstData &data, Instruction &inst) {
-  if( (data.hw & 0x2) != 0 ) {
-      LOG(FATAL)
-          << "Unallocated MOVN instruction encoding";
-      return false;
+  if ((data.hw & 0x2) != 0) {
+    return false;
   }
 
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
 
   auto pos = static_cast<uint32_t>(data.hw << 4);
   auto imm16 = data.imm16.uimm;
-  auto fixedImm = shiftNotImmediate<uint32_t>(imm16, pos);
+  auto fixedImm = ShiftNotImmediate<uint32_t>(imm16, pos);
   AddImmOperand(inst, fixedImm, kUnsigned, 32);
 
   return true;
@@ -1210,39 +1248,6 @@ bool TryDecodeSTRH_32_LDST_POS(const InstData &data, Instruction &inst) {
   return true;
 }
 
-// EOR EOR_64_log_shift:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm6     0
-//  11 x imm6     1
-//  12 x imm6     2
-//  13 x imm6     3
-//  14 x imm6     4
-//  15 x imm6     5
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0 N        0
-//  22 x shift    0
-//  23 x shift    1
-//  24 0
-//  25 1
-//  26 0
-//  27 1
-//  28 0
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 1 sf       0
 // EOR  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
 bool TryDecodeEOR_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
@@ -1250,13 +1255,13 @@ bool TryDecodeEOR_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
 
   Shift shift_type = static_cast<Shift>(data.shift);
 
-  // create a shift register operand for the second source value
+  // Create a shift register operand for the second source value.
   Operand op;
   op.type = Operand::kTypeShiftRegister;
   op.size = kPCWidth;
   op.action = Operand::kActionRead;
   op.shift_reg.reg = Reg(kActionRead, kRegX, kUseAsValue, data.Rm);
-  op.shift_reg.shift_op = getOperandShift(shift_type);
+  op.shift_reg.shift_op = GetOperandShift(shift_type);
   op.shift_reg.shift_size = data.imm6.uimm;
   inst.operands.push_back(op);
 
@@ -1346,29 +1351,22 @@ bool TryDecodeMOV_ORR_64_LOG_IMM(const InstData &, Instruction &) {
   return false;
 }
 
-}  // namespace aarch64
-
-namespace aarch64 {
-// TODO(artme): verify these are nops
 // HINT  #<imm>
 bool TryDecodeHINT_1(const InstData &, Instruction &) {
-    // NOP
-  return true;
+  return true;  // NOP.
 }
 
 // HINT  #<imm>
 bool TryDecodeHINT_2(const InstData &, Instruction &) {
-    // NOP
-  return true;
+  return true;  // NOP.
 }
 
 // HINT  #<imm>
 bool TryDecodeHINT_3(const InstData &, Instruction &) {
-    // NOP
-  return true;
+  return true;  // NOP.
 }
 
-}
+}  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
 const Arch *Arch::GetAArch64(

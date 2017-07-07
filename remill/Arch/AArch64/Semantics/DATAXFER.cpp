@@ -186,6 +186,26 @@ DEF_ISEL(MOV_MOVZ_64_MOVEWIDE) = Load<R64W, I64>;
 
 DEF_ISEL(MOV_MOVN_32_MOVEWIDE) = Load<R32W, I32>;
 
+namespace {
+
+template <typename D, typename S>
+DEF_SEM(MoveWithKeep, D dst, S src, I64 imm, I8 shift_) {
+  auto shift = ZExtTo<uint64_t>(Read(shift_));
+  auto val = UShl(Read(imm), shift);
+  auto mask = UNot(UShl((0xFFFFULL), shift));
+  auto reg = ZExtTo<uint64_t>(Read(src));
+  WriteZExt(dst, UOr(UAnd(reg, mask), val));
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(MOVK_32_MOVEWIDE) = MoveWithKeep<R32W, R32>;
+DEF_ISEL(MOVK_64_MOVEWIDE) = MoveWithKeep<R64W, R64>;
+
+// Shifting and negating of the immediate happens in the post-decoder.
+DEF_ISEL(MOVN_32_MOVEWIDE) = Load<R32W, I32>;
+DEF_ISEL(MOVN_64_MOVEWIDE) = Load<R64W, I64>;
 
 namespace {
 
