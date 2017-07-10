@@ -114,7 +114,7 @@ bool InstructionLifter::LiftIntoBlock(
   if (!isel_func) {
     LOG(ERROR)
         << "Cannot lift instruction at " << std::hex << arch_inst.pc << ", "
-        << arch_inst.function << " doesn't exist.";
+        << arch_inst.function << " doesn't exist: " << arch_inst.Serialize();
 
     isel_func = GetInstructionFunction(module, "UNSUPPORTED_INSTRUCTION");
     if (!isel_func) {
