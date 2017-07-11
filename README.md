@@ -56,9 +56,12 @@ sudo apt-get upgrade
 
 sudo apt-get install \
      git \
-     python-pip \
+     python2.7 \
+     wget \
+     realpath \
      build-essential \
-     realpath
+     libtinfo-dev \
+     lsb-release
 ```
 
 Next, clone the repository. This will clone the code into the `remill` directory.
@@ -72,7 +75,7 @@ at the same level as the `remill` directory. All remaining dependencies needed
 by Remill will be built in the `remill-build` directory.
 
 ```shell
-./remill/scripts/build.sh
+./remill/scripts/build_ubuntu.sh
 ```
 
 Next, we can install Remill. Remill itself is a library, and so there is no real way
@@ -88,9 +91,5 @@ We can also build and run Remill's test suite.
 ```shell
 cd ./remill-build
 make build_x86_tests
-./cmake-3.2.0-Linux-x86_64/bin/ctest
+make test
 ```
-
-
-
-

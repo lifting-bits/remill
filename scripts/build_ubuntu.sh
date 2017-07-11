@@ -13,19 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Make sure we have `add-apt-repository`.
-
-
-# Update sources list, and then install needed packages.
-sudo apt-get update -yqq
-
-sudo apt-get install -y git
-sudo apt-get install -y python2.7
-sudo apt-get install -y wget
-sudo apt-get install -y realpath
-sudo apt-get install -y build-essential
-sudo apt-get install -y libtinfo-dev
-
 # General directory structure:
 #   /path/to/home/remill
 #   /path/to/home/remill-build
@@ -36,7 +23,7 @@ PARENT_DIR=$( cd "$( dirname "${SRC_DIR}" )" && pwd)
 BUILD_DIR=${PARENT_DIR}/remill-build
 
 # Version name of Ubuntu (e.g. xenial, trusty).
-UBUNTU_RELEASE=`lsb_release -sc`
+source /etc/lsb-release
 
 # The version of LLVM that we will use to build remill, and also that remill
 # will use to produce bitcode. It's good to match these up.
@@ -53,12 +40,12 @@ printf "BUILD_DIR=${BUILD_DIR}\n"
 
 # There are pre-build versions of various libraries for specific
 # Ubuntu releases.
-case ${UBUNTU_RELEASE} in
+case ${DISTRIB_CODENAME} in
   xenial)
-    OS_VERSION=ubuntu160402
+    OS_VERSION=ubuntu1604
   ;;
   trusty)
-    OS_VERSION=ubuntu140405
+    OS_VERSION=ubuntu1404
   ;;
 esac
 
@@ -70,7 +57,6 @@ if [[ ! -e "${CMAKE_BIN}" ]] ; then
   wget https://cmake.org/files/v3.2/cmake-3.2.0-Linux-x86_64.sh
   yes | /bin/bash cmake-3.2.0-Linux-x86_64.sh &>/dev/null
 fi
-
 
 # Download pre-compiled version of cxx-common for this OS. This has things like
 # google protobuf, gflags, glog, gtest, capstone, and llvm in it.
