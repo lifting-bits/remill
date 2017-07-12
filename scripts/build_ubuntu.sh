@@ -42,6 +42,7 @@ printf "BUILD_DIR=${BUILD_DIR}\n"
 # Ubuntu releases.
 case ${DISTRIB_CODENAME} in
   xenial)
+    export CXXFLAGS="-D_GLIBCXX_USE_CXX11_ABI=1 ${CXXFLAGS}"
     OS_VERSION=ubuntu1604
   ;;
   trusty)

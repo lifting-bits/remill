@@ -614,7 +614,12 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
     for (auto &inst : block) {
       if (auto decl_inst = llvm::dyn_cast<llvm::DbgDeclareInst>(&inst)) {
         auto addr = decl_inst->getAddress();
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 7)
         addr->setName(decl_inst->getVariable()->getName());
+#else
+        llvm::DIVariable var(decl_inst->getVariable());
+        addr->setName(var.getName());
+#endif
       }
     }
   }
