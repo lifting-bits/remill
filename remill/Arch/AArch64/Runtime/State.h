@@ -118,7 +118,7 @@ struct alignas(16) GPR final {
 
 static_assert(528 == sizeof(GPR), "Invalid structure packing of `GPR`.");
 
-union alignas(8) NativeProcState final {
+union alignas(8) PSTATE_BITS final {
   uint64_t flat;
   struct {
     //  bit 0
@@ -154,10 +154,10 @@ union alignas(8) NativeProcState final {
   } __attribute__((packed));
 } __attribute__((packed));
 
-static_assert(8 == sizeof(NativeProcState),
+static_assert(8 == sizeof(PSTATE_BITS),
               "Invalid structure packing of `NativeProcState`.");
 
-struct alignas(8) ProcState final {
+struct alignas(8) PSTATE final {
   uint8_t _0;
   bool N;  //  Negative condition flag.
   uint8_t _1;
@@ -201,16 +201,28 @@ struct alignas(8) ProcState final {
 } __attribute__((packed));
 
 
-static_assert(40 == sizeof(ProcState),
-              "Invalid packing of `struct ProcState`");
+static_assert(40 == sizeof(PSTATE),
+              "Invalid packing of `struct PSTATE`.");
+
+enum : size_t {
+  kNumVecRegisters = 32
+};
+
+struct alignas(16) SIMD {
+  vec128_t v[kNumVecRegisters];
+};
+
+static_assert(512 == sizeof(SIMD),
+              "Invalid packing of `struct SIMD`.");
 
 struct alignas(16) State final : public ArchState {
-  NativeProcState native_state;  // 8 bytes.
-  ProcState pstate;  // 40 bytes.
+  SIMD simd;  // 512 bytes.
+  PSTATE_BITS native_state;  // 8 bytes.
+  PSTATE pstate;  // 40 bytes.
   GPR gpr;  // 528 bytes.
 } __attribute__((packed));
 
-static_assert((576 + 16) == sizeof(State),
+static_assert((1088 + 16) == sizeof(State),
               "Invalid packing of `struct State`");
 
 #pragma clang diagnostic pop
