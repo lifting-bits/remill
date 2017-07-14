@@ -11,6 +11,9 @@ os:
   - linux
 compiler:
   - gcc
+before_install:
+  - sudo apt-get update -yqq
+  - sudo apt-get install -y git python2.7 wget realpath build-essential libtinfo-dev lsb-release
 install:
   - ./scripts/build_ubuntu.sh
 before_script:

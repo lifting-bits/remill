@@ -159,7 +159,7 @@ void AArch64Arch::PrepareModule(llvm::Module *mod) const {
   }
 
   mod->setDataLayout(dl);
-  mod->setTargetTriple(triple.normalize());
+  mod->setTargetTriple(triple.normalize(triple.str()));
 
   // Go and remove compile-time attributes added into the semantics. These
   // can screw up later compilation. We purposefully compile semantics with
@@ -1043,36 +1043,30 @@ bool TryDecodeBR_64_BRANCH_REG(const InstData &data, Instruction &inst) {
   return true;
 }
 
-template <typename S>
-static bool shiftImmediate(S& value, uint8_t shift) {
-  switch(shift) {
-      case 0:
-          // shift 0 to left
-          break;
-      case 1:
-          // shift left 12 bits
-          value = value << 12;
-          break;
-      default:
-          LOG(ERROR) << "Decoding reserved bit for shit value";
-          return false;
+static bool ShiftImmediate(uint64_t &value, uint8_t shift) {
+  switch (shift) {
+    case 0:  // Shift 0 to left.
+      break;
+    case 1:  // Shift left 12 bits.
+      value = value << 12;
+      break;
+    default:
+      LOG(ERROR)
+          << "Decoding reserved bit for shift value";
+      return false;
   }
-
   return true;
 }
 
 // ADD  <Xd|SP>, <Xn|SP>, #<imm>{, <shift>}
 bool TryDecodeADD_64_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  auto imm = data.imm12.uimm;
+  if (!ShiftImmediate(imm, data.shift)) {
+    return false;
+  }
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
-
-  auto imm = data.imm12.uimm;
-  if(!shiftImmediate<decltype(imm)>(imm, data.shift)) {
-      return false;
-  }
-
   AddImmOperand(inst, imm);
-
   return true;
 }
 
@@ -1083,9 +1077,9 @@ bool TryDecodeSUB_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
 
   Shift shift_type = static_cast<Shift>(data.shift);
   // shift type '11' is a reserved value
-  if(shift_type == kShiftROR) {
-      LOG(ERROR) << "Trying to use reserved value '11' in a shift";
-      return false;
+  if (shift_type == kShiftROR) {
+    LOG(ERROR)<< "Trying to use reserved value '11' in a shift";
+    return false;
   }
 
   // create a shift register operand for the second source value
@@ -1102,14 +1096,15 @@ bool TryDecodeSUB_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
 }
 
 // CMP  <Xn>, <Xm>{, <shift> #<amount>}
-bool TryDecodeCMP_SUBS_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
+bool TryDecodeCMP_SUBS_64_ADDSUB_SHIFT(const InstData &data,
+                                       Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
 
   Shift shift_type = static_cast<Shift>(data.shift);
   // shift type '11' is a reserved value
-  if(shift_type == kShiftROR) {
-      LOG(ERROR) << "Trying to use reserved value '11' in a shift";
-      return false;
+  if (shift_type == kShiftROR) {
+    LOG(ERROR)<< "Trying to use reserved value '11' in a shift";
+    return false;
   }
 
   // create a shift register operand for the second source value
@@ -1127,13 +1122,11 @@ bool TryDecodeCMP_SUBS_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) 
 
 // CMP  <Xn|SP>, #<imm>{, <shift>}
 bool TryDecodeCMP_SUBS_64S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
-
   auto imm = data.imm12.uimm;
-  if(!shiftImmediate<decltype(imm)>(imm, data.shift)) {
-      return false;
+  if (!ShiftImmediate(imm, data.shift)) {
+    return false;
   }
-
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
   AddImmOperand(inst, imm);
   return true;
 }
@@ -1267,6 +1260,23 @@ bool TryDecodeEOR_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
 
   return true;
 }
+
+// LDUR  <Wt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeLDUR_32_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 32, data.Rn,
+                         static_cast<uint64_t>(data.imm9.simm9));
+  return true;
+}
+
+// LDUR  <Xt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeLDUR_64_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 64, data.Rn,
+                         static_cast<uint64_t>(data.imm9.simm9));
+  return true;
+}
+
 
 //static unsigned DecodeBitMasks(uint64_t N, uint64_t imms, uint64_t immr,
 //                               bool is_immediate) {

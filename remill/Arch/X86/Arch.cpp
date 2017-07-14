@@ -807,7 +807,7 @@ void X86Arch::PrepareModule(llvm::Module *mod) const {
   }
 
   mod->setDataLayout(dl);
-  mod->setTargetTriple(triple.normalize());
+  mod->setTargetTriple(triple.normalize(triple.str()));
 
   // Go and remove compile-time attributes added into the semantics. These
   // can screw up later compilation. We purposefully compile semantics with
