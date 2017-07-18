@@ -40,6 +40,9 @@ function (add_runtime_helper target_name address_bit_size enable_avx enable_avx5
     target_compile_options(${target_name} PRIVATE ${X86RUNTIME_COMPILEOPTIONS})
     target_compile_definitions(${target_name} PRIVATE "HAS_FEATURE_AVX=${enable_avx}")
     target_compile_definitions(${target_name} PRIVATE "HAS_FEATURE_AVX512=${enable_avx512}")
+
+    install(TARGETS ${target_name} DESTINATION "share/remill/${REMILL_LLVM_VERSION}/semantics")
+
 endfunction ()
 
 add_runtime_helper(x86 32 0 0)

@@ -52,6 +52,7 @@ static unsigned AddressSize(ArchName arch_name) {
     case kArchAArch64LittleEndian:
       return 64;
   }
+  return 0;
 }
 
 // Used for static storage duration caches of `Arch` specializations. The

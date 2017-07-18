@@ -187,6 +187,12 @@ static_assert(4 == sizeof(FPUControlStatus),
 #if COMPILING_WITH_GCC
 using FPUTag = uint16_t;
 using FPUAbridgedTag = uint8_t;
+# define kFPUTagNonZero 0
+# define kFPUTagZero 1
+# define kFPUTagSpecial 2
+# define kFPUTagEmpty 3
+# define kFPUAbridgedTagEmpty 0
+# define kFPUAbridgedTagValid 1
 #else
 enum FPUTag : uint16_t {
   kFPUTagNonZero,

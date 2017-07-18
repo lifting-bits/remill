@@ -18,9 +18,9 @@
 #   /path/to/home/remill-build
 
 SCRIPTS_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-SRC_DIR=$( cd "$( dirname "${SCRIPTS_DIR}" )" && pwd)
-PARENT_DIR=$( cd "$( dirname "${SRC_DIR}" )" && pwd)
-BUILD_DIR=${PARENT_DIR}/remill-build
+SRC_DIR=$( cd "$( dirname "${SCRIPTS_DIR}" )" && pwd )
+CURR_DIR=$( pwd )
+BUILD_DIR=${CURR_DIR}/remill-build
 
 # Version name of Ubuntu (e.g. xenial, trusty).
 source /etc/lsb-release

@@ -74,6 +74,7 @@ std::string GetArchName(ArchName arch_name) {
     case kArchAArch64LittleEndian:
       return "aarch64";
   }
+  return "invalid";
 }
 
 }  // namespace remill

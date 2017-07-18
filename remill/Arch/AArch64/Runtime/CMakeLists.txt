@@ -36,6 +36,8 @@ function (add_runtime_helper target_name address_bit_size little_endian)
     else ()
         target_compile_definitions(${target_name} PRIVATE "LITTLE_ENDIAN=0")
     endif ()
+
+    install(TARGETS ${target_name} DESTINATION "share/remill/${REMILL_LLVM_VERSION}/semantics")
 endfunction ()
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)

@@ -141,7 +141,7 @@ TEST_BEGIN_64(PUNPCKLBWr64m64, 2)
 TEST_INPUTS_MMX_2()
     push ARG2_64
     movq mm0, ARG1_64
-    punpcklbw mm0, qword ptr [rsp]
+    .byte 0x0f, 0x60, 0x04, 0x24  // punpcklbw mm0, dword ptr [rsp]
 TEST_END_64
 
 TEST_BEGIN_64(PUNPCKLBWv128v128, 2)
@@ -170,7 +170,7 @@ TEST_BEGIN_64(PUNPCKLWDr64m64, 2)
 TEST_INPUTS_MMX_2()
     push ARG2_64
     movq mm0, ARG1_64
-    punpcklwd mm0, qword ptr [rsp]
+    .byte 0x0f, 0x61, 0x04, 0x24  // punpcklwd mm0, dword ptr [rsp]
 TEST_END_64
 
 TEST_BEGIN_64(PUNPCKLWDv128v128, 2)
@@ -199,7 +199,7 @@ TEST_BEGIN_64(PUNPCKLDQr64m64, 2)
 TEST_INPUTS_MMX_2()
     push ARG2_64
     movq mm0, ARG1_64
-    punpckldq mm0, qword ptr [rsp]
+    .byte 0x0f, 0x62, 0x04, 0x24  // punpckldq mm0, dword ptr [rsp]
 TEST_END_64
 
 TEST_BEGIN_64(PUNPCKLDQv128v128, 2)

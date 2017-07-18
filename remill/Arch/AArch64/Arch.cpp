@@ -208,6 +208,7 @@ static std::string RegName(Action action, RegClass rclass, RegUsage rtype,
   CHECK_LE(number, 31U);
 
   std::stringstream ss;
+  CHECK(kActionReadWrite != action);
 
   if (31 == number) {
     if (rtype == kUseAsValue) {
@@ -232,6 +233,7 @@ static size_t ReadRegSize(RegClass rclass) {
     case kRegW:
       return 32;
   }
+  return 0;
 }
 
 static size_t WriteRegSize(RegClass rclass) {
@@ -240,6 +242,7 @@ static size_t WriteRegSize(RegClass rclass) {
     case kRegW:
       return 64;
   }
+  return 0;
 }
 
 // This gives us a register operand. If we have an operand like `<Xn|SP>`,
@@ -650,6 +653,7 @@ static uint64_t BaseSizeInBits(Extend extend) {
     case kExtendSXTW: return 32;
     case kExtendSXTX: return 64;
   }
+  return 0;
 }
 
 static Operand::ShiftRegister::Extend ShiftRegExtendType(Extend extend) {
@@ -665,6 +669,7 @@ static Operand::ShiftRegister::Extend ShiftRegExtendType(Extend extend) {
     case kExtendSXTX:
       return Operand::ShiftRegister::kExtendUnsigned;
   }
+  return Operand::ShiftRegister::kExtendInvalid;
 }
 
 // Note: Order is significant; extracted bits may be casted to this type.
@@ -688,6 +693,7 @@ static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
     case kShiftROR:
       return Operand::ShiftRegister::kShiftRightAround;
   }
+  return Operand::ShiftRegister::kShiftInvalid;
 }
 
 static bool TryDecodeLDR_n_LDST_REGOFF(

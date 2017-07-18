@@ -474,11 +474,11 @@ static void RunWithFlags(const test::TestInfo *info,
 
   // Compare the FPU states.
   for (auto i = 0U; i < 8U; ++i) {
-    auto &lifted_st = lifted_state->st.elems[i].val;
-    auto &native_st = native_state->st.elems[i].val;
+    auto lifted_st = lifted_state->st.elems[i].val;
+    auto native_st = native_state->st.elems[i].val;
     if (lifted_st != native_st) {
       if (fabs(lifted_st - native_st) <= 1e-14) {
-        lifted_st = native_st;  // Hide the inconsistency.
+        lifted_state->st.elems[i].val = native_st;  // Hide the inconsistency.
       }
     }
   }

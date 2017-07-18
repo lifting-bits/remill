@@ -59,6 +59,7 @@ std::string GetOSName(OSName name) {
     case kOSWindows:
       return "windows";
   }
+  return "invalid";
 }
 
 }  // namespace remill

@@ -71,7 +71,7 @@ git clone git@github.com:trailofbits/remill.git
 ```
 
 Next, we build Remill. This script will create another directory, `remill-build`
-at the same level as the `remill` directory. All remaining dependencies needed
+in the current working directory. All remaining dependencies needed
 by Remill will be built in the `remill-build` directory.
 
 ```shell

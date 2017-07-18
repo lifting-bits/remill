@@ -279,16 +279,16 @@ void StoreModuleToFile(llvm::Module *module, std::string file_name) {
 
 namespace {
 
-#ifndef BUILD_SEMANTICS_DIR
-#error "Macro `BUILD_SEMANTICS_DIR` must be defined."
-#define BUILD_SEMANTICS_DIR
-#endif  // BUILD_SEMANTICS_DIR
+#ifndef BUILD_SEMANTICS_DIR_X86
+#error "Macro `BUILD_SEMANTICS_DIR_X86` must be defined."
+#define BUILD_SEMANTICS_DIR_X86
+#endif  // BUILD_SEMANTICS_DIR_X86
 
-#ifndef BUILD_SEMANTICS_DIR_ARM
+#ifndef BUILD_SEMANTICS_DIR_AARCH64
 #error \
-    "Macro `BUILD_SEMANTICS_DIR_ARM` must be defined to support ARM architecture."
-#define BUILD_SEMANTICS_DIR_ARM
-#endif  // BUILD_SEMANTICS_DIR
+    "Macro `BUILD_SEMANTICS_DIR_AARCH64` must be defined to support AArch64 architecture."
+#define BUILD_SEMANTICS_DIR_AARCH64
+#endif  // BUILD_SEMANTICS_DIR_AARCH64
 
 #ifndef INSTALL_SEMANTICS_DIR
 #error "Macro `INSTALL_SEMANTICS_DIR` must be defined."
@@ -297,7 +297,8 @@ namespace {
 
 static const char *gSemanticsSearchPaths[] = {
     // Derived from the build.
-    BUILD_SEMANTICS_DIR "\0", BUILD_SEMANTICS_DIR_ARM "\0",
+    BUILD_SEMANTICS_DIR_X86 "\0",
+    BUILD_SEMANTICS_DIR_AARCH64 "\0",
     INSTALL_SEMANTICS_DIR "\0",
 };
 
