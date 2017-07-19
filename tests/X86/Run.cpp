@@ -193,11 +193,11 @@ Memory *__remill_atomic_end(Memory *) { return nullptr; }
 
 void __remill_defer_inlining(void) {}
 
-Memory *__remill_error(Memory *, State &, addr_t) {
+Memory *__remill_error(addr_t, State &, Memory *) {
   siglongjmp(gJmpBuf, 0);
 }
 
-Memory *__remill_missing_block(Memory *memory, State &, addr_t) {
+Memory *__remill_missing_block(addr_t, State &, Memory *memory) {
   return memory;
 }
 
@@ -225,19 +225,19 @@ Memory *__remill_sync_hyper_call(
   return mem;
 }
 
-Memory *__remill_function_call(Memory *, State &, addr_t) {
+Memory *__remill_function_call(addr_t, State &, Memory *) {
   __builtin_unreachable();
 }
 
-Memory *__remill_function_return(Memory *, State &, addr_t) {
+Memory *__remill_function_return(addr_t, State &, Memory *) {
   __builtin_unreachable();
 }
 
-Memory *__remill_jump(Memory *, State &, addr_t) {
+Memory *__remill_jump(addr_t, State &, Memory *) {
   __builtin_unreachable();
 }
 
-Memory *__remill_async_hyper_call(Memory *, State &, addr_t) {
+Memory *__remill_async_hyper_call(addr_t, State &, Memory *) {
   __builtin_unreachable();
 }
 
@@ -274,7 +274,7 @@ void __remill_mark_as_used(void *mem) {
 
 }  // extern C
 
-typedef Memory *(LiftedFunc)(Memory *, State &, addr_t);
+typedef Memory *(LiftedFunc)(addr_t, State &, Memory *);
 
 // Mapping of test name to translated function.
 static std::map<uint64_t, LiftedFunc *> gTranslatedFuncs;
@@ -428,8 +428,9 @@ static void RunWithFlags(const test::TestInfo *info,
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
     (void) lifted_func(
-        nullptr, *lifted_state,
-        static_cast<addr_t>(lifted_state->gpr.rip.aword));
+        static_cast<addr_t>(lifted_state->gpr.rip.aword),
+        *lifted_state,
+        nullptr);
   } else {
     EXPECT_TRUE(native_test_faulted);
   }

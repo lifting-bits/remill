@@ -1006,7 +1006,7 @@ T _ZeroVec(void) {
 // TODO(pag): What happens if there's a signal handler? How should we
 //            communicate the error class?
 #define StopFailure() \
-    return __remill_error(memory, state, Read(REG_XIP))
+    return __remill_error(Read(REG_PC), state, memory)
 
 // Esthetically pleasing names that hide the implicit small-step semantics
 // of the memory pointer.

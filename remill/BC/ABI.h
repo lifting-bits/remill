@@ -24,10 +24,10 @@ namespace remill {
 
 // Describes the arguments to a basic block function.
 enum : size_t {
-  kNumBlockArgs = 3,
-  kMemoryPointerArgNum = 0,
+  kPCArgNum = 0,
   kStatePointerArgNum = 1,
-  kPCArgNum = 2
+  kMemoryPointerArgNum = 2,
+  kNumBlockArgs = 3
 };
 
 }  // namespace remill

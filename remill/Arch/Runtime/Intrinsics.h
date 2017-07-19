@@ -24,7 +24,7 @@ extern "C" {
 
 // The basic block "template".
 [[gnu::used]]
-Memory *__remill_basic_block(Memory *memory, State &state, addr_t);
+Memory *__remill_basic_block(addr_t, State &state, Memory *memory);
 
 // Memory read intrinsics.
 [[gnu::used, gnu::const]]
@@ -96,23 +96,23 @@ extern float64_t __remill_undefined_f64(void);
 
 // Generic error.
 [[gnu::used]]
-extern Memory *__remill_error(Memory *, State &, addr_t addr);
+extern Memory *__remill_error(addr_t addr, State &, Memory *);
 
 // Control-flow intrinsics.
 [[gnu::used]]
-extern Memory *__remill_function_call(Memory *, State &, addr_t addr);
+extern Memory *__remill_function_call(addr_t addr, State &, Memory *);
 
 [[gnu::used]]
-extern Memory *__remill_function_return(Memory *, State &, addr_t addr);
+extern Memory *__remill_function_return(addr_t addr, State &, Memory *);
 
 [[gnu::used]]
-extern Memory *__remill_jump(Memory *, State &, addr_t addr);
+extern Memory *__remill_jump(addr_t addr, State &, Memory *);
 
 [[gnu::used]]
-extern Memory *__remill_missing_block(Memory *, State &, addr_t addr);
+extern Memory *__remill_missing_block(addr_t addr, State &, Memory *);
 
 [[gnu::used]]
-extern Memory *__remill_async_hyper_call(Memory *, State &, addr_t ret_addr);
+extern Memory *__remill_async_hyper_call(addr_t ret_addr, State &, Memory *);
 
 [[gnu::used]]
 extern Memory *__remill_sync_hyper_call(Memory *, State &, SyncHyperCall::Name);

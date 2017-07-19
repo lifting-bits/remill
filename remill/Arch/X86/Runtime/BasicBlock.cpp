@@ -23,8 +23,10 @@ extern "C" {
 
 // Method that will implement a basic block. We will clone this method for
 // each basic block in the code being lifted.
+//
+// Note: `curr_pc` is first to make sure it's not optimized away.
 [[gnu::used]]
-Memory *__remill_basic_block(Memory *memory, State &state, addr_t curr_pc) {
+Memory *__remill_basic_block(addr_t curr_pc, State &state, Memory *memory) {
 
   bool branch_taken = false;
   addr_t zero = 0;
