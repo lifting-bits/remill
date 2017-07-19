@@ -70,12 +70,12 @@ Next, clone the repository. This will clone the code into the `remill` directory
 git clone git@github.com:trailofbits/remill.git
 ```
 
-Next, we build Remill. This script will create another directory, `remill-build`
+Next, we build Remill. This script will create another directory, `remill-build`,
 in the current working directory. All remaining dependencies needed
 by Remill will be built in the `remill-build` directory.
 
 ```shell
-./remill/scripts/build_ubuntu.sh
+./remill/scripts/build.sh
 ```
 
 Next, we can install Remill. Remill itself is a library, and so there is no real way

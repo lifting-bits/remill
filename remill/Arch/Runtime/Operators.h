@@ -1254,25 +1254,27 @@ MAKE_BUILTIN(CountTrailingZeros, 64, 64, __builtin_ctzll, 0)
 ALWAYS_INLINE static
 int16_t Float64ToInt16(float64_t val) {
   auto max_int = Float64(Maximize(Int16(0)));
-  return Select<int16_t>(FCmpLt(max_int, FAbs(val)), 0x8000, Int16(val));
+  return Select<int16_t>(FCmpLt(max_int, FAbs(val)), Int16(0x8000), Int16(val));
 }
 
 ALWAYS_INLINE static
 int32_t Float64ToInt32(float64_t val) {
   auto max_int = Float64(Maximize(Int32(0)));
-  return Select<int32_t>(FCmpLt(max_int, FAbs(val)), 0x80000000, Int32(val));
+  return Select<int32_t>(FCmpLt(max_int, FAbs(val)),
+                         Int32(0x80000000), Int32(val));
 }
 
 ALWAYS_INLINE static
 int16_t Float32ToInt16(float32_t val) {
   auto max_int = Float32(Maximize(Int32(0)));
-  return Select<int16_t>(FCmpLt(max_int, FAbs(val)), 0x8000, Int16(val));
+  return Select<int16_t>(FCmpLt(max_int, FAbs(val)), Int16(0x8000), Int16(val));
 }
 
 ALWAYS_INLINE static
 int32_t Float32ToInt32(float32_t val) {
   auto max_int = Float32(Maximize(Int32(0)));
-  return Select<int32_t>(FCmpLt(max_int, FAbs(val)), 0x80000000, Int32(val));
+  return Select<int32_t>(FCmpLt(max_int, FAbs(val)),
+                         Int32(0x80000000), Int32(val));
 }
 
 ALWAYS_INLINE static
@@ -1284,7 +1286,7 @@ ALWAYS_INLINE static
 int64_t Float64ToInt64(float64_t val) {
   auto max_int = Float64(Maximize(Int64(0)));
   return Select<int64_t>(FCmpLt(max_int, FAbs(val)),
-                         0x8000000000000000, Int64(val));
+                         Int64(0x8000000000000000LL), Int64(val));
 }
 
 ALWAYS_INLINE static
