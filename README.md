@@ -60,7 +60,8 @@ sudo apt-get install \
      wget \
      realpath \
      build-essential \
-     libtinfo-dev
+     libtinfo-dev \
+     lsb-release
 ```
 
 Next, clone the repository. This will clone the code into the `remill` directory.

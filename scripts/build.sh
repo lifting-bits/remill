@@ -27,14 +27,14 @@ OS_VERSION=
 ARCH_VERSION=
 BUILD_WITH_LLVM=1
 
-# Version name of OS (e.g. xenial, trusty).
-source /etc/os-release
-
 # There are pre-build versions of various libraries for specific
 # Ubuntu releases.
 function GetUbuntuOSVersion
 {
-  case ${UBUNTU_CODENAME} in
+  # Version name of OS (e.g. xenial, trusty).
+  source /etc/lsb-release
+
+  case "${DISTRIB_CODENAME}" in
     xenial)
       OS_VERSION=ubuntu1604
       return 0
@@ -44,7 +44,7 @@ function GetUbuntuOSVersion
       return 0
     ;;
     *)
-      printf "[x] Ubuntu ${UBUNTU_CODENAME} is not supported.\n"
+      printf "[x] Ubuntu ${DISTRIB_CODENAME} is not supported.\n"
       return 1
     ;;
   esac
@@ -55,7 +55,7 @@ function GetArchVersion
 {
   local version=$( uname -m )
 
-  case "$version" in
+  case "${version}" in
     x86_64)
       ARCH_VERSION=amd64
       return 0
@@ -86,13 +86,15 @@ function GetOSVersion
 {
   local distribution_name=$( cat /etc/issue )
 
-  case "$distribution_name" in
+  case "${distribution_name}" in
     *Ubuntu*)
       GetUbuntuOSVersion
+      return 0
     ;;
 
     *openSUSE*)
       OS_VERSION=opensuse
+      return 0
     ;;
 
     *Arch\ Linux*)
