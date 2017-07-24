@@ -24,16 +24,17 @@ BUILD_DIR=${CURR_DIR}/remill-build
 INSTALL_DIR=/usr/local
 LLVM_VERSION=llvm40
 OS_VERSION=
+ARCH_VERSION=
 BUILD_WITH_LLVM=1
 
+# Version name of OS (e.g. xenial, trusty).
+source /etc/os-release
+
+# There are pre-build versions of various libraries for specific
+# Ubuntu releases.
 function GetUbuntuOSVersion
 {
-  # Version name of Ubuntu (e.g. xenial, trusty).
-  source /etc/lsb-release
-
-  # There are pre-build versions of various libraries for specific
-  # Ubuntu releases.
-  case ${DISTRIB_CODENAME} in
+  case ${UBUNTU_CODENAME} in
     xenial)
       OS_VERSION=ubuntu1604
       return 0
@@ -43,8 +44,30 @@ function GetUbuntuOSVersion
       return 0
     ;;
     *)
-      printf "[x] Ubuntu ${DISTRIB_CODENAME} is not supported.\n"
+      printf "[x] Ubuntu ${UBUNTU_CODENAME} is not supported.\n"
       return 1
+    ;;
+  esac
+}
+
+# Figure out the architecture of the current machine.
+function GetArchVersion
+{
+  local version=$( uname -m )
+
+  case "$version" in
+    x86_64)
+      ARCH_VERSION=amd64
+      return 0
+    ;;
+    aarch64)
+      ARCH_VERSION=aarch64
+      return 0
+    ;;
+    *)
+      printf "[x] ${version} architecture is not supported.\n"
+      return 1
+    ;;
   esac
 }
 
@@ -56,6 +79,32 @@ function DownloadCxxCommon
 
   # Make sure modification times are not in the future.
   find ${BUILD_DIR}/libraries -type f -exec touch {} \;
+}
+
+# Attempt to detect the OS distribution name.
+function GetOSVersion
+{
+  local distribution_name=$( cat /etc/issue )
+
+  case "$distribution_name" in
+    *Ubuntu*)
+      GetUbuntuOSVersion
+    ;;
+
+    *openSUSE*)
+      OS_VERSION=opensuse
+    ;;
+
+    *Arch\ Linux*)
+      printf "[x] Arch Linux is not yet supported\n"
+      return 1
+    ;;
+
+    *)
+      printf "[x] Failed to download the required dependencies\n"
+      return 1
+    ;;
+  esac
 }
 
 # Download pre-compiled version of cxx-common for this OS. This has things like
@@ -72,25 +121,11 @@ function DownloadLibraries
     return 1
   fi
 
-  # attempt to detect the distribution
-  local distribution_name=`cat /etc/issue`
+  GetArchVersion
+  GetOSVersion
+  
 
-  case "$distribution_name" in
-    *Ubuntu*)
-      GetUbuntuOSVersion
-    ;;
-
-    *Arch\ Linux*)
-      printf "[x] Arch Linux is not yet supported\n"
-      return 1
-    ;;
-
-    *)
-      printf "[x] Failed to download the required dependencies\n"
-      return 1
-  esac
-
-  LIBRARY_VERSION=libraries-${LLVM_VERSION}-${OS_VERSION}
+  LIBRARY_VERSION=libraries-${LLVM_VERSION}-${OS_VERSION}-${ARCH_VERSION}
 
   printf "[-] Library version is ${LIBRARY_VERSION}\n"
 
