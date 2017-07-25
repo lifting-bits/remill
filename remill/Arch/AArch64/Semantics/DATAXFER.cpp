@@ -189,6 +189,9 @@ DEF_ISEL(MOV_MOVZ_64_MOVEWIDE) = Load<R64W, I64>;
 
 DEF_ISEL(MOV_MOVN_32_MOVEWIDE) = Load<R32W, I32>;
 
+DEF_ISEL(MOV_ORR_32_LOG_IMM) = Load<R32W, I32>;
+DEF_ISEL(MOV_ORR_64_LOG_IMM) = Load<R64W, I64>;
+
 namespace {
 
 template <typename D, typename S>

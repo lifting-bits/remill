@@ -42,12 +42,6 @@ namespace {
 static constexpr int kInstructionSize = 4;  // In bytes.
 static constexpr int kPCWidth = 64;  // In bits.
 
-//template <uint32_t from_high, uint32_t to_low>
-//static inline uint32_t Extract(uint32_t inst) {
-//  auto num_bits = (from_high - to_low) + 1U;
-//  return (inst >> to_low) & ((1U << num_bits) - 1U);
-//}
-
 template <uint32_t bit, typename T>
 static inline T Select(T val) {
   return (val >> bit) & T(1);
@@ -283,6 +277,21 @@ static void AddRegOperand(Instruction &inst, Action action,
     op.action = Operand::kActionRead;
     inst.operands.push_back(op);
   }
+}
+
+static void AddShiftRegOperand(Instruction &inst, RegClass rclass,
+                               RegUsage rtype, RegNum reg_num,
+                               Operand::ShiftRegister::Shift shift_type,
+                               uint64_t shift_size) {
+  Operand op;
+  op.type = Operand::kTypeShiftRegister;
+
+  op.shift_reg.reg = Reg(kActionRead, rclass, rtype, reg_num);
+  op.shift_reg.shift_op = shift_type;
+  op.shift_reg.shift_size = shift_size;
+
+  op.size = op.shift_reg.reg.size;
+  op.action = Operand::kActionRead;
 }
 
 enum ImmType {
@@ -619,7 +628,7 @@ bool TryDecodeLDR_32_LOADLIT(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
   AddPCRegMemOp(inst, kActionRead,
                 static_cast<uint64_t>(data.imm19.simm19) << 2ULL);
-  return false;
+  return true;
 }
 
 // LDR  <Xt>, <label>
@@ -639,7 +648,7 @@ enum Extend : uint8_t {
   kExtendSXTB,  // 0b100
   kExtendSXTH,  // 0b101
   kExtendSXTW,  // 0b110
-  kExtendSXTX  // 0b110
+  kExtendSXTX  // 0b111
 };
 
 static uint64_t BaseSizeInBits(Extend extend) {
@@ -667,7 +676,7 @@ static Operand::ShiftRegister::Extend ShiftRegExtendType(Extend extend) {
     case kExtendSXTH:
     case kExtendSXTW:
     case kExtendSXTX:
-      return Operand::ShiftRegister::kExtendUnsigned;
+      return Operand::ShiftRegister::kExtendSigned;
   }
   return Operand::ShiftRegister::kExtendInvalid;
 }
@@ -1005,10 +1014,9 @@ static void DecodeConditionalBranch(Instruction &inst, int64_t disp) {
 
 template <RegClass rc>
 static bool DecodeBranchRegLabel(const InstData &data, Instruction &inst) {
-  // set up branch condition operands
-  auto imm = data.imm19.simm19 << 2;
-  DecodeConditionalBranch(inst, imm);
-  // set up source register for comparison
+  // Set up branch condition operands.
+  DecodeConditionalBranch(inst, data.imm19.simm19 << 2);
+  // Set up source register for comparison.
   AddRegOperand(inst, kActionRead, rc, kUseAsValue, data.Rt);
   return true;
 }
@@ -1036,10 +1044,8 @@ bool TryDecodeCBNZ_64_COMPBRANCH(const InstData &data, Instruction &inst) {
 // BL  <label>
 bool TryDecodeBL_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
   auto disp = static_cast<int64_t>(data.imm26.simm26) << 2ULL;
-  // decodes the call target
-  DecodeUnconditionalBranch(inst, disp);
-  // decodes the return address
-  AddNextPC(inst);
+  DecodeUnconditionalBranch(inst, disp);  // Decodes the call target.
+  AddNextPC(inst);  // Decodes the return address.
   return true;
 }
 
@@ -1058,7 +1064,7 @@ static bool ShiftImmediate(uint64_t &value, uint8_t shift) {
       break;
     default:
       LOG(ERROR)
-          << "Decoding reserved bit for shift value";
+          << "Decoding reserved bit for shift value.";
       return false;
   }
   return true;
@@ -1081,23 +1087,25 @@ bool TryDecodeSUB_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
 
-  Shift shift_type = static_cast<Shift>(data.shift);
-  // shift type '11' is a reserved value
+  auto shift_type = static_cast<Shift>(data.shift);
   if (shift_type == kShiftROR) {
-    LOG(ERROR)<< "Trying to use reserved value '11' in a shift";
-    return false;
+    return false;  // Shift type '11' is a reserved value.
   }
+  AddShiftRegOperand(inst, kRegW, kUseAsValue, data.Rm,
+                     GetOperandShift(shift_type), data.imm6.uimm);
+  return true;
+}
 
-  // create a shift register operand for the second source value
-  Operand op;
-  op.type = Operand::kTypeShiftRegister;
-  op.size = kPCWidth;
-  op.action = Operand::kActionRead;
-  op.shift_reg.reg = Reg(kActionRead, kRegX, kUseAsValue, data.Rm);
-  op.shift_reg.shift_op = GetOperandShift(shift_type);
-  op.shift_reg.shift_size = data.imm6.uimm;
-  inst.operands.push_back(op);
-
+// CMP  <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeCMP_SUBS_32_ADDSUB_SHIFT(const InstData &data,
+                                       Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  auto shift_type = static_cast<Shift>(data.shift);
+  if (shift_type == kShiftROR) {
+    return false;  // Shift type '11' is a reserved value.
+  }
+  AddShiftRegOperand(inst, kRegW, kUseAsValue, data.Rm,
+                     GetOperandShift(shift_type), data.imm6.uimm);
   return true;
 }
 
@@ -1105,24 +1113,12 @@ bool TryDecodeSUB_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
 bool TryDecodeCMP_SUBS_64_ADDSUB_SHIFT(const InstData &data,
                                        Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
-
-  Shift shift_type = static_cast<Shift>(data.shift);
-  // shift type '11' is a reserved value
+  auto shift_type = static_cast<Shift>(data.shift);
   if (shift_type == kShiftROR) {
-    LOG(ERROR)<< "Trying to use reserved value '11' in a shift";
-    return false;
+    return false;  // Shift type '11' is a reserved value.
   }
-
-  // create a shift register operand for the second source value
-  Operand op;
-  op.type = Operand::kTypeShiftRegister;
-  op.size = kPCWidth;
-  op.action = Operand::kActionRead;
-  op.shift_reg.reg = Reg(kActionRead, kRegX, kUseAsValue, data.Rm);
-  op.shift_reg.shift_op = GetOperandShift(shift_type);
-  op.shift_reg.shift_size = data.imm6.uimm;
-  inst.operands.push_back(op);
-
+  AddShiftRegOperand(inst, kRegX, kUseAsValue, data.Rm,
+                     GetOperandShift(shift_type), data.imm6.uimm);
   return true;
 }
 
@@ -1132,7 +1128,18 @@ bool TryDecodeCMP_SUBS_64S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
   if (!ShiftImmediate(imm, data.shift)) {
     return false;
   }
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
+  AddImmOperand(inst, imm);
+  return true;
+}
+
+// CMP  <Wn|WSP>, #<imm>{, <shift>}
+bool TryDecodeCMP_SUBS_32S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  auto imm = data.imm12.uimm;
+  if (!ShiftImmediate(imm, data.shift)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsAddress, data.Rn);
   AddImmOperand(inst, imm);
   return true;
 }
@@ -1185,34 +1192,20 @@ bool TryDecodeLDRB_32_LDST_POS(const InstData &data, Instruction &inst) {
 bool TryDecodeASR_SBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
-
-  auto shiftcount = data.immr.uimm;
-  AddImmOperand(inst, shiftcount, kUnsigned, 8);
-
+  AddImmOperand(inst, data.immr.uimm, kUnsigned, 8);
   return true;
 }
 
 // ADD  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
-// TOOD(artem): less copypasta for this and its sub equivalent
 bool TryDecodeADD_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
-
-  Shift shift_type = static_cast<Shift>(data.shift);
+  auto shift_type = static_cast<Shift>(data.shift);
   if (shift_type == kShiftROR) {
     return false;  // Shift type '11' is a reserved value.
   }
-
-  // create a shift register operand for the second source value
-  Operand op;
-  op.type = Operand::kTypeShiftRegister;
-  op.size = kPCWidth;
-  op.action = Operand::kActionRead;
-  op.shift_reg.reg = Reg(kActionRead, kRegX, kUseAsValue, data.Rm);
-  op.shift_reg.shift_op = GetOperandShift(shift_type);
-  op.shift_reg.shift_size = data.imm6.uimm;
-  inst.operands.push_back(op);
-
+  AddShiftRegOperand(inst, kRegX, kUseAsValue, data.Rm,
+                     GetOperandShift(shift_type), data.imm6.uimm);
   return true;
 }
 
@@ -1283,90 +1276,6 @@ bool TryDecodeLDUR_64_LDST_UNSCALED(const InstData &data, Instruction &inst) {
   return true;
 }
 
-
-//static unsigned DecodeBitMasks(uint64_t N, uint64_t imms, uint64_t immr,
-//                               bool is_immediate) {
-//  uint64_t tmask = 0;
-//  uint64_t wmask = 0;
-//}
-
-// ORR MOV_ORR_32_log_imm:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 1 Rn       0
-//   6 1 Rn       1
-//   7 1 Rn       2
-//   8 1 Rn       3
-//   9 1 Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 0 N        0
-//  23 0
-//  24 0
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 1 opc      0
-//  30 0 opc      1
-//  31 0 sf       0
-// MOV  <Wd|WSP>, #<imm>
-bool TryDecodeMOV_ORR_32_LOG_IMM(const InstData &, Instruction &) {
-//  auto imm = data.imms;
-  return false;
-}
-
-// ORR MOV_ORR_64_log_imm:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 1 Rn       0
-//   6 1 Rn       1
-//   7 1 Rn       2
-//   8 1 Rn       3
-//   9 1 Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 x N        0
-//  23 0
-//  24 0
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 1 opc      0
-//  30 0 opc      1
-//  31 1 sf       0
-// MOV  <Xd|SP>, #<imm>
-bool TryDecodeMOV_ORR_64_LOG_IMM(const InstData &, Instruction &) {
-  return false;
-}
-
 // HINT  #<imm>
 bool TryDecodeHINT_1(const InstData &, Instruction &) {
   return true;  // NOP.
@@ -1380,6 +1289,101 @@ bool TryDecodeHINT_2(const InstData &, Instruction &) {
 // HINT  #<imm>
 bool TryDecodeHINT_3(const InstData &, Instruction &) {
   return true;  // NOP.
+}
+
+static uint64_t MostSignificantSetBit(uint64_t val) {
+  return val ? static_cast<uint64_t>(63 - __builtin_clzll(val)) : 0;
+}
+
+constexpr static auto kOne = static_cast<uint64_t>(1);
+
+inline static uint64_t Ones(uint64_t val) {
+  return (kOne << val) - kOne;
+}
+
+static uint64_t ROR(uint64_t val, uint64_t val_size, uint64_t rotate_amount) {
+  for (uint64_t i = 0; i < rotate_amount; ++i) {
+    val = ((val & 1) << (val_size - 1ULL)) | (val >> 1ULL);
+  }
+  return val;
+}
+
+// Take a bit string `val` of length `val_size` bits, and concatenate it to
+// itself until it occupies at least `goal_size` bits.
+static uint64_t Replicate(uint64_t val, uint64_t val_size, uint64_t goal_size) {
+  uint64_t replicated_val = 0;
+  for (uint64_t i = 0; i < goal_size; i += val_size) {
+    replicated_val = (replicated_val << val_size) | val;
+  }
+  return replicated_val;
+}
+
+// Decode bitfield and logical immediate masks. There is a nice piece of code
+// here for producing all valid (64-bit) inputs:
+//
+//      https://stackoverflow.com/a/33265035/247591
+//
+// The gist of the format is that you hav
+static bool DecodeBitMasks(uint64_t N /* one bit */,
+                           uint64_t imms /* six bits */,
+                           uint64_t immr /* six bits */,
+                           bool is_immediate,
+                           uint64_t data_size,
+                           uint64_t *wmask_out,
+                           uint64_t *tmask_out) {
+  const uint64_t len = MostSignificantSetBit((N << 6) | (~imms & 0x3fULL));
+  const uint64_t esize = 1ULL << len;
+  if (!len || esize > data_size) {
+    return false;  // `len == 0` is a `ReservedValue()`.
+  }
+
+  const uint64_t levels = Ones(len);  // ZeroExtend(Ones(len), 6).
+  const uint64_t R = immr & levels;
+  const uint64_t S = imms & levels;
+
+  if (is_immediate && S == levels) {
+    return false;  // ReservedValue.
+  }
+
+  const uint64_t diff = R - S;
+  const uint64_t d = diff & levels;
+  const uint64_t welem = Ones(S + 1ULL);
+  const uint64_t telem = Ones(d + 1ULL);
+  const uint64_t wmask = Replicate(
+      ROR(welem, esize, R), esize, data_size);
+  const uint64_t tmask = Replicate(telem, esize, data_size);
+
+  if (wmask_out) {
+    *wmask_out = wmask;
+  }
+  if (tmask_out) {
+    *tmask_out = tmask;
+  }
+  return true;
+}
+
+// MOV  <Wd|WSP>, #<imm>
+bool TryDecodeMOV_ORR_32_LOG_IMM(const InstData &data, Instruction &inst) {
+  uint64_t wmask = 0;
+  if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
+                      true, 32, &wmask, nullptr)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsAddress, data.Rd);
+  AddImmOperand(inst, wmask, kUnsigned, 32);
+  return true;
+}
+
+// MOV  <Xd|SP>, #<imm>
+bool TryDecodeMOV_ORR_64_LOG_IMM(const InstData &data, Instruction &inst) {
+  uint64_t wmask = 0;
+  if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
+                      true, 64, &wmask, nullptr)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsAddress, data.Rd);
+  AddImmOperand(inst, wmask, kUnsigned, 64);
+  return true;
 }
 
 }  // namespace aarch64

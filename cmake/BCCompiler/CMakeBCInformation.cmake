@@ -35,14 +35,16 @@ if (NOT CMAKE_INCLUDE_FLAG_BC)
 endif ()
 
 # this is the runtime target generator, used in a similar way to add_executable
-set(add_runtime_usage "add_runtime(target_name SOURCES <source file list> ADDRESS_SIZE <size>")
+set(add_runtime_usage "add_runtime(target_name ARCH target_arch SOURCES <source file list> ADDRESS_SIZE <size>")
 
 function (add_runtime target_name)
     foreach (macro_parameter ${ARGN})
         if ("${macro_parameter}" STREQUAL "SOURCES")
             set(state "${macro_parameter}")
             continue ()
-
+        elseif ("${macro_parameter}" STREQUAL "ARCH")
+            set(state "${macro_parameter}")
+            continue ()
         elseif ("${macro_parameter}" STREQUAL "ADDRESS_SIZE")
             set(state "${macro_parameter}")
             continue ()
@@ -52,11 +54,16 @@ function (add_runtime target_name)
             set_source_files_properties("${macro_parameter}" PROPERTIES LANGUAGE BC)
             list(APPEND source_file_list "${macro_parameter}")
 
+        elseif ("${state}" STREQUAL "ARCH")
+            list(APPEND options "-target ${macro_parameter}")
+            set(arch_found True)
+
         elseif ("${state}" STREQUAL "ADDRESS_SIZE")
             if (NOT "${macro_parameter}" MATCHES "^[0-9]+$")
                 message(SEND_ERROR "Invalid ADDRESS_SIZE parameter passed to add_runtime")
             endif ()
 
+            list(APPEND options "-m${macro_parameter}")
             list(APPEND definitions "ADDRESS_SIZE_BITS=${macro_parameter}")
             set(address_size_bits_found True)
 
@@ -68,6 +75,10 @@ function (add_runtime target_name)
     foreach (source_file ${sourcefile_list})
         set_source_files_properties("${source_file}" PROPERTIES LANGUAGE BC)
     endforeach ()
+
+    if (NOT arch_found)
+        message(SEND_ERROR "Missing target architecture.")
+    endif ()
 
     if (NOT address_size_bits_found)
         message(SEND_ERROR "Missing address size.")

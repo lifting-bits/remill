@@ -17043,44 +17043,6 @@ bool TryDecodeADDP_ASISDPAIR_ONLY(const InstData &, Instruction &) {
   return false;
 }
 
-// SUBS CMP_SUBS_32_addsub_shift:
-//   0 1 Rd       0
-//   1 1 Rd       1
-//   2 1 Rd       2
-//   3 1 Rd       3
-//   4 1 Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm6     0
-//  11 x imm6     1
-//  12 x imm6     2
-//  13 x imm6     3
-//  14 x imm6     4
-//  15 x imm6     5
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0
-//  22 x shift    0
-//  23 x shift    1
-//  24 1
-//  25 1
-//  26 0
-//  27 1
-//  28 0
-//  29 1 S        0
-//  30 1 op       0
-//  31 0 sf       0
-// CMP  <Wn>, <Wm>{, <shift> #<amount>}
-bool TryDecodeCMP_SUBS_32_ADDSUB_SHIFT(const InstData &, Instruction &) {
-  return false;
-}
-
 // STR STR_B_ldst_immpost:
 //   0 x Rt       0
 //   1 x Rt       1
@@ -28288,44 +28250,6 @@ bool TryDecodeSQNEG_ASIMDMISC_R(const InstData &, Instruction &) {
 //  31 0
 // UHADD  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
 bool TryDecodeUHADD_ASIMDSAME_ONLY(const InstData &, Instruction &) {
-  return false;
-}
-
-// SUBS CMP_SUBS_32S_addsub_imm:
-//   0 1 Rd       0
-//   1 1 Rd       1
-//   2 1 Rd       2
-//   3 1 Rd       3
-//   4 1 Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm12    0
-//  11 x imm12    1
-//  12 x imm12    2
-//  13 x imm12    3
-//  14 x imm12    4
-//  15 x imm12    5
-//  16 x imm12    6
-//  17 x imm12    7
-//  18 x imm12    8
-//  19 x imm12    9
-//  20 x imm12    10
-//  21 x imm12    11
-//  22 x shift    0
-//  23 x shift    1
-//  24 1
-//  25 0
-//  26 0
-//  27 0
-//  28 1
-//  29 1 S        0
-//  30 1 op       0
-//  31 0 sf       0
-// CMP  <Wn|WSP>, #<imm>{, <shift>}
-bool TryDecodeCMP_SUBS_32S_ADDSUB_IMM(const InstData &, Instruction &) {
   return false;
 }
 

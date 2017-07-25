@@ -34,7 +34,7 @@ set(X86RUNTIME_INCLUDEDIRECTORIES ${CMAKE_SOURCE_DIR})
 function (add_runtime_helper target_name address_bit_size enable_avx enable_avx512)
     message(" > Generating runtime target: ${target_name}")
 
-    add_runtime(${target_name} SOURCES ${X86RUNTIME_SOURCEFILES} ADDRESS_SIZE ${address_bit_size})
+    add_runtime(${target_name} ARCH x86_64 SOURCES ${X86RUNTIME_SOURCEFILES} ADDRESS_SIZE ${address_bit_size})
 
     target_include_directories(${target_name} PRIVATE ${X86RUNTIME_INCLUDEDIRECTORIES})
     target_compile_options(${target_name} PRIVATE ${X86RUNTIME_COMPILEOPTIONS})
