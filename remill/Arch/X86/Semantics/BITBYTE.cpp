@@ -18,7 +18,7 @@ namespace {
 
 template <typename D>
 DEF_SEM(SETNLE, D dst) {
-  Write(dst, BAnd(BNot(FLAG_ZF), BXnor(FLAG_CF, FLAG_PF)));
+  Write(dst, BAnd(BNot(FLAG_ZF), BXnor(FLAG_SF, FLAG_OF)));
   return memory;
 }
 
@@ -66,7 +66,7 @@ DEF_SEM(SETNL, D dst) {
 
 template <typename D>
 DEF_SEM(SETNBE, D dst) {
-  Write(dst, BNot(BOr(FLAG_DF, FLAG_ZF)));
+  Write(dst, BAnd(BNot(FLAG_CF), BNot(FLAG_ZF)));
   return memory;
 }
 

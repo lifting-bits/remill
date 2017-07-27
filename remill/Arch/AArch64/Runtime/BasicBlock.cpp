@@ -38,92 +38,92 @@ extern "C" {
   PC = curr_pc;
   auto &WPC = state.gpr.PC.dword;
 
-  auto &W0 = state.gpr.X0.dword;
-  auto &W1 = state.gpr.X1.dword;
-  auto &W2 = state.gpr.X2.dword;
-  auto &W3 = state.gpr.X3.dword;
+  auto &W0 = state.gpr.x0.dword;
+  auto &W1 = state.gpr.x1.dword;
+  auto &W2 = state.gpr.x2.dword;
+  auto &W3 = state.gpr.x3.dword;
 
-  auto &W4 = state.gpr.X4.dword;
-  auto &W5 = state.gpr.X5.dword;
-  auto &W6 = state.gpr.X6.dword;
-  auto &W7 = state.gpr.X7.dword;
+  auto &W4 = state.gpr.x4.dword;
+  auto &W5 = state.gpr.x5.dword;
+  auto &W6 = state.gpr.x6.dword;
+  auto &W7 = state.gpr.x7.dword;
 
-  auto &W8 = state.gpr.X8.dword;
-  auto &W9 = state.gpr.X9.dword;
-  auto &W10 = state.gpr.X10.dword;
-  auto &W11 = state.gpr.X11.dword;
+  auto &W8 = state.gpr.x8.dword;
+  auto &W9 = state.gpr.x9.dword;
+  auto &W10 = state.gpr.x10.dword;
+  auto &W11 = state.gpr.x11.dword;
 
-  auto &W12 = state.gpr.X12.dword;
-  auto &W13 = state.gpr.X13.dword;
-  auto &W14 = state.gpr.X14.dword;
-  auto &W15 = state.gpr.X15.dword;
+  auto &W12 = state.gpr.x12.dword;
+  auto &W13 = state.gpr.x13.dword;
+  auto &W14 = state.gpr.x14.dword;
+  auto &W15 = state.gpr.x15.dword;
 
-  auto &W16 = state.gpr.X16.dword;
-  auto &W17 = state.gpr.X17.dword;
-  auto &W18 = state.gpr.X18.dword;
-  auto &W19 = state.gpr.X19.dword;
+  auto &W16 = state.gpr.x16.dword;
+  auto &W17 = state.gpr.x17.dword;
+  auto &W18 = state.gpr.x18.dword;
+  auto &W19 = state.gpr.x19.dword;
 
-  auto &W20 = state.gpr.X20.dword;
-  auto &W21 = state.gpr.X21.dword;
-  auto &W22 = state.gpr.X22.dword;
-  auto &W23 = state.gpr.X23.dword;
+  auto &W20 = state.gpr.x20.dword;
+  auto &W21 = state.gpr.x21.dword;
+  auto &W22 = state.gpr.x22.dword;
+  auto &W23 = state.gpr.x23.dword;
 
-  auto &W24 = state.gpr.X24.dword;
-  auto &W25 = state.gpr.X25.dword;
-  auto &W26 = state.gpr.X26.dword;
-  auto &W27 = state.gpr.X27.dword;
+  auto &W24 = state.gpr.x24.dword;
+  auto &W25 = state.gpr.x25.dword;
+  auto &W26 = state.gpr.x26.dword;
+  auto &W27 = state.gpr.x27.dword;
 
-  auto &W28 = state.gpr.X28.dword;
-  auto &W29 = state.gpr.X29.dword;
-  auto &W30 = state.gpr.X30.dword;
+  auto &W28 = state.gpr.x28.dword;
+  auto &W29 = state.gpr.x29.dword;
+  auto &W30 = state.gpr.x30.dword;
 
-  auto &X0 = state.gpr.X0.qword;
-  auto &X1 = state.gpr.X1.qword;
-  auto &X2 = state.gpr.X2.qword;
-  auto &X3 = state.gpr.X2.qword;
+  auto &X0 = state.gpr.x0.qword;
+  auto &X1 = state.gpr.x1.qword;
+  auto &X2 = state.gpr.x2.qword;
+  auto &X3 = state.gpr.x2.qword;
 
-  auto &X4 = state.gpr.X4.qword;
-  auto &X5 = state.gpr.X5.qword;
-  auto &X6 = state.gpr.X6.qword;
-  auto &X7 = state.gpr.X7.qword;
+  auto &X4 = state.gpr.x4.qword;
+  auto &X5 = state.gpr.x5.qword;
+  auto &X6 = state.gpr.x6.qword;
+  auto &X7 = state.gpr.x7.qword;
 
-  auto &X8 = state.gpr.X8.qword;
-  auto &X9 = state.gpr.X9.qword;
-  auto &X10 = state.gpr.X10.qword;
-  auto &X11 = state.gpr.X11.qword;
+  auto &X8 = state.gpr.x8.qword;
+  auto &X9 = state.gpr.x9.qword;
+  auto &X10 = state.gpr.x10.qword;
+  auto &X11 = state.gpr.x11.qword;
 
-  auto &X12 = state.gpr.X12.qword;
-  auto &X13 = state.gpr.X13.qword;
-  auto &X14 = state.gpr.X14.qword;
-  auto &X15 = state.gpr.X15.qword;
+  auto &X12 = state.gpr.x12.qword;
+  auto &X13 = state.gpr.x13.qword;
+  auto &X14 = state.gpr.x14.qword;
+  auto &X15 = state.gpr.x15.qword;
 
-  auto &X16 = state.gpr.X16.qword;
-  auto &X17 = state.gpr.X17.qword;
-  auto &X18 = state.gpr.X18.qword;
-  auto &X19 = state.gpr.X19.qword;
+  auto &X16 = state.gpr.x16.qword;
+  auto &X17 = state.gpr.x17.qword;
+  auto &X18 = state.gpr.x18.qword;
+  auto &X19 = state.gpr.x19.qword;
 
-  auto &X20 = state.gpr.X20.qword;
-  auto &X21 = state.gpr.X21.qword;
-  auto &X22 = state.gpr.X22.qword;
-  auto &X23 = state.gpr.X23.qword;
+  auto &X20 = state.gpr.x20.qword;
+  auto &X21 = state.gpr.x21.qword;
+  auto &X22 = state.gpr.x22.qword;
+  auto &X23 = state.gpr.x23.qword;
 
-  auto &X24 = state.gpr.X24.qword;
-  auto &X25 = state.gpr.X25.qword;
-  auto &X26 = state.gpr.X26.qword;
-  auto &X27 = state.gpr.X27.qword;
+  auto &X24 = state.gpr.x24.qword;
+  auto &X25 = state.gpr.x25.qword;
+  auto &X26 = state.gpr.x26.qword;
+  auto &X27 = state.gpr.x27.qword;
 
-  auto &X28 = state.gpr.X28.qword;
-  auto &X29 = state.gpr.X29.qword;
-  auto &X30 = state.gpr.X30.qword;
+  auto &X28 = state.gpr.x28.qword;
+  auto &X29 = state.gpr.x29.qword;
+  auto &X30 = state.gpr.x30.qword;
 
-  auto &FP = state.gpr.X29.qword;
-  auto &WFP = state.gpr.X29.qword;
+  auto &FP = state.gpr.x29.qword;
+  auto &WFP = state.gpr.x29.qword;
 
-  auto &LP = state.gpr.X30.qword;
-  auto &WLP = state.gpr.X30.qword;
+  auto &LP = state.gpr.x30.qword;
+  auto &WLP = state.gpr.x30.qword;
 
-  auto &SP = state.gpr.X31.qword;
-  auto &WSP = state.gpr.X31.dword;
+  auto &SP = state.gpr.SP.qword;
+  auto &WSP = state.gpr.SP.dword;
 
   addr_t zero = 0;
   auto &WZR = reinterpret_cast<uint32_t &>(zero);
@@ -266,6 +266,9 @@ extern "C" {
   auto &V29 = state.simd.v[29];
   auto &V30 = state.simd.v[30];
   auto &V31 = state.simd.v[31];
+
+  auto &TPIDR_EL0 = state.sr.tpidr_el0;
+  auto &TPIDRRO_EL0 = state.sr.tpidrro_el0;
 
   // Lifted code will be placed here in clones versions of this function.
   return memory;

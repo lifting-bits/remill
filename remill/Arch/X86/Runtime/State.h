@@ -62,8 +62,6 @@
 #define IF_AVX512_ELSE(a, b) b
 #endif
 
-#define aword IF_64BIT_ELSE(qword, dword)
-
 union FPUStatusWord final {
   uint16_t flat;
   struct {
@@ -514,6 +512,8 @@ struct alignas(16) State final : public ArchState {
 
 static_assert((2672 + 16) == sizeof(State),
               "Invalid packing of `struct State`");
+
+using X86State = State;
 
 #pragma clang diagnostic pop
 

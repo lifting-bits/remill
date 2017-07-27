@@ -18,7 +18,7 @@
 
 DIR=$(dirname $(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )))
 
-CXX=$(which clang++)
+CXX=$(which c++)
 
 pushd /tmp
 ${CXX} \
@@ -29,7 +29,9 @@ ${CXX} \
     -m64 -I${DIR} \
     -DADDRESS_SIZE_BITS=64 -DHAS_FEATURE_AVX=1 -DHAS_FEATURE_AVX512=1 \
     $DIR/tests/X86/PrintSaveState.cpp
-    
+
+mkdir -p $DIR/generated/Arch/X86/
+
 ./a.out > $DIR/generated/Arch/X86/SaveState.S
 rm ./a.out
 popd

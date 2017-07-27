@@ -201,10 +201,24 @@ add_subdirectory(remill/Arch/AArch64/Runtime)
 # tools
 add_subdirectory(tools)
 
-# only enable tests when compiling under x64
-if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-    if(UNIX AND NOT APPLE)
-      set(LINUX TRUE)
-      add_subdirectory(tests/X86)
-  endif ()
+if(UNIX AND NOT APPLE)
+  set(LINUX TRUE)
+else()
+  set(LINUX FALSE)
 endif ()
+
+if (LINUX)
+  if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+  
+    # only enable x86 tests when compiling under x64
+    if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+      add_subdirectory(tests/X86)
+    endif ()
+    
+    # only enable aarch64 tests when compiling under aarch64.
+    if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
+      add_subdirectory(tests/AArch64)
+    endif ()
+    
+  endif ()
+endif (LINUX)
