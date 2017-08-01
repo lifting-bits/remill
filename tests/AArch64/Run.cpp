@@ -106,12 +106,6 @@ uintptr_t gTestToRun = 0;
 // the same stack.
 uint8_t *gStackSwitcher = nullptr;
 
-// We need to capture the native flags state, and so we need a `PUSHFQ`.
-// Unfortunately, this will be done on the 'recording' stack (`gStack`) in
-// the native execution, and no corresponding operation like this is done in
-// the lifted execution. What we need to do is save the value just below the
-// top of the stack before the `PUSHFQ` clobbers it, then after we've recorded
-// the native flags we restore what was clobbered by `PUSHFQ`.
 uint64_t gStackSaveSlot = 0;
 
 // Invoke a native test case addressed by `gTestToRun` and store the machine

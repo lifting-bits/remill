@@ -65,6 +65,8 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .quad num_args ; \
     \
     .text ; \
+    adrp    x30, SYMBOL(gNativeState) \
+    add     x30, x30, :lo12:SYMBOL(gNativeState) \
     3: \
     .cfi_startproc ;
 
@@ -79,7 +81,7 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .section "__aarch64_test_table", "a" ; \
     .quad 0 ; \
     .text ; \
-    ud2 ;
+    hlt #0 ;
 
 #else
 # define TEST_END \
@@ -89,7 +91,7 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .section "__aarch64_test_table", "a" ; \
     .quad 0 ; \
     .text ; \
-    ud2 ;
+    hlt #0 ;
 #endif
 
 #ifndef IN_TEST_GENERATOR
@@ -102,20 +104,56 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .extern SYMBOL(gStackSaveSlot)
 #endif  /* IN_TEST_GENERATOR */
 
-     /* Create a symbol that represents the beginning of the test
-      * information table. */
-    .section "__aarch64_test_table", "a"
-    .globl SYMBOL(__aarch64_test_table_begin)
-SYMBOL(__aarch64_test_table_begin):
-
     .text
 
     .align 16
     .globl SYMBOL(InvokeTestCase)
 SYMBOL(InvokeTestCase):
     .cfi_startproc
+
+    /* Change stacks */
+    mov     x30, sp
+    str     SYMBOL(gStackSaveSlot), x30
+    ldr     x30, SYMBOL(gStackSwitcher)
+    mov     sp, x30
+
+    /* Start by saving the current native state into the `gLiftedState`
+     * structure. This will be used as the initial state when running the
+     * lifted tests. */
+    adrp    x30, SYMBOL(gLiftedState)
+    add     x30, x30, :lo12:SYMBOL(gLiftedState)
+#include "generated/Arch/X86/SaveState.S"
+
+    /* Branch to the test to run */
+    adrp    x30, SYMBOL(gTestToRun)
+    add     x30, x30, :lo12:SYMBOL(gTestToRun)
+    br      x30
+
+    .cfi_endproc
+
+    .align 16
+    .globl SYMBOL(__aarch64_save_state_after)
+SYMBOL(__aarch64_save_state_after):
+    .cfi_startproc
+    /* Save the current native state into the `gNativeState`, which now
+     * contains the post-test state for eventual comparison against lifted
+     * execution. Finally, go and restore the originally saved state. */
+    adrp    x30, SYMBOL(gLiftedState)
+    add     x30, x30, :lo12:SYMBOL(gLiftedState)
+#include "generated/Arch/X86/SaveState.S"
+#include "generated/Arch/X86/RestoreState.S"
+
+    ldr     x30, SYMBOL(gStackSaveSlot)
+    mov     sp, x30
+
     ret
     .cfi_endproc
+
+     /* Create a symbol that represents the beginning of the test
+      * information table. */
+    .section "__aarch64_test_table", "a"
+    .globl SYMBOL(__aarch64_test_table_begin)
+SYMBOL(__aarch64_test_table_begin):
 
      /* Create a symbol that represents the end of the test information table. */
     .section "__aarch64_test_table", "a"

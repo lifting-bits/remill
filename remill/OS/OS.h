@@ -19,6 +19,18 @@
 
 #include <string>
 
+#ifndef REMILL_OS
+# if defined(__APPLE__)
+#   define REMILL_OS "macos"
+# elif defined(__linux__)
+#   define REMILL_OS "linux"
+# elif defined(WIN32)
+#   define REMILL_OS "windows"
+# else
+#   error "Cannot infer current OS."
+# endif
+#endif
+
 namespace remill {
 
 enum OSName : uint32_t {

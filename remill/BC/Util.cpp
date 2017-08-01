@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <sstream>
@@ -50,6 +51,8 @@
 #include "remill/BC/Util.h"
 #include "remill/BC/Version.h"
 #include "remill/OS/FileSystem.h"
+
+DECLARE_string(arch);
 
 namespace remill {
 
@@ -279,38 +282,37 @@ void StoreModuleToFile(llvm::Module *module, std::string file_name) {
 
 namespace {
 
-#ifndef BUILD_SEMANTICS_DIR_X86
-#error "Macro `BUILD_SEMANTICS_DIR_X86` must be defined."
-#define BUILD_SEMANTICS_DIR_X86
-#endif  // BUILD_SEMANTICS_DIR_X86
+#ifndef REMILL_BUILD_SEMANTICS_DIR_X86
+#error "Macro `REMILL_BUILD_SEMANTICS_DIR_X86` must be defined."
+#define REMILL_BUILD_SEMANTICS_DIR_X86
+#endif  // REMILL_BUILD_SEMANTICS_DIR_X86
 
-#ifndef BUILD_SEMANTICS_DIR_AARCH64
-#error \
-    "Macro `BUILD_SEMANTICS_DIR_AARCH64` must be defined to support AArch64 architecture."
-#define BUILD_SEMANTICS_DIR_AARCH64
-#endif  // BUILD_SEMANTICS_DIR_AARCH64
+#ifndef REMILL_BUILD_SEMANTICS_DIR_AARCH64
+#error "Macro `REMILL_BUILD_SEMANTICS_DIR_AARCH64` must be defined to support AArch64 architecture."
+#define REMILL_BUILD_SEMANTICS_DIR_AARCH64
+#endif  // REMILL_BUILD_SEMANTICS_DIR_AARCH64
 
-#ifndef INSTALL_SEMANTICS_DIR
-#error "Macro `INSTALL_SEMANTICS_DIR` must be defined."
-#define INSTALL_SEMANTICS_DIR
-#endif  // INSTALL_SEMANTICS_DIR
+#ifndef REMILL_INSTALL_SEMANTICS_DIR
+#error "Macro `REMILL_INSTALL_SEMANTICS_DIR` must be defined."
+#define REMILL_INSTALL_SEMANTICS_DIR
+#endif  // REMILL_INSTALL_SEMANTICS_DIR
 
 static const char *gSemanticsSearchPaths[] = {
     // Derived from the build.
-    BUILD_SEMANTICS_DIR_X86 "\0",
-    BUILD_SEMANTICS_DIR_AARCH64 "\0",
-    INSTALL_SEMANTICS_DIR "\0",
+    REMILL_BUILD_SEMANTICS_DIR_X86 "\0",
+    REMILL_BUILD_SEMANTICS_DIR_AARCH64 "\0",
+    REMILL_INSTALL_SEMANTICS_DIR "\0",
 };
 
 }  // namespace
 
-// Find the path to the semantics bitcode file.
-std::string FindSemanticsBitcodeFile(const std::string &path,
-                                     const std::string &arch) {
-  if (!path.empty()) {
-    return path;
-  }
+// Find the path to the semantics bitcode file associated with `FLAGS_arch`.
+std::string FindSemanticsBitcodeFile(void) {
+  return FindSemanticsBitcodeFile(FLAGS_arch);
+}
 
+// Find the path to the semantics bitcode file.
+std::string FindSemanticsBitcodeFile(const std::string &arch) {
   for (auto sem_dir : gSemanticsSearchPaths) {
     std::stringstream ss;
     ss << sem_dir << "/" << arch << ".bc";
@@ -320,7 +322,8 @@ std::string FindSemanticsBitcodeFile(const std::string &path,
     }
   }
 
-  LOG(FATAL) << "Cannot find path to " << arch << " semantics bitcode file.";
+  LOG(FATAL)
+      << "Cannot find path to " << arch << " semantics bitcode file.";
   return "";
 }
 

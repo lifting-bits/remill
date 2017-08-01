@@ -98,8 +98,8 @@ llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
 void StoreModuleToFile(llvm::Module *module, std::string file_name);
 
 // Find the path to the semantics bitcode file.
-std::string FindSemanticsBitcodeFile(const std::string &path,
-                                     const std::string &arch);
+std::string FindSemanticsBitcodeFile(void);
+std::string FindSemanticsBitcodeFile(const std::string &arch);
 
 // Return a pointer to the Nth argument (N=0 is the first argument).
 llvm::Argument *NthArgument(llvm::Function *func, size_t index);

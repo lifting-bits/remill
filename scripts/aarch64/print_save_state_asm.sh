@@ -20,18 +20,32 @@ DIR=$(dirname $(dirname $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )))
 
 CXX=$(which c++)
 
+mkdir -p $DIR/generated/Arch/AArch64
+
 pushd /tmp
+
 ${CXX} \
     -std=gnu++11 \
     -Wno-nested-anon-types -Wno-variadic-macros -Wno-extended-offsetof \
     -Wno-invalid-offsetof \
     -Wno-return-type-c-linkage \
-    -m64 -I${DIR} \
-    -DADDRESS_SIZE_BITS=64 -DHAS_FEATURE_AVX=1 -DHAS_FEATURE_AVX512=1 \
+    -I${DIR} \
+    -DADDRESS_SIZE_BITS=64 \
     $DIR/tests/AArch64/PrintSaveState.cpp
 
-mkdir -p $DIR/generated/Arch/AArch64
-
 ./a.out > $DIR/generated/Arch/AArch64/SaveState.S
+
+
+${CXX} \
+    -std=gnu++11 \
+    -Wno-nested-anon-types -Wno-variadic-macros -Wno-extended-offsetof \
+    -Wno-invalid-offsetof \
+    -Wno-return-type-c-linkage \
+    -I${DIR} \
+    -DADDRESS_SIZE_BITS=64 \
+    $DIR/tests/AArch64/PrintRestoreState.cpp
+
+./a.out > $DIR/generated/Arch/AArch64/RestoreState.S
+
 rm ./a.out
 popd

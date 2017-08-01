@@ -75,7 +75,13 @@ class Arch {
   Arch(void) = delete;
 };
 
-const Arch *GetGlobalArch(void);
+// Get the (approximate) architecture of the running system. This may not
+// include all feature sets.
+const Arch *GetHostArch(void);
+
+// Get the architecture of the modelled code. This is based on command-line
+// flags.
+const Arch *GetTargetArch(void);
 
 }  // namespace remill
 

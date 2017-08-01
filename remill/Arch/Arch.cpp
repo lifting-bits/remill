@@ -173,7 +173,11 @@ const Arch *Arch::GetMips(OSName, ArchName) {
   return nullptr;
 }
 
-const Arch *GetGlobalArch(void) {
+const Arch *GetHostArch(void) {
+  return Arch::Get(GetOSName(REMILL_OS), GetArchName(REMILL_ARCH));
+}
+
+const Arch *GetTargetArch(void) {
   return Arch::Get(GetOSName(FLAGS_os), GetArchName(FLAGS_arch));
 }
 

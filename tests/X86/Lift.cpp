@@ -46,14 +46,6 @@
 # define SYMBOL_PREFIX ""
 #endif
 
-#ifndef REMILL_OS
-# if defined(__APPLE__)
-#   define REMILL_OS "mac"
-# elif defined(__linux__)
-#   define REMILL_OS "linux"
-# endif
-#endif
-
 DEFINE_string(bc_out, "",
               "Name of the file in which to place the generated bitcode.");
 
@@ -120,7 +112,7 @@ extern "C" int main(int argc, char *argv[]) {
   DLOG(INFO) << "Generating tests.";
 
   auto context = new llvm::LLVMContext;
-  auto bc_file = remill::FindSemanticsBitcodeFile("", FLAGS_arch);
+  auto bc_file = remill::FindSemanticsBitcodeFile(FLAGS_arch);
   auto module = remill::LoadModuleFromFile(context, bc_file);
   target_arch->PrepareModule(module);
   for (auto i = 0U; ; ++i) {
