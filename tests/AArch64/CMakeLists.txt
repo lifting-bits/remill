@@ -21,7 +21,6 @@ list(APPEND PROJECT_INCLUDEDIRECTORIES ${gtest_INCLUDE_DIRS})
 
 enable_testing()
 enable_language(BC)
-enable_language(LL)
 enable_language(ASM)
 
 add_custom_target(build_aarch64_tests)
@@ -58,9 +57,10 @@ add_custom_command(
 
 add_custom_command(
     OUTPUT  tests_aarch64.S
-    COMMAND ${CMAKE_LL_COMPILER}
-            -filetype=asm -march=arm
-            tests_aarch64.bc
+    COMMAND ${CMAKE_BC_COMPILER}
+            -Wno-override-module
+            -S -O0 -g0
+            -c tests_aarch64.bc
             -o tests_aarch64.S
     DEPENDS tests_aarch64.bc
 )

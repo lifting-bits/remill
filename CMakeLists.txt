@@ -17,7 +17,6 @@ cmake_minimum_required (VERSION 3.2)
 
 # add the BC (bitcode) language definition
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/BCCompiler")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/LLCompiler")
 
 include(CTest)
 

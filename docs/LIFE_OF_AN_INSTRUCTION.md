@@ -42,12 +42,12 @@ The following is an example of the `__remill_basic_block` function for X86.
 
 ```C++
 // Instructions will be lifted into clones of this function.
-Memory *__remill_basic_block(Memory *memory, State &state, addr_t curr_pc) {
+Memory *__remill_basic_block(addr_t curr_pc, State &state, Memory *memory) {
   
   ...
 
   auto &EAX = state.gpr.rax.dword;
-  auto &EBX = state.gpr.rbx.dword;\
+  auto &EBX = state.gpr.rbx.dword;
   auto &ESP = state.gpr.rsp.dword;
 
   ...
@@ -82,7 +82,7 @@ The decoder initialized the `name` field with `"EBX"`, and the lifter can look u
 In spirit, the lifted code for the instructions in our running example looks like the following C++ code.
 
 ```C++
-void __remill_sub_804b7a3(Memory *memory, State *state, addr_t pc) {
+void __remill_sub_804b7a3(addr_t pc, State *state, Memory *memory) {
   auto &EIP = state.gpr.rip.dword;
   auto &EAX = state.gpr.rax.dword;
   auto &EBX = state.gpr.rbx.dword;
@@ -92,21 +92,21 @@ void __remill_sub_804b7a3(Memory *memory, State *state, addr_t pc) {
 
   // mov    eax, 0x1
   EIP += 5;
-  MOV<R32W, I32>(state, &memory, &EAX, 1);
+  memory = MOV<R32W, I32>(memory, state, &EAX, 1);
   
   // push   ebx
   EIP += 1;
-  PUSH<R32>(state, &memory, EBX);
+  memory = PUSH<R32>(memory, state, EBX);
 
   // mov    ebx, dword [esp+0x8]
   EIP += 4;
-  MOV<R32W, M32>(state, &memory, &EBX, ESP + 0x8);
+  memory = MOV<R32W, M32>(memory, state, &EBX, ESP + 0x8);
 
   // int    0x80
   EIP += 2;
-  INT_IMMb<I8>(state, &memory, 0x80);
+  memory = INT_IMMb<I8>(memory, state, 0x80);
 
-  return __remill_interrupt_call(memory, state, EIP)
+  return __remill_interrupt_call(EIP, state, memory)
 }
 ```
 
@@ -146,7 +146,7 @@ The spiritual lifted code makes one function call per lifted instruction, where 
 
 
 ```C++
-void __remill_sub_804b7a3(Memory *memory, State *state, addr_t pc) {
+void __remill_sub_804b7a3(addr_t pc, State *state, Memory *memory) {
   auto &EIP = state.gpr.rip.dword;
   auto &EAX = state.gpr.rax.dword;
   auto &EBX = state.gpr.rbx.dword;
@@ -171,7 +171,7 @@ void __remill_sub_804b7a3(Memory *memory, State *state, addr_t pc) {
 
   EIP = pc + 12;
 
-  return __remill_async_hyper_call(state, memory, EIP)
+  return __remill_async_hyper_call(EIP, state, memory)
 }
 ```
 
@@ -191,9 +191,9 @@ The `__remill_async_hyper_call` instruction instructs the "runtime" that an expl
 
 All Remill control-flow intrinsics and Remill lifted basic block functions share the same argument structure:
 
-1. A pointer to the opaque `Memory` structure.
+1. The program counter on entry to the lifted basic block.
 2. A pointer to the `State` structure.
-3. The program counter on entry to the lifted basic block.
+3. A pointer to the opaque `Memory` structure.
 
 In the case of the `__remill_async_hyper_call`, the third argument, the program counter address, is computed to be the address following the `int 0x80` instruction.
 

@@ -174,11 +174,19 @@ const Arch *Arch::GetMips(OSName, ArchName) {
 }
 
 const Arch *GetHostArch(void) {
-  return Arch::Get(GetOSName(REMILL_OS), GetArchName(REMILL_ARCH));
+  static const Arch *gHostArch = nullptr;
+  if (!gHostArch) {
+    gHostArch = Arch::Get(GetOSName(REMILL_OS), GetArchName(REMILL_ARCH));
+  }
+  return gHostArch;
 }
 
 const Arch *GetTargetArch(void) {
-  return Arch::Get(GetOSName(FLAGS_os), GetArchName(FLAGS_arch));
+  static const Arch *gTargetArch = nullptr;
+  if (!gTargetArch) {
+    gTargetArch = Arch::Get(GetOSName(FLAGS_os), GetArchName(FLAGS_arch));
+  }
+  return gTargetArch;
 }
 
 bool Arch::IsX86(void) const {
