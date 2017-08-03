@@ -130,6 +130,9 @@ void AArch64Arch::PrepareModule(llvm::Module *mod) const {
   switch (os_name) {
     case kOSLinux:
       triple.setOS(llvm::Triple::Linux);
+      triple.setEnvironment(llvm::Triple::GNU);
+      triple.setVendor(llvm::Triple::PC);
+      triple.setObjectFormat(llvm::Triple::ELF);
 
       switch (arch_name) {
         case kArchAArch64LittleEndian:
@@ -1204,7 +1207,7 @@ bool TryDecodeB_ONLY_CONDBRANCH(const InstData &data, Instruction &inst) {
 
 // STRB  <Wt>, [<Xn|SP>{, #<pimm>}]
 bool TryDecodeSTRB_32_LDST_POS(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionWrite, 8, data.Rn,
                          data.imm12.uimm);
   return true;
@@ -1212,7 +1215,7 @@ bool TryDecodeSTRB_32_LDST_POS(const InstData &data, Instruction &inst) {
 
 // LDRB  <Wt>, [<Xn|SP>{, #<pimm>}]
 bool TryDecodeLDRB_32_LDST_POS(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionRead, 8, data.Rn,
                          data.imm12.uimm);
   return true;

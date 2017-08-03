@@ -28,47 +28,69 @@ int main(void) {
   // X30 - State *
 
   // General purpose regs (except x30, which contains State *).
-  printf("stp x1, x2, [x30, #%lu]\n", offsetof(State, gpr.x1));
-  printf("stp x3, x4, [x30, #%lu]\n", offsetof(State, gpr.x3));
-  printf("stp x5, x6, [x30, #%lu]\n", offsetof(State, gpr.x5));
-  printf("stp x7, x8, [x30, #%lu]\n", offsetof(State, gpr.x7));
-  printf("stp x9, x10, [x30, #%lu]\n", offsetof(State, gpr.x9));
-  printf("stp x11, x12, [x30, #%lu]\n", offsetof(State, gpr.x11));
-  printf("stp x13, x14, [x30, #%lu]\n", offsetof(State, gpr.x13));
-  printf("stp x15, x16, [x30, #%lu]\n", offsetof(State, gpr.x15));
-  printf("stp x17, x18, [x30, #%lu]\n", offsetof(State, gpr.x17));
-  printf("stp x19, x20, [x30, #%lu]\n", offsetof(State, gpr.x19));
-  printf("stp x21, x22, [x30, #%lu]\n", offsetof(State, gpr.x21));
-  printf("stp x23, x24, [x30, #%lu]\n", offsetof(State, gpr.x23));
-  printf("stp x25, x26, [x30, #%lu]\n", offsetof(State, gpr.x25));
-  printf("stp x27, x28, [x30, #%lu]\n", offsetof(State, gpr.x27));
-  printf("stp x29, x0, [x30, #%lu]\n", offsetof(State, gpr.x29));
+  printf("str x0, [x30, #%lu]\n", offsetof(State, gpr.x0));
+  printf("str x1, [x30, #%lu]\n", offsetof(State, gpr.x1));
+  printf("str x2, [x30, #%lu]\n", offsetof(State, gpr.x2));
+  printf("str x3, [x30, #%lu]\n", offsetof(State, gpr.x3));
+  printf("str x4, [x30, #%lu]\n", offsetof(State, gpr.x4));
+  printf("str x5, [x30, #%lu]\n", offsetof(State, gpr.x5));
+  printf("str x6, [x30, #%lu]\n", offsetof(State, gpr.x6));
+  printf("str x7, [x30, #%lu]\n", offsetof(State, gpr.x7));
+  printf("str x8, [x30, #%lu]\n", offsetof(State, gpr.x8));
+  printf("str x9, [x30, #%lu]\n", offsetof(State, gpr.x9));
+  printf("str x10, [x30, #%lu]\n", offsetof(State, gpr.x10));
+  printf("str x11, [x30, #%lu]\n", offsetof(State, gpr.x11));
+  printf("str x12, [x30, #%lu]\n", offsetof(State, gpr.x12));
+  printf("str x13, [x30, #%lu]\n", offsetof(State, gpr.x13));
+  printf("str x14, [x30, #%lu]\n", offsetof(State, gpr.x14));
+  printf("str x15, [x30, #%lu]\n", offsetof(State, gpr.x15));
+  printf("str x16, [x30, #%lu]\n", offsetof(State, gpr.x16));
+  printf("str x17, [x30, #%lu]\n", offsetof(State, gpr.x17));
+  printf("str x18, [x30, #%lu]\n", offsetof(State, gpr.x18));
+  printf("str x19, [x30, #%lu]\n", offsetof(State, gpr.x19));
+  printf("str x20, [x30, #%lu]\n", offsetof(State, gpr.x20));
+  printf("str x21, [x30, #%lu]\n", offsetof(State, gpr.x21));
+  printf("str x22, [x30, #%lu]\n", offsetof(State, gpr.x22));
+  printf("str x23, [x30, #%lu]\n", offsetof(State, gpr.x23));
+  printf("str x24, [x30, #%lu]\n", offsetof(State, gpr.x24));
+  printf("str x25, [x30, #%lu]\n", offsetof(State, gpr.x25));
+  printf("str x26, [x30, #%lu]\n", offsetof(State, gpr.x26));
+  printf("str x27, [x30, #%lu]\n", offsetof(State, gpr.x27));
+  printf("str x28, [x30, #%lu]\n", offsetof(State, gpr.x28));
+  printf("str x29, [x30, #%lu]\n", offsetof(State, gpr.x29));
 
-  printf("str sp, [x30, #%lu]\n", offsetof(State, gpr.SP));
+  // Save the stack pointer.
+  printf("mov x29, sp\n");
+  printf("str x29, [x30, #%lu]\n", offsetof(State, gpr.SP));
+
+  printf("mov x29, #1\n");
 
   // Save the N flag.
-  printf("strb #1, [x30, #%lu]\n", offsetof(State, sr.n));
-  printf("b.n .Ln_is_set\n");
-  printf("strb xzr, [x30, #%lu]\n", offsetof(State, sr.n));
-  printf(".Ln_is_set:\n");
+  printf("strb w29, [x30, #%lu]\n", offsetof(State, sr.n));
+  printf("b.mi 1f\n");
+  printf("strb wzr, [x30, #%lu]\n", offsetof(State, sr.n));
+  printf("1:\n");
 
   // Save the Z flag.
-  printf("strb #1, [x30, #%lu]\n", offsetof(State, sr.z));
-  printf("b.z .Lz_is_set\n");
-  printf("strb xzr, [x30, #%lu]\n", offsetof(State, sr.z));
-  printf(".Lz_is_set:\n");
+  printf("strb w29, [x30, #%lu]\n", offsetof(State, sr.z));
+  printf("b.eq 1f\n");
+  printf("strb wzr, [x30, #%lu]\n", offsetof(State, sr.z));
+  printf("1:\n");
 
   // Save the C flag.
-  printf("strb #1, [x30, #%lu]\n", offsetof(State, sr.c));
-  printf("b.c .Lc_is_set\n");
-  printf("strb xzr, [x30, #%lu]\n", offsetof(State, sr.c));
-  printf(".Lc_is_set:\n");
+  printf("strb w29, [x30, #%lu]\n", offsetof(State, sr.c));
+  printf("b.cs 1f\n");
+  printf("strb wzr, [x30, #%lu]\n", offsetof(State, sr.c));
+  printf("1:\n");
 
   // Save the V flag.
-  printf("strb #1, [x30, #%lu]\n", offsetof(State, sr.v));
-  printf("b.v .Lv_is_set\n");
-  printf("strb xzr, [x30, #%lu]\n", offsetof(State, sr.v));
-  printf(".Lv_is_set:\n");
+  printf("strb w29, [x30, #%lu]\n", offsetof(State, sr.v));
+  printf("b.vs 1f\n");
+  printf("strb wzr, [x30, #%lu]\n", offsetof(State, sr.v));
+  printf("1:\n");
+
+  // Restore x29.
+  printf("ldr x29, [x30, #%lu]\n", offsetof(State, gpr.x29));
 
   // Save the real version of the nzvc reg.
   printf("mrs x1, nzcv\n");
@@ -83,12 +105,12 @@ int main(void) {
   printf("str x1, [x30, #%lu]\n", offsetof(State, fpsr));
 
   // User-space thread pointer register.
-  printf("msr x1, tpidr_el0\n");
+  printf("mrs x1, tpidr_el0\n");
   printf("str x1, [x30, #%lu]\n", offsetof(State, sr.tpidr_el0));
 
   // Secondary user space thread pointer register that is read-only from
   // user space.
-  printf("msr x1, tpidrro_el0\n");
+  printf("mrs x1, tpidrro_el0\n");
   printf("str x1, [x30, #%lu]\n", offsetof(State, sr.tpidrro_el0));
 
   // Restore stolen `x1`.

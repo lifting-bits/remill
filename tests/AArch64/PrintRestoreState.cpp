@@ -28,17 +28,17 @@ int main(void) {
   // Build up the `nzcv` bits from the `State` structure.
   printf("mov x2, #0\n");
 
-  printf("ldrb x1, [x30, #%lu]\n", offsetof(State, sr.n));
-  printf("orr x2, x2, x1 LSL 31\n");
+  printf("ldrb w1, [x30, #%lu]\n", offsetof(State, sr.n));
+  printf("orr x2, x2, x1, LSL 31\n");
 
-  printf("ldrb x1, [x30, #%lu]\n", offsetof(State, sr.z));
-  printf("orr x2, x2, x1 LSL 30\n");
+  printf("ldrb w1, [x30, #%lu]\n", offsetof(State, sr.z));
+  printf("orr x2, x2, x1, LSL 30\n");
 
-  printf("ldrb x1, [x30, #%lu]\n", offsetof(State, sr.c));
-  printf("orr x2, x2, x1 LSL 29\n");
+  printf("ldrb w1, [x30, #%lu]\n", offsetof(State, sr.c));
+  printf("orr x2, x2, x1, LSL 29\n");
 
-  printf("ldrb x1, [x30, #%lu]\n", offsetof(State, sr.v));
-  printf("orr x2, x2, x1 LSL 28\n");
+  printf("ldrb w1, [x30, #%lu]\n", offsetof(State, sr.v));
+  printf("orr x2, x2, x1, LSL 28\n");
 
   // Sync `nzcv` between native and lifted.
   printf("str x2, [x30, #%lu]\n", offsetof(State, nzcv));
@@ -59,23 +59,41 @@ int main(void) {
   // Secondary user space thread pointer register is read-only.
 
   // General purpose regs (except x30, which contains State *).
-  printf("ldp x1, x2, [x30, #%lu]\n", offsetof(State, gpr.x1));
-  printf("ldp x3, x4, [x30, #%lu]\n", offsetof(State, gpr.x3));
-  printf("ldp x5, x6, [x30, #%lu]\n", offsetof(State, gpr.x5));
-  printf("ldp x7, x8, [x30, #%lu]\n", offsetof(State, gpr.x7));
-  printf("ldp x9, x10, [x30, #%lu]\n", offsetof(State, gpr.x9));
-  printf("ldp x11, x12, [x30, #%lu]\n", offsetof(State, gpr.x11));
-  printf("ldp x13, x14, [x30, #%lu]\n", offsetof(State, gpr.x13));
-  printf("ldp x15, x16, [x30, #%lu]\n", offsetof(State, gpr.x15));
-  printf("ldp x17, x18, [x30, #%lu]\n", offsetof(State, gpr.x17));
-  printf("ldp x19, x20, [x30, #%lu]\n", offsetof(State, gpr.x19));
-  printf("ldp x21, x22, [x30, #%lu]\n", offsetof(State, gpr.x21));
-  printf("ldp x23, x24, [x30, #%lu]\n", offsetof(State, gpr.x23));
-  printf("ldp x25, x26, [x30, #%lu]\n", offsetof(State, gpr.x25));
-  printf("ldp x27, x28, [x30, #%lu]\n", offsetof(State, gpr.x27));
-  printf("ldp x29, x0, [x30, #%lu]\n", offsetof(State, gpr.x29));
+  printf("ldr x0, [x30, #%lu]\n", offsetof(State, gpr.x0));
+  printf("ldr x1, [x30, #%lu]\n", offsetof(State, gpr.x1));
+  printf("ldr x2, [x30, #%lu]\n", offsetof(State, gpr.x2));
+  printf("ldr x3, [x30, #%lu]\n", offsetof(State, gpr.x3));
+  printf("ldr x4, [x30, #%lu]\n", offsetof(State, gpr.x4));
+  printf("ldr x5, [x30, #%lu]\n", offsetof(State, gpr.x5));
+  printf("ldr x6, [x30, #%lu]\n", offsetof(State, gpr.x6));
+  printf("ldr x7, [x30, #%lu]\n", offsetof(State, gpr.x7));
+  printf("ldr x8, [x30, #%lu]\n", offsetof(State, gpr.x8));
+  printf("ldr x9, [x30, #%lu]\n", offsetof(State, gpr.x9));
+  printf("ldr x10, [x30, #%lu]\n", offsetof(State, gpr.x10));
+  printf("ldr x11, [x30, #%lu]\n", offsetof(State, gpr.x11));
+  printf("ldr x12, [x30, #%lu]\n", offsetof(State, gpr.x12));
+  printf("ldr x13, [x30, #%lu]\n", offsetof(State, gpr.x13));
+  printf("ldr x14, [x30, #%lu]\n", offsetof(State, gpr.x14));
+  printf("ldr x15, [x30, #%lu]\n", offsetof(State, gpr.x15));
+  printf("ldr x16, [x30, #%lu]\n", offsetof(State, gpr.x16));
+  printf("ldr x17, [x30, #%lu]\n", offsetof(State, gpr.x17));
+  printf("ldr x18, [x30, #%lu]\n", offsetof(State, gpr.x18));
+  printf("ldr x19, [x30, #%lu]\n", offsetof(State, gpr.x19));
+  printf("ldr x20, [x30, #%lu]\n", offsetof(State, gpr.x20));
+  printf("ldr x21, [x30, #%lu]\n", offsetof(State, gpr.x21));
+  printf("ldr x22, [x30, #%lu]\n", offsetof(State, gpr.x22));
+  printf("ldr x23, [x30, #%lu]\n", offsetof(State, gpr.x23));
+  printf("ldr x24, [x30, #%lu]\n", offsetof(State, gpr.x24));
+  printf("ldr x25, [x30, #%lu]\n", offsetof(State, gpr.x25));
+  printf("ldr x26, [x30, #%lu]\n", offsetof(State, gpr.x26));
+  printf("ldr x27, [x30, #%lu]\n", offsetof(State, gpr.x27));
+  printf("ldr x28, [x30, #%lu]\n", offsetof(State, gpr.x28));
 
-  printf("ldp sp, [x30, #%lu]\n", offsetof(State, gpr.SP));
+  // Restore the stack pointer.
+  printf("ldr x29, [x30, #%lu]\n", offsetof(State, gpr.SP));
+  printf("mov sp, x29\n");
+
+  printf("ldr x29, [x30, #%lu]\n", offsetof(State, gpr.x29));
 
   return 0;
 }

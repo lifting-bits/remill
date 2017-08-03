@@ -106,6 +106,7 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
 
     .text
 
+#ifndef IN_TEST_GENERATOR
     .align 16
     .globl SYMBOL(InvokeTestCase)
 SYMBOL(InvokeTestCase):
@@ -113,7 +114,8 @@ SYMBOL(InvokeTestCase):
 
     /* Change stacks */
     mov     x30, sp
-    str     SYMBOL(gStackSaveSlot), x30
+    adr     x30, SYMBOL(gStackSaveSlot)
+    str     x30, [x30, #0]
     ldr     x30, SYMBOL(gStackSwitcher)
     mov     sp, x30
 
@@ -122,7 +124,7 @@ SYMBOL(InvokeTestCase):
      * lifted tests. */
     adrp    x30, SYMBOL(gLiftedState)
     add     x30, x30, :lo12:SYMBOL(gLiftedState)
-#include "generated/Arch/X86/SaveState.S"
+#include "generated/Arch/AArch64/SaveState.S"
 
     /* Branch to the test to run */
     adrp    x30, SYMBOL(gTestToRun)
@@ -140,14 +142,15 @@ SYMBOL(__aarch64_save_state_after):
      * execution. Finally, go and restore the originally saved state. */
     adrp    x30, SYMBOL(gLiftedState)
     add     x30, x30, :lo12:SYMBOL(gLiftedState)
-#include "generated/Arch/X86/SaveState.S"
-#include "generated/Arch/X86/RestoreState.S"
+#include "generated/Arch/AArch64/SaveState.S"
+#include "generated/Arch/AArch64/RestoreState.S"
 
     ldr     x30, SYMBOL(gStackSaveSlot)
     mov     sp, x30
 
     ret
     .cfi_endproc
+#endif  /* IN_TEST_GENERATOR */
 
      /* Create a symbol that represents the beginning of the test
       * information table. */
