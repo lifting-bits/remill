@@ -261,13 +261,6 @@ static void RunWithFlags(const test::TestInfo *info,
   auto lifted_state = reinterpret_cast<AArch64State *>(&gLiftedState);
   auto native_state = reinterpret_cast<AArch64State *>(&gNativeState);
 
-  // This will be used to initialize the native flags state before executing
-  // the native test.
-  lifted_state->pstate.n = !!flags.n;
-  lifted_state->pstate.z = !!flags.z;
-  lifted_state->pstate.c = !!flags.c;
-  lifted_state->pstate.v = !!flags.v;
-
   // Set up the run's info.
   gTestToRun = info->test_begin;
   gStackSwitcher = &(gLiftedStack._redzone2[0]);
@@ -279,6 +272,7 @@ static void RunWithFlags(const test::TestInfo *info,
   auto native_test_faulted = false;
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = true;
+    asm("msr nzcv, %0" : : "r"(flags));
     InvokeTestCase(arg1, arg2, arg3);
   } else {
     native_test_faulted = true;
@@ -292,9 +286,9 @@ static void RunWithFlags(const test::TestInfo *info,
   auto lifted_func = gTranslatedFuncs[info->test_begin];
 
   // This will execute on our stack but the lifted code will operate on
-  // `gStack`. The mechanism behind this is that `gAArch64StateBefore` is the native
-  // program state recorded before executing the native testcase, but after
-  // swapping execution to operate on `gStack`.
+  // `gLiftedStack`. The mechanism behind this is that `gLiftedState` is the
+  // native program state recorded before executing the native testcase,
+  // but after swapping execution to operate on `gStack`.
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
     (void) lifted_func(
@@ -311,19 +305,15 @@ static void RunWithFlags(const test::TestInfo *info,
   lifted_state->gpr.PC.aword = 0;
   native_state->gpr.PC.aword = 0;
 
-  // TODO(pag): Suppress these for now.
-  lifted_state->native_pstate.flat = 0;
-  lifted_state->native_pstate.flat = 0;
-
   native_state->interrupt_vector = 0;
   lifted_state->interrupt_vector = 0;
   native_state->hyper_call = AsyncHyperCall::kInvalid;
   lifted_state->hyper_call = AsyncHyperCall::kInvalid;
 
-  EXPECT_TRUE(lifted_state->pstate.n == native_state->pstate.n);
-  EXPECT_TRUE(lifted_state->pstate.z == native_state->pstate.z);
-  EXPECT_TRUE(lifted_state->pstate.c == native_state->pstate.c);
-  EXPECT_TRUE(lifted_state->pstate.v == native_state->pstate.v);
+  EXPECT_TRUE(lifted_state->sr.n == native_state->sr.n);
+  EXPECT_TRUE(lifted_state->sr.z == native_state->sr.z);
+  EXPECT_TRUE(lifted_state->sr.c == native_state->sr.c);
+  EXPECT_TRUE(lifted_state->sr.v == native_state->sr.v);
   EXPECT_TRUE(lifted_state->gpr == native_state->gpr);
 
   if (gLiftedState != gNativeState) {
@@ -417,37 +407,37 @@ static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
     //    };
 
     const auto &mcontext = context->uc_mcontext;
-    gpr.X0.qword = mcontext.regs[0];
-    gpr.X1.qword = mcontext.regs[1];
-    gpr.X2.qword = mcontext.regs[2];
-    gpr.X3.qword = mcontext.regs[3];
-    gpr.X4.qword = mcontext.regs[4];
-    gpr.X5.qword = mcontext.regs[5];
-    gpr.X6.qword = mcontext.regs[6];
-    gpr.X7.qword = mcontext.regs[7];
-    gpr.X8.qword = mcontext.regs[8];
-    gpr.X9.qword = mcontext.regs[9];
-    gpr.X10.qword = mcontext.regs[10];
-    gpr.X11.qword = mcontext.regs[11];
-    gpr.X12.qword = mcontext.regs[12];
-    gpr.X13.qword = mcontext.regs[13];
-    gpr.X14.qword = mcontext.regs[14];
-    gpr.X15.qword = mcontext.regs[15];
-    gpr.X16.qword = mcontext.regs[16];
-    gpr.X17.qword = mcontext.regs[17];
-    gpr.X18.qword = mcontext.regs[18];
-    gpr.X19.qword = mcontext.regs[19];
-    gpr.X20.qword = mcontext.regs[20];
-    gpr.X21.qword = mcontext.regs[21];
-    gpr.X22.qword = mcontext.regs[22];
-    gpr.X23.qword = mcontext.regs[23];
-    gpr.X24.qword = mcontext.regs[24];
-    gpr.X25.qword = mcontext.regs[25];
-    gpr.X26.qword = mcontext.regs[26];
-    gpr.X27.qword = mcontext.regs[27];
-    gpr.X28.qword = mcontext.regs[28];
-    gpr.X29.qword = mcontext.regs[29];
-    gpr.X30.qword = mcontext.regs[30];
+    gpr.x0.qword = mcontext.regs[0];
+    gpr.x1.qword = mcontext.regs[1];
+    gpr.x2.qword = mcontext.regs[2];
+    gpr.x3.qword = mcontext.regs[3];
+    gpr.x4.qword = mcontext.regs[4];
+    gpr.x5.qword = mcontext.regs[5];
+    gpr.x6.qword = mcontext.regs[6];
+    gpr.x7.qword = mcontext.regs[7];
+    gpr.x8.qword = mcontext.regs[8];
+    gpr.x9.qword = mcontext.regs[9];
+    gpr.x10.qword = mcontext.regs[10];
+    gpr.x11.qword = mcontext.regs[11];
+    gpr.x12.qword = mcontext.regs[12];
+    gpr.x13.qword = mcontext.regs[13];
+    gpr.x14.qword = mcontext.regs[14];
+    gpr.x15.qword = mcontext.regs[15];
+    gpr.x16.qword = mcontext.regs[16];
+    gpr.x17.qword = mcontext.regs[17];
+    gpr.x18.qword = mcontext.regs[18];
+    gpr.x19.qword = mcontext.regs[19];
+    gpr.x20.qword = mcontext.regs[20];
+    gpr.x21.qword = mcontext.regs[21];
+    gpr.x22.qword = mcontext.regs[22];
+    gpr.x23.qword = mcontext.regs[23];
+    gpr.x24.qword = mcontext.regs[24];
+    gpr.x25.qword = mcontext.regs[25];
+    gpr.x26.qword = mcontext.regs[26];
+    gpr.x27.qword = mcontext.regs[27];
+    gpr.x28.qword = mcontext.regs[28];
+    gpr.x29.qword = mcontext.regs[29];
+    gpr.x30.qword = mcontext.regs[30];
 
     gpr.PC.qword = mcontext.pc;
     gpr.SP.qword = mcontext.sp;

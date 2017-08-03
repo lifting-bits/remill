@@ -104,7 +104,7 @@ extern "C" int main(int argc, char *argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
-  auto os = remill::kOSLinux;
+  auto os = remill::GetOSName(REMILL_OS);
   auto arch_name = remill::GetArchName(FLAGS_arch);
   auto arch = remill::Arch::Get(os, arch_name);
   auto target_arch = remill::Arch::Get(os, remill::kArchAMD64_AVX512);
@@ -114,7 +114,8 @@ extern "C" int main(int argc, char *argv[]) {
   auto context = new llvm::LLVMContext;
   auto bc_file = remill::FindSemanticsBitcodeFile(FLAGS_arch);
   auto module = remill::LoadModuleFromFile(context, bc_file);
-  target_arch->PrepareModule(module);
+  remill::GetHostArch()->PrepareModule(module);
+
   for (auto i = 0U; ; ++i) {
     const auto &test = test::__x86_test_table_begin[i];
     if (&test >= &(test::__x86_test_table_end[0])) break;
