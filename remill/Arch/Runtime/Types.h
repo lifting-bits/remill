@@ -43,20 +43,18 @@ typedef uint64_t addr64_t;
 typedef IF_64BIT_ELSE(addr64_t, addr32_t) addr_t;
 typedef IF_64BIT_ELSE(int64_t, int32_t) addr_diff_t;
 
-#if COMPILING_WITH_GCC && !defined(__x86_64__)
-struct uint128_t {
-  uint8_t elems[16];
-};
-struct int128_t {
-  int8_t elems[16];
-};
-#else
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
 typedef unsigned uint128_t __attribute__((mode(TI)));
-static_assert(16 == sizeof(uint128_t), "Invalid `uint128_t` size.");
-
 typedef int int128_t __attribute__((mode(TI)));
-static_assert(16 == sizeof(int128_t), "Invalid `int128_t` size.");
+#elif defined(__aarch64__)
+typedef __uint128_t uint128_t;
+typedef __int128_t int128_t;
+#else
+# error "Cannot determine (u)int128_t type of unuspported architecture."
 #endif
+
+static_assert(16 == sizeof(uint128_t), "Invalid `uint128_t` size.");
+static_assert(16 == sizeof(int128_t), "Invalid `int128_t` size.");
 
 typedef float float32_t;
 static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");

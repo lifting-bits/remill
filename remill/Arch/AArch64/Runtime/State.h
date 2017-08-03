@@ -103,10 +103,10 @@ struct alignas(8) GPR final {
   Reg x30;
 
   volatile uint64_t _31;
-  Reg SP;  // Stack pointer.
+  Reg sp;  // Stack pointer.
 
   volatile uint64_t _32;
-  Reg PC;  // Program counter of the CURRENT instruction!
+  Reg pc;  // Program counter of the CURRENT instruction!
 
 } __attribute__((packed));
 

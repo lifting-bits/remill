@@ -115,5 +115,5 @@ if (EXISTS ${CMAKE_SOURCE_DIR}/tools/mcsema)
 endif ()
 
 if (EXISTS ${CMAKE_SOURCE_DIR}/tools/vmill)
-#    add_subdirectory(vmill)
+    add_subdirectory(vmill)
 endif ()

@@ -151,19 +151,16 @@ void __remill_sub_804b7a3(addr_t pc, State *state, Memory *memory) {
   auto &EAX = state.gpr.rax.dword;
   auto &EBX = state.gpr.rbx.dword;
   auto &ESP = state.gpr.rsp.dword;
-  auto &SS_BASE = 0;
 
   // mov    eax, 0x1
   EAX = 1;
   
   // push   ebx
   ESP -= 4;
-  addr_t push_addr = ESP + SS_BASE;
-  memory = __remill_write_memory_32(memory, push_addr, EBX);
+  memory = __remill_write_memory_32(memory, ESP, EBX);
 
   // mov    ebx, dword [esp+0x8]
-  addr_t read_addr = __remill_compute_address(ESP + 0x8, SS);
-  EBX = __remill_read_memory_32(memory, read_addr);
+  EBX = __remill_read_memory_32(memory, ESP + 0x8);
 
   // int    0x80
   state.hyper_call = AsyncHyperCall::kX86IntN;

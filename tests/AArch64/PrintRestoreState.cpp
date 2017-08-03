@@ -90,7 +90,7 @@ int main(void) {
   printf("ldr x28, [x30, #%lu]\n", offsetof(State, gpr.x28));
 
   // Restore the stack pointer.
-  printf("ldr x29, [x30, #%lu]\n", offsetof(State, gpr.SP));
+  printf("ldr x29, [x30, #%lu]\n", offsetof(State, gpr.sp));
   printf("mov sp, x29\n");
 
   printf("ldr x29, [x30, #%lu]\n", offsetof(State, gpr.x29));

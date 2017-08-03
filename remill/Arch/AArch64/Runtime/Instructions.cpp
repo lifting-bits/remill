@@ -26,8 +26,8 @@
 #include "remill/Arch/AArch64/Runtime/Operators.h"
 #include "remill/Arch/AArch64/Runtime/Types.h"
 
-#define REG_PC state.gpr.PC.qword
-#define REG_SP state.gpr.SP.qword
+#define REG_PC state.gpr.pc.qword
+#define REG_SP state.gpr.sp.qword
 #define REG_LP state.gpr.x30.qword
 #define REG_FP state.gpr.x29.qword
 #define REG_XZR state.gpr.x31.qword

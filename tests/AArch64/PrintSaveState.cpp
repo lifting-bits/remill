@@ -61,7 +61,7 @@ int main(void) {
 
   // Save the stack pointer.
   printf("mov x29, sp\n");
-  printf("str x29, [x30, #%lu]\n", offsetof(State, gpr.SP));
+  printf("str x29, [x30, #%lu]\n", offsetof(State, gpr.sp));
 
   printf("mov x29, #1\n");
 

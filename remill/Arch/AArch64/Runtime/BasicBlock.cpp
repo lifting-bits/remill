@@ -29,14 +29,14 @@ extern "C" {
   // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
   auto &MEMORY = *memory;
-  auto &PC = state.gpr.PC.qword;
+  auto &PC = state.gpr.pc.qword;
   auto &BRANCH_TAKEN = branch_taken;
 
   // `PC` should already have the correct value, but it's nice to make sure
   // that `curr_pc` is used throughout, as it helps with certain downstream
   // uses to be able to depend on the optimizer not eliminating `curr_pc`.
   PC = curr_pc;
-  auto &WPC = state.gpr.PC.dword;
+  auto &WPC = state.gpr.pc.dword;
 
   auto &W0 = state.gpr.x0.dword;
   auto &W1 = state.gpr.x1.dword;
@@ -122,8 +122,8 @@ extern "C" {
   auto &LP = state.gpr.x30.qword;
   auto &WLP = state.gpr.x30.qword;
 
-  auto &SP = state.gpr.SP.qword;
-  auto &WSP = state.gpr.SP.dword;
+  auto &SP = state.gpr.sp.qword;
+  auto &WSP = state.gpr.sp.dword;
 
   addr_t zero = 0;
   auto &WZR = reinterpret_cast<uint32_t &>(zero);

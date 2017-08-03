@@ -292,7 +292,7 @@ static void RunWithFlags(const test::TestInfo *info,
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
     (void) lifted_func(
-        static_cast<addr_t>(lifted_state->gpr.rip.aword),
+        static_cast<addr_t>(lifted_state->gpr.pc.aword),
         *lifted_state,
         nullptr);
   } else {
@@ -302,8 +302,8 @@ static void RunWithFlags(const test::TestInfo *info,
   // Don't compare the program counters. The code that is lifted is equivalent
   // to the code that is tested but because they are part of separate binaries
   // it means that there is not necessarily any relation between their values.
-  lifted_state->gpr.PC.aword = 0;
-  native_state->gpr.PC.aword = 0;
+  lifted_state->gpr.pc.aword = 0;
+  native_state->gpr.pc.aword = 0;
 
   native_state->interrupt_vector = 0;
   lifted_state->interrupt_vector = 0;
@@ -439,8 +439,8 @@ static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
     gpr.x29.qword = mcontext.regs[29];
     gpr.x30.qword = mcontext.regs[30];
 
-    gpr.PC.qword = mcontext.pc;
-    gpr.SP.qword = mcontext.sp;
+    gpr.pc.qword = mcontext.pc;
+    gpr.sp.qword = mcontext.sp;
 
     PSTATE pstate;
     pstate.flat = mcontext.pstate;

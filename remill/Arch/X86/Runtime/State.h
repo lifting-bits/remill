@@ -47,19 +47,19 @@
 #endif
 
 #if HAS_FEATURE_AVX
-#define IF_AVX(...) __VA_ARGS__
-#define IF_AVX_ELSE(a, b) a
+# define IF_AVX(...) __VA_ARGS__
+# define IF_AVX_ELSE(a, b) a
 #else
-#define IF_AVX(...)
-#define IF_AVX_ELSE(a, b) b
+# define IF_AVX(...)
+# define IF_AVX_ELSE(a, b) b
 #endif
 
 #if HAS_FEATURE_AVX && HAS_FEATURE_AVX512
-#define IF_AVX512(...) __VA_ARGS__
-#define IF_AVX512_ELSE(a, b) a
+# define IF_AVX512(...) __VA_ARGS__
+# define IF_AVX512_ELSE(a, b) a
 #else
-#define IF_AVX512(...)
-#define IF_AVX512_ELSE(a, b) b
+# define IF_AVX512(...)
+# define IF_AVX512_ELSE(a, b) b
 #endif
 
 union FPUStatusWord final {
