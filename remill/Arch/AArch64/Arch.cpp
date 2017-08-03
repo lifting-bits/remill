@@ -137,7 +137,7 @@ void AArch64Arch::PrepareModule(llvm::Module *mod) const {
       switch (arch_name) {
         case kArchAArch64LittleEndian:
           triple.setArch(llvm::Triple::aarch64);
-          dl = "e-m:e-i64:64-i128:128-n32:64-S128";
+          dl = "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128";
           break;
 
         default:
