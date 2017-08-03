@@ -52,6 +52,11 @@ DEFINE_string(bc_out, "",
 DECLARE_string(arch);
 DECLARE_string(os);
 
+extern "C" {
+int gNativeState [[gnu::used]] = 0;
+int gLiftedState [[gnu::used]] = 0;
+}  // extern
+
 namespace {
 
 // Decode a test and add it as a basic block to the module.
@@ -73,6 +78,7 @@ static void AddFunctionToModule(llvm::Module *module,
 
   func->setLinkage(llvm::GlobalValue::ExternalLinkage);
   func->setVisibility(llvm::GlobalValue::DefaultVisibility);
+  func->addFnAttr(llvm::Attribute::OptimizeNone);
 
   remill::IntrinsicTable intrinsics(module);
   remill::InstructionLifter lifter(word_type, &intrinsics);
@@ -80,13 +86,16 @@ static void AddFunctionToModule(llvm::Module *module,
   auto block = &(func->front());
   auto addr = test.test_begin;
   while (addr < test.test_end) {
-    std::string instr_bytes;
+    std::string inst_bytes;
     auto bytes = reinterpret_cast<const char *>(addr);
-    instr_bytes.insert(instr_bytes.end(), bytes, bytes + 4);
+    inst_bytes.insert(inst_bytes.end(), bytes, bytes + 4);
 
     remill::Instruction inst;
-    CHECK(arch->DecodeInstruction(addr, instr_bytes, inst))
+    CHECK(arch->DecodeInstruction(addr, inst_bytes, inst))
         << "Can't decode test instruction in " << test.test_name;
+
+    LOG(INFO)
+        << "Lifting " << inst.Serialize();
 
     CHECK(lifter.LiftIntoBlock(inst, block))
         << "Can't lift test instruction in " << test.test_name;

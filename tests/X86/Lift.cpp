@@ -73,6 +73,7 @@ static void AddFunctionToModule(llvm::Module *module,
 
   func->setLinkage(llvm::GlobalValue::ExternalLinkage);
   func->setVisibility(llvm::GlobalValue::DefaultVisibility);
+  func->addFnAttr(llvm::Attribute::OptimizeNone);
 
   remill::IntrinsicTable intrinsics(module);
   remill::InstructionLifter lifter(word_type, &intrinsics);

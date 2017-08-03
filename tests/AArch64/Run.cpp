@@ -106,7 +106,7 @@ uintptr_t gTestToRun = 0;
 // the same stack.
 uint8_t *gStackSwitcher = nullptr;
 
-uint64_t gStackSaveSlot = 0;
+uint64_t gStackSaveSlots[2] = {0, 0};
 
 // Invoke a native test case addressed by `gTestToRun` and store the machine
 // state before and after executing the test in `gAArch64StateBefore` and
@@ -292,21 +292,24 @@ static void RunWithFlags(const test::TestInfo *info,
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
     (void) lifted_func(
-        static_cast<addr_t>(lifted_state->gpr.pc.aword),
+        static_cast<addr_t>(info->test_begin),
         *lifted_state,
         nullptr);
   } else {
     EXPECT_TRUE(native_test_faulted);
   }
 
-  // Don't compare the program counters. The code that is lifted is equivalent
-  // to the code that is tested but because they are part of separate binaries
-  // it means that there is not necessarily any relation between their values.
-  lifted_state->gpr.pc.aword = 0;
-  native_state->gpr.pc.aword = 0;
+  // Used in the test cases to hold the `State *`.
+  lifted_state->gpr.x28.qword = 0;
+  native_state->gpr.x28.qword = 0;
+
+  // Link pointer register (i.e. return address).
+  lifted_state->gpr.x30.qword = 0;
+  native_state->gpr.x30.qword = 0;
 
   native_state->interrupt_vector = 0;
   lifted_state->interrupt_vector = 0;
+
   native_state->hyper_call = AsyncHyperCall::kInvalid;
   lifted_state->hyper_call = AsyncHyperCall::kInvalid;
 

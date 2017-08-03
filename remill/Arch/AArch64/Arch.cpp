@@ -286,15 +286,20 @@ static void AddShiftRegOperand(Instruction &inst, RegClass rclass,
                                RegUsage rtype, RegNum reg_num,
                                Operand::ShiftRegister::Shift shift_type,
                                uint64_t shift_size) {
-  Operand op;
-  op.type = Operand::kTypeShiftRegister;
+  if (!shift_size) {
+    AddRegOperand(inst, kActionRead, rclass, rtype, reg_num);
+  } else {
+    Operand op;
+    op.type = Operand::kTypeShiftRegister;
 
-  op.shift_reg.reg = Reg(kActionRead, rclass, rtype, reg_num);
-  op.shift_reg.shift_op = shift_type;
-  op.shift_reg.shift_size = shift_size;
+    op.shift_reg.reg = Reg(kActionRead, rclass, rtype, reg_num);
+    op.shift_reg.shift_op = shift_type;
+    op.shift_reg.shift_size = shift_size;
 
-  op.size = op.shift_reg.reg.size;
-  op.action = Operand::kActionRead;
+    op.size = op.shift_reg.reg.size;
+    op.action = Operand::kActionRead;
+    inst.operands.push_back(op);
+  }
 }
 
 enum ImmType {

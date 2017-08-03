@@ -34,6 +34,14 @@
 #define FUNC_NAME(instr_name, num_args) \
     CAT3(instr_name, _, num_args)
 
+#ifdef IN_TEST_GENERATOR
+# define TEST_PROLOGUE
+#else
+# define TEST_PROLOGUE \
+    adrp    x28, SYMBOL(gNativeState) ; \
+    add     x28, x28, :lo12:SYMBOL(gNativeState) ;
+#endif  /* IN_TEST_GENERATOR */
+
 /* Defines the beginning of a test function. The key detail is that tests
  * register themselves into data structures located in a special section of
  * the binary.
@@ -65,10 +73,9 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .quad num_args ; \
     \
     .text ; \
-    adrp    x30, SYMBOL(gNativeState) \
-    add     x30, x30, :lo12:SYMBOL(gNativeState) \
     3: \
-    .cfi_startproc ;
+    .cfi_startproc ; \
+    TEST_PROLOGUE
 
 /* Note:    The test end address is placed *before* the `RET` so that we can
  *          make sure that the end of a test marker is actually
@@ -92,7 +99,19 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .quad 0 ; \
     .text ; \
     hlt #0 ;
-#endif
+#endif  /* IN_TEST_GENERATOR */
+
+/* Defines the possible inputs to provide test. We add an extra 3 null inputs
+ * at the end so that we can purposely 'overflow' when accessing the array so
+ * that we can always specify 3 inputs, even if the program uses fewer. */
+#define TEST_INPUTS(...) \
+    .data ; \
+    .balign 8 ; \
+    4: \
+    .quad  __VA_ARGS__ ; \
+    5: \
+    .quad 0, 0, 0; \
+    .text ;
 
 #ifndef IN_TEST_GENERATOR
     .data
@@ -101,7 +120,7 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .extern SYMBOL(gNativeState)
     .extern SYMBOL(gStackSwitcher)
     .extern SYMBOL(gTestEnd)
-    .extern SYMBOL(gStackSaveSlot)
+    .extern SYMBOL(gStackSaveSlots)
 #endif  /* IN_TEST_GENERATOR */
 
     .text
@@ -112,24 +131,29 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
 SYMBOL(InvokeTestCase):
     .cfi_startproc
 
-    /* Change stacks */
-    mov     x30, sp
-    adr     x30, SYMBOL(gStackSaveSlot)
-    str     x30, [x30, #0]
-    ldr     x30, SYMBOL(gStackSwitcher)
-    mov     sp, x30
+    /* Get the address of stack save slots into x28 */
+    adrp    x28, SYMBOL(gStackSaveSlots)
+    add     x28, x28, :lo12:SYMBOL(gStackSaveSlots)
+
+    str     x29, [x28, #8]  /* Save x29 into slot 1 */
+    mov     x29, sp
+    str     x29, [x28, #0]  /* Save the stack pointer into slot 0 */
+    ldr     x29, [x28, #8]  /* Restore x29 */
+
+    /* Swap off of the native stack */
+    ldr     x28, SYMBOL(gStackSwitcher)
+    mov     sp, x28
 
     /* Start by saving the current native state into the `gLiftedState`
      * structure. This will be used as the initial state when running the
      * lifted tests. */
-    adrp    x30, SYMBOL(gLiftedState)
-    add     x30, x30, :lo12:SYMBOL(gLiftedState)
+    adrp    x28, SYMBOL(gLiftedState)
+    add     x28, x28, :lo12:SYMBOL(gLiftedState)
 #include "generated/Arch/AArch64/SaveState.S"
 
     /* Branch to the test to run */
-    adrp    x30, SYMBOL(gTestToRun)
-    add     x30, x30, :lo12:SYMBOL(gTestToRun)
-    br      x30
+    ldr     x28, SYMBOL(gTestToRun)
+    br      x28
 
     .cfi_endproc
 
@@ -140,13 +164,13 @@ SYMBOL(__aarch64_save_state_after):
     /* Save the current native state into the `gNativeState`, which now
      * contains the post-test state for eventual comparison against lifted
      * execution. Finally, go and restore the originally saved state. */
-    adrp    x30, SYMBOL(gLiftedState)
-    add     x30, x30, :lo12:SYMBOL(gLiftedState)
+    adrp    x28, SYMBOL(gNativeState)
+    add     x28, x28, :lo12:SYMBOL(gNativeState)
 #include "generated/Arch/AArch64/SaveState.S"
 #include "generated/Arch/AArch64/RestoreState.S"
 
-    ldr     x30, SYMBOL(gStackSaveSlot)
-    mov     sp, x30
+    ldr     x28, SYMBOL(gStackSaveSlots)  /* Load the saves SP from slot 0 */
+    mov     sp, x28
 
     ret
     .cfi_endproc
@@ -157,6 +181,8 @@ SYMBOL(__aarch64_save_state_after):
     .section "__aarch64_test_table", "a"
     .globl SYMBOL(__aarch64_test_table_begin)
 SYMBOL(__aarch64_test_table_begin):
+
+#include "tests/AArch64/BINARY/SUB.S"
 
      /* Create a symbol that represents the end of the test information table. */
     .section "__aarch64_test_table", "a"
