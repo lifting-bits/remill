@@ -126,7 +126,7 @@ ALWAYS_INLINE static bool CompareFloats(FloatCompareOperator op, T v1, T v2) {
   }
 }
 
-#ifndef issignaling
+#if !defined(issignaling)
 
 union nan32_t {
   float32_t f;
@@ -173,7 +173,7 @@ ALWAYS_INLINE bool issignaling(float64_t x) {
   return !x_nan.is_quiet_nan;
 }
 
-#endif
+#endif  // !defined(issignaling)
 
 template <typename S1, typename S2>
 DEF_SEM(COMISS, S1 src1, S2 src2) {
