@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(DEFAULT_BC_COMPILER_FLAGS "-std=gnu++11 -emit-llvm -Wno-unknown-warning-option -Wall -Wshadow -Wconversion -Wpadded -pedantic -Wshorten-64-to-32 -Wno-gnu-anonymous-struct -Wno-return-type-c-linkage -Wno-gnu-zero-variadic-macro-arguments -Wno-nested-anon-types -Wno-extended-offsetof -Wno-gnu-statement-expression -Wno-c99-extensions -Wno-ignored-attributes -mtune=generic -fno-vectorize -fno-slp-vectorize -ffreestanding -fno-common -fno-builtin -fno-exceptions -fno-rtti -fno-asynchronous-unwind-tables -Wno-unneeded-internal-declaration -Wno-unused-function")
+set(DEFAULT_BC_COMPILER_FLAGS "-std=gnu++11 -emit-llvm -Wno-unknown-warning-option -Wall -Wshadow -Wconversion -Wpadded -pedantic -Wshorten-64-to-32 -Wno-gnu-anonymous-struct -Wno-return-type-c-linkage -Wno-gnu-zero-variadic-macro-arguments -Wno-nested-anon-types -Wno-extended-offsetof -Wno-gnu-statement-expression -Wno-c99-extensions -Wno-ignored-attributes -mtune=generic -fno-vectorize -fno-slp-vectorize -ffreestanding -fno-common -fno-builtin -fno-exceptions -fno-rtti -fno-asynchronous-unwind-tables -Wno-unneeded-internal-declaration -Wno-unused-function -mno-sse -mno-avx -mno-3dnow")
 
 if (NOT CMAKE_BC_COMPILE_OBJECT)
     if (NOT DEFINED CMAKE_BC_COMPILER)
@@ -38,11 +38,14 @@ endif ()
 set(add_runtime_usage "add_runtime(target_name ARCH target_arch SOURCES <source file list> ADDRESS_SIZE <size>")
 
 function (add_runtime target_name)
+    
+    # NOTE(pag): Using the x86-64 target here is intentional, even if the host
+    #            arch is *not* x86.
+    list(APPEND options "-target x86_64-unknown-unknwon")
+    list(APPEND options "-m64")
+
     foreach (macro_parameter ${ARGN})
         if ("${macro_parameter}" STREQUAL "SOURCES")
-            set(state "${macro_parameter}")
-            continue ()
-        elseif ("${macro_parameter}" STREQUAL "ARCH")
             set(state "${macro_parameter}")
             continue ()
         elseif ("${macro_parameter}" STREQUAL "ADDRESS_SIZE")
@@ -54,16 +57,11 @@ function (add_runtime target_name)
             set_source_files_properties("${macro_parameter}" PROPERTIES LANGUAGE BC)
             list(APPEND source_file_list "${macro_parameter}")
 
-        elseif ("${state}" STREQUAL "ARCH")
-            list(APPEND options "-target ${macro_parameter}-unknown-unknown")
-            set(arch_found True)
-
         elseif ("${state}" STREQUAL "ADDRESS_SIZE")
             if (NOT "${macro_parameter}" MATCHES "^[0-9]+$")
                 message(SEND_ERROR "Invalid ADDRESS_SIZE parameter passed to add_runtime")
             endif ()
 
-            list(APPEND options "-m${macro_parameter}")
             list(APPEND definitions "ADDRESS_SIZE_BITS=${macro_parameter}")
             set(address_size_bits_found True)
 
@@ -75,10 +73,6 @@ function (add_runtime target_name)
     foreach (source_file ${sourcefile_list})
         set_source_files_properties("${source_file}" PROPERTIES LANGUAGE BC)
     endforeach ()
-
-    if (NOT arch_found)
-        message(SEND_ERROR "Missing target architecture.")
-    endif ()
 
     if (NOT address_size_bits_found)
         message(SEND_ERROR "Missing address size.")

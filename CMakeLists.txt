@@ -27,9 +27,12 @@ set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 #
 
 if (DEFINED ENV{TRAILOFBITS_LIBRARIES})
-    set(LIBRARY_REPOSITORY_ROOT $ENV{TRAILOFBITS_LIBRARIES})
-    include("${LIBRARY_REPOSITORY_ROOT}/cmake/repository.cmake")
+    set(LIBRARY_REPOSITORY_ROOT $ENV{TRAILOFBITS_LIBRARIES}
+        CACHE PATH "Location of cxx-common libraries.")
+endif ()
 
+if (DEFINED LIBRARY_REPOSITORY_ROOT)
+    include("${LIBRARY_REPOSITORY_ROOT}/cmake/repository.cmake")
     message(STATUS "Using the following library repository: ${LIBRARY_REPOSITORY_ROOT}")
 else ()
     message(STATUS "Using system libraries")
