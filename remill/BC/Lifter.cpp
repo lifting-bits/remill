@@ -378,7 +378,7 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(
         << " in order to store the address of the register.";
 
     auto val = LoadRegAddress(block, arch_reg.name);
-    return new llvm::PtrToIntInst(val, arg_type);
+    return new llvm::PtrToIntInst(val, arg_type, "", block);
 
   } else {
     CHECK(arg_type->isIntegerTy() || arg_type->isFloatingPointTy())

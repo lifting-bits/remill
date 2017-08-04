@@ -51,7 +51,7 @@
  * and bracketed by the `__aarch64_test_table_begin` and
  * `__aarch64_test_table_end` symbols, respectively.
  */
-#define TEST_BEGIN(instr_name, num_args) \
+#define TEST_BEGIN(isel_name, instr_name, num_args) \
     .text ; \
     \
     .align 16 ; \
@@ -66,11 +66,16 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .balign 128 ; \
     2: \
     .quad 3f ; \
-    .quad 6f ; \
+    .quad 7f ; \
     .quad 1b ; \
     .quad 4f ; \
     .quad 5f ; \
     .quad num_args ; \
+    .quad 6f ; \
+    \
+    .rodata ; \
+    6: \
+    .asciz TO_STRING(isel_name) ; \
     \
     .text ; \
     3: \
@@ -83,16 +88,15 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
  */
 #ifdef IN_TEST_GENERATOR
 # define TEST_END \
-    6: \
+    7: \
     .cfi_endproc ; \
     .section "__aarch64_test_table", "a" ; \
     .quad 0 ; \
-    .text ; \
     hlt #0 ;
 
 #else
 # define TEST_END \
-    6: \
+    7: \
     b SYMBOL(__aarch64_save_state_after) ; \
     .cfi_endproc ; \
     .section "__aarch64_test_table", "a" ; \
@@ -141,7 +145,9 @@ SYMBOL(InvokeTestCase):
     ldr     x29, [x28, #8]  /* Restore x29 */
 
     /* Swap off of the native stack */
-    ldr     x28, SYMBOL(gStackSwitcher)
+    adrp    x28, SYMBOL(gStackSwitcher)
+    add     x28, x28, :lo12:SYMBOL(gStackSwitcher)
+    ldr     x28, [x28]
     mov     sp, x28
 
     /* Start by saving the current native state into the `gLiftedState`
@@ -152,7 +158,9 @@ SYMBOL(InvokeTestCase):
 #include "generated/Arch/AArch64/SaveState.S"
 
     /* Branch to the test to run */
-    ldr     x28, SYMBOL(gTestToRun)
+    adrp    x28, SYMBOL(gTestToRun)
+    add     x28, x28, :lo12:SYMBOL(gTestToRun)
+    ldr     x28, [x28]
     br      x28
 
     .cfi_endproc
@@ -169,7 +177,9 @@ SYMBOL(__aarch64_save_state_after):
 #include "generated/Arch/AArch64/SaveState.S"
 #include "generated/Arch/AArch64/RestoreState.S"
 
-    ldr     x28, SYMBOL(gStackSaveSlots)  /* Load the saves SP from slot 0 */
+    adrp    x28, SYMBOL(gStackSaveSlots)
+    add     x28, x28, :lo12:SYMBOL(gStackSaveSlots)
+    ldr     x28, [x28]  /* Load the saves SP from slot 0 */
     mov     sp, x28
 
     ret
@@ -182,6 +192,7 @@ SYMBOL(__aarch64_save_state_after):
     .globl SYMBOL(__aarch64_test_table_begin)
 SYMBOL(__aarch64_test_table_begin):
 
+#include "tests/AArch64/BINARY/ADD.S"
 #include "tests/AArch64/BINARY/SUB.S"
 
      /* Create a symbol that represents the end of the test information table. */

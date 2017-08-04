@@ -34,6 +34,7 @@ struct alignas(128) TestInfo {
   const uint64_t * const args_begin;
   const uint64_t * const args_end;
   const uint64_t num_args;
+  const char *isel_name;
 } __attribute__((packed));
 
 extern "C" {

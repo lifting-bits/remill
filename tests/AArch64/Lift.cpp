@@ -82,6 +82,8 @@ static void AddFunctionToModule(llvm::Module *module,
   remill::IntrinsicTable intrinsics(module);
   remill::InstructionLifter lifter(word_type, &intrinsics);
 
+  auto saw_isel = false;
+
   auto block = &(func->front());
   auto addr = test.test_begin;
   while (addr < test.test_end) {
@@ -99,8 +101,14 @@ static void AddFunctionToModule(llvm::Module *module,
     CHECK(lifter.LiftIntoBlock(inst, block))
         << "Can't lift test instruction in " << test.test_name;
 
+    saw_isel = saw_isel || inst.function == test.isel_name;
+
     addr += inst.NumBytes();
   }
+
+  CHECK(saw_isel)
+      << "Test " << test.test_name << " does not have an instruction that "
+      << "uses the semantics function " << test.isel_name;
 
   remill::AddTerminatingTailCall(block, intrinsics.missing_block);
 }

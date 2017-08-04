@@ -285,6 +285,9 @@ static void RunWithFlags(const test::TestInfo *info,
 
   auto lifted_func = gTranslatedFuncs[info->test_begin];
 
+  // Includes the additional injected `adrp` and `add`.
+  lifted_state->gpr.pc.aword = static_cast<addr_t>(info->test_begin + 4 + 4);
+
   // This will execute on our stack but the lifted code will operate on
   // `gLiftedStack`. The mechanism behind this is that `gLiftedState` is the
   // native program state recorded before executing the native testcase,
@@ -292,12 +295,15 @@ static void RunWithFlags(const test::TestInfo *info,
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
     (void) lifted_func(
-        static_cast<addr_t>(info->test_begin),
+        lifted_state->gpr.pc.aword,
         *lifted_state,
         nullptr);
   } else {
     EXPECT_TRUE(native_test_faulted);
   }
+
+  // The native test doesn't update
+  native_state->gpr.pc.qword = info->test_end;
 
   // Used in the test cases to hold the `State *`.
   lifted_state->gpr.x28.qword = 0;
