@@ -452,6 +452,9 @@ struct RVnW<vec64_t> final {
   uint64_t * const val_ref;
 };
 
+// A `void` pointer is used so that we can treat different vector types
+// uniformly (from the LLVM bitcode side). That is, the type of value passed
+// in may be a pointer to a wider vector than was is specified by `T`.
 template <typename T>
 struct Vn final {
   const void * const val;

@@ -20,6 +20,11 @@ set(ARMRUNTIME_SOURCEFILES
     BasicBlock.cpp
 )
 
+set(ARMRUNTIME_COMPILEOPTIONS
+    -mno-hvx
+    -mno-hvx-double
+)
+
 set_source_files_properties(Instructions.cpp PROPERTIES COMPILE_FLAGS "-O3 -g0")
 set_source_files_properties(BasicBlock.cpp PROPERTIES COMPILE_FLAGS "-O0 -g3")
 
@@ -30,6 +35,7 @@ function (add_runtime_helper target_name address_bit_size little_endian)
 
     add_runtime(${target_name} ARCH aarch64 SOURCES ${ARMRUNTIME_SOURCEFILES} ADDRESS_SIZE ${address_bit_size})
     target_include_directories(${target_name} PRIVATE ${ARMRUNTIME_INCLUDEDIRECTORIES})
+    target_compile_options(${target_name} PRIVATE ${ARMRUNTIME_COMPILEOPTIONS})
 
     if (little_endian)
         target_compile_definitions(${target_name} PRIVATE "LITTLE_ENDIAN=1")

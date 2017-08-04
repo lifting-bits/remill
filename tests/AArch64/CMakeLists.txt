@@ -59,7 +59,7 @@ add_custom_command(
     OUTPUT  tests_aarch64.S
     COMMAND ${CMAKE_BC_COMPILER}
             -Wno-override-module
-            -S -O0 -g0
+            -S -O3 -g0
             -c tests_aarch64.bc
             -o tests_aarch64.S
     DEPENDS tests_aarch64.bc

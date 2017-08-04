@@ -30,7 +30,7 @@
 #define REG_SP state.gpr.sp.qword
 #define REG_LP state.gpr.x30.qword
 #define REG_FP state.gpr.x29.qword
-#define REG_XZR state.gpr.x31.qword
+#define REG_XZR static_cast<uint64_t>(0)
 
 #define REG_X0 state.gpr.x0.qword
 #define REG_X1 state.gpr.x1.qword

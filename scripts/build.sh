@@ -44,7 +44,7 @@ function GetUbuntuOSVersion
       return 0
     ;;
     *)
-      printf "[x] Ubuntu ${DISTRIB_CODENAME} is not supported.\n"
+      printf "[x] Ubuntu ${DISTRIB_CODENAME} is not supported. Only xenial (16.04) and trusty (14.04) are supported.\n"
       return 1
     ;;
   esac
@@ -65,7 +65,7 @@ function GetArchVersion
       return 0
     ;;
     *)
-      printf "[x] ${version} architecture is not supported.\n"
+      printf "[x] ${version} architecture is not supported. Only aarch64 and x86_64 (i.e. amd64) are supported.\n"
       return 1
     ;;
   esac
@@ -182,14 +182,6 @@ function Build
 function GetLLVMVersion
 {
   case ${1} in
-    3.6)
-      LLVM_VERSION=llvm36
-      return 0
-    ;;
-    3.7)
-      LLVM_VERSION=llvm37
-      return 0
-    ;;
     3.8)
       LLVM_VERSION=llvm38
       return 0
@@ -203,7 +195,7 @@ function GetLLVMVersion
     ;;
     *)
       # unknown option
-      printf "[x] Unknown LLVM version ${1}\n"
+      printf "[x] Unknown LLVM version ${1}. Valid versions are 3.8, 3.9, and 4.0.\n"
       exit 1
     ;;
   esac

@@ -55,7 +55,7 @@ function (add_runtime target_name)
             list(APPEND source_file_list "${macro_parameter}")
 
         elseif ("${state}" STREQUAL "ARCH")
-            list(APPEND options "-target ${macro_parameter}")
+            list(APPEND options "-target ${macro_parameter}-unknown-unknown")
             set(arch_found True)
 
         elseif ("${state}" STREQUAL "ADDRESS_SIZE")
