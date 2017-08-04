@@ -364,6 +364,22 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(
     }
     return val;
 
+  // LLVM on AArch64 converts things like `RnW<uint64_t>`, which is a struct
+  // containing a `uint64_t *`, into a `uintptr_t` when they are being passed
+  // as arguments.
+  } else if (Operand::kActionWrite == op.action) {
+    CHECK(GetHostArch()->IsAArch64() || GetTargetArch()->IsAArch64())
+        << "Operand " << op.Debug() << " is a write operand, but argument "
+        << " type " << LLVMThingToString(arg_type) << " is not a pointer type "
+        << std::hex << inst.pc;
+
+    CHECK(arg_type == word_type)
+        << LLVMThingToString(arg_type) << " must be a pointer-sized integer "
+        << " in order to store the address of the register.";
+
+    auto val = LoadRegAddress(block, arch_reg.name);
+    return new llvm::PtrToIntInst(val, arg_type, "", block);
+
   } else {
     CHECK(arg_type->isIntegerTy() || arg_type->isFloatingPointTy())
         << "Expected " << arch_reg.name << " to be an integral or float type "

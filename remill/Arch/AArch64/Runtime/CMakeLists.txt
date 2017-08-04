@@ -28,7 +28,7 @@ set(ARMRUNTIME_INCLUDEDIRECTORIES ${CMAKE_SOURCE_DIR})
 function (add_runtime_helper target_name address_bit_size little_endian)
     message(" > Generating runtime target: ${target_name}")
 
-    add_runtime(${target_name} ARCH aarch64 SOURCES ${ARMRUNTIME_SOURCEFILES} ADDRESS_SIZE ${address_bit_size})
+    add_runtime(${target_name} SOURCES ${ARMRUNTIME_SOURCEFILES} ADDRESS_SIZE ${address_bit_size})
     target_include_directories(${target_name} PRIVATE ${ARMRUNTIME_INCLUDEDIRECTORIES})
 
     if (little_endian)

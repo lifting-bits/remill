@@ -31,7 +31,7 @@ class SyncHyperCall {
     kAMD64EmulateInstruction,
     kMipsEmulateInstruction,
 
-    // TODO(pag): How to distinguish litte- and big-endian?
+    // TODO(pag): How to distinguish little- and big-endian?
     kAArch64EmulateInstruction,
 
     kAssertPrivileged,

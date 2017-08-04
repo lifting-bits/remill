@@ -27,9 +27,12 @@ set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 #
 
 if (DEFINED ENV{TRAILOFBITS_LIBRARIES})
-    set(LIBRARY_REPOSITORY_ROOT $ENV{TRAILOFBITS_LIBRARIES})
-    include("${LIBRARY_REPOSITORY_ROOT}/cmake/repository.cmake")
+    set(LIBRARY_REPOSITORY_ROOT $ENV{TRAILOFBITS_LIBRARIES}
+        CACHE PATH "Location of cxx-common libraries.")
+endif ()
 
+if (DEFINED LIBRARY_REPOSITORY_ROOT)
+    include("${LIBRARY_REPOSITORY_ROOT}/cmake/repository.cmake")
     message(STATUS "Using the following library repository: ${LIBRARY_REPOSITORY_ROOT}")
 else ()
     message(STATUS "Using system libraries")
@@ -155,9 +158,9 @@ set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}.${LLVM_MINOR_VERSION}")
 # target settings
 #
 
-list(APPEND PROJECT_DEFINITIONS "INSTALL_SEMANTICS_DIR=\"${CMAKE_INSTALL_PREFIX}/share/remill/${REMILL_LLVM_VERSION}/semantics/\"")
-list(APPEND PROJECT_DEFINITIONS "BUILD_SEMANTICS_DIR_X86=\"${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/X86/Runtime/\"")
-list(APPEND PROJECT_DEFINITIONS "BUILD_SEMANTICS_DIR_AARCH64=\"${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/AArch64/Runtime/\"")
+list(APPEND PROJECT_DEFINITIONS "REMILL_INSTALL_SEMANTICS_DIR=\"${CMAKE_INSTALL_PREFIX}/share/remill/${REMILL_LLVM_VERSION}/semantics/\"")
+list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_X86=\"${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/X86/Runtime/\"")
+list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_AARCH64=\"${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/AArch64/Runtime/\"")
 
 add_library(${PROJECT_NAME} STATIC
 
@@ -201,10 +204,24 @@ add_subdirectory(remill/Arch/AArch64/Runtime)
 # tools
 add_subdirectory(tools)
 
-# only enable tests when compiling under x64
-if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-    if(UNIX AND NOT APPLE)
-      set(LINUX TRUE)
-      add_subdirectory(tests/X86)
-  endif ()
+if(UNIX AND NOT APPLE)
+  set(LINUX TRUE)
+else()
+  set(LINUX FALSE)
 endif ()
+
+if (LINUX)
+  if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+  
+    # only enable x86 tests when compiling under x64
+    if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+      add_subdirectory(tests/X86)
+    endif ()
+    
+    # only enable aarch64 tests when compiling under aarch64.
+    if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
+      add_subdirectory(tests/AArch64)
+    endif ()
+    
+  endif ()
+endif (LINUX)

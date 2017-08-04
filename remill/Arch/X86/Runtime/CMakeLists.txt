@@ -23,21 +23,14 @@ set(X86RUNTIME_SOURCEFILES
 set_source_files_properties(Instructions.cpp PROPERTIES COMPILE_FLAGS "-O3 -g0")
 set_source_files_properties(BasicBlock.cpp PROPERTIES COMPILE_FLAGS "-O0 -g3")
 
-set(X86RUNTIME_COMPILEOPTIONS
-    -mno-sse
-    -mno-avx
-    -mno-3dnow
-)
-
 set(X86RUNTIME_INCLUDEDIRECTORIES ${CMAKE_SOURCE_DIR})
 
 function (add_runtime_helper target_name address_bit_size enable_avx enable_avx512)
     message(" > Generating runtime target: ${target_name}")
 
-    add_runtime(${target_name} ARCH x86_64 SOURCES ${X86RUNTIME_SOURCEFILES} ADDRESS_SIZE ${address_bit_size})
+    add_runtime(${target_name} SOURCES ${X86RUNTIME_SOURCEFILES} ADDRESS_SIZE ${address_bit_size})
 
     target_include_directories(${target_name} PRIVATE ${X86RUNTIME_INCLUDEDIRECTORIES})
-    target_compile_options(${target_name} PRIVATE ${X86RUNTIME_COMPILEOPTIONS})
     target_compile_definitions(${target_name} PRIVATE "HAS_FEATURE_AVX=${enable_avx}")
     target_compile_definitions(${target_name} PRIVATE "HAS_FEATURE_AVX512=${enable_avx512}")
 

@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-#ifndef TESTS_X86_TESTS_S_
-#define TESTS_X86_TESTS_S_
-
 #ifndef ADDRESS_SIZE_BITS
 # define ADDRESS_SIZE_BITS 64
 #endif
@@ -517,6 +514,3 @@ SYMBOL(__x86_test_table_begin):
     .section "__x86_test_table", "a"
     .globl SYMBOL(__x86_test_table_end)
 SYMBOL(__x86_test_table_end):
-
-
-#endif  /* TESTS_X86_TESTS_S_ */
