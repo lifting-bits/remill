@@ -194,6 +194,7 @@ SYMBOL(__aarch64_test_table_begin):
 
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
+#include "tests/AArch64/BINARY/SUB_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/SUB_n_ADDSUB_SHIFT.S"
 
      /* Create a symbol that represents the end of the test information table. */

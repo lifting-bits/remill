@@ -1114,6 +1114,16 @@ bool TryDecodeADD_64_ADDSUB_IMM(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// SUB  <Wd|WSP>, <Wn|WSP>, #<imm>{, <shift>}
+bool TryDecodeSUB_32_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  return TryDecodeADD_32_ADDSUB_IMM(data, inst);
+}
+
+// SUB  <Xd|SP>, <Xn|SP>, #<imm>{, <shift>}
+bool TryDecodeSUB_64_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  return TryDecodeADD_64_ADDSUB_IMM(data, inst);
+}
+
 // SUB  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
 bool TryDecodeSUB_32_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
   if (1 & (data.imm6.uimm >> 5)) {
@@ -1141,6 +1151,16 @@ bool TryDecodeSUB_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
   AddShiftRegOperand(inst, kRegX, kUseAsValue, data.Rm,
                      GetOperandShift(shift_type), data.imm6.uimm);
   return true;
+}
+
+// ADD  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeADD_32_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeSUB_32_ADDSUB_SHIFT(data, inst);
+}
+
+// ADD  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeADD_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeSUB_64_ADDSUB_SHIFT(data, inst);
 }
 
 // CMP  <Wn>, <Wm>{, <shift> #<amount>}
@@ -1240,35 +1260,6 @@ bool TryDecodeASR_SBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
   AddImmOperand(inst, data.immr.uimm, kUnsigned, 8);
-  return true;
-}
-
-// ADD  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
-bool TryDecodeADD_32_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
-  if (1 & (data.imm6.uimm >> 5)) {
-    return false;  // if sf == '0' && imm6<5> == '1' then ReservedValue();.
-  }
-  auto shift_type = static_cast<Shift>(data.shift);
-  if (shift_type == kShiftROR) {
-    return false;  // Shift type '11' is a reserved value.
-  }
-  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
-  AddShiftRegOperand(inst, kRegW, kUseAsValue, data.Rm,
-                     GetOperandShift(shift_type), data.imm6.uimm);
-  return true;
-}
-
-// ADD  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
-bool TryDecodeADD_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
-  auto shift_type = static_cast<Shift>(data.shift);
-  if (shift_type == kShiftROR) {
-    return false;  // Shift type '11' is a reserved value.
-  }
-  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
-  AddShiftRegOperand(inst, kRegX, kUseAsValue, data.Rm,
-                     GetOperandShift(shift_type), data.imm6.uimm);
   return true;
 }
 
