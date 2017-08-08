@@ -694,6 +694,9 @@ class X86Arch : public Arch {
       uint64_t address, const std::string &inst_bytes,
       Instruction &inst) const override;
 
+  // Maximum number of bytes in an instruction.
+  uint64_t MaxInstructionSize(void) const override;
+
  private:
   X86Arch(void) = delete;
 };
@@ -711,6 +714,11 @@ X86Arch::X86Arch(OSName os_name_, ArchName arch_name_)
 }
 
 X86Arch::~X86Arch(void) {}
+
+// Maximum number of bytes in an instruction for this particular architecture.
+uint64_t X86Arch::MaxInstructionSize(void) const {
+  return 15;
+}
 
 // Converts an LLVM module object to have the right triple / data layout
 // information for the target architecture.
@@ -849,6 +857,7 @@ bool X86Arch::DecodeInstruction(
   inst.arch_name = arch_name;
   inst.operand_size = xed_decoded_inst_get_operand_width(xedd);
   inst.function = InstructionFunctionName(xedd);
+  inst.bytes = inst_bytes.substr(0, xed_decoded_inst_get_length(xedd));
   inst.category = CreateCategory(xedd);
   inst.pc = address;
   inst.next_pc = address + xed_decoded_inst_get_length(xedd);

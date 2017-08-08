@@ -538,11 +538,16 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
 
         // Declare the global in the new module.
         llvm::GlobalValue *new_global_val = nullptr;
-        if (llvm::isa<llvm::Function>(global_val)) {
+
+        if (auto global_val_func = llvm::dyn_cast<llvm::Function>(global_val)) {
           new_global_val =
               llvm::dyn_cast<llvm::GlobalValue>(dest_mod->getOrInsertFunction(
                   global_val->getName(), llvm::dyn_cast<llvm::FunctionType>(
                                              GetValueType(global_val))));
+
+          if (auto as_func = llvm::dyn_cast<llvm::Function>(new_global_val)) {
+            as_func->setAttributes(global_val_func->getAttributes());
+          }
 
         } else if (llvm::isa<llvm::GlobalVariable>(global_val)) {
           new_global_val =

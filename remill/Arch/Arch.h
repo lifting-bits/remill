@@ -50,6 +50,9 @@ class Arch {
       uint64_t address, const std::string &instr_bytes,
       Instruction &inst) const = 0;
 
+  // Maximum number of bytes in an instruction for this particular architecture.
+  virtual uint64_t MaxInstructionSize(void) const = 0;
+
   // Number of bits in an address.
   const OSName os_name;
   const ArchName arch_name;

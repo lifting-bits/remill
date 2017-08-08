@@ -87,6 +87,7 @@ endif ()
 enable_language(C)
 enable_language(CXX)
 enable_language(ASM)
+enable_language(BC)
 
 #
 # compiler settings
@@ -185,7 +186,7 @@ add_library(${PROJECT_NAME} STATIC
 # also be set to PUBLIC since sub-tools of remill include remill's headers directly.
 list(APPEND PROJECT_INCLUDEDIRECTORIES ${CMAKE_SOURCE_DIR})
 
-# add everything as public; the remill_lift executable will inherit all settings from us
+# add everything as public.
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PUBLIC SYSTEM ${PROJECT_INCLUDEDIRECTORIES})
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_DEFINITIONS})

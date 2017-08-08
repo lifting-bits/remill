@@ -114,6 +114,9 @@ class AArch64Arch : public Arch {
       uint64_t address, const std::string &instr_bytes,
       Instruction &inst) const override;
 
+  // Maximum number of bytes in an instruction.
+  uint64_t MaxInstructionSize(void) const override;
+
  private:
   AArch64Arch(void) = delete;
 };
@@ -122,6 +125,11 @@ AArch64Arch::AArch64Arch(OSName os_name_, ArchName arch_name_)
     : Arch(os_name_, arch_name_) {}
 
 AArch64Arch::~AArch64Arch(void) {}
+
+// Maximum number of bytes in an instruction for this particular architecture.
+uint64_t AArch64Arch::MaxInstructionSize(void) const {
+  return 4;
+}
 
 void AArch64Arch::PrepareModule(llvm::Module *mod) const {
   std::string dl;
@@ -478,6 +486,7 @@ bool AArch64Arch::DecodeInstruction(
     return false;
   }
 
+  inst.bytes = inst_bytes.substr(0, kInstructionSize);
   inst.category = InstCategory(dinst);
   inst.function = aarch64::InstFormToString(dinst.iform);
 

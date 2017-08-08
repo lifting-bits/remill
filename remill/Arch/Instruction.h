@@ -142,8 +142,8 @@ class Instruction {
   // Name of semantics function that implements this instruction.
   std::string function;
 
-//  // The disassembly of this instruction.
-//  std::string disassembly;
+  // The decoded bytes of the instruction.
+  std::string bytes;
 
   // Program counter for this instruction and the next instruction.
   uint64_t pc;

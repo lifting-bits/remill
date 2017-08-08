@@ -192,8 +192,9 @@ SYMBOL(__aarch64_save_state_after):
     .globl SYMBOL(__aarch64_test_table_begin)
 SYMBOL(__aarch64_test_table_begin):
 
-#include "tests/AArch64/BINARY/ADD.S"
-#include "tests/AArch64/BINARY/SUB.S"
+#include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
+#include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
+#include "tests/AArch64/BINARY/SUB_n_ADDSUB_SHIFT.S"
 
      /* Create a symbol that represents the end of the test information table. */
     .section "__aarch64_test_table", "a"
