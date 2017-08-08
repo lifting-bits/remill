@@ -38,7 +38,7 @@
 #include "remill/BC/Util.h"
 #include "remill/OS/OS.h"
 
-#include "tests/X86/Test.h"
+#include "tests/AArch64/Test.h"
 
 #ifdef __APPLE__
 # define SYMBOL_PREFIX "_"
@@ -51,6 +51,11 @@ DEFINE_string(bc_out, "",
 
 DECLARE_string(arch);
 DECLARE_string(os);
+
+extern "C" {
+int gNativeState [[gnu::used]] = 0;
+int gLiftedState [[gnu::used]] = 0;
+}  // extern
 
 namespace {
 
@@ -77,22 +82,33 @@ static void AddFunctionToModule(llvm::Module *module,
   remill::IntrinsicTable intrinsics(module);
   remill::InstructionLifter lifter(word_type, &intrinsics);
 
+  auto saw_isel = false;
+
   auto block = &(func->front());
   auto addr = test.test_begin;
   while (addr < test.test_end) {
-    std::string instr_bytes;
+    std::string inst_bytes;
     auto bytes = reinterpret_cast<const char *>(addr);
-    instr_bytes.insert(instr_bytes.end(), bytes, bytes + 15);
+    inst_bytes.insert(inst_bytes.end(), bytes, bytes + 4);
 
     remill::Instruction inst;
-    CHECK(arch->DecodeInstruction(addr, instr_bytes, inst))
+    CHECK(arch->DecodeInstruction(addr, inst_bytes, inst))
         << "Can't decode test instruction in " << test.test_name;
+
+    LOG(INFO)
+        << "Lifting " << inst.Serialize();
 
     CHECK(lifter.LiftIntoBlock(inst, block))
         << "Can't lift test instruction in " << test.test_name;
 
+    saw_isel = saw_isel || inst.function == test.isel_name;
+
     addr += inst.NumBytes();
   }
+
+  CHECK(saw_isel)
+      << "Test " << test.test_name << " does not have an instruction that "
+      << "uses the semantics function " << test.isel_name;
 
   remill::AddTerminatingTailCall(block, intrinsics.missing_block);
 }
@@ -105,9 +121,7 @@ extern "C" int main(int argc, char *argv[]) {
   google::InitGoogleLogging(argv[0]);
 
   auto os = remill::GetOSName(REMILL_OS);
-  auto arch_name = remill::GetArchName(FLAGS_arch);
-  auto arch = remill::Arch::Get(os, arch_name);
-  auto target_arch = remill::Arch::Get(os, remill::kArchAMD64_AVX512);
+  auto arch = remill::Arch::Get(os, remill::kArchAArch64LittleEndian);
 
   DLOG(INFO) << "Generating tests.";
 
@@ -117,8 +131,8 @@ extern "C" int main(int argc, char *argv[]) {
   remill::GetHostArch()->PrepareModule(module);
 
   for (auto i = 0U; ; ++i) {
-    const auto &test = test::__x86_test_table_begin[i];
-    if (&test >= &(test::__x86_test_table_end[0])) break;
+    const auto &test = test::__aarch64_test_table_begin[i];
+    if (&test >= &(test::__aarch64_test_table_end[0])) break;
     AddFunctionToModule(module, arch, test);
   }
 

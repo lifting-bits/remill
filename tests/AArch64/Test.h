@@ -14,36 +14,34 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_OS_OS_H_
-#define REMILL_OS_OS_H_
+#ifndef TESTS_AARCH64_TEST_H_
+#define TESTS_AARCH64_TEST_H_
 
-#include <string>
+struct State;
+struct Memory;
 
-#ifndef REMILL_OS
-# if defined(__APPLE__)
-#   define REMILL_OS "macos"
-# elif defined(__linux__)
-#   define REMILL_OS "linux"
-# elif defined(WIN32)
-#   define REMILL_OS "windows"
-# else
-#   error "Cannot infer current OS."
-# endif
-#endif
+namespace test {
 
-namespace remill {
-
-enum OSName : uint32_t {
-  kOSInvalid,
-  kOSmacOS,
-  kOSLinux,
-  kOSWindows
+enum : size_t {
+  kPageSize = 4096,
+  kMaxInstrLen = 4
 };
 
-OSName GetOSName(std::string name_);
+struct alignas(128) TestInfo {
+  const uintptr_t test_begin;
+  const uintptr_t test_end;
+  const char *test_name;
+  const uint64_t * const args_begin;
+  const uint64_t * const args_end;
+  const uint64_t num_args;
+  const char *isel_name;
+} __attribute__((packed));
 
-std::string GetOSName(OSName name);
+extern "C" {
+extern const TestInfo __aarch64_test_table_begin[];
+extern const TestInfo __aarch64_test_table_end[];
+}  // extern C
 
-}  // namespace remill
+}  // namespace test
 
-#endif  // REMILL_OS_OS_H_
+#endif  // TESTS_AARCH64_TEST_H_

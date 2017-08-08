@@ -18,72 +18,72 @@ namespace {
 
 // when '101' result = (PSTATE.N == PSTATE.V); // GE or LT
 static inline bool CondGE(const State &state) {
-  return state.pstate.N == state.pstate.V;
+  return FLAG_N == FLAG_V;
 }
 
 // when '101' result = (PSTATE.N == PSTATE.V); // GE or LT
 static inline bool CondLT(const State &state) {
-  return state.pstate.N != state.pstate.V;
+  return FLAG_N != FLAG_V;
 }
 
 // when '000' result = (PSTATE.Z == '1'); // EQ or NE
 static inline bool CondEQ(const State &state) {
-  return state.pstate.Z;
+  return FLAG_Z;
 }
 
 // when '000' result = (PSTATE.Z == '1'); // EQ or NE
 static inline bool CondNE(const State &state) {
-  return !state.pstate.Z;
+  return !FLAG_Z;
 }
 
 // when '110' result = (PSTATE.N == PSTATE.V && PSTATE.Z == '0'); // GT or LE
 static inline bool CondGT(const State &state) {
-  return (state.pstate.N == state.pstate.V) && !state.pstate.Z;
+  return (FLAG_N == FLAG_V) && !FLAG_Z;
 }
 
 // when '110' result = (PSTATE.N == PSTATE.V && PSTATE.Z == '0'); // GT or LE
 static inline bool CondLE(const State &state) {
-  return (state.pstate.N != state.pstate.V) || state.pstate.Z;
+  return (FLAG_N != FLAG_V) || FLAG_Z;
 }
 
 // when '001' result = (PSTATE.C == '1'); // CS or CC
 static inline bool CondCS(const State &state) {
-  return state.pstate.C;
+  return FLAG_C;
 }
 
 // when '001' result = (PSTATE.C == '1'); // CS or CC
 static inline bool CondCC(const State &state) {
-  return !state.pstate.C;
+  return !FLAG_C;
 }
 
 // when '010' result = (PSTATE.N == '1'); // MI or PL
 static inline bool CondMI(const State &state) {
-  return state.pstate.N;
+  return FLAG_N;
 }
 
 // when '010' result = (PSTATE.N == '1'); // MI or PL
 static inline bool CondPL(const State &state) {
-  return !state.pstate.N;
+  return !FLAG_N;
 }
 
 // when '011' result = (PSTATE.V == '1'); // VS or VC
 static inline bool CondVS(const State &state) {
-  return state.pstate.V;
+  return FLAG_V;
 }
 
 // when '011' result = (PSTATE.V == '1'); // VS or VC
 static inline bool CondVC(const State &state) {
-  return !state.pstate.V;
+  return !FLAG_V;
 }
 
 // when '100' result = (PSTATE.C == '1' && PSTATE.Z == '0'); // HI or LS
 static inline bool CondHI(const State &state) {
-  return state.pstate.C && !state.pstate.Z;
+  return FLAG_C && !FLAG_Z;
 }
 
 // when '100' result = (PSTATE.C == '1' && PSTATE.Z == '0'); // HI or LS
 static inline bool CondLS(const State &state) {
-  return !state.pstate.C || state.pstate.Z;
+  return !FLAG_C || FLAG_Z;
 }
 
 static inline bool CondAL(const State &state) {

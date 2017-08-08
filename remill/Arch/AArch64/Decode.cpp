@@ -10507,44 +10507,6 @@ bool TryDecodeLDLAR_LR64_LDSTEXCL(const InstData &, Instruction &) {
   return false;
 }
 
-// ADD ADD_32_addsub_shift:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm6     0
-//  11 x imm6     1
-//  12 x imm6     2
-//  13 x imm6     3
-//  14 x imm6     4
-//  15 x imm6     5
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0
-//  22 x shift    0
-//  23 x shift    1
-//  24 1
-//  25 1
-//  26 0
-//  27 1
-//  28 0
-//  29 0 S        0
-//  30 0 op       0
-//  31 0 sf       0
-// ADD  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
-bool TryDecodeADD_32_ADDSUB_SHIFT(const InstData &, Instruction &) {
-  return false;
-}
-
 // SSHLL SSHLL_asimdshf_L:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -22968,44 +22930,6 @@ bool TryDecodeSDIV_32_DP_2SRC(const InstData &, Instruction &) {
 //  31 1 sf       0
 // SDIV  <Xd>, <Xn>, <Xm>
 bool TryDecodeSDIV_64_DP_2SRC(const InstData &, Instruction &) {
-  return false;
-}
-
-// ADD ADD_32_addsub_imm:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm12    0
-//  11 x imm12    1
-//  12 x imm12    2
-//  13 x imm12    3
-//  14 x imm12    4
-//  15 x imm12    5
-//  16 x imm12    6
-//  17 x imm12    7
-//  18 x imm12    8
-//  19 x imm12    9
-//  20 x imm12    10
-//  21 x imm12    11
-//  22 x shift    0
-//  23 x shift    1
-//  24 1
-//  25 0
-//  26 0
-//  27 0
-//  28 1
-//  29 0 S        0
-//  30 0 op       0
-//  31 0 sf       0
-// ADD  <Wd|WSP>, <Wn|WSP>, #<imm>{, <shift>}
-bool TryDecodeADD_32_ADDSUB_IMM(const InstData &, Instruction &) {
   return false;
 }
 
@@ -44631,44 +44555,6 @@ bool TryDecodeSTP_Q_LDSTPAIR_OFF(const InstData &, Instruction &) {
   return false;
 }
 
-// ADR ADR_only_pcreladdr:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x immhi    0
-//   6 x immhi    1
-//   7 x immhi    2
-//   8 x immhi    3
-//   9 x immhi    4
-//  10 x immhi    5
-//  11 x immhi    6
-//  12 x immhi    7
-//  13 x immhi    8
-//  14 x immhi    9
-//  15 x immhi    10
-//  16 x immhi    11
-//  17 x immhi    12
-//  18 x immhi    13
-//  19 x immhi    14
-//  20 x immhi    15
-//  21 x immhi    16
-//  22 x immhi    17
-//  23 x immhi    18
-//  24 0
-//  25 0
-//  26 0
-//  27 0
-//  28 1
-//  29 x immlo    0
-//  30 x immlo    1
-//  31 0 op       0
-// ADR  <Xd>, <label>
-bool TryDecodeADR_ONLY_PCRELADDR(const InstData &, Instruction &) {
-  return false;
-}
-
 // LDSMINAB LDSMINAB_32_memop:
 //   0 x Rt       0
 //   1 x Rt       1
@@ -46072,44 +45958,6 @@ bool TryDecodeURSRA_ASIMDSHF_R(const InstData &, Instruction &) {
 //  31 0 size     1
 // LDURH  <Wt>, [<Xn|SP>{, #<simm>}]
 bool TryDecodeLDURH_32_LDST_UNSCALED(const InstData &, Instruction &) {
-  return false;
-}
-
-// SUB SUB_32_addsub_shift:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm6     0
-//  11 x imm6     1
-//  12 x imm6     2
-//  13 x imm6     3
-//  14 x imm6     4
-//  15 x imm6     5
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0
-//  22 x shift    0
-//  23 x shift    1
-//  24 1
-//  25 1
-//  26 0
-//  27 1
-//  28 0
-//  29 0 S        0
-//  30 1 op       0
-//  31 0 sf       0
-// SUB  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
-bool TryDecodeSUB_32_ADDSUB_SHIFT(const InstData &, Instruction &) {
   return false;
 }
 
@@ -51813,44 +51661,6 @@ bool TryDecodeFMLS_ASIMDSAME_ONLY(const InstData &, Instruction &) {
   return false;
 }
 
-// EOR EOR_32_log_shift:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm6     0
-//  11 x imm6     1
-//  12 x imm6     2
-//  13 x imm6     3
-//  14 x imm6     4
-//  15 x imm6     5
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0 N        0
-//  22 x shift    0
-//  23 x shift    1
-//  24 0
-//  25 1
-//  26 0
-//  27 1
-//  28 0
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 0 sf       0
-// EOR  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
-bool TryDecodeEOR_32_LOG_SHIFT(const InstData &, Instruction &) {
-  return false;
-}
-
 // LDSMAXA LDSMAXA_32_memop:
 //   0 x Rt       0
 //   1 x Rt       1
@@ -55952,44 +55762,6 @@ bool TryDecodeCMTST_ASIMDSAME_ONLY(const InstData &, Instruction &) {
 //  31 0
 // UADDL{2}  <Vd>.<Ta>, <Vn>.<Tb>, <Vm>.<Tb>
 bool TryDecodeUADDL_ASIMDDIFF_L(const InstData &, Instruction &) {
-  return false;
-}
-
-// MOVN MOV_MOVN_64_movewide:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x imm16    0
-//   6 x imm16    1
-//   7 x imm16    2
-//   8 x imm16    3
-//   9 x imm16    4
-//  10 x imm16    5
-//  11 x imm16    6
-//  12 x imm16    7
-//  13 x imm16    8
-//  14 x imm16    9
-//  15 x imm16    10
-//  16 x imm16    11
-//  17 x imm16    12
-//  18 x imm16    13
-//  19 x imm16    14
-//  20 x imm16    15
-//  21 x hw       0
-//  22 x hw       1
-//  23 1
-//  24 0
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 0 opc      1
-//  31 1 sf       0
-// MOV  <Xd>, #<imm>
-bool TryDecodeMOV_MOVN_64_MOVEWIDE(const InstData &, Instruction &) {
   return false;
 }
 

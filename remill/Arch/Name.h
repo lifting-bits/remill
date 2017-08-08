@@ -17,6 +17,18 @@
 #ifndef REMILL_ARCH_NAME_H_
 #define REMILL_ARCH_NAME_H_
 
+#ifndef REMILL_ARCH
+# if defined(__x86_64__)
+#   define REMILL_ARCH "amd64"
+# elif defined(__i386__) || defined(_M_X86)
+#   define REMILL_ARCH "x86"
+# elif defined(__aarch64__)
+#   define REMILL_ARCH "aarch64"
+# else
+#   error "Cannot infer current architecture."
+# endif
+#endif
+
 #include <string>
 
 namespace remill {

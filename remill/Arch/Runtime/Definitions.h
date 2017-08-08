@@ -31,12 +31,14 @@
 # define _IF_32BIT(...)
 # define _IF_64BIT(...) , __VA_ARGS__
 # define IF_64BIT_ELSE(a, b) a
+# define aword qword
 #else
 # define IF_32BIT(...) __VA_ARGS__
 # define IF_64BIT(...)
 # define _IF_32BIT(...) , __VA_ARGS__
 # define _IF_64BIT(...)
 # define IF_64BIT_ELSE(a, b) b
+# define aword dword
 #endif
 
 // Attributes that will force inlining of specific code.
