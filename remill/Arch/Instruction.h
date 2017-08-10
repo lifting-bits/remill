@@ -73,6 +73,7 @@ class Operand {
       kShiftLeftWithOnes,  // Shift left, filling low order bits with one.
       kShiftUnsignedRight,  // Also know as logical shift right.
       kShiftSignedRight,  // Also know as arithmetic shift right.
+      kShiftLeftAround,  // Rotate left.
       kShiftRightAround  // Rotate right.
     } shift_op;
 

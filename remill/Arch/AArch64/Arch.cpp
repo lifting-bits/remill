@@ -298,12 +298,11 @@ static void AddShiftRegOperand(Instruction &inst, RegClass rclass,
     AddRegOperand(inst, kActionRead, rclass, rtype, reg_num);
   } else {
     Operand op;
-    op.type = Operand::kTypeShiftRegister;
-
     op.shift_reg.reg = Reg(kActionRead, rclass, rtype, reg_num);
     op.shift_reg.shift_op = shift_type;
     op.shift_reg.shift_size = shift_size;
 
+    op.type = Operand::kTypeShiftRegister;
     op.size = op.shift_reg.reg.size;
     op.action = Operand::kActionRead;
     inst.operands.push_back(op);

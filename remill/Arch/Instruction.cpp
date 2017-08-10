@@ -72,20 +72,20 @@ std::string Operand::Debug(void) const {
       break;
 
     case Operand::kTypeShiftRegister:
-      ss << "(REG_" << reg.size << " ";
+      ss << "(REG_" << shift_reg.reg.size << " ";
       switch (shift_reg.extend_op) {
         case Operand::ShiftRegister::kExtendInvalid:
           ss << reg.name;
           break;
 
         case Operand::ShiftRegister::kExtendSigned:
-          ss << "sext(" << reg.name << "[" << (shift_reg.extract_size - 1)
-             << ":0])";
+          ss << "sext(" << shift_reg.reg.name << "["
+             << (shift_reg.extract_size - 1) << ":0])";
           break;
 
         case Operand::ShiftRegister::kExtendUnsigned:
-          ss << "zext(" << reg.name << "[" << (shift_reg.extract_size - 1)
-             << ":0])";
+          ss << "zext(" << shift_reg.reg.name << "["
+             << (shift_reg.extract_size - 1) << ":0])";
           break;
       }
 
@@ -107,6 +107,10 @@ std::string Operand::Debug(void) const {
 
         case Operand::ShiftRegister::kShiftSignedRight:
           ss << "s>>";
+          break;
+
+        case Operand::ShiftRegister::kShiftLeftAround:
+          ss << "rol";
           break;
 
         case Operand::ShiftRegister::kShiftRightAround:

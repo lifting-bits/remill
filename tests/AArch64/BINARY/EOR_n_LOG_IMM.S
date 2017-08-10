@@ -28,19 +28,6 @@ TEST_INPUTS(
     eor w9, w0, #0x10101010
 TEST_END
 
-TEST_BEGIN(EOR_32_LOG_IMM, eor_w9_w0_0x41414141, 1)
-TEST_INPUTS(
-    0,
-    1,
-    0xFFFFFFFF,
-    0xfafbfbfd,
-    0xf1f2f3f4,
-    0x0a0b0c0d,
-    0x01020304)
-
-    eor w9, w0, #0x41414141
-TEST_END
-
 /* EOR  <Xd|SP>, <Xn>, #<imm> */
 TEST_BEGIN(EOR_64_LOG_IMM, eor_x9_x0_0x1010101010101010, 1)
 TEST_INPUTS(

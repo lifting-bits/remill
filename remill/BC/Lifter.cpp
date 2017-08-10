@@ -261,8 +261,7 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
   const uint64_t one = 1;
   const uint64_t shift_size = op.shift_reg.shift_size;
 
-  const auto shift_val = llvm::ConstantInt::get(
-      val_type, shift_size % (val_size - one));
+  const auto shift_val = llvm::ConstantInt::get(val_type, shift_size);
 
   llvm::IRBuilder<> ir(block);
 
@@ -287,7 +286,12 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
     }
   }
 
-  if (Operand::ShiftRegister::kShiftInvalid != op.shift_reg.shift_op) {
+  if (shift_size) {
+    CHECK(shift_size < val_size)
+        << "Shift of size " << shift_size
+        << " is wider than the base register size in shift register in "
+        << inst.Serialize();
+
     switch (op.shift_reg.shift_op) {
       // Left shift.
       case Operand::ShiftRegister::kShiftLeftWithZeroes:
@@ -312,20 +316,30 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
         val = ir.CreateAShr(val, shift_val);
         break;
 
+        //     const unsigned int mask = (CHAR_BIT*sizeof(value)-1);
+        //( (-count) & mask ))
+
+      // Rotate left.
+      case Operand::ShiftRegister::kShiftLeftAround: {
+        const uint64_t shr_amount = (~shift_size + one) & (val_size - one);
+        const auto shr_val = llvm::ConstantInt::get(val_type, shr_amount);
+        const auto val1 = ir.CreateLShr(val, shr_val);
+        const auto val2 = ir.CreateShl(val, shift_val);
+        val = ir.CreateOr(val1, val2);
+        break;
+      }
+
       // Rotate right.
       case Operand::ShiftRegister::kShiftRightAround: {
         const uint64_t shl_amount = (~shift_size + one) & (val_size - one);
         const auto shl_val = llvm::ConstantInt::get(val_type, shl_amount);
         const auto val1 = ir.CreateLShr(val, shift_val);
         const auto val2 = ir.CreateShl(val, shl_val);
-        val = ir.CreateAnd(val1, val2);
+        val = ir.CreateOr(val1, val2);
         break;
       }
 
-      default:
-        LOG(FATAL)
-            << "Invalid shift operation type for instruction at "
-            << std::hex << inst.pc;
+      case Operand::ShiftRegister::kShiftInvalid:
         break;
     }
   }
