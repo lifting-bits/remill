@@ -35,7 +35,7 @@ DEF_SEM(ASR, D dst, S1 src1, S2 src2) {
 }
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(EOR_REG, D dst, S1 src1, S2 src2) {
+DEF_SEM(EOR, D dst, S1 src1, S2 src2) {
   WriteZExt(dst, UXor(Read(src1), Read(src2)));
   return memory;
 }
@@ -54,8 +54,11 @@ DEF_ISEL(SUB_64_ADDSUB_IMM) = SUB<R64W, R64, I64>;
 DEF_ISEL(SUB_32_ADDSUB_SHIFT) = SUB<R32W, R32, R32>;
 DEF_ISEL(SUB_64_ADDSUB_SHIFT) = SUB<R64W, R64, R64>;
 
-DEF_ISEL(EOR_32_LOG_SHIFT) = EOR_REG<R32W, R32, R32>;
-DEF_ISEL(EOR_64_LOG_SHIFT) = EOR_REG<R64W, R64, R64>;
+DEF_ISEL(EOR_32_LOG_SHIFT) = EOR<R32W, R32, R32>;
+DEF_ISEL(EOR_64_LOG_SHIFT) = EOR<R64W, R64, R64>;
+
+DEF_ISEL(EOR_32_LOG_IMM) = EOR<R32W, R32, I32>;
+DEF_ISEL(EOR_64_LOG_IMM) = EOR<R64W, R64, I64>;
 
 namespace {
 

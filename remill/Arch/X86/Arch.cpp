@@ -846,6 +846,10 @@ bool X86Arch::DecodeInstruction(
     const std::string &inst_bytes,
     Instruction &inst) const {
 
+  inst.pc = address;
+  inst.arch_name = arch_name;
+  inst.category = Instruction::kCategoryInvalid;
+
   xed_decoded_inst_t xedd_;
   xed_decoded_inst_t *xedd = &xedd_;
   auto mode = 32 == address_size ? &kXEDState32 : &kXEDState64;
@@ -854,12 +858,10 @@ bool X86Arch::DecodeInstruction(
     return false;
   }
 
-  inst.arch_name = arch_name;
   inst.operand_size = xed_decoded_inst_get_operand_width(xedd);
   inst.function = InstructionFunctionName(xedd);
   inst.bytes = inst_bytes.substr(0, xed_decoded_inst_get_length(xedd));
   inst.category = CreateCategory(xedd);
-  inst.pc = address;
   inst.next_pc = address + xed_decoded_inst_get_length(xedd);
 
   // Wrap an instuction in atomic begin/end if it accesses memory with RMW

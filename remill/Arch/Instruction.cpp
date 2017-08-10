@@ -16,6 +16,7 @@
 
 #include <glog/logging.h>
 
+#include <iomanip>
 #include <sstream>
 
 #include "remill/Arch/Arch.h"
@@ -196,30 +197,40 @@ std::string Instruction::Serialize(void) const {
     case kArchAMD64:
     case kArchAMD64_AVX:
     case kArchAMD64_AVX512:
-      ss << "AMD64_";
+      ss << "AMD64";
       break;
     case kArchX86:
     case kArchX86_AVX:
     case kArchX86_AVX512:
-      ss << "X86_";
+      ss << "X86";
       break;
     case kArchMips32:
-      ss << "MIPS32_";
+      ss << "MIPS32";
       break;
     case kArchMips64:
-      ss << "MIPS64_";
+      ss << "MIPS64";
       break;
     case kArchAArch64LittleEndian:
-      ss << "AArch64_";
+      ss << "AArch64";
       break;
   }
 
-  ss << "INSTR " << std::hex << pc << " "
-     << std::dec << (next_pc - pc) << " ";
+  if (IsValid()) {
+    ss << " " << std::hex << pc << " "
+       << std::dec << (next_pc - pc) << " ";
 
-  if (is_atomic_read_modify_write) {
-    ss << "ATOMIC ";
+    ss << "(BYTES";
+    for (auto byte : bytes) {
+      ss << " " << std::setw(2) << std::setfill('0')
+         << std::hex << static_cast<unsigned>(static_cast<uint8_t>(byte));
+    }
+    ss << ") ";
+
+    if (is_atomic_read_modify_write) {
+      ss << "ATOMIC ";
+    }
   }
+
   ss << function;
   for (const auto &op : operands) {
     ss << " " << op.Debug();

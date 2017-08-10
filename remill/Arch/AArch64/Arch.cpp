@@ -197,8 +197,8 @@ enum RegClass {
 using RegNum = uint8_t;
 
 enum RegUsage {
-  kUseAsAddress,
-  kUseAsValue
+  kUseAsAddress,  // Interpret X31 == SP and W32 == WSP.
+  kUseAsValue  // Interpret X31 == XZR and W31 == WZR.
 };
 
 enum Action {
@@ -462,6 +462,77 @@ static void AddPostIndexMemOp(Instruction &inst, Action action,
   inst.operands.push_back(addr_op);
 }
 
+static uint64_t MostSignificantSetBit(uint64_t val) {
+  return val ? static_cast<uint64_t>(63 - __builtin_clzll(val)) : 0;
+}
+
+constexpr static auto kOne = static_cast<uint64_t>(1);
+
+inline static uint64_t Ones(uint64_t val) {
+  return (kOne << val) - kOne;
+}
+
+static uint64_t ROR(uint64_t val, uint64_t val_size, uint64_t rotate_amount) {
+  for (uint64_t i = 0; i < rotate_amount; ++i) {
+    val = ((val & 1) << (val_size - 1ULL)) | (val >> 1ULL);
+  }
+  return val;
+}
+
+// Take a bit string `val` of length `val_size` bits, and concatenate it to
+// itself until it occupies at least `goal_size` bits.
+static uint64_t Replicate(uint64_t val, uint64_t val_size, uint64_t goal_size) {
+  uint64_t replicated_val = 0;
+  for (uint64_t i = 0; i < goal_size; i += val_size) {
+    replicated_val = (replicated_val << val_size) | val;
+  }
+  return replicated_val;
+}
+
+// Decode bitfield and logical immediate masks. There is a nice piece of code
+// here for producing all valid (64-bit) inputs:
+//
+//      https://stackoverflow.com/a/33265035/247591
+//
+// The gist of the format is that you hav
+static bool DecodeBitMasks(uint64_t N /* one bit */,
+                           uint64_t imms /* six bits */,
+                           uint64_t immr /* six bits */,
+                           bool is_immediate,
+                           uint64_t data_size,
+                           uint64_t *wmask_out,
+                           uint64_t *tmask_out) {
+  const uint64_t len = MostSignificantSetBit((N << 6) | (~imms & 0x3fULL));
+  const uint64_t esize = 1ULL << len;
+  if (!len || esize > data_size) {
+    return false;  // `len == 0` is a `ReservedValue()`.
+  }
+
+  const uint64_t levels = Ones(len);  // ZeroExtend(Ones(len), 6).
+  const uint64_t R = immr & levels;
+  const uint64_t S = imms & levels;
+
+  if (is_immediate && S == levels) {
+    return false;  // ReservedValue.
+  }
+
+  const uint64_t diff = R - S;
+  const uint64_t d = diff & levels;
+  const uint64_t welem = Ones(S + 1ULL);
+  const uint64_t telem = Ones(d + 1ULL);
+  const uint64_t wmask = Replicate(
+      ROR(welem, esize, R), esize, data_size);
+  const uint64_t tmask = Replicate(telem, esize, data_size);
+
+  if (wmask_out) {
+    *wmask_out = wmask;
+  }
+  if (tmask_out) {
+    *tmask_out = tmask;
+  }
+  return true;
+}
+
 bool AArch64Arch::DecodeInstruction(
     uint64_t address, const std::string &inst_bytes,
     Instruction &inst) const {
@@ -472,6 +543,7 @@ bool AArch64Arch::DecodeInstruction(
   inst.arch_name = arch_name;
   inst.pc = address;
   inst.next_pc = address + kInstructionSize;
+  inst.category = Instruction::kCategoryInvalid;
 
   if (kInstructionSize != inst_bytes.size()) {
     inst.category = Instruction::kCategoryError;
@@ -1304,6 +1376,34 @@ bool TryDecodeEOR_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// EOR  <Wd|WSP>, <Wn>, #<imm>
+bool TryDecodeEOR_32_LOG_IMM(const InstData &data, Instruction &inst) {
+  uint64_t wmask = 0;
+  if (data.N) {
+    return false;  // `if sf == '0' && N != '0' then ReservedValue();`.
+  } else if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
+                      true, 32, &wmask, nullptr)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsAddress, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  AddImmOperand(inst, wmask, kUnsigned, 32);
+  return true;
+}
+
+// EOR  <Xd|SP>, <Xn>, #<imm>
+bool TryDecodeEOR_64_LOG_IMM(const InstData &data, Instruction &inst) {
+  uint64_t wmask = 0;
+  if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
+                      true, 64, &wmask, nullptr)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsAddress, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  AddImmOperand(inst, wmask, kUnsigned, 64);
+  return true;
+}
+
 // LDUR  <Wt>, [<Xn|SP>{, #<simm>}]
 bool TryDecodeLDUR_32_LDST_UNSCALED(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
@@ -1333,77 +1433,6 @@ bool TryDecodeHINT_2(const InstData &, Instruction &) {
 // HINT  #<imm>
 bool TryDecodeHINT_3(const InstData &, Instruction &) {
   return true;  // NOP.
-}
-
-static uint64_t MostSignificantSetBit(uint64_t val) {
-  return val ? static_cast<uint64_t>(63 - __builtin_clzll(val)) : 0;
-}
-
-constexpr static auto kOne = static_cast<uint64_t>(1);
-
-inline static uint64_t Ones(uint64_t val) {
-  return (kOne << val) - kOne;
-}
-
-static uint64_t ROR(uint64_t val, uint64_t val_size, uint64_t rotate_amount) {
-  for (uint64_t i = 0; i < rotate_amount; ++i) {
-    val = ((val & 1) << (val_size - 1ULL)) | (val >> 1ULL);
-  }
-  return val;
-}
-
-// Take a bit string `val` of length `val_size` bits, and concatenate it to
-// itself until it occupies at least `goal_size` bits.
-static uint64_t Replicate(uint64_t val, uint64_t val_size, uint64_t goal_size) {
-  uint64_t replicated_val = 0;
-  for (uint64_t i = 0; i < goal_size; i += val_size) {
-    replicated_val = (replicated_val << val_size) | val;
-  }
-  return replicated_val;
-}
-
-// Decode bitfield and logical immediate masks. There is a nice piece of code
-// here for producing all valid (64-bit) inputs:
-//
-//      https://stackoverflow.com/a/33265035/247591
-//
-// The gist of the format is that you hav
-static bool DecodeBitMasks(uint64_t N /* one bit */,
-                           uint64_t imms /* six bits */,
-                           uint64_t immr /* six bits */,
-                           bool is_immediate,
-                           uint64_t data_size,
-                           uint64_t *wmask_out,
-                           uint64_t *tmask_out) {
-  const uint64_t len = MostSignificantSetBit((N << 6) | (~imms & 0x3fULL));
-  const uint64_t esize = 1ULL << len;
-  if (!len || esize > data_size) {
-    return false;  // `len == 0` is a `ReservedValue()`.
-  }
-
-  const uint64_t levels = Ones(len);  // ZeroExtend(Ones(len), 6).
-  const uint64_t R = immr & levels;
-  const uint64_t S = imms & levels;
-
-  if (is_immediate && S == levels) {
-    return false;  // ReservedValue.
-  }
-
-  const uint64_t diff = R - S;
-  const uint64_t d = diff & levels;
-  const uint64_t welem = Ones(S + 1ULL);
-  const uint64_t telem = Ones(d + 1ULL);
-  const uint64_t wmask = Replicate(
-      ROR(welem, esize, R), esize, data_size);
-  const uint64_t tmask = Replicate(telem, esize, data_size);
-
-  if (wmask_out) {
-    *wmask_out = wmask;
-  }
-  if (tmask_out) {
-    *tmask_out = tmask;
-  }
-  return true;
 }
 
 // MOV  <Wd|WSP>, #<imm>
