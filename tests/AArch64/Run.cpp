@@ -325,6 +325,10 @@ static void RunWithFlags(const test::TestInfo *info,
   EXPECT_TRUE(lifted_state->sr.v == native_state->sr.v);
   EXPECT_TRUE(lifted_state->gpr == native_state->gpr);
 
+  // The lifted code won't update these.
+  native_state->nzcv.flat = 0;
+  lifted_state->nzcv.flat = 0;
+
   if (gLiftedState != gNativeState) {
     LOG(ERROR)
         << "States did not match for " << desc;

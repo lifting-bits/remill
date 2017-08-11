@@ -64,13 +64,20 @@ namespace {
 
 template <typename S1, typename S2>
 DEF_SEM(CMP, S1 src1, S2 src2) {
+  using T = typename BaseType<S2>::BT;
   auto lhs = Read(src1);
   auto rhs = Read(src2);
   auto res = USub(lhs, rhs);
+
+  auto rhs_comp = UNot(rhs);
+  auto add2c_inter = UAdd(lhs, rhs_comp);
+  auto add2c_final = UAdd(add2c_inter, T(1));
+
   FLAG_Z = ZeroFlag(res);
   FLAG_N = SignFlag(res);
   FLAG_V = Overflow<tag_sub>::Flag(lhs, rhs, res);
-  FLAG_C = Carry<tag_sub>::Flag(lhs, rhs, res);
+  FLAG_C = Carry<tag_add>::Flag(lhs, rhs_comp, add2c_inter) ||
+           Carry<tag_add>::Flag<T>(add2c_inter, 1, add2c_final);
   return memory;
 }
 
