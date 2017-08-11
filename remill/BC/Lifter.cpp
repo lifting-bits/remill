@@ -269,7 +269,15 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
     auto extract_type = llvm::Type::getIntNTy(
         context, op.shift_reg.extract_size);
 
-    val = ir.CreateTrunc(val, extract_type);
+    if (val_size > op.shift_reg.extract_size) {
+      val = ir.CreateTrunc(val, extract_type);
+    } else {
+      CHECK(val_size == op.shift_reg.extract_size)
+          << "Invalid extraction size. Can't extract "
+          << op.shift_reg.extract_size << " bits from a " << val_size
+          << "-bit value in operand " << op.Debug() << " of instruction at "
+          << std::hex << inst.pc;
+    }
 
     switch (op.shift_reg.extend_op) {
       case Operand::ShiftRegister::kExtendSigned:

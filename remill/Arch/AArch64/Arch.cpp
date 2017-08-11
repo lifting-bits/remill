@@ -407,6 +407,11 @@ static void AddExtendRegOperand(Instruction &inst, RegClass rclass,
       op.shift_reg.extract_size == op.shift_reg.reg.size) {
     op.shift_reg.extend_op = Operand::ShiftRegister::kExtendInvalid;
     op.shift_reg.extract_size = 0;
+
+  // Extracting a value that is wider than the register.
+  } else if (op.shift_reg.extract_size > op.shift_reg.reg.size) {
+    op.shift_reg.extend_op = Operand::ShiftRegister::kExtendInvalid;
+    op.shift_reg.extract_size = 0;
   }
 
   if (shift_size) {
