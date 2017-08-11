@@ -57,7 +57,7 @@ TEST_INPUTS(
     add x9, x0, w1, sxtb #0
 TEST_END
 
-TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_w1_uxtb3, 2)
+TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_w1_sxtb3, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,

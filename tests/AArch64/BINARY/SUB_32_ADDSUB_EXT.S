@@ -57,7 +57,7 @@ TEST_INPUTS(
     sub w9, w0, w1, sxtb #0
 TEST_END
 
-TEST_BEGIN(SUB_32_ADDSUB_EXT, sub_w9_w0_w1_uxtb3, 2)
+TEST_BEGIN(SUB_32_ADDSUB_EXT, sub_w9_w0_w1_sxtb3, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
