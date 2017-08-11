@@ -57,7 +57,7 @@ TEST_INPUTS(
     add w9, w0, w1, sxtb #0
 TEST_END
 
-TEST_BEGIN(ADD_32_ADDSUB_EXT, add_w9_w0_w1_uxtb3, 2)
+TEST_BEGIN(ADD_32_ADDSUB_EXT, add_w9_w0_w1_sxtb3, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -169,7 +169,7 @@ TEST_INPUTS(
     add w9, w0, w1, sxtw #0
 TEST_END
 
-TEST_BEGIN(ADD_32_ADDSUB_EXT, add_w9_w0_w1_suxtw3, 2)
+TEST_BEGIN(ADD_32_ADDSUB_EXT, add_w9_w0_w1_sxtw3, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -225,7 +225,7 @@ TEST_INPUTS(
     add w9, w0, w1, sxtx #0
 TEST_END
 
-TEST_BEGIN(ADD_32_ADDSUB_EXT, add_w9_w0_w1_suxtx3, 2)
+TEST_BEGIN(ADD_32_ADDSUB_EXT, add_w9_w0_w1_sxtx3, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,

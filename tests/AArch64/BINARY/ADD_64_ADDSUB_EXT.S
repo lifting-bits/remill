@@ -169,7 +169,7 @@ TEST_INPUTS(
     add x9, x0, w1, sxtw #0
 TEST_END
 
-TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_w1_suxtw3, 2)
+TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_w1_sxtw3, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -181,174 +181,6 @@ TEST_INPUTS(
     0x0a0b0c0d, 0x01020304)
 
     add x9, x0, w1, sxtw #3
-TEST_END
-
-TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_x1_uxtb0, 2)
-TEST_INPUTS(
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-    0xFFFFFFFF, 0xFFFFFFFF,
-    0, 0xFFFFFFFF,
-    0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304)
-
-    add x9, x0, x1, uxtb #0
-TEST_END
-
-TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_x1_uxtb3, 2)
-TEST_INPUTS(
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-    0xFFFFFFFF, 0xFFFFFFFF,
-    0, 0xFFFFFFFF,
-    0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304)
-
-    add x9, x0, x1, uxtb #3
-TEST_END
-
-TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_x1_sxtb0, 2)
-TEST_INPUTS(
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-    0xFFFFFFFF, 0xFFFFFFFF,
-    0, 0xFFFFFFFF,
-    0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304)
-
-    add x9, x0, x1, sxtb #0
-TEST_END
-
-TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_x1_uxtb3, 2)
-TEST_INPUTS(
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-    0xFFFFFFFF, 0xFFFFFFFF,
-    0, 0xFFFFFFFF,
-    0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304)
-
-    add x9, x0, x1, sxtb #3
-TEST_END
-
-TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_x1_uxth0, 2)
-TEST_INPUTS(
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-    0xFFFFFFFF, 0xFFFFFFFF,
-    0, 0xFFFFFFFF,
-    0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304)
-
-    add x9, x0, x1, uxth #0
-TEST_END
-
-TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_x1_uxth3, 2)
-TEST_INPUTS(
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-    0xFFFFFFFF, 0xFFFFFFFF,
-    0, 0xFFFFFFFF,
-    0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304)
-
-    add x9, x0, x1, uxth #3
-TEST_END
-
-TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_x1_sxth0, 2)
-TEST_INPUTS(
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-    0xFFFFFFFF, 0xFFFFFFFF,
-    0, 0xFFFFFFFF,
-    0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304)
-
-    add x9, x0, x1, sxth #0
-TEST_END
-
-TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_x1_sxth3, 2)
-TEST_INPUTS(
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-    0xFFFFFFFF, 0xFFFFFFFF,
-    0, 0xFFFFFFFF,
-    0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304)
-
-    add x9, x0, x1, sxth #3
-TEST_END
-
-TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_x1_uxtw0, 2)
-TEST_INPUTS(
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-    0xFFFFFFFF, 0xFFFFFFFF,
-    0, 0xFFFFFFFF,
-    0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304)
-
-    add x9, x0, x1, uxtw #0
-TEST_END
-
-TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_x1_uxtw3, 2)
-TEST_INPUTS(
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-    0xFFFFFFFF, 0xFFFFFFFF,
-    0, 0xFFFFFFFF,
-    0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304)
-
-    add x9, x0, x1, uxtw #3
-TEST_END
-
-TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_x1_sxtw0, 2)
-TEST_INPUTS(
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-    0xFFFFFFFF, 0xFFFFFFFF,
-    0, 0xFFFFFFFF,
-    0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304)
-
-    add x9, x0, x1, sxtw #0
-TEST_END
-
-TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_x1_suxtw3, 2)
-TEST_INPUTS(
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-    0xFFFFFFFF, 0xFFFFFFFF,
-    0, 0xFFFFFFFF,
-    0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304)
-
-    add x9, x0, x1, sxtw #3
 TEST_END
 
 TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_x1_uxtx0, 2)
@@ -393,7 +225,7 @@ TEST_INPUTS(
     add x9, x0, x1, sxtx #0
 TEST_END
 
-TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_x1_suxtx3, 2)
+TEST_BEGIN(ADD_64_ADDSUB_EXT, add_x9_x0_x1_sxtx3, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
