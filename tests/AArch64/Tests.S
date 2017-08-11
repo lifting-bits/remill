@@ -194,11 +194,16 @@ SYMBOL(__aarch64_test_table_begin):
 
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
+#include "tests/AArch64/BINARY/ADD_32_ADDSUB_EXT.S"
+#include "tests/AArch64/BINARY/ADD_64_ADDSUB_EXT.S"
+#include "tests/AArch64/BINARY/CMP_SUBS_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/CMP_SUBS_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/EOR_n_LOG_IMM.S"
 #include "tests/AArch64/BINARY/EOR_n_LOG_SHIFT.S"
 #include "tests/AArch64/BINARY/SUB_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/SUB_n_ADDSUB_SHIFT.S"
+#include "tests/AArch64/BINARY/SUB_32_ADDSUB_EXT.S"
+#include "tests/AArch64/BINARY/SUB_64_ADDSUB_EXT.S"
 
      /* Create a symbol that represents the end of the test information table. */
     .section "__aarch64_test_table", "a"

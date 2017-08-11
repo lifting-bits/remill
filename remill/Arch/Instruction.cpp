@@ -73,9 +73,10 @@ std::string Operand::Debug(void) const {
 
     case Operand::kTypeShiftRegister:
       ss << "(REG_" << shift_reg.reg.size << " ";
+
       switch (shift_reg.extend_op) {
         case Operand::ShiftRegister::kExtendInvalid:
-          ss << reg.name;
+          ss << shift_reg.reg.name;
           break;
 
         case Operand::ShiftRegister::kExtendSigned:
@@ -94,31 +95,31 @@ std::string Operand::Debug(void) const {
           break;
 
         case Operand::ShiftRegister::kShiftLeftWithZeroes:
-          ss << "<<0";
+          ss << " <<0 " << shift_reg.shift_size;
           break;
 
         case Operand::ShiftRegister::kShiftLeftWithOnes:
-          ss << "<<1";
+          ss << " <<1 " << shift_reg.shift_size;
           break;
 
         case Operand::ShiftRegister::kShiftUnsignedRight:
-          ss << "u>>";
+          ss << " u>> " << shift_reg.shift_size;
           break;
 
         case Operand::ShiftRegister::kShiftSignedRight:
-          ss << "s>>";
+          ss << " s>> " << shift_reg.shift_size;
           break;
 
         case Operand::ShiftRegister::kShiftLeftAround:
-          ss << "rol";
+          ss << " rol " << shift_reg.shift_size;
           break;
 
         case Operand::ShiftRegister::kShiftRightAround:
-          ss << "ror";
+          ss << " ror " << shift_reg.shift_size;
           break;
       }
 
-      ss << " " << shift_reg.shift_size << ")";
+      ss << ")";
       break;
 
     case Operand::kTypeImmediate:

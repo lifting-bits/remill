@@ -207,6 +207,91 @@ enum Action {
   kActionReadWrite
 };
 
+// Immediate integer type.
+enum ImmType {
+  kUnsigned,
+  kSigned
+};
+
+// Note: Order is significant; extracted bits may be casted to this type.
+enum Extend : uint8_t {
+  kExtendUXTB,  // 0b000
+  kExtendUXTH,  // 0b001
+  kExtendUXTW,  // 0b010
+  kExtendUXTX,  // 0b011
+  kExtendSXTB,  // 0b100
+  kExtendSXTH,  // 0b101
+  kExtendSXTW,  // 0b110
+  kExtendSXTX  // 0b111
+};
+
+static uint64_t BaseSizeInBits(Extend extend) {
+  switch (extend) {
+    case kExtendUXTB: return 8;
+    case kExtendUXTH: return 16;
+    case kExtendUXTW: return 32;
+    case kExtendUXTX: return 64;
+    case kExtendSXTB: return 8;
+    case kExtendSXTH: return 16;
+    case kExtendSXTW: return 32;
+    case kExtendSXTX: return 64;
+  }
+  return 0;
+}
+
+static RegClass ExtendTypeToRegClass(Extend extend) {
+  switch (extend) {
+    case kExtendUXTB: return kRegW;
+    case kExtendUXTH: return kRegW;
+    case kExtendUXTW: return kRegW;
+    case kExtendUXTX: return kRegX;
+    case kExtendSXTB: return kRegW;
+    case kExtendSXTH: return kRegW;
+    case kExtendSXTW: return kRegW;
+    case kExtendSXTX: return kRegX;
+  }
+}
+
+static Operand::ShiftRegister::Extend ShiftRegExtendType(Extend extend) {
+  switch (extend) {
+    case kExtendUXTB:
+    case kExtendUXTH:
+    case kExtendUXTW:
+    case kExtendUXTX:
+      return Operand::ShiftRegister::kExtendUnsigned;
+    case kExtendSXTB:
+    case kExtendSXTH:
+    case kExtendSXTW:
+    case kExtendSXTX:
+      return Operand::ShiftRegister::kExtendSigned;
+  }
+  return Operand::ShiftRegister::kExtendInvalid;
+}
+
+// Note: Order is significant; extracted bits may be casted to this type.
+enum Shift : uint8_t {
+  kShiftLSL,
+  kShiftLSR,
+  kShiftASR,
+  kShiftROR
+};
+
+// Translate a shift encoding into an operand shift type used by the shift
+// register class.
+static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
+  switch (s) {
+    case kShiftLSL:
+      return Operand::ShiftRegister::kShiftLeftWithZeroes;
+    case kShiftLSR:
+      return Operand::ShiftRegister::kShiftUnsignedRight;
+    case kShiftASR:
+      return Operand::ShiftRegister::kShiftSignedRight;
+    case kShiftROR:
+      return Operand::ShiftRegister::kShiftRightAround;
+  }
+  return Operand::ShiftRegister::kShiftInvalid;
+}
+
 // Get the name of a register.
 static std::string RegName(Action action, RegClass rclass, RegUsage rtype,
                            RegNum number) {
@@ -292,14 +377,14 @@ static void AddRegOperand(Instruction &inst, Action action,
 
 static void AddShiftRegOperand(Instruction &inst, RegClass rclass,
                                RegUsage rtype, RegNum reg_num,
-                               Operand::ShiftRegister::Shift shift_type,
+                               Shift shift_type,
                                uint64_t shift_size) {
   if (!shift_size) {
     AddRegOperand(inst, kActionRead, rclass, rtype, reg_num);
   } else {
     Operand op;
     op.shift_reg.reg = Reg(kActionRead, rclass, rtype, reg_num);
-    op.shift_reg.shift_op = shift_type;
+    op.shift_reg.shift_op = GetOperandShift(shift_type);
     op.shift_reg.shift_size = shift_size;
 
     op.type = Operand::kTypeShiftRegister;
@@ -309,10 +394,31 @@ static void AddShiftRegOperand(Instruction &inst, RegClass rclass,
   }
 }
 
-enum ImmType {
-  kUnsigned,
-  kSigned
-};
+static void AddExtendRegOperand(Instruction &inst, RegClass rclass,
+                                RegUsage rtype, RegNum reg_num,
+                                Extend extend_type, uint64_t shift_size=0) {
+  Operand op;
+  op.shift_reg.reg = Reg(kActionRead, rclass, rtype, reg_num);
+  op.shift_reg.extend_op = ShiftRegExtendType(extend_type);
+  op.shift_reg.extract_size = BaseSizeInBits(extend_type);
+
+  // No extraction needs to be done, and zero extension already happens.
+  if (Operand::ShiftRegister::kExtendUnsigned == op.shift_reg.extend_op &&
+      op.shift_reg.extract_size == op.shift_reg.reg.size) {
+    op.shift_reg.extend_op = Operand::ShiftRegister::kExtendInvalid;
+    op.shift_reg.extract_size = 0;
+  }
+
+  if (shift_size) {
+    op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
+    op.shift_reg.shift_size = shift_size;
+  }
+
+  op.type = Operand::kTypeShiftRegister;
+  op.size = op.shift_reg.reg.size;
+  op.action = Operand::kActionRead;
+  inst.operands.push_back(op);
+}
 
 static void AddImmOperand(Instruction &inst, uint64_t val,
                           ImmType signedness=kUnsigned,
@@ -727,99 +833,18 @@ bool TryDecodeLDR_64_LOADLIT(const InstData &data, Instruction &inst) {
   return true;
 }
 
-// Note: Order is significant; extracted bits may be casted to this type.
-enum Extend : uint8_t {
-  kExtendUXTB,  // 0b000
-  kExtendUXTH,  // 0b001
-  kExtendUXTW,  // 0b010
-  kExtendUXTX,  // 0b011
-  kExtendSXTB,  // 0b100
-  kExtendSXTH,  // 0b101
-  kExtendSXTW,  // 0b110
-  kExtendSXTX  // 0b111
-};
-
-static uint64_t BaseSizeInBits(Extend extend) {
-  switch (extend) {
-    case kExtendUXTB: return 8;
-    case kExtendUXTH: return 16;
-    case kExtendUXTW: return 32;
-    case kExtendUXTX: return 64;
-    case kExtendSXTB: return 8;
-    case kExtendSXTH: return 16;
-    case kExtendSXTW: return 32;
-    case kExtendSXTX: return 64;
-  }
-  return 0;
-}
-
-static Operand::ShiftRegister::Extend ShiftRegExtendType(Extend extend) {
-  switch (extend) {
-    case kExtendUXTB:
-    case kExtendUXTH:
-    case kExtendUXTW:
-    case kExtendUXTX:
-      return Operand::ShiftRegister::kExtendUnsigned;
-    case kExtendSXTB:
-    case kExtendSXTH:
-    case kExtendSXTW:
-    case kExtendSXTX:
-      return Operand::ShiftRegister::kExtendSigned;
-  }
-  return Operand::ShiftRegister::kExtendInvalid;
-}
-
-// Note: Order is significant; extracted bits may be casted to this type.
-enum Shift : uint8_t {
-  kShiftLSL,
-  kShiftLSR,
-  kShiftASR,
-  kShiftROR
-};
-
-// Translate a shift encoding into an operand shift type used by the shift
-// register class.
-static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
-  switch (s) {
-    case kShiftLSL:
-      return Operand::ShiftRegister::kShiftLeftWithZeroes;
-    case kShiftLSR:
-      return Operand::ShiftRegister::kShiftUnsignedRight;
-    case kShiftASR:
-      return Operand::ShiftRegister::kShiftSignedRight;
-    case kShiftROR:
-      return Operand::ShiftRegister::kShiftRightAround;
-  }
-  return Operand::ShiftRegister::kShiftInvalid;
-}
-
 static bool TryDecodeLDR_n_LDST_REGOFF(
     const InstData &data, Instruction &inst, RegClass val_class) {
-  if (!(data.option & 2)) {
-    return false;  // Sub word indexing, "unallocated encoding."
+  if (!(data.option & 2)) {  // Sub word indexing.
+    return false;  // `if option<1> == '0' then UnallocatedEncoding();`.
   }
-
+  unsigned scale = data.size;
+  auto shift = (data.S == 1) ? scale : 0U;
   auto extend_type = static_cast<Extend>(data.option);
-  auto amount = data.S ? data.size : 0U;
-  auto index_class = (data.option & 1) ? kRegX : kRegW;
-
-  Operand op;
-  op.type = Operand::kTypeShiftRegister;
-  op.size = kPCWidth;  // The result is pointer-sized.
-  op.action = Operand::kActionRead;
-  op.shift_reg.reg = Reg(kActionRead, index_class, kUseAsValue, data.Rm);
-  op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
-  op.shift_reg.shift_size = amount;
-
-  if (kExtendUXTX != extend_type) {
-    op.shift_reg.extract_size = BaseSizeInBits(extend_type);
-    op.shift_reg.extend_op = ShiftRegExtendType(extend_type);
-  }
-
   AddRegOperand(inst, kActionWrite, val_class, kUseAsValue, data.Rt);
-  AddBasePlusOffsetMemOp(inst, kActionRead, 8U << data.size, data.Rn, 0);
-  inst.operands.push_back(op);
-
+  AddBasePlusOffsetMemOp(inst, kActionRead, 8U << scale, data.Rn, 0);
+  AddExtendRegOperand(inst, val_class, kUseAsValue, data.Rm,
+                      extend_type, shift);
   return true;
 }
 
@@ -911,31 +936,16 @@ bool TryDecodeSTR_64_LDST_POS(const InstData &data, Instruction &inst) {
 
 static bool TryDecodeSTR_n_LDST_REGOFF(
     const InstData &data, Instruction &inst, RegClass val_class) {
-  if (!(data.option & 2)) {
-    return false;  // Sub word indexing, "unallocated encoding."
+  if (!(data.option & 2)) {  // Sub word indexing.
+    return false;  // `if option<1> == '0' then UnallocatedEncoding();`.
   }
-
+  unsigned scale = data.size;
   auto extend_type = static_cast<Extend>(data.option);
-  auto amount = data.S ? data.size : 0U;
-  auto index_class = (data.option & 1) ? kRegX : kRegW;
-
-  Operand op;
-  op.type = Operand::kTypeShiftRegister;
-  op.size = kPCWidth;  // The result is pointer-sized.
-  op.action = Operand::kActionRead;
-  op.shift_reg.reg = Reg(kActionRead, index_class, kUseAsAddress, data.Rm);
-  op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
-  op.shift_reg.shift_size = amount;
-
-  if (kExtendUXTX != extend_type) {
-    op.shift_reg.extract_size = BaseSizeInBits(extend_type);
-    op.shift_reg.extend_op = ShiftRegExtendType(extend_type);
-  }
-
+  auto shift = data.S ? scale : 0U;
   AddRegOperand(inst, kActionRead, val_class, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionWrite, 8U << data.size, data.Rn, 0);
-  inst.operands.push_back(op);
-
+  AddExtendRegOperand(inst, val_class, kUseAsValue, data.Rm,
+                      extend_type, shift);
   return true;
 }
 
@@ -1185,6 +1195,62 @@ bool TryDecodeADD_64_ADDSUB_IMM(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// ADD  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeADD_32_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
+  if (1 & (data.imm6.uimm >> 5)) {
+    return false;  // `if sf == '0' && imm6<5> == '1' then ReservedValue();`.
+  }
+  auto shift_type = static_cast<Shift>(data.shift);
+  if (shift_type == kShiftROR) {
+    return false;  // Shift type '11' is a reserved value.
+  }
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  AddShiftRegOperand(inst, kRegW, kUseAsValue, data.Rm,
+                     shift_type, data.imm6.uimm);
+  return true;
+}
+
+// ADD  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeADD_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
+  auto shift_type = static_cast<Shift>(data.shift);
+  if (shift_type == kShiftROR) {
+    return false;  // Shift type '11' is a reserved value.
+  }
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  AddShiftRegOperand(inst, kRegX, kUseAsValue, data.Rm,
+                     shift_type, data.imm6.uimm);
+  return true;
+}
+
+// ADD  <Wd|WSP>, <Wn|WSP>, <Wm>{, <extend> {#<amount>}}
+bool TryDecodeADD_32_ADDSUB_EXT(const InstData &data, Instruction &inst) {
+  auto extend_type = static_cast<Extend>(data.option);
+  auto shift = data.imm3.uimm;
+  if (shift > 4) {
+    return false;  // `if shift > 4 then ReservedValue();`.
+  }
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsAddress, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsAddress, data.Rn);
+  AddExtendRegOperand(inst, kRegW, kUseAsValue, data.Rm, extend_type, shift);
+  return true;
+}
+
+// ADD  <Xd|SP>, <Xn|SP>, <R><m>{, <extend> {#<amount>}}
+bool TryDecodeADD_64_ADDSUB_EXT(const InstData &data, Instruction &inst) {
+  auto extend_type = static_cast<Extend>(data.option);
+  auto shift = data.imm3.uimm;
+  if (shift > 4) {
+    return false;  // `if shift > 4 then ReservedValue();`.
+  }
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsAddress, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
+  AddExtendRegOperand(inst, ExtendTypeToRegClass(extend_type), kUseAsValue,
+                      data.Rm, extend_type, shift);
+  return true;
+}
+
 // SUB  <Wd|WSP>, <Wn|WSP>, #<imm>{, <shift>}
 bool TryDecodeSUB_32_ADDSUB_IMM(const InstData &data, Instruction &inst) {
   return TryDecodeADD_32_ADDSUB_IMM(data, inst);
@@ -1197,41 +1263,22 @@ bool TryDecodeSUB_64_ADDSUB_IMM(const InstData &data, Instruction &inst) {
 
 // SUB  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
 bool TryDecodeSUB_32_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
-  if (1 & (data.imm6.uimm >> 5)) {
-    return false;  // `if sf == '0' && imm6<5> == '1' then ReservedValue();`.
-  }
-  auto shift_type = static_cast<Shift>(data.shift);
-  if (shift_type == kShiftROR) {
-    return false;  // Shift type '11' is a reserved value.
-  }
-  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
-  AddShiftRegOperand(inst, kRegW, kUseAsValue, data.Rm,
-                     GetOperandShift(shift_type), data.imm6.uimm);
-  return true;
+  return TryDecodeADD_32_ADDSUB_SHIFT(data, inst);
 }
 
 // SUB  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
 bool TryDecodeSUB_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
-  auto shift_type = static_cast<Shift>(data.shift);
-  if (shift_type == kShiftROR) {
-    return false;  // Shift type '11' is a reserved value.
-  }
-  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
-  AddShiftRegOperand(inst, kRegX, kUseAsValue, data.Rm,
-                     GetOperandShift(shift_type), data.imm6.uimm);
-  return true;
+  return TryDecodeADD_64_ADDSUB_SHIFT(data, inst);
 }
 
-// ADD  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
-bool TryDecodeADD_32_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
-  return TryDecodeSUB_32_ADDSUB_SHIFT(data, inst);
+// SUB  <Wd|WSP>, <Wn|WSP>, <Wm>{, <extend> {#<amount>}}
+bool TryDecodeSUB_32_ADDSUB_EXT(const InstData &data, Instruction &inst) {
+  return TryDecodeADD_32_ADDSUB_EXT(data, inst);
 }
 
-// ADD  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
-bool TryDecodeADD_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
-  return TryDecodeSUB_64_ADDSUB_SHIFT(data, inst);
+// SUB  <Xd|SP>, <Xn|SP>, <R><m>{, <extend> {#<amount>}}
+bool TryDecodeSUB_64_ADDSUB_EXT(const InstData &data, Instruction &inst) {
+  return TryDecodeADD_64_ADDSUB_EXT(data, inst);
 }
 
 // CMP  <Wn>, <Wm>{, <shift> #<amount>}
@@ -1243,7 +1290,7 @@ bool TryDecodeCMP_SUBS_32_ADDSUB_SHIFT(const InstData &data,
   }
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
   AddShiftRegOperand(inst, kRegW, kUseAsValue, data.Rm,
-                     GetOperandShift(shift_type), data.imm6.uimm);
+                     shift_type, data.imm6.uimm);
   return true;
 }
 
@@ -1256,7 +1303,7 @@ bool TryDecodeCMP_SUBS_64_ADDSUB_SHIFT(const InstData &data,
   }
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
   AddShiftRegOperand(inst, kRegX, kUseAsValue, data.Rm,
-                     GetOperandShift(shift_type), data.imm6.uimm);
+                     shift_type, data.imm6.uimm);
   return true;
 }
 
@@ -1280,6 +1327,82 @@ bool TryDecodeCMP_SUBS_32S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegW, kUseAsAddress, data.Rn);
   AddImmOperand(inst, imm);
   return true;
+}
+
+// SUBS CMP_SUBS_32S_addsub_ext:
+//   0 1 Rd       0
+//   1 1 Rd       1
+//   2 1 Rd       2
+//   3 1 Rd       3
+//   4 1 Rd       4
+//   5 x Rn       0
+//   6 x Rn       1
+//   7 x Rn       2
+//   8 x Rn       3
+//   9 x Rn       4
+//  10 x imm3     0
+//  11 x imm3     1
+//  12 x imm3     2
+//  13 x option   0
+//  14 x option   1
+//  15 x option   2
+//  16 x Rm       0
+//  17 x Rm       1
+//  18 x Rm       2
+//  19 x Rm       3
+//  20 x Rm       4
+//  21 1
+//  22 0 opt      0
+//  23 0 opt      1
+//  24 1
+//  25 1
+//  26 0
+//  27 1
+//  28 0
+//  29 1 S        0
+//  30 1 op       0
+//  31 0 sf       0
+// CMP  <Wn|WSP>, <Wm>{, <extend> {#<amount>}}
+bool TryDecodeCMP_SUBS_32S_ADDSUB_EXT(const InstData &, Instruction &) {
+  return false;
+}
+
+// SUBS CMP_SUBS_64S_addsub_ext:
+//   0 1 Rd       0
+//   1 1 Rd       1
+//   2 1 Rd       2
+//   3 1 Rd       3
+//   4 1 Rd       4
+//   5 x Rn       0
+//   6 x Rn       1
+//   7 x Rn       2
+//   8 x Rn       3
+//   9 x Rn       4
+//  10 x imm3     0
+//  11 x imm3     1
+//  12 x imm3     2
+//  13 x option   0
+//  14 x option   1
+//  15 x option   2
+//  16 x Rm       0
+//  17 x Rm       1
+//  18 x Rm       2
+//  19 x Rm       3
+//  20 x Rm       4
+//  21 1
+//  22 0 opt      0
+//  23 0 opt      1
+//  24 1
+//  25 1
+//  26 0
+//  27 1
+//  28 0
+//  29 1 S        0
+//  30 1 op       0
+//  31 1 sf       0
+// CMP  <Xn|SP>, <R><m>{, <extend> {#<amount>}}
+bool TryDecodeCMP_SUBS_64S_ADDSUB_EXT(const InstData &, Instruction &) {
+  return false;
 }
 
 static const char *kCondName[] = {
@@ -1357,21 +1480,19 @@ bool TryDecodeEOR_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
   if (1 & (data.imm6.uimm >> 5)) {
     return false;  // `if sf == '0' && imm6<5> == '1' then ReservedValue();`.
   }
-  auto shift_type = GetOperandShift(static_cast<Shift>(data.shift));
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
   AddShiftRegOperand(inst, kRegW, kUseAsValue, data.Rm,
-                     shift_type, data.imm6.uimm);
+                     static_cast<Shift>(data.shift), data.imm6.uimm);
   return true;
 }
 
 // EOR  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
 bool TryDecodeEOR_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
-  auto shift_type = GetOperandShift(static_cast<Shift>(data.shift));
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
   AddShiftRegOperand(inst, kRegX, kUseAsValue, data.Rm,
-                     shift_type, data.imm6.uimm);
+                     static_cast<Shift>(data.shift), data.imm6.uimm);
   return true;
 }
 
