@@ -262,7 +262,7 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
   const uint64_t one = 1;
   const uint64_t shift_size = op.shift_reg.shift_size;
 
-  const auto shift_val = llvm::ConstantInt::get(reg_type, shift_size);
+  const auto shift_val = llvm::ConstantInt::get(op_type, shift_size);
 
   llvm::IRBuilder<> ir(block);
 
@@ -302,6 +302,8 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
       }
     }
   }
+
+  CHECK(curr_size <= op.size);
 
   if (curr_size < op.size) {
     reg = ir.CreateZExt(reg, op_type);
