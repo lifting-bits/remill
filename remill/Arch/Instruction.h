@@ -47,7 +47,7 @@ class Operand {
   } action;
 
   // Size of this operand, in bits.
-  size_t size;
+  uint64_t size;
 
   // kTypeRegister.
   class Register {
@@ -56,7 +56,7 @@ class Operand {
     ~Register(void) = default;
 
     std::string name;
-    size_t size;  // In bits.
+    uint64_t size;  // In bits.
   } reg;
 
   class ShiftRegister {
@@ -159,7 +159,7 @@ class Instruction {
   ArchName arch_name;
 
   // The effective size of the operand, in bits.
-  size_t operand_size;
+  uint64_t operand_size;
 
   // Does the instruction require the use of the `__remill_atomic_begin` and
   // `__remill_atomic_end`?

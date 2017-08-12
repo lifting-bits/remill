@@ -225,7 +225,7 @@ enum Extend : uint8_t {
   kExtendSXTX  // 0b111
 };
 
-static uint64_t BaseSizeInBits(Extend extend) {
+static uint64_t ExtractSizeInBits(Extend extend) {
   switch (extend) {
     case kExtendUXTB: return 8;
     case kExtendUXTH: return 16;
@@ -316,7 +316,7 @@ static std::string RegName(Action action, RegClass rclass, RegUsage rtype,
   return ss.str();
 }
 
-static size_t ReadRegSize(RegClass rclass) {
+static uint64_t ReadRegSize(RegClass rclass) {
   switch (rclass) {
     case kRegX:
       return 64;
@@ -326,7 +326,7 @@ static size_t ReadRegSize(RegClass rclass) {
   return 0;
 }
 
-static size_t WriteRegSize(RegClass rclass) {
+static uint64_t WriteRegSize(RegClass rclass) {
   switch (rclass) {
     case kRegX:
     case kRegW:
@@ -396,11 +396,12 @@ static void AddShiftRegOperand(Instruction &inst, RegClass rclass,
 
 static void AddExtendRegOperand(Instruction &inst, RegClass rclass,
                                 RegUsage rtype, RegNum reg_num,
-                                Extend extend_type, uint64_t shift_size=0) {
+                                Extend extend_type, uint64_t output_size,
+                                uint64_t shift_size=0) {
   Operand op;
   op.shift_reg.reg = Reg(kActionRead, rclass, rtype, reg_num);
   op.shift_reg.extend_op = ShiftRegExtendType(extend_type);
-  op.shift_reg.extract_size = BaseSizeInBits(extend_type);
+  op.shift_reg.extract_size = ExtractSizeInBits(extend_type);
 
   // No extraction needs to be done, and zero extension already happens.
   if (Operand::ShiftRegister::kExtendUnsigned == op.shift_reg.extend_op &&
@@ -420,7 +421,7 @@ static void AddExtendRegOperand(Instruction &inst, RegClass rclass,
   }
 
   op.type = Operand::kTypeShiftRegister;
-  op.size = op.shift_reg.reg.size;
+  op.size = output_size;
   op.action = Operand::kActionRead;
   inst.operands.push_back(op);
 }
@@ -849,7 +850,7 @@ static bool TryDecodeLDR_n_LDST_REGOFF(
   AddRegOperand(inst, kActionWrite, val_class, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionRead, 8U << scale, data.Rn, 0);
   AddExtendRegOperand(inst, val_class, kUseAsValue, data.Rm,
-                      extend_type, shift);
+                      extend_type, 64, shift);
   return true;
 }
 
@@ -950,7 +951,7 @@ static bool TryDecodeSTR_n_LDST_REGOFF(
   AddRegOperand(inst, kActionRead, val_class, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionWrite, 8U << data.size, data.Rn, 0);
   AddExtendRegOperand(inst, val_class, kUseAsValue, data.Rm,
-                      extend_type, shift);
+                      extend_type, 64, shift);
   return true;
 }
 
@@ -1238,7 +1239,8 @@ bool TryDecodeADD_32_ADDSUB_EXT(const InstData &data, Instruction &inst) {
   }
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsAddress, data.Rd);
   AddRegOperand(inst, kActionRead, kRegW, kUseAsAddress, data.Rn);
-  AddExtendRegOperand(inst, kRegW, kUseAsValue, data.Rm, extend_type, shift);
+  AddExtendRegOperand(inst, kRegW, kUseAsValue, data.Rm, extend_type,
+                      32, shift);
   return true;
 }
 
@@ -1249,10 +1251,11 @@ bool TryDecodeADD_64_ADDSUB_EXT(const InstData &data, Instruction &inst) {
   if (shift > 4) {
     return false;  // `if shift > 4 then ReservedValue();`.
   }
+  auto reg_class = ExtendTypeToRegClass(extend_type);
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsAddress, data.Rd);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
-  AddExtendRegOperand(inst, ExtendTypeToRegClass(extend_type), kUseAsValue,
-                      data.Rm, extend_type, shift);
+  AddExtendRegOperand(inst, reg_class, kUseAsValue,
+                      data.Rm, extend_type, ReadRegSize(reg_class), shift);
   return true;
 }
 

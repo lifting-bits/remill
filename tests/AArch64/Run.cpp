@@ -360,12 +360,13 @@ TEST_P(InstrTest, SemanticsMatchNative) {
        args < info->args_end;
        args += info->num_args) {
     std::stringstream ss;
+    ss << info->test_name;
     if (1 <= info->num_args) {
-      ss << "args: 0x" << std::hex << args[0];
+      ss << " with X0=" << std::hex << args[0];
       if (2 <= info->num_args) {
-        ss << ", 0x" << std::hex << args[1];
+        ss << ", X1=" << std::hex << args[1];
         if (3 <= info->num_args) {
-          ss << ", 0x" << std::hex << args[3];
+          ss << ", X2=" << std::hex << args[3];
         }
       }
     }
@@ -375,8 +376,8 @@ TEST_P(InstrTest, SemanticsMatchNative) {
       flags.flat = i << 28;
 
       std::stringstream ss2;
-      ss2 << desc << " with N=" << flags.n << " Z=" << flags.z << " C="
-         << flags.c << " V=" << flags.v;
+      ss2 << desc << " and N=" << flags.n << ", Z=" << flags.z << ", C="
+         << flags.c << ", V=" << flags.v;
 
       RunWithFlags(info, flags, ss2.str(), args[0], args[1], args[2]);
     }
