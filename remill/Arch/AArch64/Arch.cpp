@@ -1239,8 +1239,8 @@ bool TryDecodeADD_32_ADDSUB_EXT(const InstData &data, Instruction &inst) {
   }
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsAddress, data.Rd);
   AddRegOperand(inst, kActionRead, kRegW, kUseAsAddress, data.Rn);
-  AddExtendRegOperand(inst, kRegW, kUseAsValue, data.Rm, extend_type,
-                      32, shift);
+  AddExtendRegOperand(inst, kRegW, kUseAsValue,
+                      data.Rm, extend_type, 32, shift);
   return true;
 }
 
@@ -1255,7 +1255,7 @@ bool TryDecodeADD_64_ADDSUB_EXT(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsAddress, data.Rd);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
   AddExtendRegOperand(inst, reg_class, kUseAsValue,
-                      data.Rm, extend_type, ReadRegSize(reg_class), shift);
+                      data.Rm, extend_type, 64, shift);
   return true;
 }
 

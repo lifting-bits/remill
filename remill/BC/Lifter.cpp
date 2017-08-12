@@ -581,11 +581,6 @@ llvm::Value *InstructionLifter::LiftOperand(Instruction &inst,
           << "Can't write to a shift register operand "
           << "for instruction at " << std::hex << inst.pc;
 
-      CHECK(arch_op.size == arch_op.shift_reg.reg.size)
-          << "Operand size and register size must match for register "
-          << arch_op.shift_reg.reg.name << " in instruction at "
-          << std::hex << inst.pc;
-
       return LiftShiftRegisterOperand(inst, block, arg_type, arch_op);
 
     case Operand::kTypeRegister:
