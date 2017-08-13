@@ -1358,7 +1358,6 @@ bool TryDecodeCMP_SUBS_64S_ADDSUB_EXT(const InstData &data, Instruction &inst) {
     return false;  // `if shift > 4 then ReservedValue();`.
   }
   auto reg_class = ExtendTypeToRegClass(extend_type);
-  AddRegOperand(inst, kActionWrite, kRegX, kUseAsAddress, data.Rd);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
   AddExtendRegOperand(inst, reg_class, kUseAsValue,
                       data.Rm, extend_type, 64, shift);

@@ -154,7 +154,8 @@ bool InstructionLifter::LiftIntoBlock(
     CHECK(arg_num < isel_func_type->getNumParams())
         << "Function " << arch_inst.function << ", implemented by "
         << isel_func->getName().str() << ", should have at least "
-        << arg_num << " arguments.";
+        << arg_num << " arguments for instruction "
+        << arch_inst.Serialize();
 
     auto arg_type = isel_func_type->getParamType(arg_num++);
     auto operand = LiftOperand(arch_inst, block, arg_type, op);
