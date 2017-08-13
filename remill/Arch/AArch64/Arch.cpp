@@ -1337,80 +1337,32 @@ bool TryDecodeCMP_SUBS_32S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
   return true;
 }
 
-// SUBS CMP_SUBS_32S_addsub_ext:
-//   0 1 Rd       0
-//   1 1 Rd       1
-//   2 1 Rd       2
-//   3 1 Rd       3
-//   4 1 Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm3     0
-//  11 x imm3     1
-//  12 x imm3     2
-//  13 x option   0
-//  14 x option   1
-//  15 x option   2
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 0 opt      0
-//  23 0 opt      1
-//  24 1
-//  25 1
-//  26 0
-//  27 1
-//  28 0
-//  29 1 S        0
-//  30 1 op       0
-//  31 0 sf       0
 // CMP  <Wn|WSP>, <Wm>{, <extend> {#<amount>}}
-bool TryDecodeCMP_SUBS_32S_ADDSUB_EXT(const InstData &, Instruction &) {
-  return false;
+bool TryDecodeCMP_SUBS_32S_ADDSUB_EXT(const InstData &data, Instruction &inst) {
+  auto extend_type = static_cast<Extend>(data.option);
+  auto shift = data.imm3.uimm;
+  if (shift > 4) {
+    return false;  // `if shift > 4 then ReservedValue();`.
+  }
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsAddress, data.Rn);
+  AddExtendRegOperand(inst, kRegW, kUseAsValue,
+                      data.Rm, extend_type, 32, shift);
+  return true;
 }
 
-// SUBS CMP_SUBS_64S_addsub_ext:
-//   0 1 Rd       0
-//   1 1 Rd       1
-//   2 1 Rd       2
-//   3 1 Rd       3
-//   4 1 Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm3     0
-//  11 x imm3     1
-//  12 x imm3     2
-//  13 x option   0
-//  14 x option   1
-//  15 x option   2
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 0 opt      0
-//  23 0 opt      1
-//  24 1
-//  25 1
-//  26 0
-//  27 1
-//  28 0
-//  29 1 S        0
-//  30 1 op       0
-//  31 1 sf       0
 // CMP  <Xn|SP>, <R><m>{, <extend> {#<amount>}}
-bool TryDecodeCMP_SUBS_64S_ADDSUB_EXT(const InstData &, Instruction &) {
-  return false;
+bool TryDecodeCMP_SUBS_64S_ADDSUB_EXT(const InstData &data, Instruction &inst) {
+  auto extend_type = static_cast<Extend>(data.option);
+  auto shift = data.imm3.uimm;
+  if (shift > 4) {
+    return false;  // `if shift > 4 then ReservedValue();`.
+  }
+  auto reg_class = ExtendTypeToRegClass(extend_type);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsAddress, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
+  AddExtendRegOperand(inst, reg_class, kUseAsValue,
+                      data.Rm, extend_type, 64, shift);
+  return true;
 }
 
 static const char *kCondName[] = {

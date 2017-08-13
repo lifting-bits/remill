@@ -55,12 +55,12 @@ TEST_INPUTS(
 TEST_END
 
 /*  SUB  <Xd|SP>, <Xn|SP>, #<imm>{, <shift>} */
-TEST_BEGIN(SUB_64_ADDSUB_IMM, sub_xsp_xsp_16, 1)
+TEST_BEGIN(SUB_64_ADDSUB_IMM, sub_sp_sp_16, 1)
 TEST_INPUTS(0)
     sub sp, sp, #16
 TEST_END
 
-TEST_BEGIN(SUB_64_ADDSUB_IMM, sub_xsp_x9_16, 1)
+TEST_BEGIN(SUB_64_ADDSUB_IMM, sub_sp_x9_16, 1)
 TEST_INPUTS(0)
     sub x9, sp, #0
     sub sp, x9, #16

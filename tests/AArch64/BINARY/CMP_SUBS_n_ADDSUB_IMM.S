@@ -14,3 +14,110 @@
  * limitations under the License.
  */
 
+/* CMP  <Wn|WSP>, #<imm>{, <shift>} */
+TEST_BEGIN(CMP_SUBS_32S_ADDSUB_IMM, cmp_w0_1, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0xFFFFFFFF,
+    0xfafbfbfd,
+    0xf1f2f3f4,
+    0x0a0b0c0d,
+    0x01020304)
+
+    cmp w0, #0x1
+TEST_END
+
+TEST_BEGIN(CMP_SUBS_32S_ADDSUB_IMM, cmp_w0_fff, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0xFFFFFFFF,
+    0xfafbfbfd,
+    0xf1f2f3f4,
+    0x0a0b0c0d,
+    0x01020304)
+
+    cmp w0, #0xfff
+TEST_END
+
+TEST_BEGIN(CMP_SUBS_32S_ADDSUB_IMM, cmp_w0_0FF_lsl12, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0xFFFFFFFF,
+    0xfafbfbfd,
+    0xf1f2f3f4,
+    0x0a0b0c0d,
+    0x01020304)
+
+    cmp w0, #0xfff, lsl #12
+TEST_END
+
+TEST_BEGIN(CMP_SUBS_32S_ADDSUB_IMM, cmp_wsp_0FF_lsl12, 1)
+TEST_INPUTS(0)
+    cmp wsp, #0xfff, lsl #12
+TEST_END
+
+/* CMP  <Xn|SP>, #<imm>{, <shift>} */
+TEST_BEGIN(CMP_SUBS_64S_ADDSUB_IMM, cmp_sp_16, 1)
+TEST_INPUTS(0)
+    cmp sp, #16
+TEST_END
+
+TEST_BEGIN(CMP_SUBS_64S_ADDSUB_IMM, cmp_sp_16_lsl12, 1)
+TEST_INPUTS(0)
+    cmp sp, #16, lsl #12
+TEST_END
+
+TEST_BEGIN(CMP_SUBS_64S_ADDSUB_IMM, cmp_x0_1, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0xFFFFFFFF,
+    0xfafbfbfd,
+    0xf1f2f3f4,
+    0x0a0b0c0d,
+    0x01020304,
+    0xFFFFFFFFFFFFFFFF,
+    0xFFFFFFFF00000000,
+    0xfafbfbfdf1f2f3f4,
+    0xf1f2f3f4fafbfbfd)
+
+    cmp x0, #0x1
+TEST_END
+
+TEST_BEGIN(CMP_SUBS_64S_ADDSUB_IMM, cmp_x0_fff, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0xFFFFFFFF,
+    0xfafbfbfd,
+    0xf1f2f3f4,
+    0x0a0b0c0d,
+    0x01020304,
+    0xFFFFFFFFFFFFFFFF,
+    0xFFFFFFFF00000000,
+    0xfafbfbfdf1f2f3f4,
+    0xf1f2f3f4fafbfbfd)
+
+    cmp x0, #0xfff
+TEST_END
+
+TEST_BEGIN(CMP_SUBS_64S_ADDSUB_IMM, cmp_x0_0FF_lsl12, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0xFFFFFFFF,
+    0xfafbfbfd,
+    0xf1f2f3f4,
+    0x0a0b0c0d,
+    0x01020304,
+    0xFFFFFFFFFFFFFFFF,
+    0xFFFFFFFF00000000,
+    0xfafbfbfdf1f2f3f4,
+    0xf1f2f3f4fafbfbfd)
+
+    cmp x0, #0xfff, lsl #12
+TEST_END
+

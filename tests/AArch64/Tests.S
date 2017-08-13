@@ -196,6 +196,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/ADD_32_ADDSUB_EXT.S"
 #include "tests/AArch64/BINARY/ADD_64_ADDSUB_EXT.S"
+#include "tests/AArch64/BINARY/CMP_SUBS_n_ADDSUB_EXT.S"
 #include "tests/AArch64/BINARY/CMP_SUBS_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/CMP_SUBS_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/EOR_n_LOG_IMM.S"
