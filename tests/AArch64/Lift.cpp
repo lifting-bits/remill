@@ -137,7 +137,6 @@ static void AddFunctionToModule(llvm::Module *module,
         llvm::BranchInst::Create(GetOrCreateBlock(inst.branch_taken_pc),
                                  GetOrCreateBlock(inst.branch_not_taken_pc),
                                  remill::LoadBranchTaken(block), block);
-        remill::AddTerminatingTailCall(block, intrinsics.async_hyper_call);
         break;
 
       default:
