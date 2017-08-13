@@ -1274,6 +1274,8 @@ bool TryDecodeCMP_SUBS_32_ADDSUB_SHIFT(const InstData &data,
   auto shift_type = static_cast<Shift>(data.shift);
   if (shift_type == kShiftROR) {
     return false;  // Shift type '11' is a reserved value.
+  } else if ((data.imm6.uimm >> 5) & 1) {
+    return false;  // `if sf == '0' && imm6<5> == '1' then ReservedValue();`.
   }
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
   AddShiftRegOperand(inst, kRegW, kUseAsValue, data.Rm,
@@ -1373,6 +1375,117 @@ bool TryDecodeCMN_ADDS_32S_ADDSUB_EXT(const InstData &data, Instruction &inst) {
 // CMN  <Xn|SP>, <R><m>{, <extend> {#<amount>}}
 bool TryDecodeCMN_ADDS_64S_ADDSUB_EXT(const InstData &data, Instruction &inst) {
   return TryDecodeCMP_SUBS_64S_ADDSUB_EXT(data, inst);
+}
+
+// SUBS  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeSUBS_32_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
+  auto shift_type = static_cast<Shift>(data.shift);
+  if (shift_type == kShiftROR) {
+    return false;  // Shift type '11' is a reserved value.
+  } else if ((data.imm6.uimm >> 5) & 1) {
+    return false;  // `if sf == '0' && imm6<5> == '1' then ReservedValue();`.
+  }
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  AddShiftRegOperand(inst, kRegW, kUseAsValue, data.Rm, shift_type,
+                     data.imm6.uimm);
+  return true;
+}
+
+// SUBS  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeSUBS_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
+  auto shift_type = static_cast<Shift>(data.shift);
+  if (shift_type == kShiftROR) {
+    return false;  // Shift type '11' is a reserved value.
+  }
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  AddShiftRegOperand(inst, kRegX, kUseAsValue, data.Rm, shift_type,
+                     data.imm6.uimm);
+  return true;
+}
+
+// SUBS  <Wd>, <Wn|WSP>, #<imm>{, <shift>}
+bool TryDecodeSUBS_32S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  auto imm = data.imm12.uimm;
+  if (!ShiftImmediate(imm, data.shift)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsAddress, data.Rn);
+  AddImmOperand(inst, imm);
+  return true;
+}
+
+// SUBS  <Xd>, <Xn|SP>, #<imm>{, <shift>}
+bool TryDecodeSUBS_64S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  auto imm = data.imm12.uimm;
+  if (!ShiftImmediate(imm, data.shift)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
+  AddImmOperand(inst, imm);
+  return true;
+}
+
+// SUBS  <Wd>, <Wn|WSP>, <Wm>{, <extend> {#<amount>}}
+bool TryDecodeSUBS_32S_ADDSUB_EXT(const InstData &data, Instruction &inst) {
+  auto extend_type = static_cast<Extend>(data.option);
+  auto shift = data.imm3.uimm;
+  if (shift > 4) {
+    return false;  // `if shift > 4 then ReservedValue();`.
+  }
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsAddress, data.Rn);
+  AddExtendRegOperand(inst, kRegW, kUseAsValue,
+                      data.Rm, extend_type, 32, shift);
+  return true;
+}
+
+// SUBS  <Xd>, <Xn|SP>, <R><m>{, <extend> {#<amount>}}
+bool TryDecodeSUBS_64S_ADDSUB_EXT(const InstData &data, Instruction &inst) {
+  auto extend_type = static_cast<Extend>(data.option);
+  auto shift = data.imm3.uimm;
+  if (shift > 4) {
+    return false;  // `if shift > 4 then ReservedValue();`.
+  }
+  auto reg_class = ExtendTypeToRegClass(extend_type);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
+  AddExtendRegOperand(inst, reg_class, kUseAsValue,
+                      data.Rm, extend_type, 64, shift);
+  return true;
+}
+
+// ADDS  <Wd>, <Wn|WSP>, #<imm>{, <shift>}
+bool TryDecodeADDS_32S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  return TryDecodeSUBS_32S_ADDSUB_IMM(data, inst);
+}
+
+// ADDS  <Xd>, <Xn|SP>, #<imm>{, <shift>}
+bool TryDecodeADDS_64S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  return TryDecodeSUBS_64S_ADDSUB_IMM(data, inst);
+}
+
+// ADDS  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeADDS_32_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeSUBS_32_ADDSUB_SHIFT(data, inst);
+}
+
+// ADDS  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeADDS_64_ADDSUB_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeSUBS_64_ADDSUB_SHIFT(data, inst);
+}
+
+// ADDS  <Wd>, <Wn|WSP>, <Wm>{, <extend> {#<amount>}}
+bool TryDecodeADDS_32S_ADDSUB_EXT(const InstData &data, Instruction &inst) {
+  return TryDecodeSUBS_32S_ADDSUB_EXT(data, inst);
+}
+
+// ADDS  <Xd>, <Xn|SP>, <R><m>{, <extend> {#<amount>}}
+bool TryDecodeADDS_64S_ADDSUB_EXT(const InstData &data, Instruction &inst) {
+  return TryDecodeSUBS_64S_ADDSUB_EXT(data, inst);
 }
 
 static const char *kCondName[] = {

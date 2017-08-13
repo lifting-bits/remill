@@ -81,15 +81,14 @@ DEF_SEM(CMP, S1 src1, S2 src2) {
 
   FLAG_Z = ZeroFlag(res);
   FLAG_N = SignFlag(res);
-  FLAG_V = Overflow<tag_add>::Flag(lhs, rhs, res);
+  FLAG_V = Overflow<tag_sub>::Flag(lhs, rhs, res);
   FLAG_C = Carry<tag_add>::Flag(lhs, rhs_comp, add2c_inter) ||
-           Carry<tag_add>::Flag<T>(add2c_inter, 1, add2c_final);
+           Carry<tag_add>::Flag<T>(add2c_inter, T(1), add2c_final);
   return memory;
 }
 
 template <typename S1, typename S2>
 DEF_SEM(CMN, S1 src1, S2 src2) {
-  using T = typename BaseType<S2>::BT;
   auto lhs = Read(src1);
   auto rhs = Read(src2);
   auto res = UAdd(lhs, rhs);
@@ -120,3 +119,57 @@ DEF_ISEL(CMN_ADDS_64S_ADDSUB_IMM) = CMN<R64, I64>;
 
 DEF_ISEL(CMN_ADDS_32S_ADDSUB_EXT) = CMN<R32, I32>;
 DEF_ISEL(CMN_ADDS_64S_ADDSUB_EXT) = CMN<R64, I64>;
+
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SUBS, D dst, S1 src1, S2 src2) {
+  using T = typename BaseType<S2>::BT;
+  auto lhs = Read(src1);
+  auto rhs = Read(src2);
+  auto res = USub(lhs, rhs);
+
+  auto rhs_comp = UNot(rhs);
+  auto add2c_inter = UAdd(lhs, rhs_comp);
+  auto add2c_final = UAdd(add2c_inter, T(1));
+
+  FLAG_Z = ZeroFlag(res);
+  FLAG_N = SignFlag(res);
+  FLAG_V = Overflow<tag_sub>::Flag(lhs, rhs, res);
+  FLAG_C = Carry<tag_add>::Flag(lhs, rhs_comp, add2c_inter) ||
+           Carry<tag_add>::Flag<T>(add2c_inter, T(1), add2c_final);
+
+  WriteZExt(dst, res);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(ADDS, D dst, S1 src1, S2 src2) {
+  auto lhs = Read(src1);
+  auto rhs = Read(src2);
+  auto res = UAdd(lhs, rhs);
+
+  FLAG_Z = ZeroFlag(res);
+  FLAG_N = SignFlag(res);
+  FLAG_V = Overflow<tag_add>::Flag(lhs, rhs, res);
+  FLAG_C = Carry<tag_add>::Flag(lhs, rhs, res);
+
+  WriteZExt(dst, res);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(SUBS_32_ADDSUB_SHIFT) = SUBS<R32W, R32, I32>;
+DEF_ISEL(SUBS_64_ADDSUB_SHIFT) = SUBS<R64W, R64, I64>;
+DEF_ISEL(SUBS_32S_ADDSUB_IMM) = SUBS<R32W, R32, I32>;
+DEF_ISEL(SUBS_64S_ADDSUB_IMM) = SUBS<R64W, R64, I64>;
+DEF_ISEL(SUBS_32S_ADDSUB_EXT) = SUBS<R32W, R32, I32>;
+DEF_ISEL(SUBS_64S_ADDSUB_EXT) = SUBS<R64W, R64, I64>;
+
+DEF_ISEL(ADDS_32_ADDSUB_SHIFT) = ADDS<R32W, R32, I32>;
+DEF_ISEL(ADDS_64_ADDSUB_SHIFT) = ADDS<R64W, R64, I64>;
+DEF_ISEL(ADDS_32S_ADDSUB_IMM) = ADDS<R32W, R32, I32>;
+DEF_ISEL(ADDS_64S_ADDSUB_IMM) = ADDS<R64W, R64, I64>;
+DEF_ISEL(ADDS_32S_ADDSUB_EXT) = ADDS<R32W, R32, I32>;
+DEF_ISEL(ADDS_64S_ADDSUB_EXT) = ADDS<R64W, R64, I64>;
