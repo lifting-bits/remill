@@ -405,7 +405,7 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(
   // containing a `uint64_t *`, into a `uintptr_t` when they are being passed
   // as arguments.
   } else if (Operand::kActionWrite == op.action) {
-    CHECK(GetHostArch()->IsAArch64() || GetTargetArch()->IsAArch64())
+    CHECK(GetHostArch()->IsAArch64())
         << "Operand " << op.Debug() << " is a write operand, but argument "
         << " type " << LLVMThingToString(arg_type) << " is not a pointer type "
         << std::hex << inst.pc;

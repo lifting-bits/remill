@@ -1343,6 +1343,38 @@ bool TryDecodeCMP_SUBS_64S_ADDSUB_EXT(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// CMN  <Wn|WSP>, #<imm>{, <shift>}
+bool TryDecodeCMN_ADDS_32S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  return TryDecodeCMP_SUBS_32S_ADDSUB_IMM(data, inst);
+}
+
+// CMN  <Xn|SP>, #<imm>{, <shift>}
+bool TryDecodeCMN_ADDS_64S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
+  return TryDecodeCMP_SUBS_64S_ADDSUB_IMM(data, inst);
+}
+
+// CMN  <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeCMN_ADDS_32_ADDSUB_SHIFT(const InstData &data,
+                                       Instruction &inst) {
+  return TryDecodeCMP_SUBS_32_ADDSUB_SHIFT(data, inst);
+}
+
+// CMN  <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeCMN_ADDS_64_ADDSUB_SHIFT(const InstData &data,
+                                       Instruction &inst) {
+  return TryDecodeCMP_SUBS_64_ADDSUB_SHIFT(data, inst);
+}
+
+// CMN  <Wn|WSP>, <Wm>{, <extend> {#<amount>}}
+bool TryDecodeCMN_ADDS_32S_ADDSUB_EXT(const InstData &data, Instruction &inst) {
+  return TryDecodeCMP_SUBS_32S_ADDSUB_EXT(data, inst);
+}
+
+// CMN  <Xn|SP>, <R><m>{, <extend> {#<amount>}}
+bool TryDecodeCMN_ADDS_64S_ADDSUB_EXT(const InstData &data, Instruction &inst) {
+  return TryDecodeCMP_SUBS_64S_ADDSUB_EXT(data, inst);
+}
+
 static const char *kCondName[] = {
     "EQ", "CS", "MI", "VS", "HI", "GE", "GT", "AL"
 };

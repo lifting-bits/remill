@@ -81,11 +81,27 @@ DEF_SEM(CMP, S1 src1, S2 src2) {
 
   FLAG_Z = ZeroFlag(res);
   FLAG_N = SignFlag(res);
-  FLAG_V = Overflow<tag_sub>::Flag(lhs, rhs, res);
+  FLAG_V = Overflow<tag_add>::Flag(lhs, rhs, res);
   FLAG_C = Carry<tag_add>::Flag(lhs, rhs_comp, add2c_inter) ||
            Carry<tag_add>::Flag<T>(add2c_inter, 1, add2c_final);
   return memory;
 }
+
+template <typename S1, typename S2>
+DEF_SEM(CMN, S1 src1, S2 src2) {
+  using T = typename BaseType<S2>::BT;
+  auto lhs = Read(src1);
+  auto rhs = Read(src2);
+  auto res = UAdd(lhs, rhs);
+
+  FLAG_Z = ZeroFlag(res);
+  FLAG_N = SignFlag(res);
+  FLAG_V = Overflow<tag_add>::Flag(lhs, rhs, res);
+  FLAG_C = Carry<tag_add>::Flag(lhs, rhs, res);
+  return memory;
+}
+
+}  // namespace
 
 DEF_ISEL(CMP_SUBS_32_ADDSUB_SHIFT) = CMP<R32, I32>;
 DEF_ISEL(CMP_SUBS_64_ADDSUB_SHIFT) = CMP<R64, I64>;
@@ -96,4 +112,11 @@ DEF_ISEL(CMP_SUBS_64S_ADDSUB_IMM) = CMP<R64, I64>;
 DEF_ISEL(CMP_SUBS_32S_ADDSUB_EXT) = CMP<R32, I32>;
 DEF_ISEL(CMP_SUBS_64S_ADDSUB_EXT) = CMP<R64, I64>;
 
-}  // namespace
+DEF_ISEL(CMN_ADDS_32_ADDSUB_SHIFT) = CMN<R32, I32>;
+DEF_ISEL(CMN_ADDS_64_ADDSUB_SHIFT) = CMN<R64, I64>;
+
+DEF_ISEL(CMN_ADDS_32S_ADDSUB_IMM) = CMN<R32, I32>;
+DEF_ISEL(CMN_ADDS_64S_ADDSUB_IMM) = CMN<R64, I64>;
+
+DEF_ISEL(CMN_ADDS_32S_ADDSUB_EXT) = CMN<R32, I32>;
+DEF_ISEL(CMN_ADDS_64S_ADDSUB_EXT) = CMN<R64, I64>;
