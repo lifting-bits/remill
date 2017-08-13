@@ -1050,27 +1050,9 @@ bool TryDecodeADRP_ONLY_PCRELADDR(const InstData &data, Instruction &inst) {
   return true;
 }
 
-static void DecodeUnconditionalBranch(Instruction &inst, int64_t displacement) {
-  Operand taken_op = {};
-  taken_op.action = Operand::kActionRead;
-  taken_op.type = Operand::kTypeAddress;
-  taken_op.size = kPCWidth;
-  taken_op.addr.address_size = kPCWidth;
-  taken_op.addr.base_reg.name = "PC";
-  taken_op.addr.base_reg.size = kPCWidth;
-  taken_op.addr.displacement = displacement;
-  taken_op.addr.kind = Operand::Address::kControlFlowTarget;
-
-  inst.branch_taken_pc = static_cast<uint64_t>(
-      static_cast<int64_t>(inst.pc) + displacement);
-
-  inst.operands.push_back(taken_op);
-}
-
 // B  <label>
 bool TryDecodeB_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
-  auto disp = static_cast<int64_t>(data.imm26.simm26) << 2ULL;
-  DecodeUnconditionalBranch(inst, disp);
+  AddPCDisp(inst, data.imm26.simm26 << 2LL);
   return true;
 }
 
@@ -1119,39 +1101,36 @@ static void DecodeConditionalBranch(Instruction &inst, int64_t disp) {
   DecodeFallThroughPC(inst);
 }
 
-template <RegClass rc>
-static bool DecodeBranchRegLabel(const InstData &data, Instruction &inst) {
-  // Set up branch condition operands.
+static bool DecodeBranchRegLabel(const InstData &data, Instruction &inst,
+                                 RegClass reg_class) {
   DecodeConditionalBranch(inst, data.imm19.simm19 << 2);
-  // Set up source register for comparison.
-  AddRegOperand(inst, kActionRead, rc, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionRead, reg_class, kUseAsValue, data.Rt);
   return true;
-}
-
-// CBZ  <Xt>, <label>
-bool TryDecodeCBZ_64_COMPBRANCH(const InstData &data, Instruction &inst) {
-  return DecodeBranchRegLabel<kRegX>(data, inst);
 }
 
 // CBZ  <Wt>, <label>
 bool TryDecodeCBZ_32_COMPBRANCH(const InstData &data, Instruction &inst) {
-  return DecodeBranchRegLabel<kRegW>(data, inst);
+  return DecodeBranchRegLabel(data, inst, kRegW);
+}
+
+// CBZ  <Xt>, <label>
+bool TryDecodeCBZ_64_COMPBRANCH(const InstData &data, Instruction &inst) {
+  return DecodeBranchRegLabel(data, inst, kRegX);
 }
 
 // CBNZ  <Wt>, <label>
 bool TryDecodeCBNZ_32_COMPBRANCH(const InstData &data, Instruction &inst) {
-  return DecodeBranchRegLabel<kRegW>(data, inst);
+  return DecodeBranchRegLabel(data, inst, kRegW);
 }
 
 // CBNZ  <Xt>, <label>
 bool TryDecodeCBNZ_64_COMPBRANCH(const InstData &data, Instruction &inst) {
-  return DecodeBranchRegLabel<kRegX>(data, inst);
+  return DecodeBranchRegLabel(data, inst, kRegX);
 }
 
 // BL  <label>
 bool TryDecodeBL_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
-  auto disp = static_cast<int64_t>(data.imm26.simm26) << 2ULL;
-  DecodeUnconditionalBranch(inst, disp);  // Decodes the call target.
+  AddPCDisp(inst, data.imm26.simm26 << 2LL);
   AddNextPC(inst);  // Decodes the return address.
   return true;
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-TEST_BEGIN(CBNZ_32_COMPBRANCH, cbz_w0, 1)
+TEST_BEGIN(CBNZ_32_COMPBRANCH, cbnz_w0, 1)
 TEST_INPUTS(
     0,
     1,
@@ -27,7 +27,7 @@ TEST_INPUTS(
 99:
 TEST_END
 
-TEST_BEGIN(CBNZ_64_COMPBRANCH, cbz_x0, 1)
+TEST_BEGIN(CBNZ_64_COMPBRANCH, cbnz_x0, 1)
 TEST_INPUTS(
     0,
     1,
