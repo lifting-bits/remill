@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 /* SUBS  <Wd>, <Wn|WSP>, <Wm>{, <extend> {#<amount>}} */
 
 TEST_BEGIN(SUBS_32S_ADDSUB_EXT, subs_w9_wsp_w1_uxtb0, 1)
@@ -259,7 +258,7 @@ TEST_END
 
 /* SUBS  <Xd>, <Xn|SP>, <R><m>{, <extend> {#<amount>}} */
 
-TEST_BEGIN(SUBS_64S_ADDSUB_EXT, cmp_sp_w1_uxtb0, 1)
+TEST_BEGIN(SUBS_64S_ADDSUB_EXT, subs_x9_sp_w1_uxtb0, 1)
 TEST_INPUTS(
     0,
     1,

@@ -67,7 +67,7 @@ TEST_END
 
 TEST_BEGIN(SUBS_64S_ADDSUB_IMM, subs_x9_sp_16_lsl12, 1)
 TEST_INPUTS(0)
-    sub x9, sp, #16, lsl #12
+    subs x9, sp, #16, lsl #12
 TEST_END
 
 TEST_BEGIN(SUBS_64S_ADDSUB_IMM, subs_x9_x0_1, 1)
