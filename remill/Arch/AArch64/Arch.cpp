@@ -1607,6 +1607,56 @@ bool TryDecodeEOR_64_LOG_IMM(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// AND  <Wd|WSP>, <Wn>, #<imm>
+bool TryDecodeAND_32_LOG_IMM(const InstData &data, Instruction &inst) {
+  return TryDecodeEOR_32_LOG_IMM(data, inst);
+}
+
+// AND  <Xd|SP>, <Xn>, #<imm>
+bool TryDecodeAND_64_LOG_IMM(const InstData &data, Instruction &inst) {
+  return TryDecodeEOR_64_LOG_IMM(data, inst);
+}
+
+// AND  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeAND_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeEOR_32_LOG_SHIFT(data, inst);
+}
+
+// AND  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeAND_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeEOR_64_LOG_SHIFT(data, inst);
+}
+
+// ORR  <Wd|WSP>, <Wn>, #<imm>
+bool TryDecodeORR_32_LOG_IMM(const InstData &data, Instruction &inst) {
+  return TryDecodeEOR_32_LOG_IMM(data, inst);
+}
+
+// ORR  <Xd|SP>, <Xn>, #<imm>
+bool TryDecodeORR_64_LOG_IMM(const InstData &data, Instruction &inst) {
+  return TryDecodeEOR_64_LOG_IMM(data, inst);
+}
+
+// ORR  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeORR_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeEOR_32_LOG_SHIFT(data, inst);
+}
+
+// ORR  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeORR_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeEOR_64_LOG_SHIFT(data, inst);
+}
+
+// BIC  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeBIC_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeEOR_32_LOG_SHIFT(data, inst);
+}
+
+// BIC  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeBIC_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeEOR_64_LOG_SHIFT(data, inst);
+}
+
 // LDUR  <Wt>, [<Xn|SP>{, #<simm>}]
 bool TryDecodeLDUR_32_LDST_UNSCALED(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
