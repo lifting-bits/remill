@@ -350,7 +350,6 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/DATAXFER/XCHG.S"
 
 /* Bring in the rest of the semantic tests. */
-
 #include "tests/X86/MMX/INPUTS.S"
 #include "tests/X86/MMX/MISC.S"
 #include "tests/X86/MMX/PACKSS.S"
@@ -492,6 +491,11 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/UCOMISD.S"
 #include "tests/X86/SSE/UCOMISS.S"
 
+#include "tests/X86/SSE/MINSS.S"
+// #include "tests/X86/SSE/MINSD.S"
+// #include "tests/X86/SSE/MAXSS.S"
+// #include "tests/X86/SSE/MAXSD.S"
+
 #include "tests/X86/STRINGOP/CMPS.S"
 #include "tests/X86/STRINGOP/LODS.S"
 #include "tests/X86/STRINGOP/MOVS.S"
@@ -508,7 +512,6 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/X87/FUCOM.S"
 #include "tests/X86/X87/FXCH.S"
 #include "tests/X86/X87/MISC.S"
-
 
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"

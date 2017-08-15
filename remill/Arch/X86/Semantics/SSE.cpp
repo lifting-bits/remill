@@ -1173,13 +1173,20 @@ template <typename D, typename S1, typename S2>
   DEF_SEM(MINSS, D dst, S1 src1, S2 src2) {
     auto src1_float = FExtractV32(FReadV32(src1), 0);
     auto src2_float = FExtractV32(FReadV32(src2), 0);
-    auto dest_vec = FClearV32(FReadV32(dst));
+    auto dest_vec = FReadV32(dst);
 
     auto min = src1_float;
-    if (issignaling(src1_float) || 
-        issignaling(src2_float) ||
-        src1_float >= src2_float || 
-        ((src1_float == 0.0) && (src2_float == 0.0)) ) {
+
+    // If either float is a NaN (SNaN or QNaN):
+    if (std::isunordered(src1_float, src2_float)) {
+        min = src2_float;
+    } 
+    // or if both floats are 0.0:
+    else if ((src1_float == 0.0) && (src2_float == 0.0)) {
+        min = src2_float;
+    }
+    // or if src2 is less than src1:
+    else if (src1_float >= src2_float) {
         min = src2_float;
     }
 
@@ -1192,13 +1199,20 @@ template <typename D, typename S1, typename S2>
   DEF_SEM(MINSD, D dst, S1 src1, S2 src2) {
     auto src1_float = FExtractV64(FReadV64(src1), 0);
     auto src2_float = FExtractV64(FReadV64(src2), 0);
-    auto dest_vec = FClearV64(FReadV64(dst));
+    auto dest_vec = FReadV64(dst);
 
     auto min = src1_float;
-    if (issignaling(src1_float) || 
-        issignaling(src2_float) ||
-        src1_float >= src2_float || 
-        ((src1_float == 0.0) && (src2_float == 0.0)) ) {
+    
+    // If either float is a NaN (SNaN or QNaN):
+    if (std::isunordered(src1_float, src2_float)) {
+        min = src2_float;
+    } 
+    // or if both floats are 0.0:
+    else if ((src1_float == 0.0) && (src2_float == 0.0)) {
+        min = src2_float;
+    }
+    // or if src2 is less than src1:
+    else if (src1_float >= src2_float) {
         min = src2_float;
     }
 
@@ -1211,13 +1225,20 @@ template <typename D, typename S1, typename S2>
   DEF_SEM(MAXSS, D dst, S1 src1, S2 src2) {
     auto src1_float = FExtractV32(FReadV32(src1), 0);
     auto src2_float = FExtractV32(FReadV32(src2), 0);
-    auto dest_vec = FClearV32(FReadV32(dst));
+    auto dest_vec = FReadV32(dst);
 
     auto max = src1_float;
-    if (issignaling(src1_float) || 
-        issignaling(src2_float) ||
-        src1_float < src2_float ||
-        ((src1_float == 0.0) && (src2_float == 0.0)) ) {
+    
+    // If either float is a NaN (SNaN or QNaN):
+    if (std::isunordered(src1_float, src2_float)) {
+        max = src2_float;
+    } 
+    // or if both floats are 0.0:
+    else if ((src1_float == 0.0) && (src2_float == 0.0)) {
+        max = src2_float;
+    }
+    // or if src2 is greater than src1:
+    else if (src1_float < src2_float) {
         max = src2_float;
     }
 
@@ -1230,16 +1251,23 @@ template <typename D, typename S1, typename S2>
   DEF_SEM(MAXSD, D dst, S1 src1, S2 src2) {
     auto src1_float = FExtractV64(FReadV64(src1), 0);
     auto src2_float = FExtractV64(FReadV64(src2), 0);
-    auto dest_vec = FClearV64(FReadV64(dst));
+    auto dest_vec = FReadV64(dst);
  
     auto max = src1_float;
-    if (issignaling(src1_float) || 
-        issignaling(src2_float) ||
-        src1_float < src2_float ||
-        ((src1_float == 0.0) && (src2_float == 0.0)) ) {
+    
+    // If either float is a NaN (SNaN or QNaN):
+    if (std::isunordered(src1_float, src2_float)) {
+        max = src2_float;
+    } 
+    // or if both floats are 0.0:
+    else if ((src1_float == 0.0) && (src2_float == 0.0)) {
         max = src2_float;
     }
-
+    // or if src2 is greater than src1:
+    else if (src1_float < src2_float) {
+        max = src2_float;
+    }
+    
     dest_vec = FInsertV64(dest_vec, 0, max);
     FWriteV64(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
     return memory;
@@ -1249,8 +1277,8 @@ template <typename D, typename S1, typename S2>
 
 DEF_ISEL(MINSS_XMMss_MEMss) = MINSS<V128W, V128, MV32>;
 DEF_ISEL(MINSS_XMMss_XMMss) = MINSS<V128W, V128, V128>;
-IF_AVX(DEF_ISEL(VMINSS_XMMdq_XMMdq_MEMd) = MINSS<VV128W, VV128, MV128>;)
-IF_AVX(DEF_ISEL(VMINSS_XMMdq_XMMdq_XMMd) = MINSS<VV128W, VV128, VV128>;)
+IF_AVX(DEF_ISEL(VMINSS_XMMdq_XMMdq_MEMd) = MINSS<VV128W, V128, MV32>;)
+IF_AVX(DEF_ISEL(VMINSS_XMMdq_XMMdq_XMMd) = MINSS<VV128W, V128, V128>;)
 /*
 5112 VMINSS VMINSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
 5113 VMINSS VMINSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
@@ -1259,8 +1287,8 @@ IF_AVX(DEF_ISEL(VMINSS_XMMdq_XMMdq_XMMd) = MINSS<VV128W, VV128, VV128>;)
 
 DEF_ISEL(MINSD_XMMsd_MEMsd) = MINSD<V128W, V128, MV64>;
 DEF_ISEL(MINSD_XMMsd_XMMsd) = MINSD<V128W, V128, V128>;
-IF_AVX(DEF_ISEL(VMINSD_XMMdq_XMMdq_MEMq) = MINSD<VV128W, VV128, MV64>;)
-IF_AVX(DEF_ISEL(VMINSD_XMMdq_XMMdq_XMMq) = MINSD<VV128W, VV128, VV128>;)
+IF_AVX(DEF_ISEL(VMINSD_XMMdq_XMMdq_MEMq) = MINSD<VV128W, V128, MV64>;)
+IF_AVX(DEF_ISEL(VMINSD_XMMdq_XMMdq_XMMq) = MINSD<VV128W, V128, V128>;)
 /*
 634 PMINSD PMINSD_XMMdq_MEMdq SSE SSE4 SSE4 ATTRIBUTES: REQUIRES_ALIGNMENT 
 635 PMINSD PMINSD_XMMdq_XMMdq SSE SSE4 SSE4 ATTRIBUTES: REQUIRES_ALIGNMENT 
@@ -1284,8 +1312,8 @@ IF_AVX(DEF_ISEL(VMINSD_XMMdq_XMMdq_XMMq) = MINSD<VV128W, VV128, VV128>;)
 
 DEF_ISEL(MAXSS_XMMss_MEMss) = MAXSS<V128W, V128, MV32>;
 DEF_ISEL(MAXSS_XMMss_XMMss) = MAXSS<V128W, V128, V128>;
-IF_AVX(DEF_ISEL(VMAXSS_XMMdq_XMMdq_MEMd) = MAXSS<VV128W, VV128, MV128>;)
-IF_AVX(DEF_ISEL(VMAXSS_XMMdq_XMMdq_XMMd) = MAXSS<VV128W, VV128, VV128>;)
+IF_AVX(DEF_ISEL(VMAXSS_XMMdq_XMMdq_MEMd) = MAXSS<VV128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VMAXSS_XMMdq_XMMdq_XMMd) = MAXSS<VV128W, V128, V128>;)
 /*
 3958 VMAXSS VMAXSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
 3959 VMAXSS VMAXSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
@@ -1294,8 +1322,8 @@ IF_AVX(DEF_ISEL(VMAXSS_XMMdq_XMMdq_XMMd) = MAXSS<VV128W, VV128, VV128>;)
 
 DEF_ISEL(MAXSD_XMMsd_MEMsd) = MAXSD<V128W, V128, MV64>;
 DEF_ISEL(MAXSD_XMMsd_XMMsd) = MAXSD<V128W, V128, V128>;
-IF_AVX(DEF_ISEL(VMAXSD_XMMdq_XMMdq_MEMq) = MAXSD<VV128W, VV128, MV64>;)
-IF_AVX(DEF_ISEL(VMAXSD_XMMdq_XMMdq_XMMq) = MAXSD<VV128W, VV128, VV128>;)
+IF_AVX(DEF_ISEL(VMAXSD_XMMdq_XMMdq_MEMq) = MAXSD<VV128W, V128, MV64>;)
+IF_AVX(DEF_ISEL(VMAXSD_XMMdq_XMMdq_XMMq) = MAXSD<VV128W, V128, V128>;)
 /*
 794 PMAXSD PMAXSD_XMMdq_MEMdq SSE SSE4 SSE4 ATTRIBUTES: REQUIRES_ALIGNMENT 
 795 PMAXSD PMAXSD_XMMdq_XMMdq SSE SSE4 SSE4 ATTRIBUTES: REQUIRES_ALIGNMENT 

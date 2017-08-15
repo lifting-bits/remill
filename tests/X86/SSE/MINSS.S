@@ -14,166 +14,166 @@
  * limitations under the License.
  */
 
-TEST_BEGIN(MINSSv128v128m32, 2)
+TEST_BEGIN(MINSSv128v128, 2)
 TEST_INPUTS(
-    0.0, 1.2,
-    3.4, 2.3,
-    5.5, 5.5,
-    0x7fc00000, 0x7fc00000, /* nan, nan */ 
-    0x7fc00000, 0xffc00000, /* nan, -nan */ 
-    0xffc00000, 0x7fc00000, /* -nan, nan */ 
-    0x7fbfffff, 0x7fbfffff, /* nan, nan */ 
-    0xffbfffff, 0xffbfffff, /* -nan, -nan */ 
-    0x7fbfffff, 0xffbfffff, /* nan, -nan */ 
-    0xffbfffff, 0x7fbfffff, /* -nan, nan */ 
-    0x7f800000, 0x7f800000, /* inf, inf */ 
-    0x7f800000, 0xff800000, /* inf, -inf */ 
-    0xff800000, 0x7f800000, /* -inf, inf */ 
-    0x00000000, 0x00000000, /* 0.000000, 0.000000 */ 
-    0x00000000, 0x80000000, /* 0.000000, -0.000000 */ 
-    0x80000000, 0x00000000, /* -0.000000, 0.000000 */ 
-    0x3f800000, 0x7fc00000, /* 1.000000, nan */ 
-    0x7fc00000, 0x3f800000, /* nan, 1.000000 */ 
-    0x3f800000, 0x7fc00000, /* 1.000000, nan */ 
-    0x3f800000, 0x7fbfffff, /* 1.000000, nan */ 
-    0x7fbfffff, 0x3f800000, /* nan, 1.000000 */ 
-    0x3f800000, 0x7fbfffff, /* 1.000000, nan */ 
-    0x7f800000, 0x7fc00000, /* inf, nan */ 
-    0x7fc00000, 0x7f800000, /* nan, inf */ 
-    0x7f800000, 0x7fbfffff, /* inf, nan */ 
-    0x7fbfffff, 0x7f800000, /* nan, inf */ 
-    0x3f800000, 0x7f800000, /* 1.000000, inf */ 
-    0x3f800000, 0xff800000, /* 1.000000, -inf */ 
-    0x7f800000, 0x3f800000, /* inf, 1.000000 */ 
-    0xff800000, 0x3f800000, /* -inf, 1.000000 */ 
-    0x3f800000, 0xbf800000, /* 1.000000, -1.000000 */ 
+    0.0, 1.2,               /* ARG1 < ARG2 */
+    3.4, 2.3,               /* ARG1 > ARG2 */
+    5.5, 5.5,               /* ARG1 == ARG2 */
+    0x7fc00000, 0x7fc00000, /* QNaN, QNaN */
+    0xffc00000, 0xffc00000, /* -QNaN, -QNaN */
+    0x7fc00000, 0xffc00000, /* QNaN, -QNaN */
+    0xffc00000, 0x7fc00000, /* -QNaN, QNaN */
+    0x7fbfffff, 0x7fbfffff, /* SNaN, SNaN */
+    0xffbfffff, 0xffbfffff, /* -SNaN, -SNaN */
+    0x7fbfffff, 0xffbfffff, /* SNaN, -SNaN */
+    0xffbfffff, 0x7fbfffff, /* -SNaN, SNaN */
+    0x7f800000, 0x7f800000, /* inf, inf */
+    0x7f800000, 0xff800000, /* inf, -inf */
+    0xff800000, 0x7f800000, /* -inf, inf */
+    0x00000000, 0x00000000, /* 0.000000, 0.000000 */
+    0x80000000, 0x80000000, /* -0.000000, -0.000000 */
+    0x00000000, 0x80000000, /* 0.000000, -0.000000 */
+    0x80000000, 0x00000000, /* -0.000000, 0.000000 */
+    0x3f800000, 0x7fc00000, /* 1.000000, QNaN */
+    0x7fc00000, 0x3f800000, /* QNaN, 1.000000 */
+    0x3f800000, 0x7fbfffff, /* 1.000000, SNaN */
+    0x7fbfffff, 0x3f800000, /* SNaN, 1.000000 */
+    0x7f800000, 0x7fc00000, /* inf, QNaN */
+    0x7fc00000, 0x7f800000, /* QNaN, inf */
+    0x7f800000, 0x7fbfffff, /* inf, SNaN */
+    0x7fbfffff, 0x7f800000, /* SNaN, inf */
+    0x3f800000, 0x7f800000, /* 1.000000, inf */
+    0x3f800000, 0xff800000, /* 1.000000, -inf */
+    0x7f800000, 0x3f800000, /* inf, 1.000000 */
+    0xff800000, 0x3f800000, /* -inf, 1.000000 */
+    0x3f800000, 0xbf800000, /* 1.000000, -1.000000 */
     0xbf800000, 0x3f800000) /* -1.000000, 1.000000 */
-    push ARG1_32;
-    push ARG2_32;
-    movq xmm0, qword ptr [rsp + 8];  // ???
-    movq xmm1, qword ptr [rsp];      // ???
-    minss xmm0, xmm1;                // ???
+    movd xmm0, ARG1_32;      // load the low DWORD of v128 #1
+    movd xmm1, ARG2_32;      // load the low DWORD of v128 #2
+    minss xmm0, xmm1;        // find the minimum of the low DWORD of the two vectors
 TEST_END
 
-TEST_BEGIN(MINSSv128v128v128, 2)
+TEST_BEGIN_64(MINSSv128m128, 2)
 TEST_INPUTS(
-    0.0, 1.2,
-    3.4, 2.3,
-    5.5, 5.5,
-    0x7fc00000, 0x7fc00000, /* nan, nan */ 
-    0x7fc00000, 0xffc00000, /* nan, -nan */ 
-    0xffc00000, 0x7fc00000, /* -nan, nan */ 
-    0x7fbfffff, 0x7fbfffff, /* nan, nan */ 
-    0xffbfffff, 0xffbfffff, /* -nan, -nan */ 
-    0x7fbfffff, 0xffbfffff, /* nan, -nan */ 
-    0xffbfffff, 0x7fbfffff, /* -nan, nan */ 
-    0x7f800000, 0x7f800000, /* inf, inf */ 
-    0x7f800000, 0xff800000, /* inf, -inf */ 
-    0xff800000, 0x7f800000, /* -inf, inf */ 
-    0x00000000, 0x00000000, /* 0.000000, 0.000000 */ 
-    0x00000000, 0x80000000, /* 0.000000, -0.000000 */ 
-    0x80000000, 0x00000000, /* -0.000000, 0.000000 */ 
-    0x3f800000, 0x7fc00000, /* 1.000000, nan */ 
-    0x7fc00000, 0x3f800000, /* nan, 1.000000 */ 
-    0x3f800000, 0x7fc00000, /* 1.000000, nan */ 
-    0x3f800000, 0x7fbfffff, /* 1.000000, nan */ 
-    0x7fbfffff, 0x3f800000, /* nan, 1.000000 */ 
-    0x3f800000, 0x7fbfffff, /* 1.000000, nan */ 
-    0x7f800000, 0x7fc00000, /* inf, nan */ 
-    0x7fc00000, 0x7f800000, /* nan, inf */ 
-    0x7f800000, 0x7fbfffff, /* inf, nan */ 
-    0x7fbfffff, 0x7f800000, /* nan, inf */ 
-    0x3f800000, 0x7f800000, /* 1.000000, inf */ 
-    0x3f800000, 0xff800000, /* 1.000000, -inf */ 
-    0x7f800000, 0x3f800000, /* inf, 1.000000 */ 
-    0xff800000, 0x3f800000, /* -inf, 1.000000 */ 
-    0x3f800000, 0xbf800000, /* 1.000000, -1.000000 */ 
+    0.0, 1.2,               /* ARG1 < ARG2 */
+    3.4, 2.3,               /* ARG1 > ARG2 */
+    5.5, 5.5,               /* ARG1 == ARG2 */
+    0x7fc00000, 0x7fc00000, /* QNaN, QNaN */
+    0xffc00000, 0xffc00000, /* -QNaN, -QNaN */
+    0x7fc00000, 0xffc00000, /* QNaN, -QNaN */
+    0xffc00000, 0x7fc00000, /* -QNaN, QNaN */
+    0x7fbfffff, 0x7fbfffff, /* SNaN, SNaN */
+    0xffbfffff, 0xffbfffff, /* -SNaN, -SNaN */
+    0x7fbfffff, 0xffbfffff, /* SNaN, -SNaN */
+    0xffbfffff, 0x7fbfffff, /* -SNaN, SNaN */
+    0x7f800000, 0x7f800000, /* inf, inf */
+    0x7f800000, 0xff800000, /* inf, -inf */
+    0xff800000, 0x7f800000, /* -inf, inf */
+    0x00000000, 0x00000000, /* 0.000000, 0.000000 */
+    0x80000000, 0x80000000, /* -0.000000, -0.000000 */
+    0x00000000, 0x80000000, /* 0.000000, -0.000000 */
+    0x80000000, 0x00000000, /* -0.000000, 0.000000 */
+    0x3f800000, 0x7fc00000, /* 1.000000, QNaN */
+    0x7fc00000, 0x3f800000, /* QNaN, 1.000000 */
+    0x3f800000, 0x7fbfffff, /* 1.000000, SNaN */
+    0x7fbfffff, 0x3f800000, /* SNaN, 1.000000 */
+    0x7f800000, 0x7fc00000, /* inf, QNaN */
+    0x7fc00000, 0x7f800000, /* QNaN, inf */
+    0x7f800000, 0x7fbfffff, /* inf, SNaN */
+    0x7fbfffff, 0x7f800000, /* SNaN, inf */
+    0x3f800000, 0x7f800000, /* 1.000000, inf */
+    0x3f800000, 0xff800000, /* 1.000000, -inf */
+    0x7f800000, 0x3f800000, /* inf, 1.000000 */
+    0xff800000, 0x3f800000, /* -inf, 1.000000 */
+    0x3f800000, 0xbf800000, /* 1.000000, -1.000000 */
     0xbf800000, 0x3f800000) /* -1.000000, 1.000000 */
-    push ARG1_32;
-    push ARG2_32;
-    movq xmm0, qword ptr [rsp + 8];  // ???
-    movq xmm1, qword ptr [rsp];      // ???
-    minss xmm0, xmm1;                // ???
-TEST_END
+    movd xmm0, ARG1_32;     // load the low DWORD of v128
+    push ARG2_64;           // load the low DWORD of m128
+    minss xmm0, [rsp];      // find the minimum of the two
+TEST_END_64
 
-TEST_BEGIN(MINSSvv128vv128mv128, 2)
-TEST_INPUTS(
-    0.0, 1.2,
-    3.4, 2.3,
-    5.5, 5.5,
-    0x7fc00000, 0x7fc00000, /* nan, nan */ 
-    0x7fc00000, 0xffc00000, /* nan, -nan */ 
-    0xffc00000, 0x7fc00000, /* -nan, nan */ 
-    0x7fbfffff, 0x7fbfffff, /* nan, nan */ 
-    0xffbfffff, 0xffbfffff, /* -nan, -nan */ 
-    0x7fbfffff, 0xffbfffff, /* nan, -nan */ 
-    0xffbfffff, 0x7fbfffff, /* -nan, nan */ 
-    0x7f800000, 0x7f800000, /* inf, inf */ 
-    0x7f800000, 0xff800000, /* inf, -inf */ 
-    0xff800000, 0x7f800000, /* -inf, inf */ 
-    0x00000000, 0x00000000, /* 0.000000, 0.000000 */ 
-    0x00000000, 0x80000000, /* 0.000000, -0.000000 */ 
-    0x80000000, 0x00000000, /* -0.000000, 0.000000 */ 
-    0x3f800000, 0x7fc00000, /* 1.000000, nan */ 
-    0x7fc00000, 0x3f800000, /* nan, 1.000000 */ 
-    0x3f800000, 0x7fc00000, /* 1.000000, nan */ 
-    0x3f800000, 0x7fbfffff, /* 1.000000, nan */ 
-    0x7fbfffff, 0x3f800000, /* nan, 1.000000 */ 
-    0x3f800000, 0x7fbfffff, /* 1.000000, nan */ 
-    0x7f800000, 0x7fc00000, /* inf, nan */ 
-    0x7fc00000, 0x7f800000, /* nan, inf */ 
-    0x7f800000, 0x7fbfffff, /* inf, nan */ 
-    0x7fbfffff, 0x7f800000, /* nan, inf */ 
-    0x3f800000, 0x7f800000, /* 1.000000, inf */ 
-    0x3f800000, 0xff800000, /* 1.000000, -inf */ 
-    0x7f800000, 0x3f800000, /* inf, 1.000000 */ 
-    0xff800000, 0x3f800000, /* -inf, 1.000000 */ 
-    0x3f800000, 0xbf800000, /* 1.000000, -1.000000 */ 
-    0xbf800000, 0x3f800000) /* -1.000000, 1.000000 */
-    push ARG1_32;
-    push ARG2_32;
-    movq xmm0, qword ptr [rsp + 8];  // ???
-    movq xmm1, qword ptr [rsp];      // ???
-    minss xmm0, xmm1;                // ???
-TEST_END
 
-TEST_BEGIN(MINSSvv128vv128vv128, 2)
+#if HAS_FEATURE_AVX
+
+TEST_BEGIN_64(VMINSSv128v128m128, 2)
 TEST_INPUTS(
-    0.0, 1.2,
-    3.4, 2.3,
-    5.5, 5.5,
-    0x7fc00000, 0x7fc00000, /* nan, nan */ 
-    0x7fc00000, 0xffc00000, /* nan, -nan */ 
-    0xffc00000, 0x7fc00000, /* -nan, nan */ 
-    0x7fbfffff, 0x7fbfffff, /* nan, nan */ 
-    0xffbfffff, 0xffbfffff, /* -nan, -nan */ 
-    0x7fbfffff, 0xffbfffff, /* nan, -nan */ 
-    0xffbfffff, 0x7fbfffff, /* -nan, nan */ 
-    0x7f800000, 0x7f800000, /* inf, inf */ 
-    0x7f800000, 0xff800000, /* inf, -inf */ 
-    0xff800000, 0x7f800000, /* -inf, inf */ 
-    0x00000000, 0x00000000, /* 0.000000, 0.000000 */ 
-    0x00000000, 0x80000000, /* 0.000000, -0.000000 */ 
-    0x80000000, 0x00000000, /* -0.000000, 0.000000 */ 
-    0x3f800000, 0x7fc00000, /* 1.000000, nan */ 
-    0x7fc00000, 0x3f800000, /* nan, 1.000000 */ 
-    0x3f800000, 0x7fc00000, /* 1.000000, nan */ 
-    0x3f800000, 0x7fbfffff, /* 1.000000, nan */ 
-    0x7fbfffff, 0x3f800000, /* nan, 1.000000 */ 
-    0x3f800000, 0x7fbfffff, /* 1.000000, nan */ 
-    0x7f800000, 0x7fc00000, /* inf, nan */ 
-    0x7fc00000, 0x7f800000, /* nan, inf */ 
-    0x7f800000, 0x7fbfffff, /* inf, nan */ 
-    0x7fbfffff, 0x7f800000, /* nan, inf */ 
-    0x3f800000, 0x7f800000, /* 1.000000, inf */ 
-    0x3f800000, 0xff800000, /* 1.000000, -inf */ 
-    0x7f800000, 0x3f800000, /* inf, 1.000000 */ 
-    0xff800000, 0x3f800000, /* -inf, 1.000000 */ 
-    0x3f800000, 0xbf800000, /* 1.000000, -1.000000 */ 
+    0.0, 1.2,               /* ARG1 < ARG2 */
+    3.4, 2.3,               /* ARG1 > ARG2 */
+    5.5, 5.5,               /* ARG1 == ARG2 */
+    0x7fc00000, 0x7fc00000, /* QNaN, QNaN */
+    0xffc00000, 0xffc00000, /* -QNaN, -QNaN */
+    0x7fc00000, 0xffc00000, /* QNaN, -QNaN */
+    0xffc00000, 0x7fc00000, /* -QNaN, QNaN */
+    0x7fbfffff, 0x7fbfffff, /* SNaN, SNaN */
+    0xffbfffff, 0xffbfffff, /* -SNaN, -SNaN */
+    0x7fbfffff, 0xffbfffff, /* SNaN, -SNaN */
+    0xffbfffff, 0x7fbfffff, /* -SNaN, SNaN */
+    0x7f800000, 0x7f800000, /* inf, inf */
+    0x7f800000, 0xff800000, /* inf, -inf */
+    0xff800000, 0x7f800000, /* -inf, inf */
+    0x00000000, 0x00000000, /* 0.000000, 0.000000 */
+    0x80000000, 0x80000000, /* -0.000000, -0.000000 */
+    0x00000000, 0x80000000, /* 0.000000, -0.000000 */
+    0x80000000, 0x00000000, /* -0.000000, 0.000000 */
+    0x3f800000, 0x7fc00000, /* 1.000000, QNaN */
+    0x7fc00000, 0x3f800000, /* QNaN, 1.000000 */
+    0x3f800000, 0x7fbfffff, /* 1.000000, SNaN */
+    0x7fbfffff, 0x3f800000, /* SNaN, 1.000000 */
+    0x7f800000, 0x7fc00000, /* inf, QNaN */
+    0x7fc00000, 0x7f800000, /* QNaN, inf */
+    0x7f800000, 0x7fbfffff, /* inf, SNaN */
+    0x7fbfffff, 0x7f800000, /* SNaN, inf */
+    0x3f800000, 0x7f800000, /* 1.000000, inf */
+    0x3f800000, 0xff800000, /* 1.000000, -inf */
+    0x7f800000, 0x3f800000, /* inf, 1.000000 */
+    0xff800000, 0x3f800000, /* -inf, 1.000000 */
+    0x3f800000, 0xbf800000, /* 1.000000, -1.000000 */
     0xbf800000, 0x3f800000) /* -1.000000, 1.000000 */
-    push ARG1_32;
-    push ARG2_32;
-    movq xmm0, qword ptr [rsp + 8];  // ???
-    movq xmm1, qword ptr [rsp];      // ???
-    minss xmm0, xmm1;                // ???
-TEST_END
+    push ARG1_64;
+    push ARG2_64;                 // load the low DWORD of v128 #2
+    movq xmm1, qword ptr [rsp+8]; // load the low DWORD of v128 #1
+    vminss xmm2, xmm1, [rsp];     // return the minimum of the two into xmm2
+TEST_END_64
+
+TEST_BEGIN_64(VMINSSv128v128v128, 2)
+TEST_INPUTS(
+    0.0, 1.2,               /* ARG1 < ARG2 */
+    3.4, 2.3,               /* ARG1 > ARG2 */
+    5.5, 5.5,               /* ARG1 == ARG2 */
+    0x7fc00000, 0x7fc00000, /* QNaN, QNaN */
+    0xffc00000, 0xffc00000, /* -QNaN, -QNaN */
+    0x7fc00000, 0xffc00000, /* QNaN, -QNaN */
+    0xffc00000, 0x7fc00000, /* -QNaN, QNaN */
+    0x7fbfffff, 0x7fbfffff, /* SNaN, SNaN */
+    0xffbfffff, 0xffbfffff, /* -SNaN, -SNaN */
+    0x7fbfffff, 0xffbfffff, /* SNaN, -SNaN */
+    0xffbfffff, 0x7fbfffff, /* -SNaN, SNaN */
+    0x7f800000, 0x7f800000, /* inf, inf */
+    0x7f800000, 0xff800000, /* inf, -inf */
+    0xff800000, 0x7f800000, /* -inf, inf */
+    0x00000000, 0x00000000, /* 0.000000, 0.000000 */
+    0x80000000, 0x80000000, /* -0.000000, -0.000000 */
+    0x00000000, 0x80000000, /* 0.000000, -0.000000 */
+    0x80000000, 0x00000000, /* -0.000000, 0.000000 */
+    0x3f800000, 0x7fc00000, /* 1.000000, QNaN */
+    0x7fc00000, 0x3f800000, /* QNaN, 1.000000 */
+    0x3f800000, 0x7fbfffff, /* 1.000000, SNaN */
+    0x7fbfffff, 0x3f800000, /* SNaN, 1.000000 */
+    0x7f800000, 0x7fc00000, /* inf, QNaN */
+    0x7fc00000, 0x7f800000, /* QNaN, inf */
+    0x7f800000, 0x7fbfffff, /* inf, SNaN */
+    0x7fbfffff, 0x7f800000, /* SNaN, inf */
+    0x3f800000, 0x7f800000, /* 1.000000, inf */
+    0x3f800000, 0xff800000, /* 1.000000, -inf */
+    0x7f800000, 0x3f800000, /* inf, 1.000000 */
+    0xff800000, 0x3f800000, /* -inf, 1.000000 */
+    0x3f800000, 0xbf800000, /* 1.000000, -1.000000 */
+    0xbf800000, 0x3f800000) /* -1.000000, 1.000000 */
+    push ARG1_64;
+    push ARG2_64;
+    movq xmm0, qword ptr [rsp+8]; // load the low DWORD of v128 #1
+    movq xmm1, qword ptr [rsp];   // load the low DWORD of v128 #2
+    vminss xmm2, xmm1, xmm0;      // return the minimum of the two into xmm2
+TEST_END_64
+
+#endif  // HAS_FEATURE_AVX
