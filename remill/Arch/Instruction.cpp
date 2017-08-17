@@ -16,6 +16,7 @@
 
 #include <glog/logging.h>
 
+#include <iomanip>
 #include <sstream>
 
 #include "remill/Arch/Arch.h"
@@ -71,49 +72,59 @@ std::string Operand::Debug(void) const {
       break;
 
     case Operand::kTypeShiftRegister:
-      ss << "(REG_" << reg.size << " ";
-      switch (shift_reg.extend_op) {
-        case Operand::ShiftRegister::kExtendInvalid:
-          ss << reg.name;
-          break;
-
-        case Operand::ShiftRegister::kExtendSigned:
-          ss << "sext(" << reg.name << "[" << (shift_reg.extract_size - 1)
-             << ":0])";
-          break;
-
-        case Operand::ShiftRegister::kExtendUnsigned:
-          ss << "zext(" << reg.name << "[" << (shift_reg.extract_size - 1)
-             << ":0])";
-          break;
-      }
 
       switch (shift_reg.shift_op) {
         case Operand::ShiftRegister::kShiftInvalid:
           break;
 
         case Operand::ShiftRegister::kShiftLeftWithZeroes:
-          ss << "<<0";
+          ss << "(LSL ";
           break;
 
         case Operand::ShiftRegister::kShiftLeftWithOnes:
-          ss << "<<1";
+          ss << "(MSL ";
           break;
 
         case Operand::ShiftRegister::kShiftUnsignedRight:
-          ss << "u>>";
+          ss << "(LSR ";
           break;
 
         case Operand::ShiftRegister::kShiftSignedRight:
-          ss << "s>>";
+          ss << "(ASR ";
+          break;
+
+        case Operand::ShiftRegister::kShiftLeftAround:
+          ss << "(ROL ";
           break;
 
         case Operand::ShiftRegister::kShiftRightAround:
-          ss << "ror";
+          ss << "(ROR ";
           break;
       }
 
-      ss << " " << shift_reg.shift_size << ")";
+      switch (shift_reg.extend_op) {
+        case Operand::ShiftRegister::kExtendInvalid:
+          ss << "(REG_" << shift_reg.reg.size << " "
+             << shift_reg.reg.name << ")";
+          break;
+
+        case Operand::ShiftRegister::kExtendSigned:
+          ss << "(SEXT (TRUNC (REG_" << shift_reg.reg.size
+             << " " << shift_reg.reg.name << ") " << shift_reg.extract_size
+             << ") " << size << ")";
+          break;
+
+        case Operand::ShiftRegister::kExtendUnsigned:
+          ss << "(ZEXT (TRUNC (REG_" << shift_reg.reg.size
+             << " " << shift_reg.reg.name << ") " << shift_reg.extract_size
+             << ") " << size << ")";
+          break;
+      }
+
+      if (Operand::ShiftRegister::kShiftInvalid != shift_reg.shift_op) {
+        ss << " " << shift_reg.shift_size << ")";
+      }
+
       break;
 
     case Operand::kTypeImmediate:
@@ -196,30 +207,41 @@ std::string Instruction::Serialize(void) const {
     case kArchAMD64:
     case kArchAMD64_AVX:
     case kArchAMD64_AVX512:
-      ss << "AMD64_";
+      ss << "AMD64";
       break;
     case kArchX86:
     case kArchX86_AVX:
     case kArchX86_AVX512:
-      ss << "X86_";
+      ss << "X86";
       break;
     case kArchMips32:
-      ss << "MIPS32_";
+      ss << "MIPS32";
       break;
     case kArchMips64:
-      ss << "MIPS64_";
+      ss << "MIPS64";
       break;
     case kArchAArch64LittleEndian:
-      ss << "AArch64_";
+      ss << "AArch64";
       break;
   }
 
-  ss << "INSTR " << std::hex << pc << " "
-     << std::dec << (next_pc - pc) << " ";
+  ss << " " << std::hex << pc;
 
-  if (is_atomic_read_modify_write) {
-    ss << "ATOMIC ";
+  if (IsValid()) {
+    ss << " " << std::dec << (next_pc - pc) << " ";
+
+    ss << "(BYTES";
+    for (auto byte : bytes) {
+      ss << " " << std::setw(2) << std::setfill('0')
+         << std::hex << static_cast<unsigned>(static_cast<uint8_t>(byte));
+    }
+    ss << ") ";
+
+    if (is_atomic_read_modify_write) {
+      ss << "ATOMIC ";
+    }
   }
+
   ss << function;
   for (const auto &op : operands) {
     ss << " " << op.Debug();

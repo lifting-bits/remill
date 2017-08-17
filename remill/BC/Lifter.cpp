@@ -154,7 +154,8 @@ bool InstructionLifter::LiftIntoBlock(
     CHECK(arg_num < isel_func_type->getNumParams())
         << "Function " << arch_inst.function << ", implemented by "
         << isel_func->getName().str() << ", should have at least "
-        << arg_num << " arguments.";
+        << arg_num << " arguments for instruction "
+        << arch_inst.Serialize();
 
     auto arg_type = isel_func_type->getParamType(arg_num++);
     auto operand = LiftOperand(arch_inst, block, arg_type, op);
@@ -252,93 +253,129 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
     << "for instruction at " << std::hex << inst.pc;
 
   const llvm::DataLayout data_layout(module);
-  auto val = LoadRegValue(block, arch_reg.name);
-  auto val_type = val->getType();
-  auto val_size = data_layout.getTypeAllocSizeInBits(val_type);
+  auto reg = LoadRegValue(block, arch_reg.name);
+  auto reg_type = reg->getType();
+  auto reg_size = data_layout.getTypeAllocSizeInBits(reg_type);
   auto word_size = data_layout.getTypeAllocSizeInBits(word_type);
+  auto op_type = llvm::Type::getIntNTy(context, op.size);
 
   const uint64_t zero = 0;
   const uint64_t one = 1;
   const uint64_t shift_size = op.shift_reg.shift_size;
 
-  const auto shift_val = llvm::ConstantInt::get(
-      val_type, shift_size % (val_size - one));
+  const auto shift_val = llvm::ConstantInt::get(op_type, shift_size);
 
   llvm::IRBuilder<> ir(block);
 
+  auto curr_size = reg_size;
   if (Operand::ShiftRegister::kExtendInvalid != op.shift_reg.extend_op) {
+
     auto extract_type = llvm::Type::getIntNTy(
         context, op.shift_reg.extract_size);
 
-    val = ir.CreateTrunc(val, extract_type);
+    if (reg_size > op.shift_reg.extract_size) {
+      curr_size = op.shift_reg.extract_size;
+      reg = ir.CreateTrunc(reg, extract_type);
 
-    switch (op.shift_reg.extend_op) {
-      case Operand::ShiftRegister::kExtendSigned:
-        val = ir.CreateSExt(val, val_type);
-        break;
-      case Operand::ShiftRegister::kExtendUnsigned:
-        val = ir.CreateZExt(val, val_type);
-        break;
-      default:
-        LOG(FATAL)
-            << "Invalid extend operation type for instruction at "
-            << std::hex << inst.pc;
-        break;
+    } else {
+      CHECK(reg_size == op.shift_reg.extract_size)
+          << "Invalid extraction size. Can't extract "
+          << op.shift_reg.extract_size << " bits from a " << reg_size
+          << "-bit value in operand " << op.Debug() << " of instruction at "
+          << std::hex << inst.pc;
+    }
+
+    if (op.size > op.shift_reg.extract_size) {
+      switch (op.shift_reg.extend_op) {
+        case Operand::ShiftRegister::kExtendSigned:
+          reg = ir.CreateSExt(reg, op_type);
+          curr_size = op.size;
+          break;
+        case Operand::ShiftRegister::kExtendUnsigned:
+          reg = ir.CreateZExt(reg, op_type);
+          curr_size = op.size;
+          break;
+        default:
+          LOG(FATAL)
+              << "Invalid extend operation type for instruction at "
+              << std::hex << inst.pc;
+          break;
+      }
     }
   }
 
+  CHECK(curr_size <= op.size);
+
+  if (curr_size < op.size) {
+    reg = ir.CreateZExt(reg, op_type);
+    curr_size = op.size;
+  }
+
   if (Operand::ShiftRegister::kShiftInvalid != op.shift_reg.shift_op) {
+
+    CHECK(shift_size < op.size)
+        << "Shift of size " << shift_size
+        << " is wider than the base register size in shift register in "
+        << inst.Serialize();
+
     switch (op.shift_reg.shift_op) {
       // Left shift.
       case Operand::ShiftRegister::kShiftLeftWithZeroes:
-        val = ir.CreateShl(val, shift_val);
+        reg = ir.CreateShl(reg, shift_val);
         break;
 
       // Masking shift left.
       case Operand::ShiftRegister::kShiftLeftWithOnes: {
         const auto mask_val = llvm::ConstantInt::get(
-            val_type, ~((~zero) << shift_size));
-        val = ir.CreateOr(ir.CreateShl(val, shift_val), mask_val);
+            reg_type, ~((~zero) << shift_size));
+        reg = ir.CreateOr(ir.CreateShl(reg, shift_val), mask_val);
         break;
       }
 
       // Logical right shift.
       case Operand::ShiftRegister::kShiftUnsignedRight:
-        val = ir.CreateLShr(val, shift_val);
+        reg = ir.CreateLShr(reg, shift_val);
         break;
 
       // Arithmetic right shift.
       case Operand::ShiftRegister::kShiftSignedRight:
-        val = ir.CreateAShr(val, shift_val);
+        reg = ir.CreateAShr(reg, shift_val);
         break;
 
-      // Rotate right.
-      case Operand::ShiftRegister::kShiftRightAround: {
-        const uint64_t shl_amount = (~shift_size + one) & (val_size - one);
-        const auto shl_val = llvm::ConstantInt::get(val_type, shl_amount);
-        const auto val1 = ir.CreateLShr(val, shift_val);
-        const auto val2 = ir.CreateShl(val, shl_val);
-        val = ir.CreateAnd(val1, val2);
+      // Rotate left.
+      case Operand::ShiftRegister::kShiftLeftAround: {
+        const uint64_t shr_amount = (~shift_size + one) & (op.size - one);
+        const auto shr_val = llvm::ConstantInt::get(op_type, shr_amount);
+        const auto val1 = ir.CreateLShr(reg, shr_val);
+        const auto val2 = ir.CreateShl(reg, shift_val);
+        reg = ir.CreateOr(val1, val2);
         break;
       }
 
-      default:
-        LOG(FATAL)
-            << "Invalid shift operation type for instruction at "
-            << std::hex << inst.pc;
+      // Rotate right.
+      case Operand::ShiftRegister::kShiftRightAround: {
+        const uint64_t shl_amount = (~shift_size + one) & (op.size - one);
+        const auto shl_val = llvm::ConstantInt::get(op_type, shl_amount);
+        const auto val1 = ir.CreateLShr(reg, shift_val);
+        const auto val2 = ir.CreateShl(reg, shl_val);
+        reg = ir.CreateOr(val1, val2);
+        break;
+      }
+
+      case Operand::ShiftRegister::kShiftInvalid:
         break;
     }
   }
 
-
-  if (word_size > val_size) {
-    val = ir.CreateZExt(val, word_type);
+  if (word_size > op.size) {
+    reg = ir.CreateZExt(reg, word_type);
   } else {
-    CHECK(word_size == val_size)
-        << "The register " << arch_reg.name << " is too wide to be shifted.";
+    CHECK(word_size == op.size)
+        << "Final size of operand " << op.Debug() << " is " << op.size
+        << " bits, but address size is " << word_size;
   }
 
-  return val;
+  return reg;
 }
 
 // Load a register operand. This deals uniformly with write- and read-operands
@@ -368,7 +405,7 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(
   // containing a `uint64_t *`, into a `uintptr_t` when they are being passed
   // as arguments.
   } else if (Operand::kActionWrite == op.action) {
-    CHECK(GetHostArch()->IsAArch64() || GetTargetArch()->IsAArch64())
+    CHECK(GetHostArch()->IsAArch64())
         << "Operand " << op.Debug() << " is a write operand, but argument "
         << " type " << LLVMThingToString(arg_type) << " is not a pointer type "
         << std::hex << inst.pc;
@@ -546,11 +583,6 @@ llvm::Value *InstructionLifter::LiftOperand(Instruction &inst,
       CHECK(Operand::kActionRead == arch_op.action)
           << "Can't write to a shift register operand "
           << "for instruction at " << std::hex << inst.pc;
-
-      CHECK(arch_op.size == arch_op.shift_reg.reg.size)
-          << "Operand size and register size must match for register "
-          << arch_op.shift_reg.reg.name << " in instruction at "
-          << std::hex << inst.pc;
 
       return LiftShiftRegisterOperand(inst, block, arg_type, arch_op);
 

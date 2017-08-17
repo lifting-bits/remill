@@ -134,7 +134,7 @@ namespace {
 // Takes the place of an unsupported instruction.
 DEF_SEM(HandleUnsupported) {
   return __remill_sync_hyper_call(
-      memory, state, IF_64BIT_ELSE(SyncHyperCall::kAMD64EmulateInstruction,
+      state, memory, IF_64BIT_ELSE(SyncHyperCall::kAMD64EmulateInstruction,
                                    SyncHyperCall::kX86EmulateInstruction));
 }
 

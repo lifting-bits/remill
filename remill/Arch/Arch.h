@@ -19,6 +19,8 @@
 
 #include <string>
 
+#include <llvm/IR/CallingConv.h>
+
 struct ArchState;
 
 namespace llvm {
@@ -52,6 +54,9 @@ class Arch {
 
   // Maximum number of bytes in an instruction for this particular architecture.
   virtual uint64_t MaxInstructionSize(void) const = 0;
+
+  // Default calling convention for this architecture.
+  virtual llvm::CallingConv::ID DefaultCallingConv(void) const = 0;
 
   // Number of bits in an address.
   const OSName os_name;

@@ -83,7 +83,7 @@ namespace {
 // Takes the place of an unsupported instruction.
 DEF_SEM(HandleUnsupported) {
   return __remill_sync_hyper_call(
-      memory, state, SyncHyperCall::kAArch64EmulateInstruction);
+      state, memory, SyncHyperCall::kAArch64EmulateInstruction);
 }
 
 // Takes the place of an invalid instruction.

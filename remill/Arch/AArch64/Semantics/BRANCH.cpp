@@ -139,7 +139,7 @@ DEF_SEM(DirectCondBranch, R8W cond, PC taken, PC not_taken) {
 }
 
 template <typename S>
-DEF_SEM(CBZ, R8W cond, S src, PC taken, PC not_taken) {
+DEF_SEM(CBZ, R8W cond, PC taken, PC not_taken, S src) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   uint8_t take_branch = UCmpEq(Read(src), 0);
@@ -149,7 +149,7 @@ DEF_SEM(CBZ, R8W cond, S src, PC taken, PC not_taken) {
 }
 
 template <typename S>
-DEF_SEM(CBNZ, R8W cond, S src, PC taken, PC not_taken) {
+DEF_SEM(CBNZ, R8W cond, PC taken, PC not_taken, S src) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   uint8_t take_branch = UCmpNeq(Read(src), 0);

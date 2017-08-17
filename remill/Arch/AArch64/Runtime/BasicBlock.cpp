@@ -22,7 +22,7 @@ extern "C" {
 #pragma clang diagnostic ignored "-Wunused-variable"
 
 // Instructions will be lifted into clones of this function.
-[[gnu::used]] Memory *__remill_basic_block(addr_t curr_pc, State &state,
+[[gnu::used]] Memory *__remill_basic_block(State &state, addr_t curr_pc,
                                            Memory *memory) {
   bool branch_taken = false;
 

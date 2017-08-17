@@ -160,31 +160,31 @@ Memory *__remill_atomic_end(Memory *) { return nullptr; }
 
 void __remill_defer_inlining(void) {}
 
-Memory *__remill_error(addr_t, AArch64State &, Memory *) {
+Memory *__remill_error(AArch64State &, addr_t, Memory *) {
   siglongjmp(gJmpBuf, 0);
 }
 
-Memory *__remill_missing_block(addr_t, AArch64State &, Memory *memory) {
+Memory *__remill_missing_block(AArch64State &, addr_t, Memory *memory) {
   return memory;
 }
 
-Memory *__remill_sync_hyper_call(Memory *, AArch64State &, SyncHyperCall::Name) {
+Memory *__remill_sync_hyper_call(AArch64State &, Memory *, SyncHyperCall::Name) {
   __builtin_unreachable();
 }
 
-Memory *__remill_function_call(addr_t, AArch64State &, Memory *) {
+Memory *__remill_function_call(AArch64State &, addr_t, Memory *) {
   __builtin_unreachable();
 }
 
-Memory *__remill_function_return(addr_t, AArch64State &, Memory *) {
+Memory *__remill_function_return(AArch64State &, addr_t, Memory *) {
   __builtin_unreachable();
 }
 
-Memory *__remill_jump(addr_t, AArch64State &, Memory *) {
+Memory *__remill_jump(AArch64State &, addr_t, Memory *) {
   __builtin_unreachable();
 }
 
-Memory *__remill_async_hyper_call(addr_t, AArch64State &, Memory *) {
+Memory *__remill_async_hyper_call(AArch64State &, addr_t, Memory *) {
   __builtin_unreachable();
 }
 
@@ -221,7 +221,7 @@ void __remill_mark_as_used(void *mem) {
 
 }  // extern C
 
-typedef Memory *(LiftedFunc)(addr_t, AArch64State &, Memory *);
+typedef Memory *(LiftedFunc)(AArch64State &, addr_t, Memory *);
 
 // Mapping of test name to translated function.
 static std::map<uint64_t, LiftedFunc *> gTranslatedFuncs;
@@ -295,8 +295,8 @@ static void RunWithFlags(const test::TestInfo *info,
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
     (void) lifted_func(
-        lifted_state->gpr.pc.aword,
         *lifted_state,
+        lifted_state->gpr.pc.aword,
         nullptr);
   } else {
     EXPECT_TRUE(native_test_faulted);
@@ -324,6 +324,10 @@ static void RunWithFlags(const test::TestInfo *info,
   EXPECT_TRUE(lifted_state->sr.c == native_state->sr.c);
   EXPECT_TRUE(lifted_state->sr.v == native_state->sr.v);
   EXPECT_TRUE(lifted_state->gpr == native_state->gpr);
+
+  // The lifted code won't update these.
+  native_state->nzcv.flat = 0;
+  lifted_state->nzcv.flat = 0;
 
   if (gLiftedState != gNativeState) {
     LOG(ERROR)
@@ -356,12 +360,13 @@ TEST_P(InstrTest, SemanticsMatchNative) {
        args < info->args_end;
        args += info->num_args) {
     std::stringstream ss;
+    ss << info->test_name;
     if (1 <= info->num_args) {
-      ss << "args: 0x" << std::hex << args[0];
+      ss << " with X0=" << std::hex << args[0];
       if (2 <= info->num_args) {
-        ss << ", 0x" << std::hex << args[1];
+        ss << ", X1=" << std::hex << args[1];
         if (3 <= info->num_args) {
-          ss << ", 0x" << std::hex << args[3];
+          ss << ", X2=" << std::hex << args[3];
         }
       }
     }
@@ -371,8 +376,8 @@ TEST_P(InstrTest, SemanticsMatchNative) {
       flags.flat = i << 28;
 
       std::stringstream ss2;
-      ss2 << desc << " with N=" << flags.n << " Z=" << flags.z << " C="
-         << flags.c << " V=" << flags.v;
+      ss2 << desc << " and N=" << flags.n << ", Z=" << flags.z << ", C="
+         << flags.c << ", V=" << flags.v;
 
       RunWithFlags(info, flags, ss2.str(), args[0], args[1], args[2]);
     }

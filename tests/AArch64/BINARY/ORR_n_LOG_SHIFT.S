@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-/* SUB  <Wd>, <Wn>, <Wm>{, <shift> #<amount>} */
-TEST_BEGIN(SUB_32_ADDSUB_SHIFT, sub_w9_w0_w1, 2)
+/* ORR  <Wd>, <Wn>, <Wm>{, <shift> #<amount>} */
+TEST_BEGIN(ORR_32_LOG_SHIFT, orr_w9_w0_w1, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -26,10 +26,10 @@ TEST_INPUTS(
     0xfafbfbfd, 0xf1f2f3f4,
     0x0a0b0c0d, 0x01020304)
 
-    sub w9, w0, w1
+    orr w9, w0, w1
 TEST_END
 
-TEST_BEGIN(SUB_32_ADDSUB_SHIFT, sub_w9_w0_w1_lsl5, 2)
+TEST_BEGIN(ORR_32_LOG_SHIFT, orr_w9_w0_w1_lsl5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -40,10 +40,10 @@ TEST_INPUTS(
     0xfafbfbfd, 0xf1f2f3f4,
     0x0a0b0c0d, 0x01020304)
 
-    sub w9, w0, w1, lsl #5
+    orr w9, w0, w1, lsl #5
 TEST_END
 
-TEST_BEGIN(SUB_32_ADDSUB_SHIFT, sub_w9_w0_w1_lsr5, 2)
+TEST_BEGIN(ORR_32_LOG_SHIFT, orr_w9_w0_w1_lsr5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -54,12 +54,11 @@ TEST_INPUTS(
     0xfafbfbfd, 0xf1f2f3f4,
     0x0a0b0c0d, 0x01020304)
 
-    sub w9, w0, w1, lsr #5
+    orr w9, w0, w1, lsr #5
 TEST_END
 
-/* Note: ROR is not allowed here */
 
-TEST_BEGIN(SUB_32_ADDSUB_SHIFT, sub_w9_w0_w1_asr5, 2)
+TEST_BEGIN(ORR_32_LOG_SHIFT, orr_w9_w0_w1_ror5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -70,11 +69,25 @@ TEST_INPUTS(
     0xfafbfbfd, 0xf1f2f3f4,
     0x0a0b0c0d, 0x01020304)
 
-    sub w9, w0, w1, asr #5
+    orr w9, w0, w1, ror #5
 TEST_END
 
-/* SUB  <Xd>, <Xn>, <Xm>{, <shift> #<amount>} */
-TEST_BEGIN(SUB_64_ADDSUB_SHIFT, sub_x9_x0_x1, 2)
+TEST_BEGIN(ORR_32_LOG_SHIFT, orr_w9_w0_w1_asr5, 2)
+TEST_INPUTS(
+    0, 0,
+    0, 1,
+    1, 0,
+    1, 1,
+    0xFFFFFFFF, 0xFFFFFFFF,
+    0, 0xFFFFFFFF,
+    0xfafbfbfd, 0xf1f2f3f4,
+    0x0a0b0c0d, 0x01020304)
+
+    orr w9, w0, w1, asr #5
+TEST_END
+
+/* ORR  <Xd>, <Xn>, <Xm>{, <shift> #<amount>} */
+TEST_BEGIN(ORR_64_LOG_SHIFT, orr_x9_x0_x1, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -92,10 +105,10 @@ TEST_INPUTS(
     0xfafbfbfdf1f2f3f4, 0xf1f2f3f4fafbfbfd,
     0x0a0b0c0d01020304, 0x010203040a0b0c0d)
 
-    sub x9, x0, x1
+    orr x9, x0, x1
 TEST_END
 
-TEST_BEGIN(SUB_64_ADDSUB_SHIFT, sub_x9_x0_x1_lsl5, 2)
+TEST_BEGIN(ORR_64_LOG_SHIFT, orr_x9_x0_x1_lsl5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -113,10 +126,38 @@ TEST_INPUTS(
     0xfafbfbfdf1f2f3f4, 0xf1f2f3f4fafbfbfd,
     0x0a0b0c0d01020304, 0x010203040a0b0c0d)
 
-    sub x9, x0, x1, lsl #5
+    orr x9, x0, x1, lsl #5
 TEST_END
 
-TEST_BEGIN(SUB_64_ADDSUB_SHIFT, sub_x9_x0_x1_lsr5, 2)
+TEST_BEGIN(ORR_64_LOG_SHIFT, orr_x9_x0_x1_lsr5, 2)
+TEST_INPUTS(
+    0, 0,
+    0, 1,
+    1, 0,
+    1, 1,
+    0xFFFFFFFF, 0xFFFFFFFF,
+    0, 0xFFFFFFFF,
+    0xfafbfbfd, 0xf1f2f3f4,
+    0x0a0b0c0d, 0x01020304)
+
+    orr x9, x0, x1, lsr #5
+TEST_END
+
+TEST_BEGIN(ORR_64_LOG_SHIFT, orr_x9_x0_x1_ror5, 2)
+TEST_INPUTS(
+    0, 0,
+    0, 1,
+    1, 0,
+    1, 1,
+    0xFFFFFFFF, 0xFFFFFFFF,
+    0, 0xFFFFFFFF,
+    0xfafbfbfd, 0xf1f2f3f4,
+    0x0a0b0c0d, 0x01020304)
+
+    orr x9, x0, x1, ror #5
+TEST_END
+
+TEST_BEGIN(ORR_64_LOG_SHIFT, orr_x9_x0_x1_asr5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -134,28 +175,6 @@ TEST_INPUTS(
     0xfafbfbfdf1f2f3f4, 0xf1f2f3f4fafbfbfd,
     0x0a0b0c0d01020304, 0x010203040a0b0c0d)
 
-    sub x9, x0, x1, lsr #5
+    orr x9, x0, x1, asr #5
 TEST_END
 
-/* Note: ROR is not allowed here */
-
-TEST_BEGIN(SUB_64_ADDSUB_SHIFT, sub_x9_x0_x1_asr5, 2)
-TEST_INPUTS(
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-    0xFFFFFFFF, 0xFFFFFFFF,
-    0, 0xFFFFFFFF,
-    0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304,
-    0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
-    0xFFFFFFFF00000000, 0xFFFFFFFF,
-    0xFFFFFFFF, 0xFFFFFFFF00000000,
-    0xFFFFFFFFFFFFFFFF, 0,
-    0, 0xFFFFFFFFFFFFFFFF,
-    0xfafbfbfdf1f2f3f4, 0xf1f2f3f4fafbfbfd,
-    0x0a0b0c0d01020304, 0x010203040a0b0c0d)
-
-    sub x9, x0, x1, asr #5
-TEST_END

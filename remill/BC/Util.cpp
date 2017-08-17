@@ -158,7 +158,7 @@ llvm::Value *LoadStatePointer(llvm::Function *function) {
       << "pointer and program counter in function "
       << function->getName().str();
 
-  static_assert(1 == kStatePointerArgNum,
+  static_assert(0 == kStatePointerArgNum,
                 "Expected state pointer to be the first operand.");
 
   return NthArgument(function, kStatePointerArgNum);
@@ -665,6 +665,21 @@ void CloneBlockFunctionInto(llvm::Function *func) {
   auto term = entry.getTerminator();
   term->eraseFromParent();
   func->removeFnAttr(llvm::Attribute::OptimizeNone);
+}
+
+// Returns a list of callers of a specific function.
+std::vector<llvm::CallInst *> CallersOf(llvm::Function *func) {
+  std::vector<llvm::CallInst *> callers;
+  if (func) {
+    for (auto user : func->users()) {
+      if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(user)) {
+        if (call_inst->getCalledFunction() == func) {
+          callers.push_back(call_inst);
+        }
+      }
+    }
+  }
+  return callers;
 }
 
 }  // namespace remill

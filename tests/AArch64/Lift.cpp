@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <fstream>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -26,6 +27,7 @@
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalValue.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
@@ -82,9 +84,22 @@ static void AddFunctionToModule(llvm::Module *module,
   remill::IntrinsicTable intrinsics(module);
   remill::InstructionLifter lifter(word_type, &intrinsics);
 
-  auto saw_isel = false;
+  std::map<uint64_t, remill::Instruction> inst;
+  std::map<uint64_t, llvm::BasicBlock *> blocks;
 
-  auto block = &(func->front());
+  // Function that will create basic blocks as needed.
+  auto GetOrCreateBlock = [func, &blocks] (uint64_t block_pc) {
+    auto &block = blocks[block_pc];
+    if (!block) {
+      block = llvm::BasicBlock::Create(func->getContext(), "", func);
+    }
+    return block;
+  };
+
+  auto entry_block = GetOrCreateBlock(test.test_begin);
+  llvm::BranchInst::Create(entry_block, &(func->front()));
+
+  auto saw_isel = false;
   auto addr = test.test_begin;
   while (addr < test.test_end) {
     std::string inst_bytes;
@@ -98,19 +113,49 @@ static void AddFunctionToModule(llvm::Module *module,
     LOG(INFO)
         << "Lifting " << inst.Serialize();
 
+    auto block = GetOrCreateBlock(inst.pc);
     CHECK(lifter.LiftIntoBlock(inst, block))
         << "Can't lift test instruction in " << test.test_name;
 
     saw_isel = saw_isel || inst.function == test.isel_name;
-
     addr += inst.NumBytes();
+
+    // Connect together the basic blocks.
+    switch (inst.category) {
+      case remill::Instruction::kCategoryNormal:
+      case remill::Instruction::kCategoryNoOp:
+        llvm::BranchInst::Create(GetOrCreateBlock(inst.next_pc), block);
+        break;
+
+      case remill::Instruction::kCategoryDirectJump:
+      case remill::Instruction::kCategoryDirectFunctionCall:
+        llvm::BranchInst::Create(GetOrCreateBlock(inst.branch_taken_pc),
+                                 block);
+        break;
+
+      case remill::Instruction::kCategoryConditionalBranch:
+        llvm::BranchInst::Create(GetOrCreateBlock(inst.branch_taken_pc),
+                                 GetOrCreateBlock(inst.branch_not_taken_pc),
+                                 remill::LoadBranchTaken(block), block);
+        break;
+
+      default:
+        remill::AddTerminatingTailCall(block, intrinsics.missing_block);
+        break;
+    }
   }
 
   CHECK(saw_isel)
       << "Test " << test.test_name << " does not have an instruction that "
       << "uses the semantics function " << test.isel_name;
 
-  remill::AddTerminatingTailCall(block, intrinsics.missing_block);
+  // Terminate any stragglers.
+  for (auto pc_to_block : blocks) {
+    auto block = pc_to_block.second;
+    if (!block->getTerminator()) {
+      remill::AddTerminatingTailCall(block, intrinsics.missing_block);
+    }
+  }
 }
 
 }  // namespace

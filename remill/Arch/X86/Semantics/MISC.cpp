@@ -147,7 +147,7 @@ DEF_SEM(DoXLAT) {
 }
 
 DEF_SEM(DoCPUID) {
-  return __remill_sync_hyper_call(memory, state, SyncHyperCall::kX86CPUID);
+  return __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86CPUID);
 }
 }  // namespace
 

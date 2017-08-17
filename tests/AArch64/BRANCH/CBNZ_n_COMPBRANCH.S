@@ -14,20 +14,30 @@
  * limitations under the License.
  */
 
-namespace {
+TEST_BEGIN(CBNZ_32_COMPBRANCH, cbnz_w0, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x100000000,  /* w0 == 0, but x0 != 0 */
+    0xffffffff)
 
-DEF_SEM(DoRDTSC) {
-  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86ReadTSC);
-  return memory;
-}
+  mov x9, #1
+  cbnz w0, 99f
+  mov x9, #0
+99:
+TEST_END
 
-DEF_SEM(DoRDTSCP) {
-  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86ReadTSCP);
-  return memory;
-}
-}  // namespace
+TEST_BEGIN(CBNZ_64_COMPBRANCH, cbnz_x0, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x100000000,  /* w0 == 0, but x0 != 0 */
+    0xffffffff,
+    0xffffffffffffffff)
 
+  mov x9, #1
+  cbnz x0, 99f
+  mov x9, #0
+99:
+TEST_END
 
-DEF_ISEL(RDTSC) = DoRDTSC;
-
-DEF_ISEL(RDTSCP) = DoRDTSCP;

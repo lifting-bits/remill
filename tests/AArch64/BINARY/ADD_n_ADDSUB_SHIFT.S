@@ -40,7 +40,7 @@ TEST_INPUTS(
     0xfafbfbfd, 0xf1f2f3f4,
     0x0a0b0c0d, 0x01020304)
 
-    add w9, w0, w1, lsl 5
+    add w9, w0, w1, lsl #5
 TEST_END
 
 TEST_BEGIN(ADD_32_ADDSUB_SHIFT, add_w9_w0_w1_lsr5, 2)
@@ -54,7 +54,7 @@ TEST_INPUTS(
     0xfafbfbfd, 0xf1f2f3f4,
     0x0a0b0c0d, 0x01020304)
 
-    add w9, w0, w1, lsr 5
+    add w9, w0, w1, lsr #5
 TEST_END
 
 /* Note: ROR is not allowed here */
@@ -70,7 +70,7 @@ TEST_INPUTS(
     0xfafbfbfd, 0xf1f2f3f4,
     0x0a0b0c0d, 0x01020304)
 
-    add w9, w0, w1, asr 5
+    add w9, w0, w1, asr #5
 TEST_END
 
 /* ADD  <Xd>, <Xn>, <Xm>{, <shift> #<amount>} */
@@ -113,7 +113,7 @@ TEST_INPUTS(
     0xfafbfbfdf1f2f3f4, 0xf1f2f3f4fafbfbfd,
     0x0a0b0c0d01020304, 0x010203040a0b0c0d)
 
-    add x9, x0, x1, lsl 5
+    add x9, x0, x1, lsl #5
 TEST_END
 
 TEST_BEGIN(ADD_64_ADDSUB_SHIFT, add_x9_x0_x1_lsr5, 2)
@@ -125,9 +125,16 @@ TEST_INPUTS(
     0xFFFFFFFF, 0xFFFFFFFF,
     0, 0xFFFFFFFF,
     0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304)
+    0x0a0b0c0d, 0x01020304,
+    0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+    0xFFFFFFFF00000000, 0xFFFFFFFF,
+    0xFFFFFFFF, 0xFFFFFFFF00000000,
+    0xFFFFFFFFFFFFFFFF, 0,
+    0, 0xFFFFFFFFFFFFFFFF,
+    0xfafbfbfdf1f2f3f4, 0xf1f2f3f4fafbfbfd,
+    0x0a0b0c0d01020304, 0x010203040a0b0c0d)
 
-    add x9, x0, x1, lsr 5
+    add x9, x0, x1, lsr #5
 TEST_END
 
 /* Note: ROR is not allowed here */
@@ -150,6 +157,6 @@ TEST_INPUTS(
     0xfafbfbfdf1f2f3f4, 0xf1f2f3f4fafbfbfd,
     0x0a0b0c0d01020304, 0x010203040a0b0c0d)
 
-    add x9, x0, x1, asr 5
+    add x9, x0, x1, asr #5
 TEST_END
 

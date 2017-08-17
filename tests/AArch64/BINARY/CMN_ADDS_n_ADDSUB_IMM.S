@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-/* ADD  <Wd|WSP>, <Wn|WSP>, #<imm>{, <shift>} */
-TEST_BEGIN(ADD_32_ADDSUB_IMM, add_w9_w0_1, 1)
+/* CMN  <Wn|WSP>, #<imm>{, <shift>} */
+TEST_BEGIN(CMN_ADDS_32S_ADDSUB_IMM, cmn_w0_1, 1)
 TEST_INPUTS(
     0,
     1,
@@ -25,10 +25,10 @@ TEST_INPUTS(
     0x0a0b0c0d,
     0x01020304)
 
-    add w9, w0, #0x1
+    cmn w0, #0x1
 TEST_END
 
-TEST_BEGIN(ADD_32_ADDSUB_IMM, add_w9_w0_fff, 1)
+TEST_BEGIN(CMN_ADDS_32S_ADDSUB_IMM, cmn_w0_fff, 1)
 TEST_INPUTS(
     0,
     1,
@@ -38,10 +38,10 @@ TEST_INPUTS(
     0x0a0b0c0d,
     0x01020304)
 
-    add w9, w0, #0xfff
+    cmn w0, #0xfff
 TEST_END
 
-TEST_BEGIN(ADD_32_ADDSUB_IMM, add_w9_w0_0FF_lsl12, 1)
+TEST_BEGIN(CMN_ADDS_32S_ADDSUB_IMM, cmn_w0_0FF_lsl12, 1)
 TEST_INPUTS(
     0,
     1,
@@ -51,22 +51,26 @@ TEST_INPUTS(
     0x0a0b0c0d,
     0x01020304)
 
-    add w9, w0, #0xfff, lsl #12
+    cmn w0, #0xfff, lsl #12
 TEST_END
 
-/*  ADD  <Xd|SP>, <Xn|SP>, #<imm>{, <shift>} */
-TEST_BEGIN(ADD_64_ADDSUB_IMM, add_sp_sp_16, 1)
+TEST_BEGIN(CMN_ADDS_32S_ADDSUB_IMM, cmn_wsp_0FF_lsl12, 1)
 TEST_INPUTS(0)
-    add sp, sp, #16
+    cmn wsp, #0xfff, lsl #12
 TEST_END
 
-TEST_BEGIN(ADD_64_ADDSUB_IMM, add_sp_x9_16, 1)
+/* CMN  <Xn|SP>, #<imm>{, <shift>} */
+TEST_BEGIN(CMN_ADDS_64S_ADDSUB_IMM, cmn_sp_16, 1)
 TEST_INPUTS(0)
-    add x9, sp, #0
-    add sp, x9, #16
+    cmn sp, #16
 TEST_END
 
-TEST_BEGIN(ADD_64_ADDSUB_IMM, add_x9_x0_1, 1)
+TEST_BEGIN(CMN_ADDS_64S_ADDSUB_IMM, cmn_sp_16_lsl12, 1)
+TEST_INPUTS(0)
+    cmn sp, #16, lsl #12
+TEST_END
+
+TEST_BEGIN(CMN_ADDS_64S_ADDSUB_IMM, cmn_x0_1, 1)
 TEST_INPUTS(
     0,
     1,
@@ -80,10 +84,10 @@ TEST_INPUTS(
     0xfafbfbfdf1f2f3f4,
     0xf1f2f3f4fafbfbfd)
 
-    add x9, x0, #0x1
+    cmn x0, #0x1
 TEST_END
 
-TEST_BEGIN(ADD_64_ADDSUB_IMM, add_x9_x0_fff, 1)
+TEST_BEGIN(CMN_ADDS_64S_ADDSUB_IMM, cmn_x0_fff, 1)
 TEST_INPUTS(
     0,
     1,
@@ -97,10 +101,10 @@ TEST_INPUTS(
     0xfafbfbfdf1f2f3f4,
     0xf1f2f3f4fafbfbfd)
 
-    add x9, x0, #0xfff
+    cmn x0, #0xfff
 TEST_END
 
-TEST_BEGIN(ADD_64_ADDSUB_IMM, add_x9_x0_0FF_lsl12, 1)
+TEST_BEGIN(CMN_ADDS_64S_ADDSUB_IMM, cmn_x0_0FF_lsl12, 1)
 TEST_INPUTS(
     0,
     1,
@@ -114,5 +118,6 @@ TEST_INPUTS(
     0xfafbfbfdf1f2f3f4,
     0xf1f2f3f4fafbfbfd)
 
-    add x9, x0, #0xfff, lsl #12
+    cmn x0, #0xfff, lsl #12
 TEST_END
+

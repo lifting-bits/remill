@@ -22,10 +22,6 @@ include(CTest)
 
 set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 
-#
-# compiler selection
-#
-
 if (DEFINED ENV{TRAILOFBITS_LIBRARIES})
     set(LIBRARY_REPOSITORY_ROOT $ENV{TRAILOFBITS_LIBRARIES}
         CACHE PATH "Location of cxx-common libraries.")
@@ -37,6 +33,10 @@ if (DEFINED LIBRARY_REPOSITORY_ROOT)
 else ()
     message(STATUS "Using system libraries")
 endif ()
+
+#
+# compiler selection
+#
 
 # llvm
 if (DEFINED ENV{LLVM_INSTALL_PREFIX})
@@ -54,7 +54,8 @@ endif ()
 # set or you risk ending up in a configure loop!
 if (NOT DEFINED CMAKE_C_COMPILER)
     if (DEFINED LLVM_INSTALL_PREFIX)
-        set(CMAKE_C_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang")
+        set(CMAKE_C_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang"
+            CACHE PATH "Path to clang binary.")
     else ()
         set(CMAKE_C_COMPILER "clang")
     endif ()
@@ -62,7 +63,8 @@ endif ()
 
 if (NOT DEFINED CMAKE_CXX_COMPILER)
     if (DEFINED LLVM_INSTALL_PREFIX)
-        set(CMAKE_CXX_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang++")
+        set(CMAKE_CXX_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang++"
+            CACHE PATH "Path to clang++ binary.")
     else ()
         set(CMAKE_CXX_COMPILER "clang++")
     endif ()
@@ -70,7 +72,8 @@ endif ()
 
 if (NOT DEFINED CMAKE_ASM_COMPILER)
     if (DEFINED LLVM_INSTALL_PREFIX)
-        set(CMAKE_ASM_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang")
+        set(CMAKE_ASM_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang++"
+            CACHE PATH "Path to assembler (aka clang) binary.")
     else ()
         set(CMAKE_ASM_COMPILER ${CMAKE_CXX_COMPILER})
     endif ()
@@ -78,7 +81,8 @@ endif ()
 
 if (NOT DEFINED CMAKE_LLVM_LINK)
     if (DEFINED LLVM_INSTALL_PREFIX)
-        set(CMAKE_LLVM_LINK "${LLVM_INSTALL_PREFIX}/bin/llvm-link")
+        set(CMAKE_LLVM_LINK "${LLVM_INSTALL_PREFIX}/bin/llvm-link"
+            CACHE PATH "Path to llvm-link binary.")
     else ()
         set(CMAKE_LLVM_LINK "llvm-link")
     endif ()

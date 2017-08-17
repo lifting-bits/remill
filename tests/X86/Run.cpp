@@ -191,16 +191,16 @@ Memory *__remill_atomic_end(Memory *) { return nullptr; }
 
 void __remill_defer_inlining(void) {}
 
-Memory *__remill_error(addr_t, X86State &, Memory *) {
+Memory *__remill_error(X86State &, addr_t, Memory *) {
   siglongjmp(gJmpBuf, 0);
 }
 
-Memory *__remill_missing_block(addr_t, X86State &, Memory *memory) {
+Memory *__remill_missing_block(X86State &, addr_t, Memory *memory) {
   return memory;
 }
 
 Memory *__remill_sync_hyper_call(
-    Memory *mem, X86State &state, SyncHyperCall::Name call) {
+    X86State &state, Memory *mem, SyncHyperCall::Name call) {
   auto eax = state.gpr.rax.dword;
   auto ebx = state.gpr.rbx.dword;
   auto ecx = state.gpr.rcx.dword;
@@ -255,19 +255,19 @@ Memory *__remill_sync_hyper_call(
   return mem;
 }
 
-Memory *__remill_function_call(addr_t, X86State &, Memory *) {
+Memory *__remill_function_call(X86State &, addr_t, Memory *) {
   __builtin_unreachable();
 }
 
-Memory *__remill_function_return(addr_t, X86State &, Memory *) {
+Memory *__remill_function_return(X86State &, addr_t, Memory *) {
   __builtin_unreachable();
 }
 
-Memory *__remill_jump(addr_t, X86State &, Memory *) {
+Memory *__remill_jump(X86State &, addr_t, Memory *) {
   __builtin_unreachable();
 }
 
-Memory *__remill_async_hyper_call(addr_t, X86State &, Memory *) {
+Memory *__remill_async_hyper_call(X86State &, addr_t, Memory *) {
   __builtin_unreachable();
 }
 
@@ -304,7 +304,7 @@ void __remill_mark_as_used(void *mem) {
 
 }  // extern C
 
-typedef Memory *(LiftedFunc)(addr_t, X86State &, Memory *);
+typedef Memory *(LiftedFunc)(X86State &, addr_t, Memory *);
 
 // Mapping of test name to translated function.
 static std::map<uint64_t, LiftedFunc *> gTranslatedFuncs;
@@ -436,8 +436,8 @@ static void RunWithFlags(const test::TestInfo *info,
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
     (void) lifted_func(
-        static_cast<addr_t>(lifted_state->gpr.rip.aword),
         *lifted_state,
+        static_cast<addr_t>(lifted_state->gpr.rip.aword),
         nullptr);
   } else {
     EXPECT_TRUE(native_test_faulted);
