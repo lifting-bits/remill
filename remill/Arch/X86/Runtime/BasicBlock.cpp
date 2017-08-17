@@ -26,7 +26,7 @@ extern "C" {
 //
 // Note: `curr_pc` is first to make sure it's not optimized away.
 [[gnu::used]]
-Memory *__remill_basic_block(addr_t curr_pc, State &state, Memory *memory) {
+Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
 
   bool branch_taken = false;
   addr_t zero = 0;

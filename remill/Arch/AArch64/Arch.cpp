@@ -117,6 +117,9 @@ class AArch64Arch : public Arch {
   // Maximum number of bytes in an instruction.
   uint64_t MaxInstructionSize(void) const override;
 
+  // Default calling convention for this architecture.
+  llvm::CallingConv::ID DefaultCallingConv(void) const override;
+
  private:
   AArch64Arch(void) = delete;
 };
@@ -125,6 +128,11 @@ AArch64Arch::AArch64Arch(OSName os_name_, ArchName arch_name_)
     : Arch(os_name_, arch_name_) {}
 
 AArch64Arch::~AArch64Arch(void) {}
+
+// Default calling convention for this architecture.
+llvm::CallingConv::ID AArch64Arch::DefaultCallingConv(void) const {
+  return llvm::CallingConv::C;
+}
 
 // Maximum number of bytes in an instruction for this particular architecture.
 uint64_t AArch64Arch::MaxInstructionSize(void) const {
@@ -1532,12 +1540,40 @@ bool TryDecodeLDRB_32_LDST_POS(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// ASR  <Wd>, <Wn>, #<shift>
+bool TryDecodeASR_SBFM_32M_BITFIELD(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  AddImmOperand(inst, data.immr.uimm, kUnsigned, 8);
+  return true;
+}
+
 // ASR  <Xd>, <Xn>, #<shift>
 bool TryDecodeASR_SBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
   AddImmOperand(inst, data.immr.uimm, kUnsigned, 8);
   return true;
+}
+
+// LSR  <Wd>, <Wn>, #<shift>
+bool TryDecodeLSR_UBFM_32M_BITFIELD(const InstData &data, Instruction &inst) {
+  return TryDecodeASR_SBFM_32M_BITFIELD(data, inst);
+}
+
+// LSR  <Xd>, <Xn>, #<shift>
+bool TryDecodeLSR_UBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
+  return TryDecodeASR_SBFM_64M_BITFIELD(data, inst);
+}
+
+// LSL  <Wd>, <Wn>, #<shift>
+bool TryDecodeLSL_UBFM_32M_BITFIELD(const InstData &data, Instruction &inst) {
+  return TryDecodeASR_SBFM_32M_BITFIELD(data, inst);
+}
+
+// LSL  <Xd>, <Xn>, #<shift>
+bool TryDecodeLSL_UBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
+  return TryDecodeASR_SBFM_64M_BITFIELD(data, inst);
 }
 
 // MOV  <Wd>, #<imm>

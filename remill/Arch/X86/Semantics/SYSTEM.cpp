@@ -17,12 +17,12 @@
 namespace {
 
 DEF_SEM(DoRDTSC) {
-  memory = __remill_sync_hyper_call(memory, state, SyncHyperCall::kX86ReadTSC);
+  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86ReadTSC);
   return memory;
 }
 
 DEF_SEM(DoRDTSCP) {
-  memory = __remill_sync_hyper_call(memory, state, SyncHyperCall::kX86ReadTSCP);
+  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86ReadTSCP);
   return memory;
 }
 }  // namespace

@@ -160,31 +160,31 @@ Memory *__remill_atomic_end(Memory *) { return nullptr; }
 
 void __remill_defer_inlining(void) {}
 
-Memory *__remill_error(addr_t, AArch64State &, Memory *) {
+Memory *__remill_error(AArch64State &, addr_t, Memory *) {
   siglongjmp(gJmpBuf, 0);
 }
 
-Memory *__remill_missing_block(addr_t, AArch64State &, Memory *memory) {
+Memory *__remill_missing_block(AArch64State &, addr_t, Memory *memory) {
   return memory;
 }
 
-Memory *__remill_sync_hyper_call(Memory *, AArch64State &, SyncHyperCall::Name) {
+Memory *__remill_sync_hyper_call(AArch64State &, Memory *, SyncHyperCall::Name) {
   __builtin_unreachable();
 }
 
-Memory *__remill_function_call(addr_t, AArch64State &, Memory *) {
+Memory *__remill_function_call(AArch64State &, addr_t, Memory *) {
   __builtin_unreachable();
 }
 
-Memory *__remill_function_return(addr_t, AArch64State &, Memory *) {
+Memory *__remill_function_return(AArch64State &, addr_t, Memory *) {
   __builtin_unreachable();
 }
 
-Memory *__remill_jump(addr_t, AArch64State &, Memory *) {
+Memory *__remill_jump(AArch64State &, addr_t, Memory *) {
   __builtin_unreachable();
 }
 
-Memory *__remill_async_hyper_call(addr_t, AArch64State &, Memory *) {
+Memory *__remill_async_hyper_call(AArch64State &, addr_t, Memory *) {
   __builtin_unreachable();
 }
 
@@ -221,7 +221,7 @@ void __remill_mark_as_used(void *mem) {
 
 }  // extern C
 
-typedef Memory *(LiftedFunc)(addr_t, AArch64State &, Memory *);
+typedef Memory *(LiftedFunc)(AArch64State &, addr_t, Memory *);
 
 // Mapping of test name to translated function.
 static std::map<uint64_t, LiftedFunc *> gTranslatedFuncs;
@@ -295,8 +295,8 @@ static void RunWithFlags(const test::TestInfo *info,
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
     (void) lifted_func(
-        lifted_state->gpr.pc.aword,
         *lifted_state,
+        lifted_state->gpr.pc.aword,
         nullptr);
   } else {
     EXPECT_TRUE(native_test_faulted);

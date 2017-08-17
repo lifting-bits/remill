@@ -8531,82 +8531,6 @@ bool TryDecodeSRSHR_ASIMDSHF_R(const InstData &, Instruction &) {
   return false;
 }
 
-// UBFM LSL_UBFM_32M_bitfield:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 0 N        0
-//  23 0
-//  24 1
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 0 sf       0
-// LSL  <Wd>, <Wn>, #<shift>
-bool TryDecodeLSL_UBFM_32M_BITFIELD(const InstData &, Instruction &) {
-  return false;
-}
-
-// UBFM LSL_UBFM_64M_bitfield:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 1 N        0
-//  23 0
-//  24 1
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 1 sf       0
-// LSL  <Xd>, <Xn>, #<shift>
-bool TryDecodeLSL_UBFM_64M_BITFIELD(const InstData &, Instruction &) {
-  return false;
-}
-
 // CLS CLS_32_dp_1src:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -15181,43 +15105,6 @@ bool TryDecodeST3_ASISDLSOP_DX3_R3D(const InstData &, Instruction &) {
   return false;
 }
 
-// SBFM ASR_SBFM_32M_bitfield:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1 imms     0
-//  11 1 imms     1
-//  12 1 imms     2
-//  13 1 imms     3
-//  14 1 imms     4
-//  15 0 imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 0 N        0
-//  23 0
-//  24 1
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 0 opc      1
-//  31 0 sf       0
-// ASR  <Wd>, <Wn>, #<shift>
-bool TryDecodeASR_SBFM_32M_BITFIELD(const InstData &, Instruction &) {
-  return false;
-}
 
 // LDRSW LDRSW_64_loadlit:
 //   0 x Rt       0
@@ -15634,82 +15521,6 @@ bool TryDecodeFCVTZS_ASISDSHF_C(const InstData &, Instruction &) {
 //  31 0
 // FCVTZS  <Vd>.<T>, <Vn>.<T>, #<fbits>
 bool TryDecodeFCVTZS_ASIMDSHF_C(const InstData &, Instruction &) {
-  return false;
-}
-
-// UBFM LSR_UBFM_32M_bitfield:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1 imms     0
-//  11 1 imms     1
-//  12 1 imms     2
-//  13 1 imms     3
-//  14 1 imms     4
-//  15 0 imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 0 N        0
-//  23 0
-//  24 1
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 0 sf       0
-// LSR  <Wd>, <Wn>, #<shift>
-bool TryDecodeLSR_UBFM_32M_BITFIELD(const InstData &, Instruction &) {
-  return false;
-}
-
-// UBFM LSR_UBFM_64M_bitfield:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1 imms     0
-//  11 1 imms     1
-//  12 1 imms     2
-//  13 1 imms     3
-//  14 1 imms     4
-//  15 1 imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 1 N        0
-//  23 0
-//  24 1
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 1 sf       0
-// LSR  <Xd>, <Xn>, #<shift>
-bool TryDecodeLSR_UBFM_64M_BITFIELD(const InstData &, Instruction &) {
   return false;
 }
 

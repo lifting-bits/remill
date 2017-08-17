@@ -29,12 +29,6 @@ DEF_SEM(ADD, D dst, S1 src1, S2 src2) {
 }
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(ASR, D dst, S1 src1, S2 src2) {
-  WriteZExt(dst, Unsigned(SShr(Signed(Read(src1)), Signed(Read(src2)))));
-  return memory;
-}
-
-template <typename D, typename S1, typename S2>
 DEF_SEM(EOR, D dst, S1 src1, S2 src2) {
   WriteZExt(dst, UXor(Read(src1), Read(src2)));
   return memory;

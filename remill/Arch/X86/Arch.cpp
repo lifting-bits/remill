@@ -697,6 +697,9 @@ class X86Arch : public Arch {
   // Maximum number of bytes in an instruction.
   uint64_t MaxInstructionSize(void) const override;
 
+  // Default calling convention for this architecture.
+  llvm::CallingConv::ID DefaultCallingConv(void) const override;
+
  private:
   X86Arch(void) = delete;
 };
@@ -718,6 +721,28 @@ X86Arch::~X86Arch(void) {}
 // Maximum number of bytes in an instruction for this particular architecture.
 uint64_t X86Arch::MaxInstructionSize(void) const {
   return 15;
+}
+
+// Default calling convention for this architecture.
+llvm::CallingConv::ID X86Arch::DefaultCallingConv(void) const {
+  if (IsX86()) {
+    switch (os_name) {
+      case kOSInvalid:
+      case kOSmacOS:
+      case kOSLinux:
+      case kOSWindows:
+        return llvm::CallingConv::C;  // cdecl.
+    }
+  } else {
+    switch (os_name) {
+      case kOSInvalid:
+      case kOSmacOS:
+      case kOSLinux:
+        return llvm::CallingConv::X86_64_SysV;
+      case kOSWindows:
+        return llvm::CallingConv::X86_64_Win64;
+    }
+  }
 }
 
 // Converts an LLVM module object to have the right triple / data layout

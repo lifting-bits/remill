@@ -140,6 +140,9 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func);
 // Make `func` a clone of the `__remill_basic_block` function.
 void CloneBlockFunctionInto(llvm::Function *func);
 
+// Returns a list of callers of a specific function.
+std::vector<llvm::CallInst *> CallersOf(llvm::Function *func);
+
 }  // namespace remill
 
 #endif  // REMILL_BC_UTIL_H_
