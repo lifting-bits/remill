@@ -20,8 +20,25 @@
 #include <memory>
 #include <unordered_map>
 
+#include <llvm/ADT/SmallVector.h>
+
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Metadata.h>
+#include <llvm/IR/Module.h>
+
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Name.h"
+
+#include "remill/BC/ABI.h"
+#include "remill/BC/Compat/DebugInfo.h"
+#include "remill/BC/Compat/GlobalValue.h"
+#include "remill/BC/Util.h"
+#include "remill/BC/Version.h"
+
 #include "remill/OS/OS.h"
 
 DEFINE_string(arch, "",
@@ -213,6 +230,77 @@ bool Arch::IsAMD64(void) const {
 
 bool Arch::IsAArch64(void) const {
   return remill::kArchAArch64LittleEndian == arch_name;
+}
+
+namespace {
+
+// These variables must always be defined within `__remill_basic_block`.
+static bool BlockHasSpecialVars(llvm::Function *basic_block) {
+  return FindVarInFunction(basic_block, "STATE", true) &&
+         FindVarInFunction(basic_block, "MEMORY", true) &&
+         FindVarInFunction(basic_block, "PC", true) &&
+         FindVarInFunction(basic_block, "BRANCH_TAKEN", true);
+}
+
+// Clang isn't guaranteed to play nice and name the LLVM values within the
+// `__remill_basic_block` intrinsic with the same names as we find in the
+// C++ definition of that function. However, we compile that function with
+// debug information, and so we will try to recover the variables names for
+// later lookup.
+static void FixupBasicBlockVariables(llvm::Function *basic_block) {
+  if (BlockHasSpecialVars(basic_block)) {
+    return;
+  }
+
+  for (auto &block : *basic_block) {
+    for (auto &inst : block) {
+      if (auto decl_inst = llvm::dyn_cast<llvm::DbgDeclareInst>(&inst)) {
+        auto addr = decl_inst->getAddress();
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 7)
+        addr->setName(decl_inst->getVariable()->getName());
+#else
+        llvm::DIVariable var(decl_inst->getVariable());
+        addr->setName(var.getName());
+#endif
+      }
+    }
+  }
+
+  CHECK(BlockHasSpecialVars(basic_block))
+      << "Unable to locate required variables in `__remill_basic_block`.";
+}
+
+// Initialize some attributes that are common to all newly created block
+// functions. Also, give pretty names to the arguments of block functions.
+static void InitBlockFunctionAttributes(llvm::Function *block_func) {
+  block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
+  block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
+
+  remill::NthArgument(block_func, kMemoryPointerArgNum)->setName("memory");
+  remill::NthArgument(block_func, kStatePointerArgNum)->setName("state");
+  remill::NthArgument(block_func, kPCArgNum)->setName("pc");
+}
+
+}  // namespace
+
+// Converts an LLVM module object to have the right triple / data layout
+// information for the target architecture.
+void Arch::PrepareModule(llvm::Module *mod) const {
+  auto basic_block = BasicBlockFunction(mod);
+
+  if (!BlockHasSpecialVars(basic_block)) {
+    InitFunctionAttributes(basic_block);
+    FixupBasicBlockVariables(basic_block);
+    InitBlockFunctionAttributes(basic_block);
+
+    basic_block->addFnAttr(llvm::Attribute::OptimizeNone);
+    basic_block->removeFnAttr(llvm::Attribute::AlwaysInline);
+    basic_block->removeFnAttr(llvm::Attribute::InlineHint);
+    basic_block->addFnAttr(llvm::Attribute::NoInline);
+    basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
+  }
+
+  this->PrepareModuleImpl(mod);
 }
 
 }  // namespace remill

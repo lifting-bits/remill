@@ -74,6 +74,7 @@ void InitFunctionAttributes(llvm::Function *function) {
   //            intrinsics.
   function->setCallingConv(llvm::CallingConv::Fast);
 
+  function->removeFnAttr(llvm::Attribute::NoInline);
   function->addFnAttr(llvm::Attribute::InlineHint);
 }
 
@@ -361,6 +362,18 @@ llvm::Argument *NthArgument(llvm::Function *func, size_t index) {
   return &*it;
 }
 
+// Returns a pointer to the `__remill_basic_block` function.
+llvm::Function *BasicBlockFunction(llvm::Module *module) {
+  auto bb = module->getFunction("__remill_basic_block");
+  CHECK(nullptr != bb);
+  return bb;
+}
+
+// Return the type of a lifted function.
+llvm::FunctionType *LiftedFunctionType(llvm::Module *module) {
+  return BasicBlockFunction(module)->getFunctionType();
+}
+
 // Return a vector of arguments to pass to a lifted function, where the
 // arguments are derived from `block`.
 std::vector<llvm::Value *> LiftedFunctionArgs(llvm::BasicBlock *block) {
@@ -399,10 +412,7 @@ void ForEachISel(llvm::Module *module, ISelCallback callback) {
 // Declare a lifted function of the correct type.
 llvm::Function *DeclareLiftedFunction(llvm::Module *module,
                                       const std::string &name) {
-  auto bb = module->getFunction("__remill_basic_block");
-  CHECK(nullptr != bb) << "Cannot declare lifted function " << name
-                       << " because the "
-                       << " intrinsics __remill_basic_block cannot be found.";
+  auto bb = BasicBlockFunction(module);
   auto func_type = bb->getFunctionType();
 
   auto func = llvm::dyn_cast<llvm::Function>(
@@ -418,35 +428,34 @@ llvm::Function *DeclareLiftedFunction(llvm::Module *module,
 
 // Returns the type of a state pointer.
 llvm::PointerType *StatePointerType(llvm::Module *module) {
-  auto bb = module->getFunction("__remill_basic_block");
-  CHECK(nullptr != bb);
   return llvm::dyn_cast<llvm::PointerType>(
-      bb->getFunctionType()->getParamType(kStatePointerArgNum));
+      LiftedFunctionType(module)->getParamType(kStatePointerArgNum));
 }
 
 // Returns the type of a state pointer.
 llvm::PointerType *MemoryPointerType(llvm::Module *module) {
-  auto bb = module->getFunction("__remill_basic_block");
-  CHECK(nullptr != bb);
   return llvm::dyn_cast<llvm::PointerType>(
-      bb->getFunctionType()->getParamType(kMemoryPointerArgNum));
+      LiftedFunctionType(module)->getParamType(kMemoryPointerArgNum));
 }
 
 // Returns the type of an address (addr_t in the State.h).
 llvm::IntegerType *AddressType(llvm::Module *module) {
-  auto bb = module->getFunction("__remill_basic_block");
-  CHECK(nullptr != bb);
   return llvm::dyn_cast<llvm::IntegerType>(
-      bb->getFunctionType()->getParamType(kPCArgNum));
+      LiftedFunctionType(module)->getParamType(kPCArgNum));
 }
 
-// Clone function `source_func` into `dest_func`. This will strip out debug
-// info during the clone.
-void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
+// Clone function `source_func` into `dest_func`, using `value_map` to map over
+// values. This will strip out debug info during the clone. This will strip out
+// debug info during the clone.
+//
+// Note: this will try to clone globals referenced from the module of
+//       `source_func` into the module of `dest_func`.
+void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
+                       ValueMap &value_map) {
+
   auto func_name = source_func->getName().str();
   auto source_mod = source_func->getParent();
   auto dest_mod = dest_func->getParent();
-  auto new_args = dest_func->arg_begin();
 
   dest_func->setAttributes(source_func->getAttributes());
   dest_func->setLinkage(source_func->getLinkage());
@@ -456,13 +465,6 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 6)
   dest_func->setIsMaterializable(source_func->isMaterializable());
 #endif
-
-  std::unordered_map<llvm::Value *, llvm::Value *> value_map;
-  for (llvm::Argument &old_arg : source_func->args()) {
-    new_args->setName(old_arg.getName());
-    value_map[&old_arg] = &*new_args;
-    ++new_args;
-  }
 
   // Clone the basic blocks and their instructions.
   std::unordered_map<llvm::BasicBlock *, llvm::BasicBlock *> block_map;
@@ -525,7 +527,7 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
         auto global_val = llvm::dyn_cast<llvm::GlobalValue>(old_op_val);
         if (!global_val) {
           LOG(FATAL) << "Cannot clone value " << LLVMThingToString(old_op_val)
-                     << " into function " << func_name << " because it isn't "
+                     << " from function " << func_name << " because it isn't "
                      << "a global value.";
         }
 
@@ -588,77 +590,23 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
   }
 }
 
-namespace {
-
-// Initialize some attributes that are common to all newly created block
-// functions. Also, give pretty names to the arguments of block functions.
-static void InitBlockFunctionAttributes(llvm::Function *block_func) {
-  block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
-  block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
-
-  remill::NthArgument(block_func, kMemoryPointerArgNum)->setName("memory");
-  remill::NthArgument(block_func, kStatePointerArgNum)->setName("state");
-  remill::NthArgument(block_func, kPCArgNum)->setName("pc");
-}
-
-// These variables must always be defined within `__remill_basic_block`.
-static bool BlockHasSpecialVars(llvm::Function *basic_block) {
-  return FindVarInFunction(basic_block, "STATE", true) &&
-         FindVarInFunction(basic_block, "MEMORY", true) &&
-         FindVarInFunction(basic_block, "PC", true) &&
-         FindVarInFunction(basic_block, "BRANCH_TAKEN", true);
-}
-
-// Clang isn't guaranteed to play nice and name the LLVM values within the
-// `__remill_basic_block` intrinsic with the same names as we find in the
-// C++ definition of that function. However, we compile that function with
-// debug information, and so we will try to recover the variables names for
-// later lookup.
-static void FixupBasicBlockVariables(llvm::Function *basic_block) {
-  if (BlockHasSpecialVars(basic_block)) {
-    return;
+// Clone function `source_func` into `dest_func`. This will strip out debug
+// info during the clone.
+void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
+  auto new_args = dest_func->arg_begin();
+  ValueMap value_map;
+  for (llvm::Argument &old_arg : source_func->args()) {
+    new_args->setName(old_arg.getName());
+    value_map[&old_arg] = &*new_args;
+    ++new_args;
   }
 
-  for (auto &block : *basic_block) {
-    for (auto &inst : block) {
-      if (auto decl_inst = llvm::dyn_cast<llvm::DbgDeclareInst>(&inst)) {
-        auto addr = decl_inst->getAddress();
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 7)
-        addr->setName(decl_inst->getVariable()->getName());
-#else
-        llvm::DIVariable var(decl_inst->getVariable());
-        addr->setName(var.getName());
-#endif
-      }
-    }
-  }
-
-  CHECK(BlockHasSpecialVars(basic_block))
-      << "Unable to locate required variables in `__remill_basic_block`.";
+  CloneFunctionInto(source_func, dest_func, value_map);
 }
-
-}  // namespace
 
 // Make `func` a clone of the `__remill_basic_block` function.
 void CloneBlockFunctionInto(llvm::Function *func) {
-  llvm::Module *module = func->getParent();
-  auto basic_block = module->getFunction("__remill_basic_block");
-  CHECK(nullptr != basic_block)
-      << "Unable to find __remill_basic_block in module";
-
-  if (!BlockHasSpecialVars(basic_block)) {
-    InitFunctionAttributes(basic_block);
-    FixupBasicBlockVariables(basic_block);
-    InitBlockFunctionAttributes(basic_block);
-
-    basic_block->addFnAttr(llvm::Attribute::OptimizeNone);
-    basic_block->removeFnAttr(llvm::Attribute::AlwaysInline);
-    basic_block->removeFnAttr(llvm::Attribute::InlineHint);
-    basic_block->addFnAttr(llvm::Attribute::NoInline);
-    basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
-  }
-
-  CloneFunctionInto(basic_block, func);
+  CloneFunctionInto(BasicBlockFunction(func->getParent()), func);
 
   // Remove the `return` in `__remill_basic_block`.
   auto &entry = func->front();

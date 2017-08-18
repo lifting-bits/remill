@@ -19,6 +19,7 @@
 
 #include <functional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace llvm {
@@ -104,6 +105,12 @@ std::string FindSemanticsBitcodeFile(const std::string &arch);
 // Return a pointer to the Nth argument (N=0 is the first argument).
 llvm::Argument *NthArgument(llvm::Function *func, size_t index);
 
+// Returns a pointer to the `__remill_basic_block` function.
+llvm::Function *BasicBlockFunction(llvm::Module *module);
+
+// Return the type of a lifted function.
+llvm::FunctionType *LiftedFunctionType(llvm::Module *module);
+
 // Return a vector of arguments to pass to a lifted function, where the
 // arguments are derived from `block`.
 std::vector<llvm::Value *> LiftedFunctionArgs(llvm::BasicBlock *block);
@@ -129,6 +136,18 @@ llvm::PointerType *MemoryPointerType(llvm::Module *module);
 
 // Returns the type of an address (addr_t in the State.h).
 llvm::IntegerType *AddressType(llvm::Module *module);
+
+using ValueMap = std::unordered_map<llvm::Value *, llvm::Value *>;
+
+// Clone function `source_func` into `dest_func`, using `value_map` to map over
+// values. This will strip out debug info during the clone. This will strip out
+// debug info during the clone.
+//
+// Note: this will try to clone globals referenced from the module of
+//       `source_func` into the module of `dest_func`.
+void CloneFunctionInto(llvm::Function *source_func,
+                       llvm::Function *dest_func,
+                       ValueMap &value_map);
 
 // Clone function `source_func` into `dest_func`. This will strip out debug
 // info during the clone.

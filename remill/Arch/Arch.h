@@ -45,7 +45,7 @@ class Arch {
 
   // Converts an LLVM module object to have the right triple / data layout
   // information for the target architecture.
-  virtual void PrepareModule(llvm::Module *mod) const = 0;
+  void PrepareModule(llvm::Module *mod) const;
 
   // Decode an instruction.
   virtual bool DecodeInstruction(
@@ -69,6 +69,10 @@ class Arch {
 
  protected:
   Arch(OSName os_name_, ArchName arch_name_);
+
+  // Converts an LLVM module object to have the right triple / data layout
+  // information for the target architecture.
+  virtual void PrepareModuleImpl(llvm::Module *mod) const = 0;
 
  private:
   // Defined in `remill/Arch/X86/Arch.cpp`.

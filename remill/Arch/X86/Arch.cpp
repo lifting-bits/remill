@@ -687,8 +687,6 @@ class X86Arch : public Arch {
 
   virtual ~X86Arch(void);
 
-  void PrepareModule(llvm::Module *mod) const override;
-
   // Decode an instuction.
   bool DecodeInstruction(
       uint64_t address, const std::string &inst_bytes,
@@ -699,6 +697,9 @@ class X86Arch : public Arch {
 
   // Default calling convention for this architecture.
   llvm::CallingConv::ID DefaultCallingConv(void) const override;
+
+ protected:
+  void PrepareModuleImpl(llvm::Module *mod) const override;
 
  private:
   X86Arch(void) = delete;
@@ -747,7 +748,7 @@ llvm::CallingConv::ID X86Arch::DefaultCallingConv(void) const {
 
 // Converts an LLVM module object to have the right triple / data layout
 // information for the target architecture.
-void X86Arch::PrepareModule(llvm::Module *mod) const {
+void X86Arch::PrepareModuleImpl(llvm::Module *mod) const {
   std::string dl;
   llvm::Triple triple;
 

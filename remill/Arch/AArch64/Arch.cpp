@@ -107,8 +107,6 @@ class AArch64Arch : public Arch {
 
   virtual ~AArch64Arch(void);
 
-  void PrepareModule(llvm::Module *mod) const override;
-
   // Decode an instruction.
   bool DecodeInstruction(
       uint64_t address, const std::string &instr_bytes,
@@ -119,6 +117,9 @@ class AArch64Arch : public Arch {
 
   // Default calling convention for this architecture.
   llvm::CallingConv::ID DefaultCallingConv(void) const override;
+
+ protected:
+  void PrepareModuleImpl(llvm::Module *mod) const override;
 
  private:
   AArch64Arch(void) = delete;
@@ -139,7 +140,7 @@ uint64_t AArch64Arch::MaxInstructionSize(void) const {
   return 4;
 }
 
-void AArch64Arch::PrepareModule(llvm::Module *mod) const {
+void AArch64Arch::PrepareModuleImpl(llvm::Module *mod) const {
   std::string dl;
   llvm::Triple triple("aarch64-unknown-unknown-");
 
