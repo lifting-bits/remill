@@ -65,15 +65,6 @@ void InitFunctionAttributes(llvm::Function *function) {
   // Don't use any exception stuff.
   function->addFnAttr(llvm::Attribute::NoUnwind);
   function->removeFnAttr(llvm::Attribute::UWTable);
-
-  // To use must-tail-calls everywhere we need to use the `fast` calling
-  // convention, where it's up the LLVM to decide how to pass arguments.
-  //
-  // TODO(pag): This may end up being finicky down the line when trying to
-  //            integrate lifted code function with normal C/C++-defined
-  //            intrinsics.
-  function->setCallingConv(llvm::CallingConv::Fast);
-
   function->removeFnAttr(llvm::Attribute::NoInline);
   function->addFnAttr(llvm::Attribute::InlineHint);
 }
@@ -89,11 +80,8 @@ llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
     for (llvm::Argument &arg : source_func->args()) {
       args.push_back(&arg);
     }
-    llvm::CallInst *call_target_instr = ir.CreateCall(dest_func, args);
 
-    // Make sure we tail-call from one block method to another.
-    call_target_instr->setTailCallKind(llvm::CallInst::TCK_Tail);
-    call_target_instr->setCallingConv(llvm::CallingConv::Fast);
+    llvm::CallInst *call_target_instr = ir.CreateCall(dest_func, args);
     ir.CreateRet(call_target_instr);
     return call_target_instr;
   } else {
@@ -123,9 +111,6 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
   llvm::CallInst *call_target_instr = ir.CreateCall(
       dest_func, LiftedFunctionArgs(source_block));
 
-  // Make sure we tail-call from one block method to another.
-  call_target_instr->setTailCallKind(llvm::CallInst::TCK_Tail);
-  call_target_instr->setCallingConv(llvm::CallingConv::Fast);
   ir.CreateRet(call_target_instr);
   return call_target_instr;
 }
