@@ -28,4 +28,35 @@
 # error "Minimum supported LLVM version is 3.5"
 #endif
 
+#define IF_GTE_LLVM36(...) __VA_ARGS__
+#define IF_GTE_LLVM37(...) __VA_ARGS__
+#define IF_GTE_LLVM38(...) __VA_ARGS__
+#define IF_GTE_LLVM39(...) __VA_ARGS__
+#define IF_GTE_LLVM40(...) __VA_ARGS__
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 6)
+# undef IF_GTE_LLVM36
+# define IF_GTE_LLVM36(...)
+#endif
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 7)
+# undef IF_GTE_LLVM37
+# define IF_GTE_LLVM37(...)
+#endif
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 8)
+# undef IF_GTE_LLVM38
+# define IF_GTE_LLVM38(...)
+#endif
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 9)
+# undef IF_GTE_LLVM39
+# define IF_GTE_LLVM39(...)
+#endif
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(4, 0)
+# undef IF_GTE_LLVM40
+# define IF_GTE_LLVM40(...)
+#endif
+
 #endif  // REMILL_BC_VERSION_H_

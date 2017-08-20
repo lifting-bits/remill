@@ -182,6 +182,14 @@ function Build
 function GetLLVMVersion
 {
   case ${1} in
+    3.6)
+      LLVM_VERSION=llvm36
+      return 0
+    ;;
+    3.7)
+      LLVM_VERSION=llvm37
+      return 0
+    ;;
     3.8)
       LLVM_VERSION=llvm38
       return 0

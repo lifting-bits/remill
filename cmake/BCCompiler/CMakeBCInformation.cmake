@@ -14,15 +14,6 @@
 
 set(DEFAULT_BC_COMPILER_FLAGS "-std=gnu++11 -emit-llvm -Wno-unknown-warning-option -Wall -Wshadow -Wconversion -Wpadded -pedantic -Wshorten-64-to-32 -Wno-gnu-anonymous-struct -Wno-return-type-c-linkage -Wno-gnu-zero-variadic-macro-arguments -Wno-nested-anon-types -Wno-extended-offsetof -Wno-gnu-statement-expression -Wno-c99-extensions -Wno-ignored-attributes -mtune=generic -fno-vectorize -fno-slp-vectorize -ffreestanding -fno-common -fno-builtin -fno-exceptions -fno-rtti -fno-asynchronous-unwind-tables -Wno-unneeded-internal-declaration -Wno-unused-function ")
 
-# Disable process-specific vectorizations. In practice these don't really matter
-# as they more related to codegen.
-if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-  set(DEFAULT_BC_COMPILER_FLAGS "${DEFAULT_BC_COMPILER_FLAGS} -mno-sse -mno-avx -mno-3dnow")
-
-elseif ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
-  set(DEFAULT_BC_COMPILER_FLAGS "${DEFAULT_BC_COMPILER_FLAGS} -mno-hvx -mno-hvx-double")
-endif ()
-
 if (NOT CMAKE_BC_COMPILE_OBJECT)
     if (NOT DEFINED CMAKE_BC_COMPILER)
         message(SEND_ERROR "The bitcode compiler was not found!")

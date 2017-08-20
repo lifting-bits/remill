@@ -38,8 +38,8 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 | [Google Flags](https://github.com/google/glog) | 2.2.0 |
 | [Google Log](https://github.com/google/glog) | 0.3.4 |
 | [Google Test](https://github.com/google/googletest) | 1.8.0 |
-| [LLVM](http://llvm.org/) | 3.5+ |
-| [Clang](http://clang.llvm.org/) | 3.5+ |
+| [LLVM](http://llvm.org/) | 3.6+ |
+| [Clang](http://clang.llvm.org/) | 3.6+ |
 | [Intel XED](https://software.intel.com/en-us/articles/xed-x86-encoder-decoder-software-library) | 2016-02-02 |
 | [Python](https://www.python.org/) | 2.7 | 
 | Unzip | Latest |
