@@ -1197,8 +1197,8 @@ template <typename D, typename S1, typename S2>
 
 template <typename D, typename S1, typename S2>
   DEF_SEM(MINSD, D dst, S1 src1, S2 src2) {
-    auto dest_vec = FReadV64(dst);
-    auto src1_float = FExtractV64(FReadV64(src1), 0);
+    auto dest_vec = FReadV64(src1);
+    auto src1_float = FExtractV64(dest_vec, 0);
     auto src2_float = FExtractV64(FReadV64(src2), 0);
 
     auto min = src1_float;
@@ -1223,8 +1223,8 @@ template <typename D, typename S1, typename S2>
 
 template <typename D, typename S1, typename S2>
   DEF_SEM(MAXSS, D dst, S1 src1, S2 src2) {
-    auto dest_vec = FReadV32(dst);
-    auto src1_float = FExtractV32(FReadV32(src1), 0);
+    auto dest_vec = FReadV32(src1);
+    auto src1_float = FExtractV32(dest_vec, 0);
     auto src2_float = FExtractV32(FReadV32(src2), 0);
 
     auto max = src1_float;
@@ -1249,8 +1249,8 @@ template <typename D, typename S1, typename S2>
 
 template <typename D, typename S1, typename S2>
   DEF_SEM(MAXSD, D dst, S1 src1, S2 src2) {
-    auto dest_vec = FReadV64(dst);
-    auto src1_float = FExtractV64(FReadV64(src1), 0);
+    auto dest_vec = FReadV64(src1);
+    auto src1_float = FExtractV64(dest_vec, 0);
     auto src2_float = FExtractV64(FReadV64(src2), 0);
  
     auto max = src1_float;
