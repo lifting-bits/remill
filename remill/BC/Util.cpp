@@ -166,12 +166,17 @@ llvm::Value *LoadProgramCounterRef(llvm::BasicBlock *block) {
   return ir.CreateLoad(FindVarInFunction(block->getParent(), "PC"));
 }
 
+// Update the program counter in the state struct with a new value.
+void StoreProgramCounter(llvm::BasicBlock *block, llvm::Value *pc) {
+  (void) new llvm::StoreInst(pc, LoadProgramCounterRef(block), block);
+}
+
 // Update the program counter in the state struct with a hard-coded value.
 void StoreProgramCounter(llvm::BasicBlock *block, uint64_t pc) {
   auto pc_ptr = LoadProgramCounterRef(block);
   auto type = llvm::dyn_cast<llvm::PointerType>(pc_ptr->getType());
-  (void)new llvm::StoreInst(llvm::ConstantInt::get(type->getElementType(), pc),
-                            pc_ptr, block);
+  (void) new llvm::StoreInst(llvm::ConstantInt::get(type->getElementType(), pc),
+                             pc_ptr, block);
 }
 
 // Return the current memory pointer.
