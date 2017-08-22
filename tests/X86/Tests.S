@@ -328,11 +328,12 @@ SYMBOL(__x86_test_table_begin):
     .text
 
 /* For argument register and return register definitions. */
+
 #include "tests/X86/ABI.S"
 
 /* Bring in the data transfer tests. These basically HAVE to pass before
  * anything else can ;-)  */
-
+ 
 #include "tests/X86/DATAXFER/MOV.S"
 #include "tests/X86/DATAXFER/MOVAPD.S"
 #include "tests/X86/DATAXFER/MOVAPS.S"
@@ -494,9 +495,9 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/UCOMISS.S"
 
 #include "tests/X86/SSE/MINSS.S"
-//#include "tests/X86/SSE/MINSD.S"
+#include "tests/X86/SSE/MINSD.S"
 #include "tests/X86/SSE/MAXSS.S"
-//#include "tests/X86/SSE/MAXSD.S"
+#include "tests/X86/SSE/MAXSD.S"
 
 #include "tests/X86/STRINGOP/CMPS.S"
 #include "tests/X86/STRINGOP/LODS.S"
