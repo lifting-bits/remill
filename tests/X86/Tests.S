@@ -338,6 +338,8 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/DATAXFER/MOVD.S"
 #include "tests/X86/DATAXFER/MOVDQA.S"
 #include "tests/X86/DATAXFER/MOVDQU.S"
+#include "tests/X86/DATAXFER/MOVHPD.S"
+#include "tests/X86/DATAXFER/MOVHPS.S"
 #include "tests/X86/DATAXFER/MOVLPD.S"
 #include "tests/X86/DATAXFER/MOVLPS.S"
 #include "tests/X86/DATAXFER/MOVQ.S"

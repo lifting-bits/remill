@@ -500,11 +500,6 @@ static void DecodeRegister(Instruction &inst,
   // Pass the register by reference.
   if (xed_operand_written(xedo)) {
     op.action = Operand::kActionWrite;
-
-    // Note:  In `BasicBlock.cpp`, we alias things like `EAX_write` into
-    //        `RAX_write` on 64-bit builds, so we just want to notify that
-    //        the operand size is 64 bits, but the register's width itself
-    //        is still 32.
     if (Is64Bit(inst.arch_name)) {
       if (XED_REG_GPR32_FIRST <= reg && XED_REG_GPR32_LAST > reg) {
         op.reg.name[0] = 'R';  // Convert things like `EAX` into `RAX`.
@@ -524,7 +519,6 @@ static void DecodeRegister(Instruction &inst,
         }
       }
     }
-
     inst.operands.push_back(op);
   }
 
@@ -916,20 +910,29 @@ bool X86Arch::DecodeInstruction(
     DecodeFallThroughPC(inst, xedd);
   }
 
+  // Make sure we disallow decoding of AVX instructions when running with non-
+  // AVX arch specified. Same thing for AVX512 instructions.
+  switch (xed_decoded_inst_get_category(xedd)) {
+    case XED_CATEGORY_INVALID:
+    case XED_CATEGORY_LAST:
+      return false;
 
-//  char buffer[256] = {'\0'};
-//  xed_print_info_t info;
-//  info.blen = 256;
-//  info.buf = &(buffer[0]);
-//  info.context = nullptr;
-//  info.disassembly_callback = nullptr;
-//  info.format_options_valid = 0;
-//  info.p = xedd;
-//  info.runtime_address = inst.pc;
-//  info.syntax = XED_SYNTAX_INTEL;
-//  if (xed_format_generic(&info)) {
-//    inst.disassembly.assign(&(buffer[0]));
-//  }
+    case XED_CATEGORY_AVX:
+    case XED_CATEGORY_AVX2:
+    case XED_CATEGORY_AVX2GATHER:
+      return kArchAMD64 != inst.arch_name &&
+             kArchX86 != inst.arch_name;
+
+    case XED_CATEGORY_AVX512:
+    case XED_CATEGORY_AVX512_4FMAPS:
+    case XED_CATEGORY_AVX512_4VNNIW:
+    case XED_CATEGORY_AVX512_VBMI:
+      return kArchAMD64_AVX512 == inst.arch_name ||
+             kArchX86_AVX512 == inst.arch_name;
+
+    default:
+      return true;
+  }
 
   return true;
 }
