@@ -1346,28 +1346,38 @@ IF_AVX(DEF_ISEL(VMAXSD_XMMdq_XMMdq_XMMq) = MAXSD<VV128W, V128, V128>;)
 */
 
 namespace {
-/*
+
 template <typename D, typename S1, typename S2>
   DEF_SEM(UNPCKLPS, D dst, S1 src1, S2 src2) {
-    // Initialize dest with a copy of src1 as a vector of 32-bit (DWORD) floats:
-    auto dest_vec = FReadV32(src1);
+    // Initialize with a copy of src1 as a vector of 32-bit (DWORD) floats:
+    auto temp_vec = FReadV32(src1);
 
-    // The "unpack" of ?? of src1??
+    // The "unpack" of DWORD src1[31:0] into dest[31:0] is omitted here because
+    // it is done implicitly in the copying of src1, above.
+    
+    // "Unpack" of DWORD src1[63:32] into dest[95:64]:
+    auto src1_float = FExtractV32(temp_vec, 1);
+    temp_vec = FInsertV32(temp_vec, 2, src1_float);
 
     // Treat src2 as a vector of 32-bit (DWORD) floats:
     auto src2_vec = FReadV32(src2);
-    auto src2_float = FExtractV32(src2_vec, ?);      // "unpack" ?? of src2
-    dest_vec = FInsertV32(dest_vec, ?, src2_float);  //    into ?? of dest
+    
+    // "Unpack" of DWORD src2[31:0] into dest[63:32]:
+    auto src2_float = FExtractV32(src2_vec, 0);
+    temp_vec = FInsertV32(temp_vec, 1, src2_float);
 
-    FWriteV32(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+    // "Unpack" of DWORD src2[63:32] into dest[127:96]:
+    src2_float = FExtractV32(src2_vec, 1);
+    temp_vec = FInsertV32(temp_vec, 3, src2_float);
+
+    FWriteV32(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
     return memory;
 }
-*/
 
 template <typename D, typename S1, typename S2>
   DEF_SEM(UNPCKLPD, D dst, S1 src1, S2 src2) {
-    // Initialize dest with a copy of src1 as a vector of 64-bit (QWORD) floats:
-    auto dest_vec = FReadV64(src1);
+    // Initialize with a copy of src1 as a vector of 64-bit (QWORD) floats:
+    auto temp_vec = FReadV64(src1);
     
     // The "unpack" of low QWORD of src1 into low QWORD of dest is omitted here
     // because it is done implicitly in the copying of src1.
@@ -1375,51 +1385,21 @@ template <typename D, typename S1, typename S2>
     // Treat src2 as a vector of 64-bit (QWORD) floats:
     auto src2_vec = FReadV64(src2);    
     auto src2_float = FExtractV64(src2_vec, 0);        // "unpack" low QWORD of src2
-    dest_vec = FInsertV64(dest_vec, 1, src2_float);    //   into high QWORD of dest
+    temp_vec = FInsertV64(temp_vec, 1, src2_float);    //   into high QWORD of dest
     
-    FWriteV64(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+    FWriteV64(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
     return memory;
 }
 
 } // namespace
 
-
-/*
 DEF_ISEL(UNPCKLPS_XMMps_MEMdq) = UNPCKLPS<V128W, V128, MV64>;
 DEF_ISEL(UNPCKLPS_XMMps_XMMq) = UNPCKLPS<V128W, V128, V128>;
-IF_AVX(DEF_ISEL() = ;)
-IF_AVX(DEF_ISEL() = ;)
-IF_AVX(DEF_ISEL() = ;)
-IF_AVX(DEF_ISEL() = ;)
-
-1076 UNPCKLPS UNPCKLPS_XMMps_MEMdq SSE SSE SSE ATTRIBUTES: REQUIRES_ALIGNMENT 
- 2 
-	0 REG0 EXPLICIT RW NT_LOOKUP_FN F32 XMM_R 
-	1 MEM0 EXPLICIT R IMM_CONST I32 
-1077 UNPCKLPS UNPCKLPS_XMMps_XMMq SSE SSE SSE ATTRIBUTES: REQUIRES_ALIGNMENT 
- 2 
-	0 REG0 EXPLICIT RW NT_LOOKUP_FN F32 XMM_R 
-	1 REG1 EXPLICIT R NT_LOOKUP_FN I64 XMM_B 
-3501 VUNPCKLPS VUNPCKLPS_XMMdq_XMMdq_MEMdq AVX AVX AVX ATTRIBUTES: 
- 3 
-	0 REG0 EXPLICIT W NT_LOOKUP_FN F32 XMM_R 
-	1 REG1 EXPLICIT R NT_LOOKUP_FN F32 XMM_N 
-	2 MEM0 EXPLICIT R IMM_CONST F32 
-3502 VUNPCKLPS VUNPCKLPS_XMMdq_XMMdq_XMMdq AVX AVX AVX ATTRIBUTES: 
- 3 
-	0 REG0 EXPLICIT W NT_LOOKUP_FN F32 XMM_R 
-	1 REG1 EXPLICIT R NT_LOOKUP_FN F32 XMM_N 
-	2 REG2 EXPLICIT R NT_LOOKUP_FN F32 XMM_B 
-3503 VUNPCKLPS VUNPCKLPS_YMMqq_YMMqq_MEMqq AVX AVX AVX ATTRIBUTES: 
- 3 
-	0 REG0 EXPLICIT W NT_LOOKUP_FN F32 YMM_R 
-	1 REG1 EXPLICIT R NT_LOOKUP_FN F32 YMM_N 
-	2 MEM0 EXPLICIT R IMM_CONST F32 
-3504 VUNPCKLPS VUNPCKLPS_YMMqq_YMMqq_YMMqq AVX AVX AVX ATTRIBUTES: 
- 3 
-	0 REG0 EXPLICIT W NT_LOOKUP_FN F32 YMM_R 
-	1 REG1 EXPLICIT R NT_LOOKUP_FN F32 YMM_N 
-	2 REG2 EXPLICIT R NT_LOOKUP_FN F32 YMM_B 
+IF_AVX(DEF_ISEL(VUNPCKLPS_XMMdq_XMMdq_MEMdq) = UNPCKLPS<VV128W, V128, MV64>;)
+IF_AVX(DEF_ISEL(VUNPCKLPS_XMMdq_XMMdq_XMMdq) = UNPCKLPS<VV128W, V128, V128>;)
+/*
+IF_AVX(DEF_ISEL(VUNPCKLPS_YMMqq_YMMqq_MEMqq) = UNPCKLPS<VV256W, V256, MV128>;)
+IF_AVX(DEF_ISEL(VUNPCKLPS_YMMqq_YMMqq_YMMqq) = UNPCKLPS<VV256W, V256, V256>;)
 
 6156 VUNPCKLPS VUNPCKLPS_ZMMf32_MASKmskw_ZMMf32_ZMMf32_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX 
 6157 VUNPCKLPS VUNPCKLPS_ZMMf32_MASKmskw_ZMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX 
