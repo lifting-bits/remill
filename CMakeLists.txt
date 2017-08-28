@@ -151,7 +151,6 @@ list(APPEND PROJECT_LIBRARIES glog::glog)
 find_package(gflags REQUIRED)
 list(APPEND PROJECT_LIBRARIES gflags)
 
-
 # Split out the LLVM version.
 string(REPLACE "." ";" LLVM_VERSION_LIST ${LLVM_PACKAGE_VERSION})
 list(GET LLVM_VERSION_LIST 0 LLVM_MAJOR_VERSION)
@@ -195,6 +194,106 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PUBLIC SYSTEM ${PROJECT_INCLUDEDIRECTORIES})
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_DEFINITIONS})
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS ${PROJECT_CXXFLAGS})
+
+#
+# Also install clang, libllvm and llvm-link
+#
+
+function (InstallExternalTarget target_name target_path install_directory)
+  # Get the optional rpath parameter
+  set(additional_arguments ${ARGN})
+  list(LENGTH additional_arguments additional_argument_count)
+
+  if ("${additional_argument_count}" EQUAL 0)
+  elseif ("${additional_argument_count}" EQUAL 1)
+    list(GET additional_arguments 0 rpath)
+  else ()
+    message(FATAL_ERROR "InstallExternalTarget: Invalid argument count")
+  endif ()
+
+  # We need to locate the patchelf executable to fix the rpath; search for it
+  # only once, and then export the variable with PARENT_SCOPE so that we can
+  # re-use it in the next calls
+  if (NOT "${rpath}" STREQUAL "")
+    if ("${PATCHELF_LOCATION}" STREQUAL "")
+      find_program("program_location" "patchelf")
+      if ("${program_location}" STREQUAL "program_location-NOTFOUND")
+        message(FATAL_ERROR "InstallExternalTarget: Failed to locate the patchelf executable")
+      endif ()
+
+      # We need to set it both in local and in parent scope
+      set("PATCHELF_LOCATION" "${program_location}" PARENT_SCOPE)
+      set("PATCHELF_LOCATION" "${program_location}")
+    endif ()
+  endif ()
+
+  # Make sure the parameters are correct
+  if (NOT EXISTS "${target_path}")
+    message(FATAL_ERROR "InstallExternalTarget: The following path does not exists: ${target_path}")
+  endif ()
+
+  if ("${target_name}")
+    message(FATAL_ERROR "InstallExternalTarget: The following target already exists: ${target_name}")
+  endif ()
+
+  if ("${install_directory}" STREQUAL "")
+    message(FATAL_ERROR "InstallExternalTarget: Invalid install directory specified")
+  endif ()
+
+  # Generate the target
+  get_filename_component("target_file_name" "${target_path}" NAME)
+  set("output_file_path" "${CMAKE_CURRENT_BINARY_DIR}/${target_file_name}")
+
+  if (NOT "${rpath}" STREQUAL "")
+    set(CHRPATH_COMMAND ${PATCHELF_LOCATION} --set-rpath ${rpath} ${output_file_path})
+  else ()
+    set(CHRPATH_COMMAND ${CMAKE_COMMAND} -E echo 'No rpath patch needed for ${target_name}')
+  endif ()
+
+  add_custom_command(
+    OUTPUT "${output_file_path}"
+
+    COMMAND "${CMAKE_COMMAND}" -E copy ${target_path} ${output_file_path}
+    COMMAND ${CHRPATH_COMMAND}
+  )
+
+  add_custom_target("${target_name}" ALL DEPENDS "${output_file_path}")
+  install(FILES "${output_file_path}" DESTINATION "${install_directory}")
+endfunction ()
+
+if ("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "")
+  # system binaries are built statically, so we need to fix the rpath
+  find_program("clang_location" "clang-${REMILL_LLVM_VERSION}")
+  if ("${clang_location}" STREQUAL "clang_location-NOTFOUND")
+    message(FATAL_ERROR "InstallExternalTarget: Failed to locate the clang executable")
+  endif ()
+
+  message("InstallExternalTarget: Found clang executable: ${clang_location}")
+
+  find_program("llvmlink_location" "llvm-link")
+  if ("${llvmlink_location}" STREQUAL "llvmlink_location-NOTFOUND")
+    message(FATAL_ERROR "InstallExternalTarget: Failed to locate the llvm-link executable")
+  endif ()
+
+  message("InstallExternalTarget: Found llvm-link executable: ${llvmlink_location}")
+
+  find_library("libllvm_location" "libLLVM-${REMILL_LLVM_VERSION}.so")
+  if ("${libllvm_location}" STREQUAL "libllvm_location-NOTFOUND")
+    message(FATAL_ERROR "InstallExternalTarget: Failed to locate the libLLVM dynamic library")
+  endif ()
+  
+  message("InstallExternalTarget: Found libLLVM location: ${libllvm_location}")
+
+  InstallExternalTarget("ext_clang" "${clang_location}" "${CMAKE_INSTALL_PREFIX}/bin" "${CMAKE_INSTALL_PREFIX}/lib")
+  InstallExternalTarget("ext_llvmlink" "${llvmlink_location}" "${CMAKE_INSTALL_PREFIX}/bin" "${CMAKE_INSTALL_PREFIX}/lib")
+  InstallExternalTarget("ext_libllvm" "${libllvm_location}" "${CMAKE_INSTALL_PREFIX}/lib")
+
+else ()
+  # The executable in our binary repository are statically built, meaning that we don't need
+  # to change the rpath
+  InstallExternalTarget("ext_clang" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/clang-${REMILL_LLVM_VERSION}" "${CMAKE_INSTALL_PREFIX}/bin")
+  InstallExternalTarget("ext_llvmlink" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/llvm-link" "${CMAKE_INSTALL_PREFIX}/bin")
+endif ()
 
 #
 # additional targets
