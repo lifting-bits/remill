@@ -345,6 +345,33 @@ struct alignas(8) ArithFlags final {
 
 static_assert(16 == sizeof(ArithFlags), "Invalid packing of `ArithFlags`.");
 
+union XCR0 {
+  uint64_t flat;
+
+  struct {
+    uint32_t eax;
+    uint32_t edx;
+  } __attribute__((packed));
+
+  // Bits specify what process states should be saved.
+  struct {
+    uint64_t x87_fpu_mmx:1;  // Must be 1; bit 0.
+    uint64_t xmm:1;  // SSE.
+    uint64_t ymm:1;  // AVX and AVX2.
+    uint64_t bndreg:1;  // Part of MPX.
+    uint64_t bndcsr:1;  // Part of MPX.
+    uint64_t opmask:1;  // Registers k0 through k7, AVX512-only.
+    uint64_t zmm_hi256:1;  // High 256 bits of ZMM0 through ZMM15, AVX512-only.
+    uint64_t hi16_zmm:1;  // ZMM16 through ZMM31, AVX512-only.
+    uint64_t pkru:1;  // Protected key stuff.
+    uint64_t _reserved0:53;
+    uint64_t lwp:1;  // AMD lightweight profiling.
+    uint64_t _reserved1:1;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(8 == sizeof(XCR0), "Invalid packing of `XCR0`.");
+
 struct alignas(8) Segments final {
   volatile uint16_t _0;
   uint16_t ss;
@@ -507,7 +534,7 @@ struct alignas(16) State final : public ArchState {
   X87Stack st;  // 128 bytes.
   MMX mmx;  // 128 bytes.
   FPUStatusFlags sw;  // 8 bytes
-  uint8_t _0[8];
+  XCR0 xcr0;  // 8 bytes.
 } __attribute__((packed));
 
 static_assert((2672 + 16) == sizeof(State),

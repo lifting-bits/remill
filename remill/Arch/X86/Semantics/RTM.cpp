@@ -26,12 +26,23 @@ DEF_SEM(DoXTEST) {
   Write(FLAG_ZF, true);
   return memory;
 }
+
+DEF_SEM(DoXEND) {
+  StopFailure();
+}
+
+DEF_SEM(XABORT, I8) {
+  return memory;  // We treat RTM as inactive, so this is a NOP.
+}
+
 }  // namespace
 
 DEF_ISEL(XBEGIN_RELBRz_16) = XBEGIN;
 DEF_ISEL(XBEGIN_RELBRz_32) = XBEGIN;
-
+DEF_ISEL(XEND) = DoXEND;
 DEF_ISEL(XTEST) = DoXTEST;
+DEF_ISEL(XABORT_IMMb) = XABORT;
+
 /*
 522 XEND XEND COND_BR RTM RTM ATTRIBUTES:
  */

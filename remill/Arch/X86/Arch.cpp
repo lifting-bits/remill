@@ -255,6 +255,15 @@ std::map<xed_iform_enum_t, xed_iform_enum_t> kUnlockedIform = {
     {XED_IFORM_NEG_LOCK_MEMv, XED_IFORM_NEG_MEMv},
 };
 
+static bool IsScalable(const xed_decoded_inst_t *xedd) {
+  if (xed_decoded_inst_get_attribute(xedd, XED_ATTRIBUTE_SCALABLE)) {
+    return true;
+  }
+
+  auto iform = xed_decoded_inst_get_iform_enum(xedd);
+  return XED_IFORM_MOV_MEMw_SEG == iform;
+}
+
 // Name of this instuction function.
 static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
 
@@ -276,9 +285,17 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
   // instuction for each effective operand size. We represent these in
   // the semantics files with `_<size>`, so we need to look up the correct
   // selection.
-  if (xed_decoded_inst_get_attribute(xedd, XED_ATTRIBUTE_SCALABLE)) {
+  if (IsScalable(xedd)) {
     ss << "_";
     ss << xed_decoded_inst_get_operand_width(xedd);
+  }
+
+  // Suffix the ISEL function name with the segment register name for these two
+  // iforms so that we know which hypercall to use.
+  if (XED_IFORM_MOV_SEG_MEMw == iform ||
+      XED_IFORM_MOV_SEG_GPR16 == iform) {
+    ss << "_";
+    ss << xed_reg_enum_t2str(xed_decoded_inst_get_reg(xedd, XED_OPERAND_REG0));
   }
 
   return ss.str();

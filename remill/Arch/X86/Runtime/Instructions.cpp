@@ -177,5 +177,6 @@ DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 #include "remill/Arch/X86/Semantics/SYSCALL.cpp"
 #include "remill/Arch/X86/Semantics/SYSTEM.cpp"
 #include "remill/Arch/X86/Semantics/UNCOND_BR.cpp"
-#include "remill/Arch/X86/Semantics/XOP.cpp"
 #include "remill/Arch/X86/Semantics/X87.cpp"
+#include "remill/Arch/X86/Semantics/XOP.cpp"
+#include "remill/Arch/X86/Semantics/XSAVE.cpp"

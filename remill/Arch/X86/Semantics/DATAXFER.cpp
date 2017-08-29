@@ -548,10 +548,66 @@ IF_AVX(DEF_ISEL(VMOVHPS_MEMq_XMMdq) = MOVHPS_STORE;)
 //5197 VMOVHPS VMOVHPS_XMMf32_XMMf32_MEMf32_AVX512 DATAXFER AVX512EVEX AVX512F_128N ATTRIBUTES: DISP8_TUPLE2
 //5198 VMOVHPS VMOVHPS_MEMf32_XMMf32_AVX512 DATAXFER AVX512EVEX AVX512F_128N ATTRIBUTES: DISP8_TUPLE2
 
+namespace {
+
+template <typename T>
+DEF_SEM(MOV_ES, R16W dst, T src) {
+  Write(dst, Read(src));
+  return __remill_sync_hyper_call(
+      state, memory, SyncHyperCall::kX86SetSegmentES);
+}
+
+template <typename T>
+DEF_SEM(MOV_SS, R16W dst, T src) {
+  Write(dst, Read(src));
+  return __remill_sync_hyper_call(
+      state, memory, SyncHyperCall::kX86SetSegmentSS);
+}
+
+template <typename T>
+DEF_SEM(MOV_DS, R16W dst, T src) {
+  Write(dst, Read(src));
+  return __remill_sync_hyper_call(
+      state, memory, SyncHyperCall::kX86SetSegmentDS);
+}
+
+template <typename T>
+DEF_SEM(MOV_FS, R16W dst, T src) {
+  Write(dst, Read(src));
+  return __remill_sync_hyper_call(
+      state, memory, SyncHyperCall::kX86SetSegmentFS);
+}
+
+template <typename T>
+DEF_SEM(MOV_GS, R16W dst, T src) {
+  Write(dst, Read(src));
+  return __remill_sync_hyper_call(
+      state, memory, SyncHyperCall::kX86SetSegmentGS);
+}
+
+}  // namespace
+
+// TODO(pag): Force-added the `SCALABLE` attribute until this is resolved:
+//            https://github.com/intelxed/xed/issues/66.
+DEF_ISEL(MOV_MEMw_SEG_16) = MOV<M16W, R16>;
+IF_64BIT(DEF_ISEL(MOV_MEMw_SEG_64) = MOV<M64W, R16>;)
+
+DEF_ISEL(MOV_GPRv_SEG_16) = MOV<R16W, R16>;
+IF_64BIT(DEF_ISEL(MOV_GPRv_SEG_64) = MOV<R64W, R16>;)
+
+DEF_ISEL(MOV_SEG_MEMw_ES) = MOV_ES<M16>;
+DEF_ISEL(MOV_SEG_MEMw_SS) = MOV_SS<M16>;
+DEF_ISEL(MOV_SEG_MEMw_DS) = MOV_DS<M16>;
+DEF_ISEL(MOV_SEG_MEMw_FS) = MOV_FS<M16>;
+DEF_ISEL(MOV_SEG_MEMw_GS) = MOV_GS<M16>;
+
+DEF_ISEL(MOV_SEG_GPR16_ES) = MOV_ES<R16>;
+DEF_ISEL(MOV_SEG_GPR16_SS) = MOV_SS<R16>;
+DEF_ISEL(MOV_SEG_GPR16_DS) = MOV_DS<R16>;
+DEF_ISEL(MOV_SEG_GPR16_FS) = MOV_FS<R16>;
+DEF_ISEL(MOV_SEG_GPR16_GS) = MOV_GS<R16>;
 
 /*
-
-
 
 25 MOV_DR MOV_DR_DR_GPR32 DATAXFER BASE I86 ATTRIBUTES: NOTSX RING0
 26 MOV_DR MOV_DR_DR_GPR64 DATAXFER BASE I86 ATTRIBUTES: NOTSX RING0
@@ -574,12 +630,6 @@ IF_AVX(DEF_ISEL(VMOVHPS_MEMq_XMMdq) = MOVHPS_STORE;)
 958 MOVSLDUP MOVSLDUP_XMMps_XMMps DATAXFER SSE3 SSE3 ATTRIBUTES: REQUIRES_ALIGNMENT
 1071 MOVBE MOVBE_GPRv_MEMv DATAXFER MOVBE MOVBE ATTRIBUTES: SCALABLE
 1072 MOVBE MOVBE_MEMv_GPRv DATAXFER MOVBE MOVBE ATTRIBUTES: SCALABLE
-
-
-1214 MOV MOV_MEMw_SEG DATAXFER BASE I86 ATTRIBUTES:
-1215 MOV MOV_GPRv_SEG DATAXFER BASE I86 ATTRIBUTES: SCALABLE
-1216 MOV MOV_SEG_MEMw DATAXFER BASE I86 ATTRIBUTES: NOTSX
-1217 MOV MOV_SEG_GPR16 DATAXFER BASE I86 ATTRIBUTES: NOTSX
 
 1330 MOVNTSS MOVNTSS_MEMd_XMMd DATAXFER SSE4A SSE4A ATTRIBUTES:
 1365 MOVNTSD MOVNTSD_MEMq_XMMq DATAXFER SSE4A SSE4A ATTRIBUTES:

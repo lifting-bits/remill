@@ -27,6 +27,12 @@ class SyncHyperCall {
     kX86ReadTSC,
     kX86ReadTSCP,
 
+    kX86SetSegmentES,
+    kX86SetSegmentSS,
+    kX86SetSegmentDS,
+    kX86SetSegmentFS,
+    kX86SetSegmentGS,
+
     kX86EmulateInstruction,
     kAMD64EmulateInstruction,
     kMipsEmulateInstruction,
