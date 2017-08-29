@@ -587,10 +587,7 @@ DEF_SEM(MOV_GS, R16W dst, T src) {
 
 }  // namespace
 
-// TODO(pag): Force-added the `SCALABLE` attribute until this is resolved:
-//            https://github.com/intelxed/xed/issues/66.
-DEF_ISEL(MOV_MEMw_SEG_16) = MOV<M16W, R16>;
-IF_64BIT(DEF_ISEL(MOV_MEMw_SEG_64) = MOV<M64W, R16>;)
+DEF_ISEL(MOV_MEMw_SEG) = MOV<M16W, R16>;
 
 DEF_ISEL(MOV_GPRv_SEG_16) = MOV<R16W, R16>;
 IF_64BIT(DEF_ISEL(MOV_GPRv_SEG_64) = MOV<R64W, R16>;)

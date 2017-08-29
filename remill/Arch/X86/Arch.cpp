@@ -255,15 +255,6 @@ std::map<xed_iform_enum_t, xed_iform_enum_t> kUnlockedIform = {
     {XED_IFORM_NEG_LOCK_MEMv, XED_IFORM_NEG_MEMv},
 };
 
-static bool IsScalable(const xed_decoded_inst_t *xedd) {
-  if (xed_decoded_inst_get_attribute(xedd, XED_ATTRIBUTE_SCALABLE)) {
-    return true;
-  }
-
-  auto iform = xed_decoded_inst_get_iform_enum(xedd);
-  return XED_IFORM_MOV_MEMw_SEG == iform;
-}
-
 // Name of this instuction function.
 static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
 
@@ -285,7 +276,7 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
   // instuction for each effective operand size. We represent these in
   // the semantics files with `_<size>`, so we need to look up the correct
   // selection.
-  if (IsScalable(xedd)) {
+  if (xed_decoded_inst_get_attribute(xedd, XED_ATTRIBUTE_SCALABLE)) {
     ss << "_";
     ss << xed_decoded_inst_get_operand_width(xedd);
   }
