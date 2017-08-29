@@ -330,6 +330,10 @@ SYMBOL(__x86_test_table_begin):
 /* For argument register and return register definitions. */
 #include "tests/X86/ABI.S"
 
+/* Change to `0` and put new `#include`s above when making new tests to speed
+ * up compile and test times. */
+#if 1
+
 /* Bring in the data transfer tests. These basically HAVE to pass before
  * anything else can ;-)  */
 #include "tests/X86/DATAXFER/MOV.S"
@@ -491,6 +495,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/COMISS.S"
 #include "tests/X86/SSE/PCMPISTRI.S"
 #include "tests/X86/SSE/PSHUFD.S"
+#include "tests/X86/SSE/PSLLDQ.S"
 #include "tests/X86/SSE/PSRLDQ.S"
 #include "tests/X86/SSE/UCOMISD.S"
 #include "tests/X86/SSE/UCOMISS.S"
@@ -512,6 +517,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/X87/FXCH.S"
 #include "tests/X86/X87/MISC.S"
 
+#endif
 
     /* Create a symbol that represents the end of the test information table. */
     .section "__x86_test_table", "a"

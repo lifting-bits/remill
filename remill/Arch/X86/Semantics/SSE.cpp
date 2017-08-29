@@ -888,7 +888,7 @@ DEF_SEM(PSRLDQ, D dst, S src1, I8 src2) {
   return memory;
 }
 
-#if 1 || HAS_FEATURE_AVX
+#if HAS_FEATURE_AVX
 
 template <typename D, typename S>
 DEF_SEM(VPSRLDQ, D dst, S src1, I8 src2) {
@@ -898,13 +898,8 @@ DEF_SEM(VPSRLDQ, D dst, S src1, I8 src2) {
   _Pragma("unroll")
   for (size_t i = shift, j = 0; i < 16; ++i, ++j) {
     new_vec = UInsertV8(new_vec, j, UExtractV8(vec, i));
-  }
-
-  _Pragma("unroll")
-  for (size_t i = shift, j = 0; i < 16; ++i, ++j) {
     new_vec = UInsertV8(new_vec, j + 16, UExtractV8(vec, i + 16));
   }
-
   UWriteV8(dst, new_vec);
   return memory;
 }
