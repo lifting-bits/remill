@@ -69,9 +69,33 @@ DEF_SEM(MOVLPS, D dst, S src) {
   auto src_vec = FReadV32(src);
   auto low1 = FExtractV32(src_vec, 0);
   auto low2 = FExtractV32(src_vec, 1);
-  FWriteV32(dst, FInsertV32(FInsertV32(FReadV32(dst), 0, low1), 1, low2));
+  FWriteV32(dst, FInsertV32(
+        FInsertV32(FReadV32(dst), 0, low1), 
+        1, low2));
   return memory;
 }
+
+template <typename D, typename S>
+DEF_SEM(MOVLHPS, D dst, S src) {
+
+  /* DEST[63:0] (Unmodified) */
+  /* DEST[127:64] ← SRC[63:0] */
+  /* DEST[VLMAX-1:128] (Unmodified) */
+
+  auto src_vec = FReadV64(src);
+  auto src_low = FExtractV64(src_vec, 0);
+  
+  auto dst_vec = FReadV64(dst);
+  auto dst_low = FExtractV64(dst_vec, 0);
+
+  float64v2_t temp_vec = {};
+  temp_vec = FInsertV64(temp_vec, 0, dst_low);
+  temp_vec = FInsertV64(temp_vec, 1, src_low);
+
+  FWriteV64(dst, temp_vec);
+  return memory;
+}
+
 
 template <typename D, typename S>
 DEF_SEM(MOVLPD, D dst, S src) {
@@ -102,6 +126,27 @@ DEF_SEM(VMOVLPD, VV128W dst, V128 src1, MV64 src2) {
           FExtractV64(FReadV64(src2), 0)));
   return memory;
 }
+
+DEF_SEM(VMOVLHPS, VV128W dst, V128 src1, V128 src2) {
+
+  /* DEST[63:0] ← SRC1[63:0] */
+  /* DEST[127:64] ← SRC2[63:0] */
+  /* DEST[VLMAX-1:128] ← 0 */
+
+  auto src1_vec = FReadV64(src1);
+  auto src2_vec = FReadV64(src2);
+
+  float64v4_t temp_vec = {};
+  float64_t zero_float = 0.0;
+  temp_vec = FInsertV64(temp_vec, 0, FExtractV64(src1_vec, 0));
+  temp_vec = FInsertV64(temp_vec, 1, FExtractV64(src2_vec, 0));
+  temp_vec = FInsertV64(temp_vec, 2, zero_float);
+  temp_vec = FInsertV64(temp_vec, 3, zero_float);
+
+  FWriteV64(dst, temp_vec);
+  return memory;
+}
+
 
 #endif  // HAS_FEATURE_AVX
 
@@ -362,6 +407,9 @@ DEF_ISEL(MOVLPS_MEMq_XMMps) = MOVLPS<MV64W, V128>;
 DEF_ISEL(MOVLPS_XMMq_MEMq) = MOVLPS<V128W, MV64>;
 IF_AVX(DEF_ISEL(VMOVLPS_MEMq_XMMq) = MOVLPS<MV64W, VV128>;)
 IF_AVX(DEF_ISEL(VMOVLPS_XMMdq_XMMdq_MEMq) = VMOVLPS;)
+
+DEF_ISEL(MOVLHPS_XMMq_XMMq) = MOVLHPS<V128W, V128>;
+IF_AVX(DEF_ISEL(VMOVLHPS_XMMdq_XMMq_XMMq) = VMOVLHPS;)
 
 #if HAS_FEATURE_AVX
 #if HAS_FEATURE_AVX512
