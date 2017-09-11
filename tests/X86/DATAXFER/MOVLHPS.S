@@ -15,26 +15,23 @@
  * limitations under the License.
  */
 
-TEST_BEGIN_64(MOVLHPSv128v128, 2)
-TEST_INPUTS(
-    0x0000000000000000, 0x0000000000000000,  // sanity check
-    0xaaaaaaaaaaaaaaaa, 0x0000000000000000,  // arbitrarily chosen values
-    0xdeadbeefdeadbeef, 0xfacefeedfacefeed,  // other arbitrarily chosen values
-    0x00000000deadbeef, 0x00000000facefeed)
-    movq xmm0, ARG1_64;   // load the low QWORD of v128 dest
-    movq xmm1, ARG2_64;   // load the low QWORD of v128 src
+TEST_BEGIN_64(MOVLHPSv128v128, 1)
+TEST_INPUTS(0)
     movlhps xmm0, xmm1
+    movlhps xmm1, xmm2
+    movlhps xmm3, xmm4
+    movlhps xmm4, xmm0
+    movlhps xmm0, xmm0
 TEST_END_64
 
 #if HAS_FEATURE_AVX
-TEST_BEGIN_64(VMOVLHPSvv128v128v128, 2)
-TEST_INPUTS(
-    0x0000000000000000, 0x0000000000000000,  // sanity check
-    0xaaaaaaaaaaaaaaaa, 0x0000000000000000,  // arbitrarily chosen values
-    0xdeadbeefdeadbeef, 0xfacefeedfacefeed,
-    0x00000000deadbeef, 0x00000000facefeed)  // other arbitrarily chosen values
-    movq xmm1, ARG1_64
-    movq xmm2, ARG2_64
+TEST_BEGIN_64(VMOVLHPSvv128v128v128, 1)
+TEST_INPUTS(0)
     vmovlhps xmm0, xmm1, xmm2
+    vmovlhps xmm1, xmm2, xmm3
+    vmovlhps xmm2, xmm3, xmm4
+    vmovlhps xmm4, xmm0, xmm1
+    vmovlhps xmm0, xmm1, xmm1
+    vmovlhps xmm0, xmm0, xmm0
 TEST_END_64
 #endif  // HAS_FEATURE_AVX

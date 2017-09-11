@@ -82,15 +82,9 @@ DEF_SEM(MOVLHPS, D dst, S src) {
   /* DEST[127:64] ← SRC[63:0] */
   /* DEST[VLMAX-1:128] (Unmodified) */
 
-  auto src_vec = FReadV64(src);
-  auto src_low = FExtractV64(src_vec, 0);
-  
-  auto dst_vec = FReadV64(dst);
-  auto dst_low = FExtractV64(dst_vec, 0);
-
   float64v2_t temp_vec = {};
-  temp_vec = FInsertV64(temp_vec, 0, dst_low);
-  temp_vec = FInsertV64(temp_vec, 1, src_low);
+  temp_vec = FInsertV64(temp_vec, 0, FExtractV64(FReadV64(dst), 0));
+  temp_vec = FInsertV64(temp_vec, 1, FExtractV64(FReadV64(src), 0));
 
   FWriteV64(dst, temp_vec);
   return memory;
@@ -133,15 +127,9 @@ DEF_SEM(VMOVLHPS, VV128W dst, V128 src1, V128 src2) {
   /* DEST[127:64] ← SRC2[63:0] */
   /* DEST[VLMAX-1:128] ← 0 */
 
-  auto src1_vec = FReadV64(src1);
-  auto src2_vec = FReadV64(src2);
-
-  float64v4_t temp_vec = {};
-  float64_t zero_float = 0.0;
-  temp_vec = FInsertV64(temp_vec, 0, FExtractV64(src1_vec, 0));
-  temp_vec = FInsertV64(temp_vec, 1, FExtractV64(src2_vec, 0));
-  temp_vec = FInsertV64(temp_vec, 2, zero_float);
-  temp_vec = FInsertV64(temp_vec, 3, zero_float);
+  float64v2_t temp_vec = {};
+  temp_vec = FInsertV64(temp_vec, 0, FExtractV64(FReadV64(src1), 0));
+  temp_vec = FInsertV64(temp_vec, 1, FExtractV64(FReadV64(src2), 0));
 
   FWriteV64(dst, temp_vec);
   return memory;
