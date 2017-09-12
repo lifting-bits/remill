@@ -1138,12 +1138,10 @@ bool TryDecodeCBNZ_64_COMPBRANCH(const InstData &data, Instruction &inst) {
 }
 
 bool DecodeTestBitBranch(const InstData &data, Instruction &inst) {
-  auto bit_test = data.b40;
-  AddImmOperand(inst, bit_test);
+  uint8_t bit_pos = uint8_t (data.b5 << 5U) | data.b40;
+  AddImmOperand(inst, bit_pos);
   DecodeConditionalBranch(inst, data.imm14.simm14 << 2);
   RegClass reg_class;
-  //This bit doesn't actually get set properly so for now all 
-  //semantic defintions are 32 bit (they still work however)
   if(data.b5 == 1) {
     reg_class = kRegX;
     inst.function += "_64";

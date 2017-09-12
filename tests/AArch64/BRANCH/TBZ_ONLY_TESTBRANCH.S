@@ -38,9 +38,7 @@ TEST_INPUTS(
 99:
 TEST_END
 
-/* I don't know why iSEL is not selecting the 64 Semantic, in the decode the data.b5 field (supposed to be 1)
-    is not being set for some reason */
-TEST_BEGIN(TBZ_ONLY_TESTBRANCH_32, tbz_x0_1, 1)
+TEST_BEGIN(TBZ_ONLY_TESTBRANCH_64, tbz_x0_33, 1)
 TEST_INPUTS(
     0,
     1,
@@ -48,14 +46,13 @@ TEST_INPUTS(
     0xffffffff,
     0xffffffffffffffff)
 
-  mov x0, x0
   mov x9, #0xdead
-  tbz x0, #1, 99f
+  tbz x0, #33, 99f
   mov x9, #0xbeef
 99:
 TEST_END
 
-TEST_BEGIN(TBZ_ONLY_TESTBRANCH_32, tbz_x0_30, 1)
+TEST_BEGIN(TBZ_ONLY_TESTBRANCH_64, tbz_x0_62, 1)
 TEST_INPUTS(
     0,
     1,
@@ -63,9 +60,8 @@ TEST_INPUTS(
     0xffffffff,
     0xffffffffffffffff)
 
-  mov x0, x0
   mov x9, #0xdead
-  tbz x0, #30, 99f
+  tbz x0, #62, 99f
   mov x9, #0xbeef
 99:
 TEST_END
