@@ -22706,44 +22706,6 @@ bool TryDecodeSTUMINLB_32S_MEMOP(const InstData &, Instruction &) {
   return false;
 }
 
-// TBNZ TBNZ_only_testbranch:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x imm14    0
-//   6 x imm14    1
-//   7 x imm14    2
-//   8 x imm14    3
-//   9 x imm14    4
-//  10 x imm14    5
-//  11 x imm14    6
-//  12 x imm14    7
-//  13 x imm14    8
-//  14 x imm14    9
-//  15 x imm14    10
-//  16 x imm14    11
-//  17 x imm14    12
-//  18 x imm14    13
-//  19 x b40      0
-//  20 x b40      1
-//  21 x b40      2
-//  22 x b40      3
-//  23 x b40      4
-//  24 1 op       0
-//  25 1
-//  26 1
-//  27 0
-//  28 1
-//  29 1
-//  30 0
-//  31 x b5       0
-// TBNZ  <R><t>, #<imm>, <label>
-bool TryDecodeTBNZ_ONLY_TESTBRANCH(const InstData &, Instruction &) {
-  return false;
-}
-
 // STCLRH STCLRH_32S_memop:
 //   0 1 Rt       0
 //   1 1 Rt       1
@@ -36880,43 +36842,6 @@ bool TryDecodeUQXTN_ASIMDMISC_N(const InstData &, Instruction &) {
   return false;
 }
 
-// TBZ TBZ_only_testbranch:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x imm14    0
-//   6 x imm14    1
-//   7 x imm14    2
-//   8 x imm14    3
-//   9 x imm14    4
-//  10 x imm14    5
-//  11 x imm14    6
-//  12 x imm14    7
-//  13 x imm14    8
-//  14 x imm14    9
-//  15 x imm14    10
-//  16 x imm14    11
-//  17 x imm14    12
-//  18 x imm14    13
-//  19 x b40      0
-//  20 x b40      1
-//  21 x b40      2
-//  22 x b40      3
-//  23 x b40      4
-//  24 0 op       0
-//  25 1
-//  26 1
-//  27 0
-//  28 1
-//  29 1
-//  30 0
-//  31 x b5       0
-// TBZ  <R><t>, #<imm>, <label>
-bool TryDecodeTBZ_ONLY_TESTBRANCH(const InstData &, Instruction &) {
-  return false;
-}
 
 // FMINNMV FMINNMV_asimdall_only_H:
 //   0 x Rd       0

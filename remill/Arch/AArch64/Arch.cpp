@@ -1137,6 +1137,32 @@ bool TryDecodeCBNZ_64_COMPBRANCH(const InstData &data, Instruction &inst) {
   return DecodeBranchRegLabel(data, inst, kRegX);
 }
 
+bool DecodeTestBitBranch(const InstData &data, Instruction &inst) {
+  auto bit_test = data.b40;
+  AddImmOperand(inst, bit_test);
+  DecodeConditionalBranch(inst, data.imm14.simm14 << 2);
+  RegClass reg_class;
+  //This bit doesn't actually get set properly so for now all 
+  //semantic defintions are 32 bit (they still work however)
+  if(data.b5 == 1) {
+    reg_class = kRegX;
+    inst.function += "_64";
+  } else {
+    reg_class = kRegW;
+    inst.function += "_32";
+  }
+  AddRegOperand(inst, kActionRead, reg_class, kUseAsValue, data.Rt);
+  return true;
+}
+// TBZ  <R><t>, #<imm>, <label>
+bool TryDecodeTBZ_ONLY_TESTBRANCH(const InstData &data, Instruction &inst) {
+  return DecodeTestBitBranch(data, inst);
+}
+// TBNZ  <R><t>, #<imm>, <label>
+bool TryDecodeTBNZ_ONLY_TESTBRANCH(const InstData &data, Instruction &inst) {
+  return DecodeTestBitBranch(data, inst);
+}
+
 // BL  <label>
 bool TryDecodeBL_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
   AddPCDisp(inst, data.imm26.simm26 << 2LL);
@@ -1149,6 +1175,7 @@ bool TryDecodeBR_64_BRANCH_REG(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
   return true;
 }
+
 
 static bool ShiftImmediate(uint64_t &value, uint8_t shift) {
   switch (shift) {
