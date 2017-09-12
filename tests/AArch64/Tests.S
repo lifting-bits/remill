@@ -279,6 +279,11 @@ SYMBOL(__aarch64_test_table_begin):
 
 #endif
 
+#include "tests/AArch64/BITBYTE/CLZ_n_DP_1SRC.S"
+#include "tests/AArch64/COND/CSEL_n_CONDSEL.S"
+#include "tests/AArch64/COND/x_CSINC_n_CONDSEL.S"
+#include "tests/AArch64/COND/x_CSINV_n_CONDSEL.S"
+
      /* Create a symbol that represents the end of the test information table. */
     .section "__aarch64_test_table", "a"
     .globl SYMBOL(__aarch64_test_table_end)

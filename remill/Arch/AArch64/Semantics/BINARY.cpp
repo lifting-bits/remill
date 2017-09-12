@@ -78,6 +78,17 @@ DEF_SEM(ADDS, D dst, S1 src1, S2 src2) {
   return memory;
 }
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(ANDS, D dst, S1 src1, S2 src2) {
+  auto res = UAnd(Read(src1), Read(src2));
+
+  FLAG_N = SignFlag(res);
+  FLAG_Z = ZeroFlag(res);
+  FLAG_C = 0;
+  FLAG_V = 0;
+  WriteZExt(dst, UAnd(Read(src1), Read(src2)));
+  return memory;
+}
 }  // namespace
 
 DEF_ISEL(SUBS_32_ADDSUB_SHIFT) = SUBS<R32W, R32, I32>;
@@ -94,6 +105,8 @@ DEF_ISEL(ADDS_64S_ADDSUB_IMM) = ADDS<R64W, R64, I64>;
 DEF_ISEL(ADDS_32S_ADDSUB_EXT) = ADDS<R32W, R32, I32>;
 DEF_ISEL(ADDS_64S_ADDSUB_EXT) = ADDS<R64W, R64, I64>;
 
+DEF_ISEL(ANDS_32S_LOG_IMM) = ANDS<R32W, R32, I32>;
+DEF_ISEL(ANDS_64S_LOG_IMM) = ANDS<R64W, R64, I64>;
 namespace {
 
 DEF_SEM(UMADDL, R64W dst, R32 src1, R32 src2, R64 src3) {
