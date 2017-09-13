@@ -158,6 +158,33 @@ DEF_SEM(CBNZ, R8W cond, PC taken, PC not_taken, S src) {
   return memory;
 }
 
+
+template <typename S>
+DEF_SEM(TBZ, I8 bit_pos, R8W cond, PC taken, PC not_taken, S src) {
+  addr_t taken_pc = Read(taken);
+  addr_t not_taken_pc = Read(not_taken);
+  auto bit_n = ZExtTo<S>(Read(bit_pos));
+  auto reg_val = ZExtTo<S>(Read(src));
+  auto bit_set = UAnd(reg_val, UShl(ZExtTo<S>(1), bit_n));
+  auto take_branch = UCmpEq(bit_set, 0);
+  Write(cond, take_branch);
+  Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(TBNZ, I8 bit_pos, R8W cond, PC taken, PC not_taken, S src) {
+  addr_t taken_pc = Read(taken);
+  addr_t not_taken_pc = Read(not_taken);
+  auto bit_n = ZExtTo<S>(Read(bit_pos));
+  auto reg_val = ZExtTo<S>(Read(src));
+  auto bit_set = UAnd(reg_val, UShl(ZExtTo<S>(1), bit_n));
+  auto take_branch = UCmpNeq(bit_set, 0);
+  Write(cond, take_branch);
+  Write(REG_PC, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(BR_64_BRANCH_REG) = DoIndirectBranch<R64>;
@@ -185,3 +212,9 @@ DEF_ISEL(CBZ_32_COMPBRANCH) = CBZ<R32>;
 
 DEF_ISEL(CBNZ_64_COMPBRANCH) = CBNZ<R64>;
 DEF_ISEL(CBNZ_32_COMPBRANCH) = CBNZ<R32>;
+
+DEF_ISEL(TBZ_ONLY_TESTBRANCH_64) = TBZ<R64>;
+DEF_ISEL(TBZ_ONLY_TESTBRANCH_32) = TBZ<R32>;
+DEF_ISEL(TBNZ_ONLY_TESTBRANCH_64) = TBNZ<R64>;
+DEF_ISEL(TBNZ_ONLY_TESTBRANCH_32) = TBNZ<R32>;
+

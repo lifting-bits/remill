@@ -223,6 +223,8 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BRANCH/B_ONLY_CONDBRANCH.S"
 #include "tests/AArch64/BRANCH/CBNZ_n_COMPBRANCH.S"
 #include "tests/AArch64/BRANCH/CBZ_n_COMPBRANCH.S"
+#include "tests/AArch64/BRANCH/TBNZ_ONLY_TESTBRANCH.S"
+#include "tests/AArch64/BRANCH/TBZ_ONLY_TESTBRANCH.S"
 
      /* Create a symbol that represents the end of the test information table. */
     .section "__aarch64_test_table", "a"
