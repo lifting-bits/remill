@@ -65,3 +65,4 @@ TEST_INPUTS(
   mov x9, #0xbeef
 99:
 TEST_END
+

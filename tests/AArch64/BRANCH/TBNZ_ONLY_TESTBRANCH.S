@@ -47,7 +47,6 @@ TEST_INPUTS(
     0xffffffff,
     0xffffffffffffffff)
 
-  mov x0, x0
   mov x9, #0xdead
   tbnz x0, #33, 99f
   mov x9, #0xbeef
@@ -67,3 +66,4 @@ TEST_INPUTS(
   mov x9, #0xbeef
 99:
 TEST_END
+
