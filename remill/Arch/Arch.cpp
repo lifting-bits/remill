@@ -331,7 +331,7 @@ void Arch::PrepareModule(llvm::Module *mod) const {
     basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
   }
 
-  mod->setDataLayout(DataLayout());
+  mod->setDataLayout(DataLayout().getStringRepresentation());
   mod->setTargetTriple(Triple().str());
 
   // Go and remove compile-time attributes added into the semantics. These
