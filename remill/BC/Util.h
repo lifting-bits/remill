@@ -27,6 +27,7 @@ class Argument;
 class BasicBlock;
 class CallInst;
 class Function;
+class FunctionType;
 class GlobalObject;
 class GlobalVariable;
 class IntegerType;
@@ -98,11 +99,25 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *M, std::string name);
 llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
                                  std::string file_name);
 
+// Loads the semantics for the "host" machine, i.e. the machine that this
+// remill is compiled on.
+llvm::Module *LoadHostSemantics(llvm::LLVMContext *context);
+
+// Loads the semantics for the "target" machine, i.e. the machine of the
+// code that we want to lift.
+llvm::Module *LoadTargetSemantics(llvm::LLVMContext *context);
+
 // Store an LLVM module into a file.
 void StoreModuleToFile(llvm::Module *module, std::string file_name);
 
-// Find the path to the semantics bitcode file.
-std::string FindSemanticsBitcodeFile(void);
+// Find the path to the semantics bitcode file associated with `FLAGS_arch`.
+std::string FindTargetSemanticsBitcodeFile(void);
+
+// Find the path to the semantics bitcode file associated with `REMILL_ARCH`,
+// the architecture on which remill is compiled.
+std::string FindHostSemanticsBitcodeFile(void);
+
+// Find a semantics fitcode file for the architecture `arch`.
 std::string FindSemanticsBitcodeFile(const std::string &arch);
 
 // Return a pointer to the Nth argument (N=0 is the first argument).

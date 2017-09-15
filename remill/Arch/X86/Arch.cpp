@@ -371,6 +371,7 @@ static void DecodeMemory(Instruction &inst,
                          const xed_operand_t *xedo,
                          int mem_index) {
 
+  auto iform = xed_decoded_inst_get_iform_enum(xedd);
   auto iclass = xed_decoded_inst_get_iclass(xedd);
   auto op_name = xed_operand_name(xedo);
   auto segment = xed_decoded_inst_get_seg_reg(xedd, mem_index);
@@ -379,8 +380,14 @@ static void DecodeMemory(Instruction &inst,
   auto disp = xed_decoded_inst_get_memory_displacement(xedd, mem_index);
   auto scale = xed_decoded_inst_get_scale(xedd, mem_index);
   auto base_wide = xed_get_largest_enclosing_register(base);
-  auto size = xed_decoded_inst_get_operand_width(xedd);
   auto inst_size = static_cast<int64_t>(xed_decoded_inst_get_length(xedd));
+
+  // NOTE(pag): This isn't quite right (eg. it's for SCALABALE only), but works
+  // mostly right most of the time.
+  auto size = xed_decoded_inst_get_operand_width(xedd);
+  if (XED_IFORM_MOV_MEMw_SEG == iform) {
+    size = 16;
+  }
 
   // PC-relative memory accesses are relative to the next PC.
   if (XED_REG_RIP == base_wide) {
@@ -697,11 +704,11 @@ class X86Arch : public Arch {
   // Maximum number of bytes in an instruction.
   uint64_t MaxInstructionSize(void) const override;
 
+  llvm::Triple Triple(void) const override;
+  llvm::DataLayout DataLayout(void) const override;
+
   // Default calling convention for this architecture.
   llvm::CallingConv::ID DefaultCallingConv(void) const override;
-
- protected:
-  void PrepareModuleImpl(llvm::Module *mod) const override;
 
  private:
   X86Arch(void) = delete;
@@ -748,83 +755,82 @@ llvm::CallingConv::ID X86Arch::DefaultCallingConv(void) const {
   }
 }
 
-// Converts an LLVM module object to have the right triple / data layout
-// information for the target architecture.
-void X86Arch::PrepareModuleImpl(llvm::Module *mod) const {
-  std::string dl;
-  llvm::Triple triple;
+// Get the LLVM triple for this architecture.
+llvm::Triple X86Arch::Triple(void) const {
+  auto triple = BasicTriple();
+  switch (arch_name) {
+    case kArchAMD64:
+    case kArchAMD64_AVX:
+    case kArchAMD64_AVX512:
+      triple.setArch(llvm::Triple::x86_64);
+      break;
+    case kArchX86:
+    case kArchX86_AVX:
+    case kArchX86_AVX512:
+      triple.setArch(llvm::Triple::x86);
+      break;
+    default:
+      LOG(FATAL)
+          << "Cannot get triple for non-x86 architecture "
+          << GetArchName(arch_name);
+  }
 
-  // TODO(alessandro): This interface is spilling implementation-specific
-  //                   values (i.e.: mips).
+  return triple;
+}
+
+// Get the LLVM DataLayout for a module.
+llvm::DataLayout X86Arch::DataLayout(void) const {
+  std::string dl;
   switch (os_name) {
     case kOSInvalid:
       LOG(FATAL) << "Cannot convert module for an unrecognized OS.";
       break;
 
     case kOSLinux:
-      triple.setOS(llvm::Triple::Linux);
-      triple.setEnvironment(llvm::Triple::GNU);
-      triple.setVendor(llvm::Triple::PC);
-      triple.setObjectFormat(llvm::Triple::ELF);
-
       switch (arch_name) {
         case kArchAMD64:
         case kArchAMD64_AVX:
         case kArchAMD64_AVX512:
           dl = "e-m:e-i64:64-f80:128-n8:16:32:64-S128";
-          triple.setArch(llvm::Triple::x86_64);
-
           break;
         case kArchX86:
         case kArchX86_AVX:
         case kArchX86_AVX512:
           dl = "e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128";
-          triple.setArch(llvm::Triple::x86);
           break;
         default:
           LOG(FATAL)
-              << "Cannot prepare module for non-x86 architecture "
+              << "Cannot get data layout non-x86 architecture "
               << GetArchName(arch_name);
           break;
       }
       break;
 
     case kOSmacOS:
-      triple.setOS(llvm::Triple::MacOSX);
-      triple.setEnvironment(llvm::Triple::UnknownEnvironment);
-      triple.setVendor(llvm::Triple::Apple);
-      triple.setObjectFormat(llvm::Triple::MachO);
       switch (arch_name) {
         case kArchAMD64:
         case kArchAMD64_AVX:
         case kArchAMD64_AVX512:
           dl = "e-m:o-i64:64-f80:128-n8:16:32:64-S128";
-          triple.setArch(llvm::Triple::x86_64);
           break;
         case kArchX86:
         case kArchX86_AVX:
         case kArchX86_AVX512:
           dl = "e-m:o-p:32:32-f64:32:64-f80:128-n8:16:32-S128";
-          triple.setArch(llvm::Triple::x86);
           break;
         default:
           LOG(FATAL)
-              << "Cannot prepare module for non-x86 architecture "
+              << "Cannot get data layout for non-x86 architecture "
               << GetArchName(arch_name);
       }
       break;
 
     case kOSWindows:
-      triple.setOS(llvm::Triple::Win32);
-      triple.setEnvironment(llvm::Triple::MSVC);
-      triple.setVendor(llvm::Triple::UnknownVendor);
-      triple.setObjectFormat(llvm::Triple::COFF);
       switch (arch_name) {
         case kArchAMD64:
         case kArchAMD64_AVX:
         case kArchAMD64_AVX512:
           dl = "e-m:e-i64:64-f80:128-n8:16:32:64-S128";
-          triple.setArch(llvm::Triple::x86_64);
           break;
         case kArchX86:
         case kArchX86_AVX:
@@ -832,40 +838,16 @@ void X86Arch::PrepareModuleImpl(llvm::Module *mod) const {
           dl = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:"
                "32:32-f64:64:64-f80:128:128-v64:64:64-v128:128:128-a0:0:64-f80:"
                "32:32-n8:16:32-S32";
-          triple.setArch(llvm::Triple::x86);
           break;
         default:
           LOG(FATAL)
-              << "Cannot prepare module for non-x86 architecture "
+              << "Cannot get data layout for non-x86 architecture "
               << GetArchName(arch_name);
       }
       break;
   }
 
-  mod->setDataLayout(dl);
-  mod->setTargetTriple(triple.normalize(triple.str()));
-
-  // Go and remove compile-time attributes added into the semantics. These
-  // can screw up later compilation. We purposefully compile semantics with
-  // things like auto-vectorization disabled so that it keeps the bitcode
-  // to a simpler subset of the available LLVM instuction set. If/when we
-  // compile this bitcode back into machine code, we may want to use those
-  // features, and clang will complain if we try to do so if these metadata
-  // remain present.
-  auto &context = mod->getContext();
-
-  llvm::AttributeSet target_attribs;
-  target_attribs = target_attribs.addAttribute(
-      context, llvm::AttributeSet::FunctionIndex, "target-features");
-  target_attribs = target_attribs.addAttribute(
-      context, llvm::AttributeSet::FunctionIndex, "target-cpu");
-
-  for (llvm::Function &func : *mod) {
-    auto attribs = func.getAttributes();
-    attribs = attribs.removeAttributes(
-        context, llvm::AttributeSet::FunctionIndex, target_attribs);
-    func.setAttributes(attribs);
-  }
+  return llvm::DataLayout(dl);
 }
 
 // Decode an instuction.

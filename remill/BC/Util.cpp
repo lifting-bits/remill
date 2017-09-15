@@ -42,6 +42,7 @@
 #include <llvm/Support/ToolOutputFile.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
 #include "remill/BC/Compat/BitcodeReaderWriter.h"
 #include "remill/BC/Compat/DebugInfo.h"
@@ -211,6 +212,24 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *module,
   return module->getGlobalVariable(name, true);
 }
 
+// Loads the semantics for the "host" machine, i.e. the machine that this
+// remill is compiled on.
+llvm::Module *LoadHostSemantics(llvm::LLVMContext *context) {
+  auto path = FindSemanticsBitcodeFile(REMILL_ARCH);
+  LOG(INFO)
+      << "Loading host " REMILL_ARCH " semantics from file " << path;
+  return LoadModuleFromFile(context, path);
+}
+
+// Loads the semantics for the "target" machine, i.e. the machine of the
+// code that we want to lift.
+llvm::Module *LoadTargetSemantics(llvm::LLVMContext *context) {
+  auto path = FindSemanticsBitcodeFile(FLAGS_arch);
+  LOG(INFO)
+      << "Loading target " << FLAGS_arch << " semantics from file " << path;
+  return LoadModuleFromFile(context, path);
+}
+
 // Reads an LLVM module from a file.
 llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
                                  std::string file_name) {
@@ -238,6 +257,9 @@ llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
 
 // Store an LLVM module into a file.
 void StoreModuleToFile(llvm::Module *module, std::string file_name) {
+  LOG(INFO)
+      << "Saving bitcode to file " << file_name;
+
   std::stringstream ss;
   ss << file_name << ".tmp." << getpid();
   auto tmp_name = ss.str();
@@ -247,7 +269,8 @@ void StoreModuleToFile(llvm::Module *module, std::string file_name) {
 
   if (llvm::verifyModule(*module, &error_stream)) {
     error_stream.flush();
-    LOG(FATAL) << "Error writing module to file " << file_name << ": " << error;
+    LOG(FATAL)
+        << "Error writing module to file " << file_name << ": " << error;
   }
 
 #if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 5)
@@ -298,8 +321,14 @@ static const char *gSemanticsSearchPaths[] = {
 }  // namespace
 
 // Find the path to the semantics bitcode file associated with `FLAGS_arch`.
-std::string FindSemanticsBitcodeFile(void) {
+std::string FindTargetSemanticsBitcodeFile(void) {
   return FindSemanticsBitcodeFile(FLAGS_arch);
+}
+
+// Find the path to the semantics bitcode file associated with `REMILL_ARCH`,
+// the architecture on which remill is compiled.
+std::string FindHostSemanticsBitcodeFile(void) {
+  return FindSemanticsBitcodeFile(REMILL_ARCH);
 }
 
 // Find the path to the semantics bitcode file.

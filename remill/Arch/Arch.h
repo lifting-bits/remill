@@ -17,9 +17,12 @@
 #ifndef REMILL_ARCH_ARCH_H_
 #define REMILL_ARCH_ARCH_H_
 
+#include <memory>
 #include <string>
 
+#include <llvm/ADT/Triple.h>
 #include <llvm/IR/CallingConv.h>
+#include <llvm/IR/DataLayout.h>
 
 struct ArchState;
 
@@ -47,6 +50,10 @@ class Arch {
   // information for the target architecture.
   void PrepareModule(llvm::Module *mod) const;
 
+  inline void PrepareModule(const std::unique_ptr<llvm::Module> &mod) const {
+    PrepareModule(mod.get());
+  }
+
   // Decode an instruction.
   virtual bool DecodeInstruction(
       uint64_t address, const std::string &instr_bytes,
@@ -57,6 +64,12 @@ class Arch {
 
   // Default calling convention for this architecture.
   virtual llvm::CallingConv::ID DefaultCallingConv(void) const = 0;
+
+  // Get the LLVM triple for this architecture.
+  virtual llvm::Triple Triple(void) const = 0;
+
+  // Get the LLVM DataLayout for this architecture.
+  virtual llvm::DataLayout DataLayout(void) const = 0;
 
   // Number of bits in an address.
   const OSName os_name;
@@ -70,9 +83,7 @@ class Arch {
  protected:
   Arch(OSName os_name_, ArchName arch_name_);
 
-  // Converts an LLVM module object to have the right triple / data layout
-  // information for the target architecture.
-  virtual void PrepareModuleImpl(llvm::Module *mod) const = 0;
+  llvm::Triple BasicTriple(void) const;
 
  private:
   // Defined in `remill/Arch/X86/Arch.cpp`.

@@ -115,11 +115,11 @@ class AArch64Arch : public Arch {
   // Maximum number of bytes in an instruction.
   uint64_t MaxInstructionSize(void) const override;
 
+  llvm::Triple Triple(void) const override;
+  llvm::DataLayout DataLayout(void) const override;
+
   // Default calling convention for this architecture.
   llvm::CallingConv::ID DefaultCallingConv(void) const override;
-
- protected:
-  void PrepareModuleImpl(llvm::Module *mod) const override;
 
  private:
   AArch64Arch(void) = delete;
@@ -140,62 +140,36 @@ uint64_t AArch64Arch::MaxInstructionSize(void) const {
   return 4;
 }
 
-void AArch64Arch::PrepareModuleImpl(llvm::Module *mod) const {
-  std::string dl;
-  llvm::Triple triple("aarch64-unknown-unknown-");
-
-  switch (os_name) {
-    case kOSLinux:
-      triple.setOS(llvm::Triple::Linux);
-      triple.setEnvironment(llvm::Triple::GNU);
-      triple.setVendor(llvm::Triple::PC);
-      triple.setObjectFormat(llvm::Triple::ELF);
-
-      switch (arch_name) {
-        case kArchAArch64LittleEndian:
-          triple.setArch(llvm::Triple::aarch64);
-          dl = "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128";
-          break;
-
-        default:
-          LOG(FATAL)
-              << "Cannot prepare AArch64 module for architecture "
-              << GetArchName(arch_name);
-          break;
-      }
+llvm::Triple AArch64Arch::Triple(void) const {
+  auto triple = BasicTriple();
+  switch (arch_name) {
+    case kArchAArch64LittleEndian:
+      triple.setArch(llvm::Triple::aarch64);
       break;
 
     default:
       LOG(FATAL)
-          << "Cannot prepare module for AArch64 code on OS "
-          << GetOSName(os_name);
+          << "Cannot get triple for non-AArch64 architecture "
+          << GetArchName(arch_name);
       break;
   }
+  return triple;
+}
 
-  mod->setDataLayout(dl);
-  mod->setTargetTriple(triple.normalize(triple.str()));
+llvm::DataLayout AArch64Arch::DataLayout(void) const {
+  std::string dl;
+  switch (arch_name) {
+    case kArchAArch64LittleEndian:
+      dl = "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128";
+      break;
 
-  // Go and remove compile-time attributes added into the semantics. These
-  // can screw up later compilation. We purposefully compile semantics with
-  // things like auto-vectorization disabled so that it keeps the bitcode
-  // to a simpler subset of the available LLVM instruction set. If/when we
-  // compile this bitcode back into machine code, we may want to use those
-  // features, and clang will complain if we try to do so if these metadata
-  // remain present.
-  auto &context = mod->getContext();
-
-  llvm::AttributeSet target_attribs;
-  target_attribs = target_attribs.addAttribute(
-      context, llvm::AttributeSet::FunctionIndex, "target-features");
-  target_attribs = target_attribs.addAttribute(
-      context, llvm::AttributeSet::FunctionIndex, "target-cpu");
-
-  for (llvm::Function &func : *mod) {
-    auto attribs = func.getAttributes();
-    attribs = attribs.removeAttributes(
-        context, llvm::AttributeSet::FunctionIndex, target_attribs);
-    func.setAttributes(attribs);
+    default:
+      LOG(FATAL)
+          << "Cannot get data layout for non-AArch64 architecture "
+          << GetArchName(arch_name);
+      break;
   }
+  return llvm::DataLayout(dl);
 }
 
 enum RegClass {

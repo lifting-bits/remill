@@ -112,8 +112,7 @@ extern "C" int main(int argc, char *argv[]) {
   DLOG(INFO) << "Generating tests.";
 
   auto context = new llvm::LLVMContext;
-  auto bc_file = remill::FindSemanticsBitcodeFile(FLAGS_arch);
-  auto module = remill::LoadModuleFromFile(context, bc_file);
+  auto module = remill::LoadTargetSemantics(context);
   remill::GetHostArch()->PrepareModule(module);
 
   for (auto i = 0U; ; ++i) {

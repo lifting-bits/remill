@@ -87,6 +87,37 @@ Arch::Arch(OSName os_name_, ArchName arch_name_)
 
 Arch::~Arch(void) {}
 
+llvm::Triple Arch::BasicTriple(void) const {
+  llvm::Triple triple;
+  switch (os_name) {
+    case kOSInvalid:
+      LOG(FATAL) << "Cannot get triple OS.";
+      break;
+
+    case kOSLinux:
+      triple.setOS(llvm::Triple::Linux);
+      triple.setEnvironment(llvm::Triple::GNU);
+      triple.setVendor(llvm::Triple::PC);
+      triple.setObjectFormat(llvm::Triple::ELF);
+      break;
+
+    case kOSmacOS:
+      triple.setOS(llvm::Triple::MacOSX);
+      triple.setEnvironment(llvm::Triple::UnknownEnvironment);
+      triple.setVendor(llvm::Triple::Apple);
+      triple.setObjectFormat(llvm::Triple::MachO);
+      break;
+
+    case kOSWindows:
+      triple.setOS(llvm::Triple::Win32);
+      triple.setEnvironment(llvm::Triple::MSVC);
+      triple.setVendor(llvm::Triple::UnknownVendor);
+      triple.setObjectFormat(llvm::Triple::COFF);
+      break;
+  }
+  return triple;
+}
+
 const Arch *Arch::Get(OSName os_name_, ArchName arch_name_) {
   switch (arch_name_) {
     case kArchInvalid:
@@ -300,7 +331,30 @@ void Arch::PrepareModule(llvm::Module *mod) const {
     basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
   }
 
-  this->PrepareModuleImpl(mod);
+  mod->setDataLayout(DataLayout());
+  mod->setTargetTriple(Triple().str());
+
+  // Go and remove compile-time attributes added into the semantics. These
+  // can screw up later compilation. We purposefully compile semantics with
+  // things like auto-vectorization disabled so that it keeps the bitcode
+  // to a simpler subset of the available LLVM instuction set. If/when we
+  // compile this bitcode back into machine code, we may want to use those
+  // features, and clang will complain if we try to do so if these metadata
+  // remain present.
+  auto &context = mod->getContext();
+
+  llvm::AttributeSet target_attribs;
+  target_attribs = target_attribs.addAttribute(
+      context, llvm::AttributeSet::FunctionIndex, "target-features");
+  target_attribs = target_attribs.addAttribute(
+      context, llvm::AttributeSet::FunctionIndex, "target-cpu");
+
+  for (llvm::Function &func : *mod) {
+    auto attribs = func.getAttributes();
+    attribs = attribs.removeAttributes(
+        context, llvm::AttributeSet::FunctionIndex, target_attribs);
+    func.setAttributes(attribs);
+  }
 }
 
 }  // namespace remill
