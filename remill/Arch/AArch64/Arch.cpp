@@ -1111,6 +1111,30 @@ bool TryDecodeCBNZ_64_COMPBRANCH(const InstData &data, Instruction &inst) {
   return DecodeBranchRegLabel(data, inst, kRegX);
 }
 
+bool DecodeTestBitBranch(const InstData &data, Instruction &inst) {
+  uint8_t bit_pos = uint8_t (data.b5 << 5U) | data.b40;
+  AddImmOperand(inst, bit_pos);
+  DecodeConditionalBranch(inst, data.imm14.simm14 << 2);
+  RegClass reg_class;
+  if(data.b5 == 1) {
+    reg_class = kRegX;
+    inst.function += "_64";
+  } else {
+    reg_class = kRegW;
+    inst.function += "_32";
+  }
+  AddRegOperand(inst, kActionRead, reg_class, kUseAsValue, data.Rt);
+  return true;
+}
+// TBZ  <R><t>, #<imm>, <label>
+bool TryDecodeTBZ_ONLY_TESTBRANCH(const InstData &data, Instruction &inst) {
+  return DecodeTestBitBranch(data, inst);
+}
+// TBNZ  <R><t>, #<imm>, <label>
+bool TryDecodeTBNZ_ONLY_TESTBRANCH(const InstData &data, Instruction &inst) {
+  return DecodeTestBitBranch(data, inst);
+}
+
 // BL  <label>
 bool TryDecodeBL_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
   AddPCDisp(inst, data.imm26.simm26 << 2LL);
@@ -1123,6 +1147,7 @@ bool TryDecodeBR_64_BRANCH_REG(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
   return true;
 }
+
 
 static bool ShiftImmediate(uint64_t &value, uint8_t shift) {
   switch (shift) {

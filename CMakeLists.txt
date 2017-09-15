@@ -199,7 +199,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS ${PROJECT_CXXFLAG
 # Also install clang, libllvm and llvm-link
 #
 
-function (InstallExternalTarget target_name target_path install_directory)
+function (InstallExternalTarget target_name target_path install_directory installed_file_name)
   # Get the optional rpath parameter
   set(additional_arguments ${ARGN})
   list(LENGTH additional_arguments additional_argument_count)
@@ -241,8 +241,7 @@ function (InstallExternalTarget target_name target_path install_directory)
   endif ()
 
   # Generate the target
-  get_filename_component("target_file_name" "${target_path}" NAME)
-  set("output_file_path" "${CMAKE_CURRENT_BINARY_DIR}/${target_file_name}")
+  set("output_file_path" "${CMAKE_CURRENT_BINARY_DIR}/${installed_file_name}")
 
   if (NOT "${rpath}" STREQUAL "")
     set(CHRPATH_COMMAND ${PATCHELF_LOCATION} --set-rpath ${rpath} ${output_file_path})
@@ -261,8 +260,13 @@ function (InstallExternalTarget target_name target_path install_directory)
   install(FILES "${output_file_path}" DESTINATION "${install_directory}")
 endfunction ()
 
+set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}")
+set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}")
+
 if ("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "")
-  # system binaries are built statically, so we need to fix the rpath
+  set(INSTALLED_LIBLLVM_NAME "libLLVM-${REMILL_LLVM_VERSION}.so")
+
+  # system binaries are not built statically, so we need to fix the rpath
   find_program("clang_location" "clang-${REMILL_LLVM_VERSION}")
   if ("${clang_location}" STREQUAL "clang_location-NOTFOUND")
     message(FATAL_ERROR "InstallExternalTarget: Failed to locate the clang executable")
@@ -284,15 +288,23 @@ if ("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "")
   
   message("InstallExternalTarget: Found libLLVM location: ${libllvm_location}")
 
-  InstallExternalTarget("ext_clang" "${clang_location}" "${CMAKE_INSTALL_PREFIX}/bin" "${CMAKE_INSTALL_PREFIX}/lib")
-  InstallExternalTarget("ext_llvmlink" "${llvmlink_location}" "${CMAKE_INSTALL_PREFIX}/bin" "${CMAKE_INSTALL_PREFIX}/lib")
-  InstallExternalTarget("ext_libllvm" "${libllvm_location}" "${CMAKE_INSTALL_PREFIX}/lib")
+  InstallExternalTarget("ext_clang" "${clang_location}" "${CMAKE_INSTALL_PREFIX}/bin"
+    "${INSTALLED_CLANG_NAME}" "${CMAKE_INSTALL_PREFIX}/lib")
+
+  InstallExternalTarget("ext_llvmlink" "${llvmlink_location}" "${CMAKE_INSTALL_PREFIX}/bin"
+    "${INSTALLED_LLVMLINK_NAME}" "${CMAKE_INSTALL_PREFIX}/lib")
+
+  InstallExternalTarget("ext_libllvm" "${libllvm_location}" "${CMAKE_INSTALL_PREFIX}/lib"
+    "${INSTALLED_LIBLLVM_NAME}")
 
 else ()
   # The executable in our binary repository are statically built, meaning that we don't need
   # to change the rpath
-  InstallExternalTarget("ext_clang" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/clang-${REMILL_LLVM_VERSION}" "${CMAKE_INSTALL_PREFIX}/bin")
-  InstallExternalTarget("ext_llvmlink" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/llvm-link" "${CMAKE_INSTALL_PREFIX}/bin")
+  InstallExternalTarget("ext_clang" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/clang-${REMILL_LLVM_VERSION}"
+    "${CMAKE_INSTALL_PREFIX}/bin" "${INSTALLED_CLANG_NAME}")
+
+  InstallExternalTarget("ext_llvmlink" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/llvm-link"
+    "${CMAKE_INSTALL_PREFIX}/bin" "${INSTALLED_LLVMLINK_NAME}")
 endif ()
 
 #
@@ -316,16 +328,14 @@ endif ()
 
 if (LINUX)
   if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-  
     # only enable x86 tests when compiling under x64
     if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
       add_subdirectory(tests/X86)
     endif ()
-    
+
     # only enable aarch64 tests when compiling under aarch64.
     if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
       add_subdirectory(tests/AArch64)
     endif ()
-    
   endif ()
 endif (LINUX)
