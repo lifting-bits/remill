@@ -750,7 +750,7 @@ llvm::CallingConv::ID X86Arch::DefaultCallingConv(void) const {
       case kOSLinux:
         return llvm::CallingConv::X86_64_SysV;
       case kOSWindows:
-        return llvm::CallingConv::X86_64_Win64;
+        return llvm::CallingConv::Win64;
     }
   }
 }

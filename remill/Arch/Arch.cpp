@@ -34,6 +34,7 @@
 #include "remill/Arch/Name.h"
 
 #include "remill/BC/ABI.h"
+#include "remill/BC/Compat/Attributes.h"
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Util.h"
@@ -345,14 +346,20 @@ void Arch::PrepareModule(llvm::Module *mod) const {
 
   llvm::AttributeSet target_attribs;
   target_attribs = target_attribs.addAttribute(
-      context, llvm::AttributeSet::FunctionIndex, "target-features");
+      context,
+      IF_LLVM_LT_50_(llvm::AttributeSet::FunctionIndex)
+      "target-features");
   target_attribs = target_attribs.addAttribute(
-      context, llvm::AttributeSet::FunctionIndex, "target-cpu");
+      context,
+      IF_LLVM_LT_50_(llvm::AttributeSet::FunctionIndex)
+      "target-cpu");
 
   for (llvm::Function &func : *mod) {
     auto attribs = func.getAttributes();
     attribs = attribs.removeAttributes(
-        context, llvm::AttributeSet::FunctionIndex, target_attribs);
+        context,
+        llvm::AttributeLoc::FunctionIndex,
+        target_attribs);
     func.setAttributes(attribs);
   }
 }

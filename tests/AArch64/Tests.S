@@ -58,22 +58,20 @@
     .globl SYMBOL(FUNC_NAME(instr_name, num_args)) ; \
     \
 SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
-    .data ; \
-    1: \
-    .asciz TO_STRING(FUNC_NAME(instr_name, num_args)) ; \
-    \
     .section "__aarch64_test_table", "a" ; \
     .balign 128 ; \
-    2: \
+    1: \
     .quad 3f ; \
     .quad 7f ; \
-    .quad 1b ; \
+    .quad 2f ; \
     .quad 4f ; \
     .quad 5f ; \
     .quad num_args ; \
     .quad 6f ; \
     \
     .rodata ; \
+    2: \
+    .asciz TO_STRING(FUNC_NAME(instr_name, num_args)) ; \
     6: \
     .asciz TO_STRING(isel_name) ; \
     \

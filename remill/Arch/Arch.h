@@ -21,8 +21,9 @@
 #include <string>
 
 #include <llvm/ADT/Triple.h>
-#include <llvm/IR/CallingConv.h>
 #include <llvm/IR/DataLayout.h>
+
+#include "remill/BC/Compat/CallingConvention.h"
 
 struct ArchState;
 

@@ -65,19 +65,20 @@
     .globl SYMBOL(FUNC_NAME(instr_name, num_args)) ; \
     \
 SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
-    .data ; \
-    1: \
-    .asciz TO_STRING(FUNC_NAME(instr_name, num_args)) ; \
     \
     .section "__x86_test_table", "a" ; \
     .balign 128 ; \
-    2: \
+    1: \
     .quad 3f ; \
     .quad 6f ; \
-    .quad 1b ; \
+    .quad 2f ; \
     .quad 4f ; \
     .quad 5f ; \
     .quad num_args ; \
+    \
+    .rodata ; \
+    2: \
+    .asciz TO_STRING(FUNC_NAME(instr_name, num_args)) ; \
     \
     .text ; \
     3: \

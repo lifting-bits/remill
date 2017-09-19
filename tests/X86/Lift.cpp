@@ -57,6 +57,7 @@ namespace {
 // Decode a test and add it as a basic block to the module.
 //
 // TODO(pag): Eventually handle control-flow.
+__attribute__((noinline))
 static void AddFunctionToModule(llvm::Module *module,
                                 const remill::Arch *arch,
                                 const test::TestInfo &test) {
