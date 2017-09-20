@@ -199,6 +199,7 @@ SYMBOL(__aarch64_test_table_begin):
 #define ARG3_64 x2
 #define ARG3_32 w2
 
+#include "tests/AArch64/BINARY/UDIV_n_DP_2SRC.S"
 #include "tests/AArch64/BINARY/UMULH_64_DP_3SRC.S"
 #include "tests/AArch64/BINARY/UMULL_UMADDL_64WA_DP_3SRC.S"
 

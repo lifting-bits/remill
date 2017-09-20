@@ -1765,6 +1765,23 @@ bool TryDecodeUMULH_64_DP_3SRC(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// UDIV  <Wd>, <Wn>, <Wm>
+bool TryDecodeUDIV_32_DP_2SRC(const InstData &data,
+                              Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rm);
+  return true;
+}
+
+// UDIV  <Xd>, <Xn>, <Xm>
+bool TryDecodeUDIV_64_DP_2SRC(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rm);
+  return true;
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!

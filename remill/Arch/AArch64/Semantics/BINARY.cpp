@@ -208,7 +208,22 @@ DEF_SEM(UMULH, R64W dst, R64 src1, R64 src2) {
   return memory;
 }
 
+template <typename D, typename S>
+DEF_SEM(UDIV, D dst, S src1, S src2) {
+  using T = typename BaseType<S>::BT;
+  auto lhs = Read(src1);
+  auto rhs = Read(src2);
+  if (!rhs) {
+    WriteZExt(dst, T(0));
+  } else {
+    WriteZExt(dst, UDiv(lhs, rhs));
+  }
+}
+
 }  // namespace
 
 DEF_ISEL(UMULL_UMADDL_64WA_DP_3SRC) = UMULL;
 DEF_ISEL(UMULH_64_DP_3SRC) = UMULH;
+DEF_ISEL(UDIV_32_DP_2SRC) = UDIV<R32W, R32>;
+DEF_ISEL(UDIV_64_DP_2SRC) = UDIV<R64W, R64>;
+
