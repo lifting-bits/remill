@@ -1748,6 +1748,15 @@ bool TryDecodeMOV_ORR_64_LOG_IMM(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// UMULL  <Xd>, <Wn>, <Wm>
+bool TryDecodeUMULL_UMADDL_64WA_DP_3SRC(const InstData &data,
+                                        Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rm);
+  return true;
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!

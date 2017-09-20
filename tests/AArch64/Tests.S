@@ -190,6 +190,9 @@ SYMBOL(__aarch64_save_state_after):
     .globl SYMBOL(__aarch64_test_table_begin)
 SYMBOL(__aarch64_test_table_begin):
 
+#include "tests/AArch64/BINARY/UMULL_UMADDL_64WA_DP_3SRC.S"
+
+#if 0
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/ADD_32_ADDSUB_EXT.S"
@@ -223,6 +226,8 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BRANCH/CBZ_n_COMPBRANCH.S"
 #include "tests/AArch64/BRANCH/TBNZ_ONLY_TESTBRANCH.S"
 #include "tests/AArch64/BRANCH/TBZ_ONLY_TESTBRANCH.S"
+
+#endif
 
      /* Create a symbol that represents the end of the test information table. */
     .section "__aarch64_test_table", "a"

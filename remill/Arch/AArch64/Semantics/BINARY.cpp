@@ -192,3 +192,14 @@ DEF_ISEL(ADDS_32S_ADDSUB_IMM) = ADDS<R32W, R32, I32>;
 DEF_ISEL(ADDS_64S_ADDSUB_IMM) = ADDS<R64W, R64, I64>;
 DEF_ISEL(ADDS_32S_ADDSUB_EXT) = ADDS<R32W, R32, I32>;
 DEF_ISEL(ADDS_64S_ADDSUB_EXT) = ADDS<R64W, R64, I64>;
+
+namespace {
+
+DEF_SEM(UMULL, R64W dst, R32 src1, R32 src2) {
+  Write(dst, UMul(ZExt(Read(src1)), ZExt(Read(src2))));
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(UMULL_UMADDL_64WA_DP_3SRC) = UMULL;
