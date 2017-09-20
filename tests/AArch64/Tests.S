@@ -190,6 +190,15 @@ SYMBOL(__aarch64_save_state_after):
     .globl SYMBOL(__aarch64_test_table_begin)
 SYMBOL(__aarch64_test_table_begin):
 
+#define ARG1_64 x0
+#define ARG1_32 w0
+
+#define ARG2_64 x1
+#define ARG2_32 w1
+
+#define ARG3_64 x2
+#define ARG3_32 w2
+
 #include "tests/AArch64/BINARY/UMULL_UMADDL_64WA_DP_3SRC.S"
 
 #if 0
