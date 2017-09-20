@@ -1757,6 +1757,14 @@ bool TryDecodeUMULL_UMADDL_64WA_DP_3SRC(const InstData &data,
   return true;
 }
 
+// UMULH  <Xd>, <Xn>, <Xm>
+bool TryDecodeUMULH_64_DP_3SRC(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rm);
+  return true;
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!

@@ -200,6 +200,15 @@ DEF_SEM(UMULL, R64W dst, R32 src1, R32 src2) {
   return memory;
 }
 
+DEF_SEM(UMULH, R64W dst, R64 src1, R64 src2) {
+  uint128_t lhs = ZExt(Read(src1));
+  uint128_t rhs = ZExt(Read(src2));
+  uint128_t res = UMul(lhs, rhs);
+  Write(dst, Trunc(UShr(res, 64)));
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(UMULL_UMADDL_64WA_DP_3SRC) = UMULL;
+DEF_ISEL(UMULH_64_DP_3SRC) = UMULH;
