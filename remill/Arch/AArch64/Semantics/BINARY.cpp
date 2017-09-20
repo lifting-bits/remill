@@ -218,6 +218,7 @@ DEF_SEM(UDIV, D dst, S src1, S src2) {
   } else {
     WriteZExt(dst, UDiv(lhs, rhs));
   }
+  return memory;
 }
 
 }  // namespace
