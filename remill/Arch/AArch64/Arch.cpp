@@ -556,19 +556,31 @@ static void AddPostIndexMemOp(Instruction &inst, Action action,
   inst.operands.push_back(addr_op);
 }
 
-static uint64_t MostSignificantSetBit(uint64_t val) {
-  return val ? static_cast<uint64_t>(63 - __builtin_clzll(val)) : 0;
+static bool MostSignificantSetBit(uint64_t val, uint64_t *highest_out) {
+  auto found = false;
+  for (uint64_t i = 0; i < 64; ++i) {
+    if ((val >> i) & 1) {
+      *highest_out = i;
+      found = true;
+    }
+  }
+  return found;
 }
 
-constexpr static auto kOne = static_cast<uint64_t>(1);
+static constexpr uint64_t kOne = static_cast<uint64_t>(1);
 
 inline static uint64_t Ones(uint64_t val) {
-  return (kOne << val) - kOne;
+  uint64_t out = 0;
+  for (; val != 0; --val) {
+    out <<= kOne;
+    out |= kOne;
+  }
+  return out;
 }
 
 static uint64_t ROR(uint64_t val, uint64_t val_size, uint64_t rotate_amount) {
   for (uint64_t i = 0; i < rotate_amount; ++i) {
-    val = ((val & 1) << (val_size - 1ULL)) | (val >> 1ULL);
+    val = ((val & kOne) << (val_size - kOne)) | (val >> kOne);
   }
   return val;
 }
@@ -594,11 +606,20 @@ static bool DecodeBitMasks(uint64_t N /* one bit */,
                            uint64_t immr /* six bits */,
                            bool is_immediate,
                            uint64_t data_size,
-                           uint64_t *wmask_out,
-                           uint64_t *tmask_out) {
-  const uint64_t len = MostSignificantSetBit((N << 6) | (~imms & 0x3fULL));
-  const uint64_t esize = 1ULL << len;
-  if (!len || esize > data_size) {
+                           uint64_t *wmask_out=nullptr,
+                           uint64_t *tmask_out=nullptr,
+                           uint64_t *R_out=nullptr,
+                           uint64_t *S_out=nullptr) {
+  uint64_t len = 0;
+  if (!MostSignificantSetBit((N << 6ULL) | (~imms & 0x3fULL), &len)) {
+    return false;
+  }
+  if (len < 1) {
+    return false;
+  }
+
+  const uint64_t esize = kOne << len;
+  if (esize > data_size) {
     return false;  // `len == 0` is a `ReservedValue()`.
   }
 
@@ -610,10 +631,10 @@ static bool DecodeBitMasks(uint64_t N /* one bit */,
     return false;  // ReservedValue.
   }
 
-  const uint64_t diff = R - S;
+  const uint64_t diff = (R - S) & static_cast<uint64_t>(0x3F);  // 6-bit sbb.
   const uint64_t d = diff & levels;
-  const uint64_t welem = Ones(S + 1ULL);
-  const uint64_t telem = Ones(d + 1ULL);
+  const uint64_t welem = Ones(S + kOne);
+  const uint64_t telem = Ones(d + kOne);
   const uint64_t wmask = Replicate(
       ROR(welem, esize, R), esize, data_size);
   const uint64_t tmask = Replicate(telem, esize, data_size);
@@ -1621,7 +1642,7 @@ bool TryDecodeEOR_32_LOG_IMM(const InstData &data, Instruction &inst) {
   if (data.N) {
     return false;  // `if sf == '0' && N != '0' then ReservedValue();`.
   } else if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
-                      true, 32, &wmask, nullptr)) {
+                      true, 32, &wmask)) {
     return false;
   }
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsAddress, data.Rd);
@@ -1634,7 +1655,7 @@ bool TryDecodeEOR_32_LOG_IMM(const InstData &data, Instruction &inst) {
 bool TryDecodeEOR_64_LOG_IMM(const InstData &data, Instruction &inst) {
   uint64_t wmask = 0;
   if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
-                      true, 64, &wmask, nullptr)) {
+                      true, 64, &wmask)) {
     return false;
   }
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsAddress, data.Rd);
@@ -1728,7 +1749,7 @@ bool TryDecodeHINT_3(const InstData &, Instruction &) {
 bool TryDecodeMOV_ORR_32_LOG_IMM(const InstData &data, Instruction &inst) {
   uint64_t wmask = 0;
   if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
-                      true, 32, &wmask, nullptr)) {
+                      true, 32, &wmask)) {
     return false;
   }
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsAddress, data.Rd);
@@ -1740,7 +1761,7 @@ bool TryDecodeMOV_ORR_32_LOG_IMM(const InstData &data, Instruction &inst) {
 bool TryDecodeMOV_ORR_64_LOG_IMM(const InstData &data, Instruction &inst) {
   uint64_t wmask = 0;
   if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
-                      true, 64, &wmask, nullptr)) {
+                      true, 64, &wmask)) {
     return false;
   }
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsAddress, data.Rd);
@@ -1780,6 +1801,61 @@ bool TryDecodeUDIV_64_DP_2SRC(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rm);
   return true;
+}
+
+// UBFM  <Wd>, <Wn>, #<immr>, #<imms>
+bool TryDecodeUBFM_32M_BITFIELD(const InstData &data, Instruction &inst) {
+
+  // if sf == '0' && (N != '0' || immr<5> != '0' || imms<5> != '0')
+  //    then ReservedValue();
+  if (data.N || (data.immr.uimm & 0x20) || (data.imms.uimm & 0x20)) {
+    return false;
+  }
+
+  uint64_t wmask = 0;
+  uint64_t tmask = 0;
+  uint64_t R = 0;
+  if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
+                      true, 32, &wmask, &tmask, &R)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddShiftRegOperand(inst, kRegW, kUseAsValue, data.Rn, kShiftROR, R);
+  AddImmOperand(inst, wmask & tmask, kUnsigned, 32);
+  return true;
+}
+
+// UBFM  <Xd>, <Xn>, #<immr>, #<imms>
+bool TryDecodeUBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
+  if (!data.N) {
+    return false;  // `if sf == '1' && N != '1' then ReservedValue();`.
+  }
+
+  uint64_t wmask = 0;
+  uint64_t tmask = 0;
+  uint64_t R = 0;
+  if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
+                      true, 64, &wmask, &tmask, &R)) {
+    return false;
+  }
+  LOG(ERROR) << "R=" << std::hex << R;
+  LOG(ERROR) << "wmask=" << std::hex << wmask;
+  LOG(ERROR) << "tmask=" << std::hex << tmask;
+
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddShiftRegOperand(inst, kRegX, kUseAsValue, data.Rn, kShiftROR, R);
+  AddImmOperand(inst, wmask & tmask, kUnsigned, 64);
+  return true;
+}
+
+// UBFIZ  <Wd>, <Wn>, #<lsb>, #<width>
+bool TryDecodeUBFIZ_UBFM_32M_BITFIELD(const InstData &data, Instruction &inst) {
+  return TryDecodeUBFM_32M_BITFIELD(data, inst);
+}
+
+// UBFIZ  <Xd>, <Xn>, #<lsb>, #<width>
+bool TryDecodeUBFIZ_UBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
+  return TryDecodeUBFM_64M_BITFIELD(data, inst);
 }
 
 }  // namespace aarch64
