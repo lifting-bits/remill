@@ -2177,6 +2177,33 @@ const char * const kIFormName[] = {
   "ZIP2_ASIMDPERM_ONLY",
 };
 
+
+static bool BFXPreferred(const InstData &data) {
+  if (data.imms.uimm < data.immr.uimm) {
+    return false;
+  }
+  if (data.imms.uimm == ((data.sf << 5) | 0x1FULL)) {
+    return false;  // `if imms == sf:'11111' then return FALSE;`
+  }
+  if (!data.immr.uimm) {
+    // Must not match 32-bit UXT[BH] or SXT[BH].
+    if (!data.sf && (data.imms.uimm == 0x7ULL || data.imms.uimm == 0xFULL)) {
+      return false;
+    }
+
+    // Must not match 64-bit SXT[BHW].
+    auto uns = (data.opc >> 1) & 1;
+    if (data.sf && uns) {
+      if (data.imms.uimm == 0x7ULL || data.imms.uimm == 0xFULL ||
+          data.imms.uimm == 0x1FULL) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+
 static bool TryExtractFRECPX_ASISDMISCFP16_R(InstData &inst, uint32_t bits);
 static bool TryExtractFRECPX_ASISDMISC_R(InstData &inst, uint32_t bits);
 static bool TryExtractLDP_32_LDSTPAIR_POST(InstData &inst, uint32_t bits);
@@ -4305,6 +4332,9 @@ static bool TryExtractUBFX_UBFM_32M_BITFIELD(InstData &inst, uint32_t bits) {
   inst.Rn = static_cast<uint8_t>(enc.Rn);
   inst.immr.uimm = static_cast<uint64_t>(enc.immr);
   inst.imms.uimm = static_cast<uint64_t>(enc.imms);
+  if (!BFXPreferred(inst)) {
+    return false;
+  }
   inst.iform = InstForm::UBFX_UBFM_32M_BITFIELD;
   inst.iclass = InstName::UBFM;
   return true;
@@ -4345,6 +4375,9 @@ static bool TryExtractUBFX_UBFM_64M_BITFIELD(InstData &inst, uint32_t bits) {
   inst.Rn = static_cast<uint8_t>(enc.Rn);
   inst.immr.uimm = static_cast<uint64_t>(enc.immr);
   inst.imms.uimm = static_cast<uint64_t>(enc.imms);
+  if (!BFXPreferred(inst)) {
+    return false;
+  }
   inst.iform = InstForm::UBFX_UBFM_64M_BITFIELD;
   inst.iclass = InstName::UBFM;
   return true;
@@ -9360,6 +9393,9 @@ static bool TryExtractSBFX_SBFM_32M_BITFIELD(InstData &inst, uint32_t bits) {
   inst.Rn = static_cast<uint8_t>(enc.Rn);
   inst.immr.uimm = static_cast<uint64_t>(enc.immr);
   inst.imms.uimm = static_cast<uint64_t>(enc.imms);
+  if (!BFXPreferred(inst)) {
+    return false;
+  }
   inst.iform = InstForm::SBFX_SBFM_32M_BITFIELD;
   inst.iclass = InstName::SBFM;
   return true;
@@ -9400,6 +9436,9 @@ static bool TryExtractSBFX_SBFM_64M_BITFIELD(InstData &inst, uint32_t bits) {
   inst.Rn = static_cast<uint8_t>(enc.Rn);
   inst.immr.uimm = static_cast<uint64_t>(enc.immr);
   inst.imms.uimm = static_cast<uint64_t>(enc.imms);
+  if (!BFXPreferred(inst)) {
+    return false;
+  }
   inst.iform = InstForm::SBFX_SBFM_64M_BITFIELD;
   inst.iclass = InstName::SBFM;
   return true;
@@ -58806,6 +58845,9 @@ static bool TryExtractUBFIZ_UBFM_32M_BITFIELD(InstData &inst, uint32_t bits) {
   inst.Rn = static_cast<uint8_t>(enc.Rn);
   inst.immr.uimm = static_cast<uint64_t>(enc.immr);
   inst.imms.uimm = static_cast<uint64_t>(enc.imms);
+  if (inst.imms.uimm >= inst.immr.uimm) {
+    return false;
+  }
   inst.iform = InstForm::UBFIZ_UBFM_32M_BITFIELD;
   inst.iclass = InstName::UBFM;
   return true;
@@ -58846,6 +58888,9 @@ static bool TryExtractUBFIZ_UBFM_64M_BITFIELD(InstData &inst, uint32_t bits) {
   inst.Rn = static_cast<uint8_t>(enc.Rn);
   inst.immr.uimm = static_cast<uint64_t>(enc.immr);
   inst.imms.uimm = static_cast<uint64_t>(enc.imms);
+  if (inst.imms.uimm >= inst.immr.uimm) {
+    return false;
+  }
   inst.iform = InstForm::UBFIZ_UBFM_64M_BITFIELD;
   inst.iclass = InstName::UBFM;
   return true;
@@ -61987,6 +62032,9 @@ static bool TryExtractSBFIZ_SBFM_32M_BITFIELD(InstData &inst, uint32_t bits) {
   inst.Rn = static_cast<uint8_t>(enc.Rn);
   inst.immr.uimm = static_cast<uint64_t>(enc.immr);
   inst.imms.uimm = static_cast<uint64_t>(enc.imms);
+  if (inst.imms.uimm >= inst.immr.uimm) {
+    return false;
+  }
   inst.iform = InstForm::SBFIZ_SBFM_32M_BITFIELD;
   inst.iclass = InstName::SBFM;
   return true;
@@ -62027,6 +62075,9 @@ static bool TryExtractSBFIZ_SBFM_64M_BITFIELD(InstData &inst, uint32_t bits) {
   inst.Rn = static_cast<uint8_t>(enc.Rn);
   inst.immr.uimm = static_cast<uint64_t>(enc.immr);
   inst.imms.uimm = static_cast<uint64_t>(enc.imms);
+  if (inst.imms.uimm >= inst.immr.uimm) {
+    return false;
+  }
   inst.iform = InstForm::SBFIZ_SBFM_64M_BITFIELD;
   inst.iclass = InstName::SBFM;
   return true;

@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <iomanip>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -1838,9 +1839,6 @@ bool TryDecodeUBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
                       true, 64, &wmask, &tmask, &R)) {
     return false;
   }
-  LOG(ERROR) << "R=" << std::hex << R;
-  LOG(ERROR) << "wmask=" << std::hex << wmask;
-  LOG(ERROR) << "tmask=" << std::hex << tmask;
 
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddShiftRegOperand(inst, kRegX, kUseAsValue, data.Rn, kShiftROR, R);
@@ -1858,11 +1856,42 @@ bool TryDecodeUBFIZ_UBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
   return TryDecodeUBFM_64M_BITFIELD(data, inst);
 }
 
+// UBFX  <Wd>, <Wn>, #<lsb>, #<width>
+bool TryDecodeUBFX_UBFM_32M_BITFIELD(const InstData &data, Instruction &inst) {
+  return TryDecodeUBFM_32M_BITFIELD(data, inst);
+}
+
+// UBFX  <Xd>, <Xn>, #<lsb>, #<width>
+bool TryDecodeUBFX_UBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
+  return TryDecodeUBFM_64M_BITFIELD(data, inst);
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
 const Arch *Arch::GetAArch64(
     OSName os_name_, ArchName arch_name_) {
+//  aarch64::InstData data;
+//  for (uint64_t i = 0; i < 0xFFFFFFFFULL; ++i) {
+//    uint32_t bits = static_cast<uint32_t>(i);
+//    if (aarch64::TryExtractUBFM_32M_BITFIELD(data, bits)) {
+//      if (data.iform != aarch64::InstForm::UBFM_32M_BITFIELD &&
+//          data.iform != aarch64::InstForm::UBFIZ_UBFM_32M_BITFIELD &&
+//          data.iform != aarch64::InstForm::UBFX_UBFM_32M_BITFIELD) {
+//        continue;
+//      }
+//      if (data.Rd == 3 && data.Rn == 0) {
+//        LOG(ERROR)
+//            << "MAKE_UBFM_TEST(" << aarch64::InstFormToString(data.iform)
+//            << ", " << aarch64::InstNameToString(data.iclass) << "_w3_w0_"
+//            << std::hex << data.immr.uimm << "_" << data.imms.uimm << ", 0x"
+//            << std::hex << std::setw(2) << std::setfill('0')
+//            << ((bits >> 0) & 0xFF) << ", 0x" << ((bits >> 8) & 0xFF)
+//            << ", 0x" << ((bits >> 16) & 0xFF) << ", 0x"
+//            << ((bits >> 24) & 0xFF) << ")";
+//      }
+//    }
+//  }
   return new AArch64Arch(os_name_, arch_name_);
 }
 
