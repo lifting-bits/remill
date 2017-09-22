@@ -633,7 +633,7 @@ static bool DecodeBitMasks(uint64_t N /* one bit */,
   }
 
   const uint64_t diff = (R - S) & static_cast<uint64_t>(0x3F);  // 6-bit sbb.
-  const uint64_t d = diff & levels;
+  const uint64_t d = diff & levels;  // `diff<len-1:0>`.
   const uint64_t welem = Ones(S + kOne);
   const uint64_t telem = Ones(d + kOne);
   const uint64_t wmask = Replicate(
@@ -643,6 +643,7 @@ static bool DecodeBitMasks(uint64_t N /* one bit */,
   if (wmask_out) {
     *wmask_out = wmask;
   }
+
   if (tmask_out) {
     *tmask_out = tmask;
   }
@@ -1748,9 +1749,10 @@ bool TryDecodeUBFM_32M_BITFIELD(const InstData &data, Instruction &inst) {
   uint64_t tmask = 0;
   uint64_t R = 0;
   if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
-                      true, 32, &wmask, &tmask, &R)) {
+                      false, 32, &wmask, &tmask, &R)) {
     return false;
   }
+
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
   AddShiftRegOperand(inst, kRegW, kUseAsValue, data.Rn, kShiftROR, R);
   AddImmOperand(inst, wmask & tmask, kUnsigned, 32);
@@ -1767,7 +1769,7 @@ bool TryDecodeUBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
   uint64_t tmask = 0;
   uint64_t R = 0;
   if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
-                      true, 64, &wmask, &tmask, &R)) {
+                      false, 64, &wmask, &tmask, &R)) {
     return false;
   }
 
