@@ -656,6 +656,14 @@ static bool DecodeBitMasks(uint64_t N /* one bit */,
   if (tmask_out) {
     *tmask_out = tmask;
   }
+
+  if (R_out) {
+    *R_out = R;
+  }
+
+  if (S_out) {
+    *S_out = S;
+  }
   return true;
 }
 
@@ -1807,6 +1815,16 @@ bool TryDecodeUBFX_UBFM_32M_BITFIELD(const InstData &data, Instruction &inst) {
 // UBFX  <Xd>, <Xn>, #<lsb>, #<width>
 bool TryDecodeUBFX_UBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
   return TryDecodeUBFM_64M_BITFIELD(data, inst);
+}
+
+// SBFM  <Wd>, <Wn>, #<immr>, #<imms>
+bool TryDecodeSBFM_32M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// SBFM  <Xd>, <Xn>, #<immr>, #<imms>
+bool TryDecodeSBFM_64M_BITFIELD(const InstData &, Instruction &) {
+  return false;
 }
 
 }  // namespace aarch64
