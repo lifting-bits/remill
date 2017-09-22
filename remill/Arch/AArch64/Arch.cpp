@@ -286,16 +286,25 @@ static std::string RegName(Action action, RegClass rclass, RegUsage rtype,
 
   if (31 == number) {
     if (rtype == kUseAsValue) {
-      auto zr_reg_name = (rclass == kRegX ? "XZR" : "WZR");
       if (action == kActionWrite) {
-        ss << "IGNORE_WRITE_TO_";
+        ss << "IGNORE_WRITE_TO_XZR";
+      } else {
+        ss << (rclass == kRegX ? "XZR" : "WZR");
       }
-      ss << zr_reg_name;
     } else {
-      ss << (rclass == kRegX ? "SP" : "WSP");
+      if (action == kActionWrite) {
+        ss << "SP";
+      } else {
+        ss << (rclass == kRegX ? "SP" : "WSP");
+      }
     }
   } else {
-    ss << (rclass == kRegX ? "X" : "W") << static_cast<unsigned>(number);
+    if (action == kActionWrite) {
+      ss << "X";
+    } else {
+      ss << (rclass == kRegX ? "X" : "W");
+    }
+    ss << static_cast<unsigned>(number);
   }
   return ss.str();
 }
@@ -632,7 +641,7 @@ static bool DecodeBitMasks(uint64_t N /* one bit */,
     return false;  // ReservedValue.
   }
 
-  const uint64_t diff = (R - S) & static_cast<uint64_t>(0x3F);  // 6-bit sbb.
+  const uint64_t diff = (S - R) & static_cast<uint64_t>(0x3F);  // 6-bit sbb.
   const uint64_t d = diff & levels;  // `diff<len-1:0>`.
   const uint64_t welem = Ones(S + kOne);
   const uint64_t telem = Ones(d + kOne);
@@ -1582,7 +1591,8 @@ bool TryDecodeEOR_32_LOG_IMM(const InstData &data, Instruction &inst) {
   uint64_t wmask = 0;
   if (data.N) {
     return false;  // `if sf == '0' && N != '0' then ReservedValue();`.
-  } else if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
+  }
+  if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
                       true, 32, &wmask)) {
     return false;
   }
