@@ -20,18 +20,9 @@ DEF_SEM(DoNOP) {
   return memory;
 }
 
-// In the case of remill, the `addr` is already shifted and/or masked.
-// In the case of McSema, the address is already resolved and the cross-
-// reference information includes the masking of the high or low bits
-// so that the result mirrors the goal.
-DEF_SEM(AddToAddress, R64W dst, I64 addr) {
-  Write(dst, Read(addr));
-  return memory;
-}
-
 }  // namespace
 
 DEF_ISEL(NOP) = DoNOP;
-
-DEF_ISEL(ADRP_R64W_U) = AddToAddress;
-DEF_ISEL(ADR_R64W_U) = AddToAddress;
+DEF_ISEL(HINT_1) = DoNOP;
+DEF_ISEL(HINT_2) = DoNOP;
+DEF_ISEL(HINT_3) = DoNOP;

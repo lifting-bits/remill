@@ -870,31 +870,23 @@ bool TryDecodeLDR_64_LDST_REGOFF(const InstData &data, Instruction &inst) {
 }
 
 // MOV  <Wd|WSP>, <Wn|WSP>
-bool TryDecodeMOV_ADD_32_ADDSUB_IMM(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegW, kUseAsAddress, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsAddress, data.Rn);
-  return true;
+bool TryDecodeMOV_ADD_32_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
 }
 
 // MOV  <Xd|SP>, <Xn|SP>
-bool TryDecodeMOV_ADD_64_ADDSUB_IMM(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegX, kUseAsAddress, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
-  return true;
+bool TryDecodeMOV_ADD_64_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
 }
 
 // MOV  <Wd>, <Wm>
-bool TryDecodeMOV_ORR_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rm);
-  return true;
+bool TryDecodeMOV_ORR_32_LOG_SHIFT(const InstData &, Instruction &) {
+  return false;
 }
 
 // MOV  <Xd>, <Xm>
-bool TryDecodeMOV_ORR_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rm);
-  return true;
+bool TryDecodeMOV_ORR_64_LOG_SHIFT(const InstData &, Instruction &) {
+  return false;
 }
 
 // STR  <Wt>, [<Xn|SP>], #<simm>
@@ -971,13 +963,13 @@ bool TryDecodeSTR_64_LDST_REGOFF(const InstData &data, Instruction &inst) {
 }
 
 // MOV  <Wd>, #<imm>
-bool TryDecodeMOV_MOVZ_32_MOVEWIDE(const InstData &data, Instruction &inst) {
-  return TryDecodeMOVZ_32_MOVEWIDE(data, inst);
+bool TryDecodeMOV_MOVZ_32_MOVEWIDE(const InstData &, Instruction &) {
+  return false;
 }
 
 // MOV  <Xd>, #<imm>
-bool TryDecodeMOV_MOVZ_64_MOVEWIDE(const InstData &data, Instruction &inst) {
-  return TryDecodeMOVZ_64_MOVEWIDE(data, inst);
+bool TryDecodeMOV_MOVZ_64_MOVEWIDE(const InstData &, Instruction &) {
+  return false;
 }
 
 // MOVZ  <Wd>, #<imm>{, LSL #<shift>}
@@ -1299,80 +1291,33 @@ bool TryDecodeSUB_64_ADDSUB_EXT(const InstData &data, Instruction &inst) {
 }
 
 // CMP  <Wn>, <Wm>{, <shift> #<amount>}
-bool TryDecodeCMP_SUBS_32_ADDSUB_SHIFT(const InstData &data,
-                                       Instruction &inst) {
-  auto shift_type = static_cast<Shift>(data.shift);
-  if (shift_type == kShiftROR) {
-    return false;  // Shift type '11' is a reserved value.
-  } else if ((data.imm6.uimm >> 5) & 1) {
-    return false;  // `if sf == '0' && imm6<5> == '1' then ReservedValue();`.
-  }
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
-  AddShiftRegOperand(inst, kRegW, kUseAsValue, data.Rm,
-                     shift_type, data.imm6.uimm);
-  return true;
+bool TryDecodeCMP_SUBS_32_ADDSUB_SHIFT(const InstData &, Instruction &) {
+  return false;
 }
 
 // CMP  <Xn>, <Xm>{, <shift> #<amount>}
-bool TryDecodeCMP_SUBS_64_ADDSUB_SHIFT(const InstData &data,
-                                       Instruction &inst) {
-  auto shift_type = static_cast<Shift>(data.shift);
-  if (shift_type == kShiftROR) {
-    return false;  // Shift type '11' is a reserved value.
-  }
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
-  AddShiftRegOperand(inst, kRegX, kUseAsValue, data.Rm,
-                     shift_type, data.imm6.uimm);
-  return true;
+bool TryDecodeCMP_SUBS_64_ADDSUB_SHIFT(const InstData &, Instruction &) {
+  return false;
 }
 
 // CMP  <Xn|SP>, #<imm>{, <shift>}
-bool TryDecodeCMP_SUBS_64S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
-  auto imm = data.imm12.uimm;
-  if (!ShiftImmediate(imm, data.shift)) {
-    return false;
-  }
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
-  AddImmOperand(inst, imm);
-  return true;
+bool TryDecodeCMP_SUBS_64S_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
 }
 
 // CMP  <Wn|WSP>, #<imm>{, <shift>}
-bool TryDecodeCMP_SUBS_32S_ADDSUB_IMM(const InstData &data, Instruction &inst) {
-  auto imm = data.imm12.uimm;
-  if (!ShiftImmediate(imm, data.shift)) {
-    return false;
-  }
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsAddress, data.Rn);
-  AddImmOperand(inst, imm);
-  return true;
+bool TryDecodeCMP_SUBS_32S_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
 }
 
 // CMP  <Wn|WSP>, <Wm>{, <extend> {#<amount>}}
-bool TryDecodeCMP_SUBS_32S_ADDSUB_EXT(const InstData &data, Instruction &inst) {
-  auto extend_type = static_cast<Extend>(data.option);
-  auto shift = data.imm3.uimm;
-  if (shift > 4) {
-    return false;  // `if shift > 4 then ReservedValue();`.
-  }
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsAddress, data.Rn);
-  AddExtendRegOperand(inst, kRegW, kUseAsValue,
-                      data.Rm, extend_type, 32, shift);
-  return true;
+bool TryDecodeCMP_SUBS_32S_ADDSUB_EXT(const InstData &, Instruction &) {
+  return false;
 }
 
 // CMP  <Xn|SP>, <R><m>{, <extend> {#<amount>}}
-bool TryDecodeCMP_SUBS_64S_ADDSUB_EXT(const InstData &data, Instruction &inst) {
-  auto extend_type = static_cast<Extend>(data.option);
-  auto shift = data.imm3.uimm;
-  if (shift > 4) {
-    return false;  // `if shift > 4 then ReservedValue();`.
-  }
-  auto reg_class = ExtendTypeToRegClass(extend_type);
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
-  AddExtendRegOperand(inst, reg_class, kUseAsValue,
-                      data.Rm, extend_type, 64, shift);
-  return true;
+bool TryDecodeCMP_SUBS_64S_ADDSUB_EXT(const InstData &, Instruction &) {
+  return false;
 }
 
 // CMN  <Wn|WSP>, #<imm>{, <shift>}
@@ -1563,49 +1508,43 @@ bool TryDecodeLDRB_32_LDST_POS(const InstData &data, Instruction &inst) {
 }
 
 // ASR  <Wd>, <Wn>, #<shift>
-bool TryDecodeASR_SBFM_32M_BITFIELD(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
-  AddImmOperand(inst, data.immr.uimm, kUnsigned, 8);
-  return true;
+bool TryDecodeASR_SBFM_32M_BITFIELD(const InstData &, Instruction &) {
+  return false;
 }
 
 // ASR  <Xd>, <Xn>, #<shift>
-bool TryDecodeASR_SBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
-  AddImmOperand(inst, data.immr.uimm, kUnsigned, 8);
-  return true;
+bool TryDecodeASR_SBFM_64M_BITFIELD(const InstData &, Instruction &) {
+  return false;
 }
 
 // LSR  <Wd>, <Wn>, #<shift>
-bool TryDecodeLSR_UBFM_32M_BITFIELD(const InstData &data, Instruction &inst) {
-  return TryDecodeASR_SBFM_32M_BITFIELD(data, inst);
+bool TryDecodeLSR_UBFM_32M_BITFIELD(const InstData &, Instruction &) {
+  return false;
 }
 
 // LSR  <Xd>, <Xn>, #<shift>
-bool TryDecodeLSR_UBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
-  return TryDecodeASR_SBFM_64M_BITFIELD(data, inst);
+bool TryDecodeLSR_UBFM_64M_BITFIELD(const InstData &, Instruction &) {
+  return false;
 }
 
 // LSL  <Wd>, <Wn>, #<shift>
-bool TryDecodeLSL_UBFM_32M_BITFIELD(const InstData &data, Instruction &inst) {
-  return TryDecodeASR_SBFM_32M_BITFIELD(data, inst);
+bool TryDecodeLSL_UBFM_32M_BITFIELD(const InstData &, Instruction &) {
+  return false;
 }
 
 // LSL  <Xd>, <Xn>, #<shift>
-bool TryDecodeLSL_UBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
-  return TryDecodeASR_SBFM_64M_BITFIELD(data, inst);
+bool TryDecodeLSL_UBFM_64M_BITFIELD(const InstData &, Instruction &) {
+  return false;
 }
 
 // MOV  <Wd>, #<imm>
-bool TryDecodeMOV_MOVN_32_MOVEWIDE(const InstData &data, Instruction &inst) {
-  return TryDecodeMOVN_32_MOVEWIDE(data, inst);
+bool TryDecodeMOV_MOVN_32_MOVEWIDE(const InstData &, Instruction &) {
+  return false;
 }
 
 // MOV  <Xd>, #<imm>
-bool TryDecodeMOV_MOVN_64_MOVEWIDE(const InstData &data, Instruction &inst) {
-  return TryDecodeMOVN_64_MOVEWIDE(data, inst);
+bool TryDecodeMOV_MOVN_64_MOVEWIDE(const InstData &, Instruction &) {
+  return false;
 }
 
 // STRH  <Wt>, [<Xn|SP>{, #<pimm>}]
@@ -1747,36 +1686,28 @@ bool TryDecodeHINT_3(const InstData &, Instruction &) {
 }
 
 // MOV  <Wd|WSP>, #<imm>
-bool TryDecodeMOV_ORR_32_LOG_IMM(const InstData &data, Instruction &inst) {
-  uint64_t wmask = 0;
-  if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
-                      true, 32, &wmask)) {
-    return false;
-  }
-  AddRegOperand(inst, kActionWrite, kRegW, kUseAsAddress, data.Rd);
-  AddImmOperand(inst, wmask, kUnsigned, 32);
-  return true;
+bool TryDecodeMOV_ORR_32_LOG_IMM(const InstData &, Instruction &) {
+  return false;
 }
 
 // MOV  <Xd|SP>, #<imm>
-bool TryDecodeMOV_ORR_64_LOG_IMM(const InstData &data, Instruction &inst) {
-  uint64_t wmask = 0;
-  if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
-                      true, 64, &wmask)) {
-    return false;
-  }
-  AddRegOperand(inst, kActionWrite, kRegX, kUseAsAddress, data.Rd);
-  AddImmOperand(inst, wmask, kUnsigned, 64);
+bool TryDecodeMOV_ORR_64_LOG_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// UMADDL  <Xd>, <Wn>, <Wm>, <Xa>
+bool TryDecodeUMADDL_64WA_DP_3SRC(const InstData &data,
+                                  Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rm);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Ra);
   return true;
 }
 
 // UMULL  <Xd>, <Wn>, <Wm>
-bool TryDecodeUMULL_UMADDL_64WA_DP_3SRC(const InstData &data,
-                                        Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rm);
-  return true;
+bool TryDecodeUMULL_UMADDL_64WA_DP_3SRC(const InstData &, Instruction &) {
+  return false;
 }
 
 // UMULH  <Xd>, <Xn>, <Xm>
@@ -1875,12 +1806,14 @@ const Arch *Arch::GetAArch64(
 //  for (uint64_t i = 0; i < 0xFFFFFFFFULL; ++i) {
 //    uint32_t bits = static_cast<uint32_t>(i);
 //    if (aarch64::TryExtractUBFM_32M_BITFIELD(data, bits)) {
-//      if (data.iform != aarch64::InstForm::UBFM_32M_BITFIELD &&
-//          data.iform != aarch64::InstForm::UBFIZ_UBFM_32M_BITFIELD &&
-//          data.iform != aarch64::InstForm::UBFX_UBFM_32M_BITFIELD) {
+//      if (data.iform != aarch64::InstForm::UBFM_32M_BITFIELD) {
 //        continue;
 //      }
 //      if (data.Rd == 3 && data.Rn == 0) {
+//        remill::Instruction inst;
+//        if (!aarch64::TryDecode(data, inst)) {
+//          continue;
+//        }
 //        LOG(ERROR)
 //            << "MAKE_UBFM_TEST(" << aarch64::InstFormToString(data.iform)
 //            << ", " << aarch64::InstNameToString(data.iclass) << "_w3_w0_"

@@ -45279,44 +45279,6 @@ bool TryDecodeFMINNMP_ASISDPAIR_ONLY_SD(const InstData &, Instruction &) {
   return false;
 }
 
-// UMADDL UMADDL_64WA_dp_3src:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x Ra       0
-//  11 x Ra       1
-//  12 x Ra       2
-//  13 x Ra       3
-//  14 x Ra       4
-//  15 0 o0       0
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 0
-//  23 1 U        0
-//  24 1
-//  25 1
-//  26 0
-//  27 1
-//  28 1
-//  29 0 op54     0
-//  30 0 op54     1
-//  31 1 sf       0
-// UMADDL  <Xd>, <Wn>, <Wm>, <Xa>
-bool TryDecodeUMADDL_64WA_DP_3SRC(const InstData &, Instruction &) {
-  return false;
-}
-
 // FMOV FMOV_H_floatdp1:
 //   0 x Rd       0
 //   1 x Rd       1

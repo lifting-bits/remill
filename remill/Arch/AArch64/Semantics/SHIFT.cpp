@@ -14,34 +14,33 @@
  * limitations under the License.
  */
 
-
-namespace {
-
-template <typename D, typename S1, typename S2>
-DEF_SEM(ASR, D dst, S1 src1, S2 src2) {
-  WriteZExt(dst, Unsigned(SShr(Signed(Read(src1)), Signed(Read(src2)))));
-  return memory;
-}
-
-template <typename D, typename S1, typename S2>
-DEF_SEM(LSR, D dst, S1 src1, S2 src2) {
-  WriteZExt(dst, UShr(Read(src1), Read(src2)));
-  return memory;
-}
-
-template <typename D, typename S1, typename S2>
-DEF_SEM(LSL, D dst, S1 src1, S2 src2) {
-  WriteZExt(dst, UShl(Read(src1), Read(src2)));
-  return memory;
-}
-
-}  // namespace
-
-DEF_ISEL(ASR_SBFM_32M_BITFIELD) = ASR<R32W, R32, I32>;
-DEF_ISEL(ASR_SBFM_64M_BITFIELD) = ASR<R64W, R64, I64>;
-
-DEF_ISEL(LSR_UBFM_32M_BITFIELD) = LSR<R32W, R32, I32>;
-DEF_ISEL(LSR_UBFM_64M_BITFIELD) = LSR<R64W, R64, I64>;
-
-DEF_ISEL(LSL_UBFM_32M_BITFIELD) = LSL<R32W, R32, I32>;
-DEF_ISEL(LSL_UBFM_64M_BITFIELD) = LSL<R64W, R64, I64>;
+//namespace {
+//
+//template <typename D, typename S1, typename S2>
+//DEF_SEM(ASR, D dst, S1 src1, S2 src2) {
+//  WriteZExt(dst, Unsigned(SShr(Signed(Read(src1)), Signed(Read(src2)))));
+//  return memory;
+//}
+//
+//template <typename D, typename S1, typename S2>
+//DEF_SEM(LSR, D dst, S1 src1, S2 src2) {
+//  WriteZExt(dst, UShr(Read(src1), Read(src2)));
+//  return memory;
+//}
+//
+//template <typename D, typename S1, typename S2>
+//DEF_SEM(LSL, D dst, S1 src1, S2 src2) {
+//  WriteZExt(dst, UShl(Read(src1), Read(src2)));
+//  return memory;
+//}
+//
+//}  // namespace
+//
+//DEF_ISEL(ASR_SBFM_32M_BITFIELD) = ASR<R32W, R32, I32>;
+//DEF_ISEL(ASR_SBFM_64M_BITFIELD) = ASR<R64W, R64, I64>;
+//
+//DEF_ISEL(LSR_UBFM_32M_BITFIELD) = LSR<R32W, R32, I32>;
+//DEF_ISEL(LSR_UBFM_64M_BITFIELD) = LSR<R64W, R64, I64>;
+//
+//DEF_ISEL(LSL_UBFM_32M_BITFIELD) = LSL<R32W, R32, I32>;
+//DEF_ISEL(LSL_UBFM_64M_BITFIELD) = LSL<R64W, R64, I64>;

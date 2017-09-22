@@ -239,7 +239,7 @@ class Instruction {
   }
 
   inline bool IsValid(void) const {
-    return kCategoryInvalid != category;
+    return kCategoryInvalid != category && kCategoryError != category;
   }
 
   // Length, in bytes, of the instruction.
