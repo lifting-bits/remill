@@ -760,7 +760,7 @@ MAKE_OPS(Shl, <<, MAKE_BINOP, MAKE_NOP)
 MAKE_OPS(Neg, -, MAKE_UOP, MAKE_UOP)
 MAKE_OPS(Not, ~, MAKE_UOP, MAKE_NOP)
 
-/*
+
 template <typename T>
 ALWAYS_INLINE static T URor(T val_, T amount_) {
   using UT = typename IntegerType<T>::UT;
@@ -771,7 +771,7 @@ ALWAYS_INLINE static T URor(T val_, T amount_) {
   UT high_bits = val << (width - amount);
   return static_cast<T>(low_bits | high_bits);
 }
-
+/*
 template <typename T>
 ALWAYS_INLINE static T RRor(T val_, T amount_) {
   using ST = typename IntegerType<T>::ST;

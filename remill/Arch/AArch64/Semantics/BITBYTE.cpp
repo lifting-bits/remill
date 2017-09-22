@@ -25,10 +25,28 @@ DEF_SEM(UBFM, D dst, S1 src1, S2 mask) {
   return memory;
 }
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(SBFM, D dst, S1 src1, S2 src2, S2 src3, S2 src4, S2 src5) {
+  using T = typename BaseType<S2>::BT;
+  auto src = Read(src1);
+  auto R = Read(src2);
+  auto S = Read(src3);
+  auto wmask = Read(src4);
+  auto tmask = Read(src5);
+  auto bot = UAnd(URor(src, R), wmask);
+  auto sign_bit = UAnd(UShr(src, S), T(1));  // Zero or one.
+  auto top = Select(UCmpEq(sign_bit, T(0)), T(0), ~T(0));
+  WriteZExt(dst, UOr(UAnd(top, UNot(tmask)), UAnd(bot, tmask)));
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(UBFM_32M_BITFIELD) = UBFM<R32W, R32, I32>;
 DEF_ISEL(UBFM_64M_BITFIELD) = UBFM<R64W, R64, I64>;
+
+DEF_ISEL(SBFM_32M_BITFIELD) = SBFM<R32W, R32, I32>;
+DEF_ISEL(SBFM_64M_BITFIELD) = SBFM<R64W, R64, I64>;
 
 //DEF_ISEL(UBFIZ_UBFM_32M_BITFIELD) = UBFM<R32W, R32, I32>;
 //DEF_ISEL(UBFIZ_UBFM_64M_BITFIELD) = UBFM<R64W, R64, I64>;

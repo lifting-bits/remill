@@ -18,6 +18,167 @@
 
 namespace remill {
 namespace aarch64 {
+
+// UBFIZ  <Wd>, <Wn>, #<lsb>, #<width>
+bool TryDecodeUBFIZ_UBFM_32M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// UBFIZ  <Xd>, <Xn>, #<lsb>, #<width>
+bool TryDecodeUBFIZ_UBFM_64M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// UBFX  <Wd>, <Wn>, #<lsb>, #<width>
+bool TryDecodeUBFX_UBFM_32M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// UBFX  <Xd>, <Xn>, #<lsb>, #<width>
+bool TryDecodeUBFX_UBFM_64M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Wd|WSP>, #<imm>
+bool TryDecodeMOV_ORR_32_LOG_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Xd|SP>, #<imm>
+bool TryDecodeMOV_ORR_64_LOG_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// ASR  <Wd>, <Wn>, #<shift>
+bool TryDecodeASR_SBFM_32M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// ASR  <Xd>, <Xn>, #<shift>
+bool TryDecodeASR_SBFM_64M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// LSR  <Wd>, <Wn>, #<shift>
+bool TryDecodeLSR_UBFM_32M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// LSR  <Xd>, <Xn>, #<shift>
+bool TryDecodeLSR_UBFM_64M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// LSL  <Wd>, <Wn>, #<shift>
+bool TryDecodeLSL_UBFM_32M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// LSL  <Xd>, <Xn>, #<shift>
+bool TryDecodeLSL_UBFM_64M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Wd>, #<imm>
+bool TryDecodeMOV_MOVN_32_MOVEWIDE(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Xd>, #<imm>
+bool TryDecodeMOV_MOVN_64_MOVEWIDE(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMP  <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeCMP_SUBS_32_ADDSUB_SHIFT(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMP  <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeCMP_SUBS_64_ADDSUB_SHIFT(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMP  <Xn|SP>, #<imm>{, <shift>}
+bool TryDecodeCMP_SUBS_64S_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMP  <Wn|WSP>, #<imm>{, <shift>}
+bool TryDecodeCMP_SUBS_32S_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMP  <Wn|WSP>, <Wm>{, <extend> {#<amount>}}
+bool TryDecodeCMP_SUBS_32S_ADDSUB_EXT(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMP  <Xn|SP>, <R><m>{, <extend> {#<amount>}}
+bool TryDecodeCMP_SUBS_64S_ADDSUB_EXT(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMN  <Wn|WSP>, #<imm>{, <shift>}
+bool TryDecodeCMN_ADDS_32S_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMN  <Xn|SP>, #<imm>{, <shift>}
+bool TryDecodeCMN_ADDS_64S_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMN  <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeCMN_ADDS_32_ADDSUB_SHIFT(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMN  <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeCMN_ADDS_64_ADDSUB_SHIFT(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMN  <Wn|WSP>, <Wm>{, <extend> {#<amount>}}
+bool TryDecodeCMN_ADDS_32S_ADDSUB_EXT(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMN  <Xn|SP>, <R><m>{, <extend> {#<amount>}}
+bool TryDecodeCMN_ADDS_64S_ADDSUB_EXT(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Wd>, #<imm>
+bool TryDecodeMOV_MOVZ_32_MOVEWIDE(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Xd>, #<imm>
+bool TryDecodeMOV_MOVZ_64_MOVEWIDE(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Wd|WSP>, <Wn|WSP>
+bool TryDecodeMOV_ADD_32_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Xd|SP>, <Xn|SP>
+bool TryDecodeMOV_ADD_64_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Wd>, <Wm>
+bool TryDecodeMOV_ORR_32_LOG_SHIFT(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Xd>, <Xm>
+bool TryDecodeMOV_ORR_64_LOG_SHIFT(const InstData &, Instruction &) {
+  return false;
+}
+
 // FRECPX FRECPX_asisdmiscfp16_R:
 //   0 x Rd       0
 //   1 x Rd       1
