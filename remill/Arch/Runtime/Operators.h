@@ -764,12 +764,12 @@ MAKE_OPS(Not, ~, MAKE_UOP, MAKE_NOP)
 template <typename T>
 ALWAYS_INLINE static T URor(T val_, T amount_) {
   using UT = typename IntegerType<T>::UT;
-  constexpr UT width = static_cast<UT>(sizeof(val_) * 8);
+  constexpr UT width = static_cast<UT>(sizeof(UT) * 8);
   const UT val = static_cast<UT>(val_);
   const UT amount = static_cast<UT>(amount_) % width;
-  UT low_bits = val >> amount;
-  UT high_bits = val << (width - amount);
-  return static_cast<T>(low_bits | high_bits);
+  const UT shifted_bits = val >> amount;
+  const UT rotated_bits = val << (width - amount);
+  return static_cast<T>(shifted_bits | rotated_bits);
 }
 /*
 template <typename T>

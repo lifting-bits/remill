@@ -28,13 +28,13 @@ DEF_SEM(UBFM, D dst, S1 src1, S2 mask) {
 template <typename D, typename S1, typename S2>
 DEF_SEM(SBFM, D dst, S1 src1, S2 src2, S2 src3, S2 src4, S2 src5) {
   using T = typename BaseType<S2>::BT;
-  auto src = Read(src1);
-  auto R = Read(src2);
-  auto S = Read(src3);
-  auto wmask = Read(src4);
-  auto tmask = Read(src5);
-  auto bot = UAnd(URor(src, R), wmask);
-  auto sign_bit = UAnd(UShr(src, S), T(1));  // Zero or one.
+  auto src = Read(src1);  // 0
+  auto R = Read(src2);  // 0
+  auto S = Read(src3);  // 0
+  auto wmask = Read(src4);  // 1
+  auto tmask = Read(src5);  // 1
+  auto bot = UAnd(URor(src, R), wmask);  // 0
+  auto sign_bit = UAnd(UShr(src, S), T(1));  // 0  // Zero or one.
   auto top = Select(UCmpEq(sign_bit, T(0)), T(0), ~T(0));
   WriteZExt(dst, UOr(UAnd(top, UNot(tmask)), UAnd(bot, tmask)));
   return memory;
