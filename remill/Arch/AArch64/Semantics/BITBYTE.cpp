@@ -25,29 +25,6 @@ DEF_SEM(UBFM, D dst, S1 src1, S2 mask) {
   return memory;
 }
 
-//integer d = UInt(Rd);
-//integer n = UInt(Rn);
-//integer datasize = if sf == '1' then 64 else 32;
-//integer R; integer S; bits(datasize) wmask;
-//bits(datasize) tmask;
-//if sf == '1' && N != '1' then ReservedValue();
-//if sf == '0' && (N != '0' || immr<5> != '0' || imms<5> != '0') then ReservedValue();
-//
-//R = UInt(immr);
-//S = UInt(imms);
-//(wmask, tmask) = DecodeBitMasks(N, imms, immr, FALSE);
-//
-//bits(datasize) src = X[n];
-//
-//// perform bitfield move on low bits
-//bits(datasize) bot = ROR(src, R) AND wmask;
-//
-//// determine extension bits (sign, zero or dest register)
-//bits(datasize) top = Replicate(src<S>);
-//
-//// combine extension bits and result bits
-//X[d] = (top AND NOT(tmask)) OR (bot AND tmask);
-
 template <typename D, typename S1, typename S2>
 DEF_SEM(SBFM, D dst, S1 src1, S2 src2, S2 src3, S2 src4, S2 src5) {
   using T = typename BaseType<S2>::BT;

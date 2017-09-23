@@ -15,7 +15,7 @@
  */
 
 /* UMULL  <Xd>, <Wn>, <Wm> */
-TEST_BEGIN(UMULL_UMADDL_64WA_DP_3SRC, umull_x3_w0_w1, 2)
+TEST_BEGIN(UMADDL_64WA_DP_3SRC, umull_x3_w0_w1, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -29,5 +29,23 @@ TEST_INPUTS(
     0xfafbfbfd, 0xf1f2f3f4,
     0x0a0b0c0d, 0x01020304)
 
-    umull x3, ARG1_32, ARG2_32
+    umaddl x3, ARG1_32, ARG2_32, xzr
+TEST_END
+
+/* UMADDL  <Xd>, <Wn>, <Wm>, <Xa> */
+TEST_BEGIN(UMADDL_64WA_DP_3SRC, umaddl_x3_w0_w1_x2, 3)
+TEST_INPUTS(
+    0, 0, 0,
+    0, 1, 0,
+    1, 0, 0,
+    1, 1, 0,
+    0xFFFFFFFF, 1, 0,
+    1, 0xFFFFFFFF, 0,
+    0xFFFFFFFF, 0xFFFFFFFF, 0,
+    0, 0xFFFFFFFF, 0,
+    0xFFFFFFFF, 0, 0,
+    0xfafbfbfd, 0xf1f2f3f4, 0,
+    0x0a0b0c0d, 0x01020304 0)
+
+    umaddl x3, ARG1_32, ARG2_32, xzr
 TEST_END

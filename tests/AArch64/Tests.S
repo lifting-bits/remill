@@ -199,9 +199,8 @@ SYMBOL(__aarch64_test_table_begin):
 #define ARG3_64 x2
 #define ARG3_32 w2
 
-#include "tests/AArch64/BITBYTE/SBFM_nM_BITFIELD.S"
 
-#if 0
+#if 1
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/ADD_32_ADDSUB_EXT.S"
@@ -230,9 +229,10 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BINARY/SUBS_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/SUBS_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/UDIV_n_DP_2SRC.S"
+#include "tests/AArch64/BINARY/UMADDL_64WA_DP_3SRC.S"
 #include "tests/AArch64/BINARY/UMULH_64_DP_3SRC.S"
-//#include "tests/AArch64/BINARY/UMULL_UMADDL_64WA_DP_3SRC.S"
 
+#include "tests/AArch64/BITBYTE/SBFM_nM_BITFIELD.S"
 #include "tests/AArch64/BITBYTE/UBFM_nM_BITFIELD.S"
 
 #include "tests/AArch64/BRANCH/B_ONLY_CONDBRANCH.S"
