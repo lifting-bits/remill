@@ -1567,7 +1567,7 @@ bool TryDecodeUMADDL_64WA_DP_3SRC(const InstData &data,
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rm);
-  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Ra);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Ra);
   return true;
 }
 
