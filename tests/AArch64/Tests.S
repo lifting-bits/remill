@@ -210,6 +210,8 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BINARY/ADDS_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/AND_n_LOG_IMM.S"
 #include "tests/AArch64/BINARY/AND_n_LOG_SHIFT.S"
+#include "tests/AArch64/BINARY/ANDS_nS_LOG_IMM.S"
+#include "tests/AArch64/BINARY/ANDS_n_LOG_SHIFT.S"
 #include "tests/AArch64/BINARY/BIC_n_LOG_SHIFT.S"
 //#include "tests/AArch64/BINARY/CMN_ADDS_n_ADDSUB_EXT.S"
 //#include "tests/AArch64/BINARY/CMN_ADDS_n_ADDSUB_IMM.S"

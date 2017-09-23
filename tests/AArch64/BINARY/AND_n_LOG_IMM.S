@@ -33,11 +33,11 @@ TEST_BEGIN(AND_64_LOG_IMM, and_x9_x0_0x1010101010101010, 1)
 TEST_INPUTS(
     0,
     1,
-    0xFFFFFFFF,
-    0xfafbfbfd,
-    0xf1f2f3f4,
-    0x0a0b0c0d,
-    0x01020304)
+    0xFFFFFFFFFFFFFFFF,
+    0xfafbfbfdfefff0f1,
+    0xf1f2f3f4f5f6f7f8,
+    0x0a0b0c0d0e0f0102,
+    0x0102030405060708)
 
     and x9, x0, #0x1010101010101010
 TEST_END
@@ -46,11 +46,11 @@ TEST_BEGIN(AND_64_LOG_IMM, and_x9_x0_0xfff80007ffffffff, 1)
 TEST_INPUTS(
     0,
     1,
-    0xFFFFFFFF,
-    0xfafbfbfd,
-    0xf1f2f3f4,
-    0x0a0b0c0d,
-    0x01020304)
+    0xFFFFFFFFFFFFFFFF,
+    0xfafbfbfdfefff0f1,
+    0xf1f2f3f4f5f6f7f8,
+    0x0a0b0c0d0e0f0102,
+    0x0102030405060708)
 
     and x9, x0, #0xfff80007ffffffff
 TEST_END

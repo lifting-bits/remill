@@ -236,3 +236,23 @@ DEF_ISEL(UMULH_64_DP_3SRC) = UMULH;
 DEF_ISEL(UDIV_32_DP_2SRC) = UDIV<R32W, R32>;
 DEF_ISEL(UDIV_64_DP_2SRC) = UDIV<R64W, R64>;
 
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(ANDS, D dst, S1 src1, S2 src2) {
+  auto res = UAnd(Read(src1), Read(src2));
+  WriteZExt(dst, res);
+  FLAG_N = SignFlag(res);
+  FLAG_Z = ZeroFlag(res);
+  FLAG_C = false;
+  FLAG_V = false;
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(ANDS_32S_LOG_IMM) = ANDS<R32W, R32, I32>;
+DEF_ISEL(ANDS_64S_LOG_IMM) = ANDS<R64W, R64, I64>;
+
+DEF_ISEL(ANDS_32_LOG_SHIFT) = ANDS<R32W, R32, I32>;
+DEF_ISEL(ANDS_64_LOG_SHIFT) = ANDS<R64W, R64, I64>;

@@ -1726,112 +1726,73 @@ bool TryDecodeBFM_64M_BITFIELD(const InstData &data, Instruction &inst) {
   return true;
 }
 
-// ANDS ANDS_32S_log_imm:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 0 N        0
-//  23 0
-//  24 0
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 1 opc      0
-//  30 1 opc      1
-//  31 0 sf       0
 // ANDS  <Wd>, <Wn>, #<imm>
-bool TryDecodeANDS_32S_LOG_IMM(const InstData &, Instruction &) {
-  return false;
+bool TryDecodeANDS_32S_LOG_IMM(const InstData &data, Instruction &inst) {
+  if (data.N) {
+    return false;  // `if sf == '0' && N != '0' then ReservedValue();`.
+  }
+  uint64_t imm = 0;
+  if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
+                      true, 32, &imm)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  AddImmOperand(inst, imm, kUnsigned, 32);
+  return true;
 }
 
-// ANDS ANDS_64S_log_imm:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 x N        0
-//  23 0
-//  24 0
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 1 opc      0
-//  30 1 opc      1
-//  31 1 sf       0
 // ANDS  <Xd>, <Xn>, #<imm>
-bool TryDecodeANDS_64S_LOG_IMM(const InstData &, Instruction &) {
-  return false;
+bool TryDecodeANDS_64S_LOG_IMM(const InstData &data, Instruction &inst) {
+  uint64_t imm = 0;
+  if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
+                      true, 64, &imm)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  AddImmOperand(inst, imm, kUnsigned, 64);
+  return true;
 }
 
-extern "C" bool TryExtractBFM_32M_BITFIELD(InstData &inst, uint32_t bits);
-extern "C" bool TryExtractBFM_64M_BITFIELD(InstData &inst, uint32_t bits);
+// ANDS  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeANDS_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeAND_32_LOG_SHIFT(data, inst);
+}
+
+// ANDS  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeANDS_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeAND_64_LOG_SHIFT(data, inst);
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
 const Arch *Arch::GetAArch64(
     OSName os_name_, ArchName arch_name_) {
-  aarch64::InstData data;
-  for (uint64_t i = 0; i < 0xFFFFFFFFULL; ++i) {
-    uint32_t bits = static_cast<uint32_t>(i);
-    if (aarch64::TryExtractBFM_32M_BITFIELD(data, bits)) {
-      if (data.iform != aarch64::InstForm::BFM_32M_BITFIELD) {
-        continue;
-      }
-      if (data.Rd == 3 && data.Rn == 0) {
-        remill::Instruction inst;
-        if (!aarch64::TryDecode(data, inst)) {
-          continue;
-        }
-        LOG(ERROR)
-            << "MAKE_BFM_TEST(" << aarch64::InstFormToString(data.iform)
-            << ", " << aarch64::InstNameToString(data.iclass) << "_w3_w0_"
-            << std::hex << data.immr.uimm << "_" << data.imms.uimm << ", 0x"
-            << std::hex << std::setw(2) << std::setfill('0')
-            << ((bits >> 0) & 0xFF) << ", 0x" << ((bits >> 8) & 0xFF)
-            << ", 0x" << ((bits >> 16) & 0xFF) << ", 0x"
-            << ((bits >> 24) & 0xFF) << ")";
-      }
-    }
-  }
+//  aarch64::InstData data;
+//  for (uint64_t i = 0; i < 0xFFFFFFFFULL; ++i) {
+//    uint32_t bits = static_cast<uint32_t>(i);
+//    if (aarch64::TryExtractBFM_32M_BITFIELD(data, bits)) {
+//      if (data.iform != aarch64::InstForm::BFM_32M_BITFIELD) {
+//        continue;
+//      }
+//      if (data.Rd == 3 && data.Rn == 0) {
+//        remill::Instruction inst;
+//        if (!aarch64::TryDecode(data, inst)) {
+//          continue;
+//        }
+//        LOG(ERROR)
+//            << "MAKE_BFM_TEST(" << aarch64::InstFormToString(data.iform)
+//            << ", " << aarch64::InstNameToString(data.iclass) << "_w3_w0_"
+//            << std::hex << data.immr.uimm << "_" << data.imms.uimm << ", 0x"
+//            << std::hex << std::setw(2) << std::setfill('0')
+//            << ((bits >> 0) & 0xFF) << ", 0x" << ((bits >> 8) & 0xFF)
+//            << ", 0x" << ((bits >> 16) & 0xFF) << ", 0x"
+//            << ((bits >> 24) & 0xFF) << ")";
+//      }
+//    }
+//  }
   return new AArch64Arch(os_name_, arch_name_);
 }
 
