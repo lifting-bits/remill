@@ -762,38 +762,32 @@ MAKE_OPS(Not, ~, MAKE_UOP, MAKE_NOP)
 
 
 template <typename T>
-ALWAYS_INLINE static T URor(T val_, T amount_) {
+ALWAYS_INLINE static T Ror(T val_, T amount_) {
   using UT = typename IntegerType<T>::UT;
   constexpr UT width = static_cast<UT>(sizeof(UT) * 8);
   const UT val = static_cast<UT>(val_);
   const UT amount = static_cast<UT>(amount_) % width;
+  if (!amount) {
+    return val_;
+  }
   const UT shifted_bits = val >> amount;
   const UT rotated_bits = val << (width - amount);
   return static_cast<T>(shifted_bits | rotated_bits);
 }
-/*
-template <typename T>
-ALWAYS_INLINE static T RRor(T val_, T amount_) {
-  using ST = typename IntegerType<T>::ST;
-  constexpr ST width = static_cast<ST>(sizeof(val_) * 8);
-  const ST val = static_cast<ST>(val_);
-  const ST amount = static_cast<ST>(amount_) % width;
-  ST low_bits = val >> amount;
-  ST high_bits = val << (width - amount);
-  return static_cast<T>(low_bits | high_bits);
-}
 
 template <typename T>
-ALWAYS_INLINE static T URol(T val_, T amount_) {
+ALWAYS_INLINE static T Rol(T val_, T amount_) {
   using UT = typename IntegerType<T>::UT;
   constexpr UT width = static_cast<UT>(sizeof(val_) * 8);
   const UT val = static_cast<UT>(val_);
   const UT amount = static_cast<UT>(amount_) % width;
+  if (!amount) {
+    return val_;
+  }
   UT low_bits = val >> (width - amount);
   UT high_bits = val << width;
   return static_cast<T>(low_bits | high_bits);
 }
-*/
 
 // TODO(pag): Handle unordered and ordered floating point comparisons.
 MAKE_OPS(CmpEq, ==, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
