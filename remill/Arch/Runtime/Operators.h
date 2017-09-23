@@ -760,6 +760,35 @@ MAKE_OPS(Shl, <<, MAKE_BINOP, MAKE_NOP)
 MAKE_OPS(Neg, -, MAKE_UOP, MAKE_UOP)
 MAKE_OPS(Not, ~, MAKE_UOP, MAKE_NOP)
 
+
+template <typename T>
+ALWAYS_INLINE static T Ror(T val_, T amount_) {
+  using UT = typename IntegerType<T>::UT;
+  constexpr UT width = static_cast<UT>(sizeof(UT) * 8);
+  const UT val = static_cast<UT>(val_);
+  const UT amount = static_cast<UT>(amount_) % width;
+  if (!amount) {
+    return val_;
+  }
+  const UT shifted_bits = val >> amount;
+  const UT rotated_bits = val << (width - amount);
+  return static_cast<T>(shifted_bits | rotated_bits);
+}
+
+template <typename T>
+ALWAYS_INLINE static T Rol(T val_, T amount_) {
+  using UT = typename IntegerType<T>::UT;
+  constexpr UT width = static_cast<UT>(sizeof(val_) * 8);
+  const UT val = static_cast<UT>(val_);
+  const UT amount = static_cast<UT>(amount_) % width;
+  if (!amount) {
+    return val_;
+  }
+  UT low_bits = val >> (width - amount);
+  UT high_bits = val << width;
+  return static_cast<T>(low_bits | high_bits);
+}
+
 // TODO(pag): Handle unordered and ordered floating point comparisons.
 MAKE_OPS(CmpEq, ==, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
 MAKE_OPS(CmpNeq, !=, MAKE_BOOLBINOP, MAKE_BOOLBINOP)

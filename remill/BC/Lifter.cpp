@@ -96,12 +96,15 @@ bool InstructionLifter::LiftIntoBlock(
 
   llvm::Function *func = block->getParent();
   llvm::Module *module = func->getParent();
-  auto isel_func = GetInstructionFunction(module, arch_inst.function);
+  llvm::Function *isel_func = nullptr;
 
-  if (Instruction::kCategoryInvalid == arch_inst.category) {
+  if (arch_inst.IsValid()) {
+    isel_func = GetInstructionFunction(module, arch_inst.function);
+  } else {
     LOG(ERROR)
         << "Cannot decode instruction bytes at "
         << std::hex << arch_inst.pc;
+
     isel_func = GetInstructionFunction(module, "INVALID_INSTRUCTION");
     arch_inst.operands.clear();
     if (!isel_func) {

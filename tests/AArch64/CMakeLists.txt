@@ -31,6 +31,10 @@ add_executable(lift-aarch64-tests
     Tests.S
 )
 
+set_target_properties(lift-aarch64-tests PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    COMPILE_FLAGS "-fPIC -pie")
+
 target_compile_options(lift-aarch64-tests
     PRIVATE ${X86_TEST_FLAGS}
             -DIN_TEST_GENERATOR
@@ -47,6 +51,10 @@ add_executable(run-aarch64-tests
     tests_aarch64.S
 )
 
+set_target_properties(run-aarch64-tests PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    COMPILE_FLAGS "-fPIC -pie")
+
 add_custom_command(
     OUTPUT tests_aarch64.bc
     COMMAND lift-aarch64-tests
@@ -59,7 +67,7 @@ add_custom_command(
     OUTPUT  tests_aarch64.S
     COMMAND ${CMAKE_BC_COMPILER}
             -Wno-override-module
-            -S -O3 -g0
+            -S -O1 -g0
             -c tests_aarch64.bc
             -o tests_aarch64.S
     DEPENDS tests_aarch64.bc

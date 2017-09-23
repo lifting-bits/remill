@@ -18,6 +18,167 @@
 
 namespace remill {
 namespace aarch64 {
+
+// UBFIZ  <Wd>, <Wn>, #<lsb>, #<width>
+bool TryDecodeUBFIZ_UBFM_32M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// UBFIZ  <Xd>, <Xn>, #<lsb>, #<width>
+bool TryDecodeUBFIZ_UBFM_64M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// UBFX  <Wd>, <Wn>, #<lsb>, #<width>
+bool TryDecodeUBFX_UBFM_32M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// UBFX  <Xd>, <Xn>, #<lsb>, #<width>
+bool TryDecodeUBFX_UBFM_64M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Wd|WSP>, #<imm>
+bool TryDecodeMOV_ORR_32_LOG_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Xd|SP>, #<imm>
+bool TryDecodeMOV_ORR_64_LOG_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// ASR  <Wd>, <Wn>, #<shift>
+bool TryDecodeASR_SBFM_32M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// ASR  <Xd>, <Xn>, #<shift>
+bool TryDecodeASR_SBFM_64M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// LSR  <Wd>, <Wn>, #<shift>
+bool TryDecodeLSR_UBFM_32M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// LSR  <Xd>, <Xn>, #<shift>
+bool TryDecodeLSR_UBFM_64M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// LSL  <Wd>, <Wn>, #<shift>
+bool TryDecodeLSL_UBFM_32M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// LSL  <Xd>, <Xn>, #<shift>
+bool TryDecodeLSL_UBFM_64M_BITFIELD(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Wd>, #<imm>
+bool TryDecodeMOV_MOVN_32_MOVEWIDE(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Xd>, #<imm>
+bool TryDecodeMOV_MOVN_64_MOVEWIDE(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMP  <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeCMP_SUBS_32_ADDSUB_SHIFT(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMP  <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeCMP_SUBS_64_ADDSUB_SHIFT(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMP  <Xn|SP>, #<imm>{, <shift>}
+bool TryDecodeCMP_SUBS_64S_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMP  <Wn|WSP>, #<imm>{, <shift>}
+bool TryDecodeCMP_SUBS_32S_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMP  <Wn|WSP>, <Wm>{, <extend> {#<amount>}}
+bool TryDecodeCMP_SUBS_32S_ADDSUB_EXT(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMP  <Xn|SP>, <R><m>{, <extend> {#<amount>}}
+bool TryDecodeCMP_SUBS_64S_ADDSUB_EXT(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMN  <Wn|WSP>, #<imm>{, <shift>}
+bool TryDecodeCMN_ADDS_32S_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMN  <Xn|SP>, #<imm>{, <shift>}
+bool TryDecodeCMN_ADDS_64S_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMN  <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeCMN_ADDS_32_ADDSUB_SHIFT(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMN  <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeCMN_ADDS_64_ADDSUB_SHIFT(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMN  <Wn|WSP>, <Wm>{, <extend> {#<amount>}}
+bool TryDecodeCMN_ADDS_32S_ADDSUB_EXT(const InstData &, Instruction &) {
+  return false;
+}
+
+// CMN  <Xn|SP>, <R><m>{, <extend> {#<amount>}}
+bool TryDecodeCMN_ADDS_64S_ADDSUB_EXT(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Wd>, #<imm>
+bool TryDecodeMOV_MOVZ_32_MOVEWIDE(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Xd>, #<imm>
+bool TryDecodeMOV_MOVZ_64_MOVEWIDE(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Wd|WSP>, <Wn|WSP>
+bool TryDecodeMOV_ADD_32_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Xd|SP>, <Xn|SP>
+bool TryDecodeMOV_ADD_64_ADDSUB_IMM(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Wd>, <Wm>
+bool TryDecodeMOV_ORR_32_LOG_SHIFT(const InstData &, Instruction &) {
+  return false;
+}
+
+// MOV  <Xd>, <Xm>
+bool TryDecodeMOV_ORR_64_LOG_SHIFT(const InstData &, Instruction &) {
+  return false;
+}
+
 // FRECPX FRECPX_asisdmiscfp16_R:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -243,82 +404,6 @@ bool TryDecodeREV_32_DP_1SRC(const InstData &, Instruction &) {
 //  31 1 sf       0
 // REV  <Xd>, <Xn>
 bool TryDecodeREV_64_DP_1SRC(const InstData &, Instruction &) {
-  return false;
-}
-
-// UBFM UBFX_UBFM_32M_bitfield:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 0 N        0
-//  23 0
-//  24 1
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 0 sf       0
-// UBFX  <Wd>, <Wn>, #<lsb>, #<width>
-bool TryDecodeUBFX_UBFM_32M_BITFIELD(const InstData &, Instruction &) {
-  return false;
-}
-
-// UBFM UBFX_UBFM_64M_bitfield:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 1 N        0
-//  23 0
-//  24 1
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 1 sf       0
-// UBFX  <Xd>, <Xn>, #<lsb>, #<width>
-bool TryDecodeUBFX_UBFM_64M_BITFIELD(const InstData &, Instruction &) {
   return false;
 }
 
@@ -5639,44 +5724,6 @@ bool TryDecodeST1_ASISDLSEP_R4_R4(const InstData &, Instruction &) {
 //  31 0
 // AESIMC  <Vd>.16B, <Vn>.16B
 bool TryDecodeAESIMC_B_CRYPTOAES(const InstData &, Instruction &) {
-  return false;
-}
-
-// UMULH UMULH_64_dp_3src:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1 Ra       0
-//  11 1 Ra       1
-//  12 1 Ra       2
-//  13 1 Ra       3
-//  14 1 Ra       4
-//  15 0 o0       0
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0
-//  22 1
-//  23 1 U        0
-//  24 1
-//  25 1
-//  26 0
-//  27 1
-//  28 1
-//  29 0 op54     0
-//  30 0 op54     1
-//  31 1 sf       0
-// UMULH  <Xd>, <Xn>, <Xm>
-bool TryDecodeUMULH_64_DP_3SRC(const InstData &, Instruction &) {
   return false;
 }
 
@@ -11340,44 +11387,6 @@ bool TryDecodeASR_ASRV_32_DP_2SRC(const InstData &, Instruction &) {
 //  31 1 sf       0
 // ASR  <Xd>, <Xn>, <Xm>
 bool TryDecodeASR_ASRV_64_DP_2SRC(const InstData &, Instruction &) {
-  return false;
-}
-
-// UMADDL UMULL_UMADDL_64WA_dp_3src:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1 Ra       0
-//  11 1 Ra       1
-//  12 1 Ra       2
-//  13 1 Ra       3
-//  14 1 Ra       4
-//  15 0 o0       0
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 0
-//  23 1 U        0
-//  24 1
-//  25 1
-//  26 0
-//  27 1
-//  28 1
-//  29 0 op54     0
-//  30 0 op54     1
-//  31 1 sf       0
-// UMULL  <Xd>, <Wn>, <Wm>
-bool TryDecodeUMULL_UMADDL_64WA_DP_3SRC(const InstData &, Instruction &) {
   return false;
 }
 
@@ -28102,82 +28111,6 @@ bool TryDecodeLD2_ASISDLSEP_R2_R(const InstData &, Instruction &) {
   return false;
 }
 
-// SBFM SBFM_32M_bitfield:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 0 N        0
-//  23 0
-//  24 1
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 0 opc      1
-//  31 0 sf       0
-// SBFM  <Wd>, <Wn>, #<immr>, #<imms>
-bool TryDecodeSBFM_32M_BITFIELD(const InstData &, Instruction &) {
-  return false;
-}
-
-// SBFM SBFM_64M_bitfield:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 1 N        0
-//  23 0
-//  24 1
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 0 opc      1
-//  31 1 sf       0
-// SBFM  <Xd>, <Xn>, #<immr>, #<imms>
-bool TryDecodeSBFM_64M_BITFIELD(const InstData &, Instruction &) {
-  return false;
-}
-
 // FMAXV FMAXV_asimdall_only_H:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -43379,82 +43312,6 @@ bool TryDecodeLDSMINLB_32_MEMOP(const InstData &, Instruction &) {
   return false;
 }
 
-// UBFM UBFIZ_UBFM_32M_bitfield:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 0 N        0
-//  23 0
-//  24 1
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 0 sf       0
-// UBFIZ  <Wd>, <Wn>, #<lsb>, #<width>
-bool TryDecodeUBFIZ_UBFM_32M_BITFIELD(const InstData &, Instruction &) {
-  return false;
-}
-
-// UBFM UBFIZ_UBFM_64M_bitfield:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 1 N        0
-//  23 0
-//  24 1
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 1 sf       0
-// UBFIZ  <Xd>, <Xn>, #<lsb>, #<width>
-bool TryDecodeUBFIZ_UBFM_64M_BITFIELD(const InstData &, Instruction &) {
-  return false;
-}
-
 // LD4 LD4_asisdlso_B4_4b:
 //   0 x Rt       0
 //   1 x Rt       1
@@ -45507,44 +45364,6 @@ bool TryDecodeFMINNMP_ASISDPAIR_ONLY_SD(const InstData &, Instruction &) {
   return false;
 }
 
-// UMADDL UMADDL_64WA_dp_3src:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x Ra       0
-//  11 x Ra       1
-//  12 x Ra       2
-//  13 x Ra       3
-//  14 x Ra       4
-//  15 0 o0       0
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 0
-//  23 1 U        0
-//  24 1
-//  25 1
-//  26 0
-//  27 1
-//  28 1
-//  29 0 op54     0
-//  30 0 op54     1
-//  31 1 sf       0
-// UMADDL  <Xd>, <Wn>, <Wm>, <Xa>
-bool TryDecodeUMADDL_64WA_DP_3SRC(const InstData &, Instruction &) {
-  return false;
-}
-
 // FMOV FMOV_H_floatdp1:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -47556,82 +47375,6 @@ bool TryDecodeUQRSHRN_ASISDSHF_N(const InstData &, Instruction &) {
 //  31 0
 // UQRSHRN{2}  <Vd>.<Tb>, <Vn>.<Ta>, #<shift>
 bool TryDecodeUQRSHRN_ASIMDSHF_N(const InstData &, Instruction &) {
-  return false;
-}
-
-// UBFM UBFM_32M_bitfield:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 0 N        0
-//  23 0
-//  24 1
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 0 sf       0
-// UBFM  <Wd>, <Wn>, #<immr>, #<imms>
-bool TryDecodeUBFM_32M_BITFIELD(const InstData &, Instruction &) {
-  return false;
-}
-
-// UBFM UBFM_64M_bitfield:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imms     0
-//  11 x imms     1
-//  12 x imms     2
-//  13 x imms     3
-//  14 x imms     4
-//  15 x imms     5
-//  16 x immr     0
-//  17 x immr     1
-//  18 x immr     2
-//  19 x immr     3
-//  20 x immr     4
-//  21 x immr     5
-//  22 1 N        0
-//  23 0
-//  24 1
-//  25 1
-//  26 0
-//  27 0
-//  28 1
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 1 sf       0
-// UBFM  <Xd>, <Xn>, #<immr>, #<imms>
-bool TryDecodeUBFM_64M_BITFIELD(const InstData &, Instruction &) {
   return false;
 }
 
@@ -54016,82 +53759,6 @@ bool TryDecodeFCVTNU_64D_FLOAT2INT(const InstData &, Instruction &) {
 //  31 0
 // MUL  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
 bool TryDecodeMUL_ASIMDSAME_ONLY(const InstData &, Instruction &) {
-  return false;
-}
-
-// UDIV UDIV_32_dp_2src:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0 o1       0
-//  11 1 opcode2  1
-//  12 0 opcode2  2
-//  13 0 opcode2  3
-//  14 0 opcode2  4
-//  15 0 opcode2  5
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0
-//  22 1
-//  23 1
-//  24 0
-//  25 1
-//  26 0
-//  27 1
-//  28 1
-//  29 0 S        0
-//  30 0 op       0
-//  31 0 sf       0
-// UDIV  <Wd>, <Wn>, <Wm>
-bool TryDecodeUDIV_32_DP_2SRC(const InstData &, Instruction &) {
-  return false;
-}
-
-// UDIV UDIV_64_dp_2src:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0 o1       0
-//  11 1 opcode2  1
-//  12 0 opcode2  2
-//  13 0 opcode2  3
-//  14 0 opcode2  4
-//  15 0 opcode2  5
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0
-//  22 1
-//  23 1
-//  24 0
-//  25 1
-//  26 0
-//  27 1
-//  28 1
-//  29 0 S        0
-//  30 0 op       0
-//  31 1 sf       0
-// UDIV  <Xd>, <Xn>, <Xm>
-bool TryDecodeUDIV_64_DP_2SRC(const InstData &, Instruction &) {
   return false;
 }
 

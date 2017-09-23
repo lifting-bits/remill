@@ -80,7 +80,7 @@ extern "C" {
   auto &X0 = state.gpr.x0.qword;
   auto &X1 = state.gpr.x1.qword;
   auto &X2 = state.gpr.x2.qword;
-  auto &X3 = state.gpr.x2.qword;
+  auto &X3 = state.gpr.x3.qword;
 
   auto &X4 = state.gpr.x4.qword;
   auto &X5 = state.gpr.x5.qword;

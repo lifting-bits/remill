@@ -14,15 +14,37 @@
  * limitations under the License.
  */
 
+/* UDIV  <Wd>, <Wn>, <Wm> */
+TEST_BEGIN(UDIV_32_DP_2SRC, udiv_w3_w0_w1, 2)
+TEST_INPUTS(
+    0, 0,
+    1, 0,
+    0xffffffff, 1,
+    1, 0xffffffff,
+    0xffffffff, 0xffffffff,
+    1, 2,
+    5, 2,
+    5, 3,
+    5, 4)
 
-namespace {
+    udiv w3, ARG1_32, ARG2_32
+TEST_END
 
-DEF_SEM(NOP_IMPL) {
-  return memory;
-}
+/* UDIV  <Xd>, <Xn>, <Xm> */
+TEST_BEGIN(UDIV_64_DP_2SRC, udiv_x3_x0_x1, 2)
+TEST_INPUTS(
+    0, 0,
+    1, 0,
+    0xffffffff, 1,
+    1, 0xffffffff,
+    0xffffffff, 0xffffffff,
+    1, 2,
+    5, 2,
+    5, 3,
+    5, 4,
+    0xffffffffffffffff, 0xffffffff,
+    0xffffffffffffffff, 0xabcdef)
 
-}  // namespace
+    udiv x3, ARG1_64, ARG2_64
+TEST_END
 
-DEF_ISEL(HINT_1) = NOP_IMPL;
-DEF_ISEL(HINT_2) = NOP_IMPL;
-DEF_ISEL(HINT_3) = NOP_IMPL;

@@ -190,6 +190,17 @@ SYMBOL(__aarch64_save_state_after):
     .globl SYMBOL(__aarch64_test_table_begin)
 SYMBOL(__aarch64_test_table_begin):
 
+#define ARG1_64 x0
+#define ARG1_32 w0
+
+#define ARG2_64 x1
+#define ARG2_32 w1
+
+#define ARG3_64 x2
+#define ARG3_32 w2
+
+
+#if 1
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/ADD_32_ADDSUB_EXT.S"
@@ -200,12 +211,12 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BINARY/AND_n_LOG_IMM.S"
 #include "tests/AArch64/BINARY/AND_n_LOG_SHIFT.S"
 #include "tests/AArch64/BINARY/BIC_n_LOG_SHIFT.S"
-#include "tests/AArch64/BINARY/CMN_ADDS_n_ADDSUB_EXT.S"
-#include "tests/AArch64/BINARY/CMN_ADDS_n_ADDSUB_IMM.S"
-#include "tests/AArch64/BINARY/CMN_ADDS_n_ADDSUB_SHIFT.S"
-#include "tests/AArch64/BINARY/CMP_SUBS_n_ADDSUB_EXT.S"
-#include "tests/AArch64/BINARY/CMP_SUBS_n_ADDSUB_IMM.S"
-#include "tests/AArch64/BINARY/CMP_SUBS_n_ADDSUB_SHIFT.S"
+//#include "tests/AArch64/BINARY/CMN_ADDS_n_ADDSUB_EXT.S"
+//#include "tests/AArch64/BINARY/CMN_ADDS_n_ADDSUB_IMM.S"
+//#include "tests/AArch64/BINARY/CMN_ADDS_n_ADDSUB_SHIFT.S"
+//#include "tests/AArch64/BINARY/CMP_SUBS_n_ADDSUB_EXT.S"
+//#include "tests/AArch64/BINARY/CMP_SUBS_n_ADDSUB_IMM.S"
+//#include "tests/AArch64/BINARY/CMP_SUBS_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/EOR_n_LOG_IMM.S"
 #include "tests/AArch64/BINARY/EOR_n_LOG_SHIFT.S"
 #include "tests/AArch64/BINARY/ORR_n_LOG_IMM.S"
@@ -217,12 +228,20 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BINARY/SUBS_n_ADDSUB_EXT.S"
 #include "tests/AArch64/BINARY/SUBS_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/SUBS_n_ADDSUB_SHIFT.S"
+#include "tests/AArch64/BINARY/UDIV_n_DP_2SRC.S"
+#include "tests/AArch64/BINARY/UMADDL_64WA_DP_3SRC.S"
+#include "tests/AArch64/BINARY/UMULH_64_DP_3SRC.S"
+
+#include "tests/AArch64/BITBYTE/SBFM_nM_BITFIELD.S"
+#include "tests/AArch64/BITBYTE/UBFM_nM_BITFIELD.S"
 
 #include "tests/AArch64/BRANCH/B_ONLY_CONDBRANCH.S"
 #include "tests/AArch64/BRANCH/CBNZ_n_COMPBRANCH.S"
 #include "tests/AArch64/BRANCH/CBZ_n_COMPBRANCH.S"
 #include "tests/AArch64/BRANCH/TBNZ_ONLY_TESTBRANCH.S"
 #include "tests/AArch64/BRANCH/TBZ_ONLY_TESTBRANCH.S"
+
+#endif
 
      /* Create a symbol that represents the end of the test information table. */
     .section "__aarch64_test_table", "a"

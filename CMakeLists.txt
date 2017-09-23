@@ -186,6 +186,8 @@ add_library(${PROJECT_NAME} STATIC
     remill/OS/OS.cpp
 )
 
+set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
+
 # this is needed for the #include directives with absolutes paths to work correctly; it must
 # also be set to PUBLIC since sub-tools of remill include remill's headers directly.
 list(APPEND PROJECT_INCLUDEDIRECTORIES ${CMAKE_SOURCE_DIR})

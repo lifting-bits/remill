@@ -14,15 +14,20 @@
  * limitations under the License.
  */
 
-namespace {
+TEST_BEGIN(UMULH_64_DP_3SRC, umulh_x3_x0_x1, 2)
+TEST_INPUTS(
+    0, 0,
+    0, 1,
+    1, 0,
+    1, 1,
+    0xFFFFFFFF, 0xFFFFFFFF,
+    0, 0xFFFFFFFF,
+    0xfafbfbfd, 0xf1f2f3f4,
+    0x0a0b0c0d, 0x01020304,
 
-DEF_SEM(DoNOP) {
-  return memory;
-}
+    0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+    0xfafbfbfdfafbfbfd, 0xf1f2f3f4f1f2f3f4,
+    0xfafbfbfd0a0b0c0d, 0x01020304f1f2f3f4)
 
-}  // namespace
-
-DEF_ISEL(NOP) = DoNOP;
-DEF_ISEL(HINT_1) = DoNOP;
-DEF_ISEL(HINT_2) = DoNOP;
-DEF_ISEL(HINT_3) = DoNOP;
+    umulh x3, ARG1_64, ARG2_64
+TEST_END

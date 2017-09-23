@@ -101,9 +101,9 @@ DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 #include "remill/Arch/AArch64/Semantics/FLAGS.cpp"
 
 #include "remill/Arch/AArch64/Semantics/BINARY.cpp"
+#include "remill/Arch/AArch64/Semantics/BITBYTE.cpp"
 #include "remill/Arch/AArch64/Semantics/BRANCH.cpp"
 #include "remill/Arch/AArch64/Semantics/CALL_RET.cpp"
 #include "remill/Arch/AArch64/Semantics/DATAXFER.cpp"
 #include "remill/Arch/AArch64/Semantics/MISC.cpp"
 #include "remill/Arch/AArch64/Semantics/SHIFT.cpp"
-#include "remill/Arch/AArch64/Semantics/NOP.cpp"

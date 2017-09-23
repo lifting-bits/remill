@@ -774,9 +774,13 @@ for base in ENCODINGS:
       base.iform.upper()))
 
   # Deal with aliases.
+  #
+  # NOTE(pag): Added in `false` to always disable aliases for now...
   if base.iform in ALIASES:
-    for alias_base in ALIASES[base.iform]:
-      impl.write('  if (TryExtract{}(inst, bits)) return true;\n'.format(
+    aliases = list(ALIASES[base.iform])
+    aliases.sort(key=lambda base: base.bits.count('x')-32)
+    for alias_base in aliases:
+      impl.write('  if (false && TryExtract{}(inst, bits)) return true;\n'.format(
           alias_base.iform.upper()))
 
   # Decide whether or not the bits of the instruction are an encoding
