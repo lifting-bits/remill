@@ -45,7 +45,7 @@ TEST_INPUTS(
     0, 0xFFFFFFFF, 0,
     0xFFFFFFFF, 0, 0,
     0xfafbfbfd, 0xf1f2f3f4, 0,
-    0x0a0b0c0d, 0x01020304 0)
+    0x0a0b0c0d, 0x01020304, 0)
 
-    umaddl x3, ARG1_32, ARG2_32, xzr
+    umaddl x3, ARG1_32, ARG2_32, ARG3_64
 TEST_END
