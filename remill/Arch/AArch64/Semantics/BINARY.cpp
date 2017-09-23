@@ -205,6 +205,14 @@ DEF_SEM(UMADDL, R64W dst, R32 src1, R32 src2, R64 src3) {
   return memory;
 }
 
+DEF_SEM(SMADDL, R64W dst, R32 src1, R32 src2, R64 src3) {
+  auto operand1 = SExt(Signed(Read(src1)));
+  auto operand2 = SExt(Signed(Read(src2)));
+  auto operand3 = Signed(Read(src3));
+  Write(dst, Unsigned(SAdd(operand3, SMul(operand1, operand2))));
+  return memory;
+}
+
 DEF_SEM(UMULH, R64W dst, R64 src1, R64 src2) {
   uint128_t lhs = ZExt(Read(src1));
   uint128_t rhs = ZExt(Read(src2));
@@ -212,6 +220,15 @@ DEF_SEM(UMULH, R64W dst, R64 src1, R64 src2) {
   Write(dst, Trunc(UShr(res, 64)));
   return memory;
 }
+
+DEF_SEM(SMULH, R64W dst, R64 src1, R64 src2) {
+  int128_t lhs = SExt(Signed(Read(src1)));
+  int128_t rhs = SExt(Signed(Read(src2)));
+  uint128_t res = Unsigned(SMul(lhs, rhs));
+  Write(dst, Trunc(UShr(res, 64)));
+  return memory;
+}
+
 
 template <typename D, typename S>
 DEF_SEM(UDIV, D dst, S src1, S src2) {
@@ -231,8 +248,11 @@ DEF_SEM(UDIV, D dst, S src1, S src2) {
 //DEF_ISEL(UMULL_UMADDL_64WA_DP_3SRC) = UMULL;
 
 DEF_ISEL(UMADDL_64WA_DP_3SRC) = UMADDL;
+DEF_ISEL(SMADDL_64WA_DP_3SRC) = SMADDL;
 
 DEF_ISEL(UMULH_64_DP_3SRC) = UMULH;
+DEF_ISEL(SMULH_64_DP_3SRC) = SMULH;
+
 DEF_ISEL(UDIV_32_DP_2SRC) = UDIV<R32W, R32>;
 DEF_ISEL(UDIV_64_DP_2SRC) = UDIV<R64W, R64>;
 
