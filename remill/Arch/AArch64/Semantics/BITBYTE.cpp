@@ -46,6 +46,23 @@ DEF_SEM(SBFM, D dst, S1 src1, S2 src2, S2 src3, S2 src4, S2 src5) {
   return memory;
 }
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(BFM, D dst, S1 src1, S2 src2, S2 src3, S2 src4) {
+  using T = typename BaseType<S2>::BT;
+  auto dst_val = TruncTo<T>(Read(dst));  // May be wider due to zero-extension.
+  auto src = Read(src1);
+  auto R = Read(src2);
+  auto wmask = Read(src3);
+  auto tmask = Read(src4);
+
+  // Perform bitfield move on low bits.
+  auto bot = UOr(UAnd(dst_val, UNot(wmask)), UAnd(Ror(src, R), wmask));
+
+  // Combine extension bits and result bits.
+  WriteZExt(dst, UOr(UAnd(dst_val, UNot(tmask)), UAnd(bot, tmask)));
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(UBFM_32M_BITFIELD) = UBFM<R32W, R32, I32>;
@@ -54,8 +71,5 @@ DEF_ISEL(UBFM_64M_BITFIELD) = UBFM<R64W, R64, I64>;
 DEF_ISEL(SBFM_32M_BITFIELD) = SBFM<R32W, R32, I32>;
 DEF_ISEL(SBFM_64M_BITFIELD) = SBFM<R64W, R64, I64>;
 
-//DEF_ISEL(UBFIZ_UBFM_32M_BITFIELD) = UBFM<R32W, R32, I32>;
-//DEF_ISEL(UBFIZ_UBFM_64M_BITFIELD) = UBFM<R64W, R64, I64>;
-//
-//DEF_ISEL(UBFX_UBFM_32M_BITFIELD) = UBFM<R32W, R32, I32>;
-//DEF_ISEL(UBFX_UBFM_64M_BITFIELD) = UBFM<R64W, R64, I64>;
+DEF_ISEL(BFM_32M_BITFIELD) = BFM<R32W, R32, I32>;
+DEF_ISEL(BFM_64M_BITFIELD) = BFM<R64W, R64, I64>;

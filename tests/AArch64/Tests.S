@@ -232,6 +232,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BINARY/UMADDL_64WA_DP_3SRC.S"
 #include "tests/AArch64/BINARY/UMULH_64_DP_3SRC.S"
 
+#include "tests/AArch64/BITBYTE/BFM_nM_BITFIELD.S"
 #include "tests/AArch64/BITBYTE/SBFM_nM_BITFIELD.S"
 #include "tests/AArch64/BITBYTE/UBFM_nM_BITFIELD.S"
 

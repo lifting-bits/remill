@@ -2300,8 +2300,8 @@ static bool TryExtractLDUMINLB_32_MEMOP(InstData &inst, uint32_t bits);
 static bool TryExtractSHA256SU0_VV_CRYPTOSHA2(InstData &inst, uint32_t bits);
 static bool TryExtractFMINP_ASIMDSAMEFP16_ONLY(InstData &inst, uint32_t bits);
 static bool TryExtractFMINP_ASIMDSAME_ONLY(InstData &inst, uint32_t bits);
-static bool TryExtractBFM_32M_BITFIELD(InstData &inst, uint32_t bits);
-static bool TryExtractBFM_64M_BITFIELD(InstData &inst, uint32_t bits);
+extern "C" bool TryExtractBFM_32M_BITFIELD(InstData &inst, uint32_t bits);
+extern "C" bool TryExtractBFM_64M_BITFIELD(InstData &inst, uint32_t bits);
 static bool TryExtractLDR_B_LDST_REGOFF(InstData &inst, uint32_t bits);
 static bool TryExtractLDR_BL_LDST_REGOFF(InstData &inst, uint32_t bits);
 static bool TryExtractLDR_H_LDST_REGOFF(InstData &inst, uint32_t bits);
@@ -8045,7 +8045,7 @@ static bool TryExtractFMINP_ASIMDSAME_ONLY(InstData &inst, uint32_t bits) {
   return true;
 }
 
-static bool TryExtractBFM_32M_BITFIELD(InstData &inst, uint32_t bits) {
+extern "C" bool TryExtractBFM_32M_BITFIELD(InstData &inst, uint32_t bits) {
   if (false && TryExtractBFC_BFM_32M_BITFIELD(inst, bits)) return true;
   if (false && TryExtractBFXIL_BFM_32M_BITFIELD(inst, bits)) return true;
   if (false && TryExtractBFI_BFM_32M_BITFIELD(inst, bits)) return true;
@@ -8088,7 +8088,7 @@ static bool TryExtractBFM_32M_BITFIELD(InstData &inst, uint32_t bits) {
   return true;
 }
 
-static bool TryExtractBFM_64M_BITFIELD(InstData &inst, uint32_t bits) {
+extern "C" bool TryExtractBFM_64M_BITFIELD(InstData &inst, uint32_t bits) {
   if (false && TryExtractBFC_BFM_64M_BITFIELD(inst, bits)) return true;
   if (false && TryExtractBFXIL_BFM_64M_BITFIELD(inst, bits)) return true;
   if (false && TryExtractBFI_BFM_64M_BITFIELD(inst, bits)) return true;
