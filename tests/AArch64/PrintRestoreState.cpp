@@ -47,29 +47,27 @@ int main(void) {
   // Floating point condition register.
   printf("ldr x1, [x28, #%lu]\n", offsetof(State, fpcr));
 
-
   // Floating point status register.
   printf("ldr x1, [x28, #%lu]\n", offsetof(State, fpsr));
-  printf("msr fpsr, x1\n");
 
-  // Save the cumulative overflow flag from the FPSR into the SR.
+  // Extract the cumulative overflow flag from the SR into the FPSR.
   printf("ldrb w2, [x28, #%lu]\n", offsetof(State, sr.ofc));
   printf("bfi x1, x2, #2, #1\n");
 
-  // Save the cumulative underflow flag from the FPSR into the SR.
-  printf("ldrb w2w29, [x28, #%lu]\n", offsetof(State, sr.ufc));
+  // Extract the cumulative underflow flag from the SR into the FPSR.
+  printf("ldrb w2, [x28, #%lu]\n", offsetof(State, sr.ufc));
   printf("bfi x1, x2, #3, #1\n");
 
-  // Save the cumulative inexact flag from the FPSR into the SR.
-  printf("ldrb w229, [x28, #%lu]\n", offsetof(State, sr.ixc));
+  // Extract the cumulative inexact flag from the SR into the FPSR.
+  printf("ldrb w2, [x28, #%lu]\n", offsetof(State, sr.ixc));
   printf("bfi x1, x2, #4, #1\n");
 
-  // Save the cumulative input denormal flag from the FPSR into the SR.
+  // Extract the cumulative input denormal flag from the SR into the FPSR.
   printf("ldrb w2, [x28, #%lu]\n", offsetof(State, sr.idc));
   printf("bfi x1, x2, #6, #1\n");
 
-  // Store the combined info into the FPSR register, and keep them in sync.
-  printf("src x1, [x28, #%lu]\n", offsetof(State, fpsr));
+  // Sync `fpsr` between native and lifted.
+  printf("str x1, [x28, #%lu]\n", offsetof(State, fpsr));
   printf("msr fpcr, x1\n");
 
   // User-space thread pointer register.

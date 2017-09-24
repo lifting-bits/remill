@@ -13,16 +13,15 @@ str x2, [x28, #1072]
 msr nzcv, x2
 ldr x1, [x28, #1080]
 ldr x1, [x28, #1088]
-msr fpsr, x1
 ldrb w2, [x28, #1147]
 bfi x1, x2, #2, #1
-ldrb w2w29, [x28, #1149]
+ldrb w2, [x28, #1149]
 bfi x1, x2, #3, #1
-ldrb w229, [x28, #1145]
+ldrb w2, [x28, #1145]
 bfi x1, x2, #4, #1
 ldrb w2, [x28, #1151]
 bfi x1, x2, #6, #1
-src x1, [x28, #1088]
+str x1, [x28, #1088]
 msr fpcr, x1
 ldr x1, [x28, #1112]
 msr tpidr_el0, x1
