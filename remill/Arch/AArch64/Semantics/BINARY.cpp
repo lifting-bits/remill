@@ -167,7 +167,18 @@ DEF_SEM(SBC, D dst, S src1, S src2) {
   return memory;
 }
 
+template <typename D, typename S>
+DEF_SEM(SBCS, D dst, S src1, S src2) {
+  auto carry = ZExtTo<S>(Unsigned(FLAG_C));
+  auto res = AddWithCarryNZCV(state, Read(src1), UNot(Read(src2)), carry);
+  WriteZExt(dst, res);
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(SBC_32_ADDSUB_CARRY) = SBC<R32W, R32>;
 DEF_ISEL(SBC_64_ADDSUB_CARRY) = SBC<R64W, R64>;
+
+DEF_ISEL(SBCS_32_ADDSUB_CARRY) = SBCS<R32W, R32>;
+DEF_ISEL(SBCS_64_ADDSUB_CARRY) = SBCS<R64W, R64>;

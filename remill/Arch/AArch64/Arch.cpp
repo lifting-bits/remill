@@ -1880,6 +1880,16 @@ bool TryDecodeSBC_64_ADDSUB_CARRY(const InstData &data, Instruction &inst) {
   return TryDecodeLSLV_64_DP_2SRC(data, inst);
 }
 
+// SBCS  <Wd>, <Wn>, <Wm>
+bool TryDecodeSBCS_32_ADDSUB_CARRY(const InstData &data, Instruction &inst) {
+  return TryDecodeSBC_32_ADDSUB_CARRY(data, inst);
+}
+
+// SBCS  <Xd>, <Xn>, <Xm>
+bool TryDecodeSBCS_64_ADDSUB_CARRY(const InstData &data, Instruction &inst) {
+  return TryDecodeSBC_64_ADDSUB_CARRY(data, inst);
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
