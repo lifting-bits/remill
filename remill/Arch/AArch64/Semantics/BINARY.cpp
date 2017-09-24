@@ -63,7 +63,7 @@ DEF_SEM(SUBS, D dst, S1 src1, S2 src2) {
   using T = typename BaseType<S2>::BT;
   auto lhs = Read(src1);
   auto rhs = Read(src2);
-  auto res = AddWithCarryNZCV<T>(state, lhs, rhs, T(1));
+  auto res = AddWithCarryNZCV(state, lhs, UNot(rhs), T(1));
   WriteZExt(dst, res);
   return memory;
 }
@@ -73,7 +73,7 @@ DEF_SEM(ADDS, D dst, S1 src1, S2 src2) {
   using T = typename BaseType<S2>::BT;
   auto lhs = Read(src1);
   auto rhs = Read(src2);
-  auto res = AddWithCarryNZCV<T>(state, lhs, rhs, T(0));
+  auto res = AddWithCarryNZCV(state, lhs, rhs, T(0));
   WriteZExt(dst, res);
   return memory;
 }
