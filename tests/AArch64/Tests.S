@@ -199,7 +199,6 @@ SYMBOL(__aarch64_test_table_begin):
 #define ARG3_64 x2
 #define ARG3_32 w2
 
-
 #if 1
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
@@ -208,19 +207,6 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BINARY/ADDS_n_ADDSUB_EXT.S"
 #include "tests/AArch64/BINARY/ADDS_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADDS_n_ADDSUB_SHIFT.S"
-#include "tests/AArch64/BINARY/AND_n_LOG_IMM.S"
-#include "tests/AArch64/BINARY/AND_n_LOG_SHIFT.S"
-#include "tests/AArch64/BINARY/ANDS_nS_LOG_IMM.S"
-#include "tests/AArch64/BINARY/ANDS_n_LOG_SHIFT.S"
-#include "tests/AArch64/BINARY/BIC_n_LOG_SHIFT.S"
-//#include "tests/AArch64/BINARY/CMN_ADDS_n_ADDSUB_EXT.S"
-//#include "tests/AArch64/BINARY/CMN_ADDS_n_ADDSUB_IMM.S"
-//#include "tests/AArch64/BINARY/CMN_ADDS_n_ADDSUB_SHIFT.S"
-//#include "tests/AArch64/BINARY/CMP_SUBS_n_ADDSUB_EXT.S"
-//#include "tests/AArch64/BINARY/CMP_SUBS_n_ADDSUB_IMM.S"
-//#include "tests/AArch64/BINARY/CMP_SUBS_n_ADDSUB_SHIFT.S"
-#include "tests/AArch64/BINARY/EOR_n_LOG_IMM.S"
-#include "tests/AArch64/BINARY/EOR_n_LOG_SHIFT.S"
 #include "tests/AArch64/BINARY/MADD_nA_DP_3SRC.S"
 #include "tests/AArch64/BINARY/ORR_n_LOG_IMM.S"
 #include "tests/AArch64/BINARY/ORR_n_LOG_SHIFT.S"
@@ -247,6 +233,15 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BRANCH/CBZ_n_COMPBRANCH.S"
 #include "tests/AArch64/BRANCH/TBNZ_ONLY_TESTBRANCH.S"
 #include "tests/AArch64/BRANCH/TBZ_ONLY_TESTBRANCH.S"
+
+#include "tests/AArch64/LOGICAL/AND_n_LOG_IMM.S"
+#include "tests/AArch64/LOGICAL/AND_n_LOG_SHIFT.S"
+#include "tests/AArch64/LOGICAL/ANDS_nS_LOG_IMM.S"
+#include "tests/AArch64/LOGICAL/ANDS_n_LOG_SHIFT.S"
+#include "tests/AArch64/LOGICAL/BIC_n_LOG_SHIFT.S"
+#include "tests/AArch64/LOGICAL/EOR_n_LOG_IMM.S"
+#include "tests/AArch64/LOGICAL/EOR_n_LOG_SHIFT.S"
+#include "tests/AArch64/LOGICAL/ORN_n_LOG_SHIFT.S"
 
 #endif
 

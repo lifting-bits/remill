@@ -1430,6 +1430,16 @@ bool TryDecodeSTRH_32_LDST_POS(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// ORN  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeORN_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeEOR_32_LOG_SHIFT(data, inst);
+}
+
+// ORN  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeORN_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeEOR_64_LOG_SHIFT(data, inst);
+}
+
 // EOR  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
 bool TryDecodeEOR_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
   if (1 & (data.imm6.uimm >> 5)) {
