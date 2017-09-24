@@ -1590,8 +1590,7 @@ bool TryDecodeSMULH_64_DP_3SRC(const InstData &data, Instruction &inst) {
 }
 
 // UDIV  <Wd>, <Wn>, <Wm>
-bool TryDecodeUDIV_32_DP_2SRC(const InstData &data,
-                              Instruction &inst) {
+bool TryDecodeUDIV_32_DP_2SRC(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rm);
@@ -1813,6 +1812,52 @@ bool TryDecodeEXTR_64_EXTRACT(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rm);
   AddImmOperand(inst, data.imms.uimm, kUnsigned, 64);
   return true;
+}
+
+// LSLV  <Wd>, <Wn>, <Wm>
+bool TryDecodeLSLV_32_DP_2SRC(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rm);
+  return true;
+}
+
+// LSLV  <Xd>, <Xn>, <Xm>
+bool TryDecodeLSLV_64_DP_2SRC(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rm);
+  return true;
+}
+
+// LSRV  <Wd>, <Wn>, <Wm>
+bool TryDecodeLSRV_32_DP_2SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeLSLV_32_DP_2SRC(data, inst);
+}
+
+// LSRV  <Xd>, <Xn>, <Xm>
+bool TryDecodeLSRV_64_DP_2SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeLSLV_64_DP_2SRC(data, inst);
+}
+
+// ASRV  <Wd>, <Wn>, <Wm>
+bool TryDecodeASRV_32_DP_2SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeLSLV_32_DP_2SRC(data, inst);
+}
+
+// ASRV  <Xd>, <Xn>, <Xm>
+bool TryDecodeASRV_64_DP_2SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeLSLV_64_DP_2SRC(data, inst);
+}
+
+// RORV  <Wd>, <Wn>, <Wm>
+bool TryDecodeRORV_32_DP_2SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeLSLV_32_DP_2SRC(data, inst);
+}
+
+// RORV  <Xd>, <Xn>, <Xm>
+bool TryDecodeRORV_64_DP_2SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeLSLV_64_DP_2SRC(data, inst);
 }
 
 }  // namespace aarch64
