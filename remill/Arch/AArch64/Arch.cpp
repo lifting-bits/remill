@@ -1788,6 +1788,33 @@ bool TryDecodeMADD_64A_DP_3SRC(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// EXTR  <Wd>, <Wn>, <Wm>, #<lsb>
+bool TryDecodeEXTR_32_EXTRACT(const InstData &data, Instruction &inst) {
+  if (data.N != data.sf) {
+    return false;  // `if N != sf then UnallocatedEncoding();`
+  }
+  if (data.imms.uimm & 0x20) {
+    return false;  // `if sf == '0' && imms<5> == '1' then ReservedValue();`
+  }
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rm);
+  AddImmOperand(inst, data.imms.uimm, kUnsigned, 32);
+  return true;
+}
+
+// EXTR  <Xd>, <Xn>, <Xm>, #<lsb>
+bool TryDecodeEXTR_64_EXTRACT(const InstData &data, Instruction &inst) {
+  if (data.N != data.sf) {
+    return false;  // `if N != sf then UnallocatedEncoding();`
+  }
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rm);
+  AddImmOperand(inst, data.imms.uimm, kUnsigned, 64);
+  return true;
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!

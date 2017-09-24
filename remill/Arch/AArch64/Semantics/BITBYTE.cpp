@@ -73,3 +73,25 @@ DEF_ISEL(SBFM_64M_BITFIELD) = SBFM<R64W, R64, I64>;
 
 DEF_ISEL(BFM_32M_BITFIELD) = BFM<R32W, R32, I32>;
 DEF_ISEL(BFM_64M_BITFIELD) = BFM<R64W, R64, I64>;
+
+namespace {
+
+template <typename D, typename S, typename I>
+DEF_SEM(EXTR, D dst, S src1, S src2, I src3) {
+  using T = typename BaseType<S>::BT;
+  constexpr auto size = T(sizeof(T) * 8);
+  auto lsb = Read(src3);
+  if (!lsb) {
+    WriteZExt(dst, Read(src2));
+  } else {
+    auto operand1 = UShl(Read(src1), USub(size, lsb));
+    auto operand2 = UShr(Read(src2), lsb);
+    WriteZExt(dst, UOr(operand1, operand2));
+  }
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(EXTR_32_EXTRACT) = EXTR<R32W, R32, I32>;
+DEF_ISEL(EXTR_64_EXTRACT) = EXTR<R64W, R64, I64>;
