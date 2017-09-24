@@ -125,6 +125,20 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .extern SYMBOL(gStackSaveSlots)
 #endif  /* IN_TEST_GENERATOR */
 
+    .align 16
+SYMBOL(vec_data):
+    .long 0x41414141, 0xabababab, 0xcdcdcdcd, 0xefefefef
+    .long 0x29292929, 0x38383838, 0x47474747, 0x56565656
+    .long 0x37373737, 0x82828282, 0x1a1a1a1a, 0x2b2b2b2b
+    .long 0x96969696, 0x35353535, 0xaeaeaeae, 0xc4c4c4c4
+    .long 0x3d3d3d3d, 0x21212121, 0x11223344, 0x55667788
+    .long 0x00414243, 0x41004243, 0x41420043, 0x41424300
+    .long 0x00abcdef, 0xab00cdef, 0xabcd00ef, 0xabcdef00
+    .long 0x00001111, 0x22222222, 0x33333333, 0x44444444
+    .long 0xaaaa0000, 0xbbbbbbbb, 0xcccccccc, 0xdddddddd
+    .long 0x55555555, 0x00006666, 0x77777777, 0x77777777
+    .long 0xabababab, 0xcdcd0000, 0xefefefef, 0x12121212
+
     .text
 
 #ifndef IN_TEST_GENERATOR
@@ -132,6 +146,18 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .globl SYMBOL(InvokeTestCase)
 SYMBOL(InvokeTestCase):
     .cfi_startproc
+
+    /* Fill in q0 through q7 with dummy values. */
+    adrp    x28, SYMBOL(vec_data)
+    add     x28, x28, :lo12:SYMBOL(vec_data)
+    ldur    q0, [x28, #0]
+    ldur    q1, [x28, #16]
+    ldur    q2, [x28, #32]
+    ldur    q3, [x28, #64]
+    ldur    q4, [x28, #80]
+    ldur    q5, [x28, #96]
+    ldur    q6, [x28, #112]
+    ldur    q7, [x28, #128]
 
     /* Get the address of stack save slots into x28 */
     adrp    x28, SYMBOL(gStackSaveSlots)
@@ -233,6 +259,9 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BRANCH/CBZ_n_COMPBRANCH.S"
 #include "tests/AArch64/BRANCH/TBNZ_ONLY_TESTBRANCH.S"
 #include "tests/AArch64/BRANCH/TBZ_ONLY_TESTBRANCH.S"
+
+#include "tests/AArch64/CONVERT/UCVTF_Dn_FLOAT2INT.S"
+#include "tests/AArch64/CONVERT/UCVTF_Sn_FLOAT2INT.S"
 
 #include "tests/AArch64/LOGICAL/AND_n_LOG_IMM.S"
 #include "tests/AArch64/LOGICAL/AND_n_LOG_SHIFT.S"

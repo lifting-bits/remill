@@ -174,8 +174,12 @@ llvm::DataLayout AArch64Arch::DataLayout(void) const {
 }
 
 enum RegClass {
-  kRegX,
-  kRegW
+  kRegX,  // 64-bit int.
+  kRegW,  // Word, 32-bit int.
+  kRegH,  // Half-word, 16-bit float.
+  kRegS,  // Single-precision float.
+  kRegD,  // Doubleword, Double precision float.
+  kRegQ,  // Quadword.
 };
 
 using RegNum = uint8_t;
@@ -276,8 +280,8 @@ static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
   return Operand::ShiftRegister::kShiftInvalid;
 }
 
-// Get the name of a register.
-static std::string RegName(Action action, RegClass rclass, RegUsage rtype,
+// Get the name of an integer register.
+static std::string RegNameXW(Action action, RegClass rclass, RegUsage rtype,
                            RegNum number) {
   CHECK_LE(number, 31U);
 
@@ -309,12 +313,62 @@ static std::string RegName(Action action, RegClass rclass, RegUsage rtype,
   return ss.str();
 }
 
+// Get the name of a floating point register.
+static std::string RegNameFP(Action action, RegClass rclass, RegUsage rtype,
+                             RegNum number) {
+  CHECK_LE(number, 31U);
+
+  std::stringstream ss;
+  CHECK(kActionReadWrite != action);
+
+  if (kActionRead == action) {
+    if (kRegH == rclass) {
+      ss << "H";
+    } else if (kRegS == rclass) {
+      ss << "S";
+    } else if (kRegD == rclass) {
+      ss << "D";
+    } else {
+      CHECK(kRegQ == rclass);
+      ss << "Q";
+    }
+  } else {
+    ss << "V";
+  }
+
+  ss << static_cast<unsigned>(number);
+
+  return ss.str();
+}
+
+static std::string RegName(Action action, RegClass rclass, RegUsage rtype,
+                           RegNum number) {
+  switch (rclass) {
+    case kRegX:
+    case kRegW:
+      return RegNameXW(action, rclass, rtype, number);
+    case kRegH:
+    case kRegS:
+    case kRegD:
+    case kRegQ:
+      return RegNameFP(action, rclass, rtype, number);
+  }
+}
+
 static uint64_t ReadRegSize(RegClass rclass) {
   switch (rclass) {
     case kRegX:
       return 64;
     case kRegW:
       return 32;
+    case kRegH:
+      return 16;
+    case kRegS:
+      return 32;
+    case kRegD:
+      return 64;
+    case kRegQ:
+      return 128;
   }
   return 0;
 }
@@ -324,6 +378,11 @@ static uint64_t WriteRegSize(RegClass rclass) {
     case kRegX:
     case kRegW:
       return 64;
+    case kRegH:
+    case kRegS:
+    case kRegD:
+    case kRegQ:
+      return 128;
   }
   return 0;
 }
@@ -1888,6 +1947,48 @@ bool TryDecodeSBCS_32_ADDSUB_CARRY(const InstData &data, Instruction &inst) {
 // SBCS  <Xd>, <Xn>, <Xm>
 bool TryDecodeSBCS_64_ADDSUB_CARRY(const InstData &data, Instruction &inst) {
   return TryDecodeSBC_64_ADDSUB_CARRY(data, inst);
+}
+
+// UCVTF  <Hd>, <Wn>
+bool TryDecodeUCVTF_H32_FLOAT2INT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegH, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  return true;
+}
+
+// UCVTF  <Sd>, <Wn>
+bool TryDecodeUCVTF_S32_FLOAT2INT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  return true;
+}
+
+// UCVTF  <Dd>, <Wn>
+bool TryDecodeUCVTF_D32_FLOAT2INT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  return true;
+}
+
+// UCVTF  <Hd>, <Xn>
+bool TryDecodeUCVTF_H64_FLOAT2INT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegH, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  return true;
+}
+
+// UCVTF  <Sd>, <Xn>
+bool TryDecodeUCVTF_S64_FLOAT2INT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  return true;
+}
+
+// UCVTF  <Dd>, <Xn>
+bool TryDecodeUCVTF_D64_FLOAT2INT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  return true;
 }
 
 }  // namespace aarch64
