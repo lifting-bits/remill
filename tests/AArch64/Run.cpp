@@ -356,6 +356,9 @@ static void RunWithFlags(const test::TestInfo *info,
 
 TEST_P(InstrTest, SemanticsMatchNative) {
   auto info = GetParam();
+  CHECK(0 < info->num_args)
+      << "Test " << info->test_name << " must have at least one argument!";
+
   for (auto args = info->args_begin;
        args < info->args_end;
        args += info->num_args) {
