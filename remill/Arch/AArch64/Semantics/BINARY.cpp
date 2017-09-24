@@ -46,38 +46,34 @@ DEF_ISEL(SUB_64_ADDSUB_EXT) = SUB<R64W, R64, I64>;
 
 namespace {
 
+template <typename T>
+T AddWithCarryNZCV(State &state, T lhs, T rhs, T carry) {
+  auto unsigned_result = UAdd(UAdd(ZExt(lhs), ZExt(rhs)), ZExt(carry));
+  auto signed_result = SAdd(SAdd(SExt(lhs), SExt(rhs)), Signed(ZExt(carry)));
+  auto result = TruncTo<T>(unsigned_result);
+  FLAG_N = SignFlag(result);
+  FLAG_Z = ZeroFlag(result);
+  FLAG_C = UCmpNeq(ZExt(result), unsigned_result);
+  FLAG_V = SCmpNeq(SExt(result), signed_result);
+  return result;
+}
+
 template <typename D, typename S1, typename S2>
 DEF_SEM(SUBS, D dst, S1 src1, S2 src2) {
   using T = typename BaseType<S2>::BT;
   auto lhs = Read(src1);
   auto rhs = Read(src2);
-  auto res = USub(lhs, rhs);
-
-  auto rhs_comp = UNot(rhs);
-  auto add2c_inter = UAdd(lhs, rhs_comp);
-  auto add2c_final = UAdd(add2c_inter, T(1));
-
-  FLAG_Z = ZeroFlag(res);
-  FLAG_N = SignFlag(res);
-  FLAG_V = Overflow<tag_sub>::Flag(lhs, rhs, res);
-  FLAG_C = Carry<tag_add>::Flag(lhs, rhs_comp, add2c_inter) ||
-           Carry<tag_add>::Flag<T>(add2c_inter, T(1), add2c_final);
-
+  auto res = AddWithCarryNZCV<T>(state, lhs, rhs, T(1));
   WriteZExt(dst, res);
   return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(ADDS, D dst, S1 src1, S2 src2) {
+  using T = typename BaseType<S2>::BT;
   auto lhs = Read(src1);
   auto rhs = Read(src2);
-  auto res = UAdd(lhs, rhs);
-
-  FLAG_Z = ZeroFlag(res);
-  FLAG_N = SignFlag(res);
-  FLAG_V = Overflow<tag_add>::Flag(lhs, rhs, res);
-  FLAG_C = Carry<tag_add>::Flag(lhs, rhs, res);
-
+  auto res = AddWithCarryNZCV<T>(state, lhs, rhs, T(0));
   WriteZExt(dst, res);
   return memory;
 }
@@ -162,3 +158,16 @@ DEF_ISEL(UDIV_64_DP_2SRC) = UDIV<R64W, R64>;
 DEF_ISEL(MADD_32A_DP_3SRC) = MADD<R32W, R32>;
 DEF_ISEL(MADD_64A_DP_3SRC) = MADD<R64W, R64>;
 
+namespace {
+
+template <typename D, typename S>
+DEF_SEM(SBC, D dst, S src1, S src2) {
+  auto carry = ZExtTo<S>(Unsigned(FLAG_C));
+  WriteZExt(dst, UAdd(UAdd(Read(src1), UNot(Read(src2))), carry));
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(SBC_32_ADDSUB_CARRY) = SBC<R32W, R32>;
+DEF_ISEL(SBC_64_ADDSUB_CARRY) = SBC<R64W, R64>;
