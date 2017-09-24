@@ -89,6 +89,40 @@ int main(void) {
   printf("ldr x27, [x28, #%lu]\n", offsetof(State, gpr.x27));
   printf("ldr x30, [x28, #%lu]\n", offsetof(State, gpr.x30));
 
+  // SIMD registers.
+  printf("ldur q0, [x28, #%lu]\n", offsetof(State, simd.v[0].dqwords));
+  printf("ldur q1, [x28, #%lu]\n", offsetof(State, simd.v[1].dqwords));
+  printf("ldur q2, [x28, #%lu]\n", offsetof(State, simd.v[2].dqwords));
+  printf("ldur q3, [x28, #%lu]\n", offsetof(State, simd.v[3].dqwords));
+  printf("ldur q4, [x28, #%lu]\n", offsetof(State, simd.v[4].dqwords));
+  printf("ldur q5, [x28, #%lu]\n", offsetof(State, simd.v[5].dqwords));
+  printf("ldur q6, [x28, #%lu]\n", offsetof(State, simd.v[6].dqwords));
+  printf("ldur q7, [x28, #%lu]\n", offsetof(State, simd.v[7].dqwords));
+  printf("ldur q8, [x28, #%lu]\n", offsetof(State, simd.v[8].dqwords));
+  printf("ldur q9, [x28, #%lu]\n", offsetof(State, simd.v[9].dqwords));
+  printf("ldur q10, [x28, #%lu]\n", offsetof(State, simd.v[10].dqwords));
+  printf("ldur q11, [x28, #%lu]\n", offsetof(State, simd.v[11].dqwords));
+  printf("ldur q12, [x28, #%lu]\n", offsetof(State, simd.v[12].dqwords));
+  printf("ldur q13, [x28, #%lu]\n", offsetof(State, simd.v[13].dqwords));
+  printf("ldur q14, [x28, #%lu]\n", offsetof(State, simd.v[14].dqwords));
+  printf("ldur q15, [x28, #%lu]\n", offsetof(State, simd.v[15].dqwords));
+  printf("ldur q16, [x28, #%lu]\n", offsetof(State, simd.v[16].dqwords));
+  printf("ldur q17, [x28, #%lu]\n", offsetof(State, simd.v[17].dqwords));
+  printf("ldur q18, [x28, #%lu]\n", offsetof(State, simd.v[18].dqwords));
+  printf("ldur q19, [x28, #%lu]\n", offsetof(State, simd.v[19].dqwords));
+  printf("ldur q20, [x28, #%lu]\n", offsetof(State, simd.v[20].dqwords));
+  printf("ldur q21, [x28, #%lu]\n", offsetof(State, simd.v[21].dqwords));
+  printf("ldur q22, [x28, #%lu]\n", offsetof(State, simd.v[22].dqwords));
+  printf("ldur q23, [x28, #%lu]\n", offsetof(State, simd.v[23].dqwords));
+  printf("ldur q24, [x28, #%lu]\n", offsetof(State, simd.v[24].dqwords));
+  printf("ldur q25, [x28, #%lu]\n", offsetof(State, simd.v[25].dqwords));
+  printf("ldur q26, [x28, #%lu]\n", offsetof(State, simd.v[26].dqwords));
+  printf("ldur q27, [x28, #%lu]\n", offsetof(State, simd.v[27].dqwords));
+  printf("ldur q28, [x28, #%lu]\n", offsetof(State, simd.v[28].dqwords));
+  printf("ldur q29, [x28, #%lu]\n", offsetof(State, simd.v[29].dqwords));
+  printf("ldur q30, [x28, #%lu]\n", offsetof(State, simd.v[30].dqwords));
+  printf("ldur q31, [x28, #%lu]\n", offsetof(State, simd.v[31].dqwords));
+
   // Restore the stack pointer.
   printf("ldr x29, [x28, #%lu]\n", offsetof(State, gpr.sp));
   printf("mov sp, x29\n");
