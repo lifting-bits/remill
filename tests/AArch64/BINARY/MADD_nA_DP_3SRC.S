@@ -15,19 +15,19 @@
  */
 
 /* MUL  <Wd>, <Wn>, <Wm> */
-TEST_BEGIN(MADD_32A_DP_3SRC, mul_w3_w0_w1_w2, 3)
+TEST_BEGIN(MADD_32A_DP_3SRC, mul_w3_w0_w1_w2, 2)
 TEST_INPUTS(
-    0, 0, 0,
-    0, 1, 0,
-    1, 0, 0,
-    1, 1, 0,
-    0xFFFFFFFF, 1, 0,
-    1, 0xFFFFFFFF, 0,
-    0xFFFFFFFF, 0xFFFFFFFF, 0,
-    0, 0xFFFFFFFF, 0,
-    0xFFFFFFFF, 0, 0,
-    0xfafbfbfd, 0xf1f2f3f4, 0,
-    0x0a0b0c0d, 0x01020304, 0)
+    0, 0,
+    0, 1,
+    1, 0,
+    1, 1,
+    0xFFFFFFFF, 1,
+    1, 0xFFFFFFFF,
+    0xFFFFFFFF, 0xFFFFFFFF,
+    0, 0xFFFFFFFF,
+    0xFFFFFFFF, 0,
+    0xfafbfbfd, 0xf1f2f3f4,
+    0x0a0b0c0d, 0x01020304)
 
     madd w3, ARG1_32, ARG2_32, wzr
 TEST_END
@@ -54,19 +54,19 @@ TEST_END
 
 
 /* MUL  <Wd>, <Wn>, <Wm> */
-TEST_BEGIN(MADD_32A_DP_3SRC, mul_w3_w0_w1_w2, 3)
+TEST_BEGIN(MADD_64A_DP_3SRC, mul_x3_x0_x1_x2, 2)
 TEST_INPUTS(
-    0, 0, 0,
-    0, 1, 0,
-    1, 0, 0,
-    1, 1, 0,
-    0xFFFFFFFF, 1, 0,
-    1, 0xFFFFFFFF, 0,
-    0xFFFFFFFF, 0xFFFFFFFF, 0,
-    0, 0xFFFFFFFF, 0,
-    0xFFFFFFFF, 0, 0,
-    0xfafbfbfd, 0xf1f2f3f4, 0,
-    0x0a0b0c0d, 0x01020304, 0)
+    0, 0,
+    0, 1,
+    1, 0,
+    1, 1,
+    0xFFFFFFFF, 1,
+    1, 0xFFFFFFFF,
+    0xFFFFFFFF, 0xFFFFFFFF,
+    0, 0xFFFFFFFF,
+    0xFFFFFFFF, 0,
+    0xfafbfbfd, 0xf1f2f3f4,
+    0x0a0b0c0d, 0x01020304)
 
     madd x3, ARG1_64, ARG2_64, xzr
 TEST_END
