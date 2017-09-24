@@ -1770,80 +1770,22 @@ bool TryDecodeANDS_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
   return TryDecodeAND_64_LOG_SHIFT(data, inst);
 }
 
-// MADD MADD_32A_dp_3src:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x Ra       0
-//  11 x Ra       1
-//  12 x Ra       2
-//  13 x Ra       3
-//  14 x Ra       4
-//  15 0 o0       0
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0 op31     0
-//  22 0 op31     1
-//  23 0 op31     2
-//  24 1
-//  25 1
-//  26 0
-//  27 1
-//  28 1
-//  29 0 op54     0
-//  30 0 op54     1
-//  31 0 sf       0
 // MADD  <Wd>, <Wn>, <Wm>, <Wa>
-bool TryDecodeMADD_32A_DP_3SRC(const InstData &, Instruction &) {
-  return false;
+bool TryDecodeMADD_32A_DP_3SRC(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rm);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Ra);
+  return true;
 }
 
-// MADD MADD_64A_dp_3src:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x Ra       0
-//  11 x Ra       1
-//  12 x Ra       2
-//  13 x Ra       3
-//  14 x Ra       4
-//  15 0 o0       0
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0 op31     0
-//  22 0 op31     1
-//  23 0 op31     2
-//  24 1
-//  25 1
-//  26 0
-//  27 1
-//  28 1
-//  29 0 op54     0
-//  30 0 op54     1
-//  31 1 sf       0
 // MADD  <Xd>, <Xn>, <Xm>, <Xa>
-bool TryDecodeMADD_64A_DP_3SRC(const InstData &, Instruction &) {
-  return false;
+bool TryDecodeMADD_64A_DP_3SRC(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rm);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Ra);
+  return true;
 }
 
 }  // namespace aarch64

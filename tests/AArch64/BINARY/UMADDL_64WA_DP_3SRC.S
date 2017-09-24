@@ -48,4 +48,6 @@ TEST_INPUTS(
     0x0a0b0c0d, 0x01020304, 0)
 
     umaddl x3, ARG1_32, ARG2_32, ARG3_64
+    umaddl x4, ARG1_32, ARG1_32, ARG1_64
+    umaddl x5, ARG2_32, ARG2_32, ARG2_64
 TEST_END

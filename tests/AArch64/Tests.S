@@ -221,6 +221,7 @@ SYMBOL(__aarch64_test_table_begin):
 //#include "tests/AArch64/BINARY/CMP_SUBS_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/EOR_n_LOG_IMM.S"
 #include "tests/AArch64/BINARY/EOR_n_LOG_SHIFT.S"
+#include "tests/AArch64/BINARY/MADD_nA_DP_3SRC.S"
 #include "tests/AArch64/BINARY/ORR_n_LOG_IMM.S"
 #include "tests/AArch64/BINARY/ORR_n_LOG_SHIFT.S"
 #include "tests/AArch64/BINARY/SMADDL_64WA_DP_3SRC.S"
