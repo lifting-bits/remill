@@ -16,23 +16,43 @@
 
 namespace {
 
+template <typename S, typename D>
+D FPConvertIntToFloat(State &state, S src) {
+  auto res = static_cast<D>(src);
+  if (static_cast<S>(res) != src) {
+    state.sr.ixc = true;  // Inexact.
+  }
+
+  if (std::isinf(res)) {
+    state.sr.ofc = true;  // Overflow.
+  }
+
+  // Can't underflow, because we're converting an integer to a float.
+
+  return res;
+}
+
 DEF_SEM(UCVTF_UInt32ToFloat32, V128W dst, R32 src) {
-  FWriteV32(dst, Float32(Read(src)));
+  auto res = FPConvertIntToFloat<uint32_t, float32_t>(state, Read(src));
+  FWriteV32(dst, res);
   return memory;
 }
 
 DEF_SEM(UCVTF_UInt32ToFloat64, V128W dst, R32 src) {
-  FWriteV64(dst, Float64(Read(src)));
+  auto res = FPConvertIntToFloat<uint32_t, float64_t>(state, Read(src));
+  FWriteV64(dst, res);
   return memory;
 }
 
 DEF_SEM(UCVTF_UInt64ToFloat32, V128W dst, R64 src) {
-  FWriteV32(dst, Float32(Read(src)));
+  auto res = FPConvertIntToFloat<uint64_t, float32_t>(state, Read(src));
+  FWriteV32(dst, res);
   return memory;
 }
 
 DEF_SEM(UCVTF_UInt64ToFloat64, V128W dst, R64 src) {
-  FWriteV64(dst, Float64(Read(src)));
+  auto res = FPConvertIntToFloat<uint64_t, float64_t>(state, Read(src));
+  FWriteV64(dst, res);
   return memory;
 }
 

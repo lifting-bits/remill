@@ -89,9 +89,6 @@ int main(void) {
   printf("strb wzr, [x28, #%lu]\n", offsetof(State, sr.v));
   printf("1:\n");
 
-  // Restore x29.
-  printf("ldr x29, [x28, #%lu]\n", offsetof(State, gpr.x29));
-
   // Save the real version of the nzvc reg.
   printf("mrs x1, nzcv\n");
   printf("str x1, [x28, #%lu]\n", offsetof(State, nzcv));
@@ -103,6 +100,25 @@ int main(void) {
   // Floating point status register.
   printf("mrs x1, fpsr\n");
   printf("str x1, [x28, #%lu]\n", offsetof(State, fpsr));
+
+  // Save the cumulative overflow flag from the FPSR into the SR.
+  printf("ubfiz x29, x1, #2, #1\n");
+  printf("strb w29, [x28, #%lu]\n", offsetof(State, sr.ofc));
+
+  // Save the cumulative underflow flag from the FPSR into the SR.
+  printf("ubfiz x29, x1, #3, #1\n");
+  printf("strb w29, [x28, #%lu]\n", offsetof(State, sr.ufc));
+
+  // Save the cumulative inexact flag from the FPSR into the SR.
+  printf("ubfiz x29, x1, #4, #1\n");
+  printf("strb w29, [x28, #%lu]\n", offsetof(State, sr.ixc));
+
+  // Save the cumulative input denormal flag from the FPSR into the SR.
+  printf("ubfiz x29, x1, #6, #1\n");
+  printf("strb w29, [x28, #%lu]\n", offsetof(State, sr.idc));
+
+  // Restore x29.
+  printf("ldr x29, [x28, #%lu]\n", offsetof(State, gpr.x29));
 
   // User-space thread pointer register.
   printf("mrs x1, tpidr_el0\n");

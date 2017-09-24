@@ -1,21 +1,30 @@
 /* Auto-generated file! Don't modify! */
 
 mov x2, #0
-ldrb w1, [x28, #1129]
+ldrb w1, [x28, #1137]
 orr x2, x2, x1, LSL 31
-ldrb w1, [x28, #1131]
+ldrb w1, [x28, #1139]
 orr x2, x2, x1, LSL 30
-ldrb w1, [x28, #1133]
+ldrb w1, [x28, #1141]
 orr x2, x2, x1, LSL 29
-ldrb w1, [x28, #1135]
+ldrb w1, [x28, #1143]
 orr x2, x2, x1, LSL 28
 str x2, [x28, #1072]
 msr nzcv, x2
 ldr x1, [x28, #1080]
-msr fpcr, x1
 ldr x1, [x28, #1088]
 msr fpsr, x1
-ldr x1, [x28, #1104]
+ldrb w2, [x28, #1147]
+bfi x1, x2, #2, #1
+ldrb w2w29, [x28, #1149]
+bfi x1, x2, #3, #1
+ldrb w229, [x28, #1145]
+bfi x1, x2, #4, #1
+ldrb w2, [x28, #1151]
+bfi x1, x2, #6, #1
+src x1, [x28, #1088]
+msr fpcr, x1
+ldr x1, [x28, #1112]
 msr tpidr_el0, x1
 add x1, x28, #16
 ldur q0, [x1, #0]

@@ -253,9 +253,18 @@ struct alignas(8) SR final {
   bool c;  //  Carry condition flag
   uint8_t _5;
   bool v;  //  Overflow condition flag
+
+  uint8_t _6;
+  bool ixc;  // Inexact (cumulative).
+  uint8_t _7;
+  bool ofc;  // Overflow (cumulative).
+  uint8_t _8;
+  bool ufc;  // Underflow (cumulative).
+  uint8_t _9;
+  bool idc;  // Input denormal (cumulative).
 } __attribute__((packed));
 
-static_assert((5 * 8) == sizeof(SR), "Invalid packing of `struct SR`.");
+static_assert((6 * 8) == sizeof(SR), "Invalid packing of `struct SR`.");
 
 enum : size_t {
   kNumVecRegisters = 32
@@ -280,11 +289,13 @@ struct alignas(16) State final : public ArchState {
   FPCR fpcr;  // 8 bytes (high 4 are unused).
   FPSR fpsr;  // 8 bytes (high 4 are unused).
 
-  SR sr;  // 40 bytes.
+  uint64_t _2;
+
+  SR sr;  // 48 bytes.
 
 } __attribute__((packed));
 
-static_assert((1120 + 16) == sizeof(State),
+static_assert((1136 + 16) == sizeof(State),
               "Invalid packing of `struct State`");
 
 using AArch64State = State;

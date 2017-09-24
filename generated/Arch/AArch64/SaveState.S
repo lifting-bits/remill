@@ -33,33 +33,41 @@ str x30, [x28, #1024]
 mov x29, sp
 str x29, [x28, #1040]
 mov x29, #1
-strb w29, [x28, #1129]
+strb w29, [x28, #1137]
 b.mi 1f
-strb wzr, [x28, #1129]
+strb wzr, [x28, #1137]
 1:
-strb w29, [x28, #1131]
+strb w29, [x28, #1139]
 b.eq 1f
-strb wzr, [x28, #1131]
+strb wzr, [x28, #1139]
 1:
-strb w29, [x28, #1133]
+strb w29, [x28, #1141]
 b.cs 1f
-strb wzr, [x28, #1133]
+strb wzr, [x28, #1141]
 1:
-strb w29, [x28, #1135]
+strb w29, [x28, #1143]
 b.vs 1f
-strb wzr, [x28, #1135]
+strb wzr, [x28, #1143]
 1:
-ldr x29, [x28, #1008]
 mrs x1, nzcv
 str x1, [x28, #1072]
 mrs x1, fpcr
 str x1, [x28, #1080]
 mrs x1, fpsr
 str x1, [x28, #1088]
+ubfiz x29, x1, #2, #1
+strb w29, [x28, #1147]
+ubfiz x29, x1, #3, #1
+strb w29, [x28, #1149]
+ubfiz x29, x1, #4, #1
+strb w29, [x28, #1145]
+ubfiz x29, x1, #6, #1
+strb w29, [x28, #1151]
+ldr x29, [x28, #1008]
 mrs x1, tpidr_el0
-str x1, [x28, #1104]
+str x1, [x28, #1112]
 mrs x1, tpidrro_el0
-str x1, [x28, #1120]
+str x1, [x28, #1128]
 add x1, x28, #16
 stur q0, [x1, #0]
 stur q1, [x1, #16]
