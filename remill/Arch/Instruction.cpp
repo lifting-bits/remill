@@ -49,7 +49,7 @@ Operand::Operand(void)
       action(Operand::kActionInvalid),
       size(0) {}
 
-std::string Operand::Debug(void) const {
+std::string Operand::Serialize(void) const {
   std::stringstream ss;
   switch (action) {
     case Operand::kActionInvalid:
@@ -246,7 +246,7 @@ std::string Instruction::Serialize(void) const {
 
   ss << function;
   for (const auto &op : operands) {
-    ss << " " << op.Debug();
+    ss << " " << op.Serialize();
   }
   ss << ")";
   return ss.str();

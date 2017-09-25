@@ -34,9 +34,10 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
-#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/Operator.h>
 #include <llvm/IR/Type.h>
 
 #include <llvm/Support/raw_ostream.h>
@@ -166,7 +167,7 @@ bool InstructionLifter::LiftIntoBlock(
     arg_num += 1;
     auto op_type = operand->getType();
     CHECK(op_type == arg_type)
-        << "Lifted operand " << op.Debug() << " to "
+        << "Lifted operand " << op.Serialize() << " to "
         << arch_inst.function << " does not have the correct type. Expected "
         << LLVMThingToString(arg_type) << " but got "
         << LLVMThingToString(op_type) << ".";
@@ -287,7 +288,7 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
       CHECK(reg_size == op.shift_reg.extract_size)
           << "Invalid extraction size. Can't extract "
           << op.shift_reg.extract_size << " bits from a " << reg_size
-          << "-bit value in operand " << op.Debug() << " of instruction at "
+          << "-bit value in operand " << op.Serialize() << " of instruction at "
           << std::hex << inst.pc;
     }
 
@@ -377,7 +378,7 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
     reg = ir.CreateZExt(reg, word_type);
   } else {
     CHECK(word_size == op.size)
-        << "Final size of operand " << op.Debug() << " is " << op.size
+        << "Final size of operand " << op.Serialize() << " is " << op.size
         << " bits, but address size is " << word_size;
   }
 
@@ -395,13 +396,28 @@ static llvm::Type *IntendedArgumentType(llvm::Argument *arg) {
   return arg->getType();
 }
 
-static llvm::Value *ConvertToIntendedType(llvm::BasicBlock *block,
+static llvm::Value *ConvertToIntendedType(Instruction &inst, Operand &op,
+                                          llvm::BasicBlock *block,
                                           llvm::Value *val,
                                           llvm::Type *intended_type) {
   if (val->getType() == intended_type) {
     return val;
   } else {
-    return new llvm::BitCastInst(val, intended_type, "", block);
+    CHECK(intended_type->isPointerTy());
+
+    auto val_type = val->getType();
+    if (val_type->isPointerTy()) {
+      return new llvm::BitCastInst(val, intended_type, "", block);
+    } else if (val_type->isIntegerTy()) {
+      return new llvm::PtrToIntInst(val, intended_type, "", block);
+    } else {
+      LOG(FATAL)
+          << "Unable to convert value " << LLVMThingToString(val)
+          << " to intended argument type " << LLVMThingToString(intended_type)
+          << " for operand " << op.Serialize() << " of instruction "
+          << inst.Serialize();
+    }
+
   }
 }
 
@@ -431,7 +447,7 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(
 
   if (auto ptr_type = llvm::dyn_cast_or_null<llvm::PointerType>(arg_type)) {
     auto val = LoadRegAddress(block, arch_reg.name);
-    return ConvertToIntendedType(block, val, real_arg_type);
+    return ConvertToIntendedType(inst, op, block, val, real_arg_type);
 
   } else {
     CHECK(arg_type->isIntegerTy() || arg_type->isFloatingPointTy())
@@ -489,7 +505,7 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(
       }
     }
 
-    return ConvertToIntendedType(block, val, real_arg_type);
+    return ConvertToIntendedType(inst, op, block, val, real_arg_type);
   }
 }
 

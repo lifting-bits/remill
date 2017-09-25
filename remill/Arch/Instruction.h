@@ -129,7 +129,7 @@ class Operand {
     }
   } addr;
 
-  std::string Debug(void) const;
+  std::string Serialize(void) const;
 };
 
 // Generic instruction type.
