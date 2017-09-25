@@ -57,6 +57,8 @@ typedef Mn<uint16_t> M16;
 typedef Mn<uint32_t> M32;
 typedef Mn<uint64_t> M64;
 
+typedef MVn<vec8_t> MV8;
+typedef MVn<vec16_t> MV16;
 typedef MVn<vec32_t> MV32;
 typedef MVn<vec64_t> MV64;
 typedef MVn<vec128_t> MV128;
