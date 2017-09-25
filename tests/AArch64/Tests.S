@@ -199,7 +199,7 @@ SYMBOL(__aarch64_save_state_after):
     adrp    x28, SYMBOL(gNativeState)
     add     x28, x28, :lo12:SYMBOL(gNativeState)
 #include "generated/Arch/AArch64/SaveState.S"
-#include "generated/Arch/AArch64/RestoreState.S"
+/*#include "generated/Arch/AArch64/RestoreState.S"*/
 
     adrp    x28, SYMBOL(gStackSaveSlots)
     add     x28, x28, :lo12:SYMBOL(gStackSaveSlots)

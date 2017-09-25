@@ -102,19 +102,20 @@ int main(void) {
   printf("str x1, [x28, #%lu]\n", offsetof(State, fpsr));
 
   // Save the cumulative overflow flag from the FPSR into the SR.
-  printf("ubfiz x29, x1, #2, #1\n");
+  printf("ubfx x29, x1, #2, #1\n");
+  printf("lsr x29, x29, #1\n");
   printf("strb w29, [x28, #%lu]\n", offsetof(State, sr.ofc));
 
   // Save the cumulative underflow flag from the FPSR into the SR.
-  printf("ubfiz x29, x1, #3, #1\n");
+  printf("ubfx x29, x1, #3, #1\n");
   printf("strb w29, [x28, #%lu]\n", offsetof(State, sr.ufc));
 
   // Save the cumulative inexact flag from the FPSR into the SR.
-  printf("ubfiz x29, x1, #4, #1\n");
+  printf("ubfx x29, x1, #4, #1\n");
   printf("strb w29, [x28, #%lu]\n", offsetof(State, sr.ixc));
 
   // Save the cumulative input denormal flag from the FPSR into the SR.
-  printf("ubfiz x29, x1, #6, #1\n");
+  printf("ubfx x29, x1, #6, #1\n");
   printf("strb w29, [x28, #%lu]\n", offsetof(State, sr.idc));
 
   // Restore x29.

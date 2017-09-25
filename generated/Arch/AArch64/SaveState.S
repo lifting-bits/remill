@@ -55,13 +55,14 @@ mrs x1, fpcr
 str x1, [x28, #1080]
 mrs x1, fpsr
 str x1, [x28, #1088]
-ubfiz x29, x1, #2, #1
+ubfx x29, x1, #2, #1
+lsr x29, x29, #1
 strb w29, [x28, #1147]
-ubfiz x29, x1, #3, #1
+ubfx x29, x1, #3, #1
 strb w29, [x28, #1149]
-ubfiz x29, x1, #4, #1
+ubfx x29, x1, #4, #1
 strb w29, [x28, #1145]
-ubfiz x29, x1, #6, #1
+ubfx x29, x1, #6, #1
 strb w29, [x28, #1151]
 ldr x29, [x28, #1008]
 mrs x1, tpidr_el0

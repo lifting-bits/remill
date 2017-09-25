@@ -19,12 +19,13 @@ namespace {
 template <typename S, typename D>
 D FPConvertIntToFloat(State &state, S src) {
   auto res = static_cast<D>(src);
-  if (static_cast<S>(res) != src) {
-    state.sr.ixc = true;  // Inexact.
-  }
 
   if (std::isinf(res)) {
     state.sr.ofc = true;  // Overflow.
+    state.sr.ixc = true;  // Inexact.
+
+  } else if (static_cast<S>(res) != src) {
+    state.sr.ixc = true;  // Inexact.
   }
 
   // Can't underflow, because we're converting an integer to a float.

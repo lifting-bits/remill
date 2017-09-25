@@ -328,6 +328,10 @@ static void RunWithFlags(const test::TestInfo *info,
   // The lifted code won't update these.
   native_state->nzcv.flat = 0;
   lifted_state->nzcv.flat = 0;
+  native_state->fpcr.flat = 0;
+  lifted_state->fpcr.flat = 0;
+  native_state->fpsr.flat = 0;
+  lifted_state->fpsr.flat = 0;
 
   if (gLiftedState != gNativeState) {
     LOG(ERROR)
