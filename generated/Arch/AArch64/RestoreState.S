@@ -1,22 +1,64 @@
 /* Auto-generated file! Don't modify! */
 
 mov x2, #0
-ldrb w1, [x28, #1129]
+ldrb w1, [x28, #1137]
 orr x2, x2, x1, LSL 31
-ldrb w1, [x28, #1131]
+ldrb w1, [x28, #1139]
 orr x2, x2, x1, LSL 30
-ldrb w1, [x28, #1133]
+ldrb w1, [x28, #1141]
 orr x2, x2, x1, LSL 29
-ldrb w1, [x28, #1135]
+ldrb w1, [x28, #1143]
 orr x2, x2, x1, LSL 28
 str x2, [x28, #1072]
 msr nzcv, x2
 ldr x1, [x28, #1080]
-msr fpcr, x1
 ldr x1, [x28, #1088]
-msr fpsr, x1
-ldr x1, [x28, #1104]
+ldrb w2, [x28, #1147]
+bfi x1, x2, #2, #1
+ldrb w2, [x28, #1149]
+bfi x1, x2, #3, #1
+ldrb w2, [x28, #1145]
+bfi x1, x2, #4, #1
+ldrb w2, [x28, #1151]
+bfi x1, x2, #6, #1
+str x1, [x28, #1088]
+msr fpcr, x1
+ldr x1, [x28, #1112]
 msr tpidr_el0, x1
+add x1, x28, #16
+ldur q0, [x1, #0]
+ldur q1, [x1, #16]
+ldur q2, [x1, #32]
+ldur q3, [x1, #48]
+ldur q4, [x1, #64]
+ldur q5, [x1, #80]
+ldur q6, [x1, #96]
+ldur q7, [x1, #112]
+ldur q8, [x1, #128]
+ldur q9, [x1, #144]
+ldur q10, [x1, #160]
+ldur q11, [x1, #176]
+ldur q12, [x1, #192]
+ldur q13, [x1, #208]
+ldur q14, [x1, #224]
+ldur q15, [x1, #240]
+add x1, x28, #272
+ldur q16, [x1, #0]
+ldur q17, [x1, #16]
+ldur q18, [x1, #32]
+ldur q19, [x1, #48]
+ldur q20, [x1, #64]
+ldur q21, [x1, #80]
+ldur q22, [x1, #96]
+ldur q23, [x1, #112]
+ldur q24, [x1, #128]
+ldur q25, [x1, #144]
+ldur q26, [x1, #160]
+ldur q27, [x1, #176]
+ldur q28, [x1, #192]
+ldur q29, [x1, #208]
+ldur q30, [x1, #224]
+ldur q31, [x1, #240]
 ldr x0, [x28, #544]
 ldr x1, [x28, #560]
 ldr x2, [x28, #576]

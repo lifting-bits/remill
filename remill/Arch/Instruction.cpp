@@ -240,6 +240,8 @@ std::string Instruction::Serialize(void) const {
     if (is_atomic_read_modify_write) {
       ss << "ATOMIC ";
     }
+  } else {
+    ss << " ";
   }
 
   ss << function;

@@ -14,40 +14,20 @@
  * limitations under the License.
  */
 
-/* UMULL  <Xd>, <Wn>, <Wm> */
-TEST_BEGIN(UMADDL_64WA_DP_3SRC, umull_x3_w0_w1, 2)
+TEST_BEGIN(SMULH_64_DP_3SRC, smulh_x3_x0_x1, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
     1, 0,
     1, 1,
-    0xFFFFFFFF, 1,
-    1, 0xFFFFFFFF,
     0xFFFFFFFF, 0xFFFFFFFF,
     0, 0xFFFFFFFF,
-    0xFFFFFFFF, 0,
     0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304)
+    0x0a0b0c0d, 0x01020304,
 
-    umaddl x3, ARG1_32, ARG2_32, xzr
-TEST_END
+    0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+    0xfafbfbfdfafbfbfd, 0xf1f2f3f4f1f2f3f4,
+    0xfafbfbfd0a0b0c0d, 0x01020304f1f2f3f4)
 
-/* UMADDL  <Xd>, <Wn>, <Wm>, <Xa> */
-TEST_BEGIN(UMADDL_64WA_DP_3SRC, umaddl_x3_w0_w1_x2, 3)
-TEST_INPUTS(
-    0, 0, 0,
-    0, 1, 0,
-    1, 0, 0,
-    1, 1, 0,
-    0xFFFFFFFF, 1, 0,
-    1, 0xFFFFFFFF, 0,
-    0xFFFFFFFF, 0xFFFFFFFF, 0,
-    0, 0xFFFFFFFF, 0,
-    0xFFFFFFFF, 0, 0,
-    0xfafbfbfd, 0xf1f2f3f4, 0,
-    0x0a0b0c0d, 0x01020304, 0)
-
-    umaddl x3, ARG1_32, ARG2_32, ARG3_64
-    umaddl x4, ARG1_32, ARG1_32, ARG1_64
-    umaddl x5, ARG2_32, ARG2_32, ARG2_64
+    smulh x3, ARG1_64, ARG2_64
 TEST_END

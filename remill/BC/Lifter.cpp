@@ -101,7 +101,7 @@ bool InstructionLifter::LiftIntoBlock(
   if (arch_inst.IsValid()) {
     isel_func = GetInstructionFunction(module, arch_inst.function);
   } else {
-    LOG(ERROR)
+    DLOG(ERROR)
         << "Cannot decode instruction bytes at "
         << std::hex << arch_inst.pc;
 
@@ -115,7 +115,7 @@ bool InstructionLifter::LiftIntoBlock(
   }
 
   if (!isel_func) {
-    LOG(ERROR)
+    DLOG(ERROR)
         << "Cannot lift instruction at " << std::hex << arch_inst.pc << ", "
         << arch_inst.function << " doesn't exist: " << arch_inst.Serialize();
 

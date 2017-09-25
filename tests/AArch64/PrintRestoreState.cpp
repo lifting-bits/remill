@@ -46,17 +46,75 @@ int main(void) {
 
   // Floating point condition register.
   printf("ldr x1, [x28, #%lu]\n", offsetof(State, fpcr));
-  printf("msr fpcr, x1\n");
 
   // Floating point status register.
   printf("ldr x1, [x28, #%lu]\n", offsetof(State, fpsr));
-  printf("msr fpsr, x1\n");
+
+  // Extract the cumulative overflow flag from the SR into the FPSR.
+  printf("ldrb w2, [x28, #%lu]\n", offsetof(State, sr.ofc));
+  printf("bfi x1, x2, #2, #1\n");
+
+  // Extract the cumulative underflow flag from the SR into the FPSR.
+  printf("ldrb w2, [x28, #%lu]\n", offsetof(State, sr.ufc));
+  printf("bfi x1, x2, #3, #1\n");
+
+  // Extract the cumulative inexact flag from the SR into the FPSR.
+  printf("ldrb w2, [x28, #%lu]\n", offsetof(State, sr.ixc));
+  printf("bfi x1, x2, #4, #1\n");
+
+  // Extract the cumulative input denormal flag from the SR into the FPSR.
+  printf("ldrb w2, [x28, #%lu]\n", offsetof(State, sr.idc));
+  printf("bfi x1, x2, #6, #1\n");
+
+  // Sync `fpsr` between native and lifted.
+  printf("str x1, [x28, #%lu]\n", offsetof(State, fpsr));
+  printf("msr fpcr, x1\n");
 
   // User-space thread pointer register.
   printf("ldr x1, [x28, #%lu]\n", offsetof(State, sr.tpidr_el0));
   printf("msr tpidr_el0, x1\n");
 
   // Secondary user space thread pointer register is read-only.
+
+  // SIMD regs.
+  auto base = offsetof(State, simd.v[0].dqwords);
+  printf("add x1, x28, #%lu\n", base);
+
+  printf("ldur q0, [x1, #%lu]\n", offsetof(State, simd.v[0].dqwords) - base);
+  printf("ldur q1, [x1, #%lu]\n", offsetof(State, simd.v[1].dqwords) - base);
+  printf("ldur q2, [x1, #%lu]\n", offsetof(State, simd.v[2].dqwords) - base);
+  printf("ldur q3, [x1, #%lu]\n", offsetof(State, simd.v[3].dqwords) - base);
+  printf("ldur q4, [x1, #%lu]\n", offsetof(State, simd.v[4].dqwords) - base);
+  printf("ldur q5, [x1, #%lu]\n", offsetof(State, simd.v[5].dqwords) - base);
+  printf("ldur q6, [x1, #%lu]\n", offsetof(State, simd.v[6].dqwords) - base);
+  printf("ldur q7, [x1, #%lu]\n", offsetof(State, simd.v[7].dqwords) - base);
+  printf("ldur q8, [x1, #%lu]\n", offsetof(State, simd.v[8].dqwords) - base);
+  printf("ldur q9, [x1, #%lu]\n", offsetof(State, simd.v[9].dqwords) - base);
+  printf("ldur q10, [x1, #%lu]\n", offsetof(State, simd.v[10].dqwords) - base);
+  printf("ldur q11, [x1, #%lu]\n", offsetof(State, simd.v[11].dqwords) - base);
+  printf("ldur q12, [x1, #%lu]\n", offsetof(State, simd.v[12].dqwords) - base);
+  printf("ldur q13, [x1, #%lu]\n", offsetof(State, simd.v[13].dqwords) - base);
+  printf("ldur q14, [x1, #%lu]\n", offsetof(State, simd.v[14].dqwords) - base);
+  printf("ldur q15, [x1, #%lu]\n", offsetof(State, simd.v[15].dqwords) - base);
+
+  base = offsetof(State, simd.v[16].dqwords);
+  printf("add x1, x28, #%lu\n", base);
+  printf("ldur q16, [x1, #%lu]\n", offsetof(State, simd.v[16].dqwords) - base);
+  printf("ldur q17, [x1, #%lu]\n", offsetof(State, simd.v[17].dqwords) - base);
+  printf("ldur q18, [x1, #%lu]\n", offsetof(State, simd.v[18].dqwords) - base);
+  printf("ldur q19, [x1, #%lu]\n", offsetof(State, simd.v[19].dqwords) - base);
+  printf("ldur q20, [x1, #%lu]\n", offsetof(State, simd.v[20].dqwords) - base);
+  printf("ldur q21, [x1, #%lu]\n", offsetof(State, simd.v[21].dqwords) - base);
+  printf("ldur q22, [x1, #%lu]\n", offsetof(State, simd.v[22].dqwords) - base);
+  printf("ldur q23, [x1, #%lu]\n", offsetof(State, simd.v[23].dqwords) - base);
+  printf("ldur q24, [x1, #%lu]\n", offsetof(State, simd.v[24].dqwords) - base);
+  printf("ldur q25, [x1, #%lu]\n", offsetof(State, simd.v[25].dqwords) - base);
+  printf("ldur q26, [x1, #%lu]\n", offsetof(State, simd.v[26].dqwords) - base);
+  printf("ldur q27, [x1, #%lu]\n", offsetof(State, simd.v[27].dqwords) - base);
+  printf("ldur q28, [x1, #%lu]\n", offsetof(State, simd.v[28].dqwords) - base);
+  printf("ldur q29, [x1, #%lu]\n", offsetof(State, simd.v[29].dqwords) - base);
+  printf("ldur q30, [x1, #%lu]\n", offsetof(State, simd.v[30].dqwords) - base);
+  printf("ldur q31, [x1, #%lu]\n", offsetof(State, simd.v[31].dqwords) - base);
 
   // General purpose regs (except x28, which contains State *).
   printf("ldr x0, [x28, #%lu]\n", offsetof(State, gpr.x0));

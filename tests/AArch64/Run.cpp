@@ -313,8 +313,8 @@ static void RunWithFlags(const test::TestInfo *info,
   lifted_state->gpr.x30.qword = 0;
   native_state->gpr.x30.qword = 0;
 
-  native_state->interrupt_vector = 0;
-  lifted_state->interrupt_vector = 0;
+  native_state->vector = 0;
+  lifted_state->vector = 0;
 
   native_state->hyper_call = AsyncHyperCall::kInvalid;
   lifted_state->hyper_call = AsyncHyperCall::kInvalid;
@@ -328,6 +328,10 @@ static void RunWithFlags(const test::TestInfo *info,
   // The lifted code won't update these.
   native_state->nzcv.flat = 0;
   lifted_state->nzcv.flat = 0;
+  native_state->fpcr.flat = 0;
+  lifted_state->fpcr.flat = 0;
+  native_state->fpsr.flat = 0;
+  lifted_state->fpsr.flat = 0;
 
   if (gLiftedState != gNativeState) {
     LOG(ERROR)
@@ -356,6 +360,9 @@ static void RunWithFlags(const test::TestInfo *info,
 
 TEST_P(InstrTest, SemanticsMatchNative) {
   auto info = GetParam();
+  CHECK(0 < info->num_args)
+      << "Test " << info->test_name << " must have at least one argument!";
+
   for (auto args = info->args_begin;
        args < info->args_end;
        args += info->num_args) {

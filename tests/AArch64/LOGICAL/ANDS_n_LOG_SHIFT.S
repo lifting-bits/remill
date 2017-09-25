@@ -14,25 +14,8 @@
  * limitations under the License.
  */
 
-/* CMP  <Wn>, <Wm>{, <shift> #<amount>} */
-TEST_BEGIN(CMP_SUBS_32_ADDSUB_SHIFT, cmp_w0_w1, 2)
-TEST_INPUTS(
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-    0xFFFFFFFF, 1,
-    1, 0xFFFFFFFF,
-    0xFFFFFFFF, 0xFFFFFFFF,
-    0, 0xFFFFFFFF,
-    0xFFFFFFFF, 0,
-    0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304)
-
-    cmp w0, w1
-TEST_END
-
-TEST_BEGIN(CMP_SUBS_32_ADDSUB_SHIFT, cmp_w0_w1_lsl5, 2)
+/* AND  <Wd>, <Wn>, <Wm>{, <shift> #<amount>} */
+TEST_BEGIN(ANDS_32_LOG_SHIFT, ands_w9_w0_w1, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -40,14 +23,13 @@ TEST_INPUTS(
     1, 1,
     0xFFFFFFFF, 0xFFFFFFFF,
     0, 0xFFFFFFFF,
-    0xFFFFFFFF, 0,
     0xfafbfbfd, 0xf1f2f3f4,
     0x0a0b0c0d, 0x01020304)
 
-    cmp w0, w1, lsl #5
+    ands w9, w0, w1
 TEST_END
 
-TEST_BEGIN(CMP_SUBS_32_ADDSUB_SHIFT, cmp_w0_w1_lsr5, 2)
+TEST_BEGIN(ANDS_32_LOG_SHIFT, ands_w9_w0_w1_lsl5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -55,16 +37,13 @@ TEST_INPUTS(
     1, 1,
     0xFFFFFFFF, 0xFFFFFFFF,
     0, 0xFFFFFFFF,
-    0xFFFFFFFF, 0,
     0xfafbfbfd, 0xf1f2f3f4,
     0x0a0b0c0d, 0x01020304)
 
-    cmp w0, w1, lsr #5
+    ands w9, w0, w1, lsl #5
 TEST_END
 
-/* Note: ROR is not allowed here */
-
-TEST_BEGIN(CMP_SUBS_32_ADDSUB_SHIFT, cmp_w0_w1_asr5, 2)
+TEST_BEGIN(ANDS_32_LOG_SHIFT, ands_w9_w0_w1_lsr5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -72,15 +51,42 @@ TEST_INPUTS(
     1, 1,
     0xFFFFFFFF, 0xFFFFFFFF,
     0, 0xFFFFFFFF,
-    0xFFFFFFFF, 0,
     0xfafbfbfd, 0xf1f2f3f4,
     0x0a0b0c0d, 0x01020304)
 
-    cmp w0, w1, asr #5
+    ands w9, w0, w1, lsr #5
 TEST_END
 
-/* CMP  <Xn>, <Xm>{, <shift> #<amount>} */
-TEST_BEGIN(CMP_SUBS_64_ADDSUB_SHIFT, cmp_x9_x0_x1, 2)
+TEST_BEGIN(ANDS_32_LOG_SHIFT, ands_w9_w0_w1_ror5, 2)
+TEST_INPUTS(
+    0, 0,
+    0, 1,
+    1, 0,
+    1, 1,
+    0xFFFFFFFF, 0xFFFFFFFF,
+    0, 0xFFFFFFFF,
+    0xfafbfbfd, 0xf1f2f3f4,
+    0x0a0b0c0d, 0x01020304)
+
+    ands w9, w0, w1, ror #5
+TEST_END
+
+TEST_BEGIN(ANDS_32_LOG_SHIFT, ands_w9_w0_w1_asr5, 2)
+TEST_INPUTS(
+    0, 0,
+    0, 1,
+    1, 0,
+    1, 1,
+    0xFFFFFFFF, 0xFFFFFFFF,
+    0, 0xFFFFFFFF,
+    0xfafbfbfd, 0xf1f2f3f4,
+    0x0a0b0c0d, 0x01020304)
+
+    ands w9, w0, w1, asr #5
+TEST_END
+
+/* AND  <Xd>, <Xn>, <Xm>{, <shift> #<amount>} */
+TEST_BEGIN(ANDS_64_LOG_SHIFT, ands_x9_x0_x1, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -98,10 +104,10 @@ TEST_INPUTS(
     0xfafbfbfdf1f2f3f4, 0xf1f2f3f4fafbfbfd,
     0x0a0b0c0d01020304, 0x010203040a0b0c0d)
 
-    cmp x0, x1
+    ands x9, x0, x1
 TEST_END
 
-TEST_BEGIN(CMP_SUBS_64_ADDSUB_SHIFT, cmp_x9_x0_x1_lsl5, 2)
+TEST_BEGIN(ANDS_64_LOG_SHIFT, ands_x9_x0_x1_lsl5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -119,10 +125,38 @@ TEST_INPUTS(
     0xfafbfbfdf1f2f3f4, 0xf1f2f3f4fafbfbfd,
     0x0a0b0c0d01020304, 0x010203040a0b0c0d)
 
-    cmp x0, x1, lsl #5
+    ands x9, x0, x1, lsl #5
 TEST_END
 
-TEST_BEGIN(CMP_SUBS_64_ADDSUB_SHIFT, cmp_x9_x0_x1_lsr5, 2)
+TEST_BEGIN(ANDS_64_LOG_SHIFT, ands_x9_x0_x1_lsr5, 2)
+TEST_INPUTS(
+    0, 0,
+    0, 1,
+    1, 0,
+    1, 1,
+    0xFFFFFFFF, 0xFFFFFFFF,
+    0, 0xFFFFFFFF,
+    0xfafbfbfd, 0xf1f2f3f4,
+    0x0a0b0c0d, 0x01020304)
+
+    ands x9, x0, x1, lsr #5
+TEST_END
+
+TEST_BEGIN(ANDS_64_LOG_SHIFT, ands_x9_x0_x1_ror5, 2)
+TEST_INPUTS(
+    0, 0,
+    0, 1,
+    1, 0,
+    1, 1,
+    0xFFFFFFFF, 0xFFFFFFFF,
+    0, 0xFFFFFFFF,
+    0xfafbfbfd, 0xf1f2f3f4,
+    0x0a0b0c0d, 0x01020304)
+
+    ands x9, x0, x1, ror #5
+TEST_END
+
+TEST_BEGIN(ANDS_64_LOG_SHIFT, ands_x9_x0_x1_asr5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -140,28 +174,6 @@ TEST_INPUTS(
     0xfafbfbfdf1f2f3f4, 0xf1f2f3f4fafbfbfd,
     0x0a0b0c0d01020304, 0x010203040a0b0c0d)
 
-    cmp x0, x1, lsr #5
+    ands x9, x0, x1, asr #5
 TEST_END
 
-/* Note: ROR is not allowed here */
-
-TEST_BEGIN(CMP_SUBS_64_ADDSUB_SHIFT, cmp_x9_x0_x1_asr5, 2)
-TEST_INPUTS(
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-    0xFFFFFFFF, 0xFFFFFFFF,
-    0, 0xFFFFFFFF,
-    0xfafbfbfd, 0xf1f2f3f4,
-    0x0a0b0c0d, 0x01020304,
-    0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
-    0xFFFFFFFF00000000, 0xFFFFFFFF,
-    0xFFFFFFFF, 0xFFFFFFFF00000000,
-    0xFFFFFFFFFFFFFFFF, 0,
-    0, 0xFFFFFFFFFFFFFFFF,
-    0xfafbfbfdf1f2f3f4, 0xf1f2f3f4fafbfbfd,
-    0x0a0b0c0d01020304, 0x010203040a0b0c0d)
-
-    cmp x0, x1, asr #5
-TEST_END

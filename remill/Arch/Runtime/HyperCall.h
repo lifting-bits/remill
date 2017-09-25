@@ -23,6 +23,11 @@ class SyncHyperCall {
  public:
   enum Name : uint32_t {
     kInvalid,
+    kAssertPrivileged,
+
+    kX86EmulateInstruction = 0x100U,
+    kAMD64EmulateInstruction,
+
     kX86CPUID,
     kX86ReadTSC,
     kX86ReadTSCP,
@@ -33,16 +38,11 @@ class SyncHyperCall {
     kX86SetSegmentFS,
     kX86SetSegmentGS,
 
-    kX86EmulateInstruction,
-    kAMD64EmulateInstruction,
-    kMipsEmulateInstruction,
-
     // TODO(pag): How to distinguish little- and big-endian?
-    kAArch64EmulateInstruction,
+    kAArch64EmulateInstruction = 0x200U,
+    kAArch64Breakpoint,
 
-    kAssertPrivileged,
-
-    kIntegerOverflow  // MIPS-specific.
+    kMipsEmulateInstruction = 0x300U,
   };
 } __attribute__((packed));
 
@@ -67,6 +67,8 @@ class AsyncHyperCall {
 
     kX86SysEnter,
     kX86SysExit,
+
+    kAArch64SupervisorCall,
 
     // Invalid instruction.
     kInvalidInstruction

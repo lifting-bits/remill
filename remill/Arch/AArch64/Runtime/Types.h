@@ -36,8 +36,8 @@ typedef Rn<uint64_t> R64;
 typedef RVn<vec32_t> V32;
 typedef RVn<vec64_t> V64;
 
-typedef RVnW<IF_64BIT_ELSE(vec64_t, vec32_t)> V32W;
-typedef RVnW<vec64_t> V64W;
+typedef Vn<vec128_t> V128;
+typedef VnW<vec128_t> V128W;
 
 typedef MnW<uint8_t> M8W;
 typedef MnW<uint16_t> M16W;
