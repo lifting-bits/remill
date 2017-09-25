@@ -400,25 +400,24 @@ static llvm::Value *ConvertToIntendedType(Instruction &inst, Operand &op,
                                           llvm::BasicBlock *block,
                                           llvm::Value *val,
                                           llvm::Type *intended_type) {
+  auto val_type = val->getType();
   if (val->getType() == intended_type) {
     return val;
-  } else {
-    CHECK(intended_type->isPointerTy());
-
-    auto val_type = val->getType();
-    if (val_type->isPointerTy()) {
+  } else if (val_type->isPointerTy()) {
+    if (intended_type->isPointerTy()) {
       return new llvm::BitCastInst(val, intended_type, "", block);
-    } else if (val_type->isIntegerTy()) {
+    } else if (intended_type->isIntegerTy()) {
       return new llvm::PtrToIntInst(val, intended_type, "", block);
-    } else {
-      LOG(FATAL)
-          << "Unable to convert value " << LLVMThingToString(val)
-          << " to intended argument type " << LLVMThingToString(intended_type)
-          << " for operand " << op.Serialize() << " of instruction "
-          << inst.Serialize();
     }
-
   }
+
+  LOG(FATAL)
+      << "Unable to convert value " << LLVMThingToString(val)
+      << " to intended argument type " << LLVMThingToString(intended_type)
+      << " for operand " << op.Serialize() << " of instruction "
+      << inst.Serialize();
+
+  return nullptr;
 }
 
 }  // namespace
