@@ -176,6 +176,7 @@ llvm::DataLayout AArch64Arch::DataLayout(void) const {
 enum RegClass {
   kRegX,  // 64-bit int.
   kRegW,  // Word, 32-bit int.
+  kRegB,  // Byte.
   kRegH,  // Half-word, 16-bit float.
   kRegS,  // Single-precision float.
   kRegD,  // Doubleword, Double precision float.
@@ -322,7 +323,9 @@ static std::string RegNameFP(Action action, RegClass rclass, RegUsage rtype,
   CHECK(kActionReadWrite != action);
 
   if (kActionRead == action) {
-    if (kRegH == rclass) {
+    if (kRegB == rclass) {
+      ss << "B";
+    } else if (kRegH == rclass) {
       ss << "H";
     } else if (kRegS == rclass) {
       ss << "S";
@@ -347,6 +350,7 @@ static std::string RegName(Action action, RegClass rclass, RegUsage rtype,
     case kRegX:
     case kRegW:
       return RegNameXW(action, rclass, rtype, number);
+    case kRegB:
     case kRegH:
     case kRegS:
     case kRegD:
@@ -361,6 +365,8 @@ static uint64_t ReadRegSize(RegClass rclass) {
       return 64;
     case kRegW:
       return 32;
+    case kRegB:
+      return 8;
     case kRegH:
       return 16;
     case kRegS:
@@ -378,6 +384,7 @@ static uint64_t WriteRegSize(RegClass rclass) {
     case kRegX:
     case kRegW:
       return 64;
+    case kRegB:
     case kRegH:
     case kRegS:
     case kRegD:
@@ -2007,6 +2014,87 @@ bool TryDecodeBRK_EX_EXCEPTION(const InstData &data, Instruction &inst) {
 bool TryDecodeMRS_RS_SYSTEM(const InstData &, Instruction &) {
   return false;
 }
+
+// STR  <Bt>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeSTR_B_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegB, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 8, data.Rn,
+                         static_cast<uint64_t>(data.imm12.uimm) << 0);
+  return true;
+}
+
+// STR  <Ht>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeSTR_H_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegH, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 16, data.Rn,
+                         static_cast<uint64_t>(data.imm12.uimm) << 1);
+  return true;
+}
+
+// STR  <St>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeSTR_S_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 32, data.Rn,
+                         static_cast<uint64_t>(data.imm12.uimm) << 2);
+  return true;
+}
+
+// STR  <Dt>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeSTR_D_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 64, data.Rn,
+                         static_cast<uint64_t>(data.imm12.uimm) << 3);
+  return true;
+}
+
+// STR  <Qt>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeSTR_Q_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegQ, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 128, data.Rn,
+                         static_cast<uint64_t>(data.imm12.uimm) << 4);
+  return true;
+}
+
+// LDR  <Bt>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeLDR_B_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegB, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 8, data.Rn,
+                         static_cast<uint64_t>(data.imm12.uimm) << 0);
+  return true;
+}
+
+// LDR  <Ht>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeLDR_H_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegH, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 16, data.Rn,
+                         static_cast<uint64_t>(data.imm12.uimm) << 1);
+  return true;
+}
+
+// LDR  <St>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeLDR_S_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 32, data.Rn,
+                         static_cast<uint64_t>(data.imm12.uimm) << 2);
+  return true;
+}
+
+// LDR  <Dt>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeLDR_D_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 64, data.Rn,
+                         static_cast<uint64_t>(data.imm12.uimm) << 3);
+  return true;
+}
+
+// LDR  <Qt>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeLDR_Q_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegQ, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 128, data.Rn,
+                         static_cast<uint64_t>(data.imm12.uimm) << 4);
+  return true;
+}
+
 
 }  // namespace aarch64
 

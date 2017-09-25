@@ -18,6 +18,7 @@
 #define REMILL_BC_LIFTER_H_
 
 namespace llvm {
+class Argument;
 class Function;
 class Module;
 class GlobalVariable;
@@ -54,30 +55,31 @@ class InstructionLifter {
   // Lift an operand to an instruction.
   virtual llvm::Value *LiftOperand(Instruction &inst,
                                    llvm::BasicBlock *block,
-                                   llvm::Type *op_type,
+                                   llvm::Argument *arg,
                                    Operand &op);
 
   // Lift a register operand to a value.
   virtual llvm::Value *LiftShiftRegisterOperand(Instruction &inst,
                                                 llvm::BasicBlock *block,
-                                                llvm::Type *arg_type,
+                                                llvm::Argument *arg,
                                                 Operand &reg);
 
   // Lift a register operand to a value.
   virtual llvm::Value *LiftRegisterOperand(Instruction &inst,
                                            llvm::BasicBlock *block,
-                                           llvm::Type *arg_type,
+                                           llvm::Argument *arg,
                                            Operand &reg);
 
   // Lift an immediate operand.
   virtual llvm::Value *LiftImmediateOperand(Instruction &inst,
                                             llvm::BasicBlock *block,
-                                            llvm::Type *arg_type,
+                                            llvm::Argument *arg,
                                             Operand &op);
 
   // Lift an indirect memory operand to a value.
   virtual llvm::Value *LiftAddressOperand(Instruction &inst,
                                           llvm::BasicBlock *block,
+                                          llvm::Argument *arg,
                                           Operand &mem);
 
  private:
