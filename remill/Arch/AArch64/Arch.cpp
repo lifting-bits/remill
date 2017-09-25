@@ -2055,6 +2055,47 @@ bool TryDecodeSTR_Q_LDST_POS(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// LDR  <Bt>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeLDR_B_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegB, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 8, data.Rn,
+                         static_cast<uint64_t>(data.imm12.uimm) << 0);
+  return true;
+}
+
+// LDR  <Ht>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeLDR_H_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegH, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 16, data.Rn,
+                         static_cast<uint64_t>(data.imm12.uimm) << 1);
+  return true;
+}
+
+// LDR  <St>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeLDR_S_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 32, data.Rn,
+                         static_cast<uint64_t>(data.imm12.uimm) << 2);
+  return true;
+}
+
+// LDR  <Dt>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeLDR_D_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 64, data.Rn,
+                         static_cast<uint64_t>(data.imm12.uimm) << 3);
+  return true;
+}
+
+// LDR  <Qt>, [<Xn|SP>{, #<pimm>}]
+bool TryDecodeLDR_Q_LDST_POS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegQ, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 128, data.Rn,
+                         static_cast<uint64_t>(data.imm12.uimm) << 4);
+  return true;
+}
+
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!

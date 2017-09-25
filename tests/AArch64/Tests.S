@@ -263,6 +263,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/CONVERT/UCVTF_Dn_FLOAT2INT.S"
 #include "tests/AArch64/CONVERT/UCVTF_Sn_FLOAT2INT.S"
 
+#include "tests/AArch64/DATAXFER/LDR_n_LDST_POS.S"
 #include "tests/AArch64/DATAXFER/STR_n_LDST_POS.S"
 
 #include "tests/AArch64/LOGICAL/AND_n_LOG_IMM.S"

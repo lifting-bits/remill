@@ -439,6 +439,16 @@ struct RVn<vec32_t> final {
   const addr_t val;  // Scales to "natural" machine word length.
 };
 
+template <>
+struct RVn<vec16_t> final {
+  const addr_t val;  // Scales to "natural" machine word length.
+};
+
+template <>
+struct RVn<vec8_t> final {
+  const addr_t val;  // Scales to "natural" machine word length.
+};
+
 template <typename T>
 struct RVnW;
 
