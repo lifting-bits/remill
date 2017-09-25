@@ -239,3 +239,37 @@ DEF_ISEL(ADRP_ONLY_PCRELADDR) = ADRP;
 
 DEF_ISEL(ADR_ONLY_PCRELADDR) = Load<R64W, I64>;
 
+namespace {
+
+DEF_SEM(STR_B, V8 src, MV8W dst) {
+  UWriteV8(dst, UReadV8(src));
+  return memory;
+}
+
+DEF_SEM(STR_H, V16 src, MV16W dst) {
+  UWriteV16(dst, UReadV16(src));
+  return memory;
+}
+
+DEF_SEM(STR_S, V32 src, MV32W dst) {
+  FWriteV32(dst, FReadV32(src));
+  return memory;
+}
+
+DEF_SEM(STR_D, V64 src, MV64W dst) {
+  FWriteV64(dst, FReadV64(src));
+  return memory;
+}
+
+DEF_SEM(STR_Q, V128 src, MV128W dst) {
+  UWriteV128(dst, UReadV128(src));
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(STR_B_LDST_POS) = STR_B;
+DEF_ISEL(STR_H_LDST_POS) = STR_H;
+DEF_ISEL(STR_S_LDST_POS) = STR_S;
+DEF_ISEL(STR_D_LDST_POS) = STR_D;
+DEF_ISEL(STR_Q_LDST_POS) = STR_Q;

@@ -33,9 +33,10 @@ typedef Rn<uint16_t> R16;
 typedef Rn<uint32_t> R32;
 typedef Rn<uint64_t> R64;
 
-typedef RVn<vec32_t> V32;
-typedef RVn<vec64_t> V64;
-
+typedef Vn<vec8_t> V8;
+typedef Vn<vec16_t> V16;
+typedef Vn<vec32_t> V32;
+typedef Vn<vec64_t> V64;
 typedef Vn<vec128_t> V128;
 typedef VnW<vec128_t> V128W;
 
@@ -44,6 +45,8 @@ typedef MnW<uint16_t> M16W;
 typedef MnW<uint32_t> M32W;
 typedef MnW<uint64_t> M64W;
 
+typedef MVnW<vec8_t> MV8W;
+typedef MVnW<vec16_t> MV16W;
 typedef MVnW<vec32_t> MV32W;
 typedef MVnW<vec64_t> MV64W;
 typedef MVnW<vec128_t> MV128W;
