@@ -280,12 +280,11 @@ SYMBOL(__aarch64_test_table_begin):
 
 #include "tests/AArch64/COND/CSEL_n_CONDSEL.S"
 #include "tests/AArch64/COND/x_CSNEG_n_CONDSEL.S"
-// #include "tests/AArch64/COND/CCMP_n_CONDCMP_IMM.S"
+#include "tests/AArch64/COND/CCMP_n_CONDCMP_IMM.S"
 #include "tests/AArch64/COND/x_CSINC_n_CONDSEL.S"
 #include "tests/AArch64/COND/x_CSINV_n_CONDSEL.S"
 
 #endif
-
 
      /* Create a symbol that represents the end of the test information table. */
     .section "__aarch64_test_table", "a"

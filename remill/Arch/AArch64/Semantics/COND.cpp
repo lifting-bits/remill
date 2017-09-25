@@ -17,13 +17,14 @@
 
 namespace {
 
-template <bool (*check_cond)(const State &), typename D, typename S1, typename S2>
+template <bool (*check_cond)(const State &), typename D,
+          typename S1, typename S2>
 DEF_SEM(CSEL, D dst, S1 src1, S2 src2) {
-    auto val = check_cond(state) ? Read(src1) : Read(src2);
-    WriteZExt(dst, val);
-    return memory;
+  auto val = check_cond(state) ? Read(src1) : Read(src2);
+  WriteZExt(dst, val);
+  return memory;
 }
-} // namespace
+}  // namespace
 
 DEF_ISEL(CSEL_32_CONDSEL_GE) = CSEL<CondGE, R32W, R32, R32>;
 DEF_ISEL(CSEL_32_CONDSEL_GT) = CSEL<CondGT, R32W, R32, R32>;
@@ -59,13 +60,16 @@ DEF_ISEL(CSEL_64_CONDSEL_AL) = CSEL<CondAL, R64W, R64, R64>;
 
 namespace {
 
-template <bool (*check_cond)(const State &), typename D, typename S1, typename S2>
+template <bool (*check_cond)(const State &), typename D,
+          typename S1, typename S2>
 DEF_SEM(CSNEG, D dst, S1 src1, S2 src2) {
-  auto val = check_cond(state) ? Read(src1) : UAdd(UNot(Read(src2)), ZExtTo<S2>(1));
-  WriteZExt(dst, val);
+  WriteZExt(dst, Select(check_cond(state),
+                        Read(src1),
+                        UAdd(UNot(Read(src2)), ZExtTo<S2>(1))));
   return memory;
 }
-} // namespace
+
+}  // namespace
 
 DEF_ISEL(CSNEG_32_CONDSEL_GE) = CSNEG<CondGE, R32W, R32, R32>;
 DEF_ISEL(CSNEG_32_CONDSEL_GT) = CSNEG<CondGT, R32W, R32, R32>;
@@ -101,10 +105,10 @@ DEF_ISEL(CSNEG_64_CONDSEL_AL) = CSNEG<CondAL, R64W, R64, R64>;
 
 namespace {
 
-template <bool (*check_cond)(const State &), typename D, typename S1, typename S2>
+template <bool (*check_cond)(const State &), typename D,
+          typename S1, typename S2>
 DEF_SEM(CSINC, D dst, S1 src1, S2 src2)  {
-  auto val = check_cond(state)? Read(src1) : UAdd(Read(src2), 1);
-  WriteZExt(dst, val);
+  WriteZExt(dst, Select(check_cond(state), Read(src1), UAdd(Read(src2), 1)));
   return memory;
 }
 }  // namespace
@@ -144,13 +148,13 @@ DEF_ISEL(CSINC_64_CONDSEL_AL) = CSINC<CondAL, R64W, R64, R64>;
 
 namespace {
 
-template <bool (*check_cond)(const State &), typename D, typename S1, typename S2>
+template <bool (*check_cond)(const State &), typename D,
+          typename S1, typename S2>
 DEF_SEM(CSINV, D dst, S1 src1, S2 src2)  {
-  auto val = check_cond(state)? Read(src1) : UNot(Read(src2));
-  WriteZExt(dst, val);
+  WriteZExt(dst, Select(check_cond(state), Read(src1), UNot(Read(src2))));
   return memory;
 }
-} // namespace
+}  // namespace
 
 DEF_ISEL(CSINV_32_CONDSEL_GE) = CSINV<CondGE, R32W, R32, R32>;
 DEF_ISEL(CSINV_32_CONDSEL_GT) = CSINV<CondGT, R32W, R32, R32>;
@@ -189,9 +193,7 @@ template <bool (*check_cond)(const State &), typename S1, typename S2>
 DEF_SEM(CCMP, S1 src1, S2 src2, S2 nzcv) {
   using T = typename BaseType<S1>::BT;
   if (check_cond(state)) {
-    //
-    // (void) AddWithCarryNZCV(state, Read(src1), UNot(Read(src2)), T(1));
-    return memory;
+    (void) AddWithCarryNZCV(state, Read(src1), UNot(Read(src2)), T(1));
   } else {
     auto nzcv_val = Read(nzcv);
     FLAG_V = UCmpNeq(UAnd(nzcv_val, T(1)), T(0));
@@ -201,6 +203,6 @@ DEF_SEM(CCMP, S1 src1, S2 src2, S2 nzcv) {
   }
   return memory;
 }
-} // namespace
+}  // namespace
 
 DEF_ISEL(CCMP_32_CONDCMP_IMM_EQ) = CCMP<CondEQ, R32, I32>;
