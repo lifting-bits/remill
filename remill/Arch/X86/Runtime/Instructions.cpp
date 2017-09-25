@@ -128,7 +128,7 @@
 #define REG_CS_BASE 0
 
 #define HYPER_CALL state.hyper_call
-#define INTERRUPT_VECTOR state.interrupt_vector
+#define INTERRUPT_VECTOR state.hyper_call_vector
 
 namespace {
 // Takes the place of an unsupported instruction.

@@ -77,7 +77,8 @@
 #define FLAG_N state.sr.n  // Negative.
 
 #define HYPER_CALL state.hyper_call
-#define INTERRUPT_VECTOR state.interrupt_vector
+#define INTERRUPT_VECTOR state.hyper_call_vector
+#define HYPER_CALL_VECTOR state.hyper_call_vector
 
 namespace {
 // Takes the place of an unsupported instruction.
@@ -109,3 +110,4 @@ DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 #include "remill/Arch/AArch64/Semantics/LOGICAL.cpp"
 #include "remill/Arch/AArch64/Semantics/MISC.cpp"
 #include "remill/Arch/AArch64/Semantics/SHIFT.cpp"
+#include "remill/Arch/AArch64/Semantics/SYSTEM.cpp"

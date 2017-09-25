@@ -18123,44 +18123,6 @@ bool TryDecodeSTRH_32_LDST_REGOFF(const InstData &, Instruction &) {
   return false;
 }
 
-// BRK BRK_EX_exception:
-//   0 0 LL       0
-//   1 0 LL       1
-//   2 0 op2      0
-//   3 0 op2      1
-//   4 0 op2      2
-//   5 x imm16    0
-//   6 x imm16    1
-//   7 x imm16    2
-//   8 x imm16    3
-//   9 x imm16    4
-//  10 x imm16    5
-//  11 x imm16    6
-//  12 x imm16    7
-//  13 x imm16    8
-//  14 x imm16    9
-//  15 x imm16    10
-//  16 x imm16    11
-//  17 x imm16    12
-//  18 x imm16    13
-//  19 x imm16    14
-//  20 x imm16    15
-//  21 1 opc      0
-//  22 0 opc      1
-//  23 0 opc      2
-//  24 0
-//  25 0
-//  26 1
-//  27 0
-//  28 1
-//  29 0
-//  30 1
-//  31 1
-// BRK  #<imm>
-bool TryDecodeBRK_EX_EXCEPTION(const InstData &, Instruction &) {
-  return false;
-}
-
 // UADDLP UADDLP_asimdmisc_P:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -25001,44 +24963,6 @@ bool TryDecodeTLBI_SYS_CR_SYSTEM(const InstData &, Instruction &) {
   return false;
 }
 
-// SVC SVC_EX_exception:
-//   0 1 LL       0
-//   1 0 LL       1
-//   2 0 op2      0
-//   3 0 op2      1
-//   4 0 op2      2
-//   5 x imm16    0
-//   6 x imm16    1
-//   7 x imm16    2
-//   8 x imm16    3
-//   9 x imm16    4
-//  10 x imm16    5
-//  11 x imm16    6
-//  12 x imm16    7
-//  13 x imm16    8
-//  14 x imm16    9
-//  15 x imm16    10
-//  16 x imm16    11
-//  17 x imm16    12
-//  18 x imm16    13
-//  19 x imm16    14
-//  20 x imm16    15
-//  21 0 opc      0
-//  22 0 opc      1
-//  23 0 opc      2
-//  24 0
-//  25 0
-//  26 1
-//  27 0
-//  28 1
-//  29 0
-//  30 1
-//  31 1
-// SVC  #<imm>
-bool TryDecodeSVC_EX_EXCEPTION(const InstData &, Instruction &) {
-  return false;
-}
-
 // FCMPE FCMPE_H_floatcmp:
 //   0 0
 //   1 0
@@ -25644,44 +25568,6 @@ bool TryDecodeFMOV_S_FLOATIMM(const InstData &, Instruction &) {
 //  31 0 M        0
 // FMOV  <Dd>, #<imm>
 bool TryDecodeFMOV_D_FLOATIMM(const InstData &, Instruction &) {
-  return false;
-}
-
-// MRS MRS_RS_system:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x op2      0
-//   6 x op2      1
-//   7 x op2      2
-//   8 x CRm      0
-//   9 x CRm      1
-//  10 x CRm      2
-//  11 x CRm      3
-//  12 x CRn      0
-//  13 x CRn      1
-//  14 x CRn      2
-//  15 x CRn      3
-//  16 x op1      0
-//  17 x op1      1
-//  18 x op1      2
-//  19 x o0       0
-//  20 1
-//  21 1 L        0
-//  22 0
-//  23 0
-//  24 1
-//  25 0
-//  26 1
-//  27 0
-//  28 1
-//  29 0
-//  30 1
-//  31 1
-// MRS  <Xt>, (<systemreg>|S<op0>_<op1>_<Cn>_<Cm>_<op2>)
-bool TryDecodeMRS_RS_SYSTEM(const InstData &, Instruction &) {
   return false;
 }
 

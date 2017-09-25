@@ -1991,6 +1991,23 @@ bool TryDecodeUCVTF_D64_FLOAT2INT(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// SVC  #<imm>
+bool TryDecodeSVC_EX_EXCEPTION(const InstData &data, Instruction &inst) {
+  AddImmOperand(inst, data.imm16.uimm, kUnsigned, 32);
+  return true;
+}
+
+// BRK  #<imm>
+bool TryDecodeBRK_EX_EXCEPTION(const InstData &data, Instruction &inst) {
+  AddImmOperand(inst, data.imm16.uimm, kUnsigned, 32);
+  return true;
+}
+
+// MRS  <Xt>, (<systemreg>|S<op0>_<op1>_<Cn>_<Cm>_<op2>)
+bool TryDecodeMRS_RS_SYSTEM(const InstData &, Instruction &) {
+  return false;
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
