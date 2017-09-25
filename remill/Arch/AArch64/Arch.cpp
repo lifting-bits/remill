@@ -1579,35 +1579,6 @@ bool TryDecodeAND_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
   return TryDecodeEOR_64_LOG_SHIFT(data, inst);
 }
 
-// ANDS  <Wd>, <Wn>, #<imm>
-bool TryDecodeANDS_32S_LOG_IMM(const InstData &data, Instruction &inst) {
-  uint64_t wmask = 0;
-  if (data.N) {
-    return false;  // `if sf == '0' && N != '0' then ReservedValue();`.
-  } else if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
-                      true, 32, &wmask, nullptr)) {
-    return false;
-  }
-  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
-  AddImmOperand(inst, wmask, kUnsigned, 32);
-  return true;
-}
-
-// ANDS  <Xd>, <Xn>, #<imm>
-bool TryDecodeANDS_64S_LOG_IMM(const InstData &data, Instruction &inst) {
-  uint64_t wmask = 0;
-  if (data.N) {
-    return false;  // `if sf == '0' && N != '0' then ReservedValue();`.
-  } else if (!DecodeBitMasks(data.N, data.imms.uimm, data.immr.uimm,
-                      true, 32, &wmask, nullptr)) {
-    return false;
-  }
-  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
-  AddImmOperand(inst, wmask, kUnsigned, 32);
-  return true;
-}
 // ORR  <Wd|WSP>, <Wn>, #<imm>
 bool TryDecodeORR_32_LOG_IMM(const InstData &data, Instruction &inst) {
   return TryDecodeEOR_32_LOG_IMM(data, inst);
