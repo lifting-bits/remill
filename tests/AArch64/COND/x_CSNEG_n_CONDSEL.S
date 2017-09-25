@@ -14,37 +14,52 @@
  * limitations under the License.
  */
 
- TEST_BEGIN(CSEL_32_CONDSEL_EQ, csel_32_eq, 2)
- TEST_INPUTS(
-     0x0, 0x1,
-     0x22, 0x22,
-     0xffffffff, 0x1,
-     0x1, 0xffffffff
- )
-    mov w3, #0xdead
-    mov w4, #0xface
-    csel w2, w3, w4, EQ
-TEST_END
-
- TEST_BEGIN(CSEL_32_CONDSEL_HI, csel_32_HI, 2)
- TEST_INPUTS(
-     0x0, 0x1,
-     0x22, 0x22,
-     0xffffffff, 0x1,
-     0x1, 0xffffffff
- )
-    mov w3, #0xdead
-    mov w4, #0xface
-    csel w2, w3, w4, HI
-TEST_END
-    
-TEST_BEGIN(CSEL_64_CONDSEL_EQ, csel_64_eq, 2)
+TEST_BEGIN(CSNEG_32_CONDSEL_EQ, csneg_32_eq, 2)
 TEST_INPUTS(
      0x0, 0x1,
-     0xfffffffffffffffc, 0xfffffffffffffffc
+     0x51, 0x22,
+     0xffffffff, 0x1,
+     0x1, 0xffffffff
+ )
+    csneg w2, w0, w1, EQ
+TEST_END
+
+TEST_BEGIN(CSNEG_32_CONDSEL_HI, csneg_32_HI, 2)
+TEST_INPUTS(
+     0x0, 0x1,
+     0x22, 0x22,
+     0xffffffff, 0x1,
+     0x1, 0xffffffff
+ )
+    csneg w2, w0, w1, HI
+TEST_END
+
+TEST_BEGIN(CSNEG_32_CONDSEL_EQ, cneg_csneg_32_ne, 1)
+TEST_INPUTS(
+     0x0,
+     0x51, 
+     0x22,
+     0xffffffff
 )
-    mov x3, #0xdead
-    mov x4, #0xface
-    csel x2, x3, x4, EQ
+    cneg w2, w0, ne
 TEST_END
     
+TEST_BEGIN(CSNEG_64_CONDSEL_EQ, csneg_64_eq, 2)
+TEST_INPUTS(
+     0x0, 0x1,
+     0xfffffffffffffffc, 0xfffffffffffffffc,
+     0x1, 0xffffffffffffffff,
+     0xffffffffffffffff, 0xfffffffffffffffe
+)
+    csneg x2, x0, x1, EQ
+TEST_END
+    
+TEST_BEGIN(CSNEG_64_CONDSEL_EQ, cneg_csneg_64_ne, 1)
+TEST_INPUTS(
+     0x0,
+     0xfffffffffffffffc,
+     0xffffffffffffffff,
+     0xfffffffffffffffe
+)
+    cneg x2, x0, ne
+TEST_END

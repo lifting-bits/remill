@@ -21,7 +21,6 @@ TEST_INPUTS(
 )
     mov w3, #0xdead
     mov w4, #0xface
-    cmp w0, w1
     csinv w2, w3, w4, eq
 TEST_END
     
@@ -32,44 +31,39 @@ TEST_END
  )
     mov x3, #0xdead
     mov x4, #0xface
-    cmp x0, x1
     csinv x2, x3, x4, eq
 TEST_END
 
-TEST_BEGIN(CINV_CSINV_32_CONDSEL_EQ, cisv_csinv_32_eq, 2)
+TEST_BEGIN(CSINV_32_CONDSEL_EQ, cisv_csinv_32_ne, 2)
 TEST_INPUTS(
     0x0, 0x1,
     0x22, 0x22
 )
     mov w3, #0xface
-    cmp w0, w1
-    cinv w4, w3, eq
+    cinv w4, w3, ne
 TEST_END
     
-TEST_BEGIN(CINV_CSINV_64_CONDSEL_EQ, cinv_csinv_64_eq, 2)
+TEST_BEGIN(CSINV_64_CONDSEL_EQ, cinv_csinv_64_ne, 2)
 TEST_INPUTS(
      0x0, 0x1,
      0xfffffffffffffffc, 0xfffffffffffffffc
  )
     mov x3, #0xface
-    cmp x0, x1
-    cinv x5, x3, eq
+    cinv x5, x3, ne
 TEST_END
 
-TEST_BEGIN(CSETM_CSINV_32_CONDSEL_EQ, csetm_csinv_32_eq, 2)
+TEST_BEGIN(CSINV_32_CONDSEL_EQ, csetm_csinv_32_ne, 2)
 TEST_INPUTS(
-    // 0x0, 0x1,
+    0x0, 0x1,
     0x22, 0x22
 )
-    cmp w0, w1
-    csetm w2, eq
+    csetm w2, ne
 TEST_END
 
-TEST_BEGIN(CSETM_CSINV_64_CONDSEL_EQ, csetm_csinv_64_eq, 2)
+TEST_BEGIN(CSINV_64_CONDSEL_EQ, csetm_csinv_64_ne, 2)
 TEST_INPUTS(
-    //  0x0, 0x1,
+     0x0, 0x1,
      0xfffffffffffffffc, 0xfffffffffffffffc
  )
-    cmp x0, x1
-    csetm x3, eq
+    csetm x3, ne
 TEST_END

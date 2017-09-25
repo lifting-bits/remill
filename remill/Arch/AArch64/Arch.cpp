@@ -2196,25 +2196,27 @@ bool TryDecodeCSINC_64_CONDSEL(const InstData &data, Instruction &inst) {
   return DecodeConditionalRegSelect(data, inst, kRegX, 3);
 }
 
+//////////////////////// DEPRICATED ALIAS
 // CINC  <Wd>, <Wn>, <cond>
 bool TryDecodeCINC_CSINC_32_CONDSEL(const InstData &data, Instruction &inst) {
-  return DecodeConditionalRegSelect(data, inst, kRegW, 2, true);
+  return false;
 }
 
 // CINC  <Xd>, <Xn>, <cond>
 bool TryDecodeCINC_CSINC_64_CONDSEL(const InstData &data, Instruction &inst) {
-  return DecodeConditionalRegSelect(data, inst, kRegX, 2, true);
+  return false;
 }
 
 // CSET  <Wd>, <cond>
 bool TryDecodeCSET_CSINC_32_CONDSEL(const InstData &data, Instruction &inst) {
-  return DecodeConditionalRegSelect(data, inst, kRegW, 1, true);
+  return false;
 }
 
-// // CSET  <Xd>, <cond>
+// CSET  <Xd>, <cond>
 bool TryDecodeCSET_CSINC_64_CONDSEL(const InstData &data, Instruction &inst) {
-  return DecodeConditionalRegSelect(data, inst, kRegX, 1, true);
+  return false;
 }
+//////////////////////////////////////////
 
 // CSINV  <Wd>, <Wn>, <Wm>, <cond>
 bool TryDecodeCSINV_32_CONDSEL(const InstData &data, Instruction &inst) {
@@ -2226,29 +2228,40 @@ bool TryDecodeCSINV_64_CONDSEL(const InstData &data, Instruction &inst) {
   return DecodeConditionalRegSelect(data, inst, kRegX, 3);
 }
 
+///////////////// DEPRICATED ALIAS
 // CINV  <Wd>, <Wn>, <cond>
 bool TryDecodeCINV_CSINV_32_CONDSEL(const InstData &data, Instruction &inst) {
-  return DecodeConditionalRegSelect(data, inst, kRegW, 2, true);
+  return false;
 }
 
 // CINV  <Xd>, <Xn>, <cond>
 bool TryDecodeCINV_CSINV_64_CONDSEL(const InstData &data, Instruction &inst) {
-  return DecodeConditionalRegSelect(data, inst, kRegX, 2, true);
+  return false;
 }
 
 // CSETM  <Wd>, <cond>
 bool TryDecodeCSETM_CSINV_32_CONDSEL(const InstData &data, Instruction &inst) {
-  return DecodeConditionalRegSelect(data, inst, kRegW, 1, true);
+  return false;
 }
 
 // CSETM  <Xd>, <cond>
 bool TryDecodeCSETM_CSINV_64_CONDSEL(const InstData &data, Instruction &inst) {
-  return DecodeConditionalRegSelect(data, inst, kRegX, 1, true);
+  return false;
+}
+///////////////////////////////////
+
+// CSNEG  <Wd>, <Wn>, <Wm>, <cond>
+bool TryDecodeCSNEG_32_CONDSEL(const InstData &data, Instruction &inst) {
+  return DecodeConditionalRegSelect(data, inst, kRegW, 3);
+}
+
+// CSNEG  <Xd>, <Xn>, <Xm>, <cond>
+bool TryDecodeCSNEG_64_CONDSEL(const InstData &data, Instruction &inst) {
+  return DecodeConditionalRegSelect(data, inst, kRegX, 3);
 }
 
 // CCMP  <Wn>, #<imm>, #<nzcv>, <cond>
 bool TryDecodeCCMP_32_CONDCMP_IMM(const InstData &data, Instruction &inst) {
-  LOG(ERROR) << "INSIDE CCMP DECODE";
   DecodeConditionalRegSelect(data, inst, kRegW, 1);
   AddImmOperand(inst, data.imm5.uimm);
   AddImmOperand(inst, data.nzcv);

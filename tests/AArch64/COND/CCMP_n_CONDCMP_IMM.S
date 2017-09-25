@@ -31,25 +31,23 @@ TEST_END
 //     0xffffff
 // )
 //   mov w9, #0xdead
-//   cmp w0, w0
 //   ccmp w0, #0x11, #0xc, eq
 //   b.eq 99f
 //   mov w9, #0xface
 // 99:
 // TEST_END
 
-// TEST_BEGIN(CCMP_32_CONDCMP_IMM_EQ, ccmp_32_cmpeq_eq_11_c, 1)
+// TEST_BEGIN(CCMP_32_CONDCMP_IMM_HI, ccmp_32_cmpeq_hi_11_c, 1)
 // TEST_INPUTS(
-//     // 0x11
-//     // 0x0,
-//     0x1
-//     // 0xf,
-//     // 0x7,
-//     // 0xffffff
+//     0x11,
+//     0x0,
+//     0x1,
+//     0xf,
+//     0x7,
+//     0xffffff
 // )
 //   mov w9, #0xdead
-//   cmp w0, w0
-//   ccmp w0, #0x11, #0xc, eq
+//   ccmp w0, #0x11, #0xc, hi
 //   b.eq 99f
 //   mov w9, #0xface
 // 99:

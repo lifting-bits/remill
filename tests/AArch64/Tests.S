@@ -253,6 +253,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BITBYTE/EXTR_n_EXTRACT.S"
 #include "tests/AArch64/BITBYTE/SBFM_nM_BITFIELD.S"
 #include "tests/AArch64/BITBYTE/UBFM_nM_BITFIELD.S"
+#include "tests/AArch64/BITBYTE/CLZ_n_DP_1SRC.S"
 
 #include "tests/AArch64/BRANCH/B_ONLY_CONDBRANCH.S"
 #include "tests/AArch64/BRANCH/CBNZ_n_COMPBRANCH.S"
@@ -277,12 +278,14 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/LOGICAL/ORR_n_LOG_IMM.S"
 #include "tests/AArch64/LOGICAL/ORR_n_LOG_SHIFT.S"
 
+#include "tests/AArch64/COND/CSEL_n_CONDSEL.S"
+#include "tests/AArch64/COND/x_CSNEG_n_CONDSEL.S"
+// #include "tests/AArch64/COND/CCMP_n_CONDCMP_IMM.S"
+#include "tests/AArch64/COND/x_CSINC_n_CONDSEL.S"
+#include "tests/AArch64/COND/x_CSINV_n_CONDSEL.S"
+
 #endif
 
-#include "tests/AArch64/BITBYTE/CLZ_n_DP_1SRC.S"
-#include "tests/AArch64/COND/CSEL_n_CONDSEL.S"
-//#include "tests/AArch64/COND/x_CSINC_n_CONDSEL.S"
-//#include "tests/AArch64/COND/x_CSINV_n_CONDSEL.S"
 
      /* Create a symbol that represents the end of the test information table. */
     .section "__aarch64_test_table", "a"
