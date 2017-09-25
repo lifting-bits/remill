@@ -160,8 +160,10 @@ bool InstructionLifter::LiftIntoBlock(
         << arg_num << " arguments for instruction "
         << arch_inst.Serialize();
 
-    auto arg_type = isel_func_type->getParamType(arg_num++);
-    auto operand = LiftOperand(arch_inst, block, arg_type, op);
+    auto arg = remill::NthArgument(isel_func, arg_num);
+    auto arg_type = arg->getType();
+    auto operand = LiftOperand(arch_inst, block, arg, op);
+    arg_num += 1;
     auto op_type = operand->getType();
     CHECK(op_type == arg_type)
         << "Lifted operand " << op.Debug() << " to "
@@ -244,13 +246,14 @@ static llvm::Value *LoadWordRegValOrZero(llvm::BasicBlock *block,
 
 llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
     Instruction &inst, llvm::BasicBlock *block,
-    llvm::Type *arg_type, Operand &op) {
+    llvm::Argument *arg, Operand &op) {
 
   llvm::Function *func = block->getParent();
   llvm::Module *module = func->getParent();
   auto &context = module->getContext();
   auto &arch_reg = op.shift_reg.reg;
 
+  auto arg_type = arg->getType();
   CHECK(arg_type->isIntegerTy())
     << "Expected " << arch_reg.name << " to be an integral type "
     << "for instruction at " << std::hex << inst.pc;
@@ -381,44 +384,54 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
   return reg;
 }
 
+namespace {
+
+static llvm::Type *IntendedArgumentType(llvm::Argument *arg) {
+  for (auto user : arg->users()) {
+    if (auto cast_inst = llvm::dyn_cast<llvm::IntToPtrInst>(user)) {
+      return cast_inst->getType();
+    }
+  }
+  return arg->getType();
+}
+
+static llvm::Value *ConvertToIntendedType(llvm::BasicBlock *block,
+                                          llvm::Value *val,
+                                          llvm::Type *intended_type) {
+  if (val->getType() == intended_type) {
+    return val;
+  } else {
+    return new llvm::BitCastInst(val, intended_type, "", block);
+  }
+}
+
+}  // namespace
+
 // Load a register operand. This deals uniformly with write- and read-operands
 // for registers. In the case of write operands, the argument type is always
 // a pointer. In the case of read operands, the argument type is sometimes
 // a pointer (e.g. when passing a vector to an instruction semantics function).
 llvm::Value *InstructionLifter::LiftRegisterOperand(
     Instruction &inst, llvm::BasicBlock *block,
-    llvm::Type *arg_type, Operand &op) {
+    llvm::Argument *arg, Operand &op) {
 
   llvm::Function *func = block->getParent();
   llvm::Module *module = func->getParent();
   auto &arch_reg = op.reg;
 
-  if (auto ptr_type = llvm::dyn_cast_or_null<llvm::PointerType>(arg_type)) {
-    auto val = LoadRegAddress(block, arch_reg.name);
-    auto val_ptr_type = llvm::dyn_cast<llvm::PointerType>(val->getType());
-
-    // Vectors are passed as void pointers because on something like x86,
-    // we want to treat XMM, YMM, and ZMM registers uniformly.
-    if (val_ptr_type->getElementType() != ptr_type->getElementType()) {
-      val = new llvm::BitCastInst(val, ptr_type, "", block);
-    }
-    return val;
+  const auto real_arg_type = arg->getType();
+  auto arg_type = real_arg_type;
 
   // LLVM on AArch64 converts things like `RnW<uint64_t>`, which is a struct
   // containing a `uint64_t *`, into a `uintptr_t` when they are being passed
   // as arguments.
-  } else if (Operand::kActionWrite == op.action) {
-    CHECK(GetHostArch()->IsAArch64())
-        << "Operand " << op.Debug() << " is a write operand, but argument "
-        << " type " << LLVMThingToString(arg_type) << " is not a pointer type "
-        << std::hex << inst.pc;
+  if (arg_type->isIntegerTy() && GetHostArch()->IsAArch64()) {
+    arg_type = IntendedArgumentType(arg);
+  }
 
-    CHECK(arg_type == word_type)
-        << LLVMThingToString(arg_type) << " must be a pointer-sized integer "
-        << " in order to store the address of the register.";
-
+  if (auto ptr_type = llvm::dyn_cast_or_null<llvm::PointerType>(arg_type)) {
     auto val = LoadRegAddress(block, arch_reg.name);
-    return new llvm::PtrToIntInst(val, arg_type, "", block);
+    return ConvertToIntendedType(block, val, real_arg_type);
 
   } else {
     CHECK(arg_type->isIntegerTy() || arg_type->isFloatingPointTy())
@@ -476,15 +489,16 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(
       }
     }
 
-    return val;
+    return ConvertToIntendedType(block, val, real_arg_type);
   }
 }
 
 // Lift an immediate operand.
 llvm::Value *InstructionLifter::LiftImmediateOperand(Instruction &inst,
                                                      llvm::BasicBlock *,
-                                                     llvm::Type *arg_type,
+                                                     llvm::Argument *arg,
                                                      Operand &arch_op) {
+  auto arg_type = arg->getType();
   if (arch_op.size > word_type->getBitWidth()) {
     CHECK(arg_type->isIntegerTy(static_cast<uint32_t>(arch_op.size)))
         << "Argument to semantics function for instruction at " << std::hex
@@ -514,7 +528,7 @@ llvm::Value *InstructionLifter::LiftImmediateOperand(Instruction &inst,
 
 // Zero-extend a value to be the machine word size.
 llvm::Value *InstructionLifter::LiftAddressOperand(
-    Instruction &inst, llvm::BasicBlock *block, Operand &op) {
+    Instruction &inst, llvm::BasicBlock *block, llvm::Argument *, Operand &op) {
   auto &arch_addr = op.addr;
   auto zero = llvm::ConstantInt::get(word_type, 0, false);
   auto word_size = word_type->getBitWidth();
@@ -574,8 +588,9 @@ llvm::Value *InstructionLifter::LiftAddressOperand(
 // Lift an operand for use by the instruction.
 llvm::Value *InstructionLifter::LiftOperand(Instruction &inst,
                                             llvm::BasicBlock *block,
-                                            llvm::Type *arg_type,
+                                            llvm::Argument *arg,
                                             Operand &arch_op) {
+  auto arg_type = arg->getType();
   switch (arch_op.type) {
     case Operand::kTypeInvalid:
       LOG(FATAL)
@@ -587,17 +602,17 @@ llvm::Value *InstructionLifter::LiftOperand(Instruction &inst,
           << "Can't write to a shift register operand "
           << "for instruction at " << std::hex << inst.pc;
 
-      return LiftShiftRegisterOperand(inst, block, arg_type, arch_op);
+      return LiftShiftRegisterOperand(inst, block, arg, arch_op);
 
     case Operand::kTypeRegister:
       CHECK(arch_op.size == arch_op.reg.size)
           << "Operand size and register size must match for register "
           << arch_op.reg.name << ".";
 
-      return LiftRegisterOperand(inst, block, arg_type, arch_op);
+      return LiftRegisterOperand(inst, block, arg, arch_op);
 
     case Operand::kTypeImmediate:
-      return LiftImmediateOperand(inst, block, arg_type, arch_op);
+      return LiftImmediateOperand(inst, block, arg, arch_op);
 
     case Operand::kTypeAddress:
       if (arg_type != word_type) {
@@ -609,7 +624,7 @@ llvm::Value *InstructionLifter::LiftOperand(Instruction &inst,
             << std::hex << inst.pc;
       }
 
-      return LiftAddressOperand(inst, block, arch_op);
+      return LiftAddressOperand(inst, block, arg, arch_op);
   }
 
   LOG(FATAL)
