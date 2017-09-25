@@ -36,7 +36,7 @@ TEST_END
     csinc x2, x3, x4, eq
 TEST_END
 
-TEST_BEGIN(CINC_CSINC_32_CONDSEL_EQ, cisc_csinc_32_eq, 2)
+TEST_BEGIN(CINC_CSINC_32_CONDSEL_EQ, cinc_csinc_32_eq, 2)
 TEST_INPUTS(
     0x0, 0x1,
     0x22, 0x22
