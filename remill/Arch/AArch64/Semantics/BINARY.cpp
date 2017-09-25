@@ -77,7 +77,6 @@ DEF_SEM(ADDS, D dst, S1 src1, S2 src2) {
   WriteZExt(dst, res);
   return memory;
 }
-
 }  // namespace
 
 DEF_ISEL(SUBS_32_ADDSUB_SHIFT) = SUBS<R32W, R32, I32>;

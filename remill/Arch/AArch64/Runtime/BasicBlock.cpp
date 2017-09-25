@@ -117,10 +117,10 @@ extern "C" {
   auto &X30 = state.gpr.x30.qword;
 
   auto &FP = state.gpr.x29.qword;
-  auto &WFP = state.gpr.x29.qword;
+  auto &WFP = state.gpr.x29.dword;
 
   auto &LP = state.gpr.x30.qword;
-  auto &WLP = state.gpr.x30.qword;
+  auto &WLP = state.gpr.x30.dword;
 
   auto &SP = state.gpr.sp.qword;
   auto &WSP = state.gpr.sp.dword;

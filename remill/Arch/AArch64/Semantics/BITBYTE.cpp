@@ -95,3 +95,16 @@ DEF_SEM(EXTR, D dst, S src1, S src2, I src3) {
 
 DEF_ISEL(EXTR_32_EXTRACT) = EXTR<R32W, R32, I32>;
 DEF_ISEL(EXTR_64_EXTRACT) = EXTR<R64W, R64, I64>;
+
+namespace {
+
+template <typename D, typename S>
+DEF_SEM(CLZ, D dst, S src) {
+    auto count = CountLeadingZeros(Read(src));
+    WriteZExt(dst, count);
+    return memory;
+}
+}  // namespace
+
+DEF_ISEL(CLZ_32_DP_1SRC) = CLZ<R32W, R32>;
+DEF_ISEL(CLZ_64_DP_1SRC) = CLZ<R64W, R64>;
