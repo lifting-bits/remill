@@ -313,8 +313,8 @@ static void RunWithFlags(const test::TestInfo *info,
   lifted_state->gpr.x30.qword = 0;
   native_state->gpr.x30.qword = 0;
 
-  native_state->vector = 0;
-  lifted_state->vector = 0;
+  native_state->hyper_call_vector = 0;
+  lifted_state->hyper_call_vector = 0;
 
   native_state->hyper_call = AsyncHyperCall::kInvalid;
   lifted_state->hyper_call = AsyncHyperCall::kInvalid;

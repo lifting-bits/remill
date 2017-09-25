@@ -476,8 +476,8 @@ static void RunWithFlags(const test::TestInfo *info,
   native_state->rflag.flat &= 0x0ED7UL;
   lifted_state->rflag.flat &= 0x0ED7UL;
 
-  native_state->vector = 0;
-  lifted_state->vector = 0;
+  native_state->hyper_call_vector = 0;
+  lifted_state->hyper_call_vector = 0;
   native_state->hyper_call = AsyncHyperCall::kInvalid;
   lifted_state->hyper_call = AsyncHyperCall::kInvalid;
 
