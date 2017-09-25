@@ -1460,7 +1460,15 @@ static const char *CondName(uint8_t cond) {
   }
 }
 
-void SetConditionalFunctionName(uint8_t cond, Instruction &inst) {
+void SetConditionalFunctionName(const InstData &data, Instruction &inst,
+                                bool invert_condition=false) {
+  uint8_t cond = 0;
+  if (invert_condition) {
+    cond = data.cond ^ 1;
+  } else {
+    cond = data.cond;
+  }
+
   std::stringstream ss;
   ss << inst.function << "_" << CondName(cond);
   inst.function = ss.str();
@@ -1470,7 +1478,7 @@ void SetConditionalFunctionName(uint8_t cond, Instruction &inst) {
 bool TryDecodeB_ONLY_CONDBRANCH(const InstData &data, Instruction &inst) {
 
   // Add in the condition to the isel name.
-  SetConditionalFunctionName(data.cond, inst);
+  SetConditionalFunctionName(data, inst);
   DecodeConditionalBranch(inst, data.imm19.simm19 << 2);
   return true;
 }
@@ -2113,37 +2121,21 @@ bool TryDecodeCLZ_64_DP_1SRC(const InstData &data, Instruction &inst) {
   return true;
 }
 
-
-bool DecodeConditionalRegSelect(
-  const InstData &data, 
-  Instruction &inst, 
-  RegClass r_class, 
-  int8_t n_regs, // signed because otherwise we underflow
-  bool invert_cond = false
-) {
-
-  if (!(1 <= n_regs && n_regs <= 3)) {
-    LOG(ERROR) << "Number of registers in conditional select must be 1 <= x <= 3";
-    return false;
-  }
+bool DecodeConditionalRegSelect(const InstData &data, Instruction &inst,
+                                RegClass r_class, int n_regs,
+                                bool invert_cond=false) {
+  CHECK(1 <= n_regs && n_regs <= 3);
 
   AddRegOperand(inst, kActionWrite, r_class, kUseAsValue, data.Rd);
-  if (--n_regs > 0) { 
-    AddRegOperand(inst, kActionRead, r_class, kUseAsValue, data.Rn); 
+  if (--n_regs > 0) {
+    AddRegOperand(inst, kActionRead, r_class, kUseAsValue, data.Rn);
   }
-  if (--n_regs > 0) { 
-    AddRegOperand(inst, kActionRead, r_class, kUseAsValue, data.Rm); 
-  }
-
-  uint8_t cond;
-  if (invert_cond) { 
-    cond = data.cond ^ 1;
-  } else {
-    cond = data.cond;
+  if (--n_regs > 0) {
+    AddRegOperand(inst, kActionRead, r_class, kUseAsValue, data.Rm);
   }
 
-  // Condition will be part of the isel, not an operand
-  SetConditionalFunctionName(cond, inst);
+  // Condition will be part of the isel, not an operand.
+  SetConditionalFunctionName(data, inst, invert_cond);
   return true;
 }
 
@@ -2167,28 +2159,6 @@ bool TryDecodeCSINC_64_CONDSEL(const InstData &data, Instruction &inst) {
   return DecodeConditionalRegSelect(data, inst, kRegX, 3);
 }
 
-//////////////////////// DEPRICATED ALIAS
-// CINC  <Wd>, <Wn>, <cond>
-bool TryDecodeCINC_CSINC_32_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
-
-// CINC  <Xd>, <Xn>, <cond>
-bool TryDecodeCINC_CSINC_64_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
-
-// CSET  <Wd>, <cond>
-bool TryDecodeCSET_CSINC_32_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
-
-// CSET  <Xd>, <cond>
-bool TryDecodeCSET_CSINC_64_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
-//////////////////////////////////////////
-
 // CSINV  <Wd>, <Wn>, <Wm>, <cond>
 bool TryDecodeCSINV_32_CONDSEL(const InstData &data, Instruction &inst) {
   return DecodeConditionalRegSelect(data, inst, kRegW, 3);
@@ -2198,28 +2168,6 @@ bool TryDecodeCSINV_32_CONDSEL(const InstData &data, Instruction &inst) {
 bool TryDecodeCSINV_64_CONDSEL(const InstData &data, Instruction &inst) {
   return DecodeConditionalRegSelect(data, inst, kRegX, 3);
 }
-
-///////////////// DEPRICATED ALIAS
-// CINV  <Wd>, <Wn>, <cond>
-bool TryDecodeCINV_CSINV_32_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
-
-// CINV  <Xd>, <Xn>, <cond>
-bool TryDecodeCINV_CSINV_64_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
-
-// CSETM  <Wd>, <cond>
-bool TryDecodeCSETM_CSINV_32_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
-
-// CSETM  <Xd>, <cond>
-bool TryDecodeCSETM_CSINV_64_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
-///////////////////////////////////
 
 // CSNEG  <Wd>, <Wn>, <Wm>, <cond>
 bool TryDecodeCSNEG_32_CONDSEL(const InstData &data, Instruction &inst) {
@@ -2233,50 +2181,39 @@ bool TryDecodeCSNEG_64_CONDSEL(const InstData &data, Instruction &inst) {
 
 // CCMP  <Wn>, #<imm>, #<nzcv>, <cond>
 bool TryDecodeCCMP_32_CONDCMP_IMM(const InstData &data, Instruction &inst) {
-  DecodeConditionalRegSelect(data, inst, kRegW, 1);
+  SetConditionalFunctionName(data, inst);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
   AddImmOperand(inst, data.imm5.uimm);
   AddImmOperand(inst, data.nzcv);
   return true;
 }
 
-// CCMP CCMP_64_condcmp_imm:
-//   0 x nzcv     0
-//   1 x nzcv     1
-//   2 x nzcv     2
-//   3 x nzcv     3
-//   4 0 o3       0
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0 o2       0
-//  11 1
-//  12 x cond     0
-//  13 x cond     1
-//  14 x cond     2
-//  15 x cond     3
-//  16 x imm5     0
-//  17 x imm5     1
-//  18 x imm5     2
-//  19 x imm5     3
-//  20 x imm5     4
-//  21 0
-//  22 1
-//  23 0
-//  24 0
-//  25 1
-//  26 0
-//  27 1
-//  28 1
-//  29 1 S        0
-//  30 1 op       0
-//  31 1 sf       0
 // CCMP  <Xn>, #<imm>, #<nzcv>, <cond>
-bool TryDecodeCCMP_64_CONDCMP_IMM(const InstData &, Instruction &) {
-  return false;
+bool TryDecodeCCMP_64_CONDCMP_IMM(const InstData &data, Instruction &inst) {
+  SetConditionalFunctionName(data, inst);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  AddImmOperand(inst, data.imm5.uimm);
+  AddImmOperand(inst, data.nzcv);
+  return true;
 }
 
+// CCMP  <Wn>, <Wm>, #<nzcv>, <cond>
+bool TryDecodeCCMP_32_CONDCMP_REG(const InstData &data, Instruction &inst) {
+  SetConditionalFunctionName(data, inst);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rm);
+  AddImmOperand(inst, data.nzcv);
+  return true;
+}
+
+// CCMP  <Xn>, <Xm>, #<nzcv>, <cond>
+bool TryDecodeCCMP_64_CONDCMP_REG(const InstData &data, Instruction &inst) {
+  SetConditionalFunctionName(data, inst);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rm);
+  AddImmOperand(inst, data.nzcv);
+  return true;
+}
 
 }  // namespace aarch64
 
