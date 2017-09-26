@@ -593,9 +593,6 @@ static void AddPreIndexMemOp(Instruction &inst, Action action,
   inst.operands.push_back(reg_op);
 
   addr_op.addr.kind = Operand::Address::kAddressCalculation;
-  addr_op.addr.address_size = 64;
-  addr_op.addr.base_reg = Reg(kActionRead, kRegX, kUseAsAddress, base_reg);
-  addr_op.addr.displacement *= 2;
   inst.operands.push_back(addr_op);
 }
 
