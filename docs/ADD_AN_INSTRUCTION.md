@@ -14,7 +14,7 @@ We use the following nomenclature:
 
 #### Choosing an instruction
 
-Start by finding your instruction within the [XED tables document](/blob/xed/xed.txt).
+Start by finding your instruction within the [XED tables document](XED/xed.txt).
 We will use `AND` as a running example.
 
 To start off, here are two entries from the tables document:

@@ -16,22 +16,22 @@ Below is a string representation of the data structures representing our example
 
 ```lisp
 ;; mov eax, 1
-(X86_INSTR 8048098 5 MOV_GPRv_IMMv_32
-  (WRITE_OP (REG_32 EAX))
-  (READ_OP (IMM_32 1)))
+(X86 8048098 5 (BYTES b8 01 00 00 00) MOV_GPRv_IMMv_32
+    (WRITE_OP (REG_32 EAX))
+    (READ_OP (IMM_32 1)))
 
 ;; push ebx
-(X86_INSTR 804809d 1 PUSH_GPRv_50_32
-  (READ_OP (REG_32 EBX)))
+(X86 804809d 1 (BYTES 53) PUSH_GPRv_50_32
+    (READ_OP (REG_32 EBX)))
 
 ;; mov ebx, dword ptr [esp + 8]
-(X86_INSTR 804809e 4 MOV_GPRv_MEMv_32
-  (WRITE_OP (REG_32 EBX))
-  (READ_OP (ADDR_32 DWORD (SEGMENT SS_BASE) ESP + 0x8))))
+(X86 804809e 4 (BYTES 8b 5c 24 08) MOV_GPRv_MEMv_32
+    (WRITE_OP (REG_32 EBX))
+    (READ_OP (ADDR_32 DWORD (SEGMENT SS_BASE) ESP + 0x8))))
 
 ;; int 0x80
-(X86_INSTR 80480a2 2 INT_IMMb
-  (READ_OP (IMM_8 80)))
+(X86 80480a2 2 (BYTES cd 80) INT_IMMb
+    (READ_OP (IMM_8 80)))
 ```
 
 ## From architecture-specific to architecture-neutral
@@ -42,7 +42,7 @@ The following is an example of the `__remill_basic_block` function for X86.
 
 ```C++
 // Instructions will be lifted into clones of this function.
-Memory *__remill_basic_block(addr_t curr_pc, State &state, Memory *memory) {
+Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   
   ...
 
@@ -82,7 +82,7 @@ The decoder initialized the `name` field with `"EBX"`, and the lifter can look u
 In spirit, the lifted code for the instructions in our running example looks like the following C++ code.
 
 ```C++
-void __remill_sub_804b7a3(addr_t pc, State *state, Memory *memory) {
+void __remill_sub_804b7a3(State *state, addr_t pc, Memory *memory) {
   auto &EIP = state.gpr.rip.dword;
   auto &EAX = state.gpr.rax.dword;
   auto &EBX = state.gpr.rbx.dword;
@@ -105,8 +105,8 @@ void __remill_sub_804b7a3(addr_t pc, State *state, Memory *memory) {
   // int    0x80
   EIP += 2;
   memory = INT_IMMb<I8>(memory, state, 0x80);
-
-  return __remill_interrupt_call(EIP, state, memory)
+  
+  return __remill_async_hyper_call(state, EIP, memory)
 }
 ```
 
@@ -116,9 +116,9 @@ The data structure of `mov ebx, dword [esp+0x8]` was:
 
 ```lisp
 ;; mov ebx, dword ptr [esp + 8]
-(X86_INSTR 804809e 4 MOV_GPRv_MEMv_32
-  (WRITE_OP (REG_32 EBX))
-  (READ_OP (ADDR_32 DWORD (SEGMENT SS_BASE) ESP + 0x8))))
+(X86 804809e 4 (BYTES 8b 5c 24 08) MOV_GPRv_MEMv_32
+    (WRITE_OP (REG_32 EBX))
+    (READ_OP (ADDR_32 DWORD (SEGMENT SS_BASE) ESP + 0x8))))
 ```
 
 The semantics function implementing the `mov` instruction is:
@@ -144,9 +144,8 @@ You can head on over to the [how to add an instruction](ADD_AN_INSTRUCTION.md) d
 
 The spiritual lifted code makes one function call per lifted instruction, where the actual implementation of each function can be arbitrarily complex. If we optimize the bitcode that Remill produces for our few example instructions, then what we get, if translated back to C++, looks like the following. 
 
-
 ```C++
-void __remill_sub_804b7a3(addr_t pc, State *state, Memory *memory) {
+void __remill_sub_804b7a3(State &state, addr_t pc, Memory *memory) {
   auto &EIP = state.gpr.rip.dword;
   auto &EAX = state.gpr.rax.dword;
   auto &EBX = state.gpr.rbx.dword;
@@ -168,7 +167,36 @@ void __remill_sub_804b7a3(addr_t pc, State *state, Memory *memory) {
 
   EIP = pc + 12;
 
-  return __remill_async_hyper_call(EIP, state, memory)
+  return __remill_async_hyper_call(state, EIP, memory)
+}
+```
+
+As LLVM bitcode, this looks like:
+
+```llvm
+; Function Attrs: noinline nounwind
+define %struct.Memory* @__remill_sub_804b7a3(%struct.State* dereferenceable(2688) %state2, i32 %pc, %struct.Memory* %memory1) #0 {
+  %1 = getelementptr inbounds %struct.State, %struct.State* %state2, i64 0, i32 6, i32 33, i32 0, i32 0
+  %2 = getelementptr inbounds %struct.State, %struct.State* %state2, i64 0, i32 6, i32 1, i32 0, i32 0
+  %3 = getelementptr inbounds %struct.State, %struct.State* %state2, i64 0, i32 6, i32 3, i32 0, i32 0
+  %4 = getelementptr inbounds %struct.State, %struct.State* %state2, i64 0, i32 6, i32 13, i32 0, i32 0
+  store i32 1, i32* %2, align 4
+  %5 = load i32, i32* %3, align 4
+  %6 = load i32, i32* %4, align 8
+  %7 = add i32 %6, -4
+  %8 = tail call %struct.Memory* @__remill_write_memory_32(%struct.Memory* %memory1, i32 %7, i32 %5) #3
+  store i32 %7, i32* %4, align 4
+  %9 = add i32 %6, 4
+  %10 = tail call i32 @__remill_read_memory_32(%struct.Memory* %8, i32 %9) #3
+  store i32 %10, i32* %3, align 4
+  %11 = add i32 %pc, 12
+  store i32 %11, i32* %1, align 4
+  %12 = getelementptr inbounds %struct.State, %struct.State* %state2, i64 0, i32 0, i32 2
+  store i32 128, i32* %12, align 8
+  %13 = getelementptr inbounds %struct.State, %struct.State* %state2, i64 0, i32 0, i32 0
+  store i32 4, i32* %13, align 16
+  %14 = tail call %struct.Memory* @__remill_async_hyper_call(%struct.State* nonnull %state2, i32 %11, %struct.Memory* %8)
+  ret %struct.Memory* %14
 }
 ```
 
@@ -188,11 +216,11 @@ The `__remill_async_hyper_call` instruction instructs the "runtime" that an expl
 
 All Remill control-flow intrinsics and Remill lifted basic block functions share the same argument structure:
 
-1. The program counter on entry to the lifted basic block.
-2. A pointer to the `State` structure.
+1. A pointer to the `State` structure.
+2. The program counter on entry to the lifted basic block.
 3. A pointer to the opaque `Memory` structure.
 
-In the case of the `__remill_async_hyper_call`, the third argument, the program counter address, is computed to be the address following the `int 0x80` instruction.
+In the case of the `__remill_async_hyper_call`, the second argument, the program counter address, is computed to be the address following the `int 0x80` instruction.
 
 ## Concluding remarks
 

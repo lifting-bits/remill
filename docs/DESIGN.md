@@ -31,7 +31,7 @@ designed to maintain the following properties.
 
  - They should actively prevent certain compiler optimizations that obscure the
    semantics of the translated machine code. For example, special
-   [tear fields](https://github.com/trailofbits/remill/blob/master/remill/Arch/X86/Runtime/State.h#L211)
+   [tear fields](https://github.com/trailofbits/remill/blob/master/remill/Arch/X86/Runtime/State.h#L327)
    are introduced so as to prevent load and store coalescing, and preserve the
    semantics that writes to logical units of data remain as such.
  - They should have a uniform size across all architecture revisions and
