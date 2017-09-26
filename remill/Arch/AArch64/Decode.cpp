@@ -19,6 +19,45 @@
 namespace remill {
 namespace aarch64 {
 
+// CINC  <Wd>, <Wn>, <cond>
+bool TryDecodeCINC_CSINC_32_CONDSEL(const InstData &data, Instruction &inst) {
+  return false;
+}
+
+// CINC  <Xd>, <Xn>, <cond>
+bool TryDecodeCINC_CSINC_64_CONDSEL(const InstData &data, Instruction &inst) {
+  return false;
+}
+
+// CSET  <Wd>, <cond>
+bool TryDecodeCSET_CSINC_32_CONDSEL(const InstData &data, Instruction &inst) {
+  return false;
+}
+
+// CSET  <Xd>, <cond>
+bool TryDecodeCSET_CSINC_64_CONDSEL(const InstData &data, Instruction &inst) {
+  return false;
+}
+
+// CINV  <Wd>, <Wn>, <cond>
+bool TryDecodeCINV_CSINV_32_CONDSEL(const InstData &data, Instruction &inst) {
+  return false;
+}
+
+// CINV  <Xd>, <Xn>, <cond>
+bool TryDecodeCINV_CSINV_64_CONDSEL(const InstData &data, Instruction &inst) {
+  return false;
+}
+
+// CSETM  <Wd>, <cond>
+bool TryDecodeCSETM_CSINV_32_CONDSEL(const InstData &data, Instruction &inst) {
+  return false;
+}
+
+// CSETM  <Xd>, <cond>
+bool TryDecodeCSETM_CSINV_64_CONDSEL(const InstData &data, Instruction &inst) {
+  return false;
+}
 
 // UMULL  <Xd>, <Wn>, <Wm>
 bool TryDecodeUMULL_UMADDL_64WA_DP_3SRC(const InstData &, Instruction &) {
@@ -12119,82 +12158,6 @@ bool TryDecodeLDAXR_LR64_LDSTEXCL(const InstData &, Instruction &) {
   return false;
 }
 
-// LDRB LDRB_32B_ldst_regoff:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 x S        0
-//  13 x option   0
-//  14 x option   1
-//  15 x option   2
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 1 opc      0
-//  23 0 opc      1
-//  24 0
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 1
-//  29 1
-//  30 0 size     0
-//  31 0 size     1
-// LDRB  <Wt>, [<Xn|SP>, (<Wm>|<Xm>), <extend> {<amount>}]
-bool TryDecodeLDRB_32B_LDST_REGOFF(const InstData &, Instruction &) {
-  return false;
-}
-
-// LDRB LDRB_32BL_ldst_regoff:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 x S        0
-//  13 1 option   0
-//  14 1 option   1
-//  15 0 option   2
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 1 opc      0
-//  23 0 opc      1
-//  24 0
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 1
-//  29 1
-//  30 0 size     0
-//  31 0 size     1
-// LDRB  <Wt>, [<Xn|SP>, <Xm>{, LSL <amount>}]
-bool TryDecodeLDRB_32BL_LDST_REGOFF(const InstData &, Instruction &) {
-  return false;
-}
-
 // UADALP UADALP_asimdmisc_P:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -23479,82 +23442,6 @@ bool TryDecodeFMADD_S_FLOATDP3(const InstData &, Instruction &) {
 //  31 0 M        0
 // FMADD  <Dd>, <Dn>, <Dm>, <Da>
 bool TryDecodeFMADD_D_FLOATDP3(const InstData &, Instruction &) {
-  return false;
-}
-
-// CCMP CCMP_32_condcmp_reg:
-//   0 x nzcv     0
-//   1 x nzcv     1
-//   2 x nzcv     2
-//   3 x nzcv     3
-//   4 0 o3       0
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0 o2       0
-//  11 0
-//  12 x cond     0
-//  13 x cond     1
-//  14 x cond     2
-//  15 x cond     3
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0
-//  22 1
-//  23 0
-//  24 0
-//  25 1
-//  26 0
-//  27 1
-//  28 1
-//  29 1 S        0
-//  30 1 op       0
-//  31 0 sf       0
-// CCMP  <Wn>, <Wm>, #<nzcv>, <cond>
-bool TryDecodeCCMP_32_CONDCMP_REG(const InstData &, Instruction &) {
-  return false;
-}
-
-// CCMP CCMP_64_condcmp_reg:
-//   0 x nzcv     0
-//   1 x nzcv     1
-//   2 x nzcv     2
-//   3 x nzcv     3
-//   4 0 o3       0
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0 o2       0
-//  11 0
-//  12 x cond     0
-//  13 x cond     1
-//  14 x cond     2
-//  15 x cond     3
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0
-//  22 1
-//  23 0
-//  24 0
-//  25 1
-//  26 0
-//  27 1
-//  28 1
-//  29 1 S        0
-//  30 1 op       0
-//  31 1 sf       0
-// CCMP  <Xn>, <Xm>, #<nzcv>, <cond>
-bool TryDecodeCCMP_64_CONDCMP_REG(const InstData &, Instruction &) {
   return false;
 }
 

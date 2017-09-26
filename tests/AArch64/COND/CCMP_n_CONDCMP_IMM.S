@@ -14,42 +14,188 @@
  * limitations under the License.
  */
 
-TEST_BEGIN(CCMP_32_CONDCMP_IMM_EQ, ccmp_w0_eq_1, 1)
+TEST_BEGIN(CCMP_32_CONDCMP_IMM_GE, ccmp_w0_ge_11, 1)
 TEST_INPUTS(
-    0x11
-    )
-    ccmp w0, #0x11, #0x0, eq
+    0,
+    1,
+    0x10,
+    0x11,
+    0x12,
+    0x0fffffff,
+    0x7fffffff,
+    0xffffffff)
+    ccmp ARG1_32, #0x11, #0x0, ge
 TEST_END
 
-// TEST_BEGIN(CCMP_32_CONDCMP_IMM_EQ, ccmp_32_cmpne_eq_11_c, 1)
-// TEST_INPUTS(
-//     0x11,
-//     0x0,
-//     0x1,
-//     0xf,
-//     0x7,
-//     0xffffff
-// )
-//   mov w9, #0xdead
-//   ccmp w0, #0x11, #0xc, eq
-//   b.eq 99f
-//   mov w9, #0xface
-// 99:
-// TEST_END
+TEST_BEGIN(CCMP_32_CONDCMP_IMM_GT, ccmp_w0_gt_11, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x10,
+    0x11,
+    0x12,
+    0x0fffffff,
+    0x7fffffff,
+    0xffffffff)
+    ccmp ARG1_32, #0x11, #0x0, gt
+TEST_END
 
-// TEST_BEGIN(CCMP_32_CONDCMP_IMM_HI, ccmp_32_cmpeq_hi_11_c, 1)
-// TEST_INPUTS(
-//     0x11,
-//     0x0,
-//     0x1,
-//     0xf,
-//     0x7,
-//     0xffffff
-// )
-//   mov w9, #0xdead
-//   ccmp w0, #0x11, #0xc, hi
-//   b.eq 99f
-//   mov w9, #0xface
-// 99:
-// TEST_END
+TEST_BEGIN(CCMP_32_CONDCMP_IMM_LE, ccmp_w0_le_11, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x10,
+    0x11,
+    0x12,
+    0x0fffffff,
+    0x7fffffff,
+    0xffffffff)
+    ccmp ARG1_32, #0x11, #0x0, le
+TEST_END
+
+TEST_BEGIN(CCMP_32_CONDCMP_IMM_LT, ccmp_w0_lt_11, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x10,
+    0x11,
+    0x12,
+    0x0fffffff,
+    0x7fffffff,
+    0xffffffff)
+    ccmp ARG1_32, #0x11, #0x0, lt
+TEST_END
+
+TEST_BEGIN(CCMP_32_CONDCMP_IMM_EQ, ccmp_w0_eq_11, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x10,
+    0x11,
+    0x12,
+    0x0fffffff,
+    0x7fffffff,
+    0xffffffff)
+    ccmp ARG1_32, #0x11, #0x0, eq
+TEST_END
+
+TEST_BEGIN(CCMP_32_CONDCMP_IMM_NE, ccmp_w0_ne_11, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x10,
+    0x11,
+    0x12,
+    0x0fffffff,
+    0x7fffffff,
+    0xffffffff)
+    ccmp ARG1_32, #0x11, #0x0, ne
+TEST_END
+
+TEST_BEGIN(CCMP_32_CONDCMP_IMM_CS, ccmp_w0_cs_11, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x10,
+    0x11,
+    0x12,
+    0x0fffffff,
+    0x7fffffff,
+    0xffffffff)
+    ccmp ARG1_32, #0x11, #0x0, cs
+TEST_END
+
+/* TODO(pag): Are more necessary? */
+
+
+TEST_BEGIN(CCMP_64_CONDCMP_IMM_GE, ccmp_x0_ge_11, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x10,
+    0x11,
+    0x12,
+    0x0fffffff,
+    0x7fffffff,
+    0xffffffff)
+    ccmp ARG1_64, #0x11, #0x0, ge
+TEST_END
+
+TEST_BEGIN(CCMP_64_CONDCMP_IMM_GT, ccmp_x0_gt_11, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x10,
+    0x11,
+    0x12,
+    0x0fffffff,
+    0x7fffffff,
+    0xffffffff)
+    ccmp ARG1_64, #0x11, #0x0, gt
+TEST_END
+
+TEST_BEGIN(CCMP_64_CONDCMP_IMM_LE, ccmp_x0_le_11, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x10,
+    0x11,
+    0x12,
+    0x0fffffff,
+    0x7fffffff,
+    0xffffffff)
+    ccmp ARG1_64, #0x11, #0x0, le
+TEST_END
+
+TEST_BEGIN(CCMP_64_CONDCMP_IMM_LT, ccmp_x0_lt_11, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x10,
+    0x11,
+    0x12,
+    0x0fffffff,
+    0x7fffffff,
+    0xffffffff)
+    ccmp ARG1_64, #0x11, #0x0, lt
+TEST_END
+
+TEST_BEGIN(CCMP_64_CONDCMP_IMM_EQ, ccmp_x0_eq_11, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x10,
+    0x11,
+    0x12,
+    0x0fffffff,
+    0x7fffffff,
+    0xffffffff)
+    ccmp ARG1_64, #0x11, #0x0, eq
+TEST_END
+
+TEST_BEGIN(CCMP_64_CONDCMP_IMM_NE, ccmp_x0_ne_11, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x10,
+    0x11,
+    0x12,
+    0x0fffffff,
+    0x7fffffff,
+    0xffffffff)
+    ccmp ARG1_64, #0x11, #0x0, ne
+TEST_END
+
+TEST_BEGIN(CCMP_64_CONDCMP_IMM_CS, ccmp_x0_cs_11, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x10,
+    0x11,
+    0x12,
+    0x0fffffff,
+    0x7fffffff,
+    0xffffffff)
+    ccmp ARG1_64, #0x11, #0x0, cs
+TEST_END
 

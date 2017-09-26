@@ -2180,30 +2180,30 @@ const char * const kIFormName[] = {
 };
 
 
-static bool BFXPreferred(const InstData &data) {
-  if (data.imms.uimm < data.immr.uimm) {
-    return false;
-  }
-  if (data.imms.uimm == ((data.sf << 5) | 0x1FULL)) {
-    return false;  // `if imms == sf:'11111' then return FALSE;`
-  }
-  if (!data.immr.uimm) {
-    // Must not match 32-bit UXT[BH] or SXT[BH].
-    if (!data.sf && (data.imms.uimm == 0x7ULL || data.imms.uimm == 0xFULL)) {
-      return false;
-    }
-
-    // Must not match 64-bit SXT[BHW].
-    auto uns = (data.opc >> 1) & 1;
-    if (data.sf && uns) {
-      if (data.imms.uimm == 0x7ULL || data.imms.uimm == 0xFULL ||
-          data.imms.uimm == 0x1FULL) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
+//static bool BFXPreferred(const InstData &data) {
+//  if (data.imms.uimm < data.immr.uimm) {
+//    return false;
+//  }
+//  if (data.imms.uimm == ((data.sf << 5) | 0x1FULL)) {
+//    return false;  // `if imms == sf:'11111' then return FALSE;`
+//  }
+//  if (!data.immr.uimm) {
+//    // Must not match 32-bit UXT[BH] or SXT[BH].
+//    if (!data.sf && (data.imms.uimm == 0x7ULL || data.imms.uimm == 0xFULL)) {
+//      return false;
+//    }
+//
+//    // Must not match 64-bit SXT[BHW].
+//    auto uns = (data.opc >> 1) & 1;
+//    if (data.sf && uns) {
+//      if (data.imms.uimm == 0x7ULL || data.imms.uimm == 0xFULL ||
+//          data.imms.uimm == 0x1FULL) {
+//        return false;
+//      }
+//    }
+//  }
+//  return true;
+//}
 
 
 static bool TryExtractFRECPX_ASISDMISCFP16_R(InstData &inst, uint32_t bits);
