@@ -133,6 +133,10 @@ extern "C" {
   auto &IGNORE_WRITE_TO_WZR = reinterpret_cast<uint32_t &>(ignored);
   auto &IGNORE_WRITE_TO_XZR = ignored;
 
+  // Used to suppress writeback for pre- and post-index memory operands when
+  // the base register and destination register are the same.
+  auto &SUPPRESS_WRITEBACK = ignored;
+
   auto &B0 = state.simd.v[0].bytes.elems[0];
   auto &B1 = state.simd.v[1].bytes.elems[0];
   auto &B2 = state.simd.v[2].bytes.elems[0];

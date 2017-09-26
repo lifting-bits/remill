@@ -24,6 +24,19 @@ TEST_INPUTS(0)
     ldp w8, w9, [x3, #64]
 TEST_END
 
+TEST_BEGIN(LDP_32_LDSTPAIR_OFF, ldp_w3_w5_m64_off_nowb, 1)
+TEST_INPUTS(0)
+    add x3, sp, #-256
+    ldp w3, w5, [x3, #0]
+TEST_END
+
+TEST_BEGIN(LDP_32_LDSTPAIR_OFF, ldp_w4_w3_m64_off_nowb, 1)
+TEST_INPUTS(0)
+
+    add x3, sp, #-256
+    ldp w4, w3, [x3, #0]
+TEST_END
+
 /* LDP  <Xt1>, <Xt2>, [<Xn|SP>{, #<imm>}] */
 TEST_BEGIN(LDP_64_LDSTPAIR_OFF, ldp_x0_x1_m128_off, 1)
 TEST_INPUTS(0)
