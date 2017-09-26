@@ -1493,10 +1493,33 @@ bool TryDecodeSTRB_32_LDST_POS(const InstData &data, Instruction &inst) {
 
 // LDRB  <Wt>, [<Xn|SP>{, #<pimm>}]
 bool TryDecodeLDRB_32_LDST_POS(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionRead, 8, data.Rn,
                          data.imm12.uimm);
   return true;
+}
+
+// LDRB  <Wt>, [<Xn|SP>, (<Wm>|<Xm>), <extend> {<amount>}]
+bool TryDecodeLDRB_32B_LDST_REGOFF(const InstData &data, Instruction &inst) {
+  if (!(data.option & 0x2)) {  // Sub-word index.
+    return false;  // `if option<1> == '0' then UnallocatedEncoding();`
+  }
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
+  auto extend_type = static_cast<Extend>(data.option);
+  AddExtendRegOperand(inst, kRegX, kUseAsValue, data.Rm, extend_type, 64, 0);
+  return false;
+}
+
+// LDRB  <Wt>, [<Xn|SP>, <Xm>{, LSL <amount>}]
+bool TryDecodeLDRB_32BL_LDST_REGOFF(const InstData &data, Instruction &inst) {
+  if (!(data.option & 0x2)) {  // Sub-word index.
+    return false;  // `if option<1> == '0' then UnallocatedEncoding();`
+  }
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
+  AddShiftRegOperand(inst, kRegX, kUseAsValue, data.Rm, kShiftLSL, 0);
+  return false;
 }
 
 // STRH  <Wt>, [<Xn|SP>{, #<pimm>}]

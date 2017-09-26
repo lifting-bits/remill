@@ -36,6 +36,18 @@ DEF_SEM(StorePairUpdateIndex64, R64 src1, R64 src2, MV128W dst_mem,
   return memory;
 }
 
+DEF_SEM(StorePair32, R32 src1, R32 src2, MV64W dst) {
+  uint32v2_t vec = {};
+  UWriteV32(dst, UInsertV32(UInsertV32(vec, 0, Read(src1)), 1, Read(src2)));
+  return memory;
+}
+
+DEF_SEM(StorePair64, R64 src1, R64 src2, MV128W dst) {
+  uint64v2_t vec = {};
+  UWriteV64(dst, UInsertV64(UInsertV64(vec, 0, Read(src1)), 1, Read(src2)));
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(STP_32_LDSTPAIR_PRE) = StorePairUpdateIndex32;
@@ -43,6 +55,9 @@ DEF_ISEL(STP_32_LDSTPAIR_POST) = StorePairUpdateIndex32;
 
 DEF_ISEL(STP_64_LDSTPAIR_PRE) = StorePairUpdateIndex64;
 DEF_ISEL(STP_64_LDSTPAIR_POST) = StorePairUpdateIndex64;
+
+DEF_ISEL(STP_32_LDSTPAIR_OFF) = StorePair32;
+DEF_ISEL(STP_64_LDSTPAIR_OFF) = StorePair64;
 
 namespace {
 
@@ -81,25 +96,6 @@ DEF_ISEL(STRH_32_LDST_POS) = Store<R16, M16W>;
 
 DEF_ISEL(STR_32_LDST_REGOFF) = STR_BASE_OFFSET<R32, M32W>;
 DEF_ISEL(STR_64_LDST_REGOFF) = STR_BASE_OFFSET<R64, M64W>;
-
-namespace {
-
-DEF_SEM(StorePair32, R32 src1, R32 src2, MV64W dst) {
-  uint32v2_t vec = {};
-  UWriteV32(dst, UInsertV32(UInsertV32(vec, 0, Read(src1)), 1, Read(src2)));
-  return memory;
-}
-
-DEF_SEM(StorePair64, R64 src1, R64 src2, MV128W dst) {
-  uint64v2_t vec = {};
-  UWriteV64(dst, UInsertV64(UInsertV64(vec, 0, Read(src1)), 1, Read(src2)));
-  return memory;
-}
-
-}  // namespace
-
-DEF_ISEL(STP_32_LDSTPAIR_OFF) = StorePair32;
-DEF_ISEL(STP_64_LDSTPAIR_OFF) = StorePair64;
 
 namespace {
 
@@ -169,6 +165,9 @@ DEF_SEM(LDR_BASE_OFFSET, D dst, M base, ADDR offset) {
 DEF_ISEL(LDR_32_LDST_POS) = Load<R32W, M32>;
 DEF_ISEL(LDR_64_LDST_POS) = Load<R64W, M64>;
 DEF_ISEL(LDRB_32_LDST_POS) = Load<R8W, M8>;
+
+DEF_ISEL(LDRB_32B_LDST_REGOFF) = LDR_BASE_OFFSET<R8W, M8>;
+DEF_ISEL(LDRB_32BL_LDST_REGOFF) = LDR_BASE_OFFSET<R8W, M8>;
 
 DEF_ISEL(LDR_32_LOADLIT) = Load<R32W, M32>;
 DEF_ISEL(LDR_64_LOADLIT) = Load<R64W, M64>;
