@@ -620,10 +620,11 @@ llvm::Value *InstructionLifter::LiftOperand(Instruction &inst,
       return LiftShiftRegisterOperand(inst, block, arg, arch_op);
 
     case Operand::kTypeRegister:
-      CHECK(arch_op.size == arch_op.reg.size)
-          << "Operand size and register size must match for register "
-          << arch_op.reg.name << ".";
-
+      if (arch_op.size != arch_op.reg.size) {
+        LOG(FATAL)
+            << "Operand size and register size must match for register "
+            << arch_op.reg.name << " in instruction " << inst.Serialize();
+      }
       return LiftRegisterOperand(inst, block, arg, arch_op);
 
     case Operand::kTypeImmediate:

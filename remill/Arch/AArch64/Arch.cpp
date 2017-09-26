@@ -635,7 +635,6 @@ static void AddPostIndexMemOp(Instruction &inst, Action action,
   Operand reg_op;
   reg_op.type = Operand::kTypeRegister;
   reg_op.action = Operand::kActionWrite;
-  reg_op.size = reg_op.reg.size;
 
   // We don't care about the case of `31` because then `base_reg` will be
   // `SP`, but `dest_reg1` or `dest_reg2` (if they are 31), will represent
@@ -647,8 +646,10 @@ static void AddPostIndexMemOp(Instruction &inst, Action action,
     reg_op.reg = Reg(kActionWrite, kRegX, kUseAsAddress, base_reg);
   }
 
+  reg_op.size = reg_op.reg.size;
   inst.operands.push_back(reg_op);
 
+  addr_op.size = 64;
   addr_op.action = Operand::kActionRead;
   addr_op.addr.kind = Operand::Address::kAddressCalculation;
   addr_op.addr.displacement = disp;
@@ -1591,7 +1592,7 @@ bool TryDecodeLDRB_32B_LDST_REGOFF(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
   auto extend_type = static_cast<Extend>(data.option);
   AddExtendRegOperand(inst, kRegX, kUseAsValue, data.Rm, extend_type, 64, 0);
-  return false;
+  return true;
 }
 
 // LDRB  <Wt>, [<Xn|SP>, <Xm>{, LSL <amount>}]
@@ -1602,7 +1603,7 @@ bool TryDecodeLDRB_32BL_LDST_REGOFF(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
   AddShiftRegOperand(inst, kRegX, kUseAsValue, data.Rm, kShiftLSL, 0);
-  return false;
+  return true;
 }
 
 // STRH  <Wt>, [<Xn|SP>{, #<pimm>}]

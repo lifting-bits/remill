@@ -61,16 +61,16 @@ TEST_BEGIN(LDRB_32B_LDST_REGOFF, ldrb_w5_m8_off_w0_uxtw, 1)
 TEST_INPUTS(
     0,
     8)
-    ldrb w5, [x3, ARG1_64, UXTW]
-    ldrb w6, [x3, ARG1_64, UXTW #0]
+    ldrb w5, [x3, ARG1_32, uxtw]
+    ldrb w6, [x3, ARG1_32, uxtw #0]
 TEST_END
 
 TEST_BEGIN(LDRB_32B_LDST_REGOFF, ldrb_w5_m8_off_w0_sxtw, 1)
 TEST_INPUTS(
     0,
     0xfffffff8)  /* -8 */
-    ldrb w5, [x3, ARG1_64, SXTW]
-    ldrb w6, [x3, ARG1_64, SXTW #0]
+    ldrb w6, [x3, ARG1_32, sxtw]
+    ldrb w7, [x3, ARG1_32, sxtw #0]
 TEST_END
 
 /* LDRB  <Wt>, [<Xn|SP>, <Xm>{, LSL <amount>}] */
@@ -83,5 +83,5 @@ TEST_END
 TEST_BEGIN(LDRB_32BL_LDST_REGOFF, ldrb_w5_m8_off_w0_lsl0, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
-    ldrb w5, [x3, ARG1_64, LSL #0]  /* Explicit LSL 0 */
+    ldrb w5, [x3, ARG1_64, lsl #0]  /* Explicit LSL 0 */
 TEST_END
