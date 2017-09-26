@@ -248,6 +248,9 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BINARY/UDIV_n_DP_2SRC.S"
 #include "tests/AArch64/BINARY/UMADDL_64WA_DP_3SRC.S"
 #include "tests/AArch64/BINARY/UMULH_64_DP_3SRC.S"
+#include "tests/AArch64/BINARY/FADD_t_FLOATDP2.S"
+#include "tests/AArch64/BINARY/FMUL_t_FLOATDP2.S"
+#include "tests/AArch64/BINARY/FCMPE_n_FLOATCMP.S"
 
 #include "tests/AArch64/BITBYTE/BFM_nM_BITFIELD.S"
 #include "tests/AArch64/BITBYTE/EXTR_n_EXTRACT.S"
@@ -263,6 +266,7 @@ SYMBOL(__aarch64_test_table_begin):
 
 #include "tests/AArch64/CONVERT/UCVTF_Dn_FLOAT2INT.S"
 #include "tests/AArch64/CONVERT/UCVTF_Sn_FLOAT2INT.S"
+#include "tests/AArch64/CONVERT/FCVTZU_nS_FLOAT2INT.S"
 
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_OFF.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_POST.S"
@@ -275,6 +279,8 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_PRE.S"
 #include "tests/AArch64/DATAXFER/STR_n_LDST_POS.S"
 #include "tests/AArch64/DATAXFER/STRB.S"
+#include "tests/AArch64/DATAXFER/FMOV_t_FLOATIMM.S"
+#include "tests/AArch64/DATAXFER/FMOV_NToN.S"
 
 #include "tests/AArch64/LOGICAL/AND_n_LOG_IMM.S"
 #include "tests/AArch64/LOGICAL/AND_n_LOG_SHIFT.S"

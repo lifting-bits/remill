@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 namespace {
 
 template <typename D, typename S1, typename S2>
@@ -27,7 +28,6 @@ DEF_SEM(ADD, D dst, S1 src1, S2 src2) {
   WriteZExt(dst, UAdd(Read(src1), Read(src2)));
   return memory;
 }
-
 }  // namespace
 
 DEF_ISEL(ADD_32_ADDSUB_IMM) = ADD<R32W, R32, I32>;
@@ -181,3 +181,85 @@ DEF_ISEL(SBC_64_ADDSUB_CARRY) = SBC<R64W, R64>;
 
 DEF_ISEL(SBCS_32_ADDSUB_CARRY) = SBCS<R32W, R32>;
 DEF_ISEL(SBCS_64_ADDSUB_CARRY) = SBCS<R64W, R64>;
+
+namespace {
+
+DEF_SEM(FADD_Scalar32, V128W dst, V32 src1, V32 src2) {
+  auto val1 = FExtractV32(FReadV32(src1), 0);
+  auto val2 = FExtractV32(FReadV32(src2), 0);
+  std::feclearexcept(FE_ALL_EXCEPT);
+  auto sum = FAdd(val1, val2);
+  SetFPSRStatusFlags(state, sum);
+  FWriteV32(dst, sum);
+  return memory;
+}
+
+// Multiplication was setting idc for denormal
+// exception but this might be wrong
+DEF_SEM(FMUL_Scalar32, V128W dst, V32 src1, V32 src2) {
+  auto val1 = FExtractV32(FReadV32(src1), 0);
+  auto val2 = FExtractV32(FReadV32(src2), 0);
+  std::feclearexcept(FE_ALL_EXCEPT);
+  auto prod = FMul(val1, val2);
+  SetFPSRStatusFlags(state, prod);
+  FWriteV32(dst, prod);
+  return memory;
+}
+
+template <typename S>
+void FCompare(State &state, S val1, S val2) {
+  // Set flags for operand == NAN
+  if (std::isnan(val1) || std::isnan(val2)) {
+    // result = '0011';
+    FLAG_N = 0;
+    FLAG_Z = 0;
+    FLAG_C = 1;
+    FLAG_V = 1;
+    // This semantic form always signals
+    state.fpsr.ioc = true;
+  } 
+  // Regular float compare
+  else {
+    if (FCmpEq(val1, val2)) {
+      // result = '0110';
+      FLAG_N = 0;
+      FLAG_Z = 1;
+      FLAG_C = 1;
+      FLAG_V = 0;
+    } 
+    else if (FCmpLt(val1, val2)) {
+      // result = '1000';
+      FLAG_N = 1;
+      FLAG_Z = 0;
+      FLAG_C = 0;
+      FLAG_V = 0;
+    }
+    else { // FCmpGt(val1, val2)
+      // result = '0010';
+      FLAG_N = 0;
+      FLAG_Z = 0;
+      FLAG_C = 1;
+      FLAG_V = 0;
+    }
+  }
+
+}
+DEF_SEM(FCMPE_S, V32 src1, V32 src2) {
+  auto val1 = FExtractV32(FReadV32(src1), 0);
+  auto val2 = FExtractV32(FReadV32(src2), 0);
+  FCompare(state, val1, val2);
+  return memory;
+}
+
+DEF_SEM(FCMPE_SZ, V32 src1, I32 zero) {
+  auto val1 = FExtractV32(FReadV32(src1), 0);
+  auto float_zero = static_cast<float32_t>(Read(zero));
+  FCompare(state, val1, float_zero);
+  return memory;
+}
+}  // namespace
+
+DEF_ISEL(FADD_S_FLOATDP2) = FADD_Scalar32;
+DEF_ISEL(FMUL_S_FLOATDP2) = FMUL_Scalar32;
+DEF_ISEL(FCMPE_S_FLOATCMP) = FCMPE_S;
+DEF_ISEL(FCMPE_SZ_FLOATCMP) = FCMPE_SZ;

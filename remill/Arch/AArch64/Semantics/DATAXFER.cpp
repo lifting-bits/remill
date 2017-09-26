@@ -226,6 +226,41 @@ DEF_SEM(MoveWithKeep, D dst, S src, I64 imm, I8 shift_) {
   return memory;
 }
 
+DEF_SEM(FMOV_Imm32, V128W dst, F32 imm) {
+  auto val = Read(imm);
+  FWriteV32(dst, val);
+  return memory;
+}
+
+DEF_SEM(FMOV_Imm64, V128W dst, F64 imm) {
+  auto val = Read(imm);
+  FWriteV64(dst, val);
+  return memory;
+}
+
+DEF_SEM(FMOV_I32ToF32, V128W dst, R32 src ) {
+  auto val = Read(src);
+  UWriteV32(dst, val);
+  return memory;
+}
+
+DEF_SEM(FMOV_F32ToI32, R32W dst, V32 src) {
+  auto float_val = FExtractV32(FReadV32(src), 0);
+  WriteZExt(dst, reinterpret_cast<uint32_t &>(float_val));
+  return memory;
+}
+
+DEF_SEM(FMOV_I64ToF64, V128W dst, R64 src ) {
+  auto val = Read(src);
+  UWriteV64(dst, val);
+  return memory;
+}
+
+DEF_SEM(FMOV_F64ToI64, R64W dst, V64 src) {
+  auto float_val = FExtractV64(FReadV64(src), 0);
+  WriteZExt(dst, reinterpret_cast<uint64_t &>(float_val));
+  return memory;
+}
 }  // namespace
 
 DEF_ISEL(MOVK_32_MOVEWIDE) = MoveWithKeep<R32W, R32>;
@@ -235,6 +270,15 @@ DEF_ISEL(MOVK_64_MOVEWIDE) = MoveWithKeep<R64W, R64>;
 DEF_ISEL(MOVN_32_MOVEWIDE) = Load<R32W, I32>;
 DEF_ISEL(MOVN_64_MOVEWIDE) = Load<R64W, I64>;
 
+DEF_ISEL(FMOV_H_FLOATIMM) = FMOV_Imm32;
+DEF_ISEL(FMOV_S_FLOATIMM) = FMOV_Imm32;
+DEF_ISEL(FMOV_D_FLOATIMM) = FMOV_Imm64;
+
+DEF_ISEL(FMOV_32S_FLOAT2INT) = FMOV_F32ToI32;
+DEF_ISEL(FMOV_S32_FLOAT2INT) = FMOV_I32ToF32;
+
+DEF_ISEL(FMOV_64D_FLOAT2INT) = FMOV_F64ToI64;
+DEF_ISEL(FMOV_D64_FLOAT2INT) = FMOV_I64ToF64;
 namespace {
 
 DEF_SEM(ADRP, R64W dst, PC label) {

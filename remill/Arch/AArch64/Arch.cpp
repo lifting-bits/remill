@@ -746,6 +746,31 @@ static bool DecodeBitMasks(uint64_t N /* one bit */,
   }
   return true;
 }
+// Utility function for extracting [From, To] bits from a uint32_t.
+static inline uint64_t Slice(uint64_t bits, unsigned from, unsigned to) {
+  CHECK(from < 64 && to < 64 && from >= to);
+  return (bits >> to) & ((1 << (from - to + 1)) - 1);
+}
+
+// Adapted from LLVM 
+// https://llvm.org/svn/llvm-project/llvm/branches/ggreif/CallInst-operands/lib/Target/ARM/Disassembler/ARMDisassemblerCore.cpp
+static uint64_t VFPExpandImmToFloat32(uint64_t imm) {
+  uint64_t result = 0;
+  uint64_t bit6 = Slice(imm, 6, 6);
+  result |= Slice(imm, 7, 7) << 31;
+  result |= Slice(imm, 5, 0) << 19;
+  result |= bit6 ? (0x1FULL << 25) : (0x1ULL << 30);
+  return result;
+}
+
+static uint64_t VFPExpandImmToFloat64(uint64_t imm) {
+  uint64_t result = 0;
+  uint64_t bit6 = Slice(imm, 6, 6);
+  result |= Slice(imm, 7, 7) << 63;
+  result |= Slice(imm, 5, 0) << 48;
+  result |= bit6 ? (0xFFULL << 54) : (0x1ULL << 62);
+  return result;
+}
 
 bool AArch64Arch::DecodeInstruction(
     uint64_t address, const std::string &inst_bytes,
@@ -2189,6 +2214,110 @@ bool TryDecodeUCVTF_S64_FLOAT2INT(const InstData &data, Instruction &inst) {
 bool TryDecodeUCVTF_D64_FLOAT2INT(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  return true;
+}
+
+// FCVTZU  <Xd>, <Sn>
+bool TryDecodeFCVTZU_64S_FLOAT2INT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
+  return true;
+}
+
+// FMOV  <Hd>, #<imm>
+bool TryDecodeFMOV_H_FLOATIMM(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegH, kUseAsValue, data.Rd);
+  auto float_val = VFPExpandImmToFloat32(data.imm8.uimm);
+  AddImmOperand(inst, float_val);
+  return true;
+}
+
+// FMOV  <Sd>, #<imm>
+bool TryDecodeFMOV_S_FLOATIMM(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
+  auto float_val = VFPExpandImmToFloat32(data.imm8.uimm);
+  AddImmOperand(inst, float_val);
+  return true;
+}
+
+// FMOV  <Dd>, #<imm>
+bool TryDecodeFMOV_D_FLOATIMM(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rd);
+  auto float_val = VFPExpandImmToFloat64(data.imm8.uimm);
+  AddImmOperand(inst, float_val);
+  return true;
+}
+
+// FMOV  <Sd>, <Wn>
+bool TryDecodeFMOV_S32_FLOAT2INT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  return true;
+}
+
+// FMOV  <Wd>, <Sn>
+bool TryDecodeFMOV_32S_FLOAT2INT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rn);
+  return true;
+}
+
+// FMOV  <Dd>, <Xn>
+bool TryDecodeFMOV_D64_FLOAT2INT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  return true;
+}
+// FMOV  <Xd>, <Dn>
+bool TryDecodeFMOV_64D_FLOAT2INT(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rn);
+  return true;
+}
+
+// FADD  <Hd>, <Hn>, <Hm>
+bool TryDecodeFADD_H_FLOATDP2(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegH, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegH, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegH, kUseAsValue, data.Rm);
+  return true;
+}
+
+// FADD  <Sd>, <Sn>, <Sm>
+bool TryDecodeFADD_S_FLOATDP2(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rm);
+  return true;
+}
+
+// FADD  <Dd>, <Dn>, <Dm>
+bool TryDecodeFADD_D_FLOATDP2(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rm);
+  return true;
+}
+
+// FMUL  <Sd>, <Sn>, <Sm>
+bool TryDecodeFMUL_S_FLOATDP2(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rm);
+  return true;
+}
+
+// FCMPE  <Sn>, <Sm>
+bool TryDecodeFCMPE_S_FLOATCMP(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rm);
+  return true;
+}
+
+// FCMPE  <Sn>, #0.0
+bool TryDecodeFCMPE_SZ_FLOATCMP(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
+  AddImmOperand(inst, 0);
   return true;
 }
 
