@@ -15,7 +15,7 @@
  */
 
 /* LDP  <Wt1>, <Wt2>, [<Xn|SP>{, #<imm>}] */
-TEST_BEGIN(LDP_32_LDLDPAIR_OFF, ldp_w0_w1_m64_off, 1)
+TEST_BEGIN(LDP_32_LDSTPAIR_OFF, ldp_w0_w1_m64_off, 1)
 TEST_INPUTS(0)
 
     add x3, sp, #-256
@@ -25,7 +25,7 @@ TEST_INPUTS(0)
 TEST_END
 
 /* LDP  <Xt1>, <Xt2>, [<Xn|SP>{, #<imm>}] */
-TEST_BEGIN(LDP_64_LDLDPAIR_OFF, ldp_x0_x1_m128_off, 1)
+TEST_BEGIN(LDP_64_LDSTPAIR_OFF, ldp_x0_x1_m128_off, 1)
 TEST_INPUTS(0)
 
     add x3, sp, #-256
