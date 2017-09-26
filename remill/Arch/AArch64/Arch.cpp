@@ -592,6 +592,7 @@ static void AddPreIndexMemOp(Instruction &inst, Action action,
   reg_op.size = reg_op.reg.size;
   inst.operands.push_back(reg_op);
 
+  addr_op.action = Operand::kActionRead;
   addr_op.addr.kind = Operand::Address::kAddressCalculation;
   inst.operands.push_back(addr_op);
 }
@@ -622,9 +623,8 @@ static void AddPostIndexMemOp(Instruction &inst, Action action,
   reg_op.size = reg_op.reg.size;
   inst.operands.push_back(reg_op);
 
+  addr_op.action = Operand::kActionRead;
   addr_op.addr.kind = Operand::Address::kAddressCalculation;
-  addr_op.addr.address_size = 64;
-  addr_op.addr.base_reg = Reg(kActionRead, kRegX, kUseAsAddress, base_reg);
   addr_op.addr.displacement = disp;
   inst.operands.push_back(addr_op);
 }
