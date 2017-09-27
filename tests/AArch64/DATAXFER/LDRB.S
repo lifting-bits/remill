@@ -31,10 +31,11 @@ TEST_INPUTS(0)
     ldrb w6, [x3], #32
 TEST_END
 
+/*
 TEST_BEGIN(LDRB_32_LDST_IMMPOST, ldrb_w3_m8_post_alias, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
-    .byte 0x63, 0x04, 0x41, 0x38  /* ldrb w3, [x3], #16 */
+    .byte 0x63, 0x04, 0x41, 0x38  // ldrb w3, [x3], #16
 TEST_END
 
 TEST_BEGIN(LDRB_32_LDST_IMMPOST, ldrb_wzr_m8_post_alias, 1)
@@ -43,6 +44,8 @@ TEST_INPUTS(0)
     ldrb wzr, [sp], #16
 TEST_END
 
+*/
+
 /* LDRB  <Wt>, [<Xn|SP>, #<simm>]! */
 TEST_BEGIN(LDRB_32_LDST_IMMPRE, ldrb_w5_m8_pre, 1)
 TEST_INPUTS(0)
@@ -50,11 +53,13 @@ TEST_INPUTS(0)
     ldrb w5, [x3, #16]!
 TEST_END
 
+/*
 TEST_BEGIN(LDRB_32_LDST_IMMPRE, ldrb_w3_m8_pre_alias, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
-    .byte 0x63, 0x0c, 0x41, 0x38  /* ldrb w3, [x3, #16]! */
+    .byte 0x63, 0x0c, 0x41, 0x38  // ldrb w3, [x3, #16]!
 TEST_END
+*/
 
 /* LDRB  <Wt>, [<Xn|SP>, (<Wm>|<Xm>), <extend> {<amount>}] */
 TEST_BEGIN(LDRB_32B_LDST_REGOFF, ldrb_w5_m8_off_w0_uxtw, 1)
