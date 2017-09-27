@@ -80,7 +80,7 @@ TEST_INPUTS(0)
     strb w5, [x3, ARG1_64]  /* Implicit LSL 0 */
 TEST_END
 
-TEST_BEGIN(STRB_32B_LDST_REGOFF, strb_w5_m8_off_w0_lsl0, 1)
+TEST_BEGIN(STRB_32BL_LDST_REGOFF, strb_w5_m8_off_w0_lsl0, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldr w5, [x3, #16]
