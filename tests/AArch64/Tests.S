@@ -269,6 +269,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_PRE.S"
 #include "tests/AArch64/DATAXFER/LDR_n_LDST_POS.S"
 #include "tests/AArch64/DATAXFER/LDRB.S"
+#include "tests/AArch64/DATAXFER/LDRH.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_OFF.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_POST.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_PRE.S"
