@@ -75,7 +75,7 @@ DEF_SEM(Store, S src, D dst) {
 }
 
 template <typename S, typename D>
-DEF_SEM(STR_BASE_OFFSET, S src, D base, ADDR offset) {
+DEF_SEM(StoreToOffset, S src, D base, ADDR offset) {
   Write(DisplaceAddress(base, Read(offset)), Read(src));
   return memory;
 }
@@ -94,13 +94,13 @@ DEF_ISEL(STR_64_LDST_POS) = Store<R64, M64W>;
 DEF_ISEL(STRB_32_LDST_POS) = Store<R8, M8W>;
 DEF_ISEL(STRB_32_LDST_IMMPOST) = StoreUpdateIndex<R8, M8W>;
 DEF_ISEL(STRB_32_LDST_IMMPRE) = StoreUpdateIndex<R8, M8W>;
-DEF_ISEL(STRB_32B_LDST_REGOFF) = StoreUpdateIndex<R8, M8W>;
-DEF_ISEL(STRB_32BL_LDST_REGOFF) = StoreUpdateIndex<R8, M8W>;
+DEF_ISEL(STRB_32B_LDST_REGOFF) = StoreToOffset<R8, M8W>;
+DEF_ISEL(STRB_32BL_LDST_REGOFF) = StoreToOffset<R8, M8W>;
 
-DEF_ISEL(STRH_32_LDST_POS) = Store<R16, M16W>;
+DEF_ISEL(STRH_32_LDST_POS) = StoreToOffset<R16, M16W>;
 
-DEF_ISEL(STR_32_LDST_REGOFF) = STR_BASE_OFFSET<R32, M32W>;
-DEF_ISEL(STR_64_LDST_REGOFF) = STR_BASE_OFFSET<R64, M64W>;
+DEF_ISEL(STR_32_LDST_REGOFF) = StoreToOffset<R32, M32W>;
+DEF_ISEL(STR_64_LDST_REGOFF) = StoreToOffset<R64, M64W>;
 
 namespace {
 
