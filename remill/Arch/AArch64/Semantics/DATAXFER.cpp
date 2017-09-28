@@ -75,7 +75,7 @@ DEF_SEM(Store, S src, D dst) {
 }
 
 template <typename S, typename D>
-DEF_SEM(STR_BASE_OFFSET, S src, D base, ADDR offset) {
+DEF_SEM(StoreToOffset, S src, D base, ADDR offset) {
   Write(DisplaceAddress(base, Read(offset)), Read(src));
   return memory;
 }
@@ -92,10 +92,15 @@ DEF_ISEL(STR_32_LDST_POS) = Store<R32, M32W>;
 DEF_ISEL(STR_64_LDST_POS) = Store<R64, M64W>;
 
 DEF_ISEL(STRB_32_LDST_POS) = Store<R8, M8W>;
-DEF_ISEL(STRH_32_LDST_POS) = Store<R16, M16W>;
+DEF_ISEL(STRB_32_LDST_IMMPOST) = StoreUpdateIndex<R8, M8W>;
+DEF_ISEL(STRB_32_LDST_IMMPRE) = StoreUpdateIndex<R8, M8W>;
+DEF_ISEL(STRB_32B_LDST_REGOFF) = StoreToOffset<R8, M8W>;
+DEF_ISEL(STRB_32BL_LDST_REGOFF) = StoreToOffset<R8, M8W>;
 
-DEF_ISEL(STR_32_LDST_REGOFF) = STR_BASE_OFFSET<R32, M32W>;
-DEF_ISEL(STR_64_LDST_REGOFF) = STR_BASE_OFFSET<R64, M64W>;
+DEF_ISEL(STRH_32_LDST_POS) = StoreToOffset<R16, M16W>;
+
+DEF_ISEL(STR_32_LDST_REGOFF) = StoreToOffset<R32, M32W>;
+DEF_ISEL(STR_64_LDST_REGOFF) = StoreToOffset<R64, M64W>;
 
 namespace {
 
@@ -154,26 +159,39 @@ DEF_SEM(Load, D dst, S src) {
   return memory;
 }
 
-template <typename D, typename M>
-DEF_SEM(LDR_BASE_OFFSET, D dst, M base, ADDR offset) {
-  WriteZExt(dst, Read(DisplaceAddress(base, Read(offset))));
+template <typename D, typename S>
+DEF_SEM(LoadUpdateIndex, D dst, S src, R64W dst_reg, ADDR next_addr) {
+  WriteZExt(dst, Read(src));
+  Write(dst_reg, Read(next_addr));
   return memory;
 }
 
+template <typename D, typename M>
+DEF_SEM(LoadFromOffset, D dst, M base, ADDR offset) {
+  WriteZExt(dst, Read(DisplaceAddress(base, Read(offset))));
+  return memory;
+}
 }  // namespace
 
 DEF_ISEL(LDR_32_LDST_POS) = Load<R32W, M32>;
 DEF_ISEL(LDR_64_LDST_POS) = Load<R64W, M64>;
-DEF_ISEL(LDRB_32_LDST_POS) = Load<R8W, M8>;
 
-DEF_ISEL(LDRB_32B_LDST_REGOFF) = LDR_BASE_OFFSET<R8W, M8>;
-DEF_ISEL(LDRB_32BL_LDST_REGOFF) = LDR_BASE_OFFSET<R8W, M8>;
+DEF_ISEL(LDRB_32_LDST_POS) = Load<R32W, M8>;
+DEF_ISEL(LDRB_32_LDST_IMMPOST) = LoadUpdateIndex<R32W, M8>;
+DEF_ISEL(LDRB_32_LDST_IMMPRE) = LoadUpdateIndex<R32W, M8>;
+DEF_ISEL(LDRB_32B_LDST_REGOFF) = LoadFromOffset<R32W, M8>;
+DEF_ISEL(LDRB_32BL_LDST_REGOFF) = LoadFromOffset<R32W, M8>;
+
+DEF_ISEL(LDRH_32_LDST_POS) = Load<R32W, M16>;
+DEF_ISEL(LDRH_32_LDST_IMMPOST) = LoadUpdateIndex<R32W, M16>;
+DEF_ISEL(LDRH_32_LDST_IMMPRE) = LoadUpdateIndex<R32W, M16>;
+DEF_ISEL(LDRH_32_LDST_REGOFF) = LoadFromOffset<R32W, M16>;
 
 DEF_ISEL(LDR_32_LOADLIT) = Load<R32W, M32>;
 DEF_ISEL(LDR_64_LOADLIT) = Load<R64W, M64>;
 
-DEF_ISEL(LDR_32_LDST_REGOFF) = LDR_BASE_OFFSET<R32W, M32>;
-DEF_ISEL(LDR_64_LDST_REGOFF) = LDR_BASE_OFFSET<R64W, M64>;
+DEF_ISEL(LDR_32_LDST_REGOFF) = LoadFromOffset<R32W, M32>;
+DEF_ISEL(LDR_64_LDST_REGOFF) = LoadFromOffset<R64W, M64>;
 
 DEF_ISEL(LDUR_32_LDST_UNSCALED) = Load<R32W, M32>;
 DEF_ISEL(LDUR_64_LDST_UNSCALED) = Load<R64W, M64>;
