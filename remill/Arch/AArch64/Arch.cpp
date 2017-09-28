@@ -2257,12 +2257,47 @@ bool TryDecodeLDR_B_LDST_POS(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// LDR  <Bt>, [<Xn|SP>, (<Wm>|<Xm>), <extend> {<amount>}]
+bool TryDecodeLDR_B_LDST_REGOFF(const InstData &, Instruction &) {
+  return false;
+}
+
+// LDR  <Bt>, [<Xn|SP>, <Xm>{, LSL <amount>}]
+bool TryDecodeLDR_BL_LDST_REGOFF(const InstData &, Instruction &) {
+  return false;
+}
+
+// LDR  <Bt>, [<Xn|SP>], #<simm>
+bool TryDecodeLDR_B_LDST_IMMPOST(const InstData &, Instruction &) {
+  return false;
+}
+
+// LDR  <Bt>, [<Xn|SP>, #<simm>]!
+bool TryDecodeLDR_B_LDST_IMMPRE(const InstData &, Instruction &) {
+  return false;
+}
+
 // LDR  <Ht>, [<Xn|SP>{, #<pimm>}]
 bool TryDecodeLDR_H_LDST_POS(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegH, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionRead, 16, data.Rn,
                          static_cast<uint64_t>(data.imm12.uimm) << 1);
   return true;
+}
+
+// LDR  <Ht>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
+bool TryDecodeLDR_H_LDST_REGOFF(const InstData &, Instruction &) {
+  return false;
+}
+
+// LDR  <Ht>, [<Xn|SP>], #<simm>
+bool TryDecodeLDR_H_LDST_IMMPOST(const InstData &, Instruction &) {
+  return false;
+}
+
+// LDR  <Ht>, [<Xn|SP>, #<simm>]!
+bool TryDecodeLDR_H_LDST_IMMPRE(const InstData &, Instruction &) {
+  return false;
 }
 
 // LDR  <St>, [<Xn|SP>{, #<pimm>}]
@@ -2273,12 +2308,52 @@ bool TryDecodeLDR_S_LDST_POS(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// LDR  <St>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
+bool TryDecodeLDR_S_LDST_REGOFF(const InstData &, Instruction &) {
+  return false;
+}
+
+// LDR  <St>, [<Xn|SP>], #<simm>
+bool TryDecodeLDR_S_LDST_IMMPOST(const InstData &, Instruction &) {
+  return false;
+}
+
+// LDR  <St>, [<Xn|SP>, #<simm>]!
+bool TryDecodeLDR_S_LDST_IMMPRE(const InstData &, Instruction &) {
+  return false;
+}
+
+// LDR  <St>, <label>
+bool TryDecodeLDR_S_LOADLIT(const InstData &, Instruction &) {
+  return false;
+}
+
 // LDR  <Dt>, [<Xn|SP>{, #<pimm>}]
 bool TryDecodeLDR_D_LDST_POS(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionRead, 64, data.Rn,
                          static_cast<uint64_t>(data.imm12.uimm) << 3);
   return true;
+}
+
+// LDR  <Dt>, [<Xn|SP>], #<simm>
+bool TryDecodeLDR_D_LDST_IMMPOST(const InstData &, Instruction &) {
+  return false;
+}
+
+// LDR  <Dt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
+bool TryDecodeLDR_D_LDST_REGOFF(const InstData &, Instruction &) {
+  return false;
+}
+
+// LDR  <Dt>, [<Xn|SP>, #<simm>]!
+bool TryDecodeLDR_D_LDST_IMMPRE(const InstData &, Instruction &) {
+  return false;
+}
+
+// LDR  <Dt>, <label>
+bool TryDecodeLDR_D_LOADLIT(const InstData &, Instruction &) {
+  return false;
 }
 
 // LDR  <Qt>, [<Xn|SP>{, #<pimm>}]
@@ -2289,6 +2364,25 @@ bool TryDecodeLDR_Q_LDST_POS(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// LDR  <Qt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
+bool TryDecodeLDR_Q_LDST_REGOFF(const InstData &, Instruction &) {
+  return false;
+}
+
+// LDR  <Qt>, [<Xn|SP>], #<simm>
+bool TryDecodeLDR_Q_LDST_IMMPOST(const InstData &, Instruction &) {
+  return false;
+}
+
+// LDR  <Qt>, [<Xn|SP>, #<simm>]!
+bool TryDecodeLDR_Q_LDST_IMMPRE(const InstData &, Instruction &) {
+  return false;
+}
+
+// LDR  <Qt>, <label>
+bool TryDecodeLDR_Q_LOADLIT(const InstData &, Instruction &) {
+  return false;
+}
 
 // CLZ  <Wd>, <Wn>
 bool TryDecodeCLZ_32_DP_1SRC(const InstData &data, Instruction &inst) {
