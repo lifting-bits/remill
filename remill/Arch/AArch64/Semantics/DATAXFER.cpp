@@ -256,13 +256,13 @@ DEF_SEM(LDR_H, V128W dst, MV16 src) {
   return memory;
 }
 
-DEF_SEM(LDR_S, V128W dst, MV32W src) {
-  UWriteV32(dst, UReadV32(src));
+DEF_SEM(LDR_S, V128W dst, MV32 src) {
+  FWriteV32(dst, FReadV32(src));
   return memory;
 }
 
 DEF_SEM(LDR_D, V128W dst, MV64 src) {
-  UWriteV64(dst, UReadV64(src));
+  FWriteV64(dst, FReadV64(src));
   return memory;
 }
 
@@ -284,13 +284,13 @@ DEF_SEM(LDR_H_UpdateIndex, V128W dst, MV16 src, R64W dst_reg, ADDR next_addr) {
 }
 
 DEF_SEM(LDR_S_UpdateIndex, V128W dst, MV32W src, R64W dst_reg, ADDR next_addr) {
-  UWriteV32(dst, UReadV32(src));
+  FWriteV32(dst, FReadV32(src));
   Write(dst_reg, Read(next_addr));
   return memory;
 }
 
 DEF_SEM(LDR_D_UpdateIndex, V128W dst, MV64 src, R64W dst_reg, ADDR next_addr) {
-  UWriteV64(dst, UReadV64(src));
+  FWriteV64(dst, FReadV64(src));
   Write(dst_reg, Read(next_addr));
   return memory;
 }
@@ -300,7 +300,6 @@ DEF_SEM(LDR_Q_UpdateIndex, V128W dst, MV128 src, R64W dst_reg, ADDR next_addr) {
   Write(dst_reg, Read(next_addr));
   return memory;
 }
-
 
 DEF_SEM(STR_B, V8 src, MV8W dst) {
   UWriteV8(dst, UReadV8(src));
@@ -313,12 +312,12 @@ DEF_SEM(STR_H, V16 src, MV16W dst) {
 }
 
 DEF_SEM(STR_S, V32 src, MV32W dst) {
-  UWriteV32(dst, UReadV32(src));
+  FWriteV32(dst, FReadV32(src));
   return memory;
 }
 
 DEF_SEM(STR_D, V64 src, MV64W dst) {
-  UWriteV64(dst, UReadV64(src));
+  FWriteV64(dst, FReadV64(src));
   return memory;
 }
 

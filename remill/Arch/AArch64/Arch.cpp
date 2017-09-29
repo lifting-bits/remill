@@ -2375,7 +2375,7 @@ static bool TryDecodeLDR_Vn_LDST_IMMPOST(const InstData &data,
   auto num_bits = ReadRegSize(val_class);
   AddRegOperand(inst, kActionWrite, val_class, kUseAsValue, data.Rt);
   uint64_t offset = static_cast<uint64_t>(data.imm9.simm9);
-  AddPostIndexMemOp(inst, kActionRead, num_bits, data.Rn, offset << scale);
+  AddPostIndexMemOp(inst, kActionRead, num_bits, data.Rn, offset);
   return true;
 }
 
@@ -2413,7 +2413,7 @@ static bool TryDecodeLDR_Vn_LDST_IMMPRE(const InstData &data, Instruction &inst,
   auto num_bits = ReadRegSize(val_class);
   AddRegOperand(inst, kActionWrite, val_class, kUseAsValue, data.Rt);
   uint64_t offset = static_cast<uint64_t>(data.imm9.simm9);
-  AddPreIndexMemOp(inst, kActionRead, num_bits, data.Rn, offset << scale);
+  AddPreIndexMemOp(inst, kActionRead, num_bits, data.Rn, offset);
   return true;
 }
 
