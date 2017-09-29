@@ -2246,8 +2246,6 @@ static bool TryDecodeSTR_Vn_LDST_POS(const InstData &data, Instruction &inst,
   uint64_t scale = ((data.opc & 0x2U) << 1U) | data.size;
   if (scale > 4) {
     return false;
-  } else if (kRegB != val_class && !(data.option & 2)) {  // Sub word indexing.
-    return false;  // `if option<1> == '0' then UnallocatedEncoding();`.
   }
   auto num_bits = ReadRegSize(val_class);
   AddRegOperand(inst, kActionRead, val_class, kUseAsValue, data.Rt);
