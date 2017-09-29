@@ -271,6 +271,37 @@ DEF_SEM(LDR_Q, V128W dst, MV128 src) {
   return memory;
 }
 
+DEF_SEM(LDR_B_UpdateIndex, V128W dst, MV8 src, R64W dst_reg, ADDR next_addr) {
+  UWriteV8(dst, UReadV8(src));
+  Write(dst_reg, Read(next_addr));
+  return memory;
+}
+
+DEF_SEM(LDR_H_UpdateIndex, V128W dst, MV16 src, R64W dst_reg, ADDR next_addr) {
+  UWriteV16(dst, UReadV16(src));
+  Write(dst_reg, Read(next_addr));
+  return memory;
+}
+
+DEF_SEM(LDR_S_UpdateIndex, V128W dst, MV32W src, R64W dst_reg, ADDR next_addr) {
+  UWriteV32(dst, UReadV32(src));
+  Write(dst_reg, Read(next_addr));
+  return memory;
+}
+
+DEF_SEM(LDR_D_UpdateIndex, V128W dst, MV64 src, R64W dst_reg, ADDR next_addr) {
+  UWriteV64(dst, UReadV64(src));
+  Write(dst_reg, Read(next_addr));
+  return memory;
+}
+
+DEF_SEM(LDR_Q_UpdateIndex, V128W dst, MV128 src, R64W dst_reg, ADDR next_addr) {
+  UWriteV128(dst, UReadV128(src));
+  Write(dst_reg, Read(next_addr));
+  return memory;
+}
+
+
 DEF_SEM(STR_B, V8 src, MV8W dst) {
   UWriteV8(dst, UReadV8(src));
   return memory;
@@ -303,6 +334,18 @@ DEF_ISEL(LDR_H_LDST_POS) = LDR_H;
 DEF_ISEL(LDR_S_LDST_POS) = LDR_S;
 DEF_ISEL(LDR_D_LDST_POS) = LDR_D;
 DEF_ISEL(LDR_Q_LDST_POS) = LDR_Q;
+
+DEF_ISEL(LDR_B_LDST_IMMPRE) = LDR_B_UpdateIndex;
+DEF_ISEL(LDR_H_LDST_IMMPRE) = LDR_H_UpdateIndex;
+DEF_ISEL(LDR_S_LDST_IMMPRE) = LDR_S_UpdateIndex;
+DEF_ISEL(LDR_D_LDST_IMMPRE) = LDR_D_UpdateIndex;
+DEF_ISEL(LDR_Q_LDST_IMMPRE) = LDR_Q_UpdateIndex;
+
+DEF_ISEL(LDR_B_LDST_IMMPOST) = LDR_B_UpdateIndex;
+DEF_ISEL(LDR_H_LDST_IMMPOST) = LDR_H_UpdateIndex;
+DEF_ISEL(LDR_S_LDST_IMMPOST) = LDR_S_UpdateIndex;
+DEF_ISEL(LDR_D_LDST_IMMPOST) = LDR_D_UpdateIndex;
+DEF_ISEL(LDR_Q_LDST_IMMPOST) = LDR_Q_UpdateIndex;
 
 DEF_ISEL(STR_B_LDST_POS) = STR_B;
 DEF_ISEL(STR_H_LDST_POS) = STR_H;
