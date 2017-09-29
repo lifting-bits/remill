@@ -2246,7 +2246,7 @@ static bool TryDecodeSTR_Vn_LDST_POS(const InstData &data, Instruction &inst,
   uint64_t scale = ((data.opc & 0x2U) << 1U) | data.size;
   if (scale > 4) {
     return false;
-  } else if (!(data.option & 2)) {  // Sub word indexing.
+  } else if (kRegB != val_class && !(data.option & 2)) {  // Sub word indexing.
     return false;  // `if option<1> == '0' then UnallocatedEncoding();`.
   }
   auto num_bits = ReadRegSize(val_class);
@@ -2256,7 +2256,6 @@ static bool TryDecodeSTR_Vn_LDST_POS(const InstData &data, Instruction &inst,
       static_cast<uint64_t>(data.imm12.uimm) << scale);
   return true;
 }
-
 
 // STR  <Bt>, [<Xn|SP>{, #<pimm>}]
 bool TryDecodeSTR_B_LDST_POS(const InstData &data, Instruction &inst) {
@@ -2287,8 +2286,12 @@ static bool TryDecodeLDR_Vn_LDST_POS(const InstData &data, Instruction &inst,
                                      RegClass val_class) {
   uint64_t scale = ((data.opc & 0x2U) << 1U) | data.size;
   if (scale > 4) {
+    LOG(ERROR)
+        << "Scale=" << scale << " opc=" << data.opc << " size=" << data.size;
     return false;
-  } else if (!(data.option & 2)) {  // Sub word indexing.
+  } else if (kRegB != val_class && !(data.option & 2)) {  // Sub word indexing.
+    LOG(ERROR)
+        << "option=" << unsigned(data.option);
     return false;  // `if option<1> == '0' then UnallocatedEncoding();`.
   }
   auto num_bits = ReadRegSize(val_class);
