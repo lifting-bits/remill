@@ -2217,8 +2217,13 @@ bool TryDecodeUCVTF_D64_FLOAT2INT(const InstData &data, Instruction &inst) {
   return true;
 }
 
+bool CheckFloatUnallocatedEncoding(const InstData &data) {
+  // when type `10` UnallocatedEncoding()
+  return (data.type == 2);
+}
 // FCVTZU  <Xd>, <Sn>
 bool TryDecodeFCVTZU_64S_FLOAT2INT(const InstData &data, Instruction &inst) {
+  if (CheckFloatUnallocatedEncoding(data)) { return false; }
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
   return true;
@@ -2226,6 +2231,7 @@ bool TryDecodeFCVTZU_64S_FLOAT2INT(const InstData &data, Instruction &inst) {
 
 // FMOV  <Hd>, #<imm>
 bool TryDecodeFMOV_H_FLOATIMM(const InstData &data, Instruction &inst) {
+  if (CheckFloatUnallocatedEncoding(data)) { return false; }
   AddRegOperand(inst, kActionWrite, kRegH, kUseAsValue, data.Rd);
   auto float_val = VFPExpandImmToFloat32(data.imm8.uimm);
   AddImmOperand(inst, float_val);
@@ -2234,6 +2240,7 @@ bool TryDecodeFMOV_H_FLOATIMM(const InstData &data, Instruction &inst) {
 
 // FMOV  <Sd>, #<imm>
 bool TryDecodeFMOV_S_FLOATIMM(const InstData &data, Instruction &inst) {
+  if (CheckFloatUnallocatedEncoding(data)) { return false; }
   AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
   auto float_val = VFPExpandImmToFloat32(data.imm8.uimm);
   AddImmOperand(inst, float_val);
@@ -2242,6 +2249,7 @@ bool TryDecodeFMOV_S_FLOATIMM(const InstData &data, Instruction &inst) {
 
 // FMOV  <Dd>, #<imm>
 bool TryDecodeFMOV_D_FLOATIMM(const InstData &data, Instruction &inst) {
+  if (CheckFloatUnallocatedEncoding(data)) { return false; }
   AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rd);
   auto float_val = VFPExpandImmToFloat64(data.imm8.uimm);
   AddImmOperand(inst, float_val);
@@ -2250,6 +2258,7 @@ bool TryDecodeFMOV_D_FLOATIMM(const InstData &data, Instruction &inst) {
 
 // FMOV  <Sd>, <Wn>
 bool TryDecodeFMOV_S32_FLOAT2INT(const InstData &data, Instruction &inst) {
+  if (CheckFloatUnallocatedEncoding(data)) { return false; }
   AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
   return true;
@@ -2257,6 +2266,7 @@ bool TryDecodeFMOV_S32_FLOAT2INT(const InstData &data, Instruction &inst) {
 
 // FMOV  <Wd>, <Sn>
 bool TryDecodeFMOV_32S_FLOAT2INT(const InstData &data, Instruction &inst) {
+  if (CheckFloatUnallocatedEncoding(data)) { return false; }
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rn);
   return true;
@@ -2264,12 +2274,14 @@ bool TryDecodeFMOV_32S_FLOAT2INT(const InstData &data, Instruction &inst) {
 
 // FMOV  <Dd>, <Xn>
 bool TryDecodeFMOV_D64_FLOAT2INT(const InstData &data, Instruction &inst) {
+  if (CheckFloatUnallocatedEncoding(data)) { return false; }
   AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
   return true;
 }
 // FMOV  <Xd>, <Dn>
 bool TryDecodeFMOV_64D_FLOAT2INT(const InstData &data, Instruction &inst) {
+  if (CheckFloatUnallocatedEncoding(data)) { return false; }
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rn);
   return true;
@@ -2277,6 +2289,7 @@ bool TryDecodeFMOV_64D_FLOAT2INT(const InstData &data, Instruction &inst) {
 
 // FADD  <Hd>, <Hn>, <Hm>
 bool TryDecodeFADD_H_FLOATDP2(const InstData &data, Instruction &inst) {
+  if (CheckFloatUnallocatedEncoding(data)) { return false; }
   AddRegOperand(inst, kActionWrite, kRegH, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegH, kUseAsValue, data.Rn);
   AddRegOperand(inst, kActionRead, kRegH, kUseAsValue, data.Rm);
@@ -2285,6 +2298,7 @@ bool TryDecodeFADD_H_FLOATDP2(const InstData &data, Instruction &inst) {
 
 // FADD  <Sd>, <Sn>, <Sm>
 bool TryDecodeFADD_S_FLOATDP2(const InstData &data, Instruction &inst) {
+  if (CheckFloatUnallocatedEncoding(data)) { return false; }
   AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rm);
@@ -2293,6 +2307,7 @@ bool TryDecodeFADD_S_FLOATDP2(const InstData &data, Instruction &inst) {
 
 // FADD  <Dd>, <Dn>, <Dm>
 bool TryDecodeFADD_D_FLOATDP2(const InstData &data, Instruction &inst) {
+  if (CheckFloatUnallocatedEncoding(data)) { return false; }
   AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rn);
   AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rm);
@@ -2301,6 +2316,7 @@ bool TryDecodeFADD_D_FLOATDP2(const InstData &data, Instruction &inst) {
 
 // FMUL  <Sd>, <Sn>, <Sm>
 bool TryDecodeFMUL_S_FLOATDP2(const InstData &data, Instruction &inst) {
+  if (CheckFloatUnallocatedEncoding(data)) { return false; }
   AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rm);
@@ -2309,6 +2325,7 @@ bool TryDecodeFMUL_S_FLOATDP2(const InstData &data, Instruction &inst) {
 
 // FCMPE  <Sn>, <Sm>
 bool TryDecodeFCMPE_S_FLOATCMP(const InstData &data, Instruction &inst) {
+  if (CheckFloatUnallocatedEncoding(data)) { return false; }
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rm);
   return true;
@@ -2316,6 +2333,7 @@ bool TryDecodeFCMPE_S_FLOATCMP(const InstData &data, Instruction &inst) {
 
 // FCMPE  <Sn>, #0.0
 bool TryDecodeFCMPE_SZ_FLOATCMP(const InstData &data, Instruction &inst) {
+  if (CheckFloatUnallocatedEncoding(data)) { return false; }
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
   AddImmOperand(inst, 0);
   return true;
