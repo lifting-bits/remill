@@ -453,12 +453,16 @@ static void AddShiftRegOperand(Instruction &inst, RegClass rclass,
   }
 }
 
-static void AddExtendRegOperand(Instruction &inst, RegClass rclass,
-                                RegUsage rtype, RegNum reg_num,
+// Add an extend register operand, e.g. `(<Wm>|<Xm>){, <extend> {<amount>}}`.
+//
+// NOTE(pag): `rclass` is explicitly passed instead of inferred because some
+//            instructions, e.g. `ADD_32_ADDSUB_EXT` specify `Wm` only.
+static void AddExtendRegOperand(Instruction &inst, RegClass reg_class,
+                                RegUsage reg_use, RegNum reg_num,
                                 Extend extend_type, uint64_t output_size,
                                 uint64_t shift_size=0) {
   Operand op;
-  op.shift_reg.reg = Reg(kActionRead, rclass, rtype, reg_num);
+  op.shift_reg.reg = Reg(kActionRead, reg_class, reg_use, reg_num);
   op.shift_reg.extend_op = ShiftRegExtendType(extend_type);
   op.shift_reg.extract_size = ExtractSizeInBits(extend_type);
 
@@ -1025,10 +1029,11 @@ static bool TryDecodeLDR_n_LDST_REGOFF(
   unsigned scale = data.size;
   auto shift = (data.S == 1) ? scale : 0U;
   auto extend_type = static_cast<Extend>(data.option);
+  auto rclass = ExtendTypeToRegClass(extend_type);
   AddRegOperand(inst, kActionWrite, val_class, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionRead, 8U << scale, data.Rn, 0);
-  AddExtendRegOperand(inst, val_class, kUseAsValue, data.Rm,
-                      extend_type, 64, shift);
+  AddExtendRegOperand(inst, rclass, kUseAsValue, data.Rm, extend_type,
+                      64, shift);
   return true;
 }
 
@@ -1100,8 +1105,8 @@ static bool TryDecodeSTR_n_LDST_REGOFF(
   auto shift = data.S ? scale : 0U;
   AddRegOperand(inst, kActionRead, val_class, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionWrite, 8U << data.size, data.Rn, 0);
-  AddExtendRegOperand(inst, val_class, kUseAsValue, data.Rm,
-                      extend_type, 64, shift);
+  AddExtendRegOperand(inst, ExtendTypeToRegClass(extend_type),
+                      kUseAsValue, data.Rm, extend_type, 64, shift);
   return true;
 }
 
@@ -1615,7 +1620,8 @@ bool TryDecodeSTRB_32B_LDST_REGOFF(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsAddress, data.Rn);
   auto extend_type = static_cast<Extend>(data.option);
-  AddExtendRegOperand(inst, kRegX, kUseAsValue, data.Rm, extend_type, 64, 0);
+  auto rclass = ExtendTypeToRegClass(extend_type);
+  AddExtendRegOperand(inst, rclass, kUseAsValue, data.Rm, extend_type, 64, 0);
   return true;
 }
 
@@ -1662,7 +1668,8 @@ bool TryDecodeLDRB_32B_LDST_REGOFF(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
   auto extend_type = static_cast<Extend>(data.option);
-  AddExtendRegOperand(inst, kRegX, kUseAsValue, data.Rm, extend_type, 64, 0);
+  auto rclass = ExtendTypeToRegClass(extend_type);
+  AddExtendRegOperand(inst, rclass, kUseAsValue, data.Rm, extend_type, 64, 0);
   return true;
 }
 
@@ -1709,7 +1716,8 @@ bool TryDecodeLDRH_32_LDST_REGOFF(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
   auto extend_type = static_cast<Extend>(data.option);
-  AddExtendRegOperand(inst, kRegX, kUseAsValue, data.Rm, extend_type,
+  auto rclass = ExtendTypeToRegClass(extend_type);
+  AddExtendRegOperand(inst, rclass, kUseAsValue, data.Rm, extend_type,
                       64, data.S);
   return true;
 }
@@ -2328,9 +2336,10 @@ static bool TryDecodeLDR_Vn_LDST_REGOFF(const InstData &data, Instruction &inst,
   }
   auto shift = (data.S == 1) ? scale : 0U;
   auto extend_type = static_cast<Extend>(data.option);
+  auto rclass = ExtendTypeToRegClass(extend_type);
   AddRegOperand(inst, kActionWrite, val_class, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionRead, 8U << scale, data.Rn, 0);
-  AddExtendRegOperand(inst, val_class, kUseAsValue, data.Rm,
+  AddExtendRegOperand(inst, rclass, kUseAsValue, data.Rm,
                       extend_type, 64, shift);
   return true;
 }

@@ -49,6 +49,21 @@ Operand::Operand(void)
       action(Operand::kActionInvalid),
       size(0) {}
 
+namespace {
+static int64_t SignedImmediate(uint64_t val, uint64_t size) {
+  switch (size) {
+    case 8:
+      return static_cast<int64_t>(static_cast<int8_t>(val));
+    case 16:
+      return static_cast<int64_t>(static_cast<int16_t>(val));
+    case 32:
+      return static_cast<int64_t>(static_cast<int32_t>(val));
+    default:
+      return static_cast<int64_t>(val);
+  }
+}
+}  // namespace
+
 std::string Operand::Serialize(void) const {
   std::stringstream ss;
   switch (action) {
@@ -130,13 +145,20 @@ std::string Operand::Serialize(void) const {
     case Operand::kTypeImmediate:
       ss << "(";
       if (imm.is_signed) {
-        ss << "SIGNED_";
+        ss << "SIGNED_IMM_" << size << " ";
+        auto simm = SignedImmediate(imm.val, size);
+        if (simm < 0) {
+          ss << "-0x" << std::hex << static_cast<uint64_t>(-simm) << std::dec;
+        } else {
+          ss << "0x" << std::hex << imm.val << std::dec;
+        }
+      } else {
+        ss << "IMM_" << size << " " << std::hex << imm.val << std::dec << ")";
       }
-      ss << "IMM_" << size << " " << std::hex << imm.val << std::dec << ")";
       break;
 
     case Operand::kTypeAddress:
-      ss << "(ADDR_" << addr.address_size << " ";
+      ss << "(";
 
       // Nice version of the memory size.
       switch (size) {
@@ -154,22 +176,47 @@ std::string Operand::Serialize(void) const {
           ss << std::dec << (size / 8) << "_BYTES"; break;
       }
 
-      if (!addr.segment_base_reg.name.empty()) {
-        ss << " (SEGMENT " << addr.segment_base_reg.name << ")";
+      ss << "_PTR ";
+
+      if (addr.displacement) {
+        ss << "(ADD";
       }
 
-      ss << " " << addr.base_reg.name;
+      if (!addr.segment_base_reg.name.empty()) {
+        ss << " (REG_" << addr.segment_base_reg.size << " "
+           << addr.segment_base_reg.name << ")";
+      }
+
+      ss << " (REG_" << addr.base_reg.size << " " << addr.base_reg.name << ")";
+
+      if (addr.scale) {
+        CHECK(!addr.index_reg.name.empty());
+        ss << "(MUL";
+      }
+
       if (!addr.index_reg.name.empty()) {
-        ss << " + (" << addr.index_reg.name << " * " << addr.scale << ")";
+        ss << " (REG_" << addr.index_reg.size << " "
+           << addr.index_reg.name << ")";
       }
+
+      if (addr.scale) {
+        ss << " (IMM_" << addr.index_reg.size << " 0x" << std::hex
+           << addr.scale << std::dec << ")";
+        ss << ")";  // End of `(MUL`.
+      }
+
       if (addr.displacement) {
+        ss << " (SIGNED_IMM_" << addr.address_size << " ";
         if (0 > addr.displacement) {
-          ss << " - 0x" << std::hex << (-addr.displacement) << std::dec;
+          ss << "-0x" << std::hex << (-addr.displacement) << std::dec;
         } else {
-          ss << " + 0x" << std::hex << addr.displacement << std::dec;
+          ss << "0x" << std::hex << addr.displacement << std::dec;
         }
+        ss << ")";  // End of `(SIGNED_IMM_`.
       }
-      ss << "))";
+      ss << ")";  // End of `(ADD`.
+
+      ss << ")";  // End of `(ADDR_`.
       break;
   }
   ss << ")";
