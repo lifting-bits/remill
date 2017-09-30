@@ -1856,6 +1856,22 @@ bool TryDecodeLDUR_64_LDST_UNSCALED(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// STUR  <Wt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeSTUR_32_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 32, data.Rn,
+                         static_cast<uint64_t>(data.imm9.simm9));
+  return true;
+}
+
+// STUR  <Xt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeSTUR_64_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 64, data.Rn,
+                         static_cast<uint64_t>(data.imm9.simm9));
+  return true;
+}
+
 // HINT  #<imm>
 bool TryDecodeHINT_1(const InstData &, Instruction &) {
   return true;  // NOP.
