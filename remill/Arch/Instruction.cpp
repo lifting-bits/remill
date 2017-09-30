@@ -176,10 +176,21 @@ std::string Operand::Serialize(void) const {
           ss << std::dec << (size / 8) << "_BYTES"; break;
       }
 
-      ss << "_PTR ";
+      ss << "_PTR";
 
+      int num_components = 0;
       if (addr.displacement) {
-        ss << "(ADD";
+        ++num_components;
+      }
+      if (!addr.segment_base_reg.name.empty()) {
+        ++num_components;
+      }
+      if (!addr.index_reg.name.empty()) {
+        ++num_components;
+      }
+
+      if (1 < num_components) {
+        ss << " (ADD";
       }
 
       if (!addr.segment_base_reg.name.empty()) {
@@ -191,7 +202,7 @@ std::string Operand::Serialize(void) const {
 
       if (addr.scale) {
         CHECK(!addr.index_reg.name.empty());
-        ss << "(MUL";
+        ss << " (MUL";
       }
 
       if (!addr.index_reg.name.empty()) {
@@ -214,8 +225,9 @@ std::string Operand::Serialize(void) const {
         }
         ss << ")";  // End of `(SIGNED_IMM_`.
       }
-      ss << ")";  // End of `(ADD`.
-
+      if (1 < num_components) {
+        ss << ")";  // End of `(ADD`.
+      }
       ss << ")";  // End of `(ADDR_`.
       break;
   }
