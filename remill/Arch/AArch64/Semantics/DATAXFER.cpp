@@ -326,6 +326,102 @@ DEF_SEM(LDR_Q_FromOffset, V128W dst, MV128 src, ADDR offset) {
   return memory;
 }
 
+}  // namespace
+
+DEF_ISEL(LDR_B_LDST_POS) = LDR_B;
+DEF_ISEL(LDR_H_LDST_POS) = LDR_H;
+DEF_ISEL(LDR_S_LDST_POS) = LDR_S;
+DEF_ISEL(LDR_D_LDST_POS) = LDR_D;
+DEF_ISEL(LDR_Q_LDST_POS) = LDR_Q;
+
+DEF_ISEL(LDR_S_LOADLIT) = LDR_S;
+DEF_ISEL(LDR_D_LOADLIT) = LDR_D;
+DEF_ISEL(LDR_Q_LOADLIT) = LDR_Q;
+
+DEF_ISEL(LDR_B_LDST_IMMPRE) = LDR_B_UpdateIndex;
+DEF_ISEL(LDR_H_LDST_IMMPRE) = LDR_H_UpdateIndex;
+DEF_ISEL(LDR_S_LDST_IMMPRE) = LDR_S_UpdateIndex;
+DEF_ISEL(LDR_D_LDST_IMMPRE) = LDR_D_UpdateIndex;
+DEF_ISEL(LDR_Q_LDST_IMMPRE) = LDR_Q_UpdateIndex;
+
+DEF_ISEL(LDR_B_LDST_IMMPOST) = LDR_B_UpdateIndex;
+DEF_ISEL(LDR_H_LDST_IMMPOST) = LDR_H_UpdateIndex;
+DEF_ISEL(LDR_S_LDST_IMMPOST) = LDR_S_UpdateIndex;
+DEF_ISEL(LDR_D_LDST_IMMPOST) = LDR_D_UpdateIndex;
+DEF_ISEL(LDR_Q_LDST_IMMPOST) = LDR_Q_UpdateIndex;
+
+DEF_ISEL(LDR_B_LDST_REGOFF) = LDR_B_FromOffset;
+DEF_ISEL(LDR_H_LDST_REGOFF) = LDR_H_FromOffset;
+DEF_ISEL(LDR_S_LDST_REGOFF) = LDR_S_FromOffset;
+DEF_ISEL(LDR_D_LDST_REGOFF) = LDR_D_FromOffset;
+DEF_ISEL(LDR_Q_LDST_REGOFF) = LDR_Q_FromOffset;
+
+namespace {
+
+DEF_SEM(LDP_S, V128W dst1, V128W dst2, MV64 src) {
+  auto src_vec = FReadV32(src);
+  FWriteV32(dst1, FExtractV32(src_vec, 0));
+  FWriteV32(dst2, FExtractV32(src_vec, 1));
+  return memory;
+}
+
+DEF_SEM(LDP_D, V128W dst1, V128W dst2, MV128 src) {
+  auto src_vec = FReadV64(src);
+  FWriteV64(dst1, FExtractV64(src_vec, 0));
+  FWriteV64(dst2, FExtractV64(src_vec, 1));
+  return memory;
+}
+
+DEF_SEM(LDP_Q, V128W dst1, V128W dst2, MV256 src) {
+  auto src_vec = UReadV128(src);
+  UWriteV128(dst1, UExtractV128(src_vec, 0));
+  UWriteV128(dst2, UExtractV128(src_vec, 1));
+  return memory;
+}
+
+DEF_SEM(LDP_S_UpdateIndex, V128W dst1, V128W dst2, MV64 src,
+        R64W dst_reg, ADDR next_addr) {
+  auto src_vec = FReadV32(src);
+  FWriteV32(dst1, FExtractV32(src_vec, 0));
+  FWriteV32(dst2, FExtractV32(src_vec, 1));
+  Write(dst_reg, Read(next_addr));
+  return memory;
+}
+
+DEF_SEM(LDP_D_UpdateIndex, V128W dst1, V128W dst2, MV128 src,
+        R64W dst_reg, ADDR next_addr) {
+  auto src_vec = FReadV64(src);
+  FWriteV64(dst1, FExtractV64(src_vec, 0));
+  FWriteV64(dst2, FExtractV64(src_vec, 1));
+  Write(dst_reg, Read(next_addr));
+  return memory;
+}
+
+DEF_SEM(LDP_Q_UpdateIndex, V128W dst1, V128W dst2, MV256 src,
+        R64W dst_reg, ADDR next_addr) {
+  auto src_vec = UReadV128(src);
+  UWriteV128(dst1, UExtractV128(src_vec, 0));
+  UWriteV128(dst2, UExtractV128(src_vec, 1));
+  Write(dst_reg, Read(next_addr));
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(LDP_S_LDSTPAIR_OFF) = LDP_S;
+DEF_ISEL(LDP_D_LDSTPAIR_OFF) = LDP_D;
+DEF_ISEL(LDP_Q_LDSTPAIR_OFF) = LDP_Q;
+
+DEF_ISEL(LDP_S_LDSTPAIR_POST) = LDP_S_UpdateIndex;
+DEF_ISEL(LDP_D_LDSTPAIR_POST) = LDP_D_UpdateIndex;
+DEF_ISEL(LDP_Q_LDSTPAIR_POST) = LDP_Q_UpdateIndex;
+
+DEF_ISEL(LDP_S_LDSTPAIR_PRE) = LDP_S_UpdateIndex;
+DEF_ISEL(LDP_D_LDSTPAIR_PRE) = LDP_D_UpdateIndex;
+DEF_ISEL(LDP_Q_LDSTPAIR_PRE) = LDP_Q_UpdateIndex;
+
+namespace {
+
 DEF_SEM(STR_B, V8 src, MV8W dst) {
   UWriteV8(dst, UReadV8(src));
   return memory;
@@ -352,30 +448,6 @@ DEF_SEM(STR_Q, V128 src, MV128W dst) {
 }
 
 }  // namespace
-
-DEF_ISEL(LDR_B_LDST_POS) = LDR_B;
-DEF_ISEL(LDR_H_LDST_POS) = LDR_H;
-DEF_ISEL(LDR_S_LDST_POS) = LDR_S;
-DEF_ISEL(LDR_D_LDST_POS) = LDR_D;
-DEF_ISEL(LDR_Q_LDST_POS) = LDR_Q;
-
-DEF_ISEL(LDR_B_LDST_IMMPRE) = LDR_B_UpdateIndex;
-DEF_ISEL(LDR_H_LDST_IMMPRE) = LDR_H_UpdateIndex;
-DEF_ISEL(LDR_S_LDST_IMMPRE) = LDR_S_UpdateIndex;
-DEF_ISEL(LDR_D_LDST_IMMPRE) = LDR_D_UpdateIndex;
-DEF_ISEL(LDR_Q_LDST_IMMPRE) = LDR_Q_UpdateIndex;
-
-DEF_ISEL(LDR_B_LDST_IMMPOST) = LDR_B_UpdateIndex;
-DEF_ISEL(LDR_H_LDST_IMMPOST) = LDR_H_UpdateIndex;
-DEF_ISEL(LDR_S_LDST_IMMPOST) = LDR_S_UpdateIndex;
-DEF_ISEL(LDR_D_LDST_IMMPOST) = LDR_D_UpdateIndex;
-DEF_ISEL(LDR_Q_LDST_IMMPOST) = LDR_Q_UpdateIndex;
-
-DEF_ISEL(LDR_B_LDST_REGOFF) = LDR_B_FromOffset;
-DEF_ISEL(LDR_H_LDST_REGOFF) = LDR_H_FromOffset;
-DEF_ISEL(LDR_S_LDST_REGOFF) = LDR_S_FromOffset;
-DEF_ISEL(LDR_D_LDST_REGOFF) = LDR_D_FromOffset;
-DEF_ISEL(LDR_Q_LDST_REGOFF) = LDR_Q_FromOffset;
 
 DEF_ISEL(STR_B_LDST_POS) = STR_B;
 DEF_ISEL(STR_H_LDST_POS) = STR_H;
