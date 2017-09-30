@@ -68,7 +68,7 @@ TEST_INPUTS(0)
 TEST_END
 
 /* LDP  <Qt1>, <Qt2>, [<Xn|SP>{, #<imm>}] */
-TEST_BEGIN(LDP_D_LDSTPAIR_OFF, ldp_q0_q1_m256_off, 1)
+TEST_BEGIN(LDP_Q_LDSTPAIR_OFF, ldp_q0_q1_m256_off, 1)
 TEST_INPUTS(0)
 
     add x3, sp, #-256
