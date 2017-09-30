@@ -15,7 +15,7 @@
  */
 
 /* STUR  <Wt>, [<Xn|SP>{, #<simm>}] */
-TEST_BEGIN(STUR_32_LDST_UNSCALED, ldur_w5_m32, 3)
+TEST_BEGIN(STUR_32_LDST_UNSCALED, sdur_w5_m32, 3)
 TEST_INPUTS(
     0x41414141, 0xabababab, 0xefefefef)
 
@@ -26,7 +26,7 @@ TEST_INPUTS(
 TEST_END
 
 /* STUR  <Xt>, [<Xn|SP>{, #<simm>}] */
-TEST_BEGIN(STUR_64_LDST_UNSCALED, ldur_x5_m64, 1)
+TEST_BEGIN(STUR_64_LDST_UNSCALED, sdur_x5_m64, 1)
 TEST_INPUTS(
     0x4141414151515151, 0xababababcdcdcdcd, 0xefefefef01010101)
 

@@ -1840,6 +1840,46 @@ bool TryDecodeBIC_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
   return TryDecodeEOR_64_LOG_SHIFT(data, inst);
 }
 
+static bool TryDecodeLDUR_Vn_LDST_UNSCALED(const InstData &data,
+                                           Instruction &inst,
+                                           RegClass val_class) {
+  uint64_t scale = ((data.opc & 0x2U) << 1U) | data.size;
+  if (scale > 4) {
+    return false;
+  }
+  auto num_bits = ReadRegSize(val_class);
+  AddRegOperand(inst, kActionWrite, val_class, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(
+      inst, kActionRead, num_bits, data.Rn,
+      static_cast<uint64_t>(data.imm12.uimm));
+  return true;
+}
+
+// LDUR  <Bt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeLDUR_B_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeLDUR_Vn_LDST_UNSCALED(data, inst, kRegB);
+}
+
+// LDUR  <Ht>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeLDUR_H_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeLDUR_Vn_LDST_UNSCALED(data, inst, kRegH);
+}
+
+// LDUR  <St>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeLDUR_S_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeLDUR_Vn_LDST_UNSCALED(data, inst, kRegS);
+}
+
+// LDUR  <Dt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeLDUR_D_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeLDUR_Vn_LDST_UNSCALED(data, inst, kRegD);
+}
+
+// LDUR  <Qt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeLDUR_Q_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeLDUR_Vn_LDST_UNSCALED(data, inst, kRegQ);
+}
+
 // LDUR  <Wt>, [<Xn|SP>{, #<simm>}]
 bool TryDecodeLDUR_32_LDST_UNSCALED(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
@@ -1854,6 +1894,46 @@ bool TryDecodeLDUR_64_LDST_UNSCALED(const InstData &data, Instruction &inst) {
   AddBasePlusOffsetMemOp(inst, kActionRead, 64, data.Rn,
                          static_cast<uint64_t>(data.imm9.simm9));
   return true;
+}
+
+static bool TryDecodeSTUR_Vn_LDST_UNSCALED(const InstData &data,
+                                           Instruction &inst,
+                                           RegClass val_class) {
+  uint64_t scale = ((data.opc & 0x2U) << 1U) | data.size;
+  if (scale > 4) {
+    return false;
+  }
+  auto num_bits = ReadRegSize(val_class);
+  AddRegOperand(inst, kActionRead, val_class, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(
+      inst, kActionWrite, num_bits, data.Rn,
+      static_cast<uint64_t>(data.imm12.uimm));
+  return true;
+}
+
+// STUR  <Bt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeSTUR_B_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeSTUR_Vn_LDST_UNSCALED(data, inst, kRegB);
+}
+
+// STUR  <Ht>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeSTUR_H_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeSTUR_Vn_LDST_UNSCALED(data, inst, kRegH);
+}
+
+// STUR  <St>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeSTUR_S_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeSTUR_Vn_LDST_UNSCALED(data, inst, kRegS);
+}
+
+// STUR  <Dt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeSTUR_D_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeSTUR_Vn_LDST_UNSCALED(data, inst, kRegD);
+}
+
+// STUR  <Qt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeSTUR_Q_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeSTUR_Vn_LDST_UNSCALED(data, inst, kRegQ);
 }
 
 // STUR  <Wt>, [<Xn|SP>{, #<simm>}]
