@@ -13,3 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+namespace {
+
+template <typename S>
+DEF_SEM(ORR_Vec, V128W dst, S src1, S src2) {
+  UWriteV64(dst, UOrV64(UReadV64(src1), UReadV64(src2)));
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(ORR_ASIMDSAME_ONLY_8B) = ORR_Vec<V64>;
+DEF_ISEL(ORR_ASIMDSAME_ONLY_16B) = ORR_Vec<V128>;

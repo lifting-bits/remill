@@ -181,6 +181,7 @@ enum RegClass {
   kRegS,  // Single-precision float.
   kRegD,  // Doubleword, Double precision float.
   kRegQ,  // Quadword.
+  kRegV,  // V reg containing Q, D, S, H, and B.
 };
 
 using RegNum = uint8_t;
@@ -331,9 +332,11 @@ static std::string RegNameFP(Action action, RegClass rclass, RegUsage rtype,
       ss << "S";
     } else if (kRegD == rclass) {
       ss << "D";
-    } else {
-      CHECK(kRegQ == rclass);
+    } else if (kRegQ == rclass) {
       ss << "Q";
+    } else {
+      CHECK(kRegV == rclass);
+      ss << "V";
     }
   } else {
     ss << "V";
@@ -355,6 +358,7 @@ static std::string RegName(Action action, RegClass rclass, RegUsage rtype,
     case kRegS:
     case kRegD:
     case kRegQ:
+    case kRegV:
       return RegNameFP(action, rclass, rtype, number);
   }
 }
@@ -374,6 +378,7 @@ static uint64_t ReadRegSize(RegClass rclass) {
     case kRegD:
       return 64;
     case kRegQ:
+    case kRegV:
       return 128;
   }
   return 0;
@@ -389,6 +394,7 @@ static uint64_t WriteRegSize(RegClass rclass) {
     case kRegS:
     case kRegD:
     case kRegQ:
+    case kRegV:
       return 128;
   }
   return 0;
@@ -2907,6 +2913,17 @@ bool TryDecodeCCMP_64_CONDCMP_REG(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rm);
   AddImmOperand(inst, data.nzcv);
+  return true;
+}
+
+// ORR  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeORR_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  std::stringstream ss;
+  ss << inst.function << "_" << (data.Q ? "16B" : "8B");
+  inst.function = ss.str();
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rm);
   return true;
 }
 
