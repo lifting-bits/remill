@@ -131,7 +131,7 @@ TEST_INPUTS(0)
     ldrsb w5, [x3, ARG1_64, lsl #0]  /* Explicit LSL 0 */
 TEST_END
 
-TEST_BEGIN(LDRSB_64B_LDST_REGOFF, ldrsb_x5_m8_off_w0_lsl0, 1)
+TEST_BEGIN(LDRSB_64BL_LDST_REGOFF, ldrsb_x5_m8_off_w0_lsl0, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldrsb x5, [x3, ARG1_64, lsl #0]  /* Explicit LSL 0 */
