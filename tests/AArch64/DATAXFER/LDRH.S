@@ -15,7 +15,7 @@
  */
 
 /* LDRH  <Wt>, [<Xn|SP>{, #<pimm>}] */
-TEST_BEGIN(LDRH_32_LDST_POS, ldrh_w563_m8, 1)
+TEST_BEGIN(LDRH_32_LDST_POS, ldrh_w563_m16, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldrh w5, [x3]
@@ -24,28 +24,28 @@ TEST_INPUTS(0)
 TEST_END
 
 /* LDRH  <Wt>, [<Xn|SP>], #<simm> */
-TEST_BEGIN(LDRH_32_LDST_IMMPOST, ldrh_w5_m8_post, 1)
+TEST_BEGIN(LDRH_32_LDST_IMMPOST, ldrh_w56_m16_post, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldrh w5, [x3], #0
     ldrh w6, [x3], #32
 TEST_END
 
-TEST_BEGIN(LDRH_32_LDST_IMMPOST, ldrh_wzr_m8_post_alias, 1)
+TEST_BEGIN(LDRH_32_LDST_IMMPOST, ldrh_wzr_m16_post_alias, 1)
 TEST_INPUTS(0)
     add sp, sp, #-256
     ldrh wzr, [sp], #16
 TEST_END
 
 /* LDRH  <Wt>, [<Xn|SP>, #<simm>]! */
-TEST_BEGIN(LDRH_32_LDST_IMMPRE, ldrh_w5_m8_pre, 1)
+TEST_BEGIN(LDRH_32_LDST_IMMPRE, ldrh_w5_m16_pre, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldrh w5, [x3, #16]!
 TEST_END
 
 /* LDRH  <Wt>, [<Xn|SP>, (<Wm>|<Xm>), <extend> {<amount>}] */
-TEST_BEGIN(LDRH_32_LDST_REGOFF, ldrh_w5_m8_off_w0_uxtw, 1)
+TEST_BEGIN(LDRH_32_LDST_REGOFF, ldrh_w567_m16_off_w0_uxtw, 1)
 TEST_INPUTS(
     0,
     8)
@@ -55,7 +55,7 @@ TEST_INPUTS(
     ldrh w7, [x3, ARG1_32, uxtw #1]
 TEST_END
 
-TEST_BEGIN(LDRH_32_LDST_REGOFF, ldrh_w5_m8_off_w0_sxtw, 1)
+TEST_BEGIN(LDRH_32_LDST_REGOFF, ldrh_w567_m16_off_w0_sxtw, 1)
 TEST_INPUTS(
     0,
     0xfffffff8)  /* -8 */
@@ -66,19 +66,19 @@ TEST_INPUTS(
 TEST_END
 
 /* LDRH  <Wt>, [<Xn|SP>, <Xm>{, LSL <amount>}] */
-TEST_BEGIN(LDRH_32_LDST_REGOFF, ldrh_w5_m8_off_w0, 1)
+TEST_BEGIN(LDRH_32_LDST_REGOFF, ldrh_w5_m16_off_w0, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldrh w5, [x3, ARG1_64]  /* Implicit LSL 0 */
 TEST_END
 
-TEST_BEGIN(LDRH_32_LDST_REGOFF, ldrh_w5_m8_off_w0_lsl0, 1)
+TEST_BEGIN(LDRH_32_LDST_REGOFF, ldrh_w5_m16_off_w0_lsl0, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldrh w5, [x3, ARG1_64, lsl #0]  /* Explicit LSL 0 */
 TEST_END
 
-TEST_BEGIN(LDRH_32_LDST_REGOFF, ldrh_w5_m8_off_w0_lsl1, 1)
+TEST_BEGIN(LDRH_32_LDST_REGOFF, ldrh_w5_m16_off_w0_lsl1, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldrh w5, [x3, ARG1_64, lsl #1]  /* Explicit LSL 1 */

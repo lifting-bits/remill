@@ -24,7 +24,7 @@ TEST_INPUTS(0)
 TEST_END
 
 /* LDRB  <Wt>, [<Xn|SP>], #<simm> */
-TEST_BEGIN(LDRB_32_LDST_IMMPOST, ldrb_w5_m8_post, 1)
+TEST_BEGIN(LDRB_32_LDST_IMMPOST, ldrb_w56_m8_post, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldrb w5, [x3], #0
@@ -63,7 +63,7 @@ TEST_END
 */
 
 /* LDRB  <Wt>, [<Xn|SP>, (<Wm>|<Xm>), <extend> {<amount>}] */
-TEST_BEGIN(LDRB_32B_LDST_REGOFF, ldrb_w5_m8_off_w0_uxtw, 1)
+TEST_BEGIN(LDRB_32B_LDST_REGOFF, ldrb_w56_m8_off_w0_uxtw, 1)
 TEST_INPUTS(
     0,
     8)
@@ -72,7 +72,7 @@ TEST_INPUTS(
     ldrb w6, [x3, ARG1_32, uxtw #0]
 TEST_END
 
-TEST_BEGIN(LDRB_32B_LDST_REGOFF, ldrb_w5_m8_off_w0_sxtw, 1)
+TEST_BEGIN(LDRB_32B_LDST_REGOFF, ldrb_w67_m8_off_w0_sxtw, 1)
 TEST_INPUTS(
     0,
     0xfffffff8)  /* -8 */

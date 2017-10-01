@@ -211,6 +211,55 @@ DEF_ISEL(MOVZ_64_MOVEWIDE) = Load<R64W, I64>;
 
 namespace {
 
+template <typename D, typename S, typename InterType>
+DEF_SEM(LoadSExt, D dst, S src) {
+  WriteZExt(dst, SExtTo<InterType>(Read(src)));
+  return memory;
+}
+
+template <typename D, typename S, typename InterType>
+DEF_SEM(LoadSExtUpdateIndex, D dst, S src, R64W dst_reg, ADDR next_addr) {
+  WriteZExt(dst, SExtTo<InterType>(Read(src)));
+  Write(dst_reg, Read(next_addr));
+  return memory;
+}
+
+template <typename D, typename M, typename InterType>
+DEF_SEM(LoadSExtFromOffset, D dst, M base, ADDR offset) {
+  WriteZExt(dst, SExtTo<InterType>(Read(DisplaceAddress(base, Read(offset)))));
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(LDRSB_32_LDST_POS) = LoadSExt<R32W, M8, int32_t>;
+DEF_ISEL(LDRSB_64_LDST_POS) = LoadSExt<R64W, M8, int64_t>;
+DEF_ISEL(LDRSB_32_LDST_IMMPOST) = LoadSExtUpdateIndex<R32W, M8, int32_t>;
+DEF_ISEL(LDRSB_64_LDST_IMMPOST) = LoadSExtUpdateIndex<R64W, M8, int64_t>;
+DEF_ISEL(LDRSB_32_LDST_IMMPRE) = LoadSExtUpdateIndex<R32W, M8, int32_t>;
+DEF_ISEL(LDRSB_64_LDST_IMMPRE) = LoadSExtUpdateIndex<R64W, M8, int64_t>;
+DEF_ISEL(LDRSB_32B_LDST_REGOFF) = LoadSExtFromOffset<R32W, M8, int32_t>;
+DEF_ISEL(LDRSB_32BL_LDST_REGOFF) = LoadSExtFromOffset<R32W, M8, int32_t>;
+DEF_ISEL(LDRSB_64B_LDST_REGOFF) = LoadSExtFromOffset<R64W, M8, int64_t>;
+DEF_ISEL(LDRSB_64BL_LDST_REGOFF) = LoadSExtFromOffset<R64W, M8, int64_t>;
+
+DEF_ISEL(LDRSH_32_LDST_POS) = LoadSExt<R32W, M16, int32_t>;
+DEF_ISEL(LDRSH_64_LDST_POS) = LoadSExt<R64W, M16, int64_t>;
+DEF_ISEL(LDRSH_32_LDST_IMMPOST) = LoadSExtUpdateIndex<R32W, M16, int32_t>;
+DEF_ISEL(LDRSH_64_LDST_IMMPOST) = LoadSExtUpdateIndex<R64W, M16, int64_t>;
+DEF_ISEL(LDRSH_32_LDST_IMMPRE) = LoadSExtUpdateIndex<R32W, M16, int32_t>;
+DEF_ISEL(LDRSH_64_LDST_IMMPRE) = LoadSExtUpdateIndex<R64W, M16, int64_t>;
+DEF_ISEL(LDRSH_32_LDST_REGOFF) = LoadSExtFromOffset<R32W, M16, int32_t>;
+DEF_ISEL(LDRSH_64_LDST_REGOFF) = LoadSExtFromOffset<R64W, M16, int64_t>;
+
+DEF_ISEL(LDRSW_64_LDST_POS) = LoadSExt<R64W, M32, int64_t>;
+DEF_ISEL(LDRSW_64_LDST_IMMPOST) = LoadSExtUpdateIndex<R64W, M32, int64_t>;
+DEF_ISEL(LDRSW_64_LDST_IMMPRE) = LoadSExtUpdateIndex<R64W, M32, int64_t>;
+DEF_ISEL(LDRSW_64_LDST_REGOFF) = LoadSExtFromOffset<R64W, M32, int64_t>;
+DEF_ISEL(LDRSW_64_LOADLIT) = LoadSExt<R64W, M32, int64_t>;
+
+namespace {
+
 template <typename D, typename S>
 DEF_SEM(MoveWithKeep, D dst, S src, I64 imm, I8 shift_) {
   auto shift = ZExtTo<uint64_t>(Read(shift_));
