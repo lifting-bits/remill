@@ -113,7 +113,7 @@ TEST_INPUTS(
 TEST_END
 
 /* LDRSB  <Wt>, [<Xn|SP>, <Xm>{, LSL <amount>}] */
-TEST_BEGIN(LDRSB_32B_LDST_REGOFF, ldrsb_w5_m8_off_w0, 1)
+TEST_BEGIN(LDRSB_32BL_LDST_REGOFF, ldrsb_w5_m8_off_w0, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldrsb w5, [x3, ARG1_64]  /* Implicit LSL 0 */
