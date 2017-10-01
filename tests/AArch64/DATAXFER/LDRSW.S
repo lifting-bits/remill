@@ -24,7 +24,7 @@ TEST_INPUTS(0)
 TEST_END
 
 /* LDRSW  <Xt>, [<Xn|SP>], #<simm> */
-TEST_BEGIN(LDRSW_32_LDST_IMMPOST, ldrsw_x56_m32_post, 1)
+TEST_BEGIN(LDRSW_64_LDST_IMMPOST, ldrsw_x56_m32_post, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldrsw x5, [x3], #0
