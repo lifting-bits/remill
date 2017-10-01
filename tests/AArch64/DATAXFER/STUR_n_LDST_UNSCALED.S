@@ -14,8 +14,30 @@
  * limitations under the License.
  */
 
+/* STURB  <Wt>, [<Xn|SP>{, #<simm>}] */
+TEST_BEGIN(STURB_32_LDST_UNSCALED, sturb_w5_m8, 3)
+TEST_INPUTS(
+    0x41414141, 0xabababab, 0xefefefef)
+
+    add x3, sp, #-256
+    sturb ARG1_32, [x3, #0]
+    sturb ARG2_32, [x3, #8]
+    sturb ARG3_32, [x3, #16]
+TEST_END
+
+/* STURH  <Wt>, [<Xn|SP>{, #<simm>}] */
+TEST_BEGIN(STURH_32_LDST_UNSCALED, sturh_w5_m16, 3)
+TEST_INPUTS(
+    0x41414141, 0xabababab, 0xefefefef)
+
+    add x3, sp, #-256
+    sturh ARG1_32, [x3, #0]
+    sturh ARG2_32, [x3, #8]
+    sturh ARG3_32, [x3, #16]
+TEST_END
+
 /* STUR  <Wt>, [<Xn|SP>{, #<simm>}] */
-TEST_BEGIN(STUR_32_LDST_UNSCALED, sdur_w5_m32, 3)
+TEST_BEGIN(STUR_32_LDST_UNSCALED, stur_w5_m32, 3)
 TEST_INPUTS(
     0x41414141, 0xabababab, 0xefefefef)
 
@@ -26,7 +48,7 @@ TEST_INPUTS(
 TEST_END
 
 /* STUR  <Xt>, [<Xn|SP>{, #<simm>}] */
-TEST_BEGIN(STUR_64_LDST_UNSCALED, sdur_x5_m64, 1)
+TEST_BEGIN(STUR_64_LDST_UNSCALED, stur_x5_m64, 1)
 TEST_INPUTS(
     0x4141414151515151, 0xababababcdcdcdcd, 0xefefefef01010101)
 

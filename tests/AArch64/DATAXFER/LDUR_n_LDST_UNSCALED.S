@@ -14,6 +14,24 @@
  * limitations under the License.
  */
 
+/* LDURB  <Wt>, [<Xn|SP>{, #<simm>}] */
+TEST_BEGIN(LDURB_32_LDST_UNSCALED, ldurb_w5_m8, 1)
+TEST_INPUTS(0)
+    add x3, sp, #-256
+    ldurb w5, [x3, #0]
+    ldurb w6, [x3, #8]
+    ldurb w7, [x3, #16]
+TEST_END
+
+/* LDURH  <Wt>, [<Xn|SP>{, #<simm>}] */
+TEST_BEGIN(LDURH_32_LDST_UNSCALED, ldurh_w5_m16, 1)
+TEST_INPUTS(0)
+    add x3, sp, #-256
+    ldurh w5, [x3, #0]
+    ldurh w6, [x3, #8]
+    ldurh w7, [x3, #16]
+TEST_END
+
 /* LDUR  <Wt>, [<Xn|SP>{, #<simm>}] */
 TEST_BEGIN(LDUR_32_LDST_UNSCALED, ldur_w5_m32, 1)
 TEST_INPUTS(0)

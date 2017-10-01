@@ -63,20 +63,20 @@ namespace {
 
 template <typename S, typename D>
 DEF_SEM(StoreUpdateIndex, S src, D dst_mem, R64W dst_reg, ADDR next_addr) {
-  Write(dst_mem, Read(src));
+  WriteTrunc(dst_mem, Read(src));
   Write(dst_reg, Read(next_addr));
   return memory;
 }
 
 template <typename S, typename D>
 DEF_SEM(Store, S src, D dst) {
-  Write(dst, Read(src));
+  WriteTrunc(dst, Read(src));
   return memory;
 }
 
 template <typename S, typename D>
 DEF_SEM(StoreToOffset, S src, D base, ADDR offset) {
-  Write(DisplaceAddress(base, Read(offset)), Read(src));
+  WriteTrunc(DisplaceAddress(base, Read(offset)), Read(src));
   return memory;
 }
 
@@ -91,13 +91,13 @@ DEF_ISEL(STR_64_LDST_IMMPOST) = StoreUpdateIndex<R64, M64W>;
 DEF_ISEL(STR_32_LDST_POS) = Store<R32, M32W>;
 DEF_ISEL(STR_64_LDST_POS) = Store<R64, M64W>;
 
-DEF_ISEL(STRB_32_LDST_POS) = Store<R8, M8W>;
-DEF_ISEL(STRB_32_LDST_IMMPOST) = StoreUpdateIndex<R8, M8W>;
-DEF_ISEL(STRB_32_LDST_IMMPRE) = StoreUpdateIndex<R8, M8W>;
-DEF_ISEL(STRB_32B_LDST_REGOFF) = StoreToOffset<R8, M8W>;
-DEF_ISEL(STRB_32BL_LDST_REGOFF) = StoreToOffset<R8, M8W>;
+DEF_ISEL(STRB_32_LDST_POS) = Store<R32, M8W>;
+DEF_ISEL(STRB_32_LDST_IMMPOST) = StoreUpdateIndex<R32, M8W>;
+DEF_ISEL(STRB_32_LDST_IMMPRE) = StoreUpdateIndex<R32, M8W>;
+DEF_ISEL(STRB_32B_LDST_REGOFF) = StoreToOffset<R32, M8W>;
+DEF_ISEL(STRB_32BL_LDST_REGOFF) = StoreToOffset<R32, M8W>;
 
-DEF_ISEL(STRH_32_LDST_POS) = StoreToOffset<R16, M16W>;
+DEF_ISEL(STRH_32_LDST_POS) = StoreToOffset<R32, M16W>;
 
 DEF_ISEL(STR_32_LDST_REGOFF) = StoreToOffset<R32, M32W>;
 DEF_ISEL(STR_64_LDST_REGOFF) = StoreToOffset<R64, M64W>;
@@ -196,9 +196,13 @@ DEF_ISEL(LDR_64_LDST_IMMPRE) = LoadUpdateIndex<R64W, M64>;
 DEF_ISEL(LDR_64_LDST_REGOFF) = LoadFromOffset<R64W, M64>;
 DEF_ISEL(LDR_64_LOADLIT) = Load<R64W, M64>;
 
+DEF_ISEL(LDURB_32_LDST_UNSCALED) = Load<R32W, M8>;
+DEF_ISEL(LDURH_64_LDST_UNSCALED) = Load<R64W, M16>;
 DEF_ISEL(LDUR_32_LDST_UNSCALED) = Load<R32W, M32>;
 DEF_ISEL(LDUR_64_LDST_UNSCALED) = Load<R64W, M64>;
 
+DEF_ISEL(STURB_32_LDST_UNSCALED) = Store<R32, M8W>;
+DEF_ISEL(STURH_32_LDST_UNSCALED) = Store<R32, M16W>;
 DEF_ISEL(STUR_32_LDST_UNSCALED) = Store<R32, M32W>;
 DEF_ISEL(STUR_64_LDST_UNSCALED) = Store<R64, M64W>;
 

@@ -3454,44 +3454,6 @@ bool TryDecodeUABD_ASIMDSAME_ONLY(const InstData &, Instruction &) {
   return false;
 }
 
-// STURB STURB_32_ldst_unscaled:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 0
-//  12 x imm9     0
-//  13 x imm9     1
-//  14 x imm9     2
-//  15 x imm9     3
-//  16 x imm9     4
-//  17 x imm9     5
-//  18 x imm9     6
-//  19 x imm9     7
-//  20 x imm9     8
-//  21 0
-//  22 0 opc      0
-//  23 0 opc      1
-//  24 0
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 1
-//  29 1
-//  30 0 size     0
-//  31 0 size     1
-// STURB  <Wt>, [<Xn|SP>{, #<simm>}]
-bool TryDecodeSTURB_32_LDST_UNSCALED(const InstData &, Instruction &) {
-  return false;
-}
-
 // ORR ORR_asimdsame_only:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -29106,44 +29068,6 @@ bool TryDecodeFRINTM_ASIMDMISC_R(const InstData &, Instruction &) {
   return false;
 }
 
-// STURH STURH_32_ldst_unscaled:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 0
-//  12 x imm9     0
-//  13 x imm9     1
-//  14 x imm9     2
-//  15 x imm9     3
-//  16 x imm9     4
-//  17 x imm9     5
-//  18 x imm9     6
-//  19 x imm9     7
-//  20 x imm9     8
-//  21 0
-//  22 0 opc      0
-//  23 0 opc      1
-//  24 0
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 1
-//  29 1
-//  30 1 size     0
-//  31 0 size     1
-// STURH  <Wt>, [<Xn|SP>{, #<simm>}]
-bool TryDecodeSTURH_32_LDST_UNSCALED(const InstData &, Instruction &) {
-  return false;
-}
-
 // SQSHLU SQSHLU_asisdshf_R:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -34236,44 +34160,6 @@ bool TryDecodeLDTR_64_LDST_UNPRIV(const InstData &, Instruction &) {
 //  31 0
 // UZP2  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
 bool TryDecodeUZP2_ASIMDPERM_ONLY(const InstData &, Instruction &) {
-  return false;
-}
-
-// LDURB LDURB_32_ldst_unscaled:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 0
-//  12 x imm9     0
-//  13 x imm9     1
-//  14 x imm9     2
-//  15 x imm9     3
-//  16 x imm9     4
-//  17 x imm9     5
-//  18 x imm9     6
-//  19 x imm9     7
-//  20 x imm9     8
-//  21 0
-//  22 1 opc      0
-//  23 0 opc      1
-//  24 0
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 1
-//  29 1
-//  30 0 size     0
-//  31 0 size     1
-// LDURB  <Wt>, [<Xn|SP>{, #<simm>}]
-bool TryDecodeLDURB_32_LDST_UNSCALED(const InstData &, Instruction &) {
   return false;
 }
 
@@ -40468,44 +40354,6 @@ bool TryDecodeURSRA_ASISDSHF_R(const InstData &, Instruction &) {
 //  31 0
 // URSRA  <Vd>.<T>, <Vn>.<T>, #<shift>
 bool TryDecodeURSRA_ASIMDSHF_R(const InstData &, Instruction &) {
-  return false;
-}
-
-// LDURH LDURH_32_ldst_unscaled:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 0
-//  12 x imm9     0
-//  13 x imm9     1
-//  14 x imm9     2
-//  15 x imm9     3
-//  16 x imm9     4
-//  17 x imm9     5
-//  18 x imm9     6
-//  19 x imm9     7
-//  20 x imm9     8
-//  21 0
-//  22 1 opc      0
-//  23 0 opc      1
-//  24 0
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 1
-//  29 1
-//  30 1 size     0
-//  31 0 size     1
-// LDURH  <Wt>, [<Xn|SP>{, #<simm>}]
-bool TryDecodeLDURH_32_LDST_UNSCALED(const InstData &, Instruction &) {
   return false;
 }
 

@@ -1880,20 +1880,33 @@ bool TryDecodeLDUR_Q_LDST_UNSCALED(const InstData &data, Instruction &inst) {
   return TryDecodeLDUR_Vn_LDST_UNSCALED(data, inst, kRegQ);
 }
 
-// LDUR  <Wt>, [<Xn|SP>{, #<simm>}]
-bool TryDecodeLDUR_32_LDST_UNSCALED(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
-  AddBasePlusOffsetMemOp(inst, kActionRead, 32, data.Rn,
+static bool TryDecodeLDUR_n_LDST_UNSCALED(const InstData &data,
+                                          Instruction &inst,
+                                          RegClass rclass, uint64_t mem_size) {
+  AddRegOperand(inst, kActionWrite, rclass, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, mem_size, data.Rn,
                          static_cast<uint64_t>(data.imm9.simm9));
   return true;
 }
 
+// LDURB  <Wt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeLDURB_32_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeLDUR_n_LDST_UNSCALED(data, inst, kRegW, 8);
+}
+
+// LDURH  <Wt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeLDURH_32_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeLDUR_n_LDST_UNSCALED(data, inst, kRegW, 16);
+}
+
+// LDUR  <Wt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeLDUR_32_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeLDUR_n_LDST_UNSCALED(data, inst, kRegW, 32);
+}
+
 // LDUR  <Xt>, [<Xn|SP>{, #<simm>}]
 bool TryDecodeLDUR_64_LDST_UNSCALED(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
-  AddBasePlusOffsetMemOp(inst, kActionRead, 64, data.Rn,
-                         static_cast<uint64_t>(data.imm9.simm9));
-  return true;
+  return TryDecodeLDUR_n_LDST_UNSCALED(data, inst, kRegX, 64);
 }
 
 static bool TryDecodeSTUR_Vn_LDST_UNSCALED(const InstData &data,
@@ -1936,20 +1949,33 @@ bool TryDecodeSTUR_Q_LDST_UNSCALED(const InstData &data, Instruction &inst) {
   return TryDecodeSTUR_Vn_LDST_UNSCALED(data, inst, kRegQ);
 }
 
-// STUR  <Wt>, [<Xn|SP>{, #<simm>}]
-bool TryDecodeSTUR_32_LDST_UNSCALED(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
-  AddBasePlusOffsetMemOp(inst, kActionWrite, 32, data.Rn,
+static bool TryDecodeSTUR_n_LDST_UNSCALED(const InstData &data,
+                                          Instruction &inst, RegClass rclass,
+                                          uint64_t mem_size) {
+  AddRegOperand(inst, kActionRead, rclass, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, mem_size, data.Rn,
                          static_cast<uint64_t>(data.imm9.simm9));
   return true;
 }
 
+// STURB  <Wt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeSTURB_32_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeSTUR_n_LDST_UNSCALED(data, inst, kRegW, 8);
+}
+
+// STURH  <Wt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeSTURH_32_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeSTUR_n_LDST_UNSCALED(data, inst, kRegW, 16);
+}
+
+// STUR  <Wt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeSTUR_32_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeSTUR_n_LDST_UNSCALED(data, inst, kRegW, 32);
+}
+
 // STUR  <Xt>, [<Xn|SP>{, #<simm>}]
 bool TryDecodeSTUR_64_LDST_UNSCALED(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
-  AddBasePlusOffsetMemOp(inst, kActionWrite, 64, data.Rn,
-                         static_cast<uint64_t>(data.imm9.simm9));
-  return true;
+  return TryDecodeSTUR_n_LDST_UNSCALED(data, inst, kRegX, 64);
 }
 
 // HINT  #<imm>
