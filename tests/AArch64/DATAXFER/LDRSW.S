@@ -67,7 +67,7 @@ TEST_END
 TEST_BEGIN(LDRSW_64_LDST_REGOFF, ldrsw_x5_m32_off_w0, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
-    ldrsw w5, [x3, ARG1_64]  /* Implicit LSL 0 */
+    ldrsw x5, [x3, ARG1_64]  /* Implicit LSL 0 */
 TEST_END
 
 TEST_BEGIN(LDRSW_64_LDST_REGOFF, ldrsw_x5_m32_off_w0_lsl0, 1)
