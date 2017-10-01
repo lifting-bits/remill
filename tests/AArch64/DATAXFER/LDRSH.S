@@ -24,7 +24,7 @@ TEST_INPUTS(0)
 TEST_END
 
 /* LDRSH  <Xt>, [<Xn|SP>{, #<pimm>}] */
-TEST_BEGIN(LDRSH_32_LDST_POS, ldrsh_x563_m16, 1)
+TEST_BEGIN(LDRSH_64_LDST_POS, ldrsh_x563_m16, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldrsh x5, [x3]
