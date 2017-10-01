@@ -16,14 +16,14 @@
 
 TEST_BEGIN(ORR_ASIMDSAME_ONLY_8B, orr_v8b, 1)
 TEST_INPUTS(0)
-    orr v10.8b, v0.8b, v1.8b
-    orr v11.8b, v2.8b, v3.8b
-    orr v12.8b, v4.8b, v5.8b
+    orr v5.8b, v0.8b, v1.8b
+    orr v6.8b, v2.8b, v3.8b
+    orr v7.8b, v4.8b, v5.8b
 TEST_END
 
 TEST_BEGIN(ORR_ASIMDSAME_ONLY_16B, orr_v16b, 1)
 TEST_INPUTS(0)
-    orr v10.16b, v0.16b, v1.16b
-    orr v11.16b, v2.16b, v3.16b
-    orr v12.16b, v4.16b, v5.16b
+    orr v5.16b, v0.16b, v1.16b
+    orr v6.16b, v2.16b, v3.16b
+    orr v7.16b, v4.16b, v5.16b
 TEST_END
