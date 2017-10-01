@@ -1649,7 +1649,7 @@ bool TryDecodeSTRB_32BL_LDST_REGOFF(const InstData &data, Instruction &inst) {
 }
 
 static bool TryDecodeLDRn_m_LDST_REGOFF(const InstData &data, Instruction &inst,
-                                        RegClass dest_rclass) {
+                                        RegClass dest_rclass, uint64_t scale) {
   if (!(data.option & 0x2)) {  // Sub-word index.
     return false;  // `if option<1> == '0' then UnallocatedEncoding();`
   }
@@ -1657,13 +1657,14 @@ static bool TryDecodeLDRn_m_LDST_REGOFF(const InstData &data, Instruction &inst,
   AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
   auto extend_type = static_cast<Extend>(data.option);
   auto rclass = ExtendTypeToRegClass(extend_type);
-  AddExtendRegOperand(inst, rclass, kUseAsValue, data.Rm, extend_type, 64, 0);
+  AddExtendRegOperand(inst, rclass, kUseAsValue, data.Rm, extend_type, 64,
+                      data.S * scale);
   return true;
 }
 
 // LDRB  <Wt>, [<Xn|SP>, (<Wm>|<Xm>), <extend> {<amount>}]
 bool TryDecodeLDRB_32B_LDST_REGOFF(const InstData &data, Instruction &inst) {
-  return TryDecodeLDRn_m_LDST_REGOFF(data, inst, kRegW);
+  return TryDecodeLDRn_m_LDST_REGOFF(data, inst, kRegW, 0);
 }
 
 // LDRB  <Wt>, [<Xn|SP>, <Xm>{, LSL <amount>}]
@@ -1679,16 +1680,7 @@ bool TryDecodeLDRB_32BL_LDST_REGOFF(const InstData &data, Instruction &inst) {
 
 // LDRH  <Wt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
 bool TryDecodeLDRH_32_LDST_REGOFF(const InstData &data, Instruction &inst) {
-  if (!(data.option & 0x2)) {  // Sub-word index.
-    return false;  // `if option<1> == '0' then UnallocatedEncoding();`
-  }
-  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
-  auto extend_type = static_cast<Extend>(data.option);
-  auto rclass = ExtendTypeToRegClass(extend_type);
-  AddExtendRegOperand(inst, rclass, kUseAsValue, data.Rm, extend_type,
-                      64, data.S);
-  return true;
+  return TryDecodeLDRn_m_LDST_REGOFF(data, inst, kRegW, 1);
 }
 
 // STRH  <Wt>, [<Xn|SP>{, #<pimm>}]
@@ -2081,7 +2073,7 @@ bool TryDecodeLDRSW_64_LDST_POS(const InstData &data, Instruction &inst) {
 
 // LDRSB  <Wt>, [<Xn|SP>, (<Wm>|<Xm>), <extend> {<amount>}]
 bool TryDecodeLDRSB_32B_LDST_REGOFF(const InstData &data, Instruction &inst) {
-  return TryDecodeLDRB_32B_LDST_REGOFF(data, inst);
+  return TryDecodeLDRn_m_LDST_REGOFF(data, inst, kRegW, 0);
 }
 
 // LDRSB  <Wt>, [<Xn|SP>, <Xm>{, LSL <amount>}]
@@ -2091,7 +2083,7 @@ bool TryDecodeLDRSB_32BL_LDST_REGOFF(const InstData &data, Instruction &inst) {
 
 // LDRSB  <Xt>, [<Xn|SP>, (<Wm>|<Xm>), <extend> {<amount>}]
 bool TryDecodeLDRSB_64B_LDST_REGOFF(const InstData &data, Instruction &inst) {
-  return TryDecodeLDRn_m_LDST_REGOFF(data, inst, kRegX);
+  return TryDecodeLDRn_m_LDST_REGOFF(data, inst, kRegX, 0);
 }
 
 // LDRSB  <Xt>, [<Xn|SP>, <Xm>{, LSL <amount>}]
@@ -2105,17 +2097,17 @@ bool TryDecodeLDRSB_64BL_LDST_REGOFF(const InstData &data, Instruction &inst) {
 
 // LDRSH  <Wt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
 bool TryDecodeLDRSH_32_LDST_REGOFF(const InstData &data, Instruction &inst) {
-  return TryDecodeLDRn_m_LDST_REGOFF(data, inst, kRegW);
+  return TryDecodeLDRn_m_LDST_REGOFF(data, inst, kRegW, 1);
 }
 
 // LDRSH  <Xt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
 bool TryDecodeLDRSH_64_LDST_REGOFF(const InstData &data, Instruction &inst) {
-  return TryDecodeLDRn_m_LDST_REGOFF(data, inst, kRegX);
+  return TryDecodeLDRn_m_LDST_REGOFF(data, inst, kRegX, 1);
 }
 
 // LDRSW  <Xt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
 bool TryDecodeLDRSW_64_LDST_REGOFF(const InstData &data, Instruction &inst) {
-  return TryDecodeLDRn_m_LDST_REGOFF(data, inst, kRegX);
+  return TryDecodeLDRn_m_LDST_REGOFF(data, inst, kRegX, 2);
 }
 
 // LDRSW  <Xt>, <label>

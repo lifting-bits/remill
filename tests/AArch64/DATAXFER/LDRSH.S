@@ -130,26 +130,16 @@ TEST_INPUTS(0)
     ldrsh x5, [x3, ARG1_64]  /* Implicit LSL 0 */
 TEST_END
 
-TEST_BEGIN(LDRSH_32_LDST_REGOFF, ldrsh_w5_m16_off_w0_lsl0, 1)
+TEST_BEGIN(LDRSH_32_LDST_REGOFF, ldrsh_w56_m16_off_w0_lsl01, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldrsh w5, [x3, ARG1_64, lsl #0]  /* Explicit LSL 0 */
+    ldrsh w6, [x3, ARG1_64, lsl #1]  /* Explicit LSL 1 */
 TEST_END
 
-TEST_BEGIN(LDRSH_64_LDST_REGOFF, ldrsh_x5_m16_off_w0_lsl0, 1)
+TEST_BEGIN(LDRSH_64_LDST_REGOFF, ldrsh_x56_m16_off_w0_lsl01, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldrsh x5, [x3, ARG1_64, lsl #0]  /* Explicit LSL 0 */
-TEST_END
-
-TEST_BEGIN(LDRSH_32_LDST_REGOFF, ldrsh_w5_m16_off_w0_lsl1, 1)
-TEST_INPUTS(0)
-    add x3, sp, #-256
-    ldrsh w5, [x3, ARG1_64, lsl #1]  /* Explicit LSL 1 */
-TEST_END
-
-TEST_BEGIN(LDRSH_64_LDST_REGOFF, ldrsh_x5_m16_off_w0_lsl1, 1)
-TEST_INPUTS(0)
-    add x3, sp, #-256
-    ldrsh x5, [x3, ARG1_64, lsl #1]  /* Explicit LSL 1 */
+    ldrsh x6, [x3, ARG1_64, lsl #1]  /* Explicit LSL 1 */
 TEST_END

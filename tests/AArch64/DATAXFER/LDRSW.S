@@ -45,33 +45,30 @@ TEST_INPUTS(0)
 TEST_END
 
 /* LDRSW  <Xt>, [<Xn|SP>, (<Wm>|<Xm>), <extend> {<amount>}] */
-TEST_BEGIN(LDRSW_64_LDST_REGOFF, ldrsw_x56_m32_off_w0_uxtw, 1)
+TEST_BEGIN(LDRSW_64_LDST_REGOFF, ldrsw_x567_m32_off_w0_uxtw02, 1)
 TEST_INPUTS(
     0,
     8)
     add x3, sp, #-256
     ldrsw x5, [x3, ARG1_32, uxtw]
     ldrsw x6, [x3, ARG1_32, uxtw #0]
+    ldrsw x6, [x3, ARG1_32, uxtw #2]
 TEST_END
 
-TEST_BEGIN(LDRSW_64_LDST_REGOFF, ldrsw_x67_m32_off_w0_sxtw, 1)
+TEST_BEGIN(LDRSW_64_LDST_REGOFF, ldrsw_x567_m32_off_w0_sxtw02, 1)
 TEST_INPUTS(
     0,
     0xfffffff8)  /* -8 */
     add x3, sp, #-256
-    ldrsw x6, [x3, ARG1_32, sxtw]
-    ldrsw x7, [x3, ARG1_32, sxtw #0]
+    ldrsw x5, [x3, ARG1_32, sxtw]
+    ldrsw x6, [x3, ARG1_32, sxtw #0]
+    ldrsw x7, [x3, ARG1_32, sxtw #2]
 TEST_END
 
-/* LDRSW  <Xt>, [<Xn|SP>, <Xm>{, LSL <amount>}] */
-TEST_BEGIN(LDRSW_64_LDST_REGOFF, ldrsw_x5_m32_off_w0, 1)
+TEST_BEGIN(LDRSW_64_LDST_REGOFF, ldrsw_x567_m32_off_w0_lsl02, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldrsw x5, [x3, ARG1_64]  /* Implicit LSL 0 */
-TEST_END
-
-TEST_BEGIN(LDRSW_64_LDST_REGOFF, ldrsw_x5_m32_off_w0_lsl0, 1)
-TEST_INPUTS(0)
-    add x3, sp, #-256
-    ldrsw x5, [x3, ARG1_64, lsl #0]  /* Explicit LSL 0 */
+    ldrsw x6, [x3, ARG1_64, lsl #0]  /* Explicit LSL 0 */
+    ldrsw x7, [x3, ARG1_64, lsl #2]  /* Explicit LSL 2 */
 TEST_END
