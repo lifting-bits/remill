@@ -196,9 +196,7 @@ namespace {
 DEF_SEM(FADD_Scalar32, V128W dst, V32 src1, V32 src2) {
   auto val1 = FExtractV32(FReadV32(src1), 0);
   auto val2 = FExtractV32(FReadV32(src2), 0);
-  std::feclearexcept(FE_ALL_EXCEPT);
-  auto sum = FAdd(val1, val2);
-  SetFPSRStatusFlags(state, sum);
+  auto sum = CheckedFloatBinOp(state, FAdd32, val1, val2);
   FWriteV32(dst, sum);
   return memory;
 }
@@ -208,9 +206,7 @@ DEF_SEM(FADD_Scalar32, V128W dst, V32 src1, V32 src2) {
 DEF_SEM(FMUL_Scalar32, V128W dst, V32 src1, V32 src2) {
   auto val1 = FExtractV32(FReadV32(src1), 0);
   auto val2 = FExtractV32(FReadV32(src2), 0);
-  std::feclearexcept(FE_ALL_EXCEPT);
-  auto prod = FMul(val1, val2);
-  SetFPSRStatusFlags(state, prod);
+  auto prod = CheckedFloatBinOp(state, FMul32, val1, val2);
   FWriteV32(dst, prod);
   return memory;
 }
@@ -244,7 +240,7 @@ void FCompare(State &state, S val1, S val2) {
       FLAG_C = 0;
       FLAG_V = 0;
 
-    } else { // FCmpGt(val1, val2)
+    } else {  // FCmpGt(val1, val2)
       // result = '0010';
       FLAG_N = 0;
       FLAG_Z = 0;

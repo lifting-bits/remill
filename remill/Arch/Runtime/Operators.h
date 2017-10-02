@@ -749,17 +749,29 @@ auto TruncTo(T val) -> typename IntegerType<DT>::BT {
 // make that explicit, where `addr_t` encodes the natural machine word.
 #define MAKE_OPS(name, op, make_int_op, make_float_op) \
     make_int_op(U ## name, uint8_t, addr_t, op) \
+    make_int_op(U ## name ## 8, uint8_t, addr_t, op) \
     make_int_op(U ## name, uint16_t, addr_t, op) \
+    make_int_op(U ## name ## 16, uint16_t, addr_t, op) \
     make_int_op(U ## name, uint32_t, addr_t, op) \
+    make_int_op(U ## name ## 32, uint32_t, addr_t, op) \
     make_int_op(U ## name, uint64_t, uint64_t, op) \
+    make_int_op(U ## name ## 64, uint64_t, uint64_t, op) \
     make_int_op(U ## name, uint128_t, uint128_t, op) \
+    make_int_op(U ## name ## 128, uint128_t, uint128_t, op) \
     make_int_op(S ## name, int8_t, addr_diff_t, op) \
+    make_int_op(S ## name ## 8, int8_t, addr_diff_t, op) \
     make_int_op(S ## name, int16_t, addr_diff_t, op) \
+    make_int_op(S ## name ## 16, int16_t, addr_diff_t, op) \
     make_int_op(S ## name, int32_t, addr_diff_t, op) \
+    make_int_op(S ## name ## 32, int32_t, addr_diff_t, op) \
     make_int_op(S ## name, int64_t, int64_t, op) \
+    make_int_op(S ## name ## 64, int64_t, int64_t, op) \
     make_int_op(S ## name, int128_t, int128_t, op) \
+    make_int_op(S ## name ## 128, int128_t, int128_t, op) \
     make_float_op(F ## name, float32_t, float32_t, op) \
-    make_float_op(F ## name, float64_t, float64_t, op)
+    make_float_op(F ## name ## 32, float32_t, float32_t, op) \
+    make_float_op(F ## name, float64_t, float64_t, op) \
+    make_float_op(F ## name ## 64, float64_t, float64_t, op)
 
 MAKE_OPS(Add, +, MAKE_BINOP, MAKE_BINOP)
 MAKE_OPS(Sub, -, MAKE_BINOP, MAKE_BINOP)
