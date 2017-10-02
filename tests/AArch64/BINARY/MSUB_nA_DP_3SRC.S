@@ -15,7 +15,7 @@
  */
 
 /* MUL  <Wd>, <Wn>, <Wm> */
-TEST_BEGIN(MSUB_32A_DP_3SRC, mul_w3_w0_w1_w2, 2)
+TEST_BEGIN(MSUB_32A_DP_3SRC, msub_w3_w0_w1_w2, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -54,7 +54,7 @@ TEST_END
 
 
 /* MUL  <Wd>, <Wn>, <Wm> */
-TEST_BEGIN(MSUB_64A_DP_3SRC, mul_x3_x0_x1_x2, 2)
+TEST_BEGIN(MSUB_64A_DP_3SRC, msub_x3_x0_x1_x2, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
