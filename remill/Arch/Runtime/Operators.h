@@ -115,6 +115,16 @@ float64_t _Read(Memory *, float64_t val) {
   return val;
 }
 
+ALWAYS_INLINE static
+float32_t _Read(Memory *, In<float32_t> imm) {
+  return reinterpret_cast<const float32_t &>(imm.val);
+}
+
+ALWAYS_INLINE static
+float64_t _Read(Memory *, In<float64_t> imm) {
+  return reinterpret_cast<const float64_t &>(imm.val);
+}
+
 template <typename T>
 ALWAYS_INLINE static
 T _Read(Memory *, In<T> imm) {

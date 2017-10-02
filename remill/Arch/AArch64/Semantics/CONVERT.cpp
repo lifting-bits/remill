@@ -27,9 +27,19 @@ D FPConvertIntToFloat(State &state, S src) {
   } else if (static_cast<S>(res) != src) {
     state.sr.ixc = true;  // Inexact.
   }
-
   // Can't underflow, because we're converting an integer to a float.
+  return res;
+}
 
+template <typename S, typename D>
+D FPConvertFloatToInt(State &state, S src) {
+  std::feclearexcept(FE_ALL_EXCEPT);
+  auto res = static_cast<D>(src);
+  // Handle extra rounding errors (ignore INEXACT on NaN)
+  SetFPSRStatusFlags(state, src);
+  if (!std::isnan(src)) {
+    if (static_cast<S>(res) != src) { state.sr.ixc = true; }
+  }
   return res;
 }
 
@@ -57,6 +67,13 @@ DEF_SEM(UCVTF_UInt64ToFloat64, V128W dst, R64 src) {
   return memory;
 }
 
+DEF_SEM(FCVTZU_Float32ToUInt64, R64W dst, V32 src) {
+  auto float_val = FExtractV32(FReadV32(src), 0);
+  auto res = FPConvertFloatToInt<float32_t, uint64_t>(state, float_val);
+  WriteZExt(dst, res);
+  return memory;
+}
+
 }  // namespace
 
 // TODO(pag): UCVTF_H32_FLOAT2INT.
@@ -67,3 +84,5 @@ DEF_ISEL(UCVTF_D32_FLOAT2INT) = UCVTF_UInt32ToFloat64;
 
 DEF_ISEL(UCVTF_S64_FLOAT2INT) = UCVTF_UInt64ToFloat32;
 DEF_ISEL(UCVTF_D64_FLOAT2INT) = UCVTF_UInt64ToFloat64;
+
+DEF_ISEL(FCVTZU_64S_FLOAT2INT) = FCVTZU_Float32ToUInt64;

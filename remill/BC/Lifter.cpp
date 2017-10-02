@@ -453,6 +453,7 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(
         << "Expected " << arch_reg.name << " to be an integral or float type "
         << "for instruction at " << std::hex << inst.pc;
 
+    
     auto val = LoadRegValue(block, arch_reg.name);
 
     const llvm::DataLayout data_layout(module);
