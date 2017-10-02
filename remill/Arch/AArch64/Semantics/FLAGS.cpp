@@ -185,9 +185,10 @@ ALWAYS_INLINE
 auto CheckedFloatUnaryOp(State &state, F func, T arg1)
     -> decltype(func(arg1)) {
   std::feclearexcept(FE_ALL_EXCEPT);
-  if (!std::isnormal(arg1)) {
-    state.sr.idc = true;
-  }
+  // TODO(pag): This seems related to the FTZ rounding mode.
+//  if (!std::isnormal(arg1)) {
+//    state.sr.idc = true;
+//  }
   auto res = func(arg1);
   SetFPSRStatusFlags(state, res);
   return res;
@@ -198,12 +199,13 @@ ALWAYS_INLINE
 auto CheckedFloatBinOp(State &state, F func, T arg1, T arg2)
     -> decltype(func(arg1, arg2)) {
   std::feclearexcept(FE_ALL_EXCEPT);
-  if (!std::isnormal(arg1)) {
-    state.sr.idc = true;
-  }
-  if (!std::isnormal(arg2)) {
-    state.sr.idc = true;
-  }
+  // TODO(pag): This seems related to the FTZ rounding mode.
+//  if (!std::isnormal(arg1)) {
+//    state.sr.idc = true;
+//  }
+//  if (!std::isnormal(arg2)) {
+//    state.sr.idc = true;
+//  }
   auto res = func(arg1, arg2);
   SetFPSRStatusFlags(state, res);
   return res;
