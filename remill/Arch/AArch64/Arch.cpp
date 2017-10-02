@@ -284,7 +284,7 @@ static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
 
 // Get the name of an integer register.
 static std::string RegNameXW(Action action, RegClass rclass, RegUsage rtype,
-                           RegNum number) {
+                             RegNum number) {
   CHECK_LE(number, 31U);
 
   std::stringstream ss;
@@ -757,27 +757,25 @@ static bool DecodeBitMasks(uint64_t N /* one bit */,
   return true;
 }
 // Utility function for extracting [From, To] bits from a uint32_t.
-static inline uint64_t Slice(uint64_t bits, unsigned from, unsigned to) {
+static inline uint64_t Extract(uint64_t bits, unsigned from, unsigned to) {
   CHECK(from < 64 && to < 64 && from >= to);
   return (bits >> to) & ((1 << (from - to + 1)) - 1);
 }
 
-// Adapted from LLVM 
-// https://llvm.org/svn/llvm-project/llvm/branches/ggreif/CallInst-operands/lib/Target/ARM/Disassembler/ARMDisassemblerCore.cpp
 static uint64_t VFPExpandImmToFloat32(uint64_t imm) {
   uint64_t result = 0;
-  uint64_t bit6 = Slice(imm, 6, 6);
-  result |= Slice(imm, 7, 7) << 31;
-  result |= Slice(imm, 5, 0) << 19;
+  uint64_t bit6 = Extract(imm, 6, 6);
+  result |= Extract(imm, 7, 7) << 31;
+  result |= Extract(imm, 5, 0) << 19;
   result |= bit6 ? (0x1FULL << 25) : (0x1ULL << 30);
   return result;
 }
 
 static uint64_t VFPExpandImmToFloat64(uint64_t imm) {
   uint64_t result = 0;
-  uint64_t bit6 = Slice(imm, 6, 6);
-  result |= Slice(imm, 7, 7) << 63;
-  result |= Slice(imm, 5, 0) << 48;
+  uint64_t bit6 = Extract(imm, 6, 6);
+  result |= Extract(imm, 7, 7) << 63;
+  result |= Extract(imm, 5, 0) << 48;
   result |= bit6 ? (0xFFULL << 54) : (0x1ULL << 62);
   return result;
 }
@@ -1241,6 +1239,8 @@ bool TryDecodeADRP_ONLY_PCRELADDR(const InstData &data, Instruction &inst) {
 // B  <label>
 bool TryDecodeB_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
   AddPCDisp(inst, data.imm26.simm26 << 2LL);
+  inst.branch_taken_pc = static_cast<uint64_t>(
+      static_cast<int64_t>(inst.pc) + (data.imm26.simm26 << 2ULL));
   return true;
 }
 
@@ -1342,6 +1342,9 @@ bool TryDecodeTBNZ_ONLY_TESTBRANCH(const InstData &data, Instruction &inst) {
 
 // BL  <label>
 bool TryDecodeBL_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
+  inst.branch_taken_pc = static_cast<uint64_t>(
+      static_cast<int64_t>(inst.pc) + (data.imm26.simm26 << 2ULL));
+  inst.branch_not_taken_pc = inst.next_pc;
   AddPCDisp(inst, data.imm26.simm26 << 2LL);
   AddNextPC(inst);  // Decodes the return address.
   return true;
@@ -1352,7 +1355,6 @@ bool TryDecodeBR_64_BRANCH_REG(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegX, kUseAsAddress, data.Rn);
   return true;
 }
-
 
 static bool ShiftImmediate(uint64_t &value, uint8_t shift) {
   switch (shift) {
@@ -1608,8 +1610,13 @@ static const char *CondName(uint8_t cond) {
   }
 }
 
-void SetConditionalFunctionName(const InstData &data, Instruction &inst,
-                                bool invert_condition=false) {
+// `if option<1> == '0' then UnallocatedEncoding();`
+static bool IsSubWordIndex(const InstData &data) {
+  return !(data.option & 0x2);
+}
+
+static void SetConditionalFunctionName(const InstData &data, Instruction &inst,
+                                       bool invert_condition=false) {
   uint8_t cond = 0;
   if (invert_condition) {
     cond = data.cond ^ 1;
@@ -1657,8 +1664,8 @@ bool TryDecodeSTRB_32_LDST_IMMPRE(const InstData &data, Instruction &inst) {
 
 // STRB  <Wt>, [<Xn|SP>, (<Wm>|<Xm>), <extend> {<amount>}]
 bool TryDecodeSTRB_32B_LDST_REGOFF(const InstData &data, Instruction &inst) {
-  if (!(data.option & 0x2)) {  // Sub-word index.
-    return false;  // `if option<1> == '0' then UnallocatedEncoding();`
+  if (IsSubWordIndex(data)) {
+    return false;
   }
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsAddress, data.Rn);
@@ -1670,7 +1677,7 @@ bool TryDecodeSTRB_32B_LDST_REGOFF(const InstData &data, Instruction &inst) {
 
 // STRB  <Wt>, [<Xn|SP>, <Xm>{, LSL <amount>}]
 bool TryDecodeSTRB_32BL_LDST_REGOFF(const InstData &data, Instruction &inst) {
-  if (!(data.option & 0x2)) {  // Sub-word index.
+  if (IsSubWordIndex(data)) {  // Sub-word index.
     return false;  // `if option<1> == '0' then UnallocatedEncoding();`
   }
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
@@ -1681,7 +1688,7 @@ bool TryDecodeSTRB_32BL_LDST_REGOFF(const InstData &data, Instruction &inst) {
 
 static bool TryDecodeLDRn_m_LDST_REGOFF(const InstData &data, Instruction &inst,
                                         RegClass dest_rclass, uint64_t scale) {
-  if (!(data.option & 0x2)) {  // Sub-word index.
+  if (IsSubWordIndex(data)) {  // Sub-word index.
     return false;  // `if option<1> == '0' then UnallocatedEncoding();`
   }
   AddRegOperand(inst, kActionWrite, dest_rclass, kUseAsValue, data.Rt);
@@ -1700,7 +1707,7 @@ bool TryDecodeLDRB_32B_LDST_REGOFF(const InstData &data, Instruction &inst) {
 
 // LDRB  <Wt>, [<Xn|SP>, <Xm>{, LSL <amount>}]
 bool TryDecodeLDRB_32BL_LDST_REGOFF(const InstData &data, Instruction &inst) {
-  if (!(data.option & 0x2)) {  // Sub-word index.
+  if (IsSubWordIndex(data)) {  // Sub-word index.
     return false;  // `if option<1> == '0' then UnallocatedEncoding();`
   }
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
@@ -1832,10 +1839,15 @@ bool TryDecodeBIC_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
   return TryDecodeEOR_64_LOG_SHIFT(data, inst);
 }
 
+static uint64_t DecodeScale(const InstData &data) {
+  uint64_t scale = ((data.opc & 0x2ULL) << 1ULL) | data.size;
+  return scale;
+}
+
 static bool TryDecodeLDUR_Vn_LDST_UNSCALED(const InstData &data,
                                            Instruction &inst,
                                            RegClass val_class) {
-  uint64_t scale = ((data.opc & 0x2U) << 1U) | data.size;
+  uint64_t scale = DecodeScale(data);
   if (scale > 4) {
     return false;
   }
@@ -1904,7 +1916,7 @@ bool TryDecodeLDUR_64_LDST_UNSCALED(const InstData &data, Instruction &inst) {
 static bool TryDecodeSTUR_Vn_LDST_UNSCALED(const InstData &data,
                                            Instruction &inst,
                                            RegClass val_class) {
-  uint64_t scale = ((data.opc & 0x2U) << 1U) | data.size;
+  uint64_t scale = DecodeScale(data);
   if (scale > 4) {
     return false;
   }
@@ -2509,13 +2521,16 @@ bool TryDecodeUCVTF_D64_FLOAT2INT(const InstData &data, Instruction &inst) {
   return true;
 }
 
-bool CheckFloatUnallocatedEncoding(const InstData &data) {
+bool IsUnallocatedFloatEncoding(const InstData &data) {
   // when type `10` UnallocatedEncoding()
   return (data.type == 2);
 }
+
 // FCVTZU  <Xd>, <Sn>
 bool TryDecodeFCVTZU_64S_FLOAT2INT(const InstData &data, Instruction &inst) {
-  if (CheckFloatUnallocatedEncoding(data)) { return false; }
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
   return true;
@@ -2523,7 +2538,9 @@ bool TryDecodeFCVTZU_64S_FLOAT2INT(const InstData &data, Instruction &inst) {
 
 // FMOV  <Hd>, #<imm>
 bool TryDecodeFMOV_H_FLOATIMM(const InstData &data, Instruction &inst) {
-  if (CheckFloatUnallocatedEncoding(data)) { return false; }
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
   AddRegOperand(inst, kActionWrite, kRegH, kUseAsValue, data.Rd);
   auto float_val = VFPExpandImmToFloat32(data.imm8.uimm);
   AddImmOperand(inst, float_val);
@@ -2532,7 +2549,9 @@ bool TryDecodeFMOV_H_FLOATIMM(const InstData &data, Instruction &inst) {
 
 // FMOV  <Sd>, #<imm>
 bool TryDecodeFMOV_S_FLOATIMM(const InstData &data, Instruction &inst) {
-  if (CheckFloatUnallocatedEncoding(data)) { return false; }
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
   AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
   auto float_val = VFPExpandImmToFloat32(data.imm8.uimm);
   AddImmOperand(inst, float_val);
@@ -2541,7 +2560,9 @@ bool TryDecodeFMOV_S_FLOATIMM(const InstData &data, Instruction &inst) {
 
 // FMOV  <Dd>, #<imm>
 bool TryDecodeFMOV_D_FLOATIMM(const InstData &data, Instruction &inst) {
-  if (CheckFloatUnallocatedEncoding(data)) { return false; }
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
   AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rd);
   auto float_val = VFPExpandImmToFloat64(data.imm8.uimm);
   AddImmOperand(inst, float_val);
@@ -2550,7 +2571,9 @@ bool TryDecodeFMOV_D_FLOATIMM(const InstData &data, Instruction &inst) {
 
 // FMOV  <Sd>, <Wn>
 bool TryDecodeFMOV_S32_FLOAT2INT(const InstData &data, Instruction &inst) {
-  if (CheckFloatUnallocatedEncoding(data)) { return false; }
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
   AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
   return true;
@@ -2558,7 +2581,9 @@ bool TryDecodeFMOV_S32_FLOAT2INT(const InstData &data, Instruction &inst) {
 
 // FMOV  <Wd>, <Sn>
 bool TryDecodeFMOV_32S_FLOAT2INT(const InstData &data, Instruction &inst) {
-  if (CheckFloatUnallocatedEncoding(data)) { return false; }
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rn);
   return true;
@@ -2566,14 +2591,18 @@ bool TryDecodeFMOV_32S_FLOAT2INT(const InstData &data, Instruction &inst) {
 
 // FMOV  <Dd>, <Xn>
 bool TryDecodeFMOV_D64_FLOAT2INT(const InstData &data, Instruction &inst) {
-  if (CheckFloatUnallocatedEncoding(data)) { return false; }
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
   AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
   return true;
 }
 // FMOV  <Xd>, <Dn>
 bool TryDecodeFMOV_64D_FLOAT2INT(const InstData &data, Instruction &inst) {
-  if (CheckFloatUnallocatedEncoding(data)) { return false; }
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rn);
   return true;
@@ -2581,7 +2610,9 @@ bool TryDecodeFMOV_64D_FLOAT2INT(const InstData &data, Instruction &inst) {
 
 // FADD  <Hd>, <Hn>, <Hm>
 bool TryDecodeFADD_H_FLOATDP2(const InstData &data, Instruction &inst) {
-  if (CheckFloatUnallocatedEncoding(data)) { return false; }
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
   AddRegOperand(inst, kActionWrite, kRegH, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegH, kUseAsValue, data.Rn);
   AddRegOperand(inst, kActionRead, kRegH, kUseAsValue, data.Rm);
@@ -2590,7 +2621,9 @@ bool TryDecodeFADD_H_FLOATDP2(const InstData &data, Instruction &inst) {
 
 // FADD  <Sd>, <Sn>, <Sm>
 bool TryDecodeFADD_S_FLOATDP2(const InstData &data, Instruction &inst) {
-  if (CheckFloatUnallocatedEncoding(data)) { return false; }
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
   AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rm);
@@ -2599,7 +2632,9 @@ bool TryDecodeFADD_S_FLOATDP2(const InstData &data, Instruction &inst) {
 
 // FADD  <Dd>, <Dn>, <Dm>
 bool TryDecodeFADD_D_FLOATDP2(const InstData &data, Instruction &inst) {
-  if (CheckFloatUnallocatedEncoding(data)) { return false; }
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
   AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rn);
   AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rm);
@@ -2608,7 +2643,9 @@ bool TryDecodeFADD_D_FLOATDP2(const InstData &data, Instruction &inst) {
 
 // FMUL  <Sd>, <Sn>, <Sm>
 bool TryDecodeFMUL_S_FLOATDP2(const InstData &data, Instruction &inst) {
-  if (CheckFloatUnallocatedEncoding(data)) { return false; }
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
   AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rm);
@@ -2617,7 +2654,9 @@ bool TryDecodeFMUL_S_FLOATDP2(const InstData &data, Instruction &inst) {
 
 // FCMPE  <Sn>, <Sm>
 bool TryDecodeFCMPE_S_FLOATCMP(const InstData &data, Instruction &inst) {
-  if (CheckFloatUnallocatedEncoding(data)) { return false; }
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rm);
   return true;
@@ -2625,7 +2664,9 @@ bool TryDecodeFCMPE_S_FLOATCMP(const InstData &data, Instruction &inst) {
 
 // FCMPE  <Sn>, #0.0
 bool TryDecodeFCMPE_SZ_FLOATCMP(const InstData &data, Instruction &inst) {
-  if (CheckFloatUnallocatedEncoding(data)) { return false; }
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
   AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
   AddImmOperand(inst, 0);
   return true;
@@ -2650,7 +2691,7 @@ bool TryDecodeMRS_RS_SYSTEM(const InstData &, Instruction &) {
 
 static bool TryDecodeSTR_Vn_LDST_POS(const InstData &data, Instruction &inst,
                                      RegClass val_class) {
-  uint64_t scale = ((data.opc & 0x2U) << 1U) | data.size;
+  uint64_t scale = DecodeScale(data);
   if (scale > 4) {
     return false;
   }
@@ -2689,7 +2730,7 @@ bool TryDecodeSTR_Q_LDST_POS(const InstData &data, Instruction &inst) {
 
 static bool TryDecodeLDR_Vn_LDST_POS(const InstData &data, Instruction &inst,
                                      RegClass val_class) {
-  uint64_t scale = ((data.opc & 0x2U) << 1U) | data.size;
+  uint64_t scale = DecodeScale(data);
   if (scale > 4) {
     return false;
   }
@@ -2727,7 +2768,7 @@ bool TryDecodeLDR_Q_LDST_POS(const InstData &data, Instruction &inst) {
 
 static bool TryDecodeLDR_Vn_LDST_REGOFF(const InstData &data, Instruction &inst,
                                         RegClass val_class) {
-  uint64_t scale = ((data.opc & 0x2U) << 1U) | data.size;
+  uint64_t scale = DecodeScale(data);
   if (scale > 4) {
     return false;
   } else if (!(data.option & 2)) {  // Sub word indexing.
@@ -2776,7 +2817,7 @@ bool TryDecodeLDR_Q_LDST_REGOFF(const InstData &data, Instruction &inst) {
 static bool TryDecodeLDR_Vn_LDST_IMMPOST(const InstData &data,
                                          Instruction &inst,
                                          RegClass val_class) {
-  uint64_t scale = ((data.opc & 0x2U) << 1U) | data.size;
+  uint64_t scale = DecodeScale(data);
   if (scale > 4) {
     return false;
   }
@@ -2814,7 +2855,7 @@ bool TryDecodeLDR_Q_LDST_IMMPOST(const InstData &data, Instruction &inst) {
 
 static bool TryDecodeLDR_Vn_LDST_IMMPRE(const InstData &data, Instruction &inst,
                                         RegClass val_class) {
-  uint64_t scale = ((data.opc & 0x2U) << 1U) | data.size;
+  uint64_t scale = DecodeScale(data);
   if (scale > 4) {
     return false;
   }

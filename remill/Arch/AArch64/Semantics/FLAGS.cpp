@@ -166,31 +166,27 @@ struct Carry<tag_sub> {
 template <typename S>
 void SetFPSRStatusFlags(State &state, S res) {
   if (std::isinf(res)) {
-    state.fpsr.ofc = true;
-    state.fpsr.ixc = true;
-  } 
+    state.sr.ofc = true;
+    state.sr.ixc = true;
+  }
   if (std::fetestexcept(FE_INEXACT)) {
-    // state.fpsr.ixc = true;
     state.sr.ixc = true;
   }
   if (std::fetestexcept(FE_OVERFLOW)) {
-    // state.fpsr.ofc = true;
     state.sr.ofc = true;
   }
   if (std::fetestexcept(FE_UNDERFLOW)) {
-    // state.fpsr.ufc = true;
     state.sr.ufc = true;
   }
-  // Ignore fpsr, only set sr
 
-  if (std::fetestexcept(FE_INVALID)) {
-    state.fpsr.ioc = true;
-  }
+//  if (std::fetestexcept(FE_INVALID)) {
+//    state.sr.ioc = true;
+//  }
   // TODO: Look into setting idc flag
-  // if (std::fpclassify(res) == FP_SUBNORMAL) {
-  //   state.fpsr.idc = true;
-  //   state.sr.idc = true;
-  // }
+   if (std::fpclassify(res) == FP_SUBNORMAL) {
+     state.fpsr.idc = true;
+     state.sr.idc = true;
+   }
 
 }
 

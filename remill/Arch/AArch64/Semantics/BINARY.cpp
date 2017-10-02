@@ -224,26 +224,27 @@ void FCompare(State &state, S val1, S val2) {
     FLAG_Z = 0;
     FLAG_C = 1;
     FLAG_V = 1;
-    // This semantic form always signals
+
+    // This semantic form always signals.
     state.fpsr.ioc = true;
-  } 
+
   // Regular float compare
-  else {
+  } else {
     if (FCmpEq(val1, val2)) {
       // result = '0110';
       FLAG_N = 0;
       FLAG_Z = 1;
       FLAG_C = 1;
       FLAG_V = 0;
-    } 
-    else if (FCmpLt(val1, val2)) {
+
+    } else if (FCmpLt(val1, val2)) {
       // result = '1000';
       FLAG_N = 1;
       FLAG_Z = 0;
       FLAG_C = 0;
       FLAG_V = 0;
-    }
-    else { // FCmpGt(val1, val2)
+
+    } else { // FCmpGt(val1, val2)
       // result = '0010';
       FLAG_N = 0;
       FLAG_Z = 0;
@@ -251,8 +252,8 @@ void FCompare(State &state, S val1, S val2) {
       FLAG_V = 0;
     }
   }
-
 }
+
 DEF_SEM(FCMPE_S, V32 src1, V32 src2) {
   auto val1 = FExtractV32(FReadV32(src1), 0);
   auto val2 = FExtractV32(FReadV32(src2), 0);
