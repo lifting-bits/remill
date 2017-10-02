@@ -191,6 +191,15 @@ auto CheckedFloatUnaryOp(State &state, F func, T arg1)
 //  if (!std::isnormal(arg1)) {
 //    state.sr.idc = true;
 //  }
+  // TODO: Look into setting idc flag
+  //  if (std::fpclassify(res) == FP_SUBNORMAL) {
+  //    state.fpsr.idc = true;
+  //    state.sr.idc = true;
+  //  } else {
+  //    state.fpsr.idc = false;
+  //    state.sr.idc = false;
+  //  }
+
   auto res = func(arg1);
   SetFPSRStatusFlags(state, res);
   return res;
