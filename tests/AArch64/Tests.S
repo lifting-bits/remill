@@ -309,6 +309,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/COND/x_CSINV_n_CONDSEL.S"
 
 #include "tests/AArch64/SIMD/ORR_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/FMOV_VECTORS.S"
 
 #endif
 
