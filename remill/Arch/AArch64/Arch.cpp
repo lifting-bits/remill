@@ -2738,9 +2738,68 @@ bool TryDecodeBRK_EX_EXCEPTION(const InstData &data, Instruction &inst) {
   return true;
 }
 
+union SystemReg {
+  uint64_t flat;
+  enum Name : uint64_t {
+    kFPCR = 0xDA20,
+    kFPSR = 0xDA21,
+    kTPIDR_EL0 = 0xDE82,
+    kTPIDRRO_EL0 = 0xDE83,
+  } name;
+  struct {
+    uint64_t op2:3;
+    uint64_t crm:4;
+    uint64_t crn:4;
+    uint64_t op1:3;
+    uint64_t op0:2;
+
+    uint64_t _rest:64 - 16;
+  } __attribute__((flat));
+} __attribute__((flat));
+
+static_assert(sizeof(SystemReg) == sizeof(uint64_t),
+              "Invalid packing of `union SystemReg`.");
+
+static bool AppendSysRegName(Instruction &inst, SystemReg bits) {
+  std::stringstream ss;
+  ss << inst.function << "_";
+
+  switch (bits.name) {
+    case SystemReg::kFPCR:
+      ss << "FPCR";
+      break;
+    case SystemReg::kFPSR:
+      ss << "FPSR";
+      break;
+    case SystemReg::kTPIDR_EL0:
+      ss << "TPIDR_EL0";
+      break;
+    case SystemReg::kTPIDRRO_EL0:
+      ss << "TPIDRRO_EL0";
+      break;
+    default:
+      LOG(ERROR)
+          << "Unrecognized system register " << std::hex << bits.flat
+          << " with op0=" << bits.op0 << ", op1=" << bits.op1
+          << ", crn=" << bits.crn << ", crm=" << bits.crm << ", op2="
+          << bits.op2 << std::dec;
+      return false;
+  }
+
+  inst.function = ss.str();
+  return true;
+}
+
 // MRS  <Xt>, (<systemreg>|S<op0>_<op1>_<Cn>_<Cm>_<op2>)
-bool TryDecodeMRS_RS_SYSTEM(const InstData &, Instruction &) {
-  return false;
+bool TryDecodeMRS_RS_SYSTEM(const InstData &data, Instruction &inst) {
+  SystemReg bits;
+  bits.op0 = data.o0 + 2ULL;  // 2 bits.
+  bits.op1 = data.op1;  // 3 bits.
+  bits.crn = data.CRn;  // 4 bits.
+  bits.crm = data.CRm;  // 4 bits.
+  bits.op2 = data.op2;  // 3 bits.
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
+  return AppendSysRegName(inst, bits);
 }
 
 static bool TryDecodeSTR_Vn_LDST_POS(const InstData &data, Instruction &inst,

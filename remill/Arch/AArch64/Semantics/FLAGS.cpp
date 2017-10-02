@@ -169,6 +169,7 @@ ALWAYS_INLINE static void SetFPSRStatusFlags(State &state, T res) {
 //    state.sr.ofc = true;
 //    state.sr.ixc = true;
 //  }
+
   auto mask = std::fetestexcept(FE_ALL_EXCEPT);
   if ((mask & FE_INEXACT)) {
     state.sr.ixc = true;
