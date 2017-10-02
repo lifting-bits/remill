@@ -196,22 +196,63 @@ namespace {
 DEF_SEM(FADD_Scalar32, V128W dst, V32 src1, V32 src2) {
   auto val1 = FExtractV32(FReadV32(src1), 0);
   auto val2 = FExtractV32(FReadV32(src2), 0);
-  std::feclearexcept(FE_ALL_EXCEPT);
-  auto sum = FAdd(val1, val2);
-  SetFPSRStatusFlags(state, sum);
+  auto sum = CheckedFloatBinOp(state, FAdd32, val1, val2);
   FWriteV32(dst, sum);
   return memory;
 }
 
-// Multiplication was setting idc for denormal
-// exception but this might be wrong
+DEF_SEM(FADD_Scalar64, V128W dst, V64 src1, V64 src2) {
+  auto val1 = FExtractV64(FReadV64(src1), 0);
+  auto val2 = FExtractV64(FReadV64(src2), 0);
+  auto sum = CheckedFloatBinOp(state, FAdd64, val1, val2);
+  FWriteV64(dst, sum);
+  return memory;
+}
+
+DEF_SEM(FSUB_Scalar32, V128W dst, V32 src1, V32 src2) {
+  auto val1 = FExtractV32(FReadV32(src1), 0);
+  auto val2 = FExtractV32(FReadV32(src2), 0);
+  auto sum = CheckedFloatBinOp(state, FSub32, val1, val2);
+  FWriteV32(dst, sum);
+  return memory;
+}
+
+DEF_SEM(FSUB_Scalar64, V128W dst, V64 src1, V64 src2) {
+  auto val1 = FExtractV64(FReadV64(src1), 0);
+  auto val2 = FExtractV64(FReadV64(src2), 0);
+  auto sum = CheckedFloatBinOp(state, FSub64, val1, val2);
+  FWriteV64(dst, sum);
+  return memory;
+}
 DEF_SEM(FMUL_Scalar32, V128W dst, V32 src1, V32 src2) {
   auto val1 = FExtractV32(FReadV32(src1), 0);
   auto val2 = FExtractV32(FReadV32(src2), 0);
-  std::feclearexcept(FE_ALL_EXCEPT);
-  auto prod = FMul(val1, val2);
-  SetFPSRStatusFlags(state, prod);
+  auto prod = CheckedFloatBinOp(state, FMul32, val1, val2);
   FWriteV32(dst, prod);
+  return memory;
+}
+
+DEF_SEM(FMUL_Scalar64, V128W dst, V64 src1, V64 src2) {
+  auto val1 = FExtractV64(FReadV64(src1), 0);
+  auto val2 = FExtractV64(FReadV64(src2), 0);
+  auto prod = CheckedFloatBinOp(state, FMul64, val1, val2);
+  FWriteV64(dst, prod);
+  return memory;
+}
+
+DEF_SEM(FDIV_Scalar32, V128W dst, V32 src1, V32 src2) {
+  auto val1 = FExtractV32(FReadV32(src1), 0);
+  auto val2 = FExtractV32(FReadV32(src2), 0);
+  auto prod = CheckedFloatBinOp(state, FDiv32, val1, val2);
+  FWriteV32(dst, prod);
+  return memory;
+}
+
+DEF_SEM(FDIV_Scalar64, V128W dst, V64 src1, V64 src2) {
+  auto val1 = FExtractV64(FReadV64(src1), 0);
+  auto val2 = FExtractV64(FReadV64(src2), 0);
+  auto prod = CheckedFloatBinOp(state, FDiv64, val1, val2);
+  FWriteV64(dst, prod);
   return memory;
 }
 
@@ -244,7 +285,7 @@ void FCompare(State &state, S val1, S val2) {
       FLAG_C = 0;
       FLAG_V = 0;
 
-    } else { // FCmpGt(val1, val2)
+    } else {  // FCmpGt(val1, val2)
       // result = '0010';
       FLAG_N = 0;
       FLAG_Z = 0;
@@ -261,15 +302,42 @@ DEF_SEM(FCMPE_S, V32 src1, V32 src2) {
   return memory;
 }
 
-DEF_SEM(FCMPE_SZ, V32 src1, I32 zero) {
+DEF_SEM(FCMPE_SZ, V32 src1) {
   auto val1 = FExtractV32(FReadV32(src1), 0);
-  auto float_zero = static_cast<float32_t>(Read(zero));
+  float32_t float_zero = 0.0;
+  FCompare(state, val1, float_zero);
+  return memory;
+}
+
+DEF_SEM(FCMPE_D, V64 src1, V64 src2) {
+  auto val1 = FExtractV64(FReadV64(src1), 0);
+  auto val2 = FExtractV64(FReadV64(src2), 0);
+  FCompare(state, val1, val2);
+  return memory;
+}
+
+DEF_SEM(FCMPE_DZ, V64 src1) {
+  auto val1 = FExtractV64(FReadV64(src1), 0);
+  float64_t float_zero = 0.0;
   FCompare(state, val1, float_zero);
   return memory;
 }
 }  // namespace
 
+DEF_ISEL(FSUB_S_FLOATDP2) = FSUB_Scalar32;
+DEF_ISEL(FSUB_D_FLOATDP2) = FSUB_Scalar64;
+
 DEF_ISEL(FADD_S_FLOATDP2) = FADD_Scalar32;
+DEF_ISEL(FADD_D_FLOATDP2) = FADD_Scalar64;
+
 DEF_ISEL(FMUL_S_FLOATDP2) = FMUL_Scalar32;
+DEF_ISEL(FMUL_D_FLOATDP2) = FMUL_Scalar64;
+
+DEF_ISEL(FDIV_S_FLOATDP2) = FDIV_Scalar32;
+DEF_ISEL(FDIV_D_FLOATDP2) = FDIV_Scalar64;
+
 DEF_ISEL(FCMPE_S_FLOATCMP) = FCMPE_S;
 DEF_ISEL(FCMPE_SZ_FLOATCMP) = FCMPE_SZ;
+
+DEF_ISEL(FCMPE_D_FLOATCMP) = FCMPE_D;
+DEF_ISEL(FCMPE_DZ_FLOATCMP) = FCMPE_DZ;

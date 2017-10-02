@@ -17,7 +17,7 @@
 namespace {
 
 template <typename S, typename D>
-D FPConvertIntToFloat(State &state, S src) {
+ALWAYS_INLINE static D FPConvertIntToFloat(State &state, S src) {
   auto res = static_cast<D>(src);
 
   if (std::isinf(res)) {
@@ -32,13 +32,15 @@ D FPConvertIntToFloat(State &state, S src) {
 }
 
 template <typename S, typename D>
-D FPConvertFloatToInt(State &state, S src) {
+ALWAYS_INLINE static D FPConvertFloatToInt(State &state, S src) {
   std::feclearexcept(FE_ALL_EXCEPT);
   auto res = static_cast<D>(src);
   // Handle extra rounding errors (ignore INEXACT on NaN)
   SetFPSRStatusFlags(state, src);
   if (!std::isnan(src)) {
-    if (static_cast<S>(res) != src) { state.sr.ixc = true; }
+    if (static_cast<S>(res) != src) {
+      state.sr.ixc = true;
+    }
   }
   return res;
 }

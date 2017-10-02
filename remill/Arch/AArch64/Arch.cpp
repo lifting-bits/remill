@@ -2633,68 +2633,122 @@ bool TryDecodeFMOV_64VX_FLOAT2INT(const InstData &data, Instruction &inst) {
   return true;
 }
 
-// FADD  <Hd>, <Hn>, <Hm>
-bool TryDecodeFADD_H_FLOATDP2(const InstData &data, Instruction &inst) {
+static bool TryDecodeFn_Fm(const InstData &data, Instruction &inst,
+                               RegClass rclass) {
   if (IsUnallocatedFloatEncoding(data)) {
     return false;
   }
-  AddRegOperand(inst, kActionWrite, kRegH, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegH, kUseAsValue, data.Rn);
-  AddRegOperand(inst, kActionRead, kRegH, kUseAsValue, data.Rm);
+  AddRegOperand(inst, kActionRead, rclass, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, rclass, kUseAsValue, data.Rm);
   return true;
+}
+
+static bool TryDecodeFdW_Fn_Fm(const InstData &data, Instruction &inst,
+                               RegClass rclass) {
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, rclass, kUseAsValue, data.Rd);
+  return TryDecodeFn_Fm(data, inst, rclass);
+}
+
+// FADD  <Hd>, <Hn>, <Hm>
+bool TryDecodeFADD_H_FLOATDP2(const InstData &data, Instruction &inst) {
+  return TryDecodeFdW_Fn_Fm(data, inst, kRegH);
 }
 
 // FADD  <Sd>, <Sn>, <Sm>
 bool TryDecodeFADD_S_FLOATDP2(const InstData &data, Instruction &inst) {
-  if (IsUnallocatedFloatEncoding(data)) {
-    return false;
-  }
-  AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
-  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rm);
-  return true;
+  return TryDecodeFdW_Fn_Fm(data, inst, kRegS);
 }
 
 // FADD  <Dd>, <Dn>, <Dm>
 bool TryDecodeFADD_D_FLOATDP2(const InstData &data, Instruction &inst) {
-  if (IsUnallocatedFloatEncoding(data)) {
-    return false;
-  }
-  AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rn);
-  AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rm);
-  return true;
+  return TryDecodeFdW_Fn_Fm(data, inst, kRegD);
+}
+
+// FMUL  <Hd>, <Hn>, <Hm>
+bool TryDecodeFMUL_H_FLOATDP2(const InstData &data, Instruction &inst) {
+  return TryDecodeFdW_Fn_Fm(data, inst, kRegH);
 }
 
 // FMUL  <Sd>, <Sn>, <Sm>
 bool TryDecodeFMUL_S_FLOATDP2(const InstData &data, Instruction &inst) {
-  if (IsUnallocatedFloatEncoding(data)) {
-    return false;
-  }
-  AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
-  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rm);
-  return true;
+  return TryDecodeFdW_Fn_Fm(data, inst, kRegS);
+}
+
+// FMUL  <Dd>, <Dn>, <Dm>
+bool TryDecodeFMUL_D_FLOATDP2(const InstData &data, Instruction &inst) {
+  return TryDecodeFdW_Fn_Fm(data, inst, kRegD);
+}
+
+// FDIV  <Hd>, <Hn>, <Hm>
+bool TryDecodeFDIV_H_FLOATDP2(const InstData &data, Instruction &inst) {
+  return TryDecodeFdW_Fn_Fm(data, inst, kRegH);
+}
+
+// FDIV  <Sd>, <Sn>, <Sm>
+bool TryDecodeFDIV_S_FLOATDP2(const InstData &data, Instruction &inst) {
+  return TryDecodeFdW_Fn_Fm(data, inst, kRegS);
+}
+
+// FDIV  <Dd>, <Dn>, <Dm>
+bool TryDecodeFDIV_D_FLOATDP2(const InstData &data, Instruction &inst) {
+  return TryDecodeFdW_Fn_Fm(data, inst, kRegD);
+}
+
+// FSUB  <Hd>, <Hn>, <Hm>
+bool TryDecodeFSUB_H_FLOATDP2(const InstData &data, Instruction &inst) {
+  return TryDecodeFdW_Fn_Fm(data, inst, kRegH);
+}
+
+// FSUB  <Sd>, <Sn>, <Sm>
+bool TryDecodeFSUB_S_FLOATDP2(const InstData &data, Instruction &inst) {
+  return TryDecodeFdW_Fn_Fm(data, inst, kRegS);
+}
+
+// FSUB  <Dd>, <Dn>, <Dm>
+bool TryDecodeFSUB_D_FLOATDP2(const InstData &data, Instruction &inst) {
+  return TryDecodeFdW_Fn_Fm(data, inst, kRegD);
 }
 
 // FCMPE  <Sn>, <Sm>
 bool TryDecodeFCMPE_S_FLOATCMP(const InstData &data, Instruction &inst) {
+  return TryDecodeFn_Fm(data, inst, kRegS);
+}
+
+// FCMPE  <Hn>, <Hm>
+bool TryDecodeFCMPE_H_FLOATCMP(const InstData &data, Instruction &inst) {
+  return TryDecodeFn_Fm(data, inst, kRegH);
+}
+
+// FCMPE  <Dn>, <Dm>
+bool TryDecodeFCMPE_D_FLOATCMP(const InstData &data, Instruction &inst) {
+  return TryDecodeFn_Fm(data, inst, kRegD);
+}
+
+static bool TryDecodeFCMP_ToZero(const InstData &data, Instruction &inst,
+                                 RegClass rclass) {
   if (IsUnallocatedFloatEncoding(data)) {
     return false;
   }
-  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
-  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rm);
+  AddRegOperand(inst, kActionRead, rclass, kUseAsValue, data.Rn);
   return true;
+}
+
+// FCMPE  <Hn>, #0.0
+bool TryDecodeFCMPE_HZ_FLOATCMP(const InstData &data, Instruction &inst) {
+  return TryDecodeFCMP_ToZero(data, inst, kRegH);
 }
 
 // FCMPE  <Sn>, #0.0
 bool TryDecodeFCMPE_SZ_FLOATCMP(const InstData &data, Instruction &inst) {
-  if (IsUnallocatedFloatEncoding(data)) {
-    return false;
-  }
-  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
-  AddImmOperand(inst, 0);
-  return true;
+  return TryDecodeFCMP_ToZero(data, inst, kRegS);
+}
+
+// FCMPE  <Dn>, #0.0
+bool TryDecodeFCMPE_DZ_FLOATCMP(const InstData &data, Instruction &inst) {
+  return TryDecodeFCMP_ToZero(data, inst, kRegD);
 }
 
 // SVC  #<imm>
@@ -2709,9 +2763,68 @@ bool TryDecodeBRK_EX_EXCEPTION(const InstData &data, Instruction &inst) {
   return true;
 }
 
+union SystemReg {
+  uint64_t flat;
+  enum Name : uint64_t {
+    kFPCR = 0xDA20,
+    kFPSR = 0xDA21,
+    kTPIDR_EL0 = 0xDE82,
+    kTPIDRRO_EL0 = 0xDE83,
+  } name;
+  struct {
+    uint64_t op2:3;
+    uint64_t crm:4;
+    uint64_t crn:4;
+    uint64_t op1:3;
+    uint64_t op0:2;
+
+    uint64_t _rest:64 - 16;
+  } __attribute__((flat));
+} __attribute__((flat));
+
+static_assert(sizeof(SystemReg) == sizeof(uint64_t),
+              "Invalid packing of `union SystemReg`.");
+
+static bool AppendSysRegName(Instruction &inst, SystemReg bits) {
+  std::stringstream ss;
+  ss << inst.function << "_";
+
+  switch (bits.name) {
+    case SystemReg::kFPCR:
+      ss << "FPCR";
+      break;
+    case SystemReg::kFPSR:
+      ss << "FPSR";
+      break;
+    case SystemReg::kTPIDR_EL0:
+      ss << "TPIDR_EL0";
+      break;
+    case SystemReg::kTPIDRRO_EL0:
+      ss << "TPIDRRO_EL0";
+      break;
+    default:
+      LOG(ERROR)
+          << "Unrecognized system register " << std::hex << bits.flat
+          << " with op0=" << bits.op0 << ", op1=" << bits.op1
+          << ", crn=" << bits.crn << ", crm=" << bits.crm << ", op2="
+          << bits.op2 << std::dec;
+      return false;
+  }
+
+  inst.function = ss.str();
+  return true;
+}
+
 // MRS  <Xt>, (<systemreg>|S<op0>_<op1>_<Cn>_<Cm>_<op2>)
-bool TryDecodeMRS_RS_SYSTEM(const InstData &, Instruction &) {
-  return false;
+bool TryDecodeMRS_RS_SYSTEM(const InstData &data, Instruction &inst) {
+  SystemReg bits;
+  bits.op0 = data.o0 + 2ULL;  // 2 bits.
+  bits.op1 = data.op1;  // 3 bits.
+  bits.crn = data.CRn;  // 4 bits.
+  bits.crm = data.CRm;  // 4 bits.
+  bits.op2 = data.op2;  // 3 bits.
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
+  return AppendSysRegName(inst, bits);
 }
 
 static bool TryDecodeSTR_Vn_LDST_POS(const InstData &data, Instruction &inst,
