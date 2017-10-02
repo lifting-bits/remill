@@ -143,6 +143,12 @@ DEF_SEM(MADD, D dst, S src1, S src2, S src3) {
   return memory;
 }
 
+template <typename D, typename S>
+DEF_SEM(MSUB, D dst, S src1, S src2, S src3) {
+  WriteZExt(dst, USub(Read(src3), UMul(Read(src1), Read(src2))));
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(UMADDL_64WA_DP_3SRC) = UMADDL;
@@ -156,6 +162,9 @@ DEF_ISEL(UDIV_64_DP_2SRC) = UDIV<R64W, R64>;
 
 DEF_ISEL(MADD_32A_DP_3SRC) = MADD<R32W, R32>;
 DEF_ISEL(MADD_64A_DP_3SRC) = MADD<R64W, R64>;
+
+DEF_ISEL(MSUB_32A_DP_3SRC) = MSUB<R32W, R32>;
+DEF_ISEL(MSUB_64A_DP_3SRC) = MSUB<R64W, R64>;
 
 namespace {
 

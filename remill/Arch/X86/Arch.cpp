@@ -430,7 +430,7 @@ static void DecodeMemory(Instruction &inst,
   op.addr.segment_base_reg = SegBaseRegOp(segment, op.addr.address_size);
   op.addr.base_reg = RegOp(base);
   op.addr.index_reg = RegOp(index);
-  op.addr.scale = static_cast<int64_t>(scale);
+  op.addr.scale = XED_REG_INVALID != index ? static_cast<int64_t>(scale) : 0;
   op.addr.displacement = disp;
 
   // Rename the base register to use `PC` as the register name.

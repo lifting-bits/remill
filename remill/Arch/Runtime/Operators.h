@@ -621,6 +621,11 @@ auto TruncTo(T val) -> typename IntegerType<DT>::BT {
   return static_cast<typename IntegerType<DT>::BT>(val);
 }
 
+#define WriteTrunc(op, val) \
+    do { \
+      Write(op, TruncTo<decltype(op)>(val)); \
+    } while (false)
+
 // Handle writes of N-bit values to M-bit values with N <= M. If N < M then the
 // source value will be zero-extended to the dest value type. This is useful
 // on x86-64 where writes to 32-bit registers zero-extend to 64-bits. In a
