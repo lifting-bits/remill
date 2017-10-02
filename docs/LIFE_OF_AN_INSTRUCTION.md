@@ -16,22 +16,28 @@ Below is a string representation of the data structures representing our example
 
 ```lisp
 ;; mov eax, 1
-(X86 8048098 5 (BYTES b8 01 00 00 00) MOV_GPRv_IMMv_32
+(X86 8048098 5 (BYTES b8 01 00 00 00)
+  MOV_GPRv_IMMv_32
     (WRITE_OP (REG_32 EAX))
-    (READ_OP (IMM_32 1)))
+    (READ_OP  (IMM_32 0x1)))
 
 ;; push ebx
-(X86 804809d 1 (BYTES 53) PUSH_GPRv_50_32
+(X86 804809d 1 (BYTES 53)
+  PUSH_GPRv_50_32
     (READ_OP (REG_32 EBX)))
 
 ;; mov ebx, dword ptr [esp + 8]
-(X86 804809e 4 (BYTES 8b 5c 24 08) MOV_GPRv_MEMv_32
+(X86 804809e 4 (BYTES 8b 5c 24 08)
+  MOV_GPRv_MEMv_32
     (WRITE_OP (REG_32 EBX))
-    (READ_OP (ADDR_32 DWORD (SEGMENT SS_BASE) ESP + 0x8))))
+    (READ_OP  (DWORD_PTR (ADD (REG_32 SS_BASE)
+                              (REG_32 ESP)
+                              (SIGNED_IMM_32 0x8)))))
 
 ;; int 0x80
-(X86 80480a2 2 (BYTES cd 80) INT_IMMb
-    (READ_OP (IMM_8 80)))
+(X86 80480a2 2 (BYTES cd 80)
+  INT_IMMb
+    (READ_OP (IMM_8 0x80)))
 ```
 
 ## From architecture-specific to architecture-neutral
@@ -116,9 +122,12 @@ The data structure of `mov ebx, dword [esp+0x8]` was:
 
 ```lisp
 ;; mov ebx, dword ptr [esp + 8]
-(X86 804809e 4 (BYTES 8b 5c 24 08) MOV_GPRv_MEMv_32
+(X86 804809e 4 (BYTES 8b 5c 24 08)
+  MOV_GPRv_MEMv_32
     (WRITE_OP (REG_32 EBX))
-    (READ_OP (ADDR_32 DWORD (SEGMENT SS_BASE) ESP + 0x8))))
+    (READ_OP  (DWORD_PTR (ADD (REG_32 SS_BASE)
+                              (REG_32 ESP)
+                              (SIGNED_IMM_32 0x8)))))
 ```
 
 The semantics function implementing the `mov` instruction is:

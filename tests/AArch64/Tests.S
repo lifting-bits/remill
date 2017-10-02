@@ -234,6 +234,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BINARY/ADDS_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADDS_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/MADD_nA_DP_3SRC.S"
+#include "tests/AArch64/BINARY/MSUB_nA_DP_3SRC.S"
 #include "tests/AArch64/BINARY/SBC_n_ADDSUB_CARRY.S"
 #include "tests/AArch64/BINARY/SBCS_n_ADDSUB_CARRY.S"
 #include "tests/AArch64/BINARY/SMADDL_64WA_DP_3SRC.S"
@@ -267,14 +268,22 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_OFF.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_POST.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_PRE.S"
+#include "tests/AArch64/DATAXFER/LDR_n_LDST_IMMPOST.S"
+#include "tests/AArch64/DATAXFER/LDR_n_LDST_IMMPRE.S"
 #include "tests/AArch64/DATAXFER/LDR_n_LDST_POS.S"
+#include "tests/AArch64/DATAXFER/LDR_n_LDST_REGOFF.S"
 #include "tests/AArch64/DATAXFER/LDRB.S"
 #include "tests/AArch64/DATAXFER/LDRH.S"
+#include "tests/AArch64/DATAXFER/LDRSB.S"
+#include "tests/AArch64/DATAXFER/LDRSH.S"
+#include "tests/AArch64/DATAXFER/LDRSW.S"
+#include "tests/AArch64/DATAXFER/LDUR_n_LDST_UNSCALED.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_OFF.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_POST.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_PRE.S"
 #include "tests/AArch64/DATAXFER/STR_n_LDST_POS.S"
 #include "tests/AArch64/DATAXFER/STRB.S"
+#include "tests/AArch64/DATAXFER/STUR_n_LDST_UNSCALED.S"
 
 #include "tests/AArch64/LOGICAL/AND_n_LOG_IMM.S"
 #include "tests/AArch64/LOGICAL/AND_n_LOG_SHIFT.S"
@@ -292,6 +301,8 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/COND/CCMP_n_CONDCMP_IMM.S"
 #include "tests/AArch64/COND/x_CSINC_n_CONDSEL.S"
 #include "tests/AArch64/COND/x_CSINV_n_CONDSEL.S"
+
+#include "tests/AArch64/SIMD/ORR_ASIMDSAME_ONLY.S"
 
 #endif
 
