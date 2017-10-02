@@ -16,10 +16,24 @@
 
 TEST_BEGIN(FMOV_64VX_FLOAT2INT, fmov_64vx, 1)
 TEST_INPUTS(0)
-    fmov x4, v0.d[1]
+    fmov x0, v0.d[1]
+    fmov x1, v1.d[1]
+    fmov x2, v2.d[1]
+    fmov x3, v3.d[1]
+    fmov x4, v4.d[1]
+    fmov x5, v5.d[1]
+    fmov x6, v6.d[1]
+    fmov x0, v6.d[1]
 TEST_END
 
 TEST_BEGIN(FMOV_V64I_FLOAT2INT, fmov_v64i, 1)
 TEST_INPUTS(0)
-    fmov v4.d[1], x0
+    fmov v0.d[1], x0
+    fmov v1.d[1], x1
+    fmov v2.d[1], x2
+    fmov v3.d[1], x3
+    fmov v4.d[1], x4
+    fmov v5.d[1], x5
+    fmov v6.d[1], x6
+    fmov v0.d[1], x6
 TEST_END
