@@ -2337,9 +2337,7 @@ bool TryDecodeANDS_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
 
 // MADD  <Wd>, <Wn>, <Wm>, <Wa>
 bool TryDecodeMADD_32A_DP_3SRC(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rm);
+  TryDecodeRdW_Rn_Rm(data, inst, kRegW);
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Ra);
   return true;
 }
@@ -2351,6 +2349,16 @@ bool TryDecodeMADD_64A_DP_3SRC(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// MSUB  <Wd>, <Wn>, <Wm>, <Wa>
+bool TryDecodeMSUB_32A_DP_3SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeMADD_32A_DP_3SRC(data, inst);
+}
+
+// MSUB  <Xd>, <Xn>, <Xm>, <Xa>
+bool TryDecodeMSUB_64A_DP_3SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeMADD_64A_DP_3SRC(data, inst);
+}
+
 // EXTR  <Wd>, <Wn>, <Wm>, #<lsb>
 bool TryDecodeEXTR_32_EXTRACT(const InstData &data, Instruction &inst) {
   if (data.N != data.sf) {
@@ -2359,9 +2367,7 @@ bool TryDecodeEXTR_32_EXTRACT(const InstData &data, Instruction &inst) {
   if (data.imms.uimm & 0x20) {
     return false;  // `if sf == '0' && imms<5> == '1' then ReservedValue();`
   }
-  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rm);
+  TryDecodeRdW_Rn_Rm(data, inst, kRegW);
   AddImmOperand(inst, data.imms.uimm, kUnsigned, 32);
   return true;
 }
