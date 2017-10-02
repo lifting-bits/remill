@@ -2669,7 +2669,22 @@ bool TryDecodeFDIV_S_FLOATDP2(const InstData &data, Instruction &inst) {
 
 // FDIV  <Dd>, <Dn>, <Dm>
 bool TryDecodeFDIV_D_FLOATDP2(const InstData &data, Instruction &inst) {
+  return TryDecodeFdW_Fn_Fm(data, inst, kRegD);
+}
+
+// FSUB  <Hd>, <Hn>, <Hm>
+bool TryDecodeFSUB_H_FLOATDP2(const InstData &data, Instruction &inst) {
+  return TryDecodeFdW_Fn_Fm(data, inst, kRegH);
+}
+
+// FSUB  <Sd>, <Sn>, <Sm>
+bool TryDecodeFSUB_S_FLOATDP2(const InstData &data, Instruction &inst) {
   return TryDecodeFdW_Fn_Fm(data, inst, kRegS);
+}
+
+// FSUB  <Dd>, <Dn>, <Dm>
+bool TryDecodeFSUB_D_FLOATDP2(const InstData &data, Instruction &inst) {
+  return TryDecodeFdW_Fn_Fm(data, inst, kRegD);
 }
 
 // FCMPE  <Sn>, <Sm>

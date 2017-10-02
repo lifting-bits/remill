@@ -209,6 +209,21 @@ DEF_SEM(FADD_Scalar64, V128W dst, V64 src1, V64 src2) {
   return memory;
 }
 
+DEF_SEM(FSUB_Scalar32, V128W dst, V32 src1, V32 src2) {
+  auto val1 = FExtractV32(FReadV32(src1), 0);
+  auto val2 = FExtractV32(FReadV32(src2), 0);
+  auto sum = CheckedFloatBinOp(state, FSub32, val1, val2);
+  FWriteV32(dst, sum);
+  return memory;
+}
+
+DEF_SEM(FSUB_Scalar64, V128W dst, V64 src1, V64 src2) {
+  auto val1 = FExtractV64(FReadV64(src1), 0);
+  auto val2 = FExtractV64(FReadV64(src2), 0);
+  auto sum = CheckedFloatBinOp(state, FSub64, val1, val2);
+  FWriteV64(dst, sum);
+  return memory;
+}
 DEF_SEM(FMUL_Scalar32, V128W dst, V32 src1, V32 src2) {
   auto val1 = FExtractV32(FReadV32(src1), 0);
   auto val2 = FExtractV32(FReadV32(src2), 0);
@@ -308,6 +323,9 @@ DEF_SEM(FCMPE_DZ, V64 src1) {
   return memory;
 }
 }  // namespace
+
+DEF_ISEL(FSUB_S_FLOATDP2) = FSUB_Scalar32;
+DEF_ISEL(FSUB_D_FLOATDP2) = FSUB_Scalar64;
 
 DEF_ISEL(FADD_S_FLOATDP2) = FADD_Scalar32;
 DEF_ISEL(FADD_D_FLOATDP2) = FADD_Scalar64;
