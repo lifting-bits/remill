@@ -165,10 +165,10 @@ struct Carry<tag_sub> {
 
 template <typename T>
 ALWAYS_INLINE static void SetFPSRStatusFlags(State &state, T res) {
-  if (std::isinf(res)) {
-    state.sr.ofc = true;
-    state.sr.ixc = true;
-  }
+//  if (std::isinf(res)) {
+//    state.sr.ofc = true;
+//    state.sr.ixc = true;
+//  }
   if (std::fetestexcept(FE_INEXACT)) {
     state.sr.ixc = true;
   }
