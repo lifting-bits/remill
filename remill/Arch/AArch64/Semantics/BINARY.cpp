@@ -145,7 +145,7 @@ DEF_SEM(MADD, D dst, S src1, S src2, S src3) {
 
 template <typename D, typename S>
 DEF_SEM(MSUB, D dst, S src1, S src2, S src3) {
-  WriteZExt(dst, UAdd(Read(src3), UMul(Read(src1), Read(src2))));
+  WriteZExt(dst, USub(Read(src3), UMul(Read(src1), Read(src2))));
   return memory;
 }
 
