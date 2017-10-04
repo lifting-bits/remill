@@ -417,14 +417,14 @@ std::vector<llvm::Value *> LiftedFunctionArgs(llvm::BasicBlock *block) {
 // Apply a callback function to every semantics bitcode function.
 void ForEachISel(llvm::Module *module, ISelCallback callback) {
   for (auto &global : module->globals()) {
-    if (!global.hasInitializer() || !global.getName().startswith("ISEL_")) {
-      continue;
+    const auto &name = global.getName();
+    if (global.hasInitializer() &&
+        (name.startswith("ISEL_") || name.startswith("COND_"))) {
+      auto sem = llvm::dyn_cast<llvm::Function>(
+          global.getInitializer()->stripPointerCasts());
+
+      callback(&global, sem);
     }
-
-    auto sem = llvm::dyn_cast<llvm::Function>(
-        global.getInitializer()->stripPointerCasts());
-
-    callback(&global, sem);
   }
 }
 

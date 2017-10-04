@@ -35,6 +35,7 @@ DEF_SEM(DoMRS_RS_SYSTEM_FPSR, R64W dest) {
   fpsr.ufc = state.sr.ufc;
   fpsr.idc = state.sr.idc;
   WriteZExt(dest, fpsr.flat);
+  return memory;
 }
 
 }  // namespace
