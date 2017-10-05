@@ -15,34 +15,37 @@
  */
 
 
-TEST_BEGIN(FCMPE_S_FLOATCMP, fcmpe_s0_s1, 2)
-TEST_INPUTS(
-    0x00000000, 0x00000000,
-    0x00000000, 0x00000001,
-    0x3fffffff, 0x00000001,
-    0x3fffffff, 0x3fffffff,     
-    0x3fffffff, 0x40000000,     
-    0x40000000, 0x3fffffff,    
-    0x7FFFFFFF, 0x7FFFFFFF,
-    0x80000000, 0x7FFFFFFF,     
-    0x7FFFFFFF, 0x80000000,     
-    0x80000000, 0x80000000,
-    0xffffffff, 0xffffffff)
 
-    fmov s0, ARG1_32
-    fmov s1, ARG2_32
-    fcmpe s0, s1
-TEST_END
-
-TEST_BEGIN(FCMPE_SZ_FLOATCMP, fcmpe_z_s0_s1, 1)
+TEST_BEGIN(FABS_S_FLOATDP1, fabs_s, 1)
 TEST_INPUTS(
     0x00000000, 
     0x3fffffff,      
     0x40000000,     
     0x7FFFFFFF, 
     0x80000000,      
-    0xffffffff)
+    0xffffffff,
+    0xbf800000,
+    0xc0000000)
 
     fmov s0, ARG1_32
-    fcmpe s0, #0.0
+    fabs s1, s0
 TEST_END
+
+TEST_BEGIN(FABS_D_FLOATDP1, fabs_d, 1)
+TEST_INPUTS(
+    0x00000000, 
+    0x3fffffff,      
+    0x40000000,     
+    0x7FFFFFFF, 
+    0x80000000,      
+    0xffffffff,
+    0xbf800000,
+    0xc0000000,
+    0xcccccccccccccccc,
+    0xbf8ccccccccccccc,
+    0xffffffffffffffff)
+
+    fmov d0, ARG1_64
+    fabs d1, d0
+TEST_END
+

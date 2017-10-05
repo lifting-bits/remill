@@ -15,6 +15,19 @@
  */
 
 
+TEST_BEGIN(FCVTZU_32S_FLOAT2INT, fcvtzu_w0_s0, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x80000000,
+    0x7fffffff,
+    0xffffffff,
+    0x3fffffff)
+
+    fmov s0, ARG1_32
+    fcvtzu w0, s0
+TEST_END
+
 TEST_BEGIN(FCVTZU_64S_FLOAT2INT, fcvtzu_x0_s0, 1)
 TEST_INPUTS(
     0,
@@ -26,4 +39,30 @@ TEST_INPUTS(
 
     fmov s0, ARG1_32
     fcvtzu x0, s0
+TEST_END
+
+TEST_BEGIN(FCVTZU_32D_FLOAT2INT, fcvtzu_w0_d0, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x80000000,
+    0x7fffffff,
+    0xffffffff,
+    0x3fffffff)
+
+    fmov d0, ARG1_64
+    fcvtzu w0, d0
+TEST_END
+
+TEST_BEGIN(FCVTZU_64D_FLOAT2INT, fcvtzu_x0_d0, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x80000000,
+    0x7fffffff,
+    0xffffffff,
+    0x3fffffff)
+
+    fmov d0, ARG1_64
+    fcvtzu x0, d0
 TEST_END

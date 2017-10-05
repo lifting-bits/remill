@@ -183,10 +183,10 @@ void SetFPSRStatusFlags(State &state, S res) {
 //    state.sr.ioc = true;
 //  }
   // TODO: Look into setting idc flag
-   if (std::fpclassify(res) == FP_SUBNORMAL) {
-     state.fpsr.idc = true;
-     state.sr.idc = true;
-   }
+  //  if (std::fpclassify(res) == FP_SUBNORMAL) {
+  //    state.fpsr.idc = true;
+  //    state.sr.idc = true;
+  //  }
 
 }
 

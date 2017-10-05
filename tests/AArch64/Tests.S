@@ -225,7 +225,7 @@ SYMBOL(__aarch64_test_table_begin):
 #define ARG3_64 x2
 #define ARG3_32 w2
 
-#if 1
+#if 0
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/ADD_32_ADDSUB_EXT.S"
@@ -251,7 +251,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BINARY/UMULH_64_DP_3SRC.S"
 #include "tests/AArch64/BINARY/FADD_t_FLOATDP2.S"
 #include "tests/AArch64/BINARY/FMUL_t_FLOATDP2.S"
-#include "tests/AArch64/BINARY/FCMPE_n_FLOATCMP.S"
+#include "tests/AArch64/BINARY/FCMPx_n_FLOATCMP.S"
 
 #include "tests/AArch64/BITBYTE/BFM_nM_BITFIELD.S"
 #include "tests/AArch64/BITBYTE/EXTR_n_EXTRACT.S"
@@ -311,6 +311,15 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/SIMD/ORR_ASIMDSAME_ONLY.S"
 
 #endif
+// #include "tests/AArch64/DATAXFER/STR_n_LDST_IMMPRE.S"
+// #include "tests/AArch64/DATAXFER/STR_n_LDST_REGOFF.S"
+// #include "tests/AArch64/DATAXFER/STRH.S"
+// #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_OFF.S"
+// #include "tests/AArch64/COND/CCMN_n_CONDCMP_IMM.S"
+// #include "tests/AArch64/CONVERT/FCVTZx_nS_FLOAT2INT.S"
+// #include "tests/AArch64/BINARY/FCMPx_n_FLOATCMP.S"
+// #include "tests/AArch64/BINARY/FABS_t_FLOATDP1.S"
+#include "tests/AArch64/CONVERT/FCVT_t_FLOAT2INT.S"
 
      /* Create a symbol that represents the end of the test information table. */
     .section "__aarch64_test_table", "a"
