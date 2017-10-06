@@ -2833,6 +2833,30 @@ bool TryDecodeFMUL_S_FLOATDP2(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// FMADD  <Sd>, <Sn>, <Sm>, <Sa>
+bool TryDecodeFMADD_S_FLOATDP3(const InstData &data, Instruction &inst) {
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rm);
+  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Ra);
+  return true;
+}
+
+// FMADD  <Dd>, <Dn>, <Dm>, <Da>
+bool TryDecodeFMADD_D_FLOATDP3(const InstData &data, Instruction &inst) {
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rm);
+  AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Ra);
+  return true;
+}
+
 // FCMPE  <Sn>, <Sm>
 bool TryDecodeFCMPE_S_FLOATCMP(const InstData &data, Instruction &inst) {
   if (IsUnallocatedFloatEncoding(data)) {
@@ -2875,6 +2899,26 @@ bool TryDecodeFABS_S_FLOATDP1(const InstData &data, Instruction &inst) {
 
 // FABS  <Dd>, <Dn>
 bool TryDecodeFABS_D_FLOATDP1(const InstData &data, Instruction &inst) {
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegD, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rn);
+  return true;
+}
+
+// FNEG  <Sd>, <Sn>
+bool TryDecodeFNEG_S_FLOATDP1(const InstData &data, Instruction &inst) {
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegS, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
+  return true;
+}
+
+// FNEG  <Dd>, <Dn>
+bool TryDecodeFNEG_D_FLOATDP1(const InstData &data, Instruction &inst) {
   if (IsUnallocatedFloatEncoding(data)) {
     return false;
   }

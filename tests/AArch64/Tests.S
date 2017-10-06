@@ -324,7 +324,9 @@ SYMBOL(__aarch64_test_table_begin):
 // #include "tests/AArch64/BINARY/FCMPx_n_FLOATCMP.S"
 // #include "tests/AArch64/BINARY/FABS_t_FLOATDP1.S"
 // #include "tests/AArch64/CONVERT/FCVT_t_FLOAT2INT.S"
-#include "tests/AArch64/DATAXFER/FMOV_NToN.S"
+// #include "tests/AArch64/DATAXFER/FMOV_NToN.S"
+// #include "tests/AArch64/BINARY/FNEG_t_FLOATDP1.S"
+#include "tests/AArch64/BINARY/FMADD_t_FLOATDP3.S"
 
      /* Create a symbol that represents the end of the test information table. */
     .section "__aarch64_test_table", "a"
