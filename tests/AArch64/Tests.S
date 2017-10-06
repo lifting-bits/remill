@@ -146,6 +146,8 @@ SYMBOL(vec_data):
     .globl SYMBOL(InvokeTestCase)
 SYMBOL(InvokeTestCase):
     .cfi_startproc
+    msr fpcr, xzr
+    msr fpsr, xzr
 
     /* Fill in q0 through q7 with dummy values. */
     adrp    x28, SYMBOL(vec_data)
@@ -185,6 +187,8 @@ SYMBOL(InvokeTestCase):
     adrp    x28, SYMBOL(gTestToRun)
     add     x28, x28, :lo12:SYMBOL(gTestToRun)
     ldr     x28, [x28]
+    msr fpcr, xzr
+    msr fpsr, xzr
     br      x28
 
     .cfi_endproc
@@ -311,14 +315,14 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/SIMD/ORR_ASIMDSAME_ONLY.S"
 
 #endif
-// #include "tests/AArch64/DATAXFER/STR_n_LDST_IMMPRE.S"
-// #include "tests/AArch64/DATAXFER/STR_n_LDST_REGOFF.S"
-// #include "tests/AArch64/DATAXFER/STRH.S"
-// #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_OFF.S"
-// #include "tests/AArch64/COND/CCMN_n_CONDCMP_IMM.S"
-// #include "tests/AArch64/CONVERT/FCVTZx_nS_FLOAT2INT.S"
-// #include "tests/AArch64/BINARY/FCMPx_n_FLOATCMP.S"
-// #include "tests/AArch64/BINARY/FABS_t_FLOATDP1.S"
+#include "tests/AArch64/DATAXFER/STR_n_LDST_IMMPRE.S"
+#include "tests/AArch64/DATAXFER/STR_n_LDST_REGOFF.S"
+#include "tests/AArch64/DATAXFER/STRH.S"
+#include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_OFF.S"
+#include "tests/AArch64/COND/CCMN_n_CONDCMP_IMM.S"
+#include "tests/AArch64/CONVERT/FCVTZx_nS_FLOAT2INT.S"
+#include "tests/AArch64/BINARY/FCMPx_n_FLOATCMP.S"
+#include "tests/AArch64/BINARY/FABS_t_FLOATDP1.S"
 #include "tests/AArch64/CONVERT/FCVT_t_FLOAT2INT.S"
 
      /* Create a symbol that represents the end of the test information table. */

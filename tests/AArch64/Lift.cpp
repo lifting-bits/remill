@@ -118,7 +118,6 @@ static void AddFunctionToModule(llvm::Module *module,
         << "Can't lift test instruction in " << test.test_name;
 
     saw_isel = saw_isel || inst.function == test.isel_name;
-    LOG(ERROR) << "function: " << inst.function << " .  isel_name: " << test.isel_name;
     addr += inst.NumBytes();
 
     // Connect together the basic blocks.

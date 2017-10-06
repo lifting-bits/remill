@@ -23,7 +23,6 @@ TEST_INPUTS(
     0x7fffffff,
     0xffffffff,
     0x3fffffff)
-
     fmov s0, ARG1_32
     fcvtzu w0, s0
 TEST_END

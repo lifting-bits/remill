@@ -2619,22 +2619,42 @@ bool TryDecodeFCVT_SD_FLOATDP1(const InstData &data, Instruction &inst) {
 
 // FCVTZS  <Wd>, <Sn>
 bool TryDecodeFCVTZS_32S_FLOAT2INT(const InstData &data, Instruction &inst) {
-  return false;
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
+  return true;
 }
 
 // FCVTZS  <Xd>, <Sn>
 bool TryDecodeFCVTZS_64S_FLOAT2INT(const InstData &data, Instruction &inst) {
-  return false;
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegS, kUseAsValue, data.Rn);
+  return true;
 }
 
 // FCVTZS  <Wd>, <Dn>
 bool TryDecodeFCVTZS_32D_FLOAT2INT(const InstData &data, Instruction &inst) {
-  return false;
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rn);
+  return true;
 }
 
 // FCVTZS  <Xd>, <Dn>
 bool TryDecodeFCVTZS_64D_FLOAT2INT(const InstData &data, Instruction &inst) {
-  return false;
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rn);
+  return true;
 }
 
 // FCVTZU  <Wd>, <Sn>
