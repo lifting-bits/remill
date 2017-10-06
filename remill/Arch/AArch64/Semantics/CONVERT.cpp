@@ -33,13 +33,13 @@ D FPConvertIntToFloat(State &state, S src) {
 
 template <typename S, typename D>
 D FPConvertFloatTo(State &state, S src) {
-  std::feclearexcept(FE_ALL_EXCEPT);
+  // std::feclearexcept(FE_ALL_EXCEPT);
   auto res = static_cast<D>(src);
   // Handle extra rounding errors (ignore INEXACT on NaN)
   SetFPSRStatusFlags(state, src);
-  if (!std::isnan(src)) {
-    state.sr.ixc = (static_cast<S>(res) != src);
-  }
+  // if (!std::isnan(src)) {
+  //   state.sr.ixc = (reinterpret_cast<S &>(res) != src);
+  // }
 
   // if(src == 0 && std::signbit(src)) {
   //   state.sr.ixc = true;

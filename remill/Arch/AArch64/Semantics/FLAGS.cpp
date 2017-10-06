@@ -178,10 +178,9 @@ void SetFPSRStatusFlags(State &state, S res) {
   if (std::fetestexcept(FE_UNDERFLOW)) {
     state.sr.ufc = true;
   }
-
-//  if (std::fetestexcept(FE_INVALID)) {
-//    state.sr.ioc = true;
-//  }
+  if (std::fetestexcept(FE_INVALID)) {
+    state.fpsr.ioc = true;
+  }
   // TODO: Look into setting idc flag
   //  if (std::fpclassify(res) == FP_SUBNORMAL) {
   //    state.fpsr.idc = true;
@@ -189,6 +188,4 @@ void SetFPSRStatusFlags(State &state, S res) {
   //  }
 
 }
-
-
 }  // namespace
