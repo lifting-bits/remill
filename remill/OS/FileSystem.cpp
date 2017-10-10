@@ -46,6 +46,28 @@ bool TryCreateDirectory(const std::string &dir_name) {
   }
 }
 
+// Iterator over a directory.
+void ForEachFileInDirectory(const std::string &dir_name,
+                            DirectoryVisitor visitor) {
+  auto dir = opendir(dir_name.c_str());
+  CHECK(dir != nullptr)
+      << "Could not list the " << dir_name << " directory";
+
+  while (auto ent = readdir(dir)) {
+    if (!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..")) {
+      continue;
+    }
+
+    std::stringstream ss;
+    ss << dir_name << "/" << ent->d_name;
+    auto path = ss.str();
+    if (!visitor(path)) {
+      break;
+    }
+  }
+  closedir(dir);
+}
+
 std::string CurrentWorkingDirectory(void) {
   char result[PATH_MAX] = {};
   auto res = getcwd(result, PATH_MAX);

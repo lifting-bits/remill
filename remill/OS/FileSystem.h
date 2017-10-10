@@ -18,11 +18,18 @@
 #define REMILL_OS_FILESYSTEM_H_
 
 #include <cstdint>
+#include <functional>
 #include <string>
 
 namespace remill {
 
 bool TryCreateDirectory(const std::string &dir_name);
+
+using DirectoryVisitor = std::function<bool(const std::string &path)>;
+
+// Iterator over a directory.
+void ForEachFileInDirectory(const std::string &dir_name,
+                            DirectoryVisitor visitor);
 
 std::string CurrentWorkingDirectory(void);
 

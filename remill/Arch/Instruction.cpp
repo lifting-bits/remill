@@ -198,7 +198,10 @@ std::string Operand::Serialize(void) const {
            << addr.segment_base_reg.name << ")";
       }
 
-      ss << " (REG_" << addr.base_reg.size << " " << addr.base_reg.name << ")";
+      if (!addr.base_reg.name.empty()) {
+        ss << " (REG_" << addr.base_reg.size << " "
+           << addr.base_reg.name << ")";
+      }
 
       if (addr.scale) {
         CHECK(!addr.index_reg.name.empty());

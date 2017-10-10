@@ -625,13 +625,18 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
 
 // Make `func` a clone of the `__remill_basic_block` function.
 void CloneBlockFunctionInto(llvm::Function *func) {
-  CloneFunctionInto(BasicBlockFunction(func->getParent()), func);
+  auto bb_func = BasicBlockFunction(func->getParent());
+  CHECK(remill::FindVarInFunction(bb_func, "MEMORY") != nullptr);
+
+  CloneFunctionInto(bb_func, func);
 
   // Remove the `return` in `__remill_basic_block`.
   auto &entry = func->front();
   auto term = entry.getTerminator();
   term->eraseFromParent();
   func->removeFnAttr(llvm::Attribute::OptimizeNone);
+
+  CHECK(remill::FindVarInFunction(func, "MEMORY") != nullptr);
 }
 
 // Returns a list of callers of a specific function.

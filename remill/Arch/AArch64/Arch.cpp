@@ -1331,10 +1331,12 @@ bool DecodeTestBitBranch(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, reg_class, kUseAsValue, data.Rt);
   return true;
 }
+
 // TBZ  <R><t>, #<imm>, <label>
 bool TryDecodeTBZ_ONLY_TESTBRANCH(const InstData &data, Instruction &inst) {
   return DecodeTestBitBranch(data, inst);
 }
+
 // TBNZ  <R><t>, #<imm>, <label>
 bool TryDecodeTBNZ_ONLY_TESTBRANCH(const InstData &data, Instruction &inst) {
   return DecodeTestBitBranch(data, inst);
@@ -2779,8 +2781,8 @@ union SystemReg {
     uint64_t op0:2;
 
     uint64_t _rest:64 - 16;
-  } __attribute__((flat));
-} __attribute__((flat));
+  } __attribute__((packed));
+} __attribute__((packed));
 
 static_assert(sizeof(SystemReg) == sizeof(uint64_t),
               "Invalid packing of `union SystemReg`.");
