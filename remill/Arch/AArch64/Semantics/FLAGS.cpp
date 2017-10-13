@@ -180,6 +180,9 @@ ALWAYS_INLINE static void SetFPSRStatusFlags(State &state, T res) {
   if ((mask & FE_UNDERFLOW)) {
     state.sr.ufc = true;
   }
+  if (std::fetestexcept(FE_INVALID)) {
+    state.fpsr.ioc = true;
+  }
 }
 
 template <typename F, typename T>

@@ -15,15 +15,37 @@
  */
 
 
-TEST_BEGIN(FCVTZU_64S_FLOAT2INT, fcvtzu_x0_s0, 1)
+
+TEST_BEGIN(FABS_S_FLOATDP1, fabs_s, 1)
 TEST_INPUTS(
-    0,
-    1,
-    0x80000000,
-    0x7fffffff,
+    0x00000000, 
+    0x3fffffff,      
+    0x40000000,     
+    0x7FFFFFFF, 
+    0x80000000,      
     0xffffffff,
-    0x3fffffff)
+    0xbf800000,
+    0xc0000000)
 
     fmov s0, ARG1_32
-    fcvtzu x0, s0
+    fabs s1, s0
 TEST_END
+
+TEST_BEGIN(FABS_D_FLOATDP1, fabs_d, 1)
+TEST_INPUTS(
+    0x00000000, 
+    0x3fffffff,      
+    0x40000000,     
+    0x7FFFFFFF, 
+    0x80000000,      
+    0xffffffff,
+    0xbf800000,
+    0xc0000000,
+    0xcccccccccccccccc,
+    0xbf8ccccccccccccc,
+    0xffffffffffffffff)
+
+    fmov d0, ARG1_64
+    fabs d1, d0
+TEST_END
+

@@ -14,12 +14,32 @@
  * limitations under the License.
  */
 
-
-TEST_BEGIN(FCMPE_S_FLOATCMP, fcmpe_s0_s1, 2)
+// FMADD  <Sd>, <Sn>, <Sm>, <Sa>
+TEST_BEGIN(FMADD_S_FLOATDP3, fmadd_s_pos_floatdp3, 2)
 TEST_INPUTS(
     0x00000000, 0x00000000,
     0x00000000, 0x00000001,
-    0x3fffffff, 0x00000001,
+    0x3fffffff, 0x00000001, // WILL FAIL (Native no underflow, lifted says yes)
+    0x3fffffff, 0x3fffffff,     
+    0x3fffffff, 0x40000000,
+    0x40000000, 0x3fffffff,    
+    0x7FFFFFFF, 0x7FFFFFFF,
+    0x80000000, 0x7FFFFFFF,     
+    0x7FFFFFFF, 0x80000000,     
+    0x80000000, 0x80000000,
+    0xffffffff, 0xffffffff)
+
+    fmov s0, ARG1_32
+    fmov s1, ARG2_32
+    fmov s2, #0x22
+    fmadd s3, s0, s1, s2
+TEST_END
+
+TEST_BEGIN(FMADD_S_FLOATDP3, fmadd_s_neg_floatdp3, 2)
+TEST_INPUTS(
+    0x00000000, 0x00000000,
+    0x00000000, 0x00000001,
+    0x3fffffff, 0x00000001, // WILL FAIL (Native no underflow, lifted says yes)
     0x3fffffff, 0x3fffffff,     
     0x3fffffff, 0x40000000,     
     0x40000000, 0x3fffffff,    
@@ -31,18 +51,7 @@ TEST_INPUTS(
 
     fmov s0, ARG1_32
     fmov s1, ARG2_32
-    fcmpe s0, s1
+    fmov s2, -#0x22
+    fmadd s3, s0, s1, s2
 TEST_END
 
-TEST_BEGIN(FCMPE_SZ_FLOATCMP, fcmpe_z_s0_s1, 1)
-TEST_INPUTS(
-    0x00000000, 
-    0x3fffffff,      
-    0x40000000,     
-    0x7FFFFFFF, 
-    0x80000000,      
-    0xffffffff)
-
-    fmov s0, ARG1_32
-    fcmpe s0, #0.0
-TEST_END

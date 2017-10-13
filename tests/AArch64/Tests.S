@@ -146,6 +146,8 @@ SYMBOL(vec_data):
     .globl SYMBOL(InvokeTestCase)
 SYMBOL(InvokeTestCase):
     .cfi_startproc
+    msr fpcr, xzr
+    msr fpsr, xzr
 
     /* Fill in q0 through q7 with dummy values. */
     adrp    x28, SYMBOL(vec_data)
@@ -185,6 +187,8 @@ SYMBOL(InvokeTestCase):
     adrp    x28, SYMBOL(gTestToRun)
     add     x28, x28, :lo12:SYMBOL(gTestToRun)
     ldr     x28, [x28]
+    msr fpcr, xzr
+    msr fpsr, xzr
     br      x28
 
     .cfi_endproc
@@ -258,11 +262,6 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BINARY/ADDS_n_ADDSUB_EXT.S"
 #include "tests/AArch64/BINARY/ADDS_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADDS_n_ADDSUB_SHIFT.S"
-#include "tests/AArch64/BINARY/FADD_t_FLOATDP2.S"
-#include "tests/AArch64/BINARY/FDIV_t_FLOATDP2.S"
-#include "tests/AArch64/BINARY/FCMPE_n_FLOATCMP.S"
-#include "tests/AArch64/BINARY/FMUL_t_FLOATDP2.S"
-#include "tests/AArch64/BINARY/FSUB_t_FLOATDP2.S"
 #include "tests/AArch64/BINARY/MADD_nA_DP_3SRC.S"
 #include "tests/AArch64/BINARY/MSUB_nA_DP_3SRC.S"
 #include "tests/AArch64/BINARY/SBC_n_ADDSUB_CARRY.S"
@@ -279,6 +278,14 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BINARY/UDIV_n_DP_2SRC.S"
 #include "tests/AArch64/BINARY/UMADDL_64WA_DP_3SRC.S"
 #include "tests/AArch64/BINARY/UMULH_64_DP_3SRC.S"
+#include "tests/AArch64/BINARY/FADD_t_FLOATDP2.S"
+#include "tests/AArch64/BINARY/FSUB_t_FLOATDP2.S"
+#include "tests/AArch64/BINARY/FMUL_t_FLOATDP2.S"
+#include "tests/AArch64/BINARY/FDIV_t_FLOATDP2.S"
+#include "tests/AArch64/BINARY/FCMPx_n_FLOATCMP.S"
+#include "tests/AArch64/BINARY/FABS_t_FLOATDP1.S"
+#include "tests/AArch64/BINARY/FNEG_t_FLOATDP1.S"
+#include "tests/AArch64/BINARY/FMADD_t_FLOATDP3.S"
 
 #include "tests/AArch64/BITBYTE/BFM_nM_BITFIELD.S"
 #include "tests/AArch64/BITBYTE/CLZ_n_DP_1SRC.S"
@@ -294,7 +301,8 @@ SYMBOL(__aarch64_test_table_begin):
 
 #include "tests/AArch64/CONVERT/UCVTF_Dn_FLOAT2INT.S"
 #include "tests/AArch64/CONVERT/UCVTF_Sn_FLOAT2INT.S"
-#include "tests/AArch64/CONVERT/FCVTZU_nS_FLOAT2INT.S"
+#include "tests/AArch64/CONVERT/FCVTZx_nS_FLOAT2INT.S"
+#include "tests/AArch64/CONVERT/FCVT_t_FLOAT2INT.S"
 
 #include "tests/AArch64/DATAXFER/FMOV_t_FLOATIMM.S"
 #include "tests/AArch64/DATAXFER/FMOV_NToN.S"
@@ -315,7 +323,10 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_POST.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_PRE.S"
 #include "tests/AArch64/DATAXFER/STR_n_LDST_POS.S"
+#include "tests/AArch64/DATAXFER/STR_n_LDST_IMMPRE.S"
+#include "tests/AArch64/DATAXFER/STR_n_LDST_REGOFF.S"
 #include "tests/AArch64/DATAXFER/STRB.S"
+#include "tests/AArch64/DATAXFER/STRH.S"
 #include "tests/AArch64/DATAXFER/STUR_n_LDST_UNSCALED.S"
 
 #include "tests/AArch64/LOGICAL/AND_n_LOG_IMM.S"
@@ -334,6 +345,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/COND/CCMP_n_CONDCMP_IMM.S"
 #include "tests/AArch64/COND/x_CSINC_n_CONDSEL.S"
 #include "tests/AArch64/COND/x_CSINV_n_CONDSEL.S"
+#include "tests/AArch64/COND/CCMN_n_CONDCMP_IMM.S"
 
 #include "tests/AArch64/SIMD/ORR_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/FMOV_VECTORS.S"

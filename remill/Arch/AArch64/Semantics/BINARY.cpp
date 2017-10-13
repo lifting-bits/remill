@@ -248,6 +248,20 @@ DEF_SEM(FDIV_Scalar32, V128W dst, V32 src1, V32 src2) {
   return memory;
 }
 
+DEF_SEM(FMADD_S, V128W dst, V32 src1, V32 src2, V32 src3) {
+  auto factor1 = FExtractV32(FReadV32(src1), 0);
+  auto factor2 = FExtractV32(FReadV32(src2), 0);
+  auto add = FExtractV32(FReadV32(src3), 0);
+  std::feclearexcept(FE_ALL_EXCEPT);
+  auto prod = FMul(factor1, factor2);
+  SetFPSRStatusFlags(state, prod);
+  auto res = FAdd(prod, add);
+  // Sets underflow for 0x3fffffff, 0x1 but native doesn't
+  SetFPSRStatusFlags(state, res);
+  FWriteV32(dst, res);
+  return memory;
+}
+
 DEF_SEM(FDIV_Scalar64, V128W dst, V64 src1, V64 src2) {
   auto val1 = FExtractV64(FReadV64(src1), 0);
   auto val2 = FExtractV64(FReadV64(src2), 0);
@@ -257,7 +271,7 @@ DEF_SEM(FDIV_Scalar64, V128W dst, V64 src1, V64 src2) {
 }
 
 template <typename S>
-void FCompare(State &state, S val1, S val2) {
+void FCompare(State &state, S val1, S val2, bool signal=true) {
   // Set flags for operand == NAN
   if (std::isnan(val1) || std::isnan(val2)) {
     // result = '0011';
@@ -266,8 +280,9 @@ void FCompare(State &state, S val1, S val2) {
     FLAG_C = 1;
     FLAG_V = 1;
 
-    // This semantic form always signals.
-    state.fpsr.ioc = true;
+    if(signal) { 
+      state.fpsr.ioc = true; 
+    }
 
   // Regular float compare
   } else {
@@ -322,6 +337,42 @@ DEF_SEM(FCMPE_DZ, V64 src1) {
   FCompare(state, val1, float_zero);
   return memory;
 }
+
+DEF_SEM(FCMP_DZ, V64 src1, I64 zero) {
+  auto val1 = FExtractV64(FReadV64(src1), 0);
+  auto float_zero = static_cast<float64_t>(Read(zero));
+  FCompare(state, val1, float_zero, false);
+  return memory;
+}
+
+DEF_SEM(FABS_S, V128W dst, V32 src) {
+  auto val = FExtractV32(FReadV32(src), 0);
+  auto result = static_cast<float32_t>(fabs(val));
+  FWriteV32(dst, result);
+  return memory;
+}
+
+DEF_SEM(FABS_D, V128W dst, V64 src) {
+  auto val = FExtractV64(FReadV64(src), 0);
+  auto result = static_cast<float64_t>(fabs(val));
+  FWriteV64(dst, result);
+  return memory;
+}
+
+DEF_SEM(FNEG_S, V128W dst, V32 src) {
+  auto val = FExtractV32(FReadV32(src), 0);
+  auto result = -val;
+  FWriteV32(dst, result);
+  return memory;
+}
+
+DEF_SEM(FNEG_D, V128W dst, V64 src) {
+  auto val = FExtractV64(FReadV64(src), 0);
+  auto result = -val;
+  FWriteV64(dst, result);
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(FSUB_S_FLOATDP2) = FSUB_Scalar32;
@@ -333,8 +384,19 @@ DEF_ISEL(FADD_D_FLOATDP2) = FADD_Scalar64;
 DEF_ISEL(FMUL_S_FLOATDP2) = FMUL_Scalar32;
 DEF_ISEL(FMUL_D_FLOATDP2) = FMUL_Scalar64;
 
+DEF_ISEL(FMADD_S_FLOATDP3) = FMADD_S;
+// DEF_ISEL(FMADD_D_FLOATDP3)
+
 DEF_ISEL(FDIV_S_FLOATDP2) = FDIV_Scalar32;
 DEF_ISEL(FDIV_D_FLOATDP2) = FDIV_Scalar64;
+
+DEF_ISEL(FCMP_DZ_FLOATCMP) = FCMP_DZ;
+
+DEF_ISEL(FABS_S_FLOATDP1) = FABS_S;
+DEF_ISEL(FABS_D_FLOATDP1) = FABS_D;
+
+DEF_ISEL(FNEG_S_FLOATDP1) = FNEG_S;
+DEF_ISEL(FNEG_D_FLOATDP1) = FNEG_D;
 
 DEF_ISEL(FCMPE_S_FLOATCMP) = FCMPE_S;
 DEF_ISEL(FCMPE_SZ_FLOATCMP) = FCMPE_SZ;

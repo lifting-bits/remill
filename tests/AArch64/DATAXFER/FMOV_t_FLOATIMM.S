@@ -29,7 +29,7 @@
 // TEST_END
 // FMOV  <Sd>, #<imm>
 
-TEST_BEGIN(FMOV_S_FLOATIMM, fmov_s, 1)
+TEST_BEGIN(FMOV_S_FLOATIMM, fmov_s_imm, 1)
 TEST_INPUTS(0)
     fmov s0, #0x0
     fmov s1, #0x1
@@ -39,7 +39,7 @@ TEST_INPUTS(0)
     fmov s5, #0x3f
 TEST_END
 
-TEST_BEGIN(FMOV_D_FLOATIMM, fmov_d, 1)
+TEST_BEGIN(FMOV_D_FLOATIMM, fmov_d_imm, 1)
 TEST_INPUTS(0)
     fmov d0, #0x0
     fmov d1, #0x1

@@ -1,0 +1,67 @@
+/*
+ * Copyright (c) 2017 Trail of Bits, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * dildributed under the License is dildributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// TEST_BEGIN(LDR_32_LDST_IMMPRE, ldr_w5_m32_pre, 1)
+// TEST_INPUTS(0)
+//     add x3, sp, #-256
+//     ldr w5, [x3, #0]!
+// TEST_END
+
+// TEST_BEGIN(LDR_64_LDST_IMMPRE, ldr_x5_m64_pre, 1)
+// TEST_INPUTS(0)
+//     add x3, sp, #-256
+//     ldr x5, [x3, #0]!
+// TEST_END
+
+// TEST_BEGIN(LDR_B_LDST_IMMPRE, ldr_b0_m8_pre, 1)
+// TEST_INPUTS(0)
+//     add x3, sp, #-256
+//     ldr b0, [x3, #0]!
+//     ldr b1, [x3, #16]!
+//     ldr b3, [x3, #32]!
+// TEST_END
+
+// TEST_BEGIN(LDR_H_LDST_IMMPRE, ldr_h0_m16_pre, 1)
+// TEST_INPUTS(0)
+//     add x3, sp, #-256
+//     ldr h0, [x3, #0]!
+//     ldr h1, [x3, #16]!
+//     ldr h3, [x3, #32]!
+// TEST_END
+
+// TEST_BEGIN(LDR_S_LDST_IMMPRE, ldr_s0_m32_pre, 1)
+// TEST_INPUTS(0)
+//     add x3, sp, #-256
+//     ldr s0, [x3, #0]!
+//     ldr s1, [x3, #16]!
+//     ldr s3, [x3, #32]!
+// TEST_END
+
+// TEST_BEGIN(LDR_D_LDST_IMMPRE, ldr_d0_m64_pre, 1)
+// TEST_INPUTS(0)
+//     add x3, sp, #-256
+//     ldr d0, [x3, #0]!
+//     ldr d1, [x3, #16]!
+//     ldr d3, [x3, #32]!
+// TEST_END
+
+TEST_BEGIN(STR_Q_LDST_IMMPRE, str_q0_m128_pre, 1)
+TEST_INPUTS(0)
+    add x3, sp, #-256
+    str q0, [x3, #0]!
+    str q1, [x3, #16]!
+    str q3, [x3, #32]!
+TEST_END

@@ -48,6 +48,39 @@ DEF_SEM(StorePair64, R64 src1, R64 src2, MV128W dst) {
   return memory;
 }
 
+DEF_SEM(STP_S, V32 src1, V32 src2, MV64W dst) {
+  auto src1_vec = FReadV32(src1);
+  auto src2_vec = FReadV32(src2);
+  float32v2_t tmp_vec = {};
+  tmp_vec = FInsertV32(tmp_vec, 0, FExtractV32(src1_vec, 0));
+  tmp_vec = FInsertV32(tmp_vec, 1, FExtractV32(src2_vec, 0));
+  FWriteV32(dst, tmp_vec);
+  return memory;
+}
+
+DEF_SEM(STP_D, V64 src1, V64 src2, MV128W dst) {
+  auto src1_vec = FReadV64(src1);
+  auto src2_vec = FReadV64(src2);
+  float64v2_t tmp_vec = {};
+  tmp_vec = FInsertV64(tmp_vec, 0, FExtractV64(src1_vec, 0));
+  tmp_vec = FInsertV64(tmp_vec, 1, FExtractV64(src2_vec, 0));
+  FWriteV64(dst, tmp_vec);
+  return memory;
+}
+
+// MvW type isnt supported
+// remill/remill/Arch/Runtime/Operators.h:437:1: error: static_assert failed "Invalid value size for MVnW."
+// MAKE_MWRITEV(U, 128, dqwords, 128, uint128_t)
+
+// DEF_SEM(STP_Q, V128 src1, V128 src2, MV128W dst) {
+//   auto src1_vec = UReadV128(src1);
+//   auto src2_vec = UReadV128(src2);
+//   uint128v2_t tmp_vec = {};
+//   tmp_vec = UInsertV128(tmp_vec, 0, UExtractV128(src1_vec, 0));
+//   tmp_vec = UInsertV128(tmp_vec, 1, UExtractV128(src2_vec, 0));
+//   UWriteV128(dst, tmp_vec);
+//   return memory;
+// }
 }  // namespace
 
 DEF_ISEL(STP_32_LDSTPAIR_PRE) = StorePairUpdateIndex32;
@@ -58,6 +91,10 @@ DEF_ISEL(STP_64_LDSTPAIR_POST) = StorePairUpdateIndex64;
 
 DEF_ISEL(STP_32_LDSTPAIR_OFF) = StorePair32;
 DEF_ISEL(STP_64_LDSTPAIR_OFF) = StorePair64;
+
+DEF_ISEL(STP_S_LDSTPAIR_OFF) = STP_S;
+DEF_ISEL(STP_D_LDSTPAIR_OFF) = STP_D;
+// DEF_ISEL(STP_Q_LDSTPAIR_OFF) = STP_Q;
 
 namespace {
 
@@ -97,6 +134,9 @@ DEF_ISEL(STRB_32_LDST_IMMPRE) = StoreUpdateIndex<R32, M8W>;
 DEF_ISEL(STRB_32B_LDST_REGOFF) = StoreToOffset<R32, M8W>;
 DEF_ISEL(STRB_32BL_LDST_REGOFF) = StoreToOffset<R32, M8W>;
 
+DEF_ISEL(STRH_32_LDST_REGOFF) = StoreToOffset<R32, M16W>;
+DEF_ISEL(STRH_32_LDST_IMMPRE) = StoreUpdateIndex<R32, M16W>;
+DEF_ISEL(STRH_32_LDST_IMMPOST) = StoreUpdateIndex<R32, M16W>;
 DEF_ISEL(STRH_32_LDST_POS) = Store<R32, M16W>;
 
 DEF_ISEL(STR_32_LDST_REGOFF) = StoreToOffset<R32, M32W>;
@@ -305,6 +345,18 @@ DEF_SEM(FMOV_F64ToI64, R64W dst, V64 src) {
   WriteZExt(dst, reinterpret_cast<uint64_t &>(float_val));
   return memory;
 }
+
+DEF_SEM(FMOV_S, V128W dst, V32 src) {
+  auto reg = FReadV32(src);
+  FWriteV32(dst, reg);
+  return memory;
+}
+
+DEF_SEM(FMOV_D, V128W dst, V64 src) {
+  auto reg = FReadV64(src);
+  FWriteV64(dst, reg);
+  return memory;
+}
 }  // namespace
 
 DEF_ISEL(MOVK_32_MOVEWIDE) = MoveWithKeep<R32W, R32>;
@@ -323,6 +375,9 @@ DEF_ISEL(FMOV_S32_FLOAT2INT) = FMOV_I32ToF32;
 
 DEF_ISEL(FMOV_64D_FLOAT2INT) = FMOV_F64ToI64;
 DEF_ISEL(FMOV_D64_FLOAT2INT) = FMOV_I64ToF64;
+
+DEF_ISEL(FMOV_S_FLOATDP1) = FMOV_S;
+DEF_ISEL(FMOV_D_FLOATDP1) = FMOV_D;
 namespace {
 
 DEF_SEM(ADRP, R64W dst, PC label) {
@@ -553,6 +608,16 @@ DEF_SEM(STR_Q, V128 src, MV128W dst) {
   return memory;
 }
 
+DEF_SEM(STR_Q_UpdateIndex, V128 src, MV128W dst, R64W dst_reg, ADDR next_addr) {
+  UWriteV128(dst, UReadV128(src));
+  Write(dst_reg, Read(next_addr));
+  return memory;
+}
+
+DEF_SEM(STR_Q_FromOffset, V128 src, MV128W dst, ADDR offset) {
+  UWriteV128(DisplaceAddress(dst, Read(offset)), UReadV128(src));
+  return memory;
+}
 }  // namespace
 
 DEF_ISEL(STR_B_LDST_POS) = STR_B;
@@ -566,3 +631,8 @@ DEF_ISEL(STUR_H_LDST_UNSCALED) = STR_H;
 DEF_ISEL(STUR_S_LDST_UNSCALED) = STR_S;
 DEF_ISEL(STUR_D_LDST_UNSCALED) = STR_D;
 DEF_ISEL(STUR_Q_LDST_UNSCALED) = STR_Q;
+
+DEF_ISEL(STR_Q_LDST_REGOFF) = STR_Q_FromOffset;
+
+DEF_ISEL(STR_Q_LDST_IMMPRE) = STR_Q_UpdateIndex;
+
