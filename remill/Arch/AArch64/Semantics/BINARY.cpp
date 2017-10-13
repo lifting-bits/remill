@@ -221,6 +221,7 @@ DEF_SEM(FMADD_S, V128W dst, V32 src1, V32 src2, V32 src3) {
   auto add = FExtractV32(FReadV32(src3), 0);
   std::feclearexcept(FE_ALL_EXCEPT);
   auto prod = FMul(factor1, factor2);
+  SetFPSRStatusFlags(state, prod);
   auto res = FAdd(prod, add);
   // Sets underflow for 0x3fffffff, 0x1 but native doesn't
   SetFPSRStatusFlags(state, res);

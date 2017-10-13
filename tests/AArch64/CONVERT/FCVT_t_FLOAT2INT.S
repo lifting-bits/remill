@@ -23,7 +23,7 @@ TEST_INPUTS(
     0x80000000,      
     0xffffffff,
     0xbf800000,
-    0xc0000000, // Any transition causes 64 bit number to fail once with underflow setting
+    0xc0000000,     
     0xcccccccccccccccc,
     0xbf8ccccccccccccc,
     0xffffffffffffffff)

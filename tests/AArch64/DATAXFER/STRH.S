@@ -35,12 +35,6 @@ TEST_INPUTS(0)
     strh w6, [x3], #32
 TEST_END
 
-TEST_BEGIN(LDRH_32_LDST_IMMPOST, ldrh_wzr_m16_post_alias, 1)
-TEST_INPUTS(0)
-    add sp, sp, #-256
-    ldrh wzr, [sp], #16
-TEST_END
-
 /* STRH  <Wt>, [<Xn|SP>, #<simm>]! */
 TEST_BEGIN(STRH_32_LDST_IMMPRE, strh_w5_m16_pre, 1)
 TEST_INPUTS(0)
