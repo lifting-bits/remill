@@ -232,24 +232,36 @@ llvm::Module *LoadTargetSemantics(llvm::LLVMContext *context) {
 
 // Reads an LLVM module from a file.
 llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
-                                 std::string file_name) {
+                                 std::string file_name,
+                                 bool allow_failure) {
   llvm::SMDiagnostic err;
   auto mod_ptr = llvm::parseIRFile(file_name, err, *context);
   auto module = mod_ptr.get();
   mod_ptr.release();
 
-  CHECK(nullptr != module) << "Unable to parse module file: " << file_name
-                           << ".";
+  if (!module) {
+    LOG_IF(FATAL, !allow_failure)
+        << "Unable to parse module file: " << file_name;
+    return nullptr;
+  }
 
   auto ec = module->materializeAll();  // Just in case.
-  CHECK(!ec) << "Unable to materialize everything from " << file_name;
+  if (ec) {
+    LOG_IF(FATAL, !allow_failure)
+        << "Unable to materialize everything from " << file_name;
+    delete module;
+    return nullptr;
+  }
 
   std::string error;
   llvm::raw_string_ostream error_stream(error);
   if (llvm::verifyModule(*module, &error_stream)) {
     error_stream.flush();
-    LOG(FATAL) << "Error reading module from file " << file_name << ": "
-               << error;
+    LOG_IF(FATAL, !allow_failure)
+        << "Error verifying module read from file " << file_name << ": "
+        << error;
+    delete module;
+    return nullptr;
   }
 
   return module;
@@ -418,11 +430,12 @@ std::vector<llvm::Value *> LiftedFunctionArgs(llvm::BasicBlock *block) {
 void ForEachISel(llvm::Module *module, ISelCallback callback) {
   for (auto &global : module->globals()) {
     const auto &name = global.getName();
-    if (global.hasInitializer() &&
-        (name.startswith("ISEL_") || name.startswith("COND_"))) {
-      auto sem = llvm::dyn_cast<llvm::Function>(
+    if (name.startswith("ISEL_") || name.startswith("COND_")) {
+      llvm::Function *sem = nullptr;
+      if (global.hasInitializer()) {
+        sem = llvm::dyn_cast<llvm::Function>(
           global.getInitializer()->stripPointerCasts());
-
+      }
       callback(&global, sem);
     }
   }
