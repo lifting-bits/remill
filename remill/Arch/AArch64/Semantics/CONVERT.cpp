@@ -17,7 +17,7 @@
 namespace {
 
 template <typename S, typename D>
-D FPConvertIntToFloat(State &state, S src) {
+ALWAYS_INLINE static D FPConvertIntToFloat(State &state, S src) {
   auto res = static_cast<D>(src);
 
   if (std::isinf(res)) {

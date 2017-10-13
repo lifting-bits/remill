@@ -163,29 +163,66 @@ struct Carry<tag_sub> {
   }
 };
 
-template <typename S>
-void SetFPSRStatusFlags(State &state, S res) {
-  if (std::isinf(res)) {
-    state.sr.ofc = true;
+template <typename T>
+ALWAYS_INLINE static void SetFPSRStatusFlags(State &state, T res) {
+//  if (std::isinf(res)) {
+//    state.sr.ofc = true;
+//    state.sr.ixc = true;
+//  }
+
+  auto mask = std::fetestexcept(FE_ALL_EXCEPT);
+  if ((mask & FE_INEXACT)) {
     state.sr.ixc = true;
   }
-  if (std::fetestexcept(FE_INEXACT)) {
-    state.sr.ixc = true;
-  }
-  if (std::fetestexcept(FE_OVERFLOW)) {
+  if ((mask & FE_OVERFLOW)) {
     state.sr.ofc = true;
   }
-  if (std::fetestexcept(FE_UNDERFLOW)) {
+  if ((mask & FE_UNDERFLOW)) {
     state.sr.ufc = true;
   }
   if (std::fetestexcept(FE_INVALID)) {
     state.fpsr.ioc = true;
   }
+}
+
+template <typename F, typename T>
+ALWAYS_INLINE static
+auto CheckedFloatUnaryOp(State &state, F func, T arg1)
+    -> decltype(func(arg1)) {
+  std::feclearexcept(FE_ALL_EXCEPT);
+  // TODO(pag): This seems related to the FTZ rounding mode.
+//  if (!std::isnormal(arg1)) {
+//    state.sr.idc = true;
+//  }
   // TODO: Look into setting idc flag
   //  if (std::fpclassify(res) == FP_SUBNORMAL) {
   //    state.fpsr.idc = true;
   //    state.sr.idc = true;
+  //  } else {
+  //    state.fpsr.idc = false;
+  //    state.sr.idc = false;
   //  }
 
+  auto res = func(arg1);
+  SetFPSRStatusFlags(state, res);
+  return res;
 }
+
+template <typename F, typename T>
+ALWAYS_INLINE static
+auto CheckedFloatBinOp(State &state, F func, T arg1, T arg2)
+    -> decltype(func(arg1, arg2)) {
+  std::feclearexcept(FE_ALL_EXCEPT);
+  // TODO(pag): This seems related to the FTZ rounding mode.
+//  if (!std::isnormal(arg1)) {
+//    state.sr.idc = true;
+//  }
+//  if (!std::isnormal(arg2)) {
+//    state.sr.idc = true;
+//  }
+  auto res = func(arg1, arg2);
+  SetFPSRStatusFlags(state, res);
+  return res;
+}
+
 }  // namespace

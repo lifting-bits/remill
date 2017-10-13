@@ -229,6 +229,31 @@ SYMBOL(__aarch64_test_table_begin):
 #define ARG3_64 x2
 #define ARG3_32 w2
 
+#define TEST_INPUTS_FP32    \
+    0x3fffffff, 0x3fffffff,      \
+    0x3fffffff, 0x40000000,      \
+    0x40000000, 0x3fffffff,      \
+    0x7FFFFFFF, 0x7FFFFFFF,      \
+    0x80000000, 0x7FFFFFFF,      \
+    0x7FFFFFFF, 0x80000000,      \
+    0x80000000, 0x80000000
+
+#define TEST_INPUTS_FP64    \
+    0x3ff0000000000000 /* 1.000000 */, 0x3ff0000000000000, /* 1.000000 */    \
+    0x3ff0000000000000 /* 1.000000 */, 0x4000000000000000, /* 2.000000 */    \
+    0x4000000000000000 /* 2.000000 */, 0x3ff0000000000000, /* 1.000000 */    \
+    0x3ff0000000000000 /* 1.000000 */, 0x7ff0000000000000, /* inf */         \
+    0x7ff0000000000000 /* inf */, 0x3ff0000000000000, /* 1.000000 */         \
+    0x3ff0000000000000 /* 1.000000 */, 0xfff0000000000000, /* -inf */        \
+    0xfff0000000000000 /* -inf */, 0x3ff0000000000000, /* 1.000000 */        \
+    0x7ff0000000000000 /* inf */, 0x7ff0000000000000, /* inf */              \
+    0xfff0000000000000 /* -inf */, 0xfff0000000000000, /* -inf */            \
+    0x3ff0000000000000 /* 1.000000 */, 0x7ff8000000000000, /* nan */         \
+    0x7ff8000000000000 /* nan */, 0x3ff0000000000000, /* 1.000000 */         \
+    0x7ff8000000000000 /* nan */, 0x7ff8000000000000, /* nan */              \
+    0x7ff0000000000000 /* inf */, 0x7ff8000000000000, /* nan */              \
+    0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
+
 #if 1
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
@@ -237,6 +262,11 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BINARY/ADDS_n_ADDSUB_EXT.S"
 #include "tests/AArch64/BINARY/ADDS_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADDS_n_ADDSUB_SHIFT.S"
+#include "tests/AArch64/BINARY/FADD_t_FLOATDP2.S"
+#include "tests/AArch64/BINARY/FDIV_t_FLOATDP2.S"
+#include "tests/AArch64/BINARY/FCMPE_n_FLOATCMP.S"
+#include "tests/AArch64/BINARY/FMUL_t_FLOATDP2.S"
+#include "tests/AArch64/BINARY/FSUB_t_FLOATDP2.S"
 #include "tests/AArch64/BINARY/MADD_nA_DP_3SRC.S"
 #include "tests/AArch64/BINARY/MSUB_nA_DP_3SRC.S"
 #include "tests/AArch64/BINARY/SBC_n_ADDSUB_CARRY.S"
@@ -261,10 +291,10 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BINARY/FMADD_t_FLOATDP3.S"
 
 #include "tests/AArch64/BITBYTE/BFM_nM_BITFIELD.S"
+#include "tests/AArch64/BITBYTE/CLZ_n_DP_1SRC.S"
 #include "tests/AArch64/BITBYTE/EXTR_n_EXTRACT.S"
 #include "tests/AArch64/BITBYTE/SBFM_nM_BITFIELD.S"
 #include "tests/AArch64/BITBYTE/UBFM_nM_BITFIELD.S"
-#include "tests/AArch64/BITBYTE/CLZ_n_DP_1SRC.S"
 
 #include "tests/AArch64/BRANCH/B_ONLY_CONDBRANCH.S"
 #include "tests/AArch64/BRANCH/CBNZ_n_COMPBRANCH.S"
@@ -321,6 +351,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/COND/CCMN_n_CONDCMP_IMM.S"
 
 #include "tests/AArch64/SIMD/ORR_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/FMOV_VECTORS.S"
 
 #endif
 

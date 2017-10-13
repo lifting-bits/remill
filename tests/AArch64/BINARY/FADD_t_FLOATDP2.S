@@ -17,23 +17,21 @@
 // FADD  <Sd>, <Sn>, <Sm>
 TEST_BEGIN(FADD_S_FLOATDP2, fadd_s_floatdp2, 2)
 TEST_INPUTS(
-    0x00000000, 0x00000000,
-    0x3fffffff, 0x00000000,
-    0x3fffffff, 0x3fffffff,     
-    0x3fffffff, 0x40000000,     
-    0x40000000, 0x3fffffff,    
-    0x7FFFFFFF, 0x7FFFFFFF,
-    0x80000000, 0x7FFFFFFF,     
-    0x7FFFFFFF, 0x80000000,     
-    0x80000000, 0x80000000,
-    0xffffffff, 0xffffffff)
+    0, 0,
+    TEST_INPUTS_FP32)
 
     fmov s0, ARG1_32
     fmov s1, ARG2_32
     fadd s4, s0, s1
 TEST_END
 
-// TEST_BEGIN(FMOV_S_FLOATIMM, fadd_s_floatdp2, 2)
-// TEST_INPUTS(0)
-//     FMOV s0, #0x3
-// TEST_END
+// FADD  <Dd>, <Dn>, <Dm>
+TEST_BEGIN(FADD_D_FLOATDP2, fadd_d_floatdp2, 2)
+TEST_INPUTS(
+    0, 0,
+    TEST_INPUTS_FP64)
+
+    fmov d0, ARG1_64
+    fmov d1, ARG2_64
+    fadd d4, d0, d1
+TEST_END
