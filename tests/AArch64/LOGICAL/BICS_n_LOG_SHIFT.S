@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-/* BICSS  <Wd>, <Wn>, <Wm>{, <shift> #<amount>} */
-TEST_BEGIN(BICSS_32_LOG_SHIFT, bics_w9_w0_w1, 2)
+/* BICS  <Wd>, <Wn>, <Wm>{, <shift> #<amount>} */
+TEST_BEGIN(BICS_32_LOG_SHIFT, bics_w9_w0_w1, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -29,7 +29,7 @@ TEST_INPUTS(
     bics w9, w0, w1
 TEST_END
 
-TEST_BEGIN(BICSS_32_LOG_SHIFT, bics_w9_w0_w1_lsl5, 2)
+TEST_BEGIN(BICS_32_LOG_SHIFT, bics_w9_w0_w1_lsl5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -43,7 +43,7 @@ TEST_INPUTS(
     bics w9, w0, w1, lsl #5
 TEST_END
 
-TEST_BEGIN(BICSS_32_LOG_SHIFT, bics_w9_w0_w1_lsr5, 2)
+TEST_BEGIN(BICS_32_LOG_SHIFT, bics_w9_w0_w1_lsr5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -58,7 +58,7 @@ TEST_INPUTS(
 TEST_END
 
 
-TEST_BEGIN(BICSS_32_LOG_SHIFT, bics_w9_w0_w1_ror5, 2)
+TEST_BEGIN(BICS_32_LOG_SHIFT, bics_w9_w0_w1_ror5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -72,7 +72,7 @@ TEST_INPUTS(
     bics w9, w0, w1, ror #5
 TEST_END
 
-TEST_BEGIN(BICSS_32_LOG_SHIFT, bics_w9_w0_w1_asr5, 2)
+TEST_BEGIN(BICS_32_LOG_SHIFT, bics_w9_w0_w1_asr5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -86,8 +86,8 @@ TEST_INPUTS(
     bics w9, w0, w1, asr #5
 TEST_END
 
-/* BICSS  <Xd>, <Xn>, <Xm>{, <shift> #<amount>} */
-TEST_BEGIN(BICSS_64_LOG_SHIFT, bics_x9_x0_x1, 2)
+/* BICS  <Xd>, <Xn>, <Xm>{, <shift> #<amount>} */
+TEST_BEGIN(BICS_64_LOG_SHIFT, bics_x9_x0_x1, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -108,7 +108,7 @@ TEST_INPUTS(
     bics x9, x0, x1
 TEST_END
 
-TEST_BEGIN(BICSS_64_LOG_SHIFT, bics_x9_x0_x1_lsl5, 2)
+TEST_BEGIN(BICS_64_LOG_SHIFT, bics_x9_x0_x1_lsl5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -129,7 +129,7 @@ TEST_INPUTS(
     bics x9, x0, x1, lsl #5
 TEST_END
 
-TEST_BEGIN(BICSS_64_LOG_SHIFT, bics_x9_x0_x1_lsr5, 2)
+TEST_BEGIN(BICS_64_LOG_SHIFT, bics_x9_x0_x1_lsr5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -143,7 +143,7 @@ TEST_INPUTS(
     bics x9, x0, x1, lsr #5
 TEST_END
 
-TEST_BEGIN(BICSS_64_LOG_SHIFT, bics_x9_x0_x1_ror5, 2)
+TEST_BEGIN(BICS_64_LOG_SHIFT, bics_x9_x0_x1_ror5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
@@ -157,7 +157,7 @@ TEST_INPUTS(
     bics x9, x0, x1, ror #5
 TEST_END
 
-TEST_BEGIN(BICSS_64_LOG_SHIFT, bics_x9_x0_x1_asr5, 2)
+TEST_BEGIN(BICS_64_LOG_SHIFT, bics_x9_x0_x1_asr5, 2)
 TEST_INPUTS(
     0, 0,
     0, 1,
