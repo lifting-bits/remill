@@ -3572,6 +3572,16 @@ bool TryDecodeORR_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// BICS  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeBICS_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeBIC_32_LOG_SHIFT(data, inst);
+}
+
+// BICS  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeBICS_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeBIC_64_LOG_SHIFT(data, inst);
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
