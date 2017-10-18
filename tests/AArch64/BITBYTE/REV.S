@@ -33,13 +33,13 @@ TEST_INPUTS(0xaabbccddeeff1122)
 TEST_END
 
 /* REV32  <Xd>, <Xn> */
-TEST_BEGIN(REV16_32_DP_1SRC, rev32_x3_x0, 1)
+TEST_BEGIN(REV32_64_DP_1SRC, rev32_x3_x0, 1)
 TEST_INPUTS(0xaabbccddeeff1122)
     rev32 x3, ARG1_64
 TEST_END
 
 /* REV  <Xd>, <Xn> */
-TEST_BEGIN(REV16_64_DP_1SRC, rev_x3_x0, 1)
+TEST_BEGIN(REV_64_DP_1SRC, rev_x3_x0, 1)
 TEST_INPUTS(0xaabbccddeeff1122)
     rev x3, ARG1_64
 TEST_END
