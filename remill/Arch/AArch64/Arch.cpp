@@ -827,11 +827,18 @@ static uint64_t DecodeScale(const InstData &data) {
   return scale;
 }
 
-// <OPCODE>  <Xd>, <Xn>, <Xm>
-static bool TryDecodeRdW_Rn_Rm(const InstData &data, Instruction &inst,
+// <OPCODE>  <Xd>, <Xn>
+static bool TryDecodeRdW_Rn(const InstData &data, Instruction &inst,
                                RegClass rclass) {
   AddRegOperand(inst, kActionWrite, rclass, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, rclass, kUseAsValue, data.Rn);
+  return true;
+}
+
+// <OPCODE>  <Xd>, <Xn>, <Xm>
+static bool TryDecodeRdW_Rn_Rm(const InstData &data, Instruction &inst,
+                               RegClass rclass) {
+  TryDecodeRdW_Rn(data, inst, rclass);
   AddRegOperand(inst, kActionRead, rclass, kUseAsValue, data.Rm);
   return true;
 }
@@ -1817,8 +1824,7 @@ bool TryDecodeEOR_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
   if (1 & (data.imm6.uimm >> 5)) {
     return false;  // `if sf == '0' && imm6<5> == '1' then ReservedValue();`.
   }
-  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rn);
+  TryDecodeRdW_Rn(data, inst, kRegW);
   AddShiftRegOperand(inst, kRegW, kUseAsValue, data.Rm,
                      static_cast<Shift>(data.shift), data.imm6.uimm);
   return true;
@@ -1826,8 +1832,7 @@ bool TryDecodeEOR_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
 
 // EOR  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
 bool TryDecodeEOR_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+  TryDecodeRdW_Rn(data, inst, kRegX);
   AddShiftRegOperand(inst, kRegX, kUseAsValue, data.Rm,
                      static_cast<Shift>(data.shift), data.imm6.uimm);
   return true;
@@ -3580,6 +3585,74 @@ bool TryDecodeBICS_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
 // BICS  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
 bool TryDecodeBICS_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
   return TryDecodeBIC_64_LOG_SHIFT(data, inst);
+}
+
+// LDARB  <Wt>, [<Xn|SP>{,#0}]
+bool TryDecodeLDARB_LR32_LDSTEXCL(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 8, data.Rn, 0);
+  return true;
+}
+
+// LDARH  <Wt>, [<Xn|SP>{,#0}]
+bool TryDecodeLDARH_LR32_LDSTEXCL(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 16, data.Rn, 0);
+  return true;
+}
+
+// LDAR  <Wt>, [<Xn|SP>{,#0}]
+bool TryDecodeLDAR_LR32_LDSTEXCL(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 32, data.Rn, 0);
+  return true;
+}
+
+// LDAR  <Xt>, [<Xn|SP>{,#0}]
+bool TryDecodeLDAR_LR64_LDSTEXCL(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 64, data.Rn, 0);
+  return true;
+}
+
+// REV16  <Wd>, <Wn>
+bool TryDecodeREV16_32_DP_1SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeRdW_Rn(data, inst, kRegW);
+}
+
+// REV16  <Xd>, <Xn>
+bool TryDecodeREV16_64_DP_1SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeRdW_Rn(data, inst, kRegX);
+}
+
+// REV  <Wd>, <Wn>
+bool TryDecodeREV_32_DP_1SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeRdW_Rn(data, inst, kRegW);
+}
+
+// REV32  <Xd>, <Xn>
+bool TryDecodeREV32_64_DP_1SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeRdW_Rn(data, inst, kRegX);
+}
+
+// REV  <Xd>, <Xn>
+bool TryDecodeREV_64_DP_1SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeRdW_Rn(data, inst, kRegX);
+}
+
+// REV16  <Vd>.<T>, <Vn>.<T>
+bool TryDecodeREV16_ASIMDMISC_R(const InstData &, Instruction &) {
+  return false;
+}
+
+// REV32  <Vd>.<T>, <Vn>.<T>
+bool TryDecodeREV32_ASIMDMISC_R(const InstData &, Instruction &) {
+  return false;
+}
+
+// REV64  <Vd>.<T>, <Vn>.<T>
+bool TryDecodeREV64_ASIMDMISC_R(const InstData &, Instruction &) {
+  return false;
 }
 
 }  // namespace aarch64

@@ -255,7 +255,7 @@ SYMBOL(__aarch64_test_table_begin):
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
 
 
-#include "tests/AArch64/LOGICAL/BICS_n_LOG_SHIFT.S"
+#include "tests/AArch64/BITBYTE/REV.S"
 
 #if 0
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
@@ -337,6 +337,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/LOGICAL/ANDS_nS_LOG_IMM.S"
 #include "tests/AArch64/LOGICAL/ANDS_n_LOG_SHIFT.S"
 #include "tests/AArch64/LOGICAL/BIC_n_LOG_SHIFT.S"
+#include "tests/AArch64/LOGICAL/BICS_n_LOG_SHIFT.S"
 #include "tests/AArch64/LOGICAL/EOR_n_LOG_IMM.S"
 #include "tests/AArch64/LOGICAL/EOR_n_LOG_SHIFT.S"
 #include "tests/AArch64/LOGICAL/ORN_n_LOG_SHIFT.S"

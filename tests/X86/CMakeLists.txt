@@ -70,7 +70,7 @@ macro(COMPILE_X86_TESTS name address_size has_avx has_avx512)
         OUTPUT  tests_${name}.S
         COMMAND ${CMAKE_BC_COMPILER}
                 -Wno-override-module
-                -S -O3 -g0
+                -S -O0 -g0
                 -c tests_${name}.bc
                 -o tests_${name}.S
         DEPENDS tests_${name}.bc

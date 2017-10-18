@@ -111,18 +111,21 @@ extern Memory *__remill_async_hyper_call(State &, addr_t ret_addr, Memory *);
 [[gnu::used]]
 extern Memory *__remill_sync_hyper_call(State &, Memory *, SyncHyperCall::Name);
 
-// Memory barriers types, see: http://g.oswego.edu/dl/jmm/cookbook.html
+// Memory barriers types:
+//  http://g.oswego.edu/dl/jmm/cookbook.html
+//  http://preshing.com/20120913/acquire-and-release-semantics/
+//  http://preshing.com/20120710/memory-barriers-are-like-source-control-operations/
 [[gnu::used, gnu::const]]
 extern Memory *__remill_barrier_load_load(Memory *);
 
 [[gnu::used, gnu::const]]
-extern Memory *__remill_barrier_load_store(Memory *);
+extern Memory *__remill_barrier_load_store(Memory *);  // Load acquire.
 
 [[gnu::used, gnu::const]]
 extern Memory *__remill_barrier_store_load(Memory *);
 
 [[gnu::used, gnu::const]]
-extern Memory *__remill_barrier_store_store(Memory *);
+extern Memory *__remill_barrier_store_store(Memory *);  // Store release.
 
 // Atomic operations. The address/size are hints, but the granularity of the
 // access can be bigger. These have implicit StoreLoad semantics.

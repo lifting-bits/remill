@@ -636,3 +636,19 @@ DEF_ISEL(STR_Q_LDST_REGOFF) = STR_Q_FromOffset;
 
 DEF_ISEL(STR_Q_LDST_IMMPRE) = STR_Q_UpdateIndex;
 
+namespace {
+
+template <typename D, typename S>
+DEF_SEM(LoadAcquire, D dst, S src) {
+  memory = __remill_barrier_load_store(memory);
+  WriteZExt(dst, Read(src));
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(LDARB_LR32_LDSTEXCL) = LoadAcquire<R32W, M8>;
+DEF_ISEL(LDARH_LR32_LDSTEXCL) = LoadAcquire<R32W, M16>;
+DEF_ISEL(LDAR_LR32_LDSTEXCL) = LoadAcquire<R32W, M32>;
+DEF_ISEL(LDAR_LR64_LDSTEXCL) = LoadAcquire<R64W, M64>;
+
