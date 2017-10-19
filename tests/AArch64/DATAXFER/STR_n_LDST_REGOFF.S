@@ -38,7 +38,6 @@ TEST_END
 TEST_BEGIN(STR_32_LDST_REGOFF, str_w567_m32_lsl, 1)
 TEST_INPUTS(0, 8)
     add x3, sp, #-256
-    str w5, [x3, ARG1_64, lsl]
     str w6, [x3, ARG1_64, lsl #0]
     str w7, [x3, ARG1_64, lsl #2]
 TEST_END
@@ -61,13 +60,12 @@ TEST_INPUTS(
     add x3, sp, #-256
     str x5, [x3, ARG1_64, sxtx]
     str x6, [x3, ARG1_64, sxtx #0]
-    str x7, [x3, ARG1_64, sxtx #2]
+    str x7, [x3, ARG1_64, sxtx #3]
 TEST_END
 
 TEST_BEGIN(STR_64_LDST_REGOFF, str_x567_m64_lsl, 1)
 TEST_INPUTS(0, 8)
     add x3, sp, #-256
-    str x5, [x3, ARG1_64, lsl]
     str x6, [x3, ARG1_64, lsl #0]
     str x7, [x3, ARG1_64, lsl #3]
 TEST_END
