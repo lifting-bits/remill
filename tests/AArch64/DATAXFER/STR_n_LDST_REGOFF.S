@@ -67,9 +67,9 @@ TEST_END
 TEST_BEGIN(STR_64_LDST_REGOFF, str_x567_m64_lsl, 1)
 TEST_INPUTS(0, 8)
     add x3, sp, #-256
-    str x5, [x3, ARG1_32, lsl]
-    str x6, [x3, ARG1_32, lsl #0]
-    str x7, [x3, ARG1_32, lsl #3]
+    str x5, [x3, ARG1_64, lsl]
+    str x6, [x3, ARG1_64, lsl #0]
+    str x7, [x3, ARG1_64, lsl #3]
 TEST_END
 
 TEST_BEGIN(STR_Q_LDST_REGOFF, str_10_m128_uxt, 1)
