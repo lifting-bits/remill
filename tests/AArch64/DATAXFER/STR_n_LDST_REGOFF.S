@@ -14,6 +14,64 @@
  * limitations under the License.
  */
 
+TEST_BEGIN(STR_32_LDST_REGOFF, str_w567_m32_uxtw, 1)
+TEST_INPUTS(0, 8)
+    add x3, sp, #-256
+    str w5, [x3, ARG1_32, uxtw]
+    str w6, [x3, ARG1_32, uxtw #0]
+    str w7, [x3, ARG1_32, uxtw #2]
+TEST_END
+
+TEST_BEGIN(STR_32_LDST_REGOFF, str_w567_m32_sxtw, 1)
+TEST_INPUTS(
+    0,
+    8,
+    0xfffffffffffffff8,
+    0xfffffffffffffff0)
+
+    add x3, sp, #-256
+    str w5, [x3, ARG1_32, sxtw]
+    str w6, [x3, ARG1_32, sxtw #0]
+    str w7, [x3, ARG1_32, sxtw #2]
+TEST_END
+
+TEST_BEGIN(STR_32_LDST_REGOFF, str_w567_m32_lsl, 1)
+TEST_INPUTS(0, 8)
+    add x3, sp, #-256
+    str w5, [x3, ARG1_64, lsl]
+    str w6, [x3, ARG1_64, lsl #0]
+    str w7, [x3, ARG1_64, lsl #2]
+TEST_END
+
+TEST_BEGIN(STR_64_LDST_REGOFF, str_x567_m64_uxtw, 1)
+TEST_INPUTS(0, 8)
+    add x3, sp, #-256
+    str x5, [x3, ARG1_32, uxtw]
+    str x6, [x3, ARG1_32, uxtw #0]
+    str x7, [x3, ARG1_32, uxtw #3]
+TEST_END
+
+TEST_BEGIN(STR_64_LDST_REGOFF, str_x567_m64_sxtx, 1)
+TEST_INPUTS(
+    0,
+    8,
+    0xfffffffffffffff8,
+    0xfffffffffffffff0)
+
+    add x3, sp, #-256
+    str x5, [x3, ARG1_64, sxtx]
+    str x6, [x3, ARG1_64, sxtx #0]
+    str x7, [x3, ARG1_64, sxtx #2]
+TEST_END
+
+TEST_BEGIN(STR_64_LDST_REGOFF, str_x567_m64_lsl, 1)
+TEST_INPUTS(0, 8)
+    add x3, sp, #-256
+    str x5, [x3, ARG1_32, lsl]
+    str x6, [x3, ARG1_32, lsl #0]
+    str x7, [x3, ARG1_32, lsl #3]
+TEST_END
+
 TEST_BEGIN(STR_Q_LDST_REGOFF, str_10_m128_uxt, 1)
 TEST_INPUTS(
     0,

@@ -14,6 +14,22 @@
  * limitations under the License.
  */
 
+TEST_BEGIN(STR_32_LDST_POS, str_w0_m32, 1)
+TEST_INPUTS(0)
+    add x3, sp, #-256
+    str w0, [x3, #0]
+    str w1, [x3, #16]
+    str w2, [x3, #32]
+TEST_END
+
+TEST_BEGIN(STR_64_LDST_POS, str_x0_m64, 1)
+TEST_INPUTS(0)
+    add x3, sp, #-256
+    str x0, [x3, #0]
+    str x1, [x3, #16]
+    str x2, [x3, #32]
+TEST_END
+
 TEST_BEGIN(STR_B_LDST_POS, str_b0_m8, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
