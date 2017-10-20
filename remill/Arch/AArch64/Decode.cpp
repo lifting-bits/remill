@@ -6000,44 +6000,6 @@ bool TryDecodeSUB_ASISDSAME_ONLY(const InstData &, Instruction &) {
   return false;
 }
 
-// SUB SUB_asimdsame_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1
-//  11 0 opcode   0
-//  12 0 opcode   1
-//  13 0 opcode   2
-//  14 0 opcode   3
-//  15 1 opcode   4
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 x size     0
-//  23 x size     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1 U        0
-//  30 x Q        0
-//  31 0
-// SUB  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
-bool TryDecodeSUB_ASIMDSAME_ONLY(const InstData &, Instruction &) {
-  return false;
-}
-
 // SWPA SWPA_32_memop:
 //   0 x Rt       0
 //   1 x Rt       1
@@ -24923,44 +24885,6 @@ bool TryDecodeFRSQRTE_ASIMDMISC_R(const InstData &, Instruction &) {
 //  31 0
 // ADD  <V><d>, <V><n>, <V><m>
 bool TryDecodeADD_ASISDSAME_ONLY(const InstData &, Instruction &) {
-  return false;
-}
-
-// ADD ADD_asimdsame_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1
-//  11 0 opcode   0
-//  12 0 opcode   1
-//  13 0 opcode   2
-//  14 0 opcode   3
-//  15 1 opcode   4
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 x size     0
-//  23 x size     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 0 U        0
-//  30 x Q        0
-//  31 0
-// ADD  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
-bool TryDecodeADD_ASIMDSAME_ONLY(const InstData &, Instruction &) {
   return false;
 }
 

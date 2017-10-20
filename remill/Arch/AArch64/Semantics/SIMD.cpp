@@ -77,4 +77,47 @@ DEF_ISEL(DUP_ASIMDINS_DR_R_2D) = DUP_64<uint64v2_t>;
 
 namespace {
 
+#define MAKE_BROADCAST(op, binop, size) \
+    template <typename S, typename V> \
+    DEF_SEM(op ## _ ## size, V128W dst, S src1, S src2) { \
+      auto vec1 = UReadV ## size (src1); \
+      auto vec2 = UReadV ## size (src2); \
+      V sum = {}; \
+      for (size_t i = 0, max_i = NumVectorElems(sum); i < max_i; ++i) { \
+        sum.elems[i] = binop(UExtractV ## size(vec1, i), \
+                             UExtractV ## size(vec2, i)); \
+      } \
+      UWriteV ## size(dst, sum); \
+      return memory; \
+    }
+
+MAKE_BROADCAST(ADD, UAdd, 8)
+MAKE_BROADCAST(ADD, UAdd, 16)
+MAKE_BROADCAST(ADD, UAdd, 32)
+MAKE_BROADCAST(ADD, UAdd, 64)
+
+MAKE_BROADCAST(SUB, USub, 8)
+MAKE_BROADCAST(SUB, USub, 16)
+MAKE_BROADCAST(SUB, USub, 32)
+MAKE_BROADCAST(SUB, USub, 64)
+
+#undef MAKE_BROADCAST
+
 }  // namespace
+
+DEF_ISEL(ADD_ASIMDSAME_ONLY_8B) = ADD_8<V64, uint8v8_t>;
+DEF_ISEL(ADD_ASIMDSAME_ONLY_16B) = ADD_8<V128, uint8v16_t>;
+DEF_ISEL(ADD_ASIMDSAME_ONLY_4H) = ADD_16<V64, uint16v4_t>;
+DEF_ISEL(ADD_ASIMDSAME_ONLY_8H) = ADD_16<V128, uint16v8_t>;
+DEF_ISEL(ADD_ASIMDSAME_ONLY_2S) = ADD_32<V64, uint32v2_t>;
+DEF_ISEL(ADD_ASIMDSAME_ONLY_4S) = ADD_32<V128, uint32v4_t>;
+DEF_ISEL(ADD_ASIMDSAME_ONLY_2D) = ADD_64<V128, uint64v2_t>;
+
+DEF_ISEL(SUB_ASIMDSAME_ONLY_8B) = SUB_8<V64, uint8v8_t>;
+DEF_ISEL(SUB_ASIMDSAME_ONLY_16B) = SUB_8<V128, uint8v16_t>;
+DEF_ISEL(SUB_ASIMDSAME_ONLY_4H) = SUB_16<V64, uint16v4_t>;
+DEF_ISEL(SUB_ASIMDSAME_ONLY_8H) = SUB_16<V128, uint16v8_t>;
+DEF_ISEL(SUB_ASIMDSAME_ONLY_2S) = SUB_32<V64, uint32v2_t>;
+DEF_ISEL(SUB_ASIMDSAME_ONLY_4S) = SUB_32<V128, uint32v4_t>;
+DEF_ISEL(SUB_ASIMDSAME_ONLY_2D) = SUB_64<V128, uint64v2_t>;
+

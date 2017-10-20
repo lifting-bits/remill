@@ -3711,6 +3711,24 @@ bool TryDecodeDUP_ASIMDINS_DR_R(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// ADD  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeADD_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  if (0x3 == data.size && !data.Q) {
+    return false;  // `if size:Q == '110' then ReservedValue();`.
+  }
+  std::stringstream ss;
+  ss << inst.function;
+  ss << "_" << ArrangementSpecifier(data.Q ? 128 : 64, 8UL << data.size);
+  inst.function = ss.str();
+  auto rclass = data.Q ? kRegQ : kRegD;
+  return TryDecodeRdW_Rn_Rm(data, inst, rclass);
+}
+
+// SUB  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeSUB_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeADD_ASIMDSAME_ONLY(data, inst);
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
