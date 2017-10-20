@@ -43,3 +43,38 @@ DEF_ISEL(ORR_ASIMDSAME_ONLY_16B) = ORR_Vec<V128>;
 
 DEF_ISEL(FMOV_64VX_FLOAT2INT) = FMOV_VectorToUInt64;
 DEF_ISEL(FMOV_V64I_FLOAT2INT) = FMOV_UInt64ToVector;
+
+namespace {
+
+#define MAKE_DUP(size) \
+    template <typename V> \
+    DEF_SEM(DUP_ ## size, V128W dst, R64 src) { \
+      auto val = TruncTo<uint ## size ## _t>(Read(src)); \
+      V vec = {}; \
+      for (auto &element : vec.elems) { \
+        element = val; \
+      } \
+      UWriteV ## size(dst, vec); \
+      return memory; \
+    }
+
+MAKE_DUP(8)
+MAKE_DUP(16)
+MAKE_DUP(32)
+MAKE_DUP(64)
+
+#undef MAKE_DUP
+
+}  // namespace
+
+DEF_ISEL(DUP_ASIMDINS_DR_R_8B) = DUP_8<uint8v8_t>;
+DEF_ISEL(DUP_ASIMDINS_DR_R_16B) = DUP_8<uint8v16_t>;
+DEF_ISEL(DUP_ASIMDINS_DR_R_4H) = DUP_16<uint16v4_t>;
+DEF_ISEL(DUP_ASIMDINS_DR_R_8H) = DUP_16<uint16v8_t>;
+DEF_ISEL(DUP_ASIMDINS_DR_R_2S) = DUP_32<uint32v2_t>;
+DEF_ISEL(DUP_ASIMDINS_DR_R_4S) = DUP_32<uint32v4_t>;
+DEF_ISEL(DUP_ASIMDINS_DR_R_2D) = DUP_64<uint64v2_t>;
+
+namespace {
+
+}  // namespace

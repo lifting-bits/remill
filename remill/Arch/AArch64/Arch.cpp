@@ -677,6 +677,16 @@ static bool MostSignificantSetBit(uint64_t val, uint64_t *highest_out) {
   return found;
 }
 
+static bool LeastSignificantSetBit(uint64_t val, uint64_t *highest_out) {
+  for (uint64_t i = 0; i < 64; ++i) {
+    if ((val >> i) & 1) {
+      *highest_out = i;
+      return true;
+    }
+  }
+  return false;
+}
+
 static constexpr uint64_t kOne = static_cast<uint64_t>(1);
 
 inline static uint64_t Ones(uint64_t val) {
@@ -3653,6 +3663,52 @@ bool TryDecodeREV32_ASIMDMISC_R(const InstData &, Instruction &) {
 // REV64  <Vd>.<T>, <Vn>.<T>
 bool TryDecodeREV64_ASIMDMISC_R(const InstData &, Instruction &) {
   return false;
+}
+
+static const char *ArrangementSpecifier(uint64_t total_size,
+                                        uint64_t element_size) {
+  if (128 == total_size) {
+    switch (element_size) {
+      case 8: return "16B";
+      case 16: return "8H";
+      case 32: return "4S";
+      case 64: return "2D";
+      default: break;
+    }
+  } else if (64 == total_size) {
+    switch (element_size) {
+      case 8: return "8B";
+      case 16: return "4H";
+      case 32: return "2S";
+      default: break;
+    }
+  }
+
+  LOG(FATAL)
+      << "Can't deduce specifier for " << total_size << "-vector with "
+      << element_size << "-bit elements";
+  return nullptr;
+}
+
+// DUP  <Vd>.<T>, <R><n>
+bool TryDecodeDUP_ASIMDINS_DR_R(const InstData &data, Instruction &inst) {
+  uint64_t size = 0;
+  if (!LeastSignificantSetBit(data.imm5.uimm, &size) || size > 3) {
+    return false;  // `if size > 3 then UnallocatedEncoding();`
+  } else if (size == 3 && !data.Q) {
+    return false;  // `if size == 3 && Q == '0' then ReservedValue();`
+  }
+
+  std::stringstream ss;
+  ss << inst.function;
+  ss << "_" << ArrangementSpecifier(data.Q ? 64 : 128, 8UL << size);
+  inst.function = ss.str();
+
+  AddRegOperand(inst, kActionWrite, data.Q ? kRegQ : kRegD,
+                kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
+
+  return true;
 }
 
 }  // namespace aarch64
