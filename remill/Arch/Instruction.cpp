@@ -185,6 +185,9 @@ std::string Operand::Serialize(void) const {
       if (!addr.segment_base_reg.name.empty()) {
         ++num_components;
       }
+      if (!addr.base_reg.name.empty()) {
+        ++num_components;
+      }
       if (!addr.index_reg.name.empty()) {
         ++num_components;
       }

@@ -1133,7 +1133,7 @@ bool TryDecodeLDR_64_LDST_REGOFF(const InstData &data, Instruction &inst) {
 bool TryDecodeSTR_32_LDST_IMMPOST(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
   uint64_t offset = static_cast<uint64_t>(data.imm9.simm9);
-  AddPostIndexMemOp(inst, kActionWrite, 32, data.Rn, offset << 2);
+  AddPostIndexMemOp(inst, kActionWrite, 32, data.Rn, offset);
   return true;
 }
 
@@ -1141,7 +1141,7 @@ bool TryDecodeSTR_32_LDST_IMMPOST(const InstData &data, Instruction &inst) {
 bool TryDecodeSTR_64_LDST_IMMPOST(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
   uint64_t offset = static_cast<uint64_t>(data.imm9.simm9);
-  AddPostIndexMemOp(inst, kActionWrite, 64, data.Rn, offset << 2);
+  AddPostIndexMemOp(inst, kActionWrite, 64, data.Rn, offset);
   return true;
 }
 
@@ -1149,7 +1149,7 @@ bool TryDecodeSTR_64_LDST_IMMPOST(const InstData &data, Instruction &inst) {
 bool TryDecodeSTR_32_LDST_IMMPRE(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
   uint64_t offset = static_cast<uint64_t>(data.imm9.simm9);
-  AddPreIndexMemOp(inst, kActionWrite, 32, data.Rn, offset << 2);
+  AddPreIndexMemOp(inst, kActionWrite, 32, data.Rn, offset);
   return true;
 }
 
@@ -1157,7 +1157,7 @@ bool TryDecodeSTR_32_LDST_IMMPRE(const InstData &data, Instruction &inst) {
 bool TryDecodeSTR_64_LDST_IMMPRE(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
   uint64_t offset = static_cast<uint64_t>(data.imm9.simm9);
-  AddPreIndexMemOp(inst, kActionWrite, 64, data.Rn, offset << 2);
+  AddPreIndexMemOp(inst, kActionWrite, 64, data.Rn, offset);
   return true;
 }
 
