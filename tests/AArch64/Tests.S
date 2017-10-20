@@ -254,13 +254,7 @@ SYMBOL(__aarch64_test_table_begin):
     0x7ff0000000000000 /* inf */, 0x7ff8000000000000, /* nan */              \
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
 
-
-#include "tests/AArch64/DATAXFER/STR_n_LDST_POS.S"
-#include "tests/AArch64/DATAXFER/STR_n_LDST_IMMPRE.S"
-#include "tests/AArch64/DATAXFER/STR_n_LDST_IMMPOST.S"
-#include "tests/AArch64/DATAXFER/STR_n_LDST_REGOFF.S"
-
-#if 0
+#if 1
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/ADD_32_ADDSUB_EXT.S"
@@ -331,6 +325,10 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_OFF.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_POST.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_PRE.S"
+#include "tests/AArch64/DATAXFER/STR_n_LDST_POS.S"
+#include "tests/AArch64/DATAXFER/STR_n_LDST_IMMPRE.S"
+#include "tests/AArch64/DATAXFER/STR_n_LDST_IMMPOST.S"
+#include "tests/AArch64/DATAXFER/STR_n_LDST_REGOFF.S"
 #include "tests/AArch64/DATAXFER/STRB.S"
 #include "tests/AArch64/DATAXFER/STRH.S"
 #include "tests/AArch64/DATAXFER/STUR_n_LDST_UNSCALED.S"
