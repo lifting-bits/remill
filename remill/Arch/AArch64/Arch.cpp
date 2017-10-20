@@ -3701,13 +3701,13 @@ bool TryDecodeDUP_ASIMDINS_DR_R(const InstData &data, Instruction &inst) {
 
   std::stringstream ss;
   ss << inst.function;
-  ss << "_" << ArrangementSpecifier(data.Q ? 64 : 128, 8UL << size);
+  ss << "_" << ArrangementSpecifier(data.Q ? 128 : 64, 8UL << size);
   inst.function = ss.str();
 
   AddRegOperand(inst, kActionWrite, data.Q ? kRegQ : kRegD,
                 kUseAsValue, data.Rd);
-  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
-
+  AddRegOperand(inst, kActionRead, size == 3 ? kRegX : kRegW,
+                kUseAsValue, data.Rn);
   return true;
 }
 
