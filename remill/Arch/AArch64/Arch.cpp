@@ -3680,6 +3680,7 @@ static const char *ArrangementSpecifier(uint64_t total_size,
       case 8: return "8B";
       case 16: return "4H";
       case 32: return "2S";
+      case 64: return "1D";
       default: break;
     }
   }
@@ -3688,6 +3689,14 @@ static const char *ArrangementSpecifier(uint64_t total_size,
       << "Can't deduce specifier for " << total_size << "-vector with "
       << element_size << "-bit elements";
   return nullptr;
+}
+
+static void AddArrangementSpecifier(Instruction &inst, uint64_t total_size,
+                                    uint64_t element_size) {
+  std::stringstream ss;
+  ss << inst.function;
+  ss << "_" << ArrangementSpecifier(total_size, element_size);
+  inst.function = ss.str();
 }
 
 // DUP  <Vd>.<T>, <R><n>
@@ -3699,11 +3708,7 @@ bool TryDecodeDUP_ASIMDINS_DR_R(const InstData &data, Instruction &inst) {
     return false;  // `if size == 3 && Q == '0' then ReservedValue();`
   }
 
-  std::stringstream ss;
-  ss << inst.function;
-  ss << "_" << ArrangementSpecifier(data.Q ? 128 : 64, 8UL << size);
-  inst.function = ss.str();
-
+  AddArrangementSpecifier(inst, data.Q ? 128 : 64, 8UL << size);
   AddRegOperand(inst, kActionWrite, data.Q ? kRegQ : kRegD,
                 kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, size == 3 ? kRegX : kRegW,
@@ -3716,17 +3721,84 @@ bool TryDecodeADD_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
   if (0x3 == data.size && !data.Q) {
     return false;  // `if size:Q == '110' then ReservedValue();`.
   }
-  std::stringstream ss;
-  ss << inst.function;
-  ss << "_" << ArrangementSpecifier(data.Q ? 128 : 64, 8UL << data.size);
-  inst.function = ss.str();
-  auto rclass = data.Q ? kRegQ : kRegD;
-  return TryDecodeRdW_Rn_Rm(data, inst, rclass);
+  AddArrangementSpecifier(inst, data.Q ? 128 : 64, 8UL << data.size);
+  return TryDecodeRdW_Rn_Rm(data, inst, data.Q ? kRegQ : kRegD);
 }
 
 // SUB  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
 bool TryDecodeSUB_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
   return TryDecodeADD_ASIMDSAME_ONLY(data, inst);
+}
+
+static bool TryDecodeLDnSTnOpcode(uint8_t opcode, uint64_t *rpt,
+                                  uint64_t *selem) {
+  switch (opcode) {
+    case 0:  // `0000`, LD/ST4 (4 registers).
+      *rpt = 1;
+      *selem = 4;
+      return true;
+    case 1:  // `0010`, LD/ST1 (4 registers).
+      *rpt = 4;
+      *selem = 1;
+      return true;
+    case 4:  // `0100`, LD/ST3 (3 registers).
+      *rpt = 1;
+      *selem = 3;
+      return true;
+    case 6:  // `0110`, LD/ST1 (3 registers).
+      *rpt = 3;
+      *selem = 1;
+      return true;
+    case 7:  // `0111`, LD/ST1 (1 register).
+      *rpt = 1;
+      *selem = 1;
+      return true;
+    case 8:  // `1000`, LD/ST2 (2 registers).
+      *rpt = 1;
+      *selem = 2;
+      return true;
+    case 10:  // `1010`, LD/ST1 (2 registers).
+      *rpt = 2;
+      *selem = 1;
+      return true;
+    default:
+      return false;  // `UnallocatedEncoding();`.
+  }
+}
+
+// Load/store one or more data structures.
+bool TryDecodeLDnSTn(const InstData &data, Instruction &inst,
+                     uint64_t *total_num_bytes) {
+  uint64_t rpt = 0;
+  uint64_t selem = 0;
+  if (!TryDecodeLDnSTnOpcode(data.opcode, &rpt, &selem)) {
+    return false;
+  } else if (0x3 == data.size && !data.Q && selem != 1) {
+    return false;  // `if size:Q == '110' && selem != 1 then ReservedValue()`.
+  }
+  uint64_t data_size = data.Q ? 128 : 64;
+  uint64_t esize = 8UL << data.size;
+  uint64_t elements = data_size / esize;
+  uint64_t ebytes = esize / 8;
+  *total_num_bytes = ebytes * rpt * elements * selem;
+  AddArrangementSpecifier(inst, data_size, 8UL << data.size);
+  RegNum t = data.Rt;
+  auto num_regs = static_cast<RegNum>(rpt * selem);
+  for (RegNum i = 0; i < num_regs; ++i) {
+    RegNum tt = (t + i) % 32;
+    AddRegOperand(inst, kActionWrite, data.Q ? kRegQ : kRegD, kUseAsValue, tt);
+  }
+  return true;
+}
+
+// LD1  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>], <imm>
+bool TryDecodeLD1_ASISDLSEP_I2_I2(const InstData &data, Instruction &inst) {
+  uint64_t offset = 0;
+  if (!TryDecodeLDnSTn(data, inst, &offset)) {
+    return false;
+  }
+  AddPostIndexMemOp(inst, kActionRead, offset * 8, data.Rn, offset);
+  return true;
 }
 
 }  // namespace aarch64

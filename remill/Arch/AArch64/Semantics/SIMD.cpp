@@ -77,29 +77,29 @@ DEF_ISEL(DUP_ASIMDINS_DR_R_2D) = DUP_64<uint64v2_t>;
 
 namespace {
 
-#define MAKE_BROADCAST(op, binop, size) \
+#define MAKE_BROADCAST(op, prefix, binop, size) \
     template <typename S, typename V> \
     DEF_SEM(op ## _ ## size, V128W dst, S src1, S src2) { \
-      auto vec1 = UReadV ## size (src1); \
-      auto vec2 = UReadV ## size (src2); \
+      auto vec1 = prefix ## ReadV ## size (src1); \
+      auto vec2 = prefix ## ReadV ## size (src2); \
       V sum = {}; \
       for (size_t i = 0, max_i = NumVectorElems(sum); i < max_i; ++i) { \
-        sum.elems[i] = binop(UExtractV ## size(vec1, i), \
-                             UExtractV ## size(vec2, i)); \
+        sum.elems[i] = binop(prefix ## ExtractV ## size(vec1, i), \
+                             prefix ## ExtractV ## size(vec2, i)); \
       } \
       UWriteV ## size(dst, sum); \
       return memory; \
     }
 
-MAKE_BROADCAST(ADD, UAdd, 8)
-MAKE_BROADCAST(ADD, UAdd, 16)
-MAKE_BROADCAST(ADD, UAdd, 32)
-MAKE_BROADCAST(ADD, UAdd, 64)
+MAKE_BROADCAST(ADD, U, UAdd, 8)
+MAKE_BROADCAST(ADD, U, UAdd, 16)
+MAKE_BROADCAST(ADD, U, UAdd, 32)
+MAKE_BROADCAST(ADD, U, UAdd, 64)
 
-MAKE_BROADCAST(SUB, USub, 8)
-MAKE_BROADCAST(SUB, USub, 16)
-MAKE_BROADCAST(SUB, USub, 32)
-MAKE_BROADCAST(SUB, USub, 64)
+MAKE_BROADCAST(SUB, U, USub, 8)
+MAKE_BROADCAST(SUB, U, USub, 16)
+MAKE_BROADCAST(SUB, U, USub, 32)
+MAKE_BROADCAST(SUB, U, USub, 64)
 
 #undef MAKE_BROADCAST
 
@@ -120,4 +120,3 @@ DEF_ISEL(SUB_ASIMDSAME_ONLY_8H) = SUB_16<V128, uint16v8_t>;
 DEF_ISEL(SUB_ASIMDSAME_ONLY_2S) = SUB_32<V64, uint32v2_t>;
 DEF_ISEL(SUB_ASIMDSAME_ONLY_4S) = SUB_32<V128, uint32v4_t>;
 DEF_ISEL(SUB_ASIMDSAME_ONLY_2D) = SUB_64<V128, uint64v2_t>;
-

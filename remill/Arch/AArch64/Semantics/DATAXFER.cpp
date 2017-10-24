@@ -652,3 +652,38 @@ DEF_ISEL(LDARH_LR32_LDSTEXCL) = LoadAcquire<R32W, M16>;
 DEF_ISEL(LDAR_LR32_LDSTEXCL) = LoadAcquire<R32W, M32>;
 DEF_ISEL(LDAR_LR64_LDSTEXCL) = LoadAcquire<R64W, M64>;
 
+
+namespace {
+
+#define MAKE_LD1_POSTINDEX(esize) \
+    template <typename S> \
+    DEF_SEM(LD1_PAIR_POSTINDEX_ ## esize, V128W dst1, V128W dst2, S src, \
+            R64W addr_reg, ADDR next_addr) { \
+      auto elems1 = UReadV ## esize(src); \
+      auto elems2 = UReadV ## esize(GetElementPtr(src, 1U)); \
+      UWriteV ## esize(dst1, elems1); \
+      UWriteV ## esize(dst2, elems2); \
+      Write(addr_reg, Read(next_addr)); \
+      return memory; \
+    }
+
+MAKE_LD1_POSTINDEX(8)
+MAKE_LD1_POSTINDEX(16)
+MAKE_LD1_POSTINDEX(32)
+MAKE_LD1_POSTINDEX(64)
+
+#undef MAKE_LD1_POSTINDEX
+
+}  // namespace
+
+DEF_ISEL(LD1_ASISDLSEP_I2_I2_8B) = LD1_PAIR_POSTINDEX_8<MV64>;
+DEF_ISEL(LD1_ASISDLSEP_I2_I2_16B) = LD1_PAIR_POSTINDEX_8<MV128>;
+
+DEF_ISEL(LD1_ASISDLSEP_I2_I2_4H) = LD1_PAIR_POSTINDEX_16<MV64>;
+DEF_ISEL(LD1_ASISDLSEP_I2_I2_8H) = LD1_PAIR_POSTINDEX_16<MV128>;
+
+DEF_ISEL(LD1_ASISDLSEP_I2_I2_2S) = LD1_PAIR_POSTINDEX_32<MV64>;
+DEF_ISEL(LD1_ASISDLSEP_I2_I2_4S) = LD1_PAIR_POSTINDEX_32<MV128>;
+
+DEF_ISEL(LD1_ASISDLSEP_I2_I2_1D) = LD1_PAIR_POSTINDEX_64<MV64>;
+DEF_ISEL(LD1_ASISDLSEP_I2_I2_2D) = LD1_PAIR_POSTINDEX_64<MV128>;

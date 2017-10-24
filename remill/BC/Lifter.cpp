@@ -444,7 +444,7 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(
     arg_type = IntendedArgumentType(arg);
   }
 
-  if (auto ptr_type = llvm::dyn_cast_or_null<llvm::PointerType>(arg_type)) {
+  if (llvm::isa<llvm::PointerType>(arg_type)) {
     auto val = LoadRegAddress(block, arch_reg.name);
     return ConvertToIntendedType(inst, op, block, val, real_arg_type);
 
@@ -453,7 +453,6 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(
         << "Expected " << arch_reg.name << " to be an integral or float type "
         << "for instruction at " << std::hex << inst.pc;
 
-    
     auto val = LoadRegValue(block, arch_reg.name);
 
     const llvm::DataLayout data_layout(module);

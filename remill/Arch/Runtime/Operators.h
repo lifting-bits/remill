@@ -480,19 +480,16 @@ MAKE_WRITE_REF(float64_t)
       memory = _Write(memory, op, (val)); \
     } while (false)
 
-
-template <typename T>
+template <typename T, typename R=typename IntegerType<T>::UT>
 ALWAYS_INLINE static constexpr
-auto ByteSizeOf(T) -> typename IntegerType<T>::UT {
-  return static_cast<typename IntegerType<T>::UT>(
-      sizeof(typename BaseType<T>::BT));
+R ByteSizeOf(T) {
+  return static_cast<R>(sizeof(typename BaseType<T>::BT));
 }
 
-template <typename T>
+template <typename T, typename R=typename IntegerType<T>::UT>
 ALWAYS_INLINE static constexpr
-auto BitSizeOf(T) -> typename IntegerType<T>::UT {
-  return static_cast<typename IntegerType<T>::UT>(
-      sizeof(typename BaseType<T>::BT) * 8);
+R BitSizeOf(T) {
+  return static_cast<R>(sizeof(typename BaseType<T>::BT) * 8);
 }
 
 // Convert the input value into an unsigned integer.
@@ -1151,14 +1148,26 @@ MAKE_PRED(Immediate, uint64_t, true)
 
 template <typename T>
 ALWAYS_INLINE static
-Mn<T> GetElementPtr(Mn<T> addr, T index) {
-  return {addr.addr + (index * static_cast<addr_t>(ByteSizeOf(addr)))};
+Mn<T> GetElementPtr(Mn<T> addr, addr_t index) {
+  return {addr.addr + (index * static_cast<addr_t>(sizeof(T)))};
 }
 
 template <typename T>
 ALWAYS_INLINE static
-MnW<T> GetElementPtr(MnW<T> addr, T index) {
-  return {addr.addr + (index * static_cast<addr_t>(ByteSizeOf(addr)))};
+MVn<T> GetElementPtr(MVn<T> addr, addr_t index) {
+  return {addr.addr + (index * static_cast<addr_t>(sizeof(T)))};
+}
+
+template <typename T>
+ALWAYS_INLINE static
+MnW<T> GetElementPtr(MnW<T> addr, addr_t index) {
+  return {addr.addr + (index * static_cast<addr_t>(sizeof(T)))};
+}
+
+template <typename T>
+ALWAYS_INLINE static
+MVnW<T> GetElementPtr(MVnW<T> addr, addr_t index) {
+  return {addr.addr + (index * static_cast<addr_t>(sizeof(T)))};
 }
 
 template <typename T>
