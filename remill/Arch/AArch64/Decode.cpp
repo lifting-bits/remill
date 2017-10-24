@@ -26636,44 +26636,6 @@ bool TryDecodeLD1_ASISDLSE_R4_4V(const InstData &, Instruction &) {
   return false;
 }
 
-// LD1 LD1_asisdlsep_I1_i1:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x size     0
-//  11 x size     1
-//  12 1 opcode   0
-//  13 1 opcode   1
-//  14 1 opcode   2
-//  15 0 opcode   3
-//  16 1 Rm       0
-//  17 1 Rm       1
-//  18 1 Rm       2
-//  19 1 Rm       3
-//  20 1 Rm       4
-//  21 0
-//  22 1 L        0
-//  23 1
-//  24 0
-//  25 0
-//  26 1
-//  27 1
-//  28 0
-//  29 0
-//  30 x Q        0
-//  31 0
-// LD1  { <Vt>.<T> }, [<Xn|SP>], <imm>
-bool TryDecodeLD1_ASISDLSEP_I1_I1(const InstData &, Instruction &) {
-  return false;
-}
-
 // LD1 LD1_asisdlsep_R1_r1:
 //   0 x Rt       0
 //   1 x Rt       1

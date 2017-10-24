@@ -3801,6 +3801,11 @@ bool TryDecodeLD1_ASISDLSEP_I2_I2(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// LD1  { <Vt>.<T> }, [<Xn|SP>], <imm>
+bool TryDecodeLD1_ASISDLSEP_I1_I1(const InstData &data, Instruction &inst) {
+  return TryDecodeLD1_ASISDLSEP_I2_I2(data, inst);
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
