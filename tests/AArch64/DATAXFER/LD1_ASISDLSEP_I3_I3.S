@@ -17,7 +17,7 @@
 TEST_BEGIN(LD1_ASISDLSEP_I3_I3_16B, ld1_i3_16b, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
-    ld1 {v31.16b, v0.16b, v1.16b}, [x3], #0x28
+    ld1 {v31.16b, v0.16b, v1.16b}, [x3], #0x30
 TEST_END
 
 TEST_BEGIN(LD1_ASISDLSEP_I3_I3_8B, ld1_i3_8b, 1)
@@ -29,7 +29,7 @@ TEST_END
 TEST_BEGIN(LD1_ASISDLSEP_I3_I3_8H, ld1_i3_8h, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
-    ld1 {v31.8h, v0.8h, v1.8h}, [x3], #0x28
+    ld1 {v31.8h, v0.8h, v1.8h}, [x3], #0x30
 TEST_END
 
 TEST_BEGIN(LD1_ASISDLSEP_I3_I3_4H, ld1_i3_4h, 1)
@@ -41,7 +41,7 @@ TEST_END
 TEST_BEGIN(LD1_ASISDLSEP_I3_I3_4S, ld1_i3_4s, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
-    ld1 {v31.4s, v0.4s, v1.4s}, [x3], #0x28
+    ld1 {v31.4s, v0.4s, v1.4s}, [x3], #0x30
 TEST_END
 
 TEST_BEGIN(LD1_ASISDLSEP_I3_I3_2S, ld1_i3_2s, 1)
@@ -53,7 +53,7 @@ TEST_END
 TEST_BEGIN(LD1_ASISDLSEP_I3_I3_2D, ld1_i3_2d, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
-    ld1 {v31.2d, v0.2d, v1.2d}, [x3], #0x28
+    ld1 {v31.2d, v0.2d, v1.2d}, [x3], #0x30
 TEST_END
 
 TEST_BEGIN(LD1_ASISDLSEP_I3_I3_1D, ld1_i3_1d, 1)
