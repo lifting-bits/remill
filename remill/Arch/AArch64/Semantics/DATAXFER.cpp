@@ -719,3 +719,79 @@ DEF_ISEL(LD1_ASISDLSEP_I2_I2_4S) = LD1_PAIR_POSTINDEX_32<MV128>;
 
 DEF_ISEL(LD1_ASISDLSEP_I2_I2_1D) = LD1_PAIR_POSTINDEX_64<MV64>;
 DEF_ISEL(LD1_ASISDLSEP_I2_I2_2D) = LD1_PAIR_POSTINDEX_64<MV128>;
+
+namespace {
+
+#define MAKE_LD1_POSTINDEX(esize) \
+    template <typename S> \
+    DEF_SEM(LD1_TRIPLE_POSTINDEX_ ## esize, V128W dst1, V128W dst2, \
+            V128W dst3, S src, R64W addr_reg, ADDR next_addr) { \
+      auto elems1 = UReadV ## esize(src); \
+      auto elems2 = UReadV ## esize(GetElementPtr(src, 1U)); \
+      auto elems3 = UReadV ## esize(GetElementPtr(src, 2U)); \
+      UWriteV ## esize(dst1, elems1); \
+      UWriteV ## esize(dst2, elems2); \
+      UWriteV ## esize(dst3, elems3); \
+      Write(addr_reg, Read(next_addr)); \
+      return memory; \
+    }
+
+MAKE_LD1_POSTINDEX(8)
+MAKE_LD1_POSTINDEX(16)
+MAKE_LD1_POSTINDEX(32)
+MAKE_LD1_POSTINDEX(64)
+
+#undef MAKE_LD1_POSTINDEX
+
+}  // namespace
+
+DEF_ISEL(LD1_ASISDLSEP_I3_I3_8B) = LD1_TRIPLE_POSTINDEX_8<MV64>;
+DEF_ISEL(LD1_ASISDLSEP_I3_I3_16B) = LD1_TRIPLE_POSTINDEX_8<MV128>;
+
+DEF_ISEL(LD1_ASISDLSEP_I3_I3_4H) = LD1_TRIPLE_POSTINDEX_16<MV64>;
+DEF_ISEL(LD1_ASISDLSEP_I3_I3_8H) = LD1_TRIPLE_POSTINDEX_16<MV128>;
+
+DEF_ISEL(LD1_ASISDLSEP_I3_I3_2S) = LD1_TRIPLE_POSTINDEX_32<MV64>;
+DEF_ISEL(LD1_ASISDLSEP_I3_I3_4S) = LD1_TRIPLE_POSTINDEX_32<MV128>;
+
+DEF_ISEL(LD1_ASISDLSEP_I3_I3_1D) = LD1_TRIPLE_POSTINDEX_64<MV64>;
+DEF_ISEL(LD1_ASISDLSEP_I3_I3_2D) = LD1_TRIPLE_POSTINDEX_64<MV128>;
+
+namespace {
+
+#define MAKE_LD1_POSTINDEX(esize) \
+    template <typename S> \
+    DEF_SEM(LD1_QUAD_POSTINDEX_ ## esize, V128W dst1, V128W dst2, \
+            V128W dst3, V128W dst4, S src, R64W addr_reg, ADDR next_addr) { \
+      auto elems1 = UReadV ## esize(src); \
+      auto elems2 = UReadV ## esize(GetElementPtr(src, 1U)); \
+      auto elems3 = UReadV ## esize(GetElementPtr(src, 2U)); \
+      auto elems4 = UReadV ## esize(GetElementPtr(src, 3U)); \
+      UWriteV ## esize(dst1, elems1); \
+      UWriteV ## esize(dst2, elems2); \
+      UWriteV ## esize(dst3, elems3); \
+      UWriteV ## esize(dst4, elems4); \
+      Write(addr_reg, Read(next_addr)); \
+      return memory; \
+    }
+
+MAKE_LD1_POSTINDEX(8)
+MAKE_LD1_POSTINDEX(16)
+MAKE_LD1_POSTINDEX(32)
+MAKE_LD1_POSTINDEX(64)
+
+#undef MAKE_LD1_POSTINDEX
+
+}  // namespace
+
+DEF_ISEL(LD1_ASISDLSEP_I4_I4_8B) = LD1_QUAD_POSTINDEX_8<MV64>;
+DEF_ISEL(LD1_ASISDLSEP_I4_I4_16B) = LD1_QUAD_POSTINDEX_8<MV128>;
+
+DEF_ISEL(LD1_ASISDLSEP_I4_I4_4H) = LD1_QUAD_POSTINDEX_16<MV64>;
+DEF_ISEL(LD1_ASISDLSEP_I4_I4_8H) = LD1_QUAD_POSTINDEX_16<MV128>;
+
+DEF_ISEL(LD1_ASISDLSEP_I4_I4_2S) = LD1_QUAD_POSTINDEX_32<MV64>;
+DEF_ISEL(LD1_ASISDLSEP_I4_I4_4S) = LD1_QUAD_POSTINDEX_32<MV128>;
+
+DEF_ISEL(LD1_ASISDLSEP_I4_I4_1D) = LD1_QUAD_POSTINDEX_64<MV64>;
+DEF_ISEL(LD1_ASISDLSEP_I4_I4_2D) = LD1_QUAD_POSTINDEX_64<MV128>;
