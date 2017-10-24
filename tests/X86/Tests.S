@@ -510,6 +510,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/UNPCKLPD.S"
 #include "tests/X86/SSE/UNPCKLPS.S"
 #include "tests/X86/SSE/MOVDDUP.S"
+#include "tests/X86/SSE/SQRTSS.S"
 
 #include "tests/X86/STRINGOP/CMPS.S"
 #include "tests/X86/STRINGOP/LODS.S"

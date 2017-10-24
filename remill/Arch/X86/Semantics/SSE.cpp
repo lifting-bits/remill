@@ -126,8 +126,6 @@ ALWAYS_INLINE static bool CompareFloats(FloatCompareOperator op, T v1, T v2) {
   }
 }
 
-#if !defined(issignaling)
-
 union nan32_t {
   float32_t f;
   struct {
@@ -154,6 +152,8 @@ union nan64_t {
 
 static_assert(sizeof(float64_t) == sizeof(nan64_t),
               "Invalid packing of `nan64_t`.");
+
+#if !defined(issignaling)
 
 ALWAYS_INLINE bool issignaling(float32_t x) {
   if (!std::isnan(x)) {
@@ -1165,107 +1165,107 @@ IF_AVX(DEF_ISEL(VPSRLDQ_YMMqq_YMMqq_IMMb) = VPSRLDQ<VV256W, V256>;)
 
 namespace {
 template <typename D, typename S1, typename S2>
-  DEF_SEM(MINSS, D dst, S1 src1, S2 src2) {
-    auto dest_vec = FReadV32(src1);
-    auto src1_float = FExtractV32(dest_vec, 0);
-    auto src2_float = FExtractV32(FReadV32(src2), 0);
+DEF_SEM(MINSS, D dst, S1 src1, S2 src2) {
+  auto dest_vec = FReadV32(src1);
+  auto src1_float = FExtractV32(dest_vec, 0);
+  auto src2_float = FExtractV32(FReadV32(src2), 0);
 
-    auto min = src1_float;
+  auto min = src1_float;
 
-    // If either float is a NaN (SNaN or QNaN):
-    if (std::isunordered(src1_float, src2_float)) {
-        min = src2_float;
-    } 
-    // or if both floats are 0.0:
-    else if ((src1_float == 0.0) && (src2_float == 0.0)) {
-        min = src2_float;
-    }
-    // or if src2 is less than src1:
-    else if (src1_float >= src2_float) {
-        min = src2_float;
-    }
+  // If either float is a NaN (SNaN or QNaN):
+  if (std::isunordered(src1_float, src2_float)) {
+    min = src2_float;
+  } 
+  // or if both floats are 0.0:
+  else if ((src1_float == 0.0) && (src2_float == 0.0)) {
+    min = src2_float;
+  }
+  // or if src2 is less than src1:
+  else if (src1_float >= src2_float) {
+    min = src2_float;
+  }
 
-    dest_vec = FInsertV32(dest_vec, 0, min);
-    FWriteV32(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
-    return memory;
+  dest_vec = FInsertV32(dest_vec, 0, min);
+  FWriteV32(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
-  DEF_SEM(MINSD, D dst, S1 src1, S2 src2) {
-    auto dest_vec = FReadV64(src1);
-    auto src1_float = FExtractV64(dest_vec, 0);
-    auto src2_float = FExtractV64(FReadV64(src2), 0);
+DEF_SEM(MINSD, D dst, S1 src1, S2 src2) {
+  auto dest_vec = FReadV64(src1);
+  auto src1_float = FExtractV64(dest_vec, 0);
+  auto src2_float = FExtractV64(FReadV64(src2), 0);
 
-    auto min = src1_float;
+  auto min = src1_float;
     
-    // If either float is a NaN (SNaN or QNaN):
-    if (std::isunordered(src1_float, src2_float)) {
-        min = src2_float;
-    } 
-    // or if both floats are 0.0:
-    else if ((src1_float == 0.0) && (src2_float == 0.0)) {
-        min = src2_float;
-    }
-    // or if src2 is less than src1:
-    else if (src1_float >= src2_float) {
-        min = src2_float;
-    }
+  // If either float is a NaN (SNaN or QNaN):
+  if (std::isunordered(src1_float, src2_float)) {
+    min = src2_float;
+  } 
+  // or if both floats are 0.0:
+  else if ((src1_float == 0.0) && (src2_float == 0.0)) {
+    min = src2_float;
+  }
+  // or if src2 is less than src1:
+  else if (src1_float >= src2_float) {
+    min = src2_float;
+  }
 
-    dest_vec = FInsertV64(dest_vec, 0, min);
-    FWriteV64(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
-    return memory;
+  dest_vec = FInsertV64(dest_vec, 0, min);
+  FWriteV64(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
-  DEF_SEM(MAXSS, D dst, S1 src1, S2 src2) {
-    auto dest_vec = FReadV32(src1);
-    auto src1_float = FExtractV32(dest_vec, 0);
-    auto src2_float = FExtractV32(FReadV32(src2), 0);
+DEF_SEM(MAXSS, D dst, S1 src1, S2 src2) {
+  auto dest_vec = FReadV32(src1);
+  auto src1_float = FExtractV32(dest_vec, 0);
+  auto src2_float = FExtractV32(FReadV32(src2), 0);
 
-    auto max = src1_float;
+  auto max = src1_float;
     
-    // If either float is a NaN (SNaN or QNaN):
-    if (std::isunordered(src1_float, src2_float)) {
-        max = src2_float;
-    } 
-    // or if both floats are 0.0:
-    else if ((src1_float == 0.0) && (src2_float == 0.0)) {
-        max = src2_float;
-    }
-    // or if src2 is greater than src1:
-    else if (src1_float < src2_float) {
-        max = src2_float;
-    }
+  // If either float is a NaN (SNaN or QNaN):
+  if (std::isunordered(src1_float, src2_float)) {
+      max = src2_float;
+  } 
+  // or if both floats are 0.0:
+  else if ((src1_float == 0.0) && (src2_float == 0.0)) {
+    max = src2_float;
+  }
+  // or if src2 is greater than src1:
+  else if (src1_float < src2_float) {
+    max = src2_float;
+  }
 
-    dest_vec = FInsertV32(dest_vec, 0, max);
-    FWriteV32(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
-    return memory;
+  dest_vec = FInsertV32(dest_vec, 0, max);
+  FWriteV32(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
-  DEF_SEM(MAXSD, D dst, S1 src1, S2 src2) {
-    auto dest_vec = FReadV64(src1);
-    auto src1_float = FExtractV64(dest_vec, 0);
-    auto src2_float = FExtractV64(FReadV64(src2), 0);
+DEF_SEM(MAXSD, D dst, S1 src1, S2 src2) {
+  auto dest_vec = FReadV64(src1);
+  auto src1_float = FExtractV64(dest_vec, 0);
+  auto src2_float = FExtractV64(FReadV64(src2), 0);
  
-    auto max = src1_float;
+  auto max = src1_float;
     
-    // If either float is a NaN (SNaN or QNaN):
-    if (std::isunordered(src1_float, src2_float)) {
-        max = src2_float;
-    } 
-    // or if both floats are 0.0:
-    else if ((src1_float == 0.0) && (src2_float == 0.0)) {
-        max = src2_float;
-    }
-    // or if src2 is greater than src1:
-    else if (src1_float < src2_float) {
-        max = src2_float;
-    }
-    
-    dest_vec = FInsertV64(dest_vec, 0, max);
-    FWriteV64(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
-    return memory;
+  // If either float is a NaN (SNaN or QNaN):
+  if (std::isunordered(src1_float, src2_float)) {
+    max = src2_float;
+  } 
+  // or if both floats are 0.0:
+  else if ((src1_float == 0.0) && (src2_float == 0.0)) {
+    max = src2_float;
+  }
+  // or if src2 is greater than src1:
+  else if (src1_float < src2_float) {
+    max = src2_float;
+  }
+  
+  dest_vec = FInsertV64(dest_vec, 0, max);
+  FWriteV64(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
 }
 
 } // namespace
@@ -1343,47 +1343,47 @@ IF_AVX(DEF_ISEL(VMAXSD_XMMdq_XMMdq_XMMq) = MAXSD<VV128W, V128, V128>;)
 namespace {
 
 template <typename D, typename S1, typename S2>
-  DEF_SEM(UNPCKLPS, D dst, S1 src1, S2 src2) {
-    // Initialize with a copy of src1 as a vector of 32-bit (DWORD) floats:
-    auto temp_vec = FReadV32(src1);
+DEF_SEM(UNPCKLPS, D dst, S1 src1, S2 src2) {
+  // Initialize with a copy of src1 as a vector of 32-bit (DWORD) floats:
+  auto temp_vec = FReadV32(src1);
 
-    // The "unpack" of DWORD src1[31:0] into dest[31:0] is omitted here because
-    // it is done implicitly in the copying of src1, above.
-    
-    // "Unpack" of DWORD src1[63:32] into dest[95:64]:
-    auto src1_float = FExtractV32(temp_vec, 1);
-    temp_vec = FInsertV32(temp_vec, 2, src1_float);
+  // The "unpack" of DWORD src1[31:0] into dest[31:0] is omitted here because
+  // it is done implicitly in the copying of src1, above.
+  
+  // "Unpack" of DWORD src1[63:32] into dest[95:64]:
+  auto src1_float = FExtractV32(temp_vec, 1);
+  temp_vec = FInsertV32(temp_vec, 2, src1_float);
 
-    // Treat src2 as a vector of 32-bit (DWORD) floats:
-    auto src2_vec = FReadV32(src2);
-    
-    // "Unpack" of DWORD src2[31:0] into dest[63:32]:
-    auto src2_float = FExtractV32(src2_vec, 0);
-    temp_vec = FInsertV32(temp_vec, 1, src2_float);
+  // Treat src2 as a vector of 32-bit (DWORD) floats:
+  auto src2_vec = FReadV32(src2);
+  
+  // "Unpack" of DWORD src2[31:0] into dest[63:32]:
+  auto src2_float = FExtractV32(src2_vec, 0);
+  temp_vec = FInsertV32(temp_vec, 1, src2_float);
 
-    // "Unpack" of DWORD src2[63:32] into dest[127:96]:
-    src2_float = FExtractV32(src2_vec, 1);
-    temp_vec = FInsertV32(temp_vec, 3, src2_float);
+  // "Unpack" of DWORD src2[63:32] into dest[127:96]:
+  src2_float = FExtractV32(src2_vec, 1);
+  temp_vec = FInsertV32(temp_vec, 3, src2_float);
 
-    FWriteV32(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
-    return memory;
+  FWriteV32(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
 }
 
 template <typename D, typename S1, typename S2>
-  DEF_SEM(UNPCKLPD, D dst, S1 src1, S2 src2) {
-    // Initialize with a copy of src1 as a vector of 64-bit (QWORD) floats:
-    auto temp_vec = FReadV64(src1);
-    
-    // The "unpack" of low QWORD of src1 into low QWORD of dest is omitted here
-    // because it is done implicitly in the copying of src1.
-    
-    // Treat src2 as a vector of 64-bit (QWORD) floats:
-    auto src2_vec = FReadV64(src2);    
-    auto src2_float = FExtractV64(src2_vec, 0);        // "unpack" low QWORD of src2
-    temp_vec = FInsertV64(temp_vec, 1, src2_float);    //   into high QWORD of dest
-    
-    FWriteV64(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
-    return memory;
+DEF_SEM(UNPCKLPD, D dst, S1 src1, S2 src2) {
+  // Initialize with a copy of src1 as a vector of 64-bit (QWORD) floats:
+  auto temp_vec = FReadV64(src1);
+  
+  // The "unpack" of low QWORD of src1 into low QWORD of dest is omitted here
+  // because it is done implicitly in the copying of src1.
+  
+  // Treat src2 as a vector of 64-bit (QWORD) floats:
+  auto src2_vec = FReadV64(src2);    
+  auto src2_float = FExtractV64(src2_vec, 0);        // "unpack" low QWORD of src2
+  temp_vec = FInsertV64(temp_vec, 1, src2_float);    //   into high QWORD of dest
+  
+  FWriteV64(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
 }
 
 } // namespace
@@ -1423,20 +1423,20 @@ IF_AVX(DEF_ISEL(VUNPCKLPD_YMMqq_YMMqq_YMMqq) = UNPCKLPD<VV256W, V256, V256>;)
 namespace {
 
 template <typename D, typename S1>
-  DEF_SEM(MOVDDUP, D dst, S1 src) {  
-    // Treat src as a vector of QWORD (64-bit) floats, even if it's just one element:
-    auto src_vec = FReadV64(src);
+DEF_SEM(MOVDDUP, D dst, S1 src) {  
+  // Treat src as a vector of QWORD (64-bit) floats, even if it's just one element:
+  auto src_vec = FReadV64(src);
 
-    // "Move and duplicate" QWORD src[63:0] into dest[63:0] and into dest[127:64]:
-    auto src_float = FExtractV64(src_vec, 0);
+  // "Move and duplicate" QWORD src[63:0] into dest[63:0] and into dest[127:64]:
+  auto src_float = FExtractV64(src_vec, 0);
 
-    float64v2_t temp_vec = {};  // length of src and dest may differ, so manually create.
-    temp_vec = FInsertV64(temp_vec, 0, src_float);
-    temp_vec = FInsertV64(temp_vec, 1, src_float);
+  float64v2_t temp_vec = {};  // length of src and dest may differ, so manually create.
+  temp_vec = FInsertV64(temp_vec, 0, src_float);
+  temp_vec = FInsertV64(temp_vec, 1, src_float);
 
-    // SSE: Writes to XMM (dest[MAXVL-1:127] unmodified). AVX: Zero-extends XMM.
-    FWriteV64(dst, temp_vec);
-    return memory;
+  // SSE: Writes to XMM (dest[MAXVL-1:127] unmodified). AVX: Zero-extends XMM.
+  FWriteV64(dst, temp_vec);
+  return memory;
 }
 
 } // namespace
@@ -1454,6 +1454,69 @@ IF_AVX(DEF_ISEL(VMOVDDUP_XMMdq_XMMdq) = MOVDDUP<VV128W, V128>;)
 4073 VMOVDDUP VMOVDDUP_XMMf64_MASKmskw_MEMf64_AVX512 DATAXFER AVX512EVEX AVX512F_128 ATTRIBUTES: DISP8_MOVDDUP MASKOP_EVEX 
 4074 VMOVDDUP VMOVDDUP_YMMf64_MASKmskw_YMMf64_AVX512 DATAXFER AVX512EVEX AVX512F_256 ATTRIBUTES: MASKOP_EVEX 
 4075 VMOVDDUP VMOVDDUP_YMMf64_MASKmskw_MEMf64_AVX512 DATAXFER AVX512EVEX AVX512F_256 ATTRIBUTES: DISP8_MOVDDUP MASKOP_EVEX 
+*/
+
+namespace {
+
+template <typename D, typename S1>
+DEF_SEM(SQRTSS, D dst, S1 src1) {
+  // Make a working copy of dest as a vector of 32-bit (DWORD) floats:
+  auto temp_vec = FReadV32(dst);
+
+  // Treat src1 as a vector of "single-precision" (32-bit DWORD) floats:
+  auto src1_vec = FReadV32(src1);
+  
+  // Extract a single-precision float from src1[31:0]:
+  auto src1_float = FExtractV32(src1_vec, 0);
+  auto square_root = src1_float;
+
+  // Special cases for invalid square root operations:
+  if (std::isnan(src1_float)) {    // if src is SNaN or QNaN
+    if (issignaling(src1_float)) {  // if src is SNaN
+      // return the SNaN converted to a QNaN:
+      nan32_t temp_nan = {src1_float};
+      temp_nan.is_quiet_nan = 1;  // equivalent to bitwise OR with 0x00400000 (Intel Table E-10)
+      square_root = temp_nan.f;
+    }
+    else {  // src is a QNaN
+      square_root = src1_float;  // just pass it directly to the result (see Table E-10)
+    }
+  }
+  else if (src1_float < 0.0) {   // a value of -0 will evaluate this to false, and go to 'else'.
+    square_root = 0xFFC00000; // return the QNaN single-precision floating-point indefinite
+  }
+  else {
+    // do the square root operation
+    square_root = std::sqrt(src1_float);
+  }
+
+  // Store the square root result in dest[32:0]:
+  temp_vec = FInsertV32(temp_vec, 0, square_root);
+
+  // Write out the result and return memory state:
+  FWriteV32(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.  
+  return memory;
+}
+
+#if HAS_FEATURE_AVX
+// template <typename D, typename S1, typename S2, typename S3>
+// DEF_SEM(VSQRTSS, D dst, S1 src1, S2 src2, S3 src3) {
+// ... same as above, except computes square root of the low single-precision floating-point 
+// value in src3 and stores the results in dest which is a copy of src1. Also, upper 
+// single-precision floating-point values (bits[127:32]) from src2 are copied to dest[127:32].
+// }
+#endif // HAS_FEATURE_AVX
+
+} // namespace
+
+DEF_ISEL(SQRTSS_XMMss_MEMss) = SQRTSS<V128W, MV32>;
+DEF_ISEL(SQRTSS_XMMss_XMMss) = SQRTSS<V128W, V128>;
+//IF_AVX(DEF_ISEL(VSQRTSS_XMMdq_XMMdq_MEMd) = VSQRTSS<VV128W, V128, MV32>;)
+//IF_AVX(DEF_ISEL(VSQRTSS_XMMdq_XMMdq_XMMd) = VSQRTSS<VV128W, V128, V128>;)
+/*
+4316 VSQRTSS VSQRTSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
+4317 VSQRTSS VSQRTSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
+4318 VSQRTSS VSQRTSS_XMMf32_MASKmskw_XMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: DISP8_SCALAR MASKOP_EVEX MEMORY_FAULT_SUPPRESSION MXCSR SIMD_SCALAR
 */
 
 #endif  // REMILL_ARCH_X86_SEMANTICS_SSE_H_
