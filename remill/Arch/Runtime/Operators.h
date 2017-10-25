@@ -115,6 +115,16 @@ float64_t _Read(Memory *, float64_t val) {
   return val;
 }
 
+ALWAYS_INLINE static
+float32_t _Read(Memory *, In<float32_t> imm) {
+  return reinterpret_cast<const float32_t &>(imm.val);
+}
+
+ALWAYS_INLINE static
+float64_t _Read(Memory *, In<float64_t> imm) {
+  return reinterpret_cast<const float64_t &>(imm.val);
+}
+
 template <typename T>
 ALWAYS_INLINE static
 T _Read(Memory *, In<T> imm) {
@@ -470,19 +480,16 @@ MAKE_WRITE_REF(float64_t)
       memory = _Write(memory, op, (val)); \
     } while (false)
 
-
-template <typename T>
+template <typename T, typename R=typename IntegerType<T>::UT>
 ALWAYS_INLINE static constexpr
-auto ByteSizeOf(T) -> typename IntegerType<T>::UT {
-  return static_cast<typename IntegerType<T>::UT>(
-      sizeof(typename BaseType<T>::BT));
+R ByteSizeOf(T) {
+  return static_cast<R>(sizeof(typename BaseType<T>::BT));
 }
 
-template <typename T>
+template <typename T, typename R=typename IntegerType<T>::UT>
 ALWAYS_INLINE static constexpr
-auto BitSizeOf(T) -> typename IntegerType<T>::UT {
-  return static_cast<typename IntegerType<T>::UT>(
-      sizeof(typename BaseType<T>::BT) * 8);
+R BitSizeOf(T) {
+  return static_cast<R>(sizeof(typename BaseType<T>::BT) * 8);
 }
 
 // Convert the input value into an unsigned integer.
@@ -739,17 +746,29 @@ auto TruncTo(T val) -> typename IntegerType<DT>::BT {
 // make that explicit, where `addr_t` encodes the natural machine word.
 #define MAKE_OPS(name, op, make_int_op, make_float_op) \
     make_int_op(U ## name, uint8_t, addr_t, op) \
+    make_int_op(U ## name ## 8, uint8_t, addr_t, op) \
     make_int_op(U ## name, uint16_t, addr_t, op) \
+    make_int_op(U ## name ## 16, uint16_t, addr_t, op) \
     make_int_op(U ## name, uint32_t, addr_t, op) \
+    make_int_op(U ## name ## 32, uint32_t, addr_t, op) \
     make_int_op(U ## name, uint64_t, uint64_t, op) \
+    make_int_op(U ## name ## 64, uint64_t, uint64_t, op) \
     make_int_op(U ## name, uint128_t, uint128_t, op) \
+    make_int_op(U ## name ## 128, uint128_t, uint128_t, op) \
     make_int_op(S ## name, int8_t, addr_diff_t, op) \
+    make_int_op(S ## name ## 8, int8_t, addr_diff_t, op) \
     make_int_op(S ## name, int16_t, addr_diff_t, op) \
+    make_int_op(S ## name ## 16, int16_t, addr_diff_t, op) \
     make_int_op(S ## name, int32_t, addr_diff_t, op) \
+    make_int_op(S ## name ## 32, int32_t, addr_diff_t, op) \
     make_int_op(S ## name, int64_t, int64_t, op) \
+    make_int_op(S ## name ## 64, int64_t, int64_t, op) \
     make_int_op(S ## name, int128_t, int128_t, op) \
+    make_int_op(S ## name ## 128, int128_t, int128_t, op) \
     make_float_op(F ## name, float32_t, float32_t, op) \
-    make_float_op(F ## name, float64_t, float64_t, op)
+    make_float_op(F ## name ## 32, float32_t, float32_t, op) \
+    make_float_op(F ## name, float64_t, float64_t, op) \
+    make_float_op(F ## name ## 64, float64_t, float64_t, op)
 
 MAKE_OPS(Add, +, MAKE_BINOP, MAKE_BINOP)
 MAKE_OPS(Sub, -, MAKE_BINOP, MAKE_BINOP)
@@ -1129,14 +1148,26 @@ MAKE_PRED(Immediate, uint64_t, true)
 
 template <typename T>
 ALWAYS_INLINE static
-Mn<T> GetElementPtr(Mn<T> addr, T index) {
-  return {addr.addr + (index * static_cast<addr_t>(ByteSizeOf(addr)))};
+Mn<T> GetElementPtr(Mn<T> addr, addr_t index) {
+  return {addr.addr + (index * static_cast<addr_t>(sizeof(T)))};
 }
 
 template <typename T>
 ALWAYS_INLINE static
-MnW<T> GetElementPtr(MnW<T> addr, T index) {
-  return {addr.addr + (index * static_cast<addr_t>(ByteSizeOf(addr)))};
+MVn<T> GetElementPtr(MVn<T> addr, addr_t index) {
+  return {addr.addr + (index * static_cast<addr_t>(sizeof(T)))};
+}
+
+template <typename T>
+ALWAYS_INLINE static
+MnW<T> GetElementPtr(MnW<T> addr, addr_t index) {
+  return {addr.addr + (index * static_cast<addr_t>(sizeof(T)))};
+}
+
+template <typename T>
+ALWAYS_INLINE static
+MVnW<T> GetElementPtr(MVnW<T> addr, addr_t index) {
+  return {addr.addr + (index * static_cast<addr_t>(sizeof(T)))};
 }
 
 template <typename T>

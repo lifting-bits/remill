@@ -372,19 +372,50 @@ union XCR0 {
 
 static_assert(8 == sizeof(XCR0), "Invalid packing of `XCR0`.");
 
+
+
+#if COMPILING_WITH_GCC
+using RequestPrivilegeLevel = uint16_t;
+using TableIndicator = uint16_t;
+#else
+enum RequestPrivilegeLevel : uint16_t {
+  kRingZero = 0,
+  kRingOne = 1,
+  kRingTwo = 2,
+  kRingThree = 3
+};
+
+enum TableIndicator : uint16_t {
+  kGlobalDescriptorTable = 0,
+  kLocalDescriptorTable = 1
+};
+#endif  // COMPILING_WITH_GCC
+
+union SegmentSelector final {
+  uint16_t flat;
+  struct {
+    RequestPrivilegeLevel rpi:2;
+    TableIndicator ti:1;
+    uint16_t index:13;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(sizeof(SegmentSelector) == 2,
+              "Invalid packing of `union SegmentSelector`.");
+
 struct alignas(8) Segments final {
   volatile uint16_t _0;
-  uint16_t ss;
+  SegmentSelector ss;
   volatile uint16_t _1;
-  uint16_t es;
+  SegmentSelector es;
   volatile uint16_t _2;
-  uint16_t gs;
+  SegmentSelector gs;
   volatile uint16_t _3;
-  uint16_t fs;
+  SegmentSelector fs;
   volatile uint16_t _4;
-  uint16_t ds;
+  SegmentSelector ds;
   volatile uint16_t _5;
-  uint16_t cs;
+  SegmentSelector cs;
 } __attribute__((packed));
 
 static_assert(24 == sizeof(Segments), "Invalid packing of `struct Segments`.");

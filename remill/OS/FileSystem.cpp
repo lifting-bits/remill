@@ -21,6 +21,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <vector>
 
 #include "remill/OS/FileSystem.h"
 
@@ -43,6 +44,32 @@ bool TryCreateDirectory(const std::string &dir_name) {
     return true;
   } else {
     return false;
+  }
+}
+
+// Iterator over a directory.
+void ForEachFileInDirectory(const std::string &dir_name,
+                            DirectoryVisitor visitor) {
+  std::vector<std::string> paths;
+  auto dir = opendir(dir_name.c_str());
+  CHECK(dir != nullptr)
+      << "Could not list the " << dir_name << " directory";
+
+  while (auto ent = readdir(dir)) {
+    if (!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..")) {
+      continue;
+    }
+
+    std::stringstream ss;
+    ss << dir_name << "/" << ent->d_name;
+    paths.push_back(ss.str());
+  }
+  closedir(dir);
+
+  for (const auto &path : paths) {
+    if (!visitor(path)) {
+      break;
+    }
   }
 }
 

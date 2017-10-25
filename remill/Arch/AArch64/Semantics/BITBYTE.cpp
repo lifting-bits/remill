@@ -108,3 +108,56 @@ DEF_SEM(CLZ, D dst, S src) {
 
 DEF_ISEL(CLZ_32_DP_1SRC) = CLZ<R32W, R32>;
 DEF_ISEL(CLZ_64_DP_1SRC) = CLZ<R64W, R64>;
+
+namespace {
+
+DEF_SEM(REV16_32, R32W dst, R32 src) {
+  vec32_t v = {};
+  v.dwords.elems[0] = Read(src);
+  _Pragma("unroll")
+  for (auto &word : v.words.elems) {
+    word = __builtin_bswap16(word);
+  }
+  WriteZExt(dst, v.dwords.elems[0]);
+  return memory;
+}
+
+DEF_SEM(REV16_64, R64W dst, R64 src) {
+  vec64_t v = {};
+  v.qwords.elems[0] = Read(src);
+  _Pragma("unroll")
+  for (auto &word : v.words.elems) {
+    word = __builtin_bswap16(word);
+  }
+  Write(dst, v.qwords.elems[0]);
+  return memory;
+}
+
+DEF_SEM(REV32_32, R32W dst, R32 src) {
+  WriteZExt(dst, __builtin_bswap32(Read(src)));
+  return memory;
+}
+
+DEF_SEM(REV32_64, R64W dst, R64 src) {
+  vec64_t v = {};
+  v.qwords.elems[0] = Read(src);
+  _Pragma("unroll")
+  for (auto &dword : v.dwords.elems) {
+    dword = __builtin_bswap32(dword);
+  }
+  Write(dst, v.qwords.elems[0]);
+  return memory;
+}
+
+DEF_SEM(REV64, R64W dst, R64 src) {
+  Write(dst, __builtin_bswap64(Read(src)));
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(REV16_32_DP_1SRC) = REV16_32;
+DEF_ISEL(REV16_64_DP_1SRC) = REV16_64;
+DEF_ISEL(REV_32_DP_1SRC) = REV32_32;
+DEF_ISEL(REV32_64_DP_1SRC) = REV32_64;
+DEF_ISEL(REV_64_DP_1SRC) = REV64;

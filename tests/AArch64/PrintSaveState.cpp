@@ -103,7 +103,6 @@ int main(void) {
 
   // Save the cumulative overflow flag from the FPSR into the SR.
   printf("ubfx x29, x1, #2, #1\n");
-  printf("lsr x29, x29, #1\n");
   printf("strb w29, [x28, #%lu]\n", offsetof(State, sr.ofc));
 
   // Save the cumulative underflow flag from the FPSR into the SR.

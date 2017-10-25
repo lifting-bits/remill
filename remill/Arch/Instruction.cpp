@@ -170,7 +170,7 @@ std::string Operand::Serialize(void) const {
         case 256: ss << "DOWORD"; break;
         case 512: ss << "QOWORD"; break;
         default:
-          CHECK((size / 8) == (8 * (size / 8)))
+          CHECK(!(size & 7))
               << "Memory operand size must be divisible by 8; got "
               << size << " bits.";
           ss << std::dec << (size / 8) << "_BYTES"; break;
@@ -183,6 +183,9 @@ std::string Operand::Serialize(void) const {
         ++num_components;
       }
       if (!addr.segment_base_reg.name.empty()) {
+        ++num_components;
+      }
+      if (!addr.base_reg.name.empty()) {
         ++num_components;
       }
       if (!addr.index_reg.name.empty()) {
@@ -198,7 +201,10 @@ std::string Operand::Serialize(void) const {
            << addr.segment_base_reg.name << ")";
       }
 
-      ss << " (REG_" << addr.base_reg.size << " " << addr.base_reg.name << ")";
+      if (!addr.base_reg.name.empty()) {
+        ss << " (REG_" << addr.base_reg.size << " "
+           << addr.base_reg.name << ")";
+      }
 
       if (addr.scale) {
         CHECK(!addr.index_reg.name.empty());

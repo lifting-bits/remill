@@ -28,7 +28,18 @@ DEF_SEM(Breakpoint, I32 imm) {
       state, memory, SyncHyperCall::kAArch64Breakpoint);
 }
 
+DEF_SEM(DoMRS_RS_SYSTEM_FPSR, R64W dest) {
+  auto fpsr = state.fpsr;
+  fpsr.ixc = state.sr.ixc;
+  fpsr.ofc = state.sr.ofc;
+  fpsr.ufc = state.sr.ufc;
+  fpsr.idc = state.sr.idc;
+  WriteZExt(dest, fpsr.flat);
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(SVC_EX_EXCEPTION) = CallSupervisor;
 DEF_ISEL(BRK_EX_EXCEPTION) = Breakpoint;
+DEF_ISEL(MRS_RS_SYSTEM_FPSR) = DoMRS_RS_SYSTEM_FPSR;

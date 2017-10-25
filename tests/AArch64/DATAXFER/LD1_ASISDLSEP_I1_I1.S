@@ -14,58 +14,50 @@
  * limitations under the License.
  */
 
-TEST_BEGIN(STR_32_LDST_POS, str_w0_m32, 1)
+TEST_BEGIN(LD1_ASISDLSEP_I1_I1_16B, ld1_i1_16b, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
-    str w0, [x3, #0]
-    str w1, [x3, #16]
-    str w2, [x3, #32]
+    ld1 {v0.16b}, [x3], #0x10
 TEST_END
 
-TEST_BEGIN(STR_64_LDST_POS, str_x0_m64, 1)
+TEST_BEGIN(LD1_ASISDLSEP_I1_I1_8B, ld1_i1_8b, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
-    str x0, [x3, #0]
-    str x1, [x3, #16]
-    str x2, [x3, #32]
+    ld1 {v0.8b}, [x3], #0x8
 TEST_END
 
-TEST_BEGIN(STR_B_LDST_POS, str_b0_m8, 1)
+TEST_BEGIN(LD1_ASISDLSEP_I1_I1_8H, ld1_i1_8h, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
-    str b0, [x3, #0]
-    str b1, [x3, #16]
-    str b3, [x3, #32]
+    ld1 {v1.8h}, [x3], #0x10
 TEST_END
 
-TEST_BEGIN(STR_H_LDST_POS, str_h0_m16, 1)
+TEST_BEGIN(LD1_ASISDLSEP_I1_I1_4H, ld1_i1_4h, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
-    str h0, [x3, #0]
-    str h1, [x3, #16]
-    str h3, [x3, #32]
+    ld1 {v0.4h}, [x3], #0x8
 TEST_END
 
-TEST_BEGIN(STR_S_LDST_POS, str_s0_m32, 1)
+TEST_BEGIN(LD1_ASISDLSEP_I1_I1_4S, ld1_i1_4s, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
-    str s0, [x3, #0]
-    str s1, [x3, #16]
-    str s3, [x3, #32]
+    ld1 {v0.4s}, [x3], #0x10
 TEST_END
 
-TEST_BEGIN(STR_D_LDST_POS, str_d0_m64, 1)
+TEST_BEGIN(LD1_ASISDLSEP_I1_I1_2S, ld1_i1_2s, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
-    str d0, [x3, #0]
-    str d1, [x3, #16]
-    str d3, [x3, #32]
+    ld1 {v0.2s}, [x3], #0x8
 TEST_END
 
-TEST_BEGIN(STR_Q_LDST_POS, str_q0_m128, 1)
+TEST_BEGIN(LD1_ASISDLSEP_I1_I1_2D, ld1_i1_2d, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
-    str q0, [x3, #0]
-    str q1, [x3, #16]
-    str q3, [x3, #32]
+    ld1 {v0.2d}, [x3], #0x10
+TEST_END
+
+TEST_BEGIN(LD1_ASISDLSEP_I1_I1_1D, ld1_i1_1d, 1)
+TEST_INPUTS(0)
+    add x3, sp, #-256
+    ld1 {v0.1d}, [x3], #0x8
 TEST_END

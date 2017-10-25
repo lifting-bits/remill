@@ -56,7 +56,6 @@ str x1, [x28, #1080]
 mrs x1, fpsr
 str x1, [x28, #1088]
 ubfx x29, x1, #2, #1
-lsr x29, x29, #1
 strb w29, [x28, #1147]
 ubfx x29, x1, #3, #1
 strb w29, [x28, #1149]

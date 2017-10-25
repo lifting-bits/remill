@@ -104,6 +104,21 @@ DEF_SEM(CCMP, S1 src1, S2 src2, S2 nzcv) {
   }
   return memory;
 }
+
+template <bool (*check_cond)(const State &), typename S1, typename S2>
+DEF_SEM(CCMN, S1 src1, S2 src2, S2 nzcv) {
+  using T = typename BaseType<S1>::BT;
+  if (check_cond(state)) {
+    (void) AddWithCarryNZCV(state, Read(src1), Read(src2), T(0));
+  } else {
+    auto nzcv_val = Read(nzcv);
+    FLAG_V = UCmpNeq(UAnd(nzcv_val, T(1)), T(0));
+    FLAG_C = UCmpNeq(UAnd(nzcv_val, T(2)), T(0));
+    FLAG_Z = UCmpNeq(UAnd(nzcv_val, T(4)), T(0));
+    FLAG_N = UCmpNeq(UAnd(nzcv_val, T(8)), T(0));
+  }
+  return memory;
+}
 }  // namespace
 
 DEF_COND_ISEL(CCMP_32_CONDCMP_IMM, CCMP, R32, I32)
@@ -111,3 +126,6 @@ DEF_COND_ISEL(CCMP_64_CONDCMP_IMM, CCMP, R64, I64)
 
 DEF_COND_ISEL(CCMP_32_CONDCMP_REG, CCMP, R32, R32)
 DEF_COND_ISEL(CCMP_64_CONDCMP_REG, CCMP, R64, R64)
+
+DEF_COND_ISEL(CCMN_32_CONDCMP_IMM, CCMN, R32, I32)
+DEF_COND_ISEL(CCMN_64_CONDCMP_IMM, CCMN, R64, I64)
