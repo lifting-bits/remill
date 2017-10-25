@@ -3737,7 +3737,7 @@ static bool TryDecodeLDnSTnOpcode(uint8_t opcode, uint64_t *rpt,
       *rpt = 1;
       *selem = 4;
       return true;
-    case 1:  // `0010`, LD/ST1 (4 registers).
+    case 2:  // `0010`, LD/ST1 (4 registers).
       *rpt = 4;
       *selem = 1;
       return true;
