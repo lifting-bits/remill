@@ -1458,39 +1458,40 @@ IF_AVX(DEF_ISEL(VMOVDDUP_XMMdq_XMMdq) = MOVDDUP<VV128W, V128>;)
 
 namespace {
 
-template <typename D, typename S1>
-DEF_SEM(SQRTSS, D dst, S1 src1) {
-  // Make a working copy of dest as a vector of 32-bit (DWORD) floats:
-  auto temp_vec = FReadV32(dst);
-
-  // Treat src1 as a vector of "single-precision" (32-bit DWORD) floats:
-  auto src1_vec = FReadV32(src1);
-  
-  // Extract a single-precision float from src1[31:0]:
-  auto src1_float = FExtractV32(src1_vec, 0);
-  auto square_root = src1_float;
+DEF_HELPER(SquareRoot32, float32_t src_float) -> float32_t {
+  auto square_root = src_float;
 
   // Special cases for invalid square root operations:
-  if (std::isnan(src1_float)) {    // if src is SNaN or QNaN
-    if (issignaling(src1_float)) {  // if src is SNaN
+  if (std::isnan(src_float)) {    // if src is SNaN or QNaN
+    if (issignaling(src_float)) {  // if src is SNaN
       // return the SNaN converted to a QNaN:
-      nan32_t temp_nan = {src1_float};
+      nan32_t temp_nan = {src_float};
       temp_nan.is_quiet_nan = 1;  // equivalent to bitwise OR with 0x00400000 (Intel Table E-10)
       square_root = temp_nan.f;
     }
     else {  // src is a QNaN
-      square_root = src1_float;  // just pass it directly to the result (see Table E-10)
+      square_root = src_float;  // just pass it directly to the result (see Table E-10)
     }
   }
-  else if (src1_float < 0.0) {   // a value of -0 will evaluate this to false, and go to 'else'.
+  else if (src_float < 0.0) {   // a value of -0 will evaluate this to false, and go to 'else'.
     square_root = 0xFFC00000; // return the QNaN single-precision floating-point indefinite
   }
   else {
     // do the square root operation
-    square_root = std::sqrt(src1_float);
+    square_root = std::sqrt(src_float);
   }
+  
+  return square_root;
+}
+
+template <typename D, typename S1>
+DEF_SEM(SQRTSS, D dst, S1 src1) {
+  // Extract a "single-precision" (32-bit) float from [31:0] of src1 vector:
+  auto src_float = FExtractV32(FReadV32(src1), 0);
 
   // Store the square root result in dest[32:0]:
+  auto square_root = SquareRoot32(memory, state, src_float);
+  auto temp_vec = FReadV32(dst);  // initialize a destination vector
   temp_vec = FInsertV32(temp_vec, 0, square_root);
 
   // Write out the result and return memory state:
@@ -1499,20 +1500,30 @@ DEF_SEM(SQRTSS, D dst, S1 src1) {
 }
 
 #if HAS_FEATURE_AVX
-// template <typename D, typename S1, typename S2, typename S3>
-// DEF_SEM(VSQRTSS, D dst, S1 src1, S2 src2, S3 src3) {
-// ... same as above, except computes square root of the low single-precision floating-point 
-// value in src3 and stores the results in dest which is a copy of src1. Also, upper 
-// single-precision floating-point values (bits[127:32]) from src2 are copied to dest[127:32].
-// }
+template <typename D, typename S1, typename S2>
+DEF_SEM(VSQRTSS, D dst, S1 src1, S2 src2) {  
+  // Extract the single-precision float from [31:0] of the src2 vector:
+  auto src_float = FExtractV32(FReadV32(src2), 0);
+  
+  // Initialize dest vector, while also copying src1[127:32] -> dst[127:32].
+  auto temp_vec = FReadV32(src1);
+  
+  // Store the square root result in dest[32:0]:
+  auto square_root = SquareRoot32(memory, state, src_float);
+  temp_vec = FInsertV32(temp_vec, 0, square_root);
+  
+  // Write out the result and return memory state:
+  FWriteV32(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.  
+  return memory;
+}
 #endif // HAS_FEATURE_AVX
 
 } // namespace
 
 DEF_ISEL(SQRTSS_XMMss_MEMss) = SQRTSS<V128W, MV32>;
 DEF_ISEL(SQRTSS_XMMss_XMMss) = SQRTSS<V128W, V128>;
-//IF_AVX(DEF_ISEL(VSQRTSS_XMMdq_XMMdq_MEMd) = VSQRTSS<VV128W, V128, MV32>;)
-//IF_AVX(DEF_ISEL(VSQRTSS_XMMdq_XMMdq_XMMd) = VSQRTSS<VV128W, V128, V128>;)
+IF_AVX(DEF_ISEL(VSQRTSS_XMMdq_XMMdq_MEMd) = VSQRTSS<VV128W, V128, MV32>;)
+IF_AVX(DEF_ISEL(VSQRTSS_XMMdq_XMMdq_XMMd) = VSQRTSS<VV128W, V128, V128>;)
 /*
 4316 VSQRTSS VSQRTSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
 4317 VSQRTSS VSQRTSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
