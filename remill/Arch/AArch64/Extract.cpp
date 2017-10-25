@@ -15,8 +15,6 @@
  */
 
 #include "remill/Arch/AArch64/Decode.h"
-#include <gflags/gflags.h>
-#include <glog/logging.h>
 
 namespace remill {
 namespace aarch64 {
@@ -2178,33 +2176,6 @@ const char * const kIFormName[] = {
   "ZIP1_ASIMDPERM_ONLY",
   "ZIP2_ASIMDPERM_ONLY",
 };
-
-
-//static bool BFXPreferred(const InstData &data) {
-//  if (data.imms.uimm < data.immr.uimm) {
-//    return false;
-//  }
-//  if (data.imms.uimm == ((data.sf << 5) | 0x1FULL)) {
-//    return false;  // `if imms == sf:'11111' then return FALSE;`
-//  }
-//  if (!data.immr.uimm) {
-//    // Must not match 32-bit UXT[BH] or SXT[BH].
-//    if (!data.sf && (data.imms.uimm == 0x7ULL || data.imms.uimm == 0xFULL)) {
-//      return false;
-//    }
-//
-//    // Must not match 64-bit SXT[BHW].
-//    auto uns = (data.opc >> 1) & 1;
-//    if (data.sf && uns) {
-//      if (data.imms.uimm == 0x7ULL || data.imms.uimm == 0xFULL ||
-//          data.imms.uimm == 0x1FULL) {
-//        return false;
-//      }
-//    }
-//  }
-//  return true;
-//}
-
 
 static bool TryExtractFRECPX_ASISDMISCFP16_R(InstData &inst, uint32_t bits);
 static bool TryExtractFRECPX_ASISDMISC_R(InstData &inst, uint32_t bits);
@@ -9177,8 +9148,8 @@ static bool TryExtractFRINTA_ASIMDMISC_R(InstData &inst, uint32_t bits) {
 }
 
 static bool TryExtractSUBS_32_ADDSUB_SHIFT(InstData &inst, uint32_t bits) {
-  if (false && TryExtractNEGS_SUBS_32_ADDSUB_SHIFT(inst, bits)) return true;
   if (false && TryExtractCMP_SUBS_32_ADDSUB_SHIFT(inst, bits)) return true;
+  if (false && TryExtractNEGS_SUBS_32_ADDSUB_SHIFT(inst, bits)) return true;
   //   bits
   // & 11111111001000000000000000000000
   //   --------------------------------
@@ -9221,8 +9192,8 @@ static bool TryExtractSUBS_32_ADDSUB_SHIFT(InstData &inst, uint32_t bits) {
 }
 
 static bool TryExtractSUBS_64_ADDSUB_SHIFT(InstData &inst, uint32_t bits) {
-  if (false && TryExtractCMP_SUBS_64_ADDSUB_SHIFT(inst, bits)) return true;
   if (false && TryExtractNEGS_SUBS_64_ADDSUB_SHIFT(inst, bits)) return true;
+  if (false && TryExtractCMP_SUBS_64_ADDSUB_SHIFT(inst, bits)) return true;
   //   bits
   // & 11111111001000000000000000000000
   //   --------------------------------
@@ -17646,8 +17617,6 @@ static bool TryExtractCSET_CSINC_32_CONDSEL(InstData &inst, uint32_t bits) {
   if (!(inst.cond != 0xf)) return false;
   inst.Rm = static_cast<uint8_t>(enc.Rm);
   inst.Rn = static_cast<uint8_t>(enc.Rn);
-  // Rm and Rn both have to be 0x1f
-  if (!(inst.Rm == 0x1f && inst.Rn == 0x1f)) return false;
   inst.o2 = static_cast<uint8_t>(enc.o2);
   inst.op = static_cast<uint8_t>(enc.op);
   inst.iform = InstForm::CSET_CSINC_32_CONDSEL;
@@ -17695,8 +17664,6 @@ static bool TryExtractCSET_CSINC_64_CONDSEL(InstData &inst, uint32_t bits) {
   if (!(inst.cond != 0xf)) return false;
   inst.Rm = static_cast<uint8_t>(enc.Rm);
   inst.Rn = static_cast<uint8_t>(enc.Rn);
-  // Rm and Rn both have to be 0x1f
-  if (!(inst.Rm == 0x1f && inst.Rn == 0x1f)) return false;
   inst.o2 = static_cast<uint8_t>(enc.o2);
   inst.op = static_cast<uint8_t>(enc.op);
   inst.iform = InstForm::CSET_CSINC_64_CONDSEL;
@@ -39484,8 +39451,6 @@ static bool TryExtractCSETM_CSINV_32_CONDSEL(InstData &inst, uint32_t bits) {
   if (!(inst.cond != 0xf)) return false;
   inst.Rm = static_cast<uint8_t>(enc.Rm);
   inst.Rn = static_cast<uint8_t>(enc.Rn);
-  // Rm and Rn both have to be 0x1f
-  if (!(inst.Rm == 0x1f && inst.Rn == 0x1f)) return false;
   inst.o2 = static_cast<uint8_t>(enc.o2);
   inst.op = static_cast<uint8_t>(enc.op);
   inst.iform = InstForm::CSETM_CSINV_32_CONDSEL;
@@ -39533,8 +39498,6 @@ static bool TryExtractCSETM_CSINV_64_CONDSEL(InstData &inst, uint32_t bits) {
   if (!(inst.cond != 0xf)) return false;
   inst.Rm = static_cast<uint8_t>(enc.Rm);
   inst.Rn = static_cast<uint8_t>(enc.Rn);
-  // Rm and Rn both have to be 0x1f
-  if (!(inst.Rm == 0x1f && inst.Rn == 0x1f)) return false;
   inst.o2 = static_cast<uint8_t>(enc.o2);
   inst.op = static_cast<uint8_t>(enc.op);
   inst.iform = InstForm::CSETM_CSINV_64_CONDSEL;
@@ -39904,12 +39867,12 @@ static bool TryExtractSBFM_32M_BITFIELD(InstData &inst, uint32_t bits) {
 }
 
 static bool TryExtractSBFM_64M_BITFIELD(InstData &inst, uint32_t bits) {
+  if (false && TryExtractSXTH_SBFM_64M_BITFIELD(inst, bits)) return true;
   if (false && TryExtractSXTW_SBFM_64M_BITFIELD(inst, bits)) return true;
   if (false && TryExtractSXTB_SBFM_64M_BITFIELD(inst, bits)) return true;
-  if (false && TryExtractSXTH_SBFM_64M_BITFIELD(inst, bits)) return true;
   if (false && TryExtractASR_SBFM_64M_BITFIELD(inst, bits)) return true;
-  if (false && TryExtractSBFX_SBFM_64M_BITFIELD(inst, bits)) return true;
   if (false && TryExtractSBFIZ_SBFM_64M_BITFIELD(inst, bits)) return true;
+  if (false && TryExtractSBFX_SBFM_64M_BITFIELD(inst, bits)) return true;
   //   bits
   // & 11111111110000000000000000000000
   //   --------------------------------
@@ -48011,10 +47974,6 @@ static bool TryExtractCINC_CSINC_32_CONDSEL(InstData &inst, uint32_t bits) {
   if (!(inst.Rm != 0x1f)) return false;
   inst.Rn = static_cast<uint8_t>(enc.Rn);
   if (!(inst.Rn != 0x1f)) return false;
-  // The bitmask check autogenerated does not check
-  // if the two registers are the same which is important
-  // otherwise this will shadow all csinc instructions
-  if (!(inst.Rm == inst.Rn)) return false;
   inst.o2 = static_cast<uint8_t>(enc.o2);
   inst.op = static_cast<uint8_t>(enc.op);
   inst.iform = InstForm::CINC_CSINC_32_CONDSEL;
@@ -48064,10 +48023,6 @@ static bool TryExtractCINC_CSINC_64_CONDSEL(InstData &inst, uint32_t bits) {
   if (!(inst.Rm != 0x1f)) return false;
   inst.Rn = static_cast<uint8_t>(enc.Rn);
   if (!(inst.Rn != 0x1f)) return false;
-  // The bitmask check autogenerated does not check
-  // if the two registers are the same which is important
-  // otherwise this will shadow all csinc instructions
-  if (!(inst.Rm == inst.Rn)) return false;
   inst.o2 = static_cast<uint8_t>(enc.o2);
   inst.op = static_cast<uint8_t>(enc.op);
   inst.iform = InstForm::CINC_CSINC_64_CONDSEL;
@@ -63173,10 +63128,6 @@ static bool TryExtractCINV_CSINV_32_CONDSEL(InstData &inst, uint32_t bits) {
   if (!(inst.Rm != 0x1f)) return false;
   inst.Rn = static_cast<uint8_t>(enc.Rn);
   if (!(inst.Rn != 0x1f)) return false;
-  // The bitmask check autogenerated does not check
-  // if the two registers are the same which is important
-  // otherwise this will shadow all csinc instructions
-  if (!(inst.Rm == inst.Rn)) return false;
   inst.o2 = static_cast<uint8_t>(enc.o2);
   inst.op = static_cast<uint8_t>(enc.op);
   inst.iform = InstForm::CINV_CSINV_32_CONDSEL;
@@ -63226,10 +63177,6 @@ static bool TryExtractCINV_CSINV_64_CONDSEL(InstData &inst, uint32_t bits) {
   if (!(inst.Rm != 0x1f)) return false;
   inst.Rn = static_cast<uint8_t>(enc.Rn);
   if (!(inst.Rn != 0x1f)) return false;
-  // The bitmask check autogenerated does not check
-  // if the two registers are the same which is important
-  // otherwise this will shadow all csinc instructions
-  if (!(inst.Rm == inst.Rn)) return false;
   inst.o2 = static_cast<uint8_t>(enc.o2);
   inst.op = static_cast<uint8_t>(enc.op);
   inst.iform = InstForm::CINV_CSINV_64_CONDSEL;
@@ -64228,9 +64175,9 @@ static bool TryExtractUBFM_32M_BITFIELD(InstData &inst, uint32_t bits) {
   if (false && TryExtractUXTH_UBFM_32M_BITFIELD(inst, bits)) return true;
   if (false && TryExtractUXTB_UBFM_32M_BITFIELD(inst, bits)) return true;
   if (false && TryExtractLSR_UBFM_32M_BITFIELD(inst, bits)) return true;
-  if (false && TryExtractUBFX_UBFM_32M_BITFIELD(inst, bits)) return true;
   if (false && TryExtractLSL_UBFM_32M_BITFIELD(inst, bits)) return true;
   if (false && TryExtractUBFIZ_UBFM_32M_BITFIELD(inst, bits)) return true;
+  if (false && TryExtractUBFX_UBFM_32M_BITFIELD(inst, bits)) return true;
   //   bits
   // & 11111111110000000000000000000000
   //   --------------------------------
@@ -64272,8 +64219,8 @@ static bool TryExtractUBFM_32M_BITFIELD(InstData &inst, uint32_t bits) {
 
 static bool TryExtractUBFM_64M_BITFIELD(InstData &inst, uint32_t bits) {
   if (false && TryExtractLSR_UBFM_64M_BITFIELD(inst, bits)) return true;
-  if (false && TryExtractUBFIZ_UBFM_64M_BITFIELD(inst, bits)) return true;
   if (false && TryExtractUBFX_UBFM_64M_BITFIELD(inst, bits)) return true;
+  if (false && TryExtractUBFIZ_UBFM_64M_BITFIELD(inst, bits)) return true;
   if (false && TryExtractLSL_UBFM_64M_BITFIELD(inst, bits)) return true;
   //   bits
   // & 11111111110000000000000000000000
@@ -67792,9 +67739,9 @@ static bool TryExtractLDSMAXL_64_MEMOP(InstData &inst, uint32_t bits) {
 
 static bool TryExtractSYS_CR_SYSTEM(InstData &inst, uint32_t bits) {
   if (false && TryExtractAT_SYS_CR_SYSTEM(inst, bits)) return true;
-  if (false && TryExtractIC_SYS_CR_SYSTEM(inst, bits)) return true;
-  if (false && TryExtractDC_SYS_CR_SYSTEM(inst, bits)) return true;
   if (false && TryExtractTLBI_SYS_CR_SYSTEM(inst, bits)) return true;
+  if (false && TryExtractDC_SYS_CR_SYSTEM(inst, bits)) return true;
+  if (false && TryExtractIC_SYS_CR_SYSTEM(inst, bits)) return true;
   //   bits
   // & 11111111111110000000000000000000
   //   --------------------------------
@@ -74624,1510 +74571,1510 @@ static bool TryExtract1(InstData &inst, uint32_t bits) {
 // 00001000000000000000000000000000
 static bool TryExtract2(InstData &inst, uint32_t bits) {
   return false ||
-         TryExtractANDS_64_LOG_SHIFT(inst, bits) ||
-         TryExtractLDAXRB_LR32_LDSTEXCL(inst, bits) ||
-         TryExtractLDAR_LR64_LDSTEXCL(inst, bits) ||
-         TryExtractSTNP_64_LDSTNAPAIR_OFFS(inst, bits) ||
-         TryExtractLDAXP_LP32_LDSTEXCL(inst, bits) ||
-         TryExtractSTNP_32_LDSTNAPAIR_OFFS(inst, bits) ||
-         TryExtractLDAXP_LP64_LDSTEXCL(inst, bits) ||
-         TryExtractLDLAR_LR32_LDSTEXCL(inst, bits) ||
-         TryExtractSTP_32_LDSTPAIR_POST(inst, bits) ||
-         TryExtractLDAXRH_LR32_LDSTEXCL(inst, bits) ||
-         TryExtractSUB_32_ADDSUB_EXT(inst, bits) ||
-         TryExtractCASAH_C32_LDSTEXCL(inst, bits) ||
-         TryExtractADD_32_ADDSUB_SHIFT(inst, bits) ||
-         TryExtractLDAXR_LR64_LDSTEXCL(inst, bits) ||
-         TryExtractADDS_32_ADDSUB_SHIFT(inst, bits) ||
-         TryExtractADDS_64_ADDSUB_SHIFT(inst, bits) ||
-         TryExtractEON_64_LOG_SHIFT(inst, bits) ||
-         TryExtractLDP_64_LDSTPAIR_POST(inst, bits) ||
-         TryExtractLDP_32_LDSTPAIR_POST(inst, bits) ||
-         TryExtractSTLLRB_SL32_LDSTEXCL(inst, bits) ||
-         TryExtractSTLLRH_SL32_LDSTEXCL(inst, bits) ||
-         TryExtractLDP_32_LDSTPAIR_PRE(inst, bits) ||
-         TryExtractLDAR_LR32_LDSTEXCL(inst, bits) ||
-         TryExtractLDP_64_LDSTPAIR_PRE(inst, bits) ||
-         TryExtractCASALH_C32_LDSTEXCL(inst, bits) ||
-         TryExtractLDARB_LR32_LDSTEXCL(inst, bits) ||
-         TryExtractLDP_32_LDSTPAIR_OFF(inst, bits) ||
-         TryExtractCASH_C32_LDSTEXCL(inst, bits) ||
-         TryExtractEON_32_LOG_SHIFT(inst, bits) ||
-         TryExtractEOR_64_LOG_SHIFT(inst, bits) ||
-         TryExtractSUB_32_ADDSUB_SHIFT(inst, bits) ||
-         TryExtractLDPSW_64_LDSTPAIR_POST(inst, bits) ||
-         TryExtractEOR_32_LOG_SHIFT(inst, bits) ||
-         TryExtractCAS_C32_LDSTEXCL(inst, bits) ||
-         TryExtractORR_32_LOG_SHIFT(inst, bits) ||
-         TryExtractLDPSW_64_LDSTPAIR_PRE(inst, bits) ||
-         TryExtractCASL_C64_LDSTEXCL(inst, bits) ||
-         TryExtractLDXP_LP64_LDSTEXCL(inst, bits) ||
-         TryExtractLDPSW_64_LDSTPAIR_OFF(inst, bits) ||
-         TryExtractSTLXRH_SR32_LDSTEXCL(inst, bits) ||
-         TryExtractCASAL_C64_LDSTEXCL(inst, bits) ||
-         TryExtractLDLAR_LR64_LDSTEXCL(inst, bits) ||
+         TryExtractLDLARB_LR32_LDSTEXCL(inst, bits) ||
+         TryExtractLDAXR_LR32_LDSTEXCL(inst, bits) ||
+         TryExtractSTLLR_SL64_LDSTEXCL(inst, bits) ||
          TryExtractSTLRH_SL32_LDSTEXCL(inst, bits) ||
+         TryExtractLDXR_LR64_LDSTEXCL(inst, bits) ||
+         TryExtractLDLARH_LR32_LDSTEXCL(inst, bits) ||
+         TryExtractSTLLRB_SL32_LDSTEXCL(inst, bits) ||
+         TryExtractLDAXR_LR64_LDSTEXCL(inst, bits) ||
+         TryExtractSTLLRH_SL32_LDSTEXCL(inst, bits) ||
+         TryExtractLDAR_LR32_LDSTEXCL(inst, bits) ||
+         TryExtractSTLRB_SL32_LDSTEXCL(inst, bits) ||
+         TryExtractLDARH_LR32_LDSTEXCL(inst, bits) ||
+         TryExtractSTLR_SL32_LDSTEXCL(inst, bits) ||
+         TryExtractLDAXRH_LR32_LDSTEXCL(inst, bits) ||
+         TryExtractLDAXRB_LR32_LDSTEXCL(inst, bits) ||
+         TryExtractSTLLR_SL32_LDSTEXCL(inst, bits) ||
+         TryExtractLDXRH_LR32_LDSTEXCL(inst, bits) ||
+         TryExtractLDAR_LR64_LDSTEXCL(inst, bits) ||
+         TryExtractLDLAR_LR32_LDSTEXCL(inst, bits) ||
+         TryExtractLDXRB_LR32_LDSTEXCL(inst, bits) ||
+         TryExtractLDARB_LR32_LDSTEXCL(inst, bits) ||
+         TryExtractLDLAR_LR64_LDSTEXCL(inst, bits) ||
          TryExtractLDXR_LR32_LDSTEXCL(inst, bits) ||
+         TryExtractSTLR_SL64_LDSTEXCL(inst, bits) ||
+         TryExtractCASALB_C32_LDSTEXCL(inst, bits) ||
+         TryExtractSTXR_SR32_LDSTEXCL(inst, bits) ||
+         TryExtractCASLH_C32_LDSTEXCL(inst, bits) ||
+         TryExtractSTXR_SR64_LDSTEXCL(inst, bits) ||
+         TryExtractSTLXR_SR32_LDSTEXCL(inst, bits) ||
+         TryExtractLDAXP_LP64_LDSTEXCL(inst, bits) ||
+         TryExtractCASAL_C64_LDSTEXCL(inst, bits) ||
+         TryExtractCASA_C32_LDSTEXCL(inst, bits) ||
+         TryExtractCASAL_C32_LDSTEXCL(inst, bits) ||
+         TryExtractCAS_C32_LDSTEXCL(inst, bits) ||
+         TryExtractCASA_C64_LDSTEXCL(inst, bits) ||
+         TryExtractCASL_C32_LDSTEXCL(inst, bits) ||
+         TryExtractCASL_C64_LDSTEXCL(inst, bits) ||
+         TryExtractCAS_C64_LDSTEXCL(inst, bits) ||
+         TryExtractCASB_C32_LDSTEXCL(inst, bits) ||
+         TryExtractCASLB_C32_LDSTEXCL(inst, bits) ||
          TryExtractCASPA_CP32_LDSTEXCL(inst, bits) ||
          TryExtractCASPAL_CP32_LDSTEXCL(inst, bits) ||
          TryExtractCASP_CP32_LDSTEXCL(inst, bits) ||
-         TryExtractCASPL_CP32_LDSTEXCL(inst, bits) ||
+         TryExtractSTLXRH_SR32_LDSTEXCL(inst, bits) ||
          TryExtractCASPA_CP64_LDSTEXCL(inst, bits) ||
-         TryExtractSUB_64_ADDSUB_SHIFT(inst, bits) ||
          TryExtractCASPAL_CP64_LDSTEXCL(inst, bits) ||
          TryExtractCASP_CP64_LDSTEXCL(inst, bits) ||
-         TryExtractSTLR_SL64_LDSTEXCL(inst, bits) ||
          TryExtractCASPL_CP64_LDSTEXCL(inst, bits) ||
-         TryExtractANDS_32_LOG_SHIFT(inst, bits) ||
-         TryExtractSTLXRB_SR32_LDSTEXCL(inst, bits) ||
-         TryExtractCASLH_C32_LDSTEXCL(inst, bits) ||
-         TryExtractCASA_C32_LDSTEXCL(inst, bits) ||
-         TryExtractCASALB_C32_LDSTEXCL(inst, bits) ||
-         TryExtractCASLB_C32_LDSTEXCL(inst, bits) ||
-         TryExtractORN_64_LOG_SHIFT(inst, bits) ||
-         TryExtractSTLLR_SL64_LDSTEXCL(inst, bits) ||
-         TryExtractSTXR_SR32_LDSTEXCL(inst, bits) ||
-         TryExtractSTXR_SR64_LDSTEXCL(inst, bits) ||
-         TryExtractSTP_64_LDSTPAIR_PRE(inst, bits) ||
-         TryExtractLDNP_32_LDSTNAPAIR_OFFS(inst, bits) ||
-         TryExtractSTP_32_LDSTPAIR_OFF(inst, bits) ||
-         TryExtractLDXP_LP32_LDSTEXCL(inst, bits) ||
-         TryExtractLDNP_64_LDSTNAPAIR_OFFS(inst, bits) ||
-         TryExtractAND_64_LOG_SHIFT(inst, bits) ||
-         TryExtractCASL_C32_LDSTEXCL(inst, bits) ||
-         TryExtractSTP_32_LDSTPAIR_PRE(inst, bits) ||
-         TryExtractADDS_64S_ADDSUB_EXT(inst, bits) ||
-         TryExtractADDS_32S_ADDSUB_EXT(inst, bits) ||
-         TryExtractLDLARH_LR32_LDSTEXCL(inst, bits) ||
-         TryExtractLDXRH_LR32_LDSTEXCL(inst, bits) ||
-         TryExtractBICS_64_LOG_SHIFT(inst, bits) ||
-         TryExtractAND_32_LOG_SHIFT(inst, bits) ||
-         TryExtractORR_64_LOG_SHIFT(inst, bits) ||
-         TryExtractLDXRB_LR32_LDSTEXCL(inst, bits) ||
-         TryExtractSTXRH_SR32_LDSTEXCL(inst, bits) ||
-         TryExtractCASA_C64_LDSTEXCL(inst, bits) ||
-         TryExtractBIC_32_LOG_SHIFT(inst, bits) ||
-         TryExtractBIC_64_LOG_SHIFT(inst, bits) ||
-         TryExtractORN_32_LOG_SHIFT(inst, bits) ||
-         TryExtractCAS_C64_LDSTEXCL(inst, bits) ||
-         TryExtractADD_64_ADDSUB_SHIFT(inst, bits) ||
-         TryExtractSTLLR_SL32_LDSTEXCL(inst, bits) ||
-         TryExtractCASAL_C32_LDSTEXCL(inst, bits) ||
-         TryExtractSTLXR_SR64_LDSTEXCL(inst, bits) ||
-         TryExtractSUBS_64_ADDSUB_SHIFT(inst, bits) ||
-         TryExtractSUBS_32_ADDSUB_SHIFT(inst, bits) ||
-         TryExtractCASAB_C32_LDSTEXCL(inst, bits) ||
-         TryExtractSUB_64_ADDSUB_EXT(inst, bits) ||
-         TryExtractLDP_64_LDSTPAIR_OFF(inst, bits) ||
-         TryExtractSTLRB_SL32_LDSTEXCL(inst, bits) ||
-         TryExtractSTXP_SP32_LDSTEXCL(inst, bits) ||
-         TryExtractSTXP_SP64_LDSTEXCL(inst, bits) ||
-         TryExtractSTP_64_LDSTPAIR_OFF(inst, bits) ||
-         TryExtractSTLXR_SR32_LDSTEXCL(inst, bits) ||
-         TryExtractSTP_64_LDSTPAIR_POST(inst, bits) ||
-         TryExtractSTLXP_SP32_LDSTEXCL(inst, bits) ||
-         TryExtractCASB_C32_LDSTEXCL(inst, bits) ||
-         TryExtractLDLARB_LR32_LDSTEXCL(inst, bits) ||
-         TryExtractSTLR_SL32_LDSTEXCL(inst, bits) ||
-         TryExtractLDXR_LR64_LDSTEXCL(inst, bits) ||
-         TryExtractBICS_32_LOG_SHIFT(inst, bits) ||
          TryExtractSTXRB_SR32_LDSTEXCL(inst, bits) ||
-         TryExtractLDAXR_LR32_LDSTEXCL(inst, bits) ||
-         TryExtractSUBS_64S_ADDSUB_EXT(inst, bits) ||
+         TryExtractLDAXP_LP32_LDSTEXCL(inst, bits) ||
+         TryExtractSTLXR_SR64_LDSTEXCL(inst, bits) ||
+         TryExtractCASH_C32_LDSTEXCL(inst, bits) ||
+         TryExtractCASPL_CP32_LDSTEXCL(inst, bits) ||
+         TryExtractCASALH_C32_LDSTEXCL(inst, bits) ||
+         TryExtractCASAB_C32_LDSTEXCL(inst, bits) ||
+         TryExtractSTXRH_SR32_LDSTEXCL(inst, bits) ||
+         TryExtractLDXP_LP64_LDSTEXCL(inst, bits) ||
+         TryExtractLDXP_LP32_LDSTEXCL(inst, bits) ||
+         TryExtractSTLXRB_SR32_LDSTEXCL(inst, bits) ||
+         TryExtractCASAH_C32_LDSTEXCL(inst, bits) ||
+         TryExtractSTLXP_SP32_LDSTEXCL(inst, bits) ||
          TryExtractSTLXP_SP64_LDSTEXCL(inst, bits) ||
+         TryExtractSTXP_SP64_LDSTEXCL(inst, bits) ||
+         TryExtractSTXP_SP32_LDSTEXCL(inst, bits) ||
+         TryExtractSUB_64_ADDSUB_EXT(inst, bits) ||
+         TryExtractSUB_32_ADDSUB_EXT(inst, bits) ||
+         TryExtractSUBS_32S_ADDSUB_EXT(inst, bits) ||
          TryExtractADD_32_ADDSUB_EXT(inst, bits) ||
          TryExtractADD_64_ADDSUB_EXT(inst, bits) ||
-         TryExtractLDARH_LR32_LDSTEXCL(inst, bits) ||
-         TryExtractSUBS_32S_ADDSUB_EXT(inst, bits);
+         TryExtractADDS_64S_ADDSUB_EXT(inst, bits) ||
+         TryExtractADDS_32S_ADDSUB_EXT(inst, bits) ||
+         TryExtractSUBS_64S_ADDSUB_EXT(inst, bits) ||
+         TryExtractSTNP_32_LDSTNAPAIR_OFFS(inst, bits) ||
+         TryExtractSTNP_64_LDSTNAPAIR_OFFS(inst, bits) ||
+         TryExtractLDNP_32_LDSTNAPAIR_OFFS(inst, bits) ||
+         TryExtractLDNP_64_LDSTNAPAIR_OFFS(inst, bits) ||
+         TryExtractLDP_32_LDSTPAIR_POST(inst, bits) ||
+         TryExtractLDP_64_LDSTPAIR_POST(inst, bits) ||
+         TryExtractLDP_32_LDSTPAIR_PRE(inst, bits) ||
+         TryExtractLDP_64_LDSTPAIR_PRE(inst, bits) ||
+         TryExtractLDP_32_LDSTPAIR_OFF(inst, bits) ||
+         TryExtractLDP_64_LDSTPAIR_OFF(inst, bits) ||
+         TryExtractSTP_64_LDSTPAIR_PRE(inst, bits) ||
+         TryExtractSTP_32_LDSTPAIR_PRE(inst, bits) ||
+         TryExtractSTP_64_LDSTPAIR_OFF(inst, bits) ||
+         TryExtractSTP_32_LDSTPAIR_OFF(inst, bits) ||
+         TryExtractLDPSW_64_LDSTPAIR_POST(inst, bits) ||
+         TryExtractLDPSW_64_LDSTPAIR_PRE(inst, bits) ||
+         TryExtractLDPSW_64_LDSTPAIR_OFF(inst, bits) ||
+         TryExtractSTP_32_LDSTPAIR_POST(inst, bits) ||
+         TryExtractSTP_64_LDSTPAIR_POST(inst, bits) ||
+         TryExtractSUB_64_ADDSUB_SHIFT(inst, bits) ||
+         TryExtractEOR_64_LOG_SHIFT(inst, bits) ||
+         TryExtractADDS_32_ADDSUB_SHIFT(inst, bits) ||
+         TryExtractADDS_64_ADDSUB_SHIFT(inst, bits) ||
+         TryExtractSUBS_32_ADDSUB_SHIFT(inst, bits) ||
+         TryExtractBIC_32_LOG_SHIFT(inst, bits) ||
+         TryExtractANDS_64_LOG_SHIFT(inst, bits) ||
+         TryExtractANDS_32_LOG_SHIFT(inst, bits) ||
+         TryExtractAND_64_LOG_SHIFT(inst, bits) ||
+         TryExtractORN_32_LOG_SHIFT(inst, bits) ||
+         TryExtractAND_32_LOG_SHIFT(inst, bits) ||
+         TryExtractEON_32_LOG_SHIFT(inst, bits) ||
+         TryExtractORR_64_LOG_SHIFT(inst, bits) ||
+         TryExtractBICS_32_LOG_SHIFT(inst, bits) ||
+         TryExtractEON_64_LOG_SHIFT(inst, bits) ||
+         TryExtractORN_64_LOG_SHIFT(inst, bits) ||
+         TryExtractBICS_64_LOG_SHIFT(inst, bits) ||
+         TryExtractSUBS_64_ADDSUB_SHIFT(inst, bits) ||
+         TryExtractBIC_64_LOG_SHIFT(inst, bits) ||
+         TryExtractADD_64_ADDSUB_SHIFT(inst, bits) ||
+         TryExtractADD_32_ADDSUB_SHIFT(inst, bits) ||
+         TryExtractORR_32_LOG_SHIFT(inst, bits) ||
+         TryExtractEOR_32_LOG_SHIFT(inst, bits) ||
+         TryExtractSUB_32_ADDSUB_SHIFT(inst, bits);
 }
 
 // 00001100000000000000000000000000
 static bool TryExtract3(InstData &inst, uint32_t bits) {
   return false ||
-         TryExtractLD3_ASISDLSO_S3_3S(inst, bits) ||
-         TryExtractURHADD_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLD4_ASISDLSOP_D4_I4D(inst, bits) ||
-         TryExtractSQRDMLAH_ASIMDSAME2_ONLY(inst, bits) ||
-         TryExtractFRINTM_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractFACGT_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractSABA_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractSRSRA_ASIMDSHF_R(inst, bits) ||
-         TryExtractST3_ASISDLSO_B3_3B(inst, bits) ||
-         TryExtractSUQADD_ASIMDMISC_R(inst, bits) ||
-         TryExtractST3_ASISDLSO_H3_3H(inst, bits) ||
-         TryExtractFRSQRTS_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractST3_ASISDLSO_S3_3S(inst, bits) ||
-         TryExtractORR_ASIMDIMM_L_SL(inst, bits) ||
-         TryExtractSMLAL_ASIMDELEM_L(inst, bits) ||
-         TryExtractFMAXV_ASIMDALL_ONLY_H(inst, bits) ||
-         TryExtractFMLA_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractST3_ASISDLSOP_H3_I3H(inst, bits) ||
-         TryExtractST3_ASISDLSOP_HX3_R3H(inst, bits) ||
-         TryExtractLD3R_ASISDLSOP_R3_I(inst, bits) ||
-         TryExtractST3_ASISDLSOP_S3_I3S(inst, bits) ||
-         TryExtractFMAXNMP_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractFMOV_ASIMDIMM_H_H(inst, bits) ||
-         TryExtractST3_ASISDLSOP_DX3_R3D(inst, bits) ||
-         TryExtractORR_ASIMDIMM_L_HL(inst, bits) ||
-         TryExtractFABD_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractSADDW_ASIMDDIFF_W(inst, bits) ||
-         TryExtractLD3_ASISDLSO_D3_3D(inst, bits) ||
-         TryExtractFMINNM_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractMLA_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFRINTM_ASIMDMISC_R(inst, bits) ||
-         TryExtractFMINNM_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractUSUBL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractSMINV_ASIMDALL_ONLY(inst, bits) ||
-         TryExtractCLS_ASIMDMISC_R(inst, bits) ||
-         TryExtractCMLE_ASIMDMISC_Z(inst, bits) ||
-         TryExtractSQSHLU_ASIMDSHF_R(inst, bits) ||
-         TryExtractSCVTF_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractFMLA_ASIMDELEM_R_SD(inst, bits) ||
-         TryExtractUZP1_ASIMDPERM_ONLY(inst, bits) ||
-         TryExtractLD3_ASISDLSOP_SX3_R3S(inst, bits) ||
-         TryExtractLD1R_ASISDLSOP_RX1_R(inst, bits) ||
-         TryExtractLD3_ASISDLSOP_D3_I3D(inst, bits) ||
-         TryExtractSCVTF_ASIMDMISC_R(inst, bits) ||
-         TryExtractUQSHL_ASIMDSHF_R(inst, bits) ||
-         TryExtractMLA_ASIMDELEM_R(inst, bits) ||
-         TryExtractMUL_ASIMDELEM_R(inst, bits) ||
-         TryExtractST4_ASISDLSO_D4_4D(inst, bits) ||
-         TryExtractFRSQRTE_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractFMAXNMP_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractSADDLP_ASIMDMISC_P(inst, bits) ||
-         TryExtractFMINNMV_ASIMDALL_ONLY_H(inst, bits) ||
-         TryExtractCNT_ASIMDMISC_R(inst, bits) ||
-         TryExtractFMAX_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractUADDLV_ASIMDALL_ONLY(inst, bits) ||
-         TryExtractMLS_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractSQSHRN_ASIMDSHF_N(inst, bits) ||
-         TryExtractFACGE_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractSADALP_ASIMDMISC_P(inst, bits) ||
-         TryExtractST3_ASISDLSEP_I3_I(inst, bits) ||
-         TryExtractFABD_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFACGE_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLDNP_S_LDSTNAPAIR_OFFS(inst, bits) ||
-         TryExtractSABD_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFMAX_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractUZP2_ASIMDPERM_ONLY(inst, bits) ||
-         TryExtractFCVTPS_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractFCVTPS_ASIMDMISC_R(inst, bits) ||
-         TryExtractUMULL_ASIMDELEM_L(inst, bits) ||
-         TryExtractLD1_ASISDLSO_D1_1D(inst, bits) ||
-         TryExtractSSHLL_ASIMDSHF_L(inst, bits) ||
-         TryExtractUHSUB_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFDIV_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractFMOV_ASIMDIMM_S_S(inst, bits) ||
-         TryExtractFCVTZS_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractFCVTZS_ASIMDMISC_R(inst, bits) ||
-         TryExtractSHSUB_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractCMHS_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFMAXP_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractNOT_ASIMDMISC_R(inst, bits) ||
-         TryExtractSTP_S_LDSTPAIR_POST(inst, bits) ||
-         TryExtractINS_ASIMDINS_IR_R(inst, bits) ||
-         TryExtractST4_ASISDLSE_R4(inst, bits) ||
-         TryExtractST4_ASISDLSEP_I4_I(inst, bits) ||
-         TryExtractLD4R_ASISDLSO_R4(inst, bits) ||
-         TryExtractST4_ASISDLSEP_R4_R(inst, bits) ||
-         TryExtractREV32_ASIMDMISC_R(inst, bits) ||
-         TryExtractFCVTZU_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractLD2R_ASISDLSO_R2(inst, bits) ||
-         TryExtractSQRDMULH_ASIMDELEM_R(inst, bits) ||
-         TryExtractLD1_ASISDLSOP_BX1_R1B(inst, bits) ||
-         TryExtractFCMLE_ASIMDMISCFP16_FZ(inst, bits) ||
-         TryExtractFRECPS_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractST1_ASISDLSO_H1_1H(inst, bits) ||
-         TryExtractFCMLE_ASIMDMISC_FZ(inst, bits) ||
-         TryExtractST3_ASISDLSO_D3_3D(inst, bits) ||
-         TryExtractFADDP_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractST3_ASISDLSOP_B3_I3B(inst, bits) ||
-         TryExtractST1_ASISDLSOP_B1_I1B(inst, bits) ||
-         TryExtractST1_ASISDLSOP_BX1_R1B(inst, bits) ||
-         TryExtractLD3R_ASISDLSO_R3(inst, bits) ||
-         TryExtractST1_ASISDLSOP_H1_I1H(inst, bits) ||
-         TryExtractUSHL_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractST1_ASISDLSOP_HX1_R1H(inst, bits) ||
-         TryExtractST1_ASISDLSO_B1_1B(inst, bits) ||
-         TryExtractST1_ASISDLSOP_S1_I1S(inst, bits) ||
-         TryExtractFMLS_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractSQRDMLSH_ASIMDSAME2_ONLY(inst, bits) ||
-         TryExtractST3_ASISDLSOP_BX3_R3B(inst, bits) ||
-         TryExtractST1_ASISDLSOP_D1_I1D(inst, bits) ||
-         TryExtractST1_ASISDLSOP_DX1_R1D(inst, bits) ||
-         TryExtractSMULL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractMOVI_ASIMDIMM_D2_D(inst, bits) ||
-         TryExtractPMUL_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFMLA_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLD3_ASISDLSOP_B3_I3B(inst, bits) ||
-         TryExtractSMLSL_ASIMDELEM_L(inst, bits) ||
-         TryExtractSTP_D_LDSTPAIR_PRE(inst, bits) ||
-         TryExtractST2_ASISDLSE_R2(inst, bits) ||
-         TryExtractUQRSHRN_ASIMDSHF_N(inst, bits) ||
-         TryExtractST1_ASISDLSO_S1_1S(inst, bits) ||
-         TryExtractST2_ASISDLSEP_I2_I(inst, bits) ||
-         TryExtractST2_ASISDLSEP_R2_R(inst, bits) ||
-         TryExtractBIC_ASIMDIMM_L_HL(inst, bits) ||
-         TryExtractUMLSL_ASIMDELEM_L(inst, bits) ||
-         TryExtractFMULX_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractST1_ASISDLSO_D1_1D(inst, bits) ||
-         TryExtractLD4R_ASISDLSOP_R4_I(inst, bits) ||
-         TryExtractST2_ASISDLSO_B2_2B(inst, bits) ||
-         TryExtractFMULX_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractST1_ASISDLSEP_R2_R2(inst, bits) ||
-         TryExtractUCVTF_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractSCVTF_ASIMDSHF_C(inst, bits) ||
-         TryExtractFMLS_ASIMDELEM_RH_H(inst, bits) ||
-         TryExtractFCVTNS_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractST3_ASISDLSOP_D3_I3D(inst, bits) ||
-         TryExtractSQRSHRN_ASIMDSHF_N(inst, bits) ||
-         TryExtractST2_ASISDLSO_S2_2S(inst, bits) ||
-         TryExtractFCVTNS_ASIMDMISC_R(inst, bits) ||
-         TryExtractUMLAL_ASIMDELEM_L(inst, bits) ||
-         TryExtractFMIN_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFRINTP_ASIMDMISC_R(inst, bits) ||
-         TryExtractAESD_B_CRYPTOAES(inst, bits) ||
-         TryExtractCMGT_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractSQSHRUN_ASIMDSHF_N(inst, bits) ||
-         TryExtractREV64_ASIMDMISC_R(inst, bits) ||
-         TryExtractURSRA_ASIMDSHF_R(inst, bits) ||
-         TryExtractFCVTMS_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractFCVTMS_ASIMDMISC_R(inst, bits) ||
-         TryExtractST3_ASISDLSE_R3(inst, bits) ||
-         TryExtractFRINTP_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractSQABS_ASIMDMISC_R(inst, bits) ||
-         TryExtractSQXTN_ASIMDMISC_N(inst, bits) ||
-         TryExtractRBIT_ASIMDMISC_R(inst, bits) ||
-         TryExtractSTP_D_LDSTPAIR_OFF(inst, bits) ||
-         TryExtractSQDMULL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractSQDMLSL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractLD1R_ASISDLSO_R1(inst, bits) ||
-         TryExtractSQADD_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLD1R_ASISDLSOP_R1_I(inst, bits) ||
-         TryExtractADD_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFNEG_ASIMDMISC_R(inst, bits) ||
-         TryExtractSUBHN_ASIMDDIFF_N(inst, bits) ||
-         TryExtractST1_ASISDLSOP_SX1_R1S(inst, bits) ||
-         TryExtractSHRN_ASIMDSHF_N(inst, bits) ||
-         TryExtractFMUL_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractLD3_ASISDLSOP_H3_I3H(inst, bits) ||
-         TryExtractFNEG_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractTRN2_ASIMDPERM_ONLY(inst, bits) ||
-         TryExtractADDV_ASIMDALL_ONLY(inst, bits) ||
-         TryExtractFMIN_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractUHADD_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLD1_ASISDLSEP_R3_R3(inst, bits) ||
-         TryExtractLD1_ASISDLSE_R1_1V(inst, bits) ||
-         TryExtractZIP1_ASIMDPERM_ONLY(inst, bits) ||
-         TryExtractFMUL_ASIMDELEM_R_SD(inst, bits) ||
-         TryExtractFMUL_ASIMDELEM_RH_H(inst, bits) ||
-         TryExtractFCVTZU_ASIMDSHF_C(inst, bits) ||
          TryExtractAESIMC_B_CRYPTOAES(inst, bits) ||
-         TryExtractLD4R_ASISDLSOP_RX4_R(inst, bits) ||
-         TryExtractLD3_ASISDLSO_B3_3B(inst, bits) ||
-         TryExtractFMULX_ASIMDELEM_RH_H(inst, bits) ||
-         TryExtractSMLAL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractST2_ASISDLSOP_D2_I2D(inst, bits) ||
-         TryExtractSSHL_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFMULX_ASIMDELEM_R_SD(inst, bits) ||
-         TryExtractBSL_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLD3_ASISDLSO_H3_3H(inst, bits) ||
-         TryExtractSQRDMULH_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractSQNEG_ASIMDMISC_R(inst, bits) ||
-         TryExtractUMLSL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractLD1_ASISDLSE_R4_4V(inst, bits) ||
-         TryExtractLD4_ASISDLSE_R4(inst, bits) ||
-         TryExtractRSUBHN_ASIMDDIFF_N(inst, bits) ||
-         TryExtractSMAX_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractMLS_ASIMDELEM_R(inst, bits) ||
          TryExtractAESE_B_CRYPTOAES(inst, bits) ||
-         TryExtractLDP_S_LDSTPAIR_POST(inst, bits) ||
-         TryExtractLD4_ASISDLSOP_BX4_R4B(inst, bits) ||
-         TryExtractLDP_D_LDSTPAIR_POST(inst, bits) ||
-         TryExtractLDP_Q_LDSTPAIR_POST(inst, bits) ||
-         TryExtractSMULL_ASIMDELEM_L(inst, bits) ||
-         TryExtractLDP_S_LDSTPAIR_PRE(inst, bits) ||
-         TryExtractLD3_ASISDLSOP_HX3_R3H(inst, bits) ||
-         TryExtractLD2_ASISDLSO_H2_2H(inst, bits) ||
-         TryExtractLDP_D_LDSTPAIR_PRE(inst, bits) ||
-         TryExtractLDP_Q_LDSTPAIR_PRE(inst, bits) ||
-         TryExtractFADD_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractLD1_ASISDLSEP_I1_I1(inst, bits) ||
-         TryExtractUQADD_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractUQRSHL_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractNEG_ASIMDMISC_R(inst, bits) ||
-         TryExtractLDP_D_LDSTPAIR_OFF(inst, bits) ||
-         TryExtractLDP_Q_LDSTPAIR_OFF(inst, bits) ||
-         TryExtractFCMGE_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractFCMGE_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLD1_ASISDLSE_R2_2V(inst, bits) ||
-         TryExtractFADD_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLD3_ASISDLSOP_S3_I3S(inst, bits) ||
-         TryExtractFCVTNU_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractFMINNMP_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractSQDMLSL_ASIMDELEM_L(inst, bits) ||
-         TryExtractSLI_ASIMDSHF_R(inst, bits) ||
-         TryExtractSQSHL_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractURSHR_ASIMDSHF_R(inst, bits) ||
-         TryExtractFCVTNU_ASIMDMISC_R(inst, bits) ||
-         TryExtractTBL_ASIMDTBL_L2_2(inst, bits) ||
-         TryExtractLD3_ASISDLSOP_BX3_R3B(inst, bits) ||
-         TryExtractTBL_ASIMDTBL_L3_3(inst, bits) ||
-         TryExtractORN_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractUQSHL_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractTBL_ASIMDTBL_L4_4(inst, bits) ||
-         TryExtractTBL_ASIMDTBL_L1_1(inst, bits) ||
-         TryExtractUMULL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractFRINTZ_ASIMDMISC_R(inst, bits) ||
-         TryExtractSQSUB_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractUMIN_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractUSRA_ASIMDSHF_R(inst, bits) ||
-         TryExtractLD4_ASISDLSOP_DX4_R4D(inst, bits) ||
-         TryExtractFMAXNMV_ASIMDALL_ONLY_SD(inst, bits) ||
-         TryExtractUQXTN_ASIMDMISC_N(inst, bits) ||
-         TryExtractFRSQRTS_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractADDP_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLD1_ASISDLSEP_I4_I4(inst, bits) ||
-         TryExtractSTP_Q_LDSTPAIR_PRE(inst, bits) ||
-         TryExtractFMAXP_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractUABAL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractLD2R_ASISDLSOP_R2_I(inst, bits) ||
-         TryExtractLD1_ASISDLSO_B1_1B(inst, bits) ||
-         TryExtractLD1_ASISDLSO_H1_1H(inst, bits) ||
-         TryExtractLD1_ASISDLSO_S1_1S(inst, bits) ||
-         TryExtractMVNI_ASIMDIMM_M_SM(inst, bits) ||
-         TryExtractMVNI_ASIMDIMM_L_SL(inst, bits) ||
-         TryExtractLD1_ASISDLSOP_B1_I1B(inst, bits) ||
-         TryExtractMVNI_ASIMDIMM_L_HL(inst, bits) ||
-         TryExtractLD1_ASISDLSOP_H1_I1H(inst, bits) ||
-         TryExtractLD1_ASISDLSOP_HX1_R1H(inst, bits) ||
-         TryExtractSTP_S_LDSTPAIR_OFF(inst, bits) ||
-         TryExtractLD1_ASISDLSOP_S1_I1S(inst, bits) ||
-         TryExtractLD1_ASISDLSOP_SX1_R1S(inst, bits) ||
-         TryExtractLD1_ASISDLSOP_D1_I1D(inst, bits) ||
-         TryExtractSMINP_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractSRSHR_ASIMDSHF_R(inst, bits) ||
-         TryExtractLD2_ASISDLSOP_HX2_R2H(inst, bits) ||
-         TryExtractUCVTF_ASIMDMISC_R(inst, bits) ||
-         TryExtractCMGE_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLD3_ASISDLSOP_DX3_R3D(inst, bits) ||
-         TryExtractREV16_ASIMDMISC_R(inst, bits) ||
-         TryExtractRSHRN_ASIMDSHF_N(inst, bits) ||
-         TryExtractCMGE_ASIMDMISC_Z(inst, bits) ||
-         TryExtractFCMGT_ASIMDMISC_FZ(inst, bits) ||
-         TryExtractLD4_ASISDLSEP_R4_R(inst, bits) ||
-         TryExtractSTP_Q_LDSTPAIR_OFF(inst, bits) ||
-         TryExtractFCMGT_ASIMDMISCFP16_FZ(inst, bits) ||
-         TryExtractZIP2_ASIMDPERM_ONLY(inst, bits) ||
-         TryExtractUMOV_ASIMDINS_W_W(inst, bits) ||
-         TryExtractLD4_ASISDLSO_H4_4H(inst, bits) ||
-         TryExtractSQRSHL_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLD4_ASISDLSEP_I4_I(inst, bits) ||
-         TryExtractST4_ASISDLSO_B4_4B(inst, bits) ||
-         TryExtractLD4_ASISDLSOP_H4_I4H(inst, bits) ||
-         TryExtractLD4_ASISDLSOP_HX4_R4H(inst, bits) ||
-         TryExtractLD4_ASISDLSOP_S4_I4S(inst, bits) ||
-         TryExtractLD4_ASISDLSOP_SX4_R4S(inst, bits) ||
-         TryExtractLD1_ASISDLSE_R3_3V(inst, bits) ||
-         TryExtractLD1_ASISDLSEP_I2_I2(inst, bits) ||
-         TryExtractSUB_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLD1_ASISDLSEP_R1_R1(inst, bits) ||
-         TryExtractST4_ASISDLSO_H4_4H(inst, bits) ||
-         TryExtractLDNP_D_LDSTNAPAIR_OFFS(inst, bits) ||
-         TryExtractLD2R_ASISDLSOP_RX2_R(inst, bits) ||
-         TryExtractUMOV_ASIMDINS_X_X(inst, bits) ||
-         TryExtractSABAL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractST4_ASISDLSO_S4_4S(inst, bits) ||
-         TryExtractFMAXNMV_ASIMDALL_ONLY_H(inst, bits) ||
-         TryExtractFCMEQ_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractFMINNMV_ASIMDALL_ONLY_SD(inst, bits) ||
-         TryExtractBIC_ASIMDIMM_L_SL(inst, bits) ||
-         TryExtractFCMEQ_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractADDHN_ASIMDDIFF_N(inst, bits) ||
-         TryExtractFCMLT_ASIMDMISCFP16_FZ(inst, bits) ||
-         TryExtractBIT_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFCMLT_ASIMDMISC_FZ(inst, bits) ||
-         TryExtractSABDL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractUABA_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractSRHADD_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLD1_ASISDLSEP_R2_R2(inst, bits) ||
-         TryExtractFABS_ASIMDMISC_R(inst, bits) ||
-         TryExtractST4_ASISDLSOP_D4_I4D(inst, bits) ||
-         TryExtractFMINP_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractLD4_ASISDLSO_S4_4S(inst, bits) ||
-         TryExtractSQSHL_ASIMDSHF_R(inst, bits) ||
+         TryExtractAESD_B_CRYPTOAES(inst, bits) ||
+         TryExtractAESMC_B_CRYPTOAES(inst, bits) ||
          TryExtractFCVTPU_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractSSUBL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractXTN_ASIMDMISC_N(inst, bits) ||
-         TryExtractSSUBW_ASIMDDIFF_W(inst, bits) ||
-         TryExtractUADDL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractFMAXNM_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFCMGT_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractLD1_ASISDLSEP_I3_I3(inst, bits) ||
-         TryExtractFMAXNM_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractFACGT_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFCMGT_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractSQRDMLSH_ASIMDELEM_R(inst, bits) ||
-         TryExtractST4_ASISDLSOP_BX4_R4B(inst, bits) ||
-         TryExtractSQDMULH_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractUABD_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractUMAXV_ASIMDALL_ONLY(inst, bits) ||
-         TryExtractFRINTN_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractST4_ASISDLSOP_HX4_R4H(inst, bits) ||
-         TryExtractCMEQ_ASIMDMISC_Z(inst, bits) ||
-         TryExtractSRSHL_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractSADDL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractUMLAL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractLD1_ASISDLSEP_R4_R4(inst, bits) ||
-         TryExtractUMINP_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractST3_ASISDLSOP_SX3_R3S(inst, bits) ||
-         TryExtractSQRDMLAH_ASIMDELEM_R(inst, bits) ||
-         TryExtractFRINTA_ASIMDMISC_R(inst, bits) ||
-         TryExtractUADDLP_ASIMDMISC_P(inst, bits) ||
+         TryExtractFRSQRTE_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractFRINTI_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractNOT_ASIMDMISC_R(inst, bits) ||
+         TryExtractST2_ASISDLSO_D2_2D(inst, bits) ||
+         TryExtractST4_ASISDLSO_D4_4D(inst, bits) ||
+         TryExtractST2_ASISDLSOP_D2_I2D(inst, bits) ||
+         TryExtractST3_ASISDLSO_D3_3D(inst, bits) ||
+         TryExtractST3_ASISDLSOP_D3_I3D(inst, bits) ||
+         TryExtractFCVTZU_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractFCMLE_ASIMDMISCFP16_FZ(inst, bits) ||
+         TryExtractST4_ASISDLSOP_D4_I4D(inst, bits) ||
+         TryExtractFMINNMV_ASIMDALL_ONLY_H(inst, bits) ||
+         TryExtractFMINV_ASIMDALL_ONLY_H(inst, bits) ||
+         TryExtractUCVTF_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractFMAXNMV_ASIMDALL_ONLY_H(inst, bits) ||
+         TryExtractFCVTZS_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractFRINTP_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractFNEG_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractFCMLT_ASIMDMISCFP16_FZ(inst, bits) ||
+         TryExtractFABS_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractFCVTMU_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractLD4_ASISDLSOP_D4_I4D(inst, bits) ||
+         TryExtractSCVTF_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractFCMGE_ASIMDMISCFP16_FZ(inst, bits) ||
+         TryExtractUMOV_ASIMDINS_X_X(inst, bits) ||
          TryExtractFRINTA_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractUMAXP_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLD4_ASISDLSO_D4_4D(inst, bits) ||
-         TryExtractSMAXV_ASIMDALL_ONLY(inst, bits) ||
-         TryExtractFRSQRTE_ASIMDMISC_R(inst, bits) ||
-         TryExtractFCVTZU_ASIMDMISC_R(inst, bits) ||
-         TryExtractFMLS_ASIMDELEM_R_SD(inst, bits) ||
-         TryExtractMOVI_ASIMDIMM_N_B(inst, bits) ||
-         TryExtractMOVI_ASIMDIMM_L_HL(inst, bits) ||
-         TryExtractUSHLL_ASIMDSHF_L(inst, bits) ||
-         TryExtractMOVI_ASIMDIMM_L_SL(inst, bits) ||
-         TryExtractMOVI_ASIMDIMM_M_SM(inst, bits) ||
-         TryExtractMOVI_ASIMDIMM_D_DS(inst, bits) ||
-         TryExtractFCVTL_ASIMDMISC_L(inst, bits) ||
-         TryExtractFMUL_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractSMIN_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLDP_S_LDSTPAIR_OFF(inst, bits) ||
-         TryExtractFRECPS_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFADDP_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractCMTST_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFRINTN_ASIMDMISC_R(inst, bits) ||
-         TryExtractST4_ASISDLSOP_DX4_R4D(inst, bits) ||
-         TryExtractABS_ASIMDMISC_R(inst, bits) ||
-         TryExtractFCVTN_ASIMDMISC_N(inst, bits) ||
-         TryExtractLD2_ASISDLSO_B2_2B(inst, bits) ||
-         TryExtractSQXTUN_ASIMDMISC_N(inst, bits) ||
-         TryExtractEXT_ASIMDEXT_ONLY(inst, bits) ||
-         TryExtractLD2_ASISDLSO_S2_2S(inst, bits) ||
-         TryExtractLD2_ASISDLSO_D2_2D(inst, bits) ||
-         TryExtractDUP_ASIMDINS_DV_V(inst, bits) ||
-         TryExtractSQRSHRUN_ASIMDSHF_N(inst, bits) ||
-         TryExtractLD2_ASISDLSOP_B2_I2B(inst, bits) ||
-         TryExtractLD2_ASISDLSOP_BX2_R2B(inst, bits) ||
-         TryExtractLD2_ASISDLSOP_H2_I2H(inst, bits) ||
-         TryExtractFCVTAS_ASIMDMISC_R(inst, bits) ||
-         TryExtractCMEQ_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFRINTX_ASIMDMISC_R(inst, bits) ||
-         TryExtractLD2_ASISDLSOP_S2_I2S(inst, bits) ||
-         TryExtractFMAXV_ASIMDALL_ONLY_SD(inst, bits) ||
-         TryExtractLD2_ASISDLSOP_SX2_R2S(inst, bits) ||
          TryExtractLD2_ASISDLSOP_D2_I2D(inst, bits) ||
-         TryExtractST3_ASISDLSEP_R3_R(inst, bits) ||
-         TryExtractLD2_ASISDLSOP_DX2_R2D(inst, bits) ||
-         TryExtractUSQADD_ASIMDMISC_R(inst, bits) ||
-         TryExtractSMOV_ASIMDINS_X_X(inst, bits) ||
-         TryExtractBIF_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractURSHL_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFCVTMS_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractLD1_ASISDLSO_D1_1D(inst, bits) ||
+         TryExtractFCVTPS_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractFCMGT_ASIMDMISCFP16_FZ(inst, bits) ||
+         TryExtractLD1_ASISDLSOP_D1_I1D(inst, bits) ||
+         TryExtractFMAXV_ASIMDALL_ONLY_H(inst, bits) ||
+         TryExtractST1_ASISDLSO_D1_1D(inst, bits) ||
+         TryExtractFRINTM_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractLD3_ASISDLSO_D3_3D(inst, bits) ||
+         TryExtractST1_ASISDLSOP_D1_I1D(inst, bits) ||
+         TryExtractFRINTZ_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractLD2_ASISDLSO_D2_2D(inst, bits) ||
+         TryExtractFCVTNS_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractFRECPE_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractFCMEQ_ASIMDMISCFP16_FZ(inst, bits) ||
+         TryExtractFRINTN_ASIMDMISCFP16_R(inst, bits) ||
          TryExtractFCVTAS_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractSRI_ASIMDSHF_R(inst, bits) ||
-         TryExtractST4_ASISDLSOP_B4_I4B(inst, bits) ||
-         TryExtractUADALP_ASIMDMISC_P(inst, bits) ||
-         TryExtractST4_ASISDLSOP_H4_I4H(inst, bits) ||
-         TryExtractSMAXP_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFCVTAU_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractFCVTNU_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractFSQRT_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractFRINTX_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractRBIT_ASIMDMISC_R(inst, bits) ||
+         TryExtractLD3_ASISDLSOP_D3_I3D(inst, bits) ||
+         TryExtractLD4_ASISDLSO_D4_4D(inst, bits) ||
+         TryExtractFRSQRTE_ASIMDMISC_R(inst, bits) ||
+         TryExtractFCMGE_ASIMDMISC_FZ(inst, bits) ||
+         TryExtractST2_ASISDLSO_S2_2S(inst, bits) ||
+         TryExtractST4_ASISDLSO_S4_4S(inst, bits) ||
+         TryExtractST2_ASISDLSOP_S2_I2S(inst, bits) ||
+         TryExtractFRINTZ_ASIMDMISC_R(inst, bits) ||
+         TryExtractST3_ASISDLSOP_S3_I3S(inst, bits) ||
+         TryExtractFCMLE_ASIMDMISC_FZ(inst, bits) ||
+         TryExtractFRINTM_ASIMDMISC_R(inst, bits) ||
          TryExtractST4_ASISDLSOP_S4_I4S(inst, bits) ||
-         TryExtractST4_ASISDLSOP_SX4_R4S(inst, bits) ||
-         TryExtractSHL_ASIMDSHF_R(inst, bits) ||
-         TryExtractFCVTZS_ASIMDSHF_C(inst, bits) ||
-         TryExtractLDNP_Q_LDSTNAPAIR_OFFS(inst, bits) ||
+         TryExtractFCVTL_ASIMDMISC_L(inst, bits) ||
+         TryExtractFMINNMV_ASIMDALL_ONLY_SD(inst, bits) ||
+         TryExtractFMAXNMV_ASIMDALL_ONLY_SD(inst, bits) ||
+         TryExtractUCVTF_ASIMDMISC_R(inst, bits) ||
+         TryExtractFMINV_ASIMDALL_ONLY_SD(inst, bits) ||
+         TryExtractLD4_ASISDLSOP_S4_I4S(inst, bits) ||
+         TryExtractFCVTN_ASIMDMISC_N(inst, bits) ||
+         TryExtractST1_ASISDLSOP_S1_I1S(inst, bits) ||
+         TryExtractFCVTXN_ASIMDMISC_N(inst, bits) ||
+         TryExtractFRINTP_ASIMDMISC_R(inst, bits) ||
+         TryExtractLD4_ASISDLSO_S4_4S(inst, bits) ||
+         TryExtractFRINTA_ASIMDMISC_R(inst, bits) ||
+         TryExtractFCVTZS_ASIMDMISC_R(inst, bits) ||
+         TryExtractFCVTPU_ASIMDMISC_R(inst, bits) ||
+         TryExtractFCVTMS_ASIMDMISC_R(inst, bits) ||
+         TryExtractST3_ASISDLSO_S3_3S(inst, bits) ||
+         TryExtractFNEG_ASIMDMISC_R(inst, bits) ||
+         TryExtractST1_ASISDLSO_S1_1S(inst, bits) ||
+         TryExtractFRINTI_ASIMDMISC_R(inst, bits) ||
+         TryExtractFCMLT_ASIMDMISC_FZ(inst, bits) ||
+         TryExtractFABS_ASIMDMISC_R(inst, bits) ||
+         TryExtractURSQRTE_ASIMDMISC_R(inst, bits) ||
+         TryExtractSCVTF_ASIMDMISC_R(inst, bits) ||
+         TryExtractLD1_ASISDLSO_S1_1S(inst, bits) ||
+         TryExtractFCVTAS_ASIMDMISC_R(inst, bits) ||
+         TryExtractFCVTZU_ASIMDMISC_R(inst, bits) ||
+         TryExtractFCMGT_ASIMDMISC_FZ(inst, bits) ||
+         TryExtractFCVTPS_ASIMDMISC_R(inst, bits) ||
+         TryExtractFSQRT_ASIMDMISC_R(inst, bits) ||
+         TryExtractLD3_ASISDLSO_S3_3S(inst, bits) ||
+         TryExtractLD2_ASISDLSO_S2_2S(inst, bits) ||
+         TryExtractFRINTN_ASIMDMISC_R(inst, bits) ||
+         TryExtractLD2_ASISDLSOP_S2_I2S(inst, bits) ||
+         TryExtractFCVTNS_ASIMDMISC_R(inst, bits) ||
+         TryExtractFCMEQ_ASIMDMISC_FZ(inst, bits) ||
+         TryExtractURECPE_ASIMDMISC_R(inst, bits) ||
+         TryExtractFCVTAU_ASIMDMISC_R(inst, bits) ||
+         TryExtractFCVTNU_ASIMDMISC_R(inst, bits) ||
+         TryExtractFMAXV_ASIMDALL_ONLY_SD(inst, bits) ||
+         TryExtractFRECPE_ASIMDMISC_R(inst, bits) ||
+         TryExtractFRINTX_ASIMDMISC_R(inst, bits) ||
+         TryExtractFCVTMU_ASIMDMISC_R(inst, bits) ||
+         TryExtractLD1_ASISDLSOP_S1_I1S(inst, bits) ||
+         TryExtractLD3_ASISDLSOP_S3_I3S(inst, bits) ||
+         TryExtractCMEQ_ASIMDMISC_Z(inst, bits) ||
+         TryExtractCMLT_ASIMDMISC_Z(inst, bits) ||
+         TryExtractST2_ASISDLSE_R2(inst, bits) ||
+         TryExtractST3_ASISDLSOP_H3_I3H(inst, bits) ||
+         TryExtractLD4R_ASISDLSO_R4(inst, bits) ||
+         TryExtractST2_ASISDLSEP_I2_I(inst, bits) ||
+         TryExtractREV16_ASIMDMISC_R(inst, bits) ||
+         TryExtractSQXTUN_ASIMDMISC_N(inst, bits) ||
+         TryExtractLD1_ASISDLSE_R4_4V(inst, bits) ||
+         TryExtractMOVI_ASIMDIMM_D_DS(inst, bits) ||
+         TryExtractUADDLV_ASIMDALL_ONLY(inst, bits) ||
+         TryExtractLD1_ASISDLSEP_I1_I1(inst, bits) ||
+         TryExtractLD1R_ASISDLSO_R1(inst, bits) ||
+         TryExtractSHLL_ASIMDMISC_S(inst, bits) ||
+         TryExtractSUQADD_ASIMDMISC_R(inst, bits) ||
+         TryExtractST4_ASISDLSO_H4_4H(inst, bits) ||
+         TryExtractST2_ASISDLSO_H2_2H(inst, bits) ||
+         TryExtractSADDLP_ASIMDMISC_P(inst, bits) ||
+         TryExtractST2_ASISDLSOP_H2_I2H(inst, bits) ||
+         TryExtractSMINV_ASIMDALL_ONLY(inst, bits) ||
+         TryExtractCMGT_ASIMDMISC_Z(inst, bits) ||
+         TryExtractST4_ASISDLSOP_H4_I4H(inst, bits) ||
+         TryExtractNEG_ASIMDMISC_R(inst, bits) ||
+         TryExtractCLS_ASIMDMISC_R(inst, bits) ||
+         TryExtractUQXTN_ASIMDMISC_N(inst, bits) ||
+         TryExtractUSQADD_ASIMDMISC_R(inst, bits) ||
+         TryExtractLD2R_ASISDLSOP_R2_I(inst, bits) ||
+         TryExtractLD3R_ASISDLSO_R3(inst, bits) ||
+         TryExtractLD3R_ASISDLSOP_R3_I(inst, bits) ||
+         TryExtractCNT_ASIMDMISC_R(inst, bits) ||
+         TryExtractST3_ASISDLSEP_I3_I(inst, bits) ||
+         TryExtractLD2R_ASISDLSO_R2(inst, bits) ||
+         TryExtractLD4_ASISDLSO_H4_4H(inst, bits) ||
+         TryExtractLD4_ASISDLSOP_H4_I4H(inst, bits) ||
+         TryExtractSQABS_ASIMDMISC_R(inst, bits) ||
+         TryExtractST3_ASISDLSE_R3(inst, bits) ||
+         TryExtractLD1_ASISDLSEP_I4_I4(inst, bits) ||
+         TryExtractLD1_ASISDLSEP_I3_I3(inst, bits) ||
+         TryExtractABS_ASIMDMISC_R(inst, bits) ||
+         TryExtractUMINV_ASIMDALL_ONLY(inst, bits) ||
+         TryExtractMOVI_ASIMDIMM_D2_D(inst, bits) ||
          TryExtractST1_ASISDLSE_R1_1V(inst, bits) ||
          TryExtractST1_ASISDLSE_R2_2V(inst, bits) ||
          TryExtractST1_ASISDLSE_R3_3V(inst, bits) ||
          TryExtractST1_ASISDLSE_R4_4V(inst, bits) ||
-         TryExtractLD3_ASISDLSE_R3(inst, bits) ||
-         TryExtractFMINV_ASIMDALL_ONLY_H(inst, bits) ||
-         TryExtractFRINTI_ASIMDMISC_R(inst, bits) ||
-         TryExtractST1_ASISDLSEP_I1_I1(inst, bits) ||
-         TryExtractST1_ASISDLSEP_R1_R1(inst, bits) ||
-         TryExtractSSHR_ASIMDSHF_R(inst, bits) ||
-         TryExtractST1_ASISDLSEP_I2_I2(inst, bits) ||
-         TryExtractSQDMLAL_ASIMDELEM_L(inst, bits) ||
-         TryExtractST1_ASISDLSEP_I3_I3(inst, bits) ||
-         TryExtractST1_ASISDLSEP_R3_R3(inst, bits) ||
-         TryExtractST1_ASISDLSEP_I4_I4(inst, bits) ||
-         TryExtractST1_ASISDLSEP_R4_R4(inst, bits) ||
-         TryExtractLD2_ASISDLSE_R2(inst, bits) ||
-         TryExtractFRINTI_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractLD1_ASISDLSOP_DX1_R1D(inst, bits) ||
-         TryExtractFRECPE_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractLD2_ASISDLSEP_I2_I(inst, bits) ||
-         TryExtractLD2_ASISDLSEP_R2_R(inst, bits) ||
-         TryExtractUMINV_ASIMDALL_ONLY(inst, bits) ||
-         TryExtractSQDMLAL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractFCVTAU_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractUSUBW_ASIMDDIFF_W(inst, bits) ||
-         TryExtractUABDL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractFCVTAU_ASIMDMISC_R(inst, bits) ||
-         TryExtractFMOV_ASIMDIMM_D2_D(inst, bits) ||
-         TryExtractFSUB_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractRADDHN_ASIMDDIFF_N(inst, bits) ||
-         TryExtractTBX_ASIMDTBL_L3_3(inst, bits) ||
-         TryExtractFSUB_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractLD3_ASISDLSEP_I3_I(inst, bits) ||
-         TryExtractTBX_ASIMDTBL_L2_2(inst, bits) ||
-         TryExtractTBX_ASIMDTBL_L1_1(inst, bits) ||
-         TryExtractSSRA_ASIMDSHF_R(inst, bits) ||
-         TryExtractTBX_ASIMDTBL_L4_4(inst, bits) ||
-         TryExtractSMLSL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractFRECPE_ASIMDMISC_R(inst, bits) ||
-         TryExtractSQDMULH_ASIMDELEM_R(inst, bits) ||
-         TryExtractFABS_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractSHADD_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractLD4_ASISDLSOP_B4_I4B(inst, bits) ||
-         TryExtractEOR_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractSTP_D_LDSTPAIR_POST(inst, bits) ||
-         TryExtractSTP_Q_LDSTPAIR_POST(inst, bits) ||
-         TryExtractURECPE_ASIMDMISC_R(inst, bits) ||
          TryExtractCLZ_ASIMDMISC_R(inst, bits) ||
-         TryExtractSTP_S_LDSTPAIR_PRE(inst, bits) ||
-         TryExtractFRINTX_ASIMDMISCFP16_R(inst, bits) ||
+         TryExtractST1_ASISDLSEP_I1_I1(inst, bits) ||
+         TryExtractST1_ASISDLSEP_I2_I2(inst, bits) ||
+         TryExtractST1_ASISDLSEP_I3_I3(inst, bits) ||
+         TryExtractST1_ASISDLSEP_I4_I4(inst, bits) ||
+         TryExtractSQXTN_ASIMDMISC_N(inst, bits) ||
+         TryExtractLD4R_ASISDLSOP_R4_I(inst, bits) ||
+         TryExtractUMAXV_ASIMDALL_ONLY(inst, bits) ||
+         TryExtractSADALP_ASIMDMISC_P(inst, bits) ||
+         TryExtractUADDLP_ASIMDMISC_P(inst, bits) ||
+         TryExtractLD1_ASISDLSO_H1_1H(inst, bits) ||
+         TryExtractLD1_ASISDLSOP_H1_I1H(inst, bits) ||
+         TryExtractCMLE_ASIMDMISC_Z(inst, bits) ||
          TryExtractSADDLV_ASIMDALL_ONLY(inst, bits) ||
-         TryExtractFSQRT_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractST2_ASISDLSO_H2_2H(inst, bits) ||
-         TryExtractCMLT_ASIMDMISC_Z(inst, bits) ||
-         TryExtractST2_ASISDLSO_D2_2D(inst, bits) ||
-         TryExtractTRN1_ASIMDPERM_ONLY(inst, bits) ||
+         TryExtractST1_ASISDLSO_H1_1H(inst, bits) ||
+         TryExtractXTN_ASIMDMISC_N(inst, bits) ||
+         TryExtractST1_ASISDLSOP_H1_I1H(inst, bits) ||
+         TryExtractLD2_ASISDLSO_H2_2H(inst, bits) ||
+         TryExtractLD2_ASISDLSOP_H2_I2H(inst, bits) ||
+         TryExtractREV32_ASIMDMISC_R(inst, bits) ||
+         TryExtractLD3_ASISDLSOP_H3_I3H(inst, bits) ||
+         TryExtractUADALP_ASIMDMISC_P(inst, bits) ||
+         TryExtractCMGE_ASIMDMISC_Z(inst, bits) ||
+         TryExtractFMOV_ASIMDIMM_D2_D(inst, bits) ||
+         TryExtractST4_ASISDLSE_R4(inst, bits) ||
+         TryExtractLD3_ASISDLSE_R3(inst, bits) ||
+         TryExtractADDV_ASIMDALL_ONLY(inst, bits) ||
+         TryExtractLD1R_ASISDLSOP_R1_I(inst, bits) ||
+         TryExtractLD4_ASISDLSE_R4(inst, bits) ||
+         TryExtractLD4_ASISDLSEP_I4_I(inst, bits) ||
+         TryExtractLD1_ASISDLSE_R2_2V(inst, bits) ||
+         TryExtractLD1_ASISDLSE_R3_3V(inst, bits) ||
+         TryExtractSMAXV_ASIMDALL_ONLY(inst, bits) ||
+         TryExtractLD1_ASISDLSEP_I2_I2(inst, bits) ||
+         TryExtractST4_ASISDLSEP_I4_I(inst, bits) ||
+         TryExtractLD2_ASISDLSE_R2(inst, bits) ||
+         TryExtractLD3_ASISDLSO_H3_3H(inst, bits) ||
+         TryExtractST3_ASISDLSO_H3_3H(inst, bits) ||
+         TryExtractLD2_ASISDLSEP_I2_I(inst, bits) ||
+         TryExtractLD1_ASISDLSE_R1_1V(inst, bits) ||
+         TryExtractLD3_ASISDLSEP_I3_I(inst, bits) ||
+         TryExtractREV64_ASIMDMISC_R(inst, bits) ||
+         TryExtractSQNEG_ASIMDMISC_R(inst, bits) ||
+         TryExtractST4_ASISDLSO_B4_4B(inst, bits) ||
+         TryExtractST4_ASISDLSOP_B4_I4B(inst, bits) ||
+         TryExtractMOVI_ASIMDIMM_N_B(inst, bits) ||
+         TryExtractST2_ASISDLSO_B2_2B(inst, bits) ||
          TryExtractST2_ASISDLSOP_B2_I2B(inst, bits) ||
-         TryExtractST2_ASISDLSOP_BX2_R2B(inst, bits) ||
-         TryExtractST2_ASISDLSOP_H2_I2H(inst, bits) ||
-         TryExtractST2_ASISDLSOP_HX2_R2H(inst, bits) ||
-         TryExtractST2_ASISDLSOP_S2_I2S(inst, bits) ||
-         TryExtractST2_ASISDLSOP_SX2_R2S(inst, bits) ||
-         TryExtractSQDMULL_ASIMDELEM_L(inst, bits) ||
-         TryExtractST2_ASISDLSOP_DX2_R2D(inst, bits) ||
-         TryExtractURSQRTE_ASIMDMISC_R(inst, bits) ||
-         TryExtractUCVTF_ASIMDSHF_C(inst, bits) ||
-         TryExtractPMULL_ASIMDDIFF_L(inst, bits) ||
-         TryExtractFCVTMU_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractORR_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractAND_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFCVTMU_ASIMDMISC_R(inst, bits) ||
-         TryExtractUSHR_ASIMDSHF_R(inst, bits) ||
-         TryExtractMUL_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractBIC_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFRINTZ_ASIMDMISCFP16_R(inst, bits) ||
-         TryExtractUMAX_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFMINV_ASIMDALL_ONLY_SD(inst, bits) ||
-         TryExtractFDIV_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractINS_ASIMDINS_IV_V(inst, bits) ||
-         TryExtractFCMEQ_ASIMDMISCFP16_FZ(inst, bits) ||
-         TryExtractCMGT_ASIMDMISC_Z(inst, bits) ||
-         TryExtractFCMEQ_ASIMDMISC_FZ(inst, bits) ||
-         TryExtractLD3_ASISDLSEP_R3_R(inst, bits) ||
-         TryExtractUQSUB_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractUQSHRN_ASIMDSHF_N(inst, bits) ||
+         TryExtractST3_ASISDLSOP_B3_I3B(inst, bits) ||
+         TryExtractFMOV_ASIMDIMM_H_H(inst, bits) ||
+         TryExtractFMOV_ASIMDIMM_S_S(inst, bits) ||
          TryExtractLD4_ASISDLSO_B4_4B(inst, bits) ||
+         TryExtractLD3_ASISDLSO_B3_3B(inst, bits) ||
+         TryExtractLD4_ASISDLSOP_B4_I4B(inst, bits) ||
+         TryExtractLD1_ASISDLSO_B1_1B(inst, bits) ||
+         TryExtractLD1_ASISDLSOP_B1_I1B(inst, bits) ||
+         TryExtractST1_ASISDLSO_B1_1B(inst, bits) ||
+         TryExtractST1_ASISDLSOP_B1_I1B(inst, bits) ||
+         TryExtractLD2_ASISDLSO_B2_2B(inst, bits) ||
+         TryExtractLD2_ASISDLSOP_B2_I2B(inst, bits) ||
+         TryExtractST3_ASISDLSO_B3_3B(inst, bits) ||
+         TryExtractLD3_ASISDLSOP_B3_I3B(inst, bits) ||
+         TryExtractBIC_ASIMDIMM_L_HL(inst, bits) ||
+         TryExtractMOVI_ASIMDIMM_L_HL(inst, bits) ||
+         TryExtractMOVI_ASIMDIMM_M_SM(inst, bits) ||
+         TryExtractSMOV_ASIMDINS_X_X(inst, bits) ||
+         TryExtractUMOV_ASIMDINS_W_W(inst, bits) ||
          TryExtractSMOV_ASIMDINS_W_W(inst, bits) ||
-         TryExtractFSQRT_ASIMDMISC_R(inst, bits) ||
-         TryExtractFCMGE_ASIMDMISCFP16_FZ(inst, bits) ||
+         TryExtractMVNI_ASIMDIMM_M_SM(inst, bits) ||
+         TryExtractMVNI_ASIMDIMM_L_HL(inst, bits) ||
+         TryExtractINS_ASIMDINS_IR_R(inst, bits) ||
+         TryExtractORR_ASIMDIMM_L_HL(inst, bits) ||
+         TryExtractEOR_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFMAXNM_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractBIC_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFMUL_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFRECPS_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractORR_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractST4_ASISDLSOP_DX4_R4D(inst, bits) ||
+         TryExtractFMIN_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractTBX_ASIMDTBL_L2_2(inst, bits) ||
+         TryExtractFMAX_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFACGE_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractMOVI_ASIMDIMM_L_SL(inst, bits) ||
+         TryExtractBIC_ASIMDIMM_L_SL(inst, bits) ||
+         TryExtractBIF_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFDIV_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractST2_ASISDLSOP_DX2_R2D(inst, bits) ||
+         TryExtractFMAXP_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractST3_ASISDLSOP_DX3_R3D(inst, bits) ||
+         TryExtractFABD_ASIMDSAMEFP16_ONLY(inst, bits) ||
          TryExtractDUP_ASIMDINS_DR_R(inst, bits) ||
-         TryExtractFMINP_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractFCMGE_ASIMDMISC_FZ(inst, bits) ||
-         TryExtractSHLL_ASIMDMISC_S(inst, bits) ||
-         TryExtractFCVTXN_ASIMDMISC_N(inst, bits) ||
-         TryExtractSTNP_Q_LDSTNAPAIR_OFFS(inst, bits) ||
-         TryExtractSTNP_D_LDSTNAPAIR_OFFS(inst, bits) ||
-         TryExtractCMHI_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractORN_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFMLS_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFMINP_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFMULX_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFMAXNMP_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFRSQRTS_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFADD_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractAND_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFMINNM_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFSUB_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFMLA_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFADDP_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractTBL_ASIMDTBL_L2_2(inst, bits) ||
+         TryExtractTBL_ASIMDTBL_L3_3(inst, bits) ||
+         TryExtractTBL_ASIMDTBL_L1_1(inst, bits) ||
          TryExtractFMINNMP_ASIMDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractFCVTPU_ASIMDMISC_R(inst, bits) ||
-         TryExtractFMLA_ASIMDELEM_RH_H(inst, bits) ||
-         TryExtractLD3R_ASISDLSOP_RX3_R(inst, bits) ||
-         TryExtractSTNP_S_LDSTNAPAIR_OFFS(inst, bits) ||
+         TryExtractLD1_ASISDLSOP_DX1_R1D(inst, bits) ||
+         TryExtractDUP_ASIMDINS_DV_V(inst, bits) ||
+         TryExtractTBL_ASIMDTBL_L4_4(inst, bits) ||
+         TryExtractST1_ASISDLSOP_DX1_R1D(inst, bits) ||
+         TryExtractLD4_ASISDLSOP_DX4_R4D(inst, bits) ||
+         TryExtractLD2_ASISDLSOP_DX2_R2D(inst, bits) ||
+         TryExtractMVNI_ASIMDIMM_L_SL(inst, bits) ||
+         TryExtractFCMGT_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFCMGE_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractBIT_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFCMEQ_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractTBX_ASIMDTBL_L3_3(inst, bits) ||
+         TryExtractTBX_ASIMDTBL_L1_1(inst, bits) ||
+         TryExtractTBX_ASIMDTBL_L4_4(inst, bits) ||
+         TryExtractFACGT_ASIMDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractBSL_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractORR_ASIMDIMM_L_SL(inst, bits) ||
+         TryExtractLD3_ASISDLSOP_DX3_R3D(inst, bits) ||
+         TryExtractFMAXNM_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractST4_ASISDLSOP_SX4_R4S(inst, bits) ||
+         TryExtractFRECPS_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFMAX_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractLD3_ASISDLSOP_SX3_R3S(inst, bits) ||
+         TryExtractFABD_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractST2_ASISDLSOP_SX2_R2S(inst, bits) ||
+         TryExtractST3_ASISDLSOP_SX3_R3S(inst, bits) ||
+         TryExtractFDIV_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFMAXNMP_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFACGT_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFCMGE_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFMINP_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFMLA_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFCMGT_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFMAXP_ASIMDSAME_ONLY(inst, bits) ||
          TryExtractFMLS_ASIMDSAME_ONLY(inst, bits) ||
-         TryExtractAESMC_B_CRYPTOAES(inst, bits) ||
-         TryExtractUADDW_ASIMDDIFF_W(inst, bits);
+         TryExtractFMIN_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFMULX_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFMUL_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractLD4_ASISDLSOP_SX4_R4S(inst, bits) ||
+         TryExtractFSUB_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFADDP_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFADD_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFACGE_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractLD1_ASISDLSOP_SX1_R1S(inst, bits) ||
+         TryExtractFMINNM_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractST1_ASISDLSOP_SX1_R1S(inst, bits) ||
+         TryExtractLD2_ASISDLSOP_SX2_R2S(inst, bits) ||
+         TryExtractFCMEQ_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFRSQRTS_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFMINNMP_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSRSHL_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSQDMULH_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSQSUB_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractZIP2_ASIMDPERM_ONLY(inst, bits) ||
+         TryExtractURSHL_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSMINP_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractADD_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSQSHRN_ASIMDSHF_N(inst, bits) ||
+         TryExtractSQSHLU_ASIMDSHF_R(inst, bits) ||
+         TryExtractPMUL_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractUMULL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractSQDMLSL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractUHSUB_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractLD1_ASISDLSEP_R1_R1(inst, bits) ||
+         TryExtractSSHL_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractUADDL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractUMAXP_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSADDW_ASIMDDIFF_W(inst, bits) ||
+         TryExtractLD1R_ASISDLSOP_RX1_R(inst, bits) ||
+         TryExtractCMTST_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractUSHL_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractURHADD_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractST2_ASISDLSOP_HX2_R2H(inst, bits) ||
+         TryExtractST3_ASISDLSOP_HX3_R3H(inst, bits) ||
+         TryExtractUQRSHL_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractUMLAL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractSHSUB_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSHADD_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractCMEQ_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSMLAL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractSQSHRUN_ASIMDSHF_N(inst, bits) ||
+         TryExtractST4_ASISDLSOP_HX4_R4H(inst, bits) ||
+         TryExtractUABD_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractUSRA_ASIMDSHF_R(inst, bits) ||
+         TryExtractSRSRA_ASIMDSHF_R(inst, bits) ||
+         TryExtractMLS_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractMLA_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSQSHL_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSQRSHRUN_ASIMDSHF_N(inst, bits) ||
+         TryExtractUZP2_ASIMDPERM_ONLY(inst, bits) ||
+         TryExtractLD4_ASISDLSEP_R4_R(inst, bits) ||
+         TryExtractLD3R_ASISDLSOP_RX3_R(inst, bits) ||
+         TryExtractTRN2_ASIMDPERM_ONLY(inst, bits) ||
+         TryExtractUSUBL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractUQSUB_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSQRSHRN_ASIMDSHF_N(inst, bits) ||
+         TryExtractST3_ASISDLSEP_R3_R(inst, bits) ||
+         TryExtractCMGT_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSRI_ASIMDSHF_R(inst, bits) ||
+         TryExtractSABD_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSABDL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractSADDL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractSSUBL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractUABDL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractLD1_ASISDLSEP_R3_R3(inst, bits) ||
+         TryExtractUADDW_ASIMDDIFF_W(inst, bits) ||
+         TryExtractLD1_ASISDLSEP_R4_R4(inst, bits) ||
+         TryExtractSSUBW_ASIMDDIFF_W(inst, bits) ||
+         TryExtractSQRDMLSH_ASIMDSAME2_ONLY(inst, bits) ||
+         TryExtractUQSHRN_ASIMDSHF_N(inst, bits) ||
+         TryExtractSMULL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractURSHR_ASIMDSHF_R(inst, bits) ||
+         TryExtractSUBHN_ASIMDDIFF_N(inst, bits) ||
+         TryExtractLD4_ASISDLSOP_HX4_R4H(inst, bits) ||
+         TryExtractST2_ASISDLSEP_R2_R(inst, bits) ||
+         TryExtractSQSHL_ASIMDSHF_R(inst, bits) ||
+         TryExtractFCVTZU_ASIMDSHF_C(inst, bits) ||
+         TryExtractRSHRN_ASIMDSHF_N(inst, bits) ||
+         TryExtractFMUL_ASIMDELEM_RH_H(inst, bits) ||
+         TryExtractUSHR_ASIMDSHF_R(inst, bits) ||
+         TryExtractCMHI_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSCVTF_ASIMDSHF_C(inst, bits) ||
+         TryExtractSMAXP_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractADDP_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractST1_ASISDLSEP_R1_R1(inst, bits) ||
+         TryExtractST1_ASISDLSEP_R2_R2(inst, bits) ||
+         TryExtractST1_ASISDLSEP_R3_R3(inst, bits) ||
+         TryExtractST1_ASISDLSEP_R4_R4(inst, bits) ||
+         TryExtractSMAX_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSQDMLAL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractUQADD_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSMLSL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractFMLA_ASIMDELEM_RH_H(inst, bits) ||
+         TryExtractUCVTF_ASIMDSHF_C(inst, bits) ||
+         TryExtractSSRA_ASIMDSHF_R(inst, bits) ||
+         TryExtractUMAX_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractTRN1_ASIMDPERM_ONLY(inst, bits) ||
+         TryExtractSRHADD_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSUB_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSQRDMULH_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractLD4R_ASISDLSOP_RX4_R(inst, bits) ||
+         TryExtractFMULX_ASIMDELEM_RH_H(inst, bits) ||
+         TryExtractLD1_ASISDLSOP_HX1_R1H(inst, bits) ||
+         TryExtractUSUBW_ASIMDDIFF_W(inst, bits) ||
+         TryExtractZIP1_ASIMDPERM_ONLY(inst, bits) ||
+         TryExtractUMLSL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractSABA_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSHRN_ASIMDSHF_N(inst, bits) ||
+         TryExtractSQDMULL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractLD2R_ASISDLSOP_RX2_R(inst, bits) ||
+         TryExtractST1_ASISDLSOP_HX1_R1H(inst, bits) ||
+         TryExtractUQSHL_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFMLS_ASIMDELEM_RH_H(inst, bits) ||
+         TryExtractLD2_ASISDLSOP_HX2_R2H(inst, bits) ||
+         TryExtractUABAL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractCMGE_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractFCVTZS_ASIMDSHF_C(inst, bits) ||
+         TryExtractLD1_ASISDLSEP_R2_R2(inst, bits) ||
+         TryExtractSRSHR_ASIMDSHF_R(inst, bits) ||
+         TryExtractCMHS_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractUHADD_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractSSHR_ASIMDSHF_R(inst, bits) ||
+         TryExtractSQRSHL_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractUMIN_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractRADDHN_ASIMDDIFF_N(inst, bits) ||
+         TryExtractSMIN_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractLD3_ASISDLSEP_R3_R(inst, bits) ||
+         TryExtractUZP1_ASIMDPERM_ONLY(inst, bits) ||
+         TryExtractUABA_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractPMULL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractSQADD_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractUQSHL_ASIMDSHF_R(inst, bits) ||
+         TryExtractUSHLL_ASIMDSHF_L(inst, bits) ||
+         TryExtractUQRSHRN_ASIMDSHF_N(inst, bits) ||
+         TryExtractSHL_ASIMDSHF_R(inst, bits) ||
+         TryExtractMUL_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractURSRA_ASIMDSHF_R(inst, bits) ||
+         TryExtractRSUBHN_ASIMDDIFF_N(inst, bits) ||
+         TryExtractLD2_ASISDLSEP_R2_R(inst, bits) ||
+         TryExtractSSHLL_ASIMDSHF_L(inst, bits) ||
+         TryExtractST4_ASISDLSEP_R4_R(inst, bits) ||
+         TryExtractUMINP_ASIMDSAME_ONLY(inst, bits) ||
+         TryExtractLD3_ASISDLSOP_HX3_R3H(inst, bits) ||
+         TryExtractADDHN_ASIMDDIFF_N(inst, bits) ||
+         TryExtractSABAL_ASIMDDIFF_L(inst, bits) ||
+         TryExtractSQRDMLAH_ASIMDSAME2_ONLY(inst, bits) ||
+         TryExtractSLI_ASIMDSHF_R(inst, bits) ||
+         TryExtractST4_ASISDLSOP_BX4_R4B(inst, bits) ||
+         TryExtractINS_ASIMDINS_IV_V(inst, bits) ||
+         TryExtractST2_ASISDLSOP_BX2_R2B(inst, bits) ||
+         TryExtractST3_ASISDLSOP_BX3_R3B(inst, bits) ||
+         TryExtractST1_ASISDLSOP_BX1_R1B(inst, bits) ||
+         TryExtractFMLS_ASIMDELEM_R_SD(inst, bits) ||
+         TryExtractFMUL_ASIMDELEM_R_SD(inst, bits) ||
+         TryExtractLD4_ASISDLSOP_BX4_R4B(inst, bits) ||
+         TryExtractFMLA_ASIMDELEM_R_SD(inst, bits) ||
+         TryExtractLD2_ASISDLSOP_BX2_R2B(inst, bits) ||
+         TryExtractLD1_ASISDLSOP_BX1_R1B(inst, bits) ||
+         TryExtractLD3_ASISDLSOP_BX3_R3B(inst, bits) ||
+         TryExtractFMULX_ASIMDELEM_R_SD(inst, bits) ||
+         TryExtractSQDMULL_ASIMDELEM_L(inst, bits) ||
+         TryExtractUMLSL_ASIMDELEM_L(inst, bits) ||
+         TryExtractUMULL_ASIMDELEM_L(inst, bits) ||
+         TryExtractMLS_ASIMDELEM_R(inst, bits) ||
+         TryExtractSQRDMLSH_ASIMDELEM_R(inst, bits) ||
+         TryExtractSMLAL_ASIMDELEM_L(inst, bits) ||
+         TryExtractMUL_ASIMDELEM_R(inst, bits) ||
+         TryExtractSQRDMULH_ASIMDELEM_R(inst, bits) ||
+         TryExtractSQRDMLAH_ASIMDELEM_R(inst, bits) ||
+         TryExtractSMULL_ASIMDELEM_L(inst, bits) ||
+         TryExtractSMLSL_ASIMDELEM_L(inst, bits) ||
+         TryExtractSQDMLSL_ASIMDELEM_L(inst, bits) ||
+         TryExtractEXT_ASIMDEXT_ONLY(inst, bits) ||
+         TryExtractMLA_ASIMDELEM_R(inst, bits) ||
+         TryExtractSQDMLAL_ASIMDELEM_L(inst, bits) ||
+         TryExtractUMLAL_ASIMDELEM_L(inst, bits) ||
+         TryExtractSQDMULH_ASIMDELEM_R(inst, bits) ||
+         TryExtractLDNP_Q_LDSTNAPAIR_OFFS(inst, bits) ||
+         TryExtractSTP_S_LDSTPAIR_POST(inst, bits) ||
+         TryExtractLDP_D_LDSTPAIR_OFF(inst, bits) ||
+         TryExtractLDP_S_LDSTPAIR_POST(inst, bits) ||
+         TryExtractLDP_D_LDSTPAIR_POST(inst, bits) ||
+         TryExtractLDP_Q_LDSTPAIR_POST(inst, bits) ||
+         TryExtractLDP_S_LDSTPAIR_PRE(inst, bits) ||
+         TryExtractLDP_Q_LDSTPAIR_PRE(inst, bits) ||
+         TryExtractLDP_S_LDSTPAIR_OFF(inst, bits) ||
+         TryExtractLDP_Q_LDSTPAIR_OFF(inst, bits) ||
+         TryExtractLDP_D_LDSTPAIR_PRE(inst, bits) ||
+         TryExtractSTP_Q_LDSTPAIR_POST(inst, bits) ||
+         TryExtractSTNP_D_LDSTNAPAIR_OFFS(inst, bits) ||
+         TryExtractLDNP_D_LDSTNAPAIR_OFFS(inst, bits) ||
+         TryExtractSTP_Q_LDSTPAIR_OFF(inst, bits) ||
+         TryExtractSTP_Q_LDSTPAIR_PRE(inst, bits) ||
+         TryExtractSTP_S_LDSTPAIR_OFF(inst, bits) ||
+         TryExtractSTP_D_LDSTPAIR_OFF(inst, bits) ||
+         TryExtractSTNP_Q_LDSTNAPAIR_OFFS(inst, bits) ||
+         TryExtractSTNP_S_LDSTNAPAIR_OFFS(inst, bits) ||
+         TryExtractSTP_D_LDSTPAIR_POST(inst, bits) ||
+         TryExtractSTP_S_LDSTPAIR_PRE(inst, bits) ||
+         TryExtractSTP_D_LDSTPAIR_PRE(inst, bits) ||
+         TryExtractLDNP_S_LDSTNAPAIR_OFFS(inst, bits);
 }
 
 // 00010000000000000000000000000000
 static bool TryExtract4(InstData &inst, uint32_t bits) {
   return false ||
-         TryExtractBFM_64M_BITFIELD(inst, bits) ||
-         TryExtractBFM_32M_BITFIELD(inst, bits) ||
-         TryExtractEOR_64_LOG_IMM(inst, bits) ||
-         TryExtractADRP_ONLY_PCRELADDR(inst, bits) ||
-         TryExtractADD_64_ADDSUB_IMM(inst, bits) ||
-         TryExtractMOVZ_64_MOVEWIDE(inst, bits) ||
-         TryExtractUBFM_32M_BITFIELD(inst, bits) ||
-         TryExtractSUB_32_ADDSUB_IMM(inst, bits) ||
-         TryExtractORR_64_LOG_IMM(inst, bits) ||
-         TryExtractANDS_64S_LOG_IMM(inst, bits) ||
-         TryExtractAND_32_LOG_IMM(inst, bits) ||
-         TryExtractADDS_32S_ADDSUB_IMM(inst, bits) ||
-         TryExtractADD_32_ADDSUB_IMM(inst, bits) ||
-         TryExtractANDS_32S_LOG_IMM(inst, bits) ||
-         TryExtractSBFM_64M_BITFIELD(inst, bits) ||
          TryExtractEXTR_32_EXTRACT(inst, bits) ||
+         TryExtractEXTR_64_EXTRACT(inst, bits) ||
+         TryExtractEOR_32_LOG_IMM(inst, bits) ||
+         TryExtractBFM_32M_BITFIELD(inst, bits) ||
          TryExtractSBFM_32M_BITFIELD(inst, bits) ||
-         TryExtractAND_64_LOG_IMM(inst, bits) ||
-         TryExtractSUBS_32S_ADDSUB_IMM(inst, bits) ||
-         TryExtractMOVK_32_MOVEWIDE(inst, bits) ||
+         TryExtractUBFM_64M_BITFIELD(inst, bits) ||
+         TryExtractBFM_64M_BITFIELD(inst, bits) ||
+         TryExtractAND_32_LOG_IMM(inst, bits) ||
+         TryExtractSBFM_64M_BITFIELD(inst, bits) ||
+         TryExtractANDS_32S_LOG_IMM(inst, bits) ||
+         TryExtractUBFM_32M_BITFIELD(inst, bits) ||
          TryExtractORR_32_LOG_IMM(inst, bits) ||
+         TryExtractORR_64_LOG_IMM(inst, bits) ||
+         TryExtractMOVN_64_MOVEWIDE(inst, bits) ||
+         TryExtractMOVZ_64_MOVEWIDE(inst, bits) ||
+         TryExtractMOVK_32_MOVEWIDE(inst, bits) ||
+         TryExtractAND_64_LOG_IMM(inst, bits) ||
+         TryExtractMOVZ_32_MOVEWIDE(inst, bits) ||
          TryExtractMOVN_32_MOVEWIDE(inst, bits) ||
          TryExtractMOVK_64_MOVEWIDE(inst, bits) ||
-         TryExtractEOR_32_LOG_IMM(inst, bits) ||
-         TryExtractMOVN_64_MOVEWIDE(inst, bits) ||
-         TryExtractADR_ONLY_PCRELADDR(inst, bits) ||
-         TryExtractSUB_64_ADDSUB_IMM(inst, bits) ||
+         TryExtractANDS_64S_LOG_IMM(inst, bits) ||
+         TryExtractEOR_64_LOG_IMM(inst, bits) ||
+         TryExtractADD_32_ADDSUB_IMM(inst, bits) ||
+         TryExtractSUB_32_ADDSUB_IMM(inst, bits) ||
+         TryExtractADDS_32S_ADDSUB_IMM(inst, bits) ||
          TryExtractSUBS_64S_ADDSUB_IMM(inst, bits) ||
-         TryExtractMOVZ_32_MOVEWIDE(inst, bits) ||
-         TryExtractEXTR_64_EXTRACT(inst, bits) ||
+         TryExtractSUBS_32S_ADDSUB_IMM(inst, bits) ||
+         TryExtractSUB_64_ADDSUB_IMM(inst, bits) ||
          TryExtractADDS_64S_ADDSUB_IMM(inst, bits) ||
-         TryExtractUBFM_64M_BITFIELD(inst, bits);
+         TryExtractADD_64_ADDSUB_IMM(inst, bits) ||
+         TryExtractADR_ONLY_PCRELADDR(inst, bits) ||
+         TryExtractADRP_ONLY_PCRELADDR(inst, bits);
 }
 
 // 00010100000000000000000000000000
 static bool TryExtract5(InstData &inst, uint32_t bits) {
   return false ||
-         TryExtractB_ONLY_BRANCH_IMM(inst, bits) ||
-         TryExtractDCPS1_DC_EXCEPTION(inst, bits) ||
-         TryExtractHINT_2(inst, bits) ||
-         TryExtractRET_64R_BRANCH_REG(inst, bits) ||
          TryExtractWFI_HI_SYSTEM(inst, bits) ||
-         TryExtractMSR_SI_SYSTEM(inst, bits) ||
-         TryExtractBLR_64_BRANCH_REG(inst, bits) ||
-         TryExtractTBNZ_ONLY_TESTBRANCH(inst, bits) ||
-         TryExtractHINT_1(inst, bits) ||
          TryExtractERET_64E_BRANCH_REG(inst, bits) ||
+         TryExtractESB_HI_SYSTEM(inst, bits) ||
+         TryExtractDRPS_64E_BRANCH_REG(inst, bits) ||
+         TryExtractWFE_HI_SYSTEM(inst, bits) ||
+         TryExtractNOP_HI_SYSTEM(inst, bits) ||
+         TryExtractSEV_HI_SYSTEM(inst, bits) ||
+         TryExtractPSB_HC_SYSTEM(inst, bits) ||
+         TryExtractYIELD_HI_SYSTEM(inst, bits) ||
+         TryExtractSEVL_HI_SYSTEM(inst, bits) ||
+         TryExtractHINT_1(inst, bits) ||
          TryExtractHINT_3(inst, bits) ||
+         TryExtractDSB_BO_SYSTEM(inst, bits) ||
+         TryExtractISB_BI_SYSTEM(inst, bits) ||
+         TryExtractCLREX_BN_SYSTEM(inst, bits) ||
+         TryExtractDMB_BO_SYSTEM(inst, bits) ||
+         TryExtractBLR_64_BRANCH_REG(inst, bits) ||
+         TryExtractBR_64_BRANCH_REG(inst, bits) ||
+         TryExtractRET_64R_BRANCH_REG(inst, bits) ||
+         TryExtractHINT_2(inst, bits) ||
+         TryExtractMSR_SI_SYSTEM(inst, bits) ||
+         TryExtractDCPS3_DC_EXCEPTION(inst, bits) ||
+         TryExtractDCPS2_DC_EXCEPTION(inst, bits) ||
+         TryExtractBRK_EX_EXCEPTION(inst, bits) ||
          TryExtractHVC_EX_EXCEPTION(inst, bits) ||
-         TryExtractCBZ_32_COMPBRANCH(inst, bits) ||
+         TryExtractDCPS1_DC_EXCEPTION(inst, bits) ||
+         TryExtractHLT_EX_EXCEPTION(inst, bits) ||
+         TryExtractSMC_EX_EXCEPTION(inst, bits) ||
+         TryExtractSVC_EX_EXCEPTION(inst, bits) ||
          TryExtractSYS_CR_SYSTEM(inst, bits) ||
          TryExtractSYSL_RC_SYSTEM(inst, bits) ||
-         TryExtractSVC_EX_EXCEPTION(inst, bits) ||
-         TryExtractDMB_BO_SYSTEM(inst, bits) ||
-         TryExtractCBNZ_64_COMPBRANCH(inst, bits) ||
-         TryExtractYIELD_HI_SYSTEM(inst, bits) ||
-         TryExtractBL_ONLY_BRANCH_IMM(inst, bits) ||
-         TryExtractCBNZ_32_COMPBRANCH(inst, bits) ||
-         TryExtractHLT_EX_EXCEPTION(inst, bits) ||
-         TryExtractTBZ_ONLY_TESTBRANCH(inst, bits) ||
-         TryExtractDCPS3_DC_EXCEPTION(inst, bits) ||
-         TryExtractCLREX_BN_SYSTEM(inst, bits) ||
-         TryExtractDCPS2_DC_EXCEPTION(inst, bits) ||
-         TryExtractNOP_HI_SYSTEM(inst, bits) ||
          TryExtractMRS_RS_SYSTEM(inst, bits) ||
          TryExtractMSR_SR_SYSTEM(inst, bits) ||
-         TryExtractSEVL_HI_SYSTEM(inst, bits) ||
-         TryExtractPSB_HC_SYSTEM(inst, bits) ||
-         TryExtractSEV_HI_SYSTEM(inst, bits) ||
-         TryExtractBRK_EX_EXCEPTION(inst, bits) ||
-         TryExtractCBZ_64_COMPBRANCH(inst, bits) ||
-         TryExtractSMC_EX_EXCEPTION(inst, bits) ||
-         TryExtractISB_BI_SYSTEM(inst, bits) ||
-         TryExtractWFE_HI_SYSTEM(inst, bits) ||
          TryExtractB_ONLY_CONDBRANCH(inst, bits) ||
-         TryExtractBR_64_BRANCH_REG(inst, bits) ||
-         TryExtractDRPS_64E_BRANCH_REG(inst, bits) ||
-         TryExtractDSB_BO_SYSTEM(inst, bits) ||
-         TryExtractESB_HI_SYSTEM(inst, bits);
+         TryExtractCBZ_64_COMPBRANCH(inst, bits) ||
+         TryExtractCBNZ_32_COMPBRANCH(inst, bits) ||
+         TryExtractCBZ_32_COMPBRANCH(inst, bits) ||
+         TryExtractCBNZ_64_COMPBRANCH(inst, bits) ||
+         TryExtractTBZ_ONLY_TESTBRANCH(inst, bits) ||
+         TryExtractTBNZ_ONLY_TESTBRANCH(inst, bits) ||
+         TryExtractBL_ONLY_BRANCH_IMM(inst, bits) ||
+         TryExtractB_ONLY_BRANCH_IMM(inst, bits);
 }
 
 // 00011000000000000000000000000000
 static bool TryExtract6(InstData &inst, uint32_t bits) {
   return false ||
-         TryExtractLDADDALB_32_MEMOP(inst, bits) ||
-         TryExtractSTR_64_LDST_IMMPOST(inst, bits) ||
-         TryExtractSTR_64_LDST_REGOFF(inst, bits) ||
-         TryExtractSTR_32_LDST_IMMPRE(inst, bits) ||
-         TryExtractSTR_64_LDST_IMMPRE(inst, bits) ||
-         TryExtractSTEOR_64S_MEMOP(inst, bits) ||
-         TryExtractLDSETAB_32_MEMOP(inst, bits) ||
-         TryExtractSTR_32_LDST_POS(inst, bits) ||
-         TryExtractLDSETALB_32_MEMOP(inst, bits) ||
-         TryExtractSTR_64_LDST_POS(inst, bits) ||
-         TryExtractLDTRSH_32_LDST_UNPRIV(inst, bits) ||
-         TryExtractLDTRSW_64_LDST_UNPRIV(inst, bits) ||
-         TryExtractASRV_64_DP_2SRC(inst, bits) ||
-         TryExtractLDADDAB_32_MEMOP(inst, bits) ||
-         TryExtractLDURSH_64_LDST_UNSCALED(inst, bits) ||
-         TryExtractASRV_32_DP_2SRC(inst, bits) ||
-         TryExtractLDRSB_32_LDST_IMMPRE(inst, bits) ||
-         TryExtractMSUB_64A_DP_3SRC(inst, bits) ||
-         TryExtractSTSET_32S_MEMOP(inst, bits) ||
-         TryExtractMSUB_32A_DP_3SRC(inst, bits) ||
-         TryExtractSTSETL_32S_MEMOP(inst, bits) ||
-         TryExtractSTSET_64S_MEMOP(inst, bits) ||
-         TryExtractRBIT_64_DP_1SRC(inst, bits) ||
-         TryExtractSTSETL_64S_MEMOP(inst, bits) ||
-         TryExtractLDSETB_32_MEMOP(inst, bits) ||
-         TryExtractSBC_64_ADDSUB_CARRY(inst, bits) ||
-         TryExtractPRFM_P_LOADLIT(inst, bits) ||
-         TryExtractLDADDAL_32_MEMOP(inst, bits) ||
-         TryExtractUDIV_32_DP_2SRC(inst, bits) ||
-         TryExtractLDTRSB_64_LDST_UNPRIV(inst, bits) ||
-         TryExtractSTRB_32BL_LDST_REGOFF(inst, bits) ||
-         TryExtractLDTRSB_32_LDST_UNPRIV(inst, bits) ||
-         TryExtractLDSETLB_32_MEMOP(inst, bits) ||
-         TryExtractLDURSB_32_LDST_UNSCALED(inst, bits) ||
-         TryExtractLDEORB_32_MEMOP(inst, bits) ||
-         TryExtractSTSMAXL_64S_MEMOP(inst, bits) ||
-         TryExtractLDURSH_32_LDST_UNSCALED(inst, bits) ||
-         TryExtractLDTRH_32_LDST_UNPRIV(inst, bits) ||
-         TryExtractLDRH_32_LDST_IMMPOST(inst, bits) ||
-         TryExtractSWPLB_32_MEMOP(inst, bits) ||
-         TryExtractLDRH_32_LDST_IMMPRE(inst, bits) ||
-         TryExtractLDRH_32_LDST_POS(inst, bits) ||
-         TryExtractSWPB_32_MEMOP(inst, bits) ||
-         TryExtractLDSMINB_32_MEMOP(inst, bits) ||
-         TryExtractSWPALB_32_MEMOP(inst, bits) ||
-         TryExtractLDUMAXL_32_MEMOP(inst, bits) ||
-         TryExtractLDRSH_64_LDST_POS(inst, bits) ||
-         TryExtractSWPAB_32_MEMOP(inst, bits) ||
-         TryExtractLDSMINLB_32_MEMOP(inst, bits) ||
-         TryExtractSTRB_32_LDST_IMMPOST(inst, bits) ||
-         TryExtractLDRSW_64_LDST_POS(inst, bits) ||
-         TryExtractLDEORALB_32_MEMOP(inst, bits) ||
-         TryExtractCCMP_64_CONDCMP_IMM(inst, bits) ||
-         TryExtractLDR_32_LDST_IMMPOST(inst, bits) ||
-         TryExtractLDR_64_LDST_IMMPOST(inst, bits) ||
-         TryExtractSDIV_32_DP_2SRC(inst, bits) ||
-         TryExtractLDR_32_LDST_IMMPRE(inst, bits) ||
-         TryExtractLDR_64_LDST_IMMPRE(inst, bits) ||
-         TryExtractLDCLRA_32_MEMOP(inst, bits) ||
-         TryExtractLDR_32_LDST_POS(inst, bits) ||
-         TryExtractLDR_64_LDST_POS(inst, bits) ||
-         TryExtractCSINV_32_CONDSEL(inst, bits) ||
-         TryExtractSTCLRB_32S_MEMOP(inst, bits) ||
-         TryExtractLDRB_32_LDST_POS(inst, bits) ||
-         TryExtractSTUMIN_32S_MEMOP(inst, bits) ||
-         TryExtractLDEORLB_32_MEMOP(inst, bits) ||
-         TryExtractSTUMINL_32S_MEMOP(inst, bits) ||
-         TryExtractLDSMINALB_32_MEMOP(inst, bits) ||
-         TryExtractSTUMINL_64S_MEMOP(inst, bits) ||
-         TryExtractSTSMINL_64S_MEMOP(inst, bits) ||
-         TryExtractLDRSB_64BL_LDST_REGOFF(inst, bits) ||
-         TryExtractSTSMIN_64S_MEMOP(inst, bits) ||
-         TryExtractSTSMIN_32S_MEMOP(inst, bits) ||
-         TryExtractSTUMIN_64S_MEMOP(inst, bits) ||
-         TryExtractSTSMINL_32S_MEMOP(inst, bits) ||
-         TryExtractSTRB_32B_LDST_REGOFF(inst, bits) ||
-         TryExtractLDCLRAH_32_MEMOP(inst, bits) ||
-         TryExtractSTEORLH_32S_MEMOP(inst, bits) ||
-         TryExtractSTSETH_32S_MEMOP(inst, bits) ||
-         TryExtractLDRSB_64_LDST_POS(inst, bits) ||
-         TryExtractSTADDL_32S_MEMOP(inst, bits) ||
-         TryExtractSTUMINLH_32S_MEMOP(inst, bits) ||
-         TryExtractSTSMAX_64S_MEMOP(inst, bits) ||
-         TryExtractLDCLRALH_32_MEMOP(inst, bits) ||
-         TryExtractSTEORH_32S_MEMOP(inst, bits) ||
-         TryExtractSTUMINH_32S_MEMOP(inst, bits) ||
-         TryExtractPRFUM_P_LDST_UNSCALED(inst, bits) ||
-         TryExtractLDSMAXLB_32_MEMOP(inst, bits) ||
-         TryExtractADCS_32_ADDSUB_CARRY(inst, bits) ||
-         TryExtractLDCLRLH_32_MEMOP(inst, bits) ||
-         TryExtractSBCS_64_ADDSUB_CARRY(inst, bits) ||
-         TryExtractSTADDL_64S_MEMOP(inst, bits) ||
-         TryExtractCCMP_32_CONDCMP_IMM(inst, bits) ||
-         TryExtractRORV_32_DP_2SRC(inst, bits) ||
-         TryExtractRORV_64_DP_2SRC(inst, bits) ||
-         TryExtractLDSMINA_32_MEMOP(inst, bits) ||
-         TryExtractADCS_64_ADDSUB_CARRY(inst, bits) ||
-         TryExtractUDIV_64_DP_2SRC(inst, bits) ||
-         TryExtractLDSMAXA_32_MEMOP(inst, bits) ||
-         TryExtractLDSMAXAL_32_MEMOP(inst, bits) ||
-         TryExtractLDSMAX_32_MEMOP(inst, bits) ||
-         TryExtractCRC32B_32C_DP_2SRC(inst, bits) ||
-         TryExtractLDSMAXL_32_MEMOP(inst, bits) ||
-         TryExtractMADD_64A_DP_3SRC(inst, bits) ||
-         TryExtractLDSMAXA_64_MEMOP(inst, bits) ||
-         TryExtractLDSMAXAL_64_MEMOP(inst, bits) ||
-         TryExtractLDSMAXL_64_MEMOP(inst, bits) ||
-         TryExtractLDSMIN_32_MEMOP(inst, bits) ||
-         TryExtractLDSMAX_64_MEMOP(inst, bits) ||
-         TryExtractLDUMINB_32_MEMOP(inst, bits) ||
-         TryExtractSTSETLB_32S_MEMOP(inst, bits) ||
-         TryExtractSMULH_64_DP_3SRC(inst, bits) ||
-         TryExtractLDSMINLH_32_MEMOP(inst, bits) ||
-         TryExtractLDSMINAL_32_MEMOP(inst, bits) ||
-         TryExtractCCMP_32_CONDCMP_REG(inst, bits) ||
-         TryExtractLDURSW_64_LDST_UNSCALED(inst, bits) ||
-         TryExtractLDSMINL_32_MEMOP(inst, bits) ||
-         TryExtractLDRSH_32_LDST_IMMPOST(inst, bits) ||
-         TryExtractLDSMINA_64_MEMOP(inst, bits) ||
-         TryExtractLDSMINH_32_MEMOP(inst, bits) ||
-         TryExtractSTEORL_32S_MEMOP(inst, bits) ||
-         TryExtractPRFM_P_LDST_POS(inst, bits) ||
-         TryExtractLDSMIN_64_MEMOP(inst, bits) ||
-         TryExtractSTRB_32_LDST_IMMPRE(inst, bits) ||
-         TryExtractLDSMINAL_64_MEMOP(inst, bits) ||
-         TryExtractLDSMINALH_32_MEMOP(inst, bits) ||
-         TryExtractLDUMAXAL_64_MEMOP(inst, bits) ||
-         TryExtractLDRSH_64_LDST_IMMPOST(inst, bits) ||
-         TryExtractLDSMINAH_32_MEMOP(inst, bits) ||
-         TryExtractSTADDLB_32S_MEMOP(inst, bits) ||
-         TryExtractSWPALH_32_MEMOP(inst, bits) ||
-         TryExtractLDADDB_32_MEMOP(inst, bits) ||
-         TryExtractSWPH_32_MEMOP(inst, bits) ||
-         TryExtractADC_32_ADDSUB_CARRY(inst, bits) ||
-         TryExtractLDSMINL_64_MEMOP(inst, bits) ||
-         TryExtractSTTRH_32_LDST_UNPRIV(inst, bits) ||
-         TryExtractLDUR_64_LDST_UNSCALED(inst, bits) ||
-         TryExtractLDSMAXALH_32_MEMOP(inst, bits) ||
-         TryExtractPRFM_P_LDST_REGOFF(inst, bits) ||
-         TryExtractSWPLH_32_MEMOP(inst, bits) ||
-         TryExtractLDRSW_64_LDST_REGOFF(inst, bits) ||
-         TryExtractSTRB_32_LDST_POS(inst, bits) ||
-         TryExtractLDTR_64_LDST_UNPRIV(inst, bits) ||
-         TryExtractLDRSH_64_LDST_IMMPRE(inst, bits) ||
-         TryExtractLDTR_32_LDST_UNPRIV(inst, bits) ||
-         TryExtractLDSMAXAH_32_MEMOP(inst, bits) ||
-         TryExtractLDSMAXLH_32_MEMOP(inst, bits) ||
-         TryExtractLDCLRB_32_MEMOP(inst, bits) ||
-         TryExtractLDRSH_32_LDST_REGOFF(inst, bits) ||
-         TryExtractCSINV_64_CONDSEL(inst, bits) ||
-         TryExtractLDRSH_64_LDST_REGOFF(inst, bits) ||
-         TryExtractSTSETB_32S_MEMOP(inst, bits) ||
-         TryExtractADC_64_ADDSUB_CARRY(inst, bits) ||
-         TryExtractLDSETALH_32_MEMOP(inst, bits) ||
-         TryExtractCSEL_64_CONDSEL(inst, bits) ||
-         TryExtractCCMP_64_CONDCMP_REG(inst, bits) ||
-         TryExtractLDADDLB_32_MEMOP(inst, bits) ||
-         TryExtractSTSMINLH_32S_MEMOP(inst, bits) ||
-         TryExtractCSEL_32_CONDSEL(inst, bits) ||
-         TryExtractSTEORLB_32S_MEMOP(inst, bits) ||
-         TryExtractLDSETH_32_MEMOP(inst, bits) ||
-         TryExtractSTCLRLH_32S_MEMOP(inst, bits) ||
-         TryExtractLDCLRLB_32_MEMOP(inst, bits) ||
-         TryExtractLDR_64_LDST_REGOFF(inst, bits) ||
-         TryExtractSTADDLH_32S_MEMOP(inst, bits) ||
-         TryExtractLDTRB_32_LDST_UNPRIV(inst, bits) ||
-         TryExtractSTUMINLB_32S_MEMOP(inst, bits) ||
-         TryExtractLDUMAXA_32_MEMOP(inst, bits) ||
-         TryExtractLDUMAX_32_MEMOP(inst, bits) ||
-         TryExtractSTR_32_LDST_REGOFF(inst, bits) ||
-         TryExtractLDADDAH_32_MEMOP(inst, bits) ||
-         TryExtractLDUMAXA_64_MEMOP(inst, bits) ||
-         TryExtractLDURB_32_LDST_UNSCALED(inst, bits) ||
-         TryExtractLDUMAXL_64_MEMOP(inst, bits) ||
-         TryExtractLDUMAX_64_MEMOP(inst, bits) ||
-         TryExtractSTUMINB_32S_MEMOP(inst, bits) ||
-         TryExtractLSLV_32_DP_2SRC(inst, bits) ||
-         TryExtractLDUMAXAL_32_MEMOP(inst, bits) ||
-         TryExtractLDRB_32B_LDST_REGOFF(inst, bits) ||
-         TryExtractLDR_32_LDST_REGOFF(inst, bits) ||
-         TryExtractSTSETLH_32S_MEMOP(inst, bits) ||
-         TryExtractSTSMAXB_32S_MEMOP(inst, bits) ||
-         TryExtractLDADDALH_32_MEMOP(inst, bits) ||
-         TryExtractSDIV_64_DP_2SRC(inst, bits) ||
-         TryExtractLDEOR_32_MEMOP(inst, bits) ||
-         TryExtractLDRB_32BL_LDST_REGOFF(inst, bits) ||
-         TryExtractUMULH_64_DP_3SRC(inst, bits) ||
-         TryExtractSWPAH_32_MEMOP(inst, bits) ||
-         TryExtractSTSMAXLB_32S_MEMOP(inst, bits) ||
-         TryExtractSTR_32_LDST_IMMPOST(inst, bits) ||
-         TryExtractSTEORB_32S_MEMOP(inst, bits) ||
-         TryExtractCSNEG_32_CONDSEL(inst, bits) ||
-         TryExtractSTCLRH_32S_MEMOP(inst, bits) ||
-         TryExtractCSINC_64_CONDSEL(inst, bits) ||
-         TryExtractCSINC_32_CONDSEL(inst, bits) ||
-         TryExtractLDSETLH_32_MEMOP(inst, bits) ||
-         TryExtractREV32_64_DP_1SRC(inst, bits) ||
-         TryExtractCCMN_64_CONDCMP_IMM(inst, bits) ||
-         TryExtractLDRH_32_LDST_REGOFF(inst, bits) ||
-         TryExtractLDADDLH_32_MEMOP(inst, bits) ||
-         TryExtractLDEOR_64_MEMOP(inst, bits) ||
-         TryExtractSTUMAXLB_32S_MEMOP(inst, bits) ||
-         TryExtractSTADDH_32S_MEMOP(inst, bits) ||
-         TryExtractLDADDH_32_MEMOP(inst, bits) ||
-         TryExtractLDSETAH_32_MEMOP(inst, bits) ||
-         TryExtractLSLV_64_DP_2SRC(inst, bits) ||
-         TryExtractSWP_64_MEMOP(inst, bits) ||
-         TryExtractLDUMINH_32_MEMOP(inst, bits) ||
-         TryExtractLDUMINA_64_MEMOP(inst, bits) ||
-         TryExtractSTRH_32_LDST_POS(inst, bits) ||
-         TryExtractCCMN_32_CONDCMP_IMM(inst, bits) ||
-         TryExtractLDRSB_32_LDST_IMMPOST(inst, bits) ||
-         TryExtractSMSUBL_64WA_DP_3SRC(inst, bits) ||
-         TryExtractLDRSB_64_LDST_IMMPOST(inst, bits) ||
-         TryExtractREV_32_DP_1SRC(inst, bits) ||
-         TryExtractLDSMAXB_32_MEMOP(inst, bits) ||
-         TryExtractMADD_32A_DP_3SRC(inst, bits) ||
-         TryExtractCRC32CX_64C_DP_2SRC(inst, bits) ||
-         TryExtractLDRSB_64_LDST_IMMPRE(inst, bits) ||
-         TryExtractCRC32CW_32C_DP_2SRC(inst, bits) ||
-         TryExtractLDRSB_32_LDST_POS(inst, bits) ||
-         TryExtractLDCLRL_32_MEMOP(inst, bits) ||
-         TryExtractLDEORLH_32_MEMOP(inst, bits) ||
-         TryExtractLDCLRA_64_MEMOP(inst, bits) ||
-         TryExtractLDCLRAL_64_MEMOP(inst, bits) ||
-         TryExtractLDUMINAL_64_MEMOP(inst, bits) ||
-         TryExtractLDCLR_64_MEMOP(inst, bits) ||
-         TryExtractLDCLRL_64_MEMOP(inst, bits) ||
-         TryExtractSTEORL_64S_MEMOP(inst, bits) ||
-         TryExtractSWP_32_MEMOP(inst, bits) ||
-         TryExtractLDUR_32_LDST_UNSCALED(inst, bits) ||
-         TryExtractSTSMAXLH_32S_MEMOP(inst, bits) ||
-         TryExtractSTADD_64S_MEMOP(inst, bits) ||
-         TryExtractSTSMAXH_32S_MEMOP(inst, bits) ||
-         TryExtractSBC_32_ADDSUB_CARRY(inst, bits) ||
-         TryExtractLDUMINAB_32_MEMOP(inst, bits) ||
-         TryExtractSTADDB_32S_MEMOP(inst, bits) ||
-         TryExtractLDUMAXH_32_MEMOP(inst, bits) ||
-         TryExtractLDSETAL_64_MEMOP(inst, bits) ||
-         TryExtractLDUMINALH_32_MEMOP(inst, bits) ||
-         TryExtractLDRSW_64_LDST_IMMPRE(inst, bits) ||
-         TryExtractLDUMINAH_32_MEMOP(inst, bits) ||
-         TryExtractCLZ_64_DP_1SRC(inst, bits) ||
-         TryExtractLDRSW_64_LDST_IMMPOST(inst, bits) ||
-         TryExtractCLZ_32_DP_1SRC(inst, bits) ||
-         TryExtractLDSET_64_MEMOP(inst, bits) ||
-         TryExtractSTRH_32_LDST_IMMPOST(inst, bits) ||
-         TryExtractSWPL_32_MEMOP(inst, bits) ||
-         TryExtractSTUMAXB_32S_MEMOP(inst, bits) ||
-         TryExtractSTRH_32_LDST_IMMPRE(inst, bits) ||
-         TryExtractLDADDAL_64_MEMOP(inst, bits) ||
-         TryExtractLDUMINLH_32_MEMOP(inst, bits) ||
-         TryExtractLDUMAXAH_32_MEMOP(inst, bits) ||
-         TryExtractLDUMAXLH_32_MEMOP(inst, bits) ||
-         TryExtractSWPA_64_MEMOP(inst, bits) ||
-         TryExtractLDADD_32_MEMOP(inst, bits) ||
-         TryExtractLDADD_64_MEMOP(inst, bits) ||
-         TryExtractLDADDL_64_MEMOP(inst, bits) ||
-         TryExtractSTURH_32_LDST_UNSCALED(inst, bits) ||
-         TryExtractLDADDA_64_MEMOP(inst, bits) ||
-         TryExtractLDRSH_32_LDST_IMMPRE(inst, bits) ||
-         TryExtractLDUMAXALH_32_MEMOP(inst, bits) ||
-         TryExtractLDADDL_32_MEMOP(inst, bits) ||
-         TryExtractLDRSH_32_LDST_POS(inst, bits) ||
-         TryExtractSTUR_32_LDST_UNSCALED(inst, bits) ||
-         TryExtractLDSMAXAB_32_MEMOP(inst, bits) ||
-         TryExtractLDUMAXAB_32_MEMOP(inst, bits) ||
-         TryExtractLDUMAXALB_32_MEMOP(inst, bits) ||
-         TryExtractLDUMAXB_32_MEMOP(inst, bits) ||
-         TryExtractLDUMAXLB_32_MEMOP(inst, bits) ||
-         TryExtractLDCLRH_32_MEMOP(inst, bits) ||
-         TryExtractLDRB_32_LDST_IMMPRE(inst, bits) ||
-         TryExtractLDEORALH_32_MEMOP(inst, bits) ||
-         TryExtractSTSMINH_32S_MEMOP(inst, bits) ||
-         TryExtractLDUMIN_32_MEMOP(inst, bits) ||
-         TryExtractLDRB_32_LDST_IMMPOST(inst, bits) ||
-         TryExtractLDUMINAL_32_MEMOP(inst, bits) ||
-         TryExtractLDUMINA_32_MEMOP(inst, bits) ||
-         TryExtractRBIT_32_DP_1SRC(inst, bits) ||
-         TryExtractSTUMAX_32S_MEMOP(inst, bits) ||
-         TryExtractSTRH_32_LDST_REGOFF(inst, bits) ||
-         TryExtractLDADDA_32_MEMOP(inst, bits) ||
-         TryExtractSTUMAXL_32S_MEMOP(inst, bits) ||
-         TryExtractREV16_32_DP_1SRC(inst, bits) ||
-         TryExtractLDUMIN_64_MEMOP(inst, bits) ||
-         TryExtractUMADDL_64WA_DP_3SRC(inst, bits) ||
-         TryExtractSWPAL_64_MEMOP(inst, bits) ||
-         TryExtractLDRSW_64_LOADLIT(inst, bits) ||
-         TryExtractSTUMAX_64S_MEMOP(inst, bits) ||
-         TryExtractLDTRSH_64_LDST_UNPRIV(inst, bits) ||
-         TryExtractLDUMINL_64_MEMOP(inst, bits) ||
-         TryExtractSTUMAXL_64S_MEMOP(inst, bits) ||
-         TryExtractSTUR_64_LDST_UNSCALED(inst, bits) ||
-         TryExtractSTCLR_64S_MEMOP(inst, bits) ||
-         TryExtractCSNEG_64_CONDSEL(inst, bits) ||
-         TryExtractREV16_64_DP_1SRC(inst, bits) ||
-         TryExtractCRC32X_64C_DP_2SRC(inst, bits) ||
-         TryExtractUMSUBL_64WA_DP_3SRC(inst, bits) ||
-         TryExtractLDEORAH_32_MEMOP(inst, bits) ||
-         TryExtractSTCLRL_32S_MEMOP(inst, bits) ||
-         TryExtractSTCLRL_64S_MEMOP(inst, bits) ||
-         TryExtractSTCLRLB_32S_MEMOP(inst, bits) ||
-         TryExtractLDUMINL_32_MEMOP(inst, bits) ||
-         TryExtractLDURSB_64_LDST_UNSCALED(inst, bits) ||
-         TryExtractCRC32W_32C_DP_2SRC(inst, bits) ||
-         TryExtractSBCS_32_ADDSUB_CARRY(inst, bits) ||
-         TryExtractCCMN_64_CONDCMP_REG(inst, bits) ||
-         TryExtractSTCLR_32S_MEMOP(inst, bits) ||
-         TryExtractLDRSB_32BL_LDST_REGOFF(inst, bits) ||
-         TryExtractLDRSB_64B_LDST_REGOFF(inst, bits) ||
-         TryExtractSWPA_32_MEMOP(inst, bits) ||
-         TryExtractSTSMINLB_32S_MEMOP(inst, bits) ||
-         TryExtractREV_64_DP_1SRC(inst, bits) ||
-         TryExtractCCMN_32_CONDCMP_REG(inst, bits) ||
-         TryExtractSTSMINB_32S_MEMOP(inst, bits) ||
-         TryExtractSWPL_64_MEMOP(inst, bits) ||
-         TryExtractSTSMAXL_32S_MEMOP(inst, bits) ||
-         TryExtractSTSMAX_32S_MEMOP(inst, bits) ||
-         TryExtractSWPAL_32_MEMOP(inst, bits) ||
-         TryExtractLDCLRAB_32_MEMOP(inst, bits) ||
-         TryExtractLDSMINAB_32_MEMOP(inst, bits) ||
-         TryExtractLDEORH_32_MEMOP(inst, bits) ||
          TryExtractSTADD_32S_MEMOP(inst, bits) ||
+         TryExtractSTUMINLH_32S_MEMOP(inst, bits) ||
+         TryExtractSTUMAXLB_32S_MEMOP(inst, bits) ||
+         TryExtractREV_64_DP_1SRC(inst, bits) ||
+         TryExtractREV_32_DP_1SRC(inst, bits) ||
+         TryExtractSTSMAXH_32S_MEMOP(inst, bits) ||
+         TryExtractCLZ_32_DP_1SRC(inst, bits) ||
+         TryExtractSTUMINH_32S_MEMOP(inst, bits) ||
+         TryExtractSTSMAXLH_32S_MEMOP(inst, bits) ||
+         TryExtractCLS_32_DP_1SRC(inst, bits) ||
+         TryExtractSTUMINB_32S_MEMOP(inst, bits) ||
+         TryExtractSTEORLH_32S_MEMOP(inst, bits) ||
+         TryExtractSTEORH_32S_MEMOP(inst, bits) ||
+         TryExtractSTADD_64S_MEMOP(inst, bits) ||
+         TryExtractSTSMAXL_64S_MEMOP(inst, bits) ||
+         TryExtractSTUMINLB_32S_MEMOP(inst, bits) ||
+         TryExtractCLS_64_DP_1SRC(inst, bits) ||
+         TryExtractSTCLRL_64S_MEMOP(inst, bits) ||
+         TryExtractSTSETB_32S_MEMOP(inst, bits) ||
+         TryExtractSTCLRH_32S_MEMOP(inst, bits) ||
+         TryExtractSTADDB_32S_MEMOP(inst, bits) ||
+         TryExtractSTUMIN_32S_MEMOP(inst, bits) ||
+         TryExtractSTADDL_32S_MEMOP(inst, bits) ||
+         TryExtractSTUMINL_64S_MEMOP(inst, bits) ||
+         TryExtractSTUMIN_64S_MEMOP(inst, bits) ||
+         TryExtractSTADDL_64S_MEMOP(inst, bits) ||
+         TryExtractSTUMAXH_32S_MEMOP(inst, bits) ||
+         TryExtractREV16_32_DP_1SRC(inst, bits) ||
+         TryExtractSTSET_32S_MEMOP(inst, bits) ||
+         TryExtractSTSETL_32S_MEMOP(inst, bits) ||
+         TryExtractSTSETL_64S_MEMOP(inst, bits) ||
+         TryExtractSTSMINH_32S_MEMOP(inst, bits) ||
+         TryExtractSTSMINLH_32S_MEMOP(inst, bits) ||
+         TryExtractSTUMAXB_32S_MEMOP(inst, bits) ||
+         TryExtractSTUMINL_32S_MEMOP(inst, bits) ||
+         TryExtractSTCLRLB_32S_MEMOP(inst, bits) ||
+         TryExtractSTSMINL_64S_MEMOP(inst, bits) ||
+         TryExtractSTCLR_32S_MEMOP(inst, bits) ||
+         TryExtractSTCLRB_32S_MEMOP(inst, bits) ||
+         TryExtractSTSMAXB_32S_MEMOP(inst, bits) ||
+         TryExtractSTSMINL_32S_MEMOP(inst, bits) ||
+         TryExtractSTEORLB_32S_MEMOP(inst, bits) ||
+         TryExtractSTEORB_32S_MEMOP(inst, bits) ||
+         TryExtractSTEORL_32S_MEMOP(inst, bits) ||
+         TryExtractSTCLRLH_32S_MEMOP(inst, bits) ||
+         TryExtractSTSMAX_64S_MEMOP(inst, bits) ||
+         TryExtractSTADDLH_32S_MEMOP(inst, bits) ||
+         TryExtractCLZ_64_DP_1SRC(inst, bits) ||
+         TryExtractSTADDH_32S_MEMOP(inst, bits) ||
+         TryExtractSTSMAX_32S_MEMOP(inst, bits) ||
+         TryExtractSTSMAXL_32S_MEMOP(inst, bits) ||
+         TryExtractSTSMINLB_32S_MEMOP(inst, bits) ||
+         TryExtractSTSMINB_32S_MEMOP(inst, bits) ||
+         TryExtractSTUMAXLH_32S_MEMOP(inst, bits) ||
+         TryExtractSTADDLB_32S_MEMOP(inst, bits) ||
+         TryExtractREV32_64_DP_1SRC(inst, bits) ||
+         TryExtractSTSMAXLB_32S_MEMOP(inst, bits) ||
+         TryExtractRBIT_64_DP_1SRC(inst, bits) ||
+         TryExtractSTSETLB_32S_MEMOP(inst, bits) ||
+         TryExtractSTEOR_32S_MEMOP(inst, bits) ||
+         TryExtractRBIT_32_DP_1SRC(inst, bits) ||
+         TryExtractSTCLR_64S_MEMOP(inst, bits) ||
+         TryExtractSTCLRL_32S_MEMOP(inst, bits) ||
+         TryExtractSTSETLH_32S_MEMOP(inst, bits) ||
+         TryExtractSTSET_64S_MEMOP(inst, bits) ||
+         TryExtractSTUMAX_32S_MEMOP(inst, bits) ||
+         TryExtractSTUMAXL_32S_MEMOP(inst, bits) ||
+         TryExtractSTEOR_64S_MEMOP(inst, bits) ||
+         TryExtractSTEORL_64S_MEMOP(inst, bits) ||
+         TryExtractSTUMAX_64S_MEMOP(inst, bits) ||
+         TryExtractSTSMIN_64S_MEMOP(inst, bits) ||
+         TryExtractSTUMAXL_64S_MEMOP(inst, bits) ||
+         TryExtractSTSMIN_32S_MEMOP(inst, bits) ||
+         TryExtractSTSETH_32S_MEMOP(inst, bits) ||
+         TryExtractREV16_64_DP_1SRC(inst, bits) ||
+         TryExtractLSLV_32_DP_2SRC(inst, bits) ||
+         TryExtractLDSMAXALB_32_MEMOP(inst, bits) ||
+         TryExtractSBC_64_ADDSUB_CARRY(inst, bits) ||
+         TryExtractLDSMAXAB_32_MEMOP(inst, bits) ||
+         TryExtractLDUMINALB_32_MEMOP(inst, bits) ||
+         TryExtractLSLV_64_DP_2SRC(inst, bits) ||
+         TryExtractLDADDALB_32_MEMOP(inst, bits) ||
+         TryExtractLDSMAXB_32_MEMOP(inst, bits) ||
+         TryExtractLDADDAB_32_MEMOP(inst, bits) ||
+         TryExtractLDSETALB_32_MEMOP(inst, bits) ||
+         TryExtractLDSETLB_32_MEMOP(inst, bits) ||
+         TryExtractLDSETB_32_MEMOP(inst, bits) ||
+         TryExtractLDUMAXA_64_MEMOP(inst, bits) ||
+         TryExtractLDSMINA_32_MEMOP(inst, bits) ||
+         TryExtractSWPAB_32_MEMOP(inst, bits) ||
+         TryExtractLDEORB_32_MEMOP(inst, bits) ||
+         TryExtractSWPALH_32_MEMOP(inst, bits) ||
+         TryExtractLDSMINAL_32_MEMOP(inst, bits) ||
+         TryExtractADC_32_ADDSUB_CARRY(inst, bits) ||
+         TryExtractLDEORLB_32_MEMOP(inst, bits) ||
+         TryExtractLDEORH_32_MEMOP(inst, bits) ||
+         TryExtractLDSMINL_32_MEMOP(inst, bits) ||
          TryExtractLDEORA_32_MEMOP(inst, bits) ||
          TryExtractLDEORAL_32_MEMOP(inst, bits) ||
-         TryExtractSTTR_64_LDST_UNPRIV(inst, bits) ||
+         TryExtractLDEOR_32_MEMOP(inst, bits) ||
          TryExtractLDEORL_32_MEMOP(inst, bits) ||
-         TryExtractLDUMINALB_32_MEMOP(inst, bits) ||
          TryExtractLDEORA_64_MEMOP(inst, bits) ||
          TryExtractLDEORAL_64_MEMOP(inst, bits) ||
-         TryExtractCRC32H_32C_DP_2SRC(inst, bits) ||
+         TryExtractSDIV_64_DP_2SRC(inst, bits) ||
+         TryExtractLDEOR_64_MEMOP(inst, bits) ||
          TryExtractLDEORL_64_MEMOP(inst, bits) ||
+         TryExtractUDIV_32_DP_2SRC(inst, bits) ||
+         TryExtractLDSMAXALH_32_MEMOP(inst, bits) ||
+         TryExtractLDEORLH_32_MEMOP(inst, bits) ||
+         TryExtractLDUMAXAL_64_MEMOP(inst, bits) ||
+         TryExtractLDSMAXAL_32_MEMOP(inst, bits) ||
+         TryExtractLDEORAB_32_MEMOP(inst, bits) ||
+         TryExtractADC_64_ADDSUB_CARRY(inst, bits) ||
+         TryExtractLDEORALB_32_MEMOP(inst, bits) ||
+         TryExtractSWPALB_32_MEMOP(inst, bits) ||
+         TryExtractLDADDLB_32_MEMOP(inst, bits) ||
+         TryExtractSWPL_32_MEMOP(inst, bits) ||
+         TryExtractSWPL_64_MEMOP(inst, bits) ||
+         TryExtractSWPAL_64_MEMOP(inst, bits) ||
+         TryExtractSWP_32_MEMOP(inst, bits) ||
+         TryExtractUMULH_64_DP_3SRC(inst, bits) ||
+         TryExtractSWPA_64_MEMOP(inst, bits) ||
+         TryExtractSWPLB_32_MEMOP(inst, bits) ||
+         TryExtractSBC_32_ADDSUB_CARRY(inst, bits) ||
+         TryExtractSWP_64_MEMOP(inst, bits) ||
+         TryExtractLDSMAXLB_32_MEMOP(inst, bits) ||
+         TryExtractLSRV_64_DP_2SRC(inst, bits) ||
+         TryExtractLDUMAXA_32_MEMOP(inst, bits) ||
+         TryExtractLDUMAX_32_MEMOP(inst, bits) ||
+         TryExtractLDUMAXL_32_MEMOP(inst, bits) ||
+         TryExtractLDUMAXL_64_MEMOP(inst, bits) ||
+         TryExtractLDUMAX_64_MEMOP(inst, bits) ||
+         TryExtractLDCLRA_64_MEMOP(inst, bits) ||
+         TryExtractLDCLRAL_64_MEMOP(inst, bits) ||
+         TryExtractLDUMAXAL_32_MEMOP(inst, bits) ||
+         TryExtractLDCLRL_64_MEMOP(inst, bits) ||
+         TryExtractRORV_64_DP_2SRC(inst, bits) ||
+         TryExtractASRV_32_DP_2SRC(inst, bits) ||
+         TryExtractRORV_32_DP_2SRC(inst, bits) ||
+         TryExtractLDADDA_32_MEMOP(inst, bits) ||
+         TryExtractLDCLRA_32_MEMOP(inst, bits) ||
+         TryExtractLDSMAXL_64_MEMOP(inst, bits) ||
+         TryExtractLDSMAX_64_MEMOP(inst, bits) ||
+         TryExtractLDSMAXAL_64_MEMOP(inst, bits) ||
+         TryExtractLDSMAXA_64_MEMOP(inst, bits) ||
+         TryExtractLDCLRAL_32_MEMOP(inst, bits) ||
+         TryExtractLDUMAXAB_32_MEMOP(inst, bits) ||
+         TryExtractLDUMAXALB_32_MEMOP(inst, bits) ||
+         TryExtractLDCLR_32_MEMOP(inst, bits) ||
+         TryExtractLDUMAXB_32_MEMOP(inst, bits) ||
+         TryExtractLDUMAXLB_32_MEMOP(inst, bits) ||
+         TryExtractLDUMINB_32_MEMOP(inst, bits) ||
+         TryExtractLDCLRL_32_MEMOP(inst, bits) ||
+         TryExtractLDUMINAB_32_MEMOP(inst, bits) ||
+         TryExtractLDSMIN_32_MEMOP(inst, bits) ||
+         TryExtractLDUMINLB_32_MEMOP(inst, bits) ||
+         TryExtractLDSMINA_64_MEMOP(inst, bits) ||
+         TryExtractLDSMINAL_64_MEMOP(inst, bits) ||
+         TryExtractLDSMIN_64_MEMOP(inst, bits) ||
+         TryExtractLSRV_32_DP_2SRC(inst, bits) ||
+         TryExtractLDCLR_64_MEMOP(inst, bits) ||
+         TryExtractLDSMAXH_32_MEMOP(inst, bits) ||
+         TryExtractLDSMAXAH_32_MEMOP(inst, bits) ||
+         TryExtractASRV_64_DP_2SRC(inst, bits) ||
+         TryExtractLDSMINL_64_MEMOP(inst, bits) ||
+         TryExtractSBCS_64_ADDSUB_CARRY(inst, bits) ||
+         TryExtractLDSMAXLH_32_MEMOP(inst, bits) ||
+         TryExtractSBCS_32_ADDSUB_CARRY(inst, bits) ||
+         TryExtractSMULH_64_DP_3SRC(inst, bits) ||
+         TryExtractADCS_64_ADDSUB_CARRY(inst, bits) ||
+         TryExtractCRC32CB_32C_DP_2SRC(inst, bits) ||
+         TryExtractLDCLRLB_32_MEMOP(inst, bits) ||
+         TryExtractCRC32CW_32C_DP_2SRC(inst, bits) ||
+         TryExtractCRC32CX_64C_DP_2SRC(inst, bits) ||
+         TryExtractLDSMINAB_32_MEMOP(inst, bits) ||
+         TryExtractLDADD_64_MEMOP(inst, bits) ||
+         TryExtractSDIV_32_DP_2SRC(inst, bits) ||
          TryExtractLDSETA_32_MEMOP(inst, bits) ||
-         TryExtractSTEOR_32S_MEMOP(inst, bits) ||
+         TryExtractSWPH_32_MEMOP(inst, bits) ||
+         TryExtractLDSETH_32_MEMOP(inst, bits) ||
+         TryExtractSWPLH_32_MEMOP(inst, bits) ||
+         TryExtractSWPAL_32_MEMOP(inst, bits) ||
+         TryExtractSWPAH_32_MEMOP(inst, bits) ||
+         TryExtractLDUMINALH_32_MEMOP(inst, bits) ||
+         TryExtractLDADDLH_32_MEMOP(inst, bits) ||
+         TryExtractLDADDB_32_MEMOP(inst, bits) ||
+         TryExtractLDADDH_32_MEMOP(inst, bits) ||
+         TryExtractADCS_32_ADDSUB_CARRY(inst, bits) ||
+         TryExtractLDSETLH_32_MEMOP(inst, bits) ||
+         TryExtractLDADDALH_32_MEMOP(inst, bits) ||
+         TryExtractSWPA_32_MEMOP(inst, bits) ||
+         TryExtractLDADDAH_32_MEMOP(inst, bits) ||
+         TryExtractLDSETAH_32_MEMOP(inst, bits) ||
+         TryExtractLDSETALH_32_MEMOP(inst, bits) ||
+         TryExtractLDUMINAL_32_MEMOP(inst, bits) ||
+         TryExtractLDUMINL_32_MEMOP(inst, bits) ||
+         TryExtractCRC32H_32C_DP_2SRC(inst, bits) ||
+         TryExtractLDSMINAH_32_MEMOP(inst, bits) ||
+         TryExtractLDUMINA_32_MEMOP(inst, bits) ||
+         TryExtractLDUMIN_32_MEMOP(inst, bits) ||
+         TryExtractLDUMINAL_64_MEMOP(inst, bits) ||
+         TryExtractCRC32W_32C_DP_2SRC(inst, bits) ||
+         TryExtractLDSMINALH_32_MEMOP(inst, bits) ||
+         TryExtractLDCLRAB_32_MEMOP(inst, bits) ||
+         TryExtractLDSETAB_32_MEMOP(inst, bits) ||
+         TryExtractLDCLRAH_32_MEMOP(inst, bits) ||
+         TryExtractLDCLRALH_32_MEMOP(inst, bits) ||
+         TryExtractLDUMINLH_32_MEMOP(inst, bits) ||
+         TryExtractLDCLRH_32_MEMOP(inst, bits) ||
+         TryExtractLDCLRB_32_MEMOP(inst, bits) ||
+         TryExtractLDUMINA_64_MEMOP(inst, bits) ||
+         TryExtractUDIV_64_DP_2SRC(inst, bits) ||
+         TryExtractLDCLRALB_32_MEMOP(inst, bits) ||
+         TryExtractLDSMINH_32_MEMOP(inst, bits) ||
+         TryExtractCRC32X_64C_DP_2SRC(inst, bits) ||
+         TryExtractCRC32B_32C_DP_2SRC(inst, bits) ||
+         TryExtractLDUMINL_64_MEMOP(inst, bits) ||
+         TryExtractLDEORALH_32_MEMOP(inst, bits) ||
+         TryExtractSWPB_32_MEMOP(inst, bits) ||
+         TryExtractLDUMIN_64_MEMOP(inst, bits) ||
+         TryExtractLDSMINLH_32_MEMOP(inst, bits) ||
+         TryExtractLDSMINLB_32_MEMOP(inst, bits) ||
+         TryExtractLDSMINB_32_MEMOP(inst, bits) ||
+         TryExtractLDEORAH_32_MEMOP(inst, bits) ||
+         TryExtractLDCLRLH_32_MEMOP(inst, bits) ||
+         TryExtractCRC32CH_32C_DP_2SRC(inst, bits) ||
+         TryExtractLDSMAXA_32_MEMOP(inst, bits) ||
          TryExtractLDSETAL_32_MEMOP(inst, bits) ||
          TryExtractLDSET_32_MEMOP(inst, bits) ||
          TryExtractLDSETL_32_MEMOP(inst, bits) ||
          TryExtractLDSETA_64_MEMOP(inst, bits) ||
-         TryExtractCLS_64_DP_1SRC(inst, bits) ||
-         TryExtractSTUMAXLH_32S_MEMOP(inst, bits) ||
-         TryExtractLDCLRAL_32_MEMOP(inst, bits) ||
+         TryExtractLDSETAL_64_MEMOP(inst, bits) ||
+         TryExtractLDSET_64_MEMOP(inst, bits) ||
          TryExtractLDSETL_64_MEMOP(inst, bits) ||
-         TryExtractSTUMAXH_32S_MEMOP(inst, bits) ||
-         TryExtractLSRV_32_DP_2SRC(inst, bits) ||
-         TryExtractLDCLRALB_32_MEMOP(inst, bits) ||
-         TryExtractLDSMAXALB_32_MEMOP(inst, bits) ||
-         TryExtractLSRV_64_DP_2SRC(inst, bits) ||
-         TryExtractLDCLR_32_MEMOP(inst, bits) ||
-         TryExtractSMADDL_64WA_DP_3SRC(inst, bits) ||
-         TryExtractCRC32CH_32C_DP_2SRC(inst, bits) ||
-         TryExtractSTTR_32_LDST_UNPRIV(inst, bits) ||
-         TryExtractLDUMINLB_32_MEMOP(inst, bits) ||
-         TryExtractLDEORAB_32_MEMOP(inst, bits) ||
-         TryExtractSTTRB_32_LDST_UNPRIV(inst, bits) ||
-         TryExtractLDSMAXH_32_MEMOP(inst, bits) ||
-         TryExtractLDR_32_LOADLIT(inst, bits) ||
-         TryExtractLDURH_32_LDST_UNSCALED(inst, bits) ||
-         TryExtractCLS_32_DP_1SRC(inst, bits) ||
-         TryExtractLDR_64_LOADLIT(inst, bits) ||
-         TryExtractCRC32CB_32C_DP_2SRC(inst, bits) ||
+         TryExtractLDSMAX_32_MEMOP(inst, bits) ||
+         TryExtractLDADD_32_MEMOP(inst, bits) ||
+         TryExtractLDUMINAH_32_MEMOP(inst, bits) ||
+         TryExtractLDADDL_32_MEMOP(inst, bits) ||
+         TryExtractLDUMINH_32_MEMOP(inst, bits) ||
+         TryExtractLDSMAXL_32_MEMOP(inst, bits) ||
+         TryExtractLDUMAXAH_32_MEMOP(inst, bits) ||
+         TryExtractLDUMAXLH_32_MEMOP(inst, bits) ||
+         TryExtractLDUMAXH_32_MEMOP(inst, bits) ||
+         TryExtractLDADDL_64_MEMOP(inst, bits) ||
+         TryExtractLDADDA_64_MEMOP(inst, bits) ||
+         TryExtractLDUMAXALH_32_MEMOP(inst, bits) ||
+         TryExtractLDADDAL_64_MEMOP(inst, bits) ||
+         TryExtractLDADDAL_32_MEMOP(inst, bits) ||
+         TryExtractLDSMINALB_32_MEMOP(inst, bits) ||
+         TryExtractLDRB_32BL_LDST_REGOFF(inst, bits) ||
+         TryExtractLDRSB_64BL_LDST_REGOFF(inst, bits) ||
+         TryExtractLDRSB_32BL_LDST_REGOFF(inst, bits) ||
+         TryExtractSTRB_32BL_LDST_REGOFF(inst, bits) ||
+         TryExtractCCMN_32_CONDCMP_REG(inst, bits) ||
+         TryExtractCCMN_64_CONDCMP_REG(inst, bits) ||
+         TryExtractCCMP_32_CONDCMP_REG(inst, bits) ||
+         TryExtractCCMP_64_CONDCMP_IMM(inst, bits) ||
+         TryExtractCCMP_32_CONDCMP_IMM(inst, bits) ||
+         TryExtractCCMP_64_CONDCMP_REG(inst, bits) ||
+         TryExtractCCMN_64_CONDCMP_IMM(inst, bits) ||
+         TryExtractCCMN_32_CONDCMP_IMM(inst, bits) ||
+         TryExtractCSNEG_64_CONDSEL(inst, bits) ||
+         TryExtractCSNEG_32_CONDSEL(inst, bits) ||
+         TryExtractLDUR_64_LDST_UNSCALED(inst, bits) ||
+         TryExtractLDTRH_32_LDST_UNPRIV(inst, bits) ||
+         TryExtractLDTRSH_64_LDST_UNPRIV(inst, bits) ||
+         TryExtractSTR_64_LDST_IMMPOST(inst, bits) ||
          TryExtractSTURB_32_LDST_UNSCALED(inst, bits) ||
-         TryExtractLDRSB_32B_LDST_REGOFF(inst, bits);
+         TryExtractSTR_32_LDST_REGOFF(inst, bits) ||
+         TryExtractLDTRSH_32_LDST_UNPRIV(inst, bits) ||
+         TryExtractLDTRSW_64_LDST_UNPRIV(inst, bits) ||
+         TryExtractSTR_32_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDRB_32B_LDST_REGOFF(inst, bits) ||
+         TryExtractLDUR_32_LDST_UNSCALED(inst, bits) ||
+         TryExtractLDRSH_32_LDST_IMMPOST(inst, bits) ||
+         TryExtractLDRSH_64_LDST_IMMPOST(inst, bits) ||
+         TryExtractLDRSH_32_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDURSB_32_LDST_UNSCALED(inst, bits) ||
+         TryExtractLDURSB_64_LDST_UNSCALED(inst, bits) ||
+         TryExtractSTRH_32_LDST_IMMPOST(inst, bits) ||
+         TryExtractLDRH_32_LDST_IMMPOST(inst, bits) ||
+         TryExtractLDURH_32_LDST_UNSCALED(inst, bits) ||
+         TryExtractLDRH_32_LDST_IMMPRE(inst, bits) ||
+         TryExtractSTR_32_LDST_IMMPOST(inst, bits) ||
+         TryExtractSTRB_32_LDST_IMMPOST(inst, bits) ||
+         TryExtractLDRSH_64_LDST_REGOFF(inst, bits) ||
+         TryExtractCSEL_64_CONDSEL(inst, bits) ||
+         TryExtractSTTRH_32_LDST_UNPRIV(inst, bits) ||
+         TryExtractCSEL_32_CONDSEL(inst, bits) ||
+         TryExtractLDURSW_64_LDST_UNSCALED(inst, bits) ||
+         TryExtractLDURB_32_LDST_UNSCALED(inst, bits) ||
+         TryExtractSTURH_32_LDST_UNSCALED(inst, bits) ||
+         TryExtractLDRSB_32_LDST_IMMPOST(inst, bits) ||
+         TryExtractLDRSB_32_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDRSB_64_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDTRB_32_LDST_UNPRIV(inst, bits) ||
+         TryExtractLDRSB_64_LDST_IMMPOST(inst, bits) ||
+         TryExtractLDRSW_64_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDR_64_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDRSW_64_LDST_IMMPOST(inst, bits) ||
+         TryExtractSTRH_32_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDTRSB_64_LDST_UNPRIV(inst, bits) ||
+         TryExtractSTTRB_32_LDST_UNPRIV(inst, bits) ||
+         TryExtractSTR_64_LDST_IMMPRE(inst, bits) ||
+         TryExtractSTRB_32_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDRSH_32_LDST_REGOFF(inst, bits) ||
+         TryExtractSTRB_32B_LDST_REGOFF(inst, bits) ||
+         TryExtractLDTR_32_LDST_UNPRIV(inst, bits) ||
+         TryExtractLDRSW_64_LDST_REGOFF(inst, bits) ||
+         TryExtractSTTR_32_LDST_UNPRIV(inst, bits) ||
+         TryExtractCSINC_64_CONDSEL(inst, bits) ||
+         TryExtractCSINC_32_CONDSEL(inst, bits) ||
+         TryExtractLDTR_64_LDST_UNPRIV(inst, bits) ||
+         TryExtractPRFM_P_LDST_REGOFF(inst, bits) ||
+         TryExtractSTUR_32_LDST_UNSCALED(inst, bits) ||
+         TryExtractLDRH_32_LDST_REGOFF(inst, bits) ||
+         TryExtractLDR_32_LDST_IMMPOST(inst, bits) ||
+         TryExtractSTTR_64_LDST_UNPRIV(inst, bits) ||
+         TryExtractLDR_64_LDST_IMMPOST(inst, bits) ||
+         TryExtractLDR_64_LDST_REGOFF(inst, bits) ||
+         TryExtractLDR_32_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDR_32_LDST_REGOFF(inst, bits) ||
+         TryExtractPRFUM_P_LDST_UNSCALED(inst, bits) ||
+         TryExtractSTUR_64_LDST_UNSCALED(inst, bits) ||
+         TryExtractLDRB_32_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDRSH_64_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDRB_32_LDST_IMMPOST(inst, bits) ||
+         TryExtractSTRH_32_LDST_REGOFF(inst, bits) ||
+         TryExtractCSINV_32_CONDSEL(inst, bits) ||
+         TryExtractSTR_64_LDST_REGOFF(inst, bits) ||
+         TryExtractLDTRSB_32_LDST_UNPRIV(inst, bits) ||
+         TryExtractCSINV_64_CONDSEL(inst, bits) ||
+         TryExtractLDRSB_32B_LDST_REGOFF(inst, bits) ||
+         TryExtractLDRSB_64B_LDST_REGOFF(inst, bits) ||
+         TryExtractLDURSH_64_LDST_UNSCALED(inst, bits) ||
+         TryExtractLDURSH_32_LDST_UNSCALED(inst, bits) ||
+         TryExtractUMADDL_64WA_DP_3SRC(inst, bits) ||
+         TryExtractMADD_32A_DP_3SRC(inst, bits) ||
+         TryExtractMADD_64A_DP_3SRC(inst, bits) ||
+         TryExtractMSUB_32A_DP_3SRC(inst, bits) ||
+         TryExtractUMSUBL_64WA_DP_3SRC(inst, bits) ||
+         TryExtractSMSUBL_64WA_DP_3SRC(inst, bits) ||
+         TryExtractMSUB_64A_DP_3SRC(inst, bits) ||
+         TryExtractSMADDL_64WA_DP_3SRC(inst, bits) ||
+         TryExtractLDRSB_32_LDST_POS(inst, bits) ||
+         TryExtractLDRSH_32_LDST_POS(inst, bits) ||
+         TryExtractLDRH_32_LDST_POS(inst, bits) ||
+         TryExtractLDRSB_64_LDST_POS(inst, bits) ||
+         TryExtractLDRSW_64_LDST_POS(inst, bits) ||
+         TryExtractLDR_64_LDST_POS(inst, bits) ||
+         TryExtractPRFM_P_LDST_POS(inst, bits) ||
+         TryExtractSTR_32_LDST_POS(inst, bits) ||
+         TryExtractSTR_64_LDST_POS(inst, bits) ||
+         TryExtractSTRB_32_LDST_POS(inst, bits) ||
+         TryExtractSTRH_32_LDST_POS(inst, bits) ||
+         TryExtractLDRSH_64_LDST_POS(inst, bits) ||
+         TryExtractLDR_32_LDST_POS(inst, bits) ||
+         TryExtractLDRB_32_LDST_POS(inst, bits) ||
+         TryExtractLDR_32_LOADLIT(inst, bits) ||
+         TryExtractPRFM_P_LOADLIT(inst, bits) ||
+         TryExtractLDR_64_LOADLIT(inst, bits) ||
+         TryExtractLDRSW_64_LOADLIT(inst, bits);
 }
 
 // 00011100000000000000000000000000
 static bool TryExtract7(InstData &inst, uint32_t bits) {
   return false ||
-         TryExtractFACGT_ASISDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractFCVTMU_64S_FLOAT2INT(inst, bits) ||
-         TryExtractSCVTF_ASISDMISCFP16_R(inst, bits) ||
-         TryExtractFCVTMS_64H_FLOAT2INT(inst, bits) ||
-         TryExtractFMAX_D_FLOATDP2(inst, bits) ||
-         TryExtractFABD_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFCVTZU_64D_FLOAT2INT(inst, bits) ||
-         TryExtractSQSHL_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFCVTAS_ASISDMISCFP16_R(inst, bits) ||
-         TryExtractFRSQRTE_ASISDMISCFP16_R(inst, bits) ||
-         TryExtractFCVTAS_ASISDMISC_R(inst, bits) ||
-         TryExtractFCVTNS_32D_FLOAT2INT(inst, bits) ||
-         TryExtractFCVTNS_64D_FLOAT2INT(inst, bits) ||
-         TryExtractADD_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFABS_D_FLOATDP1(inst, bits) ||
-         TryExtractFCVTMU_64D_FLOAT2INT(inst, bits) ||
-         TryExtractSCVTF_ASISDMISC_R(inst, bits) ||
-         TryExtractSUB_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFACGT_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFMLA_ASISDELEM_RH_H(inst, bits) ||
-         TryExtractFRINTP_S_FLOATDP1(inst, bits) ||
-         TryExtractSHA256H_QQV_CRYPTOSHA3(inst, bits) ||
-         TryExtractFCVTMS_32S_FLOAT2INT(inst, bits) ||
-         TryExtractFCVTMS_64S_FLOAT2INT(inst, bits) ||
-         TryExtractFCVTMS_32D_FLOAT2INT(inst, bits) ||
-         TryExtractFRINTP_D_FLOATDP1(inst, bits) ||
-         TryExtractFRINTP_H_FLOATDP1(inst, bits) ||
-         TryExtractFCVTMS_32H_FLOAT2INT(inst, bits) ||
-         TryExtractFNEG_D_FLOATDP1(inst, bits) ||
-         TryExtractFDIV_S_FLOATDP2(inst, bits) ||
-         TryExtractSHA1C_QSV_CRYPTOSHA3(inst, bits) ||
-         TryExtractFCVTNS_32H_FLOAT2INT(inst, bits) ||
-         TryExtractSQSHLU_ASISDSHF_R(inst, bits) ||
-         TryExtractSQSHRN_ASISDSHF_N(inst, bits) ||
-         TryExtractFCVTPU_64D_FLOAT2INT(inst, bits) ||
-         TryExtractFCVTMS_64D_FLOAT2INT(inst, bits) ||
-         TryExtractLDR_S_LDST_POS(inst, bits) ||
-         TryExtractSTR_Q_LDST_IMMPRE(inst, bits) ||
-         TryExtractLDR_D_LDST_POS(inst, bits) ||
-         TryExtractLDR_Q_LDST_POS(inst, bits) ||
-         TryExtractSCVTF_S32_FLOAT2FIX(inst, bits) ||
-         TryExtractFCMLE_ASISDMISC_FZ(inst, bits) ||
-         TryExtractFCVTPS_ASISDMISCFP16_R(inst, bits) ||
-         TryExtractSTUR_H_LDST_UNSCALED(inst, bits) ||
-         TryExtractSQRDMULH_ASISDELEM_R(inst, bits) ||
-         TryExtractFRINTA_D_FLOATDP1(inst, bits) ||
-         TryExtractFMOV_S_FLOATDP1(inst, bits) ||
-         TryExtractCMHS_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractURSHR_ASISDSHF_R(inst, bits) ||
-         TryExtractFCVTZS_ASISDMISC_R(inst, bits) ||
-         TryExtractFABD_ASISDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractSTUR_D_LDST_UNSCALED(inst, bits) ||
-         TryExtractFCMP_HZ_FLOATCMP(inst, bits) ||
-         TryExtractSHA1SU0_VVV_CRYPTOSHA3(inst, bits) ||
-         TryExtractFCMP_D_FLOATCMP(inst, bits) ||
-         TryExtractFRINTA_S_FLOATDP1(inst, bits) ||
-         TryExtractUCVTF_S32_FLOAT2INT(inst, bits) ||
-         TryExtractFABS_H_FLOATDP1(inst, bits) ||
-         TryExtractFCMLE_ASISDMISCFP16_FZ(inst, bits) ||
-         TryExtractCMTST_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractCMEQ_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractSTUR_B_LDST_UNSCALED(inst, bits) ||
-         TryExtractFCMP_SZ_FLOATCMP(inst, bits) ||
-         TryExtractFCMP_DZ_FLOATCMP(inst, bits) ||
-         TryExtractSRSRA_ASISDSHF_R(inst, bits) ||
-         TryExtractFMIN_D_FLOATDP2(inst, bits) ||
-         TryExtractSTUR_S_LDST_UNSCALED(inst, bits) ||
-         TryExtractFCMP_H_FLOATCMP(inst, bits) ||
-         TryExtractSHA1SU1_VV_CRYPTOSHA2(inst, bits) ||
-         TryExtractLDR_D_LDST_IMMPRE(inst, bits) ||
-         TryExtractSQRDMLSH_ASISDSAME2_ONLY(inst, bits) ||
-         TryExtractFDIV_D_FLOATDP2(inst, bits) ||
-         TryExtractUQRSHL_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFCSEL_D_FLOATSEL(inst, bits) ||
-         TryExtractFCMP_S_FLOATCMP(inst, bits) ||
-         TryExtractSTR_H_LDST_REGOFF(inst, bits) ||
-         TryExtractFMOV_D_FLOATDP1(inst, bits) ||
-         TryExtractSCVTF_D32_FLOAT2FIX(inst, bits) ||
-         TryExtractSTR_BL_LDST_REGOFF(inst, bits) ||
-         TryExtractUCVTF_D32_FLOAT2INT(inst, bits) ||
-         TryExtractSQDMULL_ASISDELEM_L(inst, bits) ||
-         TryExtractFMIN_S_FLOATDP2(inst, bits) ||
-         TryExtractSTR_B_LDST_REGOFF(inst, bits) ||
-         TryExtractSTR_D_LDST_REGOFF(inst, bits) ||
-         TryExtractFCVTPS_ASISDMISC_R(inst, bits) ||
-         TryExtractSTR_Q_LDST_REGOFF(inst, bits) ||
-         TryExtractLDR_D_LDST_IMMPOST(inst, bits) ||
-         TryExtractFMULX_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractLDR_Q_LDST_IMMPOST(inst, bits) ||
-         TryExtractSRSHR_ASISDSHF_R(inst, bits) ||
-         TryExtractLDR_H_LDST_IMMPOST(inst, bits) ||
-         TryExtractLDR_B_LDST_IMMPOST(inst, bits) ||
-         TryExtractFCMPE_HZ_FLOATCMP(inst, bits) ||
-         TryExtractFRECPS_ASISDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractABS_ASISDMISC_R(inst, bits) ||
-         TryExtractFCVTNS_ASISDMISCFP16_R(inst, bits) ||
-         TryExtractSQRDMLAH_ASISDELEM_R(inst, bits) ||
-         TryExtractFCVTNS_ASISDMISC_R(inst, bits) ||
-         TryExtractUCVTF_D32_FLOAT2FIX(inst, bits) ||
-         TryExtractFCVTNS_64H_FLOAT2INT(inst, bits) ||
-         TryExtractSQSHRUN_ASISDSHF_N(inst, bits) ||
-         TryExtractFCVTZS_32S_FLOAT2INT(inst, bits) ||
-         TryExtractFADDP_ASISDPAIR_ONLY_H(inst, bits) ||
-         TryExtractFRECPE_ASISDMISCFP16_R(inst, bits) ||
-         TryExtractFCVTZS_64S_FLOAT2FIX(inst, bits) ||
-         TryExtractFRECPE_ASISDMISC_R(inst, bits) ||
-         TryExtractUQSUB_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFCVTMS_ASISDMISCFP16_R(inst, bits) ||
-         TryExtractFCVTAS_32D_FLOAT2INT(inst, bits) ||
-         TryExtractFSQRT_D_FLOATDP1(inst, bits) ||
-         TryExtractFRINTZ_H_FLOATDP1(inst, bits) ||
-         TryExtractSQDMULL_ASISDDIFF_ONLY(inst, bits) ||
-         TryExtractFSUB_S_FLOATDP2(inst, bits) ||
-         TryExtractSQXTN_ASISDMISC_N(inst, bits) ||
-         TryExtractFADD_S_FLOATDP2(inst, bits) ||
-         TryExtractLDR_S_LDST_IMMPRE(inst, bits) ||
-         TryExtractSHA1H_SS_CRYPTOSHA2(inst, bits) ||
-         TryExtractFMAXNMP_ASISDPAIR_ONLY_SD(inst, bits) ||
-         TryExtractLDUR_B_LDST_UNSCALED(inst, bits) ||
-         TryExtractLDUR_H_LDST_UNSCALED(inst, bits) ||
-         TryExtractLDUR_S_LDST_UNSCALED(inst, bits) ||
-         TryExtractFMOV_64H_FLOAT2INT(inst, bits) ||
-         TryExtractLDUR_D_LDST_UNSCALED(inst, bits) ||
-         TryExtractLDUR_Q_LDST_UNSCALED(inst, bits) ||
-         TryExtractFRINTZ_D_FLOATDP1(inst, bits) ||
-         TryExtractSCVTF_H32_FLOAT2INT(inst, bits) ||
-         TryExtractLDR_B_LDST_IMMPRE(inst, bits) ||
-         TryExtractFCVTNU_64H_FLOAT2INT(inst, bits) ||
-         TryExtractCMGT_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFMULX_ASISDELEM_RH_H(inst, bits) ||
-         TryExtractSQDMULH_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFSQRT_H_FLOATDP1(inst, bits) ||
-         TryExtractLDR_B_LDST_POS(inst, bits) ||
-         TryExtractFCVTNS_64S_FLOAT2INT(inst, bits) ||
-         TryExtractLDR_H_LDST_POS(inst, bits) ||
-         TryExtractSTR_S_LDST_POS(inst, bits) ||
-         TryExtractSQDMLSL_ASISDDIFF_ONLY(inst, bits) ||
-         TryExtractLDR_Q_LDST_IMMPRE(inst, bits) ||
-         TryExtractSQSUB_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractSCVTF_ASISDSHF_C(inst, bits) ||
-         TryExtractCMGE_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFCVTZS_64D_FLOAT2FIX(inst, bits) ||
-         TryExtractFCVTZS_32D_FLOAT2FIX(inst, bits) ||
-         TryExtractFRINTI_S_FLOATDP1(inst, bits) ||
-         TryExtractFCVTZS_32S_FLOAT2FIX(inst, bits) ||
-         TryExtractFCVTZS_64H_FLOAT2FIX(inst, bits) ||
-         TryExtractSUQADD_ASISDMISC_R(inst, bits) ||
-         TryExtractUCVTF_D64_FLOAT2INT(inst, bits) ||
-         TryExtractFNMUL_H_FLOATDP2(inst, bits) ||
-         TryExtractSRSHL_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFNMADD_D_FLOATDP3(inst, bits) ||
-         TryExtractFCMPE_SZ_FLOATCMP(inst, bits) ||
-         TryExtractFMULX_ASISDELEM_R_SD(inst, bits) ||
-         TryExtractFCVTNS_32S_FLOAT2INT(inst, bits) ||
-         TryExtractFNMUL_S_FLOATDP2(inst, bits) ||
-         TryExtractFMUL_ASISDELEM_R_SD(inst, bits) ||
-         TryExtractFMUL_ASISDELEM_RH_H(inst, bits) ||
-         TryExtractFCMPE_D_FLOATCMP(inst, bits) ||
-         TryExtractSHA1P_QSV_CRYPTOSHA3(inst, bits) ||
-         TryExtractFCVTZU_ASISDSHF_C(inst, bits) ||
-         TryExtractSQRDMULH_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractLDR_S_LDST_REGOFF(inst, bits) ||
-         TryExtractFCMPE_S_FLOATCMP(inst, bits) ||
-         TryExtractFNMUL_D_FLOATDP2(inst, bits) ||
-         TryExtractSSHL_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractUCVTF_ASISDSHF_C(inst, bits) ||
-         TryExtractSQNEG_ASISDMISC_R(inst, bits) ||
-         TryExtractFCMGE_ASISDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractSTR_S_LDST_REGOFF(inst, bits) ||
-         TryExtractUQADD_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFCMPE_DZ_FLOATCMP(inst, bits) ||
-         TryExtractFMADD_S_FLOATDP3(inst, bits) ||
-         TryExtractFCMGE_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFCVTNU_64D_FLOAT2INT(inst, bits) ||
-         TryExtractSTR_B_LDST_IMMPOST(inst, bits) ||
-         TryExtractUSHL_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFCVTZU_32S_FLOAT2FIX(inst, bits) ||
-         TryExtractFCVTZU_64H_FLOAT2FIX(inst, bits) ||
-         TryExtractFMSUB_S_FLOATDP3(inst, bits) ||
-         TryExtractFCVTZU_32H_FLOAT2FIX(inst, bits) ||
-         TryExtractFCVTZU_32D_FLOAT2FIX(inst, bits) ||
-         TryExtractFMOV_32S_FLOAT2INT(inst, bits) ||
-         TryExtractFCVTZU_64S_FLOAT2FIX(inst, bits) ||
-         TryExtractFCVTNU_ASISDMISC_R(inst, bits) ||
-         TryExtractFCVTNU_64S_FLOAT2INT(inst, bits) ||
-         TryExtractDUP_ASISDONE_ONLY(inst, bits) ||
-         TryExtractFMLA_ASISDELEM_R_SD(inst, bits) ||
-         TryExtractFADD_H_FLOATDP2(inst, bits) ||
-         TryExtractUQXTN_ASISDMISC_N(inst, bits) ||
-         TryExtractFMADD_H_FLOATDP3(inst, bits) ||
-         TryExtractFCVTNU_32S_FLOAT2INT(inst, bits) ||
-         TryExtractFCMGE_ASISDMISC_FZ(inst, bits) ||
-         TryExtractFRINTI_D_FLOATDP1(inst, bits) ||
-         TryExtractFRINTI_H_FLOATDP1(inst, bits) ||
-         TryExtractFRSQRTS_ASISDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractFMADD_D_FLOATDP3(inst, bits) ||
-         TryExtractUQRSHRN_ASISDSHF_N(inst, bits) ||
-         TryExtractFRSQRTS_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFMOV_H64_FLOAT2INT(inst, bits) ||
-         TryExtractSCVTF_S64_FLOAT2INT(inst, bits) ||
-         TryExtractFCVTZS_64D_FLOAT2INT(inst, bits) ||
-         TryExtractSCVTF_D64_FLOAT2INT(inst, bits) ||
-         TryExtractUSRA_ASISDSHF_R(inst, bits) ||
-         TryExtractFCVTZS_32H_FLOAT2FIX(inst, bits) ||
-         TryExtractFCSEL_S_FLOATSEL(inst, bits) ||
-         TryExtractSCVTF_H32_FLOAT2FIX(inst, bits) ||
-         TryExtractSHA256SU1_VVV_CRYPTOSHA3(inst, bits) ||
-         TryExtractFMAXNM_D_FLOATDP2(inst, bits) ||
-         TryExtractFCVTZU_32S_FLOAT2INT(inst, bits) ||
-         TryExtractSCVTF_D32_FLOAT2INT(inst, bits) ||
-         TryExtractFCCMP_D_FLOATCCMP(inst, bits) ||
-         TryExtractSCVTF_H64_FLOAT2INT(inst, bits) ||
-         TryExtractFCVTPU_32D_FLOAT2INT(inst, bits) ||
-         TryExtractFRINTZ_S_FLOATDP1(inst, bits) ||
-         TryExtractFRINTA_H_FLOATDP1(inst, bits) ||
-         TryExtractFCVTPU_32S_FLOAT2INT(inst, bits) ||
-         TryExtractFCVTZU_32D_FLOAT2INT(inst, bits) ||
-         TryExtractUCVTF_ASISDMISCFP16_R(inst, bits) ||
-         TryExtractUQSHL_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFCVTZS_64H_FLOAT2INT(inst, bits) ||
-         TryExtractUCVTF_ASISDMISC_R(inst, bits) ||
-         TryExtractFCVTPU_64S_FLOAT2INT(inst, bits) ||
-         TryExtractSCVTF_S32_FLOAT2INT(inst, bits) ||
-         TryExtractNEG_ASISDMISC_R(inst, bits) ||
-         TryExtractSCVTF_H64_FLOAT2FIX(inst, bits) ||
-         TryExtractSTR_S_LDST_IMMPRE(inst, bits) ||
-         TryExtractFCVTZU_64S_FLOAT2INT(inst, bits) ||
-         TryExtractSCVTF_S64_FLOAT2FIX(inst, bits) ||
-         TryExtractFCVTZU_32H_FLOAT2INT(inst, bits) ||
-         TryExtractSQRSHL_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractSCVTF_D64_FLOAT2FIX(inst, bits) ||
-         TryExtractFMSUB_D_FLOATDP3(inst, bits) ||
-         TryExtractCMGE_ASISDMISC_Z(inst, bits) ||
-         TryExtractUCVTF_S64_FLOAT2INT(inst, bits) ||
-         TryExtractFCVTAS_64S_FLOAT2INT(inst, bits) ||
-         TryExtractFCMGT_ASISDMISC_FZ(inst, bits) ||
-         TryExtractFCMGT_ASISDMISCFP16_FZ(inst, bits) ||
-         TryExtractFCMLT_ASISDMISCFP16_FZ(inst, bits) ||
-         TryExtractFRINTX_H_FLOATDP1(inst, bits) ||
-         TryExtractCMGT_ASISDMISC_Z(inst, bits) ||
-         TryExtractFMAXNM_H_FLOATDP2(inst, bits) ||
-         TryExtractSQSHL_ASISDSHF_R(inst, bits) ||
-         TryExtractFADDP_ASISDPAIR_ONLY_SD(inst, bits) ||
-         TryExtractFRINTX_S_FLOATDP1(inst, bits) ||
-         TryExtractFCMEQ_ASISDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractFCVTZS_32D_FLOAT2INT(inst, bits) ||
-         TryExtractFMAXNM_S_FLOATDP2(inst, bits) ||
-         TryExtractFCVTPU_32H_FLOAT2INT(inst, bits) ||
-         TryExtractFCMEQ_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractURSRA_ASISDSHF_R(inst, bits) ||
-         TryExtractSHA256H2_QQV_CRYPTOSHA3(inst, bits) ||
-         TryExtractFCMLT_ASISDMISC_FZ(inst, bits) ||
-         TryExtractFMLS_ASISDELEM_RH_H(inst, bits) ||
-         TryExtractFMLS_ASISDELEM_R_SD(inst, bits) ||
-         TryExtractFCVTZS_64S_FLOAT2INT(inst, bits) ||
-         TryExtractFCVTPU_64H_FLOAT2INT(inst, bits) ||
-         TryExtractFRINTX_D_FLOATDP1(inst, bits) ||
-         TryExtractUSHR_ASISDSHF_R(inst, bits) ||
-         TryExtractFCVTZU_64H_FLOAT2INT(inst, bits) ||
-         TryExtractUCVTF_H32_FLOAT2FIX(inst, bits) ||
-         TryExtractUCVTF_S32_FLOAT2FIX(inst, bits) ||
-         TryExtractFDIV_H_FLOATDP2(inst, bits) ||
          TryExtractFRINTM_S_FLOATDP1(inst, bits) ||
-         TryExtractSTR_D_LDST_POS(inst, bits) ||
-         TryExtractFRINTM_H_FLOATDP1(inst, bits) ||
-         TryExtractFCVT_SD_FLOATDP1(inst, bits) ||
-         TryExtractFCVTNU_32H_FLOAT2INT(inst, bits) ||
+         TryExtractFCMP_DZ_FLOATCMP(inst, bits) ||
+         TryExtractFCVTAS_64D_FLOAT2INT(inst, bits) ||
+         TryExtractFCMP_SZ_FLOATCMP(inst, bits) ||
          TryExtractFRECPX_ASISDMISCFP16_R(inst, bits) ||
-         TryExtractUQSHRN_ASISDSHF_N(inst, bits) ||
-         TryExtractFCMGT_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractSLI_ASISDSHF_R(inst, bits) ||
-         TryExtractFRECPX_ASISDMISC_R(inst, bits) ||
-         TryExtractFRECPS_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFCVT_HD_FLOATDP1(inst, bits) ||
+         TryExtractFCVTPU_ASISDMISCFP16_R(inst, bits) ||
+         TryExtractFABS_S_FLOATDP1(inst, bits) ||
+         TryExtractFCVTPS_32S_FLOAT2INT(inst, bits) ||
          TryExtractFCVTPS_64S_FLOAT2INT(inst, bits) ||
-         TryExtractUCVTF_D64_FLOAT2FIX(inst, bits) ||
-         TryExtractUCVTF_H64_FLOAT2FIX(inst, bits) ||
-         TryExtractUCVTF_S64_FLOAT2FIX(inst, bits) ||
-         TryExtractFCVTMU_32H_FLOAT2INT(inst, bits) ||
-         TryExtractFCVTMU_64H_FLOAT2INT(inst, bits) ||
-         TryExtractFCVTMU_32S_FLOAT2INT(inst, bits) ||
-         TryExtractSHA256SU0_VV_CRYPTOSHA2(inst, bits) ||
+         TryExtractFCVTPS_32D_FLOAT2INT(inst, bits) ||
          TryExtractFCVTPS_64D_FLOAT2INT(inst, bits) ||
          TryExtractFCVTMU_32D_FLOAT2INT(inst, bits) ||
-         TryExtractCMEQ_ASISDMISC_Z(inst, bits) ||
-         TryExtractFCVTPS_32H_FLOAT2INT(inst, bits) ||
-         TryExtractSSRA_ASISDSHF_R(inst, bits) ||
-         TryExtractFRSQRTE_ASISDMISC_R(inst, bits) ||
-         TryExtractSSHR_ASISDSHF_R(inst, bits) ||
-         TryExtractFMINNM_S_FLOATDP2(inst, bits) ||
-         TryExtractCMLE_ASISDMISC_Z(inst, bits) ||
-         TryExtractFCCMP_H_FLOATCCMP(inst, bits) ||
-         TryExtractCMHI_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFABS_S_FLOATDP1(inst, bits) ||
-         TryExtractFMINNM_D_FLOATDP2(inst, bits) ||
+         TryExtractFCVTMU_64D_FLOAT2INT(inst, bits) ||
+         TryExtractFSQRT_D_FLOATDP1(inst, bits) ||
+         TryExtractFCMGE_ASISDMISCFP16_FZ(inst, bits) ||
+         TryExtractFRINTN_S_FLOATDP1(inst, bits) ||
+         TryExtractFCMP_D_FLOATCMP(inst, bits) ||
+         TryExtractFSQRT_S_FLOATDP1(inst, bits) ||
+         TryExtractSHA1H_SS_CRYPTOSHA2(inst, bits) ||
+         TryExtractFCVTNS_32S_FLOAT2INT(inst, bits) ||
+         TryExtractFMOV_64D_FLOAT2INT(inst, bits) ||
+         TryExtractFRINTM_D_FLOATDP1(inst, bits) ||
+         TryExtractFRINTM_H_FLOATDP1(inst, bits) ||
+         TryExtractFCVTZU_64H_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTZS_32H_FLOAT2INT(inst, bits) ||
          TryExtractFNEG_S_FLOATDP1(inst, bits) ||
-         TryExtractFMINNM_H_FLOATDP2(inst, bits) ||
-         TryExtractFCVTZU_ASISDMISC_R(inst, bits) ||
-         TryExtractFCVTPS_32S_FLOAT2INT(inst, bits) ||
+         TryExtractFRINTN_H_FLOATDP1(inst, bits) ||
+         TryExtractFRINTX_D_FLOATDP1(inst, bits) ||
+         TryExtractFCMLE_ASISDMISCFP16_FZ(inst, bits) ||
+         TryExtractFMINP_ASISDPAIR_ONLY_H(inst, bits) ||
+         TryExtractFCVT_SD_FLOATDP1(inst, bits) ||
+         TryExtractFCVTNS_64S_FLOAT2INT(inst, bits) ||
+         TryExtractFNEG_H_FLOATDP1(inst, bits) ||
+         TryExtractFRINTP_S_FLOATDP1(inst, bits) ||
+         TryExtractFRINTP_D_FLOATDP1(inst, bits) ||
+         TryExtractFCVTPS_32H_FLOAT2INT(inst, bits) ||
+         TryExtractFRINTP_H_FLOATDP1(inst, bits) ||
+         TryExtractFCVTMS_64H_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTMS_32D_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTMS_32H_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTMS_32S_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTPS_64H_FLOAT2INT(inst, bits) ||
+         TryExtractSHA1SU1_VV_CRYPTOSHA2(inst, bits) ||
+         TryExtractFCVTNS_32H_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTZU_ASISDMISCFP16_R(inst, bits) ||
+         TryExtractFCVTMU_32H_FLOAT2INT(inst, bits) ||
+         TryExtractSCVTF_D64_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTMU_64H_FLOAT2INT(inst, bits) ||
+         TryExtractUCVTF_ASISDMISCFP16_R(inst, bits) ||
+         TryExtractFCVTMU_32S_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTMU_64S_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTMS_64D_FLOAT2INT(inst, bits) ||
+         TryExtractSCVTF_S64_FLOAT2INT(inst, bits) ||
+         TryExtractSCVTF_H64_FLOAT2INT(inst, bits) ||
+         TryExtractFRSQRTE_ASISDMISCFP16_R(inst, bits) ||
+         TryExtractSCVTF_D32_FLOAT2INT(inst, bits) ||
+         TryExtractFRINTX_S_FLOATDP1(inst, bits) ||
+         TryExtractFCVTAS_64H_FLOAT2INT(inst, bits) ||
+         TryExtractFNEG_D_FLOATDP1(inst, bits) ||
+         TryExtractSCVTF_S32_FLOAT2INT(inst, bits) ||
+         TryExtractFRINTX_H_FLOATDP1(inst, bits) ||
+         TryExtractFCVTZU_64D_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTZU_32D_FLOAT2INT(inst, bits) ||
+         TryExtractSCVTF_H32_FLOAT2INT(inst, bits) ||
+         TryExtractFMAXP_ASISDPAIR_ONLY_H(inst, bits) ||
+         TryExtractFCVTNS_64H_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTNU_32S_FLOAT2INT(inst, bits) ||
+         TryExtractUCVTF_H64_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTNU_64H_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTZS_ASISDMISCFP16_R(inst, bits) ||
+         TryExtractFCVTAS_64S_FLOAT2INT(inst, bits) ||
+         TryExtractFCMP_H_FLOATCMP(inst, bits) ||
+         TryExtractUCVTF_S64_FLOAT2INT(inst, bits) ||
+         TryExtractUCVTF_S32_FLOAT2INT(inst, bits) ||
+         TryExtractUCVTF_D32_FLOAT2INT(inst, bits) ||
+         TryExtractUCVTF_D64_FLOAT2INT(inst, bits) ||
+         TryExtractFCMLT_ASISDMISCFP16_FZ(inst, bits) ||
+         TryExtractFCVTNU_32H_FLOAT2INT(inst, bits) ||
+         TryExtractFCMP_S_FLOATCMP(inst, bits) ||
+         TryExtractFCMP_HZ_FLOATCMP(inst, bits) ||
+         TryExtractSCVTF_ASISDMISCFP16_R(inst, bits) ||
+         TryExtractSHA256SU0_VV_CRYPTOSHA2(inst, bits) ||
+         TryExtractFCVT_HD_FLOATDP1(inst, bits) ||
+         TryExtractFRINTI_D_FLOATDP1(inst, bits) ||
+         TryExtractFSQRT_H_FLOATDP1(inst, bits) ||
+         TryExtractFCVTZU_32H_FLOAT2INT(inst, bits) ||
+         TryExtractFMOV_H_FLOATDP1(inst, bits) ||
+         TryExtractFCVTAS_32H_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTAS_32D_FLOAT2INT(inst, bits) ||
+         TryExtractFMAXNMP_ASISDPAIR_ONLY_H(inst, bits) ||
+         TryExtractFCVTMS_ASISDMISCFP16_R(inst, bits) ||
+         TryExtractFMOV_V64I_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTPS_ASISDMISCFP16_R(inst, bits) ||
          TryExtractFCVT_SH_FLOATDP1(inst, bits) ||
-         TryExtractSQRDMLAH_ASISDSAME2_ONLY(inst, bits) ||
          TryExtractFCVT_DS_FLOATDP1(inst, bits) ||
          TryExtractFCVT_HS_FLOATDP1(inst, bits) ||
+         TryExtractFRINTI_H_FLOATDP1(inst, bits) ||
          TryExtractFCVT_DH_FLOATDP1(inst, bits) ||
-         TryExtractSQXTUN_ASISDMISC_N(inst, bits) ||
-         TryExtractFMIN_H_FLOATDP2(inst, bits) ||
-         TryExtractFMINP_ASISDPAIR_ONLY_SD(inst, bits) ||
-         TryExtractFRINTN_H_FLOATDP1(inst, bits) ||
-         TryExtractUQSHL_ASISDSHF_R(inst, bits) ||
-         TryExtractFRINTM_D_FLOATDP1(inst, bits) ||
-         TryExtractADDP_ASISDPAIR_ONLY(inst, bits) ||
-         TryExtractFACGE_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractURSHL_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFRINTN_D_FLOATDP1(inst, bits) ||
-         TryExtractFMAXP_ASISDPAIR_ONLY_H(inst, bits) ||
-         TryExtractSQRSHRUN_ASISDSHF_N(inst, bits) ||
-         TryExtractFMAXP_ASISDPAIR_ONLY_SD(inst, bits) ||
-         TryExtractSTUR_Q_LDST_UNSCALED(inst, bits) ||
-         TryExtractSQADD_ASISDSAME_ONLY(inst, bits) ||
-         TryExtractFCVTNU_ASISDMISCFP16_R(inst, bits) ||
-         TryExtractFCMGT_ASISDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractSHL_ASISDSHF_R(inst, bits) ||
-         TryExtractUSQADD_ASISDMISC_R(inst, bits) ||
-         TryExtractFMINNMP_ASISDPAIR_ONLY_H(inst, bits) ||
-         TryExtractFCVTPU_ASISDMISCFP16_R(inst, bits) ||
-         TryExtractSQDMLAL_ASISDELEM_L(inst, bits) ||
-         TryExtractFCVTZU_64D_FLOAT2FIX(inst, bits) ||
-         TryExtractFCVTMS_ASISDMISC_R(inst, bits) ||
-         TryExtractFCMEQ_ASISDMISCFP16_FZ(inst, bits) ||
-         TryExtractFNEG_H_FLOATDP1(inst, bits) ||
-         TryExtractFCVTAU_ASISDMISC_R(inst, bits) ||
-         TryExtractFCVTAU_ASISDMISCFP16_R(inst, bits) ||
-         TryExtractSQDMLAL_ASISDDIFF_ONLY(inst, bits) ||
-         TryExtractSRI_ASISDSHF_R(inst, bits) ||
-         TryExtractFMOV_H_FLOATDP1(inst, bits) ||
-         TryExtractFMINNMP_ASISDPAIR_ONLY_SD(inst, bits) ||
-         TryExtractFCCMP_S_FLOATCCMP(inst, bits) ||
-         TryExtractLDR_Q_LOADLIT(inst, bits) ||
-         TryExtractSQDMLSL_ASISDELEM_L(inst, bits) ||
-         TryExtractLDR_S_LOADLIT(inst, bits) ||
-         TryExtractFCVTZS_32H_FLOAT2INT(inst, bits) ||
-         TryExtractFMINP_ASISDPAIR_ONLY_H(inst, bits) ||
-         TryExtractFCVTZS_ASISDSHF_C(inst, bits) ||
-         TryExtractSQDMULH_ASISDELEM_R(inst, bits) ||
-         TryExtractFMSUB_H_FLOATDP3(inst, bits) ||
-         TryExtractSHA1M_QSV_CRYPTOSHA3(inst, bits) ||
-         TryExtractLDR_S_LDST_IMMPOST(inst, bits) ||
+         TryExtractFCVTZS_64H_FLOAT2INT(inst, bits) ||
          TryExtractUCVTF_H32_FLOAT2INT(inst, bits) ||
-         TryExtractLDR_D_LOADLIT(inst, bits) ||
-         TryExtractSQRSHRN_ASISDSHF_N(inst, bits) ||
-         TryExtractFCVTPU_ASISDMISC_R(inst, bits) ||
-         TryExtractCMLT_ASISDMISC_Z(inst, bits) ||
-         TryExtractUCVTF_H64_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTAS_32S_FLOAT2INT(inst, bits) ||
+         TryExtractFCMPE_HZ_FLOATCMP(inst, bits) ||
+         TryExtractFCVTZU_64S_FLOAT2INT(inst, bits) ||
+         TryExtractFRINTA_D_FLOATDP1(inst, bits) ||
+         TryExtractFRINTA_S_FLOATDP1(inst, bits) ||
+         TryExtractFRINTA_H_FLOATDP1(inst, bits) ||
+         TryExtractFMOV_D_FLOATDP1(inst, bits) ||
+         TryExtractFCVTAS_ASISDMISCFP16_R(inst, bits) ||
+         TryExtractFCVTNS_32D_FLOAT2INT(inst, bits) ||
+         TryExtractFRINTZ_H_FLOATDP1(inst, bits) ||
+         TryExtractFRINTZ_D_FLOATDP1(inst, bits) ||
+         TryExtractFMOV_S_FLOATDP1(inst, bits) ||
+         TryExtractFRINTZ_S_FLOATDP1(inst, bits) ||
+         TryExtractFCVTZS_32D_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTZS_64S_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTZS_32S_FLOAT2INT(inst, bits) ||
+         TryExtractFADDP_ASISDPAIR_ONLY_H(inst, bits) ||
+         TryExtractFRINTN_D_FLOATDP1(inst, bits) ||
+         TryExtractFCMPE_D_FLOATCMP(inst, bits) ||
+         TryExtractFCMPE_H_FLOATCMP(inst, bits) ||
+         TryExtractFCMPE_DZ_FLOATCMP(inst, bits) ||
+         TryExtractFCVTNS_ASISDMISCFP16_R(inst, bits) ||
+         TryExtractFRECPE_ASISDMISCFP16_R(inst, bits) ||
+         TryExtractFABS_H_FLOATDP1(inst, bits) ||
+         TryExtractFCMPE_S_FLOATCMP(inst, bits) ||
+         TryExtractFCVTAU_32D_FLOAT2INT(inst, bits) ||
+         TryExtractFCMPE_SZ_FLOATCMP(inst, bits) ||
+         TryExtractFCVTAU_ASISDMISCFP16_R(inst, bits) ||
+         TryExtractFCVTNU_ASISDMISCFP16_R(inst, bits) ||
+         TryExtractFMINNMP_ASISDPAIR_ONLY_H(inst, bits) ||
+         TryExtractFCVTNU_64D_FLOAT2INT(inst, bits) ||
+         TryExtractFABS_D_FLOATDP1(inst, bits) ||
+         TryExtractFCVTMS_64S_FLOAT2INT(inst, bits) ||
+         TryExtractFRINTI_S_FLOATDP1(inst, bits) ||
+         TryExtractFCVTNU_64S_FLOAT2INT(inst, bits) ||
          TryExtractFMOV_32H_FLOAT2INT(inst, bits) ||
-         TryExtractFCVTAU_32S_FLOAT2INT(inst, bits) ||
-         TryExtractFCSEL_H_FLOATSEL(inst, bits) ||
-         TryExtractFADD_D_FLOATDP2(inst, bits) ||
-         TryExtractFMUL_D_FLOATDP2(inst, bits) ||
+         TryExtractFCMEQ_ASISDMISCFP16_FZ(inst, bits) ||
+         TryExtractFCVTAU_32H_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTAU_64H_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTAU_64S_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTZU_32S_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTPU_64H_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTZS_64D_FLOAT2INT(inst, bits) ||
+         TryExtractFMOV_64H_FLOAT2INT(inst, bits) ||
          TryExtractFMOV_H32_FLOAT2INT(inst, bits) ||
          TryExtractFMOV_S32_FLOAT2INT(inst, bits) ||
-         TryExtractSQRDMLSH_ASISDELEM_R(inst, bits) ||
-         TryExtractLDR_B_LDST_REGOFF(inst, bits) ||
-         TryExtractFMUL_S_FLOATDP2(inst, bits) ||
-         TryExtractFSUB_H_FLOATDP2(inst, bits) ||
          TryExtractFCVTMU_ASISDMISCFP16_R(inst, bits) ||
+         TryExtractFCVTNU_32D_FLOAT2INT(inst, bits) ||
+         TryExtractFMOV_32S_FLOAT2INT(inst, bits) ||
+         TryExtractFMOV_H64_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTNS_64D_FLOAT2INT(inst, bits) ||
+         TryExtractFMOV_D64_FLOAT2INT(inst, bits) ||
+         TryExtractFCMGT_ASISDMISCFP16_FZ(inst, bits) ||
+         TryExtractFMOV_64VX_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTPU_32S_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTPU_32H_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTPU_64S_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTPU_32D_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTPU_64D_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTAU_32S_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTAU_64D_FLOAT2INT(inst, bits) ||
+         TryExtractFCVTPU_ASISDMISC_R(inst, bits) ||
+         TryExtractFRECPX_ASISDMISC_R(inst, bits) ||
+         TryExtractFRSQRTE_ASISDMISC_R(inst, bits) ||
+         TryExtractFCMGE_ASISDMISC_FZ(inst, bits) ||
+         TryExtractFCMLE_ASISDMISC_FZ(inst, bits) ||
+         TryExtractFCVTZU_ASISDMISC_R(inst, bits) ||
+         TryExtractUCVTF_ASISDMISC_R(inst, bits) ||
+         TryExtractFCVTZS_ASISDMISC_R(inst, bits) ||
+         TryExtractSCVTF_ASISDMISC_R(inst, bits) ||
+         TryExtractFCVTMS_ASISDMISC_R(inst, bits) ||
+         TryExtractFCMLT_ASISDMISC_FZ(inst, bits) ||
+         TryExtractFADDP_ASISDPAIR_ONLY_SD(inst, bits) ||
+         TryExtractFMAXNMP_ASISDPAIR_ONLY_SD(inst, bits) ||
+         TryExtractFCMGT_ASISDMISC_FZ(inst, bits) ||
+         TryExtractFMINP_ASISDPAIR_ONLY_SD(inst, bits) ||
+         TryExtractFCVTAS_ASISDMISC_R(inst, bits) ||
+         TryExtractFCVTPS_ASISDMISC_R(inst, bits) ||
+         TryExtractFCVTNS_ASISDMISC_R(inst, bits) ||
          TryExtractFCVTXN_ASISDMISC_N(inst, bits) ||
-         TryExtractFSUB_D_FLOATDP2(inst, bits) ||
+         TryExtractFCMEQ_ASISDMISC_FZ(inst, bits) ||
+         TryExtractFRECPE_ASISDMISC_R(inst, bits) ||
+         TryExtractFMINNMP_ASISDPAIR_ONLY_SD(inst, bits) ||
+         TryExtractFCVTAU_ASISDMISC_R(inst, bits) ||
+         TryExtractFCVTNU_ASISDMISC_R(inst, bits) ||
+         TryExtractFMAXP_ASISDPAIR_ONLY_SD(inst, bits) ||
          TryExtractFCVTMU_ASISDMISC_R(inst, bits) ||
-         TryExtractLDR_H_LDST_REGOFF(inst, bits) ||
+         TryExtractCMLT_ASISDMISC_Z(inst, bits) ||
+         TryExtractSQXTUN_ASISDMISC_N(inst, bits) ||
+         TryExtractSQNEG_ASISDMISC_R(inst, bits) ||
+         TryExtractCMLE_ASISDMISC_Z(inst, bits) ||
+         TryExtractSUQADD_ASISDMISC_R(inst, bits) ||
+         TryExtractCMGT_ASISDMISC_Z(inst, bits) ||
+         TryExtractSQABS_ASISDMISC_R(inst, bits) ||
+         TryExtractUSQADD_ASISDMISC_R(inst, bits) ||
+         TryExtractUQXTN_ASISDMISC_N(inst, bits) ||
+         TryExtractNEG_ASISDMISC_R(inst, bits) ||
+         TryExtractABS_ASISDMISC_R(inst, bits) ||
+         TryExtractSQXTN_ASISDMISC_N(inst, bits) ||
+         TryExtractADDP_ASISDPAIR_ONLY(inst, bits) ||
+         TryExtractCMEQ_ASISDMISC_Z(inst, bits) ||
+         TryExtractCMGE_ASISDMISC_Z(inst, bits) ||
+         TryExtractFMOV_H_FLOATIMM(inst, bits) ||
+         TryExtractFMOV_S_FLOATIMM(inst, bits) ||
+         TryExtractFMOV_D_FLOATIMM(inst, bits) ||
+         TryExtractFSUB_S_FLOATDP2(inst, bits) ||
+         TryExtractFSUB_H_FLOATDP2(inst, bits) ||
+         TryExtractFABD_ASISDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFMUL_D_FLOATDP2(inst, bits) ||
+         TryExtractFMINNM_H_FLOATDP2(inst, bits) ||
+         TryExtractFCMEQ_ASISDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFMINNM_D_FLOATDP2(inst, bits) ||
+         TryExtractSHA256SU1_VVV_CRYPTOSHA3(inst, bits) ||
+         TryExtractFSUB_D_FLOATDP2(inst, bits) ||
+         TryExtractFNMUL_S_FLOATDP2(inst, bits) ||
+         TryExtractFDIV_H_FLOATDP2(inst, bits) ||
+         TryExtractFRECPS_ASISDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFCMGE_ASISDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFNMUL_H_FLOATDP2(inst, bits) ||
+         TryExtractFMAXNM_S_FLOATDP2(inst, bits) ||
+         TryExtractFMAXNM_H_FLOATDP2(inst, bits) ||
+         TryExtractSHA256H_QQV_CRYPTOSHA3(inst, bits) ||
+         TryExtractFMUL_S_FLOATDP2(inst, bits) ||
+         TryExtractFMULX_ASISDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFMUL_H_FLOATDP2(inst, bits) ||
+         TryExtractFMAX_D_FLOATDP2(inst, bits) ||
+         TryExtractFDIV_S_FLOATDP2(inst, bits) ||
+         TryExtractSHA1SU0_VVV_CRYPTOSHA3(inst, bits) ||
+         TryExtractFDIV_D_FLOATDP2(inst, bits) ||
+         TryExtractSHA1M_QSV_CRYPTOSHA3(inst, bits) ||
+         TryExtractFMIN_D_FLOATDP2(inst, bits) ||
+         TryExtractFADD_S_FLOATDP2(inst, bits) ||
+         TryExtractFMIN_S_FLOATDP2(inst, bits) ||
+         TryExtractSHA1P_QSV_CRYPTOSHA3(inst, bits) ||
+         TryExtractFADD_D_FLOATDP2(inst, bits) ||
+         TryExtractFMINNM_S_FLOATDP2(inst, bits) ||
+         TryExtractDUP_ASISDONE_ONLY(inst, bits) ||
+         TryExtractFMIN_H_FLOATDP2(inst, bits) ||
+         TryExtractSHA1C_QSV_CRYPTOSHA3(inst, bits) ||
+         TryExtractFNMUL_D_FLOATDP2(inst, bits) ||
+         TryExtractFRSQRTS_ASISDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFMAXNM_D_FLOATDP2(inst, bits) ||
+         TryExtractFMAX_S_FLOATDP2(inst, bits) ||
+         TryExtractFCMGT_ASISDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFADD_H_FLOATDP2(inst, bits) ||
+         TryExtractFACGT_ASISDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractFMAX_H_FLOATDP2(inst, bits) ||
+         TryExtractFACGE_ASISDSAMEFP16_ONLY(inst, bits) ||
+         TryExtractSHA256H2_QQV_CRYPTOSHA3(inst, bits) ||
+         TryExtractUCVTF_D64_FLOAT2FIX(inst, bits) ||
+         TryExtractFRECPS_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractUCVTF_S32_FLOAT2FIX(inst, bits) ||
+         TryExtractUCVTF_D32_FLOAT2FIX(inst, bits) ||
+         TryExtractFCVTZS_32S_FLOAT2FIX(inst, bits) ||
+         TryExtractFABD_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractFCMEQ_ASISDSAME_ONLY(inst, bits) ||
          TryExtractLDR_BL_LDST_REGOFF(inst, bits) ||
+         TryExtractUCVTF_S64_FLOAT2FIX(inst, bits) ||
+         TryExtractFCVTZU_32D_FLOAT2FIX(inst, bits) ||
+         TryExtractFCMGE_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractSTR_BL_LDST_REGOFF(inst, bits) ||
+         TryExtractFRSQRTS_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractFMULX_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractSCVTF_H32_FLOAT2FIX(inst, bits) ||
+         TryExtractSCVTF_S32_FLOAT2FIX(inst, bits) ||
+         TryExtractSCVTF_D32_FLOAT2FIX(inst, bits) ||
+         TryExtractSCVTF_H64_FLOAT2FIX(inst, bits) ||
+         TryExtractSCVTF_S64_FLOAT2FIX(inst, bits) ||
+         TryExtractSCVTF_D64_FLOAT2FIX(inst, bits) ||
+         TryExtractFCVTZS_64D_FLOAT2FIX(inst, bits) ||
+         TryExtractFCVTZS_32D_FLOAT2FIX(inst, bits) ||
+         TryExtractFCVTZS_64S_FLOAT2FIX(inst, bits) ||
+         TryExtractFCVTZS_64H_FLOAT2FIX(inst, bits) ||
+         TryExtractFCVTZS_32H_FLOAT2FIX(inst, bits) ||
+         TryExtractUCVTF_H32_FLOAT2FIX(inst, bits) ||
+         TryExtractFCVTZU_32H_FLOAT2FIX(inst, bits) ||
+         TryExtractFCVTZU_64H_FLOAT2FIX(inst, bits) ||
+         TryExtractFCVTZU_32S_FLOAT2FIX(inst, bits) ||
+         TryExtractFCVTZU_64S_FLOAT2FIX(inst, bits) ||
+         TryExtractFCVTZU_64D_FLOAT2FIX(inst, bits) ||
+         TryExtractFACGE_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractFACGT_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractFCMGT_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractUCVTF_H64_FLOAT2FIX(inst, bits) ||
+         TryExtractSQSUB_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractUQSHL_ASISDSHF_R(inst, bits) ||
+         TryExtractSQRSHRUN_ASISDSHF_N(inst, bits) ||
+         TryExtractADD_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractUQSHL_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractURSHL_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractSQDMULH_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractSQSHRN_ASISDSHF_N(inst, bits) ||
+         TryExtractSQSHLU_ASISDSHF_R(inst, bits) ||
+         TryExtractSRSRA_ASISDSHF_R(inst, bits) ||
+         TryExtractCMEQ_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractUSRA_ASISDSHF_R(inst, bits) ||
+         TryExtractUSHL_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractSQSHL_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractFCVTZU_ASISDSHF_C(inst, bits) ||
+         TryExtractSQSHL_ASISDSHF_R(inst, bits) ||
+         TryExtractSQSHRUN_ASISDSHF_N(inst, bits) ||
+         TryExtractSQDMULL_ASISDDIFF_ONLY(inst, bits) ||
+         TryExtractUQSUB_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractCMGT_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractSQRSHRN_ASISDSHF_N(inst, bits) ||
+         TryExtractUQADD_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractSSHR_ASISDSHF_R(inst, bits) ||
+         TryExtractSQRDMLSH_ASISDSAME2_ONLY(inst, bits) ||
+         TryExtractSRI_ASISDSHF_R(inst, bits) ||
+         TryExtractUQRSHRN_ASISDSHF_N(inst, bits) ||
+         TryExtractCMHI_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractFMUL_ASISDELEM_RH_H(inst, bits) ||
+         TryExtractSSRA_ASISDSHF_R(inst, bits) ||
+         TryExtractSCVTF_ASISDSHF_C(inst, bits) ||
+         TryExtractSSHL_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractUSHR_ASISDSHF_R(inst, bits) ||
+         TryExtractSQDMLAL_ASISDDIFF_ONLY(inst, bits) ||
+         TryExtractFMLA_ASISDELEM_RH_H(inst, bits) ||
+         TryExtractUCVTF_ASISDSHF_C(inst, bits) ||
+         TryExtractSQADD_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractFMULX_ASISDELEM_RH_H(inst, bits) ||
+         TryExtractUQSHRN_ASISDSHF_N(inst, bits) ||
+         TryExtractSQRDMULH_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractCMGE_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractURSHR_ASISDSHF_R(inst, bits) ||
+         TryExtractFMLS_ASISDELEM_RH_H(inst, bits) ||
+         TryExtractSRSHL_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractSQRDMLAH_ASISDSAME2_ONLY(inst, bits) ||
+         TryExtractFCVTZS_ASISDSHF_C(inst, bits) ||
+         TryExtractCMHS_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractUQRSHL_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractSRSHR_ASISDSHF_R(inst, bits) ||
+         TryExtractCMTST_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractSQDMLSL_ASISDDIFF_ONLY(inst, bits) ||
+         TryExtractSLI_ASISDSHF_R(inst, bits) ||
+         TryExtractSUB_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractSHL_ASISDSHF_R(inst, bits) ||
+         TryExtractSQRSHL_ASISDSAME_ONLY(inst, bits) ||
+         TryExtractURSRA_ASISDSHF_R(inst, bits) ||
+         TryExtractFCCMP_H_FLOATCCMP(inst, bits) ||
+         TryExtractFCCMPE_S_FLOATCCMP(inst, bits) ||
+         TryExtractFMUL_ASISDELEM_R_SD(inst, bits) ||
+         TryExtractFCCMP_D_FLOATCCMP(inst, bits) ||
+         TryExtractFCCMPE_H_FLOATCCMP(inst, bits) ||
+         TryExtractFCCMPE_D_FLOATCCMP(inst, bits) ||
+         TryExtractFMLA_ASISDELEM_R_SD(inst, bits) ||
+         TryExtractFMULX_ASISDELEM_R_SD(inst, bits) ||
+         TryExtractFMLS_ASISDELEM_R_SD(inst, bits) ||
+         TryExtractFCCMP_S_FLOATCCMP(inst, bits) ||
+         TryExtractFCSEL_D_FLOATSEL(inst, bits) ||
+         TryExtractSTR_S_LDST_REGOFF(inst, bits) ||
+         TryExtractLDR_S_LDST_REGOFF(inst, bits) ||
+         TryExtractLDR_H_LDST_REGOFF(inst, bits) ||
+         TryExtractLDR_B_LDST_REGOFF(inst, bits) ||
+         TryExtractSTR_B_LDST_IMMPOST(inst, bits) ||
          TryExtractSTR_H_LDST_IMMPOST(inst, bits) ||
          TryExtractSTR_S_LDST_IMMPOST(inst, bits) ||
          TryExtractSTR_D_LDST_IMMPOST(inst, bits) ||
          TryExtractSTR_Q_LDST_IMMPOST(inst, bits) ||
-         TryExtractFCVTNU_32D_FLOAT2INT(inst, bits) ||
-         TryExtractFMAX_S_FLOATDP2(inst, bits) ||
          TryExtractSTR_B_LDST_IMMPRE(inst, bits) ||
-         TryExtractFMOV_D64_FLOAT2INT(inst, bits) ||
-         TryExtractFMOV_V64I_FLOAT2INT(inst, bits) ||
-         TryExtractLDR_H_LDST_IMMPRE(inst, bits) ||
+         TryExtractSTR_H_LDST_IMMPRE(inst, bits) ||
+         TryExtractSTR_S_LDST_IMMPRE(inst, bits) ||
          TryExtractSTR_D_LDST_IMMPRE(inst, bits) ||
-         TryExtractFMOV_64D_FLOAT2INT(inst, bits) ||
-         TryExtractFMOV_64VX_FLOAT2INT(inst, bits) ||
+         TryExtractSTR_Q_LDST_IMMPRE(inst, bits) ||
+         TryExtractSTR_D_LDST_REGOFF(inst, bits) ||
+         TryExtractSQDMULL_ASISDELEM_L(inst, bits) ||
+         TryExtractLDR_Q_LDST_REGOFF(inst, bits) ||
+         TryExtractLDR_D_LDST_REGOFF(inst, bits) ||
+         TryExtractSTR_B_LDST_REGOFF(inst, bits) ||
+         TryExtractSTR_Q_LDST_REGOFF(inst, bits) ||
+         TryExtractSQRDMULH_ASISDELEM_R(inst, bits) ||
+         TryExtractSTUR_D_LDST_UNSCALED(inst, bits) ||
+         TryExtractSTUR_Q_LDST_UNSCALED(inst, bits) ||
+         TryExtractSQRDMLSH_ASISDELEM_R(inst, bits) ||
+         TryExtractSTUR_H_LDST_UNSCALED(inst, bits) ||
+         TryExtractSTR_H_LDST_REGOFF(inst, bits) ||
+         TryExtractSTUR_S_LDST_UNSCALED(inst, bits) ||
+         TryExtractSQRDMLAH_ASISDELEM_R(inst, bits) ||
+         TryExtractLDR_B_LDST_IMMPOST(inst, bits) ||
+         TryExtractLDUR_D_LDST_UNSCALED(inst, bits) ||
+         TryExtractLDUR_B_LDST_UNSCALED(inst, bits) ||
+         TryExtractLDUR_S_LDST_UNSCALED(inst, bits) ||
+         TryExtractLDUR_Q_LDST_UNSCALED(inst, bits) ||
+         TryExtractFCSEL_S_FLOATSEL(inst, bits) ||
+         TryExtractFCSEL_H_FLOATSEL(inst, bits) ||
+         TryExtractSQDMLSL_ASISDELEM_L(inst, bits) ||
+         TryExtractLDR_H_LDST_IMMPOST(inst, bits) ||
+         TryExtractLDR_D_LDST_IMMPOST(inst, bits) ||
+         TryExtractLDR_Q_LDST_IMMPOST(inst, bits) ||
+         TryExtractLDR_S_LDST_IMMPOST(inst, bits) ||
+         TryExtractLDR_Q_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDR_H_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDR_D_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDR_S_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDR_B_LDST_IMMPRE(inst, bits) ||
+         TryExtractLDUR_H_LDST_UNSCALED(inst, bits) ||
+         TryExtractSQDMLAL_ASISDELEM_L(inst, bits) ||
+         TryExtractSQDMULH_ASISDELEM_R(inst, bits) ||
+         TryExtractSTUR_B_LDST_UNSCALED(inst, bits) ||
+         TryExtractFNMSUB_D_FLOATDP3(inst, bits) ||
+         TryExtractFNMSUB_H_FLOATDP3(inst, bits) ||
+         TryExtractFNMSUB_S_FLOATDP3(inst, bits) ||
+         TryExtractFNMADD_S_FLOATDP3(inst, bits) ||
+         TryExtractFNMADD_D_FLOATDP3(inst, bits) ||
+         TryExtractFNMADD_H_FLOATDP3(inst, bits) ||
+         TryExtractFMSUB_S_FLOATDP3(inst, bits) ||
+         TryExtractFMSUB_H_FLOATDP3(inst, bits) ||
+         TryExtractFMSUB_D_FLOATDP3(inst, bits) ||
+         TryExtractFMADD_H_FLOATDP3(inst, bits) ||
+         TryExtractFMADD_S_FLOATDP3(inst, bits) ||
+         TryExtractFMADD_D_FLOATDP3(inst, bits) ||
+         TryExtractSTR_S_LDST_POS(inst, bits) ||
+         TryExtractSTR_Q_LDST_POS(inst, bits) ||
          TryExtractSTR_B_LDST_POS(inst, bits) ||
          TryExtractSTR_H_LDST_POS(inst, bits) ||
-         TryExtractFMOV_H_FLOATIMM(inst, bits) ||
-         TryExtractFCVTAU_64D_FLOAT2INT(inst, bits) ||
-         TryExtractSTR_Q_LDST_POS(inst, bits) ||
-         TryExtractFCVTZS_ASISDMISCFP16_R(inst, bits) ||
-         TryExtractFCVTAS_32S_FLOAT2INT(inst, bits) ||
-         TryExtractLDR_D_LDST_REGOFF(inst, bits) ||
-         TryExtractLDR_Q_LDST_REGOFF(inst, bits) ||
-         TryExtractFMAXNMP_ASISDPAIR_ONLY_H(inst, bits) ||
-         TryExtractFCMGE_ASISDMISCFP16_FZ(inst, bits) ||
-         TryExtractSTR_H_LDST_IMMPRE(inst, bits) ||
-         TryExtractFNMSUB_H_FLOATDP3(inst, bits) ||
-         TryExtractFCVTZU_ASISDMISCFP16_R(inst, bits) ||
-         TryExtractFCVTAS_64H_FLOAT2INT(inst, bits) ||
-         TryExtractFNMADD_H_FLOATDP3(inst, bits) ||
-         TryExtractFCCMPE_D_FLOATCCMP(inst, bits) ||
-         TryExtractFRINTN_S_FLOATDP1(inst, bits) ||
-         TryExtractFCCMPE_S_FLOATCCMP(inst, bits) ||
-         TryExtractFCVTAU_32H_FLOAT2INT(inst, bits) ||
-         TryExtractFMULX_ASISDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractFMOV_S_FLOATIMM(inst, bits) ||
-         TryExtractFCVTAU_64S_FLOAT2INT(inst, bits) ||
-         TryExtractFSQRT_S_FLOATDP1(inst, bits) ||
-         TryExtractFMUL_H_FLOATDP2(inst, bits) ||
-         TryExtractFCVTPS_64H_FLOAT2INT(inst, bits) ||
-         TryExtractFNMSUB_D_FLOATDP3(inst, bits) ||
-         TryExtractFCVTAU_32D_FLOAT2INT(inst, bits) ||
-         TryExtractFCCMPE_H_FLOATCCMP(inst, bits) ||
-         TryExtractFNMSUB_S_FLOATDP3(inst, bits) ||
-         TryExtractFACGE_ASISDSAMEFP16_ONLY(inst, bits) ||
-         TryExtractFCMEQ_ASISDMISC_FZ(inst, bits) ||
-         TryExtractFCVTAU_64H_FLOAT2INT(inst, bits) ||
-         TryExtractFCMPE_H_FLOATCMP(inst, bits) ||
-         TryExtractFNMADD_S_FLOATDP3(inst, bits) ||
-         TryExtractFCVTAS_32H_FLOAT2INT(inst, bits) ||
-         TryExtractFCVTAS_64D_FLOAT2INT(inst, bits) ||
-         TryExtractSQABS_ASISDMISC_R(inst, bits) ||
-         TryExtractFMOV_D_FLOATIMM(inst, bits) ||
-         TryExtractFMAX_H_FLOATDP2(inst, bits) ||
-         TryExtractFCVTPS_32D_FLOAT2INT(inst, bits);
+         TryExtractSTR_D_LDST_POS(inst, bits) ||
+         TryExtractLDR_B_LDST_POS(inst, bits) ||
+         TryExtractLDR_Q_LDST_POS(inst, bits) ||
+         TryExtractLDR_H_LDST_POS(inst, bits) ||
+         TryExtractLDR_S_LDST_POS(inst, bits) ||
+         TryExtractLDR_D_LDST_POS(inst, bits) ||
+         TryExtractLDR_S_LOADLIT(inst, bits) ||
+         TryExtractLDR_Q_LOADLIT(inst, bits) ||
+         TryExtractLDR_D_LOADLIT(inst, bits);
 }
 
 static bool (* const kFirstLevel[])(InstData &, uint32_t) = {

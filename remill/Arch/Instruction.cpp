@@ -170,7 +170,7 @@ std::string Operand::Serialize(void) const {
         case 256: ss << "DOWORD"; break;
         case 512: ss << "QOWORD"; break;
         default:
-          CHECK((size / 8) == (8 * (size / 8)))
+          CHECK(!(size & 7))
               << "Memory operand size must be divisible by 8; got "
               << size << " bits.";
           ss << std::dec << (size / 8) << "_BYTES"; break;
