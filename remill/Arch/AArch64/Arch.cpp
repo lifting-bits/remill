@@ -3587,6 +3587,11 @@ bool TryDecodeORR_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// AND  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeAND_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeORR_ASIMDSAME_ONLY(data, inst);
+}
+
 // BICS  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
 bool TryDecodeBICS_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
   return TryDecodeBIC_32_LOG_SHIFT(data, inst);
@@ -3814,6 +3819,179 @@ bool TryDecodeLD1_ASISDLSEP_I3_I3(const InstData &data, Instruction &inst) {
 // LD1  { <Vt>.<T>, <Vt2>.<T>, <Vt3>.<T>, <Vt4>.<T> }, [<Xn|SP>], <imm>
 bool TryDecodeLD1_ASISDLSEP_I4_I4(const InstData &data, Instruction &inst) {
   return TryDecodeLD1_ASISDLSEP_I2_I2(data, inst);
+}
+
+// CMEQ  <Vd>.<T>, <Vn>.<T>, #0
+bool TryDecodeCMEQ_ASIMDMISC_Z(const InstData &data, Instruction &inst) {
+  if (data.size == 3 && !data.Q) {
+    return false;  // `if size:Q == '110' then ReservedValue();`.
+  }
+  AddArrangementSpecifier(inst, data.Q ? 128 : 64, 8UL << data.size);
+  TryDecodeRdW_Rn(data, inst, data.Q ? kRegQ : kRegD);
+  AddImmOperand(inst, 0, kUnsigned, 8UL << data.size);
+  return true;
+}
+
+// CMLT  <Vd>.<T>, <Vn>.<T>, #0
+bool TryDecodeCMLT_ASIMDMISC_Z(const InstData &data, Instruction &inst) {
+  return TryDecodeCMEQ_ASIMDMISC_Z(data, inst);
+}
+
+// CMLE  <Vd>.<T>, <Vn>.<T>, #0
+bool TryDecodeCMLE_ASIMDMISC_Z(const InstData &data, Instruction &inst) {
+  return TryDecodeCMEQ_ASIMDMISC_Z(data, inst);
+}
+
+// CMGT  <Vd>.<T>, <Vn>.<T>, #0
+bool TryDecodeCMGT_ASIMDMISC_Z(const InstData &data, Instruction &inst) {
+  return TryDecodeCMEQ_ASIMDMISC_Z(data, inst);
+}
+
+// CMGE  <Vd>.<T>, <Vn>.<T>, #0
+bool TryDecodeCMGE_ASIMDMISC_Z(const InstData &data, Instruction &inst) {
+  return TryDecodeCMEQ_ASIMDMISC_Z(data, inst);
+}
+
+// CMEQ  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeCMEQ_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  if (data.size == 3 && !data.Q) {
+    return false;  // `if size:Q == '110' then ReservedValue();`.
+  }
+  AddArrangementSpecifier(inst, data.Q ? 128 : 64, 8UL << data.size);
+  return TryDecodeRdW_Rn_Rm(data, inst, data.Q ? kRegQ : kRegD);
+}
+
+// CMGE  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeCMGE_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeCMEQ_ASIMDSAME_ONLY(data, inst);
+}
+
+// CMGT  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeCMGT_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeCMEQ_ASIMDSAME_ONLY(data, inst);
+}
+
+// CMTST  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeCMTST_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeCMEQ_ASIMDSAME_ONLY(data, inst);
+}
+
+// ADDP  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeADDP_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeADD_ASIMDSAME_ONLY(data, inst);
+}
+
+// UMAXP  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeUMAXP_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  if (0x3 == data.size) {
+    return false;  // `if size == '11' then ReservedValue();`.
+  }
+  AddArrangementSpecifier(inst, data.Q ? 128 : 64, 8UL << data.size);
+  return TryDecodeRdW_Rn_Rm(data, inst, data.Q ? kRegQ : kRegD);
+}
+
+// SMAXP  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeSMAXP_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeUMAXP_ASIMDSAME_ONLY(data, inst);
+}
+
+// UMINP  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeUMINP_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeUMAXP_ASIMDSAME_ONLY(data, inst);
+}
+
+// SMINP  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeSMINP_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeUMAXP_ASIMDSAME_ONLY(data, inst);
+}
+
+// UMIN  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeUMIN_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeUMAXP_ASIMDSAME_ONLY(data, inst);
+}
+
+// UMAX  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeUMAX_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeUMAXP_ASIMDSAME_ONLY(data, inst);
+}
+
+// SMIN  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeSMIN_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeUMAXP_ASIMDSAME_ONLY(data, inst);
+}
+
+// SMAX  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeSMAX_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeUMAXP_ASIMDSAME_ONLY(data, inst);
+}
+
+// UMOV  <Wd>, <Vn>.<Ts>[<index>]
+bool TryDecodeUMOV_ASIMDINS_W_W(const InstData &data, Instruction &inst) {
+  uint64_t size = 0;
+  if (!LeastSignificantSetBit(data.imm5.uimm, &size) || size > 3) {
+    return false;  // `if size > 3 then UnallocatedEncoding();`
+  } else if (data.Q && size < 3) {
+    return false;
+  }
+  std::stringstream ss;
+  ss << inst.function;
+  switch (size) {
+    case 0: ss << "_B"; break;
+    case 1: ss << "_H"; break;
+    case 2: ss << "_S"; break;
+    case 3: ss << "_D"; break;
+    default: return false;
+  }
+  inst.function = ss.str();
+  AddRegOperand(inst, kActionWrite, data.Q ? kRegX : kRegW,
+                kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  AddImmOperand(inst, data.imm5.uimm >> (size + 1));
+  return true;
+}
+
+// UMOV  <Xd>, <Vn>.<Ts>[<index>]
+bool TryDecodeUMOV_ASIMDINS_X_X(const InstData &data, Instruction &inst) {
+  return TryDecodeUMOV_ASIMDINS_W_W(data, inst);
+}
+
+// SMOV  <Wd>, <Vn>.<Ts>[<index>]
+bool TryDecodeSMOV_ASIMDINS_W_W(const InstData &data, Instruction &inst) {
+  uint64_t size = 0;
+  if (!LeastSignificantSetBit(data.imm5.uimm, &size) || size > 2) {
+    return false;  // `if size > 3 then UnallocatedEncoding();`
+  } else if (size == 2 && !data.Q) {
+    return false;
+  }
+  std::stringstream ss;
+  ss << inst.function;
+  switch (size) {
+    case 0: ss << "_B"; break;
+    case 1: ss << "_H"; break;
+    case 2: ss << "_S"; break;
+    default: return false;
+  }
+  inst.function = ss.str();
+  AddRegOperand(inst, kActionWrite, data.Q ? kRegX : kRegW,
+                kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  AddImmOperand(inst, data.imm5.uimm >> (size + 1));
+  return true;
+}
+
+// SMOV  <Xd>, <Vn>.<Ts>[<index>]
+bool TryDecodeSMOV_ASIMDINS_X_X(const InstData &data, Instruction &inst) {
+  return TryDecodeSMOV_ASIMDINS_W_W(data, inst);
+}
+
+// RBIT  <Wd>, <Wn>
+bool TryDecodeRBIT_32_DP_1SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeRdW_Rn(data, inst, kRegW);
+}
+
+// RBIT  <Xd>, <Xn>
+bool TryDecodeRBIT_64_DP_1SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeRdW_Rn(data, inst, kRegX);
 }
 
 }  // namespace aarch64

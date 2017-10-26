@@ -795,3 +795,39 @@ DEF_ISEL(LD1_ASISDLSEP_I4_I4_4S) = LD1_QUAD_POSTINDEX_32<MV128>;
 
 DEF_ISEL(LD1_ASISDLSEP_I4_I4_1D) = LD1_QUAD_POSTINDEX_64<MV64>;
 DEF_ISEL(LD1_ASISDLSEP_I4_I4_2D) = LD1_QUAD_POSTINDEX_64<MV128>;
+
+namespace {
+
+#define EXTRACT_VEC(prefix, size, ext_op) \
+    template <typename D, typename T> \
+    DEF_SEM(prefix ## MovFromVec ## size, D dst, V128 src, I64 index) { \
+      WriteZExt(dst, ext_op<T>( \
+          prefix ## ExtractV ## size( \
+              prefix ## ReadV ## size(src), Read(index)))); \
+      return memory; \
+    } \
+
+EXTRACT_VEC(U, 8, ZExtTo)
+EXTRACT_VEC(U, 16, ZExtTo)
+EXTRACT_VEC(U, 32, ZExtTo)
+EXTRACT_VEC(U, 64, ZExtTo)
+
+EXTRACT_VEC(S, 8, SExtTo)
+EXTRACT_VEC(S, 16, SExtTo)
+EXTRACT_VEC(S, 32, SExtTo)
+
+#undef EXTRACT_VEC
+
+}  // namespace
+
+DEF_ISEL(UMOV_ASIMDINS_W_W_B) = UMovFromVec8<R32W, uint32_t>;
+DEF_ISEL(UMOV_ASIMDINS_W_W_H) = UMovFromVec16<R32W, uint32_t>;
+DEF_ISEL(UMOV_ASIMDINS_W_W_S) = UMovFromVec32<R32W, uint32_t>;
+DEF_ISEL(UMOV_ASIMDINS_X_X_D) = UMovFromVec64<R64W, uint64_t>;
+
+DEF_ISEL(SMOV_ASIMDINS_W_W_B) = SMovFromVec8<R32W, int32_t>;
+DEF_ISEL(SMOV_ASIMDINS_W_W_H) = SMovFromVec16<R32W, int32_t>;
+
+DEF_ISEL(SMOV_ASIMDINS_X_X_B) = SMovFromVec8<R64W, int64_t>;
+DEF_ISEL(SMOV_ASIMDINS_X_X_H) = SMovFromVec16<R64W, int64_t>;
+DEF_ISEL(SMOV_ASIMDINS_X_X_S) = SMovFromVec32<R64W, int64_t>;

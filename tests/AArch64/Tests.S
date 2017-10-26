@@ -255,8 +255,11 @@ SYMBOL(__aarch64_test_table_begin):
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
 
 
-#include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_I3_I3.S"
-#include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_I4_I4.S"
+#include "tests/AArch64/SIMD/SMAX.S"
+#include "tests/AArch64/SIMD/SMIN.S"
+
+#include "tests/AArch64/SIMD/UMAX.S"
+#include "tests/AArch64/SIMD/UMIN.S"
 
 #if 0
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
@@ -294,6 +297,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/BITBYTE/BFM_nM_BITFIELD.S"
 #include "tests/AArch64/BITBYTE/CLZ_n_DP_1SRC.S"
 #include "tests/AArch64/BITBYTE/EXTR_n_EXTRACT.S"
+#include "tests/AArch64/BITBYTE/RBIT.S"
 #include "tests/AArch64/BITBYTE/REV.S"
 #include "tests/AArch64/BITBYTE/SBFM_nM_BITFIELD.S"
 #include "tests/AArch64/BITBYTE/UBFM_nM_BITFIELD.S"
@@ -313,6 +317,8 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/FMOV_NToN.S"
 #include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_I1_I1.S"
 #include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_I2_I2.S"
+#include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_I3_I3.S"
+#include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_I4_I4.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_OFF.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_POST.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_PRE.S"
@@ -328,6 +334,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/LDUR_n_LDST_UNSCALED.S"
 #include "tests/AArch64/DATAXFER/MOVK_n_MOVEWIDE.S"
 #include "tests/AArch64/DATAXFER/MOVZ_n_MOVEWIDE.S"
+#include "tests/AArch64/DATAXFER/SMOV.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_OFF.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_POST.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_PRE.S"
@@ -338,6 +345,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/STRB.S"
 #include "tests/AArch64/DATAXFER/STRH.S"
 #include "tests/AArch64/DATAXFER/STUR_n_LDST_UNSCALED.S"
+#include "tests/AArch64/DATAXFER/UMOV.S"
 
 #include "tests/AArch64/LOGICAL/AND_n_LOG_IMM.S"
 #include "tests/AArch64/LOGICAL/AND_n_LOG_SHIFT.S"
