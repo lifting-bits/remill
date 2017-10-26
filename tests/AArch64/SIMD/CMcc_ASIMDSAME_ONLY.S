@@ -140,27 +140,6 @@ TEST_INPUTS(0)
     cmge v2.4s, v3.4s, v4.4s
 TEST_END
 
-TEST_BEGIN(CMEQ_ASIMDSAME_ONLY_1D, cmeq_v123x1d, 1)
-TEST_INPUTS(0)
-    cmeq v0.1d, v1.1d, v2.1d
-    cmeq v1.1d, v2.1d, v3.1d
-    cmeq v2.1d, v3.1d, v4.1d
-TEST_END
-
-TEST_BEGIN(CMGT_ASIMDSAME_ONLY_1D, cmgt_v123x1d, 1)
-TEST_INPUTS(0)
-    cmgt v0.1d, v1.1d, v2.1d
-    cmgt v1.1d, v2.1d, v3.1d
-    cmgt v2.1d, v3.1d, v4.1d
-TEST_END
-
-TEST_BEGIN(CMGE_ASIMDSAME_ONLY_1D, cmge_v123x1d, 1)
-TEST_INPUTS(0)
-    cmge v0.1d, v1.1d, v2.1d
-    cmge v1.1d, v2.1d, v3.1d
-    cmge v2.1d, v3.1d, v4.1d
-TEST_END
-
 TEST_BEGIN(CMEQ_ASIMDSAME_ONLY_2D, cmeq_v123x2d, 1)
 TEST_INPUTS(0)
     cmeq v0.2d, v1.2d, v2.2d
