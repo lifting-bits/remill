@@ -1461,26 +1461,29 @@ namespace {
 DEF_HELPER(SquareRoot32, float32_t src_float) -> float32_t {
   auto square_root = src_float;
 
-  // Special cases for invalid square root operations:
-  if (std::isnan(src_float)) {    // if src is SNaN or QNaN
-    if (issignaling(src_float)) {  // if src is SNaN
-      // return the SNaN converted to a QNaN:
+  // Special cases for invalid square root operations. See Intel manual, Table E-10.
+  if (std::isnan(src_float)) {
+    // If src is SNaN, return the SNaN converted to a QNaN:
+    if (issignaling(src_float)) {
       nan32_t temp_nan = {src_float};
-      temp_nan.is_quiet_nan = 1;  // equivalent to bitwise OR with 0x00400000 (Intel Table E-10)
+      temp_nan.is_quiet_nan = 1;  // equivalent to a bitwise OR with 0x00400000
       square_root = temp_nan.f;
     }
-    else {  // src is a QNaN
-      square_root = src_float;  // just pass it directly to the result (see Table E-10)
+    // Else, src is a QNaN. Pass it directly to the result:
+    else {
+      square_root = src_float;
     }
   }
-  else if (src_float < 0.0) {   // a value of -0 will evaluate this to false, and go to 'else'.
-    square_root = 0xFFC00000; // return the QNaN single-precision floating-point indefinite
+  else {  // a number, that is, not a NaN
+    // A negative operand results in the QNaN indefinite value.
+    if (std::signbit(src_float)) {
+      square_root = 0xFFC00000;
+    }
+    else {
+      square_root = std::sqrt(src_float);
+    }
   }
-  else {
-    // do the square root operation
-    square_root = std::sqrt(src_float);
-  }
-  
+
   return square_root;
 }
 
