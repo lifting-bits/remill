@@ -236,12 +236,12 @@ llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
                                  bool allow_failure) {
   llvm::SMDiagnostic err;
   auto mod_ptr = llvm::parseIRFile(file_name, err, *context);
-  auto module = mod_ptr.get();
-  mod_ptr.release();
+  auto module = mod_ptr.release();
 
   if (!module) {
     LOG_IF(FATAL, !allow_failure)
-        << "Unable to parse module file: " << file_name;
+        << "Unable to parse module file " << file_name
+        << ": " << err.getMessage().str();
     return nullptr;
   }
 
