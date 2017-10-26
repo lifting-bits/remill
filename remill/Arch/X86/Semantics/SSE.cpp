@@ -1477,7 +1477,8 @@ DEF_HELPER(SquareRoot32, float32_t src_float) -> float32_t {
   else {  // a number, that is, not a NaN
     // A negative operand results in the QNaN indefinite value.
     if (std::signbit(src_float)) {
-      square_root = 0xFFC00000;
+      uint32_t indef_qnan = 0xFFC00000;
+      square_root = *reinterpret_cast<float32_t*>(&indef_qnan);
     }
     else {
       square_root = std::sqrt(src_float);
