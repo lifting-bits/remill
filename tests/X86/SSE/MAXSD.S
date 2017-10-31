@@ -53,7 +53,7 @@ TEST_INPUTS(
     maxsd xmm0, xmm1;        // find the maximum of the low QWORD of the two vectors
 TEST_END_64
 
-TEST_BEGIN_64(MAXSDv128m128, 2)
+TEST_BEGIN_64(MAXSDv128m64, 2)
 TEST_INPUTS(
     0.0, 1.2,               /* ARG1 < ARG2 */
     3.4, 2.3,               /* ARG1 > ARG2 */
@@ -88,14 +88,14 @@ TEST_INPUTS(
     0xc000000000000000, 0xbffe000000000000, /* 1.000000, -1.000000 */
     0xbffe000000000000, 0xc000000000000000) /* -1.000000, 1.000000 */
     movq xmm0, ARG1_64;     // load the low QWORD of v128
-    push ARG2_64;           // load the low QWORD of m128
-    maxsd xmm0, [rsp];      // find the maximum of the two
+    push ARG2_64;           // load this QWORD as the m64
+    maxsd xmm0, qword ptr [rsp];      // find the maximum of the two low QWORDS
 TEST_END_64
 
 
 #if HAS_FEATURE_AVX
 
-TEST_BEGIN_64(VMAXSDv128v128m128, 2)
+TEST_BEGIN_64(VMAXSDv128v128m64, 2)
 TEST_INPUTS(
     0.0, 1.2,               /* ARG1 < ARG2 */
     3.4, 2.3,               /* ARG1 > ARG2 */
@@ -130,9 +130,9 @@ TEST_INPUTS(
     0xc000000000000000, 0xbffe000000000000, /* 1.000000, -1.000000 */
     0xbffe000000000000, 0xc000000000000000) /* -1.000000, 1.000000 */
     push ARG1_64;
-    push ARG2_64;                 // load the low QWORD of v128 #2
+    push ARG2_64;                 // load this QWORD as the m64
     movq xmm1, qword ptr [rsp+8]; // load the low QWORD of v128 #1
-    vmaxsd xmm2, xmm1, [rsp];     // return the maximum of the two into xmm2
+    vmaxsd xmm2, xmm1, qword ptr [rsp];     // return the maximum of the two QWORDs into v128 xmm2
 TEST_END_64
 
 TEST_BEGIN_64(VMAXSDv128v128v128, 2)
@@ -173,7 +173,7 @@ TEST_INPUTS(
     push ARG2_64;
     movq xmm0, qword ptr [rsp+8]; // load the low QWORD of v128 #1
     movq xmm1, qword ptr [rsp];   // load the low QWORD of v128 #2
-    vmaxsd xmm2, xmm1, xmm0;      // return the maximum of the two into xmm2
+    vmaxsd xmm2, xmm1, xmm0;      // return the maximum of the two QWORDs into v128 xmm2
 TEST_END_64
 
 #endif  // HAS_FEATURE_AVX
