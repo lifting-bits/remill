@@ -41,7 +41,7 @@ TEST_INPUTS(
     0xBF800000,   // -1.0, should return a constant (the QNaN floating-point indefinite)
     0xff800000)   // -inf
     push ARG1_64;           // load the low single-precision floating point value of m128
-    sqrtss xmm0, [rsp];     // find the sqrt of the low SP FP value of [rsp], store in xmm0
+    sqrtss xmm0, dword ptr [rsp];     // sqrt of the low SP FP value of [rsp], store in xmm0
 TEST_END_64
 
 #if HAS_FEATURE_AVX
@@ -58,7 +58,7 @@ TEST_INPUTS(
     0xBF800000,   // -1.0, should return a constant (the QNaN floating-point indefinite)
     0xff800000)   // -inf
     push ARG1_64;                  // load the single-prec. floating point value of m128[31:0]
-    vsqrtss xmm2, xmm1, [rsp];     // return the sqrt of [rsp] into xmm2, also xmm1[127:31]->xmm2
+    vsqrtss xmm2, xmm1, dword ptr [rsp];     // sqrt of [rsp] into xmm2, also xmm1[127:31]->xmm2
 TEST_END_64
 
 TEST_BEGIN_64(VSQRTSSv128v128v128, 1)
