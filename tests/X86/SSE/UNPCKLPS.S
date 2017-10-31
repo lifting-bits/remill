@@ -24,7 +24,6 @@ TEST_INPUTS(
     unpcklps xmm0, xmm1;  // "unpacks and interleaves" the low QWORD values of #1,#2
 TEST_END_64
 
-
 TEST_BEGIN_64(UNPCKLPSv128m128, 2)
 TEST_INPUTS(
     0x0000000000000000, 0x0000000000000000,  // sanity check
@@ -33,7 +32,7 @@ TEST_INPUTS(
     movq xmm0, ARG1_64;   // load the low QWORD of v128
     push ARG2_64;         // load the low QWORD of m128
     push ARG2_64;         // also, load something as filler for the high QWORD of m128
-    unpcklps xmm0, [rsp]; // "unpacks and interleaves" the low QWORD values of v128,m128
+    unpcklps xmm0, xmmword ptr [rsp]; // "unpacks and interleaves" the low QWORD values of v128,m128
 TEST_END_64
 
 #if HAS_FEATURE_AVX
@@ -47,7 +46,7 @@ TEST_INPUTS(
     push ARG1_64;                  // also, load another QWORD of filler to pad out m128
     push ARG2_64;                  // load the low QWORD of v128 (step 1)
     movq xmm1, qword ptr [rsp];    // load the low QWORD of v128 (step 2)
-    vunpcklps xmm2, xmm1, [rsp+8]; // "unpacks and interleaves" v128 and m128 into xmm2
+    vunpcklps xmm2, xmm1, xmmword ptr [rsp+8]; // "unpacks and interleaves" v128 and m128 into xmm2
 TEST_END_64
 
 TEST_BEGIN_64(VUNPCKLPSv128v128v128, 2)
