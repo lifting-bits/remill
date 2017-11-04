@@ -924,6 +924,7 @@ for i in xrange(int(2**len(chosen))):
   # assert sel_mask == int(sel_mask_str, 2)
 
   bases = set()
+  num_var_bits = {}
   for base in UNALIASED_ENCODINGS:
     # base_bits = "".join(reversed(base.bits)).replace('x');
     base_mask_str = "".join(reversed(base.bits)).replace('x', '0')
@@ -933,6 +934,18 @@ for i in xrange(int(2**len(chosen))):
     if (mask & base_mask) == sel_mask:
       bases.add(base)
       all_bases.add(base)
+
+      # Get the number of variable bits per encoding
+      num_var = 0
+      for bit in base.bits:
+        if bit == 'x':
+          num_var += 1
+      num_var_bits[base] = num_var
+
+  # Sort the bases in ascending order of variable bits, so that we try to
+  # extract the most constraints bases first
+  bases = list(bases)
+  bases.sort(key=lambda b: num_var_bits[b])
 
   # exit()
   impl.write("// {}\n".format(sel_mask_str))

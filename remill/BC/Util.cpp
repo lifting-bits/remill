@@ -232,24 +232,36 @@ llvm::Module *LoadTargetSemantics(llvm::LLVMContext *context) {
 
 // Reads an LLVM module from a file.
 llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
-                                 std::string file_name) {
+                                 std::string file_name,
+                                 bool allow_failure) {
   llvm::SMDiagnostic err;
   auto mod_ptr = llvm::parseIRFile(file_name, err, *context);
-  auto module = mod_ptr.get();
-  mod_ptr.release();
+  auto module = mod_ptr.release();
 
-  CHECK(nullptr != module) << "Unable to parse module file: " << file_name
-                           << ".";
+  if (!module) {
+    LOG_IF(FATAL, !allow_failure)
+        << "Unable to parse module file " << file_name
+        << ": " << err.getMessage().str();
+    return nullptr;
+  }
 
   auto ec = module->materializeAll();  // Just in case.
-  CHECK(!ec) << "Unable to materialize everything from " << file_name;
+  if (ec) {
+    LOG_IF(FATAL, !allow_failure)
+        << "Unable to materialize everything from " << file_name;
+    delete module;
+    return nullptr;
+  }
 
   std::string error;
   llvm::raw_string_ostream error_stream(error);
   if (llvm::verifyModule(*module, &error_stream)) {
     error_stream.flush();
-    LOG(FATAL) << "Error reading module from file " << file_name << ": "
-               << error;
+    LOG_IF(FATAL, !allow_failure)
+        << "Error verifying module read from file " << file_name << ": "
+        << error;
+    delete module;
+    return nullptr;
   }
 
   return module;
@@ -417,14 +429,15 @@ std::vector<llvm::Value *> LiftedFunctionArgs(llvm::BasicBlock *block) {
 // Apply a callback function to every semantics bitcode function.
 void ForEachISel(llvm::Module *module, ISelCallback callback) {
   for (auto &global : module->globals()) {
-    if (!global.hasInitializer() || !global.getName().startswith("ISEL_")) {
-      continue;
+    const auto &name = global.getName();
+    if (name.startswith("ISEL_") || name.startswith("COND_")) {
+      llvm::Function *sem = nullptr;
+      if (global.hasInitializer()) {
+        sem = llvm::dyn_cast<llvm::Function>(
+          global.getInitializer()->stripPointerCasts());
+      }
+      callback(&global, sem);
     }
-
-    auto sem = llvm::dyn_cast<llvm::Function>(
-        global.getInitializer()->stripPointerCasts());
-
-    callback(&global, sem);
   }
 }
 
@@ -625,13 +638,18 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
 
 // Make `func` a clone of the `__remill_basic_block` function.
 void CloneBlockFunctionInto(llvm::Function *func) {
-  CloneFunctionInto(BasicBlockFunction(func->getParent()), func);
+  auto bb_func = BasicBlockFunction(func->getParent());
+  CHECK(remill::FindVarInFunction(bb_func, "MEMORY") != nullptr);
+
+  CloneFunctionInto(bb_func, func);
 
   // Remove the `return` in `__remill_basic_block`.
   auto &entry = func->front();
   auto term = entry.getTerminator();
   term->eraseFromParent();
   func->removeFnAttr(llvm::Attribute::OptimizeNone);
+
+  CHECK(remill::FindVarInFunction(func, "MEMORY") != nullptr);
 }
 
 // Returns a list of callers of a specific function.

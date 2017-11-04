@@ -97,7 +97,8 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *M, std::string name);
 
 // Parses and loads a bitcode file into memory.
 llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
-                                 std::string file_name);
+                                 std::string file_name,
+                                 bool allow_failure=false);
 
 // Loads the semantics for the "host" machine, i.e. the machine that this
 // remill is compiled on.

@@ -46,6 +46,17 @@ DEF_SEM(BIC, D dst, S1 src1, S2 src2) {
   return memory;
 }
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(BICS, D dst, S1 src1, S2 src2) {
+  auto res = UAnd(Read(src1), UNot(Read(src2)));
+  WriteZExt(dst, res);
+  FLAG_N = SignFlag(res);
+  FLAG_Z = ZeroFlag(res);
+  FLAG_C = false;
+  FLAG_V = false;
+  return memory;
+}
+
 }  // namespace
 
 
@@ -69,6 +80,9 @@ DEF_ISEL(ORR_64_LOG_IMM) = ORR<R64W, R64, I64>;
 
 DEF_ISEL(BIC_32_LOG_SHIFT) = BIC<R32W, R32, I32>;
 DEF_ISEL(BIC_64_LOG_SHIFT) = BIC<R64W, R64, I64>;
+
+DEF_ISEL(BICS_32_LOG_SHIFT) = BICS<R32W, R32, I32>;
+DEF_ISEL(BICS_64_LOG_SHIFT) = BICS<R64W, R64, I64>;
 
 namespace {
 

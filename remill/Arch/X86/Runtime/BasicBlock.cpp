@@ -126,12 +126,12 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   auto &RIP = state.gpr.rip.qword;
 #endif  // 64 == ADDRESS_SIZE_BITS
 
-  auto &SS = state.seg.ss;
-  auto &ES = state.seg.es;
-  auto &GS = state.seg.gs;
-  auto &FS = state.seg.fs;
-  auto &DS = state.seg.ds;
-  auto &CS = state.seg.cs;
+  auto &SS = state.seg.ss.flat;
+  auto &ES = state.seg.es.flat;
+  auto &GS = state.seg.gs.flat;
+  auto &FS = state.seg.fs.flat;
+  auto &DS = state.seg.ds.flat;
+  auto &CS = state.seg.cs.flat;
 
   auto &SS_BASE = zero;
   auto &ES_BASE = zero;

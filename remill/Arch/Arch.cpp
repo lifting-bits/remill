@@ -320,17 +320,15 @@ static void InitBlockFunctionAttributes(llvm::Function *block_func) {
 void Arch::PrepareModule(llvm::Module *mod) const {
   auto basic_block = BasicBlockFunction(mod);
 
-  if (!BlockHasSpecialVars(basic_block)) {
-    InitFunctionAttributes(basic_block);
-    FixupBasicBlockVariables(basic_block);
-    InitBlockFunctionAttributes(basic_block);
+  InitFunctionAttributes(basic_block);
+  FixupBasicBlockVariables(basic_block);
+  InitBlockFunctionAttributes(basic_block);
 
-    basic_block->addFnAttr(llvm::Attribute::OptimizeNone);
-    basic_block->removeFnAttr(llvm::Attribute::AlwaysInline);
-    basic_block->removeFnAttr(llvm::Attribute::InlineHint);
-    basic_block->addFnAttr(llvm::Attribute::NoInline);
-    basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
-  }
+  basic_block->addFnAttr(llvm::Attribute::OptimizeNone);
+  basic_block->removeFnAttr(llvm::Attribute::AlwaysInline);
+  basic_block->removeFnAttr(llvm::Attribute::InlineHint);
+  basic_block->addFnAttr(llvm::Attribute::NoInline);
+  basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
 
   mod->setDataLayout(DataLayout().getStringRepresentation());
   mod->setTargetTriple(Triple().str());
