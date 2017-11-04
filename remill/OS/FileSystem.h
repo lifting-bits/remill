@@ -40,10 +40,17 @@ uint64_t FileSize(const std::string &path, int fd);
 uint64_t FileSize(const std::string &path);
 
 void RemoveFile(const std::string &path);
-void RenameFile(const std::string &from_path, const std::string &to_path);
+bool RenameFile(const std::string &from_path, const std::string &to_path);
 void HardLinkOrCopyFile(const std::string &from_path,
                         const std::string &to_path);
 void CopyFile(const std::string &from_path, const std::string &to_path);
+void MoveFile(const std::string &from_path, const std::string &to_path);
+
+// Returns a canonical path name for `path` (calls `realpath`).
+std::string CanonicalPath(const std::string &path);
+
+// Returns the path separator character for this OS.
+const char *PathSeparator(void);
 
 }  // namespace remill
 

@@ -109,7 +109,8 @@ llvm::Module *LoadHostSemantics(llvm::LLVMContext *context);
 llvm::Module *LoadTargetSemantics(llvm::LLVMContext *context);
 
 // Store an LLVM module into a file.
-void StoreModuleToFile(llvm::Module *module, std::string file_name);
+bool StoreModuleToFile(llvm::Module *module, std::string file_name,
+                       bool allow_failure=false);
 
 // Find the path to the semantics bitcode file associated with `FLAGS_arch`.
 std::string FindTargetSemanticsBitcodeFile(void);

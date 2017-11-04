@@ -268,7 +268,8 @@ llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
 }
 
 // Store an LLVM module into a file.
-void StoreModuleToFile(llvm::Module *module, std::string file_name) {
+bool StoreModuleToFile(llvm::Module *module, std::string file_name,
+                       bool allow_failure) {
   LOG(INFO)
       << "Saving bitcode to file " << file_name;
 
@@ -281,8 +282,9 @@ void StoreModuleToFile(llvm::Module *module, std::string file_name) {
 
   if (llvm::verifyModule(*module, &error_stream)) {
     error_stream.flush();
-    LOG(FATAL)
+    LOG_IF(FATAL, !allow_failure)
         << "Error writing module to file " << file_name << ": " << error;
+    return false;
   }
 
 #if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 5)
@@ -299,10 +301,14 @@ void StoreModuleToFile(llvm::Module *module, std::string file_name) {
   llvm::WriteBitcodeToFile(module, bc.os());
   bc.keep();
   if (!bc.os().has_error()) {
-    RenameFile(tmp_name, file_name);
+    MoveFile(tmp_name, file_name);
+    return true;
+
   } else {
     RemoveFile(tmp_name);
-    LOG(FATAL) << "Error writing bitcode to file: " << file_name << ".";
+    LOG_IF(FATAL, !allow_failure)
+        << "Error writing bitcode to file: " << file_name << ".";
+    return false;
   }
 }
 
