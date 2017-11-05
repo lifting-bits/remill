@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 
 #include <algorithm>
+#include <cerrno>
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -117,8 +118,17 @@ void RemoveFile(const std::string &path) {
   unlink(path.c_str());
 }
 
-void RenameFile(const std::string &from_path, const std::string &to_path) {
-  rename(from_path.c_str(), to_path.c_str());
+bool RenameFile(const std::string &from_path, const std::string &to_path) {
+  auto ret = rename(from_path.c_str(), to_path.c_str());
+  auto err = errno;
+  if (-1 == ret) {
+    LOG(ERROR)
+        << "Unable to rename " << from_path << " to " << to_path
+        << ": " << strerror(err);
+    return false;
+  } else {
+    return true;
+  }
 }
 
 namespace {
@@ -186,6 +196,37 @@ void HardLinkOrCopyFile(const std::string &from_path,
       << from_path << ": " << strerror(errno);
 
   CopyFile(from_path, to_path);
+}
+
+void MoveFile(const std::string &from_path, const std::string &to_path) {
+  if (!RenameFile(from_path, to_path)) {
+    CopyFile(from_path, to_path);
+    RemoveFile(from_path);
+  }
+}
+
+std::string CanonicalPath(const std::string &path) {
+  char buff[PATH_MAX + 1];
+  auto canon_path_c = realpath(path.c_str(), buff);
+  auto err = errno;
+  if (!canon_path_c) {
+    LOG(ERROR)
+        << "Cannot compute full path of " << path
+        << ": " << strerror(err);
+    return "";
+  } else {
+    std::string canon_path(canon_path_c);
+    return canon_path;
+  }
+}
+
+// Returns the path separator character for this OS.
+const char *PathSeparator(void) {
+#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+  return "\\";
+#else
+  return "/";
+#endif
 }
 
 }  // namespace remill
