@@ -13,18 +13,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef REMILL_BC_COMPAT_JITSYMBOL_H_
-#define REMILL_BC_COMPAT_JITSYMBOL_H_
 
-#include "remill/BC/Version.h"
+/* SDIV  <Wd>, <Wn>, <Wm> */
+TEST_BEGIN(SDIV_32_DP_2SRC, sdiv_w3_w0_w1, 2)
+TEST_INPUTS(
+    0, 0,
+    1, 0,
+    0xffffffff, 1,
+    1, 0xffffffff,
+    0xffffffff, 0xffffffff,
+    1, 2,
+    5, 2,
+    5, 3,
+    5, 4)
 
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(4, 0)
-# include <llvm/ExecutionEngine/RuntimeDyld.h>
-namespace llvm {
-using JITSymbol = llvm::RuntimeDyld::SymbolInfo;
-using JITSymbolResolver = llvm::RuntimeDyld::SymbolResolver;
-}  // namespace llvm
-#else
-# include <llvm/ExecutionEngine/JITSymbol.h>
-#endif
-#endif  // REMILL_BC_COMPAT_JITSYMBOL_H_
+    sdiv w3, ARG1_32, ARG2_32
+TEST_END
+
+/* SDIV  <Xd>, <Xn>, <Xm> */
+TEST_BEGIN(SDIV_64_DP_2SRC, sdiv_x3_x0_x1, 2)
+TEST_INPUTS(
+    0, 0,
+    1, 0,
+    0xffffffff, 1,
+    1, 0xffffffff,
+    0xffffffff, 0xffffffff,
+    1, 2,
+    5, 2,
+    5, 3,
+    5, 4,
+    0xffffffffffffffff, 0xffffffff,
+    0xffffffffffffffff, 0xabcdef)
+
+    sdiv x3, ARG1_64, ARG2_64
+TEST_END
+

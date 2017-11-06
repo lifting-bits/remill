@@ -255,7 +255,7 @@ SYMBOL(__aarch64_test_table_begin):
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
 
 
-#include "tests/AArch64/SIMD/CMcc_ASIMDMISC_Z.S"
+#include "tests/AArch64/BINARY/SDIV_n_DP_2SRC.S"
 
 #if 0
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
@@ -364,6 +364,7 @@ SYMBOL(__aarch64_test_table_begin):
 
 #include "tests/AArch64/SIMD/ADD_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/ADDP_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/CMcc_ASIMDMISC_Z.S"
 #include "tests/AArch64/SIMD/CMcc_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/DUP_ASIMDINS_DR_R.S"
 #include "tests/AArch64/SIMD/ORR_ASIMDSAME_ONLY.S"
