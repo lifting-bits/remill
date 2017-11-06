@@ -3994,6 +3994,16 @@ bool TryDecodeRBIT_64_DP_1SRC(const InstData &data, Instruction &inst) {
   return TryDecodeRdW_Rn(data, inst, kRegX);
 }
 
+// SDIV  <Wd>, <Wn>, <Wm>
+bool TryDecodeSDIV_32_DP_2SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeRdW_Rn_Rm(data, inst, kRegW);
+}
+
+// SDIV  <Xd>, <Xn>, <Xm>
+bool TryDecodeSDIV_64_DP_2SRC(const InstData &data, Instruction &inst) {
+  return TryDecodeRdW_Rn_Rm(data, inst, kRegX);
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!

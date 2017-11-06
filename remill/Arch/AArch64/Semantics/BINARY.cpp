@@ -138,6 +138,19 @@ DEF_SEM(UDIV, D dst, S src1, S src2) {
 }
 
 template <typename D, typename S>
+DEF_SEM(SDIV, D dst, S src1, S src2) {
+  using T = typename BaseType<S>::BT;
+  auto lhs = Signed(Read(src1));
+  auto rhs = Signed(Read(src2));
+  if (!rhs) {
+    WriteZExt(dst, T(0));
+  } else {
+    WriteZExt(dst, Unsigned(SDiv(lhs, rhs)));
+  }
+  return memory;
+}
+
+template <typename D, typename S>
 DEF_SEM(MADD, D dst, S src1, S src2, S src3) {
   WriteZExt(dst, UAdd(Read(src3), UMul(Read(src1), Read(src2))));
   return memory;
@@ -159,6 +172,9 @@ DEF_ISEL(SMULH_64_DP_3SRC) = SMULH;
 
 DEF_ISEL(UDIV_32_DP_2SRC) = UDIV<R32W, R32>;
 DEF_ISEL(UDIV_64_DP_2SRC) = UDIV<R64W, R64>;
+
+DEF_ISEL(SDIV_32_DP_2SRC) = SDIV<R32W, R32>;
+DEF_ISEL(SDIV_64_DP_2SRC) = SDIV<R64W, R64>;
 
 DEF_ISEL(MADD_32A_DP_3SRC) = MADD<R32W, R32>;
 DEF_ISEL(MADD_64A_DP_3SRC) = MADD<R64W, R64>;
