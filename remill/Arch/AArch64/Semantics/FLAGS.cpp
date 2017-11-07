@@ -217,6 +217,7 @@ auto CheckedFloatUnaryOp(State &state, F func, T arg1)
 
   std::feclearexcept(FE_ALL_EXCEPT);
   auto res = func(arg1);
+  BarrierReorder();
   SetFPSRStatusFlags(state);
   return res;
 }
@@ -230,6 +231,7 @@ auto CheckedFloatBinOp(State &state, F func, T arg1, T arg2)
   SetInputDenormal(state, arg2);
   std::feclearexcept(FE_ALL_EXCEPT);
   auto res = func(arg1, arg2);
+  BarrierReorder();
   SetFPSRStatusFlags(state);
   return res;
 }
