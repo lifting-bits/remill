@@ -13,47 +13,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#define UNPCKLPD_INPUTS_64 \
+    0x0000000000000000, 0x0000000000000000,  /* sanity check */\
+    0xfedcba9876543210, 0x0000000000000000,  /* arbitrarily chosen values */\
+    0xfedcba9876543210, 0xffffffffffffffff   /* other arbitrarily chosen values */\
  
 TEST_BEGIN_64(UNPCKLPDv128v128, 2)
-TEST_INPUTS(
-    0x0000000000000000, 0x0000000000000000,  // sanity check
-    0xfedcba9876543210, 0x0000000000000000,  // arbitrarily chosen values
-    0xfedcba9876543210, 0xffffffffffffffff)  // other arbitrarily chosen values
+TEST_INPUTS(UNPCKLPD_INPUTS_64)
     movq xmm0, ARG1_64;   // load the low QWORD of v128 #1
     movq xmm1, ARG2_64;   // load the low QWORD of v128 #2
     unpcklpd xmm0, xmm1;  // "unpacks and interleaves" the low QWORD values of #1,#2
 TEST_END_64
 
 TEST_BEGIN_64(UNPCKLPDv128m128, 2)
-TEST_INPUTS(
-    0x0000000000000000, 0x0000000000000000,  // sanity check
-    0xfedcba9876543210, 0x0000000000000000,  // arbitrarily chosen values
-    0xfedcba9876543210, 0xffffffffffffffff)  // other arbitrarily chosen values
+TEST_INPUTS(UNPCKLPD_INPUTS_64)
     movq xmm0, ARG1_64;   // load the low QWORD of v128
     push ARG2_64;         // load the low QWORD of m128
     push ARG2_64;         // also, load something as filler for the high QWORD of m128
-    unpcklpd xmm0, [rsp]; // "unpacks and interleaves" the low QWORD values of v128,m128
+    unpcklpd xmm0, xmmword ptr [rsp]; // "unpacks and interleaves" the low QWORD values of v128,m128
 TEST_END_64
 
 #if HAS_FEATURE_AVX
 
 TEST_BEGIN_64(VUNPCKLPDv128v128m128, 2)
-TEST_INPUTS(
-    0x0000000000000000, 0x0000000000000000,  // sanity check
-    0xfedcba9876543210, 0x0000000000000000,  // arbitrarily chosen values
-    0xfedcba9876543210, 0xffffffffffffffff)  // other arbitrarily chosen values
+TEST_INPUTS(UNPCKLPD_INPUTS_64)
     push ARG1_64;                  // load the low QWORD of m128
     push ARG1_64;                  // also, load another QWORD of filler to pad out m128
     push ARG2_64;                  // load the low QWORD of v128 (step 1)
     movq xmm1, qword ptr [rsp];    // load the low QWORD of v128 (step 2)
-    vunpcklpd xmm2, xmm1, [rsp+8]; // "unpacks and interleaves" v128 and m128 into xmm2
+    vunpcklpd xmm2, xmm1, xmmword ptr [rsp+8]; // "unpacks and interleaves" v128 and m128 into xmm2
 TEST_END_64
 
 TEST_BEGIN_64(VUNPCKLPDv128v128v128, 2)
-TEST_INPUTS(
-    0x0000000000000000, 0x0000000000000000,  // sanity check
-    0xfedcba9876543210, 0x0000000000000000,  // arbitrarily chosen values
-    0xfedcba9876543210, 0xffffffffffffffff)  // other arbitrarily chosen values
+TEST_INPUTS(UNPCKLPD_INPUTS_64)
     push ARG1_64;
     push ARG2_64;
     movq xmm0, qword ptr [rsp+8]; // load the low QWORD of v128 #1
