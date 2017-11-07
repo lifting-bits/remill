@@ -194,7 +194,7 @@ ALWAYS_INLINE static void SetFPSRStatusFlags(State &state) {
   if ((mask & FE_UNDERFLOW)) {
     state.sr.ufc = true;
   }
-  if (std::fetestexcept(FE_INVALID)) {
+  if ((mask & FE_INVALID)) {
     state.fpsr.ioc = true;
   }
 }
