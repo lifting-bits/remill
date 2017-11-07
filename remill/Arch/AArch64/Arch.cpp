@@ -4004,6 +4004,47 @@ bool TryDecodeSDIV_64_DP_2SRC(const InstData &data, Instruction &inst) {
   return TryDecodeRdW_Rn_Rm(data, inst, kRegX);
 }
 
+static bool TryDecodeSCVTF_Sn_FLOAT2INT(
+    const InstData &data, Instruction &inst,
+    RegClass dest_class, RegClass src_class) {
+  if (0x3 == data.type) {
+    return false;  // `case type of ... when '10' UnallocatedEncoding();`
+  }
+  AddRegOperand(inst, kActionWrite, dest_class, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, src_class, kUseAsValue, data.Rn);
+  return true;
+}
+
+// SCVTF  <Hd>, <Wn>
+bool TryDecodeSCVTF_H32_FLOAT2INT(const InstData &data, Instruction &inst) {
+  return TryDecodeSCVTF_Sn_FLOAT2INT(data, inst, kRegH, kRegW);
+}
+
+// SCVTF  <Sd>, <Wn>
+bool TryDecodeSCVTF_S32_FLOAT2INT(const InstData &data, Instruction &inst) {
+  return TryDecodeSCVTF_Sn_FLOAT2INT(data, inst, kRegS, kRegW);
+}
+
+// SCVTF  <Dd>, <Wn>
+bool TryDecodeSCVTF_D32_FLOAT2INT(const InstData &data, Instruction &inst) {
+  return TryDecodeSCVTF_Sn_FLOAT2INT(data, inst, kRegD, kRegW);
+}
+
+// SCVTF  <Hd>, <Xn>
+bool TryDecodeSCVTF_H64_FLOAT2INT(const InstData &data, Instruction &inst) {
+  return TryDecodeSCVTF_Sn_FLOAT2INT(data, inst, kRegH, kRegX);
+}
+
+// SCVTF  <Sd>, <Xn>
+bool TryDecodeSCVTF_S64_FLOAT2INT(const InstData &data, Instruction &inst) {
+  return TryDecodeSCVTF_Sn_FLOAT2INT(data, inst, kRegS, kRegX);
+}
+
+// SCVTF  <Dd>, <Xn>
+bool TryDecodeSCVTF_D64_FLOAT2INT(const InstData &data, Instruction &inst) {
+  return TryDecodeSCVTF_Sn_FLOAT2INT(data, inst, kRegD, kRegX);
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!

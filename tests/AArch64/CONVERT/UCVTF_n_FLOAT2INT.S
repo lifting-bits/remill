@@ -37,3 +37,26 @@ TEST_INPUTS(
     ucvtf d0, ARG1_64
 TEST_END
 
+
+TEST_BEGIN(UCVTF_S32_FLOAT2INT, ucvtf_s0_w0, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x80000000,
+    0x7fffffff,
+    0xffffffff)
+    ucvtf s0, ARG1_32
+TEST_END
+
+TEST_BEGIN(UCVTF_S64_FLOAT2INT, ucvtf_s0_x0, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x80000000,
+    0x7fffffff,
+    0xffffffff,
+    0x8000000000000000,
+    0x7fffffffffffffff,
+    0xffffffffffffffff)
+    ucvtf s0, ARG1_64
+TEST_END
