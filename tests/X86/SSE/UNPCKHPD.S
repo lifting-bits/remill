@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
+#define UNPCKHPD_INPUTS_64 \
+    0x0000000000000000, 0x0000000000000000,  /* sanity check */\
+    0xfedcba9876543210, 0x0000000000000000,  /* arbitrarily chosen values */\
+    0xfedcba9876543210, 0xffffffffffffffff   /* other arbitrarily chosen values */\
+    
 TEST_BEGIN_64(UNPCKHPDv128v128, 2)
-TEST_INPUTS(
-    0x0000000000000000, 0x0000000000000000,  // sanity check
-    0xfedcba9876543210, 0x0000000000000000,  // arbitrarily chosen values
-    0xfedcba9876543210, 0xffffffffffffffff)  // other arbitrarily chosen values
+TEST_INPUTS(UNPCKHPD_INPUTS_64)
     push ARG1_64;
     movhpd xmm0, qword ptr [rsp];     // dest[127:64]<-arg1[63:0]
     push ARG2_64;
@@ -27,10 +29,7 @@ TEST_INPUTS(
 TEST_END_64
 
 TEST_BEGIN_64(UNPCKHPDv128m128, 2)
-TEST_INPUTS(
-    0x0000000000000000, 0x0000000000000000,  // sanity check
-    0xfedcba9876543210, 0x0000000000000000,  // arbitrarily chosen values
-    0xfedcba9876543210, 0xffffffffffffffff)  // other arbitrarily chosen values
+TEST_INPUTS(UNPCKHPD_INPUTS_64)
     push ARG1_64;
     movhpd xmm0, qword ptr [rsp];    // dest[127:64]<-arg1[63:0]
     push ARG2_64;                    // src[127:64]<-arg2[63:0]
@@ -41,10 +40,7 @@ TEST_END_64
 #if HAS_FEATURE_AVX
 
 TEST_BEGIN_64(VUNPCKHPDv128v128m128, 2)
-TEST_INPUTS(
-    0x0000000000000000, 0x0000000000000000,  // sanity check
-    0xfedcba9876543210, 0x0000000000000000,  // arbitrarily chosen values
-    0xfedcba9876543210, 0xffffffffffffffff)  // other arbitrarily chosen values
+TEST_INPUTS(UNPCKHPD_INPUTS_64)
     push ARG1_64;
     movhpd xmm1, qword ptr [rsp];    // src1[127:64]<-arg1[63:0]
     push ARG2_64;                    // src2[127:64]<-arg2[63:0]
@@ -53,10 +49,7 @@ TEST_INPUTS(
 TEST_END_64
 
 TEST_BEGIN_64(VUNPCKHPDv128v128v128, 2)
-TEST_INPUTS(
-    0x0000000000000000, 0x0000000000000000,  // sanity check
-    0xfedcba9876543210, 0x0000000000000000,  // arbitrarily chosen values
-    0xfedcba9876543210, 0xffffffffffffffff)  // other arbitrarily chosen values
+TEST_INPUTS(UNPCKHPD_INPUTS_64)
     push ARG1_64;
     movhpd xmm1, qword ptr [rsp];     // src1[127:64]<-arg1[63:0]
     push ARG2_64;

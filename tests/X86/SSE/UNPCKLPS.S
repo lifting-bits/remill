@@ -13,22 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
+#define UNPCKLPS_INPUTS_64 \
+    0x0000000000000000, 0x0000000000000000,  /* sanity check */\
+    0xfedcba9876543210, 0x0000000000000000,  /* arbitrarily chosen values */\
+    0xfedcba9876543210, 0xffffffffffffffff   /* other arbitrarily chosen values */\
+
 TEST_BEGIN_64(UNPCKLPSv128v128, 2)
-TEST_INPUTS(
-    0x0000000000000000, 0x0000000000000000,  // sanity check
-    0xfedcba9876543210, 0x0000000000000000,  // arbitrarily chosen values
-    0xfedcba9876543210, 0xffffffffffffffff)  // other arbitrarily chosen values
+TEST_INPUTS(UNPCKLPS_INPUTS_64)
     movq xmm0, ARG1_64;   // load the low QWORD of v128 #1
     movq xmm1, ARG2_64;   // load the low QWORD of v128 #2
     unpcklps xmm0, xmm1;  // "unpacks and interleaves" the low QWORD values of #1,#2
 TEST_END_64
 
 TEST_BEGIN_64(UNPCKLPSv128m128, 2)
-TEST_INPUTS(
-    0x0000000000000000, 0x0000000000000000,  // sanity check
-    0xfedcba9876543210, 0x0000000000000000,  // arbitrarily chosen values
-    0xfedcba9876543210, 0xffffffffffffffff)  // other arbitrarily chosen values
+TEST_INPUTS(UNPCKLPS_INPUTS_64)
     movq xmm0, ARG1_64;   // load the low QWORD of v128
     push ARG2_64;         // load the low QWORD of m128
     push ARG2_64;         // also, load something as filler for the high QWORD of m128
@@ -38,10 +37,7 @@ TEST_END_64
 #if HAS_FEATURE_AVX
 
 TEST_BEGIN_64(VUNPCKLPSv128v128m128, 2)
-TEST_INPUTS(
-    0x0000000000000000, 0x0000000000000000,  // sanity check
-    0xfedcba9876543210, 0x0000000000000000,  // arbitrarily chosen values
-    0xfedcba9876543210, 0xffffffffffffffff)  // other arbitrarily chosen values
+TEST_INPUTS(UNPCKLPS_INPUTS_64)
     push ARG1_64;                  // load the low QWORD of m128
     push ARG1_64;                  // also, load another QWORD of filler to pad out m128
     push ARG2_64;                  // load the low QWORD of v128 (step 1)
@@ -50,10 +46,7 @@ TEST_INPUTS(
 TEST_END_64
 
 TEST_BEGIN_64(VUNPCKLPSv128v128v128, 2)
-TEST_INPUTS(
-    0x0000000000000000, 0x0000000000000000,  // sanity check
-    0xfedcba9876543210, 0x0000000000000000,  // arbitrarily chosen values
-    0xfedcba9876543210, 0xffffffffffffffff)  // other arbitrarily chosen values
+TEST_INPUTS(UNPCKLPS_INPUTS_64)
     push ARG1_64;
     push ARG2_64;
     movq xmm0, qword ptr [rsp+8]; // load the low QWORD of v128 #1
