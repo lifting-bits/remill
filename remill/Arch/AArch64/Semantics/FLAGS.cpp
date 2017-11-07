@@ -170,22 +170,6 @@ ALWAYS_INLINE static void SetFPSRStatusFlags(State &state, int mask) {
   state.sr.ioc |= static_cast<uint64_t>(0 != (mask & FE_INVALID));
 }
 
-ALWAYS_INLINE static void SetInputDenormal(State &state, double x) {
-  if (!std::isnormal(x)) {
-    state.fpsr.idc = true;
-  }
-}
-
-ALWAYS_INLINE static void SetInputDenormal(State &state, float x) {
-  if (!std::isnormal(x)) {
-    state.fpsr.idc = true;
-  }
-}
-
-template <typename T>
-ALWAYS_INLINE static void SetInputDenormal(State &, T) {}
-
-
 template <typename F, typename T>
 ALWAYS_INLINE static
 auto CheckedFloatUnaryOp(State &state, F func, T arg1)
