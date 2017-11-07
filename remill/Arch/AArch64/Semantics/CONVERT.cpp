@@ -17,91 +17,86 @@
 namespace {
 
 template <typename S, typename D>
-ALWAYS_INLINE static D FPConvertIntToFloat(State &state, S src) {
-  return CheckedFloatUnaryOp(state, [] (S v) {return static_cast<D>(v);}, src);
-}
-
-template <typename S, typename D>
-D FPConvertFloatTo(State &state, S src) {
+ALWAYS_INLINE static D CheckedCast(State &state, S src) {
   return CheckedFloatUnaryOp(state, [] (S v) {return static_cast<D>(v);}, src);
 }
 
 DEF_SEM(UCVTF_UInt32ToFloat32, V128W dst, R32 src) {
-  auto res = FPConvertIntToFloat<uint32_t, float32_t>(state, Read(src));
+  auto res = CheckedCast<uint32_t, float32_t>(state, Read(src));
   FWriteV32(dst, res);
   return memory;
 }
 
 DEF_SEM(UCVTF_UInt32ToFloat64, V128W dst, R32 src) {
-  auto res = FPConvertIntToFloat<uint32_t, float64_t>(state, Read(src));
+  auto res = CheckedCast<uint32_t, float64_t>(state, Read(src));
   FWriteV64(dst, res);
   return memory;
 }
 
 DEF_SEM(UCVTF_UInt64ToFloat32, V128W dst, R64 src) {
-  auto res = FPConvertIntToFloat<uint64_t, float32_t>(state, Read(src));
+  auto res = CheckedCast<uint64_t, float32_t>(state, Read(src));
   FWriteV32(dst, res);
   return memory;
 }
 
 DEF_SEM(UCVTF_UInt64ToFloat64, V128W dst, R64 src) {
-  auto res = FPConvertIntToFloat<uint64_t, float64_t>(state, Read(src));
+  auto res = CheckedCast<uint64_t, float64_t>(state, Read(src));
   FWriteV64(dst, res);
   return memory;
 }
 
 DEF_SEM(FCVTZU_Float32ToUInt32, R32W dst, V32 src) {
   auto float_val = FExtractV32(FReadV32(src), 0);
-  auto res = FPConvertFloatTo<float32_t, uint32_t>(state, float_val);
+  auto res = CheckedCast<float32_t, uint32_t>(state, float_val);
   WriteZExt(dst, res);
   return memory;
 }
 
 DEF_SEM(FCVTZU_Float32ToUInt64, R64W dst, V32 src) {
   auto float_val = FExtractV32(FReadV32(src), 0);
-  auto res = FPConvertFloatTo<float32_t, uint64_t>(state, float_val);
+  auto res = CheckedCast<float32_t, uint64_t>(state, float_val);
   WriteZExt(dst, res);
   return memory;
 }
 
 DEF_SEM(FCVTZU_Float64ToUInt32, R32W dst, V64 src) {
   auto float_val = FExtractV64(FReadV64(src), 0);
-  auto res = FPConvertFloatTo<float64_t, uint32_t>(state, float_val);
+  auto res = CheckedCast<float64_t, uint32_t>(state, float_val);
   WriteZExt(dst, res);
   return memory;
 }
 
 DEF_SEM(FCVTZU_Float64ToUInt64, R64W dst, V64 src) {
   auto float_val = FExtractV64(FReadV64(src), 0);
-  auto res = FPConvertFloatTo<float64_t, uint64_t>(state, float_val);
+  auto res = CheckedCast<float64_t, uint64_t>(state, float_val);
   WriteZExt(dst, res);
   return memory;
 }
 
 DEF_SEM(FCVTZS_Float64ToSInt32, R32W dst, V64 src) {
   auto float_val = FExtractV64(FReadV64(src), 0);
-  auto res = FPConvertFloatTo<float64_t, int32_t>(state, float_val);
+  auto res = CheckedCast<float64_t, int32_t>(state, float_val);
   WriteZExt(dst, res);
   return memory;
 }
 
 DEF_SEM(FCVTZS_Float64ToSInt64, R64W dst, V64 src) {
   auto float_val = FExtractV64(FReadV64(src), 0);
-  auto res = FPConvertFloatTo<float64_t, int64_t>(state, float_val);
+  auto res = CheckedCast<float64_t, int64_t>(state, float_val);
   WriteZExt(dst, res);
   return memory;
 }
 
 DEF_SEM(FCVT_Float32ToFloat64, V128W dst, V32 src) {
   auto float_val = FExtractV32(FReadV32(src), 0);
-  auto res = FPConvertFloatTo<float32_t, float64_t>(state, float_val);
+  auto res = CheckedCast<float32_t, float64_t>(state, float_val);
   FWriteV64(dst, res);
   return memory;
 }
 
 DEF_SEM(FCVT_Float64ToFloat32, V128W dst, V64 src) {
   auto float_val = FExtractV64(FReadV64(src), 0);
-  auto res = FPConvertFloatTo<float64_t, float32_t>(state, float_val);
+  auto res = CheckedCast<float64_t, float32_t>(state, float_val);
   FWriteV32(dst, res);
   return memory;
 }
@@ -131,25 +126,25 @@ DEF_ISEL(FCVT_SD_FLOATDP1) = FCVT_Float64ToFloat32;
 namespace {
 
 DEF_SEM(SCVTF_Int32ToFloat32, V128W dst, R32 src) {
-  auto res = FPConvertIntToFloat<int32_t, float32_t>(state, Signed(Read(src)));
+  auto res = CheckedCast<int32_t, float32_t>(state, Signed(Read(src)));
   FWriteV32(dst, res);
   return memory;
 }
 
 DEF_SEM(SCVTF_Int32ToFloat64, V128W dst, R32 src) {
-  auto res = FPConvertIntToFloat<int32_t, float64_t>(state, Signed(Read(src)));
+  auto res = CheckedCast<int32_t, float64_t>(state, Signed(Read(src)));
   FWriteV64(dst, res);
   return memory;
 }
 
 DEF_SEM(SCVTF_Int64ToFloat32, V128W dst, R64 src) {
-  auto res = FPConvertIntToFloat<int64_t, float32_t>(state, Signed(Read(src)));
+  auto res = CheckedCast<int64_t, float32_t>(state, Signed(Read(src)));
   FWriteV32(dst, res);
   return memory;
 }
 
 DEF_SEM(SCVTF_Int64ToFloat64, V128W dst, R64 src) {
-  auto res = FPConvertIntToFloat<int64_t, float64_t>(state, Signed(Read(src)));
+  auto res = CheckedCast<int64_t, float64_t>(state, Signed(Read(src)));
   FWriteV64(dst, res);
   return memory;
 }

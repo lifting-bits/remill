@@ -268,12 +268,10 @@ DEF_SEM(FMADD_S, V128W dst, V32 src1, V32 src2, V32 src3) {
   auto factor1 = FExtractV32(FReadV32(src1), 0);
   auto factor2 = FExtractV32(FReadV32(src2), 0);
   auto add = FExtractV32(FReadV32(src3), 0);
-  std::feclearexcept(FE_ALL_EXCEPT);
-  auto prod = FMul(factor1, factor2);
-  SetFPSRStatusFlags(state, prod);
-  auto res = FAdd(prod, add);
-  // Sets underflow for 0x3fffffff, 0x1 but native doesn't
-  SetFPSRStatusFlags(state, res);
+
+  auto prod = CheckedFloatBinOp(state, FMul32, factor1, factor2);
+  auto res = CheckedFloatBinOp(state, FAdd32, prod, add);
+
   FWriteV32(dst, res);
   return memory;
 }
