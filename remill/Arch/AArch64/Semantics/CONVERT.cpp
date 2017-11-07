@@ -118,7 +118,6 @@ DEF_SEM(FCVTZS_Float64ToSInt64, R64W dst, V64 src) {
   return memory;
 }
 
-
 DEF_SEM(FCVT_Float32ToFloat64, V128W dst, V32 src) {
   auto float_val = FExtractV32(FReadV32(src), 0);
   auto res = FPConvertFloatTo<float32_t, float64_t>(state, float_val);
@@ -154,3 +153,39 @@ DEF_ISEL(FCVTZS_64D_FLOAT2INT) = FCVTZS_Float64ToSInt64;
 
 DEF_ISEL(FCVT_DS_FLOATDP1) = FCVT_Float32ToFloat64;
 DEF_ISEL(FCVT_SD_FLOATDP1) = FCVT_Float64ToFloat32;
+
+namespace {
+
+DEF_SEM(SCVTF_Int32ToFloat32, V128W dst, R32 src) {
+  auto res = FPConvertIntToFloat<int32_t, float32_t>(state, Signed(Read(src)));
+  FWriteV32(dst, res);
+  return memory;
+}
+
+DEF_SEM(SCVTF_Int32ToFloat64, V128W dst, R32 src) {
+  auto res = FPConvertIntToFloat<int32_t, float64_t>(state, Signed(Read(src)));
+  FWriteV64(dst, res);
+  return memory;
+}
+
+DEF_SEM(SCVTF_Int64ToFloat32, V128W dst, R64 src) {
+  auto res = FPConvertIntToFloat<int64_t, float32_t>(state, Signed(Read(src)));
+  FWriteV32(dst, res);
+  return memory;
+}
+
+DEF_SEM(SCVTF_Int64ToFloat64, V128W dst, R64 src) {
+  auto res = FPConvertIntToFloat<int64_t, float64_t>(state, Signed(Read(src)));
+  FWriteV64(dst, res);
+  return memory;
+}
+
+}  // namespace
+
+// TODO(pag): SCVTF_H32_FLOAT2INT.
+// TODO(pag): SCVTF_H64_FLOAT2INT.
+
+DEF_ISEL(SCVTF_S32_FLOAT2INT) = SCVTF_Int32ToFloat32;
+DEF_ISEL(SCVTF_D32_FLOAT2INT) = SCVTF_Int32ToFloat64;
+DEF_ISEL(SCVTF_S64_FLOAT2INT) = SCVTF_Int64ToFloat32;
+DEF_ISEL(SCVTF_D64_FLOAT2INT) = SCVTF_Int64ToFloat64;
