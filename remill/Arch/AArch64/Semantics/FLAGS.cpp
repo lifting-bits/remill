@@ -163,8 +163,22 @@ struct Carry<tag_sub> {
   }
 };
 
+ALWAYS_INLINE static void SetInputDenormal(State &state, double x) {
+  if (!std::isnormal(x)) {
+    state.fpsr.idc = true;
+  }
+}
+
+ALWAYS_INLINE static void SetInputDenormal(State &state, float x) {
+  if (!std::isnormal(x)) {
+    state.fpsr.idc = true;
+  }
+}
+
 template <typename T>
-ALWAYS_INLINE static void SetFPSRStatusFlags(State &state, T res) {
+ALWAYS_INLINE static void SetInputDenormal(State &, T) {}
+
+ALWAYS_INLINE static void SetFPSRStatusFlags(State &state) {
 //  if (std::isinf(res)) {
 //    state.sr.ofc = true;
 //    state.sr.ixc = true;
@@ -189,11 +203,9 @@ template <typename F, typename T>
 ALWAYS_INLINE static
 auto CheckedFloatUnaryOp(State &state, F func, T arg1)
     -> decltype(func(arg1)) {
-  std::feclearexcept(FE_ALL_EXCEPT);
-  // TODO(pag): This seems related to the FTZ rounding mode.
-//  if (!std::isnormal(arg1)) {
-//    state.sr.idc = true;
-//  }
+
+  SetInputDenormal(state, arg1);
+
   // TODO: Look into setting idc flag
   //  if (std::fpclassify(res) == FP_SUBNORMAL) {
   //    state.fpsr.idc = true;
@@ -203,8 +215,9 @@ auto CheckedFloatUnaryOp(State &state, F func, T arg1)
   //    state.sr.idc = false;
   //  }
 
+  std::feclearexcept(FE_ALL_EXCEPT);
   auto res = func(arg1);
-  SetFPSRStatusFlags(state, res);
+  SetFPSRStatusFlags(state);
   return res;
 }
 
@@ -212,16 +225,12 @@ template <typename F, typename T>
 ALWAYS_INLINE static
 auto CheckedFloatBinOp(State &state, F func, T arg1, T arg2)
     -> decltype(func(arg1, arg2)) {
-  std::feclearexcept(FE_ALL_EXCEPT);
   // TODO(pag): This seems related to the FTZ rounding mode.
-//  if (!std::isnormal(arg1)) {
-//    state.sr.idc = true;
-//  }
-//  if (!std::isnormal(arg2)) {
-//    state.sr.idc = true;
-//  }
+  SetInputDenormal(state, arg1);
+  SetInputDenormal(state, arg2);
+  std::feclearexcept(FE_ALL_EXCEPT);
   auto res = func(arg1, arg2);
-  SetFPSRStatusFlags(state, res);
+  SetFPSRStatusFlags(state);
   return res;
 }
 

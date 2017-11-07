@@ -18,38 +18,12 @@ namespace {
 
 template <typename S, typename D>
 ALWAYS_INLINE static D FPConvertIntToFloat(State &state, S src) {
-  auto res = static_cast<D>(src);
-
-  if (std::isinf(res)) {
-    state.sr.ofc = true;  // Overflow.
-    state.sr.ixc = true;  // Inexact.
-
-  } else if (static_cast<S>(res) != src) {
-    state.sr.ixc = true;  // Inexact.
-  }
-  // Can't underflow, because we're converting an integer to a float.
-  return res;
+  return CheckedFloatUnaryOp(state, [] (S v) {return static_cast<D>(v);}, src);
 }
 
 template <typename S, typename D>
 D FPConvertFloatTo(State &state, S src) {
-  // std::feclearexcept(FE_ALL_EXCEPT);
-  auto res = static_cast<D>(src);
-  // Handle extra rounding errors (ignore INEXACT on NaN)
-  SetFPSRStatusFlags(state, src);
-  // if (!std::isnan(src)) {
-  //   state.sr.ixc = (reinterpret_cast<S &>(res) != src);
-  // }
-
-  // if(src == 0 && std::signbit(src)) {
-  //   state.sr.ixc = true;
-  // }
-  // If src was negative 0, this is also inexact conversion
-
-  // Check for FE underflow
-  // state.sr.ufc = /*(std::isinf(res) && res < 0) ||*/ (src != 0 && res == 0);
-
-  return res;
+  return CheckedFloatUnaryOp(state, [] (S v) {return static_cast<D>(v);}, src);
 }
 
 DEF_SEM(UCVTF_UInt32ToFloat32, V128W dst, R32 src) {
