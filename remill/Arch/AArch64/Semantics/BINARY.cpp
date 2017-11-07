@@ -272,7 +272,6 @@ DEF_SEM(FMADD_S, V128W dst, V32 src1, V32 src2, V32 src3) {
   auto res = CheckedFloatBinOp(state, FAdd32, prod, add);
 
   // Sets underflow for 0x3fffffff, 0x1 but native doesn't
-
   FWriteV32(dst, res);
   return memory;
 }
