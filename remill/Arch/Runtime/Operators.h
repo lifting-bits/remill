@@ -1090,6 +1090,14 @@ T _ZeroVec(void) {
       __asm__ __volatile__ ("" ::: "memory"); \
     } while (false)
 
+// A 'compiler' barrier that forced a particular value to be used in a specific
+// spot.
+#define BarrierUsedHere(x) \
+    do { \
+      __asm__ __volatile__ ("" :: "m"(x) : "memory"); \
+    } while (false)
+
+
 // Make a predicate for querying the type of an operand.
 #define MAKE_PRED(name, X, val) \
     template <typename T> \

@@ -203,21 +203,10 @@ template <typename F, typename T>
 ALWAYS_INLINE static
 auto CheckedFloatUnaryOp(State &state, F func, T arg1)
     -> decltype(func(arg1)) {
-
   SetInputDenormal(state, arg1);
-
-  // TODO: Look into setting idc flag
-  //  if (std::fpclassify(res) == FP_SUBNORMAL) {
-  //    state.fpsr.idc = true;
-  //    state.sr.idc = true;
-  //  } else {
-  //    state.fpsr.idc = false;
-  //    state.sr.idc = false;
-  //  }
-
   std::feclearexcept(FE_ALL_EXCEPT);
   auto res = func(arg1);
-  BarrierReorder();
+  BarrierUsedHere(res);  // See https://bugs.llvm.org/show_bug.cgi?id=35233
   SetFPSRStatusFlags(state);
   return res;
 }
@@ -231,7 +220,7 @@ auto CheckedFloatBinOp(State &state, F func, T arg1, T arg2)
   SetInputDenormal(state, arg2);
   std::feclearexcept(FE_ALL_EXCEPT);
   auto res = func(arg1, arg2);
-  BarrierReorder();
+  BarrierUsedHere(res);  // See https://bugs.llvm.org/show_bug.cgi?id=35233
   SetFPSRStatusFlags(state);
   return res;
 }
