@@ -372,8 +372,6 @@ union XCR0 {
 
 static_assert(8 == sizeof(XCR0), "Invalid packing of `XCR0`.");
 
-
-
 #if COMPILING_WITH_GCC
 using RequestPrivilegeLevel = uint16_t;
 using TableIndicator = uint16_t;
@@ -566,9 +564,11 @@ struct alignas(16) State final : public ArchState {
   MMX mmx;  // 128 bytes.
   FPUStatusFlags sw;  // 8 bytes
   XCR0 xcr0;  // 8 bytes.
+  FPUControlWord fpu_control;  // 2 bytes;
+  uint8_t _0[14];  // 14 bytes.
 } __attribute__((packed));
 
-static_assert((2672 + 16) == sizeof(State),
+static_assert((2688 + 16) == sizeof(State),
               "Invalid packing of `struct State`");
 
 using X86State = State;

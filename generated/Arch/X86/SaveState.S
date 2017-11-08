@@ -1,5 +1,6 @@
 /* Auto-generated file! Don't modify! */
 
+fnstcw WORD PTR [RIP + STATE_PTR + 2688]
 #ifdef AFTER_TEST_CASE
 #if 64 == ADDRESS_SIZE_BITS
 fxsave64 [RIP + SYMBOL(gFPU)]
