@@ -255,10 +255,8 @@ SYMBOL(__aarch64_test_table_begin):
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
 
 
-#include "tests/AArch64/CONVERT/UCVTF_n_FLOAT2INT.S"
-#include "tests/AArch64/CONVERT/SCVTF_n_FLOAT2INT.S"
 
-#if 0
+#if 1
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/ADD_32_ADDSUB_EXT.S"
@@ -308,6 +306,8 @@ SYMBOL(__aarch64_test_table_begin):
 
 #include "tests/AArch64/CONVERT/FCVTZx_nS_FLOAT2INT.S"
 #include "tests/AArch64/CONVERT/FCVT_t_FLOAT2INT.S"
+#include "tests/AArch64/CONVERT/SCVTF_n_FLOAT2INT.S"
+#include "tests/AArch64/CONVERT/UCVTF_n_FLOAT2INT.S"
 
 #include "tests/AArch64/DATAXFER/FMOV_t_FLOATIMM.S"
 #include "tests/AArch64/DATAXFER/FMOV_NToN.S"
