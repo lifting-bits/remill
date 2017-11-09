@@ -565,7 +565,7 @@ struct alignas(16) State final : public ArchState {
   FPUStatusFlags sw;  // 8 bytes
   XCR0 xcr0;  // 8 bytes.
   FPUControlWord fpu_control;  // 2 bytes;
-  uint8_t _0[14];  // 14 bytes.
+  uint8_t _padding[14];  // Pad to a 16-byte boundary.
 } __attribute__((packed));
 
 static_assert((2688 + 16) == sizeof(State),
