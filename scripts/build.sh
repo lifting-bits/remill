@@ -182,6 +182,10 @@ function Build
 function GetLLVMVersion
 {
   case ${1} in
+    3.5)
+      LLVM_VERSION=llvm35
+      return 0
+    ;;
     3.6)
       LLVM_VERSION=llvm36
       return 0
@@ -206,7 +210,7 @@ function GetLLVMVersion
     ;;
     *)
       # unknown option
-      printf "[x] Unknown LLVM version ${1}. Valid versions are 3.8, 3.9, and 4.0.\n"
+      printf "[x] Unknown LLVM version ${1}.\n"
       exit 1
     ;;
   esac
