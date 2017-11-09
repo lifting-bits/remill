@@ -18,6 +18,8 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <climits>
+#include <cstdlib>
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -25,13 +27,18 @@
 #include <vector>
 
 #include "remill/OS/FileSystem.h"
+#include "remill/OS/OS.h"
 
-#ifdef __APPLE__
+#if REMILL_ON_MACOS
 # ifndef _DARWIN_USE_64_BIT_INODE
 #   define _DARWIN_USE_64_BIT_INODE 1
 # endif
 # define stat64 stat
 # define fstat64 fstat
+#endif
+
+#if defined(_MAX_PATH) && !defined(PATH_MAX)
+# define PATH_MAX _MAX_PATH
 #endif
 
 namespace remill {
@@ -206,14 +213,19 @@ void MoveFile(const std::string &from_path, const std::string &to_path) {
 }
 
 std::string CanonicalPath(const std::string &path) {
-  char buff[PATH_MAX + 1];
+  char buff[PATH_MAX + 1] = {};
+#if REMILL_ON_WINDOWS
+  auto canon_path_c = _fullpath(buff, path.c_str(), PATH_MAX);
+  auto err = ENOENT;
+#else
   auto canon_path_c = realpath(path.c_str(), buff);
   auto err = errno;
+#endif
   if (!canon_path_c) {
     LOG(ERROR)
         << "Cannot compute full path of " << path
         << ": " << strerror(err);
-    return "";
+    return path;
   } else {
     std::string canon_path(canon_path_c);
     return canon_path;
@@ -222,7 +234,7 @@ std::string CanonicalPath(const std::string &path) {
 
 // Returns the path separator character for this OS.
 const char *PathSeparator(void) {
-#if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#if REMILL_ON_WINDOWS
   return "\\";
 #else
   return "/";

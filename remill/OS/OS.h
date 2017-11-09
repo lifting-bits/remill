@@ -21,12 +21,24 @@
 
 #ifndef REMILL_OS
 # if defined(__APPLE__)
+#   define REMILL_ON_MACOS 1
+#   define REMILL_ON_LINUX 0
+#   define REMILL_ON_WINDOWS 0
 #   define REMILL_OS "macos"
 # elif defined(__linux__)
+#   define REMILL_ON_MACOS 0
+#   define REMILL_ON_LINUX 1
+#   define REMILL_ON_WINDOWS 0
 #   define REMILL_OS "linux"
-# elif defined(WIN32)
+# elif defined(WIN32) || defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
+#   define REMILL_ON_MACOS 0
+#   define REMILL_ON_LINUX 0
+#   define REMILL_ON_WINDOWS 1
 #   define REMILL_OS "windows"
 # else
+#   define REMILL_ON_MACOS 0
+#   define REMILL_ON_LINUX 0
+#   define REMILL_ON_WINDOWS 0
 #   error "Cannot infer current OS."
 # endif
 #endif
