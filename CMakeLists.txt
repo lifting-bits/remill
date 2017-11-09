@@ -28,7 +28,19 @@ if (DEFINED ENV{TRAILOFBITS_LIBRARIES})
 endif ()
 
 if (DEFINED LIBRARY_REPOSITORY_ROOT)
-    include("${LIBRARY_REPOSITORY_ROOT}/cmake/repository.cmake")
+    set(TOB_CMAKE_INCLUDE "${LIBRARY_REPOSITORY_ROOT}/cmake_modules/repository.cmake")
+    set(LEGACY_TOB_CMAKE_INCLUDE "${LIBRARY_REPOSITORY_ROOT}/cmake/repository.cmake")
+
+    if (EXISTS "${LEGACY_TOB_CMAKE_INCLUDE}")
+        include("${LEGACY_TOB_CMAKE_INCLUDE}")
+        message(WARNING "Using legacy cxx-common build; please update!")
+    elseif (EXISTS "${TOB_CMAKE_INCLUDE}")
+        include("${TOB_CMAKE_INCLUDE}")
+
+    else ()
+        message(FATAL_ERROR "The library repository could not be found!")
+    endif ()
+
     message(STATUS "Using the following library repository: ${LIBRARY_REPOSITORY_ROOT}")
 else ()
     message(STATUS "Using system libraries")

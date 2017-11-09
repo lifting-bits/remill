@@ -24,8 +24,8 @@
 #define LLVM_VERSION_NUMBER \
     LLVM_VERSION(LLVM_VERSION_MAJOR, LLVM_VERSION_MINOR)
 
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 6)
-# error "Minimum supported LLVM version is 3.6"
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 5)
+# error "Minimum supported LLVM version is 3.5"
 #endif
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(5, 0)
