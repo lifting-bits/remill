@@ -723,8 +723,8 @@ DEF_SEM(FNSTSW, D dst) {
 }
 
 DEF_SEM(FNSTCW, M16W dst) {
-  FPUControlWord cw = {};
-  cw.flat = 0x027F_u16;  // Our default, with double-precision.
+  auto &cw = state.fpu_control;
+  //cw.flat = 0x027F_u16;  // Our default, with double-precision.
   switch (fegetround()) {
     default:
     case FE_TONEAREST:
@@ -745,8 +745,9 @@ DEF_SEM(FNSTCW, M16W dst) {
 }
 
 DEF_SEM(FLDCW, M16 cwd) {
-  FPUControlWord cw = {};
+  auto &cw = state.fpu_control;
   cw.flat = Read(cwd);
+  cw.pc = kPrecisionSingle;
   int rounding_mode = FE_TONEAREST;
   switch (cw.rc) {
     case kFPURoundToNearestEven:
@@ -766,6 +767,7 @@ DEF_SEM(FLDCW, M16 cwd) {
       break;
   }
   fesetround(rounding_mode);
+
   return memory;
 }
 

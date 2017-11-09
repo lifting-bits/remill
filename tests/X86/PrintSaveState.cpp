@@ -36,6 +36,9 @@ int main(void) {
 
   printf("/* Auto-generated file! Don't modify! */\n\n");
 
+  // Save the control word.
+  printf("fnstcw WORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, fpu_control));
+
   // Save the native post-test FPU state.
   printf("#ifdef AFTER_TEST_CASE\n");
   printf("#if 64 == ADDRESS_SIZE_BITS\n");
