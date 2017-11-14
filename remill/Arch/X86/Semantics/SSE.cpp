@@ -126,62 +126,13 @@ ALWAYS_INLINE static bool CompareFloats(FloatCompareOperator op, T v1, T v2) {
   }
 }
 
-union nan32_t {
-  float32_t f;
-  struct {
-    uint32_t mantissa:22;
-    uint32_t is_quiet_nan:1;
-    uint32_t exponent:8;
-    uint32_t is_negative:1;
-  } __attribute__((packed));
-} __attribute__((packed));
-
-static_assert(sizeof(float32_t) == sizeof(nan32_t),
-              "Invalid packing of `nan32_t`.");
-
-union nan64_t {
-  float64_t d;
-  struct {
-    uint64_t mantissa_low:32;
-    uint64_t mantissa_high:19;
-    uint64_t is_quiet_nan:1;
-    uint64_t exponent:11;
-    uint64_t is_negative:1;
-  } __attribute__((packed));
-} __attribute__((packed));
-
-static_assert(sizeof(float64_t) == sizeof(nan64_t),
-              "Invalid packing of `nan64_t`.");
-
-#if !defined(issignaling)
-
-ALWAYS_INLINE bool issignaling(float32_t x) {
-  if (!std::isnan(x)) {
-    return false;
-  }
-
-  nan32_t x_nan = {x};
-  return !x_nan.is_quiet_nan;
-}
-
-ALWAYS_INLINE bool issignaling(float64_t x) {
-  if (!std::isnan(x)) {
-    return false;
-  }
-
-  nan64_t x_nan = {x};
-  return !x_nan.is_quiet_nan;
-}
-
-#endif  // !defined(issignaling)
-
 template <typename S1, typename S2>
 DEF_SEM(COMISS, S1 src1, S2 src2) {
   auto left = FExtractV32(FReadV32(src1), 0);
   auto right = FExtractV32(FReadV32(src2), 0);
 
   if (__builtin_isunordered(left, right)) {
-    if (issignaling(left + right)) {
+    if (IsSignalingNaN(left + right)) {
       StopFailure();
     }
 
@@ -216,7 +167,7 @@ DEF_SEM(COMISD, S1 src1, S2 src2) {
   auto right = FExtractV64(FReadV64(src2), 0);
 
   if (__builtin_isunordered(left, right)) {
-    if (issignaling(left + right)) {
+    if (IsSignalingNaN(left + right)) {
       StopFailure();
     }
 
@@ -1497,25 +1448,23 @@ DEF_HELPER(SquareRoot32, float32_t src_float) -> float32_t {
   auto square_root = src_float;
 
   // Special cases for invalid square root operations. See Intel manual, Table E-10.
-  if (std::isnan(src_float)) {
+  if (IsNaN(src_float)) {
     // If src is SNaN, return the SNaN converted to a QNaN:
-    if (issignaling(src_float)) {
+    if (IsSignalingNaN(src_float)) {
       nan32_t temp_nan = {src_float};
       temp_nan.is_quiet_nan = 1;  // equivalent to a bitwise OR with 0x00400000
       square_root = temp_nan.f;
-    }
+
     // Else, src is a QNaN. Pass it directly to the result:
-    else {
+    } else {
       square_root = src_float;
     }
-  }
-  else {  // a number, that is, not a NaN
+  } else {  // a number, that is, not a NaN
     // A negative operand (except -0.0) results in the QNaN indefinite value.
-    if (std::signbit(src_float) && src_float != -0.0) {
-      uint32_t indef_qnan = 0xFFC00000;
-      square_root = *reinterpret_cast<float32_t*>(&indef_qnan);
-    }
-    else {
+    if (IsNegative(src_float) && src_float != -0.0) {
+      uint32_t indef_qnan = 0xFFC00000U;
+      square_root = reinterpret_cast<float32_t &>(indef_qnan);
+    } else {
       square_root = std::sqrt(src_float);
     }
   }

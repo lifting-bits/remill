@@ -19,6 +19,6 @@ endif ()
 
 if (307 LESS ${REMILL_LLVM_VERSION_NUMBER})
     if (EXISTS ${CMAKE_SOURCE_DIR}/tools/vmill)
-        add_subdirectory(vmill)
+        #add_subdirectory(vmill)
     endif ()
 endif ()

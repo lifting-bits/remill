@@ -36,60 +36,79 @@ int main(void) {
 
   printf("/* Auto-generated file! Don't modify! */\n\n");
 
-  // Save the control word.
-  printf("fnstcw WORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, fpu_control));
-
-  // Save the native post-test FPU state.
-  printf("#ifdef AFTER_TEST_CASE\n");
+  // Save the native FPU state.
   printf("#if 64 == ADDRESS_SIZE_BITS\n");
-  printf("fxsave64 [RIP + SYMBOL(gFPU)]\n");
+  printf("fxsave64 [RIP + STATE_PTR + %lu]\n", offsetof(State, x87));
   printf("#else\n");
-  printf("fxsave [RIP + SYMBOL(gFPU)]\n");
-  printf("#endif\n");
+  printf("fxsave [RIP + STATE_PTR + %lu]\n", offsetof(State, x87));
   printf("#endif\n");
 
-  // Save the flags. This first saves whatever is on the stack that would get
-  // clobbered by the `PUSHFQ`.
+  // Save whatever is on the stack that would get clobbered by the `PUSHFQ`.
   printf("lea RSP, [RSP - 8]\n");
   printf("pop QWORD PTR [RIP + SYMBOL(gStackSaveSlot)]\n");
 
-  // Before the testcase this will initialize the flags, and after the test
-  // case this will record the flags.
-  printf("#ifdef AFTER_TEST_CASE\n");
+  // Record the flags, both in native form (`Flags` struct), and in expanded
+  // form (`ArithFlags` struct).
   printf("pushfq\n");
-  printf("#else\n");
-  printf("push QWORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, rflag));
-  printf("#endif\n");
+  printf("pop QWORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, rflag));
 
-  printf("bt QWORD PTR [RSP], 0\n");
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, rflag));
   printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, aflag.cf));
 
-  printf("bt QWORD PTR [RSP], 2\n");
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 2\n", offsetof(State, rflag));
   printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, aflag.pf));
 
-  printf("bt QWORD PTR [RSP], 4\n");
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 4\n", offsetof(State, rflag));
   printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, aflag.af));
 
-  printf("bt QWORD PTR [RSP], 6\n");
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 6\n", offsetof(State, rflag));
   printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, aflag.zf));
 
-  printf("bt QWORD PTR [RSP], 7\n");
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 7\n", offsetof(State, rflag));
   printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, aflag.sf));
 
-  printf("bt QWORD PTR [RSP], 10\n");
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 10\n", offsetof(State, rflag));
   printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, aflag.df));
 
-  printf("bt QWORD PTR [RSP], 11\n");
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 11\n", offsetof(State, rflag));
   printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, aflag.of));
 
-  // Before the native test case this will set the flags from `gFlags`, but
-  // after the test case this will save the flags to the `rflag` field.
-  printf("#ifdef AFTER_TEST_CASE\n");
-  printf("pop QWORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, rflag));
-  printf("#else\n");
-  printf("popfq\n");
-  printf("#endif\n");
+  // Marshal the FPU status word flags.
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 8\n", offsetof(State, x87.fxsave.swd));
+  printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, sw.c0));
 
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 9\n", offsetof(State, x87.fxsave.swd));
+  printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, sw.c1));
+
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 10\n", offsetof(State, x87.fxsave.swd));
+  printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, sw.c2));
+
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 14\n", offsetof(State, x87.fxsave.swd));
+  printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, sw.c3));
+
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, x87.fxsave.swd));
+  printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, sw.ie));
+
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 1\n", offsetof(State, x87.fxsave.swd));
+  printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, sw.de));
+
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 2\n", offsetof(State, x87.fxsave.swd));
+  printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, sw.ze));
+
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 3\n", offsetof(State, x87.fxsave.swd));
+  printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, sw.oe));
+
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 4\n", offsetof(State, x87.fxsave.swd));
+  printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, sw.ue));
+
+  printf("bt QWORD PTR [RIP + STATE_PTR + %lu], 5\n", offsetof(State, x87.fxsave.swd));
+  printf("adc BYTE PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, sw.pe));
+
+  // Restore the flags.
+  printf("push QWORD PTR [RIP + STATE_PTR + %lu]\n", offsetof(State, rflag));
+  printf("popfq\n");
+
+  // Restore whatever was previously on the stack.
   printf("push QWORD PTR [RIP + SYMBOL(gStackSaveSlot)]\n");
   printf("lea RSP, [RSP + 8]\n");
 
@@ -133,7 +152,6 @@ int main(void) {
   printf("mov [RIP + STATE_PTR + %lu], R14W\n", offsetof(State, gpr.r14.word));
   printf("mov [RIP + STATE_PTR + %lu], R15W\n", offsetof(State, gpr.r15.word));
   printf("#endif  /* 64 == ADDRESS_SIZE_BITS */\n");
-  printf("mov WORD PTR [RIP + STATE_PTR + %lu], 0\n", offsetof(State, gpr.rip.word));
   printf("mov [RIP + STATE_PTR + %lu], EAX\n", offsetof(State, gpr.rax.dword));
   printf("mov [RIP + STATE_PTR + %lu], EBX\n", offsetof(State, gpr.rbx.dword));
   printf("mov [RIP + STATE_PTR + %lu], ECX\n", offsetof(State, gpr.rcx.dword));

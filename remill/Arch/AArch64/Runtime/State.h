@@ -246,25 +246,29 @@ struct alignas(8) SR final {
   Reg tpidrro_el0;  // Read-only thread pointer for EL0.
 
   uint8_t _2;
-  bool n;  //  Negative condition flag.
+  uint8_t n;  //  Negative condition flag.
   uint8_t _3;
-  bool z;  //  Zero condition flag
+  uint8_t z;  //  Zero condition flag
   uint8_t _4;
-  bool c;  //  Carry condition flag
+  uint8_t c;  //  Carry condition flag
   uint8_t _5;
-  bool v;  //  Overflow condition flag
+  uint8_t v;  //  Overflow condition flag
 
   uint8_t _6;
-  bool ixc;  // Inexact (cumulative).
+  uint8_t ixc;  // Inexact (cumulative).
   uint8_t _7;
-  bool ofc;  // Overflow (cumulative).
+  uint8_t ofc;  // Overflow (cumulative).
   uint8_t _8;
-  bool ufc;  // Underflow (cumulative).
+  uint8_t ufc;  // Underflow (cumulative).
   uint8_t _9;
-  bool idc;  // Input denormal (cumulative).
+  uint8_t idc;  // Input denormal (cumulative).
+  uint8_t _10;
+  uint8_t ioc;  // Invalid operation (cumulative).
+
+  uint8_t _padding[6];
 } __attribute__((packed));
 
-static_assert((6 * 8) == sizeof(SR), "Invalid packing of `struct SR`.");
+static_assert(56 == sizeof(SR), "Invalid packing of `struct SR`.");
 
 enum : size_t {
   kNumVecRegisters = 32
@@ -291,11 +295,13 @@ struct alignas(16) State final : public ArchState {
 
   uint64_t _2;
 
-  SR sr;  // 48 bytes.
+  SR sr;  // 56 bytes.
+
+  uint64_t _3;
 
 } __attribute__((packed));
 
-static_assert((1136 + 16) == sizeof(State),
+static_assert((1152 + 16) == sizeof(State),
               "Invalid packing of `struct State`");
 
 using AArch64State = State;

@@ -292,7 +292,7 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
   return ss.str();
 }
 
-// Decode an instuction into the XED instuction format.
+// Decode an instruction into the XED instuction format.
 static bool DecodeXED(xed_decoded_inst_t *xedd,
                       const xed_state_t *mode,
                       const std::string &inst_bytes,
@@ -621,7 +621,6 @@ static void DecodeRelativeBranch(Instruction &inst,
   // Taken branch.
   Operand taken_op = {};
   taken_op.action = Operand::kActionRead;
-  taken_op.action = Operand::kActionRead;
   taken_op.type = Operand::kTypeAddress;
   taken_op.size = pc_width;
   taken_op.addr.address_size = pc_width;
@@ -633,6 +632,53 @@ static void DecodeRelativeBranch(Instruction &inst,
 
   inst.branch_taken_pc = static_cast<uint64_t>(
       static_cast<int64_t>(inst.next_pc) + disp);
+}
+
+// Decodes the opcode byte of this FPU instruction. This is the unique part of
+// the first two opcode bytes, and skips over prefix bytes. The FPU opcode is
+// the 11 `x`s of the first two non-prefix bytes: `11011xxx xxxxxxxx`.
+static uint16_t DecodeFpuOpcode(Instruction &inst) {
+  unsigned i = 0;
+  auto found_first_opcode_byte = false;
+  uint8_t bytes[15] = {};
+  for (auto b : inst.bytes) {
+    if (0xD8 == (0xF8 & b)) {
+      found_first_opcode_byte = true;
+    }
+    if (found_first_opcode_byte) {
+      bytes[i++] = static_cast<uint8_t>(b);
+    }
+  }
+
+  CHECK(i >= 2)
+      << "Failed to find FPU opcode byte for instruction " << inst.Serialize();
+
+  uint16_t opcode = 0;
+  opcode |= static_cast<uint16_t>(bytes[0] & 3) << 8;
+  opcode |= static_cast<uint16_t>(bytes[1]);
+
+  return opcode;
+}
+
+// Add to the instruction operands that will let us get at the last program
+// counter and opcode for non-control x87 instructions.
+static void DecodeX87LastIpDp(Instruction &inst) {
+  auto pc_width = Is64Bit(inst.arch_name) ? 64 : 32;
+  Operand pc = {};
+  pc.action = Operand::kActionRead;
+  pc.type = Operand::kTypeRegister;
+  pc.size = pc_width;
+  pc.reg.name = "PC";
+  pc.reg.size = pc_width;
+  inst.operands.push_back(pc);
+
+  Operand fop;
+  fop.action = Operand::kActionRead;
+  fop.type = Operand::kTypeImmediate;
+  fop.size = 16;
+  fop.imm.is_signed = false;
+  fop.imm.val = static_cast<uint64_t>(DecodeFpuOpcode(inst));
+  inst.operands.push_back(fop);
 }
 
 // Decode an operand.
@@ -898,6 +944,32 @@ bool X86Arch::DecodeInstruction(
 
   if (inst.IsFunctionCall()) {
     DecodeFallThroughPC(inst, xedd);
+  }
+
+  // All non-control FPU instructions update the last instruction pointer
+  // and opcode.
+  if ((XED_ISA_SET_X87 == xed_decoded_inst_get_isa_set(xedd) ||
+       XED_CATEGORY_X87_ALU == xed_decoded_inst_get_category(xedd))) {
+    auto set_ip_dp = false;
+    const auto get_attr = xed_decoded_inst_get_attribute;
+    switch (xed_decoded_inst_get_iform_enum(xedd)) {
+      case XED_IFORM_FNOP:
+      case XED_IFORM_FINCSTP:
+      case XED_IFORM_FDECSTP:
+        set_ip_dp = true;
+        break;
+      default:
+        set_ip_dp = !get_attr(xedd, XED_ATTRIBUTE_X87_CONTROL) &&
+                    !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_CW) &&
+                    !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_R) &&
+                    !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_W) &&
+                    !get_attr(xedd, XED_ATTRIBUTE_X87_NOWAIT);
+        break;
+    }
+
+    if (set_ip_dp) {
+      DecodeX87LastIpDp(inst);
+    }
   }
 
   // Make sure we disallow decoding of AVX instructions when running with non-

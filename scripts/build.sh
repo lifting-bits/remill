@@ -150,6 +150,8 @@ function Configure
     export CXX=${TRAILOFBITS_LIBRARIES}/llvm/bin/clang++
   fi
 
+  export PATH="${TRAILOFBITS_LIBRARIES}/llvm/bin:${PATH}"
+  
   if [[ -z "${CC}" ]] ; then
     export CC=$(which cc)
   fi

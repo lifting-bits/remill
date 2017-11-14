@@ -16,6 +16,7 @@
 
 #define _XOPEN_SOURCE
 
+#include <cfenv>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -149,6 +150,12 @@ NEVER_INLINE float64_t __remill_read_memory_f80(Memory *, addr_t) {
 
 NEVER_INLINE Memory *__remill_write_memory_f80(Memory *, addr_t, float64_t) {
   __builtin_unreachable();
+}
+
+int __remill_fpu_exception_test_and_clear(int read_mask, int clear_mask) {
+  auto except = std::fetestexcept(read_mask);
+  std::feclearexcept(clear_mask);
+  return except;
 }
 
 Memory *__remill_barrier_load_load(Memory *) { return nullptr; }

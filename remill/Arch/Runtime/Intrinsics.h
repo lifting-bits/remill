@@ -135,6 +135,18 @@ extern Memory *__remill_atomic_begin(Memory *);
 [[gnu::used, gnu::const]]
 extern Memory *__remill_atomic_end(Memory *);
 
+// Read and modify the floating point exception state of the (virtual) machine
+// that is executing the actual floating point operations.
+//
+//      auto old = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
+//      auto y = ...;
+//      auto res = x op y;
+//      auto flags = __remill_fpu_exception_test_and_clear(FE_ALL_EXCEPT, 0);
+//
+// These flags are also subject to optimizations
+[[gnu::used, gnu::const]]
+extern int __remill_fpu_exception_test_and_clear(int read_mask, int clear_mask);
+
 }  // extern C
 
 #endif  // REMILL_ARCH_RUNTIME_INTRINSICS_H_

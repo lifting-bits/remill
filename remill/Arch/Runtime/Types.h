@@ -69,6 +69,32 @@ struct float80_t final {
 
 static_assert(10 == sizeof(float80_t), "Invalid `float80_t` size.");
 
+union nan32_t {
+  float32_t f;
+  struct {
+    uint32_t payload:22;
+    uint32_t is_quiet_nan:1;
+    uint32_t exponent:8;
+    uint32_t is_negative:1;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(sizeof(float32_t) == sizeof(nan32_t),
+              "Invalid packing of `nan32_t`.");
+
+union nan64_t {
+  float64_t d;
+  struct {
+    uint64_t payload:51;
+    uint64_t is_quiet_nan:1;
+    uint64_t exponent:11;
+    uint64_t is_negative:1;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(sizeof(float64_t) == sizeof(nan64_t),
+              "Invalid packing of `nan64_t`.");
+
 // Note: We are re-defining the `std::is_signed` type trait because we can't
 //       always explicitly specialize it inside of the `std` namespace.
 

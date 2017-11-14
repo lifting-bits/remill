@@ -149,11 +149,23 @@ TEST_INPUTS(0)
     fpatan
 TEST_END
 
-TEST_BEGIN(FSQRT, 1)
-TEST_INPUTS(0)
-    fldl2e
+TEST_BEGIN_64(FSQRT, 1)
+TEST_INPUTS(
+    0x41100000,   /* 9.0, a "perfect square," of which sqrt() is an integer */
+    0x00000000,   /* sqrt(0) should be 0 */
+    0x412E3D71,   /* 10.89, should return 3.33 */
+    0x411CCCCD,   /* 9.8, whose square root result needs to be rounded */
+    0x7fbfffff,   /* should return the SNaN converted to a QNaN */
+    0xffbfffff,   /* should return the -SNaN converted to a -QNaN */
+    0x7f800000,   /* inf */
+    0xBF800000,   /* -1.0, should return a constant (the QNaN floating-point indefinite) */
+    0xff800000,   /* -inf */
+    0x80000000)    /* -0.0 */
+
+    push ARG1_64
+    fld DWORD PTR [rsp]
     fsqrt
-TEST_END
+TEST_END_64
 
 TEST_BEGIN(FDECSTP, 1)
 TEST_INPUTS(0)
