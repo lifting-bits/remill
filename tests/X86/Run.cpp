@@ -484,6 +484,10 @@ static void RunWithFlags(const test::TestInfo *info,
   lifted_state->x87.fxsave.swd.flat = 0;
   native_state->x87.fxsave.swd.flat = 0;
 
+  // TODO(pag): We don't support these yet.
+  lifted_state->x87.fxsave.mxcsr.flat = 0;
+  native_state->x87.fxsave.mxcsr.flat = 0;
+
   // Copy the aflags state back into the rflags state.
   lifted_state->rflag.cf = lifted_state->aflag.cf;
   lifted_state->rflag.pf = lifted_state->aflag.pf;

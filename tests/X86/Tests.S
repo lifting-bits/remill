@@ -424,7 +424,6 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/CMOV/CMOVP.S"
 #include "tests/X86/CMOV/CMOVS.S"
 #include "tests/X86/CMOV/CMOVZ.S"
-#include "tests/X86/CMOV/FCMOV.S"
 
 #include "tests/X86/CONVERT/CBW.S"
 #include "tests/X86/CONVERT/CDQ.S"
@@ -527,6 +526,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/STRINGOP/STOS.S"
 
 #include "tests/X86/X87/FADD.S"
+#include "tests/X86/X87/FCMOV.S"
 #include "tests/X86/X87/FCOM.S"
 #include "tests/X86/X87/FDIV.S"
 #include "tests/X86/X87/FLD.S"

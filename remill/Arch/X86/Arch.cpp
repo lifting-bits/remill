@@ -948,8 +948,9 @@ bool X86Arch::DecodeInstruction(
 
   // All non-control FPU instructions update the last instruction pointer
   // and opcode.
-  if ((XED_ISA_SET_X87 == xed_decoded_inst_get_isa_set(xedd) ||
-       XED_CATEGORY_X87_ALU == xed_decoded_inst_get_category(xedd))) {
+  if (XED_ISA_SET_X87 == xed_decoded_inst_get_isa_set(xedd) ||
+      XED_ISA_SET_FCMOV == xed_decoded_inst_get_isa_set(xedd) ||
+      XED_CATEGORY_X87_ALU == xed_decoded_inst_get_category(xedd)) {
     auto set_ip_dp = false;
     const auto get_attr = xed_decoded_inst_get_attribute;
     switch (xed_decoded_inst_get_iform_enum(xedd)) {

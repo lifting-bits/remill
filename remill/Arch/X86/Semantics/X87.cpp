@@ -1301,6 +1301,81 @@ DEF_ISEL(FYL2XP1) = DoFYL2XP1;
 DEF_ISEL(FFREE_X87) = FFREE;
 DEF_ISEL(FFREEP_X87) = FFREEP;
 
+namespace {
+
+template <typename D, typename S1>
+DEF_FPU_SEM(FCMOVNP, D dst, S1 src1) {
+  SetFPUIpOp();
+  Write(dst, Select(BNot(FLAG_PF), Read(src1), Read(dst)));
+  return memory;
+}
+
+template <typename D, typename S1>
+DEF_FPU_SEM(FCMOVNZ, D dst, S1 src1) {
+  SetFPUIpOp();
+  Write(dst, Select(BNot(FLAG_ZF), Read(src1), Read(dst)));
+  return memory;
+}
+
+template <typename D, typename S1>
+DEF_FPU_SEM(FCMOVNB, D dst, S1 src1) {
+  SetFPUIpOp();
+  Write(dst, Select(BNot(FLAG_CF), Read(src1), Read(dst)));
+  return memory;
+}
+
+template <typename D, typename S1>
+DEF_FPU_SEM(FCMOVNBE, D dst, S1 src1) {
+  SetFPUIpOp();
+  Write(dst, Select(
+      BNot(BOr(FLAG_CF, FLAG_ZF)),
+      Read(src1),
+      Read(dst)));
+  return memory;
+}
+
+template <typename D, typename S1>
+DEF_FPU_SEM(FCMOVBE, D dst, S1 src1) {
+  SetFPUIpOp();
+  Write(dst, Select(
+      BOr(FLAG_CF, FLAG_ZF),
+      Read(src1),
+      Read(dst)));
+  return memory;
+}
+
+template <typename D, typename S1>
+DEF_FPU_SEM(FCMOVP, D dst, S1 src1) {
+  SetFPUIpOp();
+  Write(dst, Select(FLAG_PF, Read(src1), Read(dst)));
+  return memory;
+}
+
+template <typename D, typename S1>
+DEF_FPU_SEM(FCMOVZ, D dst, S1 src1) {
+  SetFPUIpOp();
+  Write(dst, Select(FLAG_ZF, Read(src1), Read(dst)));
+  return memory;
+}
+
+template <typename D, typename S1>
+DEF_FPU_SEM(FCMOVB, D dst, S1 src1) {
+  SetFPUIpOp();
+  Write(dst, Select(FLAG_CF, Read(src1), Read(dst)));
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(FCMOVNU_ST0_X87) = FCMOVNP<RF80W, RF80>;
+DEF_ISEL(FCMOVNB_ST0_X87) = FCMOVNB<RF80W, RF80>;
+DEF_ISEL(FCMOVNE_ST0_X87) = FCMOVNZ<RF80W, RF80>;
+DEF_ISEL(FCMOVBE_ST0_X87) = FCMOVBE<RF80W, RF80>;
+DEF_ISEL(FCMOVNBE_ST0_X87) = FCMOVNBE<RF80W, RF80>;
+DEF_ISEL(FCMOVU_ST0_X87) = FCMOVP<RF80W, RF80>;
+DEF_ISEL(FCMOVE_ST0_X87) = FCMOVZ<RF80W, RF80>;
+DEF_ISEL(FCMOVB_ST0_X87) = FCMOVB<RF80W, RF80>;
+
 /*
 
 23 FICOMP FICOMP_ST0_MEMmem32int X87_ALU X87 X87 ATTRIBUTES: NOTSX
