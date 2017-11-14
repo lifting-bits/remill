@@ -488,6 +488,15 @@ static void RunWithFlags(const test::TestInfo *info,
   lifted_state->x87.fxsave.mxcsr.flat = 0;
   native_state->x87.fxsave.mxcsr.flat = 0;
 
+  // Don't compare EIP on 32-bit because the tests we run natively (on 64-bits)
+  // may be different than the 32-bit code that we lift. This is just so that
+  // things actually work, e.g. stuff needing the REX.W prefix in the native
+  // tests to execute.
+#if 32 == ADDRESS_SIZE_BITS
+  lifted_state->gpr.rip.aword = 0;
+  native_state->gpr.rip.aword = 0;
+#endif
+
   // Copy the aflags state back into the rflags state.
   lifted_state->rflag.cf = lifted_state->aflag.cf;
   lifted_state->rflag.pf = lifted_state->aflag.pf;
