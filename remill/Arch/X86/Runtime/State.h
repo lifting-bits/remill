@@ -62,6 +62,35 @@
 # define IF_AVX512_ELSE(a, b) b
 #endif
 
+enum RequestPrivilegeLevel : uint16_t {
+  kRingZero = 0,
+  kRingOne = 1,
+  kRingTwo = 2,
+  kRingThree = 3
+};
+
+enum TableIndicator : uint16_t {
+  kGlobalDescriptorTable = 0,
+  kLocalDescriptorTable = 1
+};
+
+#if COMPILING_WITH_GCC
+# define RequestPrivilegeLevel uint16_t
+# define TableIndicator uint16_t
+#endif  // COMPILING_WITH_GCC
+
+union SegmentSelector final {
+  uint16_t flat;
+  struct {
+    RequestPrivilegeLevel rpi:2;
+    TableIndicator ti:1;
+    uint16_t index:13;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(sizeof(SegmentSelector) == 2,
+              "Invalid packing of `union SegmentSelector`.");
+
 union FPUStatusWord final {
   uint16_t flat;
   struct {
@@ -85,11 +114,6 @@ union FPUStatusWord final {
 static_assert(2 == sizeof(FPUStatusWord),
               "Invalid structure packing of `FPUFlags`.");
 
-#if COMPILING_WITH_GCC
-using FPUPrecisionControl = uint16_t;
-using FPURoundingControl = uint16_t;
-using FPUInfinityControl = uint16_t;
-#else
 enum FPUPrecisionControl : uint16_t {
   kPrecisionSingle,
   kPrecisionReserved,
@@ -108,7 +132,12 @@ enum FPUInfinityControl : uint16_t {
   kInfinityProjective,
   kInfinityAffine
 };
-#endif
+
+#if COMPILING_WITH_GCC
+# define FPUPrecisionControl uint16_t
+# define FPURoundingControl uint16_t
+# define FPUInfinityControl uint16_t
+#endif  // COMPILING_WITH_GCC
 
 union FPUControlWord final {
   uint16_t flat;
@@ -182,20 +211,10 @@ union FPUControlStatus {
 static_assert(4 == sizeof(FPUControlStatus),
               "Invalid structure packing of `SSEControlStatus`.");
 
-#if COMPILING_WITH_GCC
-using FPUTag = uint16_t;
-using FPUAbridgedTag = uint8_t;
-# define kFPUTagNonZero 0
-# define kFPUTagZero 1
-# define kFPUTagSpecial 2
-# define kFPUTagEmpty 3
-# define kFPUAbridgedTagEmpty 0
-# define kFPUAbridgedTagValid 1
-#else
 enum FPUTag : uint16_t {
   kFPUTagNonZero,
   kFPUTagZero,
-  kFPUTagSpecial,
+  kFPUTagSpecial,  // Invalid (NaN, unsupported), infinity, denormal.
   kFPUTagEmpty
 };
 
@@ -203,73 +222,115 @@ enum FPUAbridgedTag : uint8_t {
   kFPUAbridgedTagEmpty,
   kFPUAbridgedTagValid
 };
-#endif
+
+#if COMPILING_WITH_GCC
+# define FPUTag uint16_t
+# define FPUAbridgedTag uint8_t
+#endif  // COMPILING_WITH_GCC
 
 // Note: Stored in top-of-stack order.
-struct FPUTagWord final {
-  FPUTag tag0:2;
-  FPUTag tag1:2;
-  FPUTag tag2:2;
-  FPUTag tag3:2;
-  FPUTag tag4:2;
-  FPUTag tag5:2;
-  FPUTag tag6:2;
-  FPUTag tag7:2;
+union FPUTagWord final {
+  uint16_t flat;
+  struct {
+    FPUTag tag0:2;
+    FPUTag tag1:2;
+    FPUTag tag2:2;
+    FPUTag tag3:2;
+    FPUTag tag4:2;
+    FPUTag tag5:2;
+    FPUTag tag6:2;
+    FPUTag tag7:2;
+  } __attribute__((packed));
 } __attribute__((packed));
 
 static_assert(sizeof(FPUTagWord) == 2,
               "Invalid structure packing of `TagWord`.");
 
 // Note: Stored in physical order.
-struct FPUAbridgedTagWord final {
-  FPUAbridgedTag r0:1;
-  FPUAbridgedTag r1:1;
-  FPUAbridgedTag r2:1;
-  FPUAbridgedTag r3:1;
-  FPUAbridgedTag r4:1;
-  FPUAbridgedTag r5:1;
-  FPUAbridgedTag r6:1;
-  FPUAbridgedTag r7:1;
-};
+union FPUAbridgedTagWord final {
+  uint8_t flat;
+  struct {
+    FPUAbridgedTag r0:1;
+    FPUAbridgedTag r1:1;
+    FPUAbridgedTag r2:1;
+    FPUAbridgedTag r3:1;
+    FPUAbridgedTag r4:1;
+    FPUAbridgedTag r5:1;
+    FPUAbridgedTag r6:1;
+    FPUAbridgedTag r7:1;
+  } __attribute__((packed));
+} __attribute__((packed));
 
-// FP register state that conforms with `FXSAVE`.
-struct alignas(64) FPU final {
+static_assert(sizeof(FPUAbridgedTagWord) == 1,
+              "Invalid structure packing of `FPUAbridgedTagWord`.");
+
+// FPU register state that conforms with `FSAVE` and `FRSTOR`.
+struct FpuFSAVE {
+  FPUControlWord cwd;
+  uint16_t _rsvd0;
+  FPUStatusWord swd;
+  uint16_t _rsvd1;
+  FPUTagWord ftw;
+  uint16_t fop;  // Last instruction opcode.
+  uint32_t ip;  // Offset in segment of last non-control FPU instruction.
+  SegmentSelector cs;  // Code segment associated with `ip`.
+  uint16_t _rsvd2;
+  uint32_t dp;  // Operand address.
+  SegmentSelector ds;  // Data segment associated with `dp`.
+  uint16_t _rsvd3;
+  FPUStackElem st[8];
+} __attribute__((packed));
+
+// FPU register state that conforms with `FXSAVE` and `FXRSTOR`.
+struct FpuFXSAVE {
   FPUControlWord cwd;
   FPUStatusWord swd;
-  union {
-    struct {
-      FPUAbridgedTagWord abridged;
-      uint8_t _rsvd0;
-    } __attribute__((packed)) fxsave;
-    struct {
-      FPUTagWord full;
-    } __attribute__((packed)) fsave;
-  } __attribute__((packed)) ftw;
-  uint16_t fop;
-  union {
-    struct {
-      uint32_t ip;  // Offset in segment of last non-control FPU instruction.
-      uint16_t cs;  // Code segment associated with `ip`.
-      uint16_t _rsvd1;
-      uint32_t dp;
-      uint16_t ds;
-      uint16_t _rsvd2;
-    } __attribute__((packed)) fxsave;
-    struct {
-      uint64_t ip;
-      uint64_t dp;
-    } __attribute__((packed)) fxsave64;
-  } __attribute__((packed)) code_data;
+  FPUAbridgedTagWord ftw;
+  uint8_t _rsvd0;
+  uint16_t fop;  // Last instruction opcode.
+  uint32_t ip;  // Offset in segment of last non-control FPU instruction.
+  SegmentSelector cs;  // Code segment associated with `ip`.
+  uint16_t _rsvd1;
+  uint32_t dp;  // Operand address.
+  SegmentSelector ds;  // Data segment associated with `dp`.
+  uint16_t _rsvd2;
   FPUControlStatus mxcsr;
   FPUControlStatus mxcsr_mask;
-  FPUStackElem st[8];   // 8*16 bytes for each FP reg = 128 bytes.
-
-  // Note: This is consistent with `fxsave64`, but doesn't handle things like
-  //       ZMM/YMM registers. Therefore, we use a different set of registers
-  //       for those.
-  vec128_t xmm[16];  // 16*16 bytes for each XMM reg = 256 bytes.
-  uint32_t padding[24];
+  FPUStackElem st[8];
+  vec128_t xmm[8];
 } __attribute__((packed));
+
+// FPU register state that conforms with `FXSAVE64` and `FXRSTOR64`.
+struct FpuFXSAVE64 {
+  FPUControlWord cwd;
+  FPUStatusWord swd;
+  FPUAbridgedTagWord ftw;
+  uint8_t _rsvd0;
+  uint16_t fop;  // Last instruction opcode.
+  uint64_t ip;  // Offset in segment of last non-control FPU instruction.
+  uint64_t dp;  // Operand address.
+  FPUControlStatus mxcsr;
+  FPUControlStatus mxcsr_mask;
+  FPUStackElem st[8];
+  vec128_t xmm[16];
+} __attribute__((packed));
+
+// FP register state that conforms with `FXSAVE` and `FXSAVE64`.
+union alignas(16) FPU final {
+  struct : public FpuFSAVE {
+    uint8_t _padding0[512 - sizeof(FpuFSAVE)];
+  } __attribute__((packed)) fsave;
+
+  struct : public FpuFXSAVE {
+    uint8_t _padding0[512 - sizeof(FpuFXSAVE)];
+  } __attribute__((packed)) fxsave32;
+
+  struct : public FpuFXSAVE64 {
+    uint8_t _padding0[512 - sizeof(FpuFXSAVE64)];
+  } __attribute__((packed)) fxsave64;
+} __attribute__((packed));
+
+#define fxsave IF_64BIT_ELSE(fxsave64, fxsave32)
 
 static_assert(512 == sizeof(FPU), "Invalid structure packing of `FPU`.");
 
@@ -282,9 +343,29 @@ struct FPUStatusFlags final {
   uint8_t c2;
   uint8_t _3;
   uint8_t c3;
+
+  uint8_t _4;
+  uint8_t pe;  // Precision.
+
+  uint8_t _5;
+  uint8_t ue;  // Underflow.
+
+  uint8_t _6;
+  uint8_t oe;  // Overflow.
+
+  uint8_t _7;
+  uint8_t ze;  // Divide by zero.
+
+  uint8_t _8;
+  uint8_t de;  // Denormal operand.
+
+  uint8_t _9;
+  uint8_t ie;  // Invalid operation.
+
+  uint8_t _padding[4];
 } __attribute__((packed));
 
-static_assert(8 == sizeof(FPUStatusFlags),
+static_assert(24 == sizeof(FPUStatusFlags),
               "Invalid packing of `FPUStatusFlags`.");
 
 union alignas(8) Flags final {
@@ -325,22 +406,22 @@ static_assert(8 == sizeof(Flags), "Invalid structure packing of `Flags`.");
 
 struct alignas(8) ArithFlags final {
   // Prevents LLVM from casting and `ArithFlags` into an `i8` to access `cf`.
-  volatile bool _0;
+  volatile uint8_t _0;
   uint8_t cf;  // Prevents load/store coalescing.
-  volatile bool _1;
+  volatile uint8_t _1;
   uint8_t pf;
-  volatile bool _2;
+  volatile uint8_t _2;
   uint8_t af;
-  volatile bool _3;
+  volatile uint8_t _3;
   uint8_t zf;
-  volatile bool _4;
+  volatile uint8_t _4;
   uint8_t sf;
-  volatile bool _5;
+  volatile uint8_t _5;
   uint8_t df;
-  volatile bool _6;
+  volatile uint8_t _6;
   uint8_t of;
-  volatile bool _7;
-  volatile bool _8;
+  volatile uint8_t _7;
+  volatile uint8_t _8;
 } __attribute__((packed));
 
 static_assert(16 == sizeof(ArithFlags), "Invalid packing of `ArithFlags`.");
@@ -371,35 +452,6 @@ union XCR0 {
 } __attribute__((packed));
 
 static_assert(8 == sizeof(XCR0), "Invalid packing of `XCR0`.");
-
-#if COMPILING_WITH_GCC
-using RequestPrivilegeLevel = uint16_t;
-using TableIndicator = uint16_t;
-#else
-enum RequestPrivilegeLevel : uint16_t {
-  kRingZero = 0,
-  kRingOne = 1,
-  kRingTwo = 2,
-  kRingThree = 3
-};
-
-enum TableIndicator : uint16_t {
-  kGlobalDescriptorTable = 0,
-  kLocalDescriptorTable = 1
-};
-#endif  // COMPILING_WITH_GCC
-
-union SegmentSelector final {
-  uint16_t flat;
-  struct {
-    RequestPrivilegeLevel rpi:2;
-    TableIndicator ti:1;
-    uint16_t index:13;
-  } __attribute__((packed));
-} __attribute__((packed));
-
-static_assert(sizeof(SegmentSelector) == 2,
-              "Invalid packing of `union SegmentSelector`.");
 
 struct alignas(8) Segments final {
   volatile uint16_t _0;
@@ -562,13 +614,12 @@ struct alignas(16) State final : public ArchState {
   GPR gpr;  // 272 bytes.
   X87Stack st;  // 128 bytes.
   MMX mmx;  // 128 bytes.
-  FPUStatusFlags sw;  // 8 bytes
+  FPUStatusFlags sw;  // 24 bytes
   XCR0 xcr0;  // 8 bytes.
-  FPUControlWord fpu_control;  // 2 bytes;
-  uint8_t _padding[14];  // Pad to a 16-byte boundary.
+  FPU x87;  // 512 bytes
 } __attribute__((packed));
 
-static_assert((2688 + 16) == sizeof(State),
+static_assert((3200 + 16) == sizeof(State),
               "Invalid packing of `struct State`");
 
 using X86State = State;

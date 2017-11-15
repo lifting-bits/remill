@@ -92,42 +92,40 @@ InstructionLifter::InstructionLifter(llvm::IntegerType *word_type_,
       intrinsics(intrinsics_) {}
 
 // Lift a single instruction into a basic block.
-bool InstructionLifter::LiftIntoBlock(
+LiftStatus InstructionLifter::LiftIntoBlock(
     Instruction &arch_inst, llvm::BasicBlock *block) {
 
   llvm::Function *func = block->getParent();
   llvm::Module *module = func->getParent();
   llvm::Function *isel_func = nullptr;
+  auto status = kLiftedInstruction;
 
   if (arch_inst.IsValid()) {
     isel_func = GetInstructionFunction(module, arch_inst.function);
   } else {
-    DLOG(ERROR)
+    LOG(ERROR)
         << "Cannot decode instruction bytes at "
-        << std::hex << arch_inst.pc;
+        << std::hex << arch_inst.pc << std::dec;
 
     isel_func = GetInstructionFunction(module, "INVALID_INSTRUCTION");
+    CHECK(isel_func != nullptr)
+        << "INVALID_INSTRUCTION doesn't exist.";
+
     arch_inst.operands.clear();
-    if (!isel_func) {
-      LOG(ERROR)
-          << "INVALID_INSTRUCTION doesn't exist.";
-      return false;
-    }
+    status = kLiftedInvalidInstruction;
   }
 
   if (!isel_func) {
-    DLOG(ERROR)
-        << "Cannot lift instruction at " << std::hex << arch_inst.pc << ", "
-        << arch_inst.function << " doesn't exist: " << arch_inst.Serialize();
+    LOG(ERROR)
+        << "Missing semantics for instruction " << arch_inst.Serialize();
 
     isel_func = GetInstructionFunction(module, "UNSUPPORTED_INSTRUCTION");
-    if (!isel_func) {
-      LOG(ERROR)
-          << "UNSUPPORTED_INSTRUCTION doesn't exist; not using it in place of "
-          << arch_inst.function;
-      return false;
-    }
+    CHECK(isel_func != nullptr)
+        << "UNSUPPORTED_INSTRUCTION doesn't exist; not using it in place of "
+        << arch_inst.function;
+
     arch_inst.operands.clear();
+    status = kLiftedUnsupportedInstruction;
   }
 
   llvm::IRBuilder<> ir(block);
@@ -197,7 +195,7 @@ bool InstructionLifter::LiftIntoBlock(
         mem_ptr);
   }
 
-  return true;
+  return status;
 }
 
 namespace {

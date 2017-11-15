@@ -14,6 +14,12 @@
  * limitations under the License.
  */
 
+#include <algorithm>
+#include <bitset>
+#include <cfenv>
+#include <cfloat>
+#include <cmath>
+
 #include "remill/Arch/AArch64/Runtime/State.h"
 
 extern "C" {

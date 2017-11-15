@@ -63,6 +63,8 @@ extern "C" void __remill_intrinsics(void) {
   USED(__remill_atomic_begin);
   USED(__remill_atomic_end);
 
+  USED(__remill_fpu_exception_test_and_clear);
+
 //  USED(__remill_defer_inlining);
 
   USED(__remill_error);

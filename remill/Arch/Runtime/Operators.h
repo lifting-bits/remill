@@ -480,6 +480,21 @@ MAKE_WRITE_REF(float64_t)
       memory = _Write(memory, op, (val)); \
     } while (false)
 
+
+#if !defined(issignaling)
+
+ALWAYS_INLINE uint8_t issignaling(float32_t x) {
+  const nan32_t x_nan = {x};
+  return x_nan.exponent == 0xFFU && !x_nan.is_quiet_nan && x_nan.payload;
+}
+
+ALWAYS_INLINE uint8_t issignaling(float64_t x) {
+  const nan64_t x_nan = {x};
+  return x_nan.exponent == 0x7FFU && !x_nan.is_quiet_nan && x_nan.payload;
+}
+
+#endif  // !defined(issignaling)
+
 template <typename T, typename R=typename IntegerType<T>::UT>
 ALWAYS_INLINE static constexpr
 R ByteSizeOf(T) {
@@ -504,6 +519,78 @@ template <typename T>
 ALWAYS_INLINE static
 auto Signed(T val) -> typename IntegerType<T>::ST {
   return static_cast<typename IntegerType<T>::ST>(val);
+}
+
+template <typename T>
+ALWAYS_INLINE static uint8_t IsNegative(T x) {
+  return static_cast<uint8_t>(std::signbit(x));
+}
+
+ALWAYS_INLINE static uint8_t IsZero(float32_t x) {
+  return static_cast<uint8_t>(FP_ZERO == std::fpclassify(x));
+}
+
+ALWAYS_INLINE static uint8_t IsZero(float64_t x) {
+  return static_cast<uint8_t>(FP_ZERO == std::fpclassify(x));
+}
+
+ALWAYS_INLINE static uint8_t IsInfinite(float32_t x) {
+  return static_cast<uint8_t>(FP_INFINITE == std::fpclassify(x));
+}
+
+ALWAYS_INLINE static uint8_t IsInfinite(float64_t x) {
+  return static_cast<uint8_t>(FP_INFINITE == std::fpclassify(x));
+}
+
+ALWAYS_INLINE static uint8_t IsNaN(float32_t x) {
+  return static_cast<uint8_t>(FP_NAN == std::fpclassify(x));
+}
+
+ALWAYS_INLINE static uint8_t IsNaN(float64_t x) {
+  return static_cast<uint8_t>(FP_NAN == std::fpclassify(x));
+}
+
+ALWAYS_INLINE static uint8_t IsSignalingNaN(float32_t x) {
+  const nan32_t x_nan = {x};
+  return x_nan.exponent == 0xFFU && !x_nan.is_quiet_nan && x_nan.payload;
+}
+
+ALWAYS_INLINE static uint8_t IsSignalingNaN(float64_t x) {
+  const nan64_t x_nan = {x};
+  return x_nan.exponent == 0x7FFU && !x_nan.is_quiet_nan && x_nan.payload;
+}
+
+template <typename T>
+ALWAYS_INLINE static uint8_t IsSignalingNaN(T) {
+  return 0;
+}
+
+ALWAYS_INLINE static uint8_t IsDenormal(float32_t x) {
+  return static_cast<uint8_t>(FP_SUBNORMAL == std::fpclassify(x));
+}
+
+ALWAYS_INLINE static uint8_t IsDenormal(float64_t x) {
+  return static_cast<uint8_t>(FP_SUBNORMAL == std::fpclassify(x));
+}
+
+template <typename T>
+ALWAYS_INLINE static uint8_t IsZero(T val) {
+  return static_cast<uint8_t>(!val);
+}
+
+template <typename T>
+ALWAYS_INLINE static uint8_t IsInfinite(T) {
+  return 0;
+}
+
+template <typename T>
+ALWAYS_INLINE static uint8_t IsNaN(T) {
+  return 0;
+}
+
+template <typename T>
+ALWAYS_INLINE static uint8_t IsDenormal(T) {
+  return 0;
 }
 
 // Return the largest possible value assignable to `val`.
@@ -984,6 +1071,14 @@ ALWAYS_INLINE static float32_t FAbs(float32_t val) {
 }
 
 ALWAYS_INLINE static float64_t FAbs(float64_t val) {
+  return __builtin_fabs(val);
+}
+
+ALWAYS_INLINE static float32_t FAbs32(float32_t val) {
+  return __builtin_fabsf(val);
+}
+
+ALWAYS_INLINE static float64_t FAbs64(float64_t val) {
   return __builtin_fabs(val);
 }
 

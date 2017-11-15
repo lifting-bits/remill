@@ -166,6 +166,7 @@ std::string Operand::Serialize(void) const {
         case 16: ss << "WORD"; break;
         case 32: ss << "DWORD"; break;
         case 64: ss << "QWORD"; break;
+        case 80: ss << "TBYTE"; break;
         case 128: ss << "OWORD"; break;
         case 256: ss << "DOWORD"; break;
         case 512: ss << "QOWORD"; break;

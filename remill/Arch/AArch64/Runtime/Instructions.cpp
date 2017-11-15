@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "remill/Arch/Runtime/Intrinsics.h"
-#include "remill/Arch/Runtime/Operators.h"
-
-#include <fenv.h>
 #include <algorithm>
 #include <bitset>
+#include <cfenv>
+#include <cfloat>
 #include <cmath>
 
+#include "remill/Arch/Runtime/Intrinsics.h"
+#include "remill/Arch/Runtime/Operators.h"
 #include "remill/Arch/AArch64/Runtime/State.h"
 #include "remill/Arch/AArch64/Runtime/Operators.h"
 #include "remill/Arch/AArch64/Runtime/Types.h"

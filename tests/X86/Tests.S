@@ -172,7 +172,7 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .extern SYMBOL(gStackSwitcher)
     .extern SYMBOL(gTestEnd)
     .extern SYMBOL(gStackSaveSlot)
-    .extern SYMBOL(gFPU)
+    .extern SYMBOL(gRflagsForTest)
 
     .data
     .align 16
@@ -247,6 +247,10 @@ SYMBOL(DoInvokeTestCase):
     SET_VEC(5)
     SET_VEC(6)
     SET_VEC(7)
+
+    /* Set the rflags to what we want them to be. */
+    push QWORD PTR [RIP + SYMBOL(gRflagsForTest)]
+    popfq
 
     xchg RSP, [RIP + SYMBOL(gStackSwitcher)]  /* Switch onto recording stack. */
 
@@ -331,6 +335,7 @@ SYMBOL(__x86_test_table_begin):
 /* For argument register and return register definitions. */
 
 #include "tests/X86/ABI.S"
+#include "tests/X86/MMX/INPUTS.S"
 
 /* Change to `0` and put new `#include`s above when making new tests to speed
  * up compile and test times. */
@@ -361,22 +366,8 @@ SYMBOL(__x86_test_table_begin):
 
 /* Bring in the rest of the semantic tests. */
 
-#include "tests/X86/MMX/INPUTS.S"
-#include "tests/X86/MMX/MISC.S"
-#include "tests/X86/MMX/PACKSS.S"
-#include "tests/X86/MMX/PADD.S"
-#include "tests/X86/MMX/PCMP.S"
-#include "tests/X86/MMX/PEXTR.S"
-#include "tests/X86/MMX/PINSRW.S"
-#include "tests/X86/MMX/PMOV.S"
-#include "tests/X86/MMX/PMUL.S"
-#include "tests/X86/MMX/PSADBW.S"
-#include "tests/X86/MMX/PSHUF.S"
-#include "tests/X86/MMX/PSIGN.S"
-#include "tests/X86/MMX/PSLL.S"
-#include "tests/X86/MMX/PSRL.S"
-#include "tests/X86/MMX/PSUB.S"
-#include "tests/X86/MMX/PUNPCK.S"
+
+#include "tests/X86/AVX/VZEROUPPER.S"
 
 #include "tests/X86/BINARY/ADC.S"
 #include "tests/X86/BINARY/ADD.S"
@@ -433,7 +424,6 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/CMOV/CMOVP.S"
 #include "tests/X86/CMOV/CMOVS.S"
 #include "tests/X86/CMOV/CMOVZ.S"
-#include "tests/X86/CMOV/FCMOV.S"
 
 #include "tests/X86/CONVERT/CBW.S"
 #include "tests/X86/CONVERT/CDQ.S"
@@ -471,6 +461,22 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/MISC/LEA.S"
 #include "tests/X86/MISC/LEAVE.S"
 #include "tests/X86/MISC/XLAT.S"
+
+#include "tests/X86/MMX/MISC.S"
+#include "tests/X86/MMX/PACKSS.S"
+#include "tests/X86/MMX/PADD.S"
+#include "tests/X86/MMX/PCMP.S"
+#include "tests/X86/MMX/PEXTR.S"
+#include "tests/X86/MMX/PINSRW.S"
+#include "tests/X86/MMX/PMOV.S"
+#include "tests/X86/MMX/PMUL.S"
+#include "tests/X86/MMX/PSADBW.S"
+#include "tests/X86/MMX/PSHUF.S"
+#include "tests/X86/MMX/PSIGN.S"
+#include "tests/X86/MMX/PSLL.S"
+#include "tests/X86/MMX/PSRL.S"
+#include "tests/X86/MMX/PSUB.S"
+#include "tests/X86/MMX/PUNPCK.S"
 
 #include "tests/X86/POP/POP.S"
 #include "tests/X86/POP/POPF.S"
@@ -520,6 +526,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/STRINGOP/STOS.S"
 
 #include "tests/X86/X87/FADD.S"
+#include "tests/X86/X87/FCMOV.S"
 #include "tests/X86/X87/FCOM.S"
 #include "tests/X86/X87/FDIV.S"
 #include "tests/X86/X87/FLD.S"

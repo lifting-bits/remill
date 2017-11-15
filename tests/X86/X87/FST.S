@@ -55,8 +55,8 @@ FST_INPUTS
     push ARG1_64
     fld QWORD PTR [rsp]
     fld QWORD PTR [rsp]
-    fadd st(1)  // st(0) = 2, st(1) = 1
-    fst st(1)  // st(0) = 2, st(1) = 2
+    fsub st(1)
+    fst st(1)
 TEST_END_64
 
 
@@ -84,8 +84,8 @@ FST_INPUTS
     push ARG1_64
     fld QWORD PTR [rsp]
     fld QWORD PTR [rsp]
-    fadd st(1)  // st(0) = 2, st(1) = 1
-    fstp st(1)  // st(0) = 2, st(1) = 0, st(7) = 2
+    fsub st(1)
+    fstp st(1)
 TEST_END_64
 
 TEST_BEGIN_64(FISTm16, 1)
