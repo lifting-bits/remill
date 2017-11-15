@@ -659,13 +659,6 @@ DEF_FPU_SEM(FSTPmem, T dst, RF80 src) {
   return FSTP(memory, state, dst, src, pc, fop);
 }
 
-//printf("input=%lx rounded=%lx back=%lx conv_cast=%lx conv_adj=%lx ie=%d pe=%d\n",
-//         reinterpret_cast<uint64_t &>(input),
-//         reinterpret_cast<uint64_t &>(rounded),
-//         reinterpret_cast<uint64_t &>(back),
-//         static_cast<int64_t>(conv_cast), static_cast<int64_t>(conv_adj),
-//         state.sw.ie, state.sw.pe);
-
 template <typename C1, typename C2>
 DEF_HELPER(ConvertToInt, C1 cast, C2 convert, float64_t input)
     -> decltype(cast(input)) {

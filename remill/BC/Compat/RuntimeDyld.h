@@ -20,7 +20,9 @@
 
 #include <llvm/ExecutionEngine/RuntimeDyld.h>
 
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(4, 0)
+#if LLVM_VERSION_NUMBER == LLVM_VERSION(3, 5)
+# error "Unsupported LLVM version."
+#elif LLVM_VERSION_NUMBER < LLVM_VERSION(4, 0)
 namespace llvm {
 using JITSymbol = llvm::RuntimeDyld::SymbolInfo;
 using JITSymbolResolver = llvm::RuntimeDyld::SymbolResolver;
