@@ -930,6 +930,7 @@ bool X86Arch::DecodeInstruction(
   auto mode = 32 == address_size ? &kXEDState32 : &kXEDState64;
 
   if (!DecodeXED(xedd, mode, inst_bytes, address)) {
+    LOG(ERROR) << "DecodeXED() could not decode the following opcodes: " << inst.Serialize();
     return false;
   }
 
@@ -1000,6 +1001,7 @@ bool X86Arch::DecodeInstruction(
   switch (xed_decoded_inst_get_category(xedd)) {
     case XED_CATEGORY_INVALID:
     case XED_CATEGORY_LAST:
+      LOG(ERROR) << "Instruction decode failed because XED_CATEGORY_LAST.";
       return false;
 
     case XED_CATEGORY_AVX:
