@@ -130,8 +130,7 @@ TEST_INPUTS_MMX_2()
     psubq xmm0, xmmword ptr [rsp];
 TEST_END_64
 
-/*  // BUG: vpsubd, vpsubq instructions fail the XED decoding process, breaking the tests?
-#ifdef HAS_FEATURE_AVX
+#if HAS_FEATURE_AVX
 
 TEST_BEGIN_64(VPSUBDv128v128m128, 2)
 TEST_INPUTS_MMX_2()
@@ -164,7 +163,6 @@ TEST_INPUTS_MMX_2()
 TEST_END_64
 
 #endif  // HAS_FEATURE_AVX
-*/
 
 TEST_BEGIN_64(PSUBUSBr64r64, 2)
 TEST_INPUTS_MMX_2()
