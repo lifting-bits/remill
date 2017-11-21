@@ -221,6 +221,23 @@ TEST_INPUTS(PSRL_INPUT_64)
     vpsrlq xmm1, xmm0, 0xA;
 TEST_END_64
 
+TEST_BEGIN_64(VPSRLQv256v256i8, 1)
+TEST_INPUTS(0)
+    vpsrlq ymm0, ymm1, 0xA;
+TEST_END_64
+
+TEST_BEGIN_64(VPSRLQv256v256v128, 2)
+TEST_INPUTS(0)
+    vpsrlq ymm0, ymm1, xmm0;
+TEST_END_64
+
+TEST_BEGIN_64(VPSRLQv256v256m128, 2)
+TEST_INPUTS(PSRL_INPUT_64)
+    push 0;
+    push ARG1_64;
+    vpsrlq ymm0, ymm1, xmmword ptr [rsp];
+TEST_END_64
+
 #endif  // HAS_FEATURE_AVX
 
 TEST_BEGIN_64(PSRAWr64r64, 2)
