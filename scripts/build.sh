@@ -25,7 +25,6 @@ INSTALL_DIR=/usr/local
 LLVM_VERSION=llvm40
 OS_VERSION=
 ARCH_VERSION=
-BUILD_WITH_LLVM=1
 
 # There are pre-build versions of various libraries for specific
 # Ubuntu releases.
@@ -142,23 +141,11 @@ function DownloadLibraries
 function Configure
 {
   # Tell the remill CMakeLists.txt where the extracted libraries are. 
-  export TRAILOFBITS_LIBRARIES=${BUILD_DIR}/libraries
+  export TRAILOFBITS_LIBRARIES="${BUILD_DIR}/libraries"
+  export PATH=“${TRAILOFBITS_LIBRARIES}/cmake/bin:${TRAILOFBITS_LIBRARIES}/llvm/bin:${PATH}”
+  export CC="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang"
+  export CXX="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang++"
 
-  # Use the pre-built versions of Clang for compiling.
-  if [[ ${BUILD_WITH_LLVM} -eq 1 ]] ; then
-    export CC=${TRAILOFBITS_LIBRARIES}/llvm/bin/clang
-    export CXX=${TRAILOFBITS_LIBRARIES}/llvm/bin/clang++
-  fi
-
-  export PATH="${TRAILOFBITS_LIBRARIES}/llvm/bin:${PATH}"
-  
-  if [[ -z "${CC}" ]] ; then
-    export CC=$(which cc)
-  fi
-
-  if [[ -z "${CXX}" ]] ; then
-    export CXX=$(which c++)
-  fi
 
   # Configure the remill build, specifying that it should use the pre-built
   # Clang compiler binaries.
@@ -248,13 +235,6 @@ function main
         BUILD_DIR=$(python -c "import os; import sys; sys.stdout.write(os.path.abspath('${2}'))")
         printf "[+] New build directory is ${BUILD_DIR}\n"
         shift # past argument
-      ;;
-
-      # Use the system compiler for building? In general, use this if you
-      # are using LLVM < 3.9. This lets you avoid breaking changes in the
-      # GNU C++ ABI.
-      --use-system-compiler)
-        BUILD_WITH_LLVM=0
       ;;
 
       *)
