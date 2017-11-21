@@ -198,3 +198,44 @@ TEST_INPUTS(PSLL_INPUT_64)
     psllq xmm0, 0xA
 TEST_END_64
 
+#if HAS_FEATURE_AVX
+
+TEST_BEGIN_64(VPSLLQv128v128i8, 1)
+TEST_INPUTS(PSLL_INPUT_64)
+    movq xmm0, ARG1_64;
+    vpsllq xmm1, xmm0, 0xA; 
+TEST_END_64
+
+TEST_BEGIN_64(VPSLLQv128v128v128, 2)
+TEST_INPUTS(PSLL_INPUTS_64)
+    movq xmm0, ARG1_64;
+    movq xmm1, ARG2_64;
+    vpsllq xmm2, xmm0, xmm1;
+TEST_END_64
+
+TEST_BEGIN_64(VPSLLQv128v128m128, 2)
+TEST_INPUTS(PSLL_INPUTS_64)
+    push 0;
+    push ARG2_64;
+    movq xmm0, ARG1_64;
+    vpsllq xmm1, xmm0, xmmword ptr [rsp];
+TEST_END_64
+
+TEST_BEGIN_64(VPSLLQv256v256i8, 1)
+TEST_INPUTS(0)
+    vpsllq ymm0, ymm1, 0xA;
+TEST_END_64
+
+TEST_BEGIN_64(VPSLLQv256v256v128, 2)
+TEST_INPUTS(0)
+    vpsllq ymm0, ymm1, xmm0;
+TEST_END_64
+
+TEST_BEGIN_64(VPSLLQv256v256m128, 2)
+TEST_INPUTS(PSLL_INPUT_64)
+    push 0;
+    push ARG1_64;
+    vpsllq ymm0, ymm1, xmmword ptr [rsp];
+TEST_END_64
+
+#endif
