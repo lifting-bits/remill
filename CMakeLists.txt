@@ -15,6 +15,9 @@
 project(remill)
 cmake_minimum_required (VERSION 3.2)
 
+# Generate a compile commands JSON file.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # add the BC (bitcode) language definition
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/BCCompiler")
 
