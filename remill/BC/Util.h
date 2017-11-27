@@ -182,6 +182,10 @@ void CloneBlockFunctionInto(llvm::Function *func);
 // Returns a list of callers of a specific function.
 std::vector<llvm::CallInst *> CallersOf(llvm::Function *func);
 
+// Returns the name of a module.
+std::string ModuleName(llvm::Module *module);
+std::string ModuleName(const std::unique_ptr<llvm::Module> &module);
+
 }  // namespace remill
 
 #endif  // REMILL_BC_UTIL_H_

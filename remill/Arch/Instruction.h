@@ -239,7 +239,13 @@ class Instruction {
   }
 
   inline bool IsValid(void) const {
-    return kCategoryInvalid != category && kCategoryError != category;
+    return kCategoryInvalid != category;
+  }
+
+  // Returns `true` if this instruction results in a runtime error. An example
+  // of this is a `HLT`- or `UD2`-like instruction from x86.
+  inline bool IsError(void) const {
+    return kCategoryError == category;
   }
 
   // Length, in bytes, of the instruction.

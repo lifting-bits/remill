@@ -46,7 +46,7 @@ static const xed_state_t kXEDState64 = {
 
 static bool Is64Bit(ArchName arch_name) {
   return kArchAMD64 == arch_name || kArchAMD64_AVX == arch_name ||
-         kArchAMD64_AVX == arch_name;
+         kArchAMD64_AVX512 == arch_name;
 }
 
 static bool IsFunctionReturn(const xed_decoded_inst_t *xedd) {
@@ -135,13 +135,19 @@ static bool IsNoOp(const xed_decoded_inst_t *xedd) {
 
 static bool IsError(const xed_decoded_inst_t *xedd) {
   auto iclass = xed_decoded_inst_get_iclass(xedd);
-  return XED_ICLASS_HLT == iclass || XED_ICLASS_UD2 == iclass ||
-         XED_ICLASS_INVALID == iclass;
+  return XED_ICLASS_HLT == iclass || XED_ICLASS_UD2 == iclass;
+}
+
+static bool IsInvalid(const xed_decoded_inst_t *xedd) {
+  return XED_ICLASS_INVALID == xed_decoded_inst_get_iclass(xedd);
 }
 
 // Return the category of this instuction.
 static Instruction::Category CreateCategory(const xed_decoded_inst_t *xedd) {
-  if (IsError(xedd)) {
+  if (IsInvalid(xedd)) {
+    return Instruction::kCategoryInvalid;
+
+  } else if (IsError(xedd)) {
     return Instruction::kCategoryError;
 
   } else if (IsDirectJump(xedd)) {

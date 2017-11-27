@@ -673,4 +673,17 @@ std::vector<llvm::CallInst *> CallersOf(llvm::Function *func) {
   return callers;
 }
 
+// Returns the name of a module.
+std::string ModuleName(llvm::Module *module) {
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 6)
+  return module->getModuleIdentifier();
+#else
+  return module->getName().str();
+#endif
+}
+
+std::string ModuleName(const std::unique_ptr<llvm::Module> &module) {
+  return ModuleName(module.get());
+}
+
 }  // namespace remill

@@ -803,11 +803,11 @@ bool AArch64Arch::DecodeInstruction(
   inst.category = Instruction::kCategoryInvalid;
 
   if (kInstructionSize != inst_bytes.size()) {
-    inst.category = Instruction::kCategoryError;
+    inst.category = Instruction::kCategoryInvalid;
     return false;
 
   } else if (0 != (address % kInstructionSize)) {
-    inst.category = Instruction::kCategoryError;
+    inst.category = Instruction::kCategoryInvalid;
     return false;
 
   } else if (!aarch64::TryExtract(bytes, dinst)) {
@@ -820,7 +820,7 @@ bool AArch64Arch::DecodeInstruction(
   inst.function = aarch64::InstFormToString(dinst.iform);
 
   if (!aarch64::TryDecode(dinst, inst)) {
-    inst.category = Instruction::kCategoryError;
+    inst.category = Instruction::kCategoryInvalid;
     return false;
   }
 

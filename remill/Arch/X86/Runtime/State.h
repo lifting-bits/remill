@@ -63,21 +63,16 @@
 #endif
 
 enum RequestPrivilegeLevel : uint16_t {
-  kRingZero = 0,
-  kRingOne = 1,
-  kRingTwo = 2,
-  kRingThree = 3
+  kRPLRingZero = 0,
+  kRPLRingOne = 1,
+  kRPLRingTwo = 2,
+  kRPLRingThree = 3
 };
 
 enum TableIndicator : uint16_t {
   kGlobalDescriptorTable = 0,
   kLocalDescriptorTable = 1
 };
-
-#if COMPILING_WITH_GCC
-# define RequestPrivilegeLevel uint16_t
-# define TableIndicator uint16_t
-#endif  // COMPILING_WITH_GCC
 
 union SegmentSelector final {
   uint16_t flat;
@@ -132,12 +127,6 @@ enum FPUInfinityControl : uint16_t {
   kInfinityProjective,
   kInfinityAffine
 };
-
-#if COMPILING_WITH_GCC
-# define FPUPrecisionControl uint16_t
-# define FPURoundingControl uint16_t
-# define FPUInfinityControl uint16_t
-#endif  // COMPILING_WITH_GCC
 
 union FPUControlWord final {
   uint16_t flat;
@@ -222,11 +211,6 @@ enum FPUAbridgedTag : uint8_t {
   kFPUAbridgedTagEmpty,
   kFPUAbridgedTagValid
 };
-
-#if COMPILING_WITH_GCC
-# define FPUTag uint16_t
-# define FPUAbridgedTag uint8_t
-#endif  // COMPILING_WITH_GCC
 
 // Note: Stored in top-of-stack order.
 union FPUTagWord final {
@@ -470,10 +454,140 @@ struct alignas(8) Segments final {
 
 static_assert(24 == sizeof(Segments), "Invalid packing of `struct Segments`.");
 
-// For remill-opt's register alias analysis, we don't want 32-bit lifted
-// code to look like operations on 64-bit registers, because then every
-// (bitcasted from 64 bit) store of a 32-bit value will look like a false-
-// dependency on the (bitcasted from 64 bit) full 64-bit quantity.
+enum DescriptorPrivilegeLevel : uint64_t {
+  kDPLRingZero = 0,
+  kDPLRingOne = 1,
+  kDPLRingTwo = 2,
+  kDPLRingThree = 3
+};
+
+enum DescriptorClass : uint64_t {
+  kDataSegmentDescriptor,
+  kCodeSegmentDescriptor,
+  kSystemSegmentDescriptor,
+  kGateDescriptor,
+  kNotPresentDescriptor
+};
+
+enum SegmentGranularity : uint64_t {
+  kSegmentGranularityNotScaled,
+  kSegmentGranularityScaled
+};
+
+enum SegmentDefaultOperandSize : uint64_t {
+  kSegmentDefaultOperandSize16,
+  kSegmentDefaultOperandSize32
+};
+
+enum SegmentPresentStatus : uint64_t {
+  kSegmentNotPresent,
+  kSegmentPresent
+};
+
+enum SystemDescriptorType : uint64_t {
+  kSystemTypeIllegal0,
+  kSystemTypeIllegal1,
+  kSystemTypeLDT,
+  kSystemTypeIllegal2,
+  kSystemTypeIllegal3,
+  kSystemTypeIllegal4,
+  kSystemTypeIllegal5,
+  kSystemTypeIllegal6,
+  kSystemTypeIllegal7,
+  kSystemTypeAvailableTSS,
+  kSystemTypeIllegal8,
+  kSystemTypeBusyTSS,
+  kSystemTypeCallGate,
+  kSystemTypeIllegal9,
+  kSystemTypeInterruptGate,
+  kSystemTypeTrapGate
+};
+
+enum CodeSegmentMode : uint64_t {
+  kSegmentCompatibilityMode,
+  kSegment64BitMode
+};
+
+enum SegmentSystemBit : uint64_t {
+  kSegmentBitSystem,
+  kSegmentBitUser
+};
+
+struct GenericDescriptor {
+  uint64_t unused:44;
+  SegmentSystemBit sbit:1;
+  DescriptorPrivilegeLevel dpl:2;
+  SegmentPresentStatus present:1;
+  uint16_t unused3:16;
+} __attribute__ ((packed));
+
+static_assert(8U == sizeof(GenericDescriptor),
+              "Invalid packing of `struct GenericDescriptor`.");
+
+struct SegmentDescriptor {
+  uint64_t limit_low:16;
+  uint64_t base_low:16;
+  uint64_t base_middle:8;
+  union {
+    struct {
+      SystemDescriptorType system_type:4;
+      uint64_t system_access:4;
+    } __attribute__((packed));
+    uint64_t nonsystem_access:8;
+  } __attribute__((packed));
+
+  uint64_t limit_high:4;
+  uint64_t available:1;
+
+  /* Only valid for kCodeSegmentDescriptor */
+  CodeSegmentMode code_mode:1;  // Only valid for code segments.
+
+  /* Only valid for kCodeSegmentDescriptor, kDataSegmentDescriptor */
+  SegmentDefaultOperandSize default_operand_size:1;
+  SegmentGranularity granularity:1;
+
+  uint64_t base_high:8;
+} __attribute__((packed));
+
+static_assert(8U == sizeof(SegmentDescriptor),
+              "Invalid packing of `struct SegmentDescriptor`.");
+
+struct GateDescriptor {
+  uint64_t target_offset_low:16;
+  SegmentSelector target_selector; /* :16 */
+  /* Only valid for interrupt gates. */
+  uint64_t interrupt_stack_table_index:3;
+  uint64_t reserved:5;
+  SystemDescriptorType system_type:4;
+  uint64_t access:4;
+  uint64_t target_offset_middle:16;
+} __attribute__ ((packed));
+
+static_assert(8U == sizeof(GateDescriptor),
+              "Invalid packing of `struct GateDescriptor`.");
+
+struct ExtensionDescriptor {
+  uint64_t higher_addr:32;
+  uint64_t reserved:32;
+} __attribute__ ((packed));
+
+static_assert(8U == sizeof(ExtensionDescriptor),
+              "Invalid packing of `struct DescritorExtension`.");
+
+union Descriptor {
+  GenericDescriptor generic;
+  SegmentDescriptor segment;
+  GateDescriptor gate;
+  ExtensionDescriptor extension;
+} __attribute__((packed));
+
+static_assert(8U == sizeof(Descriptor),
+              "Invalid packing of `struct SystemDescriptorExtra`.");
+
+// We don't want 32-bit lifted code to look like operations on 64-bit
+// registers, because then every (bitcasted from 64 bit) store of a 32-bit
+// value will look like a false- dependency on the (bitcasted from 64 bit)
+// full 64-bit quantity.
 struct Reg final {
   union {
     alignas(1) struct {
@@ -520,12 +634,20 @@ static_assert(64 == sizeof(VectorReg),
 
 struct alignas(8) AddressSpace final {
   volatile uint64_t _0;
-  Reg fs_base;
+  Reg ss_base;
   volatile uint64_t _1;
+  Reg es_base;
+  volatile uint64_t _2;
   Reg gs_base;
+  volatile uint64_t _3;
+  Reg fs_base;
+  volatile uint64_t _4;
+  Reg ds_base;
+  volatile uint64_t _5;
+  Reg cs_base;
 } __attribute__((packed));
 
-static_assert(32 == sizeof(AddressSpace),
+static_assert(96 == sizeof(AddressSpace),
               "Invalid packing of `struct AddressSpace`.");
 
 // Named the same way as the 64-bit version to keep names the same
@@ -610,7 +732,7 @@ struct alignas(16) State final : public ArchState {
   ArithFlags aflag;  // 16 bytes.
   Flags rflag;  // 8 bytes.
   Segments seg;  // 24 bytes.
-  AddressSpace addr;  // 32 bytes.
+  AddressSpace addr;  // 96 bytes.
   GPR gpr;  // 272 bytes.
   X87Stack st;  // 128 bytes.
   MMX mmx;  // 128 bytes.
@@ -619,7 +741,7 @@ struct alignas(16) State final : public ArchState {
   FPU x87;  // 512 bytes
 } __attribute__((packed));
 
-static_assert((3200 + 16) == sizeof(State),
+static_assert((3264 + 16) == sizeof(State),
               "Invalid packing of `struct State`");
 
 using X86State = State;
