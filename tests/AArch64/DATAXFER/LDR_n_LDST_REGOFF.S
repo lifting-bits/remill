@@ -96,6 +96,15 @@ TEST_END
 
 // ------------------------------------
 
+TEST_BEGIN(LDR_BL_LDST_REGOFF, ldr_b0_m8_lsl, 1)
+TEST_INPUTS(
+    0,
+    8)
+    add x3, sp, #-256
+
+    ldr b2, [x3, ARG1_32, lsl #0]
+TEST_END
+
 TEST_BEGIN(LDR_B_LDST_REGOFF, ldr_b0_m8_uxt, 1)
 TEST_INPUTS(
     0,

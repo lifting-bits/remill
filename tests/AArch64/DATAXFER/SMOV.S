@@ -42,7 +42,7 @@ TEST_INPUTS(0)
   smov x4, v0.B[12]
 TEST_END
 
-TEST_BEGIN(SMOV_ASIMDINS_X_X_H, smov_xN_B, 1)
+TEST_BEGIN(SMOV_ASIMDINS_X_X_H, smov_xN_H, 1)
 TEST_INPUTS(0)
   smov x0, v0.H[0]
   smov x1, v0.H[2]
