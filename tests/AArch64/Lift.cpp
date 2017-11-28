@@ -96,6 +96,9 @@ static void AddFunctionToModule(llvm::Module *module,
     return block;
   };
 
+  std::stringstream seen_insts;
+  const char *sep = "";
+
   auto entry_block = GetOrCreateBlock(test.test_begin);
   llvm::BranchInst::Create(entry_block, &(func->front()));
 
@@ -110,6 +113,9 @@ static void AddFunctionToModule(llvm::Module *module,
     CHECK(arch->DecodeInstruction(addr, inst_bytes, inst))
         << "Can't decode test instruction " << inst.Serialize()
         << " in " << test.test_name;
+
+    seen_insts << sep << inst.function;
+    sep = ", ";
 
     LOG(INFO)
         << "Lifting " << inst.Serialize();
@@ -149,7 +155,8 @@ static void AddFunctionToModule(llvm::Module *module,
 
   CHECK(saw_isel)
       << "Test " << test.test_name << " does not have an instruction that "
-      << "uses the semantics function " << test.isel_name;
+      << "uses the semantics function " << test.isel_name << ", saw "
+      << seen_insts.str();
 
   // Terminate any stragglers.
   for (auto pc_to_block : blocks) {

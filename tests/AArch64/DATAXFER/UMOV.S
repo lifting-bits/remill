@@ -31,7 +31,7 @@ TEST_INPUTS(0)
   umov w4, v0.H[6]
 TEST_END
 
-TEST_BEGIN(UMOV_ASIMDINS_W_W_H, umov_wN_S, 1)
+TEST_BEGIN(UMOV_ASIMDINS_W_W_S, umov_wN_S, 1)
 TEST_INPUTS(0)
   umov w0, v0.S[0]
   umov w1, v0.S[1]

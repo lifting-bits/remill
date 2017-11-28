@@ -13,6 +13,8 @@ str x2, [x28, #1072]
 msr nzcv, x2
 ldr x1, [x28, #1080]
 ldr x1, [x28, #1088]
+ldrb w2, [x28, #1153]
+bfi x1, x2, #0, #1
 ldrb w2, [x28, #1147]
 bfi x1, x2, #2, #1
 ldrb w2, [x28, #1149]

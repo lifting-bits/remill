@@ -82,7 +82,7 @@ TEST_INPUTS(
 TEST_END
 
 /* LDRB  <Wt>, [<Xn|SP>, <Xm>{, LSL <amount>}] */
-TEST_BEGIN(LDRB_32B_LDST_REGOFF, ldrb_w5_m8_off_w0_lsl0, 1)
+TEST_BEGIN(LDRB_32BL_LDST_REGOFF, ldrb_w5_m8_off_w0_lsl0, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ldrb w5, [x3, ARG1_64]  /* Implicit LSL 0 */
