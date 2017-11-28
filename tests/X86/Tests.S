@@ -538,6 +538,8 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/X87/FXCH.S"
 #include "tests/X86/X87/MISC.S"
 
+#include "tests/X86/FMA/VFMADDSD.S"
+
 #endif
 
     /* Create a symbol that represents the end of the test information table. */
