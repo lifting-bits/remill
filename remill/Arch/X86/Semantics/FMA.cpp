@@ -14,19 +14,29 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_FMA_H_
-#define REMILL_ARCH_X86_SEMANTICS_FMA_H_
-
 #if HAS_FEATURE_AVX
 
 namespace {
 
-// DEF_HELPER(VFMADDxxxSD, D dst, S1 src1, S2 src2) {
-//}
+template <typename D, typename S1, typename S2, typename S3>
+DEF_SEM(VFMADD132SD, D dst, S1 src1, S2 src2, S3 src3) {
+  // Each operand is a vector of 64-bit (QWORD) floats:
+  auto temp_vec = FReadV64(src1);  // src1 is also dst
+  auto src3_vec = FReadV64(src3);
+  auto src2_vec = FReadV64(src2);
 
-// template <typename D, typename S1, typename S2>
-// DEF_SEM(VFMADD132SD, D dst, S1 src1, S2 src2) {
-//}
+  auto dst_float = FExtractV64(temp_vec, 0);   // dest[63:0]    
+  auto src3_float = FExtractV64(src3_vec, 0);  // src3[63:0]
+  auto src2_float = FExtractV64(src2_vec, 0);  // src2[63:0]
+
+  // DEST[63:0] <- RoundFPControl(DEST[63:0]*SRC3[63:0] + SRC2[63:0])
+  auto vfmadd132sd_float = (dst_float * src3_float + src2_float);
+  temp_vec = FInsertV64(temp_vec, 0, vfmadd132sd_float);
+
+  // Writes to XMM (DEST[MAXVL-1:127] unmodified). Zero-extends XMM.
+  FWriteV64(dst, temp_vec);
+  return memory;
+}
 
 template <typename D, typename S1, typename S2, typename S3>
 DEF_SEM(VFMADD231SD, D dst, S1 src1, S2 src2, S3 src3) {
@@ -72,10 +82,87 @@ DEF_SEM(VFMADD213SD, D dst, S1 src1, S2 src2, S3 src3) {
 
 #endif  // HAS_FEATURE_AVX
 
+IF_AVX(DEF_ISEL(VFMADD132SD_XMMdq_XMMq_MEMq) = VFMADD132SD<VV128W, V128, V128, MV64>;)
+IF_AVX(DEF_ISEL(VFMADD132SD_XMMdq_XMMq_XMMq) = VFMADD132SD<VV128W, V128, V128, V128>;)
 IF_AVX(DEF_ISEL(VFMADD231SD_XMMdq_XMMq_MEMq) = VFMADD231SD<VV128W, V128, V128, MV64>;)
 IF_AVX(DEF_ISEL(VFMADD231SD_XMMdq_XMMq_XMMq) = VFMADD231SD<VV128W, V128, V128, V128>;)
 IF_AVX(DEF_ISEL(VFMADD213SD_XMMdq_XMMq_MEMq) = VFMADD213SD<VV128W, V128, V128, MV64>;)
 IF_AVX(DEF_ISEL(VFMADD213SD_XMMdq_XMMq_XMMq) = VFMADD213SD<VV128W, V128, V128, V128>;)
+
+#if HAS_FEATURE_AVX
+
+namespace {
+
+template <typename D, typename S1, typename S2, typename S3>
+DEF_SEM(VFMSUB132SD, D dst, S1 src1, S2 src2, S3 src3) {
+  // Each operand is a vector of 64-bit (QWORD) floats:
+  auto temp_vec = FReadV64(src1);  // src1 is also dst
+  auto src3_vec = FReadV64(src3);
+  auto src2_vec = FReadV64(src2);
+
+  auto dst_float = FExtractV64(temp_vec, 0);   // dest[63:0]
+  auto src3_float = FExtractV64(src3_vec, 0);  // src3[63:0]
+  auto src2_float = FExtractV64(src2_vec, 0);  // src2[63:0]
+
+  // DEST[63:0] <- RoundFPControl(DEST[63:0]*SRC3[63:0] - SRC2[63:0])
+  auto vfmsub132sd_float = (dst_float * src3_float - src2_float);
+  temp_vec = FInsertV64(temp_vec, 0, vfmsub132sd_float);
+
+  // Writes to XMM (DEST[MAXVL-1:127] unmodified). Zero-extends XMM.
+  FWriteV64(dst, temp_vec);
+  return memory;
+} 
+
+template <typename D, typename S1, typename S2, typename S3>
+DEF_SEM(VFMSUB213SD, D dst, S1 src1, S2 src2, S3 src3) {
+  // Each operand is a vector of 64-bit (QWORD) floats:
+  auto src2_vec = FReadV64(src2);
+  auto temp_vec = FReadV64(src1);  // src1 is also dst
+  auto src3_vec = FReadV64(src3);
+
+  auto src2_float = FExtractV64(src2_vec, 0);  // src2[63:0]
+  auto dst_float = FExtractV64(temp_vec, 0);   // dest[63:0]
+  auto src3_float = FExtractV64(src3_vec, 0);  // src3[63:0]
+
+  // DEST[63:0] <- RoundFPControl(SRC2[63:0]*DEST[63:0] - SRC3[63:0])
+  auto vfmsub213sd_float = (src2_float * dst_float - src3_float);
+  temp_vec = FInsertV64(temp_vec, 0, vfmsub213sd_float);
+
+  // Writes to XMM (DEST[MAXVL-1:127] unmodified). Zero-extends XMM.
+  FWriteV64(dst, temp_vec);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2, typename S3>
+DEF_SEM(VFMSUB231SD, D dst, S1 src1, S2 src2, S3 src3) {
+  // Each operand is a vector of 64-bit (QWORD) floats:
+  auto src2_vec = FReadV64(src2);
+  auto src3_vec = FReadV64(src3);
+  auto temp_vec = FReadV64(src1);  // src1 is also dst
+
+  auto src2_float = FExtractV64(src2_vec, 0);  // src2[63:0]
+  auto src3_float = FExtractV64(src3_vec, 0);  // src3[63:0]
+  auto dst_float = FExtractV64(temp_vec, 0);   // dest[63:0]
+
+  // DEST[63:0] <- RoundFPControl(SRC2[63:0]*SRC3[63:0] - DEST[63:0])
+  auto vfmsub231sd_float = (src2_float * src3_float - dst_float);
+  temp_vec = FInsertV64(temp_vec, 0, vfmsub231sd_float);
+
+  // Writes to XMM (DEST[MAXVL-1:127] unmodified). Zero-extends XMM.
+  FWriteV64(dst, temp_vec);
+  return memory;
+}
+
+} // namespace
+
+#endif // HAS_FEATURE_AVX
+
+IF_AVX(DEF_ISEL(VFMSUB132SD_XMMdq_XMMq_MEMq) = VFMSUB132SD<VV128W, V128, V128, MV64>;)
+IF_AVX(DEF_ISEL(VFMSUB132SD_XMMdq_XMMq_XMMq) = VFMSUB132SD<VV128W, V128, V128, V128>;)
+IF_AVX(DEF_ISEL(VFMSUB231SD_XMMdq_XMMq_MEMq) = VFMSUB231SD<VV128W, V128, V128, MV64>;)
+IF_AVX(DEF_ISEL(VFMSUB231SD_XMMdq_XMMq_XMMq) = VFMSUB231SD<VV128W, V128, V128, V128>;)
+IF_AVX(DEF_ISEL(VFMSUB213SD_XMMdq_XMMq_MEMq) = VFMSUB213SD<VV128W, V128, V128, MV64>;)
+IF_AVX(DEF_ISEL(VFMSUB213SD_XMMdq_XMMq_XMMq) = VFMSUB213SD<VV128W, V128, V128, V128>;)
 
 /*
 44 PFMAX PFMAX_MMXq_MEMq 3DNOW 3DNOW 3DNOW ATTRIBUTES:
@@ -164,10 +251,9 @@ MXCSR
 MXCSR
 2551 VFMSUBADD213PD VFMSUBADD213PD_YMMqq_YMMqq_YMMqq VFMA FMA FMA ATTRIBUTES:
 MXCSR
-2562 VFMSUB132SD VFMSUB132SD_XMMdq_XMMq_MEMq VFMA FMA FMA ATTRIBUTES: MXCSR
-SIMD_SCALAR
-2563 VFMSUB132SD VFMSUB132SD_XMMdq_XMMq_XMMq VFMA FMA FMA ATTRIBUTES: MXCSR
-SIMD_SCALAR
+*/
+
+/*
 2606 VFNMADD213PS VFNMADD213PS_XMMdq_XMMdq_MEMdq VFMA FMA FMA ATTRIBUTES: MXCSR
 2607 VFNMADD213PS VFNMADD213PS_XMMdq_XMMdq_XMMdq VFMA FMA FMA ATTRIBUTES: MXCSR
 2608 VFNMADD213PS VFNMADD213PS_YMMqq_YMMqq_MEMqq VFMA FMA FMA ATTRIBUTES: MXCSR
@@ -187,10 +273,6 @@ SIMD_SCALAR
 */
 
 /*
-2745 VFMSUB213SD VFMSUB213SD_XMMdq_XMMq_MEMq VFMA FMA FMA ATTRIBUTES: MXCSR
-SIMD_SCALAR
-2746 VFMSUB213SD VFMSUB213SD_XMMdq_XMMq_XMMq VFMA FMA FMA ATTRIBUTES: MXCSR
-SIMD_SCALAR
 2749 VFNMSUB132PD VFNMSUB132PD_XMMdq_XMMdq_MEMdq VFMA FMA FMA ATTRIBUTES: MXCSR
 2750 VFNMSUB132PD VFNMSUB132PD_XMMdq_XMMdq_XMMdq VFMA FMA FMA ATTRIBUTES: MXCSR
 2751 VFNMSUB132PD VFNMSUB132PD_YMMqq_YMMqq_MEMqq VFMA FMA FMA ATTRIBUTES: MXCSR
@@ -207,10 +289,9 @@ SIMD_SCALAR
 2824 VFMADD231PS VFMADD231PS_XMMdq_XMMdq_XMMdq VFMA FMA FMA ATTRIBUTES: MXCSR
 2825 VFMADD231PS VFMADD231PS_YMMqq_YMMqq_MEMqq VFMA FMA FMA ATTRIBUTES: MXCSR
 2826 VFMADD231PS VFMADD231PS_YMMqq_YMMqq_YMMqq VFMA FMA FMA ATTRIBUTES: MXCSR
-2840 VFMADD132SD VFMADD132SD_XMMdq_XMMq_MEMq VFMA FMA FMA ATTRIBUTES: MXCSR
-SIMD_SCALAR
-2841 VFMADD132SD VFMADD132SD_XMMdq_XMMq_XMMq VFMA FMA FMA ATTRIBUTES: MXCSR
-SIMD_SCALAR
+*/
+
+/*
 2858 VFMADD132SS VFMADD132SS_XMMdq_XMMd_MEMd VFMA FMA FMA ATTRIBUTES: MXCSR
 SIMD_SCALAR
 2859 VFMADD132SS VFMADD132SS_XMMdq_XMMd_XMMd VFMA FMA FMA ATTRIBUTES: MXCSR
@@ -279,10 +360,9 @@ SIMD_SCALAR
 SIMD_SCALAR
 2974 VFMADDSS VFMADDSS_XMMdq_XMMdq_XMMdq_XMMd FMA4 FMA4 FMA4 ATTRIBUTES: MXCSR
 SIMD_SCALAR
-2979 VFMSUB231SD VFMSUB231SD_XMMdq_XMMq_MEMq VFMA FMA FMA ATTRIBUTES: MXCSR
-SIMD_SCALAR
-2980 VFMSUB231SD VFMSUB231SD_XMMdq_XMMq_XMMq VFMA FMA FMA ATTRIBUTES: MXCSR
-SIMD_SCALAR
+*/
+
+/*
 2981 VFMADDSD VFMADDSD_XMMdq_XMMdq_MEMq_XMMdq FMA4 FMA4 FMA4 ATTRIBUTES: MXCSR
 SIMD_SCALAR
 2982 VFMADDSD VFMADDSD_XMMdq_XMMdq_XMMq_XMMdq FMA4 FMA4 FMA4 ATTRIBUTES: MXCSR
@@ -1413,5 +1493,3 @@ AVX512EVEX AVX512F_256 ATTRIBUTES: MASKOP_EVEX MXCSR
 AVX512EVEX AVX512F_256 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX
 MEMORY_FAULT_SUPPRESSION MXCSR
 */
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_FMA_H_

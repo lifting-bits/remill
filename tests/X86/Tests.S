@@ -539,6 +539,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/X87/MISC.S"
 
 #include "tests/X86/FMA/VFMADDSD.S"
+#include "tests/X86/FMA/VFMSUBSD.S"
 
 #endif
 

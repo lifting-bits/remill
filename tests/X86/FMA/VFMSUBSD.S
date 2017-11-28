@@ -18,42 +18,42 @@
 
 // TODO: define a good list of floating point corner case values
 
-TEST_BEGIN_64(VFMADD132SDv128v128m64, 1)
+TEST_BEGIN_64(VFMSUB132SDv128v128m64, 1)
 TEST_INPUTS(0)
     push 0x0000000001234567;
-    vfmadd132sd xmm0, xmm1, qword ptr [rsp];
+    vfmsub132sd xmm0, xmm1, qword ptr [rsp];
 TEST_END_64
 
-TEST_BEGIN_64(VFMADD132SDv128v128v128, 1)
+TEST_BEGIN_64(VFMSUB132SDv128v128v128, 1)
 TEST_INPUTS(0)
-    vfmadd132sd xmm0, xmm1, xmm2;
+    vfmsub132sd xmm0, xmm1, xmm2;
 TEST_END_64
 
-TEST_BEGIN_64(VFMADD213SDv128v128m64, 1)
+TEST_BEGIN_64(VFMSUB213SDv128v128m64, 1)
 TEST_INPUTS(0)
     push 0x0000000001234567;
-    vfmadd213sd xmm0, xmm1, qword ptr [rsp];
+    vfmsub213sd xmm0, xmm1, qword ptr [rsp];
 TEST_END_64
 
-TEST_BEGIN_64(VFMADD213SDv128v128v128, 1)
+TEST_BEGIN_64(VFMSUB213SDv128v128v128, 1)
 TEST_INPUTS(0)
-    vfmadd213sd xmm0, xmm1, xmm2;
+    vfmsub213sd xmm0, xmm1, xmm2;
 TEST_END_64
 
-TEST_BEGIN_64(VFMADD231SDv128v128m64, 1)
+TEST_BEGIN_64(VFMSUB231SDv128v128m64, 1)
 TEST_INPUTS(0xfedcba9876543210)
     push ARG1_64;
-    vfmadd231sd xmm0, xmm1, qword ptr [rsp];
+    vfmsub231sd xmm0, xmm1, qword ptr [rsp];
 TEST_END_64
 
-TEST_BEGIN_64(VFMADD231SDv128v128v128, 3)
+TEST_BEGIN_64(VFMSUB231SDv128v128v128, 3)
 TEST_INPUTS(0.0, 0.0, 0.0,
             1.0, 1.0, 1.0,
             1.2, 2.3, 3.4)
     movq xmm0, ARG1_64;
     movq xmm1, ARG2_64;
     movq xmm2, ARG3_64;
-    vfmadd231sd xmm0, xmm1, xmm2;
+    vfmsub231sd xmm0, xmm1, xmm2;
 TEST_END_64
 
 #endif  // HAS_FEATURE_AVX
