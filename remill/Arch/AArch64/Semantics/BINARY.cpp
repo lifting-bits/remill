@@ -268,10 +268,28 @@ DEF_SEM(FMADD_S, V128W dst, V32 src1, V32 src2, V32 src3) {
   auto factor2 = FExtractV32(FReadV32(src2), 0);
   auto add = FExtractV32(FReadV32(src3), 0);
 
-  auto prod = CheckedFloatBinOp(state, FMul32, factor1, factor2);
-  auto res = CheckedFloatBinOp(state, FAdd32, prod, add);
+  auto old_underflow = state.sr.ufc;
 
-  // Sets underflow for 0x3fffffff, 0x1 but native doesn't
+
+  auto zero = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
+  BarrierReorder();
+  auto prod = FMul32(factor1, factor2);
+  BarrierReorder();
+  auto except_mul = __remill_fpu_exception_test_and_clear(FE_ALL_EXCEPT, zero);
+  BarrierReorder();
+  auto res = FAdd32(prod, add);
+  BarrierReorder();
+  auto except_add = __remill_fpu_exception_test_and_clear(
+      FE_ALL_EXCEPT, except_mul);
+  SetFPSRStatusFlags(state, except_add);
+
+  // Sets underflow for 0x3fffffff, 0x1 but native doesn't.
+  if (state.sr.ufc && !old_underflow) {
+    if (IsDenormal(factor1) || IsDenormal(factor2) || IsDenormal(add)) {
+      state.sr.ufc = old_underflow;
+    }
+  }
+
   FWriteV32(dst, res);
   return memory;
 }
@@ -294,8 +312,8 @@ void FCompare(State &state, S val1, S val2, bool signal=true) {
     FLAG_C = 1;
     FLAG_V = 1;
 
-    if(signal) { 
-      state.fpsr.ioc = true; 
+    if (signal) {
+      state.sr.ioc = true;
     }
 
   // Regular float compare
