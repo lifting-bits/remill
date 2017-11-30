@@ -4045,6 +4045,26 @@ bool TryDecodeSCVTF_D64_FLOAT2INT(const InstData &data, Instruction &inst) {
   return TryDecodeSCVTF_Sn_FLOAT2INT(data, inst, kRegD, kRegX);
 }
 
+// BIC  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeBIC_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeORR_ASIMDSAME_ONLY(data, inst);
+}
+
+// EOR  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeEOR_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeORR_ASIMDSAME_ONLY(data, inst);
+}
+
+// BIT  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeBIT_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeORR_ASIMDSAME_ONLY(data, inst);
+}
+
+// BIF  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeBIF_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeORR_ASIMDSAME_ONLY(data, inst);
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!

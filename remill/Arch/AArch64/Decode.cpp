@@ -5582,44 +5582,6 @@ bool TryDecodeSQADD_ASIMDSAME_ONLY(const InstData &, Instruction &) {
   return false;
 }
 
-// BIC BIC_asimdsame_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1
-//  11 1 opcode   0
-//  12 1 opcode   1
-//  13 0 opcode   2
-//  14 0 opcode   3
-//  15 0 opcode   4
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 1 size     0
-//  23 0 size     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 0 U        0
-//  30 x Q        0
-//  31 0
-// BIC  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
-bool TryDecodeBIC_ASIMDSAME_ONLY(const InstData &, Instruction &) {
-  return false;
-}
-
 // SUB SUB_asisdsame_only:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -11663,44 +11625,6 @@ bool TryDecodeCMLE_ASISDMISC_Z(const InstData &, Instruction &) {
   return false;
 }
 
-// EOR EOR_asimdsame_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1
-//  11 1 opcode   0
-//  12 1 opcode   1
-//  13 0 opcode   2
-//  14 0 opcode   3
-//  15 0 opcode   4
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 0 opc2     0
-//  23 0 opc2     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1 U        0
-//  30 x Q        0
-//  31 0
-// EOR  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
-bool TryDecodeEOR_ASIMDSAME_ONLY(const InstData &, Instruction &) {
-  return false;
-}
-
 // CMEQ CMEQ_asisdmisc_Z:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -15119,44 +15043,6 @@ bool TryDecodeSTCLR_64S_MEMOP(const InstData &, Instruction &) {
 //  31 1 size     1
 // STCLRL  <Xs>, [<Xn|SP>]
 bool TryDecodeSTCLRL_64S_MEMOP(const InstData &, Instruction &) {
-  return false;
-}
-
-// BIT BIT_asimdsame_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1
-//  11 1 opcode   0
-//  12 1 opcode   1
-//  13 0 opcode   2
-//  14 0 opcode   3
-//  15 0 opcode   4
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 0 opc2     0
-//  23 1 opc2     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1 U        0
-//  30 x Q        0
-//  31 0
-// BIT  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
-bool TryDecodeBIT_ASIMDSAME_ONLY(const InstData &, Instruction &) {
   return false;
 }
 
@@ -24657,44 +24543,6 @@ bool TryDecodeFMAXP_ASISDPAIR_ONLY_H(const InstData &, Instruction &) {
 //  31 0
 // FMAXP  <V><d>, <Vn>.<T>
 bool TryDecodeFMAXP_ASISDPAIR_ONLY_SD(const InstData &, Instruction &) {
-  return false;
-}
-
-// BIF BIF_asimdsame_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1
-//  11 1 opcode   0
-//  12 1 opcode   1
-//  13 0 opcode   2
-//  14 0 opcode   3
-//  15 0 opcode   4
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 1 opc2     0
-//  23 1 opc2     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1 U        0
-//  30 x Q        0
-//  31 0
-// BIF  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
-bool TryDecodeBIF_ASIMDSAME_ONLY(const InstData &, Instruction &) {
   return false;
 }
 

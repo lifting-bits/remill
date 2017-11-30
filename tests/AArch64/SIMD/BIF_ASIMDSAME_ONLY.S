@@ -13,12 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef REMILL_BC_COMPAT_RUNTIMEDYLD_H_
-#define REMILL_BC_COMPAT_RUNTIMEDYLD_H_
 
-#include "remill/BC/Version.h"
+TEST_BEGIN(BIF_ASIMDSAME_ONLY_8B, bif_v8b, 1)
+TEST_INPUTS(0)
+    bif v5.8b, v0.8b, v1.8b
+    bif v6.8b, v2.8b, v3.8b
+    bif v7.8b, v4.8b, v5.8b
+TEST_END
 
-#include <llvm/ExecutionEngine/RuntimeDyld.h>
-#include <llvm/ExecutionEngine/RTDyldMemoryManager.h>
-
-#endif  // REMILL_BC_COMPAT_RUNTIMEDYLD_H_
+TEST_BEGIN(BIF_ASIMDSAME_ONLY_16B, bif_v16b, 1)
+TEST_INPUTS(0)
+    bif v5.16b, v0.16b, v1.16b
+    bif v6.16b, v2.16b, v3.16b
+    bif v7.16b, v4.16b, v5.16b
+TEST_END

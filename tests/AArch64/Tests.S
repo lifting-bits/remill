@@ -255,8 +255,12 @@ SYMBOL(__aarch64_test_table_begin):
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
 
 
+#include "tests/AArch64/SIMD/BIC_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/BIF_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/BIT_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/EOR_ASIMDSAME_ONLY.S"
 
-#if 1
+#if 0
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/ADD_32_ADDSUB_EXT.S"

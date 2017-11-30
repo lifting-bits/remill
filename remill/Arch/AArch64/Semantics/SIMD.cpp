@@ -18,13 +18,50 @@ namespace {
 
 template <typename S>
 DEF_SEM(ORR_Vec, V128W dst, S src1, S src2) {
-  UWriteV8(dst, UOrV8(UReadV8(src1), UReadV8(src2)));
+  UWriteV64(dst, UOrV64(UReadV64(src1), UReadV64(src2)));
   return memory;
 }
 
 template <typename S>
 DEF_SEM(AND_Vec, V128W dst, S src1, S src2) {
-  UWriteV8(dst, UAndV8(UReadV8(src1), UReadV8(src2)));
+  UWriteV64(dst, UAndV64(UReadV64(src1), UReadV64(src2)));
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(BIC_Vec, V128W dst, S src1, S src2) {
+  UWriteV64(dst, UAndV64(UReadV64(src1), UNotV64(UReadV64(src2))));
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(EOR_Vec, V128W dst, S src1, S src2) {
+  auto operand4 = UReadV64(src1);
+  auto operand1 = UReadV64(src2);
+  auto operand2 = UClearV64(operand4);
+  auto operand3 = UNotV64(operand2);
+  UWriteV64(dst, UXorV64(
+      operand1, UAndV64(UXorV64(operand2, operand4), operand3)));
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(BIT_Vec, V128W dst, S src1, S src2) {
+  auto operand4 = UReadV64(src1);
+  auto operand1 = UReadV64(dst);
+  auto operand3 = UReadV64(src2);
+  UWriteV64(dst, UXorV64(
+      operand1, UAndV64(UXorV64(operand1, operand4), operand3)));
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(BIF_Vec, V128W dst, S src1, S src2) {
+  auto operand4 = UReadV64(src1);
+  auto operand1 = UReadV64(dst);
+  auto operand3 = UNotV64(UReadV64(src2));
+  UWriteV64(dst, UXorV64(
+      operand1, UAndV64(UXorV64(operand1, operand4), operand3)));
   return memory;
 }
 
@@ -35,6 +72,18 @@ DEF_ISEL(ORR_ASIMDSAME_ONLY_16B) = ORR_Vec<V128>;
 
 DEF_ISEL(AND_ASIMDSAME_ONLY_8B) = AND_Vec<V64>;
 DEF_ISEL(AND_ASIMDSAME_ONLY_16B) = AND_Vec<V128>;
+
+DEF_ISEL(BIC_ASIMDSAME_ONLY_8B) = BIC_Vec<V64>;
+DEF_ISEL(BIC_ASIMDSAME_ONLY_16B) = BIC_Vec<V128>;
+
+DEF_ISEL(EOR_ASIMDSAME_ONLY_8B) = EOR_Vec<V64>;
+DEF_ISEL(EOR_ASIMDSAME_ONLY_16B) = EOR_Vec<V128>;
+
+DEF_ISEL(BIT_ASIMDSAME_ONLY_8B) = BIT_Vec<V64>;
+DEF_ISEL(BIT_ASIMDSAME_ONLY_16B) = BIT_Vec<V128>;
+
+DEF_ISEL(BIF_ASIMDSAME_ONLY_8B) = BIF_Vec<V64>;
+DEF_ISEL(BIF_ASIMDSAME_ONLY_16B) = BIF_Vec<V128>;
 
 namespace {
 
