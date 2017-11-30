@@ -4057,12 +4057,18 @@ bool TryDecodeEOR_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
 
 // BIT  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
 bool TryDecodeBIT_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
-  return TryDecodeORR_ASIMDSAME_ONLY(data, inst);
+  std::stringstream ss;
+  ss << inst.function << "_" << (data.Q ? "16B" : "8B");
+  inst.function = ss.str();
+  AddRegOperand(inst, kActionReadWrite, kRegV, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rm);
+  return true;
 }
 
 // BIF  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
 bool TryDecodeBIF_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
-  return TryDecodeORR_ASIMDSAME_ONLY(data, inst);
+  return TryDecodeBIT_ASIMDSAME_ONLY(data, inst);
 }
 
 }  // namespace aarch64

@@ -1187,7 +1187,7 @@ T _ZeroVec(void) {
     } while (false)
 
 // A 'compiler' barrier that also forces a variable's value to be resident in
-// mere at the current spot. This is a useful debugging aid, e.g. when you
+// memory at the current spot. This is a useful debugging aid, e.g. when you
 // see `<optimized out>` in GDB, and really pessimizes optimizations.
 //
 // An entertaining explanation is here: https://youtu.be/nXaxk27zwlk?t=40m50s 

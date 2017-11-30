@@ -46,9 +46,9 @@ DEF_SEM(EOR_Vec, V128W dst, S src1, S src2) {
 }
 
 template <typename S>
-DEF_SEM(BIT_Vec, V128W dst, S src1, S src2) {
+DEF_SEM(BIT_Vec, V128W dst, S dst_src, S src1, S src2) {
   auto operand4 = UReadV64(src1);
-  auto operand1 = UReadV64(dst);
+  auto operand1 = UReadV64(dst_src);
   auto operand3 = UReadV64(src2);
   UWriteV64(dst, UXorV64(
       operand1, UAndV64(UXorV64(operand1, operand4), operand3)));
@@ -56,9 +56,9 @@ DEF_SEM(BIT_Vec, V128W dst, S src1, S src2) {
 }
 
 template <typename S>
-DEF_SEM(BIF_Vec, V128W dst, S src1, S src2) {
+DEF_SEM(BIF_Vec, V128W dst, S dst_src, S src1, S src2) {
   auto operand4 = UReadV64(src1);
-  auto operand1 = UReadV64(dst);
+  auto operand1 = UReadV64(dst_src);
   auto operand3 = UNotV64(UReadV64(src2));
   UWriteV64(dst, UXorV64(
       operand1, UAndV64(UXorV64(operand1, operand4), operand3)));
