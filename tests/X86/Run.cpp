@@ -538,15 +538,27 @@ static void RunWithFlags(const test::TestInfo *info,
   for (auto i = 0UL; i < kNumVecRegisters; ++i) {
     EXPECT_TRUE(lifted_state->vec[i] == native_state->vec[i]);
   }
-  EXPECT_TRUE(lifted_state->aflag == native_state->aflag);
-  EXPECT_TRUE(lifted_state->rflag == native_state->rflag);
+
+  EXPECT_TRUE(lifted_state->rflag == native_state->rflag)
+      << "Lifted RFLAG after test is " << std::hex
+      << lifted_state->rflag.flat << ", native is "
+      << native_state->rflag.flat << std::dec;
+
   EXPECT_TRUE(lifted_state->seg == native_state->seg);
+
   EXPECT_TRUE(lifted_state->gpr == native_state->gpr);
+
+  EXPECT_TRUE(lifted_state->x87.fxsave.swd == native_state->x87.fxsave.swd)
+      << "Lifted X87 status word after test is " << std::hex
+      << lifted_state->x87.fxsave.swd.flat << ", native is "
+      << native_state->x87.fxsave.swd.flat << std::dec;
+
   if (gLiftedState != gNativeState) {
     LOG(ERROR)
         << "States did not match for " << desc;
     EXPECT_TRUE(!"Lifted and native states did not match.");
   }
+
   if (gLiftedStack != gNativeStack) {
     LOG(ERROR)
         << "Stacks did not match for " << desc;

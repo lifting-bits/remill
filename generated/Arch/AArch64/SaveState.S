@@ -55,6 +55,8 @@ mrs x1, fpcr
 str x1, [x28, #1080]
 mrs x1, fpsr
 str x1, [x28, #1088]
+ubfx x29, x1, #0, #1
+strb w29, [x28, #1153]
 ubfx x29, x1, #2, #1
 strb w29, [x28, #1147]
 ubfx x29, x1, #3, #1

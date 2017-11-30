@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-TEST_BEGIN(UCVTF_D32_FLOAT2INT, ucvtf_d0_w0, 1)
+TEST_BEGIN(SCVTF_D32_FLOAT2INT, scvtf_d0_w0, 1)
 TEST_INPUTS(
     0,
     1,
     0x80000000,
     0x7fffffff,
     0xffffffff)
-    ucvtf d0, ARG1_32
+    scvtf d0, ARG1_32
 TEST_END
 
-TEST_BEGIN(UCVTF_D64_FLOAT2INT, ucvtf_d0_x0, 1)
+TEST_BEGIN(SCVTF_D64_FLOAT2INT, scvtf_d0_x0, 1)
 TEST_INPUTS(
     0,
     1,
@@ -34,6 +34,29 @@ TEST_INPUTS(
     0x8000000000000000,
     0x7fffffffffffffff,
     0xffffffffffffffff)
-    ucvtf d0, ARG1_64
+    scvtf d0, ARG1_64
 TEST_END
 
+
+TEST_BEGIN(SCVTF_S32_FLOAT2INT, scvtf_s0_w0, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x80000000,
+    0x7fffffff,
+    0xffffffff)
+    scvtf s0, ARG1_32
+TEST_END
+
+TEST_BEGIN(SCVTF_S64_FLOAT2INT, scvtf_s0_x0, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x80000000,
+    0x7fffffff,
+    0xffffffff,
+    0x8000000000000000,
+    0x7fffffffffffffff,
+    0xffffffffffffffff)
+    scvtf s0, ARG1_64
+TEST_END

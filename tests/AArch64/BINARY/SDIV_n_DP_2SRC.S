@@ -14,25 +14,37 @@
  * limitations under the License.
  */
 
-TEST_BEGIN(UCVTF_S32_FLOAT2INT, ucvtf_s0_w0, 1)
+/* SDIV  <Wd>, <Wn>, <Wm> */
+TEST_BEGIN(SDIV_32_DP_2SRC, sdiv_w3_w0_w1, 2)
 TEST_INPUTS(
-    0,
-    1,
-    0x80000000,
-    0x7fffffff,
-    0xffffffff)
-    ucvtf s0, ARG1_32
+    0, 0,
+    1, 0,
+    0xffffffff, 1,
+    1, 0xffffffff,
+    0xffffffff, 0xffffffff,
+    1, 2,
+    5, 2,
+    5, 3,
+    5, 4)
+
+    sdiv w3, ARG1_32, ARG2_32
 TEST_END
 
-TEST_BEGIN(UCVTF_S64_FLOAT2INT, ucvtf_s0_x0, 1)
+/* SDIV  <Xd>, <Xn>, <Xm> */
+TEST_BEGIN(SDIV_64_DP_2SRC, sdiv_x3_x0_x1, 2)
 TEST_INPUTS(
-    0,
-    1,
-    0x80000000,
-    0x7fffffff,
-    0xffffffff,
-    0x8000000000000000,
-    0x7fffffffffffffff,
-    0xffffffffffffffff)
-    ucvtf s0, ARG1_64
+    0, 0,
+    1, 0,
+    0xffffffff, 1,
+    1, 0xffffffff,
+    0xffffffff, 0xffffffff,
+    1, 2,
+    5, 2,
+    5, 3,
+    5, 4,
+    0xffffffffffffffff, 0xffffffff,
+    0xffffffffffffffff, 0xabcdef)
+
+    sdiv x3, ARG1_64, ARG2_64
 TEST_END
+

@@ -300,6 +300,7 @@ static void RunWithFlags(const test::TestInfo *info,
   // native program state recorded before executing the native testcase,
   // but after swapping execution to operate on `gStack`.
   if (!sigsetjmp(gJmpBuf, true)) {
+    std::fesetenv(FE_DFL_ENV);
     gInNativeTest = false;
     (void) lifted_func(
         *lifted_state,

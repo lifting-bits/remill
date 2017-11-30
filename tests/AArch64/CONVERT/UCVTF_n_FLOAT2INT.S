@@ -14,35 +14,49 @@
  * limitations under the License.
  */
 
-TEST_BEGIN(FCVT_SD_FLOATDP1, fcvt_s1_d0, 1)
+TEST_BEGIN(UCVTF_D32_FLOAT2INT, ucvtf_d0_w0, 1)
 TEST_INPUTS(
-    0x00000000, 
-    0x3fffffff,
-    0x40000000,     
-    0x7FFFFFFF, 
-    0x80000000,      
-    0xffffffff,
-    0xbf800000,
-    0xc0000000,     
-    0xcccccccccccccccc,
-    0xbf8ccccccccccccc,
-    0xffffffffffffffff)
-
-    fmov d0, ARG1_64
-    fcvt s1, d0
+    0,
+    1,
+    0x80000000,
+    0x7fffffff,
+    0xffffffff)
+    ucvtf d0, ARG1_32
 TEST_END
 
-TEST_BEGIN(FCVT_DS_FLOATDP1, fcvt_d1_s0, 1)
+TEST_BEGIN(UCVTF_D64_FLOAT2INT, ucvtf_d0_x0, 1)
 TEST_INPUTS(
-    0x00000000, 
-    0x3fffffff,
-    0x40000000,     
-    0x7FFFFFFF, 
-    0x80000000,      
+    0,
+    1,
+    0x80000000,
+    0x7fffffff,
     0xffffffff,
-    0xbf800000,
-    0xc0000000)
-    
-    fmov s0, ARG1_32
-    fcvt d1, s0
+    0x8000000000000000,
+    0x7fffffffffffffff,
+    0xffffffffffffffff)
+    ucvtf d0, ARG1_64
+TEST_END
+
+
+TEST_BEGIN(UCVTF_S32_FLOAT2INT, ucvtf_s0_w0, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x80000000,
+    0x7fffffff,
+    0xffffffff)
+    ucvtf s0, ARG1_32
+TEST_END
+
+TEST_BEGIN(UCVTF_S64_FLOAT2INT, ucvtf_s0_x0, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x80000000,
+    0x7fffffff,
+    0xffffffff,
+    0x8000000000000000,
+    0x7fffffffffffffff,
+    0xffffffffffffffff)
+    ucvtf s0, ARG1_64
 TEST_END
