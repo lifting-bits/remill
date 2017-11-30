@@ -28,6 +28,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <cfenv>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -441,6 +442,7 @@ static void RunWithFlags(const test::TestInfo *info,
   // swapping execution to operate on `gStack`.
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
+    std::fesetenv(FE_DFL_ENV);
     (void) lifted_func(
         *lifted_state,
         static_cast<addr_t>(lifted_state->gpr.rip.aword),
