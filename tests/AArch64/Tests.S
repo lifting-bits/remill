@@ -255,13 +255,12 @@ SYMBOL(__aarch64_test_table_begin):
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
 
 
-#include "tests/AArch64/SIMD/ADDV_ASIMDALL_ONLY.S"
-#include "tests/AArch64/SIMD/SMAXV_ASIMDALL_ONLY.S"
-#include "tests/AArch64/SIMD/SMINV_ASIMDALL_ONLY.S"
-#include "tests/AArch64/SIMD/UMAXV_ASIMDALL_ONLY.S"
-#include "tests/AArch64/SIMD/UMINV_ASIMDALL_ONLY.S"
+
+#include "tests/AArch64/SIMD/FMAXV_ASIMDALL_ONLY_SD_4S.S"
+#include "tests/AArch64/SIMD/FMINV_ASIMDALL_ONLY_SD_4S.S"
 
 #if 0
+
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/ADD_32_ADDSUB_EXT.S"
@@ -369,6 +368,7 @@ SYMBOL(__aarch64_test_table_begin):
 
 #include "tests/AArch64/SIMD/ADD_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/ADDP_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/ADDV_ASIMDALL_ONLY.S"
 #include "tests/AArch64/SIMD/BIC_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/BIF_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/BIT_ASIMDSAME_ONLY.S"
@@ -380,13 +380,17 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/SIMD/FMOV_VECTORS.S"
 #include "tests/AArch64/SIMD/SMAX_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/SMAXP_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/SMAXV_ASIMDALL_ONLY.S"
 #include "tests/AArch64/SIMD/SMIN_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/SMINP_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/SMINV_ASIMDALL_ONLY.S"
 #include "tests/AArch64/SIMD/SUB_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/UMAX_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/UMAXP_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/UMAXV_ASIMDALL_ONLY.S"
 #include "tests/AArch64/SIMD/UMIN_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/UMINP_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/UMINV_ASIMDALL_ONLY.S"
 
 
 #endif

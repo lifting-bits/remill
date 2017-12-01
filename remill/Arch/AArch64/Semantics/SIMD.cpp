@@ -754,3 +754,67 @@ DEF_ISEL(SMAXV_ASIMDALL_ONLY_16B) = SMAXV_8<V128>;
 DEF_ISEL(SMAXV_ASIMDALL_ONLY_4H) = SMAXV_16<V64>;
 DEF_ISEL(SMAXV_ASIMDALL_ONLY_8H) = SMAXV_16<V128>;
 DEF_ISEL(SMAXV_ASIMDALL_ONLY_4S) = SMAXV_32<V128>;
+
+namespace {
+
+template <typename T, typename I>
+ALWAYS_INLINE static T FloatMin(T lhs, T rhs) {
+  if (__builtin_isunordered(lhs, rhs)) {
+    return NAN;
+  }
+
+  // Use integer comparisons; we need to return the "most negative" value
+  // (e.g. in the case of +0 and -0).
+  auto a = reinterpret_cast<I &>(lhs);
+  auto b = reinterpret_cast<I &>(rhs);
+  if (a < b) {
+    return lhs;
+  } else {
+    return rhs;
+  }
+}
+
+template <typename T, typename I>
+ALWAYS_INLINE static T FloatMax(T lhs, T rhs) {
+  if (__builtin_isunordered(lhs, rhs)) {
+    return NAN;
+  }
+
+  // Use integer comparisons; we need to return the "most positive" value
+  // (e.g. in the case of +0 and -0).
+  auto a = reinterpret_cast<I &>(lhs);
+  auto b = reinterpret_cast<I &>(rhs);
+  if (a > b) {
+    return lhs;
+  } else {
+    return rhs;
+  }
+}
+
+// NOTE(pag): These aren't quite right w.r.t. NaN propagation.
+template <typename S>
+DEF_SEM(FMINV_32_Reduce, V128W dst, S src) {
+  auto vec = FReadV32(src);
+  FWriteV32(dst, Reduce(vec, FloatMin<float32_t, int32_t>));
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(FMAXV_32_Reduce, V128W dst, S src) {
+  auto vec = FReadV32(src);
+  FWriteV32(dst, Reduce(vec, FloatMax<float32_t, int32_t>));
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(FMINV_ASIMDALL_ONLY_SD_4S) = FMINV_32_Reduce<V128>;
+DEF_ISEL(FMAXV_ASIMDALL_ONLY_SD_4S) = FMAXV_32_Reduce<V128>;
+
+// TODO(pag):
+// FMINV_ASIMDALL_ONLY_H
+// FMAXV_ASIMDALL_ONLY_H
+// FMINNMV_ASIMDALL_ONLY_H
+// FMINNMV_ASIMDALL_ONLY_SD
+// FMAXNMV_ASIMDALL_ONLY_H
+// FMAXNMV_ASIMDALL_ONLY_SD
