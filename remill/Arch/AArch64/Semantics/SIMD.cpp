@@ -657,7 +657,7 @@ DEF_SEM(UMAXV_8, V128W dst, S src) {
   auto val = std::numeric_limits<uint8_t>::min();
   _Pragma("unroll")
   for (auto elem : vec.elems) {
-    val = UMin(elem, val);
+    val = UMax(elem, val);
   }
   UWriteV8(dst, val);
   return memory;
@@ -669,7 +669,7 @@ DEF_SEM(UMAXV_16, V128W dst, S src) {
   auto val = std::numeric_limits<uint16_t>::min();
   _Pragma("unroll")
   for (auto elem : vec.elems) {
-    val = UMin(elem, val);
+    val = UMax(elem, val);
   }
   UWriteV16(dst, val);
   return memory;
@@ -681,7 +681,7 @@ DEF_SEM(UMAXV_32, V128W dst, S src) {
   auto val = std::numeric_limits<uint32_t>::min();
   _Pragma("unroll")
   for (auto elem : vec.elems) {
-    val = UMin(elem, val);
+    val = UMax(elem, val);
   }
   UWriteV32(dst, val);
   return memory;
@@ -693,7 +693,7 @@ DEF_SEM(SMAXV_8, V128W dst, S src) {
   auto val = std::numeric_limits<int8_t>::min();
   _Pragma("unroll")
   for (auto elem : vec.elems) {
-    val = SMin(elem, val);
+    val = SMax(elem, val);
   }
   SWriteV8(dst, val);
   return memory;
@@ -705,7 +705,7 @@ DEF_SEM(SMAXV_16, V128W dst, S src) {
   auto val = std::numeric_limits<int16_t>::min();
   _Pragma("unroll")
   for (auto elem : vec.elems) {
-    val = SMin(elem, val);
+    val = SMax(elem, val);
   }
   SWriteV16(dst, val);
   return memory;
@@ -717,7 +717,7 @@ DEF_SEM(SMAXV_32, V128W dst, S src) {
   auto val = std::numeric_limits<int32_t>::min();
   _Pragma("unroll")
   for (auto elem : vec.elems) {
-    val = SMin(elem, val);
+    val = SMax(elem, val);
   }
   SWriteV32(dst, val);
   return memory;
