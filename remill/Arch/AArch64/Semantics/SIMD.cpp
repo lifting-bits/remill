@@ -761,65 +761,71 @@ template <typename T, typename I>
 ALWAYS_INLINE static T FloatMin(T lhs, T rhs) {
   if (__builtin_isunordered(lhs, rhs)) {
     return NAN;
-  }
-
-  if (lhs < rhs) {
+  } else if (__builtin_isless(lhs, rhs)) {
     return lhs;
-
-  } else if (lhs > rhs) {
-    return rhs;
-
-  // Use integer comparisons; we need to return the "most negative" value
-  // (e.g. in the case of +0 and -0).
   } else {
-    auto a = reinterpret_cast<I &>(lhs);
-    auto b = reinterpret_cast<I &>(rhs);
-    auto res = SMin(a, b);
-    return reinterpret_cast<T &>(res);
+    return rhs;
   }
+
+//  if (lhs < rhs) {
+//    return lhs;
+//
+//  } else if (lhs > rhs) {
+//    return rhs;
+//
+//  // Use integer comparisons; we need to return the "most negative" value
+//  // (e.g. in the case of +0 and -0).
+//  } else {
+//    auto a = reinterpret_cast<I &>(lhs);
+//    auto b = reinterpret_cast<I &>(rhs);
+//    auto res = SMin(a, b);
+//    return reinterpret_cast<T &>(res);
+//  }
 }
 
 template <typename T, typename I>
 ALWAYS_INLINE static T FloatMax(T lhs, T rhs) {
   if (__builtin_isunordered(lhs, rhs)) {
     return NAN;
-  }
-
-  if (lhs < rhs) {
-    return rhs;
-
-  } else if (lhs > rhs) {
+  } else if (__builtin_isgreater(lhs, rhs)) {
     return lhs;
-
-  // Use integer comparisons; we need to return the "most negative" value
-  // (e.g. in the case of +0 and -0).
   } else {
-    auto a = reinterpret_cast<I &>(lhs);
-    auto b = reinterpret_cast<I &>(rhs);
-    auto res = SMax(a, b);
-    return reinterpret_cast<T &>(res);
+    return rhs;
   }
+//
+//  if (lhs < rhs) {
+//    return rhs;
+//
+//  } else if (lhs > rhs) {
+//    return lhs;
+//
+//  // Use integer comparisons; we need to return the "most negative" value
+//  // (e.g. in the case of +0 and -0).
+//  } else {
+//    auto a = reinterpret_cast<I &>(lhs);
+//    auto b = reinterpret_cast<I &>(rhs);
+//    auto res = SMax(a, b);
+//    return reinterpret_cast<T &>(res);
+//  }
 }
 
 // NOTE(pag): These aren't quite right w.r.t. NaN propagation.
-template <typename S>
-DEF_SEM(FMINV_32_Reduce, V128W dst, S src) {
+DEF_SEM(FMINV_32_Reduce, V128W dst, V128 src) {
   auto vec = FReadV32(src);
-  FWriteV32(dst, Reduce(vec, FloatMin<float32_t, int32_t>));
+  FWriteV32(dst, Reduce4(vec, FloatMin<float32_t, int32_t>));
   return memory;
 }
 
-template <typename S>
-DEF_SEM(FMAXV_32_Reduce, V128W dst, S src) {
+DEF_SEM(FMAXV_32_Reduce, V128W dst, V128 src) {
   auto vec = FReadV32(src);
-  FWriteV32(dst, Reduce(vec, FloatMax<float32_t, int32_t>));
+  FWriteV32(dst, Reduce4(vec, FloatMax<float32_t, int32_t>));
   return memory;
 }
 
 }  // namespace
 
-DEF_ISEL(FMINV_ASIMDALL_ONLY_SD_4S) = FMINV_32_Reduce<V128>;
-DEF_ISEL(FMAXV_ASIMDALL_ONLY_SD_4S) = FMAXV_32_Reduce<V128>;
+DEF_ISEL(FMINV_ASIMDALL_ONLY_SD_4S) = FMINV_32_Reduce;
+DEF_ISEL(FMAXV_ASIMDALL_ONLY_SD_4S) = FMAXV_32_Reduce;
 
 // TODO(pag):
 // FMINV_ASIMDALL_ONLY_H

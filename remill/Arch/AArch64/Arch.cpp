@@ -3792,7 +3792,9 @@ bool TryDecodeLDnSTn(const InstData &data, Instruction &inst,
   uint64_t esize = 8UL << data.size;
   uint64_t elements = data_size / esize;
   uint64_t ebytes = esize / 8;
-  *total_num_bytes = ebytes * rpt * elements * selem;
+  if (total_num_bytes) {
+    *total_num_bytes = ebytes * rpt * elements * selem;
+  }
   AddArrangementSpecifier(inst, data_size, 8UL << data.size);
   RegNum t = data.Rt;
   auto num_regs = static_cast<RegNum>(rpt * selem);
@@ -4173,6 +4175,31 @@ bool TryDecodeSADDLV_ASIMDALL_ONLY(const InstData &, Instruction &) {
 // DMB  <option>|#<imm>
 bool TryDecodeDMB_BO_SYSTEM(const InstData &, Instruction &) {
   return true;
+}
+
+// LD1  { <Vt>.<T> }, [<Xn|SP>]
+bool TryDecodeLD1_ASISDLSE_R1_1V(const InstData &data, Instruction &inst) {
+  uint64_t num_bytes = 0;
+  if (!TryDecodeLDnSTn(data, inst, &num_bytes)) {
+    return false;
+  }
+  AddBasePlusOffsetMemOp(inst, kActionRead, num_bytes * 8, data.Rn, 0);
+  return true;
+}
+
+// LD1  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>]
+bool TryDecodeLD1_ASISDLSE_R2_2V(const InstData &data, Instruction &inst) {
+  return TryDecodeLD1_ASISDLSE_R1_1V(data, inst);
+}
+
+// LD1  { <Vt>.<T>, <Vt2>.<T>, <Vt3>.<T> }, [<Xn|SP>]
+bool TryDecodeLD1_ASISDLSE_R3_3V(const InstData &data, Instruction &inst) {
+  return TryDecodeLD1_ASISDLSE_R1_1V(data, inst);
+}
+
+// LD1  { <Vt>.<T>, <Vt2>.<T>, <Vt3>.<T>, <Vt4>.<T> }, [<Xn|SP>]
+bool TryDecodeLD1_ASISDLSE_R4_4V(const InstData &data, Instruction &inst) {
+  return TryDecodeLD1_ASISDLSE_R1_1V(data, inst);
 }
 
 }  // namespace aarch64
