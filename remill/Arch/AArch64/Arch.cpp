@@ -30,6 +30,8 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
 
+#define REMILL_AARCH_STRICT_REGNUM
+
 #include "remill/Arch/AArch64/Decode.h"
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Instruction.h"
@@ -184,8 +186,6 @@ enum RegClass {
   kRegV,  // V reg containing Q, D, S, H, and B.
 };
 
-using RegNum = uint8_t;
-
 enum RegUsage {
   kUseAsAddress,  // Interpret X31 == SP and W32 == WSP.
   kUseAsValue  // Interpret X31 == XZR and W31 == WZR.
@@ -284,7 +284,8 @@ static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
 
 // Get the name of an integer register.
 static std::string RegNameXW(Action action, RegClass rclass, RegUsage rtype,
-                             RegNum number) {
+                             aarch64::RegNum number_) {
+  auto number = static_cast<uint8_t>(number_);
   CHECK_LE(number, 31U);
 
   std::stringstream ss;
@@ -317,7 +318,8 @@ static std::string RegNameXW(Action action, RegClass rclass, RegUsage rtype,
 
 // Get the name of a floating point register.
 static std::string RegNameFP(Action action, RegClass rclass, RegUsage rtype,
-                             RegNum number) {
+                             aarch64::RegNum number_) {
+  auto number = static_cast<uint8_t>(number_);
   CHECK_LE(number, 31U);
 
   std::stringstream ss;
@@ -348,7 +350,7 @@ static std::string RegNameFP(Action action, RegClass rclass, RegUsage rtype,
 }
 
 static std::string RegName(Action action, RegClass rclass, RegUsage rtype,
-                           RegNum number) {
+                           aarch64::RegNum number) {
   switch (rclass) {
     case kRegX:
     case kRegW:
@@ -404,7 +406,7 @@ static uint64_t WriteRegSize(RegClass rclass) {
 // then the usage is `kTypeUsage`, otherwise (i.e. `<Xn>`), the usage is
 // a `kTypeValue`.
 static Operand::Register Reg(Action action, RegClass rclass, RegUsage rtype,
-                             RegNum reg_num) {
+                             aarch64::RegNum reg_num) {
   Operand::Register reg;
   if (kActionWrite == action) {
     reg.name = RegName(action, rclass, rtype, reg_num);
@@ -421,7 +423,7 @@ static Operand::Register Reg(Action action, RegClass rclass, RegUsage rtype,
 
 static void AddRegOperand(Instruction &inst, Action action,
                           RegClass rclass, RegUsage rtype,
-                          RegNum reg_num) {
+                          aarch64::RegNum reg_num) {
   Operand op;
   op.type = Operand::kTypeRegister;
 
@@ -441,7 +443,7 @@ static void AddRegOperand(Instruction &inst, Action action,
 }
 
 static void AddShiftRegOperand(Instruction &inst, RegClass rclass,
-                               RegUsage rtype, RegNum reg_num,
+                               RegUsage rtype, aarch64::RegNum reg_num,
                                Shift shift_type,
                                uint64_t shift_size) {
   if (!shift_size) {
@@ -464,7 +466,7 @@ static void AddShiftRegOperand(Instruction &inst, RegClass rclass,
 // NOTE(pag): `rclass` is explicitly passed instead of inferred because some
 //            instructions, e.g. `ADD_32_ADDSUB_EXT` specify `Wm` only.
 static void AddExtendRegOperand(Instruction &inst, RegClass reg_class,
-                                RegUsage rtype, RegNum reg_num,
+                                RegUsage rtype, aarch64::RegNum reg_num,
                                 Extend extend_type, uint64_t output_size,
                                 uint64_t shift_size=0) {
   Operand op;
@@ -555,7 +557,7 @@ static void AddNextPC(Instruction &inst) {
 //    ... deref addr and do stuff ...
 static void AddBasePlusOffsetMemOp(Instruction &inst, Action action,
                                    uint64_t access_size,
-                                   RegNum base_reg, uint64_t disp) {
+                                   aarch64::RegNum base_reg, uint64_t disp) {
   Operand op;
   op.type = Operand::kTypeAddress;
   op.size = access_size;
@@ -576,7 +578,7 @@ static void AddBasePlusOffsetMemOp(Instruction &inst, Action action,
   }
 }
 
-static constexpr RegNum kInvalidReg = 0xFF;
+static constexpr auto kInvalidReg = static_cast<aarch64::RegNum>(0xFF);
 
 // Pre-index memory operands write back the result of the displaced address
 // to the base register.
@@ -593,9 +595,9 @@ static constexpr RegNum kInvalidReg = 0xFF;
 // the other that is the value of (Xn + imm + imm).
 static void AddPreIndexMemOp(Instruction &inst, Action action,
                              uint64_t access_size,
-                             RegNum base_reg, uint64_t disp,
-                             RegNum dest_reg1=kInvalidReg,
-                             RegNum dest_reg2=kInvalidReg) {
+                             aarch64::RegNum base_reg, uint64_t disp,
+                             aarch64::RegNum dest_reg1=kInvalidReg,
+                             aarch64::RegNum dest_reg2=kInvalidReg) {
   AddBasePlusOffsetMemOp(inst, action, access_size, base_reg, disp);
   auto addr_op = inst.operands[inst.operands.size() - 1];
 
@@ -606,7 +608,8 @@ static void AddPreIndexMemOp(Instruction &inst, Action action,
   // We don't care about the case of `31` because then `base_reg` will be
   // `SP`, but `dest_reg1` or `dest_reg2` (if they are 31), will represent
   // one of `WZR` or `ZR`.
-  if (base_reg != 31 && (dest_reg1 == base_reg || dest_reg2 == base_reg)) {
+  if (static_cast<uint8_t>(base_reg) != 31 &&
+      (dest_reg1 == base_reg || dest_reg2 == base_reg)) {
     reg_op.reg.name = "SUPPRESS_WRITEBACK";
     reg_op.reg.size = 64;
   } else {
@@ -636,9 +639,9 @@ static void AddPreIndexMemOp(Instruction &inst, Action action,
 // the other that is the value of (Xn + imm).
 static void AddPostIndexMemOp(Instruction &inst, Action action,
                               uint64_t access_size,
-                              RegNum base_reg, uint64_t disp,
-                              RegNum dest_reg1=kInvalidReg,
-                              RegNum dest_reg2=kInvalidReg) {
+                              aarch64::RegNum base_reg, uint64_t disp,
+                              aarch64::RegNum dest_reg1=kInvalidReg,
+                              aarch64::RegNum dest_reg2=kInvalidReg) {
   AddBasePlusOffsetMemOp(inst, action, access_size, base_reg, 0);
   auto addr_op = inst.operands[inst.operands.size() - 1];
 
@@ -649,7 +652,8 @@ static void AddPostIndexMemOp(Instruction &inst, Action action,
   // We don't care about the case of `31` because then `base_reg` will be
   // `SP`, but `dest_reg1` or `dest_reg2` (if they are 31), will represent
   // one of `WZR` or `ZR`.
-  if (base_reg != 31 && (dest_reg1 == base_reg || dest_reg2 == base_reg)) {
+  if (static_cast<uint8_t>(base_reg) != 31 &&
+      (dest_reg1 == base_reg || dest_reg2 == base_reg)) {
     reg_op.reg.name = "SUPPRESS_WRITEBACK";
     reg_op.reg.size = 64;
   } else {
@@ -663,6 +667,54 @@ static void AddPostIndexMemOp(Instruction &inst, Action action,
   addr_op.action = Operand::kActionRead;
   addr_op.addr.kind = Operand::Address::kAddressCalculation;
   addr_op.addr.displacement = disp;
+  inst.operands.push_back(addr_op);
+}
+
+// Post-index memory operands write back the result of the displaced address
+// to the base register.
+//
+// We have something like this:
+//    [<Xn|SP>], <Xm>
+//
+// Which gets us:
+//    addr = Xn
+//    ... deref addr and do stuff ...
+//    Xn = addr + Xm
+//
+// So we add in two operands: one that is a register write operand for Xn,
+// the other that is the value of (Xn + imm).
+static void AddPostIndexMemOp(Instruction &inst, Action action,
+                              uint64_t access_size,
+                              aarch64::RegNum base_reg,
+                              aarch64::RegNum disp_reg,
+                              aarch64::RegNum dest_reg1=kInvalidReg,
+                              aarch64::RegNum dest_reg2=kInvalidReg) {
+  AddBasePlusOffsetMemOp(inst, action, access_size, base_reg, 0);
+  auto addr_op = inst.operands[inst.operands.size() - 1];
+
+  Operand reg_op;
+  reg_op.type = Operand::kTypeRegister;
+  reg_op.action = Operand::kActionWrite;
+
+  // We don't care about the case of `31` because then `base_reg` will be
+  // `SP`, but `dest_reg1` or `dest_reg2` (if they are 31), will represent
+  // one of `WZR` or `ZR`.
+  if (static_cast<uint8_t>(base_reg) != 31 &&
+      (dest_reg1 == base_reg || dest_reg2 == base_reg)) {
+    reg_op.reg.name = "SUPPRESS_WRITEBACK";
+    reg_op.reg.size = 64;
+  } else {
+    reg_op.reg = Reg(kActionWrite, kRegX, kUseAsAddress, base_reg);
+  }
+
+  reg_op.size = reg_op.reg.size;
+  inst.operands.push_back(reg_op);
+
+  addr_op.size = 64;
+  addr_op.action = Operand::kActionRead;
+  addr_op.addr.kind = Operand::Address::kAddressCalculation;
+  addr_op.addr.scale = 1;
+  addr_op.addr.index_reg = Reg(kActionRead, kRegX, kUseAsAddress, disp_reg);
   inst.operands.push_back(addr_op);
 }
 
@@ -839,7 +891,7 @@ static uint64_t DecodeScale(const InstData &data) {
 
 // <OPCODE>  <Xd>, <Xn>
 static bool TryDecodeRdW_Rn(const InstData &data, Instruction &inst,
-                               RegClass rclass) {
+                            RegClass rclass) {
   AddRegOperand(inst, kActionWrite, rclass, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, rclass, kUseAsValue, data.Rn);
   return true;
@@ -3796,10 +3848,10 @@ bool TryDecodeLDnSTn(const InstData &data, Instruction &inst,
     *total_num_bytes = ebytes * rpt * elements * selem;
   }
   AddArrangementSpecifier(inst, data_size, 8UL << data.size);
-  RegNum t = data.Rt;
-  auto num_regs = static_cast<RegNum>(rpt * selem);
-  for (RegNum i = 0; i < num_regs; ++i) {
-    RegNum tt = (t + i) % 32;
+  auto t = static_cast<uint8_t>(data.Rt);
+  auto num_regs = static_cast<uint8_t>(rpt * selem);
+  for (uint8_t i = 0; i < num_regs; ++i) {
+    auto tt = static_cast<aarch64::RegNum>((t + i) % 32);
     AddRegOperand(inst, kActionWrite, data.Q ? kRegQ : kRegD, kUseAsValue, tt);
   }
   return true;
@@ -4200,6 +4252,26 @@ bool TryDecodeLD1_ASISDLSE_R3_3V(const InstData &data, Instruction &inst) {
 // LD1  { <Vt>.<T>, <Vt2>.<T>, <Vt3>.<T>, <Vt4>.<T> }, [<Xn|SP>]
 bool TryDecodeLD1_ASISDLSE_R4_4V(const InstData &data, Instruction &inst) {
   return TryDecodeLD1_ASISDLSE_R1_1V(data, inst);
+}
+
+// LD2  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>]
+bool TryDecodeLD2_ASISDLSE_R2(const InstData &data, Instruction &inst) {
+  return TryDecodeLD1_ASISDLSE_R1_1V(data, inst);
+}
+
+// LD2  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>], <imm>
+bool TryDecodeLD2_ASISDLSEP_I2_I(const InstData &data, Instruction &inst) {
+  return TryDecodeLD1_ASISDLSEP_I2_I2(data, inst);
+}
+
+// LD2  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>], <Xm>
+bool TryDecodeLD2_ASISDLSEP_R2_R(const InstData &data, Instruction &inst) {
+  uint64_t offset = 0;
+  if (!TryDecodeLDnSTn(data, inst, &offset)) {
+    return false;
+  }
+  AddPostIndexMemOp(inst, kActionRead, offset * 8, data.Rn, data.Rm);
+  return true;
 }
 
 }  // namespace aarch64

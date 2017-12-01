@@ -254,14 +254,7 @@ SYMBOL(__aarch64_test_table_begin):
     0x7ff0000000000000 /* inf */, 0x7ff8000000000000, /* nan */              \
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
 
-
-#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R1_1V.S"
-#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R2_2V.S"
-#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R3_3V.S"
-#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R4_4V.S"
-
-#include "tests/AArch64/SIMD/FMAXV_ASIMDALL_ONLY_SD_4S.S"
-#include "tests/AArch64/SIMD/FMINV_ASIMDALL_ONLY_SD_4S.S"
+#include "tests/AArch64/DATAXFER/LD2_ASISDLSE_R2.S"
 
 #if 0
 
@@ -319,6 +312,10 @@ SYMBOL(__aarch64_test_table_begin):
 
 #include "tests/AArch64/DATAXFER/FMOV_t_FLOATIMM.S"
 #include "tests/AArch64/DATAXFER/FMOV_NToN.S"
+#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R1_1V.S"
+#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R2_2V.S"
+#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R3_3V.S"
+#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R4_4V.S"
 #include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_I1_I1.S"
 #include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_I2_I2.S"
 #include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_I3_I3.S"
@@ -380,6 +377,8 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/SIMD/CMcc_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/DUP_ASIMDINS_DR_R.S"
 #include "tests/AArch64/SIMD/EOR_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/FMAXV_ASIMDALL_ONLY_SD_4S.S"
+#include "tests/AArch64/SIMD/FMINV_ASIMDALL_ONLY_SD_4S.S"
 #include "tests/AArch64/SIMD/ORR_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/FMOV_VECTORS.S"
 #include "tests/AArch64/SIMD/SMAX_ASIMDSAME_ONLY.S"
