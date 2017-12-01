@@ -376,44 +376,6 @@ bool TryDecodeSTSMAXLH_32S_MEMOP(const InstData &, Instruction &) {
   return false;
 }
 
-// UMINV UMINV_asimdall_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 0
-//  13 1
-//  14 0
-//  15 1
-//  16 1 op       0
-//  17 0
-//  18 0
-//  19 0
-//  20 1
-//  21 1
-//  22 x size     0
-//  23 x size     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1 U        0
-//  30 x Q        0
-//  31 0
-// UMINV  <V><d>, <Vn>.<T>
-bool TryDecodeUMINV_ASIMDALL_ONLY(const InstData &, Instruction &) {
-  return false;
-}
-
 // FADDP FADDP_asimdsamefp16_only:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -15274,44 +15236,6 @@ bool TryDecodeUADDLP_ASIMDMISC_P(const InstData &, Instruction &) {
   return false;
 }
 
-// UMAXV UMAXV_asimdall_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 0
-//  13 1
-//  14 0
-//  15 1
-//  16 0 op       0
-//  17 0
-//  18 0
-//  19 0
-//  20 1
-//  21 1
-//  22 x size     0
-//  23 x size     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1 U        0
-//  30 x Q        0
-//  31 0
-// UMAXV  <V><d>, <Vn>.<T>
-bool TryDecodeUMAXV_ASIMDALL_ONLY(const InstData &, Instruction &) {
-  return false;
-}
-
 // LDEORAH LDEORAH_32_memop:
 //   0 x Rt       0
 //   1 x Rt       1
@@ -15461,44 +15385,6 @@ bool TryDecodeLDEORH_32_MEMOP(const InstData &, Instruction &) {
 //  31 0 size     1
 // LDEORLH  <Ws>, <Wt>, [<Xn|SP>]
 bool TryDecodeLDEORLH_32_MEMOP(const InstData &, Instruction &) {
-  return false;
-}
-
-// SMAXV SMAXV_asimdall_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 0
-//  13 1
-//  14 0
-//  15 1
-//  16 0 op       0
-//  17 0
-//  18 0
-//  19 0
-//  20 1
-//  21 1
-//  22 x size     0
-//  23 x size     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 0 U        0
-//  30 x Q        0
-//  31 0
-// SMAXV  <V><d>, <Vn>.<T>
-bool TryDecodeSMAXV_ASIMDALL_ONLY(const InstData &, Instruction &) {
   return false;
 }
 
@@ -16715,44 +16601,6 @@ bool TryDecodeFCVTZU_64D_FLOAT2FIX(const InstData &, Instruction &) {
 //  31 0
 // SHA1P  <Qd>, <Sn>, <Vm>.4S
 bool TryDecodeSHA1P_QSV_CRYPTOSHA3(const InstData &, Instruction &) {
-  return false;
-}
-
-// SADDLV SADDLV_asimdall_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 1 opcode   0
-//  13 1 opcode   1
-//  14 0 opcode   2
-//  15 0 opcode   3
-//  16 0 opcode   4
-//  17 0
-//  18 0
-//  19 0
-//  20 1
-//  21 1
-//  22 x size     0
-//  23 x size     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 0 U        0
-//  30 x Q        0
-//  31 0
-// SADDLV  <V><d>, <Vn>.<T>
-bool TryDecodeSADDLV_ASIMDALL_ONLY(const InstData &, Instruction &) {
   return false;
 }
 
@@ -23254,82 +23102,6 @@ bool TryDecodeLD2_ASISDLSEP_R2_R(const InstData &, Instruction &) {
   return false;
 }
 
-// FMAXV FMAXV_asimdall_only_H:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 1 opcode   0
-//  13 1 opcode   1
-//  14 1 opcode   2
-//  15 1 opcode   3
-//  16 0 opcode   4
-//  17 0
-//  18 0
-//  19 0
-//  20 1
-//  21 1
-//  22 0
-//  23 0 o1       0
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 0 U        0
-//  30 x Q        0
-//  31 0
-// FMAXV  <V><d>, <Vn>.<T>
-bool TryDecodeFMAXV_ASIMDALL_ONLY_H(const InstData &, Instruction &) {
-  return false;
-}
-
-// FMAXV FMAXV_asimdall_only_SD:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 1 opcode   0
-//  13 1 opcode   1
-//  14 1 opcode   2
-//  15 1 opcode   3
-//  16 0 opcode   4
-//  17 0
-//  18 0
-//  19 0
-//  20 1
-//  21 1
-//  22 x sz       0
-//  23 0 o1       0
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1 U        0
-//  30 x Q        0
-//  31 0
-// FMAXV  <V><d>, <Vn>.<T>
-bool TryDecodeFMAXV_ASIMDALL_ONLY_SD(const InstData &, Instruction &) {
-  return false;
-}
-
 // STADDB STADDB_32S_memop:
 //   0 1 Rt       0
 //   1 1 Rt       1
@@ -28766,44 +28538,6 @@ bool TryDecodeSQSHL_ASIMDSAME_ONLY(const InstData &, Instruction &) {
   return false;
 }
 
-// ADDV ADDV_asimdall_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 1 opcode   0
-//  13 1 opcode   1
-//  14 0 opcode   2
-//  15 1 opcode   3
-//  16 1 opcode   4
-//  17 0
-//  18 0
-//  19 0
-//  20 1
-//  21 1
-//  22 x size     0
-//  23 x size     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 0 U        0
-//  30 x Q        0
-//  31 0
-// ADDV  <V><d>, <Vn>.<T>
-bool TryDecodeADDV_ASIMDALL_ONLY(const InstData &, Instruction &) {
-  return false;
-}
-
 // PMUL PMUL_asimdsame_only:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -30097,82 +29831,6 @@ bool TryDecodeUQXTN_ASIMDMISC_N(const InstData &, Instruction &) {
 }
 
 
-// FMINNMV FMINNMV_asimdall_only_H:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 0 opcode   0
-//  13 0 opcode   1
-//  14 1 opcode   2
-//  15 1 opcode   3
-//  16 0 opcode   4
-//  17 0
-//  18 0
-//  19 0
-//  20 1
-//  21 1
-//  22 0
-//  23 1 o1       0
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 0 U        0
-//  30 x Q        0
-//  31 0
-// FMINNMV  <V><d>, <Vn>.<T>
-bool TryDecodeFMINNMV_ASIMDALL_ONLY_H(const InstData &, Instruction &) {
-  return false;
-}
-
-// FMINNMV FMINNMV_asimdall_only_SD:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 0 opcode   0
-//  13 0 opcode   1
-//  14 1 opcode   2
-//  15 1 opcode   3
-//  16 0 opcode   4
-//  17 0
-//  18 0
-//  19 0
-//  20 1
-//  21 1
-//  22 x sz       0
-//  23 1 o1       0
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1 U        0
-//  30 x Q        0
-//  31 0
-// FMINNMV  <V><d>, <Vn>.<T>
-bool TryDecodeFMINNMV_ASIMDALL_ONLY_SD(const InstData &, Instruction &) {
-  return false;
-}
-
 // FCVTZS FCVTZS_asisdmiscfp16_R:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -30854,44 +30512,6 @@ bool TryDecodeLDTRSB_32_LDST_UNPRIV(const InstData &, Instruction &) {
 //  31 0 size     1
 // LDTRSB  <Xt>, [<Xn|SP>{, #<simm>}]
 bool TryDecodeLDTRSB_64_LDST_UNPRIV(const InstData &, Instruction &) {
-  return false;
-}
-
-// SMINV SMINV_asimdall_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 0
-//  13 1
-//  14 0
-//  15 1
-//  16 1 op       0
-//  17 0
-//  18 0
-//  19 0
-//  20 1
-//  21 1
-//  22 x size     0
-//  23 x size     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 0 U        0
-//  30 x Q        0
-//  31 0
-// SMINV  <V><d>, <Vn>.<T>
-bool TryDecodeSMINV_ASIMDALL_ONLY(const InstData &, Instruction &) {
   return false;
 }
 
@@ -32108,82 +31728,6 @@ bool TryDecodeWFI_HI_SYSTEM(const InstData &, Instruction &) {
 //  31 0 size     1
 // LDXRH  <Wt>, [<Xn|SP>{,#0}]
 bool TryDecodeLDXRH_LR32_LDSTEXCL(const InstData &, Instruction &) {
-  return false;
-}
-
-// FMAXNMV FMAXNMV_asimdall_only_H:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 0 opcode   0
-//  13 0 opcode   1
-//  14 1 opcode   2
-//  15 1 opcode   3
-//  16 0 opcode   4
-//  17 0
-//  18 0
-//  19 0
-//  20 1
-//  21 1
-//  22 0
-//  23 0 o1       0
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 0 U        0
-//  30 x Q        0
-//  31 0
-// FMAXNMV  <V><d>, <Vn>.<T>
-bool TryDecodeFMAXNMV_ASIMDALL_ONLY_H(const InstData &, Instruction &) {
-  return false;
-}
-
-// FMAXNMV FMAXNMV_asimdall_only_SD:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 0 opcode   0
-//  13 0 opcode   1
-//  14 1 opcode   2
-//  15 1 opcode   3
-//  16 0 opcode   4
-//  17 0
-//  18 0
-//  19 0
-//  20 1
-//  21 1
-//  22 x sz       0
-//  23 0 o1       0
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1 U        0
-//  30 x Q        0
-//  31 0
-// FMAXNMV  <V><d>, <Vn>.<T>
-bool TryDecodeFMAXNMV_ASIMDALL_ONLY_SD(const InstData &, Instruction &) {
   return false;
 }
 
@@ -34122,82 +33666,6 @@ bool TryDecodeSTSETH_32S_MEMOP(const InstData &, Instruction &) {
 //  31 0 size     1
 // STSETLH  <Ws>, [<Xn|SP>]
 bool TryDecodeSTSETLH_32S_MEMOP(const InstData &, Instruction &) {
-  return false;
-}
-
-// FMINV FMINV_asimdall_only_H:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 1 opcode   0
-//  13 1 opcode   1
-//  14 1 opcode   2
-//  15 1 opcode   3
-//  16 0 opcode   4
-//  17 0
-//  18 0
-//  19 0
-//  20 1
-//  21 1
-//  22 0
-//  23 1 o1       0
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 0 U        0
-//  30 x Q        0
-//  31 0
-// FMINV  <V><d>, <Vn>.<T>
-bool TryDecodeFMINV_ASIMDALL_ONLY_H(const InstData &, Instruction &) {
-  return false;
-}
-
-// FMINV FMINV_asimdall_only_SD:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 1 opcode   0
-//  13 1 opcode   1
-//  14 1 opcode   2
-//  15 1 opcode   3
-//  16 0 opcode   4
-//  17 0
-//  18 0
-//  19 0
-//  20 1
-//  21 1
-//  22 x sz       0
-//  23 1 o1       0
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1 U        0
-//  30 x Q        0
-//  31 0
-// FMINV  <V><d>, <Vn>.<T>
-bool TryDecodeFMINV_ASIMDALL_ONLY_SD(const InstData &, Instruction &) {
   return false;
 }
 
@@ -42975,44 +42443,6 @@ bool TryDecodeLD1R_ASISDLSOP_RX1_R(const InstData &, Instruction &) {
 //  31 0
 // MUL  <Vd>.<T>, <Vn>.<T>, <Vm>.<Ts>[<index>]
 bool TryDecodeMUL_ASIMDELEM_R(const InstData &, Instruction &) {
-  return false;
-}
-
-// UADDLV UADDLV_asimdall_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 1 opcode   0
-//  13 1 opcode   1
-//  14 0 opcode   2
-//  15 0 opcode   3
-//  16 0 opcode   4
-//  17 0
-//  18 0
-//  19 0
-//  20 1
-//  21 1
-//  22 x size     0
-//  23 x size     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1 U        0
-//  30 x Q        0
-//  31 0
-// UADDLV  <V><d>, <Vn>.<T>
-bool TryDecodeUADDLV_ASIMDALL_ONLY(const InstData &, Instruction &) {
   return false;
 }
 

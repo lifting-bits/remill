@@ -3583,7 +3583,7 @@ bool TryDecodeORR_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
   inst.function = ss.str();
   AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
-  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rm);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rm);
   return true;
 }
 
@@ -3668,6 +3668,13 @@ bool TryDecodeREV32_ASIMDMISC_R(const InstData &, Instruction &) {
 // REV64  <Vd>.<T>, <Vn>.<T>
 bool TryDecodeREV64_ASIMDMISC_R(const InstData &, Instruction &) {
   return false;
+}
+
+static void AddQArrangementSpecifier(const InstData &data, Instruction &inst,
+                                     const char *if_Q, const char *if_not_Q) {
+  std::stringstream ss;
+  ss << inst.function << "_" << (data.Q ? if_Q : if_not_Q);
+  inst.function = ss.str();
 }
 
 static const char *ArrangementSpecifier(uint64_t total_size,
@@ -4057,18 +4064,110 @@ bool TryDecodeEOR_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
 
 // BIT  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
 bool TryDecodeBIT_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
-  std::stringstream ss;
-  ss << inst.function << "_" << (data.Q ? "16B" : "8B");
-  inst.function = ss.str();
+  AddQArrangementSpecifier(data, inst, "16B", "8B");
   AddRegOperand(inst, kActionReadWrite, kRegV, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
-  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rm);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rm);
   return true;
 }
 
 // BIF  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
 bool TryDecodeBIF_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
   return TryDecodeBIT_ASIMDSAME_ONLY(data, inst);
+}
+
+// ADDV  <V><d>, <Vn>.<T>
+bool TryDecodeADDV_ASIMDALL_ONLY(const InstData &data, Instruction &inst) {
+  if (data.size == 0x2 && !data.Q) {
+    return false;  // `if size:Q == '100' then ReservedValue();`
+  } else if (data.size == 0x3) {
+    return false;  // `if size == '11' then ReservedValue();`.
+  }
+  const uint64_t esize = 8ULL << data.size;
+  const uint64_t datasize = data.Q ? 128 : 64;
+  AddArrangementSpecifier(inst, datasize, esize);
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  return true;
+}
+
+// UMINV  <V><d>, <Vn>.<T>
+bool TryDecodeUMINV_ASIMDALL_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeADDV_ASIMDALL_ONLY(data, inst);
+}
+
+// UMAXV  <V><d>, <Vn>.<T>
+bool TryDecodeUMAXV_ASIMDALL_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeADDV_ASIMDALL_ONLY(data, inst);
+}
+
+// SMAXV  <V><d>, <Vn>.<T>
+bool TryDecodeSMAXV_ASIMDALL_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeADDV_ASIMDALL_ONLY(data, inst);
+}
+
+// SMINV  <V><d>, <Vn>.<T>
+bool TryDecodeSMINV_ASIMDALL_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeADDV_ASIMDALL_ONLY(data, inst);
+}
+
+// FMAXV  <V><d>, <Vn>.<T>
+bool TryDecodeFMAXV_ASIMDALL_ONLY_H(const InstData &data, Instruction &inst) {
+  AddQArrangementSpecifier(data, inst, "8H", "4H");
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  return true;
+}
+
+// FMAXV  <V><d>, <Vn>.<T>
+bool TryDecodeFMAXV_ASIMDALL_ONLY_SD(const InstData &data, Instruction &inst) {
+  if (!(!data.sz && data.Q)) {
+    return false;  // `if sz:Q != '01' then ReservedValue();`
+  }
+  inst.function += "_4S";
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  return true;
+}
+
+// FMINNMV  <V><d>, <Vn>.<T>
+bool TryDecodeFMINNMV_ASIMDALL_ONLY_H(const InstData &data, Instruction &inst) {
+  return TryDecodeFMAXV_ASIMDALL_ONLY_H(data, inst);
+}
+
+// FMINNMV  <V><d>, <Vn>.<T>
+bool TryDecodeFMINNMV_ASIMDALL_ONLY_SD(const InstData &data, Instruction &inst) {
+  return TryDecodeFMAXV_ASIMDALL_ONLY_SD(data, inst);
+}
+
+// FMAXNMV  <V><d>, <Vn>.<T>
+bool TryDecodeFMAXNMV_ASIMDALL_ONLY_H(const InstData &data, Instruction &inst) {
+  return TryDecodeFMAXV_ASIMDALL_ONLY_H(data, inst);
+}
+
+// FMAXNMV  <V><d>, <Vn>.<T>
+bool TryDecodeFMAXNMV_ASIMDALL_ONLY_SD(const InstData &data, Instruction &inst) {
+  return TryDecodeFMAXV_ASIMDALL_ONLY_SD(data, inst);
+}
+
+// FMINV  <V><d>, <Vn>.<T>
+bool TryDecodeFMINV_ASIMDALL_ONLY_H(const InstData &data, Instruction &inst) {
+  return TryDecodeFMAXV_ASIMDALL_ONLY_H(data, inst);
+}
+
+// FMINV  <V><d>, <Vn>.<T>
+bool TryDecodeFMINV_ASIMDALL_ONLY_SD(const InstData &data, Instruction &inst) {
+  return TryDecodeFMAXV_ASIMDALL_ONLY_SD(data, inst);
+}
+
+// UADDLV  <V><d>, <Vn>.<T>
+bool TryDecodeUADDLV_ASIMDALL_ONLY(const InstData &, Instruction &) {
+  return false;
+}
+
+// SADDLV  <V><d>, <Vn>.<T>
+bool TryDecodeSADDLV_ASIMDALL_ONLY(const InstData &, Instruction &) {
+  return false;
 }
 
 }  // namespace aarch64
