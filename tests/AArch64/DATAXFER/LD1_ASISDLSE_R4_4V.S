@@ -14,49 +14,49 @@
  * limitations under the License.
  */
 
-TEST_BEGIN(LD1_ASISDLSEP_I4_I4_16B, ld1_r4_16b, 1)
+TEST_BEGIN(LD1_ASISDLSE_R4_4V_16B, ld1_r4_16b, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ld1 {v31.16b, v0.16b, v1.16b, v2.16b}, [x3]
 TEST_END
 
-TEST_BEGIN(LD1_ASISDLSEP_I4_I4_8B, ld1_r4_8b, 1)
+TEST_BEGIN(LD1_ASISDLSE_R4_4V_8B, ld1_r4_8b, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ld1 {v31.8b, v0.8b, v1.8b, v2.8b}, [x3]
 TEST_END
 
-TEST_BEGIN(LD1_ASISDLSEP_I4_I4_8H, ld1_r4_8h, 1)
+TEST_BEGIN(LD1_ASISDLSE_R4_4V_8H, ld1_r4_8h, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ld1 {v31.8h, v0.8h, v1.8h, v2.8h}, [x3]
 TEST_END
 
-TEST_BEGIN(LD1_ASISDLSEP_I4_I4_4H, ld1_r4_4h, 1)
+TEST_BEGIN(LD1_ASISDLSE_R4_4V_4H, ld1_r4_4h, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ld1 {v31.4h, v0.4h, v1.4h, v2.4h}, [x3]
 TEST_END
 
-TEST_BEGIN(LD1_ASISDLSEP_I4_I4_4S, ld1_r4_4s, 1)
+TEST_BEGIN(LD1_ASISDLSE_R4_4V_4S, ld1_r4_4s, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ld1 {v31.4s, v0.4s, v1.4s, v2.4s}, [x3]
 TEST_END
 
-TEST_BEGIN(LD1_ASISDLSEP_I4_I4_2S, ld1_r4_2s, 1)
+TEST_BEGIN(LD1_ASISDLSE_R4_4V_2S, ld1_r4_2s, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ld1 {v31.2s, v0.2s, v1.2s, v2.2s}, [x3]
 TEST_END
 
-TEST_BEGIN(LD1_ASISDLSEP_I4_I4_2D, ld1_r4_2d, 1)
+TEST_BEGIN(LD1_ASISDLSE_R4_4V_2D, ld1_r4_2d, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ld1 {v31.2d, v0.2d, v1.2d, v2.2d}, [x3]
 TEST_END
 
-TEST_BEGIN(LD1_ASISDLSEP_I4_I4_1D, ld1_r4_1d, 1)
+TEST_BEGIN(LD1_ASISDLSE_R4_4V_1D, ld1_r4_1d, 1)
 TEST_INPUTS(0)
     add x3, sp, #-256
     ld1 {v31.1d, v0.1d, v1.1d, v2.1d}, [x3]

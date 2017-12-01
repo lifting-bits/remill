@@ -255,10 +255,10 @@ SYMBOL(__aarch64_test_table_begin):
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
 
 
-#include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_R1_1V.S"
-#include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_R2_2V.S"
-#include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_R3_3V.S"
-#include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_R4_4V.S"
+#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R1_1V.S"
+#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R2_2V.S"
+#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R3_3V.S"
+#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R4_4V.S"
 
 #include "tests/AArch64/SIMD/FMAXV_ASIMDALL_ONLY_SD_4S.S"
 #include "tests/AArch64/SIMD/FMINV_ASIMDALL_ONLY_SD_4S.S"
