@@ -286,6 +286,67 @@ IF_AVX(DEF_ISEL(VPSHUFD_YMMqq_YMMqq_IMMb) = PSHUFD<VV256W, V256>;)
 
 namespace {
 
+template <typename D, typename S1>
+  DEF_SEM(PSHUFLW, D dst, S1 src1, I8 src2) {
+  // Source operand is packed with word (16-bit) integers to be shuffled,
+  // but src1 is also a vector of one or more 128-bit "lanes":
+  auto src_vec = UReadV128(src1);
+  auto src_words_vec = UReadV16(src1);
+  
+  // Dest operand is similar. DEST[MAXVL-1:128] will be unmodified:
+  auto dst_vec = UClearV16(UReadV16(dst));
+
+  // The same operation is done for each 128-bit "lane" of src1:
+  auto num_lanes = NumVectorElems(UReadV128(src1));
+
+  _Pragma("unroll")
+  for (std::size_t lane_index = 0, word_index = 0; lane_index < num_lanes; ++lane_index) {
+    auto lane = UExtractV128(src_vec, lane_index);
+    // Words will be shuffled in the order specified in a code in src2:
+    auto order = Read(src2);
+
+    // Shuffle the 4 words from the low 64-bits of the 128-bit lane:
+    _Pragma("unroll")
+    for (std::size_t word_count = 0; word_count < 4; ++word_count, ++word_index) {
+      auto sel = UAnd(order, 0x3_u8);
+      auto shift = UMul(sel, 16_u8);
+      order = UShr(order, 2_u8);
+      auto sel_val = UShr(lane, UInt128(shift));
+      dst_vec = UInsertV16(dst_vec, word_index, TruncTo<uint16_t>(sel_val));
+    }
+
+    // After shuffling the low 64-bits, the high 64-bits of the src1 lane is 
+    // copied to the high quadword of the corresponding destination lane:
+    _Pragma("unroll")
+    for (std::size_t word_count = 0; word_count < 4; ++word_count, ++word_index) {
+      dst_vec = UInsertV16(dst_vec, word_index, UExtractV16(src_words_vec, word_index));
+    }
+  }
+
+  UWriteV16(dst, dst_vec);
+  return memory;
+}
+
+} // namespace
+
+DEF_ISEL(PSHUFLW_XMMdq_MEMdq_IMMb) = PSHUFLW<V128W, MV128>;
+DEF_ISEL(PSHUFLW_XMMdq_XMMdq_IMMb) = PSHUFLW<V128W, V128>;
+IF_AVX(DEF_ISEL(VPSHUFLW_XMMdq_MEMdq_IMMb) = PSHUFLW<VV128W, MV128>;)
+IF_AVX(DEF_ISEL(VPSHUFLW_XMMdq_XMMdq_IMMb) = PSHUFLW<VV128W, V128>;)
+IF_AVX(DEF_ISEL(VPSHUFLW_YMMqq_MEMqq_IMMb) = PSHUFLW<VV256W, MV256>;)
+IF_AVX(DEF_ISEL(VPSHUFLW_YMMqq_YMMqq_IMMb) = PSHUFLW<VV256W, V256>;)
+
+/*
+4432 VPSHUFLW VPSHUFLW_XMMu16_MASKmskw_XMMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_128 ATTRIBUTES: MASKOP_EVEX 
+4433 VPSHUFLW VPSHUFLW_XMMu16_MASKmskw_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_128 ATTRIBUTES: DISP8_FULLMEM MASKOP_EVEX 
+4434 VPSHUFLW VPSHUFLW_YMMu16_MASKmskw_YMMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_256 ATTRIBUTES: MASKOP_EVEX 
+4435 VPSHUFLW VPSHUFLW_YMMu16_MASKmskw_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_256 ATTRIBUTES: DISP8_FULLMEM MASKOP_EVEX 
+4436 VPSHUFLW VPSHUFLW_ZMMu16_MASKmskw_ZMMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_512 ATTRIBUTES: MASKOP_EVEX 
+4437 VPSHUFLW VPSHUFLW_ZMMu16_MASKmskw_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_512 ATTRIBUTES: DISP8_FULLMEM MASKOP_EVEX 
+*/
+
+namespace {
+
 #define MAKE_PCMP(suffix, size, op) \
     template <typename D, typename S1, typename S2> \
     DEF_SEM(PCMP ## suffix, D dst, S1 src1, S2 src2) { \
