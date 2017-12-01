@@ -3568,44 +3568,6 @@ bool TryDecodeFCVTL_ASIMDMISC_L(const InstData &, Instruction &) {
   return false;
 }
 
-// DMB DMB_BO_system:
-//   0 1 Rt       0
-//   1 1 Rt       1
-//   2 1 Rt       2
-//   3 1 Rt       3
-//   4 1 Rt       4
-//   5 1 opc      0
-//   6 0 opc      1
-//   7 1
-//   8 x CRm      0
-//   9 x CRm      1
-//  10 x CRm      2
-//  11 x CRm      3
-//  12 1 CRn      0
-//  13 1 CRn      1
-//  14 0 CRn      2
-//  15 0 CRn      3
-//  16 1 op1      0
-//  17 1 op1      1
-//  18 0 op1      2
-//  19 0 op0      0
-//  20 0 op0      1
-//  21 0 L        0
-//  22 0
-//  23 0
-//  24 1
-//  25 0
-//  26 1
-//  27 0
-//  28 1
-//  29 0
-//  30 1
-//  31 1
-// DMB  <option>|#<imm>
-bool TryDecodeDMB_BO_SYSTEM(const InstData &, Instruction &) {
-  return false;
-}
-
 // YIELD YIELD_HI_system:
 //   0 1 Rt       0
 //   1 1 Rt       1

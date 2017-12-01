@@ -39,8 +39,15 @@ DEF_SEM(DoMRS_RS_SYSTEM_FPSR, R64W dest) {
   return memory;
 }
 
+DEF_SEM(DataMemoryBarrier) {
+  // TODO(pag): Full-system data memory barrier probably requires a synchronous
+  //            hypercall if it behaves kind of like Linux's `sys_membarrier`.
+  return __remill_barrier_store_store(memory);
+}
+
 }  // namespace
 
 DEF_ISEL(SVC_EX_EXCEPTION) = CallSupervisor;
 DEF_ISEL(BRK_EX_EXCEPTION) = Breakpoint;
 DEF_ISEL(MRS_RS_SYSTEM_FPSR) = DoMRS_RS_SYSTEM_FPSR;
+DEF_ISEL(DMB_BO_SYSTEM) = DataMemoryBarrier;

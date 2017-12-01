@@ -763,14 +763,19 @@ ALWAYS_INLINE static T FloatMin(T lhs, T rhs) {
     return NAN;
   }
 
+  if (lhs < rhs) {
+    return lhs;
+
+  } else if (lhs > rhs) {
+    return rhs;
+
   // Use integer comparisons; we need to return the "most negative" value
   // (e.g. in the case of +0 and -0).
-  auto a = reinterpret_cast<I &>(lhs);
-  auto b = reinterpret_cast<I &>(rhs);
-  if (a < b) {
-    return lhs;
   } else {
-    return rhs;
+    auto a = reinterpret_cast<I &>(lhs);
+    auto b = reinterpret_cast<I &>(rhs);
+    auto res = SMin(a, b);
+    return reinterpret_cast<T &>(res);
   }
 }
 
@@ -780,14 +785,19 @@ ALWAYS_INLINE static T FloatMax(T lhs, T rhs) {
     return NAN;
   }
 
-  // Use integer comparisons; we need to return the "most positive" value
-  // (e.g. in the case of +0 and -0).
-  auto a = reinterpret_cast<I &>(lhs);
-  auto b = reinterpret_cast<I &>(rhs);
-  if (a > b) {
-    return lhs;
-  } else {
+  if (lhs < rhs) {
     return rhs;
+
+  } else if (lhs > rhs) {
+    return lhs;
+
+  // Use integer comparisons; we need to return the "most negative" value
+  // (e.g. in the case of +0 and -0).
+  } else {
+    auto a = reinterpret_cast<I &>(lhs);
+    auto b = reinterpret_cast<I &>(rhs);
+    auto res = SMax(a, b);
+    return reinterpret_cast<T &>(res);
   }
 }
 

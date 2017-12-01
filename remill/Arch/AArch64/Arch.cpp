@@ -4170,6 +4170,11 @@ bool TryDecodeSADDLV_ASIMDALL_ONLY(const InstData &, Instruction &) {
   return false;
 }
 
+// DMB  <option>|#<imm>
+bool TryDecodeDMB_BO_SYSTEM(const InstData &, Instruction &) {
+  return true;
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
