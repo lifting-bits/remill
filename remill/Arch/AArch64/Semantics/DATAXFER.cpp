@@ -894,7 +894,7 @@ namespace {
     template <typename S> \
     DEF_SEM(LD1_QUAD_POSTINDEX_ ## esize, V128W dst1, V128W dst2, \
             V128W dst3, V128W dst4, S src, R64W addr_reg, ADDR next_addr) { \
-    memory = LD1_QUAD_ ## esize(memory, state, dst1, dst2, dst3, dst4, src); \
+      memory = LD1_QUAD_ ## esize(memory, state, dst1, dst2, dst3, dst4, src); \
       Write(addr_reg, Read(next_addr)); \
       return memory; \
     }
@@ -933,8 +933,24 @@ namespace {
         dst1_vec = UInsertV ## size(dst1_vec, j, UExtractV ## size(vec, i++)); \
         dst2_vec = UInsertV ## size(dst2_vec, j, UExtractV ## size(vec, i++)); \
       } \
-      UWriteV ## size(dst1, dst1_vec); \
-      UWriteV ## size(dst2, dst2_vec); \
+        UWriteV ## size(dst1, dst1_vec); \
+        UWriteV ## size(dst2, dst2_vec); \
+      return memory; \
+    }
+
+MAKE_LD2(8)
+MAKE_LD2(16)
+MAKE_LD2(32)
+MAKE_LD2(64)
+
+#undef MAKE_LD2
+
+#define MAKE_LD2(size) \
+    template <typename S> \
+    DEF_SEM(LD2_ ## size ## _POSTINDEX, V128W dst1, V128W dst2, S src, \
+            R64W addr_reg, ADDR next_addr) { \
+      memory = LD2_ ## size(memory, state, dst1, dst2, src); \
+      Write(addr_reg, Read(next_addr)); \
       return memory; \
     }
 
@@ -954,6 +970,22 @@ DEF_ISEL(LD2_ASISDLSE_R2_8H) = LD2_16<MV256>;
 DEF_ISEL(LD2_ASISDLSE_R2_2S) = LD2_32<MV128>;
 DEF_ISEL(LD2_ASISDLSE_R2_4S) = LD2_32<MV256>;
 DEF_ISEL(LD2_ASISDLSE_R2_2D) = LD2_64<MV256>;
+
+DEF_ISEL(LD2_ASISDLSE_I2_I_8B) = LD2_8_POSTINDEX<MV128>;
+DEF_ISEL(LD2_ASISDLSE_I2_I_16B) = LD2_8_POSTINDEX<MV256>;
+DEF_ISEL(LD2_ASISDLSE_I2_I_4H) = LD2_16_POSTINDEX<MV128>;
+DEF_ISEL(LD2_ASISDLSE_I2_I_8H) = LD2_16_POSTINDEX<MV256>;
+DEF_ISEL(LD2_ASISDLSE_I2_I_2S) = LD2_32_POSTINDEX<MV128>;
+DEF_ISEL(LD2_ASISDLSE_I2_I_4S) = LD2_32_POSTINDEX<MV256>;
+DEF_ISEL(LD2_ASISDLSE_I2_I_2D) = LD2_64_POSTINDEX<MV256>;
+
+DEF_ISEL(LD2_ASISDLSE_R2_R_8B) = LD2_8_POSTINDEX<MV128>;
+DEF_ISEL(LD2_ASISDLSE_R2_R_16B) = LD2_8_POSTINDEX<MV256>;
+DEF_ISEL(LD2_ASISDLSE_R2_R_4H) = LD2_16_POSTINDEX<MV128>;
+DEF_ISEL(LD2_ASISDLSE_R2_R_8H) = LD2_16_POSTINDEX<MV256>;
+DEF_ISEL(LD2_ASISDLSE_R2_R_2S) = LD2_32_POSTINDEX<MV128>;
+DEF_ISEL(LD2_ASISDLSE_R2_R_4S) = LD2_32_POSTINDEX<MV256>;
+DEF_ISEL(LD2_ASISDLSE_R2_R_2D) = LD2_64_POSTINDEX<MV256>;
 
 namespace {
 
