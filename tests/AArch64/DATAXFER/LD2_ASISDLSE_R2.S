@@ -25,3 +25,33 @@ TEST_INPUTS(0)
     add x3, sp, #-256
     ld2 {v3.8b, v4.8b}, [x3]
 TEST_END
+
+TEST_BEGIN(LD2_ASISDLSE_R2_4H, ld2_r2_4h, 1)
+TEST_INPUTS(0)
+    add x3, sp, #-256
+    ld2 {v3.4h, v4.4h}, [x3]
+TEST_END
+
+TEST_BEGIN(LD2_ASISDLSE_R2_8H, ld2_r2_8h, 1)
+TEST_INPUTS(0)
+    add x3, sp, #-256
+    ld2 {v3.8h, v4.8h}, [x3]
+TEST_END
+
+TEST_BEGIN(LD2_ASISDLSE_R2_4S, ld2_r2_4s, 1)
+TEST_INPUTS(0)
+    add x3, sp, #-256
+    ld2 {v3.4s, v4.4s}, [x3]
+TEST_END
+
+TEST_BEGIN(LD2_ASISDLSE_R2_2S, ld2_r2_2s, 1)
+TEST_INPUTS(0)
+    add x3, sp, #-256
+    ld2 {v3.2s, v4.2s}, [x3]
+TEST_END
+
+TEST_BEGIN(LD2_ASISDLSE_R2_2D, ld2_r2_2d, 1)
+TEST_INPUTS(0)
+    add x3, sp, #-256
+    ld2 {v3.2d, v4.2d}, [x3]
+TEST_END

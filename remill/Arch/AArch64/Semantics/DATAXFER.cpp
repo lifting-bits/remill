@@ -927,13 +927,11 @@ DEF_SEM(LD2_8, V128W dst1, V128W dst2, S src) {
   auto vec = UReadV8(src);
   auto dst1_vec = UClearV8(UReadV8(dst1));
   auto dst2_vec = UClearV8(UReadV8(dst2));
-
   _Pragma("unroll")
   for (size_t i = 0, j = 0; i < NumVectorElems(vec); j++) {
     dst1_vec = UInsertV8(dst1_vec, j, UExtractV8(vec, i++));
     dst2_vec = UInsertV8(dst2_vec, j, UExtractV8(vec, i++));
   }
-
   UWriteV8(dst1, dst1_vec);
   UWriteV8(dst2, dst2_vec);
   return memory;
