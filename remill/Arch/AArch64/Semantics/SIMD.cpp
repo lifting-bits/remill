@@ -18,13 +18,50 @@ namespace {
 
 template <typename S>
 DEF_SEM(ORR_Vec, V128W dst, S src1, S src2) {
-  UWriteV8(dst, UOrV8(UReadV8(src1), UReadV8(src2)));
+  UWriteV64(dst, UOrV64(UReadV64(src1), UReadV64(src2)));
   return memory;
 }
 
 template <typename S>
 DEF_SEM(AND_Vec, V128W dst, S src1, S src2) {
-  UWriteV8(dst, UAndV8(UReadV8(src1), UReadV8(src2)));
+  UWriteV64(dst, UAndV64(UReadV64(src1), UReadV64(src2)));
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(BIC_Vec, V128W dst, S src1, S src2) {
+  UWriteV64(dst, UAndV64(UReadV64(src1), UNotV64(UReadV64(src2))));
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(EOR_Vec, V128W dst, S src1, S src2) {
+  auto operand4 = UReadV64(src1);
+  auto operand1 = UReadV64(src2);
+  auto operand2 = UClearV64(operand4);
+  auto operand3 = UNotV64(operand2);
+  UWriteV64(dst, UXorV64(
+      operand1, UAndV64(UXorV64(operand2, operand4), operand3)));
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(BIT_Vec, V128W dst, S dst_src, S src1, S src2) {
+  auto operand4 = UReadV64(src1);
+  auto operand1 = UReadV64(dst_src);
+  auto operand3 = UReadV64(src2);
+  UWriteV64(dst, UXorV64(
+      operand1, UAndV64(UXorV64(operand1, operand4), operand3)));
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(BIF_Vec, V128W dst, S dst_src, S src1, S src2) {
+  auto operand4 = UReadV64(src1);
+  auto operand1 = UReadV64(dst_src);
+  auto operand3 = UNotV64(UReadV64(src2));
+  UWriteV64(dst, UXorV64(
+      operand1, UAndV64(UXorV64(operand1, operand4), operand3)));
   return memory;
 }
 
@@ -35,6 +72,18 @@ DEF_ISEL(ORR_ASIMDSAME_ONLY_16B) = ORR_Vec<V128>;
 
 DEF_ISEL(AND_ASIMDSAME_ONLY_8B) = AND_Vec<V64>;
 DEF_ISEL(AND_ASIMDSAME_ONLY_16B) = AND_Vec<V128>;
+
+DEF_ISEL(BIC_ASIMDSAME_ONLY_8B) = BIC_Vec<V64>;
+DEF_ISEL(BIC_ASIMDSAME_ONLY_16B) = BIC_Vec<V128>;
+
+DEF_ISEL(EOR_ASIMDSAME_ONLY_8B) = EOR_Vec<V64>;
+DEF_ISEL(EOR_ASIMDSAME_ONLY_16B) = EOR_Vec<V128>;
+
+DEF_ISEL(BIT_ASIMDSAME_ONLY_8B) = BIT_Vec<V64>;
+DEF_ISEL(BIT_ASIMDSAME_ONLY_16B) = BIT_Vec<V128>;
+
+DEF_ISEL(BIF_ASIMDSAME_ONLY_8B) = BIF_Vec<V64>;
+DEF_ISEL(BIF_ASIMDSAME_ONLY_16B) = BIF_Vec<V128>;
 
 namespace {
 
@@ -464,3 +513,324 @@ DEF_ISEL(SMAXP_ASIMDSAME_ONLY_4H) = SMAXP_16<V64, int16v4_t>;
 DEF_ISEL(SMAXP_ASIMDSAME_ONLY_8H) = SMAXP_16<V128, int16v8_t>;
 DEF_ISEL(SMAXP_ASIMDSAME_ONLY_2S) = SMAXP_32<V64, int32v2_t>;
 DEF_ISEL(SMAXP_ASIMDSAME_ONLY_4S) = SMAXP_32<V128, int32v4_t>;
+
+namespace {
+
+template <typename V, typename B>
+ALWAYS_INLINE static auto Reduce2(const V &vec, B binop, size_t base=0)
+    -> decltype(binop(vec.elems[0], vec.elems[1])) {
+  return binop(vec.elems[base + 0], vec.elems[base + 1]);
+}
+
+template <typename V, typename B>
+ALWAYS_INLINE static auto Reduce4(const V &vec, B binop, size_t base=0)
+    -> decltype(binop(vec.elems[0], vec.elems[1])) {
+  auto lo = Reduce2(vec, binop, base + 0);
+  auto hi = Reduce2(vec, binop, base + 2);
+  return binop(lo, hi);
+}
+
+template <typename V, typename B>
+ALWAYS_INLINE static auto Reduce8(const V &vec, B binop, size_t base=0)
+    -> decltype(binop(vec.elems[0], vec.elems[1])) {
+  auto lo = Reduce4(vec, binop, base + 0);
+  auto hi = Reduce4(vec, binop, base + 4);
+  return binop(lo, hi);
+}
+
+template <typename V, typename B>
+ALWAYS_INLINE static auto Reduce16(const V &vec, B binop, size_t base=0)
+    -> decltype(binop(vec.elems[0], vec.elems[1])) {
+  auto lo = Reduce8(vec, binop, base + 0);
+  auto hi = Reduce8(vec, binop, base + 8);
+  return binop(lo, hi);
+}
+
+template <typename V, typename B>
+ALWAYS_INLINE static auto Reduce(const V &vec, B binop)
+    -> decltype(Reduce2(vec, binop)) {
+  switch (NumVectorElems(vec)) {
+    case 2: return Reduce2(vec, binop);
+    case 4: return Reduce4(vec, binop);
+    case 8: return Reduce8(vec, binop);
+    case 16: return Reduce16(vec, binop);
+    default: __builtin_unreachable();
+  }
+}
+
+template <typename S>
+DEF_SEM(ADDV_8_Reduce, V128W dst, S src) {
+  auto vec = SReadV8(src);
+  UWriteV8(dst, Unsigned(Reduce(vec, SAdd8)));
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(ADDV_16_Reduce, V128W dst, S src) {
+  auto vec = SReadV16(src);
+  UWriteV16(dst, Unsigned(Reduce(vec, SAdd16)));
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(ADDV_32_Reduce, V128W dst, S src) {
+  auto vec = SReadV32(src);
+  UWriteV32(dst, Unsigned(Reduce(vec, SAdd32)));
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(UMINV_8, V128W dst, S src) {
+  auto vec = UReadV8(src);
+  auto val = std::numeric_limits<uint8_t>::max();
+  _Pragma("unroll")
+  for (auto elem : vec.elems) {
+    val = UMin(elem, val);
+  }
+  UWriteV8(dst, val);
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(UMINV_16, V128W dst, S src) {
+  auto vec = UReadV16(src);
+  auto val = std::numeric_limits<uint16_t>::max();
+  _Pragma("unroll")
+  for (auto elem : vec.elems) {
+    val = UMin(elem, val);
+  }
+  UWriteV16(dst, val);
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(UMINV_32, V128W dst, S src) {
+  auto vec = UReadV32(src);
+  auto val = std::numeric_limits<uint32_t>::max();
+  _Pragma("unroll")
+  for (auto elem : vec.elems) {
+    val = UMin(elem, val);
+  }
+  UWriteV32(dst, val);
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(SMINV_8, V128W dst, S src) {
+  auto vec = SReadV8(src);
+  auto val = std::numeric_limits<int8_t>::max();
+  _Pragma("unroll")
+  for (auto elem : vec.elems) {
+    val = SMin(elem, val);
+  }
+  SWriteV8(dst, val);
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(SMINV_16, V128W dst, S src) {
+  auto vec = SReadV16(src);
+  auto val = std::numeric_limits<int16_t>::max();
+  _Pragma("unroll")
+  for (auto elem : vec.elems) {
+    val = SMin(elem, val);
+  }
+  SWriteV16(dst, val);
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(SMINV_32, V128W dst, S src) {
+  auto vec = SReadV32(src);
+  auto val = std::numeric_limits<int32_t>::max();
+  _Pragma("unroll")
+  for (auto elem : vec.elems) {
+    val = SMin(elem, val);
+  }
+  SWriteV32(dst, val);
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(UMAXV_8, V128W dst, S src) {
+  auto vec = UReadV8(src);
+  auto val = std::numeric_limits<uint8_t>::min();
+  _Pragma("unroll")
+  for (auto elem : vec.elems) {
+    val = UMax(elem, val);
+  }
+  UWriteV8(dst, val);
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(UMAXV_16, V128W dst, S src) {
+  auto vec = UReadV16(src);
+  auto val = std::numeric_limits<uint16_t>::min();
+  _Pragma("unroll")
+  for (auto elem : vec.elems) {
+    val = UMax(elem, val);
+  }
+  UWriteV16(dst, val);
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(UMAXV_32, V128W dst, S src) {
+  auto vec = UReadV32(src);
+  auto val = std::numeric_limits<uint32_t>::min();
+  _Pragma("unroll")
+  for (auto elem : vec.elems) {
+    val = UMax(elem, val);
+  }
+  UWriteV32(dst, val);
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(SMAXV_8, V128W dst, S src) {
+  auto vec = SReadV8(src);
+  auto val = std::numeric_limits<int8_t>::min();
+  _Pragma("unroll")
+  for (auto elem : vec.elems) {
+    val = SMax(elem, val);
+  }
+  SWriteV8(dst, val);
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(SMAXV_16, V128W dst, S src) {
+  auto vec = SReadV16(src);
+  auto val = std::numeric_limits<int16_t>::min();
+  _Pragma("unroll")
+  for (auto elem : vec.elems) {
+    val = SMax(elem, val);
+  }
+  SWriteV16(dst, val);
+  return memory;
+}
+
+template <typename S>
+DEF_SEM(SMAXV_32, V128W dst, S src) {
+  auto vec = SReadV32(src);
+  auto val = std::numeric_limits<int32_t>::min();
+  _Pragma("unroll")
+  for (auto elem : vec.elems) {
+    val = SMax(elem, val);
+  }
+  SWriteV32(dst, val);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(ADDV_ASIMDALL_ONLY_8B) = ADDV_8_Reduce<V64>;
+DEF_ISEL(ADDV_ASIMDALL_ONLY_16B) = ADDV_8_Reduce<V128>;
+DEF_ISEL(ADDV_ASIMDALL_ONLY_4H) = ADDV_16_Reduce<V64>;
+DEF_ISEL(ADDV_ASIMDALL_ONLY_8H) = ADDV_16_Reduce<V128>;
+DEF_ISEL(ADDV_ASIMDALL_ONLY_4S) = ADDV_32_Reduce<V128>;
+
+DEF_ISEL(UMINV_ASIMDALL_ONLY_8B) = UMINV_8<V64>;
+DEF_ISEL(UMINV_ASIMDALL_ONLY_16B) = UMINV_8<V128>;
+DEF_ISEL(UMINV_ASIMDALL_ONLY_4H) = UMINV_16<V64>;
+DEF_ISEL(UMINV_ASIMDALL_ONLY_8H) = UMINV_16<V128>;
+DEF_ISEL(UMINV_ASIMDALL_ONLY_4S) = UMINV_32<V128>;
+
+DEF_ISEL(SMINV_ASIMDALL_ONLY_8B) = SMINV_8<V64>;
+DEF_ISEL(SMINV_ASIMDALL_ONLY_16B) = SMINV_8<V128>;
+DEF_ISEL(SMINV_ASIMDALL_ONLY_4H) = SMINV_16<V64>;
+DEF_ISEL(SMINV_ASIMDALL_ONLY_8H) = SMINV_16<V128>;
+DEF_ISEL(SMINV_ASIMDALL_ONLY_4S) = SMINV_32<V128>;
+
+DEF_ISEL(UMAXV_ASIMDALL_ONLY_8B) = UMAXV_8<V64>;
+DEF_ISEL(UMAXV_ASIMDALL_ONLY_16B) = UMAXV_8<V128>;
+DEF_ISEL(UMAXV_ASIMDALL_ONLY_4H) = UMAXV_16<V64>;
+DEF_ISEL(UMAXV_ASIMDALL_ONLY_8H) = UMAXV_16<V128>;
+DEF_ISEL(UMAXV_ASIMDALL_ONLY_4S) = UMAXV_32<V128>;
+
+DEF_ISEL(SMAXV_ASIMDALL_ONLY_8B) = SMAXV_8<V64>;
+DEF_ISEL(SMAXV_ASIMDALL_ONLY_16B) = SMAXV_8<V128>;
+DEF_ISEL(SMAXV_ASIMDALL_ONLY_4H) = SMAXV_16<V64>;
+DEF_ISEL(SMAXV_ASIMDALL_ONLY_8H) = SMAXV_16<V128>;
+DEF_ISEL(SMAXV_ASIMDALL_ONLY_4S) = SMAXV_32<V128>;
+
+namespace {
+
+template <typename T, typename I>
+ALWAYS_INLINE static T FloatMin(T lhs, T rhs) {
+  if (__builtin_isunordered(lhs, rhs)) {
+    return NAN;
+  } else if (__builtin_isless(lhs, rhs)) {
+    return lhs;
+  } else {
+    return rhs;
+  }
+
+//  if (lhs < rhs) {
+//    return lhs;
+//
+//  } else if (lhs > rhs) {
+//    return rhs;
+//
+//  // Use integer comparisons; we need to return the "most negative" value
+//  // (e.g. in the case of +0 and -0).
+//  } else {
+//    auto a = reinterpret_cast<I &>(lhs);
+//    auto b = reinterpret_cast<I &>(rhs);
+//    auto res = SMin(a, b);
+//    return reinterpret_cast<T &>(res);
+//  }
+}
+
+template <typename T, typename I>
+ALWAYS_INLINE static T FloatMax(T lhs, T rhs) {
+  if (__builtin_isunordered(lhs, rhs)) {
+    return NAN;
+  } else if (__builtin_isgreater(lhs, rhs)) {
+    return lhs;
+  } else {
+    return rhs;
+  }
+//
+//  if (lhs < rhs) {
+//    return rhs;
+//
+//  } else if (lhs > rhs) {
+//    return lhs;
+//
+//  // Use integer comparisons; we need to return the "most negative" value
+//  // (e.g. in the case of +0 and -0).
+//  } else {
+//    auto a = reinterpret_cast<I &>(lhs);
+//    auto b = reinterpret_cast<I &>(rhs);
+//    auto res = SMax(a, b);
+//    return reinterpret_cast<T &>(res);
+//  }
+}
+
+// NOTE(pag): These aren't quite right w.r.t. NaN propagation.
+DEF_SEM(FMINV_32_Reduce, V128W dst, V128 src) {
+  auto vec = FReadV32(src);
+  FWriteV32(dst, Reduce4(vec, FloatMin<float32_t, int32_t>));
+  return memory;
+}
+
+DEF_SEM(FMAXV_32_Reduce, V128W dst, V128 src) {
+  auto vec = FReadV32(src);
+  FWriteV32(dst, Reduce4(vec, FloatMax<float32_t, int32_t>));
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(FMINV_ASIMDALL_ONLY_SD_4S) = FMINV_32_Reduce;
+DEF_ISEL(FMAXV_ASIMDALL_ONLY_SD_4S) = FMAXV_32_Reduce;
+
+// TODO(pag):
+// FMINV_ASIMDALL_ONLY_H
+// FMAXV_ASIMDALL_ONLY_H
+// FMINNMV_ASIMDALL_ONLY_H
+// FMINNMV_ASIMDALL_ONLY_SD
+// FMAXNMV_ASIMDALL_ONLY_H
+// FMAXNMV_ASIMDALL_ONLY_SD

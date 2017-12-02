@@ -655,12 +655,150 @@ DEF_ISEL(LDAR_LR64_LDSTEXCL) = LoadAcquire<R64W, M64>;
 
 namespace {
 
+#define MAKE_LD1(esize) \
+    template <typename S> \
+    DEF_SEM(LD1_SINGLE_ ## esize, V128W dst1, S src) { \
+      auto elems1 = UReadV ## esize(src); \
+      UWriteV ## esize(dst1, elems1); \
+      return memory; \
+    }
+
+MAKE_LD1(8)
+MAKE_LD1(16)
+MAKE_LD1(32)
+MAKE_LD1(64)
+
+#undef MAKE_LD1
+
+}  // namespace
+
+DEF_ISEL(LD1_ASISDLSE_R1_1V_8B) = LD1_SINGLE_8<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R1_1V_16B) = LD1_SINGLE_8<MV128>;
+
+DEF_ISEL(LD1_ASISDLSE_R1_1V_4H) = LD1_SINGLE_16<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R1_1V_8H) = LD1_SINGLE_16<MV128>;
+
+DEF_ISEL(LD1_ASISDLSE_R1_1V_2S) = LD1_SINGLE_32<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R1_1V_4S) = LD1_SINGLE_32<MV128>;
+
+DEF_ISEL(LD1_ASISDLSE_R1_1V_1D) = LD1_SINGLE_64<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R1_1V_2D) = LD1_SINGLE_64<MV128>;
+
+namespace {
+
+#define MAKE_LD1(esize) \
+    template <typename S> \
+    DEF_SEM(LD1_PAIR_ ## esize, V128W dst1, V128W dst2, S src) { \
+      auto elems1 = UReadV ## esize(src); \
+      auto elems2 = UReadV ## esize(GetElementPtr(src, 1U)); \
+      UWriteV ## esize(dst1, elems1); \
+      UWriteV ## esize(dst2, elems2); \
+      return memory; \
+    }
+
+MAKE_LD1(8)
+MAKE_LD1(16)
+MAKE_LD1(32)
+MAKE_LD1(64)
+
+#undef MAKE_LD1
+
+}  // namespace
+
+DEF_ISEL(LD1_ASISDLSE_R2_2V_8B) = LD1_PAIR_8<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R2_2V_16B) = LD1_PAIR_8<MV128>;
+
+DEF_ISEL(LD1_ASISDLSE_R2_2V_4H) = LD1_PAIR_16<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R2_2V_8H) = LD1_PAIR_16<MV128>;
+
+DEF_ISEL(LD1_ASISDLSE_R2_2V_2S) = LD1_PAIR_32<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R2_2V_4S) = LD1_PAIR_32<MV128>;
+
+DEF_ISEL(LD1_ASISDLSE_R2_2V_1D) = LD1_PAIR_64<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R2_2V_2D) = LD1_PAIR_64<MV128>;
+
+
+namespace {
+
+#define MAKE_LD1(esize) \
+    template <typename S> \
+    DEF_SEM(LD1_TRIPLE_ ## esize, V128W dst1, V128W dst2, \
+            V128W dst3, S src) { \
+      auto elems1 = UReadV ## esize(src); \
+      auto elems2 = UReadV ## esize(GetElementPtr(src, 1U)); \
+      auto elems3 = UReadV ## esize(GetElementPtr(src, 2U)); \
+      UWriteV ## esize(dst1, elems1); \
+      UWriteV ## esize(dst2, elems2); \
+      UWriteV ## esize(dst3, elems3); \
+      return memory; \
+    }
+
+MAKE_LD1(8)
+MAKE_LD1(16)
+MAKE_LD1(32)
+MAKE_LD1(64)
+
+#undef MAKE_LD1
+
+}  // namespace
+
+DEF_ISEL(LD1_ASISDLSE_R3_3V_8B) = LD1_TRIPLE_8<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R3_3V_16B) = LD1_TRIPLE_8<MV128>;
+
+DEF_ISEL(LD1_ASISDLSE_R3_3V_4H) = LD1_TRIPLE_16<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R3_3V_8H) = LD1_TRIPLE_16<MV128>;
+
+DEF_ISEL(LD1_ASISDLSE_R3_3V_2S) = LD1_TRIPLE_32<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R3_3V_4S) = LD1_TRIPLE_32<MV128>;
+
+DEF_ISEL(LD1_ASISDLSE_R3_3V_1D) = LD1_TRIPLE_64<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R3_3V_2D) = LD1_TRIPLE_64<MV128>;
+
+namespace {
+
+#define MAKE_LD1(esize) \
+    template <typename S> \
+    DEF_SEM(LD1_QUAD_ ## esize, V128W dst1, V128W dst2, \
+            V128W dst3, V128W dst4, S src) { \
+      auto elems1 = UReadV ## esize(src); \
+      auto elems2 = UReadV ## esize(GetElementPtr(src, 1U)); \
+      auto elems3 = UReadV ## esize(GetElementPtr(src, 2U)); \
+      auto elems4 = UReadV ## esize(GetElementPtr(src, 3U)); \
+      UWriteV ## esize(dst1, elems1); \
+      UWriteV ## esize(dst2, elems2); \
+      UWriteV ## esize(dst3, elems3); \
+      UWriteV ## esize(dst4, elems4); \
+      return memory; \
+    }
+
+MAKE_LD1(8)
+MAKE_LD1(16)
+MAKE_LD1(32)
+MAKE_LD1(64)
+
+#undef MAKE_LD1
+
+}  // namespace
+
+DEF_ISEL(LD1_ASISDLSE_R4_4V_8B) = LD1_QUAD_8<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R4_4V_16B) = LD1_QUAD_8<MV128>;
+
+DEF_ISEL(LD1_ASISDLSE_R4_4V_4H) = LD1_QUAD_16<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R4_4V_8H) = LD1_QUAD_16<MV128>;
+
+DEF_ISEL(LD1_ASISDLSE_R4_4V_2S) = LD1_QUAD_32<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R4_4V_4S) = LD1_QUAD_32<MV128>;
+
+DEF_ISEL(LD1_ASISDLSE_R4_4V_1D) = LD1_QUAD_64<MV64>;
+DEF_ISEL(LD1_ASISDLSE_R4_4V_2D) = LD1_QUAD_64<MV128>;
+
+namespace {
+
 #define MAKE_LD1_POSTINDEX(esize) \
     template <typename S> \
     DEF_SEM(LD1_SINGLE_POSTINDEX_ ## esize, V128W dst1, S src, \
             R64W addr_reg, ADDR next_addr) { \
-      auto elems1 = UReadV ## esize(src); \
-      UWriteV ## esize(dst1, elems1); \
+      memory = LD1_SINGLE_ ## esize(memory, state, dst1, src); \
       Write(addr_reg, Read(next_addr)); \
       return memory; \
     }
@@ -692,10 +830,7 @@ namespace {
     template <typename S> \
     DEF_SEM(LD1_PAIR_POSTINDEX_ ## esize, V128W dst1, V128W dst2, S src, \
             R64W addr_reg, ADDR next_addr) { \
-      auto elems1 = UReadV ## esize(src); \
-      auto elems2 = UReadV ## esize(GetElementPtr(src, 1U)); \
-      UWriteV ## esize(dst1, elems1); \
-      UWriteV ## esize(dst2, elems2); \
+      memory = LD1_PAIR_ ## esize(memory, state, dst1, dst2, src); \
       Write(addr_reg, Read(next_addr)); \
       return memory; \
     }
@@ -727,12 +862,7 @@ namespace {
     template <typename S> \
     DEF_SEM(LD1_TRIPLE_POSTINDEX_ ## esize, V128W dst1, V128W dst2, \
             V128W dst3, S src, R64W addr_reg, ADDR next_addr) { \
-      auto elems1 = UReadV ## esize(src); \
-      auto elems2 = UReadV ## esize(GetElementPtr(src, 1U)); \
-      auto elems3 = UReadV ## esize(GetElementPtr(src, 2U)); \
-      UWriteV ## esize(dst1, elems1); \
-      UWriteV ## esize(dst2, elems2); \
-      UWriteV ## esize(dst3, elems3); \
+      memory = LD1_TRIPLE_ ## esize(memory, state, dst1, dst2, dst3, src); \
       Write(addr_reg, Read(next_addr)); \
       return memory; \
     }
@@ -764,14 +894,7 @@ namespace {
     template <typename S> \
     DEF_SEM(LD1_QUAD_POSTINDEX_ ## esize, V128W dst1, V128W dst2, \
             V128W dst3, V128W dst4, S src, R64W addr_reg, ADDR next_addr) { \
-      auto elems1 = UReadV ## esize(src); \
-      auto elems2 = UReadV ## esize(GetElementPtr(src, 1U)); \
-      auto elems3 = UReadV ## esize(GetElementPtr(src, 2U)); \
-      auto elems4 = UReadV ## esize(GetElementPtr(src, 3U)); \
-      UWriteV ## esize(dst1, elems1); \
-      UWriteV ## esize(dst2, elems2); \
-      UWriteV ## esize(dst3, elems3); \
-      UWriteV ## esize(dst4, elems4); \
+      memory = LD1_QUAD_ ## esize(memory, state, dst1, dst2, dst3, dst4, src); \
       Write(addr_reg, Read(next_addr)); \
       return memory; \
     }
@@ -796,6 +919,73 @@ DEF_ISEL(LD1_ASISDLSEP_I4_I4_4S) = LD1_QUAD_POSTINDEX_32<MV128>;
 
 DEF_ISEL(LD1_ASISDLSEP_I4_I4_1D) = LD1_QUAD_POSTINDEX_64<MV64>;
 DEF_ISEL(LD1_ASISDLSEP_I4_I4_2D) = LD1_QUAD_POSTINDEX_64<MV128>;
+
+namespace {
+
+#define MAKE_LD2(size) \
+    template <typename S> \
+    DEF_SEM(LD2_ ## size, V128W dst1, V128W dst2, S src) { \
+      auto vec = UReadV ## size(src); \
+      auto dst1_vec = UClearV ## size(UReadV ## size(dst1)); \
+      auto dst2_vec = UClearV ## size(UReadV ## size(dst2)); \
+      _Pragma("unroll") \
+      for (size_t i = 0, j = 0; i < NumVectorElems(vec); j++) { \
+        dst1_vec = UInsertV ## size(dst1_vec, j, UExtractV ## size(vec, i++)); \
+        dst2_vec = UInsertV ## size(dst2_vec, j, UExtractV ## size(vec, i++)); \
+      } \
+        UWriteV ## size(dst1, dst1_vec); \
+        UWriteV ## size(dst2, dst2_vec); \
+      return memory; \
+    }
+
+MAKE_LD2(8)
+MAKE_LD2(16)
+MAKE_LD2(32)
+MAKE_LD2(64)
+
+#undef MAKE_LD2
+
+#define MAKE_LD2(size) \
+    template <typename S> \
+    DEF_SEM(LD2_ ## size ## _POSTINDEX, V128W dst1, V128W dst2, S src, \
+            R64W addr_reg, ADDR next_addr) { \
+      memory = LD2_ ## size(memory, state, dst1, dst2, src); \
+      Write(addr_reg, Read(next_addr)); \
+      return memory; \
+    }
+
+MAKE_LD2(8)
+MAKE_LD2(16)
+MAKE_LD2(32)
+MAKE_LD2(64)
+
+#undef MAKE_LD2
+
+}  // namespace
+
+DEF_ISEL(LD2_ASISDLSE_R2_8B) = LD2_8<MV128>;
+DEF_ISEL(LD2_ASISDLSE_R2_16B) = LD2_8<MV256>;
+DEF_ISEL(LD2_ASISDLSE_R2_4H) = LD2_16<MV128>;
+DEF_ISEL(LD2_ASISDLSE_R2_8H) = LD2_16<MV256>;
+DEF_ISEL(LD2_ASISDLSE_R2_2S) = LD2_32<MV128>;
+DEF_ISEL(LD2_ASISDLSE_R2_4S) = LD2_32<MV256>;
+DEF_ISEL(LD2_ASISDLSE_R2_2D) = LD2_64<MV256>;
+
+DEF_ISEL(LD2_ASISDLSEP_I2_I_8B) = LD2_8_POSTINDEX<MV128>;
+DEF_ISEL(LD2_ASISDLSEP_I2_I_16B) = LD2_8_POSTINDEX<MV256>;
+DEF_ISEL(LD2_ASISDLSEP_I2_I_4H) = LD2_16_POSTINDEX<MV128>;
+DEF_ISEL(LD2_ASISDLSEP_I2_I_8H) = LD2_16_POSTINDEX<MV256>;
+DEF_ISEL(LD2_ASISDLSEP_I2_I_2S) = LD2_32_POSTINDEX<MV128>;
+DEF_ISEL(LD2_ASISDLSEP_I2_I_4S) = LD2_32_POSTINDEX<MV256>;
+DEF_ISEL(LD2_ASISDLSEP_I2_I_2D) = LD2_64_POSTINDEX<MV256>;
+
+DEF_ISEL(LD2_ASISDLSEP_R2_R_8B) = LD2_8_POSTINDEX<MV128>;
+DEF_ISEL(LD2_ASISDLSEP_R2_R_16B) = LD2_8_POSTINDEX<MV256>;
+DEF_ISEL(LD2_ASISDLSEP_R2_R_4H) = LD2_16_POSTINDEX<MV128>;
+DEF_ISEL(LD2_ASISDLSEP_R2_R_8H) = LD2_16_POSTINDEX<MV256>;
+DEF_ISEL(LD2_ASISDLSEP_R2_R_2S) = LD2_32_POSTINDEX<MV128>;
+DEF_ISEL(LD2_ASISDLSEP_R2_R_4S) = LD2_32_POSTINDEX<MV256>;
+DEF_ISEL(LD2_ASISDLSEP_R2_R_2D) = LD2_64_POSTINDEX<MV256>;
 
 namespace {
 

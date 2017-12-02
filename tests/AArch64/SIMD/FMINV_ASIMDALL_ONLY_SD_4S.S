@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef REMILL_BC_COMPAT_RUNTIMEDYLD_H_
-#define REMILL_BC_COMPAT_RUNTIMEDYLD_H_
 
-#include "remill/BC/Version.h"
-
-#include <llvm/ExecutionEngine/RuntimeDyld.h>
-#include <llvm/ExecutionEngine/RTDyldMemoryManager.h>
-
-#endif  // REMILL_BC_COMPAT_RUNTIMEDYLD_H_
+TEST_BEGIN(FMINV_ASIMDALL_ONLY_SD_4S, fminv_v4s, 1)
+TEST_INPUTS(0)
+    fminv s5, v0.4s
+    fminv s6, v1.4s
+    fminv s7, v2.4s
+    fminv s8, v3.4s
+TEST_END

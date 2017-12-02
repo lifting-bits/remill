@@ -257,6 +257,7 @@ SYMBOL(__aarch64_test_table_begin):
 
 
 #if 1
+
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
 #include "tests/AArch64/BINARY/ADD_32_ADDSUB_EXT.S"
@@ -311,10 +312,17 @@ SYMBOL(__aarch64_test_table_begin):
 
 #include "tests/AArch64/DATAXFER/FMOV_t_FLOATIMM.S"
 #include "tests/AArch64/DATAXFER/FMOV_NToN.S"
+#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R1_1V.S"
+#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R2_2V.S"
+#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R3_3V.S"
+#include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R4_4V.S"
 #include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_I1_I1.S"
 #include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_I2_I2.S"
 #include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_I3_I3.S"
 #include "tests/AArch64/DATAXFER/LD1_ASISDLSEP_I4_I4.S"
+#include "tests/AArch64/DATAXFER/LD2_ASISDLSE_R2.S"
+#include "tests/AArch64/DATAXFER/LD2_ASISDLSEP_R2_R.S"
+#include "tests/AArch64/DATAXFER/LD2_ASISDLSEP_I2_I.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_OFF.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_POST.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_PRE.S"
@@ -364,20 +372,31 @@ SYMBOL(__aarch64_test_table_begin):
 
 #include "tests/AArch64/SIMD/ADD_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/ADDP_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/ADDV_ASIMDALL_ONLY.S"
+#include "tests/AArch64/SIMD/BIC_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/BIF_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/BIT_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/CMcc_ASIMDMISC_Z.S"
 #include "tests/AArch64/SIMD/CMcc_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/DUP_ASIMDINS_DR_R.S"
+#include "tests/AArch64/SIMD/EOR_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/FMAXV_ASIMDALL_ONLY_SD_4S.S"
+#include "tests/AArch64/SIMD/FMINV_ASIMDALL_ONLY_SD_4S.S"
 #include "tests/AArch64/SIMD/ORR_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/FMOV_VECTORS.S"
 #include "tests/AArch64/SIMD/SMAX_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/SMAXP_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/SMAXV_ASIMDALL_ONLY.S"
 #include "tests/AArch64/SIMD/SMIN_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/SMINP_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/SMINV_ASIMDALL_ONLY.S"
 #include "tests/AArch64/SIMD/SUB_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/UMAX_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/UMAXP_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/UMAXV_ASIMDALL_ONLY.S"
 #include "tests/AArch64/SIMD/UMIN_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/UMINP_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/UMINV_ASIMDALL_ONLY.S"
 
 
 #endif

@@ -1156,7 +1156,7 @@ T _ZeroVec(void) {
 #define StopFailure() \
     return __remill_error(state, Read(REG_PC), memory)
 
-// Esthetically pleasing names that hide the implicit small-step semantics
+// Aesthetically pleasing names that hide the implicit small-step semantics
 // of the memory pointer.
 #define BarrierLoadLoad() \
     do { \
@@ -1179,14 +1179,18 @@ T _ZeroVec(void) {
     } while (false)
 
 // A 'compiler' barrier that prevents reordering of instructions across the
-// barrier.
+// barrier. A thorough explanation can be found here:
+// http://preshing.com/20120625/memory-ordering-at-compile-time/  
 #define BarrierReorder() \
     do { \
       __asm__ __volatile__ ("" ::: "memory"); \
     } while (false)
 
-// A 'compiler' barrier that forced a particular value to be used in a specific
-// spot.
+// A 'compiler' barrier that also forces a variable's value to be resident in
+// memory at the current spot. This is a useful debugging aid, e.g. when you
+// see `<optimized out>` in GDB, and really pessimizes optimizations.
+//
+// An entertaining explanation is here: https://youtu.be/nXaxk27zwlk?t=40m50s 
 #define BarrierUsedHere(x) \
     do { \
       __asm__ __volatile__ ("" :: "m"(x) : "memory"); \
