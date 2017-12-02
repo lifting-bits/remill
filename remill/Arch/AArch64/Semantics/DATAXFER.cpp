@@ -922,25 +922,38 @@ DEF_ISEL(LD1_ASISDLSEP_I4_I4_2D) = LD1_QUAD_POSTINDEX_64<MV128>;
 
 namespace {
 
-template <typename S>
-DEF_SEM(LD2_8, V128W dst1, V128W dst2, S src) {
-  auto vec = UReadV8(src);
-  auto dst1_vec = UClearV8(UReadV8(dst1));
-  auto dst2_vec = UClearV8(UReadV8(dst2));
-  _Pragma("unroll")
-  for (size_t i = 0, j = 0; i < NumVectorElems(vec); j++) {
-    dst1_vec = UInsertV8(dst1_vec, j, UExtractV8(vec, i++));
-    dst2_vec = UInsertV8(dst2_vec, j, UExtractV8(vec, i++));
-  }
-  UWriteV8(dst1, dst1_vec);
-  UWriteV8(dst2, dst2_vec);
-  return memory;
-}
+#define MAKE_LD2(size) \
+    template <typename S> \
+    DEF_SEM(LD2_ ## size, V128W dst1, V128W dst2, S src) { \
+      auto vec = UReadV ## size(src); \
+      auto dst1_vec = UClearV ## size(UReadV ## size(dst1)); \
+      auto dst2_vec = UClearV ## size(UReadV ## size(dst2)); \
+      _Pragma("unroll") \
+      for (size_t i = 0, j = 0; i < NumVectorElems(vec); j++) { \
+        dst1_vec = UInsertV ## size(dst1_vec, j, UExtractV ## size(vec, i++)); \
+        dst2_vec = UInsertV ## size(dst2_vec, j, UExtractV ## size(vec, i++)); \
+      } \
+      UWriteV ## size(dst1, dst1_vec); \
+      UWriteV ## size(dst2, dst2_vec); \
+      return memory; \
+    }
+
+MAKE_LD2(8)
+MAKE_LD2(16)
+MAKE_LD2(32)
+MAKE_LD2(64)
+
+#undef MAKE_LD2
 
 }  // namespace
 
 DEF_ISEL(LD2_ASISDLSE_R2_8B) = LD2_8<MV128>;
 DEF_ISEL(LD2_ASISDLSE_R2_16B) = LD2_8<MV256>;
+DEF_ISEL(LD2_ASISDLSE_R2_4H) = LD2_16<MV128>;
+DEF_ISEL(LD2_ASISDLSE_R2_8H) = LD2_16<MV256>;
+DEF_ISEL(LD2_ASISDLSE_R2_2S) = LD2_32<MV128>;
+DEF_ISEL(LD2_ASISDLSE_R2_4S) = LD2_32<MV256>;
+DEF_ISEL(LD2_ASISDLSE_R2_2D) = LD2_64<MV256>;
 
 namespace {
 
