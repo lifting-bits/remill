@@ -282,6 +282,9 @@ DEF_ISEL(STUR_64_LDST_UNSCALED) = Store<R64, M64W>;
 DEF_ISEL(MOVZ_32_MOVEWIDE) = Load<R32W, I32>;
 DEF_ISEL(MOVZ_64_MOVEWIDE) = Load<R64W, I64>;
 
+DEF_ISEL(LDXR_LR32_LDSTEXCL) = Load<R32W, M32>;
+DEF_ISEL(LDXR_LR64_LDSTEXCL) = Load<R64W, M64>;
+
 namespace {
 
 template <typename D, typename S, typename InterType>

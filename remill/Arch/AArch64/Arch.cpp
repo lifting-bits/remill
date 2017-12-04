@@ -4353,6 +4353,7 @@ bool TryDecodeLD2_ASISDLSEP_R2_R(const InstData &data, Instruction &inst) {
   return true;
 }
 
+<<<<<<< 1f1492efc29e25839c7a8522d539bd15bd38a6cc
 // NOT  <Vd>.<T>, <Vn>.<T>
 bool TryDecodeNOT_ASIMDMISC_R(const InstData &data, Instruction &inst) {
   const uint64_t datasize = data.Q ? 128 : 64;
@@ -4360,6 +4361,22 @@ bool TryDecodeNOT_ASIMDMISC_R(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
   return true;
+=======
+// LDXR  <Wt>, [<Xn|SP>{,#0}]
+bool TryDecodeLDXR_LR32_LDSTEXCL(const InstData &data, Instruction &inst) {
+  inst.is_atomic_read_modify_write = true;
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 32, data.Rn, 0);
+  return false;
+}
+
+// LDXR  <Xt>, [<Xn|SP>{,#0}]
+bool TryDecodeLDXR_LR64_LDSTEXCL(const InstData &data, Instruction &inst) {
+  inst.is_atomic_read_modify_write = true;
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 64, data.Rn, 0);
+  return false;
+>>>>>>> Semantics and tests for LDXR_LR32_LDSTEXCL and LDXR_LR64_LDSTEXCL.
 }
 
 }  // namespace aarch64
