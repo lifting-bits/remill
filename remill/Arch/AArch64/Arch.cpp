@@ -4274,6 +4274,22 @@ bool TryDecodeLD2_ASISDLSEP_R2_R(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// LDXR  <Wt>, [<Xn|SP>{,#0}]
+bool TryDecodeLDXR_LR32_LDSTEXCL(const InstData &data, Instruction &inst) {
+  inst.is_atomic_read_modify_write = true;
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 32, data.Rn, 0);
+  return false;
+}
+
+// LDXR  <Xt>, [<Xn|SP>{,#0}]
+bool TryDecodeLDXR_LR64_LDSTEXCL(const InstData &data, Instruction &inst) {
+  inst.is_atomic_read_modify_write = true;
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 64, data.Rn, 0);
+  return false;
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!

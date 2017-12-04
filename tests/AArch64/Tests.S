@@ -256,7 +256,9 @@ SYMBOL(__aarch64_test_table_begin):
 
 
 
-#if 1
+#include "tests/AArch64/DATAXFER/LDXR_LRn_LDSTEXCL.S"
+
+#if 0
 
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
