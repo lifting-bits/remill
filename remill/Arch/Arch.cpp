@@ -88,6 +88,12 @@ Arch::Arch(OSName os_name_, ArchName arch_name_)
 
 Arch::~Arch(void) {}
 
+bool Arch::LazyDecodeInstruction(
+    uint64_t address, const std::string &instr_bytes,
+    Instruction &inst) const {
+  return DecodeInstruction(address, instr_bytes, inst);
+}
+
 llvm::Triple Arch::BasicTriple(void) const {
   llvm::Triple triple;
   switch (os_name) {
