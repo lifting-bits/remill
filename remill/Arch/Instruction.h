@@ -140,6 +140,8 @@ class Instruction {
 
   void Reset(void);
 
+  bool FinalizeDecode(void);
+
   // Name of semantics function that implements this instruction.
   std::string function;
 
@@ -160,6 +162,10 @@ class Instruction {
 
   // The effective size of the operand, in bits.
   uint64_t operand_size;
+
+  // Pointer to the `remill::Arch` used to complete the decoding of this
+  // instruction.
+  const Arch *arch_for_decode;
 
   // Does the instruction require the use of the `__remill_atomic_begin` and
   // `__remill_atomic_end`?

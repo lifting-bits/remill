@@ -113,16 +113,16 @@ class AArch64Arch : public Arch {
   // Decode an instruction.
   bool DecodeInstruction(
       uint64_t address, const std::string &instr_bytes,
-      Instruction &inst) const override;
+      Instruction &inst) const final;
 
   // Maximum number of bytes in an instruction.
-  uint64_t MaxInstructionSize(void) const override;
+  uint64_t MaxInstructionSize(void) const final;
 
-  llvm::Triple Triple(void) const override;
-  llvm::DataLayout DataLayout(void) const override;
+  llvm::Triple Triple(void) const final;
+  llvm::DataLayout DataLayout(void) const final;
 
   // Default calling convention for this architecture.
-  llvm::CallingConv::ID DefaultCallingConv(void) const override;
+  llvm::CallingConv::ID DefaultCallingConv(void) const final;
 
  private:
   AArch64Arch(void) = delete;
