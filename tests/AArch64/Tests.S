@@ -255,8 +255,7 @@ SYMBOL(__aarch64_test_table_begin):
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
 
 
-
-#include "tests/AArch64/DATAXFER/LDXR_LRn_LDSTEXCL.S"
+#include "tests/AArch64/DATAXFER/MOVI_ASIMDIMM.S"
 
 #if 0
 
@@ -338,6 +337,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/LDRSH.S"
 #include "tests/AArch64/DATAXFER/LDRSW.S"
 #include "tests/AArch64/DATAXFER/LDUR_n_LDST_UNSCALED.S"
+#include "tests/AArch64/DATAXFER/LDXR_LRn_LDSTEXCL.S"
 #include "tests/AArch64/DATAXFER/MOVK_n_MOVEWIDE.S"
 #include "tests/AArch64/DATAXFER/MOVZ_n_MOVEWIDE.S"
 #include "tests/AArch64/DATAXFER/SMOV.S"

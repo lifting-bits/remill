@@ -4290,34 +4290,49 @@ bool TryDecodeLDXR_LR64_LDSTEXCL(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// STLXR  <Ws>, <Wt>, [<Xn|SP>{,#0}]
+bool TryDecodeSTLXR_SR32_LDSTEXCL(const InstData &data, Instruction &inst) {
+  inst.is_atomic_read_modify_write = true;
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 32, data.Rn, 0);
+  return true;
+}
+
+// STLXR  <Ws>, <Xt>, [<Xn|SP>{,#0}]
+bool TryDecodeSTLXR_SR64_LDSTEXCL(const InstData &data, Instruction &inst) {
+  inst.is_atomic_read_modify_write = true;
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 64, data.Rn, 0);
+  return true;
+}
+
+// MOVI  <Vd>.2D, #<imm>
+bool TryDecodeMOVI_ASIMDIMM_D2_D(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rn);
+  auto a = Replicate(data.a, 1, 8);
+  auto b = Replicate(data.b, 1, 8);
+  auto c = Replicate(data.c, 1, 8);
+  auto d = Replicate(data.d, 1, 8);
+  auto e = Replicate(data.e, 1, 8);
+  auto f = Replicate(data.f, 1, 8);
+  auto g = Replicate(data.g, 1, 8);
+  auto h = Replicate(data.h, 1, 8);
+  uint64_t imm = a;
+  imm = (imm << 8) | b;
+  imm = (imm << 8) | c;
+  imm = (imm << 8) | d;
+  imm = (imm << 8) | e;
+  imm = (imm << 8) | f;
+  imm = (imm << 8) | g;
+  imm = (imm << 8) | h;
+  AddImmOperand(inst, imm);
+  return true;
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
-const Arch *Arch::GetAArch64(
-    OSName os_name_, ArchName arch_name_) {
-//  aarch64::InstData data;
-//  for (uint64_t i = 0; i < 0xFFFFFFFFULL; ++i) {
-//    uint32_t bits = static_cast<uint32_t>(i);
-//    if (aarch64::TryExtractBFM_32M_BITFIELD(data, bits)) {
-//      if (data.iform != aarch64::InstForm::BFM_32M_BITFIELD) {
-//        continue;
-//      }
-//      if (data.Rd == 3 && data.Rn == 0) {
-//        remill::Instruction inst;
-//        if (!aarch64::TryDecode(data, inst)) {
-//          continue;
-//        }
-//        LOG(ERROR)
-//            << "MAKE_BFM_TEST(" << aarch64::InstFormToString(data.iform)
-//            << ", " << aarch64::InstNameToString(data.iclass) << "_w3_w0_"
-//            << std::hex << data.immr.uimm << "_" << data.imms.uimm << ", 0x"
-//            << std::hex << std::setw(2) << std::setfill('0')
-//            << ((bits >> 0) & 0xFF) << ", 0x" << ((bits >> 8) & 0xFF)
-//            << ", 0x" << ((bits >> 16) & 0xFF) << ", 0x"
-//            << ((bits >> 24) & 0xFF) << ")";
-//      }
-//    }
-//  }
+const Arch *Arch::GetAArch64(OSName os_name_, ArchName arch_name_) {
   return new AArch64Arch(os_name_, arch_name_);
 }
 
