@@ -32415,44 +32415,6 @@ bool TryDecodeLDURSH_64_LDST_UNSCALED(const InstData &, Instruction &) {
   return false;
 }
 
-// LDURSW LDURSW_64_ldst_unscaled:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 0
-//  12 x imm9     0
-//  13 x imm9     1
-//  14 x imm9     2
-//  15 x imm9     3
-//  16 x imm9     4
-//  17 x imm9     5
-//  18 x imm9     6
-//  19 x imm9     7
-//  20 x imm9     8
-//  21 0
-//  22 0 opc      0
-//  23 1 opc      1
-//  24 0
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 1
-//  29 1
-//  30 0 size     0
-//  31 1 size     1
-// LDURSW  <Xt>, [<Xn|SP>{, #<simm>}]
-bool TryDecodeLDURSW_64_LDST_UNSCALED(const InstData &, Instruction &) {
-  return false;
-}
-
 // SSHLL SXTL_SSHLL_asimdshf_L:
 //   0 x Rd       0
 //   1 x Rd       1

@@ -2058,6 +2058,11 @@ bool TryDecodeLDUR_64_LDST_UNSCALED(const InstData &data, Instruction &inst) {
   return TryDecodeLDUR_n_LDST_UNSCALED(data, inst, kRegX, 64);
 }
 
+// LDURSW  <Xt>, [<Xn|SP>{, #<simm>}]
+bool TryDecodeLDURSW_64_LDST_UNSCALED(const InstData &data, Instruction &inst) {
+  return TryDecodeLDUR_n_LDST_UNSCALED(data, inst, kRegX, 64);
+}
+
 static bool TryDecodeSTUR_Vn_LDST_UNSCALED(const InstData &data,
                                            Instruction &inst,
                                            RegClass val_class) {

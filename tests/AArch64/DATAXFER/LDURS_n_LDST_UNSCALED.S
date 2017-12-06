@@ -24,7 +24,7 @@ TEST_INPUTS(0xFFFFFFFFFFFFFFFF)
     ldursb w7, [x3, #16]
 TEST_END
 
-/* LDURH  <Wt>, [<Xn|SP>{, #<simm>}] */
+/* LDURSH  <Wt>, [<Xn|SP>{, #<simm>}] */
 TEST_BEGIN(LDURSH_32_LDST_UNSCALED, ldursh_w5_m16, 1)
 TEST_INPUTS(0xFFFFFFFFFFFFFFFF)
     add x3, sp, #-256
@@ -32,4 +32,14 @@ TEST_INPUTS(0xFFFFFFFFFFFFFFFF)
     ldursh w5, [x3, #0]
     ldursh w6, [x3, #8]
     ldursh w7, [x3, #16]
+TEST_END
+
+/* LDURSW  <Wt>, [<Xn|SP>{, #<simm>}] */
+TEST_BEGIN(LDURSW_64_LDST_UNSCALED, ldursw_x5_m32, 1)
+TEST_INPUTS(0xFFFFFFFFFFFFFFFF)
+    add x3, sp, #-256
+    str ARG1_64, [x3, #0]
+    ldursw x5, [x3, #0]
+    ldursw x6, [x3, #8]
+    ldursw x7, [x3, #16]
 TEST_END
