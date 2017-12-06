@@ -8,7 +8,7 @@ url="https://github.com/trailofbits/remill"
 license=('Apache')
 
 depends=('clang39' 'llvm39' 'llvm39-libs')
-makedepends=('git' 'curl' 'patchelf')
+makedepends=('git' 'curl' 'patchelf' 'cmake')
 
 provides=('remill')
 conflicts=('remill')
