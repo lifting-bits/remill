@@ -23786,44 +23786,6 @@ bool TryDecodeMOVI_ASIMDIMM_D_DS(const InstData &, Instruction &) {
   return false;
 }
 
-// MOVI MOVI_asimdimm_D2_d:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x h        0
-//   6 x g        0
-//   7 x f        0
-//   8 x e        0
-//   9 x d        0
-//  10 1
-//  11 0 o2       0
-//  12 0 cmode    0
-//  13 1 cmode    1
-//  14 1 cmode    2
-//  15 1 cmode    3
-//  16 x c        0
-//  17 x b        0
-//  18 x a        0
-//  19 0
-//  20 0
-//  21 0
-//  22 0
-//  23 0
-//  24 1
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1 op       0
-//  30 1 Q        0
-//  31 0
-// MOVI  <Vd>.2D, #<imm>
-bool TryDecodeMOVI_ASIMDIMM_D2_D(const InstData &, Instruction &) {
-  return false;
-}
-
 // SQRDMLAH SQRDMLAH_asisdelem_R:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -31157,82 +31119,6 @@ bool TryDecodeWFI_HI_SYSTEM(const InstData &, Instruction &) {
 //  31 0 size     1
 // LDXRH  <Wt>, [<Xn|SP>{,#0}]
 bool TryDecodeLDXRH_LR32_LDSTEXCL(const InstData &, Instruction &) {
-  return false;
-}
-
-// STLXR STLXR_SR32_ldstexcl:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1 Rt2      0
-//  11 1 Rt2      1
-//  12 1 Rt2      2
-//  13 1 Rt2      3
-//  14 1 Rt2      4
-//  15 1 o0       0
-//  16 x Rs       0
-//  17 x Rs       1
-//  18 x Rs       2
-//  19 x Rs       3
-//  20 x Rs       4
-//  21 0 o1       0
-//  22 0 L        0
-//  23 0 o2       0
-//  24 0
-//  25 0
-//  26 0
-//  27 1
-//  28 0
-//  29 0
-//  30 0 size     0
-//  31 1 size     1
-// STLXR  <Ws>, <Wt>, [<Xn|SP>{,#0}]
-bool TryDecodeSTLXR_SR32_LDSTEXCL(const InstData &, Instruction &) {
-  return false;
-}
-
-// STLXR STLXR_SR64_ldstexcl:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1 Rt2      0
-//  11 1 Rt2      1
-//  12 1 Rt2      2
-//  13 1 Rt2      3
-//  14 1 Rt2      4
-//  15 1 o0       0
-//  16 x Rs       0
-//  17 x Rs       1
-//  18 x Rs       2
-//  19 x Rs       3
-//  20 x Rs       4
-//  21 0 o1       0
-//  22 0 L        0
-//  23 0 o2       0
-//  24 0
-//  25 0
-//  26 0
-//  27 1
-//  28 0
-//  29 0
-//  30 1 size     0
-//  31 1 size     1
-// STLXR  <Ws>, <Xt>, [<Xn|SP>{,#0}]
-bool TryDecodeSTLXR_SR64_LDSTEXCL(const InstData &, Instruction &) {
   return false;
 }
 

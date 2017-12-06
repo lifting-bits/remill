@@ -285,6 +285,9 @@ DEF_ISEL(MOVZ_64_MOVEWIDE) = Load<R64W, I64>;
 DEF_ISEL(LDXR_LR32_LDSTEXCL) = Load<R32W, M32>;
 DEF_ISEL(LDXR_LR64_LDSTEXCL) = Load<R64W, M64>;
 
+DEF_ISEL(STLXR_SR32_LDSTEXCL) = Store<R32, M32W>;
+DEF_ISEL(STLXR_SR64_LDSTEXCL) = Store<R64, M64W>;
+
 namespace {
 
 template <typename D, typename S, typename InterType>
@@ -1062,3 +1065,29 @@ DEF_ISEL(SMOV_ASIMDINS_W_W_H) = SMovFromVec16<R32W, int32_t>;
 DEF_ISEL(SMOV_ASIMDINS_X_X_B) = SMovFromVec8<R64W, int64_t>;
 DEF_ISEL(SMOV_ASIMDINS_X_X_H) = SMovFromVec16<R64W, int64_t>;
 DEF_ISEL(SMOV_ASIMDINS_X_X_S) = SMovFromVec32<R64W, int64_t>;
+
+namespace {
+
+DEF_SEM(MOVI_D2, V128W dst, I64 src) {
+  auto imm = Read(src);
+  auto zero_vec = UClearV64(UReadV64(dst));
+  auto res = UInsertV64(zero_vec, 0, imm);
+  UWriteV64(dst, res);
+  return memory;
+}
+
+}
+
+DEF_ISEL(MOVI_ASIMDIMM_D2_D) = MOVI_D2;
+
+
+
+
+
+
+
+
+
+
+
+
