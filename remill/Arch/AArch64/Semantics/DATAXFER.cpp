@@ -193,6 +193,19 @@ DEF_ISEL(LDP_64_LDSTPAIR_OFF) = LoadPair64;
 
 namespace {
 
+DEF_SEM(LoadSignedPair64, R64W dst1, R64W dst2, MV64 src_mem) {
+  auto vec = SReadV32(src_mem);
+  WriteZExt(dst1, SExtTo<int64_t>(SExtractV32(vec, 0)));
+  WriteZExt(dst2, SExtTo<int64_t>(SExtractV32(vec, 1)));
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(LDPSW_64_LDSTPAIR_OFF) = LoadSignedPair64;
+
+namespace {
+
 template <typename D, typename S>
 DEF_SEM(Load, D dst, S src) {
   WriteZExt(dst, Read(src));

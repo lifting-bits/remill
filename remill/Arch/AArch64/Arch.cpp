@@ -1035,6 +1035,18 @@ bool TryDecodeLDP_64_LDSTPAIR_POST(const InstData &data, Instruction &inst) {
   return true;
 }
 
+//LDPSW <Xt1>, <Xt2>, [<Xn|SP>], #<imm>
+bool TryDecodeLDPSW_64_LDSTPAIR_OFF(const InstData &data, Instruction &inst) {
+  if (data.Rt == data.Rt2) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt2);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 64, data.Rn,
+                         static_cast<uint64_t>(data.imm7.simm7) << 2);
+  return true;
+}
+
 // LDP  <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]!
 bool TryDecodeLDP_32_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
   // `if L:opc<0> == '01' || opc == '11' then UnallocatedEncoding();`.

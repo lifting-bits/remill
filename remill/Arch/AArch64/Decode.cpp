@@ -7179,44 +7179,6 @@ bool TryDecodeLDPSW_64_LDSTPAIR_PRE(const InstData &, Instruction &) {
   return false;
 }
 
-// LDPSW LDPSW_64_ldstpair_off:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x Rt2      0
-//  11 x Rt2      1
-//  12 x Rt2      2
-//  13 x Rt2      3
-//  14 x Rt2      4
-//  15 x imm7     0
-//  16 x imm7     1
-//  17 x imm7     2
-//  18 x imm7     3
-//  19 x imm7     4
-//  20 x imm7     5
-//  21 x imm7     6
-//  22 1 L        0
-//  23 0
-//  24 1
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 0
-//  29 1
-//  30 1 opc      0
-//  31 0 opc      1
-// LDPSW  <Xt1>, <Xt2>, [<Xn|SP>{, #<imm>}]
-bool TryDecodeLDPSW_64_LDSTPAIR_OFF(const InstData &, Instruction &) {
-  return false;
-}
-
 // STUMAXH STUMAXH_32S_memop:
 //   0 1 Rt       0
 //   1 1 Rt       1
