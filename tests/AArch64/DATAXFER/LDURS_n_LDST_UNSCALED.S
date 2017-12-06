@@ -23,3 +23,13 @@ TEST_INPUTS(0xFFFFFFFFFFFFFFFF)
     ldursb w6, [x3, #8]
     ldursb w7, [x3, #16]
 TEST_END
+
+/* LDURH  <Wt>, [<Xn|SP>{, #<simm>}] */
+TEST_BEGIN(LDURSH_32_LDST_UNSCALED, ldursh_w5_m16, 1)
+TEST_INPUTS(0xFFFFFFFFFFFFFFFF)
+    add x3, sp, #-256
+    str ARG1_64, [x3, #0]
+    ldursh w5, [x3, #0]
+    ldursh w6, [x3, #8]
+    ldursh w7, [x3, #16]
+TEST_END
