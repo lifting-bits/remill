@@ -395,11 +395,6 @@ static void DecodeMemory(Instruction &inst,
     size = 16;
   }
 
-  // PC-relative memory accesses are relative to the next PC.
-  if (XED_REG_RIP == base_wide) {
-    disp += static_cast<int64_t>(inst_size);
-  }
-
   // Deduce the implicit segment register if it is absent.
   if (XED_REG_INVALID == segment) {
     segment = XED_REG_DS;
@@ -439,10 +434,11 @@ static void DecodeMemory(Instruction &inst,
   op.addr.scale = XED_REG_INVALID != index ? static_cast<int64_t>(scale) : 0;
   op.addr.displacement = disp;
 
-  // Rename the base register to use `PC` as the register name.
+  // PC-relative memory accesses are relative to the next PC. Rename the base
+  // register to use `PC` as the register name.
   if (XED_REG_RIP == base_wide) {
     op.addr.base_reg.name = "PC";
-    op.addr.displacement += static_cast<int64_t>(inst.NumBytes());
+    op.addr.displacement += static_cast<int64_t>(inst_size);
   }
 
   // We always pass destination operands first, then sources. Memory operands

@@ -458,6 +458,11 @@ static void RunWithFlags(const test::TestInfo *info,
   memset(lifted_state->x87.fxsave.st, 0, kill_size);
   memset(native_state->x87.fxsave.st, 0, kill_size);
 
+  // New Intel CPUs have apparently stopped tracking `dp`, even though we track
+  // it. E.g., in testing, an i7-4910MQ tracked `dp` but an i7-7920HQ did not.
+  lifted_state->x87.fxsave.dp = 0;
+  native_state->x87.fxsave.dp = 0;
+
   // Most machines have `fop` recording disabled, even though we track it.
   lifted_state->x87.fxsave.fop = 0;
   native_state->x87.fxsave.fop = 0;
