@@ -25382,45 +25382,6 @@ bool TryDecodeUMULL_ASIMDELEM_L(const InstData &, Instruction &) {
   return false;
 }
 
-// NOT NOT_asimdmisc_R:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 1
-//  12 1 opcode   0
-//  13 0 opcode   1
-//  14 1 opcode   2
-//  15 0 opcode   3
-//  16 0 opcode   4
-//  17 0
-//  18 0
-//  19 0
-//  20 0
-//  21 1
-//  22 0 size     0
-//  23 0 size     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1 U        0
-//  30 x Q        0
-//  31 0
-// NOT  <Vd>.<T>, <Vn>.<T>
-bool TryDecodeNOT_ASIMDMISC_R(const InstData &, Instruction &) {
-  return false;
-}
-
-
 // SWPAB SWPAB_32_memop:
 //   0 x Rt       0
 //   1 x Rt       1

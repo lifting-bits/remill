@@ -4274,6 +4274,15 @@ bool TryDecodeLD2_ASISDLSEP_R2_R(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// NOT  <Vd>.<T>, <Vn>.<T>
+bool TryDecodeNOT_ASIMDMISC_R(const InstData &data, Instruction &inst) {
+  const uint64_t datasize = data.Q ? 128 : 64;
+  AddArrangementSpecifier(inst, datasize, 8);
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  return true;
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!

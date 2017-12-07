@@ -827,6 +827,22 @@ DEF_SEM(FMAXV_32_Reduce, V128W dst, V128 src) {
 DEF_ISEL(FMINV_ASIMDALL_ONLY_SD_4S) = FMINV_32_Reduce;
 DEF_ISEL(FMAXV_ASIMDALL_ONLY_SD_4S) = FMAXV_32_Reduce;
 
+namespace {
+
+template <typename S>
+DEF_SEM(NOT_8, V128W dst, S src) {
+  auto vec = UReadV8(src);
+  auto res = UNotV8(vec);
+  UWriteV8(dst, res);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(NOT_ASIMDMISC_R_8B) = NOT_8<V64>; 
+DEF_ISEL(NOT_ASIMDMISC_R_16B) = NOT_8<V128>; 
+
+
 // TODO(pag):
 // FMINV_ASIMDALL_ONLY_H
 // FMAXV_ASIMDALL_ONLY_H
