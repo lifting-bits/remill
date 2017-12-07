@@ -281,7 +281,7 @@ endfunction ()
 set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}")
 set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}")
 
-if ("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "")
+if ("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "" OR NOT EXISTS "${LIBRARY_REPOSITORY_ROOT}/llvm")
   set(INSTALLED_LIBLLVM_NAME "libLLVM-${REMILL_LLVM_VERSION}.so")
 
   # system binaries are not built statically, so we need to fix the rpath
@@ -311,9 +311,6 @@ if ("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "")
 
   InstallExternalTarget("ext_llvmlink" "${llvmlink_location}" "${CMAKE_INSTALL_PREFIX}/bin"
     "${INSTALLED_LLVMLINK_NAME}" "${CMAKE_INSTALL_PREFIX}/lib")
-
-  InstallExternalTarget("ext_libllvm" "${libllvm_location}" "${CMAKE_INSTALL_PREFIX}/lib"
-    "${INSTALLED_LIBLLVM_NAME}")
 
 else ()
   # The executable in our binary repository are statically built, meaning that we don't need
