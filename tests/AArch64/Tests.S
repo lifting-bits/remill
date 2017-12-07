@@ -361,6 +361,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/LOGICAL/BICS_n_LOG_SHIFT.S"
 #include "tests/AArch64/LOGICAL/EOR_n_LOG_IMM.S"
 #include "tests/AArch64/LOGICAL/EOR_n_LOG_SHIFT.S"
+#include "tests/AArch64/LOGICAL/EON_n_LOG_SHIFT.S"
 #include "tests/AArch64/LOGICAL/ORN_n_LOG_SHIFT.S"
 #include "tests/AArch64/LOGICAL/ORR_n_LOG_IMM.S"
 #include "tests/AArch64/LOGICAL/ORR_n_LOG_SHIFT.S"

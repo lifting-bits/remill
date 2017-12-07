@@ -1898,6 +1898,11 @@ bool TryDecodeORN_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
   return TryDecodeEOR_64_LOG_SHIFT(data, inst);
 }
 
+// EON  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
+bool TryDecodeEON_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeEOR_64_LOG_SHIFT(data, inst);
+}
+
 // EOR  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
 bool TryDecodeEOR_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
   if (1 & (data.imm6.uimm >> 5)) {
