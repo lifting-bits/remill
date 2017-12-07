@@ -4381,6 +4381,7 @@ bool TryDecodeLDXR_LR64_LDSTEXCL(const InstData &data, Instruction &inst) {
 // STLXR  <Ws>, <Wt>, [<Xn|SP>{,#0}]
 bool TryDecodeSTLXR_SR32_LDSTEXCL(const InstData &data, Instruction &inst) {
   inst.is_atomic_read_modify_write = true;
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rs);
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionWrite, 32, data.Rn, 0);
   return true;
@@ -4389,14 +4390,25 @@ bool TryDecodeSTLXR_SR32_LDSTEXCL(const InstData &data, Instruction &inst) {
 // STLXR  <Ws>, <Xt>, [<Xn|SP>{,#0}]
 bool TryDecodeSTLXR_SR64_LDSTEXCL(const InstData &data, Instruction &inst) {
   inst.is_atomic_read_modify_write = true;
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rs);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionWrite, 64, data.Rn, 0);
   return true;
 }
 
-// MOVI  <Vd>.2D, #<imm>
-bool TryDecodeMOVI_ASIMDIMM_D2_D(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+static uint64_t ConcatABCDEFGHToU8(const InstData &data) {
+  uint64_t imm = data.a;
+  imm = (imm << 1) | data.b;
+  imm = (imm << 1) | data.c;
+  imm = (imm << 1) | data.d;
+  imm = (imm << 1) | data.e;
+  imm = (imm << 1) | data.f;
+  imm = (imm << 1) | data.g;
+  imm = (imm << 1) | data.h;
+  return imm;
+}
+
+static uint64_t ConcatAndReplicateABCDEFGHToU64(const InstData &data) {
   auto a = Replicate(data.a, 1, 8);
   auto b = Replicate(data.b, 1, 8);
   auto c = Replicate(data.c, 1, 8);
@@ -4413,7 +4425,87 @@ bool TryDecodeMOVI_ASIMDIMM_D2_D(const InstData &data, Instruction &inst) {
   imm = (imm << 8) | f;
   imm = (imm << 8) | g;
   imm = (imm << 8) | h;
-  AddImmOperand(inst, imm);
+  return imm;
+}
+
+// MOVI  <Vd>.2D, #<imm>
+bool TryDecodeMOVI_ASIMDIMM_D2_D(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddImmOperand(inst, ConcatAndReplicateABCDEFGHToU64(data));
+  return true;
+}
+
+// MOVI  <Vd>.<T>, #<imm8>{, LSL #0}
+bool TryDecodeMOVI_ASIMDIMM_N_B(const InstData &data, Instruction &inst) {
+  AddQArrangementSpecifier(data, inst, "16B", "8B");
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddImmOperand(inst, ConcatABCDEFGHToU8(data), kUnsigned, 8);
+  return true;
+}
+
+// MOVI  <Vd>.<T>, #<imm8>{, LSL #<amount>}
+bool TryDecodeMOVI_ASIMDIMM_L_HL(const InstData &data, Instruction &inst) {
+  AddQArrangementSpecifier(data, inst, "8H", "4H");
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  uint64_t shift = (data.cmode & 2) ? 8 : 0;
+  AddImmOperand(inst, ConcatABCDEFGHToU8(data) << shift, kUnsigned, 16);
+  return true;
+}
+
+// MOVI  <Vd>.<T>, #<imm8>{, LSL #<amount>}
+bool TryDecodeMOVI_ASIMDIMM_L_SL(const InstData &data, Instruction &inst) {
+  AddQArrangementSpecifier(data, inst, "4S", "2S");
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  uint64_t shift = 8 * ((data.cmode >> 1) & 3);
+  AddImmOperand(inst, ConcatABCDEFGHToU8(data) << shift, kUnsigned, 32);
+  return true;
+}
+
+// MOVI  <Vd>.<T>, #<imm8>, MSL #<amount>
+bool TryDecodeMOVI_ASIMDIMM_M_SM(const InstData &data, Instruction &inst) {
+  AddQArrangementSpecifier(data, inst, "4S", "2S");
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  uint64_t shift = (data.cmode & 1) ? 16 : 8;
+  uint64_t ones = ~((~0ULL) << shift);
+  uint64_t imm = (ConcatABCDEFGHToU8(data) << shift) | ones;
+  AddImmOperand(inst, imm, kUnsigned, 32);
+  return true;
+}
+
+// MOVI  <Dd>, #<imm>
+bool TryDecodeMOVI_ASIMDIMM_D_DS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddImmOperand(inst, ConcatAndReplicateABCDEFGHToU64(data));
+  return true;
+}
+
+// MVNI  <Vd>.<T>, #<imm8>{, LSL #<amount>}
+bool TryDecodeMVNI_ASIMDIMM_L_HL(const InstData &data, Instruction &inst) {
+  if (!TryDecodeMOVI_ASIMDIMM_L_HL(data, inst)) {
+    return false;
+  }
+  auto &imm = inst.operands[inst.operands.size() - 1].imm.val;
+  imm = (~imm) & 0xFFFFULL;
+  return true;
+}
+
+// MVNI  <Vd>.<T>, #<imm8>{, LSL #<amount>}
+bool TryDecodeMVNI_ASIMDIMM_L_SL(const InstData &data, Instruction &inst) {
+  if (!TryDecodeMOVI_ASIMDIMM_L_SL(data, inst)) {
+    return false;
+  }
+  auto &imm = inst.operands[inst.operands.size() - 1].imm.val;
+  imm = (~imm) & 0xFFFFFFFFULL;
+  return true;
+}
+
+// MVNI  <Vd>.<T>, #<imm8>, MSL #<amount>
+bool TryDecodeMVNI_ASIMDIMM_M_SM(const InstData &data, Instruction &inst) {
+  if (!TryDecodeMOVI_ASIMDIMM_M_SM(data, inst)) {
+    return false;
+  }
+  auto &imm = inst.operands[inst.operands.size() - 1].imm.val;
+  imm = (~imm) & 0xFFFFFFFFULL;
   return true;
 }
 

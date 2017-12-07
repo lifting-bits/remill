@@ -285,8 +285,19 @@ DEF_ISEL(MOVZ_64_MOVEWIDE) = Load<R64W, I64>;
 DEF_ISEL(LDXR_LR32_LDSTEXCL) = Load<R32W, M32>;
 DEF_ISEL(LDXR_LR64_LDSTEXCL) = Load<R64W, M64>;
 
-DEF_ISEL(STLXR_SR32_LDSTEXCL) = Store<R32, M32W>;
-DEF_ISEL(STLXR_SR64_LDSTEXCL) = Store<R64, M64W>;
+namespace {
+
+template <typename S, typename D>
+DEF_SEM(STLXR, R32W dst1, S src1, D dst2) {
+  WriteZExt(dst2, Read(src1));
+  WriteZExt(dst1, 0_u32);  // Store succeeded.
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(STLXR_SR32_LDSTEXCL) = STLXR<R32, M32W>;
+DEF_ISEL(STLXR_SR64_LDSTEXCL) = STLXR<R64, M64W>;
 
 namespace {
 
@@ -1070,8 +1081,53 @@ namespace {
 
 DEF_SEM(MOVI_D2, V128W dst, I64 src) {
   auto imm = Read(src);
-  auto zero_vec = UClearV64(UReadV64(dst));
-  auto res = UInsertV64(zero_vec, 0, imm);
+  auto res = UClearV64(UReadV64(dst));
+  res = UInsertV64(res, 0, imm);
+  res = UInsertV64(res, 1, imm);
+  UWriteV64(dst, res);
+  return memory;
+}
+
+template <typename V>
+DEF_SEM(MOVI_N_B, V128W dst, I8 src) {
+  auto imm = Read(src);
+  V res = {};
+  _Pragma("unroll")
+  for (auto &elem : res.elems) {
+    elem = imm;
+  }
+  UWriteV8(dst, res);
+  return memory;
+}
+
+template <typename V>
+DEF_SEM(MOVI_L_HL, V128W dst, I16 src) {
+  auto imm = Read(src);
+  V res = {};
+  _Pragma("unroll")
+  for (auto &elem : res.elems) {
+    elem = imm;
+  }
+  UWriteV16(dst, res);
+  return memory;
+}
+
+template <typename V>
+DEF_SEM(MOVI_L_SL, V128W dst, I32 src) {
+  auto imm = Read(src);
+  V res = {};
+  _Pragma("unroll")
+  for (auto &elem : res.elems) {
+    elem = imm;
+  }
+  UWriteV32(dst, res);
+  return memory;
+}
+
+DEF_SEM(MOVI_DS, V128W dst, I64 src) {
+  auto imm = Read(src);
+  auto res = UClearV64(UReadV64(dst));
+  res = UInsertV64(res, 0, imm);
   UWriteV64(dst, res);
   return memory;
 }
@@ -1079,4 +1135,20 @@ DEF_SEM(MOVI_D2, V128W dst, I64 src) {
 }
 
 DEF_ISEL(MOVI_ASIMDIMM_D2_D) = MOVI_D2;
+DEF_ISEL(MOVI_ASIMDIMM_N_B_8B) = MOVI_N_B<uint8v8_t>;
+DEF_ISEL(MOVI_ASIMDIMM_N_B_16B) = MOVI_N_B<uint8v16_t>;
+DEF_ISEL(MOVI_ASIMDIMM_L_HL_4H) = MOVI_L_HL<uint16v4_t>;
+DEF_ISEL(MOVI_ASIMDIMM_L_HL_8H) = MOVI_L_HL<uint16v8_t>;
+DEF_ISEL(MOVI_ASIMDIMM_L_SL_2S) = MOVI_L_SL<uint32v2_t>;
+DEF_ISEL(MOVI_ASIMDIMM_L_SL_4S) = MOVI_L_SL<uint32v4_t>;
+DEF_ISEL(MOVI_ASIMDIMM_M_SM_2S) = MOVI_L_SL<uint32v2_t>;
+DEF_ISEL(MOVI_ASIMDIMM_M_SM_4S) = MOVI_L_SL<uint32v4_t>;
+DEF_ISEL(MOVI_ASIMDIMM_D_DS) = MOVI_DS;
+
+DEF_ISEL(MVNI_ASIMDIMM_L_HL_4H) = MOVI_L_HL<uint16v4_t>;
+DEF_ISEL(MVNI_ASIMDIMM_L_HL_8H) = MOVI_L_HL<uint16v8_t>;
+DEF_ISEL(MVNI_ASIMDIMM_L_SL_2S) = MOVI_L_SL<uint32v2_t>;
+DEF_ISEL(MVNI_ASIMDIMM_L_SL_4S) = MOVI_L_SL<uint32v4_t>;
+DEF_ISEL(MVNI_ASIMDIMM_M_SM_2S) = MOVI_L_SL<uint32v2_t>;
+DEF_ISEL(MVNI_ASIMDIMM_M_SM_4S) = MOVI_L_SL<uint32v4_t>;
 
