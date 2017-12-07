@@ -381,6 +381,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/SIMD/BIC_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/BIF_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/BIT_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/BSL_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/CMcc_ASIMDMISC_Z.S"
 #include "tests/AArch64/SIMD/CMcc_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/DUP_ASIMDINS_DR_R.S"

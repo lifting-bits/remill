@@ -4167,6 +4167,11 @@ bool TryDecodeBIF_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
   return TryDecodeBIT_ASIMDSAME_ONLY(data, inst);
 }
 
+// BSL  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+bool TryDecodeBSL_ASIMDSAME_ONLY(const InstData &data, Instruction &inst) {
+  return TryDecodeBIT_ASIMDSAME_ONLY(data, inst);
+}
+
 // ADDV  <V><d>, <Vn>.<T>
 bool TryDecodeADDV_ASIMDALL_ONLY(const InstData &data, Instruction &inst) {
   if (data.size == 0x2 && !data.Q) {

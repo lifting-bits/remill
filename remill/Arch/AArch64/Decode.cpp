@@ -31199,44 +31199,6 @@ bool TryDecodeFCMGT_ASIMDMISC_FZ(const InstData &, Instruction &) {
   return false;
 }
 
-// BSL BSL_asimdsame_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1
-//  11 1 opcode   0
-//  12 1 opcode   1
-//  13 0 opcode   2
-//  14 0 opcode   3
-//  15 0 opcode   4
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 1 opc2     0
-//  23 0 opc2     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1 U        0
-//  30 x Q        0
-//  31 0
-// BSL  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
-bool TryDecodeBSL_ASIMDSAME_ONLY(const InstData &, Instruction &) {
-  return false;
-}
-
 // UQSUB UQSUB_asisdsame_only:
 //   0 x Rd       0
 //   1 x Rd       1
