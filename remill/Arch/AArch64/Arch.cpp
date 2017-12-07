@@ -3129,12 +3129,22 @@ bool TryDecodeFCMPE_DZ_FLOATCMP(const InstData &data, Instruction &inst) {
 
 // FCMP  <Dn>, #0.0
 bool TryDecodeFCMP_DZ_FLOATCMP(const InstData &data, Instruction &inst) {
-  if (IsUnallocatedFloatEncoding(data)) {
-    return false;
-  }
-  AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rn);
-  AddImmOperand(inst, 0);
-  return true;
+  return TryDecodeFCMP_ToZero(data, inst, kRegD);
+}
+
+// FCMP  <Sn>, #0.0
+bool TryDecodeFCMP_SZ_FLOATCMP(const InstData &data, Instruction &inst) {
+  return TryDecodeFCMP_ToZero(data, inst, kRegS);
+}
+
+// FCMP  <Dn>, <Dm>
+bool TryDecodeFCMP_D_FLOATCMP(const InstData &data, Instruction &inst) {
+  return TryDecodeFn_Fm(data, inst, kRegD);
+}
+
+// FCMP  <Sn>, <Sm>
+bool TryDecodeFCMP_S_FLOATCMP(const InstData &data, Instruction &inst) {
+  return TryDecodeFn_Fm(data, inst, kRegS);
 }
 
 // FABS  <Sd>, <Sn>

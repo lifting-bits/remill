@@ -385,6 +385,20 @@ DEF_SEM(FCMPE_SZ, V32 src1) {
   return memory;
 }
 
+DEF_SEM(FCMP_S, V32 src1, V32 src2) {
+  auto val1 = FExtractV32(FReadV32(src1), 0);
+  auto val2 = FExtractV32(FReadV32(src2), 0);
+  FCompare(state, val1, val2, false);
+  return memory;
+}
+
+DEF_SEM(FCMP_SZ, V32 src1) {
+  auto val1 = FExtractV32(FReadV32(src1), 0);
+  float32_t float_zero = 0.0;
+  FCompare(state, val1, float_zero, false);
+  return memory;
+}
+
 DEF_SEM(FCMPE_D, V64 src1, V64 src2) {
   auto val1 = FExtractV64(FReadV64(src1), 0);
   auto val2 = FExtractV64(FReadV64(src2), 0);
@@ -399,9 +413,16 @@ DEF_SEM(FCMPE_DZ, V64 src1) {
   return memory;
 }
 
-DEF_SEM(FCMP_DZ, V64 src1, I64 zero) {
+DEF_SEM(FCMP_D, V64 src1, V64 src2) {
   auto val1 = FExtractV64(FReadV64(src1), 0);
-  auto float_zero = static_cast<float64_t>(Read(zero));
+  auto val2 = FExtractV64(FReadV64(src2), 0);
+  FCompare(state, val1, val2, false);
+  return memory;
+}
+
+DEF_SEM(FCMP_DZ, V64 src1) {
+  auto val1 = FExtractV64(FReadV64(src1), 0);
+  float64_t float_zero = 0.0;
   FCompare(state, val1, float_zero, false);
   return memory;
 }
@@ -451,8 +472,6 @@ DEF_ISEL(FMADD_D_FLOATDP3) = FMADD_D;
 DEF_ISEL(FDIV_S_FLOATDP2) = FDIV_Scalar32;
 DEF_ISEL(FDIV_D_FLOATDP2) = FDIV_Scalar64;
 
-DEF_ISEL(FCMP_DZ_FLOATCMP) = FCMP_DZ;
-
 DEF_ISEL(FABS_S_FLOATDP1) = FABS_S;
 DEF_ISEL(FABS_D_FLOATDP1) = FABS_D;
 
@@ -461,6 +480,11 @@ DEF_ISEL(FNEG_D_FLOATDP1) = FNEG_D;
 
 DEF_ISEL(FCMPE_S_FLOATCMP) = FCMPE_S;
 DEF_ISEL(FCMPE_SZ_FLOATCMP) = FCMPE_SZ;
+DEF_ISEL(FCMP_S_FLOATCMP) = FCMP_S;
+DEF_ISEL(FCMP_SZ_FLOATCMP) = FCMP_SZ;
 
 DEF_ISEL(FCMPE_D_FLOATCMP) = FCMPE_D;
 DEF_ISEL(FCMPE_DZ_FLOATCMP) = FCMPE_DZ;
+DEF_ISEL(FCMP_D_FLOATCMP) = FCMP_D;
+DEF_ISEL(FCMP_DZ_FLOATCMP) = FCMP_DZ;
+
