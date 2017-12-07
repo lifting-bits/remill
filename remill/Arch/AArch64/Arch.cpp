@@ -4396,7 +4396,7 @@ bool TryDecodeSTLXR_SR64_LDSTEXCL(const InstData &data, Instruction &inst) {
 
 // MOVI  <Vd>.2D, #<imm>
 bool TryDecodeMOVI_ASIMDIMM_D2_D(const InstData &data, Instruction &inst) {
-  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rn);
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
   auto a = Replicate(data.a, 1, 8);
   auto b = Replicate(data.b, 1, 8);
   auto c = Replicate(data.c, 1, 8);
