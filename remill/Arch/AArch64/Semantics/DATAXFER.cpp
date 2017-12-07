@@ -1043,14 +1043,3 @@ DEF_SEM(MOVI_D2, V128W dst, I64 src) {
 
 DEF_ISEL(MOVI_ASIMDIMM_D2_D) = MOVI_D2;
 
-
-
-
-
-
-
-
-
-
-
-
