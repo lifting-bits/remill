@@ -365,6 +365,8 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/LOGICAL/ORR_n_LOG_IMM.S"
 #include "tests/AArch64/LOGICAL/ORR_n_LOG_SHIFT.S"
 
+#include "tests/AArch64/MISC/NOP.S"
+
 #include "tests/AArch64/COND/CSEL_n_CONDSEL.S"
 #include "tests/AArch64/COND/x_CSNEG_n_CONDSEL.S"
 #include "tests/AArch64/COND/CCMP_n_CONDCMP_IMM.S"

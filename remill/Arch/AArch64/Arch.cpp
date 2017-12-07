@@ -1883,6 +1883,11 @@ bool TryDecodeSTRH_32_LDST_IMMPOST(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// NOP
+bool TryDecodeNOP_HI_SYSTEM(const InstData &, Instruction &) {
+  return true;
+}
+
 // ORN  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
 bool TryDecodeORN_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
   return TryDecodeEOR_32_LOG_SHIFT(data, inst);

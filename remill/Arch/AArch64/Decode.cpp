@@ -38608,44 +38608,6 @@ bool TryDecodeFCVTZS_64H_FLOAT2INT(const InstData &, Instruction &) {
   return false;
 }
 
-// NOP NOP_HI_system:
-//   0 1 Rt       0
-//   1 1 Rt       1
-//   2 1 Rt       2
-//   3 1 Rt       3
-//   4 1 Rt       4
-//   5 0 op2      0
-//   6 0 op2      1
-//   7 0 op2      2
-//   8 0 CRm      0
-//   9 0 CRm      1
-//  10 0 CRm      2
-//  11 0 CRm      3
-//  12 0 CRn      0
-//  13 1 CRn      1
-//  14 0 CRn      2
-//  15 0 CRn      3
-//  16 1 op1      0
-//  17 1 op1      1
-//  18 0 op1      2
-//  19 0 op0      0
-//  20 0 op0      1
-//  21 0 L        0
-//  22 0
-//  23 0
-//  24 1
-//  25 0
-//  26 1
-//  27 0
-//  28 1
-//  29 0
-//  30 1
-//  31 1
-// NOP
-bool TryDecodeNOP_HI_SYSTEM(const InstData &, Instruction &) {
-  return false;
-}
-
 // FCVTMS FCVTMS_asisdmiscfp16_R:
 //   0 x Rd       0
 //   1 x Rd       1
