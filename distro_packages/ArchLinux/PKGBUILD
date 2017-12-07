@@ -1,4 +1,4 @@
-pkgname=remill
+pkgname=remill-git
 pkgver=1
 pkgrel=1
 arch=('x86_64')
@@ -13,7 +13,7 @@ makedepends=('git' 'curl' 'patchelf' 'cmake')
 provides=('remill')
 conflicts=('remill')
 
-source=("${pkgname}::git+https://github.com/trailofbits/remill.git#branch=alessandro/feature/archlinux-package")
+source=("${pkgname}::git+https://github.com/trailofbits/remill.git")
 sha1sums=('SKIP')
 
 pkgver() {
