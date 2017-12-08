@@ -249,20 +249,45 @@ DEF_ISEL(STUR_64_LDST_UNSCALED) = Store<R64, M64W>;
 DEF_ISEL(MOVZ_32_MOVEWIDE) = Load<R32W, I32>;
 DEF_ISEL(MOVZ_64_MOVEWIDE) = Load<R64W, I64>;
 
-DEF_ISEL(LDXR_LR32_LDSTEXCL) = Load<R32W, M32>;
-DEF_ISEL(LDXR_LR64_LDSTEXCL) = Load<R64W, M64>;
 
 namespace {
 
-template <typename S, typename D>
-DEF_SEM(STLXR, R32W dst1, S src1, D dst2) {
-  WriteZExt(dst2, Read(src1));
-  WriteZExt(dst1, 0_u32);  // Store succeeded.
+template <typename D, typename S>
+DEF_SEM(LDXR, D dst, S src, R64W monitor) {
+  WriteZExt(dst, Read(src));
+  Write(monitor, AddressOf(src));
   return memory;
 }
 
+template <typename D, typename S>
+DEF_SEM(LDAXR, D dst, S src, R64W monitor) {
+  memory = __remill_barrier_load_store(memory);
+  WriteZExt(dst, Read(src));
+  Write(monitor, AddressOf(src));
+  return memory;
+}
+
+template <typename S, typename D>
+DEF_SEM(STLXR, R32W dst1, S src1, D dst2, R64W monitor) {
+  auto old_addr = Read(monitor);
+  if (old_addr == AddressOf(dst2)) {
+    WriteZExt(dst2, Read(src1));
+    WriteZExt(dst1, 0_u32);  // Store succeeded.
+  } else {
+    WriteZExt(dst1, 1_u32);  // Store failed.
+  }
+  Write(monitor, 0_u64);
+  memory = __remill_barrier_store_store(memory);
+  return memory;
+}
+
+
 }  // namespace
 
+DEF_ISEL(LDXR_LR32_LDSTEXCL) = LDXR<R32W, M32>;
+DEF_ISEL(LDXR_LR64_LDSTEXCL) = LDXR<R64W, M64>;
+DEF_ISEL(LDAXR_LR32_LDSTEXCL) = LDAXR<R32W, M32>;
+DEF_ISEL(LDAXR_LR64_LDSTEXCL) = LDAXR<R64W, M64>;
 DEF_ISEL(STLXR_SR32_LDSTEXCL) = STLXR<R32, M32W>;
 DEF_ISEL(STLXR_SR64_LDSTEXCL) = STLXR<R64, M64W>;
 
