@@ -4362,11 +4362,31 @@ bool TryDecodeNOT_ASIMDMISC_R(const InstData &data, Instruction &inst) {
   return true;
 }
 
+static void AddMonitorOperand(Instruction &inst) {
+  Operand op;
+  op.action = Operand::kActionWrite;
+  op.reg.name = "MONITOR";
+  op.reg.size = 64;
+  op.size = 64;
+  op.type = Operand::kTypeRegister;
+}
+
+// LDAXR  <Wt>, [<Xn|SP>{,#0}]
+bool TryDecodeLDAXR_LR32_LDSTEXCL(const InstData &data, Instruction &inst) {
+  return TryDecodeLDXR_LR32_LDSTEXCL(data, inst);
+}
+
+// LDAXR  <Xt>, [<Xn|SP>{,#0}]
+bool TryDecodeLDAXR_LR64_LDSTEXCL(const InstData &data, Instruction &inst) {
+  return TryDecodeLDXR_LR64_LDSTEXCL(data, inst);
+}
+
 // LDXR  <Wt>, [<Xn|SP>{,#0}]
 bool TryDecodeLDXR_LR32_LDSTEXCL(const InstData &data, Instruction &inst) {
   inst.is_atomic_read_modify_write = true;
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionRead, 32, data.Rn, 0);
+  AddMonitorOperand(inst);
   return true;
 }
 
@@ -4375,6 +4395,7 @@ bool TryDecodeLDXR_LR64_LDSTEXCL(const InstData &data, Instruction &inst) {
   inst.is_atomic_read_modify_write = true;
   AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionRead, 64, data.Rn, 0);
+  AddMonitorOperand(inst);
   return true;
 }
 
@@ -4384,6 +4405,7 @@ bool TryDecodeSTLXR_SR32_LDSTEXCL(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rs);
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionWrite, 32, data.Rn, 0);
+  AddMonitorOperand(inst);
   return true;
 }
 
@@ -4393,6 +4415,7 @@ bool TryDecodeSTLXR_SR64_LDSTEXCL(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rs);
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionWrite, 64, data.Rn, 0);
+  AddMonitorOperand(inst);
   return true;
 }
 

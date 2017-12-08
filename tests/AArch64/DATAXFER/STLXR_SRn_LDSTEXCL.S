@@ -33,3 +33,23 @@ TEST_INPUTS(0)
     stlxr w7, x5, [x3]
     stlxr w8, x6, [x4, #0]
 TEST_END
+
+TEST_BEGIN(STLXR_SR32_LDSTEXCL, ldxr_stlxr_m32, 1)
+TEST_INPUTS(0)
+    add x3, sp, #-256
+    mov x7, #0xFF
+    mov x8, #0xFF
+    ldxr w4, [x3]
+    add w4, w4, w4
+    stlxr w7, w4, [x3]
+TEST_END
+
+TEST_BEGIN(STLXR_SR64_LDSTEXCL, ldxr_stlxr_m64, 1)
+TEST_INPUTS(0)
+    add x3, sp, #-256
+    mov x7, #0xFF
+    mov x8, #0xFF
+    ldxr x4, [x3]
+    add x4, x4, x4
+    stlxr w7, x4, [x3]
+TEST_END
