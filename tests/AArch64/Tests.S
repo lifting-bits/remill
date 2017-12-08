@@ -257,6 +257,7 @@ SYMBOL(__aarch64_test_table_begin):
 
 #include "tests/AArch64/DATAXFER/STLXR_SRn_LDSTEXCL.S"
 #include "tests/AArch64/DATAXFER/MOVI_ASIMDIMM.S"
+#include "tests/AArch64/DATAXFER/MVNI_ASIMDIMM.S"
 
 #if 0
 

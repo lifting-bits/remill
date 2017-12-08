@@ -21,7 +21,7 @@ TEST_INPUTS(0)
     mov x7, #0xFF
     mov x8, #0xFF
     stlxr w7, w5, [x3]
-    stlxr x8, w6, [x4, #0]
+    stlxr w8, w6, [x4, #0]
 TEST_END
 
 TEST_BEGIN(STLXR_SR64_LDSTEXCL, stlxr_m64, 1)
