@@ -36,8 +36,7 @@ DEF_SEM(AAS) {
 		al = USub8(al, 6);
 		cf = 1;
 		af = 1;	
-	}
-	else {
+	} else {
 		cf = 0;
 		af = 0;
 	}
