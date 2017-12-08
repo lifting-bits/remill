@@ -1707,15 +1707,60 @@ IF_AVX(DEF_ISEL(VPACKUSWB_YMMqq_YMMqq_YMMqq) = PACKUSWB_AVX<VV256W, V256, V256, 
 
 namespace {
 
-DEF_SEM(LDMXCSR, M32 dst) {
-  //TODO(pag): when we support MXCSR register in our State, then uncomment this.
-  //state.x87.fxsave.mxcsr.flat = Read(src);
+DEF_SEM(LDMXCSR, M32 src) {
+  auto &csr = state.x87.fxsave.mxcsr;
+  csr.flat = Read(src);
+
+  int rounding_mode = FE_TONEAREST;
+  
+  if (!csr.rp && !csr.rn) {
+    rounding_mode = FE_TONEAREST;
+  } 
+  else if (!csr.rp && csr.rn) {
+    rounding_mode = FE_DOWNWARD;
+  }
+  else if (csr.rp && !csr.rn) {
+    rounding_mode = FE_UPWARD;
+  }
+  else {
+    rounding_mode = FE_TOWARDZERO;
+  }
+  fesetround(rounding_mode);
+  
+  // TODO: set FPU precision based on MXCSR precision flag (csr.pe)
+  
   return memory;
 }
 
-DEF_SEM(STMXCSR, M32W src) {
-  //TODO(pag): when we support MXCSR register in our State, then uncomment this, and the tests in MXCSR.S.
-  //Write(dst, state.x87.fxsave.mxcsr.flat);
+DEF_SEM(STMXCSR, M32W dst) {
+  auto &csr = state.x87.fxsave.mxcsr;
+  
+  // TODO: store the current FPU precision control:
+  csr.pe = 0;
+
+  // Store the current FPU rounding mode:
+  switch (fegetround()) {
+    default:
+    case FE_TONEAREST:
+      csr.rp = 0;
+      csr.rn = 0;
+      break;
+    case FE_DOWNWARD:
+      csr.rp = 0;
+      csr.rn = 1;
+      break;
+    case FE_UPWARD:
+      csr.rp = 1;
+      csr.rn = 0;
+      break;
+    case FE_TOWARDZERO:
+      csr.rp = 1;
+      csr.rn = 1;
+      break;
+  }
+
+  Write(dst, csr.flat);
+  
   return memory;
 }
 
