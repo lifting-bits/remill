@@ -16,9 +16,11 @@
 
 #if ADDRESS_SIZE_BITS == 32
 
+// al > 9, af = 1
 TEST_BEGIN(AAS_alf_af1, 1)
 TEST_IGNORE_FLAGS(OF ZF PF)
 TEST_INPUTS(0)
+  // force af = 1 
   lahf
   bts ax, 0xc
   sahf
@@ -34,6 +36,7 @@ TEST_INPUTS(0)
 #endif /* IN_TEST_GENERATOR */
 TEST_END
 
+// al > 9, af = 1
 TEST_BEGIN(AAS_alf_af1_extra, 1)
 TEST_IGNORE_FLAGS(OF ZF PF)
 TEST_INPUTS(0)
@@ -52,6 +55,7 @@ TEST_INPUTS(0)
 #endif /* IN_TEST_GENERATOR */
 TEST_END
 
+// al > 9, af = 0 
 TEST_BEGIN(AAS_alf_af0, 1)
 TEST_IGNORE_FLAGS(OF ZF PF)
 TEST_INPUTS(0)
@@ -70,6 +74,7 @@ TEST_INPUTS(0)
 #endif /* IN_TEST_GENERATOR */
 TEST_END
 
+// al < 9, af = 1
 TEST_BEGIN(AAS_al8_af1, 1)
 TEST_IGNORE_FLAGS(OF ZF PF)
 TEST_INPUTS(0)
@@ -88,6 +93,7 @@ TEST_INPUTS(0)
 #endif /* IN_TEST_GENERATOR */
 TEST_END
 
+// al = 9, af = 1
 TEST_BEGIN(AAS_af9_al1, 1)
 TEST_IGNORE_FLAGS(OF ZF PF)
 TEST_INPUTS(0)
@@ -106,6 +112,7 @@ TEST_INPUTS(0)
 #endif /* IN_TEST_GENERATOR */
 TEST_END
 
+// al = 9, af = 0
 TEST_BEGIN(AAS_al9_af0, 1)
 TEST_IGNORE_FLAGS(OF ZF PF)
 TEST_INPUTS(0)
@@ -123,6 +130,7 @@ TEST_INPUTS(0)
 #endif /* IN_TEST_GENERATOR */
 TEST_END
 
+// al = 0, af = 1
 TEST_BEGIN(AAS_al0_af1, 1)
 TEST_IGNORE_FLAGS(OF ZF PF)
 TEST_INPUTS(0)
@@ -141,6 +149,7 @@ TEST_INPUTS(0)
 #endif /* IN_TEST_GENERATOR */
 TEST_END
 
+// al = 0, af = 0
 TEST_BEGIN(AAS_al0_af0, 1)
 TEST_IGNORE_FLAGS(OF ZF PF)
 TEST_INPUTS(0)
