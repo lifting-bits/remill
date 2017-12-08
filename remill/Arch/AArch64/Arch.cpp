@@ -4369,6 +4369,7 @@ static void AddMonitorOperand(Instruction &inst) {
   op.reg.size = 64;
   op.size = 64;
   op.type = Operand::kTypeRegister;
+  inst.operands.push_back(op);
 }
 
 // LDAXR  <Wt>, [<Xn|SP>{,#0}]
