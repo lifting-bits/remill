@@ -1375,12 +1375,12 @@ DEF_SEM(DoFNINIT) {
   // Initialize the FPU state without checking error conditions.
   // "Word" and opcode fields are always 16-bit. Pointer fields are either 
   // 32-bit or 64-bit, but regardless, they are set to 0.
-  state.x87.fxsave.cwd.flat = 0x037F; // FPUControlWord
-  state.x87.fxsave.swd.flat = 0x0000; // FPUStatusWord
-  state.x87.fxsave.ftw.flat = 0xFFFF; // FPUTagWord
-  state.x87.fxsave.dp = 0x0;          // FPUDataPointer
-  state.x87.fxsave.ip = 0x0;          // FPUInstructionPointer
-  state.x87.fxsave.fop = 0x0;         // FPULastInstructionOpcode
+  state.x87.fsave.cwd.flat = 0x037F; // FPUControlWord
+  state.x87.fsave.swd.flat = 0x0000; // FPUStatusWord
+  state.x87.fsave.ftw.flat = 0x0000; // FPUTagWord (0xFFFF in the manual, 0x0000 in testing)
+  state.x87.fsave.dp = 0x0;          // FPUDataPointer
+  state.x87.fsave.ip = 0x0;          // FPUInstructionPointer
+  state.x87.fsave.fop = 0x0;         // FPULastInstructionOpcode
   return memory;
 }
 
