@@ -920,6 +920,13 @@ bool TryDecodeBLR_64_BRANCH_REG(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// STLR  <Wt>, [<Xn|SP>{,#0}]
+bool TryDecodeSTLR_SL32_LDSTEXCL(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 32, data.Rn, 0);
+  return true;
+}
+
 // STP  <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]!
 bool TryDecodeSTP_32_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
@@ -2065,7 +2072,7 @@ bool TryDecodeLDURH_32_LDST_UNSCALED(const InstData &data, Instruction &inst) {
   return TryDecodeLDUR_n_LDST_UNSCALED(data, inst, kRegW, 16);
 }
 
-// LDURH  <Wt>, [<Xn|SP>{, #<simm>}]
+// LDURSH  <Wt>, [<Xn|SP>{, #<simm>}]
 bool TryDecodeLDURSH_32_LDST_UNSCALED(const InstData &data, Instruction &inst) {
   return TryDecodeLDUR_n_LDST_UNSCALED(data, inst, kRegW, 16);
 }

@@ -40546,44 +40546,6 @@ bool TryDecodeUSHLL_ASIMDSHF_L(const InstData &, Instruction &) {
   return false;
 }
 
-// STLR STLR_SL32_ldstexcl:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1 Rt2      0
-//  11 1 Rt2      1
-//  12 1 Rt2      2
-//  13 1 Rt2      3
-//  14 1 Rt2      4
-//  15 1 o0       0
-//  16 1 Rs       0
-//  17 1 Rs       1
-//  18 1 Rs       2
-//  19 1 Rs       3
-//  20 1 Rs       4
-//  21 0 o1       0
-//  22 0 L        0
-//  23 1 o2       0
-//  24 0
-//  25 0
-//  26 0
-//  27 1
-//  28 0
-//  29 0
-//  30 0 size     0
-//  31 1 size     1
-// STLR  <Wt>, [<Xn|SP>{,#0}]
-bool TryDecodeSTLR_SL32_LDSTEXCL(const InstData &, Instruction &) {
-  return false;
-}
-
 // STLR STLR_SL64_ldstexcl:
 //   0 x Rt       0
 //   1 x Rt       1

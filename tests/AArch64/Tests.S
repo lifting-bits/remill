@@ -350,6 +350,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/STR_n_LDST_REGOFF.S"
 #include "tests/AArch64/DATAXFER/STRB.S"
 #include "tests/AArch64/DATAXFER/STRH.S"
+#include "tests/AArch64/DATAXFER/STLR.S"
 #include "tests/AArch64/DATAXFER/STUR_n_LDST_UNSCALED.S"
 #include "tests/AArch64/DATAXFER/UMOV.S"
 
