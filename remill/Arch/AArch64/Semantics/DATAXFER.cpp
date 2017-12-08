@@ -117,6 +117,13 @@ DEF_SEM(StoreToOffset, S src, D base, ADDR offset) {
   return memory;
 }
 
+template <typename S, typename D>
+DEF_SEM(StoreRelease, S src, D dst) {
+  WriteTrunc(dst, Read(src));
+  memory = __remill_barrier_store_store(memory);
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(STR_32_LDST_IMMPRE) = StoreUpdateIndex<R32, M32W>;
@@ -128,7 +135,7 @@ DEF_ISEL(STR_64_LDST_IMMPOST) = StoreUpdateIndex<R64, M64W>;
 DEF_ISEL(STR_32_LDST_POS) = Store<R32, M32W>;
 DEF_ISEL(STR_64_LDST_POS) = Store<R64, M64W>;
 
-DEF_ISEL(STLR_SL32_LDSTEXCL) = Store<R32, M32W>;
+DEF_ISEL(STLR_SL32_LDSTEXCL) = StoreRelease<R32, M32W>;
 
 DEF_ISEL(STRB_32_LDST_POS) = Store<R32, M8W>;
 DEF_ISEL(STRB_32_LDST_IMMPOST) = StoreUpdateIndex<R32, M8W>;
