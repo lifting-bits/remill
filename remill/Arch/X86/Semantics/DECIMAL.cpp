@@ -18,20 +18,14 @@
 #define REMILL_ARCH_X86_SEMANTICS_DECIMAL_H_
 
 namespace {
-/* 
- 901 AAS AAS DECIMAL BASE I86 ATTRIBUTES: 
- 3 
-	0 REG0 SUPPRESSED RW REG INVALID AL 
-	1 REG1 SUPPRESSED RW REG INVALID AH 
-	2 REG2 SUPPRESSED RW NT_LOOKUP_FN INVALID RFLAGS */
 
 DEF_SEM(AAS) {
- 	uint8_t al = Read(REG_AL);
+	uint8_t al = Read(REG_AL);
 	uint8_t ah = Read(REG_AH);
 	auto af = Read(FLAG_AF);
 	auto cf = Read(FLAG_CF);
 	
-	if (UCmpGt(al, 9) || UCmpEq(af, 1)) {
+	if (UCmpGt(UAnd8(al, 0xf), 9) || UCmpEq(af, 1)) {
 		ah = USub8(ah, 1);
 		al = USub8(al, 6);
 		cf = 1;
@@ -47,6 +41,10 @@ DEF_SEM(AAS) {
 	Write(REG_AL, masked_al); 
 	Write(FLAG_AF, af);
 	Write(FLAG_CF, cf);
+
+	FLAG_OF = __remill_undefined_8();
+	FLAG_ZF = __remill_undefined_8();
+	FLAG_PF = __remill_undefined_8();
 
   return memory;
 }
