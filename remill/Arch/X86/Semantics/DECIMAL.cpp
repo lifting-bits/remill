@@ -20,25 +20,25 @@
 namespace {
 
 DEF_SEM(AAS) {
-	uint8_t al = Read(REG_AL);
-	uint8_t ah = Read(REG_AH);
+	auto &rax = state.gpr.rax;
 	auto af = Read(FLAG_AF);
 	auto cf = Read(FLAG_CF);
-	
-	if (UCmpGt(UAnd8(al, 0xf), 9) || UCmpEq(af, 1)) {
-		ah = USub8(ah, 1);
-		al = USub8(al, 6);
+
+	// al > 9 or af == 1
+	if (UCmpGt(UAnd16(rax.byte.low, 0xf), 9) || UCmpEq(af, 1)) {
+		rax.word = USub16(rax.word, 6);
+		rax.byte.high = USub8(rax.byte.high, 1);
 		cf = 1;
 		af = 1;	
+
 	} else {
 		cf = 0;
 		af = 0;
 	}
-	
-	auto masked_al = UAnd8(al, 0xf);
 
-	Write(REG_AH, ah);
-	Write(REG_AL, masked_al); 
+	// in both cases
+	rax.byte.low = UAnd8(rax.byte.low, 0xf);
+
 	Write(FLAG_AF, af);
 	Write(FLAG_CF, cf);
 
