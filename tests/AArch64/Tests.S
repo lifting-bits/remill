@@ -340,6 +340,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/MOVI_ASIMDIMM.S"
 #include "tests/AArch64/DATAXFER/MOVK_n_MOVEWIDE.S"
 #include "tests/AArch64/DATAXFER/MOVZ_n_MOVEWIDE.S"
+#include "tests/AArch64/DATAXFER/MVNI_ASIMDIMM.S"
 #include "tests/AArch64/DATAXFER/SMOV.S"
 #include "tests/AArch64/DATAXFER/STLXR_SRn_LDSTEXCL.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_OFF.S"
