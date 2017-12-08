@@ -1381,6 +1381,17 @@ DEF_SEM(DoFNINIT) {
   state.x87.fsave.dp = 0x0;          // FPUDataPointer
   state.x87.fsave.ip = 0x0;          // FPUInstructionPointer
   state.x87.fsave.fop = 0x0;         // FPULastInstructionOpcode
+  state.x87.fsave.ds.flat = 0x0000;  // FPU code segment selector
+  state.x87.fsave.cs.flat = 0x0000;  // FPU data operand segment selector
+
+  // Mask all floating-point exceptions:
+  std::feclearexcept(FE_ALL_EXCEPT);
+
+  // Set FPU rounding mode to nearest:
+  std::fesetround(FE_TONEAREST);
+
+  // TODO: Set the FPU precision to 64 bits
+
   return memory;
 }
 
