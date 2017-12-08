@@ -1372,13 +1372,15 @@ DEF_ISEL(FCMOVB_ST0_X87) = FCMOVB<RF80W, RF80>;
 namespace {
 
 DEF_SEM(DoFNINIT) {
-// TODO(mm): when this branch is synced with master, set parts of FPU state.
-// state.x87.fxsave.cwd = 0x037F; // FPUControlWord
-// state.x87.fxsave.swd = 0x0000; // FPUStatusWord
-// state.x87.fxsave.ftw = 0xFFFF; // (abridged?) FPUTagWord 
-// state.x87.fxsave.dp = 0x0;     // FPUDataPointer (?) 
-// state.x87.fxsave.ip = 0x0;     // FPUInstructionPointer (?)
-// state.x87.fxsave.fop = 0x0000; // FPULastInstructionOpcode 
+  // Initialize the FPU state without checking error conditions.
+  // "Word" and opcode fields are always 16-bit. Pointer fields are either 
+  // 32-bit or 64-bit, but regardless, they are set to 0.
+  state.x87.fxsave.cwd.flat = 0x037F; // FPUControlWord
+  state.x87.fxsave.swd.flat = 0x0000; // FPUStatusWord
+  state.x87.fxsave.ftw.flat = 0xFFFF; // FPUTagWord
+  state.x87.fxsave.dp = 0x0;          // FPUDataPointer
+  state.x87.fxsave.ip = 0x0;          // FPUInstructionPointer
+  state.x87.fxsave.fop = 0x0;         // FPULastInstructionOpcode
   return memory;
 }
 
