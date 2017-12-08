@@ -7103,82 +7103,6 @@ bool TryDecodeSTEORLB_32S_MEMOP(const InstData &, Instruction &) {
   return false;
 }
 
-// LDPSW LDPSW_64_ldstpair_post:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x Rt2      0
-//  11 x Rt2      1
-//  12 x Rt2      2
-//  13 x Rt2      3
-//  14 x Rt2      4
-//  15 x imm7     0
-//  16 x imm7     1
-//  17 x imm7     2
-//  18 x imm7     3
-//  19 x imm7     4
-//  20 x imm7     5
-//  21 x imm7     6
-//  22 1 L        0
-//  23 1
-//  24 0
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 0
-//  29 1
-//  30 1 opc      0
-//  31 0 opc      1
-// LDPSW  <Xt1>, <Xt2>, [<Xn|SP>], #<imm>
-bool TryDecodeLDPSW_64_LDSTPAIR_POST(const InstData &, Instruction &) {
-  return false;
-}
-
-// LDPSW LDPSW_64_ldstpair_pre:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x Rt2      0
-//  11 x Rt2      1
-//  12 x Rt2      2
-//  13 x Rt2      3
-//  14 x Rt2      4
-//  15 x imm7     0
-//  16 x imm7     1
-//  17 x imm7     2
-//  18 x imm7     3
-//  19 x imm7     4
-//  20 x imm7     5
-//  21 x imm7     6
-//  22 1 L        0
-//  23 1
-//  24 1
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 0
-//  29 1
-//  30 1 opc      0
-//  31 0 opc      1
-// LDPSW  <Xt1>, <Xt2>, [<Xn|SP>, #<imm>]!
-bool TryDecodeLDPSW_64_LDSTPAIR_PRE(const InstData &, Instruction &) {
-  return false;
-}
-
 // STUMAXH STUMAXH_32S_memop:
 //   0 1 Rt       0
 //   1 1 Rt       1
@@ -40581,44 +40505,6 @@ bool TryDecodeUSHLL_ASIMDSHF_L(const InstData &, Instruction &) {
 //  31 1 size     1
 // STLR  <Xt>, [<Xn|SP>{,#0}]
 bool TryDecodeSTLR_SL64_LDSTEXCL(const InstData &, Instruction &) {
-  return false;
-}
-
-// EON EON_32_log_shift:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm6     0
-//  11 x imm6     1
-//  12 x imm6     2
-//  13 x imm6     3
-//  14 x imm6     4
-//  15 x imm6     5
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1 N        0
-//  22 x shift    0
-//  23 x shift    1
-//  24 0
-//  25 1
-//  26 0
-//  27 1
-//  28 0
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 0 sf       0
-// EON  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
-bool TryDecodeEON_32_LOG_SHIFT(const InstData &, Instruction &) {
   return false;
 }
 

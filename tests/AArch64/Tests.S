@@ -255,7 +255,6 @@ SYMBOL(__aarch64_test_table_begin):
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
 
 
-
 #if 1
 
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
@@ -323,7 +322,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/LD2_ASISDLSE_R2.S"
 #include "tests/AArch64/DATAXFER/LD2_ASISDLSEP_R2_R.S"
 #include "tests/AArch64/DATAXFER/LD2_ASISDLSEP_I2_I.S"
-#include "tests/AArch64/DATAXFER/LDPS_n_LDSTPAIR_OFF.S"
+#include "tests/AArch64/DATAXFER/LDPSW_64_LDSTPAIR.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_OFF.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_POST.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_PRE.S"

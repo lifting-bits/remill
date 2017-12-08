@@ -209,9 +209,20 @@ DEF_SEM(LoadSignedPair64, R64W dst1, R64W dst2, MV64 src_mem) {
   return memory;
 }
 
+DEF_SEM(LoadSignedPairUpdateIndex64, R64W dst1, R64W dst2, MV64 src_mem,
+                                     R64W dst_reg, ADDR next_addr) {
+  auto vec = SReadV32(src_mem);
+  WriteZExt(dst1, SExtTo<int64_t>(SExtractV32(vec, 0)));
+  WriteZExt(dst2, SExtTo<int64_t>(SExtractV32(vec, 1)));
+  Write(dst_reg, Read(next_addr));
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(LDPSW_64_LDSTPAIR_OFF) = LoadSignedPair64;
+DEF_ISEL(LDPSW_64_LDSTPAIR_PRE) = LoadSignedPairUpdateIndex64;
+DEF_ISEL(LDPSW_64_LDSTPAIR_POST) = LoadSignedPairUpdateIndex64;
 
 namespace {
 

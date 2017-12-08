@@ -1054,6 +1054,31 @@ bool TryDecodeLDPSW_64_LDSTPAIR_OFF(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// LDPSW  <Xt1>, <Xt2>, [<Xn|SP>], #<imm>
+bool TryDecodeLDPSW_64_LDSTPAIR_POST(const InstData &data, Instruction &inst) {
+  if (data.Rt == data.Rt2) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt2);
+  AddPostIndexMemOp(inst, kActionRead, 64, data.Rn,
+                    static_cast<uint64_t>(data.imm7.simm7) << 2);
+  return true;
+}
+
+// LDPSW  <Xt1>, <Xt2>, [<Xn|SP>, #<imm>]!
+bool TryDecodeLDPSW_64_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
+  if (data.Rt == data.Rt2) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt2);
+  AddPreIndexMemOp(inst, kActionRead, 64, data.Rn,
+                   static_cast<uint64_t>(data.imm7.simm7) << 2,
+                   data.Rt, data.Rt2);
+  return true;
+}
+
 // LDP  <Wt1>, <Wt2>, [<Xn|SP>, #<imm>]!
 bool TryDecodeLDP_32_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
   // `if L:opc<0> == '01' || opc == '11' then UnallocatedEncoding();`.
@@ -1903,6 +1928,11 @@ bool TryDecodeORN_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
 // ORN  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
 bool TryDecodeORN_64_LOG_SHIFT(const InstData &data, Instruction &inst) {
   return TryDecodeEOR_64_LOG_SHIFT(data, inst);
+}
+
+// EON  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
+bool TryDecodeEON_32_LOG_SHIFT(const InstData &data, Instruction &inst) {
+  return TryDecodeEOR_32_LOG_SHIFT(data, inst);
 }
 
 // EON  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
