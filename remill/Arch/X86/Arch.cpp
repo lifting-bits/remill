@@ -895,14 +895,12 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
         case kArchAMD64:
         case kArchAMD64_AVX:
         case kArchAMD64_AVX512:
-          dl = "e-m:e-i64:64-f80:128-n8:16:32:64-S128";
+          dl = "e-m:w-i64:64-f80:128-n8:16:32:64-S128";
           break;
         case kArchX86:
         case kArchX86_AVX:
         case kArchX86_AVX512:
-          dl = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:"
-               "32:32-f64:64:64-f80:128:128-v64:64:64-v128:128:128-a0:0:64-f80:"
-               "32:32-n8:16:32-S32";
+          dl = "e-m:x-p:32:32-i64:64-f80:32-n8:16:32-a:0:32-S32";
           break;
         default:
           LOG(FATAL)
