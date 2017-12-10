@@ -14,16 +14,11 @@
  * limitations under the License.
  */
 
-namespace {
+/* STLR  <Wt>, [<Xn|SP>{,#0}] */
+TEST_BEGIN(STLR_SL32_LDSTEXCL, stlr_sl32_ldstexcl, 1)
+TEST_INPUTS(0)
+    add x3, sp, #-256
+    ldp w5, w6, [x3]
+    stlr w5, [x3]
+TEST_END
 
-DEF_SEM(DoNOP) {
-  return memory;
-}
-
-}  // namespace
-
-DEF_ISEL(NOP) = DoNOP;
-DEF_ISEL(HINT_1) = DoNOP;
-DEF_ISEL(HINT_2) = DoNOP;
-DEF_ISEL(HINT_3) = DoNOP;
-DEF_ISEL(NOP_HI_SYSTEM) = DoNOP;

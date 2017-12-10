@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-namespace {
+TEST_BEGIN(BSL_ASIMDSAME_ONLY_8B, bsl_v8b, 1)
+TEST_INPUTS(0)
+    bsl v5.8b, v0.8b, v1.8b
+    bsl v6.8b, v2.8b, v3.8b
+    bsl v7.8b, v4.8b, v5.8b
+TEST_END
 
-DEF_SEM(DoNOP) {
-  return memory;
-}
-
-}  // namespace
-
-DEF_ISEL(NOP) = DoNOP;
-DEF_ISEL(HINT_1) = DoNOP;
-DEF_ISEL(HINT_2) = DoNOP;
-DEF_ISEL(HINT_3) = DoNOP;
-DEF_ISEL(NOP_HI_SYSTEM) = DoNOP;
+TEST_BEGIN(BSL_ASIMDSAME_ONLY_16B, bsl_v16b, 1)
+TEST_INPUTS(0)
+    bsl v5.16b, v0.16b, v1.16b
+    bsl v6.16b, v2.16b, v3.16b
+    bsl v7.16b, v4.16b, v5.16b
+TEST_END

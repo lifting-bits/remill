@@ -255,7 +255,6 @@ SYMBOL(__aarch64_test_table_begin):
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
 
 
-
 #if 1
 
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
@@ -323,6 +322,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/LD2_ASISDLSE_R2.S"
 #include "tests/AArch64/DATAXFER/LD2_ASISDLSEP_R2_R.S"
 #include "tests/AArch64/DATAXFER/LD2_ASISDLSEP_I2_I.S"
+#include "tests/AArch64/DATAXFER/LDPSW_64_LDSTPAIR.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_OFF.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_POST.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_PRE.S"
@@ -336,6 +336,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/LDRSH.S"
 #include "tests/AArch64/DATAXFER/LDRSW.S"
 #include "tests/AArch64/DATAXFER/LDUR_n_LDST_UNSCALED.S"
+#include "tests/AArch64/DATAXFER/LDURS_n_LDST_UNSCALED.S"
 #include "tests/AArch64/DATAXFER/MOVK_n_MOVEWIDE.S"
 #include "tests/AArch64/DATAXFER/MOVZ_n_MOVEWIDE.S"
 #include "tests/AArch64/DATAXFER/SMOV.S"
@@ -348,6 +349,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/STR_n_LDST_REGOFF.S"
 #include "tests/AArch64/DATAXFER/STRB.S"
 #include "tests/AArch64/DATAXFER/STRH.S"
+#include "tests/AArch64/DATAXFER/STLR.S"
 #include "tests/AArch64/DATAXFER/STUR_n_LDST_UNSCALED.S"
 #include "tests/AArch64/DATAXFER/UMOV.S"
 
@@ -359,9 +361,12 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/LOGICAL/BICS_n_LOG_SHIFT.S"
 #include "tests/AArch64/LOGICAL/EOR_n_LOG_IMM.S"
 #include "tests/AArch64/LOGICAL/EOR_n_LOG_SHIFT.S"
+#include "tests/AArch64/LOGICAL/EON_n_LOG_SHIFT.S"
 #include "tests/AArch64/LOGICAL/ORN_n_LOG_SHIFT.S"
 #include "tests/AArch64/LOGICAL/ORR_n_LOG_IMM.S"
 #include "tests/AArch64/LOGICAL/ORR_n_LOG_SHIFT.S"
+
+#include "tests/AArch64/MISC/NOP.S"
 
 #include "tests/AArch64/COND/CSEL_n_CONDSEL.S"
 #include "tests/AArch64/COND/x_CSNEG_n_CONDSEL.S"
@@ -376,6 +381,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/SIMD/BIC_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/BIF_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/BIT_ASIMDSAME_ONLY.S"
+#include "tests/AArch64/SIMD/BSL_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/CMcc_ASIMDMISC_Z.S"
 #include "tests/AArch64/SIMD/CMcc_ASIMDSAME_ONLY.S"
 #include "tests/AArch64/SIMD/DUP_ASIMDINS_DR_R.S"

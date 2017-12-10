@@ -117,6 +117,13 @@ DEF_SEM(StoreToOffset, S src, D base, ADDR offset) {
   return memory;
 }
 
+template <typename S, typename D>
+DEF_SEM(StoreRelease, S src, D dst) {
+  WriteTrunc(dst, Read(src));
+  memory = __remill_barrier_store_store(memory);
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(STR_32_LDST_IMMPRE) = StoreUpdateIndex<R32, M32W>;
@@ -127,6 +134,8 @@ DEF_ISEL(STR_64_LDST_IMMPOST) = StoreUpdateIndex<R64, M64W>;
 
 DEF_ISEL(STR_32_LDST_POS) = Store<R32, M32W>;
 DEF_ISEL(STR_64_LDST_POS) = Store<R64, M64W>;
+
+DEF_ISEL(STLR_SL32_LDSTEXCL) = StoreRelease<R32, M32W>;
 
 DEF_ISEL(STRB_32_LDST_POS) = Store<R32, M8W>;
 DEF_ISEL(STRB_32_LDST_IMMPOST) = StoreUpdateIndex<R32, M8W>;
@@ -190,6 +199,30 @@ DEF_SEM(LoadPair64, R64W dst1, R64W dst2, MV128 src_mem) {
 
 DEF_ISEL(LDP_32_LDSTPAIR_OFF) = LoadPair32;
 DEF_ISEL(LDP_64_LDSTPAIR_OFF) = LoadPair64;
+
+namespace {
+
+DEF_SEM(LoadSignedPair64, R64W dst1, R64W dst2, MV64 src_mem) {
+  auto vec = SReadV32(src_mem);
+  WriteZExt(dst1, SExtTo<int64_t>(SExtractV32(vec, 0)));
+  WriteZExt(dst2, SExtTo<int64_t>(SExtractV32(vec, 1)));
+  return memory;
+}
+
+DEF_SEM(LoadSignedPairUpdateIndex64, R64W dst1, R64W dst2, MV64 src_mem,
+                                     R64W dst_reg, ADDR next_addr) {
+  auto vec = SReadV32(src_mem);
+  WriteZExt(dst1, SExtTo<int64_t>(SExtractV32(vec, 0)));
+  WriteZExt(dst2, SExtTo<int64_t>(SExtractV32(vec, 1)));
+  Write(dst_reg, Read(next_addr));
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(LDPSW_64_LDSTPAIR_OFF) = LoadSignedPair64;
+DEF_ISEL(LDPSW_64_LDSTPAIR_PRE) = LoadSignedPairUpdateIndex64;
+DEF_ISEL(LDPSW_64_LDSTPAIR_POST) = LoadSignedPairUpdateIndex64;
 
 namespace {
 
@@ -271,6 +304,10 @@ DEF_SEM(LoadSExtFromOffset, D dst, M base, ADDR offset) {
 }
 
 }  // namespace
+
+DEF_ISEL(LDURSB_32_LDST_UNSCALED) = LoadSExt<R32W, M8, int32_t>;
+DEF_ISEL(LDURSH_32_LDST_UNSCALED) = LoadSExt<R32W, M16, int32_t>;
+DEF_ISEL(LDURSW_64_LDST_UNSCALED) = LoadSExt<R64W, M32, int64_t>;
 
 DEF_ISEL(LDRSB_32_LDST_POS) = LoadSExt<R32W, M8, int32_t>;
 DEF_ISEL(LDRSB_64_LDST_POS) = LoadSExt<R64W, M8, int64_t>;

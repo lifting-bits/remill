@@ -14,16 +14,7 @@
  * limitations under the License.
  */
 
-namespace {
-
-DEF_SEM(DoNOP) {
-  return memory;
-}
-
-}  // namespace
-
-DEF_ISEL(NOP) = DoNOP;
-DEF_ISEL(HINT_1) = DoNOP;
-DEF_ISEL(HINT_2) = DoNOP;
-DEF_ISEL(HINT_3) = DoNOP;
-DEF_ISEL(NOP_HI_SYSTEM) = DoNOP;
+TEST_BEGIN(NOP_HI_SYSTEM, nop_hi_system, 1)
+TEST_INPUTS(0)
+  nop
+TEST_END

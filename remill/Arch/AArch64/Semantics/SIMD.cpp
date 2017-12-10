@@ -65,6 +65,16 @@ DEF_SEM(BIF_Vec, V128W dst, S dst_src, S src1, S src2) {
   return memory;
 }
 
+template <typename S>
+DEF_SEM(BSL_Vec, V128W dst, S dst_src, S src1, S src2) {
+  auto operand4 = UReadV64(src1);
+  auto operand1 = UReadV64(src2);
+  auto operand3 = UReadV64(dst_src);
+  UWriteV64(dst, UXorV64(
+      operand1, UAndV64(UXorV64(operand1, operand4), operand3)));
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(ORR_ASIMDSAME_ONLY_8B) = ORR_Vec<V64>;
@@ -84,6 +94,9 @@ DEF_ISEL(BIT_ASIMDSAME_ONLY_16B) = BIT_Vec<V128>;
 
 DEF_ISEL(BIF_ASIMDSAME_ONLY_8B) = BIF_Vec<V64>;
 DEF_ISEL(BIF_ASIMDSAME_ONLY_16B) = BIF_Vec<V128>;
+
+DEF_ISEL(BSL_ASIMDSAME_ONLY_8B) = BSL_Vec<V64>;
+DEF_ISEL(BSL_ASIMDSAME_ONLY_16B) = BSL_Vec<V128>;
 
 namespace {
 

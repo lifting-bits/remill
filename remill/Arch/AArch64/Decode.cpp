@@ -7103,120 +7103,6 @@ bool TryDecodeSTEORLB_32S_MEMOP(const InstData &, Instruction &) {
   return false;
 }
 
-// LDPSW LDPSW_64_ldstpair_post:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x Rt2      0
-//  11 x Rt2      1
-//  12 x Rt2      2
-//  13 x Rt2      3
-//  14 x Rt2      4
-//  15 x imm7     0
-//  16 x imm7     1
-//  17 x imm7     2
-//  18 x imm7     3
-//  19 x imm7     4
-//  20 x imm7     5
-//  21 x imm7     6
-//  22 1 L        0
-//  23 1
-//  24 0
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 0
-//  29 1
-//  30 1 opc      0
-//  31 0 opc      1
-// LDPSW  <Xt1>, <Xt2>, [<Xn|SP>], #<imm>
-bool TryDecodeLDPSW_64_LDSTPAIR_POST(const InstData &, Instruction &) {
-  return false;
-}
-
-// LDPSW LDPSW_64_ldstpair_pre:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x Rt2      0
-//  11 x Rt2      1
-//  12 x Rt2      2
-//  13 x Rt2      3
-//  14 x Rt2      4
-//  15 x imm7     0
-//  16 x imm7     1
-//  17 x imm7     2
-//  18 x imm7     3
-//  19 x imm7     4
-//  20 x imm7     5
-//  21 x imm7     6
-//  22 1 L        0
-//  23 1
-//  24 1
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 0
-//  29 1
-//  30 1 opc      0
-//  31 0 opc      1
-// LDPSW  <Xt1>, <Xt2>, [<Xn|SP>, #<imm>]!
-bool TryDecodeLDPSW_64_LDSTPAIR_PRE(const InstData &, Instruction &) {
-  return false;
-}
-
-// LDPSW LDPSW_64_ldstpair_off:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x Rt2      0
-//  11 x Rt2      1
-//  12 x Rt2      2
-//  13 x Rt2      3
-//  14 x Rt2      4
-//  15 x imm7     0
-//  16 x imm7     1
-//  17 x imm7     2
-//  18 x imm7     3
-//  19 x imm7     4
-//  20 x imm7     5
-//  21 x imm7     6
-//  22 1 L        0
-//  23 0
-//  24 1
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 0
-//  29 1
-//  30 1 opc      0
-//  31 0 opc      1
-// LDPSW  <Xt1>, <Xt2>, [<Xn|SP>{, #<imm>}]
-bool TryDecodeLDPSW_64_LDSTPAIR_OFF(const InstData &, Instruction &) {
-  return false;
-}
-
 // STUMAXH STUMAXH_32S_memop:
 //   0 1 Rt       0
 //   1 1 Rt       1
@@ -31198,44 +31084,6 @@ bool TryDecodeFCMGT_ASIMDMISC_FZ(const InstData &, Instruction &) {
   return false;
 }
 
-// BSL BSL_asimdsame_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1
-//  11 1 opcode   0
-//  12 1 opcode   1
-//  13 0 opcode   2
-//  14 0 opcode   3
-//  15 0 opcode   4
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1
-//  22 1 opc2     0
-//  23 0 opc2     1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1 U        0
-//  30 x Q        0
-//  31 0
-// BSL  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
-bool TryDecodeBSL_ASIMDSAME_ONLY(const InstData &, Instruction &) {
-  return false;
-}
-
 // UQSUB UQSUB_asisdsame_only:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -32338,44 +32186,6 @@ bool TryDecodeFCVTAS_64D_FLOAT2INT(const InstData &, Instruction &) {
   return false;
 }
 
-// LDURSH LDURSH_32_ldst_unscaled:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 0
-//  12 x imm9     0
-//  13 x imm9     1
-//  14 x imm9     2
-//  15 x imm9     3
-//  16 x imm9     4
-//  17 x imm9     5
-//  18 x imm9     6
-//  19 x imm9     7
-//  20 x imm9     8
-//  21 0
-//  22 1 opc      0
-//  23 1 opc      1
-//  24 0
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 1
-//  29 1
-//  30 1 size     0
-//  31 0 size     1
-// LDURSH  <Wt>, [<Xn|SP>{, #<simm>}]
-bool TryDecodeLDURSH_32_LDST_UNSCALED(const InstData &, Instruction &) {
-  return false;
-}
-
 // LDURSH LDURSH_64_ldst_unscaled:
 //   0 x Rt       0
 //   1 x Rt       1
@@ -32411,44 +32221,6 @@ bool TryDecodeLDURSH_32_LDST_UNSCALED(const InstData &, Instruction &) {
 //  31 0 size     1
 // LDURSH  <Xt>, [<Xn|SP>{, #<simm>}]
 bool TryDecodeLDURSH_64_LDST_UNSCALED(const InstData &, Instruction &) {
-  return false;
-}
-
-// LDURSW LDURSW_64_ldst_unscaled:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 0
-//  12 x imm9     0
-//  13 x imm9     1
-//  14 x imm9     2
-//  15 x imm9     3
-//  16 x imm9     4
-//  17 x imm9     5
-//  18 x imm9     6
-//  19 x imm9     7
-//  20 x imm9     8
-//  21 0
-//  22 0 opc      0
-//  23 1 opc      1
-//  24 0
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 1
-//  29 1
-//  30 0 size     0
-//  31 1 size     1
-// LDURSW  <Xt>, [<Xn|SP>{, #<simm>}]
-bool TryDecodeLDURSW_64_LDST_UNSCALED(const InstData &, Instruction &) {
   return false;
 }
 
@@ -38683,44 +38455,6 @@ bool TryDecodeFCVTZS_64H_FLOAT2INT(const InstData &, Instruction &) {
   return false;
 }
 
-// NOP NOP_HI_system:
-//   0 1 Rt       0
-//   1 1 Rt       1
-//   2 1 Rt       2
-//   3 1 Rt       3
-//   4 1 Rt       4
-//   5 0 op2      0
-//   6 0 op2      1
-//   7 0 op2      2
-//   8 0 CRm      0
-//   9 0 CRm      1
-//  10 0 CRm      2
-//  11 0 CRm      3
-//  12 0 CRn      0
-//  13 1 CRn      1
-//  14 0 CRn      2
-//  15 0 CRn      3
-//  16 1 op1      0
-//  17 1 op1      1
-//  18 0 op1      2
-//  19 0 op0      0
-//  20 0 op0      1
-//  21 0 L        0
-//  22 0
-//  23 0
-//  24 1
-//  25 0
-//  26 1
-//  27 0
-//  28 1
-//  29 0
-//  30 1
-//  31 1
-// NOP
-bool TryDecodeNOP_HI_SYSTEM(const InstData &, Instruction &) {
-  return false;
-}
-
 // FCVTMS FCVTMS_asisdmiscfp16_R:
 //   0 x Rd       0
 //   1 x Rd       1
@@ -40697,44 +40431,6 @@ bool TryDecodeUSHLL_ASIMDSHF_L(const InstData &, Instruction &) {
   return false;
 }
 
-// STLR STLR_SL32_ldstexcl:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1 Rt2      0
-//  11 1 Rt2      1
-//  12 1 Rt2      2
-//  13 1 Rt2      3
-//  14 1 Rt2      4
-//  15 1 o0       0
-//  16 1 Rs       0
-//  17 1 Rs       1
-//  18 1 Rs       2
-//  19 1 Rs       3
-//  20 1 Rs       4
-//  21 0 o1       0
-//  22 0 L        0
-//  23 1 o2       0
-//  24 0
-//  25 0
-//  26 0
-//  27 1
-//  28 0
-//  29 0
-//  30 0 size     0
-//  31 1 size     1
-// STLR  <Wt>, [<Xn|SP>{,#0}]
-bool TryDecodeSTLR_SL32_LDSTEXCL(const InstData &, Instruction &) {
-  return false;
-}
-
 // STLR STLR_SL64_ldstexcl:
 //   0 x Rt       0
 //   1 x Rt       1
@@ -40770,82 +40466,6 @@ bool TryDecodeSTLR_SL32_LDSTEXCL(const InstData &, Instruction &) {
 //  31 1 size     1
 // STLR  <Xt>, [<Xn|SP>{,#0}]
 bool TryDecodeSTLR_SL64_LDSTEXCL(const InstData &, Instruction &) {
-  return false;
-}
-
-// EON EON_32_log_shift:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm6     0
-//  11 x imm6     1
-//  12 x imm6     2
-//  13 x imm6     3
-//  14 x imm6     4
-//  15 x imm6     5
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1 N        0
-//  22 x shift    0
-//  23 x shift    1
-//  24 0
-//  25 1
-//  26 0
-//  27 1
-//  28 0
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 0 sf       0
-// EON  <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
-bool TryDecodeEON_32_LOG_SHIFT(const InstData &, Instruction &) {
-  return false;
-}
-
-// EON EON_64_log_shift:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x imm6     0
-//  11 x imm6     1
-//  12 x imm6     2
-//  13 x imm6     3
-//  14 x imm6     4
-//  15 x imm6     5
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 1 N        0
-//  22 x shift    0
-//  23 x shift    1
-//  24 0
-//  25 1
-//  26 0
-//  27 1
-//  28 0
-//  29 0 opc      0
-//  30 1 opc      1
-//  31 1 sf       0
-// EON  <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
-bool TryDecodeEON_64_LOG_SHIFT(const InstData &, Instruction &) {
   return false;
 }
 
@@ -41340,44 +40960,6 @@ bool TryDecodeSXTH_SBFM_32M_BITFIELD(const InstData &, Instruction &) {
 //  31 1 sf       0
 // SXTH  <Xd>, <Wn>
 bool TryDecodeSXTH_SBFM_64M_BITFIELD(const InstData &, Instruction &) {
-  return false;
-}
-
-// LDURSB LDURSB_32_ldst_unscaled:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 0
-//  12 x imm9     0
-//  13 x imm9     1
-//  14 x imm9     2
-//  15 x imm9     3
-//  16 x imm9     4
-//  17 x imm9     5
-//  18 x imm9     6
-//  19 x imm9     7
-//  20 x imm9     8
-//  21 0
-//  22 1 opc      0
-//  23 1 opc      1
-//  24 0
-//  25 0
-//  26 0 V        0
-//  27 1
-//  28 1
-//  29 1
-//  30 0 size     0
-//  31 0 size     1
-// LDURSB  <Wt>, [<Xn|SP>{, #<simm>}]
-bool TryDecodeLDURSB_32_LDST_UNSCALED(const InstData &, Instruction &) {
   return false;
 }
 
