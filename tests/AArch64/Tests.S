@@ -255,11 +255,8 @@ SYMBOL(__aarch64_test_table_begin):
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
 
 
-#include "tests/AArch64/DATAXFER/STLXR_SRn_LDSTEXCL.S"
-#include "tests/AArch64/DATAXFER/MOVI_ASIMDIMM.S"
-#include "tests/AArch64/DATAXFER/MVNI_ASIMDIMM.S"
 
-#if 0
+#if 1
 
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
@@ -340,9 +337,12 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/LDRSW.S"
 #include "tests/AArch64/DATAXFER/LDUR_n_LDST_UNSCALED.S"
 #include "tests/AArch64/DATAXFER/LDXR_LRn_LDSTEXCL.S"
+#include "tests/AArch64/DATAXFER/MOVI_ASIMDIMM.S"
 #include "tests/AArch64/DATAXFER/MOVK_n_MOVEWIDE.S"
 #include "tests/AArch64/DATAXFER/MOVZ_n_MOVEWIDE.S"
+#include "tests/AArch64/DATAXFER/MVNI_ASIMDIMM.S"
 #include "tests/AArch64/DATAXFER/SMOV.S"
+#include "tests/AArch64/DATAXFER/STLXR_SRn_LDSTEXCL.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_OFF.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_POST.S"
 #include "tests/AArch64/DATAXFER/STP_n_LDSTPAIR_PRE.S"
