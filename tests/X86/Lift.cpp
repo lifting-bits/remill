@@ -87,8 +87,9 @@ static void AddFunctionToModule(llvm::Module *module,
 
     remill::Instruction inst;
     CHECK(arch->DecodeInstruction(addr, instr_bytes, inst))
-        << "Can't decode test instruction " << inst.Serialize()
-        << " in " << test.test_name;
+        << "Can't decode test instruction in " << test.test_name << ": "
+        << inst.Serialize() 
+        << "\nSee DecodeInstruction() and the logs for more info.";
 
     CHECK(remill::kLiftedInstruction == lifter.LiftIntoBlock(inst, block))
         << "Can't lift test instruction " << inst.Serialize()

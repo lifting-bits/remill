@@ -286,6 +286,67 @@ IF_AVX(DEF_ISEL(VPSHUFD_YMMqq_YMMqq_IMMb) = PSHUFD<VV256W, V256>;)
 
 namespace {
 
+template <typename D, typename S1>
+  DEF_SEM(PSHUFLW, D dst, S1 src1, I8 src2) {
+  // Source operand is packed with word (16-bit) integers to be shuffled,
+  // but src1 is also a vector of one or more 128-bit "lanes":
+  auto src_vec = UReadV128(src1);
+  auto src_words_vec = UReadV16(src1);
+  
+  // Dest operand is similar. DEST[MAXVL-1:128] will be unmodified:
+  auto dst_vec = UClearV16(UReadV16(dst));
+
+  // The same operation is done for each 128-bit "lane" of src1:
+  auto num_lanes = NumVectorElems(UReadV128(src1));
+
+  _Pragma("unroll")
+  for (std::size_t lane_index = 0, word_index = 0; lane_index < num_lanes; ++lane_index) {
+    auto lane = UExtractV128(src_vec, lane_index);
+    // Words will be shuffled in the order specified in a code in src2:
+    auto order = Read(src2);
+
+    // Shuffle the 4 words from the low 64-bits of the 128-bit lane:
+    _Pragma("unroll")
+    for (std::size_t word_count = 0; word_count < 4; ++word_count, ++word_index) {
+      auto sel = UAnd(order, 0x3_u8);
+      auto shift = UMul(sel, 16_u8);
+      order = UShr(order, 2_u8);
+      auto sel_val = UShr(lane, UInt128(shift));
+      dst_vec = UInsertV16(dst_vec, word_index, TruncTo<uint16_t>(sel_val));
+    }
+
+    // After shuffling the low 64-bits, the high 64-bits of the src1 lane is 
+    // copied to the high quadword of the corresponding destination lane:
+    _Pragma("unroll")
+    for (std::size_t word_count = 0; word_count < 4; ++word_count, ++word_index) {
+      dst_vec = UInsertV16(dst_vec, word_index, UExtractV16(src_words_vec, word_index));
+    }
+  }
+
+  UWriteV16(dst, dst_vec);
+  return memory;
+}
+
+} // namespace
+
+DEF_ISEL(PSHUFLW_XMMdq_MEMdq_IMMb) = PSHUFLW<V128W, MV128>;
+DEF_ISEL(PSHUFLW_XMMdq_XMMdq_IMMb) = PSHUFLW<V128W, V128>;
+IF_AVX(DEF_ISEL(VPSHUFLW_XMMdq_MEMdq_IMMb) = PSHUFLW<VV128W, MV128>;)
+IF_AVX(DEF_ISEL(VPSHUFLW_XMMdq_XMMdq_IMMb) = PSHUFLW<VV128W, V128>;)
+IF_AVX(DEF_ISEL(VPSHUFLW_YMMqq_MEMqq_IMMb) = PSHUFLW<VV256W, MV256>;)
+IF_AVX(DEF_ISEL(VPSHUFLW_YMMqq_YMMqq_IMMb) = PSHUFLW<VV256W, V256>;)
+
+/*
+4432 VPSHUFLW VPSHUFLW_XMMu16_MASKmskw_XMMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_128 ATTRIBUTES: MASKOP_EVEX 
+4433 VPSHUFLW VPSHUFLW_XMMu16_MASKmskw_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_128 ATTRIBUTES: DISP8_FULLMEM MASKOP_EVEX 
+4434 VPSHUFLW VPSHUFLW_YMMu16_MASKmskw_YMMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_256 ATTRIBUTES: MASKOP_EVEX 
+4435 VPSHUFLW VPSHUFLW_YMMu16_MASKmskw_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_256 ATTRIBUTES: DISP8_FULLMEM MASKOP_EVEX 
+4436 VPSHUFLW VPSHUFLW_ZMMu16_MASKmskw_ZMMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_512 ATTRIBUTES: MASKOP_EVEX 
+4437 VPSHUFLW VPSHUFLW_ZMMu16_MASKmskw_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_512 ATTRIBUTES: DISP8_FULLMEM MASKOP_EVEX 
+*/
+
+namespace {
+
 #define MAKE_PCMP(suffix, size, op) \
     template <typename D, typename S1, typename S2> \
     DEF_SEM(PCMP ## suffix, D dst, S1 src1, S2 src2) { \
@@ -1594,7 +1655,6 @@ IF_AVX(DEF_ISEL(VPACKUSWB_YMMqq_YMMqq_MEMqq) = PACKUSWB_AVX<VV256W, V256, MV256,
 IF_AVX(DEF_ISEL(VPACKUSWB_YMMqq_YMMqq_YMMqq) = PACKUSWB_AVX<VV256W, V256, V256, uint8v32_t>;)
 
 /*
-
 555 PACKSSDW PACKSSDW_MMXq_MEMq MMX MMX PENTIUMMMX ATTRIBUTES: HALF_WIDE_OUTPUT NOTSX
 556 PACKSSDW PACKSSDW_MMXq_MMXq MMX MMX PENTIUMMMX ATTRIBUTES: HALF_WIDE_OUTPUT NOTSX
 557 PACKSSDW PACKSSDW_XMMdq_MEMdq SSE SSE2 SSE2 ATTRIBUTES: HALF_WIDE_OUTPUT REQUIRES_ALIGNMENT
@@ -1643,5 +1703,72 @@ IF_AVX(DEF_ISEL(VPACKUSWB_YMMqq_YMMqq_YMMqq) = PACKUSWB_AVX<VV256W, V256, V256, 
 6434 VPACKSSWB VPACKSSWB_ZMMi8_MASKmskw_ZMMi16_ZMMi16_AVX512 AVX512 AVX512EVEX AVX512BW_512 ATTRIBUTES: MASKOP_EVEX
 6435 VPACKSSWB VPACKSSWB_ZMMi8_MASKmskw_ZMMi16_MEMi16_AVX512 AVX512 AVX512EVEX AVX512BW_512 ATTRIBUTES: DISP8_FULLMEM MASKOP_EVEX
  */
+
+
+namespace {
+
+DEF_SEM(LDMXCSR, M32 src) {
+  auto &csr = state.x87.fxsave.mxcsr;
+  csr.flat = Read(src);
+
+  int rounding_mode = FE_TONEAREST;
+  
+  if (!csr.rp && !csr.rn) {
+    rounding_mode = FE_TONEAREST;
+  } 
+  else if (!csr.rp && csr.rn) {
+    rounding_mode = FE_DOWNWARD;
+  }
+  else if (csr.rp && !csr.rn) {
+    rounding_mode = FE_UPWARD;
+  }
+  else {
+    rounding_mode = FE_TOWARDZERO;
+  }
+  fesetround(rounding_mode);
+  
+  // TODO: set FPU precision based on MXCSR precision flag (csr.pe)
+  
+  return memory;
+}
+
+DEF_SEM(STMXCSR, M32W dst) {
+  auto &csr = state.x87.fxsave.mxcsr;
+  
+  // TODO: store the current FPU precision control:
+  csr.pe = 0;
+
+  // Store the current FPU rounding mode:
+  switch (fegetround()) {
+    default:
+    case FE_TONEAREST:
+      csr.rp = 0;
+      csr.rn = 0;
+      break;
+    case FE_DOWNWARD:
+      csr.rp = 0;
+      csr.rn = 1;
+      break;
+    case FE_UPWARD:
+      csr.rp = 1;
+      csr.rn = 0;
+      break;
+    case FE_TOWARDZERO:
+      csr.rp = 1;
+      csr.rn = 1;
+      break;
+  }
+
+  Write(dst, csr.flat);
+  
+  return memory;
+}
+
+} // namespace
+
+DEF_ISEL(LDMXCSR_MEMd) = LDMXCSR;
+DEF_ISEL(STMXCSR_MEMd) = STMXCSR;
+IF_AVX(DEF_ISEL(VLDMXCSR_MEMd) = LDMXCSR;)
+IF_AVX(DEF_ISEL(VSTMXCSR_MEMd) = STMXCSR;)
 
 #endif  // REMILL_ARCH_X86_SEMANTICS_SSE_H_
