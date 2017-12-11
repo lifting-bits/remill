@@ -509,6 +509,16 @@ static void AddImmOperand(Instruction &inst, uint64_t val,
   inst.operands.push_back(op);
 }
 
+static void AddMonitorOperand(Instruction &inst) {
+  Operand op;
+  op.action = Operand::kActionWrite;
+  op.reg.name = "MONITOR";
+  op.reg.size = 64;
+  op.size = 64;
+  op.type = Operand::kTypeRegister;
+  inst.operands.push_back(op);
+}
+
 static void AddPCRegOp(Instruction &inst, Operand::Action action, int64_t disp,
                        Operand::Address::Kind op_kind) {
   Operand op;
@@ -4360,16 +4370,6 @@ bool TryDecodeNOT_ASIMDMISC_R(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
   AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
   return true;
-}
-
-static void AddMonitorOperand(Instruction &inst) {
-  Operand op;
-  op.action = Operand::kActionWrite;
-  op.reg.name = "MONITOR";
-  op.reg.size = 64;
-  op.size = 64;
-  op.type = Operand::kTypeRegister;
-  inst.operands.push_back(op);
 }
 
 // LDAXR  <Wt>, [<Xn|SP>{,#0}]
