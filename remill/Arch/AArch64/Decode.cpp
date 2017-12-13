@@ -36252,44 +36252,6 @@ bool TryDecodeUABDL_ASIMDDIFF_L(const InstData &, Instruction &) {
   return false;
 }
 
-// MSR MSR_SR_system:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x op2      0
-//   6 x op2      1
-//   7 x op2      2
-//   8 x CRm      0
-//   9 x CRm      1
-//  10 x CRm      2
-//  11 x CRm      3
-//  12 x CRn      0
-//  13 x CRn      1
-//  14 x CRn      2
-//  15 x CRn      3
-//  16 x op1      0
-//  17 x op1      1
-//  18 x op1      2
-//  19 x o0       0
-//  20 1
-//  21 0 L        0
-//  22 0
-//  23 0
-//  24 1
-//  25 0
-//  26 1
-//  27 0
-//  28 1
-//  29 0
-//  30 1
-//  31 1
-// MSR  (<systemreg>|S<op0>_<op1>_<Cn>_<Cm>_<op2>), <Xt>
-bool TryDecodeMSR_SR_SYSTEM(const InstData &, Instruction &) {
-  return false;
-}
-
 // UQSHL UQSHL_asisdshf_R:
 //   0 x Rd       0
 //   1 x Rd       1

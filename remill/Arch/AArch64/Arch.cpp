@@ -3225,6 +3225,18 @@ bool TryDecodeMRS_RS_SYSTEM(const InstData &data, Instruction &inst) {
   return AppendSysRegName(inst, bits);
 }
 
+// MSR  (<systemreg>|S<op0>_<op1>_<Cn>_<Cm>_<op2>), <Xt>
+bool TryDecodeMSR_SR_SYSTEM(const InstData &data, Instruction &inst) {
+  SystemReg bits;
+  bits.op0 = data.o0 + 2ULL;  // 2 bits.
+  bits.op1 = data.op1;  // 3 bits.
+  bits.crn = data.CRn;  // 4 bits.
+  bits.crm = data.CRm;  // 4 bits.
+  bits.op2 = data.op2;  // 3 bits.
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
+  return AppendSysRegName(inst, bits);
+}
+
 static bool TryDecodeSTR_Vn_LDST_POS(const InstData &data, Instruction &inst,
                                      RegClass val_class) {
   uint64_t scale = DecodeScale(data);
