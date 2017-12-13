@@ -53,6 +53,21 @@ DEF_SEM(DoMSR_SR_SYSTEM_FPSR, R64 src) {
   return memory;
 }
 
+DEF_SEM(DoMRS_RS_SYSTEM_FPCR, R64W dest) {
+  auto fpcr = state.fpcr;
+  WriteZExt(dest, fpcr.flat);
+  return memory;
+}
+
+DEF_SEM(DoMSR_SR_SYSTEM_FPCR, R64 src) {
+  FPCR fpcr;
+  WriteZExt(fpcr.flat, Read(src));
+  fpcr._res0 = 0;
+  fpcr._res1 = 0;
+  state.fpcr = fpcr;
+  return memory;
+}
+
 DEF_SEM(DataMemoryBarrier) {
   // TODO(pag): Full-system data memory barrier probably requires a synchronous
   //            hypercall if it behaves kind of like Linux's `sys_membarrier`.
@@ -65,4 +80,6 @@ DEF_ISEL(SVC_EX_EXCEPTION) = CallSupervisor;
 DEF_ISEL(BRK_EX_EXCEPTION) = Breakpoint;
 DEF_ISEL(MRS_RS_SYSTEM_FPSR) = DoMRS_RS_SYSTEM_FPSR;
 DEF_ISEL(MSR_SR_SYSTEM_FPSR) = DoMSR_SR_SYSTEM_FPSR;
+DEF_ISEL(MRS_RS_SYSTEM_FPCR) = DoMRS_RS_SYSTEM_FPCR;
+DEF_ISEL(MSR_SR_SYSTEM_FPCR) = DoMSR_SR_SYSTEM_FPCR;
 DEF_ISEL(DMB_BO_SYSTEM) = DataMemoryBarrier;

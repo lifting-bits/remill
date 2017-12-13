@@ -406,6 +406,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/SIMD/NOT_ASIMDMISC_R.S"
 
 #include "tests/AArch64/SYSTEM/Mn_n_SYSTEM_FPSR.S"
+#include "tests/AArch64/SYSTEM/Mn_n_SYSTEM_FPCR.S"
 
 #endif
 
