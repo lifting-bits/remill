@@ -314,7 +314,8 @@ union alignas(16) FPU final {
   } __attribute__((packed)) fxsave64;
 } __attribute__((packed));
 
-#define fxsave IF_64BIT_ELSE(fxsave64, fxsave32)
+// fxsave64 will be our default model, fxsave, for the FPU state:
+#define fxsave fxsave64
 
 static_assert(512 == sizeof(FPU), "Invalid structure packing of `FPU`.");
 

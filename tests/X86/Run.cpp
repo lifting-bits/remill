@@ -340,8 +340,8 @@ static void ImportX87X86State(X86State *state) {
       kFPUAbridgedTagValid == fpu.fxsave.ftw.r6 &&
       kFPUAbridgedTagValid == fpu.fxsave.ftw.r7) {
 
-    // Copy over the MMX data. A good guess for MMX data is that the the
-    // value looks like its infinity.
+    // Copy over the MMX data. A good guess for MMX data is that the
+    // value looks like it's infinity.
     DLOG(INFO) << "Importing MMX state.";
     for (size_t i = 0; i < 8; ++i) {
       if (static_cast<uint16_t>(0xFFFFU) == fpu.fxsave.st[i].infinity) {
@@ -359,7 +359,7 @@ static void ImportX87X86State(X86State *state) {
   }
 
   state->sw.c0 = fpu.fxsave.swd.c0;
-//  state->sw.c1 = fpu.fxsave.swd.c1;
+//  state->sw.c1 = fpu.fxsave.swd.c1;  // currently we do not model C1
   state->sw.c2 = fpu.fxsave.swd.c2;
   state->sw.c3 = fpu.fxsave.swd.c3;
 }
@@ -551,9 +551,11 @@ static void RunWithFlags(const test::TestInfo *info,
       << lifted_state->rflag.flat << ", native is "
       << native_state->rflag.flat << std::dec;
 
-  EXPECT_TRUE(lifted_state->seg == native_state->seg);
+  EXPECT_TRUE(lifted_state->seg == native_state->seg)
+      << "Lifted SEG differs from native SEG";
 
-  EXPECT_TRUE(lifted_state->gpr == native_state->gpr);
+  EXPECT_TRUE(lifted_state->gpr == native_state->gpr)
+      << "Lifted GPR differs from native GPR";
 
   EXPECT_TRUE(lifted_state->x87.fxsave.swd == native_state->x87.fxsave.swd)
       << "Lifted X87 status word after test is " << std::hex
