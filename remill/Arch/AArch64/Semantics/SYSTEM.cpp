@@ -68,6 +68,16 @@ DEF_SEM(DoMSR_SR_SYSTEM_FPCR, R64 src) {
   return memory;
 }
 
+DEF_SEM(DoMRS_RS_SYSTEM_TPIDR_EL0, R64W dest) {
+  WriteZExt(dest, Read(state.sr.tpidr_el0));
+  return memory;
+}
+
+DEF_SEM(DoMSR_SR_SYSTEM_TPIDR_EL0, R64 src) {
+  WriteZExt(state.sr.tpidr_el0.qword, Read(src));
+  return memory;
+}
+
 DEF_SEM(DataMemoryBarrier) {
   // TODO(pag): Full-system data memory barrier probably requires a synchronous
   //            hypercall if it behaves kind of like Linux's `sys_membarrier`.
@@ -78,8 +88,14 @@ DEF_SEM(DataMemoryBarrier) {
 
 DEF_ISEL(SVC_EX_EXCEPTION) = CallSupervisor;
 DEF_ISEL(BRK_EX_EXCEPTION) = Breakpoint;
+
 DEF_ISEL(MRS_RS_SYSTEM_FPSR) = DoMRS_RS_SYSTEM_FPSR;
 DEF_ISEL(MSR_SR_SYSTEM_FPSR) = DoMSR_SR_SYSTEM_FPSR;
+
 DEF_ISEL(MRS_RS_SYSTEM_FPCR) = DoMRS_RS_SYSTEM_FPCR;
 DEF_ISEL(MSR_SR_SYSTEM_FPCR) = DoMSR_SR_SYSTEM_FPCR;
+
+DEF_ISEL(MRS_RS_SYSTEM_TPIDR_EL0) = DoMRS_RS_SYSTEM_TPIDR_EL0;
+DEF_ISEL(MSR_SR_SYSTEM_TPIDR_EL0) = DoMSR_SR_SYSTEM_TPIDR_EL0;
+
 DEF_ISEL(DMB_BO_SYSTEM) = DataMemoryBarrier;
