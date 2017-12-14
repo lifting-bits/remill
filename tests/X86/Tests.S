@@ -403,9 +403,9 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BITBYTE/BTC.S"
 #include "tests/X86/BITBYTE/BTR.S"
 #include "tests/X86/BITBYTE/BTS.S"
-//#include "tests/X86/BITBYTE/LZCNT.S" // TODO: conditionally disable when not supported in CPU
+#include "tests/X86/BITBYTE/LZCNT.S"
 #include "tests/X86/BITBYTE/SETcc.S"
-//#include "tests/X86/BITBYTE/TZCNT.S" // TODO: conditionally disable when not supported in CPU
+#include "tests/X86/BITBYTE/TZCNT.S"
 
 #include "tests/X86/CMOV/CMOVB.S"
 #include "tests/X86/CMOV/CMOVBE.S"
