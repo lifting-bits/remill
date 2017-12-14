@@ -506,6 +506,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/PACKUSWB.S"
 #include "tests/X86/SSE/PCMPISTRI.S"
 #include "tests/X86/SSE/PSHUFD.S"
+#include "tests/X86/SSE/PSHUFLW.S"
 #include "tests/X86/SSE/PSLLDQ.S"
 #include "tests/X86/SSE/PSRLDQ.S"
 #include "tests/X86/SSE/UCOMISD.S"
@@ -519,6 +520,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/UNPCKHPD.S"
 #include "tests/X86/SSE/MOVDDUP.S"
 #include "tests/X86/SSE/SQRTSS.S"
+#include "tests/X86/SSE/MXCSR.S"
 
 #include "tests/X86/STRINGOP/CMPS.S"
 #include "tests/X86/STRINGOP/LODS.S"
@@ -537,6 +539,10 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/X87/FUCOM.S"
 #include "tests/X86/X87/FXCH.S"
 #include "tests/X86/X87/MISC.S"
+#include "tests/X86/X87/FNINIT.S"
+
+#include "tests/X86/FMA/VFMADDSD.S"
+#include "tests/X86/FMA/VFMSUBSD.S"
 
 #endif
 

@@ -509,6 +509,16 @@ static void AddImmOperand(Instruction &inst, uint64_t val,
   inst.operands.push_back(op);
 }
 
+static void AddMonitorOperand(Instruction &inst) {
+  Operand op;
+  op.action = Operand::kActionWrite;
+  op.reg.name = "MONITOR";
+  op.reg.size = 64;
+  op.size = 64;
+  op.type = Operand::kTypeRegister;
+  inst.operands.push_back(op);
+}
+
 static void AddPCRegOp(Instruction &inst, Operand::Action action, int64_t disp,
                        Operand::Address::Kind op_kind) {
   Operand op;
@@ -4374,34 +4384,171 @@ bool TryDecodeNOT_ASIMDMISC_R(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// LDAXR  <Wt>, [<Xn|SP>{,#0}]
+bool TryDecodeLDAXR_LR32_LDSTEXCL(const InstData &data, Instruction &inst) {
+  return TryDecodeLDXR_LR32_LDSTEXCL(data, inst);
+}
+
+// LDAXR  <Xt>, [<Xn|SP>{,#0}]
+bool TryDecodeLDAXR_LR64_LDSTEXCL(const InstData &data, Instruction &inst) {
+  return TryDecodeLDXR_LR64_LDSTEXCL(data, inst);
+}
+
+// LDXR  <Wt>, [<Xn|SP>{,#0}]
+bool TryDecodeLDXR_LR32_LDSTEXCL(const InstData &data, Instruction &inst) {
+  inst.is_atomic_read_modify_write = true;
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 32, data.Rn, 0);
+  AddMonitorOperand(inst);
+  return true;
+}
+
+// LDXR  <Xt>, [<Xn|SP>{,#0}]
+bool TryDecodeLDXR_LR64_LDSTEXCL(const InstData &data, Instruction &inst) {
+  inst.is_atomic_read_modify_write = true;
+  AddRegOperand(inst, kActionWrite, kRegX, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionRead, 64, data.Rn, 0);
+  AddMonitorOperand(inst);
+  return true;
+}
+
+// STLXR  <Ws>, <Wt>, [<Xn|SP>{,#0}]
+bool TryDecodeSTLXR_SR32_LDSTEXCL(const InstData &data, Instruction &inst) {
+  inst.is_atomic_read_modify_write = true;
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rs);
+  AddRegOperand(inst, kActionRead, kRegW, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 32, data.Rn, 0);
+  AddMonitorOperand(inst);
+  return true;
+}
+
+// STLXR  <Ws>, <Xt>, [<Xn|SP>{,#0}]
+bool TryDecodeSTLXR_SR64_LDSTEXCL(const InstData &data, Instruction &inst) {
+  inst.is_atomic_read_modify_write = true;
+  AddRegOperand(inst, kActionWrite, kRegW, kUseAsValue, data.Rs);
+  AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionWrite, 64, data.Rn, 0);
+  AddMonitorOperand(inst);
+  return true;
+}
+
+static uint64_t ConcatABCDEFGHToU8(const InstData &data) {
+  uint64_t imm = data.a;
+  imm = (imm << 1) | data.b;
+  imm = (imm << 1) | data.c;
+  imm = (imm << 1) | data.d;
+  imm = (imm << 1) | data.e;
+  imm = (imm << 1) | data.f;
+  imm = (imm << 1) | data.g;
+  imm = (imm << 1) | data.h;
+  return imm;
+}
+
+static uint64_t ConcatAndReplicateABCDEFGHToU64(const InstData &data) {
+  auto a = Replicate(data.a, 1, 8);
+  auto b = Replicate(data.b, 1, 8);
+  auto c = Replicate(data.c, 1, 8);
+  auto d = Replicate(data.d, 1, 8);
+  auto e = Replicate(data.e, 1, 8);
+  auto f = Replicate(data.f, 1, 8);
+  auto g = Replicate(data.g, 1, 8);
+  auto h = Replicate(data.h, 1, 8);
+  uint64_t imm = a;
+  imm = (imm << 8) | b;
+  imm = (imm << 8) | c;
+  imm = (imm << 8) | d;
+  imm = (imm << 8) | e;
+  imm = (imm << 8) | f;
+  imm = (imm << 8) | g;
+  imm = (imm << 8) | h;
+  return imm;
+}
+
+// MOVI  <Vd>.2D, #<imm>
+bool TryDecodeMOVI_ASIMDIMM_D2_D(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddImmOperand(inst, ConcatAndReplicateABCDEFGHToU64(data));
+  return true;
+}
+
+// MOVI  <Vd>.<T>, #<imm8>{, LSL #0}
+bool TryDecodeMOVI_ASIMDIMM_N_B(const InstData &data, Instruction &inst) {
+  AddQArrangementSpecifier(data, inst, "16B", "8B");
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddImmOperand(inst, ConcatABCDEFGHToU8(data), kUnsigned, 8);
+  return true;
+}
+
+// MOVI  <Vd>.<T>, #<imm8>{, LSL #<amount>}
+bool TryDecodeMOVI_ASIMDIMM_L_HL(const InstData &data, Instruction &inst) {
+  AddQArrangementSpecifier(data, inst, "8H", "4H");
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  uint64_t shift = (data.cmode & 2) ? 8 : 0;
+  AddImmOperand(inst, ConcatABCDEFGHToU8(data) << shift, kUnsigned, 16);
+  return true;
+}
+
+// MOVI  <Vd>.<T>, #<imm8>{, LSL #<amount>}
+bool TryDecodeMOVI_ASIMDIMM_L_SL(const InstData &data, Instruction &inst) {
+  AddQArrangementSpecifier(data, inst, "4S", "2S");
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  uint64_t shift = 8 * ((data.cmode >> 1) & 3);
+  AddImmOperand(inst, ConcatABCDEFGHToU8(data) << shift, kUnsigned, 32);
+  return true;
+}
+
+// MOVI  <Vd>.<T>, #<imm8>, MSL #<amount>
+bool TryDecodeMOVI_ASIMDIMM_M_SM(const InstData &data, Instruction &inst) {
+  AddQArrangementSpecifier(data, inst, "4S", "2S");
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  uint64_t shift = (data.cmode & 1) ? 16 : 8;
+  uint64_t ones = ~((~0ULL) << shift);
+  uint64_t imm = (ConcatABCDEFGHToU8(data) << shift) | ones;
+  AddImmOperand(inst, imm, kUnsigned, 32);
+  return true;
+}
+
+// MOVI  <Dd>, #<imm>
+bool TryDecodeMOVI_ASIMDIMM_D_DS(const InstData &data, Instruction &inst) {
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddImmOperand(inst, ConcatAndReplicateABCDEFGHToU64(data));
+  return true;
+}
+
+// MVNI  <Vd>.<T>, #<imm8>{, LSL #<amount>}
+bool TryDecodeMVNI_ASIMDIMM_L_HL(const InstData &data, Instruction &inst) {
+  if (!TryDecodeMOVI_ASIMDIMM_L_HL(data, inst)) {
+    return false;
+  }
+  auto &imm = inst.operands[inst.operands.size() - 1].imm.val;
+  imm = (~imm) & 0xFFFFULL;
+  return true;
+}
+
+// MVNI  <Vd>.<T>, #<imm8>{, LSL #<amount>}
+bool TryDecodeMVNI_ASIMDIMM_L_SL(const InstData &data, Instruction &inst) {
+  if (!TryDecodeMOVI_ASIMDIMM_L_SL(data, inst)) {
+    return false;
+  }
+  auto &imm = inst.operands[inst.operands.size() - 1].imm.val;
+  imm = (~imm) & 0xFFFFFFFFULL;
+  return true;
+}
+
+// MVNI  <Vd>.<T>, #<imm8>, MSL #<amount>
+bool TryDecodeMVNI_ASIMDIMM_M_SM(const InstData &data, Instruction &inst) {
+  if (!TryDecodeMOVI_ASIMDIMM_M_SM(data, inst)) {
+    return false;
+  }
+  auto &imm = inst.operands[inst.operands.size() - 1].imm.val;
+  imm = (~imm) & 0xFFFFFFFFULL;
+  return true;
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
-const Arch *Arch::GetAArch64(
-    OSName os_name_, ArchName arch_name_) {
-//  aarch64::InstData data;
-//  for (uint64_t i = 0; i < 0xFFFFFFFFULL; ++i) {
-//    uint32_t bits = static_cast<uint32_t>(i);
-//    if (aarch64::TryExtractBFM_32M_BITFIELD(data, bits)) {
-//      if (data.iform != aarch64::InstForm::BFM_32M_BITFIELD) {
-//        continue;
-//      }
-//      if (data.Rd == 3 && data.Rn == 0) {
-//        remill::Instruction inst;
-//        if (!aarch64::TryDecode(data, inst)) {
-//          continue;
-//        }
-//        LOG(ERROR)
-//            << "MAKE_BFM_TEST(" << aarch64::InstFormToString(data.iform)
-//            << ", " << aarch64::InstNameToString(data.iclass) << "_w3_w0_"
-//            << std::hex << data.immr.uimm << "_" << data.imms.uimm << ", 0x"
-//            << std::hex << std::setw(2) << std::setfill('0')
-//            << ((bits >> 0) & 0xFF) << ", 0x" << ((bits >> 8) & 0xFF)
-//            << ", 0x" << ((bits >> 16) & 0xFF) << ", 0x"
-//            << ((bits >> 24) & 0xFF) << ")";
-//      }
-//    }
-//  }
+const Arch *Arch::GetAArch64(OSName os_name_, ArchName arch_name_) {
   return new AArch64Arch(os_name_, arch_name_);
 }
 

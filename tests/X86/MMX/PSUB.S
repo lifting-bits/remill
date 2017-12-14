@@ -83,7 +83,7 @@ TEST_BEGIN_64(PSUBDr64m64, 2)
 TEST_INPUTS_MMX_2()
     push ARG2_64
     movq mm0, ARG1_64
-    psubb mm0, qword ptr [rsp]
+    psubd mm0, qword ptr [rsp]
 TEST_END_64
 
 TEST_BEGIN_64(PSUBDv128v128, 2)
@@ -98,8 +98,71 @@ TEST_INPUTS_MMX_2()
     push 0
     push ARG2_64
     movq xmm0, ARG1_64
-    psubb xmm0, xmmword ptr [rsp]
+    psubd xmm0, xmmword ptr [rsp]
 TEST_END_64
+
+TEST_BEGIN_64(PSUBQr64r64, 2)
+TEST_INPUTS_MMX_2()
+    movq mm0, ARG1_64;
+    movq mm1, ARG2_64;
+    psubq mm0, mm1;
+TEST_END_64
+
+TEST_BEGIN_64(PSUBQr64m64, 2)
+TEST_INPUTS_MMX_2()
+    push ARG2_64;
+    movq mm0, ARG1_64;
+    psubq mm0, qword ptr [rsp];
+TEST_END_64
+
+TEST_BEGIN_64(PSUBQv128v128, 2)
+TEST_INPUTS_MMX_2()
+    movq xmm0, ARG1_64;
+    movq xmm1, ARG2_64;
+    psubq xmm0, xmm1;
+TEST_END_64
+
+TEST_BEGIN_64(PSUBQv128m128, 2)
+TEST_INPUTS_MMX_2()
+    push 0;
+    push ARG2_64;
+    movq xmm0, ARG1_64;
+    psubq xmm0, xmmword ptr [rsp];
+TEST_END_64
+
+#if HAS_FEATURE_AVX
+
+TEST_BEGIN_64(VPSUBDv128v128m128, 2)
+TEST_INPUTS_MMX_2()
+    push 0;
+    push ARG2_64;
+    movq xmm0, ARG1_64;
+    vpsubd xmm1, xmm0, xmmword ptr [rsp];
+TEST_END_64
+
+TEST_BEGIN_64(VPSUBDv128v128v128, 2)
+TEST_INPUTS_MMX_2()
+    movq xmm0, ARG1_64;
+    movq xmm1, ARG2_64;
+    vpsubd xmm2, xmm1, xmm0;
+TEST_END_64
+
+TEST_BEGIN_64(VPSUBQv128v128m128, 2)
+TEST_INPUTS_MMX_2()
+    push 0;
+    push ARG2_64;
+    movq xmm0, ARG1_64;
+    vpsubq xmm1, xmm0, xmmword ptr [rsp];
+TEST_END_64
+
+TEST_BEGIN_64(VPSUBQv128v128v128, 2)
+TEST_INPUTS_MMX_2()
+    movq xmm0, ARG1_64;
+    movq xmm1, ARG2_64;
+    vpsubq xmm2, xmm1, xmm0;
+TEST_END_64
+
+#endif  // HAS_FEATURE_AVX
 
 TEST_BEGIN_64(PSUBUSBr64r64, 2)
 TEST_INPUTS_MMX_2()
