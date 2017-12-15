@@ -337,7 +337,6 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/ABI.S"
 #include "tests/X86/MMX/INPUTS.S"
 
-#include "tests/X86/DECIMAL/AAS.S"
 
 /* Change to `0` and put new `#include`s above when making new tests to speed
  * up compile and test times. */
@@ -451,6 +450,9 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/CONVERT/CVTTSS2SI.S"
 #include "tests/X86/CONVERT/CWD.S"
 #include "tests/X86/CONVERT/CWDE.S"
+
+#include "tests/X86/DECIMAL/AAS.S"
+#include "tests/X86/DECIMAL/DAA.S"
 
 #include "tests/X86/LOGICAL/AND.S"
 #include "tests/X86/LOGICAL/NOT.S"

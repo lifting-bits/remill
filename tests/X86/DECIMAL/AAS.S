@@ -37,6 +37,26 @@ TEST_INPUTS(0)
 TEST_END
 
 // al > 9, af = 1
+TEST_BEGIN(AAS_alff_af1, 1)
+TEST_IGNORE_FLAGS(OF ZF PF)
+TEST_INPUTS(0)
+  // force af = 1 
+  lahf
+  bts ax, 0xc
+  sahf
+  mov eax, 0xffff
+#if IN_TEST_GENERATOR
+  .byte 0x3f  /* aas */
+#else
+  lahf
+  bts ax, 0xc
+  bts ax, 0x8
+  sahf
+  mov ax, 0xfe09 /* hard coded post-AAS value */
+#endif /* IN_TEST_GENERATOR */
+TEST_END
+
+// al > 9, af = 1
 TEST_BEGIN(AAS_alf_af1_extra, 1)
 TEST_IGNORE_FLAGS(OF ZF PF)
 TEST_INPUTS(0)
