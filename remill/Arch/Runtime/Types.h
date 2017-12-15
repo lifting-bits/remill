@@ -666,6 +666,22 @@ struct IntegerType {
 template <>
 struct IntegerType<bool> : public IntegerType<uint8_t> {};
 
+template <int>
+struct SizeTEquivalent;
+
+template <>
+struct SizeTEquivalent<4> {
+  typedef IntegerType<uint32_t> T;
+};
+
+template <>
+struct SizeTEquivalent<8> {
+  typedef IntegerType<uint64_t> T;
+};
+
+template <>
+struct IntegerType<size_t> : public SizeTEquivalent<sizeof(size_t)>::T {};
+
 #if !COMPILING_WITH_GCC
 
 inline uint8_t operator "" _u8(unsigned long long value) {
