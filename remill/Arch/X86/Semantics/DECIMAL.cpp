@@ -20,80 +20,80 @@
 namespace {
 
 DEF_SEM(AAS) {
-	auto &rax = state.gpr.rax;
-	auto af = Read(FLAG_AF);
-	auto cf = Read(FLAG_CF);
+  auto &rax = state.gpr.rax;
+  auto af = Read(FLAG_AF);
+  auto cf = Read(FLAG_CF);
 
-	// al > 9 or af == 1
-	if (UCmpGt(UAnd16(rax.byte.low, 0xf), 9) || UCmpEq(af, 1)) {
-		rax.word = USub16(rax.word, 6);
-		rax.byte.high = USub8(rax.byte.high, 1);
-		cf = 1;
-		af = 1;	
+  // al > 9 or af == 1
+  if (UCmpGt(UAnd16(rax.byte.low, 0xf), 9) || UCmpEq(af, 1)) {
+    rax.word = USub16(rax.word, 6);
+    rax.byte.high = USub8(rax.byte.high, 1);
+    cf = 1;
+    af = 1;
 
-	} else {
-		cf = 0;
-		af = 0;
-	}
+  } else {
+    cf = 0;
+    af = 0;
+  }
 
-	// in both cases
-	rax.byte.low = UAnd8(rax.byte.low, 0xf);
+  // in both cases
+  rax.byte.low = UAnd8(rax.byte.low, 0xf);
 
-	Write(FLAG_AF, af);
-	Write(FLAG_CF, cf);
+  Write(FLAG_AF, af);
+  Write(FLAG_CF, cf);
 
-	FLAG_OF = __remill_undefined_8();
-	FLAG_ZF = __remill_undefined_8();
-	FLAG_PF = __remill_undefined_8();
+  FLAG_OF = __remill_undefined_8();
+  FLAG_ZF = __remill_undefined_8();
+  FLAG_PF = __remill_undefined_8();
 
   return memory;
 }
 
 DEF_SEM(DAA) {
-	auto old_al = Read(REG_AL);
-	auto al = old_al;
-	auto cf = Read(FLAG_CF);
-	auto old_cf = Read(FLAG_CF);
-	auto af = Read(FLAG_AF);
+  auto old_al = Read(REG_AL);
+  auto al = old_al;
+  auto cf = Read(FLAG_CF);
+  auto old_cf = Read(FLAG_CF);
+  auto af = Read(FLAG_AF);
   auto sf = Read(FLAG_SF);
   auto pf = Read(FLAG_PF);
   auto zf = Read(FLAG_ZF);
 
   cf = 0;
 
-	// (al & 0xf) > 9 or af == 1
-	if (UCmpGt(UAnd8(al, 0xf), 9) || UCmpEq(af, 1)) {
-		al = UAdd8(al, 6);
+  // (al & 0xf) > 9 or af == 1
+  if (UCmpGt(UAnd8(al, 0xf), 9) || UCmpEq(af, 1)) {
+    al = UAdd8(al, 6);
     bool set_cf = BOr((UCmpLt(al, old_al)), UCmpLt(al, 6));
     cf = BOr(old_cf, set_cf);
     af = 1;
   } else {
-		af = 0;
-	}
+    af = 0;
+  }
 
 
-	// old_al > 0x99 or old_cf == 1
-	if (UCmpGt(old_al, 0x99) || UCmpEq(old_cf, 1)) {
-		al = UAdd8(al, 0x60);
-		cf = 1;
-	} else {
-		cf = 0;
-	}
+  // old_al > 0x99 or old_cf == 1
+  if (UCmpGt(old_al, 0x99) || UCmpEq(old_cf, 1)) {
+    al = UAdd8(al, 0x60);
+    cf = 1;
+  } else {
+    cf = 0;
+  }
 
-	sf = SignFlag(al);
-	zf = ZeroFlag(al);
-	pf = ParityFlag(al);
+  sf = SignFlag(al);
+  zf = ZeroFlag(al);
+  pf = ParityFlag(al);
 
   Write(REG_AL, al);
   Write(FLAG_CF, cf);
   Write(FLAG_AF, af);
   Write(FLAG_SF, sf);
-	Write(FLAG_PF, pf);
-	Write(FLAG_ZF, zf);
+  Write(FLAG_PF, pf);
+  Write(FLAG_ZF, zf);
 
-	FLAG_OF = __remill_undefined_8();
+  FLAG_OF = __remill_undefined_8();
 
-	return memory;
+  return memory;
 }
 
 } // namespace
