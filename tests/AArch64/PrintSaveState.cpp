@@ -101,6 +101,10 @@ int main(void) {
   printf("mrs x1, fpsr\n");
   printf("str x1, [x28, #%lu]\n", offsetof(State, fpsr));
 
+  // Save the cumulative invalid operation flag from the FPSR into the SR.
+  printf("ubfx x29, x1, #0, #1\n");
+  printf("strb w29, [x28, #%lu]\n", offsetof(State, sr.ioc));
+
   // Save the cumulative overflow flag from the FPSR into the SR.
   printf("ubfx x29, x1, #2, #1\n");
   printf("strb w29, [x28, #%lu]\n", offsetof(State, sr.ofc));

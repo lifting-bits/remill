@@ -19,17 +19,6 @@
 #include "remill/BC/Version.h"
 
 #include <llvm/ExecutionEngine/RuntimeDyld.h>
+#include <llvm/ExecutionEngine/RTDyldMemoryManager.h>
 
-#if LLVM_VERSION_NUMBER == LLVM_VERSION(3, 5)
-# error "Unsupported LLVM version."
-#elif LLVM_VERSION_NUMBER < LLVM_VERSION(4, 0)
-namespace llvm {
-using JITSymbol = llvm::RuntimeDyld::SymbolInfo;
-using JITSymbolResolver = llvm::RuntimeDyld::SymbolResolver;
-using RTDyldMemoryManager = llvm::RuntimeDyld::MemoryManager;
-}  // namespace llvm
-#else
-# include <llvm/ExecutionEngine/JITSymbol.h>
-# include <llvm/ExecutionEngine/RTDyldMemoryManager.h>
-#endif
 #endif  // REMILL_BC_COMPAT_RUNTIMEDYLD_H_

@@ -249,6 +249,7 @@ Instruction::Instruction(void)
       branch_not_taken_pc(0),
       arch_name(kArchInvalid),
       operand_size(0),
+      arch_for_decode(nullptr),
       is_atomic_read_modify_write(false),
       category(Instruction::kCategoryInvalid) {}
 
@@ -261,7 +262,22 @@ void Instruction::Reset(void) {
   operand_size = 0;
   is_atomic_read_modify_write = false;
   category = Instruction::kCategoryInvalid;
+  arch_for_decode = nullptr;
   operands.clear();
+  function.clear();
+  bytes.clear();
+}
+
+bool Instruction::FinalizeDecode(void) {
+  if (!IsValid()) {
+    return false;
+  } else if (!arch_for_decode) {
+    return true;
+  } else {
+    auto ret = arch_for_decode->DecodeInstruction(pc, bytes, *this);
+    arch_for_decode = nullptr;
+    return ret;
+  }
 }
 
 std::string Instruction::Serialize(void) const {

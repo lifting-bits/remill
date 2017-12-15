@@ -60,6 +60,12 @@ class Arch {
       uint64_t address, const std::string &instr_bytes,
       Instruction &inst) const = 0;
 
+  // Fully decode any control-flow transfer instructions, but only partially
+  // decode other instructions.
+  virtual bool LazyDecodeInstruction(
+      uint64_t address, const std::string &instr_bytes,
+      Instruction &inst) const;
+
   // Maximum number of bytes in an instruction for this particular architecture.
   virtual uint64_t MaxInstructionSize(void) const = 0;
 

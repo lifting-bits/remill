@@ -222,7 +222,7 @@ std::string CanonicalPath(const std::string &path) {
   auto err = errno;
 #endif
   if (!canon_path_c) {
-    LOG(ERROR)
+    LOG(WARNING)
         << "Cannot compute full path of " << path
         << ": " << strerror(err);
     return path;

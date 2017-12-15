@@ -50,6 +50,10 @@ int main(void) {
   // Floating point status register.
   printf("ldr x1, [x28, #%lu]\n", offsetof(State, fpsr));
 
+  // Extract the cumulative invalid operation flag from the SR into the FPSR.
+  printf("ldrb w2, [x28, #%lu]\n", offsetof(State, sr.ioc));
+  printf("bfi x1, x2, #0, #1\n");
+
   // Extract the cumulative overflow flag from the SR into the FPSR.
   printf("ldrb w2, [x28, #%lu]\n", offsetof(State, sr.ofc));
   printf("bfi x1, x2, #2, #1\n");

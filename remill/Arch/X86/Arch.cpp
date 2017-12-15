@@ -46,7 +46,7 @@ static const xed_state_t kXEDState64 = {
 
 static bool Is64Bit(ArchName arch_name) {
   return kArchAMD64 == arch_name || kArchAMD64_AVX == arch_name ||
-         kArchAMD64_AVX == arch_name;
+         kArchAMD64_AVX512 == arch_name;
 }
 
 static bool IsFunctionReturn(const xed_decoded_inst_t *xedd) {
@@ -135,13 +135,19 @@ static bool IsNoOp(const xed_decoded_inst_t *xedd) {
 
 static bool IsError(const xed_decoded_inst_t *xedd) {
   auto iclass = xed_decoded_inst_get_iclass(xedd);
-  return XED_ICLASS_HLT == iclass || XED_ICLASS_UD2 == iclass ||
-         XED_ICLASS_INVALID == iclass;
+  return XED_ICLASS_HLT == iclass || XED_ICLASS_UD2 == iclass;
+}
+
+static bool IsInvalid(const xed_decoded_inst_t *xedd) {
+  return XED_ICLASS_INVALID == xed_decoded_inst_get_iclass(xedd);
 }
 
 // Return the category of this instuction.
 static Instruction::Category CreateCategory(const xed_decoded_inst_t *xedd) {
-  if (IsError(xedd)) {
+  if (IsInvalid(xedd)) {
+    return Instruction::kCategoryInvalid;
+
+  } else if (IsError(xedd)) {
     return Instruction::kCategoryError;
 
   } else if (IsDirectJump(xedd)) {
@@ -745,18 +751,31 @@ class X86Arch : public Arch {
   // Decode an instuction.
   bool DecodeInstruction(
       uint64_t address, const std::string &inst_bytes,
-      Instruction &inst) const override;
+      Instruction &inst) const final;
+
+  // Fully decode any control-flow transfer instructions, but only partially
+  // decode other instructions. To complete the decoding, call
+  // `Instruction::FinalizeDecode`.
+  bool LazyDecodeInstruction(
+      uint64_t address, const std::string &inst_bytes,
+      Instruction &inst) const final;
 
   // Maximum number of bytes in an instruction.
-  uint64_t MaxInstructionSize(void) const override;
+  uint64_t MaxInstructionSize(void) const final;
 
-  llvm::Triple Triple(void) const override;
-  llvm::DataLayout DataLayout(void) const override;
+  llvm::Triple Triple(void) const final;
+  llvm::DataLayout DataLayout(void) const final;
 
   // Default calling convention for this architecture.
-  llvm::CallingConv::ID DefaultCallingConv(void) const override;
+  llvm::CallingConv::ID DefaultCallingConv(void) const final;
 
  private:
+
+  // Decode an instuction.
+  bool DecodeInstruction(
+      uint64_t address, const std::string &inst_bytes,
+      Instruction &inst, bool is_lazy) const;
+
   X86Arch(void) = delete;
 };
 
@@ -900,7 +919,7 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
 bool X86Arch::DecodeInstruction(
     uint64_t address,
     const std::string &inst_bytes,
-    Instruction &inst) const {
+    Instruction &inst, bool is_lazy) const {
 
   inst.pc = address;
   inst.arch_name = arch_name;
@@ -915,12 +934,11 @@ bool X86Arch::DecodeInstruction(
   }
 
   inst.operand_size = xed_decoded_inst_get_operand_width(xedd);
-  inst.function = InstructionFunctionName(xedd);
   inst.bytes = inst_bytes.substr(0, xed_decoded_inst_get_length(xedd));
   inst.category = CreateCategory(xedd);
   inst.next_pc = address + xed_decoded_inst_get_length(xedd);
 
-  // Wrap an instuction in atomic begin/end if it accesses memory with RMW
+  // Wrap an instruction in atomic begin/end if it accesses memory with RMW
   // semantics or with a LOCK prefix.
   if (xed_operand_values_get_atomic(xedd) ||
       xed_operand_values_has_lock_prefix(xedd)) {
@@ -931,45 +949,49 @@ bool X86Arch::DecodeInstruction(
     DecodeConditionalInterrupt(inst);
   }
 
-  // Lift the operands. This creates the arguments for us to call the
-  // instuction implementation.
-  auto xedi = xed_decoded_inst_inst(xedd);
-  auto num_operands = xed_decoded_inst_noperands(xedd);
-  for (auto i = 0U; i < num_operands; ++i) {
-    auto xedo = xed_inst_operand(xedi, i);
-    if (XED_OPVIS_SUPPRESSED != xed_operand_operand_visibility(xedo)) {
-      DecodeOperand(inst, xedd, xedo);
-    }
-  }
+  if (!is_lazy || inst.IsControlFlow()) {
+    inst.function = InstructionFunctionName(xedd);
 
-  if (inst.IsFunctionCall()) {
-    DecodeFallThroughPC(inst, xedd);
-  }
-
-  // All non-control FPU instructions update the last instruction pointer
-  // and opcode.
-  if (XED_ISA_SET_X87 == xed_decoded_inst_get_isa_set(xedd) ||
-      XED_ISA_SET_FCMOV == xed_decoded_inst_get_isa_set(xedd) ||
-      XED_CATEGORY_X87_ALU == xed_decoded_inst_get_category(xedd)) {
-    auto set_ip_dp = false;
-    const auto get_attr = xed_decoded_inst_get_attribute;
-    switch (xed_decoded_inst_get_iform_enum(xedd)) {
-      case XED_IFORM_FNOP:
-      case XED_IFORM_FINCSTP:
-      case XED_IFORM_FDECSTP:
-        set_ip_dp = true;
-        break;
-      default:
-        set_ip_dp = !get_attr(xedd, XED_ATTRIBUTE_X87_CONTROL) &&
-                    !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_CW) &&
-                    !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_R) &&
-                    !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_W) &&
-                    !get_attr(xedd, XED_ATTRIBUTE_X87_NOWAIT);
-        break;
+    // Lift the operands. This creates the arguments for us to call the
+    // instuction implementation.
+    auto xedi = xed_decoded_inst_inst(xedd);
+    auto num_operands = xed_decoded_inst_noperands(xedd);
+    for (auto i = 0U; i < num_operands; ++i) {
+      auto xedo = xed_inst_operand(xedi, i);
+      if (XED_OPVIS_SUPPRESSED != xed_operand_operand_visibility(xedo)) {
+        DecodeOperand(inst, xedd, xedo);
+      }
     }
 
-    if (set_ip_dp) {
-      DecodeX87LastIpDp(inst);
+    if (inst.IsFunctionCall()) {
+      DecodeFallThroughPC(inst, xedd);
+    }
+
+    // All non-control FPU instructions update the last instruction pointer
+    // and opcode.
+    if (XED_ISA_SET_X87 == xed_decoded_inst_get_isa_set(xedd) ||
+        XED_ISA_SET_FCMOV == xed_decoded_inst_get_isa_set(xedd) ||
+        XED_CATEGORY_X87_ALU == xed_decoded_inst_get_category(xedd)) {
+      auto set_ip_dp = false;
+      const auto get_attr = xed_decoded_inst_get_attribute;
+      switch (xed_decoded_inst_get_iform_enum(xedd)) {
+        case XED_IFORM_FNOP:
+        case XED_IFORM_FINCSTP:
+        case XED_IFORM_FDECSTP:
+          set_ip_dp = true;
+          break;
+        default:
+          set_ip_dp = !get_attr(xedd, XED_ATTRIBUTE_X87_CONTROL) &&
+                      !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_CW) &&
+                      !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_R) &&
+                      !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_W) &&
+                      !get_attr(xedd, XED_ATTRIBUTE_X87_NOWAIT);
+          break;
+      }
+
+      if (set_ip_dp) {
+        DecodeX87LastIpDp(inst);
+      }
     }
   }
 
@@ -998,6 +1020,30 @@ bool X86Arch::DecodeInstruction(
   }
 
   return true;
+}
+
+bool X86Arch::DecodeInstruction(
+    uint64_t address,
+    const std::string &inst_bytes,
+    Instruction &inst) const {
+  inst.arch_for_decode = nullptr;
+  return DecodeInstruction(address, inst_bytes, inst, false);
+}
+
+// Fully decode any control-flow transfer instructions, but only partially
+// decode other instructions.
+bool X86Arch::LazyDecodeInstruction(
+    uint64_t address, const std::string &inst_bytes,
+    Instruction &inst) const {
+  inst.arch_for_decode = nullptr;
+  if (DecodeInstruction(address, inst_bytes, inst, true)) {
+    if (!inst.IsControlFlow()) {
+      inst.arch_for_decode = this;
+    }
+    return true;
+  } else {
+    return false;
+  }
 }
 
 }  // namespace

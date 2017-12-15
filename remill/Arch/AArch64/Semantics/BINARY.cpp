@@ -137,6 +137,19 @@ DEF_SEM(UDIV, D dst, S src1, S src2) {
 }
 
 template <typename D, typename S>
+DEF_SEM(SDIV, D dst, S src1, S src2) {
+  using T = typename BaseType<S>::BT;
+  auto lhs = Signed(Read(src1));
+  auto rhs = Signed(Read(src2));
+  if (!rhs) {
+    WriteZExt(dst, T(0));
+  } else {
+    WriteZExt(dst, Unsigned(SDiv(lhs, rhs)));
+  }
+  return memory;
+}
+
+template <typename D, typename S>
 DEF_SEM(MADD, D dst, S src1, S src2, S src3) {
   WriteZExt(dst, UAdd(Read(src3), UMul(Read(src1), Read(src2))));
   return memory;
@@ -158,6 +171,9 @@ DEF_ISEL(SMULH_64_DP_3SRC) = SMULH;
 
 DEF_ISEL(UDIV_32_DP_2SRC) = UDIV<R32W, R32>;
 DEF_ISEL(UDIV_64_DP_2SRC) = UDIV<R64W, R64>;
+
+DEF_ISEL(SDIV_32_DP_2SRC) = SDIV<R32W, R32>;
+DEF_ISEL(SDIV_64_DP_2SRC) = SDIV<R64W, R64>;
 
 DEF_ISEL(MADD_32A_DP_3SRC) = MADD<R32W, R32>;
 DEF_ISEL(MADD_64A_DP_3SRC) = MADD<R64W, R64>;
@@ -252,10 +268,27 @@ DEF_SEM(FMADD_S, V128W dst, V32 src1, V32 src2, V32 src3) {
   auto factor2 = FExtractV32(FReadV32(src2), 0);
   auto add = FExtractV32(FReadV32(src3), 0);
 
-  auto prod = CheckedFloatBinOp(state, FMul32, factor1, factor2);
-  auto res = CheckedFloatBinOp(state, FAdd32, prod, add);
+  auto old_underflow = state.sr.ufc;
 
-  // Sets underflow for 0x3fffffff, 0x1 but native doesn't
+
+  auto zero = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
+  BarrierReorder();
+  auto prod = FMul32(factor1, factor2);
+  BarrierReorder();
+  auto except_mul = __remill_fpu_exception_test_and_clear(FE_ALL_EXCEPT, zero);
+  BarrierReorder();
+  auto res = FAdd32(prod, add);
+  BarrierReorder();
+  auto except_add = __remill_fpu_exception_test_and_clear(
+      FE_ALL_EXCEPT, except_mul);
+  SetFPSRStatusFlags(state, except_add);
+
+  // Sets underflow for 0x3fffffff, 0x1 but native doesn't.
+  if (state.sr.ufc && !old_underflow) {
+    if (IsDenormal(factor1) || IsDenormal(factor2) || IsDenormal(add)) {
+      state.sr.ufc = old_underflow;
+    }
+  }
 
   FWriteV32(dst, res);
   return memory;
@@ -279,8 +312,8 @@ void FCompare(State &state, S val1, S val2, bool signal=true) {
     FLAG_C = 1;
     FLAG_V = 1;
 
-    if(signal) { 
-      state.fpsr.ioc = true; 
+    if (signal) {
+      state.sr.ioc = true;
     }
 
   // Regular float compare

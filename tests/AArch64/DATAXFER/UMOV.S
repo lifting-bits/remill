@@ -31,12 +31,12 @@ TEST_INPUTS(0)
   umov w4, v0.H[6]
 TEST_END
 
-TEST_BEGIN(UMOV_ASIMDINS_W_W_H, umov_wN_S, 1)
+TEST_BEGIN(UMOV_ASIMDINS_W_W_S, umov_wN_S, 1)
 TEST_INPUTS(0)
   umov w0, v0.S[0]
-  umov w1, v0.S[2]
-  umov w2, v0.S[4]
-  umov w4, v0.S[6]
+  umov w1, v0.S[1]
+  umov w2, v0.S[2]
+  umov w4, v0.S[3]
 TEST_END
 
 /* UMOV  <Xd>, <Vn>.<Ts>[<index>] */

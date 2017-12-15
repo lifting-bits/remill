@@ -121,12 +121,12 @@
 #define REG_GS state.seg.gs
 #define REG_CS state.seg.cs
 
-#define REG_SS_BASE 0
-#define REG_ES_BASE 0
-#define REG_DS_BASE 0
-#define REG_FS_BASE state.addr.fs_base
-#define REG_GS_BASE state.addr.gs_base
-#define REG_CS_BASE 0
+#define REG_SS_BASE IF_32BIT_ELSE(state.addr.ss_base.aword, 0)
+#define REG_ES_BASE IF_32BIT_ELSE(state.addr.es_base.aword, 0)
+#define REG_DS_BASE IF_32BIT_ELSE(state.addr.ds_base.aword, 0)
+#define REG_FS_BASE state.addr.fs_base.aword
+#define REG_GS_BASE state.addr.gs_base.aword
+#define REG_CS_BASE IF_32BIT_ELSE(state.addr.cs_base.aword, 0)
 
 #define HYPER_CALL state.hyper_call
 #define INTERRUPT_VECTOR state.hyper_call_vector

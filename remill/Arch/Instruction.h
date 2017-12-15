@@ -140,6 +140,8 @@ class Instruction {
 
   void Reset(void);
 
+  bool FinalizeDecode(void);
+
   // Name of semantics function that implements this instruction.
   std::string function;
 
@@ -160,6 +162,10 @@ class Instruction {
 
   // The effective size of the operand, in bits.
   uint64_t operand_size;
+
+  // Pointer to the `remill::Arch` used to complete the decoding of this
+  // instruction.
+  const Arch *arch_for_decode;
 
   // Does the instruction require the use of the `__remill_atomic_begin` and
   // `__remill_atomic_end`?
@@ -239,7 +245,13 @@ class Instruction {
   }
 
   inline bool IsValid(void) const {
-    return kCategoryInvalid != category && kCategoryError != category;
+    return kCategoryInvalid != category;
+  }
+
+  // Returns `true` if this instruction results in a runtime error. An example
+  // of this is a `HLT`- or `UD2`-like instruction from x86.
+  inline bool IsError(void) const {
+    return kCategoryError == category;
   }
 
   // Length, in bytes, of the instruction.
