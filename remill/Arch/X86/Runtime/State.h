@@ -281,7 +281,7 @@ struct FpuFXSAVE {
   FPUControlStatus mxcsr;
   FPUControlStatus mxcsr_mask;
   FPUStackElem st[8];
-  vec128_t xmm[8];
+  vec128_t xmm[16];
 } __attribute__((packed));
 
 // FPU register state that conforms with `FXSAVE64` and `FXRSTOR64`.
@@ -314,8 +314,7 @@ union alignas(16) FPU final {
   } __attribute__((packed)) fxsave64;
 } __attribute__((packed));
 
-// fxsave64 will be our default model, fxsave, for the FPU state:
-#define fxsave fxsave64
+#define fxsave IF_64BIT_ELSE(fxsave64, fxsave32)
 
 static_assert(512 == sizeof(FPU), "Invalid structure packing of `FPU`.");
 
