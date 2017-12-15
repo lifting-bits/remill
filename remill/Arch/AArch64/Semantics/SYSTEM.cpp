@@ -33,9 +33,48 @@ DEF_SEM(DoMRS_RS_SYSTEM_FPSR, R64W dest) {
   fpsr.ixc = state.sr.ixc;
   fpsr.ofc = state.sr.ofc;
   fpsr.ufc = state.sr.ufc;
-  fpsr.idc = state.sr.idc;
+  //fpsr.idc = state.sr.idc;  // TODO(garret): fix the saving of the idc bit before reenabling (issue #188)
   fpsr.ioc = state.sr.ioc;
   WriteZExt(dest, fpsr.flat);
+  return memory;
+}
+
+DEF_SEM(DoMSR_SR_SYSTEM_FPSR, R64 src) {
+  FPSR fpsr;
+  WriteZExt(fpsr.flat, Read(src));
+  fpsr._res0 = 0;
+  fpsr._res1 = 0;
+  state.fpsr = fpsr;
+  state.sr.ioc = fpsr.ioc;
+  state.sr.ofc = fpsr.ofc;
+  state.sr.ixc = fpsr.ixc;
+  state.sr.ufc = fpsr.ufc;
+  //state.sr.idc = fpsr.idc;  // TODO(garret): fix the saving of the idc bit before reenabling (issue #188)
+  return memory;
+}
+
+DEF_SEM(DoMRS_RS_SYSTEM_FPCR, R64W dest) {
+  auto fpcr = state.fpcr;
+  WriteZExt(dest, fpcr.flat);
+  return memory;
+}
+
+DEF_SEM(DoMSR_SR_SYSTEM_FPCR, R64 src) {
+  FPCR fpcr;
+  WriteZExt(fpcr.flat, Read(src));
+  fpcr._res0 = 0;
+  fpcr._res1 = 0;
+  state.fpcr = fpcr;
+  return memory;
+}
+
+DEF_SEM(DoMRS_RS_SYSTEM_TPIDR_EL0, R64W dest) {
+  WriteZExt(dest, Read(state.sr.tpidr_el0));
+  return memory;
+}
+
+DEF_SEM(DoMSR_SR_SYSTEM_TPIDR_EL0, R64 src) {
+  WriteZExt(state.sr.tpidr_el0.qword, Read(src));
   return memory;
 }
 
@@ -49,5 +88,14 @@ DEF_SEM(DataMemoryBarrier) {
 
 DEF_ISEL(SVC_EX_EXCEPTION) = CallSupervisor;
 DEF_ISEL(BRK_EX_EXCEPTION) = Breakpoint;
+
 DEF_ISEL(MRS_RS_SYSTEM_FPSR) = DoMRS_RS_SYSTEM_FPSR;
+DEF_ISEL(MSR_SR_SYSTEM_FPSR) = DoMSR_SR_SYSTEM_FPSR;
+
+DEF_ISEL(MRS_RS_SYSTEM_FPCR) = DoMRS_RS_SYSTEM_FPCR;
+DEF_ISEL(MSR_SR_SYSTEM_FPCR) = DoMSR_SR_SYSTEM_FPCR;
+
+DEF_ISEL(MRS_RS_SYSTEM_TPIDR_EL0) = DoMRS_RS_SYSTEM_TPIDR_EL0;
+DEF_ISEL(MSR_SR_SYSTEM_TPIDR_EL0) = DoMSR_SR_SYSTEM_TPIDR_EL0;
+
 DEF_ISEL(DMB_BO_SYSTEM) = DataMemoryBarrier;
