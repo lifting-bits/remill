@@ -281,7 +281,7 @@ struct FpuFXSAVE {
   FPUControlStatus mxcsr;
   FPUControlStatus mxcsr_mask;
   FPUStackElem st[8];
-  vec128_t xmm[8];
+  vec128_t xmm[16];
 } __attribute__((packed));
 
 // FPU register state that conforms with `FXSAVE64` and `FXRSTOR64`.

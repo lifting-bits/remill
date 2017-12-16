@@ -285,7 +285,15 @@ SYMBOL(InvokeTestCase):
     push r13
     push r14
     push r15
+    mov rax, cs
+    push rax
+    mov rax, ds
+    push rax
     call SYMBOL(DoInvokeTestCase)
+    pop rax
+    mov ds, rax
+    pop rax
+    mov cs, rax
     pop r15
     pop r14
     pop r13
@@ -366,7 +374,6 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/DATAXFER/XCHG.S"
 
 /* Bring in the rest of the semantic tests. */
-
 
 #include "tests/X86/AVX/VZEROUPPER.S"
 
