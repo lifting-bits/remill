@@ -160,6 +160,7 @@ DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 #include "remill/Arch/X86/Semantics/COND_BR.cpp"
 #include "remill/Arch/X86/Semantics/CONVERT.cpp"
 #include "remill/Arch/X86/Semantics/DATAXFER.cpp"
+#include "remill/Arch/X86/Semantics/DECIMAL.cpp"
 #include "remill/Arch/X86/Semantics/INTERRUPT.cpp"
 #include "remill/Arch/X86/Semantics/FLAGOP.cpp"
 #include "remill/Arch/X86/Semantics/FMA.cpp"
