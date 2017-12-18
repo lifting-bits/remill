@@ -666,6 +666,14 @@ struct IntegerType {
 template <>
 struct IntegerType<bool> : public IntegerType<uint8_t> {};
 
+#if __APPLE__
+
+/*
+ * In parts of the code, we create IntegerType<size_t>.
+ * On OS X, size_t is the same as unsigned long, which is
+ * 8 bytes. This code defines IntegerType for size_t.
+ */
+
 template <int>
 struct SizeTEquivalent;
 
@@ -681,6 +689,8 @@ struct SizeTEquivalent<8> {
 
 template <>
 struct IntegerType<size_t> : public SizeTEquivalent<sizeof(size_t)>::T {};
+
+#endif // __APPLE__
 
 #if !COMPILING_WITH_GCC
 
