@@ -337,10 +337,9 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/ABI.S"
 #include "tests/X86/MMX/INPUTS.S"
 
-
 /* Change to `0` and put new `#include`s above when making new tests to speed
  * up compile and test times. */
-#if 0
+#if 1
 
 /* Bring in the data transfer tests. These basically HAVE to pass before
  * anything else can ;-)  */
@@ -451,6 +450,8 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/CONVERT/CWD.S"
 #include "tests/X86/CONVERT/CWDE.S"
 
+/* used for DECIMAL tests */
+#include "tests/X86/DECIMAL/UTIL_FLAGS.S"
 #include "tests/X86/DECIMAL/AAS.S"
 #include "tests/X86/DECIMAL/DAA.S"
 
