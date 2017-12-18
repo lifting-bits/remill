@@ -348,7 +348,7 @@ SYMBOL(__x86_test_table_begin):
 
 /* Change to `0` and put new `#include`s above when making new tests to speed
  * up compile and test times. */
-#if 0
+#if 1
 
 /* Bring in the data transfer tests. These basically HAVE to pass before
  * anything else can ;-)  */
