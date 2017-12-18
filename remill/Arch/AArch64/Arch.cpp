@@ -3953,6 +3953,22 @@ bool TryDecodeLDnSTn(const InstData &data, Instruction &inst,
   return true;
 }
 
+// ST1  { <Vt>.<T> }, [<Xn|SP>]
+bool TryDecodeST1_ASISDLSE_R1_1V(const InstData &data, Instruction &inst) {
+  uint64_t num_bytes = 0;
+  if (!TryDecodeLDnSTn(data, inst, &num_bytes)) {
+    return false;
+  }
+  AddBasePlusOffsetMemOp(inst, kActionWrite, num_bytes * 8, data.Rn, 0);
+  return true;
+}
+
+// ST1  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>]
+bool TryDecodeST1_ASISDLSE_R2_2V(const InstData &data, Instruction &inst) {
+  return TryDecodeST1_ASISDLSE_R1_1V(data, inst);
+}
+
+
 // LD1  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>], <imm>
 bool TryDecodeLD1_ASISDLSEP_I2_I2(const InstData &data, Instruction &inst) {
   uint64_t offset = 0;

@@ -734,6 +734,35 @@ DEF_ISEL(LDAR_LR64_LDSTEXCL) = LoadAcquire<R64W, M64>;
 
 namespace {
 
+#define MAKE_ST1(esize) \
+    template <typename D> \
+    DEF_SEM(ST1_SINGLE_ ## esize, V ## esize src1, D dst) { \
+      auto elems1 = UReadV ## esize(src1); \
+      UWriteV ## esize(dst, elems1); \
+      return memory; \
+    }
+
+MAKE_ST1(64)
+MAKE_ST1(128)
+
+#undef MAKE_ST1
+
+} // namespace
+
+DEF_ISEL(ST1_ASISDLSE_R1_1V_8B) = ST1_SINGLE_64<MV64W>;
+DEF_ISEL(ST1_ASISDLSE_R1_1V_16B) = ST1_SINGLE_128<MV128W>;
+
+DEF_ISEL(ST1_ASISDLSE_R1_1V_4H) = ST1_SINGLE_64<MV64W>;
+DEF_ISEL(ST1_ASISDLSE_R1_1V_8H) = ST1_SINGLE_128<MV128W>;
+
+DEF_ISEL(ST1_ASISDLSE_R1_1V_2S) = ST1_SINGLE_64<MV64W>;
+DEF_ISEL(ST1_ASISDLSE_R1_1V_4S) = ST1_SINGLE_128<MV128W>;
+
+DEF_ISEL(ST1_ASISDLSE_R1_1V_1D) = ST1_SINGLE_64<MV64W>;
+DEF_ISEL(ST1_ASISDLSE_R1_1V_2D) = ST1_SINGLE_128<MV128W>;
+
+namespace {
+
 #define MAKE_LD1(esize) \
     template <typename S> \
     DEF_SEM(LD1_SINGLE_ ## esize, V128W dst1, S src) { \
@@ -796,6 +825,36 @@ DEF_ISEL(LD1_ASISDLSE_R2_2V_4S) = LD1_PAIR_32<MV128>;
 DEF_ISEL(LD1_ASISDLSE_R2_2V_1D) = LD1_PAIR_64<MV64>;
 DEF_ISEL(LD1_ASISDLSE_R2_2V_2D) = LD1_PAIR_64<MV128>;
 
+namespace {
+
+#define MAKE_ST1(esize) \
+    template <typename D> \
+    DEF_SEM(ST1_PAIR_ ## esize, V ## esize src1, V ## esize src2, D dst) { \
+      auto elems1 = UReadV ## esize(src1); \
+      auto elems2 = UReadV ## esize(src2); \
+      UWriteV ## esize(dst, elems1); \
+      UWriteV ## esize(GetElementPtr(dst, 1U), elems2); \
+      return memory; \
+    }
+
+MAKE_ST1(64)
+MAKE_ST1(128)
+
+#undef MAKE_ST1
+
+} //namespace
+
+DEF_ISEL(ST1_ASISDLSE_R2_2V_8B) = ST1_PAIR_64<MV64W>;
+DEF_ISEL(ST1_ASISDLSE_R2_2V_16B) = ST1_PAIR_128<MV128W>;
+
+DEF_ISEL(ST1_ASISDLSE_R2_2V_4H) = ST1_PAIR_64<MV64W>;
+DEF_ISEL(ST1_ASISDLSE_R2_2V_8H) = ST1_PAIR_128<MV128W>;
+
+DEF_ISEL(ST1_ASISDLSE_R2_2V_2S) = ST1_PAIR_64<MV64W>;
+DEF_ISEL(ST1_ASISDLSE_R2_2V_4S) = ST1_PAIR_128<MV128W>;
+
+DEF_ISEL(ST1_ASISDLSE_R2_2V_1D) = ST1_PAIR_64<MV64W>;
+DEF_ISEL(ST1_ASISDLSE_R2_2V_2D) = ST1_PAIR_128<MV128W>;
 
 namespace {
 
