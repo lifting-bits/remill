@@ -858,6 +858,36 @@ DEF_ISEL(ST1_ASISDLSE_R2_2V_2D) = ST1_PAIR_128<MV128W>;
 
 namespace {
 
+#define MAKE_ST1_POSTINDEX(esize) \
+    template <typename D> \
+    DEF_SEM(ST1_PAIR_POSTINDEX_ ## esize, V ## esize src1, V ## esize src2, \
+            D dst, R64W addr_reg, ADDR next_addr) { \
+      memory = ST1_PAIR_ ## esize(memory, state, src1, src2, dst); \
+      Write(addr_reg, Read(next_addr)); \
+      return memory; \
+    }
+
+MAKE_ST1_POSTINDEX(64)
+MAKE_ST1_POSTINDEX(128)
+
+#undef MAKE_ST1_POSTINDEX
+
+}  // namespace
+
+DEF_ISEL(ST1_ASISDLSEP_I2_I2_8B) = ST1_PAIR_POSTINDEX_64<MV64W>;
+DEF_ISEL(ST1_ASISDLSEP_I2_I2_16B) = ST1_PAIR_POSTINDEX_128<MV128W>;
+
+DEF_ISEL(ST1_ASISDLSEP_I2_I2_4H) = ST1_PAIR_POSTINDEX_64<MV64W>;
+DEF_ISEL(ST1_ASISDLSEP_I2_I2_8H) = ST1_PAIR_POSTINDEX_128<MV128W>;
+
+DEF_ISEL(ST1_ASISDLSEP_I2_I2_2S) = ST1_PAIR_POSTINDEX_64<MV64W>;
+DEF_ISEL(ST1_ASISDLSEP_I2_I2_4S) = ST1_PAIR_POSTINDEX_128<MV128W>;
+
+DEF_ISEL(ST1_ASISDLSEP_I2_I2_1D) = ST1_PAIR_POSTINDEX_64<MV64W>;
+DEF_ISEL(ST1_ASISDLSEP_I2_I2_2D) = ST1_PAIR_POSTINDEX_128<MV128W>;
+
+namespace {
+
 #define MAKE_LD1(esize) \
     template <typename S> \
     DEF_SEM(LD1_TRIPLE_ ## esize, V128W dst1, V128W dst2, \
