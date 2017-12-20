@@ -102,8 +102,8 @@ extern "C" {
 
 // Native state before we run the native test case. We then use this as the
 // initial state for the lifted testcase. The lifted test case code mutates
-// this, and we require that after running the lifted testcase, `gX86StateBefore`
-// matches `gX86StateAfter`,
+// this, and we require that after running the lifted testcase, `gLiftedState`
+// matches `gNativeState`,
 std::aligned_storage<sizeof(X86State), alignof(X86State)>::type gLiftedState;
 
 // Native state after running the native test case.
@@ -116,7 +116,7 @@ Flags gRflagsForTest = {};
 // the native program state but then needs a way to figure out where to go
 // without storing that information in any register. So what we do is we
 // store it here and indirectly `JMP` into the native test case code after
-// saving the machine state to `gX86StateBefore`.
+// saving the machine state to `gLiftedState`.
 uintptr_t gTestToRun = 0;
 
 // Used for swapping the stack pointer between `gStack` and the normal
@@ -133,8 +133,8 @@ uint8_t *gStackSwitcher = nullptr;
 uint64_t gStackSaveSlot = 0;
 
 // Invoke a native test case addressed by `gTestToRun` and store the machine
-// state before and after executing the test in `gX86StateBefore` and
-// `gX86StateAfter`, respectively.
+// state before and after executing the test in `gLiftedState` and
+// `gNativeState`, respectively.
 extern void InvokeTestCase(uint64_t, uint64_t, uint64_t);
 
 #define MAKE_RW_MEMORY(size) \
@@ -437,7 +437,7 @@ static void RunWithFlags(const test::TestInfo *info,
   auto lifted_func = gTranslatedFuncs[info->test_begin];
 
   // This will execute on our stack but the lifted code will operate on
-  // `gStack`. The mechanism behind this is that `gX86StateBefore` is the native
+  // `gStack`. The mechanism behind this is that `gLiftedState` is the native
   // program state recorded before executing the native testcase, but after
   // swapping execution to operate on `gStack`.
   if (!sigsetjmp(gJmpBuf, true)) {
