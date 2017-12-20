@@ -973,6 +973,8 @@ bool X86Arch::DecodeInstruction(
         case XED_IFORM_FNOP:
         case XED_IFORM_FINCSTP:
         case XED_IFORM_FDECSTP:
+        case XED_IFORM_FFREE_X87:
+        case XED_IFORM_FFREEP_X87:
           set_ip_dp = true;
           break;
         default:

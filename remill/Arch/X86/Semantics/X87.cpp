@@ -1274,14 +1274,16 @@ DEF_FPU_SEM(DoFYL2XP1) {
   return memory;
 }
 
-DEF_FPU_SEM(FFREE, RF80) {
+DEF_FPU_SEM(FFREE, RF80 src) {
   SetFPUIpOp();
+  (void) src;
   return memory;
 }
 
-DEF_FPU_SEM(FFREEP, RF80) {
+DEF_FPU_SEM(FFREEP, RF80 src) {
   SetFPUIpOp();
   (void) POP_X87_STACK();
+  (void) src;
   return memory;
 }
 
