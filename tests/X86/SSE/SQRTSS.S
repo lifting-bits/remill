@@ -32,7 +32,7 @@ TEST_INPUTS(SQRT_INPUTS_32)
     sqrtss xmm0, xmm1;       // find the sqrt of the low SP FP value of xmm1, store in xmm0
 TEST_END
 
-TEST_BEGIN_64(SQRTSSv128m128, 1)
+TEST_BEGIN_64(SQRTSSv128m32, 1)
 TEST_INPUTS(SQRT_INPUTS_32)
     push ARG1_64;           // load the low single-precision floating point value of m128
     sqrtss xmm0, dword ptr [rsp];     // sqrt of the low SP FP value of [rsp], store in xmm0
@@ -40,7 +40,7 @@ TEST_END_64
 
 #if HAS_FEATURE_AVX
 
-TEST_BEGIN_64(VSQRTSSv128v128m128, 1)
+TEST_BEGIN_64(VSQRTSSv128v128m32, 1)
 TEST_INPUTS(SQRT_INPUTS_32)
     push ARG1_64;                  // load the single-prec. floating point value of m128[31:0]
     vsqrtss xmm2, xmm1, dword ptr [rsp];     // sqrt of [rsp] into xmm2, also xmm1[127:31]->xmm2

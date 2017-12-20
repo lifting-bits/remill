@@ -186,7 +186,7 @@ union FPUControlStatus {
     uint32_t daz:1;  // Denormals are zero.
     uint32_t im:1;  // Invalid operation.
     uint32_t dm:1;  // Denormal mask.
-    uint32_t zm:1;  // Dvidide by zero mask.
+    uint32_t zm:1;  // Divide by zero mask.
     uint32_t om:1;  // Overflow mask.
     uint32_t um:1;  // Underflow mask.
     uint32_t pm:1;  // Precision mask.
