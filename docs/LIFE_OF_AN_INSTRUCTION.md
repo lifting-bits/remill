@@ -2,7 +2,7 @@
 
 This document describes how machine code instructions are lifted into LLVM bitcode. It should provide a detailed, inside-out overview of how Remill performs binary translation.
 
-### Running example
+## Running example
 
 This document will use the instructions in the following basic block as a running example.
 
@@ -42,14 +42,15 @@ Below is a string representation of the data structures representing our example
 
 ## From architecture-specific to architecture-neutral
 
-Decoded instructions must be lifted into a compatible function. Compatible functions are clones of the [`__remill_basic_block`](/remill/Arch/X86/Runtime/BasicBlock.cpp) function. The `__remill_basic_block` function is special because it defines local variables that "point into" the [`State`](/remill/Arch/X86/Runtime/State.h)) structure, which represents the machine's register state. 
+Decoded instructions must be lifted into a compatible function. Compatible functions are clones of the [`__remill_basic_block`](/remill/Arch/X86/Runtime/BasicBlock.cpp) function. The `__remill_basic_block` function is special because it defines local
+variables that "point into" the [`State`](/remill/Arch/X86/Runtime/State.h)) structure, which represents the machine's register state.
 
 The following is an example of the `__remill_basic_block` function for X86.
 
 ```C++
 // Instructions will be lifted into clones of this function.
 Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
-  
+
   ...
 
   auto &EAX = state.gpr.rax.dword;
@@ -59,7 +60,7 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   ...
 
   auto &SS_BASE = zero;
-  
+
   ...
 
   // Lifted code will be placed here in clones versions of this function.
@@ -67,8 +68,7 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
 }
 ```
 
-In the case of the `push ebx` instruction from our example block, our decoder understands that `ebx` is a register. Surprisingly, the lifting side of Remill has no concept of what `ebx` is! Remill is designed to be able to translate arbitrary machine code to LLVM bitcode. To that end, there needs to be a kind of "common language" that the architecture-neutral LLVM side of things, and the architecture-specific semantics functions and machine instruction decoders can use to negotiate the translation process. This common language is variable names within the `__remill_basic_block` function. The instruction decoder ensures that decoded register names correspond to variables defined in `__remill_basic_block`. The programmer implementing `__remill_basic_block` ensures the same things. The conversion from `Instruction` data structures to LLVM bitcode _assumes_ that this correspondence exists.
-
+In the case of the `push ebx` instruction from our example block, our decoder understands that `ebx` is a register. Surprisingly, the lifting side of Remill has no concept of what `ebx` is! Remill is designed to be able to translate arbitrary machine code to LLVM bitcode. To that end, there needs to be a kind of "common language" that the architecture-neutral LLVM side of things and the architecture-specific semantics functions and machine instruction decoders can use to negotiate the translation process. This common language is variable names within the `__remill_basic_block` function. The instruction decoder ensures that decoded register names correspond to variables defined in `__remill_basic_block`. The programmer implementing `__remill_basic_block` ensures the same things. The conversion from `Instruction` data structures to LLVM bitcode _assumes_ that this correspondence exists.
 
 Let's hammer this home. If we scroll up, we see that the `Instruction` data structure corresponding to `push ebx` has `EBX` in one of its `(READ_OP (REG_32 EBX))` register operands. This operand corresponds to the following `Register` data structure.
 
@@ -83,9 +83,9 @@ class Register {
 
 The decoder initialized the `name` field with `"EBX"`, and the lifter can look up the variable name `EBX` in any cloned copies of `__remill_basic_block`.
 
-## What does lifted code look like?
+## What lifted code looks like
 
-In spirit, the lifted code for the instructions in our running example looks like the following C++ code.
+In spirit, the lifted code for the instructions in our running example looks like the following C++ code:
 
 ```C++
 void __remill_sub_804b7a3(State *state, addr_t pc, Memory *memory) {
@@ -99,7 +99,7 @@ void __remill_sub_804b7a3(State *state, addr_t pc, Memory *memory) {
   // mov    eax, 0x1
   EIP += 5;
   memory = MOV<R32W, I32>(memory, state, &EAX, 1);
-  
+
   // push   ebx
   EIP += 1;
   memory = PUSH<R32>(memory, state, EBX);
@@ -111,12 +111,12 @@ void __remill_sub_804b7a3(State *state, addr_t pc, Memory *memory) {
   // int    0x80
   EIP += 2;
   memory = INT_IMMb<I8>(memory, state, 0x80);
-  
+
   return __remill_async_hyper_call(state, EIP, memory)
 }
 ```
 
-Earlier this documented mentioned that there is a one-to-one correspondence between operands in the `Instruction` data structure and arguments to semantics functions. We can see that with the `MOV` instruction.
+Earlier, this document mentioned that there is a one-to-one correspondence between operands in the `Instruction` data structure and arguments to semantics functions. We can see that with the `MOV` instruction.
 
 The data structure of `mov ebx, dword [esp+0x8]` was:
 
@@ -140,7 +140,7 @@ DEF_SEM(MOV, D dst, const S src) {
 }
 ```
 
-The `(REG_32 EBX)` corresponds with the `dst` parameter, and the `(ADDR_32 DWORD (SEGMENT SS_BASE) ESP + 0x8))` corresponds with the `src` paremter. What links the `Instruction` data structure and the `MOV` semantics function together is the weird `MOV_GPRv_MEMv_32` name that we see. This name is stored in the `Instruction::function` field. The lifting code "discovers" the `MOV` semantics function via this name, and that association is made using the following special syntax.
+The `(REG_32 EBX)` corresponds with the `dst` parameter, and the `(ADDR_32 DWORD (SEGMENT SS_BASE) ESP + 0x8))` corresponds with the `src` parameter. What links the `Instruction` data structure and the `MOV` semantics function together is the weird `MOV_GPRv_MEMv_32` name that we see. This name is stored in the `Instruction::function` field. The lifting code "discovers" the `MOV` semantics function via this name, and that association is made using the following special syntax:
 
 ```c++
 DEF_ISEL(MOV_GPRv_MEMv_32) = MOV<R32W, M32>;
@@ -148,10 +148,9 @@ DEF_ISEL(MOV_GPRv_MEMv_32) = MOV<R32W, M32>;
 
 You can head on over to the [how to add an instruction](ADD_AN_INSTRUCTION.md) document to better understand the meaning of `DEF_SEM` and `DEF_ISEL`.
 
-
 ## We must go deeper
 
-The spiritual lifted code makes one function call per lifted instruction, where the actual implementation of each function can be arbitrarily complex. If we optimize the bitcode that Remill produces for our few example instructions, then what we get, if translated back to C++, looks like the following. 
+The spiritual lifted code makes one function call per lifted instruction, where the actual implementation of each function can be arbitrarily complex. If we optimize the bitcode that Remill produces for our few example instructions, then what we get, if translated back to C++, looks like the following:
 
 ```C++
 void __remill_sub_804b7a3(State &state, addr_t pc, Memory *memory) {
@@ -162,7 +161,7 @@ void __remill_sub_804b7a3(State &state, addr_t pc, Memory *memory) {
 
   // mov    eax, 0x1
   EAX = 1;
-  
+
   // push   ebx
   ESP -= 4;
   memory = __remill_write_memory_32(memory, ESP, EBX);
@@ -211,7 +210,7 @@ define %struct.Memory* @__remill_sub_804b7a3(%struct.State* dereferenceable(2688
 
 ## The Remill runtime exposed
 
-In the case of Remill, we want to be explicit about accesses to the "modelled program's memory", and to the "runtime's memory". Take another look above at the optimized bitcode. We can see many `load` and `store` instructions. These instruction's are LLVM's way of representing memory reads and writes. Conceptually, the `State` structure is not part of a program's memory -- if you ran the program natively, then our `State` structure would not be present. In Remill, we consider the "runtime" to be made of the following:
+In the case of Remill, we want to be explicit about accesses to the "modeled program's memory", and to the "runtime's memory". Take another look above at the optimized bitcode. We can see many `load` and `store` instructions. These instructions are LLVM's way of representing memory reads and writes. Conceptually, the `State` structure is not part of a program's memory – if you ran the program natively, then our `State` structure would not be present. In Remill, we consider the "runtime" to be made of the following:
 
 1. Memory accesses to `alloca`'d space: local variables needed to support more elaborate computations.
 2. Memory accesses to the `State` structure. The `State` structure is passed by pointer, so it must be accessed via `load` and `store` instructions.
@@ -221,7 +220,7 @@ The naming of "runtime" does not mean that the bitcode itself needs to be execut
 
 Anyway, back to the memory model and memory ordering. Notice that the `memory` pointer is passed into every memory access intrinsic. The `memory` pointer is also replaced in the case of memory write intrinsics. This is to enforce a total order across all memory writes, and a partial order between memory reads and writes.
 
-The `__remill_async_hyper_call` instruction instructs the "runtime" that an explicit [interrupt](https://en.wikipedia.org/wiki/Interrupt) (`int 0x80`) happens. Again, Remill has no way of knowing what this actually means or how it works -- that falls under the purview of the operating system kernel. What Remill *does* know is that an interrupt is a kind of ["indirect" control flow](https://en.wikipedia.org/wiki/Indirect_branch), and so it models is like all other indirect control flows.
+The `__remill_async_hyper_call` instruction instructs the "runtime" that an explicit [interrupt](https://en.wikipedia.org/wiki/Interrupt) (`int 0x80`) happens. Again, Remill has no way of knowing what this actually means or how it works – that falls under the purview of the operating system kernel. What Remill *does* know is that an interrupt is a kind of ["indirect" control flow](https://en.wikipedia.org/wiki/Indirect_branch), and so it models it like all other indirect control flows.
 
 All Remill control-flow intrinsics and Remill lifted basic block functions share the same argument structure:
 
