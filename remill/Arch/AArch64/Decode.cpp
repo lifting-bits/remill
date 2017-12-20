@@ -3910,82 +3910,6 @@ bool TryDecodeMLS_ASIMDSAME_ONLY(const InstData &, Instruction &) {
   return false;
 }
 
-// ST1 ST1_asisdlse_R1_1v:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x size     0
-//  11 x size     1
-//  12 1 opcode   0
-//  13 1 opcode   1
-//  14 1 opcode   2
-//  15 0 opcode   3
-//  16 0
-//  17 0
-//  18 0
-//  19 0
-//  20 0
-//  21 0
-//  22 0 L        0
-//  23 0
-//  24 0
-//  25 0
-//  26 1
-//  27 1
-//  28 0
-//  29 0
-//  30 x Q        0
-//  31 0
-// ST1  { <Vt>.<T> }, [<Xn|SP>]
-bool TryDecodeST1_ASISDLSE_R1_1V(const InstData &, Instruction &) {
-  return false;
-}
-
-// ST1 ST1_asisdlse_R2_2v:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x size     0
-//  11 x size     1
-//  12 0 opcode   0
-//  13 1 opcode   1
-//  14 0 opcode   2
-//  15 1 opcode   3
-//  16 0
-//  17 0
-//  18 0
-//  19 0
-//  20 0
-//  21 0
-//  22 0 L        0
-//  23 0
-//  24 0
-//  25 0
-//  26 1
-//  27 1
-//  28 0
-//  29 0
-//  30 x Q        0
-//  31 0
-// ST1  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>]
-bool TryDecodeST1_ASISDLSE_R2_2V(const InstData &, Instruction &) {
-  return false;
-}
-
 // ST1 ST1_asisdlse_R3_3v:
 //   0 x Rt       0
 //   1 x Rt       1
@@ -4135,44 +4059,6 @@ bool TryDecodeST1_ASISDLSEP_I1_I1(const InstData &, Instruction &) {
 //  31 0
 // ST1  { <Vt>.<T> }, [<Xn|SP>], <Xm>
 bool TryDecodeST1_ASISDLSEP_R1_R1(const InstData &, Instruction &) {
-  return false;
-}
-
-// ST1 ST1_asisdlsep_I2_i2:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x size     0
-//  11 x size     1
-//  12 0 opcode   0
-//  13 1 opcode   1
-//  14 0 opcode   2
-//  15 1 opcode   3
-//  16 1 Rm       0
-//  17 1 Rm       1
-//  18 1 Rm       2
-//  19 1 Rm       3
-//  20 1 Rm       4
-//  21 0
-//  22 0 L        0
-//  23 1
-//  24 0
-//  25 0
-//  26 1
-//  27 1
-//  28 0
-//  29 0
-//  30 x Q        0
-//  31 0
-// ST1  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>], <imm>
-bool TryDecodeST1_ASISDLSEP_I2_I2(const InstData &, Instruction &) {
   return false;
 }
 

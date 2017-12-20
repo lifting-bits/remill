@@ -254,6 +254,7 @@ SYMBOL(__aarch64_test_table_begin):
     0x7ff0000000000000 /* inf */, 0x7ff8000000000000, /* nan */              \
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
 
+
 #if 1
 
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
@@ -310,6 +311,9 @@ SYMBOL(__aarch64_test_table_begin):
 
 #include "tests/AArch64/DATAXFER/FMOV_t_FLOATIMM.S"
 #include "tests/AArch64/DATAXFER/FMOV_NToN.S"
+#include "tests/AArch64/DATAXFER/ST1_ASISDLSE_R1_1V.S"
+#include "tests/AArch64/DATAXFER/ST1_ASISDLSE_R2_2V.S"
+#include "tests/AArch64/DATAXFER/ST1_ASISDLSEP_I2_I2.S"
 #include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R1_1V.S"
 #include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R2_2V.S"
 #include "tests/AArch64/DATAXFER/LD1_ASISDLSE_R3_3V.S"
