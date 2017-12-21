@@ -14286,44 +14286,6 @@ bool TryDecodeLDUMINLH_32_MEMOP(const InstData &, Instruction &) {
   return false;
 }
 
-// INS INS_asimdins_IR_r:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 1
-//  11 1 imm4     0
-//  12 1 imm4     1
-//  13 0 imm4     2
-//  14 0 imm4     3
-//  15 0
-//  16 x imm5     0
-//  17 x imm5     1
-//  18 x imm5     2
-//  19 x imm5     3
-//  20 x imm5     4
-//  21 0
-//  22 0
-//  23 0
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 0 op       0
-//  30 1 Q        0
-//  31 0
-// INS  <Vd>.<Ts>[<index>], <R><n>
-bool TryDecodeINS_ASIMDINS_IR_R(const InstData &, Instruction &) {
-  return false;
-}
-
 // CMGT CMGT_asisdmisc_Z:
 //   0 x Rd       0
 //   1 x Rd       1

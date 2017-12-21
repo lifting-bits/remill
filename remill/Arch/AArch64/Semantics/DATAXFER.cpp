@@ -1157,6 +1157,33 @@ DEF_ISEL(LD2_ASISDLSEP_R2_R_2D) = LD2_64_POSTINDEX<MV256>;
 
 namespace {
 
+#define INS_VEC(size) \
+    template <typename T> \
+    DEF_SEM(INS_ ## size, V128W dst, I64 idx, T src) { \
+      auto vec = UReadV ## size(dst); \
+      auto index = Read(idx); \
+      auto val = Read(src); \
+      vec = UInsertV ## size(vec, index, TruncTo<uint ## size ## _t>(val)); \
+      UWriteV ## size(dst, vec); \
+      return memory; \
+    }
+
+INS_VEC(8)
+INS_VEC(16)
+INS_VEC(32)
+INS_VEC(64)
+
+#undef INS_VEC
+
+}  // namespace
+
+DEF_ISEL(INS_ASIMDINS_IR_R_B) = INS_8<R32>;
+DEF_ISEL(INS_ASIMDINS_IR_R_H) = INS_16<R32>;
+DEF_ISEL(INS_ASIMDINS_IR_R_S) = INS_32<R32>;
+DEF_ISEL(INS_ASIMDINS_IR_R_D) = INS_64<R64>;
+
+namespace {
+
 #define EXTRACT_VEC(prefix, size, ext_op) \
     template <typename D, typename T> \
     DEF_SEM(prefix ## MovFromVec ## size, D dst, V128 src, I64 index) { \
