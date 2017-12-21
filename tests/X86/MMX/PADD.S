@@ -130,6 +130,36 @@ TEST_INPUTS_MMX_2()
     paddq xmm0, xmmword ptr [rsp]
 TEST_END_64
 
+#if HAS_FEATURE_AVX
+
+TEST_BEGIN_64(VPADDQv128v128v128, 2)
+TEST_INPUTS_MMX_2()
+    movq xmm0, ARG1_64;
+    movq xmm1, ARG2_64;
+    vpaddq xmm2, xmm1, xmm0;
+TEST_END_64
+
+TEST_BEGIN_64(VPADDQv128v128m128, 2)
+TEST_INPUTS_MMX_2()
+    push 0;
+    push ARG2_64;
+    movq xmm0, ARG1_64;
+    vpaddq xmm1, xmm0, xmmword ptr [rsp];
+TEST_END_64
+
+TEST_BEGIN_64(VPADDQv256v256m256, 2)
+TEST_INPUTS(0)
+    vmovdqu [rsp - 32], ymm0;
+    vpaddq ymm0, ymm1, ymmword ptr [rsp - 32];
+TEST_END_64
+
+TEST_BEGIN_64(VPADDQv256v256v256, 2)
+TEST_INPUTS(0)
+    vpaddq ymm0, ymm1, ymm4;
+TEST_END_64
+
+#endif  // HAS_FEATURE_AVX
+
 TEST_BEGIN_64(PADDSBr64r64, 2)
 TEST_INPUTS_MMX_2()
     movq mm0, ARG1_64

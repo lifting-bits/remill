@@ -28,6 +28,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <cfenv>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -101,8 +102,8 @@ extern "C" {
 
 // Native state before we run the native test case. We then use this as the
 // initial state for the lifted testcase. The lifted test case code mutates
-// this, and we require that after running the lifted testcase, `gX86StateBefore`
-// matches `gX86StateAfter`,
+// this, and we require that after running the lifted testcase, `gLiftedState`
+// matches `gNativeState`,
 std::aligned_storage<sizeof(X86State), alignof(X86State)>::type gLiftedState;
 
 // Native state after running the native test case.
@@ -115,7 +116,7 @@ Flags gRflagsForTest = {};
 // the native program state but then needs a way to figure out where to go
 // without storing that information in any register. So what we do is we
 // store it here and indirectly `JMP` into the native test case code after
-// saving the machine state to `gX86StateBefore`.
+// saving the machine state to `gLiftedState`.
 uintptr_t gTestToRun = 0;
 
 // Used for swapping the stack pointer between `gStack` and the normal
@@ -132,8 +133,8 @@ uint8_t *gStackSwitcher = nullptr;
 uint64_t gStackSaveSlot = 0;
 
 // Invoke a native test case addressed by `gTestToRun` and store the machine
-// state before and after executing the test in `gX86StateBefore` and
-// `gX86StateAfter`, respectively.
+// state before and after executing the test in `gLiftedState` and
+// `gNativeState`, respectively.
 extern void InvokeTestCase(uint64_t, uint64_t, uint64_t);
 
 #define MAKE_RW_MEMORY(size) \
@@ -339,8 +340,8 @@ static void ImportX87X86State(X86State *state) {
       kFPUAbridgedTagValid == fpu.fxsave.ftw.r6 &&
       kFPUAbridgedTagValid == fpu.fxsave.ftw.r7) {
 
-    // Copy over the MMX data. A good guess for MMX data is that the the
-    // value looks like its infinity.
+    // Copy over the MMX data. A good guess for MMX data is that the
+    // value looks like it's infinity.
     DLOG(INFO) << "Importing MMX state.";
     for (size_t i = 0; i < 8; ++i) {
       if (static_cast<uint16_t>(0xFFFFU) == fpu.fxsave.st[i].infinity) {
@@ -358,7 +359,7 @@ static void ImportX87X86State(X86State *state) {
   }
 
   state->sw.c0 = fpu.fxsave.swd.c0;
-//  state->sw.c1 = fpu.fxsave.swd.c1;
+//  state->sw.c1 = fpu.fxsave.swd.c1;  // currently we do not model C1
   state->sw.c2 = fpu.fxsave.swd.c2;
   state->sw.c3 = fpu.fxsave.swd.c3;
 }
@@ -436,11 +437,12 @@ static void RunWithFlags(const test::TestInfo *info,
   auto lifted_func = gTranslatedFuncs[info->test_begin];
 
   // This will execute on our stack but the lifted code will operate on
-  // `gStack`. The mechanism behind this is that `gX86StateBefore` is the native
+  // `gStack`. The mechanism behind this is that `gLiftedState` is the native
   // program state recorded before executing the native testcase, but after
   // swapping execution to operate on `gStack`.
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
+    std::fesetenv(FE_DFL_ENV);
     (void) lifted_func(
         *lifted_state,
         static_cast<addr_t>(lifted_state->gpr.rip.aword),
@@ -455,6 +457,11 @@ static void RunWithFlags(const test::TestInfo *info,
   auto kill_size = sizeof(lifted_state->x87) - offsetof(FPU, fxsave.st);
   memset(lifted_state->x87.fxsave.st, 0, kill_size);
   memset(native_state->x87.fxsave.st, 0, kill_size);
+
+  // New Intel CPUs have apparently stopped tracking `dp`, even though we track
+  // it. E.g., in testing, an i7-4910MQ tracked `dp` but an i7-7920HQ did not.
+  lifted_state->x87.fxsave.dp = 0;
+  native_state->x87.fxsave.dp = 0;
 
   // Most machines have `fop` recording disabled, even though we track it.
   lifted_state->x87.fxsave.fop = 0;
@@ -544,9 +551,11 @@ static void RunWithFlags(const test::TestInfo *info,
       << lifted_state->rflag.flat << ", native is "
       << native_state->rflag.flat << std::dec;
 
-  EXPECT_TRUE(lifted_state->seg == native_state->seg);
+  EXPECT_TRUE(lifted_state->seg == native_state->seg)
+      << "Lifted SEG differs from native SEG";
 
-  EXPECT_TRUE(lifted_state->gpr == native_state->gpr);
+  EXPECT_TRUE(lifted_state->gpr == native_state->gpr)
+      << "Lifted GPR differs from native GPR";
 
   EXPECT_TRUE(lifted_state->x87.fxsave.swd == native_state->x87.fxsave.swd)
       << "Lifted X87 status word after test is " << std::hex

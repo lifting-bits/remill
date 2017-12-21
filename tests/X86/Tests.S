@@ -285,7 +285,15 @@ SYMBOL(InvokeTestCase):
     push r13
     push r14
     push r15
+    mov rax, cs
+    push rax
+    mov rax, ds
+    push rax
     call SYMBOL(DoInvokeTestCase)
+    pop rax
+    mov ds, rax
+    pop rax
+    mov cs, rax
     pop r15
     pop r14
     pop r13
@@ -365,7 +373,6 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/DATAXFER/XCHG.S"
 
 /* Bring in the rest of the semantic tests. */
-
 
 #include "tests/X86/AVX/VZEROUPPER.S"
 
@@ -511,6 +518,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/PACKUSWB.S"
 #include "tests/X86/SSE/PCMPISTRI.S"
 #include "tests/X86/SSE/PSHUFD.S"
+#include "tests/X86/SSE/PSHUFLW.S"
 #include "tests/X86/SSE/PSLLDQ.S"
 #include "tests/X86/SSE/PSRLDQ.S"
 #include "tests/X86/SSE/UCOMISD.S"
@@ -524,6 +532,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/UNPCKHPD.S"
 #include "tests/X86/SSE/MOVDDUP.S"
 #include "tests/X86/SSE/SQRTSS.S"
+#include "tests/X86/SSE/MXCSR.S"
 
 #include "tests/X86/STRINGOP/CMPS.S"
 #include "tests/X86/STRINGOP/LODS.S"
@@ -542,6 +551,10 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/X87/FUCOM.S"
 #include "tests/X86/X87/FXCH.S"
 #include "tests/X86/X87/MISC.S"
+#include "tests/X86/X87/FNINIT.S"
+
+#include "tests/X86/FMA/VFMADDSD.S"
+#include "tests/X86/FMA/VFMSUBSD.S"
 
 #endif
 

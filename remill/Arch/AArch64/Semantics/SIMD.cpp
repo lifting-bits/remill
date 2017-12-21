@@ -65,6 +65,16 @@ DEF_SEM(BIF_Vec, V128W dst, S dst_src, S src1, S src2) {
   return memory;
 }
 
+template <typename S>
+DEF_SEM(BSL_Vec, V128W dst, S dst_src, S src1, S src2) {
+  auto operand4 = UReadV64(src1);
+  auto operand1 = UReadV64(src2);
+  auto operand3 = UReadV64(dst_src);
+  UWriteV64(dst, UXorV64(
+      operand1, UAndV64(UXorV64(operand1, operand4), operand3)));
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(ORR_ASIMDSAME_ONLY_8B) = ORR_Vec<V64>;
@@ -84,6 +94,9 @@ DEF_ISEL(BIT_ASIMDSAME_ONLY_16B) = BIT_Vec<V128>;
 
 DEF_ISEL(BIF_ASIMDSAME_ONLY_8B) = BIF_Vec<V64>;
 DEF_ISEL(BIF_ASIMDSAME_ONLY_16B) = BIF_Vec<V128>;
+
+DEF_ISEL(BSL_ASIMDSAME_ONLY_8B) = BSL_Vec<V64>;
+DEF_ISEL(BSL_ASIMDSAME_ONLY_16B) = BSL_Vec<V128>;
 
 namespace {
 
@@ -826,6 +839,47 @@ DEF_SEM(FMAXV_32_Reduce, V128W dst, V128 src) {
 
 DEF_ISEL(FMINV_ASIMDALL_ONLY_SD_4S) = FMINV_32_Reduce;
 DEF_ISEL(FMAXV_ASIMDALL_ONLY_SD_4S) = FMAXV_32_Reduce;
+
+namespace {
+
+template <typename S>
+DEF_SEM(NOT_8, V128W dst, S src) {
+  auto vec = UReadV8(src);
+  auto res = UNotV8(vec);
+  UWriteV8(dst, res);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(NOT_ASIMDMISC_R_8B) = NOT_8<V64>; 
+DEF_ISEL(NOT_ASIMDMISC_R_16B) = NOT_8<V128>; 
+
+namespace {
+
+template <typename T, size_t count>
+DEF_SEM(EXT, V128W dst, T src1, T src2, I32 src3) {
+  auto lsb = Read(src3);
+  auto vn = UReadV8(src1);
+  auto vm = UReadV8(src2);
+  uint8v16_t result = {};
+  _Pragma("unroll")
+  for (size_t i = 0, max_i = count; i+lsb < max_i; ++i) {
+    result.elems[count-1-i] = UExtractV8(vm, i+lsb);
+  }
+  _Pragma("unroll")
+  for (size_t i = lsb; i < count; ++i) {
+    result.elems[count-1-i] = UExtractV8(vn, i-lsb);
+  }
+  UWriteV8(dst, result);
+  return memory;
+}
+
+} //  namespace
+
+DEF_ISEL(EXT_ASIMDEXT_ONLY_8B) = EXT<V64, 8>;
+DEF_ISEL(EXT_ASIMDEXT_ONLY_16B) = EXT<V128, 16>;
+
 
 // TODO(pag):
 // FMINV_ASIMDALL_ONLY_H

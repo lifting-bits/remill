@@ -19,6 +19,17 @@ TEST_INPUTS(0)
     fnop
 TEST_END
 
+TEST_BEGIN(FFREE, 1)
+TEST_INPUTS(0)
+    ffree st(0)
+TEST_END
+
+TEST_BEGIN(FFREEP, 1)
+TEST_INPUTS(0)
+  // ffreep st(0)
+  .byte 0xdf, 0xc0
+TEST_END
+
 TEST_BEGIN(FWAIT, 1)
 TEST_INPUTS(0)
     // fwait

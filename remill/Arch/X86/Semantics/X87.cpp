@@ -1274,14 +1274,16 @@ DEF_FPU_SEM(DoFYL2XP1) {
   return memory;
 }
 
-DEF_FPU_SEM(FFREE, RF80) {
+DEF_FPU_SEM(FFREE, RF80 src) {
   SetFPUIpOp();
+  (void) src;
   return memory;
 }
 
-DEF_FPU_SEM(FFREEP, RF80) {
+DEF_FPU_SEM(FFREEP, RF80 src) {
   SetFPUIpOp();
   (void) POP_X87_STACK();
+  (void) src;
   return memory;
 }
 
@@ -1369,8 +1371,37 @@ DEF_ISEL(FCMOVU_ST0_X87) = FCMOVP<RF80W, RF80>;
 DEF_ISEL(FCMOVE_ST0_X87) = FCMOVZ<RF80W, RF80>;
 DEF_ISEL(FCMOVB_ST0_X87) = FCMOVB<RF80W, RF80>;
 
-/*
+namespace {
 
+DEF_SEM(DoFNINIT) {
+  // Initialize the FPU state without checking error conditions.
+  // "Word" and opcode fields are always 16-bit. Pointer fields are either 
+  // 32-bit or 64-bit, but regardless, they are set to 0.
+  state.x87.fsave.cwd.flat = 0x037F; // FPUControlWord
+  state.x87.fsave.swd.flat = 0x0000; // FPUStatusWord
+  state.x87.fsave.ftw.flat = 0x0000; // FPUTagWord (0xFFFF in the manual, 0x0000 in testing)
+  state.x87.fsave.dp = 0x0;          // FPUDataPointer
+  state.x87.fsave.ip = 0x0;          // FPUInstructionPointer
+  state.x87.fsave.fop = 0x0;         // FPULastInstructionOpcode
+  state.x87.fsave.ds.flat = 0x0000;  // FPU code segment selector
+  state.x87.fsave.cs.flat = 0x0000;  // FPU data operand segment selector
+
+  // Mask all floating-point exceptions:
+  std::feclearexcept(FE_ALL_EXCEPT);
+
+  // Set FPU rounding mode to nearest:
+  std::fesetround(FE_TONEAREST);
+
+  // TODO: Set the FPU precision to 64 bits
+
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(FNINIT) = DoFNINIT;
+
+/*
 23 FICOMP FICOMP_ST0_MEMmem32int X87_ALU X87 X87 ATTRIBUTES: NOTSX
 24 FICOMP FICOMP_ST0_MEMmem16int X87_ALU X87 X87 ATTRIBUTES: NOTSX
 889 FICOM FICOM_ST0_MEMmem32int X87_ALU X87 X87 ATTRIBUTES: NOTSX
@@ -1383,7 +1414,7 @@ DEF_ISEL(FCMOVB_ST0_X87) = FCMOVB<RF80W, RF80>;
 357 FXTRACT FXTRACT_ST0_ST1 X87_ALU X87 X87 ATTRIBUTES: NOTSX
 401 FENI8087_NOP FENI8087_NOP X87_ALU X87 X87 ATTRIBUTES: NOP NOTSX
 546 FSETPM287_NOP FSETPM287_NOP X87_ALU X87 X87 ATTRIBUTES: NOP NOTSX
-817 FNINIT FNINIT X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL X87_MMX_STATE_W X87_NOWAIT
+
 1200 FLDENV FLDENV_MEMmem14 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
 1201 FLDENV FLDENV_MEMmem28 X87_ALU X87 X87 ATTRIBUTES: NOTSX X87_CONTROL
 1262 FBLD FBLD_ST0_MEMmem80dec X87_ALU X87 X87 ATTRIBUTES: NOTSX

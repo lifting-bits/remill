@@ -355,4 +355,4 @@ TEST_INPUTS(0)
 #endif /* IN_TEST_GENERATOR */
 TEST_END
 
-#endif /* IN_TEST_GENERATOR */
+#endif /* ADDRESS_SIZE_BITS == 32 */

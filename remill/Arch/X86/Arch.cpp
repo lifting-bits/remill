@@ -395,11 +395,6 @@ static void DecodeMemory(Instruction &inst,
     size = 16;
   }
 
-  // PC-relative memory accesses are relative to the next PC.
-  if (XED_REG_RIP == base_wide) {
-    disp += static_cast<int64_t>(inst_size);
-  }
-
   // Deduce the implicit segment register if it is absent.
   if (XED_REG_INVALID == segment) {
     segment = XED_REG_DS;
@@ -439,10 +434,11 @@ static void DecodeMemory(Instruction &inst,
   op.addr.scale = XED_REG_INVALID != index ? static_cast<int64_t>(scale) : 0;
   op.addr.displacement = disp;
 
-  // Rename the base register to use `PC` as the register name.
+  // PC-relative memory accesses are relative to the next PC. Rename the base
+  // register to use `PC` as the register name.
   if (XED_REG_RIP == base_wide) {
     op.addr.base_reg.name = "PC";
-    op.addr.displacement += static_cast<int64_t>(inst.NumBytes());
+    op.addr.displacement += static_cast<int64_t>(inst_size);
   }
 
   // We always pass destination operands first, then sources. Memory operands
@@ -895,14 +891,12 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
         case kArchAMD64:
         case kArchAMD64_AVX:
         case kArchAMD64_AVX512:
-          dl = "e-m:e-i64:64-f80:128-n8:16:32:64-S128";
+          dl = "e-m:w-i64:64-f80:128-n8:16:32:64-S128";
           break;
         case kArchX86:
         case kArchX86_AVX:
         case kArchX86_AVX512:
-          dl = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:"
-               "32:32-f64:64:64-f80:128:128-v64:64:64-v128:128:128-a0:0:64-f80:"
-               "32:32-n8:16:32-S32";
+          dl = "e-m:x-p:32:32-i64:64-f80:32-n8:16:32-a:0:32-S32";
           break;
         default:
           LOG(FATAL)
@@ -930,6 +924,7 @@ bool X86Arch::DecodeInstruction(
   auto mode = 32 == address_size ? &kXEDState32 : &kXEDState64;
 
   if (!DecodeXED(xedd, mode, inst_bytes, address)) {
+    LOG(ERROR) << "DecodeXED() could not decode the following opcodes: " << inst.Serialize();
     return false;
   }
 
@@ -978,6 +973,8 @@ bool X86Arch::DecodeInstruction(
         case XED_IFORM_FNOP:
         case XED_IFORM_FINCSTP:
         case XED_IFORM_FDECSTP:
+        case XED_IFORM_FFREE_X87:
+        case XED_IFORM_FFREEP_X87:
           set_ip_dp = true;
           break;
         default:
@@ -997,24 +994,92 @@ bool X86Arch::DecodeInstruction(
 
   // Make sure we disallow decoding of AVX instructions when running with non-
   // AVX arch specified. Same thing for AVX512 instructions.
-  switch (xed_decoded_inst_get_category(xedd)) {
-    case XED_CATEGORY_INVALID:
-    case XED_CATEGORY_LAST:
+  auto iform = xed_decoded_inst_get_iform_enum(xedd);
+  switch (xed_decoded_inst_get_isa_set(xedd)) {
+    case XED_ISA_SET_INVALID:
+    case XED_ISA_SET_LAST:
+      LOG(ERROR)
+          << "Instruction decode of " << xed_iform_enum_t2str(iform)
+          << " failed because XED_ISA_SET_LAST.";
       return false;
 
-    case XED_CATEGORY_AVX:
-    case XED_CATEGORY_AVX2:
-    case XED_CATEGORY_AVX2GATHER:
-      return kArchAMD64 != inst.arch_name &&
-             kArchX86 != inst.arch_name;
+    case XED_ISA_SET_AVX:
+    case XED_ISA_SET_AVX2:
+    case XED_ISA_SET_AVX2GATHER:
+    case XED_ISA_SET_AVXAES:
+    case XED_ISA_SET_AVX_GFNI: {
+      auto supp = kArchAMD64 != inst.arch_name &&
+                  kArchX86 != inst.arch_name;
+      LOG_IF(ERROR, !supp)
+          << "Instruction decode of " << xed_iform_enum_t2str(iform)
+          << " failed because the current arch is specified "
+          << "as " << GetArchName(inst.arch_name) << " but what is needed is "
+          << "the _avx or _avx512 variant.";
+      return supp;
+    }
 
-    case XED_CATEGORY_AVX512:
-    case XED_CATEGORY_AVX512_4FMAPS:
-    case XED_CATEGORY_AVX512_4VNNIW:
-    case XED_CATEGORY_AVX512_VBMI:
-      return kArchAMD64_AVX512 == inst.arch_name ||
-             kArchX86_AVX512 == inst.arch_name;
-
+    case XED_ISA_SET_AVX512BW_128:
+    case XED_ISA_SET_AVX512BW_128N:
+    case XED_ISA_SET_AVX512BW_256:
+    case XED_ISA_SET_AVX512BW_512:
+    case XED_ISA_SET_AVX512BW_KOP:
+    case XED_ISA_SET_AVX512CD_128:
+    case XED_ISA_SET_AVX512CD_256:
+    case XED_ISA_SET_AVX512CD_512:
+    case XED_ISA_SET_AVX512DQ_128:
+    case XED_ISA_SET_AVX512DQ_128N:
+    case XED_ISA_SET_AVX512DQ_256:
+    case XED_ISA_SET_AVX512DQ_512:
+    case XED_ISA_SET_AVX512DQ_KOP:
+    case XED_ISA_SET_AVX512DQ_SCALAR:
+    case XED_ISA_SET_AVX512ER_512:
+    case XED_ISA_SET_AVX512ER_SCALAR:
+    case XED_ISA_SET_AVX512F_128:
+    case XED_ISA_SET_AVX512F_128N:
+    case XED_ISA_SET_AVX512F_256:
+    case XED_ISA_SET_AVX512F_512:
+    case XED_ISA_SET_AVX512F_KOP:
+    case XED_ISA_SET_AVX512F_SCALAR:
+    case XED_ISA_SET_AVX512PF_512:
+    case XED_ISA_SET_AVX512_4FMAPS_512:
+    case XED_ISA_SET_AVX512_4FMAPS_SCALAR:
+    case XED_ISA_SET_AVX512_4VNNIW_512:
+    case XED_ISA_SET_AVX512_BITALG_128:
+    case XED_ISA_SET_AVX512_BITALG_256:
+    case XED_ISA_SET_AVX512_BITALG_512:
+    case XED_ISA_SET_AVX512_GFNI_128:
+    case XED_ISA_SET_AVX512_GFNI_256:
+    case XED_ISA_SET_AVX512_GFNI_512:
+    case XED_ISA_SET_AVX512_IFMA_128:
+    case XED_ISA_SET_AVX512_IFMA_256:
+    case XED_ISA_SET_AVX512_IFMA_512:
+    case XED_ISA_SET_AVX512_VAES_128:
+    case XED_ISA_SET_AVX512_VAES_256:
+    case XED_ISA_SET_AVX512_VAES_512:
+    case XED_ISA_SET_AVX512_VBMI2_128:
+    case XED_ISA_SET_AVX512_VBMI2_256:
+    case XED_ISA_SET_AVX512_VBMI2_512:
+    case XED_ISA_SET_AVX512_VBMI_128:
+    case XED_ISA_SET_AVX512_VBMI_256:
+    case XED_ISA_SET_AVX512_VBMI_512:
+    case XED_ISA_SET_AVX512_VNNI_128:
+    case XED_ISA_SET_AVX512_VNNI_256:
+    case XED_ISA_SET_AVX512_VNNI_512:
+    case XED_ISA_SET_AVX512_VPCLMULQDQ_128:
+    case XED_ISA_SET_AVX512_VPCLMULQDQ_256:
+    case XED_ISA_SET_AVX512_VPCLMULQDQ_512:
+    case XED_ISA_SET_AVX512_VPOPCNTDQ_128:
+    case XED_ISA_SET_AVX512_VPOPCNTDQ_256:
+    case XED_ISA_SET_AVX512_VPOPCNTDQ_512: {
+      auto supp = kArchAMD64_AVX512 == inst.arch_name ||
+                  kArchX86_AVX512 == inst.arch_name;
+      LOG_IF(ERROR, !supp)
+          << "Instruction decode of " << xed_iform_enum_t2str(iform)
+          << " failed because the current arch is specified "
+          << "as " << GetArchName(inst.arch_name) << " but what is needed is "
+          << "the _avx512 variant.";
+      return supp;
+    }
     default:
       return true;
   }
