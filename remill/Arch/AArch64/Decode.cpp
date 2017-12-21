@@ -39253,44 +39253,6 @@ bool TryDecodeUQSHRN_ASIMDSHF_N(const InstData &, Instruction &) {
   return false;
 }
 
-// EXT EXT_asimdext_only:
-//   0 x Rd       0
-//   1 x Rd       1
-//   2 x Rd       2
-//   3 x Rd       3
-//   4 x Rd       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 0
-//  11 x imm4     0
-//  12 x imm4     1
-//  13 x imm4     2
-//  14 x imm4     3
-//  15 0
-//  16 x Rm       0
-//  17 x Rm       1
-//  18 x Rm       2
-//  19 x Rm       3
-//  20 x Rm       4
-//  21 0
-//  22 0 op2      0
-//  23 0 op2      1
-//  24 0
-//  25 1
-//  26 1
-//  27 1
-//  28 0
-//  29 1
-//  30 x Q        0
-//  31 0
-// EXT  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>, #<index>
-bool TryDecodeEXT_ASIMDEXT_ONLY(const InstData &, Instruction &) {
-  return false;
-}
-
 // USHL USHL_asisdsame_only:
 //   0 x Rd       0
 //   1 x Rd       1

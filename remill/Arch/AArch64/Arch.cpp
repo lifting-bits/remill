@@ -3926,6 +3926,17 @@ static bool TryDecodeLDnSTnOpcode(uint8_t opcode, uint64_t *rpt,
   }
 }
 
+// EXT  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>, #<index>
+bool TryDecodeEXT_ASIMDEXT_ONLY(const InstData &data, Instruction &inst) {
+  if (!data.Q && data.imm4.uimm & 0x8) {
+    return false;  // `if Q == '0' and imm4<3> == '1' then UnallocatedEncoding();`
+  }
+  AddQArrangementSpecifier(data, inst, "16B", "8B");
+  TryDecodeRdW_Rn_Rm(data, inst, kRegV);
+  AddImmOperand(inst, data.imm4.uimm, kUnsigned, 32);
+  return true;
+}
+
 // Load/store one or more data structures.
 bool TryDecodeLDnSTn(const InstData &data, Instruction &inst,
                      uint64_t *total_num_bytes) {
