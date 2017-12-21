@@ -863,9 +863,11 @@ DEF_SEM(EXT, V128W dst, T src1, T src2, I32 src3) {
   auto vn = UReadV8(src1);
   auto vm = UReadV8(src2);
   uint8v16_t result = {};
+  _Pragma("unroll")
   for (size_t i = 0, max_i = count; i+lsb < max_i; ++i) {
     result.elems[count-1-i] = UExtractV8(vm, i+lsb);
   }
+  _Pragma("unroll")
   for (size_t i = lsb; i < count; ++i) {
     result.elems[count-1-i] = UExtractV8(vn, i-lsb);
   }
