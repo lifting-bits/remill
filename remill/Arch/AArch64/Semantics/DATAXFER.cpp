@@ -1101,8 +1101,8 @@ namespace {
         dst1_vec = UInsertV ## size(dst1_vec, j, UExtractV ## size(vec, i++)); \
         dst2_vec = UInsertV ## size(dst2_vec, j, UExtractV ## size(vec, i++)); \
       } \
-        UWriteV ## size(dst1, dst1_vec); \
-        UWriteV ## size(dst2, dst2_vec); \
+      UWriteV ## size(dst1, dst1_vec); \
+      UWriteV ## size(dst2, dst2_vec); \
       return memory; \
     }
 
@@ -1154,6 +1154,49 @@ DEF_ISEL(LD2_ASISDLSEP_R2_R_8H) = LD2_16_POSTINDEX<MV256>;
 DEF_ISEL(LD2_ASISDLSEP_R2_R_2S) = LD2_32_POSTINDEX<MV128>;
 DEF_ISEL(LD2_ASISDLSEP_R2_R_4S) = LD2_32_POSTINDEX<MV256>;
 DEF_ISEL(LD2_ASISDLSEP_R2_R_2D) = LD2_64_POSTINDEX<MV256>;
+
+namespace {
+
+#define MAKE_LD3(size) \
+    template <typename S, size_t count> \
+    DEF_SEM(LD3_ ## size, V128W dst1, V128W dst2, V128W dst3, S src) { \
+      auto dst1_vec = UClearV ## size(UReadV ## size(dst1)); \
+      auto dst2_vec = UClearV ## size(UReadV ## size(dst2)); \
+      auto dst3_vec = UClearV ## size(UReadV ## size(dst3)); \
+      _Pragma("unroll") \
+      for (size_t i = 0; i < count; ++i) { \
+        auto val = Read(src); \
+        src = GetElementPtr(src, 1); \
+        dst1_vec = UInsertV ## size(dst1_vec, i, val); \
+        val = Read(src); \
+        src = GetElementPtr(src, 1); \
+        dst2_vec = UInsertV ## size(dst2_vec, i, val); \
+        val = Read(src); \
+        src = GetElementPtr(src, 1); \
+        dst3_vec = UInsertV ## size(dst3_vec, i, val); \
+      } \
+      UWriteV ## size(dst1, dst1_vec); \
+      UWriteV ## size(dst2, dst2_vec); \
+      UWriteV ## size(dst3, dst3_vec); \
+      return memory; \
+    }
+
+MAKE_LD3(8)
+MAKE_LD3(16)
+MAKE_LD3(32)
+MAKE_LD3(64)
+
+#undef MAKE_LD3
+
+}  // namespace
+
+DEF_ISEL(LD3_ASISDLSE_R3_8B) = LD3_8<M8, 8>;
+DEF_ISEL(LD3_ASISDLSE_R3_16B) = LD3_8<M8, 16>;
+DEF_ISEL(LD3_ASISDLSE_R3_4H) = LD3_16<M16, 4>;
+DEF_ISEL(LD3_ASISDLSE_R3_8H) = LD3_16<M16, 8>;
+DEF_ISEL(LD3_ASISDLSE_R3_2S) = LD3_32<M32, 2>;
+DEF_ISEL(LD3_ASISDLSE_R3_4S) = LD3_32<M32, 4>;
+DEF_ISEL(LD3_ASISDLSE_R3_2D) = LD3_64<M64, 2>;
 
 namespace {
 

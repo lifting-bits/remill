@@ -254,8 +254,9 @@ SYMBOL(__aarch64_test_table_begin):
     0x7ff0000000000000 /* inf */, 0x7ff8000000000000, /* nan */              \
     0x7ff8000000000000 /* nan */, 0x7ff0000000000000 /* inf */
 
+#include "tests/AArch64/DATAXFER/LD3_ASISDLSE_R3.S"
 
-#if 1
+#if 0
 
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_IMM.S"
 #include "tests/AArch64/BINARY/ADD_n_ADDSUB_SHIFT.S"
