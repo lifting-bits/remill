@@ -4582,6 +4582,51 @@ bool TryDecodeMVNI_ASIMDIMM_M_SM(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// USHLL USHLL_asimdshf_L:
+//   0 x Rd       0
+//   1 x Rd       1
+//   2 x Rd       2
+//   3 x Rd       3
+//   4 x Rd       4
+//   5 x Rn       0
+//   6 x Rn       1
+//   7 x Rn       2
+//   8 x Rn       3
+//   9 x Rn       4
+//  10 1
+//  11 0 opcode   0
+//  12 0 opcode   1
+//  13 1 opcode   2
+//  14 0 opcode   3
+//  15 1 opcode   4
+//  16 x immb     0
+//  17 x immb     1
+//  18 x immb     2
+//  19 x immh     0
+//  20 x immh     1
+//  21 x immh     2
+//  22 x immh     3
+//  23 0
+//  24 1
+//  25 1
+//  26 1
+//  27 1
+//  28 0
+//  29 1 U        0
+//  30 x Q        0
+//  31 0
+// USHLL{2}  <Vd>.<Ta>, <Vn>.<Tb>, #<shift>
+bool TryDecodeUSHLL_ASIMDSHF_L(const InstData &data, Instruction &inst) {
+  if(data.immh.uimm & 0b1000) {
+      return false; // if immh<3> == '1' then ReservedValue()
+  }
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  //auto imm = data.imm16.uimm;
+  //AddImmOperand(inst, imm);
+  return true;
+}
+    
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
