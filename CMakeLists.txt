@@ -346,7 +346,7 @@ else()
   set(LINUX FALSE)
 endif ()
 
-if (LINUX)
+if (LINUX OR APPLE)
   if (CMAKE_SIZEOF_VOID_P EQUAL 8)
     # only enable x86 tests when compiling under x64
     if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
