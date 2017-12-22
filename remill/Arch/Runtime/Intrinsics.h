@@ -135,6 +135,31 @@ extern Memory *__remill_atomic_begin(Memory *);
 [[gnu::used, gnu::const]]
 extern Memory *__remill_atomic_end(Memory *);
 
+[[gnu::used, gnu::const]]
+extern uint32_t __remill_compare_exchange_memory_8(Memory *, addr_t addr, uint8_t *expected, uint8_t desired);
+
+[[gnu::used, gnu::const]]
+extern uint32_t __remill_compare_exchange_memory_16(Memory *, addr_t addr, uint16_t *expected, uint16_t desired);
+
+[[gnu::used, gnu::const]]
+extern uint32_t __remill_compare_exchange_memory_32(Memory *, addr_t addr, uint32_t *expected, uint32_t desired);
+
+[[gnu::used, gnu::const]]
+extern uint32_t __remill_compare_exchange_memory_64(Memory *, addr_t addr, uint64_t *expected, uint64_t desired);
+
+[[gnu::used, gnu::const]]
+extern uint32_t __remill_compare_exchange_8(Memory *, const uint8_t* addr, uint8_t *expected, uint8_t desired);
+
+[[gnu::used, gnu::const]]
+extern uint32_t __remill_compare_exchange_16(Memory *, const uint16_t* addr, uint16_t *expected, uint16_t desired);
+
+[[gnu::used, gnu::const]]
+extern uint32_t __remill_compare_exchange_32(Memory *, const uint32_t* addr, uint32_t *expected, uint32_t desired);
+
+[[gnu::used, gnu::const]]
+extern uint32_t __remill_compare_exchange_64(Memory *, const uint64_t* addr, uint64_t *expected, uint64_t desired);
+
+
 // Read and modify the floating point exception state of the (virtual) machine
 // that is executing the actual floating point operations.
 //

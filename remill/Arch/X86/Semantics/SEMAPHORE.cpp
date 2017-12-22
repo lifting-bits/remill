@@ -22,10 +22,9 @@ namespace {
       auto curr_val = Read(src1); \
       auto desired_val = Read(src2); \
       auto check_val = Read(REG_ ## xax); \
-      auto cmp_res = USub(check_val, curr_val); \
-      auto replace = UCmpEq(cmp_res, 0); \
-      WriteFlagsAddSub<tag_sub>(state, check_val, curr_val, cmp_res); \
-      WriteZExt(dst, Select(replace, desired_val, curr_val)); \
+      auto swap_flag = CmpXchg(dst, check_val, desired_val); \
+      auto replace = UCmpEq(UInt32(swap_flag), UInt32(0)); \
+      Write(FLAG_ZF, replace); \
       WriteZExt(REG_ ## xax, Select(replace, check_val, curr_val)); \
       return memory; \
     }

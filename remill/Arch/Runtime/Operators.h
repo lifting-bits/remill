@@ -465,6 +465,27 @@ MAKE_WRITE_REF(float64_t)
 
 #undef MAKE_WRITE_REF
 
+#define MAKE_CMPXCHG(size, type_prefix, access_suffix) \
+    ALWAYS_INLINE static bool _CmpXchg( \
+        Memory *&memory, RnW<type_prefix ## size ## _t> op, \
+        type_prefix ## size ## _t expected, type_prefix ## size ## _t desired) { \
+      return __remill_compare_exchange_ ## access_suffix (memory, op.val_ref, &expected, desired);\
+    } \
+    \
+    ALWAYS_INLINE static bool _CmpXchg( \
+        Memory *&memory, MnW<type_prefix ## size ## _t> op, \
+        type_prefix ## size ## _t expected, type_prefix ## size ## _t desired) { \
+      return __remill_compare_exchange_memory_ ## access_suffix (memory, op.addr, &expected, desired); \
+    }
+
+MAKE_CMPXCHG(8, uint, 8)
+MAKE_CMPXCHG(16, uint, 16)
+MAKE_CMPXCHG(32, uint, 32)
+MAKE_CMPXCHG(64, uint, 64)
+
+#undef MAKE_CMPXCHG
+#define CmpXchg(op, oldval, newval) _CmpXchg(memory, op, oldval, newval)
+
 // For the sake of esthetics and hiding the small-step semantics of memory
 // operands, we use this macros to implicitly pass in the `memory` operand,
 // which we know will be defined in semantics functions.
