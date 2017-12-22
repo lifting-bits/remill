@@ -359,6 +359,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/STLR.S"
 #include "tests/AArch64/DATAXFER/STUR_n_LDST_UNSCALED.S"
 #include "tests/AArch64/DATAXFER/UMOV.S"
+#include "tests/AArch64/DATAXFER/INS_ASIMDINS_IR_R.S"
 
 #include "tests/AArch64/LOGICAL/AND_n_LOG_IMM.S"
 #include "tests/AArch64/LOGICAL/AND_n_LOG_SHIFT.S"
