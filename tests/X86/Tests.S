@@ -42,10 +42,20 @@
 #else
 # define SYMBOL(x) x
 #endif
-
+        
 #define FUNC_NAME(instr_name, num_args) \
     CAT3(instr_name, _, num_args)
 
+#if __APPLE__
+#define TEXT_SECTION .section __TEXT,__text
+#define DATA_SECTION .section __DATA,__data
+#define CONST_SECTION .section __TEXT,__const
+#else
+#define TEXT_SECTION .text
+#define DATA_SECTION .data
+#define CONST_SECTION .rodata
+#endif // __APPLE__   
+        
 /* Defines the beginning of a test function. The key detail is that tests
  * register themselves into data structures located in a special section of
  * the binary.
@@ -59,7 +69,7 @@
  *       one should use `TEST_BEGIN_32` or `TEST_BEGIN_64`.
  */
 #define TEST_BEGIN(instr_name, num_args) \
-    .text ; \
+    TEXT_SECTION ; \
     \
     .align 16 ; \
     .globl SYMBOL(FUNC_NAME(instr_name, num_args)) ; \
@@ -76,11 +86,11 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .quad 5f ; \
     .quad num_args ; \
     \
-    .rodata ; \
+    CONST_SECTION ; \
     2: \
     .asciz TO_STRING(FUNC_NAME(instr_name, num_args)) ; \
     \
-    .text ; \
+    TEXT_SECTION ; \
     3: \
     .cfi_startproc ;
 
