@@ -326,6 +326,38 @@ static void InitFlags(void) {
       : "m"(gRflagsInitial));
 }
 
+// Check if we are in a mode such that FCS and FDS are deprecated, and
+// are thus zeroed out in FXSAVE, XSAVE, and XSAVEOPT.
+//
+// Per the Intel SDM Vol. 1, Section 8.1.8, this happens when:
+//
+//    CPUID.(EAX=07H,ECX=0H):EBX[bit 13] = 1
+//
+// Where "bit 13" is a 0-based index.
+static bool AreFCSAndFDSDeprecated(void) {
+    uint32_t eax, ebx, ecx, edx;
+
+    eax = 0x07;
+    ecx = 0;
+
+    asm volatile(
+        "cpuid"
+        : "=a"(eax),
+          "=b"(ebx),
+          "=c"(ecx),
+          "=d"(edx)
+        : "a"(eax),
+          "b"(ebx),
+          "c"(ecx),
+          "d"(edx)
+    );
+
+    // Bit 13 of EBX (zero-based indexing)
+    uint32_t ebx_13 = (ebx & (1 << 13)) >> 13;
+
+    return ebx_13 == 1;
+}
+
 // Convert some native state, stored in various ways, into the `X86State` structure
 // type.
 static void ImportX87X86State(X86State *state) {
@@ -457,6 +489,14 @@ static void RunWithFlags(const test::TestInfo *info,
   auto kill_size = sizeof(lifted_state->x87) - offsetof(FPU, fxsave.st);
   memset(lifted_state->x87.fxsave.st, 0, kill_size);
   memset(native_state->x87.fxsave.st, 0, kill_size);
+
+#if 32 == ADDRESS_SIZE_BITS
+  // If FCS and FDS are deprecated, don't compare them.
+  if (AreFCSAndFDSDeprecated()) {
+      lifted_state->x87.fxsave.cs = {0};
+      native_state->x87.fxsave.cs = {0};
+  }
+#endif
 
   // New Intel CPUs have apparently stopped tracking `dp`, even though we track
   // it. E.g., in testing, an i7-4910MQ tracked `dp` but an i7-7920HQ did not.

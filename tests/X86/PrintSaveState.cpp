@@ -112,6 +112,14 @@ int main(void) {
   printf("push QWORD PTR [RIP + SYMBOL(gStackSaveSlot)]\n");
   printf("lea RSP, [RSP + 8]\n");
 
+  // Save segment registers.
+  printf("mov WORD PTR [RIP + STATE_PTR + %lu], CS\n", offsetof(State, seg.cs));
+  printf("mov WORD PTR [RIP + STATE_PTR + %lu], SS\n", offsetof(State, seg.ss));
+  printf("mov WORD PTR [RIP + STATE_PTR + %lu], DS\n", offsetof(State, seg.ds));
+  printf("mov WORD PTR [RIP + STATE_PTR + %lu], ES\n", offsetof(State, seg.es));
+  printf("mov WORD PTR [RIP + STATE_PTR + %lu], FS\n", offsetof(State, seg.fs));
+  printf("mov WORD PTR [RIP + STATE_PTR + %lu], GS\n", offsetof(State, seg.gs));
+
   printf("mov [RIP + STATE_PTR + %lu], AH\n", offsetof(State, gpr.rax.byte.high));
   printf("mov [RIP + STATE_PTR + %lu], BH\n", offsetof(State, gpr.rbx.byte.high));
   printf("mov [RIP + STATE_PTR + %lu], CH\n", offsetof(State, gpr.rcx.byte.high));
