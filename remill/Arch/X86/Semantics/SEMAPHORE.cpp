@@ -96,12 +96,9 @@ DEF_SEM(XADD, D1 dst1, S1 src1, D2 dst2, S2 src2) {
   if (IsRegister(dst1)) {
     BarrierStoreLoad();
   }
-
-  auto lhs = Read(src1);
   auto rhs = Read(src2);
+  auto lhs = fetch_and_add(dst1, rhs);
   auto sum = UAdd(lhs, rhs);
-  WriteZExt(dst1, sum);
-  WriteZExt(dst2, lhs);
   WriteFlagsAddSub<tag_add>(state, lhs, rhs, sum);
   return memory;
 }
