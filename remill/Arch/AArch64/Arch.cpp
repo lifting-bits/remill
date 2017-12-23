@@ -3926,6 +3926,17 @@ static bool TryDecodeLDnSTnOpcode(uint8_t opcode, uint64_t *rpt,
   }
 }
 
+// EXT  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>, #<index>
+bool TryDecodeEXT_ASIMDEXT_ONLY(const InstData &data, Instruction &inst) {
+  if (!data.Q && data.imm4.uimm & 0x8) {
+    return false;  // `if Q == '0' and imm4<3> == '1' then UnallocatedEncoding();`
+  }
+  AddQArrangementSpecifier(data, inst, "16B", "8B");
+  TryDecodeRdW_Rn_Rm(data, inst, kRegV);
+  AddImmOperand(inst, data.imm4.uimm, kUnsigned, 32);
+  return true;
+}
+
 // Load/store one or more data structures.
 bool TryDecodeLDnSTn(const InstData &data, Instruction &inst,
                      uint64_t *total_num_bytes) {
@@ -4353,6 +4364,29 @@ bool TryDecodeSADDLV_ASIMDALL_ONLY(const InstData &, Instruction &) {
 
 // DMB  <option>|#<imm>
 bool TryDecodeDMB_BO_SYSTEM(const InstData &, Instruction &) {
+  return true;
+}
+
+// INS  <Vd>.<Ts>[<index>], <R><n>
+bool TryDecodeINS_ASIMDINS_IR_R(const InstData &data, Instruction &inst) {
+  uint64_t size = 0;
+  if (!LeastSignificantSetBit(data.imm5.uimm, &size) || size > 3) {
+    return false;
+  }
+  std::stringstream ss;
+  ss << inst.function;
+  switch (size) {
+    case 0: ss << "_B"; break;
+    case 1: ss << "_H"; break;
+    case 2: ss << "_S"; break;
+    case 3: ss << "_D"; break;
+    default: return false;
+  }
+  inst.function = ss.str();
+
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddImmOperand(inst, data.imm5.uimm >> (size + 1));
+  AddRegOperand(inst, kActionRead, (size == 3) ? kRegX : kRegW, kUseAsValue, data.Rn);
   return true;
 }
 

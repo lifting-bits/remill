@@ -1198,7 +1198,6 @@ DEF_ISEL(LD3_ASISDLSE_R3_2S) = LD3_32<M32, 2>;
 DEF_ISEL(LD3_ASISDLSE_R3_4S) = LD3_32<M32, 4>;
 DEF_ISEL(LD3_ASISDLSE_R3_2D) = LD3_64<M64, 2>;
 
-
 namespace {
 
 #define MAKE_LD4(size) \
@@ -1247,6 +1246,33 @@ DEF_ISEL(LD4_ASISDLSE_R4_8H) = LD4_16<M16, 8>;
 DEF_ISEL(LD4_ASISDLSE_R4_2S) = LD4_32<M32, 2>;
 DEF_ISEL(LD4_ASISDLSE_R4_4S) = LD4_32<M32, 4>;
 DEF_ISEL(LD4_ASISDLSE_R4_2D) = LD4_64<M64, 2>;
+
+namespace {
+
+#define INS_VEC(size) \
+    template <typename T> \
+    DEF_SEM(INS_ ## size, V128W dst, I64 idx, T src) { \
+      auto vec = UReadV ## size(dst); \
+      auto index = Read(idx); \
+      auto val = Read(src); \
+      vec = UInsertV ## size(vec, index, TruncTo<uint ## size ## _t>(val)); \
+      UWriteV ## size(dst, vec); \
+      return memory; \
+    }
+
+INS_VEC(8)
+INS_VEC(16)
+INS_VEC(32)
+INS_VEC(64)
+
+#undef INS_VEC
+
+}  // namespace
+
+DEF_ISEL(INS_ASIMDINS_IR_R_B) = INS_8<R32>;
+DEF_ISEL(INS_ASIMDINS_IR_R_H) = INS_16<R32>;
+DEF_ISEL(INS_ASIMDINS_IR_R_S) = INS_32<R32>;
+DEF_ISEL(INS_ASIMDINS_IR_R_D) = INS_64<R64>;
 
 namespace {
 

@@ -457,6 +457,8 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/CONVERT/CWD.S"
 #include "tests/X86/CONVERT/CWDE.S"
 
+/* used for DECIMAL tests */
+#include "tests/X86/DECIMAL/UTIL_FLAGS.S"
 #include "tests/X86/DECIMAL/AAS.S"
 #include "tests/X86/DECIMAL/DAA.S"
 
