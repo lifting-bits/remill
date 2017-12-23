@@ -9573,44 +9573,6 @@ bool TryDecodeLDADDLH_32_MEMOP(const InstData &, Instruction &) {
   return false;
 }
 
-// LD3 LD3_asisdlse_R3:
-//   0 x Rt       0
-//   1 x Rt       1
-//   2 x Rt       2
-//   3 x Rt       3
-//   4 x Rt       4
-//   5 x Rn       0
-//   6 x Rn       1
-//   7 x Rn       2
-//   8 x Rn       3
-//   9 x Rn       4
-//  10 x size     0
-//  11 x size     1
-//  12 0 opcode   0
-//  13 0 opcode   1
-//  14 1 opcode   2
-//  15 0 opcode   3
-//  16 0
-//  17 0
-//  18 0
-//  19 0
-//  20 0
-//  21 0
-//  22 1 L        0
-//  23 0
-//  24 0
-//  25 0
-//  26 1
-//  27 1
-//  28 0
-//  29 0
-//  30 x Q        0
-//  31 0
-// LD3  { <Vt>.<T>, <Vt2>.<T>, <Vt3>.<T> }, [<Xn|SP>]
-bool TryDecodeLD3_ASISDLSE_R3(const InstData &, Instruction &) {
-  return false;
-}
-
 // LD3 LD3_asisdlsep_I3_i:
 //   0 x Rt       0
 //   1 x Rt       1
