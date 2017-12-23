@@ -466,25 +466,35 @@ MAKE_WRITE_REF(float64_t)
 #undef MAKE_WRITE_REF
 
 #define MAKE_CMPXCHG(size, type_prefix, access_suffix) \
+    template <typename T> \
     ALWAYS_INLINE static bool _CmpXchg( \
-        Memory *&memory, RnW<type_prefix ## size ## _t> op, \
-        type_prefix ## size ## _t expected, type_prefix ## size ## _t desired) { \
-      return __remill_compare_exchange_ ## access_suffix (memory, op.val_ref, &expected, desired);\
+        Memory *&memory, RnW<T> op, type_prefix ## size ## _t &expected, \
+        type_prefix ## size ## _t desired) { \
+        auto prev_val = expected; \
+        if (*op.val_ref == expected) {\
+          expected = *reinterpret_cast<type_prefix ## size ## _t*>(op.val_ref); \
+          *op.val_ref = desired; \
+        } \
+        return prev_val == expected; \
     } \
     \
+    template <typename T> \
     ALWAYS_INLINE static bool _CmpXchg( \
-        Memory *&memory, MnW<type_prefix ## size ## _t> op, \
-        type_prefix ## size ## _t expected, type_prefix ## size ## _t desired) { \
-      return __remill_compare_exchange_memory_ ## access_suffix (memory, op.addr, &expected, desired); \
+        Memory *&memory, MnW<T> op, type_prefix ## size ## _t &expected, \
+        type_prefix ## size ## _t desired) { \
+        auto prev_val = expected; \
+        memory = __remill_compare_exchange_memory_ ## access_suffix (memory, op.addr, expected, desired);\
+        return prev_val == expected; \
     }
 
 MAKE_CMPXCHG(8, uint, 8)
 MAKE_CMPXCHG(16, uint, 16)
 MAKE_CMPXCHG(32, uint, 32)
 MAKE_CMPXCHG(64, uint, 64)
+MAKE_CMPXCHG(128, uint, 128)
 
 #undef MAKE_CMPXCHG
-#define CmpXchg(op, oldval, newval) _CmpXchg(memory, op, oldval, newval)
+#define UCmpXchg(op, oldval, newval) _CmpXchg(memory, op, oldval, newval)
 
 // For the sake of esthetics and hiding the small-step semantics of memory
 // operands, we use this macros to implicitly pass in the `memory` operand,

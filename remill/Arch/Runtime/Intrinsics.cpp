@@ -67,10 +67,6 @@ extern "C" void __remill_intrinsics(void) {
   USED(__remill_compare_exchange_memory_16);
   USED(__remill_compare_exchange_memory_32);
   USED(__remill_compare_exchange_memory_64);
-  USED(__remill_compare_exchange_8);
-  USED(__remill_compare_exchange_16);
-  USED(__remill_compare_exchange_32);
-  USED(__remill_compare_exchange_64);
 
   USED(__remill_fpu_exception_test_and_clear);
 

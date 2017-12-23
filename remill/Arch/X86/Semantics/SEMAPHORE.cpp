@@ -19,13 +19,11 @@ namespace {
 #define MAKE_CMPXCHG_XAX(xax) \
     template <typename D, typename S1, typename S2> \
     DEF_SEM(CMPXCHG_ ## xax, D dst, S1 src1, S2 src2) { \
-      auto curr_val = Read(src1); \
       auto desired_val = Read(src2); \
       auto check_val = Read(REG_ ## xax); \
-      auto swap_flag = CmpXchg(dst, check_val, desired_val); \
-      auto replace = UCmpEq(UInt32(swap_flag), UInt32(0)); \
-      Write(FLAG_ZF, replace); \
-      WriteZExt(REG_ ## xax, Select(replace, check_val, curr_val)); \
+      auto swap_flag = UCmpXchg(dst, check_val, desired_val); \
+      Write(FLAG_ZF, swap_flag); \
+      WriteZExt(REG_ ## xax, check_val); \
       return memory; \
     }
 
@@ -35,37 +33,31 @@ MAKE_CMPXCHG_XAX(EAX)
 IF_64BIT(MAKE_CMPXCHG_XAX(RAX))
 
 DEF_SEM(DoCMPXCHG8B_MEMq, M64W dst, M64 src1) {
-  auto curr_val = Read(src1);
   auto xdx = Read(REG_EDX);
   auto xax = Read(REG_EAX);
   auto xcx = Read(REG_ECX);
   auto xbx = Read(REG_EBX);
   auto desired_val = UOr(UShl(ZExt(xcx), 32), ZExt(xbx));
   auto check_val = UOr(UShl(ZExt(xdx), 32), ZExt(xax));
-  auto cmp_res = USub(check_val, curr_val);
-  auto replace = UCmpEq(cmp_res, 0);
-  Write(FLAG_ZF, replace);
-  Write(dst, Select(replace, desired_val, curr_val));
-  Write(REG_EDX, Select(replace, xdx, Trunc(UShr(curr_val, 32))));
-  Write(REG_EAX, Select(replace, xax, Trunc(curr_val)));
+  auto swap_flag = UCmpXchg(dst, check_val, desired_val);
+  Write(FLAG_ZF, swap_flag);
+  Write(REG_EDX, Trunc(UShr(check_val, 32)));
+  Write(REG_EAX, Trunc(check_val));
   return memory;
 }
 
 #if 64 == ADDRESS_SIZE_BITS
 DEF_SEM(DoCMPXCHG16B_MEMdq, M128W dst, M128 src1) {
-  auto curr_val = Read(src1);
   auto xdx = Read(REG_RDX);
   auto xax = Read(REG_RAX);
   auto xcx = Read(REG_RCX);
   auto xbx = Read(REG_RBX);
   auto desired_val = UOr(UShl(ZExt(xcx), 64), ZExt(xbx));
   auto check_val = UOr(UShl(ZExt(xdx), 64), ZExt(xax));
-  auto cmp_res = USub(check_val, curr_val);
-  auto replace = UCmpEq(cmp_res, 0);
-  Write(FLAG_ZF, replace);
-  Write(dst, Select(replace, desired_val, curr_val));
-  Write(REG_RDX, Select(replace, xdx, Trunc(UShr(curr_val, 64))));
-  Write(REG_RAX, Select(replace, xax, Trunc(curr_val)));
+  auto swap_flag = UCmpXchg(dst, check_val, desired_val);
+  Write(FLAG_ZF, swap_flag);
+  Write(REG_RDX, Trunc(UShr(check_val, 64)));
+  Write(REG_RAX, Trunc(check_val));
   return memory;
 }
 #endif  // 64 == ADDRESS_SIZE_BITS

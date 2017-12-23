@@ -135,29 +135,24 @@ extern Memory *__remill_atomic_begin(Memory *);
 [[gnu::used, gnu::const]]
 extern Memory *__remill_atomic_end(Memory *);
 
-[[gnu::used, gnu::const]]
-extern uint32_t __remill_compare_exchange_memory_8(Memory *, addr_t addr, uint8_t *expected, uint8_t desired);
+/* The function should be declared [[gnu::const]] to generate optimized intrinsics. It
+ * is subjected to sub-expression elimination. However, It causes problem when the expected value
+ * argument is pointer. It is declared [[gun::pure]] to avoid the issue.
+ */
+[[gnu::used, gnu::pure]]
+extern Memory *__remill_compare_exchange_memory_8(Memory *, addr_t addr, uint8_t &expected, uint8_t desired);
 
-[[gnu::used, gnu::const]]
-extern uint32_t __remill_compare_exchange_memory_16(Memory *, addr_t addr, uint16_t *expected, uint16_t desired);
+[[gnu::used, gnu::pure]]
+extern Memory *__remill_compare_exchange_memory_16(Memory *, addr_t addr, uint16_t &expected, uint16_t desired);
 
-[[gnu::used, gnu::const]]
-extern uint32_t __remill_compare_exchange_memory_32(Memory *, addr_t addr, uint32_t *expected, uint32_t desired);
+[[gnu::used, gnu::pure]]
+extern Memory *__remill_compare_exchange_memory_32(Memory *, addr_t addr, uint32_t &expected, uint32_t desired);
 
-[[gnu::used, gnu::const]]
-extern uint32_t __remill_compare_exchange_memory_64(Memory *, addr_t addr, uint64_t *expected, uint64_t desired);
+[[gnu::used, gnu::pure]]
+extern Memory *__remill_compare_exchange_memory_64(Memory *, addr_t addr, uint64_t &expected, uint64_t desired);
 
-[[gnu::used, gnu::const]]
-extern uint32_t __remill_compare_exchange_8(Memory *, const uint8_t* addr, uint8_t *expected, uint8_t desired);
-
-[[gnu::used, gnu::const]]
-extern uint32_t __remill_compare_exchange_16(Memory *, const uint16_t* addr, uint16_t *expected, uint16_t desired);
-
-[[gnu::used, gnu::const]]
-extern uint32_t __remill_compare_exchange_32(Memory *, const uint32_t* addr, uint32_t *expected, uint32_t desired);
-
-[[gnu::used, gnu::const]]
-extern uint32_t __remill_compare_exchange_64(Memory *, const uint64_t* addr, uint64_t *expected, uint64_t desired);
+[[gnu::used, gnu::pure]]
+extern Memory *__remill_compare_exchange_memory_128(Memory *, addr_t addr, uint128_t &expected, uint128_t desired);
 
 
 // Read and modify the floating point exception state of the (virtual) machine
