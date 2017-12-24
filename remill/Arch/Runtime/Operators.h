@@ -469,22 +469,24 @@ MAKE_WRITE_REF(float64_t)
     template <typename T> \
     ALWAYS_INLINE static bool _CmpXchg( \
         Memory *&memory, RnW<T> op, type_prefix ## size ## _t &expected, \
-        type_prefix ## size ## _t desired) { \
-        auto prev_val = expected; \
-        if (*op.val_ref == expected) {\
-          expected = *reinterpret_cast<type_prefix ## size ## _t*>(op.val_ref); \
-          *op.val_ref = desired; \
-        } \
-        return prev_val == expected; \
+      type_prefix ## size ## _t desired) { \
+      auto prev_val = expected; \
+      if (*op.val_ref == expected) {\
+        *op.val_ref = desired; \
+      } else { \
+        expected = *reinterpret_cast<type_prefix ## size ## _t*>(op.val_ref); \
+      } \
+      return prev_val == expected; \
     } \
     \
     template <typename T> \
     ALWAYS_INLINE static bool _CmpXchg( \
         Memory *&memory, MnW<T> op, type_prefix ## size ## _t &expected, \
-        type_prefix ## size ## _t desired) { \
-        auto prev_val = expected; \
-        memory = __remill_compare_exchange_memory_ ## access_suffix (memory, op.addr, expected, desired);\
-        return prev_val == expected; \
+      type_prefix ## size ## _t desired) { \
+      auto prev_val = expected; \
+      memory = __remill_compare_exchange_memory_ ## access_suffix \
+          (memory, op.addr, expected, desired);\
+      return prev_val == expected; \
     }
 
 MAKE_CMPXCHG(8, uint, 8)
@@ -498,13 +500,15 @@ MAKE_CMPXCHG(128, uint, 128)
 
 #define MAKE_ATOMIC_INTRINSIC(name, size, type_prefix, op)\
   template<typename T> \
-  ALWAYS_INLINE type_prefix ## size ## _t _ ## name(Memory *&memory, MnW<T> addr, type_prefix ## size ## _t &value) { \
-  memory = __remill_ ## name ## _ ## size(memory, addr.addr, value); \
+  ALWAYS_INLINE type_prefix ## size ## _t name( \
+      Memory *&memory, MnW<T> addr, type_prefix ## size ## _t &value) { \
+    memory = __remill_ ## name ## _ ## size(memory, addr.addr, value); \
     return value; \
   } \
   \
   template<typename T> \
-  ALWAYS_INLINE type_prefix ## size ## _t _ ## name(Memory *&memory, RnW<T> addr, type_prefix ## size ## _t &value) { \
+  ALWAYS_INLINE type_prefix ## size ## _t name ( \
+      Memory *&memory, RnW<T> addr, type_prefix ## size ## _t &value) { \
     auto prev_value = *reinterpret_cast<type_prefix ## size ## _t*>(addr.val_ref); \
     *addr.val_ref = prev_value op value; \
     value = prev_value; \
@@ -524,11 +528,11 @@ MAKE_ATOMIC(fetch_and_and, &, MAKE_ATOMIC_INTRINSIC)
 MAKE_ATOMIC(fetch_and_xor, ^, MAKE_ATOMIC_INTRINSIC)
 //MAKE_ATOMIC(fetch_and_nand, MAKE_ATOMIC_INTRINSIC)
 
-#define fetch_and_add(op1, op2) _fetch_and_add(memory, op1, op2)
-#define fetch_and_sub(op1, op2) _fetch_and_sub(memory, op1, op2)
-#define fetch_and_or(op1, op2)  _fetch_and_or(memory, op1, op2)
-#define fetch_and_and(op1, op2) _fetch_and_and(memory, op1, op2)
-#define fetch_and_xor(op1, op2)  _fetch_and_xor(memory, op1, op2)
+#define UFetchAdd(op1, op2) fetch_and_add(memory, op1, op2)
+#define UFetchSub(op1, op2) fetch_and_sub(memory, op1, op2)
+#define UFetchOr(op1, op2)  fetch_and_or(memory, op1, op2)
+#define UFetchAnd(op1, op2) fetch_and_and(memory, op1, op2)
+#define UFetchXor(op1, op2) fetch_and_xor(memory, op1, op2)
 //#define fetch_and_nand(op1, op2) _fetch_and_nand(memory, op1, op2)
 
 

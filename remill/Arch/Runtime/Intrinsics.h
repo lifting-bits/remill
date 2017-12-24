@@ -135,10 +135,16 @@ extern Memory *__remill_atomic_begin(Memory *);
 [[gnu::used, gnu::const]]
 extern Memory *__remill_atomic_end(Memory *);
 
-/* The function should be declared [[gnu::const]] to generate optimized intrinsics. It
- * is subjected to sub-expression elimination. However, It causes problem when the expected value
- * argument is pointer. It is declared [[gun::pure]] to avoid the issue.
+/* Most memory intrinsics are marked as `[[gnu::const]]` which tells the compiler that they
+ * do not read/write to memory. This permits LLVM to optimize around the intrinsic, without thinking
+ * about it's internals.
+ * The meaning of `[[gnu::const]]` is the function will neither read nor write to the memory. In
+ * This case the previous value of memory at `addr` needs to be communicated back to the program
+ * which will happen by writing back to the refernecs of `expected`. If the function were declared
+ * with `[[gnu::const]]`, the compiler is free to assume that the value of `expected` is not changed
+ * and it will cause the unwanted behavior.
  */
+
 [[gnu::used, gnu::pure]]
 extern Memory *__remill_compare_exchange_memory_8(Memory *, addr_t addr, uint8_t &expected, uint8_t desired);
 
