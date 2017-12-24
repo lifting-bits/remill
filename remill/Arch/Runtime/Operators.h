@@ -498,70 +498,37 @@ MAKE_CMPXCHG(128, uint, 128)
 #undef MAKE_CMPXCHG
 #define UCmpXchg(op, oldval, newval) _CmpXchg(memory, op, oldval, newval)
 
-#define MAKE_ATOMIC_ACCESSOR(type_prefix, size) \
-    ALWAYS_INLINE static Memory *UFetchAdd ## size( \
-        Memory *&memory, addr_t addr, type_prefix ## size ## _t &value) { \
-      return __remill_fetch_and_add_ ## size(memory, addr, value); \
-    } \
-    \
-    ALWAYS_INLINE static Memory *UFetchSub ## size( \
-        Memory *&memory, addr_t addr, type_prefix ## size ## _t &value) { \
-      return __remill_fetch_and_sub_ ## size(memory, addr, value); \
-    } \
-    \
-    ALWAYS_INLINE static Memory *UFetchOr ## size( \
-        Memory *&memory, addr_t addr, type_prefix ## size ## _t &value) { \
-      return __remill_fetch_and_or_ ## size(memory, addr, value); \
-    } \
-    \
-    ALWAYS_INLINE static Memory *UFetchAnd ## size( \
-        Memory *&memory, addr_t addr, type_prefix ## size ## _t &value) { \
-      return __remill_fetch_and_and_ ## size(memory, addr, value); \
-    } \
-    \
-    ALWAYS_INLINE static Memory *UFetchXor ## size( \
-        Memory *&memory, addr_t addr, type_prefix ## size ## _t &value) { \
-      return __remill_fetch_and_xor_ ## size(memory, addr, value); \
-    } \
-
-MAKE_ATOMIC_ACCESSOR(uint, 8)
-MAKE_ATOMIC_ACCESSOR(uint, 16)
-MAKE_ATOMIC_ACCESSOR(uint, 32)
-MAKE_ATOMIC_ACCESSOR(uint, 64)
-
-#undef MAKE_ATOMIC_ACCESSOR
-
-#define MAKE_ATOMIC_INTRINSIC(name, size, type_prefix, op)\
+#define MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, size, type_prefix, op)\
   template<typename T> \
-  ALWAYS_INLINE type_prefix ## size ## _t _ ## name( \
+  ALWAYS_INLINE type_prefix ## size ## _t _U ## name( \
       Memory *&memory, MnW<T> addr, type_prefix ## size ## _t &value) { \
-    memory = name ## size(memory, addr.addr, value); \
+    memory = __remill_ ## intrinsic_name ## _ ## size(memory, addr.addr, value); \
     return value; \
   } \
   \
   template<typename T> \
-  ALWAYS_INLINE type_prefix ## size ## _t _ ## name ( \
+  ALWAYS_INLINE type_prefix ## size ## _t _U ## name ( \
       Memory *&memory, RnW<T> addr, type_prefix ## size ## _t &value) { \
     auto prev_value = *reinterpret_cast<type_prefix ## size ## _t*>(addr.val_ref); \
     *addr.val_ref = prev_value op value; \
     value = prev_value; \
     return value; \
-  } \
+  }
 
-#define MAKE_ATOMIC(name, op, make_atomic_intrinsic)  \
-    make_atomic_intrinsic(U ## name, 8, uint, op) \
-    make_atomic_intrinsic(U ## name, 16, uint, op) \
-    make_atomic_intrinsic(U ## name, 32, uint, op) \
-    make_atomic_intrinsic(U ## name, 64, uint, op) \
+#define MAKE_ATOMIC(name, intrinsic_name, op)  \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 8, uint, op) \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 16, uint, op) \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 32, uint, op) \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 64, uint, op) \
 
-MAKE_ATOMIC(FetchAdd, +, MAKE_ATOMIC_INTRINSIC)
-MAKE_ATOMIC(FetchSub, -, MAKE_ATOMIC_INTRINSIC)
-MAKE_ATOMIC(FetchOr, |, MAKE_ATOMIC_INTRINSIC)
-MAKE_ATOMIC(FetchAnd, &, MAKE_ATOMIC_INTRINSIC)
-MAKE_ATOMIC(FetchXor, ^, MAKE_ATOMIC_INTRINSIC)
-//MAKE_ATOMIC(fetch_and_nand, MAKE_ATOMIC_INTRINSIC)
+MAKE_ATOMIC(FetchAdd, fetch_and_add, +)
+MAKE_ATOMIC(FetchSub, fetch_and_sub, -)
+MAKE_ATOMIC(FetchOr, fetch_and_or, |)
+MAKE_ATOMIC(FetchAnd, fetch_and_and, &)
+MAKE_ATOMIC(FetchXor, fetch_and_xor, ^)
 
 #undef MAKE_ATOMIC
+#undef MAKE_ATOMIC_INTRINSIC
 
 #define UFetchAdd(op1, op2) _UFetchAdd(memory, op1, op2)
 #define UFetchSub(op1, op2) _UFetchSub(memory, op1, op2)
