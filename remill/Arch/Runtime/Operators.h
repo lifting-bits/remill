@@ -474,7 +474,7 @@ MAKE_WRITE_REF(float64_t)
         *op.val_ref = desired; \
         return true; \
       } else { \
-        expected = *reinterpret_cast<type_prefix ## size ## _t*>(op.val_ref); \
+        expected = *reinterpret_cast<type_prefix ## size ## _t *>(op.val_ref); \
         return false; \
       } \
     } \
@@ -509,7 +509,7 @@ MAKE_CMPXCHG(128, uint, 128)
   template<typename T> \
   ALWAYS_INLINE type_prefix ## size ## _t _U ## name ( \
       Memory *&memory, RnW<T> addr, type_prefix ## size ## _t &value) { \
-    auto prev_value = *reinterpret_cast<type_prefix ## size ## _t*>(addr.val_ref); \
+    auto prev_value = *reinterpret_cast<type_prefix ## size ## _t *>(addr.val_ref); \
     *addr.val_ref = prev_value op value; \
     value = prev_value; \
     return value; \
