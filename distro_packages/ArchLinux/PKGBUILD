@@ -10,8 +10,7 @@ license=('Apache')
 depends=('clang39' 'llvm39' 'llvm39-libs')
 makedepends=('git' 'curl' 'patchelf' 'cmake')
 
-provides=('remill')
-conflicts=('remill')
+replaces=('remill')
 
 source=("${pkgname}::git+https://github.com/trailofbits/remill.git")
 sha1sums=('SKIP')
