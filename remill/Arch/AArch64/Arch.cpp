@@ -729,14 +729,14 @@ static void AddPostIndexMemOp(Instruction &inst, Action action,
 }
 
 static bool MostSignificantSetBit(uint64_t val, uint64_t *highest_out) {
-  #if defined(__GCC__) || defined(__clang__)
+#if defined(__GCC__) || defined(__clang__)
   if (val) {
     *highest_out = 63 - (__builtin_clzll(val) - (sizeof(unsigned long long) * 8 - 64));
     return true;
   } else {
     return false;
   }
-  #else
+#else
   auto found = false;
   for (uint64_t i = 0; i < 64; ++i) {
     if ((val >> i) & 1) {
@@ -745,18 +745,18 @@ static bool MostSignificantSetBit(uint64_t val, uint64_t *highest_out) {
     }
   }
   return found;
-  #endif
+#endif
 }
 
 static bool LeastSignificantSetBit(uint64_t val, uint64_t *highest_out) {
-  #if defined(__GCC__) || defined(__clang__)
+#if defined(__GCC__) || defined(__clang__)
   if (val) {
     *highest_out = __builtin_ctzll(val);
     return true;
   } else {
     return false;
   }
-  #else
+#else
   for (uint64_t i = 0; i < 64; ++i) {
     if ((val >> i) & 1) {
       *highest_out = i;
@@ -764,7 +764,7 @@ static bool LeastSignificantSetBit(uint64_t val, uint64_t *highest_out) {
     }
   }
   return false;
-  #endif
+#endif
 }
 
 static constexpr uint64_t kOne = static_cast<uint64_t>(1);
