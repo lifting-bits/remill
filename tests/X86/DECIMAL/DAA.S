@@ -16,18 +16,6 @@
 
 #if ADDRESS_SIZE_BITS == 32
 
-#define CLEAR_PFSFZF  lahf; and ax, 0x3bff; sahf;
-#define SET_PF        lahf; bts ax, 0xa; sahf;
-#define CLEAR_PF      lahf; and ax, 0xfbff; sahf;
-#define SET_ZF        lahf; bts ax, 0xe; sahf;
-#define CLEAR_ZF      lahf; and ax, 0xbfff; sahf;
-#define SET_SF        lahf; bts ax, 0xf; sahf;
-#define CLEAR_SF      lahf; and ax, 0x7fff; sahf;
-#define SET_CF        lahf; bts ax, 0x8; sahf;
-#define SET_AF        lahf; bts ax, 0xc; sahf;
-#define CLEAR_AF      lahf; and ax, 0xefff; sahf;
-#define CLEAR_CF      lahf; and ax, 0xfeff; sahf;
-
 // (al & 0xf) > 9, al < 0x99, af = 1, cf = 1
 TEST_BEGIN(DAA_0, 1)
 TEST_IGNORE_FLAGS(OF)

@@ -4385,6 +4385,29 @@ bool TryDecodeDMB_BO_SYSTEM(const InstData &, Instruction &) {
   return true;
 }
 
+// INS  <Vd>.<Ts>[<index>], <R><n>
+bool TryDecodeINS_ASIMDINS_IR_R(const InstData &data, Instruction &inst) {
+  uint64_t size = 0;
+  if (!LeastSignificantSetBit(data.imm5.uimm, &size) || size > 3) {
+    return false;
+  }
+  std::stringstream ss;
+  ss << inst.function;
+  switch (size) {
+    case 0: ss << "_B"; break;
+    case 1: ss << "_H"; break;
+    case 2: ss << "_S"; break;
+    case 3: ss << "_D"; break;
+    default: return false;
+  }
+  inst.function = ss.str();
+
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddImmOperand(inst, data.imm5.uimm >> (size + 1));
+  AddRegOperand(inst, kActionRead, (size == 3) ? kRegX : kRegW, kUseAsValue, data.Rn);
+  return true;
+}
+
 // LD1  { <Vt>.<T> }, [<Xn|SP>]
 bool TryDecodeLD1_ASISDLSE_R1_1V(const InstData &data, Instruction &inst) {
   uint64_t num_bytes = 0;
@@ -4393,6 +4416,24 @@ bool TryDecodeLD1_ASISDLSE_R1_1V(const InstData &data, Instruction &inst) {
   }
   AddBasePlusOffsetMemOp(inst, kActionRead, num_bytes * 8, data.Rn, 0);
   return true;
+}
+
+// LD2  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>]
+bool TryDecodeLD2_ASISDLSE_R2(const InstData &data, Instruction &inst) {
+  if (data.size == 0x3 && !data.Q) {
+    return false;  // Reserved (arrangement specifier 1D).
+  }
+  return TryDecodeLD1_ASISDLSE_R1_1V(data, inst);
+}
+
+// LD3  { <Vt>.<T>, <Vt2>.<T>, <Vt3>.<T> }, [<Xn|SP>]
+bool TryDecodeLD3_ASISDLSE_R3(const InstData &data, Instruction &inst) {
+  return TryDecodeLD2_ASISDLSE_R2(data, inst);
+}
+
+// LD4  { <Vt>.<T>, <Vt2>.<T>, <Vt3>.<T>, <Vt4>.<T> }, [<Xn|SP>]
+bool TryDecodeLD4_ASISDLSE_R4(const InstData &data, Instruction &inst) {
+  return TryDecodeLD2_ASISDLSE_R2(data, inst);
 }
 
 // LD1  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>]
@@ -4410,11 +4451,6 @@ bool TryDecodeLD1_ASISDLSE_R4_4V(const InstData &data, Instruction &inst) {
   return TryDecodeLD1_ASISDLSE_R1_1V(data, inst);
 }
 
-// LD2  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>]
-bool TryDecodeLD2_ASISDLSE_R2(const InstData &data, Instruction &inst) {
-  return TryDecodeLD1_ASISDLSE_R1_1V(data, inst);
-}
-
 // LD2  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>], <imm>
 bool TryDecodeLD2_ASISDLSEP_I2_I(const InstData &data, Instruction &inst) {
   return TryDecodeLD1_ASISDLSEP_I2_I2(data, inst);
@@ -4428,6 +4464,16 @@ bool TryDecodeLD2_ASISDLSEP_R2_R(const InstData &data, Instruction &inst) {
   }
   AddPostIndexMemOp(inst, kActionRead, offset * 8, data.Rn, data.Rm);
   return true;
+}
+
+// LD4  { <Vt>.<T>, <Vt2>.<T>, <Vt3>.<T>, <Vt4>.<T> }, [<Xn|SP>], <imm>
+bool TryDecodeLD4_ASISDLSEP_I4_I(const InstData &, Instruction &) {
+  return false;
+}
+
+// LD4  { <Vt>.<T>, <Vt2>.<T>, <Vt3>.<T>, <Vt4>.<T> }, [<Xn|SP>], <Xm>
+bool TryDecodeLD4_ASISDLSEP_R4_R(const InstData &, Instruction &) {
+  return false;
 }
 
 // NOT  <Vd>.<T>, <Vn>.<T>

@@ -10,6 +10,7 @@ license=('Apache')
 depends=('clang39' 'llvm39' 'llvm39-libs')
 makedepends=('git' 'curl' 'patchelf' 'cmake')
 
+replaces=('remill')
 provides=('remill')
 conflicts=('remill')
 

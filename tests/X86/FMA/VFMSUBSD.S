@@ -16,13 +16,19 @@
 
 #if HAS_FEATURE_AVX
 
+// We have not yet been successful in modeling the so-called "infinite
+// precision" floating point that the FMA instructions supposedly use to
+// calculate the intermediary results of the fused-multiply operations. This 
+// means that tests with operand values that cannot be precisely stored using
+// binary floating point (e.g., 0.1, as opposed to 0.5 which can be 
+// stored precisely) will fail to match the output of the native FMA
+// instruction -- by exactly 1 bit.
 #define VFMSUBSD_INPUTS_64                                             \
     0.0, 0.0, 0.0,    /* will evaluate to 0.0 */                       \
     1.0, 1.0, 1.0,    /* will evaluate to 0.0 */                       \
     2.0, 3.0, 4.0,    /* will evaluate to 5.0 or 2.0 */                \
     2.5, 0.0, 2.5,    /* will evaluate to 0.0 or exactly 6.25 */       \
     1.75, 1.5, -2.25, /* test with negative values */                  \
-    1.2, 2.3, 3.4,    /* test floating point rounding accuracy */      \
     0xc000000000000000, 0xc000000000000000, 0xc000000000000000, /* -2.0, -2.0, -2.0 */  \
     0x3FF0000000000000, 1.0, 0xBFF0000000000000,                /* 1.0, 1.0, -1.0 */    \
     0xbffe000000000000, 1.0, 0xc000000000000000,                /* -1.875, 1.0, -2.0 */ \
@@ -33,6 +39,9 @@
     0x7ff0000000000000, 1.0, 0x7ff0000000000000,                /* inf, 1.0, inf */     \
     0x7ff0000000000000, 1.0, 0xfff0000000000000,                /* inf, 1.0, -inf */    \
     0x8000000000000000, 1.0, 0x8000000000000000                 /* -0, 1.0, -0 */
+
+// Failing tests (results will be wrong in the least significant bit):
+//   1.2, 2.3, 3.4,
 
 TEST_BEGIN_64(VFMSUB132SDv128v128m64, 3)
 TEST_INPUTS(VFMSUBSD_INPUTS_64)
