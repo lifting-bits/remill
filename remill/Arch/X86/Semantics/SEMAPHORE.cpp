@@ -21,7 +21,10 @@ namespace {
     DEF_SEM(CMPXCHG_ ## xax, D dst, S1 src1, S2 src2) { \
       auto desired_val = Read(src2); \
       auto check_val = Read(REG_ ## xax); \
+      auto prev_value = check_val; \
       auto swap_flag = UCmpXchg(dst, check_val, desired_val); \
+      auto sub_res = USub(check_val, prev_value); \
+      WriteFlagsAddSub<tag_sub>(state, check_val, prev_value, sub_res); \
       Write(FLAG_ZF, swap_flag); \
       WriteZExt(REG_ ## xax, check_val); \
       return memory; \
@@ -39,7 +42,10 @@ DEF_SEM(DoCMPXCHG8B_MEMq, M64W dst, M64 src1) {
   auto xbx = Read(REG_EBX);
   auto desired_val = UOr(UShl(ZExt(xcx), 32), ZExt(xbx));
   auto check_val = UOr(UShl(ZExt(xdx), 32), ZExt(xax));
+  auto prev_value = check_val; \
   auto swap_flag = UCmpXchg(dst, check_val, desired_val);
+  auto sub_res = USub(check_val, prev_value); \
+  WriteFlagsAddSub<tag_sub>(state, check_val, prev_value, sub_res); \
   Write(FLAG_ZF, swap_flag);
   Write(REG_EDX, Trunc(UShr(check_val, 32)));
   Write(REG_EAX, Trunc(check_val));
@@ -54,7 +60,10 @@ DEF_SEM(DoCMPXCHG16B_MEMdq, M128W dst, M128 src1) {
   auto xbx = Read(REG_RBX);
   auto desired_val = UOr(UShl(ZExt(xcx), 64), ZExt(xbx));
   auto check_val = UOr(UShl(ZExt(xdx), 64), ZExt(xax));
+  auto prev_value = check_val; \
   auto swap_flag = UCmpXchg(dst, check_val, desired_val);
+  auto sub_res = USub(check_val, prev_value); \
+  WriteFlagsAddSub<tag_sub>(state, check_val, prev_value, sub_res); \
   Write(FLAG_ZF, swap_flag);
   Write(REG_RDX, Trunc(UShr(check_val, 64)));
   Write(REG_RAX, Trunc(check_val));
