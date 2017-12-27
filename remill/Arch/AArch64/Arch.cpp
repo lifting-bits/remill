@@ -749,7 +749,7 @@ static bool MostSignificantSetBit(uint64_t val, uint64_t *highest_out) {
 }
 
 static bool LeastSignificantSetBit(uint64_t val, uint64_t *highest_out) {
-#if __has_builtin(__builtin_clzll)
+#if __has_builtin(__builtin_ctzll)
   if (val) {
     *highest_out = __builtin_ctzll(val);
     return true;
