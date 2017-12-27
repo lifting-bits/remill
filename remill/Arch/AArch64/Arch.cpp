@@ -729,7 +729,7 @@ static void AddPostIndexMemOp(Instruction &inst, Action action,
 }
 
 static bool MostSignificantSetBit(uint64_t val, uint64_t *highest_out) {
-#if defined(__GCC__) || defined(__clang__)
+#if __has_builtin(__builtin_clzll)
   if (val) {
     *highest_out = 63 - (__builtin_clzll(val) - (sizeof(unsigned long long) * 8 - 64));
     return true;
@@ -749,7 +749,7 @@ static bool MostSignificantSetBit(uint64_t val, uint64_t *highest_out) {
 }
 
 static bool LeastSignificantSetBit(uint64_t val, uint64_t *highest_out) {
-#if defined(__GCC__) || defined(__clang__)
+#if __has_builtin(__builtin_clzll)
   if (val) {
     *highest_out = __builtin_ctzll(val);
     return true;
