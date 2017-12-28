@@ -213,7 +213,7 @@ Memory *__remill_compare_exchange_memory_64(
 
 Memory *__remill_compare_exchange_memory_128(
     Memory *memory, addr_t addr, uint128_t &expected, uint128_t &desired) {
-#ifdef _GXX_EXPERIMENTAL_CXX0X__
+#if !(defined(__x86_64__) || defined(__i386__) || defined(_M_X86))
   expected = __sync_val_compare_and_swap(
       reinterpret_cast<uint128_t *>(addr), expected, desired);
 #endif

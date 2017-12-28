@@ -143,93 +143,97 @@ extern Memory *__remill_atomic_end(Memory *);
  * which will happen by writing back to the refernecs of `expected`. If the function were declared
  * with `[[gnu::const]]`, the compiler is free to assume that the value of `expected` is not changed
  * and it will cause the unwanted behavior.
+ *
+ * The `gnu::pure` attribute causes the unwanted behaviour and the argument references updated inside
+ * the function are not visible in the caller functions
  */
 
-[[gnu::used, gnu::pure]]
+
+[[gnu::used]]
 extern Memory *__remill_compare_exchange_memory_8(Memory *, addr_t addr, uint8_t &expected, uint8_t desired);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_compare_exchange_memory_16(Memory *, addr_t addr, uint16_t &expected, uint16_t desired);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_compare_exchange_memory_32(Memory *, addr_t addr, uint32_t &expected, uint32_t desired);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_compare_exchange_memory_64(Memory *, addr_t addr, uint64_t &expected, uint64_t desired);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_compare_exchange_memory_128(Memory *, addr_t addr, uint128_t &expected, uint128_t &desired);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_add_8(Memory *, addr_t addr, uint8_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_add_16(Memory *, addr_t addr, uint16_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_add_32(Memory *, addr_t addr, uint32_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_add_64(Memory *, addr_t addr, uint64_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_sub_8(Memory *, addr_t addr, uint8_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_sub_16(Memory *, addr_t addr, uint16_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_sub_32(Memory *, addr_t addr, uint32_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_sub_64(Memory *, addr_t addr, uint64_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_and_8(Memory *, addr_t addr, uint8_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_and_16(Memory *, addr_t addr, uint16_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_and_32(Memory *, addr_t addr, uint32_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_and_64(Memory *, addr_t addr, uint64_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_or_8(Memory *, addr_t addr, uint8_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_or_16(Memory *, addr_t addr, uint16_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_or_32(Memory *, addr_t addr, uint32_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_or_64(Memory *, addr_t addr, uint64_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_xor_8(Memory *, addr_t addr, uint8_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_xor_16(Memory *, addr_t addr, uint16_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_xor_32(Memory *, addr_t addr, uint32_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_xor_64(Memory *, addr_t addr, uint64_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_nand_8(Memory *, addr_t addr, uint8_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_nand_16(Memory *, addr_t addr, uint16_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_nand_32(Memory *, addr_t addr, uint32_t &value);
 
-[[gnu::used, gnu::pure]]
+[[gnu::used]]
 extern Memory *__remill_fetch_and_nand_64(Memory *, addr_t addr, uint64_t &value);
 
 // Read and modify the floating point exception state of the (virtual) machine

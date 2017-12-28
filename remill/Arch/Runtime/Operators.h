@@ -501,18 +501,17 @@ MAKE_CMPXCHG(128, uint, 128)
 #define MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, size, type_prefix, op)\
   template<typename T> \
   ALWAYS_INLINE type_prefix ## size ## _t _U ## name( \
-      Memory *&memory, MnW<T> addr, type_prefix ## size ## _t &value) { \
+      Memory *&memory, MnW<T> addr, type_prefix ## size ## _t value) { \
     memory = __remill_ ## intrinsic_name ## _ ## size(memory, addr.addr, value); \
     return value; \
   } \
   \
   template<typename T> \
   ALWAYS_INLINE type_prefix ## size ## _t _U ## name ( \
-      Memory *&memory, RnW<T> addr, type_prefix ## size ## _t &value) { \
+      Memory *&memory, RnW<T> addr, type_prefix ## size ## _t value) { \
     auto prev_value = *reinterpret_cast<type_prefix ## size ## _t *>(addr.val_ref); \
     *addr.val_ref = prev_value op value; \
-    value = prev_value; \
-    return value; \
+    return prev_value; \
   }
 
 #define MAKE_ATOMIC(name, intrinsic_name, op)  \

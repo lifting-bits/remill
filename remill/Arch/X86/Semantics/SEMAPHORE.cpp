@@ -23,9 +23,9 @@ namespace {
       auto check_val = Read(REG_ ## xax); \
       auto prev_value = check_val; \
       auto swap_flag = UCmpXchg(dst, check_val, desired_val); \
-      auto sub_res = USub(check_val, prev_value); \
-      WriteFlagsAddSub<tag_sub>(state, check_val, prev_value, sub_res); \
-      Write(FLAG_ZF, swap_flag); \
+      auto sub_res = USub(prev_value, check_val); \
+      WriteFlagsAddSub<tag_sub>(state, prev_value, check_val, sub_res); \
+      Write(FLAG_ZF, swap_flag);\
       WriteZExt(REG_ ## xax, check_val); \
       return memory; \
     }
@@ -44,8 +44,8 @@ DEF_SEM(DoCMPXCHG8B_MEMq, M64W dst, M64 src1) {
   auto check_val = UOr(UShl(ZExt(xdx), 32), ZExt(xax));
   auto prev_value = check_val; \
   auto swap_flag = UCmpXchg(dst, check_val, desired_val);
-  auto sub_res = USub(check_val, prev_value); \
-  WriteFlagsAddSub<tag_sub>(state, check_val, prev_value, sub_res); \
+  auto sub_res = USub(prev_value, check_val); \
+  WriteFlagsAddSub<tag_sub>(state, prev_value, check_val, sub_res); \
   Write(FLAG_ZF, swap_flag);
   Write(REG_EDX, Trunc(UShr(check_val, 32)));
   Write(REG_EAX, Trunc(check_val));
@@ -62,8 +62,8 @@ DEF_SEM(DoCMPXCHG16B_MEMdq, M128W dst, M128 src1) {
   auto check_val = UOr(UShl(ZExt(xdx), 64), ZExt(xax));
   auto prev_value = check_val; \
   auto swap_flag = UCmpXchg(dst, check_val, desired_val);
-  auto sub_res = USub(check_val, prev_value); \
-  WriteFlagsAddSub<tag_sub>(state, check_val, prev_value, sub_res); \
+  auto sub_res = USub(prev_value, check_val); \
+  WriteFlagsAddSub<tag_sub>(state, prev_value, check_val, sub_res); \
   Write(FLAG_ZF, swap_flag);
   Write(REG_RDX, Trunc(UShr(check_val, 64)));
   Write(REG_RAX, Trunc(check_val));
@@ -105,10 +105,12 @@ DEF_SEM(XADD, D1 dst1, S1 src1, D2 dst2, S2 src2) {
   if (IsRegister(dst1)) {
     BarrierStoreLoad();
   }
+
   auto rhs = Read(src2);
   auto lhs = UFetchAdd(dst1, rhs);
   auto sum = UAdd(lhs, rhs);
-  WriteFlagsAddSub<tag_add>(state, lhs, rhs, sum);
+  WriteFlagsAddSub<tag_add>(state, rhs, lhs, sum);
+  WriteZExt(dst2, lhs);
   return memory;
 }
 
