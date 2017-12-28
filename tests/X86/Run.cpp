@@ -218,13 +218,13 @@ Memory *__remill_compare_exchange_memory_128(
       reinterpret_cast<uint128_t *>(addr), expected, desired);
 #else
   bool result;
-  struct uint128 {
+  struct alignas(16) uint128 {
     uint64_t lo;
     uint64_t hi;
-  } __attribute__ ((__aligned__( 16 )));
+  };
 
-  uint128 *oldval = reinterpret_cast<uint128*>(&expected);
-  uint128 *newval = reinterpret_cast<uint128*>(&desired);
+  uint128 *oldval = reinterpret_cast<uint128 *>(&expected);
+  uint128 *newval = reinterpret_cast<uint128 *>(&desired);
 
   __asm__ __volatile__(
       "lock; cmpxchg16b %0; setz %1"
