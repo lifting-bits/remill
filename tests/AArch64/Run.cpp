@@ -152,6 +152,71 @@ NEVER_INLINE Memory *__remill_write_memory_f80(Memory *, addr_t, float64_t) {
   __builtin_unreachable();
 }
 
+Memory *__remill_compare_exchange_memory_8(
+    Memory *memory, addr_t addr, uint8_t &expected, uint8_t desired) {
+  expected = __sync_val_compare_and_swap(
+      reinterpret_cast<uint8_t *>(addr), expected, desired);
+  return memory;
+}
+
+Memory *__remill_compare_exchange_memory_16(
+    Memory *memory, addr_t addr, uint16_t &expected, uint16_t desired) {
+  expected =  __sync_val_compare_and_swap(
+      reinterpret_cast<uint16_t *>(addr), expected, desired);
+  return memory;
+}
+
+Memory *__remill_compare_exchange_memory_32(
+    Memory *memory, addr_t addr, uint32_t &expected, uint32_t desired) {
+  expected = __sync_val_compare_and_swap(
+      reinterpret_cast<uint32_t *>(addr), expected, desired);
+  return memory;
+}
+
+Memory *__remill_compare_exchange_memory_64(
+    Memory *memory, addr_t addr, uint64_t &expected, uint64_t desired) {
+  expected = __sync_val_compare_and_swap(
+      reinterpret_cast<uint64_t *>(addr), expected, desired);
+  return memory;
+}
+
+Memory *__remill_compare_exchange_memory_128(
+    Memory *memory, addr_t addr, uint128_t &expected, uint128_t &desired) {
+#ifdef _GXX_EXPERIMENTAL_CXX0X__
+  expected = __sync_val_compare_and_swap(
+      reinterpret_cast<uint128_t *>(addr), expected, desired);
+#endif
+  return memory;
+}
+
+#define MAKE_ATOMIC_INTRINSIC(intrinsic_name, type_prefix, size) \
+  Memory *__remill_ ## intrinsic_name ## _ ## size( \
+      Memory *memory, addr_t addr, type_prefix ## size ## _t &value) { \
+    value = __sync_ ## intrinsic_name(reinterpret_cast<type_prefix ## size ## _t *>(addr), value); \
+    return memory; \
+  } \
+
+MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 8)
+MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 16)
+MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 32)
+MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 64)
+MAKE_ATOMIC_INTRINSIC(fetch_and_sub, uint, 8)
+MAKE_ATOMIC_INTRINSIC(fetch_and_sub, uint, 16)
+MAKE_ATOMIC_INTRINSIC(fetch_and_sub, uint, 32)
+MAKE_ATOMIC_INTRINSIC(fetch_and_sub, uint, 64)
+MAKE_ATOMIC_INTRINSIC(fetch_and_or, uint, 8)
+MAKE_ATOMIC_INTRINSIC(fetch_and_or, uint, 16)
+MAKE_ATOMIC_INTRINSIC(fetch_and_or, uint, 32)
+MAKE_ATOMIC_INTRINSIC(fetch_and_or, uint, 64)
+MAKE_ATOMIC_INTRINSIC(fetch_and_and, uint, 8)
+MAKE_ATOMIC_INTRINSIC(fetch_and_and, uint, 16)
+MAKE_ATOMIC_INTRINSIC(fetch_and_and, uint, 32)
+MAKE_ATOMIC_INTRINSIC(fetch_and_and, uint, 64)
+MAKE_ATOMIC_INTRINSIC(fetch_and_xor, uint, 8)
+MAKE_ATOMIC_INTRINSIC(fetch_and_xor, uint, 16)
+MAKE_ATOMIC_INTRINSIC(fetch_and_xor, uint, 32)
+MAKE_ATOMIC_INTRINSIC(fetch_and_xor, uint, 64)
+
 int __remill_fpu_exception_test_and_clear(int read_mask, int clear_mask) {
   auto except = std::fetestexcept(read_mask);
   std::feclearexcept(clear_mask);

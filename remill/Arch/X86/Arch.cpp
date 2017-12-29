@@ -936,7 +936,8 @@ bool X86Arch::DecodeInstruction(
   // Wrap an instruction in atomic begin/end if it accesses memory with RMW
   // semantics or with a LOCK prefix.
   if (xed_operand_values_get_atomic(xedd) ||
-      xed_operand_values_has_lock_prefix(xedd)) {
+      xed_operand_values_has_lock_prefix(xedd) ||
+      XED_CATEGORY_SEMAPHORE == xed_decoded_inst_get_category(xedd)) {
     inst.is_atomic_read_modify_write = true;
   }
 
