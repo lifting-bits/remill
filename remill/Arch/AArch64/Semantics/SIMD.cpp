@@ -834,3 +834,16 @@ DEF_ISEL(FMAXV_ASIMDALL_ONLY_SD_4S) = FMAXV_32_Reduce;
 // FMINNMV_ASIMDALL_ONLY_SD
 // FMAXNMV_ASIMDALL_ONLY_H
 // FMAXNMV_ASIMDALL_ONLY_SD
+
+DEF_SEM(USHR_64B, V128W dst, V128W src, I64 shift) {
+  auto vec = UExtractV64(UReadV64(src), 0);
+  auto sft = Read(shift);
+  auto shifted = UShr128(vec, sft);
+  uint64v2_t temp_vec = {};
+  temp_vec = UInsertV64(temp_vec, 1, 0);
+  temp_vec = UInsertV64(temp_vec, 0, (uint64_t) shifted);
+  UWriteV64(dst, temp_vec);
+  return memory;
+}
+
+DEF_ISEL(USHR_ASISDSHF_R) = USHR_64B;
