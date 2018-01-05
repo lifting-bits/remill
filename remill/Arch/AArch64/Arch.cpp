@@ -3338,8 +3338,8 @@ bool TryDecodeSTR_Q_LDST_REGOFF(const InstData &data, Instruction &inst) {
 
 static bool TryDecodeSTR_Vn_LDST_IMMPRE(const InstData &data, Instruction &inst, RegClass val_class) {
   uint64_t scale = DecodeScale(data);
-  if (scale < 4) {
-    return false;
+  if (scale < 4) { 
+    return false; 
   }
   auto num_bits = ReadRegSize(val_class);
   AddRegOperand(inst, kActionRead, val_class, kUseAsValue, data.Rt);
