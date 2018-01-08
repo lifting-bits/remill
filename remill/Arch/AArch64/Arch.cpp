@@ -4659,7 +4659,7 @@ bool TryDecodeMVNI_ASIMDIMM_M_SM(const InstData &data, Instruction &inst) {
 // USHR  <V><d>, <V><n>, #<shift>
 bool TryDecodeUSHR_ASISDSHF_R(const InstData &data, Instruction &inst) {
   if ((data.immh.uimm & 8) == 0) {
-    return false;  // `if immh<3>:Q == '10' then ReservedValue();`
+    return false;  // if immh<3> != '1' then ReservedValue(); 
   }
   uint64_t shift = 128 - ((data.immh.uimm << 3) + data.immb.uimm);
   AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
@@ -4671,7 +4671,7 @@ bool TryDecodeUSHR_ASISDSHF_R(const InstData &data, Instruction &inst) {
 // USHR  <Vd>.<T>, <Vn>.<T>, #<shift>
 bool TryDecodeUSHR_ASIMDSHF_R(const InstData &data, Instruction &inst) {
   return false; // TODO remove this after adding semantics for vector version
-  if (((data.immh.uimm & 8) == 0) && !data.Q) {
+  if (((data.immh.uimm & 8) != 0) && !data.Q) {
     return false;  // `if immh<3>:Q == '10' then ReservedValue();`
   }
   uint64_t esize = 0;
