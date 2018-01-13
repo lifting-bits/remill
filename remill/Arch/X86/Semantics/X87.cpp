@@ -71,6 +71,41 @@ namespace {
 #define DEF_FPU_SEM(name, ...) \
     DEF_SEM(name, ##__VA_ARGS__, PC pc, I16 fop)
 
+// TODO(joe): Loss of precision, see issue #199.
+DEF_FPU_SEM(FBLD, RF80W, MD80 src1) {
+  SetFPUIpOp();
+  SetFPUDp(src1);
+
+  auto src1_dec = ReadDec80(src1);
+  double val = 0.0;  // Decoded BCD value
+  double mag = 1.0;  // Magnitude of decimal position
+
+  // Iterate through pairs of digits, encoded as bytes.
+  _Pragma("unroll")
+  for (addr_t i = 0; i < sizeof(src1_dec.digits); i++) {
+    // We expect each half-byte to be a valid binary-coded decimal
+    // digit (0-9). If not, the decoding result is undefined. The
+    // native behavior seems to continue as if each encoding were
+    // valid, so we do the same.
+    auto b = src1_dec.digits[i];
+    auto lo = b & 0xf;
+    auto hi = b >> 4;
+
+    // Accumulate positional decimal value of decoded digits.
+    val += static_cast<double>(lo) * mag;
+    mag *= 10.0;
+    val += static_cast<double>(hi) * mag;
+    mag *= 10.0;
+  }
+
+  if (src1_dec.is_negative) {
+    val = -val;
+  }
+
+  PUSH_X87_STACK(val);
+  return memory;
+}
+
 template <typename T>
 DEF_FPU_SEM(FILD, RF80W, T src1) {
   SetFPUIpOp();
@@ -359,6 +394,7 @@ DEF_SEM(DoFNCLEX) {
 
 }  // namespace
 
+DEF_ISEL(FBLD_ST0_MEMmem80dec) = FBLD;
 
 DEF_ISEL(FILD_ST0_MEMmem16int) = FILD<M16>;
 DEF_ISEL(FILD_ST0_MEMmem32int) = FILD<M32>;
