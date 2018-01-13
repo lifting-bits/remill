@@ -17,6 +17,18 @@
 #ifndef REMILL_ARCH_X86_RUNTIME_TYPES_H_
 #define REMILL_ARCH_X86_RUNTIME_TYPES_H_
 
+// TODO(joe): Assumes little endian.
+// 80-bit packed binary-coded decimal.
+struct dec80_t final {
+  uint8_t digits[9];
+  struct {
+    uint8_t _unused:7;  // No meaning in encoding
+    uint8_t is_negative:1;
+  } __attribute((packed));
+} __attribute__((packed));
+
+static_assert(10 == sizeof(dec80_t), "Invalid `dec80_t` size.");
+
 // What's going on with `R32W`? In 64-bit code, writes to the 32-bit general
 // purpose registers actually clear the high 32-bits of the associated 64-bit
 // registers, so we want to model that behavior.
@@ -67,6 +79,8 @@ typedef MnW<uint32_t> M32W;
 typedef MnW<uint64_t> M64W;
 typedef MnW<uint128_t> M128W;
 
+typedef MnW<dec80_t> MD80W;
+
 typedef MnW<float32_t> MF32W;
 typedef MnW<float64_t> MF64W;
 typedef MnW<float80_t> MF80W;
@@ -86,6 +100,8 @@ typedef Mn<uint16_t> M16;
 typedef Mn<uint32_t> M32;
 typedef Mn<uint64_t> M64;
 typedef Mn<uint128_t> M128;
+
+typedef Mn<dec80_t> MD80;
 
 typedef MVn<vec8_t> MV8;
 typedef MVn<vec16_t> MV16;

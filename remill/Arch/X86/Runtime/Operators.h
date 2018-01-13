@@ -32,6 +32,23 @@ void _Write(Memory *, Reg &reg, IF_64BIT_ELSE(uint64_t, uint32_t) val) {
   reg.IF_64BIT_ELSE(qword, dword) = val;
 }
 
+ALWAYS_INLINE static
+dec80_t _ReadDec80(Memory *memory, Mn<dec80_t> op) {
+  dec80_t dec = {};
+  const auto num_digit_pairs = sizeof(dec.digits);
+
+  _Pragma("unroll")
+  for (addr_t i = 0; i < num_digit_pairs; i++) {
+    dec.digits[i] = __remill_read_memory_8(memory, op.addr + i);
+  }
+  auto msb = __remill_read_memory_8(memory, op.addr + num_digit_pairs);
+  dec.is_negative = msb >> 7;
+
+  return dec;
+}
+
+#define ReadDec80(op) _ReadDec80(memory, op)
+
 }  // namespace
 
 #endif  // REMILL_ARCH_X86_RUNTIME_OPERATORS_H_
