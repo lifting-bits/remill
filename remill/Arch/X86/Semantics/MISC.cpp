@@ -19,9 +19,9 @@
 
 namespace {
 
-template <typename D, typename S>
+template <typename D, typename S, typename DestType>
 DEF_SEM(LEA, D dst, S src) {
-  WriteZExt(dst, AddressOf(src));
+  WriteZExt(dst, static_cast<DestType>(AddressOf(src)));
   return memory;
 }
 
@@ -48,8 +48,8 @@ DEF_SEM(LEAVE_FULL) {
 
 }  // namespace
 
-DEF_ISEL(LEA_GPRv_AGEN_32) = LEA<R32W, M8>;
-IF_64BIT( DEF_ISEL(LEA_GPRv_AGEN_64) = LEA<R64W, M8>; )
+DEF_ISEL(LEA_GPRv_AGEN_32) = LEA<R32W, M8, uint32_t>;
+IF_64BIT( DEF_ISEL(LEA_GPRv_AGEN_64) = LEA<R64W, M8, uint64_t>; )
 
 DEF_ISEL(LEAVE_16) = LEAVE_16BIT;
 DEF_ISEL_RI32or64(LEAVE, LEAVE_FULL);
