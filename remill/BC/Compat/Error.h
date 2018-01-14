@@ -22,9 +22,10 @@
 
 #include "remill/BC/Version.h"
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 6)
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
 # include <llvm/Support/Error.h>
 #endif
+
 namespace remill {
 
 template <typename T>
@@ -32,7 +33,7 @@ bool IsError(llvm::ErrorOr<T> &val) {
   return !val;
 }
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 6)
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
 template <typename T>
 bool IsError(llvm::Expected<T> &val) {
   return !val;
@@ -54,7 +55,7 @@ std::string GetErrorString(llvm::ErrorOr<T> &val) {
   return val.getError().message();
 }
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 6)
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
 template <typename T>
 std::string GetErrorString(llvm::Expected<T> &val) {
   auto err = val.takeError();
@@ -84,7 +85,7 @@ T *GetPointer(llvm::ErrorOr<T> &val) {
   return val.operator->();
 }
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 6)
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
 template <typename T>
 T *GetPointer(llvm::Expected<T> &val) {
   return val.operator->();
@@ -106,7 +107,7 @@ T &GetReference(llvm::ErrorOr<T> &val) {
   return val.operator*();
 }
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 6)
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
 template <typename T>
 T &GetReference(llvm::Expected<T> &val) {
   return val.operator*();

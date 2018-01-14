@@ -348,8 +348,8 @@ extern "C" {
   auto &V30 = state.simd.v[30];
   auto &V31 = state.simd.v[31];
 
-  auto &TPIDR_EL0 = state.sr.tpidr_el0;
-  auto &TPIDRRO_EL0 = state.sr.tpidrro_el0;
+  auto &TPIDR_EL0 = state.sr.tpidr_el0.aword;
+  auto &TPIDRRO_EL0 = state.sr.tpidrro_el0.aword;
 
   // Lifted code will be placed here in clones versions of this function.
   return memory;
