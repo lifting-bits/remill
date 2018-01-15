@@ -20,7 +20,13 @@
 // TODO(joe): Assumes little endian.
 // 80-bit packed binary-coded decimal.
 struct dec80_t final {
-  uint8_t digits[9];
+  union {
+    uint8_t u8;
+    struct {
+      uint8_t lo:4;
+      uint8_t hi:4;
+    } __attribute((packed)) pair;
+  } __attribute((packed)) digit_pairs[9];
   struct {
     uint8_t _unused:7;  // No meaning in encoding
     uint8_t is_negative:1;

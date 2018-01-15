@@ -82,12 +82,12 @@ DEF_FPU_SEM(FBLD, RF80W, MD80 src1) {
 
   // Iterate through pairs of digits, encoded as bytes.
   _Pragma("unroll")
-  for (addr_t i = 0; i < sizeof(src1_dec.digits); i++) {
+  for (addr_t i = 0; i < sizeof(src1_dec.digit_pairs); i++) {
     // We expect each half-byte to be a valid binary-coded decimal
     // digit (0-9). If not, the decoding result is undefined. The
     // native behavior seems to continue as if each encoding were
     // valid, so we do the same.
-    auto b = src1_dec.digits[i];
+    auto b = src1_dec.digit_pairs[i].u8;
     auto lo = b & 0xf;
     auto hi = b >> 4;
 
