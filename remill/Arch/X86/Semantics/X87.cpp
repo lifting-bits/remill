@@ -677,6 +677,54 @@ DEF_ISEL(FIDIVR_ST0_MEMmem16int) = FIDIVR<M16>;
 
 namespace {
 
+DEF_FPU_SEM(FBSTP, MD80W dst, RF80 src) {
+  SetFPUIpOp();
+  dec80_t out_dec = {};
+  auto read = Float64(Read(src));
+
+  auto out_of_range = FAbs(read) >= (1e18 - 1);
+  if (out_of_range || IsNaN(read) || IsInfinite(read)) {
+    state.sw.ie = 1;
+    state.sw.pe = 0;
+    (void) POP_X87_STACK();
+    return WriteDec80Indefinite(dst);
+  }
+
+  auto rounded = FRoundUsingMode64(read);
+
+  // Was it rounded?
+  if (rounded != read) {
+    state.sw.pe = 1;
+
+    // Was it rounded up (towards infinity)?
+    if (read < rounded) {
+      state.sw.c1 = 1;
+    }
+  }
+
+  if (IsNegative(rounded)) {
+    out_dec.is_negative = true;
+  }
+  auto positive = FAbs(rounded);
+
+  // If we are here, we've checked that `positive` < 1e18 < `UINT64_MAX`.
+  auto casted = static_cast<uint64_t>(positive);
+
+  // Encode the double into packed BCD. By the range checks above, we know this
+  // will succeed.
+  for (uint64_t i = 0; i < sizeof(out_dec.digit_pairs); i++) {
+    out_dec.digit_pairs[i].pair.lo = static_cast<uint8_t>(casted % 10);
+    casted /= 10;
+    out_dec.digit_pairs[i].pair.hi = static_cast<uint8_t>(casted % 10);
+    casted /= 10;
+  }
+
+  memory = WriteDec80(dst, out_dec);
+
+  (void) POP_X87_STACK();
+  return memory;
+}
+
 template <typename T>
 DEF_FPU_SEM(FST, T dst, RF80 src) {
   SetFPUIpOp();
@@ -787,6 +835,7 @@ DEF_FPU_SEM(DoFDECSTP) {
 
 }  // namespace
 
+DEF_ISEL(FBSTP_MEMmem80dec_ST0) = FBSTP;
 DEF_ISEL(FSTP_MEMmem32real_ST0) = FSTPmem<MF32W>;
 DEF_ISEL(FSTP_MEMmem80real_ST0) = FSTPmem<MF80W>;
 DEF_ISEL(FSTP_MEMm64real_ST0) = FSTPmem<MF64W>;
