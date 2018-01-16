@@ -17,16 +17,18 @@
 #ifndef REMILL_ARCH_X86_RUNTIME_TYPES_H_
 #define REMILL_ARCH_X86_RUNTIME_TYPES_H_
 
+typedef union {
+  uint8_t u8;
+  struct {
+    uint8_t lsd:4;  // Least-significant digit
+    uint8_t msd:4;  // Most-significant digit
+  } __attribute((packed)) pair;
+} __attribute((packed)) dec_digit_pair_t;
+
 // TODO(joe): Assumes little endian.
 // 80-bit packed binary-coded decimal.
 struct dec80_t final {
-  union {
-    uint8_t u8;
-    struct {
-      uint8_t lo:4;
-      uint8_t hi:4;
-    } __attribute((packed)) pair;
-  } __attribute((packed)) digit_pairs[9];
+  dec_digit_pair_t digit_pairs[9];
   struct {
     uint8_t _unused:7;  // No meaning in encoding
     uint8_t is_negative:1;

@@ -713,9 +713,9 @@ DEF_FPU_SEM(FBSTP, MD80W dst, RF80 src) {
   // Encode the double into packed BCD. By the range checks above, we know this
   // will succeed.
   for (uint64_t i = 0; i < sizeof(out_dec.digit_pairs); i++) {
-    out_dec.digit_pairs[i].pair.lo = static_cast<uint8_t>(casted % 10);
+    out_dec.digit_pairs[i].pair.lsd = static_cast<uint8_t>(casted % 10);
     casted /= 10;
-    out_dec.digit_pairs[i].pair.hi = static_cast<uint8_t>(casted % 10);
+    out_dec.digit_pairs[i].pair.msd = static_cast<uint8_t>(casted % 10);
     casted /= 10;
   }
 
