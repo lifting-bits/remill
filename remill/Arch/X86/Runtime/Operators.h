@@ -49,6 +49,39 @@ dec80_t _ReadDec80(Memory *memory, Mn<dec80_t> op) {
 
 #define ReadDec80(op) _ReadDec80(memory, op)
 
+ALWAYS_INLINE static
+Memory *_WriteDec80(Memory *memory, MD80W dst, dec80_t src) {
+  const auto num_digit_pairs = sizeof(src.digit_pairs);
+
+  _Pragma("unroll")
+  for (addr_t i = 0; i < num_digit_pairs; i++) {
+    memory = __remill_write_memory_8(memory, dst.addr + i, src.digit_pairs[i].u8);
+  }
+
+  uint8_t msb = static_cast<uint8_t>(src.is_negative << 7);
+  memory = __remill_write_memory_8(memory, dst.addr + num_digit_pairs, msb);
+
+  return memory;
+}
+
+#define WriteDec80(op, val) _WriteDec80(memory, op, val)
+
+ALWAYS_INLINE static
+Memory *_WriteDec80Indefinite(Memory *memory, MD80W dst) {
+  const uint8_t indefinite[sizeof(dec80_t)] = {
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xc0, 0xff, 0xff,
+  };
+
+  _Pragma("unroll")
+  for (addr_t i = 0; i < sizeof(indefinite); i++) {
+    memory = __remill_write_memory_8(memory, dst.addr + i, indefinite[i]);
+  }
+
+  return memory;
+}
+
+#define WriteDec80Indefinite(op) _WriteDec80Indefinite(memory, op)
+
 }  // namespace
 
 #endif  // REMILL_ARCH_X86_RUNTIME_OPERATORS_H_
