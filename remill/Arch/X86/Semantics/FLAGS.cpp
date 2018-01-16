@@ -202,12 +202,13 @@ struct Carry<tag_sub> {
     } while (false)
 
 
+// X87 status flags are sticky, so we must not unset flags if set.
 ALWAYS_INLINE static void SetFPSRStatusFlags(State &state, int mask) {
-  state.sw.pe = static_cast<uint8_t>(0 != (mask & FE_INEXACT));
-  state.sw.oe = static_cast<uint8_t>(0 != (mask & FE_OVERFLOW));
-  state.sw.ue = static_cast<uint8_t>(0 != (mask & FE_UNDERFLOW));
-  state.sw.ie = static_cast<uint8_t>(0 != (mask & FE_INVALID));
-  state.sw.ze = static_cast<uint8_t>(0 != (mask & FE_DIVBYZERO));
+  state.sw.pe |= static_cast<uint8_t>(0 != (mask & FE_INEXACT));
+  state.sw.oe |= static_cast<uint8_t>(0 != (mask & FE_OVERFLOW));
+  state.sw.ue |= static_cast<uint8_t>(0 != (mask & FE_UNDERFLOW));
+  state.sw.ie |= static_cast<uint8_t>(0 != (mask & FE_INVALID));
+  state.sw.ze |= static_cast<uint8_t>(0 != (mask & FE_DIVBYZERO));
 }
 
 template <typename F, typename T>
