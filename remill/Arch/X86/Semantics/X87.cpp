@@ -83,14 +83,14 @@ template <typename T>
 DEF_FPU_SEM(FLD, RF80W, T src1) {
   SetFPUIpOp();
   auto val = Read(src1);
-  state.sw.ie = IsSignalingNaN(val);
+  state.sw.ie |= IsSignalingNaN(val);
   state.sw.de = IsDenormal(val);
   auto res = Float64(val);
 
-  // Propagate signaling of the NaNs.
+  // Quietize if signaling NaN.
   if (state.sw.ie) {
     nan64_t res_nan = {res};
-    res_nan.is_quiet_nan = 0;
+    res_nan.is_quiet_nan = 1;
     res = res_nan.d;
   }
 
@@ -200,10 +200,12 @@ ALWAYS_INLINE static uint8_t IsImprecise(float64_t x) {
 DEF_FPU_SEM(DoFCOS) {
   SetFPUIpOp();
   float64_t st0 = Read(X87_ST0);
-  state.sw.ie = IsSignalingNaN(st0) | IsInfinite(st0);
+  state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
   state.sw.de = IsDenormal(st0);
-  auto res = FCos64(st0);
-  state.sw.pe = IsImprecise(res);
+  auto res = CheckedFloatUnaryOp(state, FCos64, st0);
+  if (!IsNaN(res)) {
+    state.sw.pe = IsImprecise(res);
+  }
   Write(X87_ST0, res);
   return memory;
 }
@@ -211,10 +213,12 @@ DEF_FPU_SEM(DoFCOS) {
 DEF_FPU_SEM(DoFSIN) {
   SetFPUIpOp();
   float64_t st0 = Read(X87_ST0);
-  state.sw.ie = IsSignalingNaN(st0) | IsInfinite(st0);
+  state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
   state.sw.de = IsDenormal(st0);
-  auto res = FSin64(st0);
-  state.sw.pe = IsImprecise(res);
+  auto res = CheckedFloatUnaryOp(state, FSin64, st0);
+  if (!IsNaN(res)) {
+    state.sw.pe = IsImprecise(res);
+  }
   Write(X87_ST0, res);
   return memory;
 }
@@ -222,10 +226,12 @@ DEF_FPU_SEM(DoFSIN) {
 DEF_FPU_SEM(DoFPTAN) {
   SetFPUIpOp();
   float64_t st0 = Read(X87_ST0);
-  state.sw.ie = IsSignalingNaN(st0) | IsInfinite(st0);
+  state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
   state.sw.de = IsDenormal(st0);
-  auto res = FTan64(st0);
-  state.sw.pe = IsImprecise(res);
+  auto res = CheckedFloatUnaryOp(state, FTan64, st0);
+  if (!IsNaN(res)) {
+    state.sw.pe = IsImprecise(res);
+  }
   Write(X87_ST0, res);
   PUSH_X87_STACK(1.0);
   return memory;
@@ -257,10 +263,12 @@ DEF_FPU_SEM(DoFSQRT) {
     state.sw.pe = 0;
     Write(X87_ST0, st0);
   } else {
-    state.sw.ie = IsSignalingNaN(st0) | IsNegative(st0);
+    state.sw.ie |= IsSignalingNaN(st0) | IsNegative(st0);
     state.sw.de = IsDenormal(st0);
-    float64_t res = FSqrt64(st0);
-    state.sw.pe = IsImprecise(res);
+    float64_t res = CheckedFloatUnaryOp(state, FSqrt64, st0);
+    if (!IsNaN(res)) {
+      state.sw.pe = IsImprecise(res);
+    }
     Write(X87_ST0, res);
   }
   return memory;
@@ -269,11 +277,13 @@ DEF_FPU_SEM(DoFSQRT) {
 DEF_FPU_SEM(DoFSINCOS) {
   SetFPUIpOp();
   auto st0 = Read(X87_ST0);
-  state.sw.ie = IsSignalingNaN(st0) | IsInfinite(st0);
+  state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
   state.sw.de = IsDenormal(st0);
-  auto sin_res = __builtin_sin(st0);
-  auto cos_res = __builtin_cos(st0);
-  state.sw.pe = IsImprecise(sin_res) | IsImprecise(cos_res);
+  auto sin_res = CheckedFloatUnaryOp(state, FSin64, st0);
+  auto cos_res = CheckedFloatUnaryOp(state, FCos64, st0);
+  if (!IsNaN(sin_res) && !IsNaN(cos_res)) {
+    state.sw.pe = IsImprecise(sin_res) | IsImprecise(cos_res);
+  }
   Write(X87_ST0, sin_res);
   PUSH_X87_STACK(cos_res);
   return memory;
@@ -290,11 +300,13 @@ DEF_FPU_SEM(DoFSCALE) {
 DEF_FPU_SEM(DoF2XM1) {
   SetFPUIpOp();
   auto st0 = Read(X87_ST0);
-  state.sw.ie = IsSignalingNaN(st0) | IsInfinite(st0);
+  state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
   state.sw.de = IsDenormal(st0);
   state.sw.ue = 0;  // TODO(pag): Not sure.
   auto res = FSub(__builtin_exp2(st0), 1.0);
-  state.sw.pe = IsImprecise(res);  // TODO(pag): Not sure.
+  if (!IsNaN(res)) {
+    state.sw.pe = IsImprecise(res);  // TODO(pag): Not sure.
+  }
   Write(X87_ST0, res);
   return memory;
 }
@@ -1237,9 +1249,11 @@ DEF_FPU_SEM(DoFRNDINT) {
   SetFPUIpOp();
   auto st0 = Read(X87_ST0);
   auto rounded = FRoundUsingMode64(st0);
-  state.sw.ie = IsSignalingNaN(st0);
+  state.sw.ie |= IsSignalingNaN(st0);
   state.sw.de = IsDenormal(st0);
-  state.sw.pe = st0 != rounded;
+  if (!IsNaN(rounded)) {
+      state.sw.pe = st0 != rounded;
+  }
   // state.sw.c1 = __builtin_isgreater(FAbs(rounded), FAbs(st0)) ? 1_u8 : 0_u8;
   Write(X87_ST0, rounded);
   return memory;
@@ -1375,7 +1389,7 @@ namespace {
 
 DEF_SEM(DoFNINIT) {
   // Initialize the FPU state without checking error conditions.
-  // "Word" and opcode fields are always 16-bit. Pointer fields are either 
+  // "Word" and opcode fields are always 16-bit. Pointer fields are either
   // 32-bit or 64-bit, but regardless, they are set to 0.
   state.x87.fsave.cwd.flat = 0x037F; // FPUControlWord
   state.x87.fsave.swd.flat = 0x0000; // FPUStatusWord
