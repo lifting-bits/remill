@@ -15,6 +15,8 @@
  */
 
 namespace {
+
+// Note: The taken branch is the transaction failed fallback path.
 DEF_SEM(XBEGIN, R8W cond, PC taken, PC not_taken) {
   Write(cond, true);
   Write(REG_PC, Read(taken));

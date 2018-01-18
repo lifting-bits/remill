@@ -764,7 +764,7 @@ static bool LeastSignificantSetBit(uint64_t val, uint64_t *highest_out) {
     }
   }
   return false;
-#endif
+#endif  // __has_builtin(__builtin_ctzll)
 }
 
 static constexpr uint64_t kOne = static_cast<uint64_t>(1);
@@ -3129,12 +3129,22 @@ bool TryDecodeFCMPE_DZ_FLOATCMP(const InstData &data, Instruction &inst) {
 
 // FCMP  <Dn>, #0.0
 bool TryDecodeFCMP_DZ_FLOATCMP(const InstData &data, Instruction &inst) {
-  if (IsUnallocatedFloatEncoding(data)) {
-    return false;
-  }
-  AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rn);
-  AddImmOperand(inst, 0);
-  return true;
+  return TryDecodeFCMP_ToZero(data, inst, kRegD);
+}
+
+// FCMP  <Sn>, #0.0
+bool TryDecodeFCMP_SZ_FLOATCMP(const InstData &data, Instruction &inst) {
+  return TryDecodeFCMP_ToZero(data, inst, kRegS);
+}
+
+// FCMP  <Dn>, <Dm>
+bool TryDecodeFCMP_D_FLOATCMP(const InstData &data, Instruction &inst) {
+  return TryDecodeFn_Fm(data, inst, kRegD);
+}
+
+// FCMP  <Sn>, <Sm>
+bool TryDecodeFCMP_S_FLOATCMP(const InstData &data, Instruction &inst) {
+  return TryDecodeFn_Fm(data, inst, kRegS);
 }
 
 // FABS  <Sd>, <Sn>
@@ -4643,6 +4653,39 @@ bool TryDecodeMVNI_ASIMDIMM_M_SM(const InstData &data, Instruction &inst) {
   }
   auto &imm = inst.operands[inst.operands.size() - 1].imm.val;
   imm = (~imm) & 0xFFFFFFFFULL;
+  return true;
+}
+
+// USHR  <V><d>, <V><n>, #<shift>
+bool TryDecodeUSHR_ASISDSHF_R(const InstData &data, Instruction &inst) {
+  if ((data.immh.uimm & 8) == 0) {
+    return false;  // if immh<3> != '1' then ReservedValue(); 
+  }
+  uint64_t shift = 128 - ((data.immh.uimm << 3) + data.immb.uimm);
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  AddImmOperand(inst, shift);
+  return true;
+}
+
+// USHR  <Vd>.<T>, <Vn>.<T>, #<shift>
+bool TryDecodeUSHR_ASIMDSHF_R(const InstData &data, Instruction &inst) {
+  return false; // TODO remove this after adding semantics for vector version
+  if (((data.immh.uimm & 8) != 0) && !data.Q) {
+    return false;  // `if immh<3>:Q == '10' then ReservedValue();`
+  }
+  uint64_t esize = 0;
+  MostSignificantSetBit(data.immh.uimm, &esize);
+  esize = 8 << esize;
+
+  const uint64_t datasize = data.Q ? 128 : 64;
+  AddArrangementSpecifier(inst, datasize, esize);
+  // AddArrangementSpecifier(inst, 128, 8UL << data.size);
+
+  uint64_t shift = (esize * 2) - ((data.immh.uimm << 3) + data.immb.uimm);
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  AddImmOperand(inst, shift);
   return true;
 }
 

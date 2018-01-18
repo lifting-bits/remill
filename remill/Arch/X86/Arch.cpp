@@ -261,7 +261,7 @@ std::map<xed_iform_enum_t, xed_iform_enum_t> kUnlockedIform = {
     {XED_IFORM_NEG_LOCK_MEMv, XED_IFORM_NEG_MEMv},
 };
 
-// Name of this instuction function.
+// Name of this instruction function.
 static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
 
   // If this instuction is marked as atomic via the `LOCK` prefix then we want
@@ -936,13 +936,16 @@ bool X86Arch::DecodeInstruction(
   // Wrap an instruction in atomic begin/end if it accesses memory with RMW
   // semantics or with a LOCK prefix.
   if (xed_operand_values_get_atomic(xedd) ||
-      xed_operand_values_has_lock_prefix(xedd)) {
+      xed_operand_values_has_lock_prefix(xedd) ||
+      XED_CATEGORY_SEMAPHORE == xed_decoded_inst_get_category(xedd)) {
     inst.is_atomic_read_modify_write = true;
   }
 
   if (Instruction::kCategoryConditionalAsyncHyperCall == inst.category) {
     DecodeConditionalInterrupt(inst);
   }
+
+  auto iform = xed_decoded_inst_get_iform_enum(xedd);
 
   if (!is_lazy || inst.IsControlFlow()) {
     inst.function = InstructionFunctionName(xedd);
@@ -969,7 +972,7 @@ bool X86Arch::DecodeInstruction(
         XED_CATEGORY_X87_ALU == xed_decoded_inst_get_category(xedd)) {
       auto set_ip_dp = false;
       const auto get_attr = xed_decoded_inst_get_attribute;
-      switch (xed_decoded_inst_get_iform_enum(xedd)) {
+      switch (iform) {
         case XED_IFORM_FNOP:
         case XED_IFORM_FINCSTP:
         case XED_IFORM_FDECSTP:
@@ -990,11 +993,17 @@ bool X86Arch::DecodeInstruction(
         DecodeX87LastIpDp(inst);
       }
     }
+
+    if (xed_decoded_inst_is_xacquire(xedd) ||
+        xed_decoded_inst_is_xrelease(xedd)) {
+      LOG(ERROR)
+          << "Ignoring XACQUIRE/XRELEASE prefix at " << std::hex
+          << inst.pc << std::dec;
+    }
   }
 
   // Make sure we disallow decoding of AVX instructions when running with non-
   // AVX arch specified. Same thing for AVX512 instructions.
-  auto iform = xed_decoded_inst_get_iform_enum(xedd);
   switch (xed_decoded_inst_get_isa_set(xedd)) {
     case XED_ISA_SET_INVALID:
     case XED_ISA_SET_LAST:
