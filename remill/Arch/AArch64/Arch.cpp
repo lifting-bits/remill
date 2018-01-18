@@ -4656,6 +4656,39 @@ bool TryDecodeMVNI_ASIMDIMM_M_SM(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// USHR  <V><d>, <V><n>, #<shift>
+bool TryDecodeUSHR_ASISDSHF_R(const InstData &data, Instruction &inst) {
+  if ((data.immh.uimm & 8) == 0) {
+    return false;  // if immh<3> != '1' then ReservedValue(); 
+  }
+  uint64_t shift = 128 - ((data.immh.uimm << 3) + data.immb.uimm);
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  AddImmOperand(inst, shift);
+  return true;
+}
+
+// USHR  <Vd>.<T>, <Vn>.<T>, #<shift>
+bool TryDecodeUSHR_ASIMDSHF_R(const InstData &data, Instruction &inst) {
+  return false; // TODO remove this after adding semantics for vector version
+  if (((data.immh.uimm & 8) != 0) && !data.Q) {
+    return false;  // `if immh<3>:Q == '10' then ReservedValue();`
+  }
+  uint64_t esize = 0;
+  MostSignificantSetBit(data.immh.uimm, &esize);
+  esize = 8 << esize;
+
+  const uint64_t datasize = data.Q ? 128 : 64;
+  AddArrangementSpecifier(inst, datasize, esize);
+  // AddArrangementSpecifier(inst, 128, 8UL << data.size);
+
+  uint64_t shift = (esize * 2) - ((data.immh.uimm << 3) + data.immb.uimm);
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  AddImmOperand(inst, shift);
+  return true;
+}
+
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
