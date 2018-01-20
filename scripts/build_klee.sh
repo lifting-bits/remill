@@ -64,6 +64,8 @@ function CloneAndBuildKlee {
       -DLLVM_ENABLE_RTTI=OFF \
       -DENABLE_POSIX_RUNTIME=ON \
       -DENABLE_KLEE_UCLIBC=ON \
+      -DENABLE_SOLVER_STP=OFF \
+      -DENABLE_SOLVER_Z3=ON \
       -DKLEE_UCLIBC_PATH="${CURR_DIR}/klee-uclibc" \
       "${CURR_DIR}/klee"
   make -j4
