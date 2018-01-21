@@ -680,17 +680,21 @@ namespace {
 DEF_FPU_SEM(FBSTP, MD80W dst, RF80 src) {
   SetFPUIpOp();
   dec80_t out_dec = {};
-  auto read = Float64(Read(src));
 
-  auto out_of_range = FAbs(read) >= (1e18 - 1);
+  auto read = Float64(Read(src));
+  auto rounded = FRoundUsingMode64(read);
+  auto rounded_abs = FAbs(rounded);
+
+  // Any larger double aliases an integer out of 80-bit packed BCD range.
+  constexpr double max_dec80_float = 1e18 - 65;
+  auto out_of_range = rounded_abs > max_dec80_float;
+
   if (out_of_range || IsNaN(read) || IsInfinite(read)) {
     state.sw.ie = 1;
     state.sw.pe = 0;
     (void) POP_X87_STACK();
     return WriteDec80Indefinite(dst);
   }
-
-  auto rounded = FRoundUsingMode64(read);
 
   // Was it rounded?
   if (rounded != read) {
@@ -705,10 +709,8 @@ DEF_FPU_SEM(FBSTP, MD80W dst, RF80 src) {
   if (IsNegative(rounded)) {
     out_dec.is_negative = true;
   }
-  auto positive = FAbs(rounded);
 
-  // If we are here, we've checked that `positive` < 1e18 < `UINT64_MAX`.
-  auto casted = static_cast<uint64_t>(positive);
+  auto casted = static_cast<uint64_t>(rounded_abs);
 
   // Encode the double into packed BCD. By the range checks above, we know this
   // will succeed.
