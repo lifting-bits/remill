@@ -33,24 +33,24 @@ void _Write(Memory *, Reg &reg, IF_64BIT_ELSE(uint64_t, uint32_t) val) {
 }
 
 ALWAYS_INLINE static
-dec80_t _ReadDec80(Memory *memory, Mn<dec80_t> op) {
-  dec80_t dec = {};
-  const auto num_digit_pairs = sizeof(dec.digit_pairs);
+bcd80_t _ReadBCD80(Memory *memory, Mn<bcd80_t> op) {
+  bcd80_t bcd = {};
+  const auto num_digit_pairs = sizeof(bcd.digit_pairs);
 
   _Pragma("unroll")
   for (addr_t i = 0; i < num_digit_pairs; i++) {
-    dec.digit_pairs[i].u8 = __remill_read_memory_8(memory, op.addr + i);
+    bcd.digit_pairs[i].u8 = __remill_read_memory_8(memory, op.addr + i);
   }
   auto msb = __remill_read_memory_8(memory, op.addr + num_digit_pairs);
-  dec.is_negative = msb >> 7;
+  bcd.is_negative = msb >> 7;
 
-  return dec;
+  return bcd;
 }
 
-#define ReadDec80(op) _ReadDec80(memory, op)
+#define ReadBCD80(op) _ReadBCD80(memory, op)
 
 ALWAYS_INLINE static
-Memory *_WriteDec80(Memory *memory, MD80W dst, dec80_t src) {
+Memory *_WriteBCD80(Memory *memory, MBCD80W dst, bcd80_t src) {
   const auto num_digit_pairs = sizeof(src.digit_pairs);
 
   _Pragma("unroll")
@@ -64,11 +64,11 @@ Memory *_WriteDec80(Memory *memory, MD80W dst, dec80_t src) {
   return memory;
 }
 
-#define WriteDec80(op, val) _WriteDec80(memory, op, val)
+#define WriteBCD80(op, val) _WriteBCD80(memory, op, val)
 
 ALWAYS_INLINE static
-Memory *_WriteDec80Indefinite(Memory *memory, MD80W dst) {
-  const uint8_t indefinite[sizeof(dec80_t)] = {
+Memory *_WriteBCD80Indefinite(Memory *memory, MBCD80W dst) {
+  const uint8_t indefinite[sizeof(bcd80_t)] = {
     0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xc0, 0xff, 0xff,
   };
 
@@ -80,7 +80,7 @@ Memory *_WriteDec80Indefinite(Memory *memory, MD80W dst) {
   return memory;
 }
 
-#define WriteDec80Indefinite(op) _WriteDec80Indefinite(memory, op)
+#define WriteBCD80Indefinite(op) _WriteBCD80Indefinite(memory, op)
 
 }  // namespace
 

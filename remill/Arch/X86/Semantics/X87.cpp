@@ -72,22 +72,22 @@ namespace {
     DEF_SEM(name, ##__VA_ARGS__, PC pc, I16 fop)
 
 // TODO(joe): Loss of precision, see issue #199.
-DEF_FPU_SEM(FBLD, RF80W, MD80 src1) {
+DEF_FPU_SEM(FBLD, RF80W, MBCD80 src1) {
   SetFPUIpOp();
   SetFPUDp(src1);
 
-  auto src1_dec = ReadDec80(src1);
+  auto src1_bcd = ReadBCD80(src1);
   double val = 0.0;  // Decoded BCD value
   double mag = 1.0;  // Magnitude of decimal position
 
   // Iterate through pairs of digits, encoded as bytes.
   _Pragma("unroll")
-  for (addr_t i = 0; i < sizeof(src1_dec.digit_pairs); i++) {
+  for (addr_t i = 0; i < sizeof(src1_bcd.digit_pairs); i++) {
     // We expect each half-byte to be a valid binary-coded decimal
     // digit (0-9). If not, the decoding result is undefined. The
     // native behavior seems to continue as if each encoding were
     // valid, so we do the same.
-    auto b = src1_dec.digit_pairs[i].u8;
+    auto b = src1_bcd.digit_pairs[i].u8;
     auto lo = b & 0xf;
     auto hi = b >> 4;
 
@@ -98,7 +98,7 @@ DEF_FPU_SEM(FBLD, RF80W, MD80 src1) {
     mag *= 10.0;
   }
 
-  if (src1_dec.is_negative) {
+  if (src1_bcd.is_negative) {
     val = -val;
   }
 
@@ -677,23 +677,23 @@ DEF_ISEL(FIDIVR_ST0_MEMmem16int) = FIDIVR<M16>;
 
 namespace {
 
-DEF_FPU_SEM(FBSTP, MD80W dst, RF80 src) {
+DEF_FPU_SEM(FBSTP, MBCD80W dst, RF80 src) {
   SetFPUIpOp();
-  dec80_t out_dec = {};
+  bcd80_t out_bcd = {};
 
   auto read = Float64(Read(src));
   auto rounded = FRoundUsingMode64(read);
   auto rounded_abs = FAbs(rounded);
 
   // Any larger double aliases an integer out of 80-bit packed BCD range.
-  constexpr double max_dec80_float = 1e18 - 65;
-  auto out_of_range = rounded_abs > max_dec80_float;
+  constexpr double max_bcd80_float = 1e18 - 65;
+  auto out_of_range = rounded_abs > max_bcd80_float;
 
   if (out_of_range || IsNaN(read) || IsInfinite(read)) {
     state.sw.ie = 1;
     state.sw.pe = 0;
     (void) POP_X87_STACK();
-    return WriteDec80Indefinite(dst);
+    return WriteBCD80Indefinite(dst);
   }
 
   // Was it rounded?
@@ -707,21 +707,21 @@ DEF_FPU_SEM(FBSTP, MD80W dst, RF80 src) {
   }
 
   if (IsNegative(rounded)) {
-    out_dec.is_negative = true;
+    out_bcd.is_negative = true;
   }
 
   auto casted = static_cast<uint64_t>(rounded_abs);
 
   // Encode the double into packed BCD. By the range checks above, we know this
   // will succeed.
-  for (uint64_t i = 0; i < sizeof(out_dec.digit_pairs); i++) {
-    out_dec.digit_pairs[i].pair.lsd = static_cast<uint8_t>(casted % 10);
+  for (uint64_t i = 0; i < sizeof(out_bcd.digit_pairs); i++) {
+    out_bcd.digit_pairs[i].pair.lsd = static_cast<uint8_t>(casted % 10);
     casted /= 10;
-    out_dec.digit_pairs[i].pair.msd = static_cast<uint8_t>(casted % 10);
+    out_bcd.digit_pairs[i].pair.msd = static_cast<uint8_t>(casted % 10);
     casted /= 10;
   }
 
-  memory = WriteDec80(dst, out_dec);
+  memory = WriteBCD80(dst, out_bcd);
 
   (void) POP_X87_STACK();
   return memory;
