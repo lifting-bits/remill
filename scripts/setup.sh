@@ -20,6 +20,9 @@ CURR_DIR=$( pwd )
 SetupLinux() {
   printf "Getting dependencies for platform: linux\n"
 
+  printf " > Adding i386 architecture support\n"
+  sudo dpkg --add-architecture i386
+
   printf " > Updating the system...\n"
   sudo apt-get -qq update
   if [ $? -ne 0 ] ; then
@@ -46,8 +49,6 @@ SetupLinux() {
     return 1
   fi
 
-  printf " > Adding i386 architecture support\n"
-  sudo dpkg --add-architecture i386
   sudo apt-get install -qqy zlib1g-dev:i386
   if [ $? -ne 0 ] ; then
     printf " x Could not install the i386 dependencies\n"
