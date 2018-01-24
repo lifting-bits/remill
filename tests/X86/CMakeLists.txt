@@ -20,7 +20,6 @@ list(APPEND PROJECT_LIBRARIES ${gtest_LIBRARIES})
 list(APPEND PROJECT_INCLUDEDIRECTORIES ${gtest_INCLUDE_DIRS})
 
 enable_testing()
-enable_language(BC)
 enable_language(ASM)
 
 add_custom_target(build_x86_tests)

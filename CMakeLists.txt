@@ -18,134 +18,16 @@ if (POLICY CMP0025)
 endif ()
 
 project(remill)
-cmake_minimum_required (VERSION 3.2)
+cmake_minimum_required(VERSION 3.2)
 
-# Generate a compile commands JSON file.
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-# add the BC (bitcode) language definition
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/BCCompiler")
-
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/settings.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/BCCompiler.cmake")
 include(CTest)
 
+FindAndSelectClangCompiler()
+
 set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
-
-if (DEFINED ENV{TRAILOFBITS_LIBRARIES})
-    set(LIBRARY_REPOSITORY_ROOT $ENV{TRAILOFBITS_LIBRARIES}
-        CACHE PATH "Location of cxx-common libraries.")
-endif ()
-
-if (DEFINED LIBRARY_REPOSITORY_ROOT)
-    set(TOB_CMAKE_INCLUDE "${LIBRARY_REPOSITORY_ROOT}/cmake_modules/repository.cmake")
-    set(LEGACY_TOB_CMAKE_INCLUDE "${LIBRARY_REPOSITORY_ROOT}/cmake/repository.cmake")
-
-    if (EXISTS "${LEGACY_TOB_CMAKE_INCLUDE}")
-        include("${LEGACY_TOB_CMAKE_INCLUDE}")
-        message(WARNING "Using legacy cxx-common build; please update!")
-    elseif (EXISTS "${TOB_CMAKE_INCLUDE}")
-        include("${TOB_CMAKE_INCLUDE}")
-
-    else ()
-        message(FATAL_ERROR "The library repository could not be found!")
-    endif ()
-
-    message(STATUS "Using the following library repository: ${LIBRARY_REPOSITORY_ROOT}")
-else ()
-    message(STATUS "Using system libraries")
-endif ()
-
-#
-# compiler selection
-#
-
-# llvm
-if (DEFINED ENV{LLVM_INSTALL_PREFIX})
-    set(LLVM_INSTALL_PREFIX $ENV{LLVM_INSTALL_PREFIX})
-endif ()
-
-if (DEFINED LLVM_INSTALL_PREFIX)
-    list(APPEND FINDPACKAGE_LLVM_HINTS "${LLVM_INSTALL_PREFIX}/lib/cmake/llvm/")
-    list(APPEND FINDPACKAGE_LLVM_HINTS "${LLVM_INSTALL_PREFIX}/share/llvm/cmake/")
-
-    message(STATUS "Using LLVM_INSTALL_PREFIX hints for find_package(LLVM): ${FINDPACKAGE_LLVM_HINTS}")
-endif ()
-
-# it is important to avoid re-defining these variables if they have been already
-# set or you risk ending up in a configure loop!
-if (NOT DEFINED CMAKE_C_COMPILER)
-    if (DEFINED LLVM_INSTALL_PREFIX)
-        set(CMAKE_C_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang"
-            CACHE PATH "Path to clang binary.")
-    else ()
-        set(CMAKE_C_COMPILER "clang")
-    endif ()
-endif ()
-
-if (NOT DEFINED CMAKE_CXX_COMPILER)
-    if (DEFINED LLVM_INSTALL_PREFIX)
-        set(CMAKE_CXX_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang++"
-            CACHE PATH "Path to clang++ binary.")
-    else ()
-        set(CMAKE_CXX_COMPILER "clang++")
-    endif ()
-endif ()
-
-if (NOT DEFINED CMAKE_ASM_COMPILER)
-    if (DEFINED LLVM_INSTALL_PREFIX)
-        set(CMAKE_ASM_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang++"
-            CACHE PATH "Path to assembler (aka clang) binary.")
-    else ()
-        set(CMAKE_ASM_COMPILER ${CMAKE_CXX_COMPILER})
-    endif ()
-endif ()
-
-if (NOT DEFINED CMAKE_LLVM_LINK)
-    if (DEFINED LLVM_INSTALL_PREFIX)
-        set(CMAKE_LLVM_LINK "${LLVM_INSTALL_PREFIX}/bin/llvm-link"
-            CACHE PATH "Path to llvm-link binary.")
-    else ()
-        set(CMAKE_LLVM_LINK "llvm-link")
-    endif ()
-endif ()
-
-enable_language(C)
-enable_language(CXX)
-enable_language(ASM)
-enable_language(BC)
-
-#
-# compiler settings
-#
-
-# enable the gnu extensions
-set(CMAKE_CXX_EXTENSIONS ON)
-
-# visual studio already defaults to c++11
-if (NOT WIN32)
-    set(CMAKE_CXX_STANDARD 11)
-endif ()
-
-# warnings and compiler settings
-set(PROJECT_CXXWARNINGS "-Wall -Wextra -Wno-unused-parameter -Wno-c++98-compat -Wno-unreachable-code-return -Wno-nested-anon-types -Wno-extended-offsetof -Wgnu-alignof-expression -Wno-gnu-anonymous-struct -Wno-gnu-designator -Wno-variadic-macros -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-statement-expression -Wno-return-type-c-linkage -Wno-c99-extensions -Wno-ignored-attributes -Wno-unused-local-typedef -Wno-unknown-pragmas")
-set(PROJECT_CXXFLAGS "${PROJECT_CXXFLAGS} -Wno-unknown-warning-option ${PROJECT_CXXWARNINGS} -fPIC -fno-omit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fno-asynchronous-unwind-tables -fno-rtti")
-
-# default build type
-if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo")
-endif ()
-
-# debug symbols
-if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    set(PROJECT_CXXFLAGS "${PROJECT_CXXFLAGS} -gdwarf-2 -g3")
-endif ()
-
-# optimization flags and definitions
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(PROJECT_CXXFLAGS "${PROJECT_CXXFLAGS} -O0")
-else ()
-    set(PROJECT_CXXFLAGS "${PROJECT_CXXFLAGS} -O3")
-    list(APPEND PROJECT_DEFINITIONS "NDEBUG")
-endif ()
 
 #
 # libraries
@@ -153,7 +35,16 @@ endif ()
 
 find_package(LLVM REQUIRED CONFIG HINTS ${FINDPACKAGE_LLVM_HINTS})
 
-set(LLVM_LIBRARIES LLVMCore LLVMSupport LLVMAnalysis LLVMipo LLVMIRReader LLVMBitReader LLVMBitWriter LLVMTransformUtils LLVMScalarOpts LLVMLTO)
+string(REPLACE "." ";" LLVM_VERSION_LIST ${LLVM_PACKAGE_VERSION})
+list(GET LLVM_VERSION_LIST 0 LLVM_MAJOR_VERSION)
+list(GET LLVM_VERSION_LIST 1 LLVM_MINOR_VERSION)
+
+set(LLVM_LIBRARIES
+  LLVMCore LLVMSupport LLVMAnalysis LLVMipo LLVMIRReader
+  LLVMBitReader LLVMBitWriter LLVMTransformUtils LLVMScalarOpts
+  LLVMLTO
+)
+
 list(APPEND PROJECT_LIBRARIES ${LLVM_LIBRARIES})
 list(APPEND PROJECT_DEFINITIONS ${LLVM_DEFINITIONS})
 list(APPEND PROJECT_INCLUDEDIRECTORIES ${LLVM_INCLUDE_DIRS})
@@ -171,14 +62,6 @@ list(APPEND PROJECT_LIBRARIES glog::glog)
 find_package(gflags REQUIRED)
 list(APPEND PROJECT_LIBRARIES gflags)
 
-# Split out the LLVM version.
-string(REPLACE "." ";" LLVM_VERSION_LIST ${LLVM_PACKAGE_VERSION})
-list(GET LLVM_VERSION_LIST 0 LLVM_MAJOR_VERSION)
-list(GET LLVM_VERSION_LIST 1 LLVM_MINOR_VERSION)
-
-set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}.${LLVM_MINOR_VERSION}")
-math(EXPR REMILL_LLVM_VERSION_NUMBER "${LLVM_MAJOR_VERSION} * 100 + ${LLVM_MINOR_VERSION}" )
-
 #
 # target settings
 #
@@ -188,22 +71,21 @@ list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_X86=\"${CMAKE_CURREN
 list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_AARCH64=\"${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/AArch64/Runtime/\"")
 
 add_library(${PROJECT_NAME} STATIC
+  remill/Arch/AArch64/Arch.cpp
+  remill/Arch/AArch64/Decode.cpp
+  remill/Arch/AArch64/Extract.cpp
+  remill/Arch/X86/Arch.cpp
+  
+  remill/Arch/Arch.cpp
+  remill/Arch/Instruction.cpp
+  remill/Arch/Name.cpp
 
-    remill/Arch/AArch64/Arch.cpp
-    remill/Arch/AArch64/Decode.cpp
-    remill/Arch/AArch64/Extract.cpp
-    remill/Arch/X86/Arch.cpp
-    
-    remill/Arch/Arch.cpp
-    remill/Arch/Instruction.cpp
-    remill/Arch/Name.cpp
+  remill/BC/IntrinsicTable.cpp
+  remill/BC/Lifter.cpp
+  remill/BC/Util.cpp
 
-    remill/BC/IntrinsicTable.cpp
-    remill/BC/Lifter.cpp
-    remill/BC/Util.cpp
-
-    remill/OS/FileSystem.cpp
-    remill/OS/OS.cpp
+  remill/OS/FileSystem.cpp
+  remill/OS/OS.cpp
 )
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -215,8 +97,8 @@ list(APPEND PROJECT_INCLUDEDIRECTORIES ${CMAKE_SOURCE_DIR})
 # add everything as public.
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PUBLIC SYSTEM ${PROJECT_INCLUDEDIRECTORIES})
-target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_DEFINITIONS})
-set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS ${PROJECT_CXXFLAGS})
+target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_DEFINITIONS} ${GLOBAL_DEFINITIONS})
+target_compile_options(${PROJECT_NAME} PUBLIC ${GLOBAL_CXXFLAGS})
 
 #
 # Also install clang, libllvm and llvm-link
@@ -289,6 +171,9 @@ function (InstallExternalTarget target_name target_path install_directory instal
   )
 endfunction ()
 
+set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}.${LLVM_MINOR_VERSION}")
+math(EXPR REMILL_LLVM_VERSION_NUMBER "${LLVM_MAJOR_VERSION} * 100 + ${LLVM_MINOR_VERSION}")
+
 set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}")
 set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}")
 
@@ -346,14 +231,8 @@ add_subdirectory(remill/Arch/AArch64/Runtime)
 # tools
 add_subdirectory(tools)
 
-if(UNIX AND NOT APPLE)
-  set(LINUX TRUE)
-else()
-  set(LINUX FALSE)
-endif ()
-
-if (LINUX OR APPLE)
-  if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+if(NOT "${PLATFORM_NAME}" STREQUAL "windows")
+  if(${IS_AMD64_MACHINE})
     # only enable x86 tests when compiling under x64
     if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
       add_subdirectory(tests/X86)
@@ -362,6 +241,6 @@ if (LINUX OR APPLE)
     # only enable aarch64 tests when compiling under aarch64.
     if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
       add_subdirectory(tests/AArch64)
-    endif ()
-  endif ()
-endif ()
+    endif()
+  endif()
+endif()
