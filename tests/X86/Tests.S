@@ -533,6 +533,8 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/STRINGOP/STOS.S"
 
 #include "tests/X86/X87/FADD.S"
+#include "tests/X86/X87/FBLD.S"
+#include "tests/X86/X87/FBSTP.S"
 #include "tests/X86/X87/FCMOV.S"
 #include "tests/X86/X87/FCOM.S"
 #include "tests/X86/X87/FDIV.S"
