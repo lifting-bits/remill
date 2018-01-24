@@ -275,7 +275,13 @@ function (InstallExternalTarget target_name target_path install_directory instal
   )
 
   add_custom_target("${target_name}" ALL DEPENDS "${output_file_path}")
-  install(FILES "${output_file_path}" DESTINATION "${install_directory}")
+
+  install(FILES "${output_file_path}"
+    DESTINATION "${install_directory}"
+    PERMISSIONS OWNER_READ OWNER_EXECUTE
+                GROUP_READ GROUP_EXECUTE
+                WORLD_READ WORLD_EXECUTE
+  )
 endfunction ()
 
 set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}")
