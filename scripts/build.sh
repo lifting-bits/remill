@@ -97,12 +97,12 @@ function GetOSVersion
     ;;
 
     *Arch\ Linux*)
-      printf "[x] Arch Linux is not yet supported\n"
+      printf "[x] Arch Linux is not yet supported.\n"
       return 1
     ;;
 
     *)
-      printf "[x] Failed to download the required dependencies\n"
+      printf "[x] ${distribution_name} is not yet a supported distribution.\n"
       return 1
     ;;
   esac
@@ -114,17 +114,22 @@ function DownloadLibraries
 {
   # mac os x packages
   if [[ "$OSTYPE" == "darwin"* ]]; then
-    printf "[x] macOS is not yet supported\n"
+    printf "[x] macOS is not yet supported.\n"
     return 1
 
   # unsupported systems
   elif [[ "$OSTYPE" != "linux-gnu" ]]; then
+    printf "[x] Only Linux is supported currently.\n"
     return 1
   fi
 
-  GetArchVersion
-  GetOSVersion
-  
+  if ! GetArchVersion; then
+    return 1
+  fi
+
+  if ! GetOSVersion; then
+    return 1
+  fi
 
   LIBRARY_VERSION=libraries-${LLVM_VERSION}-${OS_VERSION}-${ARCH_VERSION}
 
@@ -207,7 +212,6 @@ function GetLLVMVersion
 
 function main
 {
-  
   while [[ $# -gt 0 ]] ; do
     key="$1"
 
@@ -246,11 +250,14 @@ function main
 
     shift # past argument or value
   done
-  
+
   mkdir -p ${BUILD_DIR}
   cd ${BUILD_DIR}
 
-  DownloadLibraries && Configure && Build
+  if ! (DownloadLibraries && Configure && Build); then
+  printf "[x] Build aborted.\n"
+  fi
+
   return $?
 }
 
