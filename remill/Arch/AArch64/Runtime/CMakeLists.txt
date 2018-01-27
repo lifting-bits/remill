@@ -38,6 +38,21 @@ function (add_runtime_helper target_name address_bit_size little_endian)
     BCFLAGS -std=c++11
     INCLUDEDIRECTORIES "${CMAKE_SOURCE_DIR}"
     INSTALLDESTINATION "share/remill/${REMILL_LLVM_VERSION}/semantics"
+
+    DEPENDENCIES
+    "${CMAKE_SOURCE_DIR}/remill/Arch/AArch64/Semantics/CONVERT.cpp"
+    "${CMAKE_SOURCE_DIR}/remill/Arch/AArch64/Semantics/BITBYTE.cpp"
+    "${CMAKE_SOURCE_DIR}/remill/Arch/AArch64/Semantics/SIMD.cpp"
+    "${CMAKE_SOURCE_DIR}/remill/Arch/AArch64/Semantics/COND.cpp"
+    "${CMAKE_SOURCE_DIR}/remill/Arch/AArch64/Semantics/BINARY.cpp"
+    "${CMAKE_SOURCE_DIR}/remill/Arch/AArch64/Semantics/SHIFT.cpp"
+    "${CMAKE_SOURCE_DIR}/remill/Arch/AArch64/Semantics/BRANCH.cpp"
+    "${CMAKE_SOURCE_DIR}/remill/Arch/AArch64/Semantics/DATAXFER.cpp"
+    "${CMAKE_SOURCE_DIR}/remill/Arch/AArch64/Semantics/CALL_RET.cpp"
+    "${CMAKE_SOURCE_DIR}/remill/Arch/AArch64/Semantics/MISC.cpp"
+    "${CMAKE_SOURCE_DIR}/remill/Arch/AArch64/Semantics/FLAGS.cpp"
+    "${CMAKE_SOURCE_DIR}/remill/Arch/AArch64/Semantics/LOGICAL.cpp"
+    "${CMAKE_SOURCE_DIR}/remill/Arch/AArch64/Semantics/SYSTEM.cpp"    
   )
 endfunction()
 

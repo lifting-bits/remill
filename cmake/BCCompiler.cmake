@@ -68,79 +68,86 @@ endif()
 #
 
 # this is the runtime target generator, used in a similar way to add_executable
-set(add_runtime_usage "add_runtime(target_name SOURCES <src1 src2> ADDRESS_SIZE <size> DEFINITIONS <def1 def2> BCFLAGS <bcflag1 bcflag2> LINKERFLAGS <lnkflag1 lnkflag2> INCLUDEDIRECTORIES <path1 path2> INSTALLDESTINATION <path>")
+set(add_runtime_usage "add_runtime(target_name SOURCES <src1 src2> ADDRESS_SIZE <size> DEFINITIONS <def1 def2> BCFLAGS <bcflag1 bcflag2> LINKERFLAGS <lnkflag1 lnkflag2> INCLUDEDIRECTORIES <path1 path2> INSTALLDESTINATION <path> DEPENDENCIES <dependency1 dependency2>")
 
 function(add_runtime target_name)
-  if (NOT DEFINED CMAKE_BC_COMPILER)
+  if(NOT DEFINED CMAKE_BC_COMPILER)
     message(FATAL_ERROR "The bitcode compiler was not found!")
   endif()
 
-  if (NOT DEFINED CMAKE_BC_LINKER)
+  if(NOT DEFINED CMAKE_BC_LINKER)
     message(FATAL_ERROR "The bitcode linker was not found!")
   endif()
 
-  foreach (macro_parameter ${ARGN})
-    if ("${macro_parameter}" STREQUAL "SOURCES")
+  foreach(macro_parameter ${ARGN})
+    if("${macro_parameter}" STREQUAL "SOURCES")
       set(state "${macro_parameter}")
       continue()
 
-    elseif ("${macro_parameter}" STREQUAL "ADDRESS_SIZE")
+    elseif("${macro_parameter}" STREQUAL "ADDRESS_SIZE")
       set(state "${macro_parameter}")
       continue()
 
-    elseif ("${macro_parameter}" STREQUAL "DEFINITIONS")
+    elseif("${macro_parameter}" STREQUAL "DEFINITIONS")
       set(state "${macro_parameter}")
       continue()
 
-    elseif ("${macro_parameter}" STREQUAL "BCFLAGS")
+    elseif("${macro_parameter}" STREQUAL "BCFLAGS")
       set(state "${macro_parameter}")
       continue()
 
-    elseif ("${macro_parameter}" STREQUAL "LINKERFLAGS")
+    elseif("${macro_parameter}" STREQUAL "LINKERFLAGS")
       set(state "${macro_parameter}")
       continue()
 
-    elseif ("${macro_parameter}" STREQUAL "INCLUDEDIRECTORIES")
+    elseif("${macro_parameter}" STREQUAL "INCLUDEDIRECTORIES")
       set(state "${macro_parameter}")
       continue()
 
-    elseif ("${macro_parameter}" STREQUAL "INSTALLDESTINATION")
+    elseif("${macro_parameter}" STREQUAL "INSTALLDESTINATION")
+      set(state "${macro_parameter}")
+      continue()
+
+    elseif("${macro_parameter}" STREQUAL "DEPENDENCIES")
       set(state "${macro_parameter}")
       continue()
     endif()
 
-    if ("${state}" STREQUAL "SOURCES")
+    if("${state}" STREQUAL "SOURCES")
       list(APPEND source_file_list "${macro_parameter}")
 
-    elseif ("${state}" STREQUAL "ADDRESS_SIZE")
-      if (DEFINED address_size_bits_found)
+    elseif("${state}" STREQUAL "ADDRESS_SIZE")
+      if(DEFINED address_size_bits_found)
         message(SEND_ERROR "The ADDRESS_SIZE parameter has been specified twice!")
       endif()
 
-      if (NOT "${macro_parameter}" MATCHES "^[0-9]+$")
+      if(NOT "${macro_parameter}" MATCHES "^[0-9]+$")
         message(SEND_ERROR "Invalid ADDRESS_SIZE parameter passed to add_runtime")
       endif()
 
       list(APPEND definitions "ADDRESS_SIZE_BITS=${macro_parameter}")
       set(address_size_bits_found True)
 
-    elseif ("${state}" STREQUAL "DEFINITIONS")
+    elseif("${state}" STREQUAL "DEFINITIONS")
       list(APPEND definition_list "-D${macro_parameter}")
 
-    elseif ("${state}" STREQUAL "BCFLAGS")
+    elseif("${state}" STREQUAL "BCFLAGS")
       list(APPEND bc_flag_list "${macro_parameter}")
 
-    elseif ("${state}" STREQUAL "LINKERFLAGS")
+    elseif("${state}" STREQUAL "LINKERFLAGS")
       list(APPEND linker_flag_list "${macro_parameter}")
 
-    elseif ("${state}" STREQUAL "INCLUDEDIRECTORIES")
+    elseif("${state}" STREQUAL "INCLUDEDIRECTORIES")
       list(APPEND include_directory_list "-I${macro_parameter}")
 
-    elseif ("${state}" STREQUAL "INSTALLDESTINATION")
+    elseif("${state}" STREQUAL "INSTALLDESTINATION")
       if(DEFINED install_destination)
         message(SEND_ERROR "The INSTALLDESTINATION parameter has been specified twice!")
         set(install_destination "${macro_parameter}")
       endif()
+
+    elseif("${state}" STREQUAL "DEPENDENCIES")
+      list(APPEND dependency_list "${macro_parameter}")
 
     else()
       message(SEND_ERROR "Syntax error. Usage: ${add_runtime_usage}")
@@ -158,16 +165,20 @@ function(add_runtime target_name)
   foreach(source_file ${source_file_list})
     get_filename_component(source_file_name "${source_file}" NAME)
     get_filename_component(absolute_source_file_path "${source_file}" ABSOLUTE)
-    set(absolute_output_file_path "${CMAKE_CURRENT_BINARY_DIR}/${target_name}_${source_file_name}.bc.o")
+    set(absolute_output_file_path "${CMAKE_CURRENT_BINARY_DIR}/${target_name}_${source_file_name}.bc")
 
     get_property(source_file_properties SOURCE "${absolute_source_file_path}" PROPERTY COMPILE_FLAGS)
     string(REPLACE " " ";" source_file_option_list "${source_file_properties}")
 
+    if(NOT "${dependency_list}" STREQUAL "")
+      set(dependency_list_directive DEPENDS ${dependency_list})
+    endif()
+
     add_custom_command(OUTPUT "${absolute_output_file_path}"
       COMMAND "${CMAKE_BC_COMPILER}" ${include_directory_list} ${definition_list} ${DEFAULT_BC_COMPILER_FLAGS} ${bc_flag_list} ${source_file_option_list} -c "${absolute_source_file_path}" -o "${absolute_output_file_path}"
-      DEPENDS "${absolute_source_file_path}"
-      IMPLICIT_DEPENDS CXX "${absolute_source_file_path}"
-      COMMENT "Building BC object: ${absolute_output_file_path}"
+      MAIN_DEPENDENCY "${absolute_source_file_path}"
+      ${dependency_list_directive}
+      COMMENT "Building BC object ${absolute_output_file_path}"
     )
 
     set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES "${absolute_output_file_path}")
