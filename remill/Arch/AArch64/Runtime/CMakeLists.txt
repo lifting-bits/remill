@@ -28,7 +28,7 @@ set(ARMRUNTIME_SOURCEFILES
 set_source_files_properties(Instructions.cpp PROPERTIES COMPILE_FLAGS "-O3 -g0")
 set_source_files_properties(BasicBlock.cpp PROPERTIES COMPILE_FLAGS "-O0 -g3")
 
-function (add_runtime_helper target_name address_bit_size little_endian)
+function(add_runtime_helper target_name address_bit_size little_endian)
   message(" > Generating runtime target: ${target_name}")
 
   add_runtime(${target_name}
@@ -56,7 +56,7 @@ function (add_runtime_helper target_name address_bit_size little_endian)
   )
 endfunction()
 
-if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-    #add_runtime_helper(aarch64be 64 0)
-    add_runtime_helper(aarch64 64 1)
-endif ()
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  #add_runtime_helper(aarch64be 64 0)
+  add_runtime_helper(aarch64 64 1)
+endif()
