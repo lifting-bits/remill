@@ -453,8 +453,12 @@ static void RunWithFlags(const test::TestInfo *info,
 
   ResetFlags();
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winvalid-offsetof"
   // We'll compare the `ST` and `XMM` regs via their other stored forms.
   auto kill_size = sizeof(lifted_state->x87) - offsetof(FPU, fxsave.st);
+#pragma clang diagnostic pop
+
   memset(lifted_state->x87.fxsave.st, 0, kill_size);
   memset(native_state->x87.fxsave.st, 0, kill_size);
 

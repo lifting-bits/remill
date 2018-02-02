@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "remill/Arch/Assembly.S"
+
 #ifndef ADDRESS_SIZE_BITS
 # define ADDRESS_SIZE_BITS 64
 #endif
@@ -25,36 +27,9 @@
 #ifndef HAS_FEATURE_AVX512
 # define HAS_FEATURE_AVX512 1
 #endif
-
-#define CAT_3(a, b) a ## b
-#define CAT_2(a, b) CAT_3(a, b)
-#define CAT(a, b) CAT_2(a, b)
-
-#define CAT3(a, b, c) CAT(a, CAT(b, c))
-
-#define TO_STRING3(a) # a
-#define TO_STRING2(a) TO_STRING3(a)
-#define TO_STRING(a) TO_STRING2(a)
-
-/* Note:    Apple mangles C symbol names to have a leading underscore. */
-#ifdef __APPLE__
-# define SYMBOL(x) CAT(_, x)
-#else
-# define SYMBOL(x) x
-#endif
         
 #define FUNC_NAME(instr_name, num_args) \
     CAT3(instr_name, _, num_args)
-
-#if __APPLE__
-#define TEXT_SECTION .section __TEXT,__text
-#define DATA_SECTION .section __DATA,__data
-#define CONST_SECTION .section __TEXT,__const
-#else
-#define TEXT_SECTION .text
-#define DATA_SECTION .data
-#define CONST_SECTION .rodata
-#endif // __APPLE__   
         
 /* Defines the beginning of a test function. The key detail is that tests
  * register themselves into data structures located in a special section of
@@ -175,7 +150,7 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .intel_syntax noprefix ;
 
 #ifndef IN_TEST_GENERATOR
-    .data
+    DATA_SECTION
     .extern SYMBOL(gTestToRun)
     .extern SYMBOL(gLiftedState)
     .extern SYMBOL(gNativeState)
@@ -184,7 +159,7 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .extern SYMBOL(gStackSaveSlot)
     .extern SYMBOL(gRflagsForTest)
 
-    .data
+    CONST_SECTION
     .align 16
 SYMBOL(fpu_cwd):
     .long 0x27F  /* Default is 0x37F */
@@ -213,7 +188,7 @@ SYMBOL(vec_data):
     /* This function tail-calls to the test that we want to run via the
      * `gTestToRun` pointer.
      */
-    .text
+    TEXT_SECTION
     .extern SYMBOL(__remill_detach)
     .align 16
     .globl SYMBOL(DoInvokeTestCase)
@@ -327,7 +302,7 @@ SYMBOL(__x86_save_state_after):
 # undef STATE_PTR
 
 #else
-    .text
+    TEXT_SECTION
 SYMBOL(InvokeTestCase):
 SYMBOL(__x86_save_state_after):
     ud2;
@@ -340,7 +315,7 @@ SYMBOL(__x86_save_state_after):
     .balign 128
     .globl SYMBOL(__x86_test_table_begin)
 SYMBOL(__x86_test_table_begin):
-    .text
+    TEXT_SECTION
 
 /* For argument register and return register definitions. */
 
