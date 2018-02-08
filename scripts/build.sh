@@ -73,7 +73,11 @@ function GetArchVersion
 function DownloadCxxCommon
 {
   wget https://s3.amazonaws.com/cxx-common/${LIBRARY_VERSION}.tar.gz
-  tar xf ${LIBRARY_VERSION}.tar.gz --warning=no-timestamp
+  local TAR_OPTIONS="--warning=no-timestamp"
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    TAR_OPTIONS=""
+  fi  
+  tar xf ${LIBRARY_VERSION}.tar.gz $TAR_OPTIONS
   rm ${LIBRARY_VERSION}.tar.gz
 
   # Make sure modification times are not in the future.
@@ -114,17 +118,15 @@ function DownloadLibraries
 {
   # mac os x packages
   if [[ "$OSTYPE" == "darwin"* ]]; then
-    printf "[x] macOS is not yet supported\n"
-    return 1
-
+    OS_VERSION=osx
   # unsupported systems
   elif [[ "$OSTYPE" != "linux-gnu" ]]; then
     return 1
+  else
+    GetOSVersion
   fi
 
-  GetArchVersion
-  GetOSVersion
-  
+  GetArchVersion  
 
   LIBRARY_VERSION=libraries-${LLVM_VERSION}-${OS_VERSION}-${ARCH_VERSION}
 
@@ -161,7 +163,11 @@ function Configure
 # Compile the code.
 function Build
 {
-  NPROC=$( nproc )
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    NPROC=$( sysctl -n hw.ncpu )
+  else
+    NPROC=$( nproc )
+  fi
   make -j${NPROC}
   return $?
 }
