@@ -524,6 +524,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/UNPCKHPD.S"
 #include "tests/X86/SSE/MOVDDUP.S"
 #include "tests/X86/SSE/SQRTSS.S"
+#include "tests/X86/SSE/SQRTSD.S"
 #include "tests/X86/SSE/MXCSR.S"
 
 #include "tests/X86/STRINGOP/CMPS.S"
