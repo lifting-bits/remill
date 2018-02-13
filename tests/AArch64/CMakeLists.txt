@@ -20,73 +20,71 @@ list(APPEND PROJECT_LIBRARIES ${gtest_LIBRARIES})
 list(APPEND PROJECT_INCLUDEDIRECTORIES ${gtest_INCLUDE_DIRS})
 
 enable_testing()
-enable_language(BC)
 enable_language(ASM)
 
 add_custom_target(build_aarch64_tests)
 
 add_executable(lift-aarch64-tests
-    EXCLUDE_FROM_ALL
-    Lift.cpp
-    Tests.S
+  EXCLUDE_FROM_ALL
+  Lift.cpp
+  Tests.S
 )
 
 set_target_properties(lift-aarch64-tests PROPERTIES
-    POSITION_INDEPENDENT_CODE ON
-    COMPILE_FLAGS "-fPIC -pie")
+  POSITION_INDEPENDENT_CODE ON
+  COMPILE_FLAGS "-fPIC -pie"
+)
 
 target_compile_options(lift-aarch64-tests
-    PRIVATE ${X86_TEST_FLAGS}
-            -DIN_TEST_GENERATOR
+  PRIVATE ${X86_TEST_FLAGS}
+  -DIN_TEST_GENERATOR
 )
 
 target_link_libraries(lift-aarch64-tests PUBLIC remill ${PROJECT_LIBRARIES})
 target_include_directories(lift-aarch64-tests PUBLIC ${PROJECT_INCLUDEDIRECTORIES})
-target_compile_definitions(lift-aarch64-tests PUBLIC ${PROJECT_DEFINITIONS})
 
 add_executable(run-aarch64-tests
-    EXCLUDE_FROM_ALL
-    Run.cpp
-    Tests.S
-    tests_aarch64.S
+  EXCLUDE_FROM_ALL
+  Run.cpp
+  Tests.S
+  tests_aarch64.S
 )
 
 set_target_properties(run-aarch64-tests PROPERTIES
-    POSITION_INDEPENDENT_CODE ON
-    COMPILE_FLAGS "-fPIC -pie")
-
-add_custom_command(
-    OUTPUT tests_aarch64.bc
-    COMMAND lift-aarch64-tests
-            --arch aarch64
-            --bc_out tests_aarch64.bc
-    DEPENDS lift-aarch64-tests semantics
+  POSITION_INDEPENDENT_CODE ON
+  COMPILE_FLAGS "-fPIC -pie"
 )
 
 add_custom_command(
-    OUTPUT  tests_aarch64.S
-    COMMAND ${CMAKE_BC_COMPILER}
-            -Wno-override-module
-            -S -O1 -g0
-            -c tests_aarch64.bc
-            -o tests_aarch64.S
-    DEPENDS tests_aarch64.bc
+  OUTPUT tests_aarch64.bc
+  COMMAND lift-aarch64-tests --arch aarch64 --bc_out tests_aarch64.bc
+  DEPENDS lift-aarch64-tests semantics
+)
+
+add_custom_command(
+  OUTPUT  tests_aarch64.S
+  COMMAND ${CMAKE_BC_COMPILER}
+          -Wno-override-module
+          -S -O1 -g0
+          -c tests_aarch64.bc
+          -o tests_aarch64.S
+  DEPENDS tests_aarch64.bc
 )
 
 target_link_libraries(run-aarch64-tests PUBLIC remill ${PROJECT_LIBRARIES})
 target_include_directories(run-aarch64-tests PUBLIC ${PROJECT_INCLUDEDIRECTORIES})
-target_compile_definitions(run-aarch64-tests PUBLIC ${PROJECT_DEFINITIONS})
 
 target_compile_options(run-aarch64-tests
-    PRIVATE -I${CMAKE_SOURCE_DIR}
-            -DADDRESS_SIZE_BITS=64
-            -DGTEST_HAS_RTTI=0
-            -DGTEST_HAS_TR1_TUPLE=0
+  PRIVATE -I${CMAKE_SOURCE_DIR}
+          -DADDRESS_SIZE_BITS=64
+          -DGTEST_HAS_RTTI=0
+          -DGTEST_HAS_TR1_TUPLE=0
 )
 
 add_dependencies(build_aarch64_tests
-    lift-aarch64-tests
-    run-aarch64-tests
+  lift-aarch64-tests
+  run-aarch64-tests
 )
 
 add_test(aarch64 run-aarch64-tests)
+
