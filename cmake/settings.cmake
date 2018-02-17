@@ -49,8 +49,12 @@ macro(main)
   # compiler and linker flags
   #
 
-  # warnings and compiler settings
+  # enable c++14 for all targets
+  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_EXTENSIONS OFF)
+
   if(WIN32)
+    # warnings and compiler settings
     set(GLOBAL_CXXFLAGS
       /MD /nologo /W3 /EHsc /wd4141 /wd4146 /wd4180 /wd4244
       /wd4258 /wd4267 /wd4291 /wd4345 /wd4351 /wd4355 /wd4456
@@ -71,10 +75,6 @@ macro(main)
     )
 
   else()
-    # enable c++11 for all targets
-    set(CMAKE_CXX_STANDARD 11)
-    set(CMAKE_CXX_EXTENSIONS OFF)
-
     # warnings and compiler settings
     set(GLOBAL_CXXFLAGS
       -Wall -Wextra -Wno-unused-parameter -Wno-c++98-compat
@@ -100,7 +100,6 @@ macro(main)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
       list(APPEND GLOBAL_CXXFLAGS -O0)
       list(APPEND PROJECT_DEFINITIONS "DEBUG")
-
     else()
       list(APPEND GLOBAL_CXXFLAGS -O3)
       list(APPEND PROJECT_DEFINITIONS "NDEBUG")

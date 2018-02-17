@@ -174,28 +174,38 @@ endfunction()
 set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}.${LLVM_MINOR_VERSION}")
 math(EXPR REMILL_LLVM_VERSION_NUMBER "${LLVM_MAJOR_VERSION} * 100 + ${LLVM_MINOR_VERSION}")
 
-set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}")
-set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}")
+if(DEFINED WIN32)
+  set(dynamic_lib_prefix "")
+  set(dynamic_lib_extension "dll")
+  set(executable_extension ".exe")
+else()
+  set(dynamic_lib_prefix "lib")
+  set(dynamic_lib_extension "so")
+  set(executable_extension "")
+endif()
+
+set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}${executable_extension}")
+set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}${executable_extension}")
 
 if("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "" OR NOT EXISTS "${LIBRARY_REPOSITORY_ROOT}/llvm")
-  set(INSTALLED_LIBLLVM_NAME "libLLVM-${REMILL_LLVM_VERSION}.so")
+  set(INSTALLED_LIBLLVM_NAME "${dynamic_lib_prefix}LLVM-${REMILL_LLVM_VERSION}.${dynamic_lib_extension}")
 
   # system binaries are not built statically, so we need to fix the rpath
-  find_program("clang_location" "clang-${REMILL_LLVM_VERSION}")
+  find_program("clang_location" "clang-${REMILL_LLVM_VERSION}${executable_extension}")
   if("${clang_location}" STREQUAL "clang_location-NOTFOUND")
     message(FATAL_ERROR "InstallExternalTarget: Failed to locate the clang executable")
   endif()
 
   message("InstallExternalTarget: Found clang executable: ${clang_location}")
 
-  find_program("llvmlink_location" "llvm-link")
+  find_program("llvmlink_location" "llvm-link${executable_extension}")
   if("${llvmlink_location}" STREQUAL "llvmlink_location-NOTFOUND")
     message(FATAL_ERROR "InstallExternalTarget: Failed to locate the llvm-link executable")
   endif()
 
   message("InstallExternalTarget: Found llvm-link executable: ${llvmlink_location}")
 
-  find_library("libllvm_location" "libLLVM-${REMILL_LLVM_VERSION}.so")
+  find_library("libllvm_location" "${dynamic_lib_prefix}LLVM-${REMILL_LLVM_VERSION}.${dynamic_lib_extension}")
   if("${libllvm_location}" STREQUAL "libllvm_location-NOTFOUND")
     message(FATAL_ERROR "InstallExternalTarget: Failed to locate the libLLVM dynamic library")
   endif()
@@ -211,10 +221,10 @@ if("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "" OR NOT EXISTS "${LIBRARY_REPOSITORY_
 else()
   # The executable in our binary repository are statically built, meaning that we don't need
   # to change the rpath
-  InstallExternalTarget("ext_clang" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/clang-${REMILL_LLVM_VERSION}"
+  InstallExternalTarget("ext_clang" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/clang${executable_extension}"
     "${CMAKE_INSTALL_PREFIX}/bin" "${INSTALLED_CLANG_NAME}")
 
-  InstallExternalTarget("ext_llvmlink" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/llvm-link"
+  InstallExternalTarget("ext_llvmlink" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/llvm-link${executable_extension}"
     "${CMAKE_INSTALL_PREFIX}/bin" "${INSTALLED_LLVMLINK_NAME}")
 endif()
 

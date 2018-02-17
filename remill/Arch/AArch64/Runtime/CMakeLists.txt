@@ -35,7 +35,7 @@ function(add_runtime_helper target_name address_bit_size little_endian)
     SOURCES ${ARMRUNTIME_SOURCEFILES}
     ADDRESS_SIZE ${address_bit_size}
     DEFINITIONS "LITTLE_ENDIAN=${little_endian}"
-    BCFLAGS -std=c++11
+    BCFLAGS -std=c++14
     INCLUDEDIRECTORIES "${CMAKE_SOURCE_DIR}"
     INSTALLDESTINATION "share/remill/${REMILL_LLVM_VERSION}/semantics"
 

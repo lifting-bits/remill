@@ -30,7 +30,7 @@ function(add_runtime_helper target_name address_bit_size enable_avx enable_avx51
     SOURCES ${X86RUNTIME_SOURCEFILES}
     ADDRESS_SIZE ${address_bit_size}
     DEFINITIONS "HAS_FEATURE_AVX=${enable_avx}" "HAS_FEATURE_AVX512=${enable_avx512}"
-    BCFLAGS -std=c++11
+    BCFLAGS -std=c++14
     INCLUDEDIRECTORIES "${CMAKE_SOURCE_DIR}"
     INSTALLDESTINATION "share/remill/${REMILL_LLVM_VERSION}/semantics"
 
