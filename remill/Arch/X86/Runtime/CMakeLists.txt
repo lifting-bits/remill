@@ -23,6 +23,12 @@ set(X86RUNTIME_SOURCEFILES
 set_source_files_properties(Instructions.cpp PROPERTIES COMPILE_FLAGS "-O3 -g0")
 set_source_files_properties(BasicBlock.cpp PROPERTIES COMPILE_FLAGS "-O0 -g3")
 
+if(DEFINED WIN32)
+  set(install_folder "${CMAKE_INSTALL_PREFIX}/remill/${REMILL_LLVM_VERSION}/semantics")
+else()
+  set(install_folder "${CMAKE_INSTALL_PREFIX}/share/remill/${REMILL_LLVM_VERSION}/semantics")
+endif()
+
 function(add_runtime_helper target_name address_bit_size enable_avx enable_avx512)
   message(" > Generating runtime target: ${target_name}")
 
@@ -32,7 +38,7 @@ function(add_runtime_helper target_name address_bit_size enable_avx enable_avx51
     DEFINITIONS "HAS_FEATURE_AVX=${enable_avx}" "HAS_FEATURE_AVX512=${enable_avx512}"
     BCFLAGS -std=c++14
     INCLUDEDIRECTORIES "${CMAKE_SOURCE_DIR}"
-    INSTALLDESTINATION "share/remill/${REMILL_LLVM_VERSION}/semantics"
+    INSTALLDESTINATION "${install_folder}"
 
     DEPENDENCIES
     "${CMAKE_SOURCE_DIR}/remill/Arch/X86/Semantics/CONVERT.cpp"

@@ -140,9 +140,10 @@ function(add_runtime target_name)
 
     elseif("${state}" STREQUAL "INSTALLDESTINATION")
       if(DEFINED install_destination)
-        message(SEND_ERROR "The INSTALLDESTINATION parameter has been specified twice!")
-        set(install_destination "${macro_parameter}")
+        message("The INSTALLDESTINATION parameter has been specified twice!")
       endif()
+
+      set(install_destination "${macro_parameter}")
 
     elseif("${state}" STREQUAL "DEPENDENCIES")
       list(APPEND dependency_list "${macro_parameter}")
@@ -196,9 +197,7 @@ function(add_runtime target_name)
   add_custom_target("${target_name}" ALL DEPENDS "${absolute_target_path}")
   set_property(TARGET "${target_name}" PROPERTY LOCATION "${absolute_target_path}")
 
-  set("${target_name}_location" "${absolute_target_path}" PARENT_SCOPE)
-
   if(DEFINED install_destination)
-    install(FILES "${target_name}_location" DESTINATION "${install_destination}")
+    install(FILES "${absolute_target_path}" DESTINATION "${install_destination}")
   endif()
 endfunction()

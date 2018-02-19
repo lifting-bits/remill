@@ -29,6 +29,18 @@ FindAndSelectClangCompiler()
 
 set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 
+if(DEFINED WIN32)
+  set(dynamic_lib_prefix "")
+  set(dynamic_lib_extension "dll")
+  set(executable_extension ".exe")
+  set(install_folder "${CMAKE_INSTALL_PREFIX}/remill")
+else()
+  set(dynamic_lib_prefix "lib")
+  set(dynamic_lib_extension "so")
+  set(executable_extension "")
+  set(install_folder "${CMAKE_INSTALL_PREFIX}")
+endif()
+
 #
 # libraries
 #
@@ -66,7 +78,12 @@ list(APPEND PROJECT_LIBRARIES gflags)
 # target settings
 #
 
-list(APPEND PROJECT_DEFINITIONS "REMILL_INSTALL_SEMANTICS_DIR=\"${CMAKE_INSTALL_PREFIX}/share/remill/${REMILL_LLVM_VERSION}/semantics/\"")
+if(DEFINED WIN32)
+  list(APPEND PROJECT_DEFINITIONS "REMILL_INSTALL_SEMANTICS_DIR=\"${install_folder}/${REMILL_LLVM_VERSION}/semantics/\"")
+else()
+  list(APPEND PROJECT_DEFINITIONS "REMILL_INSTALL_SEMANTICS_DIR=\"${CMAKE_INSTALL_PREFIX}/share/remill/${REMILL_LLVM_VERSION}/semantics/\"")
+endif()
+
 list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_X86=\"${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/X86/Runtime/\"")
 list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_AARCH64=\"${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/AArch64/Runtime/\"")
 
@@ -174,16 +191,6 @@ endfunction()
 set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}.${LLVM_MINOR_VERSION}")
 math(EXPR REMILL_LLVM_VERSION_NUMBER "${LLVM_MAJOR_VERSION} * 100 + ${LLVM_MINOR_VERSION}")
 
-if(DEFINED WIN32)
-  set(dynamic_lib_prefix "")
-  set(dynamic_lib_extension "dll")
-  set(executable_extension ".exe")
-else()
-  set(dynamic_lib_prefix "lib")
-  set(dynamic_lib_extension "so")
-  set(executable_extension "")
-endif()
-
 set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}${executable_extension}")
 set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}${executable_extension}")
 
@@ -212,20 +219,20 @@ if("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "" OR NOT EXISTS "${LIBRARY_REPOSITORY_
   
   message("InstallExternalTarget: Found libLLVM location: ${libllvm_location}")
 
-  InstallExternalTarget("ext_clang" "${clang_location}" "${CMAKE_INSTALL_PREFIX}/bin"
-    "${INSTALLED_CLANG_NAME}" "${CMAKE_INSTALL_PREFIX}/lib")
+  InstallExternalTarget("ext_clang" "${clang_location}" "${install_folder}/bin"
+    "${INSTALLED_CLANG_NAME}" "${install_folder}/lib")
 
-  InstallExternalTarget("ext_llvmlink" "${llvmlink_location}" "${CMAKE_INSTALL_PREFIX}/bin"
-    "${INSTALLED_LLVMLINK_NAME}" "${CMAKE_INSTALL_PREFIX}/lib")
+  InstallExternalTarget("ext_llvmlink" "${llvmlink_location}" "${install_folder}/bin"
+    "${INSTALLED_LLVMLINK_NAME}" "${install_folder}/lib")
 
 else()
   # The executable in our binary repository are statically built, meaning that we don't need
   # to change the rpath
   InstallExternalTarget("ext_clang" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/clang${executable_extension}"
-    "${CMAKE_INSTALL_PREFIX}/bin" "${INSTALLED_CLANG_NAME}")
+    "${install_folder}/bin" "${INSTALLED_CLANG_NAME}")
 
   InstallExternalTarget("ext_llvmlink" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/llvm-link${executable_extension}"
-    "${CMAKE_INSTALL_PREFIX}/bin" "${INSTALLED_LLVMLINK_NAME}")
+    "${install_folder}/bin" "${INSTALLED_LLVMLINK_NAME}")
 endif()
 
 #

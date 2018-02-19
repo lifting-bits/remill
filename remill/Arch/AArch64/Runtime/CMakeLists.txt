@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Fix behavior of CMAKE_CXX_STANDARD when targeting macOS.
-if (POLICY CMP0025)
-  cmake_policy(SET CMP0025 NEW)
-endif ()
-
-cmake_minimum_required (VERSION 3.2)
+cmake_minimum_required(VERSION 3.2)
 project(arm_runtime)
 
 set(ARMRUNTIME_SOURCEFILES
@@ -28,6 +23,12 @@ set(ARMRUNTIME_SOURCEFILES
 set_source_files_properties(Instructions.cpp PROPERTIES COMPILE_FLAGS "-O3 -g0")
 set_source_files_properties(BasicBlock.cpp PROPERTIES COMPILE_FLAGS "-O0 -g3")
 
+if(DEFINED WIN32)
+  set(install_folder "${CMAKE_INSTALL_PREFIX}/remill/${REMILL_LLVM_VERSION}/semantics")
+else()
+  set(install_folder "${CMAKE_INSTALL_PREFIX}/share/remill/${REMILL_LLVM_VERSION}/semantics")
+endif()
+
 function(add_runtime_helper target_name address_bit_size little_endian)
   message(" > Generating runtime target: ${target_name}")
 
@@ -37,7 +38,7 @@ function(add_runtime_helper target_name address_bit_size little_endian)
     DEFINITIONS "LITTLE_ENDIAN=${little_endian}"
     BCFLAGS -std=c++14
     INCLUDEDIRECTORIES "${CMAKE_SOURCE_DIR}"
-    INSTALLDESTINATION "share/remill/${REMILL_LLVM_VERSION}/semantics"
+    INSTALLDESTINATION "${install_folder}"
 
     DEPENDENCIES
     "${CMAKE_SOURCE_DIR}/remill/Arch/AArch64/Semantics/CONVERT.cpp"
