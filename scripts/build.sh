@@ -76,7 +76,7 @@ function GetArchVersion
 
 function DownloadCxxCommon
 {
-  wget https://s3.amazonaws.com/cxx-common/${LIBRARY_VERSION}.tar.gz
+  curl -O https://s3.amazonaws.com/cxx-common/${LIBRARY_VERSION}.tar.gz
   if [[ $? -ne 0 ]]; then
     return 1
   fi
@@ -84,7 +84,8 @@ function DownloadCxxCommon
   local TAR_OPTIONS="--warning=no-timestamp"
   if [[ "$OSTYPE" == "darwin"* ]]; then
     TAR_OPTIONS=""
-  fi  
+  fi
+
   tar xf ${LIBRARY_VERSION}.tar.gz $TAR_OPTIONS
   rm ${LIBRARY_VERSION}.tar.gz
 
@@ -166,7 +167,6 @@ function Configure
   export PATH=“${TRAILOFBITS_LIBRARIES}/cmake/bin:${TRAILOFBITS_LIBRARIES}/llvm/bin:${PATH}”
   export CC="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang"
   export CXX="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang++"
-
 
   # Configure the remill build, specifying that it should use the pre-built
   # Clang compiler binaries.

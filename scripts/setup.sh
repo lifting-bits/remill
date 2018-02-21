@@ -35,7 +35,7 @@ SetupLinux() {
      git \
      cmake \
      python2.7 python-pip python-virtualenv \
-     wget \
+     curl \
      build-essential \
      gcc-multilib g++-multilib \
      libtinfo-dev \
