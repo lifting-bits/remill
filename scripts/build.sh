@@ -59,6 +59,10 @@ function GetArchVersion
       ARCH_VERSION=amd64
       return 0
     ;;
+    x86-64)
+      ARCH_VERSION=amd64
+      return 0
+    ;;
     aarch64)
       ARCH_VERSION=aarch64
       return 0
@@ -73,6 +77,10 @@ function GetArchVersion
 function DownloadCxxCommon
 {
   wget https://s3.amazonaws.com/cxx-common/${LIBRARY_VERSION}.tar.gz
+  if [[ $? -ne 0 ]]; then
+    return 1
+  fi
+  
   local TAR_OPTIONS="--warning=no-timestamp"
   if [[ "$OSTYPE" == "darwin"* ]]; then
     TAR_OPTIONS=""
@@ -82,6 +90,8 @@ function DownloadCxxCommon
 
   # Make sure modification times are not in the future.
   find ${BUILD_DIR}/libraries -type f -exec touch {} \;
+  
+  return 0
 }
 
 # Attempt to detect the OS distribution name.
@@ -101,12 +111,12 @@ function GetOSVersion
     ;;
 
     *Arch\ Linux*)
-      printf "[x] Arch Linux is not yet supported\n"
+      printf "[x] Arch Linux is not yet supported.\n"
       return 1
     ;;
 
     *)
-      printf "[x] Failed to download the required dependencies\n"
+      printf "[x] ${distribution_name} is not yet a supported distribution.\n"
       return 1
     ;;
   esac
@@ -116,24 +126,33 @@ function GetOSVersion
 # google protobuf, gflags, glog, gtest, capstone, and llvm in it.
 function DownloadLibraries
 {
-  # mac os x packages
+  # macOS packages
   if [[ "$OSTYPE" == "darwin"* ]]; then
     OS_VERSION=osx
-  # unsupported systems
-  elif [[ "$OSTYPE" != "linux-gnu" ]]; then
-    return 1
+
+  # Linux packages
+  elif [[ "$OSTYPE" == "linux-gnu" ]]; then
+    if ! GetOSVersion; then
+      return 1
+    fi
   else
-    GetOSVersion
+    printf "[x] OS ${OSTYPE} is not supported.\n"
+    return 1
   fi
 
-  GetArchVersion  
+  if ! GetArchVersion; then
+    return 1
+  fi
 
   LIBRARY_VERSION=libraries-${LLVM_VERSION}-${OS_VERSION}-${ARCH_VERSION}
 
   printf "[-] Library version is ${LIBRARY_VERSION}\n"
 
-  if [[ ! -d "${BUILD_DIR}/libraries" ]] ; then
-    DownloadCxxCommon
+  if [[ ! -d "${BUILD_DIR}/libraries" ]]; then
+    if ! DownloadCxxCommon; then
+      printf "[x] Unable to download cxx-common build ${LIBRARY_VERSION}.\n"
+      return 1
+    fi
   fi
 
   return 0
@@ -213,7 +232,6 @@ function GetLLVMVersion
 
 function main
 {
-  
   while [[ $# -gt 0 ]] ; do
     key="$1"
 
@@ -252,11 +270,14 @@ function main
 
     shift # past argument or value
   done
-  
+
   mkdir -p ${BUILD_DIR}
   cd ${BUILD_DIR}
 
-  DownloadLibraries && Configure && Build
+  if ! (DownloadLibraries && Configure && Build); then
+  printf "[x] Build aborted.\n"
+  fi
+
   return $?
 }
 

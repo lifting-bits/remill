@@ -14,9 +14,27 @@
  * limitations under the License.
  */
 
+#define SNAN_32 0x7fbfffff
+#define SNAN_64 0x7ff0000000000001
+
+#define QNAN_32 0x7fffffff
+#define QNAN_64 0x7ff8000000000001
+
+
 TEST_BEGIN(FNOP, 1)
 TEST_INPUTS(0)
     fnop
+TEST_END
+
+TEST_BEGIN(FFREE, 1)
+TEST_INPUTS(0)
+    ffree st(0)
+TEST_END
+
+TEST_BEGIN(FFREEP, 1)
+TEST_INPUTS(0)
+  // ffreep st(0)
+  .byte 0xdf, 0xc0
 TEST_END
 
 TEST_BEGIN(FWAIT, 1)
@@ -31,6 +49,8 @@ TEST_END
 
 TEST_BEGIN_64(FABS, 1)
 TEST_INPUTS(
+    QNAN_64,
+    SNAN_64,
     0x7ff0000000000000,  /* +inf */
     0xfff0000000000000,  /* -inf */
     0x3fe0000000000000,  /* 0.5 */
@@ -43,6 +63,8 @@ TEST_END_64
 
 TEST_BEGIN_64(FCHS, 1)
 TEST_INPUTS(
+    QNAN_64,
+    SNAN_64,
     0x7ff0000000000000,  /* +inf */
     0xfff0000000000000,  /* -inf */
     0x3fe0000000000000,  /* 0.5 */
@@ -55,6 +77,8 @@ TEST_END_64
 
 TEST_BEGIN_64(FCOS, 1)
 TEST_INPUTS(
+    QNAN_64,
+    SNAN_64,
     0x4058ff5c28f5c28f,  /* 99.99 */
     0xc058ff5c28f5c28f  /* -99.99 */)
 
@@ -65,6 +89,8 @@ TEST_END_64
 
 TEST_BEGIN_64(FSIN, 1)
 TEST_INPUTS(
+    QNAN_64,
+    SNAN_64,
     0x4058ff5c28f5c28f,  /* 99.99 */
     0xc058ff5c28f5c28f  /* -99.99 */)
 
@@ -75,6 +101,8 @@ TEST_END_64
 
 TEST_BEGIN_64(FSINCOS, 1)
 TEST_INPUTS(
+    QNAN_64,
+    SNAN_64,
     0x4058ff5c28f5c28f,  /* 99.99 */
     0xc058ff5c28f5c28f  /* -99.99 */)
 
@@ -85,6 +113,8 @@ TEST_END_64
 
 TEST_BEGIN_64(FSCALE, 1)
 TEST_INPUTS(
+    QNAN_64,
+    SNAN_64,
     0x401199999999999a,  /* 4.4 */
     0x4012000000000000,  /* 4.5 */
     0x4012666666666666,  /* 4.6 */
@@ -100,6 +130,8 @@ TEST_END_64
 
 TEST_BEGIN_64(FPREM, 2)
 TEST_INPUTS(
+    QNAN_64,
+    SNAN_64,
     0x4058ff5c28f5c28f, /* 99.99 */ 0x401199999999999a,  /* 4.4 */
     0x4058ff5c28f5c28f, /* 99.99 */ 0xc01199999999999a,  /* -4.4 */
     0xc058ff5c28f5c28f, /* -99.99 */ 0x401199999999999a,  /* 4.4 */
@@ -114,6 +146,8 @@ TEST_END_64
 
 TEST_BEGIN_64(FPREM1, 2)
 TEST_INPUTS(
+    QNAN_64,
+    SNAN_64,
     0x4058ff5c28f5c28f, /* 99.99 */ 0x401199999999999a,  /* 4.4 */
     0x4058ff5c28f5c28f, /* 99.99 */ 0xc01199999999999a,  /* -4.4 */
     0xc058ff5c28f5c28f, /* -99.99 */ 0x401199999999999a,  /* 4.4 */
@@ -128,6 +162,8 @@ TEST_END_64
 
 TEST_BEGIN_64(F2XM1, 1)
 TEST_INPUTS(
+    QNAN_64,
+    SNAN_64,
     0x3fe0000000000000,  /* 0.5 */
     0xbfe0000000000000  /* -0.5 */)
 
@@ -136,12 +172,14 @@ TEST_INPUTS(
     f2xm1
 TEST_END_64
 
+// TODO(joe): Test NaN handling.
 TEST_BEGIN(FPTAN, 1)
 TEST_INPUTS(0)
     fldl2e
     fptan
 TEST_END
 
+// TODO(joe): Test NaN handling.
 TEST_BEGIN(FPATAN, 1)
 TEST_INPUTS(0)
     fldl2e
@@ -151,6 +189,8 @@ TEST_END
 
 TEST_BEGIN_64(FSQRT, 1)
 TEST_INPUTS(
+    QNAN_32,
+    SNAN_32,
     0x41100000,   /* 9.0, a "perfect square," of which sqrt() is an integer */
     0x00000000,   /* sqrt(0) should be 0 */
     0x412E3D71,   /* 10.89, should return 3.33 */
@@ -167,6 +207,7 @@ TEST_INPUTS(
     fsqrt
 TEST_END_64
 
+// TODO(joe): Test NaN handling.
 TEST_BEGIN(FDECSTP, 1)
 TEST_INPUTS(0)
     fldl2e
@@ -174,6 +215,7 @@ TEST_INPUTS(0)
     fdecstp
 TEST_END
 
+// TODO(joe): Test NaN handling.
 TEST_BEGIN(FINCSTP, 1)
 TEST_INPUTS(0)
     fldl2e
@@ -190,6 +232,8 @@ TEST_END
 
 TEST_BEGIN_64(FXAM, 1)
 TEST_INPUTS(
+    QNAN_64,
+    SNAN_64,
     0x7ff0000000000000,  /* +inf */
     0xfff0000000000000,  /* -inf */
     0xfff8000000000000,  /* -nan */
@@ -206,6 +250,8 @@ TEST_END_64
 
 TEST_BEGIN_64(FTST, 1)
 TEST_INPUTS(
+    QNAN_64,
+    SNAN_64,
     0x7ff0000000000000,  /* +inf */
     0xfff0000000000000,  /* -inf */
     0xfff8000000000000,  /* -nan */
@@ -226,6 +272,8 @@ TEST_END_64
 
 TEST_BEGIN_64(FRNDINT, 1)
 TEST_INPUTS(
+    QNAN_64,
+    SNAN_64,
     0x401199999999999a,  /* 4.4 */
     0x4012000000000000,  /* 4.5 */
     0x4012666666666666,  /* 4.6 */
@@ -238,6 +286,7 @@ TEST_INPUTS(
     frndint
 TEST_END_64
 
+// TODO(joe): Test NaN handling.
 TEST_BEGIN(FY2LX, 1)
 TEST_INPUTS(0)
     fldpi
@@ -245,6 +294,7 @@ TEST_INPUTS(0)
     fyl2x
 TEST_END
 
+// TODO(joe): Test NaN handling.
 TEST_BEGIN(FY2LXP1, 1)
 TEST_INPUTS(0)
     fldpi

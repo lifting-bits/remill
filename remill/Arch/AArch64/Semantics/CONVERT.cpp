@@ -73,6 +73,13 @@ DEF_SEM(FCVTZU_Float64ToUInt64, R64W dst, V64 src) {
   return memory;
 }
 
+DEF_SEM(FCVTZS_Float32ToSInt32, R32W dst, V32 src) {
+  auto float_val = FExtractV32(FReadV32(src), 0);
+  auto res = CheckedCast<float32_t, int32_t>(state, float_val);
+  WriteZExt(dst, res);
+  return memory;
+}
+
 DEF_SEM(FCVTZS_Float64ToSInt32, R32W dst, V64 src) {
   auto float_val = FExtractV64(FReadV64(src), 0);
   auto res = CheckedCast<float64_t, int32_t>(state, float_val);
@@ -116,6 +123,8 @@ DEF_ISEL(FCVTZU_32S_FLOAT2INT) = FCVTZU_Float32ToUInt32;
 
 DEF_ISEL(FCVTZU_32D_FLOAT2INT) = FCVTZU_Float64ToUInt32;
 DEF_ISEL(FCVTZU_64D_FLOAT2INT) = FCVTZU_Float64ToUInt64;
+
+DEF_ISEL(FCVTZS_32S_FLOAT2INT) = FCVTZS_Float32ToSInt32;
 
 DEF_ISEL(FCVTZS_32D_FLOAT2INT) = FCVTZS_Float64ToSInt32;
 DEF_ISEL(FCVTZS_64D_FLOAT2INT) = FCVTZS_Float64ToSInt64;

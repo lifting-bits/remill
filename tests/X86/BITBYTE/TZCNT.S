@@ -25,8 +25,19 @@ TEST_INPUTS(
     0x0080,
     0x0800)
 
+    // check CPU for TZCNT support first. (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz tzcnt_nop1
+
+    // TZCNT supported, proceed with test:
     mov eax, ARG1_32
     tzcnt dx, ax
+
+tzcnt_nop1: nop
+
 TEST_END
 
 TEST_BEGIN(TZCNTr32r32, 1)
@@ -40,8 +51,19 @@ TEST_INPUTS(
     0x00000080,
     0x08000000)
 
+    // check CPU for TZCNT support first. (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz tzcnt_nop2
+
+    // TZCNT supported, proceed with test:
     mov eax, ARG1_32
     tzcnt edx, eax
+
+tzcnt_nop2: nop
+
 TEST_END
 
 TEST_BEGIN_64(TZCNTr64r64, 1)
@@ -55,6 +77,17 @@ TEST_INPUTS(
     0x0000000000000080,
     0x0800000000000000)
 
+    // check CPU for TZCNT support first. (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz tzcnt_nop3
+
+    // TZCNT supported, proceed with test:
     mov rax, ARG1_64
     tzcnt rdx, rax
+
+tzcnt_nop3: nop
+
 TEST_END_64

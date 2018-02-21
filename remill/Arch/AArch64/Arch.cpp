@@ -729,6 +729,14 @@ static void AddPostIndexMemOp(Instruction &inst, Action action,
 }
 
 static bool MostSignificantSetBit(uint64_t val, uint64_t *highest_out) {
+#if __has_builtin(__builtin_clzll)
+  if (val) {
+    *highest_out = 63 - (__builtin_clzll(val) - (sizeof(unsigned long long) * 8 - 64));
+    return true;
+  } else {
+    return false;
+  }
+#else
   auto found = false;
   for (uint64_t i = 0; i < 64; ++i) {
     if ((val >> i) & 1) {
@@ -737,9 +745,18 @@ static bool MostSignificantSetBit(uint64_t val, uint64_t *highest_out) {
     }
   }
   return found;
+#endif
 }
 
 static bool LeastSignificantSetBit(uint64_t val, uint64_t *highest_out) {
+#if __has_builtin(__builtin_ctzll)
+  if (val) {
+    *highest_out = __builtin_ctzll(val);
+    return true;
+  } else {
+    return false;
+  }
+#else
   for (uint64_t i = 0; i < 64; ++i) {
     if ((val >> i) & 1) {
       *highest_out = i;
@@ -747,6 +764,7 @@ static bool LeastSignificantSetBit(uint64_t val, uint64_t *highest_out) {
     }
   }
   return false;
+#endif  // __has_builtin(__builtin_ctzll)
 }
 
 static constexpr uint64_t kOne = static_cast<uint64_t>(1);
@@ -3111,12 +3129,22 @@ bool TryDecodeFCMPE_DZ_FLOATCMP(const InstData &data, Instruction &inst) {
 
 // FCMP  <Dn>, #0.0
 bool TryDecodeFCMP_DZ_FLOATCMP(const InstData &data, Instruction &inst) {
-  if (IsUnallocatedFloatEncoding(data)) {
-    return false;
-  }
-  AddRegOperand(inst, kActionRead, kRegD, kUseAsValue, data.Rn);
-  AddImmOperand(inst, 0);
-  return true;
+  return TryDecodeFCMP_ToZero(data, inst, kRegD);
+}
+
+// FCMP  <Sn>, #0.0
+bool TryDecodeFCMP_SZ_FLOATCMP(const InstData &data, Instruction &inst) {
+  return TryDecodeFCMP_ToZero(data, inst, kRegS);
+}
+
+// FCMP  <Dn>, <Dm>
+bool TryDecodeFCMP_D_FLOATCMP(const InstData &data, Instruction &inst) {
+  return TryDecodeFn_Fm(data, inst, kRegD);
+}
+
+// FCMP  <Sn>, <Sm>
+bool TryDecodeFCMP_S_FLOATCMP(const InstData &data, Instruction &inst) {
+  return TryDecodeFn_Fm(data, inst, kRegS);
 }
 
 // FABS  <Sd>, <Sn>
@@ -3926,6 +3954,17 @@ static bool TryDecodeLDnSTnOpcode(uint8_t opcode, uint64_t *rpt,
   }
 }
 
+// EXT  <Vd>.<T>, <Vn>.<T>, <Vm>.<T>, #<index>
+bool TryDecodeEXT_ASIMDEXT_ONLY(const InstData &data, Instruction &inst) {
+  if (!data.Q && data.imm4.uimm & 0x8) {
+    return false;  // `if Q == '0' and imm4<3> == '1' then UnallocatedEncoding();`
+  }
+  AddQArrangementSpecifier(data, inst, "16B", "8B");
+  TryDecodeRdW_Rn_Rm(data, inst, kRegV);
+  AddImmOperand(inst, data.imm4.uimm, kUnsigned, 32);
+  return true;
+}
+
 // Load/store one or more data structures.
 bool TryDecodeLDnSTn(const InstData &data, Instruction &inst,
                      uint64_t *total_num_bytes) {
@@ -3952,6 +3991,32 @@ bool TryDecodeLDnSTn(const InstData &data, Instruction &inst,
   }
   return true;
 }
+
+// ST1  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>], <imm>
+bool TryDecodeST1_ASISDLSEP_I2_I2(const InstData &data, Instruction &inst) {
+  uint64_t offset = 0;
+  if (!TryDecodeLDnSTn(data, inst, &offset)) {
+    return false;
+  }
+  AddPostIndexMemOp(inst, kActionWrite, offset * 8, data.Rn, offset);
+  return true;
+}
+
+// ST1  { <Vt>.<T> }, [<Xn|SP>]
+bool TryDecodeST1_ASISDLSE_R1_1V(const InstData &data, Instruction &inst) {
+  uint64_t num_bytes = 0;
+  if (!TryDecodeLDnSTn(data, inst, &num_bytes)) {
+    return false;
+  }
+  AddBasePlusOffsetMemOp(inst, kActionWrite, num_bytes * 8, data.Rn, 0);
+  return true;
+}
+
+// ST1  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>]
+bool TryDecodeST1_ASISDLSE_R2_2V(const InstData &data, Instruction &inst) {
+  return TryDecodeST1_ASISDLSE_R1_1V(data, inst);
+}
+
 
 // LD1  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>], <imm>
 bool TryDecodeLD1_ASISDLSEP_I2_I2(const InstData &data, Instruction &inst) {
@@ -4330,6 +4395,29 @@ bool TryDecodeDMB_BO_SYSTEM(const InstData &, Instruction &) {
   return true;
 }
 
+// INS  <Vd>.<Ts>[<index>], <R><n>
+bool TryDecodeINS_ASIMDINS_IR_R(const InstData &data, Instruction &inst) {
+  uint64_t size = 0;
+  if (!LeastSignificantSetBit(data.imm5.uimm, &size) || size > 3) {
+    return false;
+  }
+  std::stringstream ss;
+  ss << inst.function;
+  switch (size) {
+    case 0: ss << "_B"; break;
+    case 1: ss << "_H"; break;
+    case 2: ss << "_S"; break;
+    case 3: ss << "_D"; break;
+    default: return false;
+  }
+  inst.function = ss.str();
+
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddImmOperand(inst, data.imm5.uimm >> (size + 1));
+  AddRegOperand(inst, kActionRead, (size == 3) ? kRegX : kRegW, kUseAsValue, data.Rn);
+  return true;
+}
+
 // LD1  { <Vt>.<T> }, [<Xn|SP>]
 bool TryDecodeLD1_ASISDLSE_R1_1V(const InstData &data, Instruction &inst) {
   uint64_t num_bytes = 0;
@@ -4338,6 +4426,24 @@ bool TryDecodeLD1_ASISDLSE_R1_1V(const InstData &data, Instruction &inst) {
   }
   AddBasePlusOffsetMemOp(inst, kActionRead, num_bytes * 8, data.Rn, 0);
   return true;
+}
+
+// LD2  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>]
+bool TryDecodeLD2_ASISDLSE_R2(const InstData &data, Instruction &inst) {
+  if (data.size == 0x3 && !data.Q) {
+    return false;  // Reserved (arrangement specifier 1D).
+  }
+  return TryDecodeLD1_ASISDLSE_R1_1V(data, inst);
+}
+
+// LD3  { <Vt>.<T>, <Vt2>.<T>, <Vt3>.<T> }, [<Xn|SP>]
+bool TryDecodeLD3_ASISDLSE_R3(const InstData &data, Instruction &inst) {
+  return TryDecodeLD2_ASISDLSE_R2(data, inst);
+}
+
+// LD4  { <Vt>.<T>, <Vt2>.<T>, <Vt3>.<T>, <Vt4>.<T> }, [<Xn|SP>]
+bool TryDecodeLD4_ASISDLSE_R4(const InstData &data, Instruction &inst) {
+  return TryDecodeLD2_ASISDLSE_R2(data, inst);
 }
 
 // LD1  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>]
@@ -4355,11 +4461,6 @@ bool TryDecodeLD1_ASISDLSE_R4_4V(const InstData &data, Instruction &inst) {
   return TryDecodeLD1_ASISDLSE_R1_1V(data, inst);
 }
 
-// LD2  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>]
-bool TryDecodeLD2_ASISDLSE_R2(const InstData &data, Instruction &inst) {
-  return TryDecodeLD1_ASISDLSE_R1_1V(data, inst);
-}
-
 // LD2  { <Vt>.<T>, <Vt2>.<T> }, [<Xn|SP>], <imm>
 bool TryDecodeLD2_ASISDLSEP_I2_I(const InstData &data, Instruction &inst) {
   return TryDecodeLD1_ASISDLSEP_I2_I2(data, inst);
@@ -4373,6 +4474,16 @@ bool TryDecodeLD2_ASISDLSEP_R2_R(const InstData &data, Instruction &inst) {
   }
   AddPostIndexMemOp(inst, kActionRead, offset * 8, data.Rn, data.Rm);
   return true;
+}
+
+// LD4  { <Vt>.<T>, <Vt2>.<T>, <Vt3>.<T>, <Vt4>.<T> }, [<Xn|SP>], <imm>
+bool TryDecodeLD4_ASISDLSEP_I4_I(const InstData &, Instruction &) {
+  return false;
+}
+
+// LD4  { <Vt>.<T>, <Vt2>.<T>, <Vt3>.<T>, <Vt4>.<T> }, [<Xn|SP>], <Xm>
+bool TryDecodeLD4_ASISDLSEP_R4_R(const InstData &, Instruction &) {
+  return false;
 }
 
 // NOT  <Vd>.<T>, <Vn>.<T>
@@ -4542,6 +4653,39 @@ bool TryDecodeMVNI_ASIMDIMM_M_SM(const InstData &data, Instruction &inst) {
   }
   auto &imm = inst.operands[inst.operands.size() - 1].imm.val;
   imm = (~imm) & 0xFFFFFFFFULL;
+  return true;
+}
+
+// USHR  <V><d>, <V><n>, #<shift>
+bool TryDecodeUSHR_ASISDSHF_R(const InstData &data, Instruction &inst) {
+  if ((data.immh.uimm & 8) == 0) {
+    return false;  // if immh<3> != '1' then ReservedValue(); 
+  }
+  uint64_t shift = 128 - ((data.immh.uimm << 3) + data.immb.uimm);
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  AddImmOperand(inst, shift);
+  return true;
+}
+
+// USHR  <Vd>.<T>, <Vn>.<T>, #<shift>
+bool TryDecodeUSHR_ASIMDSHF_R(const InstData &data, Instruction &inst) {
+  return false; // TODO remove this after adding semantics for vector version
+  if (((data.immh.uimm & 8) != 0) && !data.Q) {
+    return false;  // `if immh<3>:Q == '10' then ReservedValue();`
+  }
+  uint64_t esize = 0;
+  MostSignificantSetBit(data.immh.uimm, &esize);
+  esize = 8 << esize;
+
+  const uint64_t datasize = data.Q ? 128 : 64;
+  AddArrangementSpecifier(inst, datasize, esize);
+  // AddArrangementSpecifier(inst, 128, 8UL << data.size);
+
+  uint64_t shift = (esize * 2) - ((data.immh.uimm << 3) + data.immb.uimm);
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  AddImmOperand(inst, shift);
   return true;
 }
 

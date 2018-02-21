@@ -150,7 +150,7 @@ TEST_END_64
 TEST_BEGIN_64(VPADDQv256v256m256, 2)
 TEST_INPUTS(0)
     vmovdqu [rsp - 32], ymm0;
-    vpaddq ymm0, ymm1, [rsp - 32];
+    vpaddq ymm0, ymm1, ymmword ptr [rsp - 32];
 TEST_END_64
 
 TEST_BEGIN_64(VPADDQv256v256v256, 2)

@@ -17,6 +17,26 @@
 #ifndef REMILL_ARCH_X86_RUNTIME_TYPES_H_
 #define REMILL_ARCH_X86_RUNTIME_TYPES_H_
 
+union bcd_digit_pair_t {
+  uint8_t u8;
+  struct {
+    uint8_t lsd:4;  // Least-significant digit
+    uint8_t msd:4;  // Most-significant digit
+  } __attribute((packed)) pair;
+} __attribute((packed));
+
+// TODO(joe): Assumes little endian.
+// 80-bit packed binary-coded decimal.
+struct bcd80_t final {
+  union bcd_digit_pair_t digit_pairs[9];
+  struct {
+    uint8_t _unused:7;  // No meaning in encoding
+    uint8_t is_negative:1;
+  } __attribute((packed));
+} __attribute__((packed));
+
+static_assert(10 == sizeof(bcd80_t), "Invalid `bcd80_t` size.");
+
 // What's going on with `R32W`? In 64-bit code, writes to the 32-bit general
 // purpose registers actually clear the high 32-bits of the associated 64-bit
 // registers, so we want to model that behavior.
@@ -67,6 +87,8 @@ typedef MnW<uint32_t> M32W;
 typedef MnW<uint64_t> M64W;
 typedef MnW<uint128_t> M128W;
 
+typedef MnW<bcd80_t> MBCD80W;
+
 typedef MnW<float32_t> MF32W;
 typedef MnW<float64_t> MF64W;
 typedef MnW<float80_t> MF80W;
@@ -86,6 +108,8 @@ typedef Mn<uint16_t> M16;
 typedef Mn<uint32_t> M32;
 typedef Mn<uint64_t> M64;
 typedef Mn<uint128_t> M128;
+
+typedef Mn<bcd80_t> MBCD80;
 
 typedef MVn<vec8_t> MV8;
 typedef MVn<vec16_t> MV16;

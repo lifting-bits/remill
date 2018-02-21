@@ -102,8 +102,8 @@ extern "C" {
 
 // Native state before we run the native test case. We then use this as the
 // initial state for the lifted testcase. The lifted test case code mutates
-// this, and we require that after running the lifted testcase, `gX86StateBefore`
-// matches `gX86StateAfter`,
+// this, and we require that after running the lifted testcase, `gLiftedState`
+// matches `gNativeState`,
 std::aligned_storage<sizeof(X86State), alignof(X86State)>::type gLiftedState;
 
 // Native state after running the native test case.
@@ -116,7 +116,7 @@ Flags gRflagsForTest = {};
 // the native program state but then needs a way to figure out where to go
 // without storing that information in any register. So what we do is we
 // store it here and indirectly `JMP` into the native test case code after
-// saving the machine state to `gX86StateBefore`.
+// saving the machine state to `gLiftedState`.
 uintptr_t gTestToRun = 0;
 
 // Used for swapping the stack pointer between `gStack` and the normal
@@ -133,8 +133,8 @@ uint8_t *gStackSwitcher = nullptr;
 uint64_t gStackSaveSlot = 0;
 
 // Invoke a native test case addressed by `gTestToRun` and store the machine
-// state before and after executing the test in `gX86StateBefore` and
-// `gX86StateAfter`, respectively.
+// state before and after executing the test in `gLiftedState` and
+// `gNativeState`, respectively.
 extern void InvokeTestCase(uint64_t, uint64_t, uint64_t);
 
 #define MAKE_RW_MEMORY(size) \
@@ -182,6 +182,91 @@ NEVER_INLINE Memory *__remill_write_memory_f80(
   AccessMemory<float80_t>(addr) = storage.val;
   return memory;
 }
+
+Memory *__remill_compare_exchange_memory_8(
+    Memory *memory, addr_t addr, uint8_t &expected, uint8_t desired) {
+  expected = __sync_val_compare_and_swap(
+      reinterpret_cast<uint8_t *>(addr), expected, desired);
+  return memory;
+}
+
+Memory *__remill_compare_exchange_memory_16(
+    Memory *memory, addr_t addr, uint16_t &expected, uint16_t desired) {
+  expected =  __sync_val_compare_and_swap(
+      reinterpret_cast<uint16_t *>(addr), expected, desired);
+  return memory;
+}
+
+Memory *__remill_compare_exchange_memory_32(
+    Memory *memory, addr_t addr, uint32_t &expected, uint32_t desired) {
+  expected = __sync_val_compare_and_swap(
+      reinterpret_cast<uint32_t *>(addr), expected, desired);
+  return memory;
+}
+
+Memory *__remill_compare_exchange_memory_64(
+    Memory *memory, addr_t addr, uint64_t &expected, uint64_t desired) {
+  expected = __sync_val_compare_and_swap(
+      reinterpret_cast<uint64_t *>(addr), expected, desired);
+  return memory;
+}
+
+Memory *__remill_compare_exchange_memory_128(
+    Memory *memory, addr_t addr, uint128_t &expected, uint128_t &desired) {
+#if !(defined(__x86_64__) || defined(__i386__) || defined(_M_X86))
+  expected = __sync_val_compare_and_swap(
+      reinterpret_cast<uint128_t *>(addr), expected, desired);
+#else
+  bool result;
+  struct alignas(16) uint128 {
+    uint64_t lo;
+    uint64_t hi;
+  };
+
+  uint128 *oldval = reinterpret_cast<uint128 *>(&expected);
+  uint128 *newval = reinterpret_cast<uint128 *>(&desired);
+
+  __asm__ __volatile__(
+      "lock; cmpxchg16b %0; setz %1"
+      : "=m"(*reinterpret_cast<uint128_t *>(addr)), "=q"(result)
+      : "m"(*reinterpret_cast<uint128_t *>(addr)), "d" (oldval->hi), "a" (oldval->lo),
+        "c" (newval->hi), "b" (newval->lo)
+      : "memory");
+
+  if(!result) {
+    expected = *reinterpret_cast<uint128_t*>(addr);
+  }
+#endif
+  return memory;
+}
+
+#define MAKE_ATOMIC_INTRINSIC(intrinsic_name, type_prefix, size) \
+  Memory *__remill_ ## intrinsic_name ## _ ## size( \
+      Memory *memory, addr_t addr, type_prefix ## size ## _t &value) { \
+    value = __sync_ ## intrinsic_name(reinterpret_cast<type_prefix ## size ## _t *>(addr), value); \
+    return memory; \
+  } \
+
+MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 8)
+MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 16)
+MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 32)
+MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 64)
+MAKE_ATOMIC_INTRINSIC(fetch_and_sub, uint, 8)
+MAKE_ATOMIC_INTRINSIC(fetch_and_sub, uint, 16)
+MAKE_ATOMIC_INTRINSIC(fetch_and_sub, uint, 32)
+MAKE_ATOMIC_INTRINSIC(fetch_and_sub, uint, 64)
+MAKE_ATOMIC_INTRINSIC(fetch_and_or, uint, 8)
+MAKE_ATOMIC_INTRINSIC(fetch_and_or, uint, 16)
+MAKE_ATOMIC_INTRINSIC(fetch_and_or, uint, 32)
+MAKE_ATOMIC_INTRINSIC(fetch_and_or, uint, 64)
+MAKE_ATOMIC_INTRINSIC(fetch_and_and, uint, 8)
+MAKE_ATOMIC_INTRINSIC(fetch_and_and, uint, 16)
+MAKE_ATOMIC_INTRINSIC(fetch_and_and, uint, 32)
+MAKE_ATOMIC_INTRINSIC(fetch_and_and, uint, 64)
+MAKE_ATOMIC_INTRINSIC(fetch_and_xor, uint, 8)
+MAKE_ATOMIC_INTRINSIC(fetch_and_xor, uint, 16)
+MAKE_ATOMIC_INTRINSIC(fetch_and_xor, uint, 32)
+MAKE_ATOMIC_INTRINSIC(fetch_and_xor, uint, 64)
 
 int __remill_fpu_exception_test_and_clear(int read_mask, int clear_mask) {
   auto except = std::fetestexcept(read_mask);
@@ -326,6 +411,38 @@ static void InitFlags(void) {
       : "m"(gRflagsInitial));
 }
 
+// Check if we are in a mode such that FCS and FDS are deprecated, and
+// are thus zeroed out in FXSAVE, XSAVE, and XSAVEOPT.
+//
+// Per the Intel SDM Vol. 1, Section 8.1.8, this happens when:
+//
+//    CPUID.(EAX=07H,ECX=0H):EBX[bit 13] = 1
+//
+// Where "bit 13" is a 0-based index.
+static bool AreFCSAndFDSDeprecated(void) {
+    uint32_t eax, ebx, ecx, edx;
+
+    eax = 0x07;
+    ecx = 0;
+
+    asm volatile(
+        "cpuid"
+        : "=a"(eax),
+          "=b"(ebx),
+          "=c"(ecx),
+          "=d"(edx)
+        : "a"(eax),
+          "b"(ebx),
+          "c"(ecx),
+          "d"(edx)
+    );
+
+    // Bit 13 of EBX (zero-based indexing)
+    uint32_t ebx_13 = (ebx & (1 << 13)) >> 13;
+
+    return ebx_13 == 1;
+}
+
 // Convert some native state, stored in various ways, into the `X86State` structure
 // type.
 static void ImportX87X86State(X86State *state) {
@@ -340,8 +457,8 @@ static void ImportX87X86State(X86State *state) {
       kFPUAbridgedTagValid == fpu.fxsave.ftw.r6 &&
       kFPUAbridgedTagValid == fpu.fxsave.ftw.r7) {
 
-    // Copy over the MMX data. A good guess for MMX data is that the the
-    // value looks like its infinity.
+    // Copy over the MMX data. A good guess for MMX data is that the
+    // value looks like it's infinity.
     DLOG(INFO) << "Importing MMX state.";
     for (size_t i = 0; i < 8; ++i) {
       if (static_cast<uint16_t>(0xFFFFU) == fpu.fxsave.st[i].infinity) {
@@ -359,7 +476,7 @@ static void ImportX87X86State(X86State *state) {
   }
 
   state->sw.c0 = fpu.fxsave.swd.c0;
-//  state->sw.c1 = fpu.fxsave.swd.c1;
+//  state->sw.c1 = fpu.fxsave.swd.c1;  // currently we do not model C1
   state->sw.c2 = fpu.fxsave.swd.c2;
   state->sw.c3 = fpu.fxsave.swd.c3;
 }
@@ -437,7 +554,7 @@ static void RunWithFlags(const test::TestInfo *info,
   auto lifted_func = gTranslatedFuncs[info->test_begin];
 
   // This will execute on our stack but the lifted code will operate on
-  // `gStack`. The mechanism behind this is that `gX86StateBefore` is the native
+  // `gStack`. The mechanism behind this is that `gLiftedState` is the native
   // program state recorded before executing the native testcase, but after
   // swapping execution to operate on `gStack`.
   if (!sigsetjmp(gJmpBuf, true)) {
@@ -461,6 +578,14 @@ static void RunWithFlags(const test::TestInfo *info,
 
   memset(lifted_state->x87.fxsave.st, 0, kill_size);
   memset(native_state->x87.fxsave.st, 0, kill_size);
+
+#if 32 == ADDRESS_SIZE_BITS
+  // If FCS and FDS are deprecated, don't compare them.
+  if (AreFCSAndFDSDeprecated()) {
+      lifted_state->x87.fxsave.cs = {0};
+      native_state->x87.fxsave.cs = {0};
+  }
+#endif
 
   // New Intel CPUs have apparently stopped tracking `dp`, even though we track
   // it. E.g., in testing, an i7-4910MQ tracked `dp` but an i7-7920HQ did not.
@@ -555,9 +680,11 @@ static void RunWithFlags(const test::TestInfo *info,
       << lifted_state->rflag.flat << ", native is "
       << native_state->rflag.flat << std::dec;
 
-  EXPECT_TRUE(lifted_state->seg == native_state->seg);
+  EXPECT_TRUE(lifted_state->seg == native_state->seg)
+      << "Lifted SEG differs from native SEG";
 
-  EXPECT_TRUE(lifted_state->gpr == native_state->gpr);
+  EXPECT_TRUE(lifted_state->gpr == native_state->gpr)
+      << "Lifted GPR differs from native GPR";
 
   EXPECT_TRUE(lifted_state->x87.fxsave.swd == native_state->x87.fxsave.swd)
       << "Lifted X87 status word after test is " << std::hex

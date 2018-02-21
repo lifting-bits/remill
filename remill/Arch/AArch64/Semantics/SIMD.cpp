@@ -855,6 +855,31 @@ DEF_SEM(NOT_8, V128W dst, S src) {
 DEF_ISEL(NOT_ASIMDMISC_R_8B) = NOT_8<V64>; 
 DEF_ISEL(NOT_ASIMDMISC_R_16B) = NOT_8<V128>; 
 
+namespace {
+
+template <typename T, size_t count>
+DEF_SEM(EXT, V128W dst, T src1, T src2, I32 src3) {
+  auto lsb = Read(src3);
+  auto vn = UReadV8(src1);
+  auto vm = UReadV8(src2);
+  uint8v16_t result = {};
+  _Pragma("unroll")
+  for (size_t i = 0, max_i = count; i+lsb < max_i; ++i) {
+    result.elems[count-1-i] = UExtractV8(vm, i+lsb);
+  }
+  _Pragma("unroll")
+  for (size_t i = lsb; i < count; ++i) {
+    result.elems[count-1-i] = UExtractV8(vn, i-lsb);
+  }
+  UWriteV8(dst, result);
+  return memory;
+}
+
+} //  namespace
+
+DEF_ISEL(EXT_ASIMDEXT_ONLY_8B) = EXT<V64, 8>;
+DEF_ISEL(EXT_ASIMDEXT_ONLY_16B) = EXT<V128, 16>;
+
 
 // TODO(pag):
 // FMINV_ASIMDALL_ONLY_H
@@ -863,3 +888,16 @@ DEF_ISEL(NOT_ASIMDMISC_R_16B) = NOT_8<V128>;
 // FMINNMV_ASIMDALL_ONLY_SD
 // FMAXNMV_ASIMDALL_ONLY_H
 // FMAXNMV_ASIMDALL_ONLY_SD
+
+DEF_SEM(USHR_64B, V128W dst, V128W src, I64 shift) {
+  auto vec = UExtractV64(UReadV64(src), 0);
+  auto sft = Read(shift);
+  auto shifted = UShr128(vec, sft);
+  uint64v2_t temp_vec = {};
+  temp_vec = UInsertV64(temp_vec, 1, 0);
+  temp_vec = UInsertV64(temp_vec, 0, (uint64_t) shifted);
+  UWriteV64(dst, temp_vec);
+  return memory;
+}
+
+DEF_ISEL(USHR_ASISDSHF_R) = USHR_64B;

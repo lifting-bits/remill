@@ -47,6 +47,58 @@ TEST_INPUTS(
     fcmpe s0, #0.0
 TEST_END
 
+TEST_BEGIN(FCMP_S_FLOATCMP, fcmp_s0_s1, 2)
+TEST_INPUTS(
+    0x00000000, 0x00000000,
+    0x00000000, 0x00000001,
+    0x3fffffff, 0x00000001,
+    0x3fffffff, 0x3fffffff,     
+    0x3fffffff, 0x40000000,     
+    0x40000000, 0x3fffffff,    
+    0x7FFFFFFF, 0x7FFFFFFF,
+    0x80000000, 0x7FFFFFFF,     
+    0x7FFFFFFF, 0x80000000,     
+    0x80000000, 0x80000000,
+    0xffffffff, 0xffffffff)
+
+    fmov s0, ARG1_32
+    fmov s1, ARG2_32
+    fcmp s0, s1
+TEST_END
+
+TEST_BEGIN(FCMP_SZ_FLOATCMP, fcmp_z_s0_0, 1)
+TEST_INPUTS(
+    0x00000000, 
+    0x3fffffff,      
+    0x40000000,     
+    0x7FFFFFFF, 
+    0x80000000,      
+    0xffffffff)
+
+    fmov s0, ARG1_32
+    fcmp s0, #0.0
+TEST_END
+
+TEST_BEGIN(FCMPE_D_FLOATCMP, fcmpe_d0_d1, 2)
+TEST_INPUTS(
+0x00000000, 0x00000000,
+0x00000000, 0x00000001,
+TEST_INPUTS_FP64)
+    fmov d0, ARG1_64
+    fmov d1, ARG2_64
+    fcmpe d0, d1
+TEST_END
+
+TEST_BEGIN(FCMP_D_FLOATCMP, fcmp_d0_d1, 2)
+TEST_INPUTS(
+0x00000000, 0x00000000,
+0x00000000, 0x00000001,
+TEST_INPUTS_FP64)
+    fmov d0, ARG1_64
+    fmov d1, ARG2_64
+    fcmp d0, d1
+TEST_END
+
 TEST_BEGIN(FCMP_DZ_FLOATCMP, fcmp_z_d0_0, 1)
 TEST_INPUTS(
     0x00000000, 

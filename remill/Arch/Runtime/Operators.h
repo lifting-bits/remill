@@ -465,6 +465,77 @@ MAKE_WRITE_REF(float64_t)
 
 #undef MAKE_WRITE_REF
 
+#define MAKE_CMPXCHG(size, type_prefix, access_suffix) \
+    template <typename T> \
+    ALWAYS_INLINE static bool _CmpXchg( \
+        Memory *&memory, RnW<T> op, type_prefix ## size ## _t &expected, \
+      type_prefix ## size ## _t desired) { \
+      if (*op.val_ref == expected) {\
+        *op.val_ref = desired; \
+        return true; \
+      } else { \
+        expected = *reinterpret_cast<type_prefix ## size ## _t *>(op.val_ref); \
+        return false; \
+      } \
+    } \
+    \
+    template <typename T> \
+    ALWAYS_INLINE static bool _CmpXchg( \
+        Memory *&memory, MnW<T> op, type_prefix ## size ## _t &expected, \
+      type_prefix ## size ## _t desired) { \
+      auto prev_val = expected; \
+      memory = __remill_compare_exchange_memory_ ## access_suffix \
+          (memory, op.addr, expected, desired);\
+      return prev_val == expected; \
+    }
+
+MAKE_CMPXCHG(8, uint, 8)
+MAKE_CMPXCHG(16, uint, 16)
+MAKE_CMPXCHG(32, uint, 32)
+MAKE_CMPXCHG(64, uint, 64)
+MAKE_CMPXCHG(128, uint, 128)
+
+#undef MAKE_CMPXCHG
+#define UCmpXchg(op, oldval, newval) _CmpXchg(memory, op, oldval, newval)
+
+#define MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, size, type_prefix, op)\
+  template<typename T> \
+  ALWAYS_INLINE type_prefix ## size ## _t _U ## name( \
+      Memory *&memory, MnW<T> addr, type_prefix ## size ## _t value) { \
+    memory = __remill_ ## intrinsic_name ## _ ## size(memory, addr.addr, value); \
+    return value; \
+  } \
+  \
+  template<typename T> \
+  ALWAYS_INLINE type_prefix ## size ## _t _U ## name ( \
+      Memory *&memory, RnW<T> addr, type_prefix ## size ## _t value) { \
+    auto prev_value = *reinterpret_cast<type_prefix ## size ## _t *>(addr.val_ref); \
+    *addr.val_ref = prev_value op value; \
+    return prev_value; \
+  }
+
+#define MAKE_ATOMIC(name, intrinsic_name, op)  \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 8, uint, op) \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 16, uint, op) \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 32, uint, op) \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 64, uint, op) \
+
+MAKE_ATOMIC(FetchAdd, fetch_and_add, +)
+MAKE_ATOMIC(FetchSub, fetch_and_sub, -)
+MAKE_ATOMIC(FetchOr, fetch_and_or, |)
+MAKE_ATOMIC(FetchAnd, fetch_and_and, &)
+MAKE_ATOMIC(FetchXor, fetch_and_xor, ^)
+
+#undef MAKE_ATOMIC
+#undef MAKE_ATOMIC_INTRINSIC
+
+#define UFetchAdd(op1, op2) _UFetchAdd(memory, op1, op2)
+#define UFetchSub(op1, op2) _UFetchSub(memory, op1, op2)
+#define UFetchOr(op1, op2)  _UFetchOr(memory, op1, op2)
+#define UFetchAnd(op1, op2) _UFetchAnd(memory, op1, op2)
+#define UFetchXor(op1, op2) _UFetchXor(memory, op1, op2)
+
+
 // For the sake of esthetics and hiding the small-step semantics of memory
 // operands, we use this macros to implicitly pass in the `memory` operand,
 // which we know will be defined in semantics functions.

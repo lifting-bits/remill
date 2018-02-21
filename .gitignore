@@ -86,3 +86,6 @@ remill_disass.egg-info/*
 *.log
 obj-ia32/*
 obj-intel64/*
+
+# VIM
+*.swp

@@ -1557,7 +1557,7 @@ DEF_SEM(VSQRTSS, D dst, S1 src1, S2 src2) {
   // Initialize dest vector, while also copying src1[127:32] -> dst[127:32].
   auto temp_vec = FReadV32(src1);
   
-  // Store the square root result in dest[32:0]:
+  // Store the square root result in dest[31:0]:
   auto square_root = SquareRoot32(memory, state, src_float);
   temp_vec = FInsertV32(temp_vec, 0, square_root);
   
@@ -1578,6 +1578,84 @@ IF_AVX(DEF_ISEL(VSQRTSS_XMMdq_XMMdq_XMMd) = VSQRTSS<VV128W, V128, V128>;)
 4317 VSQRTSS VSQRTSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
 4318 VSQRTSS VSQRTSS_XMMf32_MASKmskw_XMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: DISP8_SCALAR MASKOP_EVEX MEMORY_FAULT_SUPPRESSION MXCSR SIMD_SCALAR
 */
+
+
+namespace {
+
+DEF_HELPER(SquareRoot64, float64_t src_float) -> float64_t {
+  auto square_root = src_float;
+
+  // Special cases for invalid square root operations. See Intel manual, Table E-10.
+  if (IsNaN(src_float)) {
+    // If src is SNaN, return the SNaN converted to a QNaN:
+    if (IsSignalingNaN(src_float)) {
+      nan64_t temp_nan = {src_float};
+      temp_nan.is_quiet_nan = 1;  // equivalent to a bitwise OR with 0x0008000000000000
+      square_root = temp_nan.d;
+
+    // Else, src is a QNaN. Pass it directly to the result:
+    } else {
+      square_root = src_float;
+    }
+  } else {  // a number, that is, not a NaN
+    // A negative operand (except -0.0) results in the QNaN indefinite value.
+    if (IsNegative(src_float) && src_float != -0.0) {
+      uint64_t indef_qnan = 0xFFF8000000000000ULL;
+      square_root = reinterpret_cast<float64_t &>(indef_qnan);
+    } else {
+      square_root = std::sqrt(src_float);
+    }
+  }
+
+  return square_root;
+}
+
+template <typename D, typename S1>
+DEF_SEM(SQRTSD, D dst, S1 src1) {
+  // Extract a "double-precision" (64-bit) float from [63:0] of src1 vector:
+  auto src_float = FExtractV64(FReadV64(src1), 0);
+
+  // Store the square root result in dest[63:0]:
+  auto square_root = SquareRoot64(memory, state, src_float);
+  auto temp_vec = FReadV64(dst);  // initialize a destination vector
+  temp_vec = FInsertV64(temp_vec, 0, square_root);
+
+  // Write out the result and return memory state:
+  FWriteV64(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
+}
+
+#if HAS_FEATURE_AVX
+template <typename D, typename S1, typename S2>
+DEF_SEM(VSQRTSD, D dst, S1 src1, S2 src2) {
+  // Extract the single-precision float from [63:0] of the src2 vector:
+  auto src_float = FExtractV64(FReadV64(src2), 0);
+
+  // Initialize dest vector, while also copying src1[127:64] -> dst[127:64].
+  auto temp_vec = FReadV64(src1);
+
+  // Store the square root result in dest[63:0]:
+  auto square_root = SquareRoot64(memory, state, src_float);
+  temp_vec = FInsertV64(temp_vec, 0, square_root);
+
+  // Write out the result and return memory state:
+  FWriteV64(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
+}
+#endif // HAS_FEATURE_AVX
+
+} // namespace
+
+DEF_ISEL(SQRTSD_XMMsd_MEMsd) = SQRTSD<V128W, MV64>;
+DEF_ISEL(SQRTSD_XMMsd_XMMsd) = SQRTSD<V128W, V128>;
+IF_AVX(DEF_ISEL(VSQRTSD_XMMdq_XMMdq_MEMq) = VSQRTSD<VV128W, V128, MV64>;)
+IF_AVX(DEF_ISEL(VSQRTSD_XMMdq_XMMdq_XMMq) = VSQRTSD<VV128W, V128, V128>;)
+/*
+4295 VSQRTSD VSQRTSD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR
+4296 VSQRTSD VSQRTSD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR
+4297 VSQRTSD VSQRTSD_XMMf64_MASKmskw_XMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: DISP8_SCALAR MASKOP_EVEX MEMORY_FAULT_SUPPRESSION MXCSR SIMD_SCALAR
+*/
+
 
 namespace {
 

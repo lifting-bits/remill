@@ -63,6 +63,37 @@ extern "C" void __remill_intrinsics(void) {
   USED(__remill_atomic_begin);
   USED(__remill_atomic_end);
 
+  // Atomic intrinsics
+  USED(__remill_compare_exchange_memory_8);
+  USED(__remill_compare_exchange_memory_16);
+  USED(__remill_compare_exchange_memory_32);
+  USED(__remill_compare_exchange_memory_64);
+
+  USED(__remill_fetch_and_add_8);
+  USED(__remill_fetch_and_add_16);
+  USED(__remill_fetch_and_add_32);
+  USED(__remill_fetch_and_add_64);
+
+  USED(__remill_fetch_and_sub_8);
+  USED(__remill_fetch_and_sub_16);
+  USED(__remill_fetch_and_sub_32);
+  USED(__remill_fetch_and_sub_64);
+
+  USED(__remill_fetch_and_or_8);
+  USED(__remill_fetch_and_or_16);
+  USED(__remill_fetch_and_or_32);
+  USED(__remill_fetch_and_or_64);
+
+  USED(__remill_fetch_and_and_8);
+  USED(__remill_fetch_and_and_16);
+  USED(__remill_fetch_and_and_32);
+  USED(__remill_fetch_and_and_64);
+
+  USED(__remill_fetch_and_xor_8);
+  USED(__remill_fetch_and_xor_16);
+  USED(__remill_fetch_and_xor_32);
+  USED(__remill_fetch_and_xor_64);
+
   USED(__remill_fpu_exception_test_and_clear);
 
 //  USED(__remill_defer_inlining);
