@@ -59,6 +59,10 @@ function GetArchVersion
       ARCH_VERSION=amd64
       return 0
     ;;
+    x86-64)
+      ARCH_VERSION=amd64
+      return 0
+    ;;
     aarch64)
       ARCH_VERSION=aarch64
       return 0
@@ -72,12 +76,23 @@ function GetArchVersion
 
 function DownloadCxxCommon
 {
-  wget https://s3.amazonaws.com/cxx-common/${LIBRARY_VERSION}.tar.gz
-  tar xf ${LIBRARY_VERSION}.tar.gz --warning=no-timestamp
+  curl -O https://s3.amazonaws.com/cxx-common/${LIBRARY_VERSION}.tar.gz
+  if [[ $? -ne 0 ]]; then
+    return 1
+  fi
+  
+  local TAR_OPTIONS="--warning=no-timestamp"
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    TAR_OPTIONS=""
+  fi
+
+  tar xf ${LIBRARY_VERSION}.tar.gz $TAR_OPTIONS
   rm ${LIBRARY_VERSION}.tar.gz
 
   # Make sure modification times are not in the future.
   find ${BUILD_DIR}/libraries -type f -exec touch {} \;
+  
+  return 0
 }
 
 # Attempt to detect the OS distribution name.
@@ -112,14 +127,17 @@ function GetOSVersion
 # google protobuf, gflags, glog, gtest, capstone, and llvm in it.
 function DownloadLibraries
 {
-  # mac os x packages
+  # macOS packages
   if [[ "$OSTYPE" == "darwin"* ]]; then
-    printf "[x] macOS is not yet supported.\n"
-    return 1
+    OS_VERSION=osx
 
-  # unsupported systems
-  elif [[ "$OSTYPE" != "linux-gnu" ]]; then
-    printf "[x] Only Linux is supported currently.\n"
+  # Linux packages
+  elif [[ "$OSTYPE" == "linux-gnu" ]]; then
+    if ! GetOSVersion; then
+      return 1
+    fi
+  else
+    printf "[x] OS ${OSTYPE} is not supported.\n"
     return 1
   fi
 
@@ -127,16 +145,15 @@ function DownloadLibraries
     return 1
   fi
 
-  if ! GetOSVersion; then
-    return 1
-  fi
-
   LIBRARY_VERSION=libraries-${LLVM_VERSION}-${OS_VERSION}-${ARCH_VERSION}
 
   printf "[-] Library version is ${LIBRARY_VERSION}\n"
 
-  if [[ ! -d "${BUILD_DIR}/libraries" ]] ; then
-    DownloadCxxCommon
+  if [[ ! -d "${BUILD_DIR}/libraries" ]]; then
+    if ! DownloadCxxCommon; then
+      printf "[x] Unable to download cxx-common build ${LIBRARY_VERSION}.\n"
+      return 1
+    fi
   fi
 
   return 0
@@ -150,7 +167,6 @@ function Configure
   export PATH=“${TRAILOFBITS_LIBRARIES}/cmake/bin:${TRAILOFBITS_LIBRARIES}/llvm/bin:${PATH}”
   export CC="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang"
   export CXX="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang++"
-
 
   # Configure the remill build, specifying that it should use the pre-built
   # Clang compiler binaries.
@@ -166,7 +182,11 @@ function Configure
 # Compile the code.
 function Build
 {
-  NPROC=$( nproc )
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    NPROC=$( sysctl -n hw.ncpu )
+  else
+    NPROC=$( nproc )
+  fi
   make -j${NPROC}
   return $?
 }

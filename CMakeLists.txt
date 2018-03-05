@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Fix behavior of CMAKE_CXX_STANDARD when targeting macOS.
+if (POLICY CMP0025)
+  cmake_policy(SET CMP0025 NEW)
+endif ()
+
 project(remill)
 cmake_minimum_required (VERSION 3.2)
 
@@ -347,7 +352,7 @@ else()
   set(LINUX FALSE)
 endif ()
 
-if (LINUX)
+if (LINUX OR APPLE)
   if (CMAKE_SIZEOF_VOID_P EQUAL 8)
     # only enable x86 tests when compiling under x64
     if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
@@ -359,4 +364,4 @@ if (LINUX)
       add_subdirectory(tests/AArch64)
     endif ()
   endif ()
-endif (LINUX)
+endif ()
