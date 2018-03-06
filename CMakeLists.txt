@@ -121,7 +121,7 @@ target_compile_options(${PROJECT_NAME} PUBLIC ${GLOBAL_CXXFLAGS})
 # Also install clang, libllvm and llvm-link
 #
 
-function (InstallExternalTarget target_name target_path install_directory installed_file_name)
+function(InstallExternalTarget target_name target_path install_directory installed_file_name)
   # Get the optional rpath parameter
   set(additional_arguments ${ARGN})
   list(LENGTH additional_arguments additional_argument_count)
@@ -234,6 +234,46 @@ else()
   InstallExternalTarget("ext_llvmlink" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/llvm-link${executable_extension}"
     "${install_folder}/bin" "${INSTALLED_LLVMLINK_NAME}")
 endif()
+
+install(TARGETS "${PROJECT_NAME}"
+  ARCHIVE DESTINATION "${install_folder}/lib"
+  PUBLIC_HEADER DESTINATION "${install_folder}/include"
+)
+
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/cmake/remillConfig.cmake"
+  DESTINATION "${install_folder}/lib"
+)
+
+install(FILES 
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Arch.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Instruction.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Name.h"
+
+  DESTINATION "${install_folder}/include/remill/Arch"
+)
+
+install(FILES 
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/ABI.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/IntrinsicTable.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Lifter.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Util.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Version.h"
+
+  DESTINATION "${install_folder}/include/remill/BC"
+)
+
+install(FILES 
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/CallingConvention.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/GlobalValue.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/TargetLibraryInfo.h"
+
+  DESTINATION "${install_folder}/include/remill/BC/Compat"
+)
+
+install(FILES 
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/OS/OS.h"
+  DESTINATION "${install_folder}/include/remill/OS"
+)
 
 #
 # additional targets
