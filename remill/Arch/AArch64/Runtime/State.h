@@ -116,35 +116,35 @@ union PSTATE final {
   uint64_t flat;
   struct {
     // Bit 0.
-    uint32_t N:1;  // Negative condition flag.
-    uint32_t Z:1;  // Zero condition flag.
-    uint32_t C:1;  // Carry condition flag.
-    uint32_t V:1;  // Overflow condition flag.
+    uint64_t N:1;  // Negative condition flag.
+    uint64_t Z:1;  // Zero condition flag.
+    uint64_t C:1;  // Carry condition flag.
+    uint64_t V:1;  // Overflow condition flag.
 
     // Bit 4.
-    uint32_t D:1;  // Debug mask bit [AArch64 only].
-    uint32_t A:1;  // Asynchronous abort mask bit.
-    uint32_t I:1;  // IRQ mask bit.
-    uint32_t F:1;  // FIQ mask bit.
+    uint64_t D:1;  // Debug mask bit [AArch64 only].
+    uint64_t A:1;  // Asynchronous abort mask bit.
+    uint64_t I:1;  // IRQ mask bit.
+    uint64_t F:1;  // FIQ mask bit.
 
     // Bit 8.
-    uint32_t SS:1;  // Single-step bit.
-    uint32_t IL:1;  // Illegal state bit.
-    uint32_t EL:2;  // Exception Level (see above).
+    uint64_t SS:1;  // Single-step bit.
+    uint64_t IL:1;  // Illegal state bit.
+    uint64_t EL:2;  // Exception Level (see above).
 
     // Bit 12.
-    uint32_t nRW:1;  // not Register Width: 0=64, 1=32
-    uint32_t SP:1;  // Stack pointer select: 0=SP0, 1=SPx [AArch64 only]
-    uint32_t Q:1;  // Cumulative saturation flag [AArch32 only]
-    uint32_t GE:4;  // Greater than or Equal flags [AArch32 only]
+    uint64_t nRW:1;  // not Register Width: 0=64, 1=32
+    uint64_t SP:1;  // Stack pointer select: 0=SP0, 1=SPx [AArch64 only]
+    uint64_t Q:1;  // Cumulative saturation flag [AArch32 only]
+    uint64_t GE:4;  // Greater than or Equal flags [AArch32 only]
 
     // Bit 19.
-    uint32_t IT:8;  // If-then state [AArch32 only]
-    uint32_t J:1;  // Jazelle state [AArch32 only]
-    uint32_t T:1;  // Thumb state [AArch32 only]
-    uint32_t E:1;  // Endian state [AArch32 only]
-    uint32_t M:5;  // Mode field (see above) [AArch32 only]
-    uint32_t _res0:29;  // bits 34-63.
+    uint64_t IT:8;  // If-then state [AArch32 only]
+    uint64_t J:1;  // Jazelle state [AArch32 only]
+    uint64_t T:1;  // Thumb state [AArch32 only]
+    uint64_t E:1;  // Endian state [AArch32 only]
+    uint64_t M:5;  // Mode field (see above) [AArch32 only]
+    uint64_t _res0:29;  // bits 34-63.
   } __attribute__((packed));
 } __attribute__((packed));
 
