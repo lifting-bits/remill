@@ -174,6 +174,7 @@ function Configure
       -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
       -DCMAKE_C_COMPILER=${CC} \
       -DCMAKE_CXX_COMPILER=${CXX} \
+      -DCMAKE_VERBOSE_MAKEFILE=True \
       ${SRC_DIR}
 
   return $?
