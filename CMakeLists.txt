@@ -293,16 +293,15 @@ add_subdirectory(remill/Arch/AArch64/Runtime)
 # tools
 add_subdirectory(tools)
 
+# tests
 if(NOT "${PLATFORM_NAME}" STREQUAL "windows")
-  if(${IS_AMD64_MACHINE})
-    # only enable x86 tests when compiling under x64
-    if("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-      add_subdirectory(tests/X86)
-    endif()
-
-    # only enable aarch64 tests when compiling under aarch64.
-    if("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
-      add_subdirectory(tests/AArch64)
-    endif()
+  if("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "AMD64" OR "${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+    message(STATUS "X86 tests enabled")
+    add_subdirectory(tests/X86)
   endif()
+endif()
+
+if("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "aarch64" AND "${PLATFORM_NAME}" STREQUAL "linux")
+  message(STATUS "aarch64 tests enabled")
+  add_subdirectory(tests/AArch64)
 endif()
