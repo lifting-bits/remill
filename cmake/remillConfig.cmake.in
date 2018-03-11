@@ -26,5 +26,9 @@ add_library(remill STATIC IMPORTED)
 set_property(TARGET remill PROPERTY IMPORTED_LOCATION "${REMILL_LIBRARY_LOCATION}")
 target_include_directories(remill INTERFACE "${REMILL_INCLUDE_LOCATION}")
 
+target_compile_definitions(remill INTERFACE "REMILL_INSTALL_SEMANTICS_DIR=${REMILL_INSTALL_SEMANTICS_DIR}")
+target_compile_definitions(remill INTERFACE "REMILL_BUILD_SEMANTICS_DIR_X86${REMILL_INSTALL_SEMANTICS_DIR}")
+target_compile_definitions(remill INTERFACE "REMILL_BUILD_SEMANTICS_DIR_AARCH64${REMILL_INSTALL_SEMANTICS_DIR}")
+
 # Add a dummy 'semantics' target to satisfy the protobuf generator
 add_custom_target(semantics)
