@@ -74,6 +74,11 @@ list(APPEND PROJECT_LIBRARIES glog::glog)
 find_package(gflags REQUIRED)
 list(APPEND PROJECT_LIBRARIES gflags)
 
+# windows sdk
+if(DEFINED WIN32)
+  list(APPEND PROJECT_LIBRARIES "Kernel32.lib")
+endif()
+
 #
 # target settings
 #

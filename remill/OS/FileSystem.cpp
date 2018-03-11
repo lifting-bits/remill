@@ -20,11 +20,15 @@
 #include <cerrno>
 #include <climits>
 #include <cstdlib>
-#include <dirent.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <vector>
+#include <fstream>
+
+#ifndef WIN32
+# include <dirent.h>
+# include <fcntl.h>
+# include <sys/stat.h>
+# include <unistd.h>
+#endif
 
 #include "remill/OS/FileSystem.h"
 #include "remill/OS/OS.h"
@@ -41,52 +45,136 @@
 # define PATH_MAX _MAX_PATH
 #endif
 
-namespace remill {
+// Do not include windows.h, or its macros will end up shadowing our functions
+// (i.e.: MoveFile)
+#ifdef WIN32
+namespace {
+const std::uint32_t INVALID_FILE_ATTRIBUTES = static_cast<std::uint32_t>(-1);
+const std::uint32_t ERROR_NO_MORE_FILES = 18U;
+const std::uint32_t FILE_ATTRIBUTE_DIRECTORY = 16U;
+const std::uint32_t INVALID_HANDLE_VALUE = static_cast<std::uint32_t>(-1);
+const int MAX_PATH = 260;
 
-// Try to create a directory. Returns `true` if the directory was created or
-// exists.
-bool TryCreateDirectory(const std::string &dir_name) {
-  mkdir(dir_name.c_str(), 0777);  // Ignore errors.
-  if (auto d = opendir(dir_name.c_str())) {
-    closedir(d);
-    return true;
-  } else {
+struct FILETIME {
+  std::uint32_t dwLowDateTime;
+  std::uint32_t dwHighDateTime;
+};
+
+struct WIN32_FIND_DATA {
+  std::uint32_t dwFileAttributes;
+  FILETIME ftCreationTime;
+  FILETIME ftLastAccessTime;
+  FILETIME ftLastWriteTime;
+  std::uint32_t nFileSizeHigh;
+  std::uint32_t nFileSizeLow;
+  std::uint32_t dwReserved0;
+  std::uint32_t dwReserved1;
+  char cFileName[MAX_PATH];
+  char cAlternateFileName[14];
+};
+
+extern "C" int CreateDirectoryA(const char *path_name, void *security_attributes);
+extern "C" std::uint32_t GetCurrentDirectoryA(std::uint32_t buffer_length, char *buffer);
+extern "C" std::uint32_t GetFileAttributesA(const char *file_name);
+extern "C" int CopyFileA(const char *existing_file_name, const char *new_file_name, int file_if_exists);
+extern "C" int CreateHardLinkA(const char *file_name, const char *existing_file_name, void *security_attributes);
+extern "C" std::uint32_t FindFirstFileA(const char *file_name, WIN32_FIND_DATA *find_data);
+extern "C" std::uint32_t FindNextFileA(std::uint32_t handle, WIN32_FIND_DATA *find_data);
+extern "C" int FindClose(std::uint32_t handle);
+extern "C" std::uint32_t GetLastError();
+
+int mkdir(const char *pathname, std::uint16_t mode) {
+  static_cast<void>(mode);
+
+  if (CreateDirectoryA(pathname, nullptr) == 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+char *getcwd(char *buf, size_t size) {
+  if (GetCurrentDirectoryA(static_cast<std::uint32_t>(size), buf) == 0) {
+    return nullptr;
+  }
+
+  return buf;
+}
+
+int link(const char *path1, const char *path2) {
+  if (CreateHardLinkA(path1, path2, nullptr) == 0) {
+    return -1;
+  }
+
+  return 0;
+}
+}
+#endif
+
+namespace remill {
+#ifdef WIN32
+bool IsDirectory(const std::string &path_name) {
+  auto attributes = GetFileAttributesA(path_name.data());
+  if (attributes == INVALID_FILE_ATTRIBUTES) {
     return false;
   }
+
+  return (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+}
+
+bool FileExists(const std::string &path) {
+  auto attributes = GetFileAttributesA(path.data());
+  if (attributes == INVALID_FILE_ATTRIBUTES) {
+    return false;
+  }
+
+  return (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
+}
+
+uint64_t FileSize(const std::string &path) {
+  std::ifstream stream(path, std::ifstream::binary | std::ifstream::ate);
+  return static_cast<std::uint64_t>(stream.tellg());
 }
 
 // Iterator over a directory.
 void ForEachFileInDirectory(const std::string &dir_name,
-                            DirectoryVisitor visitor) {
-  std::vector<std::string> paths;
-  auto dir = opendir(dir_name.c_str());
-  CHECK(dir != nullptr)
-      << "Could not list the " << dir_name << " directory";
+                            remill::DirectoryVisitor visitor) {
 
-  while (auto ent = readdir(dir)) {
-    if (!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..")) {
-      continue;
-    }
+  WIN32_FIND_DATA find_data = {};
 
-    std::stringstream ss;
-    ss << dir_name << "/" << ent->d_name;
-    paths.push_back(ss.str());
+  auto handle = FindFirstFileA(dir_name.data(), &find_data);
+  if (handle == INVALID_HANDLE_VALUE) {
+    return;
   }
-  closedir(dir);
 
-  for (const auto &path : paths) {
-    if (!visitor(path)) {
+  do {
+    std::string full_path = dir_name + "\\" + find_data.cFileName;
+    if (!visitor(full_path)) {
       break;
     }
-  }
+
+    if (FindNextFileA(handle, &find_data) == 0) {
+      if (GetLastError() == ERROR_NO_MORE_FILES) {
+        break;
+      }
+
+      LOG(ERROR) << "Could not list the " << dir_name << " directory";
+      break;
+    }
+  } while (true);
+
+  FindClose(handle);
 }
 
-std::string CurrentWorkingDirectory(void) {
-  char result[PATH_MAX] = {};
-  auto res = getcwd(result, PATH_MAX);
-  CHECK(res)
-      << "Could not determine current working directory: " << strerror(errno);
-  return std::string(result);
+#else
+bool IsDirectory(const std::string &path_name) {
+  auto d = opendir(path_name.c_str());
+  if (d == 0) {
+    return false;
+  }
+
+  closedir(d);
+  return true;
 }
 
 bool FileExists(const std::string &path) {
@@ -121,6 +209,48 @@ uint64_t FileSize(const std::string &path) {
   return static_cast<uint64_t>(file_info.st_size);
 }
 
+// Iterator over a directory.
+void ForEachFileInDirectory(const std::string &dir_name,
+                            DirectoryVisitor visitor) {
+  std::vector<std::string> paths;
+  auto dir = opendir(dir_name.c_str());
+  CHECK(dir != nullptr)
+      << "Could not list the " << dir_name << " directory";
+
+  while (auto ent = readdir(dir)) {
+    if (!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..")) {
+      continue;
+    }
+
+    std::stringstream ss;
+    ss << dir_name << "/" << ent->d_name;
+    paths.push_back(ss.str());
+  }
+  closedir(dir);
+
+  for (const auto &path : paths) {
+    if (!visitor(path)) {
+      break;
+    }
+  }
+}
+#endif
+
+// Try to create a directory. Returns `true` if the directory was created or
+// exists.
+bool TryCreateDirectory(const std::string &dir_name) {
+  mkdir(dir_name.c_str(), 0777);  // Ignore errors.
+  return IsDirectory(dir_name);
+}
+
+std::string CurrentWorkingDirectory(void) {
+  char result[PATH_MAX] = {};
+  auto res = getcwd(result, PATH_MAX);
+  CHECK(res)
+      << "Could not determine current working directory: " << strerror(errno);
+  return std::string(result);
+}
+
 void RemoveFile(const std::string &path) {
   unlink(path.c_str());
 }
@@ -138,6 +268,7 @@ bool RenameFile(const std::string &from_path, const std::string &to_path) {
   }
 }
 
+#ifndef WIN32
 namespace {
 enum : size_t {
   kCopyDataSize = 4096ULL
@@ -145,7 +276,18 @@ enum : size_t {
 
 static uint8_t gCopyData[kCopyDataSize];
 }  // namespace
+#endif
 
+#ifdef WIN32
+void CopyFile(const std::string &from_path, const std::string &to_path) {
+  if (CopyFileA(from_path.data(), to_path.data(), false) == 0) {
+    LOG(FATAL)
+      << "Unable to copy all data read from " << from_path
+      << " to " << to_path;
+  }
+}
+
+#else
 void CopyFile(const std::string &from_path, const std::string &to_path) {
   unlink(to_path.c_str());
   auto from_fd = open(from_path.c_str(), O_RDONLY);
@@ -190,6 +332,7 @@ void CopyFile(const std::string &from_path, const std::string &to_path) {
         << " to " << to_path << ": " << strerror(errno_copy);
   }
 }
+#endif
 
 void HardLinkOrCopyFile(const std::string &from_path,
                         const std::string &to_path) {
@@ -234,7 +377,7 @@ std::string CanonicalPath(const std::string &path) {
 
 // Returns the path separator character for this OS.
 const char *PathSeparator(void) {
-#if REMILL_ON_WINDOWS
+#ifdef WIN32
   return "\\";
 #else
   return "/";
