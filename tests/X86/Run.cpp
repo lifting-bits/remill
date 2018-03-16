@@ -487,6 +487,21 @@ static void ResetFlags(void) {
   asm("push %0; popfq;" : : "m"(gRflagsInitial));
 }
 
+// clear the exception flags in mxcsr
+// *and* set MXCSR to ignore denormal exceptions
+// this is done by newer (after 2015) glibcs
+// but is missing in older versions
+// see: https://sourceware.org/ml/libc-alpha/2015-10/msg01020.html
+static void FixGlibcMxcsrBug() {
+  const uint32_t FE_ALL_EXCEPT_X86 = (FE_ALL_EXCEPT | __FE_DENORM);
+  uint32_t mxcsr = 0; // temporary holds our mxcsr
+  asm("stmxcsr %0;" : "=m"(mxcsr));
+  // assumes the rest of MXCSR was santely set by fesetenv
+  mxcsr &= ~FE_ALL_EXCEPT_X86;
+  mxcsr |= (FE_ALL_EXCEPT_X86 << 7);
+  asm("ldmxcsr %0;" : : "m"(mxcsr));
+}
+
 }  // namespace
 
 class InstrTest : public ::testing::TestWithParam<const test::TestInfo *> {};
@@ -560,6 +575,7 @@ static void RunWithFlags(const test::TestInfo *info,
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
     std::fesetenv(FE_DFL_ENV);
+    FixGlibcMxcsrBug();
     (void) lifted_func(
         *lifted_state,
         static_cast<addr_t>(lifted_state->gpr.rip.aword),
