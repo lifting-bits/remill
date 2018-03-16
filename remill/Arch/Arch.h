@@ -48,11 +48,20 @@ class Arch {
   static const Arch *Get(OSName os, ArchName arch_name);
 
   // Converts an LLVM module object to have the right triple / data layout
-  // information for the target architecture.
+  // information for the target architecture and ensures remill requied functions
+  // have the appropriate prototype and internal variables
   void PrepareModule(llvm::Module *mod) const;
 
   inline void PrepareModule(const std::unique_ptr<llvm::Module> &mod) const {
     PrepareModule(mod.get());
+  }
+
+  // Converts an LLVM module object to have the right triple / data layout
+  // information for the target architecture
+  void PrepareModuleDataLayout(llvm::Module *mod) const;
+
+  inline void PrepareModuleDataLayout(const std::unique_ptr<llvm::Module> &mod) const {
+    PrepareModuleDataLayout(mod.get());
   }
 
   // Decode an instruction.
