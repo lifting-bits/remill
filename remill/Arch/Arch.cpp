@@ -321,9 +321,9 @@ static void InitBlockFunctionAttributes(llvm::Function *block_func) {
 
 }  // namespace
 
-// Converts an LLVM module object to have the right triple / data layout
-// information for the target architecture.
-void Arch::PrepareModule(llvm::Module *mod) const {
+// ensures that mandatory remill functions have the correct
+// type signature and variable names
+static void PrepareModuleRemillFunctions(llvm::Module *mod) {
   auto basic_block = BasicBlockFunction(mod);
 
   InitFunctionAttributes(basic_block);
@@ -335,7 +335,12 @@ void Arch::PrepareModule(llvm::Module *mod) const {
   basic_block->removeFnAttr(llvm::Attribute::InlineHint);
   basic_block->addFnAttr(llvm::Attribute::NoInline);
   basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
+}
 
+// Converts an LLVM module object to have the right triple / data layout
+// information for the target architecture.
+//
+void Arch::PrepareModuleDataLayout(llvm::Module *mod) const {
   mod->setDataLayout(DataLayout().getStringRepresentation());
   mod->setTargetTriple(Triple().str());
 
@@ -366,6 +371,11 @@ void Arch::PrepareModule(llvm::Module *mod) const {
         target_attribs);
     func.setAttributes(attribs);
   }
+}
+
+void Arch::PrepareModule(llvm::Module *mod) const {
+    PrepareModuleRemillFunctions(mod);
+    PrepareModuleDataLayout(mod);
 }
 
 }  // namespace remill
