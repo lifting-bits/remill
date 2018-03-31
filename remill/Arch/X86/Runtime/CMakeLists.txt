@@ -32,11 +32,18 @@ endif()
 function(add_runtime_helper target_name address_bit_size enable_avx enable_avx512)
   message(" > Generating runtime target: ${target_name}")
 
+  # Visual C++ requires C++14
+  if(WIN32)
+    set(required_cpp_standard "c++14")
+  else()
+    set(required_cpp_standard "c++11")
+  endif()
+
   add_runtime(${target_name}
     SOURCES ${X86RUNTIME_SOURCEFILES}
     ADDRESS_SIZE ${address_bit_size}
     DEFINITIONS "HAS_FEATURE_AVX=${enable_avx}" "HAS_FEATURE_AVX512=${enable_avx512}"
-    BCFLAGS -std=c++14
+    BCFLAGS "-std=${required_cpp_standard}"
     INCLUDEDIRECTORIES "${CMAKE_SOURCE_DIR}"
     INSTALLDESTINATION "${install_folder}"
 
