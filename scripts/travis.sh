@@ -247,6 +247,13 @@ common_build() {
 
   # Some LLVM versions can't compile the tests
   if [ "${llvm_version}" == "35" ] || [ "${llvm_version}" == "36" ] || [ "${llvm_version}" == "37" ] || [ "${llvm_version}" == "38" ] ; then
+    printf " ! Tests are not compatible with this LLVM version (${llvm_version})\n"
+    printf " > Build succeeded\n"
+    return 0
+  fi
+
+  # Some LLVM versions aren't (yet) compatible with the tests
+  if [ "${llvm_version}" == "50" ] ; then
     printf " ! Tests are blacklisted for this LLVM version (${llvm_version})\n"
     printf " > Build succeeded\n"
     return 0
@@ -267,7 +274,7 @@ common_build() {
   fi
 
   printf " > Building and running the tests...\n\nWaiting..."
-  ( cd build && make -j `GetProcessorCount` test_dependencies && make test ) > "${log_file}" 2>&1 &
+  ( cd build && make -j `GetProcessorCount` test_dependencies && env CTEST_OUTPUT_ON_FAILURE=1 make test ) > "${log_file}" 2>&1 &
   local test_pid="$!"
 
   while [ true ] ; do
