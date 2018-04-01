@@ -15,8 +15,6 @@
 project(x86_tests ASM)
 cmake_minimum_required(VERSION 3.2)
 
-add_custom_target(build_x86_tests)
-
 function(COMPILE_X86_TESTS name address_size has_avx has_avx512)
   set(X86_TEST_FLAGS
     -I${CMAKE_SOURCE_DIR}
@@ -40,13 +38,11 @@ function(COMPILE_X86_TESTS name address_size has_avx has_avx512)
   target_link_libraries(lift-${name}-tests PUBLIC remill ${gtest_LIBRARIES})
   target_include_directories(lift-${name}-tests PUBLIC ${gtest_INCLUDE_DIRS})
   target_compile_definitions(lift-${name}-tests PUBLIC ${PROJECT_DEFINITIONS})
-    
-  add_executable(run-${name}-tests EXCLUDE_FROM_ALL Run.cpp Tests.S tests_${name}.S)
-    
+
   add_custom_command(
     OUTPUT tests_${name}.bc
     COMMAND lift-${name}-tests --arch ${name} --bc_out tests_${name}.bc
-    DEPENDS lift-${name}-tests semantics
+    DEPENDS semantics
   )
     
   add_custom_command(
@@ -54,6 +50,8 @@ function(COMPILE_X86_TESTS name address_size has_avx has_avx512)
     COMMAND ${CMAKE_BC_COMPILER} -Wno-override-module -S -O1 -g0 -c tests_${name}.bc -o tests_${name}.S
     DEPENDS tests_${name}.bc
   )
+ 
+  add_executable(run-${name}-tests EXCLUDE_FROM_ALL Run.cpp Tests.S tests_${name}.S)
 
   target_link_libraries(run-${name}-tests PUBLIC remill ${gtest_LIBRARIES})
   target_include_directories(run-${name}-tests PUBLIC ${gtest_INCLUDE_DIRS})
@@ -63,12 +61,9 @@ function(COMPILE_X86_TESTS name address_size has_avx has_avx512)
     PRIVATE ${X86_TEST_FLAGS}
   )
 
-  add_dependencies(build_x86_tests
-    lift-${name}-tests
-    run-${name}-tests
-  )
-
-  add_test(${name} run-${name}-tests)
+  message(STATUS "Adding test: ${name} as run-${name}-tests")
+  add_test(NAME "${name}" COMMAND "run-${name}-tests")
+  add_dependencies(test_dependencies "run-${name}-tests")
 endfunction()
 
 find_package(gtest REQUIRED)

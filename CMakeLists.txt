@@ -303,6 +303,8 @@ add_subdirectory(remill/Arch/AArch64/Runtime)
 add_subdirectory(tools)
 
 # tests
+add_custom_target(test_dependencies)
+
 if(NOT "${PLATFORM_NAME}" STREQUAL "windows")
   if("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "AMD64" OR "${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
     message(STATUS "X86 tests enabled")

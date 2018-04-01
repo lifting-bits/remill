@@ -22,8 +22,6 @@ list(APPEND PROJECT_INCLUDEDIRECTORIES ${gtest_INCLUDE_DIRS})
 enable_testing()
 enable_language(ASM)
 
-add_custom_target(build_aarch64_tests)
-
 add_executable(lift-aarch64-tests
   EXCLUDE_FROM_ALL
   Lift.cpp
@@ -81,10 +79,6 @@ target_compile_options(run-aarch64-tests
           -DGTEST_HAS_TR1_TUPLE=0
 )
 
-add_dependencies(build_aarch64_tests
-  lift-aarch64-tests
-  run-aarch64-tests
-)
-
-add_test(aarch64 run-aarch64-tests)
-
+message(STATUS "Adding test: aarch64 as run-aarch64-tests")
+add_test(NAME "aarch64" COMMAND "run-aarch64-tests")
+add_dependencies(test_dependencies run-aarch64-tests)
