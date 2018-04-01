@@ -18,10 +18,7 @@
 #include <bitset>
 #include <cmath>
 
-#include "remill/Arch/FPUFlags.h"
-#include <cfenv>
-#include <cfloat>
-
+#include "remill/Arch/Float.h"
 #include "remill/Arch/Runtime/Intrinsics.h"
 #include "remill/Arch/Runtime/Operators.h"
 
