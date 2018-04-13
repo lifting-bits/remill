@@ -17,6 +17,7 @@
 #ifndef REMILL_BC_COMPAT_TOOLOUTPUTFILE_H_
 #define REMILL_BC_COMPAT_TOOLOUTPUTFILE_H_
 
+#include "remill/BC/Version.h"
 #include <llvm/Support/ToolOutputFile.h>
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(6, 0)
