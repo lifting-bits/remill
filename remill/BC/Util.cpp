@@ -39,7 +39,6 @@
 
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/SourceMgr.h>
-#include <llvm/Support/ToolOutputFile.h>
 #include <llvm/Support/raw_ostream.h>
 
 #include "remill/Arch/Name.h"
@@ -48,6 +47,7 @@
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/IRReader.h"
+#include "remill/BC/Compat/ToolOutputFile.h"
 #include "remill/BC/Compat/Verifier.h"
 #include "remill/BC/Util.h"
 #include "remill/BC/Version.h"
@@ -289,7 +289,7 @@ bool StoreModuleToFile(llvm::Module *module, std::string file_name,
 
 #if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 5)
   std::error_code ec;
-  llvm::tool_output_file bc(tmp_name.c_str(), ec, llvm::sys::fs::F_RW);
+  llvm::ToolOutputFile bc(tmp_name.c_str(), ec, llvm::sys::fs::F_RW);
   CHECK(!ec) << "Unable to open output bitcode file for writing: " << tmp_name;
 #else
   llvm::tool_output_file bc(tmp_name.c_str(), error, llvm::sys::fs::F_RW);
