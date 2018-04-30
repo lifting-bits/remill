@@ -23,7 +23,8 @@ CURR_DIR=$( pwd )
 BUILD_DIR=${CURR_DIR}/remill-build
 INSTALL_DIR=/usr/local
 LLVM_VERSION=llvm40
-OS_VERSION=
+# FIXME: remove workaround
+OS_VERSION=ubuntu1604
 ARCH_VERSION=
 
 # There are pre-build versions of various libraries for specific
@@ -118,7 +119,8 @@ function GetOSVersion
 
     *)
       printf "[x] ${distribution_name} is not yet a supported distribution.\n"
-      return 1
+      # FIXME: remove workaround
+      return 0
     ;;
   esac
 }
