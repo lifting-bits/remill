@@ -24,12 +24,16 @@ class Value;
 }  // namespace llvm
 
 class StateSlot {
-    // uint64_t begin offset
-    // uint64_t end offset
-    // StringRef comment
+  protected:
+    // Inclusive beginning byte offset
+    uint64_t begin_offset;
+    // Exclusive end byte offset
+    uint64_t end_offset;
+    // Slot "name"
+    StringRef comment;
 };
 
-void StateSlots(llvm::Module *module);
+vector<StateSlot> StateSlots(llvm::Module *module);
 
-void VisitField(llvm::Value *value, uint64_t offset);
+StateSlot VisitField(llvm::Value *value, uint64_t offset);
 #endif  // REMILL_BC_DSELIM_H_

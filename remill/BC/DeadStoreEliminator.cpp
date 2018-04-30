@@ -22,8 +22,8 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Module.h>
 
-#include "remill/BC/Util.h"
 #include "remill/BC/DeadStoreEliminator.h"
+#include "remill/BC/Util.h"
 
 /* TODO(tim):
  * - Retrieve a State struct
@@ -32,14 +32,16 @@
 
 // Return a vector of state slot records, where each
 // "slot" of the State structure has its own SlotRecord.
-void StateSlots(llvm::Module *module) {
+vector<StateSlot> StateSlots(llvm::Module *module) {
   // get the state corresponding to the module
   // start at offset 0 and begin visiting State
   // iterate and visit fields, returning StateSlots
   // update offset with the .end_offset of each new StateSlot
 }
 
-StateSlot VisitField(llvm::Value *value, uint32_t offset) {
+// Return a new StateSlot based on the Type of the given value,
+// and the starting offset provided.
+StateSlot VisitField(llvm::Value *value, uint64_t offset) {
   // get the value's type (llvm::Type*)
   // get the value's name and use it as the comment
   // return a StateSlot
