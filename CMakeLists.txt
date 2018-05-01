@@ -201,6 +201,7 @@ add_library(${PROJECT_NAME} STATIC
     remill/BC/IntrinsicTable.cpp
     remill/BC/Lifter.cpp
     remill/BC/Util.cpp
+    remill/BC/DeadStoreEliminator.cpp
 
     remill/OS/FileSystem.cpp
     remill/OS/OS.cpp

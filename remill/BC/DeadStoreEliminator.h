@@ -18,12 +18,13 @@
 #define REMILL_BC_DSELIM_H_
 
 namespace llvm {
-class BasicBlock;
+class Type;
+class StructType;
 class Module;
-class Value;
-class StringRef;
+class DataLayout;
 }  // namespace llvm
 
+namespace remill {
 class StateSlot {
   public:
     StateSlot(uint64_t begin, uint64_t end) {
@@ -37,6 +38,15 @@ class StateSlot {
 };
 
 std::vector<StateSlot> StateSlots(llvm::Module *module);
+}  // namespace remill
 
-StateSlot VisitField(llvm::Type *ty, uint64_t offset);
+namespace {
+std::vector<remill::StateSlot> VisitStruct(llvm::StructType *struct_type,
+                                           uint64_t offset,
+                                           llvm::DataLayout *dl);
+
+remill::StateSlot VisitField(llvm::Type *ty,
+                             uint64_t offset,
+                             llvm::DataLayout *dl);
+}
 #endif  // REMILL_BC_DSELIM_H_

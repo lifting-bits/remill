@@ -34,26 +34,43 @@ namespace remill {
   // Return a vector of state slot records, where each
   // "slot" of the State structure has its own SlotRecord.
   std::vector<StateSlot> StateSlots(llvm::Module *module) {
+    // get the state
     auto slots = std::vector<StateSlot>();
     auto state_ptr_type = StatePointerType(module);
-    auto struct_type = llvm::dyn_cast<llvm::StructType>(state_ptr_type);
+    llvm::Type *type = state_ptr_type->getElementType();
+    llvm::DataLayout dl = module->getDataLayout();
+    auto struct_type = llvm::dyn_cast<llvm::StructType>(type);
     CHECK(struct_type != nullptr);
     uint64_t offset = 0;
-    for (auto elem_type : struct_type->elements()) {
-      auto slot = VisitField(elem_type, offset);
-      offset = slot.end_offset;
-      slots.push_back(slot);
-    }
-    return slots;
+    return VisitStruct(struct_type, offset, &dl);
   }
 }  // namespace remill
 
 namespace {
+  std::vector<remill::StateSlot> VisitStruct(llvm::StructType *struct_type,
+                                             uint64_t offset,
+                                             llvm::DataLayout *dl) {
+    auto slots = std::vector<remill::StateSlot>();
+    for (auto elem_type : struct_type->elements()) {
+      if (auto struct_type = llvm::dyn_cast<llvm::StructType>(elem_type)) {
+        // TODO(tim): other CompositeTypes: arrays, vectors
+        auto struct_slots = VisitStruct(struct_type, offset, dl);
+        offset = struct_slots.end()->end_offset;
+        // flatten into existing list
+        slots.insert(slots.end(), struct_slots.begin(), struct_slots.end());
+      } else {
+        remill::StateSlot slot = VisitField(elem_type, offset, dl);
+        CHECK(slot.end_offset > offset);
+        offset = slot.end_offset;
+        slots.push_back(slot);
+      }
+    }
+    return slots;
+  }
   // Return a new StateSlot based on the Type of the given value,
   // and the starting offset provided.
-  StateSlot VisitField(llvm::Type *ty, uint64_t offset) {
-    auto end = llvm::DataLayout::getTypeAllocSize(ty) + offset;
-    // TODO(tim): change to properly recurse if given type is non-primitive
-    return StateSlot(offset, end);
+  remill::StateSlot VisitField(llvm::Type *ty, uint64_t offset, llvm::DataLayout *dl) {
+    uint64_t end = dl->getTypeAllocSize(ty) + offset;
+    return remill::StateSlot(offset, end);
   }
 }  // namespace
