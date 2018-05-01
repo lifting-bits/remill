@@ -30,20 +30,30 @@
  * - Recursively visit the struct's members and produce a flattened list of slots
  */
 
-// Return a vector of state slot records, where each
-// "slot" of the State structure has its own SlotRecord.
-vector<StateSlot> StateSlots(llvm::Module *module) {
-  // get the state corresponding to the module
-  // start at offset 0 and begin visiting State
-  // iterate and visit fields, returning StateSlots
-  // update offset with the .end_offset of each new StateSlot
-}
+namespace remill {
+  // Return a vector of state slot records, where each
+  // "slot" of the State structure has its own SlotRecord.
+  std::vector<StateSlot> StateSlots(llvm::Module *module) {
+    auto slots = std::vector<StateSlot>();
+    auto state_ptr_type = StatePointerType(module);
+    auto struct_type = llvm::dyn_cast<llvm::StructType>(state_ptr_type);
+    CHECK(struct_type != nullptr);
+    uint64_t offset = 0;
+    for (auto elem_type : struct_type->elements()) {
+      auto slot = VisitField(elem_type, offset);
+      offset = slot.end_offset;
+      slots.push_back(slot);
+    }
+    return slots;
+  }
+}  // namespace remill
 
-// Return a new StateSlot based on the Type of the given value,
-// and the starting offset provided.
-StateSlot VisitField(llvm::Value *value, uint64_t offset) {
-  // get the value's type (llvm::Type*)
-  // get the value's name and use it as the comment
-  // return a StateSlot
-}
-
+namespace {
+  // Return a new StateSlot based on the Type of the given value,
+  // and the starting offset provided.
+  StateSlot VisitField(llvm::Type *ty, uint64_t offset) {
+    auto end = llvm::DataLayout::getTypeAllocSize(ty) + offset;
+    // TODO(tim): change to properly recurse if given type is non-primitive
+    return StateSlot(offset, end);
+  }
+}  // namespace

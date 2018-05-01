@@ -21,19 +21,22 @@ namespace llvm {
 class BasicBlock;
 class Module;
 class Value;
+class StringRef;
 }  // namespace llvm
 
 class StateSlot {
-  protected:
+  public:
+    StateSlot(uint64_t begin, uint64_t end) {
+      begin_offset = begin;
+      end_offset = end;
+    }
     // Inclusive beginning byte offset
     uint64_t begin_offset;
     // Exclusive end byte offset
     uint64_t end_offset;
-    // Slot "name"
-    StringRef comment;
 };
 
-vector<StateSlot> StateSlots(llvm::Module *module);
+std::vector<StateSlot> StateSlots(llvm::Module *module);
 
-StateSlot VisitField(llvm::Value *value, uint64_t offset);
+StateSlot VisitField(llvm::Type *ty, uint64_t offset);
 #endif  // REMILL_BC_DSELIM_H_
