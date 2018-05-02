@@ -52,12 +52,17 @@ namespace {
                                              llvm::DataLayout *dl) {
     auto slots = std::vector<remill::StateSlot>();
     for (auto elem_type : struct_type->elements()) {
+      elem_type->dump();
       if (auto struct_type = llvm::dyn_cast<llvm::StructType>(elem_type)) {
         // TODO(tim): other CompositeTypes: arrays, vectors
         auto struct_slots = VisitStruct(struct_type, offset, dl);
         offset = struct_slots.end()->end_offset;
         // flatten into existing list
         slots.insert(slots.end(), struct_slots.begin(), struct_slots.end());
+      } else if (auto seq_type = llvm::dyn_cast<llvm::SequentialType>(elem_type)) {
+        auto seq_slots = VisitSequential(seq_type, offset, dl);
+        offset = seq_slots.end()->end_offset;
+        slots.insert(slots.end(), seq_slots.begin(), seq_slots.end());
       } else {
         remill::StateSlot slot = VisitField(elem_type, offset, dl);
         CHECK(slot.end_offset > offset);
@@ -72,5 +77,33 @@ namespace {
   remill::StateSlot VisitField(llvm::Type *ty, uint64_t offset, llvm::DataLayout *dl) {
     uint64_t end = dl->getTypeAllocSize(ty) + offset;
     return remill::StateSlot(offset, end);
+  }
+
+  std::vector<remill::StateSlot> VisitSequential(llvm::SequentialType *seq_ty,
+                                                 uint64_t offset,
+                                                 llvm::DataLayout *dl) {
+    auto slots = std::vector<remill::StateSlot>();
+    // since every slot has the same type, get it once
+    auto ty = seq_ty->getSequentialElementType();
+    if (auto struct_type = llvm::dyn_cast<llvm::StructType>(ty)) {
+      auto struct_slots = VisitStruct(struct_type, offset, dl);
+      uint64_t len = struct_slots.end()->end_offset - struct_slots.begin()->begin_offset;
+      slots.insert(slots.end(), struct_slots.begin(), struct_slots.end());
+      // for each subsequent struct, add offset to it
+      for (unsigned int i=1; i < seq_ty->getNumContainedTypes(); i++) {
+        // duplicate the slot for each contained type, updating the offset
+        std::vector<remill::StateSlot> copy(struct_slots);
+        offset += len;
+        for (remill::StateSlot slot : copy) {
+          slot.increment_offset(offset);
+        }
+        slots.insert(slots.end(), struct_slots.begin(), struct_slots.end());
+      }
+    } else {
+      // if the inner type is not a struct, treat it as one whole slot
+      uint64_t end = dl->getTypeAllocSize(ty) * seq_ty->getNumContainedTypes() + offset;
+      slots.push_back(remill::StateSlot(offset, end));
+    }
+    return slots;
   }
 }  // namespace

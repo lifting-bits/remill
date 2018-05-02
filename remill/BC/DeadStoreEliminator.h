@@ -31,10 +31,17 @@ class StateSlot {
       begin_offset = begin;
       end_offset = end;
     }
+    //StateSlot(const StateSlot& other);
     // Inclusive beginning byte offset
     uint64_t begin_offset;
     // Exclusive end byte offset
     uint64_t end_offset;
+
+    // Increment the offset of both begin and end by the given offset.
+    void increment_offset(const uint64_t offset) {
+      begin_offset += offset;
+      end_offset += offset;
+    }
 };
 
 std::vector<StateSlot> StateSlots(llvm::Module *module);
@@ -48,5 +55,9 @@ std::vector<remill::StateSlot> VisitStruct(llvm::StructType *struct_type,
 remill::StateSlot VisitField(llvm::Type *ty,
                              uint64_t offset,
                              llvm::DataLayout *dl);
+
+std::vector<remill::StateSlot> VisitSequential(llvm::SequentialType *seq_ty,
+                                               uint64_t offset,
+                                               llvm::DataLayout *dl);
 }
 #endif  // REMILL_BC_DSELIM_H_
