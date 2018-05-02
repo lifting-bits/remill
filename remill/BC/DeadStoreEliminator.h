@@ -25,24 +25,63 @@ class DataLayout;
 }  // namespace llvm
 
 namespace remill {
-class StateSlot {
-  public:
-    StateSlot(uint64_t begin, uint64_t end) {
-      begin_offset = begin;
-      end_offset = end;
-    }
-    //StateSlot(const StateSlot& other);
-    // Inclusive beginning byte offset
-    uint64_t begin_offset;
-    // Exclusive end byte offset
-    uint64_t end_offset;
+  class StateSlot {
+    public:
+      StateSlot(uint64_t begin, uint64_t end) {
+        begin_offset = begin;
+        end_offset = end;
+      }
+      //StateSlot(const StateSlot& other);
+      // Inclusive beginning byte offset
+      uint64_t begin_offset;
+      // Exclusive end byte offset
+      uint64_t end_offset;
 
-    // Increment the offset of both begin and end by the given offset.
-    void increment_offset(const uint64_t offset) {
-      begin_offset += offset;
-      end_offset += offset;
-    }
-};
+      // Increment the offset of both begin and end by the given offset.
+      void increment_offset(const uint64_t offset) {
+        begin_offset += offset;
+        end_offset += offset;
+      }
+  };
+
+  class StateVisitor {
+    public:
+      std::vector<remill::StateSlot> slots;
+      // the current offset in the state structure
+      uint64_t offset;
+
+      StateVisitor(llvm::DataLayout *dl) {
+        slots = std::vector<remill::StateSlot>();
+        offset = 0;
+      }
+
+    private:
+      // the LLVM datalayout used for calculating type allocation size
+      llvm::DataLayout *dl;
+
+    public:
+      // visit a type and record it (and any children) in the slots vector
+      void visit(llvm::Type *ty) {
+        if (ty == nullptr) {
+          // skip
+        } else if (auto struct_ty = llvm::dyn_cast<llvm::StructType>(ty)) {
+          for (auto elem_ty : struct_ty->elements()) {
+            this->visit(elem_ty);
+          }
+        } else if (auto seq_ty = llvm::dyn_cast<llvm::SequentialType>(ty)) {
+          auto first_ty = seq_ty->getSequentialElementType();
+          for (unsigned int i=0; i < seq_ty->getNumContainedTypes(); i++) {
+            // repeat NumContained times
+            // NOTE: will recalculate every time, rather than memoizing
+            this->visit(first_ty);
+          }
+        } else {  // BASE CASE
+          uint64_t len = dl->getTypeAllocSize(ty);
+          slots.push_back(remill::StateSlot(offset, offset + len));
+          offset += len;
+        }
+      }
+  };
 
 std::vector<StateSlot> StateSlots(llvm::Module *module);
 }  // namespace remill

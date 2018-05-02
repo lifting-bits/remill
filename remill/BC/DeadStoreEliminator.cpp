@@ -33,16 +33,19 @@
 namespace remill {
   // Return a vector of state slot records, where each
   // "slot" of the State structure has its own SlotRecord.
-  std::vector<StateSlot> StateSlots(llvm::Module *module) {
+  std::vector<remill::StateSlot> StateSlots(llvm::Module *module) {
     // get the state
-    auto slots = std::vector<StateSlot>();
+    auto slots = std::vector<remill::StateSlot>();
     auto state_ptr_type = StatePointerType(module);
     llvm::Type *type = state_ptr_type->getElementType();
     llvm::DataLayout dl = module->getDataLayout();
-    auto struct_type = llvm::dyn_cast<llvm::StructType>(type);
-    CHECK(struct_type != nullptr);
-    uint64_t offset = 0;
-    return VisitStruct(struct_type, offset, &dl);
+    //auto struct_type = llvm::dyn_cast<llvm::StructType>(type);
+    //CHECK(struct_type != nullptr);
+    //uint64_t offset = 0;
+    //return VisitStruct(struct_type, offset, &dl);
+    remill::StateVisitor vis(&dl);
+    vis.visit(type);
+    return vis.slots;
   }
 }  // namespace remill
 
