@@ -16,6 +16,7 @@
 
 #include <glog/logging.h>
 
+#include <iomanip>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -310,9 +311,15 @@ static bool DecodeXED(xed_decoded_inst_t *xedd,
   auto err = xed_decode(xedd, bytes, static_cast<uint32_t>(num_bytes));
 
   if (XED_ERROR_NONE != err) {
+    std::stringstream ss;
+    for (auto b : inst_bytes) {
+      ss << std::hex << std::setw(2) << std::setfill('0')
+         << static_cast<unsigned>(b);
+    }
     LOG(ERROR)
-        << "Unable to decode instuction at " << std::hex << address
-        << " with error: " << xed_error_enum_t2str(err) << ".";
+        << "Unable to decode instruction at " << std::hex << address
+        << " with bytes " << ss.str() << " and error: "
+        << xed_error_enum_t2str(err) << std::dec;
     return false;
   }
 
