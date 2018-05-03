@@ -49,7 +49,8 @@ enum OSName : uint32_t {
   kOSInvalid,
   kOSmacOS,
   kOSLinux,
-  kOSWindows
+  kOSWindows,
+  kOSVxWorks
 };
 
 OSName GetOSName(std::string name_);

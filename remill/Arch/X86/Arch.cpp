@@ -801,6 +801,7 @@ llvm::CallingConv::ID X86Arch::DefaultCallingConv(void) const {
       case kOSInvalid:
       case kOSmacOS:
       case kOSLinux:
+      case kOSVxWorks:
       case kOSWindows:
         return llvm::CallingConv::C;  // cdecl.
     }
@@ -809,6 +810,7 @@ llvm::CallingConv::ID X86Arch::DefaultCallingConv(void) const {
       case kOSInvalid:
       case kOSmacOS:
       case kOSLinux:
+      case kOSVxWorks:
         return llvm::CallingConv::X86_64_SysV;
       case kOSWindows:
         return llvm::CallingConv::Win64;
@@ -848,6 +850,7 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
       break;
 
     case kOSLinux:
+    case kOSVxWorks:
       switch (arch_name) {
         case kArchAMD64:
         case kArchAMD64_AVX:
