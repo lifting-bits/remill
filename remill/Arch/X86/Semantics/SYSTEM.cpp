@@ -17,17 +17,23 @@
 namespace {
 
 DEF_SEM(DoRDTSC) {
-  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86ReadTSC);
-  return memory;
+  return __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86ReadTSC);
 }
 
 DEF_SEM(DoRDTSCP) {
-  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86ReadTSCP);
-  return memory;
+  return __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86ReadTSCP);
 }
+
+DEF_SEM(LGDT, M32 src) {
+  memory = __remill_sync_hyper_call(
+      state, memory, SyncHyperCall::kAssertPrivileged);
+  state.addr_to_load = AddressOf(src);
+  return __remill_sync_hyper_call(
+      state, memory, SyncHyperCall::kX86LoadGlobalDescriptorTable);
+}
+
 }  // namespace
 
-
 DEF_ISEL(RDTSC) = DoRDTSC;
-
 DEF_ISEL(RDTSCP) = DoRDTSCP;
+DEF_ISEL(LGDT_MEMs_32) = LGDT;

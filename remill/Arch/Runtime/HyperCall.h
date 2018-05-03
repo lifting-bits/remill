@@ -31,12 +31,19 @@ class SyncHyperCall {
     kX86CPUID,
     kX86ReadTSC,
     kX86ReadTSCP,
+    kX86LoadGlobalDescriptorTable,
 
     kX86SetSegmentES,
     kX86SetSegmentSS,
     kX86SetSegmentDS,
     kX86SetSegmentFS,
     kX86SetSegmentGS,
+
+    kX86SetDebugReg,
+    kAMD64SetDebugReg,
+
+    kX86SetControlReg,
+    kAMD64SetControlReg,
 
     // TODO(pag): How to distinguish little- and big-endian?
     kAArch64EmulateInstruction = 0x200U,

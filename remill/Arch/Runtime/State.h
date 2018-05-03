@@ -28,8 +28,13 @@ struct ArchState {
   // issue is that the interrupt number is part of an instruction, and our
   // generic three-operand block/intrinsic form (state, mem, pc) doesn't
   // have room to hold a vector number.
-  uint32_t hyper_call_vector;
-  uint32_t _1;
+  union {
+    struct {
+      uint32_t hyper_call_vector;
+      uint32_t _1;
+    };
+    uint64_t addr_to_load;
+  };
 } __attribute__((packed));
 
 static_assert(16 == sizeof(ArchState),
