@@ -16,10 +16,13 @@
 
 #include <glog/logging.h>
 
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Module.h>
 
 #include "remill/BC/DeadStoreEliminator.h"
@@ -71,4 +74,21 @@ void StateVisitor::visit(llvm::Type *ty) {
     offset += len;
   }
 }
+
+ForwardAliasVisitor::ForwardAliasVisitor() : AliasMap() { }
+
+void ForwardAliasVisitor::visitAllocaInst(llvm::AllocaInst &I) { }
+
+void ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) { }
+
+void ForwardAliasVisitor::visitStoreInst(llvm::StoreInst &I) { }
+
+void ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst &I) { }
+
+void ForwardAliasVisitor::visitGetPtrToIntInst(llvm::GetPtrToIntInst &I) { }
+
+void ForwardAliasVisitor::visitGetIntToPtrInst(llvm::GetIntToPtrInst &I) { }
+
+void ForwardAliasVisitor::visitBitCastInst(llvm::BitCastInst &I) { }
+
 }

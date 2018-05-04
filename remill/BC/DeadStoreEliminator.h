@@ -17,22 +17,34 @@
 #ifndef REMILL_BC_DSELIM_H_
 #define REMILL_BC_DSELIM_H_
 
+#include <llvm/IR/InstVisitor.h>
+
 namespace llvm {
 class Type;
 class StructType;
 class Module;
 class DataLayout;
+class Value;
+class AllocaInst;
+class LoadInst;
+class StoreInst;
+class GetElementPtrInst;
+class GetPtrToIntInst;
+class GetIntToPtrInst;
+class BitCastInst;
+//template<typename SubClass> class InstVisitor;
 }  // namespace llvm
 
 namespace remill {
-  class StateSlot {
-    public:
-      StateSlot(uint64_t begin, uint64_t end);
-      // Inclusive beginning byte offset
-      uint64_t begin_offset;
-      // Exclusive end byte offset
-      uint64_t end_offset;
-  };
+
+class StateSlot {
+public:
+  StateSlot(uint64_t begin, uint64_t end);
+  // Inclusive beginning byte offset
+  uint64_t begin_offset;
+  // Exclusive end byte offset
+  uint64_t end_offset;
+};
 
 class StateVisitor {
   public:
@@ -52,5 +64,21 @@ class StateVisitor {
 };
 
 std::vector<StateSlot> StateSlots(llvm::Module *module);
+
+struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor> {
+  public:
+    std::unordered_map<llvm::Value *, uint64_t> AliasMap;
+
+    ForwardAliasVisitor();
+
+    virtual void visitAllocaInst(llvm::AllocaInst &I);
+    virtual void visitLoadInst(llvm::LoadInst &I);
+    virtual void visitStoreInst(llvm::StoreInst &I);
+    virtual void visitGetElementPtrInst(llvm::GetElementPtrInst &I);
+    virtual void visitGetPtrToIntInst(llvm::GetPtrToIntInst &I);
+    virtual void visitGetIntToPtrInst(llvm::GetIntToPtrInst &I);
+    virtual void visitBitCastInst(llvm::BitCastInst &I);
+};
+
 }  // namespace remill
 #endif  // REMILL_BC_DSELIM_H_
