@@ -176,6 +176,7 @@ DEF_HELPER(PopFromStack) -> T {
 #include "remill/Arch/X86/Semantics/INTERRUPT.cpp"
 #include "remill/Arch/X86/Semantics/FLAGOP.cpp"
 #include "remill/Arch/X86/Semantics/FMA.cpp"
+#include "remill/Arch/X86/Semantics/IO.cpp"
 #include "remill/Arch/X86/Semantics/LOGICAL.cpp"
 #include "remill/Arch/X86/Semantics/MISC.cpp"
 #include "remill/Arch/X86/Semantics/MMX.cpp"

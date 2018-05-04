@@ -132,6 +132,23 @@ uint8_t *gStackSwitcher = nullptr;
 // the native flags we restore what was clobbered by `PUSHFQ`.
 uint64_t gStackSaveSlot = 0;
 
+// Debug registers.
+uint64_t gDR0;
+uint64_t gDR1;
+uint64_t gDR2;
+uint64_t gDR3;
+uint64_t gDR4;
+uint64_t gDR5;
+uint64_t gDR6;
+uint64_t gDR7;
+
+// Control regs.
+CR0Reg gCR0;
+CR1Reg gCR1;
+CR2Reg gCR2;
+CR3Reg gCR3;
+CR4Reg gCR4;
+
 // Invoke a native test case addressed by `gTestToRun` and store the machine
 // state before and after executing the test in `gLiftedState` and
 // `gNativeState`, respectively.
@@ -341,26 +358,51 @@ Memory *__remill_sync_hyper_call(
       break;
 
     default:
-      __builtin_unreachable();
+      abort();
   }
 
   return mem;
 }
 
+// Read/write to I/O ports.
+uint8_t __remill_read_io_port_8(Memory *, addr_t) {
+  abort();
+}
+
+uint16_t __remill_read_io_port_16(Memory *, addr_t) {
+  abort();
+}
+
+uint32_t __remill_read_io_port_32(Memory *, addr_t) {
+  abort();
+}
+
+Memory *__remill_write_io_port_8(Memory *, addr_t, uint8_t) {
+  abort();
+}
+
+Memory *__remill_write_io_port_16(Memory *, addr_t, uint16_t) {
+  abort();
+}
+
+Memory *__remill_write_io_port_32(Memory *, addr_t, uint32_t) {
+  abort();
+}
+
 Memory *__remill_function_call(X86State &, addr_t, Memory *) {
-  __builtin_unreachable();
+  abort();
 }
 
 Memory *__remill_function_return(X86State &, addr_t, Memory *) {
-  __builtin_unreachable();
+  abort();
 }
 
 Memory *__remill_jump(X86State &, addr_t, Memory *) {
-  __builtin_unreachable();
+  abort();
 }
 
 Memory *__remill_async_hyper_call(X86State &, addr_t, Memory *) {
-  __builtin_unreachable();
+  abort();
 }
 
 uint8_t __remill_undefined_8(void) {

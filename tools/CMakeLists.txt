@@ -14,11 +14,11 @@
 
 # mcsema needs to be manually cloned into this repo.
 if (EXISTS ${CMAKE_SOURCE_DIR}/tools/mcsema)
-    #add_subdirectory(mcsema)
+    add_subdirectory(mcsema)
 endif ()
 
 if (EXISTS ${CMAKE_SOURCE_DIR}/tools/fcd)
-    #add_subdirectory(fcd)
+    add_subdirectory(fcd)
 endif ()
 
 if (307 LESS ${REMILL_LLVM_VERSION_NUMBER})

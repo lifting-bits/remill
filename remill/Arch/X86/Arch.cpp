@@ -288,10 +288,13 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
     ss << xed_decoded_inst_get_operand_width(xedd);
   }
 
-  // Suffix the ISEL function name with the segment register name for these two
-  // iforms so that we know which hypercall to use.
+  // Suffix the ISEL function name with the segment or control register names,
+  // as a runtime may need to perform complex actions that are specific to
+  // the register used.
   if (XED_IFORM_MOV_SEG_MEMw == iform ||
-      XED_IFORM_MOV_SEG_GPR16 == iform) {
+      XED_IFORM_MOV_SEG_GPR16 == iform ||
+      XED_IFORM_MOV_CR_CR_GPR32 == iform ||
+      XED_IFORM_MOV_CR_CR_GPR64 == iform) {
     ss << "_";
     ss << xed_reg_enum_t2str(xed_decoded_inst_get_reg(xedd, XED_OPERAND_REG0));
   }

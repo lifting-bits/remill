@@ -655,98 +655,6 @@ DEF_SEM(MOV_GS, R16W dst, T src) {
       state, memory, SyncHyperCall::kX86SetSegmentGS);
 }
 
-DEF_SEM(WRITE_CONTROL_REG_32, R64W dst, R32 src) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
-  WriteZExt(dst, Read(src));
-  auto u = __remill_undefined_8();
-  Write(FLAG_OF, u);
-  Write(FLAG_SF, u);
-  Write(FLAG_ZF, u);
-  Write(FLAG_AF, u);
-  Write(FLAG_PF, u);
-  Write(FLAG_CF, u);
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kX86SetControlReg);
-}
-
-DEF_SEM(READ_CONTROL_REG_32, R32W dst, R64 src) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
-  WriteZExt(dst, Trunc(Read(src)));
-  auto u = __remill_undefined_8();
-  Write(FLAG_OF, u);
-  Write(FLAG_SF, u);
-  Write(FLAG_ZF, u);
-  Write(FLAG_AF, u);
-  Write(FLAG_PF, u);
-  Write(FLAG_CF, u);
-  return memory;
-}
-
-#if ADDRESS_SIZE_BITS == 64
-DEF_SEM(READ_CONTROL_REG_64, R64W dst, R64 src) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
-  Write(dst, Read(src));
-  auto u = __remill_undefined_8();
-  Write(FLAG_OF, u);
-  Write(FLAG_SF, u);
-  Write(FLAG_ZF, u);
-  Write(FLAG_AF, u);
-  Write(FLAG_PF, u);
-  Write(FLAG_CF, u);
-  return memory;
-}
-
-DEF_SEM(WRITE_CONTROL_REG_64, R64W dst, R64 src) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
-  Write(dst, Read(src));
-  auto u = __remill_undefined_8();
-  Write(FLAG_OF, u);
-  Write(FLAG_SF, u);
-  Write(FLAG_ZF, u);
-  Write(FLAG_AF, u);
-  Write(FLAG_PF, u);
-  Write(FLAG_CF, u);
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAMD64SetControlReg);
-}
-#endif
-
-DEF_SEM(WRITE_DEBUG_REG_32, R64W dst, R32 src) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
-  WriteZExt(dst, Read(src));
-  auto u = __remill_undefined_8();
-  Write(FLAG_OF, u);
-  Write(FLAG_SF, u);
-  Write(FLAG_ZF, u);
-  Write(FLAG_AF, u);
-  Write(FLAG_PF, u);
-  Write(FLAG_CF, u);
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kX86SetDebugReg);
-}
-
-#if ADDRESS_SIZE_BITS == 64
-DEF_SEM(WRITE_DEBUG_REG_64, R64W dst, R64 src) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
-  Write(dst, Read(src));
-  auto u = __remill_undefined_8();
-  Write(FLAG_OF, u);
-  Write(FLAG_SF, u);
-  Write(FLAG_ZF, u);
-  Write(FLAG_AF, u);
-  Write(FLAG_PF, u);
-  Write(FLAG_CF, u);
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAMD64SetDebugReg);
-}
-#endif
-
 }  // namespace
 
 DEF_ISEL(MOV_MEMw_SEG) = MOV<M16W, R16>;
@@ -766,14 +674,6 @@ DEF_ISEL(MOV_SEG_GPR16_SS) = MOV_SS<R16>;
 DEF_ISEL(MOV_SEG_GPR16_DS) = MOV_DS<R16>;
 DEF_ISEL(MOV_SEG_GPR16_FS) = MOV_FS<R16>;
 DEF_ISEL(MOV_SEG_GPR16_GS) = MOV_GS<R16>;
-
-DEF_ISEL(MOV_CR_CR_GPR32) = WRITE_CONTROL_REG_32;
-DEF_ISEL(MOV_CR_GPR32_CR) = READ_CONTROL_REG_32;
-IF_64BIT(DEF_ISEL(MOV_CR_CR_GPR64) = WRITE_CONTROL_REG_64;)
-IF_64BIT(DEF_ISEL(MOV_CR_GPR64_CR) = READ_CONTROL_REG_64;)
-
-DEF_ISEL(MOV_DR_DR_GPR32) = WRITE_DEBUG_REG_32;
-IF_64BIT(DEF_ISEL(MOV_DR_DR_GPR64) = WRITE_DEBUG_REG_64;)
 
 /*
 
