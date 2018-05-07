@@ -68,7 +68,7 @@ SetupMaxOSX() {
 main() {
   # macOS packages.
   if [[ "$OSTYPE" == "darwin"* ]]; then
-    SetupLinux
+    SetupMaxOSX
     return $?
 
   # Linux
