@@ -83,6 +83,9 @@ endif()
 # target settings
 #
 
+set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}.${LLVM_MINOR_VERSION}")
+math(EXPR REMILL_LLVM_VERSION_NUMBER "${LLVM_MAJOR_VERSION} * 100 + ${LLVM_MINOR_VERSION}")
+
 if(DEFINED WIN32)
   set(REMILL_INSTALL_SEMANTICS_DIR "${install_folder}/${REMILL_LLVM_VERSION}/semantics/")
 else()
@@ -197,9 +200,6 @@ function(InstallExternalTarget target_name target_path install_directory install
   )
 endfunction()
 
-set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}.${LLVM_MINOR_VERSION}")
-math(EXPR REMILL_LLVM_VERSION_NUMBER "${LLVM_MAJOR_VERSION} * 100 + ${LLVM_MINOR_VERSION}")
-
 set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}${executable_extension}")
 set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}${executable_extension}")
 
@@ -249,13 +249,15 @@ install(TARGETS "${PROJECT_NAME}"
   PUBLIC_HEADER DESTINATION "${install_folder}/include"
 )
 
+set(REMILL_LIBRARY_LOCATION "${install_folder}/lib/libremill.a")
+set(REMILL_INCLUDE_LOCATION "${install_folder}/include")
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/remillConfig.cmake.in"
   "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
 )
 
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
-  DESTINATION "${install_folder}/lib"
+  DESTINATION "${install_folder}/lib/cmake/remill"
 )
 
 install(FILES 
@@ -280,6 +282,7 @@ install(FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/CallingConvention.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/GlobalValue.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/TargetLibraryInfo.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/Attributes.h"
 
   DESTINATION "${install_folder}/include/remill/BC/Compat"
 )
