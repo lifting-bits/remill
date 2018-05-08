@@ -495,7 +495,9 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
   auto source_mod = source_func->getParent();
   auto dest_mod = dest_func->getParent();
 
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
   dest_func->getContext().setDiscardValueNames(false);
+#endif
 
   dest_func->setAttributes(source_func->getAttributes());
   dest_func->setLinkage(source_func->getLinkage());
