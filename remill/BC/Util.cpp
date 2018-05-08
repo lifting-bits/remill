@@ -495,6 +495,8 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
   auto source_mod = source_func->getParent();
   auto dest_mod = dest_func->getParent();
 
+  dest_func->getContext().setDiscardValueNames(false);
+
   dest_func->setAttributes(source_func->getAttributes());
   dest_func->setLinkage(source_func->getLinkage());
   dest_func->setVisibility(source_func->getVisibility());
