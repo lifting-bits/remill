@@ -67,7 +67,9 @@ std::vector<StateSlot> StateSlots(llvm::Module *module);
 
 void AnalyzeAliases(llvm::Module *module);
 
-struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, bool> {
+enum class AliasResult;
+
+struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, AliasResult> {
   public:
     std::unordered_map<llvm::Value *, uint64_t> offset_map;
     std::unordered_map<llvm::Instruction *, uint64_t> alias_map;
@@ -79,23 +81,18 @@ struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, bool>
     void addInstructions(std::vector<llvm::Instruction *> &insts);
     void analyze();
 
-    virtual bool visitAllocaInst(llvm::AllocaInst &I);
-    virtual bool visitLoadInst(llvm::LoadInst &I);
-    virtual bool visitStoreInst(llvm::StoreInst &I);
-    virtual bool visitGetElementPtrInst(llvm::GetElementPtrInst &I);
-    virtual bool visitPtrToIntInst(llvm::PtrToIntInst &I);
-    virtual bool visitIntToPtrInst(llvm::IntToPtrInst &I);
-    virtual bool visitBitCastInst(llvm::BitCastInst &I);
-    virtual bool visitAdd(llvm::BinaryOperator &I);
-    virtual bool visitSub(llvm::BinaryOperator &I);
-
-    bool visitInstruction(llvm::Instruction &I) {
-      return false;
-    }
+    virtual AliasResult visitInstruction(llvm::Instruction &I); 
+    virtual AliasResult visitAllocaInst(llvm::AllocaInst &I);
+    virtual AliasResult visitLoadInst(llvm::LoadInst &I);
+    virtual AliasResult visitStoreInst(llvm::StoreInst &I);
+    virtual AliasResult visitGetElementPtrInst(llvm::GetElementPtrInst &I);
+    virtual AliasResult visitCastInst(llvm::CastInst &I);
+    virtual AliasResult visitAdd(llvm::BinaryOperator &I);
+    virtual AliasResult visitSub(llvm::BinaryOperator &I);
 
   private:
     const llvm::DataLayout *dl;
-    virtual bool visitBinaryOp_(llvm::BinaryOperator &I);
+    virtual AliasResult visitBinaryOp_(llvm::BinaryOperator &I, bool plus);
 };
 
 }  // namespace remill
