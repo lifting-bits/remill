@@ -82,6 +82,7 @@ void AnalyzeAliases(llvm::Module *module) {
   llvm::DataLayout dl = module->getDataLayout();
   for (auto &func : *module) {
     // add state pointer
+    std::cout << "Func argsize: " << func.arg_size() << std::endl;
     auto fav = ForwardAliasVisitor(&dl);
     fav.offset_map.insert({LoadStatePointer(&func), 0});
     std::vector<llvm::Instruction *> insts;
@@ -92,6 +93,7 @@ void AnalyzeAliases(llvm::Module *module) {
     }
     fav.addInstructions(insts);
     fav.analyze();
+    std::cout << "Offsets recorded: " << fav.offset_map.size() << std::endl;
   }
 }
 
@@ -173,8 +175,8 @@ void ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst &I) {
       // get the offset
       llvm::APInt offset;
       if (I.accumulateConstantOffset(*dl, offset)) {
-        // use offset
-        offset_map.insert({&I, ptr->second + offset});
+        // use offset (getRawData extracts the uint64_t)
+        offset_map[&I] = *(ptr->second + offset.getRawData());
       } else {
         // give up
         exclude.insert(&I);
@@ -183,7 +185,7 @@ void ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst &I) {
   }
 }
 
-void ForwardAliasVisitor::visitGetPtrToIntInst(llvm::GetPtrToIntInst &I) {
+void ForwardAliasVisitor::visitPtrToIntInst(llvm::PtrToIntInst &I) {
   LOG(INFO) << "Entered ptrtoint instruction";
   // TODO: save int to alias map with offset to ptr
   auto val = I.getPointerOperand();
@@ -197,7 +199,7 @@ void ForwardAliasVisitor::visitGetPtrToIntInst(llvm::GetPtrToIntInst &I) {
   }
 }
 
-void ForwardAliasVisitor::visitGetIntToPtrInst(llvm::GetIntToPtrInst &I) {
+void ForwardAliasVisitor::visitIntToPtrInst(llvm::IntToPtrInst &I) {
   LOG(INFO) << "Entered inttoptr instruction";
   auto val = &I;
   if (exclude.count(val) == 0) {

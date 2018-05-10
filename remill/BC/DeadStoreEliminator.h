@@ -83,8 +83,8 @@ struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor> {
     virtual void visitLoadInst(llvm::LoadInst &I);
     virtual void visitStoreInst(llvm::StoreInst &I);
     virtual void visitGetElementPtrInst(llvm::GetElementPtrInst &I);
-    virtual void visitGetPtrToIntInst(llvm::GetPtrToIntInst &I);
-    virtual void visitGetIntToPtrInst(llvm::GetIntToPtrInst &I);
+    virtual void visitPtrToIntInst(llvm::PtrToIntInst &I);
+    virtual void visitIntToPtrInst(llvm::IntToPtrInst &I);
     virtual void visitBitCastInst(llvm::BitCastInst &I);
     virtual void visitAdd(llvm::BinaryOperator &I);
     virtual void visitSub(llvm::BinaryOperator &I);
