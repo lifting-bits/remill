@@ -88,22 +88,19 @@ void StateVisitor::visit(llvm::Type *ty) {
 void AnalyzeAliases(llvm::Module *module) {
   auto slots = StateSlots(module);
   llvm::DataLayout dl = module->getDataLayout();
-  for (auto &func : *module) {
-    // add state pointer
-    std::cout << "Func argsize: " << func.arg_size() << std::endl;
-    func.dump();
-    ForwardAliasVisitor fav(&dl);
-    fav.offset_map.insert({LoadStatePointer(&func), 0});
-    std::vector<llvm::Instruction *> insts;
-    for (auto &block : func) {
-      for (auto &inst : block) {
-        insts.push_back(&inst);
-      }
+  auto func = BasicBlockFunction(module);
+  // add state pointer
+  ForwardAliasVisitor fav(&dl);
+  fav.offset_map.insert({LoadStatePointer(func), 0});
+  std::vector<llvm::Instruction *> insts;
+  for (auto &block : *func) {
+    for (auto &inst : block) {
+      insts.push_back(&inst);
     }
-    fav.addInstructions(insts);
-    fav.analyze();
-    std::cout << "Offsets recorded: " << fav.offset_map.size() << std::endl;
   }
+  fav.addInstructions(insts);
+  fav.analyze();
+  std::cout << "Offsets recorded: " << fav.offset_map.size() << std::endl;
 }
 
 ForwardAliasVisitor::ForwardAliasVisitor(llvm::DataLayout *dl_)
@@ -121,16 +118,12 @@ void ForwardAliasVisitor::addInstructions(std::vector<llvm::Instruction *> &inst
 // Analysis repeats until the current worklist is empty.
 void ForwardAliasVisitor::analyze(void) {
   bool progress = true;
-  while (!curr_wl.empty()) {
+  // if any visit makes progress, continue the loop
+  while (!curr_wl.empty() && progress) {
+    progress = false;
     for (auto inst : curr_wl) {
       if (!visit(inst)) {
-        // if we're not making any progress, jump out
-        if (progress) {
-          next_wl.insert(inst);
-          progress = false;
-        } else {
-          return;
-        }
+        next_wl.insert(inst);
       } else {
         progress = true;
       }
