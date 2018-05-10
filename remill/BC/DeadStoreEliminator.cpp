@@ -64,10 +64,18 @@ void StateVisitor::visit(llvm::Type *ty) {
     }
   } else if (auto seq_ty = llvm::dyn_cast<llvm::SequentialType>(ty)) {
     auto first_ty = seq_ty->getElementType();
-    for (unsigned int i=0; i < seq_ty->getNumElements(); i++) {
-      // repeat NumContained times
-      // NOTE: will recalculate every time, rather than memoizing
-      visit(first_ty);
+    if (auto int_ty = llvm::dyn_cast<llvm::IntegerType>(first_ty)) {
+      // SPECIAL CASE
+      // treat sequences of primitive types as one slot
+      uint64_t len = dl->getTypeAllocSize(seq_ty);
+      slots.push_back(remill::StateSlot(offset, offset + len));
+      offset += len;
+    } else {
+      for (unsigned int i=0; i < seq_ty->getNumElements(); i++) {
+        // repeat NumContained times
+        // NOTE: will recalculate every time, rather than memoizing
+        visit(first_ty);
+      }
     }
   } else {  // BASE CASE
     //ty->dump();
@@ -83,7 +91,8 @@ void AnalyzeAliases(llvm::Module *module) {
   for (auto &func : *module) {
     // add state pointer
     std::cout << "Func argsize: " << func.arg_size() << std::endl;
-    auto fav = ForwardAliasVisitor(&dl);
+    func.dump();
+    ForwardAliasVisitor fav(&dl);
     fav.offset_map.insert({LoadStatePointer(&func), 0});
     std::vector<llvm::Instruction *> insts;
     for (auto &block : func) {
@@ -110,10 +119,12 @@ void ForwardAliasVisitor::addInstructions(std::vector<llvm::Instruction *> &inst
 // currently interpretable (some of its pointers are not yet in the offset_map)
 // is withheld to the next analysis round in the next worklist.
 // Analysis repeats until the current worklist is empty.
-void ForwardAliasVisitor::analyze() {
+void ForwardAliasVisitor::analyze(void) {
   while (!curr_wl.empty()) {
     for (auto inst : curr_wl) {
-      visit(inst);
+      if (visit(inst)) {
+        next_wl.insert(inst);
+      }
     }
     // update curr_wl to the next set of insts
     curr_wl.swap(next_wl);
@@ -122,55 +133,65 @@ void ForwardAliasVisitor::analyze() {
   }
 }
 
-void ForwardAliasVisitor::visitAllocaInst(llvm::AllocaInst &I) {
+bool ForwardAliasVisitor::visitAllocaInst(llvm::AllocaInst &I) {
   LOG(INFO) << "Entered alloca instruction";
   exclude.insert(&I);
+  return true;
 }
 
 // Visit a load instruction and update the alias map.
-void ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) {
+bool ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) {
   LOG(INFO) << "Entered load instruction";
   // get the initial ptr
   auto val = I.getPointerOperand();
-  if (exclude.count(val) == 0) {
+  if (exclude.count(val)) {
+    exclude.insert(&I);
+    return true;
+  } else {
     auto ptr = offset_map.find(val);
     if (ptr == offset_map.end()) {
-      next_wl.insert(&I);
+      return false;
     } else {
       // loads mean we now have an alias to the pointer
       alias_map.insert({&I, ptr->second});
+      return true;
     }
   }
 }
 
 // Visit a store instruction and update the alias map.
-void ForwardAliasVisitor::visitStoreInst(llvm::StoreInst &I) {
+bool ForwardAliasVisitor::visitStoreInst(llvm::StoreInst &I) {
   LOG(INFO) << "Entered store instruction";
   // get the initial ptr
   auto val = I.getPointerOperand();
-  if (exclude.count(val) == 0) {
+  if (exclude.count(val)) {
+    exclude.insert(&I);
+    return true;
+  } else {
     auto ptr = offset_map.find(val);
     if (ptr == offset_map.end()) {
-      next_wl.insert(&I);
+      return false;
     } else {
       // loads mean we now have an alias to the pointer
       alias_map.insert({&I, ptr->second});
+      return true;
     }
   }
 }
 
 // Visit a GEP instruction and update the offset map.
-void ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst &I) {
+bool ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst &I) {
   LOG(INFO) << "Entered GEP instruction";
   // get the initial ptr
   auto val = I.getPointerOperand();
-  if (exclude.count(val) > 0) {
+  if (exclude.count(val)) {
     exclude.insert(&I);
+    return true;
   } else {
     auto ptr = offset_map.find(val);
     if (ptr == offset_map.end()) {
       // no pointer found
-      next_wl.insert(&I);
+      return false;
     } else {
       // get the offset
       llvm::APInt offset;
@@ -181,92 +202,110 @@ void ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst &I) {
         // give up
         exclude.insert(&I);
       }
+      return true;
     }
   }
 }
 
-void ForwardAliasVisitor::visitPtrToIntInst(llvm::PtrToIntInst &I) {
+bool ForwardAliasVisitor::visitPtrToIntInst(llvm::PtrToIntInst &I) {
   LOG(INFO) << "Entered ptrtoint instruction";
   // TODO: save int to alias map with offset to ptr
   auto val = I.getPointerOperand();
-  if (exclude.count(val) == 0) {
+  if (exclude.count(val)) {
+    exclude.insert(&I);
+    return true;
+  } else {
     auto ptr = offset_map.find(val);
     if (ptr == offset_map.end()) {
-      next_wl.insert(&I);
+      return false;
     } else {
       offset_map.insert({&I, ptr->second});
+      return true;
     }
   }
 }
 
-void ForwardAliasVisitor::visitIntToPtrInst(llvm::IntToPtrInst &I) {
+bool ForwardAliasVisitor::visitIntToPtrInst(llvm::IntToPtrInst &I) {
   LOG(INFO) << "Entered inttoptr instruction";
   auto val = &I;
-  if (exclude.count(val) == 0) {
+  if (exclude.count(val)) {
+    exclude.insert(&I);
+    return true;
+  } else {
     auto ptr = offset_map.find(&I);
     if (ptr == offset_map.end()) {
-      // TODO: add to offset_map?
-      next_wl.insert(&I);
+      // TODO(tim): add to offset_map?
+      return false;
     } else {
       // update value
       offset_map[&I] = ptr->second;
+      return true;
     }
   }
 }
 
-void ForwardAliasVisitor::visitBitCastInst(llvm::BitCastInst &I) {
+bool ForwardAliasVisitor::visitBitCastInst(llvm::BitCastInst &I) {
   LOG(INFO) << "Entered bitcast instruction";
   // will naturally fail if I.getOperand(0) does not point to a pointer
   auto val = I.getOperand(0);
-  if (exclude.count(val) == 0) {
+  if (exclude.count(val)) {
+    exclude.insert(&I);
+    return true;
+  } else {
     auto ptr = offset_map.find(val);
     if (ptr == offset_map.end()) {
-      next_wl.insert(&I);
+      return false;
     } else {
       offset_map.insert({&I, ptr->second});
+      return true;
     }
   }
 }
 
-void ForwardAliasVisitor::visitAdd(llvm::BinaryOperator &I) {
+bool ForwardAliasVisitor::visitAdd(llvm::BinaryOperator &I) {
   LOG(INFO) << "Entered add instruction";
-  ForwardAliasVisitor::visitBinaryOp_(I);
+  return ForwardAliasVisitor::visitBinaryOp_(I);
 }
 
-void ForwardAliasVisitor::visitSub(llvm::BinaryOperator &I) {
+bool ForwardAliasVisitor::visitSub(llvm::BinaryOperator &I) {
   LOG(INFO) << "Entered sub instruction";
-  ForwardAliasVisitor::visitBinaryOp_(I);
+  return ForwardAliasVisitor::visitBinaryOp_(I);
 }
 
-void ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I) {
+bool ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I) {
   auto val1 = I.getOperand(0);
   auto val2 = I.getOperand(1);
-  // FIXME: shouldn't the cint be used?
+  // FIXME(tim): shouldn't the cint be used?
   if (auto cint = llvm::dyn_cast<llvm::ConstantInt>(val1)) {
     if (exclude.count(val2) > 0) {
       exclude.insert(&I);
+      return true;
     } else {
       auto ptr = offset_map.find(val2);
       if (ptr == offset_map.end()) {
-        next_wl.insert(&I);
+        return false;
       } else {
         offset_map.insert({&I, ptr->second});
+        return true;
       }
     }
   } else if (auto cint = llvm::dyn_cast<llvm::ConstantInt>(val2)) {
     if (exclude.count(val1) > 0) {
       exclude.insert(&I);
+      return true;
     } else {
       auto ptr = offset_map.find(val1);
       if (ptr == offset_map.end()) {
-        next_wl.insert(&I);
+        return false;
       } else {
         offset_map.insert({&I, ptr->second});
+        return true;
       }
     }
   } else {
     // neither val is constant, so exclude
     exclude.insert(&I);
+    return true;
   }
 }
 
