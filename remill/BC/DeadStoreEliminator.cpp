@@ -120,10 +120,19 @@ void ForwardAliasVisitor::addInstructions(std::vector<llvm::Instruction *> &inst
 // is withheld to the next analysis round in the next worklist.
 // Analysis repeats until the current worklist is empty.
 void ForwardAliasVisitor::analyze(void) {
+  bool progress = true;
   while (!curr_wl.empty()) {
     for (auto inst : curr_wl) {
-      if (visit(inst)) {
-        next_wl.insert(inst);
+      if (!visit(inst)) {
+        // if we're not making any progress, jump out
+        if (progress) {
+          next_wl.insert(inst);
+          progress = false;
+        } else {
+          return;
+        }
+      } else {
+        progress = true;
       }
     }
     // update curr_wl to the next set of insts
