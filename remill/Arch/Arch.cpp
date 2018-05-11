@@ -335,6 +335,9 @@ static void PrepareModuleRemillFunctions(llvm::Module *mod) {
   basic_block->removeFnAttr(llvm::Attribute::InlineHint);
   basic_block->addFnAttr(llvm::Attribute::NoInline);
   basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
+
+  remill::NthArgument(basic_block, kStatePointerArgNum)->addAttr(llvm::Attribute::NoAlias);
+  remill::NthArgument(basic_block, kMemoryPointerArgNum)->addAttr(llvm::Attribute::NoAlias);
 }
 
 // Converts an LLVM module object to have the right triple / data layout
