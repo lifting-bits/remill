@@ -62,7 +62,8 @@ sudo apt-get install \
      realpath \
      build-essential \
      libtinfo-dev \
-     lsb-release
+     lsb-release \
+     zlib1g-dev
 ```
 
 Next, clone the repository. This will clone the code into the `remill` directory.
