@@ -76,8 +76,9 @@ struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, Alias
     std::unordered_set<llvm::Value *> exclude;
     std::unordered_set<llvm::Instruction *> curr_wl;
     std::unordered_set<llvm::Instruction *> next_wl;
+    llvm::Value *state_ptr;
 
-    ForwardAliasVisitor(llvm::DataLayout *dl_);
+    ForwardAliasVisitor(llvm::DataLayout *dl_, llvm::Value *sp_);
     void addInstructions(std::vector<llvm::Instruction *> &insts);
     void analyze();
 
@@ -89,6 +90,7 @@ struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, Alias
     virtual AliasResult visitCastInst(llvm::CastInst &I);
     virtual AliasResult visitAdd(llvm::BinaryOperator &I);
     virtual AliasResult visitSub(llvm::BinaryOperator &I);
+    virtual AliasResult visitPHINode(llvm::PHINode &I);
 
   private:
     const llvm::DataLayout *dl;

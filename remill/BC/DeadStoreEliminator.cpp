@@ -90,8 +90,9 @@ void AnalyzeAliases(llvm::Module *module) {
   llvm::DataLayout dl = module->getDataLayout();
   auto func = BasicBlockFunction(module);
   // add state pointer
-  ForwardAliasVisitor fav(&dl);
-  fav.offset_map.insert({LoadStatePointer(func), 0});
+  auto sp = LoadStatePointer(func);
+  ForwardAliasVisitor fav(&dl, sp);
+  //fav.offset_map.insert({LoadStatePointer(func), 0});
   std::vector<llvm::Instruction *> insts;
   for (auto &block : *func) {
     for (auto &inst : block) {
@@ -100,7 +101,9 @@ void AnalyzeAliases(llvm::Module *module) {
   }
   fav.addInstructions(insts);
   fav.analyze();
-  std::cout << "Offsets recorded: " << fav.offset_map.size() << std::endl;
+  std::cout << "Offsets: " << fav.offset_map.size() << std::endl;
+  std::cout << "Aliases: " << fav.alias_map.size() << std::endl;
+  std::cout << "Excluded: " << fav.exclude.size() << std::endl;
 }
 
 enum class AliasResult {
@@ -109,8 +112,14 @@ enum class AliasResult {
   Error
 };
 
-ForwardAliasVisitor::ForwardAliasVisitor(llvm::DataLayout *dl_)
-  : offset_map(), alias_map(), exclude(), curr_wl(), next_wl(), dl(dl_) { }
+ForwardAliasVisitor::ForwardAliasVisitor(llvm::DataLayout *dl_, llvm::Value *sp_)
+  : offset_map({{sp_, 0}}),
+    alias_map(),
+    exclude(),
+    curr_wl(),
+    next_wl(),
+    state_ptr(sp_),
+    dl(dl_) { }
 
 // Add instructions to the visitor's worklist.
 void ForwardAliasVisitor::addInstructions(std::vector<llvm::Instruction *> &insts) {
@@ -128,6 +137,7 @@ void ForwardAliasVisitor::analyze(void) {
   while (!curr_wl.empty() && progress) {
     progress = false;
     for (auto inst : curr_wl) {
+      inst->dump();
       switch (visit(inst)) {
         case AliasResult::Progress:
           progress = true;
@@ -161,7 +171,8 @@ AliasResult ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) {
   LOG(INFO) << "Entered load instruction";
   // get the initial ptr
   auto val = I.getPointerOperand();
-  if (exclude.count(val)) {
+  // special case: loading the state ptr
+  if (exclude.count(val) && val != state_ptr) {
     exclude.insert(&I);
     return AliasResult::Progress;
   } else {
@@ -255,12 +266,11 @@ AliasResult ForwardAliasVisitor::visitSub(llvm::BinaryOperator &I) {
 AliasResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool plus) {
   auto val1 = I.getOperand(0);
   auto val2 = I.getOperand(1);
-  // FIXME(tim): shouldn't the cint be used?
-  if (auto cint = llvm::dyn_cast<llvm::ConstantInt>(val1)) {
-    if (exclude.count(val2) > 0) {
-      exclude.insert(&I);
-      return AliasResult::Progress;
-    } else {
+  if (exclude.count(val1) || exclude.count(val2)) {
+    exclude.insert(&I);
+    return AliasResult::Progress;
+  } else {
+    if (auto cint = llvm::dyn_cast<llvm::ConstantInt>(val1)) {
       auto ptr = offset_map.find(val2);
       if (ptr == offset_map.end()) {
         return AliasResult::NoProgress;
@@ -269,12 +279,7 @@ AliasResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
         offset_map.insert({&I, offset});
         return AliasResult::Progress;
       }
-    }
-  } else if (auto cint = llvm::dyn_cast<llvm::ConstantInt>(val2)) {
-    if (exclude.count(val1) > 0) {
-      exclude.insert(&I);
-      return AliasResult::Progress;
-    } else {
+    } else if (auto cint = llvm::dyn_cast<llvm::ConstantInt>(val2)) {
       auto ptr = offset_map.find(val1);
       if (ptr == offset_map.end()) {
         return AliasResult::NoProgress;
@@ -283,11 +288,25 @@ AliasResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
         offset_map.insert({&I, offset});
         return AliasResult::Progress;
       }
+    } else {
+      // neither val is constant, so give up
+      return AliasResult::Error;
     }
-  } else {
-    // neither val is constant, so give up
-    return AliasResult::Error;
   }
+}
+
+AliasResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
+  // iterate over each operand
+  auto in_offset_map = true;
+  for (auto &operand : I.operands()) {
+    if (exclude.count(operand)) {
+      in_offset_map = false;
+    } else {
+      auto ptr = offset_map.find(operand);
+      // TODO(tim): check if in the offset_map
+    }
+  }
+  return AliasResult::NoProgress;
 }
 
 }  // namespace remill
