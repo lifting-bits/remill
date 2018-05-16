@@ -88,22 +88,29 @@ void StateVisitor::visit(llvm::Type *ty) {
 void AnalyzeAliases(llvm::Module *module) {
   auto slots = StateSlots(module);
   llvm::DataLayout dl = module->getDataLayout();
-  auto func = BasicBlockFunction(module);
-  // add state pointer
-  auto sp = LoadStatePointer(func);
-  ForwardAliasVisitor fav(&dl, sp);
-  //fav.offset_map.insert({LoadStatePointer(func), 0});
-  std::vector<llvm::Instruction *> insts;
-  for (auto &block : *func) {
-    for (auto &inst : block) {
-      insts.push_back(&inst);
+  auto bb_func = BasicBlockFunction(module);
+  for (auto &func : *module) {
+    if (&func != bb_func
+        && func.getType() == bb_func->getType()
+        && !func.isDeclaration())
+    {
+      // add state pointer
+      auto sp = LoadStatePointer(&func);
+      ForwardAliasVisitor fav(&dl, sp);
+      //fav.offset_map.insert({LoadStatePointer(func), 0});
+      std::vector<llvm::Instruction *> insts;
+      for (auto &block : func) {
+        for (auto &inst : block) {
+          insts.push_back(&inst);
+        }
+      }
+      fav.addInstructions(insts);
+      fav.analyze();
+      LOG(INFO) << "Offsets: " << fav.offset_map.size();
+      LOG(INFO) << "Aliases: " << fav.alias_map.size();
+      LOG(INFO) << "Excluded: " << fav.exclude.size();
     }
   }
-  fav.addInstructions(insts);
-  fav.analyze();
-  std::cout << "Offsets: " << fav.offset_map.size() << std::endl;
-  std::cout << "Aliases: " << fav.alias_map.size() << std::endl;
-  std::cout << "Excluded: " << fav.exclude.size() << std::endl;
 }
 
 enum class AliasResult {
@@ -135,9 +142,9 @@ void ForwardAliasVisitor::analyze(void) {
   bool progress = true;
   // if any visit makes progress, continue the loop
   while (!curr_wl.empty() && progress) {
+    LOG(INFO) << "FAV: " << curr_wl.size() << " instructions remaining";
     progress = false;
     for (auto inst : curr_wl) {
-      inst->dump();
       switch (visit(inst)) {
         case AliasResult::Progress:
           progress = true;
@@ -163,6 +170,7 @@ AliasResult ForwardAliasVisitor::visitInstruction(llvm::Instruction &I) {
 AliasResult ForwardAliasVisitor::visitAllocaInst(llvm::AllocaInst &I) {
   LOG(INFO) << "Entered alloca instruction";
   exclude.insert(&I);
+  LOG(INFO) << "excluding: " << LLVMThingToString(&I);
   return AliasResult::Progress;
 }
 
@@ -172,8 +180,9 @@ AliasResult ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) {
   // get the initial ptr
   auto val = I.getPointerOperand();
   // special case: loading the state ptr
-  if (exclude.count(val) && val != state_ptr) {
+  if (exclude.count(val) && I.getType() != state_ptr->getType()) {
     exclude.insert(&I);
+    LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     return AliasResult::Progress;
   } else {
     auto ptr = offset_map.find(val);
@@ -182,6 +191,7 @@ AliasResult ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) {
     } else {
       // loads mean we now have an alias to the pointer
       alias_map.insert({&I, ptr->second});
+      LOG(INFO) << "aliasing: " << LLVMThingToString(&I);
       return AliasResult::Progress;
     }
   }
@@ -194,6 +204,7 @@ AliasResult ForwardAliasVisitor::visitStoreInst(llvm::StoreInst &I) {
   auto val = I.getPointerOperand();
   if (exclude.count(val)) {
     exclude.insert(&I);
+    LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     return AliasResult::Progress;
   } else {
     auto ptr = offset_map.find(val);
@@ -202,6 +213,7 @@ AliasResult ForwardAliasVisitor::visitStoreInst(llvm::StoreInst &I) {
     } else {
       // loads mean we now have an alias to the pointer
       alias_map.insert({&I, ptr->second});
+      LOG(INFO) << "aliasing: " << LLVMThingToString(&I);
       return AliasResult::Progress;
     }
   }
@@ -214,6 +226,7 @@ AliasResult ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst 
   auto val = I.getPointerOperand();
   if (exclude.count(val)) {
     exclude.insert(&I);
+    LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     return AliasResult::Progress;
   } else {
     auto ptr = offset_map.find(val);
@@ -226,6 +239,7 @@ AliasResult ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst 
       if (I.accumulateConstantOffset(*dl, offset)) {
         // use offset (getRawData extracts the uint64_t)
         offset_map[&I] = *(ptr->second + offset.getRawData());
+        LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
         return AliasResult::Progress;
       } else {
         // give up
@@ -240,6 +254,7 @@ AliasResult ForwardAliasVisitor::visitCastInst(llvm::CastInst &I) {
   auto val = I.getOperand(0);
   if (exclude.count(val)) {
     exclude.insert(&I);
+    LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     return AliasResult::Progress;
   } else {
     auto ptr = offset_map.find(val);
@@ -248,6 +263,7 @@ AliasResult ForwardAliasVisitor::visitCastInst(llvm::CastInst &I) {
     } else {
       // update value
       offset_map[&I] = ptr->second;
+      LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
       return AliasResult::Progress;
     }
   }
@@ -268,6 +284,7 @@ AliasResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
   auto val2 = I.getOperand(1);
   if (exclude.count(val1) || exclude.count(val2)) {
     exclude.insert(&I);
+    LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     return AliasResult::Progress;
   } else {
     if (auto cint = llvm::dyn_cast<llvm::ConstantInt>(val1)) {
@@ -277,6 +294,7 @@ AliasResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
       } else {
         auto offset = (plus ? ptr->second + cint->getZExtValue() : ptr->second - cint->getZExtValue());
         offset_map.insert({&I, offset});
+        LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
         return AliasResult::Progress;
       }
     } else if (auto cint = llvm::dyn_cast<llvm::ConstantInt>(val2)) {
@@ -286,16 +304,29 @@ AliasResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
       } else {
         auto offset = (plus ? ptr->second + cint->getZExtValue() : ptr->second - cint->getZExtValue());
         offset_map.insert({&I, offset});
+        LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
         return AliasResult::Progress;
       }
     } else {
+      // check if both are in the offset_map
+      auto ptr1 = offset_map.find(val1);
+      auto ptr2 = offset_map.find(val2);
+      if (ptr1 == offset_map.end() || ptr2 == offset_map.end()) {
+        return AliasResult::NoProgress;
+      } else {
+        auto offset = (plus ? ptr1->second + ptr2->second : ptr1->second - ptr2->second);
+        offset_map.insert({&I, offset});
+        LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
+        return AliasResult::Progress;
+      }
       // neither val is constant, so give up
-      return AliasResult::Error;
+      //return AliasResult::Error;
     }
   }
 }
 
 AliasResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
+  LOG(INFO) << "Entered PHI node";
   // iterate over each operand
   auto in_offset_map = true;
   for (auto &operand : I.operands()) {
@@ -303,10 +334,17 @@ AliasResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
       in_offset_map = false;
     } else {
       auto ptr = offset_map.find(operand);
-      // TODO(tim): check if in the offset_map
+      if (ptr == offset_map.end()) {
+        return AliasResult::NoProgress;
+      }
     }
   }
-  return AliasResult::NoProgress;
+  if (in_offset_map) {
+    //TODO(tim): modify offset_map
+  } else {
+    exclude.insert(&I);
+  }
+  return AliasResult::Progress;
 }
 
 }  // namespace remill
