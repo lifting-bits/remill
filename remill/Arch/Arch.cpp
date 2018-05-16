@@ -102,6 +102,7 @@ llvm::Triple Arch::BasicTriple(void) const {
       break;
 
     case kOSLinux:
+    case kOSVxWorks:
       triple.setOS(llvm::Triple::Linux);
       triple.setEnvironment(llvm::Triple::GNU);
       triple.setVendor(llvm::Triple::PC);

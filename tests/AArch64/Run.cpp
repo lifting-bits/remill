@@ -145,11 +145,11 @@ MAKE_RW_FP_MEMORY(32)
 MAKE_RW_FP_MEMORY(64)
 
 NEVER_INLINE float64_t __remill_read_memory_f80(Memory *, addr_t) {
-  __builtin_unreachable();
+  abort();
 }
 
 NEVER_INLINE Memory *__remill_write_memory_f80(Memory *, addr_t, float64_t) {
-  __builtin_unreachable();
+  abort();
 }
 
 Memory *__remill_compare_exchange_memory_8(
@@ -241,23 +241,47 @@ Memory *__remill_missing_block(AArch64State &, addr_t, Memory *memory) {
 }
 
 Memory *__remill_sync_hyper_call(AArch64State &, Memory *, SyncHyperCall::Name) {
-  __builtin_unreachable();
+  abort();
+}
+// Read/write to I/O ports.
+uint8_t __remill_read_io_port_8(Memory *, addr_t) {
+  abort();
+}
+
+uint16_t __remill_read_io_port_16(Memory *, addr_t) {
+  abort();
+}
+
+uint32_t __remill_read_io_port_32(Memory *, addr_t) {
+  abort();
+}
+
+Memory *__remill_write_io_port_8(Memory *, addr_t, uint8_t) {
+  abort();
+}
+
+Memory *__remill_write_io_port_16(Memory *, addr_t, uint16_t) {
+  abort();
+}
+
+Memory *__remill_write_io_port_32(Memory *, addr_t, uint32_t) {
+  abort();
 }
 
 Memory *__remill_function_call(AArch64State &, addr_t, Memory *) {
-  __builtin_unreachable();
+  abort();
 }
 
 Memory *__remill_function_return(AArch64State &, addr_t, Memory *) {
-  __builtin_unreachable();
+  abort();
 }
 
 Memory *__remill_jump(AArch64State &, addr_t, Memory *) {
-  __builtin_unreachable();
+  abort();
 }
 
 Memory *__remill_async_hyper_call(AArch64State &, addr_t, Memory *) {
-  __builtin_unreachable();
+  abort();
 }
 
 uint8_t __remill_undefined_8(void) {
