@@ -319,8 +319,6 @@ AliasResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
         LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
         return AliasResult::Progress;
       }
-      // neither val is constant, so give up
-      //return AliasResult::Error;
     }
   }
 }
@@ -328,20 +326,36 @@ AliasResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
 AliasResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
   LOG(INFO) << "Entered PHI node";
   // iterate over each operand
-  auto in_offset_map = true;
+  auto in_offset_map = false;
+  uint64_t offset;
   for (auto &operand : I.operands()) {
     if (exclude.count(operand)) {
-      in_offset_map = false;
+      // fail if some operands are excluded and others are state offsets
+      if (in_offset_map) {
+        return AliasResult::Error;
+      }
     } else {
       auto ptr = offset_map.find(operand);
       if (ptr == offset_map.end()) {
         return AliasResult::NoProgress;
+      } else {
+        if (!in_offset_map) {
+          offset = ptr->second;
+          in_offset_map = true;
+        } else {
+          if (ptr->second != offset) {
+            // bail if the offsets don't match
+            return AliasResult::Error;
+          }
+        }
       }
     }
   }
   if (in_offset_map) {
-    //TODO(tim): modify offset_map
+    LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
+    offset_map.insert({&I, offset});
   } else {
+    LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     exclude.insert(&I);
   }
   return AliasResult::Progress;
