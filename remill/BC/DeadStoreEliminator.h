@@ -39,7 +39,9 @@ namespace remill {
 
 class StateSlot {
 public:
-  StateSlot(uint64_t begin, uint64_t end);
+  StateSlot(uint64_t i, uint64_t begin, uint64_t end);
+  // slot index
+  uint64_t i;
   // Inclusive beginning byte offset
   uint64_t begin_offset;
   // Exclusive end byte offset
@@ -49,6 +51,8 @@ public:
 class StateVisitor {
   public:
     std::vector<StateSlot> slots;
+    // the current index in the state structure
+    uint64_t idx;
     // the current offset in the state structure
     uint64_t offset;
 
@@ -97,5 +101,9 @@ struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, Alias
     virtual AliasResult visitBinaryOp_(llvm::BinaryOperator &I, bool plus);
 };
 
+void addAAMDNodes(std::unordered_map<llvm::Instruction *, uint64_t> alias_map,
+                  std::vector<StateSlot> slots);
+
+const StateSlot *get_slot_by_offset(std::vector<StateSlot> slots, uint64_t offset);
 }  // namespace remill
 #endif  // REMILL_BC_DSELIM_H_

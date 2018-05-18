@@ -30,11 +30,6 @@
 #include "remill/BC/DeadStoreEliminator.h"
 #include "remill/BC/Util.h"
 
-/* TODO(tim):
- * - Retrieve a State struct
- * - Recursively visit the struct's members and produce a flattened list of slots
- */
-
 namespace remill {
 // Return a vector of state slot records, where each
 // "slot" of the State structure has its own SlotRecord.
@@ -49,12 +44,17 @@ std::vector<StateSlot> StateSlots(llvm::Module *module) {
   return vis.slots;
 }
 
-StateSlot::StateSlot(uint64_t begin_offset_, uint64_t end_offset_)
-  : begin_offset(begin_offset_), end_offset(end_offset_) { }
+StateSlot::StateSlot(uint64_t i_, uint64_t begin_offset_, uint64_t end_offset_)
+  : i(i_), begin_offset(begin_offset_), end_offset(end_offset_) { }
 
 StateVisitor::StateVisitor(llvm::DataLayout *dl_)
-  : slots(std::vector<StateSlot>()), offset(0), dl(dl_) { }
+  : slots(std::vector<StateSlot>()), idx(0), offset(0), dl(dl_) { }
 
+/* Update the StateVisitor's slots field to hold
+ * a StateSlot for every byte offset into the state.
+ * The StateSlot element is the same across each byte offset
+ * that is within the element's begin offset and end offset.
+ */
 void StateVisitor::visit(llvm::Type *ty) {
   if (ty == nullptr) {
     // skip
@@ -68,7 +68,11 @@ void StateVisitor::visit(llvm::Type *ty) {
       // SPECIAL CASE
       // treat sequences of primitive types as one slot
       uint64_t len = dl->getTypeAllocSize(seq_ty);
-      slots.push_back(remill::StateSlot(offset, offset + len));
+      for (uint64_t i=0; i<len; i++) {
+        slots.push_back(remill::StateSlot(idx, offset, offset + len));
+      }
+      // update StateVisitor fields
+      idx++;
       offset += len;
     } else {
       for (unsigned int i=0; i < seq_ty->getNumElements(); i++) {
@@ -78,9 +82,12 @@ void StateVisitor::visit(llvm::Type *ty) {
       }
     }
   } else {  // BASE CASE
-    //ty->dump();
     uint64_t len = dl->getTypeAllocSize(ty);
-    slots.push_back(remill::StateSlot(offset, offset + len));
+    for (uint64_t i=0; i<len; i++) {
+      slots.push_back(remill::StateSlot(idx, offset, offset + len));
+    }
+    // update StateVisitor fields
+    idx++;
     offset += len;
   }
 }
@@ -359,6 +366,49 @@ AliasResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
     exclude.insert(&I);
   }
   return AliasResult::Progress;
+}
+
+/* TODO(tim):
+ * - read an alias_map and a state slots vector,
+ *   find the slot for each alias
+ * - add an AAMDNodes struct for each load/store
+ *   to that instruction
+ * - return the loads and stores?
+ */
+void addAAMDNodes(std::unordered_map<llvm::Instruction *, uint64_t> alias_map,
+                  std::vector<llvm::AAMDNodes> aamds) {
+  for ( const auto &alias : alias_map ) {
+    if (auto inst = llvm::dyn_cast<llvm::LoadInst>(alias.first)) {
+      auto aamd = aamds[alias.second];
+      //auto *n = llvm::MDNode::get(c, llvm::MDString::get(c, "slot_" + std::to_string(slot.i)));
+      //llvm::MDNode *aamdn = llvm::MDNode::get(c, &aamds[alias.second]);
+      //inst->setMetadata("alias.md", aamd);
+    }
+  }
+}
+
+const std::vector<llvm::AAMDNodes> generateAAMDNodesFromSlots(
+    std::vector<StateSlot> slots,
+    llvm::LLVMContext &context) {
+  auto mdstrings = std::vector<llvm::MDString>();
+  for ( const auto &slot : slots ) {
+    mdstrings.emplace_back(context, "slot_" + std::to_string(slot.i));
+  }
+  auto aamds = std::vector<llvm::AAMDNodes>();
+  for ( const auto &mdstring : mdstrings ) {
+    //FIXME(tim): replace nullptr with all S in mdstrings where S != mdstring
+    aamds.emplace_back(context, mdstring, llvm::MDTuple::get(context, nullptr));
+  }
+  return aamds;
+}
+
+const StateSlot *get_slot_by_offset(const std::vector<StateSlot> &slots, uint64_t offset) {
+  for ( auto &slot : slots ) {
+    if (slot.begin_offset <= offset && offset <= slot.end_offset) {
+      return &slot;
+    }
+  }
+  return nullptr;
 }
 
 }  // namespace remill
