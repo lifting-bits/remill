@@ -56,6 +56,7 @@ class SyncHyperCall {
     kAMD64SetControlReg2,
     kAMD64SetControlReg3,
     kAMD64SetControlReg4,
+    kAMD64SetControlReg8,
 
     // TODO(pag): How to distinguish little- and big-endian?
     kAArch64EmulateInstruction = 0x200U,

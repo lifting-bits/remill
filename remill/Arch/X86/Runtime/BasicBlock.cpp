@@ -43,6 +43,7 @@ extern CR1Reg gCR1;
 extern CR2Reg gCR2;
 extern CR3Reg gCR3;
 extern CR4Reg gCR4;
+extern CR8Reg gCR8;
 
 // Method that will implement a basic block. We will clone this method for
 // each basic block in the code being lifted.
@@ -343,6 +344,9 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   auto &CR2 = gCR2.flat;
   auto &CR3 = gCR3.flat;
   auto &CR4 = gCR4.flat;
+#if 64 == ADDRESS_SIZE_BITS
+  auto &CR8 = gCR8.flat;
+#endif  // 64 == ADDRESS_SIZE_BITS
 
   // Lifted code will be placed here in clones versions of this function.
   return memory;
