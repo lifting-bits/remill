@@ -67,16 +67,24 @@ class StateVisitor {
     virtual void visit(llvm::Type *ty);
 };
 
+typedef std::unordered_map<llvm::Instruction *, uint64_t> AliasMap;
+
 std::vector<StateSlot> StateSlots(llvm::Module *module);
 
-void AnalyzeAliases(llvm::Module *module);
+const std::vector<llvm::AAMDNodes> generateAAMDNodesFromSlots(
+        std::vector<StateSlot> slots,
+        llvm::LLVMContext &context);
+
+void addAAMDNodes(AliasMap alias_map, std::vector<StateSlot> slots);
+
+void AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> slots);
 
 enum class AliasResult;
 
 struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, AliasResult> {
   public:
     std::unordered_map<llvm::Value *, uint64_t> offset_map;
-    std::unordered_map<llvm::Instruction *, uint64_t> alias_map;
+    AliasMap alias_map;
     std::unordered_set<llvm::Value *> exclude;
     std::unordered_set<llvm::Instruction *> curr_wl;
     std::unordered_set<llvm::Instruction *> next_wl;
@@ -101,9 +109,5 @@ struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, Alias
     virtual AliasResult visitBinaryOp_(llvm::BinaryOperator &I, bool plus);
 };
 
-void addAAMDNodes(std::unordered_map<llvm::Instruction *, uint64_t> alias_map,
-                  std::vector<StateSlot> slots);
-
-const StateSlot *get_slot_by_offset(std::vector<StateSlot> slots, uint64_t offset);
 }  // namespace remill
 #endif  // REMILL_BC_DSELIM_H_

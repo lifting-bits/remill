@@ -92,8 +92,49 @@ void StateVisitor::visit(llvm::Type *ty) {
   }
 }
 
-void AnalyzeAliases(llvm::Module *module) {
-  auto slots = StateSlots(module);
+/* TODO(tim):
+ * - read an alias_map and a state slots vector,
+ *   find the slot for each alias
+ * - add an AAMDNodes struct for each load/store
+ *   to that instruction
+ * - return the loads and stores?
+ */
+void addAAMDNodes(AliasMap alias_map,
+                  std::vector<llvm::AAMDNodes> aamds) {
+  for ( const auto &alias : alias_map ) {
+    if (auto inst = llvm::dyn_cast<llvm::LoadInst>(alias.first)) {
+      auto aamd = aamds[alias.second];
+      inst->setAAMetadata(aamd);
+    }
+  }
+}
+
+const std::vector<llvm::AAMDNodes> generateAAMDNodesFromSlots(
+    std::vector<StateSlot> slots,
+    llvm::LLVMContext &context) {
+  auto mdstrings = std::vector<llvm::MDString *>();
+  for ( const auto &slot : slots ) {
+    mdstrings.push_back(llvm::MDString::get(context, "slot_" + std::to_string(slot.i)));
+  }
+  std::vector<llvm::AAMDNodes> aamds;
+  aamds.reserve(mdstrings.size());
+  for ( uint64_t i = 0; i < mdstrings.size(); i++ ) {
+    // noalias all slots != scope
+    std::vector<llvm::Metadata *> noalias_vec;
+    for ( uint64_t j = 0; j < mdstrings.size(); j++ ) {
+      if (i != j) {
+        noalias_vec.push_back(mdstrings[j]);
+      }
+    }
+    llvm::MDNode *scope = llvm::MDNode::get(context, mdstrings[i]);
+    llvm::MDNode *noalias = llvm::MDNode::get(context, llvm::MDTuple::get(context, noalias_vec));
+    aamds.emplace_back(nullptr, scope, noalias);
+  }
+  return aamds;
+}
+
+void AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> slots) {
+  auto aamds = generateAAMDNodesFromSlots(slots, module->getContext());
   llvm::DataLayout dl = module->getDataLayout();
   auto bb_func = BasicBlockFunction(module);
   for (auto &func : *module) {
@@ -116,6 +157,7 @@ void AnalyzeAliases(llvm::Module *module) {
       LOG(INFO) << "Offsets: " << fav.offset_map.size();
       LOG(INFO) << "Aliases: " << fav.alias_map.size();
       LOG(INFO) << "Excluded: " << fav.exclude.size();
+      addAAMDNodes(fav.alias_map, aamds);
     }
   }
 }
@@ -366,49 +408,6 @@ AliasResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
     exclude.insert(&I);
   }
   return AliasResult::Progress;
-}
-
-/* TODO(tim):
- * - read an alias_map and a state slots vector,
- *   find the slot for each alias
- * - add an AAMDNodes struct for each load/store
- *   to that instruction
- * - return the loads and stores?
- */
-void addAAMDNodes(std::unordered_map<llvm::Instruction *, uint64_t> alias_map,
-                  std::vector<llvm::AAMDNodes> aamds) {
-  for ( const auto &alias : alias_map ) {
-    if (auto inst = llvm::dyn_cast<llvm::LoadInst>(alias.first)) {
-      auto aamd = aamds[alias.second];
-      //auto *n = llvm::MDNode::get(c, llvm::MDString::get(c, "slot_" + std::to_string(slot.i)));
-      //llvm::MDNode *aamdn = llvm::MDNode::get(c, &aamds[alias.second]);
-      //inst->setMetadata("alias.md", aamd);
-    }
-  }
-}
-
-const std::vector<llvm::AAMDNodes> generateAAMDNodesFromSlots(
-    std::vector<StateSlot> slots,
-    llvm::LLVMContext &context) {
-  auto mdstrings = std::vector<llvm::MDString>();
-  for ( const auto &slot : slots ) {
-    mdstrings.emplace_back(context, "slot_" + std::to_string(slot.i));
-  }
-  auto aamds = std::vector<llvm::AAMDNodes>();
-  for ( const auto &mdstring : mdstrings ) {
-    //FIXME(tim): replace nullptr with all S in mdstrings where S != mdstring
-    aamds.emplace_back(context, mdstring, llvm::MDTuple::get(context, nullptr));
-  }
-  return aamds;
-}
-
-const StateSlot *get_slot_by_offset(const std::vector<StateSlot> &slots, uint64_t offset) {
-  for ( auto &slot : slots ) {
-    if (slot.begin_offset <= offset && offset <= slot.end_offset) {
-      return &slot;
-    }
-  }
-  return nullptr;
 }
 
 }  // namespace remill
