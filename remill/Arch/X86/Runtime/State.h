@@ -828,6 +828,16 @@ union CR4Reg {
 
 static_assert(8 == sizeof(CR4Reg), "Invalid packing of CR4Reg");
 
+union CR8Reg {
+  uint64_t flat;
+  struct {
+    uint64_t tpr:4;
+    uint64_t _rsvd0:60;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(8 == sizeof(CR8Reg), "Invalid packing of CR8Reg");
+
 #pragma clang diagnostic pop
 
 #endif  // REMILL_ARCH_X86_RUNTIME_STATE_H_

@@ -148,6 +148,7 @@ CR1Reg gCR1;
 CR2Reg gCR2;
 CR3Reg gCR3;
 CR4Reg gCR4;
+CR8Reg gCR8;
 
 // Invoke a native test case addressed by `gTestToRun` and store the machine
 // state before and after executing the test in `gLiftedState` and
