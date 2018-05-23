@@ -393,9 +393,10 @@ std::string LLVMThingToString(llvm::Type *thing) {
 
 llvm::Argument *NthArgument(llvm::Function *func, size_t index) {
   auto it = func->arg_begin();
-  for (size_t i = 0; i < index; ++i) {
-    ++it;
+  if (index >= static_cast<size_t>(std::distance(it, func->arg_end()))) {
+    return nullptr;
   }
+  std::advance(it, index);
   return &*it;
 }
 
