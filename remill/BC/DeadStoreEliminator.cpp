@@ -44,8 +44,8 @@ std::vector<StateSlot> StateSlots(llvm::Module *module) {
   return vis.slots;
 }
 
-StateSlot::StateSlot(uint64_t i_, uint64_t begin_offset_, uint64_t end_offset_)
-  : i(i_), begin_offset(begin_offset_), end_offset(end_offset_) { }
+StateSlot::StateSlot(uint64_t i_, uint64_t offset_, uint64_t size_)
+  : i(i_), offset(offset_), size(size_) { }
 
 StateVisitor::StateVisitor(llvm::DataLayout *dl_)
   : slots(std::vector<StateSlot>()), idx(0), offset(0), dl(dl_) { }
@@ -69,7 +69,7 @@ void StateVisitor::visit(llvm::Type *ty) {
       // treat sequences of primitive types as one slot
       uint64_t len = dl->getTypeAllocSize(seq_ty);
       for (uint64_t i=0; i<len; i++) {
-        slots.push_back(remill::StateSlot(idx, offset, offset + len));
+        slots.push_back(remill::StateSlot(idx, offset, len));
       }
       // update StateVisitor fields
       idx++;
@@ -84,7 +84,7 @@ void StateVisitor::visit(llvm::Type *ty) {
   } else {  // BASE CASE
     uint64_t len = dl->getTypeAllocSize(ty);
     for (uint64_t i=0; i<len; i++) {
-      slots.push_back(remill::StateSlot(idx, offset, offset + len));
+      slots.push_back(remill::StateSlot(idx, offset, len));
     }
     // update StateVisitor fields
     idx++;
@@ -92,15 +92,10 @@ void StateVisitor::visit(llvm::Type *ty) {
   }
 }
 
-/* TODO(tim):
- * - read an alias_map and a state slots vector,
- *   find the slot for each alias
- * - add an AAMDNodes struct for each load/store
- *   to that instruction
- * - return the loads and stores?
+/* For each instruction in the alias map, add an AAMDNodes struct 
+ * which specifies the aliasing stores and loads to the instruction's byte offset.
  */
-void addAAMDNodes(AliasMap alias_map,
-                  std::vector<llvm::AAMDNodes> aamds) {
+void addAAMDNodes(AliasMap alias_map, std::vector<llvm::AAMDNodes> aamds) {
   for ( const auto &alias : alias_map ) {
     if (auto inst = llvm::dyn_cast<llvm::LoadInst>(alias.first)) {
       auto aamd = aamds[alias.second];
@@ -109,32 +104,40 @@ void addAAMDNodes(AliasMap alias_map,
   }
 }
 
-const std::vector<llvm::AAMDNodes> generateAAMDNodesFromSlots(
+/* Return a map of MDNode scopes and a vector of AAMDNodes based on the given vector of StateSlots,
+ * where each byte offset (i.e. index) in the slots vector is mapped to a
+ * corresponding AAMDNodes struct.
+ */
+std::pair<std::unordered_map<llvm::MDNode *, uint64_t>, std::vector<llvm::AAMDNodes>> generateAAMDInfo(
     std::vector<StateSlot> slots,
     llvm::LLVMContext &context) {
-  auto mdstrings = std::vector<llvm::MDString *>();
+  std::vector<std::pair<llvm::MDNode *, uint64_t>> node_sizes;
+  node_sizes.reserve(slots.size());
   for ( const auto &slot : slots ) {
-    mdstrings.push_back(llvm::MDString::get(context, "slot_" + std::to_string(slot.i)));
+    auto mdstr = llvm::MDString::get(context, "slot_" + std::to_string(slot.i));
+    node_sizes.push_back(std::make_pair(llvm::MDNode::get(context, mdstr), slot.size));
   }
   std::vector<llvm::AAMDNodes> aamds;
-  aamds.reserve(mdstrings.size());
-  for ( uint64_t i = 0; i < mdstrings.size(); i++ ) {
+  aamds.reserve(slots.size());
+  for ( uint64_t i = 0; i < slots.size(); i++ ) {
     // noalias all slots != scope
     std::vector<llvm::Metadata *> noalias_vec;
-    for ( uint64_t j = 0; j < mdstrings.size(); j++ ) {
+    for ( uint64_t j = 0; j < slots.size(); j++ ) {
       if (i != j) {
-        noalias_vec.push_back(mdstrings[j]);
+        noalias_vec.push_back(node_sizes[j].first);
       }
     }
-    llvm::MDNode *scope = llvm::MDNode::get(context, mdstrings[i]);
     llvm::MDNode *noalias = llvm::MDNode::get(context, llvm::MDTuple::get(context, noalias_vec));
-    aamds.emplace_back(nullptr, scope, noalias);
+    aamds.emplace_back(nullptr, node_sizes[i].first, noalias);
   }
-  return aamds;
+  std::unordered_map<llvm::MDNode *, uint64_t> scopes(node_sizes.begin(), node_sizes.end());
+  return std::make_pair(scopes, aamds);
 }
 
-void AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> slots) {
-  auto aamds = generateAAMDNodesFromSlots(slots, module->getContext());
+std::unordered_map<llvm::MDNode *, uint64_t> AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> slots) {
+  auto aamd_sizes = generateAAMDInfo(slots, module->getContext());
+  auto scope_sizes = aamd_sizes.first;
+  auto aamds = aamd_sizes.second;
   llvm::DataLayout dl = module->getDataLayout();
   auto bb_func = BasicBlockFunction(module);
   for (auto &func : *module) {
@@ -142,10 +145,8 @@ void AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> slots) {
         && func.getType() == bb_func->getType()
         && !func.isDeclaration())
     {
-      // add state pointer
       auto sp = LoadStatePointer(&func);
       ForwardAliasVisitor fav(&dl, sp);
-      //fav.offset_map.insert({LoadStatePointer(func), 0});
       std::vector<llvm::Instruction *> insts;
       for (auto &block : func) {
         for (auto &inst : block) {
@@ -160,6 +161,7 @@ void AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> slots) {
       addAAMDNodes(fav.alias_map, aamds);
     }
   }
+  return scope_sizes;
 }
 
 enum class AliasResult {
@@ -298,6 +300,7 @@ AliasResult ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst 
   }
 }
 
+// Visit a cast instruction and update the offset map.
 AliasResult ForwardAliasVisitor::visitCastInst(llvm::CastInst &I) {
   LOG(INFO) << "Entered inttoptr instruction";
   auto val = I.getOperand(0);
@@ -318,16 +321,19 @@ AliasResult ForwardAliasVisitor::visitCastInst(llvm::CastInst &I) {
   }
 }
 
+// Visit an add instruction and update the offset map.
 AliasResult ForwardAliasVisitor::visitAdd(llvm::BinaryOperator &I) {
   LOG(INFO) << "Entered add instruction";
   return ForwardAliasVisitor::visitBinaryOp_(I, true);
 }
 
+// Visit a sub instruction and update the offset map.
 AliasResult ForwardAliasVisitor::visitSub(llvm::BinaryOperator &I) {
   LOG(INFO) << "Entered sub instruction";
   return ForwardAliasVisitor::visitBinaryOp_(I, false);
 }
 
+// Visit an add or sub instruction.
 AliasResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool plus) {
   auto val1 = I.getOperand(0);
   auto val2 = I.getOperand(1);
@@ -372,6 +378,7 @@ AliasResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
   }
 }
 
+// Visit a PHI node and update the offset map.
 AliasResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
   LOG(INFO) << "Entered PHI node";
   // iterate over each operand
@@ -408,6 +415,44 @@ AliasResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
     exclude.insert(&I);
   }
   return AliasResult::Progress;
+}
+
+// Return the scope of the given instruction.
+llvm::MDNode *GetScopeFromInst(llvm::Instruction &I) {
+  llvm::AAMDNodes N;
+  I.getAAMetadata(N);
+  return N.Scope;
+}
+
+std::vector<bool> GenerateLiveSet(llvm::Module *module, std::unordered_map<llvm::MDNode *, uint64_t> &scopes) {
+  //TODO(tim): iterate through instructions
+  auto bb_func = BasicBlockFunction(module);
+  size_t slots = scopes.size();
+  std::vector<bool> live;
+  live.reserve(slots);
+  for (auto &func : *module) {
+    if (&func != bb_func
+        && func.getType() == bb_func->getType()
+        && !func.isDeclaration())
+    {
+      std::vector<llvm::Instruction *> insts;
+      for (auto &block : func) {
+        for (auto &inst : block) {
+          insts.push_back(&inst);
+          if (auto scope = GetScopeFromInst(inst)) {
+            if (llvm::isa<llvm::StoreInst>(&inst)) {
+              // reset
+              live[scopes[scope]] = false;
+            } else if (llvm::isa<llvm::LoadInst>(&inst)) {
+              // set
+              live[scopes[scope]] = true;
+            }
+          } 
+        }
+      }
+    }
+  }
+  return live;
 }
 
 }  // namespace remill
