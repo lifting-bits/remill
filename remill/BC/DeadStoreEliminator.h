@@ -111,7 +111,7 @@ struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, Alias
 
 llvm::MDNode *GetScopeFromInst(llvm::Instruction &I);
 
-std::vector<bool> GenerateLiveSet(llvm::Module *module, std::unordered_map<llvm::MDNode *, uint64_t> &scopes);
+void GenerateLiveSet(llvm::Module *module, std::unordered_map<llvm::MDNode *, uint64_t> &scopes);
 
 }  // namespace remill
 #endif  // REMILL_BC_DSELIM_H_

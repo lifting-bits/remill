@@ -100,6 +100,9 @@ void addAAMDNodes(AliasMap alias_map, std::vector<llvm::AAMDNodes> aamds) {
     if (auto inst = llvm::dyn_cast<llvm::LoadInst>(alias.first)) {
       auto aamd = aamds[alias.second];
       inst->setAAMetadata(aamd);
+    } else if (auto inst = llvm::dyn_cast<llvm::StoreInst>(alias.first)) {
+      auto aamd = aamds[alias.second];
+      inst->setAAMetadata(aamd);
     }
   }
 }
@@ -424,22 +427,24 @@ llvm::MDNode *GetScopeFromInst(llvm::Instruction &I) {
   return N.Scope;
 }
 
-std::vector<bool> GenerateLiveSet(llvm::Module *module, std::unordered_map<llvm::MDNode *, uint64_t> &scopes) {
+void GenerateLiveSet(llvm::Module *module, std::unordered_map<llvm::MDNode *, uint64_t> &scopes) {
   //TODO(tim): iterate through instructions
   auto bb_func = BasicBlockFunction(module);
   size_t slots = scopes.size();
-  std::vector<bool> live;
-  live.reserve(slots);
   for (auto &func : *module) {
     if (&func != bb_func
         && func.getType() == bb_func->getType()
         && !func.isDeclaration())
     {
-      std::vector<llvm::Instruction *> insts;
+      std::vector<bool> live;
+      live.reserve(slots);
+      for (size_t i=0; i < slots; i++) {
+        live[i] = true;
+      }
       for (auto &block : func) {
         for (auto &inst : block) {
-          insts.push_back(&inst);
           if (auto scope = GetScopeFromInst(inst)) {
+            LOG(INFO) << "Found scope data in " << LLVMThingToString(&inst);
             if (llvm::isa<llvm::StoreInst>(&inst)) {
               // reset
               live[scopes[scope]] = false;
@@ -450,9 +455,11 @@ std::vector<bool> GenerateLiveSet(llvm::Module *module, std::unordered_map<llvm:
           } 
         }
       }
+      LOG(INFO) << "Func " << LLVMThingToString(&func) << " liveset: "
+        << live.size() << " slots, " << std::count(live.begin(), live.end(), true) << " live";
     }
   }
-  return live;
+  return;
 }
 
 }  // namespace remill
