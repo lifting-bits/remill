@@ -79,9 +79,9 @@ void addAAMDNodes(AliasMap alias_map, std::vector<StateSlot> slots);
 
 std::unordered_map<llvm::MDNode *, uint64_t> AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> slots);
 
-enum class AliasResult;
+enum class VisitResult;
 
-struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, AliasResult> {
+struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, VisitResult> {
   public:
     std::unordered_map<llvm::Value *, uint64_t> offset_map;
     AliasMap alias_map;
@@ -94,22 +94,39 @@ struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, Alias
     void addInstructions(std::vector<llvm::Instruction *> &insts);
     void analyze();
 
-    virtual AliasResult visitInstruction(llvm::Instruction &I); 
-    virtual AliasResult visitAllocaInst(llvm::AllocaInst &I);
-    virtual AliasResult visitLoadInst(llvm::LoadInst &I);
-    virtual AliasResult visitStoreInst(llvm::StoreInst &I);
-    virtual AliasResult visitGetElementPtrInst(llvm::GetElementPtrInst &I);
-    virtual AliasResult visitCastInst(llvm::CastInst &I);
-    virtual AliasResult visitAdd(llvm::BinaryOperator &I);
-    virtual AliasResult visitSub(llvm::BinaryOperator &I);
-    virtual AliasResult visitPHINode(llvm::PHINode &I);
+    virtual VisitResult visitInstruction(llvm::Instruction &I); 
+    virtual VisitResult visitAllocaInst(llvm::AllocaInst &I);
+    virtual VisitResult visitLoadInst(llvm::LoadInst &I);
+    virtual VisitResult visitStoreInst(llvm::StoreInst &I);
+    virtual VisitResult visitGetElementPtrInst(llvm::GetElementPtrInst &I);
+    virtual VisitResult visitCastInst(llvm::CastInst &I);
+    virtual VisitResult visitAdd(llvm::BinaryOperator &I);
+    virtual VisitResult visitSub(llvm::BinaryOperator &I);
+    virtual VisitResult visitPHINode(llvm::PHINode &I);
 
   private:
     const llvm::DataLayout *dl;
-    virtual AliasResult visitBinaryOp_(llvm::BinaryOperator &I, bool plus);
+    virtual VisitResult visitBinaryOp_(llvm::BinaryOperator &I, bool plus);
 };
 
+typedef std::bitset<4096> LiveSet;
+
 llvm::MDNode *GetScopeFromInst(llvm::Instruction &I);
+
+class LiveSetBlockVisitor {
+  public:
+    std::unordered_map<llvm::MDNode *, uint64_t> scope_to_offset;
+    std::vector<llvm::BasicBlock *> curr_wl;
+    std::vector<llvm::BasicBlock *> next_wl;
+    std::unordered_map<llvm::BasicBlock *, std::pair<LiveSet, LiveSet>> block_map;
+    LiveSet live;
+
+    LiveSetBlockVisitor(std::unordered_map<llvm::MDNode *, uint64_t> scope_to_offset_);
+    void addFunction(llvm::Function &func);
+    void visit();
+
+    virtual VisitResult visitBlock(llvm::BasicBlock *B);
+};
 
 void GenerateLiveSet(llvm::Module *module, std::unordered_map<llvm::MDNode *, uint64_t> &scopes);
 
