@@ -113,12 +113,15 @@ typedef std::bitset<4096> LiveSet;
 
 llvm::MDNode *GetScopeFromInst(llvm::Instruction &I);
 
+void removeDeadStores(std::unordered_set<llvm::Instruction *> dead_stores);
+
 class LiveSetBlockVisitor {
   public:
     std::unordered_map<llvm::MDNode *, uint64_t> scope_to_offset;
     std::vector<llvm::BasicBlock *> curr_wl;
     std::vector<llvm::BasicBlock *> next_wl;
     std::unordered_map<llvm::BasicBlock *, std::pair<LiveSet, LiveSet>> block_map;
+    std::unordered_set<llvm::Instruction *> to_remove;
     LiveSet live;
 
     LiveSetBlockVisitor(std::unordered_map<llvm::MDNode *, uint64_t> scope_to_offset_);

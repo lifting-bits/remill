@@ -428,8 +428,15 @@ llvm::MDNode *GetScopeFromInst(llvm::Instruction &I) {
   return N.Scope;
 }
 
+// Remove all dead stores.
+void removeDeadStores(std::unordered_set<llvm::Instruction *> dead_stores) {
+  /* for (auto *store : dead_stores) { */
+  /*   store->eraseFromParent(); */
+  /* } */
+}
+
 LiveSetBlockVisitor::LiveSetBlockVisitor(std::unordered_map<llvm::MDNode *, uint64_t> scope_to_offset_)
-  : scope_to_offset(scope_to_offset_), curr_wl(), next_wl(), block_map(), live() { }
+  : scope_to_offset(scope_to_offset_), curr_wl(), next_wl(), block_map(), to_remove(), live() { }
 
 void LiveSetBlockVisitor::addFunction(llvm::Function &func) {
   for (auto &block : func) {
@@ -467,6 +474,8 @@ void LiveSetBlockVisitor::visit() {
     // reset upcoming insts
     next_wl.clear();
   }
+  LOG(INFO) << "Found " << to_remove.size() << " dead stores to remove";
+  removeDeadStores(to_remove);
 }
 
 VisitResult LiveSetBlockVisitor::visitBlock(llvm::BasicBlock *B) {
@@ -482,9 +491,14 @@ VisitResult LiveSetBlockVisitor::visitBlock(llvm::BasicBlock *B) {
     } else {
       if (auto scope = GetScopeFromInst(*inst)) {
         if (llvm::isa<llvm::StoreInst>(&*inst)) {
-          block_map[B].first.reset(scope_to_offset[scope]);
+          if (!block_map[B].first.test(scope_to_offset[scope])) {
+            // slot is already dead, so mark this inst for removal
+            to_remove.insert(&*inst);
+          } else {
+            block_map[B].first.reset(scope_to_offset[scope]);
+          }
         } else if (llvm::isa<llvm::LoadInst>(&*inst)) {
-          block_map[B].first.reset(scope_to_offset[scope]);
+          block_map[B].first.set(scope_to_offset[scope]);
         }
       }
     }
@@ -500,7 +514,6 @@ VisitResult LiveSetBlockVisitor::visitBlock(llvm::BasicBlock *B) {
 }
 
 void GenerateLiveSet(llvm::Module *module, std::unordered_map<llvm::MDNode *, uint64_t> &scopes) {
-  //TODO(tim): iterate through instructions
   auto bb_func = BasicBlockFunction(module);
   //size_t slots = scopes.size();
   for (auto &func : *module) {
