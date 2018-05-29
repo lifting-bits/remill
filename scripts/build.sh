@@ -23,8 +23,7 @@ CURR_DIR=$( pwd )
 BUILD_DIR=${CURR_DIR}/remill-build
 INSTALL_DIR=/usr/local
 LLVM_VERSION=llvm40
-# FIXME: remove workaround
-OS_VERSION=ubuntu1604
+OS_VERSION=
 ARCH_VERSION=
 
 # There are pre-build versions of various libraries for specific
@@ -99,28 +98,27 @@ function DownloadCxxCommon
 # Attempt to detect the OS distribution name.
 function GetOSVersion
 {
-  local distribution_name=$( cat /etc/issue )
+  source /etc/os-release
 
-  case "${distribution_name}" in
-    *Ubuntu*)
+  case "${ID}" in
+    *ubuntu*)
       GetUbuntuOSVersion
       return 0
     ;;
 
-    *openSUSE*)
+    *opensuse*)
       OS_VERSION=opensuse
       return 0
     ;;
 
-    *Arch\ Linux*)
-      printf "[x] Arch Linux is not yet supported.\n"
-      return 1
+    *arch*)
+      OS_VERSION=ubuntu1604
+      return 0
     ;;
 
     *)
       printf "[x] ${distribution_name} is not yet a supported distribution.\n"
-      # FIXME: remove workaround
-      return 0
+      return 1
     ;;
   esac
 }
