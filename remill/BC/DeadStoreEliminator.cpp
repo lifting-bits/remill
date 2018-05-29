@@ -436,9 +436,9 @@ llvm::MDNode *GetScopeFromInst(llvm::Instruction &I) {
 
 // Remove all dead stores.
 void RemoveDeadStores(const std::unordered_set<llvm::Instruction *> &dead_stores) {
-  // for (auto *store : dead_stores) {
-  //   store->eraseFromParent();
-  // }
+  for (auto *store : dead_stores) {
+    store->eraseFromParent();
+  }
 }
 
 LiveSetBlockVisitor::LiveSetBlockVisitor(const ScopeMap &scope_to_offset_)
@@ -446,82 +446,90 @@ LiveSetBlockVisitor::LiveSetBlockVisitor(const ScopeMap &scope_to_offset_)
     curr_wl(),
     next_wl(),
     block_map(),
-    to_remove(),
-    live() {}
+    to_remove() {}
 
+// Get every terminating basic block from the function `func`.
 void LiveSetBlockVisitor::AddFunction(llvm::Function &func) {
   for (auto &block : func) {
     // The machines rose from the ashes of the nuclear fire....
     if (block.getTerminator()) {
       curr_wl.push_back(&block);
-      // add block to map with initial entry and exit sets
-      block_map.insert({&block, std::make_pair(LiveSet(), LiveSet())});
+      // add block to map with initial entry set
+      block_map.insert({&block, LiveSet()});
     }
   }
 }
 
+// Visit the basic blocks in the worklist and update the block_map.
 void LiveSetBlockVisitor::Visit(void) {
   //bool progress = true;
+  auto currlive = new LiveSet;
   // if any visit makes progress, continue the loop
   while (!curr_wl.empty()) {
     LOG(INFO) << "LSBV: " << curr_wl.size() << " blocks in worklist";
     //progress = false;
     for (auto block : curr_wl) {
-      switch (VisitBlock(block)) {
-        case VisitResult::Progress:
-          //progress = true;
-          break;
-        case VisitResult::NoProgress:
-          next_wl.push_back(block);
-          break;
-        case VisitResult::Error:
-          return;
+      auto newlive = VisitBlock(block, currlive);
+      if (*newlive == *currlive) {
+        // converged
+        goto end;
       }
-      live = block_map[block].first;
-      LOG(INFO) << "LSBV: " << live.count() << " live slots";
+      LOG(INFO) << "LSBV: " << newlive->count() << " live slots";
+      currlive = newlive;
     }
     // update curr_wl to the next set of insts
     curr_wl.swap(next_wl);
     // reset upcoming insts
     next_wl.clear();
   }
+end:
   LOG(INFO) << "Found " << to_remove.size() << " dead stores to remove";
   RemoveDeadStores(to_remove);
 }
 
-VisitResult LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
+LiveSet *LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *B, LiveSet *init) {
+  // Set the exit value based on the initial liveset unioned with the successors
+  block_map[B] = *init;
   for (llvm::BasicBlock *succ : successors(B)) {
     // all successors must be default have been visited first
-    // b.exit = U { s.entry | for s in successors(b)}
-    block_map[B].second |= block_map[succ].first;
+    // b = U { s | for s in successors(b)}
+    block_map[B] |= block_map[succ];
   }
   for (auto inst = B->rbegin(); inst != B->rend(); ++inst) {
-    if (inst != B->rbegin() && llvm::isa<llvm::BranchInst>(&*inst)) {
+    if ((inst != B->rbegin() && llvm::isa<llvm::BranchInst>(&*inst)) ||
+        (llvm::isa<llvm::CallInst>(&*inst))) {
       // mark as all live
-      block_map[B].first.set();
+      // we're not able to see inside other paths, so we can't predict whether or
+      // not the callee might not use any of our slots
+      block_map[B].set();
     } else {
+      // loads and stores have associated scopes
       if (auto scope = GetScopeFromInst(*inst)) {
         if (llvm::isa<llvm::StoreInst>(&*inst)) {
-          if (!block_map[B].first.test(scope_to_offset[scope])) {
-            // slot is already dead, so mark this inst for removal
+          if (!block_map[B].test(scope_to_offset.at(scope))) {
+            // Case 1: slot is marked dead by a previous store and we hit a store.
+            // (i.e. testing the slot at this offset for liveness returns false)
+            // This is a dead store, so we can add it to the chopping block.
             to_remove.insert(&*inst);
           } else {
-            block_map[B].first.reset(scope_to_offset[scope]);
+            // Case 2: slot is marked live and we hit a store.
+            // We mark that the slot is dead before this store occurs.
+            block_map[B].reset(scope_to_offset.at(scope));
           }
         } else if (llvm::isa<llvm::LoadInst>(&*inst)) {
-          block_map[B].first.set(scope_to_offset[scope]);
+          // Case 3: slot is loaded from.
+          // We mark the slot live here as it was used.
+          block_map[B].set(scope_to_offset.at(scope));
         }
       }
     }
   }
+  // Prepare for the next rotation
+  // If the block has no predecessors, we must have reached the front
   for (llvm::BasicBlock *pred : predecessors(B)) {
-    // don't add elements that have already been visited
-    if (block_map.count(pred) == 0) {
-      next_wl.push_back(pred);
-      block_map.insert({pred, std::make_pair(LiveSet(), LiveSet())});
-    }
+    next_wl.push_back(pred);
   }
-  return VisitResult::Progress;
+  return &block_map[B];
 }
 
 void GenerateLiveSet(llvm::Module *module, const ScopeMap &scopes) {

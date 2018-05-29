@@ -127,15 +127,14 @@ class LiveSetBlockVisitor {
     const ScopeMap &scope_to_offset;
     std::vector<llvm::BasicBlock *> curr_wl;
     std::vector<llvm::BasicBlock *> next_wl;
-    std::unordered_map<llvm::BasicBlock *, std::pair<LiveSet, LiveSet>> block_map;
+    std::unordered_map<llvm::BasicBlock *, LiveSet> block_map;
     std::unordered_set<llvm::Instruction *> to_remove;
-    LiveSet live;
 
     LiveSetBlockVisitor(const ScopeMap &scope_to_offset_);
     void AddFunction(llvm::Function &func);
     void Visit();
 
-    virtual VisitResult VisitBlock(llvm::BasicBlock *B);
+    virtual LiveSet *VisitBlock(llvm::BasicBlock *B, LiveSet *init);
 };
 
 void GenerateLiveSet(llvm::Module *module, const ScopeMap &scopes);
