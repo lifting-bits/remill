@@ -64,20 +64,27 @@ class StateVisitor {
 
   public:
     // visit a type and record it (and any children) in the slots vector
-    virtual void visit(llvm::Type *ty);
+    virtual void Visit(llvm::Type *ty);
 };
 
 typedef std::unordered_map<llvm::Instruction *, uint64_t> AliasMap;
+typedef std::unordered_map<llvm::MDNode *, uint64_t> ScopeMap;
 
 std::vector<StateSlot> StateSlots(llvm::Module *module);
 
-std::pair<std::unordered_map<llvm::MDNode *, uint64_t>, std::vector<llvm::AAMDNodes>> generateAAMDInfo(
-        std::vector<StateSlot> slots,
-        llvm::LLVMContext &context);
+// A struct representing the information derived from StateSlots:
+// - a map of MDNodes designating AAMDNode scope to the corresponding byte offset
+// - a vector of AAMDNodes for each byte offset
+struct AAMDInfo {
+  ScopeMap slot_scopes;
+  std::vector<llvm::AAMDNodes> slot_aamds;
 
-void addAAMDNodes(AliasMap alias_map, std::vector<StateSlot> slots);
+  AAMDInfo(std::vector<StateSlot> slots, llvm::LLVMContext &context);
+};
 
-std::unordered_map<llvm::MDNode *, uint64_t> AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> slots);
+void AddAAMDNodes(AliasMap alias_map, std::vector<StateSlot> slots);
+
+ScopeMap AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> slots);
 
 enum class VisitResult;
 
@@ -91,8 +98,8 @@ struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, Visit
     llvm::Value *state_ptr;
 
     ForwardAliasVisitor(llvm::DataLayout *dl_, llvm::Value *sp_);
-    void addInstructions(std::vector<llvm::Instruction *> &insts);
-    void analyze();
+    void AddInstruction(llvm::Instruction *inst);
+    bool Analyze();
 
     virtual VisitResult visitInstruction(llvm::Instruction &I); 
     virtual VisitResult visitAllocaInst(llvm::AllocaInst &I);
@@ -113,25 +120,25 @@ typedef std::bitset<4096> LiveSet;
 
 llvm::MDNode *GetScopeFromInst(llvm::Instruction &I);
 
-void removeDeadStores(std::unordered_set<llvm::Instruction *> dead_stores);
+void RemoveDeadStores(const std::unordered_set<llvm::Instruction *> &dead_stores);
 
 class LiveSetBlockVisitor {
   public:
-    std::unordered_map<llvm::MDNode *, uint64_t> scope_to_offset;
+    const ScopeMap &scope_to_offset;
     std::vector<llvm::BasicBlock *> curr_wl;
     std::vector<llvm::BasicBlock *> next_wl;
     std::unordered_map<llvm::BasicBlock *, std::pair<LiveSet, LiveSet>> block_map;
     std::unordered_set<llvm::Instruction *> to_remove;
     LiveSet live;
 
-    LiveSetBlockVisitor(std::unordered_map<llvm::MDNode *, uint64_t> scope_to_offset_);
-    void addFunction(llvm::Function &func);
-    void visit();
+    LiveSetBlockVisitor(const ScopeMap &scope_to_offset_);
+    void AddFunction(llvm::Function &func);
+    void Visit();
 
-    virtual VisitResult visitBlock(llvm::BasicBlock *B);
+    virtual VisitResult VisitBlock(llvm::BasicBlock *B);
 };
 
-void GenerateLiveSet(llvm::Module *module, std::unordered_map<llvm::MDNode *, uint64_t> &scopes);
+void GenerateLiveSet(llvm::Module *module, const ScopeMap &scopes);
 
 }  // namespace remill
 #endif  // REMILL_BC_DSELIM_H_

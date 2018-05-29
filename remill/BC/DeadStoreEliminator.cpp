@@ -1,18 +1,18 @@
-/*
- * Copyright (c) 2017 Trail of Bits, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+//
+// Copyright (c) 2017 Trail of Bits, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 
 #include <glog/logging.h>
 
@@ -36,56 +36,60 @@ namespace remill {
 // "slot" of the State structure has its own SlotRecord.
 std::vector<StateSlot> StateSlots(llvm::Module *module) {
   // get the state
-  auto slots = std::vector<StateSlot>();
+  std::vector<StateSlot> slots;
   auto state_ptr_type = StatePointerType(module);
-  llvm::Type *type = state_ptr_type->getElementType();
+  auto type = state_ptr_type->getElementType();
   llvm::DataLayout dl = module->getDataLayout();
   StateVisitor vis(&dl);
-  vis.visit(type);
+  vis.Visit(type);
   return vis.slots;
 }
 
 StateSlot::StateSlot(uint64_t i_, uint64_t offset_, uint64_t size_)
-  : i(i_), offset(offset_), size(size_) { }
+  : i(i_),
+    offset(offset_),
+    size(size_) {}
 
 StateVisitor::StateVisitor(llvm::DataLayout *dl_)
-  : slots(std::vector<StateSlot>()), idx(0), offset(0), dl(dl_) { }
+  : slots(),
+    idx(0),
+    offset(0),
+    dl(dl_) {}
 
-/* Update the StateVisitor's slots field to hold
- * a StateSlot for every byte offset into the state.
- * The StateSlot element is the same across each byte offset
- * that is within the element's begin offset and end offset.
- */
-void StateVisitor::visit(llvm::Type *ty) {
+// Update the StateVisitor's slots field to hold
+// a StateSlot for every byte offset into the state.
+// The StateSlot element is the same across each byte offset
+// that is within the element's begin offset and end offset.
+void StateVisitor::Visit(llvm::Type *ty) {
   if (ty == nullptr) {
     // skip
   } else if (auto struct_ty = llvm::dyn_cast<llvm::StructType>(ty)) {
     for (auto elem_ty : struct_ty->elements()) {
-      visit(elem_ty);
+      Visit(elem_ty);
     }
   } else if (auto seq_ty = llvm::dyn_cast<llvm::SequentialType>(ty)) {
     auto first_ty = seq_ty->getElementType();
-    if (auto int_ty = llvm::dyn_cast<llvm::IntegerType>(first_ty)) {
+    if (first_ty->isIntegerTy() || first_ty->isFloatingPointTy()) {
       // SPECIAL CASE
       // treat sequences of primitive types as one slot
       uint64_t len = dl->getTypeAllocSize(seq_ty);
-      for (uint64_t i=0; i<len; i++) {
-        slots.push_back(remill::StateSlot(idx, offset, len));
+      for (uint64_t i = 0; i < len; i++) {
+        slots.emplace_back(idx, offset, len);
       }
       // update StateVisitor fields
       idx++;
       offset += len;
     } else {
-      for (unsigned int i=0; i < seq_ty->getNumElements(); i++) {
+      for (unsigned int i = 0; i < seq_ty->getNumElements(); i++) {
         // repeat NumContained times
         // NOTE: will recalculate every time, rather than memoizing
-        visit(first_ty);
+        Visit(first_ty);
       }
     }
   } else {  // BASE CASE
     uint64_t len = dl->getTypeAllocSize(ty);
-    for (uint64_t i=0; i<len; i++) {
-      slots.push_back(remill::StateSlot(idx, offset, len));
+    for (uint64_t i = 0; i < len; i++) {
+      slots.emplace_back(idx, offset, len);
     }
     // update StateVisitor fields
     idx++;
@@ -93,40 +97,36 @@ void StateVisitor::visit(llvm::Type *ty) {
   }
 }
 
-/* For each instruction in the alias map, add an AAMDNodes struct 
- * which specifies the aliasing stores and loads to the instruction's byte offset.
- */
-void addAAMDNodes(AliasMap alias_map, std::vector<llvm::AAMDNodes> aamds) {
-  for ( const auto &alias : alias_map ) {
-    if (auto inst = llvm::dyn_cast<llvm::LoadInst>(alias.first)) {
+// For each instruction in the alias map, add an AAMDNodes struct 
+// which specifies the aliasing stores and loads to the instruction's byte offset.
+void AddAAMDNodes(AliasMap alias_map, std::vector<llvm::AAMDNodes> aamds) {
+  for (const auto &alias : alias_map) {
+    if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(alias.first)) {
       auto aamd = aamds[alias.second];
-      inst->setAAMetadata(aamd);
-    } else if (auto inst = llvm::dyn_cast<llvm::StoreInst>(alias.first)) {
+      load_inst->setAAMetadata(aamd);
+    } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(alias.first)) {
       auto aamd = aamds[alias.second];
-      inst->setAAMetadata(aamd);
+      store_inst->setAAMetadata(aamd);
     }
   }
 }
 
-/* Return a map of MDNode scopes and a vector of AAMDNodes based on the given vector of StateSlots,
- * where each byte offset (i.e. index) in the slots vector is mapped to a
- * corresponding AAMDNodes struct.
- */
-std::pair<std::unordered_map<llvm::MDNode *, uint64_t>, std::vector<llvm::AAMDNodes>> generateAAMDInfo(
-    std::vector<StateSlot> slots,
-    llvm::LLVMContext &context) {
+// Return a map of MDNode scopes and a vector of AAMDNodes based on the given vector of StateSlots,
+// where each byte offset (i.e. index) in the slots vector is mapped to a
+// corresponding AAMDNodes struct.
+AAMDInfo::AAMDInfo(std::vector<StateSlot> slots, llvm::LLVMContext &context) {
   std::vector<std::pair<llvm::MDNode *, uint64_t>> node_sizes;
   node_sizes.reserve(slots.size());
-  for ( const auto &slot : slots ) {
+  for (const auto &slot : slots) {
     auto mdstr = llvm::MDString::get(context, "slot_" + std::to_string(slot.i));
     node_sizes.push_back(std::make_pair(llvm::MDNode::get(context, mdstr), slot.size));
   }
   std::vector<llvm::AAMDNodes> aamds;
   aamds.reserve(slots.size());
-  for ( uint64_t i = 0; i < slots.size(); i++ ) {
+  for (uint64_t i = 0; i < slots.size(); i++) {
     // noalias all slots != scope
     std::vector<llvm::Metadata *> noalias_vec;
-    for ( uint64_t j = 0; j < slots.size(); j++ ) {
+    for (uint64_t j = 0; j < slots.size(); j++) {
       if (i != j) {
         noalias_vec.push_back(node_sizes[j].first);
       }
@@ -135,37 +135,33 @@ std::pair<std::unordered_map<llvm::MDNode *, uint64_t>, std::vector<llvm::AAMDNo
     aamds.emplace_back(nullptr, node_sizes[i].first, noalias);
   }
   std::unordered_map<llvm::MDNode *, uint64_t> scopes(node_sizes.begin(), node_sizes.end());
-  return std::make_pair(scopes, aamds);
+  slot_scopes = scopes;
+  slot_aamds = aamds;
 }
 
-std::unordered_map<llvm::MDNode *, uint64_t> AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> slots) {
-  auto aamd_sizes = generateAAMDInfo(slots, module->getContext());
-  auto scope_sizes = aamd_sizes.first;
-  auto aamds = aamd_sizes.second;
+ScopeMap AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> slots) {
+  auto aamd_info = new AAMDInfo(slots, module->getContext());
   llvm::DataLayout dl = module->getDataLayout();
   auto bb_func = BasicBlockFunction(module);
   for (auto &func : *module) {
-    if (&func != bb_func
-        && func.getType() == bb_func->getType()
-        && !func.isDeclaration())
-    {
+    if (&func != bb_func && !func.isDeclaration() &&
+        func.getFunctionType() == bb_func->getFunctionType()) {
       auto sp = LoadStatePointer(&func);
       ForwardAliasVisitor fav(&dl, sp);
-      std::vector<llvm::Instruction *> insts;
       for (auto &block : func) {
         for (auto &inst : block) {
-          insts.push_back(&inst);
+          fav.AddInstruction(&inst);
         }
       }
-      fav.addInstructions(insts);
-      fav.analyze();
-      LOG(INFO) << "Offsets: " << fav.offset_map.size();
-      LOG(INFO) << "Aliases: " << fav.alias_map.size();
-      LOG(INFO) << "Excluded: " << fav.exclude.size();
-      addAAMDNodes(fav.alias_map, aamds);
+      if (fav.Analyze()) {
+        LOG(INFO) << "Offsets: " << fav.offset_map.size();
+        LOG(INFO) << "Aliases: " << fav.alias_map.size();
+        LOG(INFO) << "Excluded: " << fav.exclude.size();
+        AddAAMDNodes(fav.alias_map, aamd_info->slot_aamds);
+      }
     }
   }
-  return scope_sizes;
+  return aamd_info->slot_scopes;
 }
 
 enum class VisitResult {
@@ -181,11 +177,10 @@ ForwardAliasVisitor::ForwardAliasVisitor(llvm::DataLayout *dl_, llvm::Value *sp_
     curr_wl(),
     next_wl(),
     state_ptr(sp_),
-    dl(dl_) { }
+    dl(dl_) {}
 
-// Add instructions to the visitor's worklist.
-void ForwardAliasVisitor::addInstructions(std::vector<llvm::Instruction *> &insts) {
-  curr_wl.insert(insts.begin(), insts.end());
+void ForwardAliasVisitor::AddInstruction(llvm::Instruction *inst) {
+  curr_wl.insert(inst);
 }
 
 // Iterate through the current worklist, updating the offset_map and alias_map
@@ -193,7 +188,7 @@ void ForwardAliasVisitor::addInstructions(std::vector<llvm::Instruction *> &inst
 // currently interpretable (some of its pointers are not yet in the offset_map)
 // is withheld to the next analysis round in the next worklist.
 // Analysis repeats until the current worklist is empty.
-void ForwardAliasVisitor::analyze(void) {
+bool ForwardAliasVisitor::Analyze(void) {
   bool progress = true;
   // if any visit makes progress, continue the loop
   while (!curr_wl.empty() && progress) {
@@ -208,7 +203,7 @@ void ForwardAliasVisitor::analyze(void) {
           next_wl.insert(inst);
           break;
         case VisitResult::Error:
-          return;
+          return false;
       }
     }
     // update curr_wl to the next set of insts
@@ -216,6 +211,8 @@ void ForwardAliasVisitor::analyze(void) {
     // reset upcoming insts
     next_wl.clear();
   }
+  //TODO(tim): check for possible errors?
+  return true;
 }
 
 VisitResult ForwardAliasVisitor::visitInstruction(llvm::Instruction &I) {
@@ -235,7 +232,10 @@ VisitResult ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) {
   // get the initial ptr
   auto val = I.getPointerOperand();
   // special case: loading the state ptr
-  if (exclude.count(val) && I.getType() != state_ptr->getType()) {
+  if (I.getType() == state_ptr->getType()) {
+    alias_map.insert({&I, 0});
+    return VisitResult::Progress;
+  } else if (exclude.count(val)) {
     exclude.insert(&I);
     LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     return VisitResult::Progress;
@@ -293,7 +293,7 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst 
       llvm::APInt offset;
       if (I.accumulateConstantOffset(*dl, offset)) {
         // use offset (getRawData extracts the uint64_t)
-        offset_map[&I] = *(ptr->second + offset.getRawData());
+        offset_map[&I] = ptr->second + offset.getZExtValue();
         LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
         return VisitResult::Progress;
       } else {
@@ -346,22 +346,27 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
     LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     return VisitResult::Progress;
   } else {
-    if (auto cint = llvm::dyn_cast<llvm::ConstantInt>(val1)) {
+    // FIXME(tim): is there a way to make this code more succinct and avoid duplication?
+    if (auto cint1 = llvm::dyn_cast<llvm::ConstantInt>(val1)) {
       auto ptr = offset_map.find(val2);
       if (ptr == offset_map.end()) {
         return VisitResult::NoProgress;
       } else {
-        auto offset = (plus ? ptr->second + cint->getZExtValue() : ptr->second - cint->getZExtValue());
+        auto offset = (plus ? ptr->second + cint1->getZExtValue() : ptr->second - cint1->getZExtValue());
+        // check that we did not overflow
+        CHECK(offset <= std::numeric_limits<uint64_t>::max());
         offset_map.insert({&I, offset});
         LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
         return VisitResult::Progress;
       }
-    } else if (auto cint = llvm::dyn_cast<llvm::ConstantInt>(val2)) {
+    } else if (auto cint2 = llvm::dyn_cast<llvm::ConstantInt>(val2)) {
       auto ptr = offset_map.find(val1);
       if (ptr == offset_map.end()) {
         return VisitResult::NoProgress;
       } else {
-        auto offset = (plus ? ptr->second + cint->getZExtValue() : ptr->second - cint->getZExtValue());
+        auto offset = (plus ? ptr->second + cint2->getZExtValue() : ptr->second - cint2->getZExtValue());
+        // check that we did not overflow
+        CHECK(offset <= std::numeric_limits<uint64_t>::max());
         offset_map.insert({&I, offset});
         LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
         return VisitResult::Progress;
@@ -387,13 +392,11 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
   LOG(INFO) << "Entered PHI node";
   // iterate over each operand
   auto in_offset_map = false;
+  auto in_exclude_set = false;
   uint64_t offset;
   for (auto &operand : I.operands()) {
     if (exclude.count(operand)) {
-      // fail if some operands are excluded and others are state offsets
-      if (in_offset_map) {
-        return VisitResult::Error;
-      }
+      in_exclude_set = true;
     } else {
       auto ptr = offset_map.find(operand);
       if (ptr == offset_map.end()) {
@@ -411,10 +414,13 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
       }
     }
   }
-  if (in_offset_map) {
+  if (in_offset_map && in_exclude_set) {
+    // fail if some operands are excluded and others are state offsets
+    return VisitResult::Error;
+  } else if (in_offset_map) {
     LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
     offset_map.insert({&I, offset});
-  } else {
+  } else if (in_exclude_set) {
     LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     exclude.insert(&I);
   }
@@ -429,16 +435,21 @@ llvm::MDNode *GetScopeFromInst(llvm::Instruction &I) {
 }
 
 // Remove all dead stores.
-void removeDeadStores(std::unordered_set<llvm::Instruction *> dead_stores) {
-  /* for (auto *store : dead_stores) { */
-  /*   store->eraseFromParent(); */
-  /* } */
+void RemoveDeadStores(const std::unordered_set<llvm::Instruction *> &dead_stores) {
+  // for (auto *store : dead_stores) {
+  //   store->eraseFromParent();
+  // }
 }
 
-LiveSetBlockVisitor::LiveSetBlockVisitor(std::unordered_map<llvm::MDNode *, uint64_t> scope_to_offset_)
-  : scope_to_offset(scope_to_offset_), curr_wl(), next_wl(), block_map(), to_remove(), live() { }
+LiveSetBlockVisitor::LiveSetBlockVisitor(const ScopeMap &scope_to_offset_)
+  : scope_to_offset(scope_to_offset_),
+    curr_wl(),
+    next_wl(),
+    block_map(),
+    to_remove(),
+    live() {}
 
-void LiveSetBlockVisitor::addFunction(llvm::Function &func) {
+void LiveSetBlockVisitor::AddFunction(llvm::Function &func) {
   for (auto &block : func) {
     // The machines rose from the ashes of the nuclear fire....
     if (block.getTerminator()) {
@@ -449,14 +460,14 @@ void LiveSetBlockVisitor::addFunction(llvm::Function &func) {
   }
 }
 
-void LiveSetBlockVisitor::visit() {
+void LiveSetBlockVisitor::Visit(void) {
   //bool progress = true;
   // if any visit makes progress, continue the loop
-  while (!curr_wl.empty()/* && progress*/) {
+  while (!curr_wl.empty()) {
     LOG(INFO) << "LSBV: " << curr_wl.size() << " blocks in worklist";
     //progress = false;
     for (auto block : curr_wl) {
-      switch (visitBlock(block)) {
+      switch (VisitBlock(block)) {
         case VisitResult::Progress:
           //progress = true;
           break;
@@ -475,19 +486,19 @@ void LiveSetBlockVisitor::visit() {
     next_wl.clear();
   }
   LOG(INFO) << "Found " << to_remove.size() << " dead stores to remove";
-  removeDeadStores(to_remove);
+  RemoveDeadStores(to_remove);
 }
 
-VisitResult LiveSetBlockVisitor::visitBlock(llvm::BasicBlock *B) {
+VisitResult LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
   for (llvm::BasicBlock *succ : successors(B)) {
     // all successors must be default have been visited first
     // b.exit = U { s.entry | for s in successors(b)}
     block_map[B].second |= block_map[succ].first;
   }
   for (auto inst = B->rbegin(); inst != B->rend(); ++inst) {
-    if (inst != B->rbegin() && llvm::isa<llvm::TerminatorInst>(&*inst)) {
+    if (inst != B->rbegin() && llvm::isa<llvm::BranchInst>(&*inst)) {
       // mark as all live
-      block_map[B].first = LiveSet(4095);
+      block_map[B].first.set();
     } else {
       if (auto scope = GetScopeFromInst(*inst)) {
         if (llvm::isa<llvm::StoreInst>(&*inst)) {
@@ -513,17 +524,15 @@ VisitResult LiveSetBlockVisitor::visitBlock(llvm::BasicBlock *B) {
   return VisitResult::Progress;
 }
 
-void GenerateLiveSet(llvm::Module *module, std::unordered_map<llvm::MDNode *, uint64_t> &scopes) {
+void GenerateLiveSet(llvm::Module *module, const ScopeMap &scopes) {
   auto bb_func = BasicBlockFunction(module);
   //size_t slots = scopes.size();
   for (auto &func : *module) {
-    if (&func != bb_func
-        && func.getType() == bb_func->getType()
-        && !func.isDeclaration())
-    {
+    if (&func != bb_func && !func.isDeclaration() &&
+        func.getFunctionType() == bb_func->getFunctionType()) {
       LiveSetBlockVisitor LSBV(scopes);
-      LSBV.addFunction(func);
-      LSBV.visit();
+      LSBV.AddFunction(func);
+      LSBV.Visit();
     }
   }
   return;
