@@ -441,12 +441,13 @@ void RemoveDeadStores(const std::unordered_set<llvm::Instruction *> &dead_stores
   }
 }
 
-LiveSetBlockVisitor::LiveSetBlockVisitor(const ScopeMap &scope_to_offset_)
+LiveSetBlockVisitor::LiveSetBlockVisitor(const ScopeMap &scope_to_offset_, const llvm::FunctionType *lft_)
   : scope_to_offset(scope_to_offset_),
     curr_wl(),
     next_wl(),
     block_map(),
-    to_remove() {}
+    to_remove(),
+    lft(lft_) {}
 
 // Get every terminating basic block from the function `func`.
 void LiveSetBlockVisitor::AddFunction(llvm::Function &func) {
@@ -500,12 +501,20 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
         // b = U { s | for s in successors(b)}
         live |= block_map[succ];
       }
-    } else if (llvm::isa<llvm::CallInst>(inst)) {
-      // mark as all live if called function has the same type as lifted function
-      // we're not able to see inside other paths, so we can't predict whether or
-      // not the callee might not use any of our slots
-      live.set();
+    } else if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(inst)) {
+      if (call_inst->getFunctionType() == lft) {
+        // mark as all live if called function has the same type as lifted function
+        // we're not able to see inside other paths, so we can't predict whether or
+        // not the callee might not use any of our slots
+        live.set();
+      }
     } else if (llvm::isa<llvm::InvokeInst>(inst)) {
+      if (call_inst->getFunctionType() == lft) {
+        // mark as all live if invoked function has the same type as lifted function
+        // we're not able to see inside other paths, so we can't predict whether or
+        // not the callee might not use any of our slots
+        live.set();
+      }
     } else if (llvm::isa<llvm::StoreInst>(inst)) {
       if (auto scope = GetScopeFromInst(*inst)) {
         if (!live.test(scope_to_offset.at(scope))) {
@@ -542,7 +551,7 @@ void GenerateLiveSet(llvm::Module *module, const ScopeMap &scopes) {
   for (auto &func : *module) {
     if (&func != bb_func && !func.isDeclaration() &&
         func.getFunctionType() == bb_func->getFunctionType()) {
-      LiveSetBlockVisitor LSBV(scopes);
+      LiveSetBlockVisitor LSBV(scopes, bb_func->getFunctionType());
       LSBV.AddFunction(func);
       LSBV.Visit();
     }
