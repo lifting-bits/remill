@@ -130,12 +130,14 @@ class LiveSetBlockVisitor {
     std::unordered_map<llvm::BasicBlock *, LiveSet> block_map;
     std::unordered_set<llvm::Instruction *> to_remove;
     const llvm::FunctionType *lft;
+    bool on_remove_pass;
 
     LiveSetBlockVisitor(const ScopeMap &scope_to_offset_, const llvm::FunctionType *lft_);
     void AddFunction(llvm::Function &func);
     void Visit();
 
     virtual bool VisitBlock(llvm::BasicBlock *B);
+    virtual void RemoveDeadStores(void);
 };
 
 void GenerateLiveSet(llvm::Module *module, const ScopeMap &scopes);
