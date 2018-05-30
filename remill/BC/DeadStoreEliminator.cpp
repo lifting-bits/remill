@@ -140,7 +140,7 @@ AAMDInfo::AAMDInfo(std::vector<StateSlot> slots, llvm::LLVMContext &context) {
 }
 
 ScopeMap AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> slots) {
-  auto aamd_info = new AAMDInfo(slots, module->getContext());
+  AAMDInfo aamd_info(slots, module->getContext());
   llvm::DataLayout dl = module->getDataLayout();
   auto bb_func = BasicBlockFunction(module);
   for (auto &func : *module) {
@@ -157,11 +157,11 @@ ScopeMap AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> slots) {
         LOG(INFO) << "Offsets: " << fav.offset_map.size();
         LOG(INFO) << "Aliases: " << fav.alias_map.size();
         LOG(INFO) << "Excluded: " << fav.exclude.size();
-        AddAAMDNodes(fav.alias_map, aamd_info->slot_aamds);
+        AddAAMDNodes(fav.alias_map, aamd_info.slot_aamds);
       }
     }
   }
-  return aamd_info->slot_scopes;
+  return aamd_info.slot_scopes;
 }
 
 enum class VisitResult {
