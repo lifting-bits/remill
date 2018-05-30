@@ -134,7 +134,7 @@ class LiveSetBlockVisitor {
     void AddFunction(llvm::Function &func);
     void Visit();
 
-    virtual LiveSet *VisitBlock(llvm::BasicBlock *B, LiveSet *init);
+    virtual bool VisitBlock(llvm::BasicBlock *B);
 };
 
 void GenerateLiveSet(llvm::Module *module, const ScopeMap &scopes);
