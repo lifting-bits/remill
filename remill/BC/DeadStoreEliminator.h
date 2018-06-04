@@ -74,6 +74,11 @@ typedef std::unordered_map<llvm::MDNode *, uint64_t> ScopeMap;
 
 enum class VisitResult;
 
+enum class OpType {
+  Plus,
+  Minus,
+};
+
 struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, VisitResult> {
   public:
     const std::vector<StateSlot> &state_slots;
@@ -100,7 +105,7 @@ struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, Visit
 
   private:
     const llvm::DataLayout *dl;
-    virtual VisitResult visitBinaryOp_(llvm::BinaryOperator &I, bool plus);
+    virtual VisitResult visitBinaryOp_(llvm::BinaryOperator &I, OpType op);
 };
 
 // A struct representing the information derived from StateSlots:

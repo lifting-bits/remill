@@ -266,16 +266,32 @@ VisitResult ForwardAliasVisitor::visitCastInst(llvm::CastInst &I) {
 
 // Visit an add instruction and update the offset map.
 VisitResult ForwardAliasVisitor::visitAdd(llvm::BinaryOperator &I) {
-  return ForwardAliasVisitor::visitBinaryOp_(I, true);
+  return ForwardAliasVisitor::visitBinaryOp_(I, OpType::Plus);
 }
 
 // Visit a sub instruction and update the offset map.
 VisitResult ForwardAliasVisitor::visitSub(llvm::BinaryOperator &I) {
-  return ForwardAliasVisitor::visitBinaryOp_(I, false);
+  return ForwardAliasVisitor::visitBinaryOp_(I, OpType::Minus);
+}
+
+// Get the unsigned offset of two int64_t numbers with bounds checking
+void GetUnsignedOffset(uint64_t *result, int64_t v1, int64_t v2, OpType op, int64_t max) {
+  auto signed_result = v1;
+  switch (op) {
+    case OpType::Plus:
+      signed_result += v2;
+      break;
+    case OpType::Minus:
+      signed_result -= v2;
+      break;
+  }
+  if (signed_result >= 0 && signed_result < max) {
+    *result = static_cast<uint64_t>(signed_result);
+  }
 }
 
 // Visit an add or sub instruction.
-VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool plus) {
+VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, OpType op) {
   auto val1 = I.getOperand(0);
   auto val2 = I.getOperand(1);
   if (exclude.count(val1) || exclude.count(val2)) {
@@ -289,11 +305,13 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
       if (ptr == offset_map.end()) {
         return VisitResult::NoProgress;
       } else {
-        auto offset = (plus ? ptr->second + cint1->getZExtValue() : ptr->second - cint1->getZExtValue());
-        // check that we did not overflow
-        CHECK(offset < state_slots.size());
-        offset_map.insert({&I, offset});
-        LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
+        uint64_t *offset_ptr = nullptr;
+        GetUnsignedOffset(offset_ptr, static_cast<int64_t>(ptr->second), cint1->getSExtValue(), op, state_slots.size());
+        if (offset_ptr == nullptr) {
+          return VisitResult::Error;
+        }
+        offset_map.insert({&I, *offset_ptr});
+        LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << *offset_ptr;
         return VisitResult::Progress;
       }
     } else if (auto cint2 = llvm::dyn_cast<llvm::ConstantInt>(val2)) {
@@ -301,11 +319,13 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
       if (ptr == offset_map.end()) {
         return VisitResult::NoProgress;
       } else {
-        auto offset = (plus ? ptr->second + cint2->getZExtValue() : ptr->second - cint2->getZExtValue());
-        // check that we did not overflow
-        CHECK(offset < state_slots.size());
-        offset_map.insert({&I, offset});
-        LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << offset;
+        uint64_t *offset_ptr = nullptr;
+        GetUnsignedOffset(offset_ptr, static_cast<int64_t>(ptr->second), cint2->getSExtValue(), op, state_slots.size());
+        if (offset_ptr == nullptr) {
+          return VisitResult::Error;
+        }
+        offset_map.insert({&I, *offset_ptr});
+        LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << *offset_ptr;
         return VisitResult::Progress;
       }
     } else {
@@ -315,11 +335,13 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
       if (ptr1 == offset_map.end() || ptr2 == offset_map.end()) {
         return VisitResult::NoProgress;
       } else {
-        auto offset = (plus ? ptr1->second + ptr2->second : ptr1->second - ptr2->second);
-        // check that we did not overflow
-        CHECK(offset < state_slots.size());
-        offset_map.insert({&I, offset});
-        LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << offset;
+        uint64_t *offset_ptr = nullptr;
+        GetUnsignedOffset(offset_ptr, static_cast<int64_t>(ptr1->second), static_cast<int64_t>(ptr2->second), op, state_slots.size());
+        if (offset_ptr == nullptr) {
+          return VisitResult::Error;
+        }
+        offset_map.insert({&I, *offset_ptr});
+        LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << *offset_ptr;
         return VisitResult::Progress;
       }
     }
