@@ -141,7 +141,7 @@ AAMDInfo::AAMDInfo(std::vector<StateSlot> slots, llvm::LLVMContext &context) {
   slot_aamds = aamds;
 }
 
-ScopeMap AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> slots) {
+ScopeMap AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> &slots) {
   AAMDInfo aamd_info(slots, module->getContext());
   llvm::DataLayout dl = module->getDataLayout();
   auto bb_func = BasicBlockFunction(module);
@@ -436,25 +436,25 @@ llvm::MDNode *GetScopeFromInst(llvm::Instruction &I) {
   return N.Scope;
 }
 
-LiveSetBlockVisitor::LiveSetBlockVisitor(const ScopeMap &scope_to_offset_, const llvm::FunctionType *lft_)
-  : scope_to_offset(scope_to_offset_),
+LiveSetBlockVisitor::LiveSetBlockVisitor(llvm::Function &func_,
+    const ScopeMap &scope_to_offset_, const llvm::FunctionType *lft_)
+  : func(func_),
+    scope_to_offset(scope_to_offset_),
     curr_wl(),
     next_wl(),
     block_map(),
     to_remove(),
     lft(lft_),
     func_used(),
-    on_remove_pass(false) {}
-
-// Get every terminating basic block from the function `func`.
-void LiveSetBlockVisitor::AddFunction(llvm::Function &func) {
-  for (auto &block : func) {
-    // The machines rose from the ashes of the nuclear fire....
-    if (block.getTerminator()) {
-      curr_wl.push_back(&block);
+    on_remove_pass(false) {
+      for (auto &block_it : func) {
+        auto block = &block_it;
+        // The machines rose from the ashes of the nuclear fire....
+        if (block->getTerminator()) {
+          curr_wl.push_back(block);
+        }
+      }
     }
-  }
-}
 
 // Visit the basic blocks in the worklist and update the block_map.
 void LiveSetBlockVisitor::Visit(void) {
@@ -580,14 +580,14 @@ void LiveSetBlockVisitor::RemoveDeadStores(void) {
 }
 
 // Generate a DOT digraph file representing the dataflow of the LSBV.
-void LiveSetBlockVisitor::CreateDOTDigraph(std::vector<StateSlot> stateslots, const llvm::DataLayout *dl) {
-  DOT() << "digraph {\n";
+void LiveSetBlockVisitor::CreateDOTDigraph(const std::vector<StateSlot> &state_slots, const llvm::DataLayout *dl) {
+  DOT() << "digraph " << func.getName().str() << " {\n";
   for (auto &block_live : block_map) {
     auto block = block_live.first;
     auto blive = block_live.second;
     // top row: entry liveset
     DOT() << "b" << reinterpret_cast<uintptr_t>(block) << " [label=<<table>\n";
-    DOT() << "<tr><td colspan=3>";
+    DOT() << "<tr><td colspan=\"3\">";
     // print out live slots
     for (uint64_t i = 0; i < blive.size(); i++) {
       if (func_used.test(i) && blive.test(i)) {
@@ -598,8 +598,13 @@ void LiveSetBlockVisitor::CreateDOTDigraph(std::vector<StateSlot> stateslots, co
     for (auto &inst : *block) {
       DOT() << "<tr><td>";
       if (auto scope = GetScopeFromInst(inst)) {
-        auto stateslot = stateslots[scope_to_offset.at(scope)];
-        auto ptr_size = dl->getTypeAllocSize(inst.getOperand(0)->getType());
+        auto stateslot = state_slots[scope_to_offset.at(scope)];
+        auto ptr_size = 0;
+        if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(&inst)) {
+          ptr_size = dl->getTypeAllocSize(load_inst->getPointerOperand()->getType());
+        } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(&inst)) {
+          ptr_size = dl->getTypeAllocSize(store_inst->getPointerOperand()->getType());
+        }
         // slot #
         DOT() << "slot " << stateslot.i
           // slot size minus load/store size
@@ -608,7 +613,7 @@ void LiveSetBlockVisitor::CreateDOTDigraph(std::vector<StateSlot> stateslots, co
         DOT() << "</td><td></td><td>";
       }
       // instruction text
-      DOT() << "\"" << LLVMThingToString(&inst) << "\"";
+      DOT() << LLVMThingToString(&inst);
       DOT() << "</td></tr>\n";
     }
     // last row: exit liveset
@@ -617,7 +622,7 @@ void LiveSetBlockVisitor::CreateDOTDigraph(std::vector<StateSlot> stateslots, co
       auto succ = &*succ_block_it;
       exit_live |= block_map[succ];
     }
-    DOT() << "<tr><td colspan=3>";
+    DOT() << "<tr><td colspan=\"3\">";
     // print out live slots
     for (uint64_t i = 0; i < exit_live.size(); i++) {
       if (func_used.test(i) && exit_live.test(i)) {
@@ -633,17 +638,6 @@ void LiveSetBlockVisitor::CreateDOTDigraph(std::vector<StateSlot> stateslots, co
     }
   }
   DOT() << "}\n" << std::endl;
-  // digraph {\n
-  // for bb in block_map
-  // bb [label=<<table>\n
-  // <tr><td colspan=3>live</td></tr>\n
-  // for inst in bb
-  //    <tr><td>slot_#</td><td>slot_size</td><td>inst</td></tr>\n
-  // <tr><td colspan=3>live_exit</td></tr>\n
-  // </table>>];\n
-  // for succ_bb in successors(bb)
-  //    bb->succ_bb
-  // }\n
 }
 
 static std::ostream &DOT(void) {
@@ -651,21 +645,20 @@ static std::ostream &DOT(void) {
   return out;
 }
 
-void GenerateLiveSet(llvm::Module *module, const std::vector<StateSlot> stateslots, const ScopeMap &scopes) {
+void GenerateLiveSet(llvm::Module *module, const std::vector<StateSlot> &state_slots, const ScopeMap &scopes) {
   auto bb_func = BasicBlockFunction(module);
   auto dl = module->getDataLayout();
   for (auto &func : *module) {
     if (&func != bb_func && !func.isDeclaration() &&
         func.getFunctionType() == bb_func->getFunctionType()) {
-      LiveSetBlockVisitor LSBV(scopes, bb_func->getFunctionType());
-      LSBV.AddFunction(func);
+      LiveSetBlockVisitor LSBV(func, scopes, bb_func->getFunctionType());
       LSBV.Visit();
       // repeat, but now ready to remove
+      // FIXME: readd function blocks
       //LSBV.on_remove_pass = true;
-      //LSBV.AddFunction(func);
       //LSBV.Visit();
       //LSBV.RemoveDeadStores();
-      LSBV.CreateDOTDigraph(stateslots, &dl);
+      LSBV.CreateDOTDigraph(state_slots, &dl);
       break;
     }
   }

@@ -84,7 +84,7 @@ struct AAMDInfo {
 
 void AddAAMDNodes(AliasMap alias_map, std::vector<StateSlot> slots);
 
-ScopeMap AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> slots);
+ScopeMap AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> &slots);
 
 enum class VisitResult;
 
@@ -124,6 +124,7 @@ void RemoveDeadStores(const std::unordered_set<llvm::Instruction *> &dead_stores
 
 class LiveSetBlockVisitor {
   public:
+    llvm::Function &func;
     const ScopeMap &scope_to_offset;
     std::vector<llvm::BasicBlock *> curr_wl;
     std::vector<llvm::BasicBlock *> next_wl;
@@ -133,18 +134,18 @@ class LiveSetBlockVisitor {
     LiveSet func_used;
     bool on_remove_pass;
 
-    LiveSetBlockVisitor(const ScopeMap &scope_to_offset_, const llvm::FunctionType *lft_);
-    void AddFunction(llvm::Function &func);
+    LiveSetBlockVisitor(llvm::Function &func_, const ScopeMap &scope_to_offset_, const llvm::FunctionType *lft_);
+    //void AddFunction(llvm::Function &func);
     void Visit();
 
     virtual bool VisitBlock(llvm::BasicBlock *B);
     virtual void RemoveDeadStores(void);
-    virtual void CreateDOTDigraph(std::vector<StateSlot> stateslots, const llvm::DataLayout *dl);
+    virtual void CreateDOTDigraph(const std::vector<StateSlot> &state_slots, const llvm::DataLayout *dl);
 };
 
 static std::ostream &DOT(void);
 
-void GenerateLiveSet(llvm::Module *module, const std::vector<StateSlot> stateslots, const ScopeMap &scopes);
+void GenerateLiveSet(llvm::Module *module, const std::vector<StateSlot> &state_slots, const ScopeMap &scopes);
 
 }  // namespace remill
 #endif  // REMILL_BC_DSELIM_H_
