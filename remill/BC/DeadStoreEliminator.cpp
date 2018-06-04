@@ -173,7 +173,7 @@ VisitResult ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) {
   auto val = I.getPointerOperand();
   // special case: loading the state ptr
   if (I.getType() == state_ptr->getType()) {
-    alias_map.insert({&I, 0});
+    offset_map.insert({&I, 0});
     return VisitResult::Progress;
   } else if (exclude.count(val)) {
     exclude.insert(&I);
@@ -185,7 +185,7 @@ VisitResult ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) {
       return VisitResult::NoProgress;
     } else {
       // loads mean we now have an alias to the pointer
-      alias_map.insert({&I, ptr->second});
+      offset_map.insert({&I, ptr->second});
       LOG(INFO) << "aliasing: " << LLVMThingToString(&I) << " to " << ptr->second;
       return VisitResult::Progress;
     }
@@ -209,7 +209,7 @@ VisitResult ForwardAliasVisitor::visitStoreInst(llvm::StoreInst &I) {
       return VisitResult::NoProgress;
     } else {
       // loads mean we now have an alias to the pointer
-      alias_map.insert({&I, ptr->second});
+      offset_map.insert({&I, ptr->second});
       LOG(INFO) << "aliasing: " << LLVMThingToString(&I) << " to " << ptr->second;
       return VisitResult::Progress;
     }
@@ -367,15 +367,15 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
 
 // For each instruction in the alias map, add an AAMDNodes struct 
 // which specifies the aliasing stores and loads to the instruction's byte offset.
-void AddAAMDNodes(const AliasMap &inst_to_offset, const std::vector<llvm::AAMDNodes> &offset_to_aamd) {
-  for (const auto &alias : inst_to_offset) {
-    //LOG(INFO) << "Adding AAMDNodes for alias from "
-    //  << LLVMThingToString(alias.first) << " to offset " << alias.second;
-    if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(alias.first)) {
-      auto aamd = offset_to_aamd[alias.second];
+void AddAAMDNodes(const ValueToOffset &inst_to_offset, const std::vector<llvm::AAMDNodes> &offset_to_aamd) {
+  for (const auto &map_pair : inst_to_offset) {
+    auto val = map_pair.first;
+    auto offset = map_pair.second;
+    if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(val)) {
+      auto aamd = offset_to_aamd[offset];
       load_inst->setAAMetadata(aamd);
-    } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(alias.first)) {
-      auto aamd = offset_to_aamd[alias.second];
+    } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(val)) {
+      auto aamd = offset_to_aamd[offset];
       store_inst->setAAMetadata(aamd);
     }
   }
@@ -436,9 +436,9 @@ ScopeMap AnalyzeAliases(llvm::Module *module, const std::vector<StateSlot> &slot
       // if the analysis succeeds for this function, add the AAMDNodes
       if (fav.Analyze()) {
         LOG(INFO) << "Offsets: " << fav.offset_map.size();
-        LOG(INFO) << "Aliases: " << fav.alias_map.size();
+        //LOG(INFO) << "Aliases: " << fav.alias_map.size();
         LOG(INFO) << "Excluded: " << fav.exclude.size();
-        AddAAMDNodes(fav.alias_map, aamd_info.slot_aamds);
+        AddAAMDNodes(fav.offset_map, aamd_info.slot_aamds);
       }
     }
   }

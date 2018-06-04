@@ -27,11 +27,13 @@ lib/*
 
 third_party/*
 build/*
+remill-build/*
 generated/*
 gtest_build/*
 
 tools/build/*
 tools/dist/*
+tools/mcsema/*
 tools/remill_disass.egg-info/*
 tools/remill_disass/CFG.proto
 tools/remill_disass/CFG_pb2.py
@@ -89,3 +91,6 @@ obj-intel64/*
 
 # VIM
 *.swp
+
+# Lifted binaries
+*.lifted

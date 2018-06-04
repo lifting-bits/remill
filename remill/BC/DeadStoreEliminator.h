@@ -69,7 +69,7 @@ class StateVisitor {
 
 std::vector<StateSlot> StateSlots(llvm::Module *module);
 
-typedef std::unordered_map<llvm::Instruction *, uint64_t> AliasMap;
+typedef std::unordered_map<llvm::Value *, uint64_t> ValueToOffset;
 typedef std::unordered_map<llvm::MDNode *, uint64_t> ScopeMap;
 
 enum class VisitResult;
@@ -77,8 +77,8 @@ enum class VisitResult;
 struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, VisitResult> {
   public:
     const std::vector<StateSlot> &state_slots;
-    std::unordered_map<llvm::Value *, uint64_t> offset_map;
-    AliasMap alias_map;
+    ValueToOffset offset_map;
+    ValueToOffset alias_map;
     std::unordered_set<llvm::Value *> exclude;
     std::unordered_set<llvm::Instruction *> curr_wl;
     std::unordered_set<llvm::Instruction *> next_wl;
@@ -113,7 +113,7 @@ struct AAMDInfo {
   AAMDInfo(const std::vector<StateSlot> &slots, llvm::LLVMContext &context);
 };
 
-void AddAAMDNodes(const AliasMap &inst_to_offset, const std::vector<llvm::AAMDNodes> &offset_to_aamd);
+void AddAAMDNodes(const ValueToOffset &inst_to_offset, const std::vector<llvm::AAMDNodes> &offset_to_aamd);
 
 ScopeMap AnalyzeAliases(llvm::Module *module, const std::vector<StateSlot> &slots);
 
