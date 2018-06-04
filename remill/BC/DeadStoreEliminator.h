@@ -67,24 +67,10 @@ class StateVisitor {
     virtual void Visit(llvm::Type *ty);
 };
 
-typedef std::unordered_map<llvm::Instruction *, uint64_t> AliasMap;
-typedef std::unordered_map<llvm::MDNode *, uint64_t> ScopeMap;
-
 std::vector<StateSlot> StateSlots(llvm::Module *module);
 
-// A struct representing the information derived from StateSlots:
-// - a map of MDNodes designating AAMDNode scope to the corresponding byte offset
-// - a vector of AAMDNodes for each byte offset
-struct AAMDInfo {
-  ScopeMap slot_scopes;
-  std::vector<llvm::AAMDNodes> slot_aamds;
-
-  AAMDInfo(std::vector<StateSlot> slots, llvm::LLVMContext &context);
-};
-
-void AddAAMDNodes(AliasMap alias_map, std::vector<StateSlot> slots);
-
-ScopeMap AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> &slots);
+typedef std::unordered_map<llvm::Instruction *, uint64_t> AliasMap;
+typedef std::unordered_map<llvm::MDNode *, uint64_t> ScopeMap;
 
 enum class VisitResult;
 
@@ -116,31 +102,43 @@ struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, Visit
     virtual VisitResult visitBinaryOp_(llvm::BinaryOperator &I, bool plus);
 };
 
+// A struct representing the information derived from StateSlots:
+// - a map of MDNodes designating AAMDNode scope to the corresponding byte offset
+// - a vector of AAMDNodes for each byte offset
+struct AAMDInfo {
+  ScopeMap slot_scopes;
+  std::vector<llvm::AAMDNodes> slot_aamds;
+
+  AAMDInfo(const std::vector<StateSlot> &slots, llvm::LLVMContext &context);
+};
+
+void AddAAMDNodes(AliasMap alias_map, std::vector<llvm::AAMDNodes> aamds);
+
+ScopeMap AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> &slots);
+
 typedef std::bitset<4096> LiveSet;
 
 llvm::MDNode *GetScopeFromInst(llvm::Instruction &I);
-
-void RemoveDeadStores(const std::unordered_set<llvm::Instruction *> &dead_stores);
 
 class LiveSetBlockVisitor {
   public:
     llvm::Function &func;
     const ScopeMap &scope_to_offset;
+    const std::vector<StateSlot> &state_slots;
     std::vector<llvm::BasicBlock *> curr_wl;
     std::vector<llvm::BasicBlock *> next_wl;
     std::unordered_map<llvm::BasicBlock *, LiveSet> block_map;
     std::unordered_set<llvm::Instruction *> to_remove;
-    const llvm::FunctionType *lft;
+    const llvm::FunctionType *lifted_func_ty;
     LiveSet func_used;
     bool on_remove_pass;
 
-    LiveSetBlockVisitor(llvm::Function &func_, const ScopeMap &scope_to_offset_, const llvm::FunctionType *lft_);
-    //void AddFunction(llvm::Function &func);
+    LiveSetBlockVisitor(llvm::Function &func_, const std::vector<StateSlot> &state_slots_, const ScopeMap &scope_to_offset_, const llvm::FunctionType *lifted_func_ty_);
     void Visit();
 
     virtual bool VisitBlock(llvm::BasicBlock *B);
     virtual void RemoveDeadStores(void);
-    virtual void CreateDOTDigraph(const std::vector<StateSlot> &state_slots, const llvm::DataLayout *dl);
+    virtual void CreateDOTDigraph(const llvm::DataLayout *dl);
 };
 
 static std::ostream &DOT(void);

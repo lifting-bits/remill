@@ -38,12 +38,12 @@ namespace remill {
 // "slot" of the State structure has its own SlotRecord.
 std::vector<StateSlot> StateSlots(llvm::Module *module) {
   // get the state
-  std::vector<StateSlot> slots;
   auto state_ptr_type = StatePointerType(module);
   auto type = state_ptr_type->getElementType();
   llvm::DataLayout dl = module->getDataLayout();
   StateVisitor vis(&dl);
   vis.Visit(type);
+  CHECK(vis.slots.size() == dl.getTypeAllocSize(type));
   return vis.slots;
 }
 
@@ -97,73 +97,6 @@ void StateVisitor::Visit(llvm::Type *ty) {
     idx++;
     offset += len;
   }
-}
-
-// For each instruction in the alias map, add an AAMDNodes struct 
-// which specifies the aliasing stores and loads to the instruction's byte offset.
-void AddAAMDNodes(AliasMap alias_map, std::vector<llvm::AAMDNodes> aamds) {
-  for (const auto &alias : alias_map) {
-    if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(alias.first)) {
-      auto aamd = aamds[alias.second];
-      load_inst->setAAMetadata(aamd);
-    } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(alias.first)) {
-      auto aamd = aamds[alias.second];
-      store_inst->setAAMetadata(aamd);
-    }
-  }
-}
-
-// Return a map of MDNode scopes and a vector of AAMDNodes based on the given vector of StateSlots,
-// where each byte offset (i.e. index) in the slots vector is mapped to a
-// corresponding AAMDNodes struct.
-AAMDInfo::AAMDInfo(std::vector<StateSlot> slots, llvm::LLVMContext &context) {
-  std::vector<std::pair<llvm::MDNode *, uint64_t>> node_sizes;
-  node_sizes.reserve(slots.size());
-  for (const auto &slot : slots) {
-    auto mdstr = llvm::MDString::get(context, "slot_" + std::to_string(slot.i));
-    node_sizes.push_back(std::make_pair(llvm::MDNode::get(context, mdstr), slot.size));
-  }
-  std::vector<llvm::AAMDNodes> aamds;
-  aamds.reserve(slots.size());
-  for (uint64_t i = 0; i < slots.size(); i++) {
-    // noalias all slots != scope
-    std::vector<llvm::Metadata *> noalias_vec;
-    for (uint64_t j = 0; j < slots.size(); j++) {
-      if (i != j) {
-        noalias_vec.push_back(node_sizes[j].first);
-      }
-    }
-    llvm::MDNode *noalias = llvm::MDNode::get(context, llvm::MDTuple::get(context, noalias_vec));
-    aamds.emplace_back(nullptr, node_sizes[i].first, noalias);
-  }
-  std::unordered_map<llvm::MDNode *, uint64_t> scopes(node_sizes.begin(), node_sizes.end());
-  slot_scopes = scopes;
-  slot_aamds = aamds;
-}
-
-ScopeMap AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> &slots) {
-  AAMDInfo aamd_info(slots, module->getContext());
-  llvm::DataLayout dl = module->getDataLayout();
-  auto bb_func = BasicBlockFunction(module);
-  for (auto &func : *module) {
-    if (&func != bb_func && !func.isDeclaration() &&
-        func.getFunctionType() == bb_func->getFunctionType()) {
-      auto sp = LoadStatePointer(&func);
-      ForwardAliasVisitor fav(&dl, sp);
-      for (auto &block : func) {
-        for (auto &inst : block) {
-          fav.AddInstruction(&inst);
-        }
-      }
-      if (fav.Analyze()) {
-        LOG(INFO) << "Offsets: " << fav.offset_map.size();
-        LOG(INFO) << "Aliases: " << fav.alias_map.size();
-        LOG(INFO) << "Excluded: " << fav.exclude.size();
-        AddAAMDNodes(fav.alias_map, aamd_info.slot_aamds);
-      }
-    }
-  }
-  return aamd_info.slot_scopes;
 }
 
 enum class VisitResult {
@@ -230,7 +163,9 @@ VisitResult ForwardAliasVisitor::visitAllocaInst(llvm::AllocaInst &I) {
 
 // Visit a load instruction and update the alias map.
 VisitResult ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) {
-  LOG(INFO) << "Entered load instruction";
+  // clear any aametadata
+  llvm::AAMDNodes aamd(nullptr, nullptr, nullptr);
+  I.setAAMetadata(aamd);
   // get the initial ptr
   auto val = I.getPointerOperand();
   // special case: loading the state ptr
@@ -248,7 +183,7 @@ VisitResult ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) {
     } else {
       // loads mean we now have an alias to the pointer
       alias_map.insert({&I, ptr->second});
-      LOG(INFO) << "aliasing: " << LLVMThingToString(&I);
+      LOG(INFO) << "aliasing: " << LLVMThingToString(&I) << " to " << ptr->second;
       return VisitResult::Progress;
     }
   }
@@ -256,7 +191,9 @@ VisitResult ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) {
 
 // Visit a store instruction and update the alias map.
 VisitResult ForwardAliasVisitor::visitStoreInst(llvm::StoreInst &I) {
-  LOG(INFO) << "Entered store instruction";
+  // clear any aametadata
+  llvm::AAMDNodes aamd(nullptr, nullptr, nullptr);
+  I.setAAMetadata(aamd);
   // get the initial ptr
   auto val = I.getPointerOperand();
   if (exclude.count(val)) {
@@ -270,7 +207,7 @@ VisitResult ForwardAliasVisitor::visitStoreInst(llvm::StoreInst &I) {
     } else {
       // loads mean we now have an alias to the pointer
       alias_map.insert({&I, ptr->second});
-      LOG(INFO) << "aliasing: " << LLVMThingToString(&I);
+      LOG(INFO) << "aliasing: " << LLVMThingToString(&I) << " to " << ptr->second;
       return VisitResult::Progress;
     }
   }
@@ -278,7 +215,6 @@ VisitResult ForwardAliasVisitor::visitStoreInst(llvm::StoreInst &I) {
 
 // Visit a GEP instruction and update the offset map.
 VisitResult ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst &I) {
-  LOG(INFO) << "Entered GEP instruction";
   // get the initial ptr
   auto val = I.getPointerOperand();
   if (exclude.count(val)) {
@@ -294,9 +230,8 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst 
       // get the offset
       llvm::APInt offset;
       if (I.accumulateConstantOffset(*dl, offset)) {
-        // use offset (getRawData extracts the uint64_t)
-        offset_map[&I] = ptr->second + offset.getZExtValue();
-        LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
+        offset_map.emplace(&I, ptr->second + offset.getZExtValue());
+        LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << ptr->second + offset.getZExtValue();
         return VisitResult::Progress;
       } else {
         // give up
@@ -308,7 +243,6 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst 
 
 // Visit a cast instruction and update the offset map.
 VisitResult ForwardAliasVisitor::visitCastInst(llvm::CastInst &I) {
-  LOG(INFO) << "Entered inttoptr instruction";
   auto val = I.getOperand(0);
   if (exclude.count(val)) {
     exclude.insert(&I);
@@ -320,8 +254,8 @@ VisitResult ForwardAliasVisitor::visitCastInst(llvm::CastInst &I) {
       return VisitResult::NoProgress;
     } else {
       // update value
-      offset_map[&I] = ptr->second;
-      LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
+      offset_map.emplace(&I, ptr->second);
+      LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << ptr->second;
       return VisitResult::Progress;
     }
   }
@@ -329,13 +263,11 @@ VisitResult ForwardAliasVisitor::visitCastInst(llvm::CastInst &I) {
 
 // Visit an add instruction and update the offset map.
 VisitResult ForwardAliasVisitor::visitAdd(llvm::BinaryOperator &I) {
-  LOG(INFO) << "Entered add instruction";
   return ForwardAliasVisitor::visitBinaryOp_(I, true);
 }
 
 // Visit a sub instruction and update the offset map.
 VisitResult ForwardAliasVisitor::visitSub(llvm::BinaryOperator &I) {
-  LOG(INFO) << "Entered sub instruction";
   return ForwardAliasVisitor::visitBinaryOp_(I, false);
 }
 
@@ -370,7 +302,7 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
         // check that we did not overflow
         CHECK(offset <= std::numeric_limits<uint64_t>::max());
         offset_map.insert({&I, offset});
-        LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
+        LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << offset;
         return VisitResult::Progress;
       }
     } else {
@@ -382,7 +314,7 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
       } else {
         auto offset = (plus ? ptr1->second + ptr2->second : ptr1->second - ptr2->second);
         offset_map.insert({&I, offset});
-        LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
+        LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << offset;
         return VisitResult::Progress;
       }
     }
@@ -391,7 +323,6 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
 
 // Visit a PHI node and update the offset map.
 VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
-  LOG(INFO) << "Entered PHI node";
   // iterate over each operand
   auto in_offset_map = false;
   auto in_exclude_set = false;
@@ -420,13 +351,87 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
     // fail if some operands are excluded and others are state offsets
     return VisitResult::Error;
   } else if (in_offset_map) {
-    LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
+    LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << offset;
     offset_map.insert({&I, offset});
   } else if (in_exclude_set) {
     LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     exclude.insert(&I);
   }
   return VisitResult::Progress;
+}
+
+// For each instruction in the alias map, add an AAMDNodes struct 
+// which specifies the aliasing stores and loads to the instruction's byte offset.
+void AddAAMDNodes(AliasMap alias_map, std::vector<llvm::AAMDNodes> aamds) {
+  for (const auto &alias : alias_map) {
+    //LOG(INFO) << "Adding AAMDNodes for alias from "
+    //  << LLVMThingToString(alias.first) << " to offset " << alias.second;
+    if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(alias.first)) {
+      auto aamd = aamds[alias.second];
+      load_inst->setAAMetadata(aamd);
+    } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(alias.first)) {
+      auto aamd = aamds[alias.second];
+      store_inst->setAAMetadata(aamd);
+    }
+  }
+}
+
+// Return a map of MDNode scopes and a vector of AAMDNodes based on the given vector of StateSlots,
+// where each byte offset (i.e. index) in the slots vector is mapped to a
+// corresponding AAMDNodes struct.
+AAMDInfo::AAMDInfo(const std::vector<StateSlot> &slots, llvm::LLVMContext &context) {
+  // Create a vector of pairs of scopes to slot offsets
+  // This will be made into a map at the end of the function
+  // We need it as a vector for now so that it is ordered when creating the noalias
+  std::vector<std::pair<llvm::MDNode *, uint64_t>> scope_offsets;
+  scope_offsets.reserve(slots.size());
+  for (const auto &slot : slots) {
+    auto mdstr = llvm::MDString::get(context, "slot_" + std::to_string(slot.i));
+    scope_offsets.push_back(std::make_pair(llvm::MDNode::get(context, mdstr), slot.offset));
+  }
+  std::vector<llvm::AAMDNodes> aamds;
+  // One AAMDNodes struct for each byte offset so that we can easily connect them
+  aamds.reserve(slots.size());
+  for (uint64_t i = 0; i < slots.size(); i++) {
+    // noalias all slots != scope
+    std::vector<llvm::Metadata *> noalias_vec;
+    for (uint64_t j = 0; j < slots.size(); j++) {
+      if (i != j && (noalias_vec.empty() || scope_offsets[j].first != noalias_vec.back())) {
+        noalias_vec.push_back(scope_offsets[j].first);
+      }
+    }
+    llvm::MDNode *noalias = llvm::MDNode::get(context, llvm::MDTuple::get(context, noalias_vec));
+    aamds.emplace_back(nullptr, scope_offsets[i].first, noalias);
+  }
+  std::unordered_map<llvm::MDNode *, uint64_t> scopes(scope_offsets.begin(), scope_offsets.end());
+  slot_scopes = scopes;
+  slot_aamds = aamds;
+}
+
+ScopeMap AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> &slots) {
+  AAMDInfo aamd_info(slots, module->getContext());
+  llvm::DataLayout dl = module->getDataLayout();
+  auto bb_func = BasicBlockFunction(module);
+  for (auto &func : *module) {
+    if (&func != bb_func && !func.isDeclaration() &&
+        func.getFunctionType() == bb_func->getFunctionType()) {
+      auto sp = LoadStatePointer(&func);
+      ForwardAliasVisitor fav(&dl, sp);
+      for (auto &block : func) {
+        for (auto &inst : block) {
+          fav.AddInstruction(&inst);
+        }
+      }
+      // if the analysis succeeds for this function, add the AAMDNodes
+      if (fav.Analyze()) {
+        LOG(INFO) << "Offsets: " << fav.offset_map.size();
+        LOG(INFO) << "Aliases: " << fav.alias_map.size();
+        LOG(INFO) << "Excluded: " << fav.exclude.size();
+        AddAAMDNodes(fav.alias_map, aamd_info.slot_aamds);
+      }
+    }
+  }
+  return aamd_info.slot_scopes;
 }
 
 // Return the scope of the given instruction.
@@ -437,20 +442,23 @@ llvm::MDNode *GetScopeFromInst(llvm::Instruction &I) {
 }
 
 LiveSetBlockVisitor::LiveSetBlockVisitor(llvm::Function &func_,
-    const ScopeMap &scope_to_offset_, const llvm::FunctionType *lft_)
+    const std::vector<StateSlot> &state_slots_,
+    const ScopeMap &scope_to_offset_,
+    const llvm::FunctionType *lifted_func_ty_)
   : func(func_),
     scope_to_offset(scope_to_offset_),
+    state_slots(state_slots_),
     curr_wl(),
     next_wl(),
     block_map(),
     to_remove(),
-    lft(lft_),
+    lifted_func_ty(lifted_func_ty_),
     func_used(),
     on_remove_pass(false) {
       for (auto &block_it : func) {
         auto block = &block_it;
-        // The machines rose from the ashes of the nuclear fire....
-        if (block->getTerminator()) {
+        auto succ_block_it = successors(block);
+        if (succ_block_it.begin() == succ_block_it.end()) {
           curr_wl.push_back(block);
         }
       }
@@ -485,7 +493,7 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
     if (on_remove_pass) {
       if (llvm::isa<llvm::StoreInst>(inst)) {
         if (auto scope = GetScopeFromInst(*inst)) {
-          if (!live.test(scope_to_offset.at(scope))) {
+          if (!live.test(state_slots[scope_to_offset.at(scope)].i)) {
             // Case 1: slot is marked dead by a previous store and we hit a store.
             // (i.e. testing the slot at this offset for liveness returns false)
             // This is a dead store, so we can add it to the chopping block.
@@ -511,14 +519,14 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
           live |= block_map[succ];
         }
       } else if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(inst)) {
-        if (call_inst->getFunctionType() == lft) {
+        if (call_inst->getFunctionType() == lifted_func_ty) {
           // mark as all live if called function has the same type as lifted function
           // we're not able to see inside other paths, so we can't predict whether or
           // not the callee might not use any of our slots
           live.set();
         }
       } else if (llvm::isa<llvm::InvokeInst>(inst)) {
-        if (call_inst->getFunctionType() == lft) {
+        if (call_inst->getFunctionType() == lifted_func_ty) {
           // mark as all live if invoked function has the same type as lifted function
           // we're not able to see inside other paths, so we can't predict whether or
           // not the callee might not use any of our slots
@@ -528,17 +536,17 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
         if (auto scope = GetScopeFromInst(*inst)) {
           // Case 2: slot is marked live and we hit a store.
           // We mark that the slot is dead before this store occurs.
-          live.reset(scope_to_offset.at(scope));
+          live.reset(state_slots[scope_to_offset.at(scope)].i);
           // Mark that we have accessed this slot
-          func_used.set(scope_to_offset.at(scope));
+          func_used.set(state_slots[scope_to_offset.at(scope)].i);
         }
       } else if (llvm::isa<llvm::LoadInst>(inst)) {
         if (auto scope = GetScopeFromInst(*inst)) {
           // Case 3: slot is loaded from.
           // We mark the slot live here as it was used.
-          live.set(scope_to_offset.at(scope));
+          live.set(state_slots[scope_to_offset.at(scope)].i);
           // Mark that we have accessed this slot
-          func_used.set(scope_to_offset.at(scope));
+          func_used.set(state_slots[scope_to_offset.at(scope)].i);
         }
       }
     }
@@ -580,8 +588,8 @@ void LiveSetBlockVisitor::RemoveDeadStores(void) {
 }
 
 // Generate a DOT digraph file representing the dataflow of the LSBV.
-void LiveSetBlockVisitor::CreateDOTDigraph(const std::vector<StateSlot> &state_slots, const llvm::DataLayout *dl) {
-  DOT() << "digraph " << func.getName().str() << " {\n";
+void LiveSetBlockVisitor::CreateDOTDigraph(const llvm::DataLayout *dl) {
+  DOT() << "digraph " << func.getName().str() << " {\n" << "node [shape=record]\n";
   for (auto &block_live : block_map) {
     auto block = block_live.first;
     auto blive = block_live.second;
@@ -599,21 +607,26 @@ void LiveSetBlockVisitor::CreateDOTDigraph(const std::vector<StateSlot> &state_s
       DOT() << "<tr><td>";
       if (auto scope = GetScopeFromInst(inst)) {
         auto stateslot = state_slots[scope_to_offset.at(scope)];
-        auto ptr_size = 0;
+        auto inst_size = 0;
         if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(&inst)) {
-          ptr_size = dl->getTypeAllocSize(load_inst->getPointerOperand()->getType());
+          inst_size = dl->getTypeAllocSize(load_inst->getType());
         } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(&inst)) {
-          ptr_size = dl->getTypeAllocSize(store_inst->getPointerOperand()->getType());
+          inst_size = dl->getTypeAllocSize(store_inst->getOperand(0)->getType());
         }
         // slot #
         DOT() << "slot " << stateslot.i
           // slot size minus load/store size
-          << "</td><td>" << (stateslot.size - ptr_size) << "</td><td>";
+          << "</td><td>" << (stateslot.size - inst_size) << "</td><td>";
       } else {
         DOT() << "</td><td></td><td>";
       }
       // instruction text
-      DOT() << LLVMThingToString(&inst);
+      if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(&inst)) {
+        // calls can be quite wide, so we don't present the whole instruction
+        DOT() << "call " << call_inst->getFunction()->getName().str();
+      } else {
+        DOT() << LLVMThingToString(&inst);
+      }
       DOT() << "</td></tr>\n";
     }
     // last row: exit liveset
@@ -651,14 +664,14 @@ void GenerateLiveSet(llvm::Module *module, const std::vector<StateSlot> &state_s
   for (auto &func : *module) {
     if (&func != bb_func && !func.isDeclaration() &&
         func.getFunctionType() == bb_func->getFunctionType()) {
-      LiveSetBlockVisitor LSBV(func, scopes, bb_func->getFunctionType());
+      LiveSetBlockVisitor LSBV(func, state_slots, scopes, bb_func->getFunctionType());
       LSBV.Visit();
       // repeat, but now ready to remove
       // FIXME: readd function blocks
       //LSBV.on_remove_pass = true;
       //LSBV.Visit();
       //LSBV.RemoveDeadStores();
-      LSBV.CreateDOTDigraph(state_slots, &dl);
+      LSBV.CreateDOTDigraph(&dl);
       break;
     }
   }
