@@ -76,6 +76,7 @@ enum class VisitResult;
 
 struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, VisitResult> {
   public:
+    const std::vector<StateSlot> &state_slots;
     std::unordered_map<llvm::Value *, uint64_t> offset_map;
     AliasMap alias_map;
     std::unordered_set<llvm::Value *> exclude;
@@ -83,7 +84,7 @@ struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, Visit
     std::unordered_set<llvm::Instruction *> next_wl;
     llvm::Value *state_ptr;
 
-    ForwardAliasVisitor(llvm::DataLayout *dl_, llvm::Value *sp_);
+    ForwardAliasVisitor(const std::vector<StateSlot> &state_slots_, llvm::DataLayout *dl_, llvm::Value *sp_);
     void AddInstruction(llvm::Instruction *inst);
     bool Analyze();
 
@@ -112,9 +113,9 @@ struct AAMDInfo {
   AAMDInfo(const std::vector<StateSlot> &slots, llvm::LLVMContext &context);
 };
 
-void AddAAMDNodes(AliasMap alias_map, std::vector<llvm::AAMDNodes> aamds);
+void AddAAMDNodes(const AliasMap &inst_to_offset, const std::vector<llvm::AAMDNodes> &offset_to_aamd);
 
-ScopeMap AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> &slots);
+ScopeMap AnalyzeAliases(llvm::Module *module, const std::vector<StateSlot> &slots);
 
 typedef std::bitset<4096> LiveSet;
 

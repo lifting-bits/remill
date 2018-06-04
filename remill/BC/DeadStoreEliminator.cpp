@@ -105,8 +105,11 @@ enum class VisitResult {
   Error
 };
 
-ForwardAliasVisitor::ForwardAliasVisitor(llvm::DataLayout *dl_, llvm::Value *sp_)
-  : offset_map({{sp_, 0}}),
+ForwardAliasVisitor::ForwardAliasVisitor(const std::vector<StateSlot> &state_slots_,
+    llvm::DataLayout *dl_,
+    llvm::Value *sp_)
+  : state_slots(state_slots_),
+    offset_map({{sp_, 0}}),
     alias_map(),
     exclude(),
     curr_wl(),
@@ -231,7 +234,7 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst 
       llvm::APInt offset;
       if (I.accumulateConstantOffset(*dl, offset)) {
         offset_map.emplace(&I, ptr->second + offset.getZExtValue());
-        LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << ptr->second + offset.getZExtValue();
+        LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << offset_map[&I];
         return VisitResult::Progress;
       } else {
         // give up
@@ -288,7 +291,7 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
       } else {
         auto offset = (plus ? ptr->second + cint1->getZExtValue() : ptr->second - cint1->getZExtValue());
         // check that we did not overflow
-        CHECK(offset <= std::numeric_limits<uint64_t>::max());
+        CHECK(offset < state_slots.size());
         offset_map.insert({&I, offset});
         LOG(INFO) << "offsetting: " << LLVMThingToString(&I);
         return VisitResult::Progress;
@@ -300,7 +303,7 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
       } else {
         auto offset = (plus ? ptr->second + cint2->getZExtValue() : ptr->second - cint2->getZExtValue());
         // check that we did not overflow
-        CHECK(offset <= std::numeric_limits<uint64_t>::max());
+        CHECK(offset < state_slots.size());
         offset_map.insert({&I, offset});
         LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << offset;
         return VisitResult::Progress;
@@ -313,6 +316,8 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, bool pl
         return VisitResult::NoProgress;
       } else {
         auto offset = (plus ? ptr1->second + ptr2->second : ptr1->second - ptr2->second);
+        // check that we did not overflow
+        CHECK(offset < state_slots.size());
         offset_map.insert({&I, offset});
         LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << offset;
         return VisitResult::Progress;
@@ -362,15 +367,15 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
 
 // For each instruction in the alias map, add an AAMDNodes struct 
 // which specifies the aliasing stores and loads to the instruction's byte offset.
-void AddAAMDNodes(AliasMap alias_map, std::vector<llvm::AAMDNodes> aamds) {
-  for (const auto &alias : alias_map) {
+void AddAAMDNodes(const AliasMap &inst_to_offset, const std::vector<llvm::AAMDNodes> &offset_to_aamd) {
+  for (const auto &alias : inst_to_offset) {
     //LOG(INFO) << "Adding AAMDNodes for alias from "
     //  << LLVMThingToString(alias.first) << " to offset " << alias.second;
     if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(alias.first)) {
-      auto aamd = aamds[alias.second];
+      auto aamd = offset_to_aamd[alias.second];
       load_inst->setAAMetadata(aamd);
     } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(alias.first)) {
-      auto aamd = aamds[alias.second];
+      auto aamd = offset_to_aamd[alias.second];
       store_inst->setAAMetadata(aamd);
     }
   }
@@ -387,14 +392,16 @@ AAMDInfo::AAMDInfo(const std::vector<StateSlot> &slots, llvm::LLVMContext &conte
   scope_offsets.reserve(slots.size());
   for (const auto &slot : slots) {
     auto mdstr = llvm::MDString::get(context, "slot_" + std::to_string(slot.i));
-    scope_offsets.push_back(std::make_pair(llvm::MDNode::get(context, mdstr), slot.offset));
+    scope_offsets.emplace_back(llvm::MDNode::get(context, mdstr), slot.offset);
   }
   std::vector<llvm::AAMDNodes> aamds;
   // One AAMDNodes struct for each byte offset so that we can easily connect them
   aamds.reserve(slots.size());
   for (uint64_t i = 0; i < slots.size(); i++) {
+    if (aamds.empty() || slots[i].i != slots[i - 1].i) {
     // noalias all slots != scope
     std::vector<llvm::Metadata *> noalias_vec;
+    noalias_vec.reserve(slots.back().i + 1);
     for (uint64_t j = 0; j < slots.size(); j++) {
       if (i != j && (noalias_vec.empty() || scope_offsets[j].first != noalias_vec.back())) {
         noalias_vec.push_back(scope_offsets[j].first);
@@ -402,21 +409,25 @@ AAMDInfo::AAMDInfo(const std::vector<StateSlot> &slots, llvm::LLVMContext &conte
     }
     llvm::MDNode *noalias = llvm::MDNode::get(context, llvm::MDTuple::get(context, noalias_vec));
     aamds.emplace_back(nullptr, scope_offsets[i].first, noalias);
+    } else {
+      // copy the last element
+      aamds.push_back(aamds.back());
+    }
   }
   std::unordered_map<llvm::MDNode *, uint64_t> scopes(scope_offsets.begin(), scope_offsets.end());
   slot_scopes = scopes;
   slot_aamds = aamds;
 }
 
-ScopeMap AnalyzeAliases(llvm::Module *module, std::vector<StateSlot> &slots) {
-  AAMDInfo aamd_info(slots, module->getContext());
+ScopeMap AnalyzeAliases(llvm::Module *module, const std::vector<StateSlot> &slots) {
+  const AAMDInfo aamd_info(slots, module->getContext());
   llvm::DataLayout dl = module->getDataLayout();
   auto bb_func = BasicBlockFunction(module);
   for (auto &func : *module) {
     if (&func != bb_func && !func.isDeclaration() &&
         func.getFunctionType() == bb_func->getFunctionType()) {
       auto sp = LoadStatePointer(&func);
-      ForwardAliasVisitor fav(&dl, sp);
+      ForwardAliasVisitor fav(slots, &dl, sp);
       for (auto &block : func) {
         for (auto &inst : block) {
           fav.AddInstruction(&inst);
