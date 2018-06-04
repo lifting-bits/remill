@@ -275,7 +275,7 @@ VisitResult ForwardAliasVisitor::visitSub(llvm::BinaryOperator &I) {
 }
 
 // Get the unsigned offset of two int64_t numbers with bounds checking
-void GetUnsignedOffset(uint64_t *result, int64_t v1, int64_t v2, OpType op, int64_t max) {
+void GetUnsignedOffset(int64_t v1, int64_t v2, OpType op, int64_t max, uint64_t *result) {
   auto signed_result = v1;
   switch (op) {
     case OpType::Plus:
@@ -283,6 +283,8 @@ void GetUnsignedOffset(uint64_t *result, int64_t v1, int64_t v2, OpType op, int6
       break;
     case OpType::Minus:
       signed_result -= v2;
+      break;
+    default:
       break;
   }
   if (signed_result >= 0 && signed_result < max) {
@@ -306,7 +308,7 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, OpType 
         return VisitResult::NoProgress;
       } else {
         uint64_t *offset_ptr = nullptr;
-        GetUnsignedOffset(offset_ptr, static_cast<int64_t>(ptr->second), cint1->getSExtValue(), op, state_slots.size());
+        GetUnsignedOffset(static_cast<int64_t>(ptr->second), cint1->getSExtValue(), op, static_cast<int64_t>(state_slots.size()), offset_ptr);
         if (offset_ptr == nullptr) {
           return VisitResult::Error;
         }
@@ -320,7 +322,7 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, OpType 
         return VisitResult::NoProgress;
       } else {
         uint64_t *offset_ptr = nullptr;
-        GetUnsignedOffset(offset_ptr, static_cast<int64_t>(ptr->second), cint2->getSExtValue(), op, state_slots.size());
+        GetUnsignedOffset(static_cast<int64_t>(ptr->second), cint2->getSExtValue(), op, static_cast<int64_t>(state_slots.size()), offset_ptr);
         if (offset_ptr == nullptr) {
           return VisitResult::Error;
         }
@@ -336,7 +338,7 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, OpType 
         return VisitResult::NoProgress;
       } else {
         uint64_t *offset_ptr = nullptr;
-        GetUnsignedOffset(offset_ptr, static_cast<int64_t>(ptr1->second), static_cast<int64_t>(ptr2->second), op, state_slots.size());
+        GetUnsignedOffset(static_cast<int64_t>(ptr1->second), static_cast<int64_t>(ptr2->second), op, static_cast<int64_t>(state_slots.size()), offset_ptr);
         if (offset_ptr == nullptr) {
           return VisitResult::Error;
         }
