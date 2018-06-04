@@ -16,6 +16,8 @@
 
 #include <glog/logging.h>
 
+#include <cstdio>
+#include <fstream>
 #include <iostream>
 #include <unordered_map>
 #include <unordered_set>
@@ -434,13 +436,6 @@ llvm::MDNode *GetScopeFromInst(llvm::Instruction &I) {
   return N.Scope;
 }
 
-// Remove all dead stores.
-void LiveSetBlockVisitor::RemoveDeadStores(void) {
-  for (auto *store : to_remove) {
-    store->eraseFromParent();
-  }
-}
-
 LiveSetBlockVisitor::LiveSetBlockVisitor(const ScopeMap &scope_to_offset_, const llvm::FunctionType *lft_)
   : scope_to_offset(scope_to_offset_),
     curr_wl(),
@@ -448,6 +443,7 @@ LiveSetBlockVisitor::LiveSetBlockVisitor(const ScopeMap &scope_to_offset_, const
     block_map(),
     to_remove(),
     lft(lft_),
+    func_used(),
     on_remove_pass(false) {}
 
 // Get every terminating basic block from the function `func`.
@@ -467,7 +463,8 @@ void LiveSetBlockVisitor::Visit(void) {
     LOG(INFO) << "LSBV: " << curr_wl.size() << " blocks in worklist";
     for (auto block : curr_wl) {
       if (VisitBlock(block)) {
-        // Updates have been made; add predecessors to next rotation
+        // Updates have been made
+        // Add predecessors to next rotation
         for (llvm::BasicBlock *pred : predecessors(block)) {
           next_wl.push_back(pred);
         }
@@ -482,6 +479,7 @@ void LiveSetBlockVisitor::Visit(void) {
 
 bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
   LiveSet live;
+  bool removed_something = false;
   for (auto inst_it = B->rbegin(); inst_it != B->rend(); ++inst_it) {
     auto inst = &*inst_it;
     if (on_remove_pass) {
@@ -491,7 +489,9 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
             // Case 1: slot is marked dead by a previous store and we hit a store.
             // (i.e. testing the slot at this offset for liveness returns false)
             // This is a dead store, so we can add it to the chopping block.
+            //TODO(tim): get size of stored to check if full/partial
             to_remove.insert(inst);
+            removed_something = true;
           }
         }
       }
@@ -529,33 +529,131 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
           // Case 2: slot is marked live and we hit a store.
           // We mark that the slot is dead before this store occurs.
           live.reset(scope_to_offset.at(scope));
+          // Mark that we have accessed this slot
+          func_used.set(scope_to_offset.at(scope));
         }
       } else if (llvm::isa<llvm::LoadInst>(inst)) {
         if (auto scope = GetScopeFromInst(*inst)) {
           // Case 3: slot is loaded from.
           // We mark the slot live here as it was used.
           live.set(scope_to_offset.at(scope));
+          // Mark that we have accessed this slot
+          func_used.set(scope_to_offset.at(scope));
         }
       }
     }
   }
-  if (block_map.count(B)) {
-    auto &old_live_on_entry = block_map[B];
-    if (old_live_on_entry != live) {
-      old_live_on_entry = live;
-      return true;
-    } else {
-      return false;
-    }
+  if (on_remove_pass) {
+    // when removing, return that progress was made when we find something to remove
+    return removed_something;
   } else {
-    block_map[B] = live;
-    return true;
+    if (block_map.count(B)) {
+      auto &old_live_on_entry = block_map[B];
+      if (old_live_on_entry != live) {
+        old_live_on_entry = live;
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      block_map[B] = live;
+      return true;
+    }
   }
 }
 
-void GenerateLiveSet(llvm::Module *module, const ScopeMap &scopes) {
+// Remove all dead stores.
+void LiveSetBlockVisitor::RemoveDeadStores(void) {
+  for (auto *store : to_remove) {
+    //auto bb = store->getParent();
+    LOG(INFO) << "Deleting store " << LLVMThingToString(store);
+    //for (auto inst_it = bb->begin(); inst_it != bb->end(); ++inst_it) {
+      //auto inst = &*inst_it;
+      //if (inst == store) {
+        //LOG(INFO) << "**" << LLVMThingToString(inst) << "**";
+      //} else {
+        //LOG(INFO) << LLVMThingToString(inst);
+      //}
+    //}
+    store->eraseFromParent();
+  }
+}
+
+// Generate a DOT digraph file representing the dataflow of the LSBV.
+void LiveSetBlockVisitor::CreateDOTDigraph(std::vector<StateSlot> stateslots, const llvm::DataLayout *dl) {
+  DOT() << "digraph {\n";
+  for (auto &block_live : block_map) {
+    auto block = block_live.first;
+    auto blive = block_live.second;
+    // top row: entry liveset
+    DOT() << "b" << reinterpret_cast<uintptr_t>(block) << " [label=<<table>\n";
+    DOT() << "<tr><td colspan=3>";
+    // print out live slots
+    for (uint64_t i = 0; i < blive.size(); i++) {
+      if (func_used.test(i) && blive.test(i)) {
+        DOT() << i << " ";
+      }
+    }
+    DOT() << "</td></tr>\n";
+    for (auto &inst : *block) {
+      DOT() << "<tr><td>";
+      if (auto scope = GetScopeFromInst(inst)) {
+        auto stateslot = stateslots[scope_to_offset.at(scope)];
+        auto ptr_size = dl->getTypeAllocSize(inst.getOperand(0)->getType());
+        // slot #
+        DOT() << "slot " << stateslot.i
+          // slot size minus load/store size
+          << "</td><td>" << (stateslot.size - ptr_size) << "</td><td>";
+      } else {
+        DOT() << "</td><td></td><td>";
+      }
+      // instruction text
+      DOT() << "\"" << LLVMThingToString(&inst) << "\"";
+      DOT() << "</td></tr>\n";
+    }
+    // last row: exit liveset
+    LiveSet exit_live = blive;
+    for (auto succ_block_it : successors(block)) {
+      auto succ = &*succ_block_it;
+      exit_live |= block_map[succ];
+    }
+    DOT() << "<tr><td colspan=3>";
+    // print out live slots
+    for (uint64_t i = 0; i < exit_live.size(); i++) {
+      if (func_used.test(i) && exit_live.test(i)) {
+        DOT() << i << " ";
+      }
+    }
+    DOT() << "</td></tr>\n";
+    DOT() << "</table>>];\n";
+    for (auto succ_block_it : successors(block)) {
+      auto succ = &*succ_block_it;
+      DOT() << "b" << reinterpret_cast<uintptr_t>(block) << " -> b"
+        << reinterpret_cast<uintptr_t>(succ) << "\n";
+    }
+  }
+  DOT() << "}\n" << std::endl;
+  // digraph {\n
+  // for bb in block_map
+  // bb [label=<<table>\n
+  // <tr><td colspan=3>live</td></tr>\n
+  // for inst in bb
+  //    <tr><td>slot_#</td><td>slot_size</td><td>inst</td></tr>\n
+  // <tr><td colspan=3>live_exit</td></tr>\n
+  // </table>>];\n
+  // for succ_bb in successors(bb)
+  //    bb->succ_bb
+  // }\n
+}
+
+static std::ostream &DOT(void) {
+  static std::ofstream out("/tmp/out.dot");
+  return out;
+}
+
+void GenerateLiveSet(llvm::Module *module, const std::vector<StateSlot> stateslots, const ScopeMap &scopes) {
   auto bb_func = BasicBlockFunction(module);
-  //size_t slots = scopes.size();
+  auto dl = module->getDataLayout();
   for (auto &func : *module) {
     if (&func != bb_func && !func.isDeclaration() &&
         func.getFunctionType() == bb_func->getFunctionType()) {
@@ -563,10 +661,12 @@ void GenerateLiveSet(llvm::Module *module, const ScopeMap &scopes) {
       LSBV.AddFunction(func);
       LSBV.Visit();
       // repeat, but now ready to remove
-      LSBV.on_remove_pass = true;
-      LSBV.AddFunction(func);
-      LSBV.Visit();
-      LSBV.RemoveDeadStores();
+      //LSBV.on_remove_pass = true;
+      //LSBV.AddFunction(func);
+      //LSBV.Visit();
+      //LSBV.RemoveDeadStores();
+      LSBV.CreateDOTDigraph(stateslots, &dl);
+      break;
     }
   }
   return;

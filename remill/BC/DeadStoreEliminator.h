@@ -130,6 +130,7 @@ class LiveSetBlockVisitor {
     std::unordered_map<llvm::BasicBlock *, LiveSet> block_map;
     std::unordered_set<llvm::Instruction *> to_remove;
     const llvm::FunctionType *lft;
+    LiveSet func_used;
     bool on_remove_pass;
 
     LiveSetBlockVisitor(const ScopeMap &scope_to_offset_, const llvm::FunctionType *lft_);
@@ -138,9 +139,12 @@ class LiveSetBlockVisitor {
 
     virtual bool VisitBlock(llvm::BasicBlock *B);
     virtual void RemoveDeadStores(void);
+    virtual void CreateDOTDigraph(std::vector<StateSlot> stateslots, const llvm::DataLayout *dl);
 };
 
-void GenerateLiveSet(llvm::Module *module, const ScopeMap &scopes);
+static std::ostream &DOT(void);
+
+void GenerateLiveSet(llvm::Module *module, const std::vector<StateSlot> stateslots, const ScopeMap &scopes);
 
 }  // namespace remill
 #endif  // REMILL_BC_DSELIM_H_
