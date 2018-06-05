@@ -105,6 +105,33 @@ enum class VisitResult {
   Error
 };
 
+enum class OpType {
+  Plus,
+  Minus,
+};
+
+// Get the unsigned offset of two int64_t numbers with bounds checking
+bool GetUnsignedOffset(int64_t v1, int64_t v2, OpType op, int64_t max, uint64_t *result) {
+  auto signed_result = v1;
+  //LOG(INFO) << "v1: " << v1 << (op == OpType::Plus ? " + " : " - ") << "v2: " << v2;
+  switch (op) {
+    case OpType::Plus:
+      signed_result += v2;
+      break;
+    case OpType::Minus:
+      signed_result -= v2;
+      break;
+    default:
+      break;
+  }
+  if (signed_result >= 0 && signed_result < max) {
+    *result = static_cast<uint64_t>(signed_result);
+    return true;
+  } else {
+    return false;
+  }
+}
+
 ForwardAliasVisitor::ForwardAliasVisitor(const std::vector<StateSlot> &state_slots_,
     llvm::DataLayout *dl_,
     llvm::Value *sp_)
@@ -231,7 +258,7 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst 
       return VisitResult::NoProgress;
     } else {
       // get the constant offset
-      llvm::APInt const_offset;
+      llvm::APInt const_offset(64, 0);
       if (I.accumulateConstantOffset(*dl, const_offset)) {
         // the final offset (adding the ptr->second value to the const_offset)
         uint64_t offset = 0;
@@ -279,27 +306,6 @@ VisitResult ForwardAliasVisitor::visitAdd(llvm::BinaryOperator &I) {
 // Visit a sub instruction and update the offset map.
 VisitResult ForwardAliasVisitor::visitSub(llvm::BinaryOperator &I) {
   return ForwardAliasVisitor::visitBinaryOp_(I, OpType::Minus);
-}
-
-// Get the unsigned offset of two int64_t numbers with bounds checking
-bool GetUnsignedOffset(int64_t v1, int64_t v2, OpType op, int64_t max, uint64_t *result) {
-  auto signed_result = v1;
-  switch (op) {
-    case OpType::Plus:
-      signed_result += v2;
-      break;
-    case OpType::Minus:
-      signed_result -= v2;
-      break;
-    default:
-      break;
-  }
-  if (signed_result >= 0 && signed_result < max) {
-    *result = static_cast<uint64_t>(signed_result);
-    return true;
-  } else {
-    return false;
-  }
 }
 
 // Visit an add or sub instruction.
@@ -407,8 +413,8 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
 
 // For each instruction in the alias map, add an AAMDNodes struct 
 // which specifies the aliasing stores and loads to the instruction's byte offset.
-void AddAAMDNodes(const ValueToOffset &inst_to_offset, const std::vector<llvm::AAMDNodes> &offset_to_aamd) {
-  for (const auto &map_pair : inst_to_offset) {
+void AddAAMDNodes(const ValueToOffset &val_to_offset, const std::vector<llvm::AAMDNodes> &offset_to_aamd) {
+  for (const auto &map_pair : val_to_offset) {
     auto val = map_pair.first;
     auto offset = map_pair.second;
     if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(val)) {

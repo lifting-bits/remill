@@ -74,10 +74,7 @@ typedef std::unordered_map<llvm::MDNode *, uint64_t> ScopeMap;
 
 enum class VisitResult;
 
-enum class OpType {
-  Plus,
-  Minus,
-};
+enum class OpType;
 
 bool GetUnsignedOffset(int64_t v1, int64_t v2, OpType op, int64_t max, uint64_t *result);
 
@@ -120,7 +117,7 @@ struct AAMDInfo {
   AAMDInfo(const std::vector<StateSlot> &slots, llvm::LLVMContext &context);
 };
 
-void AddAAMDNodes(const ValueToOffset &inst_to_offset, const std::vector<llvm::AAMDNodes> &offset_to_aamd);
+void AddAAMDNodes(const ValueToOffset &val_to_offset, const std::vector<llvm::AAMDNodes> &offset_to_aamd);
 
 ScopeMap AnalyzeAliases(llvm::Module *module, const std::vector<StateSlot> &slots);
 
