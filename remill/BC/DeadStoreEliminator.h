@@ -79,6 +79,8 @@ enum class OpType {
   Minus,
 };
 
+bool GetUnsignedOffset(int64_t v1, int64_t v2, OpType op, int64_t max, uint64_t *result);
+
 struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, VisitResult> {
   public:
     const std::vector<StateSlot> &state_slots;

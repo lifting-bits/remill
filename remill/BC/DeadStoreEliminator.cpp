@@ -230,10 +230,17 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst 
       // no pointer found
       return VisitResult::NoProgress;
     } else {
-      // get the offset
-      llvm::APInt offset;
-      if (I.accumulateConstantOffset(*dl, offset)) {
-        offset_map.emplace(&I, ptr->second + offset.getZExtValue());
+      // get the constant offset
+      llvm::APInt const_offset;
+      if (I.accumulateConstantOffset(*dl, const_offset)) {
+        // the final offset (adding the ptr->second value to the const_offset)
+        uint64_t offset = 0;
+        if (!GetUnsignedOffset(static_cast<int64_t>(ptr->second),
+              const_offset.getSExtValue(), OpType::Plus, static_cast<int64_t>(state_slots.size()), &offset)) {
+          LOG(INFO) << "Out of bounds GEP operation: " << LLVMThingToString(&I);
+          return VisitResult::Error;
+        }
+        offset_map.emplace(&I, offset);
         LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << offset_map[&I];
         return VisitResult::Progress;
       } else {
@@ -311,7 +318,10 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, OpType 
         return VisitResult::NoProgress;
       } else {
         uint64_t offset = 0;
-        if (!GetUnsignedOffset(static_cast<int64_t>(ptr->second), cint1->getSExtValue(), op, static_cast<int64_t>(state_slots.size()), &offset)) {
+        if (!GetUnsignedOffset(static_cast<int64_t>(ptr->second),
+              cint1->getSExtValue(), op, static_cast<int64_t>(state_slots.size()), &offset)) {
+          LOG(INFO) << "Out of bounds " << (op == OpType::Plus ? "add " : "sub ")
+            << "operation: " << LLVMThingToString(&I);
           return VisitResult::Error;
         }
         offset_map.insert({&I, offset});
@@ -324,7 +334,10 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, OpType 
         return VisitResult::NoProgress;
       } else {
         uint64_t offset = 0;
-        if (!GetUnsignedOffset(static_cast<int64_t>(ptr->second), cint2->getSExtValue(), op, static_cast<int64_t>(state_slots.size()), &offset)) {
+        if (!GetUnsignedOffset(static_cast<int64_t>(ptr->second),
+              cint2->getSExtValue(), op, static_cast<int64_t>(state_slots.size()), &offset)) {
+          LOG(INFO) << "Out of bounds " << (op == OpType::Plus ? "add " : "sub ")
+            << "operation: " << LLVMThingToString(&I);
           return VisitResult::Error;
         }
         offset_map.insert({&I, offset});
@@ -339,7 +352,10 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, OpType 
         return VisitResult::NoProgress;
       } else {
         uint64_t offset = 0;
-        if (!GetUnsignedOffset(static_cast<int64_t>(ptr1->second), static_cast<int64_t>(ptr2->second), op, static_cast<int64_t>(state_slots.size()), &offset)) {
+        if (!GetUnsignedOffset(static_cast<int64_t>(ptr1->second),
+              static_cast<int64_t>(ptr2->second), op, static_cast<int64_t>(state_slots.size()), &offset)) {
+          LOG(INFO) << "Out of bounds " << (op == OpType::Plus ? "add " : "sub ")
+            << "operation: " << LLVMThingToString(&I);
           return VisitResult::Error;
         }
         offset_map.insert({&I, offset});
@@ -452,6 +468,7 @@ ScopeMap AnalyzeAliases(llvm::Module *module, const std::vector<StateSlot> &slot
         func.getFunctionType() == bb_func->getFunctionType()) {
       auto sp = LoadStatePointer(&func);
       ForwardAliasVisitor fav(slots, &dl, sp);
+      LOG(INFO) << "Analyzing aliases of func " << func.getName().str();
       for (auto &block : func) {
         for (auto &inst : block) {
           fav.AddInstruction(&inst);
