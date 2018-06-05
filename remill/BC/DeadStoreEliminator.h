@@ -120,7 +120,7 @@ struct AAMDInfo {
 
 void AddAAMDNodes(const InstToOffset &inst_to_offset, const std::vector<llvm::AAMDNodes> &offset_to_aamd);
 
-ScopeMap AnalyzeAliases(llvm::Module *module, const std::vector<StateSlot> &slots);
+void AnalyzeAliases(llvm::Module *module, const std::vector<StateSlot> &slots);
 
 typedef std::bitset<4096> LiveSet;
 
@@ -129,6 +129,7 @@ llvm::MDNode *GetScopeFromInst(llvm::Instruction &I);
 class LiveSetBlockVisitor {
   public:
     llvm::Function &func;
+    const ValueToOffset &val_to_offset;
     const ScopeMap &scope_to_offset;
     const std::vector<StateSlot> &state_slots;
     std::vector<llvm::BasicBlock *> curr_wl;
@@ -139,15 +140,20 @@ class LiveSetBlockVisitor {
     LiveSet func_used;
     bool on_remove_pass;
 
-    LiveSetBlockVisitor(llvm::Function &func_, const std::vector<StateSlot> &state_slots_, const ScopeMap &scope_to_offset_, const llvm::FunctionType *lifted_func_ty_);
+    LiveSetBlockVisitor(llvm::Function &func_,
+        const std::vector<StateSlot> &state_slots_,
+        const ScopeMap &scope_to_offset_,
+        const ValueToOffset &val_to_offset_,
+        const llvm::FunctionType *lifted_func_ty_);
     void Visit();
 
+    virtual bool CallAccessesState(llvm::CallInst *call, uint64_t *slot);
     virtual bool VisitBlock(llvm::BasicBlock *B);
     virtual void RemoveDeadStores(void);
     virtual void CreateDOTDigraph(const llvm::DataLayout *dl);
 };
 
-static std::ostream &DOT(void);
+static std::ostream &DOT(std::string suffix);
 
 void GenerateLiveSet(llvm::Module *module, const std::vector<StateSlot> &state_slots, const ScopeMap &scopes);
 
