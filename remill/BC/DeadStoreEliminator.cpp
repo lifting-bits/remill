@@ -113,7 +113,7 @@ enum class OpType {
 // Get the unsigned offset of two int64_t numbers with bounds checking
 bool GetUnsignedOffset(int64_t v1, int64_t v2, OpType op, int64_t max, uint64_t *result) {
   auto signed_result = v1;
-  //LOG(INFO) << "v1: " << v1 << (op == OpType::Plus ? " + " : " - ") << "v2: " << v2;
+  LOG(INFO) << "v1: " << v1 << (op == OpType::Plus ? " + " : " - ") << "v2: " << v2;
   switch (op) {
     case OpType::Plus:
       signed_result += v2;
@@ -212,7 +212,7 @@ VisitResult ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) {
       return VisitResult::NoProgress;
     } else {
       // loads mean we now have an alias to the pointer
-      offset_map.insert({&I, ptr->second});
+      alias_map.insert({&I, ptr->second});
       LOG(INFO) << "aliasing: " << LLVMThingToString(&I) << " to " << ptr->second;
       return VisitResult::Progress;
     }
@@ -236,7 +236,7 @@ VisitResult ForwardAliasVisitor::visitStoreInst(llvm::StoreInst &I) {
       return VisitResult::NoProgress;
     } else {
       // loads mean we now have an alias to the pointer
-      offset_map.insert({&I, ptr->second});
+      alias_map.insert({&I, ptr->second});
       LOG(INFO) << "aliasing: " << LLVMThingToString(&I) << " to " << ptr->second;
       return VisitResult::Progress;
     }
@@ -324,8 +324,8 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, OpType 
         return VisitResult::NoProgress;
       } else {
         uint64_t offset = 0;
-        if (!GetUnsignedOffset(static_cast<int64_t>(ptr->second),
-              cint1->getSExtValue(), op, static_cast<int64_t>(state_slots.size()), &offset)) {
+        if (!GetUnsignedOffset(cint1->getSExtValue(), static_cast<int64_t>(ptr->second),
+              op, static_cast<int64_t>(state_slots.size()), &offset)) {
           LOG(INFO) << "Out of bounds " << (op == OpType::Plus ? "add " : "sub ")
             << "operation: " << LLVMThingToString(&I);
           return VisitResult::Error;
@@ -340,8 +340,8 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, OpType 
         return VisitResult::NoProgress;
       } else {
         uint64_t offset = 0;
-        if (!GetUnsignedOffset(static_cast<int64_t>(ptr->second),
-              cint2->getSExtValue(), op, static_cast<int64_t>(state_slots.size()), &offset)) {
+        if (!GetUnsignedOffset(static_cast<int64_t>(ptr->second), cint2->getSExtValue(),
+              op, static_cast<int64_t>(state_slots.size()), &offset)) {
           LOG(INFO) << "Out of bounds " << (op == OpType::Plus ? "add " : "sub ")
             << "operation: " << LLVMThingToString(&I);
           return VisitResult::Error;
@@ -413,14 +413,14 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
 
 // For each instruction in the alias map, add an AAMDNodes struct 
 // which specifies the aliasing stores and loads to the instruction's byte offset.
-void AddAAMDNodes(const ValueToOffset &val_to_offset, const std::vector<llvm::AAMDNodes> &offset_to_aamd) {
-  for (const auto &map_pair : val_to_offset) {
-    auto val = map_pair.first;
+void AddAAMDNodes(const InstToOffset &inst_to_offset, const std::vector<llvm::AAMDNodes> &offset_to_aamd) {
+  for (const auto &map_pair : inst_to_offset) {
+    auto inst = map_pair.first;
     auto offset = map_pair.second;
-    if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(val)) {
+    if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(inst)) {
       auto aamd = offset_to_aamd[offset];
       load_inst->setAAMetadata(aamd);
-    } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(val)) {
+    } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
       auto aamd = offset_to_aamd[offset];
       store_inst->setAAMetadata(aamd);
     }
@@ -483,9 +483,9 @@ ScopeMap AnalyzeAliases(llvm::Module *module, const std::vector<StateSlot> &slot
       // if the analysis succeeds for this function, add the AAMDNodes
       if (fav.Analyze()) {
         LOG(INFO) << "Offsets: " << fav.offset_map.size();
-        //LOG(INFO) << "Aliases: " << fav.alias_map.size();
+        LOG(INFO) << "Aliases: " << fav.alias_map.size();
         LOG(INFO) << "Excluded: " << fav.exclude.size();
-        AddAAMDNodes(fav.offset_map, aamd_info.slot_aamds);
+        AddAAMDNodes(fav.alias_map, aamd_info.slot_aamds);
       }
     }
   }
@@ -630,6 +630,12 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
 
 // Remove all dead stores.
 void LiveSetBlockVisitor::RemoveDeadStores(void) {
+  on_remove_pass = true;
+  for (auto &block_it : func) {
+    auto block = &block_it;
+    VisitBlock(block);
+  }
+  //Visit();
   for (auto *store : to_remove) {
     //auto bb = store->getParent();
     LOG(INFO) << "Deleting store " << LLVMThingToString(store);
@@ -643,6 +649,7 @@ void LiveSetBlockVisitor::RemoveDeadStores(void) {
     //}
     store->eraseFromParent();
   }
+  on_remove_pass = false;
 }
 
 // Generate a DOT digraph file representing the dataflow of the LSBV.
@@ -655,9 +662,11 @@ void LiveSetBlockVisitor::CreateDOTDigraph(const llvm::DataLayout *dl) {
     DOT() << "b" << reinterpret_cast<uintptr_t>(block) << " [label=<<table>\n";
     DOT() << "<tr><td colspan=\"3\">";
     // print out live slots
+    auto sep = "";
     for (uint64_t i = 0; i < blive.size(); i++) {
       if (func_used.test(i) && blive.test(i)) {
-        DOT() << i << " ";
+        DOT() << sep << i;
+        sep = ", ";
       }
     }
     DOT() << "</td></tr>\n";
@@ -725,12 +734,8 @@ void GenerateLiveSet(llvm::Module *module, const std::vector<StateSlot> &state_s
       LiveSetBlockVisitor LSBV(func, state_slots, scopes, bb_func->getFunctionType());
       LSBV.Visit();
       // repeat, but now ready to remove
-      // FIXME: readd function blocks
-      //LSBV.on_remove_pass = true;
-      //LSBV.Visit();
-      //LSBV.RemoveDeadStores();
-      LSBV.CreateDOTDigraph(&dl);
-      break;
+      LSBV.RemoveDeadStores();
+      //LSBV.CreateDOTDigraph(&dl);
     }
   }
   return;
