@@ -32,31 +32,34 @@ class GetElementPtrInst;
 class GetPtrToIntInst;
 class GetIntToPtrInst;
 class BitCastInst;
-//template<typename SubClass> class InstVisitor;
 }  // namespace llvm
 
 namespace remill {
 
+// A field or region of the state structure at a particular offset from
+// the top of the state structure (offset 0) with a given size.
 class StateSlot {
 public:
   StateSlot(uint64_t i, uint64_t offset, uint64_t size);
-  // slot index
-  uint64_t i;
+  // Slot index
+  uint64_t index;
   // Inclusive beginning byte offset
   uint64_t offset;
-  // Size of the slot
+  // Size of the slot in bytes
   uint64_t size;
 };
 
+// A visitor to travel through the state structure and create a vector
+// of `StateSlot`s.
 class StateVisitor {
   public:
     std::vector<StateSlot> slots;
     // the current index in the state structure
-    uint64_t idx;
+    uint64_t index;
     // the current offset in the state structure
     uint64_t offset;
 
-    StateVisitor(llvm::DataLayout *dl_);
+    explicit StateVisitor(llvm::DataLayout *dl_);
 
   private:
     // the LLVM datalayout used for calculating type allocation size
@@ -77,13 +80,11 @@ enum class VisitResult;
 
 enum class OpType;
 
-bool GetUnsignedOffset(int64_t v1, int64_t v2, OpType op, int64_t max, uint64_t *result);
-
 struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, VisitResult> {
   public:
     const std::vector<StateSlot> &state_slots;
-    ValueToOffset offset_map;
-    InstToOffset alias_map;
+    ValueToOffset state_offset;
+    InstToOffset state_access_offset;
     std::unordered_set<llvm::Value *> exclude;
     std::unordered_set<llvm::Instruction *> curr_wl;
     std::unordered_set<llvm::Instruction *> next_wl;
@@ -133,28 +134,25 @@ class LiveSetBlockVisitor {
     const ScopeMap &scope_to_offset;
     const std::vector<StateSlot> &state_slots;
     std::vector<llvm::BasicBlock *> curr_wl;
-    std::vector<llvm::BasicBlock *> next_wl;
     std::unordered_map<llvm::BasicBlock *, LiveSet> block_map;
-    std::unordered_set<llvm::Instruction *> to_remove;
+    std::vector<llvm::Instruction *> to_remove;
     const llvm::FunctionType *lifted_func_ty;
     LiveSet func_used;
-    bool on_remove_pass;
 
     LiveSetBlockVisitor(
-        llvm::Function &func_,
-        const std::vector<StateSlot> &state_slots_,
-        const ScopeMap &scope_to_offset_,
-        const ValueToOffset &val_to_offset_,
-        const llvm::FunctionType *lifted_func_ty_,
-        const llvm::DataLayout *dl_);
+        llvm::Function &func_, const std::vector<StateSlot> &state_slots_,
+        const ScopeMap &scope_to_offset_, const ValueToOffset &val_to_offset_,
+        const llvm::FunctionType *lifted_func_ty_, const llvm::DataLayout *dl_);
     void Visit();
 
-    virtual bool CallAccessesState(llvm::CallInst *call, uint64_t *slotn);
+    virtual void PerformRemovePass(bool create_dot);
+    virtual void MarkLiveArgs(llvm::CallInst *call, LiveSet *live);
     virtual bool VisitBlock(llvm::BasicBlock *B);
-    virtual void RemoveDeadStores(void);
+    virtual bool DeleteDeadInsts(void);
     virtual void CreateDOTDigraph();
 
   private:
+    bool on_remove_pass;
     const llvm::DataLayout *dl;
 };
 
