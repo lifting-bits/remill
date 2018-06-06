@@ -207,6 +207,7 @@ VisitResult ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) {
       return VisitResult::NoProgress;
     } else {
       // loads mean we now have an alias to the pointer
+      // we can also exclude the instruction
       exclude.insert(&I);
       state_access_offset.emplace(&I, ptr->second);
       return VisitResult::Progress;
@@ -220,7 +221,7 @@ VisitResult ForwardAliasVisitor::visitStoreInst(llvm::StoreInst &I) {
   llvm::AAMDNodes aamd(nullptr, nullptr, nullptr);
   I.setAAMetadata(aamd);
   // if the store is using a state pointer, fail immediately
-  if (state_offset.find(I.getOperand(0)) != state_offset.end()) {
+  if (state_offset.count(I.getOperand(0))) {
     return VisitResult::Error;
   }
   // get the initial ptr
@@ -363,55 +364,41 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, OpType 
 
 // Visit a select instruction and update the offset map.
 VisitResult ForwardAliasVisitor::visitSelect(llvm::SelectInst &I) {
-  auto in_state_offset = false;
-  auto in_exclude_set = false;
-  uint64_t offset = 0;
-  // check both the true branch and the false branch
-  auto trueval = I.getTrueValue();
-  auto falseval = I.getFalseValue();
-  if (exclude.count(trueval)) {
-    in_exclude_set = true;
-  } else {
-    auto ptr = state_offset.find(trueval);
-    if (ptr == state_offset.end()) {
-      return VisitResult::NoProgress;
-    } else {
-      if (!in_state_offset) {
-        offset = ptr->second;
-        in_state_offset = true;
-      } else {
-        if (ptr->second != offset) {
-          // bail if the offsets don't match
-          return VisitResult::Error;
-        }
-      }
-    }
-  }
-  if (exclude.count(falseval)) {
-    in_exclude_set = true;
-  } else {
-    auto ptr = state_offset.find(trueval);
-    if (ptr == state_offset.end()) {
-      return VisitResult::NoProgress;
-    } else {
-      if (!in_state_offset) {
-        offset = ptr->second;
-        in_state_offset = true;
-      } else {
-        if (ptr->second != offset) {
-          // bail if the offsets don't match
-          return VisitResult::Error;
-        }
-      }
-    }
-  }
+  auto true_val = I.getTrueValue();
+  auto false_val = I.getFalseValue();
+  auto true_ptr = state_offset.find(true_val);
+  auto false_ptr = state_offset.find(false_val);
+  auto in_exclude_set = exclude.count(true_val) || exclude.count(false_val);
+  auto in_state_offset = true_ptr != state_offset.end() || false_ptr != state_offset.end();
   if (in_state_offset && in_exclude_set) {
     // fail if the two values are inconsistent
     return VisitResult::Error;
   } else if (in_state_offset) {
-    state_offset.emplace(&I, offset);
+    if (true_ptr == state_offset.end()) {
+      uint64_t offset = false_ptr->second;
+      state_offset.emplace(&I, offset);
+      return VisitResult::NoProgress;
+    } else if (false_ptr == state_offset.end()) {
+      uint64_t offset = true_ptr->second;
+      state_offset.emplace(&I, offset);
+      return VisitResult::NoProgress;
+    } else {
+      // both have values
+      if (true_ptr == false_ptr) {
+        uint64_t offset = true_ptr->second;
+        state_offset.emplace(&I, offset);
+      } else {
+        return VisitResult::Error;
+      }
+    }
   } else if (in_exclude_set) {
-    exclude.insert(&I);
+    // if only one is found; sneaky XOR trick
+    if (!exclude.count(true_val) != !exclude.count(false_val)) {
+        exclude.insert(&I);
+        return VisitResult::NoProgress;
+    } else {
+      exclude.insert(&I);
+    }
   }
   return VisitResult::Progress;
 }
@@ -419,6 +406,7 @@ VisitResult ForwardAliasVisitor::visitSelect(llvm::SelectInst &I) {
 // Visit a PHI node and update the offset map.
 VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
   // iterate over each operand
+  auto complete = true;
   auto in_state_offset = false;
   auto in_exclude_set = false;
   uint64_t offset;
@@ -428,7 +416,7 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
     } else {
       auto ptr = state_offset.find(operand);
       if (ptr == state_offset.end()) {
-        return VisitResult::NoProgress;
+        complete = false;
       } else {
         if (!in_state_offset) {
           offset = ptr->second;
@@ -450,7 +438,7 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
   } else if (in_exclude_set) {
     exclude.insert(&I);
   }
-  return VisitResult::Progress;
+  return (complete ? VisitResult::Progress : VisitResult::NoProgress);
 }
 
 // For each instruction in the alias map, add an AAMDNodes struct 
@@ -688,6 +676,7 @@ bool LiveSetBlockVisitor::DeleteDeadInsts(void) {
   bool changed = false;
   while (!to_remove.empty()) {
     auto inst = to_remove.back();
+    to_remove.pop_back();
 
     //if (auto *alloc_inst = llvm::dyn_cast<llvm::AllocaInst>(&inst)) {
       //for (auto *dbg_info_intrinsic : llvm::FindDbgAddrUses(alloc_inst)) {
@@ -701,12 +690,11 @@ bool LiveSetBlockVisitor::DeleteDeadInsts(void) {
       if (auto op_inst = llvm::dyn_cast<llvm::Instruction>(operand)) {
         operand = nullptr;
         if (llvm::isInstructionTriviallyDead(op_inst)) {
-          to_remove.insert(to_remove.begin(), op_inst);
+          to_remove.push_back(op_inst);
         }
       }
     }
     inst->eraseFromParent();
-    to_remove.pop_back();
     changed = true;
   }
   return changed;
