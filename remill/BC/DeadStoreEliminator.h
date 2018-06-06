@@ -140,20 +140,23 @@ class LiveSetBlockVisitor {
     LiveSet func_used;
     bool on_remove_pass;
 
-    LiveSetBlockVisitor(llvm::Function &func_,
+    LiveSetBlockVisitor(
+        llvm::Function &func_,
         const std::vector<StateSlot> &state_slots_,
         const ScopeMap &scope_to_offset_,
         const ValueToOffset &val_to_offset_,
-        const llvm::FunctionType *lifted_func_ty_);
+        const llvm::FunctionType *lifted_func_ty_,
+        const llvm::DataLayout *dl_);
     void Visit();
 
-    virtual bool CallAccessesState(llvm::CallInst *call, uint64_t *slot);
+    virtual bool CallAccessesState(llvm::CallInst *call, uint64_t *slotn);
     virtual bool VisitBlock(llvm::BasicBlock *B);
     virtual void RemoveDeadStores(void);
-    virtual void CreateDOTDigraph(const llvm::DataLayout *dl);
-};
+    virtual void CreateDOTDigraph();
 
-static std::ostream &DOT(std::string suffix);
+  private:
+    const llvm::DataLayout *dl;
+};
 
 void GenerateLiveSet(llvm::Module *module, const std::vector<StateSlot> &state_slots, const ScopeMap &scopes);
 
