@@ -114,7 +114,6 @@ enum class OpType {
 // Get the unsigned offset of two int64_t numbers with bounds checking
 static bool GetUnsignedOffset(int64_t v1, int64_t v2, OpType op, int64_t max, uint64_t *result) {
   auto signed_result = v1;
-  LOG(INFO) << "v1: " << v1 << (op == OpType::Plus ? " + " : " - ") << "v2: " << v2;
   switch (op) {
     case OpType::Plus:
       signed_result += v2;
@@ -157,7 +156,6 @@ bool ForwardAliasVisitor::Analyze(void) {
   std::unordered_set<llvm::Instruction *> next_wl;
   // if any visit makes progress, continue the loop
   while (!curr_wl.empty() && progress) {
-    LOG(INFO) << "FAV: " << curr_wl.size() << " instructions remaining";
     progress = false;
     for (auto inst : curr_wl) {
       switch (visit(inst)) {
@@ -185,9 +183,7 @@ VisitResult ForwardAliasVisitor::visitInstruction(llvm::Instruction &I) {
 }
 
 VisitResult ForwardAliasVisitor::visitAllocaInst(llvm::AllocaInst &I) {
-  LOG(INFO) << "Entered alloca instruction";
   exclude.insert(&I);
-  LOG(INFO) << "excluding: " << LLVMThingToString(&I);
   return VisitResult::Progress;
 }
 
@@ -204,7 +200,6 @@ VisitResult ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) {
     return VisitResult::Progress;
   } else if (exclude.count(val)) {
     exclude.insert(&I);
-    LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     return VisitResult::Progress;
   } else {
     auto ptr = state_offset.find(val);
@@ -214,7 +209,6 @@ VisitResult ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &I) {
       // loads mean we now have an alias to the pointer
       exclude.insert(&I);
       state_access_offset.emplace(&I, ptr->second);
-      LOG(INFO) << "aliasing: " << LLVMThingToString(&I) << " to " << ptr->second;
       return VisitResult::Progress;
     }
   }
@@ -233,7 +227,6 @@ VisitResult ForwardAliasVisitor::visitStoreInst(llvm::StoreInst &I) {
   auto val = I.getPointerOperand();
   if (exclude.count(val)) {
     exclude.insert(&I);
-    LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     return VisitResult::Progress;
   } else {
     auto ptr = state_offset.find(val);
@@ -242,7 +235,6 @@ VisitResult ForwardAliasVisitor::visitStoreInst(llvm::StoreInst &I) {
     } else {
       // loads mean we now have an alias to the pointer
       state_access_offset.emplace(&I, ptr->second);
-      LOG(INFO) << "aliasing: " << LLVMThingToString(&I) << " to " << ptr->second;
       return VisitResult::Progress;
     }
   }
@@ -254,7 +246,6 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst 
   auto val = I.getPointerOperand();
   if (exclude.count(val)) {
     exclude.insert(&I);
-    LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     return VisitResult::Progress;
   } else {
     auto ptr = state_offset.find(val);
@@ -269,11 +260,10 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst 
         uint64_t offset = 0;
         if (!GetUnsignedOffset(static_cast<int64_t>(ptr->second),
               const_offset.getSExtValue(), OpType::Plus, static_cast<int64_t>(state_slots.size()), &offset)) {
-          LOG(INFO) << "Out of bounds GEP operation: " << LLVMThingToString(&I);
+          LOG(WARNING) << "Out of bounds GEP operation: " << LLVMThingToString(&I);
           return VisitResult::Error;
         }
         state_offset.emplace(&I, offset);
-        LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << state_offset[&I];
         return VisitResult::Progress;
       } else {
         // give up
@@ -288,7 +278,6 @@ VisitResult ForwardAliasVisitor::visitCastInst(llvm::CastInst &I) {
   auto val = I.getOperand(0);
   if (exclude.count(val)) {
     exclude.insert(&I);
-    LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     return VisitResult::Progress;
   } else {
     auto ptr = state_offset.find(val);
@@ -297,7 +286,6 @@ VisitResult ForwardAliasVisitor::visitCastInst(llvm::CastInst &I) {
     } else {
       // update value
       state_offset.emplace(&I, ptr->second);
-      LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << ptr->second;
       return VisitResult::Progress;
     }
   }
@@ -319,7 +307,6 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, OpType 
   auto val2 = I.getOperand(1);
   if (exclude.count(val1) || exclude.count(val2)) {
     exclude.insert(&I);
-    LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     return VisitResult::Progress;
   } else {
     // FIXME(tim): is there a way to make this code more succinct and avoid duplication?
@@ -331,12 +318,11 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, OpType 
         uint64_t offset = 0;
         if (!GetUnsignedOffset(cint1->getSExtValue(), static_cast<int64_t>(ptr->second),
               op, static_cast<int64_t>(state_slots.size()), &offset)) {
-          LOG(INFO) << "Out of bounds " << (op == OpType::Plus ? "add " : "sub ")
+          LOG(WARNING) << "Out of bounds " << (op == OpType::Plus ? "add " : "sub ")
             << "operation: " << LLVMThingToString(&I);
           return VisitResult::Error;
         }
         state_offset.emplace(&I, offset);
-        LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << offset;
         return VisitResult::Progress;
       }
     } else if (auto cint2 = llvm::dyn_cast<llvm::ConstantInt>(val2)) {
@@ -347,12 +333,11 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, OpType 
         uint64_t offset = 0;
         if (!GetUnsignedOffset(static_cast<int64_t>(ptr->second), cint2->getSExtValue(),
               op, static_cast<int64_t>(state_slots.size()), &offset)) {
-          LOG(INFO) << "Out of bounds " << (op == OpType::Plus ? "add " : "sub ")
+          LOG(WARNING) << "Out of bounds " << (op == OpType::Plus ? "add " : "sub ")
             << "operation: " << LLVMThingToString(&I);
           return VisitResult::Error;
         }
         state_offset.emplace(&I, offset);
-        LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << offset;
         return VisitResult::Progress;
       }
     } else {
@@ -365,12 +350,11 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &I, OpType 
         uint64_t offset = 0;
         if (!GetUnsignedOffset(static_cast<int64_t>(ptr1->second),
               static_cast<int64_t>(ptr2->second), op, static_cast<int64_t>(state_slots.size()), &offset)) {
-          LOG(INFO) << "Out of bounds " << (op == OpType::Plus ? "add " : "sub ")
+          LOG(WARNING) << "Out of bounds " << (op == OpType::Plus ? "add " : "sub ")
             << "operation: " << LLVMThingToString(&I);
           return VisitResult::Error;
         }
         state_offset.emplace(&I, offset);
-        LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << offset;
         return VisitResult::Progress;
       }
     }
@@ -425,10 +409,8 @@ VisitResult ForwardAliasVisitor::visitSelect(llvm::SelectInst &I) {
     // fail if the two values are inconsistent
     return VisitResult::Error;
   } else if (in_state_offset) {
-    LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << offset;
     state_offset.emplace(&I, offset);
   } else if (in_exclude_set) {
-    LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     exclude.insert(&I);
   }
   return VisitResult::Progress;
@@ -464,10 +446,8 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
     // fail if some operands are excluded and others are state offsets
     return VisitResult::Error;
   } else if (in_state_offset) {
-    LOG(INFO) << "offsetting: " << LLVMThingToString(&I) << " to " << offset;
     state_offset.emplace(&I, offset);
   } else if (in_exclude_set) {
-    LOG(INFO) << "excluding: " << LLVMThingToString(&I);
     exclude.insert(&I);
   }
   return VisitResult::Progress;
@@ -536,7 +516,7 @@ void AnalyzeAliases(llvm::Module *module, const std::vector<StateSlot> &slots) {
         func.getFunctionType() == bb_func->getFunctionType()) {
       auto sp = LoadStatePointer(&func);
       ForwardAliasVisitor fav(slots, &dl, sp);
-      LOG(INFO) << "Analyzing aliases of func " << func.getName().str();
+      DLOG(INFO) << "Analyzing aliases of func " << func.getName().str();
       for (auto &block : func) {
         for (auto &inst : block) {
           fav.AddInstruction(&inst);
@@ -544,9 +524,9 @@ void AnalyzeAliases(llvm::Module *module, const std::vector<StateSlot> &slots) {
       }
       // if the analysis succeeds for this function, add the AAMDNodes
       if (fav.Analyze()) {
-        LOG(INFO) << "Offsets: " << fav.state_offset.size();
-        LOG(INFO) << "Aliases: " << fav.state_access_offset.size();
-        LOG(INFO) << "Excluded: " << fav.exclude.size();
+        DLOG(INFO) << "Offsets: " << fav.state_offset.size();
+        DLOG(INFO) << "Aliases: " << fav.state_access_offset.size();
+        DLOG(INFO) << "Excluded: " << fav.exclude.size();
         AddAAMDNodes(fav.state_access_offset, aamd_info.slot_aamds);
         // Perform live set analysis
         LiveSetBlockVisitor LSBV(func, slots, aamd_info.slot_scopes,
@@ -594,7 +574,6 @@ void LiveSetBlockVisitor::Visit(void) {
   // if any visit makes progress, continue the loop
   std::vector<llvm::BasicBlock *> next_wl;
   while (!curr_wl.empty()) {
-    LOG(INFO) << "LSBV: " << curr_wl.size() << " blocks in worklist";
     for (auto block : curr_wl) {
       if (VisitBlock(block)) {
         // Updates have been made
@@ -709,7 +688,6 @@ bool LiveSetBlockVisitor::DeleteDeadInsts(void) {
   bool changed = false;
   while (!to_remove.empty()) {
     auto inst = to_remove.back();
-    LOG(INFO) << "Deleting dead instruction: " << LLVMThingToString(inst);
 
     //if (auto *alloc_inst = llvm::dyn_cast<llvm::AllocaInst>(&inst)) {
       //for (auto *dbg_info_intrinsic : llvm::FindDbgAddrUses(alloc_inst)) {
