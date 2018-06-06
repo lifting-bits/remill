@@ -87,8 +87,6 @@ struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, Visit
     InstToOffset state_access_offset;
     std::unordered_set<llvm::Value *> exclude;
     std::unordered_set<llvm::Instruction *> curr_wl;
-    std::unordered_set<llvm::Instruction *> next_wl;
-    llvm::Value *state_ptr;
 
     ForwardAliasVisitor(const std::vector<StateSlot> &state_slots_, llvm::DataLayout *dl_, llvm::Value *sp_);
     void AddInstruction(llvm::Instruction *inst);
@@ -102,9 +100,11 @@ struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, Visit
     virtual VisitResult visitCastInst(llvm::CastInst &I);
     virtual VisitResult visitAdd(llvm::BinaryOperator &I);
     virtual VisitResult visitSub(llvm::BinaryOperator &I);
+    virtual VisitResult visitSelect(llvm::SelectInst &I);
     virtual VisitResult visitPHINode(llvm::PHINode &I);
 
   private:
+    const llvm::Value *state_ptr;
     const llvm::DataLayout *dl;
     virtual VisitResult visitBinaryOp_(llvm::BinaryOperator &I, OpType op);
 };
@@ -146,7 +146,6 @@ class LiveSetBlockVisitor {
     void Visit();
 
     virtual void PerformRemovePass(bool create_dot);
-    virtual void MarkLiveArgs(llvm::CallInst *call, LiveSet *live);
     virtual bool VisitBlock(llvm::BasicBlock *B);
     virtual bool DeleteDeadInsts(void);
     virtual void CreateDOTDigraph();
