@@ -322,6 +322,22 @@ static void InitBlockFunctionAttributes(llvm::Function *block_func) {
 
 }  // namespace
 
+// Add attributes to llvm::Argument in a way portable across LLVMs
+static void AddNoAliasToArgument(llvm::Argument *Arg) {
+  IF_LLVM_LT_50(
+    llvm::AttrBuilder B(llvm::Attribute::NoAlias);
+    Arg->addAttr(llvm::AttributeSet::get(
+      Arg->getContext(),
+      Arg->getArgNo() + 1,
+      B
+      )); 
+  );
+
+  IF_LLVM_GTE_50(
+    Arg->addAttr(llvm:Attribute::NoAlias);
+  );
+}
+
 // ensures that mandatory remill functions have the correct
 // type signature and variable names
 static void PrepareModuleRemillFunctions(llvm::Module *mod) {
@@ -337,8 +353,8 @@ static void PrepareModuleRemillFunctions(llvm::Module *mod) {
   basic_block->addFnAttr(llvm::Attribute::NoInline);
   basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
 
-  remill::NthArgument(basic_block, kStatePointerArgNum)->addAttr(llvm::Attribute::NoAlias);
-  remill::NthArgument(basic_block, kMemoryPointerArgNum)->addAttr(llvm::Attribute::NoAlias);
+  AddNoAliasToArgument(remill::NthArgument(basic_block, kStatePointerArgNum));
+  AddNoAliasToArgument(remill::NthArgument(basic_block, kMemoryPointerArgNum));
 }
 
 // Converts an LLVM module object to have the right triple / data layout
