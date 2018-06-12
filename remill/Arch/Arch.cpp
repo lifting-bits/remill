@@ -334,7 +334,7 @@ static void AddNoAliasToArgument(llvm::Argument *Arg) {
   );
 
   IF_LLVM_GTE_39(
-    Arg->addAttr(llvm:Attribute::NoAlias);
+    Arg->addAttr(llvm::Attribute::NoAlias);
   );
 }
 
