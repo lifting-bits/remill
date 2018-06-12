@@ -324,16 +324,16 @@ static void InitBlockFunctionAttributes(llvm::Function *block_func) {
 
 // Add attributes to llvm::Argument in a way portable across LLVMs
 static void AddNoAliasToArgument(llvm::Argument *Arg) {
-  IF_LLVM_LT_50(
-    llvm::AttrBuilder B(llvm::Attribute::NoAlias);
-    Arg->addAttr(llvm::AttributeSet::get(
-      Arg->getContext(),
-      Arg->getArgNo() + 1,
-      B
-      )); 
+  IF_LLVM_LT_39(
+    Arg->addAttr(
+      llvm::AttributeSet::get(
+        Arg->getContext(),
+        Arg->getArgNo() + 1,
+        llvm::Attribute::NoAlias)
+    ); 
   );
 
-  IF_LLVM_GTE_50(
+  IF_LLVM_GTE_39(
     Arg->addAttr(llvm:Attribute::NoAlias);
   );
 }
