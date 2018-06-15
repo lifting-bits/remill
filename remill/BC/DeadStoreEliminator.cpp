@@ -384,7 +384,7 @@ VisitResult ForwardAliasVisitor::visitSelect(llvm::SelectInst &I) {
       return VisitResult::NoProgress;
     } else {
       // both have values
-      if (true_ptr == false_ptr) {
+      if (true_ptr->second == false_ptr->second) {
         uint64_t offset = true_ptr->second;
         state_offset.emplace(&I, offset);
       } else {
@@ -392,8 +392,8 @@ VisitResult ForwardAliasVisitor::visitSelect(llvm::SelectInst &I) {
       }
     }
   } else if (in_exclude_set) {
-    // if only one is found; sneaky XOR trick
-    if (!exclude.count(true_val) != !exclude.count(false_val)) {
+    // if only one is found
+    if (exclude.count(true_val) != exclude.count(false_val)) {
         exclude.insert(&I);
         return VisitResult::NoProgress;
     } else {
