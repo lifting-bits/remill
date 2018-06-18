@@ -516,6 +516,9 @@ void AnalyzeAliases(llvm::Module *module, const std::vector<StateSlot> &slots) {
         DLOG(INFO) << "Aliases: " << fav.state_access_offset.size();
         DLOG(INFO) << "Excluded: " << fav.exclude.size();
         AddAAMDNodes(fav.state_access_offset, aamd_info.slot_aamds);
+        ForwardingBlockVisitor FBV(func, fav.state_offset,
+            aamd_info.slot_scopes, slots, &dl);
+        FBV.Visit();
         // Perform live set analysis
         LiveSetBlockVisitor LSBV(func, slots, aamd_info.slot_scopes,
             fav.state_offset, bb_func->getFunctionType(), &dl);
