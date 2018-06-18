@@ -517,7 +517,7 @@ void AnalyzeAliases(llvm::Module *module, const std::vector<StateSlot> &slots) {
         DLOG(INFO) << "Excluded: " << fav.exclude.size();
         AddAAMDNodes(fav.state_access_offset, aamd_info.slot_aamds);
         ForwardingBlockVisitor FBV(func, fav.state_access_offset,
-            aamd_info.slot_scopes, slots, &dl);
+            aamd_info.slot_scopes, slots, bb_func->getFunctionType(), &dl);
         FBV.Visit();
         // Perform live set analysis
         LiveSetBlockVisitor LSBV(func, slots, aamd_info.slot_scopes,
@@ -797,11 +797,13 @@ ForwardingBlockVisitor::ForwardingBlockVisitor(
     const InstToOffset &inst_to_offset_,
     const ScopeToOffset &scope_to_offset_,
     const std::vector<StateSlot> &state_slots_,
+    const llvm::FunctionType *lifted_func_ty_,
     const llvm::DataLayout *dl_)
     : func(func_),
       inst_to_offset(inst_to_offset_),
       scope_to_offset(scope_to_offset_),
       state_slots(state_slots_),
+      lifted_func_ty(lifted_func_ty_),
       dl(dl_) {}
 
 void ForwardingBlockVisitor::Visit(void) {
@@ -813,9 +815,21 @@ void ForwardingBlockVisitor::Visit(void) {
 
 void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
   std::unordered_map<StateSlot *, llvm::LoadInst *> slot_to_load;
+  auto truncated_loads = 0;
+  auto truncated_stores = 0;
+  auto replaced_loads = 0;
+  auto replaced_stores = 0;
   for (auto inst_it = B->rbegin(); inst_it != B->rend(); ++inst_it) {
     auto inst = &*inst_it;
-    if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
+    if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(inst)) {
+      if (call_inst->getFunctionType() == lifted_func_ty) {
+        slot_to_load.clear();
+      }
+    } else if (auto invoke_inst = llvm::dyn_cast<llvm::InvokeInst>(inst)) {
+      if (invoke_inst->getFunctionType() == lifted_func_ty) {
+        slot_to_load.clear();
+      }
+    } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
       if (auto scope = GetScopeFromInst(*inst)) {
         auto inst_size = dl->getTypeAllocSize(store_inst->getOperand(0)->getType());
         auto state_slot = state_slots[scope_to_offset.at(scope)];
@@ -826,8 +840,10 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
             if (next_size < inst_size) {
               auto trunc = new llvm::TruncInst(store_inst->getOperand(0), next->getType(), "", next);
               next->replaceAllUsesWith(trunc);
+              truncated_stores++;
             } else if (next_size == inst_size) {
               next->replaceAllUsesWith(store_inst->getOperand(0));
+              replaced_stores++;
             }
           }
         }
@@ -843,8 +859,10 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
             if (next_size < inst_size) {
               auto trunc = new llvm::TruncInst(load_inst, next->getType(), "", next);
               next->replaceAllUsesWith(trunc);
+              truncated_loads++;
             } else if (next_size == inst_size) {
               next->replaceAllUsesWith(load_inst);
+              replaced_loads++;
             }
           }
         } else {
@@ -853,6 +871,11 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
       }
     }
   }
+  LOG(INFO) << "Forwarded: "
+    << replaced_stores << " forwarded stores, "
+    << truncated_stores << " forwarded and truncated; "
+    << replaced_loads << " forwarded loads, "
+    << truncated_loads << " forwarded and truncated.";
 }
 
 // Identify complete stores to slots that are subsequently accessed by loads

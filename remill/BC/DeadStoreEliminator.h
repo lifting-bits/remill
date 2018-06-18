@@ -178,6 +178,7 @@ class ForwardingBlockVisitor {
     const InstToOffset &inst_to_offset;
     const ScopeToOffset &scope_to_offset;
     const std::vector<StateSlot> &state_slots;
+    const llvm::FunctionType *lifted_func_ty;
     //std::vector<llvm::BasicBlock *> curr_wl;
 
     ForwardingBlockVisitor(
@@ -185,6 +186,7 @@ class ForwardingBlockVisitor {
         const InstToOffset &inst_to_offset,
         const ScopeToOffset &scope_to_offset_,
         const std::vector<StateSlot> &state_slots_,
+        const llvm::FunctionType *lifted_func_ty_,
         const llvm::DataLayout *dl_);
     void Visit(void);
 
