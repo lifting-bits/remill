@@ -175,14 +175,14 @@ void GenerateLiveSet(llvm::Module *module, const std::vector<StateSlot> &state_s
 class ForwardingBlockVisitor {
   public:
     llvm::Function &func;
-    const ValueToOffset &val_to_offset;
+    const InstToOffset &inst_to_offset;
     const ScopeToOffset &scope_to_offset;
     const std::vector<StateSlot> &state_slots;
-    std::vector<llvm::BasicBlock *> curr_wl;
+    //std::vector<llvm::BasicBlock *> curr_wl;
 
     ForwardingBlockVisitor(
         llvm::Function &func_,
-        const ValueToOffset &val_to_offset_,
+        const InstToOffset &inst_to_offset,
         const ScopeToOffset &scope_to_offset_,
         const std::vector<StateSlot> &state_slots_,
         const llvm::DataLayout *dl_);

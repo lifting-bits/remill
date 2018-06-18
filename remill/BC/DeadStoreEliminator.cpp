@@ -516,7 +516,7 @@ void AnalyzeAliases(llvm::Module *module, const std::vector<StateSlot> &slots) {
         DLOG(INFO) << "Aliases: " << fav.state_access_offset.size();
         DLOG(INFO) << "Excluded: " << fav.exclude.size();
         AddAAMDNodes(fav.state_access_offset, aamd_info.slot_aamds);
-        ForwardingBlockVisitor FBV(func, fav.state_offset,
+        ForwardingBlockVisitor FBV(func, fav.state_access_offset,
             aamd_info.slot_scopes, slots, &dl);
         FBV.Visit();
         // Perform live set analysis
@@ -772,7 +772,7 @@ void LiveSetBlockVisitor::CreateDOTDigraph(void) {
       auto succ = &*succ_block_it;
       exit_live |= block_map[succ];
     }
-    dot << "<tr><td colspan=\"3\">";
+    dot << "<tr><td align=\"left\" colspan=\"3\">";
     // print out live slots
     sep = "live: ";
     for (uint64_t i = 0; i < exit_live.size(); i++) {
@@ -794,12 +794,12 @@ void LiveSetBlockVisitor::CreateDOTDigraph(void) {
 
 ForwardingBlockVisitor::ForwardingBlockVisitor(
     llvm::Function &func_,
-    const ValueToOffset &val_to_offset_,
+    const InstToOffset &inst_to_offset_,
     const ScopeToOffset &scope_to_offset_,
     const std::vector<StateSlot> &state_slots_,
     const llvm::DataLayout *dl_)
     : func(func_),
-      val_to_offset(val_to_offset_),
+      inst_to_offset(inst_to_offset_),
       scope_to_offset(scope_to_offset_),
       state_slots(state_slots_),
       dl(dl_) {}
@@ -822,7 +822,7 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
         if (slot_to_load.count(&state_slot)) {
           auto next = slot_to_load[&state_slot];
           auto next_size = dl->getTypeAllocSize(next->getType());
-          if (val_to_offset.at(store_inst) == val_to_offset.at(next)) {
+          if (inst_to_offset.at(store_inst) == inst_to_offset.at(next)) {
             if (next_size < inst_size) {
               auto trunc = new llvm::TruncInst(store_inst->getOperand(0), next->getType(), "", next);
               next->replaceAllUsesWith(trunc);
@@ -839,7 +839,7 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
         if (slot_to_load.count(&state_slot)) {
           auto next = slot_to_load[&state_slot];
           auto next_size = dl->getTypeAllocSize(next->getType());
-          if (val_to_offset.at(load_inst) == val_to_offset.at(next)) {
+          if (inst_to_offset.at(load_inst) == inst_to_offset.at(next)) {
             if (next_size < inst_size) {
               auto trunc = new llvm::TruncInst(load_inst, next->getType(), "", next);
               next->replaceAllUsesWith(trunc);
