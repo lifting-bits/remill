@@ -536,7 +536,7 @@ llvm::MDNode *GetScopeFromInst(llvm::Instruction &I) {
 
 LiveSetBlockVisitor::LiveSetBlockVisitor(
     llvm::Function &func_, const std::vector<StateSlot> &state_slots_,
-    const ScopeMap &scope_to_offset_, const ValueToOffset &val_to_offset_,
+    const ScopeToOffset &scope_to_offset_, const ValueToOffset &val_to_offset_,
     const llvm::FunctionType *lifted_func_ty_, const llvm::DataLayout *dl_)
     : func(func_),
       val_to_offset(val_to_offset_),
@@ -788,5 +788,81 @@ void LiveSetBlockVisitor::CreateDOTDigraph(void) {
   }
   dot << "}\n" << std::endl;
 }
+
+ForwardingBlockVisitor::ForwardingBlockVisitor(
+    llvm::Function &func_,
+    const ValueToOffset &val_to_offset_,
+    const ScopeToOffset &scope_to_offset_,
+    const std::vector<StateSlot> &state_slots_,
+    const llvm::DataLayout *dl_)
+    : func(func_),
+      val_to_offset(val_to_offset_),
+      scope_to_offset(scope_to_offset_),
+      state_slots(state_slots_),
+      dl(dl_) {}
+
+void ForwardingBlockVisitor::Visit(void) {
+  // if any visit makes progress, continue the loop
+  for (auto &block : func) {
+    VisitBlock(&block);
+  }
+}
+
+void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
+  std::unordered_map<StateSlot *, llvm::LoadInst *> slot_to_load;
+  for (auto inst_it = B->rbegin(); inst_it != B->rend(); ++inst_it) {
+    auto inst = &*inst_it;
+    if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
+      if (auto scope = GetScopeFromInst(*inst)) {
+        auto inst_size = dl->getTypeAllocSize(store_inst->getOperand(0)->getType());
+        auto state_slot = state_slots[scope_to_offset.at(scope)];
+        if (slot_to_load.count(&state_slot)) {
+          auto next = slot_to_load[&state_slot];
+          auto next_size = dl->getTypeAllocSize(next->getType());
+          if (val_to_offset.at(store_inst) == val_to_offset.at(next)) {
+            if (next_size < inst_size) {
+              auto trunc = new llvm::TruncInst(store_inst->getOperand(0), next->getType(), "", next);
+              next->replaceAllUsesWith(trunc);
+            } else if (next_size == inst_size) {
+              next->replaceAllUsesWith(store_inst->getOperand(0));
+            }
+          }
+        }
+      }
+    } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(inst)) {
+      if (auto scope = GetScopeFromInst(*load_inst)) {
+        auto inst_size = dl->getTypeAllocSize(load_inst->getType());
+        auto state_slot = state_slots[scope_to_offset.at(scope)];
+        if (slot_to_load.count(&state_slot)) {
+          auto next = slot_to_load[&state_slot];
+          auto next_size = dl->getTypeAllocSize(next->getType());
+          if (val_to_offset.at(load_inst) == val_to_offset.at(next)) {
+            if (next_size < inst_size) {
+              auto trunc = new llvm::TruncInst(load_inst, next->getType(), "", next);
+              next->replaceAllUsesWith(trunc);
+            } else if (next_size == inst_size) {
+              next->replaceAllUsesWith(load_inst);
+            }
+          }
+        } else {
+          slot_to_load.emplace(&state_slot, load_inst);
+        }
+      }
+    }
+  }
+}
+
+// Identify complete stores to slots that are subsequently accessed by loads
+// and then used, and perform store-to-load forwarding to condense this series of
+// statements from:
+//  a complete store to %Y of %X
+//  a load to %Z from %Y
+//  a series of statements using %Z
+// to:
+//  a series of statements using %X
+void ForwardStoresToLoads(void) {
+}
+
+
 
 }  // namespace remill

@@ -72,14 +72,27 @@ class StateVisitor {
 
 std::vector<StateSlot> StateSlots(llvm::Module *module);
 
+// ------------------ DataToOffset Map Types ---------------------------
+// Used for finding an offset into the vector of `StateSlot`s.
+//
+// A map from `llvm::Value *` data to a `uint64_t` offset.
+// Used to map a pointer to a slot.
 typedef std::unordered_map<llvm::Value *, uint64_t> ValueToOffset;
+//
+// A map from `llvm::Instruction *` data to a `uint64_t` offset.
+// Used to map an instruction to a slot.
 typedef std::unordered_map<llvm::Instruction *, uint64_t> InstToOffset;
-typedef std::unordered_map<llvm::MDNode *, uint64_t> ScopeMap;
+//
+// A map from `llvm::MDNode *` scope to a `uint64_t` offset.
+// Used to map metadata describing an instruction's scope to a slot.
+typedef std::unordered_map<llvm::MDNode *, uint64_t> ScopeToOffset;
+// ---------------------------------------------------------------------
 
 enum class VisitResult;
 
 enum class OpType;
 
+// An instruction visitor for determining aliasing of instructions to state slots.
 struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, VisitResult> {
   public:
     const std::vector<StateSlot> &state_slots;
@@ -113,7 +126,7 @@ struct ForwardAliasVisitor : public llvm::InstVisitor<ForwardAliasVisitor, Visit
 // - a map of MDNodes designating AAMDNode scope to the corresponding byte offset
 // - a vector of AAMDNodes for each byte offset
 struct AAMDInfo {
-  ScopeMap slot_scopes;
+  ScopeToOffset slot_scopes;
   std::vector<llvm::AAMDNodes> slot_aamds;
 
   AAMDInfo(const std::vector<StateSlot> &slots, llvm::LLVMContext &context);
@@ -127,11 +140,12 @@ typedef std::bitset<4096> LiveSet;
 
 llvm::MDNode *GetScopeFromInst(llvm::Instruction &I);
 
+// A basic block visitor for determining live state slots.
 class LiveSetBlockVisitor {
   public:
     llvm::Function &func;
     const ValueToOffset &val_to_offset;
-    const ScopeMap &scope_to_offset;
+    const ScopeToOffset &scope_to_offset;
     const std::vector<StateSlot> &state_slots;
     std::vector<llvm::BasicBlock *> curr_wl;
     std::unordered_map<llvm::BasicBlock *, LiveSet> block_map;
@@ -141,9 +155,9 @@ class LiveSetBlockVisitor {
 
     LiveSetBlockVisitor(
         llvm::Function &func_, const std::vector<StateSlot> &state_slots_,
-        const ScopeMap &scope_to_offset_, const ValueToOffset &val_to_offset_,
+        const ScopeToOffset &scope_to_offset_, const ValueToOffset &val_to_offset_,
         const llvm::FunctionType *lifted_func_ty_, const llvm::DataLayout *dl_);
-    void Visit();
+    void Visit(void);
 
     virtual void PerformRemovePass(bool create_dot);
     virtual bool VisitBlock(llvm::BasicBlock *B);
@@ -155,7 +169,30 @@ class LiveSetBlockVisitor {
     const llvm::DataLayout *dl;
 };
 
-void GenerateLiveSet(llvm::Module *module, const std::vector<StateSlot> &state_slots, const ScopeMap &scopes);
+void GenerateLiveSet(llvm::Module *module, const std::vector<StateSlot> &state_slots, const ScopeToOffset &scopes);
+
+// A basic block visitor for forwarding loads and stores that refer to the same state slots.
+class ForwardingBlockVisitor {
+  public:
+    llvm::Function &func;
+    const ValueToOffset &val_to_offset;
+    const ScopeToOffset &scope_to_offset;
+    const std::vector<StateSlot> &state_slots;
+    std::vector<llvm::BasicBlock *> curr_wl;
+
+    ForwardingBlockVisitor(
+        llvm::Function &func_,
+        const ValueToOffset &val_to_offset_,
+        const ScopeToOffset &scope_to_offset_,
+        const std::vector<StateSlot> &state_slots_,
+        const llvm::DataLayout *dl_);
+    void Visit(void);
+
+    virtual void VisitBlock(llvm::BasicBlock *B);
+
+  private:
+    const llvm::DataLayout *dl;
+};
 
 }  // namespace remill
 #endif  // REMILL_BC_DSELIM_H_
