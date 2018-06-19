@@ -244,7 +244,7 @@ void ForwardAliasVisitor::AddInstruction(llvm::Instruction *inst) {
 
   } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(inst)) {
     llvm::AAMDNodes aamd;
-    store_inst->setAAMetadata(aamd);
+    load_inst->setAAMetadata(aamd);
   }
 
   curr_wl.insert(inst);
@@ -1014,11 +1014,11 @@ std::vector<StateSlot> StateSlots(llvm::Module *module) {
 // Analyze a module, discover aliasing loads and stores, and remove dead
 // stores into the `State` structure.
 void RemoveDeadStores(llvm::Module *module,
+                      llvm::Function *bb_func,
                       const std::vector<StateSlot> &slots) {
 
   const AAMDInfo aamd_info(slots, module->getContext());
   const llvm::DataLayout dl = module->getDataLayout();
-  auto bb_func = BasicBlockFunction(module);
 
   for (auto &func : *module) {
     if (&func == bb_func ||
