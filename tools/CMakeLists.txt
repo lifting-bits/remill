@@ -14,7 +14,7 @@
 
 # mcsema needs to be manually cloned into this repo.
 if (EXISTS ${CMAKE_SOURCE_DIR}/tools/mcsema)
-    add_subdirectory(mcsema)
+    #add_subdirectory(mcsema)
 endif ()
 
 if (EXISTS ${CMAKE_SOURCE_DIR}/tools/fcd)
