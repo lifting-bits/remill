@@ -15,6 +15,7 @@
  */
 
 #include <glog/logging.h>
+#include <gflags/gflags.h>
 
 #include <cstdio>
 #include <fstream>
@@ -33,6 +34,12 @@
 #include "remill/BC/DeadStoreEliminator.h"
 #include "remill/BC/Util.h"
 #include "remill/BC/Compat/Local.h"
+#include "remill/OS/FileSystem.h"
+
+DEFINE_string(dot_output_dir, "",
+              "The directory in which to log DOT digraphs of the alias "
+              "analysis information derived during the process of "
+              "eliminating dead stores");
 
 namespace remill {
 namespace {
@@ -156,6 +163,8 @@ static bool TryGetOffsetOrConst(
 enum class VisitResult : int {
   Progress,
   NoProgress,
+  Incomplete,
+  Ignored,
   Error
 };
 
@@ -196,17 +205,13 @@ struct ForwardAliasVisitor
  public:
   virtual ~ForwardAliasVisitor(void) = default;
 
-  const std::vector<StateSlot> &state_slots;
-  ValueToOffset state_offset;
-  InstToOffset state_access_offset;
-  std::unordered_set<llvm::Value *> exclude;
-  std::unordered_set<llvm::Instruction *> curr_wl;
+  ForwardAliasVisitor(const llvm::DataLayout &dl_,
+                      const std::vector<StateSlot> &state_slots_);
 
-  ForwardAliasVisitor(const std::vector<StateSlot> &state_slots_,
-                      const llvm::DataLayout *dl_, llvm::Value *sp_);
+  bool Analyze(llvm::Function *func);
 
-  void AddInstruction(llvm::Instruction *inst);
-  bool Analyze(void);
+ protected:
+  friend class llvm::InstVisitor<ForwardAliasVisitor, VisitResult>;
 
   virtual VisitResult visitInstruction(llvm::Instruction &I);
   virtual VisitResult visitAllocaInst(llvm::AllocaInst &I);
@@ -220,22 +225,28 @@ struct ForwardAliasVisitor
   virtual VisitResult visitPHINode(llvm::PHINode &I);
 
  private:
+  void AddInstruction(llvm::Instruction *inst);
   virtual VisitResult visitBinaryOp_(llvm::BinaryOperator &inst, OpType op);
 
-  const llvm::Value *state_ptr;
-  const llvm::DataLayout *dl;
+ public:
+  const llvm::DataLayout dl;
+  const std::vector<StateSlot> &state_slots;
+  ValueToOffset state_offset;
+  InstToOffset state_access_offset;
+  std::unordered_set<llvm::Value *> exclude;
+  std::vector<llvm::Instruction *> curr_wl;
+  llvm::Value *state_ptr;
 };
 
 ForwardAliasVisitor::ForwardAliasVisitor(
-    const std::vector<StateSlot> &state_slots_, const llvm::DataLayout *dl_,
-    llvm::Value *sp_)
-    : state_slots(state_slots_),
-      state_offset({{sp_, 0}}),
+    const llvm::DataLayout &dl_, const std::vector<StateSlot> &state_slots_)
+    : dl(dl_),
+      state_slots(state_slots_),
+      state_offset(),
       state_access_offset(),
       exclude(),
       curr_wl(),
-      state_ptr(sp_),
-      dl(dl_) {}
+      state_ptr(nullptr) {}
 
 void ForwardAliasVisitor::AddInstruction(llvm::Instruction *inst) {
   if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
@@ -247,43 +258,90 @@ void ForwardAliasVisitor::AddInstruction(llvm::Instruction *inst) {
     load_inst->setAAMetadata(aamd);
   }
 
-  curr_wl.insert(inst);
+  curr_wl.push_back(inst);
 }
 
-// Iterate through the current worklist, updating the state_offset and state_access_offset
-// according to the instructions in the list. Any instruction that is not
-// currently interpretable (some of its pointers are not yet in the state_offset)
-// is withheld to the next analysis round in the next worklist.
-// Analysis repeats until the current worklist is empty.
-bool ForwardAliasVisitor::Analyze(void) {
+// Iterate through the current worklist, updating the `state_offset` and
+// `state_access_offset` according to the instructions in the list. Any
+// instruction that is not currently interpretable (some of its pointers
+// are not yet in `state_offset`) is withheld to the next analysis round
+// in the next worklist. Analysis repeats until the current worklist is
+// empty or until an error condition is hit.
+bool ForwardAliasVisitor::Analyze(llvm::Function *func) {
+  curr_wl.clear();
+  exclude.clear();
+  state_access_offset.clear();
+  state_offset.clear();
+
+  state_ptr = LoadStatePointer(func);
+  if (!state_ptr) {
+    return false;
+  }
+
+  state_offset.emplace(state_ptr, 0);
+
+  for (auto &block : *func) {
+    for (auto &inst : block) {
+      AddInstruction(&inst);
+    }
+  }
+
+  std::vector<llvm::Instruction *> next_wl;
+  std::vector<llvm::Instruction *> pending_wl;
+  next_wl.reserve(curr_wl.size());
+
   bool progress = true;
-  std::unordered_set<llvm::Instruction *> next_wl;
-  // if any visit makes progress, continue the loop
-  while (!curr_wl.empty() && progress) {
+  bool bump = false;
+
+  while (!curr_wl.empty() && (progress || bump)) {
+    curr_wl.insert(curr_wl.end(), pending_wl.begin(), pending_wl.end());
+    pending_wl.clear();
+
     progress = false;
+
     for (auto inst : curr_wl) {
       switch (visit(inst)) {
         case VisitResult::Progress:
           progress = true;
           break;
+        case VisitResult::Incomplete:
+          pending_wl.push_back(inst);
+          break;
         case VisitResult::NoProgress:
-          next_wl.insert(inst);
+          next_wl.push_back(inst);
+          break;
+        case VisitResult::Ignored:
           break;
         case VisitResult::Error:
           return false;
       }
     }
-    // update curr_wl to the next set of insts
+
     curr_wl.swap(next_wl);
-    // reset upcoming insts
     next_wl.clear();
+
+    if (progress || bump) {
+      bump = false;
+    } else if (!pending_wl.empty()) {
+      bump = true;
+    }
   }
-  //TODO(tim): check for possible errors?
+
+  // TODO(tim): This condition is triggered a lot.
+  if (!pending_wl.empty()) {
+    DLOG(ERROR)
+        << "Alias analysis failed to complete on function `"
+        << func->getName().str() << "` with " << curr_wl.size()
+        << " instructions in the worklist and " << pending_wl.size()
+        << " incomplete but no progress made in the last"
+        << " iteration";
+  }
+
   return true;
 }
 
 VisitResult ForwardAliasVisitor::visitInstruction(llvm::Instruction &I) {
-  return VisitResult::Progress;
+  return VisitResult::Ignored;
 }
 
 VisitResult ForwardAliasVisitor::visitAllocaInst(llvm::AllocaInst &I) {
@@ -367,7 +425,7 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(
 
   // Try to get the offset as a single constant. If we can't then
   llvm::APInt const_offset(64, 0);
-  if (!inst.accumulateConstantOffset(*dl, const_offset)) {
+  if (!inst.accumulateConstantOffset(dl, const_offset)) {
     return VisitResult::Error;
   }
 
@@ -429,10 +487,20 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(
 
   uint64_t lhs_offset = 0;
   uint64_t rhs_offset = 0;
+  auto num_offsets = 0;
+  auto ret = VisitResult::NoProgress;
 
-  if (TryGetOffsetOrConst(lhs_val, state_offset, &lhs_offset) &&
-      TryGetOffsetOrConst(rhs_val, state_offset, &rhs_offset)) {
+  if (TryGetOffsetOrConst(lhs_val, state_offset, &lhs_offset)) {
+    ret = VisitResult::Incomplete;
+    num_offsets += 1;
+  }
 
+  if (TryGetOffsetOrConst(rhs_val, state_offset, &rhs_offset)) {
+    ret = VisitResult::Incomplete;
+    num_offsets += 1;
+  }
+
+  if (2 == num_offsets) {
     uint64_t offset = 0;
     if (!TryCombineOffsets(lhs_offset, op, rhs_offset, state_slots.size(),
                            &offset)) {
@@ -450,8 +518,7 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(
     return VisitResult::Progress;
 
   } else {
-    return VisitResult::NoProgress;
-
+    return ret;
   }
 }
 
@@ -474,11 +541,11 @@ VisitResult ForwardAliasVisitor::visitSelect(llvm::SelectInst &inst) {
   } else if (in_state_offset) {
     if (true_ptr == state_offset.end()) {
       state_offset.emplace(&inst, false_ptr->second);
-      return VisitResult::NoProgress;  // Wait for the other to be found.
+      return VisitResult::Incomplete;  // Wait for the other to be found.
 
     } else if (false_ptr == state_offset.end()) {
       state_offset.emplace(&inst, true_ptr->second);
-      return VisitResult::NoProgress;  // Wait for the other to be found.
+      return VisitResult::Incomplete;  // Wait for the other to be found.
 
     // Both point into `State`.
     } else {
@@ -496,7 +563,7 @@ VisitResult ForwardAliasVisitor::visitSelect(llvm::SelectInst &inst) {
   } else if (in_exclude_set) {
     if (exclude.count(true_val) != exclude.count(false_val)) {
       exclude.insert(&inst);
-      return VisitResult::NoProgress;  // Wait for the other to be found.
+      return VisitResult::Incomplete;  // Wait for the other to be found.
 
     } else {
       exclude.insert(&inst);
@@ -555,15 +622,17 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
   // in the presence of loops.
   } else if (in_state_offset) {
     state_offset.emplace(&I, offset);
+    return (complete ? VisitResult::Progress : VisitResult::Incomplete);
 
+  // Similar case to above, but at least one thing is in the exclude set.
   } else if (in_exclude_set) {
     exclude.insert(&I);
+    return (complete ? VisitResult::Progress : VisitResult::Incomplete);
+
+  } else {
+    return VisitResult::NoProgress;
   }
-
-  return (complete ? VisitResult::Progress : VisitResult::NoProgress);
 }
-
-
 
 // Back-and-forth mapping between LLVM meta-data node that we create per slot,
 // and `StateSlot`s.
@@ -659,9 +728,9 @@ class LiveSetBlockVisitor {
                       const ValueToOffset &val_to_offset_,
                       const llvm::FunctionType *lifted_func_ty_,
                       const llvm::DataLayout *dl_);
-  void Visit();
+  void FindLiveInsts();
 
-  void PerformRemovePass(void);
+  void CollectDeadInsts(void);
   bool VisitBlock(llvm::BasicBlock *B);
   bool DeleteDeadInsts(void);
   void CreateDOTDigraph(std::ostream &dot);
@@ -695,7 +764,7 @@ LiveSetBlockVisitor::LiveSetBlockVisitor(
 }
 
 // Visit the basic blocks in the worklist and update the block_map.
-void LiveSetBlockVisitor::Visit(void) {
+void LiveSetBlockVisitor::FindLiveInsts(void) {
   std::vector<llvm::BasicBlock *> next_wl;
   while (!curr_wl.empty()) {
     for (auto block : curr_wl) {
@@ -818,7 +887,7 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
   }
 }
 
-void LiveSetBlockVisitor::PerformRemovePass(void) {
+void LiveSetBlockVisitor::CollectDeadInsts(void) {
   on_remove_pass = true;
   for (auto &block : func) {
     VisitBlock(&block);
@@ -853,7 +922,7 @@ bool LiveSetBlockVisitor::DeleteDeadInsts(void) {
 
 // Generate a DOT digraph file representing the dataflow of the LSBV.
 void LiveSetBlockVisitor::CreateDOTDigraph(std::ostream &dot) {
-  dot << "digraph " << func.getName().str() << " {" << std::endl
+  dot << "digraph {" << std::endl
       << "node [shape=none margin=0 nojustify=false labeljust=l]"
       << std::endl;
 
@@ -906,23 +975,29 @@ void LiveSetBlockVisitor::CreateDOTDigraph(std::ostream &dot) {
         dot << "<td align=\"left\">  ";
 
         if (!call_inst->getType()->isVoidTy()) {
-          dot << "%" << call_inst->getName().str() << " = ";
+          dot << "%" << call_inst->getValueID() << " = ";
         }
 
-        dot << "call "
-            << call_inst->getCalledValue()->getName().str();
+        auto called_val = call_inst->getCalledValue();
+
+        dot << "call ";
+        if (called_val->getName().empty()) {
+          dot << called_val->getValueID();
+        } else {
+          dot << called_val->getName().str();
+        }
 
       // PHI nodes can also be quite wide (with the incoming block names)
       // so we compress those as well.
       } else if (auto phi_node = llvm::dyn_cast<llvm::PHINode>(&inst)) {
         dot << "<td align=\"left\">"
-            << "  %" << phi_node->getName().str();
+            << "  %" << phi_node->getValueID();
 
-        sep = " = ";
+        sep = " = phi ";
         for (auto i = 0U; i < phi_node->getNumIncomingValues(); ++i) {
           auto val = phi_node->getIncomingValue(i);
           if (auto inst_val = llvm::dyn_cast<llvm::Instruction>(val)) {
-            dot << sep << "%" << inst_val->getName().str();
+            dot << sep << "%" << inst_val->getValueID();
           } else {
             dot << sep << "...";
           }
@@ -999,6 +1074,17 @@ static void AddAAMDNodes(
 // Returns a covering vector of `StateSlots` for the module's `State` type.
 // This vector contains one entry per byte of the `State` type.
 std::vector<StateSlot> StateSlots(llvm::Module *module) {
+
+  if (!FLAGS_dot_output_dir.empty()) {
+    if (!TryCreateDirectory(FLAGS_dot_output_dir)) {
+      FLAGS_dot_output_dir.clear();
+      LOG(ERROR)
+          << "Invalid path specified to `--dot_output_dir`.";
+    } else {
+      FLAGS_dot_output_dir = CanonicalPath(FLAGS_dot_output_dir);
+    }
+  }
+
   auto state_ptr_type = StatePointerType(module);
   auto type = state_ptr_type->getElementType();
   CHECK(type->isStructTy());
@@ -1027,27 +1113,46 @@ void RemoveDeadStores(llvm::Module *module,
       continue;
     }
 
-    auto sp = LoadStatePointer(&func);
-    ForwardAliasVisitor fav(slots, &dl, sp);
-    DLOG(INFO) << "Analyzing aliases of func " << func.getName().str();
-    for (auto &block : func) {
-      for (auto &inst : block) {
-        fav.AddInstruction(&inst);
-      }
-    }
+    ForwardAliasVisitor fav(dl, slots);
 
     // if the analysis succeeds for this function, add the AAMDNodes
-    if (fav.Analyze()) {
+    if (fav.Analyze(&func)) {
       DLOG(INFO) << "Offsets: " << fav.state_offset.size();
       DLOG(INFO) << "Aliases: " << fav.state_access_offset.size();
       DLOG(INFO) << "Excluded: " << fav.exclude.size();
       AddAAMDNodes(fav.state_access_offset, aamd_info.slot_aamds);
+
       // Perform live set analysis
-      LiveSetBlockVisitor LSBV(func, slots, aamd_info.slot_scopes,
+      LiveSetBlockVisitor visitor(func, slots, aamd_info.slot_scopes,
           fav.state_offset, bb_func->getFunctionType(), &dl);
-      LSBV.Visit();
-      LSBV.PerformRemovePass();
-      LSBV.DeleteDeadInsts();
+
+      visitor.FindLiveInsts();
+      visitor.CollectDeadInsts();
+
+      std::stringstream fname;
+
+      // Log useful DOT digraphs to a directory for every successfully
+      // analyzed function.
+      if (!FLAGS_dot_output_dir.empty()) {
+        fname << FLAGS_dot_output_dir << PathSeparator();
+
+        if (func.getName().empty()) {
+          fname << "func_" << std::hex << reinterpret_cast<uintptr_t>(&func);
+        } else {
+          fname << func.getName().str();
+        }
+
+        std::ofstream dot(fname.str());
+        visitor.CreateDOTDigraph(dot);
+      }
+
+      visitor.DeleteDeadInsts();
+
+      if (!FLAGS_dot_output_dir.empty()) {
+        fname << ".post";
+        std::ofstream dot(fname.str());
+        visitor.CreateDOTDigraph(dot);
+      }
     }
   }
 }
