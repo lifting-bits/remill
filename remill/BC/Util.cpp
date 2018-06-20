@@ -270,7 +270,7 @@ llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
 // Store an LLVM module into a file.
 bool StoreModuleToFile(llvm::Module *module, std::string file_name,
                        bool allow_failure) {
-  LOG(INFO)
+  DLOG(INFO)
       << "Saving bitcode to file " << file_name;
 
   std::stringstream ss;
