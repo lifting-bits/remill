@@ -722,9 +722,9 @@ class LiveSetBlockVisitor {
   LiveSet func_used;
 
   LiveSetBlockVisitor(llvm::Function &func_,
-                      const std::vector<StateSlot> &state_slots_,
-                      const ScopeToOffset &scope_to_offset_,
                       const ValueToOffset &val_to_offset_,
+                      const ScopeToOffset &scope_to_offset_,
+                      const std::vector<StateSlot> &state_slots_,
                       const llvm::FunctionType *lifted_func_ty_,
                       const llvm::DataLayout *dl_);
   void FindLiveInsts();
@@ -740,9 +740,12 @@ class LiveSetBlockVisitor {
 };
 
 LiveSetBlockVisitor::LiveSetBlockVisitor(
-    llvm::Function &func_, const std::vector<StateSlot> &state_slots_,
-    const ScopeToOffset &scope_to_offset_, const ValueToOffset &val_to_offset_,
-    const llvm::FunctionType *lifted_func_ty_, const llvm::DataLayout *dl_)
+    llvm::Function &func_,
+    const ValueToOffset &val_to_offset_,
+    const ScopeToOffset &scope_to_offset_,
+    const std::vector<StateSlot> &state_slots_,
+    const llvm::FunctionType *lifted_func_ty_,
+    const llvm::DataLayout *dl_)
     : func(func_),
       val_to_offset(val_to_offset_),
       scope_to_offset(scope_to_offset_),
@@ -1081,11 +1084,10 @@ class ForwardingBlockVisitor {
       const InstToOffset &inst_to_offset_,
       const ScopeToOffset &scope_to_offset_,
       const std::vector<StateSlot> &state_slots_,
-      const llvm::FunctionType *lifted_func_ty_,
       const llvm::DataLayout *dl_);
 
-    void Visit(void);
-    void VisitBlock(llvm::BasicBlock *block);
+    void Visit(const ValueToOffset &val_to_offset);
+    void VisitBlock(llvm::BasicBlock *block, const ValueToOffset &val_to_offset);
 
   private:
     const llvm::DataLayout *dl;
@@ -1096,23 +1098,21 @@ ForwardingBlockVisitor::ForwardingBlockVisitor(
     const InstToOffset &inst_to_offset_,
     const ScopeToOffset &scope_to_offset_,
     const std::vector<StateSlot> &state_slots_,
-    const llvm::FunctionType *lifted_func_ty_,
     const llvm::DataLayout *dl_)
     : func(func_),
       inst_to_offset(inst_to_offset_),
       scope_to_offset(scope_to_offset_),
       state_slots(state_slots_),
-      lifted_func_ty(lifted_func_ty_),
       dl(dl_) {}
 
-void ForwardingBlockVisitor::Visit(void) {
+void ForwardingBlockVisitor::Visit(const ValueToOffset &val_to_offset) {
   // if any visit makes progress, continue the loop
   for (auto &block : func) {
-    VisitBlock(&block);
+    VisitBlock(&block, val_to_offset);
   }
 }
 
-void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
+void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block, const ValueToOffset &val_to_offset) {
   std::unordered_map<StateSlot *, llvm::LoadInst *> slot_to_load;
   auto truncated_loads = 0;
   auto truncated_stores = 0;
@@ -1120,13 +1120,32 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
   auto replaced_stores = 0;
   for (auto inst_it = block->rbegin(); inst_it != block->rend(); ++inst_it) {
     auto inst = &*inst_it;
-    if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(inst)) {
-      if (call_inst->getFunctionType() == lifted_func_ty) {
-        slot_to_load.clear();
+    if (llvm::isa<llvm::CallInst>(inst) ||
+        llvm::isa<llvm::InvokeInst>(inst)) {
+      auto args = inst->operands();
+      if (llvm::isa<llvm::CallInst>(inst)) {
+        args = llvm::dyn_cast<llvm::CallInst>(inst)->arg_operands();
+      } else {
+        args = llvm::dyn_cast<llvm::InvokeInst>(inst)->arg_operands();
       }
-    } else if (auto invoke_inst = llvm::dyn_cast<llvm::InvokeInst>(inst)) {
-      if (invoke_inst->getFunctionType() == lifted_func_ty) {
-        slot_to_load.clear();
+
+      for (auto &arg_it : args) {
+        auto arg = arg_it->stripPointerCasts();
+        const auto offset_it = val_to_offset.find(arg);
+        if (offset_it != val_to_offset.end()) {
+          const auto offset = offset_it->second;
+
+          // If we access a single non-zero offset, mark just that slot.
+          if (offset != 0) {
+            auto slot = state_slots[offset];
+            slot_to_load.erase(&slot);
+
+          // If we access offset `0`, then maybe we're actually passing
+          // a state pointer, in which anything can be changed.
+          } else {
+            slot_to_load.clear();
+          }
+        }
       }
     } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
       if (auto scope = GetScopeFromInst(*inst)) {
@@ -1230,9 +1249,14 @@ void RemoveDeadStores(llvm::Module *module,
       DLOG(INFO) << "Excluded: " << fav.exclude.size();
       AddAAMDNodes(fav.state_access_offset, aamd_info.slot_aamds);
 
+      // Perform load and store forwarding
+      ForwardingBlockVisitor fbv(func, fav.state_access_offset, aamd_info.slot_scopes,
+          slots, &dl);
+      fbv.Visit(fav.state_offset);
+
       // Perform live set analysis
-      LiveSetBlockVisitor visitor(func, slots, aamd_info.slot_scopes,
-          fav.state_offset, bb_func->getFunctionType(), &dl);
+      LiveSetBlockVisitor visitor(func, fav.state_offset, aamd_info.slot_scopes,
+          slots, bb_func->getFunctionType(), &dl);
 
       visitor.FindLiveInsts();
       visitor.CollectDeadInsts();
@@ -1264,17 +1288,5 @@ void RemoveDeadStores(llvm::Module *module,
     }
   }
 }
-
-// Identify complete stores to slots that are subsequently accessed by loads
-// and then used, and perform store-to-load forwarding to condense this series of
-// statements from:
-//  a complete store to %Y of %X
-//  a load to %Z from %Y
-//  a series of statements using %Z
-// to:
-//  a series of statements using %X
-void ForwardStoresToLoads(void) {
-}
-
 
 }  // namespace remill
