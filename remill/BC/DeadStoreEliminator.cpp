@@ -705,7 +705,6 @@ AAMDInfo::AAMDInfo(const std::vector<StateSlot> &slots,
         context, llvm::MDTuple::get(context, noalias_vec));
     slot_aamds.emplace_back(nullptr, scope_offsets[i].first, noalias);
   }
-  
   slot_scopes.insert(scope_offsets.begin(), scope_offsets.end());
 }
 
@@ -742,7 +741,7 @@ class LiveSetBlockVisitor {
 
 LiveSetBlockVisitor::LiveSetBlockVisitor(
     llvm::Function &func_, const std::vector<StateSlot> &state_slots_,
-    const ScopeMap &scope_to_offset_, const ValueToOffset &val_to_offset_,
+    const ScopeToOffset &scope_to_offset_, const ValueToOffset &val_to_offset_,
     const llvm::FunctionType *lifted_func_ty_, const llvm::DataLayout *dl_)
     : func(func_),
       val_to_offset(val_to_offset_),
@@ -1156,5 +1155,103 @@ void RemoveDeadStores(llvm::Module *module,
     }
   }
 }
+
+ForwardingBlockVisitor::ForwardingBlockVisitor(
+    llvm::Function &func_,
+    const InstToOffset &inst_to_offset_,
+    const ScopeToOffset &scope_to_offset_,
+    const std::vector<StateSlot> &state_slots_,
+    const llvm::FunctionType *lifted_func_ty_,
+    const llvm::DataLayout *dl_)
+    : func(func_),
+      inst_to_offset(inst_to_offset_),
+      scope_to_offset(scope_to_offset_),
+      state_slots(state_slots_),
+      lifted_func_ty(lifted_func_ty_),
+      dl(dl_) {}
+
+void ForwardingBlockVisitor::Visit(void) {
+  // if any visit makes progress, continue the loop
+  for (auto &block : func) {
+    VisitBlock(&block);
+  }
+}
+
+void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
+  std::unordered_map<StateSlot *, llvm::LoadInst *> slot_to_load;
+  auto truncated_loads = 0;
+  auto truncated_stores = 0;
+  auto replaced_loads = 0;
+  auto replaced_stores = 0;
+  for (auto inst_it = B->rbegin(); inst_it != B->rend(); ++inst_it) {
+    auto inst = &*inst_it;
+    if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(inst)) {
+      if (call_inst->getFunctionType() == lifted_func_ty) {
+        slot_to_load.clear();
+      }
+    } else if (auto invoke_inst = llvm::dyn_cast<llvm::InvokeInst>(inst)) {
+      if (invoke_inst->getFunctionType() == lifted_func_ty) {
+        slot_to_load.clear();
+      }
+    } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
+      if (auto scope = GetScopeFromInst(*inst)) {
+        auto inst_size = dl->getTypeAllocSize(store_inst->getOperand(0)->getType());
+        auto state_slot = state_slots[scope_to_offset.at(scope)];
+        if (slot_to_load.count(&state_slot)) {
+          auto next = slot_to_load[&state_slot];
+          auto next_size = dl->getTypeAllocSize(next->getType());
+          if (inst_to_offset.at(store_inst) == inst_to_offset.at(next)) {
+            if (next_size < inst_size) {
+              auto trunc = new llvm::TruncInst(store_inst->getOperand(0), next->getType(), "", next);
+              next->replaceAllUsesWith(trunc);
+              truncated_stores++;
+            } else if (next_size == inst_size) {
+              next->replaceAllUsesWith(store_inst->getOperand(0));
+              replaced_stores++;
+            }
+          }
+        }
+      }
+    } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(inst)) {
+      if (auto scope = GetScopeFromInst(*load_inst)) {
+        auto inst_size = dl->getTypeAllocSize(load_inst->getType());
+        auto state_slot = state_slots[scope_to_offset.at(scope)];
+        if (slot_to_load.count(&state_slot)) {
+          auto next = slot_to_load[&state_slot];
+          auto next_size = dl->getTypeAllocSize(next->getType());
+          if (inst_to_offset.at(load_inst) == inst_to_offset.at(next)) {
+            if (next_size < inst_size) {
+              auto trunc = new llvm::TruncInst(load_inst, next->getType(), "", next);
+              next->replaceAllUsesWith(trunc);
+              truncated_loads++;
+            } else if (next_size == inst_size) {
+              next->replaceAllUsesWith(load_inst);
+              replaced_loads++;
+            }
+          }
+        } else {
+          slot_to_load.emplace(&state_slot, load_inst);
+        }
+      }
+    }
+  }
+  LOG(INFO) << "Forwarded: "
+    << replaced_stores << " forwarded stores, "
+    << truncated_stores << " forwarded and truncated; "
+    << replaced_loads << " forwarded loads, "
+    << truncated_loads << " forwarded and truncated.";
+}
+
+// Identify complete stores to slots that are subsequently accessed by loads
+// and then used, and perform store-to-load forwarding to condense this series of
+// statements from:
+//  a complete store to %Y of %X
+//  a load to %Z from %Y
+//  a series of statements using %Z
+// to:
+//  a series of statements using %X
+void ForwardStoresToLoads(void) {
+}
+
 
 }  // namespace remill
