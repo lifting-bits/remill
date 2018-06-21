@@ -41,6 +41,11 @@ DEFINE_string(dot_output_dir, "",
               "analysis information derived during the process of "
               "eliminating dead stores");
 
+DEFINE_bool(disable_register_forwarding, false,
+            "Whether or not register forwarding should be enabled "
+            "to perform load-to-load and load-to-store forwarding "
+            "to eliminate dead instructions more aggressively");
+
 namespace remill {
 namespace {
 
@@ -48,6 +53,15 @@ using ValueToOffset = std::unordered_map<llvm::Value *, uint64_t>;
 using InstToOffset = std::unordered_map<llvm::Instruction *, uint64_t>;
 using ScopeToOffset = std::unordered_map<llvm::MDNode *, uint64_t>;
 using LiveSet = std::bitset<4096>;
+
+// Struct to keep track of how murderous the dead store eliminator is.
+struct KillCounter {
+  uint64_t dead_stores;
+  uint64_t removed_insts;
+  uint64_t fwd_loads;
+  uint64_t fwd_stores;
+  uint64_t fwd_truncated;
+};
 
 // Recursive visitor of the `State` structure that assigns slots of ranges of
 // bytes.
@@ -731,7 +745,7 @@ class LiveSetBlockVisitor {
 
   void CollectDeadInsts(void);
   bool VisitBlock(llvm::BasicBlock *block);
-  bool DeleteDeadInsts(void);
+  bool DeleteDeadInsts(KillCounter &stats);
   void CreateDOTDigraph(std::ostream &dot);
 
  private:
@@ -898,9 +912,11 @@ void LiveSetBlockVisitor::CollectDeadInsts(void) {
 }
 
 // Remove all dead stores.
-bool LiveSetBlockVisitor::DeleteDeadInsts(void) {
+bool LiveSetBlockVisitor::DeleteDeadInsts(KillCounter &stats) {
+  stats.dead_stores += to_remove.size();
   bool changed = false;
   while (!to_remove.empty()) {
+    stats.removed_insts++;
     auto inst = to_remove.back();
     to_remove.pop_back();
 
@@ -1078,6 +1094,10 @@ class ForwardingBlockVisitor {
     const ScopeToOffset &scope_to_offset;
     const std::vector<StateSlot> &state_slots;
     const llvm::FunctionType *lifted_func_ty;
+    int truncated_loads;
+    int truncated_stores;
+    int replaced_loads;
+    int replaced_stores;
 
     ForwardingBlockVisitor(
       llvm::Function &func_,
@@ -1086,7 +1106,7 @@ class ForwardingBlockVisitor {
       const std::vector<StateSlot> &state_slots_,
       const llvm::DataLayout *dl_);
 
-    void Visit(const ValueToOffset &val_to_offset);
+    void Visit(const ValueToOffset &val_to_offset, KillCounter &stats);
     void VisitBlock(llvm::BasicBlock *block, const ValueToOffset &val_to_offset);
 
   private:
@@ -1105,21 +1125,28 @@ ForwardingBlockVisitor::ForwardingBlockVisitor(
       state_slots(state_slots_),
       dl(dl_) {}
 
-void ForwardingBlockVisitor::Visit(const ValueToOffset &val_to_offset) {
+void ForwardingBlockVisitor::Visit(const ValueToOffset &val_to_offset, KillCounter &stats) {
   // if any visit makes progress, continue the loop
+  truncated_loads = 0;
+  truncated_stores = 0;
+  replaced_loads = 0;
+  replaced_stores = 0;
   for (auto &block : func) {
     VisitBlock(&block, val_to_offset);
   }
+  stats.fwd_loads = replaced_loads;
+  stats.fwd_stores = replaced_stores;
+  stats.fwd_truncated = truncated_loads + truncated_stores;
 }
 
 void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block, const ValueToOffset &val_to_offset) {
   std::unordered_map<StateSlot *, llvm::LoadInst *> slot_to_load;
-  auto truncated_loads = 0;
-  auto truncated_stores = 0;
-  auto replaced_loads = 0;
-  auto replaced_stores = 0;
+  std::vector<llvm::Instruction *> insts;
   for (auto inst_it = block->rbegin(); inst_it != block->rend(); ++inst_it) {
-    auto inst = &*inst_it;
+    insts.push_back(&*inst_it);
+  }
+  for (auto &inst : insts) {
+    //auto inst = &*inst_it;
     if (llvm::isa<llvm::CallInst>(inst) ||
         llvm::isa<llvm::InvokeInst>(inst)) {
       auto args = inst->operands();
@@ -1149,18 +1176,24 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block, const ValueToOf
       }
     } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
       if (auto scope = GetScopeFromInst(*inst)) {
-        auto inst_size = dl->getTypeAllocSize(store_inst->getOperand(0)->getType());
+        auto addr = store_inst->getOperand(0);
+        auto inst_size = dl->getTypeAllocSize(addr->getType());
         auto state_slot = state_slots[scope_to_offset.at(scope)];
         if (slot_to_load.count(&state_slot)) {
-          auto next = slot_to_load[&state_slot];
-          auto next_size = dl->getTypeAllocSize(next->getType());
-          if (inst_to_offset.at(store_inst) == inst_to_offset.at(next)) {
+          auto next_load = slot_to_load[&state_slot];
+          auto next_type = next_load->getType();
+          if (next_type->isIntegerTy() != addr->getType()->isIntegerTy()) {
+            slot_to_load.erase(&state_slot);
+            continue;
+          }
+          auto next_size = dl->getTypeAllocSize(next_type);
+          if (inst_to_offset.at(store_inst) == inst_to_offset.at(next_load)) {
             if (next_size < inst_size) {
-              auto trunc = new llvm::TruncInst(store_inst->getOperand(0), next->getType(), "", next);
-              next->replaceAllUsesWith(trunc);
+              auto trunc = new llvm::TruncInst(addr, next_type, "", next_load);
+              next_load->replaceAllUsesWith(trunc);
               truncated_stores++;
             } else if (next_size == inst_size) {
-              next->replaceAllUsesWith(store_inst->getOperand(0));
+              next_load->replaceAllUsesWith(addr);
               replaced_stores++;
             }
           }
@@ -1171,17 +1204,34 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block, const ValueToOf
         auto inst_size = dl->getTypeAllocSize(load_inst->getType());
         auto state_slot = state_slots[scope_to_offset.at(scope)];
         if (slot_to_load.count(&state_slot)) {
-          auto next = slot_to_load[&state_slot];
-          auto next_size = dl->getTypeAllocSize(next->getType());
-          if (inst_to_offset.at(load_inst) == inst_to_offset.at(next)) {
+          auto next_load = slot_to_load[&state_slot];
+          auto next_type = next_load->getType();
+          if (next_type->isIntegerTy() != load_inst->getType()->isIntegerTy()) {
+            slot_to_load.erase(&state_slot);
+            continue;
+          }
+          auto next_size = dl->getTypeAllocSize(next_type);
+          if (inst_to_offset.at(load_inst) == inst_to_offset.at(next_load)) {
             if (next_size < inst_size) {
-              auto trunc = new llvm::TruncInst(load_inst, next->getType(), "", next);
-              next->replaceAllUsesWith(trunc);
+              auto trunc = new llvm::TruncInst(load_inst, next_type, "", next_load);
+              next_load->replaceAllUsesWith(trunc);
               truncated_loads++;
             } else if (next_size == inst_size) {
-              next->replaceAllUsesWith(load_inst);
+              next_load->replaceAllUsesWith(load_inst);
               replaced_loads++;
+            } else {  // Flip 'em and truncate the other way.
+              // TODO(tim): handle the vector case
+              if (!load_inst->getType()->isVectorTy()) {
+                next_load->removeFromParent();
+                next_load->insertBefore(load_inst);
+                auto trunc = new llvm::TruncInst(next_load, load_inst->getType(), "", load_inst);
+                trunc->insertBefore(load_inst);
+                load_inst->removeFromParent();
+                truncated_loads++;
+                continue; // don't update slot_to_load since the instructions were switched
+              }
             }
+            slot_to_load[&state_slot] = load_inst;
           }
         } else {
           slot_to_load.emplace(&state_slot, load_inst);
@@ -1189,11 +1239,6 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block, const ValueToOf
       }
     }
   }
-  LOG(INFO) << "Forwarded: "
-    << replaced_stores << " forwarded stores, "
-    << truncated_stores << " forwarded and truncated; "
-    << replaced_loads << " forwarded loads, "
-    << truncated_loads << " forwarded and truncated.";
 }
 
 }  // namespace
@@ -1230,6 +1275,7 @@ void RemoveDeadStores(llvm::Module *module,
                       llvm::Function *bb_func,
                       const std::vector<StateSlot> &slots) {
 
+  auto stats = new KillCounter;
   const AAMDInfo aamd_info(slots, module->getContext());
   const llvm::DataLayout dl = module->getDataLayout();
 
@@ -1242,17 +1288,19 @@ void RemoveDeadStores(llvm::Module *module,
 
     ForwardAliasVisitor fav(dl, slots);
 
-    // if the analysis succeeds for this function, add the AAMDNodes
+    // If the analysis succeeds for this function, add the AAMDNodes.
     if (fav.Analyze(&func)) {
       DLOG(INFO) << "Offsets: " << fav.state_offset.size();
       DLOG(INFO) << "Aliases: " << fav.state_access_offset.size();
       DLOG(INFO) << "Excluded: " << fav.exclude.size();
       AddAAMDNodes(fav.state_access_offset, aamd_info.slot_aamds);
 
-      // Perform load and store forwarding
-      ForwardingBlockVisitor fbv(func, fav.state_access_offset, aamd_info.slot_scopes,
-          slots, &dl);
-      fbv.Visit(fav.state_offset);
+      // Perform load and store forwarding.
+      if (!FLAGS_disable_register_forwarding) {
+        ForwardingBlockVisitor fbv(func, fav.state_access_offset, aamd_info.slot_scopes,
+            slots, &dl);
+        fbv.Visit(fav.state_offset, *stats);
+      }
 
       // Perform live set analysis
       LiveSetBlockVisitor visitor(func, fav.state_offset, aamd_info.slot_scopes,
@@ -1278,13 +1326,25 @@ void RemoveDeadStores(llvm::Module *module,
         visitor.CreateDOTDigraph(dot);
       }
 
-      visitor.DeleteDeadInsts();
+        visitor.DeleteDeadInsts(*stats);
 
       if (!FLAGS_dot_output_dir.empty()) {
         fname << ".post";
         std::ofstream dot(fname.str());
         visitor.CreateDOTDigraph(dot);
       }
+
+      DLOG(INFO) << "Stats: "
+        << stats->dead_stores << " dead stores";
+      DLOG(INFO) << "Stats: "
+        << stats->removed_insts << " removed instructions";
+      DLOG(INFO) << "Stats: "
+        << stats->fwd_loads << " forwarded loads";
+      DLOG(INFO) << "Stats: "
+        << stats->fwd_stores << " forwarded stores";
+      DLOG(INFO) << "Stats: "
+        << stats->fwd_truncated << " truncated forwarded values";
+
     }
   }
 }
