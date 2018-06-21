@@ -46,7 +46,7 @@ namespace {
 
 using ValueToOffset = std::unordered_map<llvm::Value *, uint64_t>;
 using InstToOffset = std::unordered_map<llvm::Instruction *, uint64_t>;
-using ScopeMap = std::unordered_map<llvm::MDNode *, uint64_t>;
+using ScopeToOffset = std::unordered_map<llvm::MDNode *, uint64_t>;
 using LiveSet = std::bitset<4096>;
 
 // Recursive visitor of the `State` structure that assigns slots of ranges of
@@ -644,7 +644,7 @@ class AAMDInfo {
   AAMDInfo(const std::vector<StateSlot> &slots, llvm::LLVMContext &context);
 
   // Maps `llvm::MDNode`s to byte offset into the `State` structure.
-  ScopeMap slot_scopes;
+  ScopeToOffset slot_scopes;
 
   // Maps byte offsets in the `State` structure to `llvm::AAMDNodes`
   std::vector<llvm::AAMDNodes> slot_aamds;
@@ -713,7 +713,7 @@ class LiveSetBlockVisitor {
  public:
   llvm::Function &func;
   const ValueToOffset &val_to_offset;
-  const ScopeMap &scope_to_offset;
+  const ScopeToOffset &scope_to_offset;
   const std::vector<StateSlot> &state_slots;
   std::vector<llvm::BasicBlock *> curr_wl;
   std::unordered_map<llvm::BasicBlock *, LiveSet> block_map;
@@ -723,14 +723,14 @@ class LiveSetBlockVisitor {
 
   LiveSetBlockVisitor(llvm::Function &func_,
                       const std::vector<StateSlot> &state_slots_,
-                      const ScopeMap &scope_to_offset_,
+                      const ScopeToOffset &scope_to_offset_,
                       const ValueToOffset &val_to_offset_,
                       const llvm::FunctionType *lifted_func_ty_,
                       const llvm::DataLayout *dl_);
   void FindLiveInsts();
 
   void CollectDeadInsts(void);
-  bool VisitBlock(llvm::BasicBlock *B);
+  bool VisitBlock(llvm::BasicBlock *block);
   bool DeleteDeadInsts(void);
   void CreateDOTDigraph(std::ostream &dot);
 
@@ -1068,6 +1068,115 @@ static void AddAAMDNodes(
   }
 }
 
+class ForwardingBlockVisitor {
+  public:
+    llvm::Function &func;
+    const InstToOffset &inst_to_offset;
+    const ScopeToOffset &scope_to_offset;
+    const std::vector<StateSlot> &state_slots;
+    const llvm::FunctionType *lifted_func_ty;
+
+    ForwardingBlockVisitor(
+      llvm::Function &func_,
+      const InstToOffset &inst_to_offset_,
+      const ScopeToOffset &scope_to_offset_,
+      const std::vector<StateSlot> &state_slots_,
+      const llvm::FunctionType *lifted_func_ty_,
+      const llvm::DataLayout *dl_);
+
+    void Visit(void);
+    void VisitBlock(llvm::BasicBlock *block);
+
+  private:
+    const llvm::DataLayout *dl;
+};
+
+ForwardingBlockVisitor::ForwardingBlockVisitor(
+    llvm::Function &func_,
+    const InstToOffset &inst_to_offset_,
+    const ScopeToOffset &scope_to_offset_,
+    const std::vector<StateSlot> &state_slots_,
+    const llvm::FunctionType *lifted_func_ty_,
+    const llvm::DataLayout *dl_)
+    : func(func_),
+      inst_to_offset(inst_to_offset_),
+      scope_to_offset(scope_to_offset_),
+      state_slots(state_slots_),
+      lifted_func_ty(lifted_func_ty_),
+      dl(dl_) {}
+
+void ForwardingBlockVisitor::Visit(void) {
+  // if any visit makes progress, continue the loop
+  for (auto &block : func) {
+    VisitBlock(&block);
+  }
+}
+
+void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
+  std::unordered_map<StateSlot *, llvm::LoadInst *> slot_to_load;
+  auto truncated_loads = 0;
+  auto truncated_stores = 0;
+  auto replaced_loads = 0;
+  auto replaced_stores = 0;
+  for (auto inst_it = block->rbegin(); inst_it != block->rend(); ++inst_it) {
+    auto inst = &*inst_it;
+    if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(inst)) {
+      if (call_inst->getFunctionType() == lifted_func_ty) {
+        slot_to_load.clear();
+      }
+    } else if (auto invoke_inst = llvm::dyn_cast<llvm::InvokeInst>(inst)) {
+      if (invoke_inst->getFunctionType() == lifted_func_ty) {
+        slot_to_load.clear();
+      }
+    } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
+      if (auto scope = GetScopeFromInst(*inst)) {
+        auto inst_size = dl->getTypeAllocSize(store_inst->getOperand(0)->getType());
+        auto state_slot = state_slots[scope_to_offset.at(scope)];
+        if (slot_to_load.count(&state_slot)) {
+          auto next = slot_to_load[&state_slot];
+          auto next_size = dl->getTypeAllocSize(next->getType());
+          if (inst_to_offset.at(store_inst) == inst_to_offset.at(next)) {
+            if (next_size < inst_size) {
+              auto trunc = new llvm::TruncInst(store_inst->getOperand(0), next->getType(), "", next);
+              next->replaceAllUsesWith(trunc);
+              truncated_stores++;
+            } else if (next_size == inst_size) {
+              next->replaceAllUsesWith(store_inst->getOperand(0));
+              replaced_stores++;
+            }
+          }
+        }
+      }
+    } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(inst)) {
+      if (auto scope = GetScopeFromInst(*load_inst)) {
+        auto inst_size = dl->getTypeAllocSize(load_inst->getType());
+        auto state_slot = state_slots[scope_to_offset.at(scope)];
+        if (slot_to_load.count(&state_slot)) {
+          auto next = slot_to_load[&state_slot];
+          auto next_size = dl->getTypeAllocSize(next->getType());
+          if (inst_to_offset.at(load_inst) == inst_to_offset.at(next)) {
+            if (next_size < inst_size) {
+              auto trunc = new llvm::TruncInst(load_inst, next->getType(), "", next);
+              next->replaceAllUsesWith(trunc);
+              truncated_loads++;
+            } else if (next_size == inst_size) {
+              next->replaceAllUsesWith(load_inst);
+              replaced_loads++;
+            }
+          }
+        } else {
+          slot_to_load.emplace(&state_slot, load_inst);
+        }
+      }
+    }
+  }
+  LOG(INFO) << "Forwarded: "
+    << replaced_stores << " forwarded stores, "
+    << truncated_stores << " forwarded and truncated; "
+    << replaced_loads << " forwarded loads, "
+    << truncated_loads << " forwarded and truncated.";
+}
+
 }  // namespace
 
 // Returns a covering vector of `StateSlots` for the module's `State` type.
@@ -1154,92 +1263,6 @@ void RemoveDeadStores(llvm::Module *module,
       }
     }
   }
-}
-
-ForwardingBlockVisitor::ForwardingBlockVisitor(
-    llvm::Function &func_,
-    const InstToOffset &inst_to_offset_,
-    const ScopeToOffset &scope_to_offset_,
-    const std::vector<StateSlot> &state_slots_,
-    const llvm::FunctionType *lifted_func_ty_,
-    const llvm::DataLayout *dl_)
-    : func(func_),
-      inst_to_offset(inst_to_offset_),
-      scope_to_offset(scope_to_offset_),
-      state_slots(state_slots_),
-      lifted_func_ty(lifted_func_ty_),
-      dl(dl_) {}
-
-void ForwardingBlockVisitor::Visit(void) {
-  // if any visit makes progress, continue the loop
-  for (auto &block : func) {
-    VisitBlock(&block);
-  }
-}
-
-void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *B) {
-  std::unordered_map<StateSlot *, llvm::LoadInst *> slot_to_load;
-  auto truncated_loads = 0;
-  auto truncated_stores = 0;
-  auto replaced_loads = 0;
-  auto replaced_stores = 0;
-  for (auto inst_it = B->rbegin(); inst_it != B->rend(); ++inst_it) {
-    auto inst = &*inst_it;
-    if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(inst)) {
-      if (call_inst->getFunctionType() == lifted_func_ty) {
-        slot_to_load.clear();
-      }
-    } else if (auto invoke_inst = llvm::dyn_cast<llvm::InvokeInst>(inst)) {
-      if (invoke_inst->getFunctionType() == lifted_func_ty) {
-        slot_to_load.clear();
-      }
-    } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
-      if (auto scope = GetScopeFromInst(*inst)) {
-        auto inst_size = dl->getTypeAllocSize(store_inst->getOperand(0)->getType());
-        auto state_slot = state_slots[scope_to_offset.at(scope)];
-        if (slot_to_load.count(&state_slot)) {
-          auto next = slot_to_load[&state_slot];
-          auto next_size = dl->getTypeAllocSize(next->getType());
-          if (inst_to_offset.at(store_inst) == inst_to_offset.at(next)) {
-            if (next_size < inst_size) {
-              auto trunc = new llvm::TruncInst(store_inst->getOperand(0), next->getType(), "", next);
-              next->replaceAllUsesWith(trunc);
-              truncated_stores++;
-            } else if (next_size == inst_size) {
-              next->replaceAllUsesWith(store_inst->getOperand(0));
-              replaced_stores++;
-            }
-          }
-        }
-      }
-    } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(inst)) {
-      if (auto scope = GetScopeFromInst(*load_inst)) {
-        auto inst_size = dl->getTypeAllocSize(load_inst->getType());
-        auto state_slot = state_slots[scope_to_offset.at(scope)];
-        if (slot_to_load.count(&state_slot)) {
-          auto next = slot_to_load[&state_slot];
-          auto next_size = dl->getTypeAllocSize(next->getType());
-          if (inst_to_offset.at(load_inst) == inst_to_offset.at(next)) {
-            if (next_size < inst_size) {
-              auto trunc = new llvm::TruncInst(load_inst, next->getType(), "", next);
-              next->replaceAllUsesWith(trunc);
-              truncated_loads++;
-            } else if (next_size == inst_size) {
-              next->replaceAllUsesWith(load_inst);
-              replaced_loads++;
-            }
-          }
-        } else {
-          slot_to_load.emplace(&state_slot, load_inst);
-        }
-      }
-    }
-  }
-  LOG(INFO) << "Forwarded: "
-    << replaced_stores << " forwarded stores, "
-    << truncated_stores << " forwarded and truncated; "
-    << replaced_loads << " forwarded loads, "
-    << truncated_loads << " forwarded and truncated.";
 }
 
 // Identify complete stores to slots that are subsequently accessed by loads
