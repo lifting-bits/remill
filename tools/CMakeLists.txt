@@ -14,7 +14,7 @@
 
 # mcsema needs to be manually cloned into this repo.
 if (EXISTS ${CMAKE_SOURCE_DIR}/tools/mcsema)
-    add_subdirectory(mcsema)
+    #add_subdirectory(mcsema)
 endif ()
 
 if (EXISTS ${CMAKE_SOURCE_DIR}/tools/fcd)
@@ -23,6 +23,6 @@ endif ()
 
 if (307 LESS ${REMILL_LLVM_VERSION_NUMBER})
     if (EXISTS ${CMAKE_SOURCE_DIR}/tools/vmill)
-#        add_subdirectory(vmill)
+        add_subdirectory(vmill)
     endif ()
 endif ()

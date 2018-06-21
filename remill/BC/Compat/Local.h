@@ -19,7 +19,9 @@
 
 #include "remill/BC/Version.h"
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(5, 0)
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(6, 0)
+# include <llvm/Transforms/Utils/Local.h>
+#elif LLVM_VERSION_NUMBER >= LLVM_VERSION(5, 0)
 # include <llvm/Analysis/Utils/Local.h>
 #else
 # include <llvm/Transforms/Utils/Local.h>

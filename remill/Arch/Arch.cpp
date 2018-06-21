@@ -102,6 +102,7 @@ llvm::Triple Arch::BasicTriple(void) const {
       break;
 
     case kOSLinux:
+    case kOSVxWorks:
       triple.setOS(llvm::Triple::Linux);
       triple.setEnvironment(llvm::Triple::GNU);
       triple.setVendor(llvm::Triple::PC);
@@ -321,6 +322,22 @@ static void InitBlockFunctionAttributes(llvm::Function *block_func) {
 
 }  // namespace
 
+// Add attributes to llvm::Argument in a way portable across LLVMs
+static void AddNoAliasToArgument(llvm::Argument *arg) {
+  IF_LLVM_LT_39(
+    arg->addAttr(
+      llvm::AttributeSet::get(
+        arg->getContext(),
+        arg->getArgNo() + 1,
+        llvm::Attribute::NoAlias)
+    ); 
+  );
+
+  IF_LLVM_GTE_39(
+    arg->addAttr(llvm::Attribute::NoAlias);
+  );
+}
+
 // ensures that mandatory remill functions have the correct
 // type signature and variable names
 static void PrepareModuleRemillFunctions(llvm::Module *mod) {
@@ -335,6 +352,9 @@ static void PrepareModuleRemillFunctions(llvm::Module *mod) {
   basic_block->removeFnAttr(llvm::Attribute::InlineHint);
   basic_block->addFnAttr(llvm::Attribute::NoInline);
   basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
+
+  AddNoAliasToArgument(remill::NthArgument(basic_block, kStatePointerArgNum));
+  AddNoAliasToArgument(remill::NthArgument(basic_block, kMemoryPointerArgNum));
 }
 
 // Converts an LLVM module object to have the right triple / data layout
