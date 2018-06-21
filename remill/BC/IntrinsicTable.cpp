@@ -44,9 +44,9 @@ static llvm::Function *FindIntrinsic(llvm::Module *module,
 
   function->setLinkage(llvm::GlobalValue::ExternalLinkage);
 
-  function->addFnAttr(llvm::Attribute::OptimizeNone);
   function->removeFnAttr(llvm::Attribute::AlwaysInline);
   function->removeFnAttr(llvm::Attribute::InlineHint);
+  function->addFnAttr(llvm::Attribute::OptimizeNone);
   function->addFnAttr(llvm::Attribute::NoInline);
 
   return function;

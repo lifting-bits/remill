@@ -64,9 +64,9 @@ void InitFunctionAttributes(llvm::Function *function) {
   function->removeFnAttr(llvm::Attribute::NoReturn);
 
   // Don't use any exception stuff.
-  function->addFnAttr(llvm::Attribute::NoUnwind);
   function->removeFnAttr(llvm::Attribute::UWTable);
   function->removeFnAttr(llvm::Attribute::NoInline);
+  function->addFnAttr(llvm::Attribute::NoUnwind);
   function->addFnAttr(llvm::Attribute::InlineHint);
 }
 
@@ -163,8 +163,7 @@ llvm::Value *LoadProgramCounter(llvm::BasicBlock *block) {
 
 // Return a reference to the current program counter.
 llvm::Value *LoadProgramCounterRef(llvm::BasicBlock *block) {
-  llvm::IRBuilder<> ir(block);
-  return ir.CreateLoad(FindVarInFunction(block->getParent(), "PC"));
+  return FindVarInFunction(block->getParent(), "PC");
 }
 
 // Update the program counter in the state struct with a new value.
@@ -191,7 +190,7 @@ llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block) {
 llvm::Value *LoadBranchTaken(llvm::BasicBlock *block) {
   llvm::IRBuilder<> ir(block);
   auto cond = ir.CreateLoad(
-      ir.CreateLoad(FindVarInFunction(block->getParent(), "BRANCH_TAKEN")));
+      FindVarInFunction(block->getParent(), "BRANCH_TAKEN"));
   auto true_val = llvm::ConstantInt::get(cond->getType(), 1);
   return ir.CreateICmpEQ(cond, true_val);
 }
@@ -230,6 +229,20 @@ llvm::Module *LoadTargetSemantics(llvm::LLVMContext *context) {
   return LoadModuleFromFile(context, path);
 }
 
+// Try to verify a module.
+bool VerifyModule(llvm::Module *module) {
+  std::string error;
+  llvm::raw_string_ostream error_stream(error);
+  if (llvm::verifyModule(*module, &error_stream)) {
+    error_stream.flush();
+    LOG(ERROR)
+        << "Error verifying module read from file: " << error;
+    return false;
+  } else {
+    return true;
+  }
+}
+
 // Reads an LLVM module from a file.
 llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
                                  std::string file_name,
@@ -253,13 +266,9 @@ llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
     return nullptr;
   }
 
-  std::string error;
-  llvm::raw_string_ostream error_stream(error);
-  if (llvm::verifyModule(*module, &error_stream)) {
-    error_stream.flush();
+  if (!VerifyModule(module)) {
     LOG_IF(FATAL, !allow_failure)
-        << "Error verifying module read from file " << file_name << ": "
-        << error;
+        << "Error verifying module read from file " << file_name;
     delete module;
     return nullptr;
   }
@@ -657,6 +666,8 @@ void CloneBlockFunctionInto(llvm::Function *func) {
   // Remove the `return` in `__remill_basic_block`.
   auto &entry = func->front();
   auto term = entry.getTerminator();
+  CHECK(llvm::isa<llvm::ReturnInst>(term));
+
   term->eraseFromParent();
   func->removeFnAttr(llvm::Attribute::OptimizeNone);
 
