@@ -216,6 +216,34 @@ static llvm::MDNode *GetScopeFromInst(llvm::Instruction &inst) {
   return inst.getMetadata(llvm::LLVMContext::MD_alias_scope);
 }
 
+static LiveSet GetLiveSetFromArgs(
+    llvm::iterator_range<llvm::Use *> args,
+    ValueToOffset val_to_offset,
+    const std::vector<StateSlot> state_slots) {
+  LiveSet live;
+  for (auto &arg_it : args) {
+    auto arg = arg_it->stripPointerCasts();
+    const auto offset_it = val_to_offset.find(arg);
+    if (offset_it != val_to_offset.end()) {
+      const auto offset = offset_it->second;
+
+      // If we access a single non-zero offset, mark just that offset.
+      if (offset != 0) {
+        live.set(state_slots[offset].index);
+
+      // If we access offset `0`, then maybe we're actually passing
+      // a state pointer, in which anything can be changed, so we want
+      // to treat everything as live, OR maybe we're passing a pointer
+      // to the first thing in the `State` structure, which would be
+      // rare and unusual.
+      } else {
+        live.set();
+      }
+    }
+  }
+  return live;
+}
+
 // Visits instructions and propagates information about where in the
 // `State` structure a given instruction might reference.
 struct ForwardAliasVisitor
@@ -842,27 +870,8 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
       } else {
         args = llvm::dyn_cast<llvm::InvokeInst>(inst)->arg_operands();
       }
-
-      for (auto &arg_it : args) {
-        auto arg = arg_it->stripPointerCasts();
-        const auto offset_it = val_to_offset.find(arg);
-        if (offset_it != val_to_offset.end()) {
-          const auto offset = offset_it->second;
-
-          // If we access a single non-zero offset, mark just that offset.
-          if (offset != 0) {
-            live.set(state_slots[offset].index);
-
-          // If we access offset `0`, then maybe we're actually passing
-          // a state pointer, in which anything can be changed, so we want
-          // to treat everything as live, OR maybe we're passing a pointer
-          // to the first thing in the `State` structure, which would be
-          // rare and unusual.
-          } else {
-            live.set();
-          }
-        }
-      }
+      
+      live |= GetLiveSetFromArgs(args, val_to_offset, state_slots);
 
     } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
       auto scope = GetScopeFromInst(*inst);
