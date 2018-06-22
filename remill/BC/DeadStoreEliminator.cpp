@@ -216,10 +216,9 @@ static llvm::MDNode *GetScopeFromInst(llvm::Instruction &inst) {
   return inst.getMetadata(llvm::LLVMContext::MD_alias_scope);
 }
 
-static LiveSet GetLiveSetFromArgs(
-    llvm::iterator_range<llvm::Use *> args,
-    ValueToOffset val_to_offset,
-    const std::vector<StateSlot> state_slots) {
+static LiveSet GetLiveSetFromArgs(llvm::iterator_range<llvm::Use *> args,
+                                  ValueToOffset val_to_offset,
+                                  const std::vector<StateSlot> state_slots) {
   LiveSet live;
   for (auto &arg_it : args) {
     auto arg = arg_it->stripPointerCasts();
@@ -252,7 +251,8 @@ struct ForwardAliasVisitor
   virtual ~ForwardAliasVisitor(void) = default;
 
   ForwardAliasVisitor(const llvm::DataLayout &dl_,
-                      const std::vector<StateSlot> &state_slots_);
+                      const std::vector<StateSlot> &state_slots_,
+                      std::unordered_map<llvm::Instruction *, LiveSet> &live_args_);
 
   bool Analyze(llvm::Function *func);
 
@@ -269,6 +269,8 @@ struct ForwardAliasVisitor
   virtual VisitResult visitSub(llvm::BinaryOperator &I);
   virtual VisitResult visitSelect(llvm::SelectInst &inst);
   virtual VisitResult visitPHINode(llvm::PHINode &I);
+  virtual VisitResult visitCallInst(llvm::CallInst &inst);
+  virtual VisitResult visitInvokeInst(llvm::InvokeInst &inst);
 
  private:
   void AddInstruction(llvm::Instruction *inst);
@@ -279,17 +281,21 @@ struct ForwardAliasVisitor
   const std::vector<StateSlot> &state_slots;
   ValueToOffset state_offset;
   InstToOffset state_access_offset;
+  std::unordered_map<llvm::Instruction *, LiveSet> live_args;
   std::unordered_set<llvm::Value *> exclude;
   std::vector<llvm::Instruction *> curr_wl;
   llvm::Value *state_ptr;
 };
 
 ForwardAliasVisitor::ForwardAliasVisitor(
-    const llvm::DataLayout &dl_, const std::vector<StateSlot> &state_slots_)
+    const llvm::DataLayout &dl_,
+    const std::vector<StateSlot> &state_slots_,
+    std::unordered_map<llvm::Instruction *, LiveSet> &live_args_)
     : dl(dl_),
       state_slots(state_slots_),
       state_offset(),
       state_access_offset(),
+      live_args(live_args_),
       exclude(),
       curr_wl(),
       state_ptr(nullptr) {}
@@ -680,6 +686,26 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
   }
 }
 
+VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
+  // If we have not seen this instruction before, add it.
+  if (!live_args.count(&inst)) {
+    auto args = inst.arg_operands();
+    auto live = GetLiveSetFromArgs(args, state_offset, state_slots);
+    live_args.emplace(&inst, live);
+  }
+  return VisitResult::Ignored;
+}
+
+VisitResult ForwardAliasVisitor::visitInvokeInst(llvm::InvokeInst &inst) {
+  // If we have not seen this instruction before, add it.
+  if (!live_args.count(&inst)) {
+    auto args = inst.arg_operands();
+    auto live = GetLiveSetFromArgs(args, state_offset, state_slots);
+    live_args.emplace(&inst, live);
+  }
+  return VisitResult::Ignored;
+}
+
 // Back-and-forth mapping between LLVM meta-data node that we create per slot,
 // and `StateSlot`s.
 class AAMDInfo {
@@ -870,8 +896,11 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
       } else {
         args = llvm::dyn_cast<llvm::InvokeInst>(inst)->arg_operands();
       }
-      
-      live |= GetLiveSetFromArgs(args, val_to_offset, state_slots);
+
+      auto arg_live = GetLiveSetFromArgs(args, val_to_offset, state_slots);
+      live |= arg_live;
+      // Since `GetLiveSetFromArgs` only sets bits, this is safe to do.
+      func_used |= arg_live;
 
     } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
       auto scope = GetScopeFromInst(*inst);
@@ -1390,6 +1419,8 @@ void RemoveDeadStores(llvm::Module *module,
   const AAMDInfo aamd_info(slots, module->getContext());
   const llvm::DataLayout dl = module->getDataLayout();
 
+  std::unordered_map<llvm::Instruction *, LiveSet> live_args = {};
+
   for (auto &func : *module) {
     if (&func == bb_func ||
         func.isDeclaration() ||
@@ -1397,7 +1428,7 @@ void RemoveDeadStores(llvm::Module *module,
       continue;
     }
 
-    ForwardAliasVisitor fav(dl, slots);
+    ForwardAliasVisitor fav(dl, slots, live_args);
 
     // If the analysis succeeds for this function, add the AAMDNodes.
     if (fav.Analyze(&func)) {
