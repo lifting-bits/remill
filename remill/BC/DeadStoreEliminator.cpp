@@ -53,6 +53,7 @@ using ValueToOffset = std::unordered_map<llvm::Value *, uint64_t>;
 using InstToOffset = std::unordered_map<llvm::Instruction *, uint64_t>;
 using ScopeToOffset = std::unordered_map<llvm::MDNode *, uint64_t>;
 using LiveSet = std::bitset<4096>;
+using InstToLiveSet = std::unordered_map<llvm::Instruction *, LiveSet>;
 
 // Struct to keep track of how murderous the dead store eliminator is.
 struct KillCounter {
@@ -252,7 +253,7 @@ struct ForwardAliasVisitor
 
   ForwardAliasVisitor(const llvm::DataLayout &dl_,
                       const std::vector<StateSlot> &state_slots_,
-                      std::unordered_map<llvm::Instruction *, LiveSet> &live_args_);
+                      InstToLiveSet &live_args_);
 
   bool Analyze(llvm::Function *func);
 
@@ -281,7 +282,7 @@ struct ForwardAliasVisitor
   const std::vector<StateSlot> &state_slots;
   ValueToOffset state_offset;
   InstToOffset state_access_offset;
-  std::unordered_map<llvm::Instruction *, LiveSet> live_args;
+  InstToLiveSet live_args;
   std::unordered_set<llvm::Value *> exclude;
   std::vector<llvm::Instruction *> curr_wl;
   llvm::Value *state_ptr;
@@ -290,7 +291,7 @@ struct ForwardAliasVisitor
 ForwardAliasVisitor::ForwardAliasVisitor(
     const llvm::DataLayout &dl_,
     const std::vector<StateSlot> &state_slots_,
-    std::unordered_map<llvm::Instruction *, LiveSet> &live_args_)
+    InstToLiveSet &live_args_)
     : dl(dl_),
       state_slots(state_slots_),
       state_offset(),
@@ -783,8 +784,8 @@ AAMDInfo::AAMDInfo(const std::vector<StateSlot> &slots,
 
 class LiveSetBlockVisitor {
  public:
-  llvm::Function &func;
-  const ValueToOffset &val_to_offset;
+  llvm::Module &module;
+  const InstToLiveSet &live_args;
   const ScopeToOffset &scope_to_offset;
   const std::vector<StateSlot> &state_slots;
   std::vector<llvm::BasicBlock *> curr_wl;
@@ -793,8 +794,8 @@ class LiveSetBlockVisitor {
   const llvm::FunctionType *lifted_func_ty;
   LiveSet func_used;
 
-  LiveSetBlockVisitor(llvm::Function &func_,
-                      const ValueToOffset &val_to_offset_,
+  LiveSetBlockVisitor(llvm::Module &module_,
+                      const InstToLiveSet &live_args_,
                       const ScopeToOffset &scope_to_offset_,
                       const std::vector<StateSlot> &state_slots_,
                       const llvm::FunctionType *lifted_func_ty_,
@@ -812,14 +813,14 @@ class LiveSetBlockVisitor {
 };
 
 LiveSetBlockVisitor::LiveSetBlockVisitor(
-    llvm::Function &func_,
-    const ValueToOffset &val_to_offset_,
+    llvm::Module &module_,
+    const InstToLiveSet &live_args_,
     const ScopeToOffset &scope_to_offset_,
     const std::vector<StateSlot> &state_slots_,
     const llvm::FunctionType *lifted_func_ty_,
     const llvm::DataLayout *dl_)
-    : func(func_),
-      val_to_offset(val_to_offset_),
+    : module(module_),
+      live_args(live_args_),
       scope_to_offset(scope_to_offset_),
       state_slots(state_slots_),
       curr_wl(),
@@ -829,10 +830,12 @@ LiveSetBlockVisitor::LiveSetBlockVisitor(
       func_used(),
       on_remove_pass(false),
       dl(dl_) {
-  for (auto &block : func) {
-    auto succ_block_it = successors(&block);
-    if (succ_block_it.begin() == succ_block_it.end()) {
-      curr_wl.push_back(&block);
+  for (auto &func : module) {
+    for (auto &block : func) {
+      auto succ_block_it = successors(&block);
+      if (succ_block_it.begin() == succ_block_it.end()) {
+        curr_wl.push_back(&block);
+      }
     }
   }
 }
@@ -897,7 +900,7 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
         args = llvm::dyn_cast<llvm::InvokeInst>(inst)->arg_operands();
       }
 
-      auto arg_live = GetLiveSetFromArgs(args, val_to_offset, state_slots);
+      auto arg_live = live_args.at(inst);
       live |= arg_live;
       // Since `GetLiveSetFromArgs` only sets bits, this is safe to do.
       func_used |= arg_live;
@@ -947,8 +950,10 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
 
 void LiveSetBlockVisitor::CollectDeadInsts(void) {
   on_remove_pass = true;
-  for (auto &block : func) {
-    VisitBlock(&block);
+  for (auto &func : module) {
+    for (auto &block : func) {
+      VisitBlock(&block);
+    }
   }
   on_remove_pass = false;
 }
@@ -1419,7 +1424,7 @@ void RemoveDeadStores(llvm::Module *module,
   const AAMDInfo aamd_info(slots, module->getContext());
   const llvm::DataLayout dl = module->getDataLayout();
 
-  std::unordered_map<llvm::Instruction *, LiveSet> live_args = {};
+  InstToLiveSet live_args = {};
 
   for (auto &func : *module) {
     if (&func == bb_func ||
@@ -1444,50 +1449,52 @@ void RemoveDeadStores(llvm::Module *module,
         aamd_info.slot_scopes, slots, &dl);
       fbv.Visit(fav.state_offset, stats);
     }
+  }
 
-    // Perform live set analysis
-    LiveSetBlockVisitor visitor(func, fav.state_offset, aamd_info.slot_scopes,
-      slots, bb_func->getFunctionType(), &dl);
+  // Perform live set analysis
+  LiveSetBlockVisitor visitor(*module, live_args, aamd_info.slot_scopes,
+    slots, bb_func->getFunctionType(), &dl);
 
-    visitor.FindLiveInsts();
-    visitor.CollectDeadInsts();
+  visitor.FindLiveInsts();
+  visitor.CollectDeadInsts();
 
+  for (auto &func : *module) {
     std::stringstream fname;
 
     // Log useful DOT digraphs to a directory for every successfully
     // analyzed function.
     if (!FLAGS_dot_output_dir.empty()) {
       fname << FLAGS_dot_output_dir << PathSeparator();
-
-      if (func.getName().empty()) {
-        fname << "func_" << std::hex << reinterpret_cast<uintptr_t>(&func);
-      } else {
-        fname << func.getName().str();
-      }
-
-      std::ofstream dot(fname.str());
-      visitor.CreateDOTDigraph(dot);
     }
 
-    visitor.DeleteDeadInsts(stats);
-
-    if (!FLAGS_dot_output_dir.empty()) {
-      fname << ".post";
-      std::ofstream dot(fname.str());
-      visitor.CreateDOTDigraph(dot);
+    if (func.getName().empty()) {
+      fname << "func_" << std::hex << reinterpret_cast<uintptr_t>(&func);
+    } else {
+      fname << func.getName().str();
     }
 
-    LOG(INFO)
-        << "Dead stores: " << stats.dead_stores << "; "
-        << "Instructions removed from DSE: " << stats.removed_insts << "; "
-        << "Forwarded loads: " << stats.fwd_loads << "; "
-        << "Forwarded stores: " << stats.fwd_stores << "; "
-        << "Perfectly forwarded: " << stats.fwd_perfect << "; "
-        << "Forwarded by truncation: " << stats.fwd_truncated << "; "
-        << "Forwarded by casting: " << stats.fwd_casted << "; "
-        << "Forwarded by reordering: " << stats.fwd_reordered << "; "
-        << "Could not forward: " << stats.fwd_failed;
+    std::ofstream dot(fname.str());
+    visitor.CreateDOTDigraph(dot);
   }
+
+  visitor.DeleteDeadInsts(stats);
+
+//   if (!FLAGS_dot_output_dir.empty()) {
+//     fname << ".post";
+//     std::ofstream dot(fname.str());
+//     visitor.CreateDOTDigraph(dot);
+//   }
+
+  LOG(INFO)
+      << "Dead stores: " << stats.dead_stores << "; "
+      << "Instructions removed from DSE: " << stats.removed_insts << "; "
+      << "Forwarded loads: " << stats.fwd_loads << "; "
+      << "Forwarded stores: " << stats.fwd_stores << "; "
+      << "Perfectly forwarded: " << stats.fwd_perfect << "; "
+      << "Forwarded by truncation: " << stats.fwd_truncated << "; "
+      << "Forwarded by casting: " << stats.fwd_casted << "; "
+      << "Forwarded by reordering: " << stats.fwd_reordered << "; "
+      << "Could not forward: " << stats.fwd_failed;
 }
 
 }  // namespace remill
