@@ -1098,6 +1098,10 @@ class ForwardingBlockVisitor {
     const ScopeToOffset &scope_to_offset;
     const std::vector<StateSlot> &state_slots;
     const llvm::FunctionType *lifted_func_ty;
+    int truncated_loads;
+    int truncated_stores;
+    int replaced_loads;
+    int replaced_stores;
 
     ForwardingBlockVisitor(
       llvm::Function &func_,
@@ -1130,9 +1134,16 @@ ForwardingBlockVisitor::ForwardingBlockVisitor(
 void ForwardingBlockVisitor::Visit(const ValueToOffset &val_to_offset,
                                    KillCounter &stats) {
   // if any visit makes progress, continue the loop
+  truncated_loads = 0;
+  truncated_stores = 0;
+  replaced_loads = 0;
+  replaced_stores = 0;
   for (auto &block : func) {
     VisitBlock(&block, val_to_offset, stats);
   }
+  stats.fwd_loads = replaced_loads;
+  stats.fwd_stores = replaced_stores;
+  stats.fwd_truncated = truncated_loads + truncated_stores;
 }
 
 void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
@@ -1309,7 +1320,6 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
               load_inst, next_type, "", next_load);
           next_load->replaceAllUsesWith(trunc);
           next_load->eraseFromParent();
-
         } else {
           stats.fwd_failed++;
           slot_to_load.erase(state_slot.index);
@@ -1390,36 +1400,7 @@ void RemoveDeadStores(llvm::Module *module,
 
       // Perform load and store forwarding.
       if (!FLAGS_disable_register_forwarding) {
-        ForwardingBlockVisitor fbv(func, fav.state_access_offset,
-                                   aamd_info.slot_scopes, slots, &dl);
-        fbv.Visit(fav.state_offset, stats);
-      }
-
-      // Perform live set analysis
-      LiveSetBlockVisitor visitor(func, fav.state_offset, aamd_info.slot_scopes,
-          slots, bb_func->getFunctionType(), &dl);
-
-      visitor.FindLiveInsts();
-      visitor.CollectDeadInsts();
-
-      std::stringstream fname;
-
-      // Log useful DOT digraphs to a directory for every successfully
-      // analyzed function.
-      if (!FLAGS_dot_output_dir.empty()) {
-        fname << FLAGS_dot_output_dir << PathSeparator();
-
-        if (func.getName().empty()) {
-          fname << "func_" << std::hex << reinterpret_cast<uintptr_t>(&func);
-        } else {
-          fname << func.getName().str();
-        }
-
-        std::ofstream dot(fname.str());
-        visitor.CreateDOTDigraph(dot);
-      }
-
-      visitor.DeleteDeadInsts(stats);
+        visitor.DeleteDeadInsts(*stats);
 
       if (!FLAGS_dot_output_dir.empty()) {
         fname << ".post";
