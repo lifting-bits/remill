@@ -1489,12 +1489,6 @@ void RemoveDeadStores(llvm::Module *module,
 
   visitor.DeleteDeadInsts(stats);
 
-//   if (!FLAGS_dot_output_dir.empty()) {
-//     fname << ".post";
-//     std::ofstream dot(fname.str());
-//     visitor.CreateDOTDigraph(dot);
-//   }
-
   LOG(INFO)
       << "Dead stores: " << stats.dead_stores << "; "
       << "Instructions removed from DSE: " << stats.removed_insts << "; "
