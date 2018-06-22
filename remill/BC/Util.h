@@ -95,6 +95,9 @@ llvm::Function *FindFunction(llvm::Module *M, std::string name);
 // Find a global variable with name `name` in the module `M`.
 llvm::GlobalVariable *FindGlobaVariable(llvm::Module *M, std::string name);
 
+// Try to verify a module.
+bool VerifyModule(llvm::Module *module);
+
 // Parses and loads a bitcode file into memory.
 llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
                                  std::string file_name,
