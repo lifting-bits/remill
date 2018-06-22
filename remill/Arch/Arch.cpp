@@ -29,6 +29,7 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Name.h"
@@ -287,37 +288,152 @@ static bool BlockHasSpecialVars(llvm::Function *basic_block) {
 // debug information, and so we will try to recover the variables names for
 // later lookup.
 static void FixupBasicBlockVariables(llvm::Function *basic_block) {
-  if (BlockHasSpecialVars(basic_block)) {
-    return;
-  }
+//  if (BlockHasSpecialVars(basic_block)) {
+//    return;
+//  }
+
+  std::vector<llvm::AllocaInst *> allocas;
+  std::vector<llvm::StoreInst *> stores;
+  std::vector<llvm::Instruction *> normal_insts;
+  std::vector<llvm::Instruction *> remove_insts;
+
+  std::unordered_map<llvm::AllocaInst *, llvm::Value *> stored_val;
+  std::unordered_map<llvm::LoadInst *, llvm::Value *> loaded_val;
 
   for (auto &block : *basic_block) {
     for (auto &inst : block) {
-      if (auto decl_inst = llvm::dyn_cast<llvm::DbgDeclareInst>(&inst)) {
-        auto addr = decl_inst->getAddress();
+      if (auto debug_inst = llvm::dyn_cast<llvm::DbgInfoIntrinsic>(&inst)) {
+        if (auto decl_inst = llvm::dyn_cast<llvm::DbgDeclareInst>(debug_inst)) {
+          auto addr = decl_inst->getAddress();
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 7)
-        addr->setName(decl_inst->getVariable()->getName());
+          addr->setName(decl_inst->getVariable()->getName());
 #else
-        llvm::DIVariable var(decl_inst->getVariable());
-        addr->setName(var.getName());
+          llvm::DIVariable var(decl_inst->getVariable());
+          addr->setName(var.getName());
 #endif
+        }
+        remove_insts.push_back(debug_inst);
+
+      } else if (auto alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(&inst)) {
+        allocas.push_back(alloca_inst);
+
+      } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(&inst)) {
+        if (auto dest_alloca = llvm::dyn_cast<llvm::AllocaInst>(
+            store_inst->getPointerOperand())) {
+          stored_val[dest_alloca] = store_inst->getValueOperand();
+        }
+        stores.push_back(store_inst);
+
+      } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(&inst)) {
+        if (auto src_alloca = llvm::dyn_cast<llvm::AllocaInst>(
+            load_inst->getPointerOperand())) {
+          if (auto val = stored_val[src_alloca]) {
+            loaded_val[load_inst] = val;
+            continue;
+          }
+        }
+        normal_insts.push_back(&inst);
+      } else {
+        normal_insts.push_back(&inst);
       }
     }
   }
 
+  for (auto &load_and_val : loaded_val) {
+    load_and_val.first->replaceAllUsesWith(load_and_val.second);
+    load_and_val.first->eraseFromParent();
+  }
+
+  for (auto inst : normal_insts) {
+    inst->setMetadata(llvm::LLVMContext::MD_dbg, nullptr);
+    inst->setName("");
+  }
+
+  auto &context = basic_block->getContext();
+  auto i32_type = llvm::Type::getInt32Ty(context);
+
+  std::vector<llvm::Value *> indexes(1);
+  indexes[0] = llvm::ConstantInt::get(i32_type, 0);
+
+  // At this point, the instructions should have this form:
+  //
+  //  %BH = alloca i8*, align 8
+  //  ...
+  //  %24 = getelementptr inbounds ...
+  //  store i8* %24, i8** %BH, align 8
+  //
+  // Our goal is to eliminate the double indirection and get:
+  //
+  //  %BH = getelementptr inbounds ...
+  for (auto inst : stores) {
+    auto alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(
+        inst->getPointerOperand());
+    if (!alloca_inst || alloca_inst->getName().empty()) {
+      continue;
+    }
+
+    auto ptr_val = inst->getValueOperand();
+
+    // It's a constant expression, likely a GEP into a global like `gDR0`
+    // on x86.
+    if (auto const_expr = llvm::dyn_cast<llvm::ConstantExpr>(ptr_val)) {
+      auto inst_expr = const_expr->getAsInstruction();
+      inst_expr->insertBefore(inst);
+      ptr_val = inst_expr;
+
+    } else if (auto var = llvm::dyn_cast<llvm::GlobalVariable>(ptr_val)) {
+      ptr_val = llvm::GetElementPtrInst::CreateInBounds(var, indexes, "", inst);
+    }
+
+    // If it's not an instruction, then it's probably an integer, e.g.
+    // storing the default value of `0` to `branch_taken`.
+    auto ptr = llvm::dyn_cast<llvm::Instruction>(ptr_val);
+    if (!ptr || !ptr->getType()->isPointerTy()) {
+      continue;
+    }
+
+    // Copy the name and clear it out so that we can use it elsewhere without
+    // LLVM uniquing it by adding on a suffix.
+    auto name = alloca_inst->getName().str();
+    if (name == "MEMORY") {
+      continue;
+    }
+
+    alloca_inst->setName("");
+
+    // If it's already got a name, then two things must be sharing the same
+    // underlying data, and so to maintain both versions we'll clone the
+    // pointer instruction and rename it.
+    if (!ptr->getName().empty()) {
+      ptr = ptr->clone();
+      ptr->insertBefore(inst);
+    }
+
+    ptr->setName(name);
+    inst->eraseFromParent();
+
+    if (!alloca_inst->hasNUsesOrMore(1)) {
+      remove_insts.push_back(alloca_inst);
+    }
+  }
+
+  // Remove links between instructions.
+  for (auto inst : remove_insts) {
+    if (!inst->getType()->isVoidTy()) {
+      inst->replaceAllUsesWith(llvm::UndefValue::get(inst->getType()));
+    }
+  }
+
+  // Remove unneeded instructions.
+  for (auto inst : remove_insts) {
+    for (auto &operand : inst->operands()) {
+      operand = nullptr;
+    }
+    inst->eraseFromParent();
+  }
+
   CHECK(BlockHasSpecialVars(basic_block))
       << "Unable to locate required variables in `__remill_basic_block`.";
-}
-
-// Initialize some attributes that are common to all newly created block
-// functions. Also, give pretty names to the arguments of block functions.
-static void InitBlockFunctionAttributes(llvm::Function *block_func) {
-  block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
-  block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
-
-  remill::NthArgument(block_func, kMemoryPointerArgNum)->setName("memory");
-  remill::NthArgument(block_func, kStatePointerArgNum)->setName("state");
-  remill::NthArgument(block_func, kPCArgNum)->setName("pc");
 }
 
 }  // namespace
@@ -345,16 +461,24 @@ static void PrepareModuleRemillFunctions(llvm::Module *mod) {
 
   InitFunctionAttributes(basic_block);
   FixupBasicBlockVariables(basic_block);
-  InitBlockFunctionAttributes(basic_block);
 
-  basic_block->addFnAttr(llvm::Attribute::OptimizeNone);
+  basic_block->setLinkage(llvm::GlobalValue::ExternalLinkage);
+  basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
   basic_block->removeFnAttr(llvm::Attribute::AlwaysInline);
   basic_block->removeFnAttr(llvm::Attribute::InlineHint);
+  basic_block->addFnAttr(llvm::Attribute::OptimizeNone);
   basic_block->addFnAttr(llvm::Attribute::NoInline);
   basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
 
-  AddNoAliasToArgument(remill::NthArgument(basic_block, kStatePointerArgNum));
-  AddNoAliasToArgument(remill::NthArgument(basic_block, kMemoryPointerArgNum));
+  auto memory = remill::NthArgument(basic_block, kMemoryPointerArgNum);
+  auto state = remill::NthArgument(basic_block, kStatePointerArgNum);
+
+  memory->setName("");
+  state->setName("");
+  remill::NthArgument(basic_block, kPCArgNum)->setName("");
+
+  AddNoAliasToArgument(state);
+  AddNoAliasToArgument(memory);
 }
 
 // Converts an LLVM module object to have the right triple / data layout

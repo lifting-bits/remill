@@ -41,6 +41,11 @@ DEFINE_string(dot_output_dir, "",
               "analysis information derived during the process of "
               "eliminating dead stores");
 
+DEFINE_bool(disable_register_forwarding, false,
+            "Whether or not register forwarding should be enabled "
+            "to perform load-to-load and load-to-store forwarding "
+            "to eliminate dead instructions more aggressively");
+
 namespace remill {
 namespace {
 
@@ -48,6 +53,19 @@ using ValueToOffset = std::unordered_map<llvm::Value *, uint64_t>;
 using InstToOffset = std::unordered_map<llvm::Instruction *, uint64_t>;
 using ScopeToOffset = std::unordered_map<llvm::MDNode *, uint64_t>;
 using LiveSet = std::bitset<4096>;
+
+// Struct to keep track of how murderous the dead store eliminator is.
+struct KillCounter {
+  uint64_t dead_stores;
+  uint64_t removed_insts;
+  uint64_t fwd_loads;
+  uint64_t fwd_stores;
+  uint64_t fwd_perfect;
+  uint64_t fwd_truncated;
+  uint64_t fwd_casted;
+  uint64_t fwd_reordered;
+  uint64_t fwd_failed;
+};
 
 // Recursive visitor of the `State` structure that assigns slots of ranges of
 // bytes.
@@ -731,7 +749,7 @@ class LiveSetBlockVisitor {
 
   void CollectDeadInsts(void);
   bool VisitBlock(llvm::BasicBlock *block);
-  bool DeleteDeadInsts(void);
+  bool DeleteDeadInsts(KillCounter &stats);
   void CreateDOTDigraph(std::ostream &dot);
 
  private:
@@ -898,9 +916,11 @@ void LiveSetBlockVisitor::CollectDeadInsts(void) {
 }
 
 // Remove all dead stores.
-bool LiveSetBlockVisitor::DeleteDeadInsts(void) {
+bool LiveSetBlockVisitor::DeleteDeadInsts(KillCounter &stats) {
+  stats.dead_stores += to_remove.size();
   bool changed = false;
   while (!to_remove.empty()) {
+    stats.removed_insts++;
     auto inst = to_remove.back();
     to_remove.pop_back();
 
@@ -1078,6 +1098,10 @@ class ForwardingBlockVisitor {
     const ScopeToOffset &scope_to_offset;
     const std::vector<StateSlot> &state_slots;
     const llvm::FunctionType *lifted_func_ty;
+    int truncated_loads;
+    int truncated_stores;
+    int replaced_loads;
+    int replaced_stores;
 
     ForwardingBlockVisitor(
       llvm::Function &func_,
@@ -1086,8 +1110,9 @@ class ForwardingBlockVisitor {
       const std::vector<StateSlot> &state_slots_,
       const llvm::DataLayout *dl_);
 
-    void Visit(const ValueToOffset &val_to_offset);
-    void VisitBlock(llvm::BasicBlock *block, const ValueToOffset &val_to_offset);
+    void Visit(const ValueToOffset &val_to_offset, KillCounter &stats);
+    void VisitBlock(llvm::BasicBlock *block, const ValueToOffset &val_to_offset,
+                    KillCounter &stats);
 
   private:
     const llvm::DataLayout *dl;
@@ -1103,25 +1128,40 @@ ForwardingBlockVisitor::ForwardingBlockVisitor(
       inst_to_offset(inst_to_offset_),
       scope_to_offset(scope_to_offset_),
       state_slots(state_slots_),
+      lifted_func_ty(func.getFunctionType()),
       dl(dl_) {}
 
-void ForwardingBlockVisitor::Visit(const ValueToOffset &val_to_offset) {
+void ForwardingBlockVisitor::Visit(const ValueToOffset &val_to_offset,
+                                   KillCounter &stats) {
   // if any visit makes progress, continue the loop
+  truncated_loads = 0;
+  truncated_stores = 0;
+  replaced_loads = 0;
+  replaced_stores = 0;
   for (auto &block : func) {
-    VisitBlock(&block, val_to_offset);
+    VisitBlock(&block, val_to_offset, stats);
   }
+  stats.fwd_loads = replaced_loads;
+  stats.fwd_stores = replaced_stores;
+  stats.fwd_truncated = truncated_loads + truncated_stores;
 }
 
-void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block, const ValueToOffset &val_to_offset) {
-  std::unordered_map<StateSlot *, llvm::LoadInst *> slot_to_load;
-  auto truncated_loads = 0;
-  auto truncated_stores = 0;
-  auto replaced_loads = 0;
-  auto replaced_stores = 0;
+void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
+                                        const ValueToOffset &val_to_offset,
+                                        KillCounter &stats) {
+  std::unordered_map<uint64_t, llvm::LoadInst *> slot_to_load;
+
+  // Collect the instructions into a vector. We're going to be shuffling them
+  // around and deleting some, so we don't want to invalidate any iterators.
+  std::vector<llvm::Instruction *> insts;
   for (auto inst_it = block->rbegin(); inst_it != block->rend(); ++inst_it) {
-    auto inst = &*inst_it;
+    insts.push_back(&*inst_it);
+  }
+
+  for (auto &inst : insts) {
     if (llvm::isa<llvm::CallInst>(inst) ||
         llvm::isa<llvm::InvokeInst>(inst)) {
+
       auto args = inst->operands();
       if (llvm::isa<llvm::CallInst>(inst)) {
         args = llvm::dyn_cast<llvm::CallInst>(inst)->arg_operands();
@@ -1137,8 +1177,8 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block, const ValueToOf
 
           // If we access a single non-zero offset, mark just that slot.
           if (offset != 0) {
-            auto slot = state_slots[offset];
-            slot_to_load.erase(&slot);
+            const auto &slot = state_slots[offset];
+            slot_to_load.erase(slot.index);
 
           // If we access offset `0`, then maybe we're actually passing
           // a state pointer, in which anything can be changed.
@@ -1147,53 +1187,160 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block, const ValueToOf
           }
         }
       }
+    // Try to do store-to-load forwarding.
     } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
-      if (auto scope = GetScopeFromInst(*inst)) {
-        auto inst_size = dl->getTypeAllocSize(store_inst->getOperand(0)->getType());
-        auto state_slot = state_slots[scope_to_offset.at(scope)];
-        if (slot_to_load.count(&state_slot)) {
-          auto next = slot_to_load[&state_slot];
-          auto next_size = dl->getTypeAllocSize(next->getType());
-          if (inst_to_offset.at(store_inst) == inst_to_offset.at(next)) {
-            if (next_size < inst_size) {
-              auto trunc = new llvm::TruncInst(store_inst->getOperand(0), next->getType(), "", next);
-              next->replaceAllUsesWith(trunc);
-              truncated_stores++;
-            } else if (next_size == inst_size) {
-              next->replaceAllUsesWith(store_inst->getOperand(0));
-              replaced_stores++;
-            }
-          }
-        }
+      const auto scope = GetScopeFromInst(*inst);
+      if (!scope) {
+        continue;
       }
-    } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(inst)) {
-      if (auto scope = GetScopeFromInst(*load_inst)) {
-        auto inst_size = dl->getTypeAllocSize(load_inst->getType());
-        auto state_slot = state_slots[scope_to_offset.at(scope)];
-        if (slot_to_load.count(&state_slot)) {
-          auto next = slot_to_load[&state_slot];
-          auto next_size = dl->getTypeAllocSize(next->getType());
-          if (inst_to_offset.at(load_inst) == inst_to_offset.at(next)) {
-            if (next_size < inst_size) {
-              auto trunc = new llvm::TruncInst(load_inst, next->getType(), "", next);
-              next->replaceAllUsesWith(trunc);
-              truncated_loads++;
-            } else if (next_size == inst_size) {
-              next->replaceAllUsesWith(load_inst);
-              replaced_loads++;
-            }
-          }
+
+      const auto val = store_inst->getOperand(0);
+      const auto val_type = val->getType();
+      const auto val_size = dl->getTypeAllocSize(val_type);
+      const auto &state_slot = state_slots[scope_to_offset.at(scope)];
+      if (!slot_to_load.count(state_slot.index)) {
+        continue;
+      }
+
+      const auto next_load = slot_to_load[state_slot.index];
+      const auto next_type = next_load->getType();
+
+      // We're visiting a store so erase the entry because we don't want to
+      // accidentally forward around a store.
+      slot_to_load.erase(state_slot.index);
+
+      if (inst_to_offset.at(store_inst) != inst_to_offset.at(next_load)) {
+        stats.fwd_failed++;
+        continue;
+      }
+
+      auto next_size = dl->getTypeAllocSize(next_type);
+
+      // Perfect forwarding.
+      if (val_type == next_type) {
+        next_load->replaceAllUsesWith(val);
+        next_load->eraseFromParent();
+        stats.fwd_perfect++;
+        stats.fwd_stores++;
+
+      // Forwarding, but changing the type.
+      } else if (next_size == val_size) {
+        auto cast = new llvm::BitCastInst(val, next_type, "", next_load);
+        next_load->replaceAllUsesWith(cast);
+        next_load->eraseFromParent();
+        stats.fwd_casted++;
+        stats.fwd_stores++;
+
+      // Forwarding, but changing the size.
+      } else if (next_size < val_size) {
+        if (val_type->isIntegerTy() && next_type->isIntegerTy()) {
+          auto trunc = new llvm::TruncInst(val, next_type, "", next_load);
+          next_load->replaceAllUsesWith(trunc);
+          next_load->eraseFromParent();
+
+        } else if (val_type->isFloatingPointTy() &&
+                   next_type->isFloatingPointTy()) {
+          auto trunc = new llvm::FPTruncInst(val, next_type, "", next_load);
+          next_load->replaceAllUsesWith(trunc);
+          next_load->eraseFromParent();
+
         } else {
-          slot_to_load.emplace(&state_slot, load_inst);
+          stats.fwd_failed++;
+          continue;
         }
+
+        stats.fwd_truncated++;
+        stats.fwd_stores++;
+
+      // This is like a store to `AX` followed by a load of `EAX`.
+      } else {
+        stats.fwd_failed++;
+        continue;
+      }
+
+    // Try to do load-to-load forwarding.
+    } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(inst)) {
+      auto scope = GetScopeFromInst(*load_inst);
+      if (!scope) {
+        continue;
+      }
+
+      auto &state_slot = state_slots[scope_to_offset.at(scope)];
+      auto &load_ref = slot_to_load[state_slot.index];
+
+      // Get the next load, and update the slot with the current load.
+      auto next_load = load_ref;
+      load_ref = load_inst;
+
+      // There was no next load, but instead the map default-initialized to
+      // `nullptr`, so move on with this load as a candidate for being the
+      // target of forwarding.
+      if (!next_load) {
+        continue;
+      }
+
+      // E.g. One load of `AH`, one load of `AL`.
+      if (inst_to_offset.at(load_inst) != inst_to_offset.at(next_load)) {
+        stats.fwd_failed++;
+        continue;
+      }
+
+      auto val_type = load_inst->getType();
+      auto val_size = dl->getTypeAllocSize(val_type);
+      auto next_type = next_load->getType();
+      auto next_size = dl->getTypeAllocSize(next_type);
+
+      // Perfecting forwarding.
+      if (val_type == next_type) {
+        next_load->replaceAllUsesWith(load_inst);
+        next_load->eraseFromParent();
+        stats.fwd_perfect++;
+        stats.fwd_loads++;
+
+      // Forwarding, but changing the type.
+      } else if (val_size == next_size) {
+        auto cast = new llvm::BitCastInst(load_inst, next_type, "", next_load);
+        next_load->replaceAllUsesWith(cast);
+        next_load->eraseFromParent();
+        stats.fwd_casted++;
+        stats.fwd_loads++;
+
+      // Forwarding, but changing the size.
+      } else if (next_size < val_size) {
+      try_truncate:
+        if (val_type->isIntegerTy() && next_type->isIntegerTy()) {
+          auto trunc = new llvm::TruncInst(load_inst, next_type, "", next_load);
+          next_load->replaceAllUsesWith(trunc);
+          next_load->eraseFromParent();
+
+        } else if (val_type->isFloatingPointTy() &&
+                   next_type->isFloatingPointTy()) {
+          auto trunc = new llvm::FPTruncInst(
+              load_inst, next_type, "", next_load);
+          next_load->replaceAllUsesWith(trunc);
+          next_load->eraseFromParent();
+        } else {
+          stats.fwd_failed++;
+          slot_to_load.erase(state_slot.index);
+          continue;
+        }
+
+        stats.fwd_truncated++;
+        stats.fwd_loads++;
+
+      // Try to re-order the loads.
+      } else {
+        next_load->removeFromParent();
+        next_load->insertBefore(load_inst);
+        load_ref = next_load;
+        std::swap(next_load, load_inst);
+        std::swap(next_size, val_size);
+        std::swap(val_type, next_type);
+        stats.fwd_reordered++;
+        goto try_truncate;
       }
     }
   }
-  LOG(INFO) << "Forwarded: "
-    << replaced_stores << " forwarded stores, "
-    << truncated_stores << " forwarded and truncated; "
-    << replaced_loads << " forwarded loads, "
-    << truncated_loads << " forwarded and truncated.";
 }
 
 }  // namespace
@@ -1230,6 +1377,7 @@ void RemoveDeadStores(llvm::Module *module,
                       llvm::Function *bb_func,
                       const std::vector<StateSlot> &slots) {
 
+  KillCounter stats = {};
   const AAMDInfo aamd_info(slots, module->getContext());
   const llvm::DataLayout dl = module->getDataLayout();
 
@@ -1242,63 +1390,64 @@ void RemoveDeadStores(llvm::Module *module,
 
     ForwardAliasVisitor fav(dl, slots);
 
-    // if the analysis succeeds for this function, add the AAMDNodes
+    // If the analysis succeeds for this function, add the AAMDNodes.
     if (fav.Analyze(&func)) {
       DLOG(INFO) << "Offsets: " << fav.state_offset.size();
       DLOG(INFO) << "Aliases: " << fav.state_access_offset.size();
       DLOG(INFO) << "Excluded: " << fav.exclude.size();
       AddAAMDNodes(fav.state_access_offset, aamd_info.slot_aamds);
-
-      // Perform load and store forwarding
-      ForwardingBlockVisitor fbv(func, fav.state_access_offset, aamd_info.slot_scopes,
-          slots, &dl);
-      fbv.Visit(fav.state_offset);
-
-      // Perform live set analysis
-      LiveSetBlockVisitor visitor(func, fav.state_offset, aamd_info.slot_scopes,
-          slots, bb_func->getFunctionType(), &dl);
-
-      visitor.FindLiveInsts();
-      visitor.CollectDeadInsts();
-
-      std::stringstream fname;
-
-      // Log useful DOT digraphs to a directory for every successfully
-      // analyzed function.
-      if (!FLAGS_dot_output_dir.empty()) {
-        fname << FLAGS_dot_output_dir << PathSeparator();
-
-        if (func.getName().empty()) {
-          fname << "func_" << std::hex << reinterpret_cast<uintptr_t>(&func);
-        } else {
-          fname << func.getName().str();
-        }
-
-        std::ofstream dot(fname.str());
-        visitor.CreateDOTDigraph(dot);
-      }
-
-      visitor.DeleteDeadInsts();
-
-      if (!FLAGS_dot_output_dir.empty()) {
-        fname << ".post";
-        std::ofstream dot(fname.str());
-        visitor.CreateDOTDigraph(dot);
-      }
     }
+
+    // Perform load and store forwarding.
+    if (!FLAGS_disable_register_forwarding) {
+      ForwardingBlockVisitor fbv(func, fav.state_access_offset,
+        aamd_info.slot_scopes, slots, &dl);
+      fbv.Visit(fav.state_offset, stats);
+    }
+
+    // Perform live set analysis
+    LiveSetBlockVisitor visitor(func, fav.state_offset, aamd_info.slot_scopes,
+      slots, bb_func->getFunctionType(), &dl);
+
+    visitor.FindLiveInsts();
+    visitor.CollectDeadInsts();
+
+    std::stringstream fname;
+
+    // Log useful DOT digraphs to a directory for every successfully
+    // analyzed function.
+    if (!FLAGS_dot_output_dir.empty()) {
+      fname << FLAGS_dot_output_dir << PathSeparator();
+
+      if (func.getName().empty()) {
+        fname << "func_" << std::hex << reinterpret_cast<uintptr_t>(&func);
+      } else {
+        fname << func.getName().str();
+      }
+
+      std::ofstream dot(fname.str());
+      visitor.CreateDOTDigraph(dot);
+    }
+
+    visitor.DeleteDeadInsts(stats);
+
+    if (!FLAGS_dot_output_dir.empty()) {
+      fname << ".post";
+      std::ofstream dot(fname.str());
+      visitor.CreateDOTDigraph(dot);
+    }
+
+    LOG(INFO)
+        << "Dead stores: " << stats.dead_stores << "; "
+        << "Instructions removed from DSE: " << stats.removed_insts << "; "
+        << "Forwarded loads: " << stats.fwd_loads << "; "
+        << "Forwarded stores: " << stats.fwd_stores << "; "
+        << "Perfectly forwarded: " << stats.fwd_perfect << "; "
+        << "Forwarded by truncation: " << stats.fwd_truncated << "; "
+        << "Forwarded by casting: " << stats.fwd_casted << "; "
+        << "Forwarded by reordering: " << stats.fwd_reordered << "; "
+        << "Could not forward: " << stats.fwd_failed;
   }
 }
-
-// Identify complete stores to slots that are subsequently accessed by loads
-// and then used, and perform store-to-load forwarding to condense this series of
-// statements from:
-//  a complete store to %Y of %X
-//  a load to %Z from %Y
-//  a series of statements using %Z
-// to:
-//  a series of statements using %X
-void ForwardStoresToLoads(void) {
-}
-
 
 }  // namespace remill
