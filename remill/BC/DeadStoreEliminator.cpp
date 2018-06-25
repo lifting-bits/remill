@@ -815,7 +815,7 @@ class LiveSetBlockVisitor {
   std::unordered_map<llvm::BasicBlock *, LiveSet> block_map;
   std::vector<llvm::Instruction *> to_remove;
   const llvm::Function *bb_func;
-  std::multimap<llvm::BasicBlock *, llvm::BasicBlock *> trigger_map;
+  std::multimap<llvm::BasicBlock *, llvm::BasicBlock *> entry_block_triggers;
   LiveSet func_used;
 
   LiveSetBlockVisitor(llvm::Module &module_,
@@ -851,7 +851,7 @@ LiveSetBlockVisitor::LiveSetBlockVisitor(
       block_map(),
       to_remove(),
       bb_func(bb_func_),
-      trigger_map(),
+      entry_block_triggers(),
       func_used(),
       on_remove_pass(false),
       dl(dl_) {
@@ -877,9 +877,9 @@ void LiveSetBlockVisitor::FindLiveInsts(void) {
         for (llvm::BasicBlock *pred : predecessors(block)) {
           next_wl.push_back(pred);
         }
-        if (trigger_map.count(block)) {
-          // Get all the callers of this block, and add them to the next work list.
-          auto range = trigger_map.equal_range(block);
+        // If we've visited an entry block, add its callers to the next work list.
+        if (entry_block_triggers.count(block)) {
+          auto range = entry_block_triggers.equal_range(block);
           for (auto i = range.first; i != range.second; ++i) {
             auto caller = i->second;
             next_wl.push_back(caller);
@@ -939,6 +939,15 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
       }
 
       if (!IsLiftedFunction(func, bb_func)) {
+        continue;
+      }
+
+      // Add this block to the trigger map.
+      auto entry_block = &*func->begin();
+      entry_block_triggers.emplace(entry_block, block);
+      // Check if this block's entry live set has been added already.
+      if (block_map.count(entry_block)) {
+        live = block_map[entry_block];
         continue;
       }
 
