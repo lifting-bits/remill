@@ -69,6 +69,13 @@ struct KillCounter {
   uint64_t fwd_failed;
 };
 
+// Return true if the given function is a lifted function (and not the BasicBlockFunction bb_func).
+static bool IsLiftedFunction(llvm::Function *func, const llvm::Function *bb_func) {
+  return !(func == bb_func ||
+           func->isDeclaration() ||
+           func->getFunctionType() != bb_func->getFunctionType());
+}
+
 // Recursive visitor of the `State` structure that assigns slots of ranges of
 // bytes.
 class StateVisitor {
@@ -807,14 +814,15 @@ class LiveSetBlockVisitor {
   std::vector<llvm::BasicBlock *> curr_wl;
   std::unordered_map<llvm::BasicBlock *, LiveSet> block_map;
   std::vector<llvm::Instruction *> to_remove;
-  const llvm::FunctionType *lifted_func_ty;
+  const llvm::Function *bb_func;
+  std::multimap<llvm::BasicBlock *, llvm::BasicBlock *> entry_block_triggers;
   LiveSet func_used;
 
   LiveSetBlockVisitor(llvm::Module &module_,
                       const InstToLiveSet &live_args_,
                       const ScopeToOffset &scope_to_offset_,
                       const std::vector<StateSlot> &state_slots_,
-                      const llvm::FunctionType *lifted_func_ty_,
+                      const llvm::Function *bb_func_,
                       const llvm::DataLayout *dl_);
   void FindLiveInsts();
 
@@ -833,7 +841,7 @@ LiveSetBlockVisitor::LiveSetBlockVisitor(
     const InstToLiveSet &live_args_,
     const ScopeToOffset &scope_to_offset_,
     const std::vector<StateSlot> &state_slots_,
-    const llvm::FunctionType *lifted_func_ty_,
+    const llvm::Function *bb_func_,
     const llvm::DataLayout *dl_)
     : module(module_),
       live_args(live_args_),
@@ -842,7 +850,8 @@ LiveSetBlockVisitor::LiveSetBlockVisitor(
       curr_wl(),
       block_map(),
       to_remove(),
-      lifted_func_ty(lifted_func_ty_),
+      bb_func(bb_func_),
+      entry_block_triggers(),
       func_used(),
       on_remove_pass(false),
       dl(dl_) {
@@ -867,6 +876,14 @@ void LiveSetBlockVisitor::FindLiveInsts(void) {
       if (VisitBlock(block)) {
         for (llvm::BasicBlock *pred : predecessors(block)) {
           next_wl.push_back(pred);
+        }
+        // If we've visited an entry block, add its callers to the next work list.
+        if (entry_block_triggers.count(block)) {
+          auto range = entry_block_triggers.equal_range(block);
+          for (auto i = range.first; i != range.second; ++i) {
+            auto caller = i->second;
+            next_wl.push_back(caller);
+          }
         }
       }
     }
@@ -910,10 +927,28 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
                llvm::isa<llvm::InvokeInst>(inst)) {
 
       auto args = inst->operands();
+      auto func = inst->getFunction();
       if (llvm::isa<llvm::CallInst>(inst)) {
-        args = llvm::dyn_cast<llvm::CallInst>(inst)->arg_operands();
+        auto call_inst = llvm::dyn_cast<llvm::CallInst>(inst);
+        args = call_inst->arg_operands();
+        func = call_inst->getCalledFunction();
       } else {
-        args = llvm::dyn_cast<llvm::InvokeInst>(inst)->arg_operands();
+        auto invoke_inst = llvm::dyn_cast<llvm::InvokeInst>(inst);
+        args = invoke_inst->arg_operands();
+        func = invoke_inst->getCalledFunction();
+      }
+
+      if (!IsLiftedFunction(func, bb_func)) {
+        continue;
+      }
+
+      // Add this block to the trigger map.
+      auto entry_block = &*func->begin();
+      entry_block_triggers.emplace(entry_block, block);
+      // Check if this block's entry live set has been added already.
+      if (block_map.count(entry_block)) {
+        live = block_map[entry_block];
+        continue;
       }
 
       auto arg_live_it = live_args.find(inst);
@@ -1462,9 +1497,7 @@ void RemoveDeadStores(llvm::Module *module,
   InstToLiveSet live_args;
 
   for (auto &func : *module) {
-    if (&func == bb_func ||
-        func.isDeclaration() ||
-        func.getFunctionType() != bb_func->getFunctionType()) {
+    if (!IsLiftedFunction(&func, bb_func)) {
       continue;
     }
 
@@ -1485,7 +1518,7 @@ void RemoveDeadStores(llvm::Module *module,
 
   // Perform live set analysis
   LiveSetBlockVisitor visitor(*module, live_args, aamd_info.slot_scopes,
-                              slots, bb_func->getFunctionType(), &dl);
+                              slots, bb_func, &dl);
 
   visitor.FindLiveInsts();
   visitor.CollectDeadInsts();
