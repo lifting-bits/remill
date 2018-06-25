@@ -751,6 +751,7 @@ class AAMDInfo {
 // the slots vector is mapped to a corresponding `llvm::AAMDNodes` struct.
 AAMDInfo::AAMDInfo(const std::vector<StateSlot> &offset_to_slot,
                    llvm::LLVMContext &context) {
+  auto arch = GetTargetArch();
 
   // Create a vector of pairs of scopes to slot offsets. This will be made
   // into a map at the end of the function. We need it as a vector for now
@@ -758,8 +759,13 @@ AAMDInfo::AAMDInfo(const std::vector<StateSlot> &offset_to_slot,
   std::vector<std::pair<llvm::MDNode *, uint64_t>> scope_offsets;
   scope_offsets.reserve(offset_to_slot.size());
   for (const auto &slot : offset_to_slot) {
-    auto mdstr = llvm::MDString::get(
-        context, "slot_" + std::to_string(slot.index));
+    llvm::MDString *mdstr = nullptr;
+    if (auto reg = arch->RegisterAtStateOffset(slot.offset)) {
+      mdstr = llvm::MDString::get(context, reg->EnclosingRegister()->name);
+    } else {
+      mdstr = llvm::MDString::get(
+          context, "slot_" + std::to_string(slot.index));
+    }
     scope_offsets.emplace_back(
         llvm::MDNode::get(context, mdstr), slot.offset);
   }
@@ -829,7 +835,7 @@ class LiveSetBlockVisitor {
   void CollectDeadInsts(void);
   bool VisitBlock(llvm::BasicBlock *block);
   bool DeleteDeadInsts(KillCounter &stats);
-  void CreateDOTDigraph(llvm::Function *func);
+  void CreateDOTDigraph(llvm::Function *func, const char *extensions);
 
  private:
   bool on_remove_pass;
@@ -1060,7 +1066,8 @@ static void StreamSlot(std::ostream &dot, const StateSlot &slot) {
 }
 
 // Generate a DOT digraph file representing the dataflow of the LSBV.
-void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func) {
+void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
+                                           const char *extension) {
   std::stringstream fname;
   fname << FLAGS_dot_output_dir << PathSeparator();
   if (!func->hasName()) {
@@ -1068,6 +1075,7 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func) {
   } else {
     fname << func->getName().str();
   }
+  fname << extension;
 
   std::ofstream dot(fname.str());
   dot << "digraph {" << std::endl
@@ -1575,12 +1583,20 @@ void RemoveDeadStores(llvm::Module *module,
   if (!FLAGS_dot_output_dir.empty()) {
     for (auto &func : *module) {
       if (IsLiftedFunction(&func, bb_func)) {
-        visitor.CreateDOTDigraph(&func);
+        visitor.CreateDOTDigraph(&func, ".dot");
       }
     }
   }
 
   visitor.DeleteDeadInsts(stats);
+
+  if (!FLAGS_dot_output_dir.empty()) {
+    for (auto &func : *module) {
+      if (IsLiftedFunction(&func, bb_func)) {
+        visitor.CreateDOTDigraph(&func, ".post.dot");
+      }
+    }
+  }
 
   LOG(INFO)
       << "Dead stores: " << stats.dead_stores << "; "
