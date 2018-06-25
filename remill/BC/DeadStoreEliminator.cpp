@@ -69,8 +69,10 @@ struct KillCounter {
   uint64_t fwd_failed;
 };
 
-// Return true if the given function is a lifted function (and not the BasicBlockFunction bb_func).
-static bool IsLiftedFunction(llvm::Function *func, const llvm::Function *bb_func) {
+// Return true if the given function is a lifted function
+// (and not the `__remill_basic_block`).
+static bool IsLiftedFunction(llvm::Function *func,
+                             const llvm::Function *bb_func) {
   return !(func == bb_func ||
            func->isDeclaration() ||
            func->getFunctionType() != bb_func->getFunctionType());
@@ -829,7 +831,7 @@ class LiveSetBlockVisitor {
   void CollectDeadInsts(void);
   bool VisitBlock(llvm::BasicBlock *block);
   bool DeleteDeadInsts(KillCounter &stats);
-  void CreateDOTDigraph(std::ostream &dot);
+  void CreateDOTDigraph(std::ostream &dot, llvm::Function *func);
 
  private:
   bool on_remove_pass;
@@ -938,29 +940,27 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
         func = invoke_inst->getCalledFunction();
       }
 
-      if (!IsLiftedFunction(func, bb_func)) {
-        continue;
-      }
-
-      // Add this block to the trigger map.
-      auto entry_block = &*func->begin();
-      entry_block_triggers.emplace(entry_block, block);
-      // Check if this block's entry live set has been added already.
-      if (block_map.count(entry_block)) {
+      // We're calling another lifted function; add a trigger relation between
+      // this block and the called function's entry block.
+      if (func && IsLiftedFunction(func, bb_func)) {
+        auto entry_block = &*func->begin();
+        entry_block_triggers.emplace(entry_block, block);
         live = block_map[entry_block];
-        continue;
-      }
 
-      auto arg_live_it = live_args.find(inst);
-      if (arg_live_it == live_args.end()) {
-        live.set();
+      // We're calling something for which we lack the code, so just use prior
+      // information about the arguments.
       } else {
-        live |= arg_live_it->second;
+        auto arg_live_it = live_args.find(inst);
+        if (arg_live_it == live_args.end()) {
+          live.set();
+        } else {
+          live |= arg_live_it->second;
 
-        // Masking in all the bits is heavier than the branch or just flipping
-        // one bit.
-        if (!FLAGS_dot_output_dir.empty()) {
-          func_used |= arg_live_it->second;
+          // Masking in all the bits is heavier than the branch or just
+          // flipping one bit.
+          if (!FLAGS_dot_output_dir.empty()) {
+            func_used |= arg_live_it->second;
+          }
         }
       }
 
@@ -1059,7 +1059,12 @@ static void StreamSlot(std::ostream &dot, const StateSlot &slot) {
 }
 
 // Generate a DOT digraph file representing the dataflow of the LSBV.
-void LiveSetBlockVisitor::CreateDOTDigraph(std::ostream &dot) {
+void LiveSetBlockVisitor::CreateDOTDigraph(std::ostream &dot,
+                                           llvm::Function *func) {
+  if (func->isDeclaration()) {
+    return;
+  }
+
   dot << "digraph {" << std::endl
       << "node [shape=none margin=0 nojustify=false labeljust=l]"
       << std::endl;
@@ -1070,9 +1075,15 @@ void LiveSetBlockVisitor::CreateDOTDigraph(std::ostream &dot) {
     slots[slot.index] = &slot;
   }
 
-  for (auto &block_live : block_map) {
-    auto block = block_live.first;
-    auto blive = block_live.second;
+//  for (auto &block_live : block_map) {
+  for (auto &block_ref : *func) {
+    auto block_live_ptr = block_map.find(&block_ref);
+    if (block_live_ptr == block_map.end()) {
+      continue;
+    }
+
+    auto block = &block_ref;
+    auto blive = block_live_ptr->second;
 
     dot << "b" << reinterpret_cast<uintptr_t>(block)
         << " [label=<<table cellspacing=\"0\">" << std::endl
@@ -1525,6 +1536,9 @@ void RemoveDeadStores(llvm::Module *module,
 
   if (!FLAGS_dot_output_dir.empty()) {
     for (auto &func : *module) {
+      if (!IsLiftedFunction(&func, bb_func)) {
+        continue;
+      }
       std::stringstream fname;
 
       // Log useful DOT digraphs to a directory for every successfully
@@ -1538,7 +1552,7 @@ void RemoveDeadStores(llvm::Module *module,
       }
 
       std::ofstream dot(fname.str());
-      visitor.CreateDOTDigraph(dot);
+      visitor.CreateDOTDigraph(dot, &func);
     }
   }
 
