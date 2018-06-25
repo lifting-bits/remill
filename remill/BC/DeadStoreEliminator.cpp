@@ -31,6 +31,7 @@
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Module.h>
 
+#include "remill/Arch/Arch.h"
 #include "remill/BC/DeadStoreEliminator.h"
 #include "remill/BC/Util.h"
 #include "remill/BC/Compat/Local.h"
@@ -78,7 +79,7 @@ class StateVisitor {
   // Visit a type and record it (and any children) in the slots vector
   virtual void Visit(llvm::Type *ty);
 
-  std::vector<StateSlot> slots;
+  std::vector<StateSlot> offset_to_slot;
 
   // The current index in the state structure.
   uint64_t index;
@@ -92,11 +93,11 @@ class StateVisitor {
 };
 
 StateVisitor::StateVisitor(llvm::DataLayout *dl_, uint64_t num_bytes)
-    : slots(),
+    : offset_to_slot(),
       index(0),
       offset(0),
       dl(dl_) {
-  slots.reserve(num_bytes);
+  offset_to_slot.reserve(num_bytes);
 }
 
 // Update the `StateVisitor`s slots field to hold a StateSlot for every byte
@@ -120,10 +121,9 @@ void StateVisitor::Visit(llvm::Type *ty) {
     // Special case: sequences of primitive types (or vectors thereof) are
     // treated as one slot.
     if (first_ty->isIntegerTy() || first_ty->isFloatingPointTy()) {
-
       uint64_t len = dl->getTypeAllocSize(seq_ty);
       for (uint64_t i = 0; i < len; i++) {
-        slots.emplace_back(index, offset, len);
+        offset_to_slot.emplace_back(index, offset, len);
       }
       index++;
       offset += len;
@@ -140,7 +140,7 @@ void StateVisitor::Visit(llvm::Type *ty) {
   } else if (ty->isIntegerTy() || ty->isFloatingPointTy()) {
     uint64_t len = dl->getTypeAllocSize(ty);
     for (uint64_t i = 0; i < len; i++) {
-      slots.emplace_back(index, offset, len);
+      offset_to_slot.emplace_back(index, offset, len);
     }
     index++;
     offset += len;
@@ -252,7 +252,7 @@ struct ForwardAliasVisitor
   virtual ~ForwardAliasVisitor(void) = default;
 
   ForwardAliasVisitor(const llvm::DataLayout &dl_,
-                      const std::vector<StateSlot> &state_slots_,
+                      const std::vector<StateSlot> &offset_to_slot_,
                       InstToLiveSet &live_args_);
 
   bool Analyze(llvm::Function *func);
@@ -279,7 +279,7 @@ struct ForwardAliasVisitor
 
  public:
   const llvm::DataLayout dl;
-  const std::vector<StateSlot> &state_slots;
+  const std::vector<StateSlot> &offset_to_slots;
   ValueToOffset state_offset;
   InstToOffset state_access_offset;
   InstToLiveSet live_args;
@@ -291,10 +291,10 @@ struct ForwardAliasVisitor
 
 ForwardAliasVisitor::ForwardAliasVisitor(
     const llvm::DataLayout &dl_,
-    const std::vector<StateSlot> &state_slots_,
+    const std::vector<StateSlot> &offset_to_slot_,
     InstToLiveSet &live_args_)
     : dl(dl_),
-      state_slots(state_slots_),
+      offset_to_slots(offset_to_slot_),
       state_offset(),
       state_access_offset(),
       live_args(live_args_),
@@ -499,11 +499,11 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(
   uint64_t offset = 0;
   if (!TryCombineOffsets(ptr->second, OpType::Plus,
                          static_cast<uint64_t>(const_offset.getSExtValue()),
-                         state_slots.size(), &offset)) {
+                         offset_to_slots.size(), &offset)) {
     LOG(WARNING)
         << "Out of bounds GEP operation: " << LLVMThingToString(&inst)
         << " with inferred offset " << static_cast<int64_t>(offset)
-        << " and max allowed offset of " << state_slots.size();
+        << " and max allowed offset of " << offset_to_slots.size();
     return VisitResult::Error;
   }
 
@@ -568,7 +568,7 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(
 
   if (2 == num_offsets) {
     uint64_t offset = 0;
-    if (!TryCombineOffsets(lhs_offset, op, rhs_offset, state_slots.size(),
+    if (!TryCombineOffsets(lhs_offset, op, rhs_offset, offset_to_slots.size(),
                            &offset)) {
       LOG(WARNING)
           << "Out of bounds operation `"
@@ -576,7 +576,7 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(
           << static_cast<int64_t>(lhs_offset)
           << ", RHS offset " << static_cast<int64_t>(rhs_offset)
           << ", combined offset " << static_cast<int64_t>(offset)
-          << ", and max allowed offset of " << state_slots.size();
+          << ", and max allowed offset of " << offset_to_slots.size();
       return VisitResult::Error;
     }
 
@@ -705,7 +705,7 @@ VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
   // If we have not seen this instruction before, add it.
   if (!live_args.count(&inst)) {
     auto args = inst.arg_operands();
-    auto live = GetLiveSetFromArgs(args, state_offset, state_slots);
+    auto live = GetLiveSetFromArgs(args, state_offset, offset_to_slots);
     live_args.emplace(&inst, live);
   }
   return VisitResult::Ignored;
@@ -716,7 +716,7 @@ VisitResult ForwardAliasVisitor::visitInvokeInst(llvm::InvokeInst &inst) {
   // If we have not seen this instruction before, add it.
   if (!live_args.count(&inst)) {
     auto args = inst.arg_operands();
-    auto live = GetLiveSetFromArgs(args, state_offset, state_slots);
+    auto live = GetLiveSetFromArgs(args, state_offset, offset_to_slots);
     live_args.emplace(&inst, live);
   }
 
@@ -803,7 +803,7 @@ class LiveSetBlockVisitor {
   llvm::Module &module;
   const InstToLiveSet &live_args;
   const ScopeToOffset &scope_to_offset;
-  const std::vector<StateSlot> &state_slots;
+  const std::vector<StateSlot> &offset_to_slot;
   std::vector<llvm::BasicBlock *> curr_wl;
   std::unordered_map<llvm::BasicBlock *, LiveSet> block_map;
   std::vector<llvm::Instruction *> to_remove;
@@ -838,7 +838,7 @@ LiveSetBlockVisitor::LiveSetBlockVisitor(
     : module(module_),
       live_args(live_args_),
       scope_to_offset(scope_to_offset_),
-      state_slots(state_slots_),
+      offset_to_slot(state_slots_),
       curr_wl(),
       block_map(),
       to_remove(),
@@ -937,7 +937,7 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
 
       auto val = store_inst->getOperand(0);
       auto val_size = dl->getTypeAllocSize(val->getType());
-      const auto &state_slot = state_slots[scope_to_offset.at(scope)];
+      const auto &state_slot = offset_to_slot[scope_to_offset.at(scope)];
       auto slot_num = state_slot.index;
 
       if (!live.test(slot_num)) {
@@ -956,7 +956,7 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
     // Loads from slots revive the slots.
     } else if (llvm::isa<llvm::LoadInst>(inst)) {
       if (auto scope = GetScopeFromInst(*inst)) {
-        auto slot_num = state_slots[scope_to_offset.at(scope)].index;
+        auto slot_num = offset_to_slot[scope_to_offset.at(scope)].index;
         live.set(slot_num);
         func_used.set(slot_num);
       }
@@ -1009,11 +1009,31 @@ bool LiveSetBlockVisitor::DeleteDeadInsts(KillCounter &stats) {
   return changed;
 }
 
+static void StreamSlot(std::ostream &dot, const StateSlot &slot) {
+  auto arch = GetTargetArch();
+  // slot #
+  if (auto reg = arch->RegisterAtStateOffset(slot.offset)) {
+    auto enc_reg = reg->EnclosingRegisterOfSize(slot.size);
+    if (!enc_reg) {
+      enc_reg = reg->EnclosingRegister();
+    }
+    dot << enc_reg->name;
+  } else {
+    dot << slot.index;
+  }
+}
+
 // Generate a DOT digraph file representing the dataflow of the LSBV.
 void LiveSetBlockVisitor::CreateDOTDigraph(std::ostream &dot) {
   dot << "digraph {" << std::endl
       << "node [shape=none margin=0 nojustify=false labeljust=l]"
       << std::endl;
+
+  std::vector<const StateSlot *> slots;
+  slots.resize(offset_to_slot.back().index + 1);
+  for (auto &slot : offset_to_slot) {
+    slots[slot.index] = &slot;
+  }
 
   for (auto &block_live : block_map) {
     auto block = block_live.first;
@@ -1027,7 +1047,8 @@ void LiveSetBlockVisitor::CreateDOTDigraph(std::ostream &dot) {
     auto sep = "live: ";
     for (uint64_t i = 0; i < blive.size(); i++) {
       if (func_used.test(i) && blive.test(i)) {
-        dot << sep << i;
+        dot << sep;
+        StreamSlot(dot, *(slots[i]));
         sep = ", ";
       }
     }
@@ -1038,7 +1059,7 @@ void LiveSetBlockVisitor::CreateDOTDigraph(std::ostream &dot) {
       dot << "<tr><td align=\"left\">";
 
       if (auto scope = GetScopeFromInst(inst)) {
-        const auto &slot = state_slots[scope_to_offset.at(scope)];
+        const auto &slot = offset_to_slot[scope_to_offset.at(scope)];
         auto inst_size = 0;
         if (llvm::isa<llvm::LoadInst>(&inst)) {
           inst_size = dl->getTypeAllocSize(inst.getType());
@@ -1050,11 +1071,11 @@ void LiveSetBlockVisitor::CreateDOTDigraph(std::ostream &dot) {
               << " has scope meta-data";
         }
 
-        // slot #
-        dot << "slot " << slot.index
-          // slot size minus load/store size
-          << "</td><td align=\"left\">" << (slot.size - inst_size)
-          << "</td>";
+        StreamSlot(dot, slot);
+
+        // slot size minus load/store size
+        dot << "</td><td align=\"left\">" << (slot.size - inst_size)
+            << "</td>";
       } else {
         dot << "</td><td></td>";
       }
@@ -1123,7 +1144,8 @@ void LiveSetBlockVisitor::CreateDOTDigraph(std::ostream &dot) {
     sep = "live: ";
     for (uint64_t i = 0; i < exit_live.size(); i++) {
       if (func_used.test(i) && exit_live.test(i)) {
-        dot << sep << i;
+        dot << sep;
+        StreamSlot(dot, *(slots[i]));
         sep = ", ";
       }
     }
@@ -1423,8 +1445,8 @@ std::vector<StateSlot> StateSlots(llvm::Module *module) {
   const auto num_bytes = dl.getTypeAllocSize(type);
   StateVisitor vis(&dl, num_bytes);
   vis.Visit(type);
-  CHECK(vis.slots.size() == num_bytes);
-  return vis.slots;
+  CHECK(vis.offset_to_slot.size() == num_bytes);
+  return vis.offset_to_slot;
 }
 
 // Analyze a module, discover aliasing loads and stores, and remove dead
