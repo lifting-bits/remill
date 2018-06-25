@@ -1081,15 +1081,6 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func) {
     slots[slot.index] = &slot;
   }
 
-  // Collect the set of used slots in this function.
-  LiveSet func_used;
-  for (auto &block_ref : *func) {
-    auto block_live_ptr = block_map.find(&block_ref);
-    if (block_live_ptr != block_map.end()) {
-      func_used |= block_live_ptr->second;
-    }
-  }
-
   // Stream node information for each block.
   for (auto &block_ref : *func) {
     auto block_live_ptr = block_map.find(&block_ref);
@@ -1102,9 +1093,15 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func) {
 
     // Figure out the live set on exit from the block.
     LiveSet exit_live;
+    int num_succs = 0;
     for (auto succ_block_it : successors(block)) {
       auto succ = &*succ_block_it;
       exit_live |= block_map[succ];
+      num_succs++;
+    }
+
+    if (!num_succs) {
+      exit_live.set();
     }
 
     dot << "b" << reinterpret_cast<uintptr_t>(block)
@@ -1114,7 +1111,7 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func) {
     dot << "<tr><td align=\"left\" colspan=\"3\">";
     auto sep = "dead: ";
     for (uint64_t i = 0; i < slots.size(); i++) {
-      if (func_used.test(i) && !blive.test(i)) {
+      if (!blive.test(i)) {
         dot << sep;
         StreamSlot(dot, *(slots[i]));
         sep = ", ";
@@ -1128,9 +1125,9 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func) {
       if (debug_live_args_at_call.count(&inst)) {
         const auto &clive = debug_live_args_at_call[&inst];
         dot << "<tr><td align=\"left\" colspan=\"3\">";
-        auto sep = "dead: ";
+        sep = "dead: ";
         for (uint64_t i = 0; i < slots.size(); i++) {
-          if (func_used.test(i) && !clive.test(i)) {
+          if (!clive.test(i)) {
             dot << sep;
             StreamSlot(dot, *(slots[i]));
             sep = ", ";
@@ -1223,6 +1220,18 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func) {
       }
       dot << "</td></tr>" << std::endl;
     }
+
+    // Last row, print out the DEAD slots incoming from successors.
+    dot << "<tr><td align=\"left\" colspan=\"3\">";
+    sep = "dead: ";
+    for (uint64_t i = 0; i < slots.size(); i++) {
+      if (!exit_live.test(i)) {
+        dot << sep;
+        StreamSlot(dot, *(slots[i]));
+        sep = ", ";
+      }
+    }
+    dot << "</td></tr>" << std::endl;
 
     dot << "</table>>];" << std::endl;
 
