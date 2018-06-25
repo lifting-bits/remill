@@ -53,7 +53,7 @@ namespace {
 using ValueToOffset = std::unordered_map<llvm::Value *, uint64_t>;
 using InstToOffset = std::unordered_map<llvm::Instruction *, uint64_t>;
 using ScopeToOffset = std::unordered_map<llvm::MDNode *, uint64_t>;
-using LiveSet = std::bitset<4096>;
+using LiveSet = std::bitset<256>;
 using InstToLiveSet = std::unordered_map<llvm::Instruction *, LiveSet>;
 
 // Struct to keep track of how murderous the dead store eliminator is.
@@ -291,7 +291,7 @@ struct ForwardAliasVisitor
   const std::vector<StateSlot> &offset_to_slots;
   ValueToOffset state_offset;
   InstToOffset state_access_offset;
-  InstToLiveSet live_args;
+  InstToLiveSet &live_args;
   std::unordered_set<llvm::Value *> exclude;
   std::vector<llvm::Instruction *> curr_wl;
   std::vector<llvm::Instruction *> calls;
@@ -312,6 +312,8 @@ ForwardAliasVisitor::ForwardAliasVisitor(
       state_ptr(nullptr) {}
 
 void ForwardAliasVisitor::AddInstruction(llvm::Instruction *inst) {
+  inst->setName("");
+
   if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
     llvm::AAMDNodes aamd;
     store_inst->setAAMetadata(aamd);
@@ -712,23 +714,18 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &I) {
 VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
 
   // If we have not seen this instruction before, add it.
-  if (!live_args.count(&inst)) {
-    auto args = inst.arg_operands();
-    auto live = GetLiveSetFromArgs(args, state_offset, offset_to_slots);
-    live_args.emplace(&inst, live);
-  }
+  auto args = inst.arg_operands();
+  auto live = GetLiveSetFromArgs(args, state_offset, offset_to_slots);
+  live_args.emplace(&inst, std::move(live));
   return VisitResult::Ignored;
 }
 
 VisitResult ForwardAliasVisitor::visitInvokeInst(llvm::InvokeInst &inst) {
 
   // If we have not seen this instruction before, add it.
-  if (!live_args.count(&inst)) {
-    auto args = inst.arg_operands();
-    auto live = GetLiveSetFromArgs(args, state_offset, offset_to_slots);
-    live_args.emplace(&inst, live);
-  }
-
+  auto args = inst.arg_operands();
+  auto live = GetLiveSetFromArgs(args, state_offset, offset_to_slots);
+  live_args.emplace(&inst, std::move(live));
   return VisitResult::Ignored;
 }
 
@@ -739,7 +736,8 @@ class AAMDInfo {
   // Return a map of `llvm::MDNode` scopes and a vector of AAMDNodes based on
   // the given vector of `StateSlot`s, where each byte offset (i.e. index) in
   // the slots vector is mapped to a corresponding `llvm::AAMDNodes` struct.
-  AAMDInfo(const std::vector<StateSlot> &slots, llvm::LLVMContext &context);
+  AAMDInfo(const std::vector<StateSlot> &offset_to_slot,
+           llvm::LLVMContext &context);
 
   // Maps `llvm::MDNode`s to byte offset into the `State` structure.
   ScopeToOffset slot_scopes;
@@ -751,15 +749,15 @@ class AAMDInfo {
 // Return a map of `llvm::MDNode` scopes and a vector of AAMDNodes based on
 // the given vector of `StateSlot`s, where each byte offset (i.e. index) in
 // the slots vector is mapped to a corresponding `llvm::AAMDNodes` struct.
-AAMDInfo::AAMDInfo(const std::vector<StateSlot> &slots,
+AAMDInfo::AAMDInfo(const std::vector<StateSlot> &offset_to_slot,
                    llvm::LLVMContext &context) {
 
   // Create a vector of pairs of scopes to slot offsets. This will be made
   // into a map at the end of the function. We need it as a vector for now
   // so that it is ordered when creating the `noalias` sets.
   std::vector<std::pair<llvm::MDNode *, uint64_t>> scope_offsets;
-  scope_offsets.reserve(slots.size());
-  for (const auto &slot : slots) {
+  scope_offsets.reserve(offset_to_slot.size());
+  for (const auto &slot : offset_to_slot) {
     auto mdstr = llvm::MDString::get(
         context, "slot_" + std::to_string(slot.index));
     scope_offsets.emplace_back(
@@ -768,12 +766,13 @@ AAMDInfo::AAMDInfo(const std::vector<StateSlot> &slots,
 
   // One `llvm::AAMDNodes` struct for each byte offset so that we can easily
   // connect them.
-  slot_aamds.reserve(slots.size());
-  for (uint64_t i = 0; i < slots.size(); i++) {
+  slot_aamds.reserve(offset_to_slot.size());
+  for (uint64_t i = 0; i < offset_to_slot.size(); i++) {
 
     // This byte belongs to the same slot as the previous byte, so duplicate
     // the previous info.
-    if (!slot_aamds.empty() && i && slots[i].index == slots[i - 1].index) {
+    if (!slot_aamds.empty() && i &&
+        offset_to_slot[i].index == offset_to_slot[i - 1].index) {
       slot_aamds.push_back(slot_aamds.back());
       continue;
     }
@@ -781,17 +780,17 @@ AAMDInfo::AAMDInfo(const std::vector<StateSlot> &slots,
     // The `noalias` set is all `llvm::MDNode`s that aren't associated with
     // the slot.
     std::vector<llvm::Metadata *> noalias_vec;
-    noalias_vec.reserve(slots.back().index);
+    noalias_vec.reserve(offset_to_slot.back().index);
 
-    for (uint64_t j = 0; j < slots.size(); j++) {
+    for (uint64_t j = 0; j < offset_to_slot.size(); j++) {
 
       // The `j`th byte offset belong to the same slot as the `i`th byte
       // offset.
-      if (slots[i].index == slots[j].index) {
+      if (offset_to_slot[i].index == offset_to_slot[j].index) {
         continue;
 
       // Duplicate of previous one.
-      } else if (j && slots[j].index == slots[j - 1].index) {
+      } else if (j && offset_to_slot[j].index == offset_to_slot[j - 1].index) {
         continue;
 
       } else {
@@ -810,6 +809,7 @@ AAMDInfo::AAMDInfo(const std::vector<StateSlot> &slots,
 class LiveSetBlockVisitor {
  public:
   llvm::Module &module;
+  InstToLiveSet debug_live_args_at_call;
   const InstToLiveSet &live_args;
   const ScopeToOffset &scope_to_offset;
   const std::vector<StateSlot> &offset_to_slot;
@@ -817,8 +817,6 @@ class LiveSetBlockVisitor {
   std::unordered_map<llvm::BasicBlock *, LiveSet> block_map;
   std::vector<llvm::Instruction *> to_remove;
   const llvm::Function *bb_func;
-  std::multimap<llvm::BasicBlock *, llvm::BasicBlock *> entry_block_triggers;
-  LiveSet func_used;
 
   LiveSetBlockVisitor(llvm::Module &module_,
                       const InstToLiveSet &live_args_,
@@ -826,12 +824,12 @@ class LiveSetBlockVisitor {
                       const std::vector<StateSlot> &state_slots_,
                       const llvm::Function *bb_func_,
                       const llvm::DataLayout *dl_);
-  void FindLiveInsts();
+  void FindLiveInsts(void);
 
   void CollectDeadInsts(void);
   bool VisitBlock(llvm::BasicBlock *block);
   bool DeleteDeadInsts(KillCounter &stats);
-  void CreateDOTDigraph(std::ostream &dot, llvm::Function *func);
+  void CreateDOTDigraph(llvm::Function *func);
 
  private:
   bool on_remove_pass;
@@ -853,8 +851,6 @@ LiveSetBlockVisitor::LiveSetBlockVisitor(
       block_map(),
       to_remove(),
       bb_func(bb_func_),
-      entry_block_triggers(),
-      func_used(),
       on_remove_pass(false),
       dl(dl_) {
   for (auto &func : module) {
@@ -876,15 +872,23 @@ void LiveSetBlockVisitor::FindLiveInsts(void) {
       // If we change the live slots state of the block, then add the
       // block's predecessors to the next work list.
       if (VisitBlock(block)) {
+        int num_preds = 0;
         for (llvm::BasicBlock *pred : predecessors(block)) {
           next_wl.push_back(pred);
+          num_preds++;
         }
-        // If we've visited an entry block, add its callers to the next work list.
-        if (entry_block_triggers.count(block)) {
-          auto range = entry_block_triggers.equal_range(block);
-          for (auto i = range.first; i != range.second; ++i) {
-            auto caller = i->second;
-            next_wl.push_back(caller);
+
+        // If we've visited an entry block, add its callers to the
+        // next work list.
+        if (!num_preds) {
+          auto func = block->getParent();
+          for (auto user : func->users()) {
+            if (auto inst = llvm::dyn_cast<llvm::Instruction>(user)) {
+              if (llvm::isa<llvm::CallInst>(inst) ||
+                  llvm::isa<llvm::InvokeInst>(inst)) {
+                next_wl.push_back(inst->getParent());
+              }
+            }
           }
         }
       }
@@ -944,23 +948,23 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
       // this block and the called function's entry block.
       if (func && IsLiftedFunction(func, bb_func)) {
         auto entry_block = &*func->begin();
-        entry_block_triggers.emplace(entry_block, block);
         live = block_map[entry_block];
+
+        if (!FLAGS_dot_output_dir.empty()) {
+          debug_live_args_at_call[inst] = live;
+        }
 
       // We're calling something for which we lack the code, so just use prior
       // information about the arguments.
       } else {
         auto arg_live_it = live_args.find(inst);
+
+        // Likely due to a more general failure to analyze this particular
+        // function.
         if (arg_live_it == live_args.end()) {
           live.set();
         } else {
           live |= arg_live_it->second;
-
-          // Masking in all the bits is heavier than the branch or just
-          // flipping one bit.
-          if (!FLAGS_dot_output_dir.empty()) {
-            func_used |= arg_live_it->second;
-          }
         }
       }
 
@@ -986,14 +990,11 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
         live.reset(slot_num);
       }
 
-      func_used.set(slot_num);
-
     // Loads from slots revive the slots.
     } else if (llvm::isa<llvm::LoadInst>(inst)) {
       if (auto scope = GetScopeFromInst(*inst)) {
         auto slot_num = offset_to_slot[scope_to_offset.at(scope)].index;
         live.set(slot_num);
-        func_used.set(slot_num);
       }
     }
   }
@@ -1059,23 +1060,37 @@ static void StreamSlot(std::ostream &dot, const StateSlot &slot) {
 }
 
 // Generate a DOT digraph file representing the dataflow of the LSBV.
-void LiveSetBlockVisitor::CreateDOTDigraph(std::ostream &dot,
-                                           llvm::Function *func) {
-  if (func->isDeclaration()) {
-    return;
+void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func) {
+  std::stringstream fname;
+  fname << FLAGS_dot_output_dir << PathSeparator();
+  if (!func->hasName()) {
+    fname << "func_" << std::hex << reinterpret_cast<uintptr_t>(&func);
+  } else {
+    fname << func->getName().str();
   }
 
+  std::ofstream dot(fname.str());
   dot << "digraph {" << std::endl
       << "node [shape=none margin=0 nojustify=false labeljust=l]"
       << std::endl;
 
+  // Make a vector so that we can go from slot index to slot.
   std::vector<const StateSlot *> slots;
   slots.resize(offset_to_slot.back().index + 1);
   for (auto &slot : offset_to_slot) {
     slots[slot.index] = &slot;
   }
 
-//  for (auto &block_live : block_map) {
+  // Collect the set of used slots in this function.
+  LiveSet func_used;
+  for (auto &block_ref : *func) {
+    auto block_live_ptr = block_map.find(&block_ref);
+    if (block_live_ptr != block_map.end()) {
+      func_used |= block_live_ptr->second;
+    }
+  }
+
+  // Stream node information for each block.
   for (auto &block_ref : *func) {
     auto block_live_ptr = block_map.find(&block_ref);
     if (block_live_ptr == block_map.end()) {
@@ -1083,16 +1098,23 @@ void LiveSetBlockVisitor::CreateDOTDigraph(std::ostream &dot,
     }
 
     auto block = &block_ref;
-    auto blive = block_live_ptr->second;
+    const auto &blive = block_live_ptr->second;
+
+    // Figure out the live set on exit from the block.
+    LiveSet exit_live;
+    for (auto succ_block_it : successors(block)) {
+      auto succ = &*succ_block_it;
+      exit_live |= block_map[succ];
+    }
 
     dot << "b" << reinterpret_cast<uintptr_t>(block)
-        << " [label=<<table cellspacing=\"0\">" << std::endl
-        << "<tr><td align=\"left\" colspan=\"3\">";
+        << " [label=<<table cellspacing=\"0\">" << std::endl;
 
-    // First row, print out the live slots on entry.
-    auto sep = "live: ";
-    for (uint64_t i = 0; i < blive.size(); i++) {
-      if (func_used.test(i) && blive.test(i)) {
+    // First row, print out the DEAD slots on entry.
+    dot << "<tr><td align=\"left\" colspan=\"3\">";
+    auto sep = "dead: ";
+    for (uint64_t i = 0; i < slots.size(); i++) {
+      if (func_used.test(i) && !blive.test(i)) {
         dot << sep;
         StreamSlot(dot, *(slots[i]));
         sep = ", ";
@@ -1102,6 +1124,21 @@ void LiveSetBlockVisitor::CreateDOTDigraph(std::ostream &dot,
 
     // Then print out one row per instruction.
     for (auto &inst : *block) {
+      // First row, print out the DEAD slots on entry.
+      if (debug_live_args_at_call.count(&inst)) {
+        const auto &clive = debug_live_args_at_call[&inst];
+        dot << "<tr><td align=\"left\" colspan=\"3\">";
+        auto sep = "dead: ";
+        for (uint64_t i = 0; i < slots.size(); i++) {
+          if (func_used.test(i) && !clive.test(i)) {
+            dot << sep;
+            StreamSlot(dot, *(slots[i]));
+            sep = ", ";
+          }
+        }
+        dot << "</td></tr>" << std::endl;
+      }
+
       dot << "<tr><td align=\"left\">";
 
       if (auto scope = GetScopeFromInst(inst)) {
@@ -1127,16 +1164,25 @@ void LiveSetBlockVisitor::CreateDOTDigraph(std::ostream &dot,
       }
 
       // Calls can be quite wide, so we don't present the whole instruction.
-      if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(&inst)) {
+      if (llvm::isa<llvm::CallInst>(&inst) ||
+          llvm::isa<llvm::InvokeInst>(&inst)) {
         dot << "<td align=\"left\">  ";
 
-        if (!call_inst->getType()->isVoidTy()) {
-          dot << "%" << call_inst->getValueID() << " = ";
+        if (!inst.getType()->isVoidTy()) {
+          dot << "%" << inst.getValueID() << " = ";
         }
 
-        auto called_val = call_inst->getCalledValue();
+        llvm::Value *called_val = nullptr;
+        if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(&inst)) {
+          dot << "call ";
+          called_val = call_inst->getCalledValue();
+        } else {
+          dot << "invoke ";
+          auto invoke_inst = llvm::dyn_cast<llvm::InvokeInst>(&inst);
+          called_val = invoke_inst->getCalledValue();
+        }
 
-        dot << "call ";
+
         if (called_val->getName().empty()) {
           dot << called_val->getValueID();
         } else {
@@ -1178,26 +1224,9 @@ void LiveSetBlockVisitor::CreateDOTDigraph(std::ostream &dot,
       dot << "</td></tr>" << std::endl;
     }
 
-    // Figure out the live set on exit from the block.
-    LiveSet exit_live;
-    for (auto succ_block_it : successors(block)) {
-      auto succ = &*succ_block_it;
-      exit_live |= block_map[succ];
-    }
-    dot << "<tr><td colspan=\"3\">";
-
-    // Print out live slots on exit from the block.
-    sep = "live: ";
-    for (uint64_t i = 0; i < exit_live.size(); i++) {
-      if (func_used.test(i) && exit_live.test(i)) {
-        dot << sep;
-        StreamSlot(dot, *(slots[i]));
-        sep = ", ";
-      }
-    }
-
-    dot << "</td></tr>" << std::endl;
     dot << "</table>>];" << std::endl;
+
+    // Arrows to successor blocks.
     for (auto succ_block_it : successors(block)) {
       auto succ = &*succ_block_it;
       dot << "b" << reinterpret_cast<uintptr_t>(block) << " -> b"
@@ -1536,23 +1565,9 @@ void RemoveDeadStores(llvm::Module *module,
 
   if (!FLAGS_dot_output_dir.empty()) {
     for (auto &func : *module) {
-      if (!IsLiftedFunction(&func, bb_func)) {
-        continue;
+      if (IsLiftedFunction(&func, bb_func)) {
+        visitor.CreateDOTDigraph(&func);
       }
-      std::stringstream fname;
-
-      // Log useful DOT digraphs to a directory for every successfully
-      // analyzed function.
-      fname << FLAGS_dot_output_dir << PathSeparator();
-
-      if (func.getName().empty()) {
-        fname << "func_" << std::hex << reinterpret_cast<uintptr_t>(&func);
-      } else {
-        fname << func.getName().str();
-      }
-
-      std::ofstream dot(fname.str());
-      visitor.CreateDOTDigraph(dot, &func);
     }
   }
 
