@@ -404,9 +404,10 @@ std::string LLVMThingToString(llvm::Type *thing) {
 
 llvm::Argument *NthArgument(llvm::Function *func, size_t index) {
   auto it = func->arg_begin();
-  for (size_t i = 0; i < index; ++i) {
-    ++it;
+  if (index >= static_cast<size_t>(std::distance(it, func->arg_end()))) {
+    return nullptr;
   }
+  std::advance(it, index);
   return &*it;
 }
 
@@ -505,6 +506,10 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
   auto func_name = source_func->getName().str();
   auto source_mod = source_func->getParent();
   auto dest_mod = dest_func->getParent();
+
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
+  dest_func->getContext().setDiscardValueNames(false);
+#endif
 
   dest_func->setAttributes(source_func->getAttributes());
   dest_func->setLinkage(source_func->getLinkage());

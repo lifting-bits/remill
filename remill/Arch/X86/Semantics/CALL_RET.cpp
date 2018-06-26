@@ -71,5 +71,30 @@ DEF_ISEL_32or64(RET_NEAR, RET);
 728 IRETD IRETD RET BASE I386 ATTRIBUTES: FIXED_BASE0 NOTSX SCALABLE STACKPOP0
 */
 
+#if ADDRESS_SIZE_BITS == 32
+namespace {
+DEF_SEM(IRETD) {
+  auto new_eip = PopFromStack<uint32_t>(memory, state);
+  auto new_cs = static_cast<uint16_t>(PopFromStack<uint32_t>(memory, state));
+  auto temp_eflags = PopFromStack<uint32_t>(memory, state);
+  Flags f = {};
+  f.flat = (temp_eflags & 0x257FD5U) | 0x1A0000U;
+  Write(REG_PC, new_eip);
+  Write(REG_CS.flat, new_cs);
+  state.rflag = f;
+  state.aflag.af = f.af;
+  state.aflag.cf = f.cf;
+  state.aflag.df = f.df;
+  state.aflag.of = f.of;
+  state.aflag.pf = f.pf;
+  state.aflag.sf = f.sf;
+  state.aflag.zf = f.zf;
+  state.hyper_call = AsyncHyperCall::kX86IRet;
+  return memory;
+}
+}
+
+DEF_ISEL(IRETD_32) = IRETD;
+#endif
 
 #endif  // REMILL_ARCH_X86_SEMANTICS_CALL_RET_H_

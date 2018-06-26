@@ -16,6 +16,7 @@
 
 #include <glog/logging.h>
 
+#include <iomanip>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -287,10 +288,13 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
     ss << xed_decoded_inst_get_operand_width(xedd);
   }
 
-  // Suffix the ISEL function name with the segment register name for these two
-  // iforms so that we know which hypercall to use.
+  // Suffix the ISEL function name with the segment or control register names,
+  // as a runtime may need to perform complex actions that are specific to
+  // the register used.
   if (XED_IFORM_MOV_SEG_MEMw == iform ||
-      XED_IFORM_MOV_SEG_GPR16 == iform) {
+      XED_IFORM_MOV_SEG_GPR16 == iform ||
+      XED_IFORM_MOV_CR_CR_GPR32 == iform ||
+      XED_IFORM_MOV_CR_CR_GPR64 == iform) {
     ss << "_";
     ss << xed_reg_enum_t2str(xed_decoded_inst_get_reg(xedd, XED_OPERAND_REG0));
   }
@@ -310,9 +314,15 @@ static bool DecodeXED(xed_decoded_inst_t *xedd,
   auto err = xed_decode(xedd, bytes, static_cast<uint32_t>(num_bytes));
 
   if (XED_ERROR_NONE != err) {
+    std::stringstream ss;
+    for (auto b : inst_bytes) {
+      ss << std::hex << std::setw(2) << std::setfill('0')
+         << static_cast<unsigned>(b);
+    }
     LOG(ERROR)
-        << "Unable to decode instuction at " << std::hex << address
-        << " with error: " << xed_error_enum_t2str(err) << ".";
+        << "Unable to decode instruction at " << std::hex << address
+        << " with bytes " << ss.str() << " and error: "
+        << xed_error_enum_t2str(err) << std::dec;
     return false;
   }
 
@@ -801,6 +811,7 @@ llvm::CallingConv::ID X86Arch::DefaultCallingConv(void) const {
       case kOSInvalid:
       case kOSmacOS:
       case kOSLinux:
+      case kOSVxWorks:
       case kOSWindows:
         return llvm::CallingConv::C;  // cdecl.
     }
@@ -809,6 +820,7 @@ llvm::CallingConv::ID X86Arch::DefaultCallingConv(void) const {
       case kOSInvalid:
       case kOSmacOS:
       case kOSLinux:
+      case kOSVxWorks:
         return llvm::CallingConv::X86_64_SysV;
       case kOSWindows:
         return llvm::CallingConv::Win64;
@@ -848,6 +860,7 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
       break;
 
     case kOSLinux:
+    case kOSVxWorks:
       switch (arch_name) {
         case kArchAMD64:
         case kArchAMD64_AVX:
