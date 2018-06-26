@@ -226,7 +226,8 @@ static llvm::MDNode *GetScopeFromInst(llvm::Instruction &inst) {
   return inst.getMetadata(llvm::LLVMContext::MD_alias_scope);
 }
 
-static LiveSet GetLiveSetFromArgs(llvm::iterator_range<llvm::Use *> args,
+static LiveSet GetLiveSetFromArgs(llvm::Function *func,
+                                  llvm::iterator_range<llvm::Use *> args,
                                   const ValueToOffset &val_to_offset,
                                   const std::vector<StateSlot> &state_slots) {
   LiveSet live;
@@ -715,7 +716,8 @@ VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
 
   // If we have not seen this instruction before, add it.
   auto args = inst.arg_operands();
-  auto live = GetLiveSetFromArgs(args, state_offset, offset_to_slots);
+  auto live = GetLiveSetFromArgs(inst.getCalledFunction(), args,
+                                 state_offset, offset_to_slots);
   live_args.emplace(&inst, std::move(live));
   return VisitResult::Ignored;
 }
@@ -724,7 +726,8 @@ VisitResult ForwardAliasVisitor::visitInvokeInst(llvm::InvokeInst &inst) {
 
   // If we have not seen this instruction before, add it.
   auto args = inst.arg_operands();
-  auto live = GetLiveSetFromArgs(args, state_offset, offset_to_slots);
+  auto live = GetLiveSetFromArgs(inst.getCalledFunction(), args,
+                                 state_offset, offset_to_slots);
   live_args.emplace(&inst, std::move(live));
   return VisitResult::Ignored;
 }
@@ -1051,11 +1054,11 @@ bool LiveSetBlockVisitor::DeleteDeadInsts(KillCounter &stats) {
   return changed;
 }
 
-static void StreamSlot(std::ostream &dot, const StateSlot &slot) {
+static void StreamSlot(std::ostream &dot, const StateSlot &slot,
+                       uint64_t access_size) {
   auto arch = GetTargetArch();
-  // slot #
   if (auto reg = arch->RegisterAtStateOffset(slot.offset)) {
-    auto enc_reg = reg->EnclosingRegisterOfSize(slot.size);
+    auto enc_reg = reg->EnclosingRegisterOfSize(access_size);
     if (!enc_reg) {
       enc_reg = reg->EnclosingRegister();
     }
@@ -1081,6 +1084,17 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
   dot << "digraph {" << std::endl
       << "node [shape=none margin=0 nojustify=false labeljust=l]"
       << std::endl;
+
+  // Figure out relevant load/stores to print.
+  LiveSet used;
+  for (auto &block : *func) {
+    for (auto &inst : block) {
+      if (auto scope = GetScopeFromInst(inst)) {
+        const auto &slot = offset_to_slot[scope_to_offset.at(scope)];
+        used.set(slot.index);
+      }
+    }
+  }
 
   // Make a vector so that we can go from slot index to slot.
   std::vector<const StateSlot *> slots;
@@ -1119,9 +1133,9 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
     dot << "<tr><td align=\"left\" colspan=\"3\">";
     auto sep = "dead: ";
     for (uint64_t i = 0; i < slots.size(); i++) {
-      if (!blive.test(i)) {
+      if (used.test(i) && !blive.test(i)) {
         dot << sep;
-        StreamSlot(dot, *(slots[i]));
+        StreamSlot(dot, *(slots[i]), slots[i]->size);
         sep = ", ";
       }
     }
@@ -1135,9 +1149,9 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
         dot << "<tr><td align=\"left\" colspan=\"3\">";
         sep = "dead: ";
         for (uint64_t i = 0; i < slots.size(); i++) {
-          if (!clive.test(i)) {
+          if (used.test(i) && !clive.test(i)) {
             dot << sep;
-            StreamSlot(dot, *(slots[i]));
+            StreamSlot(dot, *(slots[i]), slots[i]->size);
             sep = ", ";
           }
         }
@@ -1159,7 +1173,7 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
               << " has scope meta-data";
         }
 
-        StreamSlot(dot, slot);
+        StreamSlot(dot, slot, inst_size);
 
         // slot size minus load/store size
         dot << "</td><td align=\"left\">" << (slot.size - inst_size)
@@ -1233,9 +1247,9 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
     dot << "<tr><td align=\"left\" colspan=\"3\">";
     sep = "dead: ";
     for (uint64_t i = 0; i < slots.size(); i++) {
-      if (!exit_live.test(i)) {
+      if (used.test(i) && !exit_live.test(i)) {
         dot << sep;
-        StreamSlot(dot, *(slots[i]));
+        StreamSlot(dot, *(slots[i]), slots[i]->size);
         sep = ", ";
       }
     }
