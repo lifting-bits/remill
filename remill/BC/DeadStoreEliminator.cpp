@@ -123,23 +123,29 @@ void StateVisitor::Visit(llvm::Type *ty) {
       Visit(elem_ty);
     }
 
+  } else if (llvm::isa<llvm::PointerType>(ty)) {
+    LOG(FATAL)
+        << "There should not be pointer types inside of the State structure.";
+
   // Array or vector.
   } else if (auto seq_ty = llvm::dyn_cast<llvm::SequentialType>(ty)) {
     auto first_ty = seq_ty->getElementType();
+    uint64_t el_num_bytes = dl->getTypeAllocSize(first_ty);
+    uint64_t num_bytes = dl->getTypeAllocSize(seq_ty);
 
     // Special case: sequences of primitive types (or vectors thereof) are
     // treated as one slot.
     if (first_ty->isIntegerTy() || first_ty->isFloatingPointTy()) {
-      uint64_t len = dl->getTypeAllocSize(seq_ty);
-      for (uint64_t i = 0; i < len; i++) {
-        offset_to_slot.emplace_back(index, offset, len);
+      for (uint64_t i = 0; i < num_bytes; i++) {
+        offset_to_slot.emplace_back(index, offset, num_bytes);
       }
       index++;
-      offset += len;
+      offset += num_bytes;
 
     // This is an array of non-primitive types.
     } else {
-      for (unsigned int i = 0; i < seq_ty->getNumElements(); i++) {
+      auto num_elems = num_bytes / el_num_bytes;
+      for (uint64_t i = 0; i < num_elems; i++) {
         // NOTE(tim): Recalculates every time, rather than memoizing.
         Visit(first_ty);
       }
