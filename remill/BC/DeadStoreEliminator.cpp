@@ -58,6 +58,8 @@ using InstToLiveSet = std::unordered_map<llvm::Instruction *, LiveSet>;
 
 // Struct to keep track of how murderous the dead store eliminator is.
 struct KillCounter {
+  uint64_t failed_funcs;
+  uint64_t num_stores;
   uint64_t dead_stores;
   uint64_t removed_insts;
   uint64_t fwd_loads;
@@ -820,7 +822,6 @@ AAMDInfo::AAMDInfo(const std::vector<StateSlot> &offset_to_slot,
   slot_scopes.insert(scope_offsets.begin(), scope_offsets.end());
 }
 
-
 class LiveSetBlockVisitor {
  public:
   llvm::Module &module;
@@ -839,10 +840,10 @@ class LiveSetBlockVisitor {
                       const std::vector<StateSlot> &state_slots_,
                       const llvm::Function *bb_func_,
                       const llvm::DataLayout *dl_);
-  void FindLiveInsts(void);
 
-  void CollectDeadInsts(void);
-  bool VisitBlock(llvm::BasicBlock *block);
+  void FindLiveInsts(KillCounter &stats);
+  void CollectDeadInsts(KillCounter &stats);
+  bool VisitBlock(llvm::BasicBlock *block, KillCounter &stats);
   bool DeleteDeadInsts(KillCounter &stats);
   void CreateDOTDigraph(llvm::Function *func, const char *extensions);
 
@@ -879,14 +880,14 @@ LiveSetBlockVisitor::LiveSetBlockVisitor(
 }
 
 // Visit the basic blocks in the worklist and update the block_map.
-void LiveSetBlockVisitor::FindLiveInsts(void) {
+void LiveSetBlockVisitor::FindLiveInsts(KillCounter &stats) {
   std::vector<llvm::BasicBlock *> next_wl;
   while (!curr_wl.empty()) {
     for (auto block : curr_wl) {
 
       // If we change the live slots state of the block, then add the
       // block's predecessors to the next work list.
-      if (VisitBlock(block)) {
+      if (VisitBlock(block, stats)) {
         int num_preds = 0;
         for (llvm::BasicBlock *pred : predecessors(block)) {
           next_wl.push_back(pred);
@@ -914,7 +915,8 @@ void LiveSetBlockVisitor::FindLiveInsts(void) {
   }
 }
 
-bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
+bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block,
+                                     KillCounter &stats) {
   LiveSet live;
 
   for (auto inst_it = block->rbegin(); inst_it != block->rend(); ++inst_it) {
@@ -989,6 +991,10 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
         continue;
       }
 
+      if (on_remove_pass) {
+        stats.num_stores++;
+      }
+
       auto val = store_inst->getOperand(0);
       auto val_size = dl->getTypeAllocSize(val->getType());
       const auto &state_slot = offset_to_slot[scope_to_offset.at(scope)];
@@ -1023,11 +1029,11 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block) {
   }
 }
 
-void LiveSetBlockVisitor::CollectDeadInsts(void) {
+void LiveSetBlockVisitor::CollectDeadInsts(KillCounter &stats) {
   on_remove_pass = true;
   for (auto &func : module) {
     for (auto &block : func) {
-      VisitBlock(&block);
+      VisitBlock(&block, stats);
     }
   }
   on_remove_pass = false;
@@ -1336,6 +1342,32 @@ void ForwardingBlockVisitor::Visit(const ValueToOffset &val_to_offset,
   }
 }
 
+static llvm::Value *ConvertToSameSizedType(
+    llvm::Value *val, llvm::Type *dest_type, llvm::Instruction *insert_loc) {
+
+  auto val_type = val->getType();
+  if (val_type->isIntegerTy()) {
+    if (dest_type->isPointerTy()) {
+      return new llvm::IntToPtrInst(val, dest_type, "", insert_loc);
+    } else {
+      return new llvm::BitCastInst(val, dest_type, "", insert_loc);
+    }
+  } else if (val_type->isFloatingPointTy()) {
+    if (dest_type->isPointerTy()) {
+      LOG(ERROR)
+          << "Likely nonsensical forwarding of float type "
+          << LLVMThingToString(val_type) << " to pointer type "
+          << LLVMThingToString(dest_type);
+
+      return nullptr;
+    } else {
+      return new llvm::BitCastInst(val, dest_type, "", insert_loc);
+    }
+  } else {
+    return new llvm::BitCastInst(val, dest_type, "", insert_loc);
+  }
+}
+
 void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
                                         const ValueToOffset &val_to_offset,
                                         KillCounter &stats) {
@@ -1415,11 +1447,15 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
 
       // Forwarding, but changing the type.
       } else if (next_size == val_size) {
-        auto cast = new llvm::BitCastInst(val, next_type, "", next_load);
-        next_load->replaceAllUsesWith(cast);
-        next_load->eraseFromParent();
-        stats.fwd_casted++;
-        stats.fwd_stores++;
+        if (auto cast = ConvertToSameSizedType(val, next_type, next_load)) {
+          next_load->replaceAllUsesWith(cast);
+          next_load->eraseFromParent();
+          stats.fwd_casted++;
+          stats.fwd_stores++;
+        } else {
+          stats.fwd_failed++;
+          continue;
+        }
 
       // Forwarding, but changing the size.
       } else if (next_size < val_size) {
@@ -1489,11 +1525,17 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
 
       // Forwarding, but changing the type.
       } else if (val_size == next_size) {
-        auto cast = new llvm::BitCastInst(load_inst, next_type, "", next_load);
-        next_load->replaceAllUsesWith(cast);
-        next_load->eraseFromParent();
-        stats.fwd_casted++;
-        stats.fwd_loads++;
+        if (auto cast = ConvertToSameSizedType(load_inst, next_type,
+                                               next_load)) {
+          next_load->replaceAllUsesWith(cast);
+          next_load->eraseFromParent();
+          stats.fwd_casted++;
+          stats.fwd_loads++;
+        } else {
+          stats.fwd_failed++;
+          slot_to_load.erase(state_slot.index);
+          continue;
+        }
 
       // Forwarding, but changing the size.
       } else if (next_size < val_size) {
@@ -1583,6 +1625,8 @@ void RemoveDeadStores(llvm::Module *module,
     // If the analysis succeeds for this function, add the AAMDNodes.
     if (fav.Analyze(&func)) {
       AddAAMDNodes(fav.state_access_offset, aamd_info.slot_aamds);
+    } else {
+      stats.failed_funcs++;
     }
 
     // Perform load and store forwarding.
@@ -1597,8 +1641,8 @@ void RemoveDeadStores(llvm::Module *module,
   LiveSetBlockVisitor visitor(*module, live_args, aamd_info.slot_scopes,
                               slots, bb_func, &dl);
 
-  visitor.FindLiveInsts();
-  visitor.CollectDeadInsts();
+  visitor.FindLiveInsts(stats);
+  visitor.CollectDeadInsts(stats);
 
   if (!FLAGS_dot_output_dir.empty()) {
     for (auto &func : *module) {
@@ -1619,6 +1663,7 @@ void RemoveDeadStores(llvm::Module *module,
   }
 
   LOG(INFO)
+      << "Candidate stores: " << stats.num_stores << "; "
       << "Dead stores: " << stats.dead_stores << "; "
       << "Instructions removed from DSE: " << stats.removed_insts << "; "
       << "Forwarded loads: " << stats.fwd_loads << "; "
@@ -1627,7 +1672,8 @@ void RemoveDeadStores(llvm::Module *module,
       << "Forwarded by truncation: " << stats.fwd_truncated << "; "
       << "Forwarded by casting: " << stats.fwd_casted << "; "
       << "Forwarded by reordering: " << stats.fwd_reordered << "; "
-      << "Could not forward: " << stats.fwd_failed;
+      << "Could not forward: " << stats.fwd_failed << "; "
+      << "Unanalyzed functions: " << stats.failed_funcs;
 }
 
 }  // namespace remill
