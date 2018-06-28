@@ -1494,6 +1494,7 @@ static llvm::Value *ConvertToSameSizedType(
     } else {
       return new llvm::BitCastInst(val, dest_type, "", insert_loc);
     }
+
   } else if (val_type->isFloatingPointTy()) {
     if (dest_type->isPointerTy()) {
       LOG(ERROR)
@@ -1504,6 +1505,21 @@ static llvm::Value *ConvertToSameSizedType(
       return nullptr;
     } else {
       return new llvm::BitCastInst(val, dest_type, "", insert_loc);
+    }
+
+  } else if (val_type->isPointerTy()) {
+    if (dest_type->isIntegerTy()) {
+      return new llvm::PtrToIntInst(val, dest_type, "", insert_loc);
+
+    } else if (dest_type->isPointerTy()) {
+      return new llvm::BitCastInst(val, dest_type, "", insert_loc);
+
+    } else {
+      LOG(ERROR)
+          << "Likely nonsensical forwarding of pointer type "
+          << LLVMThingToString(val_type) << " to type "
+          << LLVMThingToString(dest_type);
+      return nullptr;
     }
   } else {
     return new llvm::BitCastInst(val, dest_type, "", insert_loc);
