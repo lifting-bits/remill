@@ -563,9 +563,6 @@ bool ForwardAliasVisitor::Analyze(llvm::Function *func) {
 
   while (!curr_wl.empty() && progress) {
     missing.clear();
-    curr_wl.insert(curr_wl.end(), pending_wl.begin(), pending_wl.end());
-    pending_wl.clear();
-
     progress = false;
 
     const auto old_exclude_count = exclude.size();
@@ -590,18 +587,21 @@ bool ForwardAliasVisitor::Analyze(llvm::Function *func) {
     }
 
     progress = progress || old_exclude_count < exclude.size();
-    curr_wl.swap(next_wl);
+    curr_wl.swap(pending_wl);
+    curr_wl.insert(curr_wl.end(), next_wl.begin(), next_wl.end());
     next_wl.clear();
+    pending_wl.clear();
   }
 
   order_of_progress.insert(order_of_progress.end(),
-                           pending_wl.begin(), pending_wl.end());
+                           curr_wl.begin(), curr_wl.end());
 
   CHECK(num_insts == order_of_progress.size());
 
   pending_wl.clear();
   next_wl.clear();
   missing.clear();
+  curr_wl.clear();
 
   // Do one final pass through, in the order in which progress was made.
   for (auto inst : order_of_progress) {
@@ -629,7 +629,7 @@ bool ForwardAliasVisitor::Analyze(llvm::Function *func) {
   if (!pending_wl.empty()) {
     DLOG(ERROR)
         << "Alias analysis failed to complete on function `"
-        << func->getName().str() << "` with " << curr_wl.size()
+        << func->getName().str() << "` with " << next_wl.size()
         << " instructions in the worklist and " << pending_wl.size()
         << " incomplete but no progress made in the last"
         << " iteration";
