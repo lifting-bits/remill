@@ -333,7 +333,7 @@ static void StreamSlot(std::ostream &dot, const StateSlot &slot,
 static void StreamCallOrInvokeToDOT(std::ostream &dot,
                                     llvm::Instruction &inst) {
   if (!inst.getType()->isVoidTy()) {
-    dot << "%" << inst.getValueID() << " = ";
+    dot << "%" << inst.getName().str() << " = ";
   }
 
   llvm::Value *called_val = nullptr;
@@ -355,12 +355,12 @@ static void StreamCallOrInvokeToDOT(std::ostream &dot,
 
 // Stream a PHI node to the DOT digraph.
 static void StreamPHIToDOT(std::ostream &dot, llvm::PHINode &phi_node) {
-  dot << "%" << phi_node.getValueID();
+  dot << "%" << phi_node.getName().str();
   auto sep = " = phi ";
   for (auto i = 0U; i < phi_node.getNumIncomingValues(); ++i) {
     auto val = phi_node.getIncomingValue(i);
     if (auto inst_val = llvm::dyn_cast<llvm::Instruction>(val)) {
-      dot << sep << "%" << inst_val->getValueID();
+      dot << sep << "%" << inst_val->getName().str();
     } else {
       dot << sep << "...";
     }
@@ -434,6 +434,7 @@ void ForwardAliasVisitor::CreateDOTDigraph(llvm::Function *func,
         }
       } else if (missing.count(&inst)) {
         dot << "<td align=\"left\" bgcolor=\"orange\">";
+
       } else {
         dot << "<td align=\"left\">";
       }
@@ -480,16 +481,18 @@ ForwardAliasVisitor::ForwardAliasVisitor(
     InstToLiveSet &live_args_)
     : dl(dl_),
       offset_to_slot(offset_to_slot_),
-      state_offset(),
       state_access_offset(),
       live_args(live_args_),
-      exclude(),
-      curr_wl(),
       state_ptr(nullptr) {}
 
 void ForwardAliasVisitor::AddInstruction(llvm::Instruction *inst) {
   if (FLAGS_dot_output_dir.empty()) {
-    inst->setName("");
+    inst->setName(llvm::Twine::createNull());
+  } else {
+    static int r = 3;
+    if (!inst->getType()->isVoidTy()) {
+      inst->setName("r" + std::to_string(r++));
+    }
   }
 
   if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
@@ -529,6 +532,8 @@ bool ForwardAliasVisitor::Analyze(llvm::Function *func) {
   state_offset.clear();
   pending_wl.clear();
 
+  std::vector<llvm::Instruction *> order_of_progress;
+
   state_ptr = LoadStatePointer(func);
   auto memory_ptr = LoadMemoryPointerArg(func);
   auto pc = LoadProgramCounterArg(func);
@@ -550,21 +555,25 @@ bool ForwardAliasVisitor::Analyze(llvm::Function *func) {
   }
 
   std::vector<llvm::Instruction *> next_wl;
-  next_wl.reserve(curr_wl.size());
+  const auto num_insts = curr_wl.size();
+  next_wl.reserve(num_insts);
+  order_of_progress.reserve(num_insts);
 
   bool progress = true;
-  bool bump = false;
 
-  while (!curr_wl.empty() && (progress || bump)) {
+  while (!curr_wl.empty() && progress) {
     missing.clear();
     curr_wl.insert(curr_wl.end(), pending_wl.begin(), pending_wl.end());
     pending_wl.clear();
 
     progress = false;
 
+    const auto old_exclude_count = exclude.size();
+
     for (auto inst : curr_wl) {
       switch (visit(inst)) {
         case VisitResult::Progress:
+          order_of_progress.push_back(inst);
           progress = true;
           break;
         case VisitResult::Incomplete:
@@ -580,13 +589,35 @@ bool ForwardAliasVisitor::Analyze(llvm::Function *func) {
       }
     }
 
+    progress = progress || old_exclude_count < exclude.size();
     curr_wl.swap(next_wl);
     next_wl.clear();
+  }
 
-    if (progress || bump) {
-      bump = false;
-    } else if (!pending_wl.empty()) {
-      bump = true;
+  order_of_progress.insert(order_of_progress.end(),
+                           pending_wl.begin(), pending_wl.end());
+
+  CHECK(num_insts == order_of_progress.size());
+
+  pending_wl.clear();
+  next_wl.clear();
+  missing.clear();
+
+  // Do one final pass through, in the order in which progress was made.
+  for (auto inst : order_of_progress) {
+    switch (visit(inst)) {
+      case VisitResult::Progress:
+        break;
+      case VisitResult::Incomplete:
+        pending_wl.push_back(inst);
+        break;
+      case VisitResult::NoProgress:
+        next_wl.push_back(inst);
+        break;
+      case VisitResult::Ignored:
+        break;
+      case VisitResult::Error:
+        return false;
     }
   }
 
@@ -612,7 +643,8 @@ bool ForwardAliasVisitor::Analyze(llvm::Function *func) {
 }
 
 VisitResult ForwardAliasVisitor::visitInstruction(llvm::Instruction &I) {
-  return VisitResult::Ignored;
+  exclude.insert(&I);
+  return VisitResult::Progress;
 }
 
 VisitResult ForwardAliasVisitor::visitAllocaInst(llvm::AllocaInst &I) {
@@ -632,7 +664,7 @@ VisitResult ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &inst) {
     return VisitResult::Progress;
 
   } else if (exclude.count(val)) {
-    exclude.insert(&inst);
+    exclude.emplace(&inst);
     return VisitResult::Progress;
 
   } else {
@@ -645,8 +677,8 @@ VisitResult ForwardAliasVisitor::visitLoadInst(llvm::LoadInst &inst) {
     // this could happen where an index into a vector register is stored
     // in another register. We don't handle that yet.
     } else {
-      exclude.insert(&inst);
       state_access_offset.emplace(&inst, ptr->second);
+      exclude.emplace(&inst);
       return VisitResult::Progress;
     }
   }
@@ -752,45 +784,73 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(
   auto lhs_val = inst.getOperand(0);
   auto rhs_val = inst.getOperand(1);
   auto num_excluded = 0;
+  auto num_offsets = 0;
+  auto num_consts = 0;
+  uint64_t lhs_offset = 0;
+  uint64_t rhs_offset = 0;
+  auto ret = VisitResult::NoProgress;
 
   if (exclude.count(lhs_val)) {
     num_excluded += 1;
-  }
-  if (exclude.count(rhs_val)) {
+
+  } else if (TryGetOffsetOrConst(lhs_val, state_offset, &lhs_offset)) {
+    if (llvm::isa<llvm::Constant>(lhs_val)) {
+      num_consts += 1;
+    } else {
+      num_offsets += 1;
+    }
+
+  // It's a constant that isn't an integer, e.g. a costant expression on a
+  // global.
+  } else if (llvm::isa<llvm::Constant>(lhs_val)) {
+    exclude.emplace(lhs_val);
     num_excluded += 1;
+
+  } else {
+    if (!FLAGS_dot_output_dir.empty()) {
+      missing.emplace(lhs_val);
+    }
+    ret = VisitResult::Incomplete;
   }
 
-  uint64_t lhs_offset = 0;
-  uint64_t rhs_offset = 0;
-  auto num_offsets = 0;
-  auto ret = VisitResult::NoProgress;
+  if (exclude.count(rhs_val)) {
+    num_excluded += 1;
+
+  } else if (TryGetOffsetOrConst(rhs_val, state_offset, &rhs_offset)) {
+    if (llvm::isa<llvm::Constant>(rhs_val)) {
+      num_consts += 1;
+    } else {
+      num_offsets += 1;
+    }
+
+  // It's a constant that isn't an integer, e.g. a costant expression on a
+  // global.
+  } else if (llvm::isa<llvm::Constant>(rhs_val)) {
+    exclude.emplace(lhs_val);
+    num_excluded += 1;
+
+  } else {
+    if (!FLAGS_dot_output_dir.empty()) {
+      missing.emplace(rhs_val);
+    }
+    ret = VisitResult::Incomplete;
+  }
 
   if (num_excluded) {
     exclude.emplace(&inst);
-    if (2 == num_excluded) {
+    if (2 <= (num_offsets + num_excluded + num_consts)) {
       return VisitResult::Progress;
     } else {
       ret = VisitResult::Incomplete;
     }
   }
 
-  if (TryGetOffsetOrConst(lhs_val, state_offset, &lhs_offset)) {
-    if (!FLAGS_dot_output_dir.empty()) {
-      missing.emplace(lhs_val);
-    }
-    ret = VisitResult::Incomplete;
-    num_offsets += 1;
-  }
-
-  if (TryGetOffsetOrConst(rhs_val, state_offset, &rhs_offset)) {
-    if (!FLAGS_dot_output_dir.empty()) {
-      missing.emplace(rhs_val);
-    }
-    ret = VisitResult::Incomplete;
-    num_offsets += 1;
-  }
-
   if (2 == num_offsets) {
+    LOG(WARNING)
+        << "Adding or subtracting two state-pointer derived pointers";
+    return VisitResult::Error;
+
+  } else if (2 == (num_offsets + num_consts)) {
     uint64_t offset = 0;
     if (!TryCombineOffsets(lhs_offset, op, rhs_offset, offset_to_slot.size(),
                            &offset)) {
@@ -833,10 +893,16 @@ VisitResult ForwardAliasVisitor::visitSelect(llvm::SelectInst &inst) {
   // At least one of the selected values points into `State`.
   } else if (in_state_offset) {
     if (true_ptr == state_offset.end()) {
+      if (!FLAGS_dot_output_dir.empty()) {
+        missing.emplace(true_val);
+      }
       state_offset.emplace(&inst, false_ptr->second);
       return VisitResult::Incomplete;  // Wait for the other to be found.
 
     } else if (false_ptr == state_offset.end()) {
+      if (!FLAGS_dot_output_dir.empty()) {
+        missing.emplace(false_val);
+      }
       state_offset.emplace(&inst, true_ptr->second);
       return VisitResult::Incomplete;  // Wait for the other to be found.
 
@@ -862,6 +928,12 @@ VisitResult ForwardAliasVisitor::visitSelect(llvm::SelectInst &inst) {
       return VisitResult::Progress;
     }
 
+  // One or both values are constant.
+  } else if (llvm::isa<llvm::Constant>(true_val) ||
+             llvm::isa<llvm::Constant>(false_val)) {
+    exclude.emplace(&inst);
+    return VisitResult::Progress;
+
   // The status of the values being selected are as-of-yet unknown.
   } else {
     return VisitResult::NoProgress;
@@ -873,16 +945,20 @@ VisitResult ForwardAliasVisitor::visitSelect(llvm::SelectInst &inst) {
 // such value is resolved, so that we can make sure that there are no
 // inconsistencies.
 VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &inst) {
-  auto complete = true;
-  auto in_state_offset = false;
-  auto in_exclude_set = false;
+  auto num_in_state_offset = 0U;
+  auto num_in_exclude_set = 0U;
+  auto num_consts = 0U;
   auto num_vals = inst.getNumIncomingValues();
   uint64_t offset = 0;
 
   for (unsigned i = 0; i < num_vals; ++i) {
     auto operand = inst.getIncomingValue(i);
     if (exclude.count(operand)) {
-      in_exclude_set = true;
+      num_in_exclude_set += 1;
+      continue;
+
+    } else if (llvm::isa<llvm::Constant>(operand)) {
+      num_consts += 1;
       continue;
     }
 
@@ -894,14 +970,14 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &inst) {
       if (!FLAGS_dot_output_dir.empty()) {
         missing.emplace(operand);
       }
-      complete = false;
       continue;
     }
 
+    num_in_state_offset += 1;
+
     // This is the first incoming value that points into `State`.
-    if (!in_state_offset) {
+    if (1 == num_in_state_offset) {
       offset = ptr->second;
-      in_state_offset = true;
 
     // This is the Nth incoming value that points into `State`, let's
     // make sure that it aggrees with the others.
@@ -910,19 +986,22 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &inst) {
     }
   }
 
+  auto complete = (num_in_state_offset + num_in_exclude_set + num_consts) ==
+                  num_vals;
+
   // Fail if some operands are excluded and others are state offsets.
-  if (in_state_offset && in_exclude_set) {
+  if (num_in_state_offset && num_in_exclude_set) {
     return VisitResult::Error;
 
   // At least one incoming value is a `State` offset, so opportunistically
   // assume that all will match. This lets us have the algorithm progress
   // in the presence of loops.
-  } else if (in_state_offset) {
+  } else if (num_in_state_offset) {
     state_offset.emplace(&inst, offset);
     return (complete ? VisitResult::Progress : VisitResult::Incomplete);
 
   // Similar case to above, but at least one thing is in the exclude set.
-  } else if (in_exclude_set) {
+  } else if (num_in_exclude_set || num_consts) {
     exclude.insert(&inst);
     return (complete ? VisitResult::Progress : VisitResult::Incomplete);
 
