@@ -79,6 +79,12 @@ void StoreProgramCounter(llvm::BasicBlock *block, uint64_t pc);
 // Update the program counter in the state struct with a new value.
 void StoreProgramCounter(llvm::BasicBlock *block, llvm::Value *pc);
 
+// Return the memory pointer argument.
+llvm::Value *LoadMemoryPointerArg(llvm::Function *func);
+
+// Return the program counter argument.
+llvm::Value *LoadProgramCounterArg(llvm::Function *function);
+
 // Return the current memory pointer.
 llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block);
 
@@ -94,6 +100,9 @@ llvm::Function *FindFunction(llvm::Module *M, std::string name);
 
 // Find a global variable with name `name` in the module `M`.
 llvm::GlobalVariable *FindGlobaVariable(llvm::Module *M, std::string name);
+
+// Try to verify a module.
+bool VerifyModule(llvm::Module *module);
 
 // Parses and loads a bitcode file into memory.
 llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,

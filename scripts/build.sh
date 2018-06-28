@@ -98,22 +98,22 @@ function DownloadCxxCommon
 # Attempt to detect the OS distribution name.
 function GetOSVersion
 {
-  local distribution_name=$( cat /etc/issue )
+  source /etc/os-release
 
-  case "${distribution_name}" in
-    *Ubuntu*)
+  case "${ID}" in
+    *ubuntu*)
       GetUbuntuOSVersion
       return 0
     ;;
 
-    *openSUSE*)
+    *opensuse*)
       OS_VERSION=opensuse
       return 0
     ;;
 
-    *Arch\ Linux*)
-      printf "[x] Arch Linux is not yet supported.\n"
-      return 1
+    *arch*)
+      OS_VERSION=ubuntu1604
+      return 0
     ;;
 
     *)

@@ -23,6 +23,8 @@ class Function;
 class Module;
 class GlobalVariable;
 class IntegerType;
+class BasicBlock;
+class Value;
 }  // namespace llvm
 
 namespace remill {
