@@ -462,8 +462,10 @@ void ForwardAliasVisitor::CreateDOTDigraph(llvm::Function *func,
     dot << "</table>>];" << std::endl;
 
     // Arrows to successor blocks.
-    for (auto succ_block_it : successors(block)) {
-      auto succ = &*succ_block_it;
+    auto succ_begin_it = llvm::succ_begin(block);
+    auto succ_end_it = llvm::succ_end(block);
+    for (; succ_begin_it != succ_end_it; succ_begin_it++) {
+      auto succ = *succ_begin_it;
       dot << "b" << reinterpret_cast<uintptr_t>(block) << " -> b"
           << reinterpret_cast<uintptr_t>(succ) << std::endl;
     }
@@ -492,10 +494,10 @@ void ForwardAliasVisitor::AddInstruction(llvm::Instruction *inst) {
     }
   }
 
-  if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
+  if (llvm::isa<llvm::StoreInst>(inst)) {
     curr_wl.push_back(inst);
 
-  } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(inst)) {
+  } else if (llvm::isa<llvm::LoadInst>(inst)) {
     curr_wl.push_back(inst);
 
   } else if (llvm::isa<llvm::AllocaInst>(inst)) {
@@ -1071,8 +1073,9 @@ LiveSetBlockVisitor::LiveSetBlockVisitor(
       dl(dl_) {
   for (auto &func : module) {
     for (auto &block : func) {
-      auto succ_block_it = successors(&block);
-      if (succ_block_it.begin() == succ_block_it.end()) {
+      auto succ_begin_it = llvm::succ_begin(&block);
+      auto succ_end_it = llvm::succ_end(&block);
+      if (succ_begin_it == succ_end_it) {
         curr_wl.push_back(&block);
       }
     }
@@ -1127,19 +1130,27 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block,
     if (llvm::isa<llvm::ReturnInst>(inst) ||
         llvm::isa<llvm::UnreachableInst>(inst) ||
         llvm::isa<llvm::IndirectBrInst>(inst) ||
-        llvm::isa<llvm::ResumeInst>(inst) ||
-        llvm::isa<llvm::CatchSwitchInst>(inst) ||
-        llvm::isa<llvm::CatchReturnInst>(inst) ||
-        llvm::isa<llvm::CleanupReturnInst>(inst)) {
-
+        llvm::isa<llvm::ResumeInst>(inst)) {
       live.set();
+
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 8)
+    } else if (llvm::isa<llvm::CatchSwitchInst>(inst) ||
+               llvm::isa<llvm::CatchReturnInst>(inst) ||
+               llvm::isa<llvm::CatchPadInst>(inst) ||
+               llvm::isa<llvm::CleanupPadInst>(inst) ||
+               llvm::isa<llvm::CleanupReturnInst>(inst)) {
+      live.set();
+#endif
 
     // Update the live set from the successors. If a successors has not
     // been visited yet then we will inherit an empty live set. This is
     // fine because our algorithm converges towards bits being set.
     } else if (llvm::isa<llvm::BranchInst>(inst) ||
                llvm::isa<llvm::SwitchInst>(inst)) {
-      for (llvm::BasicBlock *succ : successors(block)) {
+      auto succ_it = llvm::succ_begin(block);
+      auto succ_end = llvm::succ_end(block);
+      for (; succ_it != succ_end; succ_it++) {
+        auto succ = *succ_it;
         live |= block_map[succ];
       }
 
@@ -1316,10 +1327,14 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
     // Figure out the live set on exit from the block.
     LiveSet exit_live;
     int num_succs = 0;
-    for (auto succ_block_it : successors(block)) {
-      auto succ = &*succ_block_it;
+    auto succ_it = llvm::succ_begin(block);
+    auto succ_end = llvm::succ_end(block);
+    for (; succ_it != succ_end; succ_it++) {
+      auto succ = *succ_it;
       exit_live |= block_map[succ];
       num_succs++;
+      dot << "b" << reinterpret_cast<uintptr_t>(block) << " -> b"
+          << reinterpret_cast<uintptr_t>(succ) << std::endl;
     }
 
     if (!num_succs) {
@@ -1422,13 +1437,6 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
     dot << "</td></tr>" << std::endl;
 
     dot << "</table>>];" << std::endl;
-
-    // Arrows to successor blocks.
-    for (auto succ_block_it : successors(block)) {
-      auto succ = &*succ_block_it;
-      dot << "b" << reinterpret_cast<uintptr_t>(block) << " -> b"
-          << reinterpret_cast<uintptr_t>(succ) << std::endl;
-    }
   }
   dot << "}" << std::endl;
 }
