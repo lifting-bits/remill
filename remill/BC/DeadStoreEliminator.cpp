@@ -40,19 +40,22 @@
 DEFINE_string(dot_output_dir, "",
               "The directory in which to log DOT digraphs of the alias "
               "analysis information derived during the process of "
-              "eliminating dead stores");
+              "eliminating dead stores.");
+
+DEFINE_bool(disable_dead_store_elimination, false,
+            "Whether or not to perform dead store elimination on stores into"
+            "the State structure.");
 
 DEFINE_bool(disable_register_forwarding, false,
             "Whether or not register forwarding should be enabled "
             "to perform load-to-load and load-to-store forwarding "
-            "to eliminate dead instructions more aggressively");
+            "to eliminate dead instructions more aggressively.");
 
 namespace remill {
 namespace {
 
 using ValueToOffset = std::unordered_map<llvm::Value *, uint64_t>;
 using InstToOffset = std::unordered_map<llvm::Instruction *, uint64_t>;
-using ScopeToOffset = std::unordered_map<llvm::MDNode *, uint64_t>;
 using LiveSet = std::bitset<256>;
 using InstToLiveSet = std::unordered_map<llvm::Instruction *, LiveSet>;
 
@@ -121,7 +124,9 @@ void StateVisitor::Visit(llvm::Type *ty) {
 
   // Structure, class, or union.
   } else if (auto struct_ty = llvm::dyn_cast<llvm::StructType>(ty)) {
-    for (auto elem_ty : struct_ty->elements()) {
+    auto num_elems = struct_ty->getNumElements();
+    for (auto i = 0U; i < num_elems; ++i) {
+      auto elem_ty = struct_ty->getElementType(i);
       Visit(elem_ty);
     }
 
@@ -230,11 +235,6 @@ static bool TryCombineOffsets(uint64_t lhs_offset, OpType op_type,
   return (*out_offset) < max_offset;
 }
 
-// Return the scope of the given instruction.
-static llvm::MDNode *GetScopeFromInst(llvm::Instruction &inst) {
-  return inst.getMetadata(llvm::LLVMContext::MD_alias_scope);
-}
-
 static LiveSet GetLiveSetFromArgs(llvm::Function *func,
                                   llvm::iterator_range<llvm::Use *> args,
                                   const ValueToOffset &val_to_offset,
@@ -272,7 +272,8 @@ struct ForwardAliasVisitor
 
   ForwardAliasVisitor(const llvm::DataLayout &dl_,
                       const std::vector<StateSlot> &offset_to_slot_,
-                      InstToLiveSet &live_args_);
+                      InstToLiveSet &live_args_,
+                      InstToOffset &state_access_offset_);
 
   bool Analyze(llvm::Function *func);
 
@@ -304,7 +305,7 @@ struct ForwardAliasVisitor
   const llvm::DataLayout dl;
   const std::vector<StateSlot> &offset_to_slot;
   ValueToOffset state_offset;
-  InstToOffset state_access_offset;
+  InstToOffset &state_access_offset;
   InstToLiveSet &live_args;
   std::unordered_set<llvm::Value *> exclude;
   std::unordered_set<llvm::Value *> missing;
@@ -453,12 +454,7 @@ void ForwardAliasVisitor::CreateDOTDigraph(llvm::Function *func,
         StreamPHIToDOT(dot, *phi_node);
 
       } else {
-        llvm::AAMDNodes blank;
-        llvm::AAMDNodes original;
-        inst.getAAMetadata(original);
-        inst.setAAMetadata(blank);
         dot << LLVMThingToString(&inst);
-        inst.setAAMetadata(original);
       }
       dot << "</td></tr>" << std::endl;
     }
@@ -478,10 +474,11 @@ void ForwardAliasVisitor::CreateDOTDigraph(llvm::Function *func,
 ForwardAliasVisitor::ForwardAliasVisitor(
     const llvm::DataLayout &dl_,
     const std::vector<StateSlot> &offset_to_slot_,
-    InstToLiveSet &live_args_)
+    InstToLiveSet &live_args_,
+    InstToOffset &state_access_offset_)
     : dl(dl_),
       offset_to_slot(offset_to_slot_),
-      state_access_offset(),
+      state_access_offset(state_access_offset_),
       live_args(live_args_),
       state_ptr(nullptr) {}
 
@@ -496,13 +493,9 @@ void ForwardAliasVisitor::AddInstruction(llvm::Instruction *inst) {
   }
 
   if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
-    llvm::AAMDNodes aamd;
-    store_inst->setAAMetadata(aamd);
     curr_wl.push_back(inst);
 
   } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(inst)) {
-    llvm::AAMDNodes aamd;
-    load_inst->setAAMetadata(aamd);
     curr_wl.push_back(inst);
 
   } else if (llvm::isa<llvm::AllocaInst>(inst)) {
@@ -528,7 +521,6 @@ bool ForwardAliasVisitor::Analyze(llvm::Function *func) {
   curr_wl.clear();
   exclude.clear();
   calls.clear();
-  state_access_offset.clear();
   state_offset.clear();
   pending_wl.clear();
 
@@ -1030,94 +1022,12 @@ VisitResult ForwardAliasVisitor::visitInvokeInst(llvm::InvokeInst &inst) {
   return VisitResult::Ignored;
 }
 
-// Back-and-forth mapping between LLVM meta-data node that we create per slot,
-// and `StateSlot`s.
-class AAMDInfo {
- public:
-  // Return a map of `llvm::MDNode` scopes and a vector of AAMDNodes based on
-  // the given vector of `StateSlot`s, where each byte offset (i.e. index) in
-  // the slots vector is mapped to a corresponding `llvm::AAMDNodes` struct.
-  AAMDInfo(const std::vector<StateSlot> &offset_to_slot,
-           llvm::LLVMContext &context);
-
-  // Maps `llvm::MDNode`s to byte offset into the `State` structure.
-  ScopeToOffset slot_scopes;
-
-  // Maps byte offsets in the `State` structure to `llvm::AAMDNodes`
-  std::vector<llvm::AAMDNodes> slot_aamds;
-};
-
-// Return a map of `llvm::MDNode` scopes and a vector of AAMDNodes based on
-// the given vector of `StateSlot`s, where each byte offset (i.e. index) in
-// the slots vector is mapped to a corresponding `llvm::AAMDNodes` struct.
-AAMDInfo::AAMDInfo(const std::vector<StateSlot> &offset_to_slot,
-                   llvm::LLVMContext &context) {
-  auto arch = GetTargetArch();
-
-  // Create a vector of pairs of scopes to slot offsets. This will be made
-  // into a map at the end of the function. We need it as a vector for now
-  // so that it is ordered when creating the `noalias` sets.
-  std::vector<std::pair<llvm::MDNode *, uint64_t>> scope_offsets;
-  scope_offsets.reserve(offset_to_slot.size());
-  for (const auto &slot : offset_to_slot) {
-    llvm::MDString *mdstr = nullptr;
-    if (auto reg = arch->RegisterAtStateOffset(slot.offset)) {
-      mdstr = llvm::MDString::get(context, reg->EnclosingRegister()->name);
-    } else {
-      mdstr = llvm::MDString::get(
-          context, "slot_" + std::to_string(slot.index));
-    }
-    scope_offsets.emplace_back(
-        llvm::MDNode::get(context, mdstr), slot.offset);
-  }
-
-  // One `llvm::AAMDNodes` struct for each byte offset so that we can easily
-  // connect them.
-  slot_aamds.reserve(offset_to_slot.size());
-  for (uint64_t i = 0; i < offset_to_slot.size(); i++) {
-
-    // This byte belongs to the same slot as the previous byte, so duplicate
-    // the previous info.
-    if (!slot_aamds.empty() && i &&
-        offset_to_slot[i].index == offset_to_slot[i - 1].index) {
-      slot_aamds.push_back(slot_aamds.back());
-      continue;
-    }
-
-    // The `noalias` set is all `llvm::MDNode`s that aren't associated with
-    // the slot.
-    std::vector<llvm::Metadata *> noalias_vec;
-    noalias_vec.reserve(offset_to_slot.back().index);
-
-    for (uint64_t j = 0; j < offset_to_slot.size(); j++) {
-
-      // The `j`th byte offset belong to the same slot as the `i`th byte
-      // offset.
-      if (offset_to_slot[i].index == offset_to_slot[j].index) {
-        continue;
-
-      // Duplicate of previous one.
-      } else if (j && offset_to_slot[j].index == offset_to_slot[j - 1].index) {
-        continue;
-
-      } else {
-        noalias_vec.push_back(scope_offsets[j].first);
-      }
-    }
-
-    auto noalias = llvm::MDNode::get(
-        context, llvm::MDTuple::get(context, noalias_vec));
-    slot_aamds.emplace_back(nullptr, scope_offsets[i].first, noalias);
-  }
-  slot_scopes.insert(scope_offsets.begin(), scope_offsets.end());
-}
-
 class LiveSetBlockVisitor {
  public:
   llvm::Module &module;
   InstToLiveSet debug_live_args_at_call;
   const InstToLiveSet &live_args;
-  const ScopeToOffset &scope_to_offset;
+  const InstToOffset &state_access_offset;
   const std::vector<StateSlot> &offset_to_slot;
   std::vector<llvm::BasicBlock *> curr_wl;
   std::unordered_map<llvm::BasicBlock *, LiveSet> block_map;
@@ -1126,7 +1036,7 @@ class LiveSetBlockVisitor {
 
   LiveSetBlockVisitor(llvm::Module &module_,
                       const InstToLiveSet &live_args_,
-                      const ScopeToOffset &scope_to_offset_,
+                      const InstToOffset &state_access_offset_,
                       const std::vector<StateSlot> &state_slots_,
                       const llvm::Function *bb_func_,
                       const llvm::DataLayout *dl_);
@@ -1145,13 +1055,13 @@ class LiveSetBlockVisitor {
 LiveSetBlockVisitor::LiveSetBlockVisitor(
     llvm::Module &module_,
     const InstToLiveSet &live_args_,
-    const ScopeToOffset &scope_to_offset_,
+    const InstToOffset &state_access_offset_,
     const std::vector<StateSlot> &state_slots_,
     const llvm::Function *bb_func_,
     const llvm::DataLayout *dl_)
     : module(module_),
       live_args(live_args_),
-      scope_to_offset(scope_to_offset_),
+      state_access_offset(state_access_offset_),
       offset_to_slot(state_slots_),
       curr_wl(),
       block_map(),
@@ -1276,8 +1186,8 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block,
       }
 
     } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
-      auto scope = GetScopeFromInst(*inst);
-      if (!scope) {
+      auto offset_ptr = state_access_offset.find(inst);
+      if (offset_ptr == state_access_offset.end()) {
         continue;
       }
 
@@ -1287,7 +1197,7 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block,
 
       auto val = store_inst->getOperand(0);
       auto val_size = dl->getTypeAllocSize(val->getType());
-      const auto &state_slot = offset_to_slot[scope_to_offset.at(scope)];
+      const auto &state_slot = offset_to_slot[offset_ptr->second];
       auto slot_num = state_slot.index;
 
       if (!live.test(slot_num)) {
@@ -1303,8 +1213,9 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block,
 
     // Loads from slots revive the slots.
     } else if (llvm::isa<llvm::LoadInst>(inst)) {
-      if (auto scope = GetScopeFromInst(*inst)) {
-        auto slot_num = offset_to_slot[scope_to_offset.at(scope)].index;
+      auto offset_ptr = state_access_offset.find(inst);
+      if (offset_ptr != state_access_offset.end()) {
+        auto slot_num = offset_to_slot[offset_ptr->second].index;
         live.set(slot_num);
       }
     }
@@ -1377,8 +1288,9 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
   LiveSet used;
   for (auto &block : *func) {
     for (auto &inst : block) {
-      if (auto scope = GetScopeFromInst(inst)) {
-        const auto &slot = offset_to_slot[scope_to_offset.at(scope)];
+      auto offset_ptr = state_access_offset.find(&inst);
+      if (offset_ptr != state_access_offset.end()) {
+        const auto &slot = offset_to_slot[offset_ptr->second];
         used.set(slot.index);
       }
     }
@@ -1448,8 +1360,9 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
 
       dot << "<tr><td align=\"left\">";
 
-      if (auto scope = GetScopeFromInst(inst)) {
-        const auto &slot = offset_to_slot[scope_to_offset.at(scope)];
+      auto offset_ptr = state_access_offset.find(&inst);
+      if (offset_ptr != state_access_offset.end()) {
+        const auto &slot = offset_to_slot[offset_ptr->second];
         auto inst_size = 0;
         if (llvm::isa<llvm::LoadInst>(&inst)) {
           inst_size = dl->getTypeAllocSize(inst.getType());
@@ -1484,10 +1397,6 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
         StreamPHIToDOT(dot, *phi_node);
 
       } else {
-        llvm::AAMDNodes blank;
-        llvm::AAMDNodes original;
-        inst.getAAMetadata(original);
-        inst.setAAMetadata(blank);
 
         // Highlight nodes in red that will be removed.
         if (std::count(to_remove.begin(), to_remove.end(), &inst)) {
@@ -1496,7 +1405,6 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
         } else {
           dot << "<td align=\"left\">" << LLVMThingToString(&inst);
         }
-        inst.setAAMetadata(original);
       }
       dot << "</td></tr>" << std::endl;
     }
@@ -1525,39 +1433,18 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
   dot << "}" << std::endl;
 }
 
-// For each instruction in the alias map, add an `llvm::AAMDNodes` struct
-// which specifies the aliasing stores and loads to the instruction's
-// byte offset.
-static void AddAAMDNodes(
-    const InstToOffset &inst_to_offset,
-    const std::vector<llvm::AAMDNodes> &offset_to_aamd) {
-  for (const auto &map_pair : inst_to_offset) {
-    auto inst = map_pair.first;
-    auto offset = map_pair.second;
-    if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(inst)) {
-      auto aamd = offset_to_aamd[offset];
-      load_inst->setAAMetadata(aamd);
-    } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
-      auto aamd = offset_to_aamd[offset];
-      store_inst->setAAMetadata(aamd);
-    }
-  }
-}
-
 class ForwardingBlockVisitor {
   public:
     llvm::Function &func;
-    const InstToOffset &inst_to_offset;
-    const ScopeToOffset &scope_to_offset;
+    const InstToOffset &state_access_offset;
     const std::vector<StateSlot> &state_slots;
     const llvm::FunctionType *lifted_func_ty;
 
     ForwardingBlockVisitor(
-      llvm::Function &func_,
-      const InstToOffset &inst_to_offset_,
-      const ScopeToOffset &scope_to_offset_,
-      const std::vector<StateSlot> &state_slots_,
-      const llvm::DataLayout *dl_);
+        llvm::Function &func_,
+        const InstToOffset &state_access_offset_,
+        const std::vector<StateSlot> &state_slots_,
+        const llvm::DataLayout *dl_);
 
     void Visit(const ValueToOffset &val_to_offset, KillCounter &stats);
     void VisitBlock(llvm::BasicBlock *block, const ValueToOffset &val_to_offset,
@@ -1569,13 +1456,11 @@ class ForwardingBlockVisitor {
 
 ForwardingBlockVisitor::ForwardingBlockVisitor(
     llvm::Function &func_,
-    const InstToOffset &inst_to_offset_,
-    const ScopeToOffset &scope_to_offset_,
+    const InstToOffset &state_access_offset_,
     const std::vector<StateSlot> &state_slots_,
     const llvm::DataLayout *dl_)
     : func(func_),
-      inst_to_offset(inst_to_offset_),
-      scope_to_offset(scope_to_offset_),
+      state_access_offset(state_access_offset_),
       state_slots(state_slots_),
       lifted_func_ty(func.getFunctionType()),
       dl(dl_) {}
@@ -1626,7 +1511,7 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
     insts.push_back(&*inst_it);
   }
 
-  for (auto &inst : insts) {
+  for (auto inst : insts) {
     if (llvm::isa<llvm::CallInst>(inst) ||
         llvm::isa<llvm::InvokeInst>(inst)) {
 
@@ -1657,15 +1542,15 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
       }
     // Try to do store-to-load forwarding.
     } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
-      const auto scope = GetScopeFromInst(*inst);
-      if (!scope) {
+      auto offset_ptr = state_access_offset.find(inst);
+      if (offset_ptr == state_access_offset.end()) {
         continue;
       }
 
       const auto val = store_inst->getOperand(0);
       const auto val_type = val->getType();
       const auto val_size = dl->getTypeAllocSize(val_type);
-      const auto &state_slot = state_slots[scope_to_offset.at(scope)];
+      const auto &state_slot = state_slots[offset_ptr->second];
       if (!slot_to_load.count(state_slot.index)) {
         continue;
       }
@@ -1677,7 +1562,8 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
       // accidentally forward around a store.
       slot_to_load.erase(state_slot.index);
 
-      if (inst_to_offset.at(store_inst) != inst_to_offset.at(next_load)) {
+      if (state_access_offset.at(store_inst) !=
+          state_access_offset.at(next_load)) {
         stats.fwd_failed++;
         continue;
       }
@@ -1732,12 +1618,12 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
 
     // Try to do load-to-load forwarding.
     } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(inst)) {
-      auto scope = GetScopeFromInst(*load_inst);
-      if (!scope) {
+      auto offset_ptr = state_access_offset.find(inst);
+      if (offset_ptr == state_access_offset.end()) {
         continue;
       }
 
-      auto &state_slot = state_slots[scope_to_offset.at(scope)];
+      const auto &state_slot = state_slots[offset_ptr->second];
       auto &load_ref = slot_to_load[state_slot.index];
 
       // Get the next load, and update the slot with the current load.
@@ -1752,7 +1638,8 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
       }
 
       // E.g. One load of `AH`, one load of `AL`.
-      if (inst_to_offset.at(load_inst) != inst_to_offset.at(next_load)) {
+      if (state_access_offset.at(load_inst) !=
+          state_access_offset.at(next_load)) {
         stats.fwd_failed++;
         continue;
       }
@@ -1854,37 +1741,35 @@ std::vector<StateSlot> StateSlots(llvm::Module *module) {
 void RemoveDeadStores(llvm::Module *module,
                       llvm::Function *bb_func,
                       const std::vector<StateSlot> &slots) {
+  if (FLAGS_disable_dead_store_elimination) {
+    return;
+  }
 
   KillCounter stats = {};
-  const AAMDInfo aamd_info(slots, module->getContext());
   const llvm::DataLayout dl = module->getDataLayout();
 
   InstToLiveSet live_args;
+  InstToOffset state_access_offset;
 
   for (auto &func : *module) {
     if (!IsLiftedFunction(&func, bb_func)) {
       continue;
     }
 
-    ForwardAliasVisitor fav(dl, slots, live_args);
+    ForwardAliasVisitor fav(dl, slots, live_args, state_access_offset);
 
-    // If the analysis succeeds for this function, add the AAMDNodes.
+    // If the analysis succeeds for this function, then do store-to-load
+    // and load-to-load forwarding.
     if (fav.Analyze(&func)) {
-      AddAAMDNodes(fav.state_access_offset, aamd_info.slot_aamds);
-    } else {
-      stats.failed_funcs++;
-    }
-
-    // Perform load and store forwarding.
-    if (!FLAGS_disable_register_forwarding) {
-      ForwardingBlockVisitor fbv(func, fav.state_access_offset,
-                                 aamd_info.slot_scopes, slots, &dl);
-      fbv.Visit(fav.state_offset, stats);
+      if (!FLAGS_disable_register_forwarding) {
+        ForwardingBlockVisitor fbv(func, state_access_offset, slots, &dl);
+        fbv.Visit(fav.state_offset, stats);
+      }
     }
   }
 
   // Perform live set analysis
-  LiveSetBlockVisitor visitor(*module, live_args, aamd_info.slot_scopes,
+  LiveSetBlockVisitor visitor(*module, live_args, state_access_offset,
                               slots, bb_func, &dl);
 
   visitor.FindLiveInsts(stats);
