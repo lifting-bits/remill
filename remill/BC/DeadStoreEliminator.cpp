@@ -1092,7 +1092,10 @@ void LiveSetBlockVisitor::FindLiveInsts(KillCounter &stats) {
       // block's predecessors to the next work list.
       if (VisitBlock(block, stats)) {
         int num_preds = 0;
-        for (llvm::BasicBlock *pred : predecessors(block)) {
+        auto pred_it = llvm::pred_begin(block);
+        auto pred_end = llvm::pred_end(block);
+        for (; pred_it != pred_end; ++pred_it) {
+          auto pred = *pred_it;
           next_wl.push_back(pred);
           num_preds++;
         }
@@ -1161,7 +1164,7 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block,
                llvm::isa<llvm::InvokeInst>(inst)) {
 
       auto args = inst->operands();
-      auto func = inst->getFunction();
+      llvm::Function *func = nullptr;
       if (llvm::isa<llvm::CallInst>(inst)) {
         auto call_inst = llvm::dyn_cast<llvm::CallInst>(inst);
         args = call_inst->arg_operands();
@@ -1736,7 +1739,7 @@ std::vector<StateSlot> StateSlots(llvm::Module *module) {
   auto type = state_ptr_type->getElementType();
   CHECK(type->isStructTy());
 
-  llvm::DataLayout dl = module->getDataLayout();
+  llvm::DataLayout dl(module);
   const auto num_bytes = dl.getTypeAllocSize(type);
   StateVisitor vis(&dl, num_bytes);
   vis.Visit(type);
@@ -1754,7 +1757,7 @@ void RemoveDeadStores(llvm::Module *module,
   }
 
   KillCounter stats = {};
-  const llvm::DataLayout dl = module->getDataLayout();
+  const llvm::DataLayout dl(module);
 
   InstToLiveSet live_args;
   InstToOffset state_access_offset;
