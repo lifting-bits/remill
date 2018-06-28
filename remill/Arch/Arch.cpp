@@ -313,7 +313,7 @@ static bool GetRegisterOffset(llvm::Module *module, llvm::Type *state_ptr_type,
   *offset = 0;
   do {
     if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(reg)) {
-      llvm::APInt gep_offset(64, 0);
+      llvm::APInt gep_offset(dl.getPointerSizeInBits(0), 0);
       if (!gep->accumulateConstantOffset(dl, gep_offset)) {
         DLOG(INFO)
             << "Named variable " << val_name << " is not a register in the "

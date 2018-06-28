@@ -79,6 +79,12 @@ void StoreProgramCounter(llvm::BasicBlock *block, uint64_t pc);
 // Update the program counter in the state struct with a new value.
 void StoreProgramCounter(llvm::BasicBlock *block, llvm::Value *pc);
 
+// Return the memory pointer argument.
+llvm::Value *LoadMemoryPointerArg(llvm::Function *func);
+
+// Return the program counter argument.
+llvm::Value *LoadProgramCounterArg(llvm::Function *function);
+
 // Return the current memory pointer.
 llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block);
 
