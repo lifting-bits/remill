@@ -30,11 +30,11 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Transforms/Utils/Local.h>
 
 #include "remill/Arch/Arch.h"
 #include "remill/BC/DeadStoreEliminator.h"
 #include "remill/BC/Util.h"
-#include "remill/BC/Compat/Local.h"
 #include "remill/OS/FileSystem.h"
 
 DEFINE_string(dot_output_dir, "",
