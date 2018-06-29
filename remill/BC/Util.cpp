@@ -23,8 +23,10 @@
 #include <utility>
 #include <vector>
 
+#ifndef WIN32
 #include <sys/stat.h>
 #include <unistd.h>
+#endif
 
 #include <llvm/ADT/SmallVector.h>
 
@@ -55,8 +57,17 @@
 
 DECLARE_string(arch);
 
-namespace remill {
+#ifdef WIN32
+namespace {
+extern "C" std::uint32_t GetProcessId(std::uint32_t handle);
 
+std::uint32_t getpid(void) {
+  return GetProcessId(0);
+}
+}
+#endif
+
+namespace remill {
 // Initialize the attributes for a lifted function.
 void InitFunctionAttributes(llvm::Function *function) {
   // Make sure functions are treated as if they return. LLVM doesn't like

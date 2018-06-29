@@ -16,7 +16,6 @@
 
 #define _XOPEN_SOURCE
 
-#include <cfenv>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -28,7 +27,6 @@
 #include <string>
 #include <type_traits>
 #include <vector>
-#include <cfenv>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -41,6 +39,7 @@
 #include "tests/X86/Test.h"
 
 #include "remill/Arch/Runtime/Runtime.h"
+#include "remill/Arch/Float.h"
 #include "remill/Arch/X86/Runtime/State.h"
 
 DECLARE_string(arch);
