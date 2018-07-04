@@ -48,6 +48,7 @@ DEF_SEM(LEAVE_FULL) {
 
 }  // namespace
 
+DEF_ISEL(LEA_GPRv_AGEN_16) = LEA<R16W, M8, uint16_t>;
 DEF_ISEL(LEA_GPRv_AGEN_32) = LEA<R32W, M8, uint32_t>;
 IF_64BIT( DEF_ISEL(LEA_GPRv_AGEN_64) = LEA<R64W, M8, uint64_t>; )
 
