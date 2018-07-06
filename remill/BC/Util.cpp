@@ -364,11 +364,17 @@ namespace {
 #define REMILL_INSTALL_SEMANTICS_DIR
 #endif  // REMILL_INSTALL_SEMANTICS_DIR
 
-static const char *gSemanticsSearchPaths[] = {
+#define _S(x) #x
+#define MAJOR_MINOR _S(LLVM_VERSION_MAJOR) "." _S(LLVM_VERSION_MINOR)
+
+static const char *gSemanticsSearchPaths[6] = {
     // Derived from the build.
     REMILL_BUILD_SEMANTICS_DIR_X86 "\0",
     REMILL_BUILD_SEMANTICS_DIR_AARCH64 "\0",
     REMILL_INSTALL_SEMANTICS_DIR "\0",
+    "/usr/local/share/remill/" MAJOR_MINOR "/semantics",
+    "/usr/share/remill/" MAJOR_MINOR "/semantics",
+    "/share/remill/" MAJOR_MINOR "/semantics",
 };
 
 }  // namespace
