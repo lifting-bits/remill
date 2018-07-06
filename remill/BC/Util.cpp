@@ -365,7 +365,8 @@ namespace {
 #endif  // REMILL_INSTALL_SEMANTICS_DIR
 
 #define _S(x) #x
-#define MAJOR_MINOR _S(LLVM_VERSION_MAJOR) "." _S(LLVM_VERSION_MINOR)
+#define S(x) _S(x)
+#define MAJOR_MINOR S(LLVM_VERSION_MAJOR) "." S(LLVM_VERSION_MINOR)
 
 static const char *gSemanticsSearchPaths[6] = {
     // Derived from the build.
