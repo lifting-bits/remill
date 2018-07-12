@@ -223,6 +223,9 @@ function GetLLVMVersion
     5.0)
       LLVM_VERSION=llvm50
     ;;
+    6.0)
+      LLVM_VERSION=llvm60
+    ;;
     *)
       # unknown option
       printf "[x] Unknown LLVM version ${1}.\n"
