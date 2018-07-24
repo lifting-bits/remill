@@ -27,6 +27,8 @@ include(CTest)
 
 FindAndSelectClangCompiler()
 
+#enable_language(C CXX ASM BC)
+
 set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 
 if(DEFINED WIN32)
