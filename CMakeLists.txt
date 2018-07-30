@@ -116,6 +116,7 @@ add_library(${PROJECT_NAME} STATIC
   remill/BC/Util.cpp
   remill/BC/DeadStoreEliminator.cpp
 
+  remill/OS/Compat.cpp
   remill/OS/FileSystem.cpp
   remill/OS/OS.cpp
 )
