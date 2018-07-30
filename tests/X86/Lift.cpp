@@ -174,7 +174,6 @@ extern "C" int main(int argc, char *argv[]) {
   auto os = remill::GetOSName(REMILL_OS);
   auto arch_name = remill::GetArchName(FLAGS_arch);
   auto arch = remill::Arch::Get(os, arch_name);
-  auto target_arch = remill::Arch::Get(os, remill::kArchAMD64_AVX512);
 
   DLOG(INFO) << "Generating tests.";
 

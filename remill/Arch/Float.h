@@ -17,9 +17,9 @@
 # define _RC_CHOP        0x00000300              //     chop
 #endif
 
+#include <cfenv>
+
 // macOS does not have this flag
 #ifndef __FE_DENORM
 # define __FE_DENORM 0x02
 #endif
-
-#include <cfenv>
