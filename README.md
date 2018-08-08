@@ -59,11 +59,13 @@ sudo apt-get install \
      python2.7 \
      wget \
      curl \
-     realpath \
      build-essential \
      libtinfo-dev \
      lsb-release \
      zlib1g-dev
+
+# Ubuntu 14.04, 16.04
+sudo apt-get install realpath
 ```
 
 Next, clone the repository. This will clone the code into the `remill` directory.

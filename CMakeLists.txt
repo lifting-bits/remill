@@ -27,7 +27,7 @@ include(CTest)
 
 FindAndSelectClangCompiler()
 
-#enable_language(C CXX ASM BC)
+enable_language(C CXX ASM)
 
 set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 

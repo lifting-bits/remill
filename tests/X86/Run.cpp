@@ -578,6 +578,14 @@ static void RunWithFlags(const test::TestInfo *info,
                          uint64_t arg1,
                          uint64_t arg2,
                          uint64_t arg3) {
+
+  // Can't fit a 64-bit stack address into a 32-bit register.
+  auto stack_addr = reinterpret_cast<uintptr_t>(gLiftedStack);
+  if (sizeof(addr_t) < sizeof(uintptr_t) &&
+      static_cast<uintptr_t>(static_cast<addr_t>(stack_addr)) != stack_addr) {
+    return;
+  }
+
   DLOG(INFO) << "Testing instruction: " << info->test_name << ": " << desc;
   if (sigsetjmp(gUnsupportedInstrBuf, true)) {
     DLOG(INFO) << "Unsupported instruction " << info->test_name;

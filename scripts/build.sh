@@ -34,6 +34,12 @@ function GetUbuntuOSVersion
   source /etc/lsb-release
 
   case "${DISTRIB_CODENAME}" in
+    bionic)
+      # TODO(pag): Eventually make real packages for 18.04!
+      OS_VERSION=ubuntu1804
+      OS_VERSION=ubuntu1604
+      return 0
+    ;;
     xenial)
       OS_VERSION=ubuntu1604
       return 0
