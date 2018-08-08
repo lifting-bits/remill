@@ -1005,10 +1005,16 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &inst) {
 }
 
 VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
-  if (!inst.getCalledFunction()) {
+  auto func = inst.getCalledFunction();
+  if (!func) {
     live_args[&inst].set();
-  } else {
 
+  } else if (func->isDeclaration() &&
+             !func->getName().startswith("__remill") &&
+             !func->getName().startswith("__mcsema")) {
+    live_args[&inst].set();
+
+  } else {
     // If we have not seen this instruction before, add it.
     auto args = inst.arg_operands();
     auto live = GetLiveSetFromArgs(inst.getCalledFunction(), args,
@@ -1019,8 +1025,15 @@ VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
 }
 
 VisitResult ForwardAliasVisitor::visitInvokeInst(llvm::InvokeInst &inst) {
+  auto func = inst.getCalledFunction();
   if (!inst.getCalledFunction()) {
     live_args[&inst].set();
+
+  } else if (func->isDeclaration() &&
+             !func->getName().startswith("__remill") &&
+             !func->getName().startswith("__mcsema")) {
+    live_args[&inst].set();
+
   } else {
     // If we have not seen this instruction before, add it.
     auto args = inst.arg_operands();
