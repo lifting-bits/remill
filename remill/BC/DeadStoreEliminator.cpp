@@ -1009,16 +1009,13 @@ VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
   if (!func) {
     live_args[&inst].set();
 
-  } else if (func->isDeclaration() &&
-             !func->getName().startswith("__remill") &&
-             !func->getName().startswith("__mcsema")) {
+  } else if (func->getName().startswith("__mcsema")) {
     live_args[&inst].set();
 
   } else {
     // If we have not seen this instruction before, add it.
     auto args = inst.arg_operands();
-    auto live = GetLiveSetFromArgs(inst.getCalledFunction(), args,
-                                   state_offset, offset_to_slot);
+    auto live = GetLiveSetFromArgs(func, args, state_offset, offset_to_slot);
     live_args.emplace(&inst, std::move(live));
   }
   return VisitResult::Ignored;
@@ -1029,16 +1026,13 @@ VisitResult ForwardAliasVisitor::visitInvokeInst(llvm::InvokeInst &inst) {
   if (!inst.getCalledFunction()) {
     live_args[&inst].set();
 
-  } else if (func->isDeclaration() &&
-             !func->getName().startswith("__remill") &&
-             !func->getName().startswith("__mcsema")) {
+  } else if (func->getName().startswith("__mcsema")) {
     live_args[&inst].set();
 
   } else {
     // If we have not seen this instruction before, add it.
     auto args = inst.arg_operands();
-    auto live = GetLiveSetFromArgs(inst.getCalledFunction(), args,
-                                   state_offset, offset_to_slot);
+    auto live = GetLiveSetFromArgs(func, args, state_offset, offset_to_slot);
     live_args.emplace(&inst, std::move(live));
   }
   return VisitResult::Ignored;
@@ -1196,7 +1190,7 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block,
       }
 
       // Indirect function call, all bets are off.
-      if (!func) {
+      if (!func || func->getName().startswith("__mcsema")) {
         live.set();
 
       // We're calling another lifted function; add a trigger relation between
@@ -1579,7 +1573,7 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
       }
 
       // Indirect function call; don't forward anything across the call.
-      if (!func) {
+      if (!func || func->getName().startswith("__mcsema")) {
         slot_to_load.clear();
         continue;
       }
