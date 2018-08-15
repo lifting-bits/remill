@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_XOP_H_
-#define REMILL_ARCH_X86_SEMANTICS_XOP_H_
+#pragma once
 
 /*
  * See https://en.wikipedia.org/wiki/XOP_instruction_set
@@ -29,5 +28,3 @@
 1996 VPCMOV VPCMOV_YMMqq_YMMqq_YMMqq_MEMqq XOP XOP XOP ATTRIBUTES:
 1997 VPCMOV VPCMOV_YMMqq_YMMqq_YMMqq_YMMqq XOP XOP XOP ATTRIBUTES:
  */
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_XOP_H_

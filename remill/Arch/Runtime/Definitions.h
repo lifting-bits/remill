@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_RUNTIME_DEFINITIONS_H_
-#define REMILL_ARCH_RUNTIME_DEFINITIONS_H_
+#pragma once
 
 #ifndef ADDRESS_SIZE_BITS
 # define ADDRESS_SIZE_BITS 64UL
@@ -241,5 +240,3 @@
 
 #define DEF_ISEL_RnW_Rn_Rn_Rn(name, tpl_func) \
   _DEF_ISEL_XnW_Xn_Yn_Zn(R, R, R, name, tpl_func)
-
-#endif  // REMILL_ARCH_RUNTIME_DEFINITIONS_H_

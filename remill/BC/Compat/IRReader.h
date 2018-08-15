@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_COMPAT_IRREADER_H_
-#define REMILL_BC_COMPAT_IRREADER_H_
+#pragma once
 
 #include <memory>
 
@@ -36,5 +35,3 @@ inline static std::unique_ptr<Module> parseIRFile(Args&... args) {
 }  // namespace llvm
 
 #endif
-
-#endif  // REMILL_BC_COMPAT_IRREADER_H_

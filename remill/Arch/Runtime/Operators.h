@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_RUNTIME_OPERATORS_H_
-#define REMILL_ARCH_RUNTIME_OPERATORS_H_
+#pragma once
 
 struct Memory;
 struct State;
@@ -1623,5 +1622,3 @@ float64_t FRoundToNegativeInfinity64(float64_t val) {
 }
 
 }  // namespace
-
-#endif  // REMILL_ARCH_RUNTIME_OPERATORS_H_

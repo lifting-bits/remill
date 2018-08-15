@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_FLAGS_H_
-#define REMILL_ARCH_X86_SEMANTICS_FLAGS_H_
+#pragma once
 
 namespace {
 
@@ -263,5 +262,3 @@ auto CheckedFloatBinOp(State &state, F func, T arg1, T arg2)
   SetFPSRStatusFlags(state, new_except);
   return res;
 }
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_FLAGS_H_

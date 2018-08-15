@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_POP_H_
-#define REMILL_ARCH_X86_SEMANTICS_POP_H_
+#pragma once
 
 namespace {
 
@@ -223,5 +222,3 @@ DEF_ISEL(POP_FS_64) = POP_FS<uint64_t>;
 DEF_ISEL(POP_GS_16) = POP_GS<uint16_t>;
 DEF_ISEL(POP_GS_64) = POP_GS<uint64_t>;
 #endif  // 64 == ADDRESS_SIZE_BITS
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_POP_H_

@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef REMILL_BC_COMPAT_ERROR_H_
-#define REMILL_BC_COMPAT_ERROR_H_
+#pragma once
 
 #include <system_error>
 
@@ -126,5 +125,3 @@ T &GetReference(T &val) {
 
 }  // namespace remill
 
-
-#endif  // REMILL_BC_COMPAT_ERROR_H_

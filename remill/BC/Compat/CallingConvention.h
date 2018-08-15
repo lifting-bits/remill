@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef REMILL_BC_COMPAT_CALLINGCONVENTION_H_
-#define REMILL_BC_COMPAT_CALLINGCONVENTION_H_
+#pragma once
 
 #include <llvm/IR/CallingConv.h>
 
@@ -29,5 +28,3 @@ constexpr auto Win64 = X86_64_Win64;
 
 }  // namespace CallingConv
 }  // namespace llvm
-
-#endif  // REMILL_BC_COMPAT_CALLINGCONVENTION_H_

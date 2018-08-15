@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_PUSH_H_
-#define REMILL_ARCH_X86_SEMANTICS_PUSH_H_
+#pragma once
 
 namespace {
 
@@ -152,5 +151,3 @@ DEF_ISEL(PUSHFQ) = DoPUSHFQ;
 767 PUSH PUSH_GS PUSH BASE I86 ATTRIBUTES: FIXED_BASE0 SCALABLE STACKPUSH0
 
  */
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_PUSH_H_

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_DECIMAL_H_
-#define REMILL_ARCH_X86_SEMANTICS_DECIMAL_H_
+#pragma once
 
 namespace {
 
@@ -100,5 +99,3 @@ DEF_SEM(DAA) {
 
 IF_32BIT(DEF_ISEL(AAS) = AAS;)
 IF_32BIT(DEF_ISEL(DAA) = DAA;)
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_LOGICAL_H_

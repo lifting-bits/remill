@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_ASSEMBLY_S_
-#define REMILL_ARCH_ASSEMBLY_S_
-
+#pragma once
 
 #define CAT_3(a, b) a ## b
 #define CAT_2(a, b) CAT_3(a, b)
@@ -45,4 +43,3 @@
 #define TO_STRING2(a) TO_STRING3(a)
 #define TO_STRING(a) TO_STRING2(a)
 
-#endif  // REMILL_ARCH_ASSEMBLY_S_

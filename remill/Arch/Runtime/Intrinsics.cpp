@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_SEMANTICS_INSTRINSICS_CPP_
-#define REMILL_ARCH_SEMANTICS_INSTRINSICS_CPP_
+#pragma once
 
 #include "remill/Arch/Runtime/Intrinsics.h"
 #include "remill/Arch/Runtime/Operators.h"
@@ -115,5 +114,3 @@ extern "C" void __remill_intrinsics(void) {
   USED(__remill_undefined_f32);
   USED(__remill_undefined_f64);
 }
-
-#endif  // REMILL_ARCH_SEMANTICS_INSTRINSICS_CPP_

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_COMPAT_TARGETLIBRARYINFO_H_
-#define REMILL_BC_COMPAT_TARGETLIBRARYINFO_H_
+#pragma once
 
 #include "remill/BC/Version.h"
 
@@ -31,5 +30,3 @@ using TargetLibraryInfoImpl = TargetLibraryInfo;
 }  // namespace llvm
 
 #endif
-
-#endif  // REMILL_BC_COMPAT_TARGETLIBRARYINFO_H_

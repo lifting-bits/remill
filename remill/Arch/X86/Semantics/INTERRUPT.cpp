@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_INTERRUPT_H_
-#define REMILL_ARCH_X86_SEMANTICS_INTERRUPT_H_
+#pragma once
 
 namespace {
 
@@ -70,5 +69,3 @@ DEF_ISEL(INTO) = DoINTO;
 DEF_ISEL(BOUND_GPRv_MEMa16_16) = BOUND<R16, M16>;
 DEF_ISEL(BOUND_GPRv_MEMa32_32) = BOUND<R32, M32>;
 #endif  // 32 == ADDRESS_SIZE_BITS
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_INTERRUPT_H_
