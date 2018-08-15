@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_OS_FILESYSTEM_H_
-#define REMILL_OS_FILESYSTEM_H_
+#pragma once
 
 #include <cstdint>
 #include <functional>
@@ -53,5 +52,3 @@ std::string CanonicalPath(const std::string &path);
 const char *PathSeparator(void);
 
 }  // namespace remill
-
-#endif  // REMILL_OS_FILESYSTEM_H_

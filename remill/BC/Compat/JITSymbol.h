@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef REMILL_BC_COMPAT_JITSYMBOL_H_
-#define REMILL_BC_COMPAT_JITSYMBOL_H_
+#pragma once
 
 #include "remill/BC/Version.h"
 
@@ -27,4 +26,3 @@ using JITSymbolResolver = llvm::RuntimeDyld::SymbolResolver;
 #else
 # include <llvm/ExecutionEngine/JITSymbol.h>
 #endif
-#endif  // REMILL_BC_COMPAT_JITSYMBOL_H_

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_RUNTIME_TYPES_H_
-#define REMILL_ARCH_RUNTIME_TYPES_H_
+#pragma once
 
 #include <cstdint>
 #include <functional>
@@ -744,5 +743,3 @@ inline int128_t operator "" _s128(unsigned long long value) {
 #endif  // COMPILING_WITH_GCC
 
 #pragma clang diagnostic pop
-
-#endif  // REMILL_ARCH_RUNTIME_TYPES_H_

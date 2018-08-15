@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_LIFTER_H_
-#define REMILL_BC_LIFTER_H_
+#pragma once
 
 namespace llvm {
 class Argument;
@@ -95,5 +94,3 @@ class InstructionLifter {
 };
 
 }  // namespace remill
-
-#endif  // REMILL_BC_LIFTER_H_

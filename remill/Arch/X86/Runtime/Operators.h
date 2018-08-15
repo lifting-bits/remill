@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_RUNTIME_OPERATORS_H_
-#define REMILL_ARCH_X86_RUNTIME_OPERATORS_H_
+#pragma once
 
 namespace {
 
@@ -83,5 +82,3 @@ Memory *_WriteBCD80Indefinite(Memory *memory, MBCD80W dst) {
 #define WriteBCD80Indefinite(op) _WriteBCD80Indefinite(memory, op)
 
 }  // namespace
-
-#endif  // REMILL_ARCH_X86_RUNTIME_OPERATORS_H_

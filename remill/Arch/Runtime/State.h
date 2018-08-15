@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_RUNTIME_STATE_H_
-#define REMILL_ARCH_RUNTIME_STATE_H_
+#pragma once
 
 #include "remill/Arch/Runtime/HyperCall.h"
 
@@ -38,5 +37,3 @@ struct ArchState {
 
 static_assert(16 == sizeof(ArchState),
               "Invalid packing of `struct ArchState`.");
-
-#endif  // REMILL_ARCH_RUNTIME_STATE_H_

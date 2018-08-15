@@ -13,12 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef REMILL_BC_COMPAT_RUNTIMEDYLD_H_
-#define REMILL_BC_COMPAT_RUNTIMEDYLD_H_
+#pragma once
 
 #include "remill/BC/Version.h"
 
 #include <llvm/ExecutionEngine/RuntimeDyld.h>
 #include <llvm/ExecutionEngine/RTDyldMemoryManager.h>
-
-#endif  // REMILL_BC_COMPAT_RUNTIMEDYLD_H_

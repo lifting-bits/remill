@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef TESTS_AARCH64_TEST_H_
-#define TESTS_AARCH64_TEST_H_
+#pragma once
 
 struct State;
 struct Memory;
@@ -43,5 +42,3 @@ extern const TestInfo __aarch64_test_table_end[];
 }  // extern C
 
 }  // namespace test
-
-#endif  // TESTS_AARCH64_TEST_H_

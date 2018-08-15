@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_DSELIM_H_
-#define REMILL_BC_DSELIM_H_
+#pragma once
 
 namespace llvm {
 class Module;
@@ -54,4 +53,3 @@ void RemoveDeadStores(llvm::Module *module, llvm::Function *bb_func,
                       const std::vector<StateSlot> &slots);
 
 }  // namespace remill
-#endif  // REMILL_BC_DSELIM_H_

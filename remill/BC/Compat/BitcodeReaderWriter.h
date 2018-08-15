@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_COMPAT_BITCODEREADERWRITER_H_
-#define REMILL_BC_COMPAT_BITCODEREADERWRITER_H_
+#pragma once
 
 #include "remill/BC/Version.h"
 
@@ -25,5 +24,3 @@
 #else
 # include <llvm/Bitcode/ReaderWriter.h>
 #endif
-
-#endif  // REMILL_BC_COMPAT_BITCODEREADERWRITER_H_
