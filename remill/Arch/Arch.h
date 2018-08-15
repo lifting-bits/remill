@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_ARCH_H_
-#define REMILL_ARCH_ARCH_H_
+#pragma once
 
 #include <memory>
 #include <string>
@@ -164,5 +163,3 @@ const Arch *GetHostArch(void);
 const Arch *GetTargetArch(void);
 
 }  // namespace remill
-
-#endif  // REMILL_ARCH_ARCH_H_

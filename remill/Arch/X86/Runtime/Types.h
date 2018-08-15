@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_RUNTIME_TYPES_H_
-#define REMILL_ARCH_X86_RUNTIME_TYPES_H_
+#pragma once
 
 union bcd_digit_pair_t {
   uint8_t u8;
@@ -135,5 +134,3 @@ typedef RnW<float64_t> RF64W;
 // Internally, we boil F80s down into F64s.
 typedef Rn<float64_t> RF80;
 typedef RnW<float64_t> RF80W;
-
-#endif  // REMILL_ARCH_X86_RUNTIME_TYPES_H_

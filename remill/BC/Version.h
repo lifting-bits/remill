@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_VERSION_H_
-#define REMILL_BC_VERSION_H_
+#pragma once
 
 #include <llvm/Config/llvm-config.h>
 
@@ -141,5 +140,3 @@
 
 #define _IF_LLVM_GTE(major, minor, ...) \
     _IF_LLVM_GTE_ ## major ## minor (__VA_ARGS__)
-
-#endif  // REMILL_BC_VERSION_H_

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_AARCH64_RUNTIME_TYPES_H_
-#define REMILL_ARCH_AARCH64_RUNTIME_TYPES_H_
+#pragma once
 
 // We need this for boolean conditions, used in branch instructions.
 typedef RnW<uint8_t> R8W;
@@ -74,5 +73,3 @@ typedef In<float64_t> F64;
 
 typedef In<addr_t> PC;
 typedef In<addr_t> ADDR;
-
-#endif  // REMILL_ARCH_AARCH64_RUNTIME_TYPES_H_

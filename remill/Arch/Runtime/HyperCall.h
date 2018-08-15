@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_RUNTIME_HYPERCALL_H_
-#define REMILL_ARCH_RUNTIME_HYPERCALL_H_
+#pragma once
 
 #include <cstdint>
 
@@ -94,5 +93,3 @@ class AsyncHyperCall {
     kInvalidInstruction
   };
 } __attribute__((packed));
-
-#endif  // REMILL_ARCH_RUNTIME_HYPERCALL_H_

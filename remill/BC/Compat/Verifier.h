@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_COMPAT_VERIFIER_H_
-#define REMILL_BC_COMPAT_VERIFIER_H_
+#pragma once
 
 #include "remill/BC/Version.h"
 
@@ -24,5 +23,3 @@
 #else
 # include <llvm/Analysis/Verifier.h>
 #endif
-
-#endif  // REMILL_BC_COMPAT_VERIFIER_H_

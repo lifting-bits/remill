@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_AARCH64_DECODE_H_
-#define REMILL_ARCH_AARCH64_DECODE_H_
+#pragma once
 
 #include <cstdint>
 
@@ -7172,5 +7171,3 @@ bool TryDecode(const InstData &data, Instruction &inst);
 
 }  // namespace aarch64
 }  // namespace remill
-
-#endif  // REMILL_ARCH_AARCH64_DECODE_H_

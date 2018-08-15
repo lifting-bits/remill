@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef REMILL_BC_COMPAT_ATTRIBUTES_H_
-#define REMILL_BC_COMPAT_ATTRIBUTES_H_
+#pragma once
 
 #include <llvm/IR/Attributes.h>
 
@@ -31,5 +30,3 @@ constexpr auto FunctionIndex = llvm::AttributeList::FunctionIndex;
 #endif
 }  // namespace AttributeLoc
 }  // namespace llvm
-
-#endif  // REMILL_BC_COMPAT_ATTRIBUTES_H_

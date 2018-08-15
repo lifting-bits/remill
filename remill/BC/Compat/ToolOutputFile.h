@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_COMPAT_TOOLOUTPUTFILE_H_
-#define REMILL_BC_COMPAT_TOOLOUTPUTFILE_H_
+#pragma once
 
 #include "remill/BC/Version.h"
 #include <llvm/Support/ToolOutputFile.h>
@@ -25,5 +24,3 @@ namespace llvm {
 using ToolOutputFile = tool_output_file;
 }  // namespace llvm
 #endif
-
-#endif  // REMILL_BC_COMPAT_TOOLOUTPUTFILE_H_

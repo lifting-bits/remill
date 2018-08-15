@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_AARCH64_RUNTIME_STATE_H_
-#define REMILL_ARCH_AARCH64_RUNTIME_STATE_H_
+#pragma once
 
 #pragma clang diagnostic push
 #pragma clang diagnostic fatal "-Wpadded"
@@ -307,5 +306,3 @@ static_assert((1152 + 16) == sizeof(State),
 using AArch64State = State;
 
 #pragma clang diagnostic pop
-
-#endif  // REMILL_ARCH_AARCH64_RUNTIME_STATE_H_
