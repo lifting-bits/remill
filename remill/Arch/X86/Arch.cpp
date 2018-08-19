@@ -478,8 +478,9 @@ static void DecodeImmediate(Instruction &inst,
   auto val = 0ULL;
   auto is_signed = false;
   auto imm_size = xed_decoded_inst_get_immediate_width_bits(xedd);
+  auto operand_size = xed_decoded_inst_get_operand_width(xedd);
 
-  CHECK(imm_size <= inst.operand_size)
+  CHECK(imm_size <= operand_size)
       << "Immediate size is greater than effective operand size at "
       << std::hex << inst.pc << ".";
 
@@ -941,7 +942,6 @@ bool X86Arch::DecodeInstruction(
     return false;
   }
 
-  inst.operand_size = xed_decoded_inst_get_operand_width(xedd);
   inst.bytes = inst_bytes.substr(0, xed_decoded_inst_get_length(xedd));
   inst.category = CreateCategory(xedd);
   inst.next_pc = address + xed_decoded_inst_get_length(xedd);
