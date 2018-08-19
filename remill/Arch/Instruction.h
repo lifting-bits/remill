@@ -160,9 +160,6 @@ class Instruction {
   // Name of this instruction's architecture.
   ArchName arch_name;
 
-  // The effective size of the operand, in bits.
-  uint64_t operand_size;
-
   // Pointer to the `remill::Arch` used to complete the decoding of this
   // instruction.
   const Arch *arch_for_decode;

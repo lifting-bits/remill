@@ -248,7 +248,6 @@ Instruction::Instruction(void)
       branch_taken_pc(0),
       branch_not_taken_pc(0),
       arch_name(kArchInvalid),
-      operand_size(0),
       arch_for_decode(nullptr),
       is_atomic_read_modify_write(false),
       category(Instruction::kCategoryInvalid) {}
@@ -259,7 +258,6 @@ void Instruction::Reset(void) {
   branch_taken_pc = 0;
   branch_not_taken_pc = 0;
   arch_name = kArchInvalid;
-  operand_size = 0;
   is_atomic_read_modify_write = false;
   category = Instruction::kCategoryInvalid;
   arch_for_decode = nullptr;
