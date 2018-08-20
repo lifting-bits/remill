@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_LOGICAL_H_
-#define REMILL_ARCH_X86_SEMANTICS_LOGICAL_H_
+#pragma once
 
 namespace {
 
@@ -320,5 +319,3 @@ IF_AVX( DEF_ISEL(VPTEST_YMMqq_YMMqq) = PTEST<VV256, VV256>; )
 /*
 1737 XTEST XTEST LOGICAL RTM RTM ATTRIBUTES:
  */
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_LOGICAL_H_

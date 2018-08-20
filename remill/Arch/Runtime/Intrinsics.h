@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_RUNTIME_INTRINSICS_H_
-#define REMILL_ARCH_RUNTIME_INTRINSICS_H_
+#pragma once
 
 #include "remill/Arch/Runtime/Types.h"
 #include "remill/Arch/Runtime/HyperCall.h"
@@ -268,5 +267,3 @@ extern Memory *__remill_write_io_port_16(Memory *, addr_t, uint16_t);
 extern Memory *__remill_write_io_port_32(Memory *, addr_t, uint32_t);
 
 }  // extern C
-
-#endif  // REMILL_ARCH_RUNTIME_INTRINSICS_H_

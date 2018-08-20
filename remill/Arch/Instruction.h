@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_INSTRUCTION_H_
-#define REMILL_ARCH_INSTRUCTION_H_
+#pragma once
 
 #include <string>
 #include <vector>
@@ -262,5 +261,3 @@ class Instruction {
 };
 
 }  // namespace remill
-
-#endif  // REMILL_ARCH_INSTRUCTION_H_

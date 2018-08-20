@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_CALL_RET_H_
-#define REMILL_ARCH_X86_SEMANTICS_CALL_RET_H_
+#pragma once
 
 namespace {
 
@@ -96,5 +95,3 @@ DEF_SEM(IRETD) {
 
 DEF_ISEL(IRETD_32) = IRETD;
 #endif
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_CALL_RET_H_

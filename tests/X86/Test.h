@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef TESTS_X86_TEST_H_
-#define TESTS_X86_TEST_H_
+#pragma once
 
 struct State;
 struct Memory;
@@ -44,4 +43,3 @@ extern const TestInfo __x86_test_table_end[];
 
 }  // namespace test
 
-#endif  // TESTS_X86_TEST_H_

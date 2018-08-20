@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef REMILL_BC_COMPAT_FILESYSTEM_H_
-#define REMILL_BC_COMPAT_FILESYSTEM_H_
+#pragma once
 
 #include <llvm/Support/FileSystem.h>
 
@@ -29,5 +28,3 @@ namespace llvm {
 using file_magic = llvm::sys::fs::file_magic;
 #endif
 }  // namespace llvm
-
-#endif  // REMILL_BC_COMPAT_FILESYSTEM_H_

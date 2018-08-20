@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_INTRINSICTABLE_H_
-#define REMILL_BC_INTRINSICTABLE_H_
+#pragma once
 
 namespace llvm {
 class ConstantArray;
@@ -87,5 +86,3 @@ class IntrinsicTable {
 };
 
 }  // namespace remill
-
-#endif  // REMILL_BC_INTRINSICTABLE_H_

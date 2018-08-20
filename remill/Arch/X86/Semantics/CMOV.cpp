@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_CMOV_H_
-#define REMILL_ARCH_X86_SEMANTICS_CMOV_H_
+#pragma once
 
 namespace {
 template <typename D, typename S1>
@@ -167,5 +166,3 @@ DEF_ISEL_RnW_Mn(CMOVB_GPRv_MEMv, CMOVB);
 DEF_ISEL_RnW_Rn(CMOVB_GPRv_GPRv, CMOVB);
 DEF_ISEL_RnW_Mn(CMOVNBE_GPRv_MEMv, CMOVNBE);
 DEF_ISEL_RnW_Rn(CMOVNBE_GPRv_GPRv, CMOVNBE);
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_CMOV_H_

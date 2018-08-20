@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_XED_H_
-#define REMILL_ARCH_X86_XED_H_
+#pragma once
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wsign-conversion"
@@ -29,4 +28,3 @@ extern "C" {
 }  // extern C
 #pragma clang diagnostic pop
 
-#endif  // REMILL_ARCH_X86_XED_H_

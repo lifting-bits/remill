@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_RUNTIME_STATE_H_
-#define REMILL_ARCH_X86_RUNTIME_STATE_H_
+#pragma once
 
 // !!! RULES FOR STATE STRUCTURE TYPES !!!
 //
@@ -839,5 +838,3 @@ union CR8Reg {
 static_assert(8 == sizeof(CR8Reg), "Invalid packing of CR8Reg");
 
 #pragma clang diagnostic pop
-
-#endif  // REMILL_ARCH_X86_RUNTIME_STATE_H_

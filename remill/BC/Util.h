@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_UTIL_H_
-#define REMILL_BC_UTIL_H_
+#pragma once
 
 #include <functional>
 #include <string>
@@ -196,5 +195,3 @@ std::string ModuleName(llvm::Module *module);
 std::string ModuleName(const std::unique_ptr<llvm::Module> &module);
 
 }  // namespace remill
-
-#endif  // REMILL_BC_UTIL_H_
