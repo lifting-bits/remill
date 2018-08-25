@@ -1005,22 +1005,36 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &inst) {
 }
 
 VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
+  auto func = inst.getCalledFunction();
+  if (!func) {
+    live_args[&inst].set();
 
-  // If we have not seen this instruction before, add it.
-  auto args = inst.arg_operands();
-  auto live = GetLiveSetFromArgs(inst.getCalledFunction(), args,
-                                 state_offset, offset_to_slot);
-  live_args.emplace(&inst, std::move(live));
+  } else if (func->getName().startswith("__mcsema")) {
+    live_args[&inst].set();
+
+  } else {
+    // If we have not seen this instruction before, add it.
+    auto args = inst.arg_operands();
+    auto live = GetLiveSetFromArgs(func, args, state_offset, offset_to_slot);
+    live_args.emplace(&inst, std::move(live));
+  }
   return VisitResult::Ignored;
 }
 
 VisitResult ForwardAliasVisitor::visitInvokeInst(llvm::InvokeInst &inst) {
+  auto func = inst.getCalledFunction();
+  if (!inst.getCalledFunction()) {
+    live_args[&inst].set();
 
-  // If we have not seen this instruction before, add it.
-  auto args = inst.arg_operands();
-  auto live = GetLiveSetFromArgs(inst.getCalledFunction(), args,
-                                 state_offset, offset_to_slot);
-  live_args.emplace(&inst, std::move(live));
+  } else if (func->getName().startswith("__mcsema")) {
+    live_args[&inst].set();
+
+  } else {
+    // If we have not seen this instruction before, add it.
+    auto args = inst.arg_operands();
+    auto live = GetLiveSetFromArgs(func, args, state_offset, offset_to_slot);
+    live_args.emplace(&inst, std::move(live));
+  }
   return VisitResult::Ignored;
 }
 
@@ -1175,9 +1189,13 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block,
         func = invoke_inst->getCalledFunction();
       }
 
+      // Indirect function call, all bets are off.
+      if (!func || func->getName().startswith("__mcsema")) {
+        live.set();
+
       // We're calling another lifted function; add a trigger relation between
       // this block and the called function's entry block.
-      if (func && IsLiftedFunction(func, bb_func)) {
+      } else if (IsLiftedFunction(func, bb_func)) {
         auto entry_block = &*func->begin();
         live = block_map[entry_block];
 
@@ -1543,10 +1561,21 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
         llvm::isa<llvm::InvokeInst>(inst)) {
 
       auto args = inst->operands();
+      llvm::Function *func = nullptr;
       if (llvm::isa<llvm::CallInst>(inst)) {
-        args = llvm::dyn_cast<llvm::CallInst>(inst)->arg_operands();
+        auto call_inst = llvm::dyn_cast<llvm::CallInst>(inst);
+        args = call_inst->arg_operands();
+        func = call_inst->getCalledFunction();
       } else {
-        args = llvm::dyn_cast<llvm::InvokeInst>(inst)->arg_operands();
+        auto invoke_inst = llvm::dyn_cast<llvm::InvokeInst>(inst);
+        args = invoke_inst->arg_operands();
+        func = invoke_inst->getCalledFunction();
+      }
+
+      // Indirect function call; don't forward anything across the call.
+      if (!func || func->getName().startswith("__mcsema")) {
+        slot_to_load.clear();
+        continue;
       }
 
       for (auto &arg_it : args) {
@@ -1567,6 +1596,7 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
           }
         }
       }
+
     // Try to do store-to-load forwarding.
     } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
       auto offset_ptr = state_access_offset.find(inst);

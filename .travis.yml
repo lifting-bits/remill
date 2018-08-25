@@ -1,20 +1,25 @@
-dist: trusty
 language: generic
-os: 
+
+sudo: required
+dist: trusty
+
+os:
   - linux
+  - osx
+
+matrix:
+  allow_failures:
+    - os: osx
+
 compiler:
   - gcc
+
 before_install:
-  - sudo apt-get update -yqq
-  - sudo apt-get install -y git python2.7 wget realpath build-essential libtinfo-dev lsb-release
-install:
-  - ./scripts/build.sh
-before_script:
-  - cd ./remill-build
-  - make build_x86_tests
+  - ./scripts/travis.sh "$TRAVIS_OS_NAME" initialize
+
 script:
-  - make test
-  - if [[ $? -ne 0 ]] ; then ./tests/X86/run-x86_avx-tests ; ./tests/X86/run-amd64_avx-tests ; fi
+  - ./scripts/travis.sh "$TRAVIS_OS_NAME" build
+
 notifications:
   slack:
     secure: eW0eTnlEz1Pa68ZJOps7L0UscoxoFa+JLuOIOy4PPrLs1DfIiGdhHMfWs2U8mF8YaBYmrXgav/1IxNVtdPxiwfyLdYbiNSoEfo1ofPpizTH02flXthnUVIzlQD1jT6OSk840vskT2WWufBEkoaEIxFDXVI8PFtAtIYyfveVEnRdkTPUvuLV0pTX92c+ZCH3FIWtDey+4aVUwsttJSVloDSExy27LuoBLDPSNX8goiZFFrIcBRpspumysEJXdj5FSNiED9TQA1NCGWhsUqUlTPMYp1B8M/lKciugqhAlGijSL3lOisJZWsf/YZcto/N7wNMU54YNbfmMUZu6K9UkveVOD8qtlAs/8MDPyH0O+s/Hf2y6KGb7PSO9sxYF/WWRLNqxp8SgmY3IKu8niglXsHBNd4cXibvM3a2KJoJo453PI48XAfaygPYcYcuNedsQT9Fng384vpUjV7YLLU1452qTjx5T5SarjeF4ExtzJVYAQWhFT7RkNpdtDnKNLczwicM8wRSCHfEmGLR1Dpw5zQlS3uFJydTWTgAeLSHKKkfgqLYiR7/Ongv1M8Q+JUgYtF2dV9PLEpb0QGzw6B/RnW2vGNWIE+JJCjpZTizQj0f8UIh+k//v9jL4simVHRDPArnvJaFP0T4BrUl4Z4XN/dYFOogp9rCHgQCvqVOCPrFI=

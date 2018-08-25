@@ -34,6 +34,12 @@ function GetUbuntuOSVersion
   source /etc/lsb-release
 
   case "${DISTRIB_CODENAME}" in
+    bionic)
+      # TODO(pag): Eventually make real packages for 18.04!
+      OS_VERSION=ubuntu1804
+      OS_VERSION=ubuntu1604
+      return 0
+    ;;
     xenial)
       OS_VERSION=ubuntu1604
       return 0
@@ -174,6 +180,7 @@ function Configure
       -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
       -DCMAKE_C_COMPILER=${CC} \
       -DCMAKE_CXX_COMPILER=${CXX} \
+      -DCMAKE_VERBOSE_MAKEFILE=True \
       ${SRC_DIR}
 
   return $?
@@ -221,6 +228,9 @@ function GetLLVMVersion
     ;;
     5.0)
       LLVM_VERSION=llvm50
+    ;;
+    6.0)
+      LLVM_VERSION=llvm60
     ;;
     *)
       # unknown option

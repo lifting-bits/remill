@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Trail of Bits, Inc.
+# Copyright (c) 2018 Trail of Bits, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,134 +18,30 @@ if (POLICY CMP0025)
 endif ()
 
 project(remill)
-cmake_minimum_required (VERSION 3.2)
+cmake_minimum_required(VERSION 3.2)
 
-# Generate a compile commands JSON file.
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-# add the BC (bitcode) language definition
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/BCCompiler")
-
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/settings.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/BCCompiler.cmake")
 include(CTest)
+
+FindAndSelectClangCompiler()
+
+enable_language(C CXX ASM)
 
 set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 
-if (DEFINED ENV{TRAILOFBITS_LIBRARIES})
-    set(LIBRARY_REPOSITORY_ROOT $ENV{TRAILOFBITS_LIBRARIES}
-        CACHE PATH "Location of cxx-common libraries.")
-endif ()
-
-if (DEFINED LIBRARY_REPOSITORY_ROOT)
-    set(TOB_CMAKE_INCLUDE "${LIBRARY_REPOSITORY_ROOT}/cmake_modules/repository.cmake")
-    set(LEGACY_TOB_CMAKE_INCLUDE "${LIBRARY_REPOSITORY_ROOT}/cmake/repository.cmake")
-
-    if (EXISTS "${LEGACY_TOB_CMAKE_INCLUDE}")
-        include("${LEGACY_TOB_CMAKE_INCLUDE}")
-        message(WARNING "Using legacy cxx-common build; please update!")
-    elseif (EXISTS "${TOB_CMAKE_INCLUDE}")
-        include("${TOB_CMAKE_INCLUDE}")
-
-    else ()
-        message(FATAL_ERROR "The library repository could not be found!")
-    endif ()
-
-    message(STATUS "Using the following library repository: ${LIBRARY_REPOSITORY_ROOT}")
-else ()
-    message(STATUS "Using system libraries")
-endif ()
-
-#
-# compiler selection
-#
-
-# llvm
-if (DEFINED ENV{LLVM_INSTALL_PREFIX})
-    set(LLVM_INSTALL_PREFIX $ENV{LLVM_INSTALL_PREFIX})
-endif ()
-
-if (DEFINED LLVM_INSTALL_PREFIX)
-    list(APPEND FINDPACKAGE_LLVM_HINTS "${LLVM_INSTALL_PREFIX}/lib/cmake/llvm/")
-    list(APPEND FINDPACKAGE_LLVM_HINTS "${LLVM_INSTALL_PREFIX}/share/llvm/cmake/")
-
-    message(STATUS "Using LLVM_INSTALL_PREFIX hints for find_package(LLVM): ${FINDPACKAGE_LLVM_HINTS}")
-endif ()
-
-# it is important to avoid re-defining these variables if they have been already
-# set or you risk ending up in a configure loop!
-if (NOT DEFINED CMAKE_C_COMPILER)
-    if (DEFINED LLVM_INSTALL_PREFIX)
-        set(CMAKE_C_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang"
-            CACHE PATH "Path to clang binary.")
-    else ()
-        set(CMAKE_C_COMPILER "clang")
-    endif ()
-endif ()
-
-if (NOT DEFINED CMAKE_CXX_COMPILER)
-    if (DEFINED LLVM_INSTALL_PREFIX)
-        set(CMAKE_CXX_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang++"
-            CACHE PATH "Path to clang++ binary.")
-    else ()
-        set(CMAKE_CXX_COMPILER "clang++")
-    endif ()
-endif ()
-
-if (NOT DEFINED CMAKE_ASM_COMPILER)
-    if (DEFINED LLVM_INSTALL_PREFIX)
-        set(CMAKE_ASM_COMPILER "${LLVM_INSTALL_PREFIX}/bin/clang++"
-            CACHE PATH "Path to assembler (aka clang) binary.")
-    else ()
-        set(CMAKE_ASM_COMPILER ${CMAKE_CXX_COMPILER})
-    endif ()
-endif ()
-
-if (NOT DEFINED CMAKE_LLVM_LINK)
-    if (DEFINED LLVM_INSTALL_PREFIX)
-        set(CMAKE_LLVM_LINK "${LLVM_INSTALL_PREFIX}/bin/llvm-link"
-            CACHE PATH "Path to llvm-link binary.")
-    else ()
-        set(CMAKE_LLVM_LINK "llvm-link")
-    endif ()
-endif ()
-
-enable_language(C)
-enable_language(CXX)
-enable_language(ASM)
-enable_language(BC)
-
-#
-# compiler settings
-#
-
-# enable the gnu extensions
-set(CMAKE_CXX_EXTENSIONS ON)
-
-# visual studio already defaults to c++11
-if (NOT WIN32)
-    set(CMAKE_CXX_STANDARD 11)
-endif ()
-
-# warnings and compiler settings
-set(PROJECT_CXXWARNINGS "-Wall -Wextra -Wno-unused-parameter -Wno-c++98-compat -Wno-unreachable-code-return -Wno-nested-anon-types -Wno-extended-offsetof -Wgnu-alignof-expression -Wno-gnu-anonymous-struct -Wno-gnu-designator -Wno-variadic-macros -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-statement-expression -Wno-return-type-c-linkage -Wno-c99-extensions -Wno-ignored-attributes -Wno-unused-local-typedef -Wno-unknown-pragmas")
-set(PROJECT_CXXFLAGS "${PROJECT_CXXFLAGS} -Wno-unknown-warning-option ${PROJECT_CXXWARNINGS} -fPIC -fno-omit-frame-pointer -fvisibility-inlines-hidden -fno-exceptions -fno-asynchronous-unwind-tables -fno-rtti")
-
-# default build type
-if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo")
-endif ()
-
-# debug symbols
-if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    set(PROJECT_CXXFLAGS "${PROJECT_CXXFLAGS} -gdwarf-2 -g3")
-endif ()
-
-# optimization flags and definitions
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(PROJECT_CXXFLAGS "${PROJECT_CXXFLAGS} -O0")
-else ()
-    set(PROJECT_CXXFLAGS "${PROJECT_CXXFLAGS} -O3")
-    list(APPEND PROJECT_DEFINITIONS "NDEBUG")
-endif ()
+if(DEFINED WIN32)
+  set(dynamic_lib_prefix "")
+  set(dynamic_lib_extension "dll")
+  set(executable_extension ".exe")
+  set(install_folder "${CMAKE_INSTALL_PREFIX}/remill")
+else()
+  set(dynamic_lib_prefix "lib")
+  set(dynamic_lib_extension "so")
+  set(executable_extension "")
+  set(install_folder "${CMAKE_INSTALL_PREFIX}")
+endif()
 
 #
 # libraries
@@ -153,7 +49,16 @@ endif ()
 
 find_package(LLVM REQUIRED CONFIG HINTS ${FINDPACKAGE_LLVM_HINTS})
 
-set(LLVM_LIBRARIES LLVMCore LLVMSupport LLVMAnalysis LLVMipo LLVMIRReader LLVMBitReader LLVMBitWriter LLVMTransformUtils LLVMScalarOpts LLVMLTO)
+string(REPLACE "." ";" LLVM_VERSION_LIST ${LLVM_PACKAGE_VERSION})
+list(GET LLVM_VERSION_LIST 0 LLVM_MAJOR_VERSION)
+list(GET LLVM_VERSION_LIST 1 LLVM_MINOR_VERSION)
+
+set(LLVM_LIBRARIES
+  LLVMCore LLVMSupport LLVMAnalysis LLVMipo LLVMIRReader
+  LLVMBitReader LLVMBitWriter LLVMTransformUtils LLVMScalarOpts
+  LLVMLTO
+)
+
 list(APPEND PROJECT_LIBRARIES ${LLVM_LIBRARIES})
 list(APPEND PROJECT_DEFINITIONS ${LLVM_DEFINITIONS})
 list(APPEND PROJECT_INCLUDEDIRECTORIES ${LLVM_INCLUDE_DIRS})
@@ -171,40 +76,49 @@ list(APPEND PROJECT_LIBRARIES glog::glog)
 find_package(gflags REQUIRED)
 list(APPEND PROJECT_LIBRARIES gflags)
 
-# Split out the LLVM version.
-string(REPLACE "." ";" LLVM_VERSION_LIST ${LLVM_PACKAGE_VERSION})
-list(GET LLVM_VERSION_LIST 0 LLVM_MAJOR_VERSION)
-list(GET LLVM_VERSION_LIST 1 LLVM_MINOR_VERSION)
-
-set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}.${LLVM_MINOR_VERSION}")
-math(EXPR REMILL_LLVM_VERSION_NUMBER "${LLVM_MAJOR_VERSION} * 100 + ${LLVM_MINOR_VERSION}" )
+# windows sdk
+if(DEFINED WIN32)
+  list(APPEND PROJECT_LIBRARIES "Kernel32.lib")
+endif()
 
 #
 # target settings
 #
 
-list(APPEND PROJECT_DEFINITIONS "REMILL_INSTALL_SEMANTICS_DIR=\"${CMAKE_INSTALL_PREFIX}/share/remill/${REMILL_LLVM_VERSION}/semantics/\"")
-list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_X86=\"${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/X86/Runtime/\"")
-list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_AARCH64=\"${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/AArch64/Runtime/\"")
+set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}.${LLVM_MINOR_VERSION}")
+math(EXPR REMILL_LLVM_VERSION_NUMBER "${LLVM_MAJOR_VERSION} * 100 + ${LLVM_MINOR_VERSION}")
+
+if(DEFINED WIN32)
+  set(REMILL_INSTALL_SEMANTICS_DIR "${install_folder}/${REMILL_LLVM_VERSION}/semantics/")
+else()
+  set(REMILL_INSTALL_SEMANTICS_DIR "${install_folder}/share/remill/${REMILL_LLVM_VERSION}/semantics/")
+endif()
+
+set(REMILL_BUILD_SEMANTICS_DIR_X86 "${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/X86/Runtime/")
+set(REMILL_BUILD_SEMANTICS_DIR_AARCH64 "${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/AArch64/Runtime/")
+
+list(APPEND PROJECT_DEFINITIONS "REMILL_INSTALL_SEMANTICS_DIR=\"${REMILL_INSTALL_SEMANTICS_DIR}/\"")
+list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_X86=\"${REMILL_BUILD_SEMANTICS_DIR_X86}\"")
+list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_AARCH64=\"${REMILL_BUILD_SEMANTICS_DIR_AARCH64}\"")
 
 add_library(${PROJECT_NAME} STATIC
+  remill/Arch/AArch64/Arch.cpp
+  remill/Arch/AArch64/Decode.cpp
+  remill/Arch/AArch64/Extract.cpp
+  remill/Arch/X86/Arch.cpp
+  
+  remill/Arch/Arch.cpp
+  remill/Arch/Instruction.cpp
+  remill/Arch/Name.cpp
 
-    remill/Arch/AArch64/Arch.cpp
-    remill/Arch/AArch64/Decode.cpp
-    remill/Arch/AArch64/Extract.cpp
-    remill/Arch/X86/Arch.cpp
-    
-    remill/Arch/Arch.cpp
-    remill/Arch/Instruction.cpp
-    remill/Arch/Name.cpp
+  remill/BC/IntrinsicTable.cpp
+  remill/BC/Lifter.cpp
+  remill/BC/Util.cpp
+  remill/BC/DeadStoreEliminator.cpp
 
-    remill/BC/IntrinsicTable.cpp
-    remill/BC/Lifter.cpp
-    remill/BC/Util.cpp
-    remill/BC/DeadStoreEliminator.cpp
-
-    remill/OS/FileSystem.cpp
-    remill/OS/OS.cpp
+  remill/OS/Compat.cpp
+  remill/OS/FileSystem.cpp
+  remill/OS/OS.cpp
 )
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -216,62 +130,62 @@ list(APPEND PROJECT_INCLUDEDIRECTORIES ${CMAKE_SOURCE_DIR})
 # add everything as public.
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PUBLIC SYSTEM ${PROJECT_INCLUDEDIRECTORIES})
-target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_DEFINITIONS})
-set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS ${PROJECT_CXXFLAGS})
+target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_DEFINITIONS} ${GLOBAL_DEFINITIONS})
+target_compile_options(${PROJECT_NAME} PUBLIC ${GLOBAL_CXXFLAGS})
 
 #
 # Also install clang, libllvm and llvm-link
 #
 
-function (InstallExternalTarget target_name target_path install_directory installed_file_name)
+function(InstallExternalTarget target_name target_path install_directory installed_file_name)
   # Get the optional rpath parameter
   set(additional_arguments ${ARGN})
   list(LENGTH additional_arguments additional_argument_count)
 
-  if ("${additional_argument_count}" EQUAL 0)
-  elseif ("${additional_argument_count}" EQUAL 1)
+  if("${additional_argument_count}" EQUAL 0)
+  elseif("${additional_argument_count}" EQUAL 1)
     list(GET additional_arguments 0 rpath)
-  else ()
+  else()
     message(FATAL_ERROR "InstallExternalTarget: Invalid argument count")
-  endif ()
+  endif()
 
   # We need to locate the patchelf executable to fix the rpath; search for it
   # only once, and then export the variable with PARENT_SCOPE so that we can
   # re-use it in the next calls
-  if (NOT "${rpath}" STREQUAL "")
-    if ("${PATCHELF_LOCATION}" STREQUAL "")
+  if(NOT "${rpath}" STREQUAL "")
+    if("${PATCHELF_LOCATION}" STREQUAL "")
       find_program("program_location" "patchelf")
-      if ("${program_location}" STREQUAL "program_location-NOTFOUND")
+      if("${program_location}" STREQUAL "program_location-NOTFOUND")
         message(FATAL_ERROR "InstallExternalTarget: Failed to locate the patchelf executable")
-      endif ()
+      endif()
 
       # We need to set it both in local and in parent scope
       set("PATCHELF_LOCATION" "${program_location}" PARENT_SCOPE)
       set("PATCHELF_LOCATION" "${program_location}")
-    endif ()
-  endif ()
+    endif()
+  endif()
 
   # Make sure the parameters are correct
-  if (NOT EXISTS "${target_path}")
+  if(NOT EXISTS "${target_path}")
     message(FATAL_ERROR "InstallExternalTarget: The following path does not exists: ${target_path}")
-  endif ()
+  endif()
 
-  if ("${target_name}")
+  if("${target_name}")
     message(FATAL_ERROR "InstallExternalTarget: The following target already exists: ${target_name}")
-  endif ()
+  endif()
 
-  if ("${install_directory}" STREQUAL "")
+  if("${install_directory}" STREQUAL "")
     message(FATAL_ERROR "InstallExternalTarget: Invalid install directory specified")
-  endif ()
+  endif()
 
   # Generate the target
   set("output_file_path" "${CMAKE_CURRENT_BINARY_DIR}/${installed_file_name}")
 
-  if (NOT "${rpath}" STREQUAL "")
+  if(NOT "${rpath}" STREQUAL "")
     set(CHRPATH_COMMAND ${PATCHELF_LOCATION} --set-rpath ${rpath} ${output_file_path})
-  else ()
+  else()
     set(CHRPATH_COMMAND ${CMAKE_COMMAND} -E echo 'No rpath patch needed for ${target_name}')
-  endif ()
+  endif()
 
   add_custom_command(
     OUTPUT "${output_file_path}"
@@ -288,51 +202,99 @@ function (InstallExternalTarget target_name target_path install_directory instal
                 GROUP_READ GROUP_EXECUTE
                 WORLD_READ WORLD_EXECUTE
   )
-endfunction ()
+endfunction()
 
-set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}")
-set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}")
+set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}${executable_extension}")
+set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}${executable_extension}")
 
-if ("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "" OR NOT EXISTS "${LIBRARY_REPOSITORY_ROOT}/llvm")
-  set(INSTALLED_LIBLLVM_NAME "libLLVM-${REMILL_LLVM_VERSION}.so")
+if("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "" OR NOT EXISTS "${LIBRARY_REPOSITORY_ROOT}/llvm")
+  set(INSTALLED_LIBLLVM_NAME "${dynamic_lib_prefix}LLVM-${REMILL_LLVM_VERSION}.${dynamic_lib_extension}")
 
   # system binaries are not built statically, so we need to fix the rpath
-  find_program("clang_location" "clang-${REMILL_LLVM_VERSION}")
-  if ("${clang_location}" STREQUAL "clang_location-NOTFOUND")
+  find_program("clang_location" "clang-${REMILL_LLVM_VERSION}${executable_extension}")
+  if("${clang_location}" STREQUAL "clang_location-NOTFOUND")
     message(FATAL_ERROR "InstallExternalTarget: Failed to locate the clang executable")
-  endif ()
+  endif()
 
   message("InstallExternalTarget: Found clang executable: ${clang_location}")
 
-  find_program("llvmlink_location" "llvm-link")
-  if ("${llvmlink_location}" STREQUAL "llvmlink_location-NOTFOUND")
+  find_program("llvmlink_location" "llvm-link${executable_extension}")
+  if("${llvmlink_location}" STREQUAL "llvmlink_location-NOTFOUND")
     message(FATAL_ERROR "InstallExternalTarget: Failed to locate the llvm-link executable")
-  endif ()
+  endif()
 
   message("InstallExternalTarget: Found llvm-link executable: ${llvmlink_location}")
 
-  find_library("libllvm_location" "libLLVM-${REMILL_LLVM_VERSION}.so")
-  if ("${libllvm_location}" STREQUAL "libllvm_location-NOTFOUND")
+  find_library("libllvm_location" "${dynamic_lib_prefix}LLVM-${REMILL_LLVM_VERSION}.${dynamic_lib_extension}")
+  if("${libllvm_location}" STREQUAL "libllvm_location-NOTFOUND")
     message(FATAL_ERROR "InstallExternalTarget: Failed to locate the libLLVM dynamic library")
-  endif ()
+  endif()
   
   message("InstallExternalTarget: Found libLLVM location: ${libllvm_location}")
 
-  InstallExternalTarget("ext_clang" "${clang_location}" "${CMAKE_INSTALL_PREFIX}/bin"
-    "${INSTALLED_CLANG_NAME}" "${CMAKE_INSTALL_PREFIX}/lib")
+  InstallExternalTarget("ext_clang" "${clang_location}" "${install_folder}/bin"
+    "${INSTALLED_CLANG_NAME}" "${install_folder}/lib")
 
-  InstallExternalTarget("ext_llvmlink" "${llvmlink_location}" "${CMAKE_INSTALL_PREFIX}/bin"
-    "${INSTALLED_LLVMLINK_NAME}" "${CMAKE_INSTALL_PREFIX}/lib")
+  InstallExternalTarget("ext_llvmlink" "${llvmlink_location}" "${install_folder}/bin"
+    "${INSTALLED_LLVMLINK_NAME}" "${install_folder}/lib")
 
-else ()
+else()
   # The executable in our binary repository are statically built, meaning that we don't need
   # to change the rpath
-  InstallExternalTarget("ext_clang" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/clang-${REMILL_LLVM_VERSION}"
-    "${CMAKE_INSTALL_PREFIX}/bin" "${INSTALLED_CLANG_NAME}")
+  InstallExternalTarget("ext_clang" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/clang${executable_extension}"
+    "${install_folder}/bin" "${INSTALLED_CLANG_NAME}")
 
-  InstallExternalTarget("ext_llvmlink" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/llvm-link"
-    "${CMAKE_INSTALL_PREFIX}/bin" "${INSTALLED_LLVMLINK_NAME}")
-endif ()
+  InstallExternalTarget("ext_llvmlink" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/llvm-link${executable_extension}"
+    "${install_folder}/bin" "${INSTALLED_LLVMLINK_NAME}")
+endif()
+
+install(TARGETS "${PROJECT_NAME}"
+  ARCHIVE DESTINATION "${install_folder}/lib"
+  PUBLIC_HEADER DESTINATION "${install_folder}/include"
+)
+
+set(REMILL_LIBRARY_LOCATION "${install_folder}/lib/libremill.a")
+set(REMILL_INCLUDE_LOCATION "${install_folder}/include")
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/remillConfig.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
+)
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
+  DESTINATION "${install_folder}/lib/cmake/remill"
+)
+
+install(FILES 
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Arch.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Instruction.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Name.h"
+
+  DESTINATION "${install_folder}/include/remill/Arch"
+)
+
+install(FILES 
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/ABI.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/IntrinsicTable.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Lifter.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Util.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Version.h"
+
+  DESTINATION "${install_folder}/include/remill/BC"
+)
+
+install(FILES 
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/CallingConvention.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/GlobalValue.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/TargetLibraryInfo.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/Attributes.h"
+
+  DESTINATION "${install_folder}/include/remill/BC/Compat"
+)
+
+install(FILES 
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/OS/OS.h"
+  DESTINATION "${install_folder}/include/remill/OS"
+)
 
 #
 # additional targets
@@ -347,22 +309,17 @@ add_subdirectory(remill/Arch/AArch64/Runtime)
 # tools
 add_subdirectory(tools)
 
-if(UNIX AND NOT APPLE)
-  set(LINUX TRUE)
-else()
-  set(LINUX FALSE)
-endif ()
+# tests
+add_custom_target(test_dependencies)
 
-if (LINUX OR APPLE)
-  if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-    # only enable x86 tests when compiling under x64
-    if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-      add_subdirectory(tests/X86)
-    endif ()
+if(NOT "${PLATFORM_NAME}" STREQUAL "windows")
+  if("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "AMD64" OR "${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+    message(STATUS "X86 tests enabled")
+    add_subdirectory(tests/X86)
+  endif()
+endif()
 
-    # only enable aarch64 tests when compiling under aarch64.
-    if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
-      add_subdirectory(tests/AArch64)
-    endif ()
-  endif ()
-endif ()
+if("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "aarch64" AND "${PLATFORM_NAME}" STREQUAL "linux")
+  message(STATUS "aarch64 tests enabled")
+  add_subdirectory(tests/AArch64)
+endif()

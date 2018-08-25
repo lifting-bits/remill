@@ -16,7 +16,6 @@
 
 #define _XOPEN_SOURCE
 
-#include <cfenv>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -28,7 +27,6 @@
 #include <string>
 #include <type_traits>
 #include <vector>
-#include <cfenv>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -41,6 +39,7 @@
 #include "tests/X86/Test.h"
 
 #include "remill/Arch/Runtime/Runtime.h"
+#include "remill/Arch/Float.h"
 #include "remill/Arch/X86/Runtime/State.h"
 
 DECLARE_string(arch);
@@ -454,6 +453,8 @@ static void InitFlags(void) {
       : "m"(gRflagsInitial));
 }
 
+#if 32 == ADDRESS_SIZE_BITS
+
 // Check if we are in a mode such that FCS and FDS are deprecated, and
 // are thus zeroed out in FXSAVE, XSAVE, and XSAVEOPT.
 //
@@ -463,28 +464,28 @@ static void InitFlags(void) {
 //
 // Where "bit 13" is a 0-based index.
 static bool AreFCSAndFDSDeprecated(void) {
-    uint32_t eax, ebx, ecx, edx;
+  uint32_t eax = 0x7;
+  uint32_t ebx = 0;
+  uint32_t ecx = 0;
+  uint32_t edx = 0;
 
-    eax = 0x07;
-    ecx = 0;
+  asm volatile(
+    "cpuid"
+    : "=a"(eax),
+      "=b"(ebx),
+      "=c"(ecx),
+      "=d"(edx)
+    : "a"(eax),
+      "b"(ebx),
+      "c"(ecx),
+      "d"(edx)
+  );
 
-    asm volatile(
-        "cpuid"
-        : "=a"(eax),
-          "=b"(ebx),
-          "=c"(ecx),
-          "=d"(edx)
-        : "a"(eax),
-          "b"(ebx),
-          "c"(ecx),
-          "d"(edx)
-    );
-
-    // Bit 13 of EBX (zero-based indexing)
-    uint32_t ebx_13 = (ebx & (1 << 13)) >> 13;
-
-    return ebx_13 == 1;
+  // Bit 13 of EBX is not zero.
+  return (ebx & (1U << 13U)) != 0U;
 }
+
+#endif  // 32 == ADDRESS_SIZE_BITS
 
 // Convert some native state, stored in various ways, into the `X86State` structure
 // type.
@@ -577,6 +578,14 @@ static void RunWithFlags(const test::TestInfo *info,
                          uint64_t arg1,
                          uint64_t arg2,
                          uint64_t arg3) {
+
+  // Can't fit a 64-bit stack address into a 32-bit register.
+  auto stack_addr = reinterpret_cast<uintptr_t>(&(gLiftedStack.bytes[0]));
+  if (sizeof(addr_t) < sizeof(uintptr_t) &&
+      static_cast<uintptr_t>(static_cast<addr_t>(stack_addr)) != stack_addr) {
+    return;
+  }
+
   DLOG(INFO) << "Testing instruction: " << info->test_name << ": " << desc;
   if (sigsetjmp(gUnsupportedInstrBuf, true)) {
     DLOG(INFO) << "Unsupported instruction " << info->test_name;
@@ -653,8 +662,11 @@ static void RunWithFlags(const test::TestInfo *info,
 #if 32 == ADDRESS_SIZE_BITS
   // If FCS and FDS are deprecated, don't compare them.
   if (AreFCSAndFDSDeprecated()) {
-      lifted_state->x87.fxsave.cs = {0};
-      native_state->x87.fxsave.cs = {0};
+    lifted_state->x87.fxsave.cs = {0};
+    lifted_state->x87.fxsave.ds = {0};
+
+    native_state->x87.fxsave.cs = {0};
+    native_state->x87.fxsave.ds = {0};
   }
 #endif
 
