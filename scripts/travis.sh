@@ -52,7 +52,7 @@ linux_initialize() {
   fi
 
   printf " > Installing the required packages...\n"
-  sudo apt-get install -qqy git python2.7 curl realpath build-essential libtinfo-dev lsb-release
+  sudo apt-get install -qqy git python2.7 curl realpath build-essential gcc-multilib g++-multilib libtinfo-dev lsb-release
   if [ $? -ne 0 ] ; then
     printf " x Could not install the required dependencies\n"
     return 1
