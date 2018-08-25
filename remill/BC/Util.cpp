@@ -144,6 +144,11 @@ llvm::Value *FindVarInFunction(llvm::Function *function, std::string name,
     }
   }
 
+  auto module = function->getParent();
+  if (auto var = module->getGlobalVariable(name)) {
+     return var;
+  }
+
   CHECK(allow_failure) << "Could not find variable " << name << " in function "
                        << function->getName().str();
   return nullptr;

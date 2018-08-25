@@ -350,13 +350,10 @@ static bool GetRegisterOffset(llvm::Module *module, llvm::Type *state_ptr_type,
 // debug information, and so we will try to recover the variables names for
 // later lookup.
 static void FixupBasicBlockVariables(llvm::Function *basic_block) {
-  std::vector<llvm::AllocaInst *> allocas;
   std::vector<llvm::StoreInst *> stores;
-  std::vector<llvm::Instruction *> normal_insts;
   std::vector<llvm::Instruction *> remove_insts;
 
   std::unordered_map<llvm::AllocaInst *, llvm::Value *> stored_val;
-  std::unordered_map<llvm::LoadInst *, llvm::Value *> loaded_val;
 
   for (auto &block : *basic_block) {
     for (auto &inst : block) {
@@ -372,46 +369,28 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
         }
         remove_insts.push_back(debug_inst);
 
-      } else if (auto alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(&inst)) {
-        allocas.push_back(alloca_inst);
-
+      // Get stores.
       } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(&inst)) {
-        if (auto dest_alloca = llvm::dyn_cast<llvm::AllocaInst>(
-            store_inst->getPointerOperand())) {
-          stored_val[dest_alloca] = store_inst->getValueOperand();
+        auto dst_alloca = llvm::dyn_cast<llvm::AllocaInst>(
+            store_inst->getPointerOperand());
+        if (dst_alloca) {
+          stored_val[dst_alloca] = store_inst->getValueOperand();
         }
         stores.push_back(store_inst);
 
+      // Forward stores to loads.
       } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(&inst)) {
-        if (auto src_alloca = llvm::dyn_cast<llvm::AllocaInst>(
-            load_inst->getPointerOperand())) {
+        auto src_alloca = llvm::dyn_cast<llvm::AllocaInst>(
+            load_inst->getPointerOperand());
+        if (src_alloca) {
           if (auto val = stored_val[src_alloca]) {
-            loaded_val[load_inst] = val;
-            continue;
+            load_inst->replaceAllUsesWith(val);
+            remove_insts.push_back(load_inst);
           }
         }
-        normal_insts.push_back(&inst);
-      } else {
-        normal_insts.push_back(&inst);
       }
     }
   }
-
-  for (auto &load_and_val : loaded_val) {
-    load_and_val.first->replaceAllUsesWith(load_and_val.second);
-    load_and_val.first->eraseFromParent();
-  }
-
-  for (auto inst : normal_insts) {
-    inst->setMetadata(llvm::LLVMContext::MD_dbg, nullptr);
-    inst->setName("");
-  }
-
-  auto &context = basic_block->getContext();
-  auto i32_type = llvm::Type::getInt32Ty(context);
-
-  std::vector<llvm::Value *> indexes(1);
-  indexes[0] = llvm::ConstantInt::get(i32_type, 0);
 
   // At this point, the instructions should have this form:
   //
@@ -423,55 +402,17 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
   // Our goal is to eliminate the double indirection and get:
   //
   //  %BH = getelementptr inbounds ...
+
   for (auto inst : stores) {
-    auto alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(
-        inst->getPointerOperand());
-    if (!alloca_inst || alloca_inst->getName().empty()) {
-      continue;
-    }
+    auto val = llvm::dyn_cast<llvm::Instruction>(inst->getValueOperand());
+    auto ptr = llvm::dyn_cast<llvm::AllocaInst>(inst->getPointerOperand());
 
-    auto ptr_val = inst->getValueOperand();
-
-    // It's a constant expression, likely a GEP into a global like `gDR0`
-    // on x86.
-    if (auto const_expr = llvm::dyn_cast<llvm::ConstantExpr>(ptr_val)) {
-      auto inst_expr = const_expr->getAsInstruction();
-      inst_expr->insertBefore(inst);
-      ptr_val = inst_expr;
-
-    } else if (auto var = llvm::dyn_cast<llvm::GlobalVariable>(ptr_val)) {
-      ptr_val = llvm::GetElementPtrInst::CreateInBounds(var, indexes, "", inst);
-    }
-
-    // If it's not an instruction, then it's probably an integer, e.g.
-    // storing the default value of `0` to `branch_taken`.
-    auto ptr = llvm::dyn_cast<llvm::Instruction>(ptr_val);
-    if (!ptr || !ptr->getType()->isPointerTy()) {
-      continue;
-    }
-
-    // Copy the name and clear it out so that we can use it elsewhere without
-    // LLVM uniquing it by adding on a suffix.
-    auto name = alloca_inst->getName().str();
-    if (name == "MEMORY") {
-      continue;
-    }
-
-    alloca_inst->setName("");
-
-    // If it's already got a name, then two things must be sharing the same
-    // underlying data, and so to maintain both versions we'll clone the
-    // pointer instruction and rename it.
-    if (!ptr->getName().empty()) {
-      ptr = ptr->clone();
-      ptr->insertBefore(inst);
-    }
-
-    ptr->setName(name);
-    inst->eraseFromParent();
-
-    if (!alloca_inst->hasNUsesOrMore(1)) {
-      remove_insts.push_back(alloca_inst);
+    if (val && ptr && val->getType()->isPointerTy() && ptr->hasName()) {
+      auto name = ptr->getName().str();
+      ptr->setName("");
+      val->setName(name);
+      remove_insts.push_back(ptr);
+      remove_insts.push_back(inst);
     }
   }
 
