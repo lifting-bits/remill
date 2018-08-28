@@ -52,7 +52,10 @@ extern CR8Reg CR8;
 Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
 
   bool branch_taken = false;
-  addr_t zero = 0;
+  addr_t zero1 = 0;
+  addr_t zero2 = 0;
+  addr_t zero3 = 0;
+  addr_t zero4 = 0;
 
   // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
@@ -156,12 +159,12 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   auto &DS = state.seg.ds.flat;
   auto &CS = state.seg.cs.flat;
 
-  auto &SS_BASE = zero;
-  auto &ES_BASE = zero;
+  auto &SS_BASE = zero1;
+  auto &ES_BASE = zero2;
   auto &GS_BASE = state.addr.gs_base.aword;
   auto &FS_BASE = state.addr.fs_base.aword;
-  auto &DS_BASE = zero;
-  auto &CS_BASE = zero;
+  auto &DS_BASE = zero3;
+  auto &CS_BASE = zero4;
 
 #if HAS_FEATURE_AVX
 #if HAS_FEATURE_AVX512
