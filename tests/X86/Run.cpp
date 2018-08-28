@@ -310,34 +310,22 @@ Memory *__remill_missing_block(X86State &, addr_t, Memory *memory) {
 
 Memory *__remill_sync_hyper_call(
     X86State &state, Memory *mem, SyncHyperCall::Name call) {
-  auto eax = state.gpr.rax.dword;
-  auto ebx = state.gpr.rbx.dword;
-  auto ecx = state.gpr.rcx.dword;
-  auto edx = state.gpr.rdx.dword;
-
   switch (call) {
     case SyncHyperCall::kX86CPUID:
-      state.gpr.rax.aword = 0;
-      state.gpr.rbx.aword = 0;
-      state.gpr.rcx.aword = 0;
-      state.gpr.rdx.aword = 0;
-
       asm volatile(
           "cpuid"
-          : "=a"(state.gpr.rax.dword),
-            "=b"(state.gpr.rbx.dword),
-            "=c"(state.gpr.rcx.dword),
-            "=d"(state.gpr.rdx.dword)
-          : "a"(eax),
-            "b"(ebx),
-            "c"(ecx),
-            "d"(edx)
+          : "=a"(state.gpr.rax.aword),
+            "=b"(state.gpr.rbx.aword),
+            "=c"(state.gpr.rcx.aword),
+            "=d"(state.gpr.rdx.aword)
+          : "a"(state.gpr.rax.aword),
+            "b"(state.gpr.rbx.aword),
+            "c"(state.gpr.rcx.aword),
+            "d"(state.gpr.rdx.aword)
       );
       break;
 
     case SyncHyperCall::kX86ReadTSC:
-      state.gpr.rax.aword = 0;
-      state.gpr.rdx.aword = 0;
       asm volatile(
           "rdtsc"
           : "=a"(state.gpr.rax.dword),
@@ -346,14 +334,14 @@ Memory *__remill_sync_hyper_call(
       break;
 
     case SyncHyperCall::kX86ReadTSCP:
-      state.gpr.rax.aword = 0;
-      state.gpr.rcx.aword = 0;
-      state.gpr.rdx.aword = 0;
       asm volatile(
           "rdtscp"
-          : "=a"(state.gpr.rax.dword),
-            "=c"(state.gpr.rcx.dword),
-            "=d"(state.gpr.rdx.dword)
+          : "=a"(state.gpr.rax.aword),
+            "=c"(state.gpr.rcx.aword),
+            "=d"(state.gpr.rdx.aword)
+          : "a"(state.gpr.rax.aword),
+            "c"(state.gpr.rcx.aword),
+            "d"(state.gpr.rdx.aword)
       );
       break;
 
