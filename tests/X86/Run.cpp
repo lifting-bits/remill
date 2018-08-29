@@ -743,29 +743,84 @@ static void RunWithFlags(const test::TestInfo *info,
 
   // Compare the register states.
   for (auto i = 0UL; i < kNumVecRegisters; ++i) {
-    EXPECT_TRUE(lifted_state->vec[i] == native_state->vec[i]);
+    EXPECT_EQ(lifted_state->vec[i], native_state->vec[i]);
   }
 
-  EXPECT_TRUE(lifted_state->rflag == native_state->rflag)
+  EXPECT_EQ(lifted_state->rflag, native_state->rflag)
       << "Lifted RFLAG after test is " << std::hex
       << lifted_state->rflag.flat << ", native is "
       << native_state->rflag.flat << std::dec;
 
-  EXPECT_TRUE(lifted_state->seg == native_state->seg)
+  EXPECT_EQ(lifted_state->seg, native_state->seg)
       << "Lifted SEG differs from native SEG";
 
-  EXPECT_TRUE(lifted_state->gpr == native_state->gpr)
+  EXPECT_EQ(lifted_state->gpr, native_state->gpr)
       << "Lifted GPR differs from native GPR";
 
-  EXPECT_TRUE(lifted_state->x87.fxsave.swd == native_state->x87.fxsave.swd)
+  EXPECT_EQ(lifted_state->x87.fxsave.swd, native_state->x87.fxsave.swd)
       << "Lifted X87 status word after test is " << std::hex
       << lifted_state->x87.fxsave.swd.flat << ", native is "
       << native_state->x87.fxsave.swd.flat << std::dec;
 
   if (gLiftedState != gNativeState) {
-    LOG(ERROR)
+    EXPECT_TRUE(false)
         << "States did not match for " << desc;
-    EXPECT_TRUE(!"Lifted and native states did not match.");
+
+#define DIFF(name, a) \
+    EXPECT_EQ(lifted_state->a, native_state->a) \
+         << "Register " #name " differs: lifted=" << std::hex \
+         << (lifted_state->a) << " native=" << (native_state->a) << std::dec
+
+    DIFF(RAX, gpr.rax.qword);
+    DIFF(RBX, gpr.rbx.qword);
+    DIFF(RCX, gpr.rcx.qword);
+    DIFF(RDX, gpr.rdx.qword);
+    DIFF(RDI, gpr.rdi.qword);
+    DIFF(RSI, gpr.rsi.qword);
+    DIFF(RBP, gpr.rbp.qword);
+    DIFF(RSP, gpr.rsp.qword);
+    DIFF(R8, gpr.r8.qword);
+    DIFF(R9, gpr.r9.qword);
+    DIFF(R10, gpr.r10.qword);
+    DIFF(R11, gpr.r11.qword);
+    DIFF(R12, gpr.r12.qword);
+    DIFF(R13, gpr.r13.qword);
+    DIFF(R14, gpr.r14.qword);
+    DIFF(R15, gpr.r15.qword);
+
+    DIFF(CF, rflag.cf);
+    DIFF(PF, rflag.pf);
+    DIFF(AF, rflag.af);
+    DIFF(ZF, rflag.zf);
+    DIFF(SF, rflag.sf);
+    DIFF(DF, rflag.df);
+    DIFF(OF, rflag.of);
+
+    DIFF(ST0, st.elems[0].val);
+    DIFF(ST1, st.elems[1].val);
+    DIFF(ST2, st.elems[2].val);
+    DIFF(ST3, st.elems[3].val);
+    DIFF(ST4, st.elems[4].val);
+    DIFF(ST5, st.elems[5].val);
+    DIFF(ST6, st.elems[6].val);
+    DIFF(ST7, st.elems[7].val);
+
+    DIFF(MMX0, mmx.elems[0].val.qwords.elems[0]);
+    DIFF(MMX1, mmx.elems[1].val.qwords.elems[0]);
+    DIFF(MMX2, mmx.elems[2].val.qwords.elems[0]);
+    DIFF(MMX3, mmx.elems[3].val.qwords.elems[0]);
+    DIFF(MMX4, mmx.elems[4].val.qwords.elems[0]);
+    DIFF(MMX5, mmx.elems[5].val.qwords.elems[0]);
+    DIFF(MMX6, mmx.elems[6].val.qwords.elems[0]);
+    DIFF(MMX7, mmx.elems[7].val.qwords.elems[0]);
+
+    auto lifted_state_bytes = reinterpret_cast<uint8_t *>(lifted_state);
+    auto native_state_bytes = reinterpret_cast<uint8_t *>(native_state);
+
+    for (size_t i = 0; i < sizeof(State); ++i) {
+      LOG_IF(ERROR, lifted_state_bytes[i] != native_state_bytes[i])
+          << "Bytes at offset " << i << " are different";
+    }
   }
 
   if (gLiftedStack != gNativeStack) {
