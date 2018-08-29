@@ -767,34 +767,40 @@ static void RunWithFlags(const test::TestInfo *info,
         << "States did not match for " << desc;
 
 #define DIFF(name, a) \
-    EXPECT_EQ(lifted_state->a, native_state->a) \
-         << "Register " #name " differs: lifted=" << std::hex \
-         << (lifted_state->a) << " native=" << (native_state->a) << std::dec
+    EXPECT_EQ(lifted_state->a, native_state->a)
 
-    DIFF(RAX, gpr.rax.qword);
-    DIFF(RBX, gpr.rbx.qword);
-    DIFF(RCX, gpr.rcx.qword);
-    DIFF(RDX, gpr.rdx.qword);
-    DIFF(RDI, gpr.rdi.qword);
-    DIFF(RSI, gpr.rsi.qword);
-    DIFF(RBP, gpr.rbp.qword);
-    DIFF(RSP, gpr.rsp.qword);
-    DIFF(R8, gpr.r8.qword);
-    DIFF(R9, gpr.r9.qword);
-    DIFF(R10, gpr.r10.qword);
-    DIFF(R11, gpr.r11.qword);
-    DIFF(R12, gpr.r12.qword);
-    DIFF(R13, gpr.r13.qword);
-    DIFF(R14, gpr.r14.qword);
-    DIFF(R15, gpr.r15.qword);
+    DIFF(RAX, gpr.rax.aword);
+    DIFF(RBX, gpr.rbx.aword);
+    DIFF(RCX, gpr.rcx.aword);
+    DIFF(RDX, gpr.rdx.aword);
+    DIFF(RDI, gpr.rdi.aword);
+    DIFF(RSI, gpr.rsi.aword);
+    DIFF(RBP, gpr.rbp.aword);
+    DIFF(RSP, gpr.rsp.aword);
+    DIFF(R8, gpr.r8.aword);
+    DIFF(R9, gpr.r9.aword);
+    DIFF(R10, gpr.r10.aword);
+    DIFF(R11, gpr.r11.aword);
+    DIFF(R12, gpr.r12.aword);
+    DIFF(R13, gpr.r13.aword);
+    DIFF(R14, gpr.r14.aword);
+    DIFF(R15, gpr.r15.aword);
 
-    DIFF(CF, rflag.cf);
-    DIFF(PF, rflag.pf);
-    DIFF(AF, rflag.af);
-    DIFF(ZF, rflag.zf);
-    DIFF(SF, rflag.sf);
-    DIFF(DF, rflag.df);
-    DIFF(OF, rflag.of);
+    DIFF(RFLAG_CF, rflag.cf);
+    DIFF(RFLAG_PF, rflag.pf);
+    DIFF(RFLAG_AF, rflag.af);
+    DIFF(RFLAG_ZF, rflag.zf);
+    DIFF(RFLAG_SF, rflag.sf);
+    DIFF(RFLAG_DF, rflag.df);
+    DIFF(RFLAG_OF, rflag.of);
+
+    DIFF(AFLAG_CF, aflag.cf);
+    DIFF(AFLAG_PF, aflag.pf);
+    DIFF(AFLAG_AF, aflag.af);
+    DIFF(AFLAG_ZF, aflag.zf);
+    DIFF(AFLAG_SF, aflag.sf);
+    DIFF(AFLAG_DF, aflag.df);
+    DIFF(AFLAG_OF, aflag.of);
 
     DIFF(ST0, st.elems[0].val);
     DIFF(ST1, st.elems[1].val);
@@ -813,6 +819,28 @@ static void RunWithFlags(const test::TestInfo *info,
     DIFF(MMX5, mmx.elems[5].val.qwords.elems[0]);
     DIFF(MMX6, mmx.elems[6].val.qwords.elems[0]);
     DIFF(MMX7, mmx.elems[7].val.qwords.elems[0]);
+
+    DIFF(FXSAVE_CWD_IM, x87.fxsave.cwd.im);
+    DIFF(FXSAVE_CWD_DM, x87.fxsave.cwd.dm);
+    DIFF(FXSAVE_CWD_ZM, x87.fxsave.cwd.zm);
+    DIFF(FXSAVE_CWD_OM, x87.fxsave.cwd.om);
+    DIFF(FXSAVE_CWD_UM, x87.fxsave.cwd.um);
+    DIFF(FXSAVE_CWD_PM, x87.fxsave.cwd.pm);
+
+    DIFF(FXSAVE_SWD_IE, x87.fxsave.swd.ie);
+    DIFF(FXSAVE_SWD_DE, x87.fxsave.swd.de);
+    DIFF(FXSAVE_SWD_ZE, x87.fxsave.swd.ze);
+    DIFF(FXSAVE_SWD_OE, x87.fxsave.swd.oe);
+    DIFF(FXSAVE_SWD_UE, x87.fxsave.swd.ue);
+    DIFF(FXSAVE_SWD_PE, x87.fxsave.swd.pe);
+    DIFF(FXSAVE_SWD_SF, x87.fxsave.swd.sf);
+    DIFF(FXSAVE_SWD_ES, x87.fxsave.swd.es);
+    DIFF(FXSAVE_SWD_C0, x87.fxsave.swd.c0);
+    DIFF(FXSAVE_SWD_C1, x87.fxsave.swd.c1);
+    DIFF(FXSAVE_SWD_C2, x87.fxsave.swd.c2);
+    DIFF(FXSAVE_SWD_TOP, x87.fxsave.swd.top);
+    DIFF(FXSAVE_SWD_C3, x87.fxsave.swd.c3);
+    DIFF(FXSAVE_SWD_B, x87.fxsave.swd.b);
 
     auto lifted_state_bytes = reinterpret_cast<uint8_t *>(lifted_state);
     auto native_state_bytes = reinterpret_cast<uint8_t *>(native_state);
