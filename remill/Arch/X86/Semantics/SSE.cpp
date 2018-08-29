@@ -1354,6 +1354,77 @@ IF_AVX(DEF_ISEL(VMAXSD_XMMdq_XMMdq_XMMq) = MAXSD<VV128W, V128, V128>;)
 namespace {
 
 template <typename D, typename S1, typename S2>
+DEF_SEM(MINPS, D dst, S1 src1, S2 src2) {
+  auto dest_vec = FReadV32(src1);
+  auto src2_vec = FReadV32(src2);
+
+  auto vec_count = NumVectorElems(src2_vec);
+  _Pragma("unroll")
+  for (std::size_t i = 0; i < vec_count; i++) {
+    auto v1 = FExtractV32(dest_vec, i);
+    auto v2 = FExtractV32(src2_vec, i);
+
+    auto min = v1;
+
+    // If either float is a NaN (SNaN or QNaN):
+    if (__builtin_isunordered(v1, v2)) {
+      min = v2;
+    // or if both floats are 0.0:
+    } 
+    else if ((v1 == 0.0) && (v2 == 0.0)) {
+      min = v2;
+    // or if src2 is less than src1:
+    } else if (__builtin_isless(v2, v1)) {
+      min = v2;
+    }
+
+    dest_vec = FInsertV32(dest_vec, i, min);
+  }
+  FWriteV32(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(MAXPS, D dst, S1 src1, S2 src2) {
+  auto dest_vec = FReadV32(src1);
+  auto src2_vec = FReadV32(src2);
+
+  auto vec_count = NumVectorElems(src2_vec);
+  _Pragma("unroll")
+  for (std::size_t i = 0; i < vec_count; i++) {
+    auto v1 = FExtractV32(dest_vec, i);
+    auto v2 = FExtractV32(src2_vec, i);
+
+    auto max = v1;
+
+    // If either float is a NaN (SNaN or QNaN):
+    if (__builtin_isunordered(v1, v2)) {
+      max = v2;
+    // or if both floats are 0.0:
+    } else if ((v1 == 0.0) && (v2 == 0.0)) {
+      max = v2;
+    // or if src2 is greater than src1:
+    } else if (__builtin_isgreater(v2, v1)) {
+      max = v2;
+    }
+
+    dest_vec = FInsertV32(dest_vec, i, max);
+  }
+  FWriteV32(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
+}
+
+}
+
+DEF_ISEL(MINPS_XMMps_MEMps) = MINPS<V128W, V128, MV128>;
+DEF_ISEL(MINPS_XMMps_XMMps) = MINPS<V128W, V128, V128>;
+
+DEF_ISEL(MAXPS_XMMps_XMMps) = MAXPS<V128W, V128, V128>;
+DEF_ISEL(MAXPS_XMMps_MEMps) = MAXPS<V128W, V128, MV128>;
+
+namespace {
+
+template <typename D, typename S1, typename S2>
 DEF_SEM(UNPCKLPS, D dst, S1 src1, S2 src2) {
   // Initialize with a copy of src1 as a vector of 32-bit (DWORD) floats:
   auto temp_vec = FReadV32(src1);
