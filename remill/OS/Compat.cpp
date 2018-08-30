@@ -27,9 +27,9 @@
 //
 // _WIN32 Defined as 1 when the compilation target is 32-bit ARM, 64-bit
 // ARM, x86, or x64. Otherwise, undefined.
-#include <sys/param.h>
-#include <unistd.h>
-#include <sys/time.h>
+# include <sys/param.h>
+# include <unistd.h>
+# include <sys/time.h>
 #endif
 
 #if defined(__APPLE__)
