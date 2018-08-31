@@ -743,29 +743,112 @@ static void RunWithFlags(const test::TestInfo *info,
 
   // Compare the register states.
   for (auto i = 0UL; i < kNumVecRegisters; ++i) {
-    EXPECT_TRUE(lifted_state->vec[i] == native_state->vec[i]);
+    EXPECT_EQ(lifted_state->vec[i], native_state->vec[i]);
   }
 
-  EXPECT_TRUE(lifted_state->rflag == native_state->rflag)
+  EXPECT_EQ(lifted_state->rflag, native_state->rflag)
       << "Lifted RFLAG after test is " << std::hex
       << lifted_state->rflag.flat << ", native is "
       << native_state->rflag.flat << std::dec;
 
-  EXPECT_TRUE(lifted_state->seg == native_state->seg)
+  EXPECT_EQ(lifted_state->seg, native_state->seg)
       << "Lifted SEG differs from native SEG";
 
-  EXPECT_TRUE(lifted_state->gpr == native_state->gpr)
+  EXPECT_EQ(lifted_state->gpr, native_state->gpr)
       << "Lifted GPR differs from native GPR";
 
-  EXPECT_TRUE(lifted_state->x87.fxsave.swd == native_state->x87.fxsave.swd)
+  EXPECT_EQ(lifted_state->x87.fxsave.swd, native_state->x87.fxsave.swd)
       << "Lifted X87 status word after test is " << std::hex
       << lifted_state->x87.fxsave.swd.flat << ", native is "
       << native_state->x87.fxsave.swd.flat << std::dec;
 
   if (gLiftedState != gNativeState) {
-    LOG(ERROR)
+    EXPECT_TRUE(false)
         << "States did not match for " << desc;
-    EXPECT_TRUE(!"Lifted and native states did not match.");
+
+#define DIFF(name, a) \
+    EXPECT_EQ(lifted_state->a, native_state->a)
+
+    DIFF(RAX, gpr.rax.aword);
+    DIFF(RBX, gpr.rbx.aword);
+    DIFF(RCX, gpr.rcx.aword);
+    DIFF(RDX, gpr.rdx.aword);
+    DIFF(RDI, gpr.rdi.aword);
+    DIFF(RSI, gpr.rsi.aword);
+    DIFF(RBP, gpr.rbp.aword);
+    DIFF(RSP, gpr.rsp.aword);
+    DIFF(R8, gpr.r8.aword);
+    DIFF(R9, gpr.r9.aword);
+    DIFF(R10, gpr.r10.aword);
+    DIFF(R11, gpr.r11.aword);
+    DIFF(R12, gpr.r12.aword);
+    DIFF(R13, gpr.r13.aword);
+    DIFF(R14, gpr.r14.aword);
+    DIFF(R15, gpr.r15.aword);
+
+    DIFF(RFLAG_CF, rflag.cf);
+    DIFF(RFLAG_PF, rflag.pf);
+    DIFF(RFLAG_AF, rflag.af);
+    DIFF(RFLAG_ZF, rflag.zf);
+    DIFF(RFLAG_SF, rflag.sf);
+    DIFF(RFLAG_DF, rflag.df);
+    DIFF(RFLAG_OF, rflag.of);
+
+    DIFF(AFLAG_CF, aflag.cf);
+    DIFF(AFLAG_PF, aflag.pf);
+    DIFF(AFLAG_AF, aflag.af);
+    DIFF(AFLAG_ZF, aflag.zf);
+    DIFF(AFLAG_SF, aflag.sf);
+    DIFF(AFLAG_DF, aflag.df);
+    DIFF(AFLAG_OF, aflag.of);
+
+    DIFF(ST0, st.elems[0].val);
+    DIFF(ST1, st.elems[1].val);
+    DIFF(ST2, st.elems[2].val);
+    DIFF(ST3, st.elems[3].val);
+    DIFF(ST4, st.elems[4].val);
+    DIFF(ST5, st.elems[5].val);
+    DIFF(ST6, st.elems[6].val);
+    DIFF(ST7, st.elems[7].val);
+
+    DIFF(MMX0, mmx.elems[0].val.qwords.elems[0]);
+    DIFF(MMX1, mmx.elems[1].val.qwords.elems[0]);
+    DIFF(MMX2, mmx.elems[2].val.qwords.elems[0]);
+    DIFF(MMX3, mmx.elems[3].val.qwords.elems[0]);
+    DIFF(MMX4, mmx.elems[4].val.qwords.elems[0]);
+    DIFF(MMX5, mmx.elems[5].val.qwords.elems[0]);
+    DIFF(MMX6, mmx.elems[6].val.qwords.elems[0]);
+    DIFF(MMX7, mmx.elems[7].val.qwords.elems[0]);
+
+    DIFF(FXSAVE_CWD_IM, x87.fxsave.cwd.im);
+    DIFF(FXSAVE_CWD_DM, x87.fxsave.cwd.dm);
+    DIFF(FXSAVE_CWD_ZM, x87.fxsave.cwd.zm);
+    DIFF(FXSAVE_CWD_OM, x87.fxsave.cwd.om);
+    DIFF(FXSAVE_CWD_UM, x87.fxsave.cwd.um);
+    DIFF(FXSAVE_CWD_PM, x87.fxsave.cwd.pm);
+
+    DIFF(FXSAVE_SWD_IE, x87.fxsave.swd.ie);
+    DIFF(FXSAVE_SWD_DE, x87.fxsave.swd.de);
+    DIFF(FXSAVE_SWD_ZE, x87.fxsave.swd.ze);
+    DIFF(FXSAVE_SWD_OE, x87.fxsave.swd.oe);
+    DIFF(FXSAVE_SWD_UE, x87.fxsave.swd.ue);
+    DIFF(FXSAVE_SWD_PE, x87.fxsave.swd.pe);
+    DIFF(FXSAVE_SWD_SF, x87.fxsave.swd.sf);
+    DIFF(FXSAVE_SWD_ES, x87.fxsave.swd.es);
+    DIFF(FXSAVE_SWD_C0, x87.fxsave.swd.c0);
+    DIFF(FXSAVE_SWD_C1, x87.fxsave.swd.c1);
+    DIFF(FXSAVE_SWD_C2, x87.fxsave.swd.c2);
+    DIFF(FXSAVE_SWD_TOP, x87.fxsave.swd.top);
+    DIFF(FXSAVE_SWD_C3, x87.fxsave.swd.c3);
+    DIFF(FXSAVE_SWD_B, x87.fxsave.swd.b);
+
+    auto lifted_state_bytes = reinterpret_cast<uint8_t *>(lifted_state);
+    auto native_state_bytes = reinterpret_cast<uint8_t *>(native_state);
+
+    for (size_t i = 0; i < sizeof(State); ++i) {
+      LOG_IF(ERROR, lifted_state_bytes[i] != native_state_bytes[i])
+          << "Bytes at offset " << i << " are different";
+    }
   }
 
   if (gLiftedStack != gNativeStack) {
