@@ -1370,8 +1370,7 @@ DEF_SEM(MINPS, D dst, S1 src1, S2 src2) {
     if (__builtin_isunordered(v1, v2)) {
       min = v2;
     // or if both floats are 0.0:
-    } 
-    else if ((v1 == 0.0) && (v2 == 0.0)) {
+    } else if ((v1 == 0.0) && (v2 == 0.0)) {
       min = v2;
     // or if src2 is less than src1:
     } else if (__builtin_isless(v2, v1)) {
