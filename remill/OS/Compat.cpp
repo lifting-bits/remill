@@ -15,9 +15,22 @@
  */
 
 #include <fcntl.h>
-#include <sys/param.h>
 #include <sys/stat.h>
-#include <unistd.h>
+
+#if !defined(_WIN32)
+// These headers are not present on a Windows build
+// and seem to be not needed.
+//
+// _WIN32 is a general check for Windows, not just 32-bit windows. 
+//
+// Per the documentation:
+//
+// _WIN32 Defined as 1 when the compilation target is 32-bit ARM, 64-bit
+// ARM, x86, or x64. Otherwise, undefined.
+# include <sys/param.h>
+# include <unistd.h>
+# include <sys/time.h>
+#endif
 
 #if defined(__APPLE__)
 # include <Availability.h>
@@ -35,7 +48,6 @@
 # define MAXPATHLEN PATH_MAX
 #endif
 
-#include <sys/time.h>
 #include <cerrno>
 
 extern "C" {
