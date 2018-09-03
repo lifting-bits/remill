@@ -27,22 +27,22 @@ extern "C" {
 #pragma clang diagnostic ignored "-Wunused-variable"
 
 // Debug registers.
-extern uint64_t DR0;
-extern uint64_t DR1;
-extern uint64_t DR2;
-extern uint64_t DR3;
-extern uint64_t DR4;
-extern uint64_t DR5;
-extern uint64_t DR6;
-extern uint64_t DR7;
+uint64_t DR0 [[gnu::used]];
+uint64_t DR1 [[gnu::used]];
+uint64_t DR2 [[gnu::used]];
+uint64_t DR3 [[gnu::used]];
+uint64_t DR4 [[gnu::used]];
+uint64_t DR5 [[gnu::used]];
+uint64_t DR6 [[gnu::used]];
+uint64_t DR7 [[gnu::used]];
 
 // Control regs.
-extern CR0Reg CR0;
-extern CR1Reg CR1;
-extern CR2Reg CR2;
-extern CR3Reg CR3;
-extern CR4Reg CR4;
-extern CR8Reg CR8;
+CR0Reg CR0 [[gnu::used]];
+CR1Reg CR1 [[gnu::used]];
+CR2Reg CR2 [[gnu::used]];
+CR3Reg CR3 [[gnu::used]];
+CR4Reg CR4 [[gnu::used]];
+CR8Reg CR8 [[gnu::used]];
 
 // Method that will implement a basic block. We will clone this method for
 // each basic block in the code being lifted.

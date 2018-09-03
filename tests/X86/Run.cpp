@@ -131,24 +131,6 @@ uint8_t *gStackSwitcher = nullptr;
 // the native flags we restore what was clobbered by `PUSHFQ`.
 uint64_t gStackSaveSlot = 0;
 
-// Debug registers.
-uint64_t gDR0;
-uint64_t gDR1;
-uint64_t gDR2;
-uint64_t gDR3;
-uint64_t gDR4;
-uint64_t gDR5;
-uint64_t gDR6;
-uint64_t gDR7;
-
-// Control regs.
-CR0Reg gCR0;
-CR1Reg gCR1;
-CR2Reg gCR2;
-CR3Reg gCR3;
-CR4Reg gCR4;
-CR8Reg gCR8;
-
 // Invoke a native test case addressed by `gTestToRun` and store the machine
 // state before and after executing the test in `gLiftedState` and
 // `gNativeState`, respectively.
