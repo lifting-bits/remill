@@ -332,6 +332,26 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   auto &SF = state.aflag.sf;
   auto &ZF = state.aflag.zf;
 
+  // Debug registers. No-ops keep them from being stripped off the module.
+  auto &_DR0 = DR0;
+  auto &_DR1 = DR1;
+  auto &_DR2 = DR2;
+  auto &_DR3 = DR3;
+  auto &_DR4 = DR4;
+  auto &_DR5 = DR5;
+  auto &_DR6 = DR6;
+  auto &_DR7 = DR7;
+
+  // Control registers
+  auto &_CR0 = CR0;
+  auto &_CR1 = CR1;
+  auto &_CR2 = CR2;
+  auto &_CR3 = CR3;
+  auto &_CR4 = CR4;
+#if 64 == ADDRESS_SIZE_BITS
+  auto &_CR8 = CR8;
+#endif
+
   // Lifted code will be placed here in clones versions of this function.
   return memory;
 }
