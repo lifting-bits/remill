@@ -466,6 +466,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/MMX/PSRL.S"
 #include "tests/X86/MMX/PSUB.S"
 #include "tests/X86/MMX/PUNPCK.S"
+#include "tests/X86/MMX/POR.S"
 
 #include "tests/X86/POP/POP.S"
 #include "tests/X86/POP/POPF.S"
