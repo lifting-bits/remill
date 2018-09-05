@@ -94,6 +94,6 @@ We can also build and run Remill's test suite.
 
 ```shell
 cd ./remill-build
-make build_x86_tests
+make test_dependencies
 make test
 ```
