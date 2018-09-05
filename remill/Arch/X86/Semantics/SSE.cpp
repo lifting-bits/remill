@@ -241,6 +241,32 @@ DEF_ISEL(VUCOMISS_XMMdq_XMMd) = COMISS<V128, V128>;
 
 namespace {
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHUFPS, D dst, S1 src1, S2 src2, I8 src3) {
+  auto dst_vec = UClearV32(UReadV32(src1));
+  auto src1_vec = UReadV32(src1);
+  auto src2_vec = UReadV32(src2);
+  auto imm = Read(src3);
+  auto num_groups = NumVectorElems(dst_vec);
+
+  _Pragma("unroll")
+  for (std::size_t i = 0; i < num_groups; ++i) {
+    auto order = UShr8(imm, TruncTo<uint8_t>(i * 2));
+    auto sel = UAnd8(order, 0x3_u8);
+    auto sel_val = UExtractV32(Select(i < 2, src1_vec, src2_vec), sel);
+    dst_vec.elems[i] = sel_val;
+  }
+  UWriteV32(dst, dst_vec);
+
+  return memory;
+}
+
+} // namespace
+
+DEF_ISEL(SHUFPS_XMMps_XMMps_IMMb) = SHUFPS<V128W, V128, V128>;
+
+namespace {
+
 template <typename D, typename S1>
 DEF_SEM(PSHUFD, D dst, S1 src1, I8 src2) {
   auto dst_vec = UClearV32(UReadV32(src1));
