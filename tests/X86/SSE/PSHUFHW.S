@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Trail of Bits, Inc.
+ * Copyright (c) 2018 Trail of Bits, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,6 +84,17 @@ TEST_INPUTS(PSHUFHW_INPUTS_64)
     movq xmm2, ARG2_64
     movq xmm3, ARG1_64
     movq xmm4, ARG2_64
+    pshufhw xmm6, xmm5, 0x57
+    pshufhw xmm5, xmm4, 0xa6
+    pshufhw xmm4, xmm3, 0xc3
+    pshufhw xmm3, xmm2, 0x1d
+    pshufhw xmm2, xmm1, 0xb8
+    pshufhw xmm1, xmm0, 0x35
+    pshufhw xmm7, xmm6, 0x2f
+TEST_END_64
+
+TEST_BEGIN_64(PSHUFHWv128v128imm8_many2, 1)
+TEST_INPUTS(0)
     pshufhw xmm6, xmm5, 0x57
     pshufhw xmm5, xmm4, 0xa6
     pshufhw xmm4, xmm3, 0xc3
