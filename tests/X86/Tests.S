@@ -454,6 +454,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/MMX/MISC.S"
 #include "tests/X86/MMX/PACKSS.S"
 #include "tests/X86/MMX/PADD.S"
+#include "tests/X86/MMX/PADDU.S"
 #include "tests/X86/MMX/PCMP.S"
 #include "tests/X86/MMX/PEXTR.S"
 #include "tests/X86/MMX/PINSRW.S"
