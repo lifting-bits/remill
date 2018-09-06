@@ -84,3 +84,15 @@ TEST_INPUTS(PADDU_INPUTS_64)
     paddusb xmm5, xmm7
     paddusb xmm1, xmm5
 TEST_END_64
+
+TEST_BEGIN_64(PADDUv128v128_8, 1)
+TEST_INPUTS(0)
+    paddusb xmm0, xmm1
+    paddusb xmm1, xmm2
+    paddusb xmm2, xmm3
+    paddusb xmm3, xmm4
+    paddusb xmm4, xmm5
+    paddusb xmm5, xmm6
+    paddusb xmm6, xmm7
+    paddusb xmm7, xmm0
+TEST_END_64
