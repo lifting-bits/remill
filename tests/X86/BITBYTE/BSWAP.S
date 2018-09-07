@@ -14,6 +14,36 @@
  * limitations under the License.
  */
 
+TEST_BEGIN(BSWAPr16, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x01609B27,
+    0xDE39D6C5,
+    0x6818FB14,
+    0xED70DFD2,
+    0x21406ECA,
+    0xAABBCCDD)
+
+    mov eax, ARG1_32
+    .byte 0x66, 0x0f, 0xc8
+TEST_END
+
+TEST_BEGIN_64(BSWAPr16_amd64, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x01609B27,
+    0xDE39D6C5,
+    0x6818FB14,
+    0xED70DFD2,
+    0x21406ECA,
+    0xAABBCCDD)
+
+    mov rax, ARG1_64
+    .byte 0x66, 0x0f, 0xc8
+TEST_END_64
+
 TEST_BEGIN(BSWAPr32, 1)
 TEST_INPUTS(
     0,
