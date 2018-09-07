@@ -335,10 +335,10 @@ DEF_SEM(PSHUFHW, D dst, S1 src1, I8 src2) {
 
   _Pragma("unroll")
   for (std::size_t i = 4; i < num_groups; ++i) {
-    auto order = UShr8(imm, TruncTo<uint8_t>((i - 4) * 16_u8));
+    auto order = UShr8(imm, TruncTo<uint8_t>((i - 4) * 2_u8));
     auto sel = UAnd8(order, 0x3_u8);
     auto sel_val = UExtractV16(src_vec, sel + 4);
-    dst_vec.elems[i + 4] = sel_val;
+    dst_vec.elems[i] = sel_val;
   }
   UWriteV16(dst, dst_vec);
   return memory;
