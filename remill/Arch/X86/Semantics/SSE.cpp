@@ -312,7 +312,7 @@ IF_AVX(DEF_ISEL(VPSHUFD_YMMqq_YMMqq_IMMb) = PSHUFD<VV256W, V256>;)
 namespace {
 
 template <typename D, typename S1>
-  DEF_SEM(PSHUFLW, D dst, S1 src1, I8 src2) {
+DEF_SEM(PSHUFLW, D dst, S1 src1, I8 src2) {
   // Source operand is packed with word (16-bit) integers to be shuffled,
   // but src1 is also a vector of one or more 128-bit "lanes":
   auto src_vec = UReadV128(src1);
@@ -352,6 +352,24 @@ template <typename D, typename S1>
   return memory;
 }
 
+template <typename D, typename S1>
+DEF_SEM(PSHUFHW, D dst, S1 src1, I8 src2) {
+  auto dst_vec = UReadV16(src1);
+  auto src_vec = UReadV16(src1);
+  auto imm = Read(src2);
+  auto num_groups = NumVectorElems(src_vec);
+
+  _Pragma("unroll")
+  for (std::size_t i = 4; i < num_groups; ++i) {
+    auto order = UShr8(imm, TruncTo<uint8_t>((i - 4) * 2_u8));
+    auto sel = UAnd8(order, 0x3_u8);
+    auto sel_val = UExtractV16(src_vec, sel + 4);
+    dst_vec.elems[i] = sel_val;
+  }
+  UWriteV16(dst, dst_vec);
+  return memory;
+}
+
 } // namespace
 
 DEF_ISEL(PSHUFLW_XMMdq_MEMdq_IMMb) = PSHUFLW<V128W, MV128>;
@@ -369,6 +387,8 @@ IF_AVX(DEF_ISEL(VPSHUFLW_YMMqq_YMMqq_IMMb) = PSHUFLW<VV256W, V256>;)
 4436 VPSHUFLW VPSHUFLW_ZMMu16_MASKmskw_ZMMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_512 ATTRIBUTES: MASKOP_EVEX 
 4437 VPSHUFLW VPSHUFLW_ZMMu16_MASKmskw_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_512 ATTRIBUTES: DISP8_FULLMEM MASKOP_EVEX 
 */
+
+DEF_ISEL(PSHUFHW_XMMdq_XMMdq_IMMb) = PSHUFHW<V128W, V128>;
 
 namespace {
 
