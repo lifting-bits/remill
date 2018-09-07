@@ -284,7 +284,7 @@ DEF_SEM(PSHUFD, D dst, S1 src1, I8 src2) {
       auto shift = UMul(sel, 32_u8);
       order = UShr(order, 2_u8);
       auto sel_val = UShr(group, UInt128(shift));
-      dst_vec = UInsertV32(dst_vec, k, TruncTo<uint32_t>(sel_val));
+      UUpdateV32(dst_vec, k, TruncTo<uint32_t>(sel_val));
     }
   }
   UWriteV32(dst, dst_vec);
