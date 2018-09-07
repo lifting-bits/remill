@@ -123,13 +123,10 @@ add_library(${PROJECT_NAME} STATIC
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-# this is needed for the #include directives with absolutes paths to work correctly; it must
-# also be set to PUBLIC since sub-tools of remill include remill's headers directly.
-list(APPEND PROJECT_INCLUDEDIRECTORIES ${CMAKE_SOURCE_DIR})
-
 # add everything as public.
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_LIBRARIES})
-target_include_directories(${PROJECT_NAME} PUBLIC SYSTEM ${PROJECT_INCLUDEDIRECTORIES})
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR})
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${PROJECT_INCLUDEDIRECTORIES})
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_DEFINITIONS} ${GLOBAL_DEFINITIONS})
 target_compile_options(${PROJECT_NAME} PUBLIC ${GLOBAL_CXXFLAGS})
 
