@@ -25,3 +25,4 @@ using JITSymbolResolver = llvm::RuntimeDyld::SymbolResolver;
 }  // namespace llvm
 #else
 # include <llvm/ExecutionEngine/JITSymbol.h>
+#endif
