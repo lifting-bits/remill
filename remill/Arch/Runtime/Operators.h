@@ -1193,6 +1193,34 @@ MAKE_INSERTV(F, 64, float64_t, doubles)
 
 #undef MAKE_INSERTV
 
+// Update the Nth element of an aggregate vector.
+#define MAKE_UPDATEV(prefix, size, base_type, accessor) \
+    template <typename T> \
+    ALWAYS_INLINE static \
+    void prefix ## UpdateV ## size(T &vec, size_t n, base_type val) { \
+      static_assert( \
+          sizeof(base_type) == sizeof(typename VectorType<T>::BT), \
+          "Invalid update"); \
+      vec.elems[n] = val; \
+    }
+
+MAKE_UPDATEV(U, 8, uint8_t, bytes)
+MAKE_UPDATEV(U, 16, uint16_t, words)
+MAKE_UPDATEV(U, 32, uint32_t, dwords)
+MAKE_UPDATEV(U, 64, uint64_t, qwords)
+MAKE_UPDATEV(U, 128, uint128_t, dqwords)
+
+MAKE_UPDATEV(S, 8, int8_t, sbytes)
+MAKE_UPDATEV(S, 16, int16_t, swords)
+MAKE_UPDATEV(S, 32, int32_t, sdwords)
+MAKE_UPDATEV(S, 64, int64_t, sqwords)
+MAKE_UPDATEV(S, 128, int128_t, sdqwords)
+
+MAKE_UPDATEV(F, 32, float32_t, floats)
+MAKE_UPDATEV(F, 64, float64_t, doubles)
+
+#undef MAKE_UPDATEV
+
 template <typename U, typename T>
 ALWAYS_INLINE static constexpr
 T _ZeroVec(void) {
