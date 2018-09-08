@@ -25,6 +25,7 @@ INSTALL_DIR=/usr/local
 LLVM_VERSION=llvm40
 OS_VERSION=
 ARCH_VERSION=
+BUILD_FLAGS=
 
 # There are pre-build versions of various libraries for specific
 # Ubuntu releases.
@@ -181,6 +182,7 @@ function Configure
       -DCMAKE_C_COMPILER=${CC} \
       -DCMAKE_CXX_COMPILER=${CXX} \
       -DCMAKE_VERBOSE_MAKEFILE=True \
+      ${BUILD_FLAGS} \
       ${SRC_DIR}
 
   return $?
@@ -269,6 +271,12 @@ function main
         BUILD_DIR=$(python -c "import os; import sys; sys.stdout.write(os.path.abspath('${2}'))")
         printf "[+] New build directory is ${BUILD_DIR}\n"
         shift # past argument
+      ;;
+
+      # Make the build type to be a debug build.
+      --debug)
+        BUILD_FLAGS="-DCMAKE_BUILD_TYPE=Debug"
+        shift
       ;;
 
       *)

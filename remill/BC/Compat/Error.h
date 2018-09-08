@@ -28,98 +28,98 @@
 namespace remill {
 
 template <typename T>
-bool IsError(llvm::ErrorOr<T> &val) {
+inline static bool IsError(llvm::ErrorOr<T> &val) {
   return !val;
 }
 
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
 template <typename T>
-bool IsError(llvm::Expected<T> &val) {
+inline static bool IsError(llvm::Expected<T> &val) {
   return !val;
 }
 #endif
 
 template <typename T>
-bool IsError(T *ptr) {
+inline static bool IsError(T *ptr) {
   return nullptr == ptr;
 }
 
 template <typename T>
-bool IsError(T &ptr) {
+inline static bool IsError(T &ptr) {
   return false;
 }
 
 template <typename T>
-std::string GetErrorString(llvm::ErrorOr<T> &val) {
+inline static std::string GetErrorString(llvm::ErrorOr<T> &val) {
   return val.getError().message();
 }
 
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
 template <typename T>
-std::string GetErrorString(llvm::Expected<T> &val) {
+inline static std::string GetErrorString(llvm::Expected<T> &val) {
   auto err = val.takeError();
   return llvm::errorToErrorCode(std::move(err)).message();
 }
 #endif
 
-std::string GetErrorString(const char *message) {
+inline static std::string GetErrorString(const char *message) {
   return message;
 }
 
-std::string GetErrorString(const std::string *message) {
+inline static std::string GetErrorString(const std::string *message) {
   return message ? *message : "";
 }
 
-std::string GetErrorString(const std::string &message) {
+inline static std::string GetErrorString(const std::string &message) {
   return message;
 }
 
 template <typename T>
-std::string GetErrorString(T *) {
+inline static std::string GetErrorString(T *) {
   return "";
 }
 
 template <typename T>
-T *GetPointer(llvm::ErrorOr<T> &val) {
+inline static T *GetPointer(llvm::ErrorOr<T> &val) {
   return val.operator->();
 }
 
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
 template <typename T>
-T *GetPointer(llvm::Expected<T> &val) {
+inline static T *GetPointer(llvm::Expected<T> &val) {
   return val.operator->();
 }
 #endif
 
 template <typename T>
-T *GetPointer(T *val) {
+inline static T *GetPointer(T *val) {
   return val;
 }
 
 template <typename T>
-T *GetPointer(T &val) {
+inline static T *GetPointer(T &val) {
   return &val;
 }
 
 template <typename T>
-T &GetReference(llvm::ErrorOr<T> &val) {
+inline static T &GetReference(llvm::ErrorOr<T> &val) {
   return val.operator*();
 }
 
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
 template <typename T>
-T &GetReference(llvm::Expected<T> &val) {
+inline static T &GetReference(llvm::Expected<T> &val) {
   return val.operator*();
 }
 #endif
 
 template <typename T>
-T *GetReference(T *val) {
+inline static T &GetReference(T *val) {
   return *val;
 }
 
 template <typename T>
-T &GetReference(T &val) {
+inline static T &GetReference(T &val) {
   return val;
 }
 
