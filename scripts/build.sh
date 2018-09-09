@@ -275,7 +275,13 @@ function main
 
       # Make the build type to be a debug build.
       --debug)
-        BUILD_FLAGS="-DCMAKE_BUILD_TYPE=Debug"
+        BUILD_FLAGS="${BUILD_FLAGS} -DCMAKE_BUILD_TYPE=Debug"
+        printf "[+] Enabling a debug build of remill\n"
+      ;;
+
+      --extra-cmake-args)
+        BUILD_FLAGS="${BUILD_FLAGS} ${2}"
+        printf "[+] Will supply additional arguments to cmake: ${BUILD_FLAGS}\n"
         shift
       ;;
 
