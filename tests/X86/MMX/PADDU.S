@@ -35,14 +35,14 @@
     0x5B3631FD, 0xA03337FF, \
     0xEE92c9F3, 0x3B786526
 
-TEST_BEGIN_64(PADDUv128v128_0, 2)
+TEST_BEGIN_64(PADDUSBv128v128_0, 2)
 TEST_INPUTS(PADDU_INPUTS_64)
     movq xmm0, ARG1_64
     movq xmm1, ARG2_64
     paddusb xmm0, xmm1
 TEST_END_64
 
-TEST_BEGIN_64(PADDUv128v128_1, 2)
+TEST_BEGIN_64(PADDUSBv128v128_1, 2)
 TEST_INPUTS(PADDU_INPUTS_64)
     push ARG2_64
     push ARG1_64
@@ -53,7 +53,7 @@ TEST_INPUTS(PADDU_INPUTS_64)
     paddusb xmm0, xmm1
 TEST_END_64
 
-TEST_BEGIN_64(PADDUv128v128_2, 2)
+TEST_BEGIN_64(PADDUSBv128v128_2, 2)
 TEST_INPUTS(PADDU_INPUTS_64)
     movq xmm1, ARG1_64
     movq xmm2, ARG2_64
@@ -61,7 +61,7 @@ TEST_INPUTS(PADDU_INPUTS_64)
     paddusb xmm1, xmm1
 TEST_END_64
 
-TEST_BEGIN_64(PADDUv128v128_3, 2)
+TEST_BEGIN_64(PADDUSBv128v128_3, 2)
 TEST_INPUTS(PADDU_INPUTS_64)
     movq xmm4, ARG1_64
     movq xmm3, ARG2_64
@@ -73,7 +73,7 @@ TEST_INPUTS(PADDU_INPUTS_64)
     paddusb xmm1, xmm3
 TEST_END_64
 
-TEST_BEGIN_64(PADDUv128v128_4, 2)
+TEST_BEGIN_64(PADDUSBv128v128_4, 2)
 TEST_INPUTS(PADDU_INPUTS_64)
     movq xmm7, ARG1_64
     movq xmm1, ARG2_64
@@ -85,7 +85,7 @@ TEST_INPUTS(PADDU_INPUTS_64)
     paddusb xmm1, xmm5
 TEST_END_64
 
-TEST_BEGIN_64(PADDUv128v128_8, 1)
+TEST_BEGIN_64(PADDUSBv128v128_8, 1)
 TEST_INPUTS(0)
     paddusb xmm0, xmm1
     paddusb xmm1, xmm2
@@ -95,4 +95,124 @@ TEST_INPUTS(0)
     paddusb xmm5, xmm6
     paddusb xmm6, xmm7
     paddusb xmm7, xmm0
+TEST_END_64
+
+TEST_BEGIN_64(PADDUSWv128v128_0, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    movq xmm0, ARG1_64
+    movq xmm1, ARG2_64
+    paddusw xmm0, xmm1
+TEST_END_64
+
+TEST_BEGIN_64(PADDUSWv128v128_1, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    push ARG2_64
+    push ARG1_64
+    movq xmm0, [rsp]
+    push ARG1_64
+    push ARG2_64
+    movq xmm1, [rsp]
+    paddusw xmm0, xmm1
+TEST_END_64
+
+TEST_BEGIN_64(PADDUSWv128v128_2, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    movq xmm1, ARG1_64
+    movq xmm2, ARG2_64
+    paddusw xmm1, xmm2
+    paddusw xmm1, xmm1
+TEST_END_64
+
+TEST_BEGIN_64(PADDUSWv128v128_3, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    movq xmm4, ARG1_64
+    movq xmm3, ARG2_64
+    push ARG2_64
+    push ARG1_64
+    movq xmm1, [rsp]
+    paddusw xmm1, xmm4
+    paddusw xmm3, xmm4
+    paddusw xmm1, xmm3
+TEST_END_64
+
+TEST_BEGIN_64(PADDUSWv128v128_4, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    movq xmm7, ARG1_64
+    movq xmm1, ARG2_64
+    movq xmm5, ARG1_64
+    paddusw xmm1, xmm7
+    paddusw xmm7, xmm1
+    paddusw xmm7, xmm7
+    paddusw xmm5, xmm7
+    paddusw xmm1, xmm5
+TEST_END_64
+
+TEST_BEGIN_64(PADDUSWv128v128_8, 1)
+TEST_INPUTS(0)
+    paddusw xmm0, xmm1
+    paddusw xmm1, xmm2
+    paddusw xmm2, xmm3
+    paddusw xmm3, xmm4
+    paddusw xmm4, xmm5
+    paddusw xmm5, xmm6
+    paddusw xmm6, xmm7
+    paddusw xmm7, xmm0
+TEST_END_64
+
+TEST_BEGIN_64(PADDUSBv128mv128_0, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    push ARG1_64
+    push ARG2_64
+    movq xmm0, ARG2_64
+    paddusb xmm0, [rsp]
+TEST_END_64
+
+TEST_BEGIN_64(PADDUSBv128mv128_1, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    push ARG2_64
+    push ARG1_64
+    push ARG2_64
+    movq xmm0, [rsp]
+    paddusb xmm0, [rsp+0x8]
+TEST_END_64
+
+TEST_BEGIN_64(PADDUSBv128mv128_2, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    push ARG1_64
+    push ARG2_64
+    push ARG1_64
+    push ARG1_64
+    movq xmm0, ARG2_64
+    movq xmm1, ARG1_64
+    paddusb xmm1, [rsp]
+    paddusb xmm0, [rsp+0x10]
+TEST_END_64
+
+TEST_BEGIN_64(PADDUSWv128mv128_0, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    push ARG1_64
+    push ARG2_64
+    movq xmm0, ARG2_64
+    paddusw xmm0, [rsp]
+TEST_END_64
+
+TEST_BEGIN_64(PADDUSWv128mv128_1, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    push ARG2_64
+    push ARG1_64
+    push ARG2_64
+    movq xmm0, [rsp]
+    paddusw xmm0, [rsp+0x8]
+TEST_END_64
+
+TEST_BEGIN_64(PADDUSWv128mv128_2, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    push ARG1_64
+    push ARG2_64
+    push ARG1_64
+    push ARG1_64
+    movq xmm0, ARG2_64
+    movq xmm1, ARG1_64
+    paddusw xmm1, [rsp]
+    paddusw xmm0, [rsp+0x10]
 TEST_END_64
