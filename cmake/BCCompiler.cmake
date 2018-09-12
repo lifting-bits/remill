@@ -28,20 +28,39 @@ if(DEFINED ENV{LLVM_INSTALL_PREFIX})
   set(LLVM_INSTALL_PREFIX $ENV{LLVM_INSTALL_PREFIX})
 endif()
 
-if("${CMAKE_CXX_COMPILER}" STREQUAL "${CLANG_CXX_EXECUTABLE_NAME}")
-  set(CLANG_PATH "${CMAKE_CXX_COMPILER}")
-
-else()
+if (DEFINED LLVM_INSTALL_PREFIX)
+  message(STATUS "LLVM bin dir: ${LLVM_INSTALL_PREFIX}/bin")
+  # clang path
   find_program(CLANG_PATH
     NAMES "${CLANG_CXX_EXECUTABLE_NAME}"
+    HINTS "${LLVM_INSTALL_PREFIX}/bin"
+    NO_DEFAULT_PATH
+  )
+
+  # llvm-link path
+  find_program(LLVMLINK_PATH
+    NAMES "${LLVMLINK_EXECUTABLE_NAME}"
+    HINTS "${LLVM_INSTALL_PREFIX}/bin"
+    NO_DEFAULT_PATH
+  )
+else()
+  # clang path
+  if("${CMAKE_CXX_COMPILER}" STREQUAL "${CLANG_CXX_EXECUTABLE_NAME}")
+    set(CLANG_PATH "${CMAKE_CXX_COMPILER}")
+
+  else()
+    find_program(CLANG_PATH
+      NAMES "${CLANG_CXX_EXECUTABLE_NAME}"
+      PATHS "/usr/bin" "/usr/local/bin" "${LLVM_INSTALL_PREFIX}/bin" "${LLVM_TOOLS_BINARY_DIR}" "C:/Program Files/LLVM/bin" "C:/Program Files (x86)/LLVM/bin"
+    )
+  endif()
+
+  # llvm-link path
+  find_program(LLVMLINK_PATH
+    NAMES "${LLVMLINK_EXECUTABLE_NAME}"
     PATHS "/usr/bin" "/usr/local/bin" "${LLVM_INSTALL_PREFIX}/bin" "${LLVM_TOOLS_BINARY_DIR}" "C:/Program Files/LLVM/bin" "C:/Program Files (x86)/LLVM/bin"
   )
 endif()
-
-find_program(LLVMLINK_PATH
-  NAMES "${LLVMLINK_EXECUTABLE_NAME}"
-  PATHS "/usr/bin" "/usr/local/bin" "${LLVM_INSTALL_PREFIX}/bin" "${LLVM_TOOLS_BINARY_DIR}" "C:/Program Files/LLVM/bin" "C:/Program Files (x86)/LLVM/bin"
-)
 
 if((NOT "${CLANG_PATH}" MATCHES "CLANG_PATH-NOTFOUND") AND (NOT "${LLVMLINK_PATH}" MATCHES "LLVMLINK_PATH-NOTFOUND"))
   file(WRITE "${CMAKE_BINARY_DIR}/emitllvm.test.cpp" "int main(int argc, char* argv[]){return 0;}\n\n")
