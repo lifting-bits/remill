@@ -897,19 +897,10 @@ bool TraceLifter::Lift(uint64_t addr_) {
                                    state.block);
           break;
 
-        // Direct jump; could be a tail-call or an in-function jump.
-        case Instruction::kCategoryDirectJump: {
-          auto target_trace = GetLiftedTraceDeclaration(
-              state.inst.branch_taken_pc);
-          if (target_trace) {
-            AddTerminatingTailCall(state.block, target_trace);
-
-          } else {
-            llvm::BranchInst::Create(state.GetOrCreateBranchTakenBlock(),
-                                     state.block);
-          }
+        case Instruction::kCategoryDirectJump:
+          llvm::BranchInst::Create(state.GetOrCreateBranchTakenBlock(),
+                                   state.block);
           break;
-        }
 
         case Instruction::kCategoryIndirectJump:
 //          manager.ForEachDevirtualizedTarget(
@@ -920,30 +911,34 @@ bool TraceLifter::Lift(uint64_t addr_) {
           AddTerminatingTailCall(state.block, intrinsics->jump);
           break;
 
+        case remill::Instruction::kCategoryAsyncHyperCall:
+          target_trace = intrinsics->async_hyper_call;
+          goto check_call_return;
 
         case Instruction::kCategoryIndirectFunctionCall:
           target_trace = intrinsics->function_call;
-          [[clang::fallthrough]];
+          goto check_call_return;
 
-        case Instruction::kCategoryDirectFunctionCall: {
-          if (!target_trace) {
-            target_trace = GetLiftedTraceDeclaration(
-                state.inst.branch_taken_pc);
-
-            if (!target_trace) {
-              if (state.inst.next_pc == state.inst.branch_taken_pc) {
-                llvm::BranchInst::Create(state.GetOrCreateNextBlock(),
-                                         state.block);
-                continue;
-              }
-
-              state.trace_work_list.insert(state.inst.branch_taken_pc);
-              const auto target_trace_name = manager.TraceName(
-                  state.inst.branch_taken_pc);
-              target_trace = DeclareLiftedFunction(module, target_trace_name);
-            }
+        case Instruction::kCategoryDirectFunctionCall:
+          if (state.inst.next_pc == state.inst.branch_taken_pc) {
+            llvm::BranchInst::Create(state.GetOrCreateNextBlock(),
+                                     state.block);
+            continue;
           }
 
+          target_trace = GetLiftedTraceDeclaration(
+              state.inst.branch_taken_pc);
+
+          if (!target_trace) {
+            state.trace_work_list.insert(state.inst.branch_taken_pc);
+            const auto target_trace_name = manager.TraceName(
+                state.inst.branch_taken_pc);
+            target_trace = DeclareLiftedFunction(module, target_trace_name);
+          }
+
+          goto check_call_return;
+
+        check_call_return: {
           AddCall(state.block, target_trace);
 
           auto pc = LoadProgramCounter(state.block);
@@ -966,21 +961,10 @@ bool TraceLifter::Lift(uint64_t addr_) {
         case Instruction::kCategoryConditionalBranch:
         case Instruction::kCategoryConditionalAsyncHyperCall:
           llvm::BranchInst::Create(
-              state.GetOrCreateBlock(state.inst.branch_taken_pc),
-              state.GetOrCreateBlock(state.inst.branch_not_taken_pc),
+              state.GetOrCreateBranchTakenBlock(),
+              state.GetOrCreateBranchNotTakenBlock(),
               LoadBranchTaken(state.block),
               state.block);
-          break;
-
-        // Lift async hyper calls in such a way that the call graph structure
-        // is maintained. Specifically, if we imagine these hyper calls as being
-        // system call instructions, then most likely they are wrapped inside of
-        // another function, and we eventually want to reach the function return
-        // instruction, so that the lifted caller can continue on.
-        case remill::Instruction::kCategoryAsyncHyperCall:
-          state.trace_work_list.insert(state.inst.next_pc);
-          AddTerminatingTailCall(
-              state.block, intrinsics->async_hyper_call);
           break;
       }
     }
