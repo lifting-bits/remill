@@ -48,6 +48,7 @@
 
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Instruction.h"
+#include "remill/Arch/Name.h"
 
 #include "remill/BC/ABI.h"
 #include "remill/BC/IntrinsicTable.h"
@@ -86,9 +87,12 @@ llvm::Function *GetInstructionFunction(llvm::Module *module,
 
 InstructionLifter::~InstructionLifter(void) {}
 
-InstructionLifter::InstructionLifter(llvm::IntegerType *word_type_,
+InstructionLifter::InstructionLifter(const Arch *arch_,
                                      const IntrinsicTable *intrinsics_)
-    : word_type(word_type_),
+    : arch(arch_),
+      word_type(llvm::Type::getIntNTy(
+          intrinsics_->async_hyper_call->getContext(),
+          arch->address_size)),
       intrinsics(intrinsics_) {}
 
 // Lift a single instruction into a basic block.
@@ -645,6 +649,352 @@ llvm::Value *InstructionLifter::LiftOperand(Instruction &inst,
       << " in instruction at " << std::hex << inst.pc;
 
   return nullptr;
+}
+
+TraceManager::~TraceManager(void) {}
+
+// Return an already lifted trace starting with the code at address
+// `addr`.
+llvm::Function *TraceManager::GetLiftedTraceDeclaration(uint64_t) {
+  return nullptr;
+}
+
+// Return an already lifted trace starting with the code at address
+// `addr`.
+llvm::Function *TraceManager::GetLiftedTraceDefinition(uint64_t) {
+  return nullptr;
+}
+
+// Apply a callback that gives the decoder access to multiple virtual
+// targets of this instruction (indirect call or jump).
+void TraceManager::ForEachDevirtualizedTarget(
+    const Instruction &,
+    std::function<void(uint64_t, DevirtualizedTargetKind)>) {
+  // Must be extended.
+}
+
+// Figure out the name for the trace starting at address `addr`.
+std::string TraceManager::TraceName(uint64_t addr) {
+  std::stringstream ss;
+  ss << "sub_" << std::hex << addr;
+  return ss.str();
+}
+
+TraceLifter::TraceLifter(InstructionLifter *inst_lifter_,
+                         TraceManager *manager_)
+    : arch(inst_lifter_->arch),
+      inst_lifter(*inst_lifter_),
+      intrinsics(inst_lifter.intrinsics),
+      context(inst_lifter.word_type->getContext()),
+      module(inst_lifter.intrinsics->async_hyper_call->getParent()),
+      addr_mask(~0ULL >> inst_lifter.word_type->getScalarSizeInBits()),
+      manager(*manager_) {}
+
+// Return an already lifted trace starting with the code at address
+// `addr`.
+llvm::Function *TraceLifter::GetLiftedTraceDeclaration(uint64_t addr) {
+  auto func = manager.GetLiftedTraceDeclaration(addr);
+  if (!func || func->getParent() == module) {
+    return func;
+  }
+
+  return nullptr;
+}
+
+// Return an already lifted trace starting with the code at address
+// `addr`.
+llvm::Function *TraceLifter::GetLiftedTraceDefinition(uint64_t addr) {
+  auto func = manager.GetLiftedTraceDefinition(addr);
+  if (!func || func->getParent() == module) {
+    return func;
+  }
+
+  CHECK(&(func->getContext()) == &context);
+
+  auto extern_func = remill::DeclareLiftedFunction(
+      module, func->getName().str());
+
+  if (extern_func->isDeclaration()) {
+    extern_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
+  }
+
+  return extern_func;
+}
+
+namespace {
+
+using DecoderWorkList = std::set<uint64_t>;
+
+// Manage decoding and lifting state.
+struct TraceLifterState {
+ public:
+  TraceLifterState(const Arch *arch, llvm::Module *module_)
+      : context(module_->getContext()),
+        module(module_),
+        func(nullptr),
+        block(nullptr),
+        switch_inst(nullptr),
+        max_inst_bytes(arch->MaxInstructionSize()) {
+
+    inst_bytes.reserve(max_inst_bytes);
+  }
+
+  llvm::BasicBlock *GetOrCreateBlock(uint64_t block_pc) {
+    auto &block = blocks[block_pc];
+    if (!block) {
+      block = llvm::BasicBlock::Create(context, "", func);
+    }
+    return block;
+  }
+
+  llvm::BasicBlock *GetOrCreateBranchTakenBlock(void) {
+    inst_work_list.insert(inst.branch_taken_pc);
+    return GetOrCreateBlock(inst.branch_taken_pc);
+  }
+
+  llvm::BasicBlock *GetOrCreateBranchNotTakenBlock(void) {
+    inst_work_list.insert(inst.branch_not_taken_pc);
+    return GetOrCreateBlock(inst.branch_not_taken_pc);
+  }
+
+  llvm::BasicBlock *GetOrCreateNextBlock(void) {
+    inst_work_list.insert(inst.next_pc);
+    return GetOrCreateBlock(inst.next_pc);
+  }
+
+  uint64_t PopTraceAddress(void) {
+    auto trace_it = trace_work_list.begin();
+    const auto trace_addr = *trace_it;
+    trace_work_list.erase(trace_it);
+    return trace_addr;
+  }
+
+  uint64_t PopInstructionAddress(void) {
+    auto inst_it = inst_work_list.begin();
+    const auto inst_addr = *inst_it;
+    inst_work_list.erase(inst_it);
+    return inst_addr;
+  }
+
+  llvm::LLVMContext &context;
+  llvm::Module * const module;
+  llvm::Function *func;
+  llvm::BasicBlock *block;
+  llvm::SwitchInst *switch_inst;
+  const size_t max_inst_bytes;
+  std::string inst_bytes;
+  Instruction inst;
+  DecoderWorkList trace_work_list;
+  DecoderWorkList inst_work_list;
+  std::map<uint64_t, llvm::BasicBlock *> blocks;
+};
+
+}  // namespace
+
+// Lift one or more traces starting from `addr`.
+bool TraceLifter::Lift(uint64_t addr_) {
+  auto addr = addr_ & addr_mask;
+  if (addr < addr_) {  // Address is out of range.
+    LOG(ERROR)
+        << "Trace address " << std::hex << addr_ << " is too big" << std::dec;
+    return false;
+  }
+
+  TraceLifterState state(arch, module);
+
+  state.trace_work_list.insert(addr);
+  while (!state.trace_work_list.empty()) {
+    const auto trace_addr = state.PopTraceAddress();
+
+    // Already lifted.
+    state.func = GetLiftedTraceDefinition(trace_addr);
+    if (state.func) {
+      continue;
+    }
+
+    state.func = GetLiftedTraceDeclaration(trace_addr);
+    if (!state.func) {
+      const auto trace_name = manager.TraceName(trace_addr);
+      state.func = DeclareLiftedFunction(module, trace_name);
+    }
+
+    CHECK(state.func->isDeclaration());
+
+    // Fill in the function, and make sure the block with all register
+    // variables jumps to the block that will contain the first instruction
+    // of the trace.
+    CloneBlockFunctionInto(state.func);
+    llvm::BranchInst::Create(state.GetOrCreateBlock(trace_addr),
+                             &(state.func->front()));
+
+    CHECK(state.inst_work_list.empty());
+    state.inst_work_list.insert(trace_addr);
+
+    llvm::Function *target_trace = nullptr;
+
+    // Decode instructions.
+    while (!state.inst_work_list.empty()) {
+      const auto inst_addr = state.PopInstructionAddress();
+
+      state.block = state.GetOrCreateBlock(inst_addr);
+      state.switch_inst = nullptr;
+
+      // We have already lifted this instruction block.
+      if (!state.block->empty()) {
+        continue;
+      }
+
+      // Check to see if this instruction corresponds with an existing
+      // trace head, and if so, tail-call into that trace directly without
+      // decoding or lifting the instruction.
+      if (inst_addr != trace_addr) {
+        if (auto inst_as_trace = GetLiftedTraceDeclaration(inst_addr)) {
+          AddTerminatingTailCall(state.block, inst_as_trace);
+          continue;
+        }
+      }
+
+      // Read instruction bytes.
+      state.inst_bytes.clear();
+      for (size_t i = 0; i < state.max_inst_bytes; ++i) {
+        const auto byte_addr = (inst_addr + i) & addr_mask;
+        if (byte_addr < inst_addr) {
+          break;  // 32- or 64-bit address overflow.
+        }
+        uint8_t byte = 0;
+        if (!manager.TryReadExecutableByte(byte_addr, &byte)) {
+          break;
+        }
+        state.inst_bytes.push_back(static_cast<char>(byte));
+      }
+
+      // No executable bytes here.
+      if (state.inst_bytes.empty()) {
+        AddTerminatingTailCall(state.block, intrinsics->missing_block);
+        continue;
+      }
+
+      state.inst.Reset();
+
+      (void) arch->DecodeInstruction(inst_addr, state.inst_bytes, state.inst);
+
+      auto lift_status = inst_lifter.LiftIntoBlock(state.inst, state.block);
+      if (kLiftedInstruction != lift_status) {
+        AddTerminatingTailCall(state.block, intrinsics->error);
+        continue;
+      }
+
+      // Connect together the basic blocks.
+      switch (state.inst.category) {
+        case Instruction::kCategoryInvalid:
+        case Instruction::kCategoryError:
+          AddTerminatingTailCall(state.block, intrinsics->error);
+          break;
+
+        case Instruction::kCategoryNormal:
+        case Instruction::kCategoryNoOp:
+          llvm::BranchInst::Create(state.GetOrCreateNextBlock(),
+                                   state.block);
+          break;
+
+        // Direct jump; could be a tail-call or an in-function jump.
+        case Instruction::kCategoryDirectJump: {
+          auto target_trace = GetLiftedTraceDeclaration(
+              state.inst.branch_taken_pc);
+          if (target_trace) {
+            AddTerminatingTailCall(state.block, target_trace);
+
+          } else {
+            llvm::BranchInst::Create(state.GetOrCreateBranchTakenBlock(),
+                                     state.block);
+          }
+          break;
+        }
+
+        case Instruction::kCategoryIndirectJump:
+//          manager.ForEachDevirtualizedTarget(
+//              state.inst, [] (uint64_t target_addr,
+//                              DevirtualizedTargetKind kind) {
+//
+//              });
+          AddTerminatingTailCall(state.block, intrinsics->jump);
+          break;
+
+
+        case Instruction::kCategoryIndirectFunctionCall:
+          target_trace = intrinsics->function_call;
+          [[clang::fallthrough]];
+
+        case Instruction::kCategoryDirectFunctionCall: {
+          if (!target_trace) {
+            target_trace = GetLiftedTraceDeclaration(
+                state.inst.branch_taken_pc);
+
+            if (!target_trace) {
+              if (state.inst.next_pc == state.inst.branch_taken_pc) {
+                llvm::BranchInst::Create(state.GetOrCreateNextBlock(),
+                                         state.block);
+                continue;
+              }
+
+              state.trace_work_list.insert(state.inst.branch_taken_pc);
+              const auto target_trace_name = manager.TraceName(
+                  state.inst.branch_taken_pc);
+              target_trace = DeclareLiftedFunction(module, target_trace_name);
+            }
+          }
+
+          AddCall(state.block, target_trace);
+
+          auto pc = LoadProgramCounter(state.block);
+          auto ret_pc = llvm::ConstantInt::get(
+              inst_lifter.word_type, state.inst.next_pc);
+
+          llvm::IRBuilder<> ir(state.block);
+          auto eq = ir.CreateICmpEQ(pc, ret_pc);
+          auto unexpected_ret_pc = llvm::BasicBlock::Create(
+              context, "", state.func);
+          ir.CreateCondBr(eq, state.GetOrCreateNextBlock(), unexpected_ret_pc);
+          AddTerminatingTailCall(unexpected_ret_pc, intrinsics->missing_block);
+          break;
+        }
+
+        case Instruction::kCategoryFunctionReturn:
+          AddTerminatingTailCall(state.block, intrinsics->function_return);
+          break;
+
+        case Instruction::kCategoryConditionalBranch:
+        case Instruction::kCategoryConditionalAsyncHyperCall:
+          llvm::BranchInst::Create(
+              state.GetOrCreateBlock(state.inst.branch_taken_pc),
+              state.GetOrCreateBlock(state.inst.branch_not_taken_pc),
+              LoadBranchTaken(state.block),
+              state.block);
+          break;
+
+        // Lift async hyper calls in such a way that the call graph structure
+        // is maintained. Specifically, if we imagine these hyper calls as being
+        // system call instructions, then most likely they are wrapped inside of
+        // another function, and we eventually want to reach the function return
+        // instruction, so that the lifted caller can continue on.
+        case remill::Instruction::kCategoryAsyncHyperCall:
+          state.trace_work_list.insert(state.inst.next_pc);
+          AddTerminatingTailCall(
+              state.block, intrinsics->async_hyper_call);
+          break;
+      }
+    }
+
+    for (auto &block : *state.func) {
+      if (!block.getTerminator()) {
+        AddTerminatingTailCall(&block, intrinsics->missing_block);
+      }
+    }
+
+    manager.SetLiftedTraceDefinition(trace_addr, state.func);
+  }
+
+  return true;
 }
 
 }  // namespace remill

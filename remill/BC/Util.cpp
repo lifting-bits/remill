@@ -43,6 +43,7 @@
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include "remill/Arch/Arch.h"
 #include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
 #include "remill/BC/Compat/BitcodeReaderWriter.h"
@@ -81,6 +82,13 @@ void InitFunctionAttributes(llvm::Function *function) {
   function->addFnAttr(llvm::Attribute::InlineHint);
 }
 
+// Create a call from one lifted function to another.
+llvm::CallInst *AddCall(llvm::BasicBlock *source_block,
+                        llvm::Value *dest_func) {
+  llvm::IRBuilder<> ir(source_block);
+  return ir.CreateCall(dest_func, LiftedFunctionArgs(source_block));
+}
+
 // Create a tail-call from one lifted function to another.
 llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
                                        llvm::Value *dest_func) {
@@ -94,6 +102,7 @@ llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
     }
 
     llvm::CallInst *call_target_instr = ir.CreateCall(dest_func, args);
+    call_target_instr->setTailCall(true);
     ir.CreateRet(call_target_instr);
     return call_target_instr;
   } else {
@@ -120,8 +129,8 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
     dest_func = ir.CreateLoad(dest_func);
   }
 
-  llvm::CallInst *call_target_instr = ir.CreateCall(
-      dest_func, LiftedFunctionArgs(source_block));
+  auto call_target_instr = AddCall(source_block, dest_func);
+  call_target_instr->setTailCall(true);
 
   ir.CreateRet(call_target_instr);
   return call_target_instr;
@@ -253,22 +262,28 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *module,
   return module->getGlobalVariable(name, true);
 }
 
+// Loads the semantics for the `arch`-specific machine, i.e. the machine of the
+// code that we want to lift.
+llvm::Module *LoadArchSemantics(const Arch *arch, llvm::LLVMContext *context) {
+  auto arch_name = GetArchName(arch->arch_name);
+  auto path = FindSemanticsBitcodeFile(arch_name);
+  LOG(INFO)
+      << "Loading host " REMILL_ARCH " semantics from file " << path;
+  auto module = LoadModuleFromFile(context, path);
+  arch->PrepareModule(module);
+  return module;
+}
+
 // Loads the semantics for the "host" machine, i.e. the machine that this
 // remill is compiled on.
 llvm::Module *LoadHostSemantics(llvm::LLVMContext *context) {
-  auto path = FindSemanticsBitcodeFile(REMILL_ARCH);
-  LOG(INFO)
-      << "Loading host " REMILL_ARCH " semantics from file " << path;
-  return LoadModuleFromFile(context, path);
+  return LoadArchSemantics(GetHostArch(), context);
 }
 
 // Loads the semantics for the "target" machine, i.e. the machine of the
 // code that we want to lift.
 llvm::Module *LoadTargetSemantics(llvm::LLVMContext *context) {
-  auto path = FindSemanticsBitcodeFile(FLAGS_arch);
-  LOG(INFO)
-      << "Loading target " << FLAGS_arch << " semantics from file " << path;
-  return LoadModuleFromFile(context, path);
+  return LoadArchSemantics(GetTargetArch(), context);
 }
 
 // Try to verify a module.
@@ -512,13 +527,12 @@ llvm::Function *DeclareLiftedFunction(llvm::Module *module,
   auto bb = BasicBlockFunction(module);
   auto func_type = bb->getFunctionType();
 
-  auto func = llvm::dyn_cast<llvm::Function>(
-      module->getOrInsertFunction(name, func_type));
-
-  CHECK(nullptr != func) << "Could not insert function " << name
-                         << " into module";
-
-  InitFunctionAttributes(func);
+  auto func = module->getFunction(name);
+  if (!func) {
+    func = llvm::Function::Create(
+        func_type, llvm::GlobalValue::InternalLinkage, name, module);
+    InitFunctionAttributes(func);
+  }
 
   return func;
 }
@@ -749,6 +763,179 @@ std::string ModuleName(llvm::Module *module) {
 
 std::string ModuleName(const std::unique_ptr<llvm::Module> &module) {
   return ModuleName(module.get());
+}
+
+namespace {
+
+#if 0
+static llvm::Constant *CloneConstant(llvm::Constant *val);
+
+static std::vector<llvm::Constant *> CloneContents(
+    llvm::ConstantAggregate *agg) {
+  auto num_elems = agg->getNumOperands();
+  std::vector<llvm::Constant *> clones(num_elems);
+  for (auto i = 0U; i < num_elems; ++i) {
+    clones[i] = CloneConstant(agg->getAggregateElement(i));
+  }
+  return clones;
+}
+
+static llvm::Constant *CloneConstant(llvm::Constant *val) {
+  if (llvm::isa<llvm::ConstantData>(val) ||
+      llvm::isa<llvm::ConstantAggregateZero>(val)) {
+    return val;
+  }
+
+  std::vector<llvm::Constant *> elements;
+  if (auto agg = llvm::dyn_cast<llvm::ConstantAggregate>(val)) {
+    CloneContents(agg);
+  }
+
+  if (auto arr = llvm::dyn_cast<llvm::ConstantArray>(val)) {
+    return llvm::ConstantArray::get(arr->getType(), elements);
+
+  } else if (auto vec = llvm::dyn_cast<llvm::ConstantVector>(val)) {
+    return llvm::ConstantVector::get(elements);
+
+  } else if (auto obj = llvm::dyn_cast<llvm::ConstantStruct>(val)) {
+    return llvm::ConstantStruct::get(obj->getType(), elements);
+
+  } else {
+    LOG(FATAL)
+        << "Cannot clone " << remill::LLVMThingToString(val);
+    return val;
+  }
+}
+
+#endif
+
+static llvm::Function *DeclareFunctionInModule(llvm::Function *func,
+                                               llvm::Module *dest_module) {
+  auto dest_func = dest_module->getFunction(func->getName());
+  if (dest_func) {
+    return dest_func;
+  }
+
+  LOG_IF(FATAL, func->hasLocalLinkage())
+      << "Cannot declare internal function " << func->getName().str()
+      << " as external in another module";
+
+  dest_func = llvm::Function::Create(
+      func->getFunctionType(), func->getLinkage(),
+      func->getName(), dest_module);
+
+  dest_func->copyAttributesFrom(func);
+  dest_func->setVisibility(func->getVisibility());
+
+  return dest_func;
+}
+
+static llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
+                                                llvm::Module *dest_module) {
+  auto dest_var = dest_module->getGlobalVariable(var->getName());
+  if (dest_var) {
+    return dest_var;
+  }
+
+  auto type = var->getType()->getElementType();
+  dest_var = new llvm::GlobalVariable(
+      *dest_module, type, var->isConstant(), var->getLinkage(), nullptr,
+      var->getName(), nullptr, var->getThreadLocalMode(),
+      var->getType()->getAddressSpace());
+
+  dest_var->copyAttributesFrom(var);
+
+  if (var->hasInitializer() && var->hasLocalLinkage()) {
+    auto initializer = var->getInitializer();
+#if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 6)
+    CHECK(!initializer->needsRelocation())
+        << "Initializer of global " << var->getName().str()
+        << " cannot be trivially copied to the destination module.";
+#endif
+    dest_var->setInitializer(initializer);
+  } else {
+    LOG_IF(FATAL, var->hasLocalLinkage())
+        << "Cannot declare internal variable " << var->getName().str()
+        << " as external in another module";
+  }
+
+  return dest_var;
+}
+
+template <typename T>
+static void ClearMetaData(T *value) {
+  llvm::SmallVector<std::pair<unsigned, llvm::MDNode *>, 4> mds;
+  value->getAllMetadata(mds);
+  for (auto md_info : mds) {
+    value->setMetadata(md_info.first, nullptr);
+  }
+}
+
+}  // namespace
+
+// Move a function from one module into another module.
+void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
+  CHECK(&(func->getContext()) == &(dest_module->getContext()))
+      << "Cannot move function across two independent LLVM contexts.";
+
+  auto source_module = func->getParent();
+  CHECK(source_module != dest_module)
+      << "Cannot move function to the same module.";
+
+  auto existing = dest_module->getFunction(func->getName());
+  if (existing) {
+    CHECK(existing->isDeclaration())
+        << "Function " << func->getName().str()
+        << " already exists in destination module.";
+    existing->setName("");
+    existing->setLinkage(llvm::GlobalValue::PrivateLinkage);
+    existing->setVisibility(llvm::GlobalValue::DefaultVisibility);
+  }
+
+  func->removeFromParent();
+  dest_module->getFunctionList().push_back(func);
+
+  if (existing) {
+    existing->replaceAllUsesWith(func);
+    existing->eraseFromParent();
+    existing = nullptr;
+  }
+
+  IF_LLVM_GTE_36( ClearMetaData(func); )
+
+  for (auto &block : *func) {
+    for (auto &inst : block) {
+      ClearMetaData(&inst);
+
+      // Substitute globals in the operands.
+      for (auto &op : inst.operands()) {
+        auto old_val = op.get();
+        auto used_val = old_val->stripPointerCasts();
+        auto used_func = llvm::dyn_cast<llvm::Function>(used_val);
+        auto used_var = llvm::dyn_cast<llvm::GlobalVariable>(used_val);
+        llvm::Constant *new_val = nullptr;
+        if (used_func) {
+          new_val = DeclareFunctionInModule(used_func, dest_module);
+
+        } else if (used_var) {
+          new_val = DeclareVarInModule(used_var, dest_module);
+
+        } else {
+          CHECK(!llvm::isa<llvm::GlobalValue>(used_val))
+              << "Cannot move global value " << used_val->getName().str()
+              << " into destination module.";
+        }
+
+        if (new_val) {
+          if (old_val->getType() != new_val->getType()) {
+            op.set(llvm::ConstantExpr::getBitCast(new_val, old_val->getType()));
+          } else {
+            op.set(new_val);
+          }
+        }
+      }
+    }
+  }
 }
 
 }  // namespace remill

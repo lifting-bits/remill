@@ -115,6 +115,7 @@ add_library(${PROJECT_NAME} STATIC
   remill/BC/Lifter.cpp
   remill/BC/Util.cpp
   remill/BC/DeadStoreEliminator.cpp
+  remill/BC/Optimizer.cpp
 
   remill/OS/Compat.cpp
   remill/OS/FileSystem.cpp

@@ -39,8 +39,14 @@ class LLVMContext;
 
 namespace remill {
 
+class Arch;
+
 // Initialize the attributes for a lifted function.
 void InitFunctionAttributes(llvm::Function *F);
+
+// Create a call from one lifted function to another.
+llvm::CallInst *AddCall(llvm::BasicBlock *source_block,
+                        llvm::Value *dest_func);
 
 // Create a tail-call from one lifted function to another.
 llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
@@ -115,6 +121,10 @@ llvm::Module *LoadHostSemantics(llvm::LLVMContext *context);
 // Loads the semantics for the "target" machine, i.e. the machine of the
 // code that we want to lift.
 llvm::Module *LoadTargetSemantics(llvm::LLVMContext *context);
+
+// Loads the semantics for the `arch`-specific machine, i.e. the machine of the
+// code that we want to lift.
+llvm::Module *LoadArchSemantics(const Arch *arcyh, llvm::LLVMContext *context);
 
 // Store an LLVM module into a file.
 bool StoreModuleToFile(llvm::Module *module, std::string file_name,
@@ -193,5 +203,8 @@ std::vector<llvm::CallInst *> CallersOf(llvm::Function *func);
 // Returns the name of a module.
 std::string ModuleName(llvm::Module *module);
 std::string ModuleName(const std::unique_ptr<llvm::Module> &module);
+
+// Move a function from one module into another module.
+void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module);
 
 }  // namespace remill
