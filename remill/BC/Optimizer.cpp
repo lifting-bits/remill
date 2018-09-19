@@ -14,10 +14,19 @@
  * limitations under the License.
  */
 
-#include <llvm/IR/Function.h>
+#include <llvm/ADT/Triple.h>
+
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/DebugInfo.h>
+#include <llvm/IR/InstIterator.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Metadata.h>
+#include <llvm/IR/MDBuilder.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
 
 #include <llvm/Transforms/IPO.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
