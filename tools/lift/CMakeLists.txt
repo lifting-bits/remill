@@ -42,11 +42,6 @@ add_executable(${REMILL_LIFT}
 # also be set to PUBLIC since mcsema-lift includes some files directly
 list(APPEND PROJECT_INCLUDEDIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_dependencies(${REMILL_LIFT}
-  semantics protobuf_python_module_ida
-  protobuf_python_module_binja
-)
-
 #
 # libraries
 #
