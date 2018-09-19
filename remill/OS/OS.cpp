@@ -19,8 +19,8 @@
 
 #include "remill/OS/OS.h"
 
-DEFINE_string(os, "", "Operating system name of the code being translated. "
-                      "Valid OSes: linux, macos, windows.");
+DEFINE_string(os, REMILL_OS, "Operating system name of the code being "
+                             "translated. Valid OSes: linux, macos, windows.");
 
 namespace remill {
 

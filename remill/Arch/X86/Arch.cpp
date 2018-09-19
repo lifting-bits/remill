@@ -279,8 +279,8 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
   std::string iform_name = xed_iform_enum_t2str(iform);
   ss << iform_name;
 
-  // Some instuctions are "scalable", i.e. there are variants of the
-  // instuction for each effective operand size. We represent these in
+  // Some instructions are "scalable", i.e. there are variants of the
+  // instruction for each effective operand size. We represent these in
   // the semantics files with `_<size>`, so we need to look up the correct
   // selection.
   if (xed_decoded_inst_get_attribute(xedd, XED_ATTRIBUTE_SCALABLE)) {

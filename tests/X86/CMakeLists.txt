@@ -47,7 +47,7 @@ function(COMPILE_X86_TESTS name address_size has_avx has_avx512)
     
   add_custom_command(
     OUTPUT tests_${name}.S
-    COMMAND ${CMAKE_BC_COMPILER} -Wno-override-module -S -O1 -g0 -c tests_${name}.bc -o tests_${name}.S
+    COMMAND ${CMAKE_BC_COMPILER} -Wno-override-module -S -O0 -g0 -c tests_${name}.bc -o tests_${name}.S
     DEPENDS tests_${name}.bc
   )
  
@@ -69,8 +69,10 @@ endfunction()
 find_package(gtest REQUIRED)
 enable_testing()
 
-COMPILE_X86_TESTS(x86 32 0 0)
-COMPILE_X86_TESTS(x86_avx 32 1 0)
+if (NOT APPLE)
+  COMPILE_X86_TESTS(x86 32 0 0)
+  COMPILE_X86_TESTS(x86_avx 32 1 0)
+endif()
 
 COMPILE_X86_TESTS(amd64 64 0 0)
 COMPILE_X86_TESTS(amd64_avx 64 1 0)
