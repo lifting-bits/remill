@@ -871,7 +871,7 @@ static llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
 
   if (var->hasInitializer() && var->hasLocalLinkage()) {
     auto initializer = var->getInitializer();
-#if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 6)
+#if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 8)
     CHECK(!initializer->needsRelocation())
         << "Initializer of global " << var->getName().str()
         << " cannot be trivially copied to the destination module.";
