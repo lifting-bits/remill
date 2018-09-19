@@ -163,7 +163,7 @@ LiftStatus InstructionLifter::LiftIntoBlock(
         << arg_num << " arguments for instruction "
         << arch_inst.Serialize();
 
-    auto arg = remill::NthArgument(isel_func, arg_num);
+    auto arg = NthArgument(isel_func, arg_num);
     auto arg_type = arg->getType();
     auto operand = LiftOperand(arch_inst, block, arg, op);
     arg_num += 1;
@@ -711,9 +711,7 @@ llvm::Function *TraceLifter::GetLiftedTraceDefinition(uint64_t addr) {
 
   CHECK(&(func->getContext()) == &context);
 
-  auto extern_func = remill::DeclareLiftedFunction(
-      module, func->getName().str());
-
+  auto extern_func = DeclareLiftedFunction(module, func->getName().str());
   if (extern_func->isDeclaration()) {
     extern_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
   }
@@ -726,6 +724,9 @@ namespace {
 using DecoderWorkList = std::set<uint64_t>;
 
 // Manage decoding and lifting state.
+//
+// This is pretty ugly, it's like a big bag of poorly structured state. The
+// actual `Lift` method was getting out of hand.
 struct TraceLifterState {
  public:
   TraceLifterState(const Arch *arch, llvm::Module *module_)
@@ -897,28 +898,39 @@ bool TraceLifter::Lift(uint64_t addr_) {
                                    state.block);
           break;
 
+        // Direct jumps could either be local or could be tail-calls. In the
+        // case of a tail call, we'll assume that the trace manager contains
+        // advanced knowledge of this, and so when we go to make a block for
+        // the targeted instruction, we'll either tail call to the target
+        // trace, or we'll just extend out the current trace. Either way, no
+        // sacrifice in correctness is made.
         case Instruction::kCategoryDirectJump:
           llvm::BranchInst::Create(state.GetOrCreateBranchTakenBlock(),
                                    state.block);
           break;
 
         case Instruction::kCategoryIndirectJump:
-//          manager.ForEachDevirtualizedTarget(
-//              state.inst, [] (uint64_t target_addr,
-//                              DevirtualizedTargetKind kind) {
-//
-//              });
+          // TODO(pag): Handle target devirtualization.
           AddTerminatingTailCall(state.block, intrinsics->jump);
           break;
 
-        case remill::Instruction::kCategoryAsyncHyperCall:
+        case Instruction::kCategoryAsyncHyperCall:
           target_trace = intrinsics->async_hyper_call;
           goto check_call_return;
 
         case Instruction::kCategoryIndirectFunctionCall:
+          // TODO(pag): Handle target devirtualization.
           target_trace = intrinsics->function_call;
           goto check_call_return;
 
+        // In the case of a direct function call, we try to handle the
+        // pattern of a call to the next PC as a way of getting access to
+        // an instruction pointer. It is the case where a call to the next
+        // PC could also be something more like a call to a `noreturn` function
+        // and that is OK, because either a user of the trace manager has
+        // already told us that the next PC is a trace head (and we'll pick
+        // that up when trying to lift it), or we'll just have a really big
+        // trace for this function without sacrificing correctness.
         case Instruction::kCategoryDirectFunctionCall:
           if (state.inst.next_pc == state.inst.branch_taken_pc) {
             llvm::BranchInst::Create(state.GetOrCreateNextBlock(),
@@ -937,6 +949,25 @@ bool TraceLifter::Lift(uint64_t addr_) {
           }
 
           goto check_call_return;
+
+        // Lift an async hyper call to check if it should do the hypercall.
+        // If so, it will jump to the `do_hyper_call` block, otherwise it will
+        // jump to the block associated with the next PC. In the case of the
+        // `do_hyper_call` block, we assign it to `state.block`, then go
+        // to `check_call_return` to add the hyper call into that block,
+        // checking if the hyper call returns to the next PC or not.
+        case Instruction::kCategoryConditionalAsyncHyperCall: {
+          auto do_hyper_call = llvm::BasicBlock::Create(
+              context, "", state.func);
+          llvm::BranchInst::Create(
+              do_hyper_call,
+              state.GetOrCreateNextBlock(),
+              LoadBranchTaken(state.block),
+              state.block);
+          state.block = do_hyper_call;
+          target_trace = intrinsics->async_hyper_call;
+          goto check_call_return;
+        }
 
         check_call_return: {
           AddCall(state.block, target_trace);
@@ -959,7 +990,6 @@ bool TraceLifter::Lift(uint64_t addr_) {
           break;
 
         case Instruction::kCategoryConditionalBranch:
-        case Instruction::kCategoryConditionalAsyncHyperCall:
           llvm::BranchInst::Create(
               state.GetOrCreateBranchTakenBlock(),
               state.GetOrCreateBranchNotTakenBlock(),
