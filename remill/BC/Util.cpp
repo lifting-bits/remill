@@ -925,7 +925,7 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
     existing = nullptr;
   }
 
-  IF_LLVM_GTE_36( ClearMetaData(func); )
+  IF_LLVM_GTE_37( ClearMetaData(func); )
 
   for (auto &block : *func) {
     for (auto &inst : block) {
