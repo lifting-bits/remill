@@ -130,6 +130,10 @@ llvm::Module *LoadArchSemantics(const Arch *arcyh, llvm::LLVMContext *context);
 bool StoreModuleToFile(llvm::Module *module, std::string file_name,
                        bool allow_failure=false);
 
+// Store a module, serialized to LLVM IR, into a file.
+bool StoreModuleIRToFile(llvm::Module *module, std::string file_name,
+                         bool allow_failure=false);
+
 // Find the path to the semantics bitcode file associated with `FLAGS_arch`.
 std::string FindTargetSemanticsBitcodeFile(void);
 

@@ -378,6 +378,30 @@ bool StoreModuleToFile(llvm::Module *module, std::string file_name,
   }
 }
 
+// Store a module, serialized to LLVM IR, into a file.
+bool StoreModuleIRToFile(llvm::Module *module, std::string file_name,
+                         bool allow_failure) {
+
+#if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 5)
+  std::error_code ec;
+  llvm::raw_fd_ostream dest(file_name.c_str(), ec, llvm::sys::fs::F_Text);
+  auto good = !ec;
+  auto error = ec.message();
+#else
+  std::string error;
+  llvm::raw_fd_ostream dest(file_name.c_str(), error, llvm::sys::fs::F_Text);
+  auto good = error.empty();
+#endif
+  if (!good) {
+    LOG_IF(FATAL, allow_failure)
+        << "Could not save LLVM IR to " << file_name
+        << ": " << error;
+    return false;
+  }
+  module->print(dest, nullptr);
+  return true;
+}
+
 namespace {
 
 #ifndef REMILL_BUILD_SEMANTICS_DIR_X86

@@ -236,17 +236,12 @@ int main(int argc, char *argv[]) {
   int ret = EXIT_SUCCESS;
 
   if (!FLAGS_ir_out.empty()) {
-    std::error_code ec;
-    llvm::raw_fd_ostream dest(FLAGS_ir_out.c_str(), ec, llvm::sys::fs::F_Text);
-    if (ec) {
+    if (!remill::StoreModuleIRToFile(&dest_module, FLAGS_ir_out, true)) {
       LOG(ERROR)
-          << "Could not save LLVM IR to " << FLAGS_ir_out
-          << ": " << ec.message();
+          << "Could not save LLVM IR to " << FLAGS_ir_out;
       ret = EXIT_FAILURE;
     }
-    dest_module.print(dest, nullptr);
   }
-
   if (!FLAGS_bc_out.empty()) {
     if (!remill::StoreModuleToFile(&dest_module, FLAGS_bc_out, true)) {
       LOG(ERROR)
