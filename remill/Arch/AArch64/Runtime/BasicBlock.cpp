@@ -139,8 +139,9 @@ extern "C" {
   auto &XZR = zero;
 
   addr_t ignored = 0;
+  addr_t ignored2 = 0;
   auto &IGNORE_WRITE_TO_WZR = reinterpret_cast<uint32_t &>(ignored);
-  auto &IGNORE_WRITE_TO_XZR = ignored;
+  auto &IGNORE_WRITE_TO_XZR = reinterpret_cast<uint32_t &>(ignored2);
 
   // Used to suppress writeback for pre- and post-index memory operands when
   // the base register and destination register are the same.
