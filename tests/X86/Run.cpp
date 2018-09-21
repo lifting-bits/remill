@@ -185,6 +185,7 @@ MAKE_RW_MEMORY(64)
 
 MAKE_RW_FP_MEMORY(32)
 MAKE_RW_FP_MEMORY(64)
+MAKE_RW_FP_MEMORY(128)
 
 NEVER_INLINE float64_t __remill_read_memory_f80(Memory *, addr_t addr) {
   LongDoubleStorage storage;

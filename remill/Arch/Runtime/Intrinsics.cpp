@@ -49,10 +49,12 @@ extern "C" void __remill_intrinsics(void) {
   USED(__remill_read_memory_f32);
   USED(__remill_read_memory_f64);
   USED(__remill_read_memory_f80);
+  USED(__remill_read_memory_f128);
 
   USED(__remill_write_memory_f32);
   USED(__remill_write_memory_f64);
   USED(__remill_write_memory_f80);
+  USED(__remill_write_memory_f128);
 
   USED(__remill_barrier_load_load);
   USED(__remill_barrier_load_store);

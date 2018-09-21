@@ -61,6 +61,9 @@ static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
 typedef double float64_t;
 static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
 
+typedef __float128 float128_t;
+static_assert(16 == sizeof(float128_t), "Invalid `float128_t` size.");
+
 // TODO(pag): Assumes little endian.
 struct float80_t final {
   uint8_t data[10];
@@ -248,6 +251,10 @@ MAKE_VECTOR(double, float64, 2, 128, 16);
 MAKE_VECTOR(double, float64, 4, 256, 32);
 MAKE_VECTOR(double, float64, 8, 512, 64);
 
+MAKE_VECTOR(__float128, float128, 1, 128, 16);
+MAKE_VECTOR(__float128, float128, 2, 256, 32);
+MAKE_VECTOR(__float128, float128, 4, 512, 64);
+
 #define NumVectorElems(val) \
     static_cast<addr_t>(VectorType<decltype(val)>::kNumElems)
 
@@ -326,6 +333,7 @@ union vec128_t final {
   uint64v2_t qwords;
   float32v4_t floats;
   float64v2_t doubles;
+  float128v1_t ldoubles;
 
   int8v16_t sbytes;
   int16v8_t swords;
@@ -345,6 +353,7 @@ union vec256_t final {
   uint128v2_t dqwords;
   float32v8_t floats;
   float64v4_t doubles;
+  float128v2_t ldoubles;
 
   int8v32_t sbytes;
   int16v16_t swords;
@@ -364,6 +373,7 @@ union vec512_t final {
   uint128v4_t dqwords;
   float32v16_t floats;
   float64v8_t doubles;
+  float128v4_t ldoubles;
 
   int8v64_t sbytes;
   int16v32_t swords;

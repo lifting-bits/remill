@@ -47,7 +47,7 @@ DEF_SEM(MOVD, D dst, S src) {
 
 template <typename D, typename S>
 DEF_SEM(MOVxPS, D dst, S src) {
-  FWriteV32(dst, FReadV32(src));
+  FWriteV128(dst, FReadV128(src));
   return memory;
 }
 

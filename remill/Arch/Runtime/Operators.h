@@ -124,6 +124,11 @@ float64_t _Read(Memory *, In<float64_t> imm) {
   return reinterpret_cast<const float64_t &>(imm.val);
 }
 
+ALWAYS_INLINE static
+float128_t _Read(Memory *, In<float128_t> imm) {
+  return reinterpret_cast<const float128_t &>(imm.val);
+}
+
 template <typename T>
 ALWAYS_INLINE static
 T _Read(Memory *, In<T> imm) {
@@ -165,6 +170,7 @@ MAKE_MREAD(128, 128, uint, 128)
 MAKE_MREAD(32, 32, float, f32)
 MAKE_MREAD(64, 64, float, f64)
 MAKE_MREAD(80, 64, float, f80)
+MAKE_MREAD(128, 128, float, f128)
 
 #undef MAKE_MREAD
 
@@ -191,6 +197,7 @@ MAKE_RWRITE(uint32_t)
 MAKE_RWRITE(uint64_t)
 MAKE_RWRITE(float32_t)
 MAKE_RWRITE(float64_t)
+MAKE_RWRITE(float128_t)
 
 #undef MAKE_RWRITE
 
@@ -213,6 +220,7 @@ MAKE_MWRITE(128, 128, uint, uint, 128)
 MAKE_MWRITE(32, 32, float, float, f32)
 MAKE_MWRITE(64, 64, float, float, f64)
 MAKE_MWRITE(80, 64, float, float, f80)
+MAKE_MWRITE(128, 128, float, float, f128)
 
 #undef MAKE_MWRITE
 
@@ -243,6 +251,7 @@ MAKE_READRV(S, 64, sqwords, int64_t)
 
 MAKE_READRV(F, 32, floats, float32_t)
 MAKE_READRV(F, 64, doubles, float64_t)
+MAKE_READRV(F, 128, ldoubles, float128_t)
 
 #undef MAKE_READRV
 
@@ -275,6 +284,7 @@ MAKE_READV(S, 128, sdqwords)
 
 MAKE_READV(F, 32, floats)
 MAKE_READV(F, 64, doubles)
+MAKE_READV(F, 128, ldoubles)
 
 #undef MAKE_READV
 
@@ -321,6 +331,7 @@ MAKE_MREADV(S, 128, sdqwords, s128)
 
 MAKE_MREADV(F, 32, floats, f32)
 MAKE_MREADV(F, 64, doubles, f64)
+MAKE_MREADV(F, 128, ldoubles, f128)
 
 #undef MAKE_MREADV
 
@@ -374,6 +385,7 @@ MAKE_WRITEV(S, 128, sdqwords, VnW, int128_t)
 
 MAKE_WRITEV(F, 32, floats, VnW, float32_t)
 MAKE_WRITEV(F, 64, doubles, VnW, float64_t)
+MAKE_WRITEV(F, 128, ldoubles, VnW, float128_t)
 
 MAKE_WRITEV(U, 8, bytes, RVnW, uint8_t)
 MAKE_WRITEV(U, 16, words, RVnW, uint16_t)
@@ -387,6 +399,7 @@ MAKE_WRITEV(S, 64, sqwords, RVnW, int64_t)
 
 MAKE_WRITEV(F, 32, floats, RVnW, float32_t)
 MAKE_WRITEV(F, 64, doubles, RVnW, float64_t)
+MAKE_WRITEV(F, 128, ldoubles, RVnW, float128_t)
 
 #undef MAKE_WRITEV
 
@@ -443,6 +456,7 @@ MAKE_MWRITEV(S, 128, sdqwords, s128, int128_t)
 
 MAKE_MWRITEV(F, 32, floats, f32, float32_t)
 MAKE_MWRITEV(F, 64, doubles, f64, float64_t)
+MAKE_MWRITEV(F, 128, ldoubles, f128, float128_t)
 
 #undef MAKE_MWRITEV
 
@@ -461,6 +475,7 @@ MAKE_WRITE_REF(uint64_t)
 MAKE_WRITE_REF(uint128_t)
 MAKE_WRITE_REF(float32_t)
 MAKE_WRITE_REF(float64_t)
+MAKE_WRITE_REF(float128_t)
 
 #undef MAKE_WRITE_REF
 
@@ -855,6 +870,10 @@ auto TruncTo(T val) -> typename IntegerType<DT>::BT {
       memory = _FWriteV64(memory, op, (val)); \
     } while (false)
 
+#define FWriteV128(op, val) \
+    do { \
+      memory = _FWriteV128(memory, op, (val)); \
+    } while (false)
 
 #define SReadV8(op) _SReadV8(memory, op)
 #define UReadV8(op) _UReadV8(memory, op)
@@ -873,6 +892,7 @@ auto TruncTo(T val) -> typename IntegerType<DT>::BT {
 
 #define FReadV32(op) _FReadV32(memory, op)
 #define FReadV64(op) _FReadV64(memory, op)
+#define FReadV128(op) _FReadV128(memory, op)
 
 // Useful for stubbing out an operator.
 #define MAKE_NOP(...)
