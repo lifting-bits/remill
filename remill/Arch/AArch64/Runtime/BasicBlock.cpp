@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Trail of Bits, Inc.
+ * Copyright (c) 2018 Trail of Bits, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -134,17 +134,22 @@ extern "C" {
   auto &SP = state.gpr.sp.qword;
   auto &WSP = state.gpr.sp.dword;
 
-  addr_t zero = 0;
-  auto &WZR = reinterpret_cast<uint32_t &>(zero);
-  auto &XZR = zero;
+  uint32_t zero1 = 0;
+  auto &WZR = zero1;
+  
+  uint64_t zero2 = 0;
+  auto &XZR = zero2;
 
-  addr_t ignored = 0;
-  auto &IGNORE_WRITE_TO_WZR = reinterpret_cast<uint32_t &>(ignored);
-  auto &IGNORE_WRITE_TO_XZR = ignored;
+  uint32_t ignored1 = 0;
+  auto &IGNORE_WRITE_TO_WZR = ignored1;
+  
+  uint64_t ignored2 = 0;
+  auto &IGNORE_WRITE_TO_XZR = ignored2;
 
   // Used to suppress writeback for pre- and post-index memory operands when
   // the base register and destination register are the same.
-  auto &SUPPRESS_WRITEBACK = ignored;
+  uint64_t ignored3 = 0;
+  auto &SUPPRESS_WRITEBACK = ignored3;
 
   auto &B0 = state.simd.v[0].bytes.elems[0];
   auto &B1 = state.simd.v[1].bytes.elems[0];
