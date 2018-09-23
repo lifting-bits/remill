@@ -17,6 +17,7 @@
 #pragma once
 
 #include <functional>
+#include <initializer_list>
 #include <map>
 #include <unordered_map>
 #include <vector>
@@ -49,6 +50,25 @@ void OptimizeModule(
     llvm::Module *module,
     std::function<llvm::Function *(void)> generator,
     OptimizationGuide guide={});
+
+template <typename K>
+inline static void OptimizeModule(
+    llvm::Module *module,
+    std::initializer_list<llvm::Function *> traces,
+    OptimizationGuide guide={}) {
+  auto trace_it = traces.begin();
+  auto trace_func_gen =
+      [&trace_it, &traces] (void) -> llvm::Function * {
+        if (trace_it != traces.end()) {
+          auto lifted_func = *trace_it;
+          trace_it++;
+          return lifted_func;
+        } else {
+          return nullptr;
+        }
+      };
+  return OptimizeModule(module, trace_func_gen, guide);
+}
 
 template <typename K>
 inline static void OptimizeModule(
