@@ -37,12 +37,12 @@ extern uint64_t DR6;
 extern uint64_t DR7;
 
 // Control regs.
-extern CR0Reg CR0;
-extern CR1Reg CR1;
-extern CR2Reg CR2;
-extern CR3Reg CR3;
-extern CR4Reg CR4;
-extern CR8Reg CR8;
+extern CR0Reg gCR0;
+extern CR1Reg gCR1;
+extern CR2Reg gCR2;
+extern CR3Reg gCR3;
+extern CR4Reg gCR4;
+extern CR8Reg gCR8;
 
 // Method that will implement a basic block. We will clone this method for
 // each basic block in the code being lifted.
@@ -343,13 +343,13 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   auto &_DR7 = DR7;
 
   // Control registers
-  auto &_CR0 = CR0;
-  auto &_CR1 = CR1;
-  auto &_CR2 = CR2;
-  auto &_CR3 = CR3;
-  auto &_CR4 = CR4;
+  auto &CR0 = gCR0.flat;
+  auto &CR1 = gCR1.flat;
+  auto &CR2 = gCR2.flat;
+  auto &CR3 = gCR3.flat;
+  auto &CR4 = gCR4.flat;
 #if 64 == ADDRESS_SIZE_BITS
-  auto &_CR8 = CR8;
+  auto &CR8 = gCR8.flat;
 #endif
 
   // Lifted code will be placed here in clones versions of this function.

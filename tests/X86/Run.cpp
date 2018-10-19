@@ -142,13 +142,13 @@ uint64_t DR6;
 uint64_t DR7;
 
 // Control registers.
-CR0Reg CR0;
-CR1Reg CR1;
-CR2Reg CR2;
-CR3Reg CR3;
-CR4Reg CR4;
+CR0Reg gCR0;
+CR1Reg gCR1;
+CR2Reg gCR2;
+CR3Reg gCR3;
+CR4Reg gCR4;
 #if 64 == ADDRESS_SIZE_BITS
-CR8Reg CR8;
+CR8Reg gCR8;
 #endif
 
 // Invoke a native test case addressed by `gTestToRun` and store the machine
