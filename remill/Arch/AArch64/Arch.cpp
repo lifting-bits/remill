@@ -4679,7 +4679,7 @@ bool TryDecodeUSHLL_ASIMDSHF_L(const InstData &data, Instruction &inst) {
       break;
     default:
       LOG_IF(ERROR, !found)
-          << "Advanced SIMD modified immediates are not yet supported."
+          << "Advanced SIMD modified immediates are not yet supported.";
       // TODO: Add support for advanced SIMD modified immediates
       return false;
   }
