@@ -90,6 +90,20 @@ TEST_INPUTS(
     fcvtzs w0, d0
 TEST_END
 
+TEST_BEGIN(FCVTZS_32S_FLOAT2INT, fcvtzs_w0_s0, 1)
+TEST_INPUTS(
+    0,
+    1,
+    0x80000000,
+    0x7fffffff,
+    0xffffffff,
+    0x3fffffff,
+    0xbf800000,
+    0xc0000000)    
+    fmov s0, ARG1_32
+    fcvtzs w0, s0
+TEST_END
+
 TEST_BEGIN(FCVTZS_64D_FLOAT2INT, fcvtzs_x0_d0, 1)
 TEST_INPUTS(
     0,

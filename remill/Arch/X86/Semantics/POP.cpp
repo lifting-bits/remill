@@ -14,20 +14,9 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_POP_H_
-#define REMILL_ARCH_X86_SEMANTICS_POP_H_
+#pragma once
 
 namespace {
-
-template <typename T>
-DEF_HELPER(PopFromStack) -> T {
-  addr_t op_size = TruncTo<addr_t>(sizeof(T));
-  addr_t old_xsp = Read(REG_XSP);
-  addr_t new_xsp = UAdd(old_xsp, op_size);
-  T val = Read(ReadPtr<T>(old_xsp _IF_32BIT(REG_SS_BASE)));
-  Write(REG_XSP, new_xsp);
-  return val;
-}
 
 // Note: Special handling of `dst` when it has the form `POP [xSP + ...]`
 //       is handled in the arch-specific instruction operand lifter.
@@ -136,9 +125,8 @@ DEF_ISEL(POP_MEMv_16) = POP<M16W>;
 DEF_ISEL_M32or64W(POP_MEMv, POP);
 
 #if 32 == ADDRESS_SIZE_BITS
-DEF_ISEL(POPA) = DoPOPA;
-
-DEF_ISEL(POPAD) = DoPOPAD;
+DEF_ISEL(POPA_32) = DoPOPA;
+DEF_ISEL(POPAD_32) = DoPOPAD;
 #endif
 
 DEF_ISEL(POPF) = DoPOPF;
@@ -234,5 +222,3 @@ DEF_ISEL(POP_FS_64) = POP_FS<uint64_t>;
 DEF_ISEL(POP_GS_16) = POP_GS<uint16_t>;
 DEF_ISEL(POP_GS_64) = POP_GS<uint64_t>;
 #endif  // 64 == ADDRESS_SIZE_BITS
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_POP_H_

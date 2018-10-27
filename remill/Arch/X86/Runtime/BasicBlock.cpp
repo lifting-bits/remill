@@ -16,16 +16,33 @@
 
 #include <algorithm>
 #include <bitset>
-#include <cfenv>
-#include <cfloat>
 #include <cmath>
 
+#include "remill/Arch/Float.h"
 #include "remill/Arch/X86/Runtime/State.h"
 
 extern "C" {
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-variable"
+
+// Debug registers.
+extern uint64_t DR0;
+extern uint64_t DR1;
+extern uint64_t DR2;
+extern uint64_t DR3;
+extern uint64_t DR4;
+extern uint64_t DR5;
+extern uint64_t DR6;
+extern uint64_t DR7;
+
+// Control regs.
+extern CR0Reg CR0;
+extern CR1Reg CR1;
+extern CR2Reg CR2;
+extern CR3Reg CR3;
+extern CR4Reg CR4;
+extern CR8Reg CR8;
 
 // Method that will implement a basic block. We will clone this method for
 // each basic block in the code being lifted.
@@ -35,7 +52,10 @@ extern "C" {
 Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
 
   bool branch_taken = false;
-  addr_t zero = 0;
+  addr_t zero1 = 0;
+  addr_t zero2 = 0;
+  addr_t zero3 = 0;
+  addr_t zero4 = 0;
 
   // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
@@ -139,12 +159,12 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   auto &DS = state.seg.ds.flat;
   auto &CS = state.seg.cs.flat;
 
-  auto &SS_BASE = zero;
-  auto &ES_BASE = zero;
-  auto &GS_BASE = state.addr.gs_base.IF_64BIT_ELSE(qword, dword);
-  auto &FS_BASE = state.addr.fs_base.IF_64BIT_ELSE(qword, dword);
-  auto &DS_BASE = zero;
-  auto &CS_BASE = zero;
+  auto &SS_BASE = zero1;
+  auto &ES_BASE = zero2;
+  auto &GS_BASE = state.addr.gs_base.aword;
+  auto &FS_BASE = state.addr.fs_base.aword;
+  auto &DS_BASE = zero3;
+  auto &CS_BASE = zero4;
 
 #if HAS_FEATURE_AVX
 #if HAS_FEATURE_AVX512
@@ -311,6 +331,26 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   auto &PF = state.aflag.pf;
   auto &SF = state.aflag.sf;
   auto &ZF = state.aflag.zf;
+
+  // Debug registers. No-ops keep them from being stripped off the module.
+  auto &_DR0 = DR0;
+  auto &_DR1 = DR1;
+  auto &_DR2 = DR2;
+  auto &_DR3 = DR3;
+  auto &_DR4 = DR4;
+  auto &_DR5 = DR5;
+  auto &_DR6 = DR6;
+  auto &_DR7 = DR7;
+
+  // Control registers
+  auto &_CR0 = CR0;
+  auto &_CR1 = CR1;
+  auto &_CR2 = CR2;
+  auto &_CR3 = CR3;
+  auto &_CR4 = CR4;
+#if 64 == ADDRESS_SIZE_BITS
+  auto &_CR8 = CR8;
+#endif
 
   // Lifted code will be placed here in clones versions of this function.
   return memory;

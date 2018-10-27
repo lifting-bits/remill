@@ -14,25 +14,26 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_RUNTIME_STATE_H_
-#define REMILL_ARCH_RUNTIME_STATE_H_
+#pragma once
 
 #include "remill/Arch/Runtime/HyperCall.h"
 
 struct ArchState {
  public:
   AsyncHyperCall::Name hyper_call;
+
   uint32_t _0;
 
   // Used to communicate the interrupt vector number to an intrinsic. The
   // issue is that the interrupt number is part of an instruction, and our
   // generic three-operand block/intrinsic form (state, mem, pc) doesn't
   // have room to hold a vector number.
-  uint32_t hyper_call_vector;
-  uint32_t _1;
+  union {
+    uint64_t addr_to_load;
+    uint64_t addr_to_store;
+    uint32_t hyper_call_vector;
+  };
 } __attribute__((packed));
 
 static_assert(16 == sizeof(ArchState),
               "Invalid packing of `struct ArchState`.");
-
-#endif  // REMILL_ARCH_RUNTIME_STATE_H_

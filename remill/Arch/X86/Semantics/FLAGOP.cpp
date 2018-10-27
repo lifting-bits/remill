@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_FLAGOP_H_
-#define REMILL_ARCH_X86_SEMANTICS_FLAGOP_H_
+#pragma once
 
 namespace {
 DEF_SEM(DoCLD) {
@@ -113,4 +112,3 @@ DEF_ISEL(CLAC) = DoCLAC;
 DEF_ISEL(STAC) = DoSTAC;
 DEF_ISEL(CLI) = DoCLI;
 DEF_ISEL(STI) = DoSTI;
-#endif  // REMILL_ARCH_X86_SEMANTICS_FLAGOP_H_

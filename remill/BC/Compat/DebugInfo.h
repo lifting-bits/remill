@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_COMPAT_DEBUGINFO_H_
-#define REMILL_BC_COMPAT_DEBUGINFO_H_
+#pragma once
 
 #include "remill/BC/Version.h"
 
@@ -26,5 +25,3 @@
 #endif
 
 #include <llvm/IR/DebugLoc.h>
-
-#endif  // REMILL_BC_COMPAT_DEBUGINFO_H_

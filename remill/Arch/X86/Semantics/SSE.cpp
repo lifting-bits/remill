@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_SSE_H_
-#define REMILL_ARCH_X86_SEMANTICS_SSE_H_
+#pragma once
 
 namespace {
 
@@ -242,6 +241,32 @@ DEF_ISEL(VUCOMISS_XMMdq_XMMd) = COMISS<V128, V128>;
 
 namespace {
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHUFPS, D dst, S1 src1, S2 src2, I8 src3) {
+  auto dst_vec = UClearV32(UReadV32(src1));
+  auto src1_vec = UReadV32(src1);
+  auto src2_vec = UReadV32(src2);
+  auto imm = Read(src3);
+  auto num_groups = NumVectorElems(dst_vec);
+
+  _Pragma("unroll")
+  for (std::size_t i = 0; i < num_groups; ++i) {
+    auto order = UShr8(imm, TruncTo<uint8_t>(i * 2));
+    auto sel = UAnd8(order, 0x3_u8);
+    auto sel_val = UExtractV32(Select(i < 2, src1_vec, src2_vec), sel);
+    dst_vec.elems[i] = sel_val;
+  }
+  UWriteV32(dst, dst_vec);
+
+  return memory;
+}
+
+} // namespace
+
+DEF_ISEL(SHUFPS_XMMps_XMMps_IMMb) = SHUFPS<V128W, V128, V128>;
+
+namespace {
+
 template <typename D, typename S1>
 DEF_SEM(PSHUFD, D dst, S1 src1, I8 src2) {
   auto dst_vec = UClearV32(UReadV32(src1));
@@ -259,7 +284,7 @@ DEF_SEM(PSHUFD, D dst, S1 src1, I8 src2) {
       auto shift = UMul(sel, 32_u8);
       order = UShr(order, 2_u8);
       auto sel_val = UShr(group, UInt128(shift));
-      dst_vec = UInsertV32(dst_vec, k, TruncTo<uint32_t>(sel_val));
+      UUpdateV32(dst_vec, k, TruncTo<uint32_t>(sel_val));
     }
   }
   UWriteV32(dst, dst_vec);
@@ -287,7 +312,7 @@ IF_AVX(DEF_ISEL(VPSHUFD_YMMqq_YMMqq_IMMb) = PSHUFD<VV256W, V256>;)
 namespace {
 
 template <typename D, typename S1>
-  DEF_SEM(PSHUFLW, D dst, S1 src1, I8 src2) {
+DEF_SEM(PSHUFLW, D dst, S1 src1, I8 src2) {
   // Source operand is packed with word (16-bit) integers to be shuffled,
   // but src1 is also a vector of one or more 128-bit "lanes":
   auto src_vec = UReadV128(src1);
@@ -327,6 +352,24 @@ template <typename D, typename S1>
   return memory;
 }
 
+template <typename D, typename S1>
+DEF_SEM(PSHUFHW, D dst, S1 src1, I8 src2) {
+  auto dst_vec = UReadV16(src1);
+  auto src_vec = UReadV16(src1);
+  auto imm = Read(src2);
+  auto num_groups = NumVectorElems(src_vec);
+
+  _Pragma("unroll")
+  for (std::size_t i = 4; i < num_groups; ++i) {
+    auto order = UShr8(imm, TruncTo<uint8_t>((i - 4) * 2_u8));
+    auto sel = UAnd8(order, 0x3_u8);
+    auto sel_val = UExtractV16(src_vec, sel + 4);
+    dst_vec.elems[i] = sel_val;
+  }
+  UWriteV16(dst, dst_vec);
+  return memory;
+}
+
 } // namespace
 
 DEF_ISEL(PSHUFLW_XMMdq_MEMdq_IMMb) = PSHUFLW<V128W, MV128>;
@@ -344,6 +387,8 @@ IF_AVX(DEF_ISEL(VPSHUFLW_YMMqq_YMMqq_IMMb) = PSHUFLW<VV256W, V256>;)
 4436 VPSHUFLW VPSHUFLW_ZMMu16_MASKmskw_ZMMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_512 ATTRIBUTES: MASKOP_EVEX 
 4437 VPSHUFLW VPSHUFLW_ZMMu16_MASKmskw_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_512 ATTRIBUTES: DISP8_FULLMEM MASKOP_EVEX 
 */
+
+DEF_ISEL(PSHUFHW_XMMdq_XMMdq_IMMb) = PSHUFHW<V128W, V128>;
 
 namespace {
 
@@ -1355,6 +1400,76 @@ IF_AVX(DEF_ISEL(VMAXSD_XMMdq_XMMdq_XMMq) = MAXSD<VV128W, V128, V128>;)
 namespace {
 
 template <typename D, typename S1, typename S2>
+DEF_SEM(MINPS, D dst, S1 src1, S2 src2) {
+  auto dest_vec = FReadV32(src1);
+  auto src2_vec = FReadV32(src2);
+
+  auto vec_count = NumVectorElems(src2_vec);
+  _Pragma("unroll")
+  for (std::size_t i = 0; i < vec_count; i++) {
+    auto v1 = FExtractV32(dest_vec, i);
+    auto v2 = FExtractV32(src2_vec, i);
+
+    auto min = v1;
+
+    // If either float is a NaN (SNaN or QNaN):
+    if (__builtin_isunordered(v1, v2)) {
+      min = v2;
+    // or if both floats are 0.0:
+    } else if ((v1 == 0.0) && (v2 == 0.0)) {
+      min = v2;
+    // or if src2 is less than src1:
+    } else if (__builtin_isless(v2, v1)) {
+      min = v2;
+    }
+
+    dest_vec = FInsertV32(dest_vec, i, min);
+  }
+  FWriteV32(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(MAXPS, D dst, S1 src1, S2 src2) {
+  auto dest_vec = FReadV32(src1);
+  auto src2_vec = FReadV32(src2);
+
+  auto vec_count = NumVectorElems(src2_vec);
+  _Pragma("unroll")
+  for (std::size_t i = 0; i < vec_count; i++) {
+    auto v1 = FExtractV32(dest_vec, i);
+    auto v2 = FExtractV32(src2_vec, i);
+
+    auto max = v1;
+
+    // If either float is a NaN (SNaN or QNaN):
+    if (__builtin_isunordered(v1, v2)) {
+      max = v2;
+    // or if both floats are 0.0:
+    } else if ((v1 == 0.0) && (v2 == 0.0)) {
+      max = v2;
+    // or if src2 is greater than src1:
+    } else if (__builtin_isgreater(v2, v1)) {
+      max = v2;
+    }
+
+    dest_vec = FInsertV32(dest_vec, i, max);
+  }
+  FWriteV32(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
+}
+
+}
+
+DEF_ISEL(MINPS_XMMps_MEMps) = MINPS<V128W, V128, MV128>;
+DEF_ISEL(MINPS_XMMps_XMMps) = MINPS<V128W, V128, V128>;
+
+DEF_ISEL(MAXPS_XMMps_XMMps) = MAXPS<V128W, V128, V128>;
+DEF_ISEL(MAXPS_XMMps_MEMps) = MAXPS<V128W, V128, MV128>;
+
+namespace {
+
+template <typename D, typename S1, typename S2>
 DEF_SEM(UNPCKLPS, D dst, S1 src1, S2 src2) {
   // Initialize with a copy of src1 as a vector of 32-bit (DWORD) floats:
   auto temp_vec = FReadV32(src1);
@@ -1557,7 +1672,7 @@ DEF_SEM(VSQRTSS, D dst, S1 src1, S2 src2) {
   // Initialize dest vector, while also copying src1[127:32] -> dst[127:32].
   auto temp_vec = FReadV32(src1);
   
-  // Store the square root result in dest[32:0]:
+  // Store the square root result in dest[31:0]:
   auto square_root = SquareRoot32(memory, state, src_float);
   temp_vec = FInsertV32(temp_vec, 0, square_root);
   
@@ -1578,6 +1693,84 @@ IF_AVX(DEF_ISEL(VSQRTSS_XMMdq_XMMdq_XMMd) = VSQRTSS<VV128W, V128, V128>;)
 4317 VSQRTSS VSQRTSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
 4318 VSQRTSS VSQRTSS_XMMf32_MASKmskw_XMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: DISP8_SCALAR MASKOP_EVEX MEMORY_FAULT_SUPPRESSION MXCSR SIMD_SCALAR
 */
+
+
+namespace {
+
+DEF_HELPER(SquareRoot64, float64_t src_float) -> float64_t {
+  auto square_root = src_float;
+
+  // Special cases for invalid square root operations. See Intel manual, Table E-10.
+  if (IsNaN(src_float)) {
+    // If src is SNaN, return the SNaN converted to a QNaN:
+    if (IsSignalingNaN(src_float)) {
+      nan64_t temp_nan = {src_float};
+      temp_nan.is_quiet_nan = 1;  // equivalent to a bitwise OR with 0x0008000000000000
+      square_root = temp_nan.d;
+
+    // Else, src is a QNaN. Pass it directly to the result:
+    } else {
+      square_root = src_float;
+    }
+  } else {  // a number, that is, not a NaN
+    // A negative operand (except -0.0) results in the QNaN indefinite value.
+    if (IsNegative(src_float) && src_float != -0.0) {
+      uint64_t indef_qnan = 0xFFF8000000000000ULL;
+      square_root = reinterpret_cast<float64_t &>(indef_qnan);
+    } else {
+      square_root = std::sqrt(src_float);
+    }
+  }
+
+  return square_root;
+}
+
+template <typename D, typename S1>
+DEF_SEM(SQRTSD, D dst, S1 src1) {
+  // Extract a "double-precision" (64-bit) float from [63:0] of src1 vector:
+  auto src_float = FExtractV64(FReadV64(src1), 0);
+
+  // Store the square root result in dest[63:0]:
+  auto square_root = SquareRoot64(memory, state, src_float);
+  auto temp_vec = FReadV64(dst);  // initialize a destination vector
+  temp_vec = FInsertV64(temp_vec, 0, square_root);
+
+  // Write out the result and return memory state:
+  FWriteV64(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
+}
+
+#if HAS_FEATURE_AVX
+template <typename D, typename S1, typename S2>
+DEF_SEM(VSQRTSD, D dst, S1 src1, S2 src2) {
+  // Extract the single-precision float from [63:0] of the src2 vector:
+  auto src_float = FExtractV64(FReadV64(src2), 0);
+
+  // Initialize dest vector, while also copying src1[127:64] -> dst[127:64].
+  auto temp_vec = FReadV64(src1);
+
+  // Store the square root result in dest[63:0]:
+  auto square_root = SquareRoot64(memory, state, src_float);
+  temp_vec = FInsertV64(temp_vec, 0, square_root);
+
+  // Write out the result and return memory state:
+  FWriteV64(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
+}
+#endif // HAS_FEATURE_AVX
+
+} // namespace
+
+DEF_ISEL(SQRTSD_XMMsd_MEMsd) = SQRTSD<V128W, MV64>;
+DEF_ISEL(SQRTSD_XMMsd_XMMsd) = SQRTSD<V128W, V128>;
+IF_AVX(DEF_ISEL(VSQRTSD_XMMdq_XMMdq_MEMq) = VSQRTSD<VV128W, V128, MV64>;)
+IF_AVX(DEF_ISEL(VSQRTSD_XMMdq_XMMdq_XMMq) = VSQRTSD<VV128W, V128, V128>;)
+/*
+4295 VSQRTSD VSQRTSD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR
+4296 VSQRTSD VSQRTSD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR
+4297 VSQRTSD VSQRTSD_XMMf64_MASKmskw_XMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: DISP8_SCALAR MASKOP_EVEX MEMORY_FAULT_SUPPRESSION MXCSR SIMD_SCALAR
+*/
+
 
 namespace {
 
@@ -1770,5 +1963,3 @@ DEF_ISEL(LDMXCSR_MEMd) = LDMXCSR;
 DEF_ISEL(STMXCSR_MEMd) = STMXCSR;
 IF_AVX(DEF_ISEL(VLDMXCSR_MEMd) = LDMXCSR;)
 IF_AVX(DEF_ISEL(VSTMXCSR_MEMd) = STMXCSR;)
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_SSE_H_

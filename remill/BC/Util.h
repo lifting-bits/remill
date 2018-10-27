@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_UTIL_H_
-#define REMILL_BC_UTIL_H_
+#pragma once
 
 #include <functional>
 #include <string>
@@ -40,8 +39,14 @@ class LLVMContext;
 
 namespace remill {
 
+class Arch;
+
 // Initialize the attributes for a lifted function.
 void InitFunctionAttributes(llvm::Function *F);
+
+// Create a call from one lifted function to another.
+llvm::CallInst *AddCall(llvm::BasicBlock *source_block,
+                        llvm::Value *dest_func);
 
 // Create a tail-call from one lifted function to another.
 llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
@@ -79,6 +84,12 @@ void StoreProgramCounter(llvm::BasicBlock *block, uint64_t pc);
 // Update the program counter in the state struct with a new value.
 void StoreProgramCounter(llvm::BasicBlock *block, llvm::Value *pc);
 
+// Return the memory pointer argument.
+llvm::Value *LoadMemoryPointerArg(llvm::Function *func);
+
+// Return the program counter argument.
+llvm::Value *LoadProgramCounterArg(llvm::Function *function);
+
 // Return the current memory pointer.
 llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block);
 
@@ -95,6 +106,9 @@ llvm::Function *FindFunction(llvm::Module *M, std::string name);
 // Find a global variable with name `name` in the module `M`.
 llvm::GlobalVariable *FindGlobaVariable(llvm::Module *M, std::string name);
 
+// Try to verify a module.
+bool VerifyModule(llvm::Module *module);
+
 // Parses and loads a bitcode file into memory.
 llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
                                  std::string file_name,
@@ -108,9 +122,17 @@ llvm::Module *LoadHostSemantics(llvm::LLVMContext *context);
 // code that we want to lift.
 llvm::Module *LoadTargetSemantics(llvm::LLVMContext *context);
 
+// Loads the semantics for the `arch`-specific machine, i.e. the machine of the
+// code that we want to lift.
+llvm::Module *LoadArchSemantics(const Arch *arcyh, llvm::LLVMContext *context);
+
 // Store an LLVM module into a file.
 bool StoreModuleToFile(llvm::Module *module, std::string file_name,
                        bool allow_failure=false);
+
+// Store a module, serialized to LLVM IR, into a file.
+bool StoreModuleIRToFile(llvm::Module *module, std::string file_name,
+                         bool allow_failure=false);
 
 // Find the path to the semantics bitcode file associated with `FLAGS_arch`.
 std::string FindTargetSemanticsBitcodeFile(void);
@@ -186,6 +208,7 @@ std::vector<llvm::CallInst *> CallersOf(llvm::Function *func);
 std::string ModuleName(llvm::Module *module);
 std::string ModuleName(const std::unique_ptr<llvm::Module> &module);
 
-}  // namespace remill
+// Move a function from one module into another module.
+void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module);
 
-#endif  // REMILL_BC_UTIL_H_
+}  // namespace remill

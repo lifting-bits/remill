@@ -55,3 +55,43 @@ TEST_INPUTS(
     fmadd s3, s0, s1, s2
 TEST_END
 
+// FMADD  <Dd>, <Dn>, <Dm>, <Da>
+TEST_BEGIN(FMADD_D_FLOATDP3, fmadd_d_pos_floatdp3, 2)
+TEST_INPUTS(
+    0x0000000000000000, 0x0000000000000000, // 0, 0
+    0x0000000000000000, 0x0000000000000001, // 0, smallest representable float
+    0x3fffffffffffffff, 0x0000000000000001, // 1.999999999999999, small float
+    0x3fffffffffffffff, 0x3fffffffffffffff, // 1.999999999999999 for both
+    0x3fffffffffffffff, 0x4000000000000000, // 1.999999999999999, 2.0
+    0x4000000000000000, 0x3fffffffffffffff, // 2.0, 1.999999999999999
+    0x7FFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFF, // NaN, NaN
+    0x8000000000000000, 0x7FFFFFFFFFFFFFFF, // -0.0, NaN
+    0x7FFFFFFFFFFFFFFF, 0x8000000000000000, // NaN, -0.0
+    0x8000000000000000, 0x8000000000000000, // -0.0, -0.0
+    0xffffffffffffffff, 0xffffffffffffffff) // -NaN, -NaN
+
+    fmov d0, ARG1_64
+    fmov d1, ARG2_64
+    fmov d2, #0x22
+    fmadd d3, d0, d1, d2
+TEST_END
+
+TEST_BEGIN(FMADD_D_FLOATDP3, fmadd_d_neg_floatdp3, 2)
+TEST_INPUTS(
+    0x0000000000000000, 0x0000000000000000, // 0, 0
+    0x0000000000000000, 0x0000000000000001, // 0, smallest representable float
+    0x3fffffffffffffff, 0x0000000000000001, // 1.999999999999999, small float
+    0x3fffffffffffffff, 0x3fffffffffffffff, // 1.999999999999999 for both
+    0x3fffffffffffffff, 0x4000000000000000, // 1.999999999999999, 2.0
+    0x4000000000000000, 0x3fffffffffffffff, // 2.0, 1.999999999999999
+    0x7FFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFF, // NaN, NaN
+    0x8000000000000000, 0x7FFFFFFFFFFFFFFF, // -0.0, NaN
+    0x7FFFFFFFFFFFFFFF, 0x8000000000000000, // NaN, -0.0
+    0x8000000000000000, 0x8000000000000000, // -0.0, -0.0
+    0xffffffffffffffff, 0xffffffffffffffff) // -NaN, -NaN
+
+    fmov d0, ARG1_64
+    fmov d1, ARG2_64
+    fmov d2, -#0x22
+    fmadd d3, d0, d1, d2
+TEST_END

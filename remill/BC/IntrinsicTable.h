@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_INTRINSICTABLE_H_
-#define REMILL_BC_INTRINSICTABLE_H_
+#pragma once
+
+#include <memory>
 
 namespace llvm {
 class ConstantArray;
@@ -27,6 +28,9 @@ namespace remill {
 
 class IntrinsicTable {
  public:
+  inline explicit IntrinsicTable(const std::unique_ptr<llvm::Module> &module)
+      : IntrinsicTable(module.get()) {}
+
   explicit IntrinsicTable(llvm::Module *module);
 
   llvm::Function * const error;
@@ -87,5 +91,3 @@ class IntrinsicTable {
 };
 
 }  // namespace remill
-
-#endif  // REMILL_BC_INTRINSICTABLE_H_

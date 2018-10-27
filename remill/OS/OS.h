@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_OS_OS_H_
-#define REMILL_OS_OS_H_
+#pragma once
 
 #include <string>
 
@@ -49,7 +48,8 @@ enum OSName : uint32_t {
   kOSInvalid,
   kOSmacOS,
   kOSLinux,
-  kOSWindows
+  kOSWindows,
+  kOSVxWorks
 };
 
 OSName GetOSName(std::string name_);
@@ -57,5 +57,3 @@ OSName GetOSName(std::string name_);
 std::string GetOSName(OSName name);
 
 }  // namespace remill
-
-#endif  // REMILL_OS_OS_H_

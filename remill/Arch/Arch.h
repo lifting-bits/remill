@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_ARCH_H_
-#define REMILL_ARCH_ARCH_H_
+#pragma once
 
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/DataLayout.h>
@@ -37,7 +38,31 @@ namespace remill {
 enum OSName : uint32_t;
 enum ArchName : uint32_t;
 
+class Arch;
 class Instruction;
+
+struct Register {
+ public:
+  Register(const std::string &name_, uint64_t offset_, uint64_t size_,
+           uint64_t order_, llvm::Type *type_);
+
+  std::string name;  // Name of the register.
+  uint64_t offset;  // Byte offset in `State`.
+  uint64_t size;  // Size of this register.
+  uint64_t order;  // Order of appears in `__remill_basic_block`.
+  llvm::Type *type;  // LLVM type associated with the field in `State`.
+
+  // Returns the enclosing register of size AT LEAST `size`, or `nullptr`.
+  const Register *EnclosingRegisterOfSize(uint64_t size) const;
+
+  // Returns the largest enclosing register containing the current register.
+  const Register *EnclosingRegister(void) const;
+
+ private:
+  friend class Arch;
+
+  const Register * parent;
+};
 
 class Arch {
  public:
@@ -47,12 +72,29 @@ class Arch {
   // operating system and architecture class.
   static const Arch *Get(OSName os, ArchName arch_name);
 
+  // Return information about the register at offset `offset` in the `State`
+  // structure.
+  const Register *RegisterAtStateOffset(uint64_t offset) const;
+
+  // Return information about a register, given its name.
+  const Register *RegisterByName(const std::string &name) const;
+
   // Converts an LLVM module object to have the right triple / data layout
-  // information for the target architecture.
+  // information for the target architecture and ensures remill requied functions
+  // have the appropriate prototype and internal variables
   void PrepareModule(llvm::Module *mod) const;
 
   inline void PrepareModule(const std::unique_ptr<llvm::Module> &mod) const {
     PrepareModule(mod.get());
+  }
+
+  // Converts an LLVM module object to have the right triple / data layout
+  // information for the target architecture
+  void PrepareModuleDataLayout(llvm::Module *mod) const;
+
+  inline void PrepareModuleDataLayout(
+      const std::unique_ptr<llvm::Module> &mod) const {
+    PrepareModuleDataLayout(mod.get());
   }
 
   // Decode an instruction.
@@ -102,6 +144,13 @@ class Arch {
   // Defined in `remill/Arch/AArch64/Arch.cpp`.
   static const Arch *GetAArch64(OSName os, ArchName arch_name);
 
+  // Get all of the register information from the prepared module.
+  void CollectRegisters(llvm::Module *module) const;
+
+  mutable std::vector<Register> registers;
+  mutable std::vector<const Register *> reg_by_offset;
+  mutable std::unordered_map<std::string, const Register *> reg_by_name;
+
   Arch(void) = delete;
 };
 
@@ -114,5 +163,3 @@ const Arch *GetHostArch(void);
 const Arch *GetTargetArch(void);
 
 }  // namespace remill
-
-#endif  // REMILL_ARCH_ARCH_H_

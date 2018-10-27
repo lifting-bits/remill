@@ -253,6 +253,11 @@ DEF_ISEL_MnW_Mn_Rn(BTC_MEMv_GPRv, BTCmem);
 DEF_ISEL_RnW_Rn_Rn(BTC_GPRv_GPRv, BTCreg);
 
 namespace {
+DEF_SEM(BSWAP_16, R16W dst, R16 src) {
+  Write(dst, static_cast<uint16_t>(0));
+  return memory;
+}
+
 DEF_SEM(BSWAP_32, R32W dst, R32 src) {
 //  auto val = Read(src);
 //  auto d = UAnd(val, 0xff);
@@ -299,6 +304,7 @@ DEF_SEM(LZCNT, D dst, S src) {
 
 }  // namespace
 
+DEF_ISEL(BSWAP_GPRv_16) = BSWAP_16;
 DEF_ISEL(BSWAP_GPRv_32) = BSWAP_32;
 IF_64BIT(DEF_ISEL(BSWAP_GPRv_64) = BSWAP_64;)
 

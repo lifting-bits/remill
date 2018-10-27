@@ -23,8 +23,10 @@
 #include <utility>
 #include <vector>
 
+#ifndef WIN32
 #include <sys/stat.h>
 #include <unistd.h>
+#endif
 
 #include <llvm/ADT/SmallVector.h>
 
@@ -39,15 +41,16 @@
 
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/SourceMgr.h>
-#include <llvm/Support/ToolOutputFile.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include "remill/Arch/Arch.h"
 #include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
 #include "remill/BC/Compat/BitcodeReaderWriter.h"
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/IRReader.h"
+#include "remill/BC/Compat/ToolOutputFile.h"
 #include "remill/BC/Compat/Verifier.h"
 #include "remill/BC/Util.h"
 #include "remill/BC/Version.h"
@@ -55,8 +58,17 @@
 
 DECLARE_string(arch);
 
-namespace remill {
+#ifdef WIN32
+namespace {
+extern "C" std::uint32_t GetProcessId(std::uint32_t handle);
 
+std::uint32_t getpid(void) {
+  return GetProcessId(0);
+}
+}
+#endif
+
+namespace remill {
 // Initialize the attributes for a lifted function.
 void InitFunctionAttributes(llvm::Function *function) {
   // Make sure functions are treated as if they return. LLVM doesn't like
@@ -64,10 +76,17 @@ void InitFunctionAttributes(llvm::Function *function) {
   function->removeFnAttr(llvm::Attribute::NoReturn);
 
   // Don't use any exception stuff.
-  function->addFnAttr(llvm::Attribute::NoUnwind);
   function->removeFnAttr(llvm::Attribute::UWTable);
   function->removeFnAttr(llvm::Attribute::NoInline);
+  function->addFnAttr(llvm::Attribute::NoUnwind);
   function->addFnAttr(llvm::Attribute::InlineHint);
+}
+
+// Create a call from one lifted function to another.
+llvm::CallInst *AddCall(llvm::BasicBlock *source_block,
+                        llvm::Value *dest_func) {
+  llvm::IRBuilder<> ir(source_block);
+  return ir.CreateCall(dest_func, LiftedFunctionArgs(source_block));
 }
 
 // Create a tail-call from one lifted function to another.
@@ -83,6 +102,7 @@ llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
     }
 
     llvm::CallInst *call_target_instr = ir.CreateCall(dest_func, args);
+    call_target_instr->setTailCall(true);
     ir.CreateRet(call_target_instr);
     return call_target_instr;
   } else {
@@ -109,8 +129,8 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
     dest_func = ir.CreateLoad(dest_func);
   }
 
-  llvm::CallInst *call_target_instr = ir.CreateCall(
-      dest_func, LiftedFunctionArgs(source_block));
+  auto call_target_instr = AddCall(source_block, dest_func);
+  call_target_instr->setTailCall(true);
 
   ir.CreateRet(call_target_instr);
   return call_target_instr;
@@ -133,6 +153,11 @@ llvm::Value *FindVarInFunction(llvm::Function *function, std::string name,
     }
   }
 
+  auto module = function->getParent();
+  if (auto var = module->getGlobalVariable(name)) {
+     return var;
+  }
+
   CHECK(allow_failure) << "Could not find variable " << name << " in function "
                        << function->getName().str();
   return nullptr;
@@ -141,14 +166,40 @@ llvm::Value *FindVarInFunction(llvm::Function *function, std::string name,
 // Find the machine state pointer.
 llvm::Value *LoadStatePointer(llvm::Function *function) {
   CHECK(kNumBlockArgs == function->arg_size())
-      << "Invalid block-like function. Expected two arguments: state "
-      << "pointer and program counter in function "
+      << "Invalid block-like function. Expected three arguments: state "
+      << "pointer, program counter, and memory pointer in function "
       << function->getName().str();
 
   static_assert(0 == kStatePointerArgNum,
                 "Expected state pointer to be the first operand.");
 
   return NthArgument(function, kStatePointerArgNum);
+}
+
+// Return the memory pointer argument.
+llvm::Value *LoadMemoryPointerArg(llvm::Function *function) {
+  CHECK(kNumBlockArgs == function->arg_size())
+      << "Invalid block-like function. Expected three arguments: state "
+      << "pointer, program counter, and memory pointer in function "
+      << function->getName().str();
+
+  static_assert(2 == kMemoryPointerArgNum,
+                "Expected state pointer to be the first operand.");
+
+  return NthArgument(function, kMemoryPointerArgNum);
+}
+
+// Return the program counter argument.
+llvm::Value *LoadProgramCounterArg(llvm::Function *function) {
+  CHECK(kNumBlockArgs == function->arg_size())
+      << "Invalid block-like function. Expected three arguments: state "
+      << "pointer, program counter, and memory pointer in function "
+      << function->getName().str();
+
+  static_assert(1 == kPCArgNum,
+                "Expected state pointer to be the first operand.");
+
+  return NthArgument(function, kPCArgNum);
 }
 
 llvm::Value *LoadStatePointer(llvm::BasicBlock *block) {
@@ -163,8 +214,7 @@ llvm::Value *LoadProgramCounter(llvm::BasicBlock *block) {
 
 // Return a reference to the current program counter.
 llvm::Value *LoadProgramCounterRef(llvm::BasicBlock *block) {
-  llvm::IRBuilder<> ir(block);
-  return ir.CreateLoad(FindVarInFunction(block->getParent(), "PC"));
+  return FindVarInFunction(block->getParent(), "PC");
 }
 
 // Update the program counter in the state struct with a new value.
@@ -191,7 +241,7 @@ llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block) {
 llvm::Value *LoadBranchTaken(llvm::BasicBlock *block) {
   llvm::IRBuilder<> ir(block);
   auto cond = ir.CreateLoad(
-      ir.CreateLoad(FindVarInFunction(block->getParent(), "BRANCH_TAKEN")));
+      FindVarInFunction(block->getParent(), "BRANCH_TAKEN"));
   auto true_val = llvm::ConstantInt::get(cond->getType(), 1);
   return ir.CreateICmpEQ(cond, true_val);
 }
@@ -212,22 +262,42 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *module,
   return module->getGlobalVariable(name, true);
 }
 
+// Loads the semantics for the `arch`-specific machine, i.e. the machine of the
+// code that we want to lift.
+llvm::Module *LoadArchSemantics(const Arch *arch, llvm::LLVMContext *context) {
+  auto arch_name = GetArchName(arch->arch_name);
+  auto path = FindSemanticsBitcodeFile(arch_name);
+  LOG(INFO)
+      << "Loading host " REMILL_ARCH " semantics from file " << path;
+  auto module = LoadModuleFromFile(context, path);
+  arch->PrepareModule(module);
+  return module;
+}
+
 // Loads the semantics for the "host" machine, i.e. the machine that this
 // remill is compiled on.
 llvm::Module *LoadHostSemantics(llvm::LLVMContext *context) {
-  auto path = FindSemanticsBitcodeFile(REMILL_ARCH);
-  LOG(INFO)
-      << "Loading host " REMILL_ARCH " semantics from file " << path;
-  return LoadModuleFromFile(context, path);
+  return LoadArchSemantics(GetHostArch(), context);
 }
 
 // Loads the semantics for the "target" machine, i.e. the machine of the
 // code that we want to lift.
 llvm::Module *LoadTargetSemantics(llvm::LLVMContext *context) {
-  auto path = FindSemanticsBitcodeFile(FLAGS_arch);
-  LOG(INFO)
-      << "Loading target " << FLAGS_arch << " semantics from file " << path;
-  return LoadModuleFromFile(context, path);
+  return LoadArchSemantics(GetTargetArch(), context);
+}
+
+// Try to verify a module.
+bool VerifyModule(llvm::Module *module) {
+  std::string error;
+  llvm::raw_string_ostream error_stream(error);
+  if (llvm::verifyModule(*module, &error_stream)) {
+    error_stream.flush();
+    LOG(ERROR)
+        << "Error verifying module read from file: " << error;
+    return false;
+  } else {
+    return true;
+  }
 }
 
 // Reads an LLVM module from a file.
@@ -253,13 +323,9 @@ llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
     return nullptr;
   }
 
-  std::string error;
-  llvm::raw_string_ostream error_stream(error);
-  if (llvm::verifyModule(*module, &error_stream)) {
-    error_stream.flush();
+  if (!VerifyModule(module)) {
     LOG_IF(FATAL, !allow_failure)
-        << "Error verifying module read from file " << file_name << ": "
-        << error;
+        << "Error verifying module read from file " << file_name;
     delete module;
     return nullptr;
   }
@@ -270,7 +336,7 @@ llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
 // Store an LLVM module into a file.
 bool StoreModuleToFile(llvm::Module *module, std::string file_name,
                        bool allow_failure) {
-  LOG(INFO)
+  DLOG(INFO)
       << "Saving bitcode to file " << file_name;
 
   std::stringstream ss;
@@ -289,7 +355,7 @@ bool StoreModuleToFile(llvm::Module *module, std::string file_name,
 
 #if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 5)
   std::error_code ec;
-  llvm::tool_output_file bc(tmp_name.c_str(), ec, llvm::sys::fs::F_RW);
+  llvm::ToolOutputFile bc(tmp_name.c_str(), ec, llvm::sys::fs::F_RW);
   CHECK(!ec) << "Unable to open output bitcode file for writing: " << tmp_name;
 #else
   llvm::tool_output_file bc(tmp_name.c_str(), error, llvm::sys::fs::F_RW);
@@ -312,6 +378,30 @@ bool StoreModuleToFile(llvm::Module *module, std::string file_name,
   }
 }
 
+// Store a module, serialized to LLVM IR, into a file.
+bool StoreModuleIRToFile(llvm::Module *module, std::string file_name,
+                         bool allow_failure) {
+
+#if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 5)
+  std::error_code ec;
+  llvm::raw_fd_ostream dest(file_name.c_str(), ec, llvm::sys::fs::F_Text);
+  auto good = !ec;
+  auto error = ec.message();
+#else
+  std::string error;
+  llvm::raw_fd_ostream dest(file_name.c_str(), error, llvm::sys::fs::F_Text);
+  auto good = error.empty();
+#endif
+  if (!good) {
+    LOG_IF(FATAL, allow_failure)
+        << "Could not save LLVM IR to " << file_name
+        << ": " << error;
+    return false;
+  }
+  module->print(dest, nullptr);
+  return true;
+}
+
 namespace {
 
 #ifndef REMILL_BUILD_SEMANTICS_DIR_X86
@@ -329,11 +419,18 @@ namespace {
 #define REMILL_INSTALL_SEMANTICS_DIR
 #endif  // REMILL_INSTALL_SEMANTICS_DIR
 
-static const char *gSemanticsSearchPaths[] = {
+#define _S(x) #x
+#define S(x) _S(x)
+#define MAJOR_MINOR S(LLVM_VERSION_MAJOR) "." S(LLVM_VERSION_MINOR)
+
+static const char *gSemanticsSearchPaths[6] = {
     // Derived from the build.
     REMILL_BUILD_SEMANTICS_DIR_X86 "\0",
     REMILL_BUILD_SEMANTICS_DIR_AARCH64 "\0",
     REMILL_INSTALL_SEMANTICS_DIR "\0",
+    "/usr/local/share/remill/" MAJOR_MINOR "/semantics",
+    "/usr/share/remill/" MAJOR_MINOR "/semantics",
+    "/share/remill/" MAJOR_MINOR "/semantics",
 };
 
 }  // namespace
@@ -393,9 +490,10 @@ std::string LLVMThingToString(llvm::Type *thing) {
 
 llvm::Argument *NthArgument(llvm::Function *func, size_t index) {
   auto it = func->arg_begin();
-  for (size_t i = 0; i < index; ++i) {
-    ++it;
+  if (index >= static_cast<size_t>(std::distance(it, func->arg_end()))) {
+    return nullptr;
   }
+  std::advance(it, index);
   return &*it;
 }
 
@@ -453,13 +551,12 @@ llvm::Function *DeclareLiftedFunction(llvm::Module *module,
   auto bb = BasicBlockFunction(module);
   auto func_type = bb->getFunctionType();
 
-  auto func = llvm::dyn_cast<llvm::Function>(
-      module->getOrInsertFunction(name, func_type));
-
-  CHECK(nullptr != func) << "Could not insert function " << name
-                         << " into module";
-
-  InitFunctionAttributes(func);
+  auto func = module->getFunction(name);
+  if (!func) {
+    func = llvm::Function::Create(
+        func_type, llvm::GlobalValue::InternalLinkage, name, module);
+    InitFunctionAttributes(func);
+  }
 
   return func;
 }
@@ -494,6 +591,10 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
   auto func_name = source_func->getName().str();
   auto source_mod = source_func->getParent();
   auto dest_mod = dest_func->getParent();
+
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
+  dest_func->getContext().setDiscardValueNames(false);
+#endif
 
   dest_func->setAttributes(source_func->getAttributes());
   dest_func->setLinkage(source_func->getLinkage());
@@ -652,6 +753,8 @@ void CloneBlockFunctionInto(llvm::Function *func) {
   // Remove the `return` in `__remill_basic_block`.
   auto &entry = func->front();
   auto term = entry.getTerminator();
+  CHECK(llvm::isa<llvm::ReturnInst>(term));
+
   term->eraseFromParent();
   func->removeFnAttr(llvm::Attribute::OptimizeNone);
 
@@ -684,6 +787,179 @@ std::string ModuleName(llvm::Module *module) {
 
 std::string ModuleName(const std::unique_ptr<llvm::Module> &module) {
   return ModuleName(module.get());
+}
+
+namespace {
+
+#if 0
+static llvm::Constant *CloneConstant(llvm::Constant *val);
+
+static std::vector<llvm::Constant *> CloneContents(
+    llvm::ConstantAggregate *agg) {
+  auto num_elems = agg->getNumOperands();
+  std::vector<llvm::Constant *> clones(num_elems);
+  for (auto i = 0U; i < num_elems; ++i) {
+    clones[i] = CloneConstant(agg->getAggregateElement(i));
+  }
+  return clones;
+}
+
+static llvm::Constant *CloneConstant(llvm::Constant *val) {
+  if (llvm::isa<llvm::ConstantData>(val) ||
+      llvm::isa<llvm::ConstantAggregateZero>(val)) {
+    return val;
+  }
+
+  std::vector<llvm::Constant *> elements;
+  if (auto agg = llvm::dyn_cast<llvm::ConstantAggregate>(val)) {
+    CloneContents(agg);
+  }
+
+  if (auto arr = llvm::dyn_cast<llvm::ConstantArray>(val)) {
+    return llvm::ConstantArray::get(arr->getType(), elements);
+
+  } else if (auto vec = llvm::dyn_cast<llvm::ConstantVector>(val)) {
+    return llvm::ConstantVector::get(elements);
+
+  } else if (auto obj = llvm::dyn_cast<llvm::ConstantStruct>(val)) {
+    return llvm::ConstantStruct::get(obj->getType(), elements);
+
+  } else {
+    LOG(FATAL)
+        << "Cannot clone " << remill::LLVMThingToString(val);
+    return val;
+  }
+}
+
+#endif
+
+static llvm::Function *DeclareFunctionInModule(llvm::Function *func,
+                                               llvm::Module *dest_module) {
+  auto dest_func = dest_module->getFunction(func->getName());
+  if (dest_func) {
+    return dest_func;
+  }
+
+  LOG_IF(FATAL, func->hasLocalLinkage())
+      << "Cannot declare internal function " << func->getName().str()
+      << " as external in another module";
+
+  dest_func = llvm::Function::Create(
+      func->getFunctionType(), func->getLinkage(),
+      func->getName(), dest_module);
+
+  dest_func->copyAttributesFrom(func);
+  dest_func->setVisibility(func->getVisibility());
+
+  return dest_func;
+}
+
+static llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
+                                                llvm::Module *dest_module) {
+  auto dest_var = dest_module->getGlobalVariable(var->getName());
+  if (dest_var) {
+    return dest_var;
+  }
+
+  auto type = var->getType()->getElementType();
+  dest_var = new llvm::GlobalVariable(
+      *dest_module, type, var->isConstant(), var->getLinkage(), nullptr,
+      var->getName(), nullptr, var->getThreadLocalMode(),
+      var->getType()->getAddressSpace());
+
+  dest_var->copyAttributesFrom(var);
+
+  if (var->hasInitializer() && var->hasLocalLinkage()) {
+    auto initializer = var->getInitializer();
+#if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 8)
+    CHECK(!initializer->needsRelocation())
+        << "Initializer of global " << var->getName().str()
+        << " cannot be trivially copied to the destination module.";
+#endif
+    dest_var->setInitializer(initializer);
+  } else {
+    LOG_IF(FATAL, var->hasLocalLinkage())
+        << "Cannot declare internal variable " << var->getName().str()
+        << " as external in another module";
+  }
+
+  return dest_var;
+}
+
+template <typename T>
+static void ClearMetaData(T *value) {
+  llvm::SmallVector<std::pair<unsigned, llvm::MDNode *>, 4> mds;
+  value->getAllMetadata(mds);
+  for (auto md_info : mds) {
+    value->setMetadata(md_info.first, nullptr);
+  }
+}
+
+}  // namespace
+
+// Move a function from one module into another module.
+void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
+  CHECK(&(func->getContext()) == &(dest_module->getContext()))
+      << "Cannot move function across two independent LLVM contexts.";
+
+  auto source_module = func->getParent();
+  CHECK(source_module != dest_module)
+      << "Cannot move function to the same module.";
+
+  auto existing = dest_module->getFunction(func->getName());
+  if (existing) {
+    CHECK(existing->isDeclaration())
+        << "Function " << func->getName().str()
+        << " already exists in destination module.";
+    existing->setName("");
+    existing->setLinkage(llvm::GlobalValue::PrivateLinkage);
+    existing->setVisibility(llvm::GlobalValue::DefaultVisibility);
+  }
+
+  func->removeFromParent();
+  dest_module->getFunctionList().push_back(func);
+
+  if (existing) {
+    existing->replaceAllUsesWith(func);
+    existing->eraseFromParent();
+    existing = nullptr;
+  }
+
+  IF_LLVM_GTE_37( ClearMetaData(func); )
+
+  for (auto &block : *func) {
+    for (auto &inst : block) {
+      ClearMetaData(&inst);
+
+      // Substitute globals in the operands.
+      for (auto &op : inst.operands()) {
+        auto old_val = op.get();
+        auto used_val = old_val->stripPointerCasts();
+        auto used_func = llvm::dyn_cast<llvm::Function>(used_val);
+        auto used_var = llvm::dyn_cast<llvm::GlobalVariable>(used_val);
+        llvm::Constant *new_val = nullptr;
+        if (used_func) {
+          new_val = DeclareFunctionInModule(used_func, dest_module);
+
+        } else if (used_var) {
+          new_val = DeclareVarInModule(used_var, dest_module);
+
+        } else {
+          CHECK(!llvm::isa<llvm::GlobalValue>(used_val))
+              << "Cannot move global value " << used_val->getName().str()
+              << " into destination module.";
+        }
+
+        if (new_val) {
+          if (old_val->getType() != new_val->getType()) {
+            op.set(llvm::ConstantExpr::getBitCast(new_val, old_val->getType()));
+          } else {
+            op.set(new_val);
+          }
+        }
+      }
+    }
+  }
 }
 
 }  // namespace remill

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_ABI_H_
-#define REMILL_BC_ABI_H_
+#pragma once
 
 namespace llvm {
 class Function;
@@ -31,5 +30,3 @@ enum : size_t {
 };
 
 }  // namespace remill
-
-#endif  // REMILL_BC_ABI_H_

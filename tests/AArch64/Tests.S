@@ -325,6 +325,8 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/LD2_ASISDLSE_R2.S"
 #include "tests/AArch64/DATAXFER/LD2_ASISDLSEP_R2_R.S"
 #include "tests/AArch64/DATAXFER/LD2_ASISDLSEP_I2_I.S"
+#include "tests/AArch64/DATAXFER/LD3_ASISDLSE_R3.S"
+#include "tests/AArch64/DATAXFER/LD4_ASISDLSE_R4.S"
 #include "tests/AArch64/DATAXFER/LDPSW_64_LDSTPAIR.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_OFF.S"
 #include "tests/AArch64/DATAXFER/LDP_n_LDSTPAIR_POST.S"
@@ -359,6 +361,7 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/DATAXFER/STLR.S"
 #include "tests/AArch64/DATAXFER/STUR_n_LDST_UNSCALED.S"
 #include "tests/AArch64/DATAXFER/UMOV.S"
+#include "tests/AArch64/DATAXFER/INS_ASIMDINS_IR_R.S"
 
 #include "tests/AArch64/LOGICAL/AND_n_LOG_IMM.S"
 #include "tests/AArch64/LOGICAL/AND_n_LOG_SHIFT.S"
@@ -412,6 +415,8 @@ SYMBOL(__aarch64_test_table_begin):
 #include "tests/AArch64/SIMD/UMINV_ASIMDALL_ONLY.S"
 #include "tests/AArch64/SIMD/NOT_ASIMDMISC_R.S"
 #include "tests/AArch64/SIMD/EXT_ASIMDINS_ONLY.S"
+#include "tests/AArch64/SIMD/USHR_ASISDSHF_R.S"
+
 
 #include "tests/AArch64/SYSTEM/Mn_n_SYSTEM_FPSR.S"
 #include "tests/AArch64/SYSTEM/Mn_n_SYSTEM_FPCR.S"

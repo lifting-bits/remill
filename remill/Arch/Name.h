@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_NAME_H_
-#define REMILL_ARCH_NAME_H_
+#pragma once
 
 #ifndef REMILL_ARCH
 # if defined(__x86_64__)
@@ -68,5 +67,3 @@ ArchName GetArchName(const std::string &arch_name);
 std::string GetArchName(ArchName);
 
 }  // namespace remill
-
-#endif  // REMILL_ARCH_NAME_H_

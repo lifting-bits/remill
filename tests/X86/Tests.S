@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "remill/Arch/Assembly.S"
+
 #ifndef ADDRESS_SIZE_BITS
 # define ADDRESS_SIZE_BITS 64
 #endif
@@ -25,27 +27,10 @@
 #ifndef HAS_FEATURE_AVX512
 # define HAS_FEATURE_AVX512 1
 #endif
-
-#define CAT_3(a, b) a ## b
-#define CAT_2(a, b) CAT_3(a, b)
-#define CAT(a, b) CAT_2(a, b)
-
-#define CAT3(a, b, c) CAT(a, CAT(b, c))
-
-#define TO_STRING3(a) # a
-#define TO_STRING2(a) TO_STRING3(a)
-#define TO_STRING(a) TO_STRING2(a)
-
-/* Note:    Apple mangles C symbol names to have a leading underscore. */
-#ifdef __APPLE__
-# define SYMBOL(x) CAT(_, x)
-#else
-# define SYMBOL(x) x
-#endif
-
+        
 #define FUNC_NAME(instr_name, num_args) \
     CAT3(instr_name, _, num_args)
-
+        
 /* Defines the beginning of a test function. The key detail is that tests
  * register themselves into data structures located in a special section of
  * the binary.
@@ -59,7 +44,7 @@
  *       one should use `TEST_BEGIN_32` or `TEST_BEGIN_64`.
  */
 #define TEST_BEGIN(instr_name, num_args) \
-    .text ; \
+    TEXT_SECTION ; \
     \
     .align 16 ; \
     .globl SYMBOL(FUNC_NAME(instr_name, num_args)) ; \
@@ -76,11 +61,11 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .quad 5f ; \
     .quad num_args ; \
     \
-    .rodata ; \
+    CONST_SECTION ; \
     2: \
     .asciz TO_STRING(FUNC_NAME(instr_name, num_args)) ; \
     \
-    .text ; \
+    TEXT_SECTION ; \
     3: \
     .cfi_startproc ;
 
@@ -165,7 +150,7 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .intel_syntax noprefix ;
 
 #ifndef IN_TEST_GENERATOR
-    .data
+    DATA_SECTION
     .extern SYMBOL(gTestToRun)
     .extern SYMBOL(gLiftedState)
     .extern SYMBOL(gNativeState)
@@ -174,7 +159,7 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .extern SYMBOL(gStackSaveSlot)
     .extern SYMBOL(gRflagsForTest)
 
-    .data
+    CONST_SECTION
     .align 16
 SYMBOL(fpu_cwd):
     .long 0x27F  /* Default is 0x37F */
@@ -203,7 +188,7 @@ SYMBOL(vec_data):
     /* This function tail-calls to the test that we want to run via the
      * `gTestToRun` pointer.
      */
-    .text
+    TEXT_SECTION
     .extern SYMBOL(__remill_detach)
     .align 16
     .globl SYMBOL(DoInvokeTestCase)
@@ -285,15 +270,7 @@ SYMBOL(InvokeTestCase):
     push r13
     push r14
     push r15
-    mov rax, cs
-    push rax
-    mov rax, ds
-    push rax
     call SYMBOL(DoInvokeTestCase)
-    pop rax
-    mov ds, rax
-    pop rax
-    mov cs, rax
     pop r15
     pop r14
     pop r13
@@ -325,7 +302,7 @@ SYMBOL(__x86_save_state_after):
 # undef STATE_PTR
 
 #else
-    .text
+    TEXT_SECTION
 SYMBOL(InvokeTestCase):
 SYMBOL(__x86_save_state_after):
     ud2;
@@ -338,7 +315,7 @@ SYMBOL(__x86_save_state_after):
     .balign 128
     .globl SYMBOL(__x86_test_table_begin)
 SYMBOL(__x86_test_table_begin):
-    .text
+    TEXT_SECTION
 
 /* For argument register and return register definitions. */
 
@@ -457,6 +434,8 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/CONVERT/CWD.S"
 #include "tests/X86/CONVERT/CWDE.S"
 
+/* used for DECIMAL tests */
+#include "tests/X86/DECIMAL/UTIL_FLAGS.S"
 #include "tests/X86/DECIMAL/AAS.S"
 #include "tests/X86/DECIMAL/DAA.S"
 
@@ -475,6 +454,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/MMX/MISC.S"
 #include "tests/X86/MMX/PACKSS.S"
 #include "tests/X86/MMX/PADD.S"
+#include "tests/X86/MMX/PADDU.S"
 #include "tests/X86/MMX/PCMP.S"
 #include "tests/X86/MMX/PEXTR.S"
 #include "tests/X86/MMX/PINSRW.S"
@@ -487,6 +467,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/MMX/PSRL.S"
 #include "tests/X86/MMX/PSUB.S"
 #include "tests/X86/MMX/PUNPCK.S"
+#include "tests/X86/MMX/POR.S"
 
 #include "tests/X86/POP/POP.S"
 #include "tests/X86/POP/POPF.S"
@@ -517,20 +498,25 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/PCMPISTRI.S"
 #include "tests/X86/SSE/PSHUFD.S"
 #include "tests/X86/SSE/PSHUFLW.S"
+#include "tests/X86/SSE/PSHUFHW.S"
 #include "tests/X86/SSE/PSLLDQ.S"
 #include "tests/X86/SSE/PSRLDQ.S"
 #include "tests/X86/SSE/UCOMISD.S"
 #include "tests/X86/SSE/UCOMISS.S"
 #include "tests/X86/SSE/MINSS.S"
 #include "tests/X86/SSE/MINSD.S"
+#include "tests/X86/SSE/MINPS.S"
 #include "tests/X86/SSE/MAXSS.S"
 #include "tests/X86/SSE/MAXSD.S"
+#include "tests/X86/SSE/MAXPS.S"
 #include "tests/X86/SSE/UNPCKLPD.S"
 #include "tests/X86/SSE/UNPCKLPS.S"
 #include "tests/X86/SSE/UNPCKHPD.S"
 #include "tests/X86/SSE/MOVDDUP.S"
 #include "tests/X86/SSE/SQRTSS.S"
+#include "tests/X86/SSE/SQRTSD.S"
 #include "tests/X86/SSE/MXCSR.S"
+#include "tests/X86/SSE/SHUFPS.S"
 
 #include "tests/X86/STRINGOP/CMPS.S"
 #include "tests/X86/STRINGOP/LODS.S"
@@ -539,6 +525,8 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/STRINGOP/STOS.S"
 
 #include "tests/X86/X87/FADD.S"
+#include "tests/X86/X87/FBLD.S"
+#include "tests/X86/X87/FBSTP.S"
 #include "tests/X86/X87/FCMOV.S"
 #include "tests/X86/X87/FCOM.S"
 #include "tests/X86/X87/FDIV.S"

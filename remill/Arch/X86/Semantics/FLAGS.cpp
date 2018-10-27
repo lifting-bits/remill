@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_FLAGS_H_
-#define REMILL_ARCH_X86_SEMANTICS_FLAGS_H_
+#pragma once
 
 namespace {
 
@@ -202,12 +201,13 @@ struct Carry<tag_sub> {
     } while (false)
 
 
+// X87 status flags are sticky, so we must not unset flags if set.
 ALWAYS_INLINE static void SetFPSRStatusFlags(State &state, int mask) {
-  state.sw.pe = static_cast<uint8_t>(0 != (mask & FE_INEXACT));
-  state.sw.oe = static_cast<uint8_t>(0 != (mask & FE_OVERFLOW));
-  state.sw.ue = static_cast<uint8_t>(0 != (mask & FE_UNDERFLOW));
-  state.sw.ie = static_cast<uint8_t>(0 != (mask & FE_INVALID));
-  state.sw.ze = static_cast<uint8_t>(0 != (mask & FE_DIVBYZERO));
+  state.sw.pe |= static_cast<uint8_t>(0 != (mask & FE_INEXACT));
+  state.sw.oe |= static_cast<uint8_t>(0 != (mask & FE_OVERFLOW));
+  state.sw.ue |= static_cast<uint8_t>(0 != (mask & FE_UNDERFLOW));
+  state.sw.ie |= static_cast<uint8_t>(0 != (mask & FE_INVALID));
+  state.sw.ze |= static_cast<uint8_t>(0 != (mask & FE_DIVBYZERO));
 }
 
 template <typename F, typename T>
@@ -262,5 +262,3 @@ auto CheckedFloatBinOp(State &state, F func, T arg1, T arg2)
   SetFPSRStatusFlags(state, new_except);
   return res;
 }
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_FLAGS_H_

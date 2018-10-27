@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_BC_COMPAT_GLOBALVALUE_H_
-#define REMILL_BC_COMPAT_GLOBALVALUE_H_
+#pragma once
 #include "remill/BC/Version.h"
 
 #include <llvm/IR/GlobalValue.h>
@@ -31,5 +30,3 @@ inline static llvm::Type *GetValueType(llvm::GlobalValue *global) {
 }
 
 }  // namespace remill
-
-#endif  // REMILL_BC_COMPAT_GLOBALVALUE_H_

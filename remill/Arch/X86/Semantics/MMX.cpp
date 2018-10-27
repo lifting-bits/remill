@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_MMX_H_
-#define REMILL_ARCH_X86_SEMANTICS_MMX_H_
+#pragma once
 
 namespace {
 
@@ -325,6 +324,56 @@ DEF_ISEL(PADDSW_MMXq_MMXq) = PADDSW<V64W, V64, V64>;
 DEF_ISEL(PADDSW_MMXq_MEMq) = PADDSW<V64W, V64, MV64>;
 DEF_ISEL(PADDSW_XMMdq_XMMdq) = PADDSW<V128W, V128, V128>;
 DEF_ISEL(PADDSW_XMMdq_MEMdq) = PADDSW<V128W, V128, MV128>;
+
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PADDUSB, D dst, S1 src1, S2 src2) {
+  auto src1_vec = UReadV8(src1);
+  auto src2_vec = UReadV8(src2);
+  auto dst_vec = UClearV8(UReadV8(dst));
+  auto num_groups = NumVectorElems(dst_vec);
+
+  // Compute unsigned saturation arithematic on each bytes
+  _Pragma("unroll")
+  for (size_t i = 0; i < num_groups; ++i) {
+    auto v1 = UExtractV8(src1_vec, i);
+    auto v2 = UExtractV8(src2_vec, i);
+    uint8_t v_sum = v1 + v2;
+    v_sum = Select(v_sum < v1, static_cast<uint8_t>(-1), v_sum);
+    dst_vec.elems[i] = v_sum;
+  }
+  UWriteV8(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PADDUSW, D dst, S1 src1, S2 src2) {
+  auto src1_vec = UReadV16(src1);
+  auto src2_vec = UReadV16(src2);
+  auto dst_vec = UClearV16(UReadV16(dst));
+  auto num_groups = NumVectorElems(dst_vec);
+
+  // Compute unsigned saturation arithematic on each words
+  _Pragma("unroll")
+  for (size_t i = 0; i < num_groups; ++i) {
+    auto v1 = UExtractV16(src1_vec, i);
+    auto v2 = UExtractV16(src2_vec, i);
+    uint16_t v_sum = v1 + v2;
+    v_sum = Select(v_sum < v1, static_cast<uint16_t>(-1), v_sum);
+    dst_vec.elems[i] = v_sum;
+  }
+  UWriteV16(dst, dst_vec);
+  return memory;
+}
+
+}
+
+DEF_ISEL(PADDUSB_XMMdq_XMMdq) = PADDUSB<V128W, V128, V128>;
+DEF_ISEL(PADDUSB_XMMdq_MEMdq) = PADDUSB<V128W, V128, MV128>;
+
+DEF_ISEL(PADDUSW_XMMdq_XMMdq) = PADDUSW<V128W, V128, V128>;
+DEF_ISEL(PADDUSW_XMMdq_MEMdq) = PADDUSW<V128W, V128, MV128>;
 
 namespace {
 
@@ -2151,5 +2200,3 @@ DEF_ISEL(FEMMS) = DoEMMS;
 // 8599:1853 PSRAD PSRAD_MMXq_MMXq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 8611:1856 PACKSSWB PACKSSWB_MMXq_MEMq MMX MMX PENTIUMMMX ATTRIBUTES: HALF_WIDE_OUTPUT NOTSX
 // 8615:1857 PACKSSWB PACKSSWB_MMXq_MMXq MMX MMX PENTIUMMMX ATTRIBUTES: HALF_WIDE_OUTPUT NOTSX
-
-#endif // REMILL_ARCH_X86_SEMANTICS_MMX_H_

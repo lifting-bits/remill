@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_MISC_H_
-#define REMILL_ARCH_X86_SEMANTICS_MISC_H_
+#pragma once
 
 namespace {
 
-template <typename D, typename S>
+template <typename D, typename S, typename DestType>
 DEF_SEM(LEA, D dst, S src) {
-  WriteZExt(dst, AddressOf(src));
+  WriteZExt(dst, static_cast<DestType>(AddressOf(src)));
   return memory;
 }
 
@@ -48,8 +47,9 @@ DEF_SEM(LEAVE_FULL) {
 
 }  // namespace
 
-DEF_ISEL(LEA_GPRv_AGEN_32) = LEA<R32W, M8>;
-IF_64BIT( DEF_ISEL(LEA_GPRv_AGEN_64) = LEA<R64W, M8>; )
+DEF_ISEL(LEA_GPRv_AGEN_16) = LEA<R16W, M8, uint16_t>;
+DEF_ISEL(LEA_GPRv_AGEN_32) = LEA<R32W, M8, uint32_t>;
+IF_64BIT( DEF_ISEL(LEA_GPRv_AGEN_64) = LEA<R64W, M8, uint64_t>; )
 
 DEF_ISEL(LEAVE_16) = LEAVE_16BIT;
 DEF_ISEL_RI32or64(LEAVE, LEAVE_FULL);
@@ -181,5 +181,3 @@ DEF_ISEL(HLT) = DoNothing;
 639 MONITOR MONITOR MISC SSE3 SSE3 ATTRIBUTES: NOTSX RING0
 1924 MWAIT MWAIT MISC SSE3 SSE3 ATTRIBUTES: NOTSX RING0
  */
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_MISC_H_

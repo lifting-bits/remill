@@ -17,9 +17,11 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <algorithm>
 #include <memory>
 #include <unordered_map>
 
+#include <llvm/ADT/APInt.h>
 #include <llvm/ADT/SmallVector.h>
 
 #include <llvm/IR/BasicBlock.h>
@@ -29,6 +31,7 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Name.h"
@@ -42,7 +45,7 @@
 
 #include "remill/OS/OS.h"
 
-DEFINE_string(arch, "",
+DEFINE_string(arch, REMILL_ARCH,
               "Architecture of the code being translated. "
               "Valid architectures: x86, amd64 (with or without "
               "`_avx` or `_avx512` appended), aarch64, "
@@ -102,6 +105,7 @@ llvm::Triple Arch::BasicTriple(void) const {
       break;
 
     case kOSLinux:
+    case kOSVxWorks:
       triple.setOS(llvm::Triple::Linux);
       triple.setEnvironment(llvm::Triple::GNU);
       triple.setVendor(llvm::Triple::PC);
@@ -224,6 +228,26 @@ const Arch *Arch::Get(OSName os_name_, ArchName arch_name_) {
   return nullptr;
 }
 
+// Return information about the register at offset `offset` in the `State`
+// structure.
+const Register *Arch::RegisterAtStateOffset(uint64_t offset) const {
+  if (offset >= reg_by_offset.size()) {
+    return nullptr;
+  } else {
+    return reg_by_offset[offset];  // May be `nullptr`.
+  }
+}
+
+// Return information about a register, given its name.
+const Register *Arch::RegisterByName(const std::string &name) const {
+  auto reg_it = reg_by_name.find(name);
+  if (reg_it == reg_by_name.end()) {
+    return nullptr;
+  } else {
+    return reg_it->second;
+  }
+}
+
 const Arch *Arch::GetMips(OSName, ArchName) {
   return nullptr;
 }
@@ -280,62 +304,234 @@ static bool BlockHasSpecialVars(llvm::Function *basic_block) {
          FindVarInFunction(basic_block, "BRANCH_TAKEN", true);
 }
 
+// Iteratively accumulate the offset, following through GEPs and bitcasts.
+static bool GetRegisterOffset(llvm::Module *module, llvm::Type *state_ptr_type,
+                              llvm::Value *reg, uint64_t *offset) {
+
+  auto val_name = reg->getName().str();
+  llvm::DataLayout dl(module);
+  *offset = 0;
+  do {
+    if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(reg)) {
+      llvm::APInt gep_offset(dl.getPointerSizeInBits(0), 0);
+      if (!gep->accumulateConstantOffset(dl, gep_offset)) {
+        DLOG(INFO)
+            << "Named variable " << val_name << " is not a register in the "
+            << "state structure";
+      }
+      *offset += gep_offset.getZExtValue();
+      reg = gep->getPointerOperand();
+
+    } else if (auto c = llvm::dyn_cast<llvm::CastInst>(reg)) {
+      reg = c->getOperand(0);
+
+    // Base case.
+    } else if (reg->getType() == state_ptr_type) {
+      break;
+
+    } else {
+      DLOG(INFO)
+          << "Named variable " << val_name << " is not a register in the "
+          << "state structure";
+      return false;
+    }
+  } while (reg);
+
+  DLOG(INFO)
+      << "Offset of register " << val_name << " in state structure is "
+      << *offset;
+
+  return true;
+}
+
 // Clang isn't guaranteed to play nice and name the LLVM values within the
 // `__remill_basic_block` intrinsic with the same names as we find in the
 // C++ definition of that function. However, we compile that function with
 // debug information, and so we will try to recover the variables names for
 // later lookup.
 static void FixupBasicBlockVariables(llvm::Function *basic_block) {
-  if (BlockHasSpecialVars(basic_block)) {
-    return;
-  }
+  std::vector<llvm::StoreInst *> stores;
+  std::vector<llvm::Instruction *> remove_insts;
+
+  std::unordered_map<llvm::AllocaInst *, llvm::Value *> stored_val;
 
   for (auto &block : *basic_block) {
     for (auto &inst : block) {
-      if (auto decl_inst = llvm::dyn_cast<llvm::DbgDeclareInst>(&inst)) {
-        auto addr = decl_inst->getAddress();
+      if (auto debug_inst = llvm::dyn_cast<llvm::DbgInfoIntrinsic>(&inst)) {
+        if (auto decl_inst = llvm::dyn_cast<llvm::DbgDeclareInst>(debug_inst)) {
+          auto addr = decl_inst->getAddress();
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 7)
-        addr->setName(decl_inst->getVariable()->getName());
+          addr->setName(decl_inst->getVariable()->getName());
 #else
-        llvm::DIVariable var(decl_inst->getVariable());
-        addr->setName(var.getName());
+          llvm::DIVariable var(decl_inst->getVariable());
+          addr->setName(var.getName());
 #endif
+        }
+        remove_insts.push_back(debug_inst);
+
+      // Get stores.
+      } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(&inst)) {
+        auto dst_alloca = llvm::dyn_cast<llvm::AllocaInst>(
+            store_inst->getPointerOperand());
+        if (dst_alloca) {
+          stored_val[dst_alloca] = store_inst->getValueOperand();
+        }
+        stores.push_back(store_inst);
+
+      // Forward stores to loads.
+      } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(&inst)) {
+        auto src_alloca = llvm::dyn_cast<llvm::AllocaInst>(
+            load_inst->getPointerOperand());
+        if (src_alloca) {
+          if (auto val = stored_val[src_alloca]) {
+            load_inst->replaceAllUsesWith(val);
+            remove_insts.push_back(load_inst);
+          }
+        }
       }
     }
+  }
+
+  // At this point, the instructions should have this form:
+  //
+  //  %BH = alloca i8*, align 8
+  //  ...
+  //  %24 = getelementptr inbounds ...
+  //  store i8* %24, i8** %BH, align 8
+  //
+  // Our goal is to eliminate the double indirection and get:
+  //
+  //  %BH = getelementptr inbounds ...
+
+  for (auto inst : stores) {
+    auto val = llvm::dyn_cast<llvm::Instruction>(inst->getValueOperand());
+    auto ptr = llvm::dyn_cast<llvm::AllocaInst>(inst->getPointerOperand());
+
+    if (val && ptr && val->getType()->isPointerTy() && ptr->hasName()) {
+      auto name = ptr->getName().str();
+      ptr->setName("");
+      val->setName(name);
+      remove_insts.push_back(ptr);
+      remove_insts.push_back(inst);
+    }
+  }
+
+  // Remove links between instructions.
+  for (auto inst : remove_insts) {
+    if (!inst->getType()->isVoidTy()) {
+      inst->replaceAllUsesWith(llvm::UndefValue::get(inst->getType()));
+    }
+  }
+
+  // Remove unneeded instructions.
+  for (auto inst : remove_insts) {
+    for (auto &operand : inst->operands()) {
+      operand = nullptr;
+    }
+    inst->eraseFromParent();
   }
 
   CHECK(BlockHasSpecialVars(basic_block))
       << "Unable to locate required variables in `__remill_basic_block`.";
 }
 
-// Initialize some attributes that are common to all newly created block
-// functions. Also, give pretty names to the arguments of block functions.
-static void InitBlockFunctionAttributes(llvm::Function *block_func) {
-  block_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
-  block_func->setVisibility(llvm::GlobalValue::DefaultVisibility);
+// Add attributes to llvm::Argument in a way portable across LLVMs
+static void AddNoAliasToArgument(llvm::Argument *arg) {
+  IF_LLVM_LT_39(
+    arg->addAttr(
+      llvm::AttributeSet::get(
+        arg->getContext(),
+        arg->getArgNo() + 1,
+        llvm::Attribute::NoAlias)
+    ); 
+  );
 
-  remill::NthArgument(block_func, kMemoryPointerArgNum)->setName("memory");
-  remill::NthArgument(block_func, kStatePointerArgNum)->setName("state");
-  remill::NthArgument(block_func, kPCArgNum)->setName("pc");
+  IF_LLVM_GTE_39(
+    arg->addAttr(llvm::Attribute::NoAlias);
+  );
 }
 
-}  // namespace
-
-// Converts an LLVM module object to have the right triple / data layout
-// information for the target architecture.
-void Arch::PrepareModule(llvm::Module *mod) const {
+// ensures that mandatory remill functions have the correct
+// type signature and variable names
+static void PrepareModuleRemillFunctions(llvm::Module *mod) {
   auto basic_block = BasicBlockFunction(mod);
 
   InitFunctionAttributes(basic_block);
   FixupBasicBlockVariables(basic_block);
-  InitBlockFunctionAttributes(basic_block);
 
-  basic_block->addFnAttr(llvm::Attribute::OptimizeNone);
+  basic_block->setLinkage(llvm::GlobalValue::ExternalLinkage);
+  basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
   basic_block->removeFnAttr(llvm::Attribute::AlwaysInline);
   basic_block->removeFnAttr(llvm::Attribute::InlineHint);
+  basic_block->addFnAttr(llvm::Attribute::OptimizeNone);
   basic_block->addFnAttr(llvm::Attribute::NoInline);
   basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
 
+  auto memory = remill::NthArgument(basic_block, kMemoryPointerArgNum);
+  auto state = remill::NthArgument(basic_block, kStatePointerArgNum);
+
+  memory->setName("");
+  state->setName("");
+  remill::NthArgument(basic_block, kPCArgNum)->setName("");
+
+  AddNoAliasToArgument(state);
+  AddNoAliasToArgument(memory);
+}
+
+// Compare two registers for sorting.
+static bool RegisterComparator(const Register &lhs, const Register &rhs) {
+  // Bigger to appear later in the array. E.g. RAX before EAX.
+  if (lhs.size > rhs.size) {
+    return true;
+
+  } else if (lhs.size < rhs.size) {
+    return false;
+
+  // Registers earlier in the state struct appear earlier in the
+  // sort.
+  } else if (lhs.offset < rhs.offset) {
+    return true;
+
+  } else if (lhs.offset > rhs.offset) {
+    return false;
+
+  } else {
+    return lhs.order < rhs.order;
+  }
+}
+
+}  // namespace
+
+Register::Register(const std::string &name_, uint64_t offset_, uint64_t size_,
+                   uint64_t order_, llvm::Type *type_)
+    : name(name_),
+      offset(offset_),
+      size(size_),
+      order(order_),
+      type(type_),
+      parent(nullptr) {}
+
+// Returns the enclosing register of size AT LEAST `size`, or `nullptr`.
+const Register *Register::EnclosingRegisterOfSize(uint64_t size_) const {
+  auto enclosing = this;
+  for (; enclosing && enclosing->size < size_; enclosing = enclosing->parent) {
+    /* Empty. */;
+  }
+  return enclosing;
+}
+
+const Register *Register::EnclosingRegister(void) const {
+  auto enclosing = this;
+  while (enclosing->parent) {
+    enclosing = enclosing->parent;
+  }
+  return enclosing;
+}
+
+// Converts an LLVM module object to have the right triple / data layout
+// information for the target architecture.
+//
+void Arch::PrepareModuleDataLayout(llvm::Module *mod) const {
   mod->setDataLayout(DataLayout().getStringRepresentation());
   mod->setTargetTriple(Triple().str());
 
@@ -365,6 +561,72 @@ void Arch::PrepareModule(llvm::Module *mod) const {
         llvm::AttributeLoc::FunctionIndex,
         target_attribs);
     func.setAttributes(attribs);
+  }
+}
+
+void Arch::PrepareModule(llvm::Module *mod) const {
+  PrepareModuleRemillFunctions(mod);
+  PrepareModuleDataLayout(mod);
+  if (registers.empty()) {
+    CollectRegisters(mod);
+  }
+}
+
+// Get all of the register information from the prepared module.
+void Arch::CollectRegisters(llvm::Module *module) const {
+  llvm::DataLayout dl(module);
+  auto basic_block = BasicBlockFunction(module);
+  auto state_ptr_type = StatePointerType(module);
+  std::vector<llvm::Instruction *> named_insts;
+  uint64_t order = 0;
+
+  // Collect all registers.
+  for (auto &block : *basic_block) {
+    for (auto &inst : block) {
+      uint64_t offset = 0;
+      if (!inst.hasName()) {
+        continue;
+      }
+      auto ptr_type = llvm::dyn_cast<llvm::PointerType>(inst.getType());
+      if (!ptr_type || ptr_type->getElementType()->isPointerTy()) {
+        continue;
+      }
+      auto reg_type = ptr_type->getElementType();
+      if (!GetRegisterOffset(module, state_ptr_type, &inst, &offset)) {
+        continue;
+      }
+      auto name = inst.getName().str();
+      registers.emplace_back(
+          name, offset, dl.getTypeAllocSize(reg_type), order++, reg_type);
+    }
+  }
+
+  // Sort them in such a way that we can recover the parentage of registers.
+  std::sort(registers.begin(), registers.end(), RegisterComparator);
+
+  auto num_bytes = dl.getTypeAllocSize(state_ptr_type->getElementType());
+  reg_by_offset.resize(num_bytes);
+
+  // Figure out parentage of registers, and fill in the various maps.
+  for (auto &reg : registers) {
+    reg_by_name[reg.name] = &reg;
+
+    for (uint64_t i = 0; i < reg.size; ++i) {
+      auto &reg_at_offset = reg_by_offset[reg.offset + i];
+      if (!reg.parent) {
+        reg.parent = reg_at_offset;
+      } else if (!reg_at_offset) {
+        LOG(FATAL)
+            << "Register " << reg.name << " is not fully enclosed by parent "
+            << reg.parent->name;
+      } else if (reg.parent != reg_at_offset) {
+        LOG(FATAL)
+            << "Can't set parent of register " << reg.name
+            << " to " << reg_at_offset->name << " because it already has "
+            << reg.parent->name << " as its parent";
+      }
+      reg_at_offset = &reg;
+    }
   }
 }
 

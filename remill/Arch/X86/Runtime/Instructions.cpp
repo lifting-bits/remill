@@ -16,10 +16,9 @@
 
 #include <algorithm>
 #include <bitset>
-#include <cfenv>
-#include <cfloat>
 #include <cmath>
 
+#include "remill/Arch/Float.h"
 #include "remill/Arch/Runtime/Intrinsics.h"
 #include "remill/Arch/Runtime/Operators.h"
 
@@ -151,6 +150,18 @@ DEF_SEM(HandleInvalidInstruction) {
 DEF_ISEL(UNSUPPORTED_INSTRUCTION) = HandleUnsupported;
 DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 
+namespace {
+template <typename T>
+DEF_HELPER(PopFromStack) -> T {
+  addr_t op_size = TruncTo<addr_t>(sizeof(T));
+  addr_t old_xsp = Read(REG_XSP);
+  addr_t new_xsp = UAdd(old_xsp, op_size);
+  T val = Read(ReadPtr<T>(old_xsp _IF_32BIT(REG_SS_BASE)));
+  Write(REG_XSP, new_xsp);
+  return val;
+}
+}  // namespace
+
 #include "remill/Arch/X86/Semantics/FLAGS.cpp"
 #include "remill/Arch/X86/Semantics/AVX.cpp"
 #include "remill/Arch/X86/Semantics/BINARY.cpp"
@@ -164,6 +175,7 @@ DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 #include "remill/Arch/X86/Semantics/INTERRUPT.cpp"
 #include "remill/Arch/X86/Semantics/FLAGOP.cpp"
 #include "remill/Arch/X86/Semantics/FMA.cpp"
+#include "remill/Arch/X86/Semantics/IO.cpp"
 #include "remill/Arch/X86/Semantics/LOGICAL.cpp"
 #include "remill/Arch/X86/Semantics/MISC.cpp"
 #include "remill/Arch/X86/Semantics/MMX.cpp"

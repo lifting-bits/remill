@@ -16,6 +16,7 @@
 
 #include <glog/logging.h>
 
+#include <iomanip>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -261,7 +262,7 @@ std::map<xed_iform_enum_t, xed_iform_enum_t> kUnlockedIform = {
     {XED_IFORM_NEG_LOCK_MEMv, XED_IFORM_NEG_MEMv},
 };
 
-// Name of this instuction function.
+// Name of this instruction function.
 static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
 
   // If this instuction is marked as atomic via the `LOCK` prefix then we want
@@ -278,8 +279,8 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
   std::string iform_name = xed_iform_enum_t2str(iform);
   ss << iform_name;
 
-  // Some instuctions are "scalable", i.e. there are variants of the
-  // instuction for each effective operand size. We represent these in
+  // Some instructions are "scalable", i.e. there are variants of the
+  // instruction for each effective operand size. We represent these in
   // the semantics files with `_<size>`, so we need to look up the correct
   // selection.
   if (xed_decoded_inst_get_attribute(xedd, XED_ATTRIBUTE_SCALABLE)) {
@@ -287,10 +288,13 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
     ss << xed_decoded_inst_get_operand_width(xedd);
   }
 
-  // Suffix the ISEL function name with the segment register name for these two
-  // iforms so that we know which hypercall to use.
+  // Suffix the ISEL function name with the segment or control register names,
+  // as a runtime may need to perform complex actions that are specific to
+  // the register used.
   if (XED_IFORM_MOV_SEG_MEMw == iform ||
-      XED_IFORM_MOV_SEG_GPR16 == iform) {
+      XED_IFORM_MOV_SEG_GPR16 == iform ||
+      XED_IFORM_MOV_CR_CR_GPR32 == iform ||
+      XED_IFORM_MOV_CR_CR_GPR64 == iform) {
     ss << "_";
     ss << xed_reg_enum_t2str(xed_decoded_inst_get_reg(xedd, XED_OPERAND_REG0));
   }
@@ -310,9 +314,15 @@ static bool DecodeXED(xed_decoded_inst_t *xedd,
   auto err = xed_decode(xedd, bytes, static_cast<uint32_t>(num_bytes));
 
   if (XED_ERROR_NONE != err) {
+    std::stringstream ss;
+    for (auto b : inst_bytes) {
+      ss << std::hex << std::setw(2) << std::setfill('0')
+         << static_cast<unsigned>(b);
+    }
     LOG(ERROR)
-        << "Unable to decode instuction at " << std::hex << address
-        << " with error: " << xed_error_enum_t2str(err) << ".";
+        << "Unable to decode instruction at " << std::hex << address
+        << " with bytes " << ss.str() << " and error: "
+        << xed_error_enum_t2str(err) << std::dec;
     return false;
   }
 
@@ -468,8 +478,9 @@ static void DecodeImmediate(Instruction &inst,
   auto val = 0ULL;
   auto is_signed = false;
   auto imm_size = xed_decoded_inst_get_immediate_width_bits(xedd);
+  auto operand_size = xed_decoded_inst_get_operand_width(xedd);
 
-  CHECK(imm_size <= inst.operand_size)
+  CHECK(imm_size <= operand_size)
       << "Immediate size is greater than effective operand size at "
       << std::hex << inst.pc << ".";
 
@@ -801,6 +812,7 @@ llvm::CallingConv::ID X86Arch::DefaultCallingConv(void) const {
       case kOSInvalid:
       case kOSmacOS:
       case kOSLinux:
+      case kOSVxWorks:
       case kOSWindows:
         return llvm::CallingConv::C;  // cdecl.
     }
@@ -809,6 +821,7 @@ llvm::CallingConv::ID X86Arch::DefaultCallingConv(void) const {
       case kOSInvalid:
       case kOSmacOS:
       case kOSLinux:
+      case kOSVxWorks:
         return llvm::CallingConv::X86_64_SysV;
       case kOSWindows:
         return llvm::CallingConv::Win64;
@@ -848,6 +861,7 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
       break;
 
     case kOSLinux:
+    case kOSVxWorks:
       switch (arch_name) {
         case kArchAMD64:
         case kArchAMD64_AVX:
@@ -928,7 +942,6 @@ bool X86Arch::DecodeInstruction(
     return false;
   }
 
-  inst.operand_size = xed_decoded_inst_get_operand_width(xedd);
   inst.bytes = inst_bytes.substr(0, xed_decoded_inst_get_length(xedd));
   inst.category = CreateCategory(xedd);
   inst.next_pc = address + xed_decoded_inst_get_length(xedd);
@@ -936,13 +949,16 @@ bool X86Arch::DecodeInstruction(
   // Wrap an instruction in atomic begin/end if it accesses memory with RMW
   // semantics or with a LOCK prefix.
   if (xed_operand_values_get_atomic(xedd) ||
-      xed_operand_values_has_lock_prefix(xedd)) {
+      xed_operand_values_has_lock_prefix(xedd) ||
+      XED_CATEGORY_SEMAPHORE == xed_decoded_inst_get_category(xedd)) {
     inst.is_atomic_read_modify_write = true;
   }
 
   if (Instruction::kCategoryConditionalAsyncHyperCall == inst.category) {
     DecodeConditionalInterrupt(inst);
   }
+
+  auto iform = xed_decoded_inst_get_iform_enum(xedd);
 
   if (!is_lazy || inst.IsControlFlow()) {
     inst.function = InstructionFunctionName(xedd);
@@ -969,7 +985,7 @@ bool X86Arch::DecodeInstruction(
         XED_CATEGORY_X87_ALU == xed_decoded_inst_get_category(xedd)) {
       auto set_ip_dp = false;
       const auto get_attr = xed_decoded_inst_get_attribute;
-      switch (xed_decoded_inst_get_iform_enum(xedd)) {
+      switch (iform) {
         case XED_IFORM_FNOP:
         case XED_IFORM_FINCSTP:
         case XED_IFORM_FDECSTP:
@@ -990,11 +1006,17 @@ bool X86Arch::DecodeInstruction(
         DecodeX87LastIpDp(inst);
       }
     }
+
+    if (xed_decoded_inst_is_xacquire(xedd) ||
+        xed_decoded_inst_is_xrelease(xedd)) {
+      LOG(ERROR)
+          << "Ignoring XACQUIRE/XRELEASE prefix at " << std::hex
+          << inst.pc << std::dec;
+    }
   }
 
   // Make sure we disallow decoding of AVX instructions when running with non-
   // AVX arch specified. Same thing for AVX512 instructions.
-  auto iform = xed_decoded_inst_get_iform_enum(xedd);
   switch (xed_decoded_inst_get_isa_set(xedd)) {
     case XED_ISA_SET_INVALID:
     case XED_ISA_SET_LAST:

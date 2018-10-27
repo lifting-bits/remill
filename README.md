@@ -9,6 +9,7 @@ Remill focuses on accurately lifting instructions. It is meant to be used as a l
 |       | master |
 | ----- | ------ |
 | Linux | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/linux/)](https://travis-ci.org/trailofbits/remill) |
+| macOS | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/osx/)](https://travis-ci.org/trailofbits/remill) |
 
 ## Additional Documentation
  
@@ -23,9 +24,7 @@ If you are experiencing undocumented problems with Remill then ask for help in t
 
 ## Supported Platforms
 
-Remill is supported on Linux platforms and has been tested on Ubuntu 14.04 and 16.04.
-
-We are actively working on porting Remill to macOS.
+Remill is supported on Linux platforms and has been tested on Ubuntu 14.04, 16.04, and 18.04. Remill also works on macOS, and has experimental support for Windows.
 
 ## Dependencies
 
@@ -58,10 +57,14 @@ sudo apt-get install \
      git \
      python2.7 \
      wget \
-     realpath \
+     curl \
      build-essential \
      libtinfo-dev \
-     lsb-release
+     lsb-release \
+     zlib1g-dev
+
+# Ubuntu 14.04, 16.04
+sudo apt-get install realpath
 ```
 
 Next, clone the repository. This will clone the code into the `remill` directory.
@@ -90,6 +93,6 @@ We can also build and run Remill's test suite.
 
 ```shell
 cd ./remill-build
-make build_x86_tests
+make test_dependencies
 make test
 ```

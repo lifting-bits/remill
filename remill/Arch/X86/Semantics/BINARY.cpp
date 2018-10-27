@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_BINARY_H_
-#define REMILL_ARCH_X86_SEMANTICS_BINARY_H_
+#pragma once
 
 namespace {
 
@@ -706,5 +705,3 @@ DEF_ISEL_RnW_Rn_Mn(ADC_GPRv_MEMv, ADC);
 DEF_ISEL_RnW_Rn_Rn(ADC_GPRv_GPRv_13, ADC);
 DEF_ISEL(ADC_AL_IMMb) = ADC<R8W, R8, I8>;
 DEF_ISEL_RnW_Rn_In(ADC_OrAX_IMMz, ADC);
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_BINARY_H_

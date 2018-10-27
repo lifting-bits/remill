@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_RUNTIME_STATE_H_
-#define REMILL_ARCH_X86_RUNTIME_STATE_H_
+#pragma once
 
 // !!! RULES FOR STATE STRUCTURE TYPES !!!
 //
@@ -515,38 +514,32 @@ enum SegmentSystemBit : uint64_t {
 
 struct GenericDescriptor {
   uint64_t unused:44;
-  SegmentSystemBit sbit:1;
-  DescriptorPrivilegeLevel dpl:2;
-  SegmentPresentStatus present:1;
-  uint16_t unused3:16;
-} __attribute__ ((packed));
+  uint64_t sbit:1;
+  uint64_t dpl:2;
+  uint64_t present:1;
+  uint64_t unused3:16;
+} __attribute__((packed));
 
 static_assert(8U == sizeof(GenericDescriptor),
               "Invalid packing of `struct GenericDescriptor`.");
 
 struct SegmentDescriptor {
-  uint64_t limit_low:16;
-  uint64_t base_low:16;
-  uint64_t base_middle:8;
-  union {
-    struct {
-      SystemDescriptorType system_type:4;
-      uint64_t system_access:4;
-    } __attribute__((packed));
-    uint64_t nonsystem_access:8;
-  } __attribute__((packed));
-
-  uint64_t limit_high:4;
-  uint64_t available:1;
+  uint16_t limit_low:16;
+  uint16_t base_low:16;
+  uint16_t base_middle:8;
+  uint16_t system_type:4;
+  uint16_t system_access:4;
+  uint16_t limit_high:4;
+  uint16_t available:1;
 
   /* Only valid for kCodeSegmentDescriptor */
-  CodeSegmentMode code_mode:1;  // Only valid for code segments.
+  uint16_t code_mode:1;  // Only valid for code segments.
 
   /* Only valid for kCodeSegmentDescriptor, kDataSegmentDescriptor */
-  SegmentDefaultOperandSize default_operand_size:1;
-  SegmentGranularity granularity:1;
+  uint16_t default_operand_size:1;
+  uint16_t granularity:1;
 
-  uint64_t base_high:8;
+  uint16_t base_high:8;
 } __attribute__((packed));
 
 static_assert(8U == sizeof(SegmentDescriptor),
@@ -554,11 +547,11 @@ static_assert(8U == sizeof(SegmentDescriptor),
 
 struct GateDescriptor {
   uint64_t target_offset_low:16;
-  SegmentSelector target_selector; /* :16 */
+  uint64_t target_selector:16;
   /* Only valid for interrupt gates. */
   uint64_t interrupt_stack_table_index:3;
   uint64_t reserved:5;
-  SystemDescriptorType system_type:4;
+  uint64_t system_type:4;
   uint64_t access:4;
   uint64_t target_offset_middle:16;
 } __attribute__ ((packed));
@@ -746,6 +739,96 @@ static_assert((3264 + 16) == sizeof(State),
 
 using X86State = State;
 
-#pragma clang diagnostic pop
+union CR0Reg {
+  uint64_t flat;
+  struct {
+    uint64_t pe:1;
+    uint64_t mp:1;
+    uint64_t em:1;
+    uint64_t ts:1;
+    uint64_t et:1;
+    uint64_t ne:1;
+    uint64_t _rsvd0:10;
+    uint64_t wp:1;
+    uint64_t _rsvd1:1;
+    uint64_t am:1;
+    uint64_t _rsvd2:10;
+    uint64_t nw:1;
+    uint64_t cd:1;
+    uint64_t pg:1;
+    uint64_t _rsvd3:32;
+  } __attribute__((packed));
+} __attribute__((packed));
 
-#endif  // REMILL_ARCH_X86_RUNTIME_STATE_H_
+static_assert(8 == sizeof(CR0Reg), "Invalid packing of CR0Reg");
+
+union CR1Reg {
+  uint64_t flat;
+} __attribute__((packed));
+
+static_assert(8 == sizeof(CR1Reg), "Invalid packing of CR1Reg");
+
+union CR2Reg {
+  uint64_t flat;
+  addr_t linear_address;
+} __attribute__((packed));
+
+static_assert(8 == sizeof(CR2Reg), "Invalid packing of CR2Reg");
+
+union CR3Reg {
+  uint64_t flat;
+  struct {
+    uint64_t _rsvd0:3;
+    uint64_t pwt:1;
+    uint64_t pcd:1;
+    uint64_t _rsvd1:7;
+    uint64_t page_dir_base:52;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(8 == sizeof(CR3Reg), "Invalid packing of CR3Reg");
+
+union CR4Reg {
+  uint64_t flat;
+  struct {
+    uint64_t vme:1;
+    uint64_t pvi:1;
+    uint64_t tsd:1;
+    uint64_t de:1;
+    uint64_t pse:1;
+    uint64_t pae:1;
+    uint64_t mce:1;
+    uint64_t pge:1;
+    uint64_t pce:1;
+    uint64_t osfxsr:1;
+    uint64_t osxmmexcpt:1;
+    uint64_t umip:1;
+    uint64_t _rsvd0:1;
+    uint64_t vmxe:1;
+    uint64_t smxe:1;
+    uint64_t _rsvd1:1;
+    uint64_t fsgsbase:1;
+    uint64_t pcide:1;
+    uint64_t osxsave:1;
+    uint64_t _rsvd2:1;
+    uint64_t smep:1;
+    uint64_t smap:1;
+    uint64_t pke:1;
+    uint64_t _rsvd3:9;
+    uint64_t _rsvd4:32;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(8 == sizeof(CR4Reg), "Invalid packing of CR4Reg");
+
+union CR8Reg {
+  uint64_t flat;
+  struct {
+    uint64_t tpr:4;
+    uint64_t _rsvd0:60;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(8 == sizeof(CR8Reg), "Invalid packing of CR8Reg");
+
+#pragma clang diagnostic pop

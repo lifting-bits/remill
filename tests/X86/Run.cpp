@@ -16,7 +16,6 @@
 
 #define _XOPEN_SOURCE
 
-#include <cfenv>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -28,7 +27,6 @@
 #include <string>
 #include <type_traits>
 #include <vector>
-#include <cfenv>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -41,6 +39,7 @@
 #include "tests/X86/Test.h"
 
 #include "remill/Arch/Runtime/Runtime.h"
+#include "remill/Arch/Float.h"
 #include "remill/Arch/X86/Runtime/State.h"
 
 DECLARE_string(arch);
@@ -132,6 +131,26 @@ uint8_t *gStackSwitcher = nullptr;
 // the native flags we restore what was clobbered by `PUSHFQ`.
 uint64_t gStackSaveSlot = 0;
 
+// Debug registers.
+uint64_t DR0;
+uint64_t DR1;
+uint64_t DR2;
+uint64_t DR3;
+uint64_t DR4;
+uint64_t DR5;
+uint64_t DR6;
+uint64_t DR7;
+
+// Control registers.
+CR0Reg CR0;
+CR1Reg CR1;
+CR2Reg CR2;
+CR3Reg CR3;
+CR4Reg CR4;
+#if 64 == ADDRESS_SIZE_BITS
+CR8Reg CR8;
+#endif
+
 // Invoke a native test case addressed by `gTestToRun` and store the machine
 // state before and after executing the test in `gLiftedState` and
 // `gNativeState`, respectively.
@@ -183,6 +202,91 @@ NEVER_INLINE Memory *__remill_write_memory_f80(
   return memory;
 }
 
+Memory *__remill_compare_exchange_memory_8(
+    Memory *memory, addr_t addr, uint8_t &expected, uint8_t desired) {
+  expected = __sync_val_compare_and_swap(
+      reinterpret_cast<uint8_t *>(addr), expected, desired);
+  return memory;
+}
+
+Memory *__remill_compare_exchange_memory_16(
+    Memory *memory, addr_t addr, uint16_t &expected, uint16_t desired) {
+  expected =  __sync_val_compare_and_swap(
+      reinterpret_cast<uint16_t *>(addr), expected, desired);
+  return memory;
+}
+
+Memory *__remill_compare_exchange_memory_32(
+    Memory *memory, addr_t addr, uint32_t &expected, uint32_t desired) {
+  expected = __sync_val_compare_and_swap(
+      reinterpret_cast<uint32_t *>(addr), expected, desired);
+  return memory;
+}
+
+Memory *__remill_compare_exchange_memory_64(
+    Memory *memory, addr_t addr, uint64_t &expected, uint64_t desired) {
+  expected = __sync_val_compare_and_swap(
+      reinterpret_cast<uint64_t *>(addr), expected, desired);
+  return memory;
+}
+
+Memory *__remill_compare_exchange_memory_128(
+    Memory *memory, addr_t addr, uint128_t &expected, uint128_t &desired) {
+#if !(defined(__x86_64__) || defined(__i386__) || defined(_M_X86))
+  expected = __sync_val_compare_and_swap(
+      reinterpret_cast<uint128_t *>(addr), expected, desired);
+#else
+  bool result;
+  struct alignas(16) uint128 {
+    uint64_t lo;
+    uint64_t hi;
+  };
+
+  uint128 *oldval = reinterpret_cast<uint128 *>(&expected);
+  uint128 *newval = reinterpret_cast<uint128 *>(&desired);
+
+  __asm__ __volatile__(
+      "lock; cmpxchg16b %0; setz %1"
+      : "=m"(*reinterpret_cast<uint128_t *>(addr)), "=q"(result)
+      : "m"(*reinterpret_cast<uint128_t *>(addr)), "d" (oldval->hi), "a" (oldval->lo),
+        "c" (newval->hi), "b" (newval->lo)
+      : "memory");
+
+  if(!result) {
+    expected = *reinterpret_cast<uint128_t*>(addr);
+  }
+#endif
+  return memory;
+}
+
+#define MAKE_ATOMIC_INTRINSIC(intrinsic_name, type_prefix, size) \
+  Memory *__remill_ ## intrinsic_name ## _ ## size( \
+      Memory *memory, addr_t addr, type_prefix ## size ## _t &value) { \
+    value = __sync_ ## intrinsic_name(reinterpret_cast<type_prefix ## size ## _t *>(addr), value); \
+    return memory; \
+  } \
+
+MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 8)
+MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 16)
+MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 32)
+MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 64)
+MAKE_ATOMIC_INTRINSIC(fetch_and_sub, uint, 8)
+MAKE_ATOMIC_INTRINSIC(fetch_and_sub, uint, 16)
+MAKE_ATOMIC_INTRINSIC(fetch_and_sub, uint, 32)
+MAKE_ATOMIC_INTRINSIC(fetch_and_sub, uint, 64)
+MAKE_ATOMIC_INTRINSIC(fetch_and_or, uint, 8)
+MAKE_ATOMIC_INTRINSIC(fetch_and_or, uint, 16)
+MAKE_ATOMIC_INTRINSIC(fetch_and_or, uint, 32)
+MAKE_ATOMIC_INTRINSIC(fetch_and_or, uint, 64)
+MAKE_ATOMIC_INTRINSIC(fetch_and_and, uint, 8)
+MAKE_ATOMIC_INTRINSIC(fetch_and_and, uint, 16)
+MAKE_ATOMIC_INTRINSIC(fetch_and_and, uint, 32)
+MAKE_ATOMIC_INTRINSIC(fetch_and_and, uint, 64)
+MAKE_ATOMIC_INTRINSIC(fetch_and_xor, uint, 8)
+MAKE_ATOMIC_INTRINSIC(fetch_and_xor, uint, 16)
+MAKE_ATOMIC_INTRINSIC(fetch_and_xor, uint, 32)
+MAKE_ATOMIC_INTRINSIC(fetch_and_xor, uint, 64)
+
 int __remill_fpu_exception_test_and_clear(int read_mask, int clear_mask) {
   auto except = std::fetestexcept(read_mask);
   std::feclearexcept(clear_mask);
@@ -208,34 +312,22 @@ Memory *__remill_missing_block(X86State &, addr_t, Memory *memory) {
 
 Memory *__remill_sync_hyper_call(
     X86State &state, Memory *mem, SyncHyperCall::Name call) {
-  auto eax = state.gpr.rax.dword;
-  auto ebx = state.gpr.rbx.dword;
-  auto ecx = state.gpr.rcx.dword;
-  auto edx = state.gpr.rdx.dword;
-
   switch (call) {
     case SyncHyperCall::kX86CPUID:
-      state.gpr.rax.aword = 0;
-      state.gpr.rbx.aword = 0;
-      state.gpr.rcx.aword = 0;
-      state.gpr.rdx.aword = 0;
-
       asm volatile(
           "cpuid"
-          : "=a"(state.gpr.rax.dword),
-            "=b"(state.gpr.rbx.dword),
-            "=c"(state.gpr.rcx.dword),
-            "=d"(state.gpr.rdx.dword)
-          : "a"(eax),
-            "b"(ebx),
-            "c"(ecx),
-            "d"(edx)
+          : "=a"(state.gpr.rax.aword),
+            "=b"(state.gpr.rbx.aword),
+            "=c"(state.gpr.rcx.aword),
+            "=d"(state.gpr.rdx.aword)
+          : "a"(state.gpr.rax.aword),
+            "b"(state.gpr.rbx.aword),
+            "c"(state.gpr.rcx.aword),
+            "d"(state.gpr.rdx.aword)
       );
       break;
 
     case SyncHyperCall::kX86ReadTSC:
-      state.gpr.rax.aword = 0;
-      state.gpr.rdx.aword = 0;
       asm volatile(
           "rdtsc"
           : "=a"(state.gpr.rax.dword),
@@ -244,38 +336,63 @@ Memory *__remill_sync_hyper_call(
       break;
 
     case SyncHyperCall::kX86ReadTSCP:
-      state.gpr.rax.aword = 0;
-      state.gpr.rcx.aword = 0;
-      state.gpr.rdx.aword = 0;
       asm volatile(
           "rdtscp"
-          : "=a"(state.gpr.rax.dword),
-            "=c"(state.gpr.rcx.dword),
-            "=d"(state.gpr.rdx.dword)
+          : "=a"(state.gpr.rax.aword),
+            "=c"(state.gpr.rcx.aword),
+            "=d"(state.gpr.rdx.aword)
+          : "a"(state.gpr.rax.aword),
+            "c"(state.gpr.rcx.aword),
+            "d"(state.gpr.rdx.aword)
       );
       break;
 
     default:
-      __builtin_unreachable();
+      abort();
   }
 
   return mem;
 }
 
+// Read/write to I/O ports.
+uint8_t __remill_read_io_port_8(Memory *, addr_t) {
+  abort();
+}
+
+uint16_t __remill_read_io_port_16(Memory *, addr_t) {
+  abort();
+}
+
+uint32_t __remill_read_io_port_32(Memory *, addr_t) {
+  abort();
+}
+
+Memory *__remill_write_io_port_8(Memory *, addr_t, uint8_t) {
+  abort();
+}
+
+Memory *__remill_write_io_port_16(Memory *, addr_t, uint16_t) {
+  abort();
+}
+
+Memory *__remill_write_io_port_32(Memory *, addr_t, uint32_t) {
+  abort();
+}
+
 Memory *__remill_function_call(X86State &, addr_t, Memory *) {
-  __builtin_unreachable();
+  abort();
 }
 
 Memory *__remill_function_return(X86State &, addr_t, Memory *) {
-  __builtin_unreachable();
+  abort();
 }
 
 Memory *__remill_jump(X86State &, addr_t, Memory *) {
-  __builtin_unreachable();
+  abort();
 }
 
 Memory *__remill_async_hyper_call(X86State &, addr_t, Memory *) {
-  __builtin_unreachable();
+  abort();
 }
 
 uint8_t __remill_undefined_8(void) {
@@ -326,6 +443,40 @@ static void InitFlags(void) {
       : "m"(gRflagsInitial));
 }
 
+#if 32 == ADDRESS_SIZE_BITS
+
+// Check if we are in a mode such that FCS and FDS are deprecated, and
+// are thus zeroed out in FXSAVE, XSAVE, and XSAVEOPT.
+//
+// Per the Intel SDM Vol. 1, Section 8.1.8, this happens when:
+//
+//    CPUID.(EAX=07H,ECX=0H):EBX[bit 13] = 1
+//
+// Where "bit 13" is a 0-based index.
+static bool AreFCSAndFDSDeprecated(void) {
+  uint32_t eax = 0x7;
+  uint32_t ebx = 0;
+  uint32_t ecx = 0;
+  uint32_t edx = 0;
+
+  asm volatile(
+    "cpuid"
+    : "=a"(eax),
+      "=b"(ebx),
+      "=c"(ecx),
+      "=d"(edx)
+    : "a"(eax),
+      "b"(ebx),
+      "c"(ecx),
+      "d"(edx)
+  );
+
+  // Bit 13 of EBX is not zero.
+  return (ebx & (1U << 13U)) != 0U;
+}
+
+#endif  // 32 == ADDRESS_SIZE_BITS
+
 // Convert some native state, stored in various ways, into the `X86State` structure
 // type.
 static void ImportX87X86State(X86State *state) {
@@ -370,6 +521,33 @@ static void ResetFlags(void) {
   asm("push %0; popfq;" : : "m"(gRflagsInitial));
 }
 
+// clear the exception flags in mxcsr
+// *and* set MXCSR to ignore denormal exceptions
+// this is done properly by std::fesetenv(FE_DFL_ENV) in newer (after 2015) glibcs
+// but the logic in older versions (like eglibc 2.19, used on some Ubuntu 14.04 installations)
+// does not clear exception flags and also does *not* ignore denormal exceptions
+// see: https://sourceware.org/ml/libc-alpha/2015-10/msg01020.html
+#if !defined(FE_DENORMALOPERAND) && defined(__FE_DENORM)
+# define FE_DENORMALOPERAND __FE_DENORM
+#endif
+#if !defined(FE_DENORMALOPERAND)
+# warning "Missing FE_DENORMALOPERAND."
+# define FE_DENORMALOPERAND 0x2
+#endif
+static void FixGlibcMxcsrBug() {
+  const uint32_t FE_ALL_EXCEPT_X86 = (FE_ALL_EXCEPT | FE_DENORMALOPERAND);
+  uint32_t mxcsr = 0; // temporarily holds our MXCSR
+  asm("stmxcsr %0;" : "=m"(mxcsr));
+  // assumes the rest of MXCSR was sanely set by std::fesetenv(FE_DFL_ENV);
+
+  // clear exceptions in MXCSR
+  mxcsr &= ~FE_ALL_EXCEPT_X86;
+  // set the exception mask for future exceptions
+  mxcsr |= (FE_ALL_EXCEPT_X86 << 7);
+
+  asm("ldmxcsr %0;" : : "m"(mxcsr));
+}
+
 }  // namespace
 
 class InstrTest : public ::testing::TestWithParam<const test::TestInfo *> {};
@@ -390,6 +568,14 @@ static void RunWithFlags(const test::TestInfo *info,
                          uint64_t arg1,
                          uint64_t arg2,
                          uint64_t arg3) {
+
+  // Can't fit a 64-bit stack address into a 32-bit register.
+  auto stack_addr = reinterpret_cast<uintptr_t>(&(gLiftedStack.bytes[0]));
+  if (sizeof(addr_t) < sizeof(uintptr_t) &&
+      static_cast<uintptr_t>(static_cast<addr_t>(stack_addr)) != stack_addr) {
+    return;
+  }
+
   DLOG(INFO) << "Testing instruction: " << info->test_name << ": " << desc;
   if (sigsetjmp(gUnsupportedInstrBuf, true)) {
     DLOG(INFO) << "Unsupported instruction " << info->test_name;
@@ -443,6 +629,7 @@ static void RunWithFlags(const test::TestInfo *info,
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = false;
     std::fesetenv(FE_DFL_ENV);
+    FixGlibcMxcsrBug();
     (void) lifted_func(
         *lifted_state,
         static_cast<addr_t>(lifted_state->gpr.rip.aword),
@@ -453,10 +640,25 @@ static void RunWithFlags(const test::TestInfo *info,
 
   ResetFlags();
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winvalid-offsetof"
   // We'll compare the `ST` and `XMM` regs via their other stored forms.
   auto kill_size = sizeof(lifted_state->x87) - offsetof(FPU, fxsave.st);
+#pragma clang diagnostic pop
+
   memset(lifted_state->x87.fxsave.st, 0, kill_size);
   memset(native_state->x87.fxsave.st, 0, kill_size);
+
+#if 32 == ADDRESS_SIZE_BITS
+  // If FCS and FDS are deprecated, don't compare them.
+  if (AreFCSAndFDSDeprecated()) {
+    lifted_state->x87.fxsave.cs = {0};
+    lifted_state->x87.fxsave.ds = {0};
+
+    native_state->x87.fxsave.cs = {0};
+    native_state->x87.fxsave.ds = {0};
+  }
+#endif
 
   // New Intel CPUs have apparently stopped tracking `dp`, even though we track
   // it. E.g., in testing, an i7-4910MQ tracked `dp` but an i7-7920HQ did not.
@@ -543,29 +745,112 @@ static void RunWithFlags(const test::TestInfo *info,
 
   // Compare the register states.
   for (auto i = 0UL; i < kNumVecRegisters; ++i) {
-    EXPECT_TRUE(lifted_state->vec[i] == native_state->vec[i]);
+    EXPECT_EQ(lifted_state->vec[i], native_state->vec[i]);
   }
 
-  EXPECT_TRUE(lifted_state->rflag == native_state->rflag)
+  EXPECT_EQ(lifted_state->rflag, native_state->rflag)
       << "Lifted RFLAG after test is " << std::hex
       << lifted_state->rflag.flat << ", native is "
       << native_state->rflag.flat << std::dec;
 
-  EXPECT_TRUE(lifted_state->seg == native_state->seg)
+  EXPECT_EQ(lifted_state->seg, native_state->seg)
       << "Lifted SEG differs from native SEG";
 
-  EXPECT_TRUE(lifted_state->gpr == native_state->gpr)
+  EXPECT_EQ(lifted_state->gpr, native_state->gpr)
       << "Lifted GPR differs from native GPR";
 
-  EXPECT_TRUE(lifted_state->x87.fxsave.swd == native_state->x87.fxsave.swd)
+  EXPECT_EQ(lifted_state->x87.fxsave.swd, native_state->x87.fxsave.swd)
       << "Lifted X87 status word after test is " << std::hex
       << lifted_state->x87.fxsave.swd.flat << ", native is "
       << native_state->x87.fxsave.swd.flat << std::dec;
 
   if (gLiftedState != gNativeState) {
-    LOG(ERROR)
+    EXPECT_TRUE(false)
         << "States did not match for " << desc;
-    EXPECT_TRUE(!"Lifted and native states did not match.");
+
+#define DIFF(name, a) \
+    EXPECT_EQ(lifted_state->a, native_state->a)
+
+    DIFF(RAX, gpr.rax.aword);
+    DIFF(RBX, gpr.rbx.aword);
+    DIFF(RCX, gpr.rcx.aword);
+    DIFF(RDX, gpr.rdx.aword);
+    DIFF(RDI, gpr.rdi.aword);
+    DIFF(RSI, gpr.rsi.aword);
+    DIFF(RBP, gpr.rbp.aword);
+    DIFF(RSP, gpr.rsp.aword);
+    DIFF(R8, gpr.r8.aword);
+    DIFF(R9, gpr.r9.aword);
+    DIFF(R10, gpr.r10.aword);
+    DIFF(R11, gpr.r11.aword);
+    DIFF(R12, gpr.r12.aword);
+    DIFF(R13, gpr.r13.aword);
+    DIFF(R14, gpr.r14.aword);
+    DIFF(R15, gpr.r15.aword);
+
+    DIFF(RFLAG_CF, rflag.cf);
+    DIFF(RFLAG_PF, rflag.pf);
+    DIFF(RFLAG_AF, rflag.af);
+    DIFF(RFLAG_ZF, rflag.zf);
+    DIFF(RFLAG_SF, rflag.sf);
+    DIFF(RFLAG_DF, rflag.df);
+    DIFF(RFLAG_OF, rflag.of);
+
+    DIFF(AFLAG_CF, aflag.cf);
+    DIFF(AFLAG_PF, aflag.pf);
+    DIFF(AFLAG_AF, aflag.af);
+    DIFF(AFLAG_ZF, aflag.zf);
+    DIFF(AFLAG_SF, aflag.sf);
+    DIFF(AFLAG_DF, aflag.df);
+    DIFF(AFLAG_OF, aflag.of);
+
+    DIFF(ST0, st.elems[0].val);
+    DIFF(ST1, st.elems[1].val);
+    DIFF(ST2, st.elems[2].val);
+    DIFF(ST3, st.elems[3].val);
+    DIFF(ST4, st.elems[4].val);
+    DIFF(ST5, st.elems[5].val);
+    DIFF(ST6, st.elems[6].val);
+    DIFF(ST7, st.elems[7].val);
+
+    DIFF(MMX0, mmx.elems[0].val.qwords.elems[0]);
+    DIFF(MMX1, mmx.elems[1].val.qwords.elems[0]);
+    DIFF(MMX2, mmx.elems[2].val.qwords.elems[0]);
+    DIFF(MMX3, mmx.elems[3].val.qwords.elems[0]);
+    DIFF(MMX4, mmx.elems[4].val.qwords.elems[0]);
+    DIFF(MMX5, mmx.elems[5].val.qwords.elems[0]);
+    DIFF(MMX6, mmx.elems[6].val.qwords.elems[0]);
+    DIFF(MMX7, mmx.elems[7].val.qwords.elems[0]);
+
+    DIFF(FXSAVE_CWD_IM, x87.fxsave.cwd.im);
+    DIFF(FXSAVE_CWD_DM, x87.fxsave.cwd.dm);
+    DIFF(FXSAVE_CWD_ZM, x87.fxsave.cwd.zm);
+    DIFF(FXSAVE_CWD_OM, x87.fxsave.cwd.om);
+    DIFF(FXSAVE_CWD_UM, x87.fxsave.cwd.um);
+    DIFF(FXSAVE_CWD_PM, x87.fxsave.cwd.pm);
+
+    DIFF(FXSAVE_SWD_IE, x87.fxsave.swd.ie);
+    DIFF(FXSAVE_SWD_DE, x87.fxsave.swd.de);
+    DIFF(FXSAVE_SWD_ZE, x87.fxsave.swd.ze);
+    DIFF(FXSAVE_SWD_OE, x87.fxsave.swd.oe);
+    DIFF(FXSAVE_SWD_UE, x87.fxsave.swd.ue);
+    DIFF(FXSAVE_SWD_PE, x87.fxsave.swd.pe);
+    DIFF(FXSAVE_SWD_SF, x87.fxsave.swd.sf);
+    DIFF(FXSAVE_SWD_ES, x87.fxsave.swd.es);
+    DIFF(FXSAVE_SWD_C0, x87.fxsave.swd.c0);
+    DIFF(FXSAVE_SWD_C1, x87.fxsave.swd.c1);
+    DIFF(FXSAVE_SWD_C2, x87.fxsave.swd.c2);
+    DIFF(FXSAVE_SWD_TOP, x87.fxsave.swd.top);
+    DIFF(FXSAVE_SWD_C3, x87.fxsave.swd.c3);
+    DIFF(FXSAVE_SWD_B, x87.fxsave.swd.b);
+
+    auto lifted_state_bytes = reinterpret_cast<uint8_t *>(lifted_state);
+    auto native_state_bytes = reinterpret_cast<uint8_t *>(native_state);
+
+    for (size_t i = 0; i < sizeof(State); ++i) {
+      LOG_IF(ERROR, lifted_state_bytes[i] != native_state_bytes[i])
+          << "Bytes at offset " << i << " are different";
+    }
   }
 
   if (gLiftedStack != gNativeStack) {

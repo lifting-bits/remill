@@ -19,8 +19,8 @@
 
 #include "remill/OS/OS.h"
 
-DEFINE_string(os, "", "Operating system name of the code being translated. "
-                      "Valid OSes: linux, macos, windows.");
+DEFINE_string(os, REMILL_OS, "Operating system name of the code being "
+                             "translated. Valid OSes: linux, macos, windows.");
 
 namespace remill {
 
@@ -31,6 +31,8 @@ OSName GetOSName(std::string name) {
     return kOSLinux;
   } else if (name == "windows") {
     return kOSWindows;
+  } else if (name == "vxworks") {
+    return kOSVxWorks;
   } else {
     return kOSInvalid;
   }
@@ -46,6 +48,8 @@ std::string GetOSName(OSName name) {
       return "linux";
     case kOSWindows:
       return "windows";
+    case kOSVxWorks:
+      return "vxworks";
   }
   return "invalid";
 }

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_RUNTIME_OPERATORS_H_
-#define REMILL_ARCH_RUNTIME_OPERATORS_H_
+#pragma once
 
 struct Memory;
 struct State;
@@ -464,6 +463,77 @@ MAKE_WRITE_REF(float32_t)
 MAKE_WRITE_REF(float64_t)
 
 #undef MAKE_WRITE_REF
+
+#define MAKE_CMPXCHG(size, type_prefix, access_suffix) \
+    template <typename T> \
+    ALWAYS_INLINE static bool _CmpXchg( \
+        Memory *&memory, RnW<T> op, type_prefix ## size ## _t &expected, \
+      type_prefix ## size ## _t desired) { \
+      if (*op.val_ref == expected) {\
+        *op.val_ref = desired; \
+        return true; \
+      } else { \
+        expected = *reinterpret_cast<type_prefix ## size ## _t *>(op.val_ref); \
+        return false; \
+      } \
+    } \
+    \
+    template <typename T> \
+    ALWAYS_INLINE static bool _CmpXchg( \
+        Memory *&memory, MnW<T> op, type_prefix ## size ## _t &expected, \
+      type_prefix ## size ## _t desired) { \
+      auto prev_val = expected; \
+      memory = __remill_compare_exchange_memory_ ## access_suffix \
+          (memory, op.addr, expected, desired);\
+      return prev_val == expected; \
+    }
+
+MAKE_CMPXCHG(8, uint, 8)
+MAKE_CMPXCHG(16, uint, 16)
+MAKE_CMPXCHG(32, uint, 32)
+MAKE_CMPXCHG(64, uint, 64)
+MAKE_CMPXCHG(128, uint, 128)
+
+#undef MAKE_CMPXCHG
+#define UCmpXchg(op, oldval, newval) _CmpXchg(memory, op, oldval, newval)
+
+#define MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, size, type_prefix, op)\
+  template<typename T> \
+  ALWAYS_INLINE type_prefix ## size ## _t _U ## name( \
+      Memory *&memory, MnW<T> addr, type_prefix ## size ## _t value) { \
+    memory = __remill_ ## intrinsic_name ## _ ## size(memory, addr.addr, value); \
+    return value; \
+  } \
+  \
+  template<typename T> \
+  ALWAYS_INLINE type_prefix ## size ## _t _U ## name ( \
+      Memory *&memory, RnW<T> addr, type_prefix ## size ## _t value) { \
+    auto prev_value = *reinterpret_cast<type_prefix ## size ## _t *>(addr.val_ref); \
+    *addr.val_ref = prev_value op value; \
+    return prev_value; \
+  }
+
+#define MAKE_ATOMIC(name, intrinsic_name, op)  \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 8, uint, op) \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 16, uint, op) \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 32, uint, op) \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 64, uint, op) \
+
+MAKE_ATOMIC(FetchAdd, fetch_and_add, +)
+MAKE_ATOMIC(FetchSub, fetch_and_sub, -)
+MAKE_ATOMIC(FetchOr, fetch_and_or, |)
+MAKE_ATOMIC(FetchAnd, fetch_and_and, &)
+MAKE_ATOMIC(FetchXor, fetch_and_xor, ^)
+
+#undef MAKE_ATOMIC
+#undef MAKE_ATOMIC_INTRINSIC
+
+#define UFetchAdd(op1, op2) _UFetchAdd(memory, op1, op2)
+#define UFetchSub(op1, op2) _UFetchSub(memory, op1, op2)
+#define UFetchOr(op1, op2)  _UFetchOr(memory, op1, op2)
+#define UFetchAnd(op1, op2) _UFetchAnd(memory, op1, op2)
+#define UFetchXor(op1, op2) _UFetchXor(memory, op1, op2)
+
 
 // For the sake of esthetics and hiding the small-step semantics of memory
 // operands, we use this macros to implicitly pass in the `memory` operand,
@@ -1123,6 +1193,34 @@ MAKE_INSERTV(F, 64, float64_t, doubles)
 
 #undef MAKE_INSERTV
 
+// Update the Nth element of an aggregate vector.
+#define MAKE_UPDATEV(prefix, size, base_type, accessor) \
+    template <typename T> \
+    ALWAYS_INLINE static \
+    void prefix ## UpdateV ## size(T &vec, size_t n, base_type val) { \
+      static_assert( \
+          sizeof(base_type) == sizeof(typename VectorType<T>::BT), \
+          "Invalid update"); \
+      vec.elems[n] = val; \
+    }
+
+MAKE_UPDATEV(U, 8, uint8_t, bytes)
+MAKE_UPDATEV(U, 16, uint16_t, words)
+MAKE_UPDATEV(U, 32, uint32_t, dwords)
+MAKE_UPDATEV(U, 64, uint64_t, qwords)
+MAKE_UPDATEV(U, 128, uint128_t, dqwords)
+
+MAKE_UPDATEV(S, 8, int8_t, sbytes)
+MAKE_UPDATEV(S, 16, int16_t, swords)
+MAKE_UPDATEV(S, 32, int32_t, sdwords)
+MAKE_UPDATEV(S, 64, int64_t, sqwords)
+MAKE_UPDATEV(S, 128, int128_t, sdqwords)
+
+MAKE_UPDATEV(F, 32, float32_t, floats)
+MAKE_UPDATEV(F, 64, float64_t, doubles)
+
+#undef MAKE_UPDATEV
+
 template <typename U, typename T>
 ALWAYS_INLINE static constexpr
 T _ZeroVec(void) {
@@ -1552,5 +1650,3 @@ float64_t FRoundToNegativeInfinity64(float64_t val) {
 }
 
 }  // namespace
-
-#endif  // REMILL_ARCH_RUNTIME_OPERATORS_H_

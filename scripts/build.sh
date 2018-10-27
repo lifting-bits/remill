@@ -25,6 +25,7 @@ INSTALL_DIR=/usr/local
 LLVM_VERSION=llvm40
 OS_VERSION=
 ARCH_VERSION=
+BUILD_FLAGS=
 
 # There are pre-build versions of various libraries for specific
 # Ubuntu releases.
@@ -34,6 +35,12 @@ function GetUbuntuOSVersion
   source /etc/lsb-release
 
   case "${DISTRIB_CODENAME}" in
+    bionic)
+      # TODO(pag): Eventually make real packages for 18.04!
+      OS_VERSION=ubuntu1804
+      OS_VERSION=ubuntu1604
+      return 0
+    ;;
     xenial)
       OS_VERSION=ubuntu1604
       return 0
@@ -59,6 +66,10 @@ function GetArchVersion
       ARCH_VERSION=amd64
       return 0
     ;;
+    x86-64)
+      ARCH_VERSION=amd64
+      return 0
+    ;;
     aarch64)
       ARCH_VERSION=aarch64
       return 0
@@ -72,37 +83,48 @@ function GetArchVersion
 
 function DownloadCxxCommon
 {
-  wget https://s3.amazonaws.com/cxx-common/${LIBRARY_VERSION}.tar.gz
-  tar xf ${LIBRARY_VERSION}.tar.gz --warning=no-timestamp
+  curl -O https://s3.amazonaws.com/cxx-common/${LIBRARY_VERSION}.tar.gz
+  if [[ $? -ne 0 ]]; then
+    return 1
+  fi
+  
+  local TAR_OPTIONS="--warning=no-timestamp"
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    TAR_OPTIONS=""
+  fi
+
+  tar xf ${LIBRARY_VERSION}.tar.gz $TAR_OPTIONS
   rm ${LIBRARY_VERSION}.tar.gz
 
   # Make sure modification times are not in the future.
   find ${BUILD_DIR}/libraries -type f -exec touch {} \;
+  
+  return 0
 }
 
 # Attempt to detect the OS distribution name.
 function GetOSVersion
 {
-  local distribution_name=$( cat /etc/issue )
+  source /etc/os-release
 
-  case "${distribution_name}" in
-    *Ubuntu*)
+  case "${ID}" in
+    *ubuntu*)
       GetUbuntuOSVersion
       return 0
     ;;
 
-    *openSUSE*)
+    *opensuse*)
       OS_VERSION=opensuse
       return 0
     ;;
 
-    *Arch\ Linux*)
-      printf "[x] Arch Linux is not yet supported\n"
-      return 1
+    *arch*)
+      OS_VERSION=ubuntu1604
+      return 0
     ;;
 
     *)
-      printf "[x] Failed to download the required dependencies\n"
+      printf "[x] ${distribution_name} is not yet a supported distribution.\n"
       return 1
     ;;
   esac
@@ -112,26 +134,33 @@ function GetOSVersion
 # google protobuf, gflags, glog, gtest, capstone, and llvm in it.
 function DownloadLibraries
 {
-  # mac os x packages
+  # macOS packages
   if [[ "$OSTYPE" == "darwin"* ]]; then
-    printf "[x] macOS is not yet supported\n"
-    return 1
+    OS_VERSION=osx
 
-  # unsupported systems
-  elif [[ "$OSTYPE" != "linux-gnu" ]]; then
+  # Linux packages
+  elif [[ "$OSTYPE" == "linux-gnu" ]]; then
+    if ! GetOSVersion; then
+      return 1
+    fi
+  else
+    printf "[x] OS ${OSTYPE} is not supported.\n"
     return 1
   fi
 
-  GetArchVersion
-  GetOSVersion
-  
+  if ! GetArchVersion; then
+    return 1
+  fi
 
   LIBRARY_VERSION=libraries-${LLVM_VERSION}-${OS_VERSION}-${ARCH_VERSION}
 
   printf "[-] Library version is ${LIBRARY_VERSION}\n"
 
-  if [[ ! -d "${BUILD_DIR}/libraries" ]] ; then
-    DownloadCxxCommon
+  if [[ ! -d "${BUILD_DIR}/libraries" ]]; then
+    if ! DownloadCxxCommon; then
+      printf "[x] Unable to download cxx-common build ${LIBRARY_VERSION}.\n"
+      return 1
+    fi
   fi
 
   return 0
@@ -146,13 +175,14 @@ function Configure
   export CC="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang"
   export CXX="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang++"
 
-
   # Configure the remill build, specifying that it should use the pre-built
   # Clang compiler binaries.
   ${TRAILOFBITS_LIBRARIES}/cmake/bin/cmake \
       -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
       -DCMAKE_C_COMPILER=${CC} \
       -DCMAKE_CXX_COMPILER=${CXX} \
+      -DCMAKE_VERBOSE_MAKEFILE=True \
+      ${BUILD_FLAGS} \
       ${SRC_DIR}
 
   return $?
@@ -161,7 +191,11 @@ function Configure
 # Compile the code.
 function Build
 {
-  NPROC=$( nproc )
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    NPROC=$( sysctl -n hw.ncpu )
+  else
+    NPROC=$( nproc )
+  fi
   make -j${NPROC}
   return $?
 }
@@ -197,6 +231,9 @@ function GetLLVMVersion
     5.0)
       LLVM_VERSION=llvm50
     ;;
+    6.0)
+      LLVM_VERSION=llvm60
+    ;;
     *)
       # unknown option
       printf "[x] Unknown LLVM version ${1}.\n"
@@ -207,7 +244,6 @@ function GetLLVMVersion
 
 function main
 {
-  
   while [[ $# -gt 0 ]] ; do
     key="$1"
 
@@ -237,6 +273,18 @@ function main
         shift # past argument
       ;;
 
+      # Make the build type to be a debug build.
+      --debug)
+        BUILD_FLAGS="${BUILD_FLAGS} -DCMAKE_BUILD_TYPE=Debug"
+        printf "[+] Enabling a debug build of remill\n"
+      ;;
+
+      --extra-cmake-args)
+        BUILD_FLAGS="${BUILD_FLAGS} ${2}"
+        printf "[+] Will supply additional arguments to cmake: ${BUILD_FLAGS}\n"
+        shift
+      ;;
+
       *)
         # unknown option
         printf "[x] Unknown option: ${key}\n"
@@ -246,11 +294,14 @@ function main
 
     shift # past argument or value
   done
-  
+
   mkdir -p ${BUILD_DIR}
   cd ${BUILD_DIR}
 
-  DownloadLibraries && Configure && Build
+  if ! (DownloadLibraries && Configure && Build); then
+  printf "[x] Build aborted.\n"
+  fi
+
   return $?
 }
 

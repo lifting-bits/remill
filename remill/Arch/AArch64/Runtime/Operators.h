@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_AARCH64_RUNTIME_OPERATORS_H_
-#define REMILL_ARCH_AARCH64_RUNTIME_OPERATORS_H_
+#pragma once
 
 namespace {
 
@@ -33,5 +32,3 @@ ALWAYS_INLINE static void _Write(Memory *, Reg &reg,
 }
 
 }  // namespace
-
-#endif  // REMILL_ARCH_AARCH64_RUNTIME_OPERATORS_H_

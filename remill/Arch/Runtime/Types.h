@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_RUNTIME_TYPES_H_
-#define REMILL_ARCH_RUNTIME_TYPES_H_
+#pragma once
 
 #include <cstdint>
 #include <functional>
@@ -666,6 +665,32 @@ struct IntegerType {
 template <>
 struct IntegerType<bool> : public IntegerType<uint8_t> {};
 
+#if __APPLE__
+
+/*
+ * In parts of the code, we create IntegerType<size_t>.
+ * On OS X, size_t is the same as unsigned long, which is
+ * 8 bytes. This code defines IntegerType for size_t.
+ */
+
+template <int>
+struct SizeTEquivalent;
+
+template <>
+struct SizeTEquivalent<4> {
+  typedef IntegerType<uint32_t> T;
+};
+
+template <>
+struct SizeTEquivalent<8> {
+  typedef IntegerType<uint64_t> T;
+};
+
+template <>
+struct IntegerType<size_t> : public SizeTEquivalent<sizeof(size_t)>::T {};
+
+#endif // __APPLE__
+
 #if !COMPILING_WITH_GCC
 
 inline uint8_t operator "" _u8(unsigned long long value) {
@@ -718,5 +743,3 @@ inline int128_t operator "" _s128(unsigned long long value) {
 #endif  // COMPILING_WITH_GCC
 
 #pragma clang diagnostic pop
-
-#endif  // REMILL_ARCH_RUNTIME_TYPES_H_

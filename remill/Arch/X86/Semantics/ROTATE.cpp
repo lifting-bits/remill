@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef REMILL_ARCH_X86_SEMANTICS_ROTATE_H_
-#define REMILL_ARCH_X86_SEMANTICS_ROTATE_H_
+#pragma once
 
 namespace {
 
@@ -223,5 +222,3 @@ DEF_ISEL(RCR_MEMb_CL) = RCR<M8W, M8, R8>;
 DEF_ISEL(RCR_GPR8_CL) = RCR<R8W, R8, R8>;
 DEF_ISEL_MnW_Mn_Rn(RCR_MEMv_CL, RCR);
 DEF_ISEL_RnW_Rn_Rn(RCR_GPRv_CL, RCR);
-
-#endif  // REMILL_ARCH_X86_SEMANTICS_ROTATE_H_
