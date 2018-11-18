@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <glog/logging.h>
+
 #include <llvm/ADT/Triple.h>
 
 #include <llvm/IR/Constants.h>

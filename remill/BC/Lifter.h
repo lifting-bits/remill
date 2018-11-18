@@ -170,9 +170,13 @@ class TraceLifter {
   TraceLifter(InstructionLifter *inst_lifter_,
               TraceManager *manager_);
 
+  static void NullCallback(uint64_t, llvm::Function *);
+
   // Lift one or more traces starting from `addr`. Calls `callback` with each
   // lifted trace.
-  bool Lift(uint64_t addr);
+  bool Lift(
+      uint64_t addr,
+      std::function<void(uint64_t,llvm::Function *)> callback=NullCallback);
 
  private:
   TraceLifter(void) = delete;

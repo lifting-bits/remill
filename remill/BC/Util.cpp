@@ -120,15 +120,6 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
 
   llvm::IRBuilder<> ir(source_block);
 
-  // We may introduce variables like `__remill_jump_0xf00` that boils down to
-  // meaning the `__remill_jump` at offset `0xf00` within the lifted binary.
-  // Being able to know what jump in the lifted bitcode corresponds with a
-  // jump as a specific area in the binary is useful for introducing things
-  // switch instructions to handle statically known jump tables.
-  if (!llvm::isa<llvm::Function>(dest_func)) {
-    dest_func = ir.CreateLoad(dest_func);
-  }
-
   auto call_target_instr = AddCall(source_block, dest_func);
   call_target_instr->setTailCall(true);
 
