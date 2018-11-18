@@ -792,8 +792,11 @@ struct TraceLifterState {
 
 }  // namespace
 
+void TraceLifter::NullCallback(uint64_t, llvm::Function *) {}
+
 // Lift one or more traces starting from `addr`.
-bool TraceLifter::Lift(uint64_t addr_) {
+bool TraceLifter::Lift(uint64_t addr_,
+                       std::function<void(uint64_t,llvm::Function *)> callback) {
   auto addr = addr_ & addr_mask;
   if (addr < addr_) {  // Address is out of range.
     LOG(ERROR)
@@ -813,7 +816,12 @@ bool TraceLifter::Lift(uint64_t addr_) {
       continue;
     }
 
+    DLOG(INFO)
+        << "Lifting trace at address " << std::hex << trace_addr << std::dec;
+
     state.func = GetLiftedTraceDeclaration(trace_addr);
+    state.blocks.clear();
+
     if (!state.func) {
       const auto trace_name = manager.TraceName(trace_addr);
       state.func = DeclareLiftedFunction(module, trace_name);
@@ -864,6 +872,9 @@ bool TraceLifter::Lift(uint64_t addr_) {
         }
         uint8_t byte = 0;
         if (!manager.TryReadExecutableByte(byte_addr, &byte)) {
+          DLOG(WARNING)
+              << "Couldn't read executable byte at "
+              << std::hex << byte_addr << std::dec;
           break;
         }
         state.inst_bytes.push_back(static_cast<char>(byte));
@@ -1005,6 +1016,7 @@ bool TraceLifter::Lift(uint64_t addr_) {
       }
     }
 
+    callback(trace_addr, state.func);
     manager.SetLiftedTraceDefinition(trace_addr, state.func);
   }
 

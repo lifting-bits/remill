@@ -388,6 +388,12 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
             remove_insts.push_back(load_inst);
           }
         }
+      } else if (llvm::isa<llvm::BranchInst>(&inst) ||
+                 llvm::isa<llvm::CallInst>(&inst) ||
+                 llvm::isa<llvm::InvokeInst>(&inst)) {
+        LOG(FATAL)
+            << "Unsupported instruction in __remill_basic_block: "
+            << LLVMThingToString(&inst);
       }
     }
   }
