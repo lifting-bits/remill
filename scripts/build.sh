@@ -20,7 +20,7 @@
 SCRIPTS_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 SRC_DIR=$( cd "$( dirname "${SCRIPTS_DIR}" )" && pwd )
 CURR_DIR=$( pwd )
-BUILD_DIR=${CURR_DIR}/remill-build
+BUILD_DIR="${CURR_DIR}/remill-build"
 INSTALL_DIR=/usr/local
 LLVM_VERSION=llvm40
 OS_VERSION=
@@ -54,7 +54,7 @@ function GetUbuntuOSVersion
       return 0
     ;;
     *)
-      printf "[x] Ubuntu ${DISTRIB_CODENAME} is not supported. Only xenial (16.04) and trusty (14.04) are supported.\n"
+      echo "[x] Ubuntu ${DISTRIB_CODENAME} is not supported. Only xenial (16.04) and trusty (14.04) are supported."
       return 1
     ;;
   esac
@@ -79,7 +79,7 @@ function GetArchVersion
       return 0
     ;;
     *)
-      printf "[x] ${version} architecture is not supported. Only aarch64 and x86_64 (i.e. amd64) are supported.\n"
+      echo "[x] ${version} architecture is not supported. Only aarch64 and x86_64 (i.e. amd64) are supported."
       return 1
     ;;
   esac
@@ -87,8 +87,7 @@ function GetArchVersion
 
 function DownloadCxxCommon
 {
-  curl -O https://s3.amazonaws.com/cxx-common/${LIBRARY_VERSION}.tar.gz
-  if [[ $? -ne 0 ]]; then
+  if ! curl -O "https://s3.amazonaws.com/cxx-common/${LIBRARY_VERSION}.tar.gz"; then
     return 1
   fi
   
@@ -97,11 +96,11 @@ function DownloadCxxCommon
     TAR_OPTIONS=""
   fi
 
-  tar xf ${LIBRARY_VERSION}.tar.gz $TAR_OPTIONS
-  rm ${LIBRARY_VERSION}.tar.gz
+  tar xf "${LIBRARY_VERSION}.tar.gz" $TAR_OPTIONS
+  rm "${LIBRARY_VERSION}.tar.gz"
 
   # Make sure modification times are not in the future.
-  find ${BUILD_DIR}/libraries -type f -exec touch {} \;
+  find "${BUILD_DIR}/libraries" -type f -exec touch {} \;
   
   return 0
 }
@@ -111,7 +110,7 @@ function GetOSVersion
 {
   source /etc/os-release
 
-  case "${ID}" in
+  case "${ID,,}" in
     *ubuntu*)
       GetUbuntuOSVersion
       return 0
@@ -128,7 +127,7 @@ function GetOSVersion
     ;;
 
     *)
-      printf "[x] ${distribution_name} is not yet a supported distribution.\n"
+      echo "[x] ${ID} is not yet a supported distribution."
       return 1
     ;;
   esac
@@ -148,7 +147,7 @@ function DownloadLibraries
       return 1
     fi
   else
-    printf "[x] OS ${OSTYPE} is not supported.\n"
+    echo "[x] OS ${OSTYPE} is not supported."
     return 1
   fi
 
@@ -156,13 +155,13 @@ function DownloadLibraries
     return 1
   fi
 
-  LIBRARY_VERSION=libraries-${LLVM_VERSION}-${OS_VERSION}-${ARCH_VERSION}
+  LIBRARY_VERSION="libraries-${LLVM_VERSION}-${OS_VERSION}-${ARCH_VERSION}"
 
-  printf "[-] Library version is ${LIBRARY_VERSION}\n"
+  echo "[-] Library version is ${LIBRARY_VERSION}"
 
   if [[ ! -d "${BUILD_DIR}/libraries" ]]; then
     if ! DownloadCxxCommon; then
-      printf "[x] Unable to download cxx-common build ${LIBRARY_VERSION}.\n"
+      echo "[x] Unable to download cxx-common build ${LIBRARY_VERSION}."
       return 1
     fi
   fi
@@ -175,19 +174,19 @@ function Configure
 {
   # Tell the remill CMakeLists.txt where the extracted libraries are. 
   export TRAILOFBITS_LIBRARIES="${BUILD_DIR}/libraries"
-  export PATH=“${TRAILOFBITS_LIBRARIES}/cmake/bin:${TRAILOFBITS_LIBRARIES}/llvm/bin:${PATH}”
+  export PATH="${TRAILOFBITS_LIBRARIES}/cmake/bin:${TRAILOFBITS_LIBRARIES}/llvm/bin:${PATH}"
   export CC="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang"
   export CXX="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang++"
 
   # Configure the remill build, specifying that it should use the pre-built
   # Clang compiler binaries.
-  ${TRAILOFBITS_LIBRARIES}/cmake/bin/cmake \
-      -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
-      -DCMAKE_C_COMPILER=${CC} \
-      -DCMAKE_CXX_COMPILER=${CXX} \
+  "${TRAILOFBITS_LIBRARIES}/cmake/bin/cmake" \
+      -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
+      -DCMAKE_C_COMPILER="${CC}" \
+      -DCMAKE_CXX_COMPILER="${CXX}" \
       -DCMAKE_VERBOSE_MAKEFILE=True \
       ${BUILD_FLAGS} \
-      ${SRC_DIR}
+      "${SRC_DIR}"
 
   return $?
 }
@@ -200,7 +199,7 @@ function Build
   else
     NPROC=$( nproc )
   fi
-  make -j${NPROC}
+  make -j"${NPROC}"
   return $?
 }
 
@@ -231,19 +230,22 @@ function GetLLVMVersion
     ;;
     4.0)
       LLVM_VERSION=llvm40
+      return 0
     ;;
     5.0)
       LLVM_VERSION=llvm50
+      return 0
     ;;
     6.0)
       LLVM_VERSION=llvm60
+      return 0
     ;;
     *)
       # unknown option
-      printf "[x] Unknown LLVM version ${1}.\n"
-      exit 1
+      echo "[x] Unknown LLVM version ${1}."
     ;;
   esac
+  return 1
 }
 
 function main
@@ -256,42 +258,41 @@ function main
       # Change the default installation prefix.
       --prefix)
         INSTALL_DIR=$(python -c "import os; import sys; sys.stdout.write(os.path.abspath('${2}'))")
-        printf "[+] New install directory is ${INSTALL_DIR}\n"
+        echo "[+] New install directory is ${INSTALL_DIR}"
         shift # past argument
       ;;
 
       # Change the default LLVM version.
       --llvm-version)
-        GetLLVMVersion ${2}
-        if [[ $? -ne 0 ]] ; then
+        if ! GetLLVMVersion "${2}" ; then
           return 1
         fi
-        printf "[+] New LLVM version is ${LLVM_VERSION}\n"
+        echo "[+] New LLVM version is ${LLVM_VERSION}"
         shift
       ;;
 
       # Change the default build directory.
       --build-dir)
         BUILD_DIR=$(python -c "import os; import sys; sys.stdout.write(os.path.abspath('${2}'))")
-        printf "[+] New build directory is ${BUILD_DIR}\n"
+        echo "[+] New build directory is ${BUILD_DIR}"
         shift # past argument
       ;;
 
       # Make the build type to be a debug build.
       --debug)
         BUILD_FLAGS="${BUILD_FLAGS} -DCMAKE_BUILD_TYPE=Debug"
-        printf "[+] Enabling a debug build of remill\n"
+        echo "[+] Enabling a debug build of remill"
       ;;
 
       --extra-cmake-args)
         BUILD_FLAGS="${BUILD_FLAGS} ${2}"
-        printf "[+] Will supply additional arguments to cmake: ${BUILD_FLAGS}\n"
+        echo "[+] Will supply additional arguments to cmake: ${BUILD_FLAGS}"
         shift
       ;;
 
       *)
         # unknown option
-        printf "[x] Unknown option: ${key}\n"
+        echo "[x] Unknown option: ${key}"
         return 1
       ;;
     esac
@@ -299,15 +300,15 @@ function main
     shift # past argument or value
   done
 
-  mkdir -p ${BUILD_DIR}
-  cd ${BUILD_DIR}
+  mkdir -p "${BUILD_DIR}"
+  cd "${BUILD_DIR}" || exit 1
 
   if ! (DownloadLibraries && Configure && Build); then
-  printf "[x] Build aborted.\n"
+    echo "[x] Build aborted."
   fi
 
   return $?
 }
 
-main $@
+main "$@"
 exit $?
