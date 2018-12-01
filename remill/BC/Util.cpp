@@ -346,7 +346,11 @@ bool StoreModuleToFile(llvm::Module *module, std::string file_name,
 
 #if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 5)
   std::error_code ec;
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(7, 0)
   llvm::ToolOutputFile bc(tmp_name.c_str(), ec, llvm::sys::fs::F_RW);
+#else
+  llvm::ToolOutputFile bc(tmp_name.c_str(), ec, llvm::sys::fs::OF_None);
+#endif
   CHECK(!ec) << "Unable to open output bitcode file for writing: " << tmp_name;
 #else
   llvm::tool_output_file bc(tmp_name.c_str(), error, llvm::sys::fs::F_RW);
@@ -355,7 +359,11 @@ bool StoreModuleToFile(llvm::Module *module, std::string file_name,
       << error;
 #endif
 
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(7, 0)
   llvm::WriteBitcodeToFile(module, bc.os());
+#else
+  llvm::WriteBitcodeToFile(*module, bc.os());
+#endif
   bc.keep();
   if (!bc.os().has_error()) {
     MoveFile(tmp_name, file_name);
