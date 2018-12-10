@@ -274,6 +274,7 @@ install(FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/ABI.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/IntrinsicTable.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Lifter.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Optimizer.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Util.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Version.h"
 
