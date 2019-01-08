@@ -444,13 +444,7 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(
 
   if (llvm::isa<llvm::PointerType>(arg_type)) {
     auto val = LoadRegAddress(block, arch_reg.name);
-    val = ConvertToIntendedType(inst, op, block, val, real_arg_type);
-
-    if (arg_type != real_arg_type) {
-      val = new llvm::PtrToIntInst(val, real_arg_type, "", block);
-    }
-
-    return val;
+    return ConvertToIntendedType(inst, op, block, val, real_arg_type);
 
   } else {
     CHECK(arg_type->isIntegerTy() || arg_type->isFloatingPointTy())
