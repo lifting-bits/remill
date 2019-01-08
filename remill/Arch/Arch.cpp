@@ -294,6 +294,18 @@ bool Arch::IsAArch64(void) const {
   return remill::kArchAArch64LittleEndian == arch_name;
 }
 
+bool Arch::IsWindows(void) const {
+  return remill::kOSWindows == os_name;
+}
+
+bool Arch::IsLinux(void) const {
+  return remill::kOSLinux == os_name;
+}
+
+bool Arch::IsMacOS(void) const {
+  return remill::kOSmacOS == os_name;
+}
+
 namespace {
 
 // These variables must always be defined within `__remill_basic_block`.

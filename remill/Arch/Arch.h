@@ -129,6 +129,10 @@ class Arch {
   bool IsAMD64(void) const;
   bool IsAArch64(void) const;
 
+  bool IsWindows(void) const;
+  bool IsLinux(void) const;
+  bool IsMacOS(void) const;
+
  protected:
   Arch(OSName os_name_, ArchName arch_name_);
 

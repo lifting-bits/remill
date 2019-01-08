@@ -436,18 +436,21 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(
   auto &arch_reg = op.reg;
 
   const auto real_arg_type = arg->getType();
-  auto arg_type = real_arg_type;
 
-  // LLVM on AArch64 converts things like `RnW<uint64_t>`, which is a struct
-  // containing a `uint64_t *`, into a `uintptr_t` when they are being passed
-  // as arguments.
-  if (arg_type->isIntegerTy() && GetHostArch()->IsAArch64()) {
-    arg_type = IntendedArgumentType(arg);
-  }
+  // LLVM on AArch64 and on amd64 Windows converts things like `RnW<uint64_t>`,
+  // which is a struct containing a `uint64_t *`, into a `uintptr_t` when they
+  // are being passed as arguments.
+  auto arg_type = IntendedArgumentType(arg);
 
   if (llvm::isa<llvm::PointerType>(arg_type)) {
     auto val = LoadRegAddress(block, arch_reg.name);
-    return ConvertToIntendedType(inst, op, block, val, real_arg_type);
+    val = ConvertToIntendedType(inst, op, block, val, real_arg_type);
+
+    if (arg_type != real_arg_type) {
+      val = new llvm::PtrToIntInst(val, real_arg_type, "", block);
+    }
+
+    return val;
 
   } else {
     CHECK(arg_type->isIntegerTy() || arg_type->isFloatingPointTy())
