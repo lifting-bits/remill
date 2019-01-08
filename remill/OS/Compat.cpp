@@ -139,6 +139,9 @@ int utimensat(int fd, const char *path, const struct timespec times[2],
   errno = ENOSYS;
   return -1;
 }
+
+#else
+void __dummy_symbol_compat_cpp(void) {}
 #endif
 
 }  // extern C

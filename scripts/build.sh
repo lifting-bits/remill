@@ -41,8 +41,7 @@ function GetUbuntuOSVersion
       return 0
     ;;
     bionic)
-      # TODO(pag): Eventually make real packages for 18.04!
-      OS_VERSION=ubuntu1604
+      OS_VERSION=ubuntu1804
       return 0
     ;;
     xenial)

@@ -259,7 +259,7 @@ llvm::Module *LoadArchSemantics(const Arch *arch, llvm::LLVMContext *context) {
   auto arch_name = GetArchName(arch->arch_name);
   auto path = FindSemanticsBitcodeFile(arch_name);
   LOG(INFO)
-      << "Loading host " REMILL_ARCH " semantics from file " << path;
+      << "Loading " << arch_name << " semantics from file " << path;
   auto module = LoadModuleFromFile(context, path);
   arch->PrepareModule(module);
   return module;
