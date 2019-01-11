@@ -38,7 +38,7 @@ DEF_SEM(DoCMC) {
 }
 
 DEF_SEM(DoSTC) {
-  FLAG_CF = BNot(FLAG_CF);
+  FLAG_CF = true;
   return memory;
 }
 
