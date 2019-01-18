@@ -106,7 +106,7 @@ add_library(${PROJECT_NAME} STATIC
   remill/Arch/AArch64/Decode.cpp
   remill/Arch/AArch64/Extract.cpp
   remill/Arch/X86/Arch.cpp
-  
+
   remill/Arch/Arch.cpp
   remill/Arch/Instruction.cpp
   remill/Arch/Name.cpp
@@ -116,6 +116,7 @@ add_library(${PROJECT_NAME} STATIC
   remill/BC/Util.cpp
   remill/BC/DeadStoreEliminator.cpp
   remill/BC/Optimizer.cpp
+  remill/BC/StateUnfolder.cpp
 
   remill/OS/Compat.cpp
   remill/OS/FileSystem.cpp
