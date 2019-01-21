@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) 2017 Trail of Bits, Inc.
+# Copyright (c) 2019 Trail of Bits, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,7 +37,8 @@ function GetUbuntuOSVersion
   case "${DISTRIB_CODENAME}" in
     cosmic)
       # TODO(pag): Eventually make real packages for 18.10!
-      OS_VERSION=ubuntu1604
+      OS_VERSION=ubuntu1810
+      OS_VERSION=ubuntu1804
       return 0
     ;;
     bionic)
@@ -89,7 +90,7 @@ function DownloadCxxCommon
   if ! curl -O "https://s3.amazonaws.com/cxx-common/${LIBRARY_VERSION}.tar.gz"; then
     return 1
   fi
-  
+
   local TAR_OPTIONS="--warning=no-timestamp"
   if [[ "$OSTYPE" == "darwin"* ]]; then
     TAR_OPTIONS=""
@@ -237,6 +238,10 @@ function GetLLVMVersion
     ;;
     6.0)
       LLVM_VERSION=llvm60
+      return 0
+    ;;
+    7.0)
+      LLVM_VERSION=llvm70
       return 0
     ;;
     *)
