@@ -1,4 +1,8 @@
-# Remill
+# Remill [![Slack Chat](http://empireslacking.herokuapp.com/badge.svg)](https://empireslacking.herokuapp.com/)
+
+<p align="center">
+     <img src="docs/images/remill_logo.png" />
+</p>
 
 Remill is a static binary translator that translates machine code instructions into [LLVM bitcode](http://llvm.org/docs/LangRef.html). It translates x86 and amd64 machine code (including AVX and AVX512) into LLVM bitcode. AArch64 support is underway.
 
