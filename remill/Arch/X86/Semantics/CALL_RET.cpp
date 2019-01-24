@@ -70,8 +70,8 @@ DEF_ISEL_32or64(RET_NEAR, RET);
 728 IRETD IRETD RET BASE I386 ATTRIBUTES: FIXED_BASE0 NOTSX SCALABLE STACKPOP0
 */
 
-#if ADDRESS_SIZE_BITS == 32
 namespace {
+#if ADDRESS_SIZE_BITS == 32
 DEF_SEM(IRETD) {
   auto new_eip = PopFromStack<uint32_t>(memory, state);
   auto new_cs = static_cast<uint16_t>(PopFromStack<uint32_t>(memory, state));
@@ -91,7 +91,42 @@ DEF_SEM(IRETD) {
   state.hyper_call = AsyncHyperCall::kX86IRet;
   return memory;
 }
-}
 
 DEF_ISEL(IRETD_32) = IRETD;
+
+#elif ADDRESS_SIZE_BITS == 64
+DEF_SEM(IRETQ) {
+  auto new_rip = PopFromStack<uint64_t>(memory, state);
+  auto new_cs = static_cast<uint16_t>(PopFromStack<uint64_t>(memory, state));
+  auto temp_rflags = PopFromStack<uint64_t>(memory, state);
+  Flags f = {};
+  f.flat = temp_rflags;
+  Write(REG_PC, new_rip);
+  Write(REG_CS.flat, new_cs);
+  state.rflag = f;
+  state.aflag.af = f.af;
+  state.aflag.cf = f.cf;
+  state.aflag.df = f.df;
+  state.aflag.of = f.of;
+  state.aflag.pf = f.pf;
+  state.aflag.sf = f.sf;
+  state.aflag.zf = f.zf;
+  state.hyper_call = AsyncHyperCall::kX86IRet;
+
+  // TODO(tathanhdinh): Update the hidden part (segment shadow) of CS,
+  //                    see Issue #334
+
+  auto new_rsp = PopFromStack<uint64_t>(memory, state);
+  auto new_ss = static_cast<uint16_t>(PopFromStack<uint64_t>(memory, state));
+  Write(REG_RSP, new_rsp);
+  Write(REG_SS.flat, new_ss);
+
+  // TODO(tathanhdinh): Update the hidden part (segment shadow) of SS,
+  //                    see Issue #334
+
+  return memory;
+}
+
+DEF_ISEL(IRETQ_64) = IRETQ;
 #endif
+}
