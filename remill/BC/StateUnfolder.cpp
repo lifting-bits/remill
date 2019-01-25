@@ -33,12 +33,16 @@
 #include <llvm/Transforms/Utils/ValueMapper.h>
 
 #include "remill/Arch/Arch.h"
+
 #include "remill/BC/ABI.h"
+#include "remill/BC/Compat/GlobalValue.h"
+#include "remill/BC/Mask.h"
 #include "remill/BC/StateUnfolder.h"
 #include "remill/BC/Util.h"
 
-
 namespace remill {
+
+namespace {
 
 static bool IsLiftedFunction(llvm::Function *func,
                              const llvm::Function *bb_func) {
@@ -114,7 +118,7 @@ EntrypointsToSubs(llvm::Module &module, F is_lifted) {
 
 // TODO: Remove once we are C++17
 template<typename T, typename U>
-void insert_or_assign(std::map<T, U> &map, const T &key, U val) {
+static void insert_or_assign(std::map<T, U> &map, const T &key, U val) {
   auto old_val = map.find(key);
   if (old_val != map.end()) {
     map.erase(old_val);
@@ -152,110 +156,7 @@ static void CreateLocalStack(llvm::Module &module, llvm::Function &func) {
   }
 }
 
-using RegisterList = std::vector<const Register *>;
-using Mask = std::vector<bool>;
-
-// TODO: std::optional
-// Retrieves next index from offset (including) that has value equal to val
-// Returns true if such index was found, with value stored in offset
-// If index was not found, offset is preserved
-template<typename U, typename T>
-bool NextIndex(const U &mask, const T& val, uint64_t &offset) {
-  for (uint64_t i = offset; i < mask.size(); ++i) {
-    if (mask[i] == val) {
-      offset = i;
-      return true;
-    }
-  }
-  return false;
-}
-
-// TODO: std::optional
-// Retrieve n-th index from offset (including) that has value equal to val
-// Returns true if such index was found, with value stored in offset
-// If index was not found, offset is preserved
-template<typename U, typename T>
-bool NthIndex(const U &mask, const T& val, int64_t n,  uint64_t &offset) {
-  if (n < 0) {
-    return false;
-  }
-
-  int64_t counter = -1;
-  for (uint64_t i = 0; i < mask.size(); ++i) {
-    if (mask[i] == val && ++counter == n) {
-      offset = i;
-      return true;
-    }
-  }
-  return false;
-}
-
-/* Utility functions for transformations on Masks */
-template<class U, class BinaryOp>
-Mask &ZipMasks(Mask &mask, const U &other, BinaryOp binary_op) {
-  std::transform(mask.begin(), mask.end(), other.begin(), mask.begin(), binary_op);
-  return mask;
-}
-
-template<class ForwardIt1, class ForwardIt2, class BinaryOp>
-Mask ZipMasks(ForwardIt1 first1, ForwardIt1 last1,
-              ForwardIt2 first2, BinaryOp binary_op) {
-  Mask result;
-  result.reserve(std::distance(first1, last1));
-  std::transform(first1, last1, first2, std::back_inserter(result), binary_op);
-  return result;
-}
-
-Mask operator||(const Mask &lhs, const Mask &rhs) {
-  return ZipMasks(lhs.cbegin(), lhs.cend(), rhs.cbegin(), [](bool l, bool r){
-      return l || r;
-    });
-}
-
-Mask operator&&(const Mask &lhs, const Mask &rhs) {
-  return ZipMasks(lhs.cbegin(), lhs.cend(), rhs.cbegin(), [](bool l, bool r){
-      return l && r;
-    });
-}
-
-// Mapping Register -> bool
-// True means that the register is present in a type
-struct TypeMask {
-  Mask ret_type_mask;
-  Mask param_type_mask;
-
-  RegisterList rets;
-  RegisterList params;
-
-  TypeMask(const RegisterList &regs) :
-    ret_type_mask(regs.size(), true), param_type_mask(regs.size(), true),
-    rets(regs), params(regs) {}
-
-  TypeMask(const RegisterList &regs, Mask ret, Mask param) :
-    ret_type_mask(std::move(ret)), param_type_mask(std::move(param)) {
-      for (auto i = 0U; i < regs.size(); ++i) {
-        if (ret_type_mask[i]) {
-          rets.push_back(regs[i]);
-        }
-        if (param_type_mask[i]) {
-          params.push_back(regs[i]);
-        }
-      }
-    }
-};
-
-std::ostream &operator<<(std::ostream &os, const TypeMask &mask) {
-  os << "Ret_type:" << std::endl;
-  for (const auto &reg : mask.rets) {
-    os << "\t" << reg->name << std::endl;
-  }
-
-  os << "Param_type:" << std::endl;
-  for (const auto &reg : mask.params) {
-    os << "\t" << reg->name << std::endl;
-  }
-  return os;
-}
+} // namespace
 
 // Holds information about unfolded function
 struct UnfoldedFunction {
@@ -574,7 +475,6 @@ struct StateUnfolder {
         ReplaceEntrypoints(func, unfolded);
       }
     }
-
   }
 
   void OptimizeIteration(const std::string &prefix="") {
@@ -946,13 +846,10 @@ struct StateUnfolder {
       }
     }
   }
-
-
 };
 
 void UnfoldState(llvm::Module *module, void(*opt)(void)) {
   StateUnfolder(*module, *GetTargetArch(), opt).Unfold();
 }
-
 
 } // namespace remill
