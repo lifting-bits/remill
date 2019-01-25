@@ -33,6 +33,7 @@
 #include <llvm/Transforms/Utils/ValueMapper.h>
 
 #include "remill/Arch/Arch.h"
+#include "remill/BC/ABI.h"
 #include "remill/BC/StateUnfolder.h"
 #include "remill/BC/Util.h"
 
@@ -42,7 +43,7 @@ namespace remill {
 static bool IsLiftedFunction(llvm::Function *func,
                              const llvm::Function *bb_func) {
   // __remill_* family is declaration and has the same type
-  if (func == bb_func || func->isDeclaration()) {
+  if (!func || func == bb_func || func->isDeclaration()) {
     return false;
   }
   if (func->getFunctionType() == bb_func->getFunctionType()) {
@@ -273,7 +274,7 @@ struct UnfoldedFunction {
 // For each caller of unfolded function, check which part of return type are used.
 // If there are some that no caller uses, mark it as false
 static Mask CallerUnusedRet(
-    const UnfoldedFunction &func, uint64_t size,
+    const UnfoldedFunction &func, uint64_t size, uint64_t prefix_size,
     const std::map<llvm::Function *, llvm::Function *> &sub_to_entrypoint) {
 
   const auto &old_mask = func.type_mask.ret_type_mask;
@@ -298,8 +299,8 @@ static Mask CallerUnusedRet(
         }
         while (extract) {
           uint64_t i = 0;
-          if (*(extract->idx_begin())) {
-            if (!NthIndex(old_mask, true, *(extract->idx_begin()) - 1, i)) {
+          if (*(extract->idx_begin()) >= prefix_size) {
+            if (!NthIndex(old_mask, true, *(extract->idx_begin()) - prefix_size, i)) {
               return old_mask;
             }
             ++mask[i];
@@ -322,14 +323,17 @@ static Mask CallerUnusedRet(
 }
 
 // Set all parameters that are not used by function itself to false
-static Mask UnusedParameters(const UnfoldedFunction &func, uint64_t size) {
+static Mask UnusedParameters(
+    const UnfoldedFunction &func,
+    uint64_t size, uint64_t prefix_size) {
+
   const auto &unfolded_func = func.unfolded_func;
   const auto &old_mask = func.type_mask.param_type_mask;
   Mask result(size, true);
 
   uint64_t i = 0;
   NextIndex(old_mask, true, i);
-  for (auto it = std::next(unfolded_func->arg_begin(), 3);
+  for (auto it = std::next(unfolded_func->arg_begin(), prefix_size);
       it != unfolded_func->arg_end();
       ++it, NextIndex(old_mask, true, ++i)) {
     if (it->user_begin() == it->user_end()) {
@@ -343,7 +347,10 @@ static Mask UnusedParameters(const UnfoldedFunction &func, uint64_t size) {
 // Check all ret instructions of a function
 // If the parameter value is being returned at all returns,
 // there is no need to return it at all, as caller has it already
-static Mask GetReturnMask(const UnfoldedFunction& func, uint64_t size) {
+static Mask GetReturnMask(
+    const UnfoldedFunction& func,
+    uint64_t size, uint64_t prefix_size) {
+
   std::vector<uint32_t> mask(size, 0);
   uint32_t counter = 0;
 
@@ -362,15 +369,15 @@ static Mask GetReturnMask(const UnfoldedFunction& func, uint64_t size) {
 
         while (insert) {
           auto inserted = insert->getInsertedValueOperand();
-          for (auto it = std::next(func.unfolded_func->arg_begin(), 3);
+          for (auto it = std::next(func.unfolded_func->arg_begin(), prefix_size);
               it != func.unfolded_func->arg_end();
               ++it) {
             if (&*it == inserted) {
               uint64_t i = 0;
-              NthIndex(old_mask, true, *(insert->idx_begin()) - 1, i);
+              NthIndex(old_mask, true, *(insert->idx_begin()) - prefix_size, i);
 
               uint64_t p = 0;
-              NthIndex(param_mask, true, it->getArgNo() - 3, p);
+              NthIndex(param_mask, true, it->getArgNo() - prefix_size, p);
 
               // To avoid getting ptr in %RDI and then returning it in %RAX
               // It must be exactly the same register
@@ -402,7 +409,7 @@ static Mask GetReturnMask(const UnfoldedFunction& func, uint64_t size) {
 // Check all callers of function
 // If they all set some parameter to undef, set it to false as well
 static Mask GetParamMask(
-    const UnfoldedFunction &func, uint64_t size,
+    const UnfoldedFunction &func, uint64_t size, uint64_t prefix_size,
     const std::map<llvm::Function *, llvm::Function *> &sub_to_entrypoint) {
 
   const auto &old_mask = func.type_mask.param_type_mask;
@@ -424,7 +431,7 @@ static Mask GetParamMask(
 
       uint64_t i = 0;
       NextIndex(old_mask, true, i);
-      for (auto it = std::next(call->arg_begin(), 3); it != call->arg_end();
+      for (auto it = std::next(call->arg_begin(), prefix_size); it != call->arg_end();
           ++it, NextIndex(old_mask, true, ++i)) {
         auto type = (*it)->getType();
         llvm::Value *undef = llvm::UndefValue::get(type);
@@ -455,6 +462,8 @@ struct StateUnfolder {
 
   std::vector<const Register *> regs;
 
+  std::vector<llvm::Type *> type_prefix;
+
   // All the unfolded function with some basic information
   std::map<llvm::Function *, UnfoldedFunction> unfolded;
 
@@ -474,6 +483,12 @@ struct StateUnfolder {
     for (const auto &name : reg_names) {
       regs.push_back(arch.RegisterByName(name));
     }
+
+    // Prefix of type for every lifted function parameters as well as return type
+    auto bb_func = BasicBlockFunction(&module);
+    type_prefix.push_back(NthArgument(bb_func, kStatePointerArgNum)->getType());
+    type_prefix.push_back(NthArgument(bb_func, kPCArgNum)->getType());
+    type_prefix.push_back(NthArgument(bb_func, kMemoryPointerArgNum)->getType());
   }
 
   ~StateUnfolder() {
@@ -574,12 +589,12 @@ struct StateUnfolder {
     // Get better masks where possible
     for (const auto &func : unfolded) {
       auto ret_mask =
-        CallerUnusedRet(func.second, regs.size(), assoc_map) &&
-        GetReturnMask(func.second, regs.size());
+        CallerUnusedRet(func.second, regs.size(), type_prefix.size(), assoc_map) &&
+        GetReturnMask(func.second, regs.size(), type_prefix.size());
 
       auto param_mask =
-        GetParamMask(func.second, regs.size(), assoc_map) &&
-        UnusedParameters(func.second, regs.size());
+        GetParamMask(func.second, regs.size(), type_prefix.size(), assoc_map) &&
+        UnusedParameters(func.second, regs.size(), type_prefix.size());
 
       func_to_mask.emplace(
           func.first,
@@ -639,7 +654,7 @@ struct StateUnfolder {
     }
 
     // Create appropriate return type
-    std::vector<llvm::Type *> unit_types = {func->getFunctionType()->getReturnType()};
+    std::vector<llvm::Type *> unit_types = type_prefix;
 
     for (const auto &reg : mask.rets) {
       unit_types.push_back(reg->type);
@@ -676,10 +691,10 @@ struct StateUnfolder {
 
     // TODO: What is this for?
     llvm::SmallVector<llvm::ReturnInst *, 8> returns;
-    CloneFunctionInto(impl_func, func, v_map, false, returns, "");
+    llvm::CloneFunctionInto(impl_func, func, v_map, false, returns, "");
 
     // Remove returned from Memory
-    auto mem = std::next(impl_func->arg_begin(), 2);
+    auto mem = std::next(impl_func->arg_begin(), kMemoryPointerArgNum);
     mem->removeAttr(llvm::Attribute::Returned);
 
     // Remove bunch of other attributes from return type of function, that got there
@@ -704,7 +719,7 @@ struct StateUnfolder {
     llvm::IRBuilder<> ir(&entry_block, entry_block.begin());
     std::vector<llvm::AllocaInst *> allocas;
 
-    auto arg_it = std::next(func.arg_begin(), 3);
+    auto arg_it = std::next(func.arg_begin(), type_prefix.size());
 
     for (auto i = 0U; i < regs.size(); ++i) {
       auto alloca_reg = ir.CreateAlloca(regs[i]->type);
@@ -728,9 +743,7 @@ struct StateUnfolder {
           llvm::IRBuilder<> ir(ret);
           FoldAggregate(
               allocas, func.getReturnType(), ir,
-              // TODO: Do not use hardcoded 2
-              &*std::next(func.arg_begin(), 2),
-              mask);
+              func, mask);
           ret->eraseFromParent();
           break;
         }
@@ -741,14 +754,18 @@ struct StateUnfolder {
   void FoldAggregate(std::vector<llvm::AllocaInst *> &allocas,
                      llvm::Type* ret_ty,
                      llvm::IRBuilder<> &ir,
-                     llvm::Value *memory,
+                     llvm::Function &func,
                      const TypeMask &mask) {
     llvm::Value *ret_val = llvm::UndefValue::get(ret_ty);
-    ret_val = ir.CreateInsertValue(ret_val, memory, 0);
+    for (auto i = 0U; i < type_prefix.size(); ++i) {
+      ret_val = ir.CreateInsertValue(ret_val, NthArgument(&func, i), i);
+    }
 
-    for (auto i = 0U, j = 1U; i < mask.ret_type_mask.size(); ++i) {
+    for (uint64_t i = 0U, j = type_prefix.size(); i < mask.ret_type_mask.size(); ++i) {
       if (mask.ret_type_mask[i]) {
-        auto load = ir.CreateLoad(allocas[i], mask.rets[j-1]->name + "_L");
+        auto load =
+          ir.CreateLoad(allocas[i], mask.rets[j - type_prefix.size()]->name + "_L");
+
         ret_val = ir.CreateInsertValue(ret_val, load, j);
         ++j;
       }
@@ -776,7 +793,7 @@ struct StateUnfolder {
   void ReplaceGEPs(std::vector<llvm::AllocaInst *> &allocas,
                    llvm::Function &func, const TypeMask &mask) {
 
-    auto state = remill::LoadStatePointer(&func);
+    auto state = NthArgument(&func, kStatePointerArgNum);
 
     for (const auto &inst : state->users()) {
       if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(inst)) {
@@ -839,11 +856,11 @@ struct StateUnfolder {
       }
       auto ret = ir.CreateCall(callee.unfolded_func, args);
 
-      auto mem = ir.CreateExtractValue(ret, 0);
+      auto mem = ir.CreateExtractValue(ret, kMemoryPointerArgNum);
       old_call->replaceAllUsesWith(mem);
 
       const auto &ret_mask = callee.type_mask.ret_type_mask;
-      for (auto i = 0U, j = 1U; i < ret_mask.size(); ++i) {
+      for (uint64_t i = 0U, j = type_prefix.size(); i < ret_mask.size(); ++i) {
         if (ret_mask[i]) {
           auto val = ir.CreateExtractValue(ret, j);
           ir.CreateStore(val, allocas[i]);
@@ -909,7 +926,7 @@ struct StateUnfolder {
 
           auto ret = ir.CreateCall(it->second.unfolded_func, args);
           const auto &ret_mask = it->second.type_mask.ret_type_mask;
-          for (auto i = 0U, j = 1U; i < ret_mask.size(); ++i) {
+          for (uint64_t i = 0U, j = type_prefix.size(); i < ret_mask.size(); ++i) {
             if (ret_mask[i]) {
               auto val = ir.CreateExtractValue(ret, j);
               ++j;
