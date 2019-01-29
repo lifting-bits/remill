@@ -35,7 +35,10 @@
 #include "remill/Arch/Arch.h"
 
 #include "remill/BC/ABI.h"
+#include "remill/BC/Compat/Attributes.h"
+#include "remill/BC/Compat/Instructions.h"
 #include "remill/BC/Compat/GlobalValue.h"
+#include "remill/BC/Compat/DerivedTypes.h"
 #include "remill/BC/Mask.h"
 #include "remill/BC/StateUnfolder.h"
 #include "remill/BC/Util.h"
@@ -139,7 +142,7 @@ static void CreateLocalStack(llvm::Module &module, llvm::Function &func) {
     if (!g_stack) {
       return;
     }
-    auto g_stack_ty = llvm::dyn_cast<llvm::ArrayType>(g_stack->getValueType());
+    auto g_stack_ty = llvm::dyn_cast<llvm::ArrayType>(GetValueType(g_stack));
     if (!g_stack_ty) {
       return;
     }
@@ -332,11 +335,11 @@ static Mask GetParamMask(
 
       uint64_t i = 0;
       NextIndex(old_mask, true, i);
-      for (auto it = std::next(call->arg_begin(), prefix_size); it != call->arg_end();
+      for (auto it = prefix_size; it != call->getNumArgOperands();
           ++it, NextIndex(old_mask, true, ++i)) {
-        auto type = (*it)->getType();
+        auto type = call->getArgOperand(it)->getType();
         llvm::Value *undef = llvm::UndefValue::get(type);
-        if (&**it == undef) {
+        if (&*(call->getArgOperand(it)) == undef) {
           ++undefs[i];
         }
       }
@@ -543,7 +546,7 @@ struct StateUnfolder {
                               const std::string &prefix="") {
     // Copy originals
     std::vector<llvm::Type *> new_params;
-    for (auto orig_param : func->getFunctionType()->params()) {
+    for (auto orig_param : Params(func->getFunctionType())) {
       new_params.emplace_back(orig_param);
     }
 
@@ -595,12 +598,17 @@ struct StateUnfolder {
 
     // Remove returned from Memory
     auto mem = std::next(impl_func->arg_begin(), kMemoryPointerArgNum);
-    mem->removeAttr(llvm::Attribute::Returned);
+    mem->removeAttr(
+        llvm::AttributeSet::get(context, mem->getArgNo(), llvm::Attribute::Returned));
 
     // Remove bunch of other attributes from return type of function, that got there
     // by opt probably
-    impl_func->removeAttribute(0, llvm::Attribute::NoAlias);
-    impl_func->removeAttribute(0, llvm::Attribute::NonNull);
+    impl_func->removeAttributes(
+        llvm::AttributeLoc::ReturnIndex,
+        llvm::AttributeSet::get(context, 0, llvm::Attribute::NoAlias));
+    impl_func->removeAttributes(
+        llvm::AttributeLoc::ReturnIndex,
+        llvm::AttributeSet::get(context, 0, llvm::Attribute::NonNull));
 
     return impl_func;
   }
@@ -705,7 +713,8 @@ struct StateUnfolder {
 
               // There can be a bunch of bitcasts thanks to complexity of llvm type
               // that represents state
-              if (!gep->getResultElementType()->isIntegerTy()) {
+              auto result_ty = GetResultElementType(gep);
+              if (!result_ty->isIntegerTy()) {
                 ReplaceBitCast(allocas[i], gep);
                 continue;
               }

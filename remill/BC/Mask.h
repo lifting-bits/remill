@@ -26,12 +26,9 @@
 #include <llvm/Transforms/Utils/ValueMapper.h>
 
 #include "remill/Arch/Arch.h"
+#include "remill/BC/Compat/DerivedTypes.h"
 
 namespace remill {
-
-inline llvm::Value *arg(llvm::Function &func, uint64_t ord) {
-  return &*(std::next(func.arg_begin(), ord));
-}
 
 // CRTP that expects attribute llvm::LLVMContext &context
 // Provides some short wrappers around llvm::ConstantInt and llvm::Type
@@ -193,7 +190,7 @@ inline llvm::Function *AppendParams(
     const std::vector<llvm::Type *> types,
     const std::string &prefix) {
 
-  std::vector<llvm::Type *> new_type = func.getFunctionType()->params();
+  std::vector<llvm::Type *> new_type = Params(func.getFunctionType());
   new_type.insert(new_type.end(), types.begin(), types.end());
 
   auto appended_type = llvm::FunctionType::get(
