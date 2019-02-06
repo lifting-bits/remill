@@ -410,6 +410,10 @@ static llvm::Value *ConvertToIntendedType(Instruction &inst, Operand &op,
     } else if (intended_type->isIntegerTy()) {
       return new llvm::PtrToIntInst(val, intended_type, "", block);
     }
+  } else if (val_type->isFloatingPointTy()) {
+    if (intended_type->isIntegerTy()) {
+      return new llvm::FPToSIInst(val, intended_type, "", block);
+    }
   }
 
   LOG(FATAL)
