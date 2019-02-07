@@ -193,8 +193,17 @@ function(add_runtime target_name)
       set(dependency_list_directive DEPENDS ${dependency_list})
     endif()
 
+    if(WIN32)
+      # We are actually using two different compilers; the LLVM platform toolset downloaded
+      # from the official LLVM download page and our own version from the cxx-common tarball.
+      #
+      # When the versions do not match, the compilation will fail; we don't really care about
+      # this, as the second compiler is only really used to output BC files.
+      set(additional_windows_settings "-D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH")
+    endif()
+
     add_custom_command(OUTPUT "${absolute_output_file_path}"
-      COMMAND "${CMAKE_BC_COMPILER}" ${include_directory_list} "-DADDRESS_SIZE_BITS=${address_size}" ${definition_list} ${DEFAULT_BC_COMPILER_FLAGS} ${bc_flag_list} ${source_file_option_list} -c "${absolute_source_file_path}" -o "${absolute_output_file_path}"
+      COMMAND "${CMAKE_BC_COMPILER}" ${include_directory_list} ${additional_windows_settings} "-DADDRESS_SIZE_BITS=${address_size}" ${definition_list} ${DEFAULT_BC_COMPILER_FLAGS} ${bc_flag_list} ${source_file_option_list} -c "${absolute_source_file_path}" -o "${absolute_output_file_path}"
       MAIN_DEPENDENCY "${absolute_source_file_path}"
       ${dependency_list_directive}
       COMMENT "Building BC object ${absolute_output_file_path}"
