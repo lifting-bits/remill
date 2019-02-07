@@ -85,6 +85,18 @@ union SegmentSelector final {
 static_assert(sizeof(SegmentSelector) == 2,
               "Invalid packing of `union SegmentSelector`.");
 
+struct SegmentShadow final {
+  union {
+    uint32_t dword;
+    uint64_t qword;
+  } base;
+  uint32_t limit;
+  uint32_t flags;
+} __attribute__((packed));
+
+static_assert(sizeof(SegmentShadow) == 16,
+              "Invalid packing of `struct SegmentShadow`.");
+
 union FPUStatusWord final {
   uint16_t flat;
   struct {
@@ -453,6 +465,17 @@ struct alignas(8) Segments final {
 
 static_assert(24 == sizeof(Segments), "Invalid packing of `struct Segments`.");
 
+struct alignas(8) SegmentCaches final {
+  SegmentShadow cs;
+  SegmentShadow ss;
+  SegmentShadow ds;
+  SegmentShadow es;
+  SegmentShadow fs;
+  SegmentShadow gs;
+} __attribute__((packed));
+
+static_assert(96 == sizeof(SegmentCaches), "Invalid packing of `struct SegmentCaches`.");
+
 enum DescriptorPrivilegeLevel : uint64_t {
   kDPLRingZero = 0,
   kDPLRingOne = 1,
@@ -523,23 +546,26 @@ struct GenericDescriptor {
 static_assert(8U == sizeof(GenericDescriptor),
               "Invalid packing of `struct GenericDescriptor`.");
 
-struct SegmentDescriptor {
-  uint16_t limit_low:16;
-  uint16_t base_low:16;
-  uint16_t base_middle:8;
-  uint16_t system_type:4;
-  uint16_t system_access:4;
-  uint16_t limit_high:4;
-  uint16_t available:1;
+union SegmentDescriptor {
+  uint64_t flat;
+  struct {
+    uint16_t limit_low:16;
+    uint16_t base_low:16;
+    uint16_t base_middle:8;
+    uint16_t system_type:4;
+    uint16_t system_access:4;
+    uint16_t limit_high:4;
+    uint16_t available:1;
 
-  /* Only valid for kCodeSegmentDescriptor */
-  uint16_t code_mode:1;  // Only valid for code segments.
+    /* Only valid for kCodeSegmentDescriptor */
+    uint16_t code_mode:1;  // Only valid for code segments.
 
-  /* Only valid for kCodeSegmentDescriptor, kDataSegmentDescriptor */
-  uint16_t default_operand_size:1;
-  uint16_t granularity:1;
+    /* Only valid for kCodeSegmentDescriptor, kDataSegmentDescriptor */
+    uint16_t default_operand_size:1;
+    uint16_t granularity:1;
 
-  uint16_t base_high:8;
+    uint16_t base_high:8;
+  } __attribute__((packed));
 } __attribute__((packed));
 
 static_assert(8U == sizeof(SegmentDescriptor),
@@ -732,9 +758,10 @@ struct alignas(16) State final : public ArchState {
   FPUStatusFlags sw;  // 24 bytes
   XCR0 xcr0;  // 8 bytes.
   FPU x87;  // 512 bytes
+  SegmentCaches seg_caches; // 96 bytes
 } __attribute__((packed));
 
-static_assert((3264 + 16) == sizeof(State),
+static_assert((96 + 3264 + 16) == sizeof(State),
               "Invalid packing of `struct State`");
 
 using X86State = State;
