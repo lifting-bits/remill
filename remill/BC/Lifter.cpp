@@ -412,7 +412,7 @@ static llvm::Value *ConvertToIntendedType(Instruction &inst, Operand &op,
     }
   } else if (val_type->isFloatingPointTy()) {
     if (intended_type->isIntegerTy()) {
-      return new llvm::FPToSIInst(val, intended_type, "", block);
+      return new llvm::BitCastInst(val, intended_type, "", block);
     }
   }
 
