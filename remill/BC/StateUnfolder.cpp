@@ -222,7 +222,6 @@ static Mask CallerUnusedRet(
         return m && b;
       });
 
-  result[6] = true;
   return result;
 }
 
@@ -303,9 +302,6 @@ static Mask GetReturnMask(
       [=](bool old, uint32_t m){
         return m != counter && old;
       });
-  // Always return %rsp!
-  // TODO: Remove hardcoded 6
-  result[6] = true;
 
   return result;
 }
