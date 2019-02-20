@@ -159,6 +159,13 @@ static void CreateLocalStack(llvm::Module &module, llvm::Function &func) {
   }
 }
 
+static llvm::Type *MostInnerSimpleType(llvm::Type *t) {
+  while (std::next(t->subtype_begin()) == t->subtype_end()) {
+    t = *t->subtype_begin();
+  }
+  return t;
+}
+
 } // namespace
 
 // Holds information about unfolded function
@@ -556,7 +563,7 @@ struct StateUnfolder {
     std::vector<llvm::Type *> unit_types = type_prefix;
 
     for (const auto &reg : mask.rets) {
-      unit_types.push_back(reg->type);
+      unit_types.push_back(MostInnerSimpleType(reg->type));
     }
 
     // Create new function
@@ -626,7 +633,7 @@ struct StateUnfolder {
     auto arg_it = std::next(func.arg_begin(), type_prefix.size());
 
     for (auto i = 0U; i < regs.size(); ++i) {
-      auto alloca_reg = ir.CreateAlloca(regs[i]->type);
+      auto alloca_reg = ir.CreateAlloca(MostInnerSimpleType(regs[i]->type));
       if (mask.param_type_mask[i]) {
         CHECK(arg_it != func.arg_end()) << "Not enough parameters when creating alloca";
         ir.CreateStore(&*arg_it, alloca_reg);
@@ -825,7 +832,7 @@ struct StateUnfolder {
                 casted_state,
                 c.i64(reg->offset));
             auto bitcast = ir.CreateBitCast(
-                gep, llvm::PointerType::get(reg->type, 0));
+                gep, llvm::PointerType::get(MostInnerSimpleType(reg->type), 0));
             args.push_back(ir.CreateLoad(bitcast));
           }
 
@@ -839,7 +846,7 @@ struct StateUnfolder {
                   casted_state,
                   c.i64(regs[i]->offset));
               auto bitcast = ir.CreateBitCast(
-                  gep, llvm::PointerType::get(regs[i]->type, 0));
+                  gep, llvm::PointerType::get(MostInnerSimpleType(regs[i]->type), 0));
               ir.CreateStore(val, bitcast);
             }
           }
