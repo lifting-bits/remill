@@ -25,6 +25,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include <llvm/ADT/APSInt.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
@@ -166,6 +167,12 @@ static llvm::Type *MostInnerSimpleType(llvm::Type *t) {
   return t;
 }
 
+void UnsafeErase(llvm::Function *func) {
+  func->replaceAllUsesWith(
+      llvm::UndefValue::get(llvm::PointerType::getUnqual(func->getFunctionType())));
+  func->eraseFromParent();
+}
+
 } // namespace
 
 // Holds information about unfolded function
@@ -181,6 +188,13 @@ struct UnfoldedFunction {
   // Hold information about currently used registers in function type
   TypeMask type_mask;
 };
+
+std::ostream &operator<<(std::ostream &os, const UnfoldedFunction &func) {
+  os << func.sub_func->getName().str() << " -> "
+     << func.unfolded_func->getName().str() << std::endl;
+  os << func.type_mask;
+  return os;
+}
 
 // For each caller of unfolded function, check which part of return type are used.
 // If there are some that no caller uses, mark it as false
@@ -250,7 +264,6 @@ static Mask UnusedParameters(
       result[i] = false;
     }
   }
-
   return result && old_mask;
 }
 
@@ -293,8 +306,8 @@ static Mask GetReturnMask(
               // It must be exactly the same register
               if (i == p) {
                 mask[i]++;
+                break;
               }
-              break;
             }
           }
           insert = llvm::dyn_cast<llvm::InsertValueInst>(insert->getAggregateOperand());
@@ -309,7 +322,6 @@ static Mask GetReturnMask(
       [=](bool old, uint32_t m){
         return m != counter && old;
       });
-
   return result;
 }
 
@@ -383,7 +395,7 @@ struct StateUnfolder {
     static const std::vector<std::string> reg_names = {
       "RAX", "RBX", "RCX", "RDX", "RSI", "RDI", "RSP", "RBP",
       "R8", "R9", "R10", "R11", "R12", "R13", "R14", "R15", "RIP",
-      "CF", "PF", "AF", "ZF", "SF", "DF", "OF"
+      "CF", "PF", "AF", "ZF", "SF", "DF", "OF", "XMM0", "XMM1"
     };
 
     regs.reserve(reg_names.size());
@@ -401,7 +413,7 @@ struct StateUnfolder {
   ~StateUnfolder() {
     // We do not need blueprints anymore
     for (auto &func : unfolded) {
-      func.first->eraseFromParent();
+      UnsafeErase(func.first);
     }
 
     auto bb_func = BasicBlockFunction(&module);
@@ -411,7 +423,7 @@ struct StateUnfolder {
     for (auto &a : assoc_map) {
       if (!a.second->hasAddressTaken() &&
           a.second->getName() != "main") {
-        a.second->eraseFromParent();
+        UnsafeErase(a.second);
       }
     }
 
@@ -509,7 +521,7 @@ struct StateUnfolder {
 
     // We no longer need older iteration as we already got all the info needed
     for (auto &func : unfolded) {
-      func.second.unfolded_func->eraseFromParent();
+      UnsafeErase(func.second.unfolded_func);
     }
 
     for (auto &func : func_to_mask) {
@@ -695,6 +707,8 @@ struct StateUnfolder {
         bitcast->replaceAllUsesWith(casted);
 
       } else if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(inst)) {
+        llvm::IRBuilder<> ir(gep);
+        allocas = ir.CreateBitCast(allocas, gep->getType());
         gep->replaceAllUsesWith(allocas);
       }
     }
@@ -705,24 +719,34 @@ struct StateUnfolder {
                    llvm::Function &func, const TypeMask &mask) {
 
     auto state = NthArgument(&func, kStatePointerArgNum);
+    Constant C(context);
 
     for (const auto &inst : state->users()) {
       if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(inst)) {
-        llvm::APInt offset(64, 0);
+        llvm::APSInt offset(64, 0);
         if (gep->accumulateConstantOffset(llvm::DataLayout(&module), offset)) {
-
           for (auto i = 0U; i < allocas.size(); ++i) {
-            if (offset == llvm::APInt(64, regs[i]->offset)) {
+            if (offset >= regs[i]->offset &&
+                offset < (regs[i]->offset + regs[i]->size)) {
 
+              int64_t diff = offset.getExtValue() - regs[i]->offset;
+              llvm::Value *ptr = allocas[i];
+              if (diff != 0) {
+                llvm::IRBuilder<> ir(gep);
+                ptr = ir.CreateGEP(
+                    ir.CreateBitCast(allocas[i], C.i8PtrTy()),
+                    C.i64(diff));
+              }
               // There can be a bunch of bitcasts thanks to complexity of llvm type
               // that represents state
               auto result_ty = GetResultElementType(gep);
               if (!result_ty->isIntegerTy()) {
-                ReplaceBitCast(allocas[i], gep);
+                ReplaceBitCast(ptr, gep);
                 continue;
               }
-
-              gep->replaceAllUsesWith(allocas[i]);
+              llvm::IRBuilder<> ir(gep);
+              ptr = ir.CreateBitCast(ptr, gep->getType());
+              gep->replaceAllUsesWith(ptr);
               break;
             }
           }
@@ -851,7 +875,7 @@ struct StateUnfolder {
             }
           }
 
-          call->replaceAllUsesWith(ret);
+          call->replaceAllUsesWith(ir.CreateExtractValue(ret, kMemoryPointerArgNum));
           call->eraseFromParent();
           return;
         }
