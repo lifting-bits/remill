@@ -1818,7 +1818,8 @@ std::vector<StateSlot> StateSlots(llvm::Module *module) {
 // stores into the `State` structure.
 void RemoveDeadStores(llvm::Module *module,
                       llvm::Function *bb_func,
-                      const std::vector<StateSlot> &slots) {
+                      const std::vector<StateSlot> &slots,
+                      llvm::Function *ds_func) {
   if (FLAGS_disable_dead_store_elimination) {
     return;
   }
@@ -1831,6 +1832,11 @@ void RemoveDeadStores(llvm::Module *module,
 
   for (auto &func : *module) {
     if (!IsLiftedFunction(&func, bb_func)) {
+      continue;
+    }
+
+    // If ds_func is set, only apply DSE on that function
+    if (ds_func && ds_func != &func) {
       continue;
     }
 
