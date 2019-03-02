@@ -925,6 +925,9 @@ struct StateUnfolder {
 };
 
 void UnfoldState(llvm::Module *module, void(*opt)(void)) {
+  if (!GetTargetArch()->IsAMD64()) {
+    LOG(INFO) << "Unfolding is not supported for chosen architecture.";
+  }
   StateUnfolder(*module, *GetTargetArch(), opt).Unfold();
 }
 
