@@ -145,44 +145,175 @@ inline Mask operator&&(const Mask &lhs, const Mask &rhs) {
     });
 }
 
+
+// This is good only to convert std::vector<bool> to Container for historic reasons
+template<typename Container>
+struct GMask : public Container {
+
+  // Tag dispatch, to make sure bitset gets its own pretty fast ctor
+  explicit GMask(std::size_t used) : GMask(used, tag<Container>{}) {}
+
+  // std::bitset
+  explicit GMask(std::size_t used, const std::true_type &) :
+    Container(std::pow(2, used) - 1) {}
+
+  // Everything else
+  explicit GMask(std::size_t used, const std::false_type &) : Container(used, true) {}
+
+private:
+
+  template<typename>
+  struct tag : std::false_type {};
+
+  template<std::size_t N>
+  struct tag<std::bitset<N>> : std::true_type {};
+
+};
+
+// This is not using iterators since std::bitset does not have any
+// CRTP to provide conversion from other collections
+template<typename Self>
+struct Converter {
+
+  Self &self() {
+    return static_cast<Self &>(*this);
+  }
+
+  // T must support T::size(), T::operator[size_t]
+  template<typename T, typename Op>
+  static Self cc(const T &other, Op op) {
+    Self self(other.size());
+    for (auto i = 0U; i < other.size(); ++i) {
+      self[i] = op(other[i]);
+    }
+    return self;
+  }
+
+  // T must support T::size(), T::operator[size_t]
+  template<typename T>
+  static Self cc(const T &other) {
+    Self self(other.size());
+    for (auto i = 0U; i < other.size(); ++i) {
+      self[i] = other[i];
+    }
+    return self;
+  }
+};
+
+// Special type for mask of return type of function
+template<typename Container>
+struct RMask : public GMask<Container>, Converter<RMask<Container>> {
+  using Base = GMask<Container>;
+  using Base::Base;
+
+};
+
+// Special type for mask of parameters of function
+template<typename Container>
+struct PMask : public GMask<Container>, Converter<PMask<Container>> {
+  using Base = GMask<Container>;
+  using Base::Base;
+};
+
 // Mapping Register -> bool
 // True means that the register is present in a type
+template<typename Container>
 struct TypeMask {
-  Mask ret_type_mask;
-  Mask param_type_mask;
+  using RType = RMask<Container>;
+  using PType = PMask<Container>;
+
+  RType ret_type_mask;
+  PType param_type_mask;
 
   RegisterList rets;
   RegisterList params;
 
   TypeMask(const RegisterList &regs) :
-    ret_type_mask(regs.size(), true), param_type_mask(regs.size(), true),
+    ret_type_mask(regs.size()), param_type_mask(regs.size()),
     rets(regs), params(regs) {}
 
-  TypeMask(const RegisterList &regs, Mask ret, Mask param) :
+  TypeMask(const RegisterList &regs, RType ret, PType param) :
     ret_type_mask(std::move(ret)), param_type_mask(std::move(param)) {
+
       for (auto i = 0U; i < regs.size(); ++i) {
-        if (ret_type_mask[i]) {
-          rets.push_back(regs[i]);
-        }
-        if (param_type_mask[i]) {
-          params.push_back(regs[i]);
-        }
+      if (ret_type_mask[i]) {
+        rets.push_back(regs[i]);
+      }
+      if (param_type_mask[i]) {
+        params.push_back(regs[i]);
       }
     }
+  }
+
+  // There are no registers present
+  bool Empty() const {
+    return rets.empty() && params.empty();
+  }
 };
 
-inline std::ostream &operator<<(std::ostream &os, const TypeMask &mask) {
+// So that std::vector<bool> can be used as Container in GMask
+std::vector<bool> &operator&=(std::vector<bool> &l, const std::vector<bool> &r) {
+  for (auto i = 0U; i < l.size(); ++i) {
+    l[i] = l[i] && r[i];
+  }
+  return l;
+}
+
+// Intermediate type that does not work with registers themselves, only with masks
+template<typename Container>
+struct TMask {
+  using RType = RMask<Container>;
+  using PType = PMask<Container>;
+
+  RType ret_type_mask;
+  PType param_type_mask;
+
+  TMask(std::size_t used) : ret_type_mask(used), param_type_mask(used) {
+    // Empty
+  }
+
+  template<typename T>
+  TMask &operator&=(const PMask<T> &param) {
+    param_type_mask &= param;
+    return *this;
+  }
+
+  template<typename T>
+  TMask &operator&=(const RMask<T> &ret) {
+    ret_type_mask &= ret;
+    return *this;
+  }
+
+  template<typename T>
+  TMask &operator&=(const TMask<T> &mask) {
+    param_type_mask &= mask.param_type_mask;
+    ret_type_mask &= mask.ret_type_mask;
+    return *this;
+  }
+
+  TypeMask<Container> Build(const RegisterList &regs) {
+    return TypeMask<Container>(regs, ret_type_mask, param_type_mask);
+  }
+
+};
+
+template<typename Container>
+inline std::ostream &operator<<(std::ostream &os, const TypeMask<Container> &mask) {
   os << "Ret_type:" << std::endl;
   for (const auto &reg : mask.rets) {
-    os << "\t" << reg->name << std::endl;
+    os << "\t" << reg->name;
   }
+  os << std::endl;
 
   os << "Param_type:" << std::endl;
   for (const auto &reg : mask.params) {
-    os << "\t" << reg->name << std::endl;
+    os << "\t" << reg->name;
   }
+  os << std::endl;
+
   return os;
 }
+
 
 inline llvm::Function *AppendParams(
     llvm::Module &module,
