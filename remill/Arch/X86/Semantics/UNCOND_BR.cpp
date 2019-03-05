@@ -22,6 +22,28 @@ DEF_SEM(JMP, T target_pc) {
   return memory;
 }
 
+template <typename T>
+DEF_SEM(JMP_FAR_MEM, T target_seg_pc) {
+  HYPER_CALL = AsyncHyperCall::kX86JmpFar;
+  uint64_t target_fword = UShr(UShl(Read(target_seg_pc), 0xf), 0xf);
+  auto pc = static_cast<uint32_t>(target_fword);
+  auto seg = static_cast<uint16_t>(UShr(target_fword, 32));
+  WriteZExt(REG_PC, pc);
+  Write(REG_CS.flat, seg);
+  return memory;
+}
+
+template <typename S1, typename S2>
+DEF_SEM(JMP_FAR_PTR, S1 src1, S2 src2) {
+  HYPER_CALL = AsyncHyperCall::kX86JmpFar;
+  auto pc = Read(src1);
+  auto seg = Read(src2);
+  WriteZExt(REG_PC, pc);
+  Write(REG_CS.flat, seg);
+  return memory;
+}
+
+
 }  // namespace
 
 DEF_ISEL(JMP_RELBRd) = JMP<PC>;
@@ -31,12 +53,18 @@ DEF_ISEL_32or64(JMP_RELBRz, JMP<PC>);
 #if 64 == ADDRESS_SIZE_BITS
 DEF_ISEL(JMP_MEMv_64) = JMP<M64>;
 DEF_ISEL(JMP_GPRv_64) = JMP<R64>;
+
+DEF_ISEL(JMP_FAR_MEMp2_32) = JMP_FAR_MEM<M64>;
 #else
 DEF_ISEL(JMP_MEMv_16) = JMP<M16>;
 DEF_ISEL(JMP_MEMv_32) = JMP<M32>;
 
 DEF_ISEL(JMP_GPRv_16) = JMP<R16>;
 DEF_ISEL(JMP_GPRv_32) = JMP<R32>;
+
+DEF_ISEL(JMP_FAR_MEMp2_32) = JMP_FAR_MEM<M32>;
+DEF_ISEL(JMP_FAR_PTRp_IMMw_32) = JMP_FAR_PTR<I32, I16>;
+DEF_ISEL(JMP_FAR_PTRp_IMMw_16) = JMP_FAR_PTR<I16, I16>;
 #endif
 
 /*

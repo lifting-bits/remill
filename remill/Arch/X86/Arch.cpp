@@ -97,13 +97,28 @@ static bool IsDirectFunctionCall(const xed_decoded_inst_t *xedd) {
   return XED_ICLASS_CALL_NEAR == iclass && XED_OPERAND_RELBR == op_name;
 }
 
+static bool IsDirectFunctionCallFar(const xed_decoded_inst_t *xedd) {
+  auto xedi = xed_decoded_inst_inst(xedd);
+  auto xedo = xed_inst_operand(xedi, 0);
+  auto op_name = xed_operand_name(xedo);
+  auto iclass = xed_decoded_inst_get_iclass(xedd);
+  return XED_ICLASS_CALL_FAR == iclass && XED_OPERAND_PTR == op_name;
+}
+
 static bool IsIndirectFunctionCall(const xed_decoded_inst_t *xedd) {
   auto xedi = xed_decoded_inst_inst(xedd);
   auto xedo = xed_inst_operand(xedi, 0);
   auto op_name = xed_operand_name(xedo);
   auto iclass = xed_decoded_inst_get_iclass(xedd);
-  return (XED_ICLASS_CALL_NEAR == iclass && XED_OPERAND_RELBR != op_name) ||
-         XED_ICLASS_CALL_FAR == iclass;
+  return XED_ICLASS_CALL_NEAR == iclass && XED_OPERAND_RELBR != op_name;
+}
+
+static bool IsIndirectFunctionCallFar(const xed_decoded_inst_t *xedd) {
+  auto xedi = xed_decoded_inst_inst(xedd);
+  auto xedo = xed_inst_operand(xedi, 0);
+  auto op_name = xed_operand_name(xedo);
+  auto iclass = xed_decoded_inst_get_iclass(xedd);
+  return XED_ICLASS_CALL_FAR == iclass && XED_OPERAND_MEM0 == op_name;
 }
 
 static bool IsDirectJump(const xed_decoded_inst_t *xedd) {
@@ -114,14 +129,29 @@ static bool IsDirectJump(const xed_decoded_inst_t *xedd) {
   return XED_ICLASS_JMP == iclass && XED_OPERAND_RELBR == op_name;
 }
 
+static bool IsDirectJumpFar(const xed_decoded_inst_t *xedd) {
+  auto xedi = xed_decoded_inst_inst(xedd);
+  auto xedo = xed_inst_operand(xedi, 0);
+  auto op_name = xed_operand_name(xedo);
+  auto iclass = xed_decoded_inst_get_iclass(xedd);
+  return XED_ICLASS_JMP_FAR == iclass && XED_OPERAND_PTR == op_name;
+}
+
 static bool IsIndirectJump(const xed_decoded_inst_t *xedd) {
   auto xedi = xed_decoded_inst_inst(xedd);
   auto xedo = xed_inst_operand(xedi, 0);
   auto op_name = xed_operand_name(xedo);
   auto iclass = xed_decoded_inst_get_iclass(xedd);
   return (XED_ICLASS_JMP == iclass && XED_OPERAND_RELBR != op_name) ||
-         XED_ICLASS_JMP_FAR == iclass ||
          XED_ICLASS_XEND == iclass || XED_ICLASS_XABORT == iclass;
+}
+
+static bool IsIndirectJumpFar(const xed_decoded_inst_t *xedd) {
+  auto xedi = xed_decoded_inst_inst(xedd);
+  auto xedo = xed_inst_operand(xedi, 0);
+  auto op_name = xed_operand_name(xedo);
+  auto iclass = xed_decoded_inst_get_iclass(xedd);
+  return XED_ICLASS_JMP_FAR == iclass && XED_OPERAND_MEM0 == op_name;
 }
 
 static bool IsNoOp(const xed_decoded_inst_t *xedd) {
@@ -188,7 +218,12 @@ static Instruction::Category CreateCategory(const xed_decoded_inst_t *xedd) {
   } else if (IsInterruptReturn(xedd)) {
     return Instruction::kCategoryAsyncHyperCall;
 
-  } else if (IsNoOp(xedd)) {
+  } else if (IsDirectJumpFar(xedd) || IsIndirectJumpFar(xedd) ||
+             IsDirectFunctionCallFar(xedd) || IsIndirectFunctionCallFar(xedd)) {
+    return Instruction::kCategoryAsyncHyperCall;
+
+  }
+  else if (IsNoOp(xedd)) {
     return Instruction::kCategoryNoOp;
 
   } else {
@@ -477,35 +512,46 @@ static void DecodeImmediate(Instruction &inst,
                             xed_operand_enum_t op_name) {
   auto val = 0ULL;
   auto is_signed = false;
-  auto imm_size = xed_decoded_inst_get_immediate_width_bits(xedd);
   auto operand_size = xed_decoded_inst_get_operand_width(xedd);
-
-  CHECK(imm_size <= operand_size)
-      << "Immediate size is greater than effective operand size at "
-      << std::hex << inst.pc << ".";
-
-  if (XED_OPERAND_IMM0SIGNED == op_name ||
-      xed_operand_values_get_immediate_is_signed(xedd)) {
-    val = static_cast<uint64_t>(
-        static_cast<int64_t>(xed_decoded_inst_get_signed_immediate(xedd)));
-    is_signed = true;
-
-  } else if (XED_OPERAND_IMM0 == op_name) {
-    val = static_cast<uint64_t>(xed_decoded_inst_get_unsigned_immediate(xedd));
-
-  } else if (XED_OPERAND_IMM1_BYTES == op_name || XED_OPERAND_IMM1 == op_name) {
-    val = static_cast<uint64_t>(xed_decoded_inst_get_second_immediate(xedd));
-
-  } else {
-    CHECK(false)
-        << "Unexpected immediate type "
-        << xed_operand_enum_t2str(op_name) << ".";
-  }
 
   Operand op = {};
   op.type = Operand::kTypeImmediate;
   op.action = Operand::kActionRead;
-  op.size = imm_size;
+
+  if (XED_OPERAND_PTR == op_name) {
+    auto ptr_size = xed_decoded_inst_get_branch_displacement_width_bits(xedd);
+    CHECK(ptr_size <= operand_size)
+        << "Pointer size is greater than effective operand size at "
+        << std::hex << inst.pc << ".";
+    op.size = ptr_size;
+
+    val = static_cast<uint64_t>(xed_decoded_inst_get_branch_displacement(xedd));
+  } else {
+    auto imm_size = xed_decoded_inst_get_immediate_width_bits(xedd);
+    CHECK(imm_size <= operand_size)
+        << "Immediate size is greater than effective operand size at "
+        << std::hex << inst.pc << ".";
+    op.size = imm_size;
+
+    if (XED_OPERAND_IMM0SIGNED == op_name ||
+        xed_operand_values_get_immediate_is_signed(xedd)) {
+      val = static_cast<uint64_t>(
+          static_cast<int64_t>(xed_decoded_inst_get_signed_immediate(xedd)));
+      is_signed = true;
+
+    } else if (XED_OPERAND_IMM0 == op_name) {
+      val = static_cast<uint64_t>(xed_decoded_inst_get_unsigned_immediate(xedd));
+
+    } else if (XED_OPERAND_IMM1_BYTES == op_name || XED_OPERAND_IMM1 == op_name) {
+      val = static_cast<uint64_t>(xed_decoded_inst_get_second_immediate(xedd));
+
+    } else {
+      CHECK(false)
+          << "Unexpected immediate type "
+          << xed_operand_enum_t2str(op_name) << ".";
+    }
+  }
+
   op.imm.is_signed = is_signed;
   op.imm.val = val;
   inst.operands.push_back(op);
@@ -712,12 +758,8 @@ static void DecodeOperand(Instruction &inst,
     case XED_OPERAND_IMM0:
     case XED_OPERAND_IMM1_BYTES:
     case XED_OPERAND_IMM1:
-      DecodeImmediate(inst, xedd, op_name);
-      break;
-
     case XED_OPERAND_PTR:
-      CHECK(false)
-          << "Unsupported operand type: XED_OPERAND_PTR";
+      DecodeImmediate(inst, xedd, op_name);
       break;
 
     case XED_OPERAND_REG:
