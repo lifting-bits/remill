@@ -30,6 +30,10 @@ DEF_SEM(JMP_FAR_MEM, T target_seg_pc) {
   auto seg = static_cast<uint16_t>(UShr(target_fword, 32));
   WriteZExt(REG_PC, pc);
   Write(REG_CS.flat, seg);
+
+  // TODO(tathanhdinh): Update the hidden part (segment shadow) of CS,
+  //                    see Issue #334
+
   return memory;
 }
 
@@ -40,6 +44,10 @@ DEF_SEM(JMP_FAR_PTR, S1 src1, S2 src2) {
   auto seg = Read(src2);
   WriteZExt(REG_PC, pc);
   Write(REG_CS.flat, seg);
+
+  // TODO(tathanhdinh): Update the hidden part (segment shadow) of CS,
+  //                    see Issue #334
+
   return memory;
 }
 
