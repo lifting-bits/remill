@@ -589,8 +589,9 @@ struct StateUnfolder {
 
     // Running more iterations may improve the produced bitcode, since it profits
     // from llvm optimization passes
-    OptimizeIteration("opt_");
-    OptimizeIteration("ppt_");
+    for (auto i = 0U; i < 5; ++i) {
+      OptimizeIteration("opt." + std::to_string(i) + "_");
+    }
 
     // We did bunch of unfolding again, clean it up
     (*opt_callback)();
