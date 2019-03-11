@@ -245,6 +245,25 @@ struct TypeMask {
     }
   }
 
+
+  llvm::FunctionType *GetFunctionType(
+      llvm::LLVMContext &ctx, const std::vector<llvm::Type *> &prefix) const {
+    auto ret_subtypes = prefix;
+    for (auto &r : rets) {
+      ret_subtypes.push_back(r->type);
+    }
+
+    auto param_subtypes = prefix;
+    for (auto &p : params) {
+      param_subtypes.push_back(p->type);
+    }
+
+    return llvm::FunctionType::get(
+        llvm::StructType::get(ctx, std::move(ret_subtypes)),
+        std::move(param_subtypes),
+        false);
+  }
+
   // There are no registers present
   bool Empty() const {
     return rets.empty() && params.empty();
