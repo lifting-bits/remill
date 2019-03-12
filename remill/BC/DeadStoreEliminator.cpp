@@ -46,7 +46,7 @@ DEFINE_bool(disable_dead_store_elimination, false,
             "Whether or not to perform dead store elimination on stores into"
             "the State structure.");
 
-DEFINE_bool(disable_register_forwarding, false,
+DEFINE_bool(disable_register_forwarding, true,
             "Whether or not register forwarding should be enabled "
             "to perform load-to-load and load-to-store forwarding "
             "to eliminate dead instructions more aggressively.");
@@ -1850,18 +1850,18 @@ void RemoveDeadStores(llvm::Module *module,
     }
   }
 
-  LOG(INFO)
-      << "Candidate stores: " << stats.num_stores << "; "
-      << "Dead stores: " << stats.dead_stores << "; "
-      << "Instructions removed from DSE: " << stats.removed_insts << "; "
-      << "Forwarded loads: " << stats.fwd_loads << "; "
-      << "Forwarded stores: " << stats.fwd_stores << "; "
-      << "Perfectly forwarded: " << stats.fwd_perfect << "; "
-      << "Forwarded by truncation: " << stats.fwd_truncated << "; "
-      << "Forwarded by casting: " << stats.fwd_casted << "; "
-      << "Forwarded by reordering: " << stats.fwd_reordered << "; "
-      << "Could not forward: " << stats.fwd_failed << "; "
-      << "Unanalyzed functions: " << stats.failed_funcs;
+//  LOG(INFO)
+//      << "Candidate stores: " << stats.num_stores << "; "
+//      << "Dead stores: " << stats.dead_stores << "; "
+//      << "Instructions removed from DSE: " << stats.removed_insts << "; "
+//      << "Forwarded loads: " << stats.fwd_loads << "; "
+//      << "Forwarded stores: " << stats.fwd_stores << "; "
+//      << "Perfectly forwarded: " << stats.fwd_perfect << "; "
+//      << "Forwarded by truncation: " << stats.fwd_truncated << "; "
+//      << "Forwarded by casting: " << stats.fwd_casted << "; "
+//      << "Forwarded by reordering: " << stats.fwd_reordered << "; "
+//      << "Could not forward: " << stats.fwd_failed << "; "
+//      << "Unanalyzed functions: " << stats.failed_funcs;
 }
 
 }  // namespace remill

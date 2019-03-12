@@ -29,10 +29,6 @@ function(FindAndSelectClangCompiler)
       set(CMAKE_C_COMPILER "clang" PARENT_SCOPE)
     endif()
   endif()
-  
-  if (NOT "${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" AND NOT "${CMAKE_C_COMPILER_ID}" STREQUAL "AppleClang")
-    message(FATAL_ERROR "Remill and its dependent libraries must be compiled with Clang.")
-  endif()
 
   if(NOT DEFINED CMAKE_CXX_COMPILER)
     if(DEFINED LLVM_INSTALL_PREFIX)
@@ -41,10 +37,6 @@ function(FindAndSelectClangCompiler)
     else()
       set(CMAKE_CXX_COMPILER "clang++${executable_extension}" PARENT_SCOPE)
     endif()
-  endif()
-  
-  if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
-    message(FATAL_ERROR "Remill and its dependent libraries must be compiled with Clang.")
   endif()
 
   if(NOT DEFINED CMAKE_ASM_COMPILER)
