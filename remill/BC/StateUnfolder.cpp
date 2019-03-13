@@ -389,7 +389,7 @@ static ResultMask GetParamMask(
   }
 
   res &= ResultMask::PType::cc(undefs, [=](uint32_t undef){
-        return undef != users;
+        return !(users && undef == users);
       });
 
   return res;
@@ -420,7 +420,7 @@ struct StateUnfolder {
     static const std::vector<std::string> reg_names = {
       "RAX", "RBX", "RCX", "RDX", "RSI", "RDI", "RSP", "RBP",
       "R8", "R9", "R10", "R11", "R12", "R13", "R14", "R15", "RIP",
-      "CF", "PF", "AF", "ZF", "SF", "DF", "OF", "XMM0", "XMM1"
+      "CF", "PF", "AF", "ZF", "SF", "DF", "OF"
     };
 
     regs.reserve(reg_names.size());
