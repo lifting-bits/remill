@@ -447,7 +447,8 @@ struct StateUnfolder {
     });
     for (auto &a : assoc_map) {
       if (!a.second->hasAddressTaken() &&
-          a.second->getName() != "main") {
+          a.second->getName() != "main" &&
+          !a.second->getName().startswith("callback_")) {
         UnsafeErase(a.second);
       }
     }
