@@ -155,7 +155,8 @@ struct GMask : public Container {
 
   // std::bitset
   explicit GMask(std::size_t used, const std::true_type &) :
-    Container(std::pow(2, used) - 1) {}
+    Container((1 << used) - 1) {
+    }
 
   // Everything else
   explicit GMask(std::size_t used, const std::false_type &) : Container(used, true) {}
@@ -315,6 +316,23 @@ struct TMask {
   }
 
 };
+
+template<typename Container>
+inline std::ostream &operator<<(std::ostream &os, const TMask<Container> &mask) {
+  os << "Ret_type:" << std::endl;
+  for (auto i = 0U; i < mask.ret_type_mask.size(); ++i) {
+    os << "\t" << mask.ret_type_mask[i];
+  }
+  os << std::endl;
+
+  os << "Param_type:" << std::endl;
+  for (auto i = 0U; i < mask.param_type_mask.size(); ++i) {
+    os << "\t" << mask.param_type_mask[i];
+  }
+  os << std::endl;
+
+  return os;
+}
 
 template<typename Container>
 inline std::ostream &operator<<(std::ostream &os, const TypeMask<Container> &mask) {
