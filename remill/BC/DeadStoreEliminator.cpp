@@ -194,8 +194,18 @@ static bool TryGetOffsetOrConst(
     llvm::Value *val, const ValueToOffset &state_offset,
     uint64_t *offset_out) {
   if (auto const_val = llvm::dyn_cast<llvm::ConstantInt>(val)) {
-    *offset_out = static_cast<uint64_t>(const_val->getSExtValue());
-    return true;
+    const auto &val_apint = const_val->getValue();
+    if (val_apint.getMinSignedBits() <= 64) {
+      *offset_out = static_cast<uint64_t>(const_val->getSExtValue());
+      return true;
+    } else {
+      llvm::SmallString<32> str;
+      (void) val_apint.toStringSigned(str);
+      LOG(ERROR)
+          << "Unable to fit offset from " << remill::LLVMThingToString(val)
+          << " into a 64-bit signed integer: " << str.str().str();
+      return false;
+    }
   } else {
     return TryGetOffset(val, state_offset, offset_out);
   }
