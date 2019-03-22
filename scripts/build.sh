@@ -26,6 +26,7 @@ LLVM_VERSION=llvm40
 OS_VERSION=
 ARCH_VERSION=
 BUILD_FLAGS=
+USE_HOST_COMPILER=0
 
 # There are pre-build versions of various libraries for specific
 # Ubuntu releases.
@@ -138,11 +139,11 @@ function GetOSVersion
 function DownloadLibraries
 {
   # macOS packages
-  if [[ "$OSTYPE" == "darwin"* ]]; then
+  if [[ "${OSTYPE}" = "darwin"* ]]; then
     OS_VERSION=osx
 
   # Linux packages
-  elif [[ "$OSTYPE" == "linux-gnu" ]]; then
+  elif [[ "${OSTYPE}" = "linux-gnu" ]]; then
     if ! GetOSVersion; then
       return 1
     fi
@@ -175,8 +176,19 @@ function Configure
   # Tell the remill CMakeLists.txt where the extracted libraries are. 
   export TRAILOFBITS_LIBRARIES="${BUILD_DIR}/libraries"
   export PATH="${TRAILOFBITS_LIBRARIES}/cmake/bin:${TRAILOFBITS_LIBRARIES}/llvm/bin:${PATH}"
-  export CC="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang"
-  export CXX="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang++"
+  
+  if [[ "${USE_HOST_COMPILER}" = "1" ]] ; then
+    if [[ "x${CC}x" = "xx" ]] ; then
+      export CC=$(which cc)
+    fi
+    
+    if [[ "x${CXX}x" = "xx" ]] ; then
+      export CXX=$(which c++)
+    fi
+  else
+    export CC="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang"
+    export CXX="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang++"
+  fi
 
   # Configure the remill build, specifying that it should use the pre-built
   # Clang compiler binaries.
@@ -184,6 +196,7 @@ function Configure
       -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
       -DCMAKE_C_COMPILER="${CC}" \
       -DCMAKE_CXX_COMPILER="${CXX}" \
+      -DCMAKE_BC_COMPILER="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang++" \
       -DCMAKE_VERBOSE_MAKEFILE=True \
       ${BUILD_FLAGS} \
       "${SRC_DIR}"
@@ -210,26 +223,32 @@ function GetLLVMVersion
   case ${1} in
     3.5)
       LLVM_VERSION=llvm35
+      USE_HOST_COMPILER=1
       return 0
     ;;
     3.6)
       LLVM_VERSION=llvm36
+      USE_HOST_COMPILER=1
       return 0
     ;;
     3.7)
       LLVM_VERSION=llvm37
+      USE_HOST_COMPILER=1
       return 0
     ;;
     3.8)
       LLVM_VERSION=llvm38
+      USE_HOST_COMPILER=1
       return 0
     ;;
     3.9)
       LLVM_VERSION=llvm39
+      USE_HOST_COMPILER=1
       return 0
     ;;
     4.0)
       LLVM_VERSION=llvm40
+      USE_HOST_COMPILER=1
       return 0
     ;;
     5.0)
@@ -242,6 +261,10 @@ function GetLLVMVersion
     ;;
     7.0)
       LLVM_VERSION=llvm70
+      return 0
+    ;;
+    8.0)
+      LLVM_VERSION=llvm80
       return 0
     ;;
     *)
@@ -291,6 +314,12 @@ function main
       --extra-cmake-args)
         BUILD_FLAGS="${BUILD_FLAGS} ${2}"
         echo "[+] Will supply additional arguments to cmake: ${BUILD_FLAGS}"
+        shift
+      ;;
+      
+      --use-host-compiler)
+        USE_HOST_COMPILER=1
+        echo "[+] Forcing use of host compiler for build"
         shift
       ;;
 
