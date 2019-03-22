@@ -199,11 +199,9 @@ static bool TryGetOffsetOrConst(
       *offset_out = static_cast<uint64_t>(const_val->getSExtValue());
       return true;
     } else {
-      llvm::SmallString<32> str;
-      (void) val_apint.toStringSigned(str);
       LOG(ERROR)
           << "Unable to fit offset from " << remill::LLVMThingToString(val)
-          << " into a 64-bit signed integer: " << str.str().str();
+          << " into a 64-bit signed integer";
       return false;
     }
   } else {
