@@ -51,6 +51,7 @@ function GetUbuntuOSVersion
       return 0
     ;;
     trusty)
+      USE_HOST_COMPILER=1
       OS_VERSION=ubuntu1404
       return 0
     ;;
