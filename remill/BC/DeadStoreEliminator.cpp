@@ -199,7 +199,7 @@ static bool TryGetOffsetOrConst(
       *offset_out = static_cast<uint64_t>(const_val->getSExtValue());
       return true;
     } else {
-      LOG(ERROR)
+      LOG(WARNING)
           << "Unable to fit offset from " << remill::LLVMThingToString(val)
           << " into a 64-bit signed integer";
       return false;
