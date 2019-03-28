@@ -46,7 +46,7 @@ DEFINE_bool(disable_dead_store_elimination, false,
             "Whether or not to perform dead store elimination on stores into"
             "the State structure.");
 
-DEFINE_bool(disable_register_forwarding, true,
+DEFINE_bool(enable_register_forwarding, false,
             "Whether or not register forwarding should be enabled "
             "to perform load-to-load and load-to-store forwarding "
             "to eliminate dead instructions more aggressively.");
@@ -1826,7 +1826,7 @@ void RemoveDeadStores(llvm::Module *module,
     // If the analysis succeeds for this function, then do store-to-load
     // and load-to-load forwarding.
     if (fav.Analyze(&func)) {
-      if (!FLAGS_disable_register_forwarding) {
+      if (FLAGS_enable_register_forwarding) {
         ForwardingBlockVisitor fbv(func, state_access_offset, slots, &dl);
         fbv.Visit(fav.state_offset, stats);
       }
