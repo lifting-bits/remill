@@ -30,7 +30,7 @@ DEF_SEM(DoVZEROUPPER) {
 }
 }  //  namespace
 
- namespace {
+namespace {
 
 template<typename D, typename S1, size_t KL, size_t VL>
 DEF_SEM(VPBROADCASTB, D dst, S1 src1) {
@@ -39,13 +39,13 @@ DEF_SEM(VPBROADCASTB, D dst, S1 src1) {
   auto num_groups = NumVectorElems(dst_vec);
   auto src_byte  = UExtractV8(src_vec, 0);
   
-  for (std::size_t i = 0; i < num_groups; ++i){
+  for (std::size_t i = 0; i < num_groups; ++i) {
     dst_vec  = UInsertV8(dst_vec, i, src_byte);
   }
-
   UWriteV8(dst, dst_vec);
   return memory;
 }
+
 }  // namespace
 
 DEF_ISEL(VZEROUPPER) = DoVZEROUPPER;

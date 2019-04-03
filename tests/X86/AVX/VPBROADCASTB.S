@@ -23,7 +23,6 @@
 TEST_BEGIN_64(VPBROADCASTB_YMMqq_XMMb, 3)
 TEST_INPUTS(VPBROADCASTB_INPUTS_64)
   movq xmm0, ARG1_64;
-  movq ymm0, ARG2_64;
   vpbroadcastb ymm0, xmm0;
 TEST_END_64
 
