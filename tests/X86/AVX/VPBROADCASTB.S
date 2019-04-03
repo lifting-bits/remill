@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#if HAS_FEATURE_AVX512
+#if HAS_FEATURE_AVX
  #define VPBROADCASTB_INPUTS_64 \
       0x0000000000000000, 0x0000000000000000,  /* sanity check */\
       0xfedcba9876543210, 0x0000000000000000,  /* arbitrarily chosen values */\
@@ -23,8 +23,8 @@
 TEST_BEGIN_64(VPBROADCASTB_YMMqq_XMMb, 3)
 TEST_INPUTS(VPBROADCASTB_INPUTS_64)
   movq xmm0, ARG1_64;
-  movq zmm0, ARG2_64;
-  vpbroadcastb zmm0, xmm0;
+  movq ymm0, ARG2_64;
+  vpbroadcastb ymm0, xmm0;
 TEST_END_64
 
-#endif  // HAS_FEATURE_AVX512
+#endif  // HAS_FEATURE_AVX
