@@ -352,6 +352,7 @@ SYMBOL(__x86_test_table_begin):
 /* Bring in the rest of the semantic tests. */
 
 #include "tests/X86/AVX/VZEROUPPER.S"
+#include "tests/X86/AVX/VPBROADCASTB.S"
 
 #include "tests/X86/BINARY/ADC.S"
 #include "tests/X86/BINARY/ADD.S"

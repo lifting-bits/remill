@@ -219,6 +219,7 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   auto &YMM13 = state.vec[13].ymm;
   auto &YMM14 = state.vec[14].ymm;
   auto &YMM15 = state.vec[15].ymm;
+
 #endif  // HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
 
 #if HAS_FEATURE_AVX512
@@ -314,14 +315,14 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   // harder, but generating and optimizing bitcode becomes simpler. The trade-
   // off is that analysis and native states will diverge in strange ways
   // with code that mixes the two (X87 FPU ops, MMX ops).
-  auto &MMX0 = state.mmx.elems[0].val.qwords.elems[0];
-  auto &MMX1 = state.mmx.elems[1].val.qwords.elems[0];
-  auto &MMX2 = state.mmx.elems[2].val.qwords.elems[0];
-  auto &MMX3 = state.mmx.elems[3].val.qwords.elems[0];
-  auto &MMX4 = state.mmx.elems[4].val.qwords.elems[0];
-  auto &MMX5 = state.mmx.elems[5].val.qwords.elems[0];
-  auto &MMX6 = state.mmx.elems[6].val.qwords.elems[0];
-  auto &MMX7 = state.mmx.elems[7].val.qwords.elems[0];
+  auto &MM0 = state.mmx.elems[0].val.qwords.elems[0];
+  auto &MM1 = state.mmx.elems[1].val.qwords.elems[0];
+  auto &MM2 = state.mmx.elems[2].val.qwords.elems[0];
+  auto &MM3 = state.mmx.elems[3].val.qwords.elems[0];
+  auto &MM4 = state.mmx.elems[4].val.qwords.elems[0];
+  auto &MM5 = state.mmx.elems[5].val.qwords.elems[0];
+  auto &MM6 = state.mmx.elems[6].val.qwords.elems[0];
+  auto &MM7 = state.mmx.elems[7].val.qwords.elems[0];
 
   // Arithmetic flags. Data-flow analyses will clear these out ;-)
   auto &AF = state.aflag.af;
