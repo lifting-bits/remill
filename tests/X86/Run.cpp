@@ -813,14 +813,14 @@ static void RunWithFlags(const test::TestInfo *info,
     DIFF(ST6, st.elems[6].val);
     DIFF(ST7, st.elems[7].val);
 
-    DIFF(MMX0, mmx.elems[0].val.qwords.elems[0]);
-    DIFF(MMX1, mmx.elems[1].val.qwords.elems[0]);
-    DIFF(MMX2, mmx.elems[2].val.qwords.elems[0]);
-    DIFF(MMX3, mmx.elems[3].val.qwords.elems[0]);
-    DIFF(MMX4, mmx.elems[4].val.qwords.elems[0]);
-    DIFF(MMX5, mmx.elems[5].val.qwords.elems[0]);
-    DIFF(MMX6, mmx.elems[6].val.qwords.elems[0]);
-    DIFF(MMX7, mmx.elems[7].val.qwords.elems[0]);
+    DIFF(MM0, mmx.elems[0].val.qwords.elems[0]);
+    DIFF(MM1, mmx.elems[1].val.qwords.elems[0]);
+    DIFF(MM2, mmx.elems[2].val.qwords.elems[0]);
+    DIFF(MM3, mmx.elems[3].val.qwords.elems[0]);
+    DIFF(MM4, mmx.elems[4].val.qwords.elems[0]);
+    DIFF(MM5, mmx.elems[5].val.qwords.elems[0]);
+    DIFF(MM6, mmx.elems[6].val.qwords.elems[0]);
+    DIFF(MM7, mmx.elems[7].val.qwords.elems[0]);
 
     DIFF(FXSAVE_CWD_IM, x87.fxsave.cwd.im);
     DIFF(FXSAVE_CWD_DM, x87.fxsave.cwd.dm);
