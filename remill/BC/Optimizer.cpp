@@ -63,7 +63,7 @@ void OptimizeModule(llvm::Module *module,
   llvm::PassManagerBuilder builder;
   builder.OptLevel = 3;
   builder.SizeLevel = 0;
-  builder.Inliner = llvm::createFunctionInliningPass(5);
+  builder.Inliner = llvm::createFunctionInliningPass(250);
   builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
   builder.DisableUnrollLoops = false;  // Unroll loops!
   builder.DisableUnitAtATime = false;
