@@ -321,7 +321,6 @@ function main
       --use-host-compiler)
         USE_HOST_COMPILER=1
         echo "[+] Forcing use of host compiler for build"
-        shift
       ;;
 
       *)
