@@ -317,7 +317,23 @@ function main
         echo "[+] Will supply additional arguments to cmake: ${BUILD_FLAGS}"
         shift
       ;;
-      
+
+      # tell McSema to build dyninst frontend as well
+      --dyninst-frontend)
+        GetOSVersion
+        if [[ $OS_VERSION != ubuntu* ]] ; then
+          echo "[+] Dyninst frontend is supported only on ubuntu, try at your own peril"
+          read -p "Continue? (Y/N): " confirm
+          case $confirm in
+            y|Y ) echo "Confirmed";;
+            n|N ) exit 1;;
+            * ) echo "Unknown option" && exit 1;;
+          esac
+        fi
+        BUILD_FLAGS="${BUILD_FLAGS} -DBUILD_MCSEMA_DYNINST_DISASS=1"
+        echo "[+] Will build dyninst frontend"
+      ;;
+
       --use-host-compiler)
         USE_HOST_COMPILER=1
         echo "[+] Forcing use of host compiler for build"
