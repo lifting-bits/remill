@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+TEST_BEGIN_64(POPrsp_64_ADD8, 1)
+TEST_INPUTS(0)
+    push rsp
+    add qword ptr [rsp], 8
+    pop rsp
+TEST_END_64
+
 TEST_BEGIN_64(POPrsp_64, 1)
 TEST_INPUTS(0)
     push rsp
