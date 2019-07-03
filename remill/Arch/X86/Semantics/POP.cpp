@@ -27,8 +27,8 @@ DEF_SEM(POP, D dst) {
   addr_t op_size = ZExtTo<D>(ByteSizeOf(dst));
   addr_t old_xsp = Read(REG_XSP);
   addr_t new_xsp = UAdd(old_xsp, op_size);
-  WriteZExt(dst, Read(ReadPtr<D>(old_xsp _IF_32BIT(REG_SS_BASE))));
   Write(REG_XSP, new_xsp);
+  WriteZExt(dst, Read(ReadPtr<D>(old_xsp _IF_32BIT(REG_SS_BASE))));
   return memory;
 }
 
