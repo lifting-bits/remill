@@ -34,6 +34,18 @@ DEF_SEM(XCHG, D1 dst, S1 dst_val, D2 src, S2 src_val) {
 }
 
 template <typename D, typename S>
+DEF_SEM(MOVBE16, D dst, const S src) {
+  WriteZExt(dst, __builtin_bswap16(Read(src)));
+  return memory;
+}
+
+template <typename D, typename S>
+DEF_SEM(MOVBE32, D dst, const S src) {
+  WriteZExt(dst, __builtin_bswap32(Read(src)));
+  return memory;
+}
+
+template <typename D, typename S>
 DEF_SEM(MOVQ, D dst, S src) {
   UWriteV64(dst, UExtractV64(UReadV64(src), 0));
   return memory;
@@ -143,6 +155,8 @@ DEF_ISEL(MOV_GPR8_IMMb_C6r0) = MOV<R8W, I8>;
 DEF_ISEL(MOV_MEMb_IMMb) = MOV<M8W, I8>;
 DEF_ISEL_RnW_In(MOV_GPRv_IMMz, MOV);
 DEF_ISEL_MnW_In(MOV_MEMv_IMMz, MOV);
+DEF_ISEL(MOVBE_GPRv_MEMv_16) = MOVBE16<R16W, M16>;
+DEF_ISEL(MOVBE_GPRv_MEMv_32) = MOVBE32<R32W, M32>;
 DEF_ISEL(MOV_GPR8_GPR8_88) = MOV<R8W, R8>;
 DEF_ISEL(MOV_MEMb_GPR8) = MOV<M8W, R8>;
 DEF_ISEL_MnW_Rn(MOV_MEMv_GPRv, MOV);
