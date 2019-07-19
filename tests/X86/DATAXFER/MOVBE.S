@@ -14,15 +14,23 @@
  * limitations under the License.
  */
 
-TEST_BEGIN_64(MOVBE_GPRv_MEMv_16, 1)
+TEST_BEGIN_64(MOVBE_GPRv_MEMv_16,  1)
 TEST_INPUTS(
-    0)
-    movbe ax, [rsp - 8]
+    0x41ec)
+    push ARG1_64
+    movbe ax, [rsp]
 TEST_END_64
 
 TEST_BEGIN_64(MOVBE_GPRv_MEMv_32, 1)
 TEST_INPUTS(
-    0)
-    movbe eax, [rsp - 8]
+    0x41ec0806)
+    push ARG1_64
+    movbe eax, [rsp]
 TEST_END_64
 
+TEST_BEGIN_64(MOVBE_GPRv_MEMv_64, 1)
+TEST_INPUTS(
+    0x41ec080600)
+    push ARG1_64
+    movbe rax, [rsp]
+TEST_END_64

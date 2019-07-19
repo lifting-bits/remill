@@ -45,6 +45,15 @@ DEF_SEM(MOVBE32, D dst, const S src) {
   return memory;
 }
 
+
+#if 64 == ADDRESS_SIZE_BITS
+  template <typename D, typename S>
+  DEF_SEM(MOVBE64, D dst, const S src) {
+    Write(dst, __builtin_bswap64(Read(src)));
+    return memory;
+  }
+#endif 
+
 template <typename D, typename S>
 DEF_SEM(MOVQ, D dst, S src) {
   UWriteV64(dst, UExtractV64(UReadV64(src), 0));
@@ -157,6 +166,7 @@ DEF_ISEL_RnW_In(MOV_GPRv_IMMz, MOV);
 DEF_ISEL_MnW_In(MOV_MEMv_IMMz, MOV);
 DEF_ISEL(MOVBE_GPRv_MEMv_16) = MOVBE16<R16W, M16>;
 DEF_ISEL(MOVBE_GPRv_MEMv_32) = MOVBE32<R32W, M32>;
+IF_64BIT(DEF_ISEL(MOVBE_GPRv_MEMv_64) = MOVBE64<R64W, M64>;)
 DEF_ISEL(MOV_GPR8_GPR8_88) = MOV<R8W, R8>;
 DEF_ISEL(MOV_MEMb_GPR8) = MOV<M8W, R8>;
 DEF_ISEL_MnW_Rn(MOV_MEMv_GPRv, MOV);
