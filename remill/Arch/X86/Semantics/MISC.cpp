@@ -115,6 +115,11 @@ DEF_SEM(DoNothing) {
   return memory;
 }
 
+template<typename S1, typename S2>
+DEF_SEM(DoNothingWithParam, S1 src1, S2 src2) {
+  return memory;
+}
+
 DEF_SEM(DoCLFLUSH_MEMmprefetch, M8) {
   return memory;
 }
@@ -170,6 +175,10 @@ DEF_ISEL(LFENCE) = DoLFENCE;
 DEF_ISEL(XLAT) = DoXLAT;
 
 DEF_ISEL(CPUID) = DoCPUID;
+
+DEF_ISEL(UD0_GPR32_MEMd) = DoNothingWithParam<R32, M32>;
+
+DEF_ISEL(UD1_GPR32_MEMd) = DoNothingWithParam<R32, M32>;
 
 DEF_ISEL(UD2) = DoNothing;
 

@@ -179,11 +179,13 @@ LiftStatus InstructionLifter::LiftIntoBlock(
 
   // Update the current program counter. Control-flow instructions may update
   // the program counter in the semantics code.
-  ir.CreateStore(
-      ir.CreateAdd(
-          ir.CreateLoad(pc_ptr),
-          llvm::ConstantInt::get(word_type, arch_inst.NumBytes())),
-      pc_ptr);
+  if (!arch_inst.IsError()) {
+    ir.CreateStore(
+        ir.CreateAdd(
+            ir.CreateLoad(pc_ptr),
+            llvm::ConstantInt::get(word_type, arch_inst.NumBytes())),
+        pc_ptr);
+  }
 
   // Pass in current value of the memory pointer.
   args[0] = ir.CreateLoad(mem_ptr);

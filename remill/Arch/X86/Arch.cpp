@@ -165,8 +165,15 @@ static bool IsNoOp(const xed_decoded_inst_t *xedd) {
 }
 
 static bool IsError(const xed_decoded_inst_t *xedd) {
-  auto iclass = xed_decoded_inst_get_iclass(xedd);
-  return XED_ICLASS_HLT == iclass || XED_ICLASS_UD2 == iclass;
+  switch (xed_decoded_inst_get_iclass(xedd)) {
+    case XED_ICLASS_HLT:
+    case XED_ICLASS_UD0:
+    case XED_ICLASS_UD1:
+    case XED_ICLASS_UD2:
+      return true;
+    default:
+      return false;
+  }
 }
 
 static bool IsInvalid(const xed_decoded_inst_t *xedd) {
