@@ -30,6 +30,12 @@ const std::string EntrypointFunction::metadata_value = BaseFunction::metadata_va
 const std::string ExternalFunction::metadata_value = BaseFunction::metadata_value + "." +
                                                      "external";
 
+const std::string AbiLibraries::metadata_value = ExternalFunction::metadata_value + "." +
+                                                 "abilibraries";
+
+const std::string CFGExternal::metadata_value = ExternalFunction::metadata_value + "." +
+                                                "cfgexternal";
+
 
 const std::string Helper::metadata_value = BaseFunction::metadata_value + "." + "helper";
 
@@ -39,4 +45,5 @@ const std::string RemillHelper::metadata_value = Helper::metadata_value + "." +
 
 const std::string McSemaHelper::metadata_value = Helper::metadata_value + "." +
                                                  "mcsema";
+
 } // namespace remill

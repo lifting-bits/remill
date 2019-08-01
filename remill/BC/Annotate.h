@@ -45,6 +45,8 @@ struct children : parent { \
 DECLARE_FUNC_ORIGIN_TYPE( LiftedFunction, BaseFunction );
 DECLARE_FUNC_ORIGIN_TYPE( EntrypointFunction, BaseFunction );
 DECLARE_FUNC_ORIGIN_TYPE( ExternalFunction, BaseFunction );
+DECLARE_FUNC_ORIGIN_TYPE( AbiLibraries, ExternalFunction );
+DECLARE_FUNC_ORIGIN_TYPE( CFGExternal, ExternalFunction );
 DECLARE_FUNC_ORIGIN_TYPE( Helper, BaseFunction );
 DECLARE_FUNC_ORIGIN_TYPE( RemillHelper, Helper );
 DECLARE_FUNC_ORIGIN_TYPE( McSemaHelper, Helper );
@@ -78,6 +80,12 @@ Container GetFunctionsByOrigin( llvm::Module &module, const Kind & ) {
     }
   }
   return result;
+}
+
+// Return list of functions that are of chosen kind
+template< typename Kind, typename Container = std::vector< llvm::Function * > >
+Container GetFunctionsByOrigin( llvm::Module &module ) {
+  return GetFunctionsByOrigin( module, Kind{} );
 }
 
 } // namespace remill
