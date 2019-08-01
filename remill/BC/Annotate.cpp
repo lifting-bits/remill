@@ -16,6 +16,8 @@
 
 #include "Annotate.h"
 
+#include <glog/logging.h>
+
 namespace remill {
 
 const std::string BaseFunction::metadata_value = "base";

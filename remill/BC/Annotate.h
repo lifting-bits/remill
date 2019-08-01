@@ -16,12 +16,9 @@
 
 #pragma once
 
-#include <glog/logging.h>
-
 #include <string>
 #include <utility>
 #include <vector>
-
 
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Metadata.h>
