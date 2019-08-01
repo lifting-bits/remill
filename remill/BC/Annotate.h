@@ -16,8 +16,12 @@
 
 #pragma once
 
+#include <glog/logging.h>
+
 #include <string>
+#include <utility>
 #include <vector>
+
 
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Metadata.h>
@@ -87,5 +91,30 @@ template< typename Kind, typename Container = std::vector< llvm::Function * > >
 Container GetFunctionsByOrigin( llvm::Module &module ) {
   return GetFunctionsByOrigin( module, Kind{} );
 }
+
+/* Functions that "tie" together two functions via specific metada:
+ * Both of them will contain metadata of specified kind, that is the other function.
+ * This is useful for example to tie entrypoints and their corresponding sub_ functions
+ */
+
+
+// Default kind to be used, user is free to choose different, for example if each function
+// is supposed to be part of multiple pairs
+const std::string TieKind = "remill.function.tie";
+
+// Get node that is holding the tie information
+llvm::MDNode *TieNode( llvm::Function *func, const std::string &kind = TieKind );
+
+bool IsTied( llvm::Function *func, const std::string& kind = TieKind );
+
+// Add metadata to first with information about second
+llvm::MDNode *TieFunction( llvm::Function *first, llvm::Function *second,
+                           const std::string& kind = TieKind );
+
+std::pair< llvm::MDNode *, llvm::MDNode * >
+TieFunctions( llvm::Function *first, llvm::Function *second, const std::string &kind = TieKind );
+
+// Get function that is tied to func, or nullptr if there is no such function
+llvm::Function *GetTied( llvm::Function *func, const std::string &kind = TieKind );
 
 } // namespace remill
