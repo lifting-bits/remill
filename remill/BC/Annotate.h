@@ -28,9 +28,9 @@
 
 namespace remill {
 
-// For all function holds that Kind should have two static strings
-// * metadata_kind that is the identifier of metadata
-// * metadata_value that is the value that identifies the Kind itself
+// For all function holds that OriginType should have two static strings
+// * metadata_kind that is the identifier (kind) of metadata
+// * metadata_value that is the value that identifies the OriginType itself
 
 
 struct BaseFunction {
@@ -55,30 +55,36 @@ DECLARE_FUNC_ORIGIN_TYPE( Helper, BaseFunction );
 DECLARE_FUNC_ORIGIN_TYPE( RemillHelper, Helper );
 DECLARE_FUNC_ORIGIN_TYPE( McSemaHelper, Helper );
 
-// Give function Kind
-template< typename Kind >
-void Annotate( llvm::Function *func ) {
+// Give function OriginType
+template< typename OriginType >
+void Annotate( llvm::Function *func, const OriginType&  ) {
   auto &C = func->getContext();
-  auto node = llvm::MDNode::get( C, llvm::MDString::get( C, LiftedFunction::metadata_value ) );
-  func->setMetadata( LiftedFunction::metadata_kind, node );
+  auto node = llvm::MDNode::get( C, llvm::MDString::get( C, OriginType::metadata_value ) );
+  func->setMetadata( OriginType::metadata_kind, node );
 }
 
-// Return list of functions that are of chosen kind
-template< typename Kind, typename Container = std::vector< llvm::Function * > >
-Container GetFunctionsByOrigin( llvm::Module &module, const Kind & ) {
+template< typename OriginType >
+void Annotate( llvm::Function *func ) {
+  return Annotate( func, OriginType{} );
+}
+
+// Return list of functions that are of chosen OriginType
+template< typename OriginType, typename Container = std::vector< llvm::Function * > >
+Container GetFunctionsByOrigin( llvm::Module &module, const OriginType & ) {
 
   Container result;
 
   for ( auto &func : module ) {
 
-    auto metadata_node = func.getMetadata( Kind::metadata_kind );
+    auto metadata_node = func.getMetadata( OriginType::metadata_kind );
     // There should be exactly one string there
     if ( !metadata_node || metadata_node->getNumOperands() != 1 ) {
       continue;
     }
 
     if ( auto message = llvm::dyn_cast< llvm::MDString >( metadata_node->getOperand( 0 ) ) ) {
-      if ( message->getString().contains( Kind::metadata_value ) ) {
+      if ( message->getString().contains( OriginType::metadata_value ) ) {
+        // Method that is both in std::set and std::vector
         result.insert( result.end(), &func );
       }
     }
@@ -87,9 +93,9 @@ Container GetFunctionsByOrigin( llvm::Module &module, const Kind & ) {
 }
 
 // Return list of functions that are of chosen kind
-template< typename Kind, typename Container = std::vector< llvm::Function * > >
+template< typename OriginType, typename Container = std::vector< llvm::Function * > >
 Container GetFunctionsByOrigin( llvm::Module &module ) {
-  return GetFunctionsByOrigin( module, Kind{} );
+  return GetFunctionsByOrigin( module, OriginType{} );
 }
 
 /* Functions that "tie" together two functions via specific metada:
