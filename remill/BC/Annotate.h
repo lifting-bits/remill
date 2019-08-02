@@ -52,13 +52,26 @@ struct BaseFunction {
       return nullptr;
     }
 
-    auto message = llvm::dyn_cast< llvm::MDString >( metadata_node->getOperand( 0 ) );
-    return ( message && message->getString().contains( metadata_value ) ) ?
+    return ( Contains( llvm::dyn_cast< llvm::MDString >( metadata_node->getOperand( 0 ) ) ) ) ?
         metadata_node : nullptr;
+  }
+
+  static bool Contains( llvm::MDString *node ) {
+    return node && node->getString().contains( metadata_value );
   }
 
   static bool HasType( llvm::Function *func ) {
     return GetNode( func );
+  }
+
+  template< typename OriginType >
+  static bool HasType( llvm::Function *func ) {
+    return OriginType::HasType( func );
+  }
+
+  template< typename Type, typename Second, typename ...OriginTypes >
+  static bool HasType( llvm::Function *func ) {
+    return Type::HasType( func ) && Second::template HasType< Second, OriginTypes... >( func );
   }
 
   // Return list of functions that are of chosen OriginType
@@ -76,7 +89,18 @@ struct BaseFunction {
     return result;
   }
 
+  static bool Remove( llvm::Function *func ) {
+    auto node = GetNode( func );
+    if ( !node ) {
+      return false;
+    }
+
+    func->eraseMetadata( node->getMetadataID() );
+    return true;
+  }
+
 };
+
 
 // Unfortunately we must define the values of static vars in .cpp file
 #define DECLARE_FUNC_ORIGIN_TYPE(children, parent) \
@@ -117,17 +141,12 @@ Container GetFunctionsByOrigin( llvm::Module &module ) {
 }
 
 template< typename OriginType >
-bool RemoveOriginType( llvm::Function *func, const OriginType & ) {
-  return false;
-}
-
-template< typename OriginType >
 bool RemoveOriginType( llvm::Function *func ) {
-  return RemoveOriginType( func, OriginType{} );
+  return OriginType::Remove( func );
 }
 
 static inline void RemoveAllOriginTypes( llvm::Function *func ) {
-  RemoveOriginType< BaseFunction >( func );
+  BaseFunction::Remove( func );
 }
 
 /* Functions that "tie" together two functions via specific metada:
