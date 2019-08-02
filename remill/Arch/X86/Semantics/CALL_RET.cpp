@@ -27,6 +27,24 @@ DEF_SEM(CALL, T target_pc, PC return_pc) {
   return memory;
 }
 
+template <typename S1, typename S2>
+DEF_SEM(CALL_FAR_PTR, S1 target_pc, S2 target_seg, PC return_pc) {
+  HYPER_CALL = AsyncHyperCall::kX86CallFar;
+
+  addr_t next_sp = USub(REG_XSP, ADDRESS_SIZE_BYTES * 2);
+
+  // stack update
+  WriteZExt(WritePtr<addr_t>(next_sp + ADDRESS_SIZE_BYTES), Read(REG_CS.flat));
+  Write(WritePtr<addr_t>(next_sp _IF_32BIT(REG_SS_BASE)), Read(return_pc));
+
+  // register update
+  Write(REG_XSP, Read(next_sp));
+  WriteZExt(REG_PC, Read(target_pc));
+  Write(REG_CS.flat, Read(target_seg));
+
+  return memory;
+}
+
 DEF_SEM(RET_IMM, I16 bytes) {
   Write(REG_PC, Read(ReadPtr<addr_t>(REG_XSP _IF_32BIT(REG_SS_BASE))));
   Write(REG_XSP,
@@ -52,6 +70,8 @@ IF_64BIT( DEF_ISEL(CALL_NEAR_MEMv_64) = CALL<M64>; )
 IF_32BIT( DEF_ISEL(CALL_NEAR_GPRv_16) = CALL<R16>; )
 IF_32BIT( DEF_ISEL(CALL_NEAR_GPRv_32) = CALL<R32>; )
 IF_64BIT( DEF_ISEL(CALL_NEAR_GPRv_64) = CALL<R64>; )
+
+IF_32BIT( DEF_ISEL(CALL_FAR_PTRp_IMMw_32) = CALL_FAR_PTR<PC, I16>; )
 
 /*
 352 CALL_FAR CALL_FAR_MEMp2 CALL BASE I86 ATTRIBUTES: FAR_XFER FIXED_BASE1 NOTSX SCALABLE STACKPUSH1

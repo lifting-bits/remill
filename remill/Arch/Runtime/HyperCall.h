@@ -87,8 +87,9 @@ class AsyncHyperCall {
     kX86SysEnter,
     kX86SysExit,
 
-    // Far jumps: CS should be updated.
+    // Far jumps/calls: CS should be updated.
     kX86JmpFar,
+    kX86CallFar,
 
     kAArch64SupervisorCall,
 
