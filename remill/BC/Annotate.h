@@ -65,6 +65,33 @@ void Annotate( llvm::Function *func ) {
   return Annotate( func, OriginType{} );
 }
 
+template< typename OriginType >
+llvm::MDNode *GetOriginTypeNode( llvm::Function *func, const OriginType & ) {
+
+  auto metadata_node = func->getMetadata( OriginType::metadata_kind );
+
+  // There should be exactly one string there
+  if ( !metadata_node || metadata_node->getNumOperands() != 1 ) {
+    return nullptr;
+  }
+
+  auto message = llvm::dyn_cast< llvm::MDString >( metadata_node->getOperand( 0 ) );
+  return ( message && message->getString().contains( OriginType::metadata_value ) ) ?
+      metadata_node : nullptr;
+}
+
+
+
+template< typename OriginType >
+bool HasOriginType( llvm::Function *func, const OriginType & ) {
+  return GetOriginTypeNode( func, OriginType{} );
+}
+
+template< typename OriginType >
+bool HasOriginType( llvm::Function *func ) {
+  return HasOriginType( func, OriginType{} );
+}
+
 // Return list of functions that are of chosen OriginType
 template< typename OriginType, typename Container = std::vector< llvm::Function * > >
 Container GetFunctionsByOrigin( llvm::Module &module, const OriginType & ) {
@@ -72,27 +99,31 @@ Container GetFunctionsByOrigin( llvm::Module &module, const OriginType & ) {
   Container result;
 
   for ( auto &func : module ) {
-
-    auto metadata_node = func.getMetadata( OriginType::metadata_kind );
-    // There should be exactly one string there
-    if ( !metadata_node || metadata_node->getNumOperands() != 1 ) {
-      continue;
-    }
-
-    if ( auto message = llvm::dyn_cast< llvm::MDString >( metadata_node->getOperand( 0 ) ) ) {
-      if ( message->getString().contains( OriginType::metadata_value ) ) {
-        // Method that is both in std::set and std::vector
-        result.insert( result.end(), &func );
-      }
+    if ( HasOriginType< OriginType >( &func ) ) {
+      // Method that is both in std::set and std::vector
+      result.insert( result.end(), &func );
     }
   }
   return result;
 }
 
-// Return list of functions that are of chosen kind
 template< typename OriginType, typename Container = std::vector< llvm::Function * > >
 Container GetFunctionsByOrigin( llvm::Module &module ) {
   return GetFunctionsByOrigin( module, OriginType{} );
+}
+
+template< typename OriginType >
+bool RemoveOriginType( llvm::Function *func, const OriginType & ) {
+  return false;
+}
+
+template< typename OriginType >
+bool RemoveOriginType( llvm::Function *func ) {
+  return RemoveOriginType( func, OriginType{} );
+}
+
+static inline void RemoveAllOriginTypes( llvm::Function *func ) {
+  RemoveOriginType< BaseFunction >( func );
 }
 
 /* Functions that "tie" together two functions via specific metada:
