@@ -93,6 +93,8 @@ DECLARE_FUNC_ORIGIN_TYPE( Helper, BaseFunction );
 DECLARE_FUNC_ORIGIN_TYPE( RemillHelper, Helper );
 DECLARE_FUNC_ORIGIN_TYPE( McSemaHelper, Helper );
 
+#undef DECLARE_FUNC_ORIGIN_TYPE
+
 template< typename OriginType >
 void Annotate( llvm::Function *func ) {
   return OriginType::Annotate( func );
