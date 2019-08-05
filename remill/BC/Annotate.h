@@ -164,4 +164,71 @@ TieFunctions( llvm::Function *first, llvm::Function *second, const std::string &
 // Get function that is tied to func, or nullptr if there is no such function
 llvm::Function *GetTied( llvm::Function *func, const std::string &kind = TieKind );
 
+
+/* Filter Tied functions in meaningful way. Several overloads are prepared depending on customization
+ * required.
+ */
+template< typename BinaryPredicate >
+void GetTieMapping(
+    llvm::Module &module,
+    BinaryPredicate pred,
+    std::unordered_map< llvm::Function *, llvm::Function * > &result,
+    const std::string &kind = TieKind ) {
+
+  for ( auto &func : module ) {
+    auto tied_to = GetTied( &func, kind );
+    if ( tied_to && pred( &func, tied_to ) ) {
+      result.insert( { &func, tied_to } );
+    }
+  }
+}
+
+// TODO(C++14): Deduced return types
+template< typename BinaryPredicate, typename Container >
+std::unordered_map< llvm::Function *, llvm::Function *> GetTieMapping(
+    llvm::Module &module,
+    BinaryPredicate pred,
+    const Container &kinds ) {
+
+  std::unordered_map< llvm::Function *, llvm::Function * > result;
+  for ( const auto& kind : kinds ) {
+    GetTieMapping( module, pred, result, kind );
+  }
+  return result;
+}
+
+// TODO(C++14): Deduced return types
+// If functions are annotated with OriginTypes, this overload filters based on these annotations.
+template< typename FromType, typename ToType = BaseFunction,
+          typename Container = std::vector< std::string > >
+std::unordered_map< llvm::Function *, llvm::Function *> GetTieMapping(
+    llvm::Module &module,
+    const Container &kinds ) {
+
+  auto filter = []( llvm::Function *from, llvm::Function *to ) {
+    return HasOriginType< FromType >( from ) && HasOriginType< ToType >( to );
+  };
+  return GetTieMapping( module, filter, kinds );
+}
+
+// TODO(C++14): Deduced return types
+template< typename FromType, typename ToType = BaseFunction >
+std::unordered_map< llvm::Function *, llvm::Function *> GetTieMapping(
+    llvm::Module &module,
+    const std::string &kind = TieKind ) {
+
+  return GetTieMapping< FromType, ToType >( module, std::vector< std::string >{ kind } );
+}
+
+
+static inline std::unordered_map< llvm::Function *, llvm::Function * > GetTieMapping(
+    llvm::Module &module,
+    const std::string &kind = TieKind ) {
+
+  // TODO(C++14): auto in lambda
+  return GetTieMapping (module,
+      []( llvm::Function *, llvm::Function * ) { return true; },
+      std::vector< std::string >{ kind } );
+}
+
 } // namespace remill
