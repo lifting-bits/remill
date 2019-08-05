@@ -46,12 +46,12 @@ const std::string RemillHelper::metadata_value = Helper::metadata_value + "." +
 const std::string McSemaHelper::metadata_value = Helper::metadata_value + "." +
                                                  "mcsema";
 
-llvm::MDNode *TieNode( llvm::Function *func, const std::string &kind ) {
+llvm::MDNode *GetTieNode( llvm::Function *func, const std::string &kind ) {
   return func->getMetadata( kind );
 }
 
 bool IsTied( llvm::Function *func, const std::string& kind ) {
-  return TieNode( func, kind );
+  return GetTieNode( func, kind );
 }
 
 llvm::MDNode *TieFunction( llvm::Function *first, llvm::Function *second,
@@ -73,7 +73,7 @@ TieFunctions( llvm::Function *first, llvm::Function *second, const std::string &
 
 
 llvm::Function *GetTied( llvm::Function *func, const std::string &kind ) {
-  auto node = TieNode( func, kind );
+  auto node = GetTieNode( func, kind );
   if ( !node || node->getNumOperands() != 1 ) {
     return nullptr;
   }

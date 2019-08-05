@@ -108,18 +108,21 @@ bool HasOriginType( llvm::Function *func ) {
   return HasOriginType< Type >( func ) || HasOriginType< Second, OriginTypes... >( func );
 }
 
-// Return list of functions that are of chosen OriginType
-template< typename OriginType, typename Container = std::vector< llvm::Function * > >
-Container GetFunctionsByOrigin( llvm::Module &module ) {
-
-  Container result;
-
-  for ( auto &func : module ) {
-    if ( HasOriginType< OriginType >( &func ) ) {
+// Return list of functions that are one of chosen OriginType
+template< typename Container, typename ... OriginTypes >
+void GetFunctionsByOrigin( llvm::Module &module, Container &result ) {
+  for ( auto& func : module ) {
+    if ( HasOriginType< OriginTypes... >( &func ) ) {
       // Method that is both in std::set and std::vector
       result.insert( result.end(), &func );
     }
   }
+}
+
+template< typename Container, typename ... OriginTypes >
+Container GetFunctionsByOrigin( llvm::Module &module ) {
+  Container result;
+  GetFunctionsByOrigin< Container, OriginTypes...>( module, result );
   return result;
 }
 
@@ -147,7 +150,7 @@ bool ChangeOriginType( llvm::Function *func ) {
 const std::string TieKind = "remill.function.tie";
 
 // Get node that is holding the tie information
-llvm::MDNode *TieNode( llvm::Function *func, const std::string &kind = TieKind );
+llvm::MDNode *GetTieNode( llvm::Function *func, const std::string &kind = TieKind );
 
 bool IsTied( llvm::Function *func, const std::string& kind = TieKind );
 
