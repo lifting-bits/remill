@@ -17,6 +17,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -150,9 +151,13 @@ bool ChangeOriginType( llvm::Function *func ) {
 const std::string TieKind = "remill.function.tie";
 
 // Get node that is holding the tie information
-llvm::MDNode *GetTieNode( llvm::Function *func, const std::string &kind = TieKind );
+static inline llvm::MDNode *GetTieNode( llvm::Function *func, const std::string &kind = TieKind ) {
+  return func->getMetadata( kind );
+}
 
-bool IsTied( llvm::Function *func, const std::string& kind = TieKind );
+static inline bool IsTied( llvm::Function *func, const std::string& kind = TieKind ) {
+  return GetTieNode( func, kind );
+}
 
 // Add metadata to first with information about second
 llvm::MDNode *TieFunction( llvm::Function *first, llvm::Function *second,
