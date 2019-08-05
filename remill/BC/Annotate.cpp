@@ -16,8 +16,6 @@
 
 #include "Annotate.h"
 
-#include <glog/logging.h>
-
 namespace remill {
 
 const std::string BaseFunction::metadata_value = "base";
@@ -47,7 +45,6 @@ const std::string RemillHelper::metadata_value = Helper::metadata_value + "." +
 
 const std::string McSemaHelper::metadata_value = Helper::metadata_value + "." +
                                                  "mcsema";
-
 
 llvm::MDNode *TieNode( llvm::Function *func, const std::string &kind ) {
   return func->getMetadata( kind );

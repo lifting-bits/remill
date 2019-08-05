@@ -23,6 +23,8 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Metadata.h>
 
+#include <glog/logging.h>
+
 namespace remill {
 
 // For all function holds that OriginType should have two static strings
@@ -35,72 +37,7 @@ struct BaseFunction {
   // Each class that inherits from some parent class appends its own metadata_value string with dot
   // to the parents one, therefore it is possible for search to easily include all subclasses as well
   static const std::string metadata_value;
-
-  // Give function OriginType
-  static void Annotate( llvm::Function *func  ) {
-    auto &C = func->getContext();
-    auto node = llvm::MDNode::get( C, llvm::MDString::get( C, metadata_value ) );
-    func->setMetadata( metadata_kind, node );
-  }
-
-  static llvm::MDNode *GetNode( llvm::Function *func ) {
-
-    auto metadata_node = func->getMetadata( metadata_kind );
-
-    // There should be exactly one string there
-    if ( !metadata_node || metadata_node->getNumOperands() != 1 ) {
-      return nullptr;
-    }
-
-    return ( Contains( llvm::dyn_cast< llvm::MDString >( metadata_node->getOperand( 0 ) ) ) ) ?
-        metadata_node : nullptr;
-  }
-
-  static bool Contains( llvm::MDString *node ) {
-    return node && node->getString().contains( metadata_value );
-  }
-
-  static bool HasType( llvm::Function *func ) {
-    return GetNode( func );
-  }
-
-  template< typename OriginType >
-  static bool HasType( llvm::Function *func ) {
-    return OriginType::HasType( func );
-  }
-
-  template< typename Type, typename Second, typename ...OriginTypes >
-  static bool HasType( llvm::Function *func ) {
-    return Type::HasType( func ) && Second::template HasType< Second, OriginTypes... >( func );
-  }
-
-  // Return list of functions that are of chosen OriginType
-  template< typename Container = std::vector< llvm::Function * > >
-  static Container GetFunctions( llvm::Module &module ) {
-
-    Container result;
-
-    for ( auto &func : module ) {
-      if ( HasType( &func ) ) {
-        // Method that is both in std::set and std::vector
-        result.insert( result.end(), &func );
-      }
-    }
-    return result;
-  }
-
-  static bool Remove( llvm::Function *func ) {
-    auto node = GetNode( func );
-    if ( !node ) {
-      return false;
-    }
-
-    func->eraseMetadata( node->getMetadataID() );
-    return true;
-  }
-
 };
-
 
 // Unfortunately we must define the values of static vars in .cpp file
 #define DECLARE_FUNC_ORIGIN_TYPE(children, parent) \
@@ -119,36 +56,86 @@ DECLARE_FUNC_ORIGIN_TYPE( McSemaHelper, Helper );
 
 #undef DECLARE_FUNC_ORIGIN_TYPE
 
+// Note(Aiethel): I tried to make them static methods and while it works it is not really worth
+
 template< typename OriginType >
-void Annotate( llvm::Function *func ) {
-  return OriginType::Annotate( func );
+bool Contains( llvm::MDString *node ) {
+  return node && node->getString().contains( OriginType::metadata_value );
 }
 
 template< typename OriginType >
-llvm::MDNode *GetOriginTypeNode( llvm::Function *func ) {
-  return OriginType::GetNode( func );
+llvm::MDNode *GetNode( llvm::Function *func ) {
+
+  auto metadata_node = func->getMetadata( OriginType::metadata_kind );
+
+  // There should be exactly one string there
+  if ( !metadata_node || metadata_node->getNumOperands() != 1 ) {
+    return nullptr;
+  }
+
+  auto metadata_s = llvm::dyn_cast< llvm::MDString >( metadata_node->getOperand( 0 ) );
+  return ( Contains< OriginType >( metadata_s ) ) ? metadata_node : nullptr;
+}
+
+template< typename OriginType >
+bool Remove( llvm::Function *func ) {
+  auto node = GetNode< OriginType >( func );
+  if ( !node ) {
+    return false;
+  }
+
+  func->eraseMetadata( node->getMetadataID() );
+  return true;
+}
+
+// Give function OriginType
+template< typename OriginType >
+void Annotate( llvm::Function *func  ) {
+  auto &C = func->getContext();
+  LOG( INFO ) << "Annotating: " << func->getName().str() << ": " << OriginType::metadata_kind
+              << " -> " << OriginType::metadata_value << std::endl;
+  auto node = llvm::MDNode::get( C, llvm::MDString::get( C, OriginType::metadata_value ) );
+  func->setMetadata( OriginType::metadata_kind, node );
 }
 
 template< typename OriginType >
 bool HasOriginType( llvm::Function *func ) {
-  return OriginType::HasNode( func );
+  return GetNode< OriginType >( func );
+}
+
+template< typename Type, typename Second, typename ...OriginTypes >
+bool HasOriginType( llvm::Function *func ) {
+  return HasOriginType< Type >( func ) || HasOriginType< Second, OriginTypes... >( func );
 }
 
 // Return list of functions that are of chosen OriginType
 template< typename OriginType, typename Container = std::vector< llvm::Function * > >
 Container GetFunctionsByOrigin( llvm::Module &module ) {
-  return OriginType::template GetFunctions< Container >( module );
+
+  Container result;
+
+  for ( auto &func : module ) {
+    if ( HasOriginType< OriginType >( &func ) ) {
+      // Method that is both in std::set and std::vector
+      result.insert( result.end(), &func );
+    }
+  }
+  return result;
 }
 
 template< typename OriginType >
-bool RemoveOriginType( llvm::Function *func ) {
-  return OriginType::Remove( func );
+void ChangeOriginType( llvm::Function *func ) {
+  Annotate< OriginType >( func );
 }
 
-static inline void RemoveAllOriginTypes( llvm::Function *func ) {
-  BaseFunction::Remove( func );
+template< typename OriginType, typename OldType >
+bool ChangeOriginType( llvm::Function *func ) {
+  if ( HasOriginType< OldType >( func ) ) {
+    ChangeOriginType< OriginType >( func );
+    return true;
+  }
+  return false;
 }
-
 /* Functions that "tie" together two functions via specific metada:
  * Both of them will contain metadata of specified kind, that is the other function.
  * This is useful for example to tie entrypoints and their corresponding sub_ functions
