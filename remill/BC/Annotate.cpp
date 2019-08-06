@@ -46,6 +46,8 @@ const std::string RemillHelper::metadata_value = Helper::metadata_value + "." +
 const std::string McSemaHelper::metadata_value = Helper::metadata_value + "." +
                                                  "mcsema";
 
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION( 4, 0 )
+
 llvm::MDNode *TieFunction( llvm::Function *first, llvm::Function *second,
                            const std::string& kind ) {
   auto &C = first->getContext();
@@ -79,4 +81,5 @@ llvm::Function *GetTied( llvm::Function *func, const std::string &kind ) {
   return llvm::dyn_cast< llvm::Function >( casted->getValue() );
 }
 
+#endif
 } // namespace remill

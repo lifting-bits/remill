@@ -24,6 +24,8 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Metadata.h>
 
+#include "remill/BC/Version.h"
+
 #include <glog/logging.h>
 
 namespace remill {
@@ -57,8 +59,13 @@ DECLARE_FUNC_ORIGIN_TYPE( McSemaHelper, Helper );
 
 #undef DECLARE_FUNC_ORIGIN_TYPE
 
+// Default kind to be used, user is free to choose different, for example if each function
+// is supposed to be part of multiple pairs
+const std::string TieKind = "remill.function.tie";
+
 // Note(Aiethel): I tried to make them static methods and while it works it is not really worth
 
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(4, 0)
 template< typename OriginType >
 bool Contains( llvm::MDString *node ) {
   return node && node->getString().contains( OriginType::metadata_value );
@@ -145,11 +152,6 @@ bool ChangeOriginType( llvm::Function *func ) {
  * This is useful for example to tie entrypoints and their corresponding sub_ functions
  */
 
-
-// Default kind to be used, user is free to choose different, for example if each function
-// is supposed to be part of multiple pairs
-const std::string TieKind = "remill.function.tie";
-
 // Get node that is holding the tie information
 static inline llvm::MDNode *GetTieNode( llvm::Function *func, const std::string &kind = TieKind ) {
   return func->getMetadata( kind );
@@ -235,5 +237,140 @@ static inline std::unordered_map< llvm::Function *, llvm::Function * > GetTieMap
       []( llvm::Function *, llvm::Function * ) { return true; },
       std::vector< std::string >{ kind } );
 }
+
+#else
+
+#define NOT_AVAILABLE(Err) \
+  LOG( Err ) << "LLVM version is less than 4.0, functions metadata are not avalaible"
+
+template< typename OriginType >
+bool Contains( llvm::MDString *node ) {
+  NOT_AVAILABLE( ERROR );
+  return false;
+}
+
+template< typename OriginType >
+llvm::MDNode *GetNode( llvm::Function *func ) {
+  NOT_AVAILABLE( ERROR );
+  return nullptr;
+}
+
+template< typename OriginType >
+bool Remove( llvm::Function *func ) {
+  NOT_AVAILABLE( ERROR );
+  return false;
+}
+
+// Give function OriginType
+template< typename OriginType >
+void Annotate( llvm::Function *func  ) {
+  NOT_AVAILABLE( ERROR );
+}
+
+template< typename OriginType >
+bool HasOriginType( llvm::Function *func ) {
+  NOT_AVAILABLE( ERROR );
+  return false;
+}
+
+template< typename Type, typename Second, typename ...OriginTypes >
+bool HasOriginType( llvm::Function *func ) {
+  NOT_AVAILABLE( ERROR );
+  return false;
+}
+
+template< typename Container, typename ... OriginTypes >
+void GetFunctionsByOrigin( llvm::Module &module, Container &result ) {
+  NOT_AVAILABLE( ERROR );
+}
+
+template< typename Container, typename ... OriginTypes >
+Container GetFunctionsByOrigin( llvm::Module &module ) {
+  NOT_AVAILABLE( ERROR );
+  return {};
+}
+
+template< typename OriginType >
+void ChangeOriginType( llvm::Function *func ) {
+  NOT_AVAILABLE( ERROR );
+}
+
+template< typename OriginType, typename OldType >
+bool ChangeOriginType( llvm::Function *func ) {
+  NOT_AVAILABLE( ERROR );
+  return false;
+}
+
+static inline llvm::MDNode *GetTieNode( llvm::Function *func, const std::string &kind = TieKind ) {
+  NOT_AVAILABLE( ERROR );
+  return nullptr;
+}
+
+static inline bool IsTied( llvm::Function *func, const std::string& kind = TieKind ) {
+  NOT_AVAILABLE( ERROR );
+  return false;
+}
+
+static inline llvm::MDNode *TieFunction( llvm::Function *first, llvm::Function *second,
+                           const std::string& kind = TieKind ) {
+  NOT_AVAILABLE( ERROR );
+  return nullptr;
+}
+
+static inline std::pair< llvm::MDNode *, llvm::MDNode * >
+TieFunctions( llvm::Function *first, llvm::Function *second, const std::string &kind = TieKind ) {
+  NOT_AVAILABLE( ERROR );
+  return {};
+}
+
+static inline llvm::Function *GetTied( llvm::Function *func, const std::string &kind = TieKind ) {
+  NOT_AVAILABLE( ERROR );
+  return nullptr;
+}
+
+template< typename BinaryPredicate >
+void GetTieMapping(
+    llvm::Module &module,
+    BinaryPredicate pred,
+    std::unordered_map< llvm::Function *, llvm::Function * > &result,
+    const std::string &kind = TieKind ) {
+  NOT_AVAILABLE( ERROR );
+}
+
+template< typename BinaryPredicate, typename Container >
+std::unordered_map< llvm::Function *, llvm::Function *> GetTieMapping(
+    llvm::Module &module,
+    BinaryPredicate pred,
+    const Container &kinds ) {
+  NOT_AVAILABLE( ERROR );
+  return {};
+}
+
+template< typename FromType, typename ToType = BaseFunction,
+          typename Container = std::vector< std::string > >
+std::unordered_map< llvm::Function *, llvm::Function *> GetTieMapping(
+    llvm::Module &module,
+    const Container &kinds ) {
+  NOT_AVAILABLE( ERROR );
+  return {};
+}
+
+template< typename FromType, typename ToType = BaseFunction >
+std::unordered_map< llvm::Function *, llvm::Function *> GetTieMapping(
+    llvm::Module &module,
+    const std::string &kind = TieKind ) {
+  NOT_AVAILABLE( ERROR );
+  return {};
+}
+
+static inline std::unordered_map< llvm::Function *, llvm::Function * > GetTieMapping(
+    llvm::Module &module,
+    const std::string &kind = TieKind ) {
+  NOT_AVAILABLE( ERROR );
+  return {};
+}
+
+#endif
+
 
 } // namespace remill
