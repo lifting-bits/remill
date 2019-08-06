@@ -65,6 +65,11 @@ const std::string TieKind = "remill.function.tie";
 
 // Note(Aiethel): I tried to make them static methods and while it works it is not really worth
 
+// Versions before LLVM-4.0 do not have metadata for functions. There is (probably) no reasonable way
+// to simulate them, therefore older version do not provide this functionality. However, since these
+// annotations are not crucial to lift itself, definition of functions are provided (so that project)
+// compiles. They issue error and return negative answers and nullptrs.
+
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(4, 0)
 template< typename OriginType >
 bool Contains( llvm::MDString *node ) {
