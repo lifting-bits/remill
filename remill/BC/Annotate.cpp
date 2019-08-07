@@ -74,9 +74,10 @@ llvm::Function *GetTied(llvm::Function *func, const std::string &kind) {
 
   auto casted = llvm::dyn_cast<llvm::ConstantAsMetadata>(node->getOperand(0));
 
-  // For now we crash here, since this should not happen
-  LOG_IF(FATAL, !casted)
-      << "Was not able to cast llvm::MDNode to llvm::ConstantAsMetadata, possible error.";
+  if (!casted) {
+    DLOG(INFO) << func->getName().str() << " with kind " << kind << " was tied to nullptr";
+    return nullptr;
+  }
 
   return llvm::dyn_cast<llvm::Function>(casted->getValue());
 }
