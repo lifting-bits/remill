@@ -46,39 +46,39 @@ const std::string RemillHelper::metadata_value = Helper::metadata_value + "." +
 const std::string McSemaHelper::metadata_value = Helper::metadata_value + "." +
                                                  "mcsema";
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION( 4, 0 )
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(4, 0)
 
-llvm::MDNode *TieFunction( llvm::Function *first, llvm::Function *second,
-                           const std::string& kind ) {
+llvm::MDNode *TieFunction(llvm::Function *first, llvm::Function *second,
+                           const std::string& kind) {
   auto &C = first->getContext();
-  auto node = llvm::MDNode::get( C, llvm::ConstantAsMetadata::get( second ) );
-  first->setMetadata( kind, node );
+  auto node = llvm::MDNode::get(C, llvm::ConstantAsMetadata::get(second));
+  first->setMetadata(kind, node);
   return node;
 }
 
-std::pair< llvm::MDNode *, llvm::MDNode * >
-TieFunctions( llvm::Function *first, llvm::Function *second, const std::string &kind ) {
-  LOG_IF( FATAL, IsTied( first ) || IsTied( second ) )
+std::pair<llvm::MDNode *, llvm::MDNode *>
+TieFunctions(llvm::Function *first, llvm::Function *second, const std::string &kind) {
+  LOG_IF(FATAL, IsTied(first) || IsTied(second))
       << "Tried to tie already tied functions " << first->getName().str()
-      << " to " << second->getName().str();
+      << " to " <<second->getName().str();
 
-  return { TieFunction( first, second, kind ), TieFunction( second, first, kind ) };
+  return { TieFunction(first, second, kind), TieFunction(second, first, kind) };
 }
 
 
-llvm::Function *GetTied( llvm::Function *func, const std::string &kind ) {
-  auto node = GetTieNode( func, kind );
-  if ( !node || node->getNumOperands() != 1 ) {
+llvm::Function *GetTied(llvm::Function *func, const std::string &kind) {
+  auto node = GetTieNode(func, kind);
+  if (!node || node->getNumOperands() != 1) {
     return nullptr;
   }
 
-  auto casted = llvm::dyn_cast< llvm::ConstantAsMetadata >( node->getOperand( 0 ) );
+  auto casted = llvm::dyn_cast<llvm::ConstantAsMetadata>(node->getOperand(0));
 
   // For now we crash here, since this should not happen
-  LOG_IF( FATAL, !casted )
+  LOG_IF(FATAL, !casted)
       << "Was not able to cast llvm::MDNode to llvm::ConstantAsMetadata, possible error.";
 
-  return llvm::dyn_cast< llvm::Function >( casted->getValue() );
+  return llvm::dyn_cast<llvm::Function>(casted->getValue());
 }
 
 #endif
