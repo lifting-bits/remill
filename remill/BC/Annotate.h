@@ -375,6 +375,8 @@ static inline std::unordered_map< llvm::Function *, llvm::Function * > GetTieMap
   return {};
 }
 
+#undef NOT_AVAILABLE
+
 #endif
 
 
