@@ -104,8 +104,8 @@ bool Remove(llvm::Function *func) {
 template<typename OriginType>
 void Annotate(llvm::Function *func) {
   auto &C = func->getContext();
-  LOG(INFO) << "Annotating: " << func->getName().str() << ": " << OriginType::metadata_kind
-            << " -> " << OriginType::metadata_value << std::endl;
+  DLOG(INFO) << "Annotating: " << func->getName().str() << ": " << OriginType::metadata_kind
+             << " -> " << OriginType::metadata_value;
   auto node = llvm::MDNode::get(C, llvm::MDString::get(C, OriginType::metadata_value));
   func->setMetadata(OriginType::metadata_kind, node);
 }
