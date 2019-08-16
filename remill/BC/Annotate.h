@@ -71,12 +71,12 @@ const std::string TieKind = "remill.function.tie";
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(4, 0)
 
 template<typename OriginType>
-bool Contains(llvm::MDString *node) {
+static bool Contains(llvm::MDString *node) {
   return node && node->getString().contains(OriginType::metadata_value);
 }
 
 template<typename OriginType>
-llvm::MDNode *GetNode(llvm::Function *func) {
+static llvm::MDNode *GetNode(llvm::Function *func) {
 
   auto metadata_node = func->getMetadata(OriginType::metadata_kind);
 
@@ -90,7 +90,7 @@ llvm::MDNode *GetNode(llvm::Function *func) {
 }
 
 template<typename OriginType>
-bool Remove(llvm::Function *func) {
+static bool Remove(llvm::Function *func) {
   auto node = GetNode<OriginType>(func);
   if (!node) {
     return false;
@@ -102,7 +102,7 @@ bool Remove(llvm::Function *func) {
 
 // Give function OriginType
 template<typename OriginType>
-void Annotate(llvm::Function *func) {
+static void Annotate(llvm::Function *func) {
   auto &C = func->getContext();
   DLOG(INFO) << "Annotating: " << func->getName().str() << ": " << OriginType::metadata_kind
              << " -> " << OriginType::metadata_value;
@@ -111,18 +111,18 @@ void Annotate(llvm::Function *func) {
 }
 
 template<typename OriginType>
-bool HasOriginType(llvm::Function *func) {
+static bool HasOriginType(llvm::Function *func) {
   return GetNode<OriginType>(func);
 }
 
 template<typename Type, typename Second, typename ...OriginTypes>
-bool HasOriginType(llvm::Function *func) {
+static bool HasOriginType(llvm::Function *func) {
   return HasOriginType<Type>(func) || HasOriginType<Second, OriginTypes...>(func);
 }
 
 // Return list of functions that are one of chosen OriginType
 template<typename Container, typename ... OriginTypes>
-void GetFunctionsByOrigin(llvm::Module &module, Container &result) {
+static void GetFunctionsByOrigin(llvm::Module &module, Container &result) {
   for (auto& func : module) {
     if (HasOriginType<OriginTypes...>(&func)) {
       // Method that is both in std::set and std::vector
@@ -132,19 +132,19 @@ void GetFunctionsByOrigin(llvm::Module &module, Container &result) {
 }
 
 template<typename Container, typename ... OriginTypes>
-Container GetFunctionsByOrigin(llvm::Module &module) {
+static Container GetFunctionsByOrigin(llvm::Module &module) {
   Container result;
   GetFunctionsByOrigin<Container, OriginTypes...>(module, result);
   return result;
 }
 
 template<typename OriginType>
-void ChangeOriginType(llvm::Function *func) {
+static void ChangeOriginType(llvm::Function *func) {
   Annotate<OriginType>(func);
 }
 
 template<typename OriginType, typename OldType>
-bool ChangeOriginType(llvm::Function *func) {
+static bool ChangeOriginType(llvm::Function *func) {
   if (HasOriginType<OldType>(func)) {
     ChangeOriginType<OriginType>(func);
     return true;
@@ -180,7 +180,7 @@ llvm::Function *GetTied(llvm::Function *func, const std::string &kind = TieKind)
  * required.
  */
 template<typename BinaryPredicate>
-void GetTieMapping(
+static void GetTieMapping(
     llvm::Module &module,
     BinaryPredicate pred,
     std::unordered_map<llvm::Function *, llvm::Function *> &result,
@@ -196,7 +196,7 @@ void GetTieMapping(
 
 // TODO(C++14): Deduced return types
 template<typename BinaryPredicate, typename Container>
-std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
+static std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
     llvm::Module &module,
     BinaryPredicate pred,
     const Container &kinds) {
@@ -211,8 +211,8 @@ std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
 // TODO(C++14): Deduced return types
 // If functions are annotated with OriginTypes, this overload filters based on these annotations.
 template<typename FromType, typename ToType = BaseFunction,
-          typename Container = std::vector<std::string>>
-std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
+         typename Container = std::vector<std::string>>
+static std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
     llvm::Module &module,
     const Container &kinds) {
 
@@ -224,7 +224,7 @@ std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
 
 // TODO(C++14): Deduced return types
 template<typename FromType, typename ToType = BaseFunction>
-std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
+static std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
     llvm::Module &module,
     const std::string &kind = TieKind) {
 
@@ -248,59 +248,59 @@ static inline std::unordered_map<llvm::Function *, llvm::Function *> GetTieMappi
   LOG(Err) <<"LLVM version is less than 4.0, functions metadata are not avalaible"
 
 template<typename OriginType>
-bool Contains(llvm::MDString *node) {
+static bool Contains(llvm::MDString *node) {
   NOT_AVAILABLE(ERROR);
   return false;
 }
 
 template<typename OriginType>
-llvm::MDNode *GetNode(llvm::Function *func) {
+static llvm::MDNode *GetNode(llvm::Function *func) {
   NOT_AVAILABLE(ERROR);
   return nullptr;
 }
 
 template<typename OriginType>
-bool Remove(llvm::Function *func) {
+static bool Remove(llvm::Function *func) {
   NOT_AVAILABLE(ERROR);
   return false;
 }
 
 // Give function OriginType
 template<typename OriginType>
-void Annotate(llvm::Function *func ) {
+static void Annotate(llvm::Function *func ) {
   NOT_AVAILABLE(ERROR);
 }
 
 template<typename OriginType>
-bool HasOriginType(llvm::Function *func) {
+static bool HasOriginType(llvm::Function *func) {
   NOT_AVAILABLE(ERROR);
   return false;
 }
 
 template<typename Type, typename Second, typename ...OriginTypes>
-bool HasOriginType(llvm::Function *func) {
+static bool HasOriginType(llvm::Function *func) {
   NOT_AVAILABLE(ERROR);
   return false;
 }
 
 template<typename Container, typename ... OriginTypes>
-void GetFunctionsByOrigin(llvm::Module &module, Container &result) {
+static void GetFunctionsByOrigin(llvm::Module &module, Container &result) {
   NOT_AVAILABLE(ERROR);
 }
 
 template<typename Container, typename ... OriginTypes>
-Container GetFunctionsByOrigin(llvm::Module &module) {
+static Container GetFunctionsByOrigin(llvm::Module &module) {
   NOT_AVAILABLE(ERROR);
   return {};
 }
 
 template<typename OriginType>
-void ChangeOriginType(llvm::Function *func) {
+static void ChangeOriginType(llvm::Function *func) {
   NOT_AVAILABLE(ERROR);
 }
 
 template<typename OriginType, typename OldType>
-bool ChangeOriginType(llvm::Function *func) {
+static bool ChangeOriginType(llvm::Function *func) {
   NOT_AVAILABLE(ERROR);
   return false;
 }
@@ -333,7 +333,7 @@ static inline llvm::Function *GetTied(llvm::Function *func, const std::string &k
 }
 
 template<typename BinaryPredicate>
-void GetTieMapping(
+static void GetTieMapping(
     llvm::Module &module,
     BinaryPredicate pred,
     std::unordered_map<llvm::Function *, llvm::Function *> &result,
@@ -342,7 +342,7 @@ void GetTieMapping(
 }
 
 template<typename BinaryPredicate, typename Container>
-std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
+static std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
     llvm::Module &module,
     BinaryPredicate pred,
     const Container &kinds) {
@@ -352,7 +352,7 @@ std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
 
 template<typename FromType, typename ToType = BaseFunction,
           typename Container = std::vector<std::string>>
-std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
+static std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
     llvm::Module &module,
     const Container &kinds) {
   NOT_AVAILABLE(ERROR);
@@ -360,7 +360,7 @@ std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
 }
 
 template<typename FromType, typename ToType = BaseFunction>
-std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
+static std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
     llvm::Module &module,
     const std::string &kind = TieKind) {
   NOT_AVAILABLE(ERROR);
