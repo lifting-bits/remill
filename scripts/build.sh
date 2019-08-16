@@ -103,7 +103,7 @@ function DownloadCxxCommon
 
   # Make sure modification times are not in the future.
   find "${BUILD_DIR}/libraries" -type f -exec touch {} \;
-  
+
   return 0
 }
 
@@ -177,12 +177,12 @@ function Configure
   # Tell the remill CMakeLists.txt where the extracted libraries are. 
   export TRAILOFBITS_LIBRARIES="${BUILD_DIR}/libraries"
   export PATH="${TRAILOFBITS_LIBRARIES}/cmake/bin:${TRAILOFBITS_LIBRARIES}/llvm/bin:${PATH}"
-  
+
   if [[ "${USE_HOST_COMPILER}" = "1" ]] ; then
     if [[ "x${CC}x" = "xx" ]] ; then
       export CC=$(which cc)
     fi
-    
+
     if [[ "x${CXX}x" = "xx" ]] ; then
       export CXX=$(which c++)
     fi
