@@ -119,6 +119,9 @@ void UnsafeErase(llvm::Function *func) {
   func->eraseFromParent();
 }
 
+// Iterate over instruction and then continue with it's AggregateOperand if it is
+// of the same type. Useful for example to iterate over all instruction that do
+// insertValue to build some value.
 template<typename Inst, typename F>
 bool Walk(llvm::Value *val, F f) {
   auto inst = llvm::dyn_cast<Inst>(val);
