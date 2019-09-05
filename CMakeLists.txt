@@ -116,6 +116,7 @@ add_library(${PROJECT_NAME} STATIC
   remill/BC/IntrinsicTable.cpp
   remill/BC/Lifter.cpp
   remill/BC/Optimizer.cpp
+  remill/BC/StateUnfolder.cpp
   remill/BC/Util.cpp
 
   remill/OS/Compat.cpp
