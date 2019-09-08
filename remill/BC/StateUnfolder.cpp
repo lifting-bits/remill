@@ -50,6 +50,7 @@
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/DerivedTypes.h"
 #include "remill/BC/Mask.h"
+#include "remill/BC/UnfoldUtils.h"
 #include "remill/BC/StateUnfolder.h"
 #include "remill/BC/Util.h"
 
@@ -132,6 +133,44 @@ bool Walk(llvm::Value *val, F f) {
     inst = llvm::dyn_cast<Inst>(inst->getAggregateOperand());
   }
   return true;
+}
+
+template<typename Filter, typename Apply>
+void FilterAndApply(const llvm::Function *func, Filter filter, Apply apply) {
+  std::cerr << "FF" << std::endl;
+  //func->print(llvm::errs());
+  std::cerr << "FF" << std::endl;
+  for (auto &bb : *func) {
+    for (auto &inst : bb) {
+      if (auto casted = filter(&inst)) {
+        apply(casted);
+      }
+    }
+  }
+}
+
+llvm::GlobalVariable *GetExplicitState(const llvm::Module &module) {
+  auto state = module.getGlobalVariable("__mcsema_reg_state");
+  std::cerr << "HERE" << std::endl;
+  state->print(llvm::errs());
+  return state;
+}
+
+llvm::GlobalVariable *GetExplicitState(const llvm::Function *func) {
+  return GetExplicitState(*func->begin()->getModule());
+}
+
+template<typename T>
+std::vector<T *> Filter(llvm::Function *func) {
+  std::vector<T *> out;
+  for (auto &bb : *func) {
+    for (auto &inst : bb) {
+      if (auto casted = llvm::dyn_cast<T>(&inst)) {
+        out.push_back(casted);
+      }
+    }
+  }
+  return out;
 }
 
 } // namespace
@@ -230,20 +269,50 @@ static ResultMask UnusedParameters(
 
   uint64_t i = 0;
   NextIndex(old_mask, true, i);
+
   for (auto it = std::next(unfolded_func->arg_begin(), prefix_size);
       it != unfolded_func->arg_end();
-      ++it, NextIndex(old_mask, true, ++i)) {
+      ++it, NextIndex(old_mask, true, ++i))
+  {
+
     if (it->user_begin() == it->user_end()) {
       result.param_type_mask[i] = false;
     }
+    {
+        using in_t = In<llvm::CallInst, llvm::InsertValueInst, llvm::PHINode>;
+        using out_t = In<llvm::ExtractValueInst, llvm::Argument, llvm::PHINode>;
+        using origin_t = void;
+        auto is_recursive_only = _EscapeArgument(unfolded_func).Run(it, i + prefix_size);
+        result.param_type_mask[i] = !is_recursive_only;
+      }
   }
+
+
+  std::vector<bool> ret_m(size, false);
+  for (auto ret : Filter<llvm::ReturnInst>(func.unfolded_func)) {
+
+    auto apply = [&](auto inst) {
+      if (*inst->idx_begin() < prefix_size) return;
+      auto idx = *inst->idx_begin() - prefix_size;
+
+      ret_m[idx] = ret_m[idx] ||
+        !_EscapeArgumentFromReturn(unfolded_func).
+        Run(inst->getInsertedValueOperand(), *inst->idx_begin());
+    };
+
+    Walk<llvm::InsertValueInst>(ret->getReturnValue(), apply);
+  }
+
+  ret_m[6] = true;
+  result &= ResultMask::RType::cc(ret_m);
   result &= old_mask;
+  result &= func.type_mask.ret_type_mask;
   return result;
 }
 
 // Check all ret instructions of a function
 // If the parameter value is being returned at all returns,
-// there is no need to return it at all, as caller has it already
+// there is no need to retu rn it at all, as caller has it already
 static ResultMask GetReturnMask(
     const UnfoldedFunction& func,
     uint64_t size, uint64_t prefix_size) {
@@ -357,6 +426,47 @@ std::unordered_set<const Register *> EntrypointParams(const llvm::Function *func
       }
     }
   }
+
+
+  auto filter = [&](auto inst) -> const llvm::GetElementPtrInst * {
+    if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(inst)) {
+      return gep;
+    }
+
+    if (auto store = llvm::dyn_cast<llvm::LoadInst>(inst)) {
+
+      if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(store->getPointerOperand()))
+        return gep;
+
+    }
+    return nullptr;
+  };
+
+  auto state = func->getParent()->getNamedGlobal("__mcsema_reg_state");
+
+  auto apply = [&](auto gep) {
+    std::cerr << "APP" << std::endl;
+    gep->print(llvm::errs());
+    if (gep->getPointerOperand() == state) {
+      result.insert(RegisterFromGEP(gep, nullptr, func->begin()->getModule()));
+     std::cerr << "GOT IT" << std::endl;
+    }
+  };
+  FilterAndApply(func, filter, apply);
+
+  auto filter_gepop = [&](auto inst) -> const llvm::GEPOperator * {
+    if (auto store = llvm::dyn_cast<llvm::LoadInst>(inst)) {
+      if (auto gep = llvm::dyn_cast<llvm::GEPOperator>(store->getPointerOperand()))
+        return gep;
+
+    }
+    return nullptr;
+  };
+  FilterAndApply(func, filter_gepop, apply);
+
+
+
+
   LOG(ERROR) << "RESULT SIZE " << result.size();
   return result;
 }
@@ -643,7 +753,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
     // Running more iterations may improve the produced bitcode, since it profits
     // from llvm optimization passes
-    for (auto i = 0U; i < 2; ++i) {
+    for (auto i = 0U; i < 5; ++i) {
       std::cout << i << std::endl;
       OptimizeIteration("opt." + std::to_string(i) + "_");
     }
