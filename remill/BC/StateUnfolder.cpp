@@ -359,11 +359,9 @@ static ResultMask GetReturnMask(
 
 
 const Register *RegisterFromGEP(const llvm::Value *inst,
-                                const llvm::Instruction *dummy,
                                 const llvm::Module *module) {
-  auto gep = llvm::dyn_cast<llvm::GEPOperator>(inst);
 
-  inst->print(llvm::errs());
+  auto gep = llvm::dyn_cast<llvm::GEPOperator>(inst);
   if (!gep) {
     return nullptr;
   }
@@ -375,25 +373,25 @@ const Register *RegisterFromGEP(const llvm::Value *inst,
   }
 
   //TODO: gArch
-  return GetTargetArch()->RegisterAtStateOffset(offset.getZExtValue())->EnclosingRegister();
+  return GetTargetArch()->RegisterAtStateOffset(
+      offset.getZExtValue())->EnclosingRegister();
 
 }
 
-
-
 std::unordered_set<const Register *> EntrypointParams(const llvm::Function *func) {
+
   std::unordered_set<const Register *> result;
   for (auto &arg : func->args()) {
     for (const auto &user : arg.users()) {
       if (auto store = llvm::dyn_cast<llvm::StoreInst>(&*user)) {
         result.emplace(
-            RegisterFromGEP(store->getPointerOperand(), store, store->getModule()));
+            RegisterFromGEP(store->getPointerOperand(), store->getModule()));
       }
     }
   }
 
 
-  auto filter = [&](auto inst) -> const llvm::GetElementPtrInst * {
+  auto get_geps = [&](auto inst) -> const llvm::GetElementPtrInst * {
     if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(inst)) {
       return gep;
     }
@@ -409,12 +407,12 @@ std::unordered_set<const Register *> EntrypointParams(const llvm::Function *func
 
   auto state = func->getParent()->getNamedGlobal("__mcsema_reg_state");
 
-  auto apply = [&](auto gep) {
+  auto extract_register = [&](auto gep) {
     if (gep->getPointerOperand() == state) {
-      result.insert(RegisterFromGEP(gep, nullptr, func->begin()->getModule()));
+      result.insert(RegisterFromGEP(gep, func->begin()->getModule()));
     }
   };
-  FilterAndApply(func, filter, apply);
+  FilterAndApply(func, get_geps, extract_register);
 
   auto filter_gepop = [&](auto inst) -> const llvm::GEPOperator * {
     if (auto store = llvm::dyn_cast<llvm::LoadInst>(inst)) {
@@ -424,28 +422,22 @@ std::unordered_set<const Register *> EntrypointParams(const llvm::Function *func
     }
     return nullptr;
   };
-  FilterAndApply(func, filter_gepop, apply);
 
-
-
-
-  LOG(ERROR) << "RESULT SIZE " << result.size();
+  FilterAndApply(func, filter_gepop, extract_register);
   return result;
-}
-
-const Register *EntrypointReturn_rec(llvm::ReturnInst *inst) {
-  auto trunc = llvm::dyn_cast<llvm::TruncInst>(inst->getReturnValue());
-  trunc->print(llvm::errs());
-  auto load = llvm::dyn_cast<llvm::LoadInst>(trunc->getOperand(0));
-  return RegisterFromGEP(load->getPointerOperand(), load, load->getModule());
 }
 
 const Register *EntrypointReturn(llvm::Function *func) {
   for (auto &bb : *func) {
     for (auto &inst : bb) {
+
       if (auto ret = llvm::dyn_cast<llvm::ReturnInst>(&inst)) {
-        return EntrypointReturn_rec(ret);
+        // TODO: More general, this version expects TruncInst to be there
+        auto trunc = llvm::dyn_cast<llvm::TruncInst>(ret->getReturnValue());
+        auto load = llvm::dyn_cast<llvm::LoadInst>(trunc->getOperand(0));
+        return RegisterFromGEP(load->getPointerOperand(), load->getModule());
       }
+
     }
   }
   return nullptr;
