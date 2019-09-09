@@ -615,8 +615,8 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     // Try to create better function types
     Optimize();
 
-    auto entrypoints = GetFunctionsByOrigin<std::vector<llvm::Function *>, EntrypointFunction>(
-        module);
+    auto entrypoints =
+      GetFunctionsByOrigin<std::vector<llvm::Function *>, EntrypointFunction>(module);
     for (auto func : entrypoints) {
         ReplaceEntrypoints(*func, unfolded);
       }
@@ -636,8 +636,6 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
   void OptimizeIteration(const std::string &prefix="") {
     //OptPass();
     (*opt_callback)();
-
-    std::cerr << GetEntrypointMask(module.getFunction("main"), regs) << std::endl;
 
     std::map<llvm::Function *, TypeMask<Container>> func_to_mask;
 
@@ -714,27 +712,9 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
       OptimizeIteration("opt." + std::to_string(i) + "_");
     }
 
-    auto assoc_map = Sub2Entrypoint(module);
-
-    std::map<llvm::Function *, TypeMask<Container>> targets;
-    for (auto &func : module) {
-      if (func.hasAddressTaken()) {
-        for (auto &entry : assoc_map) {
-          if (entry.second == &func) {
-            auto it = unfolded.find(entry.first);
-            if (it == unfolded.end())
-              continue;
-            targets.insert({it->second.unfolded_func, it->second.type_mask});
-          }
-        }
-      }
-    }
-    std::cerr << "Size of indirect_call: " << targets.size() << std::endl;
-    //SynthethizeIndirectCall(TypeMask<Container>{regs}, "switch_based_detach", targets);
-
     // We did bunch of unfolding again, clean it up
     (*opt_callback)();
-    OptPass();
+    //OptPass();
   }
 
   // Creates new function with proper name
