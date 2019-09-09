@@ -959,13 +959,17 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
       std::vector<llvm::Value *> args{old_call->arg_begin(), old_call->arg_end()};
 
       auto callee = sub_to_unfold.find(old_call->getCalledFunction())->second;
+
       const auto &param_mask = callee.type_mask.param_type_mask;
       for (auto i = 0U; i < param_mask.size(); ++i) {
+
         if (param_mask[i]) {
           auto load = ir.CreateLoad(allocas[i]);
           args.push_back(load);
         }
+
       }
+
       auto ret = ir.CreateCall(callee.unfolded_func, args);
 
       auto mem = ir.CreateExtractValue(ret, kMemoryPointerArgNum);
@@ -973,11 +977,13 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
       const auto &ret_mask = callee.type_mask.ret_type_mask;
       for (uint64_t i = 0U, j = type_prefix.size(); i < ret_mask.size(); ++i) {
+
         if (ret_mask[i]) {
           auto val = ir.CreateExtractValue(ret, j);
           ir.CreateStore(val, allocas[i]);
           ++j;
         }
+
       }
     }
 
