@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <optional>
 #include <vector>
 
 #include <llvm/IR/Constants.h>
@@ -169,17 +170,20 @@ struct GMask : public Container {
   explicit GMask(std::size_t used, const std::false_type &) : Container(used, true) {}
 
 
-  uint64_t Nth(int64_t n, bool val=true) const {
-    CHECK(n >= 0);
+  std::optional<uint64_t> Nth(int64_t n, bool val=true) const {
+    if (n < 0) {
+      return {};
+    }
 
-    std::cerr << this->size();
     int64_t counter = -1;
     for (uint64_t i = 0; i < this->size(); ++i) {
       if ((*this)[i] == val && ++counter == n) {
-        return i;
+        return { i };
       }
     }
-    CHECK(false);
+
+    DLOG(WARNING) << "GMask::Nth did not match.";
+    return {};
   }
 
   void reset() {
@@ -351,9 +355,7 @@ struct TMask {
   RType ret_type_mask;
   PType param_type_mask;
 
-  TMask(std::size_t used) : ret_type_mask(used), param_type_mask(used) {
-    // Empty
-  }
+  TMask(std::size_t used) : ret_type_mask(used), param_type_mask(used) {}
 
   template<typename T>
   TMask &operator&=(const PMask<T> &param) {
