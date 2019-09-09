@@ -135,8 +135,8 @@ bool Walk(llvm::Value *val, F f) {
   return true;
 }
 
-template<typename Filter, typename Apply>
-void FilterAndApply(const llvm::Function *func, Filter filter, Apply apply) {
+template<typename LLVMFunc, typename Filter, typename Apply>
+void FilterAndApply(LLVMFunc *func, Filter filter, Apply apply) {
   for (auto &bb : *func) {
     for (auto &inst : bb) {
       if (auto casted = filter(&inst)) {
@@ -726,6 +726,10 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
       new_params.emplace_back(orig_param);
     }
 
+    LOG_IF(WARNING, new_params != type_prefix)
+      << "Unfolded function has different prefix than specified type_prefix: "
+      << func->getName().str();
+
     // Add new ones based on regs and their size
     for (const auto &reg : mask.params) {
       auto size = static_cast<unsigned int>(reg->size);
@@ -838,11 +842,13 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     }
   }
 
+  // Fold unfolded values back into one value to be returned
   void FoldAggregate(std::vector<llvm::AllocaInst *> &allocas,
                      llvm::Type* ret_ty,
                      llvm::IRBuilder<> &ir,
                      llvm::Function &func,
                      const TypeMask<Container> &mask) {
+
     llvm::Value *ret_val = llvm::UndefValue::get(ret_ty);
     for (auto i = 0U; i < type_prefix.size(); ++i) {
       ret_val = ir.CreateInsertValue(ret_val, NthArgument(&func, i), i);
@@ -866,11 +872,13 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     for (const auto &inst : instruction->users()) {
 
       if (auto bitcast = llvm::dyn_cast<llvm::BitCastInst>(inst)) {
+
         llvm::IRBuilder<> ir(bitcast);
         auto casted = ir.CreateBitCast(allocas, bitcast->getDestTy());
         bitcast->replaceAllUsesWith(casted);
 
       } else if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(inst)) {
+
         llvm::IRBuilder<> ir(gep);
         allocas = ir.CreateBitCast(allocas, gep->getType());
         gep->replaceAllUsesWith(allocas);
@@ -886,15 +894,20 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     Constant C(context);
 
     for (const auto &inst : state->users()) {
+
       if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(inst)) {
+
         llvm::APSInt offset(64, 0);
         if (gep->accumulateConstantOffset(llvm::DataLayout(&module), offset)) {
+
           for (auto i = 0U; i < allocas.size(); ++i) {
+
             if (offset >= regs[i]->offset &&
                 offset < (regs[i]->offset + regs[i]->size)) {
 
               int64_t diff = offset.getExtValue() - regs[i]->offset;
               llvm::Value *ptr = allocas[i];
+
               if (diff != 0) {
                 llvm::IRBuilder<> ir(gep);
                 ptr = ir.CreateGEP(
@@ -908,6 +921,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
                 ReplaceBitCast(ptr, gep);
                 continue;
               }
+
               llvm::IRBuilder<> ir(gep);
               ptr = ir.CreateBitCast(ptr, gep->getType());
               gep->replaceAllUsesWith(ptr);
@@ -927,16 +941,18 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     std::vector<llvm::CallInst *> to_change;
 
     // Retrieve all calls as we will modify function later
-    for (auto &bb : *(func.unfolded_func)) {
-      for (auto &inst: bb) {
-        if (auto call = llvm::dyn_cast<llvm::CallInst>(&inst)) {
-          auto callee = sub_to_unfold.find(call->getCalledFunction());
-          if (callee != sub_to_unfold.end()) {
-            to_change.push_back(call);
-          }
-        }
+    auto filter_calls = [&](auto inst) {
+      return llvm::dyn_cast<llvm::CallInst>(inst);
+    };
+
+    auto collect_callsites = [&](auto call) {
+      if (sub_to_unfold.count(call->getCalledFunction())) {
+        to_change.push_back(call);
       }
-    }
+    };
+
+    FilterAndApply(func.unfolded_func, filter_calls, collect_callsites);
+
 
     for (const auto &old_call : to_change) {
       llvm::IRBuilder<> ir(old_call);
