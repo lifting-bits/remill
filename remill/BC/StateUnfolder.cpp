@@ -443,7 +443,7 @@ const Register *EntrypointReturn(llvm::Function *func) {
   return nullptr;
 }
 
-TypeMask<Container> GetPureEntrypointMask(llvm::Function *func, const RegisterList &regs) {
+TypeMask<Container> GetEntrypointMask(llvm::Function *func, const RegisterList &regs) {
 
   auto params = EntrypointParams(func);
   auto ret = EntrypointReturn(func);
@@ -452,10 +452,8 @@ TypeMask<Container> GetPureEntrypointMask(llvm::Function *func, const RegisterLi
   ResultMask::RType rtype{regs.size()};
   for (auto i = 0U; i < regs.size(); ++i) {
 
-    ptype[i] = params.count(regs[i]) ? true : false;
-    rtype[i] = ret == regs[i] ? true : false;
-    if (params.count(regs[i]))
-      std::cerr << regs[i]->name << std::endl;
+    ptype[i] = (params.count(regs[i])) ? true : false;
+    rtype[i] = (ret == regs[i]) ? true : false;
   }
   return {regs, std::move(rtype), std::move(ptype)};
 }
@@ -641,7 +639,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     //OptPass();
     (*opt_callback)();
 
-    std::cerr << GetPureEntrypointMask(module.getFunction("main"), regs) << std::endl;
+    std::cerr << GetEntrypointMask(module.getFunction("main"), regs) << std::endl;
 
     std::map<llvm::Function *, TypeMask<Container>> func_to_mask;
 
@@ -663,7 +661,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
       auto entrypoint = GetTied(func.second.sub_func);
 
       if (entrypoint && entrypoint->getName() == "main") {
-        auto entrypoint_mask = GetPureEntrypointMask(entrypoint, regs);
+        auto entrypoint_mask = GetEntrypointMask(entrypoint, regs);
         tm &= entrypoint_mask;
       }
 
