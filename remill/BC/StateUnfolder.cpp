@@ -297,61 +297,56 @@ static ResultMask UnusedParameters(
 static ResultMask GetReturnMask(
     const UnfoldedFunction& func,
     uint64_t size, uint64_t prefix_size) {
-  ResultMask res(size);
 
-  std::vector<uint32_t> mask(size, 0);
-  PMask<Container> unused_p(size);
-  uint32_t counter = 0;
+  ResultMask res(size);
 
   const auto &old_mask = func.type_mask.ret_type_mask;
   const auto &param_mask = func.type_mask.param_type_mask;
 
-  for (auto &bb : *func.unfolded_func) {
-    for (auto &inst : bb) {
-      auto ret = llvm::dyn_cast<llvm::ReturnInst>(&inst);
-      if (!ret) {
-        continue;
-      }
+  std::vector<uint32_t> mask(size, 0);
+  PMask<Container> unused_p(size);
 
-      for (auto &use_inst : ret->getReturnValue()->uses()) {
+  uint32_t counter = 0;
 
-        auto count_f = [&](auto insert) {
-            auto inserted = insert->getInsertedValueOperand();
-            for (auto it = std::next(func.unfolded_func->arg_begin(), prefix_size);
-              it != func.unfolded_func->arg_end();
-              ++it) {
-            if (&*it == inserted) {
+  for (auto ret : Filter<llvm::ReturnInst>(func.unfolded_func)) {
+    for (auto &use_inst : ret->getReturnValue()->uses()) {
 
-              auto i = old_mask.Nth(*(insert->idx_begin()) - prefix_size);
-              auto p = param_mask.Nth(it->getArgNo() - prefix_size);
+      auto count_f = [&](auto insert) {
 
-              // To avoid getting ptr in %RDI and then returning it in %RAX
-              // It must be exactly the same register
-              if (i == p) {
-                mask[*i]++;
+        for (auto it = std::next(func.unfolded_func->arg_begin(), prefix_size);
+          it != func.unfolded_func->arg_end();
+          ++it)
+        {
+          if (&*it == insert->getInsertedValueOperand()) {
 
-                // If it is not used anywhere else, we migh just not pass it in at all
-                if (!(*it).hasNUsesOrMore(2)) {
-                  unused_p[*i] = false;
-                }
-                break;
+            auto i = old_mask.Nth(*(insert->idx_begin()) - prefix_size);
+            auto p = param_mask.Nth(it->getArgNo() - prefix_size);
+
+            // To avoid getting ptr in %RDI and then returning it in %RAX
+            // It must be exactly the same register
+            if (i == p) {
+              mask[*i]++;
+
+              // If it is not used anywhere else, we migh just not pass it in at all
+              if (!(*it).hasNUsesOrMore(2)) {
+                unused_p[*i] = false;
               }
+              break;
             }
           }
-        };
+        }
+      };
 
-        Walk<llvm::InsertValueInst>(use_inst, count_f);
-      }
-
-      ++counter;
+      Walk<llvm::InsertValueInst>(use_inst, count_f);
     }
+
+    ++counter;
   }
 
   // We need to check if it is truly unused everywhere, if not, it cannot be removed
   for (auto i = 0U; i < mask.size(); ++i) {
-    if (mask[i] != counter) {
+    if (mask[i] != counter)
       unused_p[i] = true;
-    }
   }
 
   res &= ResultMask::RType::cc(mask, [&](uint32_t m){
