@@ -566,24 +566,17 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
         UnsafeErase(a.second);
       }
     }
-
   }
 
   // Get vector of all lifted functions, e.g sub_* or callback_*
   std::vector<llvm::Function *> ToUnfold() {
-    std::vector<llvm::Function *> to_unfold;
 
-    for (auto &func : module) {
-      if (IsLiftedFunction(&func) &&
-          !func.isDeclaration() &&
-          func.getName().substr(0, 8) != "__mcsema" &&
-          func.getName().substr(0, 8) != "__remill" &&
-          func.getName().substr(0, 10) != "breakpoint") {
-        to_unfold.push_back(&func);
-      } else if (func.getName() == "__mcsema_detach_call_value") {
-        to_unfold.push_back(&func);
-      }
-    }
+    auto to_unfold =
+      GetFunctionsByOrigin<std::vector<llvm::Function *>, LiftedFunction>(module);
+
+    if (auto detach = module.getFunction("__mcsema_detach_call_value"))
+      to_unfold.push_back(detach);
+
     return to_unfold;
   }
 
