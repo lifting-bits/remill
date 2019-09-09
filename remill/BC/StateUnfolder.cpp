@@ -199,8 +199,7 @@ std::ostream &operator<<(std::ostream &os, const UnfoldedFunction &func) {
 // For each caller of unfolded function, check which part of return type are used.
 // If there are some that no caller uses, mark it as false
 static ResultMask CallerUnusedRet(
-    const UnfoldedFunction &func, std::size_t size, uint64_t prefix_size,
-    const std::unordered_map<llvm::Function *, llvm::Function *> &sub_to_entrypoint) {
+    const UnfoldedFunction &func, std::size_t size, uint64_t prefix_size) {
 
   const auto &old_mask = func.type_mask.ret_type_mask;
 
@@ -208,17 +207,8 @@ static ResultMask CallerUnusedRet(
   res &= old_mask;
 
   // Check if function is entrypoint, if it is, make no assumptions
-  auto it = sub_to_entrypoint.find(func.sub_func);
-  if (it != sub_to_entrypoint.end() && it->second->hasAddressTaken()) {
-    if (it->second->getName() == "main") {
-      // Main has only one return reg used and it is RAX
-      ResultMask res(size);
-      for (auto i = 0U; i < size; ++i) {
-        res.ret_type_mask[i] = false;
-      }
-      res.ret_type_mask[0] = true;
-      return res;
-    }
+  auto entrypoint = GetTied(func.sub_func);
+  if (entrypoint && entrypoint->hasAddressTaken()) {
     return res;
   }
 
@@ -490,17 +480,18 @@ TypeMask<Container> GetPureEntrypointMask(llvm::Function *func, const RegisterLi
 // Check all callers of function
 // If they all set some parameter to undef, set it to false as well
 static ResultMask GetParamMask(
-    const UnfoldedFunction &func, uint64_t size, uint64_t prefix_size,
-    const std::unordered_map<llvm::Function *, llvm::Function *> &sub_to_entrypoint) {
+    const UnfoldedFunction &func, uint64_t size, uint64_t prefix_size) {
 
   const auto &old_mask = func.type_mask.param_type_mask;
 
   ResultMask res(size);
   res &= old_mask;
-  auto it = sub_to_entrypoint.find(func.sub_func);
-  if (it != sub_to_entrypoint.end() && it->second->hasAddressTaken()) {
+
+  if (auto entrypoint = GetTied(func.sub_func);
+      entrypoint && entrypoint->hasAddressTaken()) {
     return res;
   }
+
   if (func.unfolded_func->hasAddressTaken()) {
     return res;
   }
@@ -670,7 +661,6 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     std::cerr << GetPureEntrypointMask(module.getFunction("main"), regs) << std::endl;
 
     std::map<llvm::Function *, TypeMask<Container>> func_to_mask;
-    auto assoc_map = Sub2Entrypoint(module);
 
     // TODO: This can be certainly done much smarter that it is
     std::vector<llvm::Function *> old_iter;
@@ -683,9 +673,9 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
       }
 
       auto tm =
-        CallerUnusedRet(func.second, regs.size(), type_prefix.size(), assoc_map);
+        CallerUnusedRet(func.second, regs.size(), type_prefix.size());
       tm &= GetReturnMask(func.second, regs.size(), type_prefix.size());
-      tm &= GetParamMask(func.second, regs.size(), type_prefix.size(), assoc_map);
+      tm &= GetParamMask(func.second, regs.size(), type_prefix.size());
       tm &= UnusedParameters(func.second, regs.size(), type_prefix.size());
       auto entrypoint = GetTied(func.second.sub_func);
 
