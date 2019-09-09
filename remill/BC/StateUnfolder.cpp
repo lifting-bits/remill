@@ -221,7 +221,7 @@ static ResultMask CallerUnusedRet(
 
       for (const auto &call_ret : call->users()) {
 
-
+        // Count all occurences of register in extract after call, i.e caller uses it
         auto count_f = [&](auto extract) {
           if (auto i = old_mask.Nth(*(extract->idx_begin()) - prefix_size)) {
             ++mask[*i];
@@ -253,6 +253,9 @@ static ResultMask UnusedParameters(
   const auto &old_mask = func.type_mask.param_type_mask;
   ResultMask result(size);
 
+  result &= old_mask;
+  result &= func.type_mask.ret_type_mask;
+
   uint64_t i = 0;
   NextIndex(old_mask, true, i);
 
@@ -260,17 +263,7 @@ static ResultMask UnusedParameters(
       it != unfolded_func->arg_end();
       ++it, NextIndex(old_mask, true, ++i))
   {
-
-    if (it->user_begin() == it->user_end()) {
-      result.param_type_mask[i] = false;
-    }
-    {
-        using in_t = In<llvm::CallInst, llvm::InsertValueInst, llvm::PHINode>;
-        using out_t = In<llvm::ExtractValueInst, llvm::Argument, llvm::PHINode>;
-        using origin_t = void;
-        auto is_recursive_only = _EscapeArgument(unfolded_func).Run(it, i + prefix_size);
-        result.param_type_mask[i] = !is_recursive_only;
-      }
+    result.param_type_mask[i] = !_EscapeArgument(unfolded_func).Run(it, i + prefix_size);
   }
 
 
@@ -278,7 +271,9 @@ static ResultMask UnusedParameters(
   for (auto ret : Filter<llvm::ReturnInst>(func.unfolded_func)) {
 
     auto apply = [&](auto inst) {
-      if (*inst->idx_begin() < prefix_size) return;
+      if (*inst->idx_begin() < prefix_size) {
+        return;
+      }
       auto idx = *inst->idx_begin() - prefix_size;
 
       ret_m[idx] = ret_m[idx] ||
@@ -289,10 +284,10 @@ static ResultMask UnusedParameters(
     Walk<llvm::InsertValueInst>(ret->getReturnValue(), apply);
   }
 
+  // TODO: RSP always needs to be returned?
+
   ret_m[6] = true;
   result &= ResultMask::RType::cc(ret_m);
-  result &= old_mask;
-  result &= func.type_mask.ret_type_mask;
   return result;
 }
 
