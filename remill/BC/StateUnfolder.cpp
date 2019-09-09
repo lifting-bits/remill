@@ -956,11 +956,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
     for (const auto &old_call : to_change) {
       llvm::IRBuilder<> ir(old_call);
-      std::vector<llvm::Value *> args;
-
-      for (auto &op: old_call->arg_operands()) {
-        args.push_back(op);
-      }
+      std::vector<llvm::Value *> args{old_call->arg_begin(), old_call->arg_end()};
 
       auto callee = sub_to_unfold.find(old_call->getCalledFunction())->second;
       const auto &param_mask = callee.type_mask.param_type_mask;
