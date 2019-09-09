@@ -221,11 +221,12 @@ static ResultMask CallerUnusedRet(
 
       for (const auto &call_ret : call->users()) {
 
+
         auto count_f = [&](auto extract) {
-          if (*(extract->idx_begin()) >= prefix_size) {
-            auto i = old_mask.Nth(*(extract->idx_begin()) - prefix_size);
-            ++mask[i];
+          if (auto i = old_mask.Nth(*(extract->idx_begin()) - prefix_size)) {
+            ++mask[*i];
           }
+
         };
 
         if (!Walk<llvm::ExtractValueInst>(call_ret, count_f)) {
@@ -332,11 +333,11 @@ static ResultMask GetReturnMask(
               // To avoid getting ptr in %RDI and then returning it in %RAX
               // It must be exactly the same register
               if (i == p) {
-                mask[i]++;
+                mask[*i]++;
 
                 // If it is not used anywhere else, we migh just not pass it in at all
                 if (!(*it).hasNUsesOrMore(2)) {
-                  unused_p[i] = false;
+                  unused_p[*i] = false;
                 }
                 break;
               }
