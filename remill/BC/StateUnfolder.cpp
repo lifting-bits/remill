@@ -137,9 +137,6 @@ bool Walk(llvm::Value *val, F f) {
 
 template<typename Filter, typename Apply>
 void FilterAndApply(const llvm::Function *func, Filter filter, Apply apply) {
-  std::cerr << "FF" << std::endl;
-  //func->print(llvm::errs());
-  std::cerr << "FF" << std::endl;
   for (auto &bb : *func) {
     for (auto &inst : bb) {
       if (auto casted = filter(&inst)) {
@@ -151,8 +148,6 @@ void FilterAndApply(const llvm::Function *func, Filter filter, Apply apply) {
 
 llvm::GlobalVariable *GetExplicitState(const llvm::Module &module) {
   auto state = module.getGlobalVariable("__mcsema_reg_state");
-  std::cerr << "HERE" << std::endl;
-  state->print(llvm::errs());
   return state;
 }
 
@@ -385,34 +380,22 @@ static ResultMask GetReturnMask(
 const Register *RegisterFromGEP(const llvm::Value *inst,
                                 const llvm::Instruction *dummy,
                                 const llvm::Module *module) {
-#if 1
-  auto gep_c = (llvm::dyn_cast<llvm::ConstantExpr>(inst));
-  auto gep = llvm::dyn_cast<llvm::GEPOperator>(gep_c);
-
+  auto gep = llvm::dyn_cast<llvm::GEPOperator>(inst);
 
   inst->print(llvm::errs());
   if (!gep) {
-    std::cerr << "Was not gep?" << std::endl;
     return nullptr;
   }
-  std::cerr << std::endl;
-  gep->print(llvm::errs());
-  std::cerr << std::endl;
 
   llvm::APSInt offset(64, 0);
   if (!gep->accumulateConstantOffset(llvm::DataLayout(module), offset)) {
     LOG(ERROR) << "Could not get offset from gep into state!";
     return nullptr;
   }
-#endif
+
   //TODO: gArch
-#if 0
-  uint64_t offset = 0;
-  if (!GetRegisterOffset(module, StatePointerType(module), inst, &offset)) {
-    LOG(FATAL) << "Could not get offset from gep into state!";
-  }
-#endif
   return GetTargetArch()->RegisterAtStateOffset(offset.getZExtValue())->EnclosingRegister();
+
 }
 
 
@@ -422,7 +405,8 @@ std::unordered_set<const Register *> EntrypointParams(const llvm::Function *func
   for (auto &arg : func->args()) {
     for (const auto &user : arg.users()) {
       if (auto store = llvm::dyn_cast<llvm::StoreInst>(&*user)) {
-        result.insert({RegisterFromGEP(store->getPointerOperand(), store, store->getModule())});
+        result.emplace(
+            RegisterFromGEP(store->getPointerOperand(), store, store->getModule()));
       }
     }
   }
@@ -445,11 +429,8 @@ std::unordered_set<const Register *> EntrypointParams(const llvm::Function *func
   auto state = func->getParent()->getNamedGlobal("__mcsema_reg_state");
 
   auto apply = [&](auto gep) {
-    std::cerr << "APP" << std::endl;
-    gep->print(llvm::errs());
     if (gep->getPointerOperand() == state) {
       result.insert(RegisterFromGEP(gep, nullptr, func->begin()->getModule()));
-     std::cerr << "GOT IT" << std::endl;
     }
   };
   FilterAndApply(func, filter, apply);
@@ -686,7 +667,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     //OptPass();
     (*opt_callback)();
 
-    std::cerr << std::endl << "BUUUMP\n" << GetPureEntrypointMask(module.getFunction("main"), regs) << std::endl;
+    std::cerr << GetPureEntrypointMask(module.getFunction("main"), regs) << std::endl;
 
     std::map<llvm::Function *, TypeMask<Container>> func_to_mask;
     auto assoc_map = Sub2Entrypoint(module);
@@ -706,6 +687,12 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
       tm &= GetReturnMask(func.second, regs.size(), type_prefix.size());
       tm &= GetParamMask(func.second, regs.size(), type_prefix.size(), assoc_map);
       tm &= UnusedParameters(func.second, regs.size(), type_prefix.size());
+      auto entrypoint = GetTied(func.second.sub_func);
+
+      if (entrypoint && entrypoint->getName() == "main") {
+        auto entrypoint_mask = GetPureEntrypointMask(entrypoint, regs);
+        tm &= entrypoint_mask;
+      }
 
       auto mask = tm.Build(regs);
 
