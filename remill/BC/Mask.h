@@ -374,6 +374,12 @@ struct TMask {
     return *this;
   }
 
+  TMask &operator&=(const TypeMask<Container> &mask) {
+    param_type_mask &= mask.param_type_mask;
+    ret_type_mask &= mask.ret_type_mask;
+    return *this;
+  }
+
   TypeMask<Container> Build(const RegisterList &regs) {
     return TypeMask<Container>(regs, ret_type_mask, param_type_mask);
   }
