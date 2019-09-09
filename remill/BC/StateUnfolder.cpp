@@ -482,20 +482,26 @@ static ResultMask GetParamMask(
   uint32_t users = 0;
 
   for (const auto &u : func.unfolded_func->users()) {
-    if (auto call = llvm::dyn_cast<llvm::CallInst>(u)) {
+    auto call = llvm::dyn_cast<llvm::CallInst>(u);
 
-      uint64_t i = 0;
-      NextIndex(old_mask, true, i);
-      for (auto it = prefix_size; it != call->getNumArgOperands();
-          ++it, NextIndex(old_mask, true, ++i)) {
-        auto type = call->getArgOperand(it)->getType();
-        llvm::Value *undef = llvm::UndefValue::get(type);
-        if (&*(call->getArgOperand(it)) == undef) {
-          ++undefs[i];
-        }
-      }
-    } else {
+    if (!call) {
       return res;
+    }
+
+    uint64_t i = 0;
+    NextIndex(old_mask, true, i);
+
+    for (auto it = prefix_size;
+        it != call->getNumArgOperands();
+        ++it, NextIndex(old_mask, true, ++i))
+    {
+
+      auto type = call->getArgOperand(it)->getType();
+      llvm::Value *undef = llvm::UndefValue::get(type);
+      if (&*(call->getArgOperand(it)) == undef) {
+        ++undefs[i];
+      }
+
     }
     ++users;
   }
@@ -553,8 +559,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
       UnsafeErase(func.first);
     }
 
-    auto assoc_map = Sub2Entrypoint(module);
-    for (auto &a : assoc_map) {
+    for (auto &a : Sub2Entrypoint(module)) {
       if (!a.second->hasAddressTaken() &&
           a.second->getName() != "main" &&
           !a.second->getName().startswith("callback_")) {
@@ -820,21 +825,25 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
   std::vector<llvm::AllocaInst *> CreateAllocas(
       llvm::Function &func, const TypeMask<Container> &mask) {
 
+    std::vector<llvm::AllocaInst *> allocas;
+
     auto &entry_block = func.getEntryBlock();
     llvm::IRBuilder<> ir(&entry_block, entry_block.begin());
-    std::vector<llvm::AllocaInst *> allocas;
 
     auto arg_it = std::next(func.arg_begin(), type_prefix.size());
 
     for (auto i = 0U; i < regs.size(); ++i) {
       auto alloca_reg = ir.CreateAlloca(MostInnerSimpleType(regs[i]->type));
+
       if (mask.param_type_mask[i]) {
         CHECK(arg_it != func.arg_end()) << "Not enough parameters when creating alloca";
         ir.CreateStore(&*arg_it, alloca_reg);
         ++arg_it;
       }
+
       allocas.push_back(alloca_reg);
     }
+
     return allocas;
   }
 
@@ -1020,8 +1029,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
             LOG(ERROR) << "State was not found";
             return;
           }
-          bool f = func.getName() != "main";
-          if (!f) func.print(llvm::errs());
+          bool is_main = func.getName() != "main";
 
           llvm::IRBuilder<> ir(call);
           auto casted_state = ir.CreateBitCast(
@@ -1056,7 +1064,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
                   c.i64(regs[i]->offset));
               auto bitcast = ir.CreateBitCast(
                   gep, llvm::PointerType::get(MostInnerSimpleType(regs[i]->type), 0));
-              if (!f)
+              if (!is_main)
                 ir.CreateStore(val, bitcast);
               else if (i == 0) {
                 ir.CreateStore(val, bitcast);
@@ -1066,7 +1074,6 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
           call->replaceAllUsesWith(ir.CreateExtractValue(ret, kMemoryPointerArgNum));
           call->eraseFromParent();
-          if (!f) func.print(llvm::errs());
           return;
         }
       }
