@@ -146,13 +146,14 @@ void FilterAndApply(LLVMFunc *func, Filter filter, Apply apply) {
   }
 }
 
-llvm::GlobalVariable *GetExplicitState(const llvm::Module &module) {
-  auto state = module.getGlobalVariable("__mcsema_reg_state");
+template<typename LLVMModule>
+auto GetExplicitState(LLVMModule &module) {
+  auto state = module.getNamedGlobal("__mcsema_reg_state");
   return state;
 }
 
-llvm::GlobalVariable *GetExplicitState(const llvm::Function *func) {
-  return GetExplicitState(*func->begin()->getModule());
+const llvm::GlobalVariable *GetExplicitState(const llvm::Function *func) {
+  return GetExplicitState(*func->getParent());
 }
 
 template<typename T>
@@ -405,7 +406,7 @@ std::unordered_set<const Register *> EntrypointParams(const llvm::Function *func
     return nullptr;
   };
 
-  auto state = func->getParent()->getNamedGlobal("__mcsema_reg_state");
+  auto state = GetExplicitState(func);
 
   auto extract_register = [&](auto gep) {
     if (gep->getPointerOperand() == state) {
@@ -997,77 +998,71 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
       std::map<llvm::Function *, UnfoldedFunction> sub_to_unfold) {
 
     CreateLocalStack(module, func);
+
     // Expects that entrypoint contains only one call instruction
-    for (auto &bb: func) {
-      for (auto &inst: bb) {
-        if (auto call = llvm::dyn_cast<llvm::CallInst>(&inst)) {
-          auto it = sub_to_unfold.find(call->getCalledFunction());
+    for (auto call : Filter<llvm::CallInst>(&func)) {
+      auto it = sub_to_unfold.find(call->getCalledFunction());
 
-          // Probably remill or mcsema function
-          if (!llvm::CallSite{call}.isIndirectCall() &&
-              call->getCalledFunction()->getName().str().substr(0, 2) == "__") {
-            continue;
+      // Probably remill or mcsema function
+      // TODO: __mcsema_early_init for example
+      if (!llvm::CallSite{call}.isIndirectCall() &&
+          call->getCalledFunction()->getName().str().substr(0, 2) == "__") {
+        continue;
+      }
+
+      if (it == sub_to_unfold.end()) {
+        LOG(INFO) << "Could not find unfolded variant of function";
+        return;
+      }
+
+      // TODO: Dependent on internal naming convention
+      llvm::GlobalVariable *state = GetExplicitState(module);
+      bool is_main = func.getName() != "main";
+
+      llvm::IRBuilder<> ir(call);
+      auto casted_state = ir.CreateBitCast(
+          state,
+          llvm::Type::getInt8PtrTy(module.getContext()));
+
+      std::vector<llvm::Value *> args;
+      for (auto &op : call->arg_operands()) {
+        args.push_back(op);
+      }
+
+      const auto &params = it->second.type_mask.params;
+      Constant c(module.getContext());
+
+      for (auto &reg : params) {
+        auto gep = ir.CreateGEP(
+            casted_state,
+            c.i64(reg->offset));
+        auto bitcast = ir.CreateBitCast(
+            gep, llvm::PointerType::get(MostInnerSimpleType(reg->type), 0));
+        args.push_back(ir.CreateLoad(bitcast));
+      }
+
+      auto ret = ir.CreateCall(it->second.unfolded_func, args);
+      const auto &ret_mask = it->second.type_mask.ret_type_mask;
+      for (uint64_t i = 0U, j = type_prefix.size(); i < ret_mask.size(); ++i) {
+        if (ret_mask[i]) {
+          auto val = ir.CreateExtractValue(ret, j);
+          ++j;
+          auto gep = ir.CreateGEP(
+              casted_state,
+              c.i64(regs[i]->offset));
+          auto bitcast = ir.CreateBitCast(
+              gep, llvm::PointerType::get(MostInnerSimpleType(regs[i]->type), 0));
+          if (!is_main)
+            ir.CreateStore(val, bitcast);
+          else if (i == 0) {
+            ir.CreateStore(val, bitcast);
           }
-
-          if (it == sub_to_unfold.end()) {
-            LOG(INFO) << "Could not find unfolded variant of function";
-            return;
-          }
-
-          // TODO: Dependent on internal naming convention
-          auto state = module.getNamedGlobal("__mcsema_reg_state");
-          if (!state) {
-            LOG(ERROR) << "State was not found";
-            return;
-          }
-          bool is_main = func.getName() != "main";
-
-          llvm::IRBuilder<> ir(call);
-          auto casted_state = ir.CreateBitCast(
-              state,
-              llvm::Type::getInt8PtrTy(module.getContext()));
-
-          std::vector<llvm::Value *> args;
-          for (auto &op : call->arg_operands()) {
-            args.push_back(op);
-          }
-
-          const auto &params = it->second.type_mask.params;
-          Constant c(module.getContext());
-
-          for (auto &reg : params) {
-            auto gep = ir.CreateGEP(
-                casted_state,
-                c.i64(reg->offset));
-            auto bitcast = ir.CreateBitCast(
-                gep, llvm::PointerType::get(MostInnerSimpleType(reg->type), 0));
-            args.push_back(ir.CreateLoad(bitcast));
-          }
-
-          auto ret = ir.CreateCall(it->second.unfolded_func, args);
-          const auto &ret_mask = it->second.type_mask.ret_type_mask;
-          for (uint64_t i = 0U, j = type_prefix.size(); i < ret_mask.size(); ++i) {
-            if (ret_mask[i]) {
-              auto val = ir.CreateExtractValue(ret, j);
-              ++j;
-              auto gep = ir.CreateGEP(
-                  casted_state,
-                  c.i64(regs[i]->offset));
-              auto bitcast = ir.CreateBitCast(
-                  gep, llvm::PointerType::get(MostInnerSimpleType(regs[i]->type), 0));
-              if (!is_main)
-                ir.CreateStore(val, bitcast);
-              else if (i == 0) {
-                ir.CreateStore(val, bitcast);
-              }
-            }
-          }
-
-          call->replaceAllUsesWith(ir.CreateExtractValue(ret, kMemoryPointerArgNum));
-          call->eraseFromParent();
-          return;
         }
       }
+
+      call->replaceAllUsesWith(ir.CreateExtractValue(ret, kMemoryPointerArgNum));
+      call->eraseFromParent();
+      return;
     }
   }
 };
