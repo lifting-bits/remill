@@ -53,6 +53,7 @@ DECLARE_FUNC_ORIGIN_TYPE(EntrypointFunction, BaseFunction);
 DECLARE_FUNC_ORIGIN_TYPE(ExternalFunction, BaseFunction);
 DECLARE_FUNC_ORIGIN_TYPE(AbiLibraries, ExternalFunction);
 DECLARE_FUNC_ORIGIN_TYPE(CFGExternal, ExternalFunction);
+DECLARE_FUNC_ORIGIN_TYPE(ExtWrapper, ExternalFunction);
 DECLARE_FUNC_ORIGIN_TYPE(Helper, BaseFunction);
 DECLARE_FUNC_ORIGIN_TYPE(RemillHelper, Helper);
 DECLARE_FUNC_ORIGIN_TYPE(McSemaHelper, Helper);

@@ -36,6 +36,9 @@ const std::string AbiLibraries::metadata_value = ExternalFunction::metadata_valu
 const std::string CFGExternal::metadata_value = ExternalFunction::metadata_value + "." +
                                                 "cfgexternal";
 
+const std::string ExtWrapper::metadata_value = ExternalFunction::metadata_value + "." +
+                                                "extwrapper";
+
 
 const std::string Helper::metadata_value = BaseFunction::metadata_value + "." + "helper";
 
