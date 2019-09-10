@@ -1020,41 +1020,34 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
       bool is_main = func.getName() != "main";
 
       llvm::IRBuilder<> ir(call);
-      auto casted_state = ir.CreateBitCast(
-          state,
-          llvm::Type::getInt8PtrTy(module.getContext()));
+      auto state_i8ptr = ir.CreateBitCast(state, i8PtrTy());
 
-      std::vector<llvm::Value *> args;
-      for (auto &op : call->arg_operands()) {
-        args.push_back(op);
-      }
+      std::vector<llvm::Value *> args{call->arg_begin(), call->arg_end()};
 
       const auto &params = it->second.type_mask.params;
-      Constant c(module.getContext());
 
       for (auto &reg : params) {
-        auto gep = ir.CreateGEP(
-            casted_state,
-            c.i64(reg->offset));
+
+        auto gep = ir.CreateGEP(state_i8ptr, i64(reg->offset));
         auto bitcast = ir.CreateBitCast(
             gep, llvm::PointerType::get(MostInnerSimpleType(reg->type), 0));
+
         args.push_back(ir.CreateLoad(bitcast));
       }
 
       auto ret = ir.CreateCall(it->second.unfolded_func, args);
       const auto &ret_mask = it->second.type_mask.ret_type_mask;
       for (uint64_t i = 0U, j = type_prefix.size(); i < ret_mask.size(); ++i) {
+
         if (ret_mask[i]) {
           auto val = ir.CreateExtractValue(ret, j);
           ++j;
-          auto gep = ir.CreateGEP(
-              casted_state,
-              c.i64(regs[i]->offset));
+
+          auto gep = ir.CreateGEP(state_i8ptr, i64(regs[i]->offset));
           auto bitcast = ir.CreateBitCast(
               gep, llvm::PointerType::get(MostInnerSimpleType(regs[i]->type), 0));
-          if (!is_main)
-            ir.CreateStore(val, bitcast);
-          else if (i == 0) {
+
+          if (!is_main || i == 0) {
             ir.CreateStore(val, bitcast);
           }
         }
