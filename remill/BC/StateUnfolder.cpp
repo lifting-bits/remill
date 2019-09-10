@@ -567,6 +567,15 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
         UnsafeErase(a.second);
       }
     }
+
+    auto external_funcs =
+      GetFunctionsByOrigin<std::vector<llvm::Function *>, remill::ExtWrapper>(module);
+
+    for (auto &ext_func : external_funcs) {
+      if (ext_func->getNumUses() == 0) {
+        ext_func->eraseFromParent();
+      }
+    }
   }
 
   // Get vector of all lifted functions, e.g sub_* or callback_*
@@ -619,24 +628,32 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     auto entrypoints =
       GetFunctionsByOrigin<std::vector<llvm::Function *>, EntrypointFunction>(module);
     for (auto func : entrypoints) {
-        ReplaceEntrypoints(*func, unfolded);
-      }
+      ReplaceEntrypoints(*func, unfolded);
     }
+
+    OptPass();
+  }
 
   void OptPass() {
     llvm::legacy::PassManager pass_manager;
-    pass_manager.add(llvm::createCFGSimplificationPass());
+    pass_manager.add(llvm::createSROAPass());
+    pass_manager.add(llvm::createLICMPass());
     pass_manager.add(llvm::createPromoteMemoryToRegisterPass());
+    pass_manager.add(llvm::createCFGSimplificationPass());
     pass_manager.add(llvm::createReassociatePass());
     pass_manager.add(llvm::createDeadStoreEliminationPass());
     pass_manager.add(llvm::createDeadCodeEliminationPass());
+    pass_manager.add(llvm::createDeadInstEliminationPass());
+    pass_manager.add(llvm::createDeadArgEliminationPass());
+    pass_manager.add(llvm::createInstructionCombiningPass());
+    pass_manager.add(llvm::createStripDeadDebugInfoPass());
 
     pass_manager.run(module);
   }
 
   void OptimizeIteration(const std::string &prefix="") {
-    //OptPass();
-    (*opt_callback)();
+    OptPass();
+    //(*opt_callback)();
 
     std::map<llvm::Function *, TypeMask<Container>> func_to_mask;
 
@@ -708,14 +725,14 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
     // Running more iterations may improve the produced bitcode, since it profits
     // from llvm optimization passes
-    for (auto i = 0U; i < 5; ++i) {
+    for (auto i = 0U; i < 20; ++i) {
       std::cout << i << std::endl;
       OptimizeIteration("opt." + std::to_string(i) + "_");
     }
 
     // We did bunch of unfolding again, clean it up
-    (*opt_callback)();
-    //OptPass();
+    //(*opt_callback)();
+    OptPass();
   }
 
   // Creates new function with proper name
