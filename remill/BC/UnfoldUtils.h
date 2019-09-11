@@ -69,6 +69,40 @@ bool llvmcase( What &w, Lambdas &&...lambdas ) {
     return llvmcase( &w, std::forward< Lambdas >( lambdas )... );
 }
 
+template<typename LLVMFunc, typename Filter, typename Apply>
+void FilterAndApply(LLVMFunc *func, Filter filter, Apply apply) {
+  for (auto &bb : *func) {
+    for (auto &inst : bb) {
+      if (auto casted = filter(&inst)) {
+        apply(casted);
+      }
+    }
+  }
+}
+
+template<typename LLVMModule>
+auto GetExplicitState(LLVMModule &module) {
+  auto state = module.getNamedGlobal("__mcsema_reg_state");
+  return state;
+}
+
+const llvm::GlobalVariable *GetExplicitState(const llvm::Function *func) {
+  return GetExplicitState(*func->getParent());
+}
+
+template<typename T>
+std::vector<T *> Filter(llvm::Function *func) {
+  std::vector<T *> out;
+  for (auto &bb : *func) {
+    for (auto &inst : bb) {
+      if (auto casted = llvm::dyn_cast<T>(&inst)) {
+        out.push_back(casted);
+      }
+    }
+  }
+  return out;
+}
+
 template< typename ... Next >
 struct In {
 
