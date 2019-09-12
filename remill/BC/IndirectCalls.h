@@ -61,4 +61,112 @@ namespace remill {
 
     return out;
   }
+
+  template<typename Inst>
+  Inst *FirstTypedInst(llvm::Function *func) {
+    for (auto &bb: *func) {
+      for (auto &inst : bb) {
+        if (auto casted = llvm::dyn_cast<Inst>(&inst);
+            casted && llvm::CallSite(casted).isIndirectCall()) {
+          return casted;
+        }
+      }
+    }
+    return nullptr;
+  }
+
+
+  struct ExplicateIndirectCall {
+
+    llvm::Function *_func;
+    llvm::LLVMContext &_ctx;
+
+    llvm::BasicBlock *_base;
+    llvm::BasicBlock *_after;
+    llvm::BasicBlock *_tail;
+
+    llvm::PHINode *_phi;
+
+    ExplicateIndirectCall(llvm::Function *func) :
+      _func(func), _ctx(_func->getContext()) {}
+
+
+    ~ExplicateIndirectCall() {
+      llvm::IRBuilder<> ir { _tail };
+      auto &unreachable = _tail->back();
+      ir.CreateBr(_base);
+
+      unreachable.eraseFromParent();
+
+      _func->print(llvm::errs());
+      std::cerr << std::endl;
+    }
+
+    void Split(llvm::CallInst *call) {
+      auto bb = call->getParent();
+
+      _base = bb->splitBasicBlock(call);
+      _base->print(llvm::errs());
+
+      _after = _base->splitBasicBlock(std::next(_base->begin(), 2));
+
+      auto branch = llvm::dyn_cast<llvm::BranchInst>(&bb->back());
+      _tail = CreateNewNode("_tail.0");
+      branch->setSuccessor(0, _tail);
+
+
+      llvm::IRBuilder<> ir{_after};
+      ir.SetInsertPoint(&*_after->begin());
+
+      _phi = ir.CreatePHI(call->getFunctionType()->getReturnType(), 0);
+      _phi->addIncoming(call, _tail);
+      call->replaceAllUsesWith(_phi);
+    }
+
+    llvm::BasicBlock *CreateNewNode(const std::string &name="") {
+      auto node = llvm::BasicBlock::Create(_ctx, name, _func);
+
+      llvm::IRBuilder<>{ node }.CreateUnreachable();
+      return node;
+    }
+
+
+    llvm::BasicBlock *CreateCallBB(llvm::Function *target) {
+      auto bb = llvm::BasicBlock::Create(_ctx, "C." + target->getName(), _func);
+
+      llvm::IRBuilder<> ir{ bb };
+
+      auto ret = ir.CreateCall(target, {_func->arg_begin(), _func->arg_end()});
+
+      _phi->addIncoming(ret, bb);
+      return bb;
+    }
+
+    llvm::BasicBlock *CreateCase(llvm::Function *target) {
+      if (!target) {
+        std::cerr << "NULL" << std::endl;
+        return nullptr;
+      }
+      auto next = CreateNewNode();
+      auto succes = CreateCallBB(target);
+
+      auto &current = _tail; // _tail
+
+      llvm::IRBuilder<> ir{ &current->back() };
+
+      auto func_ptr = ir.CreateIntToPtr(
+          &*std::next(_func->arg_begin()), target->getType());
+
+      auto cmp = ir.CreateICmpEQ(func_ptr, target);
+
+      ir.CreateCondBr(cmp, succes, next);
+
+      current->back().eraseFromParent();
+
+      _tail = next;
+      return next;
+    }
+
+  };
+
 } // namespace remill
