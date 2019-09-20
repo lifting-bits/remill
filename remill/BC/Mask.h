@@ -83,7 +83,6 @@ struct Constant : LLVMHelperMixin<Constant> {
 using RegisterList = std::vector<const Register *>;
 using Mask = std::vector<bool>;
 
-// TODO: std::optional
 // Retrieves next index from offset (including) that has value equal to val
 // Returns true if such index was found, with value stored in offset
 // If index was not found, offset is preserved
@@ -192,6 +191,15 @@ struct GMask : public Container {
     }
   }
 
+  template<typename F>
+  void apply(F &&f) const {
+    for (uint64_t i = 0; i < this->size(); ++i) {
+      if ((*this)[i]) {
+        f();
+      }
+    }
+  }
+
 private:
 
   template<typename>
@@ -246,26 +254,6 @@ struct PMask : public GMask<Container>, Converter<PMask<Container>> {
   using Base::Base;
 };
 
-#if 0
-template<typename GMask>
-struct _MaskIterator {
-  using difference_type = int64_t;
-  using value_type = RegisterList::value_type;
-  using pointer = RegisterList::value_type *;
-  using reference = RegisterList::value_type &;
-  using iterator_category = std::random_access_iterator_tag;
-
-  friend bool operator==(const _MaskIterator &rhs, const _MaskIterator &lhs) {
-    return rhs._index == lhs._index;
-  }
-
-  int64_t _index = 0;
-  GMask _mask;
-  RegisterList _regs;
-
-};
-#endif
-
 // Mapping Register -> bool
 // True means that the register is present in a type
 template<typename Container>
@@ -279,14 +267,6 @@ struct TypeMask {
 
   RegisterList rets;
   RegisterList params;
-
-#if 0
-  using Iterator = _MaskIterator<GMask<Container>>;
-
-  Iterator begin() {
-    return Iterator{};
-  }
-#endif
 
   TypeMask(const RegisterList &regs) :
     ret_type_mask(regs.size()), param_type_mask(regs.size()),
