@@ -54,6 +54,8 @@
 #include "remill/BC/StateUnfolder.h"
 #include "remill/BC/Util.h"
 
+#include "remill/BC/Color.h"
+
 namespace remill {
 
 namespace {
@@ -145,6 +147,9 @@ using ResultMask = TMask<Container>;
 
 // Holds information about unfolded function
 struct UnfoldedFunction {
+
+  using Mask = TypeMask<Container>;
+
   // original lifted function
   llvm::Function *sub_func;
   llvm::Function *unfolded_func;
@@ -155,6 +160,62 @@ struct UnfoldedFunction {
 
   // Hold information about currently used registers in function type
   TypeMask<Container> type_mask;
+
+  std::vector<Mask> _history;
+
+  void UpdateMask(Mask mask) {
+    type_mask = mask;
+    _history.push_back(std::move(mask));
+  }
+
+  std::string History(const RegisterList &regs) const {
+    std::stringstream out;
+
+    out << sub_func->getName().str() << std::endl;
+    for (auto i = 1U; i < _history.size(); ++i) {
+      out << std::to_string(i) << std::endl
+          << Peek(_history[i - 1], _history[i], regs);
+    }
+    return out.str();
+  }
+
+  template<typename M>
+  std::string Peek(const M &lhs, const M &rhs, const RegisterList &regs,
+                   const std::string &prefix=" ") const {
+    std::stringstream out;
+    for (auto i = 0U; i < lhs.size(); ++i) {
+
+      if (lhs[i] == rhs[i]) {
+          if (lhs[i])
+            out << prefix << regs[i]->name;
+      } else if (!lhs[i])
+        out << prefix << green(regs[i]->name)();
+      else
+        out << prefix << red(regs[i]->name)();
+    }
+
+    return out.str();
+  }
+
+  std::string Peek(const Mask &lhs, const Mask &rhs, const RegisterList &regs) const {
+    std::stringstream out;
+
+    auto params = Peek(lhs.param_type_mask, rhs.param_type_mask, regs);
+    if (params.size()) {
+      out << "P:" << params << std::endl;
+    }
+
+    auto rets = Peek(lhs.ret_type_mask, rhs.ret_type_mask, regs);
+    if (rets.size()) {
+      out << "R:" << rets << std::endl;
+    }
+
+    return out.str();
+  }
+
+  std::string Peek(const Mask &rhs, const RegisterList &regs) {
+    return Peek(type_mask, rhs, regs);
+  }
 };
 
 std::ostream &operator<<(std::ostream &os, const UnfoldedFunction &func) {
@@ -568,11 +629,19 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     FoldRets(allocas, *unfolded_func, mask);
     ReplaceGEPs(allocas, *unfolded_func, mask);
 
-    insert_or_assign(
-        unfolded, func,
-        {func, unfolded_func, std::move(allocas), std::move(mask)});
-    insert_or_assign(sub_to_unfold, func, unfolded_func);
+    if (auto iter = unfolded.find(func); iter != unfolded.end()) {
+      // Update
+      iter->second.unfolded_func = unfolded_func;
+      iter->second.allocas = std::move(allocas);
+      iter->second.UpdateMask(std::move(mask));
+    } else {
+      // Insert
+      unfolded.insert(
+          {func,
+          {func, unfolded_func, std::move(allocas), mask, {std::move(mask)}}});
+    }
 
+    insert_or_assign(sub_to_unfold, func, unfolded_func);
   }
 
   // Partially unfolds the reg_state into separate parameters
