@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <string>
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -10,6 +11,7 @@
 
 #include "remill/BC/Color.h"
 #include "remill/BC/Mask.h"
+#include "remill/BC/UnfoldUtils.h"
 
 namespace remill {
 
@@ -101,7 +103,10 @@ struct UnfoldedFunction {
     return Peek(t_mask, rhs, regs);
   }
 
-  UnfoldedFunction *Update(Mask mask, const std::string &prefix="") {
+  // Returns old version of unfolded function and forfeits its ownership
+  llvm::Function *Update(Mask mask, const std::string &prefix="") {
+    auto old = unfolded_func;
+
     UpdateMask(std::move(mask));
     unfolded_func = UnfoldState(prefix);
     CreateAllocas();
@@ -109,7 +114,7 @@ struct UnfoldedFunction {
     FoldRets();
     ReplaceGEPs();
 
-    return this;
+    return old;
   }
 
   llvm::Function *UnfoldState(const std::string &prefix="");
