@@ -117,6 +117,10 @@ struct UnfoldedFunction {
     return old;
   }
 
+  auto ArgBegin() const {
+    return std::next(unfolded_func->arg_begin(), type_prefix.size());
+  }
+
   auto ArgBegin() {
     return std::next(unfolded_func->arg_begin(), type_prefix.size());
   }

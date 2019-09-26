@@ -79,7 +79,7 @@ bool llvmcase( What &w, Lambdas &&...lambdas ) {
 }
 
 template<typename LLVMFunc, typename Filter, typename Apply>
-void FilterAndApply(LLVMFunc *func, Filter filter, Apply apply) {
+void FilterAndApply(LLVMFunc *func, Filter &&filter, Apply apply) {
   for (auto &bb : *func) {
     for (auto &inst : bb) {
       if (auto casted = filter(&inst)) {
