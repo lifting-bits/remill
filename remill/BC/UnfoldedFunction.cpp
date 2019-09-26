@@ -40,18 +40,18 @@ void UnfoldedFunction::CreateAllocas() {
 
   auto arg_it = std::next(unfolded_func->arg_begin(), type_prefix.size());
 
-  for (auto i = 0U; i < regs.size(); ++i) {
-    auto alloca_reg = ir.CreateAlloca(MostInnerSimpleType(regs[i]->type));
+  // Create allocas for all registers
+  for (auto i = 0U; i < regs.size(); ++i)
+    allocas.push_back(ir.CreateAlloca(MostInnerSimpleType(regs[i]->type)));
 
-    if (t_mask.param_type_mask[i]) {
-      CHECK(arg_it != unfolded_func->arg_end())
-        << "Not enough parameters when creating alloca";
-      ir.CreateStore(&*arg_it, alloca_reg);
-      ++arg_it;
-    }
+  auto store_args = [&](uint64_t index, auto arg_it) {
+    CHECK(arg_it != unfolded_func->arg_end())
+      << "Not enough parameters when creating alloca.";
+    ir.CreateStore(&*arg_it, allocas[index]);
+  };
 
-    allocas.push_back(alloca_reg);
-  }
+  t_mask.params_m().apply(store_args, ArgBegin());
+
 }
 
 
@@ -152,19 +152,20 @@ void UnfoldedFunction::FoldAggregate(
                    llvm::IRBuilder<> &ir) {
 
   llvm::Value *ret_val = llvm::UndefValue::get(ret_ty);
+
+  // Fill in type_prefix
   for (auto i = 0U; i < type_prefix.size(); ++i) {
     ret_val = ir.CreateInsertValue(ret_val, NthArgument(unfolded_func, i), i);
   }
 
-  for (uint64_t i = 0U, j = type_prefix.size(); i < t_mask.ret_type_mask.size(); ++i) {
-    if (t_mask.ret_type_mask[i]) {
-      auto load =
-        ir.CreateLoad(allocas[i], t_mask.rets[j - type_prefix.size()]->name + "_L");
+  // Fill in values from allocas present in return type mask
+  auto createAllocas = [&](uint64_t index, uint64_t j) {
+    auto load = ir.CreateLoad(allocas[index],
+                              t_mask.regs[index]->name + "L");
+    ret_val = ir.CreateInsertValue(ret_val, load, j++);
+  };
 
-      ret_val = ir.CreateInsertValue(ret_val, load, j);
-      ++j;
-    }
-  }
+  t_mask.rets_m().apply(createAllocas, type_prefix.size());
   ir.CreateRet(ret_val);
 }
 
