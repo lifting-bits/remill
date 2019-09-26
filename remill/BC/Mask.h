@@ -202,6 +202,14 @@ struct GMask : public Container {
     }
   }
 
+  template<typename F, typename It, typename Pred>
+  void all(F &&f, It begin) {
+    for (uint64_t i = 0; i < this->size(); ++i) {
+      f(i, begin++);
+    }
+  }
+
+
 private:
 
   template<typename>

@@ -117,6 +117,10 @@ struct UnfoldedFunction {
     return old;
   }
 
+  auto ArgBegin() {
+    return std::next(unfolded_func->arg_begin(), type_prefix.size());
+  }
+
   llvm::Function *UnfoldState(const std::string &prefix="");
   void CreateAllocas();
 
