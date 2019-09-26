@@ -74,6 +74,10 @@ struct LLVMHelperMixin {
   llvm::Type *iNTy(uint64_t size) {
     return llvm::Type::getIntNTy(static_cast<Self &>(*this).context, size);
   }
+
+  llvm::Type *ptr(llvm::Type *type, unsigned addr_space=0) {
+    return llvm::PointerType::get(type, addr_space);
+  }
 };
 
 struct Constant : LLVMHelperMixin<Constant> {
@@ -284,21 +288,29 @@ struct TypeMask {
     return ret_type_mask;
   }
 
+  RType &r() {
+    return ret_type_mask;
+  }
+
   PType &params_m() {
     return param_type_mask;
   }
 
+  PType &p() {
+    return param_type_mask;
+  }
+
   TypeMask(const RegisterList &p_regs) :
-    regs(p_regs),
-    ret_type_mask(regs.size()), param_type_mask(regs.size()),
-    rets(regs), params(regs) {}
+      regs(p_regs),
+      ret_type_mask(regs.size()), param_type_mask(regs.size()),
+      rets(regs), params(regs) {}
 
   TypeMask(const RegisterList &p_regs, RType ret, PType param) :
-    regs(p_regs),
-    ret_type_mask(std::move(ret)),
-    param_type_mask(std::move(param)) {
+      regs(p_regs),
+      ret_type_mask(std::move(ret)),
+      param_type_mask(std::move(param)) {
 
-      for (auto i = 0U; i < regs.size(); ++i) {
+    for (auto i = 0U; i < regs.size(); ++i) {
       if (ret_type_mask[i]) {
         rets.push_back(p_regs[i]);
       }
@@ -309,8 +321,9 @@ struct TypeMask {
   }
 
   TypeMask(const TypeMask& o) :
-    regs(o.regs), ret_type_mask(o.ret_type_mask), param_type_mask(o.param_type_mask),
-    rets(o.rets), params(o.params) {}
+      regs(o.regs),
+      ret_type_mask(o.ret_type_mask), param_type_mask(o.param_type_mask),
+      rets(o.rets), params(o.params) {}
 
   TypeMask& operator=(TypeMask o) {
     using std::swap;
