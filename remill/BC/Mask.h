@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <glog/logging.h>
+
 #include <algorithm>
 #include <iterator>
 #include <optional>
@@ -319,12 +321,13 @@ struct TypeMask {
 };
 
 // So that std::vector<bool> can be used as Container in GMask
-std::vector<bool> &operator&=(std::vector<bool> &l, const std::vector<bool> &r) {
+static inline std::vector<bool> &operator&=(std::vector<bool> &l, const std::vector<bool> &r) {
   for (auto i = 0U; i < l.size(); ++i) {
     l[i] = l[i] && r[i];
   }
   return l;
 }
+
 
 // Intermediate type that does not work with registers themselves, only with masks
 template<typename Container>
