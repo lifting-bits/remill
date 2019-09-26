@@ -193,11 +193,11 @@ struct GMask : public Container {
     }
   }
 
-  template<typename F>
-  void apply(F &&f) const {
+  template<typename F, typename It>
+  void apply(F &&f, It begin) {
     for (uint64_t i = 0; i < this->size(); ++i) {
       if ((*this)[i]) {
-        f();
+        f(i, begin++);
       }
     }
   }
@@ -263,6 +263,7 @@ struct TypeMask {
   using RType = RMask<Container>;
   using PType = PMask<Container>;
 
+  const RegisterList &regs;
 
   RType ret_type_mask;
   PType param_type_mask;
@@ -270,21 +271,46 @@ struct TypeMask {
   RegisterList rets;
   RegisterList params;
 
-  TypeMask(const RegisterList &regs) :
+
+  RType &rets_m() {
+    return ret_type_mask;
+  }
+
+  PType &params_m() {
+    return param_type_mask;
+  }
+
+  TypeMask(const RegisterList &p_regs) :
+    regs(p_regs),
     ret_type_mask(regs.size()), param_type_mask(regs.size()),
     rets(regs), params(regs) {}
 
-  TypeMask(const RegisterList &regs, RType ret, PType param) :
-    ret_type_mask(std::move(ret)), param_type_mask(std::move(param)) {
+  TypeMask(const RegisterList &p_regs, RType ret, PType param) :
+    regs(p_regs),
+    ret_type_mask(std::move(ret)),
+    param_type_mask(std::move(param)) {
 
       for (auto i = 0U; i < regs.size(); ++i) {
       if (ret_type_mask[i]) {
-        rets.push_back(regs[i]);
+        rets.push_back(p_regs[i]);
       }
       if (param_type_mask[i]) {
-        params.push_back(regs[i]);
+        params.push_back(p_regs[i]);
       }
     }
+  }
+
+  TypeMask(const TypeMask& o) :
+    regs(o.regs), ret_type_mask(o.ret_type_mask), param_type_mask(o.param_type_mask),
+    rets(o.rets), params(o.params) {}
+
+  TypeMask& operator=(TypeMask o) {
+    using std::swap;
+    swap(ret_type_mask, o.ret_type_mask);
+    swap(param_type_mask, o.param_type_mask);
+    swap(rets, o.rets);
+    swap(params, o.params);
+    return *this;
   }
 
   llvm::FunctionType *GetFunctionType(
