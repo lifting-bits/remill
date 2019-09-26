@@ -26,6 +26,15 @@
 
 namespace remill {
 
+static inline void UnsafeErase(llvm::Function *func) {
+  if (!func) {
+    return;
+  }
+
+  func->replaceAllUsesWith(
+    llvm::UndefValue::get(llvm::PointerType::getUnqual(func->getFunctionType())));
+  func->eraseFromParent();
+}
 
 template< unsigned i, typename... Empty >
 struct _Get { };
@@ -86,7 +95,7 @@ auto GetExplicitState(LLVMModule &module) {
   return state;
 }
 
-const llvm::GlobalVariable *GetExplicitState(const llvm::Function *func) {
+static inline const llvm::GlobalVariable *GetExplicitState(const llvm::Function *func) {
   return GetExplicitState(*func->getParent());
 }
 
