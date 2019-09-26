@@ -306,6 +306,7 @@ struct TypeMask {
 
   TypeMask& operator=(TypeMask o) {
     using std::swap;
+    CHECK(regs == o.regs);
     swap(ret_type_mask, o.ret_type_mask);
     swap(param_type_mask, o.param_type_mask);
     swap(rets, o.rets);
