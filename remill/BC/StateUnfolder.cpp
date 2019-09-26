@@ -196,21 +196,17 @@ static ResultMask UnusedParameters(
     uint64_t size, uint64_t prefix_size) {
 
   const auto &unfolded_func = func.unfolded_func;
-  const auto &old_mask = func.t_mask.param_type_mask;
   ResultMask result(size);
 
-  result &= old_mask;
+  result &= func.t_mask.param_type_mask;
   result &= func.t_mask.ret_type_mask;
 
-  uint64_t i = 0;
-  NextIndex(old_mask, true, i);
+  auto verify_usage = [&](auto index, auto arg_it) {
+    bool can_escape = _EscapeArgument(unfolded_func).Run(arg_it, index + prefix_size);
+    result.param_type_mask[index] = !can_escape;
+  };
 
-  for (auto it = std::next(unfolded_func->arg_begin(), prefix_size);
-      it != unfolded_func->arg_end();
-      ++it, NextIndex(old_mask, true, ++i))
-  {
-    result.param_type_mask[i] = !_EscapeArgument(unfolded_func).Run(it, i + prefix_size);
-  }
+  result.param_type_mask.apply(verify_usage, func.ArgBegin());
 
 
   std::vector<bool> ret_m(size, false);
@@ -222,9 +218,11 @@ static ResultMask UnusedParameters(
       }
       auto idx = *inst->idx_begin() - prefix_size;
 
-      ret_m[idx] = ret_m[idx] ||
-        !_EscapeArgumentFromReturn(unfolded_func).
-        Run(inst->getInsertedValueOperand(), *inst->idx_begin());
+      bool can_escape = _EscapeArgumentFromReturn(unfolded_func).
+                         Run(inst->getInsertedValueOperand(), *inst->idx_begin());
+
+      ret_m[idx] = ret_m[idx] || !can_escape;
+
     };
 
     Walk<llvm::InsertValueInst>(ret->getReturnValue(), apply);
@@ -608,6 +606,21 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     pass_manager.run(module);
   }
 
+  UnfoldedFunction::Mask CalculateMask(const UnfoldedFunction &u_func) {
+    auto tm = CallerUnusedRet(u_func, regs.size(), type_prefix.size());
+    tm &= GetReturnMask(u_func, regs.size(), type_prefix.size());
+    tm &= GetParamMask(u_func, regs.size(), type_prefix.size());
+    tm &= UnusedParameters(u_func, regs.size(), type_prefix.size());
+    auto entrypoint = GetTied(&u_func.sub_func);
+
+    if (entrypoint && entrypoint->getName() == "main") {
+      auto entrypoint_mask = GetEntrypointMask(entrypoint, regs);
+      tm &= entrypoint_mask;
+    }
+
+    return tm.Build(regs);
+  }
+
   void OptimizeIteration(const std::string &prefix="") {
     OptPass();
     //(*opt_callback)();
@@ -624,25 +637,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
         continue;
       }
 
-      auto tm =
-        CallerUnusedRet(func.second, regs.size(), type_prefix.size());
-      tm &= GetReturnMask(func.second, regs.size(), type_prefix.size());
-      tm &= GetParamMask(func.second, regs.size(), type_prefix.size());
-      tm &= UnusedParameters(func.second, regs.size(), type_prefix.size());
-      auto entrypoint = GetTied(&func.second.sub_func);
-
-      if (entrypoint && entrypoint->getName() == "main") {
-        auto entrypoint_mask = GetEntrypointMask(entrypoint, regs);
-        tm &= entrypoint_mask;
-      }
-
-      auto mask = tm.Build(regs);
-
-      std::cerr << func.second.unfolded_func << std::endl << mask << std::endl;
-      func_to_mask.emplace(
-          func.first,
-          std::move(mask));
-
+      func_to_mask.emplace(func.first, CalculateMask(func.second));
       to_change.insert(func.first);
     }
 
@@ -652,11 +647,11 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     }
 
     for (auto &func : unfolded) {
-      // TODO: Dependent on McSema naming conventions
-      if (func.first->getName().substr(0, 4) != "ext_") continue;
-      func.second.unfolded_func->removeFnAttr(llvm::Attribute::NoInline);
-      func.second.unfolded_func->addFnAttr(llvm::Attribute::InlineHint);
-      func.second.unfolded_func->addFnAttr(llvm::Attribute::AlwaysInline);
+      if (HasOriginType<ExtWrapper>(func.first)) {
+        func.second.unfolded_func->removeFnAttr(llvm::Attribute::NoInline);
+        func.second.unfolded_func->addFnAttr(llvm::Attribute::InlineHint);
+        func.second.unfolded_func->addFnAttr(llvm::Attribute::AlwaysInline);
+      }
     }
 
     for (auto &func : unfolded) {
@@ -687,11 +682,9 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     }
 
     // We did bunch of unfolding again, clean it up
-    //(*opt_callback)();
     OptPass();
   }
 
-  
 
   void PrepareMem2Reg(std::vector<llvm::AllocaInst *> &allocas) {
     for (auto &alloca : allocas) {
@@ -744,31 +737,22 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
       auto callee = sub_to_unfold.find(old_call->getCalledFunction())->second;
 
-      const auto &param_mask = callee.t_mask.param_type_mask;
-      for (auto i = 0U; i < param_mask.size(); ++i) {
-
-        if (param_mask[i]) {
-          auto load = ir.CreateLoad(allocas[i]);
-          args.push_back(load);
-        }
-
-      }
+      auto load = [&](auto index, auto) {
+        args.push_back(ir.CreateLoad(allocas[index]));
+      };
+      callee.t_mask.p().apply(load, 0u);
 
       auto ret = ir.CreateCall(callee.unfolded_func, args);
 
       auto mem = ir.CreateExtractValue(ret, kMemoryPointerArgNum);
       old_call->replaceAllUsesWith(mem);
 
-      const auto &ret_mask = callee.t_mask.ret_type_mask;
-      for (uint64_t i = 0U, j = type_prefix.size(); i < ret_mask.size(); ++i) {
+      auto store = [&](auto index, auto j) {
+        auto val = ir.CreateExtractValue(ret, j);
+        ir.CreateStore(val, allocas[index]);
+      };
 
-        if (ret_mask[i]) {
-          auto val = ir.CreateExtractValue(ret, j);
-          ir.CreateStore(val, allocas[i]);
-          ++j;
-        }
-
-      }
+      callee.t_mask.r().apply(store, type_prefix.size());
     }
 
     for (auto &old_call : to_change) {
@@ -819,22 +803,19 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
       }
 
       auto ret = ir.CreateCall(it->second.unfolded_func, args);
-      const auto &ret_mask = it->second.t_mask.ret_type_mask;
-      for (uint64_t i = 0U, j = type_prefix.size(); i < ret_mask.size(); ++i) {
 
-        if (ret_mask[i]) {
-          auto val = ir.CreateExtractValue(ret, j);
-          ++j;
+      auto store = [&](auto index, auto arg_pos) {
+        auto val = ir.CreateExtractValue(ret, arg_pos);
+        auto gep = ir.CreateGEP(state_i8ptr, i64(regs[index]->offset));
+        auto bitcast = ir.CreateBitCast(
+            gep, ptr(MostInnerSimpleType(regs[index]->type)));
 
-          auto gep = ir.CreateGEP(state_i8ptr, i64(regs[i]->offset));
-          auto bitcast = ir.CreateBitCast(
-              gep, llvm::PointerType::get(MostInnerSimpleType(regs[i]->type), 0));
-
-          if (!is_main || i == 0) {
-            ir.CreateStore(val, bitcast);
-          }
+        if (!is_main || index == 0) {
+          ir.CreateStore(val, bitcast);
         }
-      }
+      };
+
+      it->second.t_mask.r().apply(store, type_prefix.size());
 
       call->replaceAllUsesWith(ir.CreateExtractValue(ret, kMemoryPointerArgNum));
       call->eraseFromParent();
