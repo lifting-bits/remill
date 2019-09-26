@@ -535,7 +535,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     return to_unfold;
   }
 
-  void UnfoldFunction(llvm::Function *func, TypeMask<Container> mask,
+  llvm::Function *UnfoldFunction(llvm::Function *func, TypeMask<Container> mask,
                       const std::string& prefix="") {
     // Create new function with proper type
     //auto unfolded_func = UnfoldState(func, mask, prefix);
@@ -546,12 +546,13 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     //FoldRets(allocas, *unfolded_func, mask);
     //ReplaceGEPs(allocas, *unfolded_func, mask);
 
+    llvm::Function *old = nullptr;
     if (auto iter = unfolded.find(func); iter != unfolded.end()) {
       // Update
       // iter->second.unfolded_func = unfolded_func;
       // iter->second.allocas = std::move(allocas);
       // iter->second.UpdateMask(std::move(mask));
-      iter->second.Update(std::move(mask), prefix);
+      old = iter->second.Update(std::move(mask), prefix);
     } else {
       // Insert
       unfolded.insert(
@@ -561,6 +562,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
     auto iter = unfolded.find(func);
     insert_or_assign(sub_to_unfold, func, iter->second.unfolded_func);
+    return old;
   }
 
   // Partially unfolds the reg_state into separate parameters
@@ -641,17 +643,12 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
           func.first,
           std::move(mask));
 
-      old_iter.push_back(func.second.unfolded_func);
       to_change.insert(func.first);
     }
 
-    // We no longer need older iteration as we already got all the info needed
-    for (auto &func : old_iter) {
-      UnsafeErase(func);
-    }
 
     for (auto &func : func_to_mask) {
-      UnfoldFunction(func.first, std::move(func.second), prefix);
+      old_iter.push_back(UnfoldFunction(func.first, std::move(func.second), prefix));
     }
 
     for (auto &func : unfolded) {
@@ -669,6 +666,10 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
       HandleCallSites(func.second, unfolded);
     }
 
+    // We no longer need older iteration as we already got all the info needed
+    for (auto &func : old_iter) {
+      UnsafeErase(func);
+    }
     //ReplaceIndirectCall(TypeMask<Container>(regs), prefix);
   }
 
