@@ -117,13 +117,6 @@ static void CreateLocalStack(llvm::Module &module, llvm::Function &func) {
   }
 }
 
-
-void UnsafeErase(llvm::Function *func) {
-  func->replaceAllUsesWith(
-      llvm::UndefValue::get(llvm::PointerType::getUnqual(func->getFunctionType())));
-  func->eraseFromParent();
-}
-
 // Iterate over instruction and then continue with it's AggregateOperand if it is
 // of the same type. Useful for example to iterate over all instruction that do
 // insertValue to build some value.
