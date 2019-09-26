@@ -49,16 +49,25 @@
 #include "remill/BC/Compat/Instructions.h"
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/DerivedTypes.h"
+#include "remill/BC/IndirectCalls.h"
 #include "remill/BC/Mask.h"
 #include "remill/BC/UnfoldUtils.h"
 #include "remill/BC/StateUnfolder.h"
 #include "remill/BC/Util.h"
 
 #include "remill/BC/Color.h"
+#include "remill/BC/UnfoldedFunction.h"
 
 namespace remill {
 
 namespace {
+
+llvm::Type *MostInnerSimpleType(llvm::Type *t) {
+  while (std::next(t->subtype_begin()) == t->subtype_end()) {
+    t = *t->subtype_begin();
+  }
+  return t;
+}
 
 static bool IsLiftedFunction(llvm::Function *func) {
   return HasOriginType<LiftedFunction>(func);
@@ -108,12 +117,6 @@ static void CreateLocalStack(llvm::Module &module, llvm::Function &func) {
   }
 }
 
-static llvm::Type *MostInnerSimpleType(llvm::Type *t) {
-  while (std::next(t->subtype_begin()) == t->subtype_end()) {
-    t = *t->subtype_begin();
-  }
-  return t;
-}
 
 void UnsafeErase(llvm::Function *func) {
   func->replaceAllUsesWith(
@@ -146,97 +149,18 @@ using ResultMask = TMask<Container>;
 
 
 // Holds information about unfolded function
-struct UnfoldedFunction {
-
-  using Mask = TypeMask<Container>;
-
-  // original lifted function
-  llvm::Function *sub_func;
-  llvm::Function *unfolded_func;
-
-  // allocas, that are at the beginning of the function, for each register that is being
-  // unfolded. Order is corresponding to order in type_mask
-  std::vector<llvm::AllocaInst *> allocas;
-
-  // Hold information about currently used registers in function type
-  TypeMask<Container> type_mask;
-
-  std::vector<Mask> _history;
-
-  void UpdateMask(Mask mask) {
-    type_mask = mask;
-    _history.push_back(std::move(mask));
-  }
-
-  std::string History(const RegisterList &regs) const {
-    std::stringstream out;
-
-    out << sub_func->getName().str() << std::endl;
-    for (auto i = 1U; i < _history.size(); ++i) {
-      out << std::to_string(i) << std::endl
-          << Peek(_history[i - 1], _history[i], regs);
-    }
-    return out.str();
-  }
-
-  template<typename M>
-  std::string Peek(const M &lhs, const M &rhs, const RegisterList &regs,
-                   const std::string &prefix=" ") const {
-    std::stringstream out;
-    for (auto i = 0U; i < lhs.size(); ++i) {
-
-      if (lhs[i] == rhs[i]) {
-          if (lhs[i])
-            out << prefix << regs[i]->name;
-      } else if (!lhs[i])
-        out << prefix << green(regs[i]->name)();
-      else
-        out << prefix << red(regs[i]->name)();
-    }
-
-    return out.str();
-  }
-
-  std::string Peek(const Mask &lhs, const Mask &rhs, const RegisterList &regs) const {
-    std::stringstream out;
-
-    auto params = Peek(lhs.param_type_mask, rhs.param_type_mask, regs);
-    if (params.size()) {
-      out << "P:" << params << std::endl;
-    }
-
-    auto rets = Peek(lhs.ret_type_mask, rhs.ret_type_mask, regs);
-    if (rets.size()) {
-      out << "R:" << rets << std::endl;
-    }
-
-    return out.str();
-  }
-
-  std::string Peek(const Mask &rhs, const RegisterList &regs) {
-    return Peek(type_mask, rhs, regs);
-  }
-};
-
-std::ostream &operator<<(std::ostream &os, const UnfoldedFunction &func) {
-  os << func.sub_func->getName().str() << " -> "
-     << func.unfolded_func->getName().str() << std::endl;
-  os << func.type_mask;
-  return os;
-}
-
 // For each caller of unfolded function, check which part of return type are used.
 // If there are some that no caller uses, mark it as false
 static ResultMask CallerUnusedRet(
     const UnfoldedFunction &func, std::size_t size, uint64_t prefix_size) {
 
-  const auto &old_mask = func.type_mask.ret_type_mask;
+  const auto &old_mask = func.t_mask.ret_type_mask;
 
   ResultMask res(size);
   res &= old_mask;
 
   // Check if function is entrypoint, if it is, make no assumptions
-  auto entrypoint = GetTied(func.sub_func);
+  auto entrypoint = GetTied(&func.sub_func);
   if (entrypoint && entrypoint->hasAddressTaken()) {
     return res;
   }
@@ -279,11 +203,11 @@ static ResultMask UnusedParameters(
     uint64_t size, uint64_t prefix_size) {
 
   const auto &unfolded_func = func.unfolded_func;
-  const auto &old_mask = func.type_mask.param_type_mask;
+  const auto &old_mask = func.t_mask.param_type_mask;
   ResultMask result(size);
 
   result &= old_mask;
-  result &= func.type_mask.ret_type_mask;
+  result &= func.t_mask.ret_type_mask;
 
   uint64_t i = 0;
   NextIndex(old_mask, true, i);
@@ -329,8 +253,8 @@ static ResultMask GetReturnMask(
 
   ResultMask res(size);
 
-  const auto &old_mask = func.type_mask.ret_type_mask;
-  const auto &param_mask = func.type_mask.param_type_mask;
+  const auto &old_mask = func.t_mask.ret_type_mask;
+  const auto &param_mask = func.t_mask.param_type_mask;
 
   std::vector<uint32_t> mask(size, 0);
   PMask<Container> unused_p(size);
@@ -492,12 +416,12 @@ TypeMask<Container> GetEntrypointMask(llvm::Function *func, const RegisterList &
 static ResultMask GetParamMask(
     const UnfoldedFunction &func, uint64_t size, uint64_t prefix_size) {
 
-  const auto &old_mask = func.type_mask.param_type_mask;
+  const auto &old_mask = func.t_mask.param_type_mask;
 
   ResultMask res(size);
   res &= old_mask;
 
-  if (auto entrypoint = GetTied(func.sub_func);
+  if (auto entrypoint = GetTied(&func.sub_func);
       entrypoint && entrypoint->hasAddressTaken()) {
     return res;
   }
@@ -621,27 +545,29 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
   void UnfoldFunction(llvm::Function *func, TypeMask<Container> mask,
                       const std::string& prefix="") {
     // Create new function with proper type
-    auto unfolded_func = UnfoldState(func, mask, prefix);
+    //auto unfolded_func = UnfoldState(func, mask, prefix);
     // Create allocas for each register
-    auto allocas = CreateAllocas(*unfolded_func, mask);
+    //auto allocas = CreateAllocas(*unfolded_func, mask);
 
     // Modify returns
-    FoldRets(allocas, *unfolded_func, mask);
-    ReplaceGEPs(allocas, *unfolded_func, mask);
+    //FoldRets(allocas, *unfolded_func, mask);
+    //ReplaceGEPs(allocas, *unfolded_func, mask);
 
     if (auto iter = unfolded.find(func); iter != unfolded.end()) {
       // Update
-      iter->second.unfolded_func = unfolded_func;
-      iter->second.allocas = std::move(allocas);
-      iter->second.UpdateMask(std::move(mask));
+      // iter->second.unfolded_func = unfolded_func;
+      // iter->second.allocas = std::move(allocas);
+      // iter->second.UpdateMask(std::move(mask));
+      iter->second.Update(std::move(mask), prefix);
     } else {
       // Insert
       unfolded.insert(
           {func,
-          {func, unfolded_func, std::move(allocas), mask, {std::move(mask)}}});
+          {func, regs, type_prefix, prefix}});
     }
 
-    insert_or_assign(sub_to_unfold, func, unfolded_func);
+    auto iter = unfolded.find(func);
+    insert_or_assign(sub_to_unfold, func, iter->second.unfolded_func);
   }
 
   // Partially unfolds the reg_state into separate parameters
@@ -699,7 +625,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
     // Get better masks where possible
     for (const auto &func : unfolded) {
-      if (func.second.type_mask.Empty()) {
+      if (func.second.t_mask.Empty()) {
         continue;
       }
 
@@ -708,7 +634,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
       tm &= GetReturnMask(func.second, regs.size(), type_prefix.size());
       tm &= GetParamMask(func.second, regs.size(), type_prefix.size());
       tm &= UnusedParameters(func.second, regs.size(), type_prefix.size());
-      auto entrypoint = GetTied(func.second.sub_func);
+      auto entrypoint = GetTied(&func.second.sub_func);
 
       if (entrypoint && entrypoint->getName() == "main") {
         auto entrypoint_mask = GetEntrypointMask(entrypoint, regs);
@@ -771,218 +697,28 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     OptPass();
   }
 
-  // Creates new function with proper name
-  llvm::Function* UnfoldState(llvm::Function *func, const TypeMask<Container> &mask,
-                              const std::string &prefix="") {
-    // Copy originals
-    std::vector<llvm::Type *> new_params;
-    for (auto orig_param : Params(func->getFunctionType())) {
-      new_params.emplace_back(orig_param);
-    }
+  
 
-    LOG_IF(WARNING, new_params != type_prefix)
-      << "Unfolded function has different prefix than specified type_prefix: "
-      << func->getName().str();
+  void PrepareMem2Reg(std::vector<llvm::AllocaInst *> &allocas) {
+    for (auto &alloca : allocas) {
+      llvm::IRBuilder<> ir(alloca);
+      for (auto user : alloca->users()) {
+        auto bitcast = llvm::dyn_cast<llvm::BitCastInst>(user);
 
-    // Add new ones based on regs and their size
-    for (const auto &reg : mask.params) {
-      auto size = static_cast<unsigned int>(reg->size);
-      new_params.push_back(llvm::Type::getIntNTy(context, size * 8));
-    }
-
-    // Create appropriate return type
-    std::vector<llvm::Type *> unit_types = type_prefix;
-
-    for (const auto &reg : mask.rets) {
-      unit_types.push_back(MostInnerSimpleType(reg->type));
-    }
-
-    // Create new function
-    auto impl_func_type = llvm::FunctionType::get(
-        llvm::StructType::get(context, unit_types),
-        new_params, func->isVarArg());
-
-    // TODO: Address space?
-    std::string impl_name = prefix + func->getName().str();
-
-    auto impl_func = llvm::Function::Create(
-        impl_func_type, func->getLinkage(),
-        impl_name, &module);
-
-    impl_func->setAttributes(func->getAttributes());
-
-    // Value to value mapping
-    llvm::ValueToValueMapTy v_map;
-    auto impl_func_arg_it = impl_func->arg_begin();
-    for (auto &arg : func->args()) {
-      v_map[&arg] = &(*impl_func_arg_it);
-      impl_func_arg_it->setName(arg.getName());
-      ++impl_func_arg_it;
-    }
-
-    // Now impl_func_arg_it points to the first of register arguments
-    for (auto reg : mask.params) {
-      impl_func_arg_it->setName(reg->name);
-      ++impl_func_arg_it;
-    }
-
-    // TODO: What is this for?
-    llvm::SmallVector<llvm::ReturnInst *, 8> returns;
-    llvm::CloneFunctionInto(impl_func, func, v_map, false, returns, "");
-
-    // Remove returned from Memory
-    auto mem = std::next(impl_func->arg_begin(), kMemoryPointerArgNum);
-    mem->removeAttr( llvm::Attribute::AttrKind::Returned );
-
-    // Remove bunch of other attributes from return type of function, that got there
-    // by opt probably
-    impl_func->removeAttribute(
-        llvm::AttributeLoc::ReturnIndex,
-        llvm::Attribute::AttrKind::NoAlias);
-    impl_func->removeAttribute(
-        llvm::AttributeLoc::ReturnIndex,
-        llvm::Attribute::AttrKind::NonNull);
-
-    return impl_func;
-  }
-
-  // For each register that is passed as separate argument do
-  //
-  // %RAX_ALLOCA = alloca i64
-  // store i64 %RAX, i64* %RAX_ALLOCA
-  //
-  // llvm opt passes should do what you would expect them
-  // and eliminate allocas altogether
-  std::vector<llvm::AllocaInst *> CreateAllocas(
-      llvm::Function &func, const TypeMask<Container> &mask) {
-
-    std::vector<llvm::AllocaInst *> allocas;
-
-    auto &entry_block = func.getEntryBlock();
-    llvm::IRBuilder<> ir(&entry_block, entry_block.begin());
-
-    auto arg_it = std::next(func.arg_begin(), type_prefix.size());
-
-    for (auto i = 0U; i < regs.size(); ++i) {
-      auto alloca_reg = ir.CreateAlloca(MostInnerSimpleType(regs[i]->type));
-
-      if (mask.param_type_mask[i]) {
-        CHECK(arg_it != func.arg_end()) << "Not enough parameters when creating alloca";
-        ir.CreateStore(&*arg_it, alloca_reg);
-        ++arg_it;
-      }
-
-      allocas.push_back(alloca_reg);
-    }
-
-    return allocas;
-  }
-
-  // Create Ret instruction for new function with proper
-  // aggregate type
-  void FoldRets(std::vector<llvm::AllocaInst *> &allocas,
-                llvm::Function &func, const TypeMask<Container> &mask) {
-    for (auto &bb : func) {
-      for (auto &inst : bb) {
-        if (auto ret = llvm::dyn_cast<llvm::ReturnInst>(&inst)) {
-          llvm::IRBuilder<> ir(ret);
-          FoldAggregate(
-              allocas, func.getReturnType(), ir,
-              func, mask);
-          ret->eraseFromParent();
-          break;
+        if (!bitcast) {
+          if (!llvm::isa<llvm::StoreInst>(user) && !llvm::isa<llvm::LoadInst>(user))
+            LOG(WARNING) << "User of alloca is neither load, store or bitcast";
+          continue;
         }
-      }
-    }
-  }
 
-  // Fold unfolded values back into one value to be returned
-  void FoldAggregate(std::vector<llvm::AllocaInst *> &allocas,
-                     llvm::Type* ret_ty,
-                     llvm::IRBuilder<> &ir,
-                     llvm::Function &func,
-                     const TypeMask<Container> &mask) {
+        std::cerr << std::endl;
+        auto dst_ty =
+          llvm::dyn_cast<llvm::PointerType>(bitcast->getDestTy())->getElementType();
 
-    llvm::Value *ret_val = llvm::UndefValue::get(ret_ty);
-    for (auto i = 0U; i < type_prefix.size(); ++i) {
-      ret_val = ir.CreateInsertValue(ret_val, NthArgument(&func, i), i);
-    }
-
-    for (uint64_t i = 0U, j = type_prefix.size(); i < mask.ret_type_mask.size(); ++i) {
-      if (mask.ret_type_mask[i]) {
-        auto load =
-          ir.CreateLoad(allocas[i], mask.rets[j - type_prefix.size()]->name + "_L");
-
-        ret_val = ir.CreateInsertValue(ret_val, load, j);
-        ++j;
-      }
-    }
-    ir.CreateRet(ret_val);
-  }
-
-  void ReplaceBitCast(llvm::Value* allocas,
-                      llvm::Value* instruction) {
-
-    for (const auto &inst : instruction->users()) {
-
-      if (auto bitcast = llvm::dyn_cast<llvm::BitCastInst>(inst)) {
-
-        llvm::IRBuilder<> ir(bitcast);
-        auto casted = ir.CreateBitCast(allocas, bitcast->getDestTy());
-        bitcast->replaceAllUsesWith(casted);
-
-      } else if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(inst)) {
-
-        llvm::IRBuilder<> ir(gep);
-        allocas = ir.CreateBitCast(allocas, gep->getType());
-        gep->replaceAllUsesWith(allocas);
-      }
-    }
-  }
-
-
-  void ReplaceGEPs(std::vector<llvm::AllocaInst *> &allocas,
-                   llvm::Function &func, const TypeMask<Container> &mask) {
-
-    auto state = NthArgument(&func, kStatePointerArgNum);
-    Constant C(context);
-
-    for (const auto &inst : state->users()) {
-
-      if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(inst)) {
-
-        llvm::APSInt offset(64, 0);
-        if (gep->accumulateConstantOffset(llvm::DataLayout(&module), offset)) {
-
-          for (auto i = 0U; i < allocas.size(); ++i) {
-
-            if (offset >= regs[i]->offset &&
-                offset < (regs[i]->offset + regs[i]->size)) {
-
-              int64_t diff = offset.getExtValue() - regs[i]->offset;
-              llvm::Value *ptr = allocas[i];
-
-              if (diff != 0) {
-                llvm::IRBuilder<> ir(gep);
-                ptr = ir.CreateGEP(
-                    ir.CreateBitCast(allocas[i], C.i8PtrTy()),
-                    C.i64(diff));
-              }
-              // There can be a bunch of bitcasts thanks to complexity of llvm type
-              // that represents state
-              auto result_ty = GetResultElementType(gep);
-              if (!result_ty->isIntegerTy()) {
-                ReplaceBitCast(ptr, gep);
-                continue;
-              }
-
-              llvm::IRBuilder<> ir(gep);
-              ptr = ir.CreateBitCast(ptr, gep->getType());
-              gep->replaceAllUsesWith(ptr);
-              break;
-            }
-          }
-        }
+        auto load = ir.CreateLoad(alloca);
+        auto desired = ir.CreateAlloca(bitcast->getDestTy());
+        ir.CreateStore(ir.CreateTruncOrBitCast(load, dst_ty), desired);
+        bitcast->replaceAllUsesWith(desired);
       }
     }
   }
@@ -1014,7 +750,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
       auto callee = sub_to_unfold.find(old_call->getCalledFunction())->second;
 
-      const auto &param_mask = callee.type_mask.param_type_mask;
+      const auto &param_mask = callee.t_mask.param_type_mask;
       for (auto i = 0U; i < param_mask.size(); ++i) {
 
         if (param_mask[i]) {
@@ -1029,7 +765,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
       auto mem = ir.CreateExtractValue(ret, kMemoryPointerArgNum);
       old_call->replaceAllUsesWith(mem);
 
-      const auto &ret_mask = callee.type_mask.ret_type_mask;
+      const auto &ret_mask = callee.t_mask.ret_type_mask;
       for (uint64_t i = 0U, j = type_prefix.size(); i < ret_mask.size(); ++i) {
 
         if (ret_mask[i]) {
@@ -1077,7 +813,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
       std::vector<llvm::Value *> args{call->arg_begin(), call->arg_end()};
 
-      const auto &params = it->second.type_mask.params;
+      const auto &params = it->second.t_mask.params;
 
       for (auto &reg : params) {
 
@@ -1089,7 +825,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
       }
 
       auto ret = ir.CreateCall(it->second.unfolded_func, args);
-      const auto &ret_mask = it->second.type_mask.ret_type_mask;
+      const auto &ret_mask = it->second.t_mask.ret_type_mask;
       for (uint64_t i = 0U, j = type_prefix.size(); i < ret_mask.size(); ++i) {
 
         if (ret_mask[i]) {
