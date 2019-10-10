@@ -88,4 +88,43 @@ void OptimizeModule(llvm::Module *module,
   }
 }
 
+// Optimize a normal module. This might not contain special functions
+// like `__remill_basic_block`.
+//
+// NOTE(pag): It is an error to specify `guide.eliminate_dead_stores` as
+//            `true`.
+void OptimizeBareModule(
+    llvm::Module *module, OptimizationGuide guide) {
+  CHECK(!guide.eliminate_dead_stores);
+  llvm::legacy::FunctionPassManager func_manager(module);
+  llvm::legacy::PassManager module_manager;
+
+  auto TLI = new llvm::TargetLibraryInfoImpl(
+      llvm::Triple(module->getTargetTriple()));
+
+  TLI->disableAllFunctions();  // `-fno-builtin`.
+
+  llvm::PassManagerBuilder builder;
+  builder.OptLevel = 3;
+  builder.SizeLevel = 0;
+  builder.Inliner = llvm::createFunctionInliningPass(250);
+  builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
+  builder.DisableUnrollLoops = false;  // Unroll loops!
+  builder.DisableUnitAtATime = false;
+  builder.RerollLoops = false;
+  builder.SLPVectorize = guide.slp_vectorize;
+  builder.LoopVectorize = guide.loop_vectorize;
+  IF_LLVM_GTE_36(builder.VerifyInput = guide.verify_input;)
+  IF_LLVM_GTE_36(builder.VerifyOutput = guide.verify_output;)
+
+  builder.populateFunctionPassManager(func_manager);
+  builder.populateModulePassManager(module_manager);
+  func_manager.doInitialization();
+  for (auto &func : *module) {
+    func_manager.run(func);
+  }
+  func_manager.doFinalization();
+  module_manager.run(*module);
+}
+
 }  // namespace remill

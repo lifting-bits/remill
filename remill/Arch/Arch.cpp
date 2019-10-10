@@ -28,6 +28,7 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
@@ -544,6 +545,167 @@ const Register *Register::EnclosingRegister(void) const {
     enclosing = enclosing->parent;
   }
   return enclosing;
+}
+
+namespace {
+
+// Create an array of index values to pass to a GetElementPtr instruction
+// that will let us locate a particular register.
+static std::pair<size_t, llvm::Type *>
+BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type,
+             llvm::Type * const goal_type, size_t offset,
+             const size_t goal_offset,
+             llvm::SmallVector<llvm::Value *, 8> &indexes_out) {
+  if (offset == goal_offset) {
+    if (type == goal_type) {
+      return {offset, goal_type};
+    }
+  }
+
+  CHECK_LE(offset, goal_offset);
+  CHECK_LE(goal_offset, (offset + dl.getTypeAllocSize(type)));
+
+  size_t index = 0;
+  const auto index_type = llvm::Type::getInt32Ty(type->getContext());
+
+  if (const auto struct_type = llvm::dyn_cast<llvm::StructType>(type)) {
+    for (const auto elem_type : struct_type->elements()) {
+      const auto elem_size = dl.getTypeAllocSize(elem_type);
+      if ((offset + elem_size) <= goal_offset) {
+        offset += elem_size;
+        index += 1;
+
+      } else {
+        CHECK_LE(offset, goal_offset);
+        CHECK_LE(goal_offset, (offset + elem_size));
+
+        indexes_out.push_back(llvm::ConstantInt::get(index_type, index, false));
+        const auto nearest = indexes_out.size();
+        const auto ret = BuildIndexes(dl, elem_type, goal_type, offset, goal_offset, indexes_out);
+        if (ret.second) {
+          return ret;
+        }
+
+        indexes_out.resize(nearest);
+        return {offset, elem_type};
+      }
+    }
+
+  } else if (auto seq_type = llvm::dyn_cast<llvm::SequentialType>(type)) {
+    const auto elem_type = seq_type->getElementType();
+    const auto elem_size = dl.getTypeAllocSize(elem_type);
+    const auto num_elems = seq_type->getNumElements();
+
+    while ((offset + elem_size) <= goal_offset && index < num_elems) {
+      offset += elem_size;
+      index += 1;
+    }
+
+    CHECK_LE(offset, goal_offset);
+    CHECK_LE(goal_offset, (offset + elem_size));
+
+    indexes_out.push_back(llvm::ConstantInt::get(index_type, index, false));
+    const auto nearest = indexes_out.size();
+    const auto ret = BuildIndexes(dl, elem_type, goal_type, offset, goal_offset, indexes_out);
+    if (ret.second) {
+      return ret;
+    }
+
+    indexes_out.resize(nearest);
+    return {offset, elem_type};
+
+  } else if (type->isIntegerTy() || type->isFloatingPointTy()) {
+
+    // We may need to bitcast.
+    if (offset == goal_offset) {
+      return {offset, type};
+    }
+  }
+
+  return {offset, nullptr};
+}
+
+}  // namespace
+
+// Generate a GEP that will let us load/store to this register, given
+// a `State *`.
+llvm::Instruction *Register::AddressOf(llvm::Value *state_ptr,
+                                       llvm::BasicBlock *add_to_end) const {
+  CHECK_EQ(&(type->getContext()), &(state_ptr->getContext()));
+  const auto state_ptr_type = llvm::dyn_cast<llvm::PointerType>(state_ptr->getType());
+  CHECK_NOTNULL(state_ptr_type);
+  const auto addr_space = state_ptr_type->getAddressSpace();
+
+  const auto state_type = llvm::dyn_cast<llvm::StructType>(state_ptr_type->getPointerElementType());
+  CHECK_NOTNULL(state_type);
+
+  const auto module = add_to_end->getParent()->getParent();
+  auto &context = module->getContext();
+  llvm::DataLayout dl(module);
+
+  const auto index_type = llvm::IntegerType::getInt32Ty(context);
+  llvm::SmallVector<llvm::Value *, 8> indexes;
+  indexes.push_back(llvm::ConstantInt::get(index_type, 0, false));
+
+  llvm::Type *found_type = nullptr;
+  size_t found_offset = 0;
+  std::tie(found_offset, found_type) = BuildIndexes(
+      dl, state_type, type, 0, offset, indexes);
+
+  CHECK(found_type != nullptr)
+      << "Unable to create index list for register '" << name << "'";
+
+  llvm::IRBuilder<> ir(add_to_end);
+  const auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(
+      ir.CreateInBoundsGEP(state_type, state_ptr, indexes));
+  CHECK_NOTNULL(gep);
+
+  llvm::APInt accumulated_offset(64, 0, false);
+  CHECK(gep->accumulateConstantOffset(dl, accumulated_offset));
+  CHECK_EQ(found_offset, accumulated_offset.getZExtValue());
+
+  const auto goal_ptr_type = llvm::PointerType::get(type, addr_space);
+
+  // Best case: we've found a value field in the structure that
+  // is located at the correct byte offset.
+  if (found_offset == offset) {
+    if (found_type == type) {
+      return gep;
+
+    } else {
+      return llvm::dyn_cast<llvm::Instruction>(ir.CreateBitCast(
+          gep, goal_ptr_type));
+    }
+  }
+
+  const auto diff = offset - found_offset;
+
+  // Next best case: the difference between what we want and what we have
+  // is a multiple of the size of the register, so we can cast to the
+  // `goal_ptr_type` and index.
+  if (((diff / size) * size) == diff) {
+    llvm::Value *elem_indexes[] = {
+        llvm::ConstantInt::get(index_type, diff / size, false)
+    };
+
+    const auto arr = ir.CreateBitCast(gep, goal_ptr_type);
+    return llvm::dyn_cast<llvm::Instruction>(
+         ir.CreateGEP(type, arr, elem_indexes));
+  }
+
+  // Worst case is that we have to fall down to byte-granularity
+  // pointer arithmetic.
+  const auto byte_type = llvm::IntegerType::getInt8Ty(context);
+  const auto arr = ir.CreateBitCast(
+      gep, llvm::PointerType::get(byte_type, addr_space));
+
+  llvm::Value *elem_indexes[] = {
+      llvm::ConstantInt::get(index_type, diff, false)
+  };
+
+  const auto byte_addr = ir.CreateGEP(byte_type, arr, elem_indexes);
+  return llvm::dyn_cast<llvm::Instruction>(
+      ir.CreateBitCast(byte_addr, goal_ptr_type));
 }
 
 // Converts an LLVM module object to have the right triple / data layout

@@ -32,6 +32,7 @@ namespace llvm {
 class Module;
 class BasicBlock;
 class Function;
+class Instruction;
 }  // namespace llvm.
 namespace remill {
 
@@ -50,13 +51,24 @@ struct Register {
   uint64_t offset;  // Byte offset in `State`.
   uint64_t size;  // Size of this register.
   uint64_t order;  // Order of appears in `__remill_basic_block`.
-  llvm::Type *type;  // LLVM type associated with the field in `State`.
+
+  // LLVM type associated with the field in `State`.
+  //
+  // TODO(pag): This is specific to whatever `llvm::LLVMContext` we
+  //            loaded the semantics with. We should change
+  //            `remill::GetHostArch` and `remill::GetTargetArch` and
+  //            others to take in an `llvm::LLVMContext`.
+  llvm::Type *type;
 
   // Returns the enclosing register of size AT LEAST `size`, or `nullptr`.
   const Register *EnclosingRegisterOfSize(uint64_t size) const;
 
   // Returns the largest enclosing register containing the current register.
   const Register *EnclosingRegister(void) const;
+
+  // Generate an instruction that will let us load/store to this register, given
+  // a `State *`.
+  llvm::Instruction *AddressOf(llvm::Value *state_ptr, llvm::BasicBlock *add_to_end) const;
 
  private:
   friend class Arch;
@@ -70,6 +82,8 @@ class Arch {
 
   // Factory method for loading the correct architecture class for a given
   // operating system and architecture class.
+  //
+  // TODO(pag): Refactor to also take in an `llvm::LLVMContext &`.
   static const Arch *Get(OSName os, ArchName arch_name);
 
   // Return information about the register at offset `offset` in the `State`
@@ -160,10 +174,14 @@ class Arch {
 
 // Get the (approximate) architecture of the running system. This may not
 // include all feature sets.
+//
+// TODO(pag): Refactor to take in an `llvm::LLVMContext &`.
 const Arch *GetHostArch(void);
 
 // Get the architecture of the modelled code. This is based on command-line
 // flags.
+//
+// TODO(pag): Refactor to take in an `llvm::LLVMContext &`.
 const Arch *GetTargetArch(void);
 
 }  // namespace remill
