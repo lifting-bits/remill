@@ -162,4 +162,22 @@ inline static void OptimizeModule(
   return OptimizeModule(module, trace_func_gen, guide);
 }
 
+// Optimize a normal module. This might not contain special functions
+// like `__remill_basic_block`.
+//
+// NOTE(pag): It is an error to specify `guide.eliminate_dead_stores` as
+//            `true`.
+void OptimizeBareModule(
+    llvm::Module *module, OptimizationGuide guide={});
+
+inline static void OptimizeBareModule(
+    const std::unique_ptr<llvm::Module> &module,
+    OptimizationGuide guide={}) {
+  std::vector<llvm::Function *> funcs;
+  for (auto &func : *module) {
+    funcs.push_back(&func);
+  }
+  return OptimizeBareModule(module.get(), guide);
+}
+
 }  // namespace remill
