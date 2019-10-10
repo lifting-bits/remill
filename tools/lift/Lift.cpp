@@ -175,7 +175,6 @@ static void MuteStateEscape(llvm::Module *module, const char *func_name) {
   }
 
   for (auto user : func->users()) {
-    LOG(ERROR) << remill::LLVMThingToString(user);
     if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(user)) {
       auto arg_op = call_inst->getArgOperand(remill::kStatePointerArgNum);
       call_inst->setArgOperand(
