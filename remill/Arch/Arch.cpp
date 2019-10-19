@@ -77,18 +77,27 @@ static unsigned AddressSize(ArchName arch_name) {
   return 0;
 }
 
+static uint64_t ArchKey(llvm::LLVMContext &context_, OSName os_name_,
+                        ArchName arch_name_) {
+  auto context = reinterpret_cast<uintptr_t>(&context_);
+  auto os_name = static_cast<uint64_t>(os_name_);
+  auto arch_name = static_cast<uint64_t>(arch_name_);
+  return (os_name << 48u) ^ (arch_name << 56u) ^ static_cast<uint64_t>(context);
+}
+
 // Used for static storage duration caches of `Arch` specializations. The
 // `std::unique_ptr` makes sure that the `Arch` objects are freed on `exit`
 // from the program.
 using ArchPtr = std::unique_ptr<const Arch>;
-using ArchCache = std::unordered_map<uint32_t, ArchPtr>;
+using ArchCache = std::unordered_map<uint64_t, ArchPtr>;
 
 }  // namespace
 
-Arch::Arch(OSName os_name_, ArchName arch_name_)
+Arch::Arch(llvm::LLVMContext &context_, OSName os_name_, ArchName arch_name_)
     : os_name(os_name_),
       arch_name(arch_name_),
-      address_size(AddressSize(arch_name_)) {}
+      address_size(AddressSize(arch_name_)),
+      context(&context_) {}
 
 Arch::~Arch(void) {}
 
@@ -130,103 +139,76 @@ llvm::Triple Arch::BasicTriple(void) const {
   return triple;
 }
 
-const Arch *Arch::Get(OSName os_name_, ArchName arch_name_) {
+const Arch *Arch::Get(
+    llvm::LLVMContext &context_, OSName os_name_, ArchName arch_name_) {
+
+  static ArchCache gArchCache;
+  auto &arch = gArchCache[ArchKey(context_, os_name_, arch_name_)];
+  if (arch) {
+    return arch.get();
+  }
+
   switch (arch_name_) {
     case kArchInvalid:
       LOG(FATAL) << "Unrecognized architecture.";
       return nullptr;
 
     case kArchAArch64LittleEndian: {
-      static ArchCache gArchAArch64LE;
-      auto &arch = gArchAArch64LE[os_name_];
-      if (!arch) {
-        DLOG(INFO) << "Using architecture: AArch64, feature set: Little Endian";
-        arch = ArchPtr(GetAArch64(os_name_, arch_name_));
-      }
-      return arch.get();
+      DLOG(INFO) << "Using architecture: AArch64, feature set: Little Endian";
+      arch.reset(GetAArch64(context_, os_name_, arch_name_));
+      break;
     }
 
     case kArchX86: {
-      static ArchCache gArchX86;
-      auto &arch = gArchX86[os_name_];
-      if (!arch) {
-        DLOG(INFO) << "Using architecture: X86";
-        arch = ArchPtr(GetX86(os_name_, arch_name_));
-      }
-      return arch.get();
+      DLOG(INFO) << "Using architecture: X86";
+      arch.reset(GetX86(context_, os_name_, arch_name_));
+      break;
     }
 
     case kArchMips32: {
-      static ArchCache gArchMips;
-      auto &arch = gArchMips[os_name_];
-      if (!arch) {
-        DLOG(INFO) << "Using architecture: 32-bit MIPS";
-        arch = ArchPtr(GetMips(os_name_, arch_name_));
-      }
-      return arch.get();
+      DLOG(INFO) << "Using architecture: 32-bit MIPS";
+      arch.reset(GetMips(context_, os_name_, arch_name_));
+      break;
     }
 
     case kArchMips64: {
-      static ArchCache gArchMips64;
-      auto &arch = gArchMips64[os_name_];
-      if (!arch) {
-        DLOG(INFO) << "Using architecture: 64-bit MIPS";
-        arch = ArchPtr(GetMips(os_name_, arch_name_));
-      }
-      return arch.get();
+      DLOG(INFO) << "Using architecture: 64-bit MIPS";
+      arch.reset(GetMips(context_, os_name_, arch_name_));
+      break;
     }
 
     case kArchX86_AVX: {
-      static ArchCache gArchX86_AVX;
-      auto &arch = gArchX86_AVX[os_name_];
-      if (!arch) {
-        DLOG(INFO) << "Using architecture: X86, feature set: AVX";
-        arch = ArchPtr(GetX86(os_name_, arch_name_));
-      }
-      return arch.get();
+      DLOG(INFO) << "Using architecture: X86, feature set: AVX";
+      arch.reset(GetX86(context_, os_name_, arch_name_));
+      break;
     }
 
     case kArchX86_AVX512: {
-      static ArchCache gArchX86_AVX512;
-      auto &arch = gArchX86_AVX512[os_name_];
-      if (!arch) {
-        DLOG(INFO) << "Using architecture: X86, feature set: AVX512";
-        arch = ArchPtr(GetX86(os_name_, arch_name_));
-      }
-      return arch.get();
+      DLOG(INFO) << "Using architecture: X86, feature set: AVX512";
+      arch.reset(GetX86(context_, os_name_, arch_name_));
+      break;
     }
 
     case kArchAMD64: {
-      static ArchCache gArchAMD64;
-      auto &arch = gArchAMD64[os_name_];
-      if (!arch) {
-        DLOG(INFO) << "Using architecture: AMD64";
-        arch = ArchPtr(GetX86(os_name_, arch_name_));
-      }
-      return arch.get();
+      DLOG(INFO) << "Using architecture: AMD64";
+      arch.reset(GetX86(context_, os_name_, arch_name_));
+      break;
     }
 
     case kArchAMD64_AVX: {
-      static ArchCache gArchAMD64_AVX;
-      auto &arch = gArchAMD64_AVX[os_name_];
-      if (!arch) {
-        DLOG(INFO) << "Using architecture: AMD64, feature set: AVX";
-        arch = ArchPtr(GetX86(os_name_, arch_name_));
-      }
-      return arch.get();
+      DLOG(INFO) << "Using architecture: AMD64, feature set: AVX";
+      arch.reset(GetX86(context_, os_name_, arch_name_));
+      break;
     }
 
     case kArchAMD64_AVX512: {
-      static ArchCache gArchAMD64_AVX512;
-      auto &arch = gArchAMD64_AVX512[os_name_];
-      if (!arch) {
-        DLOG(INFO) << "Using architecture: AMD64, feature set: AVX512";
-        arch = ArchPtr(GetX86(os_name_, arch_name_));
-      }
-      return arch.get();
+      DLOG(INFO) << "Using architecture: AMD64, feature set: AVX512";
+      arch.reset(GetX86(context_, os_name_, arch_name_));
+      break;
     }
   }
-  return nullptr;
+
+  return arch.get();
 }
 
 // Return information about the register at offset `offset` in the `State`
@@ -249,24 +231,27 @@ const Register *Arch::RegisterByName(const std::string &name) const {
   }
 }
 
-const Arch *Arch::GetMips(OSName, ArchName) {
+const Arch *Arch::GetMips(llvm::LLVMContext &, OSName, ArchName) {
   return nullptr;
 }
 
-const Arch *GetHostArch(void) {
-  static const Arch *gHostArch = nullptr;
-  if (!gHostArch) {
-    gHostArch = Arch::Get(GetOSName(REMILL_OS), GetArchName(REMILL_ARCH));
+const Arch *GetHostArch(llvm::LLVMContext &context) {
+  static std::unordered_map<llvm::LLVMContext *, const Arch *> gHostArches;
+  auto &arch = gHostArches[&context];
+  if (!arch) {
+    arch = Arch::Get(
+        context, GetOSName(REMILL_OS), GetArchName(REMILL_ARCH));
   }
-  return gHostArch;
+  return arch;
 }
 
-const Arch *GetTargetArch(void) {
-  static const Arch *gTargetArch = nullptr;
-  if (!gTargetArch) {
-    gTargetArch = Arch::Get(GetOSName(FLAGS_os), GetArchName(FLAGS_arch));
+const Arch *GetTargetArch(llvm::LLVMContext &context) {
+  static std::unordered_map<llvm::LLVMContext *, const Arch *> gTargetArches;
+  auto &arch = gTargetArches[&context];
+  if (!arch) {
+    arch = Arch::Get(context, GetOSName(FLAGS_os), GetArchName(FLAGS_arch));
   }
-  return gTargetArch;
+  return arch;
 }
 
 bool Arch::IsX86(void) const {
@@ -745,6 +730,7 @@ void Arch::PrepareModuleDataLayout(llvm::Module *mod) const {
 }
 
 void Arch::PrepareModule(llvm::Module *mod) const {
+  CHECK_EQ(&(mod->getContext()), context);
   PrepareModuleRemillFunctions(mod);
   PrepareModuleDataLayout(mod);
   if (registers.empty()) {

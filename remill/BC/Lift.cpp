@@ -712,10 +712,21 @@ llvm::Function *TraceLifter::GetLiftedTraceDefinition(uint64_t addr) {
     return func;
   }
 
-  CHECK(&(func->getContext()) == &context);
+  CHECK_EQ(&(func->getContext()), &context);
 
-  auto extern_func = DeclareLiftedFunction(module, func->getName().str());
-  if (extern_func->isDeclaration()) {
+  auto func_type = llvm::dyn_cast<llvm::FunctionType>(
+      RecontextualizeType(func->getFunctionType(), context));
+
+  // Handle the different module situation by declaring the trace in
+  // this module to be external, with the idea that it will link to
+  // another module.
+  auto extern_func = module->getFunction(func->getName());
+  if (!extern_func || extern_func->getFunctionType() != func_type) {
+    extern_func = llvm::Function::Create(
+        func_type, llvm::GlobalValue::ExternalLinkage, func->getName(),
+        module);
+
+  } else if (extern_func->isDeclaration()) {
     extern_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
   }
 
@@ -809,6 +820,23 @@ bool TraceLifter::Lift(uint64_t addr_,
 
   TraceLifterState state(arch, module);
 
+  // Get a trace head that the manager knows about, or that we
+  // will eventually tell the trace manager about.
+  auto get_trace_decl = [=, &state] (uint64_t addr) -> llvm::Function *{
+    if (auto trace = GetLiftedTraceDeclaration(addr)) {
+      return trace;
+    }
+
+    if (state.trace_work_list.count(addr)) {
+      const auto target_trace_name =
+          manager.TraceName(addr);
+      return DeclareLiftedFunction(
+          module, target_trace_name);
+    }
+
+    return nullptr;
+  };
+
   state.trace_work_list.insert(addr);
   while (!state.trace_work_list.empty()) {
     const auto trace_addr = state.PopTraceAddress();
@@ -822,10 +850,10 @@ bool TraceLifter::Lift(uint64_t addr_,
     DLOG(INFO)
         << "Lifting trace at address " << std::hex << trace_addr << std::dec;
 
-    state.func = GetLiftedTraceDeclaration(trace_addr);
+    state.func = get_trace_decl(trace_addr);
     state.blocks.clear();
 
-    if (!state.func) {
+    if (!state.func || !state.func->isDeclaration()) {
       const auto trace_name = manager.TraceName(trace_addr);
       state.func = DeclareLiftedFunction(module, trace_name);
     }
@@ -841,8 +869,6 @@ bool TraceLifter::Lift(uint64_t addr_,
 
     CHECK(state.inst_work_list.empty());
     state.inst_work_list.insert(trace_addr);
-
-    llvm::Function *target_trace = nullptr;
 
     // Decode instructions.
     while (!state.inst_work_list.empty()) {
@@ -860,7 +886,7 @@ bool TraceLifter::Lift(uint64_t addr_,
       // trace head, and if so, tail-call into that trace directly without
       // decoding or lifting the instruction.
       if (inst_addr != trace_addr) {
-        if (auto inst_as_trace = GetLiftedTraceDeclaration(inst_addr)) {
+        if (auto inst_as_trace = get_trace_decl(inst_addr)) {
           AddTerminatingTailCall(state.block, inst_as_trace);
           continue;
         }
@@ -923,19 +949,114 @@ bool TraceLifter::Lift(uint64_t addr_,
                                    state.block);
           break;
 
-        case Instruction::kCategoryIndirectJump:
-          // TODO(pag): Handle target devirtualization.
+        case Instruction::kCategoryIndirectJump: {
+
+          // The trace manager might know about the targets of things like
+          // jump tables, so we will let it tell us about those possibilities.
+          std::unordered_map<uint64_t, llvm::BasicBlock *> devirt_targets;
+          manager.ForEachDevirtualizedTarget(
+              state.inst,
+              [&] (uint64_t target_addr, DevirtualizedTargetKind target_kind) {
+                if (target_kind == DevirtualizedTargetKind::kTraceHead) {
+                  auto target_block = llvm::BasicBlock::Create(
+                      context, "", state.func);
+                  devirt_targets[target_addr] = target_block;
+
+                  // Always add to the work list. This will cause us to lift
+                  // if we haven't, and guarantee that `get_trace_decl` returns
+                  // something.
+                  state.trace_work_list.insert(target_addr);
+                  auto target_trace = get_trace_decl(target_addr);
+                  AddTerminatingTailCall(target_block, target_trace);
+
+                } else {
+                  devirt_targets[target_addr] = state.GetOrCreateBlock(target_addr);
+                  state.inst_work_list.insert(target_addr);
+                }
+              });
+
+          if (devirt_targets.empty()) {
+            AddTerminatingTailCall(state.block, intrinsics->jump);
+            break;
+          }
+
+          auto default_case = llvm::BasicBlock::Create(
+              context, "", state.func);
           AddTerminatingTailCall(state.block, intrinsics->jump);
+
+          auto pc = LoadProgramCounter(state.block);
+          auto pc_type = pc->getType();
+          auto dispatcher = llvm::SwitchInst::Create(
+              pc, default_case, devirt_targets.size(), state.block);
+          for (auto devirt_target : devirt_targets) {
+            dispatcher->addCase(
+                llvm::dyn_cast<llvm::ConstantInt>(
+                    llvm::ConstantInt::get(
+                        pc_type, devirt_target.first, false)),
+                devirt_target.second);
+          }
           break;
+        }
 
         case Instruction::kCategoryAsyncHyperCall:
-          target_trace = intrinsics->async_hyper_call;
+          AddCall(state.block, intrinsics->async_hyper_call);
           goto check_call_return;
 
-        case Instruction::kCategoryIndirectFunctionCall:
-          // TODO(pag): Handle target devirtualization.
-          target_trace = intrinsics->function_call;
-          goto check_call_return;
+        case Instruction::kCategoryIndirectFunctionCall: {
+          auto fall_through_block = state.GetOrCreateNextBlock();
+
+          // The trace manager might know about the targets of things like
+          // virtual tables, so we will let it tell us about those possibilities.
+          std::unordered_map<uint64_t, llvm::BasicBlock *> devirt_targets;
+          manager.ForEachDevirtualizedTarget(
+              state.inst,
+              [&](uint64_t target_addr, DevirtualizedTargetKind target_kind) {
+                if (target_kind == DevirtualizedTargetKind::kTraceLocal) {
+                  LOG(WARNING)
+                      << "Ignoring trace-local target in devirtualizable call";
+                  return;
+                }
+
+                auto target_block = llvm::BasicBlock::Create(
+                    context, "", state.func);
+                devirt_targets[target_addr] = target_block;
+
+                // Always add to the work list. This will cause us to lift
+                // if we haven't, and guarantee that `get_trace_decl` returns
+                // something.
+                state.trace_work_list.insert(target_addr);
+                auto target_trace = get_trace_decl(target_addr);
+                AddCall(target_block, target_trace);
+
+                llvm::BranchInst::Create(fall_through_block, target_block);
+              });
+
+          if (devirt_targets.empty()) {
+            AddCall(state.block, intrinsics->function_call);
+            llvm::BranchInst::Create(fall_through_block, state.block);
+            continue;
+          }
+
+          auto default_case = llvm::BasicBlock::Create(
+              context, "", state.func);
+          AddCall(default_case, intrinsics->function_call);
+          llvm::BranchInst::Create(fall_through_block, default_case);
+
+          auto pc = LoadProgramCounter(state.block);
+          auto pc_type = pc->getType();
+          auto dispatcher = llvm::SwitchInst::Create(
+              pc, default_case, devirt_targets.size(), state.block);
+          for (auto devirt_target : devirt_targets) {
+            dispatcher->addCase(
+                llvm::dyn_cast<llvm::ConstantInt>(
+                    llvm::ConstantInt::get(
+                        pc_type, devirt_target.first, false)),
+                devirt_target.second);
+          }
+
+          state.block = fall_through_block;
+          continue;
+        }
 
         // In the case of a direct function call, we try to handle the
         // pattern of a call to the next PC as a way of getting access to
@@ -945,24 +1066,16 @@ bool TraceLifter::Lift(uint64_t addr_,
         // already told us that the next PC is a trace head (and we'll pick
         // that up when trying to lift it), or we'll just have a really big
         // trace for this function without sacrificing correctness.
-        case Instruction::kCategoryDirectFunctionCall:
-          if (state.inst.next_pc == state.inst.branch_taken_pc) {
-            llvm::BranchInst::Create(state.GetOrCreateNextBlock(),
-                                     state.block);
-            continue;
-          }
-
-          target_trace = GetLiftedTraceDeclaration(
-              state.inst.branch_taken_pc);
-
-          if (!target_trace) {
+        case Instruction::kCategoryDirectFunctionCall: {
+          if (state.inst.next_pc != state.inst.branch_taken_pc) {
             state.trace_work_list.insert(state.inst.branch_taken_pc);
-            const auto target_trace_name = manager.TraceName(
-                state.inst.branch_taken_pc);
-            target_trace = DeclareLiftedFunction(module, target_trace_name);
+            auto target_trace = get_trace_decl(state.inst.branch_taken_pc);
+            AddCall(state.block, target_trace);
           }
-
-          goto check_call_return;
+          llvm::BranchInst::Create(state.GetOrCreateNextBlock(),
+                                   state.block);
+          continue;
+        }
 
         // Lift an async hyper call to check if it should do the hypercall.
         // If so, it will jump to the `do_hyper_call` block, otherwise it will
@@ -979,12 +1092,11 @@ bool TraceLifter::Lift(uint64_t addr_,
               LoadBranchTaken(state.block),
               state.block);
           state.block = do_hyper_call;
-          target_trace = intrinsics->async_hyper_call;
+          AddCall(state.block, intrinsics->async_hyper_call);
           goto check_call_return;
         }
 
         check_call_return: {
-          AddCall(state.block, target_trace);
 
           auto pc = LoadProgramCounter(state.block);
           auto ret_pc = llvm::ConstantInt::get(

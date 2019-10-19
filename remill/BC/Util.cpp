@@ -52,6 +52,7 @@
 #include "remill/BC/Compat/IRReader.h"
 #include "remill/BC/Compat/ToolOutputFile.h"
 #include "remill/BC/Compat/Verifier.h"
+#include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Util.h"
 #include "remill/BC/Version.h"
 #include "remill/OS/FileSystem.h"
@@ -255,26 +256,26 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *module,
 
 // Loads the semantics for the `arch`-specific machine, i.e. the machine of the
 // code that we want to lift.
-llvm::Module *LoadArchSemantics(const Arch *arch, llvm::LLVMContext *context) {
+llvm::Module *LoadArchSemantics(const Arch *arch) {
   auto arch_name = GetArchName(arch->arch_name);
   auto path = FindSemanticsBitcodeFile(arch_name);
   LOG(INFO)
       << "Loading " << arch_name << " semantics from file " << path;
-  auto module = LoadModuleFromFile(context, path);
+  auto module = LoadModuleFromFile(arch->context, path);
   arch->PrepareModule(module);
   return module;
 }
 
 // Loads the semantics for the "host" machine, i.e. the machine that this
 // remill is compiled on.
-llvm::Module *LoadHostSemantics(llvm::LLVMContext *context) {
-  return LoadArchSemantics(GetHostArch(), context);
+llvm::Module *LoadHostSemantics(llvm::LLVMContext &context) {
+  return LoadArchSemantics(GetHostArch(context));
 }
 
 // Loads the semantics for the "target" machine, i.e. the machine of the
 // code that we want to lift.
-llvm::Module *LoadTargetSemantics(llvm::LLVMContext *context) {
-  return LoadArchSemantics(GetTargetArch(), context);
+llvm::Module *LoadTargetSemantics(llvm::LLVMContext &context) {
+  return LoadArchSemantics(GetTargetArch(context));
 }
 
 // Try to verify a module.
@@ -547,11 +548,10 @@ void ForEachISel(llvm::Module *module, ISelCallback callback) {
 // Declare a lifted function of the correct type.
 llvm::Function *DeclareLiftedFunction(llvm::Module *module,
                                       const std::string &name) {
-  auto bb = BasicBlockFunction(module);
-  auto func_type = bb->getFunctionType();
-
   auto func = module->getFunction(name);
   if (!func) {
+    auto bb = BasicBlockFunction(module);
+    auto func_type = bb->getFunctionType();
     func = llvm::Function::Create(
         func_type, llvm::GlobalValue::InternalLinkage, name, module);
     InitFunctionAttributes(func);
@@ -897,6 +897,8 @@ static void ClearMetaData(T *value) {
 }  // namespace
 
 // Move a function from one module into another module.
+//
+// TODO(pag): Make this work across distinc `llvm::LLVMContext`s.
 void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
   CHECK(&(func->getContext()) == &(dest_module->getContext()))
       << "Cannot move function across two independent LLVM contexts.";
@@ -958,6 +960,482 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
         }
       }
     }
+  }
+}
+
+namespace {
+
+static llvm::Type *RecontextualizeType(
+    llvm::Type *type,
+    llvm::LLVMContext &context,
+    std::unordered_map<llvm::Type *, llvm::Type *> &cache) {
+  auto &cached = cache[type];
+  if (cached) {
+    return cached;
+  }
+
+  switch (type->getTypeID()) {
+    case llvm::Type::VoidTyID:
+      return llvm::Type::getVoidTy(context);
+    case llvm::Type::HalfTyID:
+      return llvm::Type::getHalfTy(context);
+    case llvm::Type::FloatTyID:
+      return llvm::Type::getFloatTy(context);
+    case llvm::Type::DoubleTyID:
+      return llvm::Type::getDoubleTy(context);
+    case llvm::Type::X86_FP80TyID:
+      return llvm::Type::getX86_FP80Ty(context);
+    case llvm::Type::FP128TyID:
+      return llvm::Type::getFP128Ty(context);
+    case llvm::Type::PPC_FP128TyID:
+      return llvm::Type::getPPC_FP128Ty(context);
+    case llvm::Type::LabelTyID:
+      return llvm::Type::getLabelTy(context);
+    case llvm::Type::MetadataTyID:
+      return llvm::Type::getMetadataTy(context);
+    case llvm::Type::X86_MMXTyID:
+      return llvm::Type::getX86_MMXTy(context);
+    case llvm::Type::TokenTyID:
+      return llvm::Type::getTokenTy(context);
+    case llvm::Type::IntegerTyID: {
+      auto int_type = llvm::dyn_cast<llvm::IntegerType>(type);
+      cached = llvm::IntegerType::get(context, int_type->getScalarSizeInBits());
+      break;
+    }
+    case llvm::Type::FunctionTyID: {
+      auto func_type = llvm::dyn_cast<llvm::FunctionType>(type);
+      auto ret_type = RecontextualizeType(
+          func_type->getReturnType(), context, cache);
+      llvm::SmallVector<llvm::Type *, 4> param_types;
+      for (auto param_type : func_type->params()) {
+        param_types.push_back(
+            RecontextualizeType(param_type, context, cache));
+      }
+      cached = llvm::FunctionType::get(ret_type, param_types, func_type->isVarArg());
+      break;
+    }
+
+    case llvm::Type::StructTyID: {
+      auto struct_type = llvm::dyn_cast<llvm::StructType>(type);
+      auto new_struct_type = llvm::StructType::create(
+          context, struct_type->getName());
+      cached = new_struct_type;
+
+      llvm::SmallVector<llvm::Type *, 4> elem_types;
+      for (auto elem_type : struct_type->elements()) {
+        elem_types.push_back(RecontextualizeType(elem_type, context, cache));
+      }
+
+      if (elem_types.size()) {
+        new_struct_type->setBody(elem_types, struct_type->isPacked());
+      }
+
+      return new_struct_type;
+    }
+
+    case llvm::Type::ArrayTyID: {
+      auto arr_type = llvm::dyn_cast<llvm::ArrayType>(type);
+      auto elem_type = arr_type->getElementType();
+      cached = llvm::ArrayType::get(
+          RecontextualizeType(elem_type, context, cache),
+          arr_type->getNumElements());
+      break;
+    }
+
+    case llvm::Type::PointerTyID: {
+      auto ptr_type = llvm::dyn_cast<llvm::PointerType>(type);
+      auto elem_type = ptr_type->getElementType();
+      cached = llvm::PointerType::get(
+          RecontextualizeType(elem_type, context, cache),
+          ptr_type->getAddressSpace());
+      break;
+    }
+
+    case llvm::Type::VectorTyID: {
+      auto arr_type = llvm::dyn_cast<llvm::VectorType>(type);
+      auto elem_type = arr_type->getElementType();
+      cached = llvm::VectorType::get(
+          RecontextualizeType(elem_type, context, cache),
+          arr_type->getNumElements());
+      break;
+    }
+
+    default:
+      LOG(FATAL)
+          << "Unable to recontextualize type " << LLVMThingToString(type);
+      return nullptr;
+  }
+
+  return cached;
+}
+
+}  // namespace
+
+// Get an instance of `type` that belongs to `context`.
+llvm::Type *RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context) {
+  if (&(type->getContext()) == &context) {
+    return type;
+  }
+
+  std::unordered_map<llvm::Type *, llvm::Type *> cache;
+  return RecontextualizeType(type, context, cache);
+}
+
+// Produce a sequence of instructions that will load values from
+// memory, building up the correct type. This will invoke the various
+// memory read intrinsics in order to match the right type, or
+// recursively build up the right type.
+llvm::Value *LoadFromMemory(
+    const IntrinsicTable &intrinsics,
+    llvm::BasicBlock *block,
+    llvm::Type *type,
+    llvm::Value *mem_ptr,
+    llvm::Value *addr) {
+
+  const auto initial_addr = addr;
+  auto module = intrinsics.error->getParent();
+  auto &context = module->getContext();
+  llvm::DataLayout dl(module);
+  llvm::Value *args_2[2] = {mem_ptr, addr};
+  auto i32_type = llvm::Type::getInt32Ty(context);
+
+  llvm::IRBuilder<> ir(block);
+
+  switch (type->getTypeID()) {
+    case llvm::Type::HalfTyID:
+      return ir.CreateBitCast(
+          ir.CreateCall(intrinsics.read_memory_16, args_2),
+          type);
+
+    case llvm::Type::FloatTyID:
+      return ir.CreateCall(intrinsics.read_memory_f32, args_2);
+
+    case llvm::Type::DoubleTyID:
+      return ir.CreateCall(intrinsics.read_memory_f64, args_2);
+
+    case llvm::Type::X86_FP80TyID:
+      return ir.CreateFPExt(
+          ir.CreateCall(intrinsics.read_memory_f80, args_2),
+          type);
+
+    case llvm::Type::X86_MMXTyID:
+      return ir.CreateBitCast(
+          ir.CreateCall(intrinsics.read_memory_64, args_2),
+          type);
+
+    case llvm::Type::IntegerTyID:
+      switch (auto size = dl.getTypeAllocSize(type)) {
+        case 1: return ir.CreateCall(intrinsics.read_memory_8, args_2);
+        case 2: return ir.CreateCall(intrinsics.read_memory_16, args_2);
+        case 4: return ir.CreateCall(intrinsics.read_memory_32, args_2);
+        case 8: return ir.CreateCall(intrinsics.read_memory_64, args_2);
+        default: break;
+      }
+      [[clang::fallthrough]];
+
+    case llvm::Type::FP128TyID:
+    case llvm::Type::PPC_FP128TyID: {
+      const auto size = dl.getTypeAllocSize(type);
+      auto res = ir.CreateAlloca(type);
+      auto i8_type = llvm::Type::getInt8Ty(context);
+      auto byte_array = ir.CreateBitCast(
+          res, llvm::PointerType::get(i8_type, 0));
+      llvm::Value *gep_indices[2] = {
+          llvm::ConstantInt::get(i32_type, 0, false),
+          nullptr
+      };
+
+      // Load one byte at a time from memory, and store it into
+      // `res`.
+      for (auto i = 0U; i < size; ++i) {
+        args_2[1] = ir.CreateAdd(
+            addr, llvm::ConstantInt::get(addr->getType(), i, false));
+        auto byte = ir.CreateCall(intrinsics.read_memory_8, args_2);
+        gep_indices[1] = llvm::ConstantInt::get(i32_type, i, false);
+        auto byte_ptr = ir.CreateInBoundsGEP(type, byte_array, gep_indices);
+        ir.CreateStore(byte, byte_ptr);
+      }
+
+      return ir.CreateLoad(res);
+    }
+
+    // Building up a structure requires us to start with an undef value,
+    // then inject each element value one at a time.
+    case llvm::Type::StructTyID: {
+      auto struct_type = llvm::dyn_cast<llvm::StructType>(type);
+      llvm::Value *val = llvm::UndefValue::get(type);
+      uint64_t offset = 0;
+      unsigned index = 0;
+      for (auto elem_type : struct_type->elements()) {
+        addr = ir.CreateAdd(
+            initial_addr,
+            llvm::ConstantInt::get(addr->getType(), offset, false));
+        auto elem_val = LoadFromMemory(
+            intrinsics, block, elem_type, mem_ptr, addr);
+        ir.SetInsertPoint(block);
+        unsigned indexes[] = {index};
+        val = ir.CreateInsertValue(val, elem_val, indexes);
+        offset += dl.getTypeAllocSize(elem_type);
+        index += 1;
+      }
+      return val;
+    }
+
+    // Build up the array in the same was as we do with structures.
+    case llvm::Type::ArrayTyID: {
+      auto arr_type = llvm::dyn_cast<llvm::ArrayType>(type);
+      const auto num_elems = arr_type->getNumElements();
+      const auto elem_type = arr_type->getElementType();
+      const auto elem_size = dl.getTypeAllocSize(elem_type);
+      llvm::Value *val = llvm::UndefValue::get(type);
+
+      for (uint64_t index = 0, offset = 0;
+           index < num_elems;
+           ++index, offset += elem_size) {
+        addr = ir.CreateAdd(
+            initial_addr,
+            llvm::ConstantInt::get(addr->getType(), offset, false));
+        unsigned indexes[] = {static_cast<unsigned>(index)};
+        auto elem_val = LoadFromMemory(
+            intrinsics, block, elem_type, mem_ptr, addr);
+        ir.SetInsertPoint(block);
+        val = ir.CreateInsertValue(val, elem_val, indexes);
+      }
+      return val;
+    }
+
+    // Read pointers from memory by loading the correct sized integer,
+    // then casting it to a pointer.
+    case llvm::Type::PointerTyID: {
+      auto ptr_type = llvm::dyn_cast<llvm::PointerType>(type);
+      auto size_bits = dl.getTypeAllocSizeInBits(ptr_type);
+      auto intptr_type = llvm::IntegerType::get(
+          context, static_cast<unsigned>(size_bits));
+      auto addr_val = LoadFromMemory(
+          intrinsics, block, intptr_type, mem_ptr, addr);
+      ir.SetInsertPoint(block);
+      return ir.CreateIntToPtr(addr_val, ptr_type);
+    }
+
+    // Build up the vector in the nearly the same was as we do with arrays.
+    case llvm::Type::VectorTyID:  {
+      auto vec_type = llvm::dyn_cast<llvm::VectorType>(type);
+      const auto num_elems = vec_type->getNumElements();
+      const auto elem_type = vec_type->getElementType();
+      const auto elem_size = dl.getTypeAllocSize(elem_type);
+      llvm::Value *val = llvm::UndefValue::get(type);
+
+      for (uint64_t index = 0, offset = 0;
+           index < num_elems;
+           ++index, offset += elem_size) {
+        addr = ir.CreateAdd(
+            initial_addr,
+            llvm::ConstantInt::get(addr->getType(), offset, false));
+        auto elem_val = LoadFromMemory(
+            intrinsics, block, elem_type, mem_ptr, addr);
+        ir.SetInsertPoint(block);
+        val = ir.CreateInsertElement(
+            val, elem_val, static_cast<unsigned>(index));
+      }
+      return val;
+    }
+
+    case llvm::Type::VoidTyID:
+    case llvm::Type::LabelTyID:
+    case llvm::Type::MetadataTyID:
+    case llvm::Type::TokenTyID:
+    case llvm::Type::FunctionTyID:
+    default:
+      LOG(FATAL)
+          << "Unable to produce IR sequence to load type "
+          << remill::LLVMThingToString(type) << " from memory";
+      return nullptr;
+  }
+}
+
+// Produce a sequence of instructions that will store a value to
+// memory. This will invoke the various memory write intrinsics
+// in order to match the right type, or recursively destructure
+// the type into components which can be written to memory.
+//
+// Returns the new value of the memory pointer.
+llvm::Value *StoreToMemory(
+    const IntrinsicTable &intrinsics,
+    llvm::BasicBlock *block,
+    llvm::Value *val_to_store,
+    llvm::Value *mem_ptr,
+    llvm::Value *addr) {
+
+  const auto initial_addr = addr;
+  auto module = intrinsics.error->getParent();
+  auto &context = module->getContext();
+  llvm::DataLayout dl(module);
+  llvm::Value *args_3[3] = {mem_ptr, addr, val_to_store};
+  auto i32_type = llvm::Type::getInt32Ty(context);
+
+  llvm::IRBuilder<> ir(block);
+
+  auto type = val_to_store->getType();
+  switch (type->getTypeID()) {
+    case llvm::Type::HalfTyID: {
+      auto i16_type = llvm::Type::getInt32Ty(context);
+      args_3[2] = ir.CreateBitCast(val_to_store, i16_type);
+      return ir.CreateCall(intrinsics.write_memory_16, args_3);
+    }
+
+    case llvm::Type::FloatTyID:
+      return ir.CreateCall(intrinsics.write_memory_f32, args_3);
+
+    case llvm::Type::DoubleTyID:
+      return ir.CreateCall(intrinsics.write_memory_f64, args_3);
+
+    case llvm::Type::X86_FP80TyID: {
+      auto double_type = llvm::Type::getDoubleTy(context);
+      args_3[2] = ir.CreateFPTrunc(val_to_store, double_type);
+      return ir.CreateCall(intrinsics.write_memory_f80, args_3);
+    }
+
+    case llvm::Type::X86_MMXTyID:  {
+      auto i64_type = llvm::Type::getInt64Ty(context);
+      args_3[2] = ir.CreateBitCast(val_to_store, i64_type);
+      return ir.CreateCall(intrinsics.write_memory_64, args_3);
+    }
+
+    case llvm::Type::IntegerTyID:
+      switch (auto size = dl.getTypeAllocSize(type)) {
+        case 1: return ir.CreateCall(intrinsics.write_memory_8, args_3);
+        case 2: return ir.CreateCall(intrinsics.write_memory_16, args_3);
+        case 4: return ir.CreateCall(intrinsics.write_memory_32, args_3);
+        case 8: return ir.CreateCall(intrinsics.write_memory_64, args_3);
+        default: break;
+      }
+      [[clang::fallthrough]];
+
+    case llvm::Type::FP128TyID:
+    case llvm::Type::PPC_FP128TyID: {
+      const auto size = dl.getTypeAllocSize(type);
+
+      // Stack-allocate the value, so we can pull out one byte
+      // at a time from it, and then write it into the target
+      // address space.
+      auto res = ir.CreateAlloca(type);
+      ir.CreateStore(val_to_store, res);
+
+      auto i8_type = llvm::Type::getInt8Ty(context);
+      auto byte_array = ir.CreateBitCast(
+          res, llvm::PointerType::get(i8_type, 0));
+      llvm::Value *gep_indices[2] = {
+          llvm::ConstantInt::get(i32_type, 0, false),
+          nullptr
+      };
+
+      // Store one byte at a time to memory.
+      for (auto i = 0U; i < size; ++i) {
+        args_3[1] = ir.CreateAdd(
+            addr, llvm::ConstantInt::get(addr->getType(), i, false));
+        gep_indices[1] = llvm::ConstantInt::get(i32_type, i, false);
+        auto byte_ptr = ir.CreateInBoundsGEP(type, byte_array, gep_indices);
+        args_3[2] = ir.CreateLoad(byte_ptr);
+        args_3[0] = ir.CreateCall(intrinsics.write_memory_8, args_3);
+      }
+
+      return args_3[0];
+    }
+
+    // Store a structure by storing the individual elements of the structure.
+    case llvm::Type::StructTyID: {
+      auto struct_type = llvm::dyn_cast<llvm::StructType>(type);
+      uint64_t offset = 0;
+      unsigned index = 0;
+      for (auto elem_type : struct_type->elements()) {
+        auto elem_addr = ir.CreateAdd(
+            initial_addr,
+            llvm::ConstantInt::get(addr->getType(), offset, false));
+        unsigned indexes[] = {index};
+        auto elem_val = ir.CreateExtractValue(val_to_store, indexes);
+        mem_ptr = StoreToMemory(
+            intrinsics, block, elem_val, mem_ptr, elem_addr);
+        ir.SetInsertPoint(block);
+        offset += dl.getTypeAllocSize(elem_type);
+        index += 1;
+      }
+      return mem_ptr;
+    }
+
+    // Build up the array store in the same was as we do with structures.
+    case llvm::Type::ArrayTyID: {
+      auto arr_type = llvm::dyn_cast<llvm::ArrayType>(type);
+      const auto num_elems = arr_type->getNumElements();
+      const auto elem_type = arr_type->getElementType();
+      const auto elem_size = dl.getTypeAllocSize(elem_type);
+
+      for (uint64_t index = 0, offset = 0;
+           index < num_elems;
+           ++index, offset += elem_size) {
+
+        auto elem_addr = ir.CreateAdd(
+            initial_addr,
+            llvm::ConstantInt::get(addr->getType(), offset, false));
+        unsigned indexes[] = {static_cast<unsigned>(index)};
+        auto elem_val = ir.CreateExtractValue(val_to_store, indexes);
+        mem_ptr = StoreToMemory(
+            intrinsics, block, elem_val, mem_ptr, elem_addr);
+        ir.SetInsertPoint(block);
+        offset += elem_size;
+        index += 1;
+      }
+      return mem_ptr;
+    }
+
+    // Write pointers to memory by converting to the correct sized integer,
+    // then storing that
+    case llvm::Type::PointerTyID: {
+      auto ptr_type = llvm::dyn_cast<llvm::PointerType>(type);
+      auto size_bits = dl.getTypeAllocSizeInBits(ptr_type);
+      auto intptr_type = llvm::IntegerType::get(
+          context, static_cast<unsigned>(size_bits));
+      return StoreToMemory(
+          intrinsics, block,
+          ir.CreatePtrToInt(val_to_store, intptr_type),
+          mem_ptr, addr);
+    }
+
+    // Build up the vector store in the nearly the same was as we do with arrays.
+    case llvm::Type::VectorTyID:  {
+      auto vec_type = llvm::dyn_cast<llvm::VectorType>(type);
+      const auto num_elems = vec_type->getNumElements();
+      const auto elem_type = vec_type->getElementType();
+      const auto elem_size = dl.getTypeAllocSize(elem_type);
+
+      for (uint64_t index = 0, offset = 0;
+           index < num_elems;
+           ++index, offset += elem_size) {
+
+        auto elem_addr = ir.CreateAdd(
+            initial_addr,
+            llvm::ConstantInt::get(addr->getType(), offset, false));
+        auto elem_val = ir.CreateExtractElement(
+            val_to_store, static_cast<unsigned>(index));
+        mem_ptr = StoreToMemory(
+            intrinsics, block, elem_val, mem_ptr, elem_addr);
+        ir.SetInsertPoint(block);
+        offset += elem_size;
+        index += 1;
+      }
+
+      return mem_ptr;
+    }
+
+    case llvm::Type::VoidTyID:
+    case llvm::Type::LabelTyID:
+    case llvm::Type::MetadataTyID:
+    case llvm::Type::TokenTyID:
+    case llvm::Type::FunctionTyID:
+    default:
+      LOG(FATAL)
+          << "Unable to produce IR sequence to store type "
+          << remill::LLVMThingToString(type) << " to memory";
+      return nullptr;
   }
 }
 

@@ -21,6 +21,10 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/tools/lift)
   add_subdirectory(lift)
 endif()
 
+if(EXISTS ${CMAKE_SOURCE_DIR}/tools/anvill)
+    add_subdirectory(anvill)
+endif()
+
 if(EXISTS ${CMAKE_SOURCE_DIR}/tools/fcd)
   add_subdirectory(fcd)
 endif()

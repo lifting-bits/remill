@@ -29,6 +29,7 @@
 struct ArchState;
 
 namespace llvm {
+class LLVMContext;
 class Module;
 class BasicBlock;
 class Function;
@@ -53,11 +54,6 @@ struct Register {
   uint64_t order;  // Order of appears in `__remill_basic_block`.
 
   // LLVM type associated with the field in `State`.
-  //
-  // TODO(pag): This is specific to whatever `llvm::LLVMContext` we
-  //            loaded the semantics with. We should change
-  //            `remill::GetHostArch` and `remill::GetTargetArch` and
-  //            others to take in an `llvm::LLVMContext`.
   llvm::Type *type;
 
   // Returns the enclosing register of size AT LEAST `size`, or `nullptr`.
@@ -68,7 +64,8 @@ struct Register {
 
   // Generate an instruction that will let us load/store to this register, given
   // a `State *`.
-  llvm::Instruction *AddressOf(llvm::Value *state_ptr, llvm::BasicBlock *add_to_end) const;
+  llvm::Instruction *AddressOf(
+      llvm::Value *state_ptr, llvm::BasicBlock *add_to_end) const;
 
  private:
   friend class Arch;
@@ -84,7 +81,7 @@ class Arch {
   // operating system and architecture class.
   //
   // TODO(pag): Refactor to also take in an `llvm::LLVMContext &`.
-  static const Arch *Get(OSName os, ArchName arch_name);
+  static const Arch *Get(llvm::LLVMContext &context, OSName os, ArchName arch_name);
 
   // Return information about the register at offset `offset` in the `State`
   // structure.
@@ -92,6 +89,12 @@ class Arch {
 
   // Return information about a register, given its name.
   const Register *RegisterByName(const std::string &name) const;
+
+  // Returns the name of the stack pointer register.
+  virtual const char *StackPointerRegisterName(void) const = 0;
+
+  // Returns the name of the program counter register.
+  virtual const char *ProgramCounterRegisterName(void) const = 0;
 
   // Converts an LLVM module object to have the right triple / data layout
   // information for the target architecture and ensures remill requied functions
@@ -138,6 +141,7 @@ class Arch {
   const OSName os_name;
   const ArchName arch_name;
   const uint64_t address_size;
+  llvm::LLVMContext * const context;
 
   bool IsX86(void) const;
   bool IsAMD64(void) const;
@@ -148,19 +152,22 @@ class Arch {
   bool IsMacOS(void) const;
 
  protected:
-  Arch(OSName os_name_, ArchName arch_name_);
+  Arch(llvm::LLVMContext &context_, OSName os_name_, ArchName arch_name_);
 
   llvm::Triple BasicTriple(void) const;
 
  private:
   // Defined in `remill/Arch/X86/Arch.cpp`.
-  static const Arch *GetX86(OSName os, ArchName arch_name);
+  static const Arch *GetX86(
+      llvm::LLVMContext &context, OSName os, ArchName arch_name);
 
   // Defined in `remill/Arch/Mips/Arch.cpp`.
-  static const Arch *GetMips(OSName os, ArchName arch_name);
+  static const Arch *GetMips(
+      llvm::LLVMContext &context, OSName os, ArchName arch_name);
 
   // Defined in `remill/Arch/AArch64/Arch.cpp`.
-  static const Arch *GetAArch64(OSName os, ArchName arch_name);
+  static const Arch *GetAArch64(
+      llvm::LLVMContext &context, OSName os, ArchName arch_name);
 
   // Get all of the register information from the prepared module.
   void CollectRegisters(llvm::Module *module) const;
@@ -174,14 +181,10 @@ class Arch {
 
 // Get the (approximate) architecture of the running system. This may not
 // include all feature sets.
-//
-// TODO(pag): Refactor to take in an `llvm::LLVMContext &`.
-const Arch *GetHostArch(void);
+const Arch *GetHostArch(llvm::LLVMContext &context);
 
 // Get the architecture of the modelled code. This is based on command-line
 // flags.
-//
-// TODO(pag): Refactor to take in an `llvm::LLVMContext &`.
-const Arch *GetTargetArch(void);
+const Arch *GetTargetArch(llvm::LLVMContext &context);
 
 }  // namespace remill

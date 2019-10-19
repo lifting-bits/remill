@@ -18,6 +18,7 @@
 #include <system_error>
 
 #include <llvm/Support/ErrorOr.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include "remill/BC/Version.h"
 
@@ -49,16 +50,28 @@ inline static bool IsError(T &ptr) {
   return false;
 }
 
+inline static bool IsError(llvm::Error &err) {
+  return !!err;
+}
+
 template <typename T>
 inline static std::string GetErrorString(llvm::ErrorOr<T> &val) {
   return val.getError().message();
+}
+
+inline static std::string GetErrorString(llvm::Error &val) {
+  std::string err;
+  llvm::raw_string_ostream os(err);
+  os << val;
+  os.flush();
+  return err;
 }
 
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
 template <typename T>
 inline static std::string GetErrorString(llvm::Expected<T> &val) {
   auto err = val.takeError();
-  return llvm::errorToErrorCode(std::move(err)).message();
+  return GetErrorString(err);
 }
 #endif
 
