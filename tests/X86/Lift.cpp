@@ -119,11 +119,11 @@ extern "C" int main(int argc, char *argv[]) {
     }
   }
 
+  llvm::LLVMContext context;
   auto os = remill::GetOSName(REMILL_OS);
   auto arch_name = remill::GetArchName(FLAGS_arch);
-  auto arch = remill::Arch::Get(os, arch_name);
-  auto context = new llvm::LLVMContext;
-  auto module = remill::LoadTargetSemantics(context);
+  auto arch = remill::Arch::Get(context, os, arch_name);
+  auto module = remill::LoadArchSemantics(arch);
 
   remill::IntrinsicTable intrinsics(module);
   remill::InstructionLifter inst_lifter(arch, intrinsics);
@@ -145,7 +145,7 @@ extern "C" int main(int argc, char *argv[]) {
   }
 
   DLOG(INFO) << "Serializing bitcode to " << FLAGS_bc_out;
-  remill::GetHostArch()->PrepareModule(module);
+  remill::GetHostArch(context)->PrepareModule(module);
   remill::StoreModuleToFile(module, FLAGS_bc_out);
 
   DLOG(INFO) << "Done.";

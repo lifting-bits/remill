@@ -104,11 +104,18 @@ Instruction::Category InstCategory(const aarch64::InstData &inst) {
   }
 }
 
-class AArch64Arch : public Arch {
+class AArch64Arch final : public Arch {
  public:
-  AArch64Arch(OSName os_name_, ArchName arch_name_);
+  AArch64Arch(llvm::LLVMContext &context_,
+              OSName os_name_, ArchName arch_name_);
 
   virtual ~AArch64Arch(void);
+
+  // Returns the name of the stack pointer register.
+  const char *StackPointerRegisterName(void) const final;
+
+  // Returns the name of the program counter register.
+  const char *ProgramCounterRegisterName(void) const final;
 
   // Decode an instruction.
   bool DecodeInstruction(
@@ -128,8 +135,9 @@ class AArch64Arch : public Arch {
   AArch64Arch(void) = delete;
 };
 
-AArch64Arch::AArch64Arch(OSName os_name_, ArchName arch_name_)
-    : Arch(os_name_, arch_name_) {}
+AArch64Arch::AArch64Arch(
+    llvm::LLVMContext &context_, OSName os_name_, ArchName arch_name_)
+    : Arch(context_, os_name_, arch_name_) {}
 
 AArch64Arch::~AArch64Arch(void) {}
 
@@ -868,6 +876,16 @@ static uint64_t VFPExpandImmToFloat64(uint64_t imm) {
   result |= Extract(imm, 5, 0) << 48;
   result |= bit6 ? (0xFFULL << 54) : (0x1ULL << 62);
   return result;
+}
+
+// Returns the name of the stack pointer register.
+const char *AArch64Arch::StackPointerRegisterName(void) const {
+  return "SP";
+}
+
+// Returns the name of the program counter register.
+const char *AArch64Arch::ProgramCounterRegisterName(void) const {
+  return "PC";
 }
 
 bool AArch64Arch::DecodeInstruction(
@@ -4692,8 +4710,9 @@ bool TryDecodeUSHR_ASIMDSHF_R(const InstData &data, Instruction &inst) {
 }  // namespace aarch64
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
-const Arch *Arch::GetAArch64(OSName os_name_, ArchName arch_name_) {
-  return new AArch64Arch(os_name_, arch_name_);
+const Arch *Arch::GetAArch64(llvm::LLVMContext &context_,
+                             OSName os_name_, ArchName arch_name_) {
+  return new AArch64Arch(context_, os_name_, arch_name_);
 }
 
 }  // namespace remill

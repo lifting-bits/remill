@@ -41,6 +41,7 @@ class LLVMContext;
 namespace remill {
 
 class Arch;
+class IntrinsicTable;
 
 // Initialize the attributes for a lifted function.
 void InitFunctionAttributes(llvm::Function *F);
@@ -117,15 +118,15 @@ llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
 
 // Loads the semantics for the "host" machine, i.e. the machine that this
 // remill is compiled on.
-llvm::Module *LoadHostSemantics(llvm::LLVMContext *context);
+llvm::Module *LoadHostSemantics(llvm::LLVMContext &context);
 
 // Loads the semantics for the "target" machine, i.e. the machine of the
 // code that we want to lift.
-llvm::Module *LoadTargetSemantics(llvm::LLVMContext *context);
+llvm::Module *LoadTargetSemantics(llvm::LLVMContext &context);
 
 // Loads the semantics for the `arch`-specific machine, i.e. the machine of the
 // code that we want to lift.
-llvm::Module *LoadArchSemantics(const Arch *arcyh, llvm::LLVMContext *context);
+llvm::Module *LoadArchSemantics(const Arch *arch);
 
 // Store an LLVM module into a file.
 bool StoreModuleToFile(llvm::Module *module, std::string file_name,
@@ -211,5 +212,34 @@ std::string ModuleName(const std::unique_ptr<llvm::Module> &module);
 
 // Move a function from one module into another module.
 void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module);
+
+// Get an instance of `type` that belongs to `context`.
+llvm::Type *RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context);
+
+// Produce a sequence of instructions that will load values from
+// memory, building up the correct type. This will invoke the various
+// memory read intrinsics in order to match the right type, or
+// recursively build up the right type.
+//
+// Returns the loaded value.
+llvm::Value *LoadFromMemory(
+    const IntrinsicTable &intrinsics,
+    llvm::BasicBlock *block,
+    llvm::Type *type,
+    llvm::Value *mem_ptr,
+    llvm::Value *addr);
+
+// Produce a sequence of instructions that will store a value to
+// memory. This will invoke the various memory write intrinsics
+// in order to match the right type, or recursively destructure
+// the type into components which can be written to memory.
+//
+// Returns the new value of the memory pointer.
+llvm::Value *StoreToMemory(
+    const IntrinsicTable &intrinsics,
+    llvm::BasicBlock *block,
+    llvm::Value *val_to_store,
+    llvm::Value *mem_ptr,
+    llvm::Value *addr);
 
 }  // namespace remill

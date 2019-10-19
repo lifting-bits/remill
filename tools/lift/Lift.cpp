@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Trail of Bits, Inc.
+ * Copyright (c) 2019 Trail of Bits, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -206,7 +206,8 @@ int main(int argc, char *argv[]) {
 
   // Make sure `--address` and `--entry_address` are in-bounds for the target
   // architecture's address size.
-  auto arch = remill::GetTargetArch();
+  llvm::LLVMContext context;
+  auto arch = remill::GetTargetArch(context);
   const uint64_t addr_mask = ~0ULL >> (64UL - arch->address_size);
   if (FLAGS_address != (FLAGS_address & addr_mask)) {
     std::cerr
@@ -224,8 +225,7 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-  llvm::LLVMContext context;
-  std::unique_ptr<llvm::Module> module(remill::LoadTargetSemantics(&context));
+  std::unique_ptr<llvm::Module> module(remill::LoadArchSemantics(arch));
 
   const auto state_ptr_type = remill::StatePointerType(module.get());
   const auto mem_ptr_type = remill::MemoryPointerType(module.get());
@@ -326,14 +326,8 @@ int main(int argc, char *argv[]) {
 
     const auto state_ptr = ir.CreateAlloca(state_type);
 
-    const remill::Register *pc_reg = nullptr;
-    if (arch->IsAMD64()) {
-      pc_reg = arch->RegisterByName("RIP");
-    } else if (arch->IsX86()) {
-      pc_reg = arch->RegisterByName("EIP");
-    } else {
-      pc_reg = arch->RegisterByName("PC");
-    }
+    const remill::Register *pc_reg = arch->RegisterByName(
+        arch->ProgramCounterRegisterName());
 
     CHECK(pc_reg != nullptr)
         << "Could not find the register in the state structure "

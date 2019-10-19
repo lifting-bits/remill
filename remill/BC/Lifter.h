@@ -138,11 +138,18 @@ class TraceManager {
   // to access "defined" vs. "declared" traces.
   //
   // NOTE: This is permitted to return a function from an arbitrary module.
+  //
+  // NOTE: This must return a function with our special 3-argument
+  //       lifted function form.
   virtual llvm::Function *GetLiftedTraceDeclaration(uint64_t addr);
 
   // Get a definition for a lifted trace.
   //
   // NOTE: This is permitted to return a function from an arbitrary module.
+  //
+  // NOTE: This is permitted to return a function of an arbitrary
+  //       type. The trace lifter only invokes this function when
+  //       it is checking if some trace has already been lifted.
   virtual llvm::Function *GetLiftedTraceDefinition(uint64_t addr);
 
   // Apply a callback that gives the decoder access to multiple

@@ -324,9 +324,10 @@ struct ForwardAliasVisitor
 };
 
 // Stream a slot of the DOT digraph.
-static void StreamSlot(std::ostream &dot, const StateSlot &slot,
-                       uint64_t access_size) {
-  auto arch = GetTargetArch();
+static void StreamSlot(
+    llvm::LLVMContext &context, std::ostream &dot,
+    const StateSlot &slot, uint64_t access_size) {
+  auto arch = GetTargetArch(context);
   if (auto reg = arch->RegisterAtStateOffset(slot.offset)) {
     auto enc_reg = reg->EnclosingRegisterOfSize(access_size);
     if (!enc_reg) {
@@ -380,6 +381,7 @@ static void StreamPHIToDOT(std::ostream &dot, llvm::PHINode &phi_node) {
 // Generate a DOT digraph file representing the offsets.
 void ForwardAliasVisitor::CreateDOTDigraph(llvm::Function *func,
                                            const char *extension) {
+  auto &context = func->getContext();
   std::stringstream fname;
   fname << FLAGS_dot_output_dir << PathSeparator();
   if (!func->hasName()) {
@@ -425,7 +427,7 @@ void ForwardAliasVisitor::CreateDOTDigraph(llvm::Function *func,
               << " has scope meta-data";
         }
         dot << "<td>" << offset << "</td><td>";
-        StreamSlot(dot, slot, inst_size);
+        StreamSlot(context, dot, slot, inst_size);
         dot << "</td>";
 
       } else if (exclude.count(&inst)) {
@@ -1310,6 +1312,8 @@ bool LiveSetBlockVisitor::DeleteDeadInsts(KillCounter &stats) {
 // Generate a DOT digraph file representing the dataflow of the LSBV.
 void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
                                            const char *extension) {
+  auto &context = func->getContext();
+
   std::stringstream fname;
   fname << FLAGS_dot_output_dir << PathSeparator();
   if (!func->hasName()) {
@@ -1379,7 +1383,7 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
     for (uint64_t i = 0; i < slots.size(); i++) {
       if (used.test(i) && !blive.test(i)) {
         dot << sep;
-        StreamSlot(dot, *(slots[i]), slots[i]->size);
+        StreamSlot(context, dot, *(slots[i]), slots[i]->size);
         sep = ", ";
       }
     }
@@ -1395,7 +1399,7 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
         for (uint64_t i = 0; i < slots.size(); i++) {
           if (used.test(i) && !clive.test(i)) {
             dot << sep;
-            StreamSlot(dot, *(slots[i]), slots[i]->size);
+            StreamSlot(context, dot, *(slots[i]), slots[i]->size);
             sep = ", ";
           }
         }
@@ -1418,7 +1422,7 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
               << " has scope meta-data";
         }
 
-        StreamSlot(dot, slot, inst_size);
+        StreamSlot(context, dot, slot, inst_size);
 
         // slot size minus load/store size
         dot << "</td><td align=\"left\">" << (slot.size - inst_size)
@@ -1459,7 +1463,7 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
     for (uint64_t i = 0; i < slots.size(); i++) {
       if (used.test(i) && !exit_live.test(i)) {
         dot << sep;
-        StreamSlot(dot, *(slots[i]), slots[i]->size);
+        StreamSlot(context, dot, *(slots[i]), slots[i]->size);
         sep = ", ";
       }
     }

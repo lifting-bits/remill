@@ -114,7 +114,7 @@ add_library(${PROJECT_NAME} STATIC
   remill/BC/Annotate.cpp
   remill/BC/DeadStoreEliminator.cpp
   remill/BC/IntrinsicTable.cpp
-  remill/BC/Lifter.cpp
+        remill/BC/Lift.cpp
   remill/BC/Optimizer.cpp
   remill/BC/Util.cpp
 
