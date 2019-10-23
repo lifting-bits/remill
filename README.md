@@ -6,7 +6,7 @@
 
 Remill is a static binary translator that translates machine code instructions into [LLVM bitcode](http://llvm.org/docs/LangRef.html). It translates x86 and amd64 machine code (including AVX and AVX512) into LLVM bitcode. AArch64 support is underway.
 
-Remill focuses on accurately lifting instructions. It is meant to be used as a library for other tools, e.g. [McSema](https://github.com/trailofbits/mcsema).
+Remill focuses on accurately lifting instructions. It is meant to be used as a library for other tools, e.g. [McSema](https://github.com/lifting-bits/mcsema).
 
 ## Build Status
 
@@ -74,7 +74,7 @@ sudo apt-get install realpath
 Next, clone the repository. This will clone the code into the `remill` directory.
 
 ```shell
-git clone git@github.com:trailofbits/remill.git
+git clone https://github.com/lifting-bits/remill.git
 ```
 
 Next, we build Remill. This script will create another directory, `remill-build`,
@@ -86,7 +86,7 @@ by Remill will be built in the `remill-build` directory.
 ```
 
 Next, we can install Remill. Remill itself is a library, and so there is no real way
-to try it. However, you can head on over to the [McSema](https://github.com/trailofbits/mcsema) repository, which uses Remill for lifting instructions.
+to try it. However, you can head on over to the [McSema](https://github.com/lifting-bits/mcsema) repository, which uses Remill for lifting instructions.
 
 ```shell
 cd ./remill-build

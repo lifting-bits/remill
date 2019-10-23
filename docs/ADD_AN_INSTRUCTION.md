@@ -39,7 +39,7 @@ These entries contain a lot of information and are quite dense. Below are descri
 - `IMPLICIT`: This is an implicit operand. You can think of this as being an operand that you _might_ write out in assembly. Alternatively, you can see it as an operand that is explicit in at least one *ISEL*. Not to be confused with SUPPRESSED.
 - `SUPPRESSED`: This is an operand that is never written out in assembly, but is operated on internally by the semantics of an instruction. In Remill, you *do not* associate any arguments in your semantic functions with suppressed operands.
 - `R`, `RW`, `W`, `CR`, `CW`, `RCW`: These per-operand markers indicate how the semantics of the instruction operate on a particular operand, or in other words, they describe the mutability of the operand. `R` stands for read, `W` stands for write, and `C` stands for condition. Therefore, `RCW` states that the semantics will read and conditionally write to the associated operand.
-- `REG`, `MEM`, `IMM`: These identify the type of the operand within a particular instruction selection (ISEL). Remill has C++ type names associated with each operand type and size, defined in [Types.h](https://github.com/trailofbits/remill/blob/master/remill/Arch/Runtime/Types.h)
+- `REG`, `MEM`, `IMM`: These identify the type of the operand within a particular instruction selection (ISEL). Remill has C++ type names associated with each operand type and size, defined in [Types.h](https://github.com/lifting-bits/remill/blob/master/remill/Arch/Runtime/Types.h)
 
 In the following code examples we will ignore condition code computation. Most instructions that manipulate condition codes have already been implemented.
 
