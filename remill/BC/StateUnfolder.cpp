@@ -317,7 +317,7 @@ const Register *RegisterFromGEP(const llvm::Value *inst,
   }
 
   //TODO: gArch
-  return GetTargetArch()->RegisterAtStateOffset(
+  return GetTargetArch(module->getContext())->RegisterAtStateOffset(
       offset.getZExtValue())->EnclosingRegister();
 
 }
@@ -829,11 +829,11 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 };
 
 void UnfoldState(llvm::Module *module, void(*opt)(void)) {
-  if (!GetTargetArch()->IsAMD64()) {
+  if (!GetTargetArch(module->getContext())->IsAMD64()) {
     LOG(INFO) << "Unfolding is not supported for chosen architecture.";
   }
 
-  StateUnfolder(*module, *GetTargetArch(), opt).Unfold();
+  StateUnfolder(*module, *GetTargetArch(module->getContext()), opt).Unfold();
 }
 
 } // namespace remill
