@@ -213,6 +213,24 @@ struct GMask : public Container {
     }
   }
 
+  struct CB {
+    void equals(uint64_t) {}
+    void added(uint64_t) {}
+    void removed(uint64_t) {}
+  };
+
+  template<typename M, typename Callback>
+  void Compare(const M &other, Callback &&cb) {
+    for (auto i = 0U; i < other.size(); ++i) {
+      if ((*this)[i] == other[i]) {
+        cb.equals(i);
+      } else if ((*this)[i]) {
+        cb.added(i);
+      } else {
+        cb.removed(i);
+      }
+    }
+  }
 
 private:
 

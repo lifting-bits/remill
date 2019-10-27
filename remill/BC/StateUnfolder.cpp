@@ -498,6 +498,10 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
   }
 
   ~StateUnfolder() {
+
+    for (auto &func : unfolded)
+      std::cerr << func.second.History();
+
     // We do not need blueprints anymore
     for (auto &func : unfolded) {
       UnsafeErase(func.first);
@@ -828,6 +832,7 @@ void UnfoldState(llvm::Module *module, void(*opt)(void)) {
   if (!GetTargetArch()->IsAMD64()) {
     LOG(INFO) << "Unfolding is not supported for chosen architecture.";
   }
+
   StateUnfolder(*module, *GetTargetArch(), opt).Unfold();
 }
 
