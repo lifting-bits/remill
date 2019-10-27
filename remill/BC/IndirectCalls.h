@@ -85,7 +85,7 @@ namespace remill {
     llvm::BasicBlock *_after;
     llvm::BasicBlock *_tail;
 
-    llvm::PHINode *_phi;
+    //llvm::PHINode *_phi;
 
     ExplicateIndirectCall(llvm::Function *func) :
       _func(func), _ctx(_func->getContext()) {}
@@ -98,6 +98,9 @@ namespace remill {
 
       unreachable.eraseFromParent();
 
+      //if (_phi->getNumIncomingValues() == 0) {
+      //  _phi->eraseFromParent();
+      //}
       _func->print(llvm::errs());
       std::cerr << std::endl;
     }
@@ -118,9 +121,9 @@ namespace remill {
       llvm::IRBuilder<> ir{_after};
       ir.SetInsertPoint(&*_after->begin());
 
-      _phi = ir.CreatePHI(call->getFunctionType()->getReturnType(), 0);
-      _phi->addIncoming(call, _tail);
-      call->replaceAllUsesWith(_phi);
+      //_phi = ir.CreatePHI(call->getFunctionType()->getReturnType(), 0);
+     // _phi->addIncoming(ir.getInt64(0), _base);
+      //call->replaceAllUsesWith(_phi);
     }
 
     llvm::BasicBlock *CreateNewNode(const std::string &name="") {
@@ -136,13 +139,21 @@ namespace remill {
 
       llvm::IRBuilder<> ir{ bb };
 
-      auto ret = ir.CreateCall(target, {_func->arg_begin(), _func->arg_end()});
+      std::vector<llvm::Value *> new_args;
+      for (auto &arg : _func->args()) {
+        new_args.push_back(&arg);
+        arg.print(llvm::errs());
+        std::cerr << std::endl;
+      }
+      ir.CreateCall(target, new_args);
+      //auto ret = ir.CreateCall(target, {_func->arg_begin(), _func->arg_end()});
 
-      _phi->addIncoming(ret, bb);
+      ir.CreateBr(_after);
+      //_phi->addIncoming(ret, bb);
       return bb;
     }
 
-    llvm::BasicBlock *CreateCase(llvm::Function *target) {
+    llvm::BasicBlock *CreateCase(llvm::Function *what, llvm::Function *target) {
       if (!target) {
         std::cerr << "NULL" << std::endl;
         return nullptr;
@@ -155,16 +166,16 @@ namespace remill {
       llvm::IRBuilder<> ir{ &current->back() };
 
       auto func_ptr = ir.CreateIntToPtr(
-          &*std::next(_func->arg_begin()), target->getType());
+          &*std::next(_func->arg_begin()), what->getType());
 
-      auto cmp = ir.CreateICmpEQ(func_ptr, target);
+      auto cmp = ir.CreateICmpEQ(func_ptr, what);
 
       ir.CreateCondBr(cmp, succes, next);
 
       current->back().eraseFromParent();
 
       _tail = next;
-      return next;
+      return _tail;
     }
 
   };
