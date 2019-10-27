@@ -12,8 +12,7 @@ Remill focuses on accurately lifting instructions. It is meant to be used as a l
 
 |       | master |
 | ----- | ------ |
-| Linux | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/linux/)](https://travis-ci.org/trailofbits/remill) |
-| macOS | [![Build Status](https://travis-ci-job-status.herokuapp.com/badge/trailofbits/remill/master/osx/)](https://travis-ci.org/trailofbits/remill) |
+| Linux | [![Build Status](https://travis-ci.org/lifting-bits/remill.svg?branch=master)](https://travis-ci.org/lifting-bits/remill) |
 
 ## Additional Documentation
  
