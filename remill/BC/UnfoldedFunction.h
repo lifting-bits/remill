@@ -156,7 +156,10 @@ struct UnfoldedFunction {
   void ReplaceBitCast(llvm::Value *allocas, llvm::Value *instruction);
   void FoldAggregate(llvm::Type *ret_ty, llvm::IRBuilder<> &ir);
   void FoldRets();
+<<<<<<< HEAD
 
+=======
+>>>>>>> 11bc8048c74dd857c0d604cb38b5e4827d31fc77
 };
 
 static inline std::ostream &operator<<(std::ostream &os, const UnfoldedFunction &func) {

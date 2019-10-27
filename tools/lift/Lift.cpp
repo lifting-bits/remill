@@ -46,6 +46,7 @@
 #include <remill/BC/IntrinsicTable.h>
 #include <remill/BC/Lifter.h>
 #include <remill/BC/Optimizer.h>
+#include <remill/BC/StateUnfolder.h>
 #include <remill/BC/Util.h>
 #include <remill/OS/OS.h>
 
@@ -64,6 +65,8 @@ DEFINE_string(bc_out, "", "Path to file where the LLVM bitcode should be "
 
 DEFINE_string(slice_inputs, "", "Comma-separated list of registers to treat as inputs.");
 DEFINE_string(slice_outputs, "", "Comma-separated list of registers to treat as outputs.");
+
+DEFINE_bool(unfold_state, false, "Should the state structure accesses be unfolded?");
 
 using Memory = std::map<uint64_t, uint8_t>;
 
@@ -245,6 +248,10 @@ int main(int argc, char *argv[]) {
   remill::OptimizationGuide guide = {};
   guide.eliminate_dead_stores = true;
   remill::OptimizeModule(module, manager.traces, guide);
+
+  if (FLAGS_unfold_state) {
+    remill::UnfoldState(module.get());
+  }
 
   // Create a new module in which we will move all the lifted functions. Prepare
   // the module for code of this architecture, i.e. set the data layout, triple,
