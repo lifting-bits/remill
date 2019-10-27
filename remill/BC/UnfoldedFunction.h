@@ -17,6 +17,30 @@ namespace remill {
 
 struct UnfoldedFunction {
 
+  struct _Diff {
+    std::stringstream _out;
+    const std::vector<const remill::Register *> _regs;
+
+    _Diff(const std::vector<const remill::Register *> regs) : _regs(regs) {}
+
+    void equals(uint64_t i) {
+      _out << _regs[i]->name;
+    }
+
+    void added(uint64_t i) {
+      _out << green(_regs[i]->name)();
+    }
+
+    void removed(uint64_t i) {
+      _out << red(_regs[i]->name)();
+    }
+
+    std::string str() {
+      return _out.str();
+    }
+  };
+
+
   static constexpr const int bitset_size = 32;
 
   using Mask = TypeMask<std::bitset<bitset_size>>;
@@ -54,7 +78,7 @@ struct UnfoldedFunction {
     _history.push_back(std::move(mask));
   }
 
-  std::string History(const RegisterList &regs) const {
+  std::string History() const {
     std::stringstream out;
 
     out << sub_func.getName().str() << std::endl;
@@ -132,6 +156,7 @@ struct UnfoldedFunction {
   void ReplaceBitCast(llvm::Value *allocas, llvm::Value *instruction);
   void FoldAggregate(llvm::Type *ret_ty, llvm::IRBuilder<> &ir);
   void FoldRets();
+
 };
 
 static inline std::ostream &operator<<(std::ostream &os, const UnfoldedFunction &func) {
