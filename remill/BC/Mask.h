@@ -220,7 +220,7 @@ struct GMask : public Container {
   };
 
   template<typename M, typename Callback>
-  void Compare(const M &other, Callback &&cb) {
+  void Compare(const M &other, Callback &&cb) const {
     for (auto i = 0U; i < other.size(); ++i) {
       if ((*this)[i] == other[i]) {
         cb.equals(i);
