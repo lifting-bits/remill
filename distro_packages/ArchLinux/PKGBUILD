@@ -4,7 +4,7 @@ pkgrel=1
 arch=('x86_64')
 
 pkgdesc="Library for lifting of x86, amd64, and aarch64 machine code to LLVM bitcode"
-url="https://github.com/trailofbits/remill"
+url="https://github.com/lifting-bits/remill"
 license=('Apache')
 
 depends=('clang39' 'llvm39' 'llvm39-libs')
@@ -14,7 +14,7 @@ replaces=('remill')
 provides=('remill')
 conflicts=('remill')
 
-source=("${pkgname}::git+https://github.com/trailofbits/remill.git")
+source=("${pkgname}::git+https://github.com/lifting-bits/remill.git")
 sha1sums=('SKIP')
 
 pkgver() {

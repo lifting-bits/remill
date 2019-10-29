@@ -265,6 +265,36 @@ DEF_SEM(SHUFPS, D dst, S1 src1, S2 src2, I8 src3) {
 
 DEF_ISEL(SHUFPS_XMMps_XMMps_IMMb) = SHUFPS<V128W, V128, V128>;
 
+
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHUFPD, D dst, S1 src1, S2 src2, I8 src3) {
+  auto dst_vec = UClearV64(UReadV64(src1));
+  auto src1_vec = UReadV64(src1);
+  auto src2_vec = UReadV64(src2);
+  auto imm = Read(src3);
+  auto num_groups = NumVectorElems(src1_vec);
+
+  _Pragma("unroll")
+  for (std::size_t i = 0; i < num_groups; i += 2) {
+    auto order = UShr8(imm, TruncTo<uint8_t>(i));
+    auto sel1 = UAnd8(order, 0x1_u8);
+    auto sel2 = Select(UAnd8(order, 0x2_u8) == 0x2_u8, 1_u8, 0_u8);
+    dst_vec.elems[i]   = UExtractV64(src1_vec, i + sel1);
+    dst_vec.elems[i+1] = UExtractV64(src2_vec, i + sel2);
+  }
+
+  UWriteV64(dst, dst_vec);
+
+  return memory;
+}
+
+} // namespace
+
+DEF_ISEL(SHUFPD_XMMpd_XMMpd_IMMb) = SHUFPD<V128W, V128, V128>;
+
+
 namespace {
 
 template <typename D, typename S1>
