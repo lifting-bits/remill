@@ -475,8 +475,11 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
   std::map<llvm::Function *, llvm::Function *> sub_to_unfold;
 
-  StateUnfolder(llvm::Module &module, const Arch &arch, OptCallback opt=nullptr) :
-      module(module), context(module.getContext()), arch(arch), opt_callback(opt) {
+  StateUnfolder(
+      llvm::Module &module,
+      const Arch &arch, OptCallback opt=nullptr,
+      bool ignore_prefix=false)
+    : module(module), context(module.getContext()), arch(arch), opt_callback(opt) {
 
     // Temporal solution, ideally que Arch for it
     static const std::vector<std::string> reg_names = {
@@ -492,11 +495,12 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
     // Prefix of type for every lifted function parameters as well as return type
     auto bb_func = BasicBlockFunction(&module);
-    type_prefix.push_back(NthArgument(bb_func, kStatePointerArgNum)->getType());
-    type_prefix.push_back(NthArgument(bb_func, kPCArgNum)->getType());
-    type_prefix.push_back(NthArgument(bb_func, kMemoryPointerArgNum)->getType());
+    if (!ignore_prefix) {
+      type_prefix.push_back(NthArgument(bb_func, kStatePointerArgNum)->getType());
+      type_prefix.push_back(NthArgument(bb_func, kPCArgNum)->getType());
+      type_prefix.push_back(NthArgument(bb_func, kMemoryPointerArgNum)->getType());
+    }
   }
-
   ~StateUnfolder() {
 
     for (auto &func : unfolded)
@@ -539,21 +543,8 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
   llvm::Function *UnfoldFunction(llvm::Function *func, TypeMask<Container> mask,
                       const std::string& prefix="") {
-    // Create new function with proper type
-    //auto unfolded_func = UnfoldState(func, mask, prefix);
-    // Create allocas for each register
-    //auto allocas = CreateAllocas(*unfolded_func, mask);
-
-    // Modify returns
-    //FoldRets(allocas, *unfolded_func, mask);
-    //ReplaceGEPs(allocas, *unfolded_func, mask);
-
     llvm::Function *old = nullptr;
     if (auto iter = unfolded.find(func); iter != unfolded.end()) {
-      // Update
-      // iter->second.unfolded_func = unfolded_func;
-      // iter->second.allocas = std::move(allocas);
-      // iter->second.UpdateMask(std::move(mask));
       old = iter->second.Update(std::move(mask), prefix);
     } else {
       // Insert
@@ -669,7 +660,6 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     for (auto &func : old_iter) {
       UnsafeErase(func);
     }
-    //ReplaceIndirectCall(TypeMask<Container>(regs), prefix);
   }
 
   void Optimize(void) {
