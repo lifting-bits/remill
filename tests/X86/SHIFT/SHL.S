@@ -112,7 +112,11 @@ TEST_INPUTS(
     0xAA, 1,
     0x0F, 1,
     0xF7, 1,
-    0xFE, 1)
+    0xFE, 1,
+    0xFFFFFF00, 1,
+    0xFFFFFF01, 1,
+    0xFFFFFFF7, 1,
+    0xFFFFFFFE, 1)
 
     mov r8, ARG1_64
     mov rcx, ARG2_64
@@ -163,7 +167,9 @@ TEST_INPUTS(
     0xAA00, 1,
     0x0F0F, 1,
     0xF7F7, 1,
-    0xFEFE, 1)
+    0xFEFE, 1,
+    0xAAAA0000, 1,
+    0xAAAAFEFE, 1)
 
     mov eax, ARG1_32
     mov ecx, ARG2_32
@@ -249,6 +255,24 @@ TEST_INPUTS(
     mov eax, ARG1_32
     shl eax, 1
 TEST_END
+
+TEST_BEGIN_64(SHLr64_32i8_0, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0xFFFFFFFFFFFFFFFF)
+
+    mov rax, ARG1_64
+    shl eax, 0
+TEST_END_64
+
+TEST_BEGIN_64(SHLr64_32i8_1, 1)
+TEST_IGNORE_FLAGS(AF)
+TEST_INPUTS(
+    0xFFFFFFFFFFFFFFFF)
+
+    mov rax, ARG1_64
+    shl eax, 1
+TEST_END_64
 
 TEST_BEGIN(SHLr32i8_16, 1)
 TEST_IGNORE_FLAGS(OF AF)
