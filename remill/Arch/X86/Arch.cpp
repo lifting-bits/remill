@@ -578,6 +578,8 @@ static void DecodeRegister(Instruction &inst,
   op.reg = RegOp(reg);
   op.size = op.reg.size;
 
+  auto read_op = op;
+
   // Pass the register by reference.
   if (xed_operand_written(xedo)) {
     op.action = Operand::kActionWrite;
@@ -604,8 +606,8 @@ static void DecodeRegister(Instruction &inst,
   }
 
   if (xed_operand_read(xedo)) {
-    op.action = Operand::kActionRead;
-    inst.operands.push_back(op);
+    read_op.action = Operand::kActionRead;
+    inst.operands.push_back(read_op);
   }
 }
 
