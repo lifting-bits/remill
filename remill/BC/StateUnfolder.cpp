@@ -47,7 +47,6 @@
 #include "remill/BC/Compat/Instructions.h"
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/DerivedTypes.h"
-#include "remill/BC/IndirectCalls.h"
 #include "remill/BC/Mask.h"
 #include "remill/BC/UnfoldUtils.h"
 #include "remill/BC/StateUnfolder.h"
