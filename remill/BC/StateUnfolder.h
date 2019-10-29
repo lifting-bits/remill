@@ -21,6 +21,6 @@ class Module;
 namespace remill {
 
 // Unfolds state in function types.
-void UnfoldState(llvm::Module *module, void(*opt)(void)=nullptr);
+void UnfoldState(llvm::Module *module, bool ignore_prefix=false);
 
 } // namespace remill

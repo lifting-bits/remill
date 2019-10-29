@@ -459,12 +459,10 @@ static ResultMask GetParamMask(
 
 // Structure responsible for unfolding
 struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
-  using OptCallback = void (*)(void);
 
   llvm::Module &module;
   llvm::LLVMContext &context;
   const Arch &arch;
-  OptCallback opt_callback;
 
   std::vector<const Register *> regs;
 
@@ -477,9 +475,9 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
   StateUnfolder(
       llvm::Module &module,
-      const Arch &arch, OptCallback opt=nullptr,
+      const Arch &arch,
       bool ignore_prefix=false)
-    : module(module), context(module.getContext()), arch(arch), opt_callback(opt) {
+    : module(module), context(module.getContext()), arch(arch) {
 
     // Temporal solution, ideally que Arch for it
     static const std::vector<std::string> reg_names = {
@@ -618,7 +616,6 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
   void OptimizeIteration(const std::string &prefix="") {
     OptPass();
-    //(*opt_callback)();
 
     std::map<llvm::Function *, TypeMask<Container>> func_to_mask;
 
@@ -818,12 +815,12 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
   }
 };
 
-void UnfoldState(llvm::Module *module, void(*opt)(void)) {
+void UnfoldState(llvm::Module *module, bool ignore_prefix) {
   if (!GetTargetArch(module->getContext())->IsAMD64()) {
     LOG(INFO) << "Unfolding is not supported for chosen architecture.";
   }
 
-  StateUnfolder(*module, *GetTargetArch(module->getContext()), opt).Unfold();
+  StateUnfolder(*module, *GetTargetArch(module->getContext()), ignore_prefix).Unfold();
 }
 
 } // namespace remill
