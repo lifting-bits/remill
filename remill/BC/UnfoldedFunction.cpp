@@ -38,8 +38,6 @@ void UnfoldedFunction::CreateAllocas() {
   auto &entry_block = unfolded_func->getEntryBlock();
   llvm::IRBuilder<> ir(&entry_block, entry_block.begin());
 
-  auto arg_it = std::next(unfolded_func->arg_begin(), type_prefix.size());
-
   // Create allocas for all registers
   for (auto i = 0U; i < regs.size(); ++i)
     allocas.push_back(ir.CreateAlloca(MostInnerSimpleType(regs[i]->type)));

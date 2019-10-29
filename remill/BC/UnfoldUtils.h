@@ -112,29 +112,6 @@ std::vector<T *> Filter(llvm::Function *func) {
   return out;
 }
 
-template< typename ... Next >
-struct In {
-
-  template<typename Callback>
-  static bool Walk(llvm::Value *value, Callback CB) {
-    return false;
-  }
-
-};
-
-template< typename Head, typename ... Next >
-struct In< Head, Next ... > {
-
-  template<typename Callback>
-  static bool Walk(llvm::Value *value, Callback CB) {
-    if (auto head = llvm::dyn_cast<Head>(value)) {
-      return CB(head);
-    }
-    return In<Next...>::Walk(value, CB);
-  }
-};
-
-
 template<typename Inst, typename Begin>
 Begin *GetBeginOfChain(Inst *val) {
   if (!val) {

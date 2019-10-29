@@ -213,6 +213,7 @@ struct GMask : public Container {
     }
   }
 
+  // Default structure that contains all necessary methods for Compare
   struct CB {
     void equals(uint64_t) {}
     void added(uint64_t) {}

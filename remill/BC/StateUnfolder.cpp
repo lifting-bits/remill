@@ -17,8 +17,6 @@
 #include <glog/logging.h>
 
 #include <algorithm>
-#include <future>
-#include <iostream>
 #include <iterator>
 #include <sstream>
 #include <unordered_map>
@@ -67,10 +65,6 @@ llvm::Type *MostInnerSimpleType(llvm::Type *t) {
     t = *t->subtype_begin();
   }
   return t;
-}
-
-static bool IsLiftedFunction(llvm::Function *func) {
-  return HasOriginType<LiftedFunction>(func);
 }
 
 static std::unordered_map<llvm::Function *, llvm::Function *> Sub2Entrypoint(llvm::Module &module) {
@@ -502,7 +496,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
   ~StateUnfolder() {
 
     for (auto &func : unfolded)
-      std::cerr << func.second.History();
+      DLOG(INFO) << func.second.History();
 
     // We do not need blueprints anymore
     for (auto &func : unfolded) {
@@ -606,11 +600,13 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     tm &= UnusedParameters(u_func, regs.size(), type_prefix.size());
     auto entrypoint = GetTied(&u_func.sub_func);
 
+    // TODO: THIS CAUSES BUG WITH GZIP
+#if 0
     if (entrypoint && entrypoint->getName() == "main") {
       auto entrypoint_mask = GetEntrypointMask(entrypoint, regs);
       tm &= entrypoint_mask;
     }
-
+#endif
     return tm.Build(regs);
   }
 
@@ -660,15 +656,9 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
   }
 
   void Optimize(void) {
-    if (!opt_callback) {
-      LOG(INFO) << "No opt pass was chosen";
-      return;
-    }
-
     // Running more iterations may improve the produced bitcode, since it profits
     // from llvm optimization passes
-    for (auto i = 0U; i < 20; ++i) {
-      std::cout << i << std::endl;
+    for (auto i = 0U; i < 10; ++i) {
       OptimizeIteration("opt." + std::to_string(i) + "_");
     }
 
@@ -689,7 +679,6 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
           continue;
         }
 
-        std::cerr << std::endl;
         auto dst_ty =
           llvm::dyn_cast<llvm::PointerType>(bitcast->getDestTy())->getElementType();
 
@@ -755,6 +744,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
       llvm::Function &func,
       std::map<llvm::Function *, UnfoldedFunction> sub_to_unfold) {
 
+    DLOG(INFO) << "Replacing entrypoint " << func.getName().str();
     CreateLocalStack(module, func);
 
     // Expects that entrypoint contains only one call instruction
