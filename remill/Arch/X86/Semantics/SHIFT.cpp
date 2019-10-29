@@ -28,6 +28,7 @@ DEF_SEM(SHR, D dst, S1 src1, S2 src2) {
   auto shift_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
   auto masked_shift = UAnd(shift, shift_mask);
   if (UCmpEq(masked_shift, 0)) {
+    WriteZExt(dst, val);
     return memory;  // No flags affected.
   }
   auto new_val = val;
@@ -72,6 +73,7 @@ DEF_SEM(SAR, D dst, S1 src1, S2 src2) {
   auto shift_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
   auto masked_shift = UAnd(shift, shift_mask);
   if (UCmpEq(masked_shift, 0)) {
+    WriteZExt(dst, uval);
     return memory;  // No flags affected.
   }
   auto new_val = uval;
@@ -121,6 +123,7 @@ DEF_SEM(SHL, D dst, S1 src1, S2 src2) {
   auto masked_shift = UAnd(shift, shift_mask);
 
   if (UCmpEq(masked_shift, 0)) {
+    WriteZExt(dst, val);
     return memory;  // No flags affected.
   }
 
@@ -232,14 +235,18 @@ DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 src3) {
   auto masked_shift = UAnd(shift, shift_mask);
 
   if (UCmpEq(masked_shift, 0)) {
+    WriteZExt(dst, val1);
     return memory;
 
   } else if (UCmpLt(op_size, masked_shift)) {
     ClearArithFlags();
-    // `dst` is undefined; leave as-is.
+
+    // `dst` is undefined; leave as-is, except w.r.t. zero-
+    // extension.
     //
     // TODO(pag): Update `dst` anyway because it may be readable but not
     //            writable?
+    WriteZExt(dst, val1);
     return memory;
   }
 
@@ -286,14 +293,18 @@ DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 src3) {
   auto masked_shift = UAnd(shift, shift_mask);
 
   if (UCmpEq(masked_shift, 0)) {
+    WriteZExt(dst, val1);
     return memory;
 
   } else if (UCmpLt(op_size, masked_shift)) {
     ClearArithFlags();
-    // `dst` is undefined; leave as-is.
+    // `dst` is undefined; leave as-is, except w.r.t
+    // zero-extension.
     //
     // TODO(pag): Update `dst` anyway because it may be readable but not
     //            writable?
+    WriteZExt(dst, val1);
+
     return memory;
   }
 
