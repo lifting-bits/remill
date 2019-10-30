@@ -1477,12 +1477,14 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
 class ForwardingBlockVisitor {
   public:
     llvm::Function &func;
+    llvm::DominatorTree &dominator_tree;
     const InstToOffset &state_access_offset;
     const std::vector<StateSlot> &state_slots;
     const llvm::FunctionType *lifted_func_ty;
 
     ForwardingBlockVisitor(
         llvm::Function &func_,
+        llvm::DominatorTree &dominator_tree,
         const InstToOffset &state_access_offset_,
         const std::vector<StateSlot> &state_slots_,
         const llvm::DataLayout *dl_);
@@ -1497,10 +1499,12 @@ class ForwardingBlockVisitor {
 
 ForwardingBlockVisitor::ForwardingBlockVisitor(
     llvm::Function &func_,
+    llvm::DominatorTree &dominator_tree_,
     const InstToOffset &state_access_offset_,
     const std::vector<StateSlot> &state_slots_,
     const llvm::DataLayout *dl_)
     : func(func_),
+      dominator_tree(dominator_tree_),
       state_access_offset(state_access_offset_),
       state_slots(state_slots_),
       lifted_func_ty(func.getFunctionType()),
@@ -1695,6 +1699,11 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
       const auto &state_slot = state_slots[offset_ptr->second];
       auto &load_ref = slot_to_load[state_slot.index];
 
+      // If the slot is not dominating the load, update it
+      if (load_ref && !dominator_tree.dominates(load_ref, load_inst)) {
+        load_ref = nullptr;
+      }
+
       // Get the next load, and update the slot with the current load.
       auto next_load = load_ref;
       load_ref = load_inst;
@@ -1830,8 +1839,9 @@ void RemoveDeadStores(llvm::Module *module,
     // If the analysis succeeds for this function, then do store-to-load
     // and load-to-load forwarding.
     if (fav.Analyze(&func)) {
+      llvm::DominatorTree dominator_tree(func);
       if (FLAGS_enable_register_forwarding) {
-        ForwardingBlockVisitor fbv(func, state_access_offset, slots, &dl);
+        ForwardingBlockVisitor fbv(func, dominator_tree, state_access_offset, slots, &dl);
         fbv.Visit(fav.state_offset, stats);
       }
     }
