@@ -30,6 +30,30 @@ TEST_INPUTS(
     shr al, 0
 TEST_END
 
+TEST_BEGIN_64(SHRr64_8i8_0, 1)
+TEST_INPUTS(
+    0xFFFFFFFFFFFFFFFF)
+
+    mov rax, ARG1_64
+    shr al, 0
+TEST_END_64
+
+TEST_BEGIN_64(SHRr64_16i8_0, 1)
+TEST_INPUTS(
+    0xFFFFFFFFFFFFFFFF)
+
+    mov rax, ARG1_64
+    shr ax, 0
+TEST_END_64
+
+TEST_BEGIN_64(SHRr64_32i8_0, 1)
+TEST_INPUTS(
+    0xFFFFFFFFFFFFFFFF)
+
+    mov rax, ARG1_64
+    shr eax, 0
+TEST_END_64
+
 /* Mask 0x1F of 0xFF is still bigger than 8 bits. */
 TEST_BEGIN(SHRr8i8_255, 1)
 TEST_IGNORE_FLAGS(OF CF AF)
