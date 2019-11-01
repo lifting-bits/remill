@@ -80,11 +80,28 @@ struct LLVMHelperMixin {
   }
 };
 
+// Minimal standalone implementation of LLVMHelperMixin,
+// useful if you need to create some constant but do not want/cannot use
+// inheritance
 struct Constant : LLVMHelperMixin<Constant> {
   llvm::LLVMContext &context;
 
   Constant(llvm::LLVMContext &c) : context(c) {}
 };
+
+/* Implements type masks and utility functions that work with them.
+ * Mask is used to keep track of registers from the unfolded State
+ * that are being used by the function.
+ *
+ * There is separate type for registers that are returned and registers that
+ * are in arguments. This is an attempt to make code that uses them a bit more
+ * safe, since you typically do not want to combine these two kinds together.
+ *
+ * Ideally operation on type masks and passing them around by value should be as
+ * lightweight as possible. Once calculation is complete more permanent TypeMask
+ * can be create from it, which brings remill::Register into the context.
+ */
+
 
 using RegisterList = std::vector<const Register *>;
 using Mask = std::vector<bool>;
@@ -146,13 +163,13 @@ Mask ZipMasks(ForwardIt1 first1, ForwardIt1 last1,
   return result;
 }
 
-inline Mask operator||(const Mask &lhs, const Mask &rhs) {
+static inline Mask operator||(const Mask &lhs, const Mask &rhs) {
   return ZipMasks(lhs.cbegin(), lhs.cend(), rhs.cbegin(), [](bool l, bool r){
       return l || r;
     });
 }
 
-inline Mask operator&&(const Mask &lhs, const Mask &rhs) {
+static inline Mask operator&&(const Mask &lhs, const Mask &rhs) {
   return ZipMasks(lhs.cbegin(), lhs.cend(), rhs.cbegin(), [](bool l, bool r){
       return l && r;
     });
@@ -246,7 +263,7 @@ private:
 // This is not using iterators since std::bitset does not have any
 // CRTP to provide conversion from other collections
 template<typename Self>
-struct Converter {
+struct _Converter {
 
   Self &self() {
     return static_cast<Self &>(*this);
@@ -275,14 +292,14 @@ struct Converter {
 
 // Special type for mask of return type of function
 template<typename Container>
-struct RMask : public GMask<Container>, Converter<RMask<Container>> {
+struct RMask : public GMask<Container>, _Converter<RMask<Container>> {
   using Base = GMask<Container>;
   using Base::Base;
 };
 
 // Special type for mask of parameters of function
 template<typename Container>
-struct PMask : public GMask<Container>, Converter<PMask<Container>> {
+struct PMask : public GMask<Container>, _Converter<PMask<Container>> {
   using Base = GMask<Container>;
   using Base::Base;
 };
@@ -396,7 +413,8 @@ static inline std::vector<bool> &operator&=(std::vector<bool> &l, const std::vec
 }
 
 
-// Intermediate type that does not work with registers themselves, only with masks
+// Intermediate type that does not work with registers themselves, only with masks.
+// Used to apply changes from different optimizations before final TypeMask is built.
 template<typename Container>
 struct TMask {
   using RType = RMask<Container>;
@@ -440,13 +458,13 @@ struct TMask {
 
 template<typename Container>
 std::ostream &operator<<(std::ostream &os, const TMask<Container> &mask) {
-  os << "Ret_type:" << std::endl;
+  os << "Ret type:" << std::endl;
   for (auto i = 0U; i < mask.ret_type_mask.size(); ++i) {
     os << "\t" << mask.ret_type_mask[i];
   }
   os << std::endl;
 
-  os << "Param_type:" << std::endl;
+  os << "Param type:" << std::endl;
   for (auto i = 0U; i < mask.param_type_mask.size(); ++i) {
     os << "\t" << mask.param_type_mask[i];
   }
@@ -457,13 +475,13 @@ std::ostream &operator<<(std::ostream &os, const TMask<Container> &mask) {
 
 template<typename Container>
 std::ostream &operator<<(std::ostream &os, const TypeMask<Container> &mask) {
-  os << "Param_type:" << std::endl;
+  os << "Param type:" << std::endl;
   for (const auto &reg : mask.params) {
     os << "\t" << reg->name;
   }
   os << std::endl;
 
-  os << "Ret_type:" << std::endl;
+  os << "Ret type:" << std::endl;
   for (const auto &reg : mask.rets) {
     os << "\t" << reg->name;
   }
