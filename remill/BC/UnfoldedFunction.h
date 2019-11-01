@@ -15,8 +15,11 @@
 
 namespace remill {
 
+// Represents one unfolded function in the module, that was originally present
+// in form of sub_*
 struct UnfoldedFunction {
 
+  // Structure that compares Masks and produces colored output
   struct _Diff {
     std::stringstream _out;
     const std::vector<const remill::Register *> _regs;
@@ -61,6 +64,7 @@ struct UnfoldedFunction {
   // Hold information about currently used registers in function type
   Mask t_mask;
 
+  // Mostly for debug purposes
   std::vector<Mask> _history;
 
   llvm::Module &module = *sub_func.getParent();
@@ -128,14 +132,23 @@ struct UnfoldedFunction {
   }
 
   // Returns old version of unfolded function and forfeits its ownership
+  // Note that after this function callsites are not transformed yet!
   llvm::Function *Update(Mask mask, const std::string &prefix="") {
     auto old = unfolded_func;
 
     UpdateMask(std::move(mask));
+    // Create function with new arguments
     unfolded_func = UnfoldState(prefix);
+
+    // Creates allocas for each register and store arguments in them
+    // Later llvm mem2reg pass transforms them into values instead of memory pointers
     CreateAllocas();
 
+    // Return type is aggregate, therefore we need to fold every register in return type
+    // into one big aggregate
     FoldRets();
+
+    // GEPs into State are rewired to the allocas created per register earlier
     ReplaceGEPs();
 
     return old;
