@@ -70,17 +70,6 @@ static std::unordered_map<llvm::Function *, llvm::Function *> Sub2Entrypoint(llv
   return GetTieMapping<LiftedFunction, EntrypointFunction>(module);
 }
 
-// TODO: Remove once we are C++17
-template<typename T, typename U>
-static void insert_or_assign(std::map<T, U> &map, const T &key, U val) {
-  auto old_val = map.find(key);
-  if (old_val != map.end()) {
-    map.erase(old_val);
-  }
-  map.emplace(key, std::move(val));
-}
-
-
 // This expects
 // 1) There is a global stack named __mcsema_stack
 // 2) Global stack has type llvm::ArrayType with reasonable size
@@ -462,9 +451,9 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
   std::vector<llvm::Type *> type_prefix;
 
   // All the unfolded function with some basic information
-  std::map<llvm::Function *, UnfoldedFunction> unfolded;
+  std::unordered_map<llvm::Function *, UnfoldedFunction> unfolded;
 
-  std::map<llvm::Function *, llvm::Function *> sub_to_unfold;
+  std::unordered_map<llvm::Function *, llvm::Function *> sub_to_unfold;
 
   StateUnfolder(
       llvm::Module &module,
@@ -545,7 +534,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
     }
 
     auto iter = unfolded.find(func);
-    insert_or_assign(sub_to_unfold, func, iter->second.unfolded_func);
+    sub_to_unfold.insert_or_assign(func, iter->second.unfolded_func);
     return old;
   }
 
@@ -612,7 +601,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
   void OptimizeIteration(const std::string &prefix="") {
     OptPass();
 
-    std::map<llvm::Function *, TypeMask<Container>> func_to_mask;
+    std::unordered_map<llvm::Function *, TypeMask<Container>> func_to_mask;
 
     // TODO: This can be certainly done much smarter that it is
     std::vector<llvm::Function *> old_iter;
@@ -691,7 +680,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
   void HandleCallSites(
       UnfoldedFunction &func,
-      const std::map<llvm::Function *, UnfoldedFunction> &sub_to_unfold) {
+      const std::unordered_map<llvm::Function *, UnfoldedFunction> &sub_to_unfold) {
 
     const auto &allocas = func.allocas;
     std::vector<llvm::CallInst *> to_change;
@@ -741,7 +730,7 @@ struct StateUnfolder : LLVMHelperMixin<StateUnfolder> {
 
   void ReplaceEntrypoints(
       llvm::Function &func,
-      std::map<llvm::Function *, UnfoldedFunction> sub_to_unfold) {
+      std::unordered_map<llvm::Function *, UnfoldedFunction> sub_to_unfold) {
 
     DLOG(INFO) << "Replacing entrypoint " << func.getName().str();
     CreateLocalStack(module, func);
