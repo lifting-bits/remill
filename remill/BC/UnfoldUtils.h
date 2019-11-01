@@ -36,48 +36,8 @@ static inline void UnsafeErase(llvm::Function *func) {
   func->eraseFromParent();
 }
 
-template< unsigned i, typename... Empty >
-struct _Get { };
-
-template< typename _T, typename... Ts >
-struct _Get< 0, _T, Ts... > { using T = _T; };
-
-template< unsigned i, typename _T, typename... Ts >
-struct _Get< i, _T, Ts... > { using T = typename _Get< i - 1, Ts... >::T; };
-
-template< unsigned, typename >
-struct MethodArg { };
-
-template< unsigned i, typename Obj, typename R, typename... Args >
-struct MethodArg< i, R (Obj::*)( Args... ) > {
-    using T = typename _Get< i, Args... >::T;
-};
-
-template< unsigned i, typename Obj, typename R, typename... Args >
-struct MethodArg< i, R (Obj::*)( Args... ) const > {
-    using T = typename _Get< i, Args... >::T;
-};
-
-template< typename What >
-bool llvmcase( What * ) { return false; }
-
-template< typename What, typename Lambda, typename... Lambdas >
-bool llvmcase( What *w, Lambda lambda, Lambdas &&...lambdas ) {
-    if ( auto val = llvm::dyn_cast<
-            typename std::remove_pointer<
-                typename MethodArg< 0, decltype( &Lambda::operator() ) >::T
-            >::type >( w ) )
-    {
-        return lambda( val );
-    }
-    return llvmcase( w, std::forward< Lambdas >( lambdas )... );
-}
-
-template< typename What, typename... Lambdas >
-bool llvmcase( What &w, Lambdas &&...lambdas ) {
-    return llvmcase( &w, std::forward< Lambdas >( lambdas )... );
-}
-
+// Apply passed function to every instruction that satisfies filter (which will
+// usually be llvm::dyn_cast).
 template<typename LLVMFunc, typename Filter, typename Apply>
 void FilterAndApply(LLVMFunc *func, Filter &&filter, Apply apply) {
   for (auto &bb : *func) {
@@ -99,6 +59,8 @@ static inline const llvm::GlobalVariable *GetExplicitState(const llvm::Function 
   return GetExplicitState(*func->getParent());
 }
 
+// Filter only instructions of type T from function
+// TODO: Extend this, probably using stack-like structure
 template<typename T>
 std::vector<T *> Filter(llvm::Function *func) {
   std::vector<T *> out;
@@ -112,6 +74,8 @@ std::vector<T *> Filter(llvm::Function *func) {
   return out;
 }
 
+// Iterate over getAggregateOperand() until the instruction can be casted to Begin
+// Return Begin or nullptr on failure.
 template<typename Inst, typename Begin>
 Begin *GetBeginOfChain(Inst *val) {
   if (!val) {
@@ -125,6 +89,9 @@ Begin *GetBeginOfChain(Inst *val) {
   return GetBeginOfChain<Inst, Begin>(llvm::dyn_cast<Inst>(val->getAggregateOperand()));
 }
 
+// Iterate users (in case there is more than one nullptr is returned), until it can
+// be casted to End
+// Return End or nullptr on failure
 template<typename Inst, typename End>
 End *GetEndOfChain(llvm::Value *val) {
   if (!val) {
@@ -143,6 +110,8 @@ End *GetEndOfChain(llvm::Value *val) {
 }
 
 // Checks if value can escape into different function
+// This can be used to determine whether argument is only passed around in recursion
+// without actually being used for anything else
 struct _EscapeArgument {
 
   std::unordered_set<llvm::Value *> _seen;
@@ -177,28 +146,25 @@ struct _EscapeArgument {
     }
     _seen.insert(val);
 
-    bool out = llvmcase(val,
-        [&](llvm::PHINode *phi)
-        {
-          bool acc = SpreadForward(phi);
-          for (auto &use: phi->incoming_values()) {
-            acc &= Backward(use);
-          }
-          return acc;
-        },
-        [&](llvm::CallInst *call)
-        {
-          return llvm::CallSite(call).getCalledFunction() == _func &&
-                 NthArgument(_func, _arg_idx) == _origin;
-        },
-        [&](llvm::InsertValueInst *insert)
-        {
-          return GetEndOfChain<llvm::InsertValueInst, llvm::ReturnInst>(insert) &&
-                 *insert->idx_begin() == _arg_idx;
-        }
-    );
+    if (auto phi = llvm::dyn_cast<llvm::PHINode>(val)) {
+      bool acc = SpreadForward(phi);
+      for (auto &use: phi->incoming_values()) {
+        acc &= Backward(use);
+      }
+      return acc;
+    }
 
-    return out;
+    if (auto call = llvm::dyn_cast<llvm::CallInst>(val)) {
+      return llvm::CallSite(call).getCalledFunction() == _func &&
+             NthArgument(_func, _arg_idx) == _origin;
+    }
+
+    if (auto insert = llvm::dyn_cast<llvm::InsertValueInst>(val)) {
+      return GetEndOfChain<llvm::InsertValueInst, llvm::ReturnInst>(insert) &&
+             *insert->idx_begin() == _arg_idx;
+    }
+
+    return false;
   }
 
 
@@ -209,34 +175,34 @@ struct _EscapeArgument {
     }
     _seen.insert(val);
 
-    bool out = llvmcase(val,
-        [&](llvm::Argument *arg)
-        {
-          return arg == _origin;
-        },
-        [&](llvm::PHINode *phi)
-        {
-          bool acc = true;
-          for (auto &use: phi->incoming_values()) {
-            if (use == llvm::UndefValue::get(use->getType())) {
-              continue;
-            }
-            acc &= Backward(use);
-          }
-          return acc;
-        },
-        [&](llvm::ExtractValueInst *extract)
-        {
-          auto call = GetBeginOfChain<llvm::ExtractValueInst, llvm::CallInst>(extract);
-          return call &&
-                 llvm::CallSite(call).getCalledFunction() == _func &&
-                 *extract->idx_begin() == _arg_idx;
-        }
-    );
+    if (auto arg = llvm::dyn_cast<llvm::Argument>(val)) {
+      return arg == _origin;
+    }
 
-    return out;
+    if (auto phi = llvm::dyn_cast<llvm::PHINode>(val)) {
+      bool acc = true;
+      for (auto &use: phi->incoming_values()) {
+        if (use == llvm::UndefValue::get(use->getType())) {
+          continue;
+        }
+        acc &= Backward(use);
+      }
+      return acc;
+    }
+
+    if (auto extract = llvm::dyn_cast<llvm::ExtractValueInst>(val)) {
+      auto call = GetBeginOfChain<llvm::ExtractValueInst, llvm::CallInst>(extract);
+      return call &&
+             llvm::CallSite(call).getCalledFunction() == _func &&
+             // The order is important! It needs to be passed as the same param
+             *extract->idx_begin() == _arg_idx;
+    }
+
+    return false;
   }
 
+  // Returns true if argument origin on position arg_idx in args list
+  // is used for something other than being passed around
   bool Run(llvm::Value *origin, uint64_t arg_idx) {
     _arg_idx = arg_idx;
     _origin = origin;
@@ -248,6 +214,8 @@ struct _EscapeArgument {
 struct _EscapeArgumentFromReturn : _EscapeArgument {
  using _EscapeArgument::_EscapeArgument;
 
+  // Returns true if argument origin on position arg_idx in return struct
+  // is used for something other than being returned around
   bool Run(llvm::Value *origin, uint64_t arg_idx) {
     _arg_idx = arg_idx;
     _origin = NthArgument(_func, _arg_idx);
