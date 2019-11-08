@@ -6,19 +6,24 @@ dist: xenial
 os:
   - linux
   - osx
+  - windows
 
 matrix:
   allow_failures:
     - os: osx
+    - os: windows
 
 compiler:
   - gcc
 
 before_install:
-  - ./scripts/travis.sh "$TRAVIS_OS_NAME" initialize
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; ./scripts/travis.sh osx initialize ; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; ./scripts/travis.sh linux initialize ; fi
 
 script:
-  - ./scripts/travis.sh "$TRAVIS_OS_NAME" build
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; ./scripts/travis.sh osx build ; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; ./scripts/travis.sh linux build ; fi
+  - if [ "$TRAVIS_OS_NAME" = "windows" ]; scripts\travis.bat ; fi
 
 notifications:
   slack:

@@ -59,15 +59,22 @@
 
 DECLARE_string(arch);
 
-#ifdef WIN32
 namespace {
+#ifdef WIN32
 extern "C" std::uint32_t GetProcessId(std::uint32_t handle);
-
-std::uint32_t getpid(void) {
-  return GetProcessId(0);
-}
-}
 #endif
+
+// We are avoiding the `getpid` name here to make sure we don't
+// conflict with the (deprecated) getpid function from the Windows
+// ucrt headers
+std::uint32_t nativeGetProcessID(void) {
+#ifdef WIN32
+  return GetProcessId(0);
+#else
+  return getpid();
+#endif
+}
+}
 
 namespace remill {
 // Initialize the attributes for a lifted function.
@@ -332,7 +339,7 @@ bool StoreModuleToFile(llvm::Module *module, std::string file_name,
       << "Saving bitcode to file " << file_name;
 
   std::stringstream ss;
-  ss << file_name << ".tmp." << getpid();
+  ss << file_name << ".tmp." << nativeGetProcessID();
   auto tmp_name = ss.str();
 
   std::string error;
