@@ -50,6 +50,6 @@ std::vector<StateSlot> StateSlots(llvm::Module *module);
 // Analyze a module, discover aliasing loads and stores, and remove dead
 // stores into the `State` structure.
 void RemoveDeadStores(llvm::Module *module, llvm::Function *bb_func,
-                      const std::vector<StateSlot> &slots);
+                      const std::vector<StateSlot> &slots, llvm::Function *ds_func=nullptr);
 
 }  // namespace remill
