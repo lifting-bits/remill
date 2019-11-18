@@ -17,13 +17,13 @@ compiler:
   - gcc
 
 before_install:
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; ./scripts/travis.sh osx initialize ; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; ./scripts/travis.sh linux initialize ; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ./scripts/travis.sh osx initialize ; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./scripts/travis.sh linux initialize ; fi
 
 script:
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; ./scripts/travis.sh osx build ; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; ./scripts/travis.sh linux build ; fi
-  - if [ "$TRAVIS_OS_NAME" = "windows" ]; scripts\travis.bat ; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ./scripts/travis.sh osx build ; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./scripts/travis.sh linux build ; fi
+  - if [ "$TRAVIS_OS_NAME" = "windows" ]; then scripts\travis.bat ; fi
 
 notifications:
   slack:
