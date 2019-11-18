@@ -149,8 +149,15 @@ function GetOSVersion
 function DownloadLibraries
 {
   # macOS packages
-  if [[ "${OSTYPE}" = "darwin"* ]]; then
-    export SDKROOT=`xcrun --show-sdk-path`
+  if [[ "${OSTYPE}" = "darwin"* ]]; the
+
+    # Compute an isysroot from the SDK root dir.
+    local sdk_root="${SDKROOT}"
+    if [[ "x${sdk_root}x" = "xx" ]]; then
+      sdk_root=`xcrun -sdk macosx --show-sdk-path`
+    fi
+
+    BUILD_FLAGS="${BUILD_FLAGS} -DCMAKE_OSX_SYSROOT=${sdk_root}"
     OS_VERSION=osx
 
   # Linux packages
@@ -276,6 +283,10 @@ function GetLLVMVersion
     ;;
     8.0)
       LLVM_VERSION=llvm80
+      return 0
+    ;;
+    9.0)
+      LLVM_VERSION=llvm90
       return 0
     ;;
     *)
