@@ -16,6 +16,12 @@ matrix:
 compiler:
   - gcc
 
+cache:
+  directories:
+    - ccache_llvm40
+    - ccache_llvm50
+    - ccache_llvm60
+
 before_install:
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ./scripts/travis.sh osx initialize ; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./scripts/travis.sh linux initialize ; fi
