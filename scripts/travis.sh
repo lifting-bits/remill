@@ -63,7 +63,7 @@ linux_initialize() {
 }
 
 osx_initialize() {
-  export SDKROOT=`xcrun --show-sdk-path`
+  export SDKROOT=$(xcrun --show-sdk-path)
   printf "Initializing platform: osx\n"
   return 0
 }

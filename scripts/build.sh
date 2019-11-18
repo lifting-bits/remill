@@ -149,12 +149,12 @@ function GetOSVersion
 function DownloadLibraries
 {
   # macOS packages
-  if [[ "${OSTYPE}" = "darwin"* ]]; the
+  if [[ "${OSTYPE}" = "darwin"* ]]; then
 
     # Compute an isysroot from the SDK root dir.
     local sdk_root="${SDKROOT}"
     if [[ "x${sdk_root}x" = "xx" ]]; then
-      sdk_root=`xcrun -sdk macosx --show-sdk-path`
+      sdk_root=$(xcrun -sdk macosx --show-sdk-path)
     fi
 
     BUILD_FLAGS="${BUILD_FLAGS} -DCMAKE_OSX_SYSROOT=${sdk_root}"
