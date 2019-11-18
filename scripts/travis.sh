@@ -284,6 +284,12 @@ common_build() {
     fi
   fi
 
+  which sw_vers > /dev/null 2>&1
+  if [ $? -eq 0 ] ; then
+    printf " ! Skipping the tests on macOS\n"
+    return 0
+  fi
+
   printf " > Building and running the tests...\n\nWaiting..."
   ( cd build && make -j `GetProcessorCount` test_dependencies && env CTEST_OUTPUT_ON_FAILURE=1 make test ) > "${log_file}" 2>&1 &
   local test_pid="$!"

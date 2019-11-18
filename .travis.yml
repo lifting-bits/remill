@@ -1,4 +1,4 @@
-language: generic
+language: cpp
 
 sudo: required
 dist: xenial
@@ -10,7 +10,6 @@ os:
 
 matrix:
   allow_failures:
-    - os: osx
     - os: windows
 
 compiler:
@@ -29,7 +28,7 @@ before_install:
 script:
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ./scripts/travis.sh osx build ; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./scripts/travis.sh linux build ; fi
-  - if [ "$TRAVIS_OS_NAME" = "windows" ]; then scripts\travis.bat ; fi
+  - if [ "$TRAVIS_OS_NAME" = "windows" ]; then ./scripts/travis.bat ; fi
 
 notifications:
   slack:
