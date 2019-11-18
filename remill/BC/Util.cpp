@@ -687,10 +687,12 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
         llvm::GlobalValue *new_global_val = nullptr;
 
         if (auto global_val_func = llvm::dyn_cast<llvm::Function>(global_val)) {
-          new_global_val =
-              llvm::dyn_cast<llvm::GlobalValue>(dest_mod->getOrInsertFunction(
-                  global_val->getName(), llvm::dyn_cast<llvm::FunctionType>(
-                                             GetValueType(global_val))));
+          auto new_func = dest_mod->getOrInsertFunction(
+              global_val->getName(),
+              llvm::dyn_cast<llvm::FunctionType>(GetValueType(global_val)));
+
+          new_global_val = llvm::dyn_cast<llvm::GlobalValue>(
+              new_func IF_LLVM_GTE_900(.getCallee()));
 
           if (auto as_func = llvm::dyn_cast<llvm::Function>(new_global_val)) {
             as_func->setAttributes(global_val_func->getAttributes());
@@ -933,7 +935,7 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
     existing = nullptr;
   }
 
-  IF_LLVM_GTE_37( ClearMetaData(func); )
+  IF_LLVM_GTE_370( ClearMetaData(func); )
 
   for (auto &block : *func) {
     for (auto &inst : block) {

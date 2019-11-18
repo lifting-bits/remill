@@ -36,9 +36,18 @@ function GetUbuntuOSVersion
   source /etc/lsb-release
 
   case "${DISTRIB_CODENAME}" in
+    disco)
+      # TODO(pag): Eventually make real packages for 19.04!
+      OS_VERSION=ubuntu1804
+      return 0
+    ;;
+    dingo)
+      # TODO(pag): Eventually make real packages for 19.04!
+      OS_VERSION=ubuntu1804
+      return 0
+    ;;
     cosmic)
       # TODO(pag): Eventually make real packages for 18.10!
-      OS_VERSION=ubuntu1810
       OS_VERSION=ubuntu1804
       return 0
     ;;
@@ -141,6 +150,7 @@ function DownloadLibraries
 {
   # macOS packages
   if [[ "${OSTYPE}" = "darwin"* ]]; then
+    export SDKROOT=`xcrun --show-sdk-path`
     OS_VERSION=osx
 
   # Linux packages

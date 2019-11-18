@@ -66,12 +66,15 @@ void OptimizeModule(llvm::Module *module,
   builder.Inliner = llvm::createFunctionInliningPass(250);
   builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
   builder.DisableUnrollLoops = false;  // Unroll loops!
-  builder.DisableUnitAtATime = false;
+  IF_LLVM_LT_900(builder.DisableUnitAtATime = false;)
   builder.RerollLoops = false;
   builder.SLPVectorize = guide.slp_vectorize;
   builder.LoopVectorize = guide.loop_vectorize;
-  IF_LLVM_GTE_36(builder.VerifyInput = guide.verify_input;)
-  IF_LLVM_GTE_36(builder.VerifyOutput = guide.verify_output;)
+  IF_LLVM_GTE_360(builder.VerifyInput = guide.verify_input;)
+  IF_LLVM_GTE_360(builder.VerifyOutput = guide.verify_output;)
+
+  // TODO(pag): Not sure when this became available.
+  IF_LLVM_GTE_800(builder.MergeFunctions = false;)
 
   builder.populateFunctionPassManager(func_manager);
   builder.populateModulePassManager(module_manager);
@@ -110,12 +113,15 @@ void OptimizeBareModule(
   builder.Inliner = llvm::createFunctionInliningPass(250);
   builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
   builder.DisableUnrollLoops = false;  // Unroll loops!
-  builder.DisableUnitAtATime = false;
+  IF_LLVM_LT_900(builder.DisableUnitAtATime = false;)
   builder.RerollLoops = false;
   builder.SLPVectorize = guide.slp_vectorize;
   builder.LoopVectorize = guide.loop_vectorize;
-  IF_LLVM_GTE_36(builder.VerifyInput = guide.verify_input;)
-  IF_LLVM_GTE_36(builder.VerifyOutput = guide.verify_output;)
+  IF_LLVM_GTE_360(builder.VerifyInput = guide.verify_input;)
+  IF_LLVM_GTE_360(builder.VerifyOutput = guide.verify_output;)
+
+  // TODO(pag): Not sure when this became available.
+  IF_LLVM_GTE_800(builder.MergeFunctions = false;)
 
   builder.populateFunctionPassManager(func_manager);
   builder.populateModulePassManager(module_manager);
