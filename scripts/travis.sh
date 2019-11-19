@@ -63,8 +63,11 @@ linux_initialize() {
 }
 
 osx_initialize() {
-  export SDKROOT=$(xcrun --show-sdk-path)
   printf "Initializing platform: osx\n"
+  if [[ "x${SDKROOT}x" == "xx" ]] ; then
+    export SDKROOT=$(xcrun -sdk macosx --show-sdk-path)
+  fi
+  printf " > The macOS SDK is located at ${SDKROOT}\n"
   return 0
 }
 
