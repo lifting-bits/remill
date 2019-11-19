@@ -100,11 +100,11 @@ DEF_SEM(XADD, D1 dst1, S1 src1, D2 dst2, S2 src2) {
     BarrierStoreLoad();
   }
 
-  auto rhs = Read(src2);
-  auto lhs = UFetchAdd(dst1, rhs);
-  auto sum = UAdd(lhs, rhs);
+  auto rhs = Read(src1);
+  auto lhs = Read(src2);
+  auto sum = UAddFetch(dst2, rhs);
   WriteFlagsAddSub<tag_add>(state, rhs, lhs, sum);
-  WriteZExt(dst2, lhs);
+  WriteZExt(dst1, sum);
   return memory;
 }
 
