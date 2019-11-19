@@ -919,6 +919,8 @@ bool TraceLifter::Lift(uint64_t addr_,
 
       (void) arch->DecodeInstruction(inst_addr, state.inst_bytes, state.inst);
 
+      LOG(ERROR) << state.inst.Serialize();
+
       auto lift_status = inst_lifter.LiftIntoBlock(state.inst, state.block);
       if (kLiftedInstruction != lift_status) {
         AddTerminatingTailCall(state.block, intrinsics->error);

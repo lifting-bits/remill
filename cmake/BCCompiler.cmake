@@ -2,6 +2,10 @@
 # compiler detection
 #
 
+if(DEFINED CMAKE_OSX_SYSROOT)
+  set(EXTRA_BC_SYSROOT -isysroot ${CMAKE_OSX_SYSROOT})
+endif()
+
 set(DEFAULT_BC_COMPILER_FLAGS
   -emit-llvm -Wno-unknown-warning-option -Wall -Wshadow
   -Wconversion -Wpadded -pedantic -Wshorten-64-to-32 -Wgnu-alignof-expression
@@ -12,7 +16,8 @@ set(DEFAULT_BC_COMPILER_FLAGS
   -Wno-variadic-macros -Wno-c11-extensions -Wno-c++11-extensions
   -ffreestanding -fno-common -fno-builtin -fno-exceptions -fno-rtti
   -fno-asynchronous-unwind-tables -Wno-unneeded-internal-declaration
-  -Wno-unused-function -std=c++0x
+  -Wno-unused-function -std=gnu++11
+  ${EXTRA_BC_SYSROOT}
 )
 
 set(CLANG_CXX_EXECUTABLE_NAME "clang++")

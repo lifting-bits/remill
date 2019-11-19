@@ -441,7 +441,7 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
 
 // Add attributes to llvm::Argument in a way portable across LLVMs
 static void AddNoAliasToArgument(llvm::Argument *arg) {
-  IF_LLVM_LT_39(
+  IF_LLVM_LT_390(
     arg->addAttr(
       llvm::AttributeSet::get(
         arg->getContext(),
@@ -450,7 +450,7 @@ static void AddNoAliasToArgument(llvm::Argument *arg) {
     ); 
   );
 
-  IF_LLVM_GTE_39(
+  IF_LLVM_GTE_390(
     arg->addAttr(llvm::Attribute::NoAlias);
   );
 }
@@ -712,11 +712,11 @@ void Arch::PrepareModuleDataLayout(llvm::Module *mod) const {
   llvm::AttributeSet target_attribs;
   target_attribs = target_attribs.addAttribute(
       context,
-      IF_LLVM_LT_50_(llvm::AttributeSet::FunctionIndex)
+      IF_LLVM_LT_500_(llvm::AttributeSet::FunctionIndex)
       "target-features");
   target_attribs = target_attribs.addAttribute(
       context,
-      IF_LLVM_LT_50_(llvm::AttributeSet::FunctionIndex)
+      IF_LLVM_LT_500_(llvm::AttributeSet::FunctionIndex)
       "target-cpu");
 
   for (llvm::Function &func : *mod) {
