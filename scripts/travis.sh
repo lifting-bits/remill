@@ -179,6 +179,17 @@ common_build() {
     fi
   fi
 
+  export CCACHE_DIR="ccache_llvm${llvm_version}"
+
+  if [ ! -d "${CCACHE_DIR}" ] ; then
+    printf " > Creating ccache folder\n"
+  else
+    printf " > Using existing ccache folder\n"
+  fi
+
+  export CCACHE_DIR="$(realpath ${CCACHE_DIR})"
+  printf " i ${CCACHE_DIR}\n"
+
   export TRAILOFBITS_LIBRARIES=`GetRealPath libraries`
   export PATH="${TRAILOFBITS_LIBRARIES}/llvm/bin:${TRAILOFBITS_LIBRARIES}/cmake/bin:${TRAILOFBITS_LIBRARIES}/protobuf/bin:${PATH}"
 
@@ -271,6 +282,12 @@ common_build() {
       cat "${log_file}"
       return 1
     fi
+  fi
+
+  which sw_vers > /dev/null 2>&1
+  if [ $? -eq 0 ] ; then
+    printf " ! Skipping the tests on macOS\n"
+    return 0
   fi
 
   printf " > Building and running the tests...\n\nWaiting..."
