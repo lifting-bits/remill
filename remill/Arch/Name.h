@@ -18,7 +18,7 @@
 
 #ifndef REMILL_ARCH
 # if defined(__x86_64__)
-#   define REMILL_ARCH "amd64"
+#   define REMILL_ARCH "amd64_avx"
 #   define REMILL_ON_AMD64 1
 #   define REMILL_ON_X86 0
 #   define REMILL_ON_AARCH64 0

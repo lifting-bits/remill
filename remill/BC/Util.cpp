@@ -597,7 +597,12 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
   auto func_name = source_func->getName().str();
   auto source_mod = source_func->getParent();
   auto dest_mod = dest_func->getParent();
+  auto &source_context = source_mod->getContext();
+  auto &dest_context = dest_func->getContext();
+  auto reg_md_id = source_context.getMDKindID("remill_register");
 
+  // Make sure that when we're cloning `__remill_basic_block`, we don't
+  // throw away register names and such.
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
   dest_func->getContext().setDiscardValueNames(false);
 #endif
@@ -645,9 +650,12 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
       auto new_inst = llvm::dyn_cast<llvm::Instruction>(value_map[&old_inst]);
 
       // Clear out all metadata from the new instruction.
+
       old_inst.getAllMetadata(mds);
       for (auto md_info : mds) {
-        new_inst->setMetadata(md_info.first, nullptr);
+        if (md_info.first != reg_md_id || &source_context != &dest_context) {
+          new_inst->setMetadata(md_info.first, nullptr);
+        }
       }
 
       new_inst->setDebugLoc(llvm::DebugLoc());
@@ -909,7 +917,9 @@ static void ClearMetaData(T *value) {
 //
 // TODO(pag): Make this work across distinc `llvm::LLVMContext`s.
 void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
-  CHECK(&(func->getContext()) == &(dest_module->getContext()))
+  const auto source_context = &(func->getContext());
+  const auto dest_context = &(dest_module->getContext());
+  CHECK(source_context == dest_context)
       << "Cannot move function across two independent LLVM contexts.";
 
   auto source_module = func->getParent();
@@ -926,8 +936,10 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
     existing->setVisibility(llvm::GlobalValue::DefaultVisibility);
   }
 
-  func->removeFromParent();
-  dest_module->getFunctionList().push_back(func);
+  if (source_context == dest_context) {
+    func->removeFromParent();
+    dest_module->getFunctionList().push_back(func);
+  }
 
   if (existing) {
     existing->replaceAllUsesWith(func);
@@ -935,11 +947,16 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
     existing = nullptr;
   }
 
-  IF_LLVM_GTE_370( ClearMetaData(func); )
+  if (source_context != dest_context) {
+    IF_LLVM_GTE_370(ClearMetaData(func);)
+  }
 
   for (auto &block : *func) {
     for (auto &inst : block) {
-      ClearMetaData(&inst);
+
+      if (source_context != dest_context) {
+        ClearMetaData(&inst);
+      }
 
       // Substitute globals in the operands.
       for (auto &op : inst.operands()) {

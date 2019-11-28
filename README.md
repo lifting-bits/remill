@@ -45,6 +45,7 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 | [Intel XED](https://software.intel.com/en-us/articles/xed-x86-encoder-decoder-software-library) | Latest |
 | [Python](https://www.python.org/) | 2.7 | 
 | Unzip | Latest |
+| [ccache](https://ccache.dev/) | Latest |
 
 ## Getting and Building the Code
 
@@ -64,7 +65,8 @@ sudo apt-get install \
      build-essential \
      libtinfo-dev \
      lsb-release \
-     zlib1g-dev
+     zlib1g-dev \
+     ccache
 
 # Ubuntu 14.04, 16.04
 sudo apt-get install realpath
