@@ -621,19 +621,42 @@ BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type,
   return {offset, nullptr};
 }
 
+// Compute the total offset of a GEP chain.
+static uint64_t TotalOffset(llvm::DataLayout &dl,
+                            llvm::Value *base,
+                            llvm::Type *state_ptr_type) {
+  llvm::APInt accumulated_offset(64, 0, false);
+  while (base) {
+    if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(base)) {
+      CHECK(gep->accumulateConstantOffset(dl, accumulated_offset));
+      base = gep->getPointerOperand();
+
+    } else if (auto bc = llvm::dyn_cast<llvm::BitCastInst>(base)) {
+      base = bc->getOperand(0);
+
+    } else if (base->getType() == state_ptr_type) {
+      break;
+
+    } else {
+      LOG(FATAL)
+          << "Unexpected value " << LLVMThingToString(base)
+          << " in State structure indexing chain";
+      base = nullptr;
+    }
+  }
+  return accumulated_offset.getZExtValue();
+}
+
 static llvm::Instruction *FinishAddressOf(
-    llvm::IRBuilder<> &ir, llvm::DataLayout &dl,
+    llvm::IRBuilder<> &ir, llvm::DataLayout &dl, llvm::Type *state_ptr_type,
+    size_t state_size,
     const Register *reg, unsigned addr_space,
     llvm::GetElementPtrInst *gep) {
 
-  llvm::APInt accumulated_offset(64, 0, false);
-  for (auto base = gep; base; ) {
-    CHECK(gep->accumulateConstantOffset(dl, accumulated_offset));
-    base = llvm::dyn_cast<llvm::GetElementPtrInst>(base->getPointerOperand());
-  }
-
-  auto gep_offset = accumulated_offset.getZExtValue();
+  auto gep_offset = TotalOffset(dl, gep, state_ptr_type);
   auto gep_type_at_offset = gep->getResultElementType();
+
+  CHECK_LT(gep_offset, state_size);
 
   const auto index_type = reg->gep_index_list[0]->getType();
   const auto goal_ptr_type = llvm::PointerType::get(reg->type, addr_space);
@@ -705,7 +728,9 @@ llvm::Instruction *Register::AddressOf(llvm::Value *state_ptr,
       ir.CreateInBoundsGEP(state_type, state_ptr, gep_index_list));
   CHECK_NOTNULL(gep);
 
-  return FinishAddressOf(ir, dl, this, addr_space, gep);
+  auto state_size = dl.getTypeAllocSize(state_type);
+  return FinishAddressOf(
+      ir, dl, state_ptr_type, state_size, this, addr_space, gep);
 }
 
 // Converts an LLVM module object to have the right triple / data layout
@@ -759,6 +784,7 @@ void Arch::CollectRegisters(llvm::Module *module) const {
   const auto basic_block = BasicBlockFunction(module);
   const auto state_ptr_type = StatePointerType(module);
   const auto state_type = state_ptr_type->getElementType();
+  const auto state_size = dl.getTypeAllocSize(state_type);
   const auto index_type = llvm::Type::getInt32Ty(module->getContext());
   uint64_t order = 0;
 
@@ -890,9 +916,13 @@ void Arch::CollectRegisters(llvm::Module *module) const {
       }
       std::reverse(sub_indexes.begin(), sub_indexes.end());
 
-      reg_gep[&reg] = llvm::GetElementPtrInst::CreateInBounds(
+      auto gep = llvm::GetElementPtrInst::CreateInBounds(
           parent_elem_type, parent_gep, sub_indexes, llvm::Twine::createNull(),
           insert_loc);
+
+      CHECK_LE(TotalOffset(dl, gep, state_ptr_type), reg.offset);
+
+      reg_gep[&reg] = gep;
       reg_indexes[&reg] = std::move(index_vec);
     }
   }
@@ -904,7 +934,7 @@ void Arch::CollectRegisters(llvm::Module *module) const {
   llvm::IRBuilder<> ir(insert_loc);
   for (auto &reg : registers) {
     auto final = FinishAddressOf(
-        ir, dl, &reg, addr_space, reg_gep[&reg]);
+        ir, dl, state_ptr_type, state_size, &reg, addr_space, reg_gep[&reg]);
 
     auto prev_reg = prev_reg_by_name[reg.name];
     prev_reg->replaceAllUsesWith(final);

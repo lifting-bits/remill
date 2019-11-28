@@ -36,6 +36,7 @@
 #include "remill/BC/DeadStoreEliminator.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/FileSystem.h"
+#include "ABI.h"
 
 DEFINE_string(dot_output_dir, "",
               "The directory in which to log DOT digraphs of the alias "
@@ -287,7 +288,7 @@ struct ForwardAliasVisitor
                       InstToOffset &state_access_offset_,
                       llvm::LLVMContext &context);
 
-  bool Analyze(llvm::Function *func);
+  bool Analyze(KillCounter &stats, llvm::Function *func);
 
  protected:
   friend class llvm::InstVisitor<ForwardAliasVisitor, VisitResult>;
@@ -502,12 +503,12 @@ ForwardAliasVisitor::ForwardAliasVisitor(
       reg_md_id(context.getMDKindID("remill_register")) {}
 
 void ForwardAliasVisitor::AddInstruction(llvm::Instruction *inst) {
-  
+
   if (!inst->getMetadata(reg_md_id)) {
     if (FLAGS_dot_output_dir.empty()) {
       inst->setName(llvm::Twine::createNull());
     } else {
-      static int r = 3;
+      static int r = static_cast<int>(remill::kNumBlockArgs);
       if (!inst->getType()->isVoidTy()) {
         inst->setName("r" + std::to_string(r++));
       }
@@ -539,7 +540,7 @@ void ForwardAliasVisitor::AddInstruction(llvm::Instruction *inst) {
 // are not yet in `state_offset`) is withheld to the next analysis round
 // in the next worklist. Analysis repeats until the current worklist is
 // empty or until an error condition is hit.
-bool ForwardAliasVisitor::Analyze(llvm::Function *func) {
+bool ForwardAliasVisitor::Analyze(KillCounter &stats, llvm::Function *func) {
   curr_wl.clear();
   exclude.clear();
   calls.clear();
@@ -640,7 +641,12 @@ bool ForwardAliasVisitor::Analyze(llvm::Function *func) {
   }
 
   // TODO(tim): This condition is triggered a lot.
+  //
+  // One place where this happens is when there is a `select` to choose
+  // what index into an array to use.
   if (!pending_wl.empty()) {
+    stats.failed_funcs++;
+
     DLOG(ERROR)
         << "Alias analysis failed to complete on function `"
         << func->getName().str() << "` with " << next_wl.size()
@@ -741,7 +747,7 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(
   }
 
   // Try to get the offset as a single constant. If we can't then
-  llvm::APInt const_offset(dl.getPointerSizeInBits(0), 0);
+  llvm::APInt const_offset(64, 0, true);
   if (!inst.accumulateConstantOffset(dl, const_offset)) {
     return VisitResult::Error;
   }
@@ -751,9 +757,12 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(
   if (!TryCombineOffsets(ptr->second, OpType::Plus,
                          static_cast<uint64_t>(const_offset.getSExtValue()),
                          offset_to_slot.size(), &offset)) {
+
     LOG(WARNING)
         << "Out of bounds GEP operation: " << LLVMThingToString(&inst)
+        << " on base " << LLVMThingToString(val)
         << " with inferred offset " << static_cast<int64_t>(offset)
+        << " (" << ptr->second << " + "  << const_offset.getSExtValue() << ")"
         << " and max allowed offset of " << offset_to_slot.size();
     return VisitResult::Error;
   }
@@ -1865,7 +1874,7 @@ void RemoveDeadStores(llvm::Module *module,
 
     // If the analysis succeeds for this function, then do store-to-load
     // and load-to-load forwarding.
-    if (fav.Analyze(&func)) {
+    if (fav.Analyze(stats, &func)) {
       if (!FLAGS_disable_register_forwarding) {
         llvm::DominatorTree dominator_tree(func);
         ForwardingBlockVisitor fbv(
