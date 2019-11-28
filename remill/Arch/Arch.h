@@ -33,6 +33,7 @@ class LLVMContext;
 class Module;
 class BasicBlock;
 class Function;
+class GetElementPtrInst;
 class Instruction;
 }  // namespace llvm.
 namespace remill {
@@ -56,11 +57,34 @@ struct Register {
   // LLVM type associated with the field in `State`.
   llvm::Type *type;
 
+  // A pre-computed index list and type for creating pointers to this register
+  // given a `State` structure pointer.
+  std::vector<llvm::Value *> gep_index_list;
+
+  // The offset in `State` nearest to `offset`. You can say that
+  // the `sizeof(gep_type_at_offset)` starting at `gep_offset` in the `State`
+  // structure fully enclose this register. The following invariant holds:
+  //
+  //    gep_offset
+  //        <= offset
+  //            <= offset + sizeof(type)
+  //                <= gep_offset + sizeof(gep_type_at_offset)
+  size_t gep_offset{0};
+
+  // This may be different than `type`. If so, then a bitcast on a
+  // `getelementptr` produced using `gep_index_list` to a `type*` is needed.
+  llvm::Type *gep_type_at_offset{nullptr};
+
   // Returns the enclosing register of size AT LEAST `size`, or `nullptr`.
   const Register *EnclosingRegisterOfSize(uint64_t size) const;
 
   // Returns the largest enclosing register containing the current register.
   const Register *EnclosingRegister(void) const;
+
+  // Returns the list of directly enclosed registers. For example,
+  // `RAX` will directly enclose `EAX` but nothing else. `AX` will directly
+  // enclose `AH` and `AL`.
+  const std::vector<const Register *> &EnclosedRegisters(void) const;
 
   // Generate an instruction that will let us load/store to this register, given
   // a `State *`.
@@ -70,7 +94,10 @@ struct Register {
  private:
   friend class Arch;
 
-  const Register * parent;
+  const Register * parent{nullptr};
+
+  // The directly enclosed registers.
+  std::vector<const Register *> children;
 };
 
 class Arch {
