@@ -52,7 +52,14 @@ struct Register {
   std::string name;  // Name of the register.
   uint64_t offset;  // Byte offset in `State`.
   uint64_t size;  // Size of this register.
-  uint64_t order;  // Order of appears in `__remill_basic_block`.
+
+  // How many indexes/casts it takes to get at this register withing the
+  // original bitcode of `__remill_basic_block`. This is a useful metric
+  // when trying to decide is something is a sub-register of another. For
+  // example, `Q0` is a sub register of `V0` on AArch64, even though they
+  // are the same size. The complexity allows us to see that it "takes more"
+  // to index into `Q0` than it does for `V0`, and thus `Q0` is a sub-register.
+  unsigned complexity;
 
   // LLVM type associated with the field in `State`.
   llvm::Type *type;

@@ -500,18 +500,18 @@ static bool RegisterComparator(const Register &lhs, const Register &rhs) {
     return false;
 
   } else {
-    return lhs.order < rhs.order;
+    return lhs.complexity < rhs.complexity;
   }
 }
 
 }  // namespace
 
 Register::Register(const std::string &name_, uint64_t offset_, uint64_t size_,
-                   uint64_t order_, llvm::Type *type_)
+                   uint64_t complexity_, llvm::Type *type_)
     : name(name_),
       offset(offset_),
       size(size_),
-      order(order_),
+      complexity(complexity_),
       type(type_) {}
 
 // Returns the enclosing register of size AT LEAST `size`, or `nullptr`.
@@ -619,6 +619,31 @@ BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type,
   }
 
   return {offset, nullptr};
+}
+
+// Return the complexity of this state indexing operation.
+static unsigned Complexity(llvm::Value *base, llvm::Type *state_ptr_type) {
+  unsigned complexity = 0;
+  while (base) {
+    if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(base)) {
+      complexity += gep->getNumOperands();
+      base = gep->getPointerOperand();
+
+    } else if (auto bc = llvm::dyn_cast<llvm::BitCastInst>(base)) {
+      base = bc->getOperand(0);
+      complexity += 1;
+
+    } else if (base->getType() == state_ptr_type) {
+      break;
+
+    } else {
+      LOG(FATAL)
+          << "Unexpected value " << LLVMThingToString(base)
+          << " in State structure indexing chain";
+      base = nullptr;
+    }
+  }
+  return complexity;
 }
 
 // Compute the total offset of a GEP chain.
@@ -786,7 +811,6 @@ void Arch::CollectRegisters(llvm::Module *module) const {
   const auto state_type = state_ptr_type->getElementType();
   const auto state_size = dl.getTypeAllocSize(state_type);
   const auto index_type = llvm::Type::getInt32Ty(module->getContext());
-  uint64_t order = 0;
 
   std::unordered_map<std::string, llvm::Instruction *> prev_reg_by_name;
 
@@ -807,7 +831,8 @@ void Arch::CollectRegisters(llvm::Module *module) const {
       }
       auto name = inst.getName().str();
       registers.emplace_back(
-          name, offset, dl.getTypeAllocSize(reg_type), order++, reg_type);
+          name, offset, dl.getTypeAllocSize(reg_type),
+          Complexity(&inst, state_ptr_type), reg_type);
 
       prev_reg_by_name[name] = &inst;
     }
