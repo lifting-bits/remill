@@ -829,6 +829,13 @@ void Arch::CollectRegisters(llvm::Module *module) const {
       if (!GetRegisterOffset(module, state_ptr_type, &inst, &offset)) {
         continue;
       }
+
+      // In `__remill_basic_block`, register assignments are the "last" things,
+      // and aren't re-used for accessing sub-registers.
+      if (!inst.hasNUses(0)) {
+        continue;
+      }
+
       auto name = inst.getName().str();
       registers.emplace_back(
           name, offset, dl.getTypeAllocSize(reg_type),
@@ -925,7 +932,10 @@ void Arch::CollectRegisters(llvm::Module *module) const {
           << " truncated index list isn't pointing to a structure type; got: "
           << LLVMThingToString(parent_elem_type) << " from "
           << LLVMThingToString(parent_gep);
-      CHECK_LT(parent_indexes.size(), reg.gep_index_list.size());
+      CHECK_LT(parent_indexes.size(), reg.gep_index_list.size())
+        << "Parent register " << reg.parent->name
+        << " index list is same size as sub-register "
+        << reg.name << " index list";
       CHECK_EQ(parent_indexes.back(), reg.gep_index_list[parent_indexes.size() - 1]);
 
       auto index_vec = reg.gep_index_list;
