@@ -647,7 +647,7 @@ bool ForwardAliasVisitor::Analyze(KillCounter &stats, llvm::Function *func) {
   if (!pending_wl.empty()) {
     stats.failed_funcs++;
 
-    DLOG(ERROR)
+    DLOG(WARNING)
         << "Alias analysis failed to complete on function `"
         << func->getName().str() << "` with " << next_wl.size()
         << " instructions in the worklist and " << pending_wl.size()
