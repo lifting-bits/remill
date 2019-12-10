@@ -284,7 +284,7 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
         context, op.shift_reg.extract_size);
 
     if (reg_size > op.shift_reg.extract_size) {
-      curr_size = op.shift_reg.extract_size;
+      curr_size = llvm::TypeSize::Fixed(op.shift_reg.extract_size);
       reg = ir.CreateTrunc(reg, extract_type);
 
     } else {
@@ -299,11 +299,11 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
       switch (op.shift_reg.extend_op) {
         case Operand::ShiftRegister::kExtendSigned:
           reg = ir.CreateSExt(reg, op_type);
-          curr_size = op.size;
+          curr_size = llvm::TypeSize::Fixed(op.size);
           break;
         case Operand::ShiftRegister::kExtendUnsigned:
           reg = ir.CreateZExt(reg, op_type);
-          curr_size = op.size;
+          curr_size = llvm::TypeSize::Fixed(op.size);
           break;
         default:
           LOG(FATAL)
@@ -318,7 +318,7 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
 
   if (curr_size < op.size) {
     reg = ir.CreateZExt(reg, op_type);
-    curr_size = op.size;
+    curr_size = llvm::TypeSize::Fixed(op.size);
   }
 
   if (Operand::ShiftRegister::kShiftInvalid != op.shift_reg.shift_op) {
