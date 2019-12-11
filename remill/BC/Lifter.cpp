@@ -51,6 +51,7 @@
 #include "remill/Arch/Name.h"
 
 #include "remill/BC/ABI.h"
+#include "remill/BC/Compat/DataLayout.h"
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Lifter.h"
 #include "remill/BC/Util.h"
@@ -284,7 +285,9 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
         context, op.shift_reg.extract_size);
 
     if (reg_size > op.shift_reg.extract_size) {
-      curr_size = llvm::TypeSize::Fixed(op.shift_reg.extract_size);
+      curr_size =
+	      IF_LLVM_GTE_1000(llvm::TypeSize::Fixed(op.shift_reg.extract_size))
+	      IF_LLVM_LT_1000(op.shift_reg.extract_size);
       reg = ir.CreateTrunc(reg, extract_type);
 
     } else {
@@ -299,11 +302,15 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
       switch (op.shift_reg.extend_op) {
         case Operand::ShiftRegister::kExtendSigned:
           reg = ir.CreateSExt(reg, op_type);
-          curr_size = llvm::TypeSize::Fixed(op.size);
+          curr_size =
+	      IF_LLVM_GTE_1000(llvm::TypeSize::Fixed(op.size))
+	      IF_LLVM_LT_1000(op.size);
           break;
         case Operand::ShiftRegister::kExtendUnsigned:
           reg = ir.CreateZExt(reg, op_type);
-          curr_size = llvm::TypeSize::Fixed(op.size);
+          curr_size =
+	      IF_LLVM_GTE_1000(llvm::TypeSize::Fixed(op.size))
+	      IF_LLVM_LT_1000(op.size);
           break;
         default:
           LOG(FATAL)
@@ -318,7 +325,9 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
 
   if (curr_size < op.size) {
     reg = ir.CreateZExt(reg, op_type);
-    curr_size = llvm::TypeSize::Fixed(op.size);
+    curr_size =
+        IF_LLVM_GTE_1000(llvm::TypeSize::Fixed(op.size))
+        IF_LLVM_LT_1000(op.size);
   }
 
   if (Operand::ShiftRegister::kShiftInvalid != op.shift_reg.shift_op) {
