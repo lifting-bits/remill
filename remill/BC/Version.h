@@ -155,6 +155,22 @@
 # define _IF_LLVM_GTE_900(...) , __VA_ARGS__
 #endif
 
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(10, 0)
+# define IF_LLVM_LT_1000(...) __VA_ARGS__
+# define IF_LLVM_LT_1000_(...) __VA_ARGS__ ,
+# define _IF_LLVM_LT_1000(...) , __VA_ARGS__
+# define IF_LLVM_GTE_1000(...)
+# define IF_LLVM_GTE_1000_(...)
+# define _IF_LLVM_GTE_1000(...)
+#else
+# define IF_LLVM_LT_1000(...)
+# define IF_LLVM_LT_1000_(...)
+# define _IF_LLVM_LT_1000(...)
+# define IF_LLVM_GTE_1000(...) __VA_ARGS__
+# define IF_LLVM_GTE_1000_(...) __VA_ARGS__ ,
+# define _IF_LLVM_GTE_1000(...) , __VA_ARGS__
+#endif
+
 #define IF_LLVM_LT(major, minor, ...) \
     IF_LLVM_LT_ ## major ## minor ## 0(__VA_ARGS__)
 

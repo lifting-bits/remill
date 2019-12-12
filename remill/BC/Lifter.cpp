@@ -51,6 +51,7 @@
 #include "remill/Arch/Name.h"
 
 #include "remill/BC/ABI.h"
+#include "remill/BC/Compat/DataLayout.h"
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Lifter.h"
 #include "remill/BC/Util.h"
@@ -265,8 +266,8 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
   const llvm::DataLayout data_layout(module);
   auto reg = LoadRegValue(block, arch_reg.name);
   auto reg_type = reg->getType();
-  auto reg_size = data_layout.getTypeAllocSizeInBits(reg_type);
-  auto word_size = data_layout.getTypeAllocSizeInBits(word_type);
+  auto reg_size = SizeOfTypeInBits(data_layout, reg_type);
+  auto word_size = SizeOfTypeInBits(data_layout, word_type);
   auto op_type = llvm::Type::getIntNTy(context, op.size);
 
   const uint64_t zero = 0;
