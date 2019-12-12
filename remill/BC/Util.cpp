@@ -1024,8 +1024,8 @@ static llvm::Type *RecontextualizeType(
     case llvm::Type::TokenTyID:
       return llvm::Type::getTokenTy(context);
     case llvm::Type::IntegerTyID: {
-      auto index_type = llvm::dyn_cast<llvm::IntegerType>(type);
-      cached = llvm::IntegerType::get(context, index_type->getScalarSizeInBits());
+      auto int_type = llvm::dyn_cast<llvm::IntegerType>(type);
+      cached = llvm::IntegerType::get(context, int_type->getScalarSizeInBits());
       break;
     }
     case llvm::Type::FunctionTyID: {
