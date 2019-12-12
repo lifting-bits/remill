@@ -266,8 +266,8 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
   const llvm::DataLayout data_layout(module);
   auto reg = LoadRegValue(block, arch_reg.name);
   auto reg_type = reg->getType();
-  auto reg_size = data_layout.getTypeAllocSizeInBits(reg_type);
-  auto word_size = data_layout.getTypeAllocSizeInBits(word_type);
+  auto reg_size = SizeOfTypeInBits(data_layout, reg_type);
+  auto word_size = SizeOfTypeInBits(data_layout, word_type);
   auto op_type = llvm::Type::getIntNTy(context, op.size);
 
   const uint64_t zero = 0;
@@ -285,7 +285,7 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
         context, op.shift_reg.extract_size);
 
     if (reg_size > op.shift_reg.extract_size) {
-      curr_size = BitsToTypeSize(op.shift_reg.extract_size);
+      curr_size = op.shift_reg.extract_size;
       reg = ir.CreateTrunc(reg, extract_type);
 
     } else {
@@ -300,11 +300,11 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
       switch (op.shift_reg.extend_op) {
         case Operand::ShiftRegister::kExtendSigned:
           reg = ir.CreateSExt(reg, op_type);
-          curr_size = BitsToTypeSize(op.size);
+          curr_size = op.size;
           break;
         case Operand::ShiftRegister::kExtendUnsigned:
           reg = ir.CreateZExt(reg, op_type);
-          curr_size = BitsToTypeSize(op.size);
+          curr_size = op.size;
           break;
         default:
           LOG(FATAL)
@@ -319,7 +319,7 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
 
   if (curr_size < op.size) {
     reg = ir.CreateZExt(reg, op_type);
-    curr_size = BitsToTypeSize(op.size);
+    curr_size = op.size;
   }
 
   if (Operand::ShiftRegister::kShiftInvalid != op.shift_reg.shift_op) {
