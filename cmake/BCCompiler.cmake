@@ -16,7 +16,7 @@ set(DEFAULT_BC_COMPILER_FLAGS
   -Wno-variadic-macros -Wno-c11-extensions -Wno-c++11-extensions
   -ffreestanding -fno-common -fno-builtin -fno-exceptions -fno-rtti
   -fno-asynchronous-unwind-tables -Wno-unneeded-internal-declaration
-  -Wno-unused-function -std=gnu++11
+  -Wno-unused-function -Wgnu-inline-cpp-without-extern -std=c++14
   ${EXTRA_BC_SYSROOT}
 )
 
