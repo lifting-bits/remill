@@ -1123,7 +1123,8 @@ llvm::Value *LoadFromMemory(
   auto &context = module->getContext();
   llvm::DataLayout dl(module);
   llvm::Value *args_2[2] = {mem_ptr, addr};
-  auto i32_type = llvm::Type::getInt32Ty(context);
+  auto index_type = llvm::Type::getIntNTy(
+      context, dl.getPointerSizeInBits(0));
 
   llvm::IRBuilder<> ir(block);
 
@@ -1167,7 +1168,7 @@ llvm::Value *LoadFromMemory(
       auto byte_array = ir.CreateBitCast(
           res, llvm::PointerType::get(i8_type, 0));
       llvm::Value *gep_indices[2] = {
-          llvm::ConstantInt::get(i32_type, 0, false),
+          llvm::ConstantInt::get(index_type, 0, false),
           nullptr
       };
 
@@ -1177,7 +1178,7 @@ llvm::Value *LoadFromMemory(
         args_2[1] = ir.CreateAdd(
             addr, llvm::ConstantInt::get(addr->getType(), i, false));
         auto byte = ir.CreateCall(intrinsics.read_memory_8, args_2);
-        gep_indices[1] = llvm::ConstantInt::get(i32_type, i, false);
+        gep_indices[1] = llvm::ConstantInt::get(index_type, i, false);
         auto byte_ptr = ir.CreateInBoundsGEP(type, byte_array, gep_indices);
         ir.CreateStore(byte, byte_ptr);
       }
@@ -1297,14 +1298,14 @@ llvm::Value *StoreToMemory(
   auto &context = module->getContext();
   llvm::DataLayout dl(module);
   llvm::Value *args_3[3] = {mem_ptr, addr, val_to_store};
-  auto i32_type = llvm::Type::getInt32Ty(context);
+  auto index_type = llvm::Type::getInt32Ty(context);
 
   llvm::IRBuilder<> ir(block);
 
   auto type = val_to_store->getType();
   switch (type->getTypeID()) {
     case llvm::Type::HalfTyID: {
-      auto i16_type = llvm::Type::getInt32Ty(context);
+      auto i16_type = llvm::Type::getInt16Ty(context);
       args_3[2] = ir.CreateBitCast(val_to_store, i16_type);
       return ir.CreateCall(intrinsics.write_memory_16, args_3);
     }
@@ -1351,7 +1352,7 @@ llvm::Value *StoreToMemory(
       auto byte_array = ir.CreateBitCast(
           res, llvm::PointerType::get(i8_type, 0));
       llvm::Value *gep_indices[2] = {
-          llvm::ConstantInt::get(i32_type, 0, false),
+          llvm::ConstantInt::get(index_type, 0, false),
           nullptr
       };
 
@@ -1359,7 +1360,7 @@ llvm::Value *StoreToMemory(
       for (auto i = 0U; i < size; ++i) {
         args_3[1] = ir.CreateAdd(
             addr, llvm::ConstantInt::get(addr->getType(), i, false));
-        gep_indices[1] = llvm::ConstantInt::get(i32_type, i, false);
+        gep_indices[1] = llvm::ConstantInt::get(index_type, i, false);
         auto byte_ptr = ir.CreateInBoundsGEP(type, byte_array, gep_indices);
         args_3[2] = ir.CreateLoad(byte_ptr);
         args_3[0] = ir.CreateCall(intrinsics.write_memory_8, args_3);

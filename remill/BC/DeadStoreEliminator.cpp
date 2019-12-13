@@ -747,7 +747,8 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(
   }
 
   // Try to get the offset as a single constant. If we can't then
-  llvm::APInt const_offset(64, 0, true);
+  llvm::APInt const_offset(
+      dl.getPointerSizeInBits(0), 0, true);
   if (!inst.accumulateConstantOffset(dl, const_offset)) {
     return VisitResult::Error;
   }

@@ -558,7 +558,7 @@ BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type,
   CHECK_LE(goal_offset, (offset + dl.getTypeAllocSize(type)));
 
   size_t index = 0;
-  const auto index_type = llvm::Type::getInt32Ty(type->getContext());
+  const auto index_type = indexes_out[0]->getType();
 
   if (const auto struct_type = llvm::dyn_cast<llvm::StructType>(type)) {
     for (const auto elem_type : struct_type->elements()) {
@@ -650,7 +650,8 @@ static unsigned Complexity(llvm::Value *base, llvm::Type *state_ptr_type) {
 static uint64_t TotalOffset(llvm::DataLayout &dl,
                             llvm::Value *base,
                             llvm::Type *state_ptr_type) {
-  llvm::APInt accumulated_offset(64, 0, false);
+  llvm::APInt accumulated_offset(
+      dl.getPointerSizeInBits(0), 0, false);
   while (base) {
     if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(base)) {
       CHECK(gep->accumulateConstantOffset(dl, accumulated_offset));
