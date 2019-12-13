@@ -73,8 +73,6 @@ static void AddFunctionToModule(llvm::Module *module,
   std::stringstream ss;
   ss << SYMBOL_PREFIX << test.test_name << "_lifted";
 
-  auto word_type = llvm::Type::getIntNTy(module->getContext(),
-                                         arch->address_size);
   auto func = remill::DeclareLiftedFunction(module, ss.str());
   remill::CloneBlockFunctionInto(func);
 
@@ -82,7 +80,7 @@ static void AddFunctionToModule(llvm::Module *module,
   func->setVisibility(llvm::GlobalValue::DefaultVisibility);
 
   remill::IntrinsicTable intrinsics(module);
-  remill::InstructionLifter lifter(word_type, &intrinsics);
+  remill::InstructionLifter lifter(arch, &intrinsics);
 
   std::map<uint64_t, remill::Instruction> inst;
   std::map<uint64_t, llvm::BasicBlock *> blocks;
@@ -175,14 +173,15 @@ extern "C" int main(int argc, char *argv[]) {
   google::InitGoogleLogging(argv[0]);
 
   auto os = remill::GetOSName(REMILL_OS);
-  auto arch = remill::Arch::Get(os, remill::kArchAArch64LittleEndian);
+  auto context = new llvm::LLVMContext;
+
+  auto arch = remill::Arch::Get(*context, os, remill::kArchAArch64LittleEndian);
 
   DLOG(INFO) << "Generating tests.";
 
-  auto context = new llvm::LLVMContext;
   auto bc_file = remill::FindSemanticsBitcodeFile(FLAGS_arch);
   auto module = remill::LoadModuleFromFile(context, bc_file);
-  remill::GetHostArch()->PrepareModule(module);
+  remill::GetHostArch(*context)->PrepareModule(module);
 
   for (auto i = 0U; ; ++i) {
     const auto &test = test::__aarch64_test_table_begin[i];
