@@ -558,8 +558,7 @@ BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type,
   CHECK_LE(goal_offset, (offset + dl.getTypeAllocSize(type)));
 
   size_t index = 0;
-  const auto index_type = llvm::Type::getIntNTy(
-      type->getContext(), dl.getPointerSizeInBits(0));
+  const auto index_type = indexes_out[0]->getType();
 
   if (const auto struct_type = llvm::dyn_cast<llvm::StructType>(type)) {
     for (const auto elem_type : struct_type->elements()) {
@@ -812,8 +811,7 @@ void Arch::CollectRegisters(llvm::Module *module) const {
   const auto state_ptr_type = StatePointerType(module);
   const auto state_type = state_ptr_type->getElementType();
   const auto state_size = dl.getTypeAllocSize(state_type);
-  const auto index_type = llvm::Type::getIntNTy(
-      module->getContext(), dl.getPointerSizeInBits(0));
+  const auto index_type = llvm::Type::getInt32Ty(module->getContext());
 
   std::unordered_map<std::string, llvm::Instruction *> prev_reg_by_name;
 
