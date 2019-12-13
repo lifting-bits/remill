@@ -558,7 +558,8 @@ BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type,
   CHECK_LE(goal_offset, (offset + dl.getTypeAllocSize(type)));
 
   size_t index = 0;
-  const auto index_type = llvm::Type::getIntNTy(type->getContext(), dl.getPointerSize());
+  const auto index_type = llvm::Type::getIntNTy(
+      type->getContext(), dl.getPointerSizeInBits(0));
 
   if (const auto struct_type = llvm::dyn_cast<llvm::StructType>(type)) {
     for (const auto elem_type : struct_type->elements()) {
@@ -650,7 +651,8 @@ static unsigned Complexity(llvm::Value *base, llvm::Type *state_ptr_type) {
 static uint64_t TotalOffset(llvm::DataLayout &dl,
                             llvm::Value *base,
                             llvm::Type *state_ptr_type) {
-  llvm::APInt accumulated_offset(dl.getPointerSize(), 0, false);
+  llvm::APInt accumulated_offset(
+      dl.getPointerSizeInBits(0), 0, false);
   while (base) {
     if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(base)) {
       CHECK(gep->accumulateConstantOffset(dl, accumulated_offset));
@@ -810,7 +812,8 @@ void Arch::CollectRegisters(llvm::Module *module) const {
   const auto state_ptr_type = StatePointerType(module);
   const auto state_type = state_ptr_type->getElementType();
   const auto state_size = dl.getTypeAllocSize(state_type);
-  const auto index_type = llvm::Type::getIntNTy(module->getContext(), dl.getPointerSize());
+  const auto index_type = llvm::Type::getIntNTy(
+      module->getContext(), dl.getPointerSizeInBits(0));
 
   std::unordered_map<std::string, llvm::Instruction *> prev_reg_by_name;
 

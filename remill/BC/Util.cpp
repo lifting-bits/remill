@@ -1123,7 +1123,8 @@ llvm::Value *LoadFromMemory(
   auto &context = module->getContext();
   llvm::DataLayout dl(module);
   llvm::Value *args_2[2] = {mem_ptr, addr};
-  auto index_type = llvm::Type::getIntNTy(context, dl.getPointerSize());
+  auto index_type = llvm::Type::getIntNTy(
+      context, dl.getPointerSizeInBits(0));
 
   llvm::IRBuilder<> ir(block);
 
@@ -1297,7 +1298,8 @@ llvm::Value *StoreToMemory(
   auto &context = module->getContext();
   llvm::DataLayout dl(module);
   llvm::Value *args_3[3] = {mem_ptr, addr, val_to_store};
-  auto index_type = llvm::Type::getIntNTy(context, dl.getPointerSize());
+  auto index_type = llvm::Type::getIntNTy(
+      context, dl.getPointerSizeInBits(0));
 
   llvm::IRBuilder<> ir(block);
 
