@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - github-actions
   pull_request:
   schedule:
     # run CI every day even if no PRs/merges occur
