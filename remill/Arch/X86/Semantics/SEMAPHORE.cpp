@@ -16,24 +16,24 @@
 
 namespace {
 
-#define MAKE_CMPXCHG_XAX(xax) \
+#define MAKE_CMPXCHG_XAX(xax, xax_write, xax_read) \
     template <typename D, typename S1, typename S2> \
     DEF_SEM(CMPXCHG_ ## xax, D dst, S1 src1, S2 src2) { \
       auto desired_val = Read(src2); \
-      auto check_val = Read(REG_ ## xax); \
+      auto check_val = Read(REG_ ## xax_read); \
       auto prev_value = check_val; \
       auto swap_flag = UCmpXchg(dst, check_val, desired_val); \
       auto sub_res = USub(prev_value, check_val); \
       WriteFlagsAddSub<tag_sub>(state, prev_value, check_val, sub_res); \
       Write(FLAG_ZF, swap_flag);\
-      WriteZExt(REG_ ## xax, check_val); \
+      WriteZExt(REG_ ## xax_write, check_val); \
       return memory; \
     }
 
-MAKE_CMPXCHG_XAX(AL)
-MAKE_CMPXCHG_XAX(AX)
-MAKE_CMPXCHG_XAX(EAX)
-IF_64BIT(MAKE_CMPXCHG_XAX(RAX))
+MAKE_CMPXCHG_XAX(AL, AL, AL)
+MAKE_CMPXCHG_XAX(AX, AX, AX)
+MAKE_CMPXCHG_XAX(EAX, XAX, EAX)
+IF_64BIT(MAKE_CMPXCHG_XAX(RAX, RAX, RAX))
 
 DEF_SEM(DoCMPXCHG8B_MEMq, M64W dst, M64 src1) {
   auto xdx = Read(REG_EDX);
@@ -44,8 +44,8 @@ DEF_SEM(DoCMPXCHG8B_MEMq, M64W dst, M64 src1) {
   auto check_val = UOr(UShl(ZExt(xdx), 32), ZExt(xax));
   auto swap_flag = UCmpXchg(dst, check_val, desired_val);
   Write(FLAG_ZF, swap_flag);
-  Write(REG_EDX, Trunc(UShr(check_val, 32)));
-  Write(REG_EAX, Trunc(check_val));
+  WriteZExt(REG_XDX, Trunc(UShr(check_val, 32)));
+  WriteZExt(REG_XAX, Trunc(check_val));
   return memory;
 }
 
