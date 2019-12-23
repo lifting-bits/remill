@@ -38,7 +38,7 @@ exit /B %ERRORLEVEL%
 
   call :initializeVisualStudioEnvironment
   if %ERRORLEVEL% neq 0 (
-    echo Failed to find a suitable Visual Studio installation
+    echo Failed to find a suitable Visual Studio installation when initializing
 
     endlocal
     exit /B 1
@@ -46,7 +46,7 @@ exit /B %ERRORLEVEL%
 
   call :configureProject
   if %ERRORLEVEL% neq 0 (
-    echo Failed to find a suitable Visual Studio installation
+    echo Failed to find a suitable Visual Studio installation when configuring
 
     endlocal
     exit /B 1
@@ -73,7 +73,7 @@ exit /B %ERRORLEVEL%
   set tob_libraries=%CD%
   popd
 
-  cmake -G "Visual Studio 2019" -T llvm -A x64 -DCMAKE_BUILD_TYPE=Release -DLIBRARY_REPOSITORY_ROOT=%tob_libraries% -DCMAKE_INSTALL_PREFIX=C:\ ..
+  cmake -G "Visual Studio 16 2019" -T llvm -A x64 -DCMAKE_BUILD_TYPE=Release -DLIBRARY_REPOSITORY_ROOT=%tob_libraries% -DCMAKE_INSTALL_PREFIX=C:\ ..
   if %ERRORLEVEL% equ 0 (
     endlocal
     exit /B 0
