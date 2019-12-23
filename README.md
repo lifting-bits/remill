@@ -10,12 +10,10 @@ Remill focuses on accurately lifting instructions. It is meant to be used as a l
 
 ## Build Status
 
-|       | master |
-| ----- | ------ |
-| Linux | [![Build Status](https://travis-ci.org/lifting-bits/remill.svg?branch=master)](https://travis-ci.org/lifting-bits/remill) |
+[![Build Status](https://img.shields.io/github/workflow/status/lifting-bits/remill/CI/master)](https://github.com/lifting-bits/remill/actions?query=workflow%3ACI)
 
 ## Additional Documentation
- 
+
  - [How to contribute](docs/CONTRIBUTING.md)
  - [How to implement the semantics of an instruction](docs/ADD_AN_INSTRUCTION.md)
  - [How instructions are lifted](docs/LIFE_OF_AN_INSTRUCTION.md)
@@ -33,7 +31,7 @@ Remill is supported on Linux platforms and has been tested on Ubuntu 14.04, 16.0
 
 Most of Remill's dependencies can be provided by the [cxx-common](https://github.com/trailofbits/cxx-common) repository. Trail of Bits hosts downloadable, pre-built versions of cxx-common, which makes it substantially easier to get up and running with Remill. Nonetheless, the following table represents most of Remill's dependencies.
 
-| Name | Version | 
+| Name | Version |
 | ---- | ------- |
 | [Git](https://git-scm.com/) | Latest |
 | [CMake](https://cmake.org/) | 3.2+ |
@@ -43,7 +41,7 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 | [LLVM](http://llvm.org/) | 3.5+ |
 | [Clang](http://clang.llvm.org/) | 3.5+ |
 | [Intel XED](https://software.intel.com/en-us/articles/xed-x86-encoder-decoder-software-library) | Latest |
-| [Python](https://www.python.org/) | 2.7 | 
+| [Python](https://www.python.org/) | 2.7 |
 | Unzip | Latest |
 | [ccache](https://ccache.dev/) | Latest |
 
