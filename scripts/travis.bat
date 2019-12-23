@@ -132,7 +132,10 @@ exit /B %ERRORLEVEL%
   echo Using Visual Studio 2019
   call "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
   )
-
+  if %ERRORLEVEL% equ 0 (
+    echo Initialized
+    exit /B 0
+  )
   exit /B 1
 
 :installLLVM
