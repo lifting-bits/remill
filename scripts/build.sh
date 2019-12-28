@@ -136,6 +136,11 @@ function GetOSVersion
       OS_VERSION=ubuntu1604
       return 0
     ;;
+    
+    [Kk]ali)
+      OS_VERSION=ubuntu1804
+      return 0;
+    ;;
 
     *)
       echo "[x] ${ID} is not yet a supported distribution."
