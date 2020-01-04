@@ -1,7 +1,7 @@
 @echo off
 
 call :main
-exit /B %ERRORLEVEL% 
+exit /B %ERRORLEVEL%
 
 :main
   setlocal
@@ -38,7 +38,7 @@ exit /B %ERRORLEVEL%
 
   call :initializeVisualStudioEnvironment
   if %ERRORLEVEL% neq 0 (
-    echo Failed to find a suitable Visual Studio installation
+    echo Failed to find a suitable Visual Studio installation when initializing
 
     endlocal
     exit /B 1
@@ -46,7 +46,7 @@ exit /B %ERRORLEVEL%
 
   call :configureProject
   if %ERRORLEVEL% neq 0 (
-    echo Failed to find a suitable Visual Studio installation
+    echo Failed to find a suitable Visual Studio installation when configuring
 
     endlocal
     exit /B 1
@@ -73,14 +73,10 @@ exit /B %ERRORLEVEL%
   set tob_libraries=%CD%
   popd
 
-  for %%v in ("16 2019" "15 2017") do (
-    echo Attempting configuration with Visual Studio %%v
-
-    cmake -G "Visual Studio %%v" -T llvm -A x64 -DCMAKE_BUILD_TYPE=Release -DLIBRARY_REPOSITORY_ROOT=%tob_libraries% -DCMAKE_INSTALL_PREFIX=C:\ ..
-    if %ERRORLEVEL% equ 0 (
-      endlocal
-      exit /B 0
-    )
+  cmake -G "Visual Studio 16 2019" -T llvm -A x64 -DCMAKE_BUILD_TYPE=Release -DLIBRARY_REPOSITORY_ROOT=%tob_libraries% -DCMAKE_INSTALL_PREFIX=C:\ ..
+  if %ERRORLEVEL% equ 0 (
+    endlocal
+    exit /B 0
   )
 
   endlocal
@@ -133,15 +129,13 @@ exit /B %ERRORLEVEL%
   exit /B 0
 
 :initializeVisualStudioEnvironment
-  for %%v in (2019 2017) do (
-    if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\%%v\BuildTools\VC\Auxiliary\Build\vcvars64.bat" (
-      echo Using Visual Studio %%v
-      call "%ProgramFiles(x86)%\Microsoft Visual Studio\%%v\BuildTools\VC\Auxiliary\Build\vcvars64.bat" > NUL
-
-      exit /B 0
-    )
+  echo Using Visual Studio 2019
+  call "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
   )
-
+  if %ERRORLEVEL% equ 0 (
+    echo Initialized
+    exit /B 0
+  )
   exit /B 1
 
 :installLLVM

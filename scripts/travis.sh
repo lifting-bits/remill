@@ -22,6 +22,13 @@ main() {
   local platform_name="$1"
   local operation_type="$2"
 
+  # This makes life simpler for github actions
+  if [[ "${platform_name}" == "macos-latest" ]] ; then
+    platform_name="osx"
+  elif [[ "${platform_name}" == "ubuntu-latest" ]] ; then
+    platform_name="linux"
+  fi
+
   if [[ "${platform_name}" != "osx" && "${platform_name}" != "linux" ]] ; then
     printf "Invalid platform: ${platform_name}\n"
     return 1
@@ -52,7 +59,7 @@ linux_initialize() {
   fi
 
   printf " > Installing the required packages...\n"
-  sudo apt-get install -qqy git python2.7 curl realpath build-essential gcc-multilib g++-multilib libtinfo-dev lsb-release
+  sudo apt-get install -qqy git python2.7 curl coreutils build-essential gcc-multilib g++-multilib libtinfo-dev lsb-release ccache
   if [ $? -ne 0 ] ; then
     printf " x Could not install the required dependencies\n"
     return 1
