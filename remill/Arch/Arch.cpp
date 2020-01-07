@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <llvm/ADT/APInt.h>
 #include <llvm/ADT/SmallVector.h>
@@ -348,6 +349,9 @@ static bool GetRegisterOffset(llvm::Module *module, llvm::Type *state_ptr_type,
 // debug information, and so we will try to recover the variables names for
 // later lookup.
 static void FixupBasicBlockVariables(llvm::Function *basic_block) {
+  std::unordered_map<llvm::Value *, std::string> names;
+  std::unordered_map<llvm::Value *, std::string> preferred_names;
+  std::unordered_set<std::string> used_names;
   std::vector<llvm::StoreInst *> stores;
   std::vector<llvm::Instruction *> remove_insts;
 
@@ -355,14 +359,22 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
 
   for (auto &block : *basic_block) {
     for (auto &inst : block) {
+      if (inst.hasName()) {
+        names[&inst] = inst.getName().str();
+      }
+    }
+  }
+
+  for (auto &block : *basic_block) {
+    for (auto &inst : block) {
       if (auto debug_inst = llvm::dyn_cast<llvm::DbgInfoIntrinsic>(&inst)) {
         if (auto decl_inst = llvm::dyn_cast<llvm::DbgDeclareInst>(debug_inst)) {
           auto addr = decl_inst->getAddress();
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 7)
-          addr->setName(decl_inst->getVariable()->getName());
+          names[addr] = decl_inst->getVariable()->getName().str();
 #else
           llvm::DIVariable var(decl_inst->getVariable());
-          addr->setName(var.getName());
+          names[addr] = var.getName().str();
 #endif
         }
         remove_insts.push_back(debug_inst);
@@ -386,9 +398,10 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
             remove_insts.push_back(load_inst);
           }
         }
+
       } else if (llvm::isa<llvm::BranchInst>(&inst) ||
-                 llvm::isa<llvm::CallInst>(&inst) ||
-                 llvm::isa<llvm::InvokeInst>(&inst)) {
+          llvm::isa<llvm::CallInst>(&inst) ||
+          llvm::isa<llvm::InvokeInst>(&inst)) {
         LOG(FATAL)
             << "Unsupported instruction in __remill_basic_block: "
             << LLVMThingToString(&inst);
@@ -411,10 +424,8 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
     auto val = llvm::dyn_cast<llvm::Instruction>(inst->getValueOperand());
     auto ptr = llvm::dyn_cast<llvm::AllocaInst>(inst->getPointerOperand());
 
-    if (val && ptr && val->getType()->isPointerTy() && ptr->hasName()) {
-      auto name = ptr->getName().str();
-      ptr->setName("");
-      val->setName(name);
+    if (val && ptr && val->getType()->isPointerTy() && names.count(ptr)) {
+      preferred_names[val] = names[ptr];
       remove_insts.push_back(ptr);
       remove_insts.push_back(inst);
     }
@@ -435,6 +446,52 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
     inst->eraseFromParent();
   }
 
+  for (auto &block : *basic_block) {
+    for (auto &inst : block) {
+      if (!inst.getType()->isVoidTy()) {
+        inst.setName("");
+      }
+    }
+  }
+
+  // First, apply names to preferred names, which are propagated.
+  for (auto &block : *basic_block) {
+    auto it = block.rbegin();
+    auto end = block.rend();
+    for (; it != end; ++it) {
+      auto &inst = *it;
+      auto name_it = preferred_names.find(&inst);
+      if (name_it != preferred_names.end()) {
+        auto &entry = *name_it;
+        if (!entry.first->getType()->isVoidTy() &&
+            !used_names.count(entry.second)) {
+          entry.first->setName(entry.second);
+          used_names.insert(entry.second);
+        }
+      }
+    }
+  }
+
+  // Finally, apply the previous names. These may conflict with the preferred
+  // names, but that
+  for (auto &block : *basic_block) {
+    auto it = block.rbegin();
+    auto end = block.rend();
+    for (; it != end; ++it) {
+      auto &inst = *it;
+      auto name_it = names.find(&inst);
+      if (name_it != names.end()) {
+        auto &entry = *name_it;
+        if (!entry.first->hasName() &&
+            !entry.first->getType()->isVoidTy() &&
+            !used_names.count(entry.second)) {
+          entry.first->setName(entry.second);
+          used_names.insert(entry.second);
+        }
+      }
+    }
+  }
+
   CHECK(BlockHasSpecialVars(basic_block))
       << "Unable to locate required variables in `__remill_basic_block`.";
 }
@@ -447,7 +504,7 @@ static void AddNoAliasToArgument(llvm::Argument *arg) {
         arg->getContext(),
         arg->getArgNo() + 1,
         llvm::Attribute::NoAlias)
-    ); 
+    );
   );
 
   IF_LLVM_GTE_390(
