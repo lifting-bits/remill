@@ -66,7 +66,7 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   // `PC` should already have the correct value, but it's nice to make sure
   // that `curr_pc` is used throughout, as it helps with certain downstream
   // uses to be able to depend on the optimizer not eliminating `curr_pc`.
-  PC = curr_pc;
+  state.gpr.rip.aword = curr_pc;
 
   // We will reference these variables from the bitcode side of things so that
   // we can map the name of a decoded register to a specific field in the
