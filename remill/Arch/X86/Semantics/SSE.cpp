@@ -264,6 +264,7 @@ DEF_SEM(SHUFPS, D dst, S1 src1, S2 src2, I8 src3) {
 } // namespace
 
 DEF_ISEL(SHUFPS_XMMps_XMMps_IMMb) = SHUFPS<V128W, V128, V128>;
+DEF_ISEL(SHUFPS_XMMps_MEMps_IMMb) = SHUFPS<V128W, V128, MV128>;
 
 
 namespace {
