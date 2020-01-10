@@ -23,6 +23,7 @@
 
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/Module.h>
 
 #include "remill/BC/Compat/CallingConvention.h"
 
@@ -170,6 +171,9 @@ class Arch {
 
   // Get the LLVM DataLayout for this architecture.
   virtual llvm::DataLayout DataLayout(void) const = 0;
+
+  // Get the architecture related to a module.
+  static const remill::Arch *GetModuleArch(const llvm::Module&);
 
   // Number of bits in an address.
   const OSName os_name;

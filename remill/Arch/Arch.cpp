@@ -247,6 +247,21 @@ const Arch* GetTargetArch() {
   return Arch::Build(nullptr, GetOSName(FLAGS_os), GetArchName(FLAGS_arch)).get();
 }
 
+const remill::Arch *Arch::GetModuleArch(const llvm::Module &module) {
+  auto triple = llvm::Triple(module.getTargetTriple());
+  std::string arch_name = triple.getArchName().data();
+  std::string os_name = triple.getOSName().data();
+  // Since llvm::Triple.getArchName() incorrectly returns the entire triple,
+  // just extract the first part of the triple ourselves.
+  arch_name = arch_name.substr(0, arch_name.find('-'));
+  if (arch_name.empty() || os_name.empty()) {
+    return nullptr;
+  }
+  std::cout << os_name << " " << arch_name << std::endl;
+  return remill::Arch::Get(module.getContext(), remill::GetOSName(os_name),
+                           remill::GetArchName(arch_name));
+}
+
 bool Arch::IsX86(void) const {
   switch (arch_name) {
     case remill::kArchX86:
