@@ -1580,6 +1580,24 @@ IF_AVX(DEF_ISEL(VUNPCKLPD_YMMqq_YMMqq_YMMqq) = UNPCKLPD<VV256W, V256, V256>;)
 namespace {
 
 template <typename D, typename S1, typename S2>
+DEF_SEM(UNPCKHPS, D dst, S1 src1, S2 src2) {
+
+  // Treating src1 as another vector of 32-bit DWORDs:
+  auto src1_vec = FReadV32(src1);
+  auto src2_vec = FReadV32(src2);
+
+  auto res = FClearV32(FReadV32(dst));
+
+  res = FInsertV32(res, 0, FExtractV32(src1_vec, 2));
+  res = FInsertV32(res, 1, FExtractV32(src2_vec, 2));
+  res = FInsertV32(res, 2, FExtractV32(src1_vec, 3));
+  res = FInsertV32(res, 3, FExtractV32(src2_vec, 3));
+
+  FWriteV32(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
 DEF_SEM(UNPCKHPD, D dst, S1 src1, S2 src2) {
   // Initialize a working copy of src2 as a vector of 64-bit QWORDs.
   // This also accomplishes the "unpack" of the high QWORD of src2:
@@ -1600,6 +1618,11 @@ DEF_ISEL(UNPCKHPD_XMMpd_MEMdq) = UNPCKHPD<V128W, V128, MV128>;
 DEF_ISEL(UNPCKHPD_XMMpd_XMMq) = UNPCKHPD<V128W, V128, V128>;
 IF_AVX(DEF_ISEL(VUNPCKHPD_XMMdq_XMMdq_MEMdq) = UNPCKHPD<VV128W, V128, MV128>;)
 IF_AVX(DEF_ISEL(VUNPCKHPD_XMMdq_XMMdq_XMMdq) = UNPCKHPD<VV128W, V128, V128>;)
+
+DEF_ISEL(UNPCKHPS_XMMps_MEMdq) = UNPCKHPS<V128W, V128, MV128>;
+DEF_ISEL(UNPCKHPS_XMMps_XMMdq) = UNPCKHPS<V128W, V128, V128>;
+IF_AVX(DEF_ISEL(VUNPCKHPS_XMMdq_XMMdq_MEMdq) = UNPCKHPS<VV128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VUNPCKHPS_XMMdq_XMMdq_XMMdq) = UNPCKHPS<VV128W, V128, V128>;)
 
 /*
 2440 VUNPCKHPD VUNPCKHPD_YMMqq_YMMqq_MEMqq AVX AVX AVX ATTRIBUTES: 

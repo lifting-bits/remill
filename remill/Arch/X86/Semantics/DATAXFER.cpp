@@ -95,21 +95,23 @@ DEF_SEM(MOVLPS, D dst, S src) {
   return memory;
 }
 
-template <typename D, typename S>
-DEF_SEM(MOVLHPS, D dst, S src) {
-
-  /* DEST[63:0] (Unmodified) */
-  /* DEST[127:64] ← SRC[63:0] */
-  /* DEST[VLMAX-1:128] (Unmodified) */
-
-  float64v2_t temp_vec = {};
-  temp_vec = FInsertV64(temp_vec, 0, FExtractV64(FReadV64(dst), 0));
-  temp_vec = FInsertV64(temp_vec, 1, FExtractV64(FReadV64(src), 0));
-
-  FWriteV64(dst, temp_vec);
+DEF_SEM(MOVLHPS, V128W dst, V128 src) {
+  auto res = FReadV32(dst);
+  auto src1 = FReadV32(src);
+  res = FInsertV32(res, 2, FExtractV32(src1, 0));
+  res = FInsertV32(res, 3, FExtractV32(src1, 1));
+  FWriteV32(dst, res);
   return memory;
 }
 
+DEF_SEM(MOVHLPS, V128W dst, V128 src) {
+  auto res = FReadV32(dst);
+  auto src1 = FReadV32(src);
+  res = FInsertV32(res, 0, FExtractV32(src1, 2));
+  res = FInsertV32(res, 1, FExtractV32(src1, 3));
+  FWriteV32(dst, res);
+  return memory;
+}
 
 template <typename D, typename S>
 DEF_SEM(MOVLPD, D dst, S src) {
@@ -147,14 +149,32 @@ DEF_SEM(VMOVLHPS, VV128W dst, V128 src1, V128 src2) {
   /* DEST[127:64] ← SRC2[63:0] */
   /* DEST[VLMAX-1:128] ← 0 */
 
-  float64v2_t temp_vec = {};
-  temp_vec = FInsertV64(temp_vec, 0, FExtractV64(FReadV64(src1), 0));
-  temp_vec = FInsertV64(temp_vec, 1, FExtractV64(FReadV64(src2), 0));
+  auto src1_vec = FReadV32(src1);
+  auto src2_vec = FReadV32(src2);
 
-  FWriteV64(dst, temp_vec);
+  float32v4_t temp_vec = {};
+  temp_vec = FInsertV32(temp_vec, 0, FExtractV32(src1_vec, 0));
+  temp_vec = FInsertV32(temp_vec, 1, FExtractV32(src1_vec, 1));
+  temp_vec = FInsertV32(temp_vec, 2, FExtractV32(src2_vec, 0));
+  temp_vec = FInsertV32(temp_vec, 3, FExtractV32(src2_vec, 1));
+
+  FWriteV32(dst, temp_vec);
   return memory;
 }
 
+DEF_SEM(VMOVHLPS, VV128W dst, V128 src1, V128 src2) {
+  auto src1_vec = FReadV32(src1);
+  auto src2_vec = FReadV32(src2);
+
+  float32v4_t temp_vec = {};
+  temp_vec = FInsertV32(temp_vec, 0, FExtractV32(src2_vec, 2));
+  temp_vec = FInsertV32(temp_vec, 1, FExtractV32(src2_vec, 3));
+  temp_vec = FInsertV32(temp_vec, 2, FExtractV32(src1_vec, 2));
+  temp_vec = FInsertV32(temp_vec, 3, FExtractV32(src1_vec, 3));
+
+  FWriteV32(dst, temp_vec);
+  return memory;
+}
 
 #endif  // HAS_FEATURE_AVX
 
@@ -449,7 +469,10 @@ DEF_ISEL(MOVLPS_XMMq_MEMq) = MOVLPS<V128W, MV64>;
 IF_AVX(DEF_ISEL(VMOVLPS_MEMq_XMMq) = MOVLPS<MV64W, VV128>;)
 IF_AVX(DEF_ISEL(VMOVLPS_XMMdq_XMMdq_MEMq) = VMOVLPS;)
 
-DEF_ISEL(MOVLHPS_XMMq_XMMq) = MOVLHPS<V128W, V128>;
+DEF_ISEL(MOVHLPS_XMMq_XMMq) = MOVHLPS;
+IF_AVX(DEF_ISEL(VMOVHLPS_XMMdq_XMMq_XMMq) = VMOVHLPS;)
+
+DEF_ISEL(MOVLHPS_XMMq_XMMq) = MOVLHPS;
 IF_AVX(DEF_ISEL(VMOVLHPS_XMMdq_XMMq_XMMq) = VMOVLHPS;)
 
 #if HAS_FEATURE_AVX

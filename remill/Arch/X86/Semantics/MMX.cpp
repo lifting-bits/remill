@@ -2153,6 +2153,17 @@ DEF_SEM(PFRSQRT, D dst, S1, S2 src) {
   return memory;
 }
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(PFACC, D dst, S1 src_dst, S2 src) {
+auto src1 = FReadV32(src_dst);
+auto src2 = FReadV32(src);
+auto out = FClearV32(FReadV32(dst));
+out = FInsertV32(out, 0, FAdd(FExtractV32(src1, 0), FExtractV32(src1, 1)));
+out = FInsertV32(out, 1, FAdd(FExtractV32(src2, 0), FExtractV32(src2, 1)));
+FWriteV32(dst, out);
+return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(PFMUL_MMXq_MEMq) = PFMUL<V64W, V64, MV64>;
@@ -2175,6 +2186,8 @@ DEF_ISEL(PFCMPEQ_MMXq_MEMq) = PFCMPEQ<V64W, V64, MV64>;
 DEF_ISEL(PFCMPEQ_MMXq_MMXq) = PFCMPEQ<V64W, V64, V64>;
 DEF_ISEL(PFRSQRT_MMXq_MEMq) = PFRSQRT<V64W, V64, MV64>;
 DEF_ISEL(PFRSQRT_MMXq_MMXq) = PFRSQRT<V64W, V64, V64>;
+DEF_ISEL(PFACC_MMXq_MEMq) = PFACC<V64W, V64, MV64>;
+DEF_ISEL(PFACC_MMXq_MMXq) = PFACC<V64W, V64, V64>;
 
 /*
 5547 VPINSRW VPINSRW_XMMu16_XMMu16_GPR32u16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_128N ATTRIBUTES:
