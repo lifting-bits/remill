@@ -1650,34 +1650,6 @@ IF_AVX(DEF_ISEL(VMOVDDUP_XMMdq_XMMdq) = MOVDDUP<VV128W, V128>;)
 
 namespace {
 
-DEF_HELPER(SquareRoot32, float32_t src_float) -> float32_t {
-  auto square_root = src_float;
-
-  // Special cases for invalid square root operations. See Intel manual, Table E-10.
-  if (IsNaN(src_float)) {
-    // If src is SNaN, return the SNaN converted to a QNaN:
-    if (IsSignalingNaN(src_float)) {
-      nan32_t temp_nan = {src_float};
-      temp_nan.is_quiet_nan = 1;  // equivalent to a bitwise OR with 0x00400000
-      square_root = temp_nan.f;
-
-    // Else, src is a QNaN. Pass it directly to the result:
-    } else {
-      square_root = src_float;
-    }
-  } else {  // a number, that is, not a NaN
-    // A negative operand (except -0.0) results in the QNaN indefinite value.
-    if (IsNegative(src_float) && src_float != -0.0) {
-      uint32_t indef_qnan = 0xFFC00000U;
-      square_root = reinterpret_cast<float32_t &>(indef_qnan);
-    } else {
-      square_root = std::sqrt(src_float);
-    }
-  }
-
-  return square_root;
-}
-
 template <typename D, typename S1>
 DEF_SEM(SQRTSS, D dst, S1 src1) {
   // Extract a "single-precision" (32-bit) float from [31:0] of src1 vector:
@@ -1690,6 +1662,21 @@ DEF_SEM(SQRTSS, D dst, S1 src1) {
 
   // Write out the result and return memory state:
   FWriteV32(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.  
+  return memory;
+}
+
+template <typename D, typename S1>
+DEF_SEM(RSQRTSS, D dst, S1 src1) {
+  // Extract a "single-precision" (32-bit) float from [31:0] of src1 vector:
+  auto src_float = FExtractV32(FReadV32(src1), 0);
+
+  // Store the square root result in dest[32:0]:
+  auto square_root = SquareRoot32(memory, state, src_float);
+  auto temp_vec = FReadV32(dst);  // initialize a destination vector
+  temp_vec = FInsertV32(temp_vec, 0, FDiv(1.0f, square_root));
+
+  // Write out the result and return memory state:
+  FWriteV32(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
   return memory;
 }
 
@@ -1710,6 +1697,23 @@ DEF_SEM(VSQRTSS, D dst, S1 src1, S2 src2) {
   FWriteV32(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.  
   return memory;
 }
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(VRSQRTSS, D dst, S1 src1, S2 src2) {
+  // Extract the single-precision float from [31:0] of the src2 vector:
+  auto src_float = FExtractV32(FReadV32(src2), 0);
+
+  // Initialize dest vector, while also copying src1[127:32] -> dst[127:32].
+  auto temp_vec = FReadV32(src1);
+
+  // Store the square root result in dest[31:0]:
+  auto square_root = SquareRoot32(memory, state, src_float);
+  temp_vec = FInsertV32(temp_vec, 0, FDiv(1.0f, square_root));
+
+  // Write out the result and return memory state:
+  FWriteV32(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
+}
 #endif // HAS_FEATURE_AVX
 
 } // namespace
@@ -1724,6 +1728,10 @@ IF_AVX(DEF_ISEL(VSQRTSS_XMMdq_XMMdq_XMMd) = VSQRTSS<VV128W, V128, V128>;)
 4318 VSQRTSS VSQRTSS_XMMf32_MASKmskw_XMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: DISP8_SCALAR MASKOP_EVEX MEMORY_FAULT_SUPPRESSION MXCSR SIMD_SCALAR
 */
 
+DEF_ISEL(RSQRTSS_XMMss_MEMss) = RSQRTSS<V128W, MV32>;
+DEF_ISEL(RSQRTSS_XMMss_XMMss) = RSQRTSS<V128W, V128>;
+IF_AVX(DEF_ISEL(VRSQRTSS_XMMdq_XMMdq_MEMd) = VRSQRTSS<VV128W, V128, MV32>;)
+IF_AVX(DEF_ISEL(VRSQRTSS_XMMdq_XMMdq_XMMd) = VRSQRTSS<VV128W, V128, V128>;)
 
 namespace {
 

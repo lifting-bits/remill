@@ -37,7 +37,7 @@ extern "C" {
   auto &MEMORY = *memory;
   auto &PC = state.gpr.pc.qword;
   auto &BRANCH_TAKEN = branch_taken;
-  
+
   // `PC` should already have the correct value, but it's nice to make sure
   // that `curr_pc` is used throughout, as it helps with certain downstream
   // uses to be able to depend on the optimizer not eliminating `curr_pc`.
