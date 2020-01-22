@@ -257,7 +257,6 @@ const remill::Arch *Arch::GetModuleArch(const llvm::Module &module) {
   if (arch_name.empty() || os_name.empty()) {
     return nullptr;
   }
-  std::cout << os_name << " " << arch_name << std::endl;
   return remill::Arch::Get(module.getContext(), remill::GetOSName(os_name),
                            remill::GetArchName(arch_name));
 }
