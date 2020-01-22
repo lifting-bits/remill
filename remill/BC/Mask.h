@@ -362,6 +362,7 @@ struct TypeMask {
       rets(o.rets), params(o.params) {}
 
   TypeMask& operator=(TypeMask o) {
+    // NOTE(lukas): To enable ADL. Not required here atm but it is a good practice
     using std::swap;
     CHECK(regs == o.regs);
     swap(ret_type_mask, o.ret_type_mask);
