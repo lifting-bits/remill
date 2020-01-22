@@ -9,9 +9,10 @@
 
 #include "remill/Arch/Arch.h"
 
-#include "remill/BC/Color.h"
 #include "remill/BC/Mask.h"
 #include "remill/BC/UnfoldUtils.h"
+
+#include "remill/Support/Color.h"
 
 namespace remill {
 
@@ -31,11 +32,11 @@ struct UnfoldedFunction {
     }
 
     void added(uint64_t i) {
-      _out << green(_regs[i]->name)();
+      _out << support::Green(_regs[i]->name)();
     }
 
     void removed(uint64_t i) {
-      _out << red(_regs[i]->name)();
+      _out << support::Red(_regs[i]->name)();
     }
 
     std::string str() {
@@ -103,9 +104,9 @@ struct UnfoldedFunction {
           if (lhs[i])
             out << prefix << regs[i]->name;
       } else if (!lhs[i])
-        out << prefix << green(regs[i]->name)();
+        out << prefix << support::Green(regs[i]->name)();
       else
-        out << prefix << red(regs[i]->name)();
+        out << prefix << support::Red(regs[i]->name)();
     }
 
     return out.str();

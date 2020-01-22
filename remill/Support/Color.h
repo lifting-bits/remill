@@ -16,12 +16,12 @@
 
 #pragma once
 
-namespace remill {
+namespace remill::support {
 
-struct _colored {
+struct _Colored {
   std::string _str;
 
-  _colored(std::string str, std::string color) : _str(std::move(color) + std::move(str)) {}
+  _Colored(std::string str, std::string color) : _str(std::move(color) + std::move(str)) {}
 
   std::string operator()() {
     _str += "\033[0m";
@@ -29,12 +29,12 @@ struct _colored {
   }
 };
 
-struct green : _colored {
-  green(std::string str) : _colored(std::move(str), "\033[92m") {}
+struct Green : _Colored {
+  Green(std::string str) : _Colored(std::move(str), "\033[92m") {}
 };
 
-struct red : _colored {
-  red(std::string str) : _colored(std::move(str), "\033[91m") {}
+struct Red : _Colored {
+  Red(std::string str) : _Colored(std::move(str), "\033[91m") {}
 };
 
-} // namespace remill
+} // namespace remill::support

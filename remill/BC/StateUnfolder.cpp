@@ -52,7 +52,6 @@
 #include "remill/BC/StateUnfolder.h"
 #include "remill/BC/Util.h"
 
-#include "remill/BC/Color.h"
 #include "remill/BC/UnfoldedFunction.h"
 
 namespace remill {
