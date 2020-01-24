@@ -802,7 +802,7 @@ static void DecodeOperand(Instruction &inst,
 
 class X86Arch final : public Arch {
  public:
-  X86Arch(llvm::LLVMContext &context_, OSName os_name_, ArchName arch_name_);
+  X86Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
 
   virtual ~X86Arch(void);
 
@@ -844,7 +844,7 @@ class X86Arch final : public Arch {
 };
 
 
-X86Arch::X86Arch(llvm::LLVMContext &context_, OSName os_name_, ArchName arch_name_)
+X86Arch::X86Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_)
     : Arch(context_, os_name_, arch_name_) {
 
   static bool xed_is_initialized = false;
@@ -1212,7 +1212,7 @@ bool X86Arch::LazyDecodeInstruction(
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
 const Arch *Arch::GetX86(
-    llvm::LLVMContext &context_, OSName os_name_, ArchName arch_name_) {
+    llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_) {
   return new X86Arch(context_, os_name_, arch_name_);
 }
 

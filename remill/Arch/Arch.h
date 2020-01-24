@@ -183,23 +183,25 @@ class Arch {
   bool IsLinux(void) const;
   bool IsMacOS(void) const;
 
+  static const Arch *Build(llvm::LLVMContext &context, OSName os, ArchName arch_name);
+
  protected:
-  Arch(llvm::LLVMContext &context_, OSName os_name_, ArchName arch_name_);
+  Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
 
   llvm::Triple BasicTriple(void) const;
 
  private:
   // Defined in `remill/Arch/X86/Arch.cpp`.
   static const Arch *GetX86(
-      llvm::LLVMContext &context, OSName os, ArchName arch_name);
+      llvm::LLVMContext *context, OSName os, ArchName arch_name);
 
   // Defined in `remill/Arch/Mips/Arch.cpp`.
   static const Arch *GetMips(
-      llvm::LLVMContext &context, OSName os, ArchName arch_name);
+      llvm::LLVMContext *context, OSName os, ArchName arch_name);
 
   // Defined in `remill/Arch/AArch64/Arch.cpp`.
   static const Arch *GetAArch64(
-      llvm::LLVMContext &context, OSName os, ArchName arch_name);
+      llvm::LLVMContext *context, OSName os, ArchName arch_name);
 
   // Get all of the register information from the prepared module.
   void CollectRegisters(llvm::Module *module) const;
@@ -218,5 +220,12 @@ const Arch *GetHostArch(llvm::LLVMContext &context);
 // Get the architecture of the modelled code. This is based on command-line
 // flags.
 const Arch *GetTargetArch(llvm::LLVMContext &context);
+
+const Arch *Get(llvm::LLVMContext &context);
+const Arch *Create(llvm::LLVMContext &context, OSName os, ArchName name);
+
+// In case it already exists with different os and arch it is still returned!
+// TODO(lukas): Allow destruction
+const Arch *GetOrCreate(llvm::LLVMContext &context, OSName os, ArchName name);
 
 }  // namespace remill

@@ -94,11 +94,11 @@ using ArchCache = std::unordered_map<uint64_t, ArchPtr>;
 
 }  // namespace
 
-Arch::Arch(llvm::LLVMContext &context_, OSName os_name_, ArchName arch_name_)
+Arch::Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_)
     : os_name(os_name_),
       arch_name(arch_name_),
       address_size(AddressSize(arch_name_)),
-      context(&context_) {}
+      context(context_) {}
 
 Arch::~Arch(void) {}
 
@@ -140,14 +140,8 @@ llvm::Triple Arch::BasicTriple(void) const {
   return triple;
 }
 
-const Arch *Arch::Get(
+const Arch *Arch::Build(
     llvm::LLVMContext &context_, OSName os_name_, ArchName arch_name_) {
-
-  static ArchCache gArchCache;
-  auto &arch = gArchCache[ArchKey(context_, os_name_, arch_name_)];
-  if (arch) {
-    return arch.get();
-  }
 
   switch (arch_name_) {
     case kArchInvalid:
@@ -156,61 +150,60 @@ const Arch *Arch::Get(
 
     case kArchAArch64LittleEndian: {
       DLOG(INFO) << "Using architecture: AArch64, feature set: Little Endian";
-      arch.reset(GetAArch64(context_, os_name_, arch_name_));
-      break;
+      return GetAArch64(&context_, os_name_, arch_name_);
     }
 
     case kArchX86: {
       DLOG(INFO) << "Using architecture: X86";
-      arch.reset(GetX86(context_, os_name_, arch_name_));
+      return GetX86(&context_, os_name_, arch_name_);
       break;
     }
 
     case kArchMips32: {
       DLOG(INFO) << "Using architecture: 32-bit MIPS";
-      arch.reset(GetMips(context_, os_name_, arch_name_));
+      return GetMips(&context_, os_name_, arch_name_);
       break;
     }
 
     case kArchMips64: {
       DLOG(INFO) << "Using architecture: 64-bit MIPS";
-      arch.reset(GetMips(context_, os_name_, arch_name_));
+      return GetMips(&context_, os_name_, arch_name_);
       break;
     }
 
     case kArchX86_AVX: {
       DLOG(INFO) << "Using architecture: X86, feature set: AVX";
-      arch.reset(GetX86(context_, os_name_, arch_name_));
+      return GetX86(&context_, os_name_, arch_name_);
       break;
     }
 
     case kArchX86_AVX512: {
       DLOG(INFO) << "Using architecture: X86, feature set: AVX512";
-      arch.reset(GetX86(context_, os_name_, arch_name_));
+      return GetX86(&context_, os_name_, arch_name_);
       break;
     }
 
     case kArchAMD64: {
       DLOG(INFO) << "Using architecture: AMD64";
-      arch.reset(GetX86(context_, os_name_, arch_name_));
+      return GetX86(&context_, os_name_, arch_name_);
       break;
     }
 
     case kArchAMD64_AVX: {
       DLOG(INFO) << "Using architecture: AMD64, feature set: AVX";
-      arch.reset(GetX86(context_, os_name_, arch_name_));
+      return GetX86(&context_, os_name_, arch_name_);
       break;
     }
 
     case kArchAMD64_AVX512: {
       DLOG(INFO) << "Using architecture: AMD64, feature set: AVX512";
-      arch.reset(GetX86(context_, os_name_, arch_name_));
+      return GetX86(&context_, os_name_, arch_name_);
       break;
     }
   }
-
-  return arch.get();
 }
+
+
 
 // Return information about the register at offset `offset` in the `State`
 // structure.
@@ -232,43 +225,61 @@ const Register *Arch::RegisterByName(const std::string &name) const {
   }
 }
 
-const Arch *Arch::GetMips(llvm::LLVMContext &, OSName, ArchName) {
+const Arch *Arch::GetMips(llvm::LLVMContext *, OSName, ArchName) {
   return nullptr;
 }
 
 //TODO(lukas): This should not be singleton at all
 struct AvailableArchs {
-  using ArchMap = std::unordered_map<llvm::LLVMContext *, const Arch *>;
+  using ArchMap = std::unordered_map<llvm::LLVMContext *, std::unique_ptr<const Arch>>;
 
-  static ArchMap host_archs;
-  static ArchMap target_archs;
+  static ArchMap cached;
 
-  static const Arch *GetOrCreateHostArch(llvm::LLVMContext &ctx) {
-    auto &arch = host_archs[&ctx];
+  static const Arch *GetOrCreate(llvm::LLVMContext *ctx, OSName os, ArchName name) {
+    auto &arch = cached[ctx];
     if (!arch) {
-      arch = Arch::Get(ctx, GetOSName(REMILL_OS), GetArchName(REMILL_ARCH));
+      arch.reset(Create(ctx, os, name));
     }
-    return arch;
+    return arch.get();
   }
 
-  static const Arch *GetOrCreateTargetArch(llvm::LLVMContext &ctx) {
-  auto &arch = target_archs[&ctx];
-    if (!arch) {
-      arch = Arch::Get(ctx, GetOSName(FLAGS_os), GetArchName(FLAGS_arch));
-    }
-    return arch;
+  static const Arch* Get(llvm::LLVMContext *ctx) {
+    if (auto arch_it = cached.find( ctx ); arch_it != cached.end())
+      return arch_it->second.get();
+    return nullptr;
   }
+
+  static const Arch *Create(llvm::LLVMContext *ctx, OSName os, ArchName name) {
+    return Arch::Build(*ctx, os, name);
+  }
+
 };
 
-AvailableArchs::ArchMap AvailableArchs::host_archs = {};
-AvailableArchs::ArchMap AvailableArchs::target_archs = {};
+AvailableArchs::ArchMap AvailableArchs::cached = {};
+
+
+const Arch *Arch::Get(llvm::LLVMContext &ctx, OSName os, ArchName name) {
+  return GetOrCreate(ctx, os, name);
+}
+
+const Arch *Create(llvm::LLVMContext &ctx, OSName os, ArchName name) {
+  return AvailableArchs::Create(&ctx, os, name);
+}
+
+const Arch *GetOrCreate(llvm::LLVMContext &ctx, OSName os, ArchName name) {
+  return AvailableArchs::GetOrCreate(&ctx, os, name);
+}
+
+const Arch *_Get(llvm::LLVMContext &ctx) {
+  return AvailableArchs::Get(&ctx);
+}
 
 const Arch *GetHostArch(llvm::LLVMContext &ctx) {
-  return AvailableArchs::GetOrCreateHostArch(ctx);
+  return GetOrCreate(ctx, GetOSName(REMILL_OS), GetArchName(REMILL_ARCH));
 }
 
 const Arch *GetTargetArch(llvm::LLVMContext &ctx) {
-  return AvailableArchs::GetOrCreateTargetArch(ctx);
+  return GetOrCreate(ctx, GetOSName(FLAGS_os), GetArchName(FLAGS_arch));
 }
 
 bool Arch::IsX86(void) const {
