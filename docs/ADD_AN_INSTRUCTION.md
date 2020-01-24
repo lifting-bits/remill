@@ -167,7 +167,7 @@ A single ISEL test case is executed multiple times: one for each of the test inp
 Build and run the tests using:
 
 ```shell
-make -j5 build_x86_tests
+make -j5 test_dependencies
 make test
 ```
 
@@ -214,7 +214,7 @@ touch ../remill/Arch/AArch64/Runtime/Instructions.cpp
 rm -f tests/AArch64/lift-*
 rm -f tests/AArch64/run-*
 make
-make build_aarch64_tests
+make test_dependencies
 ```
 
 If you come across errors in the build process that "an instruction matching the test could not be found", double check to make sure your `DEF_ISEL` and test class match up (this will test against whatever was set for the `instr.function` string).

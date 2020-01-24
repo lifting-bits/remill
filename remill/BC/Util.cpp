@@ -59,15 +59,22 @@
 
 DECLARE_string(arch);
 
-#ifdef WIN32
 namespace {
+#ifdef WIN32
 extern "C" std::uint32_t GetProcessId(std::uint32_t handle);
-
-std::uint32_t getpid(void) {
-  return GetProcessId(0);
-}
-}
 #endif
+
+// We are avoiding the `getpid` name here to make sure we don't
+// conflict with the (deprecated) getpid function from the Windows
+// ucrt headers
+std::uint32_t nativeGetProcessID(void) {
+#ifdef WIN32
+  return GetProcessId(0);
+#else
+  return getpid();
+#endif
+}
+}
 
 namespace remill {
 // Initialize the attributes for a lifted function.
@@ -332,7 +339,7 @@ bool StoreModuleToFile(llvm::Module *module, std::string file_name,
       << "Saving bitcode to file " << file_name;
 
   std::stringstream ss;
-  ss << file_name << ".tmp." << getpid();
+  ss << file_name << ".tmp." << nativeGetProcessID();
   auto tmp_name = ss.str();
 
   std::string error;
@@ -590,7 +597,12 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
   auto func_name = source_func->getName().str();
   auto source_mod = source_func->getParent();
   auto dest_mod = dest_func->getParent();
+  auto &source_context = source_mod->getContext();
+  auto &dest_context = dest_func->getContext();
+  auto reg_md_id = source_context.getMDKindID("remill_register");
 
+  // Make sure that when we're cloning `__remill_basic_block`, we don't
+  // throw away register names and such.
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
   dest_func->getContext().setDiscardValueNames(false);
 #endif
@@ -638,9 +650,12 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
       auto new_inst = llvm::dyn_cast<llvm::Instruction>(value_map[&old_inst]);
 
       // Clear out all metadata from the new instruction.
+
       old_inst.getAllMetadata(mds);
       for (auto md_info : mds) {
-        new_inst->setMetadata(md_info.first, nullptr);
+        if (md_info.first != reg_md_id || &source_context != &dest_context) {
+          new_inst->setMetadata(md_info.first, nullptr);
+        }
       }
 
       new_inst->setDebugLoc(llvm::DebugLoc());
@@ -680,10 +695,12 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
         llvm::GlobalValue *new_global_val = nullptr;
 
         if (auto global_val_func = llvm::dyn_cast<llvm::Function>(global_val)) {
-          new_global_val =
-              llvm::dyn_cast<llvm::GlobalValue>(dest_mod->getOrInsertFunction(
-                  global_val->getName(), llvm::dyn_cast<llvm::FunctionType>(
-                                             GetValueType(global_val))));
+          auto new_func = dest_mod->getOrInsertFunction(
+              global_val->getName(),
+              llvm::dyn_cast<llvm::FunctionType>(GetValueType(global_val)));
+
+          new_global_val = llvm::dyn_cast<llvm::GlobalValue>(
+              new_func IF_LLVM_GTE_900(.getCallee()));
 
           if (auto as_func = llvm::dyn_cast<llvm::Function>(new_global_val)) {
             as_func->setAttributes(global_val_func->getAttributes());
@@ -900,7 +917,9 @@ static void ClearMetaData(T *value) {
 //
 // TODO(pag): Make this work across distinc `llvm::LLVMContext`s.
 void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
-  CHECK(&(func->getContext()) == &(dest_module->getContext()))
+  const auto source_context = &(func->getContext());
+  const auto dest_context = &(dest_module->getContext());
+  CHECK(source_context == dest_context)
       << "Cannot move function across two independent LLVM contexts.";
 
   auto source_module = func->getParent();
@@ -917,8 +936,10 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
     existing->setVisibility(llvm::GlobalValue::DefaultVisibility);
   }
 
-  func->removeFromParent();
-  dest_module->getFunctionList().push_back(func);
+  if (source_context == dest_context) {
+    func->removeFromParent();
+    dest_module->getFunctionList().push_back(func);
+  }
 
   if (existing) {
     existing->replaceAllUsesWith(func);
@@ -926,11 +947,16 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
     existing = nullptr;
   }
 
-  IF_LLVM_GTE_37( ClearMetaData(func); )
+  if (source_context != dest_context) {
+    IF_LLVM_GTE_370(ClearMetaData(func);)
+  }
 
   for (auto &block : *func) {
     for (auto &inst : block) {
-      ClearMetaData(&inst);
+
+      if (source_context != dest_context) {
+        ClearMetaData(&inst);
+      }
 
       // Substitute globals in the operands.
       for (auto &op : inst.operands()) {
@@ -1097,7 +1123,8 @@ llvm::Value *LoadFromMemory(
   auto &context = module->getContext();
   llvm::DataLayout dl(module);
   llvm::Value *args_2[2] = {mem_ptr, addr};
-  auto i32_type = llvm::Type::getInt32Ty(context);
+  auto index_type = llvm::Type::getIntNTy(
+      context, dl.getPointerSizeInBits(0));
 
   llvm::IRBuilder<> ir(block);
 
@@ -1141,7 +1168,7 @@ llvm::Value *LoadFromMemory(
       auto byte_array = ir.CreateBitCast(
           res, llvm::PointerType::get(i8_type, 0));
       llvm::Value *gep_indices[2] = {
-          llvm::ConstantInt::get(i32_type, 0, false),
+          llvm::ConstantInt::get(index_type, 0, false),
           nullptr
       };
 
@@ -1151,7 +1178,7 @@ llvm::Value *LoadFromMemory(
         args_2[1] = ir.CreateAdd(
             addr, llvm::ConstantInt::get(addr->getType(), i, false));
         auto byte = ir.CreateCall(intrinsics.read_memory_8, args_2);
-        gep_indices[1] = llvm::ConstantInt::get(i32_type, i, false);
+        gep_indices[1] = llvm::ConstantInt::get(index_type, i, false);
         auto byte_ptr = ir.CreateInBoundsGEP(type, byte_array, gep_indices);
         ir.CreateStore(byte, byte_ptr);
       }
@@ -1271,14 +1298,14 @@ llvm::Value *StoreToMemory(
   auto &context = module->getContext();
   llvm::DataLayout dl(module);
   llvm::Value *args_3[3] = {mem_ptr, addr, val_to_store};
-  auto i32_type = llvm::Type::getInt32Ty(context);
+  auto index_type = llvm::Type::getInt32Ty(context);
 
   llvm::IRBuilder<> ir(block);
 
   auto type = val_to_store->getType();
   switch (type->getTypeID()) {
     case llvm::Type::HalfTyID: {
-      auto i16_type = llvm::Type::getInt32Ty(context);
+      auto i16_type = llvm::Type::getInt16Ty(context);
       args_3[2] = ir.CreateBitCast(val_to_store, i16_type);
       return ir.CreateCall(intrinsics.write_memory_16, args_3);
     }
@@ -1325,7 +1352,7 @@ llvm::Value *StoreToMemory(
       auto byte_array = ir.CreateBitCast(
           res, llvm::PointerType::get(i8_type, 0));
       llvm::Value *gep_indices[2] = {
-          llvm::ConstantInt::get(i32_type, 0, false),
+          llvm::ConstantInt::get(index_type, 0, false),
           nullptr
       };
 
@@ -1333,7 +1360,7 @@ llvm::Value *StoreToMemory(
       for (auto i = 0U; i < size; ++i) {
         args_3[1] = ir.CreateAdd(
             addr, llvm::ConstantInt::get(addr->getType(), i, false));
-        gep_indices[1] = llvm::ConstantInt::get(i32_type, i, false);
+        gep_indices[1] = llvm::ConstantInt::get(index_type, i, false);
         auto byte_ptr = ir.CreateInBoundsGEP(type, byte_array, gep_indices);
         args_3[2] = ir.CreateLoad(byte_ptr);
         args_3[0] = ir.CreateCall(intrinsics.write_memory_8, args_3);

@@ -168,13 +168,13 @@ DEF_SEM(PAND, D dst, S1 src1, S2 src2) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(PANDN_64, D dst, S1 src1, S2 src2) {
-  UWriteV64(dst, UAndNV64(UReadV64(src1), UReadV64(src2)));
+  UWriteV64(dst, UAndNV64(UReadV64(src2), UReadV64(src1)));
   return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(PANDN, D dst, S1 src1, S2 src2) {
-  UWriteV32(dst, UAndNV32(UReadV32(src1), UReadV32(src2)));
+  UWriteV32(dst, UAndNV32(UReadV32(src2), UReadV32(src1)));
   return memory;
 }
 

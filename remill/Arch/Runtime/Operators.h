@@ -469,7 +469,7 @@ MAKE_WRITE_REF(float64_t)
     ALWAYS_INLINE static bool _CmpXchg( \
         Memory *&memory, RnW<T> op, type_prefix ## size ## _t &expected, \
       type_prefix ## size ## _t desired) { \
-      if (*op.val_ref == expected) {\
+      if (decltype(expected)(*op.val_ref) == expected) {\
         *op.val_ref = desired; \
         return true; \
       } else { \
@@ -534,6 +534,42 @@ MAKE_ATOMIC(FetchXor, fetch_and_xor, ^)
 #define UFetchAnd(op1, op2) _UFetchAnd(memory, op1, op2)
 #define UFetchXor(op1, op2) _UFetchXor(memory, op1, op2)
 
+#define MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, size, type_prefix, op)\
+  template<typename T> \
+  ALWAYS_INLINE type_prefix ## size ## _t _U ## name( \
+      Memory *&memory, MnW<T> addr, type_prefix ## size ## _t value) { \
+    memory = __remill_ ## intrinsic_name ## _ ## size(memory, addr.addr, value); \
+    return value; \
+  } \
+  \
+  template<typename T> \
+  ALWAYS_INLINE type_prefix ## size ## _t _U ## name ( \
+      Memory *&memory, RnW<T> addr, type_prefix ## size ## _t value) { \
+    auto prev_value = *reinterpret_cast<type_prefix ## size ## _t *>(addr.val_ref); \
+    *addr.val_ref = value; \
+    return prev_value op value; \
+  }
+
+#define MAKE_ATOMIC(name, intrinsic_name, op)  \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 8, uint, op) \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 16, uint, op) \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 32, uint, op) \
+    MAKE_ATOMIC_INTRINSIC(name, intrinsic_name, 64, uint, op) \
+
+MAKE_ATOMIC(AddFetch, add_and_fetch, +)
+MAKE_ATOMIC(SubFetch, sub_and_fetch, -)
+MAKE_ATOMIC(OrFetch, or_and_fetch, |)
+MAKE_ATOMIC(AndFetch, and_and_fetch, &)
+MAKE_ATOMIC(XorFetch, xor_and_fetch, ^)
+
+#undef MAKE_ATOMIC
+#undef MAKE_ATOMIC_INTRINSIC
+
+#define UAddFetch(op1, op2) _UAddFetch(memory, op1, op2)
+#define USubFetch(op1, op2) _USubFetch(memory, op1, op2)
+#define UOrFetch(op1, op2)  _UOrFetch(memory, op1, op2)
+#define UAndFetch(op1, op2) _UAndFetch(memory, op1, op2)
+#define UXorFetch(op1, op2) _UXorFetch(memory, op1, op2)
 
 // For the sake of esthetics and hiding the small-step semantics of memory
 // operands, we use this macros to implicitly pass in the `memory` operand,

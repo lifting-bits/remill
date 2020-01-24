@@ -1845,10 +1845,16 @@ DEF_SEM(PMULUDQ, D dst, S1 src1, S2 src2) {
   auto src1_vec = UReadV32(src1);
   auto src2_vec = UReadV32(src2);
   auto dst_vec = UClearV64(UReadV64(dst));
-  auto v1 = ZExt(UExtractV32(src1_vec, 0));
-  auto v2 = ZExt(UExtractV32(src2_vec, 0));
-  auto mul = UMul(v1, v2);
-  UWriteV64(dst, UInsertV64(dst_vec, 0, mul));
+
+  auto vec_count = NumVectorElems(src1_vec);
+  _Pragma("unroll")
+  for (size_t i = 0; i < vec_count/2; i++) {
+    auto v1 = ZExt(UExtractV32(src1_vec, i*2));
+    auto v2 = ZExt(UExtractV32(src2_vec, i*2));
+    auto mul = UMul(v1, v2);
+    dst_vec = UInsertV64(dst_vec, i, mul);
+  }
+  UWriteV64(dst, dst_vec);
   return memory;
 }
 

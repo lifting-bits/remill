@@ -36,6 +36,7 @@
 #include "remill/BC/DeadStoreEliminator.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/FileSystem.h"
+#include "ABI.h"
 
 DEFINE_string(dot_output_dir, "",
               "The directory in which to log DOT digraphs of the alias "
@@ -46,10 +47,13 @@ DEFINE_bool(disable_dead_store_elimination, false,
             "Whether or not to perform dead store elimination on stores into"
             "the State structure.");
 
-DEFINE_bool(enable_register_forwarding, false,
+DEFINE_bool(disable_register_forwarding, false,
             "Whether or not register forwarding should be enabled "
             "to perform load-to-load and load-to-store forwarding "
             "to eliminate dead instructions more aggressively.");
+
+DEFINE_bool(log_dse_stats, false,
+            "Log out statistics about how effective the DSE pass is.");
 
 namespace remill {
 namespace {
@@ -281,9 +285,10 @@ struct ForwardAliasVisitor
   ForwardAliasVisitor(const llvm::DataLayout &dl_,
                       const std::vector<StateSlot> &offset_to_slot_,
                       InstToLiveSet &live_args_,
-                      InstToOffset &state_access_offset_);
+                      InstToOffset &state_access_offset_,
+                      llvm::LLVMContext &context);
 
-  bool Analyze(llvm::Function *func);
+  bool Analyze(KillCounter &stats, llvm::Function *func);
 
  protected:
   friend class llvm::InstVisitor<ForwardAliasVisitor, VisitResult>;
@@ -321,6 +326,7 @@ struct ForwardAliasVisitor
   std::vector<llvm::Instruction *> pending_wl;
   std::vector<llvm::Instruction *> calls;
   llvm::Value *state_ptr;
+  unsigned reg_md_id;
 };
 
 // Stream a slot of the DOT digraph.
@@ -487,20 +493,25 @@ ForwardAliasVisitor::ForwardAliasVisitor(
     const llvm::DataLayout &dl_,
     const std::vector<StateSlot> &offset_to_slot_,
     InstToLiveSet &live_args_,
-    InstToOffset &state_access_offset_)
+    InstToOffset &state_access_offset_,
+    llvm::LLVMContext &context)
     : dl(dl_),
       offset_to_slot(offset_to_slot_),
       state_access_offset(state_access_offset_),
       live_args(live_args_),
-      state_ptr(nullptr) {}
+      state_ptr(nullptr),
+      reg_md_id(context.getMDKindID("remill_register")) {}
 
 void ForwardAliasVisitor::AddInstruction(llvm::Instruction *inst) {
-  if (FLAGS_dot_output_dir.empty()) {
-    inst->setName(llvm::Twine::createNull());
-  } else {
-    static int r = 3;
-    if (!inst->getType()->isVoidTy()) {
-      inst->setName("r" + std::to_string(r++));
+
+  if (!inst->getMetadata(reg_md_id)) {
+    if (FLAGS_dot_output_dir.empty()) {
+      inst->setName(llvm::Twine::createNull());
+    } else {
+      static int r = static_cast<int>(remill::kNumBlockArgs);
+      if (!inst->getType()->isVoidTy()) {
+        inst->setName("r" + std::to_string(r++));
+      }
     }
   }
 
@@ -529,7 +540,7 @@ void ForwardAliasVisitor::AddInstruction(llvm::Instruction *inst) {
 // are not yet in `state_offset`) is withheld to the next analysis round
 // in the next worklist. Analysis repeats until the current worklist is
 // empty or until an error condition is hit.
-bool ForwardAliasVisitor::Analyze(llvm::Function *func) {
+bool ForwardAliasVisitor::Analyze(KillCounter &stats, llvm::Function *func) {
   curr_wl.clear();
   exclude.clear();
   calls.clear();
@@ -630,8 +641,13 @@ bool ForwardAliasVisitor::Analyze(llvm::Function *func) {
   }
 
   // TODO(tim): This condition is triggered a lot.
+  //
+  // One place where this happens is when there is a `select` to choose
+  // what index into an array to use.
   if (!pending_wl.empty()) {
-    DLOG(ERROR)
+    stats.failed_funcs++;
+
+    DLOG(WARNING)
         << "Alias analysis failed to complete on function `"
         << func->getName().str() << "` with " << next_wl.size()
         << " instructions in the worklist and " << pending_wl.size()
@@ -731,7 +747,8 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(
   }
 
   // Try to get the offset as a single constant. If we can't then
-  llvm::APInt const_offset(dl.getPointerSizeInBits(0), 0);
+  llvm::APInt const_offset(
+      dl.getPointerSizeInBits(0), 0, true);
   if (!inst.accumulateConstantOffset(dl, const_offset)) {
     return VisitResult::Error;
   }
@@ -741,9 +758,12 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(
   if (!TryCombineOffsets(ptr->second, OpType::Plus,
                          static_cast<uint64_t>(const_offset.getSExtValue()),
                          offset_to_slot.size(), &offset)) {
+
     LOG(WARNING)
         << "Out of bounds GEP operation: " << LLVMThingToString(&inst)
+        << " on base " << LLVMThingToString(val)
         << " with inferred offset " << static_cast<int64_t>(offset)
+        << " (" << ptr->second << " + "  << const_offset.getSExtValue() << ")"
         << " and max allowed offset of " << offset_to_slot.size();
     return VisitResult::Error;
   }
@@ -1477,12 +1497,14 @@ void LiveSetBlockVisitor::CreateDOTDigraph(llvm::Function *func,
 class ForwardingBlockVisitor {
   public:
     llvm::Function &func;
+    llvm::DominatorTree &dominator_tree;
     const InstToOffset &state_access_offset;
     const std::vector<StateSlot> &state_slots;
     const llvm::FunctionType *lifted_func_ty;
 
     ForwardingBlockVisitor(
         llvm::Function &func_,
+        llvm::DominatorTree &dominator_tree,
         const InstToOffset &state_access_offset_,
         const std::vector<StateSlot> &state_slots_,
         const llvm::DataLayout *dl_);
@@ -1497,10 +1519,12 @@ class ForwardingBlockVisitor {
 
 ForwardingBlockVisitor::ForwardingBlockVisitor(
     llvm::Function &func_,
+    llvm::DominatorTree &dominator_tree_,
     const InstToOffset &state_access_offset_,
     const std::vector<StateSlot> &state_slots_,
     const llvm::DataLayout *dl_)
     : func(func_),
+      dominator_tree(dominator_tree_),
       state_access_offset(state_access_offset_),
       state_slots(state_slots_),
       lifted_func_ty(func.getFunctionType()),
@@ -1516,13 +1540,14 @@ void ForwardingBlockVisitor::Visit(const ValueToOffset &val_to_offset,
 
 static llvm::Value *ConvertToSameSizedType(
     llvm::Value *val, llvm::Type *dest_type, llvm::Instruction *insert_loc) {
-
+  auto empty_name = llvm::Twine::createNull();
   auto val_type = val->getType();
   if (val_type->isIntegerTy()) {
     if (dest_type->isPointerTy()) {
-      return new llvm::IntToPtrInst(val, dest_type, "", insert_loc);
+      return new llvm::IntToPtrInst(
+          val, dest_type, empty_name, insert_loc);
     } else {
-      return new llvm::BitCastInst(val, dest_type, "", insert_loc);
+      return new llvm::BitCastInst(val, dest_type, empty_name, insert_loc);
     }
 
   } else if (val_type->isFloatingPointTy()) {
@@ -1534,15 +1559,18 @@ static llvm::Value *ConvertToSameSizedType(
 
       return nullptr;
     } else {
-      return new llvm::BitCastInst(val, dest_type, "", insert_loc);
+      return new llvm::BitCastInst(
+          val, dest_type, empty_name, insert_loc);
     }
 
   } else if (val_type->isPointerTy()) {
     if (dest_type->isIntegerTy()) {
-      return new llvm::PtrToIntInst(val, dest_type, "", insert_loc);
+      return new llvm::PtrToIntInst(
+          val, dest_type, empty_name, insert_loc);
 
     } else if (dest_type->isPointerTy()) {
-      return new llvm::BitCastInst(val, dest_type, "", insert_loc);
+      return new llvm::BitCastInst(
+          val, dest_type, empty_name, insert_loc);
 
     } else {
       LOG(ERROR)
@@ -1552,13 +1580,15 @@ static llvm::Value *ConvertToSameSizedType(
       return nullptr;
     }
   } else {
-    return new llvm::BitCastInst(val, dest_type, "", insert_loc);
+    return new llvm::BitCastInst(
+        val, dest_type, empty_name, insert_loc);
   }
 }
 
 void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
                                         const ValueToOffset &val_to_offset,
                                         KillCounter &stats) {
+  auto empty_name = llvm::Twine::createNull();
   std::unordered_map<uint64_t, llvm::LoadInst *> slot_to_load;
 
   // Collect the instructions into a vector. We're going to be shuffling them
@@ -1661,13 +1691,15 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
       // Forwarding, but changing the size.
       } else if (next_size < val_size) {
         if (val_type->isIntegerTy() && next_type->isIntegerTy()) {
-          auto trunc = new llvm::TruncInst(val, next_type, "", next_load);
+          auto trunc = new llvm::TruncInst(
+              val, next_type, empty_name, next_load);
           next_load->replaceAllUsesWith(trunc);
           next_load->eraseFromParent();
 
         } else if (val_type->isFloatingPointTy() &&
                    next_type->isFloatingPointTy()) {
-          auto trunc = new llvm::FPTruncInst(val, next_type, "", next_load);
+          auto trunc = new llvm::FPTruncInst(
+              val, next_type, empty_name, next_load);
           next_load->replaceAllUsesWith(trunc);
           next_load->eraseFromParent();
 
@@ -1694,6 +1726,11 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
 
       const auto &state_slot = state_slots[offset_ptr->second];
       auto &load_ref = slot_to_load[state_slot.index];
+
+      // If the slot is not dominating the load, update it
+      if (load_ref && !dominator_tree.dominates(load_ref, load_inst)) {
+        load_ref = nullptr;
+      }
 
       // Get the next load, and update the slot with the current load.
       auto next_load = load_ref;
@@ -1743,14 +1780,15 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
       } else if (next_size < val_size) {
       try_truncate:
         if (val_type->isIntegerTy() && next_type->isIntegerTy()) {
-          auto trunc = new llvm::TruncInst(load_inst, next_type, "", next_load);
+          auto trunc = new llvm::TruncInst(
+              load_inst, next_type, empty_name, next_load);
           next_load->replaceAllUsesWith(trunc);
           next_load->eraseFromParent();
 
         } else if (val_type->isFloatingPointTy() &&
                    next_type->isFloatingPointTy()) {
           auto trunc = new llvm::FPTruncInst(
-              load_inst, next_type, "", next_load);
+              load_inst, next_type, empty_name, next_load);
           next_load->replaceAllUsesWith(trunc);
           next_load->eraseFromParent();
         } else {
@@ -1809,7 +1847,8 @@ std::vector<StateSlot> StateSlots(llvm::Module *module) {
 // stores into the `State` structure.
 void RemoveDeadStores(llvm::Module *module,
                       llvm::Function *bb_func,
-                      const std::vector<StateSlot> &slots) {
+                      const std::vector<StateSlot> &slots,
+                      llvm::Function *ds_func) {
   if (FLAGS_disable_dead_store_elimination) {
     return;
   }
@@ -1825,13 +1864,22 @@ void RemoveDeadStores(llvm::Module *module,
       continue;
     }
 
-    ForwardAliasVisitor fav(dl, slots, live_args, state_access_offset);
+    // If ds_func is set, only apply DSE on that function
+    if (ds_func && ds_func != &func) {
+      continue;
+    }
+
+    ForwardAliasVisitor fav(
+        dl, slots, live_args, state_access_offset,
+        func.getContext());
 
     // If the analysis succeeds for this function, then do store-to-load
     // and load-to-load forwarding.
-    if (fav.Analyze(&func)) {
-      if (FLAGS_enable_register_forwarding) {
-        ForwardingBlockVisitor fbv(func, state_access_offset, slots, &dl);
+    if (fav.Analyze(stats, &func)) {
+      if (!FLAGS_disable_register_forwarding) {
+        llvm::DominatorTree dominator_tree(func);
+        ForwardingBlockVisitor fbv(
+            func, dominator_tree, state_access_offset, slots, &dl);
         fbv.Visit(fav.state_offset, stats);
       }
     }
@@ -1862,18 +1910,18 @@ void RemoveDeadStores(llvm::Module *module,
     }
   }
 
-//  LOG(INFO)
-//      << "Candidate stores: " << stats.num_stores << "; "
-//      << "Dead stores: " << stats.dead_stores << "; "
-//      << "Instructions removed from DSE: " << stats.removed_insts << "; "
-//      << "Forwarded loads: " << stats.fwd_loads << "; "
-//      << "Forwarded stores: " << stats.fwd_stores << "; "
-//      << "Perfectly forwarded: " << stats.fwd_perfect << "; "
-//      << "Forwarded by truncation: " << stats.fwd_truncated << "; "
-//      << "Forwarded by casting: " << stats.fwd_casted << "; "
-//      << "Forwarded by reordering: " << stats.fwd_reordered << "; "
-//      << "Could not forward: " << stats.fwd_failed << "; "
-//      << "Unanalyzed functions: " << stats.failed_funcs;
+  LOG_IF(INFO, FLAGS_log_dse_stats)
+      << "Candidate stores: " << stats.num_stores << "; "
+      << "Dead stores: " << stats.dead_stores << "; "
+      << "Instructions removed from DSE: " << stats.removed_insts << "; "
+      << "Forwarded loads: " << stats.fwd_loads << "; "
+      << "Forwarded stores: " << stats.fwd_stores << "; "
+      << "Perfectly forwarded: " << stats.fwd_perfect << "; "
+      << "Forwarded by truncation: " << stats.fwd_truncated << "; "
+      << "Forwarded by casting: " << stats.fwd_casted << "; "
+      << "Forwarded by reordering: " << stats.fwd_reordered << "; "
+      << "Could not forward: " << stats.fwd_failed << "; "
+      << "Unanalyzed functions: " << stats.failed_funcs;
 }
 
 }  // namespace remill

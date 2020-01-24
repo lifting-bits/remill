@@ -36,9 +36,18 @@ function GetUbuntuOSVersion
   source /etc/lsb-release
 
   case "${DISTRIB_CODENAME}" in
+    disco)
+      # TODO(pag): Eventually make real packages for 19.04!
+      OS_VERSION=ubuntu1804
+      return 0
+    ;;
+    dingo)
+      # TODO(pag): Eventually make real packages for 19.04!
+      OS_VERSION=ubuntu1804
+      return 0
+    ;;
     cosmic)
       # TODO(pag): Eventually make real packages for 18.10!
-      OS_VERSION=ubuntu1810
       OS_VERSION=ubuntu1804
       return 0
     ;;
@@ -127,6 +136,11 @@ function GetOSVersion
       OS_VERSION=ubuntu1604
       return 0
     ;;
+    
+    [Kk]ali)
+      OS_VERSION=ubuntu1804
+      return 0;
+    ;;
 
     *)
       echo "[x] ${ID} is not yet a supported distribution."
@@ -141,6 +155,14 @@ function DownloadLibraries
 {
   # macOS packages
   if [[ "${OSTYPE}" = "darwin"* ]]; then
+
+    # Compute an isysroot from the SDK root dir.
+    local sdk_root="${SDKROOT}"
+    if [[ "x${sdk_root}x" = "xx" ]]; then
+      sdk_root=$(xcrun -sdk macosx --show-sdk-path)
+    fi
+
+    BUILD_FLAGS="${BUILD_FLAGS} -DCMAKE_OSX_SYSROOT=${sdk_root}"
     OS_VERSION=osx
 
   # Linux packages
@@ -266,6 +288,10 @@ function GetLLVMVersion
     ;;
     8.0)
       LLVM_VERSION=llvm80
+      return 0
+    ;;
+    9.0)
+      LLVM_VERSION=llvm90
       return 0
     ;;
     *)

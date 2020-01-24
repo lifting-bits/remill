@@ -27,6 +27,13 @@
 #ifndef HAS_FEATURE_AVX512
 # define HAS_FEATURE_AVX512 1
 #endif
+
+
+#ifdef __APPLE__
+# define IF_NOT_APPLE_(...)
+#else
+# define IF_NOT_APPLE_(...) __VA_ARGS__ ,
+#endif
         
 #define FUNC_NAME(instr_name, num_args) \
     CAT3(instr_name, _, num_args)
@@ -519,6 +526,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/SQRTSD.S"
 #include "tests/X86/SSE/MXCSR.S"
 #include "tests/X86/SSE/SHUFPS.S"
+#include "tests/X86/SSE/SHUFPD.S"
 
 #include "tests/X86/STRINGOP/CMPS.S"
 #include "tests/X86/STRINGOP/LODS.S"
