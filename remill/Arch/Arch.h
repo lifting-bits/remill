@@ -113,8 +113,6 @@ class Arch {
 
   // Factory method for loading the correct architecture class for a given
   // operating system and architecture class.
-  //
-  // TODO(pag): Refactor to also take in an `llvm::LLVMContext &`.
   static const Arch *Get(llvm::LLVMContext &context, OSName os, ArchName arch_name);
 
   // Return information about the register at offset `offset` in the `State`
