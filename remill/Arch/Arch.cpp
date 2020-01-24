@@ -236,23 +236,39 @@ const Arch *Arch::GetMips(llvm::LLVMContext &, OSName, ArchName) {
   return nullptr;
 }
 
-const Arch *GetHostArch(llvm::LLVMContext &context) {
-  static std::unordered_map<llvm::LLVMContext *, const Arch *> gHostArches;
-  auto &arch = gHostArches[&context];
-  if (!arch) {
-    arch = Arch::Get(
-        context, GetOSName(REMILL_OS), GetArchName(REMILL_ARCH));
+//TODO(lukas): This should not be singleton at all
+struct AvailableArchs {
+  using ArchMap = std::unordered_map<llvm::LLVMContext *, const Arch *>;
+
+  static ArchMap host_archs;
+  static ArchMap target_archs;
+
+  static const Arch *GetOrCreateHostArch(llvm::LLVMContext &ctx) {
+    auto &arch = host_archs[&ctx];
+    if (!arch) {
+      arch = Arch::Get(ctx, GetOSName(REMILL_OS), GetArchName(REMILL_ARCH));
+    }
+    return arch;
   }
-  return arch;
+
+  static const Arch *GetOrCreateTargetArch(llvm::LLVMContext &ctx) {
+  auto &arch = target_archs[&ctx];
+    if (!arch) {
+      arch = Arch::Get(ctx, GetOSName(FLAGS_os), GetArchName(FLAGS_arch));
+    }
+    return arch;
+  }
+};
+
+AvailableArchs::ArchMap AvailableArchs::host_archs = {};
+AvailableArchs::ArchMap AvailableArchs::target_archs = {};
+
+const Arch *GetHostArch(llvm::LLVMContext &ctx) {
+  return AvailableArchs::GetOrCreateHostArch(ctx);
 }
 
-const Arch *GetTargetArch(llvm::LLVMContext &context) {
-  static std::unordered_map<llvm::LLVMContext *, const Arch *> gTargetArches;
-  auto &arch = gTargetArches[&context];
-  if (!arch) {
-    arch = Arch::Get(context, GetOSName(FLAGS_os), GetArchName(FLAGS_arch));
-  }
-  return arch;
+const Arch *GetTargetArch(llvm::LLVMContext &ctx) {
+  return AvailableArchs::GetOrCreateTargetArch(ctx);
 }
 
 bool Arch::IsX86(void) const {
