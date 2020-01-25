@@ -228,4 +228,7 @@ const Arch *Create(llvm::LLVMContext &context, OSName os, ArchName name);
 // TODO(lukas): Allow destruction
 const Arch *GetOrCreate(llvm::LLVMContext &context, OSName os, ArchName name);
 
+// Returns new Arch structure without caching -> caller has complete ownership
+std::unique_ptr<const Arch > Build(llvm::LLVMContext &context, OSName os, ArchName name);
+
 }  // namespace remill

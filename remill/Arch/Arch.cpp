@@ -282,6 +282,10 @@ const Arch *GetTargetArch(llvm::LLVMContext &ctx) {
   return GetOrCreate(ctx, GetOSName(FLAGS_os), GetArchName(FLAGS_arch));
 }
 
+ArchPtr Build(llvm::LLVMContext &ctx, OSName os, ArchName name) {
+  return ArchPtr(Arch::Build(ctx, os, name));
+}
+
 bool Arch::IsX86(void) const {
   switch (arch_name) {
     case remill::kArchX86:
