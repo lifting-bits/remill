@@ -182,6 +182,10 @@ auto Arch::Build(llvm::LLVMContext *context_,
   }
 }
 
+const Arch *Get(llvm::LLVMContext &context, OSName os, ArchName arch_name) {
+  return Arch::Build(&context, os, arch_name).release();
+}
+
 auto Arch::GetHostArch(llvm::LLVMContext &ctx) -> ArchPtr {
   return Arch::Build(&ctx, GetOSName(REMILL_OS), GetArchName(REMILL_ARCH));
 }
@@ -246,10 +250,6 @@ AvailableArchs::ArchMap AvailableArchs::cached = {};
 
 const Arch *GetOrCreate(llvm::LLVMContext &ctx, OSName os, ArchName name) {
   return AvailableArchs::GetOrCreate(&ctx, os, name);
-}
-
-const Arch *_Get(llvm::LLVMContext &ctx) {
-  return AvailableArchs::Get(&ctx);
 }
 
 const Arch *GetHostArch(llvm::LLVMContext &ctx) {

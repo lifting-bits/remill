@@ -175,6 +175,8 @@ class Arch {
   const OSName os_name;
   const ArchName arch_name;
   const uint64_t address_size;
+
+  // Constant pointer to non-const object
   llvm::LLVMContext * const context;
 
   bool IsX86(void) const;
