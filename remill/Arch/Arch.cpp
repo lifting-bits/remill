@@ -78,20 +78,6 @@ static unsigned AddressSize(ArchName arch_name) {
   return 0;
 }
 
-static uint64_t ArchKey(llvm::LLVMContext &context_, OSName os_name_,
-                        ArchName arch_name_) {
-  auto context = reinterpret_cast<uintptr_t>(&context_);
-  auto os_name = static_cast<uint64_t>(os_name_);
-  auto arch_name = static_cast<uint64_t>(arch_name_);
-  return (os_name << 48u) ^ (arch_name << 56u) ^ static_cast<uint64_t>(context);
-}
-
-// Used for static storage duration caches of `Arch` specializations. The
-// `std::unique_ptr` makes sure that the `Arch` objects are freed on `exit`
-// from the program.
-using ArchPtr = std::unique_ptr<const Arch>;
-using ArchCache = std::unordered_map<uint64_t, ArchPtr>;
-
 }  // namespace
 
 Arch::Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_)
