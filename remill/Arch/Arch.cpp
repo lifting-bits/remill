@@ -214,7 +214,9 @@ auto Arch::GetMips(llvm::LLVMContext *, OSName, ArchName) -> ArchPtr {
   return nullptr;
 }
 
-//TODO(lukas): This should not be singleton at all
+// Note(lukas): Structure that allows global caching of `Arch` objects,
+// as key llvm::LLVMContext * is used. Eventually this should be removed
+// in favor of Arch::Build/Get* but some old code may depend on this caching behaviour.
 struct AvailableArchs {
   using ArchMap = std::unordered_map<llvm::LLVMContext *, std::unique_ptr<const Arch>>;
 
