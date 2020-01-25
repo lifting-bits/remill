@@ -182,7 +182,7 @@ auto Arch::Build(llvm::LLVMContext *context_,
   }
 }
 
-const Arch *Get(llvm::LLVMContext &context, OSName os, ArchName arch_name) {
+const Arch *Arch::Get(llvm::LLVMContext &context, OSName os, ArchName arch_name) {
   return Arch::Build(&context, os, arch_name).release();
 }
 
