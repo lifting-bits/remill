@@ -156,49 +156,41 @@ const Arch *Arch::Build(
     case kArchX86: {
       DLOG(INFO) << "Using architecture: X86";
       return GetX86(&context_, os_name_, arch_name_);
-      break;
     }
 
     case kArchMips32: {
       DLOG(INFO) << "Using architecture: 32-bit MIPS";
       return GetMips(&context_, os_name_, arch_name_);
-      break;
     }
 
     case kArchMips64: {
       DLOG(INFO) << "Using architecture: 64-bit MIPS";
       return GetMips(&context_, os_name_, arch_name_);
-      break;
     }
 
     case kArchX86_AVX: {
       DLOG(INFO) << "Using architecture: X86, feature set: AVX";
       return GetX86(&context_, os_name_, arch_name_);
-      break;
     }
 
     case kArchX86_AVX512: {
       DLOG(INFO) << "Using architecture: X86, feature set: AVX512";
       return GetX86(&context_, os_name_, arch_name_);
-      break;
     }
 
     case kArchAMD64: {
       DLOG(INFO) << "Using architecture: AMD64";
       return GetX86(&context_, os_name_, arch_name_);
-      break;
     }
 
     case kArchAMD64_AVX: {
       DLOG(INFO) << "Using architecture: AMD64, feature set: AVX";
       return GetX86(&context_, os_name_, arch_name_);
-      break;
     }
 
     case kArchAMD64_AVX512: {
       DLOG(INFO) << "Using architecture: AMD64, feature set: AVX512";
       return GetX86(&context_, os_name_, arch_name_);
-      break;
     }
   }
 }
