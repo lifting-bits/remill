@@ -4709,10 +4709,10 @@ bool TryDecodeUSHR_ASIMDSHF_R(const InstData &data, Instruction &inst) {
 
 }  // namespace aarch64
 
-// TODO(pag): We pretend that these are singletons, but they aren't really!
-const Arch *Arch::GetAArch64(llvm::LLVMContext *context_,
-                             OSName os_name_, ArchName arch_name_) {
-  return new AArch64Arch(context_, os_name_, arch_name_);
+auto Arch::GetAArch64(llvm::LLVMContext *context_,
+                      OSName os_name_,
+                      ArchName arch_name_) -> ArchPtr {
+  return std::make_unique<AArch64Arch>(context_, os_name_, arch_name_);
 }
 
 }  // namespace remill

@@ -109,6 +109,8 @@ struct Register {
 
 class Arch {
  public:
+  using ArchPtr = std::unique_ptr<const Arch>;
+
   virtual ~Arch(void);
 
   // Factory method for loading the correct architecture class for a given
@@ -183,7 +185,16 @@ class Arch {
   bool IsLinux(void) const;
   bool IsMacOS(void) const;
 
-  static const Arch *Build(llvm::LLVMContext &context, OSName os, ArchName arch_name);
+  // Avoids global cache
+  static ArchPtr Build(llvm::LLVMContext *context, OSName os, ArchName arch_name);
+
+  // Get the architecture of the modelled code. This is based on command-line
+  // flags. Rather use directly Build.
+  static ArchPtr GetTargetArch(llvm::LLVMContext &context);
+
+  // Get the (approximate) architecture of the system library was built on. This may not
+  // include all feature sets.
+  static ArchPtr GetHostArch(llvm::LLVMContext &contex);
 
  protected:
   Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
@@ -192,15 +203,15 @@ class Arch {
 
  private:
   // Defined in `remill/Arch/X86/Arch.cpp`.
-  static const Arch *GetX86(
+  static ArchPtr GetX86(
       llvm::LLVMContext *context, OSName os, ArchName arch_name);
 
   // Defined in `remill/Arch/Mips/Arch.cpp`.
-  static const Arch *GetMips(
+  static ArchPtr GetMips(
       llvm::LLVMContext *context, OSName os, ArchName arch_name);
 
   // Defined in `remill/Arch/AArch64/Arch.cpp`.
-  static const Arch *GetAArch64(
+  static ArchPtr GetAArch64(
       llvm::LLVMContext *context, OSName os, ArchName arch_name);
 
   // Get all of the register information from the prepared module.
@@ -213,22 +224,15 @@ class Arch {
   Arch(void) = delete;
 };
 
-// Get the (approximate) architecture of the running system. This may not
-// include all feature sets.
-const Arch *GetHostArch(llvm::LLVMContext &context);
+/* Deprecated, do not use, prefer Arch::Build */
 
-// Get the architecture of the modelled code. This is based on command-line
-// flags.
+const Arch *GetHostArch(llvm::LLVMContext &context);
 const Arch *GetTargetArch(llvm::LLVMContext &context);
 
-const Arch *Get(llvm::LLVMContext &context);
-const Arch *Create(llvm::LLVMContext &context, OSName os, ArchName name);
-
 // In case it already exists with different os and arch it is still returned!
-// TODO(lukas): Allow destruction
 const Arch *GetOrCreate(llvm::LLVMContext &context, OSName os, ArchName name);
 
-// Returns new Arch structure without caching -> caller has complete ownership
-std::unique_ptr<const Arch > Build(llvm::LLVMContext &context, OSName os, ArchName name);
+// Double deprecated, leaks memory
+const Arch *GetTargetArch();
 
 }  // namespace remill

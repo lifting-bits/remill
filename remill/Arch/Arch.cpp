@@ -140,8 +140,9 @@ llvm::Triple Arch::BasicTriple(void) const {
   return triple;
 }
 
-const Arch *Arch::Build(
-    llvm::LLVMContext &context_, OSName os_name_, ArchName arch_name_) {
+auto Arch::Build(llvm::LLVMContext *context_,
+                 OSName os_name_,
+                 ArchName arch_name_) -> ArchPtr {
 
   switch (arch_name_) {
     case kArchInvalid:
@@ -150,52 +151,58 @@ const Arch *Arch::Build(
 
     case kArchAArch64LittleEndian: {
       DLOG(INFO) << "Using architecture: AArch64, feature set: Little Endian";
-      return GetAArch64(&context_, os_name_, arch_name_);
+      return GetAArch64(context_, os_name_, arch_name_);
     }
 
     case kArchX86: {
       DLOG(INFO) << "Using architecture: X86";
-      return GetX86(&context_, os_name_, arch_name_);
+      return GetX86(context_, os_name_, arch_name_);
     }
 
     case kArchMips32: {
       DLOG(INFO) << "Using architecture: 32-bit MIPS";
-      return GetMips(&context_, os_name_, arch_name_);
+      return GetMips(context_, os_name_, arch_name_);
     }
 
     case kArchMips64: {
       DLOG(INFO) << "Using architecture: 64-bit MIPS";
-      return GetMips(&context_, os_name_, arch_name_);
+      return GetMips(context_, os_name_, arch_name_);
     }
 
     case kArchX86_AVX: {
       DLOG(INFO) << "Using architecture: X86, feature set: AVX";
-      return GetX86(&context_, os_name_, arch_name_);
+      return GetX86(context_, os_name_, arch_name_);
     }
 
     case kArchX86_AVX512: {
       DLOG(INFO) << "Using architecture: X86, feature set: AVX512";
-      return GetX86(&context_, os_name_, arch_name_);
+      return GetX86(context_, os_name_, arch_name_);
     }
 
     case kArchAMD64: {
       DLOG(INFO) << "Using architecture: AMD64";
-      return GetX86(&context_, os_name_, arch_name_);
+      return GetX86(context_, os_name_, arch_name_);
     }
 
     case kArchAMD64_AVX: {
       DLOG(INFO) << "Using architecture: AMD64, feature set: AVX";
-      return GetX86(&context_, os_name_, arch_name_);
+      return GetX86(context_, os_name_, arch_name_);
     }
 
     case kArchAMD64_AVX512: {
       DLOG(INFO) << "Using architecture: AMD64, feature set: AVX512";
-      return GetX86(&context_, os_name_, arch_name_);
+      return GetX86(context_, os_name_, arch_name_);
     }
   }
 }
 
+auto Arch::GetHostArch(llvm::LLVMContext &ctx) -> ArchPtr {
+  return Arch::Build(&ctx, GetOSName(REMILL_OS), GetArchName(REMILL_ARCH));
+}
 
+auto Arch::GetTargetArch(llvm::LLVMContext &ctx) -> ArchPtr {
+  return Arch::Build(&ctx, GetOSName(FLAGS_os), GetArchName(FLAGS_arch));
+}
 
 // Return information about the register at offset `offset` in the `State`
 // structure.
@@ -217,7 +224,7 @@ const Register *Arch::RegisterByName(const std::string &name) const {
   }
 }
 
-const Arch *Arch::GetMips(llvm::LLVMContext *, OSName, ArchName) {
+auto Arch::GetMips(llvm::LLVMContext *, OSName, ArchName) -> ArchPtr {
   return nullptr;
 }
 
@@ -230,7 +237,7 @@ struct AvailableArchs {
   static const Arch *GetOrCreate(llvm::LLVMContext *ctx, OSName os, ArchName name) {
     auto &arch = cached[ctx];
     if (!arch) {
-      arch.reset(Create(ctx, os, name));
+      arch = Create(ctx, os, name);
     }
     return arch.get();
   }
@@ -241,22 +248,13 @@ struct AvailableArchs {
     return nullptr;
   }
 
-  static const Arch *Create(llvm::LLVMContext *ctx, OSName os, ArchName name) {
-    return Arch::Build(*ctx, os, name);
+  static Arch::ArchPtr Create(llvm::LLVMContext *ctx, OSName os, ArchName name) {
+    return Arch::Build(ctx, os, name);
   }
 
 };
 
 AvailableArchs::ArchMap AvailableArchs::cached = {};
-
-
-const Arch *Arch::Get(llvm::LLVMContext &ctx, OSName os, ArchName name) {
-  return GetOrCreate(ctx, os, name);
-}
-
-const Arch *Create(llvm::LLVMContext &ctx, OSName os, ArchName name) {
-  return AvailableArchs::Create(&ctx, os, name);
-}
 
 const Arch *GetOrCreate(llvm::LLVMContext &ctx, OSName os, ArchName name) {
   return AvailableArchs::GetOrCreate(&ctx, os, name);
@@ -274,8 +272,8 @@ const Arch *GetTargetArch(llvm::LLVMContext &ctx) {
   return GetOrCreate(ctx, GetOSName(FLAGS_os), GetArchName(FLAGS_arch));
 }
 
-ArchPtr Build(llvm::LLVMContext &ctx, OSName os, ArchName name) {
-  return ArchPtr(Arch::Build(ctx, os, name));
+const Arch* GetTargetArch() {
+  return Arch::Build(nullptr, GetOSName(FLAGS_os), GetArchName(FLAGS_arch)).get();
 }
 
 bool Arch::IsX86(void) const {
