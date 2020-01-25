@@ -175,7 +175,7 @@ extern "C" int main(int argc, char *argv[]) {
   auto os = remill::GetOSName(REMILL_OS);
   auto context = new llvm::LLVMContext;
 
-  auto arch = remill::Arch::Get(*context, os, remill::kArchAArch64LittleEndian);
+  auto arch = remill::Arch::Get(context, os, remill::kArchAArch64LittleEndian);
 
   DLOG(INFO) << "Generating tests.";
 

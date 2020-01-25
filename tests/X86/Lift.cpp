@@ -122,7 +122,7 @@ extern "C" int main(int argc, char *argv[]) {
   llvm::LLVMContext context;
   auto os = remill::GetOSName(REMILL_OS);
   auto arch_name = remill::GetArchName(FLAGS_arch);
-  auto arch = remill::Arch::Get(context, os, arch_name);
+  auto arch = remill::Arch::Get(&context, os, arch_name);
   auto module = remill::LoadArchSemantics(arch);
 
   remill::IntrinsicTable intrinsics(module);
