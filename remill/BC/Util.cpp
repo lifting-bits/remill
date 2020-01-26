@@ -263,7 +263,7 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *module,
 
 // Loads the semantics for the `arch`-specific machine, i.e. the machine of the
 // code that we want to lift.
-llvm::Module *LoadArchSemantics(const Arch *arch) {
+std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch) {
   auto arch_name = GetArchName(arch->arch_name);
   auto path = FindSemanticsBitcodeFile(arch_name);
   LOG(INFO)
@@ -275,13 +275,13 @@ llvm::Module *LoadArchSemantics(const Arch *arch) {
 
 // Loads the semantics for the "host" machine, i.e. the machine that this
 // remill is compiled on.
-llvm::Module *LoadHostSemantics(llvm::LLVMContext &context) {
+std::unique_ptr<llvm::Module> LoadHostSemantics(llvm::LLVMContext &context) {
   return LoadArchSemantics(GetHostArch(context));
 }
 
 // Loads the semantics for the "target" machine, i.e. the machine of the
 // code that we want to lift.
-llvm::Module *LoadTargetSemantics(llvm::LLVMContext &context) {
+std::unique_ptr<llvm::Module> LoadTargetSemantics(llvm::LLVMContext &context) {
   return LoadArchSemantics(GetTargetArch(context));
 }
 
@@ -300,33 +300,30 @@ bool VerifyModule(llvm::Module *module) {
 }
 
 // Reads an LLVM module from a file.
-llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
+std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
                                  std::string file_name,
                                  bool allow_failure) {
   llvm::SMDiagnostic err;
-  auto mod_ptr = llvm::parseIRFile(file_name, err, *context);
-  auto module = mod_ptr.release();
+  auto module = llvm::parseIRFile(file_name, err, *context);
 
   if (!module) {
     LOG_IF(FATAL, !allow_failure)
         << "Unable to parse module file " << file_name
         << ": " << err.getMessage().str();
-    return nullptr;
+    return {};
   }
 
   auto ec = module->materializeAll();  // Just in case.
   if (ec) {
     LOG_IF(FATAL, !allow_failure)
         << "Unable to materialize everything from " << file_name;
-    delete module;
-    return nullptr;
+    return {};
   }
 
-  if (!VerifyModule(module)) {
+  if (!VerifyModule(module.get())) {
     LOG_IF(FATAL, !allow_failure)
         << "Error verifying module read from file " << file_name;
-    delete module;
-    return nullptr;
+    return {};
   }
 
   return module;
