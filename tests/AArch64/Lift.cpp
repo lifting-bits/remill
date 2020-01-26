@@ -181,7 +181,7 @@ extern "C" int main(int argc, char *argv[]) {
 
   auto bc_file = remill::FindSemanticsBitcodeFile(FLAGS_arch);
   auto module = remill::LoadModuleFromFile(context, bc_file);
-  remill::GetHostArch(*context)->PrepareModule(module);
+  remill::GetHostArch(*context)->PrepareModule(module.get());
 
   for (auto i = 0U; ; ++i) {
     const auto &test = test::__aarch64_test_table_begin[i];
@@ -190,7 +190,7 @@ extern "C" int main(int argc, char *argv[]) {
   }
 
   DLOG(INFO) << "Serializing bitcode to " << FLAGS_bc_out;
-  remill::StoreModuleToFile(module, FLAGS_bc_out);
+  remill::StoreModuleToFile(module.get(), FLAGS_bc_out);
 
   DLOG(INFO) << "Done.";
   return 0;
