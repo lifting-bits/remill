@@ -208,10 +208,6 @@ class Arch {
   static ArchPtr GetX86(
       llvm::LLVMContext *context, OSName os, ArchName arch_name);
 
-  // Defined in `remill/Arch/Mips/Arch.cpp`.
-  static ArchPtr GetMips(
-      llvm::LLVMContext *context, OSName os, ArchName arch_name);
-
   // Defined in `remill/Arch/AArch64/Arch.cpp`.
   static ArchPtr GetAArch64(
       llvm::LLVMContext *context, OSName os, ArchName arch_name);

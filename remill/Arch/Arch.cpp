@@ -50,8 +50,7 @@
 DEFINE_string(arch, REMILL_ARCH,
               "Architecture of the code being translated. "
               "Valid architectures: x86, amd64 (with or without "
-              "`_avx` or `_avx512` appended), aarch64, "
-              "mips32, mips64");
+              "`_avx` or `_avx512` appended), aarch64");
 
 DECLARE_string(os);
 
@@ -66,12 +65,10 @@ static unsigned AddressSize(ArchName arch_name) {
     case kArchX86:
     case kArchX86_AVX:
     case kArchX86_AVX512:
-    case kArchMips32:
       return 32;
     case kArchAMD64:
     case kArchAMD64_AVX:
     case kArchAMD64_AVX512:
-    case kArchMips64:
     case kArchAArch64LittleEndian:
       return 64;
   }
@@ -145,16 +142,6 @@ auto Arch::Build(llvm::LLVMContext *context_,
       return GetX86(context_, os_name_, arch_name_);
     }
 
-    case kArchMips32: {
-      DLOG(INFO) << "Using architecture: 32-bit MIPS";
-      return GetMips(context_, os_name_, arch_name_);
-    }
-
-    case kArchMips64: {
-      DLOG(INFO) << "Using architecture: 64-bit MIPS";
-      return GetMips(context_, os_name_, arch_name_);
-    }
-
     case kArchX86_AVX: {
       DLOG(INFO) << "Using architecture: X86, feature set: AVX";
       return GetX86(context_, os_name_, arch_name_);
@@ -212,10 +199,6 @@ const Register *Arch::RegisterByName(const std::string &name) const {
   } else {
     return reg_it->second;
   }
-}
-
-auto Arch::GetMips(llvm::LLVMContext *, OSName, ArchName) -> ArchPtr {
-  return nullptr;
 }
 
 // Note(lukas): Structure that allows global caching of `Arch` objects,
