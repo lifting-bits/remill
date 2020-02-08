@@ -125,7 +125,7 @@ extern "C" int main(int argc, char *argv[]) {
   auto arch = remill::Arch::Get(context, os, arch_name);
   auto module = remill::LoadArchSemantics(arch);
 
-  remill::IntrinsicTable intrinsics(module);
+  remill::IntrinsicTable intrinsics(module.get());
   remill::InstructionLifter inst_lifter(arch, intrinsics);
   remill::TraceLifter trace_lifter(inst_lifter, manager);
 
@@ -145,8 +145,8 @@ extern "C" int main(int argc, char *argv[]) {
   }
 
   DLOG(INFO) << "Serializing bitcode to " << FLAGS_bc_out;
-  remill::GetHostArch(context)->PrepareModule(module);
-  remill::StoreModuleToFile(module, FLAGS_bc_out);
+  remill::GetHostArch(context)->PrepareModule(module.get());
+  remill::StoreModuleToFile(module.get(), FLAGS_bc_out);
 
   DLOG(INFO) << "Done.";
   return 0;

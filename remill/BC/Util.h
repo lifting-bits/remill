@@ -112,21 +112,21 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *M, std::string name);
 bool VerifyModule(llvm::Module *module);
 
 // Parses and loads a bitcode file into memory.
-llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
-                                 std::string file_name,
-                                 bool allow_failure=false);
+std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
+                                                 std::string file_name,
+                                                 bool allow_failure=false);
 
 // Loads the semantics for the "host" machine, i.e. the machine that this
 // remill is compiled on.
-llvm::Module *LoadHostSemantics(llvm::LLVMContext &context);
+std::unique_ptr<llvm::Module> LoadHostSemantics(llvm::LLVMContext &context);
 
 // Loads the semantics for the "target" machine, i.e. the machine of the
 // code that we want to lift.
-llvm::Module *LoadTargetSemantics(llvm::LLVMContext &context);
+std::unique_ptr<llvm::Module> LoadTargetSemantics(llvm::LLVMContext &context);
 
 // Loads the semantics for the `arch`-specific machine, i.e. the machine of the
 // code that we want to lift.
-llvm::Module *LoadArchSemantics(const Arch *arch);
+std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch);
 
 // Store an LLVM module into a file.
 bool StoreModuleToFile(llvm::Module *module, std::string file_name,
@@ -135,13 +135,6 @@ bool StoreModuleToFile(llvm::Module *module, std::string file_name,
 // Store a module, serialized to LLVM IR, into a file.
 bool StoreModuleIRToFile(llvm::Module *module, std::string file_name,
                          bool allow_failure=false);
-
-// Find the path to the semantics bitcode file associated with `FLAGS_arch`.
-std::string FindTargetSemanticsBitcodeFile(void);
-
-// Find the path to the semantics bitcode file associated with `REMILL_ARCH`,
-// the architecture on which remill is compiled.
-std::string FindHostSemanticsBitcodeFile(void);
 
 // Find a semantics fitcode file for the architecture `arch`.
 std::string FindSemanticsBitcodeFile(const std::string &arch);

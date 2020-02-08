@@ -103,19 +103,8 @@ llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
   if (source_func->isDeclaration()) {
     llvm::IRBuilder<> ir(
         llvm::BasicBlock::Create(source_func->getContext(), "", source_func));
-
-    std::vector<llvm::Value *> args;
-    for (llvm::Argument &arg : source_func->args()) {
-      args.push_back(&arg);
-    }
-
-    llvm::CallInst *call_target_instr = ir.CreateCall(dest_func, args);
-    call_target_instr->setTailCall(true);
-    ir.CreateRet(call_target_instr);
-    return call_target_instr;
-  } else {
-    return AddTerminatingTailCall(&(source_func->back()), dest_func);
   }
+  return AddTerminatingTailCall(&(source_func->back()), dest_func);
 }
 
 llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
@@ -263,7 +252,7 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *module,
 
 // Loads the semantics for the `arch`-specific machine, i.e. the machine of the
 // code that we want to lift.
-llvm::Module *LoadArchSemantics(const Arch *arch) {
+std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch) {
   auto arch_name = GetArchName(arch->arch_name);
   auto path = FindSemanticsBitcodeFile(arch_name);
   LOG(INFO)
@@ -275,13 +264,13 @@ llvm::Module *LoadArchSemantics(const Arch *arch) {
 
 // Loads the semantics for the "host" machine, i.e. the machine that this
 // remill is compiled on.
-llvm::Module *LoadHostSemantics(llvm::LLVMContext &context) {
+std::unique_ptr<llvm::Module> LoadHostSemantics(llvm::LLVMContext &context) {
   return LoadArchSemantics(GetHostArch(context));
 }
 
 // Loads the semantics for the "target" machine, i.e. the machine of the
 // code that we want to lift.
-llvm::Module *LoadTargetSemantics(llvm::LLVMContext &context) {
+std::unique_ptr<llvm::Module> LoadTargetSemantics(llvm::LLVMContext &context) {
   return LoadArchSemantics(GetTargetArch(context));
 }
 
@@ -300,33 +289,30 @@ bool VerifyModule(llvm::Module *module) {
 }
 
 // Reads an LLVM module from a file.
-llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
+std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
                                  std::string file_name,
                                  bool allow_failure) {
   llvm::SMDiagnostic err;
-  auto mod_ptr = llvm::parseIRFile(file_name, err, *context);
-  auto module = mod_ptr.release();
+  auto module = llvm::parseIRFile(file_name, err, *context);
 
   if (!module) {
     LOG_IF(FATAL, !allow_failure)
         << "Unable to parse module file " << file_name
         << ": " << err.getMessage().str();
-    return nullptr;
+    return {};
   }
 
   auto ec = module->materializeAll();  // Just in case.
   if (ec) {
     LOG_IF(FATAL, !allow_failure)
         << "Unable to materialize everything from " << file_name;
-    delete module;
-    return nullptr;
+    return {};
   }
 
-  if (!VerifyModule(module)) {
+  if (!VerifyModule(module.get())) {
     LOG_IF(FATAL, !allow_failure)
         << "Error verifying module read from file " << file_name;
-    delete module;
-    return nullptr;
+    return {};
   }
 
   return module;
@@ -441,17 +427,6 @@ static const char *gSemanticsSearchPaths[6] = {
 };
 
 }  // namespace
-
-// Find the path to the semantics bitcode file associated with `FLAGS_arch`.
-std::string FindTargetSemanticsBitcodeFile(void) {
-  return FindSemanticsBitcodeFile(FLAGS_arch);
-}
-
-// Find the path to the semantics bitcode file associated with `REMILL_ARCH`,
-// the architecture on which remill is compiled.
-std::string FindHostSemanticsBitcodeFile(void) {
-  return FindSemanticsBitcodeFile(REMILL_ARCH);
-}
 
 // Find the path to the semantics bitcode file.
 std::string FindSemanticsBitcodeFile(const std::string &arch) {
