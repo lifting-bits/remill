@@ -294,12 +294,6 @@ std::string Instruction::Serialize(void) const {
     case kArchX86_AVX512:
       ss << "X86";
       break;
-    case kArchMips32:
-      ss << "MIPS32";
-      break;
-    case kArchMips64:
-      ss << "MIPS64";
-      break;
     case kArchAArch64LittleEndian:
       ss << "AArch64";
       break;

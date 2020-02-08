@@ -60,8 +60,6 @@ class SyncHyperCall {
     // TODO(pag): How to distinguish little- and big-endian?
     kAArch64EmulateInstruction = 0x200U,
     kAArch64Breakpoint,
-
-    kMipsEmulateInstruction = 0x300U,
   };
 } __attribute__((packed));
 

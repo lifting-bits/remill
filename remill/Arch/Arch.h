@@ -109,12 +109,12 @@ struct Register {
 
 class Arch {
  public:
+  using ArchPtr = std::unique_ptr<const Arch>;
+
   virtual ~Arch(void);
 
   // Factory method for loading the correct architecture class for a given
   // operating system and architecture class.
-  //
-  // TODO(pag): Refactor to also take in an `llvm::LLVMContext &`.
   static const Arch *Get(llvm::LLVMContext &context, OSName os, ArchName arch_name);
 
   // Return information about the register at offset `offset` in the `State`
@@ -175,6 +175,8 @@ class Arch {
   const OSName os_name;
   const ArchName arch_name;
   const uint64_t address_size;
+
+  // Constant pointer to non-const object
   llvm::LLVMContext * const context;
 
   bool IsX86(void) const;
@@ -185,23 +187,30 @@ class Arch {
   bool IsLinux(void) const;
   bool IsMacOS(void) const;
 
+  // Avoids global cache
+  static ArchPtr Build(llvm::LLVMContext *context, OSName os, ArchName arch_name);
+
+  // Get the architecture of the modelled code. This is based on command-line
+  // flags. Rather use directly Build.
+  static ArchPtr GetTargetArch(llvm::LLVMContext &context);
+
+  // Get the (approximate) architecture of the system library was built on. This may not
+  // include all feature sets.
+  static ArchPtr GetHostArch(llvm::LLVMContext &contex);
+
  protected:
-  Arch(llvm::LLVMContext &context_, OSName os_name_, ArchName arch_name_);
+  Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
 
   llvm::Triple BasicTriple(void) const;
 
  private:
   // Defined in `remill/Arch/X86/Arch.cpp`.
-  static const Arch *GetX86(
-      llvm::LLVMContext &context, OSName os, ArchName arch_name);
-
-  // Defined in `remill/Arch/Mips/Arch.cpp`.
-  static const Arch *GetMips(
-      llvm::LLVMContext &context, OSName os, ArchName arch_name);
+  static ArchPtr GetX86(
+      llvm::LLVMContext *context, OSName os, ArchName arch_name);
 
   // Defined in `remill/Arch/AArch64/Arch.cpp`.
-  static const Arch *GetAArch64(
-      llvm::LLVMContext &context, OSName os, ArchName arch_name);
+  static ArchPtr GetAArch64(
+      llvm::LLVMContext *context, OSName os, ArchName arch_name);
 
   // Get all of the register information from the prepared module.
   void CollectRegisters(llvm::Module *module) const;
@@ -213,12 +222,15 @@ class Arch {
   Arch(void) = delete;
 };
 
-// Get the (approximate) architecture of the running system. This may not
-// include all feature sets.
-const Arch *GetHostArch(llvm::LLVMContext &context);
+/* Deprecated, do not use, prefer Arch::Build */
 
-// Get the architecture of the modelled code. This is based on command-line
-// flags.
+const Arch *GetHostArch(llvm::LLVMContext &context);
 const Arch *GetTargetArch(llvm::LLVMContext &context);
+
+// In case it already exists with different os and arch it is still returned!
+const Arch *GetOrCreate(llvm::LLVMContext &context, OSName os, ArchName name);
+
+// Double deprecated, leaks memory
+const Arch *GetTargetArch();
 
 }  // namespace remill

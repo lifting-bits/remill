@@ -106,7 +106,7 @@ Instruction::Category InstCategory(const aarch64::InstData &inst) {
 
 class AArch64Arch final : public Arch {
  public:
-  AArch64Arch(llvm::LLVMContext &context_,
+  AArch64Arch(llvm::LLVMContext *context_,
               OSName os_name_, ArchName arch_name_);
 
   virtual ~AArch64Arch(void);
@@ -136,7 +136,7 @@ class AArch64Arch final : public Arch {
 };
 
 AArch64Arch::AArch64Arch(
-    llvm::LLVMContext &context_, OSName os_name_, ArchName arch_name_)
+    llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_)
     : Arch(context_, os_name_, arch_name_) {}
 
 AArch64Arch::~AArch64Arch(void) {}
@@ -4709,10 +4709,10 @@ bool TryDecodeUSHR_ASIMDSHF_R(const InstData &data, Instruction &inst) {
 
 }  // namespace aarch64
 
-// TODO(pag): We pretend that these are singletons, but they aren't really!
-const Arch *Arch::GetAArch64(llvm::LLVMContext &context_,
-                             OSName os_name_, ArchName arch_name_) {
-  return new AArch64Arch(context_, os_name_, arch_name_);
+auto Arch::GetAArch64(llvm::LLVMContext *context_,
+                      OSName os_name_,
+                      ArchName arch_name_) -> ArchPtr {
+  return std::make_unique<AArch64Arch>(context_, os_name_, arch_name_);
 }
 
 }  // namespace remill
