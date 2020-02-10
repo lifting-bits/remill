@@ -57,6 +57,7 @@ DECLARE_FUNC_ORIGIN_TYPE(ExtWrapper, ExternalFunction);
 DECLARE_FUNC_ORIGIN_TYPE(Helper, BaseFunction);
 DECLARE_FUNC_ORIGIN_TYPE(RemillHelper, Helper);
 DECLARE_FUNC_ORIGIN_TYPE(McSemaHelper, Helper);
+DECLARE_FUNC_ORIGIN_TYPE(Semantics, Helper);
 
 #undef DECLARE_FUNC_ORIGIN_TYPE
 
