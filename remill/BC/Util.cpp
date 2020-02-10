@@ -46,6 +46,7 @@
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
+#include "remill/BC/Annotate.h"
 #include "remill/BC/Compat/BitcodeReaderWriter.h"
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
@@ -259,6 +260,9 @@ std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch) {
       << "Loading " << arch_name << " semantics from file " << path;
   auto module = LoadModuleFromFile(arch->context, path);
   arch->PrepareModule(module);
+  for (auto &func : *module) {
+    Annotate<remill::Semantics>(&func);
+  }
   return module;
 }
 
