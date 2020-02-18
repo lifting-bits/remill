@@ -29,7 +29,7 @@ if(EMSCRIPTEN)
 
   # We want to manually invoke main for Lift instead of Emscripten calling it for us
   # So we disable INVOKE_RUN, export callMain (and FS for files).
-  set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/web/src")
+  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/web/src")
   set(CMAKE_CXX_FLAGS "\
     ${CMAKE_CXX_FLAGS} \
     $ENV{EM_CXX_FLAGS} \
