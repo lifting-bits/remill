@@ -173,7 +173,7 @@ class Arch {
   virtual llvm::DataLayout DataLayout(void) const = 0;
 
   // Get the architecture related to a module.
-  static const remill::Arch *GetModuleArch(const llvm::Module&);
+  static const remill::Arch *GetModuleArch(const llvm::Module &module);
 
   // Number of bits in an address.
   const OSName os_name;

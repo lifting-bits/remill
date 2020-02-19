@@ -255,7 +255,8 @@ const remill::Arch *Arch::GetModuleArch(const llvm::Module &module) {
   // just extract the first part of the triple ourselves.
   arch_name = arch_name.substr(0, arch_name.find('-'));
   if (arch_name.empty() || os_name.empty()) {
-    return nullptr;
+    LOG(FATAL) << "Empty arch or os name: " << triple.getArchName().data()
+               << " " << triple.getOSName().data();
   }
   return remill::Arch::Get(module.getContext(), remill::GetOSName(os_name),
                            remill::GetArchName(arch_name));
