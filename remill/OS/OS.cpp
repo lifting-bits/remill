@@ -16,6 +16,7 @@
 
 #include <glog/logging.h>
 #include <gflags/gflags.h>
+#include <llvm/ADT/Triple.h>
 
 #include "remill/OS/OS.h"
 
@@ -23,6 +24,19 @@ DEFINE_string(os, REMILL_OS, "Operating system name of the code being "
                              "translated. Valid OSes: linux, macos, windows.");
 
 namespace remill {
+
+OSName GetOSName(const llvm::Triple::OSType &os) {
+  switch (os) {
+    case llvm::Triple::OSType::MacOSX:
+      return kOSmacOS;
+    case llvm::Triple::OSType::Linux:
+      return kOSLinux;
+    case llvm::Triple::OSType::Win32:
+      return kOSWindows;
+    default:
+      return kOSInvalid;
+  }
+}
 
 OSName GetOSName(std::string name) {
   if (name == "macos") {
