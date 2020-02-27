@@ -247,7 +247,7 @@ const Arch* GetTargetArch() {
   return Arch::Build(nullptr, GetOSName(FLAGS_os), GetArchName(FLAGS_arch)).get();
 }
 
-const remill::Arch *Arch::GetModuleArch(const llvm::Module &module) {
+remill::Arch::ArchPtr Arch::GetModuleArch(const llvm::Module &module) {
   auto triple = llvm::Triple(module.getTargetTriple());
   std::string arch_name = triple.getArchName().data();
   std::string os_name = triple.getOSName().data();
@@ -258,7 +258,7 @@ const remill::Arch *Arch::GetModuleArch(const llvm::Module &module) {
     LOG(FATAL) << "Empty arch or os name: " << triple.getArchName().data()
                << " " << triple.getOSName().data();
   }
-  return remill::Arch::Get(module.getContext(), remill::GetOSName(os_name),
+  return remill::Arch::Build(&module.getContext(), remill::GetOSName(os_name),
                            remill::GetArchName(arch_name));
 }
 
