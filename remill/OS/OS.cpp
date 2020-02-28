@@ -25,8 +25,8 @@ DEFINE_string(os, REMILL_OS, "Operating system name of the code being "
 
 namespace remill {
 
-OSName GetOSName(const llvm::Triple::OSType &os) {
-  switch (os) {
+OSName GetOSName(const llvm::Triple &triple) {
+  switch (triple.getOS()) {
     case llvm::Triple::OSType::MacOSX:
       return kOSmacOS;
     case llvm::Triple::OSType::Linux:
@@ -34,8 +34,20 @@ OSName GetOSName(const llvm::Triple::OSType &os) {
     case llvm::Triple::OSType::Win32:
       return kOSWindows;
     default:
-      return kOSInvalid;
+      break;
   }
+
+  switch (triple.getObjectFormat()) {
+    case llvm::Triple::ObjectFormatType::MachO:
+      return kOSmacOS;
+    case llvm::Triple::ObjectFormatType::XCOFF:
+    case llvm::Triple::ObjectFormatType::ELF:
+      return kOSLinux;
+    default:
+      break;
+  }
+
+  return kOSInvalid;
 }
 
 OSName GetOSName(std::string name) {

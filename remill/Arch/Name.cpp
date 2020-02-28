@@ -19,8 +19,8 @@
 
 namespace remill {
 
-ArchName GetArchName(const llvm::Triple::ArchType &arch) {
-  switch (arch) {
+ArchName GetArchName(const llvm::Triple &triple) {
+  switch (triple.getArch()) {
     case llvm::Triple::ArchType::x86:
       return kArchX86;
     case llvm::Triple::ArchType::x86_64:

@@ -249,8 +249,8 @@ const Arch* GetTargetArch() {
 
 remill::Arch::ArchPtr Arch::GetModuleArch(const llvm::Module &module) {
   const llvm::Triple triple = llvm::Triple(module.getTargetTriple());
-  return remill::Arch::Build(&module.getContext(), GetOSName(triple.getOS()),
-                             GetArchName(triple.getArch()));
+  return remill::Arch::Build(&module.getContext(), GetOSName(triple),
+                             GetArchName(triple));
 }
 
 bool Arch::IsX86(void) const {

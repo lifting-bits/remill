@@ -59,7 +59,7 @@ enum ArchName : uint32_t {
   kArchAArch64LittleEndian
 };
 
-ArchName GetArchName(const llvm::Triple::ArchType &arch);
+ArchName GetArchName(const llvm::Triple &triple);
 
 // Convert the string name of an architecture into a canonical form.
 ArchName GetArchName(const std::string &arch_name);

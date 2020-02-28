@@ -53,7 +53,7 @@ enum OSName : uint32_t {
   kOSVxWorks
 };
 
-OSName GetOSName(const llvm::Triple::OSType &os);
+OSName GetOSName(const llvm::Triple &triple);
 
 OSName GetOSName(std::string name_);
 
