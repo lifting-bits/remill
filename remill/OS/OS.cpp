@@ -40,9 +40,10 @@ OSName GetOSName(const llvm::Triple &triple) {
   switch (triple.getObjectFormat()) {
     case llvm::Triple::ObjectFormatType::MachO:
       return kOSmacOS;
-    case llvm::Triple::ObjectFormatType::COFF:
     case llvm::Triple::ObjectFormatType::ELF:
       return kOSLinux;
+    case llvm::Triple::ObjectFormatType::COFF:
+      return kOSWindows;
     default:
       break;
   }
