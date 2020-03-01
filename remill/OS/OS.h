@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <llvm/ADT/Triple.h>
 #include <string>
 
 #ifndef REMILL_OS
@@ -51,6 +52,8 @@ enum OSName : uint32_t {
   kOSWindows,
   kOSVxWorks
 };
+
+OSName GetOSName(const llvm::Triple &triple);
 
 OSName GetOSName(std::string name_);
 

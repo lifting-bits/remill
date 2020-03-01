@@ -15,8 +15,22 @@
  */
 
 #include "remill/Arch/Name.h"
+#include <llvm/ADT/Triple.h>
 
 namespace remill {
+
+ArchName GetArchName(const llvm::Triple &triple) {
+  switch (triple.getArch()) {
+    case llvm::Triple::ArchType::x86:
+      return kArchX86;
+    case llvm::Triple::ArchType::x86_64:
+      return kArchAMD64;
+    case llvm::Triple::ArchType::aarch64:
+      return kArchAArch64LittleEndian;
+    default:
+      return kArchInvalid;
+  }
+}
 
 ArchName GetArchName(const std::string &arch_name) {
   if (arch_name == "x86") {
