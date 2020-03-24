@@ -474,7 +474,7 @@ IF_64BIT(MAKE_DIVxax(rdxrax, REG_RAX, REG_RDX, REG_RAX, REG_RDX))
       auto lhs_high = ZExt(Read(src2)); \
       auto rhs = SExt(Read(src3)); \
       auto shift = ZExt(BitSizeOf(src3)); \
-      auto lhs = Signed(UOr(UShl(lhs_high, shift), lhs_low)); \
+      auto lhs = Signed(UOr(UShr(lhs_high, shift), lhs_low)); \
       auto quot = SDiv(lhs, rhs); \
       auto rem = SRem(lhs, rhs); \
       auto quot_trunc = Trunc(quot); \
@@ -491,7 +491,7 @@ IF_64BIT(MAKE_DIVxax(rdxrax, REG_RAX, REG_RDX, REG_RAX, REG_RDX))
 
 MAKE_IDIVxax(ax, REG_AL, REG_AH, REG_AL, REG_AH)
 MAKE_IDIVxax(dxax, REG_AX, REG_DX, REG_AX, REG_DX)
-MAKE_IDIVxax(edxeax, REG_EAX, REG_EDX, REG_XAX, REG_XDX)
+MAKE_IDIVxax(edxeax, REG_EAX, REG_EDX, REG_EAX, REG_EDX)
 IF_64BIT(MAKE_IDIVxax(rdxrax, REG_RAX, REG_RDX, REG_RAX, REG_RDX))
 
 #undef MAKE_IDIVxax
