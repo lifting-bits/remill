@@ -16,18 +16,18 @@ Below is a string representation of the data structures representing our example
 
 ```lisp
 ;; mov eax, 1
-(X86 8048098 5 (BYTES b8 01 00 00 00)
+(X86 804b7a3 5 (BYTES b8 01 00 00 00)
   MOV_GPRv_IMMv_32
     (WRITE_OP (REG_32 EAX))
     (READ_OP  (IMM_32 0x1)))
 
 ;; push ebx
-(X86 804809d 1 (BYTES 53)
+(X86 804b7a8 1 (BYTES 53)
   PUSH_GPRv_50_32
     (READ_OP (REG_32 EBX)))
 
 ;; mov ebx, dword ptr [esp + 8]
-(X86 804809e 4 (BYTES 8b 5c 24 08)
+(X86 804b7a9 4 (BYTES 8b 5c 24 08)
   MOV_GPRv_MEMv_32
     (WRITE_OP (REG_32 EBX))
     (READ_OP  (DWORD_PTR (ADD (REG_32 SS_BASE)
@@ -35,7 +35,7 @@ Below is a string representation of the data structures representing our example
                               (SIGNED_IMM_32 0x8)))))
 
 ;; int 0x80
-(X86 80480a2 2 (BYTES cd 80)
+(X86 804b7ad 2 (BYTES cd 80)
   INT_IMMb
     (READ_OP (IMM_8 0x80)))
 ```
