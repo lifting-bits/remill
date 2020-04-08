@@ -1,0 +1,5 @@
+Dockerfile*
+.travis.yml
+.git*
+LICENSE
+README.md
