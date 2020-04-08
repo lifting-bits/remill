@@ -186,7 +186,7 @@ extern "C" int main(int argc, char *argv[]) {
   for (auto i = 0U; ; ++i) {
     const auto &test = test::__aarch64_test_table_begin[i];
     if (&test >= &(test::__aarch64_test_table_end[0])) break;
-    AddFunctionToModule(module, arch, test);
+    AddFunctionToModule(module.get(), arch, test);
   }
 
   DLOG(INFO) << "Serializing bitcode to " << FLAGS_bc_out;
