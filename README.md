@@ -27,6 +27,8 @@ If you are experiencing undocumented problems with Remill then ask for help in t
 
 Remill is supported on Linux platforms and has been tested on Ubuntu 14.04, 16.04, and 18.04. Remill also works on macOS, and has experimental support for Windows.
 
+Remill's Linux version can also be built via Docker for quicker testing.
+
 ## Dependencies
 
 Most of Remill's dependencies can be provided by the [cxx-common](https://github.com/trailofbits/cxx-common) repository. Trail of Bits hosts downloadable, pre-built versions of cxx-common, which makes it substantially easier to get up and running with Remill. Nonetheless, the following table represents most of Remill's dependencies.
@@ -46,6 +48,37 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 | [ccache](https://ccache.dev/) | Latest |
 
 ## Getting and Building the Code
+
+### Docker Build
+
+Remill now comes with a Dockerfile for easier testing. This Dockerfile references the [cxx-common](https://github.com/trailofbits/cxx-common) container to have all pre-requisite libraries available. 
+
+The Dockerfile allows for quick builds of multiple supported LLVM, architecture, and Linux configurations.
+
+Quickstart (builds Remill against LLVM 8.0 on Ubuntu 18.04 for AMD64):
+
+```shell
+#Clone the repository.
+git clone https://github.com/lifting-bits/remill.git
+cd remill
+```
+
+```shell
+# do the build
+docker build . -t remill:llvm800-ubuntu18.04-amd64 \
+     -f Dockerfile \
+     --build-arg DISTRO_BASE=ubuntu18.04 \
+     --build-arg ARCH=amd64 \
+     --build-arg LLVM_VERSION=800
+```
+
+```shell
+# run the tests
+docker run --rm -it remill:llvm800-ubuntu18.04-amd64 \
+     -c "cd build; \
+     cmake --build . --target test_dependencies && \
+     env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test"
+```
 
 ### On Linux
 
