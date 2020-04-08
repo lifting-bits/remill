@@ -296,7 +296,36 @@ install(FILES
 
 install(FILES 
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/OS/OS.h"
+
   DESTINATION "${install_folder}/include/remill/OS"
+)
+
+install(FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/Definitions.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/HyperCall.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/Intrinsics.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/Operators.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/Runtime.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/State.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/Types.h"
+
+  DESTINATION "${install_folder}/include/remill/Arch/Runtime"
+)
+
+install(FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/X86/Runtime/State.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/X86/Runtime/Types.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/X86/Runtime/Operators.h"
+
+  DESTINATION "${install_folder}/include/remill/Arch/X86/Runtime"
+)
+
+install(FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/AArch64/Runtime/State.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/AArch64/Runtime/Types.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/AArch64/Runtime/Operators.h"
+
+  DESTINATION "${install_folder}/include/remill/Arch/AArch64/Runtime"
 )
 
 #
