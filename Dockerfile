@@ -15,9 +15,9 @@ ARG REMILL_INSTALL
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get install -qqy ninja-build git python2.7 curl coreutils build-essential gcc-multilib g++-multilib libtinfo-dev lsb-release && \
+    if [ "$(uname -m)" = "x86_64" ]; then apt-get install -qqy gcc-multilib g++-multilib; fi && \
+    apt-get install -qqy ninja-build git python2.7 curl coreutils build-essential libtinfo-dev lsb-release && \
     rm -rf /var/lib/apt/lists/*
-
 
 RUN mkdir -p /remill
 WORKDIR /remill
