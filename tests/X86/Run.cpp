@@ -464,7 +464,7 @@ static bool AreFCSAndFDSDeprecated(void) {
   uint32_t ecx = 0;
   uint32_t edx = 0;
 
-  if(false == FLAGS_enable_fpu_cs_ds_checking) {
+  if(!FLAGS_enable_fpu_cs_ds_checking) {
     // pretend FCS and FDS are deprecated if not checking via cmdline flag
     return true;
   }
