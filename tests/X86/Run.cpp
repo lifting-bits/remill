@@ -45,6 +45,11 @@
 DECLARE_string(arch);
 DECLARE_string(os);
 
+DEFINE_bool(
+    enable_fpu_cs_ds_checking, false,
+    "Trace values of fxsave.cs and fxsave.ds for 32-bit instructions. Disabled "
+    "by default since it is commonly broken in virtualized environments.");
+
 namespace {
 
 struct alignas(128) Stack {
@@ -458,6 +463,11 @@ static bool AreFCSAndFDSDeprecated(void) {
   uint32_t ebx = 0;
   uint32_t ecx = 0;
   uint32_t edx = 0;
+
+  if(!FLAGS_enable_fpu_cs_ds_checking) {
+    // pretend FCS and FDS are deprecated if not checking via cmdline flag
+    return true;
+  }
 
   asm volatile(
     "cpuid"
