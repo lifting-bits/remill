@@ -6,7 +6,7 @@ Remill translates machine code, and *only* machine code, into LLVM bitcode. The 
 
 Remill defers the "implementation" of memory accesses and certain types of control flows to the consumers of the produced bitcode. Deferral in this takes the form of Remill [intrinsics](https://github.com/lifting-bits/remill/blob/master/remill/Arch/Runtime/Intrinsics.h).
 
-For example, the `__remill_read_memory_8` intrinsic function represents the action of reading 8 bits of memory. Via this and similar intrinsics, downstream tools can distinguish between LLVM `load` and `store` instructions from accesses to the modeled program's memory. Downstream tools can, of course, implement memory intrinsics using LLVM's own memory access instructions.
+For example, the `__remill_read_memory_8` intrinsic function represents the action of reading 8 bits of memory. Via this and similar intrinsics, downstream tools can distinguish LLVM `load` and `store` instructions from accesses to the modeled program's memory. Downstream tools can, of course, implement memory intrinsics using LLVM's own memory access instructions.
 
 ## Instruction semantics
 
