@@ -1,5 +1,4 @@
 name: CI
-
 on:
   push:
     branches:
@@ -8,40 +7,33 @@ on:
   schedule:
     # run CI every day even if no PRs/merges occur
     - cron:  '0 6 * * *'
-
 jobs:
-  test:
-    runs-on: ${{ matrix.platform }}
+  Docker_Linux:
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        platform: ["ubuntu-latest", "macos-latest"]
+        llvm: ["800", "900"]
+        ubuntu: ["20.04", "19.10", "18.04"]
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/cache@v1
-      name: Cache LLVM 4 artifacts
-      with:
-        path: ccache_llvm40
-        key: ${{ runner.os }}-llvm4
-        restore-keys: |
-          ${{ runner.os }}-llvm4
-    - uses: actions/cache@v1
-      name: Cache LLVM 5 artifacts
-      with:
-        path: ccache_llvm50
-        key: ${{ runner.os }}-llvm5
-        restore-keys: |
-          ${{ runner.os }}-llvm5
-    - uses: actions/cache@v1
-      name: Cache LLVM 6 artifacts
-      with:
-        path: ccache_llvm60
-        key: ${{ runner.os }}-llvm6
-        restore-keys: |
-          ${{ runner.os }}-llvm6
-    - name: Run Tests
+    - name: Build LLVM ${{ matrix.llvm }} on ${{ matrix.ubuntu }}
       run: |
-        ./scripts/travis.sh ${{ matrix.platform }} initialize
-        ./scripts/travis.sh ${{ matrix.platform }} build
+        docker build . -t docker.pkg.github.com/trailofbits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest -f Dockerfile --build-arg UBUNTU_BASE=ubuntu:${{ matrix.ubuntu }} --build-arg arch=amd64 --build-arg LLVM_VERSION=${{ matrix.llvm }}
+    - name: Test Remill with LLVM ${{ matrix.llvm }} on ${{ matrix.ubuntu }}
+      run: |
+        docker run --rm -it docker.pkg.github.com/trailofbits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest -c "cd build; cmake --build . --target test_dependencies && env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test"
+    - name: Push Image for LLVM ${{ matrix.llvm }} on ${{ matrix.ubuntu }}
+      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+      run: |
+        docker login docker.pkg.github.com -u publisher -p "${GH_PACKAGE_TOKEN}"
+        docker push docker.pkg.github.com/trailofbits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest
+        docker login -u "${DOCKER_HUB_USER}" -p "${DOCKER_HUB_TOKEN}"
+        docker tag docker.pkg.github.com/trailofbits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest trailofbits/remill:llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64
+        docker push trailofbits/remill:llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64
+      env:
+        GITHUB_PACKAGE_REGISTRY_TOKEN: ${{  secrets.GITHUB_PACKAGE_REGISTRY_TOKEN  }}
+        DOCKER_HUB_USER: ${{  secrets.DOCKER_HUB_USER  }}
+        DOCKER_HUB_TOKEN: ${{  secrets.DOCKER_HUB_TOKEN  }}
   windows:
     runs-on: windows-latest
     steps:
