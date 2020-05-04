@@ -18,7 +18,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Build LLVM ${{ matrix.llvm }} on ${{ matrix.ubuntu }}
       run: |
-        docker build . -t docker.pkg.github.com/trailofbits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest -f Dockerfile --build-arg UBUNTU_BASE=ubuntu:${{ matrix.ubuntu }} --build-arg ARCH=amd64 --build-arg LLVM_VERSION=${{ matrix.llvm }}
+        docker build . -t docker.pkg.github.com/trailofbits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest -f Dockerfile --build-arg DISTRO_BASE=ubuntu${{ matrix.ubuntu }} --build-arg ARCH=amd64 --build-arg LLVM_VERSION=${{ matrix.llvm }}
     - name: Test Remill with LLVM ${{ matrix.llvm }} on ${{ matrix.ubuntu }}
       run: |
         docker run --rm -it docker.pkg.github.com/trailofbits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest -c "cd build; cmake --build . --target test_dependencies && env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test"
