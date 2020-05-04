@@ -1,5 +1,5 @@
 ARG LLVM_VERSION=800
-ARG ARCH=aarch64
+ARG ARCH=amd64
 ARG BOOTSTRAP=/opt/trailofbits/bootstrap
 ARG LIBRARIES=/opt/trailofbits/libraries
 ARG REMILL_INSTALL=/opt/trailofbits/remill
