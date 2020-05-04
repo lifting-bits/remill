@@ -75,6 +75,14 @@ osx_initialize() {
     export SDKROOT=$(xcrun -sdk macosx --show-sdk-path)
   fi
   printf " > The macOS SDK is located at ${SDKROOT}\n"
+
+  # Mainly for realpath
+  brew install coreutils
+  if [ $? -ne 0 ] ; then
+    printf " x Could not install the required dependencies\n"
+    return 1
+  fi
+
   return 0
 }
 
