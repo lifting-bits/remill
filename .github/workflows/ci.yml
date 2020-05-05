@@ -54,13 +54,14 @@ jobs:
     - name: Push Image for LLVM ${{ matrix.llvm }} on ${{ matrix.ubuntu }}
       if: github.event_name == 'push' && github.ref == 'refs/heads/master'
       run: |
-        docker login docker.pkg.github.com -u publisher -p "${GH_PACKAGE_TOKEN}"
+        docker login docker.pkg.github.com -u "${GH_USER}" -p "${GH_TOKEN}"
         docker push docker.pkg.github.com/trailofbits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest
         docker login -u "${DOCKER_HUB_USER}" -p "${DOCKER_HUB_TOKEN}"
         docker tag docker.pkg.github.com/trailofbits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest trailofbits/remill:llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64
         docker push trailofbits/remill:llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64
       env:
-        GITHUB_PACKAGE_REGISTRY_TOKEN: ${{  secrets.GITHUB_PACKAGE_REGISTRY_TOKEN  }}
+        GH_USER: ${{ github.actor }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         DOCKER_HUB_USER: ${{  secrets.DOCKER_HUB_USER  }}
         DOCKER_HUB_TOKEN: ${{  secrets.DOCKER_HUB_TOKEN  }}
   windows:
