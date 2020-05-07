@@ -22,7 +22,7 @@ SRC_DIR=$( cd "$( dirname "${SCRIPTS_DIR}" )" && pwd )
 CURR_DIR=$( pwd )
 BUILD_DIR="${CURR_DIR}/remill-build"
 INSTALL_DIR=/usr/local
-LLVM_VERSION=llvm40
+LLVM_VERSION=llvm900
 OS_VERSION=
 ARCH_VERSION=
 BUILD_FLAGS=
@@ -38,30 +38,30 @@ function GetUbuntuOSVersion
   case "${DISTRIB_CODENAME}" in
     disco)
       # TODO(pag): Eventually make real packages for 19.04!
-      OS_VERSION=ubuntu1804
+      OS_VERSION=ubuntu18.04
       return 0
     ;;
     dingo)
       # TODO(pag): Eventually make real packages for 19.04!
-      OS_VERSION=ubuntu1804
+      OS_VERSION=ubuntu19.04
       return 0
     ;;
     cosmic)
       # TODO(pag): Eventually make real packages for 18.10!
-      OS_VERSION=ubuntu1804
+      OS_VERSION=ubuntu18.10
       return 0
     ;;
     bionic)
-      OS_VERSION=ubuntu1804
+      OS_VERSION=ubuntu18.04
       return 0
     ;;
     xenial)
-      OS_VERSION=ubuntu1604
+      OS_VERSION=ubuntu16.04
       return 0
     ;;
     trusty)
       USE_HOST_COMPILER=1
-      OS_VERSION=ubuntu1404
+      OS_VERSION=ubuntu14.04
       return 0
     ;;
     *)
@@ -98,7 +98,11 @@ function GetArchVersion
 
 function DownloadCxxCommon
 {
-  if ! curl -O "https://s3.amazonaws.com/cxx-common/${LIBRARY_VERSION}.tar.gz"; then
+  local GITHUB_LIBS="${LIBRARY_VERSION}.tar.xz"
+  local URL="https://github.com/trailofbits/cxx-common/releases/latest/download/${GITHUB_LIBS}"
+
+  echo "Fetching: ${URL}"
+  if ! curl -LO "${URL}"; then
     return 1
   fi
 
@@ -107,8 +111,8 @@ function DownloadCxxCommon
     TAR_OPTIONS=""
   fi
 
-  tar xf "${LIBRARY_VERSION}.tar.gz" $TAR_OPTIONS
-  rm "${LIBRARY_VERSION}.tar.gz"
+  tar -xJf "${GITHUB_LIBS}" ${TAR_OPTIONS}
+  rm "${GITHUB_LIBS}"
 
   # Make sure modification times are not in the future.
   find "${BUILD_DIR}/libraries" -type f -exec touch {} \;
@@ -133,12 +137,12 @@ function GetOSVersion
     ;;
 
     *arch*)
-      OS_VERSION=ubuntu1604
+      OS_VERSION=ubuntu16.04
       return 0
     ;;
     
     [Kk]ali)
-      OS_VERSION=ubuntu1804
+      OS_VERSION=ubuntu18.04
       return 0;
     ;;
 
@@ -163,7 +167,12 @@ function DownloadLibraries
     fi
 
     BUILD_FLAGS="${BUILD_FLAGS} -DCMAKE_OSX_SYSROOT=${sdk_root}"
-    OS_VERSION=osx
+    OS_VERSION=macos
+    if [[ "$(sw_vers -productVersion)" == "10.15"* ]]; then
+      echo "Found MacOS Catalina"
+    else
+      echo "WARNING: ****Likely unsupported MacOS Version****"
+    fi
 
   # Linux packages
   elif [[ "${OSTYPE}" = "linux-gnu" ]]; then
@@ -179,7 +188,12 @@ function DownloadLibraries
     return 1
   fi
 
-  LIBRARY_VERSION="libraries-${LLVM_VERSION}-${OS_VERSION}-${ARCH_VERSION}"
+  if [[ "${OS_VERSION}" == "macos" ]]; then
+    # Only support catalina build, for now
+    LIBRARY_VERSION="libraries-catalina-macos"
+  else
+    LIBRARY_VERSION="libraries-${LLVM_VERSION}-${OS_VERSION}-${ARCH_VERSION}"
+  fi
 
   echo "[-] Library version is ${LIBRARY_VERSION}"
 
@@ -245,53 +259,53 @@ function GetLLVMVersion
 {
   case ${1} in
     3.5)
-      LLVM_VERSION=llvm35
+      LLVM_VERSION=llvm350
       USE_HOST_COMPILER=1
       return 0
     ;;
     3.6)
-      LLVM_VERSION=llvm36
+      LLVM_VERSION=llvm360
       USE_HOST_COMPILER=1
       return 0
     ;;
     3.7)
-      LLVM_VERSION=llvm37
+      LLVM_VERSION=llvm370
       USE_HOST_COMPILER=1
       return 0
     ;;
     3.8)
-      LLVM_VERSION=llvm38
+      LLVM_VERSION=llvm380
       USE_HOST_COMPILER=1
       return 0
     ;;
     3.9)
-      LLVM_VERSION=llvm39
+      LLVM_VERSION=llvm390
       USE_HOST_COMPILER=1
       return 0
     ;;
     4.0)
-      LLVM_VERSION=llvm40
+      LLVM_VERSION=llvm401
       USE_HOST_COMPILER=1
       return 0
     ;;
     5.0)
-      LLVM_VERSION=llvm50
+      LLVM_VERSION=llvm500
       return 0
     ;;
     6.0)
-      LLVM_VERSION=llvm60
+      LLVM_VERSION=llvm600
       return 0
     ;;
     7.0)
-      LLVM_VERSION=llvm70
+      LLVM_VERSION=llvm700
       return 0
     ;;
     8.0)
-      LLVM_VERSION=llvm80
+      LLVM_VERSION=llvm800
       return 0
     ;;
     9.0)
-      LLVM_VERSION=llvm90
+      LLVM_VERSION=llvm900
       return 0
     ;;
     *)
