@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        llvm: ["800", "900"]
+        llvm: ["800", "900", "1000"]
         ubuntu: ["20.04", "19.10", "18.04"]
     steps:
     - uses: actions/checkout@v2
