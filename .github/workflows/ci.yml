@@ -55,7 +55,7 @@ jobs:
       if: github.event_name == 'push' && github.ref == 'refs/heads/master'
       run: |
         docker login docker.pkg.github.com -u "${GH_USER}" -p "${GH_TOKEN}"
-        docker push docker.pkg.github.com/lifting-bits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest
+        for i in 1 2 3; do docker push docker.pkg.github.com/lifting-bits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest && break || sleep 10; done
         docker login -u "${DOCKER_HUB_USER}" -p "${DOCKER_HUB_TOKEN}"
         docker tag docker.pkg.github.com/lifting-bits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest trailofbits/remill:llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64
         docker push trailofbits/remill:llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64
