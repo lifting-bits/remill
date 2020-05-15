@@ -15,8 +15,6 @@ RUN apt-get update && \
 
 # Build-time dependencies go here
 FROM trailofbits/cxx-common:llvm${LLVM_VERSION}-${DISTRO_BASE}-${ARCH} as deps
-ARG LLVM_VERSION
-ARG LIBRARIES
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -28,7 +26,6 @@ RUN apt-get update && \
 
 # Source code build
 FROM deps as build
-ARG LLVM_VERSION
 ARG LIBRARIES
 
 WORKDIR /remill
