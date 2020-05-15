@@ -14,7 +14,7 @@ RUN apt-get update && \
 
 
 # Build-time dependencies go here
-FROM trailofbits/cxx-common:llvm${LLVM_VERSION}-${DISTRO_BASE}-${ARCH} as base
+FROM trailofbits/cxx-common:llvm${LLVM_VERSION}-${DISTRO_BASE}-${ARCH} as deps
 ARG LLVM_VERSION
 ARG LIBRARIES
 
