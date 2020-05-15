@@ -9,7 +9,7 @@ ARG LIBRARIES=/opt/trailofbits/libraries
 FROM ${BUILD_BASE} as base
 
 RUN apt-get update && \
-    apt-get install -qqy --no-install-recommends libtinfo5 && \
+    apt-get install -qqy --no-install-recommends libtinfo5 libz3-4 && \
     rm -rf /var/lib/apt/lists/*
 
 
