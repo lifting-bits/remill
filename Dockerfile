@@ -14,8 +14,8 @@ RUN apt-get update && \
 
 
 # Build-time dependencies go here
-# FROM trailofbits/cxx-common:llvm${LLVM_VERSION}-${DISTRO_BASE}-${ARCH} as base
-FROM ek-cxx-common as deps
+FROM trailofbits/cxx-common:llvm${LLVM_VERSION}-${DISTRO_BASE}-${ARCH} as base
+ARG LLVM_VERSION
 ARG LIBRARIES
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -28,6 +28,7 @@ RUN apt-get update && \
 
 # Source code build
 FROM deps as build
+ARG LLVM_VERSION
 ARG LIBRARIES
 
 WORKDIR /remill
@@ -38,11 +39,20 @@ ENV CC="${LIBRARIES}/llvm/bin/clang"
 ENV CXX="${LIBRARIES}/llvm/bin/clang++"
 ENV TRAILOFBITS_LIBRARIES="${LIBRARIES}"
 
-RUN mkdir /remill/build && cd /remill/build && \
+RUN mkdir build && cd build && \
     cmake -G Ninja -DCMAKE_VERBOSE_MAKEFILE=True -DCMAKE_INSTALL_PREFIX=/opt/trailofbits/remill .. && \
     cmake --build . --target install
 
+RUN cd build && \
+    cmake --build . --target test_dependencies && \
+    env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test
+
 
 FROM base as dist
+ARG LLVM_VERSION
 
+COPY scripts/docker-decomp-entrypoint.sh /opt/trailofbits/remill
 COPY --from=build /opt/trailofbits/remill /opt/trailofbits/remill
+ENV PATH=/opt/trailofbits/remill/bin:${PATH} \
+    LLVM_VERSION=llvm${LLVM_VERSION}
+ENTRYPOINT ["/opt/trailofbits/remill/docker-lifter-entrypoint.sh"]
