@@ -51,7 +51,7 @@ RUN cd build && \
 FROM base as dist
 ARG LLVM_VERSION
 
-COPY scripts/docker-decomp-entrypoint.sh /opt/trailofbits/remill
+COPY scripts/docker-lifter-entrypoint.sh /opt/trailofbits/remill/docker-lifter-entrypoint.sh
 COPY --from=build /opt/trailofbits/remill /opt/trailofbits/remill
 ENV PATH=/opt/trailofbits/remill/bin:${PATH} \
     LLVM_VERSION=llvm${LLVM_VERSION}
