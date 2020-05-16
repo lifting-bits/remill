@@ -9,7 +9,7 @@ ARG LIBRARIES=/opt/trailofbits/libraries
 FROM ${BUILD_BASE} as base
 
 RUN apt-get update && \
-    apt-get install -qqy --no-install-recommends libtinfo5 libz3-4 && \
+    apt-get install -qqy --no-install-recommends libtinfo5 zlib1g libz3-4 && \
     rm -rf /var/lib/apt/lists/*
 
 
@@ -20,7 +20,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     if [ "$(uname -m)" = "x86_64" ]; then apt-get install -qqy gcc-multilib g++-multilib; fi && \
-    apt-get install -qqy libz3-4 ninja-build ccache git python3 curl coreutils build-essential libtinfo-dev lsb-release && \
+    apt-get install -qqy zlib1g libz3-4 ninja-build ccache git python3 curl coreutils build-essential libtinfo-dev lsb-release && \
     rm -rf /var/lib/apt/lists/*
 
 
