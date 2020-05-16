@@ -1,25 +1,33 @@
 ARG LLVM_VERSION=800
 ARG ARCH=amd64
-ARG BOOTSTRAP=/opt/trailofbits/bootstrap
+ARG UBUNTU_VERSION=18.04
+ARG DISTRO_BASE=ubuntu${UBUNTU_VERSION}
+ARG BUILD_BASE=ubuntu:${UBUNTU_VERSION}
 ARG LIBRARIES=/opt/trailofbits/libraries
-ARG REMILL_INSTALL=/opt/trailofbits/remill
-ARG DISTRO_BASE=ubuntu18.04
 
-#FROM trailofbits/cxx-common/llvm${LLVM_VERSION}-${DISTRO_BASE}-${arch}:latest as base
-FROM trailofbits/cxx-common:llvm${LLVM_VERSION}-${DISTRO_BASE}-${ARCH} as base
-ARG BOOTSTRAP
-ARG LIBRARIES
-ARG LLVM_VERSION
-ARG REMILL_INSTALL
+# Run-time dependencies go here
+FROM ${BUILD_BASE} as base
+
+RUN apt-get update && \
+    apt-get install -qqy --no-install-recommends libtinfo5 libz3-4 && \
+    rm -rf /var/lib/apt/lists/*
+
+
+# Build-time dependencies go here
+FROM trailofbits/cxx-common:llvm${LLVM_VERSION}-${DISTRO_BASE}-${ARCH} as deps
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     if [ "$(uname -m)" = "x86_64" ]; then apt-get install -qqy gcc-multilib g++-multilib; fi && \
-    apt-get install -qqy ninja-build git python2.7 curl coreutils build-essential libtinfo-dev lsb-release && \
+    apt-get install -qqy ninja-build ccache git python3 curl coreutils build-essential libtinfo-dev lsb-release && \
     rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /remill
+
+# Source code build
+FROM deps as build
+ARG LIBRARIES
+
 WORKDIR /remill
 COPY . ./
 
@@ -28,8 +36,20 @@ ENV CC="${LIBRARIES}/llvm/bin/clang"
 ENV CXX="${LIBRARIES}/llvm/bin/clang++"
 ENV TRAILOFBITS_LIBRARIES="${LIBRARIES}"
 
-RUN mkdir /remill/build && cd /remill/build && \
-    cmake -G Ninja -DCMAKE_VERBOSE_MAKEFILE=True -DCMAKE_INSTALL_PREFIX=${REMILL_INSTALL} .. && \
+RUN mkdir build && cd build && \
+    cmake -G Ninja -DCMAKE_VERBOSE_MAKEFILE=True -DCMAKE_INSTALL_PREFIX=/opt/trailofbits/remill .. && \
     cmake --build . --target install
 
-ENTRYPOINT ["/bin/bash"]
+RUN cd build && \
+    cmake --build . --target test_dependencies && \
+    env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test
+
+
+FROM base as dist
+ARG LLVM_VERSION
+
+COPY scripts/docker-lifter-entrypoint.sh /opt/trailofbits/remill/docker-lifter-entrypoint.sh
+COPY --from=build /opt/trailofbits/remill /opt/trailofbits/remill
+ENV PATH=/opt/trailofbits/remill/bin:${PATH} \
+    LLVM_VERSION=llvm${LLVM_VERSION}
+ENTRYPOINT ["/opt/trailofbits/remill/docker-lifter-entrypoint.sh"]

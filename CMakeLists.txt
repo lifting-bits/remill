@@ -276,6 +276,7 @@ install(FILES
 install(FILES 
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/ABI.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Annotate.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/DeadStoreEliminator.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/IntrinsicTable.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Lifter.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Optimizer.h"
@@ -286,10 +287,21 @@ install(FILES
 )
 
 install(FILES 
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/CallingConvention.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/GlobalValue.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/TargetLibraryInfo.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/Attributes.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/BitcodeReaderWriter.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/CallingConvention.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/DataLayout.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/DebugInfo.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/Error.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/FileSystem.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/GlobalValue.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/IRReader.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/JITSymbol.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/RuntimeDyld.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/ScalarTransforms.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/TargetLibraryInfo.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/ToolOutputFile.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/Verifier.h"
 
   DESTINATION "${install_folder}/include/remill/BC/Compat"
 )
