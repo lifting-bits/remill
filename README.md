@@ -57,27 +57,33 @@ The Dockerfile allows for quick builds of multiple supported LLVM, architecture,
 
 Quickstart (builds Remill against LLVM 8.0 on Ubuntu 18.04 for AMD64):
 
+Clone Remill:
 ```shell
 #Clone the repository.
 git clone https://github.com/lifting-bits/remill.git
 cd remill
 ```
 
+Build Remill Docker container:
 ```shell
 # do the build
 docker build . -t remill:llvm800-ubuntu18.04-amd64 \
      -f Dockerfile \
-     --build-arg DISTRO_BASE=ubuntu18.04 \
+     --build-arg UBUNTU_VERSION=18.04 \
      --build-arg ARCH=amd64 \
      --build-arg LLVM_VERSION=800
 ```
 
+Ensure remill works:
 ```shell
-# run the tests
+# Decode some AMD64 instructions to LLVM
 docker run --rm -it remill:llvm800-ubuntu18.04-amd64 \
-     -c "cd build; \
-     cmake --build . --target test_dependencies && \
-     env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test"
+     --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
+     
+# Decode some AArch64 instructions to LLVM
+docker run --rm -it remill:llvm800-ubuntu18.04-amd64 \
+     --arch aarch64 --address 0x400544 --ir_out /dev/stdout \
+     --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
 ```
 
 ### On Linux
