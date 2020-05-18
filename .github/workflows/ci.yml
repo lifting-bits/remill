@@ -51,6 +51,8 @@ jobs:
     - name: Test Remill with LLVM ${{ matrix.llvm }} on ${{ matrix.ubuntu }}
       run: |
         docker run --rm docker.pkg.github.com/lifting-bits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
+        docker run --rm docker.pkg.github.com/lifting-bits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
+
     - name: Push Image for LLVM ${{ matrix.llvm }} on ${{ matrix.ubuntu }}
       if: github.event_name == 'push' && github.ref == 'refs/heads/master'
       run: |
