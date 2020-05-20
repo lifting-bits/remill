@@ -44,7 +44,7 @@
 
 // Attributes that will force inlining of specific code.
 #define ALWAYS_INLINE \
-  [[gnu::always_inline, gnu::gnu_inline]] \
+  [[gnu::always_inline]] \
   inline
 
 #define NEVER_INLINE [[gnu::noinline]]
