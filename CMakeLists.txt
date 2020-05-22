@@ -24,7 +24,18 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/settings.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/BCCompiler.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ccache.cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 include(CTest)
+
+if(DEFINED ENV{TRAILOFBITS_LIBRARIES} AND NOT LLVM_Z3_INSTALL_DIR)
+  set(LLVM_Z3_INSTALL_DIR "$ENV{TRAILOFBITS_LIBRARIES}/z3")
+endif()
+find_package(Z3 4.7.1)
+if (LLVM_Z3_INSTALL_DIR)
+  if (NOT Z3_FOUND)
+    message(FATAL_ERROR "Z3 >= 4.7.1 has not been found in LLVM_Z3_INSTALL_DIR: ${LLVM_Z3_INSTALL_DIR}.")
+  endif()
+endif()
 
 configureCcache()
 FindAndSelectClangCompiler()
@@ -56,7 +67,7 @@ list(GET LLVM_VERSION_LIST 0 LLVM_MAJOR_VERSION)
 list(GET LLVM_VERSION_LIST 1 LLVM_MINOR_VERSION)
 
 set(LLVM_LIBRARIES
-  LLVMCore LLVMSupport LLVMAnalysis LLVMipo LLVMIRReader
+  LLVMCore LLVMAnalysis LLVMipo LLVMIRReader
   LLVMBitReader LLVMBitWriter LLVMTransformUtils LLVMScalarOpts
   LLVMLTO
 )
