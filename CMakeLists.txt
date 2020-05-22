@@ -40,7 +40,7 @@ endif()
 if(need_z3)
   find_package(Z3 4.7.1)
   if (NOT Z3_FOUND)
-    message(FATAL_ERROR "Z3 >= 4.7.1 has not been found in LLVM_Z3_INSTALL_DIR: ${LLVM_Z3_INSTALL_DIR}.")
+    message(WARNING "Z3 >= 4.7.1 has not been found in LLVM_Z3_INSTALL_DIR: ${LLVM_Z3_INSTALL_DIR}.")
   endif()
 endif()
 
