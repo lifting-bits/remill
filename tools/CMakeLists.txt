@@ -12,23 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# mcsema needs to be manually cloned into this repo.
-if(EXISTS ${CMAKE_SOURCE_DIR}/tools/mcsema)
-  add_subdirectory(mcsema)
-endif()
-
 if(EXISTS ${CMAKE_SOURCE_DIR}/tools/lift)
   add_subdirectory(lift)
 endif()
 
+# Anvill.
 if(EXISTS ${CMAKE_SOURCE_DIR}/tools/anvill)
     add_subdirectory(anvill)
 endif()
 
-if(EXISTS ${CMAKE_SOURCE_DIR}/tools/fcd)
-  add_subdirectory(fcd)
+# McSema.
+#
+# NOTE(pag): Depends on Anvill.
+if(EXISTS ${CMAKE_SOURCE_DIR}/tools/mcsema)
+  if (NOT EXISTS ${CMAKE_SOURCE_DIR}/tools/anvill)
+    message(FATAL_ERROR "McSema depends upon Anvill being cloned into ${CMAKE_SOURCE_DIR}/tools/anvill")
+  endif()
+  add_subdirectory(mcsema)
 endif()
 
+# KLEE-Native
 if (NOT WIN32)
   if (EXISTS ${CMAKE_SOURCE_DIR}/tools/klee)
       add_subdirectory(klee)

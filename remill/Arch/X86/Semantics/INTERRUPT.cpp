@@ -20,7 +20,7 @@ namespace {
 
 #if 32 == ADDRESS_SIZE_BITS
 template <typename S1, typename S2>
-DEF_SEM(BOUND, R8W cond, S1 src1, S2 src2) {
+DEF_SEM(BOUND, R8W cond, S1 src1, S2 src2, R32W) {
   auto index = Read(src1);
   auto lower_bound = Read(src2);
   auto upper_bound = Read(GetElementPtr(src2, Literal<S2>(1)));
@@ -50,7 +50,7 @@ DEF_SEM(DoINT3) {
 }
 
 #if 32 == ADDRESS_SIZE_BITS
-DEF_SEM(DoINTO, R8W cond) {
+DEF_SEM(DoINTO, R8W cond, R32W) {
   Write(cond, FLAG_OF);
   INTERRUPT_VECTOR = 4;
   HYPER_CALL = AsyncHyperCall::kX86IntO;

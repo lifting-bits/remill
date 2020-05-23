@@ -40,9 +40,11 @@
 # endif
 #endif
 
-#include <llvm/ADT/Triple.h>
 #include <string>
 
+namespace llvm {
+class Triple;
+}  // namespace llvm
 namespace remill {
 
 enum ArchName : uint32_t {

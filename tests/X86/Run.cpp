@@ -198,6 +198,11 @@ NEVER_INLINE float64_t __remill_read_memory_f80(Memory *, addr_t addr) {
   return static_cast<float64_t>(val_long);
 }
 
+NEVER_INLINE float64_t __remill_read_memory_f128(Memory *, addr_t) {
+  LOG(FATAL) << "Unsupported on x86/amd64";
+  return 0.0;
+}
+
 NEVER_INLINE Memory *__remill_write_memory_f80(
     Memory *memory, addr_t addr, float64_t val) {
   LongDoubleStorage storage;
@@ -206,6 +211,12 @@ NEVER_INLINE Memory *__remill_write_memory_f80(
   AccessMemory<float80_t>(addr) = storage.val;
   return memory;
 }
+
+NEVER_INLINE Memory *__remill_write_memory_f128(Memory *, addr_t, double) {
+  LOG(FATAL) << "Unsupported on x86/amd64";
+  return nullptr;
+}
+
 
 Memory *__remill_compare_exchange_memory_8(
     Memory *memory, addr_t addr, uint8_t &expected, uint8_t desired) {
@@ -304,7 +315,8 @@ Memory *__remill_barrier_store_load(Memory *) { return nullptr; }
 Memory *__remill_barrier_store_store(Memory *) { return nullptr; }
 Memory *__remill_atomic_begin(Memory *) { return nullptr; }
 Memory *__remill_atomic_end(Memory *) { return nullptr; }
-
+Memory *__remill_delay_slot_begin(Memory *) { return nullptr; }
+Memory *__remill_delay_slot_end(Memory *) { return nullptr; }
 void __remill_defer_inlining(void) {}
 
 Memory *__remill_error(X86State &, addr_t, Memory *) {
@@ -464,7 +476,7 @@ static bool AreFCSAndFDSDeprecated(void) {
   uint32_t ecx = 0;
   uint32_t edx = 0;
 
-  if(!FLAGS_enable_fpu_cs_ds_checking) {
+  if (!FLAGS_enable_fpu_cs_ds_checking) {
     // pretend FCS and FDS are deprecated if not checking via cmdline flag
     return true;
   }
@@ -945,7 +957,7 @@ TEST_P(InstrTest, SemanticsMatchNative) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     GeneralInstrTest,
     InstrTest,
     testing::ValuesIn(gTests));

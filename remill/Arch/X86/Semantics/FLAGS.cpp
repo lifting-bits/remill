@@ -108,7 +108,7 @@ struct Overflow<tag_add> {
     const T sign_lhs = lhs >> kSignShift;
     const T sign_rhs = rhs >> kSignShift;
     const T sign_res = res >> kSignShift;
-    return 2 == (sign_lhs ^ sign_res) + (sign_rhs ^ sign_res);
+    return 2 == ((sign_lhs ^ sign_res) + (sign_rhs ^ sign_res));
   }
 };
 
@@ -128,7 +128,7 @@ struct Overflow<tag_sub> {
     const T sign_lhs = lhs >> kSignShift;
     const T sign_rhs = rhs >> kSignShift;
     const T sign_res = res >> kSignShift;
-    return 2 == (sign_lhs ^ sign_rhs) + (sign_lhs ^ sign_res);
+    return 2 == ((sign_lhs ^ sign_rhs) + (sign_lhs ^ sign_res));
   }
 };
 

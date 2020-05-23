@@ -347,7 +347,7 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
 // Decode an instruction into the XED instuction format.
 static bool DecodeXED(xed_decoded_inst_t *xedd,
                       const xed_state_t *mode,
-                      const std::string &inst_bytes,
+                      std::string_view inst_bytes,
                       uint64_t address) {
   auto num_bytes = inst_bytes.size();
   auto bytes = reinterpret_cast<const uint8_t *>(inst_bytes.data());
@@ -438,7 +438,6 @@ static void DecodeMemory(Instruction &inst,
   auto disp = xed_decoded_inst_get_memory_displacement(xedd, mem_index);
   auto scale = xed_decoded_inst_get_scale(xedd, mem_index);
   auto base_wide = xed_get_largest_enclosing_register(base);
-  auto inst_size = static_cast<int64_t>(xed_decoded_inst_get_length(xedd));
 
   // NOTE(pag): This isn't quite right (eg. it's for SCALABALE only), but works
   // mostly right most of the time.
@@ -486,11 +485,9 @@ static void DecodeMemory(Instruction &inst,
   op.addr.scale = XED_REG_INVALID != index ? static_cast<int64_t>(scale) : 0;
   op.addr.displacement = disp;
 
-  // PC-relative memory accesses are relative to the next PC. Rename the base
-  // register to use `PC` as the register name.
+  // PC-relative memory accesses are relative to the next PC.
   if (XED_REG_RIP == base_wide) {
-    op.addr.base_reg.name = "PC";
-    op.addr.displacement += static_cast<int64_t>(inst_size);
+    op.addr.base_reg.name = "NEXT_PC";
   }
 
   // We always pass destination operands first, then sources. Memory operands
@@ -611,15 +608,16 @@ static void DecodeRegister(Instruction &inst,
   }
 }
 
+// Condition variable.
 static void DecodeConditionalInterrupt(Instruction &inst) {
-  // Condition variable.
-  Operand cond_op = {};
+  inst.operands.emplace_back();
+  auto &cond_op = inst.operands.back();
+
   cond_op.action = Operand::kActionWrite;
   cond_op.type = Operand::kTypeRegister;
   cond_op.reg.name = "BRANCH_TAKEN";
   cond_op.reg.size = 8;
   cond_op.size = 8;
-  inst.operands.push_back(cond_op);
 }
 
 // Operand representing the fall-through PC, which is the not-taken branch of
@@ -634,9 +632,9 @@ static void DecodeFallThroughPC(Instruction &inst,
   not_taken_op.type = Operand::kTypeAddress;
   not_taken_op.size = pc_width;
   not_taken_op.addr.address_size = pc_width;
-  not_taken_op.addr.base_reg.name = "PC";
+  not_taken_op.addr.base_reg.name = "NEXT_PC";
   not_taken_op.addr.base_reg.size = pc_width;
-  not_taken_op.addr.displacement = static_cast<int64_t>(inst.NumBytes());
+  not_taken_op.addr.displacement = 0;
   not_taken_op.addr.kind = Operand::Address::kControlFlowTarget;
   inst.operands.push_back(not_taken_op);
 
@@ -666,9 +664,9 @@ static void DecodeConditionalBranch(Instruction &inst,
   taken_op.type = Operand::kTypeAddress;
   taken_op.size = pc_width;
   taken_op.addr.address_size = pc_width;
-  taken_op.addr.base_reg.name = "PC";
+  taken_op.addr.base_reg.name = "NEXT_PC";
   taken_op.addr.base_reg.size = pc_width;
-  taken_op.addr.displacement = disp + static_cast<int64_t>(inst.NumBytes());
+  taken_op.addr.displacement = disp;
   taken_op.addr.kind = Operand::Address::kControlFlowTarget;
   inst.operands.push_back(taken_op);
 
@@ -692,14 +690,15 @@ static void DecodeRelativeBranch(Instruction &inst,
   taken_op.type = Operand::kTypeAddress;
   taken_op.size = pc_width;
   taken_op.addr.address_size = pc_width;
-  taken_op.addr.base_reg.name = "PC";
+  taken_op.addr.base_reg.name = "NEXT_PC";
   taken_op.addr.base_reg.size = pc_width;
-  taken_op.addr.displacement = disp + static_cast<int64_t>(inst.NumBytes());
+  taken_op.addr.displacement = disp;
   taken_op.addr.kind = Operand::Address::kControlFlowTarget;
   inst.operands.push_back(taken_op);
 
   inst.branch_taken_pc = static_cast<uint64_t>(
       static_cast<int64_t>(inst.next_pc) + disp);
+  inst.branch_not_taken_pc = inst.next_pc;
 }
 
 // Decodes the opcode byte of this FPU instruction. This is the unique part of
@@ -814,14 +813,14 @@ class X86Arch final : public Arch {
 
   // Decode an instuction.
   bool DecodeInstruction(
-      uint64_t address, const std::string &inst_bytes,
+      uint64_t address, std::string_view inst_bytes,
       Instruction &inst) const final;
 
   // Fully decode any control-flow transfer instructions, but only partially
   // decode other instructions. To complete the decoding, call
   // `Instruction::FinalizeDecode`.
   bool LazyDecodeInstruction(
-      uint64_t address, const std::string &inst_bytes,
+      uint64_t address, std::string_view inst_bytes,
       Instruction &inst) const final;
 
   // Maximum number of bytes in an instruction.
@@ -837,7 +836,7 @@ class X86Arch final : public Arch {
 
   // Decode an instuction.
   bool DecodeInstruction(
-      uint64_t address, const std::string &inst_bytes,
+      uint64_t address, std::string_view inst_bytes,
       Instruction &inst, bool is_lazy) const;
 
   X86Arch(void) = delete;
@@ -869,8 +868,8 @@ llvm::CallingConv::ID X86Arch::DefaultCallingConv(void) const {
       case kOSInvalid:
       case kOSmacOS:
       case kOSLinux:
-      case kOSVxWorks:
       case kOSWindows:
+      case kOSSolaris:
         return llvm::CallingConv::C;  // cdecl.
     }
   } else {
@@ -878,7 +877,7 @@ llvm::CallingConv::ID X86Arch::DefaultCallingConv(void) const {
       case kOSInvalid:
       case kOSmacOS:
       case kOSLinux:
-      case kOSVxWorks:
+      case kOSSolaris:
         return llvm::CallingConv::X86_64_SysV;
       case kOSWindows:
         return llvm::CallingConv::Win64;
@@ -918,7 +917,7 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
       break;
 
     case kOSLinux:
-    case kOSVxWorks:
+    case kOSSolaris:  // Probably.
       switch (arch_name) {
         case kArchAMD64:
         case kArchAMD64_AVX:
@@ -983,7 +982,7 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
 // Decode an instuction.
 bool X86Arch::DecodeInstruction(
     uint64_t address,
-    const std::string &inst_bytes,
+    std::string_view inst_bytes,
     Instruction &inst, bool is_lazy) const {
 
   inst.pc = address;
@@ -995,13 +994,22 @@ bool X86Arch::DecodeInstruction(
   auto mode = 32 == address_size ? &kXEDState32 : &kXEDState64;
 
   if (!DecodeXED(xedd, mode, inst_bytes, address)) {
-    LOG(ERROR) << "DecodeXED() could not decode the following opcodes: " << inst.Serialize();
+    LOG(ERROR)
+        << "DecodeXED() could not decode the following opcodes: "
+        << inst.Serialize();
     return false;
   }
 
-  inst.bytes = inst_bytes.substr(0, xed_decoded_inst_get_length(xedd));
+  const auto len = xed_decoded_inst_get_length(xedd);
+  if (!inst.bytes.empty() && inst.bytes.data() == inst_bytes.data()) {
+    CHECK_LE(len, inst.bytes.size());
+    inst.bytes.resize(len);
+  } else {
+    inst.bytes = inst_bytes.substr(0, len);
+  }
+
   inst.category = CreateCategory(xedd);
-  inst.next_pc = address + xed_decoded_inst_get_length(xedd);
+  inst.next_pc = address + len;
 
   // Wrap an instruction in atomic begin/end if it accesses memory with RMW
   // semantics or with a LOCK prefix.
@@ -1031,8 +1039,31 @@ bool X86Arch::DecodeInstruction(
       }
     }
 
+    // Control flow operands update the next program counter.
+    if (inst.IsControlFlow()) {
+      inst.operands.emplace_back();
+      auto &dst_ret_pc = inst.operands.back();
+      dst_ret_pc.type = Operand::kTypeRegister;
+      dst_ret_pc.action = Operand::kActionWrite;
+      dst_ret_pc.size = address_size;
+      dst_ret_pc.reg.name = "NEXT_PC";
+      dst_ret_pc.reg.size = address_size;
+    }
+
     if (inst.IsFunctionCall()) {
       DecodeFallThroughPC(inst, xedd);
+
+      // The semantics will store the return address in `RETURN_PC`. This is to
+      // help synchronize program counters when lifting instructions on an ISA
+      // with delay slots.
+      inst.operands.emplace_back();
+      auto &dst_ret_pc = inst.operands.back();
+      dst_ret_pc.type = Operand::kTypeRegister;
+      dst_ret_pc.action = Operand::kActionWrite;
+      dst_ret_pc.size = address_size;
+      dst_ret_pc.reg.name = "RETURN_PC";
+      dst_ret_pc.reg.size = address_size;
+
     }
 
     // All non-control FPU instructions update the last instruction pointer
@@ -1150,17 +1181,22 @@ bool X86Arch::DecodeInstruction(
     case XED_ISA_SET_AVX512_VPOPCNTDQ_128:
     case XED_ISA_SET_AVX512_VPOPCNTDQ_256:
     case XED_ISA_SET_AVX512_VPOPCNTDQ_512: {
-      auto supp = kArchAMD64_AVX512 == inst.arch_name ||
-                  kArchX86_AVX512 == inst.arch_name;
-      LOG_IF(ERROR, !supp)
-          << "Instruction decode of " << xed_iform_enum_t2str(iform)
-          << " failed because the current arch is specified "
-          << "as " << GetArchName(inst.arch_name) << " but what is needed is "
-          << "the _avx512 variant.";
-      return supp;
+      const auto supp = kArchAMD64_AVX512 == inst.arch_name ||
+                        kArchX86_AVX512 == inst.arch_name;
+      if (!supp) {
+        LOG(ERROR)
+            << "Instruction decode of " << xed_iform_enum_t2str(iform)
+            << " failed because the current arch is specified "
+            << "as " << GetArchName(inst.arch_name) << " but what is needed is "
+            << "the _avx512 variant.";
+        inst.Reset();
+        inst.category = Instruction::kCategoryInvalid;
+        return false;
+      }
+      break;
     }
     default:
-      return true;
+      break;
   }
 
   return true;
@@ -1186,7 +1222,7 @@ const char *X86Arch::ProgramCounterRegisterName(void) const {
 
 bool X86Arch::DecodeInstruction(
     uint64_t address,
-    const std::string &inst_bytes,
+    std::string_view inst_bytes,
     Instruction &inst) const {
   inst.arch_for_decode = nullptr;
   return DecodeInstruction(address, inst_bytes, inst, false);
@@ -1195,7 +1231,7 @@ bool X86Arch::DecodeInstruction(
 // Fully decode any control-flow transfer instructions, but only partially
 // decode other instructions.
 bool X86Arch::LazyDecodeInstruction(
-    uint64_t address, const std::string &inst_bytes,
+    uint64_t address, std::string_view inst_bytes,
     Instruction &inst) const {
   inst.arch_for_decode = nullptr;
   if (DecodeInstruction(address, inst_bytes, inst, true)) {
@@ -1210,9 +1246,9 @@ bool X86Arch::LazyDecodeInstruction(
 
 }  // namespace
 
-auto Arch::GetX86(llvm::LLVMContext *context_,
-                  OSName os_name_,
-                  ArchName arch_name_) -> ArchPtr {
+// TODO(pag): We pretend that these are singletons, but they aren't really!
+Arch::ArchPtr Arch::GetX86(
+    llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_) {
   return std::make_unique<X86Arch>(context_, os_name_, arch_name_);
 }
 

@@ -56,17 +56,20 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   addr_t zero2 = 0;
   addr_t zero3 = 0;
   addr_t zero4 = 0;
+  addr_t return_pc = 0;
 
   // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
   auto &MEMORY = *memory;
   auto &PC = state.gpr.rip.aword;
+  auto &NEXT_PC = curr_pc;
   auto &BRANCH_TAKEN = branch_taken;
+  auto &RETURN_PC = return_pc;
 
   // `PC` should already have the correct value, but it's nice to make sure
   // that `curr_pc` is used throughout, as it helps with certain downstream
   // uses to be able to depend on the optimizer not eliminating `curr_pc`.
-  state.gpr.rip.aword = curr_pc;
+  PC = curr_pc;
 
   // We will reference these variables from the bitcode side of things so that
   // we can map the name of a decoded register to a specific field in the

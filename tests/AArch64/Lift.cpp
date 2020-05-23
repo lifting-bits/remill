@@ -190,7 +190,7 @@ extern "C" int main(int argc, char *argv[]) {
   }
 
   DLOG(INFO) << "Serializing bitcode to " << FLAGS_bc_out;
-  remill::StoreModuleToFile(module.get(), FLAGS_bc_out);
+  remill::StoreModuleToFile(module, FLAGS_bc_out);
 
   DLOG(INFO) << "Done.";
   return 0;

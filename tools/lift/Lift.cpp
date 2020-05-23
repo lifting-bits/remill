@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
   // Make sure `--address` and `--entry_address` are in-bounds for the target
   // architecture's address size.
   llvm::LLVMContext context;
-  auto arch = remill::GetTargetArch(context);
+  auto arch = remill::Arch::GetTargetArch(context);
   const uint64_t addr_mask = ~0ULL >> (64UL - arch->address_size);
   if (FLAGS_address != (FLAGS_address & addr_mask)) {
     std::cerr
@@ -244,7 +244,7 @@ int main(int argc, char *argv[]) {
   // that we actually lifted.
   remill::OptimizationGuide guide = {};
   guide.eliminate_dead_stores = true;
-  remill::OptimizeModule(module, manager.traces, guide);
+  remill::OptimizeModule(arch, module, manager.traces, guide);
 
   // Create a new module in which we will move all the lifted functions. Prepare
   // the module for code of this architecture, i.e. set the data layout, triple,

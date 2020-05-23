@@ -2183,130 +2183,49 @@ enum class InstForm : uint16_t {
 
 union InstImm {
   uint64_t uimm;
-  union {
-    int64_t simm1:1;
-    uint64_t _1:31;
-  } __attribute__((packed));
-  union {
-    int64_t simm2:2;
-    uint64_t _2:30;
-  } __attribute__((packed));
-  union {
-    int64_t simm3:3;
-    uint64_t _3:29;
-  } __attribute__((packed));
-  union {
-    int64_t simm4:4;
-    uint64_t _4:28;
-  } __attribute__((packed));
-  union {
-    int64_t simm5:5;
-    uint64_t _5:27;
-  } __attribute__((packed));
-  union {
-    int64_t simm6:6;
-    uint64_t _6:26;
-  } __attribute__((packed));
-  union {
-    int64_t simm7:7;
-    uint64_t _7:25;
-  } __attribute__((packed));
-  union {
-    int64_t simm8:8;
-    uint64_t _8:24;
-  } __attribute__((packed));
-  union {
-    int64_t simm9:9;
-    uint64_t _9:23;
-  } __attribute__((packed));
-  union {
-    int64_t simm10:10;
-    uint64_t _10:22;
-  } __attribute__((packed));
-  union {
-    int64_t simm11:11;
-    uint64_t _11:21;
-  } __attribute__((packed));
-  union {
-    int64_t simm12:12;
-    uint64_t _12:20;
-  } __attribute__((packed));
-  union {
-    int64_t simm13:13;
-    uint64_t _13:19;
-  } __attribute__((packed));
-  union {
-    int64_t simm14:14;
-    uint64_t _14:18;
-  } __attribute__((packed));
-  union {
-    int64_t simm15:15;
-    uint64_t _15:17;
-  } __attribute__((packed));
-  union {
-    int64_t simm16:16;
-    uint64_t _16:16;
-  } __attribute__((packed));
-  union {
-    int64_t simm17:17;
-    uint64_t _17:15;
-  } __attribute__((packed));
-  union {
-    int64_t simm18:18;
-    uint64_t _18:14;
-  } __attribute__((packed));
-  union {
-    int64_t simm19:19;
-    uint64_t _19:13;
-  } __attribute__((packed));
-  union {
-    int64_t simm20:20;
-    uint64_t _20:12;
-  } __attribute__((packed));
-  union {
-    int64_t simm21:21;
-    uint64_t _21:11;
-  } __attribute__((packed));
-  union {
-    int64_t simm22:22;
-    uint64_t _22:10;
-  } __attribute__((packed));
-  union {
-    int64_t simm23:23;
-    uint64_t _23:9;
-  } __attribute__((packed));
-  union {
-    int64_t simm24:24;
-    uint64_t _24:8;
-  } __attribute__((packed));
-  union {
-    int64_t simm25:25;
-    uint64_t _25:7;
-  } __attribute__((packed));
-  union {
-    int64_t simm26:26;
-    uint64_t _26:6;
-  } __attribute__((packed));
-  union {
-    int64_t simm27:27;
-    uint64_t _27:5;
-  } __attribute__((packed));
-  union {
-    int64_t simm28:28;
-    uint64_t _28:4;
-  } __attribute__((packed));
-  union {
-    int64_t simm29:29;
-    uint64_t _29:3;
-  } __attribute__((packed));
-  union {
-    int64_t simm30:30;
-    uint64_t _30:2;
-  } __attribute__((packed));
-  union {
-    int64_t simm31:31;
-    uint64_t _31:1;
-  } __attribute__((packed));
+
+#define IMM_GETTER(N) \
+    union { \
+      int64_t simm ## N:N; \
+      uint64_t _ ## N:(64 - N); \
+    } __attribute__((packed));
+
+  IMM_GETTER(1)
+  IMM_GETTER(2)
+  IMM_GETTER(3)
+  IMM_GETTER(4)
+  IMM_GETTER(5)
+  IMM_GETTER(6)
+  IMM_GETTER(7)
+  IMM_GETTER(8)
+  IMM_GETTER(9)
+
+  IMM_GETTER(10)
+  IMM_GETTER(11)
+  IMM_GETTER(12)
+  IMM_GETTER(13)
+  IMM_GETTER(14)
+  IMM_GETTER(15)
+  IMM_GETTER(16)
+  IMM_GETTER(17)
+  IMM_GETTER(18)
+  IMM_GETTER(19)
+
+  IMM_GETTER(20)
+  IMM_GETTER(21)
+  IMM_GETTER(22)
+  IMM_GETTER(23)
+  IMM_GETTER(24)
+  IMM_GETTER(25)
+  IMM_GETTER(26)
+  IMM_GETTER(27)
+  IMM_GETTER(28)
+  IMM_GETTER(29)
+
+  IMM_GETTER(30)
+  IMM_GETTER(31)
+
+#undef IMM_GETTER
 
 } __attribute__((packed));
 static_assert(sizeof(InstImm) == 8, "");

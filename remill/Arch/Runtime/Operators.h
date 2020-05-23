@@ -828,7 +828,7 @@ auto TruncTo(T val) -> typename IntegerType<DT>::BT {
 
 #define WriteSExt(op, val) \
     do { \
-      Write(op, SExtTo<decltype(op)>(val)); \
+      Write(op, Unsigned(SExtTo<decltype(op)>(val))); \
     } while (false)
 
 #define SWriteV8(op, val) \
@@ -1312,10 +1312,18 @@ T _ZeroVec(void) {
       memory = __remill_barrier_store_store(memory); \
     } while (false)
 
+#ifdef REMILL_BARRIER_AS_NOP
+
+// The 'compiler' barrier is generating inline assembly which is inconvenient for KLEE
+// disable it if flag `REMILL_BARRIER_AS_NOP` is defined.
+# define BarrierReorder(...)
+# define BarrierUsedHere(...)
+
+#else
 // A 'compiler' barrier that prevents reordering of instructions across the
 // barrier. A thorough explanation can be found here:
 // http://preshing.com/20120625/memory-ordering-at-compile-time/  
-#define BarrierReorder() \
+# define BarrierReorder() \
     do { \
       __asm__ __volatile__ ("" ::: "memory"); \
     } while (false)
@@ -1325,11 +1333,11 @@ T _ZeroVec(void) {
 // see `<optimized out>` in GDB, and really pessimizes optimizations.
 //
 // An entertaining explanation is here: https://youtu.be/nXaxk27zwlk?t=40m50s 
-#define BarrierUsedHere(x) \
+# define BarrierUsedHere(x) \
     do { \
       __asm__ __volatile__ ("" :: "m"(x) : "memory"); \
     } while (false)
-
+#endif
 
 // Make a predicate for querying the type of an operand.
 #define MAKE_PRED(name, X, val) \
