@@ -17,7 +17,6 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
 #include <limits>
 #include <type_traits>
 
@@ -60,6 +59,9 @@ static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
 
 typedef double float64_t;
 static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
+
+typedef double float128_t;
+static_assert(8 == sizeof(float128_t), "Invalid `float128_t` size.");
 
 // TODO(pag): Assumes little endian.
 struct float80_t final {
@@ -166,7 +168,7 @@ union vec512_t;
     \
     template <> \
     struct VectorType<prefix ## v ## nelems ## _t> { \
-      enum : size_t { \
+      enum : std::size_t { \
         kNumElems = nelems \
       }; \
       typedef base_type BT; \
@@ -406,6 +408,9 @@ struct MVnW final {
   addr_t addr;
 };
 
+template <typename T, bool=sizeof(T) <= sizeof(addr_t)>
+struct Rn;
+
 // Note: We use `addr_t` as the internal type for `Rn` and `In` struct templates
 //       because this will be the default register size used for parameter
 //       passing in the underlying ABI that Clang chooses to use when converting
@@ -413,8 +418,13 @@ struct MVnW final {
 //       too small, e.g. `uint8_t` or `uint16_t` in a struct, is passed as an
 //       aligned pointer to a `byval` parameter.
 template <typename T>
-struct Rn final {
+struct Rn<T, true> final {
   const addr_t val;
+};
+
+template <typename T>
+struct Rn<T, false> final {
+  const T val;
 };
 
 template <typename T>
@@ -657,7 +667,7 @@ struct IntegerType {
   typedef typename UnsignedIntegerType<WBT>::BT WUT;
   typedef typename SignedIntegerType<WBT>::BT WST;
 
-  enum : size_t {
+  enum : std::size_t {
     kNumBits = sizeof(BT) * 8
   };
 };

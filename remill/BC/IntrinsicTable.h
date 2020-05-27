@@ -59,10 +59,12 @@ class IntrinsicTable {
   llvm::Function * const read_memory_f32;
   llvm::Function * const read_memory_f64;
   llvm::Function * const read_memory_f80;
+  llvm::Function * const read_memory_f128;
 
   llvm::Function * const write_memory_f32;
   llvm::Function * const write_memory_f64;
   llvm::Function * const write_memory_f80;
+  llvm::Function * const write_memory_f128;
 
   // Memory barriers.
   llvm::Function * const barrier_load_load;
@@ -73,8 +75,8 @@ class IntrinsicTable {
   llvm::Function * const atomic_begin;
   llvm::Function * const atomic_end;
 
-//  // Optimization control.
-//  llvm::Function * const defer_inlining;
+  llvm::Function * const delay_slot_begin;
+  llvm::Function * const delay_slot_end;
 
   // Optimization enabling.
   llvm::Function *undefined_8;
@@ -83,9 +85,7 @@ class IntrinsicTable {
   llvm::Function *undefined_64;
   llvm::Function *undefined_f32;
   llvm::Function *undefined_f64;
-//
-//  llvm::ConstantArray *indirect_blocks;
-//  llvm::ConstantArray *exported_blocks;
+
  private:
   IntrinsicTable(void) = delete;
 };
