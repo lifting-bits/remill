@@ -33,7 +33,6 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
-#include <llvm/Support/raw_ostream.h>
 
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Name.h"
@@ -99,7 +98,6 @@ llvm::Triple Arch::BasicTriple(void) const {
       break;
 
     case kOSLinux:
-    case kOSVxWorks:
       triple.setOS(llvm::Triple::Linux);
       triple.setEnvironment(llvm::Triple::GNU);
       triple.setVendor(llvm::Triple::PC);
@@ -118,6 +116,13 @@ llvm::Triple Arch::BasicTriple(void) const {
       triple.setEnvironment(llvm::Triple::MSVC);
       triple.setVendor(llvm::Triple::UnknownVendor);
       triple.setObjectFormat(llvm::Triple::COFF);
+      break;
+
+    case kOSSolaris:
+      triple.setOS(llvm::Triple::Solaris);
+      triple.setEnvironment(llvm::Triple::UnknownEnvironment);
+      triple.setVendor(llvm::Triple::UnknownVendor);
+      triple.setObjectFormat(llvm::Triple::ELF);
       break;
   }
   return triple;
@@ -289,6 +294,10 @@ bool Arch::IsLinux(void) const {
 
 bool Arch::IsMacOS(void) const {
   return remill::kOSmacOS == os_name;
+}
+
+bool Arch::IsSolaris(void) const {
+  return remill::kOSSolaris == os_name;
 }
 
 namespace {

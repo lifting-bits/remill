@@ -190,6 +190,7 @@ class Arch {
   bool IsWindows(void) const;
   bool IsLinux(void) const;
   bool IsMacOS(void) const;
+  bool IsSolaris(void) const;
 
   // Avoids global cache
   static ArchPtr Build(llvm::LLVMContext *context, OSName os, ArchName arch_name);
