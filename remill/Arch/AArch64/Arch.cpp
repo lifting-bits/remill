@@ -913,7 +913,13 @@ bool AArch64Arch::DecodeInstruction(
     return false;
   }
 
-  inst.bytes = inst_bytes.substr(0, kInstructionSize);
+  if (!inst.bytes.empty() && inst.bytes.data() == inst_bytes.data()) {
+    CHECK_LE(kInstructionSize, inst.bytes.size());
+    inst.bytes.resize(kInstructionSize);
+  } else {
+    inst.bytes = inst_bytes.substr(0, kInstructionSize);
+  }
+
   inst.category = InstCategory(dinst);
   inst.function = aarch64::InstFormToString(dinst.iform);
 
