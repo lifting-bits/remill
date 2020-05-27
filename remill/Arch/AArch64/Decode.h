@@ -7090,4 +7090,3 @@ bool TryDecode(const InstData &data, Instruction &inst);
 
 }  // namespace aarch64
 }  // namespace remill
-
