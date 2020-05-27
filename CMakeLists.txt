@@ -102,6 +102,11 @@ if(DEFINED WIN32)
 endif()
 
 #
+# Configuration options for semantics
+#
+option(REMILL_BARRIER_AS_NOP "Remove compiler barriers (inline assembly) in semantics" OFF)
+
+#
 # target settings
 #
 

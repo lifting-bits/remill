@@ -93,6 +93,7 @@ macro(main)
         ${GLOBAL_CXXFLAGS}
         -Wgnu-alignof-expression -Wno-gnu-anonymous-struct -Wno-gnu-designator
         -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-statement-expression
+        -fno-aligned-allocation
       )
     endif()
 
