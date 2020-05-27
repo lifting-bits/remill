@@ -60,6 +60,9 @@ extern float64_t __remill_read_memory_f64(Memory *, addr_t);
 [[gnu::used]]
 extern float64_t __remill_read_memory_f80(Memory *, addr_t);
 
+[[gnu::used]]
+extern float64_t __remill_read_memory_f128(Memory *, addr_t);
+
 [[gnu::used, gnu::const]]
 extern Memory *__remill_write_memory_f32(Memory *, addr_t, float32_t);
 
@@ -68,6 +71,9 @@ extern Memory *__remill_write_memory_f64(Memory *, addr_t, float64_t);
 
 [[gnu::used]]
 extern Memory *__remill_write_memory_f80(Memory *, addr_t, float64_t);
+
+[[gnu::used]]
+extern Memory *__remill_write_memory_f128(Memory *, addr_t, float64_t);
 
 [[gnu::used, gnu::const]]
 extern uint8_t __remill_undefined_8(void);
@@ -133,6 +139,14 @@ extern Memory *__remill_atomic_begin(Memory *);
 
 [[gnu::used, gnu::const]]
 extern Memory *__remill_atomic_end(Memory *);
+
+// Used to signal the begin/ending of an instruction executed within a delay
+// slot.
+[[gnu::used, gnu::const]]
+extern Memory *__remill_delay_slot_begin(Memory *);
+
+[[gnu::used, gnu::const]]
+extern Memory *__remill_delay_slot_end(Memory *);
 
 /* Most memory intrinsics are marked as `[[gnu::const]]` which tells the compiler that they
  * do not read/write to memory. This permits LLVM to optimize around the intrinsic, without thinking

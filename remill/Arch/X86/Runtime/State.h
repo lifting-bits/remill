@@ -617,7 +617,7 @@ struct Reg final {
     alignas(4) uint32_t dword;
     IF_64BIT(alignas(8) uint64_t qword;)
   } __attribute__((packed));
-  IF_32BIT(uint32_t _padding0;)
+  IF_32BIT(volatile uint32_t _padding0;)
 } __attribute__((packed));
 
 static_assert(sizeof(uint64_t) == sizeof(Reg), "Invalid packing of `Reg`.");

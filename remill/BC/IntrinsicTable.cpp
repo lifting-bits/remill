@@ -93,11 +93,14 @@ IntrinsicTable::IntrinsicTable(llvm::Module *module)
       read_memory_f32(FindPureIntrinsic(module, "__remill_read_memory_f32")),
       read_memory_f64(FindPureIntrinsic(module, "__remill_read_memory_f64")),
       read_memory_f80(FindPureIntrinsic(module, "__remill_read_memory_f80")),
+      read_memory_f128(FindPureIntrinsic(module, "__remill_read_memory_f128")),
 
       write_memory_f32(FindPureIntrinsic(module, "__remill_write_memory_f32")),
       write_memory_f64(FindPureIntrinsic(module, "__remill_write_memory_f64")),
       write_memory_f80(FindPureIntrinsic(
           module, "__remill_write_memory_f80")),
+      write_memory_f128(FindPureIntrinsic(
+              module, "__remill_write_memory_f128")),
 
       // Memory barriers.
       barrier_load_load(FindPureIntrinsic(
@@ -110,6 +113,8 @@ IntrinsicTable::IntrinsicTable(llvm::Module *module)
           module, "__remill_barrier_store_store")),
       atomic_begin(FindPureIntrinsic(module, "__remill_atomic_begin")),
       atomic_end(FindPureIntrinsic(module, "__remill_atomic_end")),
+      delay_slot_begin(FindPureIntrinsic(module, "__remill_delay_slot_begin")),
+      delay_slot_end(FindPureIntrinsic(module, "__remill_delay_slot_end")),
 
 //      // Optimization guides.
 //      //

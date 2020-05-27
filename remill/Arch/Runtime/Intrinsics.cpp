@@ -49,10 +49,12 @@ extern "C" void __remill_intrinsics(void) {
   USED(__remill_read_memory_f32);
   USED(__remill_read_memory_f64);
   USED(__remill_read_memory_f80);
+  USED(__remill_read_memory_f128);
 
   USED(__remill_write_memory_f32);
   USED(__remill_write_memory_f64);
   USED(__remill_write_memory_f80);
+  USED(__remill_write_memory_f128);
 
   USED(__remill_barrier_load_load);
   USED(__remill_barrier_load_store);
@@ -61,6 +63,9 @@ extern "C" void __remill_intrinsics(void) {
 
   USED(__remill_atomic_begin);
   USED(__remill_atomic_end);
+
+  USED(__remill_delay_slot_begin);
+  USED(__remill_delay_slot_end);
 
   // Atomic intrinsics
   USED(__remill_compare_exchange_memory_8);
