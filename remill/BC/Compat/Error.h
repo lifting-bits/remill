@@ -179,7 +179,9 @@ inline static Error createStringError(std::error_code EC, char const *Fmt,
   Stream << format(Fmt, Vals...);
   return make_error<StringError>(Stream.str(), EC);
 }
+#endif
 
+#if LLVM_VERSION_NUMBER <= LLVM_VERSION(8, 0)
 template <typename... Ts>
 inline static Error createStringError(std::errc EC, char const *Fmt,
                                const Ts &... Vals) {
