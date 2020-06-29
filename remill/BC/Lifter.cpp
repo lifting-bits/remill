@@ -950,10 +950,8 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
     }
 
     if (trace_work_list.count(addr)) {
-      const auto target_trace_name =
-          manager.TraceName(addr);
-      return DeclareLiftedFunction(
-          module, target_trace_name);
+      const auto target_trace_name = manager.TraceName(addr);
+      return DeclareLiftedFunction(module, target_trace_name);
     }
 
     return nullptr;
@@ -1250,20 +1248,20 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
           goto check_call_return;
         }
 
-        check_call_return: {
+        check_call_return:
+          do {
+            auto pc = LoadProgramCounter(block);
+            auto ret_pc = llvm::ConstantInt::get(
+                inst_lifter.word_type, inst.next_pc);
 
-          auto pc = LoadProgramCounter(block);
-          auto ret_pc = llvm::ConstantInt::get(
-              inst_lifter.word_type, inst.next_pc);
-
-          llvm::IRBuilder<> ir(block);
-          auto eq = ir.CreateICmpEQ(pc, ret_pc);
-          auto unexpected_ret_pc = llvm::BasicBlock::Create(
-              context, "", func);
-          ir.CreateCondBr(eq, GetOrCreateNextBlock(), unexpected_ret_pc);
-          AddTerminatingTailCall(unexpected_ret_pc, intrinsics->missing_block);
+            llvm::IRBuilder<> ir(block);
+            auto eq = ir.CreateICmpEQ(pc, ret_pc);
+            auto unexpected_ret_pc = llvm::BasicBlock::Create(
+                context, "", func);
+            ir.CreateCondBr(eq, GetOrCreateNextBlock(), unexpected_ret_pc);
+            AddTerminatingTailCall(unexpected_ret_pc, intrinsics->missing_block);
+          } while (false);
           break;
-        }
 
         case Instruction::kCategoryFunctionReturn:
           try_add_delay_slot(true, block);
