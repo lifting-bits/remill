@@ -30,6 +30,8 @@ class Module;
 }  // namespace llvm
 namespace remill {
 
+class Arch;
+
 struct OptimizationGuide {
   bool slp_vectorize;
   bool loop_vectorize;
@@ -40,19 +42,21 @@ struct OptimizationGuide {
 
 template <typename T>
 inline static void OptimizeModule(
+    const std::unique_ptr<const remill::Arch> &arch,
     const std::unique_ptr<llvm::Module> &module,
     T &&generator,
     OptimizationGuide guide={}) {
-  return OptimizeModule(module.get(), generator, guide);
+  return OptimizeModule(arch.get(), module.get(), generator, guide);
 }
 
 void OptimizeModule(
+    const remill::Arch *arch,
     llvm::Module *module,
     std::function<llvm::Function *(void)> generator,
     OptimizationGuide guide={});
 
-template <typename K>
 inline static void OptimizeModule(
+    const remill::Arch *arch,
     llvm::Module *module,
     std::initializer_list<llvm::Function *> traces,
     OptimizationGuide guide={}) {
@@ -67,11 +71,12 @@ inline static void OptimizeModule(
           return nullptr;
         }
       };
-  return OptimizeModule(module, trace_func_gen, guide);
+  return OptimizeModule(arch, module, trace_func_gen, guide);
 }
 
 template <typename K>
 inline static void OptimizeModule(
+    const remill::Arch *arch,
     llvm::Module *module,
     const std::unordered_map<K, llvm::Function *> &traces,
     OptimizationGuide guide={}) {
@@ -86,11 +91,12 @@ inline static void OptimizeModule(
           return nullptr;
         }
       };
-  return OptimizeModule(module, trace_func_gen, guide);
+  return OptimizeModule(arch, module, trace_func_gen, guide);
 }
 
 template <typename K>
 inline static void OptimizeModule(
+    const remill::Arch *arch,
     llvm::Module *module,
     const std::map<K, llvm::Function *> &traces,
     OptimizationGuide guide={}) {
@@ -105,10 +111,11 @@ inline static void OptimizeModule(
           return nullptr;
         }
       };
-  return OptimizeModule(module, trace_func_gen, guide);
+  return OptimizeModule(arch, module, trace_func_gen, guide);
 }
 
 inline static void OptimizeModule(
+    const remill::Arch *arch,
     llvm::Module *module,
     const std::set<llvm::Function *> &traces,
     OptimizationGuide guide={}) {
@@ -123,10 +130,11 @@ inline static void OptimizeModule(
           return nullptr;
         }
       };
-  return OptimizeModule(module, trace_func_gen, guide);
+  return OptimizeModule(arch, module, trace_func_gen, guide);
 }
 
 inline static void OptimizeModule(
+    const remill::Arch *arch,
     llvm::Module *module,
     const std::unordered_set<llvm::Function *> &traces,
     OptimizationGuide guide={}) {
@@ -141,10 +149,11 @@ inline static void OptimizeModule(
           return nullptr;
         }
       };
-  return OptimizeModule(module, trace_func_gen, guide);
+  return OptimizeModule(arch, module, trace_func_gen, guide);
 }
 
 inline static void OptimizeModule(
+    const remill::Arch *arch,
     llvm::Module *module,
     const std::vector<llvm::Function *> &traces,
     OptimizationGuide guide={}) {
@@ -159,7 +168,7 @@ inline static void OptimizeModule(
           return nullptr;
         }
       };
-  return OptimizeModule(module, trace_func_gen, guide);
+  return OptimizeModule(arch, module, trace_func_gen, guide);
 }
 
 // Optimize a normal module. This might not contain special functions
@@ -167,8 +176,7 @@ inline static void OptimizeModule(
 //
 // NOTE(pag): It is an error to specify `guide.eliminate_dead_stores` as
 //            `true`.
-void OptimizeBareModule(
-    llvm::Module *module, OptimizationGuide guide={});
+void OptimizeBareModule(llvm::Module *module, OptimizationGuide guide={});
 
 inline static void OptimizeBareModule(
     const std::unique_ptr<llvm::Module> &module,

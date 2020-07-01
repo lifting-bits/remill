@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Trail of Bits, Inc.
+ * Copyright (c) 202 Trail of Bits, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,14 @@
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
+#include <memory>
 #include <unordered_map>
 
 namespace llvm {
 class Argument;
+class ConstantInt;
 class Function;
 class Module;
 class GlobalVariable;
@@ -38,6 +41,7 @@ class Arch;
 class Instruction;
 class IntrinsicTable;
 class Operand;
+class TraceLifter;
 
 enum LiftStatus {
   kLiftedInvalidInstruction,
@@ -52,6 +56,10 @@ class InstructionLifter {
  public:
   virtual ~InstructionLifter(void);
 
+  inline InstructionLifter(const std::unique_ptr<const Arch> &arch_,
+                           const IntrinsicTable &intrinsics_)
+      : InstructionLifter(arch_.get(), &intrinsics_) {}
+
   inline InstructionLifter(const Arch *arch_,
                            const IntrinsicTable &intrinsics_)
       : InstructionLifter(arch_, &intrinsics_) {}
@@ -59,9 +67,10 @@ class InstructionLifter {
   InstructionLifter(const Arch *arch_,
                     const IntrinsicTable *intrinsics_);
 
-  // Lift a single instruction into a basic block.
+  // Lift a single instruction into a basic block. `is_delayed` signifies that
+  // this instruction will execute within the delay slot of another instruction.
   virtual LiftStatus LiftIntoBlock(
-      Instruction &inst, llvm::BasicBlock *block);
+      Instruction &inst, llvm::BasicBlock *block, bool is_delayed=false);
 
   const Arch * const arch;
 
@@ -71,7 +80,17 @@ class InstructionLifter {
   // Set of intrinsics.
   const IntrinsicTable * const intrinsics;
 
+  // Load the address of a register.
+  llvm::Value *LoadRegAddress(llvm::BasicBlock *block,
+                              const std::string &reg_name);
+
+  // Load the value of a register.
+  llvm::Value *LoadRegValue(llvm::BasicBlock *block,
+                            const std::string &reg_name);
+
  protected:
+  friend class TraceLifter;
+
   // Lift an operand to an instruction.
   virtual llvm::Value *LiftOperand(Instruction &inst,
                                    llvm::BasicBlock *block,
@@ -102,8 +121,19 @@ class InstructionLifter {
                                           llvm::Argument *arg,
                                           Operand &mem);
 
+  // Return a register value, or zero.
+  llvm::Value *LoadWordRegValOrZero(llvm::BasicBlock *block,
+                                    const std::string &reg_name,
+                                    llvm::ConstantInt *zero);
+
+  std::unordered_map<std::string, llvm::Value *> reg_ptr_cache;
+
  private:
+  InstructionLifter(const InstructionLifter &) = delete;
+  InstructionLifter(InstructionLifter &&) noexcept = delete;
   InstructionLifter(void) = delete;
+
+  llvm::Function *last_func;
 };
 
 using TraceMap = std::unordered_map<uint64_t, llvm::Function *>;
@@ -170,6 +200,8 @@ class TraceManager {
 // Implements a recursive decoder that lifts a trace of instructions to bitcode.
 class TraceLifter {
  public:
+  ~TraceLifter(void);
+
   inline TraceLifter(InstructionLifter &inst_lifter_,
                      TraceManager &manager_)
       : TraceLifter(&inst_lifter_, &manager_) {}
@@ -188,27 +220,9 @@ class TraceLifter {
  private:
   TraceLifter(void) = delete;
 
-  // Return an already lifted trace starting with the code at address
-  // `addr`.
-  //
-  // NOTE: This is guaranteed to return either `nullptr`, or a function
-  //       within `module`.
-  llvm::Function *GetLiftedTraceDeclaration(uint64_t addr);
+  class Impl;
 
-  // Return an already lifted trace starting with the code at address
-  // `addr`.
-  //
-  // NOTE: This is guaranteed to return either `nullptr`, or a function
-  //       within `module`.
-  llvm::Function *GetLiftedTraceDefinition(uint64_t addr);
-
-  const Arch * const arch;
-  InstructionLifter &inst_lifter;
-  const remill::IntrinsicTable *intrinsics;
-  llvm::LLVMContext &context;
-  llvm::Module * const module;
-  const uint64_t addr_mask;
-  TraceManager &manager;
+  std::unique_ptr<Impl> impl;
 };
 
 }  // namespace remill

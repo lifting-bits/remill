@@ -25,8 +25,7 @@ endif()
 #
 # NOTE(pag): Depends on Anvill.
 if(EXISTS ${CMAKE_SOURCE_DIR}/tools/mcsema)
-  # NOTE(artem): Temporarily gate this via a flag until mcsema changes are merged
-  if (DEFINED MCSEMA_REQUIRES_ANVILL AND NOT EXISTS ${CMAKE_SOURCE_DIR}/tools/anvill)
+  if (NOT EXISTS ${CMAKE_SOURCE_DIR}/tools/anvill)
     message(FATAL_ERROR "McSema depends upon Anvill being cloned into ${CMAKE_SOURCE_DIR}/tools/anvill")
   endif()
   add_subdirectory(mcsema)

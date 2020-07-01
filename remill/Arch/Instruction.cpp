@@ -245,20 +245,28 @@ std::string Operand::Serialize(void) const {
 Instruction::Instruction(void)
     : pc(0),
       next_pc(0),
+      delayed_pc(0),
       branch_taken_pc(0),
       branch_not_taken_pc(0),
       arch_name(kArchInvalid),
       arch_for_decode(nullptr),
       is_atomic_read_modify_write(false),
+      has_branch_taken_delay_slot(false),
+      has_branch_not_taken_delay_slot(false),
+      in_delay_slot(false),
       category(Instruction::kCategoryInvalid) {}
 
 void Instruction::Reset(void) {
   pc = 0;
   next_pc = 0;
+  delayed_pc = 0;
   branch_taken_pc = 0;
   branch_not_taken_pc = 0;
   arch_name = kArchInvalid;
   is_atomic_read_modify_write = false;
+  has_branch_taken_delay_slot = false;
+  has_branch_not_taken_delay_slot = false;
+  in_delay_slot = false;
   category = Instruction::kCategoryInvalid;
   arch_for_decode = nullptr;
   operands.clear();
@@ -302,26 +310,81 @@ std::string Instruction::Serialize(void) const {
   ss << " " << std::hex << pc;
 
   if (IsValid()) {
-    ss << " " << std::dec << (next_pc - pc) << " ";
+    if (bytes.empty()) {
+      ss << " (NO-BYTES)";
 
-    ss << "(BYTES";
+    } else {
+      ss << " (BYTES";
+      for (auto byte : bytes) {
+        ss << " " << std::setw(2) << std::setfill('0')
+           << std::hex << static_cast<unsigned>(static_cast<uint8_t>(byte));
+      }
+      ss << ")";
+    }
+
+  } else if (bytes.empty()) {
+    ss << " (NO-BYTES)";
+
+  } else {
+    // if the instruction is invalid print the bytes
+    // It will be helpful in mapping to the instruction in the absence of binary
+    ss << " (BYTES";
     for (auto byte : bytes) {
       ss << " " << std::setw(2) << std::setfill('0')
          << std::hex << static_cast<unsigned>(static_cast<uint8_t>(byte));
     }
-    ss << ") ";
-
-    if (is_atomic_read_modify_write) {
-      ss << "ATOMIC ";
-    }
-  } else {
-    ss << " ";
+    ss << ")";
   }
 
-  ss << function;
+  if (function.empty()) {
+    ss << " !NO-FUNCTION!";
+  } else {
+    ss << " " << function;
+  }
+
   for (const auto &op : operands) {
     ss << " " << op.Serialize();
   }
+
+  if (is_atomic_read_modify_write) {
+    ss << " IS_ATOMIC";
+  }
+
+  if (has_branch_taken_delay_slot || has_branch_not_taken_delay_slot) {
+    ss << " (DELAY_SLOT";
+    if (has_branch_taken_delay_slot) {
+      ss << " (TAKEN " << std::hex << delayed_pc << std::dec << ")";
+    }
+    if (has_branch_not_taken_delay_slot) {
+      ss << " (NOT_TAKEN " << std::hex << delayed_pc << std::dec << ")";
+    }
+    ss << ")";
+  }
+
+  if (in_delay_slot) {
+    ss << " IN_DELAY_SLOT";
+  }
+
+  switch (category) {
+    case Instruction::kCategoryDirectJump:
+      ss << " (BRANCH " << std::hex << branch_taken_pc << ")";
+      break;
+    case Instruction::kCategoryDirectFunctionCall:
+      ss << " (DIRECT_CALL (TAKEN " << std::hex << branch_taken_pc << ")"
+         << " (RETURN " << branch_not_taken_pc << "))";
+      break;
+    case Instruction::kCategoryIndirectFunctionCall:
+      ss << " (INDIRECT_CALL (TAKEN <unknown>)"
+         << " (RETURN " << branch_not_taken_pc << "))";
+      break;
+    case Instruction::kCategoryConditionalBranch:
+      ss << " (COND_BRANCH (TAKEN " << std::hex << branch_taken_pc << ")"
+         << " (NOT_TAKEN " << branch_not_taken_pc << std::dec << "))";
+      break;
+    default:
+      break;
+  }
+
   ss << ")";
   return ss.str();
 }

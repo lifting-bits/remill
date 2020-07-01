@@ -21,6 +21,8 @@ class Module;
 }  // namespace llvm
 namespace remill {
 
+class Arch;
+
 // A field or region of the state structure at a particular offset from
 // the top of the state structure (offset 0) with a given size. You can think
 // of a slot as logically being the storage location of a machine register.
@@ -45,11 +47,13 @@ class StateSlot {
 
 // Returns a covering vector of `StateSlots` for the module's `State` type.
 // This vector contains one entry per byte of the `State` type.
-std::vector<StateSlot> StateSlots(llvm::Module *module);
+std::vector<StateSlot> StateSlots(const remill::Arch *arch,
+                                  llvm::Module *module);
 
 // Analyze a module, discover aliasing loads and stores, and remove dead
 // stores into the `State` structure.
-void RemoveDeadStores(llvm::Module *module, llvm::Function *bb_func,
-                      const std::vector<StateSlot> &slots, llvm::Function *ds_func=nullptr);
+void RemoveDeadStores(
+    const remill::Arch *arch, llvm::Module *module, llvm::Function *bb_func,
+    const std::vector<StateSlot> &slots, llvm::Function *ds_func=nullptr);
 
 }  // namespace remill

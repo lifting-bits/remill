@@ -331,7 +331,6 @@ install(FILES
 
 install(FILES 
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/OS/OS.h"
-
   DESTINATION "${install_folder}/include/remill/OS"
 )
 

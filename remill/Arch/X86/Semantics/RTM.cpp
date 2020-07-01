@@ -17,9 +17,9 @@
 namespace {
 
 // Note: The taken branch is the transaction failed fallback path.
-DEF_SEM(XBEGIN, R8W cond, PC taken, PC not_taken) {
+DEF_SEM(XBEGIN, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   Write(cond, true);
-  Write(REG_PC, Read(taken));
+  Write(pc_dst, Read(taken));
   WriteZExt(REG_XAX, static_cast<addr_t>(8));
   return memory;
 }

@@ -151,6 +151,9 @@ class Instruction {
   uint64_t pc;
   uint64_t next_pc;
 
+  // Program counter of the delayed instruction for taken/not-taken paths.
+  uint64_t delayed_pc;
+
   // Used to tell higher levels about direct/conditional branch
   // targets.
   uint64_t branch_taken_pc;
@@ -166,6 +169,13 @@ class Instruction {
   // Does the instruction require the use of the `__remill_atomic_begin` and
   // `__remill_atomic_end`?
   bool is_atomic_read_modify_write;
+
+  // Does this instruction have a delay slot.
+  bool has_branch_taken_delay_slot;
+  bool has_branch_not_taken_delay_slot;
+
+  // Is this instruction decoded within the context of a delay slot?
+  bool in_delay_slot;
 
   enum Category {
     kCategoryInvalid,
@@ -252,7 +262,7 @@ class Instruction {
 
   // Length, in bytes, of the instruction.
   inline uint64_t NumBytes(void) const {
-    return next_pc - pc;
+    return bytes.size();
   }
 
   inline bool IsNoOp(void) const {

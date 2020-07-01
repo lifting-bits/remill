@@ -119,7 +119,7 @@ class AArch64Arch final : public Arch {
 
   // Decode an instruction.
   bool DecodeInstruction(
-      uint64_t address, const std::string &instr_bytes,
+      uint64_t address, std::string_view instr_bytes,
       Instruction &inst) const final;
 
   // Maximum number of bytes in an instruction.
@@ -889,8 +889,7 @@ const char *AArch64Arch::ProgramCounterRegisterName(void) const {
 }
 
 bool AArch64Arch::DecodeInstruction(
-    uint64_t address, const std::string &inst_bytes,
-    Instruction &inst) const {
+    uint64_t address, std::string_view inst_bytes, Instruction &inst) const {
 
   aarch64::InstData dinst = {};
   auto bytes = reinterpret_cast<const uint8_t *>(inst_bytes.data());
@@ -926,6 +925,19 @@ bool AArch64Arch::DecodeInstruction(
   if (!aarch64::TryDecode(dinst, inst)) {
     inst.category = Instruction::kCategoryInvalid;
     return false;
+  }
+
+  // The semantics will store the return address in `RETURN_PC`. This is to
+  // help synchronize program counters when lifting instructions on an ISA
+  // with delay slots.
+  if (inst.IsFunctionCall()) {
+    inst.operands.emplace_back();
+    auto &dst_ret_pc = inst.operands.back();
+    dst_ret_pc.type = Operand::kTypeRegister;
+    dst_ret_pc.action = Operand::kActionWrite;
+    dst_ret_pc.size = 64;
+    dst_ret_pc.reg.name = "RETURN_PC";
+    dst_ret_pc.reg.size = 64;
   }
 
   return true;
