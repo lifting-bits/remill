@@ -119,6 +119,11 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
 
   llvm::IRBuilder<> ir(source_block);
 
+  // get the `NEXT_PC` and set it to `PC`
+  auto next_pc = LoadNextProgramCounter(source_block);
+  auto pc_ref = LoadProgramCounterRef(source_block);
+  (void) new llvm::StoreInst(next_pc, pc_ref, source_block);
+
   auto call_target_instr = AddCall(source_block, dest_func);
   call_target_instr->setTailCall(true);
 
