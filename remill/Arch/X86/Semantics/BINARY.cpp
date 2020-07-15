@@ -438,23 +438,28 @@ namespace {
 //            introduces extra control flow.
 #define MAKE_DIVxax(name, src1, src2, dst1, dst2) \
     template <typename S3> \
-    DEF_SEM(DIV ## name, S3 src3) { \
+    DEF_SEM(DIV ## name, S3 src3, PC next_pc) { \
       auto lhs_low = ZExt(Read(src1)); \
       auto lhs_high = ZExt(Read(src2)); \
       auto rhs = ZExt(Read(src3)); \
       auto shift = ZExt(BitSizeOf(src3)); \
       auto lhs = UOr(UShl(lhs_high, shift), lhs_low); \
-      auto quot = UDiv(lhs, rhs); \
-      auto rem = URem(lhs, rhs); \
-      auto quot_trunc = Trunc(quot); \
-      auto rem_trunc = Trunc(rem); \
-      if (quot != ZExt(quot_trunc)) { \
+      WriteZExt(REG_PC, Read(next_pc)); \
+      if (IsZero(rhs)) { \
         StopFailure(); \
       } else { \
-        WriteZExt(dst1, quot_trunc); \
-        WriteZExt(dst2, rem_trunc); \
-        ClearArithFlags(); \
-        return memory; \
+        auto quot = UDiv(lhs, rhs); \
+        auto rem = URem(lhs, rhs); \
+        auto quot_trunc = Trunc(quot); \
+        auto rem_trunc = Trunc(rem); \
+        if (quot != ZExt(quot_trunc)) { \
+          StopFailure(); \
+        } else { \
+          WriteZExt(dst1, quot_trunc); \
+          WriteZExt(dst2, rem_trunc); \
+          ClearArithFlags(); \
+          return memory; \
+        } \
       } \
     }
 
@@ -469,23 +474,28 @@ IF_64BIT(MAKE_DIVxax(rdxrax, REG_RAX, REG_RDX, REG_RAX, REG_RDX))
 //            introduces extra control flow.
 #define MAKE_IDIVxax(name, src1, src2, dst1, dst2) \
     template <typename S3> \
-    DEF_SEM(IDIV ## name, S3 src3) { \
+    DEF_SEM(IDIV ## name, S3 src3, PC next_pc) { \
       auto lhs_low = ZExt(Read(src1)); \
       auto lhs_high = ZExt(Read(src2)); \
       auto rhs = SExt(Read(src3)); \
       auto shift = ZExt(BitSizeOf(src3)); \
       auto lhs = Signed(UOr(UShl(lhs_high, shift), lhs_low)); \
-      auto quot = SDiv(lhs, rhs); \
-      auto rem = SRem(lhs, rhs); \
-      auto quot_trunc = Trunc(quot); \
-      auto rem_trunc = Trunc(rem); \
-      if (quot != SExt(quot_trunc)) { \
+      WriteZExt(REG_PC, Read(next_pc)); \
+      if (IsZero(rhs)) { \
         StopFailure(); \
       } else { \
-        WriteZExt(dst1, Unsigned(quot_trunc)); \
-        WriteZExt(dst2, Unsigned(rem_trunc)); \
-        ClearArithFlags(); \
-        return memory; \
+        auto quot = SDiv(lhs, rhs); \
+        auto rem = SRem(lhs, rhs); \
+        auto quot_trunc = Trunc(quot); \
+        auto rem_trunc = Trunc(rem); \
+        if (quot != SExt(quot_trunc)) { \
+          StopFailure(); \
+        } else { \
+          WriteZExt(dst1, Unsigned(quot_trunc)); \
+          WriteZExt(dst2, Unsigned(rem_trunc)); \
+          ClearArithFlags(); \
+          return memory; \
+        } \
       } \
     }
 
