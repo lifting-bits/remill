@@ -206,7 +206,6 @@ static bool IsScalarCompare(const xed_decoded_inst_t *xedd) {
   }
 }
 
-
 static bool IsNoOp(const xed_decoded_inst_t *xedd) {
   switch (xed_decoded_inst_get_category(xedd)) {
     case XED_CATEGORY_NOP:
