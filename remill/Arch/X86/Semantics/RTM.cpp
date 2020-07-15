@@ -29,7 +29,8 @@ DEF_SEM(DoXTEST) {
   return memory;
 }
 
-DEF_SEM(DoXEND) {
+DEF_SEM(DoXEND, PC next_pc) {
+  WriteZExt(REG_PC, Read(next_pc));
   StopFailure();
 }
 

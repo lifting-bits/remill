@@ -126,12 +126,13 @@ ALWAYS_INLINE static bool CompareFloats(FloatCompareOperator op, T v1, T v2) {
 }
 
 template <typename S1, typename S2>
-DEF_SEM(COMISS, S1 src1, S2 src2) {
+DEF_SEM(COMISS, S1 src1, S2 src2, PC next_pc) {
   auto left = FExtractV32(FReadV32(src1), 0);
   auto right = FExtractV32(FReadV32(src2), 0);
 
   if (__builtin_isunordered(left, right)) {
     if (IsSignalingNaN(left + right)) {
+      WriteZExt(REG_PC, Read(next_pc));
       StopFailure();
     }
 
@@ -161,12 +162,13 @@ DEF_SEM(COMISS, S1 src1, S2 src2) {
 }
 
 template <typename S1, typename S2>
-DEF_SEM(COMISD, S1 src1, S2 src2) {
+DEF_SEM(COMISD, S1 src1, S2 src2, PC next_pc) {
   auto left = FExtractV64(FReadV64(src1), 0);
   auto right = FExtractV64(FReadV64(src2), 0);
 
   if (__builtin_isunordered(left, right)) {
     if (IsSignalingNaN(left + right)) {
+      WriteZExt(REG_PC, Read(next_pc));
       StopFailure();
     }
 
@@ -525,12 +527,13 @@ DEF_ISEL(VPCMPEQD_YMMqq_YMMqq_YMMqq) = PCMPEQD<VV256W, V256, V256>;
 namespace {
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(CMPSS, D dst, S1 src1, S2 src2, I8 src3) {
+DEF_SEM(CMPSS, D dst, S1 src1, S2 src2, I8 src3, PC next_pc) {
   auto src1_vec = FReadV32(src1);
   auto src2_vec = FReadV32(src2);
   auto dst_vec = UClearV32(UReadV32(dst));
   auto op = Read(src3);
   if (op >= 32) {
+    WriteZExt(REG_PC, Read(next_pc));
     StopFailure();
   }
   auto v1 = FExtractV32(src1_vec, 0);
@@ -545,12 +548,13 @@ DEF_SEM(CMPSS, D dst, S1 src1, S2 src2, I8 src3) {
 }
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(CMPSD, D dst, S1 src1, S2 src2, I8 src3) {
+DEF_SEM(CMPSD, D dst, S1 src1, S2 src2, I8 src3, PC next_pc) {
   auto src1_vec = FReadV64(src1);
   auto src2_vec = FReadV64(src2);
   auto dst_vec = UClearV64(UReadV64(dst));
   auto op = Read(src3);
   if (op >= 32) {
+    WriteZExt(REG_PC, Read(next_pc));
     StopFailure();
   }
   auto v1 = FExtractV64(src1_vec, 0);
@@ -585,12 +589,13 @@ DEF_ISEL(VCMPSD_XMMdq_XMMdq_XMMq_IMMb) = CMPSD<VV128W, V128, V128>;
 
 namespace {
 template <typename D, typename S1, typename S2>
-DEF_SEM(CMPPS, D dst, S1 src1, S2 src2, I8 src3) {
+DEF_SEM(CMPPS, D dst, S1 src1, S2 src2, I8 src3, PC next_pc) {
   auto src1_vec = FReadV32(src1);
   auto src2_vec = FReadV32(src2);
   auto dst_vec = UClearV32(UReadV32(dst));
   auto op = Read(src3);
   if (op >= 32) {
+    WriteZExt(REG_PC, Read(next_pc));
     StopFailure();
   }
 
@@ -611,12 +616,13 @@ DEF_SEM(CMPPS, D dst, S1 src1, S2 src2, I8 src3) {
 }
 
 template <typename D, typename S1, typename S2>
-DEF_SEM(CMPPD, D dst, S1 src1, S2 src2, I8 src3) {
+DEF_SEM(CMPPD, D dst, S1 src1, S2 src2, I8 src3, PC next_pc) {
   auto src1_vec = FReadV64(src1);
   auto src2_vec = FReadV64(src2);
   auto dst_vec = UClearV64(UReadV64(dst));
   auto op = Read(src3);
   if (op >= 32) {
+    WriteZExt(REG_PC, Read(next_pc));
     StopFailure();
   }
 

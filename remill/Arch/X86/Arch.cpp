@@ -154,6 +154,58 @@ static bool IsIndirectJumpFar(const xed_decoded_inst_t *xedd) {
   return XED_ICLASS_JMP_FAR == iclass && XED_OPERAND_MEM0 == op_name;
 }
 
+static bool IsDiv(const xed_decoded_inst_t *xedd) {
+  switch (xed_decoded_inst_get_iclass(xedd)) {
+    case XED_ICLASS_DIV:
+    case XED_ICLASS_IDIV:
+      return true;
+    default:
+      return false;
+  }
+}
+
+static bool IsXEND(const xed_decoded_inst_t *xedd) {
+  switch (xed_decoded_inst_get_iclass(xedd)) {
+    case XED_ICLASS_XEND:
+      return true;
+    default:
+      return false;
+  }
+}
+
+static bool IsXGETBV(const xed_decoded_inst_t *xedd) {
+  switch (xed_decoded_inst_get_iclass(xedd)) {
+    case XED_ICLASS_XGETBV:
+      return true;
+    default:
+      return false;
+  }
+}
+
+static bool IsScalarCompare(const xed_decoded_inst_t *xedd) {
+  switch (xed_decoded_inst_get_iclass(xedd)) {
+    case XED_ICLASS_COMISS:
+    case XED_ICLASS_UCOMISS:
+    case XED_ICLASS_VCOMISS:
+    case XED_ICLASS_VUCOMISS:
+    case XED_ICLASS_COMISD:
+    case XED_ICLASS_UCOMISD:
+    case XED_ICLASS_VCOMISD:
+    case XED_ICLASS_VUCOMISD:
+    case XED_ICLASS_CMPSS:
+    case XED_ICLASS_VCMPSS:
+    case XED_ICLASS_CMPSD:
+    case XED_ICLASS_VCMPSD:
+    case XED_ICLASS_CMPPS:
+    case XED_ICLASS_VCMPPS:
+    case XED_ICLASS_CMPPD:
+    case XED_ICLASS_VCMPPD:
+      return true;
+    default:
+      return false;
+  }
+}
+
 static bool IsNoOp(const xed_decoded_inst_t *xedd) {
   switch (xed_decoded_inst_get_category(xedd)) {
     case XED_CATEGORY_NOP:
@@ -1064,6 +1116,17 @@ bool X86Arch::DecodeInstruction(
       dst_ret_pc.reg.name = "RETURN_PC";
       dst_ret_pc.reg.size = address_size;
 
+    }
+
+    if (IsDiv(xedd) || IsXEND(xedd) ||
+        IsXGETBV(xedd) || IsScalarCompare(xedd)) {
+      inst.operands.emplace_back();
+      auto &next_pc = inst.operands.back();
+      next_pc.type = Operand::kTypeRegister;
+      next_pc.action = Operand::kActionRead;
+      next_pc.size = address_size;
+      next_pc.reg.name = "NEXT_PC";
+      next_pc.reg.size = address_size;
     }
 
     // All non-control FPU instructions update the last instruction pointer
