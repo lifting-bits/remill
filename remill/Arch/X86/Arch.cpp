@@ -154,6 +154,19 @@ static bool IsIndirectJumpFar(const xed_decoded_inst_t *xedd) {
   return XED_ICLASS_JMP_FAR == iclass && XED_OPERAND_MEM0 == op_name;
 }
 
+//It checks if the instruction might fault and uses StopFailure to recover
+static bool IsUsesStopFailure(const xed_decoded_inst_t *xedd) {
+  switch (xed_decoded_inst_get_iclass(xedd)) {
+    case XED_ICLASS_DIV:
+    case XED_ICLASS_IDIV:
+    case XED_ICLASS_XEND:
+    case XED_ICLASS_XGETBV:
+      return true;
+    default:
+      return false;
+  }
+}
+
 static bool IsNoOp(const xed_decoded_inst_t *xedd) {
   switch (xed_decoded_inst_get_category(xedd)) {
     case XED_CATEGORY_NOP:
@@ -1064,6 +1077,20 @@ bool X86Arch::DecodeInstruction(
       dst_ret_pc.reg.name = "RETURN_PC";
       dst_ret_pc.reg.size = address_size;
 
+    }
+
+    if (IsUsesStopFailure(xedd)) {
+      // These instructions might fault and uses the StopFailure to recover.
+      // The new operand `next_pc` is added and the REG_PC is set to next_pc
+      // before calling the StopFailure
+
+      inst.operands.emplace_back();
+      auto &next_pc = inst.operands.back();
+      next_pc.type = Operand::kTypeRegister;
+      next_pc.action = Operand::kActionRead;
+      next_pc.size = address_size;
+      next_pc.reg.name = "NEXT_PC";
+      next_pc.reg.size = address_size;
     }
 
     // All non-control FPU instructions update the last instruction pointer
