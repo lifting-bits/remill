@@ -31,12 +31,15 @@ extern "C" {
                                            Memory *memory) {
   bool branch_taken = false;
   addr_t monitor = 0;
+  addr_t return_pc = 0;
 
   // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
   auto &MEMORY = *memory;
   auto &PC = state.gpr.pc.qword;
+  auto &NEXT_PC = curr_pc;
   auto &BRANCH_TAKEN = branch_taken;
+  auto &RETURN_PC = return_pc;
   
   // `PC` should already have the correct value, but it's nice to make sure
   // that `curr_pc` is used throughout, as it helps with certain downstream

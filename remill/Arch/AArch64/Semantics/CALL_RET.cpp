@@ -17,7 +17,7 @@
 namespace {
 
 template <typename S>
-DEF_SEM(CALL, S target_addr, PC ret_addr) {
+DEF_SEM(CALL, S target_addr, PC ret_addr, R64W, PC) {
   Write(REG_LP, Read(ret_addr));
   Write(REG_PC, Read(target_addr));
   return memory;
