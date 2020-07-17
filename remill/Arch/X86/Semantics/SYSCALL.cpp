@@ -16,22 +16,22 @@
 
 namespace {
 
-DEF_SEM(DoSYSCALL) {
+DEF_SEM(DoSYSCALL, IF_32BIT_ELSE(R32W, R64W)) {
   HYPER_CALL = AsyncHyperCall::kX86SysCall;
   return memory;
 }
 
-DEF_SEM(DoSYSCALL_AMD) {
+DEF_SEM(DoSYSCALL_AMD, IF_32BIT_ELSE(R32W, R64W)) {
   HYPER_CALL = AsyncHyperCall::kX86SysCall;
   return memory;
 }
 
-DEF_SEM(DoSYSENTER) {
+DEF_SEM(DoSYSENTER, IF_32BIT_ELSE(R32W, R64W)) {
   HYPER_CALL = AsyncHyperCall::kX86SysEnter;
   return memory;
 }
 
-DEF_SEM(DoSYSEXIT) {
+DEF_SEM(DoSYSEXIT, IF_32BIT_ELSE(R32W, R64W)) {
   HYPER_CALL = AsyncHyperCall::kX86SysExit;
   return memory;
 }
