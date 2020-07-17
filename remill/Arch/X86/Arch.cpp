@@ -155,7 +155,7 @@ static bool IsIndirectJumpFar(const xed_decoded_inst_t *xedd) {
 }
 
 //It checks if the instruction might fault and uses StopFailure to recover
-static bool IsUsesStopFailure(const xed_decoded_inst_t *xedd) {
+static bool UsesStopFailure(const xed_decoded_inst_t *xedd) {
   switch (xed_decoded_inst_get_iclass(xedd)) {
     case XED_ICLASS_DIV:
     case XED_ICLASS_IDIV:
@@ -1076,10 +1076,9 @@ bool X86Arch::DecodeInstruction(
       dst_ret_pc.size = address_size;
       dst_ret_pc.reg.name = "RETURN_PC";
       dst_ret_pc.reg.size = address_size;
-
     }
 
-    if (IsUsesStopFailure(xedd)) {
+    if (UsesStopFailure(xedd)) {
       // These instructions might fault and uses the StopFailure to recover.
       // The new operand `next_pc` is added and the REG_PC is set to next_pc
       // before calling the StopFailure

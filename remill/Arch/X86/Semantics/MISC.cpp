@@ -115,6 +115,11 @@ DEF_SEM(DoNothing) {
   return memory;
 }
 
+template<typename S1>
+DEF_SEM(DoNothingWithParam, S1 src1) {
+  return memory;
+}
+
 template<typename S1, typename S2>
 DEF_SEM(DoNothingWithParam, S1 src1, S2 src2) {
   return memory;
@@ -182,7 +187,7 @@ DEF_ISEL(UD1_GPR32_MEMd) = DoNothingWithParam<R32, M32>;
 
 DEF_ISEL(UD2) = DoNothing;
 
-DEF_ISEL(HLT) = DoNothing;
+DEF_ISEL(HLT) = DoNothingWithParam<IF_32BIT_ELSE(R32W, R64W)>;
 
 /*
 230 INVPCID INVPCID_GPR64_MEMdq MISC INVPCID INVPCID ATTRIBUTES: NOTSX RING0
