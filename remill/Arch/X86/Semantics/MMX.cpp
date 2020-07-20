@@ -1763,10 +1763,11 @@ DEF_SEM(PSHUFB, D dst, S1 src1, S2 src2) {
   auto dst_vec = UClearV8(UReadV8(dst));
 
   auto vec_count = NumVectorElems(src1_vec);
+  uint8_t mask = vec_count - 1;
   _Pragma("unroll")
   for (size_t i = 0; i < vec_count; i++) {
     uint8_t v1 = UExtractV8(src2_vec, i);
-    uint8_t index = UAnd(v1, 7_u8);
+    uint8_t index = UAnd(v1, mask);
     uint8_t v2 = UExtractV8(src1_vec, index);
     uint8_t value = Select(SignFlag(v1), 0_u8, v2);
     dst_vec = UInsertV8(dst_vec, i, value);
