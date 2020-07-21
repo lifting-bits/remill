@@ -16,7 +16,8 @@ cmake_minimum_required(VERSION 3.4)
 
 macro(configureCcache)
   if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND
-     NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
+     NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin" AND
+     NOT EMSCRIPTEN)
 
     message(STATUS "ccache: Not supported")
 

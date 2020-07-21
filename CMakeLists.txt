@@ -20,6 +20,29 @@ endif ()
 project(remill)
 cmake_minimum_required(VERSION 3.2)
 
+if(EMSCRIPTEN)
+  set(CMAKE_BUILD_TYPE Release)
+  set(gflags_DIR "$ENV{REPOS}/gflags/build")
+  set(glog_DIR "$ENV{REPOS}/glog/build")
+  set(LLVM_DIR "$ENV{REPOS}/llvm-project/llvm/build/lib/cmake/llvm/")
+  set(remill_DIR "$ENV{REPOS}/remill/build/")
+
+  # We want to manually invoke main for Lift instead of Emscripten calling it for us
+  # So we disable INVOKE_RUN, export callMain (and FS for files).
+  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/web/src")
+  set(CMAKE_CXX_FLAGS "\
+    ${CMAKE_CXX_FLAGS} \
+    $ENV{EM_CXX_FLAGS} \
+    -D__i386__ \
+    -DADDRESS_SIZE_BITS=32 \
+    -s ALLOW_MEMORY_GROWTH=1 \
+    --no-heap-copy \
+    -s INVOKE_RUN=0 \
+    -s EXTRA_EXPORTED_RUNTIME_METHODS='[\"callMain\",\"FS\"]' \
+    -s ASSERTIONS=1 \
+    --embed-file ${CMAKE_CURRENT_SOURCE_DIR}/web/build/remill/Arch/X86/Runtime/x86.bc@/share/remill/10.0/semantics/x86.bc")
+endif()
+
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/settings.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/BCCompiler.cmake")
@@ -250,7 +273,7 @@ if("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "" OR NOT EXISTS "${LIBRARY_REPOSITORY_
   message("InstallExternalTarget: Found llvm-link executable: ${llvmlink_location}")
 
   find_library("libllvm_location" "${dynamic_lib_prefix}LLVM-${REMILL_LLVM_VERSION}.${dynamic_lib_extension}")
-  if("${libllvm_location}" STREQUAL "libllvm_location-NOTFOUND")
+  if("${libllvm_location}" STREQUAL "libllvm_location-NOTFOUND" AND NOT EMSCRIPTEN)
     message(FATAL_ERROR "InstallExternalTarget: Failed to locate the libLLVM dynamic library")
   endif()
   
@@ -376,7 +399,7 @@ add_subdirectory(remill/Arch/AArch64/Runtime)
 add_subdirectory(tools)
 
 # tests
-if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_C_COMPILER_ID}" STREQUAL "AppleClang")
+if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_C_COMPILER_ID}" STREQUAL "AppleClang" AND NOT EMSCRIPTEN)
   add_custom_target(test_dependencies)
 
   if(NOT "${PLATFORM_NAME}" STREQUAL "windows")

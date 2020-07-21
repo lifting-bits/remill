@@ -25,7 +25,7 @@
 #   define REMILL_ON_WINDOWS 0
 #   define REMILL_ON_SOLARIS 0
 #   define REMILL_OS "macos"
-# elif defined(__linux__)
+# elif defined(__linux__) || defined(__EMSCRIPTEN__)
 #   define REMILL_ON_MACOS 0
 #   define REMILL_ON_LINUX 1
 #   define REMILL_ON_WINDOWS 0

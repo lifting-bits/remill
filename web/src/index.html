@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <meta charset="utf-8">
+    <title>Remill Lift</title>
+    <style>
+        * {
+            font-family: monospace;
+        }
+        html, body {
+            margin: 0px;
+            padding: 5px;
+            width: calc(100% - 10px);
+            height: calc(100% - 10px);
+        }
+        textarea {
+            padding: 0px;
+            width: 100%;
+            height: 45%;
+        }
+    </style>
+</head>
+
+<body>
+    x86 hex (32 bit only for now):<br>
+    <textarea id="hex" spellcheck="false">554889e5c745fc03000000c745f8050000008b45fc0345f85dc3</textarea><br>
+    Output:<br>
+    <textarea id="output" style="white-space: nowrap; overflow: auto;" spellcheck="false"></textarea><br>
+    <button id="button" disabled>Loading...</button>
+    <script>
+        var Module = {
+          onRuntimeInitialized: () => {
+            const hex = document.getElementById("hex");
+            const button = document.getElementById("button");
+            button.disabled = false;
+            button.innerText = "Run";
+            button.onclick = () => {
+                button.innerText = "Processing...";
+                button.disabled = true;
+                hex.disabled = true;
+                setTimeout(() => {
+                    Module.callMain([
+                        `--bytes=${hex.value}`,
+                        "--ir_out=/out"
+                    ]);
+                    document.getElementById("output").value = Module.FS.readFile("/out", { encoding: "utf8" });
+                    Module.FS.unlink("/out");
+                    button.innerText = "Refresh to re-run";
+                })
+            };
+          }
+        };
+    </script>
+    <script src="remill-lift-10.0.js"></script>
+</body>
+</html>
