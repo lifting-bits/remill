@@ -14,6 +14,15 @@
  * limitations under the License.
  */
 
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/GlobalValue.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
+
 #include <algorithm>
 #include <cstdint>
 #include <fstream>
@@ -22,16 +31,6 @@
 #include <sstream>
 #include <string>
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-
-#include <llvm/IR/Function.h>
-#include <llvm/IR/GlobalValue.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Type.h>
-
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Instruction.h"
 #include "remill/Arch/Name.h"
@@ -39,13 +38,12 @@
 #include "remill/BC/Lifter.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/OS.h"
-
 #include "tests/AArch64/Test.h"
 
 #ifdef __APPLE__
-# define SYMBOL_PREFIX "_"
+#  define SYMBOL_PREFIX "_"
 #else
-# define SYMBOL_PREFIX ""
+#  define SYMBOL_PREFIX ""
 #endif
 
 DEFINE_string(bc_out, "",
@@ -64,11 +62,9 @@ namespace {
 // Decode a test and add it as a basic block to the module.
 //
 // TODO(pag): Eventually handle control-flow.
-static void AddFunctionToModule(llvm::Module *module,
-                                const remill::Arch *arch,
+static void AddFunctionToModule(llvm::Module *module, const remill::Arch *arch,
                                 const test::TestInfo &test) {
-  DLOG(INFO)
-      << "Adding block for: " << test.test_name;
+  DLOG(INFO) << "Adding block for: " << test.test_name;
 
   std::stringstream ss;
   ss << SYMBOL_PREFIX << test.test_name << "_lifted";
@@ -86,7 +82,7 @@ static void AddFunctionToModule(llvm::Module *module,
   std::map<uint64_t, llvm::BasicBlock *> blocks;
 
   // Function that will create basic blocks as needed.
-  auto GetOrCreateBlock = [func, &blocks] (uint64_t block_pc) {
+  auto GetOrCreateBlock = [func, &blocks](uint64_t block_pc) {
     auto &block = blocks[block_pc];
     if (!block) {
       block = llvm::BasicBlock::Create(func->getContext(), "", func);
@@ -109,19 +105,18 @@ static void AddFunctionToModule(llvm::Module *module,
 
     remill::Instruction inst;
     CHECK(arch->DecodeInstruction(addr, inst_bytes, inst))
-        << "Can't decode test instruction " << inst.Serialize()
-        << " in " << test.test_name;
+        << "Can't decode test instruction " << inst.Serialize() << " in "
+        << test.test_name;
 
     seen_insts << sep << inst.function;
     sep = ", ";
 
-    LOG(INFO)
-        << "Lifting " << inst.Serialize();
+    LOG(INFO) << "Lifting " << inst.Serialize();
 
     auto block = GetOrCreateBlock(inst.pc);
     CHECK(remill::kLiftedInstruction == lifter.LiftIntoBlock(inst, block))
-        << "Can't lift test instruction " << inst.Serialize()
-        << " in " << test.test_name;
+        << "Can't lift test instruction " << inst.Serialize() << " in "
+        << test.test_name;
 
     saw_isel = saw_isel || inst.function == test.isel_name;
     addr += inst.NumBytes();
@@ -135,8 +130,7 @@ static void AddFunctionToModule(llvm::Module *module,
 
       case remill::Instruction::kCategoryDirectJump:
       case remill::Instruction::kCategoryDirectFunctionCall:
-        llvm::BranchInst::Create(GetOrCreateBlock(inst.branch_taken_pc),
-                                 block);
+        llvm::BranchInst::Create(GetOrCreateBlock(inst.branch_taken_pc), block);
         break;
 
       case remill::Instruction::kCategoryConditionalBranch:
@@ -151,10 +145,10 @@ static void AddFunctionToModule(llvm::Module *module,
     }
   }
 
-  CHECK(saw_isel)
-      << "Test " << test.test_name << " does not have an instruction that "
-      << "uses the semantics function " << test.isel_name << ", saw "
-      << seen_insts.str();
+  CHECK(saw_isel) << "Test " << test.test_name
+                  << " does not have an instruction that "
+                  << "uses the semantics function " << test.isel_name
+                  << ", saw " << seen_insts.str();
 
   // Terminate any stragglers.
   for (auto pc_to_block : blocks) {
@@ -183,9 +177,10 @@ extern "C" int main(int argc, char *argv[]) {
   auto module = remill::LoadModuleFromFile(context, bc_file);
   remill::GetHostArch(*context)->PrepareModule(module.get());
 
-  for (auto i = 0U; ; ++i) {
+  for (auto i = 0U;; ++i) {
     const auto &test = test::__aarch64_test_table_begin[i];
-    if (&test >= &(test::__aarch64_test_table_end[0])) break;
+    if (&test >= &(test::__aarch64_test_table_end[0]))
+      break;
     AddFunctionToModule(module.get(), arch, test);
   }
 

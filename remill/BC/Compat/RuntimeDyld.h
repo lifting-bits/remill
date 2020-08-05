@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include "remill/BC/Version.h"
-
-#include <llvm/ExecutionEngine/RuntimeDyld.h>
 #include <llvm/ExecutionEngine/RTDyldMemoryManager.h>
+#include <llvm/ExecutionEngine/RuntimeDyld.h>
+
+#include "remill/BC/Version.h"

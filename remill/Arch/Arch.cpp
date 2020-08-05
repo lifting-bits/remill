@@ -14,36 +14,33 @@
  * limitations under the License.
  */
 
+#include "remill/Arch/Arch.h"
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <llvm/ADT/APInt.h>
+#include <llvm/ADT/SmallVector.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Metadata.h>
+#include <llvm/IR/Module.h>
 
 #include <algorithm>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
 
-#include <llvm/ADT/APInt.h>
-#include <llvm/ADT/SmallVector.h>
-
-#include <llvm/IR/BasicBlock.h>
-#include <llvm/IR/Function.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/IntrinsicInst.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Metadata.h>
-#include <llvm/IR/Module.h>
-
-#include "remill/Arch/Arch.h"
 #include "remill/Arch/Name.h"
-
 #include "remill/BC/ABI.h"
 #include "remill/BC/Compat/Attributes.h"
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Util.h"
 #include "remill/BC/Version.h"
-
 #include "remill/OS/OS.h"
 
 DEFINE_string(arch, REMILL_ARCH,
@@ -57,7 +54,6 @@ namespace remill {
 
 class Arch::Impl {
  public:
-
   // State type.
   llvm::StructType *state_type{nullptr};
 
@@ -81,13 +77,11 @@ static unsigned AddressSize(ArchName arch_name) {
       return 0;
     case kArchX86:
     case kArchX86_AVX:
-    case kArchX86_AVX512:
-      return 32;
+    case kArchX86_AVX512: return 32;
     case kArchAMD64:
     case kArchAMD64_AVX:
     case kArchAMD64_AVX512:
-    case kArchAArch64LittleEndian:
-      return 64;
+    case kArchAArch64LittleEndian: return 64;
   }
   return 0;
 }
@@ -102,9 +96,8 @@ Arch::Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_)
 
 Arch::~Arch(void) {}
 
-bool Arch::LazyDecodeInstruction(
-    uint64_t address, std::string_view instr_bytes,
-    Instruction &inst) const {
+bool Arch::LazyDecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                                 Instruction &inst) const {
   return DecodeInstruction(address, instr_bytes, inst);
 }
 
@@ -119,8 +112,7 @@ bool Arch::MayHaveDelaySlot(const Instruction &) const {
 }
 
 // Returns `true` if a given instruction might have a delay slot.
-bool Arch::NextInstructionIsDelayed(const Instruction &,
-                                    const Instruction &,
+bool Arch::NextInstructionIsDelayed(const Instruction &, const Instruction &,
                                     bool) const {
   return false;
 }
@@ -128,9 +120,7 @@ bool Arch::NextInstructionIsDelayed(const Instruction &,
 llvm::Triple Arch::BasicTriple(void) const {
   llvm::Triple triple;
   switch (os_name) {
-    case kOSInvalid:
-      LOG(FATAL) << "Cannot get triple OS.";
-      break;
+    case kOSInvalid: LOG(FATAL) << "Cannot get triple OS."; break;
 
     case kOSLinux:
       triple.setOS(llvm::Triple::Linux);
@@ -163,8 +153,7 @@ llvm::Triple Arch::BasicTriple(void) const {
   return triple;
 }
 
-auto Arch::Build(llvm::LLVMContext *context_,
-                 OSName os_name_,
+auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
                  ArchName arch_name_) -> ArchPtr {
 
   switch (arch_name_) {
@@ -209,7 +198,8 @@ auto Arch::Build(llvm::LLVMContext *context_,
   }
 }
 
-const Arch *Arch::Get(llvm::LLVMContext &context, OSName os, ArchName arch_name) {
+const Arch *Arch::Get(llvm::LLVMContext &context, OSName os,
+                      ArchName arch_name) {
   return Arch::Build(&context, os, arch_name).release();
 }
 
@@ -236,7 +226,7 @@ llvm::IntegerType *Arch::AddressType(void) const {
 // The type of memory.
 llvm::PointerType *Arch::MemoryPointerType(void) const {
   CHECK(impl)
-          << "Have you not run `PrepareModule` on a loaded semantics module?";
+      << "Have you not run `PrepareModule` on a loaded semantics module?";
   return impl->memory_type;
 }
 
@@ -282,11 +272,13 @@ namespace {
 //              be removed in favor of Arch::Build/Get* but some old code may
 //              depend on this caching behaviour.
 struct AvailableArchs {
-  using ArchMap = std::unordered_map<llvm::LLVMContext *, std::unique_ptr<const Arch>>;
+  using ArchMap =
+      std::unordered_map<llvm::LLVMContext *, std::unique_ptr<const Arch>>;
 
   static ArchMap cached;
 
-  static const Arch *GetOrCreate(llvm::LLVMContext *ctx, OSName os, ArchName name) {
+  static const Arch *GetOrCreate(llvm::LLVMContext *ctx, OSName os,
+                                 ArchName name) {
     auto &arch = cached[ctx];
     if (!arch) {
       arch = Create(ctx, os, name);
@@ -300,14 +292,16 @@ struct AvailableArchs {
     return nullptr;
   }
 
-  static Arch::ArchPtr Create(llvm::LLVMContext *ctx, OSName os, ArchName name) {
+  static Arch::ArchPtr Create(llvm::LLVMContext *ctx, OSName os,
+                              ArchName name) {
     return Arch::Build(ctx, os, name);
   }
 };
 
 AvailableArchs::ArchMap AvailableArchs::cached = {};
 
-static const Arch *GetOrCreate(llvm::LLVMContext &ctx, OSName os, ArchName name) {
+static const Arch *GetOrCreate(llvm::LLVMContext &ctx, OSName os,
+                               ArchName name) {
   return AvailableArchs::GetOrCreate(&ctx, os, name);
 }
 
@@ -331,10 +325,8 @@ bool Arch::IsX86(void) const {
   switch (arch_name) {
     case remill::kArchX86:
     case remill::kArchX86_AVX:
-    case remill::kArchX86_AVX512:
-      return true;
-    default:
-      return false;
+    case remill::kArchX86_AVX512: return true;
+    default: return false;
   }
 }
 
@@ -342,10 +334,8 @@ bool Arch::IsAMD64(void) const {
   switch (arch_name) {
     case remill::kArchAMD64:
     case remill::kArchAMD64_AVX:
-    case remill::kArchAMD64_AVX512:
-      return true;
-    default:
-      return false;
+    case remill::kArchAMD64_AVX512: return true;
+    default: return false;
   }
 }
 
@@ -390,9 +380,9 @@ static bool GetRegisterOffset(llvm::Module *module, llvm::Type *state_ptr_type,
     if (auto gep = llvm::dyn_cast<llvm::GetElementPtrInst>(reg)) {
       llvm::APInt gep_offset(dl.getPointerSizeInBits(0), 0);
       if (!gep->accumulateConstantOffset(dl, gep_offset)) {
-        DLOG(INFO)
-            << "Named variable " << val_name << " is not a register in the "
-            << "state structure";
+        DLOG(INFO) << "Named variable " << val_name
+                   << " is not a register in the "
+                   << "state structure";
       }
       *offset += gep_offset.getZExtValue();
       reg = gep->getPointerOperand();
@@ -405,16 +395,15 @@ static bool GetRegisterOffset(llvm::Module *module, llvm::Type *state_ptr_type,
       break;
 
     } else {
-      DLOG(INFO)
-          << "Named variable " << val_name << " is not a register in the "
-          << "state structure";
+      DLOG(INFO) << "Named variable " << val_name
+                 << " is not a register in the "
+                 << "state structure";
       return false;
     }
   } while (reg);
 
-  DLOG(INFO)
-      << "Offset of register " << val_name << " in state structure is "
-      << *offset;
+  DLOG(INFO) << "Offset of register " << val_name << " in state structure is "
+             << *offset;
 
   return true;
 }
@@ -457,8 +446,8 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
 
       // Get stores.
       } else if (auto store_inst = llvm::dyn_cast<llvm::StoreInst>(&inst)) {
-        auto dst_alloca = llvm::dyn_cast<llvm::AllocaInst>(
-            store_inst->getPointerOperand());
+        auto dst_alloca =
+            llvm::dyn_cast<llvm::AllocaInst>(store_inst->getPointerOperand());
         if (dst_alloca) {
           stored_val[dst_alloca] = store_inst->getValueOperand();
         }
@@ -466,8 +455,8 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
 
       // Forward stores to loads.
       } else if (auto load_inst = llvm::dyn_cast<llvm::LoadInst>(&inst)) {
-        auto src_alloca = llvm::dyn_cast<llvm::AllocaInst>(
-            load_inst->getPointerOperand());
+        auto src_alloca =
+            llvm::dyn_cast<llvm::AllocaInst>(load_inst->getPointerOperand());
         if (src_alloca) {
           if (auto val = stored_val[src_alloca]) {
             load_inst->replaceAllUsesWith(val);
@@ -478,9 +467,8 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
       } else if (llvm::isa<llvm::BranchInst>(&inst) ||
                  llvm::isa<llvm::CallInst>(&inst) ||
                  llvm::isa<llvm::InvokeInst>(&inst)) {
-        LOG(FATAL)
-            << "Unsupported instruction in __remill_basic_block: "
-            << LLVMThingToString(&inst);
+        LOG(FATAL) << "Unsupported instruction in __remill_basic_block: "
+                   << LLVMThingToString(&inst);
       }
     }
   }
@@ -558,8 +546,7 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
       auto name_it = names.find(&inst);
       if (name_it != names.end()) {
         auto &entry = *name_it;
-        if (!entry.first->hasName() &&
-            !entry.first->getType()->isVoidTy() &&
+        if (!entry.first->hasName() && !entry.first->getType()->isVoidTy() &&
             !used_names.count(entry.second)) {
           entry.first->setName(entry.second);
           used_names.insert(entry.second);
@@ -574,18 +561,10 @@ static void FixupBasicBlockVariables(llvm::Function *basic_block) {
 
 // Add attributes to llvm::Argument in a way portable across LLVMs
 static void AddNoAliasToArgument(llvm::Argument *arg) {
-  IF_LLVM_LT_390(
-    arg->addAttr(
-      llvm::AttributeSet::get(
-        arg->getContext(),
-        arg->getArgNo() + 1,
-        llvm::Attribute::NoAlias)
-    );
-  );
+  IF_LLVM_LT_390(arg->addAttr(llvm::AttributeSet::get(
+      arg->getContext(), arg->getArgNo() + 1, llvm::Attribute::NoAlias)););
 
-  IF_LLVM_GTE_390(
-    arg->addAttr(llvm::Attribute::NoAlias);
-  );
+  IF_LLVM_GTE_390(arg->addAttr(llvm::Attribute::NoAlias););
 }
 
 // ensures that mandatory remill functions have the correct
@@ -617,6 +596,7 @@ static void PrepareModuleRemillFunctions(llvm::Module *mod) {
 
 // Compare two registers for sorting.
 static bool RegisterComparator(const Register &lhs, const Register &rhs) {
+
   // Bigger to appear later in the array. E.g. RAX before EAX.
   if (lhs.size > rhs.size) {
     return true;
@@ -692,9 +672,8 @@ static unsigned Complexity(llvm::Value *base, llvm::Type *state_ptr_type) {
       break;
 
     } else {
-      LOG(FATAL)
-          << "Unexpected value " << LLVMThingToString(base)
-          << " in State structure indexing chain";
+      LOG(FATAL) << "Unexpected value " << LLVMThingToString(base)
+                 << " in State structure indexing chain";
       base = nullptr;
     }
   }
@@ -705,12 +684,11 @@ static unsigned Complexity(llvm::Value *base, llvm::Type *state_ptr_type) {
 static uint64_t TotalOffset(const llvm::DataLayout &dl, llvm::Value *base,
                             llvm::Type *state_ptr_type) {
   uint64_t total_offset = 0;
-  const auto state_size = dl.getTypeAllocSize(
-      state_ptr_type->getPointerElementType());
+  const auto state_size =
+      dl.getTypeAllocSize(state_ptr_type->getPointerElementType());
   while (base) {
     if (auto gep = llvm::dyn_cast<llvm::GEPOperator>(base); gep) {
-      llvm::APInt accumulated_offset(
-          dl.getPointerSizeInBits(0), 0, false);
+      llvm::APInt accumulated_offset(dl.getPointerSizeInBits(0), 0, false);
       CHECK(gep->accumulateConstantOffset(dl, accumulated_offset));
       auto curr_offset = accumulated_offset.getZExtValue();
       CHECK_LT(curr_offset, state_size);
@@ -732,20 +710,18 @@ static uint64_t TotalOffset(const llvm::DataLayout &dl, llvm::Value *base,
       break;
 
     } else {
-      LOG(FATAL)
-          << "Unexpected value " << LLVMThingToString(base)
-          << " in State structure indexing chain";
+      LOG(FATAL) << "Unexpected value " << LLVMThingToString(base)
+                 << " in State structure indexing chain";
       base = nullptr;
     }
   }
   return total_offset;
 }
 
-static llvm::Value *FinishAddressOf(
-    llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
-    llvm::Type *state_ptr_type,
-    size_t state_size, const Register *reg, unsigned addr_space,
-    llvm::Value *gep) {
+static llvm::Value *
+FinishAddressOf(llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
+                llvm::Type *state_ptr_type, size_t state_size,
+                const Register *reg, unsigned addr_space, llvm::Value *gep) {
 
   auto gep_offset = TotalOffset(dl, gep, state_ptr_type);
   auto gep_type_at_offset = gep->getType()->getPointerElementType();
@@ -777,13 +753,12 @@ static llvm::Value *FinishAddressOf(
   // `goal_ptr_type` and index.
   if (((diff / reg->size) * reg->size) == diff) {
     llvm::Value *elem_indexes[] = {
-        llvm::ConstantInt::get(index_type, diff / reg->size, false)
-    };
+        llvm::ConstantInt::get(index_type, diff / reg->size, false)};
 
     if (auto const_gep = llvm::dyn_cast<llvm::Constant>(gep); const_gep) {
       const_gep = llvm::ConstantExpr::getBitCast(const_gep, goal_ptr_type);
-      return llvm::ConstantExpr::getGetElementPtr(
-          reg->type, const_gep, elem_indexes);
+      return llvm::ConstantExpr::getGetElementPtr(reg->type, const_gep,
+                                                  elem_indexes);
 
     } else {
       const auto arr = ir.CreateBitCast(gep, goal_ptr_type);
@@ -793,22 +768,20 @@ static llvm::Value *FinishAddressOf(
 
   // Worst case is that we have to fall down to byte-granularity
   // pointer arithmetic.
-  const auto byte_type = llvm::IntegerType::getInt8Ty(
-      goal_ptr_type->getContext());
+  const auto byte_type =
+      llvm::IntegerType::getInt8Ty(goal_ptr_type->getContext());
   llvm::Value *elem_indexes[] = {
-      llvm::ConstantInt::get(index_type, diff, false)
-  };
+      llvm::ConstantInt::get(index_type, diff, false)};
 
   if (auto const_gep = llvm::dyn_cast<llvm::Constant>(gep); const_gep) {
     const_gep = llvm::ConstantExpr::getBitCast(
         const_gep, llvm::PointerType::get(byte_type, addr_space));
-    const_gep = llvm::ConstantExpr::getGetElementPtr(
-        byte_type, const_gep, elem_indexes);
+    const_gep = llvm::ConstantExpr::getGetElementPtr(byte_type, const_gep,
+                                                     elem_indexes);
     return llvm::ConstantExpr::getBitCast(const_gep, goal_ptr_type);
 
   } else {
-    gep = ir.CreateBitCast(
-        gep, llvm::PointerType::get(byte_type, addr_space));
+    gep = ir.CreateBitCast(gep, llvm::PointerType::get(byte_type, addr_space));
     gep = ir.CreateGEP(byte_type, gep, elem_indexes);
     return ir.CreateBitCast(gep, goal_ptr_type);
   }
@@ -821,13 +794,13 @@ static llvm::Value *FinishAddressOf(
 llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
                                  llvm::BasicBlock *add_to_end) const {
   CHECK_EQ(&(type->getContext()), &(state_ptr->getContext()));
-  const auto state_ptr_type = llvm::dyn_cast<llvm::PointerType>(
-      state_ptr->getType());
+  const auto state_ptr_type =
+      llvm::dyn_cast<llvm::PointerType>(state_ptr->getType());
   CHECK_NOTNULL(state_ptr_type);
   const auto addr_space = state_ptr_type->getAddressSpace();
 
-  const auto state_type = llvm::dyn_cast<llvm::StructType>(
-      state_ptr_type->getPointerElementType());
+  const auto state_type =
+      llvm::dyn_cast<llvm::StructType>(state_ptr_type->getPointerElementType());
   CHECK_NOTNULL(state_type);
 
   const auto module = add_to_end->getParent()->getParent();
@@ -844,8 +817,8 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
   }
 
   auto state_size = dl.getTypeAllocSize(state_type);
-  return FinishAddressOf(
-      ir, dl, state_ptr_type, state_size, this, addr_space, gep);
+  return FinishAddressOf(ir, dl, state_ptr_type, state_size, this, addr_space,
+                         gep);
 }
 
 // Converts an LLVM module object to have the right triple / data layout
@@ -867,19 +840,14 @@ void Arch::PrepareModuleDataLayout(llvm::Module *mod) const {
   llvm::AttributeSet target_attribs;
   target_attribs = target_attribs.addAttribute(
       context,
-      IF_LLVM_LT_500_(llvm::AttributeSet::FunctionIndex)
-      "target-features");
+      IF_LLVM_LT_500_(llvm::AttributeSet::FunctionIndex) "target-features");
   target_attribs = target_attribs.addAttribute(
-      context,
-      IF_LLVM_LT_500_(llvm::AttributeSet::FunctionIndex)
-      "target-cpu");
+      context, IF_LLVM_LT_500_(llvm::AttributeSet::FunctionIndex) "target-cpu");
 
   for (llvm::Function &func : *mod) {
     auto attribs = func.getAttributes();
     attribs = attribs.removeAttributes(
-        context,
-        llvm::AttributeLoc::FunctionIndex,
-        target_attribs);
+        context, llvm::AttributeLoc::FunctionIndex, target_attribs);
     func.setAttributes(attribs);
   }
 }
@@ -895,68 +863,68 @@ void Arch::PrepareModule(llvm::Module *mod) const {
   }
   llvm::Triple new_mod_triple(mod->getTargetTriple());
 
-//  // If `mod` was compiled on macOS, but we're targeting Linux, then strip
-//  // off leading underscore prefixes.
-//  if (orig_mod_triple.isMacOSX() && new_mod_triple.isOSLinux()) {
-//    for (auto &func : *mod) {
-//      if (!func.hasExternalLinkage() ||
-//          !func.getName().startswith("_") ||
-//          func.getName() == "main" ||
-//          func.getName().startswith("__remill")) {
-//        continue;
-//      }
-//
-//      auto unprefixed_name = func.getName().substr(1).str();
-//      if (!mod->getFunction(unprefixed_name)) {
-//        func.setName(unprefixed_name);
-//      }
-//    }
-//
-//    for (auto &var : mod->globals()) {
-//      if (!var.hasExternalLinkage() || !var.getName().startswith("_")) {
-//        continue;
-//      }
-//
-//      auto unprefixed_name = var.getName().substr(1).str();
-//      if (!mod->getGlobalVariable(unprefixed_name, false)) {
-//        var.setName(unprefixed_name);
-//      }
-//    }
-//
-//  // If `mod` was compiled on Linux, but we're targeting macOS, then prefix
-//  // the external symbol names with underscores.
-//  } else if (orig_mod_triple.isOSLinux() && new_mod_triple.isMacOSX()) {
-//    for (auto &func : *mod) {
-//      if (!func.hasExternalLinkage() ||
-//          !func.hasName() ||
-//          func.getName() == "main" ||
-//          func.getName().startswith("__remill")) {
-//        continue;
-//      }
-//
-//      std::stringstream ss;
-//      ss << "_" << func.getName().str();
-//      const auto prefixed_name = ss.str();
-//
-//      if (!mod->getFunction(prefixed_name)) {
-//        func.setName(prefixed_name);
-//      }
-//    }
-//
-//    for (auto &var : mod->globals()) {
-//      if (!var.hasExternalLinkage() || !var.hasName()) {
-//        continue;
-//      }
-//
-//      std::stringstream ss;
-//      ss << "_" << var.getName().str();
-//      const auto prefixed_name = ss.str();
-//
-//      if (!mod->getGlobalVariable(prefixed_name, false)) {
-//        var.setName(prefixed_name);
-//      }
-//    }
-//  }
+  //  // If `mod` was compiled on macOS, but we're targeting Linux, then strip
+  //  // off leading underscore prefixes.
+  //  if (orig_mod_triple.isMacOSX() && new_mod_triple.isOSLinux()) {
+  //    for (auto &func : *mod) {
+  //      if (!func.hasExternalLinkage() ||
+  //          !func.getName().startswith("_") ||
+  //          func.getName() == "main" ||
+  //          func.getName().startswith("__remill")) {
+  //        continue;
+  //      }
+  //
+  //      auto unprefixed_name = func.getName().substr(1).str();
+  //      if (!mod->getFunction(unprefixed_name)) {
+  //        func.setName(unprefixed_name);
+  //      }
+  //    }
+  //
+  //    for (auto &var : mod->globals()) {
+  //      if (!var.hasExternalLinkage() || !var.getName().startswith("_")) {
+  //        continue;
+  //      }
+  //
+  //      auto unprefixed_name = var.getName().substr(1).str();
+  //      if (!mod->getGlobalVariable(unprefixed_name, false)) {
+  //        var.setName(unprefixed_name);
+  //      }
+  //    }
+  //
+  //  // If `mod` was compiled on Linux, but we're targeting macOS, then prefix
+  //  // the external symbol names with underscores.
+  //  } else if (orig_mod_triple.isOSLinux() && new_mod_triple.isMacOSX()) {
+  //    for (auto &func : *mod) {
+  //      if (!func.hasExternalLinkage() ||
+  //          !func.hasName() ||
+  //          func.getName() == "main" ||
+  //          func.getName().startswith("__remill")) {
+  //        continue;
+  //      }
+  //
+  //      std::stringstream ss;
+  //      ss << "_" << func.getName().str();
+  //      const auto prefixed_name = ss.str();
+  //
+  //      if (!mod->getFunction(prefixed_name)) {
+  //        func.setName(prefixed_name);
+  //      }
+  //    }
+  //
+  //    for (auto &var : mod->globals()) {
+  //      if (!var.hasExternalLinkage() || !var.hasName()) {
+  //        continue;
+  //      }
+  //
+  //      std::stringstream ss;
+  //      ss << "_" << var.getName().str();
+  //      const auto prefixed_name = ss.str();
+  //
+  //      if (!mod->getGlobalVariable(prefixed_name, false)) {
+  //        var.setName(prefixed_name);
+  //      }
+  //    }
+  //  }
 }
 
 // Get all of the register information from the prepared module.
@@ -966,8 +934,8 @@ void Arch::CollectRegisters(llvm::Module *module) const {
   llvm::DataLayout dl(module);
   const auto basic_block = BasicBlockFunction(module);
   const auto state_ptr_type = ::remill::StatePointerType(module);
-  const auto state_type = llvm::dyn_cast<llvm::StructType>(
-      state_ptr_type->getElementType());
+  const auto state_type =
+      llvm::dyn_cast<llvm::StructType>(state_ptr_type->getElementType());
   const auto state_size = dl.getTypeAllocSize(state_type);
   const auto index_type = llvm::Type::getInt32Ty(module->getContext());
 
@@ -1007,9 +975,8 @@ void Arch::CollectRegisters(llvm::Module *module) const {
       }
 
       auto name = inst.getName().str();
-      impl->registers.emplace_back(
-          name, offset, dl.getTypeAllocSize(reg_type),
-          Complexity(&inst, state_ptr_type), reg_type);
+      impl->registers.emplace_back(name, offset, dl.getTypeAllocSize(reg_type),
+                                   Complexity(&inst, state_ptr_type), reg_type);
 
       prev_reg_by_name[name] = &inst;
     }
@@ -1036,23 +1003,20 @@ void Arch::CollectRegisters(llvm::Module *module) const {
           const_cast<Register *>(reg_at_offset)->children.push_back(&reg);
         }
       } else if (!reg_at_offset) {
-        LOG(FATAL)
-            << "Register " << reg.name << " is not fully enclosed by parent "
-            << reg.parent->name;
+        LOG(FATAL) << "Register " << reg.name
+                   << " is not fully enclosed by parent " << reg.parent->name;
       } else if (reg.parent != reg_at_offset) {
-        LOG(FATAL)
-            << "Can't set parent of register " << reg.name
-            << " to " << reg_at_offset->name << " because it already has "
-            << reg.parent->name << " as its parent";
+        LOG(FATAL) << "Can't set parent of register " << reg.name << " to "
+                   << reg_at_offset->name << " because it already has "
+                   << reg.parent->name << " as its parent";
       }
       reg_at_offset = &reg;
     }
 
-    reg.gep_index_list.push_back(
-        llvm::ConstantInt::get(index_type, 0, false));
+    reg.gep_index_list.push_back(llvm::ConstantInt::get(index_type, 0, false));
 
-    std::tie(reg.gep_offset, reg.gep_type_at_offset) = BuildIndexes(
-        dl, state_type, 0, reg.offset, reg.gep_index_list);
+    std::tie(reg.gep_offset, reg.gep_type_at_offset) =
+        BuildIndexes(dl, state_type, 0, reg.offset, reg.gep_index_list);
 
     CHECK(reg.gep_type_at_offset != nullptr)
         << "Unable to create index list for register '" << reg.name << "'";
@@ -1060,24 +1024,25 @@ void Arch::CollectRegisters(llvm::Module *module) const {
 
   auto state_ptr = NthArgument(basic_block, remill::kStatePointerArgNum);
 
-  std::unordered_map<const Register *, llvm::SmallVector<llvm::Value *, 8>> reg_indexes;
+  std::unordered_map<const Register *, llvm::SmallVector<llvm::Value *, 8>>
+      reg_indexes;
   std::unordered_map<const Register *, llvm::GetElementPtrInst *> reg_gep;
 
-  auto adjust_indexes =
-      [=] (const Register &reg, llvm::SmallVector<llvm::Value *, 8> &index_vec) {
-        if (!reg.children.empty()) {
-          auto ptr_type = llvm::dyn_cast<llvm::PointerType>(
-              llvm::GetElementPtrInst::getGEPReturnType(
-                  state_type, state_ptr, index_vec));
-          while (!ptr_type->getElementType()->isStructTy()) {
-            index_vec.pop_back();
-            CHECK(!index_vec.empty());
-            ptr_type = llvm::dyn_cast<llvm::PointerType>(
-                llvm::GetElementPtrInst::getGEPReturnType(
-                    state_type, state_ptr, index_vec));
-          }
-        }
-      };
+  auto adjust_indexes = [=](const Register &reg,
+                            llvm::SmallVector<llvm::Value *, 8> &index_vec) {
+    if (!reg.children.empty()) {
+      auto ptr_type = llvm::dyn_cast<llvm::PointerType>(
+          llvm::GetElementPtrInst::getGEPReturnType(state_type, state_ptr,
+                                                    index_vec));
+      while (!ptr_type->getElementType()->isStructTy()) {
+        index_vec.pop_back();
+        CHECK(!index_vec.empty());
+        ptr_type = llvm::dyn_cast<llvm::PointerType>(
+            llvm::GetElementPtrInst::getGEPReturnType(state_type, state_ptr,
+                                                      index_vec));
+      }
+    }
+  };
 
   // Re-add register-specific instructions, but make sure that all GEPs for
   // sub-regs are derived from those of parent regs.
@@ -1095,7 +1060,8 @@ void Arch::CollectRegisters(llvm::Module *module) const {
       auto &parent_indexes = reg_indexes[reg.parent];
       auto parent_gep = reg_gep[reg.parent];
       CHECK_NOTNULL(parent_gep);
-      const auto parent_elem_type = parent_gep->getType()->getPointerElementType();
+      const auto parent_elem_type =
+          parent_gep->getType()->getPointerElementType();
       CHECK(parent_elem_type->isStructTy())
           << "Parent register " << reg.parent->name
           << " truncated index list isn't pointing to a structure type; got: "
@@ -1121,8 +1087,8 @@ void Arch::CollectRegisters(llvm::Module *module) const {
         std::reverse(sub_indexes.begin(), sub_indexes.end());
 
         auto gep = llvm::GetElementPtrInst::CreateInBounds(
-            parent_elem_type, parent_gep, sub_indexes, llvm::Twine::createNull(),
-            insert_loc);
+            parent_elem_type, parent_gep, sub_indexes,
+            llvm::Twine::createNull(), insert_loc);
 
         CHECK_LE(TotalOffset(dl, gep, state_ptr_type), reg.offset);
 
@@ -1132,8 +1098,8 @@ void Arch::CollectRegisters(llvm::Module *module) const {
       } else if (parent_indexes.size() == reg.gep_index_list.size()) {
         llvm::Value *sub_indices[] = {llvm::ConstantInt::get(index_type, 0)};
         auto gep = llvm::GetElementPtrInst::CreateInBounds(
-            parent_elem_type, parent_gep, sub_indices, llvm::Twine::createNull(),
-            insert_loc);
+            parent_elem_type, parent_gep, sub_indices,
+            llvm::Twine::createNull(), insert_loc);
 
         CHECK_LE(TotalOffset(dl, gep, state_ptr_type), reg.offset);
 
@@ -1143,8 +1109,7 @@ void Arch::CollectRegisters(llvm::Module *module) const {
       } else {
         auto gep = llvm::GetElementPtrInst::CreateInBounds(
             parent_elem_type, parent_gep, reg.gep_index_list,
-            llvm::Twine::createNull(),
-            insert_loc);
+            llvm::Twine::createNull(), insert_loc);
 
         CHECK_LE(TotalOffset(dl, gep, state_ptr_type), reg.offset);
         reg_gep[&reg] = gep;
@@ -1159,8 +1124,8 @@ void Arch::CollectRegisters(llvm::Module *module) const {
   const auto addr_space = state_ptr_type->getAddressSpace();
   llvm::IRBuilder<> ir(insert_loc);
   for (auto &reg : impl->registers) {
-    auto final = FinishAddressOf(
-        ir, dl, state_ptr_type, state_size, &reg, addr_space, reg_gep[&reg]);
+    auto final = FinishAddressOf(ir, dl, state_ptr_type, state_size, &reg,
+                                 addr_space, reg_gep[&reg]);
 
     auto prev_reg = prev_reg_by_name[reg.name];
     prev_reg->replaceAllUsesWith(final);
@@ -1168,7 +1133,8 @@ void Arch::CollectRegisters(llvm::Module *module) const {
     final->setName(reg.name);
 
     // Create the node for a `remill_register` annotation.
-    if (auto final_inst = llvm::dyn_cast<llvm::Instruction>(final); final_inst) {
+    if (auto final_inst = llvm::dyn_cast<llvm::Instruction>(final);
+        final_inst) {
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 6)
       auto reg_name_md = llvm::ValueAsMetadata::get(reg.constant_name);
       auto reg_name_node = llvm::MDNode::get(*context, reg_name_md);
@@ -1181,7 +1147,7 @@ void Arch::CollectRegisters(llvm::Module *module) const {
 
   // Run through and delete dead unnamed instructions.
   std::vector<llvm::Instruction *> to_remove;
-  for (auto changed = true; changed; ) {
+  for (auto changed = true; changed;) {
     changed = false;
     for (auto &block : *basic_block) {
       for (auto &inst : block) {

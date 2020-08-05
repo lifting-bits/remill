@@ -40,8 +40,8 @@ DEF_SEM(EOR_Vec, V128W dst, S src1, S src2) {
   auto operand1 = UReadV64(src2);
   auto operand2 = UClearV64(operand4);
   auto operand3 = UNotV64(operand2);
-  UWriteV64(dst, UXorV64(
-      operand1, UAndV64(UXorV64(operand2, operand4), operand3)));
+  UWriteV64(dst,
+            UXorV64(operand1, UAndV64(UXorV64(operand2, operand4), operand3)));
   return memory;
 }
 
@@ -50,8 +50,8 @@ DEF_SEM(BIT_Vec, V128W dst, S dst_src, S src1, S src2) {
   auto operand4 = UReadV64(src1);
   auto operand1 = UReadV64(dst_src);
   auto operand3 = UReadV64(src2);
-  UWriteV64(dst, UXorV64(
-      operand1, UAndV64(UXorV64(operand1, operand4), operand3)));
+  UWriteV64(dst,
+            UXorV64(operand1, UAndV64(UXorV64(operand1, operand4), operand3)));
   return memory;
 }
 
@@ -60,8 +60,8 @@ DEF_SEM(BIF_Vec, V128W dst, S dst_src, S src1, S src2) {
   auto operand4 = UReadV64(src1);
   auto operand1 = UReadV64(dst_src);
   auto operand3 = UNotV64(UReadV64(src2));
-  UWriteV64(dst, UXorV64(
-      operand1, UAndV64(UXorV64(operand1, operand4), operand3)));
+  UWriteV64(dst,
+            UXorV64(operand1, UAndV64(UXorV64(operand1, operand4), operand3)));
   return memory;
 }
 
@@ -70,8 +70,8 @@ DEF_SEM(BSL_Vec, V128W dst, S dst_src, S src1, S src2) {
   auto operand4 = UReadV64(src1);
   auto operand1 = UReadV64(src2);
   auto operand3 = UReadV64(dst_src);
-  UWriteV64(dst, UXorV64(
-      operand1, UAndV64(UXorV64(operand1, operand4), operand3)));
+  UWriteV64(dst,
+            UXorV64(operand1, UAndV64(UXorV64(operand1, operand4), operand3)));
   return memory;
 }
 
@@ -122,17 +122,16 @@ DEF_ISEL(FMOV_V64I_FLOAT2INT) = FMOV_UInt64ToVector;
 namespace {
 
 #define MAKE_DUP(size) \
-    template <typename V> \
-    DEF_SEM(DUP_ ## size, V128W dst, R64 src) { \
-      auto val = TruncTo<uint ## size ## _t>(Read(src)); \
-      V vec = {}; \
-      _Pragma("unroll") \
-      for (auto &element : vec.elems) { \
-        element = val; \
-      } \
-      UWriteV ## size(dst, vec); \
-      return memory; \
-    }
+  template <typename V> \
+  DEF_SEM(DUP_##size, V128W dst, R64 src) { \
+    auto val = TruncTo<uint##size##_t>(Read(src)); \
+    V vec = {}; \
+    _Pragma("unroll") for (auto &element : vec.elems) { \
+      element = val; \
+    } \
+    UWriteV##size(dst, vec); \
+    return memory; \
+  }
 
 MAKE_DUP(8)
 MAKE_DUP(16)
@@ -167,19 +166,19 @@ ALWAYS_INLINE static T UMax(T lhs, T rhs) {
 #define SMax UMax
 
 #define MAKE_BROADCAST(op, prefix, binop, size) \
-    template <typename S, typename V> \
-    DEF_SEM(op ## _ ## size, V128W dst, S src1, S src2) { \
-      auto vec1 = prefix ## ReadV ## size (src1); \
-      auto vec2 = prefix ## ReadV ## size (src2); \
-      V sum = {}; \
-      _Pragma("unroll") \
-      for (size_t i = 0, max_i = NumVectorElems(sum); i < max_i; ++i) { \
-        sum.elems[i] = prefix ## binop(prefix ## ExtractV ## size(vec1, i), \
-                                       prefix ## ExtractV ## size(vec2, i)); \
-      } \
-      prefix ## WriteV ## size(dst, sum); \
-      return memory; \
-    }
+  template <typename S, typename V> \
+  DEF_SEM(op##_##size, V128W dst, S src1, S src2) { \
+    auto vec1 = prefix##ReadV##size(src1); \
+    auto vec2 = prefix##ReadV##size(src2); \
+    V sum = {}; \
+    _Pragma("unroll") for (size_t i = 0, max_i = NumVectorElems(sum); \
+                           i < max_i; ++i) { \
+      sum.elems[i] = prefix##binop(prefix##ExtractV##size(vec1, i), \
+                                   prefix##ExtractV##size(vec2, i)); \
+    } \
+    prefix##WriteV##size(dst, sum); \
+    return memory; \
+  }
 
 MAKE_BROADCAST(ADD, U, Add, 8)
 MAKE_BROADCAST(ADD, U, Add, 16)
@@ -258,24 +257,23 @@ DEF_ISEL(SMAX_ASIMDSAME_ONLY_4S) = SMAX_32<V128, int32v4_t>;
 namespace {
 
 #define MAKE_CMP_BROADCAST(op, prefix, binop, size) \
-    template <typename S, typename V> \
-    DEF_SEM(op ## _ ## size, V128W dst, S src1, I ## size imm) { \
-      auto vec1 = prefix ## ReadV ## size (src1); \
-      auto ucmp_val = Read(imm); \
-      auto cmp_val = Signed(ucmp_val); \
-      decltype(ucmp_val) zeros = 0; \
-      decltype(ucmp_val) ones = ~zeros; \
-      V res = {}; \
-      _Pragma("unroll") \
-      for (size_t i = 0, max_i = NumVectorElems(res); i < max_i; ++i) { \
-        res.elems[i] = Select( \
-            prefix ## binop(prefix ## ExtractV ## size(vec1, i), cmp_val), \
-            ones, \
-            zeros); \
-      } \
-      UWriteV ## size(dst, res); \
-      return memory; \
-    }
+  template <typename S, typename V> \
+  DEF_SEM(op##_##size, V128W dst, S src1, I##size imm) { \
+    auto vec1 = prefix##ReadV##size(src1); \
+    auto ucmp_val = Read(imm); \
+    auto cmp_val = Signed(ucmp_val); \
+    decltype(ucmp_val) zeros = 0; \
+    decltype(ucmp_val) ones = ~zeros; \
+    V res = {}; \
+    _Pragma("unroll") for (size_t i = 0, max_i = NumVectorElems(res); \
+                           i < max_i; ++i) { \
+      res.elems[i] = \
+          Select(prefix##binop(prefix##ExtractV##size(vec1, i), cmp_val), \
+                 ones, zeros); \
+    } \
+    UWriteV##size(dst, res); \
+    return memory; \
+  }
 
 MAKE_CMP_BROADCAST(CMPEQ_IMM, S, CmpEq, 8)
 MAKE_CMP_BROADCAST(CMPEQ_IMM, S, CmpEq, 16)
@@ -357,24 +355,22 @@ DEF_ISEL(CMGE_ASIMDMISC_Z_2D) = CMPGE_IMM_64<V128, uint64v2_t>;
 namespace {
 
 #define MAKE_CMP_BROADCAST(op, prefix, binop, size) \
-    template <typename S, typename V> \
-    DEF_SEM(op ## _ ## size, V128W dst, S src1, S src2) { \
-      auto vec1 = prefix ## ReadV ## size (src1); \
-      auto vec2 = prefix ## ReadV ## size (src2); \
-      uint ## size ## _t zeros = 0; \
-      uint ## size ## _t ones = ~zeros; \
-      V res = {}; \
-      _Pragma("unroll") \
-      for (size_t i = 0, max_i = NumVectorElems(res); i < max_i; ++i) { \
-        res.elems[i] = Select( \
-            prefix ## binop(prefix ## ExtractV ## size(vec1, i), \
-                            prefix ## ExtractV ## size(vec2, i)), \
-            ones, \
-            zeros); \
-      } \
-      UWriteV ## size(dst, res); \
-      return memory; \
-    }
+  template <typename S, typename V> \
+  DEF_SEM(op##_##size, V128W dst, S src1, S src2) { \
+    auto vec1 = prefix##ReadV##size(src1); \
+    auto vec2 = prefix##ReadV##size(src2); \
+    uint##size##_t zeros = 0; \
+    uint##size##_t ones = ~zeros; \
+    V res = {}; \
+    _Pragma("unroll") for (size_t i = 0, max_i = NumVectorElems(res); \
+                           i < max_i; ++i) { \
+      res.elems[i] = Select(prefix##binop(prefix##ExtractV##size(vec1, i), \
+                                          prefix##ExtractV##size(vec2, i)), \
+                            ones, zeros); \
+    } \
+    UWriteV##size(dst, res); \
+    return memory; \
+  }
 
 template <typename T>
 ALWAYS_INLINE static bool UCmpTst(T lhs, T rhs) {
@@ -443,28 +439,24 @@ DEF_ISEL(CMTST_ASIMDSAME_ONLY_2D) = CMPTST_64<V128, uint64v2_t>;
 namespace {
 
 #define MAKE_PAIRWAISE_BROADCAST(op, prefix, binop, size) \
-    template <typename S, typename V> \
-    DEF_SEM(op ## _ ## size, V128W dst, S src1, S src2) { \
-      auto vec1 = prefix ## ReadV ## size (src1); \
-      auto vec2 = prefix ## ReadV ## size (src2); \
-      V res = {}; \
-      size_t max_i = NumVectorElems(res); \
-      size_t j = 0; \
-      _Pragma("unroll") \
-      for (size_t i = 0; i < max_i; i += 2) { \
-        res.elems[j++] = prefix ## binop( \
-            prefix ## ExtractV ## size(vec1, i), \
-            prefix ## ExtractV ## size(vec1, i + 1)); \
-      } \
-      _Pragma("unroll") \
-      for (size_t i = 0; i < max_i; i += 2) { \
-        res.elems[j++] = prefix ## binop( \
-            prefix ## ExtractV ## size(vec2, i), \
-            prefix ## ExtractV ## size(vec2, i + 1)); \
-      } \
-      prefix ## WriteV ## size(dst, res); \
-      return memory; \
-    }
+  template <typename S, typename V> \
+  DEF_SEM(op##_##size, V128W dst, S src1, S src2) { \
+    auto vec1 = prefix##ReadV##size(src1); \
+    auto vec2 = prefix##ReadV##size(src2); \
+    V res = {}; \
+    size_t max_i = NumVectorElems(res); \
+    size_t j = 0; \
+    _Pragma("unroll") for (size_t i = 0; i < max_i; i += 2) { \
+      res.elems[j++] = prefix##binop(prefix##ExtractV##size(vec1, i), \
+                                     prefix##ExtractV##size(vec1, i + 1)); \
+    } \
+    _Pragma("unroll") for (size_t i = 0; i < max_i; i += 2) { \
+      res.elems[j++] = prefix##binop(prefix##ExtractV##size(vec2, i), \
+                                     prefix##ExtractV##size(vec2, i + 1)); \
+    } \
+    prefix##WriteV##size(dst, res); \
+    return memory; \
+  }
 
 MAKE_PAIRWAISE_BROADCAST(ADDP, U, Add, 8)
 MAKE_PAIRWAISE_BROADCAST(ADDP, U, Add, 16)
@@ -530,13 +522,13 @@ DEF_ISEL(SMAXP_ASIMDSAME_ONLY_4S) = SMAXP_32<V128, int32v4_t>;
 namespace {
 
 template <typename V, typename B>
-ALWAYS_INLINE static auto Reduce2(const V &vec, B binop, size_t base=0)
+ALWAYS_INLINE static auto Reduce2(const V &vec, B binop, size_t base = 0)
     -> decltype(binop(vec.elems[0], vec.elems[1])) {
   return binop(vec.elems[base + 0], vec.elems[base + 1]);
 }
 
 template <typename V, typename B>
-ALWAYS_INLINE static auto Reduce4(const V &vec, B binop, size_t base=0)
+ALWAYS_INLINE static auto Reduce4(const V &vec, B binop, size_t base = 0)
     -> decltype(binop(vec.elems[0], vec.elems[1])) {
   auto lo = Reduce2(vec, binop, base + 0);
   auto hi = Reduce2(vec, binop, base + 2);
@@ -544,7 +536,7 @@ ALWAYS_INLINE static auto Reduce4(const V &vec, B binop, size_t base=0)
 }
 
 template <typename V, typename B>
-ALWAYS_INLINE static auto Reduce8(const V &vec, B binop, size_t base=0)
+ALWAYS_INLINE static auto Reduce8(const V &vec, B binop, size_t base = 0)
     -> decltype(binop(vec.elems[0], vec.elems[1])) {
   auto lo = Reduce4(vec, binop, base + 0);
   auto hi = Reduce4(vec, binop, base + 4);
@@ -552,7 +544,7 @@ ALWAYS_INLINE static auto Reduce8(const V &vec, B binop, size_t base=0)
 }
 
 template <typename V, typename B>
-ALWAYS_INLINE static auto Reduce16(const V &vec, B binop, size_t base=0)
+ALWAYS_INLINE static auto Reduce16(const V &vec, B binop, size_t base = 0)
     -> decltype(binop(vec.elems[0], vec.elems[1])) {
   auto lo = Reduce8(vec, binop, base + 0);
   auto hi = Reduce8(vec, binop, base + 8);
@@ -596,8 +588,7 @@ template <typename S>
 DEF_SEM(UMINV_8, V128W dst, S src) {
   auto vec = UReadV8(src);
   auto val = std::numeric_limits<uint8_t>::max();
-  _Pragma("unroll")
-  for (auto elem : vec.elems) {
+  _Pragma("unroll") for (auto elem : vec.elems) {
     val = UMin(elem, val);
   }
   UWriteV8(dst, val);
@@ -608,8 +599,7 @@ template <typename S>
 DEF_SEM(UMINV_16, V128W dst, S src) {
   auto vec = UReadV16(src);
   auto val = std::numeric_limits<uint16_t>::max();
-  _Pragma("unroll")
-  for (auto elem : vec.elems) {
+  _Pragma("unroll") for (auto elem : vec.elems) {
     val = UMin(elem, val);
   }
   UWriteV16(dst, val);
@@ -620,8 +610,7 @@ template <typename S>
 DEF_SEM(UMINV_32, V128W dst, S src) {
   auto vec = UReadV32(src);
   auto val = std::numeric_limits<uint32_t>::max();
-  _Pragma("unroll")
-  for (auto elem : vec.elems) {
+  _Pragma("unroll") for (auto elem : vec.elems) {
     val = UMin(elem, val);
   }
   UWriteV32(dst, val);
@@ -632,8 +621,7 @@ template <typename S>
 DEF_SEM(SMINV_8, V128W dst, S src) {
   auto vec = SReadV8(src);
   auto val = std::numeric_limits<int8_t>::max();
-  _Pragma("unroll")
-  for (auto elem : vec.elems) {
+  _Pragma("unroll") for (auto elem : vec.elems) {
     val = SMin(elem, val);
   }
   SWriteV8(dst, val);
@@ -644,8 +632,7 @@ template <typename S>
 DEF_SEM(SMINV_16, V128W dst, S src) {
   auto vec = SReadV16(src);
   auto val = std::numeric_limits<int16_t>::max();
-  _Pragma("unroll")
-  for (auto elem : vec.elems) {
+  _Pragma("unroll") for (auto elem : vec.elems) {
     val = SMin(elem, val);
   }
   SWriteV16(dst, val);
@@ -656,8 +643,7 @@ template <typename S>
 DEF_SEM(SMINV_32, V128W dst, S src) {
   auto vec = SReadV32(src);
   auto val = std::numeric_limits<int32_t>::max();
-  _Pragma("unroll")
-  for (auto elem : vec.elems) {
+  _Pragma("unroll") for (auto elem : vec.elems) {
     val = SMin(elem, val);
   }
   SWriteV32(dst, val);
@@ -668,8 +654,7 @@ template <typename S>
 DEF_SEM(UMAXV_8, V128W dst, S src) {
   auto vec = UReadV8(src);
   auto val = std::numeric_limits<uint8_t>::min();
-  _Pragma("unroll")
-  for (auto elem : vec.elems) {
+  _Pragma("unroll") for (auto elem : vec.elems) {
     val = UMax(elem, val);
   }
   UWriteV8(dst, val);
@@ -680,8 +665,7 @@ template <typename S>
 DEF_SEM(UMAXV_16, V128W dst, S src) {
   auto vec = UReadV16(src);
   auto val = std::numeric_limits<uint16_t>::min();
-  _Pragma("unroll")
-  for (auto elem : vec.elems) {
+  _Pragma("unroll") for (auto elem : vec.elems) {
     val = UMax(elem, val);
   }
   UWriteV16(dst, val);
@@ -692,8 +676,7 @@ template <typename S>
 DEF_SEM(UMAXV_32, V128W dst, S src) {
   auto vec = UReadV32(src);
   auto val = std::numeric_limits<uint32_t>::min();
-  _Pragma("unroll")
-  for (auto elem : vec.elems) {
+  _Pragma("unroll") for (auto elem : vec.elems) {
     val = UMax(elem, val);
   }
   UWriteV32(dst, val);
@@ -704,8 +687,7 @@ template <typename S>
 DEF_SEM(SMAXV_8, V128W dst, S src) {
   auto vec = SReadV8(src);
   auto val = std::numeric_limits<int8_t>::min();
-  _Pragma("unroll")
-  for (auto elem : vec.elems) {
+  _Pragma("unroll") for (auto elem : vec.elems) {
     val = SMax(elem, val);
   }
   SWriteV8(dst, val);
@@ -716,8 +698,7 @@ template <typename S>
 DEF_SEM(SMAXV_16, V128W dst, S src) {
   auto vec = SReadV16(src);
   auto val = std::numeric_limits<int16_t>::min();
-  _Pragma("unroll")
-  for (auto elem : vec.elems) {
+  _Pragma("unroll") for (auto elem : vec.elems) {
     val = SMax(elem, val);
   }
   SWriteV16(dst, val);
@@ -728,8 +709,7 @@ template <typename S>
 DEF_SEM(SMAXV_32, V128W dst, S src) {
   auto vec = SReadV32(src);
   auto val = std::numeric_limits<int32_t>::min();
-  _Pragma("unroll")
-  for (auto elem : vec.elems) {
+  _Pragma("unroll") for (auto elem : vec.elems) {
     val = SMax(elem, val);
   }
   SWriteV32(dst, val);
@@ -780,20 +760,20 @@ ALWAYS_INLINE static T FloatMin(T lhs, T rhs) {
     return rhs;
   }
 
-//  if (lhs < rhs) {
-//    return lhs;
-//
-//  } else if (lhs > rhs) {
-//    return rhs;
-//
-//  // Use integer comparisons; we need to return the "most negative" value
-//  // (e.g. in the case of +0 and -0).
-//  } else {
-//    auto a = reinterpret_cast<I &>(lhs);
-//    auto b = reinterpret_cast<I &>(rhs);
-//    auto res = SMin(a, b);
-//    return reinterpret_cast<T &>(res);
-//  }
+  //  if (lhs < rhs) {
+  //    return lhs;
+  //
+  //  } else if (lhs > rhs) {
+  //    return rhs;
+  //
+  //  // Use integer comparisons; we need to return the "most negative" value
+  //  // (e.g. in the case of +0 and -0).
+  //  } else {
+  //    auto a = reinterpret_cast<I &>(lhs);
+  //    auto b = reinterpret_cast<I &>(rhs);
+  //    auto res = SMin(a, b);
+  //    return reinterpret_cast<T &>(res);
+  //  }
 }
 
 template <typename T, typename I>
@@ -805,21 +785,21 @@ ALWAYS_INLINE static T FloatMax(T lhs, T rhs) {
   } else {
     return rhs;
   }
-//
-//  if (lhs < rhs) {
-//    return rhs;
-//
-//  } else if (lhs > rhs) {
-//    return lhs;
-//
-//  // Use integer comparisons; we need to return the "most negative" value
-//  // (e.g. in the case of +0 and -0).
-//  } else {
-//    auto a = reinterpret_cast<I &>(lhs);
-//    auto b = reinterpret_cast<I &>(rhs);
-//    auto res = SMax(a, b);
-//    return reinterpret_cast<T &>(res);
-//  }
+  //
+  //  if (lhs < rhs) {
+  //    return rhs;
+  //
+  //  } else if (lhs > rhs) {
+  //    return lhs;
+  //
+  //  // Use integer comparisons; we need to return the "most negative" value
+  //  // (e.g. in the case of +0 and -0).
+  //  } else {
+  //    auto a = reinterpret_cast<I &>(lhs);
+  //    auto b = reinterpret_cast<I &>(rhs);
+  //    auto res = SMax(a, b);
+  //    return reinterpret_cast<T &>(res);
+  //  }
 }
 
 // NOTE(pag): These aren't quite right w.r.t. NaN propagation.
@@ -852,8 +832,8 @@ DEF_SEM(NOT_8, V128W dst, S src) {
 
 }  // namespace
 
-DEF_ISEL(NOT_ASIMDMISC_R_8B) = NOT_8<V64>; 
-DEF_ISEL(NOT_ASIMDMISC_R_16B) = NOT_8<V128>; 
+DEF_ISEL(NOT_ASIMDMISC_R_8B) = NOT_8<V64>;
+DEF_ISEL(NOT_ASIMDMISC_R_16B) = NOT_8<V128>;
 
 namespace {
 
@@ -863,19 +843,17 @@ DEF_SEM(EXT, V128W dst, T src1, T src2, I32 src3) {
   auto vn = UReadV8(src1);
   auto vm = UReadV8(src2);
   uint8v16_t result = {};
-  _Pragma("unroll")
-  for (size_t i = 0, max_i = count; i+lsb < max_i; ++i) {
-    result.elems[count-1-i] = UExtractV8(vm, i+lsb);
+  _Pragma("unroll") for (size_t i = 0, max_i = count; i + lsb < max_i; ++i) {
+    result.elems[count - 1 - i] = UExtractV8(vm, i + lsb);
   }
-  _Pragma("unroll")
-  for (size_t i = lsb; i < count; ++i) {
-    result.elems[count-1-i] = UExtractV8(vn, i-lsb);
+  _Pragma("unroll") for (size_t i = lsb; i < count; ++i) {
+    result.elems[count - 1 - i] = UExtractV8(vn, i - lsb);
   }
   UWriteV8(dst, result);
   return memory;
 }
 
-} //  namespace
+}  //  namespace
 
 DEF_ISEL(EXT_ASIMDEXT_ONLY_8B) = EXT<V64, 8>;
 DEF_ISEL(EXT_ASIMDEXT_ONLY_16B) = EXT<V128, 16>;

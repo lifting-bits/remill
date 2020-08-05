@@ -20,12 +20,13 @@ namespace {
 
 template <typename D, typename S1, typename S2, typename S3>
 DEF_SEM(VFMADD132SD, D dst, S1 src1, S2 src2, S3 src3) {
+
   // Each operand is a vector of 64-bit (QWORD) floats:
   auto temp_vec = FReadV64(src1);  // src1 is also dst
   auto src3_vec = FReadV64(src3);
   auto src2_vec = FReadV64(src2);
 
-  auto dst_float = FExtractV64(temp_vec, 0);   // dest[63:0]
+  auto dst_float = FExtractV64(temp_vec, 0);  // dest[63:0]
   auto src3_float = FExtractV64(src3_vec, 0);  // src3[63:0]
   auto src2_float = FExtractV64(src2_vec, 0);  // src2[63:0]
 
@@ -40,6 +41,7 @@ DEF_SEM(VFMADD132SD, D dst, S1 src1, S2 src2, S3 src3) {
 
 template <typename D, typename S1, typename S2, typename S3>
 DEF_SEM(VFMADD231SD, D dst, S1 src1, S2 src2, S3 src3) {
+
   // Each operand is a vector of 64-bit (QWORD) floats:
   auto src2_vec = FReadV64(src2);
   auto src3_vec = FReadV64(src3);
@@ -47,7 +49,7 @@ DEF_SEM(VFMADD231SD, D dst, S1 src1, S2 src2, S3 src3) {
 
   auto src2_float = FExtractV64(src2_vec, 0);  // src2[63:0]
   auto src3_float = FExtractV64(src3_vec, 0);  // src3[63:0]
-  auto dst_float = FExtractV64(temp_vec, 0);   // dest[63:0]
+  auto dst_float = FExtractV64(temp_vec, 0);  // dest[63:0]
 
   // DEST[63:0] <- RoundFPControl_MXCSR(SRC2[63:0]*SRC3[63:0] + DEST[63:0])
   auto vfmadd231sd_float = (src2_float * src3_float + dst_float);
@@ -60,13 +62,14 @@ DEF_SEM(VFMADD231SD, D dst, S1 src1, S2 src2, S3 src3) {
 
 template <typename D, typename S1, typename S2, typename S3>
 DEF_SEM(VFMADD213SD, D dst, S1 src1, S2 src2, S3 src3) {
+
   // Each operand is a vector of 64-bit (QWORD) floats:
   auto src2_vec = FReadV64(src2);
   auto temp_vec = FReadV64(src1);  // src1 is also dst
   auto src3_vec = FReadV64(src3);
 
   auto src2_float = FExtractV64(src2_vec, 0);  // src2[63:0]
-  auto dst_float = FExtractV64(temp_vec, 0);   // dest[63:0]
+  auto dst_float = FExtractV64(temp_vec, 0);  // dest[63:0]
   auto src3_float = FExtractV64(src3_vec, 0);  // src3[63:0]
 
   // DEST[63:0] <- RoundFPControl_MXCSR(SRC2[63:0]*DEST[63:0] + SRC3[63:0])
@@ -101,12 +104,13 @@ namespace {
 
 template <typename D, typename S1, typename S2, typename S3>
 DEF_SEM(VFMSUB132SD, D dst, S1 src1, S2 src2, S3 src3) {
+
   // Each operand is a vector of 64-bit (QWORD) floats:
   auto temp_vec = FReadV64(src1);  // src1 is also dst
   auto src3_vec = FReadV64(src3);
   auto src2_vec = FReadV64(src2);
 
-  auto dst_float = FExtractV64(temp_vec, 0);   // dest[63:0]
+  auto dst_float = FExtractV64(temp_vec, 0);  // dest[63:0]
   auto src3_float = FExtractV64(src3_vec, 0);  // src3[63:0]
   auto src2_float = FExtractV64(src2_vec, 0);  // src2[63:0]
 
@@ -121,13 +125,14 @@ DEF_SEM(VFMSUB132SD, D dst, S1 src1, S2 src2, S3 src3) {
 
 template <typename D, typename S1, typename S2, typename S3>
 DEF_SEM(VFMSUB213SD, D dst, S1 src1, S2 src2, S3 src3) {
+
   // Each operand is a vector of 64-bit (QWORD) floats:
   auto src2_vec = FReadV64(src2);
   auto temp_vec = FReadV64(src1);  // src1 is also dst
   auto src3_vec = FReadV64(src3);
 
   auto src2_float = FExtractV64(src2_vec, 0);  // src2[63:0]
-  auto dst_float = FExtractV64(temp_vec, 0);   // dest[63:0]
+  auto dst_float = FExtractV64(temp_vec, 0);  // dest[63:0]
   auto src3_float = FExtractV64(src3_vec, 0);  // src3[63:0]
 
   // DEST[63:0] <- RoundFPControl(SRC2[63:0]*DEST[63:0] - SRC3[63:0])
@@ -141,6 +146,7 @@ DEF_SEM(VFMSUB213SD, D dst, S1 src1, S2 src2, S3 src3) {
 
 template <typename D, typename S1, typename S2, typename S3>
 DEF_SEM(VFMSUB231SD, D dst, S1 src1, S2 src2, S3 src3) {
+
   // Each operand is a vector of 64-bit (QWORD) floats:
   auto src2_vec = FReadV64(src2);
   auto src3_vec = FReadV64(src3);
@@ -148,7 +154,7 @@ DEF_SEM(VFMSUB231SD, D dst, S1 src1, S2 src2, S3 src3) {
 
   auto src2_float = FExtractV64(src2_vec, 0);  // src2[63:0]
   auto src3_float = FExtractV64(src3_vec, 0);  // src3[63:0]
-  auto dst_float = FExtractV64(temp_vec, 0);   // dest[63:0]
+  auto dst_float = FExtractV64(temp_vec, 0);  // dest[63:0]
 
   // DEST[63:0] <- RoundFPControl(SRC2[63:0]*SRC3[63:0] - DEST[63:0])
   auto vfmsub231sd_float = (src2_float * src3_float - dst_float);

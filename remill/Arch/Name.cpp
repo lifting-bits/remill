@@ -22,14 +22,10 @@ namespace remill {
 
 ArchName GetArchName(const llvm::Triple &triple) {
   switch (triple.getArch()) {
-    case llvm::Triple::ArchType::x86:
-      return kArchX86;
-    case llvm::Triple::ArchType::x86_64:
-      return kArchAMD64;
-    case llvm::Triple::ArchType::aarch64:
-      return kArchAArch64LittleEndian;
-    default:
-      return kArchInvalid;
+    case llvm::Triple::ArchType::x86: return kArchX86;
+    case llvm::Triple::ArchType::x86_64: return kArchAMD64;
+    case llvm::Triple::ArchType::aarch64: return kArchAArch64LittleEndian;
+    default: return kArchInvalid;
   }
 }
 
@@ -62,22 +58,14 @@ ArchName GetArchName(const std::string &arch_name) {
 
 std::string GetArchName(ArchName arch_name) {
   switch (arch_name) {
-    case kArchInvalid:
-      return "invalid";
-    case kArchX86:
-      return "x86";
-    case kArchX86_AVX:
-      return "x86_avx";
-    case kArchX86_AVX512:
-      return "x86_avx512";
-    case kArchAMD64:
-      return "amd64";
-    case kArchAMD64_AVX:
-      return "amd64_avx";
-    case kArchAMD64_AVX512:
-      return "amd64_avx512";
-    case kArchAArch64LittleEndian:
-      return "aarch64";
+    case kArchInvalid: return "invalid";
+    case kArchX86: return "x86";
+    case kArchX86_AVX: return "x86_avx";
+    case kArchX86_AVX512: return "x86_avx512";
+    case kArchAMD64: return "amd64";
+    case kArchAMD64_AVX: return "amd64_avx";
+    case kArchAMD64_AVX512: return "amd64_avx512";
+    case kArchAArch64LittleEndian: return "aarch64";
   }
   return "invalid";
 }

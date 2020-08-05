@@ -39,11 +39,7 @@ class Operand {
     kTypeAddress
   } type;
 
-  enum Action {
-    kActionInvalid,
-    kActionRead,
-    kActionWrite
-  } action;
+  enum Action { kActionInvalid, kActionRead, kActionWrite } action;
 
   // Size of this operand, in bits.
   uint64_t size;
@@ -200,10 +196,8 @@ class Instruction {
     switch (category) {
       case kCategoryInvalid:
       case kCategoryNormal:
-      case kCategoryNoOp:
-        return false;
-      default:
-        return true;
+      case kCategoryNoOp: return false;
+      default: return true;
     }
   }
 
@@ -211,10 +205,8 @@ class Instruction {
     switch (category) {
       case kCategoryDirectFunctionCall:
       case kCategoryDirectJump:
-      case kCategoryConditionalBranch:
-        return true;
-      default:
-        return false;
+      case kCategoryConditionalBranch: return true;
+      default: return false;
     }
   }
 
@@ -225,10 +217,8 @@ class Instruction {
       case kCategoryConditionalBranch:
       case kCategoryAsyncHyperCall:
       case kCategoryConditionalAsyncHyperCall:
-      case kCategoryFunctionReturn:
-        return true;
-      default:
-        return false;
+      case kCategoryFunctionReturn: return true;
+      default: return false;
     }
   }
 
@@ -239,10 +229,8 @@ class Instruction {
   inline bool IsFunctionCall(void) const {
     switch (category) {
       case kCategoryDirectFunctionCall:
-      case kCategoryIndirectFunctionCall:
-        return true;
-      default:
-        return false;
+      case kCategoryIndirectFunctionCall: return true;
+      default: return false;
     }
   }
 

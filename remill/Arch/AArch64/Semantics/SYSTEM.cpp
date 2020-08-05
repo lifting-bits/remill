@@ -24,8 +24,8 @@ DEF_SEM(CallSupervisor, I32 imm) {
 
 DEF_SEM(Breakpoint, I32 imm) {
   HYPER_CALL_VECTOR = Read(imm);
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAArch64Breakpoint);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kAArch64Breakpoint);
 }
 
 DEF_SEM(DoMRS_RS_SYSTEM_FPSR, R64W dest) {
@@ -33,6 +33,7 @@ DEF_SEM(DoMRS_RS_SYSTEM_FPSR, R64W dest) {
   fpsr.ixc = state.sr.ixc;
   fpsr.ofc = state.sr.ofc;
   fpsr.ufc = state.sr.ufc;
+
   //fpsr.idc = state.sr.idc;  // TODO(garret): fix the saving of the idc bit before reenabling (issue #188)
   fpsr.ioc = state.sr.ioc;
   WriteZExt(dest, fpsr.flat);
@@ -49,6 +50,7 @@ DEF_SEM(DoMSR_SR_SYSTEM_FPSR, R64 src) {
   state.sr.ofc = fpsr.ofc;
   state.sr.ixc = fpsr.ixc;
   state.sr.ufc = fpsr.ufc;
+
   //state.sr.idc = fpsr.idc;  // TODO(garret): fix the saving of the idc bit before reenabling (issue #188)
   return memory;
 }
@@ -79,6 +81,7 @@ DEF_SEM(DoMSR_SR_SYSTEM_TPIDR_EL0, R64 src) {
 }
 
 DEF_SEM(DataMemoryBarrier) {
+
   // TODO(pag): Full-system data memory barrier probably requires a synchronous
   //            hypercall if it behaves kind of like Linux's `sys_membarrier`.
   return __remill_barrier_store_store(memory);

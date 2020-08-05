@@ -16,11 +16,18 @@
 
 #define _XOPEN_SOURCE
 
+#include <dlfcn.h>
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+#include <gtest/gtest.h>
+#include <setjmp.h>
+#include <signal.h>
+#include <ucontext.h>
+
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <dlfcn.h>
 #include <iostream>
 #include <limits>
 #include <map>
@@ -28,19 +35,10 @@
 #include <type_traits>
 #include <vector>
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-#include <gtest/gtest.h>
-
-#include <setjmp.h>
-#include <signal.h>
-#include <ucontext.h>
-
-#include "tests/X86/Test.h"
-
-#include "remill/Arch/Runtime/Runtime.h"
 #include "remill/Arch/Float.h"
+#include "remill/Arch/Runtime/Runtime.h"
 #include "remill/Arch/X86/Runtime/State.h"
+#include "tests/X86/Test.h"
 
 DECLARE_string(arch);
 DECLARE_string(os);
@@ -71,11 +69,11 @@ static Flags gRflagsInitial;
 
 static const addr_t g64BitMask = IF_64BIT_ELSE(~0UL, 0UL);
 
-static const auto gStackBase = reinterpret_cast<uintptr_t>(
-    &(gLiftedStack.bytes[0]));
+static const auto gStackBase =
+    reinterpret_cast<uintptr_t>(&(gLiftedStack.bytes[0]));
 
-static const auto gStackLimit = reinterpret_cast<uintptr_t>(
-    &(gLiftedStack._redzone2[0]));
+static const auto gStackLimit =
+    reinterpret_cast<uintptr_t>(&(gLiftedStack._redzone2[0]));
 
 template <typename T>
 NEVER_INLINE static T &AccessMemory(addr_t addr) {
@@ -162,24 +160,24 @@ CR8Reg gCR8;
 extern void InvokeTestCase(uint64_t, uint64_t, uint64_t);
 
 #define MAKE_RW_MEMORY(size) \
-  NEVER_INLINE uint ## size ## _t  __remill_read_memory_ ## size( \
-     Memory *, addr_t addr) {\
-    return AccessMemory<uint ## size ## _t>(addr); \
+  NEVER_INLINE uint##size##_t __remill_read_memory_##size(Memory *, \
+                                                          addr_t addr) { \
+    return AccessMemory<uint##size##_t>(addr); \
   } \
-  NEVER_INLINE Memory *__remill_write_memory_ ## size( \
-      Memory *, addr_t addr, const uint ## size ## _t in) { \
-    AccessMemory<uint ## size ## _t>(addr) = in; \
+  NEVER_INLINE Memory *__remill_write_memory_##size(Memory *, addr_t addr, \
+                                                    const uint##size##_t in) { \
+    AccessMemory<uint##size##_t>(addr) = in; \
     return nullptr; \
   }
 
 #define MAKE_RW_FP_MEMORY(size) \
-  NEVER_INLINE float ## size ## _t __remill_read_memory_f ## size( \
-      Memory *, addr_t addr) { \
-    return AccessMemory<float ## size ## _t>(addr); \
+  NEVER_INLINE float##size##_t __remill_read_memory_f##size(Memory *, \
+                                                            addr_t addr) { \
+    return AccessMemory<float##size##_t>(addr); \
   } \
-  NEVER_INLINE Memory *__remill_write_memory_f ## size(\
-      Memory *, addr_t addr, float ## size ## _t in) { \
-    AccessMemory<float ## size ## _t>(addr) = in; \
+  NEVER_INLINE Memory *__remill_write_memory_f##size(Memory *, addr_t addr, \
+                                                     float##size##_t in) { \
+    AccessMemory<float##size##_t>(addr) = in; \
     return nullptr; \
   }
 
@@ -203,8 +201,8 @@ NEVER_INLINE float64_t __remill_read_memory_f128(Memory *, addr_t) {
   return 0.0;
 }
 
-NEVER_INLINE Memory *__remill_write_memory_f80(
-    Memory *memory, addr_t addr, float64_t val) {
+NEVER_INLINE Memory *__remill_write_memory_f80(Memory *memory, addr_t addr,
+                                               float64_t val) {
   LongDoubleStorage storage;
   auto val_long = static_cast<long double>(val);
   memcpy(&storage, &val_long, sizeof(val_long));
@@ -218,39 +216,43 @@ NEVER_INLINE Memory *__remill_write_memory_f128(Memory *, addr_t, double) {
 }
 
 
-Memory *__remill_compare_exchange_memory_8(
-    Memory *memory, addr_t addr, uint8_t &expected, uint8_t desired) {
-  expected = __sync_val_compare_and_swap(
-      reinterpret_cast<uint8_t *>(addr), expected, desired);
+Memory *__remill_compare_exchange_memory_8(Memory *memory, addr_t addr,
+                                           uint8_t &expected, uint8_t desired) {
+  expected = __sync_val_compare_and_swap(reinterpret_cast<uint8_t *>(addr),
+                                         expected, desired);
   return memory;
 }
 
-Memory *__remill_compare_exchange_memory_16(
-    Memory *memory, addr_t addr, uint16_t &expected, uint16_t desired) {
-  expected =  __sync_val_compare_and_swap(
-      reinterpret_cast<uint16_t *>(addr), expected, desired);
+Memory *__remill_compare_exchange_memory_16(Memory *memory, addr_t addr,
+                                            uint16_t &expected,
+                                            uint16_t desired) {
+  expected = __sync_val_compare_and_swap(reinterpret_cast<uint16_t *>(addr),
+                                         expected, desired);
   return memory;
 }
 
-Memory *__remill_compare_exchange_memory_32(
-    Memory *memory, addr_t addr, uint32_t &expected, uint32_t desired) {
-  expected = __sync_val_compare_and_swap(
-      reinterpret_cast<uint32_t *>(addr), expected, desired);
+Memory *__remill_compare_exchange_memory_32(Memory *memory, addr_t addr,
+                                            uint32_t &expected,
+                                            uint32_t desired) {
+  expected = __sync_val_compare_and_swap(reinterpret_cast<uint32_t *>(addr),
+                                         expected, desired);
   return memory;
 }
 
-Memory *__remill_compare_exchange_memory_64(
-    Memory *memory, addr_t addr, uint64_t &expected, uint64_t desired) {
-  expected = __sync_val_compare_and_swap(
-      reinterpret_cast<uint64_t *>(addr), expected, desired);
+Memory *__remill_compare_exchange_memory_64(Memory *memory, addr_t addr,
+                                            uint64_t &expected,
+                                            uint64_t desired) {
+  expected = __sync_val_compare_and_swap(reinterpret_cast<uint64_t *>(addr),
+                                         expected, desired);
   return memory;
 }
 
-Memory *__remill_compare_exchange_memory_128(
-    Memory *memory, addr_t addr, uint128_t &expected, uint128_t &desired) {
+Memory *__remill_compare_exchange_memory_128(Memory *memory, addr_t addr,
+                                             uint128_t &expected,
+                                             uint128_t &desired) {
 #if !(defined(__x86_64__) || defined(__i386__) || defined(_M_X86))
-  expected = __sync_val_compare_and_swap(
-      reinterpret_cast<uint128_t *>(addr), expected, desired);
+  expected = __sync_val_compare_and_swap(reinterpret_cast<uint128_t *>(addr),
+                                         expected, desired);
 #else
   bool result;
   struct alignas(16) uint128 {
@@ -264,23 +266,24 @@ Memory *__remill_compare_exchange_memory_128(
   __asm__ __volatile__(
       "lock; cmpxchg16b %0; setz %1"
       : "=m"(*reinterpret_cast<uint128_t *>(addr)), "=q"(result)
-      : "m"(*reinterpret_cast<uint128_t *>(addr)), "d" (oldval->hi), "a" (oldval->lo),
-        "c" (newval->hi), "b" (newval->lo)
+      : "m"(*reinterpret_cast<uint128_t *>(addr)), "d"(oldval->hi),
+        "a"(oldval->lo), "c"(newval->hi), "b"(newval->lo)
       : "memory");
 
-  if(!result) {
-    expected = *reinterpret_cast<uint128_t*>(addr);
+  if (!result) {
+    expected = *reinterpret_cast<uint128_t *>(addr);
   }
 #endif
   return memory;
 }
 
 #define MAKE_ATOMIC_INTRINSIC(intrinsic_name, type_prefix, size) \
-  Memory *__remill_ ## intrinsic_name ## _ ## size( \
-      Memory *memory, addr_t addr, type_prefix ## size ## _t &value) { \
-    value = __sync_ ## intrinsic_name(reinterpret_cast<type_prefix ## size ## _t *>(addr), value); \
+  Memory *__remill_##intrinsic_name##_##size(Memory *memory, addr_t addr, \
+                                             type_prefix##size##_t &value) { \
+    value = __sync_##intrinsic_name( \
+        reinterpret_cast<type_prefix##size##_t *>(addr), value); \
     return memory; \
-  } \
+  }
 
 MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 8)
 MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 16)
@@ -309,14 +312,30 @@ int __remill_fpu_exception_test_and_clear(int read_mask, int clear_mask) {
   return except;
 }
 
-Memory *__remill_barrier_load_load(Memory *) { return nullptr; }
-Memory *__remill_barrier_load_store(Memory *) { return nullptr; }
-Memory *__remill_barrier_store_load(Memory *) { return nullptr; }
-Memory *__remill_barrier_store_store(Memory *) { return nullptr; }
-Memory *__remill_atomic_begin(Memory *) { return nullptr; }
-Memory *__remill_atomic_end(Memory *) { return nullptr; }
-Memory *__remill_delay_slot_begin(Memory *) { return nullptr; }
-Memory *__remill_delay_slot_end(Memory *) { return nullptr; }
+Memory *__remill_barrier_load_load(Memory *) {
+  return nullptr;
+}
+Memory *__remill_barrier_load_store(Memory *) {
+  return nullptr;
+}
+Memory *__remill_barrier_store_load(Memory *) {
+  return nullptr;
+}
+Memory *__remill_barrier_store_store(Memory *) {
+  return nullptr;
+}
+Memory *__remill_atomic_begin(Memory *) {
+  return nullptr;
+}
+Memory *__remill_atomic_end(Memory *) {
+  return nullptr;
+}
+Memory *__remill_delay_slot_begin(Memory *) {
+  return nullptr;
+}
+Memory *__remill_delay_slot_end(Memory *) {
+  return nullptr;
+}
 void __remill_defer_inlining(void) {}
 
 Memory *__remill_error(X86State &, addr_t, Memory *) {
@@ -327,45 +346,31 @@ Memory *__remill_missing_block(X86State &, addr_t, Memory *memory) {
   return memory;
 }
 
-Memory *__remill_sync_hyper_call(
-    X86State &state, Memory *mem, SyncHyperCall::Name call) {
+Memory *__remill_sync_hyper_call(X86State &state, Memory *mem,
+                                 SyncHyperCall::Name call) {
   switch (call) {
     case SyncHyperCall::kX86CPUID:
-      asm volatile(
-          "cpuid"
-          : "=a"(state.gpr.rax.aword),
-            "=b"(state.gpr.rbx.aword),
-            "=c"(state.gpr.rcx.aword),
-            "=d"(state.gpr.rdx.aword)
-          : "a"(state.gpr.rax.aword),
-            "b"(state.gpr.rbx.aword),
-            "c"(state.gpr.rcx.aword),
-            "d"(state.gpr.rdx.aword)
-      );
+      asm volatile("cpuid"
+                   : "=a"(state.gpr.rax.aword), "=b"(state.gpr.rbx.aword),
+                     "=c"(state.gpr.rcx.aword), "=d"(state.gpr.rdx.aword)
+                   : "a"(state.gpr.rax.aword), "b"(state.gpr.rbx.aword),
+                     "c"(state.gpr.rcx.aword), "d"(state.gpr.rdx.aword));
       break;
 
     case SyncHyperCall::kX86ReadTSC:
-      asm volatile(
-          "rdtsc"
-          : "=a"(state.gpr.rax.dword),
-            "=d"(state.gpr.rdx.dword)
-      );
+      asm volatile("rdtsc"
+                   : "=a"(state.gpr.rax.dword), "=d"(state.gpr.rdx.dword));
       break;
 
     case SyncHyperCall::kX86ReadTSCP:
-      asm volatile(
-          "rdtscp"
-          : "=a"(state.gpr.rax.aword),
-            "=c"(state.gpr.rcx.aword),
-            "=d"(state.gpr.rdx.aword)
-          : "a"(state.gpr.rax.aword),
-            "c"(state.gpr.rcx.aword),
-            "d"(state.gpr.rdx.aword)
-      );
+      asm volatile("rdtscp"
+                   : "=a"(state.gpr.rax.aword), "=c"(state.gpr.rcx.aword),
+                     "=d"(state.gpr.rdx.aword)
+                   : "a"(state.gpr.rax.aword), "c"(state.gpr.rcx.aword),
+                     "d"(state.gpr.rdx.aword));
       break;
 
-    default:
-      abort();
+    default: abort();
   }
 
   return mem;
@@ -440,7 +445,7 @@ float64_t __remill_undefined_f64(void) {
 // kept around through optimization, and makes sure that optimization doesn't
 // perform dead-argument elimination on any of the intrinsics.
 void __remill_mark_as_used(void *mem) {
-  asm("" :: "m"(mem));
+  asm("" ::"m"(mem));
 }
 
 }  // extern C
@@ -453,8 +458,7 @@ static std::map<uint64_t, LiftedFunc *> gTranslatedFuncs;
 static std::vector<const test::TestInfo *> gTests;
 
 static void InitFlags(void) {
-  asm(
-      "pushfq;"
+  asm("pushfq;"
       "pop %0;"
       :
       : "m"(gRflagsInitial));
@@ -477,21 +481,14 @@ static bool AreFCSAndFDSDeprecated(void) {
   uint32_t edx = 0;
 
   if (!FLAGS_enable_fpu_cs_ds_checking) {
+
     // pretend FCS and FDS are deprecated if not checking via cmdline flag
     return true;
   }
 
-  asm volatile(
-    "cpuid"
-    : "=a"(eax),
-      "=b"(ebx),
-      "=c"(ecx),
-      "=d"(edx)
-    : "a"(eax),
-      "b"(ebx),
-      "c"(ecx),
-      "d"(edx)
-  );
+  asm volatile("cpuid"
+               : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
+               : "a"(eax), "b"(ebx), "c"(ecx), "d"(edx));
 
   // Bit 13 of EBX is not zero.
   return (ebx & (1U << 13U)) != 0U;
@@ -503,6 +500,7 @@ static bool AreFCSAndFDSDeprecated(void) {
 // type.
 static void ImportX87X86State(X86State *state) {
   auto &fpu = state->x87;
+
   // Looks like MMX state.
   if (kFPUAbridgedTagValid == fpu.fxsave.ftw.r0 &&
       kFPUAbridgedTagValid == fpu.fxsave.ftw.r1 &&
@@ -532,7 +530,8 @@ static void ImportX87X86State(X86State *state) {
   }
 
   state->sw.c0 = fpu.fxsave.swd.c0;
-//  state->sw.c1 = fpu.fxsave.swd.c1;  // currently we do not model C1
+
+  //  state->sw.c1 = fpu.fxsave.swd.c1;  // currently we do not model C1
   state->sw.c2 = fpu.fxsave.swd.c2;
   state->sw.c3 = fpu.fxsave.swd.c3;
 }
@@ -550,20 +549,22 @@ static void ResetFlags(void) {
 // does not clear exception flags and also does *not* ignore denormal exceptions
 // see: https://sourceware.org/ml/libc-alpha/2015-10/msg01020.html
 #if !defined(FE_DENORMALOPERAND) && defined(__FE_DENORM)
-# define FE_DENORMALOPERAND __FE_DENORM
+#  define FE_DENORMALOPERAND __FE_DENORM
 #endif
 #if !defined(FE_DENORMALOPERAND)
-# warning "Missing FE_DENORMALOPERAND."
-# define FE_DENORMALOPERAND 0x2
+#  warning "Missing FE_DENORMALOPERAND."
+#  define FE_DENORMALOPERAND 0x2
 #endif
 static void FixGlibcMxcsrBug() {
   const uint32_t FE_ALL_EXCEPT_X86 = (FE_ALL_EXCEPT | FE_DENORMALOPERAND);
-  uint32_t mxcsr = 0; // temporarily holds our MXCSR
+  uint32_t mxcsr = 0;  // temporarily holds our MXCSR
   asm("stmxcsr %0;" : "=m"(mxcsr));
+
   // assumes the rest of MXCSR was sanely set by std::fesetenv(FE_DFL_ENV);
 
   // clear exceptions in MXCSR
   mxcsr &= ~FE_ALL_EXCEPT_X86;
+
   // set the exception mask for future exceptions
   mxcsr |= (FE_ALL_EXCEPT_X86 << 7);
 
@@ -584,11 +585,8 @@ inline static bool operator!=(const T &a, const T &b) {
   return !!memcmp(&a, &b, sizeof(a));
 }
 
-static void RunWithFlags(const test::TestInfo *info,
-                         Flags flags,
-                         std::string desc,
-                         uint64_t arg1,
-                         uint64_t arg2,
+static void RunWithFlags(const test::TestInfo *info, Flags flags,
+                         std::string desc, uint64_t arg1, uint64_t arg2,
                          uint64_t arg3) {
 
   // Can't fit a 64-bit stack address into a 32-bit register.
@@ -652,10 +650,9 @@ static void RunWithFlags(const test::TestInfo *info,
     gInNativeTest = false;
     std::fesetenv(FE_DFL_ENV);
     FixGlibcMxcsrBug();
-    (void) lifted_func(
-        *lifted_state,
-        static_cast<addr_t>(lifted_state->gpr.rip.aword),
-        nullptr);
+    (void) lifted_func(*lifted_state,
+                       static_cast<addr_t>(lifted_state->gpr.rip.aword),
+                       nullptr);
   } else {
     EXPECT_TRUE(native_test_faulted);
   }
@@ -664,6 +661,7 @@ static void RunWithFlags(const test::TestInfo *info,
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Winvalid-offsetof"
+
   // We'll compare the `ST` and `XMM` regs via their other stored forms.
   auto kill_size = sizeof(lifted_state->x87) - offsetof(FPU, fxsave.st);
 #pragma clang diagnostic pop
@@ -672,6 +670,7 @@ static void RunWithFlags(const test::TestInfo *info,
   memset(native_state->x87.fxsave.st, 0, kill_size);
 
 #if 32 == ADDRESS_SIZE_BITS
+
   // If FCS and FDS are deprecated, don't compare them.
   if (AreFCSAndFDSDeprecated()) {
     lifted_state->x87.fxsave.cs = {0};
@@ -771,9 +770,8 @@ static void RunWithFlags(const test::TestInfo *info,
   }
 
   EXPECT_EQ(lifted_state->rflag, native_state->rflag)
-      << "Lifted RFLAG after test is " << std::hex
-      << lifted_state->rflag.flat << ", native is "
-      << native_state->rflag.flat << std::dec;
+      << "Lifted RFLAG after test is " << std::hex << lifted_state->rflag.flat
+      << ", native is " << native_state->rflag.flat << std::dec;
 
   EXPECT_EQ(lifted_state->seg, native_state->seg)
       << "Lifted SEG differs from native SEG";
@@ -787,11 +785,9 @@ static void RunWithFlags(const test::TestInfo *info,
       << native_state->x87.fxsave.swd.flat << std::dec;
 
   if (gLiftedState != gNativeState) {
-    EXPECT_TRUE(false)
-        << "States did not match for " << desc;
+    EXPECT_TRUE(false) << "States did not match for " << desc;
 
-#define DIFF(name, a) \
-    EXPECT_EQ(lifted_state->a, native_state->a)
+#define DIFF(name, a) EXPECT_EQ(lifted_state->a, native_state->a)
 
     DIFF(RAX, gpr.rax.aword);
     DIFF(RBX, gpr.rbx.aword);
@@ -876,17 +872,15 @@ static void RunWithFlags(const test::TestInfo *info,
   }
 
   if (gLiftedStack != gNativeStack) {
-    LOG(ERROR)
-        << "Stacks did not match for " << desc;
+    LOG(ERROR) << "Stacks did not match for " << desc;
 
     for (size_t i = 0; i < sizeof(gLiftedStack.bytes); ++i) {
       if (gLiftedStack.bytes[i] != gNativeStack.bytes[i]) {
-        LOG(ERROR)
-            << "Lifted stack at 0x" << std::hex
-            << reinterpret_cast<uintptr_t>(&(gLiftedStack.bytes[i]))
-            << " does not match native stack at 0x" << std::hex
-            << reinterpret_cast<uintptr_t>(&(gNativeStack.bytes[i]))
-            << std::endl;
+        LOG(ERROR) << "Lifted stack at 0x" << std::hex
+                   << reinterpret_cast<uintptr_t>(&(gLiftedStack.bytes[i]))
+                   << " does not match native stack at 0x" << std::hex
+                   << reinterpret_cast<uintptr_t>(&(gNativeStack.bytes[i]))
+                   << std::endl;
       }
     }
 
@@ -896,8 +890,7 @@ static void RunWithFlags(const test::TestInfo *info,
 
 TEST_P(InstrTest, SemanticsMatchNative) {
   auto info = GetParam();
-  for (auto args = info->args_begin;
-       args < info->args_end;
+  for (auto args = info->args_begin; args < info->args_end;
        args += info->num_args) {
     std::stringstream ss;
     ss << info->test_name << " with";
@@ -915,14 +908,14 @@ TEST_P(InstrTest, SemanticsMatchNative) {
     union EFLAGS {
       uint32_t flat;
       struct {
-        uint32_t cf:1;
-        uint32_t pf:1;
-        uint32_t af:1;
-        uint32_t zf:1;
-        uint32_t sf:1;
-        uint32_t df:1;
-        uint32_t of:1;
-        uint32_t _0:25;
+        uint32_t cf : 1;
+        uint32_t pf : 1;
+        uint32_t af : 1;
+        uint32_t zf : 1;
+        uint32_t sf : 1;
+        uint32_t df : 1;
+        uint32_t of : 1;
+        uint32_t _0 : 25;
       } __attribute__((packed));
     } __attribute__((packed));
 
@@ -935,13 +928,9 @@ TEST_P(InstrTest, SemanticsMatchNative) {
 
       std::stringstream ss2;
       ss2 << desc << " and"
-         << " CF=" << eflags.cf
-         << " PF=" << eflags.pf
-         << " AF=" << eflags.af
-         << " ZF=" << eflags.zf
-         << " SF=" << eflags.sf
-         << " DF=" << eflags.df
-         << " OF=" << eflags.of;
+          << " CF=" << eflags.cf << " PF=" << eflags.pf << " AF=" << eflags.af
+          << " ZF=" << eflags.zf << " SF=" << eflags.sf << " DF=" << eflags.df
+          << " OF=" << eflags.of;
 
       Flags flags = gRflagsInitial;
       flags.cf = eflags.cf;
@@ -957,10 +946,8 @@ TEST_P(InstrTest, SemanticsMatchNative) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    GeneralInstrTest,
-    InstrTest,
-    testing::ValuesIn(gTests));
+INSTANTIATE_TEST_SUITE_P(GeneralInstrTest, InstrTest,
+                         testing::ValuesIn(gTests));
 
 // Recover from a signal.
 static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
@@ -1018,15 +1005,13 @@ static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
   siglongjmp(gJmpBuf, 0);
 }
 
-static void ConsumeTrap(int, siginfo_t *, void *) {
-
-}
+static void ConsumeTrap(int, siginfo_t *, void *) {}
 
 static void HandleUnsupportedInstruction(int, siginfo_t *, void *) {
   siglongjmp(gUnsupportedInstrBuf, 0);
 }
 
-typedef void (SignalHandler) (int, siginfo_t *, void *);
+typedef void(SignalHandler)(int, siginfo_t *, void *);
 static void HandleSignal(int sig_num, SignalHandler *handler) {
   struct sigaction sig;
   sig.sa_sigaction = handler;
@@ -1068,9 +1053,10 @@ int main(int argc, char **argv) {
   auto this_exe = dlopen(nullptr, RTLD_NOW);
 
   // Populate the tests vector.
-  for (auto i = 0U; ; ++i) {
+  for (auto i = 0U;; ++i) {
     const auto &test = test::__x86_test_table_begin[i];
-    if (&test >= &(test::__x86_test_table_end[0])) break;
+    if (&test >= &(test::__x86_test_table_end[0]))
+      break;
     gTests.push_back(&test);
 
     std::stringstream ss;

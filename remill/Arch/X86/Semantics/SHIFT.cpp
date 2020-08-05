@@ -262,6 +262,7 @@ DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 src3) {
   Write(FLAG_ZF, ZeroFlag(res));
   Write(FLAG_SF, SignFlag(res));
   Write(FLAG_OF, BXor(SignFlag(val1), FLAG_SF));
+
   // OF undefined for `1 == temp_count`.
   return memory;
 }
@@ -298,6 +299,7 @@ DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 src3) {
 
   } else if (UCmpLt(op_size, masked_shift)) {
     ClearArithFlags();
+
     // `dst` is undefined; leave as-is, except w.r.t
     // zero-extension.
     //
@@ -320,6 +322,7 @@ DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 src3) {
   Write(FLAG_ZF, ZeroFlag(res));
   Write(FLAG_SF, SignFlag(res));
   Write(FLAG_OF, BXor(SignFlag(val1), FLAG_SF));
+
   // OF undefined for `1 == temp_count`.
   return memory;
 }
@@ -338,8 +341,7 @@ DEF_SEM(PSLLDQ, D dst, V128 src1, I8 src2) {
   uint8v16_t src1_vec = UReadV8(src1);
   uint8v16_t dst_vec = {};
   size_t shift_amount = std::min<size_t>(ZExtTo<size_t>(Read(src2)), 16);
-  _Pragma("unroll")
-  for (size_t i = 0; i < 16; ++i) {
+  _Pragma("unroll") for (size_t i = 0; i < 16; ++i) {
     if (i < (16 - shift_amount)) {
       dst_vec = UInsertV8(dst_vec, i + shift_amount, UExtractV8(src1_vec, i));
     }
@@ -355,8 +357,7 @@ DEF_SEM(VPSLLDQ, D dst, V256 src1, I8 src2) {
   uint8v32_t dst_vec = {};
   size_t shift_amount = std::min<size_t>(ZExtTo<size_t>(Read(src2)), 16);
 
-  _Pragma("unroll")
-  for (size_t i = 0, j = 16; i < 16; ++i, ++j) {
+  _Pragma("unroll") for (size_t i = 0, j = 16; i < 16; ++i, ++j) {
     if (i < (16 - shift_amount)) {
       dst_vec = UInsertV8(dst_vec, i + shift_amount, UExtractV8(src1_vec, i));
       dst_vec = UInsertV8(dst_vec, j + shift_amount, UExtractV8(src1_vec, j));

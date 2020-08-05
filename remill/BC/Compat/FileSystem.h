@@ -20,7 +20,7 @@
 #include "remill/BC/Version.h"
 
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(5, 0)
-# include <llvm/BinaryFormat/Magic.h>
+#  include <llvm/BinaryFormat/Magic.h>
 #endif
 
 namespace llvm {

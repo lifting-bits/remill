@@ -16,17 +16,16 @@
 
 #pragma once
 
+#include <glog/logging.h>
+#include <llvm/IR/Metadata.h>
+#include <llvm/IR/Module.h>
+
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Metadata.h>
-
 #include "remill/BC/Version.h"
-
-#include <glog/logging.h>
 
 namespace remill {
 
@@ -37,6 +36,7 @@ namespace remill {
 
 struct BaseFunction {
   static const std::string metadata_kind;
+
   // Each class that inherits from some parent class appends its own metadata_value string with dot
   // to the parents one, therefore it is possible for search to easily include all subclasses as well
   static const std::string metadata_value;
@@ -44,9 +44,9 @@ struct BaseFunction {
 
 // Unfortunately we must define the values of static vars in .cpp file
 #define DECLARE_FUNC_ORIGIN_TYPE(children, parent) \
-struct children : parent { \
-  static const std::string metadata_value; \
-}
+  struct children : parent { \
+    static const std::string metadata_value; \
+  }
 
 DECLARE_FUNC_ORIGIN_TYPE(LiftedFunction, BaseFunction);
 DECLARE_FUNC_ORIGIN_TYPE(EntrypointFunction, BaseFunction);
@@ -72,12 +72,12 @@ const std::string TieKind = "remill.function.tie";
 
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(4, 0)
 
-template<typename OriginType>
+template <typename OriginType>
 static bool Contains(llvm::MDString *node) {
   return node && node->getString().contains(OriginType::metadata_value);
 }
 
-template<typename OriginType>
+template <typename OriginType>
 static llvm::MDNode *GetNode(llvm::Function *func) {
 
   auto metadata_node = func->getMetadata(OriginType::metadata_kind);
@@ -87,11 +87,12 @@ static llvm::MDNode *GetNode(llvm::Function *func) {
     return nullptr;
   }
 
-  auto metadata_s = llvm::dyn_cast<llvm::MDString>(metadata_node->getOperand(0));
+  auto metadata_s =
+      llvm::dyn_cast<llvm::MDString>(metadata_node->getOperand(0));
   return (Contains<OriginType>(metadata_s)) ? metadata_node : nullptr;
 }
 
-template<typename OriginType>
+template <typename OriginType>
 static bool Remove(llvm::Function *func) {
   auto node = GetNode<OriginType>(func);
   if (!node) {
@@ -103,49 +104,53 @@ static bool Remove(llvm::Function *func) {
 }
 
 // Give function OriginType
-template<typename OriginType>
+template <typename OriginType>
 static void Annotate(llvm::Function *func) {
   auto &C = func->getContext();
-  DLOG(INFO) << "Annotating: " << func->getName().str() << ": " << OriginType::metadata_kind
-             << " -> " << OriginType::metadata_value;
-  auto node = llvm::MDNode::get(C, llvm::MDString::get(C, OriginType::metadata_value));
+  DLOG(INFO) << "Annotating: " << func->getName().str() << ": "
+             << OriginType::metadata_kind << " -> "
+             << OriginType::metadata_value;
+  auto node =
+      llvm::MDNode::get(C, llvm::MDString::get(C, OriginType::metadata_value));
   func->setMetadata(OriginType::metadata_kind, node);
 }
 
-template<typename OriginType>
+template <typename OriginType>
 static bool HasOriginType(llvm::Function *func) {
   return GetNode<OriginType>(func);
 }
 
-template<typename Type, typename Second, typename ...OriginTypes>
+template <typename Type, typename Second, typename... OriginTypes>
 static bool HasOriginType(llvm::Function *func) {
-  return HasOriginType<Type>(func) || HasOriginType<Second, OriginTypes...>(func);
+  return HasOriginType<Type>(func) ||
+         HasOriginType<Second, OriginTypes...>(func);
 }
 
 // Return list of functions that are one of chosen OriginType
-template<typename Container, typename ... OriginTypes>
+template <typename Container, typename... OriginTypes>
 static void GetFunctionsByOrigin(llvm::Module &module, Container &result) {
-  for (auto& func : module) {
+  for (auto &func : module) {
     if (HasOriginType<OriginTypes...>(&func)) {
+
       // Method that is both in std::set and std::vector
       result.insert(result.end(), &func);
     }
   }
 }
 
-template<typename Container, typename ... OriginTypes>
+template <typename Container, typename... OriginTypes>
 static Container GetFunctionsByOrigin(llvm::Module &module) {
   Container result;
   GetFunctionsByOrigin<Container, OriginTypes...>(module, result);
   return result;
 }
 
-template<typename OriginType>
+template <typename OriginType>
 static void ChangeOriginType(llvm::Function *func) {
   Annotate<OriginType>(func);
 }
 
-template<typename OriginType, typename OldType>
+template <typename OriginType, typename OldType>
 static bool ChangeOriginType(llvm::Function *func) {
   if (HasOriginType<OldType>(func)) {
     ChangeOriginType<OriginType>(func);
@@ -159,52 +164,54 @@ static bool ChangeOriginType(llvm::Function *func) {
  */
 
 // Get node that is holding the tie information
-static inline llvm::MDNode *GetTieNode(llvm::Function *func, const std::string &kind = TieKind) {
+static inline llvm::MDNode *GetTieNode(llvm::Function *func,
+                                       const std::string &kind = TieKind) {
   return func->getMetadata(kind);
 }
 
-static inline bool IsTied(llvm::Function *func, const std::string& kind = TieKind) {
+static inline bool IsTied(llvm::Function *func,
+                          const std::string &kind = TieKind) {
   return GetTieNode(func, kind);
 }
 
 // Add metadata to first with information about second
 llvm::MDNode *TieFunction(llvm::Function *first, llvm::Function *second,
-                          const std::string& kind = TieKind);
+                          const std::string &kind = TieKind);
 
 std::pair<llvm::MDNode *, llvm::MDNode *>
-TieFunctions(llvm::Function *first, llvm::Function *second, const std::string &kind = TieKind);
+TieFunctions(llvm::Function *first, llvm::Function *second,
+             const std::string &kind = TieKind);
 
 // Get function that is tied to func, or nullptr if there is no such function
-llvm::Function *GetTied(llvm::Function *func, const std::string &kind = TieKind);
+llvm::Function *GetTied(llvm::Function *func,
+                        const std::string &kind = TieKind);
 
 
 /* Filter Tied functions in meaningful way. Several overloads are prepared depending on customization
  * required.
  */
-template<typename BinaryPredicate>
-static void GetTieMapping(
-    llvm::Module &module,
-    BinaryPredicate pred,
-    std::unordered_map<llvm::Function *, llvm::Function *> &result,
-    const std::string &kind = TieKind) {
+template <typename BinaryPredicate>
+static void
+GetTieMapping(llvm::Module &module, BinaryPredicate pred,
+              std::unordered_map<llvm::Function *, llvm::Function *> &result,
+              const std::string &kind = TieKind) {
 
   for (auto &func : module) {
     auto tied_to = GetTied(&func, kind);
     if (tied_to && pred(&func, tied_to)) {
-      result.insert({ &func, tied_to });
+      result.insert({&func, tied_to});
     }
   }
 }
 
 // TODO(C++14): Deduced return types
-template<typename BinaryPredicate, typename Container>
-static std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
-    llvm::Module &module,
-    BinaryPredicate pred,
-    const Container &kinds) {
+template <typename BinaryPredicate, typename Container>
+static std::unordered_map<llvm::Function *, llvm::Function *>
+GetTieMapping(llvm::Module &module, BinaryPredicate pred,
+              const Container &kinds) {
 
   std::unordered_map<llvm::Function *, llvm::Function *> result;
-  for (const auto& kind : kinds) {
+  for (const auto &kind : kinds) {
     GetTieMapping(module, pred, result, kind);
   }
   return result;
@@ -212,11 +219,10 @@ static std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
 
 // TODO(C++14): Deduced return types
 // If functions are annotated with OriginTypes, this overload filters based on these annotations.
-template<typename FromType, typename ToType = BaseFunction,
-         typename Container = std::vector<std::string>>
-static std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
-    llvm::Module &module,
-    const Container &kinds) {
+template <typename FromType, typename ToType = BaseFunction,
+          typename Container = std::vector<std::string>>
+static std::unordered_map<llvm::Function *, llvm::Function *>
+GetTieMapping(llvm::Module &module, const Container &kinds) {
 
   auto filter = [](llvm::Function *from, llvm::Function *to) {
     return HasOriginType<FromType>(from) && HasOriginType<ToType>(to);
@@ -225,160 +231,160 @@ static std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
 }
 
 // TODO(C++14): Deduced return types
-template<typename FromType, typename ToType = BaseFunction>
-static std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
-    llvm::Module &module,
-    const std::string &kind = TieKind) {
+template <typename FromType, typename ToType = BaseFunction>
+static std::unordered_map<llvm::Function *, llvm::Function *>
+GetTieMapping(llvm::Module &module, const std::string &kind = TieKind) {
 
-  return GetTieMapping<FromType, ToType>(module, std::vector<std::string>{ kind });
+  return GetTieMapping<FromType, ToType>(module,
+                                         std::vector<std::string>{kind});
 }
 
 
-static inline std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
-    llvm::Module &module,
-    const std::string &kind = TieKind) {
+static inline std::unordered_map<llvm::Function *, llvm::Function *>
+GetTieMapping(llvm::Module &module, const std::string &kind = TieKind) {
 
   // TODO(C++14): auto in lambda
-  return GetTieMapping (module,
-      [](llvm::Function *, llvm::Function *) { return true; },
-      std::vector<std::string>{ kind });
+  return GetTieMapping(
+      module, [](llvm::Function *, llvm::Function *) { return true; },
+      std::vector<std::string>{kind});
 }
 
 #else
 
-#define NOT_AVAILABLE(Err) \
-  LOG(Err) <<"LLVM version is less than 4.0, functions metadata are not avalaible"
+#  define NOT_AVAILABLE(Err) \
+    LOG(Err) \
+        << "LLVM version is less than 4.0, functions metadata are not avalaible"
 
-template<typename OriginType>
+template <typename OriginType>
 static bool Contains(llvm::MDString *node) {
   NOT_AVAILABLE(ERROR);
   return false;
 }
 
-template<typename OriginType>
+template <typename OriginType>
 static llvm::MDNode *GetNode(llvm::Function *func) {
   NOT_AVAILABLE(ERROR);
   return nullptr;
 }
 
-template<typename OriginType>
+template <typename OriginType>
 static bool Remove(llvm::Function *func) {
   NOT_AVAILABLE(ERROR);
   return false;
 }
 
 // Give function OriginType
-template<typename OriginType>
-static void Annotate(llvm::Function *func ) {
+template <typename OriginType>
+static void Annotate(llvm::Function *func) {
   NOT_AVAILABLE(ERROR);
 }
 
-template<typename OriginType>
+template <typename OriginType>
 static bool HasOriginType(llvm::Function *func) {
   NOT_AVAILABLE(ERROR);
   return false;
 }
 
-template<typename Type, typename Second, typename ...OriginTypes>
+template <typename Type, typename Second, typename... OriginTypes>
 static bool HasOriginType(llvm::Function *func) {
   NOT_AVAILABLE(ERROR);
   return false;
 }
 
-template<typename Container, typename ... OriginTypes>
+template <typename Container, typename... OriginTypes>
 static void GetFunctionsByOrigin(llvm::Module &module, Container &result) {
   NOT_AVAILABLE(ERROR);
 }
 
-template<typename Container, typename ... OriginTypes>
+template <typename Container, typename... OriginTypes>
 static Container GetFunctionsByOrigin(llvm::Module &module) {
   NOT_AVAILABLE(ERROR);
   return {};
 }
 
-template<typename OriginType>
+template <typename OriginType>
 static void ChangeOriginType(llvm::Function *func) {
   NOT_AVAILABLE(ERROR);
 }
 
-template<typename OriginType, typename OldType>
+template <typename OriginType, typename OldType>
 static bool ChangeOriginType(llvm::Function *func) {
   NOT_AVAILABLE(ERROR);
   return false;
 }
 
-static inline llvm::MDNode *GetTieNode(llvm::Function *func, const std::string &kind = TieKind) {
+static inline llvm::MDNode *GetTieNode(llvm::Function *func,
+                                       const std::string &kind = TieKind) {
   NOT_AVAILABLE(ERROR);
   return nullptr;
 }
 
-static inline bool IsTied(llvm::Function *func, const std::string& kind = TieKind) {
+static inline bool IsTied(llvm::Function *func,
+                          const std::string &kind = TieKind) {
   NOT_AVAILABLE(ERROR);
   return false;
 }
 
-static inline llvm::MDNode *TieFunction(llvm::Function *first, llvm::Function *second,
-                           const std::string& kind = TieKind) {
+static inline llvm::MDNode *TieFunction(llvm::Function *first,
+                                        llvm::Function *second,
+                                        const std::string &kind = TieKind) {
   NOT_AVAILABLE(ERROR);
   return nullptr;
 }
 
 static inline std::pair<llvm::MDNode *, llvm::MDNode *>
-TieFunctions(llvm::Function *first, llvm::Function *second, const std::string &kind = TieKind) {
+TieFunctions(llvm::Function *first, llvm::Function *second,
+             const std::string &kind = TieKind) {
   NOT_AVAILABLE(ERROR);
   return {};
 }
 
-static inline llvm::Function *GetTied(llvm::Function *func, const std::string &kind = TieKind) {
+static inline llvm::Function *GetTied(llvm::Function *func,
+                                      const std::string &kind = TieKind) {
   NOT_AVAILABLE(ERROR);
   return nullptr;
 }
 
-template<typename BinaryPredicate>
-static void GetTieMapping(
-    llvm::Module &module,
-    BinaryPredicate pred,
-    std::unordered_map<llvm::Function *, llvm::Function *> &result,
-    const std::string &kind = TieKind) {
+template <typename BinaryPredicate>
+static void
+GetTieMapping(llvm::Module &module, BinaryPredicate pred,
+              std::unordered_map<llvm::Function *, llvm::Function *> &result,
+              const std::string &kind = TieKind) {
   NOT_AVAILABLE(ERROR);
 }
 
-template<typename BinaryPredicate, typename Container>
-static std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
-    llvm::Module &module,
-    BinaryPredicate pred,
-    const Container &kinds) {
+template <typename BinaryPredicate, typename Container>
+static std::unordered_map<llvm::Function *, llvm::Function *>
+GetTieMapping(llvm::Module &module, BinaryPredicate pred,
+              const Container &kinds) {
   NOT_AVAILABLE(ERROR);
   return {};
 }
 
-template<typename FromType, typename ToType = BaseFunction,
+template <typename FromType, typename ToType = BaseFunction,
           typename Container = std::vector<std::string>>
-static std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
-    llvm::Module &module,
-    const Container &kinds) {
+static std::unordered_map<llvm::Function *, llvm::Function *>
+GetTieMapping(llvm::Module &module, const Container &kinds) {
   NOT_AVAILABLE(ERROR);
   return {};
 }
 
-template<typename FromType, typename ToType = BaseFunction>
-static std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
-    llvm::Module &module,
-    const std::string &kind = TieKind) {
+template <typename FromType, typename ToType = BaseFunction>
+static std::unordered_map<llvm::Function *, llvm::Function *>
+GetTieMapping(llvm::Module &module, const std::string &kind = TieKind) {
   NOT_AVAILABLE(ERROR);
   return {};
 }
 
-static inline std::unordered_map<llvm::Function *, llvm::Function *> GetTieMapping(
-    llvm::Module &module,
-    const std::string &kind = TieKind) {
+static inline std::unordered_map<llvm::Function *, llvm::Function *>
+GetTieMapping(llvm::Module &module, const std::string &kind = TieKind) {
   NOT_AVAILABLE(ERROR);
   return {};
 }
 
-#undef NOT_AVAILABLE
+#  undef NOT_AVAILABLE
 
 #endif
 
 
-} // namespace remill
+}  // namespace remill

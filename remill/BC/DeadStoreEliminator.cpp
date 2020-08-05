@@ -14,8 +14,16 @@
  * limitations under the License.
  */
 
-#include <glog/logging.h>
+#include "remill/BC/DeadStoreEliminator.h"
+
 #include <gflags/gflags.h>
+#include <glog/logging.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/CFG.h>
+#include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
+#include <llvm/Transforms/Utils/Local.h>
 
 #include <cstdio>
 #include <fstream>
@@ -25,18 +33,10 @@
 #include <utility>
 #include <vector>
 
-#include <llvm/IR/BasicBlock.h>
-#include <llvm/IR/CFG.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/InstVisitor.h>
-#include <llvm/IR/Module.h>
-#include <llvm/Transforms/Utils/Local.h>
-
+#include "ABI.h"
 #include "remill/Arch/Arch.h"
-#include "remill/BC/DeadStoreEliminator.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/FileSystem.h"
-#include "ABI.h"
 
 DEFINE_string(dot_output_dir, "",
               "The directory in which to log DOT digraphs of the alias "
@@ -92,8 +92,7 @@ struct KillCounter {
 // (and not the `__remill_basic_block`).
 static bool IsLiftedFunction(llvm::Function *func,
                              const llvm::Function *bb_func) {
-  return !(func == bb_func ||
-           func->isDeclaration() ||
+  return !(func == bb_func || func->isDeclaration() ||
            func->getFunctionType() != bb_func->getFunctionType());
 }
 
@@ -132,8 +131,7 @@ StateVisitor::StateVisitor(llvm::DataLayout *dl_, uint64_t num_bytes)
 // offset that is within the element's begin offset and end offset.
 void StateVisitor::Visit(llvm::Type *ty) {
   if (!ty) {  // TODO(tim): Is this even possible?
-    LOG(FATAL)
-        << "NULL type in `State` structure.";
+    LOG(FATAL) << "NULL type in `State` structure.";
   }
 
   uint64_t num_bytes = dl->getTypeAllocSize(ty);
@@ -152,9 +150,9 @@ void StateVisitor::Visit(llvm::Type *ty) {
       const auto elem_ty = struct_ty->getElementType(i);
 
       if (elem_offset != offset) {
-        LOG(ERROR)
-            << "Element " << i << " of type " << LLVMThingToString(elem_ty)
-            << " in " << LLVMThingToString(ty) << " has padding";
+        LOG(ERROR) << "Element " << i << " of type "
+                   << LLVMThingToString(elem_ty) << " in "
+                   << LLVMThingToString(ty) << " has padding";
         CHECK_LT(offset, elem_offset);
         for (auto j = offset; j < elem_offset; ++j) {
           offset_to_slot.emplace_back(~0u, ~0u, ~0u);
@@ -167,9 +165,9 @@ void StateVisitor::Visit(llvm::Type *ty) {
           << LLVMThingToString(elem_ty) << " in " << LLVMThingToString(ty);
     }
 
-//    LOG_IF(FATAL, layout->hasPadding())
-//        << "State structure type, or embedded type, has internal padding: "
-//        << LLVMThingToString(struct_ty);
+    //    LOG_IF(FATAL, layout->hasPadding())
+    //        << "State structure type, or embedded type, has internal padding: "
+    //        << LLVMThingToString(struct_ty);
 
   // Array or vector.
   } else if (auto seq_ty = llvm::dyn_cast<llvm::SequentialType>(ty)) {
@@ -192,13 +190,15 @@ void StateVisitor::Visit(llvm::Type *ty) {
     } else {
       auto num_elems = num_bytes / el_num_bytes;
       for (uint64_t i = 0; i < num_elems; i++) {
+
         // NOTE(tim): Recalculates every time, rather than memoizing.
         Visit(first_ty);
       }
     }
 
   // Primitive type.
-  } else if (ty->isIntegerTy() || ty->isFloatingPointTy() || ty->isPointerTy()) {
+  } else if (ty->isIntegerTy() || ty->isFloatingPointTy() ||
+             ty->isPointerTy()) {
     for (uint64_t i = 0; i < num_bytes; i++) {
       offset_to_slot.emplace_back(index, offset, num_bytes);
     }
@@ -206,17 +206,15 @@ void StateVisitor::Visit(llvm::Type *ty) {
     offset += num_bytes;
 
   } else {
-    LOG(FATAL)
-        << "Unexpected type `" << LLVMThingToString(ty)
-        << "` in state structure";
+    LOG(FATAL) << "Unexpected type `" << LLVMThingToString(ty)
+               << "` in state structure";
   }
 
   CHECK_EQ(offset, prev_offset + num_bytes);
 }
 
 // Try to get the offset associated with some value.
-static bool TryGetOffset(llvm::Value *val,
-                         const ValueToOffset &state_offset,
+static bool TryGetOffset(llvm::Value *val, const ValueToOffset &state_offset,
                          uint64_t *offset_out) {
   auto ptr = state_offset.find(val);
   if (ptr != state_offset.end()) {
@@ -230,18 +228,18 @@ static bool TryGetOffset(llvm::Value *val,
 
 // Try to get the offset associated with some value, or if the value is
 // a constant integer, get that instead.
-static bool TryGetOffsetOrConst(
-    llvm::Value *val, const ValueToOffset &state_offset,
-    uint64_t *offset_out) {
+static bool TryGetOffsetOrConst(llvm::Value *val,
+                                const ValueToOffset &state_offset,
+                                uint64_t *offset_out) {
   if (auto const_val = llvm::dyn_cast<llvm::ConstantInt>(val)) {
     const auto &val_apint = const_val->getValue();
     if (val_apint.getMinSignedBits() <= 64) {
       *offset_out = static_cast<uint64_t>(const_val->getSExtValue());
       return true;
     } else {
-      LOG(WARNING)
-          << "Unable to fit offset from " << remill::LLVMThingToString(val)
-          << " into a 64-bit signed integer";
+      LOG(WARNING) << "Unable to fit offset from "
+                   << remill::LLVMThingToString(val)
+                   << " into a 64-bit signed integer";
       return false;
     }
   } else {
@@ -269,13 +267,13 @@ static bool TryCombineOffsets(uint64_t lhs_offset, OpType op_type,
   int64_t signed_result = 0;
   switch (op_type) {
     case OpType::Plus:
-      signed_result = static_cast<int64_t>(lhs_offset) +
-                      static_cast<int64_t>(rhs_offset);
+      signed_result =
+          static_cast<int64_t>(lhs_offset) + static_cast<int64_t>(rhs_offset);
       break;
 
     case OpType::Minus:
-      signed_result = static_cast<int64_t>(lhs_offset) -
-                      static_cast<int64_t>(rhs_offset);
+      signed_result =
+          static_cast<int64_t>(lhs_offset) - static_cast<int64_t>(rhs_offset);
       break;
   }
 
@@ -329,8 +327,8 @@ struct ForwardAliasVisitor
                       InstToOffset &state_access_offset_,
                       llvm::LLVMContext &context);
 
-  bool Analyze(const remill::Arch *arch,
-               KillCounter &stats, llvm::Function *func);
+  bool Analyze(const remill::Arch *arch, KillCounter &stats,
+               llvm::Function *func);
 
  protected:
   friend class llvm::InstVisitor<ForwardAliasVisitor, VisitResult>;
@@ -358,7 +356,6 @@ struct ForwardAliasVisitor
   virtual VisitResult visitBinaryOp_(llvm::BinaryOperator &inst, OpType op);
 
  public:
-
   const llvm::DataLayout dl;
   const std::vector<StateSlot> &offset_to_slot;
   ValueToOffset state_offset;
@@ -374,9 +371,9 @@ struct ForwardAliasVisitor
 };
 
 // Stream a slot of the DOT digraph.
-static void StreamSlot(
-    const remill::Arch *arch, llvm::LLVMContext &context, std::ostream &dot,
-    const StateSlot &slot, uint64_t access_size) {
+static void StreamSlot(const remill::Arch *arch, llvm::LLVMContext &context,
+                       std::ostream &dot, const StateSlot &slot,
+                       uint64_t access_size) {
   if (auto reg = arch->RegisterAtStateOffset(slot.offset)) {
     auto enc_reg = reg->EnclosingRegisterOfSize(access_size);
     if (!enc_reg) {
@@ -443,8 +440,7 @@ void ForwardAliasVisitor::CreateDOTDigraph(const remill::Arch *arch,
 
   std::ofstream dot(fname.str());
   dot << "digraph {" << std::endl
-      << "node [shape=none margin=0 nojustify=false labeljust=l]"
-      << std::endl;
+      << "node [shape=none margin=0 nojustify=false labeljust=l]" << std::endl;
 
   // Stream node information for each block.
   for (auto &block_ref : *func) {
@@ -472,9 +468,8 @@ void ForwardAliasVisitor::CreateDOTDigraph(const remill::Arch *arch,
         } else if (llvm::isa<llvm::StoreInst>(&inst)) {
           inst_size = dl.getTypeAllocSize(inst.getOperand(0)->getType());
         } else {
-          LOG(FATAL)
-              << "Instruction " << LLVMThingToString(&inst)
-              << " has scope meta-data";
+          LOG(FATAL) << "Instruction " << LLVMThingToString(&inst)
+                     << " has scope meta-data";
         }
         dot << "<td>" << offset << "</td><td>";
         StreamSlot(arch, context, dot, slot, inst_size);
@@ -534,10 +529,8 @@ void ForwardAliasVisitor::CreateDOTDigraph(const remill::Arch *arch,
 }
 
 ForwardAliasVisitor::ForwardAliasVisitor(
-    const llvm::DataLayout &dl_,
-    const std::vector<StateSlot> &offset_to_slot_,
-    InstToLiveSet &live_args_,
-    InstToOffset &state_access_offset_,
+    const llvm::DataLayout &dl_, const std::vector<StateSlot> &offset_to_slot_,
+    InstToLiveSet &live_args_, InstToOffset &state_access_offset_,
     llvm::LLVMContext &context)
     : dl(dl_),
       offset_to_slot(offset_to_slot_),
@@ -586,8 +579,8 @@ void ForwardAliasVisitor::AddInstruction(llvm::Instruction *inst) {
 // are not yet in `state_offset`) is withheld to the next analysis round
 // in the next worklist. Analysis repeats until the current worklist is
 // empty or until an error condition is hit.
-bool ForwardAliasVisitor::Analyze(const remill::Arch *arch,
-                                  KillCounter &stats, llvm::Function *func) {
+bool ForwardAliasVisitor::Analyze(const remill::Arch *arch, KillCounter &stats,
+                                  llvm::Function *func) {
   curr_wl.clear();
   exclude.clear();
   calls.clear();
@@ -600,9 +593,8 @@ bool ForwardAliasVisitor::Analyze(const remill::Arch *arch,
   auto memory_ptr = LoadMemoryPointerArg(func);
   auto pc = LoadProgramCounterArg(func);
   if (!state_ptr || !memory_ptr || !pc) {
-    LOG(ERROR)
-        << "Not analyzing " << func->getName().str()
-        << " for dead loads or stores";
+    LOG(ERROR) << "Not analyzing " << func->getName().str()
+               << " for dead loads or stores";
     return false;
   }
 
@@ -636,16 +628,10 @@ bool ForwardAliasVisitor::Analyze(const remill::Arch *arch,
           order_of_progress.push_back(inst);
           progress = true;
           break;
-        case VisitResult::Incomplete:
-          pending_wl.push_back(inst);
-          break;
-        case VisitResult::NoProgress:
-          next_wl.push_back(inst);
-          break;
-        case VisitResult::Ignored:
-          break;
-        case VisitResult::Error:
-          return false;
+        case VisitResult::Incomplete: pending_wl.push_back(inst); break;
+        case VisitResult::NoProgress: next_wl.push_back(inst); break;
+        case VisitResult::Ignored: break;
+        case VisitResult::Error: return false;
       }
     }
 
@@ -656,8 +642,8 @@ bool ForwardAliasVisitor::Analyze(const remill::Arch *arch,
     pending_wl.clear();
   }
 
-  order_of_progress.insert(order_of_progress.end(),
-                           curr_wl.begin(), curr_wl.end());
+  order_of_progress.insert(order_of_progress.end(), curr_wl.begin(),
+                           curr_wl.end());
 
   CHECK(num_insts == order_of_progress.size());
 
@@ -669,18 +655,11 @@ bool ForwardAliasVisitor::Analyze(const remill::Arch *arch,
   // Do one final pass through, in the order in which progress was made.
   for (auto inst : order_of_progress) {
     switch (visit(inst)) {
-      case VisitResult::Progress:
-        break;
-      case VisitResult::Incomplete:
-        pending_wl.push_back(inst);
-        break;
-      case VisitResult::NoProgress:
-        next_wl.push_back(inst);
-        break;
-      case VisitResult::Ignored:
-        break;
-      case VisitResult::Error:
-        return false;
+      case VisitResult::Progress: break;
+      case VisitResult::Incomplete: pending_wl.push_back(inst); break;
+      case VisitResult::NoProgress: next_wl.push_back(inst); break;
+      case VisitResult::Ignored: break;
+      case VisitResult::Error: return false;
     }
   }
 
@@ -698,12 +677,11 @@ bool ForwardAliasVisitor::Analyze(const remill::Arch *arch,
   if (!pending_wl.empty()) {
     stats.failed_funcs++;
 
-    DLOG(WARNING)
-        << "Alias analysis failed to complete on function `"
-        << func->getName().str() << "` with " << next_wl.size()
-        << " instructions in the worklist and " << pending_wl.size()
-        << " incomplete but no progress made in the last"
-        << " iteration";
+    DLOG(WARNING) << "Alias analysis failed to complete on function `"
+                  << func->getName().str() << "` with " << next_wl.size()
+                  << " instructions in the worklist and " << pending_wl.size()
+                  << " incomplete but no progress made in the last"
+                  << " iteration";
   }
 
   auto &context = func->getContext();
@@ -843,8 +821,8 @@ VisitResult ForwardAliasVisitor::visitStoreInst(llvm::StoreInst &inst) {
 }
 
 // Visit a `getelementptr` (GEP) instruction and update the offset map.
-VisitResult ForwardAliasVisitor::visitGetElementPtrInst(
-    llvm::GetElementPtrInst &inst) {
+VisitResult
+ForwardAliasVisitor::visitGetElementPtrInst(llvm::GetElementPtrInst &inst) {
 
   auto val = inst.getPointerOperand();
 
@@ -859,8 +837,7 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(
   }
 
   // Try to get the offset as a single constant. If we can't then
-  llvm::APInt const_offset(
-      dl.getPointerSizeInBits(0), 0, true);
+  llvm::APInt const_offset(dl.getPointerSizeInBits(0), 0, true);
   if (!inst.accumulateConstantOffset(dl, const_offset)) {
     return VisitResult::Error;
   }
@@ -871,12 +848,12 @@ VisitResult ForwardAliasVisitor::visitGetElementPtrInst(
                          static_cast<uint64_t>(const_offset.getSExtValue()),
                          offset_to_slot.size(), &offset)) {
 
-    LOG(WARNING)
-        << "Out of bounds GEP operation: " << LLVMThingToString(&inst)
-        << " on base " << LLVMThingToString(val)
-        << " with inferred offset " << static_cast<int64_t>(offset)
-        << " (" << ptr->second << " + "  << const_offset.getSExtValue() << ")"
-        << " and max allowed offset of " << offset_to_slot.size();
+    LOG(WARNING) << "Out of bounds GEP operation: " << LLVMThingToString(&inst)
+                 << " on base " << LLVMThingToString(val)
+                 << " with inferred offset " << static_cast<int64_t>(offset)
+                 << " (" << ptr->second << " + " << const_offset.getSExtValue()
+                 << ")"
+                 << " and max allowed offset of " << offset_to_slot.size();
     return VisitResult::Error;
   }
 
@@ -914,8 +891,8 @@ VisitResult ForwardAliasVisitor::visitSub(llvm::BinaryOperator &inst) {
 }
 
 // Visit an `add` or `sub` instruction.
-VisitResult ForwardAliasVisitor::visitBinaryOp_(
-    llvm::BinaryOperator &inst, OpType op) {
+VisitResult ForwardAliasVisitor::visitBinaryOp_(llvm::BinaryOperator &inst,
+                                                OpType op) {
 
   auto lhs_val = inst.getOperand(0);
   auto rhs_val = inst.getOperand(1);
@@ -982,21 +959,18 @@ VisitResult ForwardAliasVisitor::visitBinaryOp_(
   }
 
   if (2 == num_offsets) {
-    LOG(WARNING)
-        << "Adding or subtracting two state-pointer derived pointers";
+    LOG(WARNING) << "Adding or subtracting two state-pointer derived pointers";
     return VisitResult::Error;
 
   } else if (2 == (num_offsets + num_consts)) {
     uint64_t offset = 0;
     if (!TryCombineOffsets(lhs_offset, op, rhs_offset, offset_to_slot.size(),
                            &offset)) {
-      LOG(WARNING)
-          << "Out of bounds operation `"
-          << LLVMThingToString(&inst) << "` with LHS offset "
-          << static_cast<int64_t>(lhs_offset)
-          << ", RHS offset " << static_cast<int64_t>(rhs_offset)
-          << ", combined offset " << static_cast<int64_t>(offset)
-          << ", and max allowed offset of " << offset_to_slot.size();
+      LOG(WARNING) << "Out of bounds operation `" << LLVMThingToString(&inst)
+                   << "` with LHS offset " << static_cast<int64_t>(lhs_offset)
+                   << ", RHS offset " << static_cast<int64_t>(rhs_offset)
+                   << ", combined offset " << static_cast<int64_t>(offset)
+                   << ", and max allowed offset of " << offset_to_slot.size();
       return VisitResult::Error;
     }
 
@@ -1017,10 +991,9 @@ VisitResult ForwardAliasVisitor::visitSelect(llvm::SelectInst &inst) {
   auto false_val = inst.getFalseValue();
   auto true_ptr = state_offset.find(true_val);
   auto false_ptr = state_offset.find(false_val);
-  auto in_exclude_set = exclude.count(true_val) ||
-                        exclude.count(false_val);
-  auto in_state_offset = true_ptr != state_offset.end() ||
-                         false_ptr != state_offset.end();
+  auto in_exclude_set = exclude.count(true_val) || exclude.count(false_val);
+  auto in_state_offset =
+      true_ptr != state_offset.end() || false_ptr != state_offset.end();
 
   // Fail if the two values are inconsistent.
   if (in_state_offset && in_exclude_set) {
@@ -1122,8 +1095,8 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &inst) {
     }
   }
 
-  auto complete = (num_in_state_offset + num_in_exclude_set + num_consts) ==
-                  num_vals;
+  auto complete =
+      (num_in_state_offset + num_in_exclude_set + num_consts) == num_vals;
 
   // Fail if some operands are excluded and others are state offsets.
   if (num_in_state_offset && num_in_exclude_set) {
@@ -1168,8 +1141,7 @@ VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
         name.startswith("__remill_read_memory_") ||
         name.startswith("__remill_write_memory_") ||
         name == "__remill_fpu_exception_test_and_clear" ||
-        name == "__mcsema_pc_tracer" ||
-        name == "__mcsema_reg_tracer" ||
+        name == "__mcsema_pc_tracer" || name == "__mcsema_reg_tracer" ||
         name == "__mcsema_printf") {
 
       // Don't let this affect anything.
@@ -1229,8 +1201,7 @@ class LiveSetBlockVisitor {
   std::vector<llvm::Instruction *> to_remove;
   const llvm::Function *bb_func;
 
-  LiveSetBlockVisitor(llvm::Module &module_,
-                      const InstToLiveSet &live_args_,
+  LiveSetBlockVisitor(llvm::Module &module_, const InstToLiveSet &live_args_,
                       InstToOffset &state_access_offset_,
                       const std::vector<StateSlot> &state_slots_,
                       const llvm::Function *bb_func_,
@@ -1240,8 +1211,8 @@ class LiveSetBlockVisitor {
   void CollectDeadInsts(KillCounter &stats);
   bool VisitBlock(llvm::BasicBlock *block, KillCounter &stats);
   bool DeleteDeadInsts(KillCounter &stats);
-  void CreateDOTDigraph(const remill::Arch *,
-                        llvm::Function *func, const char *extensions);
+  void CreateDOTDigraph(const remill::Arch *, llvm::Function *func,
+                        const char *extensions);
 
  private:
   bool on_remove_pass;
@@ -1249,11 +1220,9 @@ class LiveSetBlockVisitor {
 };
 
 LiveSetBlockVisitor::LiveSetBlockVisitor(
-    llvm::Module &module_,
-    const InstToLiveSet &live_args_,
+    llvm::Module &module_, const InstToLiveSet &live_args_,
     InstToOffset &state_access_offset_,
-    const std::vector<StateSlot> &state_slots_,
-    const llvm::Function *bb_func_,
+    const std::vector<StateSlot> &state_slots_, const llvm::Function *bb_func_,
     const llvm::DataLayout *dl_)
     : module(module_),
       live_args(live_args_),
@@ -1477,8 +1446,7 @@ void LiveSetBlockVisitor::CreateDOTDigraph(const remill::Arch *arch,
 
   std::ofstream dot(fname.str());
   dot << "digraph {" << std::endl
-      << "node [shape=none margin=0 nojustify=false labeljust=l]"
-      << std::endl;
+      << "node [shape=none margin=0 nojustify=false labeljust=l]" << std::endl;
 
   // Figure out relevant load/stores to print.
   LiveSet used;
@@ -1545,6 +1513,7 @@ void LiveSetBlockVisitor::CreateDOTDigraph(const remill::Arch *arch,
 
     // Then print out one row per instruction.
     for (auto &inst : *block) {
+
       // First row, print out the DEAD slots on entry.
       if (debug_live_args_at_call.count(&inst)) {
         const auto &clive = debug_live_args_at_call[&inst];
@@ -1571,16 +1540,14 @@ void LiveSetBlockVisitor::CreateDOTDigraph(const remill::Arch *arch,
         } else if (llvm::isa<llvm::StoreInst>(&inst)) {
           inst_size = dl->getTypeAllocSize(inst.getOperand(0)->getType());
         } else {
-          LOG(FATAL)
-              << "Instruction " << LLVMThingToString(&inst)
-              << " has scope meta-data";
+          LOG(FATAL) << "Instruction " << LLVMThingToString(&inst)
+                     << " has scope meta-data";
         }
 
         StreamSlot(arch, context, dot, slot, inst_size);
 
         // slot size minus load/store size
-        dot << "</td><td align=\"left\">" << (slot.size - inst_size)
-            << "</td>";
+        dot << "</td><td align=\"left\">" << (slot.size - inst_size) << "</td>";
       } else {
         dot << "</td><td></td>";
       }
@@ -1629,36 +1596,33 @@ void LiveSetBlockVisitor::CreateDOTDigraph(const remill::Arch *arch,
 }
 
 class ForwardingBlockVisitor {
-  public:
-    llvm::Function &func;
-    llvm::DominatorTree &dominator_tree;
-    InstToOffset &state_access_offset;
-    const std::vector<StateSlot> &state_slots;
-    const InstToLiveSet &live_args;
-    const llvm::FunctionType *lifted_func_ty;
+ public:
+  llvm::Function &func;
+  llvm::DominatorTree &dominator_tree;
+  InstToOffset &state_access_offset;
+  const std::vector<StateSlot> &state_slots;
+  const InstToLiveSet &live_args;
+  const llvm::FunctionType *lifted_func_ty;
 
-    ForwardingBlockVisitor(
-        llvm::Function &func_,
-        llvm::DominatorTree &dominator_tree_,
-        InstToOffset &state_access_offset_,
-        const std::vector<StateSlot> &state_slots_,
-        const InstToLiveSet &live_args_,
-        const llvm::DataLayout *dl_);
+  ForwardingBlockVisitor(llvm::Function &func_,
+                         llvm::DominatorTree &dominator_tree_,
+                         InstToOffset &state_access_offset_,
+                         const std::vector<StateSlot> &state_slots_,
+                         const InstToLiveSet &live_args_,
+                         const llvm::DataLayout *dl_);
 
-    void Visit(const ValueToOffset &val_to_offset, KillCounter &stats);
-    void VisitBlock(llvm::BasicBlock *block, const ValueToOffset &val_to_offset,
-                    KillCounter &stats);
+  void Visit(const ValueToOffset &val_to_offset, KillCounter &stats);
+  void VisitBlock(llvm::BasicBlock *block, const ValueToOffset &val_to_offset,
+                  KillCounter &stats);
 
-  private:
-    const llvm::DataLayout *dl;
+ private:
+  const llvm::DataLayout *dl;
 };
 
 ForwardingBlockVisitor::ForwardingBlockVisitor(
-    llvm::Function &func_,
-    llvm::DominatorTree &dominator_tree_,
+    llvm::Function &func_, llvm::DominatorTree &dominator_tree_,
     InstToOffset &state_access_offset_,
-    const std::vector<StateSlot> &state_slots_,
-    const InstToLiveSet &live_args_,
+    const std::vector<StateSlot> &state_slots_, const InstToLiveSet &live_args_,
     const llvm::DataLayout *dl_)
     : func(func_),
       dominator_tree(dominator_tree_),
@@ -1670,56 +1634,51 @@ ForwardingBlockVisitor::ForwardingBlockVisitor(
 
 void ForwardingBlockVisitor::Visit(const ValueToOffset &val_to_offset,
                                    KillCounter &stats) {
+
   // If any visit makes progress, continue the loop.
   for (auto &block : func) {
     VisitBlock(&block, val_to_offset, stats);
   }
 }
 
-static llvm::Value *ConvertToSameSizedType(
-    llvm::Value *val, llvm::Type *dest_type, llvm::Instruction *insert_loc) {
+static llvm::Value *ConvertToSameSizedType(llvm::Value *val,
+                                           llvm::Type *dest_type,
+                                           llvm::Instruction *insert_loc) {
   auto empty_name = llvm::Twine::createNull();
   auto val_type = val->getType();
   if (val_type->isIntegerTy()) {
     if (dest_type->isPointerTy()) {
-      return new llvm::IntToPtrInst(
-          val, dest_type, empty_name, insert_loc);
+      return new llvm::IntToPtrInst(val, dest_type, empty_name, insert_loc);
     } else {
       return new llvm::BitCastInst(val, dest_type, empty_name, insert_loc);
     }
 
   } else if (val_type->isFloatingPointTy()) {
     if (dest_type->isPointerTy()) {
-      LOG(ERROR)
-          << "Likely nonsensical forwarding of float type "
-          << LLVMThingToString(val_type) << " to pointer type "
-          << LLVMThingToString(dest_type);
+      LOG(ERROR) << "Likely nonsensical forwarding of float type "
+                 << LLVMThingToString(val_type) << " to pointer type "
+                 << LLVMThingToString(dest_type);
 
       return nullptr;
     } else {
-      return new llvm::BitCastInst(
-          val, dest_type, empty_name, insert_loc);
+      return new llvm::BitCastInst(val, dest_type, empty_name, insert_loc);
     }
 
   } else if (val_type->isPointerTy()) {
     if (dest_type->isIntegerTy()) {
-      return new llvm::PtrToIntInst(
-          val, dest_type, empty_name, insert_loc);
+      return new llvm::PtrToIntInst(val, dest_type, empty_name, insert_loc);
 
     } else if (dest_type->isPointerTy()) {
-      return new llvm::BitCastInst(
-          val, dest_type, empty_name, insert_loc);
+      return new llvm::BitCastInst(val, dest_type, empty_name, insert_loc);
 
     } else {
-      LOG(ERROR)
-          << "Likely nonsensical forwarding of pointer type "
-          << LLVMThingToString(val_type) << " to type "
-          << LLVMThingToString(dest_type);
+      LOG(ERROR) << "Likely nonsensical forwarding of pointer type "
+                 << LLVMThingToString(val_type) << " to type "
+                 << LLVMThingToString(dest_type);
       return nullptr;
     }
   } else {
-    return new llvm::BitCastInst(
-        val, dest_type, empty_name, insert_loc);
+    return new llvm::BitCastInst(val, dest_type, empty_name, insert_loc);
   }
 }
 
@@ -1737,8 +1696,7 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
   }
 
   for (auto inst : insts) {
-    if (llvm::isa<llvm::CallInst>(inst) ||
-        llvm::isa<llvm::InvokeInst>(inst)) {
+    if (llvm::isa<llvm::CallInst>(inst) || llvm::isa<llvm::InvokeInst>(inst)) {
 
       auto live_args_it = live_args.find(inst);
       if (live_args_it == live_args.end()) {
@@ -1812,16 +1770,16 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
       // Forwarding, but changing the size.
       } else if (next_size < val_size) {
         if (val_type->isIntegerTy() && next_type->isIntegerTy()) {
-          auto trunc = new llvm::TruncInst(
-              val, next_type, empty_name, next_load);
+          auto trunc =
+              new llvm::TruncInst(val, next_type, empty_name, next_load);
           next_load->replaceAllUsesWith(trunc);
           next_load->eraseFromParent();
           state_access_offset.erase(next_load);
 
         } else if (val_type->isFloatingPointTy() &&
                    next_type->isFloatingPointTy()) {
-          auto trunc = new llvm::FPTruncInst(
-              val, next_type, empty_name, next_load);
+          auto trunc =
+              new llvm::FPTruncInst(val, next_type, empty_name, next_load);
           next_load->replaceAllUsesWith(trunc);
           next_load->eraseFromParent();
           state_access_offset.erase(next_load);
@@ -1888,8 +1846,8 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
 
       // Forwarding, but changing the type.
       } else if (val_size == next_size) {
-        if (auto cast = ConvertToSameSizedType(load_inst, next_type,
-                                               next_load)) {
+        if (auto cast =
+                ConvertToSameSizedType(load_inst, next_type, next_load)) {
           next_load->replaceAllUsesWith(cast);
           next_load->eraseFromParent();
           state_access_offset.erase(next_load);
@@ -1905,16 +1863,16 @@ void ForwardingBlockVisitor::VisitBlock(llvm::BasicBlock *block,
       } else if (next_size < val_size) {
       try_truncate:
         if (val_type->isIntegerTy() && next_type->isIntegerTy()) {
-          auto trunc = new llvm::TruncInst(
-              load_inst, next_type, empty_name, next_load);
+          auto trunc =
+              new llvm::TruncInst(load_inst, next_type, empty_name, next_load);
           next_load->replaceAllUsesWith(trunc);
           next_load->eraseFromParent();
           state_access_offset.erase(next_load);
 
         } else if (val_type->isFloatingPointTy() &&
                    next_type->isFloatingPointTy()) {
-          auto trunc = new llvm::FPTruncInst(
-              load_inst, next_type, empty_name, next_load);
+          auto trunc = new llvm::FPTruncInst(load_inst, next_type, empty_name,
+                                             next_load);
           next_load->replaceAllUsesWith(trunc);
           next_load->eraseFromParent();
           state_access_offset.erase(next_load);
@@ -1953,8 +1911,7 @@ std::vector<StateSlot> StateSlots(const remill::Arch *arch,
   if (!FLAGS_dot_output_dir.empty()) {
     if (!TryCreateDirectory(FLAGS_dot_output_dir)) {
       FLAGS_dot_output_dir.clear();
-      LOG(ERROR)
-          << "Invalid path specified to `--dot_output_dir`.";
+      LOG(ERROR) << "Invalid path specified to `--dot_output_dir`.";
     } else {
       FLAGS_dot_output_dir = CanonicalPath(FLAGS_dot_output_dir);
     }
@@ -1975,8 +1932,7 @@ std::vector<StateSlot> StateSlots(const remill::Arch *arch,
 
 // Analyze a module, discover aliasing loads and stores, and remove dead
 // stores into the `State` structure.
-void RemoveDeadStores(const remill::Arch *arch,
-                      llvm::Module *module,
+void RemoveDeadStores(const remill::Arch *arch, llvm::Module *module,
                       llvm::Function *bb_func,
                       const std::vector<StateSlot> &slots,
                       llvm::Function *ds_func) {
@@ -2002,9 +1958,8 @@ void RemoveDeadStores(const remill::Arch *arch,
       continue;
     }
 
-    ForwardAliasVisitor fav(
-        dl, slots, live_args, state_access_offset,
-        func.getContext());
+    ForwardAliasVisitor fav(dl, slots, live_args, state_access_offset,
+                            func.getContext());
 
     // If the analysis succeeds for this function, then do store-to-load
     // and load-to-load forwarding.
@@ -2015,16 +1970,16 @@ void RemoveDeadStores(const remill::Arch *arch,
 
       if (!FLAGS_disable_register_forwarding) {
         llvm::DominatorTree dominator_tree(func);
-        ForwardingBlockVisitor fbv(
-            func, dominator_tree, state_access_offset, slots, live_args, &dl);
+        ForwardingBlockVisitor fbv(func, dominator_tree, state_access_offset,
+                                   slots, live_args, &dl);
         fbv.Visit(fav.state_offset, stats);
       }
     }
   }
 
   // Perform live set analysis
-  LiveSetBlockVisitor visitor(*module, live_args, state_access_offset,
-                              slots, bb_func, &dl);
+  LiveSetBlockVisitor visitor(*module, live_args, state_access_offset, slots,
+                              bb_func, &dl);
 
   visitor.FindLiveInsts(stats);
   visitor.CollectDeadInsts(stats);

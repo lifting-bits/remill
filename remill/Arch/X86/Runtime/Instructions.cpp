@@ -21,10 +21,9 @@
 #include "remill/Arch/Float.h"
 #include "remill/Arch/Runtime/Intrinsics.h"
 #include "remill/Arch/Runtime/Operators.h"
-
+#include "remill/Arch/X86/Runtime/Operators.h"
 #include "remill/Arch/X86/Runtime/State.h"
 #include "remill/Arch/X86/Runtime/Types.h"
-#include "remill/Arch/X86/Runtime/Operators.h"
 
 #define REG_IP state.gpr.rip.word
 #define REG_EIP state.gpr.rip.dword
@@ -73,27 +72,27 @@
 #define REG_RDI state.gpr.rdi.qword
 
 #if 64 == ADDRESS_SIZE_BITS
-# define REG_PC REG_RIP
-# define REG_XIP REG_RIP
-# define REG_XAX REG_RAX
-# define REG_XDX REG_RDX
-# define REG_XCX REG_RCX
-# define REG_XSI REG_RSI
-# define REG_XDI REG_RDI
-# define REG_XSP REG_RSP
-# define REG_XBP REG_RBP
-# define REG_XBX REG_RBX
+#  define REG_PC REG_RIP
+#  define REG_XIP REG_RIP
+#  define REG_XAX REG_RAX
+#  define REG_XDX REG_RDX
+#  define REG_XCX REG_RCX
+#  define REG_XSI REG_RSI
+#  define REG_XDI REG_RDI
+#  define REG_XSP REG_RSP
+#  define REG_XBP REG_RBP
+#  define REG_XBX REG_RBX
 #else
-# define REG_PC REG_EIP
-# define REG_XIP REG_EIP
-# define REG_XAX REG_EAX
-# define REG_XDX REG_EDX
-# define REG_XCX REG_ECX
-# define REG_XSI REG_ESI
-# define REG_XDI REG_EDI
-# define REG_XSP REG_ESP
-# define REG_XBP REG_EBP
-# define REG_XBX REG_EBX
+#  define REG_PC REG_EIP
+#  define REG_XIP REG_EIP
+#  define REG_XAX REG_EAX
+#  define REG_XDX REG_EDX
+#  define REG_XCX REG_ECX
+#  define REG_XSI REG_ESI
+#  define REG_XDI REG_EDI
+#  define REG_XSP REG_ESP
+#  define REG_XBP REG_EBP
+#  define REG_XBX REG_EBX
 #endif  // 64 == ADDRESS_SIZE_BITS
 
 #define FLAG_CF state.aflag.cf
@@ -131,11 +130,13 @@
 #define INTERRUPT_VECTOR state.hyper_call_vector
 
 namespace {
+
 // Takes the place of an unsupported instruction.
 DEF_SEM(HandleUnsupported) {
   return __remill_sync_hyper_call(
-      state, memory, IF_64BIT_ELSE(SyncHyperCall::kAMD64EmulateInstruction,
-                                   SyncHyperCall::kX86EmulateInstruction));
+      state, memory,
+      IF_64BIT_ELSE(SyncHyperCall::kAMD64EmulateInstruction,
+                    SyncHyperCall::kX86EmulateInstruction));
 }
 
 // Takes the place of an invalid instruction.
@@ -152,7 +153,7 @@ DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 
 namespace {
 template <typename T>
-DEF_HELPER(PopFromStack) -> T {
+DEF_HELPER(PopFromStack)->T {
   addr_t op_size = TruncTo<addr_t>(sizeof(T));
   addr_t old_xsp = Read(REG_XSP);
   addr_t new_xsp = UAdd(old_xsp, op_size);
@@ -162,7 +163,6 @@ DEF_HELPER(PopFromStack) -> T {
 }
 }  // namespace
 
-#include "remill/Arch/X86/Semantics/FLAGS.cpp"
 #include "remill/Arch/X86/Semantics/AVX.cpp"
 #include "remill/Arch/X86/Semantics/BINARY.cpp"
 #include "remill/Arch/X86/Semantics/BITBYTE.cpp"
@@ -172,9 +172,10 @@ DEF_HELPER(PopFromStack) -> T {
 #include "remill/Arch/X86/Semantics/CONVERT.cpp"
 #include "remill/Arch/X86/Semantics/DATAXFER.cpp"
 #include "remill/Arch/X86/Semantics/DECIMAL.cpp"
-#include "remill/Arch/X86/Semantics/INTERRUPT.cpp"
 #include "remill/Arch/X86/Semantics/FLAGOP.cpp"
+#include "remill/Arch/X86/Semantics/FLAGS.cpp"
 #include "remill/Arch/X86/Semantics/FMA.cpp"
+#include "remill/Arch/X86/Semantics/INTERRUPT.cpp"
 #include "remill/Arch/X86/Semantics/IO.cpp"
 #include "remill/Arch/X86/Semantics/LOGICAL.cpp"
 #include "remill/Arch/X86/Semantics/MISC.cpp"

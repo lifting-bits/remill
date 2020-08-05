@@ -16,10 +16,10 @@
 
 #pragma once
 
-#include "remill/BC/Version.h"
-
 #include <llvm/Transforms/Scalar.h>
 
+#include "remill/BC/Version.h"
+
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(7, 0)
-#include <llvm/Transforms/Utils.h>
+#  include <llvm/Transforms/Utils.h>
 #endif

@@ -14,6 +14,27 @@
  * limitations under the License.
  */
 
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/GlobalValue.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/raw_ostream.h>
+#include <remill/Arch/Arch.h>
+#include <remill/Arch/Instruction.h>
+#include <remill/Arch/Name.h>
+#include <remill/BC/ABI.h>
+#include <remill/BC/IntrinsicTable.h>
+#include <remill/BC/Lifter.h>
+#include <remill/BC/Optimizer.h>
+#include <remill/BC/Util.h>
+#include <remill/OS/OS.h>
+
 #include <algorithm>
 #include <cstdint>
 #include <fstream>
@@ -25,45 +46,26 @@
 #include <string>
 #include <system_error>
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
+DEFINE_uint64(address, 0,
+              "Address at which we should assume the bytes are"
+              "located in virtual memory.");
 
-#include <llvm/IR/Function.h>
-#include <llvm/IR/GlobalValue.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Type.h>
-
-#include <llvm/Support/FileSystem.h>
-#include <llvm/Support/raw_ostream.h>
-
-#include <remill/Arch/Arch.h>
-#include <remill/Arch/Instruction.h>
-#include <remill/Arch/Name.h>
-#include <remill/BC/ABI.h>
-#include <remill/BC/IntrinsicTable.h>
-#include <remill/BC/Lifter.h>
-#include <remill/BC/Optimizer.h>
-#include <remill/BC/Util.h>
-#include <remill/OS/OS.h>
-
-DEFINE_uint64(address, 0, "Address at which we should assume the bytes are"
-                          "located in virtual memory.");
-
-DEFINE_uint64(entry_address, 0, "Address of instruction that should be "
-                                "considered the entrypoint of this code. "
-                                "Defaults to the value of --address.");
+DEFINE_uint64(entry_address, 0,
+              "Address of instruction that should be "
+              "considered the entrypoint of this code. "
+              "Defaults to the value of --address.");
 
 DEFINE_string(bytes, "", "Hex-encoded byte string to lift.");
 
 DEFINE_string(ir_out, "", "Path to file where the LLVM IR should be saved.");
-DEFINE_string(bc_out, "", "Path to file where the LLVM bitcode should be "
-                          "saved.");
+DEFINE_string(bc_out, "",
+              "Path to file where the LLVM bitcode should be "
+              "saved.");
 
-DEFINE_string(slice_inputs, "", "Comma-separated list of registers to treat as inputs.");
-DEFINE_string(slice_outputs, "", "Comma-separated list of registers to treat as outputs.");
+DEFINE_string(slice_inputs, "",
+              "Comma-separated list of registers to treat as inputs.");
+DEFINE_string(slice_outputs, "",
+              "Comma-separated list of registers to treat as outputs.");
 
 using Memory = std::map<uint64_t, uint8_t>;
 
@@ -78,9 +80,8 @@ static Memory UnhexlifyInputBytes(uint64_t addr_mask) {
     auto byte_val = strtol(nibbles, &parsed_to, 16);
 
     if (parsed_to != &(nibbles[2])) {
-      std::cerr
-          << "Invalid hex byte value '" << nibbles << "' specified in --bytes."
-          << std::endl;
+      std::cerr << "Invalid hex byte value '" << nibbles
+                << "' specified in --bytes." << std::endl;
       exit(EXIT_FAILURE);
     }
 
@@ -91,15 +92,13 @@ static Memory UnhexlifyInputBytes(uint64_t addr_mask) {
     // that we don't accidentally wrap around and start filling out low
     // byte addresses.
     if (masked_addr < byte_addr) {
-      std::cerr
-          << "Too many bytes specified to --bytes, would result "
-          << "in a 32-bit overflow.";
+      std::cerr << "Too many bytes specified to --bytes, would result "
+                << "in a 32-bit overflow.";
       exit(EXIT_FAILURE);
 
     } else if (masked_addr < FLAGS_address) {
-      std::cerr
-          << "Too many bytes specified to --bytes, would result "
-          << "in a 64-bit overflow.";
+      std::cerr << "Too many bytes specified to --bytes, would result "
+                << "in a 64-bit overflow.";
       exit(EXIT_FAILURE);
     }
 
@@ -113,14 +112,13 @@ class SimpleTraceManager : public remill::TraceManager {
  public:
   virtual ~SimpleTraceManager(void) = default;
 
-  explicit SimpleTraceManager(Memory &memory_)
-      : memory(memory_) {}
+  explicit SimpleTraceManager(Memory &memory_) : memory(memory_) {}
 
  protected:
   // Called when we have lifted, i.e. defined the contents, of a new trace.
   // The derived class is expected to do something useful with this.
-  void SetLiftedTraceDefinition(
-      uint64_t addr, llvm::Function *lifted_func) override {
+  void SetLiftedTraceDefinition(uint64_t addr,
+                                llvm::Function *lifted_func) override {
     traces[addr] = lifted_func;
   }
 
@@ -177,9 +175,8 @@ static void MuteStateEscape(llvm::Module *module, const char *func_name) {
   for (auto user : func->users()) {
     if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(user)) {
       auto arg_op = call_inst->getArgOperand(remill::kStatePointerArgNum);
-      call_inst->setArgOperand(
-          remill::kStatePointerArgNum,
-          llvm::UndefValue::get(arg_op->getType()));
+      call_inst->setArgOperand(remill::kStatePointerArgNum,
+                               llvm::UndefValue::get(arg_op->getType()));
     }
   }
 }
@@ -189,14 +186,14 @@ int main(int argc, char *argv[]) {
   google::InitGoogleLogging(argv[0]);
 
   if (FLAGS_bytes.empty()) {
-    std::cerr
-        << "Please specify a sequence of hex bytes to --bytes." << std::endl;
+    std::cerr << "Please specify a sequence of hex bytes to --bytes."
+              << std::endl;
     return EXIT_FAILURE;
   }
 
   if (FLAGS_bytes.size() % 2) {
-    std::cerr
-        << "Please specify an even number of nibbles to --bytes." << std::endl;
+    std::cerr << "Please specify an even number of nibbles to --bytes."
+              << std::endl;
     return EXIT_FAILURE;
   }
 
@@ -210,10 +207,9 @@ int main(int argc, char *argv[]) {
   auto arch = remill::Arch::GetTargetArch(context);
   const uint64_t addr_mask = ~0ULL >> (64UL - arch->address_size);
   if (FLAGS_address != (FLAGS_address & addr_mask)) {
-    std::cerr
-        << "Value " << std::hex << FLAGS_address
-        << " passed to --address does not fit into 32-bits. Did mean"
-        << " to specify a 64-bit architecture to --arch?" << std::endl;
+    std::cerr << "Value " << std::hex << FLAGS_address
+              << " passed to --address does not fit into 32-bits. Did mean"
+              << " to specify a 64-bit architecture to --arch?" << std::endl;
     return EXIT_FAILURE;
   }
 
@@ -253,7 +249,8 @@ int main(int argc, char *argv[]) {
   arch->PrepareModuleDataLayout(&dest_module);
 
   llvm::Function *entry_trace = nullptr;
-  const auto make_slice = !FLAGS_slice_inputs.empty() || !FLAGS_slice_outputs.empty();
+  const auto make_slice =
+      !FLAGS_slice_inputs.empty() || !FLAGS_slice_outputs.empty();
 
   // Move the lifted code into a new module. This module will be much smaller
   // because it won't be bogged down with all of the semantics definitions.
@@ -281,10 +278,10 @@ int main(int argc, char *argv[]) {
 
     llvm::SmallVector<llvm::StringRef, 4> input_reg_names;
     llvm::SmallVector<llvm::StringRef, 4> output_reg_names;
-    llvm::StringRef(FLAGS_slice_inputs).split(
-        input_reg_names, ',', -1, false  /* KeepEmpty */);
-    llvm::StringRef(FLAGS_slice_outputs).split(
-        output_reg_names, ',', -1, false  /* KeepEmpty */);
+    llvm::StringRef(FLAGS_slice_inputs)
+        .split(input_reg_names, ',', -1, false /* KeepEmpty */);
+    llvm::StringRef(FLAGS_slice_outputs)
+        .split(output_reg_names, ',', -1, false /* KeepEmpty */);
 
     CHECK(!(input_reg_names.empty() && output_reg_names.empty()))
         << "Empty lists passed to both --slice_inputs and --slice_outputs";
@@ -308,16 +305,17 @@ int main(int argc, char *argv[]) {
     for (auto &reg_name : output_reg_names) {
       const auto reg = arch->RegisterByName(reg_name.str());
       CHECK(reg != nullptr)
-              << "Invalid register name '" << reg_name.str()
-              << "' used in output slice list '" << FLAGS_slice_outputs << "'";
+          << "Invalid register name '" << reg_name.str()
+          << "' used in output slice list '" << FLAGS_slice_outputs << "'";
 
       arg_types.push_back(llvm::PointerType::get(reg->type, 0));
     }
 
     const auto state_type = state_ptr_type->getPointerElementType();
-    const auto func_type = llvm::FunctionType::get(mem_ptr_type, arg_types, false);
-    const auto func = llvm::Function::Create(func_type, llvm::GlobalValue::ExternalLinkage,
-                                             "slice", &dest_module);
+    const auto func_type =
+        llvm::FunctionType::get(mem_ptr_type, arg_types, false);
+    const auto func = llvm::Function::Create(
+        func_type, llvm::GlobalValue::ExternalLinkage, "slice", &dest_module);
 
     // Store all of the function arguments (corresponding with specific registers)
     // into the stack-allocated `State` structure.
@@ -326,8 +324,8 @@ int main(int argc, char *argv[]) {
 
     const auto state_ptr = ir.CreateAlloca(state_type);
 
-    const remill::Register *pc_reg = arch->RegisterByName(
-        arch->ProgramCounterRegisterName());
+    const remill::Register *pc_reg =
+        arch->RegisterByName(arch->ProgramCounterRegisterName());
 
     CHECK(pc_reg != nullptr)
         << "Could not find the register in the state structure "
@@ -335,7 +333,8 @@ int main(int argc, char *argv[]) {
 
     // Store the program counter into the state.
     const auto pc_reg_ptr = pc_reg->AddressOf(state_ptr, entry);
-    const auto trace_pc = llvm::ConstantInt::get(pc_reg->type, FLAGS_entry_address, false);
+    const auto trace_pc =
+        llvm::ConstantInt::get(pc_reg->type, FLAGS_entry_address, false);
     ir.SetInsertPoint(entry);
     ir.CreateStore(trace_pc, pc_reg_ptr);
 
@@ -400,15 +399,13 @@ int main(int argc, char *argv[]) {
 
   if (!FLAGS_ir_out.empty()) {
     if (!remill::StoreModuleIRToFile(&dest_module, FLAGS_ir_out, true)) {
-      LOG(ERROR)
-          << "Could not save LLVM IR to " << FLAGS_ir_out;
+      LOG(ERROR) << "Could not save LLVM IR to " << FLAGS_ir_out;
       ret = EXIT_FAILURE;
     }
   }
   if (!FLAGS_bc_out.empty()) {
     if (!remill::StoreModuleToFile(&dest_module, FLAGS_bc_out, true)) {
-      LOG(ERROR)
-          << "Could not save LLVM bitcode to " << FLAGS_bc_out;
+      LOG(ERROR) << "Could not save LLVM bitcode to " << FLAGS_bc_out;
       ret = EXIT_FAILURE;
     }
   }

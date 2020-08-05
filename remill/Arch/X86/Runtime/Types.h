@@ -19,8 +19,8 @@
 union bcd_digit_pair_t {
   uint8_t u8;
   struct {
-    uint8_t lsd:4;  // Least-significant digit
-    uint8_t msd:4;  // Most-significant digit
+    uint8_t lsd : 4;  // Least-significant digit
+    uint8_t msd : 4;  // Most-significant digit
   } __attribute((packed)) pair;
 } __attribute((packed));
 
@@ -29,8 +29,8 @@ union bcd_digit_pair_t {
 struct bcd80_t final {
   union bcd_digit_pair_t digit_pairs[9];
   struct {
-    uint8_t _unused:7;  // No meaning in encoding
-    uint8_t is_negative:1;
+    uint8_t _unused : 7;  // No meaning in encoding
+    uint8_t is_negative : 1;
   } __attribute((packed));
 } __attribute__((packed));
 
@@ -70,8 +70,7 @@ typedef Vn<vec512_t> VV512;  // AVX512 ZMM register.
 // represent that. We distinguish SSE and AVX semantics by using things like
 // `V128W` for writing to an XMM register, but `VV128W` for writing to an
 // extended AVX(512) register like YMM or ZMM.
-typedef IF_AVX512_ELSE(vec512_t, IF_AVX_ELSE(vec256_t, vec128_t))
-        WriteVecType;
+typedef IF_AVX512_ELSE(vec512_t, IF_AVX_ELSE(vec256_t, vec128_t)) WriteVecType;
 typedef RVnW<IF_64BIT_ELSE(vec64_t, vec32_t)> V32W;  // GPR with vector.
 typedef RVnW<vec64_t> V64W;  // MMX technology register, or GPR with vector.
 typedef VnW<vec128_t> V128W;  // Legacy (SSE) XMM register.

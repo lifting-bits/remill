@@ -136,8 +136,8 @@ template <typename D, typename S>
 DEF_SEM(ASRV, D dst, S src1, S src2) {
   using T = typename BaseType<S>::BT;
   constexpr auto size = T(sizeof(T) * 8);
-  WriteZExt(
-      dst, Unsigned(SShr(Signed(Read(src1)), Signed(URem(Read(src2), size)))));
+  WriteZExt(dst,
+            Unsigned(SShr(Signed(Read(src1)), Signed(URem(Read(src2), size)))));
   return memory;
 }
 

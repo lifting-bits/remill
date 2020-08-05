@@ -19,34 +19,36 @@
 #define PUSH_X87_STACK(x) \
   do { \
     auto __x = x; \
-    state.st.elems[7].val = state.st.elems[6].val ; \
-    state.st.elems[6].val = state.st.elems[5].val ; \
-    state.st.elems[5].val = state.st.elems[4].val ; \
-    state.st.elems[4].val = state.st.elems[3].val ; \
-    state.st.elems[3].val = state.st.elems[2].val ; \
-    state.st.elems[2].val = state.st.elems[1].val ; \
-    state.st.elems[1].val = state.st.elems[0].val ; \
+    state.st.elems[7].val = state.st.elems[6].val; \
+    state.st.elems[6].val = state.st.elems[5].val; \
+    state.st.elems[5].val = state.st.elems[4].val; \
+    state.st.elems[4].val = state.st.elems[3].val; \
+    state.st.elems[3].val = state.st.elems[2].val; \
+    state.st.elems[2].val = state.st.elems[1].val; \
+    state.st.elems[1].val = state.st.elems[0].val; \
     state.st.elems[0].val = __x; \
-    state.x87.fxsave.swd.top = static_cast<uint16_t>( \
-      (state.x87.fxsave.swd.top + 7) % 8); \
+    state.x87.fxsave.swd.top = \
+        static_cast<uint16_t>((state.x87.fxsave.swd.top + 7) % 8); \
   } while (false)
 
 
 // Ideally we'd want to assign `__remill_undefined_f64` to the last element,
 // but this more closely mimics the ring nature of the x87 stack.
-#define POP_X87_STACK() ({\
-  auto __x = state.st.elems[0].val ; \
-  state.st.elems[0].val = state.st.elems[1].val ; \
-  state.st.elems[1].val = state.st.elems[2].val ; \
-  state.st.elems[2].val = state.st.elems[3].val ; \
-  state.st.elems[3].val = state.st.elems[4].val ; \
-  state.st.elems[4].val = state.st.elems[5].val ; \
-  state.st.elems[5].val = state.st.elems[6].val ; \
-  state.st.elems[6].val = state.st.elems[7].val ; \
-  state.st.elems[7].val = __x; \
-  state.x87.fxsave.swd.top = static_cast<uint16_t>( \
-      (state.x87.fxsave.swd.top + 9) % 8); \
-  __x; })
+#define POP_X87_STACK() \
+  ({ \
+    auto __x = state.st.elems[0].val; \
+    state.st.elems[0].val = state.st.elems[1].val; \
+    state.st.elems[1].val = state.st.elems[2].val; \
+    state.st.elems[2].val = state.st.elems[3].val; \
+    state.st.elems[3].val = state.st.elems[4].val; \
+    state.st.elems[4].val = state.st.elems[5].val; \
+    state.st.elems[5].val = state.st.elems[6].val; \
+    state.st.elems[6].val = state.st.elems[7].val; \
+    state.st.elems[7].val = __x; \
+    state.x87.fxsave.swd.top = \
+        static_cast<uint16_t>((state.x87.fxsave.swd.top + 9) % 8); \
+    __x; \
+  })
 
 namespace {
 
@@ -67,8 +69,7 @@ namespace {
     IF_64BIT(state.x87.fxsave64.dp = AddressOf(mem);) \
   } while (false)
 
-#define DEF_FPU_SEM(name, ...) \
-    DEF_SEM(name, ##__VA_ARGS__, PC pc, I16 fop)
+#define DEF_FPU_SEM(name, ...) DEF_SEM(name, ##__VA_ARGS__, PC pc, I16 fop)
 
 // TODO(joe): Loss of precision, see issue #199.
 DEF_FPU_SEM(FBLD, RF80W, MBCD80 src1) {
@@ -80,8 +81,8 @@ DEF_FPU_SEM(FBLD, RF80W, MBCD80 src1) {
   double mag = 1.0;  // Magnitude of decimal position
 
   // Iterate through pairs of digits, encoded as bytes.
-  _Pragma("unroll")
-  for (addr_t i = 0; i < sizeof(src1_bcd.digit_pairs); i++) {
+  _Pragma("unroll") for (addr_t i = 0; i < sizeof(src1_bcd.digit_pairs); i++) {
+
     // We expect each half-byte to be a valid binary-coded decimal
     // digit (0-9). If not, the decoding result is undefined. The
     // native behavior seems to continue as if each encoding were
@@ -515,7 +516,7 @@ DEF_FPU_SEM(FADD, RF80W dst, RF80 src1, T src2) {
   SetFPUIpOp();
   Write(dst, CheckedFloatBinOp(state, FAdd64, Read(src1), Float64(Read(src2))));
 
-//  state.sw.c1 = 1;
+  //  state.sw.c1 = 1;
   state.sw.c0 = UUndefined8();
   state.sw.c2 = UUndefined8();
   state.sw.c3 = UUndefined8();
@@ -730,9 +731,8 @@ template <typename T>
 DEF_FPU_SEM(FST, T dst, RF80 src) {
   SetFPUIpOp();
   typedef typename BaseType<T>::BT BT;
-  auto res = CheckedFloatUnaryOp(state, [=] (float64_t x) {
-    return static_cast<BT>(x);
-  }, Read(src));
+  auto res = CheckedFloatUnaryOp(
+      state, [=](float64_t x) { return static_cast<BT>(x); }, Read(src));
   Write(dst, res);
   return memory;
 }
@@ -758,7 +758,7 @@ DEF_FPU_SEM(FSTPmem, T dst, RF80 src) {
 
 template <typename C1, typename C2>
 DEF_HELPER(ConvertToInt, C1 cast, C2 convert, float64_t input)
-    -> decltype(cast(input)) {
+    ->decltype(cast(input)) {
   auto rounded = FRoundUsingMode64(input);
   auto casted = CheckedFloatUnaryOp(state, cast, rounded);
   auto converted = convert(rounded);
@@ -785,8 +785,8 @@ DEF_HELPER(ConvertToInt, C1 cast, C2 convert, float64_t input)
 DEF_FPU_SEM(FISTm16, M16W dst, RF80 src) {
   SetFPUIpOp();
   SetFPUDp(dst);
-  auto res = ConvertToInt(memory, state, Int16<float64_t>,
-                          Float64ToInt16, Read(src));
+  auto res =
+      ConvertToInt(memory, state, Int16<float64_t>, Float64ToInt16, Read(src));
   Write(dst, Unsigned(res));
   return memory;
 }
@@ -794,8 +794,8 @@ DEF_FPU_SEM(FISTm16, M16W dst, RF80 src) {
 DEF_FPU_SEM(FISTm32, M32W dst, RF80 src) {
   SetFPUIpOp();
   SetFPUDp(dst);
-  auto res = ConvertToInt(memory, state, Int32<float64_t>,
-                          Float64ToInt32, Read(src));
+  auto res =
+      ConvertToInt(memory, state, Int32<float64_t>, Float64ToInt32, Read(src));
   Write(dst, Unsigned(res));
   return memory;
 }
@@ -815,8 +815,8 @@ DEF_FPU_SEM(FISTPm32, M32W dst, RF80 src) {
 DEF_FPU_SEM(FISTPm64, M64W dst, RF80 src) {
   SetFPUIpOp();
   SetFPUDp(dst);
-  auto res = ConvertToInt(memory, state, Int64<float64_t>,
-                          Float64ToInt64, Read(src));
+  auto res =
+      ConvertToInt(memory, state, Int64<float64_t>, Float64ToInt64, Read(src));
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
@@ -859,7 +859,7 @@ IF_32BIT(DEF_ISEL(FSTPNCE_X87_ST0) = FSTP<RF80W>;)
 
 template <typename C1, typename C2>
 DEF_HELPER(TruncateToInt, C1 cast, C2 convert, float64_t input)
-    -> decltype(cast(input)) {
+    ->decltype(cast(input)) {
   auto truncated = FTruncTowardZero64(input);
   auto casted = CheckedFloatUnaryOp(state, cast, truncated);
   auto converted = convert(truncated);
@@ -887,8 +887,8 @@ namespace {
 DEF_FPU_SEM(FISTTPm16, M16W dst, RF80 src) {
   SetFPUIpOp();
   SetFPUDp(dst);
-  auto res = TruncateToInt(memory, state, Int16<float64_t>,
-                           Float64ToInt16, Read(src));
+  auto res =
+      TruncateToInt(memory, state, Int16<float64_t>, Float64ToInt16, Read(src));
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
@@ -897,8 +897,8 @@ DEF_FPU_SEM(FISTTPm16, M16W dst, RF80 src) {
 DEF_FPU_SEM(FISTTPm32, M32W dst, RF80 src) {
   SetFPUIpOp();
   SetFPUDp(dst);
-  auto res = TruncateToInt(memory, state, Int32<float64_t>,
-                           Float64ToInt32, Read(src));
+  auto res =
+      TruncateToInt(memory, state, Int32<float64_t>, Float64ToInt32, Read(src));
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
@@ -907,8 +907,8 @@ DEF_FPU_SEM(FISTTPm32, M32W dst, RF80 src) {
 DEF_FPU_SEM(FISTTPm64, M64W dst, RF80 src) {
   SetFPUIpOp();
   SetFPUDp(dst);
-  auto res = TruncateToInt(memory, state, Int64<float64_t>,
-                           Float64ToInt64, Read(src));
+  auto res =
+      TruncateToInt(memory, state, Int64<float64_t>, Float64ToInt64, Read(src));
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
@@ -994,7 +994,7 @@ DEF_FPU_SEM(DoFXAM) {
   return memory;
 }
 
-DEF_HELPER(OrderedCompare, float64_t src1, float64_t src2) -> void {
+DEF_HELPER(OrderedCompare, float64_t src1, float64_t src2)->void {
   state.sw.de = IsDenormal(src1) | IsDenormal(src2);
   state.sw.ie = 0;
 
@@ -1020,7 +1020,7 @@ DEF_HELPER(OrderedCompare, float64_t src1, float64_t src2) -> void {
   }
 }
 
-DEF_HELPER(UnorderedCompare, float64_t src1, float64_t src2) -> void {
+DEF_HELPER(UnorderedCompare, float64_t src1, float64_t src2)->void {
   state.sw.de = IsDenormal(src1) | IsDenormal(src2);
   state.sw.ie = 0;
 
@@ -1064,6 +1064,7 @@ DEF_FPU_SEM(FUCOM, RF80 src1, S2 src2) {
   SetFPUIpOp();
   auto st0 = Read(src1);
   auto sti = Float64(Read(src2));
+
   // Note:  Don't modify c1. The docs only state that c1=0 if there was a
   //        stack underflow.
   UnorderedCompare(memory, state, st0, sti);
@@ -1075,6 +1076,7 @@ DEF_FPU_SEM(FCOM, RF80 src1, S2 src2) {
   SetFPUIpOp();
   auto st0 = Read(src1);
   auto sti = Float64(Read(src2));
+
   // Note:  Don't modify c1. The docs only state that c1=0 if there was a
   //        stack underflow.
   OrderedCompare(memory, state, st0, sti);
@@ -1137,7 +1139,7 @@ DEF_FPU_SEM(DoFCOMPP) {
   return memory;
 }
 
-DEF_HELPER(UnorderedCompareEflags, float64_t src1, float64_t src2) -> void {
+DEF_HELPER(UnorderedCompareEflags, float64_t src1, float64_t src2)->void {
   state.sw.de = IsDenormal(src1) | IsDenormal(src2);
   state.sw.ie = 0;
 
@@ -1164,7 +1166,7 @@ DEF_HELPER(UnorderedCompareEflags, float64_t src1, float64_t src2) -> void {
   }
 }
 
-DEF_HELPER(OrderedCompareEflags, float64_t src1, float64_t src2) -> void {
+DEF_HELPER(OrderedCompareEflags, float64_t src1, float64_t src2)->void {
   state.sw.de = IsDenormal(src1) | IsDenormal(src2);
   state.sw.ie = 0;
 
@@ -1276,21 +1278,14 @@ DEF_SEM(FNSTSW, D dst) {
 DEF_SEM(FNSTCW, M16W dst) {
   auto &cw = state.x87.fxsave.cwd;
   cw.pc = kPrecisionSingle;
+
   //cw.flat = 0x027F_u16;  // Our default, with double-precision.
   switch (fegetround()) {
     default:
-    case FE_TONEAREST:
-      cw.rc = kFPURoundToNearestEven;
-      break;
-    case FE_DOWNWARD:
-      cw.rc = kFPURoundDownNegInf;
-      break;
-    case FE_UPWARD:
-      cw.rc = kFPURoundUpInf;
-      break;
-    case FE_TOWARDZERO:
-      cw.rc = kFPURoundToZero;
-      break;
+    case FE_TONEAREST: cw.rc = kFPURoundToNearestEven; break;
+    case FE_DOWNWARD: cw.rc = kFPURoundDownNegInf; break;
+    case FE_UPWARD: cw.rc = kFPURoundUpInf; break;
+    case FE_TOWARDZERO: cw.rc = kFPURoundToZero; break;
   }
   Write(dst, cw.flat);
   return memory;
@@ -1302,21 +1297,13 @@ DEF_SEM(FLDCW, M16 cwd) {
   cw.pc = kPrecisionSingle;
   int rounding_mode = FE_TONEAREST;
   switch (cw.rc) {
-    case kFPURoundToNearestEven:
-      rounding_mode = FE_TONEAREST;
-      break;
+    case kFPURoundToNearestEven: rounding_mode = FE_TONEAREST; break;
 
-    case kFPURoundDownNegInf:
-      rounding_mode = FE_DOWNWARD;
-      break;
+    case kFPURoundDownNegInf: rounding_mode = FE_DOWNWARD; break;
 
-    case kFPURoundUpInf:
-      rounding_mode = FE_UPWARD;
-      break;
+    case kFPURoundUpInf: rounding_mode = FE_UPWARD; break;
 
-    case kFPURoundToZero:
-      rounding_mode = FE_TOWARDZERO;
-      break;
+    case kFPURoundToZero: rounding_mode = FE_TOWARDZERO; break;
   }
   fesetround(rounding_mode);
   return memory;
@@ -1338,7 +1325,7 @@ DEF_FPU_SEM(DoFRNDINT) {
   state.sw.ie |= IsSignalingNaN(st0);
   state.sw.de = IsDenormal(st0);
   if (!IsNaN(rounded)) {
-      state.sw.pe = st0 != rounded;
+    state.sw.pe = st0 != rounded;
   }
   // state.sw.c1 = __builtin_isgreater(FAbs(rounded), FAbs(st0)) ? 1_u8 : 0_u8;
   Write(X87_ST0, rounded);
@@ -1422,20 +1409,14 @@ DEF_FPU_SEM(FCMOVNB, D dst, S1 src1) {
 template <typename D, typename S1>
 DEF_FPU_SEM(FCMOVNBE, D dst, S1 src1) {
   SetFPUIpOp();
-  Write(dst, Select(
-      BNot(BOr(FLAG_CF, FLAG_ZF)),
-      Read(src1),
-      Read(dst)));
+  Write(dst, Select(BNot(BOr(FLAG_CF, FLAG_ZF)), Read(src1), Read(dst)));
   return memory;
 }
 
 template <typename D, typename S1>
 DEF_FPU_SEM(FCMOVBE, D dst, S1 src1) {
   SetFPUIpOp();
-  Write(dst, Select(
-      BOr(FLAG_CF, FLAG_ZF),
-      Read(src1),
-      Read(dst)));
+  Write(dst, Select(BOr(FLAG_CF, FLAG_ZF), Read(src1), Read(dst)));
   return memory;
 }
 
@@ -1474,15 +1455,17 @@ DEF_ISEL(FCMOVB_ST0_X87) = FCMOVB<RF80W, RF80>;
 namespace {
 
 DEF_SEM(DoFNINIT) {
+
   // Initialize the FPU state without checking error conditions.
   // "Word" and opcode fields are always 16-bit. Pointer fields are either
   // 32-bit or 64-bit, but regardless, they are set to 0.
-  state.x87.fsave.cwd.flat = 0x037F; // FPUControlWord
-  state.x87.fsave.swd.flat = 0x0000; // FPUStatusWord
-  state.x87.fsave.ftw.flat = 0x0000; // FPUTagWord (0xFFFF in the manual, 0x0000 in testing)
-  state.x87.fsave.dp = 0x0;          // FPUDataPointer
-  state.x87.fsave.ip = 0x0;          // FPUInstructionPointer
-  state.x87.fsave.fop = 0x0;         // FPULastInstructionOpcode
+  state.x87.fsave.cwd.flat = 0x037F;  // FPUControlWord
+  state.x87.fsave.swd.flat = 0x0000;  // FPUStatusWord
+  state.x87.fsave.ftw.flat =
+      0x0000;  // FPUTagWord (0xFFFF in the manual, 0x0000 in testing)
+  state.x87.fsave.dp = 0x0;  // FPUDataPointer
+  state.x87.fsave.ip = 0x0;  // FPUInstructionPointer
+  state.x87.fsave.fop = 0x0;  // FPULastInstructionOpcode
   state.x87.fsave.ds.flat = 0x0000;  // FPU code segment selector
   state.x87.fsave.cs.flat = 0x0000;  // FPU data operand segment selector
 

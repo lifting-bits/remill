@@ -52,8 +52,9 @@ std::vector<StateSlot> StateSlots(const remill::Arch *arch,
 
 // Analyze a module, discover aliasing loads and stores, and remove dead
 // stores into the `State` structure.
-void RemoveDeadStores(
-    const remill::Arch *arch, llvm::Module *module, llvm::Function *bb_func,
-    const std::vector<StateSlot> &slots, llvm::Function *ds_func=nullptr);
+void RemoveDeadStores(const remill::Arch *arch, llvm::Module *module,
+                      llvm::Function *bb_func,
+                      const std::vector<StateSlot> &slots,
+                      llvm::Function *ds_func = nullptr);
 
 }  // namespace remill

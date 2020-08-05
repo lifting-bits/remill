@@ -16,8 +16,8 @@
 
 #pragma once
 
+#include "remill/Arch/Runtime/Definitions.h"
 #include "remill/Arch/Runtime/Intrinsics.h"
 #include "remill/Arch/Runtime/Operators.h"
-#include "remill/Arch/Runtime/Types.h"
 #include "remill/Arch/Runtime/State.h"
-#include "remill/Arch/Runtime/Definitions.h"
+#include "remill/Arch/Runtime/Types.h"

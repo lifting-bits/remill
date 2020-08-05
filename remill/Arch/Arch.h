@@ -16,17 +16,17 @@
 
 #pragma once
 
+#include <llvm/ADT/SmallVector.h>
+#include <llvm/ADT/Triple.h>
+#include <llvm/IR/DataLayout.h>
+#include <remill/BC/Compat/CallingConvention.h>
+
 #include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
 
-#include <llvm/ADT/SmallVector.h>
-#include <llvm/ADT/Triple.h>
-#include <llvm/IR/DataLayout.h>
-
-#include <remill/BC/Compat/CallingConvention.h>
 #include "Instruction.h"
 
 struct ArchState;
@@ -105,13 +105,13 @@ struct Register {
 
   // Generate a value that will let us load/store to this register, given
   // a `State *`.
-  llvm::Value *AddressOf(
-      llvm::Value *state_ptr, llvm::BasicBlock *add_to_end) const;
+  llvm::Value *AddressOf(llvm::Value *state_ptr,
+                         llvm::BasicBlock *add_to_end) const;
 
  private:
   friend class Arch;
 
-  const Register * parent{nullptr};
+  const Register *parent{nullptr};
 
   // The directly enclosed registers.
   std::vector<const Register *> children;
@@ -125,8 +125,8 @@ class Arch {
 
   // Factory method for loading the correct architecture class for a given
   // operating system and architecture class.
-  static const Arch *Get(
-      llvm::LLVMContext &context, OSName os, ArchName arch_name);
+  static const Arch *Get(llvm::LLVMContext &context, OSName os,
+                         ArchName arch_name);
 
   // Return the type of the state structure.
   llvm::StructType *StateStructType(void) const;
@@ -169,28 +169,27 @@ class Arch {
   // information for the target architecture
   void PrepareModuleDataLayout(llvm::Module *mod) const;
 
-  inline void PrepareModuleDataLayout(
-      const std::unique_ptr<llvm::Module> &mod) const {
+  inline void
+  PrepareModuleDataLayout(const std::unique_ptr<llvm::Module> &mod) const {
     PrepareModuleDataLayout(mod.get());
   }
 
   // Decode an instruction.
-  virtual bool DecodeInstruction(
-      uint64_t address, std::string_view instr_bytes,
-      Instruction &inst) const = 0;
+  virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                                 Instruction &inst) const = 0;
 
   // Decode an instruction that is within a delay slot.
-  bool DecodeDelayedInstruction(
-      uint64_t address, std::string_view instr_bytes,
-      Instruction &inst) const {
+  bool DecodeDelayedInstruction(uint64_t address, std::string_view instr_bytes,
+                                Instruction &inst) const {
     inst.in_delay_slot = true;
     return this->DecodeInstruction(address, instr_bytes, inst);
   }
 
   // Fully decode any control-flow transfer instructions, but only partially
   // decode other instructions.
-  virtual bool LazyDecodeInstruction(
-      uint64_t address, std::string_view instr_bytes, Instruction &inst) const;
+  virtual bool LazyDecodeInstruction(uint64_t address,
+                                     std::string_view instr_bytes,
+                                     Instruction &inst) const;
 
   // Maximum number of bytes in an instruction for this particular architecture.
   virtual uint64_t MaxInstructionSize(void) const = 0;
@@ -227,7 +226,7 @@ class Arch {
   const unsigned address_size;
 
   // Constant pointer to non-const object
-  llvm::LLVMContext * const context;
+  llvm::LLVMContext *const context;
 
   bool IsX86(void) const;
   bool IsAMD64(void) const;
@@ -239,7 +238,8 @@ class Arch {
   bool IsSolaris(void) const;
 
   // Avoids global cache
-  static ArchPtr Build(llvm::LLVMContext *context, OSName os, ArchName arch_name);
+  static ArchPtr Build(llvm::LLVMContext *context, OSName os,
+                       ArchName arch_name);
 
   // Get the architecture of the modelled code. This is based on command-line
   // flags. Rather use directly Build.
@@ -256,12 +256,12 @@ class Arch {
 
  private:
   // Defined in `remill/Arch/X86/Arch.cpp`.
-  static ArchPtr GetX86(
-      llvm::LLVMContext *context, OSName os, ArchName arch_name);
+  static ArchPtr GetX86(llvm::LLVMContext *context, OSName os,
+                        ArchName arch_name);
 
   // Defined in `remill/Arch/AArch64/Arch.cpp`.
-  static ArchPtr GetAArch64(
-      llvm::LLVMContext *context, OSName os, ArchName arch_name);
+  static ArchPtr GetAArch64(llvm::LLVMContext *context, OSName os,
+                            ArchName arch_name);
 
   // Get all of the register information from the prepared module.
   void CollectRegisters(llvm::Module *module) const;
@@ -276,10 +276,12 @@ class Arch {
 /* Deprecated, do not use, prefer Arch::Build */
 
 const Arch *GetHostArch(llvm::LLVMContext &context) __attribute__((deprecated));
-const Arch *GetTargetArch(llvm::LLVMContext &context) __attribute__((deprecated));
+const Arch *GetTargetArch(llvm::LLVMContext &context)
+    __attribute__((deprecated));
 
 // Get the architecture of the modelled code. This is based on command-line
 // flags.
-const Arch *GetTargetArch(llvm::LLVMContext &context) __attribute__((deprecated));
+const Arch *GetTargetArch(llvm::LLVMContext &context)
+    __attribute__((deprecated));
 
 }  // namespace remill

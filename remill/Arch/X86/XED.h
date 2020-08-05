@@ -27,4 +27,3 @@ extern "C" {
 #include <xed/xed-interface.h>
 }  // extern C
 #pragma clang diagnostic pop
-

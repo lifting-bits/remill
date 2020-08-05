@@ -16,19 +16,19 @@
 
 #pragma once
 
+#include <llvm/IRReader/IRReader.h>
+
 #include <memory>
 
 #include "remill/BC/Version.h"
-
-#include <llvm/IRReader/IRReader.h>
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 6)
 
 namespace llvm {
 class Module;
 
-template <typename ...Args>
-inline static std::unique_ptr<Module> parseIRFile(Args&... args) {
+template <typename... Args>
+inline static std::unique_ptr<Module> parseIRFile(Args &... args) {
   return std::unique_ptr<Module>(ParseIRFile(args...));
 }
 
