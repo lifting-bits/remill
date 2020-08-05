@@ -25,9 +25,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include <llvm/IR/Module.h>
+
 namespace llvm {
 class Function;
-class Module;
 }  // namespace llvm
 namespace remill {
 

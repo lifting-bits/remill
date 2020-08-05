@@ -18,12 +18,14 @@
 #include <bitset>
 #include <cmath>
 
+// clang-format off
 #include "remill/Arch/Float.h"
 #include "remill/Arch/Runtime/Intrinsics.h"
 #include "remill/Arch/Runtime/Operators.h"
-#include "remill/Arch/X86/Runtime/Operators.h"
 #include "remill/Arch/X86/Runtime/State.h"
 #include "remill/Arch/X86/Runtime/Types.h"
+#include "remill/Arch/X86/Runtime/Operators.h"
+// clang-format on
 
 #define REG_IP state.gpr.rip.word
 #define REG_EIP state.gpr.rip.dword
@@ -163,6 +165,9 @@ DEF_HELPER(PopFromStack)->T {
 }
 }  // namespace
 
+// clang-format off
+#include "remill/Arch/X86/Semantics/FLAGS.cpp"
+
 #include "remill/Arch/X86/Semantics/AVX.cpp"
 #include "remill/Arch/X86/Semantics/BINARY.cpp"
 #include "remill/Arch/X86/Semantics/BITBYTE.cpp"
@@ -173,7 +178,6 @@ DEF_HELPER(PopFromStack)->T {
 #include "remill/Arch/X86/Semantics/DATAXFER.cpp"
 #include "remill/Arch/X86/Semantics/DECIMAL.cpp"
 #include "remill/Arch/X86/Semantics/FLAGOP.cpp"
-#include "remill/Arch/X86/Semantics/FLAGS.cpp"
 #include "remill/Arch/X86/Semantics/FMA.cpp"
 #include "remill/Arch/X86/Semantics/INTERRUPT.cpp"
 #include "remill/Arch/X86/Semantics/IO.cpp"
@@ -196,3 +200,4 @@ DEF_HELPER(PopFromStack)->T {
 #include "remill/Arch/X86/Semantics/X87.cpp"
 #include "remill/Arch/X86/Semantics/XOP.cpp"
 #include "remill/Arch/X86/Semantics/XSAVE.cpp"
+// clang-format on

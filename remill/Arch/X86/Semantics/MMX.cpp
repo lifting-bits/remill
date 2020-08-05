@@ -1669,7 +1669,7 @@ DEF_SEM(PSHUFB, D dst, S1 src1, S2 src2) {
   auto dst_vec = UClearV8(UReadV8(dst));
 
   auto vec_count = NumVectorElems(src1_vec);
-  uint8_t mask = vec_count - 1;
+  uint8_t mask = static_cast<uint8_t>(vec_count - 1u);
   _Pragma("unroll") for (size_t i = 0; i < vec_count; i++) {
     uint8_t v1 = UExtractV8(src2_vec, i);
     uint8_t index = UAnd(v1, mask);

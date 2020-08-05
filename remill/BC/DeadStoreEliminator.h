@@ -16,7 +16,11 @@
 
 #pragma once
 
+#include <cstdint>
+#include <vector>
+
 namespace llvm {
+class Function;
 class Module;
 }  // namespace llvm
 namespace remill {
