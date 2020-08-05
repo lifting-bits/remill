@@ -71,9 +71,10 @@ DEF_SEM(DoPOPFD) {
   state.aflag.zf = f.zf;
 
   state.rflag.id = f.id;
-//  state.rflag.ac = f.ac;
-//  state.rflag.tf = f.tf;
-//  state.rflag.nt = f.nt;
+
+  //  state.rflag.ac = f.ac;
+  //  state.rflag.tf = f.tf;
+  //  state.rflag.nt = f.nt;
   return memory;
 }
 #else
@@ -91,9 +92,10 @@ DEF_SEM(DoPOPFQ) {
   state.aflag.zf = f.zf;
 
   state.rflag.id = f.id;
-//  state.rflag.ac = f.ac;
-//  state.rflag.tf = f.tf;
-//  state.rflag.nt = f.nt;
+
+  //  state.rflag.ac = f.ac;
+  //  state.rflag.tf = f.tf;
+  //  state.rflag.nt = f.nt;
   return memory;
 }
 #endif  // 32 == ADDRESS_SIZE_BITS
@@ -145,8 +147,8 @@ DEF_SEM(POP_ES, R16W dst) {
   addr_t stack_ptr = Read(REG_XSP);
   Write(dst, TruncTo<uint16_t>(Read(ReadPtr<T>(stack_ptr))));
   Write(REG_XSP, UAdd(stack_ptr, addr_size));
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kX86SetSegmentES);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kX86SetSegmentES);
 }
 
 template <typename T>
@@ -155,8 +157,8 @@ DEF_SEM(POP_SS, R16W dst) {
   addr_t stack_ptr = Read(REG_XSP);
   Write(dst, TruncTo<uint16_t>(Read(ReadPtr<T>(stack_ptr))));
   Write(REG_XSP, UAdd(stack_ptr, addr_size));
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kX86SetSegmentSS);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kX86SetSegmentSS);
 }
 
 template <typename T>
@@ -165,8 +167,8 @@ DEF_SEM(POP_DS, R16W dst) {
   addr_t stack_ptr = Read(REG_XSP);
   Write(dst, TruncTo<uint16_t>(Read(ReadPtr<T>(stack_ptr))));
   Write(REG_XSP, UAdd(stack_ptr, addr_size));
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kX86SetSegmentDS);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kX86SetSegmentDS);
 }
 
 template <typename T>
@@ -175,8 +177,8 @@ DEF_SEM(POP_FS, R16W dst) {
   addr_t stack_ptr = Read(REG_XSP);
   Write(dst, TruncTo<uint16_t>(Read(ReadPtr<T>(stack_ptr))));
   Write(REG_XSP, UAdd(stack_ptr, addr_size));
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kX86SetSegmentFS);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kX86SetSegmentFS);
 }
 
 template <typename T>
@@ -185,8 +187,8 @@ DEF_SEM(POP_GS, R16W dst) {
   addr_t stack_ptr = Read(REG_XSP);
   Write(dst, TruncTo<uint16_t>(Read(ReadPtr<T>(stack_ptr))));
   Write(REG_XSP, UAdd(stack_ptr, addr_size));
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kX86SetSegmentGS);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kX86SetSegmentGS);
 }
 
 }  // namespace

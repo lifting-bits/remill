@@ -16,8 +16,9 @@
 
 #pragma once
 
-#include "remill/BC/Version.h"
 #include <llvm/Support/ToolOutputFile.h>
+
+#include "remill/BC/Version.h"
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(6, 0)
 namespace llvm {

@@ -18,45 +18,39 @@ namespace {
 
 // Used to select specializations of flags computations based on what operator
 // is executed.
-enum : uint32_t {
-  kLHS = 2415899639U,
-  kRHS = 70623199U
-};
+enum : uint32_t { kLHS = 2415899639U, kRHS = 70623199U };
 
 // Zero flags, tells us whether or not a value is zero.
 template <typename T>
-[[gnu::const]]
-ALWAYS_INLINE static bool ZeroFlag(T res) {
+[[gnu::const]] ALWAYS_INLINE static bool ZeroFlag(T res) {
   return T(0) == res;
 }
 
 // Zero flags, tells us whether or not a value is zero.
 template <typename T>
-[[gnu::const]]
-ALWAYS_INLINE static bool NotZeroFlag(T res) {
+[[gnu::const]] ALWAYS_INLINE static bool NotZeroFlag(T res) {
   return T(0) != res;
 }
 
 // Sign flag, tells us if a result is signed or unsigned.
 template <typename T>
-[[gnu::const]]
-ALWAYS_INLINE static bool SignFlag(T res) {
+[[gnu::const]] ALWAYS_INLINE static bool SignFlag(T res) {
   return 0 > Signed(res);
 }
 
 // Tests whether there is an even number of bits in the low order byte.
-[[gnu::const]]
-ALWAYS_INLINE static bool ParityFlag(uint8_t r0) {
+[[gnu::const]] ALWAYS_INLINE static bool ParityFlag(uint8_t r0) {
   return !__builtin_parity(static_cast<unsigned>(r0));
-//  auto r1 = r0 >> 1_u8;
-//  auto r2 = r1 >> 1_u8;
-//  auto r3 = r2 >> 1_u8;
-//  auto r4 = r3 >> 1_u8;
-//  auto r5 = r4 >> 1_u8;
-//  auto r6 = r5 >> 1_u8;
-//  auto r7 = r6 >> 1_u8;
-//
-//  return !(1 & (r0 ^ r1 ^ r2 ^ r3 ^ r4 ^ r5 ^ r6 ^ r7));
+
+  //  auto r1 = r0 >> 1_u8;
+  //  auto r2 = r1 >> 1_u8;
+  //  auto r3 = r2 >> 1_u8;
+  //  auto r4 = r3 >> 1_u8;
+  //  auto r5 = r4 >> 1_u8;
+  //  auto r6 = r5 >> 1_u8;
+  //  auto r7 = r6 >> 1_u8;
+  //
+  //  return !(1 & (r0 ^ r1 ^ r2 ^ r3 ^ r4 ^ r5 ^ r6 ^ r7));
 }
 
 struct tag_add {};
@@ -72,13 +66,10 @@ struct Overflow;
 template <>
 struct Overflow<tag_add> {
   template <typename T>
-  [[gnu::const]]
-  ALWAYS_INLINE static bool Flag(T lhs, T rhs, T res) {
+  [[gnu::const]] ALWAYS_INLINE static bool Flag(T lhs, T rhs, T res) {
     static_assert(std::is_unsigned<T>::value,
                   "Invalid specialization of `Overflow::Flag` for addition.");
-    enum {
-      kSignShift = sizeof(T) * 8 - 1
-    };
+    enum { kSignShift = sizeof(T) * 8 - 1 };
 
     const T sign_lhs = lhs >> kSignShift;
     const T sign_rhs = rhs >> kSignShift;
@@ -91,14 +82,11 @@ struct Overflow<tag_add> {
 template <>
 struct Overflow<tag_sub> {
   template <typename T>
-  [[gnu::const]]
-  ALWAYS_INLINE static bool Flag(T lhs, T rhs, T res) {
-  static_assert(std::is_unsigned<T>::value,
+  [[gnu::const]] ALWAYS_INLINE static bool Flag(T lhs, T rhs, T res) {
+    static_assert(std::is_unsigned<T>::value,
                   "Invalid specialization of `Overflow::Flag` for "
                   "subtraction.");
-    enum {
-      kSignShift = sizeof(T) * 8 - 1
-    };
+    enum { kSignShift = sizeof(T) * 8 - 1 };
 
     const T sign_lhs = lhs >> kSignShift;
     const T sign_rhs = rhs >> kSignShift;
@@ -114,10 +102,9 @@ struct Overflow<tag_mul> {
   // Integer multiplication overflow check, where result is twice the width of
   // the operands.
   template <typename T, typename R>
-  [[gnu::const]]
-  ALWAYS_INLINE static bool Flag(
-      T, T, R res,
-      typename std::enable_if<sizeof(T) < sizeof(R),int>::type=0) {
+  [[gnu::const]] ALWAYS_INLINE static bool
+  Flag(T, T, R res,
+       typename std::enable_if<sizeof(T) < sizeof(R), int>::type = 0) {
 
     return static_cast<R>(static_cast<T>(res)) != res;
   }
@@ -125,10 +112,9 @@ struct Overflow<tag_mul> {
   // Signed integer multiplication overflow check, where the result is
   // truncated to the size of the operands.
   template <typename T>
-  [[gnu::const]]
-  ALWAYS_INLINE static bool Flag(
-      T lhs, T rhs, T,
-      typename std::enable_if<std::is_signed<T>::value,int>::type=0) {
+  [[gnu::const]] ALWAYS_INLINE static bool
+  Flag(T lhs, T rhs, T,
+       typename std::enable_if<std::is_signed<T>::value, int>::type = 0) {
     auto lhs_wide = SExt(lhs);
     auto rhs_wide = SExt(rhs);
     return Flag<T, decltype(lhs_wide)>(lhs, rhs, lhs_wide * rhs_wide);
@@ -143,8 +129,7 @@ struct Carry;
 template <>
 struct Carry<tag_add> {
   template <typename T>
-  [[gnu::const]]
-  ALWAYS_INLINE static bool Flag(T lhs, T rhs, T res) {
+  [[gnu::const]] ALWAYS_INLINE static bool Flag(T lhs, T rhs, T res) {
     static_assert(std::is_unsigned<T>::value,
                   "Invalid specialization of `Carry::Flag` for addition.");
     return res < lhs || res < rhs;
@@ -155,8 +140,7 @@ struct Carry<tag_add> {
 template <>
 struct Carry<tag_sub> {
   template <typename T>
-  [[gnu::const]]
-  ALWAYS_INLINE static bool Flag(T lhs, T rhs, T) {
+  [[gnu::const]] ALWAYS_INLINE static bool Flag(T lhs, T rhs, T) {
     static_assert(std::is_unsigned<T>::value,
                   "Invalid specialization of `Carry::Flag` for addition.");
     return lhs < rhs;
@@ -171,9 +155,9 @@ ALWAYS_INLINE static void SetFPSRStatusFlags(State &state, int mask) {
 }
 
 template <typename F, typename T>
-ALWAYS_INLINE static
-auto CheckedFloatUnaryOp(State &state, F func, T arg1)
+ALWAYS_INLINE static auto CheckedFloatUnaryOp(State &state, F func, T arg1)
     -> decltype(func(arg1)) {
+
   //state.sr.idc |= IsDenormal(arg1);
   auto old_except = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
   BarrierReorder();
@@ -186,9 +170,10 @@ auto CheckedFloatUnaryOp(State &state, F func, T arg1)
 }
 
 template <typename F, typename T>
-ALWAYS_INLINE static
-auto CheckedFloatBinOp(State &state, F func, T arg1, T arg2)
+ALWAYS_INLINE static auto CheckedFloatBinOp(State &state, F func, T arg1,
+                                            T arg2)
     -> decltype(func(arg1, arg2)) {
+
   //state.sr.idc |= IsDenormal(arg1) | IsDenormal(arg2);
   auto old_except = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
   BarrierReorder();

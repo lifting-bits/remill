@@ -17,8 +17,8 @@
 
 namespace {
 
-template <bool (*check_cond)(const State &), typename D,
-          typename S1, typename S2>
+template <bool (*check_cond)(const State &), typename D, typename S1,
+          typename S2>
 DEF_SEM(CSEL, D dst, S1 src1, S2 src2) {
   auto val = check_cond(state) ? Read(src1) : Read(src2);
   WriteZExt(dst, val);
@@ -27,32 +27,31 @@ DEF_SEM(CSEL, D dst, S1 src1, S2 src2) {
 }  // namespace
 
 #define DEF_COND_ISEL(isel, sem, ...) \
-    DEF_ISEL(isel ## _GE) = sem<CondGE, __VA_ARGS__>; \
-    DEF_ISEL(isel ## _GT) = sem<CondGT, __VA_ARGS__>; \
-    DEF_ISEL(isel ## _LE) = sem<CondLE, __VA_ARGS__>; \
-    DEF_ISEL(isel ## _LT) = sem<CondLT, __VA_ARGS__>; \
-    DEF_ISEL(isel ## _EQ) = sem<CondEQ, __VA_ARGS__>; \
-    DEF_ISEL(isel ## _NE) = sem<CondNE, __VA_ARGS__>; \
-    DEF_ISEL(isel ## _CS) = sem<CondCS, __VA_ARGS__>; \
-    DEF_ISEL(isel ## _CC) = sem<CondCC, __VA_ARGS__>; \
-    DEF_ISEL(isel ## _MI) = sem<CondMI, __VA_ARGS__>; \
-    DEF_ISEL(isel ## _PL) = sem<CondPL, __VA_ARGS__>; \
-    DEF_ISEL(isel ## _VS) = sem<CondVS, __VA_ARGS__>; \
-    DEF_ISEL(isel ## _VC) = sem<CondVC, __VA_ARGS__>; \
-    DEF_ISEL(isel ## _HI) = sem<CondHI, __VA_ARGS__>; \
-    DEF_ISEL(isel ## _LS) = sem<CondLS, __VA_ARGS__>; \
-    DEF_ISEL(isel ## _AL) = sem<CondAL, __VA_ARGS__>;
+  DEF_ISEL(isel##_GE) = sem<CondGE, __VA_ARGS__>; \
+  DEF_ISEL(isel##_GT) = sem<CondGT, __VA_ARGS__>; \
+  DEF_ISEL(isel##_LE) = sem<CondLE, __VA_ARGS__>; \
+  DEF_ISEL(isel##_LT) = sem<CondLT, __VA_ARGS__>; \
+  DEF_ISEL(isel##_EQ) = sem<CondEQ, __VA_ARGS__>; \
+  DEF_ISEL(isel##_NE) = sem<CondNE, __VA_ARGS__>; \
+  DEF_ISEL(isel##_CS) = sem<CondCS, __VA_ARGS__>; \
+  DEF_ISEL(isel##_CC) = sem<CondCC, __VA_ARGS__>; \
+  DEF_ISEL(isel##_MI) = sem<CondMI, __VA_ARGS__>; \
+  DEF_ISEL(isel##_PL) = sem<CondPL, __VA_ARGS__>; \
+  DEF_ISEL(isel##_VS) = sem<CondVS, __VA_ARGS__>; \
+  DEF_ISEL(isel##_VC) = sem<CondVC, __VA_ARGS__>; \
+  DEF_ISEL(isel##_HI) = sem<CondHI, __VA_ARGS__>; \
+  DEF_ISEL(isel##_LS) = sem<CondLS, __VA_ARGS__>; \
+  DEF_ISEL(isel##_AL) = sem<CondAL, __VA_ARGS__>;
 
 DEF_COND_ISEL(CSEL_32_CONDSEL, CSEL, R32W, R32, R32)
 DEF_COND_ISEL(CSEL_64_CONDSEL, CSEL, R64W, R64, R64)
 
 namespace {
 
-template <bool (*check_cond)(const State &), typename D,
-          typename S1, typename S2>
+template <bool (*check_cond)(const State &), typename D, typename S1,
+          typename S2>
 DEF_SEM(CSNEG, D dst, S1 src1, S2 src2) {
-  WriteZExt(dst, Select(check_cond(state),
-                        Read(src1),
+  WriteZExt(dst, Select(check_cond(state), Read(src1),
                         UAdd(UNot(Read(src2)), ZExtTo<S2>(1))));
   return memory;
 }
@@ -65,9 +64,9 @@ DEF_COND_ISEL(CSNEG_64_CONDSEL, CSNEG, R64W, R64, R64)
 
 namespace {
 
-template <bool (*check_cond)(const State &), typename D,
-          typename S1, typename S2>
-DEF_SEM(CSINC, D dst, S1 src1, S2 src2)  {
+template <bool (*check_cond)(const State &), typename D, typename S1,
+          typename S2>
+DEF_SEM(CSINC, D dst, S1 src1, S2 src2) {
   WriteZExt(dst, Select(check_cond(state), Read(src1), UAdd(Read(src2), 1)));
   return memory;
 }
@@ -78,9 +77,9 @@ DEF_COND_ISEL(CSINC_64_CONDSEL, CSINC, R64W, R64, R64)
 
 namespace {
 
-template <bool (*check_cond)(const State &), typename D,
-          typename S1, typename S2>
-DEF_SEM(CSINV, D dst, S1 src1, S2 src2)  {
+template <bool (*check_cond)(const State &), typename D, typename S1,
+          typename S2>
+DEF_SEM(CSINV, D dst, S1 src1, S2 src2) {
   WriteZExt(dst, Select(check_cond(state), Read(src1), UNot(Read(src2))));
   return memory;
 }

@@ -17,18 +17,18 @@
 namespace {
 
 #define MAKE_CMPXCHG_XAX(xax) \
-    template <typename D, typename S1, typename S2> \
-    DEF_SEM(CMPXCHG_ ## xax, D dst, S1 src1, S2 src2) { \
-      auto desired_val = Read(src2); \
-      auto check_val = Read(REG_ ## xax); \
-      auto prev_value = check_val; \
-      auto swap_flag = UCmpXchg(dst, check_val, desired_val); \
-      auto sub_res = USub(prev_value, check_val); \
-      WriteFlagsAddSub<tag_sub>(state, prev_value, check_val, sub_res); \
-      Write(FLAG_ZF, swap_flag);\
-      WriteZExt(REG_ ## xax, check_val); \
-      return memory; \
-    }
+  template <typename D, typename S1, typename S2> \
+  DEF_SEM(CMPXCHG_##xax, D dst, S1 src1, S2 src2) { \
+    auto desired_val = Read(src2); \
+    auto check_val = Read(REG_##xax); \
+    auto prev_value = check_val; \
+    auto swap_flag = UCmpXchg(dst, check_val, desired_val); \
+    auto sub_res = USub(prev_value, check_val); \
+    WriteFlagsAddSub<tag_sub>(state, prev_value, check_val, sub_res); \
+    Write(FLAG_ZF, swap_flag); \
+    WriteZExt(REG_##xax, check_val); \
+    return memory; \
+  }
 
 MAKE_CMPXCHG_XAX(AL)
 MAKE_CMPXCHG_XAX(AX)
@@ -114,4 +114,3 @@ DEF_ISEL(XADD_MEMb_GPR8) = XADD<M8W, M8, R8W, R8>;
 DEF_ISEL(XADD_GPR8_GPR8) = XADD<R8W, R8, R8W, R8>;
 DEF_ISEL_MnW_Mn_RnW_Rn(XADD_MEMv_GPRv, XADD);
 DEF_ISEL_RnW_Rn_RnW_Rn(XADD_GPRv_GPRv, XADD);
-

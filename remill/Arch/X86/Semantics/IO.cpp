@@ -18,46 +18,46 @@ namespace {
 
 template <typename S>
 DEF_SEM(IN8, R8W dst, S port) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
+  memory =
+      __remill_sync_hyper_call(state, memory, SyncHyperCall::kAssertPrivileged);
   Write(dst, __remill_read_io_port_8(memory, Read(port)));
   return memory;
 }
 
 template <typename S>
 DEF_SEM(IN16, R16W dst, S port) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
+  memory =
+      __remill_sync_hyper_call(state, memory, SyncHyperCall::kAssertPrivileged);
   Write(dst, __remill_read_io_port_16(memory, Read(port)));
   return memory;
 }
 
 template <typename S>
 DEF_SEM(IN32, R32W dst, S port) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
+  memory =
+      __remill_sync_hyper_call(state, memory, SyncHyperCall::kAssertPrivileged);
   WriteZExt(dst, __remill_read_io_port_32(memory, Read(port)));
   return memory;
 }
 
 template <typename S>
 DEF_SEM(OUT8, S port, R8 src) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
+  memory =
+      __remill_sync_hyper_call(state, memory, SyncHyperCall::kAssertPrivileged);
   return __remill_write_io_port_8(memory, Read(port), Read(src));
 }
 
 template <typename S>
 DEF_SEM(OUT16, S port, R16 src) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
+  memory =
+      __remill_sync_hyper_call(state, memory, SyncHyperCall::kAssertPrivileged);
   return __remill_write_io_port_16(memory, Read(port), Read(src));
 }
 
 template <typename S>
 DEF_SEM(OUT32, S port, R32 src) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
+  memory =
+      __remill_sync_hyper_call(state, memory, SyncHyperCall::kAssertPrivileged);
   return __remill_write_io_port_32(memory, Read(port), Read(src));
 }
 

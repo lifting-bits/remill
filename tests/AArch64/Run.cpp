@@ -16,12 +16,19 @@
 
 #define _XOPEN_SOURCE
 
+#include <dlfcn.h>
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+#include <gtest/gtest.h>
+#include <setjmp.h>
+#include <signal.h>
+#include <ucontext.h>
+
 #include <cfenv>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <dlfcn.h>
 #include <iostream>
 #include <limits>
 #include <map>
@@ -29,18 +36,9 @@
 #include <type_traits>
 #include <vector>
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-#include <gtest/gtest.h>
-
-#include <setjmp.h>
-#include <signal.h>
-#include <ucontext.h>
-
-#include "tests/AArch64/Test.h"
-
-#include "remill/Arch/Runtime/Runtime.h"
 #include "remill/Arch/AArch64/Runtime/State.h"
+#include "remill/Arch/Runtime/Runtime.h"
+#include "tests/AArch64/Test.h"
 
 DECLARE_string(arch);
 DECLARE_string(os);
@@ -62,11 +60,11 @@ static Stack gLiftedStack;
 static Stack gNativeStack;
 static Stack gSigStack;
 
-static const auto gStackBase = reinterpret_cast<uintptr_t>(
-    &(gLiftedStack.bytes[0]));
+static const auto gStackBase =
+    reinterpret_cast<uintptr_t>(&(gLiftedStack.bytes[0]));
 
-static const auto gStackLimit = reinterpret_cast<uintptr_t>(
-    &(gLiftedStack._redzone2[0]));
+static const auto gStackLimit =
+    reinterpret_cast<uintptr_t>(&(gLiftedStack._redzone2[0]));
 
 template <typename T>
 NEVER_INLINE static T &AccessMemory(addr_t addr) {
@@ -90,10 +88,12 @@ extern "C" {
 // initial state for the lifted testcase. The lifted test case code mutates
 // this, and we require that after running the lifted testcase, `gAArch64StateBefore`
 // matches `gAArch64StateAfter`,
-std::aligned_storage<sizeof(AArch64State), alignof(AArch64State)>::type gLiftedState;
+std::aligned_storage<sizeof(AArch64State), alignof(AArch64State)>::type
+    gLiftedState;
 
 // Native state after running the native test case.
-std::aligned_storage<sizeof(AArch64State), alignof(AArch64State)>::type gNativeState;
+std::aligned_storage<sizeof(AArch64State), alignof(AArch64State)>::type
+    gNativeState;
 
 // Address of the native test to run. The `InvokeTestCase` function saves
 // the native program state but then needs a way to figure out where to go
@@ -115,24 +115,24 @@ uint64_t gStackSaveSlots[2] = {0, 0};
 extern void InvokeTestCase(uint64_t, uint64_t, uint64_t);
 
 #define MAKE_RW_MEMORY(size) \
-  NEVER_INLINE uint ## size ## _t  __remill_read_memory_ ## size( \
-     Memory *, addr_t addr) {\
-    return AccessMemory<uint ## size ## _t>(addr); \
+  NEVER_INLINE uint##size##_t __remill_read_memory_##size(Memory *, \
+                                                          addr_t addr) { \
+    return AccessMemory<uint##size##_t>(addr); \
   } \
-  NEVER_INLINE Memory *__remill_write_memory_ ## size( \
-      Memory *, addr_t addr, const uint ## size ## _t in) { \
-    AccessMemory<uint ## size ## _t>(addr) = in; \
+  NEVER_INLINE Memory *__remill_write_memory_##size(Memory *, addr_t addr, \
+                                                    const uint##size##_t in) { \
+    AccessMemory<uint##size##_t>(addr) = in; \
     return nullptr; \
   }
 
 #define MAKE_RW_FP_MEMORY(size) \
-  NEVER_INLINE float ## size ## _t __remill_read_memory_f ## size( \
-      Memory *, addr_t addr) { \
-    return AccessMemory<float ## size ## _t>(addr); \
+  NEVER_INLINE float##size##_t __remill_read_memory_f##size(Memory *, \
+                                                            addr_t addr) { \
+    return AccessMemory<float##size##_t>(addr); \
   } \
-  NEVER_INLINE Memory *__remill_write_memory_f ## size(\
-      Memory *, addr_t addr, float ## size ## _t in) { \
-    AccessMemory<float ## size ## _t>(addr) = in; \
+  NEVER_INLINE Memory *__remill_write_memory_f##size(Memory *, addr_t addr, \
+                                                     float##size##_t in) { \
+    AccessMemory<float##size##_t>(addr) = in; \
     return nullptr; \
   }
 
@@ -152,49 +152,54 @@ NEVER_INLINE Memory *__remill_write_memory_f80(Memory *, addr_t, float64_t) {
   abort();
 }
 
-Memory *__remill_compare_exchange_memory_8(
-    Memory *memory, addr_t addr, uint8_t &expected, uint8_t desired) {
-  expected = __sync_val_compare_and_swap(
-      reinterpret_cast<uint8_t *>(addr), expected, desired);
+Memory *__remill_compare_exchange_memory_8(Memory *memory, addr_t addr,
+                                           uint8_t &expected, uint8_t desired) {
+  expected = __sync_val_compare_and_swap(reinterpret_cast<uint8_t *>(addr),
+                                         expected, desired);
   return memory;
 }
 
-Memory *__remill_compare_exchange_memory_16(
-    Memory *memory, addr_t addr, uint16_t &expected, uint16_t desired) {
-  expected =  __sync_val_compare_and_swap(
-      reinterpret_cast<uint16_t *>(addr), expected, desired);
+Memory *__remill_compare_exchange_memory_16(Memory *memory, addr_t addr,
+                                            uint16_t &expected,
+                                            uint16_t desired) {
+  expected = __sync_val_compare_and_swap(reinterpret_cast<uint16_t *>(addr),
+                                         expected, desired);
   return memory;
 }
 
-Memory *__remill_compare_exchange_memory_32(
-    Memory *memory, addr_t addr, uint32_t &expected, uint32_t desired) {
-  expected = __sync_val_compare_and_swap(
-      reinterpret_cast<uint32_t *>(addr), expected, desired);
+Memory *__remill_compare_exchange_memory_32(Memory *memory, addr_t addr,
+                                            uint32_t &expected,
+                                            uint32_t desired) {
+  expected = __sync_val_compare_and_swap(reinterpret_cast<uint32_t *>(addr),
+                                         expected, desired);
   return memory;
 }
 
-Memory *__remill_compare_exchange_memory_64(
-    Memory *memory, addr_t addr, uint64_t &expected, uint64_t desired) {
-  expected = __sync_val_compare_and_swap(
-      reinterpret_cast<uint64_t *>(addr), expected, desired);
+Memory *__remill_compare_exchange_memory_64(Memory *memory, addr_t addr,
+                                            uint64_t &expected,
+                                            uint64_t desired) {
+  expected = __sync_val_compare_and_swap(reinterpret_cast<uint64_t *>(addr),
+                                         expected, desired);
   return memory;
 }
 
-Memory *__remill_compare_exchange_memory_128(
-    Memory *memory, addr_t addr, uint128_t &expected, uint128_t &desired) {
+Memory *__remill_compare_exchange_memory_128(Memory *memory, addr_t addr,
+                                             uint128_t &expected,
+                                             uint128_t &desired) {
 #ifdef _GXX_EXPERIMENTAL_CXX0X__
-  expected = __sync_val_compare_and_swap(
-      reinterpret_cast<uint128_t *>(addr), expected, desired);
+  expected = __sync_val_compare_and_swap(reinterpret_cast<uint128_t *>(addr),
+                                         expected, desired);
 #endif
   return memory;
 }
 
 #define MAKE_ATOMIC_INTRINSIC(intrinsic_name, type_prefix, size) \
-  Memory *__remill_ ## intrinsic_name ## _ ## size( \
-      Memory *memory, addr_t addr, type_prefix ## size ## _t &value) { \
-    value = __sync_ ## intrinsic_name(reinterpret_cast<type_prefix ## size ## _t *>(addr), value); \
+  Memory *__remill_##intrinsic_name##_##size(Memory *memory, addr_t addr, \
+                                             type_prefix##size##_t &value) { \
+    value = __sync_##intrinsic_name( \
+        reinterpret_cast<type_prefix##size##_t *>(addr), value); \
     return memory; \
-  } \
+  }
 
 MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 8)
 MAKE_ATOMIC_INTRINSIC(fetch_and_add, uint, 16)
@@ -223,12 +228,24 @@ int __remill_fpu_exception_test_and_clear(int read_mask, int clear_mask) {
   return except;
 }
 
-Memory *__remill_barrier_load_load(Memory *) { return nullptr; }
-Memory *__remill_barrier_load_store(Memory *) { return nullptr; }
-Memory *__remill_barrier_store_load(Memory *) { return nullptr; }
-Memory *__remill_barrier_store_store(Memory *) { return nullptr; }
-Memory *__remill_atomic_begin(Memory *) { return nullptr; }
-Memory *__remill_atomic_end(Memory *) { return nullptr; }
+Memory *__remill_barrier_load_load(Memory *) {
+  return nullptr;
+}
+Memory *__remill_barrier_load_store(Memory *) {
+  return nullptr;
+}
+Memory *__remill_barrier_store_load(Memory *) {
+  return nullptr;
+}
+Memory *__remill_barrier_store_store(Memory *) {
+  return nullptr;
+}
+Memory *__remill_atomic_begin(Memory *) {
+  return nullptr;
+}
+Memory *__remill_atomic_end(Memory *) {
+  return nullptr;
+}
 
 void __remill_defer_inlining(void) {}
 
@@ -240,7 +257,8 @@ Memory *__remill_missing_block(AArch64State &, addr_t, Memory *memory) {
   return memory;
 }
 
-Memory *__remill_sync_hyper_call(AArch64State &, Memory *, SyncHyperCall::Name) {
+Memory *__remill_sync_hyper_call(AArch64State &, Memory *,
+                                 SyncHyperCall::Name) {
   abort();
 }
 // Read/write to I/O ports.
@@ -312,7 +330,7 @@ float64_t __remill_undefined_f64(void) {
 // kept around through optimization, and makes sure that optimization doesn't
 // perform dead-argument elimination on any of the intrinsics.
 void __remill_mark_as_used(void *mem) {
-  asm("" :: "m"(mem));
+  asm("" ::"m"(mem));
 }
 
 }  // extern C
@@ -337,11 +355,8 @@ inline static bool operator!=(const T &a, const T &b) {
   return !!memcmp(&a, &b, sizeof(a));
 }
 
-static void RunWithFlags(const test::TestInfo *info,
-                         NZCV flags,
-                         std::string desc,
-                         uint64_t arg1,
-                         uint64_t arg2,
+static void RunWithFlags(const test::TestInfo *info, NZCV flags,
+                         std::string desc, uint64_t arg1, uint64_t arg2,
                          uint64_t arg3) {
 
   DLOG(INFO) << "Testing instruction: " << info->test_name << ": " << desc;
@@ -391,10 +406,7 @@ static void RunWithFlags(const test::TestInfo *info,
   if (!sigsetjmp(gJmpBuf, true)) {
     std::fesetenv(FE_DFL_ENV);
     gInNativeTest = false;
-    (void) lifted_func(
-        *lifted_state,
-        lifted_state->gpr.pc.aword,
-        nullptr);
+    (void) lifted_func(*lifted_state, lifted_state->gpr.pc.aword, nullptr);
   } else {
     EXPECT_TRUE(native_test_faulted);
   }
@@ -431,23 +443,20 @@ static void RunWithFlags(const test::TestInfo *info,
   lifted_state->fpsr.flat = 0;
 
   if (gLiftedState != gNativeState) {
-    LOG(ERROR)
-        << "States did not match for " << desc;
+    LOG(ERROR) << "States did not match for " << desc;
     EXPECT_TRUE(!"Lifted and native states did not match.");
   }
 
   if (gLiftedStack != gNativeStack) {
-    LOG(ERROR)
-        << "Stacks did not match for " << desc;
+    LOG(ERROR) << "Stacks did not match for " << desc;
 
     for (size_t i = 0; i < sizeof(gLiftedStack.bytes); ++i) {
       if (gLiftedStack.bytes[i] != gNativeStack.bytes[i]) {
-        LOG(ERROR)
-            << "Lifted stack at 0x" << std::hex
-            << reinterpret_cast<uintptr_t>(&(gLiftedStack.bytes[i]))
-            << " does not match native stack at 0x" << std::hex
-            << reinterpret_cast<uintptr_t>(&(gNativeStack.bytes[i]))
-            << std::endl;
+        LOG(ERROR) << "Lifted stack at 0x" << std::hex
+                   << reinterpret_cast<uintptr_t>(&(gLiftedStack.bytes[i]))
+                   << " does not match native stack at 0x" << std::hex
+                   << reinterpret_cast<uintptr_t>(&(gNativeStack.bytes[i]))
+                   << std::endl;
       }
     }
 
@@ -460,8 +469,7 @@ TEST_P(InstrTest, SemanticsMatchNative) {
   CHECK(0 < info->num_args)
       << "Test " << info->test_name << " must have at least one argument!";
 
-  for (auto args = info->args_begin;
-       args < info->args_end;
+  for (auto args = info->args_begin; args < info->args_end;
        args += info->num_args) {
     std::stringstream ss;
     ss << info->test_name;
@@ -480,18 +488,15 @@ TEST_P(InstrTest, SemanticsMatchNative) {
       flags.flat = i << 28;
 
       std::stringstream ss2;
-      ss2 << desc << " and N=" << flags.n << ", Z=" << flags.z << ", C="
-         << flags.c << ", V=" << flags.v;
+      ss2 << desc << " and N=" << flags.n << ", Z=" << flags.z
+          << ", C=" << flags.c << ", V=" << flags.v;
 
       RunWithFlags(info, flags, ss2.str(), args[0], args[1], args[2]);
     }
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-    GeneralInstrTest,
-    InstrTest,
-    testing::ValuesIn(gTests));
+INSTANTIATE_TEST_CASE_P(GeneralInstrTest, InstrTest, testing::ValuesIn(gTests));
 
 // Recover from a signal.
 static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
@@ -502,14 +507,14 @@ static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
     auto native_state = reinterpret_cast<AArch64State *>(&gNativeState);
     auto &gpr = native_state->gpr;
 #ifdef __APPLE__
-//    const auto mcontext = context->uc_mcontext;
-//    const auto &ss = mcontext->__ss;
+
+    //    const auto mcontext = context->uc_mcontext;
+    //    const auto &ss = mcontext->__ss;
 
     (void) context;
     (void) native_state;
     (void) gpr;
-    LOG(FATAL)
-        << "Implement apple signal handler.";
+    LOG(FATAL) << "Implement apple signal handler.";
 #else
 
     // `mcontext_t` is actually a `struct sigcontext`, defined as:
@@ -571,15 +576,13 @@ static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
   siglongjmp(gJmpBuf, 0);
 }
 
-static void ConsumeTrap(int, siginfo_t *, void *) {
-
-}
+static void ConsumeTrap(int, siginfo_t *, void *) {}
 
 static void HandleUnsupportedInstruction(int, siginfo_t *, void *) {
   siglongjmp(gUnsupportedInstrBuf, 0);
 }
 
-typedef void (SignalHandler) (int, siginfo_t *, void *);
+typedef void(SignalHandler)(int, siginfo_t *, void *);
 static void HandleSignal(int sig_num, SignalHandler *handler) {
   struct sigaction sig;
   sig.sa_sigaction = handler;
@@ -619,9 +622,10 @@ int main(int argc, char **argv) {
   auto this_exe = dlopen(nullptr, RTLD_NOW);
 
   // Populate the tests vector.
-  for (auto i = 0U; ; ++i) {
+  for (auto i = 0U;; ++i) {
     const auto &test = test::__aarch64_test_table_begin[i];
-    if (&test >= &(test::__aarch64_test_table_end[0])) break;
+    if (&test >= &(test::__aarch64_test_table_end[0]))
+      break;
     gTests.push_back(&test);
 
     std::stringstream ss;

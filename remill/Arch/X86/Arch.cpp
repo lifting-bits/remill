@@ -14,7 +14,13 @@
  * limitations under the License.
  */
 
+#include "remill/Arch/Arch.h"
+
 #include <glog/logging.h>
+#include <llvm/ADT/Triple.h>
+#include <llvm/IR/Attributes.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Module.h>
 
 #include <iomanip>
 #include <map>
@@ -22,12 +28,6 @@
 #include <sstream>
 #include <string>
 
-#include <llvm/ADT/Triple.h>
-#include <llvm/IR/Attributes.h>
-#include <llvm/IR/Function.h>
-#include <llvm/IR/Module.h>
-
-#include "remill/Arch/Arch.h"
 #include "remill/Arch/Instruction.h"
 #include "remill/Arch/Name.h"
 #include "remill/Arch/X86/XED.h"
@@ -37,13 +37,11 @@
 namespace remill {
 namespace {
 
-static const xed_state_t kXEDState32 = {
-    XED_MACHINE_MODE_LONG_COMPAT_32,
-    XED_ADDRESS_WIDTH_32b};
+static const xed_state_t kXEDState32 = {XED_MACHINE_MODE_LONG_COMPAT_32,
+                                        XED_ADDRESS_WIDTH_32b};
 
-static const xed_state_t kXEDState64 = {
-    XED_MACHINE_MODE_LONG_64,
-    XED_ADDRESS_WIDTH_64b};
+static const xed_state_t kXEDState64 = {XED_MACHINE_MODE_LONG_64,
+                                        XED_ADDRESS_WIDTH_64b};
 
 static bool Is64Bit(ArchName arch_name) {
   return kArchAMD64 == arch_name || kArchAMD64_AVX == arch_name ||
@@ -160,20 +158,16 @@ static bool UsesStopFailure(const xed_decoded_inst_t *xedd) {
     case XED_ICLASS_DIV:
     case XED_ICLASS_IDIV:
     case XED_ICLASS_XEND:
-    case XED_ICLASS_XGETBV:
-      return true;
-    default:
-      return false;
+    case XED_ICLASS_XGETBV: return true;
+    default: return false;
   }
 }
 
 static bool IsNoOp(const xed_decoded_inst_t *xedd) {
   switch (xed_decoded_inst_get_category(xedd)) {
     case XED_CATEGORY_NOP:
-    case XED_CATEGORY_WIDENOP:
-      return true;
-    default:
-      return false;
+    case XED_CATEGORY_WIDENOP: return true;
+    default: return false;
   }
 }
 
@@ -182,10 +176,8 @@ static bool IsError(const xed_decoded_inst_t *xedd) {
     case XED_ICLASS_HLT:
     case XED_ICLASS_UD0:
     case XED_ICLASS_UD1:
-    case XED_ICLASS_UD2:
-      return true;
-    default:
-      return false;
+    case XED_ICLASS_UD2: return true;
+    default: return false;
   }
 }
 
@@ -242,8 +234,7 @@ static Instruction::Category CreateCategory(const xed_decoded_inst_t *xedd) {
              IsDirectFunctionCallFar(xedd) || IsIndirectFunctionCallFar(xedd)) {
     return Instruction::kCategoryAsyncHyperCall;
 
-  }
-  else if (IsNoOp(xedd)) {
+  } else if (IsNoOp(xedd)) {
     return Instruction::kCategoryNoOp;
 
   } else {
@@ -346,8 +337,7 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
   // Suffix the ISEL function name with the segment or control register names,
   // as a runtime may need to perform complex actions that are specific to
   // the register used.
-  if (XED_IFORM_MOV_SEG_MEMw == iform ||
-      XED_IFORM_MOV_SEG_GPR16 == iform ||
+  if (XED_IFORM_MOV_SEG_MEMw == iform || XED_IFORM_MOV_SEG_GPR16 == iform ||
       XED_IFORM_MOV_CR_CR_GPR32 == iform ||
       XED_IFORM_MOV_CR_CR_GPR64 == iform) {
     ss << "_";
@@ -358,10 +348,8 @@ static std::string InstructionFunctionName(const xed_decoded_inst_t *xedd) {
 }
 
 // Decode an instruction into the XED instuction format.
-static bool DecodeXED(xed_decoded_inst_t *xedd,
-                      const xed_state_t *mode,
-                      std::string_view inst_bytes,
-                      uint64_t address) {
+static bool DecodeXED(xed_decoded_inst_t *xedd, const xed_state_t *mode,
+                      std::string_view inst_bytes, uint64_t address) {
   auto num_bytes = inst_bytes.size();
   auto bytes = reinterpret_cast<const uint8_t *>(inst_bytes.data());
   xed_decoded_inst_zero_set_mode(xedd, mode);
@@ -374,10 +362,9 @@ static bool DecodeXED(xed_decoded_inst_t *xedd,
       ss << ' ' << std::hex << std::setw(2) << std::setfill('0')
          << (static_cast<unsigned>(b) & 0xFFu);
     }
-    LOG(ERROR)
-        << "Unable to decode instruction at " << std::hex << address
-        << " with bytes" << ss.str() << " and error: "
-        << xed_error_enum_t2str(err) << std::dec;
+    LOG(ERROR) << "Unable to decode instruction at " << std::hex << address
+               << " with bytes" << ss.str()
+               << " and error: " << xed_error_enum_t2str(err) << std::dec;
     return false;
   }
 
@@ -389,33 +376,15 @@ static Operand::Register RegOp(xed_reg_enum_t reg) {
   Operand::Register reg_op;
   if (XED_REG_INVALID != reg) {
     switch (reg) {
-      case XED_REG_ST0:
-        reg_op.name = "ST0";
-        break;
-      case XED_REG_ST1:
-        reg_op.name = "ST1";
-        break;
-      case XED_REG_ST2:
-        reg_op.name = "ST2";
-        break;
-      case XED_REG_ST3:
-        reg_op.name = "ST3";
-        break;
-      case XED_REG_ST4:
-        reg_op.name = "ST4";
-        break;
-      case XED_REG_ST5:
-        reg_op.name = "ST5";
-        break;
-      case XED_REG_ST6:
-        reg_op.name = "ST6";
-        break;
-      case XED_REG_ST7:
-        reg_op.name = "ST7";
-        break;
-      default:
-        reg_op.name = xed_reg_enum_t2str(reg);
-        break;
+      case XED_REG_ST0: reg_op.name = "ST0"; break;
+      case XED_REG_ST1: reg_op.name = "ST1"; break;
+      case XED_REG_ST2: reg_op.name = "ST2"; break;
+      case XED_REG_ST3: reg_op.name = "ST3"; break;
+      case XED_REG_ST4: reg_op.name = "ST4"; break;
+      case XED_REG_ST5: reg_op.name = "ST5"; break;
+      case XED_REG_ST6: reg_op.name = "ST6"; break;
+      case XED_REG_ST7: reg_op.name = "ST7"; break;
+      default: reg_op.name = xed_reg_enum_t2str(reg); break;
     }
     if (XED_REG_X87_FIRST <= reg && XED_REG_X87_LAST >= reg) {
       reg_op.size = 64;
@@ -426,8 +395,7 @@ static Operand::Register RegOp(xed_reg_enum_t reg) {
   return reg_op;
 }
 
-static Operand::Register SegBaseRegOp(xed_reg_enum_t reg,
-                                      unsigned addr_size) {
+static Operand::Register SegBaseRegOp(xed_reg_enum_t reg, unsigned addr_size) {
   auto op = RegOp(reg);
   if (XED_REG_INVALID != reg) {
     op.name += "_BASE";
@@ -437,10 +405,8 @@ static Operand::Register SegBaseRegOp(xed_reg_enum_t reg,
 }
 
 // Decode a memory operand.
-static void DecodeMemory(Instruction &inst,
-                         const xed_decoded_inst_t *xedd,
-                         const xed_operand_t *xedo,
-                         int mem_index) {
+static void DecodeMemory(Instruction &inst, const xed_decoded_inst_t *xedd,
+                         const xed_operand_t *xedo, int mem_index) {
 
   auto iform = xed_decoded_inst_get_iform_enum(xedd);
   auto iclass = xed_decoded_inst_get_iclass(xedd);
@@ -468,8 +434,7 @@ static void DecodeMemory(Instruction &inst,
   }
 
   // On AMD64, only the `FS` and `GS` segments are non-zero.
-  if (Is64Bit(inst.arch_name) &&
-      XED_REG_FS != segment &&
+  if (Is64Bit(inst.arch_name) && XED_REG_FS != segment &&
       XED_REG_GS != segment) {
     segment = XED_REG_INVALID;
 
@@ -489,8 +454,8 @@ static void DecodeMemory(Instruction &inst,
   op.size = size;
 
   op.type = Operand::kTypeAddress;
-  op.addr.address_size = xed_decoded_inst_get_memop_address_width(
-      xedd, mem_index);
+  op.addr.address_size =
+      xed_decoded_inst_get_memop_address_width(xedd, mem_index);
 
   op.addr.segment_base_reg = SegBaseRegOp(segment, op.addr.address_size);
   op.addr.base_reg = RegOp(base);
@@ -524,8 +489,7 @@ static void DecodeMemory(Instruction &inst,
 }
 
 // Decode an immediate constant.
-static void DecodeImmediate(Instruction &inst,
-                            const xed_decoded_inst_t *xedd,
+static void DecodeImmediate(Instruction &inst, const xed_decoded_inst_t *xedd,
                             xed_operand_enum_t op_name) {
   auto val = 0ULL;
   auto is_signed = false;
@@ -538,8 +502,8 @@ static void DecodeImmediate(Instruction &inst,
   if (XED_OPERAND_PTR == op_name) {
     auto ptr_size = xed_decoded_inst_get_branch_displacement_width_bits(xedd);
     CHECK(ptr_size <= operand_size)
-        << "Pointer size is greater than effective operand size at "
-        << std::hex << inst.pc << ".";
+        << "Pointer size is greater than effective operand size at " << std::hex
+        << inst.pc << ".";
     op.size = ptr_size;
 
     val = static_cast<uint64_t>(xed_decoded_inst_get_branch_displacement(xedd));
@@ -557,15 +521,16 @@ static void DecodeImmediate(Instruction &inst,
       is_signed = true;
 
     } else if (XED_OPERAND_IMM0 == op_name) {
-      val = static_cast<uint64_t>(xed_decoded_inst_get_unsigned_immediate(xedd));
+      val =
+          static_cast<uint64_t>(xed_decoded_inst_get_unsigned_immediate(xedd));
 
-    } else if (XED_OPERAND_IMM1_BYTES == op_name || XED_OPERAND_IMM1 == op_name) {
+    } else if (XED_OPERAND_IMM1_BYTES == op_name ||
+               XED_OPERAND_IMM1 == op_name) {
       val = static_cast<uint64_t>(xed_decoded_inst_get_second_immediate(xedd));
 
     } else {
-      CHECK(false)
-          << "Unexpected immediate type "
-          << xed_operand_enum_t2str(op_name) << ".";
+      CHECK(false) << "Unexpected immediate type "
+                   << xed_operand_enum_t2str(op_name) << ".";
     }
   }
 
@@ -575,13 +540,11 @@ static void DecodeImmediate(Instruction &inst,
 }
 
 // Decode a register operand.
-static void DecodeRegister(Instruction &inst,
-                           const xed_decoded_inst_t *xedd,
+static void DecodeRegister(Instruction &inst, const xed_decoded_inst_t *xedd,
                            const xed_operand_t *xedo,
                            xed_operand_enum_t op_name) {
   auto reg = xed_decoded_inst_get_reg(xedd, op_name);
-  CHECK(XED_REG_INVALID != reg)
-      << "Cannot get name of invalid register.";
+  CHECK(XED_REG_INVALID != reg) << "Cannot get name of invalid register.";
 
   Operand op = {};
   op.type = Operand::kTypeRegister;
@@ -659,8 +622,8 @@ static void DecodeConditionalBranch(Instruction &inst,
                                     const xed_decoded_inst_t *xedd) {
   auto pc_reg = Is64Bit(inst.arch_name) ? XED_REG_RIP : XED_REG_EIP;
   auto pc_width = xed_get_register_width_bits64(pc_reg);
-  auto disp = static_cast<int64_t>(
-      xed_decoded_inst_get_branch_displacement(xedd));
+  auto disp =
+      static_cast<int64_t>(xed_decoded_inst_get_branch_displacement(xedd));
 
   // Condition variable.
   Operand cond_op = {};
@@ -683,8 +646,8 @@ static void DecodeConditionalBranch(Instruction &inst,
   taken_op.addr.kind = Operand::Address::kControlFlowTarget;
   inst.operands.push_back(taken_op);
 
-  inst.branch_taken_pc = static_cast<uint64_t>(
-      static_cast<int64_t>(inst.next_pc) + disp);
+  inst.branch_taken_pc =
+      static_cast<uint64_t>(static_cast<int64_t>(inst.next_pc) + disp);
 
   DecodeFallThroughPC(inst, xedd);
 }
@@ -694,8 +657,8 @@ static void DecodeRelativeBranch(Instruction &inst,
                                  const xed_decoded_inst_t *xedd) {
   auto pc_reg = Is64Bit(inst.arch_name) ? XED_REG_RIP : XED_REG_EIP;
   auto pc_width = xed_get_register_width_bits64(pc_reg);
-  auto disp = static_cast<int64_t>(
-      xed_decoded_inst_get_branch_displacement(xedd));
+  auto disp =
+      static_cast<int64_t>(xed_decoded_inst_get_branch_displacement(xedd));
 
   // Taken branch.
   Operand taken_op = {};
@@ -709,8 +672,8 @@ static void DecodeRelativeBranch(Instruction &inst,
   taken_op.addr.kind = Operand::Address::kControlFlowTarget;
   inst.operands.push_back(taken_op);
 
-  inst.branch_taken_pc = static_cast<uint64_t>(
-      static_cast<int64_t>(inst.next_pc) + disp);
+  inst.branch_taken_pc =
+      static_cast<uint64_t>(static_cast<int64_t>(inst.next_pc) + disp);
   inst.branch_not_taken_pc = inst.next_pc;
 }
 
@@ -730,8 +693,8 @@ static uint16_t DecodeFpuOpcode(Instruction &inst) {
     }
   }
 
-  CHECK(i >= 2)
-      << "Failed to find FPU opcode byte for instruction " << inst.Serialize();
+  CHECK(i >= 2) << "Failed to find FPU opcode byte for instruction "
+                << inst.Serialize();
 
   uint16_t opcode = 0;
   opcode |= static_cast<uint16_t>(bytes[0] & 3) << 8;
@@ -762,26 +725,19 @@ static void DecodeX87LastIpDp(Instruction &inst) {
 }
 
 // Decode an operand.
-static void DecodeOperand(Instruction &inst,
-                          const xed_decoded_inst_t *xedd,
+static void DecodeOperand(Instruction &inst, const xed_decoded_inst_t *xedd,
                           const xed_operand_t *xedo) {
   switch (auto op_name = xed_operand_name(xedo)) {
     case XED_OPERAND_AGEN:
-    case XED_OPERAND_MEM0:
-      DecodeMemory(inst, xedd, xedo, 0);
-      break;
+    case XED_OPERAND_MEM0: DecodeMemory(inst, xedd, xedo, 0); break;
 
-    case XED_OPERAND_MEM1:
-      DecodeMemory(inst, xedd, xedo, 1);
-      break;
+    case XED_OPERAND_MEM1: DecodeMemory(inst, xedd, xedo, 1); break;
 
     case XED_OPERAND_IMM0SIGNED:
     case XED_OPERAND_IMM0:
     case XED_OPERAND_IMM1_BYTES:
     case XED_OPERAND_IMM1:
-    case XED_OPERAND_PTR:
-      DecodeImmediate(inst, xedd, op_name);
-      break;
+    case XED_OPERAND_PTR: DecodeImmediate(inst, xedd, op_name); break;
 
     case XED_OPERAND_REG:
     case XED_OPERAND_REG0:
@@ -792,9 +748,7 @@ static void DecodeOperand(Instruction &inst,
     case XED_OPERAND_REG5:
     case XED_OPERAND_REG6:
     case XED_OPERAND_REG7:
-    case XED_OPERAND_REG8:
-      DecodeRegister(inst, xedd, xedo, op_name);
-      break;
+    case XED_OPERAND_REG8: DecodeRegister(inst, xedd, xedo, op_name); break;
 
     case XED_OPERAND_RELBR:
       if (Instruction::kCategoryConditionalBranch == inst.category) {
@@ -805,9 +759,8 @@ static void DecodeOperand(Instruction &inst,
       break;
 
     default:
-      LOG(FATAL)
-          << "Unexpected operand type "
-          << xed_operand_enum_t2str(op_name) << ".";
+      LOG(FATAL) << "Unexpected operand type "
+                 << xed_operand_enum_t2str(op_name) << ".";
       return;
   }
 }
@@ -825,16 +778,14 @@ class X86Arch final : public Arch {
   const char *ProgramCounterRegisterName(void) const final;
 
   // Decode an instuction.
-  bool DecodeInstruction(
-      uint64_t address, std::string_view inst_bytes,
-      Instruction &inst) const final;
+  bool DecodeInstruction(uint64_t address, std::string_view inst_bytes,
+                         Instruction &inst) const final;
 
   // Fully decode any control-flow transfer instructions, but only partially
   // decode other instructions. To complete the decoding, call
   // `Instruction::FinalizeDecode`.
-  bool LazyDecodeInstruction(
-      uint64_t address, std::string_view inst_bytes,
-      Instruction &inst) const final;
+  bool LazyDecodeInstruction(uint64_t address, std::string_view inst_bytes,
+                             Instruction &inst) const final;
 
   // Maximum number of bytes in an instruction.
   uint64_t MaxInstructionSize(void) const final;
@@ -846,17 +797,16 @@ class X86Arch final : public Arch {
   llvm::CallingConv::ID DefaultCallingConv(void) const final;
 
  private:
-
   // Decode an instuction.
-  bool DecodeInstruction(
-      uint64_t address, std::string_view inst_bytes,
-      Instruction &inst, bool is_lazy) const;
+  bool DecodeInstruction(uint64_t address, std::string_view inst_bytes,
+                         Instruction &inst, bool is_lazy) const;
 
   X86Arch(void) = delete;
 };
 
 
-X86Arch::X86Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_)
+X86Arch::X86Arch(llvm::LLVMContext *context_, OSName os_name_,
+                 ArchName arch_name_)
     : Arch(context_, os_name_, arch_name_) {
 
   static bool xed_is_initialized = false;
@@ -882,18 +832,15 @@ llvm::CallingConv::ID X86Arch::DefaultCallingConv(void) const {
       case kOSmacOS:
       case kOSLinux:
       case kOSWindows:
-      case kOSSolaris:
-        return llvm::CallingConv::C;  // cdecl.
+      case kOSSolaris: return llvm::CallingConv::C;  // cdecl.
     }
   } else {
     switch (os_name) {
       case kOSInvalid:
       case kOSmacOS:
       case kOSLinux:
-      case kOSSolaris:
-        return llvm::CallingConv::X86_64_SysV;
-      case kOSWindows:
-        return llvm::CallingConv::Win64;
+      case kOSSolaris: return llvm::CallingConv::X86_64_SysV;
+      case kOSWindows: return llvm::CallingConv::Win64;
     }
   }
 }
@@ -904,18 +851,13 @@ llvm::Triple X86Arch::Triple(void) const {
   switch (arch_name) {
     case kArchAMD64:
     case kArchAMD64_AVX:
-    case kArchAMD64_AVX512:
-      triple.setArch(llvm::Triple::x86_64);
-      break;
+    case kArchAMD64_AVX512: triple.setArch(llvm::Triple::x86_64); break;
     case kArchX86:
     case kArchX86_AVX:
-    case kArchX86_AVX512:
-      triple.setArch(llvm::Triple::x86);
-      break;
+    case kArchX86_AVX512: triple.setArch(llvm::Triple::x86); break;
     default:
-      LOG(FATAL)
-          << "Cannot get triple for non-x86 architecture "
-          << GetArchName(arch_name);
+      LOG(FATAL) << "Cannot get triple for non-x86 architecture "
+                 << GetArchName(arch_name);
   }
 
   return triple;
@@ -943,9 +885,8 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
           dl = "e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128";
           break;
         default:
-          LOG(FATAL)
-              << "Cannot get data layout non-x86 architecture "
-              << GetArchName(arch_name);
+          LOG(FATAL) << "Cannot get data layout non-x86 architecture "
+                     << GetArchName(arch_name);
           break;
       }
       break;
@@ -963,9 +904,8 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
           dl = "e-m:o-p:32:32-f64:32:64-f80:128-n8:16:32-S128";
           break;
         default:
-          LOG(FATAL)
-              << "Cannot get data layout for non-x86 architecture "
-              << GetArchName(arch_name);
+          LOG(FATAL) << "Cannot get data layout for non-x86 architecture "
+                     << GetArchName(arch_name);
       }
       break;
 
@@ -982,9 +922,8 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
           dl = "e-m:x-p:32:32-i64:64-f80:32-n8:16:32-a:0:32-S32";
           break;
         default:
-          LOG(FATAL)
-              << "Cannot get data layout for non-x86 architecture "
-              << GetArchName(arch_name);
+          LOG(FATAL) << "Cannot get data layout for non-x86 architecture "
+                     << GetArchName(arch_name);
       }
       break;
   }
@@ -993,10 +932,8 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
 }
 
 // Decode an instuction.
-bool X86Arch::DecodeInstruction(
-    uint64_t address,
-    std::string_view inst_bytes,
-    Instruction &inst, bool is_lazy) const {
+bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
+                                Instruction &inst, bool is_lazy) const {
 
   inst.pc = address;
   inst.arch_name = arch_name;
@@ -1007,9 +944,8 @@ bool X86Arch::DecodeInstruction(
   auto mode = 32 == address_size ? &kXEDState32 : &kXEDState64;
 
   if (!DecodeXED(xedd, mode, inst_bytes, address)) {
-    LOG(ERROR)
-        << "DecodeXED() could not decode the following opcodes: "
-        << inst.Serialize();
+    LOG(ERROR) << "DecodeXED() could not decode the following opcodes: "
+               << inst.Serialize();
     return false;
   }
 
@@ -1079,6 +1015,7 @@ bool X86Arch::DecodeInstruction(
     }
 
     if (UsesStopFailure(xedd)) {
+
       // These instructions might fault and uses the StopFailure to recover.
       // The new operand `next_pc` is added and the REG_PC is set to next_pc
       // before calling the StopFailure
@@ -1104,9 +1041,7 @@ bool X86Arch::DecodeInstruction(
         case XED_IFORM_FINCSTP:
         case XED_IFORM_FDECSTP:
         case XED_IFORM_FFREE_X87:
-        case XED_IFORM_FFREEP_X87:
-          set_ip_dp = true;
-          break;
+        case XED_IFORM_FFREEP_X87: set_ip_dp = true; break;
         default:
           set_ip_dp = !get_attr(xedd, XED_ATTRIBUTE_X87_CONTROL) &&
                       !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_CW) &&
@@ -1123,9 +1058,8 @@ bool X86Arch::DecodeInstruction(
 
     if (xed_decoded_inst_is_xacquire(xedd) ||
         xed_decoded_inst_is_xrelease(xedd)) {
-      LOG(ERROR)
-          << "Ignoring XACQUIRE/XRELEASE prefix at " << std::hex
-          << inst.pc << std::dec;
+      LOG(ERROR) << "Ignoring XACQUIRE/XRELEASE prefix at " << std::hex
+                 << inst.pc << std::dec;
     }
   }
 
@@ -1134,9 +1068,8 @@ bool X86Arch::DecodeInstruction(
   switch (xed_decoded_inst_get_isa_set(xedd)) {
     case XED_ISA_SET_INVALID:
     case XED_ISA_SET_LAST:
-      LOG(ERROR)
-          << "Instruction decode of " << xed_iform_enum_t2str(iform)
-          << " failed because XED_ISA_SET_LAST.";
+      LOG(ERROR) << "Instruction decode of " << xed_iform_enum_t2str(iform)
+                 << " failed because XED_ISA_SET_LAST.";
       return false;
 
     case XED_ISA_SET_AVX:
@@ -1144,13 +1077,13 @@ bool X86Arch::DecodeInstruction(
     case XED_ISA_SET_AVX2GATHER:
     case XED_ISA_SET_AVXAES:
     case XED_ISA_SET_AVX_GFNI: {
-      auto supp = kArchAMD64 != inst.arch_name &&
-                  kArchX86 != inst.arch_name;
-      LOG_IF(ERROR, !supp)
-          << "Instruction decode of " << xed_iform_enum_t2str(iform)
-          << " failed because the current arch is specified "
-          << "as " << GetArchName(inst.arch_name) << " but what is needed is "
-          << "the _avx or _avx512 variant.";
+      auto supp = kArchAMD64 != inst.arch_name && kArchX86 != inst.arch_name;
+      LOG_IF(ERROR, !supp) << "Instruction decode of "
+                           << xed_iform_enum_t2str(iform)
+                           << " failed because the current arch is specified "
+                           << "as " << GetArchName(inst.arch_name)
+                           << " but what is needed is "
+                           << "the _avx or _avx512 variant.";
       return supp;
     }
 
@@ -1210,19 +1143,18 @@ bool X86Arch::DecodeInstruction(
       const auto supp = kArchAMD64_AVX512 == inst.arch_name ||
                         kArchX86_AVX512 == inst.arch_name;
       if (!supp) {
-        LOG(ERROR)
-            << "Instruction decode of " << xed_iform_enum_t2str(iform)
-            << " failed because the current arch is specified "
-            << "as " << GetArchName(inst.arch_name) << " but what is needed is "
-            << "the _avx512 variant.";
+        LOG(ERROR) << "Instruction decode of " << xed_iform_enum_t2str(iform)
+                   << " failed because the current arch is specified "
+                   << "as " << GetArchName(inst.arch_name)
+                   << " but what is needed is "
+                   << "the _avx512 variant.";
         inst.Reset();
         inst.category = Instruction::kCategoryInvalid;
         return false;
       }
       break;
     }
-    default:
-      break;
+    default: break;
   }
 
   return true;
@@ -1246,19 +1178,17 @@ const char *X86Arch::ProgramCounterRegisterName(void) const {
   }
 }
 
-bool X86Arch::DecodeInstruction(
-    uint64_t address,
-    std::string_view inst_bytes,
-    Instruction &inst) const {
+bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
+                                Instruction &inst) const {
   inst.arch_for_decode = nullptr;
   return DecodeInstruction(address, inst_bytes, inst, false);
 }
 
 // Fully decode any control-flow transfer instructions, but only partially
 // decode other instructions.
-bool X86Arch::LazyDecodeInstruction(
-    uint64_t address, std::string_view inst_bytes,
-    Instruction &inst) const {
+bool X86Arch::LazyDecodeInstruction(uint64_t address,
+                                    std::string_view inst_bytes,
+                                    Instruction &inst) const {
   inst.arch_for_decode = nullptr;
   if (DecodeInstruction(address, inst_bytes, inst, true)) {
     if (!inst.IsControlFlow()) {
@@ -1273,8 +1203,8 @@ bool X86Arch::LazyDecodeInstruction(
 }  // namespace
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
-Arch::ArchPtr Arch::GetX86(
-    llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_) {
+Arch::ArchPtr Arch::GetX86(llvm::LLVMContext *context_, OSName os_name_,
+                           ArchName arch_name_) {
   return std::make_unique<X86Arch>(context_, os_name_, arch_name_);
 }
 

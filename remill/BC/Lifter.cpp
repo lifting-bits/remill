@@ -14,48 +14,43 @@
  * limitations under the License.
  */
 
+#include "remill/BC/Lifter.h"
+
 #include <glog/logging.h>
-
-#include <functional>
-#include <ios>
-#include <set>
-#include <string>
-#include <sstream>
-#include <unordered_map>
-#include <utility>
-#include <vector>
-
 #include <llvm/ADT/SmallVector.h>
-
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
-#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Operator.h>
 #include <llvm/IR/Type.h>
-
 #include <llvm/Support/raw_ostream.h>
-
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
 
+#include <functional>
+#include <ios>
+#include <set>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Instruction.h"
 #include "remill/Arch/Name.h"
-
 #include "remill/BC/ABI.h"
 #include "remill/BC/Compat/DataLayout.h"
 #include "remill/BC/IntrinsicTable.h"
-#include "remill/BC/Lifter.h"
 #include "remill/BC/Util.h"
-
 #include "remill/OS/OS.h"
 
 namespace remill {
@@ -74,10 +69,9 @@ llvm::Function *GetInstructionFunction(llvm::Module *module,
   }
 
   if (!isel->isConstant() || !isel->hasInitializer()) {
-    LOG(FATAL)
-        << "Expected a `constexpr` variable as the function pointer for "
-        << "instruction semantic function " << function
-        << ": " << LLVMThingToString(isel);
+    LOG(FATAL) << "Expected a `constexpr` variable as the function pointer for "
+               << "instruction semantic function " << function << ": "
+               << LLVMThingToString(isel);
   }
 
   auto sem = isel->getInitializer()->stripPointerCasts();
@@ -92,17 +86,17 @@ InstructionLifter::InstructionLifter(const Arch *arch_,
                                      const IntrinsicTable *intrinsics_)
     : arch(arch_),
       word_type(llvm::Type::getIntNTy(
-          intrinsics_->async_hyper_call->getContext(),
-          arch->address_size)),
+          intrinsics_->async_hyper_call->getContext(), arch->address_size)),
       intrinsics(intrinsics_),
       last_func(nullptr) {}
 
 // Lift a single instruction into a basic block.
-LiftStatus InstructionLifter::LiftIntoBlock(
-    Instruction &arch_inst, llvm::BasicBlock *block, bool is_delayed) {
+LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
+                                            llvm::BasicBlock *block,
+                                            bool is_delayed) {
 
-  llvm::Function * const func = block->getParent();
-  llvm::Module * const module = func->getParent();
+  llvm::Function *const func = block->getParent();
+  llvm::Module *const module = func->getParent();
   llvm::Function *isel_func = nullptr;
   auto status = kLiftedInstruction;
 
@@ -114,21 +108,18 @@ LiftStatus InstructionLifter::LiftIntoBlock(
   if (arch_inst.IsValid()) {
     isel_func = GetInstructionFunction(module, arch_inst.function);
   } else {
-    LOG(ERROR)
-        << "Cannot decode instruction bytes at "
-        << std::hex << arch_inst.pc << std::dec;
+    LOG(ERROR) << "Cannot decode instruction bytes at " << std::hex
+               << arch_inst.pc << std::dec;
 
     isel_func = GetInstructionFunction(module, "INVALID_INSTRUCTION");
-    CHECK(isel_func != nullptr)
-        << "INVALID_INSTRUCTION doesn't exist.";
+    CHECK(isel_func != nullptr) << "INVALID_INSTRUCTION doesn't exist.";
 
     arch_inst.operands.clear();
     status = kLiftedInvalidInstruction;
   }
 
   if (!isel_func) {
-    LOG(ERROR)
-        << "Missing semantics for instruction " << arch_inst.Serialize();
+    LOG(ERROR) << "Missing semantics for instruction " << arch_inst.Serialize();
 
     isel_func = GetInstructionFunction(module, "UNSUPPORTED_INSTRUCTION");
     CHECK(isel_func != nullptr)
@@ -155,9 +146,8 @@ LiftStatus InstructionLifter::LiftIntoBlock(
   //            semantics function.
   if (is_delayed) {
     llvm::Value *temp_args[] = {ir.CreateLoad(mem_ptr_ref)};
-    ir.CreateStore(
-        ir.CreateCall(intrinsics->delay_slot_begin, temp_args),
-        mem_ptr_ref);
+    ir.CreateStore(ir.CreateCall(intrinsics->delay_slot_begin, temp_args),
+                   mem_ptr_ref);
 
     // Leave `PC` and `NEXT_PC` alone; we assume that the semantics have done
     // the right thing initializing `PC` and `NEXT_PC` for the delay slots.
@@ -168,18 +158,16 @@ LiftStatus InstructionLifter::LiftIntoBlock(
     // the program counter in the semantics code.
     ir.CreateStore(next_pc, pc_ref);
     ir.CreateStore(
-        ir.CreateAdd(
-            next_pc,
-            llvm::ConstantInt::get(word_type, arch_inst.bytes.size())),
+        ir.CreateAdd(next_pc,
+                     llvm::ConstantInt::get(word_type, arch_inst.bytes.size())),
         next_pc_ref);
   }
 
   // Begin an atomic block.
   if (arch_inst.is_atomic_read_modify_write) {
     llvm::Value *temp_args[] = {ir.CreateLoad(mem_ptr_ref)};
-    ir.CreateStore(
-        ir.CreateCall(intrinsics->atomic_begin, temp_args),
-        mem_ptr_ref);
+    ir.CreateStore(ir.CreateCall(intrinsics->atomic_begin, temp_args),
+                   mem_ptr_ref);
   }
 
   std::vector<llvm::Value *> args;
@@ -196,9 +184,8 @@ LiftStatus InstructionLifter::LiftIntoBlock(
   for (auto &op : arch_inst.operands) {
     CHECK(arg_num < isel_func_type->getNumParams())
         << "Function " << arch_inst.function << ", implemented by "
-        << isel_func->getName().str() << ", should have at least "
-        << arg_num << " arguments for instruction "
-        << arch_inst.Serialize();
+        << isel_func->getName().str() << ", should have at least " << arg_num
+        << " arguments for instruction " << arch_inst.Serialize();
 
     auto arg = NthArgument(isel_func, arg_num);
     auto arg_type = arg->getType();
@@ -206,8 +193,8 @@ LiftStatus InstructionLifter::LiftIntoBlock(
     arg_num += 1;
     auto op_type = operand->getType();
     CHECK(op_type == arg_type)
-        << "Lifted operand " << op.Serialize() << " to "
-        << arch_inst.function << " does not have the correct type. Expected "
+        << "Lifted operand " << op.Serialize() << " to " << arch_inst.function
+        << " does not have the correct type. Expected "
         << LLVMThingToString(arg_type) << " but got "
         << LLVMThingToString(op_type) << ".";
 
@@ -223,9 +210,8 @@ LiftStatus InstructionLifter::LiftIntoBlock(
   // End an atomic block.
   if (arch_inst.is_atomic_read_modify_write) {
     llvm::Value *temp_args[] = {ir.CreateLoad(mem_ptr_ref)};
-    ir.CreateStore(
-        ir.CreateCall(intrinsics->atomic_end, temp_args),
-        mem_ptr_ref);
+    ir.CreateStore(ir.CreateCall(intrinsics->atomic_end, temp_args),
+                   mem_ptr_ref);
   }
 
   // Restore the true target of the delayed branch.
@@ -240,10 +226,9 @@ LiftStatus InstructionLifter::LiftIntoBlock(
     // are lifted, we do the `PC = NEXT_PC + size`, so this is fine.
     ir.CreateStore(next_pc, next_pc_ref);
 
-    llvm::Value *temp_args[]= {ir.CreateLoad(mem_ptr_ref)};
-    ir.CreateStore(
-        ir.CreateCall(intrinsics->delay_slot_end, temp_args),
-        mem_ptr_ref);
+    llvm::Value *temp_args[] = {ir.CreateLoad(mem_ptr_ref)};
+    ir.CreateStore(ir.CreateCall(intrinsics->delay_slot_end, temp_args),
+                   mem_ptr_ref);
   }
 
   return status;
@@ -274,9 +259,10 @@ llvm::Value *InstructionLifter::LoadRegValue(llvm::BasicBlock *block,
 }
 
 // Return a register value, or zero.
-llvm::Value *InstructionLifter::LoadWordRegValOrZero(
-    llvm::BasicBlock *block, const std::string &reg_name,
-    llvm::ConstantInt *zero) {
+llvm::Value *
+InstructionLifter::LoadWordRegValOrZero(llvm::BasicBlock *block,
+                                        const std::string &reg_name,
+                                        llvm::ConstantInt *zero) {
 
   if (reg_name.empty()) {
     return zero;
@@ -286,8 +272,7 @@ llvm::Value *InstructionLifter::LoadWordRegValOrZero(
   auto val_type = llvm::dyn_cast_or_null<llvm::IntegerType>(val->getType());
   auto word_type = zero->getType();
 
-  CHECK(val_type)
-      << "Register " << reg_name << " expected to be an integer.";
+  CHECK(val_type) << "Register " << reg_name << " expected to be an integer.";
 
   auto val_size = val_type->getBitWidth();
   auto word_size = word_type->getBitWidth();
@@ -302,9 +287,10 @@ llvm::Value *InstructionLifter::LoadWordRegValOrZero(
   return val;
 }
 
-llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
-    Instruction &inst, llvm::BasicBlock *block,
-    llvm::Argument *arg, Operand &op) {
+llvm::Value *
+InstructionLifter::LiftShiftRegisterOperand(Instruction &inst,
+                                            llvm::BasicBlock *block,
+                                            llvm::Argument *arg, Operand &op) {
 
   llvm::Function *func = block->getParent();
   llvm::Module *module = func->getParent();
@@ -313,8 +299,8 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
 
   auto arg_type = arg->getType();
   CHECK(arg_type->isIntegerTy())
-    << "Expected " << arch_reg.name << " to be an integral type "
-    << "for instruction at " << std::hex << inst.pc;
+      << "Expected " << arch_reg.name << " to be an integral type "
+      << "for instruction at " << std::hex << inst.pc;
 
   const llvm::DataLayout data_layout(module);
   auto reg = LoadRegValue(block, arch_reg.name);
@@ -334,8 +320,8 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
   auto curr_size = reg_size;
   if (Operand::ShiftRegister::kExtendInvalid != op.shift_reg.extend_op) {
 
-    auto extract_type = llvm::Type::getIntNTy(
-        context, op.shift_reg.extract_size);
+    auto extract_type =
+        llvm::Type::getIntNTy(context, op.shift_reg.extract_size);
 
     if (reg_size > op.shift_reg.extract_size) {
       curr_size = op.shift_reg.extract_size;
@@ -360,9 +346,8 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
           curr_size = op.size;
           break;
         default:
-          LOG(FATAL)
-              << "Invalid extend operation type for instruction at "
-              << std::hex << inst.pc;
+          LOG(FATAL) << "Invalid extend operation type for instruction at "
+                     << std::hex << inst.pc;
           break;
       }
     }
@@ -383,6 +368,7 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
         << inst.Serialize();
 
     switch (op.shift_reg.shift_op) {
+
       // Left shift.
       case Operand::ShiftRegister::kShiftLeftWithZeroes:
         reg = ir.CreateShl(reg, shift_val);
@@ -390,8 +376,8 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
 
       // Masking shift left.
       case Operand::ShiftRegister::kShiftLeftWithOnes: {
-        const auto mask_val = llvm::ConstantInt::get(
-            reg_type, ~((~zero) << shift_size));
+        const auto mask_val =
+            llvm::ConstantInt::get(reg_type, ~((~zero) << shift_size));
         reg = ir.CreateOr(ir.CreateShl(reg, shift_val), mask_val);
         break;
       }
@@ -426,8 +412,7 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
         break;
       }
 
-      case Operand::ShiftRegister::kShiftInvalid:
-        break;
+      case Operand::ShiftRegister::kShiftInvalid: break;
     }
   }
 
@@ -453,33 +438,28 @@ static llvm::Type *IntendedArgumentType(llvm::Argument *arg) {
   return arg->getType();
 }
 
-static llvm::Value *ConvertToIntendedType(Instruction &inst, Operand &op,
-                                          llvm::BasicBlock *block,
-                                          llvm::Value *val,
-                                          llvm::Type *intended_type) {
+static llvm::Value *
+ConvertToIntendedType(Instruction &inst, Operand &op, llvm::BasicBlock *block,
+                      llvm::Value *val, llvm::Type *intended_type) {
   auto val_type = val->getType();
   if (val->getType() == intended_type) {
     return val;
   } else if (auto val_ptr_type = llvm::dyn_cast<llvm::PointerType>(val_type)) {
     if (intended_type->isPointerTy()) {
-      return new llvm::BitCastInst(
-          val, intended_type, val->getName(), block);
+      return new llvm::BitCastInst(val, intended_type, val->getName(), block);
     } else if (intended_type->isIntegerTy()) {
-      return new llvm::PtrToIntInst(
-          val, intended_type, val->getName(), block);
+      return new llvm::PtrToIntInst(val, intended_type, val->getName(), block);
     }
   } else if (val_type->isFloatingPointTy()) {
     if (intended_type->isIntegerTy()) {
-      return new llvm::BitCastInst(
-          val, intended_type, val->getName(), block);
+      return new llvm::BitCastInst(val, intended_type, val->getName(), block);
     }
   }
 
-  LOG(FATAL)
-      << "Unable to convert value " << LLVMThingToString(val)
-      << " to intended argument type " << LLVMThingToString(intended_type)
-      << " for operand " << op.Serialize() << " of instruction "
-      << inst.Serialize();
+  LOG(FATAL) << "Unable to convert value " << LLVMThingToString(val)
+             << " to intended argument type "
+             << LLVMThingToString(intended_type) << " for operand "
+             << op.Serialize() << " of instruction " << inst.Serialize();
 
   return nullptr;
 }
@@ -490,9 +470,10 @@ static llvm::Value *ConvertToIntendedType(Instruction &inst, Operand &op,
 // for registers. In the case of write operands, the argument type is always
 // a pointer. In the case of read operands, the argument type is sometimes
 // a pointer (e.g. when passing a vector to an instruction semantics function).
-llvm::Value *InstructionLifter::LiftRegisterOperand(
-    Instruction &inst, llvm::BasicBlock *block,
-    llvm::Argument *arg, Operand &op) {
+llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
+                                                    llvm::BasicBlock *block,
+                                                    llvm::Argument *arg,
+                                                    Operand &op) {
 
   llvm::Function *func = block->getParent();
   llvm::Module *module = func->getParent();
@@ -570,10 +551,9 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(
 }
 
 // Lift an immediate operand.
-llvm::Value *InstructionLifter::LiftImmediateOperand(Instruction &inst,
-                                                     llvm::BasicBlock *,
-                                                     llvm::Argument *arg,
-                                                     Operand &arch_op) {
+llvm::Value *
+InstructionLifter::LiftImmediateOperand(Instruction &inst, llvm::BasicBlock *,
+                                        llvm::Argument *arg, Operand &arch_op) {
   auto arg_type = arg->getType();
   if (arch_op.size > word_type->getBitWidth()) {
     CHECK(arg_type->isIntegerTy(static_cast<uint32_t>(arch_op.size)))
@@ -587,8 +567,8 @@ llvm::Value *InstructionLifter::LiftImmediateOperand(Instruction &inst,
         << "Operand structure encodes a truncated " << arch_op.size << " bit "
         << "value for instruction at " << std::hex << inst.pc;
 
-    return llvm::ConstantInt::get(
-        arg_type, arch_op.imm.val, arch_op.imm.is_signed);
+    return llvm::ConstantInt::get(arg_type, arch_op.imm.val,
+                                  arch_op.imm.is_signed);
 
   } else {
     CHECK(arg_type->isIntegerTy(word_type->getBitWidth()))
@@ -597,14 +577,16 @@ llvm::Value *InstructionLifter::LiftImmediateOperand(Instruction &inst,
         << "smaller than the machine word size should be represented as "
         << "machine word sized arguments to semantics functions.";
 
-    return llvm::ConstantInt::get(
-        word_type, arch_op.imm.val, arch_op.imm.is_signed);
+    return llvm::ConstantInt::get(word_type, arch_op.imm.val,
+                                  arch_op.imm.is_signed);
   }
 }
 
 // Zero-extend a value to be the machine word size.
-llvm::Value *InstructionLifter::LiftAddressOperand(
-    Instruction &inst, llvm::BasicBlock *block, llvm::Argument *, Operand &op) {
+llvm::Value *InstructionLifter::LiftAddressOperand(Instruction &inst,
+                                                   llvm::BasicBlock *block,
+                                                   llvm::Argument *,
+                                                   Operand &op) {
   auto &arch_addr = op.addr;
   auto zero = llvm::ConstantInt::get(word_type, 0, false);
   auto word_size = word_type->getBitWidth();
@@ -623,8 +605,8 @@ llvm::Value *InstructionLifter::LiftAddressOperand(
   auto index = LoadWordRegValOrZero(block, arch_addr.index_reg.name, zero);
   auto scale = llvm::ConstantInt::get(
       word_type, static_cast<uint64_t>(arch_addr.scale), true);
-  auto segment = LoadWordRegValOrZero(
-      block, arch_addr.segment_base_reg.name, zero);
+  auto segment =
+      LoadWordRegValOrZero(block, arch_addr.segment_base_reg.name, zero);
 
   llvm::IRBuilder<> ir(block);
 
@@ -634,11 +616,13 @@ llvm::Value *InstructionLifter::LiftAddressOperand(
 
   if (arch_addr.displacement) {
     if (0 < arch_addr.displacement) {
-      addr = ir.CreateAdd(addr, llvm::ConstantInt::get(
-          word_type, static_cast<uint64_t>(arch_addr.displacement)));
+      addr = ir.CreateAdd(
+          addr, llvm::ConstantInt::get(
+                    word_type, static_cast<uint64_t>(arch_addr.displacement)));
     } else {
-      addr = ir.CreateSub(addr, llvm::ConstantInt::get(
-          word_type, static_cast<uint64_t>(-arch_addr.displacement)));
+      addr = ir.CreateSub(
+          addr, llvm::ConstantInt::get(
+                    word_type, static_cast<uint64_t>(-arch_addr.displacement)));
     }
   }
 
@@ -653,24 +637,20 @@ llvm::Value *InstructionLifter::LiftAddressOperand(
     auto addr_type = llvm::Type::getIntNTy(
         block->getContext(), static_cast<unsigned>(arch_addr.address_size));
 
-    addr = ir.CreateZExt(
-        ir.CreateTrunc(addr, addr_type),
-        word_type);
+    addr = ir.CreateZExt(ir.CreateTrunc(addr, addr_type), word_type);
   }
 
   return addr;
 }
 
 // Lift an operand for use by the instruction.
-llvm::Value *InstructionLifter::LiftOperand(Instruction &inst,
-                                            llvm::BasicBlock *block,
-                                            llvm::Argument *arg,
-                                            Operand &arch_op) {
+llvm::Value *
+InstructionLifter::LiftOperand(Instruction &inst, llvm::BasicBlock *block,
+                               llvm::Argument *arg, Operand &arch_op) {
   auto arg_type = arg->getType();
   switch (arch_op.type) {
     case Operand::kTypeInvalid:
-      LOG(FATAL)
-          << "Decode error! Cannot lift invalid operand.";
+      LOG(FATAL) << "Decode error! Cannot lift invalid operand.";
       return nullptr;
 
     case Operand::kTypeShiftRegister:
@@ -682,9 +662,9 @@ llvm::Value *InstructionLifter::LiftOperand(Instruction &inst,
 
     case Operand::kTypeRegister:
       if (arch_op.size != arch_op.reg.size) {
-        LOG(FATAL)
-            << "Operand size and register size must match for register "
-            << arch_op.reg.name << " in instruction " << inst.Serialize();
+        LOG(FATAL) << "Operand size and register size must match for register "
+                   << arch_op.reg.name << " in instruction "
+                   << inst.Serialize();
       }
       return LiftRegisterOperand(inst, block, arg, arch_op);
 
@@ -693,20 +673,19 @@ llvm::Value *InstructionLifter::LiftOperand(Instruction &inst,
 
     case Operand::kTypeAddress:
       if (arg_type != word_type) {
-        LOG(FATAL)
-            << "Expected that a memory operand should be represented by "
-            << "machine word type. Argument type is "
-            << LLVMThingToString(arg_type) << " and word type is "
-            << LLVMThingToString(word_type) << " in instruction at "
-            << std::hex << inst.pc;
+        LOG(FATAL) << "Expected that a memory operand should be represented by "
+                   << "machine word type. Argument type is "
+                   << LLVMThingToString(arg_type) << " and word type is "
+                   << LLVMThingToString(word_type) << " in instruction at "
+                   << std::hex << inst.pc;
       }
 
       return LiftAddressOperand(inst, block, arg, arch_op);
   }
 
-  LOG(FATAL)
-      << "Got a unknown operand type of " << static_cast<int>(arch_op.type)
-      << " in instruction at " << std::hex << inst.pc;
+  LOG(FATAL) << "Got a unknown operand type of "
+             << static_cast<int>(arch_op.type) << " in instruction at "
+             << std::hex << inst.pc;
 
   return nullptr;
 }
@@ -730,6 +709,7 @@ llvm::Function *TraceManager::GetLiftedTraceDefinition(uint64_t) {
 void TraceManager::ForEachDevirtualizedTarget(
     const Instruction &,
     std::function<void(uint64_t, DevirtualizedTargetKind)>) {
+
   // Must be extended.
 }
 
@@ -752,9 +732,8 @@ class TraceLifter::Impl {
 
   // Lift one or more traces starting from `addr`. Calls `callback` with each
   // lifted trace.
-  bool Lift(
-      uint64_t addr,
-      std::function<void(uint64_t,llvm::Function *)> callback);
+  bool Lift(uint64_t addr,
+            std::function<void(uint64_t, llvm::Function *)> callback);
 
   // Reads the bytes of an instruction at `addr` into `state.inst_bytes`.
   bool ReadInstructionBytes(uint64_t addr);
@@ -810,11 +789,11 @@ class TraceLifter::Impl {
     return inst_addr;
   }
 
-  const Arch * const arch;
+  const Arch *const arch;
   InstructionLifter &inst_lifter;
   const remill::IntrinsicTable *intrinsics;
   llvm::LLVMContext &context;
-  llvm::Module * const module;
+  llvm::Module *const module;
   const uint64_t addr_mask;
   TraceManager &manager;
 
@@ -830,8 +809,7 @@ class TraceLifter::Impl {
   std::map<uint64_t, llvm::BasicBlock *> blocks;
 };
 
-TraceLifter::Impl::Impl(InstructionLifter *inst_lifter_,
-                         TraceManager *manager_)
+TraceLifter::Impl::Impl(InstructionLifter *inst_lifter_, TraceManager *manager_)
     : arch(inst_lifter_->arch),
       inst_lifter(*inst_lifter_),
       intrinsics(inst_lifter.intrinsics),
@@ -877,8 +855,7 @@ llvm::Function *TraceLifter::Impl::GetLiftedTraceDefinition(uint64_t addr) {
   auto extern_func = module->getFunction(func->getName());
   if (!extern_func || extern_func->getFunctionType() != func_type) {
     extern_func = llvm::Function::Create(
-        func_type, llvm::GlobalValue::ExternalLinkage, func->getName(),
-        module);
+        func_type, llvm::GlobalValue::ExternalLinkage, func->getName(), module);
 
   } else if (extern_func->isDeclaration()) {
     extern_func->setLinkage(llvm::GlobalValue::ExternalLinkage);
@@ -905,9 +882,8 @@ bool TraceLifter::Impl::ReadInstructionBytes(uint64_t addr) {
     }
     uint8_t byte = 0;
     if (!manager.TryReadExecutableByte(byte_addr, &byte)) {
-      DLOG(WARNING)
-          << "Couldn't read executable byte at "
-          << std::hex << byte_addr << std::dec;
+      DLOG(WARNING) << "Couldn't read executable byte at " << std::hex
+                    << byte_addr << std::dec;
       break;
     }
     inst_bytes.push_back(static_cast<char>(byte));
@@ -916,18 +892,18 @@ bool TraceLifter::Impl::ReadInstructionBytes(uint64_t addr) {
 }
 
 // Lift one or more traces starting from `addr`.
-bool TraceLifter::Lift(uint64_t addr,
-                       std::function<void(uint64_t,llvm::Function *)> callback) {
+bool TraceLifter::Lift(
+    uint64_t addr, std::function<void(uint64_t, llvm::Function *)> callback) {
   return impl->Lift(addr, callback);
 }
 
 // Lift one or more traces starting from `addr`.
-bool TraceLifter::Impl::Lift(uint64_t addr_,
-                       std::function<void(uint64_t,llvm::Function *)> callback) {
+bool TraceLifter::Impl::Lift(
+    uint64_t addr_, std::function<void(uint64_t, llvm::Function *)> callback) {
   auto addr = addr_ & addr_mask;
   if (addr < addr_) {  // Address is out of range.
-    LOG(ERROR)
-        << "Trace address " << std::hex << addr_ << " is too big" << std::dec;
+    LOG(ERROR) << "Trace address " << std::hex << addr_ << " is too big"
+               << std::dec;
     return false;
   }
 
@@ -944,7 +920,7 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
 
   // Get a trace head that the manager knows about, or that we
   // will eventually tell the trace manager about.
-  auto get_trace_decl = [=] (uint64_t addr) -> llvm::Function *{
+  auto get_trace_decl = [=](uint64_t addr) -> llvm::Function * {
     if (auto trace = GetLiftedTraceDeclaration(addr)) {
       return trace;
     }
@@ -967,8 +943,8 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
       continue;
     }
 
-    DLOG(INFO)
-        << "Lifting trace at address " << std::hex << trace_addr << std::dec;
+    DLOG(INFO) << "Lifting trace at address " << std::hex << trace_addr
+               << std::dec;
 
     func = get_trace_decl(trace_addr);
     blocks.clear();
@@ -992,8 +968,7 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
       (void) new llvm::StoreInst(pc, next_pc_ref, entry_block);
 
       // Branch to the first basic block.
-      llvm::BranchInst::Create(GetOrCreateBlock(trace_addr),
-                               entry_block);
+      llvm::BranchInst::Create(GetOrCreateBlock(trace_addr), entry_block);
     }
 
     CHECK(inst_work_list.empty());
@@ -1030,7 +1005,7 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
       inst.Reset();
 
       (void) arch->DecodeInstruction(inst_addr, inst_bytes, inst);
-      
+
       auto lift_status = inst_lifter.LiftIntoBlock(inst, block);
       if (kLiftedInstruction != lift_status) {
         AddTerminatingTailCall(block, intrinsics->error);
@@ -1044,15 +1019,16 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
         if (!ReadInstructionBytes(inst.delayed_pc) ||
             !arch->DecodeDelayedInstruction(inst.delayed_pc, inst_bytes,
                                             delayed_inst)) {
-          LOG(ERROR) << "Couldn't read delayed inst " << delayed_inst.Serialize();
+          LOG(ERROR) << "Couldn't read delayed inst "
+                     << delayed_inst.Serialize();
           AddTerminatingTailCall(block, intrinsics->error);
           continue;
         }
       }
 
       // Functor used to add in a delayed instruction.
-      auto try_add_delay_slot = [&] (bool on_branch_taken_path,
-                                     llvm::BasicBlock *into_block) -> void {
+      auto try_add_delay_slot = [&](bool on_branch_taken_path,
+                                    llvm::BasicBlock *into_block) -> void {
         if (!try_delay) {
           return;
         }
@@ -1060,8 +1036,8 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
                                             on_branch_taken_path)) {
           return;
         }
-        lift_status = inst_lifter.LiftIntoBlock(
-            delayed_inst, into_block, true  /* is_delayed */);
+        lift_status = inst_lifter.LiftIntoBlock(delayed_inst, into_block,
+                                                true /* is_delayed */);
         if (kLiftedInstruction != lift_status) {
           AddTerminatingTailCall(block, intrinsics->error);
         }
@@ -1100,8 +1076,8 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
               inst,
               [&](uint64_t target_addr, DevirtualizedTargetKind target_kind) {
                 if (target_kind == DevirtualizedTargetKind::kTraceHead) {
-                  auto target_block = llvm::BasicBlock::Create(
-                      context, "", func);
+                  auto target_block =
+                      llvm::BasicBlock::Create(context, "", func);
                   devirt_targets[target_addr] = target_block;
 
                   // Always add to the work list. This will cause us to lift
@@ -1130,9 +1106,8 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
               pc, default_case, devirt_targets.size(), block);
           for (auto devirt_target : devirt_targets) {
             dispatcher->addCase(
-                llvm::dyn_cast<llvm::ConstantInt>(
-                    llvm::ConstantInt::get(
-                        pc_type, devirt_target.first, false)),
+                llvm::dyn_cast<llvm::ConstantInt>(llvm::ConstantInt::get(
+                    pc_type, devirt_target.first, false)),
                 devirt_target.second);
           }
           break;
@@ -1144,11 +1119,13 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
 
         case Instruction::kCategoryIndirectFunctionCall: {
           try_add_delay_slot(true, block);
-          const auto fall_through_block = llvm::BasicBlock::Create(
-              context, "", func);
+          const auto fall_through_block =
+              llvm::BasicBlock::Create(context, "", func);
 
-          const auto ret_pc_ref = LoadReturnProgramCounterRef(fall_through_block);
-          const auto next_pc_ref = LoadNextProgramCounterRef(fall_through_block);
+          const auto ret_pc_ref =
+              LoadReturnProgramCounterRef(fall_through_block);
+          const auto next_pc_ref =
+              LoadNextProgramCounterRef(fall_through_block);
           llvm::IRBuilder<> ir(fall_through_block);
           ir.CreateStore(ir.CreateLoad(ret_pc_ref), next_pc_ref);
           ir.CreateBr(GetOrCreateNextBlock());
@@ -1165,8 +1142,7 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
                   return;
                 }
 
-                auto target_block = llvm::BasicBlock::Create(
-                    context, "", func);
+                auto target_block = llvm::BasicBlock::Create(context, "", func);
                 devirt_targets[target_addr] = target_block;
 
                 // Always add to the work list. This will cause us to lift
@@ -1195,9 +1171,8 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
               pc, default_case, devirt_targets.size(), block);
           for (auto devirt_target : devirt_targets) {
             dispatcher->addCase(
-                llvm::dyn_cast<llvm::ConstantInt>(
-                    llvm::ConstantInt::get(
-                        pc_type, devirt_target.first, false)),
+                llvm::dyn_cast<llvm::ConstantInt>(llvm::ConstantInt::get(
+                    pc_type, devirt_target.first, false)),
                 devirt_target.second);
           }
 
@@ -1238,11 +1213,8 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
         // checking if the hyper call returns to the next PC or not.
         case Instruction::kCategoryConditionalAsyncHyperCall: {
           auto do_hyper_call = llvm::BasicBlock::Create(context, "", func);
-          llvm::BranchInst::Create(
-              do_hyper_call,
-              GetOrCreateNextBlock(),
-              LoadBranchTaken(block),
-              block);
+          llvm::BranchInst::Create(do_hyper_call, GetOrCreateNextBlock(),
+                                   LoadBranchTaken(block), block);
           block = do_hyper_call;
           AddCall(block, intrinsics->async_hyper_call);
           goto check_call_return;
@@ -1251,15 +1223,16 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
         check_call_return:
           do {
             auto pc = LoadProgramCounter(block);
-            auto ret_pc = llvm::ConstantInt::get(
-                inst_lifter.word_type, inst.next_pc);
+            auto ret_pc =
+                llvm::ConstantInt::get(inst_lifter.word_type, inst.next_pc);
 
             llvm::IRBuilder<> ir(block);
             auto eq = ir.CreateICmpEQ(pc, ret_pc);
-            auto unexpected_ret_pc = llvm::BasicBlock::Create(
-                context, "", func);
+            auto unexpected_ret_pc =
+                llvm::BasicBlock::Create(context, "", func);
             ir.CreateCondBr(eq, GetOrCreateNextBlock(), unexpected_ret_pc);
-            AddTerminatingTailCall(unexpected_ret_pc, intrinsics->missing_block);
+            AddTerminatingTailCall(unexpected_ret_pc,
+                                   intrinsics->missing_block);
           } while (false);
           break;
 
@@ -1278,8 +1251,8 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
           // and its original targets.
           if (try_delay) {
             auto new_taken_block = llvm::BasicBlock::Create(context, "", func);
-            auto new_not_taken_block = llvm::BasicBlock::Create(
-                context, "", func);
+            auto new_not_taken_block =
+                llvm::BasicBlock::Create(context, "", func);
 
             try_add_delay_slot(true, new_taken_block);
             try_add_delay_slot(false, new_not_taken_block);
@@ -1291,11 +1264,8 @@ bool TraceLifter::Impl::Lift(uint64_t addr_,
             not_taken_block = new_not_taken_block;
           }
 
-          llvm::BranchInst::Create(
-              taken_block,
-              not_taken_block,
-              LoadBranchTaken(block),
-              block);
+          llvm::BranchInst::Create(taken_block, not_taken_block,
+                                   LoadBranchTaken(block), block);
           break;
         }
       }

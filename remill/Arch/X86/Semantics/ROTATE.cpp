@@ -30,9 +30,8 @@ DEF_SEM(ROL, D dst, S1 src1, S2 src2) {
   auto masked_count = UAnd(count, count_mask);
   auto temp_count = URem(masked_count, op_size);
   if (temp_count) {
-    auto new_val = UOr(
-        UShl(val, temp_count),
-        UShr(val, USub(op_size, temp_count)));
+    auto new_val =
+        UOr(UShl(val, temp_count), UShr(val, USub(op_size, temp_count)));
     WriteZExt(dst, new_val);
     Write(FLAG_CF, UCmpEq(UAnd(new_val, one), one));
     if (1 == temp_count) {
@@ -40,7 +39,7 @@ DEF_SEM(ROL, D dst, S1 src1, S2 src2) {
     } else {
       Write(FLAG_OF, false);
     }
-    // OF undefined for `1 == temp_count`.
+  // OF undefined for `1 == temp_count`.
   } else {
     WriteZExt(dst, val);
   }
@@ -59,13 +58,13 @@ DEF_SEM(ROR, D dst, S1 src1, S2 src2) {
   auto masked_count = UAnd(count, count_mask);
   auto temp_count = URem(masked_count, op_size);
   if (temp_count) {
-    auto new_val = UOr(
-        UShr(val, temp_count),
-        UShl(val, USub(op_size, temp_count)));
+    auto new_val =
+        UOr(UShr(val, temp_count), UShl(val, USub(op_size, temp_count)));
     WriteZExt(dst, new_val);
     Write(FLAG_CF, SignFlag(new_val));
     Write(FLAG_OF, BXor(FLAG_CF, SignFlag(UShl(new_val, one))));
-    // OF undefined for `1 == temp_count`.
+
+  // OF undefined for `1 == temp_count`.
   } else {
     WriteZExt(dst, val);
   }
@@ -82,9 +81,8 @@ DEF_SEM(RORX, D dst, S1 src1, S2 src2) {
   auto count_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
   auto masked_count = UAnd(count, count_mask);
   auto temp_count = URem(masked_count, op_size);
-  auto new_val = UOr(
-      UShr(val, temp_count),
-      UShl(val, USub(op_size, temp_count)));
+  auto new_val =
+      UOr(UShr(val, temp_count), UShl(val, USub(op_size, temp_count)));
   WriteZExt(dst, new_val);
   return memory;
 }
@@ -134,10 +132,8 @@ DEF_SEM(RCL, D dst, S1 src1, S2 src2) {
   auto short_mask = Literal<S1>(0x1F);
   auto op_size = BitSizeOf(src1);
   auto count_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
-  auto count_mod = Select(
-      UCmpLt(op_size, 32),
-      UAdd(op_size, one),
-      UAdd(count_mask, one));
+  auto count_mod =
+      Select(UCmpLt(op_size, 32), UAdd(op_size, one), UAdd(count_mask, one));
 
   auto masked_count = UAnd(count, count_mask);
   auto temp_count = URem(masked_count, count_mod);
@@ -145,14 +141,14 @@ DEF_SEM(RCL, D dst, S1 src1, S2 src2) {
 
   if (temp_count) {
     auto right = UShr(val, USub(op_size, temp_count));
-    auto new_val = UOr(UOr(
-        UShl(val, temp_count),
-        UShl(carry, USub(temp_count, one))),
-        UShr(right, one));
+    auto new_val =
+        UOr(UOr(UShl(val, temp_count), UShl(carry, USub(temp_count, one))),
+            UShr(right, one));
     WriteZExt(dst, new_val);
     Write(FLAG_CF, SignFlag(UShl(val, USub(temp_count, one))));
     Write(FLAG_OF, BXor(FLAG_CF, SignFlag(new_val)));
-    // OF undefined for `1 == temp_count`.
+
+  // OF undefined for `1 == temp_count`.
   } else {
     WriteZExt(dst, val);
   }
@@ -169,10 +165,8 @@ DEF_SEM(RCR, D dst, S1 src1, S2 src2) {
   auto short_mask = Literal<S1>(0x1F);
   auto op_size = BitSizeOf(src1);
   auto count_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
-  auto count_mod = Select(
-      UCmpLt(op_size, 32),
-      UAdd(op_size, one),
-      UAdd(count_mask, one));
+  auto count_mod =
+      Select(UCmpLt(op_size, 32), UAdd(op_size, one), UAdd(count_mask, one));
 
   auto masked_count = UAnd(count, count_mask);
   auto temp_count = URem(masked_count, count_mod);
@@ -181,14 +175,14 @@ DEF_SEM(RCR, D dst, S1 src1, S2 src2) {
   if (temp_count) {
     auto left = UShr(val, USub(temp_count, one));
     auto right = UShl(val, USub(op_size, temp_count));
-    auto new_val = UOr(UOr(
-        UShr(left, one),
-        UShl(carry, USub(op_size, temp_count))),
-        UShl(right, one));
+    auto new_val =
+        UOr(UOr(UShr(left, one), UShl(carry, USub(op_size, temp_count))),
+            UShl(right, one));
     WriteZExt(dst, new_val);
     Write(FLAG_CF, UCmpNeq(UAnd(left, one), zero));
     Write(FLAG_OF, BXor(SignFlag(UShl(new_val, one)), SignFlag(new_val)));
-    // OF undefined for `1 == temp_count`.
+
+  // OF undefined for `1 == temp_count`.
   } else {
     WriteZExt(dst, val);
   }

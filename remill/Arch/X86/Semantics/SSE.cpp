@@ -58,70 +58,39 @@ ALWAYS_INLINE static bool CompareFloats(FloatCompareOperator op, T v1, T v2) {
   auto is_unordered = __builtin_isunordered(v1, v2);
   auto is_ordered = !is_unordered;
   switch (op) {
-    case kEqOrderedQuiet:
-      return !__builtin_islessgreater(v1, v2) && is_ordered;
-    case kLtOrderedSignal:
-      return v1 < v2 && is_ordered;
-    case kLeOrderedSignal:
-      return v1 <= v2 && is_ordered;
-    case kUnorderedQuiet:
-      return is_unordered;
+    case kEqOrderedQuiet: return !__builtin_islessgreater(v1, v2) && is_ordered;
+    case kLtOrderedSignal: return v1 < v2 && is_ordered;
+    case kLeOrderedSignal: return v1 <= v2 && is_ordered;
+    case kUnorderedQuiet: return is_unordered;
     case kNeUnorderedQuiet:
       return __builtin_islessgreater(v1, v2) || is_unordered;
-    case kNltUnorderedSignal:
-      return !(v1 < v2) || is_unordered;
-    case kNleUnorderedSignal:
-      return !(v1 <= v2) || is_unordered;
-    case kOrderedQuiet:
-      return is_ordered;
-    case kEqUnorderedQuiet:
-      return !__builtin_islessgreater(v1, v2);
-    case kNgeUnorderedSignal:
-      return !(v1 >= v2) || is_unordered;
-    case kNgtUnorderedSignal:
-      return !(v1 > v2) || is_unordered;
-    case kFalseOrderedQuiet:
-      return false;
-    case kNeOrderedQuiet:
-      return __builtin_islessgreater(v1, v2);
-    case kGeOrderedSignal:
-      return v1 >= v2 && is_ordered;
-    case kGtOrderedSignal:
-      return v1 > v2 && is_ordered;
-    case kTrueUnorderedQuiet:
-      return true;
-    case kEqOrderedSignal:
-      return v1 == v2 && is_ordered;
-    case kLtOrderedQuiet:
-      return __builtin_isless(v1, v2);
-    case kLeOrderedQuiet:
-      return __builtin_islessequal(v1, v2);
-    case kUnorderedSignal:
-      return is_unordered;
-    case kNeUnorderedSignal:
-      return v1 != v2 || is_unordered;
-    case kNltUnorderedQuiet:
-      return !__builtin_isless(v1, v2);
-    case kNleUnorderedQuiet:
-      return !__builtin_islessequal(v1, v2);
-    case kOrderedSignal:
-      return is_ordered;
-    case kEqUnorderedSignal:
-      return v1 == v2 || is_unordered;
-    case kNgeUnorderedQuiet:
-      return !__builtin_isgreaterequal(v1, v2);
-    case kNgtUnorderedQuiet:
-      return !__builtin_isgreater(v1, v2);
-    case kFalseOrderedSignal:
-      return false;
-    case kNeOrderedSignal:
-      return !(v1 == v2) && is_ordered;
-    case kGeOrderedQuiet:
-      return __builtin_isgreaterequal(v1, v2);
-    case kGtOrderedQuiet:
-      return __builtin_isgreater(v1, v2);
-    case kTrueUnorderedSignal:
-      return true;
+    case kNltUnorderedSignal: return !(v1 < v2) || is_unordered;
+    case kNleUnorderedSignal: return !(v1 <= v2) || is_unordered;
+    case kOrderedQuiet: return is_ordered;
+    case kEqUnorderedQuiet: return !__builtin_islessgreater(v1, v2);
+    case kNgeUnorderedSignal: return !(v1 >= v2) || is_unordered;
+    case kNgtUnorderedSignal: return !(v1 > v2) || is_unordered;
+    case kFalseOrderedQuiet: return false;
+    case kNeOrderedQuiet: return __builtin_islessgreater(v1, v2);
+    case kGeOrderedSignal: return v1 >= v2 && is_ordered;
+    case kGtOrderedSignal: return v1 > v2 && is_ordered;
+    case kTrueUnorderedQuiet: return true;
+    case kEqOrderedSignal: return v1 == v2 && is_ordered;
+    case kLtOrderedQuiet: return __builtin_isless(v1, v2);
+    case kLeOrderedQuiet: return __builtin_islessequal(v1, v2);
+    case kUnorderedSignal: return is_unordered;
+    case kNeUnorderedSignal: return v1 != v2 || is_unordered;
+    case kNltUnorderedQuiet: return !__builtin_isless(v1, v2);
+    case kNleUnorderedQuiet: return !__builtin_islessequal(v1, v2);
+    case kOrderedSignal: return is_ordered;
+    case kEqUnorderedSignal: return v1 == v2 || is_unordered;
+    case kNgeUnorderedQuiet: return !__builtin_isgreaterequal(v1, v2);
+    case kNgtUnorderedQuiet: return !__builtin_isgreater(v1, v2);
+    case kFalseOrderedSignal: return false;
+    case kNeOrderedSignal: return !(v1 == v2) && is_ordered;
+    case kGeOrderedQuiet: return __builtin_isgreaterequal(v1, v2);
+    case kGtOrderedQuiet: return __builtin_isgreater(v1, v2);
+    case kTrueUnorderedSignal: return true;
   }
 }
 
@@ -187,7 +156,6 @@ DEF_SEM(COMISD, S1 src1, S2 src2) {
     Write(FLAG_ZF, true);
     Write(FLAG_PF, false);
     Write(FLAG_CF, false);
-
   }
   Write(FLAG_OF, false);
   Write(FLAG_SF, false);
@@ -249,8 +217,7 @@ DEF_SEM(SHUFPS, D dst, S1 src1, S2 src2, I8 src3) {
   auto imm = Read(src3);
   auto num_groups = NumVectorElems(dst_vec);
 
-  _Pragma("unroll")
-  for (std::size_t i = 0; i < num_groups; ++i) {
+  _Pragma("unroll") for (std::size_t i = 0; i < num_groups; ++i) {
     auto order = UShr8(imm, TruncTo<uint8_t>(i * 2));
     auto sel = UAnd8(order, 0x3_u8);
     auto sel_val = UExtractV32(Select(i < 2, src1_vec, src2_vec), sel);
@@ -261,7 +228,7 @@ DEF_SEM(SHUFPS, D dst, S1 src1, S2 src2, I8 src3) {
   return memory;
 }
 
-} // namespace
+}  // namespace
 
 DEF_ISEL(SHUFPS_XMMps_XMMps_IMMb) = SHUFPS<V128W, V128, V128>;
 
@@ -276,13 +243,12 @@ DEF_SEM(SHUFPD, D dst, S1 src1, S2 src2, I8 src3) {
   auto imm = Read(src3);
   auto num_groups = NumVectorElems(src1_vec);
 
-  _Pragma("unroll")
-  for (std::size_t i = 0; i < num_groups; i += 2) {
+  _Pragma("unroll") for (std::size_t i = 0; i < num_groups; i += 2) {
     auto order = UShr8(imm, TruncTo<uint8_t>(i));
     auto sel1 = UAnd8(order, 0x1_u8);
     auto sel2 = Select(UAnd8(order, 0x2_u8) == 0x2_u8, 1_u8, 0_u8);
-    dst_vec.elems[i]   = UExtractV64(src1_vec, i + sel1);
-    dst_vec.elems[i+1] = UExtractV64(src2_vec, i + sel2);
+    dst_vec.elems[i] = UExtractV64(src1_vec, i + sel1);
+    dst_vec.elems[i + 1] = UExtractV64(src2_vec, i + sel2);
   }
 
   UWriteV64(dst, dst_vec);
@@ -290,7 +256,7 @@ DEF_SEM(SHUFPD, D dst, S1 src1, S2 src2, I8 src3) {
   return memory;
 }
 
-} // namespace
+}  // namespace
 
 DEF_ISEL(SHUFPD_XMMpd_XMMpd_IMMb) = SHUFPD<V128W, V128, V128>;
 
@@ -303,13 +269,11 @@ DEF_SEM(PSHUFD, D dst, S1 src1, I8 src2) {
   auto src_vec = UReadV128(src1);
   auto num_groups = NumVectorElems(src_vec);
 
-  _Pragma("unroll")
-  for (std::size_t i = 0, k = 0; i < num_groups; ++i) {
+  _Pragma("unroll") for (std::size_t i = 0, k = 0; i < num_groups; ++i) {
     auto group = UExtractV128(src_vec, i);
     auto order = Read(src2);
 
-    _Pragma("unroll")
-    for (std::size_t j = 0; j < 4; ++j, ++k) {
+    _Pragma("unroll") for (std::size_t j = 0; j < 4; ++j, ++k) {
       auto sel = UAnd(order, 0x3_u8);
       auto shift = UMul(sel, 32_u8);
       order = UShr(order, 2_u8);
@@ -343,26 +307,28 @@ namespace {
 
 template <typename D, typename S1>
 DEF_SEM(PSHUFLW, D dst, S1 src1, I8 src2) {
+
   // Source operand is packed with word (16-bit) integers to be shuffled,
   // but src1 is also a vector of one or more 128-bit "lanes":
   auto src_vec = UReadV128(src1);
   auto src_words_vec = UReadV16(src1);
-  
+
   // Dest operand is similar. DEST[MAXVL-1:128] will be unmodified:
   auto dst_vec = UClearV16(UReadV16(dst));
 
   // The same operation is done for each 128-bit "lane" of src1:
   auto num_lanes = NumVectorElems(UReadV128(src1));
 
-  _Pragma("unroll")
-  for (std::size_t lane_index = 0, word_index = 0; lane_index < num_lanes; ++lane_index) {
+  _Pragma("unroll") for (std::size_t lane_index = 0, word_index = 0;
+                         lane_index < num_lanes; ++lane_index) {
     auto lane = UExtractV128(src_vec, lane_index);
+
     // Words will be shuffled in the order specified in a code in src2:
     auto order = Read(src2);
 
     // Shuffle the 4 words from the low 64-bits of the 128-bit lane:
-    _Pragma("unroll")
-    for (std::size_t word_count = 0; word_count < 4; ++word_count, ++word_index) {
+    _Pragma("unroll") for (std::size_t word_count = 0; word_count < 4;
+                           ++word_count, ++word_index) {
       auto sel = UAnd(order, 0x3_u8);
       auto shift = UMul(sel, 16_u8);
       order = UShr(order, 2_u8);
@@ -370,11 +336,12 @@ DEF_SEM(PSHUFLW, D dst, S1 src1, I8 src2) {
       dst_vec = UInsertV16(dst_vec, word_index, TruncTo<uint16_t>(sel_val));
     }
 
-    // After shuffling the low 64-bits, the high 64-bits of the src1 lane is 
+    // After shuffling the low 64-bits, the high 64-bits of the src1 lane is
     // copied to the high quadword of the corresponding destination lane:
-    _Pragma("unroll")
-    for (std::size_t word_count = 0; word_count < 4; ++word_count, ++word_index) {
-      dst_vec = UInsertV16(dst_vec, word_index, UExtractV16(src_words_vec, word_index));
+    _Pragma("unroll") for (std::size_t word_count = 0; word_count < 4;
+                           ++word_count, ++word_index) {
+      dst_vec = UInsertV16(dst_vec, word_index,
+                           UExtractV16(src_words_vec, word_index));
     }
   }
 
@@ -389,8 +356,7 @@ DEF_SEM(PSHUFHW, D dst, S1 src1, I8 src2) {
   auto imm = Read(src2);
   auto num_groups = NumVectorElems(src_vec);
 
-  _Pragma("unroll")
-  for (std::size_t i = 4; i < num_groups; ++i) {
+  _Pragma("unroll") for (std::size_t i = 4; i < num_groups; ++i) {
     auto order = UShr8(imm, TruncTo<uint8_t>((i - 4) * 2_u8));
     auto sel = UAnd8(order, 0x3_u8);
     auto sel_val = UExtractV16(src_vec, sel + 4);
@@ -400,7 +366,7 @@ DEF_SEM(PSHUFHW, D dst, S1 src1, I8 src2) {
   return memory;
 }
 
-} // namespace
+}  // namespace
 
 DEF_ISEL(PSHUFLW_XMMdq_MEMdq_IMMb) = PSHUFLW<V128W, MV128>;
 DEF_ISEL(PSHUFLW_XMMdq_XMMdq_IMMb) = PSHUFLW<V128W, V128>;
@@ -410,12 +376,12 @@ IF_AVX(DEF_ISEL(VPSHUFLW_YMMqq_MEMqq_IMMb) = PSHUFLW<VV256W, MV256>;)
 IF_AVX(DEF_ISEL(VPSHUFLW_YMMqq_YMMqq_IMMb) = PSHUFLW<VV256W, V256>;)
 
 /*
-4432 VPSHUFLW VPSHUFLW_XMMu16_MASKmskw_XMMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_128 ATTRIBUTES: MASKOP_EVEX 
-4433 VPSHUFLW VPSHUFLW_XMMu16_MASKmskw_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_128 ATTRIBUTES: DISP8_FULLMEM MASKOP_EVEX 
-4434 VPSHUFLW VPSHUFLW_YMMu16_MASKmskw_YMMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_256 ATTRIBUTES: MASKOP_EVEX 
-4435 VPSHUFLW VPSHUFLW_YMMu16_MASKmskw_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_256 ATTRIBUTES: DISP8_FULLMEM MASKOP_EVEX 
-4436 VPSHUFLW VPSHUFLW_ZMMu16_MASKmskw_ZMMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_512 ATTRIBUTES: MASKOP_EVEX 
-4437 VPSHUFLW VPSHUFLW_ZMMu16_MASKmskw_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_512 ATTRIBUTES: DISP8_FULLMEM MASKOP_EVEX 
+4432 VPSHUFLW VPSHUFLW_XMMu16_MASKmskw_XMMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_128 ATTRIBUTES: MASKOP_EVEX
+4433 VPSHUFLW VPSHUFLW_XMMu16_MASKmskw_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_128 ATTRIBUTES: DISP8_FULLMEM MASKOP_EVEX
+4434 VPSHUFLW VPSHUFLW_YMMu16_MASKmskw_YMMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_256 ATTRIBUTES: MASKOP_EVEX
+4435 VPSHUFLW VPSHUFLW_YMMu16_MASKmskw_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_256 ATTRIBUTES: DISP8_FULLMEM MASKOP_EVEX
+4436 VPSHUFLW VPSHUFLW_ZMMu16_MASKmskw_ZMMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_512 ATTRIBUTES: MASKOP_EVEX
+4437 VPSHUFLW VPSHUFLW_ZMMu16_MASKmskw_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_512 ATTRIBUTES: DISP8_FULLMEM MASKOP_EVEX
 */
 
 DEF_ISEL(PSHUFHW_XMMdq_XMMdq_IMMb) = PSHUFHW<V128W, V128>;
@@ -423,23 +389,22 @@ DEF_ISEL(PSHUFHW_XMMdq_XMMdq_IMMb) = PSHUFHW<V128W, V128>;
 namespace {
 
 #define MAKE_PCMP(suffix, size, op) \
-    template <typename D, typename S1, typename S2> \
-    DEF_SEM(PCMP ## suffix, D dst, S1 src1, S2 src2) { \
-      auto src1_vec = SReadV ## size(src1); \
-      auto src2_vec = SReadV ## size(src2); \
-      auto dst_vec = SClearV ## size(SReadV ## size(dst)); \
-      auto num_elems = NumVectorElems(src1_vec); \
-      _Pragma("unroll") \
-      for (std::size_t i = 0; i < num_elems; ++i) { \
-        auto src1_elem = SExtractV ## size(src1_vec, i); \
-        auto src2_elem = SExtractV ## size(src2_vec, i); \
-        auto res = Select<int ## size ## _t>( \
-            op(src1_elem, src2_elem), -1_s ## size, 0_s ## size); \
-        dst_vec = SInsertV ## size(dst_vec, i, res); \
-      } \
-      SWriteV ## size(dst, dst_vec); \
-      return memory; \
-    }
+  template <typename D, typename S1, typename S2> \
+  DEF_SEM(PCMP##suffix, D dst, S1 src1, S2 src2) { \
+    auto src1_vec = SReadV##size(src1); \
+    auto src2_vec = SReadV##size(src2); \
+    auto dst_vec = SClearV##size(SReadV##size(dst)); \
+    auto num_elems = NumVectorElems(src1_vec); \
+    _Pragma("unroll") for (std::size_t i = 0; i < num_elems; ++i) { \
+      auto src1_elem = SExtractV##size(src1_vec, i); \
+      auto src2_elem = SExtractV##size(src2_vec, i); \
+      auto res = Select<int##size##_t>(op(src1_elem, src2_elem), -1_s##size, \
+                                       0_s##size); \
+      dst_vec = SInsertV##size(dst_vec, i, res); \
+    } \
+    SWriteV##size(dst, dst_vec); \
+    return memory; \
+  }
 
 MAKE_PCMP(GTQ, 64, SCmpGt)
 MAKE_PCMP(GTW, 16, SCmpGt)
@@ -535,8 +500,8 @@ DEF_SEM(CMPSS, D dst, S1 src1, S2 src2, I8 src3) {
   }
   auto v1 = FExtractV32(src1_vec, 0);
   auto v2 = FExtractV32(src2_vec, 0);
-  bool cond = CompareFloats<float32_t>(
-      static_cast<FloatCompareOperator>(op), v1, v2);
+  bool cond =
+      CompareFloats<float32_t>(static_cast<FloatCompareOperator>(op), v1, v2);
 
   dst_vec = UInsertV32(dst_vec, 0, Select<uint32_t>(cond, ~0_u32, 0_u32));
 
@@ -555,8 +520,8 @@ DEF_SEM(CMPSD, D dst, S1 src1, S2 src2, I8 src3) {
   }
   auto v1 = FExtractV64(src1_vec, 0);
   auto v2 = FExtractV64(src2_vec, 0);
-  bool cond = CompareFloats<float64_t>(
-      static_cast<FloatCompareOperator>(op), v1, v2);
+  bool cond =
+      CompareFloats<float64_t>(static_cast<FloatCompareOperator>(op), v1, v2);
 
   dst_vec = UInsertV64(dst_vec, 0, Select<uint64_t>(cond, ~0_u64, 0_u64));
 
@@ -595,13 +560,12 @@ DEF_SEM(CMPPS, D dst, S1 src1, S2 src2, I8 src3) {
   }
 
   auto vec_count = NumVectorElems(src2_vec);
-  _Pragma("unroll")
-  for (std::size_t i = 0; i < vec_count; i++) {
+  _Pragma("unroll") for (std::size_t i = 0; i < vec_count; i++) {
     auto v1 = FExtractV32(src1_vec, i);
     auto v2 = FExtractV32(src2_vec, i);
 
-    bool cond = CompareFloats<float32_t>(
-        static_cast<FloatCompareOperator>(op), v1, v2);
+    bool cond =
+        CompareFloats<float32_t>(static_cast<FloatCompareOperator>(op), v1, v2);
 
     auto res = Select<uint32_t>(cond, ~0_u32, 0_u32);
     dst_vec = UInsertV32(dst_vec, i, res);
@@ -621,13 +585,12 @@ DEF_SEM(CMPPD, D dst, S1 src1, S2 src2, I8 src3) {
   }
 
   auto vec_count = NumVectorElems(src2_vec);
-  _Pragma("unroll")
-  for (std::size_t i = 0; i < vec_count; i++) {
+  _Pragma("unroll") for (std::size_t i = 0; i < vec_count; i++) {
     auto v1 = FExtractV64(src1_vec, i);
     auto v2 = FExtractV64(src2_vec, i);
 
-    bool cond = CompareFloats<float64_t>(
-        static_cast<FloatCompareOperator>(op), v1, v2);
+    bool cond =
+        CompareFloats<float64_t>(static_cast<FloatCompareOperator>(op), v1, v2);
 
     auto res = Select<uint64_t>(cond, ~0_u64, 0_u64);
     dst_vec = UInsertV64(dst_vec, i, res);
@@ -660,12 +623,7 @@ DEF_ISEL(VCMPPD_YMMqq_YMMqq_YMMqq_IMMb) = CMPPD<VV256W, V256, V256>;
 
 namespace {
 
-enum InputFormat : uint8_t {
-  kUInt8 = 0,
-  kUInt16 = 1,
-  kInt8 = 2,
-  kInt16 = 3
-};
+enum InputFormat : uint8_t { kUInt8 = 0, kUInt16 = 1, kInt8 = 2, kInt16 = 3 };
 
 enum AggregationOperation : uint8_t {
   kEqualAny = 0,
@@ -689,11 +647,11 @@ enum OutputSelection : uint8_t {
 union StringCompareControl {
   uint8_t flat;
   struct {
-    uint8_t input_format:2;
-    uint8_t agg_operation:2;
-    uint8_t polarity:2;
-    uint8_t output_selection:1;
-    uint8_t should_be_0:1;
+    uint8_t input_format : 2;
+    uint8_t agg_operation : 2;
+    uint8_t polarity : 2;
+    uint8_t output_selection : 1;
+    uint8_t should_be_0 : 1;
   } __attribute__((packed));
 } __attribute__((packed));
 
@@ -718,16 +676,15 @@ class BitMatrix : std::bitset<x * y> {
 // src1 is a char set, src2 is a string. We set a bit of `int_res_1` to `1`
 // when a char in `src2` belongs to the char set `src1`.
 template <size_t num_elems>
-ALWAYS_INLINE static uint16_t AggregateEqualAny(
-    const BitMatrix<num_elems, num_elems> &bool_res,
-    const size_t src1_len, const size_t src2_len) {
+ALWAYS_INLINE static uint16_t
+AggregateEqualAny(const BitMatrix<num_elems, num_elems> &bool_res,
+                  const size_t src1_len, const size_t src2_len) {
 
   uint16_t int_res_1 = 0;
   uint16_t bit = 1;
   for (size_t j = 0; j < src2_len; ++j, bit <<= 1) {
 
-    _Pragma("unroll")
-    for (size_t i = 0; i < src1_len; ++i) {
+    _Pragma("unroll") for (size_t i = 0; i < src1_len; ++i) {
       if (bool_res.Test(i, j)) {
         int_res_1 |= bit;
         break;  // src2_j is in src1, at position src1_i.
@@ -740,17 +697,16 @@ ALWAYS_INLINE static uint16_t AggregateEqualAny(
 // `src2` is a string, and `src1` is kind of like a the ranges of regular
 // expression character classes.
 template <size_t num_elems>
-ALWAYS_INLINE static uint16_t AggregateRanges(
-    const BitMatrix<num_elems, num_elems> &bool_res,
-    const size_t src1_len, const size_t src2_len) {
+ALWAYS_INLINE static uint16_t
+AggregateRanges(const BitMatrix<num_elems, num_elems> &bool_res,
+                const size_t src1_len, const size_t src2_len) {
 
   uint16_t int_res_1 = 0;
   uint16_t bit = 1;
 
-  for (size_t j = 0; j < src2_len; ++j, bit <<= 1)  {
+  for (size_t j = 0; j < src2_len; ++j, bit <<= 1) {
 
-    _Pragma("unroll")
-    for (size_t i = 0; i < (src1_len - 1); i += 2) {
+    _Pragma("unroll") for (size_t i = 0; i < (src1_len - 1); i += 2) {
       const auto geq_lower_bound = bool_res.Test(i, j);
       const auto leq_upper_bound = bool_res.Test(i + 1, j);
       if (geq_lower_bound && leq_upper_bound) {
@@ -763,15 +719,14 @@ ALWAYS_INLINE static uint16_t AggregateRanges(
 }
 
 template <size_t num_elems>
-ALWAYS_INLINE static uint16_t AggregateEqualEach(
-    const BitMatrix<num_elems, num_elems> &bool_res,
-    const size_t src1_len, const size_t src2_len) {
+ALWAYS_INLINE static uint16_t
+AggregateEqualEach(const BitMatrix<num_elems, num_elems> &bool_res,
+                   const size_t src1_len, const size_t src2_len) {
 
   uint16_t int_res_1 = 0;
   uint16_t bit = 1;
 
-  _Pragma("unroll")
-  for (size_t i = 0; i < num_elems; ++i, bit <<= 1) {
+  _Pragma("unroll") for (size_t i = 0; i < num_elems; ++i, bit <<= 1) {
     const bool in_str1 = i < src1_len;
     const bool in_str2 = i < src2_len;
     if (in_str1 && in_str2) {
@@ -787,9 +742,9 @@ ALWAYS_INLINE static uint16_t AggregateEqualEach(
 
 // This is really `strstr`, i.e. searching for `src1` in `src2`.
 template <size_t num_elems>
-ALWAYS_INLINE static uint16_t AggregateEqualOrdered(
-    const BitMatrix<num_elems, num_elems> &bool_res,
-    const size_t src1_len, const size_t src2_len) {
+ALWAYS_INLINE static uint16_t
+AggregateEqualOrdered(const BitMatrix<num_elems, num_elems> &bool_res,
+                      const size_t src1_len, const size_t src2_len) {
 
   if (src1_len > src2_len) {
     return 0;
@@ -800,8 +755,8 @@ ALWAYS_INLINE static uint16_t AggregateEqualOrdered(
 
   for (size_t j = 0; j < num_elems; ++j, bit <<= 1) {
 
-    _Pragma("unroll")
-    for (size_t i = 0, k = j; i < (num_elems - j) && k < num_elems; ++i, ++k) {
+    _Pragma("unroll") for (size_t i = 0, k = j;
+                           i < (num_elems - j) && k < num_elems; ++i, ++k) {
       auto needle_valid = i < src1_len;
       auto haystack_valid = k < src2_len;
 
@@ -824,15 +779,14 @@ DEF_SEM(DoPCMPISTRI, const V &src1, const V &src2,
   size_t src1_len = num_elems;
   size_t src2_len = num_elems;
 
-  const auto agg_operation = static_cast<AggregationOperation>(
-      control.agg_operation);
+  const auto agg_operation =
+      static_cast<AggregationOperation>(control.agg_operation);
 
   const auto polarity = static_cast<Polarity>(control.polarity);
-  const auto output_selection = static_cast<OutputSelection>(
-      control.output_selection);
+  const auto output_selection =
+      static_cast<OutputSelection>(control.output_selection);
 
-  _Pragma("unroll")
-  for (size_t i = 0; i < num_elems; ++i) {
+  _Pragma("unroll") for (size_t i = 0; i < num_elems; ++i) {
     if (!src1.elems[i]) {
       src1_len = std::min<size_t>(src1_len, i);
     }
@@ -844,16 +798,13 @@ DEF_SEM(DoPCMPISTRI, const V &src1, const V &src2,
   for (size_t n = 0; n < num_elems; ++n) {
     const auto reg = src1.elems[n];
 
-    _Pragma("unroll")
-    for (size_t m = 0; m < num_elems; ++m) {
+    _Pragma("unroll") for (size_t m = 0; m < num_elems; ++m) {
       const auto reg_mem = src2.elems[m];
 
       switch (agg_operation) {
         case kEqualAny:
         case kEqualEach:
-        case kEqualOrdered:
-          bool_res.Set(n, m, reg == reg_mem);
-          break;
+        case kEqualOrdered: bool_res.Set(n, m, reg == reg_mem); break;
 
         // Checking is `src2[m]` is in the range of `src1[n]` and `src1[n+1]`.
         case kRanges:
@@ -880,26 +831,21 @@ DEF_SEM(DoPCMPISTRI, const V &src1, const V &src2,
       int_res_1 = AggregateEqualEach<num_elems>(bool_res, src1_len, src2_len);
       break;
     case kEqualOrdered:
-      int_res_1 = AggregateEqualOrdered<num_elems>(
-          bool_res, src1_len, src2_len);
+      int_res_1 =
+          AggregateEqualOrdered<num_elems>(bool_res, src1_len, src2_len);
       break;
   }
 
   uint16_t int_res_2 = 0;
   switch (polarity) {
-    case kPositive:
-      int_res_2 = int_res_1;
-      break;
+    case kPositive: int_res_2 = int_res_1; break;
     case kNegative:
       int_res_2 = (0xFFFF_u16 >> (16 - num_elems)) ^ int_res_1;
       break;
-    case kMaskedPositive:
-      int_res_2 = int_res_1;
-      break;
+    case kMaskedPositive: int_res_2 = int_res_1; break;
     case kMaskedNegative:
       int_res_2 = int_res_1;
-      _Pragma("unroll")
-      for (size_t i = 0; i < num_elems; ++i) {
+      _Pragma("unroll") for (size_t i = 0; i < num_elems; ++i) {
         auto mask = static_cast<uint16_t>(1_u16 << i);
         if (i < src2_len) {
           int_res_2 ^= mask;
@@ -939,16 +885,16 @@ DEF_SEM(PCMPISTRI, V128 src1, S2 src2, I8 src3) {
   switch (static_cast<InputFormat>(control.input_format)) {
     case kUInt8:
       return DoPCMPISTRI<uint8v16_t, 16>(memory, state, UReadV8(src1),
-                                  UReadV8(src2), control);
+                                         UReadV8(src2), control);
     case kUInt16:
       return DoPCMPISTRI<uint16v8_t, 8>(memory, state, UReadV16(src1),
-                                 UReadV16(src2), control);
+                                        UReadV16(src2), control);
     case kInt8:
       return DoPCMPISTRI<int8v16_t, 16>(memory, state, SReadV8(src1),
-                                 SReadV8(src2), control);
+                                        SReadV8(src2), control);
     case kInt16:
       return DoPCMPISTRI<int16v8_t, 8>(memory, state, SReadV16(src1),
-                                SReadV16(src2), control);
+                                       SReadV16(src2), control);
   }
   return memory;
 }
@@ -967,8 +913,7 @@ DEF_SEM(PSRLDQ, D dst, S src1, I8 src2) {
   auto vec = UReadV8(src1);
   auto new_vec = UClearV8(UReadV8(dst));
   auto shift = std::min<size_t>(Read(src2), 16);
-  _Pragma("unroll")
-  for (size_t i = shift, j = 0; i < 16; ++i, ++j) {
+  _Pragma("unroll") for (size_t i = shift, j = 0; i < 16; ++i, ++j) {
     new_vec = UInsertV8(new_vec, j, UExtractV8(vec, i));
   }
   UWriteV8(dst, new_vec);
@@ -982,8 +927,7 @@ DEF_SEM(VPSRLDQ, D dst, S src1, I8 src2) {
   auto vec = UReadV8(src1);
   auto new_vec = UClearV8(UReadV8(dst));
   auto shift = std::min<size_t>(Read(src2), 16);
-  _Pragma("unroll")
-  for (size_t i = shift, j = 0; i < 16; ++i, ++j) {
+  _Pragma("unroll") for (size_t i = shift, j = 0; i < 16; ++i, ++j) {
     new_vec = UInsertV8(new_vec, j, UExtractV8(vec, i));
     new_vec = UInsertV8(new_vec, j + 16, UExtractV8(vec, i + 16));
   }
@@ -1262,7 +1206,7 @@ DEF_SEM(MINSS, D dst, S1 src1, S2 src2) {
   // If either float is a NaN (SNaN or QNaN):
   if (std::isunordered(src1_float, src2_float)) {
     min = src2_float;
-  } 
+  }
   // or if both floats are 0.0:
   else if ((src1_float == 0.0) && (src2_float == 0.0)) {
     min = src2_float;
@@ -1284,11 +1228,11 @@ DEF_SEM(MINSD, D dst, S1 src1, S2 src2) {
   auto src2_float = FExtractV64(FReadV64(src2), 0);
 
   auto min = src1_float;
-    
+
   // If either float is a NaN (SNaN or QNaN):
   if (std::isunordered(src1_float, src2_float)) {
     min = src2_float;
-  } 
+  }
   // or if both floats are 0.0:
   else if ((src1_float == 0.0) && (src2_float == 0.0)) {
     min = src2_float;
@@ -1310,11 +1254,11 @@ DEF_SEM(MAXSS, D dst, S1 src1, S2 src2) {
   auto src2_float = FExtractV32(FReadV32(src2), 0);
 
   auto max = src1_float;
-    
+
   // If either float is a NaN (SNaN or QNaN):
   if (std::isunordered(src1_float, src2_float)) {
-      max = src2_float;
-  } 
+    max = src2_float;
+  }
   // or if both floats are 0.0:
   else if ((src1_float == 0.0) && (src2_float == 0.0)) {
     max = src2_float;
@@ -1334,13 +1278,13 @@ DEF_SEM(MAXSD, D dst, S1 src1, S2 src2) {
   auto dest_vec = FReadV64(src1);
   auto src1_float = FExtractV64(dest_vec, 0);
   auto src2_float = FExtractV64(FReadV64(src2), 0);
- 
+
   auto max = src1_float;
-    
+
   // If either float is a NaN (SNaN or QNaN):
   if (std::isunordered(src1_float, src2_float)) {
     max = src2_float;
-  } 
+  }
   // or if both floats are 0.0:
   else if ((src1_float == 0.0) && (src2_float == 0.0)) {
     max = src2_float;
@@ -1349,22 +1293,22 @@ DEF_SEM(MAXSD, D dst, S1 src1, S2 src2) {
   else if (src1_float < src2_float) {
     max = src2_float;
   }
-  
+
   dest_vec = FInsertV64(dest_vec, 0, max);
   FWriteV64(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
   return memory;
 }
 
-} // namespace
+}  // namespace
 
 DEF_ISEL(MINSS_XMMss_MEMss) = MINSS<V128W, V128, MV32>;
 DEF_ISEL(MINSS_XMMss_XMMss) = MINSS<V128W, V128, V128>;
 IF_AVX(DEF_ISEL(VMINSS_XMMdq_XMMdq_MEMd) = MINSS<VV128W, V128, MV32>;)
 IF_AVX(DEF_ISEL(VMINSS_XMMdq_XMMdq_XMMd) = MINSS<VV128W, V128, V128>;)
 /*
-5112 VMINSS VMINSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
-5113 VMINSS VMINSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
-5114 VMINSS VMINSS_XMMf32_MASKmskw_XMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: DISP8_SCALAR MASKOP_EVEX MEMORY_FAULT_SUPPRESSION MXCSR SIMD_SCALAR 
+5112 VMINSS VMINSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR
+5113 VMINSS VMINSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR
+5114 VMINSS VMINSS_XMMf32_MASKmskw_XMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: DISP8_SCALAR MASKOP_EVEX MEMORY_FAULT_SUPPRESSION MXCSR SIMD_SCALAR
 */
 
 DEF_ISEL(MINSD_XMMsd_MEMsd) = MINSD<V128W, V128, MV64>;
@@ -1372,24 +1316,24 @@ DEF_ISEL(MINSD_XMMsd_XMMsd) = MINSD<V128W, V128, V128>;
 IF_AVX(DEF_ISEL(VMINSD_XMMdq_XMMdq_MEMq) = MINSD<VV128W, V128, MV64>;)
 IF_AVX(DEF_ISEL(VMINSD_XMMdq_XMMdq_XMMq) = MINSD<VV128W, V128, V128>;)
 /*
-634 PMINSD PMINSD_XMMdq_MEMdq SSE SSE4 SSE4 ATTRIBUTES: REQUIRES_ALIGNMENT 
-635 PMINSD PMINSD_XMMdq_XMMdq SSE SSE4 SSE4 ATTRIBUTES: REQUIRES_ALIGNMENT 
+634 PMINSD PMINSD_XMMdq_MEMdq SSE SSE4 SSE4 ATTRIBUTES: REQUIRES_ALIGNMENT
+635 PMINSD PMINSD_XMMdq_XMMdq SSE SSE4 SSE4 ATTRIBUTES: REQUIRES_ALIGNMENT
 
-2385 VPMINSD VPMINSD_XMMdq_XMMdq_MEMdq AVX AVX AVX ATTRIBUTES: 
-2386 VPMINSD VPMINSD_XMMdq_XMMdq_XMMdq AVX AVX AVX ATTRIBUTES: 
-2387 VPMINSD VPMINSD_YMMqq_YMMqq_MEMqq AVX2 AVX2 AVX2 ATTRIBUTES: 
-2388 VPMINSD VPMINSD_YMMqq_YMMqq_YMMqq AVX2 AVX2 AVX2 ATTRIBUTES: 
+2385 VPMINSD VPMINSD_XMMdq_XMMdq_MEMdq AVX AVX AVX ATTRIBUTES:
+2386 VPMINSD VPMINSD_XMMdq_XMMdq_XMMdq AVX AVX AVX ATTRIBUTES:
+2387 VPMINSD VPMINSD_YMMqq_YMMqq_MEMqq AVX2 AVX2 AVX2 ATTRIBUTES:
+2388 VPMINSD VPMINSD_YMMqq_YMMqq_YMMqq AVX2 AVX2 AVX2 ATTRIBUTES:
 
-4210 VPMINSD VPMINSD_ZMMi32_MASKmskw_ZMMi32_ZMMi32_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX 
-4211 VPMINSD VPMINSD_ZMMi32_MASKmskw_ZMMi32_MEMi32_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX MEMORY_FAULT_SUPPRESSION 
-4212 VPMINSD VPMINSD_XMMi32_MASKmskw_XMMi32_XMMi32_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: MASKOP_EVEX 
-4213 VPMINSD VPMINSD_XMMi32_MASKmskw_XMMi32_MEMi32_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX MEMORY_FAULT_SUPPRESSION 
-4214 VPMINSD VPMINSD_YMMi32_MASKmskw_YMMi32_YMMi32_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: MASKOP_EVEX 
-4215 VPMINSD VPMINSD_YMMi32_MASKmskw_YMMi32_MEMi32_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX MEMORY_FAULT_SUPPRESSION 
+4210 VPMINSD VPMINSD_ZMMi32_MASKmskw_ZMMi32_ZMMi32_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX
+4211 VPMINSD VPMINSD_ZMMi32_MASKmskw_ZMMi32_MEMi32_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX MEMORY_FAULT_SUPPRESSION
+4212 VPMINSD VPMINSD_XMMi32_MASKmskw_XMMi32_XMMi32_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: MASKOP_EVEX
+4213 VPMINSD VPMINSD_XMMi32_MASKmskw_XMMi32_MEMi32_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX MEMORY_FAULT_SUPPRESSION
+4214 VPMINSD VPMINSD_YMMi32_MASKmskw_YMMi32_YMMi32_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: MASKOP_EVEX
+4215 VPMINSD VPMINSD_YMMi32_MASKmskw_YMMi32_MEMi32_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX MEMORY_FAULT_SUPPRESSION
 
-5143 VMINSD VMINSD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
-5144 VMINSD VMINSD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
-5145 VMINSD VMINSD_XMMf64_MASKmskw_XMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: DISP8_SCALAR MASKOP_EVEX MEMORY_FAULT_SUPPRESSION MXCSR SIMD_SCALAR 
+5143 VMINSD VMINSD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR
+5144 VMINSD VMINSD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR
+5145 VMINSD VMINSD_XMMf64_MASKmskw_XMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: DISP8_SCALAR MASKOP_EVEX MEMORY_FAULT_SUPPRESSION MXCSR SIMD_SCALAR
 */
 
 DEF_ISEL(MAXSS_XMMss_MEMss) = MAXSS<V128W, V128, MV32>;
@@ -1397,9 +1341,9 @@ DEF_ISEL(MAXSS_XMMss_XMMss) = MAXSS<V128W, V128, V128>;
 IF_AVX(DEF_ISEL(VMAXSS_XMMdq_XMMdq_MEMd) = MAXSS<VV128W, V128, MV128>;)
 IF_AVX(DEF_ISEL(VMAXSS_XMMdq_XMMdq_XMMd) = MAXSS<VV128W, V128, V128>;)
 /*
-3958 VMAXSS VMAXSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
-3959 VMAXSS VMAXSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
-3960 VMAXSS VMAXSS_XMMf32_MASKmskw_XMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: DISP8_SCALAR MASKOP_EVEX MEMORY_FAULT_SUPPRESSION MXCSR SIMD_SCALAR 
+3958 VMAXSS VMAXSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR
+3959 VMAXSS VMAXSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR
+3960 VMAXSS VMAXSS_XMMf32_MASKmskw_XMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: DISP8_SCALAR MASKOP_EVEX MEMORY_FAULT_SUPPRESSION MXCSR SIMD_SCALAR
 */
 
 DEF_ISEL(MAXSD_XMMsd_MEMsd) = MAXSD<V128W, V128, MV64>;
@@ -1407,24 +1351,24 @@ DEF_ISEL(MAXSD_XMMsd_XMMsd) = MAXSD<V128W, V128, V128>;
 IF_AVX(DEF_ISEL(VMAXSD_XMMdq_XMMdq_MEMq) = MAXSD<VV128W, V128, MV64>;)
 IF_AVX(DEF_ISEL(VMAXSD_XMMdq_XMMdq_XMMq) = MAXSD<VV128W, V128, V128>;)
 /*
-794 PMAXSD PMAXSD_XMMdq_MEMdq SSE SSE4 SSE4 ATTRIBUTES: REQUIRES_ALIGNMENT 
-795 PMAXSD PMAXSD_XMMdq_XMMdq SSE SSE4 SSE4 ATTRIBUTES: REQUIRES_ALIGNMENT 
+794 PMAXSD PMAXSD_XMMdq_MEMdq SSE SSE4 SSE4 ATTRIBUTES: REQUIRES_ALIGNMENT
+795 PMAXSD PMAXSD_XMMdq_XMMdq SSE SSE4 SSE4 ATTRIBUTES: REQUIRES_ALIGNMENT
 
-2299 VPMAXSD VPMAXSD_XMMdq_XMMdq_MEMdq AVX AVX AVX ATTRIBUTES: 
-2300 VPMAXSD VPMAXSD_XMMdq_XMMdq_XMMdq AVX AVX AVX ATTRIBUTES: 
-2301 VPMAXSD VPMAXSD_YMMqq_YMMqq_MEMqq AVX2 AVX2 AVX2 ATTRIBUTES: 
-2302 VPMAXSD VPMAXSD_YMMqq_YMMqq_YMMqq AVX2 AVX2 AVX2 ATTRIBUTES: 
+2299 VPMAXSD VPMAXSD_XMMdq_XMMdq_MEMdq AVX AVX AVX ATTRIBUTES:
+2300 VPMAXSD VPMAXSD_XMMdq_XMMdq_XMMdq AVX AVX AVX ATTRIBUTES:
+2301 VPMAXSD VPMAXSD_YMMqq_YMMqq_MEMqq AVX2 AVX2 AVX2 ATTRIBUTES:
+2302 VPMAXSD VPMAXSD_YMMqq_YMMqq_YMMqq AVX2 AVX2 AVX2 ATTRIBUTES:
 
-4029 VPMAXSD VPMAXSD_ZMMi32_MASKmskw_ZMMi32_ZMMi32_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX 
-4030 VPMAXSD VPMAXSD_ZMMi32_MASKmskw_ZMMi32_MEMi32_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX MEMORY_FAULT_SUPPRESSION 
-4031 VPMAXSD VPMAXSD_XMMi32_MASKmskw_XMMi32_XMMi32_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: MASKOP_EVEX 
-4032 VPMAXSD VPMAXSD_XMMi32_MASKmskw_XMMi32_MEMi32_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX MEMORY_FAULT_SUPPRESSION 
-4033 VPMAXSD VPMAXSD_YMMi32_MASKmskw_YMMi32_YMMi32_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: MASKOP_EVEX 
-4034 VPMAXSD VPMAXSD_YMMi32_MASKmskw_YMMi32_MEMi32_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX MEMORY_FAULT_SUPPRESSION 
+4029 VPMAXSD VPMAXSD_ZMMi32_MASKmskw_ZMMi32_ZMMi32_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX
+4030 VPMAXSD VPMAXSD_ZMMi32_MASKmskw_ZMMi32_MEMi32_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX MEMORY_FAULT_SUPPRESSION
+4031 VPMAXSD VPMAXSD_XMMi32_MASKmskw_XMMi32_XMMi32_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: MASKOP_EVEX
+4032 VPMAXSD VPMAXSD_XMMi32_MASKmskw_XMMi32_MEMi32_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX MEMORY_FAULT_SUPPRESSION
+4033 VPMAXSD VPMAXSD_YMMi32_MASKmskw_YMMi32_YMMi32_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: MASKOP_EVEX
+4034 VPMAXSD VPMAXSD_YMMi32_MASKmskw_YMMi32_MEMi32_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX MEMORY_FAULT_SUPPRESSION
 
-4207 VMAXSD VMAXSD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
-4208 VMAXSD VMAXSD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
-4209 VMAXSD VMAXSD_XMMf64_MASKmskw_XMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: DISP8_SCALAR MASKOP_EVEX MEMORY_FAULT_SUPPRESSION MXCSR SIMD_SCALAR 
+4207 VMAXSD VMAXSD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR
+4208 VMAXSD VMAXSD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR
+4209 VMAXSD VMAXSD_XMMf64_MASKmskw_XMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: DISP8_SCALAR MASKOP_EVEX MEMORY_FAULT_SUPPRESSION MXCSR SIMD_SCALAR
 */
 
 namespace {
@@ -1435,8 +1379,7 @@ DEF_SEM(MINPS, D dst, S1 src1, S2 src2) {
   auto src2_vec = FReadV32(src2);
 
   auto vec_count = NumVectorElems(src2_vec);
-  _Pragma("unroll")
-  for (std::size_t i = 0; i < vec_count; i++) {
+  _Pragma("unroll") for (std::size_t i = 0; i < vec_count; i++) {
     auto v1 = FExtractV32(dest_vec, i);
     auto v2 = FExtractV32(src2_vec, i);
 
@@ -1445,9 +1388,11 @@ DEF_SEM(MINPS, D dst, S1 src1, S2 src2) {
     // If either float is a NaN (SNaN or QNaN):
     if (__builtin_isunordered(v1, v2)) {
       min = v2;
+
     // or if both floats are 0.0:
     } else if ((v1 == 0.0) && (v2 == 0.0)) {
       min = v2;
+
     // or if src2 is less than src1:
     } else if (__builtin_isless(v2, v1)) {
       min = v2;
@@ -1465,8 +1410,7 @@ DEF_SEM(MAXPS, D dst, S1 src1, S2 src2) {
   auto src2_vec = FReadV32(src2);
 
   auto vec_count = NumVectorElems(src2_vec);
-  _Pragma("unroll")
-  for (std::size_t i = 0; i < vec_count; i++) {
+  _Pragma("unroll") for (std::size_t i = 0; i < vec_count; i++) {
     auto v1 = FExtractV32(dest_vec, i);
     auto v2 = FExtractV32(src2_vec, i);
 
@@ -1475,9 +1419,11 @@ DEF_SEM(MAXPS, D dst, S1 src1, S2 src2) {
     // If either float is a NaN (SNaN or QNaN):
     if (__builtin_isunordered(v1, v2)) {
       max = v2;
+
     // or if both floats are 0.0:
     } else if ((v1 == 0.0) && (v2 == 0.0)) {
       max = v2;
+
     // or if src2 is greater than src1:
     } else if (__builtin_isgreater(v2, v1)) {
       max = v2;
@@ -1489,7 +1435,7 @@ DEF_SEM(MAXPS, D dst, S1 src1, S2 src2) {
   return memory;
 }
 
-}
+}  // namespace
 
 DEF_ISEL(MINPS_XMMps_MEMps) = MINPS<V128W, V128, MV128>;
 DEF_ISEL(MINPS_XMMps_XMMps) = MINPS<V128W, V128, V128>;
@@ -1501,19 +1447,20 @@ namespace {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(UNPCKLPS, D dst, S1 src1, S2 src2) {
+
   // Initialize with a copy of src1 as a vector of 32-bit (DWORD) floats:
   auto temp_vec = FReadV32(src1);
 
   // The "unpack" of DWORD src1[31:0] into dest[31:0] is omitted here because
   // it is done implicitly in the copying of src1, above.
-  
+
   // "Unpack" of DWORD src1[63:32] into dest[95:64]:
   auto src1_float = FExtractV32(temp_vec, 1);
   temp_vec = FInsertV32(temp_vec, 2, src1_float);
 
   // Treat src2 as a vector of 32-bit (DWORD) floats:
   auto src2_vec = FReadV32(src2);
-  
+
   // "Unpack" of DWORD src2[31:0] into dest[63:32]:
   auto src2_float = FExtractV32(src2_vec, 0);
   temp_vec = FInsertV32(temp_vec, 1, src2_float);
@@ -1528,22 +1475,23 @@ DEF_SEM(UNPCKLPS, D dst, S1 src1, S2 src2) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(UNPCKLPD, D dst, S1 src1, S2 src2) {
+
   // Initialize with a copy of src1 as a vector of 64-bit (QWORD) floats:
   auto temp_vec = FReadV64(src1);
-  
+
   // The "unpack" of low QWORD of src1 into low QWORD of dest is omitted here
   // because it is done implicitly in the copying of src1.
-  
+
   // Treat src2 as a vector of 64-bit (QWORD) floats:
-  auto src2_vec = FReadV64(src2);    
-  auto src2_float = FExtractV64(src2_vec, 0);        // "unpack" low QWORD of src2
-  temp_vec = FInsertV64(temp_vec, 1, src2_float);    //   into high QWORD of dest
-  
+  auto src2_vec = FReadV64(src2);
+  auto src2_float = FExtractV64(src2_vec, 0);  // "unpack" low QWORD of src2
+  temp_vec = FInsertV64(temp_vec, 1, src2_float);  //   into high QWORD of dest
+
   FWriteV64(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
   return memory;
 }
 
-} // namespace
+}  // namespace
 
 DEF_ISEL(UNPCKLPS_XMMps_MEMdq) = UNPCKLPS<V128W, V128, MV64>;
 DEF_ISEL(UNPCKLPS_XMMps_XMMq) = UNPCKLPS<V128W, V128, V128>;
@@ -1553,12 +1501,12 @@ IF_AVX(DEF_ISEL(VUNPCKLPS_XMMdq_XMMdq_XMMdq) = UNPCKLPS<VV128W, V128, V128>;)
 IF_AVX(DEF_ISEL(VUNPCKLPS_YMMqq_YMMqq_MEMqq) = UNPCKLPS<VV256W, V256, MV128>;)
 IF_AVX(DEF_ISEL(VUNPCKLPS_YMMqq_YMMqq_YMMqq) = UNPCKLPS<VV256W, V256, V256>;)
 
-6156 VUNPCKLPS VUNPCKLPS_ZMMf32_MASKmskw_ZMMf32_ZMMf32_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX 
-6157 VUNPCKLPS VUNPCKLPS_ZMMf32_MASKmskw_ZMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX 
-6158 VUNPCKLPS VUNPCKLPS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: MASKOP_EVEX 
-6159 VUNPCKLPS VUNPCKLPS_XMMf32_MASKmskw_XMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX 
-6160 VUNPCKLPS VUNPCKLPS_YMMf32_MASKmskw_YMMf32_YMMf32_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: MASKOP_EVEX 
-6161 VUNPCKLPS VUNPCKLPS_YMMf32_MASKmskw_YMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX 
+6156 VUNPCKLPS VUNPCKLPS_ZMMf32_MASKmskw_ZMMf32_ZMMf32_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX
+6157 VUNPCKLPS VUNPCKLPS_ZMMf32_MASKmskw_ZMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX
+6158 VUNPCKLPS VUNPCKLPS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: MASKOP_EVEX
+6159 VUNPCKLPS VUNPCKLPS_XMMf32_MASKmskw_XMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX
+6160 VUNPCKLPS VUNPCKLPS_YMMf32_MASKmskw_YMMf32_YMMf32_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: MASKOP_EVEX
+6161 VUNPCKLPS VUNPCKLPS_YMMf32_MASKmskw_YMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX
 */
 
 DEF_ISEL(UNPCKLPD_XMMpd_MEMdq) = UNPCKLPD<V128W, V128, MV64>;
@@ -1569,32 +1517,35 @@ IF_AVX(DEF_ISEL(VUNPCKLPD_XMMdq_XMMdq_XMMdq) = UNPCKLPD<VV128W, V128, V128>;)
 IF_AVX(DEF_ISEL(VUNPCKLPD_YMMqq_YMMqq_MEMqq) = UNPCKLPD<VV256W, V256, MV128>;)
 IF_AVX(DEF_ISEL(VUNPCKLPD_YMMqq_YMMqq_YMMqq) = UNPCKLPD<VV256W, V256, V256>;)
 
-6177 VUNPCKLPD VUNPCKLPD_ZMMf64_MASKmskw_ZMMf64_ZMMf64_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX 
-6178 VUNPCKLPD VUNPCKLPD_ZMMf64_MASKmskw_ZMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX 
-6179 VUNPCKLPD VUNPCKLPD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: MASKOP_EVEX 
-6180 VUNPCKLPD VUNPCKLPD_XMMf64_MASKmskw_XMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX 
-6181 VUNPCKLPD VUNPCKLPD_YMMf64_MASKmskw_YMMf64_YMMf64_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: MASKOP_EVEX 
-6182 VUNPCKLPD VUNPCKLPD_YMMf64_MASKmskw_YMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX 
+6177 VUNPCKLPD VUNPCKLPD_ZMMf64_MASKmskw_ZMMf64_ZMMf64_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX
+6178 VUNPCKLPD VUNPCKLPD_ZMMf64_MASKmskw_ZMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX
+6179 VUNPCKLPD VUNPCKLPD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: MASKOP_EVEX
+6180 VUNPCKLPD VUNPCKLPD_XMMf64_MASKmskw_XMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX
+6181 VUNPCKLPD VUNPCKLPD_YMMf64_MASKmskw_YMMf64_YMMf64_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: MASKOP_EVEX
+6182 VUNPCKLPD VUNPCKLPD_YMMf64_MASKmskw_YMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX
 */
 
 namespace {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(UNPCKHPD, D dst, S1 src1, S2 src2) {
+
   // Initialize a working copy of src2 as a vector of 64-bit QWORDs.
   // This also accomplishes the "unpack" of the high QWORD of src2:
   auto temp_vec = FReadV64(src2);
 
   // Treating src1 as another vector of 64-bit QWORDs:
   auto src1_vec = FReadV64(src1);
-  auto src1_high_qword = FExtractV64(src1_vec, 1);        // "unpack" high QWORD of src1
-  temp_vec = FInsertV64(temp_vec, 0, src1_high_qword);    //   into low QWORD of temp
+  auto src1_high_qword =
+      FExtractV64(src1_vec, 1);  // "unpack" high QWORD of src1
+  temp_vec =
+      FInsertV64(temp_vec, 0, src1_high_qword);  //   into low QWORD of temp
 
   FWriteV64(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
   return memory;
 }
 
-} // namespace
+}  // namespace
 
 DEF_ISEL(UNPCKHPD_XMMpd_MEMdq) = UNPCKHPD<V128W, V128, MV128>;
 DEF_ISEL(UNPCKHPD_XMMpd_XMMq) = UNPCKHPD<V128W, V128, V128>;
@@ -1602,27 +1553,29 @@ IF_AVX(DEF_ISEL(VUNPCKHPD_XMMdq_XMMdq_MEMdq) = UNPCKHPD<VV128W, V128, MV128>;)
 IF_AVX(DEF_ISEL(VUNPCKHPD_XMMdq_XMMdq_XMMdq) = UNPCKHPD<VV128W, V128, V128>;)
 
 /*
-2440 VUNPCKHPD VUNPCKHPD_YMMqq_YMMqq_MEMqq AVX AVX AVX ATTRIBUTES: 
-2441 VUNPCKHPD VUNPCKHPD_YMMqq_YMMqq_YMMqq AVX AVX AVX ATTRIBUTES: 
-4319 VUNPCKHPD VUNPCKHPD_ZMMf64_MASKmskw_ZMMf64_ZMMf64_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX 
-4320 VUNPCKHPD VUNPCKHPD_ZMMf64_MASKmskw_ZMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX 
-4321 VUNPCKHPD VUNPCKHPD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: MASKOP_EVEX 
-4322 VUNPCKHPD VUNPCKHPD_XMMf64_MASKmskw_XMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX 
-4323 VUNPCKHPD VUNPCKHPD_YMMf64_MASKmskw_YMMf64_YMMf64_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: MASKOP_EVEX 
-4324 VUNPCKHPD VUNPCKHPD_YMMf64_MASKmskw_YMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX 
+2440 VUNPCKHPD VUNPCKHPD_YMMqq_YMMqq_MEMqq AVX AVX AVX ATTRIBUTES:
+2441 VUNPCKHPD VUNPCKHPD_YMMqq_YMMqq_YMMqq AVX AVX AVX ATTRIBUTES:
+4319 VUNPCKHPD VUNPCKHPD_ZMMf64_MASKmskw_ZMMf64_ZMMf64_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX
+4320 VUNPCKHPD VUNPCKHPD_ZMMf64_MASKmskw_ZMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX
+4321 VUNPCKHPD VUNPCKHPD_XMMf64_MASKmskw_XMMf64_XMMf64_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: MASKOP_EVEX
+4322 VUNPCKHPD VUNPCKHPD_XMMf64_MASKmskw_XMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_128 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX
+4323 VUNPCKHPD VUNPCKHPD_YMMf64_MASKmskw_YMMf64_YMMf64_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: MASKOP_EVEX
+4324 VUNPCKHPD VUNPCKHPD_YMMf64_MASKmskw_YMMf64_MEMf64_AVX512 AVX512 AVX512EVEX AVX512F_256 ATTRIBUTES: BROADCAST_ENABLED DISP8_FULL MASKOP_EVEX
 */
 
 namespace {
 
 template <typename D, typename S1>
-DEF_SEM(MOVDDUP, D dst, S1 src) {  
+DEF_SEM(MOVDDUP, D dst, S1 src) {
+
   // Treat src as a vector of QWORD (64-bit) floats, even if it's just one element:
   auto src_vec = FReadV64(src);
 
   // "Move and duplicate" QWORD src[63:0] into dest[63:0] and into dest[127:64]:
   auto src_float = FExtractV64(src_vec, 0);
 
-  float64v2_t temp_vec = {};  // length of src and dest may differ, so manually create.
+  float64v2_t temp_vec =
+      {};  // length of src and dest may differ, so manually create.
   temp_vec = FInsertV64(temp_vec, 0, src_float);
   temp_vec = FInsertV64(temp_vec, 1, src_float);
 
@@ -1631,30 +1584,31 @@ DEF_SEM(MOVDDUP, D dst, S1 src) {
   return memory;
 }
 
-} // namespace
+}  // namespace
 
 DEF_ISEL(MOVDDUP_XMMdq_MEMq) = MOVDDUP<V128W, MV64>;
 DEF_ISEL(MOVDDUP_XMMdq_XMMq) = MOVDDUP<V128W, V128>;
 IF_AVX(DEF_ISEL(VMOVDDUP_XMMdq_MEMq) = MOVDDUP<VV128W, MV64>;)
 IF_AVX(DEF_ISEL(VMOVDDUP_XMMdq_XMMdq) = MOVDDUP<VV128W, V128>;)
 /*
-2320 VMOVDDUP VMOVDDUP_YMMqq_MEMqq DATAXFER AVX AVX ATTRIBUTES: 
-2321 VMOVDDUP VMOVDDUP_YMMqq_YMMqq DATAXFER AVX AVX ATTRIBUTES: 
-4070 VMOVDDUP VMOVDDUP_ZMMf64_MASKmskw_ZMMf64_AVX512 DATAXFER AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX 
-4071 VMOVDDUP VMOVDDUP_ZMMf64_MASKmskw_MEMf64_AVX512 DATAXFER AVX512EVEX AVX512F_512 ATTRIBUTES: DISP8_MOVDDUP MASKOP_EVEX 
-4072 VMOVDDUP VMOVDDUP_XMMf64_MASKmskw_XMMf64_AVX512 DATAXFER AVX512EVEX AVX512F_128 ATTRIBUTES: MASKOP_EVEX 
-4073 VMOVDDUP VMOVDDUP_XMMf64_MASKmskw_MEMf64_AVX512 DATAXFER AVX512EVEX AVX512F_128 ATTRIBUTES: DISP8_MOVDDUP MASKOP_EVEX 
-4074 VMOVDDUP VMOVDDUP_YMMf64_MASKmskw_YMMf64_AVX512 DATAXFER AVX512EVEX AVX512F_256 ATTRIBUTES: MASKOP_EVEX 
-4075 VMOVDDUP VMOVDDUP_YMMf64_MASKmskw_MEMf64_AVX512 DATAXFER AVX512EVEX AVX512F_256 ATTRIBUTES: DISP8_MOVDDUP MASKOP_EVEX 
+2320 VMOVDDUP VMOVDDUP_YMMqq_MEMqq DATAXFER AVX AVX ATTRIBUTES:
+2321 VMOVDDUP VMOVDDUP_YMMqq_YMMqq DATAXFER AVX AVX ATTRIBUTES:
+4070 VMOVDDUP VMOVDDUP_ZMMf64_MASKmskw_ZMMf64_AVX512 DATAXFER AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX
+4071 VMOVDDUP VMOVDDUP_ZMMf64_MASKmskw_MEMf64_AVX512 DATAXFER AVX512EVEX AVX512F_512 ATTRIBUTES: DISP8_MOVDDUP MASKOP_EVEX
+4072 VMOVDDUP VMOVDDUP_XMMf64_MASKmskw_XMMf64_AVX512 DATAXFER AVX512EVEX AVX512F_128 ATTRIBUTES: MASKOP_EVEX
+4073 VMOVDDUP VMOVDDUP_XMMf64_MASKmskw_MEMf64_AVX512 DATAXFER AVX512EVEX AVX512F_128 ATTRIBUTES: DISP8_MOVDDUP MASKOP_EVEX
+4074 VMOVDDUP VMOVDDUP_YMMf64_MASKmskw_YMMf64_AVX512 DATAXFER AVX512EVEX AVX512F_256 ATTRIBUTES: MASKOP_EVEX
+4075 VMOVDDUP VMOVDDUP_YMMf64_MASKmskw_MEMf64_AVX512 DATAXFER AVX512EVEX AVX512F_256 ATTRIBUTES: DISP8_MOVDDUP MASKOP_EVEX
 */
 
 namespace {
 
-DEF_HELPER(SquareRoot32, float32_t src_float) -> float32_t {
+DEF_HELPER(SquareRoot32, float32_t src_float)->float32_t {
   auto square_root = src_float;
 
   // Special cases for invalid square root operations. See Intel manual, Table E-10.
   if (IsNaN(src_float)) {
+
     // If src is SNaN, return the SNaN converted to a QNaN:
     if (IsSignalingNaN(src_float)) {
       nan32_t temp_nan = {src_float};
@@ -1666,6 +1620,7 @@ DEF_HELPER(SquareRoot32, float32_t src_float) -> float32_t {
       square_root = src_float;
     }
   } else {  // a number, that is, not a NaN
+
     // A negative operand (except -0.0) results in the QNaN indefinite value.
     if (IsNegative(src_float) && src_float != -0.0) {
       uint32_t indef_qnan = 0xFFC00000U;
@@ -1680,6 +1635,7 @@ DEF_HELPER(SquareRoot32, float32_t src_float) -> float32_t {
 
 template <typename D, typename S1>
 DEF_SEM(SQRTSS, D dst, S1 src1) {
+
   // Extract a "single-precision" (32-bit) float from [31:0] of src1 vector:
   auto src_float = FExtractV32(FReadV32(src1), 0);
 
@@ -1689,53 +1645,56 @@ DEF_SEM(SQRTSS, D dst, S1 src1) {
   temp_vec = FInsertV32(temp_vec, 0, square_root);
 
   // Write out the result and return memory state:
-  FWriteV32(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.  
+  FWriteV32(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
   return memory;
 }
 
 #if HAS_FEATURE_AVX
 template <typename D, typename S1, typename S2>
-DEF_SEM(VSQRTSS, D dst, S1 src1, S2 src2) {  
+DEF_SEM(VSQRTSS, D dst, S1 src1, S2 src2) {
+
   // Extract the single-precision float from [31:0] of the src2 vector:
   auto src_float = FExtractV32(FReadV32(src2), 0);
-  
+
   // Initialize dest vector, while also copying src1[127:32] -> dst[127:32].
   auto temp_vec = FReadV32(src1);
-  
+
   // Store the square root result in dest[31:0]:
   auto square_root = SquareRoot32(memory, state, src_float);
   temp_vec = FInsertV32(temp_vec, 0, square_root);
-  
+
   // Write out the result and return memory state:
-  FWriteV32(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.  
+  FWriteV32(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
   return memory;
 }
-#endif // HAS_FEATURE_AVX
+#endif  // HAS_FEATURE_AVX
 
-} // namespace
+}  // namespace
 
 DEF_ISEL(SQRTSS_XMMss_MEMss) = SQRTSS<V128W, MV32>;
 DEF_ISEL(SQRTSS_XMMss_XMMss) = SQRTSS<V128W, V128>;
 IF_AVX(DEF_ISEL(VSQRTSS_XMMdq_XMMdq_MEMd) = VSQRTSS<VV128W, V128, MV32>;)
 IF_AVX(DEF_ISEL(VSQRTSS_XMMdq_XMMdq_XMMd) = VSQRTSS<VV128W, V128, V128>;)
 /*
-4316 VSQRTSS VSQRTSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
-4317 VSQRTSS VSQRTSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR 
+4316 VSQRTSS VSQRTSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR
+4317 VSQRTSS VSQRTSS_XMMf32_MASKmskw_XMMf32_XMMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: MASKOP_EVEX MXCSR SIMD_SCALAR
 4318 VSQRTSS VSQRTSS_XMMf32_MASKmskw_XMMf32_MEMf32_AVX512 AVX512 AVX512EVEX AVX512F_SCALAR ATTRIBUTES: DISP8_SCALAR MASKOP_EVEX MEMORY_FAULT_SUPPRESSION MXCSR SIMD_SCALAR
 */
 
 
 namespace {
 
-DEF_HELPER(SquareRoot64, float64_t src_float) -> float64_t {
+DEF_HELPER(SquareRoot64, float64_t src_float)->float64_t {
   auto square_root = src_float;
 
   // Special cases for invalid square root operations. See Intel manual, Table E-10.
   if (IsNaN(src_float)) {
+
     // If src is SNaN, return the SNaN converted to a QNaN:
     if (IsSignalingNaN(src_float)) {
       nan64_t temp_nan = {src_float};
-      temp_nan.is_quiet_nan = 1;  // equivalent to a bitwise OR with 0x0008000000000000
+      temp_nan.is_quiet_nan =
+          1;  // equivalent to a bitwise OR with 0x0008000000000000
       square_root = temp_nan.d;
 
     // Else, src is a QNaN. Pass it directly to the result:
@@ -1743,6 +1702,7 @@ DEF_HELPER(SquareRoot64, float64_t src_float) -> float64_t {
       square_root = src_float;
     }
   } else {  // a number, that is, not a NaN
+
     // A negative operand (except -0.0) results in the QNaN indefinite value.
     if (IsNegative(src_float) && src_float != -0.0) {
       uint64_t indef_qnan = 0xFFF8000000000000ULL;
@@ -1757,6 +1717,7 @@ DEF_HELPER(SquareRoot64, float64_t src_float) -> float64_t {
 
 template <typename D, typename S1>
 DEF_SEM(SQRTSD, D dst, S1 src1) {
+
   // Extract a "double-precision" (64-bit) float from [63:0] of src1 vector:
   auto src_float = FExtractV64(FReadV64(src1), 0);
 
@@ -1773,6 +1734,7 @@ DEF_SEM(SQRTSD, D dst, S1 src1) {
 #if HAS_FEATURE_AVX
 template <typename D, typename S1, typename S2>
 DEF_SEM(VSQRTSD, D dst, S1 src1, S2 src2) {
+
   // Extract the single-precision float from [63:0] of the src2 vector:
   auto src_float = FExtractV64(FReadV64(src2), 0);
 
@@ -1787,9 +1749,9 @@ DEF_SEM(VSQRTSD, D dst, S1 src1, S2 src2) {
   FWriteV64(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
   return memory;
 }
-#endif // HAS_FEATURE_AVX
+#endif  // HAS_FEATURE_AVX
 
-} // namespace
+}  // namespace
 
 DEF_ISEL(SQRTSD_XMMsd_MEMsd) = SQRTSD<V128W, MV64>;
 DEF_ISEL(SQRTSD_XMMsd_XMMsd) = SQRTSD<V128W, V128>;
@@ -1813,8 +1775,7 @@ DEF_SEM(PACKUSWB, D dst, S1 src1, S2 src2) {
   const auto num_elems = NumVectorElems(packed);
   const auto half_num_elems = num_elems / 2UL;
 
-  _Pragma("unroll")
-  for (size_t i = 0; i < half_num_elems; ++i) {
+  _Pragma("unroll") for (size_t i = 0; i < half_num_elems; ++i) {
     auto val = SExtractV16(src1_vec, i);
     auto sat = std::max<int16_t>(std::min<int16_t>(val, 255), 0);
     packed.elems[i] = static_cast<uint8_t>(sat);
@@ -1840,8 +1801,7 @@ DEF_SEM(PACKUSWB_AVX, D dst, S1 src1, S2 src2) {
   const auto half_num_elems = num_elems / 2UL;
   const auto quarter_num_elems = num_elems / 4UL;
 
-  _Pragma("unroll")
-  for (size_t i = 0; i < quarter_num_elems; ++i) {
+  _Pragma("unroll") for (size_t i = 0; i < quarter_num_elems; ++i) {
     auto val = SExtractV16(src1_vec, i);
     auto sat = std::max<int16_t>(std::min<int16_t>(val, 255), 0);
     packed.elems[i] = static_cast<uint8_t>(sat);
@@ -1856,7 +1816,7 @@ DEF_SEM(PACKUSWB_AVX, D dst, S1 src1, S2 src2) {
 
     auto val4 = SExtractV16(src2_vec, quarter_num_elems + i);
     auto sat4 = std::max<int16_t>(std::min<int16_t>(val4, 255), 0);
-    packed.elems[half_num_elems + quarter_num_elems + i] = \
+    packed.elems[half_num_elems + quarter_num_elems + i] =
         static_cast<uint8_t>(sat4);
   }
 
@@ -1872,10 +1832,14 @@ DEF_ISEL(PACKUSWB_MMXq_MEMq) = PACKUSWB<V64W, V64, MV64, uint8v8_t>;
 DEF_ISEL(PACKUSWB_MMXq_MMXq) = PACKUSWB<V64W, V64, V64, uint8v8_t>;
 DEF_ISEL(PACKUSWB_XMMdq_MEMdq) = PACKUSWB<V128W, V128, MV128, uint8v16_t>;
 DEF_ISEL(PACKUSWB_XMMdq_XMMdq) = PACKUSWB<V128W, V128, V128, uint8v16_t>;
-IF_AVX(DEF_ISEL(VPACKUSWB_XMMdq_XMMdq_MEMdq) = PACKUSWB<VV256W, V128, MV128, uint8v16_t>;)
-IF_AVX(DEF_ISEL(VPACKUSWB_XMMdq_XMMdq_XMMdq) = PACKUSWB<VV256W, V128, V128, uint8v16_t>;)
-IF_AVX(DEF_ISEL(VPACKUSWB_YMMqq_YMMqq_MEMqq) = PACKUSWB_AVX<VV256W, V256, MV256, uint8v32_t>;)
-IF_AVX(DEF_ISEL(VPACKUSWB_YMMqq_YMMqq_YMMqq) = PACKUSWB_AVX<VV256W, V256, V256, uint8v32_t>;)
+IF_AVX(DEF_ISEL(VPACKUSWB_XMMdq_XMMdq_MEMdq) =
+           PACKUSWB<VV256W, V128, MV128, uint8v16_t>;)
+IF_AVX(DEF_ISEL(VPACKUSWB_XMMdq_XMMdq_XMMdq) =
+           PACKUSWB<VV256W, V128, V128, uint8v16_t>;)
+IF_AVX(DEF_ISEL(VPACKUSWB_YMMqq_YMMqq_MEMqq) =
+           PACKUSWB_AVX<VV256W, V256, MV256, uint8v32_t>;)
+IF_AVX(DEF_ISEL(VPACKUSWB_YMMqq_YMMqq_YMMqq) =
+           PACKUSWB_AVX<VV256W, V256, V256, uint8v32_t>;)
 
 /*
 555 PACKSSDW PACKSSDW_MMXq_MEMq MMX MMX PENTIUMMMX ATTRIBUTES: HALF_WIDE_OUTPUT NOTSX
@@ -1935,29 +1899,26 @@ DEF_SEM(LDMXCSR, M32 src) {
   csr.flat = Read(src);
 
   int rounding_mode = FE_TONEAREST;
-  
+
   if (!csr.rp && !csr.rn) {
     rounding_mode = FE_TONEAREST;
-  } 
-  else if (!csr.rp && csr.rn) {
+  } else if (!csr.rp && csr.rn) {
     rounding_mode = FE_DOWNWARD;
-  }
-  else if (csr.rp && !csr.rn) {
+  } else if (csr.rp && !csr.rn) {
     rounding_mode = FE_UPWARD;
-  }
-  else {
+  } else {
     rounding_mode = FE_TOWARDZERO;
   }
   fesetround(rounding_mode);
-  
+
   // TODO: set FPU precision based on MXCSR precision flag (csr.pe)
-  
+
   return memory;
 }
 
 DEF_SEM(STMXCSR, M32W dst) {
   auto &csr = state.x87.fxsave.mxcsr;
-  
+
   // TODO: store the current FPU precision control:
   csr.pe = 0;
 
@@ -1983,11 +1944,11 @@ DEF_SEM(STMXCSR, M32W dst) {
   }
 
   Write(dst, csr.flat);
-  
+
   return memory;
 }
 
-} // namespace
+}  // namespace
 
 DEF_ISEL(LDMXCSR_MEMd) = LDMXCSR;
 DEF_ISEL(STMXCSR_MEMd) = STMXCSR;

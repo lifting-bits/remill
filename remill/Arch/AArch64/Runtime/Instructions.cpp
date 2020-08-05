@@ -18,12 +18,14 @@
 #include <bitset>
 #include <cmath>
 
+// clang-format off
 #include "remill/Arch/Float.h"
 #include "remill/Arch/Runtime/Intrinsics.h"
 #include "remill/Arch/Runtime/Operators.h"
 #include "remill/Arch/AArch64/Runtime/State.h"
-#include "remill/Arch/AArch64/Runtime/Operators.h"
 #include "remill/Arch/AArch64/Runtime/Types.h"
+#include "remill/Arch/AArch64/Runtime/Operators.h"
+// clang-format on
 
 #define REG_PC state.gpr.pc.qword
 #define REG_SP state.gpr.sp.qword
@@ -80,10 +82,11 @@
 #define HYPER_CALL_VECTOR state.hyper_call_vector
 
 namespace {
+
 // Takes the place of an unsupported instruction.
 DEF_SEM(HandleUnsupported) {
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAArch64EmulateInstruction);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kAArch64EmulateInstruction);
 }
 
 // Takes the place of an invalid instruction.
@@ -98,17 +101,19 @@ DEF_SEM(HandleInvalidInstruction) {
 DEF_ISEL(UNSUPPORTED_INSTRUCTION) = HandleUnsupported;
 DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 
+// clang-format off
 #include "remill/Arch/AArch64/Semantics/FLAGS.cpp"
 
 #include "remill/Arch/AArch64/Semantics/BINARY.cpp"
 #include "remill/Arch/AArch64/Semantics/BITBYTE.cpp"
 #include "remill/Arch/AArch64/Semantics/BRANCH.cpp"
 #include "remill/Arch/AArch64/Semantics/CALL_RET.cpp"
+#include "remill/Arch/AArch64/Semantics/COND.cpp"
 #include "remill/Arch/AArch64/Semantics/CONVERT.cpp"
 #include "remill/Arch/AArch64/Semantics/DATAXFER.cpp"
 #include "remill/Arch/AArch64/Semantics/LOGICAL.cpp"
 #include "remill/Arch/AArch64/Semantics/MISC.cpp"
 #include "remill/Arch/AArch64/Semantics/SHIFT.cpp"
 #include "remill/Arch/AArch64/Semantics/SIMD.cpp"
-#include "remill/Arch/AArch64/Semantics/COND.cpp"
 #include "remill/Arch/AArch64/Semantics/SYSTEM.cpp"
+// clang-format on

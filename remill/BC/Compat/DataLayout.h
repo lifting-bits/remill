@@ -18,8 +18,8 @@ inline static llvm::TypeSize BitsToTypeSize(uint64_t size) {
 }
 #endif
 
-inline static uint64_t SizeOfTypeInBits(
-    const llvm::DataLayout &data_layout, llvm::Type *type) {
+inline static uint64_t SizeOfTypeInBits(const llvm::DataLayout &data_layout,
+                                        llvm::Type *type) {
   return TypeSizeToBits(data_layout.getTypeSizeInBits(type));
 }
 

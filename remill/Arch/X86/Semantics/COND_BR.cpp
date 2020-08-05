@@ -16,7 +16,8 @@
 
 namespace {
 
-DEF_SEM(JNLE, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JNLE, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = BAnd(BNot(FLAG_ZF), BXnor(FLAG_SF, FLAG_OF));
@@ -25,7 +26,8 @@ DEF_SEM(JNLE, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst
   return memory;
 }
 
-DEF_SEM(JNS, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JNS, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = BNot(FLAG_SF);
@@ -34,7 +36,8 @@ DEF_SEM(JNS, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst)
   return memory;
 }
 
-DEF_SEM(JL, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JL, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = BXor(FLAG_SF, FLAG_OF);
@@ -43,7 +46,8 @@ DEF_SEM(JL, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) 
   return memory;
 }
 
-DEF_SEM(JNP, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JNP, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = BNot(FLAG_PF);
@@ -52,7 +56,8 @@ DEF_SEM(JNP, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst)
   return memory;
 }
 
-DEF_SEM(JNZ, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JNZ, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = BNot(FLAG_ZF);
@@ -61,7 +66,8 @@ DEF_SEM(JNZ, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst)
   return memory;
 }
 
-DEF_SEM(JNB, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JNB, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = BNot(FLAG_CF);
@@ -70,7 +76,8 @@ DEF_SEM(JNB, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst)
   return memory;
 }
 
-DEF_SEM(JNO, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JNO, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = BNot(FLAG_OF);
@@ -79,7 +86,8 @@ DEF_SEM(JNO, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst)
   return memory;
 }
 
-DEF_SEM(JNL, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JNL, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = BXnor(FLAG_SF, FLAG_OF);
@@ -88,7 +96,8 @@ DEF_SEM(JNL, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst)
   return memory;
 }
 
-DEF_SEM(JNBE, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JNBE, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = BNot(BOr(FLAG_CF, FLAG_ZF));
@@ -97,7 +106,8 @@ DEF_SEM(JNBE, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst
   return memory;
 }
 
-DEF_SEM(JBE, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JBE, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = BOr(FLAG_CF, FLAG_ZF);
@@ -106,7 +116,8 @@ DEF_SEM(JBE, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst)
   return memory;
 }
 
-DEF_SEM(JZ, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JZ, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = FLAG_ZF;
@@ -115,7 +126,8 @@ DEF_SEM(JZ, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) 
   return memory;
 }
 
-DEF_SEM(JP, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JP, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = FLAG_PF;
@@ -124,7 +136,8 @@ DEF_SEM(JP, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) 
   return memory;
 }
 
-DEF_SEM(JS, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JS, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = FLAG_SF;
@@ -133,7 +146,8 @@ DEF_SEM(JS, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) 
   return memory;
 }
 
-DEF_SEM(JO, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JO, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = FLAG_OF;
@@ -142,7 +156,8 @@ DEF_SEM(JO, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) 
   return memory;
 }
 
-DEF_SEM(JB, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JB, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = FLAG_CF;
@@ -151,7 +166,8 @@ DEF_SEM(JB, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) 
   return memory;
 }
 
-DEF_SEM(JLE, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JLE, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = BOr(FLAG_ZF, BXor(FLAG_SF, FLAG_OF));
@@ -276,7 +292,8 @@ DEF_ISEL(JLE_RELBRd) = JLE;
 
 namespace {
 
-DEF_SEM(JCXZ, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JCXZ, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = UCmpEq(REG_CX, 0_u16);
@@ -285,7 +302,8 @@ DEF_SEM(JCXZ, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst
   return memory;
 }
 
-DEF_SEM(JECXZ, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JECXZ, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = UCmpEq(REG_ECX, 0_u32);
@@ -295,7 +313,8 @@ DEF_SEM(JECXZ, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_ds
 }
 
 #if 64 == ADDRESS_SIZE_BITS
-DEF_SEM(JRCXZ, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(JRCXZ, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto take_branch = UCmpEq(REG_RCX, 0_u64);
@@ -305,7 +324,8 @@ DEF_SEM(JRCXZ, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_ds
 }
 #endif  // 64 == ADDRESS_SIZE_BITS
 
-DEF_SEM(LOOP, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(LOOP, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   addr_t count = USub(REG_XCX, addr_t(1));
@@ -316,7 +336,8 @@ DEF_SEM(LOOP, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst
   return memory;
 }
 
-DEF_SEM(LOOPE, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(LOOPE, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   addr_t count = USub(REG_XCX, addr_t(1));
@@ -327,7 +348,8 @@ DEF_SEM(LOOPE, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_ds
   return memory;
 }
 
-DEF_SEM(LOOPNE, R8W cond, PC taken, PC not_taken, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+DEF_SEM(LOOPNE, R8W cond, PC taken, PC not_taken,
+        IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   addr_t count = USub(REG_XCX, addr_t(1));

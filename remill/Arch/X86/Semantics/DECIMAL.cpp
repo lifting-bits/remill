@@ -95,7 +95,7 @@ DEF_SEM(DAA) {
   return memory;
 }
 
-} // namespace
+}  // namespace
 
 IF_32BIT(DEF_ISEL(AAS) = AAS;)
 IF_32BIT(DEF_ISEL(DAA) = DAA;)

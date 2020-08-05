@@ -18,8 +18,8 @@
 #include <bitset>
 #include <cmath>
 
-#include "remill/Arch/Float.h"
 #include "remill/Arch/AArch64/Runtime/State.h"
+#include "remill/Arch/Float.h"
 
 extern "C" {
 
@@ -40,7 +40,7 @@ extern "C" {
   auto &NEXT_PC = curr_pc;
   auto &BRANCH_TAKEN = branch_taken;
   auto &RETURN_PC = return_pc;
-  
+
   // `PC` should already have the correct value, but it's nice to make sure
   // that `curr_pc` is used throughout, as it helps with certain downstream
   // uses to be able to depend on the optimizer not eliminating `curr_pc`.
@@ -140,13 +140,13 @@ extern "C" {
 
   uint32_t zero1 = 0;
   auto &WZR = zero1;
-  
+
   uint64_t zero2 = 0;
   auto &XZR = zero2;
 
   uint32_t ignored1 = 0;
   auto &IGNORE_WRITE_TO_WZR = ignored1;
-  
+
   uint64_t ignored2 = 0;
   auto &IGNORE_WRITE_TO_XZR = ignored2;
 

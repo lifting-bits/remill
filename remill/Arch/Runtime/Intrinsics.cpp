@@ -17,10 +17,10 @@
 #pragma once
 
 #include "remill/Arch/Runtime/Intrinsics.h"
+
 #include "remill/Arch/Runtime/Operators.h"
 
-#define USED(sym) \
-  __remill_mark_as_used(reinterpret_cast<const void *>(&sym))
+#define USED(sym) __remill_mark_as_used(reinterpret_cast<const void *>(&sym))
 
 // This is two big hacks:
 //    1)  This makes sure that a symbol is treated as used and prevents it
@@ -31,8 +31,7 @@ extern "C" void __remill_mark_as_used(const void *);
 
 // This is just a hack to make sure all these functions appear in the bitcode
 // file!
-[[gnu::used]]
-extern "C" void __remill_intrinsics(void) {
+[[gnu::used]] extern "C" void __remill_intrinsics(void) {
 
   USED(__remill_basic_block);
 
@@ -100,7 +99,7 @@ extern "C" void __remill_intrinsics(void) {
 
   USED(__remill_fpu_exception_test_and_clear);
 
-//  USED(__remill_defer_inlining);
+  //  USED(__remill_defer_inlining);
 
   USED(__remill_error);
 

@@ -333,8 +333,10 @@ DEF_SEM(FDIV_Scalar64, V128W dst, V64 src1, V64 src2) {
 
 template <typename S>
 void FCompare(State &state, S val1, S val2, bool signal = true) {
+
   // Set flags for operand == NAN
   if (std::isnan(val1) || std::isnan(val2)) {
+
     // result = '0011';
     FLAG_N = 0;
     FLAG_Z = 0;
@@ -345,9 +347,10 @@ void FCompare(State &state, S val1, S val2, bool signal = true) {
       state.sr.ioc = true;
     }
 
-    // Regular float compare
+  // Regular float compare
   } else {
     if (FCmpEq(val1, val2)) {
+
       // result = '0110';
       FLAG_N = 0;
       FLAG_Z = 1;
@@ -355,6 +358,7 @@ void FCompare(State &state, S val1, S val2, bool signal = true) {
       FLAG_V = 0;
 
     } else if (FCmpLt(val1, val2)) {
+
       // result = '1000';
       FLAG_N = 1;
       FLAG_Z = 0;
@@ -362,6 +366,7 @@ void FCompare(State &state, S val1, S val2, bool signal = true) {
       FLAG_V = 0;
 
     } else {  // FCmpGt(val1, val2)
+
       // result = '0010';
       FLAG_N = 0;
       FLAG_Z = 0;
@@ -487,4 +492,3 @@ DEF_ISEL(FCMPE_D_FLOATCMP) = FCMPE_D;
 DEF_ISEL(FCMPE_DZ_FLOATCMP) = FCMPE_DZ;
 DEF_ISEL(FCMP_D_FLOATCMP) = FCMP_D;
 DEF_ISEL(FCMP_DZ_FLOATCMP) = FCMP_DZ;
-

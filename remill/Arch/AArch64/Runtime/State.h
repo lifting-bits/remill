@@ -37,6 +37,7 @@ static_assert(0 == __builtin_offsetof(Reg, qword),
               "Invalid packing of `Reg::qword`.");
 
 struct alignas(8) GPR final {
+
   // Prevents LLVM from casting a `GPR` into an `i64` to access `X0`.
   volatile uint64_t _0;
   Reg x0;
@@ -114,36 +115,37 @@ static_assert(528 == sizeof(GPR), "Invalid structure packing of `GPR`.");
 union PSTATE final {
   uint64_t flat;
   struct {
+
     // Bit 0.
-    uint64_t N:1;  // Negative condition flag.
-    uint64_t Z:1;  // Zero condition flag.
-    uint64_t C:1;  // Carry condition flag.
-    uint64_t V:1;  // Overflow condition flag.
+    uint64_t N : 1;  // Negative condition flag.
+    uint64_t Z : 1;  // Zero condition flag.
+    uint64_t C : 1;  // Carry condition flag.
+    uint64_t V : 1;  // Overflow condition flag.
 
     // Bit 4.
-    uint64_t D:1;  // Debug mask bit [AArch64 only].
-    uint64_t A:1;  // Asynchronous abort mask bit.
-    uint64_t I:1;  // IRQ mask bit.
-    uint64_t F:1;  // FIQ mask bit.
+    uint64_t D : 1;  // Debug mask bit [AArch64 only].
+    uint64_t A : 1;  // Asynchronous abort mask bit.
+    uint64_t I : 1;  // IRQ mask bit.
+    uint64_t F : 1;  // FIQ mask bit.
 
     // Bit 8.
-    uint64_t SS:1;  // Single-step bit.
-    uint64_t IL:1;  // Illegal state bit.
-    uint64_t EL:2;  // Exception Level (see above).
+    uint64_t SS : 1;  // Single-step bit.
+    uint64_t IL : 1;  // Illegal state bit.
+    uint64_t EL : 2;  // Exception Level (see above).
 
     // Bit 12.
-    uint64_t nRW:1;  // not Register Width: 0=64, 1=32
-    uint64_t SP:1;  // Stack pointer select: 0=SP0, 1=SPx [AArch64 only]
-    uint64_t Q:1;  // Cumulative saturation flag [AArch32 only]
-    uint64_t GE:4;  // Greater than or Equal flags [AArch32 only]
+    uint64_t nRW : 1;  // not Register Width: 0=64, 1=32
+    uint64_t SP : 1;  // Stack pointer select: 0=SP0, 1=SPx [AArch64 only]
+    uint64_t Q : 1;  // Cumulative saturation flag [AArch32 only]
+    uint64_t GE : 4;  // Greater than or Equal flags [AArch32 only]
 
     // Bit 19.
-    uint64_t IT:8;  // If-then state [AArch32 only]
-    uint64_t J:1;  // Jazelle state [AArch32 only]
-    uint64_t T:1;  // Thumb state [AArch32 only]
-    uint64_t E:1;  // Endian state [AArch32 only]
-    uint64_t M:5;  // Mode field (see above) [AArch32 only]
-    uint64_t _res0:29;  // bits 34-63.
+    uint64_t IT : 8;  // If-then state [AArch32 only]
+    uint64_t J : 1;  // Jazelle state [AArch32 only]
+    uint64_t T : 1;  // Thumb state [AArch32 only]
+    uint64_t E : 1;  // Endian state [AArch32 only]
+    uint64_t M : 5;  // Mode field (see above) [AArch32 only]
+    uint64_t _res0 : 29;  // bits 34-63.
   } __attribute__((packed));
 } __attribute__((packed));
 
@@ -154,12 +156,12 @@ static_assert(8 == sizeof(PSTATE), "Invalid structure packing of `PSTATE`.");
 union NZCV {
   uint64_t flat;
   struct {
-    uint64_t _0:28;
-    uint64_t v:1;  // Result overflowed, bit 28.
-    uint64_t c:1;  // Result produced a carry.
-    uint64_t z:1;  // Result is zero.
-    uint64_t n:1;  // Result is negative, bit 31.
-    uint64_t _1:32;
+    uint64_t _0 : 28;
+    uint64_t v : 1;  // Result overflowed, bit 28.
+    uint64_t c : 1;  // Result produced a carry.
+    uint64_t z : 1;  // Result is zero.
+    uint64_t n : 1;  // Result is negative, bit 31.
+    uint64_t _1 : 32;
   } __attribute__((packed));
 } __attribute__((packed));
 
@@ -200,13 +202,13 @@ enum FPUHalfPrecisionMode : uint64_t {
 union FPCR {
   uint64_t flat;
   struct {
-    uint64_t _res0:22;  // [21:0]
-    FPURoundingMode rmode:2;  // [23:22]
-    FPUFlushToZeroMode fz:1;  // [24]
-    FPUDefaultNaNMode dn:1;  // [25]
-    FPUHalfPrecisionMode ahp:1;  // [26]
-    uint64_t _res1:5;  // [31:27]
-    uint64_t _1:32;
+    uint64_t _res0 : 22;  // [21:0]
+    FPURoundingMode rmode : 2;  // [23:22]
+    FPUFlushToZeroMode fz : 1;  // [24]
+    FPUDefaultNaNMode dn : 1;  // [25]
+    FPUHalfPrecisionMode ahp : 1;  // [26]
+    uint64_t _res1 : 5;  // [31:27]
+    uint64_t _1 : 32;
   } __attribute__((packed));
 } __attribute__((packed));
 
@@ -217,20 +219,20 @@ static_assert(sizeof(FPCR) == 8, "Invalid packing of `union FPCR`.");
 union FPSR {
   uint64_t flat;
   struct {
-    uint64_t ioc:1;  // Invalid operation cumulative exception bit.
-    uint64_t dzc:1;  // Division by zero cumulative exception bit.
-    uint64_t ofc:1;  // Overflow cumulative exception bit.
-    uint64_t ufc:1;  // Underflow cumulative exception bit.
-    uint64_t ixc:1;  // Inexact cumulative exception bit.
-    uint64_t _res0:2;  // Bits 5 and 6.
-    uint64_t idc:1;  // Input denormal cumulative exception bit.
-    uint64_t _res1:19;  // Bits 8 through 26.
-    uint64_t qc:1;  // Cumulative saturation bit, bit 27.
-    uint64_t v:1;  // Result overflowed, bit 28. [AArch32 only]
-    uint64_t c:1;  // Result produced a carry. [AArch32 only]
-    uint64_t z:1;  // Result is zero. [AArch32 only]
-    uint64_t n:1;  // Result is negative, bit 31. [AArch32 only]
-    uint64_t _1:32;
+    uint64_t ioc : 1;  // Invalid operation cumulative exception bit.
+    uint64_t dzc : 1;  // Division by zero cumulative exception bit.
+    uint64_t ofc : 1;  // Overflow cumulative exception bit.
+    uint64_t ufc : 1;  // Underflow cumulative exception bit.
+    uint64_t ixc : 1;  // Inexact cumulative exception bit.
+    uint64_t _res0 : 2;  // Bits 5 and 6.
+    uint64_t idc : 1;  // Input denormal cumulative exception bit.
+    uint64_t _res1 : 19;  // Bits 8 through 26.
+    uint64_t qc : 1;  // Cumulative saturation bit, bit 27.
+    uint64_t v : 1;  // Result overflowed, bit 28. [AArch32 only]
+    uint64_t c : 1;  // Result produced a carry. [AArch32 only]
+    uint64_t z : 1;  // Result is zero. [AArch32 only]
+    uint64_t n : 1;  // Result is negative, bit 31. [AArch32 only]
+    uint64_t _1 : 32;
   } __attribute__((packed));
 } __attribute__((packed));
 
@@ -269,9 +271,7 @@ struct alignas(8) SR final {
 
 static_assert(56 == sizeof(SR), "Invalid packing of `struct SR`.");
 
-enum : size_t {
-  kNumVecRegisters = 32
-};
+enum : size_t { kNumVecRegisters = 32 };
 
 struct alignas(16) SIMD {
   vec128_t v[kNumVecRegisters];

@@ -15,16 +15,16 @@
  */
 #pragma once
 
-#include <system_error>
-
 #include <llvm/Support/ErrorOr.h>
 #include <llvm/Support/Format.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include <system_error>
+
 #include "remill/BC/Version.h"
 
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
-# include <llvm/Support/Error.h>
+#  include <llvm/Support/Error.h>
 #endif
 
 namespace remill {
@@ -63,9 +63,8 @@ inline static std::string GetErrorString(llvm::ErrorOr<T> &val) {
 inline static std::string GetErrorString(llvm::Error &val) {
   std::string err;
   llvm::raw_string_ostream os(err);
-  llvm::handleAllErrors(std::move(val), [&os] (llvm::ErrorInfoBase &eib) {
-    eib.log(os);
-  });
+  llvm::handleAllErrors(std::move(val),
+                        [&os](llvm::ErrorInfoBase &eib) { eib.log(os); });
   os.flush();
   return err;
 }
@@ -173,7 +172,7 @@ inline static Error createStringError(std::error_code EC, char const *Msg) {
 /// Create formatted StringError object.
 template <typename... Ts>
 inline static Error createStringError(std::error_code EC, char const *Fmt,
-                               const Ts &... Vals) {
+                                      const Ts &... Vals) {
   std::string Buffer;
   raw_string_ostream Stream(Buffer);
   Stream << format(Fmt, Vals...);
@@ -185,7 +184,7 @@ inline static Error createStringError(std::error_code EC, char const *Fmt,
 
 template <typename... Ts>
 inline static Error createStringError(std::errc EC, char const *Fmt,
-                               const Ts &... Vals) {
+                                      const Ts &... Vals) {
   return createStringError(std::make_error_code(EC), Fmt, Vals...);
 }
 #endif
