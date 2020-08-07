@@ -34,6 +34,7 @@
 #include <remill/BC/Optimizer.h>
 #include <remill/BC/Util.h>
 #include <remill/OS/OS.h>
+#include <remill/Version/Version.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -181,9 +182,35 @@ static void MuteStateEscape(llvm::Module *module, const char *func_name) {
   }
 }
 
+static void SetVersion() {
+  std::stringstream ss;
+  auto vs = remill::Version::GetVersionString();
+  if(0 == vs.size()) {
+      vs = "unknown";
+  }
+  ss << vs << "\n";
+  if(!remill::Version::HasVersionData()) {
+    ss << "No extended version information found!\n";
+  } else {
+    ss << "Commit Hash: " << remill::Version::GetCommitHash() << "\n";
+    ss << "Commit Date: " << remill::Version::GetCommitDate() << "\n";
+    ss << "Last commit by: " << remill::Version::GetAuthorName() << " [" << remill::Version::GetAuthorEmail() << "]\n";
+    ss << "Commit Subject: [" << remill::Version::GetCommitSubject() << "]\n";
+    ss << "\n";
+    if(remill::Version::HasUncommittedChanges()) {
+      ss << "Uncommitted changes were present during build.\n";
+    } else  {
+      ss << "All changes were committed prior to building.\n";
+    }
+  }
+  google::SetVersionString(ss.str());
+}
+
 int main(int argc, char *argv[]) {
+  SetVersion();
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
+
 
   if (FLAGS_bytes.empty()) {
     std::cerr << "Please specify a sequence of hex bytes to --bytes."

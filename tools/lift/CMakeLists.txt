@@ -55,7 +55,7 @@ if(NOT TARGET remill)
   find_package(remill REQUIRED ${REMILL_FINDPACKAGE_HINTS})
 endif()
 
-list(APPEND PROJECT_LIBRARIES remill)
+list(APPEND PROJECT_LIBRARIES remill RemillVersion)
 
 #
 # target settings
