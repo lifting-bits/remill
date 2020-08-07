@@ -126,6 +126,9 @@ list(APPEND PROJECT_DEFINITIONS "REMILL_INSTALL_SEMANTICS_DIR=\"${REMILL_INSTALL
 list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_X86=\"${REMILL_BUILD_SEMANTICS_DIR_X86}\"")
 list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_AARCH64=\"${REMILL_BUILD_SEMANTICS_DIR_AARCH64}\"")
 
+# verion data
+add_subdirectory(remill/Version)
+
 add_library(${PROJECT_NAME} STATIC
   remill/Arch/AArch64/Arch.cpp
   remill/Arch/AArch64/Decode.cpp
@@ -151,7 +154,7 @@ add_library(${PROJECT_NAME} STATIC
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 # add everything as public.
-target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_LIBRARIES} RemillVersion)
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${PROJECT_INCLUDEDIRECTORIES})
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_DEFINITIONS} ${GLOBAL_DEFINITIONS})
@@ -360,6 +363,11 @@ install(FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/AArch64/Runtime/Operators.h"
 
   DESTINATION "${install_folder}/include/remill/Arch/AArch64/Runtime"
+)
+
+install(FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Version/Version.h"
+  DESTINATION "${install_folder}/include/remill/Version"
 )
 
 #
