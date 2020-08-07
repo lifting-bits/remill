@@ -81,7 +81,7 @@ jobs:
       run: |
         mkdir -p artifacts
         cp -v scripts/emit-artifact.sh ./artifacts/
-        docker run -v "$(pwd)/artifacts:/out" --rm docker.pkg.github.com/lifting-bits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest -c "/out/emit-artifact.sh /out/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64.tar.xz"
+        docker run -v "$(pwd)/artifacts:/out" --rm --entrypoint /bin/bash docker.pkg.github.com/lifting-bits/remill/llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest -c "/out/emit-artifact.sh /out/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64.tar.xz"
         ls -l artifacts/
     - uses: actions/upload-artifact@v1
       if: github.event_name == 'push' && github.ref == 'refs/heads/master'
