@@ -94,3 +94,6 @@ obj-intel64/*
 
 # Lifted binaries
 *.lifted
+
+#VERSION files from CI
+VERSION
