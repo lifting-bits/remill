@@ -858,6 +858,42 @@ DEF_SEM(EXT, V128W dst, T src1, T src2, I32 src3) {
 DEF_ISEL(EXT_ASIMDEXT_ONLY_8B) = EXT<V64, 8>;
 DEF_ISEL(EXT_ASIMDEXT_ONLY_16B) = EXT<V128, 16>;
 
+namespace {
+
+#define MAKE_SHL(size) \
+    template <typename S, bool Q> \
+    DEF_SEM(SHL_ ## size, V128W dst, S src1, I8 src2) { \
+      auto shift = Read(src2); \
+      if (shift == 0) { \
+        return memory; \
+      } \
+      const uint_fast8_t elements = 64 / size ; \
+      auto val = UReadV ## size (src1); \
+      size_t index_min = Q ? 64 : 0; \
+      size_t index_max = Q ? elements * 2 : elements; \
+      _Pragma("unroll") \
+      for (size_t i = index_min; i < index_max; ++i) { \
+        uint64_t element = UExtractV ## size (val, i); \
+        element <<= shift; \
+        // TODO (@ESultanik): Need to populate the dst vector here \
+      } \
+      return memory; \
+    }
+
+MAKE_SHL(8)
+MAKE_SHL(16)
+MAKE_SHL(32)
+
+#undef MAKE_SHL
+
+} // namespace
+
+DEF_ISEL(USHLL_ASIMDSHF_L_8H_8B)  = SHL_32<V64, 0>;
+DEF_ISEL(USHLL_ASIMDSHF_L_8H_16B) = SHL_32<V128, 1>;
+DEF_ISEL(USHLL_ASIMDSHF_L_4S_4H)  = SHL_16<V64, 0>;
+DEF_ISEL(USHLL_ASIMDSHF_L_4S_8H)  = SHL_16<V128, 1>;
+DEF_ISEL(USHLL_ASIMDSHF_L_2D_2S)  = SHL_8<V64, 0>;
+DEF_ISEL(USHLL_ASIMDSHF_L_2D_4S)  = SHL_8<V128, 1>;
 
 // TODO(pag):
 // FMINV_ASIMDALL_ONLY_H

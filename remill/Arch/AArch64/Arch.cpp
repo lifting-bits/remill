@@ -4631,6 +4631,42 @@ bool TryDecodeMVNI_ASIMDIMM_M_SM(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// USHLL{2}  <Vd>.<Ta>, <Vn>.<Tb>, #<shift>
+bool TryDecodeUSHLL_ASIMDSHF_L(const InstData &data, Instruction &inst) {
+  if (data.immh.uimm & 0b1000) {
+    return false; // if immh<3> == '1' then ReservedValue()
+  }
+  // USHLL has two arrangement specifiers, Ta and Tb, each with a complex encoding
+  // that is not handled by AddArrangementSpecifier().
+  std::stringstream ss;
+  ss << inst.function << "_";
+  uint64_t msb = 5;
+  const bool found = MostSignificantSetBit(data.immh.uimm, &msb);
+  switch (msb) {
+    case 0:
+      ss << "8H_" << (data.Q ? "16B" : "8B");
+      break;
+    case 1:
+      ss << "4S_" << (data.Q ? "8H" : "4H");
+      break;
+    case 2:
+      ss << "2D_" << (data.Q ? "4S" : "2S");
+      break;
+    default:
+      LOG_IF(ERROR, !found)
+          << "Advanced SIMD modified immediates are not yet supported.";
+      // TODO: Add support for advanced SIMD modified immediates
+      return false;
+  }
+  inst.function = ss.str();
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  const uint8_t esize = static_cast<uint8_t>(8ULL << msb);
+  const uint8_t shift = ((static_cast<uint8_t>(data.immh.uimm) << 4) | data.immb.uimm) - esize;
+  AddImmOperand(inst, shift, kUnsigned, 8);
+  return true;
+}
+
 // USHR  <V><d>, <V><n>, #<shift>
 bool TryDecodeUSHR_ASISDSHF_R(const InstData &data, Instruction &inst) {
   if ((data.immh.uimm & 8) == 0) {
