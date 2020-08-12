@@ -23,11 +23,17 @@ if(NOT TARGET remill)
     set(REMILL_INCLUDE_LOCATION "${CMAKE_INSTALL_PREFIX}/include")
   endif()
 
+  set(LLVM_MAJOR_VERSION ${LLVM_MAJOR_VERSION})
+  set(LLVM_MINOR_VERSION ${LLVM_MINOR_VERSION})
+  set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}.${LLVM_MINOR_VERSION}")
+
   add_library(remill STATIC IMPORTED)
   set_property(TARGET remill PROPERTY IMPORTED_LOCATION "${REMILL_LIBRARY_LOCATION}")
-  target_include_directories(remill INTERFACE "${REMILL_INCLUDE_LOCATION}")
+  target_include_directories(remill INTERFACE "${REMILL_INCLUDE_LOCATION};${THIRDPARTY_INCLUDE_DIRECTORIES}")
+  target_compile_options(remill INTERFACE "${REMILL_COMPILE_OPTIONS}")
+  target_compile_definitions(remill INTERFACE "${REMILL_COMPILE_DEFINITIONS}")
 
-  target_compile_definitions(remill INTERFACE "REMILL_INSTALL_SEMANTICS_DIR=\"${REMILL_INSTALL_SEMANTICS_DIR}\"")
+  # Overwrite the build dir defines.
   target_compile_definitions(remill INTERFACE "REMILL_BUILD_SEMANTICS_DIR_X86=\"${REMILL_INSTALL_SEMANTICS_DIR}\"")
   target_compile_definitions(remill INTERFACE "REMILL_BUILD_SEMANTICS_DIR_AARCH64=\"${REMILL_INSTALL_SEMANTICS_DIR}\"")
 

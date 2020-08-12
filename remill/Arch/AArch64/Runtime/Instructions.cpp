@@ -25,6 +25,7 @@
 #include "remill/Arch/AArch64/Runtime/State.h"
 #include "remill/Arch/AArch64/Runtime/Types.h"
 #include "remill/Arch/AArch64/Runtime/Operators.h"
+
 // clang-format on
 
 #define REG_PC state.gpr.pc.qword
@@ -116,4 +117,5 @@ DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 #include "remill/Arch/AArch64/Semantics/SHIFT.cpp"
 #include "remill/Arch/AArch64/Semantics/SIMD.cpp"
 #include "remill/Arch/AArch64/Semantics/SYSTEM.cpp"
+
 // clang-format on

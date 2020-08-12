@@ -185,21 +185,22 @@ static void MuteStateEscape(llvm::Module *module, const char *func_name) {
 static void SetVersion() {
   std::stringstream ss;
   auto vs = remill::Version::GetVersionString();
-  if(0 == vs.size()) {
-      vs = "unknown";
+  if (0 == vs.size()) {
+    vs = "unknown";
   }
   ss << vs << "\n";
-  if(!remill::Version::HasVersionData()) {
+  if (!remill::Version::HasVersionData()) {
     ss << "No extended version information found!\n";
   } else {
     ss << "Commit Hash: " << remill::Version::GetCommitHash() << "\n";
     ss << "Commit Date: " << remill::Version::GetCommitDate() << "\n";
-    ss << "Last commit by: " << remill::Version::GetAuthorName() << " [" << remill::Version::GetAuthorEmail() << "]\n";
+    ss << "Last commit by: " << remill::Version::GetAuthorName() << " ["
+       << remill::Version::GetAuthorEmail() << "]\n";
     ss << "Commit Subject: [" << remill::Version::GetCommitSubject() << "]\n";
     ss << "\n";
-    if(remill::Version::HasUncommittedChanges()) {
+    if (remill::Version::HasUncommittedChanges()) {
       ss << "Uncommitted changes were present during build.\n";
-    } else  {
+    } else {
       ss << "All changes were committed prior to building.\n";
     }
   }
