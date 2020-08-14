@@ -48,25 +48,28 @@ extern CR8Reg gCR8;
 // each basic block in the code being lifted.
 //
 // Note: `curr_pc` is first to make sure it's not optimized away.
-[[gnu::used]]
-Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
+[[gnu::used]] Memory *__remill_basic_block(State &state, addr_t curr_pc,
+                                           Memory *memory) {
 
   bool branch_taken = false;
   addr_t zero1 = 0;
   addr_t zero2 = 0;
   addr_t zero3 = 0;
   addr_t zero4 = 0;
+  addr_t return_pc = 0;
 
   // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
   auto &MEMORY = *memory;
   auto &PC = state.gpr.rip.aword;
+  auto &NEXT_PC = curr_pc;
   auto &BRANCH_TAKEN = branch_taken;
+  auto &RETURN_PC = return_pc;
 
   // `PC` should already have the correct value, but it's nice to make sure
   // that `curr_pc` is used throughout, as it helps with certain downstream
   // uses to be able to depend on the optimizer not eliminating `curr_pc`.
-  state.gpr.rip.aword = curr_pc;
+  PC = curr_pc;
 
   // We will reference these variables from the bitcode side of things so that
   // we can map the name of a decoded register to a specific field in the
@@ -167,7 +170,7 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   auto &CS_BASE = zero4;
 
 #if HAS_FEATURE_AVX
-#if HAS_FEATURE_AVX512
+#  if HAS_FEATURE_AVX512
   auto &ZMM0 = state.vec[0].zmm;
   auto &ZMM1 = state.vec[1].zmm;
   auto &ZMM2 = state.vec[2].zmm;
@@ -200,7 +203,7 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   auto &ZMM29 = state.vec[29].zmm;
   auto &ZMM30 = state.vec[30].zmm;
   auto &ZMM31 = state.vec[31].zmm;
-#endif  // HAS_FEATURE_AVX512
+#  endif  // HAS_FEATURE_AVX512
 
   auto &YMM0 = state.vec[0].ymm;
   auto &YMM1 = state.vec[1].ymm;
@@ -210,7 +213,7 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   auto &YMM5 = state.vec[5].ymm;
   auto &YMM6 = state.vec[6].ymm;
   auto &YMM7 = state.vec[7].ymm;
-#if HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
+#  if HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
   auto &YMM8 = state.vec[8].ymm;
   auto &YMM9 = state.vec[9].ymm;
   auto &YMM10 = state.vec[10].ymm;
@@ -220,9 +223,9 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   auto &YMM14 = state.vec[14].ymm;
   auto &YMM15 = state.vec[15].ymm;
 
-#endif  // HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
+#  endif  // HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
 
-#if HAS_FEATURE_AVX512
+#  if HAS_FEATURE_AVX512
   auto &YMM16 = state.vec[16].ymm;
   auto &YMM17 = state.vec[17].ymm;
   auto &YMM18 = state.vec[18].ymm;
@@ -239,7 +242,7 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   auto &YMM29 = state.vec[29].ymm;
   auto &YMM30 = state.vec[30].ymm;
   auto &YMM31 = state.vec[31].ymm;
-#endif  // HAS_FEATURE_AVX512
+#  endif  // HAS_FEATURE_AVX512
 #endif  // HAS_FEATURE_AVX
 
   auto &XMM0 = state.vec[0].xmm;
@@ -292,7 +295,7 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   auto &ST7 = state.st.elems[7].val;
 
 #if 0  // TODO(pag): Don't emulate directly for now.
-#if 32 == ADDRESS_SIZE_BITS
+#  if 32 == ADDRESS_SIZE_BITS
   auto &FPU_LASTIP = state.fpu.u.x86.ip;
   auto &FPU_LASTIP = state.fpu.u.x86.ip;
   auto &FPU_LASTCS = state.fpu.u.x86.cs;
@@ -301,12 +304,12 @@ Memory *__remill_basic_block(State &state, addr_t curr_pc, Memory *memory) {
   auto &FPU_LASTDP = state.fpu.u.x86.dp;
   auto &FPU_LASTDS = state.fpu.u.x86.ds;
   auto &FPU_LASTDS = state.fpu.u.x86.ds;
-#else
+#  else
   auto &FPU_LASTIP = state.fpu.u.amd64.ip;
   auto &FPU_LASTIP = state.fpu.u.amd64.ip;
   auto &FPU_LASTDP = state.fpu.u.amd64.dp;
   auto &FPU_LASTDP = state.fpu.u.amd64.dp;
-#endif
+#  endif
 #endif
 
   // MMX technology registers. For simplicity, these are implemented separately

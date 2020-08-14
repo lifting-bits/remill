@@ -27,8 +27,8 @@ DEF_SEM(LEA, D dst, S src) {
 DEF_SEM(LEAVE_16BIT) {
   addr_t op_size = 2;
   addr_t link_pointer = Read(REG_XBP);
-  addr_t base_pointer = Read(
-      ReadPtr<addr_t>(link_pointer _IF_32BIT(REG_SS_BASE)));
+  addr_t base_pointer =
+      Read(ReadPtr<addr_t>(link_pointer _IF_32BIT(REG_SS_BASE)));
   Write(REG_XBP, base_pointer);
   Write(REG_XSP, UAdd(link_pointer, op_size));
   return memory;
@@ -38,8 +38,8 @@ template <typename T>
 DEF_SEM(LEAVE_FULL) {
   addr_t op_size = TruncTo<addr_t>(sizeof(T));
   addr_t link_pointer = Read(REG_XBP);
-  addr_t base_pointer = Read(
-      ReadPtr<addr_t>(link_pointer _IF_32BIT(REG_SS_BASE)));
+  addr_t base_pointer =
+      Read(ReadPtr<addr_t>(link_pointer _IF_32BIT(REG_SS_BASE)));
   Write(REG_XBP, base_pointer);
   Write(REG_XSP, UAdd(link_pointer, op_size));
   return memory;
@@ -49,7 +49,7 @@ DEF_SEM(LEAVE_FULL) {
 
 DEF_ISEL(LEA_GPRv_AGEN_16) = LEA<R16W, M8, uint16_t>;
 DEF_ISEL(LEA_GPRv_AGEN_32) = LEA<R32W, M8, uint32_t>;
-IF_64BIT( DEF_ISEL(LEA_GPRv_AGEN_64) = LEA<R64W, M8, uint64_t>; )
+IF_64BIT(DEF_ISEL(LEA_GPRv_AGEN_64) = LEA<R64W, M8, uint64_t>;)
 
 DEF_ISEL(LEAVE_16) = LEAVE_16BIT;
 DEF_ISEL_RI32or64(LEAVE, LEAVE_FULL);
@@ -68,9 +68,8 @@ DEF_SEM(ENTER, I16 src1, I8 src2) {
   addr_t nesting_level = ZExtTo<addr_t>(URem(Read(src2), 32_u8));
   addr_t xsp_temp = Read(REG_XSP);
   addr_t frame_temp = USub(xsp_temp, op_size);
-  addr_t next_xsp = USub(
-      USub(frame_temp, UMul(op_size, nesting_level)),
-      alloc_size);
+  addr_t next_xsp =
+      USub(USub(frame_temp, UMul(op_size, nesting_level)), alloc_size);
 
   // Detect failure. This should really happen at the end of `ENTER` but we
   // do it here. This is why `frame_temp` is created before the `PUSH` of
@@ -88,9 +87,8 @@ DEF_SEM(ENTER, I16 src1, I8 src2) {
 
   if (nesting_level) {
     if (1 < nesting_level) {
-      _Pragma("unroll")
-      for (addr_t i = 1; i <= (nesting_level - 1); ++i) {
-        xbp_temp = USub(xbp_temp, op_size); // TODO(pag): Handle 67H prefix.
+      _Pragma("unroll") for (addr_t i = 1; i <= (nesting_level - 1); ++i) {
+        xbp_temp = USub(xbp_temp, op_size);  // TODO(pag): Handle 67H prefix.
 
         // Copy the display entry to the stack.
         xsp_after_push = USub(xsp_temp, op_size);
@@ -115,7 +113,12 @@ DEF_SEM(DoNothing) {
   return memory;
 }
 
-template<typename S1, typename S2>
+template <typename S1>
+DEF_SEM(DoNothingWithParam, S1 src1) {
+  return memory;
+}
+
+template <typename S1, typename S2>
 DEF_SEM(DoNothingWithParam, S1 src1, S2 src2) {
   return memory;
 }
@@ -146,8 +149,8 @@ DEF_SEM(DoLFENCE) {
 DEF_SEM(DoXLAT) {
   addr_t base = Read(REG_XBX);
   addr_t offset = ZExtTo<addr_t>(Read(REG_AL));
-  Write(REG_AL, Read(
-      ReadPtr<uint8_t>(UAdd(base, offset) _IF_32BIT(REG_DS_BASE))));
+  Write(REG_AL,
+        Read(ReadPtr<uint8_t>(UAdd(base, offset) _IF_32BIT(REG_DS_BASE))));
   return memory;
 }
 
@@ -182,7 +185,7 @@ DEF_ISEL(UD1_GPR32_MEMd) = DoNothingWithParam<R32, M32>;
 
 DEF_ISEL(UD2) = DoNothing;
 
-DEF_ISEL(HLT) = DoNothing;
+DEF_ISEL(HLT) = DoNothingWithParam<IF_32BIT_ELSE(R32W, R64W)>;
 
 /*
 230 INVPCID INVPCID_GPR64_MEMdq MISC INVPCID INVPCID ATTRIBUTES: NOTSX RING0

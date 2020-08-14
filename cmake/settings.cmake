@@ -51,7 +51,7 @@ macro(main)
   #
 
   # Globally set the required C++ standard
-  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD 17)
   set(CMAKE_CXX_EXTENSIONS OFF)
 
   if(WIN32)
@@ -93,6 +93,7 @@ macro(main)
         ${GLOBAL_CXXFLAGS}
         -Wgnu-alignof-expression -Wno-gnu-anonymous-struct -Wno-gnu-designator
         -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-statement-expression
+        -fno-aligned-allocation
       )
     endif()
 

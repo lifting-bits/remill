@@ -18,7 +18,8 @@ namespace {
 
 template <typename S, typename D>
 ALWAYS_INLINE static D CheckedCast(State &state, S src) {
-  return CheckedFloatUnaryOp(state, [] (S v) {return static_cast<D>(v);}, src);
+  return CheckedFloatUnaryOp(
+      state, [](S v) { return static_cast<D>(v); }, src);
 }
 
 DEF_SEM(UCVTF_UInt32ToFloat32, V128W dst, R32 src) {

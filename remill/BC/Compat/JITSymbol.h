@@ -18,11 +18,11 @@
 #include "remill/BC/Version.h"
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(4, 0)
-# include <llvm/ExecutionEngine/RuntimeDyld.h>
+#  include <llvm/ExecutionEngine/RuntimeDyld.h>
 namespace llvm {
 using JITSymbol = llvm::RuntimeDyld::SymbolInfo;
 using JITSymbolResolver = llvm::RuntimeDyld::SymbolResolver;
 }  // namespace llvm
 #else
-# include <llvm/ExecutionEngine/JITSymbol.h>
+#  include <llvm/ExecutionEngine/JITSymbol.h>
 #endif

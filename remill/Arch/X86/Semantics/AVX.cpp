@@ -19,8 +19,7 @@
 namespace {
 
 DEF_SEM(DoVZEROUPPER) {
-  _Pragma("unroll")
-  for (unsigned i = 0; i < IF_64BIT_ELSE(16, 8); ++i) {
+  _Pragma("unroll") for (unsigned i = 0; i < IF_64BIT_ELSE(16, 8); ++i) {
     auto &vec = state.vec[i];
     vec.ymm.dqwords.elems[1] = 0;
     IF_AVX512(vec.zmm.dqwords.elems[2] = 0;)
@@ -32,15 +31,15 @@ DEF_SEM(DoVZEROUPPER) {
 
 namespace {
 
-template<typename D, typename S1, size_t KL, size_t VL>
+template <typename D, typename S1, size_t KL, size_t VL>
 DEF_SEM(VPBROADCASTB, D dst, S1 src1) {
   auto src_vec = UReadV8(src1);
   auto dst_vec = UClearV8(UReadV8(dst));
   auto num_groups = NumVectorElems(dst_vec);
-  auto src_byte  = UExtractV8(src_vec, 0);
-  
+  auto src_byte = UExtractV8(src_vec, 0);
+
   for (std::size_t i = 0; i < num_groups; ++i) {
-    dst_vec  = UInsertV8(dst_vec, i, src_byte);
+    dst_vec = UInsertV8(dst_vec, i, src_byte);
   }
   UWriteV8(dst, dst_vec);
   return memory;

@@ -24,7 +24,25 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/settings.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/BCCompiler.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ccache.cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 include(CTest)
+
+if (LLVM_Z3_INSTALL_DIR)
+  find_package(Z3 4.7.1)
+  set(need_z3 TRUE)
+elseif(DEFINED ENV{TRAILOFBITS_LIBRARIES})
+  set(LLVM_Z3_INSTALL_DIR "$ENV{TRAILOFBITS_LIBRARIES}/z3")
+  set(need_z3 TRUE)
+else()
+  set(need_z3 FALSE)
+endif()
+
+if(need_z3)
+  find_package(Z3 4.7.1)
+  if (NOT Z3_FOUND)
+    message(WARNING "Z3 >= 4.7.1 has not been found in LLVM_Z3_INSTALL_DIR: ${LLVM_Z3_INSTALL_DIR}.")
+  endif()
+endif()
 
 configureCcache()
 FindAndSelectClangCompiler()
@@ -56,7 +74,7 @@ list(GET LLVM_VERSION_LIST 0 LLVM_MAJOR_VERSION)
 list(GET LLVM_VERSION_LIST 1 LLVM_MINOR_VERSION)
 
 set(LLVM_LIBRARIES
-  LLVMCore LLVMSupport LLVMAnalysis LLVMipo LLVMIRReader
+  LLVMCore LLVMAnalysis LLVMSupport LLVMipo LLVMIRReader
   LLVMBitReader LLVMBitWriter LLVMTransformUtils LLVMScalarOpts
   LLVMLTO
 )
@@ -84,6 +102,11 @@ if(DEFINED WIN32)
 endif()
 
 #
+# Configuration options for semantics
+#
+option(REMILL_BARRIER_AS_NOP "Remove compiler barriers (inline assembly) in semantics" OFF)
+
+#
 # target settings
 #
 
@@ -102,6 +125,9 @@ set(REMILL_BUILD_SEMANTICS_DIR_AARCH64 "${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/
 list(APPEND PROJECT_DEFINITIONS "REMILL_INSTALL_SEMANTICS_DIR=\"${REMILL_INSTALL_SEMANTICS_DIR}/\"")
 list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_X86=\"${REMILL_BUILD_SEMANTICS_DIR_X86}\"")
 list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_AARCH64=\"${REMILL_BUILD_SEMANTICS_DIR_AARCH64}\"")
+
+# verion data
+add_subdirectory(remill/Version)
 
 add_library(${PROJECT_NAME} STATIC
   remill/Arch/AArch64/Arch.cpp
@@ -128,7 +154,7 @@ add_library(${PROJECT_NAME} STATIC
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 # add everything as public.
-target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_LIBRARIES} RemillVersion)
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${PROJECT_INCLUDEDIRECTORIES})
 target_compile_definitions(${PROJECT_NAME} PUBLIC ${PROJECT_DEFINITIONS} ${GLOBAL_DEFINITIONS})
@@ -276,6 +302,7 @@ install(FILES
 install(FILES 
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/ABI.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Annotate.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/DeadStoreEliminator.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/IntrinsicTable.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Lifter.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Optimizer.h"
@@ -286,10 +313,21 @@ install(FILES
 )
 
 install(FILES 
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/CallingConvention.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/GlobalValue.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/TargetLibraryInfo.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/Attributes.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/BitcodeReaderWriter.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/CallingConvention.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/DataLayout.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/DebugInfo.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/Error.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/FileSystem.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/GlobalValue.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/IRReader.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/JITSymbol.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/RuntimeDyld.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/ScalarTransforms.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/TargetLibraryInfo.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/ToolOutputFile.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/Verifier.h"
 
   DESTINATION "${install_folder}/include/remill/BC/Compat"
 )
@@ -297,6 +335,39 @@ install(FILES
 install(FILES 
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/OS/OS.h"
   DESTINATION "${install_folder}/include/remill/OS"
+)
+
+install(FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/Definitions.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/HyperCall.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/Intrinsics.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/Operators.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/Runtime.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/State.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/Types.h"
+
+  DESTINATION "${install_folder}/include/remill/Arch/Runtime"
+)
+
+install(FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/X86/Runtime/State.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/X86/Runtime/Types.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/X86/Runtime/Operators.h"
+
+  DESTINATION "${install_folder}/include/remill/Arch/X86/Runtime"
+)
+
+install(FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/AArch64/Runtime/State.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/AArch64/Runtime/Types.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/AArch64/Runtime/Operators.h"
+
+  DESTINATION "${install_folder}/include/remill/Arch/AArch64/Runtime"
+)
+
+install(FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Version/Version.h"
+  DESTINATION "${install_folder}/include/remill/Version"
 )
 
 #

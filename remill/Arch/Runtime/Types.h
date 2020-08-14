@@ -17,14 +17,13 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
 #include <limits>
 #include <type_traits>
 
 #if defined(__GNUG__) && !defined(__clang__)
-# define COMPILING_WITH_GCC 1
+#  define COMPILING_WITH_GCC 1
 #else
-# define COMPILING_WITH_GCC 0
+#  define COMPILING_WITH_GCC 0
 #endif
 
 #pragma clang diagnostic push
@@ -49,7 +48,7 @@ typedef int int128_t __attribute__((mode(TI)));
 typedef __uint128_t uint128_t;
 typedef __int128_t int128_t;
 #else
-# error "Cannot determine (u)int128_t type of unuspported architecture."
+#  error "Cannot determine (u)int128_t type of unuspported architecture."
 #endif
 
 static_assert(16 == sizeof(uint128_t), "Invalid `uint128_t` size.");
@@ -61,6 +60,9 @@ static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
 typedef double float64_t;
 static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
 
+typedef double float128_t;
+static_assert(8 == sizeof(float128_t), "Invalid `float128_t` size.");
+
 // TODO(pag): Assumes little endian.
 struct float80_t final {
   uint8_t data[10];
@@ -71,10 +73,10 @@ static_assert(10 == sizeof(float80_t), "Invalid `float80_t` size.");
 union nan32_t {
   float32_t f;
   struct {
-    uint32_t payload:22;
-    uint32_t is_quiet_nan:1;
-    uint32_t exponent:8;
-    uint32_t is_negative:1;
+    uint32_t payload : 22;
+    uint32_t is_quiet_nan : 1;
+    uint32_t exponent : 8;
+    uint32_t is_negative : 1;
   } __attribute__((packed));
 } __attribute__((packed));
 
@@ -84,10 +86,10 @@ static_assert(sizeof(float32_t) == sizeof(nan32_t),
 union nan64_t {
   float64_t d;
   struct {
-    uint64_t payload:51;
-    uint64_t is_quiet_nan:1;
-    uint64_t exponent:11;
-    uint64_t is_negative:1;
+    uint64_t payload : 51;
+    uint64_t is_quiet_nan : 1;
+    uint64_t exponent : 11;
+    uint64_t is_negative : 1;
   } __attribute__((packed));
 } __attribute__((packed));
 
@@ -154,26 +156,24 @@ union vec256_t;
 union vec512_t;
 
 #define MAKE_VECTOR(base_type, prefix, nelems, vec_size_bits, width_bytes) \
-    struct prefix ## v ## nelems ## _t final { \
-      base_type elems[nelems] ; \
-    } __attribute__((packed)); \
-    \
-    static_assert(width_bytes == sizeof(prefix ## v ## nelems ## _t), \
-        "Invalid definition of `" #prefix "v" #nelems "`."); \
-    \
-    static_assert((width_bytes * 8) == vec_size_bits, \
-        "Invalid definition of `" #prefix "v" #nelems "`."); \
-    \
-    template <> \
-    struct VectorType<prefix ## v ## nelems ## _t> { \
-      enum : size_t { \
-        kNumElems = nelems \
-      }; \
-      typedef base_type BT; \
-      typedef base_type BaseType; \
-      typedef vec ## vec_size_bits ## _t T; \
-      typedef vec ## vec_size_bits ## _t Type; \
-    };
+  struct prefix##v##nelems##_t final { \
+    base_type elems[nelems]; \
+  } __attribute__((packed)); \
+\
+  static_assert(width_bytes == sizeof(prefix##v##nelems##_t), \
+                "Invalid definition of `" #prefix "v" #nelems "`."); \
+\
+  static_assert((width_bytes * 8) == vec_size_bits, \
+                "Invalid definition of `" #prefix "v" #nelems "`."); \
+\
+  template <> \
+  struct VectorType<prefix##v##nelems##_t> { \
+    enum : std::size_t { kNumElems = nelems }; \
+    typedef base_type BT; \
+    typedef base_type BaseType; \
+    typedef vec##vec_size_bits##_t T; \
+    typedef vec##vec_size_bits##_t Type; \
+  };
 
 MAKE_VECTOR(uint8_t, uint8, 1, 8, 1)
 MAKE_VECTOR(uint8_t, uint8, 2, 16, 2)
@@ -249,7 +249,7 @@ MAKE_VECTOR(double, float64, 4, 256, 32);
 MAKE_VECTOR(double, float64, 8, 512, 64);
 
 #define NumVectorElems(val) \
-    static_cast<addr_t>(VectorType<decltype(val)>::kNumElems)
+  static_cast<addr_t>(VectorType<decltype(val)>::kNumElems)
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-private-field"
@@ -259,8 +259,7 @@ union vec8_t final {
   int8v1_t sbytes;
 } __attribute__((packed));
 
-static_assert(1 == sizeof(vec8_t),
-              "Invalid structure packing of `vec8_t`.");
+static_assert(1 == sizeof(vec8_t), "Invalid structure packing of `vec8_t`.");
 
 union vec16_t final {
   uint8v2_t bytes;
@@ -270,10 +269,10 @@ union vec16_t final {
   int16v1_t swords;
 } __attribute__((packed));
 
-static_assert(2 == sizeof(vec16_t),
-              "Invalid structure packing of `vec16_t`.");
+static_assert(2 == sizeof(vec16_t), "Invalid structure packing of `vec16_t`.");
 
 union vec32_t final {
+
   // Make this type look like an `[1 x i32]` to LLVM. This is important for
   // the cross-block alias analysis performed by remill-opt, as it enables
   // remill-opt to more easily handle false dependencies.
@@ -288,10 +287,10 @@ union vec32_t final {
   int32v1_t sdwords;
 } __attribute__((packed));
 
-static_assert(4 == sizeof(vec32_t),
-              "Invalid structure packing of `vec32_t`.");
+static_assert(4 == sizeof(vec32_t), "Invalid structure packing of `vec32_t`.");
 
 union vec64_t final {
+
   // Make this type look like an `[1 x i64]` to LLVM. This is important for
   // the cross-block alias analysis performed by remill-opt, as it enables
   // remill-opt to more easily handle false dependencies.
@@ -311,10 +310,10 @@ union vec64_t final {
 
 #pragma clang diagnostic pop
 
-static_assert(8 == sizeof(vec64_t),
-              "Invalid structure packing of `vec64_t`.");
+static_assert(8 == sizeof(vec64_t), "Invalid structure packing of `vec64_t`.");
 
 union vec128_t final {
+
   // Make this type look like an `[1 x i128]` to LLVM. This is important for
   // the cross-block alias analysis performed by remill-opt, as it enables
   // remill-opt to more easily handle false dependencies.
@@ -372,14 +371,13 @@ union vec512_t final {
   int128v4_t sdqwords;
 } __attribute__((packed));
 
-static_assert(64 == sizeof(vec512_t) &&
-              64 == sizeof(vec512_t().bytes) &&
-              64 == sizeof(vec512_t().words) &&
-              64 == sizeof(vec512_t().dwords) &&
-              64 == sizeof(vec512_t().qwords) &&
-              64 == sizeof(vec512_t().dqwords) &&
-              64 == sizeof(vec512_t().floats) &&
-              64 == sizeof(vec512_t().doubles),
+static_assert(64 == sizeof(vec512_t) && 64 == sizeof(vec512_t().bytes) &&
+                  64 == sizeof(vec512_t().words) &&
+                  64 == sizeof(vec512_t().dwords) &&
+                  64 == sizeof(vec512_t().qwords) &&
+                  64 == sizeof(vec512_t().dqwords) &&
+                  64 == sizeof(vec512_t().floats) &&
+                  64 == sizeof(vec512_t().doubles),
               "Invalid structure packing of `vec512_t`.");
 
 // An n-bit memory reference. This is implemented as an `addr_t`. Part of the
@@ -406,6 +404,9 @@ struct MVnW final {
   addr_t addr;
 };
 
+template <typename T, bool = sizeof(T) <= sizeof(addr_t)>
+struct Rn;
+
 // Note: We use `addr_t` as the internal type for `Rn` and `In` struct templates
 //       because this will be the default register size used for parameter
 //       passing in the underlying ABI that Clang chooses to use when converting
@@ -413,13 +414,18 @@ struct MVnW final {
 //       too small, e.g. `uint8_t` or `uint16_t` in a struct, is passed as an
 //       aligned pointer to a `byval` parameter.
 template <typename T>
-struct Rn final {
+struct Rn<T, true> final {
   const addr_t val;
 };
 
 template <typename T>
+struct Rn<T, false> final {
+  const T val;
+};
+
+template <typename T>
 struct RnW final {
-  T * const val_ref;
+  T *const val_ref;
 };
 
 template <>
@@ -434,12 +440,12 @@ struct Rn<float64_t> final {
 
 template <>
 struct RnW<float32_t> final {
-  float32_t * const val_ref;
+  float32_t *const val_ref;
 };
 
 template <>
 struct RnW<float64_t> final {
-  float64_t * const val_ref;
+  float64_t *const val_ref;
 };
 
 template <typename T>
@@ -479,12 +485,12 @@ struct RVnW;
 
 template <>
 struct RVnW<vec32_t> final {
-  uint32_t * const val_ref;
+  uint32_t *const val_ref;
 };
 
 template <>
 struct RVnW<vec64_t> final {
-  uint64_t * const val_ref;
+  uint64_t *const val_ref;
 };
 
 // A `void` pointer is used so that we can treat different vector types
@@ -492,12 +498,12 @@ struct RVnW<vec64_t> final {
 // in may be a pointer to a wider vector than was is specified by `T`.
 template <typename T>
 struct Vn final {
-  const void * const val;
+  const void *const val;
 };
 
 template <typename T>
 struct VnW final {
-  void * const val_ref;
+  void *const val_ref;
 };
 
 // Used to figure out the "base type" of an aggregate type (e.g. vector of BT)
@@ -568,41 +574,40 @@ template <typename T>
 struct UnsignedIntegerType;
 
 #define MAKE_SIGNED_INT_CHANGERS(signed_type, unsigned_type) \
-    static_assert(sizeof(signed_type) == sizeof(unsigned_type), \
-                  "Invalid int changer type type."); \
-    static_assert(is_signed<signed_type>::value != \
-                  is_signed<unsigned_type>::value, \
-                  "Sign match between int type and next int type."); \
-    template <> \
-    struct SignedIntegerType<unsigned_type> { \
-      typedef signed_type BT ; \
-    }; \
-    template <> \
-    struct SignedIntegerType<signed_type> { \
-      typedef signed_type BT ; \
-    }; \
-    template <> \
-    struct UnsignedIntegerType<signed_type> { \
-      typedef unsigned_type BT ; \
-    }; \
-    template <> \
-    struct UnsignedIntegerType<unsigned_type> { \
-      typedef unsigned_type BT ; \
-    };
+  static_assert(sizeof(signed_type) == sizeof(unsigned_type), \
+                "Invalid int changer type type."); \
+  static_assert( \
+      is_signed<signed_type>::value != is_signed<unsigned_type>::value, \
+      "Sign match between int type and next int type."); \
+  template <> \
+  struct SignedIntegerType<unsigned_type> { \
+    typedef signed_type BT; \
+  }; \
+  template <> \
+  struct SignedIntegerType<signed_type> { \
+    typedef signed_type BT; \
+  }; \
+  template <> \
+  struct UnsignedIntegerType<signed_type> { \
+    typedef unsigned_type BT; \
+  }; \
+  template <> \
+  struct UnsignedIntegerType<unsigned_type> { \
+    typedef unsigned_type BT; \
+  };
 
 #define MAKE_INT_TYPE(cur, next) \
-    static_assert(sizeof(next) == (2 * sizeof(cur)), \
-                  "Invalid next int type."); \
-    static_assert(is_signed<cur>::value == is_signed<next>::value, \
-                  "Sign mismatch between int type and next int type."); \
-    template <> \
-    struct NextLargerIntegerType<cur> { \
-      typedef next BT; \
-    }; \
-    template <> \
-    struct NextSmallerIntegerType<next> { \
-      typedef cur BT; \
-    };
+  static_assert(sizeof(next) == (2 * sizeof(cur)), "Invalid next int type."); \
+  static_assert(is_signed<cur>::value == is_signed<next>::value, \
+                "Sign mismatch between int type and next int type."); \
+  template <> \
+  struct NextLargerIntegerType<cur> { \
+    typedef next BT; \
+  }; \
+  template <> \
+  struct NextSmallerIntegerType<next> { \
+    typedef cur BT; \
+  };
 
 MAKE_SIGNED_INT_CHANGERS(int8_t, uint8_t)
 MAKE_SIGNED_INT_CHANGERS(int16_t, uint16_t)
@@ -657,9 +662,7 @@ struct IntegerType {
   typedef typename UnsignedIntegerType<WBT>::BT WUT;
   typedef typename SignedIntegerType<WBT>::BT WST;
 
-  enum : size_t {
-    kNumBits = sizeof(BT) * 8
-  };
+  enum : std::size_t { kNumBits = sizeof(BT) * 8 };
 };
 
 template <>
@@ -689,56 +692,56 @@ struct SizeTEquivalent<8> {
 template <>
 struct IntegerType<size_t> : public SizeTEquivalent<sizeof(size_t)>::T {};
 
-#endif // __APPLE__
+#endif  // __APPLE__
 
 #if !COMPILING_WITH_GCC
 
-inline uint8_t operator "" _u8(unsigned long long value) {
+inline uint8_t operator"" _u8(unsigned long long value) {
   return static_cast<uint8_t>(value);
 }
 
-inline uint16_t operator "" _u16(unsigned long long value) {
+inline uint16_t operator"" _u16(unsigned long long value) {
   return static_cast<uint16_t>(value);
 }
 
-inline uint32_t operator "" _u32(unsigned long long value) {
+inline uint32_t operator"" _u32(unsigned long long value) {
   return static_cast<uint32_t>(value);
 }
 
-inline uint64_t operator "" _u64(unsigned long long value) {
+inline uint64_t operator"" _u64(unsigned long long value) {
   return static_cast<uint64_t>(value);
 }
 
-inline uint64_t operator "" _addr_t(unsigned long long value) {
+inline uint64_t operator"" _addr_t(unsigned long long value) {
   return static_cast<addr_t>(value);
 }
 
-inline uint128_t operator "" _u128(unsigned long long value) {
+inline uint128_t operator"" _u128(unsigned long long value) {
   return static_cast<uint128_t>(value);
 }
 
 
-inline int8_t operator "" _s8(unsigned long long value) {
+inline int8_t operator"" _s8(unsigned long long value) {
   return static_cast<int8_t>(value);
 }
 
-inline int16_t operator "" _s16(unsigned long long value) {
+inline int16_t operator"" _s16(unsigned long long value) {
   return static_cast<int16_t>(value);
 }
 
-inline int32_t operator "" _s32(unsigned long long value) {
+inline int32_t operator"" _s32(unsigned long long value) {
   return static_cast<int32_t>(value);
 }
 
-inline int64_t operator "" _s64(unsigned long long value) {
+inline int64_t operator"" _s64(unsigned long long value) {
   return static_cast<int64_t>(value);
 }
 
-inline int128_t operator "" _s128(unsigned long long value) {
+inline int128_t operator"" _s128(unsigned long long value) {
   return static_cast<int128_t>(value);
 }
 
-#define auto_t(T) typename BaseType<T>::BT
+#  define auto_t(T) typename BaseType<T>::BT
 
 #endif  // COMPILING_WITH_GCC
 

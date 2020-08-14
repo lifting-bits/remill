@@ -244,16 +244,14 @@ DEF_ISEL_Rn_In(CMP_OrAX_IMMz, CMP);
 namespace {
 
 template <typename T, typename U, typename V>
-ALWAYS_INLINE static
-void WriteFlagsMul(State &state, T lhs, T rhs, U res, V res_trunc) {
+ALWAYS_INLINE static void WriteFlagsMul(State &state, T lhs, T rhs, U res,
+                                        V res_trunc) {
   const auto new_of = Overflow<tag_mul>::Flag(lhs, rhs, res);
   FLAG_CF = new_of;
   FLAG_PF = ParityFlag(res);  // Technically undefined.
   FLAG_AF = BUndefined();
   FLAG_ZF = BUndefined();
-  FLAG_SF = std::is_signed<T>::value ?
-      SignFlag(res_trunc) :
-      BUndefined();
+  FLAG_SF = std::is_signed<T>::value ? SignFlag(res_trunc) : BUndefined();
   FLAG_OF = new_of;
 }
 
@@ -292,53 +290,52 @@ DEF_SEM(MULX, D dst1, D dst2, const S2 src2) {
 }
 
 #define MAKE_MULxax(name, src1, dst1, dst2) \
-    template <typename S2> \
-    DEF_SEM(MUL ## name, S2 src2) { \
-      auto lhs = Read(src1); \
-      auto rhs = Read(src2); \
-      auto lhs_wide = ZExt(lhs); \
-      auto rhs_wide = ZExt(rhs); \
-      auto res = UMul(lhs_wide, rhs_wide); \
-      auto res_trunc = Trunc(res); \
-      auto shift = ZExt(BitSizeOf(src2)); \
-      WriteZExt(dst1, res_trunc); \
-      WriteZExt(dst2, Trunc(UShr(res, shift))); \
-      WriteFlagsMul(state, lhs, rhs, res, res_trunc); \
-      return memory; \
-    }
+  template <typename S2> \
+  DEF_SEM(MUL##name, S2 src2) { \
+    auto lhs = Read(src1); \
+    auto rhs = Read(src2); \
+    auto lhs_wide = ZExt(lhs); \
+    auto rhs_wide = ZExt(rhs); \
+    auto res = UMul(lhs_wide, rhs_wide); \
+    auto res_trunc = Trunc(res); \
+    auto shift = ZExt(BitSizeOf(src2)); \
+    WriteZExt(dst1, res_trunc); \
+    WriteZExt(dst2, Trunc(UShr(res, shift))); \
+    WriteFlagsMul(state, lhs, rhs, res, res_trunc); \
+    return memory; \
+  }
 
-MAKE_MULxax(al, REG_AL, REG_AL, REG_AH)
-MAKE_MULxax(ax, REG_AX, REG_AX, REG_DX)
-MAKE_MULxax(eax, REG_EAX, REG_XAX, REG_XDX)
-IF_64BIT(MAKE_MULxax(rax, REG_RAX, REG_RAX, REG_RDX))
+MAKE_MULxax(al, REG_AL, REG_AL, REG_AH) MAKE_MULxax(ax, REG_AX, REG_AX, REG_DX)
+    MAKE_MULxax(eax, REG_EAX, REG_XAX, REG_XDX)
+        IF_64BIT(MAKE_MULxax(rax, REG_RAX, REG_RAX, REG_RDX))
 
 #undef MAKE_MULxax
 
 #define MAKE_IMULxax(name, src1, dst1, dst2) \
-    template <typename S2> \
-    DEF_SEM(IMUL ## name, S2 src2) { \
-      auto lhs = Signed(Read(src1)); \
-      auto rhs = Signed(Read(src2)); \
-      auto lhs_wide = SExt(lhs); \
-      auto rhs_wide = SExt(rhs); \
-      auto res = SMul(lhs_wide, rhs_wide); \
-      auto res_trunc = Trunc(res); \
-      auto shift = ZExt(BitSizeOf(src2)); \
-      WriteZExt(dst1, Unsigned(res_trunc)); \
-      WriteZExt(dst2, Trunc(UShr(Unsigned(res), shift))); \
-      WriteFlagsMul(state, lhs, rhs, res, res_trunc); \
-      return memory; \
-    }
+  template <typename S2> \
+  DEF_SEM(IMUL##name, S2 src2) { \
+    auto lhs = Signed(Read(src1)); \
+    auto rhs = Signed(Read(src2)); \
+    auto lhs_wide = SExt(lhs); \
+    auto rhs_wide = SExt(rhs); \
+    auto res = SMul(lhs_wide, rhs_wide); \
+    auto res_trunc = Trunc(res); \
+    auto shift = ZExt(BitSizeOf(src2)); \
+    WriteZExt(dst1, Unsigned(res_trunc)); \
+    WriteZExt(dst2, Trunc(UShr(Unsigned(res), shift))); \
+    WriteFlagsMul(state, lhs, rhs, res, res_trunc); \
+    return memory; \
+  }
 
-MAKE_IMULxax(al, REG_AL, REG_AL, REG_AH)
-MAKE_IMULxax(ax, REG_AX, REG_AX, REG_DX)
-MAKE_IMULxax(eax, REG_EAX, REG_XAX, REG_XDX)
-IF_64BIT(MAKE_IMULxax(rax, REG_RAX, REG_RAX, REG_RDX))
+            MAKE_IMULxax(al, REG_AL, REG_AL, REG_AH)
+                MAKE_IMULxax(ax, REG_AX, REG_AX, REG_DX)
+                    MAKE_IMULxax(eax, REG_EAX, REG_XAX, REG_XDX)
+                        IF_64BIT(MAKE_IMULxax(rax, REG_RAX, REG_RAX, REG_RDX))
 
 #undef MAKE_IMULxax
 
-template <typename D, typename S1, typename S2>
-DEF_SEM(MULPS, D dst, S1 src1, S2 src2) {
+                            template <typename D, typename S1, typename S2>
+                            DEF_SEM(MULPS, D dst, S1 src1, S2 src2) {
   FWriteV32(dst, FMulV32(FReadV32(src1), FReadV32(src2)));
   return memory;
 }
@@ -437,13 +434,17 @@ namespace {
 // TODO(pag): Is the checking of `res` against `res_trunc` worth it? It
 //            introduces extra control flow.
 #define MAKE_DIVxax(name, src1, src2, dst1, dst2) \
-    template <typename S3> \
-    DEF_SEM(DIV ## name, S3 src3) { \
-      auto lhs_low = ZExt(Read(src1)); \
-      auto lhs_high = ZExt(Read(src2)); \
-      auto rhs = ZExt(Read(src3)); \
-      auto shift = ZExt(BitSizeOf(src3)); \
-      auto lhs = UOr(UShl(lhs_high, shift), lhs_low); \
+  template <typename S3> \
+  DEF_SEM(DIV##name, S3 src3, PC next_pc) { \
+    auto lhs_low = ZExt(Read(src1)); \
+    auto lhs_high = ZExt(Read(src2)); \
+    auto rhs = ZExt(Read(src3)); \
+    auto shift = ZExt(BitSizeOf(src3)); \
+    auto lhs = UOr(UShl(lhs_high, shift), lhs_low); \
+    WriteZExt(REG_PC, Read(next_pc)); \
+    if (IsZero(rhs)) { \
+      StopFailure(); \
+    } else { \
       auto quot = UDiv(lhs, rhs); \
       auto rem = URem(lhs, rhs); \
       auto quot_trunc = Trunc(quot); \
@@ -456,25 +457,30 @@ namespace {
         ClearArithFlags(); \
         return memory; \
       } \
-    }
+    } \
+  }
 
 MAKE_DIVxax(ax, REG_AL, REG_AH, REG_AL, REG_AH)
-MAKE_DIVxax(dxax, REG_AX, REG_DX, REG_AX, REG_DX)
-MAKE_DIVxax(edxeax, REG_EAX, REG_EDX, REG_XAX, REG_XDX)
-IF_64BIT(MAKE_DIVxax(rdxrax, REG_RAX, REG_RDX, REG_RAX, REG_RDX))
+    MAKE_DIVxax(dxax, REG_AX, REG_DX, REG_AX, REG_DX)
+        MAKE_DIVxax(edxeax, REG_EAX, REG_EDX, REG_XAX, REG_XDX)
+            IF_64BIT(MAKE_DIVxax(rdxrax, REG_RAX, REG_RDX, REG_RAX, REG_RDX))
 
 #undef MAKE_DIVxax
 
 // TODO(pag): Is the checking of `res` against `res_trunc` worth it? It
 //            introduces extra control flow.
 #define MAKE_IDIVxax(name, src1, src2, dst1, dst2) \
-    template <typename S3> \
-    DEF_SEM(IDIV ## name, S3 src3) { \
-      auto lhs_low = ZExt(Read(src1)); \
-      auto lhs_high = ZExt(Read(src2)); \
-      auto rhs = SExt(Read(src3)); \
-      auto shift = ZExt(BitSizeOf(src3)); \
-      auto lhs = Signed(UOr(UShl(lhs_high, shift), lhs_low)); \
+  template <typename S3> \
+  DEF_SEM(IDIV##name, S3 src3, PC next_pc) { \
+    auto lhs_low = ZExt(Read(src1)); \
+    auto lhs_high = ZExt(Read(src2)); \
+    auto rhs = SExt(Read(src3)); \
+    auto shift = ZExt(BitSizeOf(src3)); \
+    auto lhs = Signed(UOr(UShl(lhs_high, shift), lhs_low)); \
+    WriteZExt(REG_PC, Read(next_pc)); \
+    if (IsZero(rhs)) { \
+      StopFailure(); \
+    } else { \
       auto quot = SDiv(lhs, rhs); \
       auto rem = SRem(lhs, rhs); \
       auto quot_trunc = Trunc(quot); \
@@ -487,12 +493,14 @@ IF_64BIT(MAKE_DIVxax(rdxrax, REG_RAX, REG_RDX, REG_RAX, REG_RDX))
         ClearArithFlags(); \
         return memory; \
       } \
-    }
+    } \
+  }
 
-MAKE_IDIVxax(ax, REG_AL, REG_AH, REG_AL, REG_AH)
-MAKE_IDIVxax(dxax, REG_AX, REG_DX, REG_AX, REG_DX)
-MAKE_IDIVxax(edxeax, REG_EAX, REG_EDX, REG_XAX, REG_XDX)
-IF_64BIT(MAKE_IDIVxax(rdxrax, REG_RAX, REG_RDX, REG_RAX, REG_RDX))
+                MAKE_IDIVxax(ax, REG_AL, REG_AH, REG_AL, REG_AH)
+                    MAKE_IDIVxax(dxax, REG_AX, REG_DX, REG_AX, REG_DX)
+                        MAKE_IDIVxax(edxeax, REG_EAX, REG_EDX, REG_XAX, REG_XDX)
+                            IF_64BIT(MAKE_IDIVxax(rdxrax, REG_RAX, REG_RDX,
+                                                  REG_RAX, REG_RDX))
 
 #undef MAKE_IDIVxax
 

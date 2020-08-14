@@ -100,9 +100,9 @@ namespace {
 
 template <typename D, typename S>
 DEF_SEM(CLZ, D dst, S src) {
-    auto count = CountLeadingZeros(Read(src));
-    WriteZExt(dst, count);
-    return memory;
+  auto count = CountLeadingZeros(Read(src));
+  WriteZExt(dst, count);
+  return memory;
 }
 }  // namespace
 
@@ -114,8 +114,7 @@ namespace {
 DEF_SEM(REV16_32, R32W dst, R32 src) {
   vec32_t v = {};
   v.dwords.elems[0] = Read(src);
-  _Pragma("unroll")
-  for (auto &word : v.words.elems) {
+  _Pragma("unroll") for (auto &word : v.words.elems) {
     word = __builtin_bswap16(word);
   }
   WriteZExt(dst, v.dwords.elems[0]);
@@ -125,8 +124,7 @@ DEF_SEM(REV16_32, R32W dst, R32 src) {
 DEF_SEM(REV16_64, R64W dst, R64 src) {
   vec64_t v = {};
   v.qwords.elems[0] = Read(src);
-  _Pragma("unroll")
-  for (auto &word : v.words.elems) {
+  _Pragma("unroll") for (auto &word : v.words.elems) {
     word = __builtin_bswap16(word);
   }
   Write(dst, v.qwords.elems[0]);
@@ -141,8 +139,7 @@ DEF_SEM(REV32_32, R32W dst, R32 src) {
 DEF_SEM(REV32_64, R64W dst, R64 src) {
   vec64_t v = {};
   v.qwords.elems[0] = Read(src);
-  _Pragma("unroll")
-  for (auto &dword : v.dwords.elems) {
+  _Pragma("unroll") for (auto &dword : v.dwords.elems) {
     dword = __builtin_bswap32(dword);
   }
   Write(dst, v.qwords.elems[0]);
@@ -157,15 +154,14 @@ DEF_SEM(REV64, R64W dst, R64 src) {
 template <typename T, size_t n>
 ALWAYS_INLINE static T ReverseBits(T v) {
   T rv = 0;
-  _Pragma("unroll")
-  for (size_t i = 0; i < n; ++i, v >>= 1) {
+  _Pragma("unroll") for (size_t i = 0; i < n; ++i, v >>= 1) {
     rv = (rv << T(1)) | (v & T(1));
   }
   return rv;
 }
 
 #if !__has_builtin(__builtin_bitreverse32)
-# define __builtin_bitreverse32(x) ReverseBits<uint32_t, 32>(x)
+#  define __builtin_bitreverse32(x) ReverseBits<uint32_t, 32>(x)
 #endif
 
 DEF_SEM(RBIT32, R32W dst, R32 src) {
@@ -175,7 +171,7 @@ DEF_SEM(RBIT32, R32W dst, R32 src) {
 
 
 #if !__has_builtin(__builtin_bitreverse64)
-# define __builtin_bitreverse64(x) ReverseBits<uint64_t, 64>(x)
+#  define __builtin_bitreverse64(x) ReverseBits<uint64_t, 64>(x)
 #endif
 
 DEF_SEM(RBIT64, R64W dst, R64 src) {

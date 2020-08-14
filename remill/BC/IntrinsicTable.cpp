@@ -14,27 +14,25 @@
  * limitations under the License.
  */
 
+#include "remill/BC/IntrinsicTable.h"
+
 #include <glog/logging.h>
-
-#include <vector>
-
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
 
-#include "remill/BC/IntrinsicTable.h"
+#include <vector>
+
 #include "remill/BC/Util.h"
 
 namespace remill {
 namespace {
 
 // Find a specific function.
-static llvm::Function *FindIntrinsic(llvm::Module *module,
-                                     const char *name) {
+static llvm::Function *FindIntrinsic(llvm::Module *module, const char *name) {
   auto function = FindFunction(module, name);
-  CHECK(nullptr != function)
-      << "Unable to find intrinsic: " << name;
+  CHECK(nullptr != function) << "Unable to find intrinsic: " << name;
 
   // We don't want calls to memory intrinsics to be duplicated because then
   // they might have the wrong side effects!
@@ -70,14 +68,12 @@ IntrinsicTable::IntrinsicTable(llvm::Module *module)
 
       // Control-flow.
       function_call(FindIntrinsic(module, "__remill_function_call")),
-      function_return(FindIntrinsic(
-          module, "__remill_function_return")),
+      function_return(FindIntrinsic(module, "__remill_function_return")),
       jump(FindIntrinsic(module, "__remill_jump")),
       missing_block(FindIntrinsic(module, "__remill_missing_block")),
 
       // OS interaction.
-      async_hyper_call(FindIntrinsic(
-          module, "__remill_async_hyper_call")),
+      async_hyper_call(FindIntrinsic(module, "__remill_async_hyper_call")),
 
       // Memory access.
       read_memory_8(FindPureIntrinsic(module, "__remill_read_memory_8")),
@@ -93,29 +89,33 @@ IntrinsicTable::IntrinsicTable(llvm::Module *module)
       read_memory_f32(FindPureIntrinsic(module, "__remill_read_memory_f32")),
       read_memory_f64(FindPureIntrinsic(module, "__remill_read_memory_f64")),
       read_memory_f80(FindPureIntrinsic(module, "__remill_read_memory_f80")),
+      read_memory_f128(FindPureIntrinsic(module, "__remill_read_memory_f128")),
 
       write_memory_f32(FindPureIntrinsic(module, "__remill_write_memory_f32")),
       write_memory_f64(FindPureIntrinsic(module, "__remill_write_memory_f64")),
-      write_memory_f80(FindPureIntrinsic(
-          module, "__remill_write_memory_f80")),
+      write_memory_f80(FindPureIntrinsic(module, "__remill_write_memory_f80")),
+      write_memory_f128(
+          FindPureIntrinsic(module, "__remill_write_memory_f128")),
 
       // Memory barriers.
-      barrier_load_load(FindPureIntrinsic(
-          module, "__remill_barrier_load_load")),
-      barrier_load_store(FindPureIntrinsic(
-          module, "__remill_barrier_load_store")),
-      barrier_store_load(FindPureIntrinsic(
-          module, "__remill_barrier_store_load")),
-      barrier_store_store(FindPureIntrinsic(
-          module, "__remill_barrier_store_store")),
+      barrier_load_load(
+          FindPureIntrinsic(module, "__remill_barrier_load_load")),
+      barrier_load_store(
+          FindPureIntrinsic(module, "__remill_barrier_load_store")),
+      barrier_store_load(
+          FindPureIntrinsic(module, "__remill_barrier_store_load")),
+      barrier_store_store(
+          FindPureIntrinsic(module, "__remill_barrier_store_store")),
       atomic_begin(FindPureIntrinsic(module, "__remill_atomic_begin")),
       atomic_end(FindPureIntrinsic(module, "__remill_atomic_end")),
+      delay_slot_begin(FindPureIntrinsic(module, "__remill_delay_slot_begin")),
+      delay_slot_end(FindPureIntrinsic(module, "__remill_delay_slot_end")),
 
-//      // Optimization guides.
-//      //
-//      // Note:  NOT pure! This is a total hack: we call an unpure function
-//      //        within a pure one so that it is not optimized out!
-//      defer_inlining(FindIntrinsic(module, "__remill_defer_inlining")),
+      //      // Optimization guides.
+      //      //
+      //      // Note:  NOT pure! This is a total hack: we call an unpure function
+      //      //        within a pure one so that it is not optimized out!
+      //      defer_inlining(FindIntrinsic(module, "__remill_defer_inlining")),
 
       // Optimization enablers.
       undefined_8(FindPureIntrinsic(module, "__remill_undefined_8")),

@@ -20,17 +20,22 @@ namespace {
 
 static void SerializeFlags(State &state) {
   state.rflag.cf = state.aflag.cf;
+
   //state.rflag.must_be_1 = 1;
   state.rflag.pf = state.aflag.pf;
+
   //state.rflag.must_be_0a = 0;
   state.rflag.af = state.aflag.af;
+
   //state.rflag.must_be_0b = 0;
   state.rflag.zf = state.aflag.zf;
   state.rflag.sf = state.aflag.sf;
+
   //state.rflag.tf = 0;  // Trap flag (not single-stepping).
   //state.rflag._if = 1;  // Interrupts are enabled (assumes user mode).
   state.rflag.df = state.aflag.df;
   state.rflag.of = state.aflag.of;
+
   //state.rflag.iopl = 0;  // In user-mode. TODO(pag): Configurable?
   //state.rflag.nt = 0;  // Not running in a nested task (interrupted interrupt).
   //state.rflag.must_be_0c = 0;
@@ -48,7 +53,7 @@ static void SerializeFlags(State &state) {
 namespace {
 
 template <typename T>
-DEF_HELPER(PushToStack, T val) -> void {
+DEF_HELPER(PushToStack, T val)->void {
   addr_t op_size = ZExtTo<addr_t>(ByteSizeOf(val));
   addr_t old_xsp = Read(REG_XSP);
   addr_t new_xsp = USub(old_xsp, op_size);

@@ -15,9 +15,9 @@
  */
 
 #pragma once
-#include "remill/BC/Version.h"
-
 #include <llvm/IR/GlobalValue.h>
+
+#include "remill/BC/Version.h"
 
 namespace remill {
 

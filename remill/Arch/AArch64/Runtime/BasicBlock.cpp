@@ -18,8 +18,8 @@
 #include <bitset>
 #include <cmath>
 
-#include "remill/Arch/Float.h"
 #include "remill/Arch/AArch64/Runtime/State.h"
+#include "remill/Arch/Float.h"
 
 extern "C" {
 
@@ -31,12 +31,15 @@ extern "C" {
                                            Memory *memory) {
   bool branch_taken = false;
   addr_t monitor = 0;
+  addr_t return_pc = 0;
 
   // Note: These variables MUST be defined for all architectures.
   auto &STATE = state;
   auto &MEMORY = *memory;
   auto &PC = state.gpr.pc.qword;
+  auto &NEXT_PC = curr_pc;
   auto &BRANCH_TAKEN = branch_taken;
+  auto &RETURN_PC = return_pc;
 
   // `PC` should already have the correct value, but it's nice to make sure
   // that `curr_pc` is used throughout, as it helps with certain downstream
@@ -137,13 +140,13 @@ extern "C" {
 
   uint32_t zero1 = 0;
   auto &WZR = zero1;
-  
+
   uint64_t zero2 = 0;
   auto &XZR = zero2;
 
   uint32_t ignored1 = 0;
   auto &IGNORE_WRITE_TO_WZR = ignored1;
-  
+
   uint64_t ignored2 = 0;
   auto &IGNORE_WRITE_TO_XZR = ignored2;
 

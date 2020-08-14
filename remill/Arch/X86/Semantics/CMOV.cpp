@@ -19,10 +19,8 @@
 namespace {
 template <typename D, typename S1>
 DEF_SEM(CMOVNLE, D dst, S1 src1) {
-  WriteZExt(dst, Select(
-      BAnd(BNot(FLAG_ZF), BXnor(FLAG_SF, FLAG_OF)),
-      Read(src1),
-      TruncTo<S1>(Read(dst))));
+  WriteZExt(dst, Select(BAnd(BNot(FLAG_ZF), BXnor(FLAG_SF, FLAG_OF)),
+                        Read(src1), TruncTo<S1>(Read(dst))));
   return memory;
 }
 
@@ -34,10 +32,8 @@ DEF_SEM(CMOVNS, D dst, S1 src1) {
 
 template <typename D, typename S1>
 DEF_SEM(CMOVL, D dst, S1 src1) {
-  WriteZExt(dst, Select(
-      BXor(FLAG_SF, FLAG_OF),
-      Read(src1),
-      TruncTo<S1>(Read(dst))));
+  WriteZExt(dst,
+            Select(BXor(FLAG_SF, FLAG_OF), Read(src1), TruncTo<S1>(Read(dst))));
   return memory;
 }
 
@@ -68,28 +64,22 @@ DEF_SEM(CMOVNO, D dst, S1 src1) {
 
 template <typename D, typename S1>
 DEF_SEM(CMOVNL, D dst, S1 src1) {
-  WriteZExt(dst, Select(
-      BXnor(FLAG_SF, FLAG_OF),
-      Read(src1),
-      TruncTo<S1>(Read(dst))));
+  WriteZExt(
+      dst, Select(BXnor(FLAG_SF, FLAG_OF), Read(src1), TruncTo<S1>(Read(dst))));
   return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(CMOVNBE, D dst, S1 src1) {
-  WriteZExt(dst, Select(
-      BNot(BOr(FLAG_CF, FLAG_ZF)),
-      Read(src1),
-      TruncTo<S1>(Read(dst))));
+  WriteZExt(dst, Select(BNot(BOr(FLAG_CF, FLAG_ZF)), Read(src1),
+                        TruncTo<S1>(Read(dst))));
   return memory;
 }
 
 template <typename D, typename S1>
 DEF_SEM(CMOVBE, D dst, S1 src1) {
-  WriteZExt(dst, Select(
-      BOr(FLAG_CF, FLAG_ZF),
-      Read(src1),
-      TruncTo<S1>(Read(dst))));
+  WriteZExt(dst,
+            Select(BOr(FLAG_CF, FLAG_ZF), Read(src1), TruncTo<S1>(Read(dst))));
   return memory;
 }
 
@@ -125,10 +115,8 @@ DEF_SEM(CMOVB, D dst, S1 src1) {
 
 template <typename D, typename S1>
 DEF_SEM(CMOVLE, D dst, S1 src1) {
-  WriteZExt(dst, Select(
-      BOr(FLAG_ZF, BXor(FLAG_SF, FLAG_OF)),
-      Read(src1),
-      TruncTo<S1>(Read(dst))));
+  WriteZExt(dst, Select(BOr(FLAG_ZF, BXor(FLAG_SF, FLAG_OF)), Read(src1),
+                        TruncTo<S1>(Read(dst))));
   return memory;
 }
 

@@ -259,16 +259,17 @@ DEF_SEM(BSWAP_16, R16W dst, R16 src) {
 }
 
 DEF_SEM(BSWAP_32, R32W dst, R32 src) {
-//  auto val = Read(src);
-//  auto d = UAnd(val, 0xff);
-//  auto c = UAnd(UShr(val, 8), 0xff);
-//  auto b = UAnd(UShr(val, 16), 0xff);
-//  auto a = UAnd(UShr(val, 24), 0xff);
-//  auto new_a = UShl(d, 24);
-//  auto new_b = UShl(c, 16);
-//  auto new_c = UShl(b, 8);
-//  auto new_d = a;
-//  WriteZExt(dst, UOr(UOr(new_a, new_b), UOr(new_c, new_d)));
+
+  //  auto val = Read(src);
+  //  auto d = UAnd(val, 0xff);
+  //  auto c = UAnd(UShr(val, 8), 0xff);
+  //  auto b = UAnd(UShr(val, 16), 0xff);
+  //  auto a = UAnd(UShr(val, 24), 0xff);
+  //  auto new_a = UShl(d, 24);
+  //  auto new_b = UShl(c, 16);
+  //  auto new_c = UShl(b, 8);
+  //  auto new_d = a;
+  //  WriteZExt(dst, UOr(UOr(new_a, new_b), UOr(new_c, new_d)));
   WriteZExt(dst, __builtin_bswap32(Read(src)));
   return memory;
 }

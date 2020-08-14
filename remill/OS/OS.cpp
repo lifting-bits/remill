@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Trail of Bits, Inc.
+ * Copyright (c) 2020 Trail of Bits, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,36 @@
  * limitations under the License.
  */
 
-#include <glog/logging.h>
-#include <gflags/gflags.h>
-
 #include "remill/OS/OS.h"
 
-DEFINE_string(os, REMILL_OS, "Operating system name of the code being "
-                             "translated. Valid OSes: linux, macos, windows.");
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+#include <llvm/ADT/Triple.h>
+
+DEFINE_string(os, REMILL_OS,
+              "Operating system name of the code being "
+              "translated. Valid OSes: linux, macos, windows, solaris.");
 
 namespace remill {
+
+OSName GetOSName(const llvm::Triple &triple) {
+  switch (triple.getOS()) {
+    case llvm::Triple::OSType::MacOSX: return kOSmacOS;
+    case llvm::Triple::OSType::Linux: return kOSLinux;
+    case llvm::Triple::OSType::Win32: return kOSWindows;
+    case llvm::Triple::OSType::Solaris: return kOSSolaris;
+    default: break;
+  }
+
+  switch (triple.getObjectFormat()) {
+    case llvm::Triple::ObjectFormatType::MachO: return kOSmacOS;
+    case llvm::Triple::ObjectFormatType::ELF: return kOSLinux;
+    case llvm::Triple::ObjectFormatType::COFF: return kOSWindows;
+    default: break;
+  }
+
+  return kOSInvalid;
+}
 
 OSName GetOSName(std::string name) {
   if (name == "macos") {
@@ -31,8 +52,8 @@ OSName GetOSName(std::string name) {
     return kOSLinux;
   } else if (name == "windows") {
     return kOSWindows;
-  } else if (name == "vxworks") {
-    return kOSVxWorks;
+  } else if (name == "solaris") {
+    return kOSSolaris;
   } else {
     return kOSInvalid;
   }
@@ -40,16 +61,11 @@ OSName GetOSName(std::string name) {
 
 std::string GetOSName(OSName name) {
   switch (name) {
-    case kOSInvalid:
-      return "invalid";
-    case kOSmacOS:
-      return "macos";
-    case kOSLinux:
-      return "linux";
-    case kOSWindows:
-      return "windows";
-    case kOSVxWorks:
-      return "vxworks";
+    case kOSInvalid: return "invalid";
+    case kOSmacOS: return "macos";
+    case kOSLinux: return "linux";
+    case kOSWindows: return "windows";
+    case kOSSolaris: return "solaris";
   }
   return "invalid";
 }

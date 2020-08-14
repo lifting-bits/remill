@@ -20,29 +20,29 @@
 #include <cerrno>
 #include <climits>
 #include <cstdlib>
-#include <vector>
 #include <fstream>
+#include <vector>
 
 #ifndef WIN32
-# include <dirent.h>
-# include <fcntl.h>
-# include <sys/stat.h>
-# include <unistd.h>
+#  include <dirent.h>
+#  include <fcntl.h>
+#  include <sys/stat.h>
+#  include <unistd.h>
 #endif
 
 #include "remill/OS/FileSystem.h"
 #include "remill/OS/OS.h"
 
 #if REMILL_ON_MACOS
-# ifndef _DARWIN_USE_64_BIT_INODE
-#   define _DARWIN_USE_64_BIT_INODE 1
-# endif
-# define stat64 stat
-# define fstat64 fstat
+#  ifndef _DARWIN_USE_64_BIT_INODE
+#    define _DARWIN_USE_64_BIT_INODE 1
+#  endif
+#  define stat64 stat
+#  define fstat64 fstat
 #endif
 
 #if defined(_MAX_PATH) && !defined(PATH_MAX)
-# define PATH_MAX _MAX_PATH
+#  define PATH_MAX _MAX_PATH
 #endif
 
 // Do not include windows.h, or its macros will end up shadowing our functions
@@ -73,13 +73,20 @@ struct WIN32_FIND_DATA {
   char cAlternateFileName[14];
 };
 
-extern "C" int CreateDirectoryA(const char *path_name, void *security_attributes);
-extern "C" std::uint32_t GetCurrentDirectoryA(std::uint32_t buffer_length, char *buffer);
+extern "C" int CreateDirectoryA(const char *path_name,
+                                void *security_attributes);
+extern "C" std::uint32_t GetCurrentDirectoryA(std::uint32_t buffer_length,
+                                              char *buffer);
 extern "C" std::uint32_t GetFileAttributesA(const char *file_name);
-extern "C" int CopyFileA(const char *existing_file_name, const char *new_file_name, int file_if_exists);
-extern "C" int CreateHardLinkA(const char *file_name, const char *existing_file_name, void *security_attributes);
-extern "C" std::uint32_t FindFirstFileA(const char *file_name, WIN32_FIND_DATA *find_data);
-extern "C" std::uint32_t FindNextFileA(std::uint32_t handle, WIN32_FIND_DATA *find_data);
+extern "C" int CopyFileA(const char *existing_file_name,
+                         const char *new_file_name, int file_if_exists);
+extern "C" int CreateHardLinkA(const char *file_name,
+                               const char *existing_file_name,
+                               void *security_attributes);
+extern "C" std::uint32_t FindFirstFileA(const char *file_name,
+                                        WIN32_FIND_DATA *find_data);
+extern "C" std::uint32_t FindNextFileA(std::uint32_t handle,
+                                       WIN32_FIND_DATA *find_data);
 extern "C" int FindClose(std::uint32_t handle);
 extern "C" std::uint32_t GetLastError();
 
@@ -108,7 +115,7 @@ int link(const char *path1, const char *path2) {
 
   return 0;
 }
-}
+}  // namespace
 #endif
 
 namespace remill {
@@ -184,8 +191,7 @@ bool FileExists(const std::string &path) {
 
   struct stat64 file_info = {};
   return stat64(path.c_str(), &file_info) == 0 &&
-         (S_ISREG(file_info.st_mode) ||
-          S_ISFIFO(file_info.st_mode));
+         (S_ISREG(file_info.st_mode) || S_ISFIFO(file_info.st_mode));
 }
 
 uint64_t FileSize(int fd) {
@@ -214,8 +220,7 @@ void ForEachFileInDirectory(const std::string &dir_name,
                             DirectoryVisitor visitor) {
   std::vector<std::string> paths;
   auto dir = opendir(dir_name.c_str());
-  CHECK(dir != nullptr)
-      << "Could not list the " << dir_name << " directory";
+  CHECK(dir != nullptr) << "Could not list the " << dir_name << " directory";
 
   while (auto ent = readdir(dir)) {
     if (!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..")) {
@@ -246,8 +251,8 @@ bool TryCreateDirectory(const std::string &dir_name) {
 std::string CurrentWorkingDirectory(void) {
   char result[PATH_MAX] = {};
   auto res = getcwd(result, PATH_MAX);
-  CHECK(res)
-      << "Could not determine current working directory: " << strerror(errno);
+  CHECK(res) << "Could not determine current working directory: "
+             << strerror(errno);
   return std::string(result);
 }
 
@@ -259,9 +264,8 @@ bool RenameFile(const std::string &from_path, const std::string &to_path) {
   auto ret = rename(from_path.c_str(), to_path.c_str());
   auto err = errno;
   if (-1 == ret) {
-    LOG(ERROR)
-        << "Unable to rename " << from_path << " to " << to_path
-        << ": " << strerror(err);
+    LOG(ERROR) << "Unable to rename " << from_path << " to " << to_path << ": "
+               << strerror(err);
     return false;
   } else {
     return true;
@@ -270,9 +274,7 @@ bool RenameFile(const std::string &from_path, const std::string &to_path) {
 
 #ifndef WIN32
 namespace {
-enum : size_t {
-  kCopyDataSize = 4096ULL
-};
+enum : size_t { kCopyDataSize = 4096ULL };
 
 static uint8_t gCopyData[kCopyDataSize];
 }  // namespace
@@ -281,9 +283,8 @@ static uint8_t gCopyData[kCopyDataSize];
 #ifdef WIN32
 void CopyFile(const std::string &from_path, const std::string &to_path) {
   if (CopyFileA(from_path.data(), to_path.data(), false) == 0) {
-    LOG(FATAL)
-      << "Unable to copy all data read from " << from_path
-      << " to " << to_path;
+    LOG(FATAL) << "Unable to copy all data read from " << from_path << " to "
+               << to_path;
   }
 }
 
@@ -291,28 +292,26 @@ void CopyFile(const std::string &from_path, const std::string &to_path) {
 void CopyFile(const std::string &from_path, const std::string &to_path) {
   unlink(to_path.c_str());
   auto from_fd = open(from_path.c_str(), O_RDONLY);
-  CHECK(-1 != from_fd)
-      << "Unable to open source file " << from_path
-      << " for copying: " << strerror(errno);
+  CHECK(-1 != from_fd) << "Unable to open source file " << from_path
+                       << " for copying: " << strerror(errno);
 
   auto to_fd = open(to_path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0666);
-  CHECK(-1 != to_fd)
-      << "Unable to open destination file " << to_path
-      << " for copying: " << strerror(errno);
+  CHECK(-1 != to_fd) << "Unable to open destination file " << to_path
+                     << " for copying: " << strerror(errno);
 
   auto file_size = FileSize(from_path);
   int errno_copy = 0;
 
   do {
-    auto num_read = read(
-        from_fd, &(gCopyData[0]), std::min<size_t>(kCopyDataSize, file_size));
+    auto num_read = read(from_fd, &(gCopyData[0]),
+                         std::min<size_t>(kCopyDataSize, file_size));
     if (-1 == num_read) {
       errno_copy = errno;
       break;
     }
 
-    auto num_written = write(
-        to_fd, &(gCopyData[0]), static_cast<size_t>(num_read));
+    auto num_written =
+        write(to_fd, &(gCopyData[0]), static_cast<size_t>(num_read));
 
     if (num_written != num_read) {
       errno_copy = errno;
@@ -327,9 +326,8 @@ void CopyFile(const std::string &from_path, const std::string &to_path) {
 
   if (errno_copy) {
     unlink(to_path.c_str());
-    LOG(FATAL)
-        << "Unable to copy all data read from " << from_path
-        << " to " << to_path << ": " << strerror(errno_copy);
+    LOG(FATAL) << "Unable to copy all data read from " << from_path << " to "
+               << to_path << ": " << strerror(errno_copy);
   }
 }
 #endif
@@ -341,9 +339,8 @@ void HardLinkOrCopyFile(const std::string &from_path,
     return;
   }
 
-  DLOG(WARNING)
-      << "Unable to link " << to_path << " to "
-      << from_path << ": " << strerror(errno);
+  DLOG(WARNING) << "Unable to link " << to_path << " to " << from_path << ": "
+                << strerror(errno);
 
   CopyFile(from_path, to_path);
 }
@@ -365,9 +362,8 @@ std::string CanonicalPath(const std::string &path) {
   auto err = errno;
 #endif
   if (!canon_path_c) {
-    DLOG(WARNING)
-        << "Cannot compute full path of " << path
-        << ": " << strerror(err);
+    DLOG(WARNING) << "Cannot compute full path of " << path << ": "
+                  << strerror(err);
     return path;
   } else {
     std::string canon_path(canon_path_c);

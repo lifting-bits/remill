@@ -14,49 +14,48 @@
  * limitations under the License.
  */
 
+#include "remill/BC/Optimizer.h"
+
 #include <glog/logging.h>
-
 #include <llvm/ADT/Triple.h>
-
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/DebugInfo.h>
-#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Metadata.h>
+#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/MDBuilder.h>
+#include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
-
 #include <llvm/Transforms/IPO.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 #include <llvm/Transforms/Scalar.h>
-#include <llvm/Transforms/Utils/Local.h>
 #include <llvm/Transforms/Utils/Cloning.h>
+#include <llvm/Transforms/Utils/Local.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
 
+#include "remill/Arch/Arch.h"
+#include "remill/BC/Compat/ScalarTransforms.h"
 #include "remill/BC/Compat/TargetLibraryInfo.h"
-
 #include "remill/BC/DeadStoreEliminator.h"
-#include "remill/BC/Optimizer.h"
 #include "remill/BC/Util.h"
 
 namespace remill {
 
-void OptimizeModule(llvm::Module *module,
+void OptimizeModule(const remill::Arch *arch, llvm::Module *module,
                     std::function<llvm::Function *(void)> generator,
                     OptimizationGuide guide) {
 
   auto bb_func = BasicBlockFunction(module);
-  auto slots = StateSlots(module);
+  auto slots = StateSlots(arch, module);
 
   llvm::legacy::FunctionPassManager func_manager(module);
   llvm::legacy::PassManager module_manager;
 
-  auto TLI = new llvm::TargetLibraryInfoImpl(
-      llvm::Triple(module->getTargetTriple()));
+  auto TLI =
+      new llvm::TargetLibraryInfoImpl(llvm::Triple(module->getTargetTriple()));
 
   TLI->disableAllFunctions();  // `-fno-builtin`.
 
@@ -87,7 +86,7 @@ void OptimizeModule(llvm::Module *module,
   module_manager.run(*module);
 
   if (guide.eliminate_dead_stores) {
-    RemoveDeadStores(module, bb_func, slots);
+    RemoveDeadStores(arch, module, bb_func, slots);
   }
 }
 
@@ -96,14 +95,13 @@ void OptimizeModule(llvm::Module *module,
 //
 // NOTE(pag): It is an error to specify `guide.eliminate_dead_stores` as
 //            `true`.
-void OptimizeBareModule(
-    llvm::Module *module, OptimizationGuide guide) {
+void OptimizeBareModule(llvm::Module *module, OptimizationGuide guide) {
   CHECK(!guide.eliminate_dead_stores);
   llvm::legacy::FunctionPassManager func_manager(module);
   llvm::legacy::PassManager module_manager;
 
-  auto TLI = new llvm::TargetLibraryInfoImpl(
-      llvm::Triple(module->getTargetTriple()));
+  auto TLI =
+      new llvm::TargetLibraryInfoImpl(llvm::Triple(module->getTargetTriple()));
 
   TLI->disableAllFunctions();  // `-fno-builtin`.
 

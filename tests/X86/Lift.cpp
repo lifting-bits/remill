@@ -14,6 +14,15 @@
  * limitations under the License.
  */
 
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/GlobalValue.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
+
 #include <algorithm>
 #include <cstdint>
 #include <fstream>
@@ -22,16 +31,6 @@
 #include <sstream>
 #include <string>
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-
-#include <llvm/IR/Function.h>
-#include <llvm/IR/GlobalValue.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Type.h>
-
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Instruction.h"
 #include "remill/Arch/Name.h"
@@ -39,13 +38,12 @@
 #include "remill/BC/Lifter.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/OS.h"
-
 #include "tests/X86/Test.h"
 
 #ifdef __APPLE__
-# define SYMBOL_PREFIX "_"
+#  define SYMBOL_PREFIX "_"
 #else
-# define SYMBOL_PREFIX ""
+#  define SYMBOL_PREFIX ""
 #endif
 
 DEFINE_string(bc_out, "",
@@ -60,8 +58,8 @@ class TestTraceManager : public remill::TraceManager {
  public:
   virtual ~TestTraceManager(void) = default;
 
-  void SetLiftedTraceDefinition(
-      uint64_t addr, llvm::Function *lifted_func) override {
+  void SetLiftedTraceDefinition(uint64_t addr,
+                                llvm::Function *lifted_func) override {
     traces[addr] = lifted_func;
   }
 
@@ -102,7 +100,7 @@ extern "C" int main(int argc, char *argv[]) {
   DLOG(INFO) << "Generating tests.";
 
   std::vector<const test::TestInfo *> tests;
-  for (auto i = 0U; ; ++i) {
+  for (auto i = 0U;; ++i) {
     const auto &test = test::__x86_test_table_begin[i];
     if (&test >= &(test::__x86_test_table_end[0])) {
       break;
@@ -122,17 +120,16 @@ extern "C" int main(int argc, char *argv[]) {
   llvm::LLVMContext context;
   auto os = remill::GetOSName(REMILL_OS);
   auto arch_name = remill::GetArchName(FLAGS_arch);
-  auto arch = remill::Arch::Get(context, os, arch_name);
+  auto arch = remill::Arch::Build(&context, os, arch_name);
   auto module = remill::LoadArchSemantics(arch);
 
-  remill::IntrinsicTable intrinsics(module);
+  remill::IntrinsicTable intrinsics(module.get());
   remill::InstructionLifter inst_lifter(arch, intrinsics);
   remill::TraceLifter trace_lifter(inst_lifter, manager);
 
   for (auto test : tests) {
     if (!trace_lifter.Lift(test->test_begin)) {
-      LOG(ERROR)
-          << "Unable to lift test " << test->test_name;
+      LOG(ERROR) << "Unable to lift test " << test->test_name;
       continue;
     }
 
@@ -145,8 +142,10 @@ extern "C" int main(int argc, char *argv[]) {
   }
 
   DLOG(INFO) << "Serializing bitcode to " << FLAGS_bc_out;
-  remill::GetHostArch(context)->PrepareModule(module);
-  remill::StoreModuleToFile(module, FLAGS_bc_out);
+  auto host_arch = remill::Arch::Build(&context, remill::GetOSName(REMILL_OS),
+                                       remill::GetArchName(REMILL_ARCH));
+  host_arch->PrepareModule(module.get());
+  remill::StoreModuleToFile(module.get(), FLAGS_bc_out);
 
   DLOG(INFO) << "Done.";
   return 0;

@@ -27,6 +27,8 @@ If you are experiencing undocumented problems with Remill then ask for help in t
 
 Remill is supported on Linux platforms and has been tested on Ubuntu 14.04, 16.04, and 18.04. Remill also works on macOS, and has experimental support for Windows.
 
+Remill's Linux version can also be built via Docker for quicker testing.
+
 ## Dependencies
 
 Most of Remill's dependencies can be provided by the [cxx-common](https://github.com/trailofbits/cxx-common) repository. Trail of Bits hosts downloadable, pre-built versions of cxx-common, which makes it substantially easier to get up and running with Remill. Nonetheless, the following table represents most of Remill's dependencies.
@@ -46,6 +48,43 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 | [ccache](https://ccache.dev/) | Latest |
 
 ## Getting and Building the Code
+
+### Docker Build
+
+Remill now comes with a Dockerfile for easier testing. This Dockerfile references the [cxx-common](https://github.com/trailofbits/cxx-common) container to have all pre-requisite libraries available. 
+
+The Dockerfile allows for quick builds of multiple supported LLVM, architecture, and Linux configurations.
+
+Quickstart (builds Remill against LLVM 8.0 on Ubuntu 18.04 for AMD64):
+
+Clone Remill:
+```shell
+#Clone the repository.
+git clone https://github.com/lifting-bits/remill.git
+cd remill
+```
+
+Build Remill Docker container:
+```shell
+# do the build
+docker build . -t remill:llvm800-ubuntu18.04-amd64 \
+     -f Dockerfile \
+     --build-arg UBUNTU_VERSION=18.04 \
+     --build-arg ARCH=amd64 \
+     --build-arg LLVM_VERSION=800
+```
+
+Ensure remill works:
+```shell
+# Decode some AMD64 instructions to LLVM
+docker run --rm -it remill:llvm800-ubuntu18.04-amd64 \
+     --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
+     
+# Decode some AArch64 instructions to LLVM
+docker run --rm -it remill:llvm800-ubuntu18.04-amd64 \
+     --arch aarch64 --address 0x400544 --ir_out /dev/stdout \
+     --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
+```
 
 ### On Linux
 

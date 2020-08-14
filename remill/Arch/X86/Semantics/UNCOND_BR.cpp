@@ -17,18 +17,21 @@
 namespace {
 
 template <typename T>
-DEF_SEM(JMP, T target_pc) {
-  WriteZExt(REG_PC, Read(target_pc));
+DEF_SEM(JMP, T target_pc, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+  auto new_pc = Read(target_pc);
+  WriteZExt(REG_PC, new_pc);
+  WriteZExt(pc_dst, new_pc);
   return memory;
 }
 
 template <typename T>
-DEF_SEM(JMP_FAR_MEM, T target_seg_pc) {
+DEF_SEM(JMP_FAR_MEM, T target_seg_pc, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   HYPER_CALL = AsyncHyperCall::kX86JmpFar;
   uint64_t target_fword = UShr(UShl(Read(target_seg_pc), 0xf), 0xf);
   auto pc = static_cast<uint32_t>(target_fword);
   auto seg = static_cast<uint16_t>(UShr(target_fword, 32));
   WriteZExt(REG_PC, pc);
+  WriteZExt(pc_dst, pc);
   Write(REG_CS.flat, seg);
 
   // TODO(tathanhdinh): Update the hidden part (segment shadow) of CS,
@@ -38,11 +41,12 @@ DEF_SEM(JMP_FAR_MEM, T target_seg_pc) {
 }
 
 template <typename S1, typename S2>
-DEF_SEM(JMP_FAR_PTR, S1 src1, S2 src2) {
+DEF_SEM(JMP_FAR_PTR, S1 src1, S2 src2, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   HYPER_CALL = AsyncHyperCall::kX86JmpFar;
   auto pc = Read(src1);
   auto seg = Read(src2);
   WriteZExt(REG_PC, pc);
+  WriteZExt(pc_dst, pc);
   Write(REG_CS.flat, seg);
 
   // TODO(tathanhdinh): Update the hidden part (segment shadow) of CS,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Trail of Bits, Inc.
+ * Copyright (c) 2020 Trail of Bits, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,18 @@
 
 #pragma once
 
+#include <llvm/ADT/SmallVector.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
+
+#include <array>
 #include <functional>
-#include <string>
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "remill/BC/ABI.h"
 
 namespace llvm {
 class Argument;
@@ -47,8 +54,7 @@ class IntrinsicTable;
 void InitFunctionAttributes(llvm::Function *F);
 
 // Create a call from one lifted function to another.
-llvm::CallInst *AddCall(llvm::BasicBlock *source_block,
-                        llvm::Value *dest_func);
+llvm::CallInst *AddCall(llvm::BasicBlock *source_block, llvm::Value *dest_func);
 
 // Create a tail-call from one lifted function to another.
 llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
@@ -59,15 +65,13 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
-llvm::Value *FindVarInFunction(llvm::BasicBlock *block,
-                               std::string name,
-                               bool allow_failure=false);
+llvm::Value *FindVarInFunction(llvm::BasicBlock *block, const std::string &name,
+                               bool allow_failure = false);
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
-llvm::Value *FindVarInFunction(llvm::Function *func,
-                               std::string name,
-                               bool allow_failure=false);
+llvm::Value *FindVarInFunction(llvm::Function *func, const std::string &name,
+                               bool allow_failure = false);
 
 // Find the machine state pointer. The machine state pointer is, by convention,
 // passed as the first argument to every lifted function.
@@ -77,14 +81,26 @@ llvm::Value *LoadStatePointer(llvm::BasicBlock *block);
 // Return the current program counter.
 llvm::Value *LoadProgramCounter(llvm::BasicBlock *block);
 
+// Return the next program counter.
+llvm::Value *LoadNextProgramCounter(llvm::BasicBlock *block);
+
 // Return a reference to the current program counter.
 llvm::Value *LoadProgramCounterRef(llvm::BasicBlock *block);
+
+// Return a reference to the next program counter.
+llvm::Value *LoadNextProgramCounterRef(llvm::BasicBlock *block);
+
+// Return a reference to the return program counter.
+llvm::Value *LoadReturnProgramCounterRef(llvm::BasicBlock *block);
 
 // Update the program counter in the state struct with a hard-coded value.
 void StoreProgramCounter(llvm::BasicBlock *block, uint64_t pc);
 
 // Update the program counter in the state struct with a new value.
 void StoreProgramCounter(llvm::BasicBlock *block, llvm::Value *pc);
+
+// Update the next program counter in the state struct with a new value.
+void StoreNextProgramCounter(llvm::BasicBlock *block, llvm::Value *pc);
 
 // Return the memory pointer argument.
 llvm::Value *LoadMemoryPointerArg(llvm::Function *func);
@@ -102,39 +118,49 @@ llvm::Value *LoadMemoryPointerRef(llvm::BasicBlock *block);
 // or not a conditional branch is taken.
 llvm::Value *LoadBranchTaken(llvm::BasicBlock *block);
 
+llvm::Value *LoadBranchTakenRef(llvm::BasicBlock *block);
+
 // Find a function with name `name` in the module `M`.
-llvm::Function *FindFunction(llvm::Module *M, std::string name);
+llvm::Function *FindFunction(llvm::Module *M, const std::string &name);
 
 // Find a global variable with name `name` in the module `M`.
-llvm::GlobalVariable *FindGlobaVariable(llvm::Module *M, std::string name);
+llvm::GlobalVariable *FindGlobaVariable(llvm::Module *M,
+                                        const std::string &name);
 
 // Try to verify a module.
 bool VerifyModule(llvm::Module *module);
 
 // Parses and loads a bitcode file into memory.
-llvm::Module *LoadModuleFromFile(llvm::LLVMContext *context,
-                                 std::string file_name,
-                                 bool allow_failure=false);
+std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
+                                                 const std::string &file_name,
+                                                 bool allow_failure = false);
 
 // Loads the semantics for the "host" machine, i.e. the machine that this
 // remill is compiled on.
-llvm::Module *LoadHostSemantics(llvm::LLVMContext &context);
+std::unique_ptr<llvm::Module> LoadHostSemantics(llvm::LLVMContext &context)
+    __attribute__((deprecated));
 
 // Loads the semantics for the "target" machine, i.e. the machine of the
 // code that we want to lift.
-llvm::Module *LoadTargetSemantics(llvm::LLVMContext &context);
+std::unique_ptr<llvm::Module> LoadTargetSemantics(llvm::LLVMContext &context)
+    __attribute__((deprecated));
 
 // Loads the semantics for the `arch`-specific machine, i.e. the machine of the
 // code that we want to lift.
-llvm::Module *LoadArchSemantics(const Arch *arch);
+std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch);
+
+inline std::unique_ptr<llvm::Module>
+LoadArchSemantics(const std::unique_ptr<const Arch> &arch) {
+  return LoadArchSemantics(arch.get());
+}
 
 // Store an LLVM module into a file.
-bool StoreModuleToFile(llvm::Module *module, std::string file_name,
-                       bool allow_failure=false);
+bool StoreModuleToFile(llvm::Module *module, const std::string &file_name,
+                       bool allow_failure = false);
 
 // Store a module, serialized to LLVM IR, into a file.
-bool StoreModuleIRToFile(llvm::Module *module, std::string file_name,
-                         bool allow_failure=false);
+bool StoreModuleIRToFile(llvm::Module *module, const std::string &file_name,
+                         bool allow_failure = false);
 
 // Find the path to the semantics bitcode file associated with `FLAGS_arch`.
 std::string FindTargetSemanticsBitcodeFile(void);
@@ -157,15 +183,16 @@ llvm::FunctionType *LiftedFunctionType(llvm::Module *module);
 
 // Return a vector of arguments to pass to a lifted function, where the
 // arguments are derived from `block`.
-std::vector<llvm::Value *> LiftedFunctionArgs(llvm::BasicBlock *block);
+std::array<llvm::Value *, kNumBlockArgs>
+LiftedFunctionArgs(llvm::BasicBlock *block);
 
 // Serialize an LLVM object into a string.
 std::string LLVMThingToString(llvm::Value *thing);
 std::string LLVMThingToString(llvm::Type *thing);
 
 // Apply a callback function to every semantics bitcode function.
-using ISelCallback = std::function<
-    void(llvm::GlobalVariable *, llvm::Function *)>;
+using ISelCallback =
+    std::function<void(llvm::GlobalVariable *, llvm::Function *)>;
 void ForEachISel(llvm::Module *module, ISelCallback callback);
 
 // Declare a lifted function of the correct type.
@@ -189,8 +216,7 @@ using ValueMap = std::unordered_map<llvm::Value *, llvm::Value *>;
 //
 // Note: this will try to clone globals referenced from the module of
 //       `source_func` into the module of `dest_func`.
-void CloneFunctionInto(llvm::Function *source_func,
-                       llvm::Function *dest_func,
+void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
                        ValueMap &value_map);
 
 // Clone function `source_func` into `dest_func`. This will strip out debug
@@ -222,12 +248,9 @@ llvm::Type *RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context);
 // recursively build up the right type.
 //
 // Returns the loaded value.
-llvm::Value *LoadFromMemory(
-    const IntrinsicTable &intrinsics,
-    llvm::BasicBlock *block,
-    llvm::Type *type,
-    llvm::Value *mem_ptr,
-    llvm::Value *addr);
+llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
+                            llvm::BasicBlock *block, llvm::Type *type,
+                            llvm::Value *mem_ptr, llvm::Value *addr);
 
 // Produce a sequence of instructions that will store a value to
 // memory. This will invoke the various memory write intrinsics
@@ -235,11 +258,30 @@ llvm::Value *LoadFromMemory(
 // the type into components which can be written to memory.
 //
 // Returns the new value of the memory pointer.
-llvm::Value *StoreToMemory(
-    const IntrinsicTable &intrinsics,
-    llvm::BasicBlock *block,
-    llvm::Value *val_to_store,
-    llvm::Value *mem_ptr,
-    llvm::Value *addr);
+llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
+                           llvm::BasicBlock *block, llvm::Value *val_to_store,
+                           llvm::Value *mem_ptr, llvm::Value *addr);
+
+// Create an array of index values to pass to a GetElementPtr instruction
+// that will let us locate a particular register. Returns the final offset
+// into `type` which was reached as the first value in the pair, and the type
+// of what is at that offset in the second value of the pair.
+std::pair<size_t, llvm::Type *>
+BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type, size_t offset,
+             const size_t goal_offset,
+             llvm::SmallVectorImpl<llvm::Value *> &indexes_out);
+
+// Given a pointer, `ptr`, and a goal byte offset to which we'd like to index,
+// build either a constant expression or sequence of instructions that can
+// index to that offset. `ir` is provided to support the instruction case
+// and to give access to a module for data layouts.
+llvm::Value *BuildPointerToOffset(llvm::IRBuilder<> &ir, llvm::Value *ptr,
+                                  size_t dest_elem_offset,
+                                  llvm::Type *dest_ptr_type);
+
+// Compute the total offset of a GEP chain.
+std::pair<llvm::Value *, int64_t>
+StripAndAccumulateConstantOffsets(const llvm::DataLayout &dl,
+                                  llvm::Value *base);
 
 }  // namespace remill

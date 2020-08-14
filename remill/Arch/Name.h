@@ -17,31 +17,34 @@
 #pragma once
 
 #ifndef REMILL_ARCH
-# if defined(__x86_64__)
-#   define REMILL_ARCH "amd64_avx"
-#   define REMILL_ON_AMD64 1
-#   define REMILL_ON_X86 0
-#   define REMILL_ON_AARCH64 0
-# elif defined(__i386__) || defined(_M_X86)
-#   define REMILL_ARCH "x86"
-#   define REMILL_ON_AMD64 0
-#   define REMILL_ON_X86 1
-#   define REMILL_ON_AARCH64 0
-# elif defined(__aarch64__)
-#   define REMILL_ARCH "aarch64"
-#   define REMILL_ON_AMD64 0
-#   define REMILL_ON_X86 0
-#   define REMILL_ON_AARCH64 1
-# else
-#   error "Cannot infer current architecture."
-#   define REMILL_ON_AMD64 0
-#   define REMILL_ON_X86 0
-#   define REMILL_ON_AARCH64 0
-# endif
+#  if defined(__x86_64__)
+#    define REMILL_ARCH "amd64_avx"
+#    define REMILL_ON_AMD64 1
+#    define REMILL_ON_X86 0
+#    define REMILL_ON_AARCH64 0
+#  elif defined(__i386__) || defined(_M_X86)
+#    define REMILL_ARCH "x86"
+#    define REMILL_ON_AMD64 0
+#    define REMILL_ON_X86 1
+#    define REMILL_ON_AARCH64 0
+#  elif defined(__aarch64__)
+#    define REMILL_ARCH "aarch64"
+#    define REMILL_ON_AMD64 0
+#    define REMILL_ON_X86 0
+#    define REMILL_ON_AARCH64 1
+#  else
+#    error "Cannot infer current architecture."
+#    define REMILL_ON_AMD64 0
+#    define REMILL_ON_X86 0
+#    define REMILL_ON_AARCH64 0
+#  endif
 #endif
 
 #include <string>
 
+namespace llvm {
+class Triple;
+}  // namespace llvm
 namespace remill {
 
 enum ArchName : uint32_t {
@@ -55,11 +58,10 @@ enum ArchName : uint32_t {
   kArchAMD64_AVX,
   kArchAMD64_AVX512,
 
-  kArchMips32,
-  kArchMips64,
-
   kArchAArch64LittleEndian
 };
+
+ArchName GetArchName(const llvm::Triple &triple);
 
 // Convert the string name of an architecture into a canonical form.
 ArchName GetArchName(const std::string &arch_name);

@@ -15,15 +15,16 @@
  */
 #pragma once
 
-#include <system_error>
-
 #include <llvm/Support/ErrorOr.h>
+#include <llvm/Support/Format.h>
 #include <llvm/Support/raw_ostream.h>
+
+#include <system_error>
 
 #include "remill/BC/Version.h"
 
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
-# include <llvm/Support/Error.h>
+#  include <llvm/Support/Error.h>
 #endif
 
 namespace remill {
@@ -62,12 +63,14 @@ inline static std::string GetErrorString(llvm::ErrorOr<T> &val) {
 inline static std::string GetErrorString(llvm::Error &val) {
   std::string err;
   llvm::raw_string_ostream os(err);
-  os << val;
+  llvm::handleAllErrors(std::move(val),
+                        [&os](llvm::ErrorInfoBase &eib) { eib.log(os); });
   os.flush();
   return err;
 }
 
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
+
 template <typename T>
 inline static std::string GetErrorString(llvm::Expected<T> &val) {
   auto err = val.takeError();
@@ -75,12 +78,24 @@ inline static std::string GetErrorString(llvm::Expected<T> &val) {
 }
 #endif
 
+inline static std::error_code GetErrorCode(const char *) {
+  return std::make_error_code(std::errc::invalid_argument);
+}
+
 inline static std::string GetErrorString(const char *message) {
   return message;
 }
 
+inline static std::error_code GetErrorCode(const std::string *) {
+  return std::make_error_code(std::errc::invalid_argument);
+}
+
 inline static std::string GetErrorString(const std::string *message) {
   return message ? *message : "";
+}
+
+inline static std::error_code GetErrorCode(const std::string &) {
+  return std::make_error_code(std::errc::invalid_argument);
 }
 
 inline static std::string GetErrorString(const std::string &message) {
@@ -88,8 +103,18 @@ inline static std::string GetErrorString(const std::string &message) {
 }
 
 template <typename T>
+inline static std::error_code GetErrorCode(T *) {
+  return std::make_error_code(std::errc::invalid_argument);
+}
+
+template <typename T>
 inline static std::string GetErrorString(T *) {
   return "";
+}
+
+template <typename T>
+inline static std::error_code GetErrorCode(llvm::ErrorOr<T> &val) {
+  return val.getError();
 }
 
 template <typename T>
@@ -137,4 +162,31 @@ inline static T &GetReference(T &val) {
 }
 
 }  // namespace remill
+namespace llvm {
 
+#if LLVM_VERSION_NUMBER <= LLVM_VERSION(6, 0)
+inline static Error createStringError(std::error_code EC, char const *Msg) {
+  return make_error<StringError>(Msg, EC);
+}
+
+/// Create formatted StringError object.
+template <typename... Ts>
+inline static Error createStringError(std::error_code EC, char const *Fmt,
+                                      const Ts &... Vals) {
+  std::string Buffer;
+  raw_string_ostream Stream(Buffer);
+  Stream << format(Fmt, Vals...);
+  return make_error<StringError>(Stream.str(), EC);
+}
+#endif
+
+#if LLVM_VERSION_NUMBER <= LLVM_VERSION(8, 0)
+
+template <typename... Ts>
+inline static Error createStringError(std::errc EC, char const *Fmt,
+                                      const Ts &... Vals) {
+  return createStringError(std::make_error_code(EC), Fmt, Vals...);
+}
+#endif
+
+}  // namespace llvm

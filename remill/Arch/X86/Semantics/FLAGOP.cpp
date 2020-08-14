@@ -72,29 +72,29 @@ DEF_SEM(DoLAHF) {
 }
 
 DEF_SEM(DoCLAC) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
+  memory =
+      __remill_sync_hyper_call(state, memory, SyncHyperCall::kAssertPrivileged);
   state.rflag.ac = false;
   return memory;
 }
 
 DEF_SEM(DoSTAC) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
+  memory =
+      __remill_sync_hyper_call(state, memory, SyncHyperCall::kAssertPrivileged);
   state.rflag.ac = true;
   return memory;
 }
 
 DEF_SEM(DoCLI) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
+  memory =
+      __remill_sync_hyper_call(state, memory, SyncHyperCall::kAssertPrivileged);
   state.rflag._if = false;
   return memory;
 }
 
 DEF_SEM(DoSTI) {
-  memory = __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kAssertPrivileged);
+  memory =
+      __remill_sync_hyper_call(state, memory, SyncHyperCall::kAssertPrivileged);
   state.rflag._if = true;
   return memory;
 }

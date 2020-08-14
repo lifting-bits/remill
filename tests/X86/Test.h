@@ -21,17 +21,14 @@ struct Memory;
 
 namespace test {
 
-enum : size_t {
-  kPageSize = 4096,
-  kMaxInstrLen = 15
-};
+enum : size_t { kPageSize = 4096, kMaxInstrLen = 15 };
 
 struct alignas(128) TestInfo {
   const uintptr_t test_begin;
   const uintptr_t test_end;
   const char *test_name;
-  const uint64_t * const args_begin;
-  const uint64_t * const args_end;
+  const uint64_t *const args_begin;
+  const uint64_t *const args_end;
   const uint64_t num_args;
   const uint64_t ignored_flags_mask;
 } __attribute__((packed));
@@ -42,4 +39,3 @@ extern const TestInfo __x86_test_table_end[];
 }  // extern C
 
 }  // namespace test
-

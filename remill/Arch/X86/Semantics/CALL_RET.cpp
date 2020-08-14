@@ -19,23 +19,31 @@
 namespace {
 
 template <typename T>
-DEF_SEM(CALL, T target_pc, PC return_pc) {
+DEF_SEM(CALL, T target_pc, IF_32BIT_ELSE(R32W, R64W) pc_dst, PC return_pc,
+        IF_32BIT_ELSE(R32W, R64W) return_pc_dst) {
   addr_t next_sp = USub(REG_XSP, ADDRESS_SIZE_BYTES);
+  const auto new_pc = ZExtTo<addr_t>(Read(target_pc));
   Write(WritePtr<addr_t>(next_sp _IF_32BIT(REG_SS_BASE)), Read(return_pc));
   Write(REG_XSP, next_sp);
-  Write(REG_PC, ZExtTo<addr_t>(Read(target_pc)));
+  Write(REG_PC, new_pc);
+  Write(pc_dst, new_pc);
+  Write(return_pc_dst, Read(return_pc));
   return memory;
 }
 
-DEF_SEM(RET_IMM, I16 bytes) {
-  Write(REG_PC, Read(ReadPtr<addr_t>(REG_XSP _IF_32BIT(REG_SS_BASE))));
+DEF_SEM(RET_IMM, I16 bytes, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+  const auto new_pc = Read(ReadPtr<addr_t>(REG_XSP _IF_32BIT(REG_SS_BASE)));
+  Write(REG_PC, new_pc);
+  Write(pc_dst, new_pc);
   Write(REG_XSP,
         UAdd(UAdd(REG_XSP, ZExtTo<addr_t>(Read(bytes))), ADDRESS_SIZE_BYTES));
   return memory;
 }
 
-DEF_SEM(RET) {
-  Write(REG_PC, Read(ReadPtr<addr_t>(REG_XSP _IF_32BIT(REG_SS_BASE))));
+DEF_SEM(RET, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
+  const auto new_pc = Read(ReadPtr<addr_t>(REG_XSP _IF_32BIT(REG_SS_BASE)));
+  Write(REG_PC, new_pc);
+  Write(pc_dst, new_pc);
   Write(REG_XSP, UAdd(REG_XSP, ADDRESS_SIZE_BYTES));
   return memory;
 }
@@ -45,13 +53,13 @@ DEF_SEM(RET) {
 DEF_ISEL_32or64(CALL_NEAR_RELBRd, CALL<PC>);
 DEF_ISEL_32or64(CALL_NEAR_RELBRz, CALL<PC>);
 
-IF_32BIT( DEF_ISEL(CALL_NEAR_MEMv_16) = CALL<M16>; )
-IF_32BIT( DEF_ISEL(CALL_NEAR_MEMv_32) = CALL<M32>; )
-IF_64BIT( DEF_ISEL(CALL_NEAR_MEMv_64) = CALL<M64>; )
+IF_32BIT(DEF_ISEL(CALL_NEAR_MEMv_16) = CALL<M16>;)
+IF_32BIT(DEF_ISEL(CALL_NEAR_MEMv_32) = CALL<M32>;)
+IF_64BIT(DEF_ISEL(CALL_NEAR_MEMv_64) = CALL<M64>;)
 
-IF_32BIT( DEF_ISEL(CALL_NEAR_GPRv_16) = CALL<R16>; )
-IF_32BIT( DEF_ISEL(CALL_NEAR_GPRv_32) = CALL<R32>; )
-IF_64BIT( DEF_ISEL(CALL_NEAR_GPRv_64) = CALL<R64>; )
+IF_32BIT(DEF_ISEL(CALL_NEAR_GPRv_16) = CALL<R16>;)
+IF_32BIT(DEF_ISEL(CALL_NEAR_GPRv_32) = CALL<R32>;)
+IF_64BIT(DEF_ISEL(CALL_NEAR_GPRv_64) = CALL<R64>;)
 
 /*
 352 CALL_FAR CALL_FAR_MEMp2 CALL BASE I86 ATTRIBUTES: FAR_XFER FIXED_BASE1 NOTSX SCALABLE STACKPUSH1
@@ -72,13 +80,14 @@ DEF_ISEL_32or64(RET_NEAR, RET);
 
 namespace {
 #if ADDRESS_SIZE_BITS == 32
-DEF_SEM(IRETD) {
+DEF_SEM(IRETD, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   auto new_eip = PopFromStack<uint32_t>(memory, state);
   auto new_cs = static_cast<uint16_t>(PopFromStack<uint32_t>(memory, state));
   auto temp_eflags = PopFromStack<uint32_t>(memory, state);
   Flags f = {};
   f.flat = (temp_eflags & 0x257FD5U) | 0x1A0000U;
   Write(REG_PC, new_eip);
+  Write(pc_dst, new_eip);
   Write(REG_CS.flat, new_cs);
   state.rflag = f;
   state.aflag.af = f.af;
@@ -95,13 +104,14 @@ DEF_SEM(IRETD) {
 DEF_ISEL(IRETD_32) = IRETD;
 
 #elif ADDRESS_SIZE_BITS == 64
-DEF_SEM(IRETQ) {
+DEF_SEM(IRETQ, IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   auto new_rip = PopFromStack<uint64_t>(memory, state);
   auto new_cs = static_cast<uint16_t>(PopFromStack<uint64_t>(memory, state));
   auto temp_rflags = PopFromStack<uint64_t>(memory, state);
   Flags f = {};
   f.flat = temp_rflags;
   Write(REG_PC, new_rip);
+  Write(pc_dst, new_rip);
   Write(REG_CS.flat, new_cs);
   state.rflag = f;
   state.aflag.af = f.af;
@@ -129,4 +139,4 @@ DEF_SEM(IRETQ) {
 
 DEF_ISEL(IRETQ_64) = IRETQ;
 #endif
-}
+}  // namespace

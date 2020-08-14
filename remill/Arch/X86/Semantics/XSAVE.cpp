@@ -16,7 +16,7 @@
 
 namespace {
 
-DEF_SEM(DoXGETBV) {
+DEF_SEM(DoXGETBV, PC next_pc) {
   switch (Read(REG_ECX)) {
 
     // Current state of the `xcr0` register.
@@ -38,8 +38,7 @@ DEF_SEM(DoXGETBV) {
       break;
     }
 
-    default:
-      StopFailure();
+    default: WriteZExt(REG_PC, Read(next_pc)); StopFailure();
   }
   return memory;
 }
