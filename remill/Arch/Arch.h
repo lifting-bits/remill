@@ -49,24 +49,17 @@ enum OSName : uint32_t;
 enum ArchName : uint32_t;
 
 class Arch;
+class ArchImpl;
 class Instruction;
 
 struct Register {
  public:
   Register(const std::string &name_, uint64_t offset_, uint64_t size_,
-           uint64_t order_, llvm::Type *type_);
+           llvm::Type *type_, const Register *parent_, const ArchImpl *arch_);
 
   std::string name;  // Name of the register.
   uint64_t offset;  // Byte offset in `State`.
   uint64_t size;  // Size of this register.
-
-  // How many indexes/casts it takes to get at this register withing the
-  // original bitcode of `__remill_basic_block`. This is a useful metric
-  // when trying to decide is something is a sub-register of another. For
-  // example, `Q0` is a sub register of `V0` on AArch64, even though they
-  // are the same size. The complexity allows us to see that it "takes more"
-  // to index into `Q0` than it does for `V0`, and thus `Q0` is a sub-register.
-  unsigned complexity;
 
   // LLVM type associated with the field in `State`.
   llvm::Type *type;
@@ -111,7 +104,8 @@ struct Register {
  private:
   friend class Arch;
 
-  const Register *parent{nullptr};
+  const Register *const parent;
+  const ArchImpl *const arch;
 
   // The directly enclosed registers.
   std::vector<const Register *> children;
@@ -160,6 +154,12 @@ class Arch {
   // information for the target architecture and ensures remill requied functions
   // have the appropriate prototype and internal variables
   void PrepareModule(llvm::Module *mod) const;
+
+  // Get the state pointer and various other types from the `llvm::LLVMContext`
+  // associated with `module`.
+  //
+  // NOTE(pag): This is an internal API.
+  void InitFromSemanticsModule(llvm::Module *module) const;
 
   inline void PrepareModule(const std::unique_ptr<llvm::Module> &mod) const {
     PrepareModule(mod.get());
@@ -252,7 +252,15 @@ class Arch {
  protected:
   Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
 
+  // Populate the `__remill_basic_block` function with variables.
+  virtual void PopulateBasicBlockFunction(llvm::Module *module,
+                                          llvm::Function *bb_func) const = 0;
+
   llvm::Triple BasicTriple(void) const;
+
+  // Add a register into this
+  void AddRegister(const char *reg_name, llvm::Type *val_type, size_t offset,
+                   const char *parent_reg_name) const;
 
  private:
   // Defined in `remill/Arch/X86/Arch.cpp`.
@@ -263,12 +271,7 @@ class Arch {
   static ArchPtr GetAArch64(llvm::LLVMContext *context, OSName os,
                             ArchName arch_name);
 
-  // Get all of the register information from the prepared module.
-  void CollectRegisters(llvm::Module *module) const;
-
-  class Impl;
-
-  mutable std::unique_ptr<Impl> impl;
+  mutable std::unique_ptr<ArchImpl> impl;
 
   Arch(void) = delete;
 };

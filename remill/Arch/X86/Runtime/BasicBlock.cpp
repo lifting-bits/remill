@@ -49,7 +49,9 @@ extern CR8Reg gCR8;
 //
 // Note: `curr_pc` is first to make sure it's not optimized away.
 [[gnu::used]] Memory *__remill_basic_block(State &state, addr_t curr_pc,
-                                           Memory *memory) {
+                                           Memory *memory);
+
+#if 0
 
   bool branch_taken = false;
   addr_t zero1 = 0;
@@ -82,7 +84,7 @@ extern CR8Reg gCR8;
   auto &BL = state.gpr.rbx.byte.low;
   auto &CL = state.gpr.rcx.byte.low;
   auto &DL = state.gpr.rdx.byte.low;
-#if 64 == ADDRESS_SIZE_BITS
+#  if 64 == ADDRESS_SIZE_BITS
   auto &SIL = state.gpr.rsi.byte.low;
   auto &DIL = state.gpr.rdi.byte.low;
   auto &SPL = state.gpr.rsp.byte.low;
@@ -95,7 +97,7 @@ extern CR8Reg gCR8;
   auto &R13B = state.gpr.r13.byte.low;
   auto &R14B = state.gpr.r14.byte.low;
   auto &R15B = state.gpr.r15.byte.low;
-#endif  // 64 == ADDRESS_SIZE_BITS
+#  endif  // 64 == ADDRESS_SIZE_BITS
   auto &AX = state.gpr.rax.word;
   auto &BX = state.gpr.rbx.word;
   auto &CX = state.gpr.rcx.word;
@@ -104,7 +106,7 @@ extern CR8Reg gCR8;
   auto &DI = state.gpr.rdi.word;
   auto &SP = state.gpr.rsp.word;
   auto &BP = state.gpr.rbp.word;
-#if 64 == ADDRESS_SIZE_BITS
+#  if 64 == ADDRESS_SIZE_BITS
   auto &R8W = state.gpr.r8.word;
   auto &R9W = state.gpr.r9.word;
   auto &R10W = state.gpr.r10.word;
@@ -113,7 +115,7 @@ extern CR8Reg gCR8;
   auto &R13W = state.gpr.r13.word;
   auto &R14W = state.gpr.r14.word;
   auto &R15W = state.gpr.r15.word;
-#endif  // 64 == ADDRESS_SIZE_BITS
+#  endif  // 64 == ADDRESS_SIZE_BITS
   auto &IP = state.gpr.rip.word;
 
   auto &EAX = state.gpr.rax.dword;
@@ -126,7 +128,7 @@ extern CR8Reg gCR8;
   auto &EBP = state.gpr.rbp.dword;
   auto &EIP = state.gpr.rip.dword;
 
-#if 64 == ADDRESS_SIZE_BITS
+#  if 64 == ADDRESS_SIZE_BITS
   auto &R8D = state.gpr.r8.dword;
   auto &R9D = state.gpr.r9.dword;
   auto &R10D = state.gpr.r10.dword;
@@ -153,7 +155,7 @@ extern CR8Reg gCR8;
   auto &R14 = state.gpr.r14.qword;
   auto &R15 = state.gpr.r15.qword;
   auto &RIP = state.gpr.rip.qword;
-#endif  // 64 == ADDRESS_SIZE_BITS
+#  endif  // 64 == ADDRESS_SIZE_BITS
 
   auto &SS = state.seg.ss.flat;
   auto &ES = state.seg.es.flat;
@@ -169,8 +171,8 @@ extern CR8Reg gCR8;
   auto &DS_BASE = zero3;
   auto &CS_BASE = zero4;
 
-#if HAS_FEATURE_AVX
-#  if HAS_FEATURE_AVX512
+#  if HAS_FEATURE_AVX
+#    if HAS_FEATURE_AVX512
   auto &ZMM0 = state.vec[0].zmm;
   auto &ZMM1 = state.vec[1].zmm;
   auto &ZMM2 = state.vec[2].zmm;
@@ -203,7 +205,7 @@ extern CR8Reg gCR8;
   auto &ZMM29 = state.vec[29].zmm;
   auto &ZMM30 = state.vec[30].zmm;
   auto &ZMM31 = state.vec[31].zmm;
-#  endif  // HAS_FEATURE_AVX512
+#    endif  // HAS_FEATURE_AVX512
 
   auto &YMM0 = state.vec[0].ymm;
   auto &YMM1 = state.vec[1].ymm;
@@ -213,7 +215,7 @@ extern CR8Reg gCR8;
   auto &YMM5 = state.vec[5].ymm;
   auto &YMM6 = state.vec[6].ymm;
   auto &YMM7 = state.vec[7].ymm;
-#  if HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
+#    if HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
   auto &YMM8 = state.vec[8].ymm;
   auto &YMM9 = state.vec[9].ymm;
   auto &YMM10 = state.vec[10].ymm;
@@ -223,9 +225,9 @@ extern CR8Reg gCR8;
   auto &YMM14 = state.vec[14].ymm;
   auto &YMM15 = state.vec[15].ymm;
 
-#  endif  // HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
+#    endif  // HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
 
-#  if HAS_FEATURE_AVX512
+#    if HAS_FEATURE_AVX512
   auto &YMM16 = state.vec[16].ymm;
   auto &YMM17 = state.vec[17].ymm;
   auto &YMM18 = state.vec[18].ymm;
@@ -242,8 +244,8 @@ extern CR8Reg gCR8;
   auto &YMM29 = state.vec[29].ymm;
   auto &YMM30 = state.vec[30].ymm;
   auto &YMM31 = state.vec[31].ymm;
-#  endif  // HAS_FEATURE_AVX512
-#endif  // HAS_FEATURE_AVX
+#    endif  // HAS_FEATURE_AVX512
+#  endif  // HAS_FEATURE_AVX
 
   auto &XMM0 = state.vec[0].xmm;
   auto &XMM1 = state.vec[1].xmm;
@@ -254,7 +256,7 @@ extern CR8Reg gCR8;
   auto &XMM6 = state.vec[6].xmm;
   auto &XMM7 = state.vec[7].xmm;
 
-#if HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
+#  if HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
   auto &XMM8 = state.vec[8].xmm;
   auto &XMM9 = state.vec[9].xmm;
   auto &XMM10 = state.vec[10].xmm;
@@ -263,9 +265,9 @@ extern CR8Reg gCR8;
   auto &XMM13 = state.vec[13].xmm;
   auto &XMM14 = state.vec[14].xmm;
   auto &XMM15 = state.vec[15].xmm;
-#endif  // HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
+#  endif  // HAS_FEATURE_AVX || 64 == ADDRESS_SIZE_BITS
 
-#if HAS_FEATURE_AVX512
+#  if HAS_FEATURE_AVX512
   auto &XMM16 = state.vec[16].xmm;
   auto &XMM17 = state.vec[17].xmm;
   auto &XMM18 = state.vec[18].xmm;
@@ -283,7 +285,7 @@ extern CR8Reg gCR8;
   auto &XMM30 = state.vec[30].xmm;
   auto &XMM31 = state.vec[31].xmm;
 
-#endif  // HAS_FEATURE_AVX512
+#  endif  // HAS_FEATURE_AVX512
 
   auto &ST0 = state.st.elems[0].val;
   auto &ST1 = state.st.elems[1].val;
@@ -294,8 +296,8 @@ extern CR8Reg gCR8;
   auto &ST6 = state.st.elems[6].val;
   auto &ST7 = state.st.elems[7].val;
 
-#if 0  // TODO(pag): Don't emulate directly for now.
-#  if 32 == ADDRESS_SIZE_BITS
+#  if 0  // TODO(pag): Don't emulate directly for now.
+#    if 32 == ADDRESS_SIZE_BITS
   auto &FPU_LASTIP = state.fpu.u.x86.ip;
   auto &FPU_LASTIP = state.fpu.u.x86.ip;
   auto &FPU_LASTCS = state.fpu.u.x86.cs;
@@ -304,13 +306,13 @@ extern CR8Reg gCR8;
   auto &FPU_LASTDP = state.fpu.u.x86.dp;
   auto &FPU_LASTDS = state.fpu.u.x86.ds;
   auto &FPU_LASTDS = state.fpu.u.x86.ds;
-#  else
+#    else
   auto &FPU_LASTIP = state.fpu.u.amd64.ip;
   auto &FPU_LASTIP = state.fpu.u.amd64.ip;
   auto &FPU_LASTDP = state.fpu.u.amd64.dp;
   auto &FPU_LASTDP = state.fpu.u.amd64.dp;
+#    endif
 #  endif
-#endif
 
   // MMX technology registers. For simplicity, these are implemented separately
   // from the FPU stack, and so they do not alias. This makes some things
@@ -352,13 +354,14 @@ extern CR8Reg gCR8;
   auto &CR2 = gCR2.flat;
   auto &CR3 = gCR3.flat;
   auto &CR4 = gCR4.flat;
-#if 64 == ADDRESS_SIZE_BITS
+#  if 64 == ADDRESS_SIZE_BITS
   auto &CR8 = gCR8.flat;
-#endif
+#  endif
 
   // Lifted code will be placed here in clones versions of this function.
   return memory;
 }
+#endif
 
 #pragma clang diagnostic pop
 

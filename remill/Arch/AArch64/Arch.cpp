@@ -102,23 +102,27 @@ class AArch64Arch final : public Arch {
   virtual ~AArch64Arch(void);
 
   // Returns the name of the stack pointer register.
-  const char *StackPointerRegisterName(void) const final;
+  const char *StackPointerRegisterName(void) const override;
 
   // Returns the name of the program counter register.
-  const char *ProgramCounterRegisterName(void) const final;
+  const char *ProgramCounterRegisterName(void) const override;
 
   // Decode an instruction.
   bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                         Instruction &inst) const final;
+                         Instruction &inst) const override;
 
   // Maximum number of bytes in an instruction.
-  uint64_t MaxInstructionSize(void) const final;
+  uint64_t MaxInstructionSize(void) const override;
 
-  llvm::Triple Triple(void) const final;
-  llvm::DataLayout DataLayout(void) const final;
+  llvm::Triple Triple(void) const override;
+  llvm::DataLayout DataLayout(void) const override;
 
   // Default calling convention for this architecture.
-  llvm::CallingConv::ID DefaultCallingConv(void) const final;
+  llvm::CallingConv::ID DefaultCallingConv(void) const override;
+
+  // Populate the `__remill_basic_block` function with variables.
+  void PopulateBasicBlockFunction(llvm::Module *module,
+                                  llvm::Function *bb_func) const override;
 
  private:
   AArch64Arch(void) = delete;
@@ -134,6 +138,10 @@ AArch64Arch::~AArch64Arch(void) {}
 llvm::CallingConv::ID AArch64Arch::DefaultCallingConv(void) const {
   return llvm::CallingConv::C;
 }
+
+// Populate the `__remill_basic_block` function with variables.
+void AArch64Arch::PopulateBasicBlockFunction(llvm::Module *module,
+                                             llvm::Function *bb_func) const {}
 
 // Maximum number of bytes in an instruction for this particular architecture.
 uint64_t AArch64Arch::MaxInstructionSize(void) const {

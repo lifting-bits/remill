@@ -83,6 +83,8 @@ target_compile_definitions(thirdparty_llvm INTERFACE
 )
 set(LLVM_LIBRARIES "${LLVM_AVAILABLE_LIBS}")
 list(REMOVE_ITEM LLVM_LIBRARIES LLVMLTO)
+list(REMOVE_ITEM LLVM_LIBRARIES libLTO)
+list(REMOVE_ITEM LLVM_LIBRARIES LTO)
 target_link_libraries(thirdparty_llvm INTERFACE
   ${LLVM_LIBRARIES}
 )

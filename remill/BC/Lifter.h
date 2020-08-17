@@ -67,7 +67,13 @@ class InstructionLifter {
   // Lift a single instruction into a basic block. `is_delayed` signifies that
   // this instruction will execute within the delay slot of another instruction.
   virtual LiftStatus LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
+                                   llvm::Value *state_ptr,
                                    bool is_delayed = false);
+
+  // Lift a single instruction into a basic block. `is_delayed` signifies that
+  // this instruction will execute within the delay slot of another instruction.
+  LiftStatus LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
+                           bool is_delayed = false);
 
   const Arch *const arch;
 
@@ -78,11 +84,11 @@ class InstructionLifter {
   const IntrinsicTable *const intrinsics;
 
   // Load the address of a register.
-  llvm::Value *LoadRegAddress(llvm::BasicBlock *block,
+  llvm::Value *LoadRegAddress(llvm::BasicBlock *block, llvm::Value *state_ptr,
                               const std::string &reg_name);
 
   // Load the value of a register.
-  llvm::Value *LoadRegValue(llvm::BasicBlock *block,
+  llvm::Value *LoadRegValue(llvm::BasicBlock *block, llvm::Value *state_ptr,
                             const std::string &reg_name);
 
  protected:
@@ -90,16 +96,19 @@ class InstructionLifter {
 
   // Lift an operand to an instruction.
   virtual llvm::Value *LiftOperand(Instruction &inst, llvm::BasicBlock *block,
-                                   llvm::Argument *arg, Operand &op);
+                                   llvm::Value *state_ptr, llvm::Argument *arg,
+                                   Operand &op);
 
   // Lift a register operand to a value.
   virtual llvm::Value *
   LiftShiftRegisterOperand(Instruction &inst, llvm::BasicBlock *block,
-                           llvm::Argument *arg, Operand &reg);
+                           llvm::Value *state_ptr, llvm::Argument *arg,
+                           Operand &reg);
 
   // Lift a register operand to a value.
   virtual llvm::Value *LiftRegisterOperand(Instruction &inst,
                                            llvm::BasicBlock *block,
+                                           llvm::Value *state_ptr,
                                            llvm::Argument *arg, Operand &reg);
 
   // Lift an immediate operand.
@@ -108,14 +117,14 @@ class InstructionLifter {
                                             llvm::Argument *arg, Operand &op);
 
   // Lift an indirect memory operand to a value.
-  virtual llvm::Value *LiftAddressOperand(Instruction &inst,
-                                          llvm::BasicBlock *block,
-                                          llvm::Argument *arg, Operand &mem);
+  virtual llvm::Value *
+  LiftAddressOperand(Instruction &inst, llvm::BasicBlock *block,
+                     llvm::Value *state_ptr, llvm::Argument *arg, Operand &mem);
 
   // Return a register value, or zero.
-  llvm::Value *LoadWordRegValOrZero(llvm::BasicBlock *block,
-                                    const std::string &reg_name,
-                                    llvm::ConstantInt *zero);
+  llvm::Value *
+  LoadWordRegValOrZero(llvm::BasicBlock *block, llvm::Value *state_ptr,
+                       const std::string &reg_name, llvm::ConstantInt *zero);
 
   std::unordered_map<std::string, llvm::Value *> reg_ptr_cache;
 
