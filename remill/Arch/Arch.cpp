@@ -534,6 +534,13 @@ FinishAddressOf(llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
 // a `State *`.
 llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
                                  llvm::BasicBlock *add_to_end) const {
+  llvm::IRBuilder<> ir(add_to_end);
+  return AddressOf(state_ptr, ir);
+}
+
+
+llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
+                                 llvm::IRBuilder<> &ir) const {
   auto &context = type->getContext();
   CHECK_EQ(&context, &(state_ptr->getContext()));
   const auto state_ptr_type =
@@ -545,17 +552,16 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
       llvm::dyn_cast<llvm::StructType>(state_ptr_type->getPointerElementType());
   CHECK_NOTNULL(state_type);
 
-  const auto module = add_to_end->getParent()->getParent();
+  const auto module = ir.GetInsertBlock()->getParent()->getParent();
   const auto &dl = module->getDataLayout();
-  llvm::IRBuilder<> ir(add_to_end);
+
   llvm::Value *gep = nullptr;
   if (auto const_state_ptr = llvm::dyn_cast<llvm::Constant>(state_ptr);
       const_state_ptr) {
     gep = llvm::ConstantExpr::getInBoundsGetElementPtr(
         state_type, const_state_ptr, gep_index_list);
   } else {
-    gep = llvm::GetElementPtrInst::CreateInBounds(
-        state_type, state_ptr, gep_index_list, "", add_to_end);
+    gep = ir.CreateInBoundsGEP(state_type, state_ptr, gep_index_list);
   }
 
   auto state_size = dl.getTypeAllocSize(state_type);

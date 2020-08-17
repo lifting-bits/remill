@@ -269,21 +269,14 @@ llvm::Value *InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
     if (auto state_arg = llvm::dyn_cast<llvm::Argument>(state_ptr); state_arg) {
       DCHECK_EQ(state_arg->getParent(), block->getParent());
       auto &target_block = block->getParent()->getEntryBlock();
-      auto reg_inst = llvm::dyn_cast<llvm::Instruction>(
-          reg->AddressOf(state_ptr, &target_block));
-      reg_inst->removeFromParent();
-      reg_inst->insertBefore(&*target_block.getFirstInsertionPt());
-      reg_ptr = reg_inst;
+      llvm::IRBuilder<> ir(&target_block, target_block.getFirstInsertionPt());
+      reg_ptr = reg->AddressOf(state_ptr, ir);
 
     // The state pointer is an instruction, likely an `AllocaInst`.
     } else if (auto state_inst = llvm::dyn_cast<llvm::Instruction>(state_ptr);
                state_inst) {
-      auto target_block = state_inst->getParent();
-      auto reg_inst = llvm::dyn_cast<llvm::Instruction>(
-          reg->AddressOf(state_ptr, target_block));
-      reg_inst->removeFromParent();
-      reg_inst->insertAfter(state_inst);
-      reg_ptr = reg_inst;
+      llvm::IRBuilder<> ir(state_inst);
+      reg_ptr = reg->AddressOf(state_ptr, ir);
 
     // The state pointer is a constant, likely an `llvm::GlobalVariable`.
     } else if (auto state_const = llvm::dyn_cast<llvm::Constant>(state_ptr);

@@ -19,6 +19,7 @@
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/IRBuilder.h>
 #include <remill/BC/Compat/CallingConvention.h>
 
 #include <functional>
@@ -100,6 +101,8 @@ struct Register {
   // a `State *`.
   llvm::Value *AddressOf(llvm::Value *state_ptr,
                          llvm::BasicBlock *add_to_end) const;
+
+  llvm::Value *AddressOf(llvm::Value *state_ptr, llvm::IRBuilder<> &ir) const;
 
  private:
   friend class Arch;
