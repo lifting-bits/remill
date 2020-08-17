@@ -81,8 +81,10 @@ target_include_directories(thirdparty_llvm SYSTEM INTERFACE
 target_compile_definitions(thirdparty_llvm INTERFACE
   ${LLVM_DEFINITIONS}
 )
+set(LLVM_LIBRARIES "${LLVM_AVAILABLE_LIBS}")
+list(REMOVE_ITEM LLVM_LIBRARIES LLVMLTO)
 target_link_libraries(thirdparty_llvm INTERFACE
-  ${LLVM_AVAILABLE_LIBS}
+  ${LLVM_LIBRARIES}
 )
 
 # Microsoft Z3
