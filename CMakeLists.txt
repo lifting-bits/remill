@@ -81,10 +81,15 @@ target_include_directories(thirdparty_llvm SYSTEM INTERFACE
 target_compile_definitions(thirdparty_llvm INTERFACE
   ${LLVM_DEFINITIONS}
 )
-set(LLVM_LIBRARIES "${LLVM_AVAILABLE_LIBS}")
-list(REMOVE_ITEM LLVM_LIBRARIES LLVMLTO)
-list(REMOVE_ITEM LLVM_LIBRARIES libLTO)
-list(REMOVE_ITEM LLVM_LIBRARIES LTO)
+
+# Go find only the static libraries of LLVM, and link against those.
+foreach(LLVM_LIB IN LISTS LLVM_AVAILABLE_LIBS)
+  get_target_property(LLVM_LIB_TYPE ${LLVM_LIB} TYPE)
+  if (LLVM_LIB_TYPE STREQUAL "STATIC_LIBRARY")
+    list(APPEND LLVM_LIBRARIES "${LLVM_LIB}")
+  endif()
+endforeach()
+
 target_link_libraries(thirdparty_llvm INTERFACE
   ${LLVM_LIBRARIES}
 )
@@ -341,7 +346,7 @@ endfunction()
 set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}${executable_extension}")
 set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}${executable_extension}")
 
-if("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "" OR NOT EXISTS "${LIBRARY_REPOSITORY_ROOT}/llvm")
+if("${CXX_COMMON_REPOSITORY_ROOT}" STREQUAL "" OR NOT EXISTS "${CXX_COMMON_REPOSITORY_ROOT}/llvm")
   set(INSTALLED_LIBLLVM_NAME "${dynamic_lib_prefix}LLVM-${REMILL_LLVM_VERSION}.${dynamic_lib_extension}")
 
   # system binaries are not built statically, so we need to fix the rpath
@@ -375,10 +380,10 @@ if("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "" OR NOT EXISTS "${LIBRARY_REPOSITORY_
 else()
   # The executable in our binary repository are statically built, meaning that we don't need
   # to change the rpath
-  InstallExternalTarget("ext_clang" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/clang${executable_extension}"
+  InstallExternalTarget("ext_clang" "${CXX_COMMON_REPOSITORY_ROOT}/llvm/bin/clang${executable_extension}"
     "${install_folder}/bin" "${INSTALLED_CLANG_NAME}")
 
-  InstallExternalTarget("ext_llvmlink" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/llvm-link${executable_extension}"
+  InstallExternalTarget("ext_llvmlink" "${CXX_COMMON_REPOSITORY_ROOT}/llvm/bin/llvm-link${executable_extension}"
     "${install_folder}/bin" "${INSTALLED_LLVMLINK_NAME}")
 endif()
 
