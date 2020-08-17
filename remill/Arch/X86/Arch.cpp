@@ -1374,7 +1374,7 @@ void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
     SUB_REG(PC, gpr.rip.dword, u32, EIP);
   }
 
-  (void) this->RegisterByName("PC")->AddressOf(state_ptr_arg, entry_block);
+  (void) this->RegisterByName("PC")->AddressOf(state_ptr_arg, ir);
 
   REG(SS, seg.ss.flat, u16);
   REG(ES, seg.es.flat, u16);
