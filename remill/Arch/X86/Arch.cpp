@@ -1371,7 +1371,7 @@ void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
   if (64 == address_size) {
     SUB_REG(PC, gpr.rip.qword, u64, RIP);
   } else {
-    SUB_REG(PC, gpr.rip.dword, u64, EIP);
+    SUB_REG(PC, gpr.rip.dword, u32, EIP);
   }
 
   (void) this->RegisterByName("PC")->AddressOf(state_ptr_arg, entry_block);
