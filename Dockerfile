@@ -49,7 +49,7 @@ FROM base as dist
 ARG LLVM_VERSION
 
 COPY scripts/docker-lifter-entrypoint.sh /opt/trailofbits/remill/docker-lifter-entrypoint.sh
-COPY --from=build /opt/trailofbits/remill /opt/trailofbits/remill
+COPY --from=build /opt/trailofbits /opt/trailofbits
 ENV PATH=/opt/trailofbits/remill/bin:${PATH} \
     LLVM_VERSION=llvm${LLVM_VERSION}
 ENTRYPOINT ["/opt/trailofbits/remill/docker-lifter-entrypoint.sh"]
