@@ -67,13 +67,13 @@ endif()
 # libraries
 #
 
+# LLVM
 find_package(LLVM REQUIRED CONFIG HINTS ${FINDPACKAGE_LLVM_HINTS})
 
 string(REPLACE "." ";" LLVM_VERSION_LIST ${LLVM_PACKAGE_VERSION})
 list(GET LLVM_VERSION_LIST 0 LLVM_MAJOR_VERSION)
 list(GET LLVM_VERSION_LIST 1 LLVM_MINOR_VERSION)
 
-# LLVM
 add_library(thirdparty_llvm INTERFACE)
 target_include_directories(thirdparty_llvm SYSTEM INTERFACE
   ${LLVM_INCLUDE_DIRS}
@@ -85,7 +85,7 @@ target_compile_definitions(thirdparty_llvm INTERFACE
 # Go find only the static libraries of LLVM, and link against those.
 foreach(LLVM_LIB IN LISTS LLVM_AVAILABLE_LIBS)
   get_target_property(LLVM_LIB_TYPE ${LLVM_LIB} TYPE)
-  if (LLVM_LIB_TYPE STREQUAL "STATIC_LIBRARY")
+  if(LLVM_LIB_TYPE STREQUAL "STATIC_LIBRARY")
     list(APPEND LLVM_LIBRARIES "${LLVM_LIB}")
   endif()
 endforeach()
@@ -184,15 +184,11 @@ add_library(remill STATIC
 )
 
 set_property(TARGET remill PROPERTY POSITION_INDEPENDENT_CODE ON)
+set(THIRDPARTY_LIBRARY_LIST thirdparty_z3 thirdparty_llvm thirdparty_xed thirdparty_glog thirdparty_gflags)
 
 # add everything as public.
 target_link_libraries(remill PUBLIC
-  thirdparty_z3
-  thirdparty_llvm
-  thirdparty_xed
-  thirdparty_glog
-  thirdparty_gflags
-  thirdparty_win32
+  ${THIRDPARTY_LIBRARY_LIST}
   RemillVersion
 )
 
@@ -397,11 +393,34 @@ set(REMILL_INCLUDE_LOCATION "${install_folder}/include")
 get_target_property(REMILL_COMPILE_OPTIONS remill COMPILE_OPTIONS)
 get_target_property(REMILL_COMPILE_DEFINITIONS remill COMPILE_DEFINITIONS)
 
-GetTargetTree(THIRDPARTY_LIBRARIES thirdparty_z3 thirdparty_llvm thirdparty_xed thirdparty_glog thirdparty_gflags)
+GetTargetTree(THIRDPARTY_LIBRARIES ${THIRDPARTY_LIBRARY_LIST})
 GetPublicIncludeFolders(THIRDPARTY_INCLUDE_DIRECTORIES ${THIRDPARTY_LIBRARIES})
+
+foreach(THIRDPARTY_LIB IN LISTS THIRDPARTY_LIBRARIES)
+  string(SUBSTRING "${THIRDPARTY_LIB}" 0 1 THIRDPARTY_LIB_PREFIX)
+  if(TARGET ${THIRDPARTY_LIB})
+    get_target_property(THIRDPARTY_LIB_TYPE ${THIRDPARTY_LIB} TYPE)
+    if(THIRDPARTY_LIB_TYPE STREQUAL "STATIC_LIBRARY" OR THIRDPARTY_LIB_TYPE STREQUAL "SHARED_LIBRARY")
+      list(APPEND THIRDPARTY_LIBRARY_FILES "$${}<TARGET_FILE:${THIRDPARTY_LIB}>")
+    endif()
+  elseif("${THIRDPARTY_LIB_PREFIX}" STREQUAL "$${}")
+    # E.g. $<LINK_ONLY:...>
+  else()
+    list(APPEND THIRDPARTY_LIBRARY_FILES "${THIRDPARTY_LIB}")
+  endif()
+endforeach()
+
+# First do the basic substitutions.
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/remillConfig.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake.pregen"
+  @ONLY
+)
+
+# Then expand the generator expressions added to `THIRDPARTY_LIBRARY_FILES`.
+file(GENERATE
+  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
+  INPUT "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake.pregen"
 )
 
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"

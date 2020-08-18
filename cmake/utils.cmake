@@ -98,6 +98,19 @@ function(GetTargetTree output_variable)
       # INTERFACE_LINK_LIBRARIES are potentially always present
       get_target_property(target_interface_link_libs "${target}" INTERFACE_LINK_LIBRARIES)
 
+      # Try to find the actual file
+      if ("${target_type}" STREQUAL "UNKNOWN_LIBRARY" OR
+          "${target_type}" STREQUAL "STATIC_LIBRARY" OR
+          "${target_type}" STREQUAL "SHARED_LIBRARY" OR
+          "${target_type}" STREQUAL "IMPORTED_LIBRARY")
+        get_target_property(target_imported_loc "${target}" IMPORTED_LOCATION)
+        if(NOT "${target_imported_loc}" STREQUAL "target_imported_loc-NOTFOUND")
+          list(APPEND visited_dependencies "${target_imported_loc}")
+          set(target_link_libs "target_link_libs-NOTFOUND")
+          set(target_interface_link_libs "target_interface_link_libs-NOTFOUND")
+        endif()
+      endif()
+
       # Collect the results
       unset(new_queue_candidates)
 
