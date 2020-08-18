@@ -90,6 +90,10 @@ foreach(LLVM_LIB IN LISTS LLVM_AVAILABLE_LIBS)
   endif()
 endforeach()
 
+# These are out-of-order in `LLVM_AVAILABLE_LIBS` and should always be last.
+list(REMOVE_ITEM LLVM_LIBRARIES LLVMCore LLVMSupport)
+list(APPEND LLVM_LIBRARIES LLVMCore LLVMSupport)
+
 target_link_libraries(thirdparty_llvm INTERFACE
   ${LLVM_LIBRARIES}
 )
@@ -187,7 +191,7 @@ set_property(TARGET remill PROPERTY POSITION_INDEPENDENT_CODE ON)
 set(THIRDPARTY_LIBRARY_LIST thirdparty_z3 thirdparty_llvm thirdparty_xed thirdparty_glog thirdparty_gflags)
 
 # add everything as public.
-target_link_libraries(remill PUBLIC
+target_link_libraries(remill LINK_PUBLIC
   ${THIRDPARTY_LIBRARY_LIST}
   RemillVersion
 )
@@ -395,7 +399,6 @@ get_target_property(REMILL_COMPILE_DEFINITIONS remill COMPILE_DEFINITIONS)
 
 GetTargetTree(THIRDPARTY_LIBRARIES ${THIRDPARTY_LIBRARY_LIST})
 GetPublicIncludeFolders(THIRDPARTY_INCLUDE_DIRECTORIES ${THIRDPARTY_LIBRARIES})
-
 foreach(THIRDPARTY_LIB IN LISTS THIRDPARTY_LIBRARIES)
   string(SUBSTRING "${THIRDPARTY_LIB}" 0 1 THIRDPARTY_LIB_PREFIX)
   if(TARGET ${THIRDPARTY_LIB})
