@@ -32,8 +32,8 @@ WORKDIR /remill
 COPY . ./
 
 ENV PATH="${LIBRARIES}/llvm/bin:${LIBRARIES}/cmake/bin:${LIBRARIES}/protobuf/bin:${PATH}"
-ENV CC="${LIBRARIES}/llvm/bin/clang"
-ENV CXX="${LIBRARIES}/llvm/bin/clang++"
+ENV CC="/usr/bin/clang"
+ENV CXX="/usr/bin/clang++"
 ENV TRAILOFBITS_LIBRARIES="${LIBRARIES}"
 
 RUN mkdir build && cd build && \
@@ -49,7 +49,7 @@ FROM base as dist
 ARG LLVM_VERSION
 
 COPY scripts/docker-lifter-entrypoint.sh /opt/trailofbits/remill/docker-lifter-entrypoint.sh
-COPY --from=build /opt/trailofbits /opt/trailofbits
+COPY --from=build /opt/trailofbits/remill /opt/trailofbits/remill
 ENV PATH=/opt/trailofbits/remill/bin:${PATH} \
     LLVM_VERSION=llvm${LLVM_VERSION}
 ENTRYPOINT ["/opt/trailofbits/remill/docker-lifter-entrypoint.sh"]
