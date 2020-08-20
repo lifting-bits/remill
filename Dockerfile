@@ -19,8 +19,7 @@ FROM trailofbits/cxx-common:llvm${LLVM_VERSION}-${DISTRO_BASE}-${ARCH} as deps
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    if [ "$(uname -m)" = "x86_64" ]; then apt-get install -qqy gcc-multilib g++-multilib; fi && \
-    apt-get install -qqy zlib1g-dev libz3-4 ninja-build ccache git python3 curl coreutils build-essential libtinfo-dev lsb-release && \
+    apt-get install -qqy zlib1g-dev libz3-4 ninja-build ccache git python3 curl coreutils build-essential libtinfo-dev lsb-release clang && \
     rm -rf /var/lib/apt/lists/*
 
 
