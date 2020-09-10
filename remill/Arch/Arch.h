@@ -16,11 +16,14 @@
 
 #pragma once
 
+// clang-format off
+#include "remill/BC/Compat/CTypes.h"
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/IRBuilder.h>
 #include <remill/BC/Compat/CallingConvention.h>
+// clang-format on
 
 #include <functional>
 #include <memory>

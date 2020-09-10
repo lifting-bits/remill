@@ -30,8 +30,8 @@ include(CTest)
 if (LLVM_Z3_INSTALL_DIR)
   find_package(Z3 4.7.1)
   set(need_z3 TRUE)
-elseif(DEFINED ENV{TRAILOFBITS_LIBRARIES})
-  set(LLVM_Z3_INSTALL_DIR "$ENV{TRAILOFBITS_LIBRARIES}/z3")
+elseif(DEFINED CXX_COMMON_REPOSITORY_ROOT)
+  set(LLVM_Z3_INSTALL_DIR "${CXX_COMMON_REPOSITORY_ROOT}/z3")
   set(need_z3 TRUE)
 else()
   set(need_z3 FALSE)
@@ -455,6 +455,7 @@ install(FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/Attributes.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/BitcodeReaderWriter.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/CallingConvention.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/CTypes.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/DataLayout.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/DebugInfo.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/Error.h"
