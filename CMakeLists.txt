@@ -30,8 +30,8 @@ include(CTest)
 if (LLVM_Z3_INSTALL_DIR)
   find_package(Z3 4.7.1)
   set(need_z3 TRUE)
-elseif(DEFINED ENV{TRAILOFBITS_LIBRARIES})
-  set(LLVM_Z3_INSTALL_DIR "$ENV{TRAILOFBITS_LIBRARIES}/z3")
+elseif(DEFINED CXX_COMMON_REPOSITORY_ROOT)
+  set(LLVM_Z3_INSTALL_DIR "${CXX_COMMON_REPOSITORY_ROOT}/z3")
   set(need_z3 TRUE)
 else()
   set(need_z3 FALSE)
@@ -67,6 +67,7 @@ endif()
 # libraries
 #
 
+# LLVM
 find_package(LLVM REQUIRED CONFIG HINTS ${FINDPACKAGE_LLVM_HINTS})
 
 string(REPLACE "." ";" LLVM_VERSION_LIST ${LLVM_PACKAGE_VERSION})
@@ -234,7 +235,7 @@ endfunction()
 set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}${executable_extension}")
 set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}${executable_extension}")
 
-if("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "" OR NOT EXISTS "${LIBRARY_REPOSITORY_ROOT}/llvm")
+if("${CXX_COMMON_REPOSITORY_ROOT}" STREQUAL "" OR NOT EXISTS "${CXX_COMMON_REPOSITORY_ROOT}/llvm")
   set(INSTALLED_LIBLLVM_NAME "${dynamic_lib_prefix}LLVM-${REMILL_LLVM_VERSION}.${dynamic_lib_extension}")
 
   # system binaries are not built statically, so we need to fix the rpath
@@ -268,10 +269,10 @@ if("${LIBRARY_REPOSITORY_ROOT}" STREQUAL "" OR NOT EXISTS "${LIBRARY_REPOSITORY_
 else()
   # The executable in our binary repository are statically built, meaning that we don't need
   # to change the rpath
-  InstallExternalTarget("ext_clang" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/clang${executable_extension}"
+  InstallExternalTarget("ext_clang" "${CXX_COMMON_REPOSITORY_ROOT}/llvm/bin/clang${executable_extension}"
     "${install_folder}/bin" "${INSTALLED_CLANG_NAME}")
 
-  InstallExternalTarget("ext_llvmlink" "${LIBRARY_REPOSITORY_ROOT}/llvm/bin/llvm-link${executable_extension}"
+  InstallExternalTarget("ext_llvmlink" "${CXX_COMMON_REPOSITORY_ROOT}/llvm/bin/llvm-link${executable_extension}"
     "${install_folder}/bin" "${INSTALLED_LLVMLINK_NAME}")
 endif()
 
@@ -316,6 +317,7 @@ install(FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/Attributes.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/BitcodeReaderWriter.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/CallingConvention.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/CTypes.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/DataLayout.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/DebugInfo.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/Error.h"

@@ -16,9 +16,12 @@
 
 #pragma once
 
+// clang-format off
+#include "remill/BC/Compat/CTypes.h"
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
+// clang-format on
 
 #include <array>
 #include <functional>

@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <llvm/IR/Module.h>
+
 #include <functional>
 #include <initializer_list>
 #include <map>
@@ -24,8 +26,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-#include <llvm/IR/Module.h>
 
 namespace llvm {
 class Function;

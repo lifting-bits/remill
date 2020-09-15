@@ -299,6 +299,7 @@ std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch) {
   LOG(INFO) << "Loading " << arch_name << " semantics from file " << path;
   auto module = LoadModuleFromFile(arch->context, path);
   arch->PrepareModule(module);
+  arch->InitFromSemanticsModule(module.get());
   for (auto &func : *module) {
     Annotate<remill::Semantics>(&func);
   }

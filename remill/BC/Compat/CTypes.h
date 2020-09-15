@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Trail of Bits, Inc.
+ * Copyright (c) 2017 Trail of Bits, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,12 @@
  * limitations under the License.
  */
 
-#include <algorithm>
-#include <bitset>
-#include <cmath>
+#pragma once
 
-#include "remill/Arch/AArch64/Runtime/State.h"
-#include "remill/Arch/Float.h"
-
-extern "C" {
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-variable"
-
-// Instructions will be lifted into clones of this function.
-[[gnu::used]] Memory *__remill_basic_block(State &, addr_t, Memory *);
-
-#pragma clang diagnostic pop
-
-}  // extern C
-
-#include "remill/Arch/Runtime/Intrinsics.cpp"
+#include <llvm-c/Types.h>
+namespace llvm {
+// TODO(pag): This is a rather ugly hack; had some issues with anvill not
+//            compiling on macOS due to these C types.
+struct LLVMOpaqueNamedMDNode;
+using LLVMNamedMDNodeRef = struct LLVMOpaqueNamedMDNode *;
+}  // namespace llvm

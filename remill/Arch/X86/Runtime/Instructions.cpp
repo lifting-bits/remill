@@ -25,6 +25,7 @@
 #include "remill/Arch/X86/Runtime/State.h"
 #include "remill/Arch/X86/Runtime/Types.h"
 #include "remill/Arch/X86/Runtime/Operators.h"
+
 // clang-format on
 
 #define REG_IP state.gpr.rip.word
@@ -200,4 +201,5 @@ DEF_HELPER(PopFromStack)->T {
 #include "remill/Arch/X86/Semantics/X87.cpp"
 #include "remill/Arch/X86/Semantics/XOP.cpp"
 #include "remill/Arch/X86/Semantics/XSAVE.cpp"
+
 // clang-format on
