@@ -244,6 +244,7 @@ class Arch {
 
   bool IsX86(void) const;
   bool IsAMD64(void) const;
+  bool IsAArch32(void) const;
   bool IsAArch64(void) const;
   bool IsSPARC32(void) const;
   bool IsSPARC64(void) const;
@@ -284,6 +285,10 @@ class Arch {
   // Defined in `lib/Arch/X86/Arch.cpp`.
   static ArchPtr GetX86(llvm::LLVMContext *context, OSName os,
                         ArchName arch_name);
+
+  // Defined in `lib/Arch/AArch32/Arch.cpp`.
+  static ArchPtr GetAArch32(llvm::LLVMContext *context, OSName os,
+                            ArchName arch_name);
 
   // Defined in `lib/Arch/AArch64/Arch.cpp`.
   static ArchPtr GetAArch64(llvm::LLVMContext *context, OSName os,
