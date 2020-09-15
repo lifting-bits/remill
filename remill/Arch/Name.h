@@ -22,21 +22,31 @@
 #    define REMILL_ON_AMD64 1
 #    define REMILL_ON_X86 0
 #    define REMILL_ON_AARCH64 0
+#    define REMILL_ON_AARCH32 0
 #  elif defined(__i386__) || defined(_M_X86)
 #    define REMILL_ARCH "x86"
 #    define REMILL_ON_AMD64 0
 #    define REMILL_ON_X86 1
 #    define REMILL_ON_AARCH64 0
+#    define REMILL_ON_AARCH32 0
 #  elif defined(__aarch64__)
 #    define REMILL_ARCH "aarch64"
 #    define REMILL_ON_AMD64 0
 #    define REMILL_ON_X86 0
 #    define REMILL_ON_AARCH64 1
+#    define REMILL_ON_AARCH32 0
+#  elif defined(__arm__) || defined(__ARM_ARCH_7__) || defined(_M_ARM)
+#    define REMILL_ARCH "aarch32"
+#    define REMILL_ON_AARCH32 1
+#    define REMILL_ON_AMD64 0
+#    define REMILL_ON_X86 0
+#    define REMILL_ON_AARCH64 0
 #  else
 #    error "Cannot infer current architecture."
 #    define REMILL_ON_AMD64 0
 #    define REMILL_ON_X86 0
 #    define REMILL_ON_AARCH64 0
+#    define REMILL_ON_AARCH32 0
 #  endif
 #endif
 
@@ -58,7 +68,8 @@ enum ArchName : uint32_t {
   kArchAMD64_AVX,
   kArchAMD64_AVX512,
 
-  kArchAArch64LittleEndian
+  kArchAArch64LittleEndian,
+  kArchAArch32LittleEndian
 };
 
 ArchName GetArchName(const llvm::Triple &triple);

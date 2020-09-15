@@ -46,7 +46,7 @@
 DEFINE_string(arch, REMILL_ARCH,
               "Architecture of the code being translated. "
               "Valid architectures: x86, amd64 (with or without "
-              "`_avx` or `_avx512` appended), aarch64");
+              "`_avx` or `_avx512` appended), aarch64, aarch32");
 
 DECLARE_string(os);
 
@@ -85,6 +85,7 @@ static unsigned AddressSize(ArchName arch_name) {
     case kArchAMD64_AVX:
     case kArchAMD64_AVX512:
     case kArchAArch64LittleEndian: return 64;
+    case kArchAArch32LittleEndian: return 32;
   }
   return 0;
 }
@@ -167,6 +168,11 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
     case kArchAArch64LittleEndian: {
       DLOG(INFO) << "Using architecture: AArch64, feature set: Little Endian";
       return GetAArch64(context_, os_name_, arch_name_);
+    }
+
+    case kArchAArch32LittleEndian: {
+      DLOG(INFO) << "Using architecture: AArch32, feature set: Little Endian";
+      return GetAArch32(context_, os_name_, arch_name_);
     }
 
     case kArchX86: {
@@ -344,6 +350,10 @@ bool Arch::IsAMD64(void) const {
 
 bool Arch::IsAArch64(void) const {
   return remill::kArchAArch64LittleEndian == arch_name;
+}
+
+bool Arch::IsAArch32(void) const {
+  return remill::kArchAArch32LittleEndian == arch_name;
 }
 
 bool Arch::IsWindows(void) const {

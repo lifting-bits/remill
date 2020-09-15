@@ -122,10 +122,12 @@ endif()
 
 set(REMILL_BUILD_SEMANTICS_DIR_X86 "${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/X86/Runtime/")
 set(REMILL_BUILD_SEMANTICS_DIR_AARCH64 "${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/AArch64/Runtime/")
+set(REMILL_BUILD_SEMANTICS_DIR_AARCH32 "${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/AArch32/Runtime/")
 
 list(APPEND PROJECT_DEFINITIONS "REMILL_INSTALL_SEMANTICS_DIR=\"${REMILL_INSTALL_SEMANTICS_DIR}/\"")
 list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_X86=\"${REMILL_BUILD_SEMANTICS_DIR_X86}\"")
 list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_AARCH64=\"${REMILL_BUILD_SEMANTICS_DIR_AARCH64}\"")
+list(APPEND PROJECT_DEFINITIONS "REMILL_BUILD_SEMANTICS_DIR_AARCH32=\"${REMILL_BUILD_SEMANTICS_DIR_AARCH32}\"")
 
 # verion data
 add_subdirectory(remill/Version)
@@ -135,6 +137,7 @@ add_library(${PROJECT_NAME} STATIC
   remill/Arch/AArch64/Decode.cpp
   remill/Arch/AArch64/Extract.cpp
   remill/Arch/X86/Arch.cpp
+  remill/Arch/AArch32/Arch.cpp
 
   remill/Arch/Arch.cpp
   remill/Arch/Instruction.cpp
@@ -381,6 +384,7 @@ add_custom_target(semantics)
 # runtimes
 add_subdirectory(remill/Arch/X86/Runtime)
 add_subdirectory(remill/Arch/AArch64/Runtime)
+add_subdirectory(remill/Arch/AArch32/Runtime)
 
 # tools
 add_subdirectory(tools)

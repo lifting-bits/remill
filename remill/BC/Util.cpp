@@ -449,6 +449,12 @@ namespace {
 #  define REMILL_BUILD_SEMANTICS_DIR_AARCH64
 #endif  // REMILL_BUILD_SEMANTICS_DIR_AARCH64
 
+#ifndef REMILL_BUILD_SEMANTICS_DIR_AARCH32
+#  error \
+      "Macro `REMILL_BUILD_SEMANTICS_DIR_AARCH32` must be defined to support AArch32 architecture."
+#  define REMILL_BUILD_SEMANTICS_DIR_AARCH32
+#endif  // REMILL_BUILD_SEMANTICS_DIR_AARCH32
+
 #ifndef REMILL_INSTALL_SEMANTICS_DIR
 #  error "Macro `REMILL_INSTALL_SEMANTICS_DIR` must be defined."
 #  define REMILL_INSTALL_SEMANTICS_DIR
@@ -463,6 +469,7 @@ static const char *gSemanticsSearchPaths[] = {
     // Derived from the build.
     REMILL_BUILD_SEMANTICS_DIR_X86 "\0",
     REMILL_BUILD_SEMANTICS_DIR_AARCH64 "\0",
+	REMILL_BUILD_SEMANTICS_DIR_AARCH32 "\0",
     REMILL_INSTALL_SEMANTICS_DIR "\0",
     "/usr/local/share/remill/" MAJOR_MINOR "/semantics",
     "/usr/share/remill/" MAJOR_MINOR "/semantics",
