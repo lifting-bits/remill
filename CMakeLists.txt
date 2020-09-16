@@ -91,8 +91,10 @@ foreach(LLVM_LIB IN LISTS LLVM_AVAILABLE_LIBS)
 endforeach()
 
 # These are out-of-order in `LLVM_AVAILABLE_LIBS` and should always be last.
-list(REMOVE_ITEM LLVM_LIBRARIES LLVMCore LLVMSupport)
-list(APPEND LLVM_LIBRARIES LLVMCore LLVMSupport)
+list(REMOVE_ITEM LLVM_LIBRARIES LLVMMC LLVMCore LLVMSupport)
+list(APPEND LLVM_LIBRARIES LLVMMC LLVMCore LLVMSupport)
+message(WARNING "Libraries: ${LLVM_LIBRARIES}")
+
 
 target_link_libraries(thirdparty_llvm INTERFACE
   ${LLVM_LIBRARIES}
@@ -191,8 +193,20 @@ set_property(TARGET remill PROPERTY POSITION_INDEPENDENT_CODE ON)
 set(THIRDPARTY_LIBRARY_LIST thirdparty_z3 thirdparty_llvm thirdparty_xed thirdparty_glog thirdparty_gflags)
 
 # add everything as public.
+
+if(UNIX AND NOT APPLE)
+  #For Linux builds, group LLVM libraries into a single group
+  # that avoids frustrating library ordering issues
+  set(LINKER_START_GROUP "-Wl,--start-group")
+  set(LINKER_END_GROUP "-Wl,--end-group")
+else()
+  set(LINKER_START_GROUP "")
+  set(LINKER_END_GROUP "")
+endif()
+
+
 target_link_libraries(remill LINK_PUBLIC
-  ${THIRDPARTY_LIBRARY_LIST}
+  ${LINKER_START_GROUP} ${THIRDPARTY_LIBRARY_LIST} ${LINKER_END_GROUP}
   RemillVersion
 )
 
@@ -412,6 +426,10 @@ foreach(THIRDPARTY_LIB IN LISTS THIRDPARTY_LIBRARIES)
     list(APPEND THIRDPARTY_LIBRARY_FILES "${THIRDPARTY_LIB}")
   endif()
 endforeach()
+
+list(REMOVE_DUPLICATES THIRDPARTY_LIBRARY_FILES)
+list(INSERT THIRDPARTY_LIBRARY_FILES 0 ${LINKER_START_GROUP})
+list(APPEND THIRDPARTY_LIBRARY_FILES ${LINKER_END_GROUP})
 
 # First do the basic substitutions.
 configure_file(
