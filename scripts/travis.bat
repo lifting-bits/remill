@@ -73,7 +73,7 @@ exit /B %ERRORLEVEL%
   set tob_libraries=%CD%
   popd
 
-  cmake -G "Visual Studio 16 2019" -T llvm -A x64 -DCMAKE_BUILD_TYPE=Release -DLIBRARY_REPOSITORY_ROOT=%tob_libraries% -DCMAKE_INSTALL_PREFIX=C:\ ..
+  cmake -G "Visual Studio 16 2019" -T llvm -A x64 -DCMAKE_BUILD_TYPE=Release -DCXX_COMMON_REPOSITORY_ROOT=%tob_libraries% -DCMAKE_INSTALL_PREFIX=C:\ ..
   if %ERRORLEVEL% equ 0 (
     endlocal
     exit /B 0

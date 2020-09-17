@@ -90,9 +90,20 @@ InstructionLifter::InstructionLifter(const Arch *arch_,
       intrinsics(intrinsics_),
       last_func(nullptr) {}
 
+// Lift a single instruction into a basic block. `is_delayed` signifies that
+// this instruction will execute within the delay slot of another instruction.
+LiftStatus InstructionLifter::LiftIntoBlock(Instruction &inst,
+                                            llvm::BasicBlock *block,
+                                            bool is_delayed) {
+  return LiftIntoBlock(inst, block,
+                       NthArgument(block->getParent(), kStatePointerArgNum),
+                       is_delayed);
+}
+
 // Lift a single instruction into a basic block.
 LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
                                             llvm::BasicBlock *block,
+                                            llvm::Value *state_ptr,
                                             bool is_delayed) {
 
   llvm::Function *const func = block->getParent();
@@ -131,10 +142,9 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
   }
 
   llvm::IRBuilder<> ir(block);
-  const auto mem_ptr_ref = LoadRegAddress(block, "MEMORY");
-  const auto state_ptr = LoadRegValue(block, "STATE");
-  const auto pc_ref = LoadRegAddress(block, "PC");
-  const auto next_pc_ref = LoadRegAddress(block, "NEXT_PC");
+  const auto mem_ptr_ref = LoadRegAddress(block, state_ptr, "MEMORY");
+  const auto pc_ref = LoadRegAddress(block, state_ptr, "PC");
+  const auto next_pc_ref = LoadRegAddress(block, state_ptr, "NEXT_PC");
   const auto next_pc = ir.CreateLoad(next_pc_ref);
 
   // If this instruction appears within a delay slot, then we're going to assume
@@ -189,7 +199,7 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
 
     auto arg = NthArgument(isel_func, arg_num);
     auto arg_type = arg->getType();
-    auto operand = LiftOperand(arch_inst, block, arg, op);
+    auto operand = LiftOperand(arch_inst, block, state_ptr, arg, op);
     arg_num += 1;
     auto op_type = operand->getType();
     CHECK(op_type == arg_type)
@@ -236,6 +246,7 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
 
 // Load the address of a register.
 llvm::Value *InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
+                                               llvm::Value *state_ptr,
                                                const std::string &reg_name) {
   const auto func = block->getParent();
   if (func != last_func) {
@@ -245,8 +256,44 @@ llvm::Value *InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
   const auto reg_ptr_it = reg_ptr_cache.find(reg_name);
   if (reg_ptr_it != reg_ptr_cache.end()) {
     return reg_ptr_it->second;
+
+  // It's a register known to this architecture, so go and build a GEP to it
+  // right now. We'll try to be careful about the placement of the actual
+  // indexing instructions so that they always follow the definition of the
+  // state pointer, and thus are most likely to dominate all future uses.
+  } else if (auto reg = arch->RegisterByName(reg_name); reg) {
+
+    llvm::Value *reg_ptr = nullptr;
+
+    // The state pointer is an argument.
+    if (auto state_arg = llvm::dyn_cast<llvm::Argument>(state_ptr); state_arg) {
+      DCHECK_EQ(state_arg->getParent(), block->getParent());
+      auto &target_block = block->getParent()->getEntryBlock();
+      llvm::IRBuilder<> ir(&target_block, target_block.getFirstInsertionPt());
+      reg_ptr = reg->AddressOf(state_ptr, ir);
+
+    // The state pointer is an instruction, likely an `AllocaInst`.
+    } else if (auto state_inst = llvm::dyn_cast<llvm::Instruction>(state_ptr);
+               state_inst) {
+      llvm::IRBuilder<> ir(state_inst);
+      reg_ptr = reg->AddressOf(state_ptr, ir);
+
+    // The state pointer is a constant, likely an `llvm::GlobalVariable`.
+    } else if (auto state_const = llvm::dyn_cast<llvm::Constant>(state_ptr);
+               state_const) {
+      reg_ptr = reg->AddressOf(state_ptr, block);
+
+    // Not sure.
+    } else {
+      LOG(FATAL) << "Unsupported value type for the State pointer: "
+                 << LLVMThingToString(state_ptr);
+    }
+
+    reg_ptr_cache.emplace(reg_name, reg_ptr);
+    return reg_ptr;
+
   } else {
-    const auto reg_ptr = FindVarInFunction(func, reg_name);
+    const auto reg_ptr = FindVarInFunction(func, reg_name, true);
     reg_ptr_cache.emplace(reg_name, reg_ptr);
     return reg_ptr;
   }
@@ -254,21 +301,22 @@ llvm::Value *InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
 
 // Load the value of a register.
 llvm::Value *InstructionLifter::LoadRegValue(llvm::BasicBlock *block,
+                                             llvm::Value *state_ptr,
                                              const std::string &reg_name) {
-  return new llvm::LoadInst(LoadRegAddress(block, reg_name), "", block);
+  return new llvm::LoadInst(LoadRegAddress(block, state_ptr, reg_name), "",
+                            block);
 }
 
 // Return a register value, or zero.
-llvm::Value *
-InstructionLifter::LoadWordRegValOrZero(llvm::BasicBlock *block,
-                                        const std::string &reg_name,
-                                        llvm::ConstantInt *zero) {
+llvm::Value *InstructionLifter::LoadWordRegValOrZero(
+    llvm::BasicBlock *block, llvm::Value *state_ptr,
+    const std::string &reg_name, llvm::ConstantInt *zero) {
 
   if (reg_name.empty()) {
     return zero;
   }
 
-  auto val = LoadRegValue(block, reg_name);
+  auto val = LoadRegValue(block, state_ptr, reg_name);
   auto val_type = llvm::dyn_cast_or_null<llvm::IntegerType>(val->getType());
   auto word_type = zero->getType();
 
@@ -287,10 +335,9 @@ InstructionLifter::LoadWordRegValOrZero(llvm::BasicBlock *block,
   return val;
 }
 
-llvm::Value *
-InstructionLifter::LiftShiftRegisterOperand(Instruction &inst,
-                                            llvm::BasicBlock *block,
-                                            llvm::Argument *arg, Operand &op) {
+llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
+    Instruction &inst, llvm::BasicBlock *block, llvm::Value *state_ptr,
+    llvm::Argument *arg, Operand &op) {
 
   llvm::Function *func = block->getParent();
   llvm::Module *module = func->getParent();
@@ -303,7 +350,7 @@ InstructionLifter::LiftShiftRegisterOperand(Instruction &inst,
       << "for instruction at " << std::hex << inst.pc;
 
   const llvm::DataLayout data_layout(module);
-  auto reg = LoadRegValue(block, arch_reg.name);
+  auto reg = LoadRegValue(block, state_ptr, arch_reg.name);
   auto reg_type = reg->getType();
   auto reg_size = SizeOfTypeInBits(data_layout, reg_type);
   auto word_size = SizeOfTypeInBits(data_layout, word_type);
@@ -472,6 +519,7 @@ ConvertToIntendedType(Instruction &inst, Operand &op, llvm::BasicBlock *block,
 // a pointer (e.g. when passing a vector to an instruction semantics function).
 llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
                                                     llvm::BasicBlock *block,
+                                                    llvm::Value *state_ptr,
                                                     llvm::Argument *arg,
                                                     Operand &op) {
 
@@ -487,7 +535,7 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
   auto arg_type = IntendedArgumentType(arg);
 
   if (llvm::isa<llvm::PointerType>(arg_type)) {
-    auto val = LoadRegAddress(block, arch_reg.name);
+    auto val = LoadRegAddress(block, state_ptr, arch_reg.name);
     return ConvertToIntendedType(inst, op, block, val, real_arg_type);
 
   } else {
@@ -495,7 +543,7 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
         << "Expected " << arch_reg.name << " to be an integral or float type "
         << "for instruction at " << std::hex << inst.pc;
 
-    auto val = LoadRegValue(block, arch_reg.name);
+    auto val = LoadRegValue(block, state_ptr, arch_reg.name);
 
     const llvm::DataLayout data_layout(module);
     auto val_type = val->getType();
@@ -585,6 +633,7 @@ InstructionLifter::LiftImmediateOperand(Instruction &inst, llvm::BasicBlock *,
 // Zero-extend a value to be the machine word size.
 llvm::Value *InstructionLifter::LiftAddressOperand(Instruction &inst,
                                                    llvm::BasicBlock *block,
+                                                   llvm::Value *state_ptr,
                                                    llvm::Argument *,
                                                    Operand &op) {
   auto &arch_addr = op.addr;
@@ -601,12 +650,14 @@ llvm::Value *InstructionLifter::LiftAddressOperand(Instruction &inst,
       << "for instruction at " << std::hex << inst.pc
       << " is wider than the machine word size.";
 
-  auto addr = LoadWordRegValOrZero(block, arch_addr.base_reg.name, zero);
-  auto index = LoadWordRegValOrZero(block, arch_addr.index_reg.name, zero);
+  auto addr =
+      LoadWordRegValOrZero(block, state_ptr, arch_addr.base_reg.name, zero);
+  auto index =
+      LoadWordRegValOrZero(block, state_ptr, arch_addr.index_reg.name, zero);
   auto scale = llvm::ConstantInt::get(
       word_type, static_cast<uint64_t>(arch_addr.scale), true);
-  auto segment =
-      LoadWordRegValOrZero(block, arch_addr.segment_base_reg.name, zero);
+  auto segment = LoadWordRegValOrZero(block, state_ptr,
+                                      arch_addr.segment_base_reg.name, zero);
 
   llvm::IRBuilder<> ir(block);
 
@@ -646,7 +697,8 @@ llvm::Value *InstructionLifter::LiftAddressOperand(Instruction &inst,
 // Lift an operand for use by the instruction.
 llvm::Value *
 InstructionLifter::LiftOperand(Instruction &inst, llvm::BasicBlock *block,
-                               llvm::Argument *arg, Operand &arch_op) {
+                               llvm::Value *state_ptr, llvm::Argument *arg,
+                               Operand &arch_op) {
   auto arg_type = arg->getType();
   switch (arch_op.type) {
     case Operand::kTypeInvalid:
@@ -658,7 +710,7 @@ InstructionLifter::LiftOperand(Instruction &inst, llvm::BasicBlock *block,
           << "Can't write to a shift register operand "
           << "for instruction at " << std::hex << inst.pc;
 
-      return LiftShiftRegisterOperand(inst, block, arg, arch_op);
+      return LiftShiftRegisterOperand(inst, block, state_ptr, arg, arch_op);
 
     case Operand::kTypeRegister:
       if (arch_op.size != arch_op.reg.size) {
@@ -666,7 +718,7 @@ InstructionLifter::LiftOperand(Instruction &inst, llvm::BasicBlock *block,
                    << arch_op.reg.name << " in instruction "
                    << inst.Serialize();
       }
-      return LiftRegisterOperand(inst, block, arg, arch_op);
+      return LiftRegisterOperand(inst, block, state_ptr, arg, arch_op);
 
     case Operand::kTypeImmediate:
       return LiftImmediateOperand(inst, block, arg, arch_op);
@@ -680,7 +732,7 @@ InstructionLifter::LiftOperand(Instruction &inst, llvm::BasicBlock *block,
                    << std::hex << inst.pc;
       }
 
-      return LiftAddressOperand(inst, block, arg, arch_op);
+      return LiftAddressOperand(inst, block, state_ptr, arg, arch_op);
   }
 
   LOG(FATAL) << "Got a unknown operand type of "
@@ -960,9 +1012,12 @@ bool TraceLifter::Impl::Lift(
     // variables jumps to the block that will contain the first instruction
     // of the trace.
     CloneBlockFunctionInto(func);
+    auto state_ptr = NthArgument(func, kStatePointerArgNum);
+
     if (auto entry_block = &(func->front())) {
       auto pc = LoadProgramCounterArg(func);
-      auto next_pc_ref = inst_lifter.LoadRegAddress(entry_block, "NEXT_PC");
+      auto next_pc_ref =
+          inst_lifter.LoadRegAddress(entry_block, state_ptr, "NEXT_PC");
 
       // Initialize `NEXT_PC`.
       (void) new llvm::StoreInst(pc, next_pc_ref, entry_block);
@@ -1006,7 +1061,7 @@ bool TraceLifter::Impl::Lift(
 
       (void) arch->DecodeInstruction(inst_addr, inst_bytes, inst);
 
-      auto lift_status = inst_lifter.LiftIntoBlock(inst, block);
+      auto lift_status = inst_lifter.LiftIntoBlock(inst, block, state_ptr);
       if (kLiftedInstruction != lift_status) {
         AddTerminatingTailCall(block, intrinsics->error);
         continue;
@@ -1036,8 +1091,8 @@ bool TraceLifter::Impl::Lift(
                                             on_branch_taken_path)) {
           return;
         }
-        lift_status = inst_lifter.LiftIntoBlock(delayed_inst, into_block,
-                                                true /* is_delayed */);
+        lift_status = inst_lifter.LiftIntoBlock(
+            delayed_inst, into_block, state_ptr, true /* is_delayed */);
         if (kLiftedInstruction != lift_status) {
           AddTerminatingTailCall(block, intrinsics->error);
         }

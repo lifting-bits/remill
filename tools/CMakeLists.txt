@@ -16,37 +16,3 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/tools/lift)
   add_subdirectory(lift)
 endif()
 
-if(EXISTS ${CMAKE_SOURCE_DIR}/tools/circuitous)
-    add_subdirectory(circuitous)
-endif()
-
-# Anvill.
-if(EXISTS ${CMAKE_SOURCE_DIR}/tools/anvill)
-    add_subdirectory(anvill)
-endif()
-
-# McSema.
-#
-# NOTE(pag): Depends on Anvill.
-if(EXISTS ${CMAKE_SOURCE_DIR}/tools/mcsema)
-  if (NOT EXISTS ${CMAKE_SOURCE_DIR}/tools/anvill)
-    message(FATAL_ERROR "McSema depends upon Anvill being cloned into ${CMAKE_SOURCE_DIR}/tools/anvill")
-  endif()
-  add_subdirectory(mcsema)
-endif()
-
-# KLEE-Native
-if (NOT WIN32)
-  if (EXISTS ${CMAKE_SOURCE_DIR}/tools/klee)
-      add_subdirectory(klee)
-  endif ()
-endif ()
-
-if (NOT WIN32)
-  if (307 LESS ${REMILL_LLVM_VERSION_NUMBER})
-      if (EXISTS ${CMAKE_SOURCE_DIR}/tools/vmill)
-          #add_subdirectory(vmill)
-      endif ()
-  endif ()
-endif ()
-
