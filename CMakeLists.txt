@@ -138,10 +138,15 @@ add_library(${PROJECT_NAME} STATIC
   remill/Arch/AArch64/Extract.cpp
   remill/Arch/X86/Arch.cpp
   remill/Arch/AArch32/Arch.cpp
+  remill/Arch/AArch32/Arch.h
+  remill/Arch/AArch32/Decode.cpp
 
   remill/Arch/Arch.cpp
+  remill/Arch/Arch.h
   remill/Arch/Instruction.cpp
+  remill/Arch/Instruction.h
   remill/Arch/Name.cpp
+  remill/Arch/Name.h
 
   remill/BC/Annotate.cpp
   remill/BC/DeadStoreEliminator.cpp

@@ -216,6 +216,30 @@ std::string Operand::Serialize(void) const {
   return ss.str();
 }
 
+std::string Condition::Serialize(void) const {
+  std::stringstream ss;
+
+  ss << "(";
+  switch (kind) {
+    case Condition::kTypeIsEqual:
+      ss << "(REG_" << lhs_reg.size << " " << lhs_reg.name << ") = (REG_"
+         << rhs_reg.size << " " << rhs_reg.name << ")";
+      break;
+    case Condition::kTypeIsOne:
+      ss << "(REG_" << lhs_reg.size << " " << lhs_reg.name << ") = 1";
+      break;
+    case Condition::kTypeIsZero:
+      ss << "(REG_" << lhs_reg.size << " " << lhs_reg.name << ") = 0";
+      break;
+    case Condition::kTypeTrue:
+      ss << "TRUE";
+      break;
+
+  }
+  return ss.str();
+}
+
+
 Instruction::Instruction(void)
     : pc(0),
       next_pc(0),
@@ -228,6 +252,7 @@ Instruction::Instruction(void)
       has_branch_taken_delay_slot(false),
       has_branch_not_taken_delay_slot(false),
       in_delay_slot(false),
+      negate_conditions(false),
       category(Instruction::kCategoryInvalid) {}
 
 void Instruction::Reset(void) {
@@ -241,9 +266,11 @@ void Instruction::Reset(void) {
   has_branch_taken_delay_slot = false;
   has_branch_not_taken_delay_slot = false;
   in_delay_slot = false;
+  negate_conditions = false;
   category = Instruction::kCategoryInvalid;
   arch_for_decode = nullptr;
   operands.clear();
+  conditions.clear();
   function.clear();
   bytes.clear();
 }
@@ -353,6 +380,14 @@ std::string Instruction::Serialize(void) const {
     default: break;
   }
 
+  auto end = "";
+  auto sep = " (CONDS ";
+  for (const auto &cond: conditions) {
+    ss << sep << cond.Serialize();
+    sep = " AND ";
+    end = ")";
+  }
+  ss << end;
   ss << ")";
   return ss.str();
 }
