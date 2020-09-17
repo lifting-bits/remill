@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Trail of Bits, Inc.
+ * Copyright (c) 2020 Trail of Bits, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "remill/Arch/Arch.h"
+#include "Arch.h"
 
 #include <glog/logging.h>
 #include <llvm/ADT/Triple.h>
@@ -44,46 +44,6 @@
 // clang-format on
 
 namespace remill {
-namespace {
-
-
-
-class AArch32Arch final : public Arch {
- public:
-  AArch32Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
-
-  virtual ~AArch32Arch(void);
-
-  // Returns the name of the stack pointer register.
-  const char *StackPointerRegisterName(void) const override;
-
-  // Returns the name of the program counter register.
-  const char *ProgramCounterRegisterName(void) const override;
-
-  // Decode an instuction.
-  bool DecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                         Instruction &inst) const override;
-
-  // Maximum number of bytes in an instruction.
-  uint64_t MaxInstructionSize(void) const override;
-
-  llvm::Triple Triple(void) const override;
-  llvm::DataLayout DataLayout(void) const override;
-
-  // Default calling convention for this architecture.
-  llvm::CallingConv::ID DefaultCallingConv(void) const override;
-
-  // Populate the `__remill_basic_block` function with variables.
-  void PopulateBasicBlockFunction(llvm::Module *module,
-                                  llvm::Function *bb_func) const override;
-
- private:
-  // Decode an instuction.
-  bool DecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                         Instruction &inst, bool is_lazy) const;
-
-  AArch32Arch(void) = delete;
-};
 
 AArch32Arch::AArch32Arch(llvm::LLVMContext *context_, OSName os_name_,
                  ArchName arch_name_)
@@ -133,17 +93,6 @@ llvm::DataLayout AArch32Arch::DataLayout(void) const {
   return llvm::DataLayout(dl);
 }
 
-// Decode an instuction.
-bool AArch32Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                                Instruction &inst, bool is_lazy) const {
-
-  inst.pc = address;
-  inst.arch_name = arch_name;
-  inst.category = Instruction::kCategoryInvalid;
-
-  return false;
-}
-
 // Returns the name of the stack pointer register.
 const char *AArch32Arch::StackPointerRegisterName(void) const {
   return "SP";
@@ -152,12 +101,6 @@ const char *AArch32Arch::StackPointerRegisterName(void) const {
 // Returns the name of the program counter register.
 const char *AArch32Arch::ProgramCounterRegisterName(void) const {
   return "PC";
-}
-
-bool AArch32Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                                Instruction &inst) const {
-  inst.arch_for_decode = this;
-  return DecodeInstruction(address, inst_bytes, inst, false);
 }
 
 // Populate the `__remill_basic_block` function with variables.
@@ -221,8 +164,6 @@ void AArch32Arch::PopulateBasicBlockFunction(llvm::Module *module,
   ir.CreateAlloca(u32, nullptr, "SUPPRESS_WRITEBACK");
   (void) this->RegisterByName("PC")->AddressOf(state_ptr_arg, ir);
 }
-
-}  // namespace
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
 Arch::ArchPtr Arch::GetAArch32(llvm::LLVMContext *context_, OSName os_name_,

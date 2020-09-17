@@ -127,6 +127,22 @@ class Operand {
   std::string Serialize(void) const;
 };
 
+class Condition {
+ public:
+
+  enum Kind {
+    kTypeTrue,
+    kTypeIsOne,
+    kTypeIsZero,
+    kTypeIsEqual,
+  } kind;
+
+  Operand::Register lhs_reg;
+  Operand::Register rhs_reg;
+
+  std::string Serialize(void) const;
+};
+
 // Generic instruction type.
 class Instruction {
  public:
@@ -173,6 +189,10 @@ class Instruction {
   // Is this instruction decoded within the context of a delay slot?
   bool in_delay_slot;
 
+  // If `conditions` is non-empty then this tells us if we should negate the
+  // result of the condition.
+  bool negate_conditions;
+
   enum Category {
     kCategoryInvalid,
     kCategoryNormal,
@@ -189,6 +209,7 @@ class Instruction {
   } category;
 
   std::vector<Operand> operands;
+  std::vector<Condition> conditions;
 
   std::string Serialize(void) const;
 
