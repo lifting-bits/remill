@@ -253,7 +253,7 @@ void AArch64Arch::PopulateBasicBlockFunction(llvm::Module *module,
   REG(SP, gpr.sp.qword, u64);
   SUB_REG(WSP, gpr.sp.dword, u32, SP);
 
-  SUB_REG(LP, gpr.x30.qword, u32, X30);
+  SUB_REG(LP, gpr.x30.qword, u64, X30);
   SUB_REG(WLP, gpr.x30.dword, u32, LP);
 
   REG(V0, simd.v[0].bytes.elems[0], v128u8);
