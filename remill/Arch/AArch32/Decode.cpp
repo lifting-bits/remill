@@ -111,7 +111,7 @@ static void AddShiftRegOperand(Instruction &inst,
       if (!shift_size) {
         shift_size = 32;
       }
-    } else if (shift_type == Shift::kShiftROR) {
+    } else if (is_rrx) {
       LOG_IF(FATAL, !shift_size)
           << "Invalid use of AddShiftRegOperand RRX shifts not supported";
     }
@@ -168,12 +168,7 @@ static void AddShiftCarryOperand(Instruction &inst,
     }
 
     if (shift_type == Shift::kShiftLSR || shift_type == Shift::kShiftASR) {
-      if (!shift_size) {
-        shift_size = 32;
-      }
-    } else if (shift_type == Shift::kShiftROR) {
-      LOG_IF(FATAL, !shift_size)
-          << "Invalid use of AddShiftRegOperand RRX shifts not supported";
+
     }
     op.shift_reg.shift_size = shift_size;
     op.type = Operand::kTypeShiftRegister;
