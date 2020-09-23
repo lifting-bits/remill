@@ -845,11 +845,19 @@ static void AddPCDisp(Instruction &inst, int64_t disp) {
              Operand::Address::kAddressCalculation);
 }
 
-static void AddNextPC(Instruction &inst) {
+static void DecodeFallThroughPC(Instruction &inst) {
+  Operand not_taken_op = {};
+  not_taken_op.action = Operand::kActionRead;
+  not_taken_op.type = Operand::kTypeAddress;
+  not_taken_op.size = kPCWidth;
+  not_taken_op.addr.address_size = kPCWidth;
+  not_taken_op.addr.base_reg.name = "PC";
+  not_taken_op.addr.base_reg.size = kPCWidth;
+  not_taken_op.addr.displacement = kInstructionSize;
+  not_taken_op.addr.kind = Operand::Address::kControlFlowTarget;
+  inst.operands.push_back(not_taken_op);
 
-  // add +4 as the PC displacement
-  // emit an address computation operand
-  AddPCDisp(inst, kInstructionSize);
+  inst.branch_not_taken_pc = inst.next_pc;
 }
 
 // Base+offset memory operands are equivalent to indexing into an array.
@@ -1265,7 +1273,7 @@ bool TryDecodeRET_64R_BRANCH_REG(const InstData &data, Instruction &inst) {
 // BLR  <Xn>
 bool TryDecodeBLR_64_BRANCH_REG(const InstData &data, Instruction &inst) {
   AddRegOperand(inst, kActionRead, kRegX, kUseAsValue, data.Rn);
-  AddNextPC(inst);
+  DecodeFallThroughPC(inst);
   return true;
 }
 
@@ -1744,21 +1752,6 @@ bool TryDecodeB_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
   return true;
 }
 
-static void DecodeFallThroughPC(Instruction &inst) {
-  Operand not_taken_op = {};
-  not_taken_op.action = Operand::kActionRead;
-  not_taken_op.type = Operand::kTypeAddress;
-  not_taken_op.size = kPCWidth;
-  not_taken_op.addr.address_size = kPCWidth;
-  not_taken_op.addr.base_reg.name = "PC";
-  not_taken_op.addr.base_reg.size = kPCWidth;
-  not_taken_op.addr.displacement = kInstructionSize;
-  not_taken_op.addr.kind = Operand::Address::kControlFlowTarget;
-  inst.operands.push_back(not_taken_op);
-
-  inst.branch_not_taken_pc = inst.next_pc;
-}
-
 // Decode a relative branch target.
 static void DecodeConditionalBranch(Instruction &inst, int64_t disp) {
 
@@ -1848,7 +1841,7 @@ bool TryDecodeBL_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
                                                (data.imm26.simm26 << 2ULL));
   inst.branch_not_taken_pc = inst.next_pc;
   AddPCDisp(inst, data.imm26.simm26 << 2LL);
-  AddNextPC(inst);  // Decodes the return address.
+  DecodeFallThroughPC(inst); // Decodes the return address.
   return true;
 }
 
