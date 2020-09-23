@@ -23,8 +23,8 @@
 #include "remill/Arch/Runtime/Intrinsics.h"
 #include "remill/Arch/Runtime/Operators.h"
 #include "remill/Arch/AArch32/Runtime/State.h"
-//#include "remill/Arch/AArch32/Runtime/Types.h"
-//#include "remill/Arch/AArch32/Runtime/Operators.h"
+#include "remill/Arch/AArch32/Runtime/Types.h"
+#include "remill/Arch/AArch32/Runtime/Operators.h"
 
 // clang-format on
 
@@ -56,9 +56,9 @@ DEF_ISEL(UNSUPPORTED_INSTRUCTION) = HandleUnsupported;
 DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 
 // clang-format off
-//#include "remill/Arch/AArch64/Semantics/FLAGS.cpp"
+#include "remill/Arch/AArch32/Semantics/FLAGS.cpp"
 //
-//#include "remill/Arch/AArch64/Semantics/BINARY.cpp"
+#include "remill/Arch/AArch32/Semantics/BINARY.cpp"
 //#include "remill/Arch/AArch64/Semantics/BITBYTE.cpp"
 //#include "remill/Arch/AArch64/Semantics/BRANCH.cpp"
 //#include "remill/Arch/AArch64/Semantics/CALL_RET.cpp"

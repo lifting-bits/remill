@@ -94,6 +94,11 @@ static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
 static void AddShiftRegOperand(Instruction &inst,
                                uint32_t reg_num, uint32_t shift_type,
                                uint32_t shift_size) {
+  auto is_rrx = false;
+  if (!shift_size && shift_type == Shift::kShiftROR) {
+    shift_size = 1;
+    is_rrx = true;
+  }
   if (!shift_size) {
     AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
   } else {
@@ -102,6 +107,66 @@ static void AddShiftRegOperand(Instruction &inst,
     op.shift_reg.reg.name = kIntRegName[reg_num];
     op.shift_reg.reg.size = 32;
     op.shift_reg.shift_op = GetOperandShift(static_cast<Shift>(shift_type));
+    if (shift_type == Shift::kShiftLSR || shift_type == Shift::kShiftASR) {
+      if (!shift_size) {
+        shift_size = 32;
+      }
+    } else if (shift_type == Shift::kShiftROR) {
+      LOG_IF(FATAL, !shift_size)
+          << "Invalid use of AddShiftRegOperand RRX shifts not supported";
+    }
+    op.shift_reg.shift_size = shift_size;
+    op.type = Operand::kTypeShiftRegister;
+    op.size = 32;
+    op.action = Operand::kActionRead;
+  }
+}
+
+static void AddShiftCarryOperand(Instruction &inst,
+                                 uint32_t reg_num, uint32_t shift_type,
+                                 uint32_t shift_size, const char * carry_reg_name) {
+  inst.operands.emplace_back();
+  auto &op = inst.operands.back();
+  op.shift_reg.extract_size = 1;
+  op.shift_reg.extend_op = Operand::ShiftRegister::kExtendUnsigned;
+
+  auto is_rrx = false;
+  if (!shift_size && shift_type == Shift::kShiftROR) {
+    shift_size = 1;
+    is_rrx = true;
+  }
+
+  if (!shift_size) {
+    op.shift_reg.reg.name = carry_reg_name;
+    op.shift_reg.reg.size = 8;
+    op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
+    op.shift_reg.shift_size = 0;
+  } else {
+    op.shift_reg.reg.name = kIntRegName[reg_num];
+    op.shift_reg.reg.size = 32;
+    switch (static_cast<Shift>(shift_type)) {
+      case Shift::kShiftASR:
+        op.shift_reg.shift_size = shift_size - 1;
+        op.shift_reg.shift_op = Operand::ShiftRegister::kShiftSignedRight;
+        break;
+      case Shift::kShiftLSL:
+        op.shift_reg.shift_size = 32 - shift_size;
+        op.shift_reg.shift_op = Operand::ShiftRegister::kShiftUnsignedRight;
+        break;
+      case Shift::kShiftLSR:
+        op.shift_reg.shift_size = shift_size - 1;
+        op.shift_reg.shift_op = Operand::ShiftRegister::kShiftUnsignedRight;
+        break;
+      case Shift::kShiftROR:
+        if (is_rrx) {
+
+        } else {
+          op.shift_reg.shift_size = (shift_size + 31) % 32;
+          op.shift_reg.shift_op = Operand::ShiftRegister::kShiftUnsignedRight;
+        }
+        break;
+    }
+
     if (shift_type == Shift::kShiftLSR || shift_type == Shift::kShiftASR) {
       if (!shift_size) {
         shift_size = 32;
@@ -214,6 +279,40 @@ static void DecodeCondition(Instruction &inst, uint32_t cond) {
   }
 }
 
+//000     AND, ANDS (register)
+//001     EOR, EORS (register)
+//010 0 != 1101 SUB, SUBS (register) — SUB
+//010 0 1101  SUB, SUBS (SP minus register) — SUB
+//010 1 != 1101 SUB, SUBS (register) — SUBS
+//010 1 1101  SUB, SUBS (SP minus register) — SUBS
+//011     RSB, RSBS (register)
+//100 0 != 1101 ADD, ADDS (register) — ADD
+//100 0 1101  ADD, ADDS (SP plus register) — ADD
+//100 1 != 1101 ADD, ADDS (register) — ADDS
+//100 1 1101  ADD, ADDS (SP plus register) — ADDS
+//101     ADC, ADCS (register)
+//110     SBC, SBCS (register)
+//111     RSC, RSCS (register)
+// High 3 bit opc and low bit s, opc:s
+static const char * const kIdpNames[] = {
+    [0b0000] = "ANDrr",
+    [0b0001] = "ANDSrr",
+    [0b0010] = "EORrr",
+    [0b0011] = "EORSrr",
+    [0b0100] = "SUBrr",
+    [0b0101] = "SUBSrr",
+    [0b0110] = "RSBrr",
+    [0b0111] = "RSBSrr",
+    [0b1000] = "ADDrr",
+    [0b1001] = "ADDSrr",
+    [0b1010] = "ADCrr",
+    [0b1011] = "ADCSrr",
+    [0b1100] = "SBCrr",
+    [0b1101] = "SBCSrr",
+    [0b1110] = "RSCrr",
+    [0b1111] = "RSCSrr"
+};
+
 static bool TryDecodeIntegerDataProcessing(Instruction &inst, uint32_t bits) {
   const IntDataProcessing enc = {bits};
   if (enc.cond == 0b1111u) {
@@ -222,14 +321,19 @@ static bool TryDecodeIntegerDataProcessing(Instruction &inst, uint32_t bits) {
   if (enc.opc == 0b010u || enc.opc == 0b100u) {
 
   }
-
+  inst.function = kIdpNames[ (enc.opc << 1u) | enc.s];
   DecodeCondition(inst, enc.cond);
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
   AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
   AddShiftRegOperand(inst, enc.rm, enc.type, enc.imm5);
 
   if (enc.rd == kPCRegNum) {
-    inst.category = Instruction::kCategoryIndirectJump;
+    if (enc.s) {  // Updates the flags (condition codes)
+      inst.category = Instruction::kCategoryError;
+      return false;
+    } else {
+      inst.category = Instruction::kCategoryIndirectJump;
+    }
   } else {
     inst.category = Instruction::kCategoryNormal;
   }

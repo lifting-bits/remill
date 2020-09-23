@@ -469,7 +469,7 @@ static const char *gSemanticsSearchPaths[] = {
     // Derived from the build.
     REMILL_BUILD_SEMANTICS_DIR_X86 "\0",
     REMILL_BUILD_SEMANTICS_DIR_AARCH64 "\0",
-	REMILL_BUILD_SEMANTICS_DIR_AARCH32 "\0",
+    REMILL_BUILD_SEMANTICS_DIR_AARCH32 "\0",
     REMILL_INSTALL_SEMANTICS_DIR "\0",
     "/usr/local/share/remill/" MAJOR_MINOR "/semantics",
     "/usr/share/remill/" MAJOR_MINOR "/semantics",
