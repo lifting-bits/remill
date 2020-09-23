@@ -72,10 +72,38 @@ struct alignas(8) GPR final {
 
 } __attribute__((packed));
 
+// System registers affecting control and status of the machine.
+struct alignas(8) SR final {
+
+  uint8_t _2;
+  uint8_t n;  //  Negative condition flag.
+  uint8_t _3;
+  uint8_t z;  //  Zero condition flag
+  uint8_t _4;
+  uint8_t c;  //  Carry condition flag
+  uint8_t _5;
+  uint8_t v;  //  Overflow condition flag
+
+  uint8_t _6;
+  uint8_t ixc;  // Inexact (cumulative).
+  uint8_t _7;
+  uint8_t ofc;  // Overflow (cumulative).
+  uint8_t _8;
+  uint8_t ufc;  // Underflow (cumulative).
+  uint8_t _9;
+  uint8_t idc;  // Input denormal (cumulative).
+  uint8_t _10;
+  uint8_t ioc;  // Invalid operation (cumulative).
+
+  uint8_t _padding[6];
+} __attribute__((packed));
+
 struct alignas(16) State final : public ArchState {
 
 
   GPR gpr;  // 528 bytes.
+  SR sr;
+  uint64_t _0;
 
 
 } __attribute__((packed));

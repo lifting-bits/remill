@@ -488,6 +488,7 @@ namespace {
 static const char *gSemanticsSearchPaths[] = {
   // Derived from the build.
   REMILL_BUILD_SEMANTICS_DIR_X86 "\0",
+  REMILL_BUILD_SEMANTICS_DIR_AARCH32 "\0",
   REMILL_BUILD_SEMANTICS_DIR_AARCH64 "\0",
   REMILL_BUILD_SEMANTICS_DIR_SPARC32 "\0",
   REMILL_BUILD_SEMANTICS_DIR_SPARC64 "\0",

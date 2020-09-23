@@ -267,6 +267,9 @@ int main(int argc, char *argv[]) {
   // `module`.
   trace_lifter.Lift(FLAGS_entry_address);
 
+  for (auto [ea, trace] : manager.traces) {
+    LOG(ERROR) << remill::LLVMThingToString(trace);
+  }
   // Optimize the module, but with a particular focus on only the functions
   // that we actually lifted.
   remill::OptimizationGuide guide = {};

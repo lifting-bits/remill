@@ -48,6 +48,9 @@ function(add_runtime_helper target_name address_bit_size little_endian)
     INSTALLDESTINATION "${install_folder}"
 
     DEPENDENCIES
+    "${CMAKE_SOURCE_DIR}/remill/Arch/AArch32/Semantics/BINARY.cpp"
+    "${CMAKE_SOURCE_DIR}/remill/Arch/AArch32/Semantics/FLAGS.cpp"
+    
     
   )
 endfunction()

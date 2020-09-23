@@ -112,7 +112,7 @@ void AArch32Arch::PopulateBasicBlockFunction(llvm::Module *module,
       << "the bitcode module";
 
   auto &context = module->getContext();
-//  auto u8 = llvm::Type::getInt8Ty(context);
+  auto u8 = llvm::Type::getInt8Ty(context);
 //  auto u16 = llvm::Type::getInt16Ty(context);
   auto u32 = llvm::Type::getInt32Ty(context);
 //  auto u64 = llvm::Type::getInt64Ty(context);
@@ -157,10 +157,17 @@ void AArch32Arch::PopulateBasicBlockFunction(llvm::Module *module,
   SUB_REG(LR, gpr.r14.dword, u32, R14);
   SUB_REG(PC, gpr.r15.dword, u32, R15);
 
+  REG(N, sr.n, u8);
+  REG(C, sr.c, u8);
+  REG(Z, sr.z, u8);
+  REG(V, sr.v, u8);
+
   const auto pc_arg = NthArgument(bb_func, kPCArgNum);
   const auto state_ptr_arg = NthArgument(bb_func, kStatePointerArgNum);
   ir.CreateStore(pc_arg, ir.CreateAlloca(addr, nullptr, "NEXT_PC"));
 
+  auto zero_c = ir.CreateAlloca(u8, nullptr, "ZERO_C");
+  ir.CreateStore(llvm::Constant::getNullValue(u8), zero_c);
   ir.CreateAlloca(u32, nullptr, "SUPPRESS_WRITEBACK");
   (void) this->RegisterByName("PC")->AddressOf(state_ptr_arg, ir);
 }
