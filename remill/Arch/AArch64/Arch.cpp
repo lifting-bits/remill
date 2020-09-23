@@ -1220,6 +1220,17 @@ bool AArch64Arch::DecodeInstruction(uint64_t address,
     return false;
   }
 
+  // Control flow operands update the next program counter.
+  if (inst.IsControlFlow()) {
+    inst.operands.emplace_back();
+    auto &dst_ret_pc = inst.operands.back();
+    dst_ret_pc.type = Operand::kTypeRegister;
+    dst_ret_pc.action = Operand::kActionWrite;
+    dst_ret_pc.size = address_size;
+    dst_ret_pc.reg.name = "NEXT_PC";
+    dst_ret_pc.reg.size = address_size;
+  }
+
   // The semantics will store the return address in `RETURN_PC`. This is to
   // help synchronize program counters when lifting instructions on an ISA
   // with delay slots.
@@ -1228,9 +1239,9 @@ bool AArch64Arch::DecodeInstruction(uint64_t address,
     auto &dst_ret_pc = inst.operands.back();
     dst_ret_pc.type = Operand::kTypeRegister;
     dst_ret_pc.action = Operand::kActionWrite;
-    dst_ret_pc.size = 64;
+    dst_ret_pc.size = address_size;
     dst_ret_pc.reg.name = "RETURN_PC";
-    dst_ret_pc.reg.size = 64;
+    dst_ret_pc.reg.size = address_size;
   }
 
   return true;

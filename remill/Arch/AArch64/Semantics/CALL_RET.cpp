@@ -17,16 +17,20 @@
 namespace {
 
 template <typename S>
-DEF_SEM(CALL, S target_addr, PC ret_addr, R64W return_pc_dst) {
-  Write(REG_LP, Read(ret_addr));
-  const auto return_pc = Read(target_addr);
-  Write(REG_PC, return_pc);
+DEF_SEM(CALL, S target_addr, PC ret_addr, R64W dst_pc, R64W return_pc_dst) {
+  const auto return_pc = Read(ret_addr);
+  const auto new_pc = Read(target_addr);
+  Write(REG_LP, return_pc);
+  Write(REG_PC, new_pc);
+  Write(dst_pc, new_pc);
   Write(return_pc_dst, return_pc);
   return memory;
 }
 
-DEF_SEM(RET, R64 target_pc) {
-  Write(REG_PC, Read(target_pc));
+DEF_SEM(RET, R64 target_pc, R64W dst_pc) {
+  const auto new_pc = Read(target_pc);
+  Write(REG_PC, new_pc);
+  Write(dst_pc, new_pc);
   return memory;
 }
 
