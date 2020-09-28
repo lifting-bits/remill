@@ -30,84 +30,181 @@ T AddWithCarryNZCV(State &state, T lhs, T rhs, T carry) {
 
 
 
-template <typename D, typename S1, typename S2>
-DEF_SEM(AND, D dst, S1 src1, S2 src2) {
-  Write(dst, UAnd(Read(src1), Read(src2)));
+DEF_SEM(AND, R32W dst, R32 src1, I32 src2, I32 src2_rrx) {
+  auto value = UOr(Read(src2), Read(src2_rrx));
+  Write(dst, UAnd(Read(src1), value));
   return memory;
 }
 
-template <typename D, typename S1, typename S2>
-DEF_SEM(ANDS, D dst, S1 src1, S2 src2) {
-  auto res = UAnd(Read(src1), Read(src2));
+DEF_SEM(ANDS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
+  auto value = UOr(Read(src2), Read(src2_rrx));
+  auto res = UAnd(Read(src1), value);
   WriteZExt(dst, res);
   state.sr.n = SignFlag(res);
   state.sr.z = ZeroFlag(res);
-  state.sr.c = false;
+  state.sr.c = Read(carry_out);
   // PSTATE.V unchanged
   return memory;
 }
 
-template <typename D, typename S1, typename S2>
-DEF_SEM(EOR, D dst, S1 src1, S2 src2) {
-  Write(dst, UXor(Read(src1), Read(src2)));
+
+DEF_SEM(EOR, R32W dst, R32 src1, I32 src2, I32 src2_rrx) {
+  auto value = UOr(Read(src2), Read(src2_rrx));
+  Write(dst, UXor(Read(src1), value));
   return memory;
 }
 
-template <typename D, typename S1, typename S2>
-DEF_SEM(RSB, D dst, S1 src1, S2 src2) {
-  Write(dst, USub(Read(src2), Read(src1)));
+DEF_SEM(EORS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
+  auto value = UOr(Read(src2), Read(src2_rrx));
+  auto res = UXor(Read(src1), value);
+  Write(dst, res);
+  state.sr.n = SignFlag(res);
+  state.sr.z = ZeroFlag(res);
+  state.sr.c = Read(carry_out);
+  // PSTATE.V unchanged
   return memory;
 }
 
-template <typename D, typename S1, typename S2>
-DEF_SEM(SUB, D dst, S1 src1, S2 src2) {
-  Write(dst, USub(Read(src1), Read(src2)));
+DEF_SEM(RSB, R32W dst, R32 src1, I32 src2, I32 src2_rrx) {
+  auto value = UOr(Read(src2), Read(src2_rrx));
+  Write(dst, USub(value, Read(src1)));
   return memory;
 }
 
-template <typename D, typename S1, typename S2>
-DEF_SEM(ADD, D dst, S1 src1, S2 src2) {
-  Write(dst, UAdd(Read(src1), Read(src2)));
-  return memory;
-}
-
-template <typename D, typename S1, typename S2>
-DEF_SEM(ADDS, D dst, S1 src1, S2 src2) {
-  using T = typename BaseType<S2>::BT;
+DEF_SEM(RSBS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
+  auto rhs = UOr(Read(src2), Read(src2_rrx));
   auto lhs = Read(src1);
-  auto rhs = Read(src2);
-  auto res = AddWithCarryNZCV(state, lhs, rhs, T(0));
+  auto res = AddWithCarryNZCV(state, UNot(lhs), rhs, uint32_t(1));
+  Write(dst, res);
+  return memory;
+}
+
+DEF_SEM(SUB, R32W dst, R32 src1, I32 src2, I32 src2_rrx) {
+  auto value = UOr(Read(src2), Read(src2_rrx));
+  Write(dst, USub(Read(src1), value));
+  return memory;
+}
+
+DEF_SEM(SUBS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
+  auto rhs = UOr(Read(src2), Read(src2_rrx));
+  auto lhs = Read(src1);
+  auto res = AddWithCarryNZCV(state, lhs, UNot(rhs), uint32_t(1));
   Write(dst, res);
   return memory;
 }
 
 
-template <typename D, typename S1, typename S2>
-DEF_SEM(ADC, D dst, S1 src1, S2 src2) {
-  Write(dst, UAdd(UAdd(Read(src1), Read(src2)), ZExtTo<S1>(state.sr.c)));
+DEF_SEM(ADD, R32W dst, R32 src1, I32 src2, I32 src2_rrx) {
+  auto value = UOr(Read(src2), Read(src2_rrx));
+  Write(dst, UAdd(Read(src1), value));
   return memory;
 }
 
-template <typename D, typename S1, typename S2>
-DEF_SEM(SBC, D dst, S1 src1, S2 src2) {
-  Write(dst, UAdd(UAdd(Read(src1), UNot(Read(src2))), ZExtTo<S1>(state.sr.c)));
+DEF_SEM(ADDS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
+  auto rhs = UOr(Read(src2), Read(src2_rrx));
+  auto lhs = Read(src1);
+  auto res = AddWithCarryNZCV(state, lhs, rhs, uint32_t(0));
+  Write(dst, res);
   return memory;
 }
 
-template <typename D, typename S1, typename S2>
-DEF_SEM(RSC, D dst, S1 src1, S2 src2) {
-  Write(dst, UAdd(UAdd(Read(src2), UNot(Read(src1))), ZExtTo<S1>(state.sr.c)));
+DEF_SEM(ADC, R32W dst, R32 src1, I32 src2, I32 src2_rrx) {
+  auto value = UOr(Read(src2), Read(src2_rrx));
+  Write(dst, UAdd(UAdd(Read(src1),value), uint32_t(state.sr.c)));
+  return memory;
+}
+
+DEF_SEM(ADCS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
+  auto rhs = UOr(Read(src2), Read(src2_rrx));
+  auto lhs = Read(src1);
+  auto res = AddWithCarryNZCV(state, lhs, rhs, uint32_t(state.sr.c));
+  Write(dst, res);
+  return memory;
+}
+
+DEF_SEM(SBC, R32W dst, R32 src1, I32 src2, I32 src2_rrx) {
+  auto value = UOr(Read(src2), Read(src2_rrx));
+  Write(dst, UAdd(UAdd(Read(src1), UNot(value)), uint32_t(state.sr.c)));
+  return memory;
+}
+
+DEF_SEM(SBCS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
+  auto rhs = UOr(Read(src2), Read(src2_rrx));
+  auto lhs = Read(src1);
+  auto res = AddWithCarryNZCV(state, lhs, UNot(rhs), uint32_t(state.sr.c));
+  Write(dst, res);
+  return memory;
+}
+
+DEF_SEM(RSC, R32W dst, R32 src1, I32 src2, I32 src2_rrx) {
+  auto value = UOr(Read(src2), Read(src2_rrx));
+  Write(dst, UAdd(UAdd(value, UNot(Read(src1))), uint32_t(state.sr.c)));
+  return memory;
+}
+
+DEF_SEM(RSCS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
+  auto rhs = UOr(Read(src2), Read(src2_rrx));
+  auto lhs = Read(src1);
+  auto res = AddWithCarryNZCV(state, UNot(lhs), rhs, uint32_t(state.sr.c));
+  Write(dst, res);
   return memory;
 }
 
 }  // namespace
 
-DEF_ISEL(ANDrr) = AND<R32W, R32, I32>;
-DEF_ISEL(EORrr) = EOR<R32W, R32, I32>;
-DEF_ISEL(ADDrr) = ADD<R32W, R32, I32>;
-DEF_ISEL(ADDSrr) = ADDS<R32W, R32, I32>;
-DEF_ISEL(ADCrr) = ADC<R32W, R32, I32>;
-DEF_ISEL(RSBrr) = RSB<R32W, R32, I32>;
-DEF_ISEL(SUBrr) = SUB<R32W, R32, I32>;
-DEF_ISEL(SBCrr) = SBC<R32W, R32, I32>;
-DEF_ISEL(RSCrr) = RSC<R32W, R32, I32>;
+DEF_ISEL(ANDrr) = AND;
+DEF_ISEL(ANDSrr) = ANDS;
+DEF_ISEL(EORrr) = EOR;
+DEF_ISEL(EORSrr) = EORS;
+DEF_ISEL(ADDrr) = ADD;
+DEF_ISEL(ADDSrr) = ADDS;
+DEF_ISEL(ADCrr) = ADC;
+DEF_ISEL(ADCSrr) = ADCS;
+DEF_ISEL(RSBrr) = RSB;
+DEF_ISEL(RSBSrr) = RSBS;
+DEF_ISEL(SUBrr) = SUB;
+DEF_ISEL(SUBSrr) = SUBS;
+DEF_ISEL(SBCrr) = SBC;
+DEF_ISEL(SBCSrr) = SBCS;
+DEF_ISEL(RSCrr) = RSC;
+DEF_ISEL(RSCSrr) = RSCS;
+
+namespace {
+DEF_SEM(MUL, R32W dst, R32 src1, R32 src2, R32 src3) {
+  auto rhs = Signed(Read(src2));
+  auto lhs = Signed(Read(src1));
+  auto acc = Signed(Read(src3));
+  auto res = Unsigned(SAdd(SMul(lhs, rhs), acc));
+  Write(dst, res);
+  return memory;
+}
+
+DEF_SEM(MULS, R32W dst, R32 src1, R32 src2, R32 src3) {
+  auto rhs = Signed(Read(src2));
+  auto lhs = Signed(Read(src1));
+  auto acc = Signed(Read(src3));
+  auto res = Unsigned(SAdd(SMul(lhs, rhs), acc));
+  state.sr.n = SignFlag(res);
+  state.sr.z = ZeroFlag(res);
+  // PSTATE.C, PSTATE.V unchanged
+  Write(dst, res);
+  return memory;
+}
+
+DEF_SEM(MLS, R32W dst, R32 src1, R32 src2, R32 src3) {
+  auto rhs = Signed(Read(src2));
+  auto lhs = Signed(Read(src1));
+  auto acc = Signed(Read(src3));
+  auto res = Unsigned(SSub(acc, SMul(lhs, rhs)));
+  Write(dst, res);
+  return memory;
+}
+
+} // namespace
+
+DEF_ISEL(MULrr) = MUL;
+DEF_ISEL(MULSrr) = MULS;
+DEF_ISEL(MLArr) = MUL;
+DEF_ISEL(MLASrr) = MULS;
+DEF_ISEL(MLSrr) = MLS;
+

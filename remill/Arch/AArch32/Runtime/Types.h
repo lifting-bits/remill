@@ -64,7 +64,6 @@ typedef MVn<vec256_t> MV256;
 typedef In<uint8_t> I8;
 typedef In<uint16_t> I16;
 typedef In<uint32_t> I32;
-typedef In<uint64_t> I64;
 
 typedef In<float32_t> F32;
 typedef In<float64_t> F64;
