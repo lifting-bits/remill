@@ -23,7 +23,7 @@ namespace remill {
 namespace {
 
 //Integer Data Processing (three register, immediate shift)
-union IntDataProcessing {
+union IntDataProcessingRRR {
   uint32_t flat;
   struct {
     uint32_t rm : 4;
@@ -38,7 +38,39 @@ union IntDataProcessing {
     uint32_t cond : 4;
   } __attribute__((packed));
 } __attribute__((packed));
-static_assert(sizeof(IntDataProcessing) == 4, " ");
+static_assert(sizeof(IntDataProcessingRRR) == 4, " ");
+
+//Integer Data Processing (2 register and immediate, immediate shift)
+union IntDataProcessingRRI {
+  uint32_t flat;
+  struct {
+    uint32_t imm12 : 12;
+    uint32_t rd : 4;
+    uint32_t rn : 4;
+    uint32_t s : 1;
+    uint32_t opc : 3;
+    uint32_t _0010 : 4;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(IntDataProcessingRRI) == 4, " ");
+
+// Multiply and Accumulate
+union MultiplyAndAccumulate {
+  uint32_t flat;
+  struct {
+    uint32_t rn : 4;
+    uint32_t _1001  : 4;
+    uint32_t rm : 4;
+    uint32_t rdlo : 4;
+    uint32_t rdhi : 4;
+    uint32_t s : 1;
+    uint32_t opc : 3;
+    uint32_t _0000 : 4;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(MultiplyAndAccumulate) == 4, " ");
 
 static constexpr auto kPCRegNum = 15u;
 
@@ -61,6 +93,62 @@ static const char * const kIntRegName[] = {
     "R15"
 };
 
+static void DecodeA32ExpandImm(Instruction &inst, uint32_t imm12, bool carry_out) {
+  uint32_t unrotated_value = imm12 & (0b11111111u);
+  uint32_t rotation_amount = ((imm12 >> 8) & (0b1111u)) *2u;
+  auto num_ops = inst.operands.size();
+  inst.operands.emplace_back();
+  inst.operands.emplace_back();
+  inst.operands.emplace_back();
+  auto &op0 = inst.operands[num_ops];
+  auto &op1 = inst.operands[num_ops + 1];
+  auto &op2 = inst.operands[num_ops + 2];
+
+  op0.imm.is_signed = false;
+  op0.size = 32;
+  op0.action = Operand::kActionRead;
+  op0.type = Operand::kTypeImmediate;
+
+  if (!rotation_amount) {
+    op0.imm.val = unrotated_value;
+  } else {
+    op0.imm.val = __builtin_rotateright32(unrotated_value, rotation_amount);
+  }
+
+  // This is the 2nd part of RRX so we can reuse the same semantics
+  op1.imm.is_signed = false;
+  op1.imm.val = 0;
+  op1.size = 32;
+  op1.action = Operand::kActionRead;
+  op1.type = Operand::kTypeImmediate;
+
+  if (!rotation_amount) {
+    op2.shift_reg.extract_size = 1;
+    op2.shift_reg.extend_op = Operand::ShiftRegister::kExtendUnsigned;
+
+    op2.shift_reg.shift_size = 0;
+    op2.type = Operand::kTypeShiftRegister;
+    op2.size = 32;
+    op2.action = Operand::kActionRead;
+
+    op2.shift_reg.reg.name = "C";
+    op2.shift_reg.reg.size = 8;
+    op2.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
+    op2.shift_reg.shift_size = 0;
+  } else {
+    op2.imm.val = (unrotated_value >> ((rotation_amount + 31u) % 32u)) & 0b1u;
+    op2.size = 32;
+    op2.imm.is_signed = false;
+    op2.action = Operand::kActionRead;
+    op2.type = Operand::kTypeImmediate;
+  }
+
+  if (!carry_out) {
+    inst.operands.pop_back();
+  }
+
+}
+
 static void AddIntRegOp(Instruction &inst, unsigned index, unsigned size,
                         Operand::Action action) {
   inst.operands.emplace_back();
@@ -70,6 +158,17 @@ static void AddIntRegOp(Instruction &inst, unsigned index, unsigned size,
   op.action = action;
   op.reg.size = size;
   op.reg.name = kIntRegName[index];
+}
+
+static void AddImmOp(Instruction &inst, uint64_t value, unsigned size = 32,
+                        bool is_signed = false) {
+  inst.operands.emplace_back();
+  auto &op = inst.operands.back();
+  op.imm.val = value;
+  op.size = size;
+  op.imm.is_signed = is_signed;
+  op.action = Operand::kActionRead;
+  op.type = Operand::kTypeImmediate;
 }
 
 // Note: Order is significant; extracted bits may be casted to this type.
@@ -98,7 +197,12 @@ static void AddShiftRegOperand(Instruction &inst,
   if (!shift_size && shift_type == Shift::kShiftROR) {
     shift_size = 1;
     is_rrx = true;
+  } else if (shift_type == Shift::kShiftLSR || shift_type == Shift::kShiftASR) {
+    if (!shift_size) {
+      shift_size = 32;
+    }
   }
+
   if (!shift_size) {
     AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
   } else {
@@ -106,19 +210,42 @@ static void AddShiftRegOperand(Instruction &inst,
     auto &op = inst.operands.back();
     op.shift_reg.reg.name = kIntRegName[reg_num];
     op.shift_reg.reg.size = 32;
-    op.shift_reg.shift_op = GetOperandShift(static_cast<Shift>(shift_type));
-    if (shift_type == Shift::kShiftLSR || shift_type == Shift::kShiftASR) {
-      if (!shift_size) {
-        shift_size = 32;
-      }
-    } else if (is_rrx) {
-      LOG_IF(FATAL, !shift_size)
-          << "Invalid use of AddShiftRegOperand RRX shifts not supported";
+
+    if (is_rrx) {
+      op.shift_reg.shift_op = Operand::ShiftRegister::kShiftUnsignedRight;
+      op.shift_reg.shift_size = 1;
+    } else {
+      op.shift_reg.shift_op = GetOperandShift(static_cast<Shift>(shift_type));
+      op.shift_reg.shift_size = shift_size;
     }
-    op.shift_reg.shift_size = shift_size;
+
     op.type = Operand::kTypeShiftRegister;
     op.size = 32;
     op.action = Operand::kActionRead;
+  }
+
+  // To handle rrx we need to take two components shift each and OR the results
+  // together. No single operand type in remill is flexible enough to handle this.
+  // So we make 2 operands and OR those two operands together. In most cases
+  // when rrx isn't used we OR something with 0.
+  inst.operands.emplace_back();
+  auto &op = inst.operands.back();
+  if (is_rrx) {
+    op.shift_reg.reg.name = "C";
+    op.shift_reg.reg.size = 8;
+
+    op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
+    op.shift_reg.shift_size = 31;
+
+    op.type = Operand::kTypeShiftRegister;
+    op.size = 32;
+    op.action = Operand::kActionRead;
+  } else {
+    op.imm.is_signed = false;
+    op.imm.val = 0;
+    op.size = 32;
+    op.action = Operand::kActionRead;
+    op.type = Operand::kTypeImmediate;
   }
 }
 
@@ -129,6 +256,11 @@ static void AddShiftCarryOperand(Instruction &inst,
   auto &op = inst.operands.back();
   op.shift_reg.extract_size = 1;
   op.shift_reg.extend_op = Operand::ShiftRegister::kExtendUnsigned;
+
+  op.shift_reg.shift_size = shift_size;
+  op.type = Operand::kTypeShiftRegister;
+  op.size = 32;
+  op.action = Operand::kActionRead;
 
   auto is_rrx = false;
   if (!shift_size && shift_type == Shift::kShiftROR) {
@@ -159,25 +291,18 @@ static void AddShiftCarryOperand(Instruction &inst,
         break;
       case Shift::kShiftROR:
         if (is_rrx) {
-
+          op.shift_reg.shift_size = 0;
+          op.shift_reg.shift_op = Operand::ShiftRegister::kShiftUnsignedRight;
         } else {
-          op.shift_reg.shift_size = (shift_size + 31) % 32;
+          op.shift_reg.shift_size = (shift_size + 31u) % 32u;
           op.shift_reg.shift_op = Operand::ShiftRegister::kShiftUnsignedRight;
         }
         break;
     }
-
-    if (shift_type == Shift::kShiftLSR || shift_type == Shift::kShiftASR) {
-
-    }
-    op.shift_reg.shift_size = shift_size;
-    op.type = Operand::kTypeShiftRegister;
-    op.size = 32;
-    op.action = Operand::kActionRead;
   }
 }
 
-// Decode the condition field and fil in the instruction conditions accordingly
+// Decode the condition field and fill in the instruction conditions accordingly
 static void DecodeCondition(Instruction &inst, uint32_t cond) {
   inst.conditions.emplace_back();
   auto &lhs_cond = inst.conditions.back();
@@ -274,22 +399,8 @@ static void DecodeCondition(Instruction &inst, uint32_t cond) {
   }
 }
 
-//000     AND, ANDS (register)
-//001     EOR, EORS (register)
-//010 0 != 1101 SUB, SUBS (register) — SUB
-//010 0 1101  SUB, SUBS (SP minus register) — SUB
-//010 1 != 1101 SUB, SUBS (register) — SUBS
-//010 1 1101  SUB, SUBS (SP minus register) — SUBS
-//011     RSB, RSBS (register)
-//100 0 != 1101 ADD, ADDS (register) — ADD
-//100 0 1101  ADD, ADDS (SP plus register) — ADD
-//100 1 != 1101 ADD, ADDS (register) — ADDS
-//100 1 1101  ADD, ADDS (SP plus register) — ADDS
-//101     ADC, ADCS (register)
-//110     SBC, SBCS (register)
-//111     RSC, RSCS (register)
 // High 3 bit opc and low bit s, opc:s
-static const char * const kIdpNames[] = {
+static const char * const kIdpNamesRRR[] = {
     [0b0000] = "ANDrr",
     [0b0001] = "ANDSrr",
     [0b0010] = "EORrr",
@@ -308,19 +419,35 @@ static const char * const kIdpNames[] = {
     [0b1111] = "RSCSrr"
 };
 
-static bool TryDecodeIntegerDataProcessing(Instruction &inst, uint32_t bits) {
-  const IntDataProcessing enc = {bits};
+//000     AND, ANDS (register)
+//001     EOR, EORS (register)
+//010 0 != 1101 SUB, SUBS (register) — SUB
+//010 0 1101  SUB, SUBS (SP minus register) — SUB
+//010 1 != 1101 SUB, SUBS (register) — SUBS
+//010 1 1101  SUB, SUBS (SP minus register) — SUBS
+//011     RSB, RSBS (register)
+//100 0 != 1101 ADD, ADDS (register) — ADD
+//100 0 1101  ADD, ADDS (SP plus register) — ADD
+//100 1 != 1101 ADD, ADDS (register) — ADDS
+//100 1 1101  ADD, ADDS (SP plus register) — ADDS
+//101     ADC, ADCS (register)
+//110     SBC, SBCS (register)
+//111     RSC, RSCS (register)
+static bool TryDecodeIntegerDataProcessingRRR(Instruction &inst, uint32_t bits) {
+  const IntDataProcessingRRR enc = {bits};
   if (enc.cond == 0b1111u) {
     return false;
   }
-  if (enc.opc == 0b010u || enc.opc == 0b100u) {
 
-  }
-  inst.function = kIdpNames[ (enc.opc << 1u) | enc.s];
+  inst.function = kIdpNamesRRR[ (enc.opc << 1u) | enc.s];
   DecodeCondition(inst, enc.cond);
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
   AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
   AddShiftRegOperand(inst, enc.rm, enc.type, enc.imm5);
+
+  if (enc.s) {
+    AddShiftCarryOperand(inst, enc.rm, enc.type, enc.imm5, "C");
+  }
 
   if (enc.rd == kPCRegNum) {
     if (enc.s) {  // Updates the flags (condition codes)
@@ -336,15 +463,161 @@ static bool TryDecodeIntegerDataProcessing(Instruction &inst, uint32_t bits) {
   return true;
 }
 
+//000     AND, ANDS (immediate)
+//001     EOR, EORS (immediate)
+//010 0 != 11x1 SUB, SUBS (immediate) — SUB
+//010 0 1101  SUB, SUBS (SP minus immediate) — SUB
+//010 0 1111  ADR — A2
+//010 1 != 1101 SUB, SUBS (immediate) — SUBS
+//010 1 1101  SUB, SUBS (SP minus immediate) — SUBS
+//011     RSB, RSBS (immediate)
+//100 0 != 11x1 ADD, ADDS (immediate) — ADD
+//100 0 1101  ADD, ADDS (SP plus immediate) — ADD
+//100 0 1111  ADR — A1
+//100 1 != 1101 ADD, ADDS (immediate) — ADDS
+//100 1 1101  ADD, ADDS (SP plus immediate) — ADDS
+//101     ADC, ADCS (immediate)
+//110     SBC, SBCS (immediate)
+//111     RSC, RSCS (immediate)
+static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst, uint32_t bits) {
+  const IntDataProcessingRRI enc = { bits };
+  if (enc.cond == 0b1111u) {
+    return false;
+  }
+
+  inst.function = kIdpNamesRRR[(enc.opc << 1u) | enc.s];
+  DecodeCondition(inst, enc.cond);
+  AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
+
+  // Raise the program counter to align to a multiple of 4 bytes
+  if (enc.rn == kPCRegNum && (enc.opc == 0b100u || enc.opc == 0b010u)) {
+    int64_t diff = static_cast<int32_t>(inst.pc & ~(3u)) - static_cast<int32_t>(inst.pc);
+
+    inst.operands.emplace_back();
+    auto &op = inst.operands.back();
+    op.type = Operand::kTypeAddress;
+    op.size = 32;
+    op.action = Operand::kActionRead;
+    op.addr.address_size = 32;
+    op.addr.base_reg.name = "PC";
+    op.addr.base_reg.size = 32;
+    op.addr.scale = 0;
+    op.addr.displacement = diff;
+
+  } else {
+    AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
+  }
+
+  DecodeA32ExpandImm(inst, enc.imm12, enc.s);
+
+  if (enc.rd == kPCRegNum) {
+
+    if (enc.s) {  // Updates the flags (condition codes)
+      inst.category = Instruction::kCategoryError;
+      return false;
+    } else {
+      inst.category = Instruction::kCategoryIndirectJump;
+    }
+  } else {
+    inst.category = Instruction::kCategoryNormal;
+  }
+
+  return true;
+}
+
+
+static const char * const kMulAccRRR[] = {
+    [0b0000] = "MULrr",
+    [0b0001] = "MULSrr",
+    [0b0010] = "MLArr",
+    [0b0011] = "MLASrr",
+    [0b0100] = "UMAALrr",
+    [0b0101] = nullptr,
+    [0b0110] = "MLSrr",
+    [0b0111] = nullptr,
+    [0b1000] = "UMULLrr",
+    [0b1001] = "UMULLSrr",
+    [0b1010] = "UMLALrr",
+    [0b1011] = "UMLALSrr",
+    [0b1100] = "SMULLrr",
+    [0b1101] = "SMULLSrr",
+    [0b1110] = "SMLALrr",
+    [0b1111] = "SMLALSrr"
+};
+
+//000   MUL, MULS
+//001   MLA, MLAS
+//010 0 UMAAL
+//010 1 UNALLOCATED
+//011 0 MLS
+//011 1 UNALLOCATED
+//100   UMULL, UMULLS
+//101   UMLAL, UMLALS
+//110   SMULL, SMULLS
+//111   SMLAL, SMLALS
+static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
+  const MultiplyAndAccumulate enc = { bits };
+  // if d == 15 || n == 15 || m == 15 || a == 15 then UNPREDICTABLE;
+  if (enc.cond == 0b1111u || (enc.rdhi == kPCRegNum || enc.rn == kPCRegNum || enc.rm == kPCRegNum)) {
+    return false;
+  }
+
+  auto instruction = kMulAccRRR[(enc.opc << 1u) | enc.s];
+  if (!instruction) {
+    return false;
+  }
+  inst.function = instruction;
+
+  DecodeCondition(inst, enc.cond);
+  AddIntRegOp(inst, enc.rdhi, 32, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
+  AddIntRegOp(inst, enc.rm, 32, Operand::kActionRead);
+  if (enc.opc != 0b000u) {
+    AddIntRegOp(inst, enc.rdlo, 32, Operand::kActionRead);
+  } else {
+    AddImmOp(inst, 0);
+  }
+
+  return true;
+
+}
+
+static bool (*const kBits7_to_4[])(Instruction&, uint32_t) = {
+    [0b0000] = TryDecodeIntegerDataProcessingRRR,
+    [0b0001] = nullptr,
+    [0b0010] = TryDecodeIntegerDataProcessingRRR,
+    [0b0011] = nullptr,
+    [0b0100] = TryDecodeIntegerDataProcessingRRR,
+    [0b0101] = nullptr,
+    [0b0110] = TryDecodeIntegerDataProcessingRRR,
+    [0b0111] = nullptr,
+    [0b1000] = TryDecodeIntegerDataProcessingRRR,
+    [0b1001] = TryDecodeMultiplyAndAccumulate,
+    [0b1010] = TryDecodeIntegerDataProcessingRRR,
+    [0b1011] = nullptr,
+    [0b1100] = TryDecodeIntegerDataProcessingRRR,
+    [0b1101] = nullptr,
+    [0b1110] = TryDecodeIntegerDataProcessingRRR,
+    [0b1111] = nullptr
+};
+
+static bool TryDecodeArithmetic(Instruction &inst, uint32_t bits){
+  auto decode = kBits7_to_4[(bits >> 4) & 0b1111u];
+  if (!decode){
+    return false;
+  }
+  return decode(inst, bits);
+}
+
 static bool (*const kBits27_to_21[])(Instruction&, uint32_t) = {
-  [0b0000000] = TryDecodeIntegerDataProcessing,
-  [0b0000001] = TryDecodeIntegerDataProcessing,
-  [0b0000010] = TryDecodeIntegerDataProcessing,
-  [0b0000011] = TryDecodeIntegerDataProcessing,
-  [0b0000100] = TryDecodeIntegerDataProcessing,
-  [0b0000101] = TryDecodeIntegerDataProcessing,
-  [0b0000110] = TryDecodeIntegerDataProcessing,
-  [0b0000111] = TryDecodeIntegerDataProcessing,
+  [0b0000000] = TryDecodeArithmetic,
+  [0b0000001] = TryDecodeArithmetic,
+  [0b0000010] = TryDecodeArithmetic,
+  [0b0000011] = TryDecodeArithmetic,
+  [0b0000100] = TryDecodeArithmetic,
+  [0b0000101] = TryDecodeArithmetic,
+  [0b0000110] = TryDecodeArithmetic,
+  [0b0000111] = TryDecodeArithmetic,
   [0b0001000] = nullptr,
   [0b0001001] = nullptr,
   [0b0001010] = nullptr,
@@ -353,14 +626,14 @@ static bool (*const kBits27_to_21[])(Instruction&, uint32_t) = {
   [0b0001101] = nullptr,
   [0b0001110] = nullptr,
   [0b0001111] = nullptr,
-  [0b0010000] = nullptr,
-  [0b0010001] = nullptr,
-  [0b0010010] = nullptr,
-  [0b0010011] = nullptr,
-  [0b0010100] = nullptr,
-  [0b0010101] = nullptr,
-  [0b0010110] = nullptr,
-  [0b0010111] = nullptr,
+  [0b0010000] = TryDecodeIntegerDataProcessingRRI,
+  [0b0010001] = TryDecodeIntegerDataProcessingRRI,
+  [0b0010010] = TryDecodeIntegerDataProcessingRRI,
+  [0b0010011] = TryDecodeIntegerDataProcessingRRI,
+  [0b0010100] = TryDecodeIntegerDataProcessingRRI,
+  [0b0010101] = TryDecodeIntegerDataProcessingRRI,
+  [0b0010110] = TryDecodeIntegerDataProcessingRRI,
+  [0b0010111] = TryDecodeIntegerDataProcessingRRI,
   [0b0011000] = nullptr,
   [0b0011001] = nullptr,
   [0b0011010] = nullptr,
@@ -497,6 +770,10 @@ bool AArch32Arch::DecodeInstruction(uint64_t address, std::string_view inst_byte
     inst.bytes.resize(inst_bytes.size());
   } else {
     inst.bytes = inst_bytes;
+  }
+
+  if (address & 0b1u) {
+    return false;
   }
 
   const auto bytes = reinterpret_cast<const uint8_t *>(inst.bytes.data());
