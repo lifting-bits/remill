@@ -547,14 +547,14 @@ static const char * const kMulAccRRR[] = {
 
 //000   MUL, MULS
 //001   MLA, MLAS
-//010 0 UMAAL
+//010 0 UMAAL - writes to RdHi + RdLo, read RdHi
 //010 1 UNALLOCATED
 //011 0 MLS
 //011 1 UNALLOCATED
-//100   UMULL, UMULLS
-//101   UMLAL, UMLALS
-//110   SMULL, SMULLS
-//111   SMLAL, SMLALS
+//100   UMULL, UMULLS - writes to RdHi + RdLo
+//101   UMLAL, UMLALS - writes to RdHi + RdLo, read RdHi
+//110   SMULL, SMULLS - writes to RdHi + RdLo
+//111   SMLAL, SMLALS - writes to RdHi + RdLo, read RdHi
 static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
   const MultiplyAndAccumulate enc = { bits };
   // if d == 15 || n == 15 || m == 15 || a == 15 then UNPREDICTABLE;
@@ -567,11 +567,23 @@ static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
     return false;
   }
   inst.function = instruction;
-
   DecodeCondition(inst, enc.cond);
+
   AddIntRegOp(inst, enc.rdhi, 32, Operand::kActionWrite);
+  // 2nd write reg only needed for instructions with an opc that begins with 1 and UMALL
+  if (((enc.opc >> 2) & 0b1u) || enc.opc == 0b010u) {
+    AddIntRegOp(inst, enc.rdlo, 32, Operand::kActionWrite);
+  }
+
+  // If opc is UMAAL, UMLAL, SMLAL read RdHi, add 0 immediate for UMULL, SMULL
+  if (enc.opc == 0b111u || enc.opc == 0b101u || enc.opc == 0b010u) {
+    AddIntRegOp(inst, enc.rdhi, 32, Operand::kActionRead);
+  } else if ((enc.opc >> 2) & 0b1u) {
+    AddImmOp(inst, 0);
+  }
   AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
   AddIntRegOp(inst, enc.rm, 32, Operand::kActionRead);
+  // If instruction is not MUL add a read to RdLo otherwise add an immediate
   if (enc.opc != 0b000u) {
     AddIntRegOp(inst, enc.rdlo, 32, Operand::kActionRead);
   } else {
