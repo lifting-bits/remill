@@ -214,27 +214,49 @@ DEF_SEM(MLS, R32W dst, R32 src1, R32 src2, R32 src3) {
 DEF_SEM(UMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
   auto rhs = Read(src3);
   auto lhs = Read(src2);
-  // Question: this may or may not be the way you want me to do the extensions for the 64 bit result??
-  auto acc = UOr(ZExt(Read(src1)), ZExt(Read(src4))); // UInt(R[dHi]:R[dLo])
-  auto res = UAdd(UMul(uint64_t(lhs), uint64_t(rhs)), acc);
-  Write(dst_lo, Trunc(res));
+  auto acc = UOr(UShl(ZExt(Read(src1))), ZExt(Read(src4))); // UInt(R[dHi]:R[dLo])
+  auto res = UAdd(UMul(lhs, rhs), acc);
   Write(dst_hi, Trunc(UShr(res, 32ul)));
+  Write(dst_lo, Trunc(res));
   return memory;
 }
 
 DEF_SEM(UMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
   auto rhs = Read(src3);
   auto lhs = Read(src2);
-  auto acc = UOr(ZExt(Read(src1)), ZExt(Read(src4))); // UInt(R[dHi]:R[dLo])
-  auto res = UAdd(UMul(uint64_t(lhs), uint64_t(rhs)), acc);
+  auto acc = UOr(UShl(ZExt(Read(src1))), ZExt(Read(src4))); // UInt(R[dHi]:R[dLo])
+  auto res = UAdd(UMul(lhs, rhs), acc);
   state.sr.n = SignFlag(res);
   state.sr.z = ZeroFlag(res);
   // PSTATE.C, PSTATE.V unchanged
-  Write(dst_lo, Trunc(res));
   Write(dst_hi, Trunc(UShr(res, 32ul)));
+  Write(dst_lo, Trunc(res));
   return memory;
 }
 
+DEF_SEM(SMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
+  // Not entirely sure about all the signed ops I have in here
+  auto rhs = Signed(Read(src3));
+  auto lhs = Signed(Read(src2));
+  auto acc = SOr(SShl(SExt(Read(src1))), SExt(Read(src4))); // UInt(R[dHi]:R[dLo])
+  auto res = SAdd(SMul(lhs, rhs), acc);
+  Write(dst_hi, Trunc(UShr(res, 32ul)));
+  Write(dst_lo, Trunc(res));
+  return memory;
+}
+
+DEF_SEM(SMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
+  auto rhs = Signed(Read(src3));
+  auto lhs = Signed(Read(src2));
+  auto acc = SOr(SShl(SExt(Read(src1))), SExt(Read(src4))); // UInt(R[dHi]:R[dLo])
+  auto res = SAdd(SMul(lhs, rhs), acc);
+  state.sr.n = SignFlag(res);
+  state.sr.z = ZeroFlag(res);
+  // PSTATE.C, PSTATE.V unchanged
+  Write(dst_hi, Trunc(UShr(res, 32ul)));
+  Write(dst_lo, Trunc(res));
+  return memory;
+}
 } // namespace
 
 DEF_ISEL(MULrr) = MUL;
@@ -246,4 +268,8 @@ DEF_ISEL(UMULLrr) = UMULL;
 DEF_ISEL(UMULLSrr) = UMULLS;
 DEF_ISEL(UMLALrr) = UMULL;
 DEF_ISEL(UMLALSrr) = UMULLS;
+DEF_ISEL(SMULLrr) = SMULL;
+DEF_ISEL(SMULLSrr) = SMULLS;
+DEF_ISEL(SMLALrr) = SMULL;
+DEF_ISEL(SMLALSrr) = SMULLS;
 
