@@ -583,8 +583,8 @@ static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
   }
   AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
   AddIntRegOp(inst, enc.rm, 32, Operand::kActionRead);
-  // If instruction is not MUL add a read to RdLo otherwise add an immediate
-  if (enc.opc != 0b000u) {
+  // If instruction is not MUL, UMULL, SMULL add read to RdLo otherwise add an immediate
+  if (enc.opc != 0b000u || enc.opc != 0b100u || enc.opc != 0b110u) {
     AddIntRegOp(inst, enc.rdlo, 32, Operand::kActionRead);
   } else {
     AddImmOp(inst, 0);
