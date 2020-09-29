@@ -191,6 +191,17 @@ DEF_SEM(MULS, R32W dst, R32 src1, R32 src2, R32 src3) {
   return memory;
 }
 
+DEF_SEM(UMAAL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
+  auto rhs = Read(src3);
+  auto lhs = Read(src2);
+  auto acc_hi = Read(src1);
+  auto acc_lo = Read(src4);
+  auto res = UAdd(UAdd(UMul(lhs, rhs), acc_hi), acc_lo);
+  Write(dst_lo, Trunc(res));
+  Write(dst_hi, Trunc(UShr(res, 32ul)));
+  return memory;
+}
+
 DEF_SEM(MLS, R32W dst, R32 src1, R32 src2, R32 src3) {
   auto rhs = Signed(Read(src2));
   auto lhs = Signed(Read(src1));
@@ -205,7 +216,7 @@ DEF_SEM(UMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4)
   auto lhs = Read(src2);
   // Question: this may or may not be the way you want me to do the extensions for the 64 bit result??
   auto acc = UOr(ZExt(Read(src1)), ZExt(Read(src4))); // UInt(R[dHi]:R[dLo])
-  auto res = Unsigned(UAdd(UMul(uint64_t(lhs), uint64_t(rhs)), acc));
+  auto res = UAdd(UMul(uint64_t(lhs), uint64_t(rhs)), acc);
   Write(dst_lo, Trunc(res));
   Write(dst_hi, Trunc(UShr(res, 32ul)));
   return memory;
@@ -215,7 +226,7 @@ DEF_SEM(UMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4
   auto rhs = Read(src3);
   auto lhs = Read(src2);
   auto acc = UOr(ZExt(Read(src1)), ZExt(Read(src4))); // UInt(R[dHi]:R[dLo])
-  auto res = Unsigned(UAdd(UMul(uint64_t(lhs), uint64_t(rhs)), acc));
+  auto res = UAdd(UMul(uint64_t(lhs), uint64_t(rhs)), acc);
   state.sr.n = SignFlag(res);
   state.sr.z = ZeroFlag(res);
   // PSTATE.C, PSTATE.V unchanged
