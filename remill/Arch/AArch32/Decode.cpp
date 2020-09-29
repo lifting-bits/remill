@@ -557,8 +557,9 @@ static const char * const kMulAccRRR[] = {
 //111   SMLAL, SMLALS - writes to RdHi + RdLo, read RdHi
 static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
   const MultiplyAndAccumulate enc = { bits };
+  // cond != 1111
   // if d == 15 || n == 15 || m == 15 || a == 15 then UNPREDICTABLE;
-  if (enc.cond == 0b1111u || (enc.rdhi == kPCRegNum || enc.rn == kPCRegNum || enc.rm == kPCRegNum)) {
+  if (enc.cond == 0b1111u || (enc.rdhi == kPCRegNum || enc.rn == kPCRegNum || enc.rm == kPCRegNum) || ) {
     return false;
   }
 
@@ -572,6 +573,10 @@ static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
   AddIntRegOp(inst, enc.rdhi, 32, Operand::kActionWrite);
   // 2nd write reg only needed for instructions with an opc that begins with 1 and UMALL
   if (((enc.opc >> 2) & 0b1u) || enc.opc == 0b010u) {
+    // if dHi == dLo then UNPREDICTABLE;
+    if (enc.rdlo == enc.rdhi){
+      return false;
+    }
     AddIntRegOp(inst, enc.rdlo, 32, Operand::kActionWrite);
   }
 
