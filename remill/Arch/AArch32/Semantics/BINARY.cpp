@@ -192,10 +192,10 @@ DEF_SEM(MULS, R32W dst, R32 src1, R32 src2, R32 src3) {
 }
 
 DEF_SEM(UMAAL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
-  auto rhs = Read(src3);
-  auto lhs = Read(src2);
-  auto acc_hi = Read(src1);
-  auto acc_lo = Read(src4);
+  auto rhs = ZExt(Read(src3));
+  auto lhs = ZExt(Read(src2));
+  auto acc_hi = ZExt(Read(src1));
+  auto acc_lo = ZExt(Read(src4));
   auto res = UAdd(UAdd(UMul(lhs, rhs), acc_hi), acc_lo);
   Write(dst_lo, Trunc(res));
   Write(dst_hi, Trunc(UShr(res, 32ul)));
@@ -212,9 +212,9 @@ DEF_SEM(MLS, R32W dst, R32 src1, R32 src2, R32 src3) {
 }
 
 DEF_SEM(UMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
-  auto rhs = Read(src3);
-  auto lhs = Read(src2);
-  auto acc = UOr(UShl(ZExt(Read(src1))), ZExt(Read(src4))); // UInt(R[dHi]:R[dLo])
+  auto rhs = ZExt(Read(src3));
+  auto lhs = ZExt(Read(src2));
+  auto acc = UOr(UShl(ZExt(Read(src1)), 32ul), ZExt(Read(src4))); // UInt(R[dHi]:R[dLo])
   auto res = UAdd(UMul(lhs, rhs), acc);
   Write(dst_hi, Trunc(UShr(res, 32ul)));
   Write(dst_lo, Trunc(res));
@@ -222,9 +222,9 @@ DEF_SEM(UMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4)
 }
 
 DEF_SEM(UMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
-  auto rhs = Read(src3);
-  auto lhs = Read(src2);
-  auto acc = UOr(UShl(ZExt(Read(src1))), ZExt(Read(src4))); // UInt(R[dHi]:R[dLo])
+  auto rhs = ZExt(Read(src3));
+  auto lhs = ZExt(Read(src2));
+  auto acc = UOr(UShl(ZExt(Read(src1)), 32ul), ZExt(Read(src4))); // UInt(R[dHi]:R[dLo])
   auto res = UAdd(UMul(lhs, rhs), acc);
   state.sr.n = SignFlag(res);
   state.sr.z = ZeroFlag(res);
@@ -236,24 +236,24 @@ DEF_SEM(UMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4
 
 DEF_SEM(SMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
   // Not entirely sure about all the signed ops I have in here
-  auto rhs = Signed(Read(src3));
-  auto lhs = Signed(Read(src2));
-  auto acc = SOr(SShl(SExt(Read(src1))), SExt(Read(src4))); // UInt(R[dHi]:R[dLo])
+  auto rhs = SExt(Signed(Read(src3)));
+  auto lhs = SExt(Signed(Read(src2)));
+  auto acc = SOr(SShl(SExt(Read(src1)), 32ul), SExt(Read(src4))); // UInt(R[dHi]:R[dLo])
   auto res = SAdd(SMul(lhs, rhs), acc);
-  Write(dst_hi, Trunc(UShr(res, 32ul)));
+  Write(dst_hi, Trunc(SShr(res, 32ul)));
   Write(dst_lo, Trunc(res));
   return memory;
 }
 
 DEF_SEM(SMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
-  auto rhs = Signed(Read(src3));
-  auto lhs = Signed(Read(src2));
-  auto acc = SOr(SShl(SExt(Read(src1))), SExt(Read(src4))); // UInt(R[dHi]:R[dLo])
+  auto rhs = SExt(Signed(Read(src3)));
+  auto lhs = SExt(Signed(Read(src2)));
+  auto acc = SOr(SShl(SExt(Read(src1)), 32ul), SExt(Read(src4))); // UInt(R[dHi]:R[dLo])
   auto res = SAdd(SMul(lhs, rhs), acc);
   state.sr.n = SignFlag(res);
   state.sr.z = ZeroFlag(res);
   // PSTATE.C, PSTATE.V unchanged
-  Write(dst_hi, Trunc(UShr(res, 32ul)));
+  Write(dst_hi, Trunc(SShr(res, 32ul)));
   Write(dst_lo, Trunc(res));
   return memory;
 }

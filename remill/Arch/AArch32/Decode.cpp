@@ -72,6 +72,36 @@ union MultiplyAndAccumulate {
 } __attribute__((packed));
 static_assert(sizeof(MultiplyAndAccumulate) == 4, " ");
 
+// Top-level encodings for A32
+union TopLevelEncodings {
+  uint32_t flat;
+  struct {
+    uint32_t _3_to_0 : 4;
+    uint32_t op1 : 1;
+    uint32_t _24_to_5 : 20;
+    uint32_t op0 : 3;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(TopLevelEncodings) == 4, " ");
+
+// Data-processing and miscellaneous instructions
+union DataProcessingAndMisc {
+  uint32_t flat;
+  struct {
+    uint32_t _3_to_0 : 4;
+    uint32_t op4 : 1;
+    uint32_t op3 : 2;
+    uint32_t op2 : 1;
+    uint32_t _19_to_8 : 12;
+    uint32_t op1 : 5;
+    uint32_t op0 : 1;
+    uint32_t _00 : 2;
+    uint32_t _not1111 : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(DataProcessingAndMisc) == 4, " ");
+
 static constexpr auto kPCRegNum = 15u;
 
 static const char * const kIntRegName[] = {
@@ -435,9 +465,6 @@ static const char * const kIdpNamesRRR[] = {
 //111     RSC, RSCS (register)
 static bool TryDecodeIntegerDataProcessingRRR(Instruction &inst, uint32_t bits) {
   const IntDataProcessingRRR enc = {bits};
-  if (enc.cond == 0b1111u) {
-    return false;
-  }
 
   inst.function = kIdpNamesRRR[ (enc.opc << 1u) | enc.s];
   DecodeCondition(inst, enc.cond);
@@ -481,9 +508,6 @@ static bool TryDecodeIntegerDataProcessingRRR(Instruction &inst, uint32_t bits) 
 //111     RSC, RSCS (immediate)
 static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst, uint32_t bits) {
   const IntDataProcessingRRI enc = { bits };
-  if (enc.cond == 0b1111u) {
-    return false;
-  }
 
   inst.function = kIdpNamesRRR[(enc.opc << 1u) | enc.s];
   DecodeCondition(inst, enc.cond);
@@ -557,9 +581,8 @@ static const char * const kMulAccRRR[] = {
 //111   SMLAL, SMLALS - writes to RdHi + RdLo, read RdHi
 static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
   const MultiplyAndAccumulate enc = { bits };
-  // cond != 1111
   // if d == 15 || n == 15 || m == 15 || a == 15 then UNPREDICTABLE;
-  if (enc.cond == 0b1111u || (enc.rdhi == kPCRegNum || enc.rn == kPCRegNum || enc.rm == kPCRegNum) || ) {
+  if (enc.rdhi == kPCRegNum || enc.rn == kPCRegNum || enc.rm == kPCRegNum) {
     return false;
   }
 
@@ -589,7 +612,7 @@ static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
   AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
   AddIntRegOp(inst, enc.rm, 32, Operand::kActionRead);
   // If instruction is not MUL, UMULL, SMULL add read to RdLo otherwise add an immediate
-  if (enc.opc != 0b000u || enc.opc != 0b100u || enc.opc != 0b110u) {
+  if (enc.opc != 0b000u && enc.opc != 0b100u && enc.opc != 0b110u) {
     AddIntRegOp(inst, enc.rdlo, 32, Operand::kActionRead);
   } else {
     AddImmOp(inst, 0);
@@ -599,165 +622,6 @@ static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
 
 }
 
-static bool (*const kBits7_to_4[])(Instruction&, uint32_t) = {
-    [0b0000] = TryDecodeIntegerDataProcessingRRR,
-    [0b0001] = nullptr,
-    [0b0010] = TryDecodeIntegerDataProcessingRRR,
-    [0b0011] = nullptr,
-    [0b0100] = TryDecodeIntegerDataProcessingRRR,
-    [0b0101] = nullptr,
-    [0b0110] = TryDecodeIntegerDataProcessingRRR,
-    [0b0111] = nullptr,
-    [0b1000] = TryDecodeIntegerDataProcessingRRR,
-    [0b1001] = TryDecodeMultiplyAndAccumulate,
-    [0b1010] = TryDecodeIntegerDataProcessingRRR,
-    [0b1011] = nullptr,
-    [0b1100] = TryDecodeIntegerDataProcessingRRR,
-    [0b1101] = nullptr,
-    [0b1110] = TryDecodeIntegerDataProcessingRRR,
-    [0b1111] = nullptr
-};
-
-static bool TryDecodeArithmetic(Instruction &inst, uint32_t bits){
-  auto decode = kBits7_to_4[(bits >> 4) & 0b1111u];
-  if (!decode){
-    return false;
-  }
-  return decode(inst, bits);
-}
-
-static bool (*const kBits27_to_21[])(Instruction&, uint32_t) = {
-  [0b0000000] = TryDecodeArithmetic,
-  [0b0000001] = TryDecodeArithmetic,
-  [0b0000010] = TryDecodeArithmetic,
-  [0b0000011] = TryDecodeArithmetic,
-  [0b0000100] = TryDecodeArithmetic,
-  [0b0000101] = TryDecodeArithmetic,
-  [0b0000110] = TryDecodeArithmetic,
-  [0b0000111] = TryDecodeArithmetic,
-  [0b0001000] = nullptr,
-  [0b0001001] = nullptr,
-  [0b0001010] = nullptr,
-  [0b0001011] = nullptr,
-  [0b0001100] = nullptr,
-  [0b0001101] = nullptr,
-  [0b0001110] = nullptr,
-  [0b0001111] = nullptr,
-  [0b0010000] = TryDecodeIntegerDataProcessingRRI,
-  [0b0010001] = TryDecodeIntegerDataProcessingRRI,
-  [0b0010010] = TryDecodeIntegerDataProcessingRRI,
-  [0b0010011] = TryDecodeIntegerDataProcessingRRI,
-  [0b0010100] = TryDecodeIntegerDataProcessingRRI,
-  [0b0010101] = TryDecodeIntegerDataProcessingRRI,
-  [0b0010110] = TryDecodeIntegerDataProcessingRRI,
-  [0b0010111] = TryDecodeIntegerDataProcessingRRI,
-  [0b0011000] = nullptr,
-  [0b0011001] = nullptr,
-  [0b0011010] = nullptr,
-  [0b0011011] = nullptr,
-  [0b0011100] = nullptr,
-  [0b0011101] = nullptr,
-  [0b0011110] = nullptr,
-  [0b0011111] = nullptr,
-  [0b0100000] = nullptr,
-  [0b0100001] = nullptr,
-  [0b0100010] = nullptr,
-  [0b0100011] = nullptr,
-  [0b0100100] = nullptr,
-  [0b0100101] = nullptr,
-  [0b0100110] = nullptr,
-  [0b0100111] = nullptr,
-  [0b0101000] = nullptr,
-  [0b0101001] = nullptr,
-  [0b0101010] = nullptr,
-  [0b0101011] = nullptr,
-  [0b0101100] = nullptr,
-  [0b0101101] = nullptr,
-  [0b0101110] = nullptr,
-  [0b0101111] = nullptr,
-  [0b0110000] = nullptr,
-  [0b0110001] = nullptr,
-  [0b0110010] = nullptr,
-  [0b0110011] = nullptr,
-  [0b0110100] = nullptr,
-  [0b0110101] = nullptr,
-  [0b0110110] = nullptr,
-  [0b0110111] = nullptr,
-  [0b0111000] = nullptr,
-  [0b0111001] = nullptr,
-  [0b0111010] = nullptr,
-  [0b0111011] = nullptr,
-  [0b0111100] = nullptr,
-  [0b0111101] = nullptr,
-  [0b0111110] = nullptr,
-  [0b0111111] = nullptr,
-  [0b1000000] = nullptr,
-  [0b1000001] = nullptr,
-  [0b1000010] = nullptr,
-  [0b1000011] = nullptr,
-  [0b1000100] = nullptr,
-  [0b1000101] = nullptr,
-  [0b1000110] = nullptr,
-  [0b1000111] = nullptr,
-  [0b1001000] = nullptr,
-  [0b1001001] = nullptr,
-  [0b1001010] = nullptr,
-  [0b1001011] = nullptr,
-  [0b1001100] = nullptr,
-  [0b1001101] = nullptr,
-  [0b1001110] = nullptr,
-  [0b1001111] = nullptr,
-  [0b1010000] = nullptr,
-  [0b1010001] = nullptr,
-  [0b1010010] = nullptr,
-  [0b1010011] = nullptr,
-  [0b1010100] = nullptr,
-  [0b1010101] = nullptr,
-  [0b1010110] = nullptr,
-  [0b1010111] = nullptr,
-  [0b1011000] = nullptr,
-  [0b1011001] = nullptr,
-  [0b1011010] = nullptr,
-  [0b1011011] = nullptr,
-  [0b1011100] = nullptr,
-  [0b1011101] = nullptr,
-  [0b1011110] = nullptr,
-  [0b1011111] = nullptr,
-  [0b1100000] = nullptr,
-  [0b1100001] = nullptr,
-  [0b1100010] = nullptr,
-  [0b1100011] = nullptr,
-  [0b1100100] = nullptr,
-  [0b1100101] = nullptr,
-  [0b1100110] = nullptr,
-  [0b1100111] = nullptr,
-  [0b1101000] = nullptr,
-  [0b1101001] = nullptr,
-  [0b1101010] = nullptr,
-  [0b1101011] = nullptr,
-  [0b1101100] = nullptr,
-  [0b1101101] = nullptr,
-  [0b1101110] = nullptr,
-  [0b1101111] = nullptr,
-  [0b1110000] = nullptr,
-  [0b1110001] = nullptr,
-  [0b1110010] = nullptr,
-  [0b1110011] = nullptr,
-  [0b1110100] = nullptr,
-  [0b1110101] = nullptr,
-  [0b1110110] = nullptr,
-  [0b1110111] = nullptr,
-  [0b1111000] = nullptr,
-  [0b1111001] = nullptr,
-  [0b1111010] = nullptr,
-  [0b1111011] = nullptr,
-  [0b1111100] = nullptr,
-  [0b1111101] = nullptr,
-  [0b1111110] = nullptr,
-  [0b1111111] = nullptr,
-};
-
-
 static uint32_t BytesToBits(const uint8_t *bytes) {
   uint32_t bits = 0;
   bits = (bits << 8) | static_cast<uint32_t>(bytes[0]);
@@ -765,6 +629,98 @@ static uint32_t BytesToBits(const uint8_t *bytes) {
   bits = (bits << 8) | static_cast<uint32_t>(bytes[2]);
   bits = (bits << 8) | static_cast<uint32_t>(bytes[3]);
   return bits;
+}
+
+// Corresponds to Data-processing register (immediate shift)
+// op0<24 to 23> | op1 <20>
+static bool (*const kDataProcessingRI[])(Instruction&, uint32_t) = {
+    [0b000] = TryDecodeIntegerDataProcessingRRR,
+    [0b001] = TryDecodeIntegerDataProcessingRRR,
+    [0b010] = TryDecodeIntegerDataProcessingRRR,
+    [0b011] = nullptr,
+    [0b100] = nullptr,
+    [0b101] = nullptr,
+    [0b110] = nullptr,
+    [0b111] = nullptr,
+};
+
+// Corresponds to Data-processing immediate
+// op0<24 to 23> | op1 <21 to 20>
+static bool (*const kDataProcessingI[])(Instruction&, uint32_t) = {
+    [0b0000] = TryDecodeIntegerDataProcessingRRI,
+    [0b0001] = TryDecodeIntegerDataProcessingRRI,
+    [0b0010] = TryDecodeIntegerDataProcessingRRI,
+    [0b0011] = TryDecodeIntegerDataProcessingRRI,
+    [0b0100] = TryDecodeIntegerDataProcessingRRI,
+    [0b0101] = TryDecodeIntegerDataProcessingRRI,
+    [0b0110] = TryDecodeIntegerDataProcessingRRI,
+    [0b0111] = TryDecodeIntegerDataProcessingRRI,
+    [0b1000] = nullptr,
+    [0b1001] = nullptr,
+    [0b1010] = nullptr,
+    [0b1011] = nullptr,
+    [0b1100] = nullptr,
+    [0b1101] = nullptr,
+    [0b1110] = nullptr,
+    [0b1111] = nullptr
+};
+
+typedef bool (*const TryDecode)(Instruction&, uint32_t);
+
+static TryDecode TryDataProcessingAndMisc(uint32_t bits) {
+  const DataProcessingAndMisc enc = { bits };
+  if (!enc.op0) {
+    if ((!(enc.op1 >> 4)) && enc.op2 && (enc.op3 == 0b00u) && enc.op4) {
+      // Multiply and Accumulate
+      return TryDecodeMultiplyAndAccumulate;
+
+    } else if (!(((enc.op1 >> 3) == 0b10u) && (enc.op1 & 0b00001u)) && !enc.op4) {
+      // Data-processing register (immediate shift)
+      return kDataProcessingRI[(enc.op1 >> 2) | (enc.op1 & 0b00001u)];
+    } else {
+      // TODO(Sonya): Extra load/store
+      // TODO(Sonya): Synchronization primitives and Load-Acquire/Store-Release
+      // TODO(Sonya): Miscellaneous
+      // TODO(Sonya): Halfword Multiply and Accumulate
+      // TODO(Sonya): Data-processing register (register shift)
+      return nullptr;
+    }
+  } else {
+    // Data-processing immediate
+    return kDataProcessingI[(enc.op1 >> 1) | (enc.op1 & 0b00011u)];
+  }
+}
+
+//   cond op0 op1
+//!= 1111 00x     Data-processing and miscellaneous instructions
+//!= 1111 010     Load/Store Word, Unsigned Byte (immediate, literal)
+//!= 1111 011 0   Load/Store Word, Unsigned Byte (register)
+//!= 1111 011 1   Media instructions
+//        10x     Branch, branch with link, and block data transfer
+//        11x     System register access, Advanced SIMD, floating-point, and Supervisor call
+//   1111 0xx     Unconditional instructions
+static TryDecode TryDecodeTopLevelEncodings(uint32_t bits) {
+  const TopLevelEncodings enc = { bits };
+  if (!(enc.op0 >> 2)) {  // op0 == 0xx
+    if (enc.cond != 0b1111u) {
+      if (!(enc.op0 >> 1)) {  // 00x
+        // Data-processing and miscellaneous instructions
+        return TryDataProcessingAndMisc(bits);
+      } else {
+        // TODO(Sonya): Load/Store Word, Unsigned Byte (immediate, literal)
+        // TODO(Sonya): Load/Store Word, Unsigned Byte (register)
+        // TODO(Sonya): Media instructions
+        return nullptr;
+      }
+    } else {
+      // TODO(Sonya): Unconditional instructions
+      return nullptr;
+    }
+  } else {  // op0 == 1xx
+    // TODO(Sonya): Branch, branch with link, and block data transfer
+    // TODO(Sonya): System register access, Advanced SIMD, floating-point, and Supervisor call
+    return nullptr;
+  }
 }
 
 } // namespace
@@ -796,7 +752,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address, std::string_view inst_byte
   const auto bytes = reinterpret_cast<const uint8_t *>(inst.bytes.data());
   const auto bits = BytesToBits(bytes);
 
-  auto decoder = kBits27_to_21[(bits >> 21) & 0b1111111u];
+  auto decoder = TryDecodeTopLevelEncodings(bits);
   if (!decoder) {
     LOG(ERROR) << "unhandled bits";
     return false;
