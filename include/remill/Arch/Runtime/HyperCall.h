@@ -88,7 +88,7 @@ class SyncHyperCall {
     kSPARCTrapCondVC,
     kSPARCTrapCondVS,
   };
-} __attribute__((packed));
+}__attribute__((packed));
 
 class AsyncHyperCall {
  public:
