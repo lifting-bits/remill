@@ -535,7 +535,6 @@ static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst, uint32_t bits) 
   DecodeA32ExpandImm(inst, enc.imm12, enc.s);
 
   if (enc.rd == kPCRegNum) {
-
     if (enc.s) {  // Updates the flags (condition codes)
       inst.category = Instruction::kCategoryError;
       return false;
@@ -583,6 +582,7 @@ static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
   const MultiplyAndAccumulate enc = { bits };
   // if d == 15 || n == 15 || m == 15 || a == 15 then UNPREDICTABLE;
   if (enc.rdhi == kPCRegNum || enc.rn == kPCRegNum || enc.rm == kPCRegNum) {
+    inst.category = Instruction::kCategoryError;
     return false;
   }
 
@@ -594,10 +594,12 @@ static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
   DecodeCondition(inst, enc.cond);
 
   AddIntRegOp(inst, enc.rdhi, 32, Operand::kActionWrite);
+
   // 2nd write reg only needed for instructions with an opc that begins with 1 and UMALL
   if (((enc.opc >> 2) & 0b1u) || enc.opc == 0b010u) {
     // if dHi == dLo then UNPREDICTABLE;
-    if (enc.rdlo == enc.rdhi){
+    if (enc.rdlo == enc.rdhi || enc.rdlo == kPCRegNum){
+      inst.category = Instruction::kCategoryError;
       return false;
     }
     AddIntRegOp(inst, enc.rdlo, 32, Operand::kActionWrite);
@@ -611,12 +613,15 @@ static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
   }
   AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
   AddIntRegOp(inst, enc.rm, 32, Operand::kActionRead);
+
   // If instruction is not MUL, UMULL, SMULL add read to RdLo otherwise add an immediate
   if (enc.opc != 0b000u && enc.opc != 0b100u && enc.opc != 0b110u) {
     AddIntRegOp(inst, enc.rdlo, 32, Operand::kActionRead);
   } else {
     AddImmOp(inst, 0);
   }
+
+  inst.category = Instruction::kCategoryNormal;
 
   return true;
 
@@ -637,11 +642,11 @@ static bool (*const kDataProcessingRI[])(Instruction&, uint32_t) = {
     [0b000] = TryDecodeIntegerDataProcessingRRR,
     [0b001] = TryDecodeIntegerDataProcessingRRR,
     [0b010] = TryDecodeIntegerDataProcessingRRR,
-    [0b011] = nullptr,
-    [0b100] = nullptr,
-    [0b101] = nullptr,
-    [0b110] = nullptr,
-    [0b111] = nullptr,
+    [0b011] = TryDecodeIntegerDataProcessingRRR,
+    [0b100] = nullptr, // op0:op1 != 100
+    [0b101] = nullptr, // TODO(Sonya): Integer Test and Compare (two register, immediate shift)
+    [0b110] = nullptr, // TODO(Sonya): Logical Arithmetic (three register, immediate shift)
+    [0b111] = nullptr, // TODO(Sonya): Logical Arithmetic (three register, immediate shift)
 };
 
 // Corresponds to Data-processing immediate
@@ -655,14 +660,14 @@ static bool (*const kDataProcessingI[])(Instruction&, uint32_t) = {
     [0b0101] = TryDecodeIntegerDataProcessingRRI,
     [0b0110] = TryDecodeIntegerDataProcessingRRI,
     [0b0111] = TryDecodeIntegerDataProcessingRRI,
-    [0b1000] = nullptr,
-    [0b1001] = nullptr,
-    [0b1010] = nullptr,
-    [0b1011] = nullptr,
-    [0b1100] = nullptr,
-    [0b1101] = nullptr,
-    [0b1110] = nullptr,
-    [0b1111] = nullptr
+    [0b1000] = nullptr, // TODO(Sonya): Move Halfword (immediate)
+    [0b1001] = nullptr, // TODO(Sonya): Integer Test and Compare (one register and immediate)
+    [0b1010] = nullptr, // TODO(Sonya): Move Special Register and Hints (immediate)
+    [0b1011] = nullptr, // TODO(Sonya): Integer Test and Compare (one register and immediate)
+    [0b1100] = nullptr, // TODO(Sonya): Logical Arithmetic (two register and immediate)
+    [0b1101] = nullptr, // TODO(Sonya): Logical Arithmetic (two register and immediate)
+    [0b1110] = nullptr, // TODO(Sonya): Logical Arithmetic (two register and immediate)
+    [0b1111] = nullptr, // TODO(Sonya): Logical Arithmetic (two register and immediate)
 };
 
 typedef bool (*const TryDecode)(Instruction&, uint32_t);
