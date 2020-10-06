@@ -59,6 +59,8 @@
 
 DECLARE_string(arch);
 
+DEFINE_string(semantics_search_paths, "", "Colon-separated list of search paths to use when searching for semantics files.");
+
 namespace {
 #ifdef WIN32
 extern "C" std::uint32_t GetProcessId(std::uint32_t handle);
@@ -484,11 +486,22 @@ std::string FindHostSemanticsBitcodeFile(void) {
 
 // Find the path to the semantics bitcode file.
 std::string FindSemanticsBitcodeFile(const std::string &arch) {
+  if (!FLAGS_semantics_search_paths.empty()) {
+    std::stringstream pp;
+    pp << FLAGS_semantics_search_paths;
+    for (std::string sem_dir; std::getline(pp, sem_dir, ':'); ) {
+      std::stringstream ss;
+      ss << sem_dir << "/" << arch << ".bc";
+      if (auto sem_path = ss.str(); FileExists(sem_path)) {
+        return sem_path;
+      }
+    }
+  }
+
   for (auto sem_dir : gSemanticsSearchPaths) {
     std::stringstream ss;
     ss << sem_dir << "/" << arch << ".bc";
-    auto sem_path = ss.str();
-    if (FileExists(sem_path)) {
+    if (auto sem_path = ss.str(); FileExists(sem_path)) {
       return sem_path;
     }
   }
