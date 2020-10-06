@@ -676,7 +676,9 @@ static TryDecode TryDataProcessingAndMisc(uint32_t bits) {
 
     } else if (!(((enc.op1 >> 3) == 0b10u) && (enc.op1 & 0b00001u)) && !enc.op4) {
       // Data-processing register (immediate shift)
-      return kDataProcessingRI[(enc.op1 >> 2) | (enc.op1 & 0b00001u)];
+      // op0 -> enc.op1 2 high order bits, op1 -> enc.op1 lowest bit
+      // index is the concatenation of op0 and op1
+      return kDataProcessingRI[(enc.op1 >> 2) | (enc.op1 & 0b1u)];
     } else {
       // TODO(Sonya): Extra load/store
       // TODO(Sonya): Synchronization primitives and Load-Acquire/Store-Release
@@ -687,7 +689,9 @@ static TryDecode TryDataProcessingAndMisc(uint32_t bits) {
     }
   } else {
     // Data-processing immediate
-    return kDataProcessingI[(enc.op1 >> 1) | (enc.op1 & 0b00011u)];
+    // op0 -> enc.op1 2 high order bits, op1 -> enc.op1 2 lowest bits
+    // index is the concatenation of op0 and op1
+    return kDataProcessingI[(enc.op1 >> 1) | (enc.op1 & 0b11u)];
   }
 }
 
