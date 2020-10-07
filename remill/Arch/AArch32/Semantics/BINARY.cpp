@@ -197,8 +197,8 @@ DEF_SEM(UMAAL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4)
   auto acc_hi = ZExt(Read(src1));
   auto acc_lo = ZExt(Read(src4));
   auto res = UAdd(UAdd(UMul(lhs, rhs), acc_hi), acc_lo);
-  Write(dst_lo, Trunc(res));
-  Write(dst_hi, Trunc(UShr(res, 32ul)));
+  Write(dst_lo, TruncTo<uint32_t>(res));
+  Write(dst_hi, TruncTo<uint32_t>(UShr(res, 32ul)));
   return memory;
 }
 
@@ -216,8 +216,8 @@ DEF_SEM(UMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4)
   auto lhs = ZExt(Read(src2));
   auto acc = UOr(UShl(ZExt(Read(src1)), 32ul), ZExt(Read(src4))); // UInt(R[dHi]:R[dLo])
   auto res = UAdd(UMul(lhs, rhs), acc);
-  Write(dst_hi, Trunc(UShr(res, 32ul)));
-  Write(dst_lo, Trunc(res));
+  Write(dst_hi, TruncTo<uint32_t>(UShr(res, 32ul)));
+  Write(dst_lo, TruncTo<uint32_t>(res));
   return memory;
 }
 
@@ -229,8 +229,8 @@ DEF_SEM(UMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4
   state.sr.n = SignFlag(res);
   state.sr.z = ZeroFlag(res);
   // PSTATE.C, PSTATE.V unchanged
-  Write(dst_hi, Trunc(UShr(res, 32ul)));
-  Write(dst_lo, Trunc(res));
+  Write(dst_hi, TruncTo<uint32_t>(UShr(res, 32ul)));
+  Write(dst_lo, TruncTo<uint32_t>(res));
   return memory;
 }
 
@@ -240,8 +240,8 @@ DEF_SEM(SMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4)
   auto lhs = SExt(Signed(Read(src2)));
   auto acc = SOr(SShl(SExt(Read(src1)), 32ul), SExt(Read(src4))); // UInt(R[dHi]:R[dLo])
   auto res = SAdd(SMul(lhs, rhs), acc);
-  Write(dst_hi, Trunc(SShr(res, 32ul)));
-  Write(dst_lo, Trunc(res));
+  Write(dst_hi, TruncTo<uint32_t>(SShr(res, 32ul)));
+  Write(dst_lo, TruncTo<uint32_t>(res));
   return memory;
 }
 
@@ -253,8 +253,8 @@ DEF_SEM(SMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4
   state.sr.n = SignFlag(res);
   state.sr.z = ZeroFlag(res);
   // PSTATE.C, PSTATE.V unchanged
-  Write(dst_hi, Trunc(SShr(res, 32ul)));
-  Write(dst_lo, Trunc(res));
+  Write(dst_hi, TruncTo<uint32_t>(SShr(res, 32ul)));
+  Write(dst_lo, TruncTo<uint32_t>(res));
   return memory;
 }
 } // namespace
@@ -264,6 +264,7 @@ DEF_ISEL(MULSrr) = MULS;
 DEF_ISEL(MLArr) = MUL;
 DEF_ISEL(MLASrr) = MULS;
 DEF_ISEL(MLSrr) = MLS;
+DEF_ISEL(UMAALrr) = UMAAL;
 DEF_ISEL(UMULLrr) = UMULL;
 DEF_ISEL(UMULLSrr) = UMULLS;
 DEF_ISEL(UMLALrr) = UMULL;
