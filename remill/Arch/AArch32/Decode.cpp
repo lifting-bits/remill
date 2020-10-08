@@ -228,14 +228,29 @@ static void AddIntRegOp(Instruction &inst, unsigned index, unsigned size,
 }
 
 static void AddImmOp(Instruction &inst, uint64_t value, unsigned size = 32,
-                        bool is_signed = false) {
+                     Operand::Action action = Operand::kActionRead,
+                     bool is_signed = false) {
   inst.operands.emplace_back();
   auto &op = inst.operands.back();
   op.imm.val = value;
   op.size = size;
   op.imm.is_signed = is_signed;
-  op.action = Operand::kActionRead;
+  op.action = action;
   op.type = Operand::kTypeImmediate;
+}
+
+static void AddAddrRegOp(Instruction &inst, const char * reg_name, unsigned mem_size,
+                         Operand::Action mem_action, unsigned disp, unsigned scale = 0) {
+  inst.operands.emplace_back();
+  auto &op = inst.operands.back();
+  op.type = Operand::kTypeAddress;
+  op.size = mem_size;
+  op.action = mem_action;
+  op.addr.address_size = 32;
+  op.addr.base_reg.name = reg_name;
+  op.addr.base_reg.size = 32;
+  op.addr.scale = scale;
+  op.addr.displacement = disp;
 }
 
 // Note: Order is significant; extracted bits may be casted to this type.
@@ -556,16 +571,7 @@ static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst, uint32_t bits) 
   if (enc.rn == kPCRegNum && (enc.opc == 0b100u || enc.opc == 0b010u)) {
     int64_t diff = static_cast<int32_t>(inst.pc & ~(3u)) - static_cast<int32_t>(inst.pc);
 
-    inst.operands.emplace_back();
-    auto &op = inst.operands.back();
-    op.type = Operand::kTypeAddress;
-    op.size = 32;
-    op.action = Operand::kActionRead;
-    op.addr.address_size = 32;
-    op.addr.base_reg.name = "PC";
-    op.addr.base_reg.size = 32;
-    op.addr.scale = 0;
-    op.addr.displacement = diff;
+    AddAddrRegOp(inst, "PC", 32, Operand::kActionRead, diff);
 
   } else {
     AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
@@ -686,8 +692,8 @@ static const char * const kLoadSWUBIL[] = {
 
 
 // P:W o2 o1    Rn
-//!= 01 0 1    1111    LDR (literal)
-//!= 01 1 1    1111    LDRB (literal)
+//!= 01 0 1    1111 LDR (literal)
+//!= 01 1 1    1111 LDRB (literal)
 //   00 0 0         STR (immediate) — post-indexed
 //   00 0 1 != 1111 LDR (immediate) — post-indexed
 //   00 1 0         STRB (immediate) — post-indexed
@@ -721,17 +727,6 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
     return false;
   }
 
-  inst.operands.emplace_back();
-  auto &op = inst.operands.back();
-  op.type = Operand::kTypeAddress;
-  op.size = kMemSize;
-  op.action = kMemAction;
-  op.addr.address_size = 32;
-  op.addr.base_reg.name = kIntRegName[enc.rn];
-  op.addr.base_reg.size = 32;
-  op.addr.scale = 0;
-  op.addr.displacement = 0;
-
   // LDR & LDRB (literal) are pc relative. Need to align the PC to the next nearest 4 bytes
   int64_t pc_adjust = 0;
   if (kAlignPC && enc.rn == kPCRegNum) {
@@ -745,9 +740,9 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
 
   // Not Indexing
   if (!enc.P) {
-    op.addr.displacement = pc_adjust;
+    AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, pc_adjust);
   } else {
-    op.addr.displacement = disp + pc_adjust;
+    AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, disp + pc_adjust);
   }
 
   AddIntRegOp(inst, enc.rt, 32, kRegAction);
@@ -755,17 +750,9 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
   // Pre or Post Indexing
   if (write_back) {
     AddIntRegOp(inst, enc.rn, 32, Operand::kActionWrite);
-    inst.operands.emplace_back();
-    auto &op = inst.operands.back();
-    op.type = Operand::kTypeAddress;
-    op.size = 32;
-    op.action = Operand::kActionRead;
-    op.addr.address_size = 32;
-    op.addr.base_reg.name = kIntRegName[enc.rn];
-    op.addr.base_reg.size = 32;
-    op.addr.scale = 0;
-    op.addr.displacement = disp + pc_adjust;
+    AddAddrRegOp(inst, kIntRegName[enc.rn], 32, Operand::kActionRead, disp + pc_adjust);
   }
+
   inst.category = Instruction::kCategoryNormal;
   return true;
 }
@@ -775,17 +762,21 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
 //10  BIC, BICS (register)
 //11  MVN, MVNS (register)
 static const char * const kLogicalArithmeticRRRI[] = {
-    [0b00] = "ORR",
-    [0b01] = "MOV",
-    [0b10] = "BIC",
-    [0b11] = "MVN",
+    [0b000] = "ORR",
+    [0b001] = "ORRS",
+    [0b010] = "MOV",
+    [0b011] = "MOVS",
+    [0b100] = "BIC",
+    [0b101] = "BICS",
+    [0b110] = "MVN",
+    [0b111] = "MVNS",
 };
 
 // Logical Arithmetic (three register, immediate shift)
 static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
   const LogicalArithRRRI enc = { bits };
 
-  auto instruction = kLogicalArithmeticRRRI[enc.opc];
+  auto instruction = kLogicalArithmeticRRRI[enc.opc << 1u | enc.s];
   if (!instruction) {
     return false;
   }
@@ -860,13 +851,15 @@ static bool (*const kLoadStoreWordUBIL[])(Instruction&, uint32_t) = {
 //1                    Data-processing immediate
 static TryDecode TryDataProcessingAndMisc(uint32_t bits) {
   const DataProcessingAndMisc enc = { bits };
-  if (!enc.op0) {
-    if ((!(enc.op1 >> 4)) && enc.op2 && (enc.op3 == 0b00u) && enc.op4) {
-      // Multiply and Accumulate
-      return TryDecodeMultiplyAndAccumulate;
 
-    } else if (!(((enc.op1 >> 3) == 0b10u) && (enc.op1 & 0b00001u)) && !enc.op4) {
-      // Data-processing register (immediate shift)
+  // op0 == 0
+  if (!enc.op0) {
+    // Multiply and Accumulate
+    if ((!(enc.op1 >> 4)) && enc.op2 && (enc.op3 == 0b00u) && enc.op4) {
+      return TryDecodeMultiplyAndAccumulate;
+    }
+    // Data-processing register (immediate shift)
+    else if (!(((enc.op1 >> 3) == 0b10u) && (enc.op1 & 0b00001u)) && !enc.op4) {
       // op0 -> enc.op1 2 high order bits, op1 -> enc.op1 lowest bit
       // index is the concatenation of op0 and op1
       return kDataProcessingRI[(enc.op1 >> 2) | (enc.op1 & 0b1u)];
@@ -878,14 +871,19 @@ static TryDecode TryDataProcessingAndMisc(uint32_t bits) {
       // TODO(Sonya): Data-processing register (register shift)
       return nullptr;
     }
-  } else {
-    // Data-processing immediate
+  }
+  // op0 == 1
+  // Data-processing immediate
+  else {
     // op0 -> enc.op1 2 high order bits, op1 -> enc.op1 2 lowest bits
     // index is the concatenation of op0 and op1
     return kDataProcessingI[(enc.op1 >> 1) | (enc.op1 & 0b11u)];
   }
 }
 
+// This is the top level of the instruction encoding schema for AArch32.
+// Instructions are grouped into subsets based on this the top level and then
+// into smaller sets.
 //   cond op0 op1
 //!= 1111 00x     Data-processing and miscellaneous instructions
 //!= 1111 010     Load/Store Word, Unsigned Byte (immediate, literal)
@@ -896,13 +894,15 @@ static TryDecode TryDataProcessingAndMisc(uint32_t bits) {
 //   1111 0xx     Unconditional instructions
 static TryDecode TryDecodeTopLevelEncodings(uint32_t bits) {
   const TopLevelEncodings enc = { bits };
-  if (!(enc.op0 >> 2)) {  // op0 == 0xx
+  // op0 == 0xx
+  if (!(enc.op0 >> 2)) {
     if (enc.cond != 0b1111u) {
-      if (!(enc.op0 >> 1)) {  // 00x
-        // Data-processing and miscellaneous instructions
+      // Data-processing and miscellaneous instructions -- op0 == 00x
+      if (!(enc.op0 >> 1)) {
         return TryDataProcessingAndMisc(bits);
-      } else if (enc.op0 == 0b010u) {
-        // Load/Store Word, Unsigned Byte (immediate, literal)
+      }
+      // Load/Store Word, Unsigned Byte (immediate, literal) -- op0 == 010
+      else if (enc.op0 == 0b010u) {
         const LoadStoreWUBIL enc_ls_word = { bits };
         return kLoadStoreWordUBIL[enc_ls_word.o2 << 1u | enc_ls_word.o1];
       } else {
@@ -914,7 +914,9 @@ static TryDecode TryDecodeTopLevelEncodings(uint32_t bits) {
       // TODO(Sonya): Unconditional instructions
       return nullptr;
     }
-  } else {  // op0 == 1xx
+  }
+  // op0 == 1xx
+  else {
     // TODO(Sonya): Branch, branch with link, and block data transfer
     // TODO(Sonya): System register access, Advanced SIMD, floating-point, and Supervisor call
     return nullptr;
