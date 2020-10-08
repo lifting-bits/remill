@@ -159,6 +159,7 @@ static const char * const kIntRegName[] = {
     "R15"
 };
 typedef bool (*const TryDecode)(Instruction&, uint32_t);
+typedef bool (*const TryDecodeList[])(Instruction&, uint32_t);
 
 static void DecodeA32ExpandImm(Instruction &inst, uint32_t imm12, bool carry_out) {
   uint32_t unrotated_value = imm12 & (0b11111111u);
@@ -272,6 +273,9 @@ static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
   return Operand::ShiftRegister::kShiftInvalid;
 }
 
+
+// Used to handle (shift_t, shift_n) = DecodeImmShift(type, imm5) semantics
+// See an instruction in Integer Data Processing (three register, immediate shift) set for an example
 static void AddShiftRegOperand(Instruction &inst,
                                uint32_t reg_num, uint32_t shift_type,
                                uint32_t shift_size) {
@@ -570,9 +574,7 @@ static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst, uint32_t bits) 
   // Raise the program counter to align to a multiple of 4 bytes
   if (enc.rn == kPCRegNum && (enc.opc == 0b100u || enc.opc == 0b010u)) {
     int64_t diff = static_cast<int32_t>(inst.pc & ~(3u)) - static_cast<int32_t>(inst.pc);
-
     AddAddrRegOp(inst, "PC", 32, Operand::kActionRead, diff);
-
   } else {
     AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
   }
@@ -757,19 +759,19 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
   return true;
 }
 
-//00  ORR, ORRS (register)
-//01  MOV, MOVS (register)
-//10  BIC, BICS (register)
-//11  MVN, MVNS (register)
+//00  ORR, ORRS (register) -- rd, rn, & rm
+//01  MOV, MOVS (register) -- rd, & rm only
+//10  BIC, BICS (register) -- rd, rn, & rm
+//11  MVN, MVNS (register) -- rd, & rm only
 static const char * const kLogicalArithmeticRRRI[] = {
-    [0b000] = "ORR",
-    [0b001] = "ORRS",
-    [0b010] = "MOV",
-    [0b011] = "MOVS",
-    [0b100] = "BIC",
-    [0b101] = "BICS",
-    [0b110] = "MVN",
-    [0b111] = "MVNS",
+    [0b000] = "ORRrrri",
+    [0b001] = "ORRSrrri",
+    [0b010] = "MOVrrri",
+    [0b011] = "MOVSrrri",
+    [0b100] = "BICrrri",
+    [0b101] = "BICSrrri",
+    [0b110] = "MVNrrri",
+    [0b111] = "MVNSrrri",
 };
 
 // Logical Arithmetic (three register, immediate shift)
@@ -784,21 +786,28 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
   DecodeCondition(inst, enc.cond);
 
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
-  AddIntRegOp(inst, enc.rm, 32, Operand::kActionRead);
+
+  // enc.opc == x0
+  if (!(enc.opc & 0b1)) {
+    AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
+  }
+
+  AddShiftRegOperand(inst, enc.rm, enc.type, enc.imm5);
+  if (enc.s) {
+    AddShiftCarryOperand(inst, enc.rm, enc.type, enc.imm5, "C");
+  }
 
   if (enc.rd == kPCRegNum){
-    if (enc.s) {
-
-    } else {
-
-    }
+    // TODO(Sonya): handle the PC destination register case
   }
+
+  inst.category = Instruction::kCategoryNormal;
   return true;
 }
 
 // Corresponds to Data-processing register (immediate shift)
 // op0<24 to 23> | op1 <20>
-static bool (*const kDataProcessingRI[])(Instruction&, uint32_t) = {
+static TryDecodeList kDataProcessingRI = {
     [0b000] = TryDecodeIntegerDataProcessingRRR,
     [0b001] = TryDecodeIntegerDataProcessingRRR,
     [0b010] = TryDecodeIntegerDataProcessingRRR,
@@ -811,7 +820,7 @@ static bool (*const kDataProcessingRI[])(Instruction&, uint32_t) = {
 
 // Corresponds to Data-processing immediate
 // op0<24 to 23> | op1 <21 to 20>
-static bool (*const kDataProcessingI[])(Instruction&, uint32_t) = {
+static TryDecodeList kDataProcessingI = {
     [0b0000] = TryDecodeIntegerDataProcessingRRI,
     [0b0001] = TryDecodeIntegerDataProcessingRRI,
     [0b0010] = TryDecodeIntegerDataProcessingRRI,
@@ -832,7 +841,7 @@ static bool (*const kDataProcessingI[])(Instruction&, uint32_t) = {
 
 // Corresponds to: Load/Store Word, Unsigned Byte (immediate, literal)
 // o2<22> | o1<21>
-static bool (*const kLoadStoreWordUBIL[])(Instruction&, uint32_t) = {
+static TryDecodeList kLoadStoreWordUBIL = {
     [0b00] = TryDecodeLoadStoreWordUBIL<Operand::kActionWrite, Operand::kActionRead, 32u>,
     [0b01] = TryDecodeLoadStoreWordUBIL<Operand::kActionRead, Operand::kActionWrite, 32u, true>,
     [0b10] = TryDecodeLoadStoreWordUBIL<Operand::kActionWrite, Operand::kActionRead, 8u>,
@@ -906,12 +915,12 @@ static TryDecode TryDecodeTopLevelEncodings(uint32_t bits) {
         const LoadStoreWUBIL enc_ls_word = { bits };
         return kLoadStoreWordUBIL[enc_ls_word.o2 << 1u | enc_ls_word.o1];
       } else {
-        // TODO(Sonya): Load/Store Word, Unsigned Byte (register)
-        // TODO(Sonya): Media instructions
+        // TODO(Sonya): Load/Store Word, Unsigned Byte (register) -- op0 == 011, op1 == 0
+        // TODO(Sonya): Media instructions -- op0 == 011, op1 == 1
         return nullptr;
       }
     } else {
-      // TODO(Sonya): Unconditional instructions
+      // TODO(Sonya): Unconditional instructions -- cond == 1111
       return nullptr;
     }
   }
