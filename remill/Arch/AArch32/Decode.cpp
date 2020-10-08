@@ -161,62 +161,6 @@ static const char * const kIntRegName[] = {
 typedef bool (*const TryDecode)(Instruction&, uint32_t);
 typedef bool (*const TryDecodeList[])(Instruction&, uint32_t);
 
-static void DecodeA32ExpandImm(Instruction &inst, uint32_t imm12, bool carry_out) {
-  uint32_t unrotated_value = imm12 & (0b11111111u);
-  uint32_t rotation_amount = ((imm12 >> 8) & (0b1111u)) *2u;
-  auto num_ops = inst.operands.size();
-  inst.operands.emplace_back();
-  inst.operands.emplace_back();
-  inst.operands.emplace_back();
-  auto &op0 = inst.operands[num_ops];
-  auto &op1 = inst.operands[num_ops + 1];
-  auto &op2 = inst.operands[num_ops + 2];
-
-  op0.imm.is_signed = false;
-  op0.size = 32;
-  op0.action = Operand::kActionRead;
-  op0.type = Operand::kTypeImmediate;
-
-  if (!rotation_amount) {
-    op0.imm.val = unrotated_value;
-  } else {
-    op0.imm.val = __builtin_rotateright32(unrotated_value, rotation_amount);
-  }
-
-  // This is the 2nd part of RRX so we can reuse the same semantics
-  op1.imm.is_signed = false;
-  op1.imm.val = 0;
-  op1.size = 32;
-  op1.action = Operand::kActionRead;
-  op1.type = Operand::kTypeImmediate;
-
-  if (!rotation_amount) {
-    op2.shift_reg.extract_size = 1;
-    op2.shift_reg.extend_op = Operand::ShiftRegister::kExtendUnsigned;
-
-    op2.shift_reg.shift_size = 0;
-    op2.type = Operand::kTypeShiftRegister;
-    op2.size = 32;
-    op2.action = Operand::kActionRead;
-
-    op2.shift_reg.reg.name = "C";
-    op2.shift_reg.reg.size = 8;
-    op2.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
-    op2.shift_reg.shift_size = 0;
-  } else {
-    op2.imm.val = (unrotated_value >> ((rotation_amount + 31u) % 32u)) & 0b1u;
-    op2.size = 32;
-    op2.imm.is_signed = false;
-    op2.action = Operand::kActionRead;
-    op2.type = Operand::kTypeImmediate;
-  }
-
-  if (!carry_out) {
-    inst.operands.pop_back();
-  }
-
-}
-
 static void AddIntRegOp(Instruction &inst, unsigned index, unsigned size,
                         Operand::Action action) {
   inst.operands.emplace_back();
@@ -273,8 +217,49 @@ static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
   return Operand::ShiftRegister::kShiftInvalid;
 }
 
+static void DecodeA32ExpandImm(Instruction &inst, uint32_t imm12, bool carry_out) {
+  uint32_t unrotated_value = imm12 & (0b11111111u);
+  uint32_t rotation_amount = ((imm12 >> 8) & (0b1111u)) *2u;
 
-// Used to handle (shift_t, shift_n) = DecodeImmShift(type, imm5) semantics
+  if (!rotation_amount) {
+    AddImmOp(inst, unrotated_value);
+  } else {
+    AddImmOp(inst, __builtin_rotateright32(unrotated_value, rotation_amount));
+  }
+
+  AddImmOp(inst, 0);
+
+  if (carry_out) {
+    inst.operands.emplace_back();
+    auto &op2 = inst.operands.back();
+    if (!rotation_amount) {
+      op2.shift_reg.extract_size = 1;
+      op2.shift_reg.extend_op = Operand::ShiftRegister::kExtendUnsigned;
+
+      op2.shift_reg.shift_size = 0;
+      op2.type = Operand::kTypeShiftRegister;
+      op2.size = 32;
+      op2.action = Operand::kActionRead;
+
+      op2.shift_reg.reg.name = "C";
+      op2.shift_reg.reg.size = 8;
+      op2.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
+      op2.shift_reg.shift_size = 0;
+    } else {
+      op2.imm.val = (unrotated_value >> ((rotation_amount + 31u) % 32u)) & 0b1u;
+      op2.size = 32;
+      op2.imm.is_signed = false;
+      op2.action = Operand::kActionRead;
+      op2.type = Operand::kTypeImmediate;
+    }
+  }
+
+}
+
+// This function should be used with AddShiftCarryOperand to add carry_out operand!
+// Used to handle semantics for:
+// (shifted, carry) = Shift_C(R[m], shift_t, shift_n, PSTATE.C);
+// (shift_t, shift_n) = DecodeImmShift(type, imm5);
 // See an instruction in Integer Data Processing (three register, immediate shift) set for an example
 static void AddShiftRegOperand(Instruction &inst,
                                uint32_t reg_num, uint32_t shift_type,
@@ -336,7 +321,9 @@ static void AddShiftRegOperand(Instruction &inst,
 }
 
 
-// (shift_t, shift_n) = DecodeImmShift(type, imm5)
+// PLEASE SEE AddShiftRegOperand!
+// This function extracts the carry_out that from the semantics that
+// AddShiftRegOperand handles
 static void AddShiftCarryOperand(Instruction &inst,
                                  uint32_t reg_num, uint32_t shift_type,
                                  uint32_t shift_size, const char * carry_reg_name) {
