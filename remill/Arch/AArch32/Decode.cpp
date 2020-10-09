@@ -158,6 +158,7 @@ static const char * const kIntRegName[] = {
     "R14",
     "R15"
 };
+
 typedef bool (*const TryDecode)(Instruction&, uint32_t);
 typedef bool (*const TryDecodeList[])(Instruction&, uint32_t);
 
@@ -230,33 +231,30 @@ static void DecodeA32ExpandImm(Instruction &inst, uint32_t imm12, bool carry_out
   AddImmOp(inst, 0);
 
   if (carry_out) {
-    inst.operands.emplace_back();
-    auto &op2 = inst.operands.back();
     if (!rotation_amount) {
-      op2.shift_reg.extract_size = 1;
-      op2.shift_reg.extend_op = Operand::ShiftRegister::kExtendUnsigned;
-
-      op2.shift_reg.shift_size = 0;
-      op2.type = Operand::kTypeShiftRegister;
-      op2.size = 32;
-      op2.action = Operand::kActionRead;
-
-      op2.shift_reg.reg.name = "C";
-      op2.shift_reg.reg.size = 8;
-      op2.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
-      op2.shift_reg.shift_size = 0;
+      inst.operands.emplace_back();
+      auto &op = inst.operands.back();
+      op.shift_reg.extract_size = 1;
+      op.shift_reg.extend_op = Operand::ShiftRegister::kExtendUnsigned;
+      op.shift_reg.shift_size = 0;
+      op.type = Operand::kTypeShiftRegister;
+      op.size = 32;
+      op.action = Operand::kActionRead;
+      op.shift_reg.reg.name = "C";
+      op.shift_reg.reg.size = 8;
+      op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
+      op.shift_reg.shift_size = 0;
     } else {
-      op2.imm.val = (unrotated_value >> ((rotation_amount + 31u) % 32u)) & 0b1u;
-      op2.size = 32;
-      op2.imm.is_signed = false;
-      op2.action = Operand::kActionRead;
-      op2.type = Operand::kTypeImmediate;
+      AddImmOp(inst, (unrotated_value >> ((rotation_amount + 31u) % 32u)) & 0b1u);
     }
   }
 
 }
 
-// This function should be used with AddShiftCarryOperand to add carry_out operand!
+// Note: This function should be used with AddShiftCarryOperand to add carry_out operand!
+// This function adds 2 operands in total - an op and an op_rrx which should be
+// ORed together when implementing Semantics
+
 // Used to handle semantics for:
 // (shifted, carry) = Shift_C(R[m], shift_t, shift_n, PSTATE.C);
 // (shift_t, shift_n) = DecodeImmShift(type, imm5);
@@ -299,9 +297,9 @@ static void AddShiftRegOperand(Instruction &inst,
   // together. No single operand type in remill is flexible enough to handle this.
   // So we make 2 operands and OR those two operands together. In most cases
   // when rrx isn't used we OR something with 0.
-  inst.operands.emplace_back();
-  auto &op = inst.operands.back();
   if (is_rrx) {
+    inst.operands.emplace_back();
+    auto &op = inst.operands.back();
     op.shift_reg.reg.name = "C";
     op.shift_reg.reg.size = 8;
 
@@ -312,11 +310,7 @@ static void AddShiftRegOperand(Instruction &inst,
     op.size = 32;
     op.action = Operand::kActionRead;
   } else {
-    op.imm.is_signed = false;
-    op.imm.val = 0;
-    op.size = 32;
-    op.action = Operand::kActionRead;
-    op.type = Operand::kTypeImmediate;
+    AddImmOp(inst, 0);
   }
 }
 
