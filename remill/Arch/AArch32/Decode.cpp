@@ -199,6 +199,25 @@ static void AddAddrRegOp(Instruction &inst, const char * reg_name, unsigned mem_
   op.addr.displacement = disp;
 }
 
+static void AddShiftOp(Instruction &inst, Operand::ShiftRegister::Shift shift_op,
+                Operand::ShiftRegister::Extend extend_op, const char * reg_name,
+                unsigned reg_size, unsigned shift_size, unsigned extract_size,
+                Operand::Action action = Operand::kActionRead, unsigned size = 32) {
+  inst.operands.emplace_back();
+  auto &op = inst.operands.back();
+  op.shift_reg.extract_size = extract_size;
+  op.shift_reg.extend_op = extend_op;
+  op.shift_reg.shift_size = shift_size;
+  op.type = Operand::kTypeShiftRegister;
+  op.size = size;
+  op.action = action;
+  op.shift_reg.reg.name = reg_name;
+  op.shift_reg.reg.size = reg_size;
+  op.shift_reg.shift_op = shift_op;
+  op.shift_reg.shift_size = shift_size;
+}
+
+
 // Note: Order is significant; extracted bits may be casted to this type.
 enum Shift : uint32_t { kShiftLSL, kShiftLSR, kShiftASR, kShiftROR };
 
@@ -232,18 +251,7 @@ static void DecodeA32ExpandImm(Instruction &inst, uint32_t imm12, bool carry_out
 
   if (carry_out) {
     if (!rotation_amount) {
-      inst.operands.emplace_back();
-      auto &op = inst.operands.back();
-      op.shift_reg.extract_size = 1;
-      op.shift_reg.extend_op = Operand::ShiftRegister::kExtendUnsigned;
-      op.shift_reg.shift_size = 0;
-      op.type = Operand::kTypeShiftRegister;
-      op.size = 32;
-      op.action = Operand::kActionRead;
-      op.shift_reg.reg.name = "C";
-      op.shift_reg.reg.size = 8;
-      op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
-      op.shift_reg.shift_size = 0;
+      AddShiftOp(inst, Operand::ShiftRegister::kShiftLeftWithZeroes, Operand::ShiftRegister::kExtendUnsigned, "C", 8, 0, 1);
     } else {
       AddImmOp(inst, (unrotated_value >> ((rotation_amount + 31u) % 32u)) & 0b1u);
     }
@@ -275,22 +283,11 @@ static void AddShiftRegOperand(Instruction &inst,
   if (!shift_size) {
     AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
   } else {
-    inst.operands.emplace_back();
-    auto &op = inst.operands.back();
-    op.shift_reg.reg.name = kIntRegName[reg_num];
-    op.shift_reg.reg.size = 32;
-
     if (is_rrx) {
-      op.shift_reg.shift_op = Operand::ShiftRegister::kShiftUnsignedRight;
-      op.shift_reg.shift_size = 1;
+      AddShiftOp(inst, Operand::ShiftRegister::kShiftUnsignedRight, Operand::ShiftRegister::kExtendInvalid, kIntRegName[reg_num], 32, 1, 0);
     } else {
-      op.shift_reg.shift_op = GetOperandShift(static_cast<Shift>(shift_type));
-      op.shift_reg.shift_size = shift_size;
+      AddShiftOp(inst, GetOperandShift(static_cast<Shift>(shift_type)), Operand::ShiftRegister::kExtendInvalid, kIntRegName[reg_num], 32, shift_size, 0);
     }
-
-    op.type = Operand::kTypeShiftRegister;
-    op.size = 32;
-    op.action = Operand::kActionRead;
   }
 
   // To handle rrx we need to take two components shift each and OR the results
@@ -298,17 +295,7 @@ static void AddShiftRegOperand(Instruction &inst,
   // So we make 2 operands and OR those two operands together. In most cases
   // when rrx isn't used we OR something with 0.
   if (is_rrx) {
-    inst.operands.emplace_back();
-    auto &op = inst.operands.back();
-    op.shift_reg.reg.name = "C";
-    op.shift_reg.reg.size = 8;
-
-    op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
-    op.shift_reg.shift_size = 31;
-
-    op.type = Operand::kTypeShiftRegister;
-    op.size = 32;
-    op.action = Operand::kActionRead;
+    AddShiftOp(inst, Operand::ShiftRegister::kShiftLeftWithZeroes, Operand::ShiftRegister::kExtendInvalid, "C", 8, 31, 0);
   } else {
     AddImmOp(inst, 0);
   }
@@ -321,15 +308,6 @@ static void AddShiftRegOperand(Instruction &inst,
 static void AddShiftCarryOperand(Instruction &inst,
                                  uint32_t reg_num, uint32_t shift_type,
                                  uint32_t shift_size, const char * carry_reg_name) {
-  inst.operands.emplace_back();
-  auto &op = inst.operands.back();
-  op.shift_reg.extract_size = 1;
-  op.shift_reg.extend_op = Operand::ShiftRegister::kExtendUnsigned;
-
-  op.shift_reg.shift_size = shift_size;
-  op.type = Operand::kTypeShiftRegister;
-  op.size = 32;
-  op.action = Operand::kActionRead;
 
   auto is_rrx = false;
   if (!shift_size && shift_type == Shift::kShiftROR) {
@@ -338,33 +316,23 @@ static void AddShiftCarryOperand(Instruction &inst,
   }
 
   if (!shift_size) {
-    op.shift_reg.reg.name = carry_reg_name;
-    op.shift_reg.reg.size = 8;
-    op.shift_reg.shift_op = Operand::ShiftRegister::kShiftLeftWithZeroes;
-    op.shift_reg.shift_size = 0;
+    AddShiftOp(inst, Operand::ShiftRegister::kShiftLeftWithZeroes, Operand::ShiftRegister::kExtendUnsigned, carry_reg_name, 8, 0, 1);
   } else {
-    op.shift_reg.reg.name = kIntRegName[reg_num];
-    op.shift_reg.reg.size = 32;
     switch (static_cast<Shift>(shift_type)) {
       case Shift::kShiftASR:
-        op.shift_reg.shift_size = shift_size - 1;
-        op.shift_reg.shift_op = Operand::ShiftRegister::kShiftSignedRight;
+        AddShiftOp(inst, Operand::ShiftRegister::kShiftSignedRight, Operand::ShiftRegister::kExtendUnsigned, kIntRegName[reg_num], 32, shift_size - 1, 1);
         break;
       case Shift::kShiftLSL:
-        op.shift_reg.shift_size = 32 - shift_size;
-        op.shift_reg.shift_op = Operand::ShiftRegister::kShiftUnsignedRight;
+        AddShiftOp(inst, Operand::ShiftRegister::kShiftUnsignedRight, Operand::ShiftRegister::kExtendUnsigned, kIntRegName[reg_num], 32, 32 - shift_size, 1);
         break;
       case Shift::kShiftLSR:
-        op.shift_reg.shift_size = shift_size - 1;
-        op.shift_reg.shift_op = Operand::ShiftRegister::kShiftUnsignedRight;
+        AddShiftOp(inst, Operand::ShiftRegister::kShiftUnsignedRight, Operand::ShiftRegister::kExtendUnsigned, kIntRegName[reg_num], 32, shift_size - 1, 1);
         break;
       case Shift::kShiftROR:
         if (is_rrx) {
-          op.shift_reg.shift_size = 0;
-          op.shift_reg.shift_op = Operand::ShiftRegister::kShiftUnsignedRight;
+          AddShiftOp(inst, Operand::ShiftRegister::kShiftUnsignedRight, Operand::ShiftRegister::kExtendUnsigned, kIntRegName[reg_num], 32, 0, 1);
         } else {
-          op.shift_reg.shift_size = (shift_size + 31u) % 32u;
-          op.shift_reg.shift_op = Operand::ShiftRegister::kShiftUnsignedRight;
+          AddShiftOp(inst, Operand::ShiftRegister::kShiftUnsignedRight, Operand::ShiftRegister::kExtendUnsigned, kIntRegName[reg_num], 32, (shift_size + 31u) % 32u, 1);
         }
         break;
     }
@@ -830,40 +798,63 @@ static TryDecodeList kLoadStoreWordUBIL = {
 };
 
 // Corresponds to: Data-processing and miscellaneous instructions
-//op0   op1 op2 op3 op4
-//0          1 != 00 1 Extra load/store
-//0    0xxxx 1    00 1 Multiply and Accumulate
-//0    1xxxx 1    00 1 Synchronization primitives and Load-Acquire/Store-Release
-//0    10xx0 0         Miscellaneous
-//0    10xx0 1       0 Halfword Multiply and Accumulate
-//0 != 10xx0         0 Data-processing register (immediate shift)
-//0 != 10xx0 0       1 Data-processing register (register shift)
-//1                    Data-processing immediate
+//op0   op1    op2 op3  op4
+// 0            1 != 00  1 Extra load/store
+// 0     0xxxx  1    00  1 Multiply and Accumulate
+// 0     1xxxx  1    00  1 Synchronization primitives and Load-Acquire/Store-Release
+// 0     10xx0  0          Miscellaneous
+// 0     10xx0  1        0 Halfword Multiply and Accumulate
+// 0  != 10xx0           0 Data-processing register (immediate shift)
+// 0  != 10xx0  0        1 Data-processing register (register shift)
+// 1                       Data-processing immediate
 static TryDecode TryDataProcessingAndMisc(uint32_t bits) {
   const DataProcessingAndMisc enc = { bits };
-
   // op0 == 0
   if (!enc.op0) {
-    // Multiply and Accumulate
-    if ((!(enc.op1 >> 4)) && enc.op2 && (enc.op3 == 0b00u) && enc.op4) {
-      return TryDecodeMultiplyAndAccumulate;
+    // op2 == 1, op4 == 1
+    if (enc.op2 && enc.op4) {
+      // TODO(Sonya): Extra load/store -- op3 != 00
+      if (!enc.op3) {
+        return nullptr;
+      }
+      // op3 == 00
+      else {
+        // Multiply and Accumulate -- op1 == 0xxxx
+        if (!(enc.op1 >> 4)) {
+          return TryDecodeMultiplyAndAccumulate;
+        }
+        // TODO(Sonya): Synchronization primitives and Load-Acquire/Store-Release -- op1 == 1xxxx
+        else {
+          return nullptr;
+        }
+      }
     }
-    // Data-processing register (immediate shift)
-    else if (!(((enc.op1 >> 3) == 0b10u) && (enc.op1 & 0b00001u)) && !enc.op4) {
-      // op0 -> enc.op1 2 high order bits, op1 -> enc.op1 lowest bit
-      // index is the concatenation of op0 and op1
-      return kDataProcessingRI[(enc.op1 >> 2) | (enc.op1 & 0b1u)];
-    } else {
-      // TODO(Sonya): Extra load/store
-      // TODO(Sonya): Synchronization primitives and Load-Acquire/Store-Release
+    // op1 == 10xx0
+    else if (((enc.op1 >> 3) == 0b10u) && (enc.op1 & 0b00001u)) {
       // TODO(Sonya): Miscellaneous
+      if (!enc.op2) {
+        return nullptr;
+      }
       // TODO(Sonya): Halfword Multiply and Accumulate
-      // TODO(Sonya): Data-processing register (register shift)
-      return nullptr;
+      else {
+        return nullptr;
+      }
+    }
+    // op1 != 10xx0
+    else {
+      // Data-processing register (immediate shift) -- op4 == 0
+      if (!enc.op4) {
+        // op0 -> enc.op1 2 high order bits, op1 -> enc.op1 lowest bit
+        // index is the concatenation of op0 and op1
+        return kDataProcessingRI[(enc.op1 >> 2) | (enc.op1 & 0b1u)];
+      }
+      // TODO(Sonya): Data-processing register (register shift) -- op4 == 1
+      else {
+        return nullptr;
+      }
     }
   }
-  // op0 == 1
-  // Data-processing immediate
+  // Data-processing immediate -- op0 == 1
   else {
     // op0 -> enc.op1 2 high order bits, op1 -> enc.op1 2 lowest bits
     // index is the concatenation of op0 and op1
@@ -895,21 +886,36 @@ static TryDecode TryDecodeTopLevelEncodings(uint32_t bits) {
       else if (enc.op0 == 0b010u) {
         const LoadStoreWUBIL enc_ls_word = { bits };
         return kLoadStoreWordUBIL[enc_ls_word.o2 << 1u | enc_ls_word.o1];
-      } else {
-        // TODO(Sonya): Load/Store Word, Unsigned Byte (register) -- op0 == 011, op1 == 0
-        // TODO(Sonya): Media instructions -- op0 == 011, op1 == 1
+      }
+      // TODO(Sonya): Load/Store Word, Unsigned Byte (register) -- op0 == 011, op1 == 0
+      else if (!enc.op1) {
+        // This should be returning another table index using a struct like above
         return nullptr;
       }
-    } else {
-      // TODO(Sonya): Unconditional instructions -- cond == 1111
+      // TODO(Sonya): Media instructions -- op0 == 011, op1 == 1
+      else {
+        // return a result from another function for instruction categorizing
+        return nullptr;
+      }
+    }
+    // TODO(Sonya): Unconditional instructions -- cond == 1111
+    else {
+      // return a result from another function for instruction categorizing
       return nullptr;
     }
   }
   // op0 == 1xx
   else {
-    // TODO(Sonya): Branch, branch with link, and block data transfer
-    // TODO(Sonya): System register access, Advanced SIMD, floating-point, and Supervisor call
-    return nullptr;
+    // TODO(Sonya): Branch, branch with link, and block data transfer -- op0 == 10x
+    if (enc.op0 >> 1 == 0b10u) {
+      // return a result from another function for instruction categorizing
+      return nullptr;
+    }
+    // TODO(Sonya): System register access, Advanced SIMD, floating-point, and Supervisor call -- op0 == 11x
+    else {
+      // return a result from another function for instruction categorizing
+      return nullptr;
+    }
   }
 }
 
