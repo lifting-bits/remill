@@ -31,19 +31,19 @@ DEF_SEM(BOUND, R8W cond, S1 src1, S2 src2, R32W) {
 }
 #endif
 
-DEF_SEM(DoINT_IMMb, I8 num) {
+DEF_SEM(DoINT_IMMb, I8 num, IF_32BIT_ELSE(R32W, R64W)) {
   INTERRUPT_VECTOR = Read(num);
   HYPER_CALL = AsyncHyperCall::kX86IntN;
   return memory;
 }
 
-DEF_SEM(DoINT1) {
+DEF_SEM(DoINT1, IF_32BIT_ELSE(R32W, R64W)) {
   INTERRUPT_VECTOR = 1;
   HYPER_CALL = AsyncHyperCall::kX86Int1;
   return memory;
 }
 
-DEF_SEM(DoINT3) {
+DEF_SEM(DoINT3, IF_32BIT_ELSE(R32W, R64W)) {
   INTERRUPT_VECTOR = 3;
   HYPER_CALL = AsyncHyperCall::kX86Int3;
   return memory;
