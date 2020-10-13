@@ -618,6 +618,47 @@ std::optional<uint64_t> EvalOperand(const Instruction &inst, const Operand &op) 
 
 }
 
+// Handles appropriate branching semantics for:
+// if d == 15 then
+//   if setflags then
+//      ALUExceptionReturn(result);
+//   else
+//      ALUWritePC(result);
+template<typename Evaluator>
+static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
+                       Evaluator *evaluator) {
+  if (rd == kPCRegNum) {
+    // Updates the flags (condition codes)
+    if (s) {
+      inst.category = Instruction::kCategoryError;
+      return false;
+    } else {
+      auto src1 = EvalOperand(inst, inst.operands[1]);
+      auto src2 = EvalOperand(inst, inst.operands[2]);
+      auto src2_rrx = EvalOperand(inst, inst.operands[3]);
+
+      if (!src1 || !src2 || !src2_rrx) {
+        inst.category = Instruction::kCategoryIndirectJump;
+      } else {
+        auto res = evaluator(*src1, *src2, *src2_rrx);
+        if (!res) {
+          inst.category = Instruction::kCategoryIndirectJump;
+        } else if (!inst.conditions.empty()) {
+          inst.branch_taken_pc = static_cast<uint64_t>(*res);
+          inst.branch_not_taken_pc = inst.next_pc;
+          inst.category = Instruction::kCategoryConditionalBranch;
+        } else {
+          inst.branch_taken_pc = static_cast<uint64_t>(*res);
+          inst.category = Instruction::kCategoryDirectJump;
+        }
+      }
+    }
+  } else {
+    inst.category = Instruction::kCategoryNormal;
+  }
+  return true;
+}
+
 // High 3 bit opc
 static InstEval * kIdpEvaluators[] = {
     [0b000] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
@@ -645,41 +686,6 @@ static InstEval * kIdpEvaluators[] = {
       return std::optional<uint32_t>(std::nullopt);
     },
 };
-
-template<typename Evaluator>
-static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
-                       Evaluator *evaluator) {
-  if (rd == kPCRegNum) {
-    // Updates the flags (condition codes)
-    if (s) {
-        inst.category = Instruction::kCategoryError;
-        return false;
-      } else {
-        auto src1 = EvalOperand(inst, inst.operands[1]);
-        auto src2 = EvalOperand(inst, inst.operands[2]);
-        auto src2_rrx = EvalOperand(inst, inst.operands[3]);
-
-        if (!src1 || !src2 || !src2_rrx) {
-          inst.category = Instruction::kCategoryIndirectJump;
-        } else {
-          auto res = evaluator(*src1, *src2, *src2_rrx);
-          if (!res) {
-            inst.category = Instruction::kCategoryIndirectJump;
-          } else if (!inst.conditions.empty()) {
-            inst.branch_taken_pc = static_cast<uint64_t>(*res);
-            inst.branch_not_taken_pc = inst.next_pc;
-            inst.category = Instruction::kCategoryConditionalBranch;
-          } else {
-            inst.branch_taken_pc = static_cast<uint64_t>(*res);
-            inst.category = Instruction::kCategoryDirectJump;
-          }
-        }
-      }
-    } else {
-      inst.category = Instruction::kCategoryNormal;
-    }
-  return true;
-}
 
 // High 3 bit opc and low bit s, opc:s
 static const char * const kIdpNamesRRR[] = {
