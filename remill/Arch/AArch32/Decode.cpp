@@ -186,8 +186,9 @@ static void AddImmOp(Instruction &inst, uint64_t value, unsigned size = 32,
   op.type = Operand::kTypeImmediate;
 }
 
-static void AddAddrRegOp(Instruction &inst, const char * reg_name, unsigned mem_size,
-                         Operand::Action mem_action, unsigned disp, unsigned scale = 0) {
+static void AddAddrRegOp(Instruction &inst, const char *reg_name,
+                         unsigned mem_size, Operand::Action mem_action,
+                         unsigned disp, unsigned scale = 0) {
   inst.operands.emplace_back();
   auto &op = inst.operands.back();
   op.type = Operand::kTypeAddress;
@@ -200,9 +201,12 @@ static void AddAddrRegOp(Instruction &inst, const char * reg_name, unsigned mem_
   op.addr.displacement = disp;
 }
 
-static void AddShiftOp(Instruction &inst, Operand::ShiftRegister::Shift shift_op,
-                const char * reg_name, unsigned reg_size, unsigned shift_size,
-                Operand::Action action = Operand::kActionRead, unsigned size = 32) {
+static void AddShiftOp(Instruction &inst,
+                       Operand::ShiftRegister::Shift shift_op,
+                       const char *reg_name, unsigned reg_size,
+                       unsigned shift_size, Operand::Action action =
+                           Operand::kActionRead,
+                       unsigned size = 32) {
   inst.operands.emplace_back();
   auto &op = inst.operands.back();
   op.shift_reg.shift_size = shift_size;
@@ -215,10 +219,13 @@ static void AddShiftOp(Instruction &inst, Operand::ShiftRegister::Shift shift_op
   op.shift_reg.shift_size = shift_size;
 }
 
-static void AddShiftThenExtractOp(Instruction &inst, Operand::ShiftRegister::Shift shift_op,
-                                  Operand::ShiftRegister::Extend extend_op, const char * reg_name,
-                                  unsigned reg_size, unsigned shift_size, unsigned extract_size,
-                                  Operand::Action action = Operand::kActionRead, unsigned size = 32) {
+static void AddShiftThenExtractOp(Instruction &inst,
+                                  Operand::ShiftRegister::Shift shift_op,
+                                  Operand::ShiftRegister::Extend extend_op,
+                                  const char *reg_name, unsigned reg_size,
+                                  unsigned shift_size, unsigned extract_size,
+                                  Operand::Action action = Operand::kActionRead,
+                                  unsigned size = 32) {
   inst.operands.emplace_back();
   auto &op = inst.operands.back();
   op.shift_reg.extract_size = extract_size;
@@ -235,10 +242,13 @@ static void AddShiftThenExtractOp(Instruction &inst, Operand::ShiftRegister::Shi
 
 }
 
-static void AddExtractThenShiftOp(Instruction &inst, Operand::ShiftRegister::Shift shift_op,
-                                  Operand::ShiftRegister::Extend extend_op, const char * reg_name,
-                                  unsigned reg_size, unsigned shift_size, unsigned extract_size,
-                                  Operand::Action action = Operand::kActionRead, unsigned size = 32) {
+static void AddExtractThenShiftOp(Instruction &inst,
+                                  Operand::ShiftRegister::Shift shift_op,
+                                  Operand::ShiftRegister::Extend extend_op,
+                                  const char *reg_name, unsigned reg_size,
+                                  unsigned shift_size, unsigned extract_size,
+                                  Operand::Action action = Operand::kActionRead,
+                                  unsigned size = 32) {
   inst.operands.emplace_back();
   auto &op = inst.operands.back();
   op.shift_reg.extract_size = extract_size;
@@ -274,7 +284,14 @@ static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
   return Operand::ShiftRegister::kShiftInvalid;
 }
 
-static void DecodeA32ExpandImm(Instruction &inst, uint32_t imm12, bool carry_out) {
+// Note: This function adds either 2 or 3 operands in total
+// an op and an op_rrx which should be ORed together when adding Semantics,
+// and if carry_out an additional carry_out op
+
+// Used to handle semantics for:
+// (shift_t, shift_n) = DecodeImmShift(type, imm5);
+// See an instruction in Data-processing register (immediate shift) for example
+static void ExpandTo32AddImmAddCarry(Instruction &inst, uint32_t imm12, bool carry_out) {
   uint32_t unrotated_value = imm12 & (0b11111111u);
   uint32_t rotation_amount = ((imm12 >> 8) & (0b1111u)) *2u;
 
@@ -288,12 +305,14 @@ static void DecodeA32ExpandImm(Instruction &inst, uint32_t imm12, bool carry_out
 
   if (carry_out) {
     if (!rotation_amount) {
-      AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftLeftWithZeroes, Operand::ShiftRegister::kExtendUnsigned, "C", 8, 0, 1);
+      AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftLeftWithZeroes,
+                            Operand::ShiftRegister::kExtendUnsigned, "C", 8, 0,
+                            1);
     } else {
-      AddImmOp(inst, (unrotated_value >> ((rotation_amount + 31u) % 32u)) & 0b1u);
+      AddImmOp(inst,
+               (unrotated_value >> ((rotation_amount + 31u) % 32u)) & 0b1u);
     }
   }
-
 }
 
 // Note: This function should be used with AddShiftCarryOperand to add carry_out operand!
@@ -321,9 +340,11 @@ static void AddShiftRegOperand(Instruction &inst,
     AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
   } else {
     if (is_rrx) {
-      AddShiftOp(inst, Operand::ShiftRegister::kShiftUnsignedRight, kIntRegName[reg_num], 32, 1);
+      AddShiftOp(inst, Operand::ShiftRegister::kShiftUnsignedRight,
+                 kIntRegName[reg_num], 32, 1);
     } else {
-      AddShiftOp(inst, GetOperandShift(static_cast<Shift>(shift_type)), kIntRegName[reg_num], 32, shift_size);
+      AddShiftOp(inst, GetOperandShift(static_cast<Shift>(shift_type)),
+                 kIntRegName[reg_num], 32, shift_size);
     }
   }
 
@@ -353,23 +374,38 @@ static void AddShiftCarryOperand(Instruction &inst,
   }
 
   if (!shift_size) {
-    AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftLeftWithZeroes, Operand::ShiftRegister::kExtendUnsigned, carry_reg_name, 8, 0, 1);
+    AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftLeftWithZeroes,
+                          Operand::ShiftRegister::kExtendUnsigned,
+                          carry_reg_name, 8, 0, 1);
   } else {
     switch (static_cast<Shift>(shift_type)) {
       case Shift::kShiftASR:
-        AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftSignedRight, Operand::ShiftRegister::kExtendUnsigned, kIntRegName[reg_num], 32, shift_size - 1, 1);
+        AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftSignedRight,
+                              Operand::ShiftRegister::kExtendUnsigned,
+                              kIntRegName[reg_num], 32, shift_size - 1, 1);
         break;
       case Shift::kShiftLSL:
-        AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftUnsignedRight, Operand::ShiftRegister::kExtendUnsigned, kIntRegName[reg_num], 32, 32 - shift_size, 1);
+        AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftUnsignedRight,
+                              Operand::ShiftRegister::kExtendUnsigned,
+                              kIntRegName[reg_num], 32, 32 - shift_size, 1);
         break;
       case Shift::kShiftLSR:
-        AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftUnsignedRight, Operand::ShiftRegister::kExtendUnsigned, kIntRegName[reg_num], 32, shift_size - 1, 1);
+        AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftUnsignedRight,
+                              Operand::ShiftRegister::kExtendUnsigned,
+                              kIntRegName[reg_num], 32, shift_size - 1, 1);
         break;
       case Shift::kShiftROR:
         if (is_rrx) {
-          AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftUnsignedRight, Operand::ShiftRegister::kExtendUnsigned, kIntRegName[reg_num], 32, 0, 1);
+          AddShiftThenExtractOp(inst,
+                                Operand::ShiftRegister::kShiftUnsignedRight,
+                                Operand::ShiftRegister::kExtendUnsigned,
+                                kIntRegName[reg_num], 32, 0, 1);
         } else {
-          AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftUnsignedRight, Operand::ShiftRegister::kExtendUnsigned, kIntRegName[reg_num], 32, (shift_size + 31u) % 32u, 1);
+          AddShiftThenExtractOp(inst,
+                                Operand::ShiftRegister::kShiftUnsignedRight,
+                                Operand::ShiftRegister::kExtendUnsigned,
+                                kIntRegName[reg_num], 32,
+                                (shift_size + 31u) % 32u, 1);
         }
         break;
     }
@@ -611,9 +647,11 @@ static InstEval * kIdpEvaluators[] = {
 };
 
 template<typename Evaluator>
-static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd, Evaluator * evaluator) {
+static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
+                       Evaluator *evaluator) {
   if (rd == kPCRegNum) {
-      if (s) {  // Updates the flags (condition codes)
+    // Updates the flags (condition codes)
+    if (s) {
         inst.category = Instruction::kCategoryError;
         return false;
       } else {
@@ -724,7 +762,7 @@ static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst, uint32_t bits) 
     AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
   }
 
-  DecodeA32ExpandImm(inst, enc.imm12, enc.s);
+  ExpandTo32AddImmAddCarry(inst, enc.imm12, enc.s);
 
   return EvalPCDest<InstEval>(inst, enc.s, enc.opc, kIdpEvaluators[enc.opc]);
 
