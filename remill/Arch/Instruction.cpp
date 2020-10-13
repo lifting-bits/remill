@@ -31,6 +31,7 @@ Operand::Register::Register(void) : size(0) {}
 Operand::ShiftRegister::ShiftRegister(void)
     : shift_size(0),
       extract_size(0),
+      shift_first(false),
       shift_op(Operand::ShiftRegister::kShiftInvalid),
       extend_op(Operand::ShiftRegister::kExtendInvalid) {}
 
@@ -72,49 +73,83 @@ std::string Operand::Serialize(void) const {
       ss << "(REG_" << reg.size << " " << reg.name << ")";
       break;
 
-    case Operand::kTypeShiftRegister:
+    case Operand::kTypeShiftRegister: {
+      auto shift_begin = [&](void) {
+        switch (shift_reg.shift_op) {
+          case Operand::ShiftRegister::kShiftInvalid: break;
 
-      switch (shift_reg.shift_op) {
-        case Operand::ShiftRegister::kShiftInvalid: break;
+          case Operand::ShiftRegister::kShiftLeftWithZeroes: ss << "(LSL "; break;
 
-        case Operand::ShiftRegister::kShiftLeftWithZeroes: ss << "(LSL "; break;
+          case Operand::ShiftRegister::kShiftLeftWithOnes: ss << "(MSL "; break;
 
-        case Operand::ShiftRegister::kShiftLeftWithOnes: ss << "(MSL "; break;
+          case Operand::ShiftRegister::kShiftUnsignedRight: ss << "(LSR "; break;
 
-        case Operand::ShiftRegister::kShiftUnsignedRight: ss << "(LSR "; break;
+          case Operand::ShiftRegister::kShiftSignedRight: ss << "(ASR "; break;
 
-        case Operand::ShiftRegister::kShiftSignedRight: ss << "(ASR "; break;
+          case Operand::ShiftRegister::kShiftLeftAround: ss << "(ROL "; break;
 
-        case Operand::ShiftRegister::kShiftLeftAround: ss << "(ROL "; break;
+          case Operand::ShiftRegister::kShiftRightAround: ss << "(ROR "; break;
+        }
+      };
 
-        case Operand::ShiftRegister::kShiftRightAround: ss << "(ROR "; break;
+      auto shift_end = [&](void) {
+        if (Operand::ShiftRegister::kShiftInvalid != shift_reg.shift_op) {
+          ss << " " << shift_reg.shift_size << ")";
+        }
+      };
+
+      auto extract_begin = [&](void) {
+        switch (shift_reg.extend_op) {
+          case Operand::ShiftRegister::kExtendInvalid:
+            break;
+
+          case Operand::ShiftRegister::kExtendSigned:
+            ss << "(SEXT (TRUNC ";
+            break;
+
+          case Operand::ShiftRegister::kExtendUnsigned:
+            ss << "(ZEXT (TRUNC ";
+            break;
+        }
+      };
+
+      auto extract_end = [&](void) {
+        switch (shift_reg.extend_op) {
+          case Operand::ShiftRegister::kExtendInvalid:
+            break;
+
+          case Operand::ShiftRegister::kExtendSigned:
+            ss << " " << shift_reg.extract_size << ") "
+               << size << ")";
+            break;
+
+          case Operand::ShiftRegister::kExtendUnsigned:
+            ss << " " << shift_reg.extract_size << ") "
+               << size << ")";
+            break;
+        }
+      };
+
+      if (shift_reg.shift_first) {
+        extract_begin();
+        shift_begin();
+      } else {
+        shift_begin();
+        extract_begin();
       }
 
-      switch (shift_reg.extend_op) {
-        case Operand::ShiftRegister::kExtendInvalid:
-          ss << "(REG_" << shift_reg.reg.size << " " << shift_reg.reg.name
-             << ")";
-          break;
+      ss << "(REG_" << shift_reg.reg.size << " " << shift_reg.reg.name << ")";
 
-        case Operand::ShiftRegister::kExtendSigned:
-          ss << "(SEXT (TRUNC (REG_" << shift_reg.reg.size << " "
-             << shift_reg.reg.name << ") " << shift_reg.extract_size << ") "
-             << size << ")";
-          break;
-
-        case Operand::ShiftRegister::kExtendUnsigned:
-          ss << "(ZEXT (TRUNC (REG_" << shift_reg.reg.size << " "
-             << shift_reg.reg.name << ") " << shift_reg.extract_size << ") "
-             << size << ")";
-          break;
-      }
-
-      if (Operand::ShiftRegister::kShiftInvalid != shift_reg.shift_op) {
-        ss << " " << shift_reg.shift_size << ")";
+      if (shift_reg.shift_first) {
+        shift_end();
+        extract_end();
+      } else {
+        extract_end();
+        shift_end();
       }
 
       break;
-
+    }
     case Operand::kTypeImmediate:
       ss << "(";
       if (imm.is_signed) {

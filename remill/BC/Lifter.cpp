@@ -365,102 +365,114 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
   llvm::IRBuilder<> ir(block);
 
   auto curr_size = reg_size;
-  if (Operand::ShiftRegister::kExtendInvalid != op.shift_reg.extend_op) {
+  auto extract_and_extend = [&](void) {
+    if (Operand::ShiftRegister::kExtendInvalid != op.shift_reg.extend_op) {
 
-    auto extract_type =
-        llvm::Type::getIntNTy(context, op.shift_reg.extract_size);
+      auto extract_type =
+          llvm::Type::getIntNTy(context, op.shift_reg.extract_size);
 
-    if (reg_size > op.shift_reg.extract_size) {
-      curr_size = op.shift_reg.extract_size;
-      reg = ir.CreateTrunc(reg, extract_type);
+      if (reg_size > op.shift_reg.extract_size) {
+        curr_size = op.shift_reg.extract_size;
+        reg = ir.CreateTrunc(reg, extract_type);
 
-    } else {
-      CHECK(reg_size == op.shift_reg.extract_size)
-          << "Invalid extraction size. Can't extract "
-          << op.shift_reg.extract_size << " bits from a " << reg_size
-          << "-bit value in operand " << op.Serialize() << " of instruction at "
-          << std::hex << inst.pc;
-    }
+      } else {
+        CHECK(reg_size == op.shift_reg.extract_size)
+            << "Invalid extraction size. Can't extract "
+            << op.shift_reg.extract_size << " bits from a " << reg_size
+            << "-bit value in operand " << op.Serialize() << " of instruction at "
+            << std::hex << inst.pc;
+      }
 
-    if (op.size > op.shift_reg.extract_size) {
-      switch (op.shift_reg.extend_op) {
-        case Operand::ShiftRegister::kExtendSigned:
-          reg = ir.CreateSExt(reg, op_type);
-          curr_size = op.size;
-          break;
-        case Operand::ShiftRegister::kExtendUnsigned:
-          reg = ir.CreateZExt(reg, op_type);
-          curr_size = op.size;
-          break;
-        default:
-          LOG(FATAL) << "Invalid extend operation type for instruction at "
-                     << std::hex << inst.pc;
-          break;
+      if (op.size > op.shift_reg.extract_size) {
+        switch (op.shift_reg.extend_op) {
+          case Operand::ShiftRegister::kExtendSigned:
+            reg = ir.CreateSExt(reg, op_type);
+            curr_size = op.size;
+            break;
+          case Operand::ShiftRegister::kExtendUnsigned:
+            reg = ir.CreateZExt(reg, op_type);
+            curr_size = op.size;
+            break;
+          default:
+            LOG(FATAL) << "Invalid extend operation type for instruction at "
+                       << std::hex << inst.pc;
+            break;
+        }
       }
     }
-  }
 
-  CHECK(curr_size <= op.size);
+    CHECK(curr_size <= op.size);
 
-  if (curr_size < op.size) {
-    reg = ir.CreateZExt(reg, op_type);
-    curr_size = op.size;
-  }
-
-  if (Operand::ShiftRegister::kShiftInvalid != op.shift_reg.shift_op) {
-
-    CHECK(shift_size < op.size)
-        << "Shift of size " << shift_size
-        << " is wider than the base register size in shift register in "
-        << inst.Serialize();
-
-    switch (op.shift_reg.shift_op) {
-
-      // Left shift.
-      case Operand::ShiftRegister::kShiftLeftWithZeroes:
-        reg = ir.CreateShl(reg, shift_val);
-        break;
-
-      // Masking shift left.
-      case Operand::ShiftRegister::kShiftLeftWithOnes: {
-        const auto mask_val =
-            llvm::ConstantInt::get(reg_type, ~((~zero) << shift_size));
-        reg = ir.CreateOr(ir.CreateShl(reg, shift_val), mask_val);
-        break;
-      }
-
-      // Logical right shift.
-      case Operand::ShiftRegister::kShiftUnsignedRight:
-        reg = ir.CreateLShr(reg, shift_val);
-        break;
-
-      // Arithmetic right shift.
-      case Operand::ShiftRegister::kShiftSignedRight:
-        reg = ir.CreateAShr(reg, shift_val);
-        break;
-
-      // Rotate left.
-      case Operand::ShiftRegister::kShiftLeftAround: {
-        const uint64_t shr_amount = (~shift_size + one) & (op.size - one);
-        const auto shr_val = llvm::ConstantInt::get(op_type, shr_amount);
-        const auto val1 = ir.CreateLShr(reg, shr_val);
-        const auto val2 = ir.CreateShl(reg, shift_val);
-        reg = ir.CreateOr(val1, val2);
-        break;
-      }
-
-      // Rotate right.
-      case Operand::ShiftRegister::kShiftRightAround: {
-        const uint64_t shl_amount = (~shift_size + one) & (op.size - one);
-        const auto shl_val = llvm::ConstantInt::get(op_type, shl_amount);
-        const auto val1 = ir.CreateLShr(reg, shift_val);
-        const auto val2 = ir.CreateShl(reg, shl_val);
-        reg = ir.CreateOr(val1, val2);
-        break;
-      }
-
-      case Operand::ShiftRegister::kShiftInvalid: break;
+    if (curr_size < op.size) {
+      reg = ir.CreateZExt(reg, op_type);
+      curr_size = op.size;
     }
+  };
+
+  auto shift = [&](void) {
+    if (Operand::ShiftRegister::kShiftInvalid != op.shift_reg.shift_op) {
+
+      CHECK(shift_size < op.size)
+          << "Shift of size " << shift_size
+          << " is wider than the base register size in shift register in "
+          << inst.Serialize();
+
+      switch (op.shift_reg.shift_op) {
+
+        // Left shift.
+        case Operand::ShiftRegister::kShiftLeftWithZeroes:
+          reg = ir.CreateShl(reg, shift_val);
+          break;
+
+        // Masking shift left.
+        case Operand::ShiftRegister::kShiftLeftWithOnes: {
+          const auto mask_val =
+              llvm::ConstantInt::get(reg_type, ~((~zero) << shift_size));
+          reg = ir.CreateOr(ir.CreateShl(reg, shift_val), mask_val);
+          break;
+        }
+
+        // Logical right shift.
+        case Operand::ShiftRegister::kShiftUnsignedRight:
+          reg = ir.CreateLShr(reg, shift_val);
+          break;
+
+        // Arithmetic right shift.
+        case Operand::ShiftRegister::kShiftSignedRight:
+          reg = ir.CreateAShr(reg, shift_val);
+          break;
+
+        // Rotate left.
+        case Operand::ShiftRegister::kShiftLeftAround: {
+          const uint64_t shr_amount = (~shift_size + one) & (op.size - one);
+          const auto shr_val = llvm::ConstantInt::get(op_type, shr_amount);
+          const auto val1 = ir.CreateLShr(reg, shr_val);
+          const auto val2 = ir.CreateShl(reg, shift_val);
+          reg = ir.CreateOr(val1, val2);
+          break;
+        }
+
+        // Rotate right.
+        case Operand::ShiftRegister::kShiftRightAround: {
+          const uint64_t shl_amount = (~shift_size + one) & (op.size - one);
+          const auto shl_val = llvm::ConstantInt::get(op_type, shl_amount);
+          const auto val1 = ir.CreateLShr(reg, shift_val);
+          const auto val2 = ir.CreateShl(reg, shl_val);
+          reg = ir.CreateOr(val1, val2);
+          break;
+        }
+
+        case Operand::ShiftRegister::kShiftInvalid: break;
+      }
+    }
+  };
+
+  if (op.shift_reg.shift_first) {
+    shift();
+    extract_and_extend();
+  } else {
+    extract_and_extend();
+    shift();
   }
 
   if (word_size > op.size) {

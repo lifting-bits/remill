@@ -61,8 +61,9 @@ class Operand {
     Register reg;
     uint64_t shift_size;
     uint64_t extract_size;
+    bool shift_first;
 
-    enum Shift : unsigned {
+    enum Shift : uint8_t {
       kShiftInvalid,
       kShiftLeftWithZeroes,  // Shift left, filling low order bits with zero.
       kShiftLeftWithOnes,  // Shift left, filling low order bits with one.
@@ -72,7 +73,7 @@ class Operand {
       kShiftRightAround  // Rotate right.
     } shift_op;
 
-    enum Extend : unsigned {
+    enum Extend : uint8_t {
       kExtendInvalid,
       kExtendUnsigned,
       kExtendSigned,
