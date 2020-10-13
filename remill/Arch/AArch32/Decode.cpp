@@ -202,7 +202,8 @@ static void AddAddrRegOp(Instruction &inst, const char * reg_name, unsigned mem_
 static void AddShiftOp(Instruction &inst, Operand::ShiftRegister::Shift shift_op,
                 Operand::ShiftRegister::Extend extend_op, const char * reg_name,
                 unsigned reg_size, unsigned shift_size, unsigned extract_size,
-                Operand::Action action = Operand::kActionRead, unsigned size = 32) {
+                Operand::Action action = Operand::kActionRead, unsigned size = 32,
+                bool shift_first = false) {
   inst.operands.emplace_back();
   auto &op = inst.operands.back();
   op.shift_reg.extract_size = extract_size;
@@ -215,6 +216,7 @@ static void AddShiftOp(Instruction &inst, Operand::ShiftRegister::Shift shift_op
   op.shift_reg.reg.size = reg_size;
   op.shift_reg.shift_op = shift_op;
   op.shift_reg.shift_size = shift_size;
+  op.shift_reg.shift_first = shift_first;
 }
 
 
@@ -436,6 +438,145 @@ static void DecodeCondition(Instruction &inst, uint32_t cond) {
   }
 }
 
+std::optional<uint64_t> EvalReg(const Instruction &inst, const Operand::Register &op) {
+  if (op.name == kIntRegName[kPCRegNum] || op.name == "PC") {
+    return inst.pc;
+  } else if (op.name == "NEXT_PC") {
+    return inst.next_pc;
+  } else if (op.name.empty()) {
+    return 0u;
+  } else {
+    return std::nullopt;
+  }
+}
+
+std::optional<uint64_t> EvalShift(const Operand::ShiftRegister &op,
+                                  std::optional<uint64_t> maybe_val) {
+  if (!maybe_val || !op.shift_size) {
+    return maybe_val;
+  }
+
+  if (op.reg.size != 32) {
+    return std::nullopt;
+  }
+
+  auto val = static_cast<uint32_t>(*maybe_val);
+
+  switch (op.shift_op) {
+    case Operand::ShiftRegister::kShiftInvalid:
+      return maybe_val;
+    case Operand::ShiftRegister::kShiftLeftAround:
+      return __builtin_rotateleft32(val, static_cast<uint32_t>(op.shift_size));
+    case Operand::ShiftRegister::kShiftRightAround:
+      return __builtin_rotateright32(val, static_cast<uint32_t>(op.shift_size));
+    case Operand::ShiftRegister::kShiftLeftWithOnes:
+      return (val << op.shift_size) | ~(~0u << op.shift_size);
+    case Operand::ShiftRegister::kShiftLeftWithZeroes:
+      return val << op.shift_size;
+    case Operand::ShiftRegister::kShiftUnsignedRight:
+      return val >> op.shift_size;
+    case Operand::ShiftRegister::kShiftSignedRight:
+       return static_cast<uint32_t>(static_cast<int32_t>(val) >> op.shift_size);
+  }
+}
+
+std::optional<uint64_t> EvalExtract(const Operand::ShiftRegister &op,
+                                    std::optional<uint64_t> maybe_val) {
+  if (!maybe_val || !op.extract_size) {
+    return maybe_val;
+  }
+
+  if (op.reg.size != 32) {
+    return std::nullopt;
+  }
+
+  auto val = static_cast<uint32_t>(*maybe_val);
+
+  switch (op.extend_op) {
+    case Operand::ShiftRegister::kExtendInvalid:
+      return maybe_val;
+    case Operand::ShiftRegister::kExtendSigned:
+    {
+      val &= (1u << (op.extract_size)) - 1u;
+      auto sign = val >> (op.extract_size - 1u);
+
+      if (sign) {
+        val |= ~0u << op.extract_size;
+      }
+
+      return val;
+    }
+    case Operand::ShiftRegister::kExtendUnsigned:
+      return val & ((1u << (op.extract_size)) - 1u);
+  }
+
+
+}
+
+std::optional<uint64_t> EvalOperand(const Instruction &inst, const Operand &op) {
+  switch(op.type) {
+    case Operand::kTypeInvalid:
+      return std::nullopt;
+    case Operand::kTypeImmediate:
+      return op.imm.val;
+    case Operand::kTypeRegister:
+      return EvalReg(inst, op.reg);
+    case Operand::kTypeAddress:
+    {
+      auto seg_val = EvalReg(inst, op.addr.segment_base_reg);
+      auto base_val = EvalReg(inst, op.addr.base_reg);
+      auto index_val = EvalReg(inst, op.addr.index_reg);
+
+      if (!seg_val || !base_val || !index_val) {
+        return std::nullopt;
+      }
+
+      return static_cast<uint64_t>(
+          static_cast<int64_t>(*seg_val) + static_cast<int64_t>(*base_val) +
+          (static_cast<int64_t>(*index_val) * op.addr.scale) +
+          op.addr.displacement);
+
+    }
+    case Operand::kTypeShiftRegister:
+      if (op.shift_reg.shift_first) {
+        return EvalExtract(op.shift_reg, EvalShift(op.shift_reg, EvalReg(inst, op.shift_reg.reg)));
+      } else {
+        return EvalShift(op.shift_reg, EvalExtract(op.shift_reg, EvalReg(inst, op.shift_reg.reg)));
+      }
+  }
+
+}
+
+typedef std::optional<uint32_t> (InstEval)(uint32_t, uint32_t, uint32_t);
+
+// High 3 bit opc
+static InstEval * kIdpEvaluatorsRRR[] = {
+    [0b000] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
+      return std::optional<uint32_t>(src1 & (src2 | src2_rrx));
+    },
+    [0b001] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
+      return std::optional<uint32_t>(src1 ^ (src2 | src2_rrx));
+    },
+    [0b010] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
+      return std::optional<uint32_t>(src1 - (src2 | src2_rrx));
+    },
+    [0b011] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
+      return std::optional<uint32_t>((src2 | src2_rrx) - src1);
+    },
+    [0b100] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
+      return std::optional<uint32_t>((src2 | src2_rrx) + src1);
+    },
+    [0b101] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
+      return std::optional<uint32_t>(std::nullopt);
+    },
+    [0b110] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
+      return std::optional<uint32_t>(std::nullopt);
+    },
+    [0b111] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
+      return std::optional<uint32_t>(std::nullopt);
+    },
+};
+
 // High 3 bit opc and low bit s, opc:s
 static const char * const kIdpNamesRRR[] = {
     [0b0000] = "ANDrr",
@@ -488,7 +629,26 @@ static bool TryDecodeIntegerDataProcessingRRR(Instruction &inst, uint32_t bits) 
       inst.category = Instruction::kCategoryError;
       return false;
     } else {
-      inst.category = Instruction::kCategoryIndirectJump;
+      auto src1 = EvalOperand(inst, inst.operands[1]);
+      auto src2 = EvalOperand(inst, inst.operands[2]);
+      auto src2_rrx = EvalOperand(inst, inst.operands[3]);
+
+      if (!src1 || !src2 || !src2_rrx) {
+        inst.category = Instruction::kCategoryIndirectJump;
+      } else {
+        auto res = kIdpEvaluatorsRRR[enc.opc](*src1, *src2, *src2_rrx);
+
+        if (!res) {
+          inst.category = Instruction::kCategoryIndirectJump;
+        } else if (!inst.conditions.empty()) {
+          inst.branch_taken_pc = static_cast<uint64_t>(*res);
+          inst.branch_not_taken_pc = inst.next_pc;
+          inst.category = Instruction::kCategoryConditionalBranch;
+        } else {
+          inst.branch_taken_pc = static_cast<uint64_t>(*res);
+          inst.category = Instruction::kCategoryDirectJump;
+        }
+      }
     }
   } else {
     inst.category = Instruction::kCategoryNormal;
@@ -535,7 +695,34 @@ static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst, uint32_t bits) 
       inst.category = Instruction::kCategoryError;
       return false;
     } else {
-      inst.category = Instruction::kCategoryIndirectJump;
+      auto src1 = EvalOperand(inst, inst.operands[1]);
+      auto src2 = EvalOperand(inst, inst.operands[2]);
+      auto src2_rrx = EvalOperand(inst, inst.operands[3]);
+
+      if (!src1 || !src2 || !src2_rrx) {
+        inst.category = Instruction::kCategoryIndirectJump;
+      } else {
+        auto src1 = EvalOperand(inst, inst.operands[1]);
+        auto src2 = EvalOperand(inst, inst.operands[2]);
+        auto src2_rrx = EvalOperand(inst, inst.operands[3]);
+
+        if (!src1 || !src2 || !src2_rrx) {
+          inst.category = Instruction::kCategoryIndirectJump;
+        } else {
+          auto res = kIdpEvaluatorsRRR[enc.opc](*src1, *src2, *src2_rrx);
+
+          if (!res) {
+            inst.category = Instruction::kCategoryIndirectJump;
+          } else if (!inst.conditions.empty()) {
+            inst.branch_taken_pc = static_cast<uint64_t>(*res);
+            inst.branch_not_taken_pc = inst.next_pc;
+            inst.category = Instruction::kCategoryConditionalBranch;
+          } else {
+            inst.branch_taken_pc = static_cast<uint64_t>(*res);
+            inst.category = Instruction::kCategoryDirectJump;
+          }
+        }
+      }
     }
   } else {
     inst.category = Instruction::kCategoryNormal;
