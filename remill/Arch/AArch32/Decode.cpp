@@ -550,7 +550,7 @@ std::optional<uint64_t> EvalOperand(const Instruction &inst, const Operand &op) 
 typedef std::optional<uint32_t> (InstEval)(uint32_t, uint32_t, uint32_t);
 
 // High 3 bit opc
-static InstEval * kIdpEvaluatorsRRR[] = {
+static InstEval * kIdpEvaluators[] = {
     [0b000] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
       return std::optional<uint32_t>(src1 & (src2 | src2_rrx));
     },
@@ -576,6 +576,38 @@ static InstEval * kIdpEvaluatorsRRR[] = {
       return std::optional<uint32_t>(std::nullopt);
     },
 };
+
+static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd, InstEval * evaluator) {
+  if (rd == kPCRegNum) {
+      if (s) {  // Updates the flags (condition codes)
+        inst.category = Instruction::kCategoryError;
+        return false;
+      } else {
+        auto src1 = EvalOperand(inst, inst.operands[1]);
+        auto src2 = EvalOperand(inst, inst.operands[2]);
+        auto src2_rrx = EvalOperand(inst, inst.operands[3]);
+
+        if (!src1 || !src2 || !src2_rrx) {
+          inst.category = Instruction::kCategoryIndirectJump;
+        } else {
+          auto res = evaluator(*src1, *src2, *src2_rrx);
+          if (!res) {
+            inst.category = Instruction::kCategoryIndirectJump;
+          } else if (!inst.conditions.empty()) {
+            inst.branch_taken_pc = static_cast<uint64_t>(*res);
+            inst.branch_not_taken_pc = inst.next_pc;
+            inst.category = Instruction::kCategoryConditionalBranch;
+          } else {
+            inst.branch_taken_pc = static_cast<uint64_t>(*res);
+            inst.category = Instruction::kCategoryDirectJump;
+          }
+        }
+      }
+    } else {
+      inst.category = Instruction::kCategoryNormal;
+    }
+  return true;
+}
 
 // High 3 bit opc and low bit s, opc:s
 static const char * const kIdpNamesRRR[] = {
@@ -624,37 +656,7 @@ static bool TryDecodeIntegerDataProcessingRRR(Instruction &inst, uint32_t bits) 
     AddShiftCarryOperand(inst, enc.rm, enc.type, enc.imm5, "C");
   }
 
-  if (enc.rd == kPCRegNum) {
-    if (enc.s) {  // Updates the flags (condition codes)
-      inst.category = Instruction::kCategoryError;
-      return false;
-    } else {
-      auto src1 = EvalOperand(inst, inst.operands[1]);
-      auto src2 = EvalOperand(inst, inst.operands[2]);
-      auto src2_rrx = EvalOperand(inst, inst.operands[3]);
-
-      if (!src1 || !src2 || !src2_rrx) {
-        inst.category = Instruction::kCategoryIndirectJump;
-      } else {
-        auto res = kIdpEvaluatorsRRR[enc.opc](*src1, *src2, *src2_rrx);
-
-        if (!res) {
-          inst.category = Instruction::kCategoryIndirectJump;
-        } else if (!inst.conditions.empty()) {
-          inst.branch_taken_pc = static_cast<uint64_t>(*res);
-          inst.branch_not_taken_pc = inst.next_pc;
-          inst.category = Instruction::kCategoryConditionalBranch;
-        } else {
-          inst.branch_taken_pc = static_cast<uint64_t>(*res);
-          inst.category = Instruction::kCategoryDirectJump;
-        }
-      }
-    }
-  } else {
-    inst.category = Instruction::kCategoryNormal;
-  }
-
-  return true;
+  return EvalPCDest(inst, enc.s, enc.opc, kIdpEvaluators[enc.opc]);
 }
 
 //000     AND, ANDS (immediate)
@@ -690,45 +692,8 @@ static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst, uint32_t bits) 
 
   DecodeA32ExpandImm(inst, enc.imm12, enc.s);
 
-  if (enc.rd == kPCRegNum) {
-    if (enc.s) {  // Updates the flags (condition codes)
-      inst.category = Instruction::kCategoryError;
-      return false;
-    } else {
-      auto src1 = EvalOperand(inst, inst.operands[1]);
-      auto src2 = EvalOperand(inst, inst.operands[2]);
-      auto src2_rrx = EvalOperand(inst, inst.operands[3]);
+  return EvalPCDest(inst, enc.s, enc.opc, kIdpEvaluators[enc.opc]);
 
-      if (!src1 || !src2 || !src2_rrx) {
-        inst.category = Instruction::kCategoryIndirectJump;
-      } else {
-        auto src1 = EvalOperand(inst, inst.operands[1]);
-        auto src2 = EvalOperand(inst, inst.operands[2]);
-        auto src2_rrx = EvalOperand(inst, inst.operands[3]);
-
-        if (!src1 || !src2 || !src2_rrx) {
-          inst.category = Instruction::kCategoryIndirectJump;
-        } else {
-          auto res = kIdpEvaluatorsRRR[enc.opc](*src1, *src2, *src2_rrx);
-
-          if (!res) {
-            inst.category = Instruction::kCategoryIndirectJump;
-          } else if (!inst.conditions.empty()) {
-            inst.branch_taken_pc = static_cast<uint64_t>(*res);
-            inst.branch_not_taken_pc = inst.next_pc;
-            inst.category = Instruction::kCategoryConditionalBranch;
-          } else {
-            inst.branch_taken_pc = static_cast<uint64_t>(*res);
-            inst.category = Instruction::kCategoryDirectJump;
-          }
-        }
-      }
-    }
-  } else {
-    inst.category = Instruction::kCategoryNormal;
-  }
-
-  return true;
 }
 
 
@@ -895,6 +860,21 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
   return true;
 }
 
+static InstEval * kLogArithEvaluators[] = {
+    [0b00] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
+      return std::optional<uint32_t>(src1 | (src2 | src2_rrx));
+    },
+    [0b01] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
+      return std::optional<uint32_t>(src2 | src2_rrx);
+    },
+    [0b10] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
+      return std::optional<uint32_t>(src1 & ~(src2 | src2_rrx));
+    },
+    [0b11] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
+      return std::optional<uint32_t>(~(src2 | src2_rrx));
+    },
+};
+
 //00  ORR, ORRS (register) -- rd, rn, & rm
 //01  MOV, MOVS (register) -- rd, & rm only
 //10  BIC, BICS (register) -- rd, rn, & rm
@@ -923,22 +903,12 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
 
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
 
-  // enc.opc == x0
-  if (!(enc.opc & 0b1)) {
-    AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
-  }
-
   AddShiftRegOperand(inst, enc.rm, enc.type, enc.imm5);
   if (enc.s) {
     AddShiftCarryOperand(inst, enc.rm, enc.type, enc.imm5, "C");
   }
 
-  if (enc.rd == kPCRegNum){
-    // TODO(Sonya): handle the PC destination register case
-  }
-
-  inst.category = Instruction::kCategoryNormal;
-  return true;
+  return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc]);
 }
 
 // Corresponds to Data-processing register (immediate shift)

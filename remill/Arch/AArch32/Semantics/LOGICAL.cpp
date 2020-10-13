@@ -35,13 +35,13 @@ DEF_SEM(ORRS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
   return memory;
 }
 
-DEF_SEM(MOV, R32W dst, I32 src, I32 src_rrx){
+DEF_SEM(MOV, R32W dst, R32 _, I32 src, I32 src_rrx){
   auto value = UOr(Read(src), Read(src_rrx));
   Write(dst, value);
   return memory;
 }
 
-DEF_SEM(MOVS, R32W dst, I32 src, I32 src_rrx, I8 carry_out) {
+DEF_SEM(MOVS, R32W dst, R32 _, I32 src, I32 src_rrx, I8 carry_out) {
   auto value = UOr(Read(src), Read(src_rrx));
   Write(dst, value);
 
@@ -71,13 +71,13 @@ DEF_SEM(BICS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
   return memory;
 }
 
-DEF_SEM(MVN, R32W dst, I32 src, I32 src_rrx){
+DEF_SEM(MVN, R32W dst, R32 _, I32 src, I32 src_rrx){
   auto value = UNot(UOr(Read(src), Read(src_rrx)));
   Write(dst, value);
   return memory;
 }
 
-DEF_SEM(MVNS, R32W dst, I32 src, I32 src_rrx, I8 carry_out) {
+DEF_SEM(MVNS, R32W dst, R32 _, I32 src, I32 src_rrx, I8 carry_out) {
   auto value = UNot(UOr(Read(src), Read(src_rrx)));
   Write(dst, value);
 
