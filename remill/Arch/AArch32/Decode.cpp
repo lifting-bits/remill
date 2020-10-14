@@ -755,7 +755,6 @@ static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst, uint32_t bits) 
 
 }
 
-
 static const char * const kMulAccRRR[] = {
     [0b0000] = "MULrr",
     [0b0001] = "MULSrr",
@@ -919,18 +918,15 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
   return true;
 }
 
+// Can package semantics for MOV with ORR and MVN with BIC since src1 will be
+// 0 and 1 for MOV and MVN respectively, mirroring the semantics in LOGICAL.cpp
 static InstEval * kLogArithEvaluators[] = {
-    [0b00] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
+    [0b0] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
       return std::optional<uint32_t>(src1 | (src2 | src2_rrx));
     },
-    [0b01] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
-      return std::optional<uint32_t>(src2 | src2_rrx);
-    },
-    [0b10] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
+
+    [0b1] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
       return std::optional<uint32_t>(src1 & ~(src2 | src2_rrx));
-    },
-    [0b11] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
-      return std::optional<uint32_t>(~(src2 | src2_rrx));
     },
 };
 
@@ -980,7 +976,7 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
     AddShiftCarryOperand(inst, enc.rm, enc.type, enc.imm5, "C");
   }
 
-  return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc]);
+  return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u]);
 }
 
 // Corresponds to Data-processing register (immediate shift)
