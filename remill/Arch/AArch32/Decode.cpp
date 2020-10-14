@@ -159,8 +159,7 @@ static const char * const kIntRegName[] = {
     "R15"
 };
 
-typedef bool (*const TryDecode)(Instruction&, uint32_t);
-typedef bool (*const TryDecodeList[])(Instruction&, uint32_t);
+typedef bool (TryDecode)(Instruction&, uint32_t);
 typedef std::optional<uint32_t> (InstEval)(uint32_t, uint32_t, uint32_t);
 
 static void AddIntRegOp(Instruction &inst, unsigned index, unsigned size,
@@ -209,7 +208,6 @@ static void AddShiftOp(Instruction &inst,
                        unsigned size = 32) {
   inst.operands.emplace_back();
   auto &op = inst.operands.back();
-  op.shift_reg.shift_size = shift_size;
   op.type = Operand::kTypeShiftRegister;
   op.size = size;
   op.action = action;
@@ -226,18 +224,10 @@ static void AddShiftThenExtractOp(Instruction &inst,
                                   unsigned shift_size, unsigned extract_size,
                                   Operand::Action action = Operand::kActionRead,
                                   unsigned size = 32) {
-  inst.operands.emplace_back();
+  AddShiftOp(inst, shift_op, reg_name, reg_size, shift_size, action, size);
   auto &op = inst.operands.back();
   op.shift_reg.extract_size = extract_size;
   op.shift_reg.extend_op = extend_op;
-  op.shift_reg.shift_size = shift_size;
-  op.type = Operand::kTypeShiftRegister;
-  op.size = size;
-  op.action = action;
-  op.shift_reg.reg.name = reg_name;
-  op.shift_reg.reg.size = reg_size;
-  op.shift_reg.shift_op = shift_op;
-  op.shift_reg.shift_size = shift_size;
   op.shift_reg.shift_first = true;
 
 }
@@ -249,18 +239,10 @@ static void AddExtractThenShiftOp(Instruction &inst,
                                   unsigned shift_size, unsigned extract_size,
                                   Operand::Action action = Operand::kActionRead,
                                   unsigned size = 32) {
-  inst.operands.emplace_back();
+  AddShiftOp(inst, shift_op, reg_name, reg_size, shift_size, action, size);
   auto &op = inst.operands.back();
   op.shift_reg.extract_size = extract_size;
   op.shift_reg.extend_op = extend_op;
-  op.shift_reg.shift_size = shift_size;
-  op.type = Operand::kTypeShiftRegister;
-  op.size = size;
-  op.action = action;
-  op.shift_reg.reg.name = reg_name;
-  op.shift_reg.reg.size = reg_size;
-  op.shift_reg.shift_op = shift_op;
-  op.shift_reg.shift_size = shift_size;
   op.shift_reg.shift_first = false;
 }
 
@@ -580,8 +562,6 @@ std::optional<uint64_t> EvalExtract(const Operand::ShiftRegister &op,
     case Operand::ShiftRegister::kExtendUnsigned:
       return val & ((1u << (op.extract_size)) - 1u);
   }
-
-
 }
 
 std::optional<uint64_t> EvalOperand(const Instruction &inst, const Operand &op) {
@@ -624,9 +604,10 @@ std::optional<uint64_t> EvalOperand(const Instruction &inst, const Operand &op) 
 //      ALUExceptionReturn(result);
 //   else
 //      ALUWritePC(result);
-template<typename Evaluator>
+// TODO(Sonya): maybe template this and decide on a robust method for handling
+// the variable number of arguments to evaluator
 static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
-                       Evaluator *evaluator) {
+                       InstEval *evaluator) {
   if (rd == kPCRegNum) {
     // Updates the flags (condition codes)
     if (s) {
@@ -734,7 +715,7 @@ static bool TryDecodeIntegerDataProcessingRRR(Instruction &inst, uint32_t bits) 
     AddShiftCarryOperand(inst, enc.rm, enc.type, enc.imm5, "C");
   }
 
-  return EvalPCDest<InstEval>(inst, enc.s, enc.opc, kIdpEvaluators[enc.opc]);
+  return EvalPCDest(inst, enc.s, enc.opc, kIdpEvaluators[enc.opc]);
 }
 
 //000     AND, ANDS (immediate)
@@ -770,7 +751,7 @@ static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst, uint32_t bits) 
 
   ExpandTo32AddImmAddCarry(inst, enc.imm12, enc.s);
 
-  return EvalPCDest<InstEval>(inst, enc.s, enc.opc, kIdpEvaluators[enc.opc]);
+  return EvalPCDest(inst, enc.s, enc.opc, kIdpEvaluators[enc.opc]);
 
 }
 
@@ -981,17 +962,30 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
 
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
 
+  // enc.opc == x0
+  if (!(enc.opc & 0b1u)) {
+    AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
+  }
+  // enc.opc == 01
+  else if (!(enc.opc & 0b10u)) {
+    AddImmOp(inst, 0);
+  }
+  // enc.opc == 11
+  else {
+    AddImmOp(inst, 1);
+  }
+
   AddShiftRegOperand(inst, enc.rm, enc.type, enc.imm5);
   if (enc.s) {
     AddShiftCarryOperand(inst, enc.rm, enc.type, enc.imm5, "C");
   }
 
-  return EvalPCDest<InstEval>(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc]);
+  return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc]);
 }
 
 // Corresponds to Data-processing register (immediate shift)
 // op0<24 to 23> | op1 <20>
-static TryDecodeList kDataProcessingRI = {
+static TryDecode * kDataProcessingRI[] = {
     [0b000] = TryDecodeIntegerDataProcessingRRR,
     [0b001] = TryDecodeIntegerDataProcessingRRR,
     [0b010] = TryDecodeIntegerDataProcessingRRR,
@@ -1004,7 +998,7 @@ static TryDecodeList kDataProcessingRI = {
 
 // Corresponds to Data-processing immediate
 // op0<24 to 23> | op1 <21 to 20>
-static TryDecodeList kDataProcessingI = {
+static TryDecode * kDataProcessingI[] = {
     [0b0000] = TryDecodeIntegerDataProcessingRRI,
     [0b0001] = TryDecodeIntegerDataProcessingRRI,
     [0b0010] = TryDecodeIntegerDataProcessingRRI,
@@ -1025,7 +1019,7 @@ static TryDecodeList kDataProcessingI = {
 
 // Corresponds to: Load/Store Word, Unsigned Byte (immediate, literal)
 // o2<22> | o1<21>
-static TryDecodeList kLoadStoreWordUBIL = {
+static TryDecode * kLoadStoreWordUBIL[] = {
     [0b00] = TryDecodeLoadStoreWordUBIL<Operand::kActionWrite, Operand::kActionRead, 32u>,
     [0b01] = TryDecodeLoadStoreWordUBIL<Operand::kActionRead, Operand::kActionWrite, 32u, true>,
     [0b10] = TryDecodeLoadStoreWordUBIL<Operand::kActionWrite, Operand::kActionRead, 8u>,
@@ -1042,7 +1036,7 @@ static TryDecodeList kLoadStoreWordUBIL = {
 // 0  != 10xx0           0 Data-processing register (immediate shift)
 // 0  != 10xx0  0        1 Data-processing register (register shift)
 // 1                       Data-processing immediate
-static TryDecode TryDataProcessingAndMisc(uint32_t bits) {
+static TryDecode * TryDataProcessingAndMisc(uint32_t bits) {
   const DataProcessingAndMisc enc = { bits };
   // op0 == 0
   if (!enc.op0) {
@@ -1108,7 +1102,7 @@ static TryDecode TryDataProcessingAndMisc(uint32_t bits) {
 //        10x     Branch, branch with link, and block data transfer
 //        11x     System register access, Advanced SIMD, floating-point, and Supervisor call
 //   1111 0xx     Unconditional instructions
-static TryDecode TryDecodeTopLevelEncodings(uint32_t bits) {
+static TryDecode * TryDecodeTopLevelEncodings(uint32_t bits) {
   const TopLevelEncodings enc = { bits };
   // op0 == 0xx
   if (!(enc.op0 >> 2)) {
