@@ -19,17 +19,17 @@ namespace {
 DEF_SEM(ORR, R32W dst, R32 src1, I32 src2, I32 src2_rrx){
   auto value = UOr(Read(src2), Read(src2_rrx));
   auto result = UOr(Read(src1), value);
-  Write(dst, value);
+  Write(dst, result);
   return memory;
 }
 
 DEF_SEM(ORRS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
   auto value = UOr(Read(src2), Read(src2_rrx));
   auto result = UOr(Read(src1), value);
-  Write(dst, value);
+  Write(dst, result);
 
-  state.sr.n = SignFlag(value);
-  state.sr.z = ZeroFlag(value);
+  state.sr.n = SignFlag(result);
+  state.sr.z = ZeroFlag(result);
   state.sr.c = Read(carry_out);
   // PSTATE.V unchanged
   return memory;
@@ -38,17 +38,17 @@ DEF_SEM(ORRS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
 DEF_SEM(BIC, R32W dst, R32 src1, I32 src2, I32 src2_rrx){
   auto value = UNot(UOr(Read(src2), Read(src2_rrx)));
   auto result = UAnd(Read(src1), value);
-  Write(dst, value);
+  Write(dst, result);
   return memory;
 }
 
 DEF_SEM(BICS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
   auto value = UNot(UOr(Read(src2), Read(src2_rrx)));
   auto result = UAnd(Read(src1), value);
-  Write(dst, value);
+  Write(dst, result);
 
-  state.sr.n = SignFlag(value);
-  state.sr.z = ZeroFlag(value);
+  state.sr.n = SignFlag(result);
+  state.sr.z = ZeroFlag(result);
   state.sr.c = Read(carry_out);
   // PSTATE.V unchanged
   return memory;
