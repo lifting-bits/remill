@@ -64,4 +64,3 @@ DEF_ISEL(BICrrri) = BIC;
 DEF_ISEL(BICSrrri) = BICS;
 DEF_ISEL(MVNrrri) = BIC;
 DEF_ISEL(MVNSrrri) = BICS;
-
