@@ -530,6 +530,8 @@ std::optional<uint64_t> EvalShift(const Operand::ShiftRegister &op,
       return val >> op.shift_size;
     case Operand::ShiftRegister::kShiftSignedRight:
        return static_cast<uint32_t>(static_cast<int32_t>(val) >> op.shift_size);
+    default:
+      return std::nullopt;
   }
 }
 
@@ -561,6 +563,8 @@ std::optional<uint64_t> EvalExtract(const Operand::ShiftRegister &op,
     }
     case Operand::ShiftRegister::kExtendUnsigned:
       return val & ((1u << (op.extract_size)) - 1u);
+    default:
+      return std::nullopt;
   }
 }
 
@@ -594,8 +598,9 @@ std::optional<uint64_t> EvalOperand(const Instruction &inst, const Operand &op) 
       } else {
         return EvalShift(op.shift_reg, EvalExtract(op.shift_reg, EvalReg(inst, op.shift_reg.reg)));
       }
+    default:
+      return std::nullopt;
   }
-
 }
 
 // Handles appropriate branching semantics for:
@@ -604,8 +609,6 @@ std::optional<uint64_t> EvalOperand(const Instruction &inst, const Operand &op) 
 //      ALUExceptionReturn(result);
 //   else
 //      ALUWritePC(result);
-// TODO(Sonya): maybe template this and decide on a robust method for handling
-// the variable number of arguments to evaluator
 static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
                        InstEval *evaluator) {
   if (rd == kPCRegNum) {
@@ -619,6 +622,7 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
       auto src2_rrx = EvalOperand(inst, inst.operands[3]);
 
       if (!src1 || !src2 || !src2_rrx) {
+        LOG(ERROR) << "\n\n\n\n\n\n\n indirect jump \n\n\n\n\n\n\n" << !src1 << !src2 << !src2_rrx;
         inst.category = Instruction::kCategoryIndirectJump;
       } else {
         auto res = evaluator(*src1, *src2, *src2_rrx);
@@ -715,7 +719,7 @@ static bool TryDecodeIntegerDataProcessingRRR(Instruction &inst, uint32_t bits) 
     AddShiftCarryOperand(inst, enc.rm, enc.type, enc.imm5, "C");
   }
 
-  return EvalPCDest(inst, enc.s, enc.opc, kIdpEvaluators[enc.opc]);
+  return EvalPCDest(inst, enc.s, enc.rd, kIdpEvaluators[enc.opc]);
 }
 
 //000     AND, ANDS (immediate)
@@ -751,8 +755,7 @@ static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst, uint32_t bits) 
 
   ExpandTo32AddImmAddCarry(inst, enc.imm12, enc.s);
 
-  return EvalPCDest(inst, enc.s, enc.opc, kIdpEvaluators[enc.opc]);
-
+  return EvalPCDest(inst, enc.s, enc.rd, kIdpEvaluators[enc.opc]);
 }
 
 static const char * const kMulAccRRR[] = {
@@ -786,8 +789,10 @@ static const char * const kMulAccRRR[] = {
 //111   SMLAL, SMLALS - writes to RdHi + RdLo, read RdHi
 static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
   const MultiplyAndAccumulate enc = { bits };
-  // if d == 15 || n == 15 || m == 15 || a == 15 then UNPREDICTABLE;
-  if (enc.rdhi == kPCRegNum || enc.rn == kPCRegNum || enc.rm == kPCRegNum) {
+  // MUL, MULS only: if d == 15 || n == 15 || m == 15 then UNPREDICTABLE;
+  // All other instructions: if d == 15 || n == 15 || m == 15 || a == 15 then UNPREDICTABLE;
+  if (enc.rdhi == kPCRegNum || (enc.rdlo == kPCRegNum && !enc.opc)
+      || enc.rn == kPCRegNum || enc.rm == kPCRegNum) {
     inst.category = Instruction::kCategoryError;
     return false;
   }
@@ -804,7 +809,7 @@ static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
   // 2nd write reg only needed for instructions with an opc that begins with 1 and UMALL
   if (((enc.opc >> 2) & 0b1u) || enc.opc == 0b010u) {
     // if dHi == dLo then UNPREDICTABLE;
-    if (enc.rdlo == enc.rdhi || enc.rdlo == kPCRegNum){
+    if (enc.rdlo == enc.rdhi){
       inst.category = Instruction::kCategoryError;
       return false;
     }
@@ -924,7 +929,6 @@ static InstEval * kLogArithEvaluators[] = {
     [0b0] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
       return std::optional<uint32_t>(src1 | (src2 | src2_rrx));
     },
-
     [0b1] = +[](uint32_t src1, uint32_t src2, uint32_t src2_rrx) {
       return std::optional<uint32_t>(src1 & ~(src2 | src2_rrx));
     },

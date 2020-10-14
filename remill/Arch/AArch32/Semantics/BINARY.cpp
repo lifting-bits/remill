@@ -28,8 +28,6 @@ T AddWithCarryNZCV(State &state, T lhs, T rhs, T carry) {
   return result;
 }
 
-
-
 DEF_SEM(AND, R32W dst, R32 src1, I32 src2, I32 src2_rrx) {
   auto value = UOr(Read(src2), Read(src2_rrx));
   Write(dst, UAnd(Read(src1), value));
@@ -46,7 +44,6 @@ DEF_SEM(ANDS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
   // PSTATE.V unchanged
   return memory;
 }
-
 
 DEF_SEM(EOR, R32W dst, R32 src1, I32 src2, I32 src2_rrx) {
   auto value = UOr(Read(src2), Read(src2_rrx));
@@ -92,7 +89,6 @@ DEF_SEM(SUBS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
   Write(dst, res);
   return memory;
 }
-
 
 DEF_SEM(ADD, R32W dst, R32 src1, I32 src2, I32 src2_rrx) {
   auto value = UOr(Read(src2), Read(src2_rrx));
