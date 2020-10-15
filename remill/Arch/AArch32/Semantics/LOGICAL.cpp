@@ -56,11 +56,11 @@ DEF_SEM(BICS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
 
 } // namespace
 
-DEF_ISEL(ORRrrri) = ORR;
-DEF_ISEL(ORRSrrri) = ORRS;
-DEF_ISEL(MOVrrri) = ORR;
-DEF_ISEL(MOVSrrri) = ORRS;
-DEF_ISEL(BICrrri) = BIC;
-DEF_ISEL(BICSrrri) = BICS;
-DEF_ISEL(MVNrrri) = BIC;
-DEF_ISEL(MVNSrrri) = BICS;
+DEF_ISEL(ORRrr) = ORR;
+DEF_ISEL(ORRSrr) = ORRS;
+DEF_ISEL(MOVrr) = ORR;
+DEF_ISEL(MOVSrr) = ORRS;
+DEF_ISEL(BICrr) = BIC;
+DEF_ISEL(BICSrr) = BICS;
+DEF_ISEL(MVNrr) = BIC;
+DEF_ISEL(MVNSrr) = BICS;

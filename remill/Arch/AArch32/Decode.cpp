@@ -126,6 +126,20 @@ union LogicalArithRRRI {
 } __attribute__((packed));
 static_assert(sizeof(LogicalArithRRRI) == 4, " ");
 
+union LogicalArithmeticRRI {
+  uint32_t flat;
+    struct {
+      uint32_t imm12 : 12;
+      uint32_t rd : 4;
+      uint32_t rn  : 4;
+      uint32_t s : 1;
+      uint32_t opc : 2;
+      uint32_t _00111 : 5;
+      uint32_t cond : 4;
+    } __attribute__((packed));
+  } __attribute__((packed));
+static_assert(sizeof(LogicalArithmeticRRI) == 4, " ");
+
 // Top-level encodings for A32
 union TopLevelEncodings {
   uint32_t flat;
@@ -289,7 +303,7 @@ static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
 // and if carry_out an additional carry_out op
 
 // Used to handle semantics for:
-// (shift_t, shift_n) = DecodeImmShift(type, imm5);
+// (imm32, carry) = A32ExpandImm_C(imm12, PSTATE.C);
 // See an instruction in Data-processing register (immediate shift) for example
 static void ExpandTo32AddImmAddCarry(Instruction &inst, uint32_t imm12, bool carry_out) {
   uint32_t unrotated_value = imm12 & (0b11111111u);
@@ -958,14 +972,14 @@ static InstEval * kLogArithEvaluators[] = {
 //10  BIC, BICS (register) -- rd, rn, & rm
 //11  MVN, MVNS (register) -- rd, & rm only
 static const char * const kLogicalArithmeticRRRI[] = {
-    [0b000] = "ORRrrri",
-    [0b001] = "ORRSrrri",
-    [0b010] = "MOVrrri",
-    [0b011] = "MOVSrrri",
-    [0b100] = "BICrrri",
-    [0b101] = "BICSrrri",
-    [0b110] = "MVNrrri",
-    [0b111] = "MVNSrrri",
+    [0b000] = "ORRrr",
+    [0b001] = "ORRSrr",
+    [0b010] = "MOVrr",
+    [0b011] = "MOVSrr",
+    [0b100] = "BICrr",
+    [0b101] = "BICSrr",
+    [0b110] = "MVNrr",
+    [0b111] = "MVNSrr",
 };
 
 // Logical Arithmetic (three register, immediate shift)
@@ -998,6 +1012,37 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
   if (enc.s) {
     AddShiftCarryOperand(inst, enc.rm, enc.type, enc.imm5, "C");
   }
+
+  return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u]);
+}
+
+// Logical Arithmetic (two register and immediate)
+static bool TryLogicalArithmeticRRI(Instruction &inst, uint32_t bits) {
+  const LogicalArithmeticRRI enc = { bits };
+
+  auto instruction = kLogicalArithmeticRRRI[enc.opc];
+  if (!instruction) {
+    return false;
+  }
+  inst.function = instruction;
+  DecodeCondition(inst, enc.cond);
+
+  AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
+
+  // enc.opc == x0
+  if (!(enc.opc & 0b1u)) {
+    AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
+  }
+  // enc.opc == 01
+  else if (!(enc.opc & 0b10u)) {
+    AddImmOp(inst, 0);
+  }
+  // enc.opc == 11
+  else {
+    AddImmOp(inst, 1);
+  }
+
+  ExpandTo32AddImmAddCarry(inst, enc.imm12, enc.s);
 
   return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u]);
 }
@@ -1060,10 +1105,10 @@ static TryDecode * kDataProcessingI[] = {
     [0b1001] = nullptr, // TODO(Sonya): Integer Test and Compare (one register and immediate)
     [0b1010] = nullptr, // TODO(Sonya): Move Special Register and Hints (immediate)
     [0b1011] = nullptr, // TODO(Sonya): Integer Test and Compare (one register and immediate)
-    [0b1100] = nullptr, // TODO(Sonya): Logical Arithmetic (two register and immediate)
-    [0b1101] = nullptr, // TODO(Sonya): Logical Arithmetic (two register and immediate)
-    [0b1110] = nullptr, // TODO(Sonya): Logical Arithmetic (two register and immediate)
-    [0b1111] = nullptr, // TODO(Sonya): Logical Arithmetic (two register and immediate)
+    [0b1100] = TryLogicalArithmeticRRI,
+    [0b1101] = TryLogicalArithmeticRRI,
+    [0b1110] = TryLogicalArithmeticRRI,
+    [0b1111] = TryLogicalArithmeticRRI,
 };
 
 // Corresponds to: Load/Store Word, Unsigned Byte (immediate, literal)
