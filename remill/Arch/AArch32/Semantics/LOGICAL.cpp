@@ -15,7 +15,6 @@
  */
 
 namespace {
-
 DEF_SEM(ORR, R32W dst, R32 src1, I32 src2, I32 src2_rrx){
   auto value = UOr(Read(src2), Read(src2_rrx));
   auto result = UOr(Read(src1), value);
@@ -53,7 +52,6 @@ DEF_SEM(BICS, R32W dst, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
   // PSTATE.V unchanged
   return memory;
 }
-
 } // namespace
 
 DEF_ISEL(ORRrr) = ORR;

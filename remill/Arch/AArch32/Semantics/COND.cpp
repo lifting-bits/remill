@@ -15,7 +15,6 @@
  */
 
 namespace {
-
 DEF_SEM(TST, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
   auto res = UAnd(Read(src1), UOr(Read(src2), Read(src2_rrx)));
 
@@ -49,7 +48,6 @@ DEF_SEM(CMN, R32 src1, I32 src2, I32 src2_rrx, I8 carry_out) {
   AddWithCarryNZCV(state, lhs, rhs, uint32_t(0));
   return memory;
 }
-
 } // namespace
 
 DEF_ISEL(TST) = TST;

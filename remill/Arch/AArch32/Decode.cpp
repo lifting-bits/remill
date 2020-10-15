@@ -108,6 +108,21 @@ union IntTestCompRRI {
 } __attribute__((packed));
 static_assert(sizeof(IntTestCompRRI) == 4, " ");
 
+// Integer Test and Compare (one register and immediate)
+union IntTestCompRI {
+  uint32_t flat;
+  struct {
+    uint32_t imm12 : 12;
+    uint32_t _0000 : 4;
+    uint32_t rn  : 4;
+    uint32_t _1 : 1;
+    uint32_t opc : 2;
+    uint32_t _00110 : 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(IntTestCompRI) == 4, " ");
+
 // Logical Arithmetic (three register, immediate shift)
 union LogicalArithRRRI {
   uint32_t flat;
@@ -1051,18 +1066,18 @@ static bool TryLogicalArithmeticRRI(Instruction &inst, uint32_t bits) {
 //01  TEQ (register)
 //10  CMP (register)
 //11  CMN (register)
-static const char * const kIntegerTestAndCompareRRI[] = {
-    [0b00] = "TSTrri",
-    [0b01] = "TEQrri",
-    [0b10] = "CMPrri",
-    [0b11] = "CMNrri",
+static const char * const kIntegerTestAndCompareR[] = {
+    [0b00] = "TSTr",
+    [0b01] = "TEQr",
+    [0b10] = "CMPr",
+    [0b11] = "CMNr",
 };
 
 // Integer Test and Compare (two register, immediate shift)
 static bool TryIntegerTestAndCompareRRI(Instruction &inst, uint32_t bits) {
   const IntTestCompRRI enc = { bits };
 
-  auto instruction = kIntegerTestAndCompareRRI[enc.opc];
+  auto instruction = kIntegerTestAndCompareR[enc.opc];
   if (!instruction) {
     return false;
   }
@@ -1075,6 +1090,25 @@ static bool TryIntegerTestAndCompareRRI(Instruction &inst, uint32_t bits) {
 
   inst.category = Instruction::kCategoryNormal;
   return true;
+}
+
+// Integer Test and Compare (one register and immediate)
+static bool TryIntegerTestAndCompareRI(Instruction &inst, uint32_t bits) {
+  const IntTestCompRI enc = { bits };
+
+  auto instruction = kIntegerTestAndCompareR[enc.opc];
+  if (!instruction) {
+    return false;
+  }
+  inst.function = instruction;
+  DecodeCondition(inst, enc.cond);
+
+  AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
+  ExpandTo32AddImmAddCarry(inst, enc.imm12, 1u);
+
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+
 }
 
 // Corresponds to Data-processing register (immediate shift)
@@ -1102,9 +1136,9 @@ static TryDecode * kDataProcessingI[] = {
     [0b0110] = TryDecodeIntegerDataProcessingRRI,
     [0b0111] = TryDecodeIntegerDataProcessingRRI,
     [0b1000] = nullptr, // TODO(Sonya): Move Halfword (immediate)
-    [0b1001] = nullptr, // TODO(Sonya): Integer Test and Compare (one register and immediate)
+    [0b1001] = TryIntegerTestAndCompareRI,
     [0b1010] = nullptr, // TODO(Sonya): Move Special Register and Hints (immediate)
-    [0b1011] = nullptr, // TODO(Sonya): Integer Test and Compare (one register and immediate)
+    [0b1011] = TryIntegerTestAndCompareRI,
     [0b1100] = TryLogicalArithmeticRRI,
     [0b1101] = TryLogicalArithmeticRRI,
     [0b1110] = TryLogicalArithmeticRRI,
