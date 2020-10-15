@@ -57,14 +57,13 @@ DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 
 // clang-format off
 #include "remill/Arch/AArch32/Semantics/FLAGS.cpp"
-//
 #include "remill/Arch/AArch32/Semantics/BINARY.cpp"
 #include "remill/Arch/AArch32/Semantics/MEM.cpp"
 #include "remill/Arch/AArch32/Semantics/LOGICAL.cpp"
 //#include "remill/Arch/AArch64/Semantics/BITBYTE.cpp"
 //#include "remill/Arch/AArch64/Semantics/BRANCH.cpp"
 //#include "remill/Arch/AArch64/Semantics/CALL_RET.cpp"
-//#include "remill/Arch/AArch64/Semantics/COND.cpp"
+#include "remill/Arch/AArch32/Semantics/COND.cpp"
 //#include "remill/Arch/AArch64/Semantics/CONVERT.cpp"
 //#include "remill/Arch/AArch64/Semantics/DATAXFER.cpp"
 //#include "remill/Arch/AArch64/Semantics/MISC.cpp"

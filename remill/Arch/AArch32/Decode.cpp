@@ -90,6 +90,24 @@ union LoadStoreWUBIL {
 } __attribute__((packed));
 static_assert(sizeof(LoadStoreWUBIL) == 4, " ");
 
+// Integer Test and Compare (two register, immediate shift)
+union IntTestCompRRI {
+  uint32_t flat;
+  struct {
+    uint32_t rm : 4;
+    uint32_t _0 : 1;
+    uint32_t type : 2;
+    uint32_t imm5 : 5;
+    uint32_t _0000 : 4;
+    uint32_t rn  : 4;
+    uint32_t _1 : 1;
+    uint32_t opc : 2;
+    uint32_t _00010 : 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(IntTestCompRRI) == 4, " ");
+
 // Logical Arithmetic (three register, immediate shift)
 union LogicalArithRRRI {
   uint32_t flat;
@@ -106,7 +124,7 @@ union LogicalArithRRRI {
     uint32_t cond : 4;
   } __attribute__((packed));
 } __attribute__((packed));
-static_assert(sizeof(LoadStoreWUBIL) == 4, " ");
+static_assert(sizeof(LogicalArithRRRI) == 4, " ");
 
 // Top-level encodings for A32
 union TopLevelEncodings {
@@ -622,7 +640,6 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
       auto src2_rrx = EvalOperand(inst, inst.operands[3]);
 
       if (!src1 || !src2 || !src2_rrx) {
-        LOG(ERROR) << "\n\n\n\n\n\n\n indirect jump \n\n\n\n\n\n\n" << !src1 << !src2 << !src2_rrx;
         inst.category = Instruction::kCategoryIndirectJump;
       } else {
         auto res = evaluator(*src1, *src2, *src2_rrx);
@@ -722,22 +739,22 @@ static bool TryDecodeIntegerDataProcessingRRR(Instruction &inst, uint32_t bits) 
   return EvalPCDest(inst, enc.s, enc.rd, kIdpEvaluators[enc.opc]);
 }
 
-//000     AND, ANDS (immediate)
-//001     EOR, EORS (immediate)
+//000           AND, ANDS (immediate)
+//001           EOR, EORS (immediate)
 //010 0 != 11x1 SUB, SUBS (immediate) — SUB
-//010 0 1101  SUB, SUBS (SP minus immediate) — SUB
-//010 0 1111  ADR — A2
+//010 0    1101 SUB, SUBS (SP minus immediate) — SUB
+//010 0    1111 ADR — A2 (alias of subtract)
 //010 1 != 1101 SUB, SUBS (immediate) — SUBS
-//010 1 1101  SUB, SUBS (SP minus immediate) — SUBS
-//011     RSB, RSBS (immediate)
+//010 1    1101 SUB, SUBS (SP minus immediate) — SUBS
+//011           RSB, RSBS (immediate)
 //100 0 != 11x1 ADD, ADDS (immediate) — ADD
-//100 0 1101  ADD, ADDS (SP plus immediate) — ADD
-//100 0 1111  ADR — A1
+//100 0    1101 ADD, ADDS (SP plus immediate) — ADD
+//100 0    1111 ADR — A1 (alias of add)
 //100 1 != 1101 ADD, ADDS (immediate) — ADDS
-//100 1 1101  ADD, ADDS (SP plus immediate) — ADDS
-//101     ADC, ADCS (immediate)
-//110     SBC, SBCS (immediate)
-//111     RSC, RSCS (immediate)
+//100 1    1101 ADD, ADDS (SP plus immediate) — ADDS
+//101           ADC, ADCS (immediate)
+//110           SBC, SBCS (immediate)
+//111           RSC, RSCS (immediate)
 static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst, uint32_t bits) {
   const IntDataProcessingRRI enc = { bits };
 
@@ -880,18 +897,19 @@ template<Operand::Action kMemAction, Operand::Action kRegAction, unsigned kMemSi
 static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
   const LoadStoreWUBIL enc = { bits };
 
-  auto instruction = kLoadSWUBIL[enc.P << 3u | enc.W << 2u | enc.o2 << 1u | enc.o1];
-  if (!instruction) {
-    return false;
-  }
-  inst.function = instruction;
-  DecodeCondition(inst, enc.cond);
   bool write_back = (!enc.P || enc.W);
-
   if (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt)) {
     inst.category = Instruction::kCategoryError;
     return false;
   }
+
+  auto instruction = kLoadSWUBIL[enc.P << 3u | enc.W << 2u | enc.o2 << 1u | enc.o1];
+  if (!instruction) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+  inst.function = instruction;
+  DecodeCondition(inst, enc.cond);
 
   // LDR & LDRB (literal) are pc relative. Need to align the PC to the next nearest 4 bytes
   int64_t pc_adjust = 0;
@@ -899,6 +917,7 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
     pc_adjust  = static_cast<int32_t>(inst.pc & ~(3u)) - static_cast<int32_t>(inst.pc);
   }
   auto disp = static_cast<int64_t>(enc.imm12);
+
   // Subtract
   if (!enc.u) {
     disp = -disp;
@@ -983,6 +1002,36 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
   return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u]);
 }
 
+//00  TST (register)
+//01  TEQ (register)
+//10  CMP (register)
+//11  CMN (register)
+static const char * const kIntegerTestAndCompareRRI[] = {
+    [0b00] = "TSTrri",
+    [0b01] = "TEQrri",
+    [0b10] = "CMPrri",
+    [0b11] = "CMNrri",
+};
+
+// Integer Test and Compare (two register, immediate shift)
+static bool TryIntegerTestAndCompareRRI(Instruction &inst, uint32_t bits) {
+  const IntTestCompRRI enc = { bits };
+
+  auto instruction = kIntegerTestAndCompareRRI[enc.opc];
+  if (!instruction) {
+    return false;
+  }
+  inst.function = instruction;
+  DecodeCondition(inst, enc.cond);
+
+  AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
+  AddShiftRegOperand(inst, enc.rm, enc.type, enc.imm5);
+  AddShiftCarryOperand(inst, enc.rm, enc.type, enc.imm5, "C");
+
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
+
 // Corresponds to Data-processing register (immediate shift)
 // op0<24 to 23> | op1 <20>
 static TryDecode * kDataProcessingRI[] = {
@@ -991,7 +1040,7 @@ static TryDecode * kDataProcessingRI[] = {
     [0b010] = TryDecodeIntegerDataProcessingRRR,
     [0b011] = TryDecodeIntegerDataProcessingRRR,
     [0b100] = nullptr, // op0:op1 != 100
-    [0b101] = nullptr, // TODO(Sonya): Integer Test and Compare (two register, immediate shift)
+    [0b101] = TryIntegerTestAndCompareRRI,
     [0b110] = TryLogicalArithmeticRRRI,
     [0b111] = TryLogicalArithmeticRRRI,
 };
