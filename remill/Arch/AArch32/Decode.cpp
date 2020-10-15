@@ -1124,6 +1124,19 @@ static TryDecode * kDataProcessingRI[] = {
     [0b111] = TryLogicalArithmeticRRRI,
 };
 
+// Corresponds to Data-processing register (immediate shift)
+// op0<24 to 23> | op1 <20>
+static TryDecode * kDataProcessingRR[] = {
+    [0b000] = nullptr, // TODO(Sonya): Integer Data Processing (three register, register shift)
+    [0b001] = nullptr, // TODO(Sonya): Integer Data Processing (three register, register shift)
+    [0b010] = nullptr, // TODO(Sonya): Integer Data Processing (three register, register shift)
+    [0b011] = nullptr, // TODO(Sonya): Integer Data Processing (three register, register shift)
+    [0b100] = nullptr, // op0:op1 != 100
+    [0b101] = nullptr, // TODO(Sonya): Integer Test and Compare (two register, register shift)
+    [0b110] = nullptr, // TODO(Sonya): Logical Arithmetic (three register, register shift)
+    [0b111] = nullptr, // TODO(Sonya): Logical Arithmetic (three register, register shift)
+};
+
 // Corresponds to Data-processing immediate
 // op0<24 to 23> | op1 <21 to 20>
 static TryDecode * kDataProcessingI[] = {
@@ -1207,7 +1220,7 @@ static TryDecode * TryDataProcessingAndMisc(uint32_t bits) {
       }
       // TODO(Sonya): Data-processing register (register shift) -- op4 == 1
       else {
-        return nullptr;
+        return kDataProcessingRR[(enc.op1 >> 2) | (enc.op1 & 0b1u)];
       }
     }
   }
