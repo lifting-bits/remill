@@ -22,8 +22,27 @@ namespace remill {
 
 namespace {
 
+//Integer Data Processing (three register, register shift)
+union IntDataProcessingRRRR {
+  uint32_t flat;
+  struct {
+    uint32_t rm : 4;
+    uint32_t _1 : 1;
+    uint32_t type : 2;
+    uint32_t _0 : 1;
+    uint32_t rs : 4;
+    uint32_t rd : 4;
+    uint32_t rn : 4;
+    uint32_t s : 1;
+    uint32_t opc : 3;
+    uint32_t _0000 : 4;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(IntDataProcessingRRRR) == 4, " ");
+
 //Integer Data Processing (three register, immediate shift)
-union IntDataProcessingRRR {
+union IntDataProcessingRRRI {
   uint32_t flat;
   struct {
     uint32_t rm : 4;
@@ -38,7 +57,7 @@ union IntDataProcessingRRR {
     uint32_t cond : 4;
   } __attribute__((packed));
 } __attribute__((packed));
-static_assert(sizeof(IntDataProcessingRRR) == 4, " ");
+static_assert(sizeof(IntDataProcessingRRRI) == 4, " ");
 
 //Integer Data Processing (2 register and immediate, immediate shift)
 union IntDataProcessingRRI {
@@ -108,6 +127,25 @@ union IntTestCompRRI {
 } __attribute__((packed));
 static_assert(sizeof(IntTestCompRRI) == 4, " ");
 
+// Integer Test and Compare (two register, register shift)
+union IntTestCompRRR {
+  uint32_t flat;
+  struct {
+    uint32_t rm : 4;
+    uint32_t _1 : 1;
+    uint32_t type : 2;
+    uint32_t _0 : 1;
+    uint32_t rs : 4;
+    uint32_t _0000 : 4;
+    uint32_t rn  : 4;
+    uint32_t _1 : 1;
+    uint32_t opc : 2;
+    uint32_t _00010 : 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(IntTestCompRRR) == 4, " ");
+
 // Integer Test and Compare (one register and immediate)
 union IntTestCompRI {
   uint32_t flat;
@@ -140,6 +178,25 @@ union LogicalArithRRRI {
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(LogicalArithRRRI) == 4, " ");
+
+// Logical Arithmetic (three register, register shift)
+union LogicalArithRRRR {
+  uint32_t flat;
+  struct {
+    uint32_t rm  : 4;
+    uint32_t _1 : 1;
+    uint32_t type : 2;
+    uint32_t _0 : 0;
+    uint32_t rs : 4;
+    uint32_t rd : 4;
+    uint32_t rn  : 4;
+    uint32_t s : 1;
+    uint32_t opc : 2;
+    uint32_t _00011 : 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(LogicalArithRRRR) == 4, " ");
 
 union LogicalArithmeticRRI {
   uint32_t flat;
@@ -752,8 +809,8 @@ static const char * const kIdpNamesRRR[] = {
 //101     ADC, ADCS (register)
 //110     SBC, SBCS (register)
 //111     RSC, RSCS (register)
-static bool TryDecodeIntegerDataProcessingRRR(Instruction &inst, uint32_t bits) {
-  const IntDataProcessingRRR enc = {bits};
+static bool TryDecodeIntegerDataProcessingRRRI(Instruction &inst, uint32_t bits) {
+  const IntDataProcessingRRRI enc = {bits};
 
   inst.function = kIdpNamesRRR[ (enc.opc << 1u) | enc.s];
   DecodeCondition(inst, enc.cond);
@@ -1114,10 +1171,10 @@ static bool TryIntegerTestAndCompareRI(Instruction &inst, uint32_t bits) {
 // Corresponds to Data-processing register (immediate shift)
 // op0<24 to 23> | op1 <20>
 static TryDecode * kDataProcessingRI[] = {
-    [0b000] = TryDecodeIntegerDataProcessingRRR,
-    [0b001] = TryDecodeIntegerDataProcessingRRR,
-    [0b010] = TryDecodeIntegerDataProcessingRRR,
-    [0b011] = TryDecodeIntegerDataProcessingRRR,
+    [0b000] = TryDecodeIntegerDataProcessingRRRI,
+    [0b001] = TryDecodeIntegerDataProcessingRRRI,
+    [0b010] = TryDecodeIntegerDataProcessingRRRI,
+    [0b011] = TryDecodeIntegerDataProcessingRRRI,
     [0b100] = nullptr, // op0:op1 != 100
     [0b101] = TryIntegerTestAndCompareRRI,
     [0b110] = TryLogicalArithmeticRRRI,
@@ -1218,7 +1275,7 @@ static TryDecode * TryDataProcessingAndMisc(uint32_t bits) {
         // index is the concatenation of op0 and op1
         return kDataProcessingRI[(enc.op1 >> 2) | (enc.op1 & 0b1u)];
       }
-      // TODO(Sonya): Data-processing register (register shift) -- op4 == 1
+      // Data-processing register (register shift) -- op4 == 1
       else {
         return kDataProcessingRR[(enc.op1 >> 2) | (enc.op1 & 0b1u)];
       }
