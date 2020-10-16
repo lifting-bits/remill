@@ -825,6 +825,21 @@ static bool TryDecodeIntegerDataProcessingRRRI(Instruction &inst, uint32_t bits)
   return EvalPCDest(inst, enc.s, enc.rd, kIdpEvaluators[enc.opc]);
 }
 
+// TODO(Sonya): Integer Data Processing (three register, register shift)
+static bool TryDecodeIntegerDataProcessingRRRR(Instruction &inst, uint32_t bits) {
+  return false;
+  const IntDataProcessingRRRR enc = { bits };
+
+  inst.function = kIdpNamesRRR[(enc.opc << 1u) | enc.s];
+  DecodeCondition(inst, enc.cond);
+
+  if (enc.rn == kPCRegNum || enc.rd == kPCRegNum || enc.rs == kPCRegNum
+      || enc.rm == kPCRegNum) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+}
+
 //000           AND, ANDS (immediate)
 //001           EOR, EORS (immediate)
 //010 0 != 11x1 SUB, SUBS (immediate) — SUB
@@ -990,10 +1005,7 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
   }
 
   auto instruction = kLoadSWUBIL[enc.P << 3u | enc.W << 2u | enc.o2 << 1u | enc.o1];
-  if (!instruction) {
-    inst.category = Instruction::kCategoryError;
-    return false;
-  }
+
   inst.function = instruction;
   DecodeCondition(inst, enc.cond);
 
@@ -1059,9 +1071,7 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
   const LogicalArithRRRI enc = { bits };
 
   auto instruction = kLogicalArithmeticRRRI[enc.opc << 1u | enc.s];
-  if (!instruction) {
-    return false;
-  }
+
   inst.function = instruction;
   DecodeCondition(inst, enc.cond);
 
@@ -1088,19 +1098,48 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
   return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u]);
 }
 
+// TODO(Sonya): Logical Arithmetic (three register, register shift)
+static bool TryLogicalArithmeticRRRR(Instruction &inst, uint32_t bits) {
+  return false;
+
+  const LogicalArithRRRR enc = { bits };
+
+  auto instruction = kLogicalArithmeticRRRI[enc.opc << 1u | enc.s];
+
+  inst.function = instruction;
+  DecodeCondition(inst, enc.cond);
+
+  if (enc.rn == kPCRegNum || enc.rd == kPCRegNum || enc.rs == kPCRegNum
+      || enc.rm == kPCRegNum) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+
+  AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
+  // enc.opc == x0
+  if (!(enc.opc & 0b1u)) {
+    AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
+  }
+  // enc.opc == 01
+  else if (!(enc.opc & 0b10u)) {
+    AddImmOp(inst, 0);
+  }
+  // enc.opc == 11
+  else {
+    AddImmOp(inst, 1);
+  }
+}
+
 // Logical Arithmetic (two register and immediate)
 static bool TryLogicalArithmeticRRI(Instruction &inst, uint32_t bits) {
   const LogicalArithmeticRRI enc = { bits };
 
-  auto instruction = kLogicalArithmeticRRRI[enc.opc];
-  if (!instruction) {
-    return false;
-  }
+  auto instruction = kLogicalArithmeticRRRI[enc.opc | enc.s];
+
   inst.function = instruction;
   DecodeCondition(inst, enc.cond);
 
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
-
   // enc.opc == x0
   if (!(enc.opc & 0b1u)) {
     AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
@@ -1135,9 +1174,7 @@ static bool TryIntegerTestAndCompareRRI(Instruction &inst, uint32_t bits) {
   const IntTestCompRRI enc = { bits };
 
   auto instruction = kIntegerTestAndCompareR[enc.opc];
-  if (!instruction) {
-    return false;
-  }
+
   inst.function = instruction;
   DecodeCondition(inst, enc.cond);
 
@@ -1149,14 +1186,29 @@ static bool TryIntegerTestAndCompareRRI(Instruction &inst, uint32_t bits) {
   return true;
 }
 
+// TODO(Sonya): Integer Test and Compare (two register, register shift)
+static bool TryIntegerTestAndCompareRRR(Instruction &inst, uint32_t bits) {
+  return false;
+
+  const IntTestCompRRR enc = { bits };
+
+  auto instruction = kIntegerTestAndCompareR[enc.opc];
+
+  inst.function = instruction;
+  DecodeCondition(inst, enc.cond);
+
+  if (enc.rn == kPCRegNum || enc.rs == kPCRegNum || enc.rm == kPCRegNum) {
+      inst.category = Instruction::kCategoryError;
+      return false;
+  }
+}
+
 // Integer Test and Compare (one register and immediate)
 static bool TryIntegerTestAndCompareRI(Instruction &inst, uint32_t bits) {
   const IntTestCompRI enc = { bits };
 
   auto instruction = kIntegerTestAndCompareR[enc.opc];
-  if (!instruction) {
-    return false;
-  }
+
   inst.function = instruction;
   DecodeCondition(inst, enc.cond);
 
@@ -1184,14 +1236,14 @@ static TryDecode * kDataProcessingRI[] = {
 // Corresponds to Data-processing register (immediate shift)
 // op0<24 to 23> | op1 <20>
 static TryDecode * kDataProcessingRR[] = {
-    [0b000] = nullptr, // TODO(Sonya): Integer Data Processing (three register, register shift)
-    [0b001] = nullptr, // TODO(Sonya): Integer Data Processing (three register, register shift)
-    [0b010] = nullptr, // TODO(Sonya): Integer Data Processing (three register, register shift)
-    [0b011] = nullptr, // TODO(Sonya): Integer Data Processing (three register, register shift)
+    [0b000] = TryDecodeIntegerDataProcessingRRRR,
+    [0b001] = TryDecodeIntegerDataProcessingRRRR,
+    [0b010] = TryDecodeIntegerDataProcessingRRRR,
+    [0b011] = TryDecodeIntegerDataProcessingRRRR,
     [0b100] = nullptr, // op0:op1 != 100
-    [0b101] = nullptr, // TODO(Sonya): Integer Test and Compare (two register, register shift)
-    [0b110] = nullptr, // TODO(Sonya): Logical Arithmetic (three register, register shift)
-    [0b111] = nullptr, // TODO(Sonya): Logical Arithmetic (three register, register shift)
+    [0b101] = TryIntegerTestAndCompareRRR,
+    [0b110] = TryLogicalArithmeticRRRR,
+    [0b111] = TryLogicalArithmeticRRRR,
 };
 
 // Corresponds to Data-processing immediate
