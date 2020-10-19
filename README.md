@@ -52,6 +52,7 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 ### Vcpkg build
 
 ```
+git submodule update --init
 ./vcpkg/bootstrap-vcpkg.sh
 ./vcpkg/vcpkg install glog gflags llvm xed z3 gtest
 
