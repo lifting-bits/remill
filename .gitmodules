@@ -1,0 +1,4 @@
+[submodule "vcpkg"]
+	path = vcpkg
+	url = https://github.com/ekilmer/vcpkg.git
+	branch = remill

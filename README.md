@@ -49,6 +49,18 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 
 ## Getting and Building the Code
 
+### Vcpkg build
+
+```
+./vcpkg/bootstrap-vcpkg.sh
+./vcpkg/vcpkg install glog gflags llvm xed z3 gtest
+
+CC=clang CXX=clang++ cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX=$(pwd)/install -DCMAKE_TOOLCHAIN_FILE=/home/ekilmer/src/remill/vcpkg/scripts/buildsystems/vcpkg.cmake -S .
+
+cmake --build build --target test_dependencies
+env CTEST_OUTPUT_ON_FAILURE=1 cmake --build build --target test
+```
+
 ### Docker Build
 
 Remill now comes with a Dockerfile for easier testing. This Dockerfile references the [cxx-common](https://github.com/trailofbits/cxx-common) container to have all pre-requisite libraries available. 
