@@ -27,6 +27,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ccache.cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 include(CTest)
 
+
 if (LLVM_Z3_INSTALL_DIR)
   find_package(Z3 4.7.1)
   set(need_z3 TRUE)
@@ -65,7 +66,9 @@ endif()
 #
 
 # LLVM
-find_package(LLVM REQUIRED CONFIG HINTS ${FINDPACKAGE_LLVM_HINTS})
+find_package(LLVM CONFIG REQUIRED)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 string(REPLACE "." ";" LLVM_VERSION_LIST ${LLVM_PACKAGE_VERSION})
 list(GET LLVM_VERSION_LIST 0 LLVM_MAJOR_VERSION)
@@ -90,8 +93,7 @@ endforeach()
 # These are out-of-order in `LLVM_AVAILABLE_LIBS` and should always be last.
 list(REMOVE_ITEM LLVM_LIBRARIES LLVMMC LLVMCore LLVMSupport)
 list(APPEND LLVM_LIBRARIES LLVMMC LLVMCore LLVMSupport)
-message(WARNING "Libraries: ${LLVM_LIBRARIES}")
-
+message(STATUS "Libraries: ${LLVM_LIBRARIES}")
 
 target_link_libraries(thirdparty_llvm INTERFACE
   ${LLVM_LIBRARIES}
@@ -109,17 +111,21 @@ if(Z3_FOUND)
 endif()
 
 # Intel XED
-find_package(XED REQUIRED)
+find_package(XED CONFIG REQUIRED)
+add_library(thirdparty_xed INTERFACE)
+target_link_libraries(thirdparty_xed INTERFACE
+  XED::XED
+)
 
 # Google glog module
-find_package(glog REQUIRED)
+find_package(glog CONFIG REQUIRED)
 add_library(thirdparty_glog INTERFACE)
 target_link_libraries(thirdparty_glog INTERFACE
   glog::glog
 )
 
 # Google gflags
-find_package(gflags REQUIRED)
+find_package(gflags CONFIG REQUIRED)
 add_library(thirdparty_gflags INTERFACE)
 target_link_libraries(thirdparty_gflags INTERFACE
   gflags
@@ -423,7 +429,9 @@ add_subdirectory(remill/Arch/AArch64/Runtime)
 add_subdirectory(tools)
 
 # tests
+message("compiler ID ${CMAKE_C_COMPILER_ID}")
 if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_C_COMPILER_ID}" STREQUAL "AppleClang")
+  find_package(Threads REQUIRED)
   add_custom_target(test_dependencies)
 
   if(NOT "${PLATFORM_NAME}" STREQUAL "windows")
