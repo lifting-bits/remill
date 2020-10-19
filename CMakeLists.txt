@@ -30,9 +30,6 @@ include(CTest)
 if (LLVM_Z3_INSTALL_DIR)
   find_package(Z3 4.7.1)
   set(need_z3 TRUE)
-elseif(DEFINED CXX_COMMON_REPOSITORY_ROOT)
-  set(LLVM_Z3_INSTALL_DIR "${CXX_COMMON_REPOSITORY_ROOT}/z3")
-  set(need_z3 TRUE)
 else()
   set(need_z3 FALSE)
 endif()
@@ -113,13 +110,6 @@ endif()
 
 # Intel XED
 find_package(XED REQUIRED)
-add_library(thirdparty_xed INTERFACE)
-target_include_directories(thirdparty_xed SYSTEM INTERFACE
-  ${XED_INCLUDE_DIRS}
-)
-target_link_libraries(thirdparty_xed INTERFACE
-  ${XED_LIBRARIES}
-)
 
 # Google glog module
 find_package(glog REQUIRED)
@@ -152,7 +142,8 @@ option(REMILL_BARRIER_AS_NOP "Remove compiler barriers (inline assembly) in sema
 # target settings
 #
 
-set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}.${LLVM_MINOR_VERSION}")
+set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}")
+message("Remill llvm version: ${REMILL_LLVM_VERSION}")
 math(EXPR REMILL_LLVM_VERSION_NUMBER "${LLVM_MAJOR_VERSION} * 100 + ${LLVM_MINOR_VERSION}")
 
 if(DEFINED WIN32)
@@ -190,7 +181,7 @@ add_library(remill STATIC
 )
 
 set_property(TARGET remill PROPERTY POSITION_INDEPENDENT_CODE ON)
-set(THIRDPARTY_LIBRARY_LIST thirdparty_z3 thirdparty_llvm thirdparty_xed thirdparty_glog thirdparty_gflags)
+set(THIRDPARTY_LIBRARY_LIST thirdparty_z3 thirdparty_llvm XED::XED thirdparty_glog thirdparty_gflags)
 
 # add everything as public.
 
@@ -286,120 +277,8 @@ target_compile_definitions(remill PUBLIC
   "REMILL_BUILD_SEMANTICS_DIR_AARCH64=\"${REMILL_BUILD_SEMANTICS_DIR_AARCH64}\""
 )
 
-#
-# Also install clang, libllvm and llvm-link
-#
-
-function(InstallExternalTarget target_name target_path install_directory installed_file_name)
-  # Get the optional rpath parameter
-  set(additional_arguments ${ARGN})
-  list(LENGTH additional_arguments additional_argument_count)
-
-  if("${additional_argument_count}" EQUAL 0)
-  elseif("${additional_argument_count}" EQUAL 1)
-    list(GET additional_arguments 0 rpath)
-  else()
-    message(FATAL_ERROR "InstallExternalTarget: Invalid argument count")
-  endif()
-
-  # We need to locate the patchelf executable to fix the rpath; search for it
-  # only once, and then export the variable with PARENT_SCOPE so that we can
-  # re-use it in the next calls
-  if(NOT "${rpath}" STREQUAL "")
-    if("${PATCHELF_LOCATION}" STREQUAL "")
-      find_program("program_location" "patchelf")
-      if("${program_location}" STREQUAL "program_location-NOTFOUND")
-        message(FATAL_ERROR "InstallExternalTarget: Failed to locate the patchelf executable")
-      endif()
-
-      # We need to set it both in local and in parent scope
-      set("PATCHELF_LOCATION" "${program_location}" PARENT_SCOPE)
-      set("PATCHELF_LOCATION" "${program_location}")
-    endif()
-  endif()
-
-  # Make sure the parameters are correct
-  if(NOT EXISTS "${target_path}")
-    message(FATAL_ERROR "InstallExternalTarget: The following path does not exists: ${target_path}")
-  endif()
-
-  if("${target_name}")
-    message(FATAL_ERROR "InstallExternalTarget: The following target already exists: ${target_name}")
-  endif()
-
-  if("${install_directory}" STREQUAL "")
-    message(FATAL_ERROR "InstallExternalTarget: Invalid install directory specified")
-  endif()
-
-  # Generate the target
-  set("output_file_path" "${CMAKE_CURRENT_BINARY_DIR}/${installed_file_name}")
-
-  if(NOT "${rpath}" STREQUAL "")
-    set(CHRPATH_COMMAND ${PATCHELF_LOCATION} --set-rpath ${rpath} ${output_file_path})
-  else()
-    set(CHRPATH_COMMAND ${CMAKE_COMMAND} -E echo 'No rpath patch needed for ${target_name}')
-  endif()
-
-  add_custom_command(
-    OUTPUT "${output_file_path}"
-
-    COMMAND "${CMAKE_COMMAND}" -E copy ${target_path} ${output_file_path}
-    COMMAND ${CHRPATH_COMMAND}
-  )
-
-  add_custom_target("${target_name}" ALL DEPENDS "${output_file_path}")
-
-  install(FILES "${output_file_path}"
-    DESTINATION "${install_directory}"
-    PERMISSIONS OWNER_READ OWNER_EXECUTE
-                GROUP_READ GROUP_EXECUTE
-                WORLD_READ WORLD_EXECUTE
-  )
-endfunction()
-
 set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}${executable_extension}")
 set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}${executable_extension}")
-
-if("${CXX_COMMON_REPOSITORY_ROOT}" STREQUAL "" OR NOT EXISTS "${CXX_COMMON_REPOSITORY_ROOT}/llvm")
-  set(INSTALLED_LIBLLVM_NAME "${dynamic_lib_prefix}LLVM-${REMILL_LLVM_VERSION}.${dynamic_lib_extension}")
-
-  # system binaries are not built statically, so we need to fix the rpath
-  find_program("clang_location" "clang-${REMILL_LLVM_VERSION}${executable_extension}")
-  if("${clang_location}" STREQUAL "clang_location-NOTFOUND")
-    message(FATAL_ERROR "InstallExternalTarget: Failed to locate the clang executable")
-  endif()
-
-  message("InstallExternalTarget: Found clang executable: ${clang_location}")
-
-  find_program("llvmlink_location" "llvm-link${executable_extension}")
-  if("${llvmlink_location}" STREQUAL "llvmlink_location-NOTFOUND")
-    message(FATAL_ERROR "InstallExternalTarget: Failed to locate the llvm-link executable")
-  endif()
-
-  message("InstallExternalTarget: Found llvm-link executable: ${llvmlink_location}")
-
-  find_library("libllvm_location" "${dynamic_lib_prefix}LLVM-${REMILL_LLVM_VERSION}.${dynamic_lib_extension}")
-  if("${libllvm_location}" STREQUAL "libllvm_location-NOTFOUND")
-    message(FATAL_ERROR "InstallExternalTarget: Failed to locate the libLLVM dynamic library")
-  endif()
-  
-  message("InstallExternalTarget: Found libLLVM location: ${libllvm_location}")
-
-  InstallExternalTarget("ext_clang" "${clang_location}" "${install_folder}/bin"
-    "${INSTALLED_CLANG_NAME}" "${install_folder}/lib")
-
-  InstallExternalTarget("ext_llvmlink" "${llvmlink_location}" "${install_folder}/bin"
-    "${INSTALLED_LLVMLINK_NAME}" "${install_folder}/lib")
-
-else()
-  # The executable in our binary repository are statically built, meaning that we don't need
-  # to change the rpath
-  InstallExternalTarget("ext_clang" "${CXX_COMMON_REPOSITORY_ROOT}/llvm/bin/clang${executable_extension}"
-    "${install_folder}/bin" "${INSTALLED_CLANG_NAME}")
-
-  InstallExternalTarget("ext_llvmlink" "${CXX_COMMON_REPOSITORY_ROOT}/llvm/bin/llvm-link${executable_extension}"
-    "${install_folder}/bin" "${INSTALLED_LLVMLINK_NAME}")
-endif()
 
 install(TARGETS "${PROJECT_NAME}"
   ARCHIVE DESTINATION "${install_folder}/lib"
