@@ -22,7 +22,6 @@ cmake_minimum_required(VERSION 3.2)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/settings.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake")
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/BCCompiler.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ccache.cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 include(CTest)
@@ -81,6 +80,7 @@ target_include_directories(thirdparty_llvm SYSTEM INTERFACE
 target_compile_definitions(thirdparty_llvm INTERFACE
   ${LLVM_DEFINITIONS}
 )
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/BCCompiler.cmake")
 
 # Go find only the static libraries of LLVM, and link against those.
 foreach(LLVM_LIB IN LISTS LLVM_AVAILABLE_LIBS)
