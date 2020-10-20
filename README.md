@@ -54,9 +54,9 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 ```
 git submodule update --init
 ./vcpkg/bootstrap-vcpkg.sh
-./vcpkg/vcpkg install glog gflags llvm xed z3 gtest
+./vcpkg/vcpkg install glog gflags xed gtest
 
-CC=clang CXX=clang++ cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX=$(pwd)/install -DCMAKE_TOOLCHAIN_FILE=/home/ekilmer/src/remill/vcpkg/scripts/buildsystems/vcpkg.cmake -S .
+CC=clang CXX=clang++ cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX=$(pwd)/install -DCMAKE_TOOLCHAIN_FILE=$(pwd)/vcpkg/scripts/buildsystems/vcpkg.cmake -S .
 
 cmake --build build --target test_dependencies
 env CTEST_OUTPUT_ON_FAILURE=1 cmake --build build --target test
