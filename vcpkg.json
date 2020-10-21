@@ -1,0 +1,14 @@
+{
+  "name": "remill",
+  "version-string": "3.0.8",
+  "description": "Library for lifting of x86, amd64, and aarch64 machine code to LLVM bitcode",
+  "homepage": "https://github.com/lifting-bits/remill",
+  "supports": "!windows & static",
+  "dependencies": [
+    "glog",
+    "gflags",
+    "llvm",
+    "xed",
+    "z3"
+  ]
+}
