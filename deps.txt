@@ -1,0 +1,6 @@
+glog
+gflags
+llvm
+xed
+z3
+gtest

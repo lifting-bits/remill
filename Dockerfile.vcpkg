@@ -1,15 +1,22 @@
 FROM ubuntu:18.04
-RUN apt update && apt upgrade -y && \
-    apt install -y llvm-dev libclang-dev libedit-dev zlib1g-dev cmake ninja-build curl unzip tar git zip python3
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y clang libedit-dev zlib1g-dev cmake ninja-build curl unzip tar git zip python3
 
+# Bootstrap vcpkg
 WORKDIR /vcpkg
 COPY vcpkg .
 RUN ./bootstrap-vcpkg.sh
-RUN ./vcpkg install gflags glog gtest xed
+
+# Install dependencies
+COPY deps.txt .
+COPY vcpkg-overlays .
+RUN ./vcpkg/vcpkg install --overlay-ports=./vcpkg-overlays @deps.txt
 
 WORKDIR /workspace
 COPY . .
 WORKDIR /workspace/build
 RUN cmake -G Ninja -DCMAKE_TOOLCHAIN_FILE=/vcpkg/scripts/buildsystems/vcpkg.cmake .. && \
+    cmake --build . && \
+    cmake --install . && \
     cmake --build . --target test_dependencies && \
     env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test
