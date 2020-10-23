@@ -1,7 +1,16 @@
-FROM ubuntu:18.04
+FROM ubuntu:18.04 as base
+# All build dependencies for vcpkg packages
 RUN apt-get update && apt-get upgrade -y && \
-    apt-get install -y clang libedit-dev zlib1g-dev cmake ninja-build curl unzip tar git zip python3
+    apt-get install --yes clang-10 cmake ninja-build curl unzip tar git zip python3 pkg-config && \
+    apt-get clean --yes
+ENV AS=/usr/bin/llvm-as-10 \
+    AR=/usr/bin/llvm-ar-10 \
+    CC=/usr/bin/clang-10 \
+    CPP=/usr/bin/clang++-10 \
+    CXX=/usr/bin/clang++-10 \
+    LD=/usr/bin/ld.gold
 
+FROM base as vcpkg
 # Bootstrap vcpkg
 WORKDIR /vcpkg
 COPY vcpkg .
@@ -12,6 +21,7 @@ COPY deps.txt .
 COPY vcpkg-overlays .
 RUN ./vcpkg/vcpkg install --overlay-ports=./vcpkg-overlays @deps.txt
 
+FROM vcpkg as build
 WORKDIR /workspace
 COPY . .
 WORKDIR /workspace/build
