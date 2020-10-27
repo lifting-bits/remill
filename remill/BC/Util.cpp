@@ -51,6 +51,7 @@
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/IRReader.h"
 #include "remill/BC/Compat/ToolOutputFile.h"
+#include "remill/BC/Compat/VectorType.h"
 #include "remill/BC/Compat/Verifier.h"
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Util.h"
@@ -98,7 +99,8 @@ void InitFunctionAttributes(llvm::Function *function) {
 llvm::CallInst *AddCall(llvm::BasicBlock *source_block,
                         llvm::Value *dest_func) {
   llvm::IRBuilder<> ir(source_block);
-  return ir.CreateCall(dest_func, LiftedFunctionArgs(source_block));
+  auto fn = llvm::dyn_cast<llvm::Function>(dest_func);
+  return ir.CreateCall(fn, LiftedFunctionArgs(source_block));
 }
 
 // Create a tail-call from one lifted function to another.
@@ -1399,11 +1401,11 @@ RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context,
       break;
     }
 
-    case llvm::Type::VectorTyID: {
-      auto arr_type = llvm::dyn_cast<llvm::VectorType>(type);
+    case llvm::getFixedVectorTypeId(): {
+      auto arr_type = llvm::dyn_cast<llvm::FixedVectorType>(type);
       auto elem_type = arr_type->getElementType();
       cached =
-          llvm::VectorType::get(RecontextualizeType(elem_type, context, cache),
+          llvm::FixedVectorType::get(RecontextualizeType(elem_type, context, cache),
                                 arr_type->getNumElements());
       break;
     }
@@ -1560,8 +1562,8 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
     }
 
     // Build up the vector in the nearly the same was as we do with arrays.
-    case llvm::Type::VectorTyID: {
-      auto vec_type = llvm::dyn_cast<llvm::VectorType>(type);
+    case llvm::getFixedVectorTypeId(): {
+      auto vec_type = llvm::dyn_cast<llvm::FixedVectorType>(type);
       const auto num_elems = vec_type->getNumElements();
       const auto elem_type = vec_type->getElementType();
       const auto elem_size = dl.getTypeAllocSize(elem_type);
@@ -1737,8 +1739,8 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
     }
 
     // Build up the vector store in the nearly the same was as we do with arrays.
-    case llvm::Type::VectorTyID: {
-      auto vec_type = llvm::dyn_cast<llvm::VectorType>(type);
+    case llvm::getFixedVectorTypeId(): {
+      auto vec_type = llvm::dyn_cast<llvm::FixedVectorType>(type);
       const auto num_elems = vec_type->getNumElements();
       const auto elem_type = vec_type->getElementType();
       const auto elem_size = dl.getTypeAllocSize(elem_type);
@@ -1823,7 +1825,7 @@ BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type, size_t offset,
       }
     }
 
-  } else if (auto seq_type = llvm::dyn_cast<llvm::SequentialType>(type);
+  } else if (auto seq_type = llvm::dyn_cast<llvm::ArrayType>(type);
              seq_type) {
     const auto elem_type = seq_type->getElementType();
     const auto elem_size = dl.getTypeAllocSize(elem_type);
