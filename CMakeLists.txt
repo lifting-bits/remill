@@ -27,20 +27,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 include(CTest)
 
 
-if (LLVM_Z3_INSTALL_DIR)
-  find_package(Z3 4.7.1)
-  set(need_z3 TRUE)
-else()
-  set(need_z3 FALSE)
-endif()
-
-if(need_z3)
-  find_package(Z3 4.7.1)
-  if (NOT Z3_FOUND)
-    message(WARNING "Z3 >= 4.7.1 has not been found in LLVM_Z3_INSTALL_DIR: ${LLVM_Z3_INSTALL_DIR}.")
-  endif()
-endif()
-
 configureCcache()
 FindAndSelectClangCompiler()
 
@@ -99,15 +85,11 @@ target_link_libraries(thirdparty_llvm INTERFACE
   ${LLVM_LIBRARIES}
 )
 
-# Microsoft Z3
-add_library(thirdparty_z3 INTERFACE)
-if(Z3_FOUND)
-  target_include_directories(thirdparty_z3 SYSTEM INTERFACE
-    ${Z3_INCLUDE_DIR}
-  )
-  target_link_libraries(thirdparty_z3 INTERFACE
-    ${Z3_LIBRARIES}
-  )
+# Microsoft Z3 with LLVM. Not exactly used in remill, but LLVM doesn't link
+# against it correctly
+if (LLVM_WITH_Z3)
+  find_package(Z3 CONFIG REQUIRED 4.7.1)
+  target_link_libraries(thirdparty_llvm INTERFACE z3::libz3)
 endif()
 
 # Intel XED
@@ -187,7 +169,7 @@ add_library(remill STATIC
 )
 
 set_property(TARGET remill PROPERTY POSITION_INDEPENDENT_CODE ON)
-set(THIRDPARTY_LIBRARY_LIST thirdparty_z3 thirdparty_llvm XED::XED thirdparty_glog thirdparty_gflags)
+set(THIRDPARTY_LIBRARY_LIST thirdparty_llvm XED::XED thirdparty_glog thirdparty_gflags)
 
 # add everything as public.
 
@@ -204,7 +186,6 @@ endif()
 
 target_link_libraries(remill LINK_PUBLIC
   ${LINKER_START_GROUP} ${THIRDPARTY_LIBRARY_LIST} ${LINKER_END_GROUP}
-  RemillVersion
 )
 
 target_include_directories(remill PUBLIC ${CMAKE_SOURCE_DIR})

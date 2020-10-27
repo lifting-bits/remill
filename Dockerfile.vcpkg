@@ -1,7 +1,7 @@
 FROM ubuntu:18.04 as base
 # All build dependencies for vcpkg packages
 RUN apt-get update && apt-get upgrade -y && \
-    apt-get install --yes clang-10 cmake ninja-build curl unzip tar git zip python3 pkg-config && \
+    apt-get install --yes clang-10 cmake ninja-build curl unzip tar git zip python python3 pkg-config && \
     apt-get clean --yes
 ENV AS=/usr/bin/llvm-as-10 \
     AR=/usr/bin/llvm-ar-10 \
