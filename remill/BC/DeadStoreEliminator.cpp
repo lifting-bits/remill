@@ -413,7 +413,7 @@ static void StreamCallOrInvokeToDOT(std::ostream &dot,
   } else {
     dot << "invoke ";
     auto invoke_inst = llvm::dyn_cast<llvm::InvokeInst>(&inst);
-    called_val = invoke_inst->getCalledFunction();
+    called_val = invoke_inst->getCalledOperand();
   }
 
   if (called_val->getName().empty()) {
@@ -1186,7 +1186,7 @@ VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
 }
 
 VisitResult ForwardAliasVisitor::visitInvokeInst(llvm::InvokeInst &inst) {
-  auto val = inst.getCalledFunction()->stripPointerCasts();
+  auto val = inst.getCalledOperand()->stripPointerCasts();
   if (llvm::isa<llvm::InlineAsm>(val)) {
     live_args[&inst].set();  // Weird to invoke inline assembly.
 
