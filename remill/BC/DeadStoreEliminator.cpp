@@ -20,6 +20,8 @@
 #include <glog/logging.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/CFG.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/InlineAsm.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
@@ -35,6 +37,7 @@
 
 #include "ABI.h"
 #include "remill/Arch/Arch.h"
+#include "remill/BC/Compat/VectorType.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/FileSystem.h"
 
@@ -105,6 +108,9 @@ class StateVisitor {
   // Visit a type and record it (and any children) in the slots vector
   void Visit(llvm::Type *ty);
 
+  template <typename T>
+  void VisitSequentialType(T *seq_ty);
+
   std::vector<StateSlot> offset_to_slot;
 
   // The current index in the state structure.
@@ -170,31 +176,10 @@ void StateVisitor::Visit(llvm::Type *ty) {
     //        << LLVMThingToString(struct_ty);
 
   // Array or vector.
-  } else if (auto seq_ty = llvm::dyn_cast<llvm::SequentialType>(ty)) {
-    auto first_ty = seq_ty->getElementType();
-    uint64_t el_num_bytes = dl->getTypeAllocSize(first_ty);
-    CHECK_EQ(el_num_bytes, dl->getTypeStoreSize(first_ty))
-        << "Alignment of type induces additional padding: "
-        << LLVMThingToString(first_ty);
-
-    // Special case: sequences of primitive types (or vectors thereof) are
-    // treated as one slot.
-    if (first_ty->isIntegerTy() || first_ty->isFloatingPointTy()) {
-      for (uint64_t i = 0; i < num_bytes; i++) {
-        offset_to_slot.emplace_back(index, offset, num_bytes);
-      }
-      index++;
-      offset += num_bytes;
-
-    // This is an array of non-primitive types.
-    } else {
-      auto num_elems = num_bytes / el_num_bytes;
-      for (uint64_t i = 0; i < num_elems; i++) {
-
-        // NOTE(tim): Recalculates every time, rather than memoizing.
-        Visit(first_ty);
-      }
-    }
+  } else if (auto fvt_ty = llvm::dyn_cast<llvm::FixedVectorType>(ty)) {
+    VisitSequentialType(fvt_ty);
+  } else if (auto arr_ty = llvm::dyn_cast<llvm::ArrayType>(ty)) {
+    VisitSequentialType(arr_ty);
 
   // Primitive type.
   } else if (ty->isIntegerTy() || ty->isFloatingPointTy() ||
@@ -211,6 +196,35 @@ void StateVisitor::Visit(llvm::Type *ty) {
   }
 
   CHECK_EQ(offset, prev_offset + num_bytes);
+}
+
+template <typename T>
+void StateVisitor::VisitSequentialType(T *seq_ty) {
+  uint64_t num_bytes = dl->getTypeAllocSize(seq_ty);
+  auto first_ty = seq_ty->getElementType();
+  uint64_t el_num_bytes = dl->getTypeAllocSize(first_ty);
+  CHECK_EQ(el_num_bytes, dl->getTypeStoreSize(first_ty))
+      << "Alignment of type induces additional padding: "
+      << LLVMThingToString(first_ty);
+
+  // Special case: sequences of primitive types (or vectors thereof) are
+  // treated as one slot.
+  if (first_ty->isIntegerTy() || first_ty->isFloatingPointTy()) {
+    for (uint64_t i = 0; i < num_bytes; i++) {
+      offset_to_slot.emplace_back(index, offset, num_bytes);
+    }
+    index++;
+    offset += num_bytes;
+
+  // This is an array of non-primitive types.
+  } else {
+    auto num_elems = num_bytes / el_num_bytes;
+    for (uint64_t i = 0; i < num_elems; i++) {
+
+      // NOTE(tim): Recalculates every time, rather than memoizing.
+      Visit(first_ty);
+    }
+  }
 }
 
 // Try to get the offset associated with some value.
@@ -395,11 +409,11 @@ static void StreamCallOrInvokeToDOT(std::ostream &dot,
   llvm::Value *called_val = nullptr;
   if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(&inst)) {
     dot << "call ";
-    called_val = call_inst->getCalledValue();
+    called_val = call_inst->getCalledOperand();
   } else {
     dot << "invoke ";
     auto invoke_inst = llvm::dyn_cast<llvm::InvokeInst>(&inst);
-    called_val = invoke_inst->getCalledValue();
+    called_val = invoke_inst->getCalledOperand();
   }
 
   if (called_val->getName().empty()) {
@@ -1120,7 +1134,7 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &inst) {
 }
 
 VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
-  const auto val = inst.getCalledValue()->stripPointerCasts();
+  const auto val = inst.getCalledOperand()->stripPointerCasts();
   if (auto const_val = llvm::dyn_cast<llvm::Constant>(val); const_val) {
 
     // Don't let this affect anything.
@@ -1172,7 +1186,7 @@ VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
 }
 
 VisitResult ForwardAliasVisitor::visitInvokeInst(llvm::InvokeInst &inst) {
-  auto val = inst.getCalledValue()->stripPointerCasts();
+  auto val = inst.getCalledOperand()->stripPointerCasts();
   if (llvm::isa<llvm::InlineAsm>(val)) {
     live_args[&inst].set();  // Weird to invoke inline assembly.
 
@@ -1325,15 +1339,6 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block,
     // memory intrinsic or LLVM intrinsic (e.g. bswap).
     } else if (llvm::isa<llvm::CallInst>(inst) ||
                llvm::isa<llvm::InvokeInst>(inst)) {
-
-      llvm::Function *func = nullptr;
-      if (llvm::isa<llvm::CallInst>(inst)) {
-        auto call_inst = llvm::dyn_cast<llvm::CallInst>(inst);
-        func = call_inst->getCalledFunction();
-      } else {
-        auto invoke_inst = llvm::dyn_cast<llvm::InvokeInst>(inst);
-        func = invoke_inst->getCalledFunction();
-      }
 
       // Likely due to a more general failure to analyze this particular
       // function.

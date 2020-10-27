@@ -51,6 +51,7 @@
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/IRReader.h"
 #include "remill/BC/Compat/ToolOutputFile.h"
+#include "remill/BC/Compat/VectorType.h"
 #include "remill/BC/Compat/Verifier.h"
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Util.h"
@@ -59,7 +60,9 @@
 
 DECLARE_string(arch);
 
-DEFINE_string(semantics_search_paths, "", "Colon-separated list of search paths to use when searching for semantics files.");
+DEFINE_string(
+    semantics_search_paths, "",
+    "Colon-separated list of search paths to use when searching for semantics files.");
 
 namespace {
 #ifdef WIN32
@@ -98,7 +101,8 @@ void InitFunctionAttributes(llvm::Function *function) {
 llvm::CallInst *AddCall(llvm::BasicBlock *source_block,
                         llvm::Value *dest_func) {
   llvm::IRBuilder<> ir(source_block);
-  return ir.CreateCall(dest_func, LiftedFunctionArgs(source_block));
+  auto fn = llvm::dyn_cast<llvm::Function>(dest_func);
+  return ir.CreateCall(fn, LiftedFunctionArgs(source_block));
 }
 
 // Create a tail-call from one lifted function to another.
@@ -489,7 +493,7 @@ std::string FindSemanticsBitcodeFile(const std::string &arch) {
   if (!FLAGS_semantics_search_paths.empty()) {
     std::stringstream pp;
     pp << FLAGS_semantics_search_paths;
-    for (std::string sem_dir; std::getline(pp, sem_dir, ':'); ) {
+    for (std::string sem_dir; std::getline(pp, sem_dir, ':');) {
       std::stringstream ss;
       ss << sem_dir << "/" << arch << ".bc";
       if (auto sem_path = ss.str(); FileExists(sem_path)) {
@@ -665,7 +669,7 @@ std::vector<llvm::CallInst *> CallersOf(llvm::Function *func) {
   if (func) {
     for (auto user : func->users()) {
       if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(user)) {
-        if (call_inst->getCalledFunction() == func) {
+        if (call_inst->getCalledOperand() == func) {
           callers.push_back(call_inst);
         }
       }
@@ -1399,12 +1403,12 @@ RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context,
       break;
     }
 
-    case llvm::Type::VectorTyID: {
-      auto arr_type = llvm::dyn_cast<llvm::VectorType>(type);
+    case llvm::GetFixedVectorTypeId(): {
+      auto arr_type = llvm::dyn_cast<llvm::FixedVectorType>(type);
       auto elem_type = arr_type->getElementType();
-      cached =
-          llvm::VectorType::get(RecontextualizeType(elem_type, context, cache),
-                                arr_type->getNumElements());
+      cached = llvm::FixedVectorType::get(
+          RecontextualizeType(elem_type, context, cache),
+          arr_type->getNumElements());
       break;
     }
 
@@ -1560,8 +1564,8 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
     }
 
     // Build up the vector in the nearly the same was as we do with arrays.
-    case llvm::Type::VectorTyID: {
-      auto vec_type = llvm::dyn_cast<llvm::VectorType>(type);
+    case llvm::GetFixedVectorTypeId(): {
+      auto vec_type = llvm::dyn_cast<llvm::FixedVectorType>(type);
       const auto num_elems = vec_type->getNumElements();
       const auto elem_type = vec_type->getElementType();
       const auto elem_size = dl.getTypeAllocSize(elem_type);
@@ -1737,8 +1741,8 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
     }
 
     // Build up the vector store in the nearly the same was as we do with arrays.
-    case llvm::Type::VectorTyID: {
-      auto vec_type = llvm::dyn_cast<llvm::VectorType>(type);
+    case llvm::GetFixedVectorTypeId(): {
+      auto vec_type = llvm::dyn_cast<llvm::FixedVectorType>(type);
       const auto num_elems = vec_type->getNumElements();
       const auto elem_type = vec_type->getElementType();
       const auto elem_size = dl.getTypeAllocSize(elem_type);
@@ -1823,8 +1827,7 @@ BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type, size_t offset,
       }
     }
 
-  } else if (auto seq_type = llvm::dyn_cast<llvm::SequentialType>(type);
-             seq_type) {
+  } else if (auto seq_type = llvm::dyn_cast<llvm::ArrayType>(type); seq_type) {
     const auto elem_type = seq_type->getElementType();
     const auto elem_size = dl.getTypeAllocSize(elem_type);
     const auto num_elems = seq_type->getNumElements();
@@ -1839,6 +1842,18 @@ BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type, size_t offset,
 
     indexes_out.push_back(llvm::ConstantInt::get(index_type, index, false));
     return BuildIndexes(dl, elem_type, offset, goal_offset, indexes_out);
+  } else if (auto fvt_type = llvm::dyn_cast<llvm::FixedVectorType>(type); fvt_type) {
+    // It is possible that this gets called on an unexpected type
+    // such as FixedVectorType; if so, report the issue and fix if/when it
+    // happens
+    LOG(FATAL) << "Called BuildIndexes on unsupported type: "
+               << remill::LLVMThingToString(type);
+#if LLVM_VERSION_NUMBER >= LLVM_VERSION(11, 0)
+  } else if (auto svt_type = llvm::dyn_cast<llvm::ScalableVectorType>(type); svt_type) {
+    // same as above, but for scalable vectors
+    LOG(FATAL) << "Called BuildIndexes on unsupported type: "
+               << remill::LLVMThingToString(type);
+#endif
   }
 
   return {offset, type};

@@ -312,6 +312,10 @@ function GetLLVMVersion
       LLVM_VERSION=llvm1000
       return 0
     ;;
+    11.0)
+      LLVM_VERSION=llvm1100
+      return 0
+    ;;
     *)
       # unknown option
       echo "[x] Unknown LLVM version ${1}."
