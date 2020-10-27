@@ -17,6 +17,7 @@
 #pragma once
 
 #include <llvm/IR/Instructions.h>
+
 // Hack in a 'FixedVectorType' for LLVM < 11
 namespace llvm {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(11, 0)
@@ -24,11 +25,11 @@ using FixedVectorType = VectorType;
 #endif
 
 
-constexpr auto getFixedVectorTypeId() {
+constexpr auto GetFixedVectorTypeId() {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(11, 0)
- return Type::VectorTyID;
+  return Type::VectorTyID;
 #else
- return Type::FixedVectorTyID;
+  return Type::FixedVectorTyID;
 #endif
 }
 

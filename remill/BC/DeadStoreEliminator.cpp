@@ -20,11 +20,11 @@
 #include <glog/logging.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/CFG.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/InlineAsm.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
-#include <llvm/IR/DerivedTypes.h>
 #include <llvm/Transforms/Utils/Local.h>
 
 #include <cstdio>
@@ -37,9 +37,9 @@
 
 #include "ABI.h"
 #include "remill/Arch/Arch.h"
+#include "remill/BC/Compat/VectorType.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/FileSystem.h"
-#include "remill/BC/Compat/VectorType.h"
 
 DEFINE_string(dot_output_dir, "",
               "The directory in which to log DOT digraphs of the alias "
@@ -109,7 +109,7 @@ class StateVisitor {
   void Visit(llvm::Type *ty);
 
   template <typename T>
-  void visitSequentialType(T *seq_ty);
+  void VisitSequentialType(T *seq_ty);
 
   std::vector<StateSlot> offset_to_slot;
 
@@ -177,9 +177,10 @@ void StateVisitor::Visit(llvm::Type *ty) {
 
   // Array or vector.
   } else if (auto fvt_ty = llvm::dyn_cast<llvm::FixedVectorType>(ty)) {
-    visitSequentialType(fvt_ty);
+    VisitSequentialType(fvt_ty);
   } else if (auto arr_ty = llvm::dyn_cast<llvm::ArrayType>(ty)) {
-    visitSequentialType(arr_ty);
+    VisitSequentialType(arr_ty);
+
   // Primitive type.
   } else if (ty->isIntegerTy() || ty->isFloatingPointTy() ||
              ty->isPointerTy()) {
@@ -198,7 +199,7 @@ void StateVisitor::Visit(llvm::Type *ty) {
 }
 
 template <typename T>
-void StateVisitor::visitSequentialType(T *seq_ty) {
+void StateVisitor::VisitSequentialType(T *seq_ty) {
   uint64_t num_bytes = dl->getTypeAllocSize(seq_ty);
   auto first_ty = seq_ty->getElementType();
   uint64_t el_num_bytes = dl->getTypeAllocSize(first_ty);
@@ -215,7 +216,7 @@ void StateVisitor::visitSequentialType(T *seq_ty) {
     index++;
     offset += num_bytes;
 
-    // This is an array of non-primitive types.
+  // This is an array of non-primitive types.
   } else {
     auto num_elems = num_bytes / el_num_bytes;
     for (uint64_t i = 0; i < num_elems; i++) {
@@ -408,7 +409,7 @@ static void StreamCallOrInvokeToDOT(std::ostream &dot,
   llvm::Value *called_val = nullptr;
   if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(&inst)) {
     dot << "call ";
-    called_val = call_inst->getCalledFunction();
+    called_val = call_inst->getCalledOperand();
   } else {
     dot << "invoke ";
     auto invoke_inst = llvm::dyn_cast<llvm::InvokeInst>(&inst);
@@ -1133,7 +1134,7 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &inst) {
 }
 
 VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
-  const auto val = inst.getCalledFunction()->stripPointerCasts();
+  const auto val = inst.getCalledOperand()->stripPointerCasts();
   if (auto const_val = llvm::dyn_cast<llvm::Constant>(val); const_val) {
 
     // Don't let this affect anything.
@@ -1338,15 +1339,6 @@ bool LiveSetBlockVisitor::VisitBlock(llvm::BasicBlock *block,
     // memory intrinsic or LLVM intrinsic (e.g. bswap).
     } else if (llvm::isa<llvm::CallInst>(inst) ||
                llvm::isa<llvm::InvokeInst>(inst)) {
-
-      llvm::Function *func = nullptr;
-      if (llvm::isa<llvm::CallInst>(inst)) {
-        auto call_inst = llvm::dyn_cast<llvm::CallInst>(inst);
-        func = call_inst->getCalledFunction();
-      } else {
-        auto invoke_inst = llvm::dyn_cast<llvm::InvokeInst>(inst);
-        func = invoke_inst->getCalledFunction();
-      }
 
       // Likely due to a more general failure to analyze this particular
       // function.
