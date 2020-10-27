@@ -31,7 +31,7 @@ if (LLVM_Z3_INSTALL_DIR)
   find_package(Z3 4.7.1)
   set(need_z3 TRUE)
 elseif(DEFINED CXX_COMMON_REPOSITORY_ROOT)
-  set(LLVM_Z3_INSTALL_DIR "${CXX_COMMON_REPOSITORY_ROOT}/z3")
+  set(LLVM_Z3_INSTALL_DIR "${CXX_COMMON_REPOSITORY_ROOT}/z3" CACHE PATH "Path to the z3 installation")
   set(need_z3 TRUE)
 else()
   set(need_z3 FALSE)
@@ -54,11 +54,15 @@ set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 if(DEFINED WIN32)
   set(dynamic_lib_prefix "")
   set(dynamic_lib_extension "dll")
+  set(static_lib_prefix "")
+  set(static_lib_extension "lib")
   set(executable_extension ".exe")
   set(install_folder "${CMAKE_INSTALL_PREFIX}/remill")
 else()
   set(dynamic_lib_prefix "lib")
   set(dynamic_lib_extension "so")
+  set(static_lib_prefix "lib")
+  set(static_lib_extension "a")
   set(executable_extension "")
   set(install_folder "${CMAKE_INSTALL_PREFIX}")
 endif()
@@ -93,9 +97,6 @@ endforeach()
 # These are out-of-order in `LLVM_AVAILABLE_LIBS` and should always be last.
 list(REMOVE_ITEM LLVM_LIBRARIES LLVMMC LLVMCore LLVMSupport)
 list(APPEND LLVM_LIBRARIES LLVMMC LLVMCore LLVMSupport)
-message(WARNING "Libraries: ${LLVM_LIBRARIES}")
-
-
 target_link_libraries(thirdparty_llvm INTERFACE
   ${LLVM_LIBRARIES}
 )
@@ -143,6 +144,17 @@ if(DEFINED WIN32)
   )
 endif()
 
+
+# For Linux builds, group LLVM libraries into a single group
+# that avoids frustrating library ordering issues.
+if(UNIX AND NOT APPLE)
+  set(LINKER_START_GROUP "-Wl,--start-group")
+  set(LINKER_END_GROUP "-Wl,--end-group")
+else()
+  set(LINKER_START_GROUP "")
+  set(LINKER_END_GROUP "")
+endif()
+
 #
 # Configuration options for semantics
 #
@@ -156,65 +168,26 @@ set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}.${LLVM_MINOR_VERSION}")
 math(EXPR REMILL_LLVM_VERSION_NUMBER "${LLVM_MAJOR_VERSION} * 100 + ${LLVM_MINOR_VERSION}")
 
 if(DEFINED WIN32)
-  set(REMILL_INSTALL_SEMANTICS_DIR "${install_folder}/${REMILL_LLVM_VERSION}/semantics/")
+  set(REMILL_INSTALL_SEMANTICS_DIR "${install_folder}/${REMILL_LLVM_VERSION}/semantics" CACHE PATH "Directory into which semantics are installed")
 else()
-  set(REMILL_INSTALL_SEMANTICS_DIR "${install_folder}/share/remill/${REMILL_LLVM_VERSION}/semantics/")
+  set(REMILL_INSTALL_SEMANTICS_DIR "${install_folder}/share/remill/${REMILL_LLVM_VERSION}/semantics" CACHE PATH "Directory into which semantics are installed")
 endif()
 
-set(REMILL_BUILD_SEMANTICS_DIR_X86 "${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/X86/Runtime/")
-set(REMILL_BUILD_SEMANTICS_DIR_AARCH64 "${CMAKE_CURRENT_BINARY_DIR}/remill/Arch/AArch64/Runtime/")
+set(REMILL_BUILD_SEMANTICS_DIR_X86 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/X86/Runtime")
+set(REMILL_BUILD_SEMANTICS_DIR_AARCH64 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/AArch64/Runtime")
+set(REMILL_BUILD_SEMANTICS_DIR_SPARC32 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/SPARC32/Runtime")
+set(REMILL_BUILD_SEMANTICS_DIR_SPARC64 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/SPARC64/Runtime")
 
-# verion data
-add_subdirectory(remill/Version)
+set(REMILL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set(REMILL_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
-add_library(remill STATIC
-  remill/Arch/AArch64/Arch.cpp
-  remill/Arch/AArch64/Decode.cpp
-  remill/Arch/AArch64/Extract.cpp
-  remill/Arch/X86/Arch.cpp
+add_library(remill_settings INTERFACE)
 
-  remill/Arch/Arch.cpp
-  remill/Arch/Instruction.cpp
-  remill/Arch/Name.cpp
-
-  remill/BC/Annotate.cpp
-  remill/BC/DeadStoreEliminator.cpp
-  remill/BC/IntrinsicTable.cpp
-  remill/BC/Lifter.cpp
-  remill/BC/Optimizer.cpp
-  remill/BC/Util.cpp
-
-  remill/OS/Compat.cpp
-  remill/OS/FileSystem.cpp
-  remill/OS/OS.cpp
-)
-
-set_property(TARGET remill PROPERTY POSITION_INDEPENDENT_CODE ON)
-set(THIRDPARTY_LIBRARY_LIST thirdparty_z3 thirdparty_llvm thirdparty_xed thirdparty_glog thirdparty_gflags)
-
-# add everything as public.
-
-if(UNIX AND NOT APPLE)
-  #For Linux builds, group LLVM libraries into a single group
-  # that avoids frustrating library ordering issues
-  set(LINKER_START_GROUP "-Wl,--start-group")
-  set(LINKER_END_GROUP "-Wl,--end-group")
-else()
-  set(LINKER_START_GROUP "")
-  set(LINKER_END_GROUP "")
-endif()
-
-
-target_link_libraries(remill LINK_PUBLIC
-  ${LINKER_START_GROUP} ${THIRDPARTY_LIBRARY_LIST} ${LINKER_END_GROUP}
-  RemillVersion
-)
-
-target_include_directories(remill PUBLIC ${CMAKE_SOURCE_DIR})
+target_include_directories(remill_settings INTERFACE "${REMILL_INCLUDE_DIR}")
 
 if(WIN32)
   # warnings and compiler settings
-  target_compile_options(remill PUBLIC
+  target_compile_options(remill_settings INTERFACE
     /MD /nologo /W3 /EHsc /wd4141 /wd4146 /wd4180 /wd4244
     /wd4258 /wd4267 /wd4291 /wd4345 /wd4351 /wd4355 /wd4456
     /wd4457 /wd4458 /wd4459 /wd4503 /wd4624 /wd4722 /wd4800
@@ -223,7 +196,7 @@ if(WIN32)
     /wd4805 /wd4204 /wd4577 /wd4091 /wd4592 /wd4324
   )
 
-  target_compile_definitions(remill PUBLIC
+  target_compile_definitions(remill_settings INTERFACE
     _CRT_SECURE_NO_DEPRECATE
     _CRT_SECURE_NO_WARNINGS
     _CRT_NONSTDC_NO_DEPRECATE
@@ -235,7 +208,7 @@ if(WIN32)
 
 else()
   # warnings and compiler settings
-  target_compile_options(remill PUBLIC
+  target_compile_options(remill_settings INTERFACE
     -Wall -Wextra -Wno-unused-parameter -Wno-c++98-compat
     -Wno-unreachable-code-return -Wno-nested-anon-types
     -Wno-extended-offsetof
@@ -248,7 +221,7 @@ else()
 
   # Clang-specific warnings/error options
   if("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_C_COMPILER_ID}" STREQUAL "AppleClang")
-    target_compile_options(remill PUBLIC
+    target_compile_options(remill_settings INTERFACE
       -Wgnu-alignof-expression -Wno-gnu-anonymous-struct -Wno-gnu-designator
       -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-statement-expression
       -fno-aligned-allocation
@@ -257,105 +230,65 @@ else()
 
   # debug symbols
   if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    target_compile_options(remill PUBLIC
+    target_compile_options(remill_settings INTERFACE
       -gdwarf-2 -g3
     )
   endif()
 
   # optimization flags and definitions
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(remill PUBLIC
+    target_compile_options(remill_settings INTERFACE
       -O0
     )
-    target_compile_definitions(remill PUBLIC
+    target_compile_definitions(remill_settings INTERFACE
       "DEBUG"
     )
   else()
-    target_compile_options(remill PUBLIC
+    target_compile_options(remill_settings INTERFACE
       -O2
     )
-    target_compile_definitions(remill PUBLIC
+    target_compile_definitions(remill_settings INTERFACE
       "NDEBUG"
     )
   endif()
 endif()
 
-target_compile_definitions(remill PUBLIC
+target_compile_definitions(remill_settings INTERFACE
   "REMILL_INSTALL_SEMANTICS_DIR=\"${REMILL_INSTALL_SEMANTICS_DIR}/\""
   "REMILL_BUILD_SEMANTICS_DIR_X86=\"${REMILL_BUILD_SEMANTICS_DIR_X86}\""
   "REMILL_BUILD_SEMANTICS_DIR_AARCH64=\"${REMILL_BUILD_SEMANTICS_DIR_AARCH64}\""
+  "REMILL_BUILD_SEMANTICS_DIR_SPARC32=\"${REMILL_BUILD_SEMANTICS_DIR_SPARC32}\""
+  "REMILL_BUILD_SEMANTICS_DIR_SPARC64=\"${REMILL_BUILD_SEMANTICS_DIR_SPARC64}\""
+)
+
+set(THIRDPARTY_LIBRARY_LIST thirdparty_z3
+  thirdparty_llvm
+  thirdparty_xed
+  thirdparty_glog
+  thirdparty_gflags)
+
+target_link_libraries(remill_settings INTERFACE
+  ${LINKER_START_GROUP}
+  ${THIRDPARTY_LIBRARY_LIST}
+  ${LINKER_END_GROUP}
+)
+
+add_subdirectory(lib/Arch)
+add_subdirectory(lib/BC)
+add_subdirectory(lib/OS)
+add_subdirectory(lib/Version)
+
+add_library(remill INTERFACE)
+target_link_libraries(remill INTERFACE
+  remill_bc
+  remill_os
+  remill_arch
+  remill_version
 )
 
 #
 # Also install clang, libllvm and llvm-link
 #
-
-function(InstallExternalTarget target_name target_path install_directory installed_file_name)
-  # Get the optional rpath parameter
-  set(additional_arguments ${ARGN})
-  list(LENGTH additional_arguments additional_argument_count)
-
-  if("${additional_argument_count}" EQUAL 0)
-  elseif("${additional_argument_count}" EQUAL 1)
-    list(GET additional_arguments 0 rpath)
-  else()
-    message(FATAL_ERROR "InstallExternalTarget: Invalid argument count")
-  endif()
-
-  # We need to locate the patchelf executable to fix the rpath; search for it
-  # only once, and then export the variable with PARENT_SCOPE so that we can
-  # re-use it in the next calls
-  if(NOT "${rpath}" STREQUAL "")
-    if("${PATCHELF_LOCATION}" STREQUAL "")
-      find_program("program_location" "patchelf")
-      if("${program_location}" STREQUAL "program_location-NOTFOUND")
-        message(FATAL_ERROR "InstallExternalTarget: Failed to locate the patchelf executable")
-      endif()
-
-      # We need to set it both in local and in parent scope
-      set("PATCHELF_LOCATION" "${program_location}" PARENT_SCOPE)
-      set("PATCHELF_LOCATION" "${program_location}")
-    endif()
-  endif()
-
-  # Make sure the parameters are correct
-  if(NOT EXISTS "${target_path}")
-    message(FATAL_ERROR "InstallExternalTarget: The following path does not exists: ${target_path}")
-  endif()
-
-  if("${target_name}")
-    message(FATAL_ERROR "InstallExternalTarget: The following target already exists: ${target_name}")
-  endif()
-
-  if("${install_directory}" STREQUAL "")
-    message(FATAL_ERROR "InstallExternalTarget: Invalid install directory specified")
-  endif()
-
-  # Generate the target
-  set("output_file_path" "${CMAKE_CURRENT_BINARY_DIR}/${installed_file_name}")
-
-  if(NOT "${rpath}" STREQUAL "")
-    set(CHRPATH_COMMAND ${PATCHELF_LOCATION} --set-rpath ${rpath} ${output_file_path})
-  else()
-    set(CHRPATH_COMMAND ${CMAKE_COMMAND} -E echo 'No rpath patch needed for ${target_name}')
-  endif()
-
-  add_custom_command(
-    OUTPUT "${output_file_path}"
-
-    COMMAND "${CMAKE_COMMAND}" -E copy ${target_path} ${output_file_path}
-    COMMAND ${CHRPATH_COMMAND}
-  )
-
-  add_custom_target("${target_name}" ALL DEPENDS "${output_file_path}")
-
-  install(FILES "${output_file_path}"
-    DESTINATION "${install_directory}"
-    PERMISSIONS OWNER_READ OWNER_EXECUTE
-                GROUP_READ GROUP_EXECUTE
-                WORLD_READ WORLD_EXECUTE
-  )
-endfunction()
 
 set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}${executable_extension}")
 set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}${executable_extension}")
@@ -401,15 +334,26 @@ else()
     "${install_folder}/bin" "${INSTALLED_LLVMLINK_NAME}")
 endif()
 
-install(TARGETS "${PROJECT_NAME}"
+install(
+  TARGETS remill_bc remill_arch remill_arch_x86 remill_arch_aarch64
+          remill_arch_sparc32 remill_arch_sparc64 remill_os remill_version
   ARCHIVE DESTINATION "${install_folder}/lib"
   PUBLIC_HEADER DESTINATION "${install_folder}/include"
 )
 
-set(REMILL_LIBRARY_LOCATION "${install_folder}/lib/libremill.a")
+set(REMILL_BC_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_bc.${static_lib_extension}")
+set(REMILL_ARCH_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_arch.${static_lib_extension}")
+set(REMILL_ARCH_X86_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_arch_x86.${static_lib_extension}")
+set(REMILL_ARCH_AARCH64_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_arch_aarch64.${static_lib_extension}")
+set(REMILL_ARCH_SPARC32_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_arch_sparc32.${static_lib_extension}")
+set(REMILL_ARCH_SPARC64_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_arch_sparc64.${static_lib_extension}")
+set(REMILL_OS_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_os.${static_lib_extension}")
+set(REMILL_VERSION_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_version.${static_lib_extension}")
+
+
 set(REMILL_INCLUDE_LOCATION "${install_folder}/include")
-get_target_property(REMILL_COMPILE_OPTIONS remill COMPILE_OPTIONS)
-get_target_property(REMILL_COMPILE_DEFINITIONS remill COMPILE_DEFINITIONS)
+get_target_property(REMILL_COMPILE_OPTIONS remill_settings INTERFACE_COMPILE_OPTIONS)
+get_target_property(REMILL_COMPILE_DEFINITIONS remill_settings INTERFACE_COMPILE_DEFINITIONS)
 
 GetTargetTree(THIRDPARTY_LIBRARIES ${THIRDPARTY_LIBRARY_LIST})
 GetPublicIncludeFolders(THIRDPARTY_INCLUDE_DIRECTORIES ${THIRDPARTY_LIBRARIES})
@@ -450,84 +394,8 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
   DESTINATION "${install_folder}/lib/cmake/remill"
 )
 
-install(FILES 
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Arch.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Instruction.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Name.h"
-
-  DESTINATION "${install_folder}/include/remill/Arch"
-)
-
-install(FILES 
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/ABI.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Annotate.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/DeadStoreEliminator.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/IntrinsicTable.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Lifter.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Optimizer.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Util.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Version.h"
-
-  DESTINATION "${install_folder}/include/remill/BC"
-)
-
-install(FILES 
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/Attributes.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/BitcodeReaderWriter.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/CallingConvention.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/CTypes.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/DataLayout.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/DebugInfo.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/Error.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/FileSystem.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/GlobalValue.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/IRReader.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/JITSymbol.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/RuntimeDyld.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/ScalarTransforms.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/TargetLibraryInfo.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/ToolOutputFile.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/BC/Compat/Verifier.h"
-
-  DESTINATION "${install_folder}/include/remill/BC/Compat"
-)
-
-install(FILES 
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/OS/OS.h"
-  DESTINATION "${install_folder}/include/remill/OS"
-)
-
-install(FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/Definitions.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/HyperCall.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/Intrinsics.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/Operators.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/Runtime.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/State.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/Runtime/Types.h"
-
-  DESTINATION "${install_folder}/include/remill/Arch/Runtime"
-)
-
-install(FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/X86/Runtime/State.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/X86/Runtime/Types.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/X86/Runtime/Operators.h"
-
-  DESTINATION "${install_folder}/include/remill/Arch/X86/Runtime"
-)
-
-install(FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/AArch64/Runtime/State.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/AArch64/Runtime/Types.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Arch/AArch64/Runtime/Operators.h"
-
-  DESTINATION "${install_folder}/include/remill/Arch/AArch64/Runtime"
-)
-
-install(FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/remill/Version/Version.h"
-  DESTINATION "${install_folder}/include/remill/Version"
+install(DIRECTORY "${REMILL_INCLUDE_DIR}/remill"
+  DESTINATION "${install_folder}/include"
 )
 
 #
@@ -535,10 +403,6 @@ install(FILES
 #
 
 add_custom_target(semantics)
-
-# runtimes
-add_subdirectory(remill/Arch/X86/Runtime)
-add_subdirectory(remill/Arch/AArch64/Runtime)
 
 # tools
 add_subdirectory(tools)

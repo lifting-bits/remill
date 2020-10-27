@@ -47,6 +47,9 @@
 #include <string>
 #include <system_error>
 
+DECLARE_string(arch);
+DECLARE_string(os);
+
 DEFINE_uint64(address, 0,
               "Address at which we should assume the bytes are"
               "located in virtual memory.");
@@ -182,23 +185,23 @@ static void MuteStateEscape(llvm::Module *module, const char *func_name) {
   }
 }
 
-static void SetVersion() {
+static void SetVersion(void) {
   std::stringstream ss;
-  auto vs = remill::Version::GetVersionString();
+  auto vs = remill::version::GetVersionString();
   if (0 == vs.size()) {
     vs = "unknown";
   }
   ss << vs << "\n";
-  if (!remill::Version::HasVersionData()) {
+  if (!remill::version::HasVersionData()) {
     ss << "No extended version information found!\n";
   } else {
-    ss << "Commit Hash: " << remill::Version::GetCommitHash() << "\n";
-    ss << "Commit Date: " << remill::Version::GetCommitDate() << "\n";
-    ss << "Last commit by: " << remill::Version::GetAuthorName() << " ["
-       << remill::Version::GetAuthorEmail() << "]\n";
-    ss << "Commit Subject: [" << remill::Version::GetCommitSubject() << "]\n";
+    ss << "Commit Hash: " << remill::version::GetCommitHash() << "\n";
+    ss << "Commit Date: " << remill::version::GetCommitDate() << "\n";
+    ss << "Last commit by: " << remill::version::GetAuthorName() << " ["
+       << remill::version::GetAuthorEmail() << "]\n";
+    ss << "Commit Subject: [" << remill::version::GetCommitSubject() << "]\n";
     ss << "\n";
-    if (remill::Version::HasUncommittedChanges()) {
+    if (remill::version::HasUncommittedChanges()) {
       ss << "Uncommitted changes were present during build.\n";
     } else {
       ss << "All changes were committed prior to building.\n";
@@ -232,7 +235,7 @@ int main(int argc, char *argv[]) {
   // Make sure `--address` and `--entry_address` are in-bounds for the target
   // architecture's address size.
   llvm::LLVMContext context;
-  auto arch = remill::Arch::GetTargetArch(context);
+  auto arch = remill::Arch::Get(context, FLAGS_os, FLAGS_arch);
   const uint64_t addr_mask = ~0ULL >> (64UL - arch->address_size);
   if (FLAGS_address != (FLAGS_address & addr_mask)) {
     std::cerr << "Value " << std::hex << FLAGS_address
@@ -251,8 +254,8 @@ int main(int argc, char *argv[]) {
 
   std::unique_ptr<llvm::Module> module(remill::LoadArchSemantics(arch));
 
-  const auto state_ptr_type = remill::StatePointerType(module.get());
-  const auto mem_ptr_type = remill::MemoryPointerType(module.get());
+  const auto state_ptr_type = arch->StatePointerType();
+  const auto mem_ptr_type = arch->MemoryPointerType();
 
   Memory memory = UnhexlifyInputBytes(addr_mask);
   SimpleTraceManager manager(memory);

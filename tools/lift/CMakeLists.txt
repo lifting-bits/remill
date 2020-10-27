@@ -29,7 +29,7 @@ add_executable(${REMILL_LIFT}
 # target settings
 #
 
-target_link_libraries(${REMILL_LIFT} PRIVATE remill RemillVersion)
+target_link_libraries(${REMILL_LIFT} PRIVATE remill)
 target_include_directories(${REMILL_LIFT} SYSTEM PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
 if(DEFINED WIN32)

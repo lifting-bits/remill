@@ -157,3 +157,71 @@ function(GetPublicIncludeFolders output_variable)
   list(REMOVE_DUPLICATES collected_include_dirs)
   set("${output_variable}" ${collected_include_dirs} PARENT_SCOPE)
 endfunction()
+
+function(InstallExternalTarget target_name target_path install_directory installed_file_name)
+  # Get the optional rpath parameter
+  set(additional_arguments ${ARGN})
+  list(LENGTH additional_arguments additional_argument_count)
+
+  if("${additional_argument_count}" EQUAL 0)
+  elseif("${additional_argument_count}" EQUAL 1)
+    list(GET additional_arguments 0 rpath)
+  else()
+    message(FATAL_ERROR "InstallExternalTarget: Invalid argument count")
+  endif()
+
+  # We need to locate the patchelf executable to fix the rpath; search for it
+  # only once, and then export the variable with PARENT_SCOPE so that we can
+  # re-use it in the next calls
+  if(NOT "${rpath}" STREQUAL "")
+    if("${PATCHELF_LOCATION}" STREQUAL "")
+      find_program("program_location" "patchelf")
+      if("${program_location}" STREQUAL "program_location-NOTFOUND")
+        message(FATAL_ERROR "InstallExternalTarget: Failed to locate the patchelf executable")
+      endif()
+
+      # We need to set it both in local and in parent scope
+      set("PATCHELF_LOCATION" "${program_location}" PARENT_SCOPE)
+      set("PATCHELF_LOCATION" "${program_location}")
+    endif()
+  endif()
+
+  # Make sure the parameters are correct
+  if(NOT EXISTS "${target_path}")
+    message(FATAL_ERROR "InstallExternalTarget: The following path does not exists: ${target_path}")
+  endif()
+
+  if("${target_name}")
+    message(FATAL_ERROR "InstallExternalTarget: The following target already exists: ${target_name}")
+  endif()
+
+  if("${install_directory}" STREQUAL "")
+    message(FATAL_ERROR "InstallExternalTarget: Invalid install directory specified")
+  endif()
+
+  # Generate the target
+  set("output_file_path" "${CMAKE_CURRENT_BINARY_DIR}/${installed_file_name}")
+
+  if(NOT "${rpath}" STREQUAL "")
+    set(CHRPATH_COMMAND ${PATCHELF_LOCATION} --set-rpath ${rpath} ${output_file_path})
+  else()
+    set(CHRPATH_COMMAND ${CMAKE_COMMAND} -E echo 'No rpath patch needed for ${target_name}')
+  endif()
+
+  add_custom_command(
+    OUTPUT "${output_file_path}"
+
+    COMMAND "${CMAKE_COMMAND}" -E copy ${target_path} ${output_file_path}
+    COMMAND ${CHRPATH_COMMAND}
+  )
+
+  add_custom_target("${target_name}" ALL DEPENDS "${output_file_path}")
+
+  install(FILES "${output_file_path}"
+    DESTINATION "${install_directory}"
+    PERMISSIONS OWNER_READ OWNER_EXECUTE
+                GROUP_READ GROUP_EXECUTE
+                WORLD_READ WORLD_EXECUTE
+  )
+endfunction()
+
