@@ -35,7 +35,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "remill/Arch/Float.h"
+#include "remill/Arch/Runtime/Float.h"
 #include "remill/Arch/Runtime/Runtime.h"
 #include "remill/Arch/X86/Runtime/State.h"
 #include "tests/X86/Test.h"

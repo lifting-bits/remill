@@ -18,6 +18,10 @@ Makefile
 CMakeLists.txt.user
 .vscode
 .idea
+.DS_Store
+.cproject
+.project
+.settings
 cmake-build-debug
 cmake-build-release
 compile_commands.json

@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Trail of Bits, Inc.
+# Copyright (c) 2020 Trail of Bits, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,22 +22,80 @@ if(NOT TARGET remill)
     set(REMILL_LIBRARY_LOCATION "@CMAKE_INSTALL_PREFIX@/lib/libremill.a")
     set(REMILL_INCLUDE_LOCATION "@CMAKE_INSTALL_PREFIX@/include")
   endif()
+  
+  # For Linux builds, group LLVM libraries into a single group
+  # that avoids frustrating library ordering issues.
+  if(UNIX AND NOT APPLE)
+    set(LINKER_START_GROUP "-Wl,--start-group")
+    set(LINKER_END_GROUP "-Wl,--end-group")
+  else()
+    set(LINKER_START_GROUP "")
+    set(LINKER_END_GROUP "")
+  endif()
 
   if(NOT "x@CXX_COMMON_REPOSITORY_ROOT@x" STREQUAL "xx")
-    set(CXX_COMMON_REPOSITORY_ROOT "@CXX_COMMON_REPOSITORY_ROOT@")
+    if (EXISTS "@CXX_COMMON_REPOSITORY_ROOT@")
+      set(CXX_COMMON_REPOSITORY_ROOT "@CXX_COMMON_REPOSITORY_ROOT@"
+        CACHE PATH "Location of cxx-common libraries"
+      )
+    endif()
+  endif()
+  
+  if(NOT DEFINED CXX_COMMON_REPOSITORY_ROOT OR NOT EXISTS "${CXX_COMMON_REPOSITORY_ROOT}")
+    if(DEFINED ENV{TRAILOFBITS_LIBRARIES})
+      set(CXX_COMMON_REPOSITORY_ROOT $ENV{TRAILOFBITS_LIBRARIES}
+        CACHE PATH "Location of cxx-common libraries."
+      )
+    endif()
   endif()
 
   set(LLVM_MAJOR_VERSION @LLVM_MAJOR_VERSION@)
   set(LLVM_MINOR_VERSION @LLVM_MINOR_VERSION@)
   set(REMILL_LLVM_VERSION "@LLVM_MAJOR_VERSION@.@LLVM_MINOR_VERSION@")
-
-  add_library(remill STATIC IMPORTED)
-  set_property(TARGET remill PROPERTY IMPORTED_LOCATION "@REMILL_LIBRARY_LOCATION@")
+  
+  add_library(remill_bc STATIC IMPORTED)
+  set_property(TARGET remill_bc PROPERTY IMPORTED_LOCATION "@REMILL_BC_LIBRARY_LOCATION@")
+  
+  add_library(remill_os STATIC IMPORTED)
+  set_property(TARGET remill_os PROPERTY IMPORTED_LOCATION "@REMILL_OS_LIBRARY_LOCATION@")
+  
+  add_library(remill_arch STATIC IMPORTED)
+  set_property(TARGET remill_arch PROPERTY IMPORTED_LOCATION "@REMILL_ARCH_LIBRARY_LOCATION@")
+  
+  add_library(remill_arch_x86 STATIC IMPORTED)
+  set_property(TARGET remill_arch_x86 PROPERTY IMPORTED_LOCATION "@REMILL_ARCH_X86_LIBRARY_LOCATION@")
+  
+  add_library(remill_arch_aarch64 STATIC IMPORTED)
+  set_property(TARGET remill_arch_aarch64 PROPERTY IMPORTED_LOCATION "@REMILL_ARCH_AARCH64_LIBRARY_LOCATION@")
+  
+  add_library(remill_arch_sparc32 STATIC IMPORTED)
+  set_property(TARGET remill_arch_sparc32 PROPERTY IMPORTED_LOCATION "@REMILL_ARCH_SPARC32_LIBRARY_LOCATION@")
+  
+  add_library(remill_arch_sparc64 STATIC IMPORTED)
+  set_property(TARGET remill_arch_sparc64 PROPERTY IMPORTED_LOCATION "@REMILL_ARCH_SPARC64_LIBRARY_LOCATION@")
+  
+  add_library(remill_version STATIC IMPORTED)
+  set_property(TARGET remill_version PROPERTY IMPORTED_LOCATION "@REMILL_VERSION_LIBRARY_LOCATION@")
+  
+  add_library(remill INTERFACE)
+  target_link_libraries(remill INTERFACE
+    ${LINKER_START_GROUP}
+    remill_bc
+    remill_os
+    remill_arch
+    remill_arch_x86
+    remill_arch_aarch64
+    remill_arch_sparc32
+    remill_arch_sparc64
+    remill_version
+    @THIRDPARTY_LIBRARY_FILES@
+    ${LINKER_END_GROUP}
+  )
+  
   target_include_directories(remill INTERFACE @THIRDPARTY_INCLUDE_DIRECTORIES@)
   target_include_directories(remill INTERFACE @REMILL_INCLUDE_LOCATION@)
   target_compile_options(remill INTERFACE @REMILL_COMPILE_OPTIONS@)
   target_compile_definitions(remill INTERFACE @REMILL_COMPILE_DEFINITIONS@)
-  target_link_libraries(remill INTERFACE @THIRDPARTY_LIBRARY_FILES@)
 
   # Add a dummy 'semantics' target to satisfy the protobuf generator
   add_custom_target(semantics)
