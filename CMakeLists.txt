@@ -67,6 +67,11 @@ else()
   set(install_folder "${CMAKE_INSTALL_PREFIX}")
 endif()
 
+set(REMILL_INSTALL_LIB_DIR "${install_folder}/lib" CACHE PATH "Directory in which remill libraries will be installed")
+set(REMILL_INSTALL_BIN_DIR "${install_folder}/bin" CACHE PATH "Directory in which remill binaries will be installed")
+set(REMILL_INSTALL_INCLUDE_DIR "${install_folder}/include" CACHE PATH "Directory in which remill headers will be installed")
+set(REMILL_INSTALL_SHARE_DIR "${install_folder}/share" CACHE PATH "Directory in which remill cmake files will be installed")
+
 #
 # libraries
 #
@@ -170,7 +175,7 @@ math(EXPR REMILL_LLVM_VERSION_NUMBER "${LLVM_MAJOR_VERSION} * 100 + ${LLVM_MINOR
 if(DEFINED WIN32)
   set(REMILL_INSTALL_SEMANTICS_DIR "${install_folder}/${REMILL_LLVM_VERSION}/semantics" CACHE PATH "Directory into which semantics are installed")
 else()
-  set(REMILL_INSTALL_SEMANTICS_DIR "${install_folder}/share/remill/${REMILL_LLVM_VERSION}/semantics" CACHE PATH "Directory into which semantics are installed")
+  set(REMILL_INSTALL_SEMANTICS_DIR "${REMILL_INSTALL_SHARE_DIR}/remill/${REMILL_LLVM_VERSION}/semantics" CACHE PATH "Directory into which semantics are installed")
 endif()
 
 set(REMILL_BUILD_SEMANTICS_DIR_X86 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/X86/Runtime")
@@ -318,40 +323,33 @@ if("${CXX_COMMON_REPOSITORY_ROOT}" STREQUAL "" OR NOT EXISTS "${CXX_COMMON_REPOS
   
   message("InstallExternalTarget: Found libLLVM location: ${libllvm_location}")
 
-  InstallExternalTarget("ext_clang" "${clang_location}" "${install_folder}/bin"
-    "${INSTALLED_CLANG_NAME}" "${install_folder}/lib")
+  InstallExternalTarget("ext_clang" "${clang_location}" "${REMILL_INSTALL_BIN_DIR}"
+    "${INSTALLED_CLANG_NAME}" "${REMILL_INSTALL_LIB_DIR}")
 
-  InstallExternalTarget("ext_llvmlink" "${llvmlink_location}" "${install_folder}/bin"
-    "${INSTALLED_LLVMLINK_NAME}" "${install_folder}/lib")
+  InstallExternalTarget("ext_llvmlink" "${llvmlink_location}" "${REMILL_INSTALL_BIN_DIR}"
+    "${INSTALLED_LLVMLINK_NAME}" "${REMILL_INSTALL_LIB_DIR}")
 
 else()
   # The executable in our binary repository are statically built, meaning that we don't need
   # to change the rpath
   InstallExternalTarget("ext_clang" "${CXX_COMMON_REPOSITORY_ROOT}/llvm/bin/clang${executable_extension}"
-    "${install_folder}/bin" "${INSTALLED_CLANG_NAME}")
+    "${REMILL_INSTALL_BIN_DIR}" "${INSTALLED_CLANG_NAME}")
 
   InstallExternalTarget("ext_llvmlink" "${CXX_COMMON_REPOSITORY_ROOT}/llvm/bin/llvm-link${executable_extension}"
-    "${install_folder}/bin" "${INSTALLED_LLVMLINK_NAME}")
+    "${REMILL_INSTALL_BIN_DIR}" "${INSTALLED_LLVMLINK_NAME}")
 endif()
 
-install(
-  TARGETS remill_bc remill_arch remill_arch_x86 remill_arch_aarch64
-          remill_arch_sparc32 remill_arch_sparc64 remill_os remill_version
-  ARCHIVE DESTINATION "${install_folder}/lib"
-  PUBLIC_HEADER DESTINATION "${install_folder}/include"
-)
-
-set(REMILL_BC_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_bc.${static_lib_extension}")
-set(REMILL_ARCH_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_arch.${static_lib_extension}")
-set(REMILL_ARCH_X86_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_arch_x86.${static_lib_extension}")
-set(REMILL_ARCH_AARCH64_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_arch_aarch64.${static_lib_extension}")
-set(REMILL_ARCH_SPARC32_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_arch_sparc32.${static_lib_extension}")
-set(REMILL_ARCH_SPARC64_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_arch_sparc64.${static_lib_extension}")
-set(REMILL_OS_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_os.${static_lib_extension}")
-set(REMILL_VERSION_LIBRARY_LOCATION "${install_folder}/lib/${static_lib_prefix}remill_version.${static_lib_extension}")
+set(REMILL_BC_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_bc.${static_lib_extension}")
+set(REMILL_ARCH_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_arch.${static_lib_extension}")
+set(REMILL_ARCH_X86_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_arch_x86.${static_lib_extension}")
+set(REMILL_ARCH_AARCH64_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_arch_aarch64.${static_lib_extension}")
+set(REMILL_ARCH_SPARC32_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_arch_sparc32.${static_lib_extension}")
+set(REMILL_ARCH_SPARC64_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_arch_sparc64.${static_lib_extension}")
+set(REMILL_OS_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_os.${static_lib_extension}")
+set(REMILL_VERSION_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_version.${static_lib_extension}")
 
 
-set(REMILL_INCLUDE_LOCATION "${install_folder}/include")
+set(REMILL_INCLUDE_LOCATION "${REMILL_INSTALL_INCLUDE_DIR}")
 get_target_property(REMILL_COMPILE_OPTIONS remill_settings INTERFACE_COMPILE_OPTIONS)
 get_target_property(REMILL_COMPILE_DEFINITIONS remill_settings INTERFACE_COMPILE_DEFINITIONS)
 
@@ -391,11 +389,11 @@ file(GENERATE
 )
 
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
-  DESTINATION "${install_folder}/lib/cmake/remill"
+  DESTINATION "${REMILL_INSTALL_LIB_DIR}/cmake/remill"
 )
 
 install(DIRECTORY "${REMILL_INCLUDE_DIR}/remill"
-  DESTINATION "${install_folder}/include"
+  DESTINATION "${REMILL_INSTALL_INCLUDE_DIR}"
 )
 
 #

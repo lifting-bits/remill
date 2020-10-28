@@ -36,3 +36,9 @@ set_property(TARGET remill_arch_sparc32 PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(remill_arch_sparc32 LINK_PUBLIC
   remill_settings
 )
+
+install(
+  TARGETS remill_arch_sparc32
+  ARCHIVE DESTINATION "${REMILL_INSTALL_LIB_DIR}"
+  PUBLIC_HEADER DESTINATION "${REMILL_INSTALL_INCLUDE_DIR}"
+)

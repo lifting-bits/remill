@@ -36,3 +36,9 @@ target_link_libraries(remill_arch LINK_PUBLIC
   remill_arch_sparc64
   remill_arch_x86
 )
+
+install(
+  TARGETS remill_arch
+  ARCHIVE DESTINATION "${REMILL_INSTALL_LIB_DIR}"
+  PUBLIC_HEADER DESTINATION "${REMILL_INSTALL_INCLUDE_DIR}"
+)

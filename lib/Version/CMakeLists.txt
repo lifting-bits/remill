@@ -13,3 +13,9 @@ include("${CMAKE_SOURCE_DIR}/cmake/git_watcher.cmake")
 add_library(remill_version STATIC ${POST_CONFIGURE_FILE})
 target_include_directories(remill_version PUBLIC "${REMILL_INCLUDE_DIR}")
 add_dependencies(remill_version check_git_${PROJECT_NAME})
+
+install(
+  TARGETS remill_version
+  ARCHIVE DESTINATION "${REMILL_INSTALL_LIB_DIR}"
+  PUBLIC_HEADER DESTINATION "${REMILL_INSTALL_INCLUDE_DIR}"
+)

@@ -40,3 +40,9 @@ set_property(TARGET remill_bc PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(remill_bc LINK_PUBLIC
   remill_settings
 )
+
+install(
+  TARGETS remill_bc
+  ARCHIVE DESTINATION "${REMILL_INSTALL_LIB_DIR}"
+  PUBLIC_HEADER DESTINATION "${REMILL_INSTALL_INCLUDE_DIR}"
+)
