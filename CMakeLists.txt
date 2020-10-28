@@ -273,9 +273,7 @@ set(THIRDPARTY_LIBRARY_LIST thirdparty_z3
   thirdparty_gflags)
 
 target_link_libraries(remill_settings INTERFACE
-  ${LINKER_START_GROUP}
   ${THIRDPARTY_LIBRARY_LIST}
-  ${LINKER_END_GROUP}
 )
 
 add_subdirectory(lib/Arch)
@@ -286,6 +284,7 @@ add_subdirectory(lib/Version)
 add_library(remill INTERFACE)
 target_link_libraries(remill INTERFACE
   ${LINKER_START_GROUP}
+  ${THIRDPARTY_LIBRARY_LIST}
   remill_bc
   remill_os
   remill_arch
@@ -372,10 +371,6 @@ foreach(THIRDPARTY_LIB IN LISTS THIRDPARTY_LIBRARIES)
 endforeach()
 
 list(REMOVE_DUPLICATES THIRDPARTY_LIBRARY_FILES)
-if(NOT "x{$LINKER_START_GROUP}x" STREQUAL "xx")
-  list(INSERT THIRDPARTY_LIBRARY_FILES 0 "${LINKER_START_GROUP}")
-  list(APPEND THIRDPARTY_LIBRARY_FILES "${LINKER_END_GROUP}")
-endif()
 
 # First do the basic substitutions.
 configure_file(
