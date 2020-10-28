@@ -286,8 +286,9 @@ llvm::Value *InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
 llvm::Value *InstructionLifter::LoadRegValue(llvm::BasicBlock *block,
                                              llvm::Value *state_ptr,
                                              std::string_view reg_name) {
-  return new llvm::LoadInst(LoadRegAddress(block, state_ptr, reg_name), "",
-                            block);
+  auto ptr = LoadRegAddress(block, state_ptr, reg_name);
+  auto ptr_ty = ptr->getType()->getPointerElementType();
+  return new llvm::LoadInst(ptr_ty, ptr, "", block);
 }
 
 // Return a register value, or zero.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Trail of Bits, Inc.
+ * Copyright (c) 2020 Trail of Bits, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@
 
 #include <llvm/IR/Instructions.h>
 
+#include "remill/BC/Version.h"
+
 // Hack in a 'FixedVectorType' for LLVM < 11
 namespace llvm {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(11, 0)
@@ -25,7 +27,7 @@ using FixedVectorType = VectorType;
 #endif
 
 
-constexpr auto GetFixedVectorTypeId() {
+inline static constexpr auto GetFixedVectorTypeId(void) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(11, 0)
   return Type::VectorTyID;
 #else

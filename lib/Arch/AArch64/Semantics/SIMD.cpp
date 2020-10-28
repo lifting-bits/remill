@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// Disable the "loop not unrolled warnings"
+#pragma clang diagnostic ignored "-Wpass-failed"
+
 namespace {
 
 template <typename S>

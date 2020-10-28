@@ -102,8 +102,24 @@ void InitFunctionAttributes(llvm::Function *function) {
 llvm::CallInst *AddCall(llvm::BasicBlock *source_block,
                         llvm::Value *dest_func) {
   llvm::IRBuilder<> ir(source_block);
-  auto fn = llvm::dyn_cast<llvm::Function>(dest_func);
-  return ir.CreateCall(fn, LiftedFunctionArgs(source_block));
+  auto args = LiftedFunctionArgs(source_block);
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(11, 0)
+  return ir.CreateCall(dest_func, args);
+#else
+  if (auto func = llvm::dyn_cast<llvm::Function>(dest_func); func) {
+    return ir.CreateCall(func, args);
+
+  } else {
+    llvm::Type *arg_types[kNumBlockArgs];
+    arg_types[kStatePointerArgNum] = args[kStatePointerArgNum]->getType();
+    arg_types[kMemoryPointerArgNum] = args[kMemoryPointerArgNum]->getType();
+    arg_types[kPCArgNum] = args[kPCArgNum]->getType();
+    auto func_type = llvm::FunctionType::get(
+        arg_types[kMemoryPointerArgNum], arg_types, false);
+    llvm::FunctionCallee callee(func_type, dest_func);
+    return ir.CreateCall(callee, args);
+  }
+#endif
 }
 
 // Create a tail-call from one lifted function to another.
