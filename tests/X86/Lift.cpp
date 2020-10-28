@@ -118,9 +118,9 @@ extern "C" int main(int argc, char *argv[]) {
   }
 
   llvm::LLVMContext context;
-  auto os = remill::GetOSName(REMILL_OS);
+  auto os_name = remill::GetOSName(REMILL_OS);
   auto arch_name = remill::GetArchName(FLAGS_arch);
-  auto arch = remill::Arch::Build(&context, os, arch_name);
+  auto arch = remill::Arch::Build(&context, os_name, arch_name);
   auto module = remill::LoadArchSemantics(arch);
 
   remill::IntrinsicTable intrinsics(module.get());
@@ -142,8 +142,8 @@ extern "C" int main(int argc, char *argv[]) {
   }
 
   DLOG(INFO) << "Serializing bitcode to " << FLAGS_bc_out;
-  auto host_arch = remill::Arch::Build(&context, remill::GetOSName(REMILL_OS),
-                                       remill::GetArchName(REMILL_ARCH));
+  auto host_arch = remill::Arch::Build(
+      &context, os_name, remill::GetArchName(REMILL_ARCH));
   host_arch->PrepareModule(module.get());
   remill::StoreModuleToFile(module.get(), FLAGS_bc_out);
 

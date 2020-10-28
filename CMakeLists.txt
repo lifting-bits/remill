@@ -285,10 +285,12 @@ add_subdirectory(lib/Version)
 
 add_library(remill INTERFACE)
 target_link_libraries(remill INTERFACE
+  ${LINKER_START_GROUP}
   remill_bc
   remill_os
   remill_arch
   remill_version
+  ${LINKER_END_GROUP}
 )
 
 #

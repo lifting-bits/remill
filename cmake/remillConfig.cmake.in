@@ -22,6 +22,16 @@ if(NOT TARGET remill)
     set(REMILL_LIBRARY_LOCATION "@CMAKE_INSTALL_PREFIX@/lib/libremill.a")
     set(REMILL_INCLUDE_LOCATION "@CMAKE_INSTALL_PREFIX@/include")
   endif()
+  
+  # For Linux builds, group LLVM libraries into a single group
+  # that avoids frustrating library ordering issues.
+  if(UNIX AND NOT APPLE)
+    set(LINKER_START_GROUP "-Wl,--start-group")
+    set(LINKER_END_GROUP "-Wl,--end-group")
+  else()
+    set(LINKER_START_GROUP "")
+    set(LINKER_END_GROUP "")
+  endif()
 
   if(NOT "x@CXX_COMMON_REPOSITORY_ROOT@x" STREQUAL "xx")
     if (EXISTS "@CXX_COMMON_REPOSITORY_ROOT@")
@@ -69,6 +79,7 @@ if(NOT TARGET remill)
   
   add_library(remill INTERFACE)
   target_link_libraries(remill INTERFACE
+    ${LINKER_START_GROUP}
     remill_bc
     remill_os
     remill_arch
@@ -77,13 +88,14 @@ if(NOT TARGET remill)
     remill_arch_sparc32
     remill_arch_sparc64
     remill_version
+    @THIRDPARTY_LIBRARY_FILES@
+    ${LINKER_END_GROUP}
   )
   
   target_include_directories(remill INTERFACE @THIRDPARTY_INCLUDE_DIRECTORIES@)
   target_include_directories(remill INTERFACE @REMILL_INCLUDE_LOCATION@)
   target_compile_options(remill INTERFACE @REMILL_COMPILE_OPTIONS@)
   target_compile_definitions(remill INTERFACE @REMILL_COMPILE_DEFINITIONS@)
-  target_link_libraries(remill INTERFACE @THIRDPARTY_LIBRARY_FILES@)
 
   # Add a dummy 'semantics' target to satisfy the protobuf generator
   add_custom_target(semantics)
