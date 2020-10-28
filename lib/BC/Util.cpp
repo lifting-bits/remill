@@ -1676,7 +1676,7 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
     }
 
     case llvm::Type::IntegerTyID:
-      switch (auto size = dl.getTypeAllocSize(type)) {
+      switch (dl.getTypeAllocSize(type)) {
         case 1: return ir.CreateCall(intrinsics.write_memory_8, args_3);
         case 2: return ir.CreateCall(intrinsics.write_memory_16, args_3);
         case 4: return ir.CreateCall(intrinsics.write_memory_32, args_3);

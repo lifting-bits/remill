@@ -403,7 +403,7 @@ install(DIRECTORY "${REMILL_INCLUDE_DIR}/remill"
 add_custom_target(semantics)
 
 # tools
-add_subdirectory(tools)
+add_subdirectory(bin)
 
 # tests
 if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_C_COMPILER_ID}" STREQUAL "AppleClang")

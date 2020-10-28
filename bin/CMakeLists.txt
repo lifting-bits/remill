@@ -12,7 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(EXISTS ${CMAKE_SOURCE_DIR}/tools/lift)
-  add_subdirectory(lift)
-endif()
+add_subdirectory(lift)
 

@@ -32,14 +32,8 @@ add_executable(${REMILL_LIFT}
 target_link_libraries(${REMILL_LIFT} PRIVATE remill)
 target_include_directories(${REMILL_LIFT} SYSTEM PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
-if(DEFINED WIN32)
-  set(install_folder "${CMAKE_INSTALL_PREFIX}/remill")
-else()
-  set(install_folder "${CMAKE_INSTALL_PREFIX}")
-endif()
-
 install(
   TARGETS ${REMILL_LIFT}
-  RUNTIME DESTINATION "${install_folder}/bin"
-  LIBRARY DESTINATION "${install_folder}/lib"
+  RUNTIME DESTINATION "${REMILL_INSTALL_BIN_DIR}"
+  LIBRARY DESTINATION "${REMILL_INSTALL_LIB_DIR}"
 )
