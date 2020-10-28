@@ -637,6 +637,9 @@ llvm::Function *DeclareLiftedFunction(llvm::Module *module,
   return func;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 // Returns the type of a state pointer.
 llvm::PointerType *StatePointerType(llvm::Module *module) {
   return llvm::dyn_cast<llvm::PointerType>(
@@ -654,6 +657,8 @@ llvm::IntegerType *AddressType(llvm::Module *module) {
   return llvm::dyn_cast<llvm::IntegerType>(
       LiftedFunctionType(module)->getParamType(kPCArgNum));
 }
+
+#pragma GCC diagnostic pop
 
 // Clone function `source_func` into `dest_func`. This will strip out debug
 // info during the clone.
@@ -1499,7 +1504,7 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
                               type);
 
     case llvm::Type::IntegerTyID:
-      switch (auto size = dl.getTypeAllocSize(type)) {
+      switch (dl.getTypeAllocSize(type)) {
         case 1: return ir.CreateCall(intrinsics.read_memory_8, args_2);
         case 2: return ir.CreateCall(intrinsics.read_memory_16, args_2);
         case 4: return ir.CreateCall(intrinsics.read_memory_32, args_2);

@@ -50,7 +50,8 @@ typedef __int128_t int128_t;
 #elif defined(__sparc__)
 typedef __uint128_t uint128_t;
 typedef __int128_t int128_t;
-#else#  error "Cannot determine (u)int128_t type of unuspported architecture."
+#else
+#  error "Cannot determine (u)int128_t type of unuspported architecture."
 #endif
 
 static_assert(16 == sizeof(uint128_t), "Invalid `uint128_t` size.");

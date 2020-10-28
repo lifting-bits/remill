@@ -73,6 +73,11 @@ enum TableIndicator : uint16_t {
   kLocalDescriptorTable = 1
 };
 
+#ifndef __clang__
+#  define RequestPrivilegeLevel uint16_t
+#  define TableIndicator uint16_t
+#endif
+
 union SegmentSelector final {
   uint16_t flat;
   struct {
@@ -135,6 +140,12 @@ enum FPURoundingControl : uint16_t {
 };
 
 enum FPUInfinityControl : uint16_t { kInfinityProjective, kInfinityAffine };
+
+#ifndef __clang__
+#  define FPUPrecisionControl uint16_t
+#  define FPURoundingControl uint16_t
+#  define FPUInfinityControl uint16_t
+#endif
 
 union FPUControlWord final {
   uint16_t flat;
@@ -216,6 +227,11 @@ enum FPUTag : uint16_t {
 };
 
 enum FPUAbridgedTag : uint8_t { kFPUAbridgedTagEmpty, kFPUAbridgedTagValid };
+
+#ifndef __clang__
+#  define FPUTag uint16_t
+#  define FPUAbridgedTag uint8_t
+#endif
 
 // Note: Stored in top-of-stack order.
 union FPUTagWord final {
@@ -525,6 +541,17 @@ enum CodeSegmentMode : uint64_t {
 };
 
 enum SegmentSystemBit : uint64_t { kSegmentBitSystem, kSegmentBitUser };
+
+#ifndef __clang__
+#  define DescriptorPrivilegeLevel uint64_t
+#  define DescriptorClass uint64_t
+#  define SegmentGranularity uint64_t
+#  define SegmentDefaultOperandSize uint64_t
+#  define SegmentPresentStatus uint64_t
+#  define SystemDescriptorType uint64_t
+#  define CodeSegmentMode uint64_t
+#  define SegmentSystemBit uint64_t
+#endif
 
 struct GenericDescriptor {
   uint64_t unused : 44;

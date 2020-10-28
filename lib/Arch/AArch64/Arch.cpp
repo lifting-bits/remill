@@ -564,6 +564,7 @@ static RegClass ExtendTypeToRegClass(Extend extend) {
     case kExtendSXTW: return kRegW;
     case kExtendSXTX: return kRegX;
   }
+  return kRegX;
 }
 
 static Operand::ShiftRegister::Extend ShiftRegExtendType(Extend extend) {
@@ -674,6 +675,7 @@ static std::string RegName(Action action, RegClass rclass, RegUsage rtype,
     case kRegQ:
     case kRegV: return RegNameFP(action, rclass, rtype, number);
   }
+  return "";
 }
 
 static uint64_t ReadRegSize(RegClass rclass) {
