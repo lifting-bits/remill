@@ -31,12 +31,26 @@ endif(REMILL_BARRIER_AS_NOP)
 
 function(add_runtime_helper target_name little_endian)
   message(" > Generating runtime target: ${target_name}")
+  # Visual C++ requires C++14
+  if(WIN32)
+    set(required_cpp_standard "c++14")
+  else()
+    set(required_cpp_standard "c++17")
+  endif()
+
+  # necessary to build code as 32-bit
+  # on aarch64
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*|arm64.*|ARM64.*)")
+    set(arch_flags "--target=arm-linux-gnueabihf")
+  else()
+    set(arch_flags "-m32")
+  endif()
 
   add_runtime(${target_name}
     SOURCES ${SPARC32RUNTIME_SOURCEFILES}
     ADDRESS_SIZE 32
     DEFINITIONS "LITTLE_ENDIAN=${little_endian}"
-    BCFLAGS "-m32" "-std=c++17" "${EXTRA_BC_FLAGS}"
+    BCFLAGS "${arch_flags}" "-std=${required_cpp_standard}" "${EXTRA_BC_FLAGS}"
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
 
