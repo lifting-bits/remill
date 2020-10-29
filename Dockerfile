@@ -18,8 +18,10 @@ FROM trailofbits/cxx-common:llvm${LLVM_VERSION}-${DISTRO_BASE}-${ARCH} as deps
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && \
+RUN if [ "$(uname -m)" = "aarch64" ]; then dpkg --add-architecture armhf; fi && \
+    apt-get update && \
     if [ "$(uname -m)" = "x86_64" ]; then apt-get install -qqy gcc-multilib g++-multilib; fi && \
+    if [ "$(uname -m)" = "aarch64" ]; then apt-get install -qqy gcc-arm-linux-gnueabihf libstdc++-8-dev:armhf; fi && \
     apt-get install -qqy zlib1g-dev libz3-4 ninja-build ccache git python3 curl coreutils build-essential libtinfo-dev lsb-release && \
     rm -rf /var/lib/apt/lists/*
 

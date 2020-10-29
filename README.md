@@ -4,7 +4,7 @@
      <img src="docs/images/remill_logo.png" />
 </p>
 
-Remill is a static binary translator that translates machine code instructions into [LLVM bitcode](http://llvm.org/docs/LangRef.html). It translates x86 and amd64 machine code (including AVX and AVX512) into LLVM bitcode. AArch64 support is underway.
+Remill is a static binary translator that translates machine code instructions into [LLVM bitcode](http://llvm.org/docs/LangRef.html). It translates AArch64 (64-bit ARMv8), SPARC32 (SPARCv8), SPARC64 (SPARCv9), x86 and amd64 machine code (including AVX and AVX512) into LLVM bitcode. AArch32 (32-bit ARMv8 / ARMv7) support is underway.
 
 Remill focuses on accurately lifting instructions. It is meant to be used as a library for other tools, e.g. [McSema](https://github.com/lifting-bits/mcsema).
 

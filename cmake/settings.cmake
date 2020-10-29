@@ -27,11 +27,13 @@ macro(main)
   #
   # cxx-common
   #
-
-  if(DEFINED ENV{TRAILOFBITS_LIBRARIES})
-    set(CXX_COMMON_REPOSITORY_ROOT $ENV{TRAILOFBITS_LIBRARIES}
-      CACHE PATH "Location of cxx-common libraries."
-    )
+  
+  if(NOT DEFINED CXX_COMMON_REPOSITORY_ROOT)
+    if(DEFINED ENV{TRAILOFBITS_LIBRARIES})
+      set(CXX_COMMON_REPOSITORY_ROOT $ENV{TRAILOFBITS_LIBRARIES}
+        CACHE PATH "Location of cxx-common libraries."
+      )
+    endif()
   endif()
 
   if(DEFINED CXX_COMMON_REPOSITORY_ROOT)
