@@ -5,6 +5,10 @@ set -ex
 #export CMAKE_C_COMPILER_LAUNCHER="$(which ccache)"
 #export CMAKE_CXX_COMPILER_LAUNCHER="$(which ccache)"
 
+export CC=clang
+export CXX=clang++
+export CPP=clang++
+
 git clone --depth 1 https://github.com/ekilmer/vcpkg-lifting-ports.git
 git clone --depth 1 https://github.com/microsoft/vcpkg.git
 
