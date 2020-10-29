@@ -13,9 +13,9 @@
 # limitations under the License.
 
 cmake_minimum_required(VERSION 3.2)
-project(arm_runtime)
+project(AARCH64_runtime)
 
-set(ARMRUNTIME_SOURCEFILES
+set(AARCH64RUNTIME_SOURCEFILES
   Instructions.cpp
   BasicBlock.cpp
   
@@ -36,7 +36,7 @@ function(add_runtime_helper target_name address_bit_size little_endian)
   endif()
 
   add_runtime(${target_name}
-    SOURCES ${ARMRUNTIME_SOURCEFILES}
+    SOURCES ${AARCH64RUNTIME_SOURCEFILES}
     ADDRESS_SIZE ${address_bit_size}
     DEFINITIONS "LITTLE_ENDIAN=${little_endian}"
     BCFLAGS "-std=${required_cpp_standard}"
