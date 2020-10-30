@@ -87,7 +87,6 @@ endforeach()
 # These are out-of-order in `LLVM_AVAILABLE_LIBS` and should always be last.
 list(REMOVE_ITEM LLVM_LIBRARIES LLVMMC LLVMCore LLVMSupport)
 list(APPEND LLVM_LIBRARIES LLVMMC LLVMCore LLVMSupport)
-message(STATUS "LLVM Libraries: ${LLVM_LIBRARIES}")
 
 target_link_libraries(thirdparty_llvm INTERFACE
   ${LLVM_LIBRARIES}
@@ -97,8 +96,14 @@ target_link_libraries(thirdparty_llvm INTERFACE
 # against it correctly
 if (LLVM_WITH_Z3)
   find_package(Z3 CONFIG REQUIRED 4.7.1)
-  target_link_libraries(thirdparty_llvm INTERFACE z3::libz3)
+  get_target_property(LLVMSupport_LIBS LLVMSupport INTERFACE_LINK_LIBRARIES)
+  list(REMOVE_ITEM LLVMSupport_LIBS Z3)
+  list(APPEND LLVMSupport_LIBS z3::libz3)
+  set_target_properties(LLVMSupport PROPERTIES
+	  INTERFACE_LINK_LIBRARIES "${LLVMSupport_LIBS}")
 endif()
+
+message(STATUS "LLVM Libraries: ${LLVM_LIBRARIES}")
 
 # Intel XED
 find_package(XED CONFIG REQUIRED)
@@ -248,7 +253,7 @@ target_compile_definitions(remill_settings INTERFACE
   "REMILL_BUILD_SEMANTICS_DIR_SPARC64=\"${REMILL_BUILD_SEMANTICS_DIR_SPARC64}\""
 )
 
-set(THIRDPARTY_LIBRARY_LIST thirdparty_llvm XED::XED thirdparty_glog thirdparty_gflags)
+set(THIRDPARTY_LIBRARY_LIST thirdparty_llvm thirdparty_xed thirdparty_glog thirdparty_gflags)
 target_link_libraries(remill_settings INTERFACE
   ${THIRDPARTY_LIBRARY_LIST}
 )
