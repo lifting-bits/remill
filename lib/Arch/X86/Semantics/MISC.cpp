@@ -115,13 +115,8 @@ DEF_SEM(DoNothing) {
   return memory;
 }
 
-template <typename S1>
-DEF_SEM(DoNothingWithParam, S1 src1) {
-  return memory;
-}
-
-template <typename S1, typename S2>
-DEF_SEM(DoNothingWithParam, S1 src1, S2 src2) {
+template <typename...Args>
+DEF_SEM(DoNothingWithParam, Args...) {
   return memory;
 }
 
@@ -181,11 +176,11 @@ DEF_ISEL(XLAT) = DoXLAT;
 
 DEF_ISEL(CPUID) = DoCPUID;
 
-DEF_ISEL(UD0_GPR32_MEMd) = DoNothingWithParam<R32, M32>;
+DEF_ISEL(UD0_GPR32_MEMd) = DoNothingWithParam<R32, M32, IF_32BIT_ELSE(R32W, R64W)>;
 
-DEF_ISEL(UD1_GPR32_MEMd) = DoNothingWithParam<R32, M32>;
+DEF_ISEL(UD1_GPR32_MEMd) = DoNothingWithParam<R32, M32, IF_32BIT_ELSE(R32W, R64W)>;
 
-DEF_ISEL(UD2) = DoNothing;
+DEF_ISEL(UD2) = DoNothingWithParam<IF_32BIT_ELSE(R32W, R64W)>;
 
 DEF_ISEL(HLT) = DoNothingWithParam<IF_32BIT_ELSE(R32W, R64W)>;
 
