@@ -218,9 +218,9 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
 }
 
 // Load the address of a register.
-llvm::Value *InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
-                                               llvm::Value *state_ptr,
-                                               std::string_view reg_name_) {
+llvm::Value *InstructionLifter::LoadRegAddress(
+    llvm::BasicBlock *block, llvm::Value *state_ptr,
+    std::string_view reg_name_) const {
   const auto func = block->getParent();
 
   // Invalidate the cache.
@@ -235,15 +235,15 @@ llvm::Value *InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
   auto [reg_ptr_it, added] = impl->reg_ptr_cache.emplace(
       std::move(reg_name), nullptr);
 
-  if (!added) {
-    DCHECK(reg_ptr_it->second != nullptr);
+  if (reg_ptr_it->second) {
+    (void) added;
     return reg_ptr_it->second;
-  }
 
   // It's already a variable in the function.
-  if (const auto reg_ptr = FindVarInFunction(func, reg_name_, true); reg_ptr) {
-    reg_ptr_it->second = reg_ptr;
-    return reg_ptr;
+  } else if (const auto var_ptr = FindVarInFunction(func, reg_name_, true);
+             var_ptr) {
+    reg_ptr_it->second = var_ptr;
+    return var_ptr;
 
   // It's a register known to this architecture, so go and build a GEP to it
   // right now. We'll try to be careful about the placement of the actual
@@ -288,13 +288,20 @@ llvm::Value *InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
   }
 }
 
+// Clear out the cache of the current register values/addresses loaded.
+void InstructionLifter::ClearCache(void) const {
+  impl->reg_ptr_cache.clear();
+  impl->last_func = nullptr;
+}
+
 // Load the value of a register.
-llvm::Value *InstructionLifter::LoadRegValue(llvm::BasicBlock *block,
-                                             llvm::Value *state_ptr,
-                                             std::string_view reg_name) {
+llvm::Value *InstructionLifter::LoadRegValue(
+    llvm::BasicBlock *block, llvm::Value *state_ptr,
+    std::string_view reg_name) const {
   auto ptr = LoadRegAddress(block, state_ptr, reg_name);
+  CHECK_NOTNULL(ptr);
   auto ptr_ty = ptr->getType()->getPointerElementType();
-  return new llvm::LoadInst(ptr_ty, ptr, "", block);
+  return new llvm::LoadInst(ptr_ty, ptr, llvm::Twine::createNull(), block);
 }
 
 // Return a register value, or zero.
@@ -319,7 +326,7 @@ llvm::Value *InstructionLifter::LoadWordRegValOrZero(
       << "machine word size (" << word_type->getBitWidth() << " bits).";
 
   if (val_size < word_size) {
-    val = new llvm::ZExtInst(val, word_type, "", block);
+    val = new llvm::ZExtInst(val, word_type, llvm::Twine::createNull(), block);
   }
 
   return val;
@@ -552,14 +559,16 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
             << word_size << " bits) but is is " << arg_size << " instead "
             << "in instruction at " << std::hex << inst.pc;
 
-        val = new llvm::ZExtInst(val, impl->word_type, "", block);
+        val = new llvm::ZExtInst(val, impl->word_type,
+                                 llvm::Twine::createNull(), block);
 
       } else if (arg_type->isFloatingPointTy()) {
         CHECK(val_type->isFloatingPointTy())
             << "Expected " << arch_reg.name << " to be a floating point type "
             << "for instruction at " << std::hex << inst.pc;
 
-        val = new llvm::FPExtInst(val, arg_type, "", block);
+        val = new llvm::FPExtInst(val, arg_type, llvm::Twine::createNull(),
+                                  block);
       }
 
     } else if (val_size > arg_size) {
@@ -573,14 +582,16 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
             << word_size << " bits) but is is " << arg_size << " instead "
             << "in instruction at " << std::hex << inst.pc;
 
-        val = new llvm::TruncInst(val, arg_type, "", block);
+        val = new llvm::TruncInst(val, arg_type, llvm::Twine::createNull(),
+                                  block);
 
       } else if (arg_type->isFloatingPointTy()) {
         CHECK(val_type->isFloatingPointTy())
             << "Expected " << arch_reg.name << " to be a floating point type "
             << "for instruction at " << std::hex << inst.pc;
 
-        val = new llvm::FPTruncInst(val, arg_type, "", block);
+        val = new llvm::FPTruncInst(val, arg_type, llvm::Twine::createNull(),
+                                    block);
       }
     }
 
