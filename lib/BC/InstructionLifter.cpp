@@ -238,6 +238,12 @@ llvm::Value *InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
   if (!added) {
     DCHECK(reg_ptr_it->second != nullptr);
     return reg_ptr_it->second;
+  }
+
+  // It's already a variable in the function.
+  if (const auto reg_ptr = FindVarInFunction(func, reg_name_, true); reg_ptr) {
+    reg_ptr_it->second = reg_ptr;
+    return reg_ptr;
 
   // It's a register known to this architecture, so go and build a GEP to it
   // right now. We'll try to be careful about the placement of the actual
@@ -276,9 +282,9 @@ llvm::Value *InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
     return reg_ptr;
 
   } else {
-    const auto reg_ptr = FindVarInFunction(func, reg_name_, true);
-    reg_ptr_it->second = reg_ptr;
-    return reg_ptr;
+    LOG(FATAL)
+        << "Could not locate variable or register " << reg_name_;
+    return nullptr;
   }
 }
 
