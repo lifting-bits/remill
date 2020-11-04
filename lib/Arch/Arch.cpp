@@ -365,6 +365,7 @@ bool Arch::IsAMD64(void) const {
 
 bool Arch::IsAArch32(void) const {
   return remill::kArchAArch32LittleEndian == arch_name;
+}
 
 bool Arch::IsAArch64(void) const {
   return remill::kArchAArch64LittleEndian == arch_name;

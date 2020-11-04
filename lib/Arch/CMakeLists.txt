@@ -22,6 +22,7 @@ add_library(remill_arch STATIC
   Name.cpp
 )
 
+add_subdirectory(AArch32)
 add_subdirectory(AArch64)
 add_subdirectory(SPARC32)
 add_subdirectory(SPARC64)
@@ -31,6 +32,7 @@ set_property(TARGET remill_arch PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 target_link_libraries(remill_arch LINK_PUBLIC
   remill_settings
+  remill_arch_aarch32
   remill_arch_aarch64
   remill_arch_sparc32
   remill_arch_sparc64

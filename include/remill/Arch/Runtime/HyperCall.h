@@ -62,6 +62,8 @@ class SyncHyperCall {
     kAArch64Breakpoint,
     kAArch32EmulateInstruction = 0x300U,
 
+    kAArch32CheckNotEL2,
+
     kSPARC32EmulateInstruction = 0x400U,
     kSPARC64EmulateInstruction,
     kSPARCSetAsiRegister,
