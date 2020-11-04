@@ -18,12 +18,33 @@
 
 #include <string>
 #include <vector>
+#include <variant>
+
+namespace llvm {
+class Constant;
+class Type;
+} // namespace llvm
 
 namespace remill {
 
 class Arch;
+class Register;
+class OperandExpression;
 
 enum ArchName : unsigned;
+
+struct LLVMOpExpr{
+  unsigned llvm_opcode {0};
+  OperandExpression *op1 {nullptr};
+  OperandExpression *op2 {nullptr};
+};
+
+
+class OperandExpression : public std::variant<LLVMOpExpr, const Register *, llvm::Constant *, std::string_view> {
+ public:
+  std::string Serialize(void) const;
+  llvm::Type * type {nullptr};
+};
 
 // Generic instruction operand.
 class Operand {
@@ -36,7 +57,8 @@ class Operand {
     kTypeRegister,
     kTypeShiftRegister,
     kTypeImmediate,
-    kTypeAddress
+    kTypeAddress,
+    kTypeExpression,
   } type;
 
   enum Action { kActionInvalid, kActionRead, kActionWrite } action;
@@ -124,6 +146,8 @@ class Operand {
       return kControlFlowTarget == kind;
     }
   } addr;
+
+  OperandExpression * expr;
 
   std::string Serialize(void) const;
 };
@@ -278,6 +302,14 @@ class Instruction {
   inline bool IsNoOp(void) const {
     return kCategoryNoOp == category;
   }
+
+  // This allocates an OperandExpression
+  OperandExpression * AllocateExpression(void);
+
+ private:
+  static constexpr auto kMaxNumExpr = 10u;
+  OperandExpression exprs[kMaxNumExpr];
+  unsigned next_expr_index{0};
 };
 
 }  // namespace remill

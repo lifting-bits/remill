@@ -23,8 +23,29 @@
 
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Name.h"
+#include "remill/BC/Util.h"
+#include <llvm/IR/Instruction.h>
 
 namespace remill {
+
+std::string OperandExpression::Serialize(void) const {
+  std::stringstream ss;
+  if (auto llvm_op = std::get_if<LLVMOpExpr>(this)) {
+    ss << "(" << llvm::Instruction::getOpcodeName(llvm_op->llvm_opcode) << " "
+       << llvm_op->op1->Serialize();
+    if (llvm_op->op2) {
+      ss << " " << llvm_op->op2->Serialize();
+    }
+    ss << ")";
+  } else if (auto reg_op = std::get_if<const Register *>(this)) {
+    ss << (*reg_op)->name;
+  } else if (auto ci_op = std::get_if<llvm::Constant *>(this)) {
+    ss << remill::LLVMThingToString(*ci_op);
+  } else if (auto str_op = std::get_if<std::string_view>(this)) {
+    ss << *str_op;
+  }
+  return ss.str();
+}
 
 Operand::Register::Register(void) : size(0) {}
 
@@ -46,7 +67,8 @@ Operand::Address::Address(void)
 Operand::Operand(void)
     : type(Operand::kTypeInvalid),
       action(Operand::kActionInvalid),
-      size(0) {}
+      size(0),
+      expr(nullptr) {}
 
 namespace {
 static int64_t SignedImmediate(uint64_t val, uint64_t size) {
@@ -246,6 +268,9 @@ std::string Operand::Serialize(void) const {
       }
       ss << ")";  // End of `(ADDR_`.
       break;
+    case Operand::kTypeExpression:
+      ss << expr->Serialize();
+      break;
   }
   ss << ")";
   return ss.str();
@@ -308,6 +333,12 @@ void Instruction::Reset(void) {
   conditions.clear();
   function.clear();
   bytes.clear();
+  next_expr_index = 0;
+}
+
+OperandExpression * Instruction::AllocateExpression(void) {
+  CHECK_LT(next_expr_index, kMaxNumExpr);
+  return &(exprs[next_expr_index++]);
 }
 
 bool Instruction::FinalizeDecode(void) {

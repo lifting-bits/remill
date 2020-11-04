@@ -614,6 +614,65 @@ InstructionLifter::LiftImmediateOperand(Instruction &inst, llvm::BasicBlock *,
   }
 }
 
+// Lift an expression operand.
+llvm::Value *InstructionLifter::LiftExpressionOperand(Instruction &inst,
+                                           llvm::BasicBlock *block,
+                                           llvm::Value *state_ptr,
+                                           llvm::Argument *arg, Operand &op) {
+
+}
+
+// Lift an expression operand.
+llvm::Value* InstructionLifter::LiftExpressionOperand(
+    Instruction &inst, llvm::BasicBlock *block, llvm::Value *state_ptr,
+    llvm::Argument *arg, const OperandExpression *op) {
+  if (auto llvm_op = std::get_if<LLVMOpExpr>(op)) {
+    auto lhs = LiftExpressionOperand(inst, block, state_ptr, nullptr, llvm_op->op1);
+    llvm::Value * rhs = nullptr;
+    if (llvm_op->op2) {
+      rhs = LiftExpressionOperand(inst, block, state_ptr, nullptr, llvm_op->op2);
+    }
+    llvm::IRBuilder<> ir(block);
+    switch (llvm_op->llvm_opcode) {
+      case llvm::Instruction::Add:
+        return ir.CreateAdd(lhs, rhs);
+      case llvm::Instruction::Sub:
+        return ir.CreateSub(lhs, rhs);
+      case llvm::Instruction::Mul:
+        return ir.CreateMul(lhs, rhs);
+      case llvm::Instruction::Shl:
+        return ir.CreateShl(lhs, rhs);
+      case llvm::Instruction::LShr:
+        return ir.CreateLShr(lhs, rhs);
+      case llvm::Instruction::AShr:
+        return ir.CreateAShr(lhs, rhs);
+      case llvm::Instruction::ZExt:
+        return ir.CreateZExt(lhs, op->type);
+      case llvm::Instruction::SExt:
+        return ir.CreateSExt(lhs, op->type);
+      case llvm::Instruction::Trunc:
+        return ir.CreateTrunc(lhs, op->type);
+
+    }
+  } else if (auto reg_op = std::get_if<const Register*>(op)) {
+    if (!arg || !llvm::isa<llvm::PointerType>(arg->getType())) {
+      return LoadRegValue(block, state_ptr, (*reg_op)->name);
+    } else {
+      return LoadRegAddress(block, state_ptr, (*reg_op)->name);
+    }
+
+  } else if (auto ci_op = std::get_if<llvm::Constant*>(op)) {
+    return *ci_op;
+
+  } else if (auto str_op = std::get_if<std::string_view>(op)) {
+    if (!arg || !llvm::isa<llvm::PointerType>(arg->getType())) {
+      return LoadRegValue(block, state_ptr, *str_op);
+    } else {
+      return LoadRegAddress(block, state_ptr, *str_op);
+    }
+  }
+}
+
 // Zero-extend a value to be the machine word size.
 llvm::Value *InstructionLifter::LiftAddressOperand(Instruction &inst,
                                                    llvm::BasicBlock *block,
@@ -718,6 +777,9 @@ InstructionLifter::LiftOperand(Instruction &inst, llvm::BasicBlock *block,
       }
 
       return LiftAddressOperand(inst, block, state_ptr, arg, arch_op);
+
+    case Operand::kTypeExpression:
+      return LiftExpressionOperand(inst, block, state_ptr, arg, arch_op);
   }
 
   LOG(FATAL) << "Got a unknown operand type of "
