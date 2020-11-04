@@ -460,6 +460,12 @@ namespace {
 #  define REMILL_BUILD_SEMANTICS_DIR_X86
 #endif  // REMILL_BUILD_SEMANTICS_DIR_X86
 
+#ifndef REMILL_BUILD_SEMANTICS_DIR_AARCH32
+#  error \
+      "Macro `REMILL_BUILD_SEMANTICS_DIR_AARCH32` must be defined to support AArch64 architecture."
+#  define REMILL_BUILD_SEMANTICS_DIR_AARCH32
+#endif  // REMILL_BUILD_SEMANTICS_DIR_AARCH32
+
 #ifndef REMILL_BUILD_SEMANTICS_DIR_AARCH64
 #  error \
       "Macro `REMILL_BUILD_SEMANTICS_DIR_AARCH64` must be defined to support AArch64 architecture."

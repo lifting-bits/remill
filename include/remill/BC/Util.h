@@ -21,6 +21,7 @@
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
+// clang-format on
 
 // clang-format on
 
