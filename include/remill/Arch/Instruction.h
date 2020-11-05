@@ -28,19 +28,19 @@ class Type;
 namespace remill {
 
 class Arch;
-class Register;
+struct Register;
 class OperandExpression;
 
 enum ArchName : unsigned;
 
 struct LLVMOpExpr{
-  unsigned llvm_opcode {0};
-  OperandExpression *op1 {nullptr};
-  OperandExpression *op2 {nullptr};
+  unsigned llvm_opcode;
+  OperandExpression *op1;
+  OperandExpression *op2;
 };
 
 
-class OperandExpression : public std::variant<LLVMOpExpr, const Register *, llvm::Constant *, std::string_view> {
+class OperandExpression : public std::variant<LLVMOpExpr, const Register *, llvm::Constant *, std::string> {
  public:
   std::string Serialize(void) const;
   llvm::Type * type {nullptr};
@@ -305,9 +305,19 @@ class Instruction {
 
   // This allocates an OperandExpression
   OperandExpression * AllocateExpression(void);
+  OperandExpression * EmplaceRegister(const Register *);
+  OperandExpression * EmplaceConstant(llvm::Constant *);
+  OperandExpression * EmplaceVariable(std::string_view, llvm::Type *);
+  OperandExpression * EmplaceBinaryOp(unsigned opcode, OperandExpression * op1, OperandExpression * op2);
+  OperandExpression * EmplaceUnaryOp(unsigned opcode, OperandExpression * op1, llvm::Type *);
+
+  Operand & EmplaceOperand(const Operand::Register &op);
+  Operand & EmplaceOperand(const Operand::Immediate &op);
+  Operand & EmplaceOperand(const Operand::ShiftRegister &op);
+  Operand & EmplaceOperand(const Operand::Address &op);
 
  private:
-  static constexpr auto kMaxNumExpr = 10u;
+  static constexpr auto kMaxNumExpr = 32u;
   OperandExpression exprs[kMaxNumExpr];
   unsigned next_expr_index{0};
 };

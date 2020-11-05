@@ -615,22 +615,91 @@ InstructionLifter::LiftImmediateOperand(Instruction &inst, llvm::BasicBlock *,
 }
 
 // Lift an expression operand.
-llvm::Value *InstructionLifter::LiftExpressionOperand(Instruction &inst,
-                                           llvm::BasicBlock *block,
-                                           llvm::Value *state_ptr,
-                                           llvm::Argument *arg, Operand &op) {
+llvm::Value* InstructionLifter::LiftExpressionOperand(Instruction &inst,
+                                                      llvm::BasicBlock *block,
+                                                      llvm::Value *state_ptr,
+                                                      llvm::Argument *arg,
+                                                      Operand &op) {
+  auto val = LiftExpressionOperandRec(inst, block, state_ptr, arg, op.expr);
+  llvm::Function *func = block->getParent();
+  llvm::Module *module = func->getParent();
+  const auto real_arg_type = arg->getType();
 
+  // LLVM on AArch64 and on amd64 Windows converts things like `RnW<uint64_t>`,
+  // which is a struct containing a `uint64_t *`, into a `uintptr_t` when they
+  // are being passed as arguments.
+  auto arg_type = IntendedArgumentType(arg);
+
+  if (llvm::isa<llvm::PointerType>(arg_type)) {
+    return ConvertToIntendedType(inst, op, block, val, real_arg_type);
+
+  } else {
+    CHECK(arg_type->isIntegerTy() || arg_type->isFloatingPointTy())
+        << "Expected " << op.Serialize() << " to be an integral or float type "
+        << "for instruction at " << std::hex << inst.pc;
+
+    const llvm::DataLayout data_layout(module);
+    auto val_type = val->getType();
+    auto val_size = data_layout.getTypeAllocSizeInBits(val_type);
+    auto arg_size = data_layout.getTypeAllocSizeInBits(arg_type);
+    const auto word_size = impl->arch->address_size;
+
+    if (val_size < arg_size) {
+      if (arg_type->isIntegerTy()) {
+        CHECK(val_type->isIntegerTy())
+        << "Expected " << op.Serialize() << " to be an integral type "
+        << "for instruction at " << std::hex << inst.pc;
+
+        CHECK(word_size == arg_size)
+        << "Expected integer argument to be machine word size ("
+        << word_size << " bits) but is is " << arg_size << " instead "
+        << "in instruction at " << std::hex << inst.pc;
+
+        val = new llvm::ZExtInst(val, impl->word_type, "", block);
+
+      } else if (arg_type->isFloatingPointTy()) {
+        CHECK(val_type->isFloatingPointTy())
+        << "Expected " << op.Serialize() << " to be a floating point type "
+        << "for instruction at " << std::hex << inst.pc;
+
+        val = new llvm::FPExtInst(val, arg_type, "", block);
+      }
+
+    } else if (val_size > arg_size) {
+      if (arg_type->isIntegerTy()) {
+        CHECK(val_type->isIntegerTy())
+        << "Expected " << op.Serialize() << " to be an integral type "
+        << "for instruction at " << std::hex << inst.pc;
+
+        CHECK(word_size == arg_size)
+        << "Expected integer argument to be machine word size ("
+        << word_size << " bits) but is is " << arg_size << " instead "
+        << "in instruction at " << std::hex << inst.pc;
+
+        val = new llvm::TruncInst(val, arg_type, "", block);
+
+      } else if (arg_type->isFloatingPointTy()) {
+        CHECK(val_type->isFloatingPointTy())
+        << "Expected " << op.Serialize() << " to be a floating point type "
+        << "for instruction at " << std::hex << inst.pc;
+
+        val = new llvm::FPTruncInst(val, arg_type, "", block);
+      }
+    }
+
+    return ConvertToIntendedType(inst, op, block, val, real_arg_type);
+  }
 }
 
 // Lift an expression operand.
-llvm::Value* InstructionLifter::LiftExpressionOperand(
+llvm::Value *InstructionLifter::LiftExpressionOperandRec(
     Instruction &inst, llvm::BasicBlock *block, llvm::Value *state_ptr,
     llvm::Argument *arg, const OperandExpression *op) {
   if (auto llvm_op = std::get_if<LLVMOpExpr>(op)) {
-    auto lhs = LiftExpressionOperand(inst, block, state_ptr, nullptr, llvm_op->op1);
+    auto lhs = LiftExpressionOperandRec(inst, block, state_ptr, nullptr, llvm_op->op1);
     llvm::Value * rhs = nullptr;
     if (llvm_op->op2) {
-      rhs = LiftExpressionOperand(inst, block, state_ptr, nullptr, llvm_op->op2);
+      rhs = LiftExpressionOperandRec(inst, block, state_ptr, nullptr, llvm_op->op2);
     }
     llvm::IRBuilder<> ir(block);
     switch (llvm_op->llvm_opcode) {
@@ -652,6 +721,15 @@ llvm::Value* InstructionLifter::LiftExpressionOperand(
         return ir.CreateSExt(lhs, op->type);
       case llvm::Instruction::Trunc:
         return ir.CreateTrunc(lhs, op->type);
+      case llvm::Instruction::And:
+        return ir.CreateAnd(lhs, rhs);
+      case llvm::Instruction::Or:
+        return ir.CreateOr(lhs, rhs);
+      default:
+        LOG(FATAL)
+            << "Invalid Expression "
+            << llvm::Instruction::getOpcodeName(llvm_op->llvm_opcode) ;
+        return nullptr;
 
     }
   } else if (auto reg_op = std::get_if<const Register*>(op)) {
@@ -664,12 +742,15 @@ llvm::Value* InstructionLifter::LiftExpressionOperand(
   } else if (auto ci_op = std::get_if<llvm::Constant*>(op)) {
     return *ci_op;
 
-  } else if (auto str_op = std::get_if<std::string_view>(op)) {
+  } else if (auto str_op = std::get_if<std::string>(op)) {
     if (!arg || !llvm::isa<llvm::PointerType>(arg->getType())) {
       return LoadRegValue(block, state_ptr, *str_op);
     } else {
       return LoadRegAddress(block, state_ptr, *str_op);
     }
+  } else {
+    LOG(FATAL) << "Uninitialized Operand Expression";
+    return nullptr;
   }
 }
 

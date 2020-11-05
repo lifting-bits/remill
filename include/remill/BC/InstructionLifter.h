@@ -38,6 +38,7 @@ class Arch;
 class Instruction;
 class IntrinsicTable;
 class Operand;
+class OperandExpression;
 class TraceLifter;
 
 enum LiftStatus {
@@ -113,7 +114,7 @@ class InstructionLifter {
                                              llvm::Argument *arg, Operand &op);
 
   // Lift an expression operand.
-  virtual llvm::Value* LiftExpressionOperand(Instruction &inst,
+  virtual llvm::Value* LiftExpressionOperandRec(Instruction &inst,
                                              llvm::BasicBlock *block,
                                              llvm::Value *state_ptr,
                                              llvm::Argument *arg,
