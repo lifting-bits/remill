@@ -1457,11 +1457,15 @@ ALWAYS_INLINE static Memory *__remill_write_memory_128(Memory *mem, addr_t addr,
   return mem;
 }
 
+// Issue #374: https://github.com/lifting-bits/remill/issues/374
+//
+// The builtins may have defined or undefined behavior given a zero, depending
+// on the target arch.
 #define MAKE_BUILTIN(name, size, input_size, builtin, disp) \
   ALWAYS_INLINE static uint##size##_t name(uint##size##_t val) { \
-    return static_cast<uint##size##_t>( \
-               builtin(static_cast<uint##input_size##_t>(val))) - \
-           static_cast<uint##input_size##_t>(disp); \
+    const auto in_val = static_cast<uint##input_size##_t>(val); \
+    return in_val ? (static_cast<uint##size##_t>(builtin(in_val)) - \
+                     static_cast<uint##input_size##_t>(disp)) : size; \
   }
 
 MAKE_BUILTIN(CountLeadingZeros, 8, 32, __builtin_clz, 24)
