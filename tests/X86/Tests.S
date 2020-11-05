@@ -360,6 +360,7 @@ SYMBOL(__x86_test_table_begin):
 
 /* Bring in the rest of the semantic tests. */
 
+#include "tests/X86/AVX/VINSERTF128.S"
 #include "tests/X86/AVX/VZEROUPPER.S"
 #include "tests/X86/AVX/VPBROADCASTB.S"
 

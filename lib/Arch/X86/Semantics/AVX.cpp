@@ -27,9 +27,6 @@ DEF_SEM(DoVZEROUPPER) {
   }
   return memory;
 }
-}  //  namespace
-
-namespace {
 
 template <typename D, typename S1, size_t KL, size_t VL>
 DEF_SEM(VPBROADCASTB, D dst, S1 src1) {
@@ -45,7 +42,21 @@ DEF_SEM(VPBROADCASTB, D dst, S1 src1) {
   return memory;
 }
 
+template<typename S2>
+DEF_SEM(VINSERTF128, VV256W dst, V256 src1, S2 src2, I8 src3) {
+  auto dst_vec = UReadV128(src1);
+  auto src2_vec = UReadV128(src2);
+  auto src3_i8 = Read(src3);
+  std::size_t i = (src3_i8 != 0) ? 1 : 0;
+  dst_vec  = UInsertV128(dst_vec, i, UExtractV128(src2_vec, 0));
+  UWriteV128(dst, dst_vec);
+  return memory;
+}
+
 }  // namespace
+
+DEF_ISEL(VINSERTF128_YMMqq_YMMqq_MEMdq_IMMb) = VINSERTF128<MV128>;
+DEF_ISEL(VINSERTF128_YMMqq_YMMqq_XMMdq_IMMb) = VINSERTF128<V128>;
 
 DEF_ISEL(VZEROUPPER) = DoVZEROUPPER;
 DEF_ISEL(VPBROADCASTB_YMMqq_XMMb) = VPBROADCASTB<VV256W, V128, 32, 256>;
