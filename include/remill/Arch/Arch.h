@@ -17,12 +17,20 @@
 #pragma once
 
 // clang-format off
-#include "remill/BC/Compat/CTypes.h"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#pragma clang diagnostic ignored "-Wdocumentation"
+#pragma clang diagnostic ignored "-Wswitch-enum"
+#include <remill/BC/Compat/CTypes.h>
+#include <remill/BC/Compat/CallingConvention.h>
+
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/IRBuilder.h>
-#include <remill/BC/Compat/CallingConvention.h>
+#pragma clang diagnostic pop
 // clang-format on
 
 #include <functional>

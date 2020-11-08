@@ -16,7 +16,14 @@
 
 #pragma once
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#pragma clang diagnostic ignored "-Wdocumentation"
+#pragma clang diagnostic ignored "-Wswitch-enum"
 #include <llvm/IR/Module.h>
+#pragma clang diagnostic pop
 
 #include <functional>
 #include <initializer_list>
