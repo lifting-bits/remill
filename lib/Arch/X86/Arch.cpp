@@ -791,15 +791,9 @@ class X86Arch final : public Arch {
   // Returns the name of the program counter register.
   std::string_view ProgramCounterRegisterName(void) const override;
 
-  // Decode an instuction.
+  // Decode an instruction.
   bool DecodeInstruction(uint64_t address, std::string_view inst_bytes,
                          Instruction &inst) const override;
-
-  // Fully decode any control-flow transfer instructions, but only partially
-  // decode other instructions. To complete the decoding, call
-  // `Instruction::FinalizeDecode`.
-  bool LazyDecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                             Instruction &inst) const override;
 
   // Maximum number of bytes in an instruction.
   uint64_t MaxInstructionSize(void) const override;
@@ -815,9 +809,6 @@ class X86Arch final : public Arch {
                                   llvm::Function *bb_func) const override;
 
  private:
-  // Decode an instuction.
-  bool DecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                         Instruction &inst, bool is_lazy) const;
 
   X86Arch(void) = delete;
 };
@@ -950,11 +941,13 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
 
 // Decode an instuction.
 bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                                Instruction &inst, bool is_lazy) const {
+                                Instruction &inst) const {
 
   inst.pc = address;
+  inst.arch = this;
   inst.arch_name = arch_name;
   inst.category = Instruction::kCategoryInvalid;
+  inst.operands.clear();
 
   xed_decoded_inst_t xedd_;
   xed_decoded_inst_t *xedd = &xedd_;
@@ -991,93 +984,91 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
 
   auto iform = xed_decoded_inst_get_iform_enum(xedd);
 
-  if (!is_lazy || inst.IsControlFlow()) {
-    inst.function = InstructionFunctionName(xedd);
+  inst.function = InstructionFunctionName(xedd);
 
-    // Lift the operands. This creates the arguments for us to call the
-    // instuction implementation.
-    auto xedi = xed_decoded_inst_inst(xedd);
-    auto num_operands = xed_decoded_inst_noperands(xedd);
-    for (auto i = 0U; i < num_operands; ++i) {
-      auto xedo = xed_inst_operand(xedi, i);
-      if (XED_OPVIS_SUPPRESSED != xed_operand_operand_visibility(xedo)) {
-        DecodeOperand(inst, xedd, xedo);
-      }
+  // Lift the operands. This creates the arguments for us to call the
+  // instuction implementation.
+  auto xedi = xed_decoded_inst_inst(xedd);
+  auto num_operands = xed_decoded_inst_noperands(xedd);
+  for (auto i = 0U; i < num_operands; ++i) {
+    auto xedo = xed_inst_operand(xedi, i);
+    if (XED_OPVIS_SUPPRESSED != xed_operand_operand_visibility(xedo)) {
+      DecodeOperand(inst, xedd, xedo);
+    }
+  }
+
+  // Control flow operands update the next program counter.
+  if (inst.IsControlFlow()) {
+    inst.operands.emplace_back();
+    auto &dst_ret_pc = inst.operands.back();
+    dst_ret_pc.type = Operand::kTypeRegister;
+    dst_ret_pc.action = Operand::kActionWrite;
+    dst_ret_pc.size = address_size;
+    dst_ret_pc.reg.name = "NEXT_PC";
+    dst_ret_pc.reg.size = address_size;
+  }
+
+  if (inst.IsFunctionCall()) {
+    DecodeFallThroughPC(inst, xedd);
+
+    // The semantics will store the return address in `RETURN_PC`. This is to
+    // help synchronize program counters when lifting instructions on an ISA
+    // with delay slots.
+    inst.operands.emplace_back();
+    auto &dst_ret_pc = inst.operands.back();
+    dst_ret_pc.type = Operand::kTypeRegister;
+    dst_ret_pc.action = Operand::kActionWrite;
+    dst_ret_pc.size = address_size;
+    dst_ret_pc.reg.name = "RETURN_PC";
+    dst_ret_pc.reg.size = address_size;
+  }
+
+  if (UsesStopFailure(xedd)) {
+
+    // These instructions might fault and uses the StopFailure to recover.
+    // The new operand `next_pc` is added and the REG_PC is set to next_pc
+    // before calling the StopFailure
+
+    inst.operands.emplace_back();
+    auto &next_pc = inst.operands.back();
+    next_pc.type = Operand::kTypeRegister;
+    next_pc.action = Operand::kActionRead;
+    next_pc.size = address_size;
+    next_pc.reg.name = "NEXT_PC";
+    next_pc.reg.size = address_size;
+  }
+
+  // All non-control FPU instructions update the last instruction pointer
+  // and opcode.
+  if (XED_ISA_SET_X87 == xed_decoded_inst_get_isa_set(xedd) ||
+      XED_ISA_SET_FCMOV == xed_decoded_inst_get_isa_set(xedd) ||
+      XED_CATEGORY_X87_ALU == xed_decoded_inst_get_category(xedd)) {
+    auto set_ip_dp = false;
+    const auto get_attr = xed_decoded_inst_get_attribute;
+    switch (iform) {
+      case XED_IFORM_FNOP:
+      case XED_IFORM_FINCSTP:
+      case XED_IFORM_FDECSTP:
+      case XED_IFORM_FFREE_X87:
+      case XED_IFORM_FFREEP_X87: set_ip_dp = true; break;
+      default:
+        set_ip_dp = !get_attr(xedd, XED_ATTRIBUTE_X87_CONTROL) &&
+                    !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_CW) &&
+                    !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_R) &&
+                    !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_W) &&
+                    !get_attr(xedd, XED_ATTRIBUTE_X87_NOWAIT);
+        break;
     }
 
-    // Control flow operands update the next program counter.
-    if (inst.IsControlFlow()) {
-      inst.operands.emplace_back();
-      auto &dst_ret_pc = inst.operands.back();
-      dst_ret_pc.type = Operand::kTypeRegister;
-      dst_ret_pc.action = Operand::kActionWrite;
-      dst_ret_pc.size = address_size;
-      dst_ret_pc.reg.name = "NEXT_PC";
-      dst_ret_pc.reg.size = address_size;
+    if (set_ip_dp) {
+      DecodeX87LastIpDp(inst);
     }
+  }
 
-    if (inst.IsFunctionCall()) {
-      DecodeFallThroughPC(inst, xedd);
-
-      // The semantics will store the return address in `RETURN_PC`. This is to
-      // help synchronize program counters when lifting instructions on an ISA
-      // with delay slots.
-      inst.operands.emplace_back();
-      auto &dst_ret_pc = inst.operands.back();
-      dst_ret_pc.type = Operand::kTypeRegister;
-      dst_ret_pc.action = Operand::kActionWrite;
-      dst_ret_pc.size = address_size;
-      dst_ret_pc.reg.name = "RETURN_PC";
-      dst_ret_pc.reg.size = address_size;
-    }
-
-    if (UsesStopFailure(xedd)) {
-
-      // These instructions might fault and uses the StopFailure to recover.
-      // The new operand `next_pc` is added and the REG_PC is set to next_pc
-      // before calling the StopFailure
-
-      inst.operands.emplace_back();
-      auto &next_pc = inst.operands.back();
-      next_pc.type = Operand::kTypeRegister;
-      next_pc.action = Operand::kActionRead;
-      next_pc.size = address_size;
-      next_pc.reg.name = "NEXT_PC";
-      next_pc.reg.size = address_size;
-    }
-
-    // All non-control FPU instructions update the last instruction pointer
-    // and opcode.
-    if (XED_ISA_SET_X87 == xed_decoded_inst_get_isa_set(xedd) ||
-        XED_ISA_SET_FCMOV == xed_decoded_inst_get_isa_set(xedd) ||
-        XED_CATEGORY_X87_ALU == xed_decoded_inst_get_category(xedd)) {
-      auto set_ip_dp = false;
-      const auto get_attr = xed_decoded_inst_get_attribute;
-      switch (iform) {
-        case XED_IFORM_FNOP:
-        case XED_IFORM_FINCSTP:
-        case XED_IFORM_FDECSTP:
-        case XED_IFORM_FFREE_X87:
-        case XED_IFORM_FFREEP_X87: set_ip_dp = true; break;
-        default:
-          set_ip_dp = !get_attr(xedd, XED_ATTRIBUTE_X87_CONTROL) &&
-                      !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_CW) &&
-                      !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_R) &&
-                      !get_attr(xedd, XED_ATTRIBUTE_X87_MMX_STATE_W) &&
-                      !get_attr(xedd, XED_ATTRIBUTE_X87_NOWAIT);
-          break;
-      }
-
-      if (set_ip_dp) {
-        DecodeX87LastIpDp(inst);
-      }
-    }
-
-    if (xed_decoded_inst_is_xacquire(xedd) ||
-        xed_decoded_inst_is_xrelease(xedd)) {
-      LOG(ERROR) << "Ignoring XACQUIRE/XRELEASE prefix at " << std::hex
-                 << inst.pc << std::dec;
-    }
+  if (xed_decoded_inst_is_xacquire(xedd) ||
+      xed_decoded_inst_is_xrelease(xedd)) {
+    LOG(ERROR) << "Ignoring XACQUIRE/XRELEASE prefix at " << std::hex
+               << inst.pc << std::dec;
   }
 
   // Make sure we disallow decoding of AVX instructions when running with non-
@@ -1188,28 +1179,6 @@ std::string_view X86Arch::StackPointerRegisterName(void) const {
 // Returns the name of the program counter register.
 std::string_view X86Arch::ProgramCounterRegisterName(void) const {
   return kPCNames[IsX86()];
-}
-
-bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                                Instruction &inst) const {
-  inst.arch_for_decode = nullptr;
-  return DecodeInstruction(address, inst_bytes, inst, false);
-}
-
-// Fully decode any control-flow transfer instructions, but only partially
-// decode other instructions.
-bool X86Arch::LazyDecodeInstruction(uint64_t address,
-                                    std::string_view inst_bytes,
-                                    Instruction &inst) const {
-  inst.arch_for_decode = nullptr;
-  if (DecodeInstruction(address, inst_bytes, inst, true)) {
-    if (!inst.IsControlFlow()) {
-      inst.arch_for_decode = this;
-    }
-    return true;
-  } else {
-    return false;
-  }
 }
 
 // Populate the `__remill_basic_block` function with variables.

@@ -1922,6 +1922,171 @@ DEF_ISEL(PINSRW_XMMdq_GPR32_IMMb) = PINSRW<V128W, V128, R32>;
 IF_AVX(DEF_ISEL(VPINSRW_XMMdq_XMMdq_MEMw_IMMb) = PINSRW<VV128W, V128, M16>);
 IF_AVX(DEF_ISEL(VPINSRW_XMMdq_XMMdq_GPR32d_IMMb) = PINSRW<VV128W, V128, R32>);
 
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PFMUL, D dst, S1 src_dst, S2 src) {
+  auto src1 = FReadV32(src_dst);
+  auto src2 = FReadV32(src);
+  FWriteV32(dst, FMulV32(src1, src2));
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PFADD, D dst, S1 src_dst, S2 src) {
+  auto src1 = FReadV32(src_dst);
+  auto src2 = FReadV32(src);
+  FWriteV32(dst, FAddV32(src1, src2));
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PFSUB, D dst, S1 src_dst, S2 src) {
+  auto src1 = FReadV32(src_dst);
+  auto src2 = FReadV32(src);
+  FWriteV32(dst, FSubV32(src1, src2));
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PFSUBR, D dst, S1 src_dst, S2 src) {
+  auto src1 = FReadV32(src);
+  auto src2 = FReadV32(src_dst);
+  FWriteV32(dst, FSubV32(src1, src2));
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PFMAX, D dst, S1 src_dst, S2 src) {
+  auto src1 = FReadV32(src_dst);
+  auto src2 = FReadV32(src);
+  auto out = src1;
+  _Pragma("unroll")
+  for (auto i = 0u; i < 2; ++i) {
+    auto s1_val = FExtractV32(src1, i);
+    auto s2_val = FExtractV32(src2, i);
+    if (!std::isunordered(s1_val, s2_val) && s2_val > s1_val) {
+      out = FInsertV32(out, i, s2_val);
+    }
+  }
+  FWriteV32(dst, out);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PFMIN, D dst, S1 src_dst, S2 src) {
+  auto src1 = FReadV32(src_dst);
+  auto src2 = FReadV32(src);
+  auto out = src1;
+  _Pragma("unroll")
+  for (auto i = 0u; i < 2; ++i) {
+    auto s1_val = FExtractV32(src1, i);
+    auto s2_val = FExtractV32(src2, i);
+    if (!std::isunordered(s1_val, s2_val) && s2_val < s1_val) {
+      out = FInsertV32(out, i, s2_val);
+    }
+  }
+  FWriteV32(dst, out);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PFCMPGT, D dst, S1 src_dst, S2 src) {
+  auto src1 = FReadV32(src_dst);
+  auto src2 = FReadV32(src);
+  uint32v2_t out = {};
+  _Pragma("unroll")
+  for (auto i = 0u; i < 2; ++i) {
+    auto s1_val = FExtractV32(src1, i);
+    auto s2_val = FExtractV32(src2, i);
+    if (!std::isunordered(s1_val, s2_val) && s1_val > s2_val) {
+      out.elems[i] = ~0u;
+    }
+  }
+  UWriteV32(dst, out);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PFCMPGE, D dst, S1 src_dst, S2 src) {
+  auto src1 = FReadV32(src_dst);
+  auto src2 = FReadV32(src);
+  uint32v2_t out = {};
+  _Pragma("unroll")
+  for (auto i = 0u; i < 2; ++i) {
+    auto s1_val = FExtractV32(src1, i);
+    auto s2_val = FExtractV32(src2, i);
+    if (!std::isunordered(s1_val, s2_val) && s1_val >= s2_val) {
+      out.elems[i] = ~0u;
+    }
+  }
+  UWriteV32(dst, out);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PFCMPEQ, D dst, S1 src_dst, S2 src) {
+  auto src1 = FReadV32(src_dst);
+  auto src2 = FReadV32(src);
+  uint32v2_t out = {};
+  _Pragma("unroll")
+  for (auto i = 0u; i < 2; ++i) {
+    auto s1_val = FExtractV32(src1, i);
+    auto s2_val = FExtractV32(src2, i);
+    if (!std::isunordered(s1_val, s2_val) && s1_val == s2_val) {
+      out.elems[i] = ~0u;
+    }
+  }
+  UWriteV32(dst, out);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PFRSQRT, D dst, S1, S2 src) {
+  auto src2 = FReadV32(src);
+  auto out = FClearV32(FReadV32(dst));
+  out = FInsertV32(out, 0, FDiv(1.0f, SquareRoot32(memory, state, FExtractV32(src2, 0))));
+  out = FInsertV32(out, 1, FDiv(1.0f, SquareRoot32(memory, state, FExtractV32(src2, 1))));
+  FWriteV32(dst, out);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(PFACC, D dst, S1 src_dst, S2 src) {
+  auto src1 = FReadV32(src_dst);
+  auto src2 = FReadV32(src);
+  auto out = FClearV32(FReadV32(dst));
+  out = FInsertV32(out, 0, FAdd(FExtractV32(src1, 0), FExtractV32(src1, 1)));
+  out = FInsertV32(out, 1, FAdd(FExtractV32(src2, 0), FExtractV32(src2, 1)));
+  FWriteV32(dst, out);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(PFMUL_MMXq_MEMq) = PFMUL<V64W, V64, MV64>;
+DEF_ISEL(PFMUL_MMXq_MMXq) = PFMUL<V64W, V64, V64>;
+DEF_ISEL(PFADD_MMXq_MEMq) = PFADD<V64W, V64, MV64>;
+DEF_ISEL(PFADD_MMXq_MMXq) = PFADD<V64W, V64, V64>;
+DEF_ISEL(PFSUB_MMXq_MEMq) = PFSUB<V64W, V64, MV64>;
+DEF_ISEL(PFSUB_MMXq_MMXq) = PFSUB<V64W, V64, V64>;
+DEF_ISEL(PFSUBR_MMXq_MEMq) = PFSUBR<V64W, V64, MV64>;
+DEF_ISEL(PFSUBR_MMXq_MMXq) = PFSUBR<V64W, V64, V64>;
+DEF_ISEL(PFMAX_MMXq_MEMq) = PFMAX<V64W, V64, MV64>;
+DEF_ISEL(PFMAX_MMXq_MMXq) = PFMAX<V64W, V64, V64>;
+DEF_ISEL(PFMIN_MMXq_MEMq) = PFMIN<V64W, V64, MV64>;
+DEF_ISEL(PFMIN_MMXq_MMXq) = PFMIN<V64W, V64, V64>;
+DEF_ISEL(PFCMPGT_MMXq_MEMq) = PFCMPGT<V64W, V64, MV64>;
+DEF_ISEL(PFCMPGT_MMXq_MMXq) = PFCMPGT<V64W, V64, V64>;
+DEF_ISEL(PFCMPGE_MMXq_MEMq) = PFCMPGE<V64W, V64, MV64>;
+DEF_ISEL(PFCMPGE_MMXq_MMXq) = PFCMPGE<V64W, V64, V64>;
+DEF_ISEL(PFCMPEQ_MMXq_MEMq) = PFCMPEQ<V64W, V64, MV64>;
+DEF_ISEL(PFCMPEQ_MMXq_MMXq) = PFCMPEQ<V64W, V64, V64>;
+DEF_ISEL(PFRSQRT_MMXq_MEMq) = PFRSQRT<V64W, V64, MV64>;
+DEF_ISEL(PFRSQRT_MMXq_MMXq) = PFRSQRT<V64W, V64, V64>;
+DEF_ISEL(PFACC_MMXq_MEMq) = PFACC<V64W, V64, MV64>;
+DEF_ISEL(PFACC_MMXq_MMXq) = PFACC<V64W, V64, V64>;
+
 /*
 5547 VPINSRW VPINSRW_XMMu16_XMMu16_GPR32u16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_128N ATTRIBUTES:
 5548 VPINSRW VPINSRW_XMMu16_XMMu16_MEMu16_IMM8_AVX512 AVX512 AVX512EVEX AVX512BW_128N ATTRIBUTES: DISP8_GPR_READER_WORD
@@ -1962,8 +2127,6 @@ DEF_ISEL(FEMMS) = DoEMMS;
 
 // 1584:353 PSUBD PSUBD_MMXq_MEMq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 1588:354 PSUBD PSUBD_MMXq_MMXq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
-// 1760:388 PHADDSW PHADDSW_MMXq_MEMq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
-// 1764:389 PHADDSW PHADDSW_MMXq_MMXq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
 // 1925:425 PSADBW PSADBW_MMXq_MEMq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 1929:426 PSADBW PSADBW_MMXq_MMXq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 2197:482 PADDUSW PADDUSW_MMXq_MEMq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
@@ -2003,10 +2166,6 @@ DEF_ISEL(FEMMS) = DoEMMS;
 // 3862:843 PABSW PABSW_MMXq_MMXq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
 // 4019:876 PMULHUW PMULHUW_MMXq_MEMq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 4023:877 PMULHUW PMULHUW_MMXq_MMXq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
-// 4095:895 PHADDD PHADDD_MMXq_MEMq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
-// 4099:896 PHADDD PHADDD_MMXq_MMXq MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
-// 4111:899 POR POR_MMXq_MEMq LOGICAL MMX PENTIUMMMX ATTRIBUTES: NOTSX
-// 4115:900 POR POR_MMXq_MMXq LOGICAL MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 4385:950 PSLLD PSLLD_MMXq_IMMb MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 4393:952 PSLLD PSLLD_MMXq_MEMq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 4397:953 PSLLD PSLLD_MMXq_MMXq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
@@ -2020,8 +2179,6 @@ DEF_ISEL(FEMMS) = DoEMMS;
 // 4688:1018 PSUBUSB PSUBUSB_MMXq_MMXq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 4784:1038 PMOVMSKB PMOVMSKB_GPR32_MMXq MMX MMX SSE ATTRIBUTES: NOTSX
 
-// 5054:1088 PANDN PANDN_MMXq_MEMq LOGICAL MMX PENTIUMMMX ATTRIBUTES: NOTSX
-// 5058:1089 PANDN PANDN_MMXq_MMXq LOGICAL MMX PENTIUMMMX ATTRIBUTES: NOTSX
 // 5203:1120 PALIGNR PALIGNR_MMXq_MEMq_IMMb MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
 // 5208:1121 PALIGNR PALIGNR_MMXq_MMXq_IMMb MMX SSSE3 SSSE3 ATTRIBUTES: NOTSX
 // 5258:1131 PMULHW PMULHW_MMXq_MEMq MMX MMX PENTIUMMMX ATTRIBUTES: NOTSX

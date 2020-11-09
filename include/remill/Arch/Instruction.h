@@ -135,8 +135,6 @@ class Instruction {
 
   void Reset(void);
 
-  bool FinalizeDecode(void);
-
   // Name of semantics function that implements this instruction.
   std::string function;
 
@@ -160,7 +158,7 @@ class Instruction {
 
   // Pointer to the `remill::Arch` used to complete the decoding of this
   // instruction.
-  const Arch *arch_for_decode;
+  const Arch *arch;
 
   // Does the instruction require the use of the `__remill_atomic_begin` and
   // `__remill_atomic_end`?
