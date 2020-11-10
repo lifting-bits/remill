@@ -396,24 +396,37 @@ static void ExpandTo32AddImmAddCarry(Instruction &inst, uint32_t imm12,
   }
 }
 
+
+// Do an extraction and zero extension on an expression
+static void ExtractAndZExtExpr(Instruction &inst, Operand &op,
+                                          unsigned int extract_size,
+                                          unsigned int extend_size) {
+  auto extract_type = llvm::Type::getIntNTy(*(inst.arch_for_decode->context),
+                                            extract_size);
+  auto extend_type = llvm::Type::getIntNTy(*(inst.arch_for_decode->context),
+                                           extend_size);
+  // Extract bits
+  inst.operands.back().expr = inst.EmplaceUnaryOp(llvm::Instruction::Trunc,
+                                                      op.expr,
+                                                      extract_type);
+  // ZExtend operand back to I8
+  inst.operands.back().expr = inst.EmplaceUnaryOp(llvm::Instruction::ZExt,
+                                                      op.expr,
+                                                      extend_type);
+}
+
 // Note: this has no RRX shift operation
 static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
                                   uint32_t shift_type, uint32_t shift_reg_num,
                                   bool carry_out) {
   auto _32_type = llvm::Type::getInt32Ty(*(inst.arch_for_decode->context));
   auto _8_type = llvm::Type::getInt8Ty(*(inst.arch_for_decode->context));
-  auto _1_type = llvm::Type::getInt1Ty(*(inst.arch_for_decode->context));
 
   AddIntRegOp(inst, reg_num, 32u, Operand::kActionRead);
 
   // Create expression for the low 8 bits of the shift register
   AddIntRegOp(inst, shift_reg_num, 32u, Operand::kActionRead);
-  inst.operands.back().expr = inst.EmplaceUnaryOp(llvm::Instruction::Trunc,
-                                                    inst.operands.back().expr,
-                                                    _8_type);
-  inst.operands.back().expr = inst.EmplaceUnaryOp(llvm::Instruction::ZExt,
-                                                    inst.operands.back().expr,
-                                                    _32_type);
+  ExtractAndZExtExpr(inst, inst.operands.back(), 8u, 32u);
   auto shift_val_expr = inst.operands.back().expr;
   inst.operands.pop_back();
 
@@ -478,14 +491,8 @@ static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
       break;
   }
   if (carry_out) {
-    // Extract sign bit
-    inst.operands.back().expr = inst.EmplaceUnaryOp(llvm::Instruction::Trunc,
-                                                    inst.operands.back().expr,
-                                                    _1_type);
-    // ZExtend operand back to I8
-    inst.operands.back().expr = inst.EmplaceUnaryOp(llvm::Instruction::ZExt,
-                                                    inst.operands.back().expr,
-                                                    _8_type);
+    // Extract the sign bit and extend back to I8
+    ExtractAndZExtExpr(inst, inst.operands.back(), 1u, 8u);
   }
 }
 
