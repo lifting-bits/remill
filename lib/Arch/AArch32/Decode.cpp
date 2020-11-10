@@ -23,23 +23,23 @@ namespace remill {
 namespace {
 
 //Integer Data Processing (three register, register shift)
-//union IntDataProcessingRRRR {
-//  uint32_t flat;
-//  struct {
-//    uint32_t rm : 4;
-//    uint32_t _1 : 1;
-//    uint32_t type : 2;
-//    uint32_t _0 : 1;
-//    uint32_t rs : 4;
-//    uint32_t rd : 4;
-//    uint32_t rn : 4;
-//    uint32_t s : 1;
-//    uint32_t opc : 3;
-//    uint32_t _0000 : 4;
-//    uint32_t cond : 4;
-//  } __attribute__((packed));
-//} __attribute__((packed));
-//static_assert(sizeof(IntDataProcessingRRRR) == 4, " ");
+union IntDataProcessingRRRR {
+  uint32_t flat;
+  struct {
+    uint32_t rm : 4;
+    uint32_t _1 : 1;
+    uint32_t type : 2;
+    uint32_t _0 : 1;
+    uint32_t rs : 4;
+    uint32_t rd : 4;
+    uint32_t rn : 4;
+    uint32_t s : 1;
+    uint32_t opc : 3;
+    uint32_t _0000 : 4;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(IntDataProcessingRRRR) == 4, " ");
 
 //Integer Data Processing (three register, immediate shift)
 union IntDataProcessingRRRI {
@@ -128,23 +128,23 @@ union IntTestCompRRI {
 static_assert(sizeof(IntTestCompRRI) == 4, " ");
 
 // Integer Test and Compare (two register, register shift)
-//union IntTestCompRRR {
-//  uint32_t flat;
-//  struct {
-//    uint32_t rm : 4;
-//    uint32_t _1 : 1;
-//    uint32_t type : 2;
-//    uint32_t _0 : 1;
-//    uint32_t rs : 4;
-//    uint32_t _0000 : 4;
-//    uint32_t rn  : 4;
-//    uint32_t _1a : 1;
-//    uint32_t opc : 2;
-//    uint32_t _00010 : 5;
-//    uint32_t cond : 4;
-//  } __attribute__((packed));
-//} __attribute__((packed));
-//static_assert(sizeof(IntTestCompRRR) == 4, " ");
+union IntTestCompRRR {
+  uint32_t flat;
+  struct {
+    uint32_t rm : 4;
+    uint32_t _1_b4 : 1;
+    uint32_t type : 2;
+    uint32_t _0 : 1;
+    uint32_t rs : 4;
+    uint32_t _0000 : 4;
+    uint32_t rn  : 4;
+    uint32_t _1_b20 : 1;
+    uint32_t opc : 2;
+    uint32_t _00010 : 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(IntTestCompRRR) == 4, " ");
 
 // Integer Test and Compare (one register and immediate)
 union IntTestCompRI {
@@ -180,23 +180,23 @@ union LogicalArithRRRI {
 static_assert(sizeof(LogicalArithRRRI) == 4, " ");
 
 // Logical Arithmetic (three register, register shift)
-//union LogicalArithRRRR {
-//  uint32_t flat;
-//  struct {
-//    uint32_t rm  : 4;
-//    uint32_t _1 : 1;
-//    uint32_t type : 2;
-//    uint32_t _0 : 1;
-//    uint32_t rs : 4;
-//    uint32_t rd : 4;
-//    uint32_t rn  : 4;
-//    uint32_t s : 1;
-//    uint32_t opc : 2;
-//    uint32_t _00011 : 5;
-//    uint32_t cond : 4;
-//  } __attribute__((packed));
-//} __attribute__((packed));
-//static_assert(sizeof(LogicalArithRRRR) == 4, " ");
+union LogicalArithRRRR {
+  uint32_t flat;
+  struct {
+    uint32_t rm  : 4;
+    uint32_t _1 : 1;
+    uint32_t type : 2;
+    uint32_t _0 : 1;
+    uint32_t rs : 4;
+    uint32_t rd : 4;
+    uint32_t rn  : 4;
+    uint32_t s : 1;
+    uint32_t opc : 2;
+    uint32_t _00011 : 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(LogicalArithRRRR) == 4, " ");
 
 union LogicalArithmeticRRI {
   uint32_t flat;
@@ -278,13 +278,12 @@ static void AddIntRegOp(Instruction &inst, unsigned index, unsigned size,
 static void AddImmOp(Instruction &inst, uint64_t value, unsigned size = 32,
                      Operand::Action action = Operand::kActionRead,
                      bool is_signed = false) {
-  inst.operands.emplace_back();
-  auto &op = inst.operands.back();
-  op.imm.val = value;
-  op.size = size;
-  op.imm.is_signed = is_signed;
+  Operand::Immediate imm;
+  imm.val = value;
+  imm.is_signed = is_signed;
+  auto &op = inst.EmplaceOperand(imm);
   op.action = action;
-  op.type = Operand::kTypeImmediate;
+  op.size = size;
 }
 
 static void AddAddrRegOp(Instruction &inst, const char *reg_name,
@@ -374,9 +373,10 @@ static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
 // Used to handle semantics for:
 // (imm32, carry) = A32ExpandImm_C(imm12, PSTATE.C);
 // See an instruction in Data-processing register (immediate shift) for example
-static void ExpandTo32AddImmAddCarry(Instruction &inst, uint32_t imm12, bool carry_out) {
+static void ExpandTo32AddImmAddCarry(Instruction &inst, uint32_t imm12,
+                                     bool carry_out) {
   uint32_t unrotated_value = imm12 & (0b11111111u);
-  uint32_t rotation_amount = ((imm12 >> 8) & (0b1111u)) *2u;
+  uint32_t rotation_amount = ((imm12 >> 8) & (0b1111u)) * 2u;
 
   if (!rotation_amount) {
     AddImmOp(inst, unrotated_value);
@@ -396,54 +396,91 @@ static void ExpandTo32AddImmAddCarry(Instruction &inst, uint32_t imm12, bool car
   }
 }
 
-// Note: This function should be used with AddShiftCarryOperand to add carry_out operand!
-// Used to handle semantics for:
-// (shifted, carry) = Shift_C(R[m], shift_t, shift_n, PSTATE.C);
-// (shift_t, shift_n) = DecodeImmShift(type, imm5);
-// See an instruction in Integer Data Processing (three register, immediate shift) set for an example
-static void AddShiftRegOperand(Instruction &inst,
-                               uint32_t reg_num, uint32_t shift_type,
-                               uint32_t shift_size) {
-  auto is_rrx = false;
-  if (!shift_size && shift_type == Shift::kShiftROR) {
-    shift_size = 1;
-    is_rrx = true;
-  } else if (shift_type == Shift::kShiftLSR || shift_type == Shift::kShiftASR) {
-    if (!shift_size) {
-      shift_size = 32;
-    }
-  }
+// Note: this has no RRX shift operation
+static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
+                                  uint32_t shift_type, uint32_t shift_reg_num,
+                                  bool carry_out) {
+  auto _32_type = llvm::Type::getInt32Ty(*(inst.arch_for_decode->context));
+  auto _8_type = llvm::Type::getInt8Ty(*(inst.arch_for_decode->context));
+  auto _1_type = llvm::Type::getInt1Ty(*(inst.arch_for_decode->context));
 
-  if (!shift_size) {
-    AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
-  } else {
-    if (is_rrx) {
-      AddShiftOp(inst, Operand::ShiftRegister::kShiftUnsignedRight,
-                 kIntRegName[reg_num], 32, 1);
-    } else {
-      AddShiftOp(inst, GetOperandShift(static_cast<Shift>(shift_type)),
-                 kIntRegName[reg_num], 32, shift_size);
-    }
-  }
+  AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
+  AddIntRegOp(inst, shift_reg_num, 32, Operand::kActionRead);
 
-  // To handle rrx we need to take two components shift each and OR the results
-  // together. We create this functionality by creating a new shift operand,
-  // removing it from the instruction operand list, and adding a binary op to
-  // the register operand that ORs the expressions together.
-  if (is_rrx) {
-    AddShiftOp(inst, Operand::ShiftRegister::kShiftLeftWithZeroes, "C", 8, 31);
-    auto rrx_op = inst.operands.back().expr;
-    inst.operands.pop_back();
-    inst.operands.back().expr = inst.EmplaceBinaryOp(llvm::Instruction::Or,
-                                                     inst.operands.back().expr,
-                                                     rrx_op);
+  // Extract the low 8 bits
+  inst.operands.back().expr = inst.EmplaceUnaryOp(llvm::Instruction::Trunc,
+                                                    inst.operands.back().expr,
+                                                    _8_type);
+  inst.operands.back().expr = inst.EmplaceUnaryOp(llvm::Instruction::ZExt,
+                                                    inst.operands.back().expr,
+                                                    _32_type);
+
+  auto shift_val_expr = inst.operands.back().expr;
+  inst.operands.pop_back();
+
+  switch (static_cast<Shift>(shift_type)) {
+    case Shift::kShiftASR:
+      inst.operands.back().expr = inst.EmplaceBinaryOp(
+          llvm::Instruction::AShr, inst.operands.back().expr, shift_val_expr);
+
+      if (carry_out) {
+        AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
+        inst.operands.back().expr = inst.EmplaceBinaryOp(
+            llvm::Instruction::AShr, inst.operands.back().expr, shift_val_expr);
+      }
+      break;
+    case Shift::kShiftLSL:
+      inst.operands.back().expr = inst.EmplaceBinaryOp(
+          llvm::Instruction::Shl, inst.operands.back().expr, shift_val_expr);
+
+      if (carry_out) {
+        AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
+        inst.operands.back().expr = inst.EmplaceBinaryOp(
+            llvm::Instruction::Shl, inst.operands.back().expr, shift_val_expr);
+      }
+      break;
+    case Shift::kShiftLSR:
+      inst.operands.back().expr = inst.EmplaceBinaryOp(
+          llvm::Instruction::LShr, inst.operands.back().expr, shift_val_expr);
+
+      if (carry_out) {
+        AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
+        inst.operands.back().expr = inst.EmplaceBinaryOp(
+            llvm::Instruction::LShr, inst.operands.back().expr, shift_val_expr);
+      }
+      break;
+    case Shift::kShiftROR:
+      if (carry_out) {
+        AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
+        const auto word_type = inst.arch_for_decode->AddressType();
+        const auto _31 = llvm::ConstantInt::get(word_type, 31, false);
+        const auto _32 = llvm::ConstantInt::get(word_type, 32, false);
+        shift_val_expr = inst.EmplaceBinaryOp(llvm::Instruction::Add,
+                                              shift_val_expr,
+                                              inst.EmplaceConstant(_31));
+        shift_val_expr = inst.EmplaceBinaryOp(llvm::Instruction::URem,
+                                              shift_val_expr,
+                                              inst.EmplaceConstant(_32));
+        inst.operands.back().expr = inst.EmplaceBinaryOp(
+            llvm::Instruction::LShr, inst.operands.back().expr, shift_val_expr);
+      }
+      break;
+  }
+  if (carry_out) {
+    // Extract sign bit
+    inst.operands.back().expr = inst.EmplaceUnaryOp(llvm::Instruction::Trunc,
+                                                    inst.operands.back().expr,
+                                                    _1_type);
+    // ZExtend operand back to I8
+    inst.operands.back().expr = inst.EmplaceUnaryOp(llvm::Instruction::ZExt,
+                                                    inst.operands.back().expr,
+                                                    _8_type);
   }
 }
 
-
-// PLEASE SEE AddShiftRegOperand!
+// PLEASE SEE AddShiftRegImmOperand!
 // This function extracts the carry_out that from the semantics that
-// AddShiftRegOperand handles
+// AddShiftRegImmOperand handles
 static void AddShiftCarryOperand(Instruction &inst,
                                  uint32_t reg_num, uint32_t shift_type,
                                  uint32_t shift_size, const char * carry_reg_name) {
@@ -490,6 +527,53 @@ static void AddShiftCarryOperand(Instruction &inst,
         }
         break;
     }
+  }
+}
+
+// Adds a shift operand and optionally carry out operand
+// Used to handle semantics for:
+// (shift_t, shift_n) = DecodeImmShift(type, imm5);
+// (shifted, carry) = Shift_C(R[m], shift_t, shift_n, PSTATE.C);
+// See an instruction in Integer Data Processing (three register, immediate shift) set for an example
+static void AddShiftRegImmOperand(Instruction &inst, uint32_t reg_num,
+                                  uint32_t shift_type, uint32_t shift_size,
+                                  bool carry_out) {
+  auto is_rrx = false;
+  if (!shift_size && shift_type == Shift::kShiftROR) {
+    shift_size = 1;
+    is_rrx = true;
+  } else if (shift_type == Shift::kShiftLSR || shift_type == Shift::kShiftASR) {
+    if (!shift_size) {
+      shift_size = 32;
+    }
+  }
+
+  if (!shift_size) {
+    AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
+  } else {
+    if (is_rrx) {
+      AddShiftOp(inst, Operand::ShiftRegister::kShiftUnsignedRight,
+                 kIntRegName[reg_num], 32, 1);
+    } else {
+      AddShiftOp(inst, GetOperandShift(static_cast<Shift>(shift_type)),
+                 kIntRegName[reg_num], 32, shift_size);
+    }
+  }
+
+  // To handle rrx we need to take two components shift each and OR the results
+  // together. We create this functionality by creating a new shift operand,
+  // removing it from the instruction operand list, and adding a binary op to
+  // the register operand that ORs the expressions together.
+  if (is_rrx) {
+    AddShiftOp(inst, Operand::ShiftRegister::kShiftLeftWithZeroes, "C", 8, 31);
+    auto rrx_op = inst.operands.back().expr;
+    inst.operands.pop_back();
+    inst.operands.back().expr = inst.EmplaceBinaryOp(llvm::Instruction::Or,
+                                                     inst.operands.back().expr,
+                                                     rrx_op);
+  }
+  if (carry_out) {
+    AddShiftCarryOperand(inst, reg_num, shift_type, shift_size, "C");
   }
 }
 
@@ -810,29 +894,29 @@ static bool TryDecodeIntegerDataProcessingRRRI(Instruction &inst, uint32_t bits)
   DecodeCondition(inst, enc.cond);
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
   AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
-  AddShiftRegOperand(inst, enc.rm, enc.type, enc.imm5);
-
-  if (enc.s) {
-    AddShiftCarryOperand(inst, enc.rm, enc.type, enc.imm5, "C");
-  }
-
+  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, enc.s);
   return EvalPCDest(inst, enc.s, enc.rd, kIdpEvaluators[enc.opc]);
 }
 
-// TODO(Sonya): Integer Data Processing (three register, register shift)
-//static bool TryDecodeIntegerDataProcessingRRRR(Instruction &inst, uint32_t bits) {
-//  return false;
-//  const IntDataProcessingRRRR enc = { bits };
-//
-//  inst.function = kIdpNamesRRR[(enc.opc << 1u) | enc.s];
-//  DecodeCondition(inst, enc.cond);
-//
-//  if (enc.rn == kPCRegNum || enc.rd == kPCRegNum || enc.rs == kPCRegNum
-//      || enc.rm == kPCRegNum) {
-//    inst.category = Instruction::kCategoryError;
-//    return false;
-//  }
-//}
+// Integer Data Processing (three register, register shift)
+static bool TryDecodeIntegerDataProcessingRRRR(Instruction &inst, uint32_t bits) {
+  const IntDataProcessingRRRR enc = { bits };
+
+  inst.function = kIdpNamesRRR[(enc.opc << 1u) | enc.s];
+  DecodeCondition(inst, enc.cond);
+
+  if (enc.rn == kPCRegNum || enc.rd == kPCRegNum || enc.rs == kPCRegNum
+      || enc.rm == kPCRegNum) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+  AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
+  AddShiftRegRegOperand(inst, enc.rm, enc.type, enc.rs, enc.s);
+
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
 
 //000           AND, ANDS (immediate)
 //001           EOR, EORS (immediate)
@@ -1084,45 +1168,42 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
     AddImmOp(inst, 1);
   }
 
-  AddShiftRegOperand(inst, enc.rm, enc.type, enc.imm5);
-  if (enc.s) {
-    AddShiftCarryOperand(inst, enc.rm, enc.type, enc.imm5, "C");
-  }
-
+  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, enc.s);
   return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u]);
 }
 
-// TODO(Sonya): Logical Arithmetic (three register, register shift)
-//static bool TryLogicalArithmeticRRRR(Instruction &inst, uint32_t bits) {
-//  return false;
-//
-//  const LogicalArithRRRR enc = { bits };
-//
-//  auto instruction = kLogicalArithmeticRRRI[enc.opc << 1u | enc.s];
-//
-//  inst.function = instruction;
-//  DecodeCondition(inst, enc.cond);
-//
-//  if (enc.rn == kPCRegNum || enc.rd == kPCRegNum || enc.rs == kPCRegNum
-//      || enc.rm == kPCRegNum) {
-//    inst.category = Instruction::kCategoryError;
-//    return false;
-//  }
-//
-//  AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
-//  // enc.opc == x0
-//  if (!(enc.opc & 0b1u)) {
-//    AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
-//  }
-//  // enc.opc == 01
-//  else if (!(enc.opc & 0b10u)) {
-//    AddImmOp(inst, 0);
-//  }
-//  // enc.opc == 11
-//  else {
-//    AddImmOp(inst, 1);
-//  }
-//}
+// Logical Arithmetic (three register, register shift)
+static bool TryLogicalArithmeticRRRR(Instruction &inst, uint32_t bits) {
+  const LogicalArithRRRR enc = { bits };
+
+  auto instruction = kLogicalArithmeticRRRI[enc.opc << 1u | enc.s];
+
+  inst.function = instruction;
+  DecodeCondition(inst, enc.cond);
+
+  if (enc.rn == kPCRegNum || enc.rd == kPCRegNum || enc.rs == kPCRegNum
+      || enc.rm == kPCRegNum) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+
+  AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
+  // enc.opc == x0
+  if (!(enc.opc & 0b1u)) {
+    AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
+  }
+  // enc.opc == 01
+  else if (!(enc.opc & 0b10u)) {
+    AddImmOp(inst, 0);
+  }
+  // enc.opc == 11
+  else {
+    AddImmOp(inst, 1);
+  }
+  AddShiftRegRegOperand(inst, enc.rm, enc.type, enc.rs, enc.s);
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
 
 // Logical Arithmetic (two register and immediate)
 static bool TryLogicalArithmeticRRI(Instruction &inst, uint32_t bits) {
@@ -1173,46 +1254,48 @@ static bool TryIntegerTestAndCompareRRI(Instruction &inst, uint32_t bits) {
   DecodeCondition(inst, enc.cond);
 
   AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
-  AddShiftRegOperand(inst, enc.rm, enc.type, enc.imm5);
-  AddShiftCarryOperand(inst, enc.rm, enc.type, enc.imm5, "C");
+  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, 1u);
 
   inst.category = Instruction::kCategoryNormal;
   return true;
 }
 
-// TODO(Sonya): Integer Test and Compare (two register, register shift)
-//static bool TryIntegerTestAndCompareRRR(Instruction &inst, uint32_t bits) {
-//  return false;
-//
-//  const IntTestCompRRR enc = { bits };
-//
-//  auto instruction = kIntegerTestAndCompareR[enc.opc];
-//
-//  inst.function = instruction;
-//  DecodeCondition(inst, enc.cond);
-//
-//  if (enc.rn == kPCRegNum || enc.rs == kPCRegNum || enc.rm == kPCRegNum) {
-//      inst.category = Instruction::kCategoryError;
-//      return false;
-//  }
-//}
-//
-//// Integer Test and Compare (one register and immediate)
-//static bool TryIntegerTestAndCompareRI(Instruction &inst, uint32_t bits) {
-//  const IntTestCompRI enc = { bits };
-//
-//  auto instruction = kIntegerTestAndCompareR[enc.opc];
-//
-//  inst.function = instruction;
-//  DecodeCondition(inst, enc.cond);
-//
-//  AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
-//  ExpandTo32AddImmAddCarry(inst, enc.imm12, 1u);
-//
-//  inst.category = Instruction::kCategoryNormal;
-//  return true;
-//
-//}
+// Integer Test and Compare (two register, register shift)
+static bool TryIntegerTestAndCompareRRR(Instruction &inst, uint32_t bits) {
+  const IntTestCompRRR enc = { bits };
+
+  auto instruction = kIntegerTestAndCompareR[enc.opc];
+
+  inst.function = instruction;
+  DecodeCondition(inst, enc.cond);
+
+  if (enc.rn == kPCRegNum || enc.rs == kPCRegNum || enc.rm == kPCRegNum) {
+      inst.category = Instruction::kCategoryError;
+      return false;
+  }
+  AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
+  AddShiftRegRegOperand(inst, enc.rm, enc.type, enc.rs, 1u);
+
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
+
+// Integer Test and Compare (one register and immediate)
+static bool TryIntegerTestAndCompareRI(Instruction &inst, uint32_t bits) {
+  const IntTestCompRI enc = { bits };
+
+  auto instruction = kIntegerTestAndCompareR[enc.opc];
+
+  inst.function = instruction;
+  DecodeCondition(inst, enc.cond);
+
+  AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
+  ExpandTo32AddImmAddCarry(inst, enc.imm12, 1u);
+
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+
+}
 
 // Corresponds to Data-processing register (immediate shift)
 // op0<24 to 23> | op1 <20>
@@ -1227,17 +1310,17 @@ static TryDecode * kDataProcessingRI[] = {
     [0b111] = TryLogicalArithmeticRRRI,
 };
 
-// Corresponds to Data-processing register (immediate shift)
+// Corresponds to Data-processing register (register shift)
 // op0<24 to 23> | op1 <20>
 static TryDecode * kDataProcessingRR[] = {
-    [0b000] = nullptr, //TryDecodeIntegerDataProcessingRRRR,
-    [0b001] = nullptr, //TryDecodeIntegerDataProcessingRRRR,
-    [0b010] = nullptr, //TryDecodeIntegerDataProcessingRRRR,
-    [0b011] = nullptr, //TryDecodeIntegerDataProcessingRRRR,
+    [0b000] = TryDecodeIntegerDataProcessingRRRR,
+    [0b001] = TryDecodeIntegerDataProcessingRRRR,
+    [0b010] = TryDecodeIntegerDataProcessingRRRR,
+    [0b011] = TryDecodeIntegerDataProcessingRRRR,
     [0b100] = nullptr, // op0:op1 != 100
-    [0b101] = nullptr, //TryIntegerTestAndCompareRRR,
-    [0b110] = nullptr, //TryLogicalArithmeticRRRR,
-    [0b111] = nullptr, //TryLogicalArithmeticRRRR,
+    [0b101] = TryIntegerTestAndCompareRRR,
+    [0b110] = TryLogicalArithmeticRRRR,
+    [0b111] = TryLogicalArithmeticRRRR,
 };
 
 // Corresponds to Data-processing immediate
@@ -1252,9 +1335,9 @@ static TryDecode * kDataProcessingI[] = {
     [0b0110] = TryDecodeIntegerDataProcessingRRI,
     [0b0111] = TryDecodeIntegerDataProcessingRRI,
     [0b1000] = nullptr, // TODO(Sonya): Move Halfword (immediate)
-    [0b1001] = nullptr, //TryIntegerTestAndCompareRI,
+    [0b1001] = TryIntegerTestAndCompareRI,
     [0b1010] = nullptr, // TODO(Sonya): Move Special Register and Hints (immediate)
-    [0b1011] = nullptr, // TryIntegerTestAndCompareRI,
+    [0b1011] = TryIntegerTestAndCompareRI,
     [0b1100] = TryLogicalArithmeticRRI,
     [0b1101] = TryLogicalArithmeticRRI,
     [0b1110] = TryLogicalArithmeticRRI,
