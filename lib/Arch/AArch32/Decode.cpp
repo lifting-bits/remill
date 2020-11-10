@@ -404,25 +404,24 @@ static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
   auto _8_type = llvm::Type::getInt8Ty(*(inst.arch_for_decode->context));
   auto _1_type = llvm::Type::getInt1Ty(*(inst.arch_for_decode->context));
 
-  AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
-  AddIntRegOp(inst, shift_reg_num, 32, Operand::kActionRead);
+  AddIntRegOp(inst, reg_num, 32u, Operand::kActionRead);
 
-  // Extract the low 8 bits
+  // Create expression for the low 8 bits of the shift register
+  AddIntRegOp(inst, shift_reg_num, 32u, Operand::kActionRead);
   inst.operands.back().expr = inst.EmplaceUnaryOp(llvm::Instruction::Trunc,
                                                     inst.operands.back().expr,
                                                     _8_type);
   inst.operands.back().expr = inst.EmplaceUnaryOp(llvm::Instruction::ZExt,
                                                     inst.operands.back().expr,
                                                     _32_type);
-
   auto shift_val_expr = inst.operands.back().expr;
   inst.operands.pop_back();
 
+  // Create the shift and carry expressions operations
   switch (static_cast<Shift>(shift_type)) {
     case Shift::kShiftASR:
       inst.operands.back().expr = inst.EmplaceBinaryOp(
           llvm::Instruction::AShr, inst.operands.back().expr, shift_val_expr);
-
       if (carry_out) {
         AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
         inst.operands.back().expr = inst.EmplaceBinaryOp(
@@ -432,7 +431,6 @@ static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
     case Shift::kShiftLSL:
       inst.operands.back().expr = inst.EmplaceBinaryOp(
           llvm::Instruction::Shl, inst.operands.back().expr, shift_val_expr);
-
       if (carry_out) {
         AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
         inst.operands.back().expr = inst.EmplaceBinaryOp(
@@ -442,7 +440,6 @@ static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
     case Shift::kShiftLSR:
       inst.operands.back().expr = inst.EmplaceBinaryOp(
           llvm::Instruction::LShr, inst.operands.back().expr, shift_val_expr);
-
       if (carry_out) {
         AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
         inst.operands.back().expr = inst.EmplaceBinaryOp(
@@ -450,11 +447,25 @@ static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
       }
       break;
     case Shift::kShiftROR:
+      const auto word_type = inst.arch_for_decode->AddressType();
+      const auto _31 = llvm::ConstantInt::get(word_type, 31u, false);
+      const auto _32 = llvm::ConstantInt::get(word_type, 32u, false);
+      auto shift_amount = inst.EmplaceBinaryOp(llvm::Instruction::URem,
+                                               shift_val_expr,
+                                               inst.EmplaceConstant(_32));
+      auto lhs_expr = inst.EmplaceBinaryOp(llvm::Instruction::LShr,
+                                           inst.operands.back().expr,
+                                           shift_amount);
+      auto rhs_expr = inst.EmplaceBinaryOp(llvm::Instruction::Shl,
+                                           inst.operands.back().expr,
+                                           inst.EmplaceBinaryOp(
+                                               llvm::Instruction::Sub,
+                                               inst.EmplaceConstant(_32),
+                                               shift_amount));
+      inst.operands.back().expr = inst.EmplaceBinaryOp(llvm::Instruction::Or,
+                                                       lhs_expr, rhs_expr);
       if (carry_out) {
         AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
-        const auto word_type = inst.arch_for_decode->AddressType();
-        const auto _31 = llvm::ConstantInt::get(word_type, 31, false);
-        const auto _32 = llvm::ConstantInt::get(word_type, 32, false);
         shift_val_expr = inst.EmplaceBinaryOp(llvm::Instruction::Add,
                                               shift_val_expr,
                                               inst.EmplaceConstant(_31));

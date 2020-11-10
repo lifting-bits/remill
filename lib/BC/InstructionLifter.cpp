@@ -725,6 +725,8 @@ llvm::Value *InstructionLifter::LiftExpressionOperandRec(
         return ir.CreateAnd(lhs, rhs);
       case llvm::Instruction::Or:
         return ir.CreateOr(lhs, rhs);
+      case llvm::Instruction::URem:
+              return ir.CreateURem(lhs, rhs);
       default:
         LOG(FATAL)
             << "Invalid Expression "
