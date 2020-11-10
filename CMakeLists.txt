@@ -281,6 +281,12 @@ target_link_libraries(remill INTERFACE
 set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}${executable_extension}")
 set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}${executable_extension}")
 
+InstallExternalTarget("ext_clang" "${CLANG_PATH}"
+  "${REMILL_INSTALL_BIN_DIR}" "${INSTALLED_CLANG_NAME}")
+
+InstallExternalTarget("ext_llvmlink" "${LLVMLINK_PATH}"
+  "${REMILL_INSTALL_BIN_DIR}" "${INSTALLED_LLVMLINK_NAME}")
+
 set(REMILL_BC_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_bc.${static_lib_extension}")
 set(REMILL_ARCH_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_arch.${static_lib_extension}")
 set(REMILL_ARCH_X86_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_arch_x86.${static_lib_extension}")
