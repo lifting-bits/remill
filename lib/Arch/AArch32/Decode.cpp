@@ -396,23 +396,35 @@ static void ExpandTo32AddImmAddCarry(Instruction &inst, uint32_t imm12,
   }
 }
 
-
 // Do an extraction and zero extension on an expression
 static void ExtractAndZExtExpr(Instruction &inst, Operand &op,
-                                          unsigned int extract_size,
-                                          unsigned int extend_size) {
+                               unsigned int extract_size,
+                               unsigned int extend_size) {
   auto extract_type = llvm::Type::getIntNTy(*(inst.arch_for_decode->context),
                                             extract_size);
   auto extend_type = llvm::Type::getIntNTy(*(inst.arch_for_decode->context),
                                            extend_size);
   // Extract bits
-  inst.operands.back().expr = inst.EmplaceUnaryOp(llvm::Instruction::Trunc,
-                                                      op.expr,
-                                                      extract_type);
+  op.expr = inst.EmplaceUnaryOp(llvm::Instruction::Trunc, op.expr,
+                                extract_type);
   // ZExtend operand back to I8
-  inst.operands.back().expr = inst.EmplaceUnaryOp(llvm::Instruction::ZExt,
-                                                      op.expr,
-                                                      extend_type);
+  op.expr = inst.EmplaceUnaryOp(llvm::Instruction::ZExt, op.expr, extend_type);
+}
+
+static void RORExpr(Instruction &inst, Operand &op,
+                    OperandExpression *shift_amount) {
+  const auto word_type = inst.arch_for_decode->AddressType();
+  const auto _31 = llvm::ConstantInt::get(word_type, 31u, false);
+  const auto _32 = llvm::ConstantInt::get(word_type, 32u, false);
+  shift_amount = inst.EmplaceBinaryOp(llvm::Instruction::URem, shift_amount,
+                                      inst.EmplaceConstant(_32));
+  auto lhs_expr = inst.EmplaceBinaryOp(llvm::Instruction::LShr, op.expr,
+                                       shift_amount);
+  auto rhs_expr = inst.EmplaceBinaryOp(llvm::Instruction::Shl, op.expr,
+                                       inst.EmplaceBinaryOp(llvm::Instruction::Sub,
+                                       inst.EmplaceConstant(_32),
+                                       shift_amount));
+  op.expr = inst.EmplaceBinaryOp(llvm::Instruction::Or, lhs_expr, rhs_expr);
 }
 
 // Note: this has no RRX shift operation
@@ -420,6 +432,7 @@ static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
                                   uint32_t shift_type, uint32_t shift_reg_num,
                                   bool carry_out) {
   AddIntRegOp(inst, reg_num, 32u, Operand::kActionRead);
+
   // Create expression for the low 8 bits of the shift register
   AddIntRegOp(inst, shift_reg_num, 32u, Operand::kActionRead);
   ExtractAndZExtExpr(inst, inst.operands.back(), 8u, 32u);
@@ -427,65 +440,44 @@ static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
   inst.operands.pop_back();
 
   // Create the shift and carry expressions operations
-  switch (static_cast<Shift>(shift_type)) {
-    case Shift::kShiftASR:
+  if (static_cast<Shift>(shift_type) != Shift::kShiftROR) {
+    unsigned opcode;
+    switch (static_cast<Shift>(shift_type)) {
+      case Shift::kShiftASR:
+        opcode = llvm::Instruction::AShr;
+        break;
+      case Shift::kShiftLSL:
+        opcode = llvm::Instruction::Shl;
+        break;
+      case Shift::kShiftLSR:
+        opcode = llvm::Instruction::LShr;
+        break;
+    }
+    inst.operands.back().expr = inst.EmplaceBinaryOp(opcode,
+                                                     inst.operands.back().expr,
+                                                     shift_val_expr);
+    if (carry_out) {
+      AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
       inst.operands.back().expr = inst.EmplaceBinaryOp(
-          llvm::Instruction::AShr, inst.operands.back().expr, shift_val_expr);
-      if (carry_out) {
-        AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
-        inst.operands.back().expr = inst.EmplaceBinaryOp(
-            llvm::Instruction::AShr, inst.operands.back().expr, shift_val_expr);
-      }
-      break;
-    case Shift::kShiftLSL:
-      inst.operands.back().expr = inst.EmplaceBinaryOp(
-          llvm::Instruction::Shl, inst.operands.back().expr, shift_val_expr);
-      if (carry_out) {
-        AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
-        inst.operands.back().expr = inst.EmplaceBinaryOp(
-            llvm::Instruction::Shl, inst.operands.back().expr, shift_val_expr);
-      }
-      break;
-    case Shift::kShiftLSR:
-      inst.operands.back().expr = inst.EmplaceBinaryOp(
-          llvm::Instruction::LShr, inst.operands.back().expr, shift_val_expr);
-      if (carry_out) {
-        AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
-        inst.operands.back().expr = inst.EmplaceBinaryOp(
-            llvm::Instruction::LShr, inst.operands.back().expr, shift_val_expr);
-      }
-      break;
-    case Shift::kShiftROR:
-      const auto word_type = inst.arch_for_decode->AddressType();
+          opcode, inst.operands.back().expr, shift_val_expr);
+    }
+  } else {
+    RORExpr(inst, inst.operands.back(), shift_val_expr);
+    if (carry_out) {
       const auto _31 = llvm::ConstantInt::get(word_type, 31u, false);
       const auto _32 = llvm::ConstantInt::get(word_type, 32u, false);
-      auto shift_amount = inst.EmplaceBinaryOp(llvm::Instruction::URem,
-                                               shift_val_expr,
-                                               inst.EmplaceConstant(_32));
-      auto lhs_expr = inst.EmplaceBinaryOp(llvm::Instruction::LShr,
-                                           inst.operands.back().expr,
-                                           shift_amount);
-      auto rhs_expr = inst.EmplaceBinaryOp(llvm::Instruction::Shl,
-                                           inst.operands.back().expr,
-                                           inst.EmplaceBinaryOp(
-                                               llvm::Instruction::Sub,
-                                               inst.EmplaceConstant(_32),
-                                               shift_amount));
-      inst.operands.back().expr = inst.EmplaceBinaryOp(llvm::Instruction::Or,
-                                                       lhs_expr, rhs_expr);
-      if (carry_out) {
-        AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
-        shift_val_expr = inst.EmplaceBinaryOp(llvm::Instruction::Add,
-                                              shift_val_expr,
-                                              inst.EmplaceConstant(_31));
-        shift_val_expr = inst.EmplaceBinaryOp(llvm::Instruction::URem,
-                                              shift_val_expr,
-                                              inst.EmplaceConstant(_32));
-        inst.operands.back().expr = inst.EmplaceBinaryOp(
-            llvm::Instruction::LShr, inst.operands.back().expr, shift_val_expr);
-      }
-      break;
+      AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
+      shift_val_expr = inst.EmplaceBinaryOp(llvm::Instruction::Add,
+                                            shift_val_expr,
+                                            inst.EmplaceConstant(_31));
+      shift_val_expr = inst.EmplaceBinaryOp(llvm::Instruction::URem,
+                                            shift_val_expr,
+                                            inst.EmplaceConstant(_32));
+      inst.operands.back().expr = inst.EmplaceBinaryOp(
+          llvm::Instruction::LShr, inst.operands.back().expr, shift_val_expr);
+    }
   }
+
   if (carry_out) {
     // Extract the sign bit and extend back to I8
     ExtractAndZExtExpr(inst, inst.operands.back(), 1u, 8u);
