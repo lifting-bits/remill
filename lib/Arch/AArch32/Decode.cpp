@@ -419,11 +419,7 @@ static void ExtractAndZExtExpr(Instruction &inst, Operand &op,
 static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
                                   uint32_t shift_type, uint32_t shift_reg_num,
                                   bool carry_out) {
-  auto _32_type = llvm::Type::getInt32Ty(*(inst.arch_for_decode->context));
-  auto _8_type = llvm::Type::getInt8Ty(*(inst.arch_for_decode->context));
-
   AddIntRegOp(inst, reg_num, 32u, Operand::kActionRead);
-
   // Create expression for the low 8 bits of the shift register
   AddIntRegOp(inst, shift_reg_num, 32u, Operand::kActionRead);
   ExtractAndZExtExpr(inst, inst.operands.back(), 8u, 32u);
@@ -1176,13 +1172,11 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
   // enc.opc == x0
   if (!(enc.opc & 0b1u)) {
     AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
-  }
   // enc.opc == 01
-  else if (!(enc.opc & 0b10u)) {
+  } else if (!(enc.opc & 0b10u)) {
     AddImmOp(inst, 0);
-  }
   // enc.opc == 11
-  else {
+  } else {
     AddImmOp(inst, 1);
   }
 
@@ -1209,13 +1203,11 @@ static bool TryLogicalArithmeticRRRR(Instruction &inst, uint32_t bits) {
   // enc.opc == x0
   if (!(enc.opc & 0b1u)) {
     AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
-  }
   // enc.opc == 01
-  else if (!(enc.opc & 0b10u)) {
+  } else if (!(enc.opc & 0b10u)) {
     AddImmOp(inst, 0);
-  }
   // enc.opc == 11
-  else {
+  } else {
     AddImmOp(inst, 1);
   }
   AddShiftRegRegOperand(inst, enc.rm, enc.type, enc.rs, enc.s);
@@ -1236,13 +1228,11 @@ static bool TryLogicalArithmeticRRI(Instruction &inst, uint32_t bits) {
   // enc.opc == x0
   if (!(enc.opc & 0b1u)) {
     AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
-  }
   // enc.opc == 01
-  else if (!(enc.opc & 0b10u)) {
+  } else if (!(enc.opc & 0b10u)) {
     AddImmOp(inst, 0);
-  }
   // enc.opc == 11
-  else {
+  } else {
     AddImmOp(inst, 1);
   }
 
@@ -1390,27 +1380,23 @@ static TryDecode * TryDataProcessingAndMisc(uint32_t bits) {
       // TODO(Sonya): Extra load/store -- op3 != 00
       if (!enc.op3) {
         return nullptr;
-      }
       // op3 == 00
-      else {
+      } else {
         // Multiply and Accumulate -- op1 == 0xxxx
         if (!(enc.op1 >> 4)) {
           return TryDecodeMultiplyAndAccumulate;
-        }
         // TODO(Sonya): Synchronization primitives and Load-Acquire/Store-Release -- op1 == 1xxxx
-        else {
+        } else {
           return nullptr;
         }
       }
-    }
     // op1 == 10xx0
-    else if (((enc.op1 >> 3) == 0b10u) && (enc.op1 & 0b00001u)) {
+    } else if (((enc.op1 >> 3) == 0b10u) && (enc.op1 & 0b00001u)) {
       // TODO(Sonya): Miscellaneous
       if (!enc.op2) {
         return nullptr;
-      }
       // TODO(Sonya): Halfword Multiply and Accumulate
-      else {
+      } else {
         return nullptr;
       }
     }
@@ -1421,15 +1407,13 @@ static TryDecode * TryDataProcessingAndMisc(uint32_t bits) {
         // op0 -> enc.op1 2 high order bits, op1 -> enc.op1 lowest bit
         // index is the concatenation of op0 and op1
         return kDataProcessingRI[(enc.op1 >> 2) | (enc.op1 & 0b1u)];
-      }
       // Data-processing register (register shift) -- op4 == 1
-      else {
+      } else {
         return kDataProcessingRR[(enc.op1 >> 2) | (enc.op1 & 0b1u)];
       }
     }
-  }
   // Data-processing immediate -- op0 == 1
-  else {
+  } else {
     // op0 -> enc.op1 2 high order bits, op1 -> enc.op1 2 lowest bits
     // index is the concatenation of op0 and op1
     return kDataProcessingI[(enc.op1 >> 1) | (enc.op1 & 0b11u)];
@@ -1455,25 +1439,21 @@ static TryDecode * TryDecodeTopLevelEncodings(uint32_t bits) {
       // Data-processing and miscellaneous instructions -- op0 == 00x
       if (!(enc.op0 >> 1)) {
         return TryDataProcessingAndMisc(bits);
-      }
       // Load/Store Word, Unsigned Byte (immediate, literal) -- op0 == 010
-      else if (enc.op0 == 0b010u) {
+      } else if (enc.op0 == 0b010u) {
         const LoadStoreWUBIL enc_ls_word = { bits };
         return kLoadStoreWordUBIL[enc_ls_word.o2 << 1u | enc_ls_word.o1];
-      }
       // TODO(Sonya): Load/Store Word, Unsigned Byte (register) -- op0 == 011, op1 == 0
-      else if (!enc.op1) {
+      } else if (!enc.op1) {
         // This should be returning another table index using a struct like above
         return nullptr;
-      }
       // TODO(Sonya): Media instructions -- op0 == 011, op1 == 1
-      else {
+      } else {
         // return a result from another function for instruction categorizing
         return nullptr;
       }
-    }
     // TODO(Sonya): Unconditional instructions -- cond == 1111
-    else {
+    } else {
       // return a result from another function for instruction categorizing
       return nullptr;
     }
@@ -1484,9 +1464,8 @@ static TryDecode * TryDecodeTopLevelEncodings(uint32_t bits) {
     if (enc.op0 >> 1 == 0b10u) {
       // return a result from another function for instruction categorizing
       return nullptr;
-    }
     // TODO(Sonya): System register access, Advanced SIMD, floating-point, and Supervisor call -- op0 == 11x
-    else {
+    } else {
       // return a result from another function for instruction categorizing
       return nullptr;
     }
