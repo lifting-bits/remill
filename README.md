@@ -51,7 +51,7 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 
 ### Vcpkg build
 
-Follow directions to pull all required dependencies from the `vcpkg-lifting-ports` repo, and clone this repo within that one (`vcpkg-lifting-ports/remill`)
+**Important:** Follow directions to pull all required dependencies from the `vcpkg-lifting-ports` repo, and clone this repo within that one (`vcpkg-lifting-ports/remill`).
 
 Requires CMake 3.19 for the [`--preset=`](https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html#manual:cmake-presets(7)) option in CLI invocation (use `cmake --list-presets` to show all presets):
 
@@ -65,7 +65,9 @@ Or, for older CMake versions, by manually specifying the vcpkg toolchain file:
 
 ```bash
 mkdir build && cd build
-cmake -G Ninja -DCMAKE_TOOLCHAIN_FILE=$(pwd)/../vcpkg/scripts/buildsystems/vcpkg.cmake ..
+cmake -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE="$(pwd)/../../vcpkg/scripts/buildsystems/vcpkg.cmake" \
+  ..
 ```
 
 Run tests:
