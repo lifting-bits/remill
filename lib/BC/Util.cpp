@@ -788,6 +788,9 @@ static llvm::Function *DeclareFunctionInModule(llvm::Function *func,
 static llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
                                                 llvm::Module *dest_module);
 
+static llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
+                                               llvm::Module *dest_module);
+
 template <typename T>
 static void ClearMetaData(T *value) {
   llvm::SmallVector<std::pair<unsigned, llvm::MDNode *>, 4> mds;
@@ -808,7 +811,11 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
     type = ::remill::RecontextualizeType(type, dest_context);
   } else {
 #if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 8)
-    if (!c->needsRelocation()) {
+    if (!llvm::isa<llvm::Function>(c) &&
+        !llvm::isa<llvm::GlobalVariable>(c) &&
+        !llvm::isa<llvm::GlobalAlias>(c) &&
+        !c->needsRelocation()) {
+      LOG(ERROR) << "Not moving: " << LLVMThingToString(c);
       return c;
     }
 #endif
@@ -816,6 +823,9 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
 
   if (auto gv = llvm::dyn_cast<llvm::GlobalVariable>(c); gv) {
     return DeclareVarInModule(gv, dest_module);
+
+  } else if (auto ga = llvm::dyn_cast<llvm::GlobalAlias>(c); ga) {
+    return DeclareAliasInModule(ga, dest_module);
 
   } else if (auto func = llvm::dyn_cast<llvm::Function>(c); func) {
     return DeclareFunctionInModule(func, dest_module);
@@ -1078,23 +1088,23 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
 
     } else if (in_same_context) {
       LOG(ERROR) << "Unsupported CA when moving across module boundaries: "
-                 << LLVMThingToString(ce);
-      return ca;
+                 << LLVMThingToString(c);
+      return c;
 
     } else {
       LOG(FATAL) << "Unsupported CA when moving across context boundaries: "
-                 << LLVMThingToString(ce);
+                 << LLVMThingToString(c);
       return nullptr;
     }
 
   } else if (in_same_context) {
     LOG(ERROR) << "Unsupported constant when moving across module boundaries: "
-               << LLVMThingToString(ce);
+               << LLVMThingToString(c);
     return c;
 
   } else {
     LOG(FATAL) << "Unsupported constant when moving across context boundaries: "
-               << LLVMThingToString(ce);
+               << LLVMThingToString(c);
     return nullptr;
   }
 }
@@ -1122,6 +1132,24 @@ llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
         << "Cannot declare internal variable " << var->getName().str()
         << " as external in another module";
   }
+
+  return dest_var;
+}
+
+
+llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
+                                        llvm::Module *dest_module) {
+  for (auto &alias : dest_module->aliases()) {
+    if (alias.getName() == var->getName()) {
+      return &alias;
+    }
+  }
+
+  auto type = var->getType()->getElementType();
+  auto dest_var = llvm::GlobalAlias::create(
+      type, var->getType()->getAddressSpace(), var->getLinkage(),
+      var->getName(), MoveConstantIntoModule(var->getAliasee(), dest_module),
+      dest_module);
 
   return dest_var;
 }
@@ -1349,6 +1377,18 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
       for (auto &op : inst.operands()) {
         if (auto c = llvm::dyn_cast<llvm::Constant>(op.get()); c) {
           op.set(MoveConstantIntoModule(c, dest_module));
+        }
+      }
+
+      if (auto ci = llvm::dyn_cast<llvm::CallInst>(&inst); ci) {
+        if (auto callee = ci->getCalledFunction();
+            callee && callee->getParent() != dest_module) {
+          ci->setCalledOperand(DeclareFunctionInModule(callee, dest_module));
+        }
+      } else if (auto ii = llvm::dyn_cast<llvm::InvokeInst>(&inst); ii) {
+        if (auto callee = ii->getCalledFunction();
+            callee && callee->getParent() != dest_module) {
+          ii->setCalledOperand(DeclareFunctionInModule(callee, dest_module));
         }
       }
     }
