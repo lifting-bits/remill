@@ -51,20 +51,33 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 
 ### Vcpkg build
 
+Follow directions to pull all required dependencies from the `vcpkg-lifting-ports` repo, and clone this repo within that one (`vcpkg-lifting-ports/remill`)
+
+Requires CMake 3.19 for the [`--preset=`](https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html#manual:cmake-presets(7)) option in CLI invocation (use `cmake --list-presets` to show all presets):
+
+```bash
+cmake --preset=vcpkg-{osx,linux}
+cd build
+cmake --build .
 ```
-git submodule update --init
-./vcpkg/bootstrap-vcpkg.sh
-./vcpkg/vcpkg install glog gflags xed gtest
 
-CC=clang CXX=clang++ cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX=$(pwd)/install -DCMAKE_TOOLCHAIN_FILE=$(pwd)/vcpkg/scripts/buildsystems/vcpkg.cmake -S .
+Or, for older CMake versions, by manually specifying the vcpkg toolchain file:
 
-cmake --build build --target test_dependencies
+```bash
+mkdir build && cd build
+cmake -G Ninja -DCMAKE_TOOLCHAIN_FILE=$(pwd)/../vcpkg/scripts/buildsystems/vcpkg.cmake ..
+```
+
+Run tests:
+
+```bash
+cmake --build . --target test_dependencies
 env CTEST_OUTPUT_ON_FAILURE=1 cmake --build build --target test
 ```
 
 ### Docker Build
 
-Remill now comes with a Dockerfile for easier testing. This Dockerfile references the [cxx-common](https://github.com/trailofbits/cxx-common) container to have all pre-requisite libraries available. 
+Remill now comes with a Dockerfile for easier testing. This Dockerfile references the [cxx-common](https://github.com/trailofbits/cxx-common) container to have all pre-requisite libraries available.
 
 The Dockerfile allows for quick builds of multiple supported LLVM, architecture, and Linux configurations.
 

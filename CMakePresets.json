@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 19,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "vcpkg",
+      "displayName": "Default vcpkg OS triplet config",
+      "description": "Default build using vcpkg and Ninja generator. Tries to search for packages installed using vcpkg's default triplet value for your OS. This includes both release and debug builds, but we do not provide pre-built instances of these packages.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": {
+          "type": "FILEPATH",
+          "value": "${sourceParentDir}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        }
+      }
+    },
+    {
+      "name": "vcpkg-osx",
+      "inherits": "vcpkg",
+      "displayName": "OSX cached vcpkg",
+      "description": "Uses triplet that has remotely pre-built dependencies",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-osx-rel"
+      }
+    },
+    {
+      "name": "vcpkg-linux",
+      "inherits": "vcpkg",
+      "displayName": "Linux cached vcpkg",
+      "description": "Uses triplet that has remotely pre-built dependencies",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux-rel"
+      }
+    }
+  ]
+}
