@@ -276,13 +276,12 @@ static void AddIntRegOp(Instruction &inst, unsigned index, unsigned size,
 }
 
 static void AddImmOp(Instruction &inst, uint64_t value, unsigned size = 32,
-                     Operand::Action action = Operand::kActionRead,
                      bool is_signed = false) {
   Operand::Immediate imm;
   imm.val = value;
   imm.is_signed = is_signed;
   auto &op = inst.EmplaceOperand(imm);
-  op.action = action;
+  op.action = Operand::kActionRead;
   op.size = size;
 }
 
@@ -386,6 +385,7 @@ static void ExpandTo32AddImmAddCarry(Instruction &inst, uint32_t imm12,
 
   if (carry_out) {
     if (!rotation_amount) {
+      // TODO(Sonya): remove the ShiftThenExtractOp op && do an extract only
       AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftLeftWithZeroes,
                             Operand::ShiftRegister::kExtendUnsigned, "C", 8, 0,
                             1);
@@ -1226,7 +1226,7 @@ static bool TryLogicalArithmeticRRRR(Instruction &inst, uint32_t bits) {
 static bool TryLogicalArithmeticRRI(Instruction &inst, uint32_t bits) {
   const LogicalArithmeticRRI enc = { bits };
 
-  auto instruction = kLogicalArithmeticRRRI[enc.opc | enc.s];
+  auto instruction = kLogicalArithmeticRRRI[enc.opc << 1u | enc.s];
 
   inst.function = instruction;
   DecodeCondition(inst, enc.cond);
@@ -1237,14 +1237,13 @@ static bool TryLogicalArithmeticRRI(Instruction &inst, uint32_t bits) {
     AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
   // enc.opc == 01
   } else if (!(enc.opc & 0b10u)) {
-    AddImmOp(inst, 0);
+    AddImmOp(inst, 0u);
   // enc.opc == 11
   } else {
-    AddImmOp(inst, 1);
+    AddImmOp(inst, 1u);
   }
 
   ExpandTo32AddImmAddCarry(inst, enc.imm12, enc.s);
-
   return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u]);
 }
 
