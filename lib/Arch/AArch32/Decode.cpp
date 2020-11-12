@@ -458,23 +458,38 @@ static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
                                                      shift_val_expr);
     if (carry_out) {
       AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
+
+      // Create expression for the low 8 bits of the shift register
+      AddIntRegOp(inst, shift_reg_num, 32u, Operand::kActionRead);
+      ExtractAndZExtExpr(inst, inst.operands.back(), 8u, 32u);
+      auto shift_val_expr_c = inst.operands.back().expr;
+      inst.operands.pop_back();
+
       inst.operands.back().expr = inst.EmplaceBinaryOp(
-          opcode, inst.operands.back().expr, shift_val_expr);
+          opcode, inst.operands.back().expr, shift_val_expr_c);
     }
   } else {
     RORExpr(inst, inst.operands.back(), shift_val_expr);
     if (carry_out) {
+      const auto word_type = inst.arch_for_decode->AddressType();
       const auto _31 = llvm::ConstantInt::get(word_type, 31u, false);
       const auto _32 = llvm::ConstantInt::get(word_type, 32u, false);
-      AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
-      shift_val_expr = inst.EmplaceBinaryOp(llvm::Instruction::Add,
-                                            shift_val_expr,
+      AddIntRegOp(inst, reg_num, 32u, Operand::kActionRead);
+
+      // Create expression for the low 8 bits of the shift register
+      AddIntRegOp(inst, shift_reg_num, 32u, Operand::kActionRead);
+      ExtractAndZExtExpr(inst, inst.operands.back(), 8u, 32u);
+      auto shift_val_expr_c = inst.operands.back().expr;
+      inst.operands.pop_back();
+
+      shift_val_expr_c = inst.EmplaceBinaryOp(llvm::Instruction::Add,
+                                              shift_val_expr_c,
                                             inst.EmplaceConstant(_31));
-      shift_val_expr = inst.EmplaceBinaryOp(llvm::Instruction::URem,
-                                            shift_val_expr,
+      shift_val_expr_c = inst.EmplaceBinaryOp(llvm::Instruction::URem,
+                                              shift_val_expr_c,
                                             inst.EmplaceConstant(_32));
       inst.operands.back().expr = inst.EmplaceBinaryOp(
-          llvm::Instruction::LShr, inst.operands.back().expr, shift_val_expr);
+          llvm::Instruction::LShr, inst.operands.back().expr, shift_val_expr_c);
     }
   }
 
@@ -1383,7 +1398,7 @@ static TryDecode * TryDataProcessingAndMisc(uint32_t bits) {
         }
       }
     // op1 == 10xx0
-    } else if (((enc.op1 >> 3) == 0b10u) && (enc.op1 & 0b00001u)) {
+    } else if (((enc.op1 >> 3) == 0b10u) && !(enc.op1 & 0b00001u)) {
       // TODO(Sonya): Miscellaneous
       if (!enc.op2) {
         return nullptr;
@@ -1391,9 +1406,8 @@ static TryDecode * TryDataProcessingAndMisc(uint32_t bits) {
       } else {
         return nullptr;
       }
-    }
     // op1 != 10xx0
-    else {
+    } else {
       // Data-processing register (immediate shift) -- op4 == 0
       if (!enc.op4) {
         // op0 -> enc.op1 2 high order bits, op1 -> enc.op1 lowest bit

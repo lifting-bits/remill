@@ -50,7 +50,7 @@ DEF_SEM(CMN, R32 src1, I32 src2, I8 carry_out) {
 }
 } // namespace
 
-DEF_ISEL(TST) = TST;
-DEF_ISEL(TEQ) = TEQ;
-DEF_ISEL(CMP) = CMP;
-DEF_ISEL(CMN) = CMN;
+DEF_ISEL(TSTr) = TST;
+DEF_ISEL(TEQr) = TEQ;
+DEF_ISEL(CMPr) = CMP;
+DEF_ISEL(CMNr) = CMN;
