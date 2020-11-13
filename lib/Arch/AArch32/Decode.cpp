@@ -427,6 +427,59 @@ static void RORExpr(Instruction &inst, Operand &op,
   op.expr = inst.EmplaceBinaryOp(llvm::Instruction::Or, lhs_expr, rhs_expr);
 }
 
+static void AddShiftRegCarryOperand(Instruction &inst, uint32_t reg_num,
+                                    uint32_t shift_type,
+                                    uint32_t shift_reg_num) {
+  // Create expression for the low 8 bits of the shift register
+  AddIntRegOp(inst, shift_reg_num, 32u, Operand::kActionRead);
+  ExtractAndZExtExpr(inst, inst.operands.back(), 8u, 32u);
+  auto shift_val_expr_c = inst.operands.back().expr;
+  inst.operands.pop_back();
+
+  const auto word_type = inst.arch_for_decode->AddressType();
+  const auto _1 = llvm::ConstantInt::get(word_type, 1u, false);
+  const auto _31 = llvm::ConstantInt::get(word_type, 31u, false);
+  const auto _32 = llvm::ConstantInt::get(word_type, 32u, false);
+
+  unsigned opcode;
+  switch (static_cast<Shift>(shift_type)) {
+    case Shift::kShiftASR:  // shift_size - 1
+      opcode = llvm::Instruction::AShr;
+      shift_val_expr_c = inst.EmplaceBinaryOp(llvm::Instruction::Sub,
+                                              shift_val_expr_c,
+                                              inst.EmplaceConstant(_1));
+      break;
+    case Shift::kShiftLSL:  // 32 - shift_size
+      opcode = llvm::Instruction::Shl;
+      shift_val_expr_c = inst.EmplaceBinaryOp(llvm::Instruction::Sub,
+                                              inst.EmplaceConstant(_32),
+                                              shift_val_expr_c);
+      break;
+    case Shift::kShiftLSR:  // shift_size - 1
+      opcode = llvm::Instruction::LShr;
+      shift_val_expr_c = inst.EmplaceBinaryOp(llvm::Instruction::Sub,
+                                              shift_val_expr_c,
+                                              inst.EmplaceConstant(_1));
+      break;
+    case Shift::kShiftROR:
+      shift_val_expr_c = inst.EmplaceBinaryOp(llvm::Instruction::Add,
+                                              shift_val_expr_c,
+                                              inst.EmplaceConstant(_31));
+      shift_val_expr_c = inst.EmplaceBinaryOp(llvm::Instruction::URem,
+                                              shift_val_expr_c,
+                                              inst.EmplaceConstant(_32));
+      break;
+  }
+
+  AddIntRegOp(inst, reg_num, 32u, Operand::kActionRead);
+  inst.operands.back().expr = inst.EmplaceBinaryOp(opcode,
+                                                   inst.operands.back().expr,
+                                                   shift_val_expr_c);
+
+  // Extract the sign bit and extend back to I8
+  ExtractAndZExtExpr(inst, inst.operands.back(), 1u, 8u);
+}
+
 // Note: this has no RRX shift operation
 static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
                                   uint32_t shift_type, uint32_t shift_reg_num,
@@ -440,69 +493,34 @@ static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
   inst.operands.pop_back();
 
   // Create the shift and carry expressions operations
-  if (static_cast<Shift>(shift_type) != Shift::kShiftROR) {
-    unsigned opcode;
-    switch (static_cast<Shift>(shift_type)) {
-      case Shift::kShiftASR:
-        opcode = llvm::Instruction::AShr;
-        break;
-      case Shift::kShiftLSL:
-        opcode = llvm::Instruction::Shl;
-        break;
-      case Shift::kShiftLSR:
-        opcode = llvm::Instruction::LShr;
-        break;
-    }
-    inst.operands.back().expr = inst.EmplaceBinaryOp(opcode,
-                                                     inst.operands.back().expr,
-                                                     shift_val_expr);
-    if (carry_out) {
-      AddIntRegOp(inst, reg_num, 32, Operand::kActionRead);
-
-      // Create expression for the low 8 bits of the shift register
-      AddIntRegOp(inst, shift_reg_num, 32u, Operand::kActionRead);
-      ExtractAndZExtExpr(inst, inst.operands.back(), 8u, 32u);
-      auto shift_val_expr_c = inst.operands.back().expr;
-      inst.operands.pop_back();
-
+  switch (static_cast<Shift>(shift_type)) {
+    case Shift::kShiftASR:
       inst.operands.back().expr = inst.EmplaceBinaryOp(
-          opcode, inst.operands.back().expr, shift_val_expr_c);
-    }
-  } else {
-    RORExpr(inst, inst.operands.back(), shift_val_expr);
-    if (carry_out) {
-      const auto word_type = inst.arch_for_decode->AddressType();
-      const auto _31 = llvm::ConstantInt::get(word_type, 31u, false);
-      const auto _32 = llvm::ConstantInt::get(word_type, 32u, false);
-      AddIntRegOp(inst, reg_num, 32u, Operand::kActionRead);
-
-      // Create expression for the low 8 bits of the shift register
-      AddIntRegOp(inst, shift_reg_num, 32u, Operand::kActionRead);
-      ExtractAndZExtExpr(inst, inst.operands.back(), 8u, 32u);
-      auto shift_val_expr_c = inst.operands.back().expr;
-      inst.operands.pop_back();
-
-      shift_val_expr_c = inst.EmplaceBinaryOp(llvm::Instruction::Add,
-                                              shift_val_expr_c,
-                                            inst.EmplaceConstant(_31));
-      shift_val_expr_c = inst.EmplaceBinaryOp(llvm::Instruction::URem,
-                                              shift_val_expr_c,
-                                            inst.EmplaceConstant(_32));
+          llvm::Instruction::AShr, inst.operands.back().expr, shift_val_expr);
+      break;
+    case Shift::kShiftLSL:
       inst.operands.back().expr = inst.EmplaceBinaryOp(
-          llvm::Instruction::LShr, inst.operands.back().expr, shift_val_expr_c);
-    }
+          llvm::Instruction::Shl, inst.operands.back().expr, shift_val_expr);
+      break;
+    case Shift::kShiftLSR:
+      inst.operands.back().expr = inst.EmplaceBinaryOp(
+          llvm::Instruction::LShr, inst.operands.back().expr, shift_val_expr);
+      break;
+    case Shift::kShiftROR:
+      RORExpr(inst, inst.operands.back(), shift_val_expr);
+      break;
   }
 
   if (carry_out) {
-    // Extract the sign bit and extend back to I8
-    ExtractAndZExtExpr(inst, inst.operands.back(), 1u, 8u);
+    AddShiftRegCarryOperand(inst, reg_num, shift_type, shift_reg_num);
   }
 }
+
 
 // PLEASE SEE AddShiftRegImmOperand!
 // This function extracts the carry_out that from the semantics that
 // AddShiftRegImmOperand handles
-static void AddShiftCarryOperand(Instruction &inst,
+static void AddShiftImmCarryOperand(Instruction &inst,
                                  uint32_t reg_num, uint32_t shift_type,
                                  uint32_t shift_size, const char * carry_reg_name) {
 
@@ -594,7 +612,7 @@ static void AddShiftRegImmOperand(Instruction &inst, uint32_t reg_num,
                                                      rrx_op);
   }
   if (carry_out) {
-    AddShiftCarryOperand(inst, reg_num, shift_type, shift_size, "C");
+    AddShiftImmCarryOperand(inst, reg_num, shift_type, shift_size, "C");
   }
 }
 
