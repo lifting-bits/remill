@@ -316,7 +316,6 @@ Instruction::Instruction(void)
       has_branch_taken_delay_slot(false),
       has_branch_not_taken_delay_slot(false),
       in_delay_slot(false),
-      negate_conditions(false),
       category(Instruction::kCategoryInvalid) {}
 
 void Instruction::Reset(void) {
@@ -330,11 +329,9 @@ void Instruction::Reset(void) {
   has_branch_taken_delay_slot = false;
   has_branch_not_taken_delay_slot = false;
   in_delay_slot = false;
-  negate_conditions = false;
   category = Instruction::kCategoryInvalid;
   arch_for_decode = nullptr;
   operands.clear();
-  conditions.clear();
   function.clear();
   bytes.clear();
   next_expr_index = 0;
@@ -350,6 +347,10 @@ OperandExpression* Instruction::EmplaceRegister(const Register * reg) {
   expr->emplace<const Register *>(reg);
   expr->type = reg->type;
   return expr;
+}
+
+OperandExpression * Instruction::EmplaceRegister(std::string_view reg_name) {
+  return EmplaceRegister(arch_for_decode->RegisterByName(reg_name));
 }
 
 OperandExpression* Instruction::EmplaceConstant(llvm::Constant * val) {
@@ -569,8 +570,13 @@ Operand& Instruction::EmplaceOperand(const Operand::Address &addr_op) {
 
   auto reg_or_zero = [=](const Operand::Register & reg) {
     if (!reg.name.empty()) {
-      auto reg_pointer = arch_for_decode->RegisterByName(reg.name);
-      return EmplaceRegister(reg_pointer);
+      if (auto reg_pointer = arch_for_decode->RegisterByName(reg.name)) {
+        return EmplaceRegister(reg_pointer);
+      } else {
+        return EmplaceVariable(
+            reg.name,
+            llvm::Type::getIntNTy(*arch_for_decode->context, reg.size));
+      }
     } else {
       return EmplaceConstant(zero);
     }
@@ -725,17 +731,12 @@ std::string Instruction::Serialize(void) const {
       ss << " (COND_BRANCH (TAKEN " << std::hex << branch_taken_pc << ")"
          << " (NOT_TAKEN " << branch_not_taken_pc << std::dec << "))";
       break;
+    case kCategoryConditionalIndirectJump:
+      ss << " (COND_BRANCH (TAKEN <unknown>)"
+         << " (NOT_TAKEN " << branch_not_taken_pc << std::dec << "))";
     default: break;
   }
 
-  auto end = "";
-  auto sep = " (CONDS ";
-  for (const auto &cond: conditions) {
-    ss << sep << cond.Serialize();
-    sep = " AND ";
-    end = ")";
-  }
-  ss << end;
   ss << ")";
   return ss.str();
 }

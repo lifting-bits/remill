@@ -214,10 +214,6 @@ class Instruction {
   // Is this instruction decoded within the context of a delay slot?
   bool in_delay_slot;
 
-  // If `conditions` is non-empty then this tells us if we should negate the
-  // result of the condition.
-  bool negate_conditions;
-
   enum Category {
     kCategoryInvalid,
     kCategoryNormal,
@@ -225,6 +221,7 @@ class Instruction {
     kCategoryError,
     kCategoryDirectJump,
     kCategoryIndirectJump,
+    kCategoryConditionalIndirectJump,
     kCategoryDirectFunctionCall,
     kCategoryIndirectFunctionCall,
     kCategoryFunctionReturn,
@@ -234,7 +231,6 @@ class Instruction {
   } category;
 
   std::vector<Operand> operands;
-  std::vector<Condition> conditions;
 
   std::string Serialize(void) const;
 
@@ -260,7 +256,7 @@ class Instruction {
     switch (category) {
       case kCategoryIndirectFunctionCall:
       case kCategoryIndirectJump:
-      case kCategoryConditionalBranch:
+      case kCategoryConditionalIndirectJump:
       case kCategoryAsyncHyperCall:
       case kCategoryConditionalAsyncHyperCall:
       case kCategoryFunctionReturn: return true;
@@ -269,7 +265,8 @@ class Instruction {
   }
 
   inline bool IsConditionalBranch(void) const {
-    return kCategoryConditionalBranch == category;
+    return kCategoryConditionalBranch == category ||
+        kCategoryConditionalIndirectJump == category;
   }
 
   inline bool IsFunctionCall(void) const {
@@ -306,6 +303,7 @@ class Instruction {
   // This allocates an OperandExpression
   OperandExpression * AllocateExpression(void);
   OperandExpression * EmplaceRegister(const Register *);
+  OperandExpression * EmplaceRegister(std::string_view reg_name);
   OperandExpression * EmplaceConstant(llvm::Constant *);
   OperandExpression * EmplaceVariable(std::string_view, llvm::Type *);
   OperandExpression * EmplaceBinaryOp(unsigned opcode, OperandExpression * op1, OperandExpression * op2);

@@ -15,6 +15,7 @@
  */
 
 #include "Arch.h"
+#include "remill/BC/ABI.h"
 
 #include <glog/logging.h>
 
@@ -242,6 +243,18 @@ union DataProcessingAndMisc {
 } __attribute__((packed));
 static_assert(sizeof(DataProcessingAndMisc) == 4, " ");
 
+// Branch (Immediate)
+union BranchI {
+  uint32_t flat;
+  struct {
+    int32_t imm24 : 24;
+    uint32_t H : 1;
+    uint32_t _101 : 3;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(BranchI) == 4, " ");
+
 static constexpr auto kPCRegNum = 15u;
 
 static const char * const kIntRegName[] = {
@@ -274,6 +287,16 @@ static void AddIntRegOp(Instruction &inst, unsigned index, unsigned size,
   auto &op = inst.EmplaceOperand(reg);
   op.action = action;
 }
+
+//static void AddIntRegOp(Instruction &inst, const char *reg_name, unsigned size,
+//                        Operand::Action action) {
+//  Operand::Register reg;
+//  reg.size = size;
+//  reg.name = reg_name;
+//  auto &op = inst.EmplaceOperand(reg);
+//  op.action = action;
+//}
+
 
 static void AddImmOp(Instruction &inst, uint64_t value, unsigned size = 32,
                      bool is_signed = false) {
@@ -330,22 +353,22 @@ static void AddShiftThenExtractOp(Instruction &inst,
 
 }
 
-static void AddExtractThenShiftOp(Instruction &inst,
-                                  Operand::ShiftRegister::Shift shift_op,
-                                  Operand::ShiftRegister::Extend extend_op,
-                                  const char *reg_name, unsigned reg_size,
-                                  unsigned shift_size, unsigned extract_size) {
-  Operand::ShiftRegister shift_reg;
-  shift_reg.reg.name = reg_name;
-  shift_reg.reg.size = reg_size;
-  shift_reg.shift_op = shift_op;
-  shift_reg.shift_size = shift_size;
-  shift_reg.extract_size = extract_size;
-  shift_reg.extend_op = extend_op;
-  shift_reg.shift_first = false;
-  auto &op = inst.EmplaceOperand(shift_reg);
-  op.action = Operand::kActionRead;
-}
+//static void AddExtractThenShiftOp(Instruction &inst,
+//                                  Operand::ShiftRegister::Shift shift_op,
+//                                  Operand::ShiftRegister::Extend extend_op,
+//                                  const char *reg_name, unsigned reg_size,
+//                                  unsigned shift_size, unsigned extract_size) {
+//  Operand::ShiftRegister shift_reg;
+//  shift_reg.reg.name = reg_name;
+//  shift_reg.reg.size = reg_size;
+//  shift_reg.shift_op = shift_op;
+//  shift_reg.shift_size = shift_size;
+//  shift_reg.extract_size = extract_size;
+//  shift_reg.extend_op = extend_op;
+//  shift_reg.shift_first = false;
+//  auto &op = inst.EmplaceOperand(shift_reg);
+//  op.action = Operand::kActionRead;
+//}
 
 
 // Note: Order is significant; extracted bits may be casted to this type.
@@ -385,7 +408,6 @@ static void ExpandTo32AddImmAddCarry(Instruction &inst, uint32_t imm12,
 
   if (carry_out) {
     if (!rotation_amount) {
-      // TODO(Sonya): remove the ShiftThenExtractOp op && do an extract only
       AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftLeftWithZeroes,
                             Operand::ShiftRegister::kExtendUnsigned, "C", 8, 0,
                             1);
@@ -414,7 +436,6 @@ static void ExtractAndZExtExpr(Instruction &inst, Operand &op,
 static void RORExpr(Instruction &inst, Operand &op,
                     OperandExpression *shift_amount) {
   const auto word_type = inst.arch_for_decode->AddressType();
-  const auto _31 = llvm::ConstantInt::get(word_type, 31u, false);
   const auto _32 = llvm::ConstantInt::get(word_type, 32u, false);
   shift_amount = inst.EmplaceBinaryOp(llvm::Instruction::URem, shift_amount,
                                       inst.EmplaceConstant(_32));
@@ -431,6 +452,7 @@ static void AddShiftRegCarryOperand(Instruction &inst, uint32_t reg_num,
                                     uint32_t shift_type,
                                     uint32_t shift_reg_num) {
   // Create expression for the low 8 bits of the shift register
+  // TODO(Sonya): Replace with Emplace operands then emplace op manually at end
   AddIntRegOp(inst, shift_reg_num, 32u, Operand::kActionRead);
   ExtractAndZExtExpr(inst, inst.operands.back(), 8u, 32u);
   auto shift_val_expr_c = inst.operands.back().expr;
@@ -441,7 +463,7 @@ static void AddShiftRegCarryOperand(Instruction &inst, uint32_t reg_num,
   const auto _31 = llvm::ConstantInt::get(word_type, 31u, false);
   const auto _32 = llvm::ConstantInt::get(word_type, 32u, false);
 
-  unsigned opcode;
+  unsigned opcode = 0;
   switch (static_cast<Shift>(shift_type)) {
     case Shift::kShiftASR:  // shift_size - 1
       opcode = llvm::Instruction::AShr;
@@ -469,6 +491,8 @@ static void AddShiftRegCarryOperand(Instruction &inst, uint32_t reg_num,
                                               shift_val_expr_c,
                                               inst.EmplaceConstant(_32));
       break;
+    // TODO(Sonya): Add default with some LOG Error for incorrect shift type
+
   }
 
   AddIntRegOp(inst, reg_num, 32u, Operand::kActionRead);
@@ -617,100 +641,119 @@ static void AddShiftRegImmOperand(Instruction &inst, uint32_t reg_num,
 }
 
 // Decode the condition field and fill in the instruction conditions accordingly
-static void DecodeCondition(Instruction &inst, uint32_t cond) {
-  inst.conditions.emplace_back();
-  auto &lhs_cond = inst.conditions.back();
+static bool DecodeCondition(Instruction &inst, uint32_t cond) {
 
+  auto _8_type = llvm::Type::getInt8Ty(*inst.arch_for_decode->context);
+  const auto _1 = llvm::ConstantInt::get(_8_type, 1u, false);
+  bool negate_conditions = false;
+  bool is_cond = true;
+
+  OperandExpression * op_expr = nullptr;
   switch (cond) {
     case 0b0001:
-      inst.negate_conditions = true;
+      negate_conditions = true;
       [[clang::fallthrough]];
     case 0b0000: {
-      lhs_cond.kind = Condition::kTypeIsOne;
-      lhs_cond.lhs_reg.name = "Z";
-      lhs_cond.lhs_reg.size = 8;
+      op_expr = inst.EmplaceRegister("Z");
       break;
     }
     case 0b0011:
-      inst.negate_conditions = true;
+      negate_conditions = true;
       [[clang::fallthrough]];
     case 0b0010: {
-      lhs_cond.kind = Condition::kTypeIsOne;
-      lhs_cond.lhs_reg.name = "C";
-      lhs_cond.lhs_reg.size = 8;
+      op_expr = inst.EmplaceRegister("C");
       break;
     }
     case 0b0101:
-      inst.negate_conditions = true;
+      negate_conditions = true;
       [[clang::fallthrough]];
     case 0b0100: {
-      lhs_cond.kind = Condition::kTypeIsOne;
-      lhs_cond.lhs_reg.name = "N";
-      lhs_cond.lhs_reg.size = 8;
+      op_expr = inst.EmplaceRegister("N");
       break;
     }
     case 0b0111:
-      inst.negate_conditions = true;
+      negate_conditions = true;
       [[clang::fallthrough]];
     case 0b0110: {
-      lhs_cond.kind = Condition::kTypeIsOne;
-      lhs_cond.lhs_reg.name = "V";
-      lhs_cond.lhs_reg.size = 8;
+      op_expr = inst.EmplaceRegister("V");
       break;
     }
     case 0b1001:
-      inst.negate_conditions = true;
+      negate_conditions = true;
       [[clang::fallthrough]];
     case 0b1000: {
-      lhs_cond.kind = Condition::kTypeIsOne;
-      lhs_cond.lhs_reg.name = "C";
-      lhs_cond.lhs_reg.size = 8;
+      //lhs_cond.kind = Condition::kTypeIsOne;
+      auto c_expr = inst.EmplaceRegister("C");
 
-      inst.conditions.emplace_back();
-      auto &rhs_cond = inst.conditions.back();
-      rhs_cond.kind = Condition::kTypeIsZero;
-      rhs_cond.rhs_reg.name = "Z";
-      rhs_cond.rhs_reg.size = 8;
+      //rhs_cond.kind = Condition::kTypeIsZero;
+      auto z_expr = inst.EmplaceRegister("Z");
+      z_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, z_expr,
+                                     inst.EmplaceConstant(_1));
+      op_expr = inst.EmplaceBinaryOp(llvm::Instruction::And, z_expr, c_expr);
       break;
     }
     case 0b1011:
-      inst.negate_conditions = true;
+      negate_conditions = true;
       [[clang::fallthrough]];
     case 0b1010: {
-      lhs_cond.kind = Condition::kTypeIsEqual;
-      lhs_cond.lhs_reg.name = "N";
-      lhs_cond.lhs_reg.size = 8;
+      //lhs_cond.kind = Condition::kTypeIsEqual;
+      auto n_expr = inst.EmplaceRegister("N");
 
-      lhs_cond.rhs_reg.name = "V";
-      lhs_cond.rhs_reg.size = 8;
+      auto v_expr = inst.EmplaceRegister("V");
+      op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, n_expr, v_expr);
+      op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, op_expr,
+                                     inst.EmplaceConstant(_1));
       break;
     }
     case 0b1101:
-      inst.negate_conditions = true;
+      negate_conditions = true;
       [[clang::fallthrough]];
     case 0b1100: {
-      lhs_cond.kind = Condition::kTypeIsEqual;
-      lhs_cond.lhs_reg.name = "N";
-      lhs_cond.lhs_reg.size = 8;
+      //lhs_cond.kind = Condition::kTypeIsEqual;
+      auto n_expr = inst.EmplaceRegister("N");
 
-      lhs_cond.rhs_reg.name = "V";
-      lhs_cond.rhs_reg.size = 8;
+      auto v_expr = inst.EmplaceRegister("V");
+      op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, n_expr, v_expr);
+      op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, op_expr,
+                                  inst.EmplaceConstant(_1));
 
-      inst.conditions.emplace_back();
-      auto &rhs_cond = inst.conditions.back();
-      rhs_cond.kind = Condition::kTypeIsZero;
-      rhs_cond.rhs_reg.name = "Z";
-      rhs_cond.rhs_reg.size = 8;
+      //rhs_cond.kind = Condition::kTypeIsZero;
+      auto z_expr = inst.EmplaceRegister("Z");
+      z_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, z_expr,
+                                           inst.EmplaceConstant(_1));
+      op_expr = inst.EmplaceBinaryOp(llvm::Instruction::And, z_expr, op_expr);
       break;
     }
     case 0b1111:
     case 0b1110:
-      inst.conditions.pop_back();
+      op_expr = inst.EmplaceConstant(_1);
+      is_cond = false;
       break;
     default:
       LOG(FATAL) << "Invalid condition bits " << cond << " in " << inst.Serialize();
       break;
   }
+
+  if (negate_conditions) {
+    op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor,
+                                                      op_expr,
+                                                      inst.EmplaceConstant(_1));
+  }
+  inst.operands.emplace_back();
+  auto &op = inst.operands.back();
+  op.expr = op_expr;
+  op.type = Operand::kTypeExpression;
+  op.size = 8u;
+  op.action = Operand::kActionRead;
+
+  inst.operands.emplace_back();
+  auto &branch_taken = inst.operands.back();
+  branch_taken.expr = inst.EmplaceVariable(kBranchTakenVariableName, _8_type);
+  branch_taken.type = Operand::kTypeExpression;
+  branch_taken.size = 8u;
+  branch_taken.action = Operand::kActionWrite;
+
+  return is_cond;
 }
 
 std::optional<uint64_t> EvalReg(const Instruction &inst, const Operand::Register &op) {
@@ -832,7 +875,7 @@ std::optional<uint64_t> EvalOperand(const Instruction &inst, const Operand &op) 
 //   else
 //      ALUWritePC(result);
 static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
-                       InstEval *evaluator) {
+                       InstEval *evaluator, bool is_cond) {
   if (rd == kPCRegNum) {
     // Updates the flags (condition codes)
     if (s) {
@@ -847,8 +890,13 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
       } else {
         auto res = evaluator(*src1, *src2);
         if (!res) {
-          inst.category = Instruction::kCategoryIndirectJump;
-        } else if (!inst.conditions.empty()) {
+          if (is_cond) {
+            inst.branch_not_taken_pc = inst.next_pc;
+            inst.category = Instruction::kCategoryConditionalIndirectJump;
+          } else {
+            inst.category = Instruction::kCategoryIndirectJump;
+          }
+        } else if (is_cond) {
           inst.branch_taken_pc = static_cast<uint64_t>(*res);
           inst.branch_not_taken_pc = inst.next_pc;
           inst.category = Instruction::kCategoryConditionalBranch;
@@ -930,11 +978,11 @@ static bool TryDecodeIntegerDataProcessingRRRI(Instruction &inst, uint32_t bits)
   const IntDataProcessingRRRI enc = {bits};
 
   inst.function = kIdpNamesRRR[ (enc.opc << 1u) | enc.s];
-  DecodeCondition(inst, enc.cond);
+  auto is_cond = DecodeCondition(inst, enc.cond);
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
   AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
   AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, enc.s);
-  return EvalPCDest(inst, enc.s, enc.rd, kIdpEvaluators[enc.opc]);
+  return EvalPCDest(inst, enc.s, enc.rd, kIdpEvaluators[enc.opc], is_cond);
 }
 
 // Integer Data Processing (three register, register shift)
@@ -977,7 +1025,7 @@ static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst, uint32_t bits) 
   const IntDataProcessingRRI enc = { bits };
 
   inst.function = kIdpNamesRRR[(enc.opc << 1u) | enc.s];
-  DecodeCondition(inst, enc.cond);
+  auto is_cond = DecodeCondition(inst, enc.cond);
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
 
   // Raise the program counter to align to a multiple of 4 bytes
@@ -990,7 +1038,7 @@ static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst, uint32_t bits) 
 
   ExpandTo32AddImmAddCarry(inst, enc.imm12, enc.s);
 
-  return EvalPCDest(inst, enc.s, enc.rd, kIdpEvaluators[enc.opc]);
+  return EvalPCDest(inst, enc.s, enc.rd, kIdpEvaluators[enc.opc], is_cond);
 }
 
 static const char * const kMulAccRRR[] = {
@@ -1111,6 +1159,9 @@ static const char * const kLoadSWUBIL[] = {
 //   11 0 1 != 1111 LDR (immediate) — pre-indexed
 //   11 1 0         STRB (immediate) — pre-indexed
 //   11 1 1 != 1111 LDRB (immediate) — pre-indexed
+// LDR{<c>}{<q>} <Rt>, [<Rn> {, #{+/-}<imm>}]
+// LDR{<c>}{<q>} <Rt>, [<Rn>], #{+/-}<imm>
+// LDR{<c>}{<q>} <Rt>, [<Rn>, #{+/-}<imm>]!
 template<Operand::Action kMemAction, Operand::Action kRegAction, unsigned kMemSize, bool kAlignPC = false>
 static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
   const LoadStoreWUBIL enc = { bits };
@@ -1124,7 +1175,7 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
   auto instruction = kLoadSWUBIL[enc.P << 3u | enc.W << 2u | enc.o2 << 1u | enc.o1];
 
   inst.function = instruction;
-  DecodeCondition(inst, enc.cond);
+  auto is_cond = DecodeCondition(inst, enc.cond);
 
   // LDR & LDRB (literal) are pc relative. Need to align the PC to the next nearest 4 bytes
   int64_t pc_adjust = 0;
@@ -1153,7 +1204,16 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
     AddAddrRegOp(inst, kIntRegName[enc.rn], 32, Operand::kActionRead, disp + pc_adjust);
   }
 
-  inst.category = Instruction::kCategoryNormal;
+  if (enc.rt == kPCRegNum) {
+    if (is_cond) {
+      inst.branch_not_taken_pc = inst.next_pc;
+      inst.category = Instruction::kCategoryConditionalIndirectJump;
+    } else {
+      inst.category = Instruction::kCategoryIndirectJump;
+    }
+  } else {
+    inst.category = Instruction::kCategoryNormal;
+  }
   return true;
 }
 
@@ -1190,7 +1250,7 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
   auto instruction = kLogicalArithmeticRRRI[enc.opc << 1u | enc.s];
 
   inst.function = instruction;
-  DecodeCondition(inst, enc.cond);
+  auto is_cond = DecodeCondition(inst, enc.cond);
 
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
 
@@ -1206,7 +1266,7 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
   }
 
   AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, enc.s);
-  return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u]);
+  return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u], is_cond);
 }
 
 // Logical Arithmetic (three register, register shift)
@@ -1247,7 +1307,7 @@ static bool TryLogicalArithmeticRRI(Instruction &inst, uint32_t bits) {
   auto instruction = kLogicalArithmeticRRRI[enc.opc << 1u | enc.s];
 
   inst.function = instruction;
-  DecodeCondition(inst, enc.cond);
+  auto is_cond = DecodeCondition(inst, enc.cond);
 
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
   // enc.opc == x0
@@ -1262,7 +1322,7 @@ static bool TryLogicalArithmeticRRI(Instruction &inst, uint32_t bits) {
   }
 
   ExpandTo32AddImmAddCarry(inst, enc.imm12, enc.s);
-  return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u]);
+  return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u], is_cond);
 }
 
 //00  TST (register)
@@ -1327,6 +1387,59 @@ static bool TryIntegerTestAndCompareRI(Instruction &inst, uint32_t bits) {
   inst.category = Instruction::kCategoryNormal;
   return true;
 
+}
+
+// cond  H
+//!= 1111 0 B
+//!= 1111 1 BL, BLX (immediate) — A1
+//1111    BL, BLX (immediate) — A2
+// Branch (immediate)
+static bool TryBranchImm(Instruction &inst, uint32_t bits) {
+  const BranchI enc = { bits };
+  auto is_cond = DecodeCondition(inst, enc.cond);
+
+  auto is_func = false;
+  // PC used by the branch instruction is actually the address of the next instruction
+  auto target_pc = static_cast<uint32_t>(inst.pc + 4 + static_cast<uint32_t>(enc.imm24 << 2));
+  if (enc.cond != 0b1111) {
+    if (!enc.H) {
+      target_pc = target_pc & ~0b11u;
+      if (is_cond) {
+        inst.function = "BCOND";
+      } else {
+        inst.function = "B";
+      }
+    } else {
+      target_pc = target_pc & ~0b11u;
+      inst.function = "BL";
+      is_func = true;
+    }
+  } else {
+    inst.function = "BLX";
+    target_pc = target_pc & ~0b11u;
+    target_pc = target_pc | (enc.H << 1);
+    is_func = true;
+  }
+  auto offset = static_cast<uint32_t>(target_pc - inst.pc);
+
+  AddAddrRegOp(inst, "PC", 32u, Operand::kActionRead, offset);
+
+  inst.branch_taken_pc = target_pc;
+  inst.branch_not_taken_pc = inst.pc + 4;
+  if (is_cond) {
+    inst.category = Instruction::kCategoryConditionalBranch;
+    AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
+  } else if (is_func) {
+    LOG_IF(FATAL, is_cond) << "TODO: Conditional function calls";
+  } else {
+    inst.category = Instruction::kCategoryDirectJump;
+  }
+  Operand::Register reg;
+  reg.size = 32u;
+  reg.name = remill::kNextPCVariableName;
+  auto &next_pc = inst.EmplaceOperand(reg);
+  next_pc.action = Operand::kActionWrite;
+  return true;
 }
 
 // Corresponds to Data-processing register (immediate shift)
@@ -1485,8 +1598,12 @@ static TryDecode * TryDecodeTopLevelEncodings(uint32_t bits) {
   else {
     // TODO(Sonya): Branch, branch with link, and block data transfer -- op0 == 10x
     if (enc.op0 >> 1 == 0b10u) {
-      // return a result from another function for instruction categorizing
-      return nullptr;
+      // Branch (immediate) bit 25 == 1
+      if (enc.op0 == 0b101u) {
+        return TryBranchImm;
+      } else {
+        return nullptr;
+      }
     // TODO(Sonya): System register access, Advanced SIMD, floating-point, and Supervisor call -- op0 == 11x
     } else {
       // return a result from another function for instruction categorizing

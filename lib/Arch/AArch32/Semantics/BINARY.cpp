@@ -28,13 +28,15 @@ T AddWithCarryNZCV(State &state, T lhs, T rhs, T carry) {
   return result;
 }
 
-DEF_SEM(AND, R32W dst, R32 src1, I32 src2) {
+
+
+DEF_COND_SEM(AND, R32W dst, R32 src1, I32 src2) {
   auto value = Read(src2);
   Write(dst, UAnd(Read(src1), value));
   return memory;
 }
 
-DEF_SEM(ANDS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
+DEF_COND_SEM(ANDS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   auto value = Read(src2);
   auto res = UAnd(Read(src1), value);
   WriteZExt(dst, res);
@@ -45,13 +47,13 @@ DEF_SEM(ANDS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   return memory;
 }
 
-DEF_SEM(EOR, R32W dst, R32 src1, I32 src2) {
+DEF_COND_SEM(EOR, R32W dst, R32 src1, I32 src2) {
   auto value = Read(src2);
   Write(dst, UXor(Read(src1), value));
   return memory;
 }
 
-DEF_SEM(EORS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
+DEF_COND_SEM(EORS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   auto value = Read(src2);
   auto res = UXor(Read(src1), value);
   Write(dst, res);
@@ -62,13 +64,13 @@ DEF_SEM(EORS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   return memory;
 }
 
-DEF_SEM(RSB, R32W dst, R32 src1, I32 src2) {
+DEF_COND_SEM(RSB, R32W dst, R32 src1, I32 src2) {
   auto value = Read(src2);
   Write(dst, USub(value, Read(src1)));
   return memory;
 }
 
-DEF_SEM(RSBS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
+DEF_COND_SEM(RSBS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   auto rhs = Read(src2);
   auto lhs = Read(src1);
   auto res = AddWithCarryNZCV(state, UNot(lhs), rhs, uint32_t(1));
@@ -76,13 +78,13 @@ DEF_SEM(RSBS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   return memory;
 }
 
-DEF_SEM(SUB, R32W dst, R32 src1, I32 src2) {
+DEF_COND_SEM(SUB, R32W dst, R32 src1, I32 src2) {
   auto value = Read(src2);
   Write(dst, USub(Read(src1), value));
   return memory;
 }
 
-DEF_SEM(SUBS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
+DEF_COND_SEM(SUBS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   auto rhs = Read(src2);
   auto lhs = Read(src1);
   auto res = AddWithCarryNZCV(state, lhs, UNot(rhs), uint32_t(1));
@@ -90,13 +92,13 @@ DEF_SEM(SUBS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   return memory;
 }
 
-DEF_SEM(ADD, R32W dst, R32 src1, I32 src2) {
+DEF_COND_SEM(ADD, R32W dst, R32 src1, I32 src2) {
   auto value = Read(src2);
   Write(dst, UAdd(Read(src1), value));
   return memory;
 }
 
-DEF_SEM(ADDS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
+DEF_COND_SEM(ADDS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   auto rhs = Read(src2);
   auto lhs = Read(src1);
   auto res = AddWithCarryNZCV(state, lhs, rhs, uint32_t(0));
@@ -104,13 +106,13 @@ DEF_SEM(ADDS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   return memory;
 }
 
-DEF_SEM(ADC, R32W dst, R32 src1, I32 src2) {
+DEF_COND_SEM(ADC, R32W dst, R32 src1, I32 src2) {
   auto value = Read(src2);
   Write(dst, UAdd(UAdd(Read(src1),value), uint32_t(state.sr.c)));
   return memory;
 }
 
-DEF_SEM(ADCS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
+DEF_COND_SEM(ADCS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   auto rhs = Read(src2);
   auto lhs = Read(src1);
   auto res = AddWithCarryNZCV(state, lhs, rhs, uint32_t(state.sr.c));
@@ -118,13 +120,13 @@ DEF_SEM(ADCS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   return memory;
 }
 
-DEF_SEM(SBC, R32W dst, R32 src1, I32 src2) {
+DEF_COND_SEM(SBC, R32W dst, R32 src1, I32 src2) {
   auto value = Read(src2);
   Write(dst, UAdd(UAdd(Read(src1), UNot(value)), uint32_t(state.sr.c)));
   return memory;
 }
 
-DEF_SEM(SBCS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
+DEF_COND_SEM(SBCS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   auto rhs = Read(src2);
   auto lhs = Read(src1);
   auto res = AddWithCarryNZCV(state, lhs, UNot(rhs), uint32_t(state.sr.c));
@@ -132,13 +134,13 @@ DEF_SEM(SBCS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   return memory;
 }
 
-DEF_SEM(RSC, R32W dst, R32 src1, I32 src2) {
+DEF_COND_SEM(RSC, R32W dst, R32 src1, I32 src2) {
   auto value = Read(src2);
   Write(dst, UAdd(UAdd(value, UNot(Read(src1))), uint32_t(state.sr.c)));
   return memory;
 }
 
-DEF_SEM(RSCS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
+DEF_COND_SEM(RSCS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   auto rhs = Read(src2);
   auto lhs = Read(src1);
   auto res = AddWithCarryNZCV(state, UNot(lhs), rhs, uint32_t(state.sr.c));
@@ -166,7 +168,7 @@ DEF_ISEL(RSCrr) = RSC;
 DEF_ISEL(RSCSrr) = RSCS;
 
 namespace {
-DEF_SEM(MUL, R32W dst, R32 src1, R32 src2, R32 src3) {
+DEF_COND_SEM(MUL, R32W dst, R32 src1, R32 src2, R32 src3) {
   auto rhs = Signed(Read(src2));
   auto lhs = Signed(Read(src1));
   auto acc = Signed(Read(src3));
@@ -175,7 +177,7 @@ DEF_SEM(MUL, R32W dst, R32 src1, R32 src2, R32 src3) {
   return memory;
 }
 
-DEF_SEM(MULS, R32W dst, R32 src1, R32 src2, R32 src3) {
+DEF_COND_SEM(MULS, R32W dst, R32 src1, R32 src2, R32 src3) {
   auto rhs = Signed(Read(src2));
   auto lhs = Signed(Read(src1));
   auto acc = Signed(Read(src3));
@@ -187,7 +189,7 @@ DEF_SEM(MULS, R32W dst, R32 src1, R32 src2, R32 src3) {
   return memory;
 }
 
-DEF_SEM(UMAAL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
+DEF_COND_SEM(UMAAL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
   auto rhs = ZExt(Read(src3));
   auto lhs = ZExt(Read(src2));
   auto acc_hi = ZExt(Read(src1));
@@ -198,7 +200,7 @@ DEF_SEM(UMAAL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4)
   return memory;
 }
 
-DEF_SEM(MLS, R32W dst, R32 src1, R32 src2, R32 src3) {
+DEF_COND_SEM(MLS, R32W dst, R32 src1, R32 src2, R32 src3) {
   auto rhs = Signed(Read(src2));
   auto lhs = Signed(Read(src1));
   auto acc = Signed(Read(src3));
@@ -207,7 +209,7 @@ DEF_SEM(MLS, R32W dst, R32 src1, R32 src2, R32 src3) {
   return memory;
 }
 
-DEF_SEM(UMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
+DEF_COND_SEM(UMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
   auto rhs = ZExt(Read(src3));
   auto lhs = ZExt(Read(src2));
   auto acc = UOr(UShl(ZExt(Read(src1)), 32ul), ZExt(Read(src4))); // UInt(R[dHi]:R[dLo])
@@ -217,7 +219,7 @@ DEF_SEM(UMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4)
   return memory;
 }
 
-DEF_SEM(UMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
+DEF_COND_SEM(UMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
   auto rhs = ZExt(Read(src3));
   auto lhs = ZExt(Read(src2));
   auto acc = UOr(UShl(ZExt(Read(src1)), 32ul), ZExt(Read(src4))); // UInt(R[dHi]:R[dLo])
@@ -230,7 +232,7 @@ DEF_SEM(UMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4
   return memory;
 }
 
-DEF_SEM(SMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
+DEF_COND_SEM(SMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
   // Not entirely sure about all the signed ops I have in here
   auto rhs = SExt(Signed(Read(src3)));
   auto lhs = SExt(Signed(Read(src2)));
@@ -241,7 +243,7 @@ DEF_SEM(SMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4)
   return memory;
 }
 
-DEF_SEM(SMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
+DEF_COND_SEM(SMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
   auto rhs = SExt(Signed(Read(src3)));
   auto lhs = SExt(Signed(Read(src2)));
   auto acc = SOr(SShl(SExt(Read(src1)), 32ul), SExt(Read(src4))); // UInt(R[dHi]:R[dLo])

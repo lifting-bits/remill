@@ -16,34 +16,52 @@
 
 namespace {
 // Offset
-template<typename DstType, typename ValType>
-DEF_SEM(STR, DstType dst, R32 src1) {
+DEF_COND_SEM(STR, M32W dst, R32 src1) {
   auto src = Read(src1);
-  Write(dst, TruncTo<ValType>(src));
+  Write(dst, TruncTo<uint32_t>(src));
+  return memory;
+}
+
+DEF_COND_SEM(STRB, M8W dst, R32 src1) {
+  auto src = Read(src1);
+  Write(dst, TruncTo<uint8_t>(src));
   return memory;
 }
 
 // Pre + Post
-template<typename DstType, typename ValType>
-DEF_SEM(STRp, DstType dst, R32 src1, R32W dst_reg, R32 src2) {
+DEF_COND_SEM(STRp, M32W dst, R32 src1, R32W dst_reg, R32 src2) {
   auto src = Read(src1);
   auto new_val = Read(src2);
-  Write(dst, TruncTo<ValType>(src));
+  Write(dst, TruncTo<uint32_t>(src));
+  Write(dst_reg, new_val);
+  return memory;
+}
+
+// Pre + Post
+DEF_COND_SEM(STRBp, M8W dst, R32 src1, R32W dst_reg, R32 src2) {
+  auto src = Read(src1);
+  auto new_val = Read(src2);
+  Write(dst, TruncTo<uint8_t>(src));
   Write(dst_reg, new_val);
   return memory;
 }
 
 // Offset
-template<typename SrcType>
-DEF_SEM(LDR, SrcType src1, R32W dst) {
+DEF_COND_SEM(LDR, M32 src1, R32W dst) {
+  auto src = Read(src1);
+  WriteZExt(dst, src);
+  return memory;
+}
+
+// Offset
+DEF_COND_SEM(LDRB, M8 src1, R32W dst) {
   auto src = Read(src1);
   WriteZExt(dst, src);
   return memory;
 }
 
 // Pre + Post
-template<typename SrcType>
-DEF_SEM(LDRp, SrcType src1, R32W dst, R32W dst_reg, R32 src2) {
+DEF_COND_SEM(LDRp, M32 src1, R32W dst, R32W dst_reg, R32 src2) {
   auto src = Read(src1);
   auto new_val = Read(src2);
   WriteZExt(dst, src);
@@ -51,18 +69,43 @@ DEF_SEM(LDRp, SrcType src1, R32W dst, R32W dst_reg, R32 src2) {
   return memory;
 }
 
-template<typename DstType, typename ValType>
-DEF_SEM(STRT, DstType dst, R32 src1, R32W dst_reg, R32 src2) {
-  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kAArch32CheckNotEL2);
+// Pre + Post
+DEF_COND_SEM(LDRBp, M8 src1, R32W dst, R32W dst_reg, R32 src2) {
   auto src = Read(src1);
   auto new_val = Read(src2);
-  Write(dst, TruncTo<ValType>(src));
+  WriteZExt(dst, src);
   Write(dst_reg, new_val);
   return memory;
 }
 
-template<typename SrcType>
-DEF_SEM(LDRT, SrcType src1, R32W dst, R32W dst_reg, R32 src2) {
+DEF_COND_SEM(STRT, M32W dst, R32 src1, R32W dst_reg, R32 src2) {
+  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kAArch32CheckNotEL2);
+  auto src = Read(src1);
+  auto new_val = Read(src2);
+  Write(dst, TruncTo<uint32_t>(src));
+  Write(dst_reg, new_val);
+  return memory;
+}
+
+DEF_COND_SEM(STRTB, M8W dst, R32 src1, R32W dst_reg, R32 src2) {
+  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kAArch32CheckNotEL2);
+  auto src = Read(src1);
+  auto new_val = Read(src2);
+  Write(dst, TruncTo<uint8_t>(src));
+  Write(dst_reg, new_val);
+  return memory;
+}
+
+DEF_COND_SEM(LDRT, M32 src1, R32W dst, R32W dst_reg, R32 src2) {
+  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kAArch32CheckNotEL2);
+  auto src = Read(src1);
+  auto new_val = Read(src2);
+  WriteZExt(dst, src);
+  Write(dst_reg, new_val);
+  return memory;
+}
+
+DEF_COND_SEM(LDRTB, M8 src1, R32W dst, R32W dst_reg, R32 src2) {
   memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kAArch32CheckNotEL2);
   auto src = Read(src1);
   auto new_val = Read(src2);
@@ -73,15 +116,15 @@ DEF_SEM(LDRT, SrcType src1, R32W dst, R32W dst_reg, R32 src2) {
 
 } // namespace
 
-DEF_ISEL(STR) = STR<M32W, uint32_t>;
-DEF_ISEL(STRB) = STR<M8W, uint8_t>;
-DEF_ISEL(STRp) = STRp<M32W, uint32_t>;
-DEF_ISEL(STRBp) = STRp<M8W, uint8_t>;
-DEF_ISEL(LDR) = LDR<M32>;
-DEF_ISEL(LDRB) = LDR<M8>;
-DEF_ISEL(LDRp) = LDRp<M32>;
-DEF_ISEL(LDRBp) = LDRp<M8>;
-DEF_ISEL(STRT) = STRT<M32W, uint32_t>;
-DEF_ISEL(STRBT) = STRT<M8W, uint8_t>;
-DEF_ISEL(LDRT) = LDRT<M32>;
-DEF_ISEL(LDRBT) = LDRT<M8>;
+DEF_ISEL(STR) = STR;
+DEF_ISEL(STRB) = STRB;
+DEF_ISEL(STRp) = STRp;
+DEF_ISEL(STRBp) = STRBp;
+DEF_ISEL(LDR) = LDR;
+DEF_ISEL(LDRB) = LDRB;
+DEF_ISEL(LDRp) = LDRp;
+DEF_ISEL(LDRBp) = LDRBp;
+DEF_ISEL(STRT) = STRT;
+DEF_ISEL(STRBT) = STRTB;
+DEF_ISEL(LDRT) = LDRT;
+DEF_ISEL(LDRBT) = LDRTB;

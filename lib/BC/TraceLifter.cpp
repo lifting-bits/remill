@@ -607,6 +607,34 @@ bool TraceLifter::Impl::Lift(
                                    LoadBranchTaken(block), block);
           break;
         }
+        case Instruction::kCategoryConditionalIndirectJump: {
+          auto taken_block = llvm::BasicBlock::Create(context, "", func);
+          AddTerminatingTailCall(taken_block, intrinsics->jump);
+          auto not_taken_block = GetOrCreateBranchNotTakenBlock();
+
+          // If we might need to add delay slots, then try to lift the delayed
+          // instruction on each side of the conditional branch, injecting in
+          // new blocks (for the delayed instruction) between the branch
+          // and its original targets.
+          if (try_delay) {
+            auto new_taken_block = llvm::BasicBlock::Create(context, "", func);
+            auto new_not_taken_block = llvm::BasicBlock::Create(context, "",
+                                                                func);
+
+            try_add_delay_slot(true, new_taken_block);
+            try_add_delay_slot(false, new_not_taken_block);
+
+            llvm::BranchInst::Create(taken_block, new_taken_block);
+            llvm::BranchInst::Create(not_taken_block, new_not_taken_block);
+
+            taken_block = new_taken_block;
+            not_taken_block = new_not_taken_block;
+          }
+
+          llvm::BranchInst::Create(taken_block, not_taken_block,
+                                   LoadBranchTaken(block), block);
+          break;
+        }
       }
     }
 

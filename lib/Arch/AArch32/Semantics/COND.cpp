@@ -15,7 +15,7 @@
  */
 
 namespace {
-DEF_SEM(TST, R32 src1, I32 src2, I8 carry_out) {
+DEF_COND_SEM(TST, R32 src1, I32 src2, I8 carry_out) {
   auto res = UAnd(Read(src1), Read(src2));
 
   state.sr.n = SignFlag(res);
@@ -25,7 +25,7 @@ DEF_SEM(TST, R32 src1, I32 src2, I8 carry_out) {
   return memory;
 }
 
-DEF_SEM(TEQ, R32 src1, I32 src2, I8 carry_out) {
+DEF_COND_SEM(TEQ, R32 src1, I32 src2, I8 carry_out) {
   auto res = UXor(Read(src1), Read(src2));
 
   state.sr.n = SignFlag(res);
@@ -35,14 +35,14 @@ DEF_SEM(TEQ, R32 src1, I32 src2, I8 carry_out) {
   return memory;
 }
 
-DEF_SEM(CMP, R32 src1, I32 src2, I8 carry_out) {
+DEF_COND_SEM(CMP, R32 src1, I32 src2, I8 carry_out) {
   auto rhs = Read(src2);
   auto lhs = Read(src1);
   AddWithCarryNZCV(state, lhs, UNot(rhs), uint32_t(1));
   return memory;
 }
 
-DEF_SEM(CMN, R32 src1, I32 src2, I8 carry_out) {
+DEF_COND_SEM(CMN, R32 src1, I32 src2, I8 carry_out) {
   auto rhs = Read(src2);
   auto lhs = Read(src1);
   AddWithCarryNZCV(state, lhs, rhs, uint32_t(0));
