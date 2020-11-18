@@ -511,7 +511,7 @@ static void AddShiftRegCarryOperand(Instruction &inst, uint32_t reg_num,
       shift_val_expr_c = inst.EmplaceBinaryOp(llvm::Instruction::Add,
                                               shift_val_expr_c,
                                               inst.EmplaceConstant(_31));
-      shift_val_expr_c = inst.EmplaceBinaryOp(llvm::Instruction::URem,
+      carry_expr = inst.EmplaceBinaryOp(llvm::Instruction::URem,
                                               shift_val_expr_c,
                                               inst.EmplaceConstant(_32));
       break;
