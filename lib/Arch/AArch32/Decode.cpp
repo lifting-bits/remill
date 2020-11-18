@@ -288,15 +288,25 @@ static void AddIntRegOp(Instruction &inst, unsigned index, unsigned size,
   op.action = action;
 }
 
-//static void AddIntRegOp(Instruction &inst, const char *reg_name, unsigned size,
-//                        Operand::Action action) {
-//  Operand::Register reg;
-//  reg.size = size;
-//  reg.name = reg_name;
-//  auto &op = inst.EmplaceOperand(reg);
-//  op.action = action;
-//}
+static void AddIntRegOp(Instruction &inst, const char *reg_name, unsigned size,
+                        Operand::Action action) {
+  Operand::Register reg;
+  reg.size = size;
+  reg.name = reg_name;
+  auto &op = inst.EmplaceOperand(reg);
+  op.action = action;
+}
 
+static void AddExprOp(Instruction &inst, OperandExpression *op_expr,
+                      uint64_t size = 32, Operand::Action action =
+                          Operand::kActionRead) {
+  inst.operands.emplace_back();
+  auto &op = inst.operands.back();
+  op.expr = op_expr;
+  op.type = Operand::kTypeExpression;
+  op.size = size;
+  op.action = action;
+}
 
 static void AddImmOp(Instruction &inst, uint64_t value, unsigned size = 32,
                      bool is_signed = false) {
@@ -390,6 +400,25 @@ static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
   return Operand::ShiftRegister::kShiftInvalid;
 }
 
+// Do an extraction and zero extension on an expression
+static void ExtractAndZExtExpr(Instruction &inst, OperandExpression *&op_expr,
+                               unsigned int extract_size,
+                               unsigned int extend_size) {
+  auto extract_type = llvm::Type::getIntNTy(*(inst.arch_for_decode->context),
+                                            extract_size);
+  auto extend_type = llvm::Type::getIntNTy(*(inst.arch_for_decode->context),
+                                           extract_size);
+
+  // Extract bits
+  op_expr = inst.EmplaceUnaryOp(llvm::Instruction::Trunc, op_expr,
+                                extract_type);
+  // ZExtend operand to extend_size
+  if (extend_size > extract_size) {
+    op_expr = inst.EmplaceUnaryOp(llvm::Instruction::ZExt, op_expr,
+                                  extend_type);
+  }
+}
+
 // Note: This function adds either 1 or 2 operands in total
 // an op and an optional additional carry_out op
 // Used to handle semantics for:
@@ -408,9 +437,8 @@ static void ExpandTo32AddImmAddCarry(Instruction &inst, uint32_t imm12,
 
   if (carry_out) {
     if (!rotation_amount) {
-      AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftLeftWithZeroes,
-                            Operand::ShiftRegister::kExtendUnsigned, "C", 8, 0,
-                            1);
+      AddIntRegOp(inst, "C", 8u, Operand::kActionRead);
+      ExtractAndZExtExpr(inst, inst.operands.back().expr, 1u, 8u);
     } else {
       AddImmOp(inst,
                (unrotated_value >> ((rotation_amount + 31u) % 32u)) & 0b1u);
@@ -418,45 +446,28 @@ static void ExpandTo32AddImmAddCarry(Instruction &inst, uint32_t imm12,
   }
 }
 
-// Do an extraction and zero extension on an expression
-static void ExtractAndZExtExpr(Instruction &inst, Operand &op,
-                               unsigned int extract_size,
-                               unsigned int extend_size) {
-  auto extract_type = llvm::Type::getIntNTy(*(inst.arch_for_decode->context),
-                                            extract_size);
-  auto extend_type = llvm::Type::getIntNTy(*(inst.arch_for_decode->context),
-                                           extend_size);
-  // Extract bits
-  op.expr = inst.EmplaceUnaryOp(llvm::Instruction::Trunc, op.expr,
-                                extract_type);
-  // ZExtend operand back to I8
-  op.expr = inst.EmplaceUnaryOp(llvm::Instruction::ZExt, op.expr, extend_type);
-}
-
-static void RORExpr(Instruction &inst, Operand &op,
+static void RORExpr(Instruction &inst, OperandExpression * &op_expr,
                     OperandExpression *shift_amount) {
   const auto word_type = inst.arch_for_decode->AddressType();
   const auto _32 = llvm::ConstantInt::get(word_type, 32u, false);
+
   shift_amount = inst.EmplaceBinaryOp(llvm::Instruction::URem, shift_amount,
                                       inst.EmplaceConstant(_32));
-  auto lhs_expr = inst.EmplaceBinaryOp(llvm::Instruction::LShr, op.expr,
+  auto lhs_expr = inst.EmplaceBinaryOp(llvm::Instruction::LShr, op_expr,
                                        shift_amount);
-  auto rhs_expr = inst.EmplaceBinaryOp(llvm::Instruction::Shl, op.expr,
+  auto rhs_expr = inst.EmplaceBinaryOp(llvm::Instruction::Shl, op_expr,
                                        inst.EmplaceBinaryOp(llvm::Instruction::Sub,
                                        inst.EmplaceConstant(_32),
                                        shift_amount));
-  op.expr = inst.EmplaceBinaryOp(llvm::Instruction::Or, lhs_expr, rhs_expr);
+  op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Or, lhs_expr, rhs_expr);
 }
 
 static void AddShiftRegCarryOperand(Instruction &inst, uint32_t reg_num,
                                     uint32_t shift_type,
                                     uint32_t shift_reg_num) {
   // Create expression for the low 8 bits of the shift register
-  // TODO(Sonya): Replace with Emplace operands then emplace op manually at end
-  AddIntRegOp(inst, shift_reg_num, 32u, Operand::kActionRead);
-  ExtractAndZExtExpr(inst, inst.operands.back(), 8u, 32u);
-  auto shift_val_expr_c = inst.operands.back().expr;
-  inst.operands.pop_back();
+  auto shift_val_expr_c = inst.EmplaceRegister(kIntRegName[shift_reg_num]);
+  ExtractAndZExtExpr(inst, shift_val_expr_c, 8u, 32u);
 
   const auto word_type = inst.arch_for_decode->AddressType();
   const auto _1 = llvm::ConstantInt::get(word_type, 1u, false);
@@ -491,49 +502,54 @@ static void AddShiftRegCarryOperand(Instruction &inst, uint32_t reg_num,
                                               shift_val_expr_c,
                                               inst.EmplaceConstant(_32));
       break;
-    // TODO(Sonya): Add default with some LOG Error for incorrect shift type
+    default:
+      LOG(FATAL) << "Invalid shift bits " << shift_type << " in "
+                 << inst.Serialize();
 
   }
 
-  AddIntRegOp(inst, reg_num, 32u, Operand::kActionRead);
-  inst.operands.back().expr = inst.EmplaceBinaryOp(opcode,
-                                                   inst.operands.back().expr,
-                                                   shift_val_expr_c);
+  auto carry_expr = inst.EmplaceRegister(kIntRegName[reg_num]);
+  carry_expr = inst.EmplaceBinaryOp(opcode, carry_expr, shift_val_expr_c);
 
   // Extract the sign bit and extend back to I8
-  ExtractAndZExtExpr(inst, inst.operands.back(), 1u, 8u);
+  ExtractAndZExtExpr(inst, carry_expr, 1u, 8u);
+
+  AddExprOp(inst, carry_expr);
 }
 
 // Note: this has no RRX shift operation
 static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
                                   uint32_t shift_type, uint32_t shift_reg_num,
                                   bool carry_out) {
-  AddIntRegOp(inst, reg_num, 32u, Operand::kActionRead);
+  auto op_expr = inst.EmplaceRegister(kIntRegName[reg_num]);
 
   // Create expression for the low 8 bits of the shift register
-  AddIntRegOp(inst, shift_reg_num, 32u, Operand::kActionRead);
-  ExtractAndZExtExpr(inst, inst.operands.back(), 8u, 32u);
-  auto shift_val_expr = inst.operands.back().expr;
-  inst.operands.pop_back();
+  auto shift_val_expr = inst.EmplaceRegister(kIntRegName[shift_reg_num]);
+  ExtractAndZExtExpr(inst, shift_val_expr, 8u, 32u);
 
   // Create the shift and carry expressions operations
   switch (static_cast<Shift>(shift_type)) {
     case Shift::kShiftASR:
-      inst.operands.back().expr = inst.EmplaceBinaryOp(
-          llvm::Instruction::AShr, inst.operands.back().expr, shift_val_expr);
+      op_expr = inst.EmplaceBinaryOp(llvm::Instruction::AShr, op_expr,
+                                     shift_val_expr);
       break;
     case Shift::kShiftLSL:
-      inst.operands.back().expr = inst.EmplaceBinaryOp(
-          llvm::Instruction::Shl, inst.operands.back().expr, shift_val_expr);
+      op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Shl, op_expr,
+                                     shift_val_expr);
       break;
     case Shift::kShiftLSR:
-      inst.operands.back().expr = inst.EmplaceBinaryOp(
-          llvm::Instruction::LShr, inst.operands.back().expr, shift_val_expr);
+      op_expr = inst.EmplaceBinaryOp(llvm::Instruction::LShr, op_expr,
+                                     shift_val_expr);
       break;
     case Shift::kShiftROR:
-      RORExpr(inst, inst.operands.back(), shift_val_expr);
+      RORExpr(inst, op_expr, shift_val_expr);
       break;
+    default:
+      LOG(FATAL) << "Invalid shift bits " << shift_type << " in "
+                 << inst.Serialize();
   }
+
+  AddExprOp(inst, op_expr);
 
   if (carry_out) {
     AddShiftRegCarryOperand(inst, reg_num, shift_type, shift_reg_num);
@@ -547,7 +563,6 @@ static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
 static void AddShiftImmCarryOperand(Instruction &inst,
                                  uint32_t reg_num, uint32_t shift_type,
                                  uint32_t shift_size, const char * carry_reg_name) {
-
   auto is_rrx = false;
   if (!shift_size && shift_type == Shift::kShiftROR) {
     shift_size = 1;
@@ -555,9 +570,8 @@ static void AddShiftImmCarryOperand(Instruction &inst,
   }
 
   if (!shift_size) {
-    AddShiftThenExtractOp(inst, Operand::ShiftRegister::kShiftLeftWithZeroes,
-                          Operand::ShiftRegister::kExtendUnsigned,
-                          carry_reg_name, 8, 0, 1);
+    AddIntRegOp(inst, carry_reg_name, 8u, Operand::kActionRead);
+    ExtractAndZExtExpr(inst, inst.operands.back().expr, 1u, 8u);
   } else {
     switch (static_cast<Shift>(shift_type)) {
       case Shift::kShiftASR:
@@ -577,10 +591,8 @@ static void AddShiftImmCarryOperand(Instruction &inst,
         break;
       case Shift::kShiftROR:
         if (is_rrx) {
-          AddShiftThenExtractOp(inst,
-                                Operand::ShiftRegister::kShiftUnsignedRight,
-                                Operand::ShiftRegister::kExtendUnsigned,
-                                kIntRegName[reg_num], 32, 0, 1);
+          AddIntRegOp(inst, reg_num, 32u, Operand::kActionRead);
+          ExtractAndZExtExpr(inst, inst.operands.back().expr, 1u, 32u);
         } else {
           AddShiftThenExtractOp(inst,
                                 Operand::ShiftRegister::kShiftUnsignedRight,
@@ -682,10 +694,7 @@ static bool DecodeCondition(Instruction &inst, uint32_t cond) {
       negate_conditions = true;
       [[clang::fallthrough]];
     case 0b1000: {
-      //lhs_cond.kind = Condition::kTypeIsOne;
       auto c_expr = inst.EmplaceRegister("C");
-
-      //rhs_cond.kind = Condition::kTypeIsZero;
       auto z_expr = inst.EmplaceRegister("Z");
       z_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, z_expr,
                                      inst.EmplaceConstant(_1));
@@ -696,9 +705,7 @@ static bool DecodeCondition(Instruction &inst, uint32_t cond) {
       negate_conditions = true;
       [[clang::fallthrough]];
     case 0b1010: {
-      //lhs_cond.kind = Condition::kTypeIsEqual;
       auto n_expr = inst.EmplaceRegister("N");
-
       auto v_expr = inst.EmplaceRegister("V");
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, n_expr, v_expr);
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, op_expr,
@@ -709,15 +716,11 @@ static bool DecodeCondition(Instruction &inst, uint32_t cond) {
       negate_conditions = true;
       [[clang::fallthrough]];
     case 0b1100: {
-      //lhs_cond.kind = Condition::kTypeIsEqual;
       auto n_expr = inst.EmplaceRegister("N");
-
       auto v_expr = inst.EmplaceRegister("V");
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, n_expr, v_expr);
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, op_expr,
                                   inst.EmplaceConstant(_1));
-
-      //rhs_cond.kind = Condition::kTypeIsZero;
       auto z_expr = inst.EmplaceRegister("Z");
       z_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, z_expr,
                                            inst.EmplaceConstant(_1));
@@ -739,6 +742,7 @@ static bool DecodeCondition(Instruction &inst, uint32_t cond) {
                                                       op_expr,
                                                       inst.EmplaceConstant(_1));
   }
+
   inst.operands.emplace_back();
   auto &op = inst.operands.back();
   op.expr = op_expr;
