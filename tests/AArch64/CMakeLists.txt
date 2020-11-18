@@ -43,7 +43,7 @@ file(GLOB AARCH64_TEST_FILES
   "${CMAKE_CURRENT_LIST_DIR}/*/*.S"
 )
 
-set_target_properties(lift-${name}-tests PROPERTIES OBJECT_DEPENDS "${AARCH64_TEST_FILES}")
+set_target_properties(lift-aarch64-tests PROPERTIES OBJECT_DEPENDS "${AARCH64_TEST_FILES}")
 
 target_link_libraries(lift-aarch64-tests PUBLIC remill ${PROJECT_LIBRARIES} )
 target_include_directories(lift-aarch64-tests PUBLIC ${PROJECT_INCLUDEDIRECTORIES})
