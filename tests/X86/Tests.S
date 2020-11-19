@@ -343,6 +343,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/DATAXFER/MOVD.S"
 #include "tests/X86/DATAXFER/MOVDQA.S"
 #include "tests/X86/DATAXFER/MOVDQU.S"
+#include "tests/X86/DATAXFER/MOVHLPS.S"
 #include "tests/X86/DATAXFER/MOVHPD.S"
 #include "tests/X86/DATAXFER/MOVHPS.S"
 #include "tests/X86/DATAXFER/MOVLPD.S"
@@ -359,6 +360,7 @@ SYMBOL(__x86_test_table_begin):
 
 /* Bring in the rest of the semantic tests. */
 
+#include "tests/X86/AVX/VINSERTF128.S"
 #include "tests/X86/AVX/VZEROUPPER.S"
 #include "tests/X86/AVX/VPBROADCASTB.S"
 
@@ -521,6 +523,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/UNPCKLPD.S"
 #include "tests/X86/SSE/UNPCKLPS.S"
 #include "tests/X86/SSE/UNPCKHPD.S"
+#include "tests/X86/SSE/UNPCKHPS.S"
 #include "tests/X86/SSE/MOVDDUP.S"
 #include "tests/X86/SSE/SQRTSS.S"
 #include "tests/X86/SSE/SQRTSD.S"

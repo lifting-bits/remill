@@ -407,6 +407,18 @@ bool SPARC64Arch::NextInstructionIsDelayed(const Instruction &inst,
 // Decode an instruction.
 bool SPARC64Arch::DecodeInstruction(
     uint64_t address, std::string_view inst_bytes, Instruction &inst) const {
+
+  inst.pc = address;
+  inst.arch_name = arch_name;
+  inst.arch = this;
+  inst.category = Instruction::kCategoryInvalid;
+  inst.operands.clear();
+  inst.next_pc = address + inst_bytes.size();  // Default fall-through.
+  inst.branch_taken_pc = 0;
+  inst.branch_not_taken_pc = 0;
+  inst.has_branch_taken_delay_slot = false;
+  inst.has_branch_not_taken_delay_slot = false;
+
   if (address % 4) {
     return false;
   }
@@ -414,17 +426,6 @@ bool SPARC64Arch::DecodeInstruction(
   if (inst_bytes.size() != 4 && inst_bytes.size() != 8) {
     return false;
   }
-
-  inst.pc = address;
-  inst.next_pc = address + inst_bytes.size();  // Default fall-through.
-  inst.branch_taken_pc = 0;
-  inst.branch_not_taken_pc = 0;
-  inst.has_branch_taken_delay_slot = false;
-  inst.has_branch_not_taken_delay_slot = false;
-  inst.arch_name = arch_name;
-  inst.arch_for_decode = nullptr;
-  inst.category = Instruction::kCategoryInvalid;
-  inst.operands.clear();
 
   if (!inst.bytes.empty() && inst.bytes.data() == inst_bytes.data()) {
     inst.bytes.resize(inst_bytes.size());
