@@ -668,7 +668,8 @@ static void AddShiftRegImmOperand(Instruction &inst, uint32_t reg_num,
 static bool DecodeCondition(Instruction &inst, uint32_t cond) {
 
   auto _8_type = llvm::Type::getInt8Ty(*inst.arch_for_decode->context);
-  const auto _1 = llvm::ConstantInt::get(_8_type, 1u, false);
+  // Use ~0 -> 11111111 with XOR op for negation
+  const auto _1 = llvm::ConstantInt::get(_8_type, ~0u, false);
   bool negate_conditions = false;
   bool is_cond = true;
 
