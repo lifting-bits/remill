@@ -404,9 +404,9 @@ static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
 static OperandExpression * ExtractAndZExtExpr(Instruction &inst, OperandExpression * op_expr,
                                unsigned int extract_size,
                                unsigned int extend_size) {
-  auto extract_type = llvm::Type::getIntNTy(*(inst.arch_for_decode->context),
+  auto extract_type = llvm::Type::getIntNTy(*(inst.arch->context),
                                             extract_size);
-  auto extend_type = llvm::Type::getIntNTy(*(inst.arch_for_decode->context),
+  auto extend_type = llvm::Type::getIntNTy(*(inst.arch->context),
                                            extend_size);
 
   // Extract bits
@@ -452,7 +452,7 @@ static void ExpandTo32AddImmAddCarry(Instruction &inst, uint32_t imm12,
 static OperandExpression * RORExpr(Instruction &inst,
                                    OperandExpression * op_expr,
                                    OperandExpression * shift_amount) {
-  const auto word_type = inst.arch_for_decode->AddressType();
+  const auto word_type = inst.arch->AddressType();
   const auto _32 = llvm::ConstantInt::get(word_type, 32u, false);
 
   shift_amount = inst.EmplaceBinaryOp(llvm::Instruction::URem, shift_amount,
@@ -476,7 +476,7 @@ static void AddShiftRegCarryOperand(Instruction &inst, uint32_t reg_num,
   auto shift_val_expr_c = inst.EmplaceRegister(kIntRegName[shift_reg_num]);
   shift_val_expr_c = ExtractAndZExtExpr(inst, shift_val_expr_c, 8u, 32u);
 
-  const auto word_type = inst.arch_for_decode->AddressType();
+  const auto word_type = inst.arch->AddressType();
   const auto _1 = llvm::ConstantInt::get(word_type, 1u, false);
   const auto _31 = llvm::ConstantInt::get(word_type, 31u, false);
   const auto _32 = llvm::ConstantInt::get(word_type, 32u, false);
@@ -669,7 +669,7 @@ static void AddShiftRegImmOperand(Instruction &inst, uint32_t reg_num,
 // Decode the condition field and fill in the instruction conditions accordingly
 static bool DecodeCondition(Instruction &inst, uint32_t cond) {
 
-  auto _8_type = llvm::Type::getInt8Ty(*inst.arch_for_decode->context);
+  auto _8_type = llvm::Type::getInt8Ty(*inst.arch->context);
   const auto _1 = llvm::ConstantInt::get(_8_type, 1u, false);
   // Use ~0 -> 11111111 with XOR op for negation
   const auto negate = llvm::ConstantInt::get(_8_type, ~0u, false);
@@ -1642,7 +1642,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address, std::string_view inst_byte
   inst.has_branch_taken_delay_slot = false;
   inst.has_branch_not_taken_delay_slot = false;
   inst.arch_name = arch_name;
-  inst.arch_for_decode = this;
+  inst.arch = this;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();
   if (!inst.bytes.empty() && inst.bytes.data() == inst_bytes.data()) {

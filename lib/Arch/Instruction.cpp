@@ -350,7 +350,7 @@ OperandExpression* Instruction::EmplaceRegister(const Register * reg) {
 }
 
 OperandExpression * Instruction::EmplaceRegister(std::string_view reg_name) {
-  return EmplaceRegister(arch_for_decode->RegisterByName(reg_name));
+  return EmplaceRegister(arch->RegisterByName(reg_name));
 }
 
 OperandExpression* Instruction::EmplaceConstant(llvm::Constant * val) {
@@ -390,10 +390,10 @@ Operand & Instruction::EmplaceOperand(const Operand::Register &reg_op) {
   auto &op = operands.back();
   op.type = Operand::kTypeExpression;
   op.size = reg_op.size;
-  if (auto reg = arch_for_decode->RegisterByName(reg_op.name)) {
+  if (auto reg = arch->RegisterByName(reg_op.name)) {
     op.expr = EmplaceRegister(reg);
   } else {
-    auto &context = *arch_for_decode->context;
+    auto &context = *arch->context;
     auto ty = llvm::Type::getIntNTy(context, reg_op.size);
     op.expr = EmplaceVariable(reg_op.name, ty);
   }
@@ -403,11 +403,11 @@ Operand & Instruction::EmplaceOperand(const Operand::Register &reg_op) {
 Operand &Instruction::EmplaceOperand(const Operand::Immediate &imm_op) {
   operands.emplace_back();
   auto &op = operands.back();
-  auto &context = *arch_for_decode->context;
+  auto &context = *arch->context;
 
-  auto ty = llvm::Type::getIntNTy(context, arch_for_decode->address_size);
+  auto ty = llvm::Type::getIntNTy(context, arch->address_size);
   op.expr = EmplaceConstant(llvm::ConstantInt::get(ty, imm_op.val, imm_op.is_signed));
-  op.size = arch_for_decode->address_size;
+  op.size = arch->address_size;
   op.type = Operand::kTypeExpression;
   return op;
 }
@@ -416,11 +416,11 @@ Operand &Instruction::EmplaceOperand(const Operand::ShiftRegister &shift_op) {
   operands.emplace_back();
   auto &op = operands.back();
   op.type = Operand::kTypeExpression;
-  op.size = arch_for_decode->address_size;
+  op.size = arch->address_size;
   auto &arch_reg = shift_op.reg;
 
-  auto &context = *arch_for_decode->context;
-  auto reg = arch_for_decode->RegisterByName(arch_reg.name);
+  auto &context = *arch->context;
+  auto reg = arch->RegisterByName(arch_reg.name);
   auto reg_type = reg->type;
   auto reg_size = reg->size * 8u;
   auto op_type = llvm::Type::getIntNTy(context, op.size);
@@ -556,9 +556,9 @@ Operand& Instruction::EmplaceOperand(const Operand::Address &addr_op) {
   operands.emplace_back();
   auto &op = operands.back();
 
-  const auto word_type = arch_for_decode->AddressType();
+  const auto word_type = arch->AddressType();
   const auto zero = llvm::ConstantInt::get(word_type, 0, false);
-  const auto word_size = arch_for_decode->address_size;
+  const auto word_size = arch->address_size;
 
   CHECK(word_size >= addr_op.base_reg.size)<< "Memory base register "
       << addr_op.base_reg.name << "for instruction at " << std::hex << pc
@@ -570,12 +570,12 @@ Operand& Instruction::EmplaceOperand(const Operand::Address &addr_op) {
 
   auto reg_or_zero = [=](const Operand::Register & reg) {
     if (!reg.name.empty()) {
-      if (auto reg_pointer = arch_for_decode->RegisterByName(reg.name)) {
+      if (auto reg_pointer = arch->RegisterByName(reg.name)) {
         return EmplaceRegister(reg_pointer);
       } else {
         return EmplaceVariable(
             reg.name,
-            llvm::Type::getIntNTy(*arch_for_decode->context, reg.size));
+            llvm::Type::getIntNTy(*arch->context, reg.size));
       }
     } else {
       return EmplaceConstant(zero);
@@ -617,7 +617,7 @@ Operand& Instruction::EmplaceOperand(const Operand::Address &addr_op) {
   // used in 64-bit).
   if (addr_op.address_size < word_size) {
     auto addr_type = llvm::Type::getIntNTy(
-        *arch_for_decode->context, static_cast<unsigned>(addr_op.address_size));
+        *arch->context, static_cast<unsigned>(addr_op.address_size));
 
     addr = EmplaceUnaryOp(llvm::Instruction::Trunc, addr, addr_type);
     addr = EmplaceUnaryOp(llvm::Instruction::ZExt, addr, word_type);
