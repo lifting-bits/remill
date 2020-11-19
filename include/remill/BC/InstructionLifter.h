@@ -76,11 +76,14 @@ class InstructionLifter {
 
   // Load the address of a register.
   llvm::Value *LoadRegAddress(llvm::BasicBlock *block, llvm::Value *state_ptr,
-                              std::string_view reg_name);
+                              std::string_view reg_name) const;
 
   // Load the value of a register.
   llvm::Value *LoadRegValue(llvm::BasicBlock *block, llvm::Value *state_ptr,
-                            std::string_view reg_name);
+                            std::string_view reg_name) const;
+
+  // Clear out the cache of the current register values/addresses loaded.
+  void ClearCache(void) const;
 
  protected:
   friend class TraceLifter;

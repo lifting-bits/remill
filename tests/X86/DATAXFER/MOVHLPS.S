@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2017 Trail of Bits, Inc.
  *
@@ -14,16 +15,23 @@
  * limitations under the License.
  */
 
-#pragma once
+TEST_BEGIN_64(MOVHLPSv128v128, 1)
+TEST_INPUTS(0)
+    movhlps xmm0, xmm1
+    movhlps xmm1, xmm2
+    movhlps xmm3, xmm4
+    movhlps xmm4, xmm0
+    movhlps xmm0, xmm0
+TEST_END_64
 
-#if __has_include(<llvm-c/Types.h>)
-#include <llvm-c/Types.h>
-
-namespace llvm {
-// TODO(pag): This is a rather ugly hack; had some issues with anvill not
-//            compiling on macOS due to these C types.
-struct LLVMOpaqueNamedMDNode;
-using LLVMNamedMDNodeRef = struct LLVMOpaqueNamedMDNode *;
-}  // namespace llvm
-
-#endif
+#if HAS_FEATURE_AVX
+TEST_BEGIN_64(VMOVHLPSvv128v128v128, 1)
+TEST_INPUTS(0)
+    vmovhlps xmm0, xmm1, xmm2
+    vmovhlps xmm1, xmm2, xmm3
+    vmovhlps xmm2, xmm3, xmm4
+    vmovhlps xmm4, xmm0, xmm1
+    vmovhlps xmm0, xmm1, xmm1
+    vmovhlps xmm0, xmm0, xmm0
+TEST_END_64
+#endif  // HAS_FEATURE_AVX

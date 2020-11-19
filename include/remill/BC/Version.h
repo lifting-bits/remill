@@ -16,7 +16,14 @@
 
 #pragma once
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#pragma clang diagnostic ignored "-Wdocumentation"
+#pragma clang diagnostic ignored "-Wswitch-enum"
 #include <llvm/Config/llvm-config.h>
+#pragma clang diagnostic pop
 
 #define LLVM_VERSION(major, minor) ((major * 100) + minor)
 

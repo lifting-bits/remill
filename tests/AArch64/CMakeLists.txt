@@ -34,9 +34,16 @@ set_target_properties(lift-aarch64-tests PROPERTIES
 )
 
 target_compile_options(lift-aarch64-tests
-  PRIVATE ${X86_TEST_FLAGS}
+  PRIVATE ${AARCH64_TEST_FLAGS}
   -DIN_TEST_GENERATOR
 )
+
+
+file(GLOB AARCH64_TEST_FILES
+  "${CMAKE_CURRENT_LIST_DIR}/*/*.S"
+)
+
+set_target_properties(lift-aarch64-tests PROPERTIES OBJECT_DEPENDS "${AARCH64_TEST_FILES}")
 
 target_link_libraries(lift-aarch64-tests PUBLIC remill ${PROJECT_LIBRARIES} )
 target_include_directories(lift-aarch64-tests PUBLIC ${PROJECT_INCLUDEDIRECTORIES})
@@ -52,6 +59,7 @@ add_executable(run-aarch64-tests
 set_target_properties(run-aarch64-tests PROPERTIES
   POSITION_INDEPENDENT_CODE ON
   COMPILE_FLAGS "-fPIC -pie"
+  OBJECT_DEPENDS "${AARCH64_TEST_FILES}"
 )
 
 add_custom_command(

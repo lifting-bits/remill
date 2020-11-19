@@ -1193,6 +1193,7 @@ bool AArch64Arch::DecodeInstruction(uint64_t address,
   aarch64::InstData dinst = {};
   auto bytes = reinterpret_cast<const uint8_t *>(inst_bytes.data());
 
+  inst.arch = this;
   inst.arch_name = arch_name;
   inst.pc = address;
   inst.next_pc = address + kInstructionSize;

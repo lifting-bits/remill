@@ -311,7 +311,7 @@ Instruction::Instruction(void)
       branch_taken_pc(0),
       branch_not_taken_pc(0),
       arch_name(kArchInvalid),
-      arch_for_decode(nullptr),
+      arch(nullptr),
       is_atomic_read_modify_write(false),
       has_branch_taken_delay_slot(false),
       has_branch_not_taken_delay_slot(false),
@@ -330,7 +330,7 @@ void Instruction::Reset(void) {
   has_branch_not_taken_delay_slot = false;
   in_delay_slot = false;
   category = Instruction::kCategoryInvalid;
-  arch_for_decode = nullptr;
+  arch = nullptr;
   operands.clear();
   function.clear();
   bytes.clear();
@@ -625,18 +625,6 @@ Operand& Instruction::EmplaceOperand(const Operand::Address &addr_op) {
   op.expr = addr;
   op.type = Operand::kTypeExpression;
   return op;
-}
-
-bool Instruction::FinalizeDecode(void) {
-  if (!IsValid()) {
-    return false;
-  } else if (!arch_for_decode) {
-    return true;
-  } else {
-    auto ret = arch_for_decode->DecodeInstruction(pc, bytes, *this);
-    arch_for_decode = nullptr;
-    return ret;
-  }
 }
 
 std::string Instruction::Serialize(void) const {

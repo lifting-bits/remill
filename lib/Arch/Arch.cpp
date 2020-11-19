@@ -104,11 +104,6 @@ Arch::Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_)
 
 Arch::~Arch(void) {}
 
-bool Arch::LazyDecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                                 Instruction &inst) const {
-  return DecodeInstruction(address, instr_bytes, inst);
-}
-
 // Returns `true` if memory access are little endian byte ordered.
 bool Arch::MemoryAccessIsLittleEndian(void) const {
   return true;

@@ -17,12 +17,20 @@
 #pragma once
 
 // clang-format off
-#include "remill/BC/Compat/CTypes.h"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#pragma clang diagnostic ignored "-Wdocumentation"
+#pragma clang diagnostic ignored "-Wswitch-enum"
+#include <remill/BC/Compat/CTypes.h>
+#include <remill/BC/Compat/CallingConvention.h>
+
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/IRBuilder.h>
-#include <remill/BC/Compat/CallingConvention.h>
+#pragma clang diagnostic pop
 // clang-format on
 
 #include <functional>
@@ -63,7 +71,7 @@ struct Register {
 
   std::string name;  // Name of the register.
   uint64_t offset;  // Byte offset in `State`.
-  uint64_t size;  // Size of this register.
+  uint64_t size;  // Size of this register (in bytes).
 
   // LLVM type associated with the field in `State`.
   llvm::Type *type;
@@ -198,12 +206,6 @@ class Arch {
     inst.in_delay_slot = true;
     return this->DecodeInstruction(address, instr_bytes, inst);
   }
-
-  // Fully decode any control-flow transfer instructions, but only partially
-  // decode other instructions.
-  virtual bool LazyDecodeInstruction(uint64_t address,
-                                     std::string_view instr_bytes,
-                                     Instruction &inst) const;
 
   // Maximum number of bytes in an instruction for this particular architecture.
   virtual uint64_t MaxInstructionSize(void) const = 0;
