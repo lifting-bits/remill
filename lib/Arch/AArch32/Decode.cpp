@@ -668,8 +668,9 @@ static void AddShiftRegImmOperand(Instruction &inst, uint32_t reg_num,
 static bool DecodeCondition(Instruction &inst, uint32_t cond) {
 
   auto _8_type = llvm::Type::getInt8Ty(*inst.arch_for_decode->context);
+  const auto _1 = llvm::ConstantInt::get(_8_type, 1u, false);
   // Use ~0 -> 11111111 with XOR op for negation
-  const auto _1 = llvm::ConstantInt::get(_8_type, ~0u, false);
+  const auto negate = llvm::ConstantInt::get(_8_type, ~0u, false);
   bool negate_conditions = false;
   bool is_cond = true;
 
@@ -710,7 +711,7 @@ static bool DecodeCondition(Instruction &inst, uint32_t cond) {
       auto c_expr = inst.EmplaceRegister("C");
       auto z_expr = inst.EmplaceRegister("Z");
       z_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, z_expr,
-                                     inst.EmplaceConstant(_1));
+                                     inst.EmplaceConstant(negate));
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::And, z_expr, c_expr);
       break;
     }
@@ -722,7 +723,7 @@ static bool DecodeCondition(Instruction &inst, uint32_t cond) {
       auto v_expr = inst.EmplaceRegister("V");
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, n_expr, v_expr);
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, op_expr,
-                                     inst.EmplaceConstant(_1));
+                                     inst.EmplaceConstant(negate));
       break;
     }
     case 0b1101:
@@ -733,10 +734,10 @@ static bool DecodeCondition(Instruction &inst, uint32_t cond) {
       auto v_expr = inst.EmplaceRegister("V");
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, n_expr, v_expr);
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, op_expr,
-                                  inst.EmplaceConstant(_1));
+                                  inst.EmplaceConstant(negate));
       auto z_expr = inst.EmplaceRegister("Z");
       z_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, z_expr,
-                                           inst.EmplaceConstant(_1));
+                                           inst.EmplaceConstant(negate));
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::And, z_expr, op_expr);
       break;
     }
