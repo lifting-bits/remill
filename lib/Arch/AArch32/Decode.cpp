@@ -495,7 +495,7 @@ static void AddShiftRegCarryOperand(Instruction &inst, uint32_t reg_num,
       shift_val_expr_c = inst.EmplaceBinaryOp(llvm::Instruction::Sub,
                                               inst.EmplaceConstant(_32),
                                               shift_val_expr_c);
-      carry_expr = inst.EmplaceBinaryOp(llvm::Instruction::Shl, carry_expr,
+      carry_expr = inst.EmplaceBinaryOp(llvm::Instruction::LShr, carry_expr,
                                         shift_val_expr_c);
       break;
     case Shift::kShiftLSR:
@@ -511,9 +511,11 @@ static void AddShiftRegCarryOperand(Instruction &inst, uint32_t reg_num,
       shift_val_expr_c = inst.EmplaceBinaryOp(llvm::Instruction::Add,
                                               shift_val_expr_c,
                                               inst.EmplaceConstant(_31));
-      carry_expr = inst.EmplaceBinaryOp(llvm::Instruction::URem,
+      shift_val_expr_c = inst.EmplaceBinaryOp(llvm::Instruction::URem,
                                               shift_val_expr_c,
                                               inst.EmplaceConstant(_32));
+      carry_expr = inst.EmplaceBinaryOp(llvm::Instruction::LShr, carry_expr,
+                                        shift_val_expr_c);
       break;
     default:
       LOG(FATAL) << "Invalid shift bits " << shift_type << " in "
@@ -752,9 +754,8 @@ static bool DecodeCondition(Instruction &inst, uint32_t cond) {
   }
 
   if (negate_conditions) {
-    op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor,
-                                                      op_expr,
-                                                      inst.EmplaceConstant(_1));
+    op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, op_expr,
+                                   inst.EmplaceConstant(negate));
   }
 
   AddExprOp(inst, op_expr, 8u);
@@ -1598,9 +1599,8 @@ static TryDecode * TryDecodeTopLevelEncodings(uint32_t bits) {
       // return a result from another function for instruction categorizing
       return nullptr;
     }
-  }
   // op0 == 1xx
-  else {
+  } else {
     // Branch, branch with link, and block data transfer -- op0 == 10x
     if (enc.op0 >> 1 == 0b10u) {
       // Branch (immediate) op0 == 101
