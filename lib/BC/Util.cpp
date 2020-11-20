@@ -822,7 +822,7 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
         !llvm::isa<llvm::GlobalVariable>(c) &&
         !llvm::isa<llvm::GlobalAlias>(c) &&
         !c->needsRelocation()) {
-      LOG(ERROR) << "Not moving: " << LLVMThingToString(c);
+      //LOG(ERROR) << "Not moving: " << LLVMThingToString(c);
       return c;
     }
 #endif

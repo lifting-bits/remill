@@ -316,7 +316,7 @@ DEF_COND_SEM(SMULh, R32W dst, R32 src1, R32 src2) {
 DEF_COND_SEM(SMLALh, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
   auto rhs = SExt<uint64_t>(Read(src4));
   auto lhs = SExt<uint64_t>(Read(src3));
-  auto acc = SOr(SShl(SExt<uint64_t>(Read(src1)), 32ul), Signed(ZExt<uint64_t>(Read(src2)))); // UInt(R[dHi]:R[dLo])
+  auto acc = SOr(SShl(SExt<uint64_t>(Read(src1)), 32ul), ZExt<uint64_t>(Read(src2))); // UInt(R[dHi]:R[dLo])
   auto res = SAdd(SMul(lhs, rhs), acc);
   Write(dst_hi, TruncTo<uint32_t>(SShr(res, 32ul)));
   Write(dst_lo, TruncTo<uint32_t>(res));
@@ -325,9 +325,20 @@ DEF_COND_SEM(SMLALh, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32
 
 }// namespace
 
-DEF_ISEL(SMULh) = SMULh;
-DEF_ISEL(SMLAh) = SMLAh;
-DEF_ISEL(SMLALh) = SMLALh;
-DEF_ISEL(SMULWh) = SMLAWh;
-DEF_ISEL(SMLAWh) = SMLAWh;
+DEF_ISEL(SMLABB) = SMLAh;
+DEF_ISEL(SMLABT) = SMLAh;
+DEF_ISEL(SMLATB) = SMLAh;
+DEF_ISEL(SMLATT) = SMLAh;
+DEF_ISEL(SMLAWB) = SMLAWh;
+DEF_ISEL(SMULWB) = SMLAWh;
+DEF_ISEL(SMLAWT) = SMLAWh;
+DEF_ISEL(SMULWT) = SMLAWh;
+DEF_ISEL(SMULBB) = SMULh;
+DEF_ISEL(SMULBT) = SMULh;
+DEF_ISEL(SMULTB) = SMULh;
+DEF_ISEL(SMULTT) = SMULh;
+DEF_ISEL(SMLALBB) = SMLALh;
+DEF_ISEL(SMLALBT) = SMLALh;
+DEF_ISEL(SMLALTB) = SMLALh;
+DEF_ISEL(SMLALTT) = SMLALh;
 

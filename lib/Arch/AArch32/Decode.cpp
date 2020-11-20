@@ -1151,24 +1151,32 @@ static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
 }
 
 static const char * const kHMulAccRRR[] = {
-    [0b000] = "SMLAh",
-    [0b001] = "SMLAh",
-    [0b010] = "SMLAWh",
-    [0b011] = "SMULWh",
-    [0b100] = "SMLALh",
-    [0b101] = "SMLALh",
-    [0b110] = "SMULh",
-    [0b111] = "SMULh",
+    [0b0000] = "SMLABB", // (M == 0 && N == 0)
+    [0b0010] = "SMLABT", // (M == 1 && N == 0)
+    [0b0001] = "SMLATB", // (M == 0 && N == 1)
+    [0b0011] = "SMLATT", // (M == 1 && N == 1)
+    [0b0100] = "SMLAWB",
+    [0b0101] = "SMULWB",
+    [0b0110] = "SMLAWT",
+    [0b0111] = "SMULWT",
+    [0b1000] = "SMLALBB", // (M == 0 && N == 0)
+    [0b1010] = "SMLALBT", // (M == 1 && N == 0)
+    [0b1001] = "SMLALTB", // (M == 0 && N == 1)
+    [0b1011] = "SMLALTT", // (M == 1 && N == 1)
+    [0b1100] = "SMULBB", // (M == 0 && N == 0)
+    [0b1110] = "SMULBT", // (M == 1 && N == 0)
+    [0b1101] = "SMULTB", // (M == 0 && N == 1)
+    [0b1111] = "SMULTT", // (M == 1 && N == 1)
 };
 
-//opc M N
-//00      SMLABB, SMLABT, SMLATB, SMLATT — writes to Rd, read Ra, Rm, Rn
-//01  0 0 SMLAWB, SMLAWT — SMLAWB — writes to Rd, read Ra, Rm, Rn
-//01  0 1 SMULWB, SMULWT — SMULWB — writes to Rd, read Rm, Rn
-//01  1 0 SMLAWB, SMLAWT — SMLAWT — writes to Rd, read Ra, Rm, Rn
-//01  1 1 SMULWB, SMULWT — SMULWT — writes to Rd, read Rm, Rn
-//10      SMLALBB, SMLALBT, SMLALTB, SMLALTT — writes to Rd, Ra, read Rd, Ra, Rm, Rn
-//11      SMULBB, SMULBT, SMULTB, SMULTT — writes to Rd, read Rm, Rn
+// opc M N
+// 00      SMLABB, SMLABT, SMLATB, SMLATT — writes to Rd, read Ra, Rm, Rn
+// 01  0 0 SMLAWB, SMLAWT — SMLAWB — writes to Rd, read Ra, Rm, Rn
+// 01  0 1 SMULWB, SMULWT — SMULWB — writes to Rd, read Rm, Rn
+// 01  1 0 SMLAWB, SMLAWT — SMLAWT — writes to Rd, read Ra, Rm, Rn
+// 01  1 1 SMULWB, SMULWT — SMULWT — writes to Rd, read Rm, Rn
+// 10      SMLALBB, SMLALBT, SMLALTB, SMLALTT — writes to Rd, Ra, read Rd, Ra, Rm, Rn
+// 11      SMULBB, SMULBT, SMULTB, SMULTT — writes to Rd, read Rm, Rn
 // Halfword Multiply and Accumulate
 // - under Data-processing and miscellaneous instructions
 static bool TryHalfwordDecodeMultiplyAndAccumulate(Instruction &inst,
@@ -1181,7 +1189,7 @@ static bool TryHalfwordDecodeMultiplyAndAccumulate(Instruction &inst,
     inst.category = Instruction::kCategoryError;
   }
 
-  inst.function = kHMulAccRRR[(enc.opc << 1) | enc.N];
+  inst.function = kHMulAccRRR[(enc.opc << 2u) | (enc.M << 1u) | enc.N];
   DecodeCondition(inst, enc.cond);
 
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
@@ -1736,7 +1744,7 @@ static uint32_t BytesToBits(const uint8_t *bytes) {
 }
 } // namespace
 
-// Decode an instuction.
+// Decode an instruction
 bool AArch32Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
                                     Instruction &inst) const {
 
