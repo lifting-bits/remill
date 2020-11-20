@@ -167,6 +167,8 @@ DEF_ISEL(SBCSrr) = SBCS;
 DEF_ISEL(RSCrr) = RSC;
 DEF_ISEL(RSCSrr) = RSCS;
 
+
+// Multiply and Accumulate
 namespace {
 DEF_COND_SEM(MUL, R32W dst, R32 src1, R32 src2, R32 src3) {
   auto rhs = Signed(Read(src2));
@@ -233,10 +235,9 @@ DEF_COND_SEM(UMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32
 }
 
 DEF_COND_SEM(SMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
-  // Not entirely sure about all the signed ops I have in here
   auto rhs = SExt(Signed(Read(src3)));
   auto lhs = SExt(Signed(Read(src2)));
-  auto acc = SOr(SShl(SExt(Read(src1)), 32ul), SExt(Read(src4))); // UInt(R[dHi]:R[dLo])
+  auto acc = SOr(SShl(SExt(Read(src1)), 32ul), ZExt<uint64_t>(Read(src4))); // UInt(R[dHi]:R[dLo])
   auto res = SAdd(SMul(lhs, rhs), acc);
   Write(dst_hi, TruncTo<uint32_t>(SShr(res, 32ul)));
   Write(dst_lo, TruncTo<uint32_t>(res));
@@ -246,7 +247,7 @@ DEF_COND_SEM(SMULL, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 
 DEF_COND_SEM(SMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
   auto rhs = SExt(Signed(Read(src3)));
   auto lhs = SExt(Signed(Read(src2)));
-  auto acc = SOr(SShl(SExt(Read(src1)), 32ul), SExt(Read(src4))); // UInt(R[dHi]:R[dLo])
+  auto acc = SOr(SShl(SExt(Read(src1)), 32ul), ZExt<uint64_t>(Read(src4))); // UInt(R[dHi]:R[dLo])
   auto res = SAdd(SMul(lhs, rhs), acc);
   state.sr.n = SignFlag(res);
   state.sr.z = ZeroFlag(res);
@@ -257,18 +258,76 @@ DEF_COND_SEM(SMULLS, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32
 }
 } // namespace
 
-DEF_ISEL(MULrr) = MUL;
-DEF_ISEL(MULSrr) = MULS;
-DEF_ISEL(MLArr) = MUL;
-DEF_ISEL(MLASrr) = MULS;
-DEF_ISEL(MLSrr) = MLS;
-DEF_ISEL(UMAALrr) = UMAAL;
-DEF_ISEL(UMULLrr) = UMULL;
-DEF_ISEL(UMULLSrr) = UMULLS;
-DEF_ISEL(UMLALrr) = UMULL;
-DEF_ISEL(UMLALSrr) = UMULLS;
-DEF_ISEL(SMULLrr) = SMULL;
-DEF_ISEL(SMULLSrr) = SMULLS;
-DEF_ISEL(SMLALrr) = SMULL;
-DEF_ISEL(SMLALSrr) = SMULLS;
+DEF_ISEL(MUL) = MUL;
+DEF_ISEL(MULS) = MULS;
+DEF_ISEL(MLA) = MUL;
+DEF_ISEL(MLAS) = MULS;
+DEF_ISEL(MLS) = MLS;
+DEF_ISEL(UMAAL) = UMAAL;
+DEF_ISEL(UMULL) = UMULL;
+DEF_ISEL(UMULLS) = UMULLS;
+DEF_ISEL(UMLAL) = UMULL;
+DEF_ISEL(UMLALS) = UMULLS;
+DEF_ISEL(SMULL) = SMULL;
+DEF_ISEL(SMULLS) = SMULLS;
+DEF_ISEL(SMLAL) = SMULL;
+DEF_ISEL(SMLALS) = SMULLS;
+
+
+// Halfword Multiply and Accumulate
+namespace {
+DEF_COND_SEM(SMLAh, R32W dst, R32 src1, R32 src2, R32 src3) {
+  auto rhs = SExt<uint64_t>(Read(src3));
+  auto lhs = SExt<uint64_t>(Read(src2));
+  auto acc = SExt<uint64_t>(Read(src1));
+  auto res = SAdd(SMul(lhs, rhs), acc);
+  auto trun_res = TruncTo<uint32_t>(res);
+  Write(dst, trun_res);
+
+  //  if result != SInt(result<31:0>) then  // Signed overflow
+  //          PSTATE.Q = '1';
+  state.sr.q = UOr(state.sr.q, SCmpNeq(res, SExt<uint64_t>(trun_res)));
+  return memory;
+}
+
+DEF_COND_SEM(SMLAWh, R32W dst, R32 src1, R32 src2, R32 src3) {
+  auto rhs = SExt<uint64_t>(Read(src3));
+  auto lhs = SExt<uint64_t>(Read(src2));
+  auto acc = SShl(SExt<uint64_t>(Read(src1)), 16ul); // SInt(R[a]) << 16
+  auto res = SShr(SAdd(SMul(lhs, rhs), acc), 16ul); // R[d] = result<47:16>
+  auto trun_res = TruncTo<uint32_t>(res);
+  Write(dst, trun_res);
+
+  //  if (result >> 16) != SInt(R[d]) then  // Signed overflow
+  //          PSTATE.Q = '1';
+  state.sr.q = UOr(state.sr.q, SCmpNeq(res, SExt<uint64_t>(trun_res)));
+  return memory;
+}
+
+DEF_COND_SEM(SMULh, R32W dst, R32 src1, R32 src2) {
+  auto rhs = Signed(Read(src2));
+  auto lhs = Signed(Read(src1));
+  auto res = SMul(lhs, rhs);
+  Write(dst, TruncTo<uint32_t>(res));
+  return memory;
+  // Signed overflow cannot occur
+}
+
+DEF_COND_SEM(SMLALh, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
+  auto rhs = SExt<uint64_t>(Read(src4));
+  auto lhs = SExt<uint64_t>(Read(src3));
+  auto acc = SOr(SShl(SExt<uint64_t>(Read(src1)), 32ul), Signed(ZExt<uint64_t>(Read(src2)))); // UInt(R[dHi]:R[dLo])
+  auto res = SAdd(SMul(lhs, rhs), acc);
+  Write(dst_hi, TruncTo<uint32_t>(SShr(res, 32ul)));
+  Write(dst_lo, TruncTo<uint32_t>(res));
+  return memory;
+}
+
+}// namespace
+
+DEF_ISEL(SMULh) = SMULh;
+DEF_ISEL(SMLAh) = SMLAh;
+DEF_ISEL(SMLALh) = SMLALh;
+DEF_ISEL(SMULWh) = SMLAWh;
+DEF_ISEL(SMLAWh) = SMLAWh;
 

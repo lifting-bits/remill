@@ -92,6 +92,26 @@ union MultiplyAndAccumulate {
 } __attribute__((packed));
 static_assert(sizeof(MultiplyAndAccumulate) == 4, " ");
 
+// Halfword Multiply and Accumulate
+union HMultiplyAndAccumulate {
+  uint32_t flat;
+  struct {
+    uint32_t rn : 4;
+    uint32_t _0_b4 : 1;
+    uint32_t N  : 1;
+    uint32_t M  : 1;
+    uint32_t _1  : 1;
+    uint32_t rm : 4;
+    uint32_t ra : 4;
+    uint32_t rd : 4;
+    uint32_t _0_b20 : 1;
+    uint32_t opc : 2;
+    uint32_t _00010 : 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(HMultiplyAndAccumulate) == 4, " ");
+
 // Load/Store Word, Unsigned Byte (immediate, literal)
 union LoadStoreWUBIL {
   uint32_t flat;
@@ -401,7 +421,8 @@ static Operand::ShiftRegister::Shift GetOperandShift(Shift s) {
 }
 
 // Do an extraction and zero extension on an expression
-static OperandExpression * ExtractAndZExtExpr(Instruction &inst, OperandExpression * op_expr,
+template<unsigned ext = llvm::Instruction::ZExt>
+static OperandExpression * ExtractAndExtExpr(Instruction &inst, OperandExpression * op_expr,
                                unsigned int extract_size,
                                unsigned int extend_size) {
   auto extract_type = llvm::Type::getIntNTy(*(inst.arch->context),
@@ -414,8 +435,7 @@ static OperandExpression * ExtractAndZExtExpr(Instruction &inst, OperandExpressi
                                 extract_type);
   // ZExtend operand to extend_size
   if (extend_size > extract_size) {
-    op_expr = inst.EmplaceUnaryOp(llvm::Instruction::ZExt, op_expr,
-                                  extend_type);
+    op_expr = inst.EmplaceUnaryOp(ext, op_expr, extend_type);
   }
   return op_expr;
 }
@@ -439,7 +459,7 @@ static void ExpandTo32AddImmAddCarry(Instruction &inst, uint32_t imm12,
   if (carry_out) {
     if (!rotation_amount) {
       AddIntRegOp(inst, "C", 8u, Operand::kActionRead);
-      inst.operands.back().expr = ExtractAndZExtExpr(inst,
+      inst.operands.back().expr = ExtractAndExtExpr(inst,
                                                      inst.operands.back().expr,
                                                      1u, 8u);
     } else {
@@ -474,7 +494,7 @@ static void AddShiftRegCarryOperand(Instruction &inst, uint32_t reg_num,
 
   // Create expression for the low 8 bits of the shift register
   auto shift_val_expr_c = inst.EmplaceRegister(kIntRegName[shift_reg_num]);
-  shift_val_expr_c = ExtractAndZExtExpr(inst, shift_val_expr_c, 8u, 32u);
+  shift_val_expr_c = ExtractAndExtExpr(inst, shift_val_expr_c, 8u, 32u);
 
   const auto word_type = inst.arch->AddressType();
   const auto _1 = llvm::ConstantInt::get(word_type, 1u, false);
@@ -524,7 +544,7 @@ static void AddShiftRegCarryOperand(Instruction &inst, uint32_t reg_num,
   }
 
   // Extract the sign bit and extend back to I8
-  carry_expr = ExtractAndZExtExpr(inst, carry_expr, 1u, 8u);
+  carry_expr = ExtractAndExtExpr(inst, carry_expr, 1u, 8u);
 
   AddExprOp(inst, carry_expr);
 }
@@ -537,7 +557,7 @@ static void AddShiftRegRegOperand(Instruction &inst, uint32_t reg_num,
 
   // Create expression for the low 8 bits of the shift register
   auto shift_val_expr = inst.EmplaceRegister(kIntRegName[shift_reg_num]);
-  shift_val_expr = ExtractAndZExtExpr(inst, shift_val_expr, 8u, 32u);
+  shift_val_expr = ExtractAndExtExpr(inst, shift_val_expr, 8u, 32u);
 
   // Create the shift and carry expressions operations
   switch (static_cast<Shift>(shift_type)) {
@@ -583,7 +603,7 @@ static void AddShiftImmCarryOperand(Instruction &inst,
 
   if (!shift_size) {
     AddIntRegOp(inst, carry_reg_name, 8u, Operand::kActionRead);
-    inst.operands.back().expr = ExtractAndZExtExpr(inst,
+    inst.operands.back().expr = ExtractAndExtExpr(inst,
                                                    inst.operands.back().expr,
                                                    1u, 8u);
   } else {
@@ -606,7 +626,7 @@ static void AddShiftImmCarryOperand(Instruction &inst,
       case Shift::kShiftROR:
         if (is_rrx) {
           AddIntRegOp(inst, reg_num, 32u, Operand::kActionRead);
-          inst.operands.back().expr = ExtractAndZExtExpr(inst, inst.operands.back().expr, 1u, 32u);
+          inst.operands.back().expr = ExtractAndExtExpr(inst, inst.operands.back().expr, 1u, 32u);
         } else {
           AddShiftThenExtractOp(inst,
                                 Operand::ShiftRegister::kShiftUnsignedRight,
@@ -1052,22 +1072,22 @@ static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst, uint32_t bits) 
 }
 
 static const char * const kMulAccRRR[] = {
-    [0b0000] = "MULrr",
-    [0b0001] = "MULSrr",
-    [0b0010] = "MLArr",
-    [0b0011] = "MLASrr",
-    [0b0100] = "UMAALrr",
+    [0b0000] = "MUL",
+    [0b0001] = "MULS",
+    [0b0010] = "MLA",
+    [0b0011] = "MLAS",
+    [0b0100] = "UMAAL",
     [0b0101] = nullptr,
-    [0b0110] = "MLSrr",
+    [0b0110] = "MLS",
     [0b0111] = nullptr,
-    [0b1000] = "UMULLrr",
-    [0b1001] = "UMULLSrr",
-    [0b1010] = "UMLALrr",
-    [0b1011] = "UMLALSrr",
-    [0b1100] = "SMULLrr",
-    [0b1101] = "SMULLSrr",
-    [0b1110] = "SMLALrr",
-    [0b1111] = "SMLALSrr"
+    [0b1000] = "UMULL",
+    [0b1001] = "UMULLS",
+    [0b1010] = "UMLAL",
+    [0b1011] = "UMLALS",
+    [0b1100] = "SMULL",
+    [0b1101] = "SMULLS",
+    [0b1110] = "SMLAL",
+    [0b1111] = "SMLALS"
 };
 
 //000   MUL, MULS
@@ -1127,6 +1147,91 @@ static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
 
   inst.category = Instruction::kCategoryNormal;
 
+  return true;
+}
+
+static const char * const kHMulAccRRR[] = {
+    [0b000] = "SMLAh",
+    [0b001] = "SMLAh",
+    [0b010] = "SMLAWh",
+    [0b011] = "SMULWh",
+    [0b100] = "SMLALh",
+    [0b101] = "SMLALh",
+    [0b110] = "SMULh",
+    [0b111] = "SMULh",
+};
+
+//opc M N
+//00      SMLABB, SMLABT, SMLATB, SMLATT — writes to Rd, read Ra, Rm, Rn
+//01  0 0 SMLAWB, SMLAWT — SMLAWB — writes to Rd, read Ra, Rm, Rn
+//01  0 1 SMULWB, SMULWT — SMULWB — writes to Rd, read Rm, Rn
+//01  1 0 SMLAWB, SMLAWT — SMLAWT — writes to Rd, read Ra, Rm, Rn
+//01  1 1 SMULWB, SMULWT — SMULWT — writes to Rd, read Rm, Rn
+//10      SMLALBB, SMLALBT, SMLALTB, SMLALTT — writes to Rd, Ra, read Rd, Ra, Rm, Rn
+//11      SMULBB, SMULBT, SMULTB, SMULTT — writes to Rd, read Rm, Rn
+// Halfword Multiply and Accumulate
+// - under Data-processing and miscellaneous instructions
+static bool TryHalfwordDecodeMultiplyAndAccumulate(Instruction &inst,
+                                                   uint32_t bits) {
+
+  const HMultiplyAndAccumulate enc = { bits };
+  // if d == 15 || n == 15 || m == 15 || a == 15 then UNPREDICTABLE;
+  // if d == 15 || n == 15 || m == 15 then UNPREDICTABLE;
+  if (enc.rd == kPCRegNum || enc.rn == kPCRegNum || enc.rm == kPCRegNum) {
+    inst.category = Instruction::kCategoryError;
+  }
+
+  inst.function = kHMulAccRRR[(enc.opc << 1) | enc.N];
+  DecodeCondition(inst, enc.cond);
+
+  AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
+
+  // SMLALBB, SMLALBT, SMLALTB, SMLALTT add write ra and read rd
+  if (enc.opc == 0b10u) {
+    AddIntRegOp(inst, enc.ra, 32, Operand::kActionWrite);
+    AddIntRegOp(inst, enc.rd, 32, Operand::kActionRead);
+  }
+
+
+  // Ra
+  if (enc.opc == 0b10u || (enc.opc == 0b1u && !enc.N) || !enc.opc) {
+    AddIntRegOp(inst, enc.ra, 32, Operand::kActionRead);
+  } else if (enc.opc != 0b11u) {
+    AddImmOp(inst, 0);
+  }
+
+  const auto word_type = inst.arch->AddressType();
+  const auto _16 = llvm::ConstantInt::get(word_type, 16u, false);
+
+  // Rm
+  AddIntRegOp(inst, enc.rm, 32, Operand::kActionRead);
+  if (enc.M) {
+    inst.operands.back().expr = inst.EmplaceBinaryOp(llvm::Instruction::LShr,
+                                                     inst.operands.back().expr,
+                                                     inst.EmplaceConstant(_16));
+    inst.operands.back().expr = ExtractAndExtExpr<llvm::Instruction::SExt>(
+        inst, inst.operands.back().expr, 16u, 32u);
+  } else {
+    inst.operands.back().expr = ExtractAndExtExpr<llvm::Instruction::SExt>(
+        inst, inst.operands.back().expr, 16u, 32u);
+  }
+
+  // Rn
+  AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
+  if (enc.opc != 0b1u) {
+    if (enc.N) {
+      inst.operands.back().expr = inst.EmplaceBinaryOp(
+          llvm::Instruction::LShr, inst.operands.back().expr,
+          inst.EmplaceConstant(_16));
+      inst.operands.back().expr = ExtractAndExtExpr<llvm::Instruction::SExt>(
+          inst, inst.operands.back().expr, 16u, 32u);
+    } else {
+      inst.operands.back().expr = ExtractAndExtExpr<llvm::Instruction::SExt>(
+          inst, inst.operands.back().expr, 16u, 32u);
+    }
+  }
+
+  inst.category = Instruction::kCategoryNormal;
   return true;
 }
 
@@ -1538,9 +1643,9 @@ static TryDecode * TryDataProcessingAndMisc(uint32_t bits) {
       // TODO(Sonya): Miscellaneous
       if (!enc.op2) {
         return nullptr;
-      // TODO(Sonya): Halfword Multiply and Accumulate
+      // Halfword Multiply and Accumulate
       } else {
-        return nullptr;
+        return TryHalfwordDecodeMultiplyAndAccumulate;
       }
     // op1 != 10xx0
     } else {

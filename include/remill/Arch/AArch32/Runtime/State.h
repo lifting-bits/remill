@@ -94,8 +94,10 @@ struct alignas(8) SR final {
   uint8_t idc;  // Input denormal (cumulative).
   uint8_t _10;
   uint8_t ioc;  // Invalid operation (cumulative).
+  uint8_t _11;
+  uint8_t q;  //  Sticky overflow bit.
 
-  uint8_t _padding[6];
+  uint8_t _padding[4];
 } __attribute__((packed));
 
 struct alignas(16) State final : public ArchState {
