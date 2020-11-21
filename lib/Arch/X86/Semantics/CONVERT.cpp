@@ -341,10 +341,10 @@ DEF_SEM(CVTSI2SS, V128W dst, V128 src1, S2 src2) {
 }
 
 template <typename S2>
-DEF_SEM(CVTSI2SD, V128W dst_src1, S2 src2) {
-  auto src1_vec = FReadV64(dst_src1);
+DEF_SEM(CVTSI2SD, V128W dst, V128 src1, S2 src2) {
+  auto src1_vec = FReadV64(src1);
   auto conv_val = Float64(Signed(Read(src2)));
-  FWriteV64(dst_src1, FInsertV64(src1_vec, 0, conv_val));
+  FWriteV64(dst, FInsertV64(src1_vec, 0, conv_val));
   return memory;
 }
 
