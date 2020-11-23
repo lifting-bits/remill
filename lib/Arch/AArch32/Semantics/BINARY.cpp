@@ -277,9 +277,9 @@ DEF_ISEL(SMLALS) = SMULLS;
 // Halfword Multiply and Accumulate
 namespace {
 DEF_COND_SEM(SMLAh, R32W dst, R32 src1, R32 src2, R32 src3) {
-  auto rhs = SExt<uint64_t>(Read(src3));
-  auto lhs = SExt<uint64_t>(Read(src2));
-  auto acc = SExt<uint64_t>(Read(src1));
+  auto rhs = SExt<uint64_t>(Read(src2));
+  auto lhs = SExt<uint64_t>(Read(src1));
+  auto acc = SExt<uint64_t>(Read(src3));
   auto res = SAdd(SMul(lhs, rhs), acc);
   auto trun_res = TruncTo<uint32_t>(res);
   Write(dst, trun_res);
@@ -291,9 +291,9 @@ DEF_COND_SEM(SMLAh, R32W dst, R32 src1, R32 src2, R32 src3) {
 }
 
 DEF_COND_SEM(SMLAWh, R32W dst, R32 src1, R32 src2, R32 src3) {
-  auto rhs = SExt<uint64_t>(Read(src3));
-  auto lhs = SExt<uint64_t>(Read(src2));
-  auto acc = SShl(SExt<uint64_t>(Read(src1)), 16ul); // SInt(R[a]) << 16
+  auto rhs = SExt<uint64_t>(Read(src2));
+  auto lhs = SExt<uint64_t>(Read(src1));
+  auto acc = SShl(SExt<uint64_t>(Read(src3)), 16ul); // SInt(R[a]) << 16
   auto res = SShr(SAdd(SMul(lhs, rhs), acc), 16ul); // R[d] = result<47:16>
   auto trun_res = TruncTo<uint32_t>(res);
   Write(dst, trun_res);
@@ -314,9 +314,9 @@ DEF_COND_SEM(SMULh, R32W dst, R32 src1, R32 src2) {
 }
 
 DEF_COND_SEM(SMLALh, R32W dst_hi, R32W dst_lo, R32 src1, R32 src2, R32 src3, R32 src4) {
-  auto rhs = SExt<uint64_t>(Read(src4));
-  auto lhs = SExt<uint64_t>(Read(src3));
-  auto acc = SOr(SShl(SExt<uint64_t>(Read(src1)), 32ul), ZExt<uint64_t>(Read(src2))); // UInt(R[dHi]:R[dLo])
+  auto rhs = SExt<uint64_t>(Read(src3));
+  auto lhs = SExt<uint64_t>(Read(src2));
+  auto acc = SOr(SShl(SExt<uint64_t>(Read(src1)), 32ul), ZExt<uint64_t>(Read(src4))); // UInt(R[dHi]:R[dLo])
   auto res = SAdd(SMul(lhs, rhs), acc);
   Write(dst_hi, TruncTo<uint32_t>(SShr(res, 32ul)));
   Write(dst_lo, TruncTo<uint32_t>(res));

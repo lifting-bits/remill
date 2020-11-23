@@ -1183,9 +1183,13 @@ static bool TryHalfwordDecodeMultiplyAndAccumulate(Instruction &inst,
                                                    uint32_t bits) {
 
   const HMultiplyAndAccumulate enc = { bits };
+  bool add_ra = enc.opc == 0b10u || (enc.opc == 0b1u && !enc.N) || !enc.opc;
   // if d == 15 || n == 15 || m == 15 || a == 15 then UNPREDICTABLE;
   // if d == 15 || n == 15 || m == 15 then UNPREDICTABLE;
-  if (enc.rd == kPCRegNum || enc.rn == kPCRegNum || enc.rm == kPCRegNum) {
+  // if dHi == dLo then UNPREDICTABLE;
+  if (enc.rd == kPCRegNum || enc.rn == kPCRegNum || enc.rm == kPCRegNum
+      || ((enc.ra == kPCRegNum) && add_ra)
+      || ((enc.opc == 0b10u) && (enc.rd == enc.ra))) {
     inst.category = Instruction::kCategoryError;
   }
 
@@ -1200,47 +1204,43 @@ static bool TryHalfwordDecodeMultiplyAndAccumulate(Instruction &inst,
     AddIntRegOp(inst, enc.rd, 32, Operand::kActionRead);
   }
 
-
-  // Ra
-  if (enc.opc == 0b10u || (enc.opc == 0b1u && !enc.N) || !enc.opc) {
-    AddIntRegOp(inst, enc.ra, 32, Operand::kActionRead);
-  } else if (enc.opc != 0b11u) {
-    AddImmOp(inst, 0);
-  }
-
   const auto word_type = inst.arch->AddressType();
   const auto _16 = llvm::ConstantInt::get(word_type, 16u, false);
-
-  // Rm
-  AddIntRegOp(inst, enc.rm, 32, Operand::kActionRead);
-  if (enc.M) {
-    inst.operands.back().expr = inst.EmplaceBinaryOp(llvm::Instruction::LShr,
-                                                     inst.operands.back().expr,
-                                                     inst.EmplaceConstant(_16));
-    inst.operands.back().expr = ExtractAndExtExpr<llvm::Instruction::SExt>(
-        inst, inst.operands.back().expr, 16u, 32u);
-  } else {
-    inst.operands.back().expr = ExtractAndExtExpr<llvm::Instruction::SExt>(
-        inst, inst.operands.back().expr, 16u, 32u);
-  }
 
   // Rn
   AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
   if (enc.opc != 0b1u) {
     if (enc.N) {
       inst.operands.back().expr = inst.EmplaceBinaryOp(
-          llvm::Instruction::LShr, inst.operands.back().expr,
+          llvm::Instruction::AShr, inst.operands.back().expr,
           inst.EmplaceConstant(_16));
-      inst.operands.back().expr = ExtractAndExtExpr<llvm::Instruction::SExt>(
-          inst, inst.operands.back().expr, 16u, 32u);
     } else {
       inst.operands.back().expr = ExtractAndExtExpr<llvm::Instruction::SExt>(
           inst, inst.operands.back().expr, 16u, 32u);
     }
   }
 
+  // Rm
+  AddIntRegOp(inst, enc.rm, 32, Operand::kActionRead);
+  if (enc.M) {
+    inst.operands.back().expr = inst.EmplaceBinaryOp(llvm::Instruction::AShr,
+                                                     inst.operands.back().expr,
+                                                     inst.EmplaceConstant(_16));
+  } else {
+    inst.operands.back().expr = ExtractAndExtExpr<llvm::Instruction::SExt>(
+        inst, inst.operands.back().expr, 16u, 32u);
+  }
+
+  // Ra
+  if (add_ra) {
+    AddIntRegOp(inst, enc.ra, 32, Operand::kActionRead);
+  } else if (enc.opc != 0b11u) {
+    AddImmOp(inst, 0);
+  }
+
   inst.category = Instruction::kCategoryNormal;
   return true;
+
 }
 
 static const char * const kLoadSWUBIL[] = {
