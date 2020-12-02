@@ -22,7 +22,7 @@ SRC_DIR=$( cd "$( dirname "${SCRIPTS_DIR}" )" && pwd )
 CURR_DIR=$( pwd )
 BUILD_DIR="${CURR_DIR}/remill-build"
 INSTALL_DIR=/usr/local
-LLVM_VERSION=llvm900
+LLVM_VERSION=llvm-9
 OS_VERSION=
 ARCH_VERSION=
 BUILD_FLAGS=
@@ -37,31 +37,30 @@ function GetUbuntuOSVersion
   case "${DISTRIB_CODENAME}" in
     groovy)
       echo "[!] Ubuntu 20.10 is not supported; using libraries for Ubuntu 20.04 instead"
-      OS_VERSION=ubuntu20.04
+      OS_VERSION=ubuntu-20.04
       return 0
     ;;
     focal)
-      OS_VERSION=ubuntu20.04
+      OS_VERSION=ubuntu-20.04
       return 0
     ;;
-    
     eoam)
       echo "[!] Ubuntu 19.10 is not supported; using libraries for Ubuntu 18.04 instead"
-      OS_VERSION=ubuntu18.04
+      OS_VERSION=ubuntu-18.04
       return 0
     ;;
     disco)
       echo "[!] Ubuntu 19.04 is not supported; using libraries for Ubuntu 18.04 instead"
-      OS_VERSION=ubuntu18.04
+      OS_VERSION=ubuntu-18.04
       return 0
     ;;
     cosmic)
       echo "[!] Ubuntu 18.10 is not supported; using libraries for Ubuntu 18.04 instead"
-      OS_VERSION=ubuntu18.04
+      OS_VERSION=ubuntu-18.04
       return 0
     ;;
     bionic)
-      OS_VERSION=ubuntu18.04
+      OS_VERSION=ubuntu-18.04
       return 0
     ;;
     *)
@@ -74,7 +73,8 @@ function GetUbuntuOSVersion
 # Figure out the architecture of the current machine.
 function GetArchVersion
 {
-  local version=$( uname -m )
+  local version
+  version="$( uname -m )"
 
   case "${version}" in
     x86_64)
@@ -96,10 +96,10 @@ function GetArchVersion
   esac
 }
 
-function DownloadCxxCommon
+function DownloadVcpkgLibraries
 {
   local GITHUB_LIBS="${LIBRARY_VERSION}.tar.xz"
-  local URL="https://github.com/trailofbits/cxx-common/releases/latest/download/${GITHUB_LIBS}"
+  local URL="https://github.com/ekilmer/vcpkg-lifting-ports/releases/download/v0.1.0-pre.4/${GITHUB_LIBS}"
 
   echo "Fetching: ${URL}"
   if ! curl -LO "${URL}"; then
@@ -111,11 +111,16 @@ function DownloadCxxCommon
     TAR_OPTIONS=""
   fi
 
-  tar -xJf "${GITHUB_LIBS}" ${TAR_OPTIONS}
+  # NOTE: export-raw is the directory that vcpkg used for exporting raw file tree
+  #   we want to rename it
+  (
+  set -x
+  tar -xJf "${GITHUB_LIBS}" ${TAR_OPTIONS} --transform "s/export-raw/${LIBRARY_VERSION}/"
+  )
   rm "${GITHUB_LIBS}"
 
   # Make sure modification times are not in the future.
-  find "${BUILD_DIR}/libraries" -type f -exec touch {} \;
+  find "${BUILD_DIR}/${LIBRARY_VERSION}" -type f -exec touch {} \;
 
   return 0
 }
@@ -132,12 +137,12 @@ function GetOSVersion
     ;;
 
     *arch*)
-      OS_VERSION=ubuntu18.04
+      OS_VERSION=ubuntu-18.04
       return 0
     ;;
-    
+
     [Kk]ali)
-      OS_VERSION=ubuntu18.04
+      OS_VERSION=ubuntu-18.04
       return 0;
     ;;
 
@@ -156,17 +161,26 @@ function DownloadLibraries
   if [[ "${OSTYPE}" = "darwin"* ]]; then
 
     # Compute an isysroot from the SDK root dir.
-    local sdk_root="${SDKROOT}"
-    if [[ "x${sdk_root}x" = "xx" ]]; then
-      sdk_root=$(xcrun -sdk macosx --show-sdk-path)
-    fi
+    #local sdk_root="${SDKROOT}"
+    #if [[ "x${sdk_root}x" = "xx" ]]; then
+    #  sdk_root=$(xcrun -sdk macosx --show-sdk-path)
+    #fi
 
-    BUILD_FLAGS="${BUILD_FLAGS} -DCMAKE_OSX_SYSROOT=${sdk_root}"
-    OS_VERSION=macos
+    #BUILD_FLAGS="${BUILD_FLAGS} -DCMAKE_OSX_SYSROOT=${sdk_root}"
+    # Min version supported
+    OS_VERSION="macos-10.15"
+    XCODE_VERSION="12.1.0"
     if [[ "$(sw_vers -productVersion)" == "10.15"* ]]; then
       echo "Found MacOS Catalina"
+      OS_VERSION="macos-10.15"
+      XCODE_VERSION="12.1.0"
+    elif [[ "$(sw_vers -productVersion)" == "11.0"* ]]; then
+      echo "Found MacOS Big Sur"
+      OS_VERSION="macos-11.0"
+      XCODE_VERSION="12.2.0"
     else
       echo "WARNING: ****Likely unsupported MacOS Version****"
+      echo "WARNING: ****Using ${OS_VERSION}****"
     fi
 
   # Linux packages
@@ -183,18 +197,19 @@ function DownloadLibraries
     return 1
   fi
 
-  if [[ "${OS_VERSION}" == "macos" ]]; then
-    # Only support catalina build, for now
-    LIBRARY_VERSION="libraries-catalina-macos"
+  if [[ "${OS_VERSION}" == "macos-"* ]]; then
+    # TODO Figure out Xcode compatibility
+    LIBRARY_VERSION="vcpkg_${OS_VERSION}_${LLVM_VERSION}_xcode-${XCODE_VERSION}_${ARCH_VERSION}"
   else
-    LIBRARY_VERSION="libraries-${LLVM_VERSION}-${OS_VERSION}-${ARCH_VERSION}"
+    # TODO Arch version
+    LIBRARY_VERSION="vcpkg_${OS_VERSION}_${LLVM_VERSION}_${ARCH_VERSION}"
   fi
 
   echo "[-] Library version is ${LIBRARY_VERSION}"
 
-  if [[ ! -d "${BUILD_DIR}/libraries" ]]; then
-    if ! DownloadCxxCommon; then
-      echo "[x] Unable to download cxx-common build ${LIBRARY_VERSION}."
+  if [[ ! -d "${BUILD_DIR}/${LIBRARY_VERSION}" ]]; then
+    if ! DownloadVcpkgLibraries; then
+      echo "[x] Unable to download vcpkg libraries build ${LIBRARY_VERSION}."
       return 1
     fi
   fi
@@ -205,19 +220,17 @@ function DownloadLibraries
 # Configure the build.
 function Configure
 {
-  # Tell the remill CMakeLists.txt where the extracted libraries are. 
-  export TRAILOFBITS_LIBRARIES="${BUILD_DIR}/libraries"
-  export PATH="${TRAILOFBITS_LIBRARIES}/cmake/bin:${TRAILOFBITS_LIBRARIES}/llvm/bin:${PATH}"
-
   # Configure the remill build, specifying that it should use the pre-built
   # Clang compiler binaries.
-  "${TRAILOFBITS_LIBRARIES}/cmake/bin/cmake" \
-      -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
-      -DCMAKE_BC_COMPILER="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang++" \
-      -DCMAKE_BC_LINKER="${TRAILOFBITS_LIBRARIES}/llvm/bin/llvm-link" \
-      -DCMAKE_VERBOSE_MAKEFILE=True \
-      ${BUILD_FLAGS} \
-      "${SRC_DIR}"
+  (
+    set -x
+    cmake \
+        -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
+        -DCMAKE_VERBOSE_MAKEFILE=True \
+        -DVCPKG_ROOT="${BUILD_DIR}/${LIBRARY_VERSION}" \
+        ${BUILD_FLAGS} \
+        "${SRC_DIR}"
+  )
 
   return $?
 }
@@ -230,7 +243,12 @@ function Build
   else
     NPROC=$( nproc )
   fi
-  make -j"${NPROC}"
+
+  (
+    set -x
+    cmake --build . -- -j"${NPROC}"
+  )
+
   return $?
 }
 
@@ -239,16 +257,16 @@ function Build
 function GetLLVMVersion
 {
   case ${1} in
-    9.0)
-      LLVM_VERSION=llvm900
+    9)
+      LLVM_VERSION=llvm-9
       return 0
     ;;
-    10.0)
-      LLVM_VERSION=llvm1000
+    10)
+      LLVM_VERSION=llvm-10
       return 0
     ;;
-    11.0)
-      LLVM_VERSION=llvm1100
+    11)
+      LLVM_VERSION=llvm-11
       return 0
     ;;
     *)
