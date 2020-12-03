@@ -49,58 +49,32 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 
 ## Getting and Building the Code
 
-### Vcpkg build
+### Vcpkg Quickstart
 
-**Important:** Follow directions to pull all required dependencies from the `vcpkg-lifting-ports` repo, and clone this repo within that one (`vcpkg-lifting-ports/remill`).
+If you are running Ubuntu or Mac, you will be able to use pre-compiled libraries instead of building everything yourself.
 
-Requires CMake 3.19 for the [`--preset=`](https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html#manual:cmake-presets(7)) option in CLI invocation (use `cmake --list-presets` to show all presets):
+First, clone the repository. This will clone the code into the `remill` directory.
 
-```bash
-cmake --preset=vcpkg-{osx,linux}
-cd build
-cmake --build .
+```shell
+git clone https://github.com/lifting-bits/remill.git
 ```
 
-Or, for older CMake versions, by manually specifying the vcpkg toolchain file:
+Next, we build Remill. This script will create another directory, `remill-build`, in the current working directory. All remaining dependencies needed by Remill will be downloaded from what was built in our CI into the `remill-build` directory. The build script will use whatever compiler is found by CMake.
 
 ```bash
-mkdir build && cd build
-cmake -G Ninja \
-  -DCMAKE_TOOLCHAIN_FILE="$(pwd)/../../vcpkg/scripts/buildsystems/vcpkg.cmake" \
-  ..
+./remill/scripts/build.sh
 ```
 
-Run tests:
+To run the tests you must have built Remill with `clang`:
 
 ```bash
 cmake --build . --target test_dependencies
 env CTEST_OUTPUT_ON_FAILURE=1 cmake --build build --target test
 ```
 
+To see more options for the build script, use `--help`, open an issue, or join Slack.
+
 ### Docker Build
-
-Remill now comes with a Dockerfile for easier testing. This Dockerfile references the [cxx-common](https://github.com/trailofbits/cxx-common) container to have all pre-requisite libraries available.
-
-The Dockerfile allows for quick builds of multiple supported LLVM, architecture, and Linux configurations.
-
-Quickstart (builds Remill against LLVM 8.0 on Ubuntu 18.04 for AMD64):
-
-Clone Remill:
-```shell
-#Clone the repository.
-git clone https://github.com/lifting-bits/remill.git
-cd remill
-```
-
-Build Remill Docker container:
-```shell
-# do the build
-docker build . -t remill:llvm800-ubuntu18.04-amd64 \
-     -f Dockerfile \
-     --build-arg UBUNTU_VERSION=18.04 \
-     --build-arg ARCH=amd64 \
-     --build-arg LLVM_VERSION=800
-```
 
 Ensure remill works:
 ```shell
@@ -112,57 +86,4 @@ docker run --rm -it remill:llvm800-ubuntu18.04-amd64 \
 docker run --rm -it remill:llvm800-ubuntu18.04-amd64 \
      --arch aarch64 --address 0x400544 --ir_out /dev/stdout \
      --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
-```
-
-### On Linux
-
-First, update aptitude and get install the baseline dependencies.
-
-```shell
-sudo apt-get update
-sudo apt-get upgrade
-
-sudo apt-get install \
-     git \
-     python2.7 \
-     wget \
-     curl \
-     build-essential \
-     libtinfo-dev \
-     lsb-release \
-     zlib1g-dev \
-     ccache
-
-# Ubuntu 14.04, 16.04
-sudo apt-get install realpath
-```
-
-Next, clone the repository. This will clone the code into the `remill` directory.
-
-```shell
-git clone https://github.com/lifting-bits/remill.git
-```
-
-Next, we build Remill. This script will create another directory, `remill-build`,
-in the current working directory. All remaining dependencies needed
-by Remill will be built in the `remill-build` directory.
-
-```shell
-./remill/scripts/build.sh
-```
-
-Next, we can install Remill. Remill itself is a library, and so there is no real way
-to try it. However, you can head on over to the [McSema](https://github.com/lifting-bits/mcsema) repository, which uses Remill for lifting instructions.
-
-```shell
-cd ./remill-build
-sudo make install
-```
-
-We can also build and run Remill's test suite.
-
-```shell
-cd ./remill-build
-make test_dependencies
-make test
 ```
