@@ -114,8 +114,9 @@ function DownloadVcpkgLibraries
   # NOTE: export-raw is the directory that vcpkg used for exporting raw file tree
   #   we want to rename it
   (
-  set -x
-  tar -xJf "${GITHUB_LIBS}" ${TAR_OPTIONS} --transform "s/export-raw/${LIBRARY_VERSION}/"
+    set -x
+    tar -xJf "${GITHUB_LIBS}" ${TAR_OPTIONS}
+    mv export-raw "${LIBRARY_VERSION}"
   )
   rm "${GITHUB_LIBS}"
 
