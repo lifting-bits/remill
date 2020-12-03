@@ -278,12 +278,36 @@ function GetLLVMVersion
   return 1
 }
 
+function Help
+{
+  echo "Beginner build script to get started"
+  echo ""
+  echo "Options:"
+  echo "  --prefix           Change the default (${INSTALL_DIR}) installation prefix."
+  echo "  --llvm-version     Change the default (9) LLVM version."
+  echo "  --build-dir        Change the default (${BUILD_DIR}) build directory."
+  echo "  --debug            Build with Debug symbols."
+  echo "  --extra-cmake-args Extra CMake arguments to build with."
+  echo "  --dyinst-frontend  Build McSema with dyninst frontend as well."
+  echo "  -h --help          Print help."
+}
+
 function main
 {
   while [[ $# -gt 0 ]] ; do
     key="$1"
 
     case $key in
+
+      -h)
+        Help
+        exit 0
+      ;;
+
+      --help)
+        Help
+        exit 0
+      ;;
 
       # Change the default installation prefix.
       --prefix)
