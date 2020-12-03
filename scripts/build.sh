@@ -99,7 +99,7 @@ function GetArchVersion
 function DownloadVcpkgLibraries
 {
   local GITHUB_LIBS="${LIBRARY_VERSION}.tar.xz"
-  local URL="https://github.com/ekilmer/vcpkg-lifting-ports/releases/download/v0.1.0-pre.4/${GITHUB_LIBS}"
+  local URL="https://github.com/ekilmer/vcpkg-lifting-ports/releases/latest/download/${GITHUB_LIBS}"
 
   echo "Fetching: ${URL}"
   if ! curl -LO "${URL}"; then
@@ -116,8 +116,7 @@ function DownloadVcpkgLibraries
   (
     set -x
     tar -xJf "${GITHUB_LIBS}" ${TAR_OPTIONS}
-    mv export-raw "${LIBRARY_VERSION}"
-  )
+  ) || return $?
   rm "${GITHUB_LIBS}"
 
   # Make sure modification times are not in the future.
@@ -231,7 +230,7 @@ function Configure
         -DVCPKG_ROOT="${BUILD_DIR}/${LIBRARY_VERSION}" \
         ${BUILD_FLAGS} \
         "${SRC_DIR}"
-  )
+  ) || exit $?
 
   return $?
 }
@@ -248,7 +247,7 @@ function Build
   (
     set -x
     cmake --build . -- -j"${NPROC}"
-  )
+  ) || return $?
 
   return $?
 }

@@ -33,18 +33,10 @@ if(NOT TARGET remill)
     set(LINKER_END_GROUP "")
   endif()
 
-  if(NOT "x@CXX_COMMON_REPOSITORY_ROOT@x" STREQUAL "xx")
-    if (EXISTS "@CXX_COMMON_REPOSITORY_ROOT@")
-      set(CXX_COMMON_REPOSITORY_ROOT "@CXX_COMMON_REPOSITORY_ROOT@"
-        CACHE PATH "Location of cxx-common libraries"
-      )
-    endif()
-  endif()
-  
-  if(NOT DEFINED CXX_COMMON_REPOSITORY_ROOT OR NOT EXISTS "${CXX_COMMON_REPOSITORY_ROOT}")
-    if(DEFINED ENV{TRAILOFBITS_LIBRARIES})
-      set(CXX_COMMON_REPOSITORY_ROOT $ENV{TRAILOFBITS_LIBRARIES}
-        CACHE PATH "Location of cxx-common libraries."
+  if(NOT "x@VCPKG_ROOT@x" STREQUAL "xx")
+    if (EXISTS "@VCPKG_ROOT@")
+      set(VCPKG_ROOT "@VCPKG_ROOT@"
+        CACHE PATH "Location of dependency libraries"
       )
     endif()
   endif()
