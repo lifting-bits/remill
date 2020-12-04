@@ -158,7 +158,7 @@ function(GetPublicIncludeFolders output_variable)
   set("${output_variable}" ${collected_include_dirs} PARENT_SCOPE)
 endfunction()
 
-function(InstallExternalTarget target_name target_path install_directory installed_file_name)
+function(InstallExternalTarget target_name target_path install_type installed_file_name)
   # Get the optional rpath parameter
   set(additional_arguments ${ARGN})
   list(LENGTH additional_arguments additional_argument_count)
@@ -195,8 +195,8 @@ function(InstallExternalTarget target_name target_path install_directory install
     message(FATAL_ERROR "InstallExternalTarget: The following target already exists: ${target_name}")
   endif()
 
-  if("${install_directory}" STREQUAL "")
-    message(FATAL_ERROR "InstallExternalTarget: Invalid install directory specified")
+  if("${install_type}" STREQUAL "")
+    message(FATAL_ERROR "InstallExternalTarget: Invalid install type specified")
   endif()
 
   # Generate the target
@@ -218,7 +218,7 @@ function(InstallExternalTarget target_name target_path install_directory install
   add_custom_target("${target_name}" ALL DEPENDS "${output_file_path}")
 
   install(FILES "${output_file_path}"
-    DESTINATION "${install_directory}"
+    TYPE ${install_type}
     PERMISSIONS OWNER_READ OWNER_EXECUTE
                 GROUP_READ GROUP_EXECUTE
                 WORLD_READ WORLD_EXECUTE

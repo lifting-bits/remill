@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Fix behavior of CMAKE_CXX_STANDARD when targeting macOS.
-if (POLICY CMP0025)
-  cmake_policy(SET CMP0025 NEW)
-endif ()
-
 include(cmake/vcpkg_helper.cmake)
 
 project(remill)
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.14)
+include(GNUInstallDirs)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/settings.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake")
@@ -35,26 +31,10 @@ enable_language(C CXX ASM)
 
 set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 
-if(DEFINED WIN32)
-  set(dynamic_lib_prefix "")
-  set(dynamic_lib_extension "dll")
-  set(static_lib_prefix "")
-  set(static_lib_extension "lib")
-  set(executable_extension ".exe")
-  set(install_folder "${CMAKE_INSTALL_PREFIX}/remill")
-else()
-  set(dynamic_lib_prefix "lib")
-  set(dynamic_lib_extension "so")
-  set(static_lib_prefix "lib")
-  set(static_lib_extension "a")
-  set(executable_extension "")
-  set(install_folder "${CMAKE_INSTALL_PREFIX}")
-endif()
-
-set(REMILL_INSTALL_LIB_DIR "${install_folder}/lib" CACHE PATH "Directory in which remill libraries will be installed")
-set(REMILL_INSTALL_BIN_DIR "${install_folder}/bin" CACHE PATH "Directory in which remill binaries will be installed")
-set(REMILL_INSTALL_INCLUDE_DIR "${install_folder}/include" CACHE PATH "Directory in which remill headers will be installed")
-set(REMILL_INSTALL_SHARE_DIR "${install_folder}/share" CACHE PATH "Directory in which remill cmake files will be installed")
+set(REMILL_INSTALL_LIB_DIR "${CMAKE_INSTALL_LIBDIR}" CACHE PATH "Directory in which remill libraries will be installed")
+set(REMILL_INSTALL_BIN_DIR "${CMAKE_INSTALL_BINDIR}" CACHE PATH "Directory in which remill binaries will be installed")
+set(REMILL_INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_INCLUDEDIR}/remill" CACHE PATH "Directory in which remill headers will be installed")
+set(REMILL_INSTALL_SHARE_DIR "${CMAKE_INSTALL_DATADIR}" CACHE PATH "Directory in which remill cmake files will be installed")
 
 #
 # libraries
@@ -96,13 +76,14 @@ target_link_libraries(thirdparty_llvm INTERFACE
 
 # Microsoft Z3 with LLVM. Not exactly used in remill, but LLVM doesn't link
 # against it correctly
+# NOTE: If changing this, also replicate in remillConfig file
 if (LLVM_WITH_Z3)
   find_package(Z3 CONFIG REQUIRED 4.7.1)
   get_target_property(LLVMSupport_LIBS LLVMSupport INTERFACE_LINK_LIBRARIES)
   list(REMOVE_ITEM LLVMSupport_LIBS Z3)
   list(APPEND LLVMSupport_LIBS z3::libz3)
   set_target_properties(LLVMSupport PROPERTIES
-	  INTERFACE_LINK_LIBRARIES "${LLVMSupport_LIBS}")
+    INTERFACE_LINK_LIBRARIES "${LLVMSupport_LIBS}")
 endif()
 
 message(STATUS "LLVM Libraries: ${LLVM_LIBRARIES}")
@@ -160,11 +141,7 @@ set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}")
 message("Remill llvm version: ${REMILL_LLVM_VERSION}")
 math(EXPR REMILL_LLVM_VERSION_NUMBER "${LLVM_MAJOR_VERSION} * 100 + ${LLVM_MINOR_VERSION}")
 
-if(DEFINED WIN32)
-  set(REMILL_INSTALL_SEMANTICS_DIR "${install_folder}/${REMILL_LLVM_VERSION}/semantics" CACHE PATH "Directory into which semantics are installed")
-else()
-  set(REMILL_INSTALL_SEMANTICS_DIR "${REMILL_INSTALL_SHARE_DIR}/remill/${REMILL_LLVM_VERSION}/semantics" CACHE PATH "Directory into which semantics are installed")
-endif()
+set(REMILL_INSTALL_SEMANTICS_DIR "${REMILL_INSTALL_SHARE_DIR}/remill/${REMILL_LLVM_VERSION}/semantics" CACHE PATH "Directory into which semantics are installed")
 
 set(REMILL_BUILD_SEMANTICS_DIR_X86 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/X86/Runtime")
 set(REMILL_BUILD_SEMANTICS_DIR_AARCH64 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/AArch64/Runtime")
@@ -177,7 +154,9 @@ set(REMILL_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
 add_library(remill_settings INTERFACE)
 
-target_include_directories(remill_settings INTERFACE "${REMILL_INCLUDE_DIR}")
+target_include_directories(remill_settings INTERFACE
+  $<BUILD_INTERFACE:${REMILL_INCLUDE_DIR}>
+  $<INSTALL_INTERFACE:include>)
 
 if(WIN32)
   # warnings and compiler settings
@@ -259,6 +238,8 @@ set(THIRDPARTY_LIBRARY_LIST thirdparty_llvm thirdparty_xed thirdparty_glog third
 target_link_libraries(remill_settings INTERFACE
   ${THIRDPARTY_LIBRARY_LIST}
 )
+install(TARGETS remill_settings ${THIRDPARTY_LIBRARY_LIST}
+  EXPORT remillTargets)
 
 add_subdirectory(lib/Arch)
 add_subdirectory(lib/BC)
@@ -275,33 +256,18 @@ target_link_libraries(remill INTERFACE
   remill_version
   ${LINKER_END_GROUP}
 )
+install(TARGETS remill EXPORT remillTargets)
 
 #
 # Also install clang, libllvm and llvm-link
 #
 
-set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}${executable_extension}")
-set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}${executable_extension}")
+set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}${CMAKE_EXECUTABLE_SUFFIX}")
+set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}${CMAKE_EXECUTABLE_SUFFIX}")
 
-InstallExternalTarget("ext_clang" "${CLANG_PATH}"
-  "${REMILL_INSTALL_BIN_DIR}" "${INSTALLED_CLANG_NAME}")
+InstallExternalTarget("ext_clang" "${CLANG_PATH}" "BIN" "${INSTALLED_CLANG_NAME}")
 
-InstallExternalTarget("ext_llvmlink" "${LLVMLINK_PATH}"
-  "${REMILL_INSTALL_BIN_DIR}" "${INSTALLED_LLVMLINK_NAME}")
-
-set(REMILL_BC_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_bc.${static_lib_extension}")
-set(REMILL_ARCH_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_arch.${static_lib_extension}")
-set(REMILL_ARCH_X86_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_arch_x86.${static_lib_extension}")
-set(REMILL_ARCH_AARCH64_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_arch_aarch64.${static_lib_extension}")
-set(REMILL_ARCH_SPARC32_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_arch_sparc32.${static_lib_extension}")
-set(REMILL_ARCH_SPARC64_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_arch_sparc64.${static_lib_extension}")
-set(REMILL_OS_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_os.${static_lib_extension}")
-set(REMILL_VERSION_LIBRARY_LOCATION "${REMILL_INSTALL_LIB_DIR}/${static_lib_prefix}remill_version.${static_lib_extension}")
-
-
-set(REMILL_INCLUDE_LOCATION "${REMILL_INSTALL_INCLUDE_DIR}")
-get_target_property(REMILL_COMPILE_OPTIONS remill_settings INTERFACE_COMPILE_OPTIONS)
-get_target_property(REMILL_COMPILE_DEFINITIONS remill_settings INTERFACE_COMPILE_DEFINITIONS)
+InstallExternalTarget("ext_llvmlink" "${LLVMLINK_PATH}" "BIN" "${INSTALLED_LLVMLINK_NAME}")
 
 GetTargetTree(THIRDPARTY_LIBRARIES ${THIRDPARTY_LIBRARY_LIST})
 GetPublicIncludeFolders(THIRDPARTY_INCLUDE_DIRECTORIES ${THIRDPARTY_LIBRARIES})
@@ -335,10 +301,11 @@ file(GENERATE
 )
 
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
+	      "${CMAKE_CURRENT_LIST_DIR}/cmake/vcpkg_helper.cmake"
   DESTINATION "${REMILL_INSTALL_LIB_DIR}/cmake/remill"
 )
 
-install(DIRECTORY "${REMILL_INCLUDE_DIR}/remill"
+install(DIRECTORY "${REMILL_INCLUDE_DIR}/remill/"
   DESTINATION "${REMILL_INSTALL_INCLUDE_DIR}"
 )
 
@@ -350,6 +317,9 @@ add_custom_target(semantics)
 
 # tools
 add_subdirectory(bin)
+
+install(EXPORT remillTargets
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/remill")
 
 # tests
 message("compiler ID ${CMAKE_C_COMPILER_ID}")

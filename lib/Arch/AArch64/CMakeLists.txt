@@ -20,11 +20,11 @@ add_library(remill_arch_aarch64 STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Runtime.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/State.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Types.h"
-  
+
   "${REMILL_INCLUDE_DIR}/remill/Arch/AArch64/Runtime/Operators.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/AArch64/Runtime/State.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/AArch64/Runtime/Types.h"
-  
+
   Arch.cpp
   Decode.cpp
   Decode.h
@@ -41,6 +41,5 @@ target_link_libraries(remill_arch_aarch64 LINK_PUBLIC
 
 install(
   TARGETS remill_arch_aarch64
-  ARCHIVE DESTINATION "${REMILL_INSTALL_LIB_DIR}"
-  PUBLIC_HEADER DESTINATION "${REMILL_INSTALL_INCLUDE_DIR}"
+  EXPORT remillTargets
 )
