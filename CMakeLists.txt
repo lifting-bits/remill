@@ -290,18 +290,12 @@ list(REMOVE_DUPLICATES THIRDPARTY_LIBRARY_FILES)
 # First do the basic substitutions.
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/remillConfig.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake.pregen"
+  "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
   @ONLY
 )
 
-# Then expand the generator expressions added to `THIRDPARTY_LIBRARY_FILES`.
-file(GENERATE
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
-  INPUT "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake.pregen"
-)
-
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
-	      "${CMAKE_CURRENT_LIST_DIR}/cmake/vcpkg_helper.cmake"
+              "${CMAKE_CURRENT_LIST_DIR}/cmake/vcpkg_helper.cmake"
   DESTINATION "${REMILL_INSTALL_LIB_DIR}/cmake/remill"
 )
 

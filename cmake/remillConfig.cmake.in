@@ -14,51 +14,50 @@
 
 @PACKAGE_INIT@
 
-cmake_minimum_required(VERSION 3.2)
-
-if(NOT TARGET remill)
-  # For Linux builds, group LLVM libraries into a single group
-  # that avoids frustrating library ordering issues.
-  if(UNIX AND NOT APPLE)
-    set(LINKER_START_GROUP "-Wl,--start-group")
-    set(LINKER_END_GROUP "-Wl,--end-group")
-  else()
-    set(LINKER_START_GROUP "")
-    set(LINKER_END_GROUP "")
+foreach(_comp ${remill_FIND_COMPONENTS})
+  if (NOT "VCPKG_DEPS" STREQUAL _comp)
+    set(remill_FOUND False)
+    set(remill_NOT_FOUND_MESSAGE "Unsupported component: ${_comp}. Only VCPKG_DEPS")
   endif()
 
+  if ("VCPKG_DEPS" STREQUAL _comp)
+    set(remill_setup_vcpkg True)
+    if(NOT "x@VCPKG_ROOT@x" STREQUAL "xx" AND NOT I_KNOW_WHAT_IM_DOING)
+      if (EXISTS "@VCPKG_ROOT@")
+        set(VCPKG_ROOT "@VCPKG_ROOT@"
+          CACHE PATH "Location of dependency libraries"
+          )
+        include(${CMAKE_CURRENT_LIST_DIR}/vcpkg_helper.cmake)
+        message(STATUS "Found VCPKG_ROOT: ${VCPKG_ROOT}")
+        set(vcpkgdeps_FOUND)
+      endif()
+    endif()
+  endif()
+endforeach()
+
+if(NOT remill_setup_vcpkg AND NOT TARGET remill)
   set(LLVM_MAJOR_VERSION @LLVM_MAJOR_VERSION@)
   set(LLVM_MINOR_VERSION @LLVM_MINOR_VERSION@)
   set(REMILL_LLVM_VERSION "@LLVM_MAJOR_VERSION@.@LLVM_MINOR_VERSION@")
 
-  # "Easy" dependency management shenanigans with vcpkg
-  if (DEFINED VCPKG_ROOT OR DEFINED I_KNOW_WHAT_IM_DOING)
-    # External libs
-    include(CMakeFindDependencyMacro)
-    find_dependency(XED)
-    find_dependency(glog)
-    find_dependency(LLVM)
-    # NOTE: If changing this, also replicate in CMakeLists.txt
-    if (LLVM_WITH_Z3)
-      find_dependency(Z3)
-      get_target_property(LLVMSupport_LIBS LLVMSupport INTERFACE_LINK_LIBRARIES)
-      list(REMOVE_ITEM LLVMSupport_LIBS Z3)
-      list(APPEND LLVMSupport_LIBS z3::libz3)
-      set_target_properties(LLVMSupport PROPERTIES
-        INTERFACE_LINK_LIBRARIES "${LLVMSupport_LIBS}")
-    endif()
-
-    # Exported Targets
-    include("${CMAKE_CURRENT_LIST_DIR}/remillTargets.cmake")
+  # External libs
+  include(CMakeFindDependencyMacro)
+  find_dependency(XED)
+  find_dependency(glog)
+  find_dependency(LLVM)
+  # NOTE: If changing this, also replicate in CMakeLists.txt
+  if (LLVM_WITH_Z3)
+    find_dependency(Z3)
+    get_target_property(LLVMSupport_LIBS LLVMSupport INTERFACE_LINK_LIBRARIES)
+    list(REMOVE_ITEM LLVMSupport_LIBS Z3)
+    list(APPEND LLVMSupport_LIBS z3::libz3)
+    set_target_properties(LLVMSupport PROPERTIES
+      INTERFACE_LINK_LIBRARIES "${LLVMSupport_LIBS}")
   endif()
 
-  if(NOT "x@VCPKG_ROOT@x" STREQUAL "xx")
-    if (EXISTS "@VCPKG_ROOT@")
-      set(VCPKG_ROOT "@VCPKG_ROOT@"
-        CACHE PATH "Location of dependency libraries"
-      )
-      include(${CMAKE_CURRENT_LIST_DIR}/vcpkg_helper.cmake)
-    endif()
-  endif()
+  # Exported Targets
+  include("${CMAKE_CURRENT_LIST_DIR}/remillTargets.cmake")
 
 endif()
+
+set(remill_setup_vcpkg False)
