@@ -19,6 +19,7 @@
 
 SCRIPTS_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 SRC_DIR=$( cd "$( dirname "${SCRIPTS_DIR}" )" && pwd )
+DOWNLOAD_DIR="$( cd "$( dirname "${SRC_DIR}" )" && pwd )/lifting-bits-downloads"
 CURR_DIR=$( pwd )
 BUILD_DIR="${CURR_DIR}/remill-build"
 INSTALL_DIR=/usr/local
@@ -101,7 +102,10 @@ function DownloadVcpkgLibraries
   local GITHUB_LIBS="${LIBRARY_VERSION}.tar.xz"
   local URL="https://github.com/ekilmer/vcpkg-lifting-ports/releases/latest/download/${GITHUB_LIBS}"
 
-  echo "Fetching: ${URL}"
+  mkdir -p "${DOWNLOAD_DIR}"
+  pushd "${DOWNLOAD_DIR}" || return 1
+
+  echo "Fetching: ${URL} and placing in ${DOWNLOAD_DIR}"
   if ! curl -LO "${URL}"; then
     return 1
   fi
@@ -118,9 +122,10 @@ function DownloadVcpkgLibraries
     tar -xJf "${GITHUB_LIBS}" ${TAR_OPTIONS}
   ) || return $?
   rm "${GITHUB_LIBS}"
+  popd || return 1
 
   # Make sure modification times are not in the future.
-  find "${BUILD_DIR}/${LIBRARY_VERSION}" -type f -exec touch {} \;
+  find "${DOWNLOAD_DIR}/${LIBRARY_VERSION}" -type f -exec touch {} \;
 
   return 0
 }
@@ -207,7 +212,7 @@ function DownloadLibraries
 
   echo "[-] Library version is ${LIBRARY_VERSION}"
 
-  if [[ ! -d "${BUILD_DIR}/${LIBRARY_VERSION}" ]]; then
+  if [[ ! -d "${DOWNLOAD_DIR}/${LIBRARY_VERSION}" ]]; then
     if ! DownloadVcpkgLibraries; then
       echo "[x] Unable to download vcpkg libraries build ${LIBRARY_VERSION}."
       return 1
@@ -227,7 +232,7 @@ function Configure
     cmake \
         -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
         -DCMAKE_VERBOSE_MAKEFILE=True \
-        -DVCPKG_ROOT="${BUILD_DIR}/${LIBRARY_VERSION}" \
+        -DVCPKG_ROOT="${DOWNLOAD_DIR}/${LIBRARY_VERSION}" \
         ${BUILD_FLAGS} \
         "${SRC_DIR}"
   ) || exit $?
@@ -329,6 +334,13 @@ function main
       --build-dir)
         BUILD_DIR=$(python3 -c "import os; import sys; sys.stdout.write(os.path.abspath('${2}'))")
         echo "[+] New build directory is ${BUILD_DIR}"
+        shift # past argument
+      ;;
+
+      # Change the default download directory.
+      --download-dir)
+        DOWNLOAD_DIR=$(python3 -c "import os; import sys; sys.stdout.write(os.path.abspath('${2}'))")
+        echo "[+] New download directory is ${BUILD_DIR}"
         shift # past argument
       ;;
 
