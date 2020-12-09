@@ -16,7 +16,6 @@ install_manifest.txt
 Makefile
 
 CMakeLists.txt.user
-CMakeUserPresets.json
 .vscode
 .idea
 .DS_Store
