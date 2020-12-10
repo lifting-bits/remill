@@ -40,6 +40,18 @@ jobs:
       - name: Build with build script
         shell: bash
         run: ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
+      - name: Run tests
+        shell: bash
+        working-directory: remill-build
+        run: |
+          cmake --build . --target install
+          cmake --build . --target test_dependencies
+          env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test
+      - name: Smoketests with installed executable
+        shell: bash
+        run: |
+          remill-lift-${{ matrix.llvm }} --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
+          remill-lift-${{ matrix.llvm }} --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
 
   build_mac:
     strategy:
@@ -62,3 +74,15 @@ jobs:
       - name: Build with build script
         shell: bash
         run: ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
+      - name: Run tests
+        shell: bash
+        working-directory: remill-build
+        run: |
+          cmake --build . --target install
+          cmake --build . --target test_dependencies
+          env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test
+      - name: Smoketests with installed executable
+        shell: bash
+        run: |
+          remill-lift-${{ matrix.llvm }} --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
+          remill-lift-${{ matrix.llvm }} --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
