@@ -36,7 +36,7 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 | Name | Version |
 | ---- | ------- |
 | [Git](https://git-scm.com/) | Latest |
-| [CMake](https://cmake.org/) | 3.2+ |
+| [CMake](https://cmake.org/) | 3.14+ |
 | [Google Flags](https://github.com/google/glog) | Latest |
 | [Google Log](https://github.com/google/glog) | Latest |
 | [Google Test](https://github.com/google/googletest) | Latest |
@@ -51,7 +51,7 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 
 ### Docker Build
 
-Remill now comes with a Dockerfile for easier testing. This Dockerfile references the [cxx-common](https://github.com/trailofbits/cxx-common) container to have all pre-requisite libraries available. 
+Remill now comes with a Dockerfile for easier testing. This Dockerfile references the [cxx-common](https://github.com/trailofbits/cxx-common) container to have all pre-requisite libraries available.
 
 The Dockerfile allows for quick builds of multiple supported LLVM, architecture, and Linux configurations.
 

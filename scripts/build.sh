@@ -100,7 +100,7 @@ function GetArchVersion
 function DownloadVcpkgLibraries
 {
   local GITHUB_LIBS="${LIBRARY_VERSION}.tar.xz"
-  local URL="https://github.com/trailofbits/cxx-common/releases/latest/download/${GITHUB_LIBS}"
+  local URL="https://github.com/trailofbits/cxx-common/releases/download/v0.1.0-rc.2/${GITHUB_LIBS}"
 
   mkdir -p "${DOWNLOAD_DIR}"
   pushd "${DOWNLOAD_DIR}" || return 1
