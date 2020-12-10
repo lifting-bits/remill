@@ -39,7 +39,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Two latest released stable Xcode versions
         os: [
           'macos-10.15',
           'macos-11.0'
