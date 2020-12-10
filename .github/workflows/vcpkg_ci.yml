@@ -45,9 +45,9 @@ jobs:
         shell: bash
         working-directory: remill-build
         run: |
-          cmake --build . --target install
-          cmake --build . --target test_dependencies
-          env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test
+          cmake --build . --target install -- -j "$(nproc)"
+          cmake --build . --target test_dependencies -- -j "$(nproc)"
+          env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test -- -j "$(nproc)"
       - name: Smoketests with installed executable
         shell: bash
         run: |
@@ -79,9 +79,9 @@ jobs:
         shell: bash
         working-directory: remill-build
         run: |
-          cmake --build . --target install
-          cmake --build . --target test_dependencies
-          env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test
+          cmake --build . --target install -- -j "$(sysctl -n hw.logicalcpu)"
+          cmake --build . --target test_dependencies -- -j "$(sysctl -n hw.logicalcpu)"
+          env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test -- -j "$(sysctl -n hw.logicalcpu)"
       - name: Smoketests with installed executable
         shell: bash
         run: |
