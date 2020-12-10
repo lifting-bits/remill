@@ -31,6 +31,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - name: Install utility tools
+        shell: bash
+        run: |
+          apt-get update
+          apt-get install -y pixz
+
       - name: Build with build script
         shell: bash
         run: ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
@@ -49,7 +55,7 @@ jobs:
           '11'
           ]
 
-    runs-on: ${{ matrix.os.runner }}
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v2

@@ -387,6 +387,7 @@ function main
 
   if ! (DownloadLibraries && Configure && Build); then
     echo "[x] Build aborted."
+    exit 1
   fi
 
   return $?
