@@ -1,0 +1,89 @@
+name: VCPKG Continuous Integration
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  schedule:
+    # run CI every day even if no PRs/merges occur
+    - cron:  '0 6 * * *'
+
+jobs:
+  build_linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - { name: 'ubuntu', tag: '18.04' }
+          - { name: 'ubuntu', tag: '20.04' }
+        llvm: [
+          '9',
+          '10',
+          '11'
+          ]
+
+    runs-on: ubuntu-20.04
+    container:
+      image: docker.pkg.github.com/trailofbits/cxx-common/vcpkg-builder-${{ matrix.image.name }}:${{ matrix.image.tag }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install utility tools
+        shell: bash
+        run: |
+          # TODO some of these should probably live in the Docker build image
+          apt-get update
+          apt-get install -y pixz xz-utils make
+
+      - name: Build with build script
+        shell: bash
+        run: ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
+      - name: Run tests
+        shell: bash
+        working-directory: remill-build
+        run: |
+          cmake --build . --target install -- -j "$(nproc)"
+          cmake --build . --target test_dependencies -- -j "$(nproc)"
+          env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test -- -j "$(nproc)"
+      - name: Smoketests with installed executable
+        shell: bash
+        run: |
+          remill-lift-${{ matrix.llvm }} --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
+          remill-lift-${{ matrix.llvm }} --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
+
+  build_mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [
+          'macos-10.15',
+          'macos-11.0'
+          ]
+        llvm: [
+          '9',
+          '10',
+          '11'
+          ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build with build script
+        shell: bash
+        run: ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
+      - name: Run tests
+        shell: bash
+        working-directory: remill-build
+        run: |
+          cmake --build . --target install -- -j "$(sysctl -n hw.logicalcpu)"
+          cmake --build . --target test_dependencies -- -j "$(sysctl -n hw.logicalcpu)"
+          env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test -- -j "$(sysctl -n hw.logicalcpu)"
+      - name: Smoketests with installed executable
+        shell: bash
+        run: |
+          remill-lift-${{ matrix.llvm }} --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
+          remill-lift-${{ matrix.llvm }} --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6

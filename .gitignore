@@ -27,7 +27,6 @@ cmake-build-release
 compile_commands.json
 
 bin/*
-lib/*
 
 third_party/*
 build/*
