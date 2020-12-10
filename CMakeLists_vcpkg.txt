@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+include(cmake/vcpkg_helper.cmake)
+
+project(remill)
+cmake_minimum_required(VERSION 3.14)
 include(GNUInstallDirs)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/settings.cmake")
