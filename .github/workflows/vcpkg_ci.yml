@@ -34,8 +34,9 @@ jobs:
       - name: Install utility tools
         shell: bash
         run: |
+          # TODO some of these should probably live in the Docker build image
           apt-get update
-          apt-get install -y pixz xz-utils
+          apt-get install -y pixz xz-utils make
 
       - name: Build with build script
         shell: bash
