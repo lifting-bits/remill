@@ -35,7 +35,7 @@ jobs:
         shell: bash
         run: |
           apt-get update
-          apt-get install -y pixz
+          apt-get install -y pixz xz-utils
 
       - name: Build with build script
         shell: bash
