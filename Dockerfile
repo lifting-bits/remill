@@ -1,3 +1,6 @@
+# TODO(ek) Fix for vcpkg
+# Should similar to what's in GHA CI
+
 ARG LLVM_VERSION=1000
 ARG ARCH=amd64
 ARG UBUNTU_VERSION=18.04
