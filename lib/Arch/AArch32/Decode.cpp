@@ -1653,6 +1653,23 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
   return true;
 }
 
+static bool TryDecodeCLZ(Instruction &inst, uint32_t bits) {
+  const Misc enc = { bits };
+  if (enc.Rd == kPCRegNum || enc.Rm == kPCRegNum) {
+    // if d == 15 || m == 15 then UNPREDICTABLE;
+    return false;
+  }
+  DecodeCondition(inst, enc.cond);
+
+  AddIntRegOp(inst, enc.Rd, 32u, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.Rm, 32u, Operand::kActionRead);
+
+  inst.function = "CLZ";
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
+
+
 //00  001 UNALLOCATED
 //00  010 UNALLOCATED
 //00  011 UNALLOCATED
@@ -1681,9 +1698,9 @@ static TryDecode * TryMiscellaneous(uint32_t bits) {
     case 0b01010:
     case 0b01011:
       return TryDecodeBX;
-    // TODO(Sonya)
-    case 0b11001: // CLZ
-    case 0b11110: // ERET
+    case 0b11001:
+      return TryDecodeCLZ;
+    case 0b11110:  // TODO(Sonya): ERET
       return nullptr;
   }
   // TODO(Sonya)
