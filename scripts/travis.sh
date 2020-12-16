@@ -77,7 +77,7 @@ osx_initialize() {
   printf " > The macOS SDK is located at ${SDKROOT}\n"
 
   # Mainly for realpath
-  brew install coreutils
+  brew install coreutils cmake
   if [ $? -ne 0 ] ; then
     printf " x Could not install the required dependencies\n"
     return 1
@@ -210,7 +210,11 @@ common_build() {
   printf " i ${CCACHE_DIR}\n"
 
   export TRAILOFBITS_LIBRARIES=`GetRealPath libraries`
-  export PATH="${TRAILOFBITS_LIBRARIES}/llvm/bin:${TRAILOFBITS_LIBRARIES}/cmake/bin:${TRAILOFBITS_LIBRARIES}/protobuf/bin:${PATH}"
+  export PATH="${TRAILOFBITS_LIBRARIES}/llvm/bin:${TRAILOFBITS_LIBRARIES}/protobuf/bin:${PATH}"
+  # Use brew-installed cmake instead of outdated version here
+  if [[ "${platform_name}" != "osx" ]] ; then
+    export PATH="${TRAILOFBITS_LIBRARIES}/cmake/bin:${PATH}"
+  fi
 
   export CC="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang"
   export CXX="${TRAILOFBITS_LIBRARIES}/llvm/bin/clang++"

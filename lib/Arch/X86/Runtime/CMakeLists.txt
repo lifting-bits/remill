@@ -18,7 +18,7 @@ project(x86_runtime)
 set(X86RUNTIME_SOURCEFILES
   Instructions.cpp
   BasicBlock.cpp
-  
+
   "${REMILL_LIB_DIR}/Arch/Runtime/Intrinsics.cpp"
 )
 
@@ -55,7 +55,7 @@ function(add_runtime_helper target_name address_bit_size enable_avx enable_avx51
     "${REMILL_INCLUDE_DIR}/remill/Arch/X86/Runtime/Operators.h"
     "${REMILL_INCLUDE_DIR}/remill/Arch/X86/Runtime/State.h"
     "${REMILL_INCLUDE_DIR}/remill/Arch/X86/Runtime/Types.h"
-    
+
     "${REMILL_LIB_DIR}/Arch/X86/Semantics/CONVERT.cpp"
     "${REMILL_LIB_DIR}/Arch/X86/Semantics/POP.cpp"
     "${REMILL_LIB_DIR}/Arch/X86/Semantics/BITBYTE.cpp"

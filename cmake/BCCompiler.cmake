@@ -64,7 +64,7 @@ else()
   # llvm-link path
   find_program(LLVMLINK_PATH
     NAMES "${LLVMLINK_EXECUTABLE_NAME}"
-    PATHS "/usr/bin" "/usr/local/bin" "${LLVM_INSTALL_PREFIX}/bin" "${LLVM_TOOLS_BINARY_DIR}" "C:/Program Files/LLVM/bin" "C:/Program Files (x86)/LLVM/bin"
+    PATHS "${LLVM_INSTALL_PREFIX}/bin" "${LLVM_TOOLS_BINARY_DIR}" "/usr/bin" "/usr/local/bin" "C:/Program Files/LLVM/bin" "C:/Program Files (x86)/LLVM/bin"
   )
 endif()
 

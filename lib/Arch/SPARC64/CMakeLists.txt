@@ -20,12 +20,12 @@ add_library(remill_arch_sparc64 STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Runtime.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/State.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Types.h"
-  
+
   "${REMILL_INCLUDE_DIR}/remill/Arch/SPARC64/Runtime/State.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/SPARC64/Runtime/Types.h"
-  
+
   "${REMILL_LIB_DIR}/Arch/SPARC32/Decode.h"
-  
+
   Arch.cpp
   Decode.h
   Extract.cpp
@@ -41,6 +41,5 @@ target_link_libraries(remill_arch_sparc64 LINK_PUBLIC
 
 install(
   TARGETS remill_arch_sparc64
-  ARCHIVE DESTINATION "${REMILL_INSTALL_LIB_DIR}"
-  PUBLIC_HEADER DESTINATION "${REMILL_INSTALL_INCLUDE_DIR}"
+  EXPORT remillTargets
 )

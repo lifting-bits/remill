@@ -26,6 +26,8 @@ cmake-build-debug
 cmake-build-release
 compile_commands.json
 
+bin/*
+
 third_party/*
 build/*
 remill-build/*
