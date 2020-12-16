@@ -29,6 +29,7 @@
 // clang-format on
 
 #define REG_PC state.gpr.r15.dword
+#define REG_LR state.gpr.r14.dword
 #define REG_SP state.gpr.r13.dword
 
 #define HYPER_CALL state.hyper_call

@@ -221,8 +221,11 @@ class Instruction {
     kCategoryIndirectJump,
     kCategoryConditionalIndirectJump,
     kCategoryDirectFunctionCall,
+    kCategoryConditionalDirectFunctionCall,
     kCategoryIndirectFunctionCall,
+    kCategoryConditionalIndirectFunctionCall,
     kCategoryFunctionReturn,
+    kCategoryConditionalFunctionReturn,
     kCategoryConditionalBranch,
     kCategoryAsyncHyperCall,
     kCategoryConditionalAsyncHyperCall,
@@ -253,30 +256,41 @@ class Instruction {
   inline bool IsIndirectControlFlow(void) const {
     switch (category) {
       case kCategoryIndirectFunctionCall:
+      case kCategoryConditionalIndirectFunctionCall:
       case kCategoryIndirectJump:
       case kCategoryConditionalIndirectJump:
       case kCategoryAsyncHyperCall:
       case kCategoryConditionalAsyncHyperCall:
-      case kCategoryFunctionReturn: return true;
+      case kCategoryFunctionReturn:
+      case kCategoryConditionalFunctionReturn: return true;
       default: return false;
     }
   }
 
   inline bool IsConditionalBranch(void) const {
-    return kCategoryConditionalBranch == category ||
-        kCategoryConditionalIndirectJump == category;
+    switch (category) {
+      case kCategoryConditionalDirectFunctionCall:
+      case kCategoryConditionalBranch:
+      case kCategoryConditionalIndirectJump:
+      case kCategoryConditionalAsyncHyperCall:
+      case kCategoryConditionalFunctionReturn: return true;
+      default: return false;
+    }
   }
 
   inline bool IsFunctionCall(void) const {
     switch (category) {
       case kCategoryDirectFunctionCall:
+      case kCategoryConditionalDirectFunctionCall:
+      case kCategoryConditionalIndirectFunctionCall:
       case kCategoryIndirectFunctionCall: return true;
       default: return false;
     }
   }
 
   inline bool IsFunctionReturn(void) const {
-    return kCategoryFunctionReturn == category;
+    return kCategoryFunctionReturn == category ||
+        kCategoryConditionalFunctionReturn == category;
   }
 
   inline bool IsValid(void) const {

@@ -275,7 +275,26 @@ union BranchI {
 } __attribute__((packed));
 static_assert(sizeof(BranchI) == 4, " ");
 
+// Miscellaneous
+union Misc {
+  uint32_t flat;
+  struct {
+    uint32_t Rm : 4;
+    uint32_t op1 : 3;
+    uint32_t _0_b7 : 1;
+    uint32_t _11_to_8 : 4;
+    uint32_t Rd : 4;
+    uint32_t _19_to_16 : 4;
+    uint32_t _0_b20 : 1;
+    uint32_t op0 : 2;
+    uint32_t _00010: 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(BranchI) == 4, " ");
+
 static constexpr auto kPCRegNum = 15u;
+static constexpr auto kLRRegNum = 14u;
 
 static const char * const kIntRegName[] = {
     "R0",
@@ -1519,15 +1538,11 @@ static bool TryBranchImm(Instruction &inst, uint32_t bits) {
 
   auto is_func = false;
   // PC used by the branch instruction is actually the address of the next instruction
-  auto target_pc = static_cast<uint32_t>(inst.pc + 4 + static_cast<uint32_t>(enc.imm24 << 2));
+  auto target_pc = static_cast<uint32_t>(inst.pc + 8 + static_cast<uint32_t>(enc.imm24 << 2));
   if (enc.cond != 0b1111) {
     if (!enc.H) {
       target_pc = target_pc & ~0b11u;
-      if (is_cond) {
-        inst.function = "BCOND";
-      } else {
-        inst.function = "B";
-      }
+      inst.function = "B";
     } else {
       target_pc = target_pc & ~0b11u;
       inst.function = "BL";
@@ -1539,26 +1554,146 @@ static bool TryBranchImm(Instruction &inst, uint32_t bits) {
     target_pc = target_pc | (enc.H << 1);
     is_func = true;
   }
+  if (is_cond) {
+    inst.function += "COND";
+  }
   auto offset = static_cast<uint32_t>(target_pc - inst.pc);
 
   AddAddrRegOp(inst, "PC", 32u, Operand::kActionRead, offset);
 
   inst.branch_taken_pc = target_pc;
   inst.branch_not_taken_pc = inst.pc + 4;
-  if (is_cond) {
+  if (is_cond && is_func) {
+    inst.category = Instruction::kCategoryConditionalDirectFunctionCall;
+    AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
+  } else if (is_cond) {
     inst.category = Instruction::kCategoryConditionalBranch;
     AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
   } else if (is_func) {
-    LOG_IF(FATAL, is_cond) << "TODO: Conditional function calls";
+    inst.category = Instruction::kCategoryDirectFunctionCall;
+    AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
   } else {
     inst.category = Instruction::kCategoryDirectJump;
   }
+
   Operand::Register reg;
   reg.size = 32u;
   reg.name = remill::kNextPCVariableName;
   auto &next_pc = inst.EmplaceOperand(reg);
   next_pc.action = Operand::kActionWrite;
+
+  if (is_func) {
+    Operand::Register reg;
+    reg.size = 32u;
+    reg.name = remill::kReturnPCVariableName;
+    auto &next_pc = inst.EmplaceOperand(reg);
+    next_pc.action = Operand::kActionWrite;
+  }
+
   return true;
+}
+
+static const char * const kBX[] = {
+    [0b01] = "BX",
+    [0b10] = "BXJ", // unsupported
+    [0b11] = "BLX",
+};
+
+static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
+  const Misc enc = { bits };
+
+  if (enc.op1 == 0b10) { // BJX unsupported
+    LOG(ERROR) << "BJX unsupported";
+    return false;
+  } else if (enc.op1 == 0b11 && enc.Rm == kPCRegNum) {
+    // if m == 15 then UNPREDICTABLE;
+    return false;
+  }
+
+  auto is_cond = DecodeCondition(inst, enc.cond);
+  inst.function = kBX[enc.op1];
+  if (is_cond) {
+    inst.function += "COND";
+  }
+
+  AddAddrRegOp(inst, kIntRegName[enc.Rm], 32u, Operand::kActionRead, 0);
+  if (enc.op1 == 0b01) {
+    if (is_cond && (enc.Rm == kLRRegNum)) {
+      inst.category = Instruction::kCategoryConditionalFunctionReturn;
+      AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
+    } else if (enc.Rm == kLRRegNum) {
+      inst.category = Instruction::kCategoryFunctionReturn;
+    } else if (is_cond) {
+      inst.category = Instruction::kCategoryConditionalIndirectJump;
+      AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
+    } else if (enc.op1 == 0b01) {
+      inst.category = Instruction::kCategoryIndirectJump;
+    }
+  } else if (is_cond) {
+    inst.category = Instruction::kCategoryConditionalDirectFunctionCall;
+    AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
+  } else {
+    inst.category = Instruction::kCategoryDirectFunctionCall;
+  }
+
+  Operand::Register reg;
+  reg.size = 32u;
+  reg.name = remill::kNextPCVariableName;
+  auto &next_pc = inst.EmplaceOperand(reg);
+  next_pc.action = Operand::kActionWrite;
+
+  if (enc.op1 == 0b11) {
+    Operand::Register reg;
+    reg.size = 32u;
+    reg.name = remill::kReturnPCVariableName;
+    auto &next_pc = inst.EmplaceOperand(reg);
+    next_pc.action = Operand::kActionWrite;
+  }
+
+  return true;
+}
+
+//00  001 UNALLOCATED
+//00  010 UNALLOCATED
+//00  011 UNALLOCATED
+//00  110 UNALLOCATED
+//01  001 BX
+//01  010 BXJ
+//01  011 BLX (register)
+//01  110 UNALLOCATED
+//10  001 UNALLOCATED
+//10  010 UNALLOCATED
+//10  011 UNALLOCATED
+//10  110 UNALLOCATED
+//11  001 CLZ
+//11  010 UNALLOCATED
+//11  011 UNALLOCATED
+//11  110 ERET
+//    111 Exception Generation
+//    000 Move special register (register)
+//    100 Cyclic Redundancy Check
+//    101 Integer Saturating Arithmetic
+static TryDecode * TryMiscellaneous(uint32_t bits) {
+  const Misc enc = { bits };
+  // op0 | op1
+  switch (enc.op0 << 3 | enc.op1) {
+    case 0b01001:
+    case 0b01010:
+    case 0b01011:
+      return TryDecodeBX;
+    // TODO(Sonya)
+    case 0b11001: // CLZ
+    case 0b11110: // ERET
+      return nullptr;
+  }
+  // TODO(Sonya)
+  switch (enc.op1) {
+    case 0b111: // Exception Generation
+    case 0b000: // Move special register (register)
+    case 0b100: // Cyclic Redundancy Check
+    case 0b101: // Integer Saturating Arithmetic
+    default: return nullptr;
+  }
 }
 
 // Corresponds to Data-processing register (immediate shift)
@@ -1648,9 +1783,9 @@ static TryDecode * TryDataProcessingAndMisc(uint32_t bits) {
       }
     // op1 == 10xx0
     } else if (((enc.op1 >> 3) == 0b10u) && !(enc.op1 & 0b00001u)) {
-      // TODO(Sonya): Miscellaneous
+      // Miscellaneous
       if (!enc.op2) {
-        return nullptr;
+        return TryMiscellaneous(bits);
       // Halfword Multiply and Accumulate
       } else {
         return TryHalfwordDecodeMultiplyAndAccumulate;
