@@ -233,6 +233,21 @@ union LogicalArithmeticRRI {
   } __attribute__((packed));
 static_assert(sizeof(LogicalArithmeticRRI) == 4, " ");
 
+union MoveHW {
+  uint32_t flat;
+    struct {
+      uint32_t imm12 : 12;
+      uint32_t rd : 4;
+      uint32_t imm4  : 4;
+      uint32_t _00  : 2;
+      uint32_t H : 1;
+      uint32_t _00110 : 5;
+      uint32_t cond : 4;
+    } __attribute__((packed));
+  } __attribute__((packed));
+static_assert(sizeof(MoveHW) == 4, " ");
+
+
 // Top-level encodings for A32
 union TopLevelEncodings {
   uint32_t flat;
@@ -1253,8 +1268,6 @@ static bool TryHalfwordDecodeMultiplyAndAccumulate(Instruction &inst,
   // Ra
   if (add_ra) {
     AddIntRegOp(inst, enc.ra, 32, Operand::kActionRead);
-  } else if (enc.opc != 0b11u) {
-    AddImmOp(inst, 0);
   }
 
   inst.category = Instruction::kCategoryNormal;
@@ -1462,6 +1475,27 @@ static bool TryLogicalArithmeticRRI(Instruction &inst, uint32_t bits) {
 
   ExpandTo32AddImmAddCarry(inst, enc.imm12, enc.s);
   return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u], is_cond);
+}
+
+// Move Halfword (immediate)
+static bool TryDecodeMoveHalfword(Instruction &inst, uint32_t bits) {
+  const MoveHW enc = { bits };
+
+  // if d == 15 then UNPREDICTABLE;
+  if (enc.rd == kPCRegNum) {
+    return false;
+  } else if (!enc.H) {
+    // (Sonya) This doesn't look like it should be reachable
+    return false;
+  }
+
+  inst.function = "MOVT";
+  DecodeCondition(inst, enc.cond);
+  AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.rd, 32, Operand::kActionRead);
+  AddImmOp(inst, enc.imm4 << 12 | enc.imm12);
+  inst.category = Instruction::kCategoryNormal;
+  return true;
 }
 
 //00  TST (register)
@@ -1750,7 +1784,7 @@ static TryDecode * kDataProcessingI[] = {
     [0b0101] = TryDecodeIntegerDataProcessingRRI,
     [0b0110] = TryDecodeIntegerDataProcessingRRI,
     [0b0111] = TryDecodeIntegerDataProcessingRRI,
-    [0b1000] = nullptr, // TODO(Sonya): Move Halfword (immediate)
+    [0b1000] = TryDecodeMoveHalfword, // Move Halfword (immediate)
     [0b1001] = TryIntegerTestAndCompareRI,
     [0b1010] = nullptr, // TODO(Sonya): Move Special Register and Hints (immediate)
     [0b1011] = TryIntegerTestAndCompareRI,
@@ -1823,7 +1857,7 @@ static TryDecode * TryDataProcessingAndMisc(uint32_t bits) {
   } else {
     // op0 -> enc.op1 2 high order bits, op1 -> enc.op1 2 lowest bits
     // index is the concatenation of op0 and op1
-    return kDataProcessingI[(enc.op1 >> 1) | (enc.op1 & 0b11u)];
+    return kDataProcessingI[((enc.op1 >> 1) & 0b1100u) | (enc.op1 & 0b11u)];
   }
 }
 

@@ -52,6 +52,7 @@ DEF_COND_SEM(BICS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   // PSTATE.V unchanged
   return memory;
 }
+
 } // namespace
 
 DEF_ISEL(ORRrr) = ORR;
@@ -62,3 +63,14 @@ DEF_ISEL(BICrr) = BIC;
 DEF_ISEL(BICSrr) = BICS;
 DEF_ISEL(MVNrr) = BIC;
 DEF_ISEL(MVNSrr) = BICS;
+
+namespace {
+DEF_COND_SEM(MOVT, R32W dst, R32 src1, R32 src2){
+  auto value = ZExt(Trunc(Read(src1)));
+  auto result = UOr(UShl(Read(src2), 16), value);
+  Write(dst, result);
+  return memory;
+}
+} // namespace
+
+DEF_ISEL(MOVT) = MOVT;

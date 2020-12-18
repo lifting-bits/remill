@@ -290,6 +290,15 @@ DEF_COND_SEM(SMLAh, R32W dst, R32 src1, R32 src2, R32 src3) {
   return memory;
 }
 
+DEF_COND_SEM(SMULWh, R32W dst, R32 src1, R32 src2) {
+  auto rhs = SExt<uint64_t>(Read(src2));
+  auto lhs = SExt<uint64_t>(Read(src1));
+  auto res = SShr(SMul(lhs, rhs), 16ul); // R[d] = result<47:16>
+  auto trun_res = TruncTo<uint32_t>(res);
+  Write(dst, trun_res);
+  return memory;
+}
+
 DEF_COND_SEM(SMLAWh, R32W dst, R32 src1, R32 src2, R32 src3) {
   auto rhs = SExt<uint64_t>(Read(src2));
   auto lhs = SExt<uint64_t>(Read(src1));
@@ -330,9 +339,9 @@ DEF_ISEL(SMLABT) = SMLAh;
 DEF_ISEL(SMLATB) = SMLAh;
 DEF_ISEL(SMLATT) = SMLAh;
 DEF_ISEL(SMLAWB) = SMLAWh;
-DEF_ISEL(SMULWB) = SMLAWh;
+DEF_ISEL(SMULWB) = SMULWh;
 DEF_ISEL(SMLAWT) = SMLAWh;
-DEF_ISEL(SMULWT) = SMLAWh;
+DEF_ISEL(SMULWT) = SMULWh;
 DEF_ISEL(SMULBB) = SMULh;
 DEF_ISEL(SMULBT) = SMULh;
 DEF_ISEL(SMULTB) = SMULh;
