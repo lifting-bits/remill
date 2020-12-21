@@ -284,7 +284,8 @@ DEF_COND_SEM(SMLAh, R32W dst, R32 src1, R32 src2, R32 src3) {
 
   //  if result != SInt(result<31:0>) then  // Signed overflow
   //          PSTATE.Q = '1';
-  state.sr.q = UOr(state.sr.q, SCmpNeq(res, SExt<uint64_t>(trun_res)));
+  state.sr.q = Select(SCmpNeq(res, SExt<uint64_t>(trun_res)),
+                      uint8_t(1), state.sr.q);
   return memory;
 }
 
@@ -307,7 +308,8 @@ DEF_COND_SEM(SMLAWh, R32W dst, R32 src1, R32 src2, R32 src3) {
 
   //  if (result >> 16) != SInt(R[d]) then  // Signed overflow
   //          PSTATE.Q = '1';
-  state.sr.q = UOr(state.sr.q, SCmpNeq(res, SExt<uint64_t>(trun_res)));
+  state.sr.q = Select(SCmpNeq(res, SExt<uint64_t>(trun_res)),
+                      uint8_t(1), state.sr.q);
   return memory;
 }
 
@@ -356,7 +358,7 @@ T SignedSatQ(State &state, T res, int32_t nbits) {
   auto upper_bound = T((1 << nbits) - 1);
   auto lower_bound = T(-(1 << nbits));
   state.sr.q = Select(SOr(SCmpGt(res, upper_bound), SCmpLt(res, lower_bound)),
-                      uint8_t(1), state.sr.q);
+                      uint8_t(1u), state.sr.q);
   res = Select(SCmpGt(res, upper_bound), upper_bound, res);
   res = Select(SCmpLt(res, lower_bound), lower_bound, res);
   return res;
