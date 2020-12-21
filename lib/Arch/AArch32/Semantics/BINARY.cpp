@@ -28,8 +28,6 @@ T AddWithCarryNZCV(State &state, T lhs, T rhs, T carry) {
   return result;
 }
 
-
-
 DEF_COND_SEM(AND, R32W dst, R32 src1, I32 src2) {
   auto value = Read(src2);
   Write(dst, UAnd(Read(src1), value));
@@ -351,3 +349,59 @@ DEF_ISEL(SMLALBT) = SMLALh;
 DEF_ISEL(SMLALTB) = SMLALh;
 DEF_ISEL(SMLALTT) = SMLALh;
 
+namespace {
+template <typename T>
+T SignedSatQ(State &state, T res, int32_t nbits) {
+  nbits--;
+  auto upper_bound = T((1 << nbits) - 1);
+  auto lower_bound = T(-(1 << nbits));
+  state.sr.q = Select(SOr(SCmpGt(res, upper_bound), SCmpLt(res, lower_bound)),
+                      uint8_t(1), state.sr.q);
+  res = Select(SCmpGt(res, upper_bound), upper_bound, res);
+  res = Select(SCmpLt(res, lower_bound), lower_bound, res);
+  return res;
+}
+
+DEF_COND_SEM(QADD, R32W dst, R32 src1, R32 src2) {
+  auto rhs = SExt<int64_t>(Signed(Read(src2)));
+  auto lhs = SExt<int64_t>(Signed(Read(src1)));
+  auto res = SAdd(lhs, rhs);
+  res = SignedSatQ(state, res, 32u);
+  Write(dst, TruncTo<uint32_t>(res));
+  return memory;
+}
+
+DEF_COND_SEM(QDADD, R32W dst, R32 src1, R32 src2) {
+  auto rhs = SExt<int64_t>(Signed(Read(src2)));
+  auto lhs = SExt<int64_t>(Signed(Read(src1)));
+  rhs = SignedSatQ(state, SShl(rhs, 1u), 32u);
+  auto res = SAdd(lhs, rhs);
+  res = SignedSatQ(state, res, 32u);
+  Write(dst, TruncTo<int32_t>(res));
+  return memory;
+}
+
+DEF_COND_SEM(QSUB, R32W dst, R32 src1, R32 src2) {
+  auto rhs = SExt<int64_t>(Signed(Read(src2)));
+  auto lhs = SExt<int64_t>(Signed(Read(src1)));
+  auto res = SSub(lhs, rhs);
+  res = SignedSatQ(state, res, 32u);
+  Write(dst, TruncTo<uint32_t>(res));
+  return memory;
+}
+
+DEF_COND_SEM(QDSUB, R32W dst, R32 src1, R32 src2) {
+  auto rhs = SExt<int64_t>(Signed(Read(src2)));
+  auto lhs = SExt<int64_t>(Signed(Read(src1)));
+  rhs = SignedSatQ(state, SShl(rhs, 1u), 32u);
+  auto res = SSub(lhs, rhs);
+  res = SignedSatQ(state, res, 32u);
+  Write(dst, TruncTo<int32_t>(res));
+  return memory;
+}
+} // namespace
+
+DEF_ISEL(QADD) = QADD;
+DEF_ISEL(QDADD) = QDADD;
+DEF_ISEL(QSUB) = QSUB;
+DEF_ISEL(QDSUB) = QDSUB;

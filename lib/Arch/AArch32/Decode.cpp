@@ -306,7 +306,24 @@ union Misc {
     uint32_t cond : 4;
   } __attribute__((packed));
 } __attribute__((packed));
-static_assert(sizeof(BranchI) == 4, " ");
+static_assert(sizeof(Misc) == 4, " ");
+
+// Integer Saturating Arithmetic
+union IntSatArith {
+  uint32_t flat;
+  struct {
+    uint32_t Rm : 4;
+    uint32_t _11_to_4 : 8;
+    uint32_t Rd : 4;
+    uint32_t Rn : 4;
+    uint32_t _0_b20 : 1;
+    uint32_t opc : 2;
+    uint32_t _00010: 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(IntSatArith) == 4, " ");
+
 
 static constexpr auto kPCRegNum = 15u;
 static constexpr auto kLRRegNum = 14u;
@@ -1146,6 +1163,7 @@ static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
 
   auto instruction = kMulAccRRR[(enc.opc << 1u) | enc.s];
   if (!instruction) {
+    inst.category = Instruction::kCategoryError;
     return false;
   }
   inst.function = instruction;
@@ -1483,9 +1501,11 @@ static bool TryDecodeMoveHalfword(Instruction &inst, uint32_t bits) {
 
   // if d == 15 then UNPREDICTABLE;
   if (enc.rd == kPCRegNum) {
+    inst.category = Instruction::kCategoryError;
     return false;
   } else if (!enc.H) {
     // (Sonya) This doesn't look like it should be reachable
+    inst.category = Instruction::kCategoryError;
     return false;
   }
 
@@ -1638,9 +1658,11 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
 
   if (enc.op1 == 0b10) { // BJX unsupported
     LOG(ERROR) << "BJX unsupported";
+    inst.category = Instruction::kCategoryError;
     return false;
   } else if (enc.op1 == 0b11 && enc.Rm == kPCRegNum) {
     // if m == 15 then UNPREDICTABLE;
+    inst.category = Instruction::kCategoryError;
     return false;
   }
 
@@ -1687,10 +1709,12 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
   return true;
 }
 
+// Count Leading Zeros
 static bool TryDecodeCLZ(Instruction &inst, uint32_t bits) {
   const Misc enc = { bits };
   if (enc.Rd == kPCRegNum || enc.Rm == kPCRegNum) {
     // if d == 15 || m == 15 then UNPREDICTABLE;
+    inst.category = Instruction::kCategoryError;
     return false;
   }
   DecodeCondition(inst, enc.cond);
@@ -1703,6 +1727,31 @@ static bool TryDecodeCLZ(Instruction &inst, uint32_t bits) {
   return true;
 }
 
+static const char * const kSatArith[] = {
+    [0b00] = "QADD",
+    [0b01] = "QSUB",
+    [0b10] = "QDADD",
+    [0b11] = "QDSUB",
+};
+
+// Integer Saturating Arithmetic
+static bool TryDecodeIntegerSaturatingArithmetic(Instruction &inst,
+                                                 uint32_t bits) {
+  const IntSatArith enc = { bits };
+  // if d == 15 || n == 15 || m == 15 then UNPREDICTABLE;
+  if (enc.Rd == kPCRegNum || enc.Rm == kPCRegNum || enc.Rn == kPCRegNum) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+  DecodeCondition(inst, enc.cond);
+  AddIntRegOp(inst, enc.Rd, 32u, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.Rm, 32u, Operand::kActionRead);
+  AddIntRegOp(inst, enc.Rn, 32u, Operand::kActionRead);
+
+  inst.function = kSatArith[enc.opc];
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
 
 //00  001 UNALLOCATED
 //00  010 UNALLOCATED
@@ -1742,7 +1791,9 @@ static TryDecode * TryMiscellaneous(uint32_t bits) {
     case 0b111: // Exception Generation
     case 0b000: // Move special register (register)
     case 0b100: // Cyclic Redundancy Check
-    case 0b101: // Integer Saturating Arithmetic
+      return nullptr;
+    case 0b101:
+      return TryDecodeIntegerSaturatingArithmetic;
     default: return nullptr;
   }
 }
@@ -1784,7 +1835,7 @@ static TryDecode * kDataProcessingI[] = {
     [0b0101] = TryDecodeIntegerDataProcessingRRI,
     [0b0110] = TryDecodeIntegerDataProcessingRRI,
     [0b0111] = TryDecodeIntegerDataProcessingRRI,
-    [0b1000] = TryDecodeMoveHalfword, // Move Halfword (immediate)
+    [0b1000] = TryDecodeMoveHalfword,
     [0b1001] = TryIntegerTestAndCompareRI,
     [0b1010] = nullptr, // TODO(Sonya): Move Special Register and Hints (immediate)
     [0b1011] = TryIntegerTestAndCompareRI,
