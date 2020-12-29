@@ -130,6 +130,72 @@ union LoadStoreWUBIL {
 } __attribute__((packed));
 static_assert(sizeof(LoadStoreWUBIL) == 4, " ");
 
+// Load/Store Word, Unsigned Byte (register)
+union LoadStoreWUBR {
+  uint32_t flat;
+  struct {
+    uint32_t rm  : 4;
+    uint32_t _0 : 1;
+    uint32_t type : 2;
+    uint32_t imm5 : 5;
+    uint32_t rt : 4;
+    uint32_t rn  : 4;
+    uint32_t o1 : 1;
+    uint32_t W : 1;
+    uint32_t o2 : 1;
+    uint32_t u : 1;
+    uint32_t P : 1;
+    uint32_t _011 : 3;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(LoadStoreWUBR) == 4, " ");
+
+// Load/Store Dual, Half, Signed Byte (immediate, literal)
+union LoadStoreDualHSBIL {
+  uint32_t flat;
+  struct {
+    uint32_t imm4L : 4;
+    uint32_t _1_b4 : 1;
+    uint32_t op2 : 2;
+    uint32_t _1_b7 : 1;
+    uint32_t imm4H : 4;
+    uint32_t rt : 4;
+    uint32_t rn  : 4;
+    uint32_t o1 : 1;
+    uint32_t W : 1;
+    uint32_t _1_b22 : 1;
+    uint32_t U : 1;
+    uint32_t P : 1;
+    uint32_t _000 : 3;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(LoadStoreDualHSBIL) == 4, " ");
+
+// Load/Store Dual, Half, Signed Byte (register)
+union LoadStoreDualHSBR {
+  uint32_t flat;
+  struct {
+    uint32_t rm : 4;
+    uint32_t _1_b4 : 1;
+    uint32_t op2 : 2;
+    uint32_t _1_b7 : 1;
+    uint32_t _0000 : 4;
+    uint32_t rt : 4;
+    uint32_t rn  : 4;
+    uint32_t o1 : 1;
+    uint32_t W : 1;
+    uint32_t _0 : 1;
+    uint32_t U : 1;
+    uint32_t P : 1;
+    uint32_t _000 : 3;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(LoadStoreDualHSBR) == 4, " ");
+
+
 // Integer Test and Compare (two register, immediate shift)
 union IntTestCompRRI {
   uint32_t flat;
@@ -1312,7 +1378,6 @@ static const char * const kLoadSWUBIL[] = {
     [0b1111] = "LDRBp",
 };
 
-
 // P:W o2 o1    Rn
 //!= 01 0 1    1111 LDR (literal)
 //!= 01 1 1    1111 LDRB (literal)
@@ -1345,9 +1410,7 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
     return false;
   }
 
-  auto instruction = kLoadSWUBIL[enc.P << 3u | enc.W << 2u | enc.o2 << 1u | enc.o1];
-
-  inst.function = instruction;
+  inst.function = kLoadSWUBIL[enc.P << 3u | enc.W << 2u | enc.o2 << 1u | enc.o1];
   auto is_cond = DecodeCondition(inst, enc.cond);
 
   // LDR & LDRB (literal) are pc relative. Need to align the PC to the next nearest 4 bytes
@@ -1374,7 +1437,109 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
   // Pre or Post Indexing
   if (write_back) {
     AddIntRegOp(inst, enc.rn, 32, Operand::kActionWrite);
-    AddAddrRegOp(inst, kIntRegName[enc.rn], 32, Operand::kActionRead, disp + pc_adjust);
+    AddAddrRegOp(inst, kIntRegName[enc.rn], 32, Operand::kActionRead,
+                 disp + pc_adjust);
+  }
+
+  if (enc.rt == kPCRegNum) {
+    if (is_cond) {
+      inst.branch_not_taken_pc = inst.next_pc;
+      inst.category = Instruction::kCategoryConditionalIndirectJump;
+    } else {
+      inst.category = Instruction::kCategoryIndirectJump;
+    }
+  } else {
+    inst.category = Instruction::kCategoryNormal;
+  }
+  return true;
+}
+
+static const char * const kLoadSWUBR[] = {
+    [0b0000] = "STRp",
+    [0b0001] = "LDRp",
+    [0b0010] = "STRT",
+    [0b0011] = "LDRT",
+    [0b0100] = "STRB",
+    [0b0101] = "LDRB",
+    [0b0110] = "STRBT",
+    [0b0111] = "LDRBT",
+    [0b1000] = "STRp",
+    [0b1001] = "LDRp",
+    [0b1010] = "STRp",
+    [0b1011] = "LDRp",
+    [0b1100] = "STRBp",
+    [0b1101] = "LDRBp",
+    [0b1110] = "STRBp",
+    [0b1111] = "LDRBp",
+};
+
+// P o2  W o1
+// 0  0  0  0 STR (register) — post-indexed
+// 0  0  0  1 LDR (register) — post-indexed
+// 0  0  1  0 STRT
+// 0  0  1  1 LDRT
+// 0  1  0  0 STRB (register) — post-indexed
+// 0  1  0  1 LDRB (register) — post-indexed
+// 0  1  1  0 STRBT
+// 0  1  1  1 LDRBT
+// 1  0     0 STR (register) — pre-indexed
+// 1  0     1 LDR (register) — pre-indexed
+// 1  1     0 STRB (register) — pre-indexed
+// 1  1     1 LDRB (register) — pre-indexed
+// Offset (P == 1 && W == 0):       LDR{<c>}{<q>} <Rt>, [<Rn>, {+/-}<Rm>{, <shift>}]
+// Post-indexed (P == 0 && W == 0): LDR{<c>}{<q>} <Rt>, [<Rn>], {+/-}<Rm>{, <shift>}
+// Pre-indexed (P == 1 && W == 1):  LDR{<c>}{<q>} <Rt>, [<Rn>, {+/-}<Rm>{, <shift>}]!
+// Load/Store Word, Unsigned Byte (register)
+template<Operand::Action kMemAction, Operand::Action kRegAction,
+    unsigned kMemSize, bool kAlignPC = false>
+static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
+  const LoadStoreWUBR enc = { bits };
+  bool write_back = (!enc.P || enc.W);
+
+  // if wback && (n == 15 || n == t) then UNPREDICTABLE;
+  // if m == 15 then UNPREDICTABLE;
+  if ((write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt))
+      || (enc.rm == kPCRegNum)) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+
+  inst.function = kLoadSWUBR[enc.P << 3u | enc.o2 << 2u | enc.W << 1u | enc.o1];
+  return false;
+
+  auto is_cond = DecodeCondition(inst, enc.cond);
+
+  // LDR & LDRB (literal) are pc relative. Need to align the PC to the next nearest 4 bytes
+  int64_t pc_adjust = 0;
+  if (kAlignPC && enc.rn == kPCRegNum) {
+    pc_adjust = static_cast<int32_t>(inst.pc & ~(3u))
+        - static_cast<int32_t>(inst.pc);
+  }
+
+  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, 0u);
+
+  auto disp = 0;//static_cast<int64_t>(enc.imm12);
+
+  // Subtract
+  if (!enc.u) {
+    disp = -disp;
+  }
+
+  // Not Indexing
+  if (!enc.P) {
+    AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, pc_adjust);
+  } else {
+    AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction,
+                 disp + pc_adjust);
+  }
+
+  AddIntRegOp(inst, enc.rt, 32, kRegAction);
+
+  // Pre or Post Indexing
+  if (write_back) {
+    AddIntRegOp(inst, enc.rn, 32, Operand::kActionWrite);
+    AddAddrRegOp(inst, kIntRegName[enc.rn], 32, Operand::kActionRead,
+                 disp + pc_adjust);
   }
 
   if (enc.rt == kPCRegNum) {
@@ -1503,17 +1668,21 @@ static bool TryDecodeMoveHalfword(Instruction &inst, uint32_t bits) {
   if (enc.rd == kPCRegNum) {
     inst.category = Instruction::kCategoryError;
     return false;
-  } else if (!enc.H) {
-    // (Sonya) This doesn't look like it should be reachable
-    inst.category = Instruction::kCategoryError;
-    return false;
+  } else if (enc.H) {
+    inst.function = "MOVT";
+  } else {
+    inst.function = "MOVrr";
   }
 
-  inst.function = "MOVT";
   DecodeCondition(inst, enc.cond);
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
-  AddIntRegOp(inst, enc.rd, 32, Operand::kActionRead);
+  if (enc.H) {
+    AddIntRegOp(inst, enc.rd, 32, Operand::kActionRead);
+  }
   AddImmOp(inst, enc.imm4 << 12 | enc.imm12);
+  if (!enc.H) {
+    AddImmOp(inst, 0);
+  }
   inst.category = Instruction::kCategoryNormal;
   return true;
 }
@@ -1854,6 +2023,21 @@ static TryDecode * kLoadStoreWordUBIL[] = {
     [0b11] = TryDecodeLoadStoreWordUBIL<Operand::kActionRead, Operand::kActionWrite, 8u, true>,
 };
 
+// Corresponds to: Load/Store Word, Unsigned Byte (register)
+// o2<22> | o1<21>
+static TryDecode * kLoadStoreWordUBR[] = {
+    [0b00] = TryDecodeLoadStoreWordUBReg<Operand::kActionWrite, Operand::kActionRead, 32u>,
+    [0b01] = TryDecodeLoadStoreWordUBReg<Operand::kActionRead, Operand::kActionWrite, 32u, true>,
+    [0b10] = TryDecodeLoadStoreWordUBReg<Operand::kActionWrite, Operand::kActionRead, 8u>,
+    [0b11] = TryDecodeLoadStoreWordUBReg<Operand::kActionRead, Operand::kActionWrite, 8u, true>,
+};
+
+// Extra load/store
+static TryDecode * kExtraLoadStore[] = {
+    [0b0] = nullptr, // TryDecodeLoadStoreDualHalfSignedBReg,
+    [0b1] = nullptr, // TryDecodeLoadStoreDualHalfSignedBImm,
+};
+
 // Corresponds to: Data-processing and miscellaneous instructions
 //op0   op1    op2 op3  op4
 // 0            1 != 00  1 Extra load/store
@@ -1870,9 +2054,10 @@ static TryDecode * TryDataProcessingAndMisc(uint32_t bits) {
   if (!enc.op0) {
     // op2 == 1, op4 == 1
     if (enc.op2 && enc.op4) {
-      // TODO(Sonya): Extra load/store -- op3 != 00
+      // Extra load/store -- op3 != 00
       if (!enc.op3) {
-        return nullptr;
+        // Index with bit 22
+        return kExtraLoadStore[(enc.op1 >> 2) & 0b1];
       // op3 == 00
       } else {
         // Multiply and Accumulate -- op1 == 0xxxx
@@ -1935,10 +2120,10 @@ static TryDecode * TryDecodeTopLevelEncodings(uint32_t bits) {
       } else if (enc.op0 == 0b010u) {
         const LoadStoreWUBIL enc_ls_word = { bits };
         return kLoadStoreWordUBIL[enc_ls_word.o2 << 1u | enc_ls_word.o1];
-      // TODO(Sonya): Load/Store Word, Unsigned Byte (register) -- op0 == 011, op1 == 0
+      // Load/Store Word, Unsigned Byte (register) -- op0 == 011, op1 == 0
       } else if (!enc.op1) {
-        // This should be returning another table index using a struct like above
-        return nullptr;
+        const LoadStoreWUBR enc_ls_word = { bits };
+        return kLoadStoreWordUBR[enc_ls_word.o2 << 1u | enc_ls_word.o1];
       // TODO(Sonya): Media instructions -- op0 == 011, op1 == 1
       } else {
         // return a result from another function for instruction categorizing
