@@ -1497,14 +1497,10 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
 
   AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, 0u);
   auto disp_expr = inst.operands.back().expr;
+  auto disp_op = llvm::Instruction::Add;
   inst.operands.pop_back();
-
-  // Subtract
   if (!enc.u) {
-    const auto word_type = inst.arch->AddressType();
-    const auto _0 = llvm::ConstantInt::get(word_type, 0, true);
-    disp_expr = inst.EmplaceBinaryOp(llvm::Instruction::Sub,
-                                     inst.EmplaceConstant(_0), disp_expr);
+    disp_op = llvm::Instruction::Sub;
   }
 
   // Not Indexing
@@ -1513,7 +1509,7 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
   } else {
     AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction,
                  pc_adjust);
-    inst.operands.back().expr = inst.EmplaceBinaryOp(llvm::Instruction::Add,
+    inst.operands.back().expr = inst.EmplaceBinaryOp(disp_op,
                                                      inst.operands.back().expr,
                                                      disp_expr);
   }
@@ -1525,7 +1521,7 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
     AddIntRegOp(inst, enc.rn, 32, Operand::kActionWrite);
     AddAddrRegOp(inst, kIntRegName[enc.rn], 32, Operand::kActionRead,
                  pc_adjust);
-    inst.operands.back().expr = inst.EmplaceBinaryOp(llvm::Instruction::Add,
+    inst.operands.back().expr = inst.EmplaceBinaryOp(disp_op,
                                                      inst.operands.back().expr,
                                                      disp_expr);
   }
