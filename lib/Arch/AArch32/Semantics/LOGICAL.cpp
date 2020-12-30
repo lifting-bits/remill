@@ -64,6 +64,8 @@ DEF_ISEL(BICSrr) = BICS;
 DEF_ISEL(MVNrr) = BIC;
 DEF_ISEL(MVNSrr) = BICS;
 
+DEF_ISEL(MOVW) = ORR;
+
 namespace {
 DEF_COND_SEM(MOVT, R32W dst, R32 src1, R32 src2){
   auto value = ZExt(Trunc(Read(src1)));

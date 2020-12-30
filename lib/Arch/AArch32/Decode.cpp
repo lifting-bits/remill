@@ -1359,7 +1359,7 @@ static bool TryHalfwordDecodeMultiplyAndAccumulate(Instruction &inst,
 
 }
 
-static const char * const kLoadSWUBIL[] = {
+static const char * const kLoadSWUB[] = {
     [0b0000] = "STRp",
     [0b0001] = "LDRp",
     [0b0010] = "STRBp",
@@ -1410,7 +1410,7 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
     return false;
   }
 
-  inst.function = kLoadSWUBIL[enc.P << 3u | enc.W << 2u | enc.o2 << 1u | enc.o1];
+  inst.function = kLoadSWUB[enc.P << 3u | enc.W << 2u | enc.o2 << 1u | enc.o1];
   auto is_cond = DecodeCondition(inst, enc.cond);
 
   // LDR & LDRB (literal) are pc relative. Need to align the PC to the next nearest 4 bytes
@@ -1454,37 +1454,18 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
   return true;
 }
 
-static const char * const kLoadSWUBR[] = {
-    [0b0000] = "STRp",
-    [0b0001] = "LDRp",
-    [0b0010] = "STRT",
-    [0b0011] = "LDRT",
-    [0b0100] = "STRB",
-    [0b0101] = "LDRB",
-    [0b0110] = "STRBT",
-    [0b0111] = "LDRBT",
-    [0b1000] = "STRp",
-    [0b1001] = "LDRp",
-    [0b1010] = "STRp",
-    [0b1011] = "LDRp",
-    [0b1100] = "STRBp",
-    [0b1101] = "LDRBp",
-    [0b1110] = "STRBp",
-    [0b1111] = "LDRBp",
-};
-
 // P o2  W o1
-// 0  0  0  0 STR (register) — post-indexed
+// 0  0  0  0 STR (register) — post-indexed if m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 0  0  0  1 LDR (register) — post-indexed
-// 0  0  1  0 STRT
+// 0  0  1  0 STRT if n == 15 || n == t || m == 15 then UNPREDICTABLE;
 // 0  0  1  1 LDRT
-// 0  1  0  0 STRB (register) — post-indexed
+// 0  1  0  0 STRB (register) — post-indexed if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 0  1  0  1 LDRB (register) — post-indexed
-// 0  1  1  0 STRBT
+// 0  1  1  0 STRBT if t == 15 || n == 15 || n == t then UNPREDICTABLE;
 // 0  1  1  1 LDRBT
-// 1  0     0 STR (register) — pre-indexed
+// 1  0     0 STR (register) — pre-indexed if m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 1  0     1 LDR (register) — pre-indexed
-// 1  1     0 STRB (register) — pre-indexed
+// 1  1     0 STRB (register) — pre-indexed if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 1  1     1 LDRB (register) — pre-indexed
 // Offset (P == 1 && W == 0):       LDR{<c>}{<q>} <Rt>, [<Rn>, {+/-}<Rm>{, <shift>}]
 // Post-indexed (P == 0 && W == 0): LDR{<c>}{<q>} <Rt>, [<Rn>], {+/-}<Rm>{, <shift>}
@@ -1497,16 +1478,14 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
   bool write_back = (!enc.P || enc.W);
 
   // if wback && (n == 15 || n == t) then UNPREDICTABLE;
-  // if m == 15 then UNPREDICTABLE;
   if ((write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt))
-      || (enc.rm == kPCRegNum)) {
+      || (enc.rm == kPCRegNum && (enc.P || !enc.o2 || !enc.W))
+      || (enc.rt == kPCRegNum && enc.o2)) {
     inst.category = Instruction::kCategoryError;
     return false;
   }
 
-  inst.function = kLoadSWUBR[enc.P << 3u | enc.o2 << 2u | enc.W << 1u | enc.o1];
-  return false;
-
+  inst.function = kLoadSWUB[enc.P << 3u | enc.W << 2u | enc.o2 << 1u | enc.o1];
   auto is_cond = DecodeCondition(inst, enc.cond);
 
   // LDR & LDRB (literal) are pc relative. Need to align the PC to the next nearest 4 bytes
@@ -1517,12 +1496,15 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
   }
 
   AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, 0u);
-
-  auto disp = 0;//static_cast<int64_t>(enc.imm12);
+  auto disp_expr = inst.operands.back().expr;
+  inst.operands.pop_back();
 
   // Subtract
   if (!enc.u) {
-    disp = -disp;
+    const auto word_type = inst.arch->AddressType();
+    const auto _0 = llvm::ConstantInt::get(word_type, 0, true);
+    disp_expr = inst.EmplaceBinaryOp(llvm::Instruction::Sub,
+                                     inst.EmplaceConstant(_0), disp_expr);
   }
 
   // Not Indexing
@@ -1530,7 +1512,10 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
     AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, pc_adjust);
   } else {
     AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction,
-                 disp + pc_adjust);
+                 pc_adjust);
+    inst.operands.back().expr = inst.EmplaceBinaryOp(llvm::Instruction::Add,
+                                                     inst.operands.back().expr,
+                                                     disp_expr);
   }
 
   AddIntRegOp(inst, enc.rt, 32, kRegAction);
@@ -1539,7 +1524,10 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
   if (write_back) {
     AddIntRegOp(inst, enc.rn, 32, Operand::kActionWrite);
     AddAddrRegOp(inst, kIntRegName[enc.rn], 32, Operand::kActionRead,
-                 disp + pc_adjust);
+                 pc_adjust);
+    inst.operands.back().expr = inst.EmplaceBinaryOp(llvm::Instruction::Add,
+                                                     inst.operands.back().expr,
+                                                     disp_expr);
   }
 
   if (enc.rt == kPCRegNum) {
@@ -1671,7 +1659,7 @@ static bool TryDecodeMoveHalfword(Instruction &inst, uint32_t bits) {
   } else if (enc.H) {
     inst.function = "MOVT";
   } else {
-    inst.function = "MOVrr";
+    inst.function = "MOVW";
   }
 
   DecodeCondition(inst, enc.cond);
