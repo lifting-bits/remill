@@ -1487,6 +1487,8 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
 
   inst.function = kLoadSWUB[enc.P << 3u | enc.W << 2u | enc.o2 << 1u | enc.o1];
   auto is_cond = DecodeCondition(inst, enc.cond);
+  bool is_add = enc.u;
+  bool is_index = enc.P;
 
   // LDR & LDRB (literal) are pc relative. Need to align the PC to the next nearest 4 bytes
   int64_t pc_adjust = 0;
@@ -1499,12 +1501,12 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
   auto disp_expr = inst.operands.back().expr;
   auto disp_op = llvm::Instruction::Add;
   inst.operands.pop_back();
-  if (!enc.u) {
+  if (!is_add) {
     disp_op = llvm::Instruction::Sub;
   }
 
-  // Not Indexing
-  if (!enc.P) {
+  // Indexing
+  if (!is_index) {
     AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, pc_adjust);
   } else {
     AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction,
@@ -1515,6 +1517,182 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
   }
 
   AddIntRegOp(inst, enc.rt, 32, kRegAction);
+
+  // Pre or Post Indexing
+  if (write_back) {
+    AddIntRegOp(inst, enc.rn, 32, Operand::kActionWrite);
+    AddAddrRegOp(inst, kIntRegName[enc.rn], 32, Operand::kActionRead,
+                 pc_adjust);
+    inst.operands.back().expr = inst.EmplaceBinaryOp(disp_op,
+                                                     inst.operands.back().expr,
+                                                     disp_expr);
+  }
+
+  if (enc.rt == kPCRegNum) {
+    if (is_cond) {
+      inst.branch_not_taken_pc = inst.next_pc;
+      inst.category = Instruction::kCategoryConditionalIndirectJump;
+    } else {
+      inst.category = Instruction::kCategoryIndirectJump;
+    }
+  } else {
+    inst.category = Instruction::kCategoryNormal;
+  }
+  return true;
+}
+
+// op2 != 00 for extra load store instructions
+// (see: Data-processing and miscellaneous instructions & Extra load/store)
+static const char * const kLoadStoreDHSB[] = {
+    [0b00010] = "LDRDp",
+    [0b00001] = "STRHp",
+    [0b00011] = "STRDp",
+    [0b00101] = "LDRHp",
+    [0b00110] = "LDRSBp",
+    [0b00111] = "LDRSHp",
+    [0b01010] = nullptr,
+    [0b01001] = "STRHT",
+    [0b01011] = nullptr,
+    [0b01101] = "LDRHT",
+    [0b01110] = "LDRSBT",
+    [0b01111] = "LDRSHT",
+    [0b10010] = "LDRD",
+    [0b10001] = "STRH",
+    [0b10011] = "STRD",
+    [0b10101] = "LDRH",
+    [0b10110] = "LDRSB",
+    [0b10111] = "LDRSH",
+    [0b11010] = "LDRDp",
+    [0b11001] = "STRHp",
+    [0b11011] = "STRDp",
+    [0b11101] = "LDRHp",
+    [0b11110] = "LDRSBp",
+    [0b11111] = "LDRSHp",
+};
+
+//P:W  o1   Rn    op2
+//      0  1111   10  LDRD (literal)
+//!= 01 1  1111   01  LDRH (literal)
+//!= 01 1  1111   10  LDRSB (literal)
+//!= 01 1  1111   11  LDRSH (literal)
+// 00   0 != 1111 10  LDRD (immediate) — post-indexed
+// 00   0         01  STRH (immediate) — post-indexed
+// 00   0         11  STRD (immediate) — post-indexed
+// 00   1 != 1111 01  LDRH (immediate) — post-indexed
+// 00   1 != 1111 10  LDRSB (immediate) — post-indexed
+// 00   1 != 1111 11  LDRSH (immediate) — post-indexed
+// 01   0 != 1111 10  UNALLOCATED
+// 01   0         01  STRHT
+// 01   0         11  UNALLOCATED
+// 01   1         01  LDRHT
+// 01   1         10  LDRSBT
+// 01   1         11  LDRSHT
+// 10   0 != 1111 10  LDRD (immediate) — offset
+// 10   0         01  STRH (immediate) — offset
+// 10   0         11  STRD (immediate) — offset
+// 10   1 != 1111 01  LDRH (immediate) — offset
+// 10   1 != 1111 10  LDRSB (immediate) — offset
+// 10   1 != 1111 11  LDRSH (immediate) — offset
+// 11   0 != 1111 10  LDRD (immediate) — pre-indexed
+// 11   0         01  STRH (immediate) — pre-indexed
+// 11   0         11  STRD (immediate) — pre-indexed
+// 11   1 != 1111 01  LDRH (immediate) — pre-indexed
+// 11   1 != 1111 10  LDRSB (immediate) — pre-indexed
+// 11   1 != 1111 11  LDRSH (immediate) — pre-indexed
+// Load/Store Dual, Half, Signed Byte (immediate, literal)
+template<Operand::Action kMemAction, Operand::Action kRegAction,
+    unsigned kMemSize, bool kAlignPC = false>
+static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
+                                                 uint32_t bits) {
+  const LoadStoreDualHSBIL enc = { bits };
+  auto instruction =
+      kLoadStoreDHSB[enc.P << 4 | enc.W << 3 | enc.o1 << 2 | enc.op2];
+  if (enc.rn == kPCRegNum && !instruction && enc.op2 == 0b10) {
+    inst.function = "LDRDp";
+  } else if (instruction) {
+    inst.function = instruction;
+  } else {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+
+  return false;
+}
+
+// P W o1  op2
+// 0 0  0   01  STRH (register) — post-indexed if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 0 0  0   10  LDRD (register) — post-indexed
+// if t2 == 15 || m == 15 || m == t || m == t2 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
+// 0 0  0   11  STRD (register) — post-indexed if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 0 0  1   01  LDRH (register) — post-indexed if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 0 0  1   10  LDRSB (register) — post-indexed
+// 0 0  1   11  LDRSH (register) — post-indexed
+// 0 1  0   01  STRHT  if t == 15 || n == 15 || n == t then UNPREDICTABLE;
+// 0 1  0   10  UNALLOCATED
+// 0 1  0   11  UNALLOCATED
+// 0 1  1   01  LDRHT  if t == 15 || n == 15 || n == t then UNPREDICTABLE;
+// 0 1  1   10  LDRSBT if t == 15 || n == 15 || n == t then UNPREDICTABLE;
+// 0 1  1   11  LDRSHT if t == 15 || n == 15 || n == t then UNPREDICTABLE;
+// 1    0   01  STRH (register) — pre-indexed if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 1    0   10  LDRD (register) — pre-indexed
+// 1    0   11  STRD (register) — pre-indexed if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 1    1   01  LDRH (register) — pre-indexed
+// 1    1   10  LDRSB (register) — pre-indexed
+// 1    1   11  LDRSH (register) — pre-indexed
+// TODO: Load/Store Dual, Half, Signed Byte (register)
+template<Operand::Action kMemAction, Operand::Action kRegAction,
+    unsigned kMemSize, bool kAlignPC = false>
+static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
+                                                 uint32_t bits) {
+  const LoadStoreDualHSBR enc = { bits };
+  inst.function =
+      kLoadStoreDHSB[enc.P << 4 | enc.W << 3 | enc.o1 << 2 | enc.op2];
+
+  bool write_back = (!enc.P || enc.W);
+  bool is_add = enc.U;
+  bool is_index = enc.P;
+
+  // TODO(Sonya): FIXME! Finish this complicated error condition
+  if (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt)) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+  auto is_cond = DecodeCondition(inst, enc.cond);
+
+  // LDR & LDRB (literal) are pc relative. Need to align the PC to the next nearest 4 bytes
+  int64_t pc_adjust = 0;
+  if (kAlignPC && enc.rn == kPCRegNum) {
+    pc_adjust = static_cast<int32_t>(inst.pc & ~(3u))
+        - static_cast<int32_t>(inst.pc);
+  }
+
+  // Note: AArch32 has shift_size = 0 and type = LSL so disp is an unshifted reg
+  // Thumb instructions have shift
+  AddIntRegOp(inst, enc.rm, 32, Operand::kActionRead);
+  auto disp_expr = inst.operands.back().expr;
+  auto disp_op = llvm::Instruction::Add;
+  inst.operands.pop_back();
+
+  if (!is_add) {
+    disp_op = llvm::Instruction::Sub;
+  }
+
+  // Not Indexing
+  if (!is_index) {
+    AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, pc_adjust);
+  } else {
+    AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction,
+                 pc_adjust);
+    inst.operands.back().expr = inst.EmplaceBinaryOp(disp_op,
+                                                     inst.operands.back().expr,
+                                                     disp_expr);
+  }
+
+  AddIntRegOp(inst, enc.rt, 32, kRegAction);
+  // Add t2 =  t + 1 reg for dual instructions
+  if (kMemSize == 64u) {
+    AddIntRegOp(inst, enc.rt + 1, 32, kRegAction);
+  }
 
   // Pre or Post Indexing
   if (write_back) {
@@ -2018,8 +2196,54 @@ static TryDecode * kLoadStoreWordUBR[] = {
 
 // Extra load/store
 static TryDecode * kExtraLoadStore[] = {
-    [0b0] = nullptr, // TryDecodeLoadStoreDualHalfSignedBReg,
-    [0b1] = nullptr, // TryDecodeLoadStoreDualHalfSignedBImm,
+    [0b000001] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionWrite, Operand::kActionRead, 16u>,
+    [0b000010] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead, Operand::kActionWrite, 64u, true>,
+    [0b000011] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionWrite, Operand::kActionRead, 64u>,
+    [0b000101] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
+    [0b000110] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead, Operand::kActionWrite, 8u, true>,
+    [0b000111] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
+    [0b001001] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionWrite, Operand::kActionRead, 16u>,
+    [0b001010] = nullptr,
+    [0b001011] = nullptr,
+    [0b001101] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
+    [0b001110] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead, Operand::kActionWrite, 8u, true>,
+    [0b001111] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
+    [0b010001] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionWrite, Operand::kActionRead, 16u>,
+    [0b010010] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead, Operand::kActionWrite, 64u, true>,
+    [0b010011] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionWrite, Operand::kActionRead, 64u>,
+    [0b010101] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
+    [0b010110] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead, Operand::kActionWrite, 8u, true>,
+    [0b010111] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
+    [0b011001] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionWrite, Operand::kActionRead, 16u>,
+    [0b011010] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead, Operand::kActionWrite, 64u, true>,
+    [0b011011] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionWrite, Operand::kActionRead, 64u>,
+    [0b011101] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
+    [0b011110] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead, Operand::kActionWrite, 8u, true>,
+    [0b011111] = TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
+    [0b100001] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionWrite, Operand::kActionRead, 16u>,
+    [0b100010] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 64u, true>,
+    [0b100011] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionWrite, Operand::kActionRead, 64u>,
+    [0b100101] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
+    [0b100110] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 8u, true>,
+    [0b100111] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
+    [0b101001] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionWrite, Operand::kActionRead, 16u>,
+    [0b101010] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 16u, true>, // only valid for Rn == 15 (PC)
+    [0b101011] = nullptr,
+    [0b101101] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
+    [0b101110] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 8u, true>,
+    [0b101111] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
+    [0b110001] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionWrite, Operand::kActionRead, 16u>,
+    [0b110010] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 64u, true>,
+    [0b110011] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionWrite, Operand::kActionRead, 64u>,
+    [0b110101] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
+    [0b110110] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 8u, true>,
+    [0b110111] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
+    [0b111001] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionWrite, Operand::kActionRead, 16u>,
+    [0b111010] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 64u, true>,
+    [0b111011] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionWrite, Operand::kActionRead, 64u>,
+    [0b111101] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
+    [0b111110] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 8u, true>,
+    [0b111111] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
 };
 
 // Corresponds to: Data-processing and miscellaneous instructions
@@ -2039,9 +2263,13 @@ static TryDecode * TryDataProcessingAndMisc(uint32_t bits) {
     // op2 == 1, op4 == 1
     if (enc.op2 && enc.op4) {
       // Extra load/store -- op3 != 00
-      if (!enc.op3) {
-        // Index with bit 22
-        return kExtraLoadStore[(enc.op1 >> 2) & 0b1];
+      if (enc.op3) {
+        // Index with <22> | P <24> | W <21> | o1 <20> | op2 != 00 <6:5>
+        return kExtraLoadStore[(((enc.op1 >> 2) & 0b1) << 5)
+                               | ((enc.op1 >> 4) << 4)
+                               | (((enc.op1 >> 1) & 0b1) << 3)
+                               | ((enc.op1 & 0b1) << 2)
+                               | enc.op3 ];
       // op3 == 00
       } else {
         // Multiply and Accumulate -- op1 == 0xxxx
@@ -2098,7 +2326,7 @@ static TryDecode * TryDecodeTopLevelEncodings(uint32_t bits) {
   if (!(enc.op0 >> 2)) {
     if (enc.cond != 0b1111u) {
       // Data-processing and miscellaneous instructions -- op0 == 00x
-      if (!(enc.op0 >> 1)) {
+      if (~(enc.op0 >> 1)) {
         return TryDataProcessingAndMisc(bits);
       // Load/Store Word, Unsigned Byte (immediate, literal) -- op0 == 010
       } else if (enc.op0 == 0b010u) {
