@@ -1616,7 +1616,62 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
     return false;
   }
 
-  return false;
+  bool write_back = (!enc.P || enc.W);
+  bool is_add = enc.U;
+  bool is_index = enc.P;
+
+  // TODO(Sonya): FIXME! Finish this complicated error condition
+  if (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt)) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+  auto is_cond = DecodeCondition(inst, enc.cond);
+
+  // LDR & LDRB (literal) are pc relative. Need to align the PC to the next nearest 4 bytes
+  int64_t pc_adjust = 0;
+  if (kAlignPC && enc.rn == kPCRegNum) {
+    pc_adjust = static_cast<int32_t>(inst.pc & ~(3u))
+        - static_cast<int32_t>(inst.pc);
+  }
+
+  auto disp = static_cast<int64_t>(enc.imm4H << 4 | enc.imm4L);
+
+  // Subtract
+  if (!is_add) {
+    disp = -disp;
+  }
+
+  // Not Indexing
+  if (!is_index) {
+    AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, pc_adjust);
+  } else {
+    AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, disp + pc_adjust);
+  }
+
+  AddIntRegOp(inst, enc.rt, 32, kRegAction);
+  // Add t2 =  t + 1 reg for dual instructions
+  if (kMemSize == 64u) {
+    AddIntRegOp(inst, enc.rt + 1, 32, kRegAction);
+  }
+
+  // Pre or Post Indexing
+  if (write_back) {
+    AddIntRegOp(inst, enc.rn, 32, Operand::kActionWrite);
+    AddAddrRegOp(inst, kIntRegName[enc.rn], 32, Operand::kActionRead,
+                     disp + pc_adjust);
+  }
+
+  if (enc.rt == kPCRegNum) {
+    if (is_cond) {
+      inst.branch_not_taken_pc = inst.next_pc;
+      inst.category = Instruction::kCategoryConditionalIndirectJump;
+    } else {
+      inst.category = Instruction::kCategoryIndirectJump;
+    }
+  } else {
+    inst.category = Instruction::kCategoryNormal;
+  }
+  return true;
 }
 
 // P W o1  op2
