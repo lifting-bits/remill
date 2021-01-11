@@ -1405,6 +1405,8 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
   const LoadStoreWUBIL enc = { bits };
 
   bool write_back = (!enc.P || enc.W);
+  bool is_add = enc.u;
+  bool is_index = enc.P;
   if (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt)) {
     inst.category = Instruction::kCategoryError;
     return false;
@@ -1421,12 +1423,12 @@ static bool TryDecodeLoadStoreWordUBIL (Instruction &inst, uint32_t bits) {
   auto disp = static_cast<int64_t>(enc.imm12);
 
   // Subtract
-  if (!enc.u) {
+  if (!is_add) {
     disp = -disp;
   }
 
   // Not Indexing
-  if (!enc.P) {
+  if (!is_index) {
     AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, pc_adjust);
   } else {
     AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, disp + pc_adjust);
@@ -1571,34 +1573,34 @@ static const char * const kLoadStoreDHSB[] = {
 };
 
 //P:W  o1   Rn    op2
-//      0  1111   10  LDRD (literal)
-//!= 01 1  1111   01  LDRH (literal)
-//!= 01 1  1111   10  LDRSB (literal)
-//!= 01 1  1111   11  LDRSH (literal)
-// 00   0 != 1111 10  LDRD (immediate) — post-indexed
-// 00   0         01  STRH (immediate) — post-indexed
-// 00   0         11  STRD (immediate) — post-indexed
-// 00   1 != 1111 01  LDRH (immediate) — post-indexed
-// 00   1 != 1111 10  LDRSB (immediate) — post-indexed
-// 00   1 != 1111 11  LDRSH (immediate) — post-indexed
+//      0  1111   10  LDRD (literal)                   if Rt<0> == '1' t2 == 15 || wback then UNPREDICTABLE;
+//!= 01 1  1111   01  LDRH (literal)                   if t == 15 || wback then UNPREDICTABLE;
+//!= 01 1  1111   10  LDRSB (literal)                  if t == 15 || wback then UNPREDICTABLE;
+//!= 01 1  1111   11  LDRSH (literal)                  if t == 15 || wback then UNPREDICTABLE;
+// 00   0 != 1111 10  LDRD (immediate) — post-indexed  if t2 == 15   wback && (n == t || n == t2) then UNPREDICTABLE;
+// 00   0         01  STRH (immediate) — post-indexed  if t == 15    wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 00   0         11  STRD (immediate) — post-indexed  if t2 == 15   wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
+// 00   1 != 1111 01  LDRH (immediate) — post-indexed  if t == 15    wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 00   1 != 1111 10  LDRSB (immediate) — post-indexed if t == 15    wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 00   1 != 1111 11  LDRSH (immediate) — post-indexed if t == 15    wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 01   0 != 1111 10  UNALLOCATED
-// 01   0         01  STRHT
+// 01   0         01  STRHT                            if t == 15 || n == 15 || n == t then UNPREDICTABLE;
 // 01   0         11  UNALLOCATED
-// 01   1         01  LDRHT
-// 01   1         10  LDRSBT
-// 01   1         11  LDRSHT
-// 10   0 != 1111 10  LDRD (immediate) — offset
-// 10   0         01  STRH (immediate) — offset
-// 10   0         11  STRD (immediate) — offset
-// 10   1 != 1111 01  LDRH (immediate) — offset
-// 10   1 != 1111 10  LDRSB (immediate) — offset
-// 10   1 != 1111 11  LDRSH (immediate) — offset
-// 11   0 != 1111 10  LDRD (immediate) — pre-indexed
-// 11   0         01  STRH (immediate) — pre-indexed
-// 11   0         11  STRD (immediate) — pre-indexed
-// 11   1 != 1111 01  LDRH (immediate) — pre-indexed
-// 11   1 != 1111 10  LDRSB (immediate) — pre-indexed
-// 11   1 != 1111 11  LDRSH (immediate) — pre-indexed
+// 01   1         01  LDRHT                            if t == 15 || n == 15 || n == t then UNPREDICTABLE;
+// 01   1         10  LDRSBT                           if t == 15 || n == 15 || n == t then UNPREDICTABLE;
+// 01   1         11  LDRSHT                           if t == 15 || n == 15 || n == t then UNPREDICTABLE;
+// 10   0 != 1111 10  LDRD (immediate) — offset        if t2 == 15   wback && (n == t || n == t2) then UNPREDICTABLE;
+// 10   0         01  STRH (immediate) — offset        if t == 15    wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 10   0         11  STRD (immediate) — offset        if t2 == 15   wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
+// 10   1 != 1111 01  LDRH (immediate) — offset        if t == 15    wback && n == t then UNPREDICTABLE;
+// 10   1 != 1111 10  LDRSB (immediate) — offset       if t == 15    wback && n == t then UNPREDICTABLE;
+// 10   1 != 1111 11  LDRSH (immediate) — offset       if t == 15    wback && n == t then UNPREDICTABLE;
+// 11   0 != 1111 10  LDRD (immediate) — pre-indexed   if t2 == 15   wback && (n == t || n == t2) then UNPREDICTABLE;
+// 11   0         01  STRH (immediate) — pre-indexed   if t == 15    wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 11   0         11  STRD (immediate) — pre-indexed   if t2 == 15   wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
+// 11   1 != 1111 01  LDRH (immediate) — pre-indexed   if t == 15    wback && n == t then UNPREDICTABLE;
+// 11   1 != 1111 10  LDRSB (immediate) — pre-indexed  if t == 15    wback && n == t then UNPREDICTABLE;
+// 11   1 != 1111 11  LDRSH (immediate) — pre-indexed  if t == 15    wback && n == t then UNPREDICTABLE;
 // Load/Store Dual, Half, Signed Byte (immediate, literal)
 template<Operand::Action kMemAction, Operand::Action kRegAction,
     unsigned kMemSize, bool kAlignPC = false>
@@ -1608,6 +1610,10 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
   auto instruction =
       kLoadStoreDHSB[enc.P << 4 | enc.W << 3 | enc.o1 << 2 | enc.op2];
   if (enc.rn == kPCRegNum && !instruction && enc.op2 == 0b10) {
+    if (enc.rt &0b1) {
+      inst.category = Instruction::kCategoryError;
+      return false;
+    }
     inst.function = "LDRDp";
   } else if (instruction) {
     inst.function = instruction;
@@ -1619,9 +1625,13 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
   bool write_back = (!enc.P || enc.W);
   bool is_add = enc.U;
   bool is_index = enc.P;
+  bool is_dual = !enc.o1 && enc.op2 >> 1;
+  uint32_t rt2 = enc.rt + 1;
 
-  // TODO(Sonya): FIXME! Finish this complicated error condition
-  if (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt)) {
+  if ((!is_dual && enc.rt == kPCRegNum) || (is_dual && rt2 == kPCRegNum)
+      || (write_back
+          && (enc.rn == kPCRegNum || enc.rn == enc.rt
+              || (is_dual && enc.rn == rt2)))) {
     inst.category = Instruction::kCategoryError;
     return false;
   }
@@ -1650,7 +1660,7 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
 
   AddIntRegOp(inst, enc.rt, 32, kRegAction);
   // Add t2 =  t + 1 reg for dual instructions
-  if (kMemSize == 64u) {
+  if (is_dual) {
     AddIntRegOp(inst, enc.rt + 1, 32, kRegAction);
   }
 
@@ -1675,42 +1685,52 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
 }
 
 // P W o1  op2
-// 0 0  0   01  STRH (register) — post-indexed if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
-// 0 0  0   10  LDRD (register) — post-indexed
-// if t2 == 15 || m == 15 || m == t || m == t2 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
-// 0 0  0   11  STRD (register) — post-indexed if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
-// 0 0  1   01  LDRH (register) — post-indexed if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
-// 0 0  1   10  LDRSB (register) — post-indexed
-// 0 0  1   11  LDRSH (register) — post-indexed
-// 0 1  0   01  STRHT  if t == 15 || n == 15 || n == t then UNPREDICTABLE;
+// 0 0  0   01  STRH (register) — post-indexed  if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 0 0  0   10  LDRD (register) — post-indexed  if t2 == 15 || m == 15 || m == t || m == t2 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
+// 0 0  0   11  STRD (register) — post-indexed  if t2 == 15 || m == 15 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
+// 0 0  1   01  LDRH (register) — post-indexed  if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 0 0  1   10  LDRSB (register) — post-indexed if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 0 0  1   11  LDRSH (register) — post-indexed if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE
+// 0 1  0   01  STRHT                           if t == 15 || n == 15 || n == t || m == 15 then UNPREDICTABLE;
 // 0 1  0   10  UNALLOCATED
 // 0 1  0   11  UNALLOCATED
-// 0 1  1   01  LDRHT  if t == 15 || n == 15 || n == t then UNPREDICTABLE;
-// 0 1  1   10  LDRSBT if t == 15 || n == 15 || n == t then UNPREDICTABLE;
-// 0 1  1   11  LDRSHT if t == 15 || n == 15 || n == t then UNPREDICTABLE;
-// 1    0   01  STRH (register) — pre-indexed if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
-// 1    0   10  LDRD (register) — pre-indexed
-// 1    0   11  STRD (register) — pre-indexed if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
-// 1    1   01  LDRH (register) — pre-indexed
-// 1    1   10  LDRSB (register) — pre-indexed
-// 1    1   11  LDRSH (register) — pre-indexed
-// TODO: Load/Store Dual, Half, Signed Byte (register)
+// 0 1  1   01  LDRHT                           if t == 15 || n == 15 || n == t || m == 15 then UNPREDICTABLE;
+// 0 1  1   10  LDRSBT                          if t == 15 || n == 15 || n == t || m == 15 then UNPREDICTABLE;
+// 0 1  1   11  LDRSHT                          if t == 15 || n == 15 || n == t || m == 15 then UNPREDICTABLE;
+// 1    0   01  STRH (register) — pre-indexed   if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 1    0   10  LDRD (register) — pre-indexed   if t2 == 15 || m == 15 || m == t || m == t2 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
+// 1    0   11  STRD (register) — pre-indexed   if t2 == 15 || m == 15 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
+// 1    1   01  LDRH (register) — pre-indexed   if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 1    1   10  LDRSB (register) — pre-indexed  if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE;
+// 1    1   11  LDRSH (register) — pre-indexed  if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE
+// Load/Store Dual, Half, Signed Byte (register)
 template<Operand::Action kMemAction, Operand::Action kRegAction,
     unsigned kMemSize, bool kAlignPC = false>
 static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
                                                  uint32_t bits) {
   const LoadStoreDualHSBR enc = { bits };
-  inst.function =
+  auto instruction =
       kLoadStoreDHSB[enc.P << 4 | enc.W << 3 | enc.o1 << 2 | enc.op2];
 
   bool write_back = (!enc.P || enc.W);
   bool is_add = enc.U;
   bool is_index = enc.P;
+  bool is_dual = !enc.o1 && enc.op2 >> 1;
+  bool is_unpriv = enc.W && !enc.P;
+  uint32_t rt2 = enc.rt + 1;
 
-  // TODO(Sonya): FIXME! Finish this complicated error condition
-  if (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt)) {
+  if (!instruction
+      || (write_back
+          && (enc.rn == kPCRegNum || enc.rn == enc.rt
+              || (is_dual && enc.rn == rt2)
+              || (is_unpriv && (enc.rt == kPCRegNum || enc.rm == kPCRegNum))))
+      || (is_dual
+          && (enc.rt == kLRRegNum || enc.rm == kPCRegNum
+              || (enc.op2 == 0b10 && (enc.rm == enc.rt || enc.rm == rt2))))) {
     inst.category = Instruction::kCategoryError;
     return false;
+  } else {
+    inst.function = instruction;
   }
   auto is_cond = DecodeCondition(inst, enc.cond);
 
@@ -1744,9 +1764,9 @@ static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
   }
 
   AddIntRegOp(inst, enc.rt, 32, kRegAction);
-  // Add t2 =  t + 1 reg for dual instructions
-  if (kMemSize == 64u) {
-    AddIntRegOp(inst, enc.rt + 1, 32, kRegAction);
+
+  if (is_dual) {
+    AddIntRegOp(inst, rt2, 32, kRegAction);
   }
 
   // Pre or Post Indexing
@@ -2393,12 +2413,10 @@ static TryDecode * TryDecodeTopLevelEncodings(uint32_t bits) {
         return kLoadStoreWordUBR[enc_ls_word.o2 << 1u | enc_ls_word.o1];
       // TODO(Sonya): Media instructions -- op0 == 011, op1 == 1
       } else {
-        // return a result from another function for instruction categorizing
         return nullptr;
       }
     // TODO(Sonya): Unconditional instructions -- cond == 1111
     } else {
-      // return a result from another function for instruction categorizing
       return nullptr;
     }
   // op0 == 1xx
@@ -2417,7 +2435,6 @@ static TryDecode * TryDecodeTopLevelEncodings(uint32_t bits) {
       }
     // TODO(Sonya): System register access, Advanced SIMD, floating-point, and Supervisor call -- op0 == 11x
     } else {
-      // return a result from another function for instruction categorizing
       return nullptr;
     }
   }
