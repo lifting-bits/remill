@@ -16,9 +16,10 @@
 
 #pragma once
 
-#include <cstdint>
-#include <limits>
-#include <type_traits>
+#include "Int.h"
+#include "Limits.h"
+#include "TypeTraits.h"
+#include "Float.h"
 
 #if defined(__GNUG__) && !defined(__clang__)
 #  define COMPILING_WITH_GCC 1
@@ -36,68 +37,21 @@ struct Memory;
 
 // Address in the source architecture type. We don't use a `uintptr_t` because
 // that might be specific to the destination architecture type.
+typedef uint16_t addr16_t;
 typedef uint32_t addr32_t;
 typedef uint64_t addr64_t;
-typedef IF_64BIT_ELSE(addr64_t, addr32_t) addr_t;
-typedef IF_64BIT_ELSE(int64_t, int32_t) addr_diff_t;
-
-#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86) || defined (__arm__)
-typedef unsigned uint128_t __attribute__((mode(TI)));
-typedef int int128_t __attribute__((mode(TI)));
-#elif defined(__aarch64__)
-typedef __uint128_t uint128_t;
-typedef __int128_t int128_t;
-#elif defined(__sparc__)
-typedef __uint128_t uint128_t;
-typedef __int128_t int128_t;
+#if ADDRESS_SIZE_BITS == 64
+typedef addr64_t addr_t;
+typedef int64_t addr_diff_t;
+#elif ADDRESS_SIZE_BITS == 32
+typedef addr32_t addr_t;
+typedef int32_t addr_diff_t;
+#elif ADDRESS_SIZE_BITS == 16
+typedef addr16_t addr_t;
+typedef int16_t addr_diff_t;
 #else
-#  error "Cannot determine (u)int128_t type of unuspported architecture."
+# error "Invalid address size in bits"
 #endif
-
-static_assert(16 == sizeof(uint128_t), "Invalid `uint128_t` size.");
-static_assert(16 == sizeof(int128_t), "Invalid `int128_t` size.");
-
-typedef float float32_t;
-static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
-
-typedef double float64_t;
-static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
-
-typedef double float128_t;
-static_assert(8 == sizeof(float128_t), "Invalid `float128_t` size.");
-
-// TODO(pag): Assumes little endian.
-struct float80_t final {
-  uint8_t data[10];
-} __attribute__((packed));
-
-static_assert(10 == sizeof(float80_t), "Invalid `float80_t` size.");
-
-union nan32_t {
-  float32_t f;
-  struct {
-    uint32_t payload : 22;
-    uint32_t is_quiet_nan : 1;
-    uint32_t exponent : 8;
-    uint32_t is_negative : 1;
-  } __attribute__((packed));
-} __attribute__((packed));
-
-static_assert(sizeof(float32_t) == sizeof(nan32_t),
-              "Invalid packing of `nan32_t`.");
-
-union nan64_t {
-  float64_t d;
-  struct {
-    uint64_t payload : 51;
-    uint64_t is_quiet_nan : 1;
-    uint64_t exponent : 11;
-    uint64_t is_negative : 1;
-  } __attribute__((packed));
-} __attribute__((packed));
-
-static_assert(sizeof(float64_t) == sizeof(nan64_t),
-              "Invalid packing of `nan64_t`.");
 
 // Note: We are re-defining the `std::is_signed` type trait because we can't
 //       always explicitly specialize it inside of the `std` namespace.
@@ -120,6 +74,7 @@ struct is_unsigned {
 #endif
 };
 
+#if !defined(REMILL_DISABLE_INT128)
 template <>
 struct is_signed<int128_t> {
   static constexpr bool value = true;
@@ -139,6 +94,7 @@ template <>
 struct is_unsigned<uint128_t> {
   static constexpr bool value = true;
 };
+#endif
 
 template <typename T>
 struct VectorType;
@@ -204,10 +160,12 @@ MAKE_VECTOR(uint64_t, uint64, 2, 128, 16)
 MAKE_VECTOR(uint64_t, uint64, 4, 256, 32)
 MAKE_VECTOR(uint64_t, uint64, 8, 512, 64)
 
+#if !defined(REMILL_DISABLE_INT128)
 //MAKE_VECTOR(uint128_t, uint128, 0, 64, 8);
 MAKE_VECTOR(uint128_t, uint128, 1, 128, 16)
 MAKE_VECTOR(uint128_t, uint128, 2, 256, 32)
 MAKE_VECTOR(uint128_t, uint128, 4, 512, 64)
+#endif
 
 MAKE_VECTOR(int8_t, int8, 1, 8, 1)
 MAKE_VECTOR(int8_t, int8, 2, 16, 2)
@@ -235,10 +193,12 @@ MAKE_VECTOR(int64_t, int64, 2, 128, 16)
 MAKE_VECTOR(int64_t, int64, 4, 256, 32)
 MAKE_VECTOR(int64_t, int64, 8, 512, 64)
 
+#if !defined(REMILL_DISABLE_INT128)
 //MAKE_VECTOR(int128_t, int128, 0, 64, 8);
 MAKE_VECTOR(int128_t, int128, 1, 128, 16)
 MAKE_VECTOR(int128_t, int128, 2, 256, 32)
 MAKE_VECTOR(int128_t, int128, 4, 512, 64)
+#endif
 
 MAKE_VECTOR(float, float32, 1, 32, 4)
 MAKE_VECTOR(float, float32, 2, 64, 8)
@@ -317,10 +277,14 @@ static_assert(8 == sizeof(vec64_t), "Invalid structure packing of `vec64_t`.");
 
 union vec128_t final {
 
+#if !defined(REMILL_DISABLE_INT128)
   // Make this type look like an `[1 x i128]` to LLVM. This is important for
   // the cross-block alias analysis performed by remill-opt, as it enables
   // remill-opt to more easily handle false dependencies.
   uint128v1_t dqwords;
+
+  int128v1_t sdqwords;
+#endif
 
   uint8v16_t bytes;
   uint16v8_t words;
@@ -333,7 +297,7 @@ union vec128_t final {
   int16v8_t swords;
   int32v4_t sdwords;
   int64v2_t sqwords;
-  int128v1_t sdqwords;
+
 } __attribute__((packed));
 
 static_assert(16 == sizeof(vec128_t),
@@ -344,7 +308,6 @@ union vec256_t final {
   uint16v16_t words;
   uint32v8_t dwords;
   uint64v4_t qwords;
-  uint128v2_t dqwords;
   float32v8_t floats;
   float64v4_t doubles;
 
@@ -352,7 +315,11 @@ union vec256_t final {
   int16v16_t swords;
   int32v8_t sdwords;
   int64v4_t sqwords;
+
+#if !defined(REMILL_DISABLE_INT128)
+  uint128v2_t dqwords;
   int128v2_t sdqwords;
+#endif
 } __attribute__((packed));
 
 static_assert(32 == sizeof(vec256_t),
@@ -363,7 +330,6 @@ union vec512_t final {
   uint16v32_t words;
   uint32v16_t dwords;
   uint64v8_t qwords;
-  uint128v4_t dqwords;
   float32v16_t floats;
   float64v8_t doubles;
 
@@ -371,16 +337,14 @@ union vec512_t final {
   int16v32_t swords;
   int32v16_t sdwords;
   int64v8_t sqwords;
+
+#if !defined(REMILL_DISABLE_INT128)
+  uint128v4_t dqwords;
   int128v4_t sdqwords;
+#endif
 } __attribute__((packed));
 
-static_assert(64 == sizeof(vec512_t) && 64 == sizeof(vec512_t().bytes) &&
-                  64 == sizeof(vec512_t().words) &&
-                  64 == sizeof(vec512_t().dwords) &&
-                  64 == sizeof(vec512_t().qwords) &&
-                  64 == sizeof(vec512_t().dqwords) &&
-                  64 == sizeof(vec512_t().floats) &&
-                  64 == sizeof(vec512_t().doubles),
+static_assert(64 == sizeof(vec512_t),
               "Invalid structure packing of `vec512_t`.");
 
 // An n-bit memory reference. This is implemented as an `addr_t`. Part of the
@@ -616,33 +580,38 @@ MAKE_SIGNED_INT_CHANGERS(int8_t, uint8_t)
 MAKE_SIGNED_INT_CHANGERS(int16_t, uint16_t)
 MAKE_SIGNED_INT_CHANGERS(int32_t, uint32_t)
 MAKE_SIGNED_INT_CHANGERS(int64_t, uint64_t)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_SIGNED_INT_CHANGERS(int128_t, uint128_t)
+#endif
 
 MAKE_INT_TYPE(int8_t, int16_t)
 MAKE_INT_TYPE(uint8_t, uint16_t)
+static_assert(sizeof(NextLargerIntegerType<uint8_t>::BT) == 2, "Bad type.");
 
 MAKE_INT_TYPE(int16_t, int32_t)
 MAKE_INT_TYPE(uint16_t, uint32_t)
+static_assert(sizeof(NextLargerIntegerType<uint16_t>::BT) == 4, "Bad type.");
+static_assert(sizeof(NextSmallerIntegerType<uint16_t>::BT) == 1, "Bad type.");
 
 MAKE_INT_TYPE(int32_t, int64_t)
 MAKE_INT_TYPE(uint32_t, uint64_t)
-
-MAKE_INT_TYPE(int64_t, int128_t)
-MAKE_INT_TYPE(uint64_t, uint128_t)
-
-static_assert(sizeof(NextLargerIntegerType<uint8_t>::BT) == 2, "Bad type.");
-static_assert(sizeof(NextLargerIntegerType<uint16_t>::BT) == 4, "Bad type.");
 static_assert(sizeof(NextLargerIntegerType<uint32_t>::BT) == 8, "Bad type.");
-static_assert(sizeof(NextLargerIntegerType<uint64_t>::BT) == 16, "Bad type.");
-
-static_assert(sizeof(NextSmallerIntegerType<uint16_t>::BT) == 1, "Bad type.");
 static_assert(sizeof(NextSmallerIntegerType<uint32_t>::BT) == 2, "Bad type.");
 static_assert(sizeof(NextSmallerIntegerType<uint64_t>::BT) == 4, "Bad type.");
+
+#if !defined(REMILL_DISABLE_INT128)
+MAKE_INT_TYPE(int64_t, int128_t)
+MAKE_INT_TYPE(uint64_t, uint128_t)
+static_assert(sizeof(NextLargerIntegerType<uint64_t>::BT) == 16, "Bad type.");
 static_assert(sizeof(NextSmallerIntegerType<uint128_t>::BT) == 8, "Bad type.");
+#endif
+
 
 #undef MAKE_SIGNED_INT_CHANGERS
 #undef MAKE_INT_TYPE
 
+#if !defined(REMILL_DISABLE_INT128)
 template <>
 struct NextLargerIntegerType<uint128_t> {
   typedef uint128_t BT;
@@ -652,6 +621,17 @@ template <>
 struct NextLargerIntegerType<int128_t> {
   typedef int128_t BT;
 };
+#else
+template <>
+struct NextLargerIntegerType<uint64_t> {
+  typedef uint64_t BT;
+};
+
+template <>
+struct NextLargerIntegerType<int64_t> {
+  typedef int64_t BT;
+};
+#endif
 
 // General integer type info. Useful for quickly changing between different
 // integer types.
@@ -719,10 +699,6 @@ inline uint64_t operator"" _addr_t(unsigned long long value) {
   return static_cast<addr_t>(value);
 }
 
-inline uint128_t operator"" _u128(unsigned long long value) {
-  return static_cast<uint128_t>(value);
-}
-
 
 inline int8_t operator"" _s8(unsigned long long value) {
   return static_cast<int8_t>(value);
@@ -740,9 +716,15 @@ inline int64_t operator"" _s64(unsigned long long value) {
   return static_cast<int64_t>(value);
 }
 
+#if !defined(REMILL_DISABLE_INT128)
+inline uint128_t operator"" _u128(unsigned long long value) {
+  return static_cast<uint128_t>(value);
+}
+
 inline int128_t operator"" _s128(unsigned long long value) {
   return static_cast<int128_t>(value);
 }
+#endif
 
 #  define auto_t(T) typename BaseType<T>::BT
 

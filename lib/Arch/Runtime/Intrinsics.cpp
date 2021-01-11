@@ -16,8 +16,6 @@
 
 #include "remill/Arch/Runtime/Intrinsics.h"
 
-#include "remill/Arch/Runtime/Operators.h"
-
 #define USED(sym) __remill_mark_as_used(reinterpret_cast<const void *>(&sym))
 
 // This is two big hacks:
@@ -69,6 +67,10 @@ extern "C" void __remill_mark_as_used(const void *);
   USED(__remill_compare_exchange_memory_16);
   USED(__remill_compare_exchange_memory_32);
   USED(__remill_compare_exchange_memory_64);
+
+#if !defined(REMILL_DISABLE_INT128)
+  USED(__remill_compare_exchange_memory_128);
+#endif
 
   USED(__remill_fetch_and_add_8);
   USED(__remill_fetch_and_add_16);

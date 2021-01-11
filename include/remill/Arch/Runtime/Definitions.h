@@ -25,21 +25,40 @@
 #endif
 
 #if 64 == ADDRESS_SIZE_BITS
+#  define IF_16BIT(...)
 #  define IF_32BIT(...)
 #  define IF_64BIT(...) __VA_ARGS__
+#  define _IF_16BIT(...)
 #  define _IF_32BIT(...)
 #  define _IF_64BIT(...) , __VA_ARGS__
 #  define IF_64BIT_ELSE(a, b) a
 #  define IF_32BIT_ELSE(a, b) b
+#  define IF_16BIT_ELSE(a, b) b
 #  define aword qword
-#else
+#elif 32 == ADDRESS_SIZE_BITS
+#  define IF_16BIT(...)
 #  define IF_32BIT(...) __VA_ARGS__
 #  define IF_64BIT(...)
+#  define _IF_16BIT(...)
 #  define _IF_32BIT(...) , __VA_ARGS__
 #  define _IF_64BIT(...)
 #  define IF_64BIT_ELSE(a, b) b
 #  define IF_32BIT_ELSE(a, b) a
+#  define IF_16BIT_ELSE(a, b) b
 #  define aword dword
+#elif 16 == ADDRESS_SIZE_BITS
+#  define IF_16BIT(...) __VA_ARGS__
+#  define IF_32BIT(...)
+#  define IF_64BIT(...)
+#  define _IF_16BIT(...) , __VA_ARGS__
+#  define _IF_32BIT(...)
+#  define _IF_64BIT(...)
+#  define IF_64BIT_ELSE(a, b) b
+#  define IF_32BIT_ELSE(a, b) b
+#  define IF_16BIT_ELSE(a, b) a
+#  define aword word
+#else
+#  error "Invalid number of bits in an address"
 #endif
 
 // Attributes that will force inlining of specific code.

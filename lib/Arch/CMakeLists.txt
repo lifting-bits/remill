@@ -23,6 +23,7 @@ add_library(remill_arch STATIC
 )
 
 add_subdirectory(AArch64)
+add_subdirectory(MSP430)
 add_subdirectory(SPARC32)
 add_subdirectory(SPARC64)
 add_subdirectory(X86)
@@ -31,6 +32,7 @@ set_property(TARGET remill_arch PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 target_link_libraries(remill_arch LINK_PUBLIC
   remill_arch_aarch64
+  remill_arch_msp430
   remill_arch_sparc32
   remill_arch_sparc64
   remill_arch_x86

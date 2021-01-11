@@ -162,9 +162,11 @@ __remill_compare_exchange_memory_32(Memory *, addr_t addr, uint32_t &expected,
 __remill_compare_exchange_memory_64(Memory *, addr_t addr, uint64_t &expected,
                                     uint64_t desired);
 
+#if !defined(REMILL_DISABLE_INT128)
 [[gnu::used]] extern Memory *
 __remill_compare_exchange_memory_128(Memory *, addr_t addr, uint128_t &expected,
                                      uint128_t &desired);
+#endif
 
 [[gnu::used]] extern Memory *__remill_fetch_and_add_8(Memory *, addr_t addr,
                                                       uint8_t &value);

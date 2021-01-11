@@ -25,6 +25,9 @@ ArchName GetArchName(const llvm::Triple &triple) {
     case llvm::Triple::ArchType::x86: return kArchX86;
     case llvm::Triple::ArchType::x86_64: return kArchAMD64;
     case llvm::Triple::ArchType::aarch64: return kArchAArch64LittleEndian;
+    case llvm::Triple::ArchType::sparc: return kArchSparc32;
+    case llvm::Triple::ArchType::sparcv9: return kArchSparc32;
+    case llvm::Triple::ArchType::msp430: return kArchMSP430;
     default: return kArchInvalid;
   }
 }
@@ -57,6 +60,9 @@ ArchName GetArchName(std::string_view arch_name) {
   } else if (arch_name == "sparc64") {
     return kArchSparc64;
 
+  } else if (arch_name == "msp430") {
+    return kArchMSP430;
+
   } else {
     return kArchInvalid;
   }
@@ -75,6 +81,7 @@ static const std::string_view kArchNames[] = {
     [kArchAArch64LittleEndian] = "aarch64",
     [kArchSparc32] = "sparc32",
     [kArchSparc64] = "sparc64",
+    [kArchMSP430] = "msp430",
 };
 
 }  // namespace

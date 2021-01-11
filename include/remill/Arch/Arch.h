@@ -249,6 +249,7 @@ class Arch {
   bool IsAArch64(void) const;
   bool IsSPARC32(void) const;
   bool IsSPARC64(void) const;
+  bool IsMSP430(void) const;
 
   bool IsWindows(void) const;
   bool IsLinux(void) const;
@@ -297,6 +298,10 @@ class Arch {
 
   // Defined in `lib/Arch/SPARC64/Arch.cpp`.
   static ArchPtr GetSPARC64(
+      llvm::LLVMContext *context, OSName os, ArchName arch_name);
+
+  // Defined in `lib/Arch/MSP430/Arch.cpp`.
+  static ArchPtr GetMSP430(
       llvm::LLVMContext *context, OSName os, ArchName arch_name);
 
   mutable std::unique_ptr<ArchImpl> impl;

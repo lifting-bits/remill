@@ -78,6 +78,8 @@ static unsigned AddressSize(ArchName arch_name) {
     case kArchInvalid:
       LOG(FATAL) << "Cannot get address size for invalid arch.";
       return 0;
+    case kArchMSP430:
+      return 16;
     case kArchX86:
     case kArchX86_AVX:
     case kArchX86_AVX512:
@@ -206,6 +208,11 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
     case kArchSparc64: {
       DLOG(INFO) << "Using architecture: 64-bit SPARC";
       return GetSPARC64(context_, os_name_, arch_name_);
+    }
+
+    case kArchMSP430: {
+      DLOG(INFO) << "Using architecture: TI MSP430";
+      return GetMSP430(context_, os_name_, arch_name_);
     }
   }
 }
@@ -362,6 +369,10 @@ bool Arch::IsSPARC32(void) const {
 
 bool Arch::IsSPARC64(void) const {
   return remill::kArchSparc64 == arch_name;
+}
+
+bool Arch::IsMSP430(void) const {
+  return remill::kArchMSP430 == arch_name;
 }
 
 bool Arch::IsWindows(void) const {
