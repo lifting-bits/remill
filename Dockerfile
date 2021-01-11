@@ -1,60 +1,40 @@
-# TODO(ek) Fix for vcpkg
-# Should similar to what's in GHA CI
-
-ARG LLVM_VERSION=1000
-ARG ARCH=amd64
-ARG UBUNTU_VERSION=18.04
-ARG DISTRO_BASE=ubuntu${UBUNTU_VERSION}
-ARG BUILD_BASE=ubuntu:${UBUNTU_VERSION}
-ARG LIBRARIES=/opt/trailofbits/libraries
+ARG LLVM_VERSION=10
+# TODO: Untested for anything other than amd64 images
+# ARG ARCH=amd64
+ARG DISTRO_TAG=18.04
+ARG DISTRO=ubuntu
+# Used for small final dist image. Shouldn't require any run-time dependencies
+# if we do everything correctly, since it's all statically linked.
+ARG DISTRO_BASE=${DISTRO}:${DISTRO_TAG}
+# Used for pulling in build dependencies
+ARG BUILD_BASE=trailofbits/cxx-common/vcpkg-builder-${DISTRO}:${DISTRO_TAG}
 
 # Run-time dependencies go here
 FROM ${BUILD_BASE} as base
 
-RUN apt-get update && \
-    apt-get install -qqy --no-install-recommends libtinfo5 zlib1g libz3-4 && \
-    rm -rf /var/lib/apt/lists/*
-
-
-# Build-time dependencies go here
-FROM trailofbits/cxx-common:llvm${LLVM_VERSION}-${DISTRO_BASE}-${ARCH} as deps
-
 ENV DEBIAN_FRONTEND=noninteractive
-
-RUN if [ "$(uname -m)" = "aarch64" ]; then dpkg --add-architecture armhf; fi && \
-    apt-get update && \
-    if [ "$(uname -m)" = "x86_64" ]; then apt-get install -qqy gcc-multilib g++-multilib; fi && \
-    if [ "$(uname -m)" = "aarch64" ]; then apt-get install -qqy gcc-arm-linux-gnueabihf libstdc++-8-dev:armhf; fi && \
-    apt-get install -qqy zlib1g-dev libz3-4 ninja-build ccache git python3 curl coreutils build-essential libtinfo-dev lsb-release && \
+RUN apt-get update && \
+    apt-get install -qqy --no-install-recommends pixz xz-utils make && \
     rm -rf /var/lib/apt/lists/*
 
 
 # Source code build
-FROM deps as build
-ARG LIBRARIES
-
-WORKDIR /remill
-COPY . ./
-
-ENV PATH="${LIBRARIES}/llvm/bin:${LIBRARIES}/cmake/bin:${LIBRARIES}/protobuf/bin:${PATH}"
-ENV CC="${LIBRARIES}/llvm/bin/clang"
-ENV CXX="${LIBRARIES}/llvm/bin/clang++"
-ENV TRAILOFBITS_LIBRARIES="${LIBRARIES}"
-
-RUN mkdir build && cd build && \
-    cmake -G Ninja -DCMAKE_VERBOSE_MAKEFILE=True -DCMAKE_INSTALL_PREFIX=/opt/trailofbits/remill .. && \
-    cmake --build . --target install
-
-RUN cd build && \
-    cmake --build . --target test_dependencies && \
-    env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test
-
-
-FROM base as dist
+FROM base as build
 ARG LLVM_VERSION
 
-COPY scripts/docker-lifter-entrypoint.sh /opt/trailofbits/remill/docker-lifter-entrypoint.sh
-COPY --from=build /opt/trailofbits/remill /opt/trailofbits/remill
-ENV PATH=/opt/trailofbits/remill/bin:${PATH} \
-    LLVM_VERSION=llvm${LLVM_VERSION}
-ENTRYPOINT ["/opt/trailofbits/remill/docker-lifter-entrypoint.sh"]
+WORKDIR /projects/remill
+COPY . ./
+
+RUN ./scripts/build.sh --prefix /opt/lifting-bits --llvm-version ${LLVM_VERSION}
+WORKDIR remill-build
+RUN cmake --build . --target install -- -j "$(nproc)"
+
+
+FROM ${DISTRO_BASE} as dist
+ARG LLVM_VERSION
+COPY scripts/docker-lifter-entrypoint.sh /opt/lifting-bits/share/remill/docker-lifter-entrypoint.sh
+COPY --from=build /opt/lifting-bits/bin /opt/lifting-bits/bin
+COPY --from=build /opt/lifting-bits/share /opt/lifting-bits/share
+ENV PATH="/opt/lifting-bits/bin:${PATH}" \
+    LLVM_VERSION="llvm${LLVM_VERSION}"
+ENTRYPOINT ["/opt/lifting-bits/share/remill/docker-lifter-entrypoint.sh"]
