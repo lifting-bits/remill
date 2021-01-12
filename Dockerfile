@@ -7,7 +7,7 @@ ARG DISTRO=ubuntu
 # if we do everything correctly, since it's all statically linked.
 ARG DISTRO_BASE=${DISTRO}:${DISTRO_TAG}
 # Used for pulling in build dependencies
-ARG BUILD_BASE=trailofbits/cxx-common/vcpkg-builder-${DISTRO}:${DISTRO_TAG}
+ARG BUILD_BASE=trailofbits/cxx-common-vcpkg-builder-${DISTRO}:${DISTRO_TAG}
 
 # Run-time dependencies go here
 FROM ${BUILD_BASE} as base
@@ -28,6 +28,8 @@ COPY . ./
 RUN ./scripts/build.sh --prefix /opt/lifting-bits --llvm-version ${LLVM_VERSION}
 WORKDIR remill-build
 RUN cmake --build . --target install -- -j "$(nproc)"
+RUN cmake --build . --target test_dependencies
+RUN cmake --build . --target test
 
 
 FROM ${DISTRO_BASE} as dist
