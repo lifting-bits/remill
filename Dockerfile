@@ -28,8 +28,10 @@ COPY . ./
 RUN ./scripts/build.sh --prefix /opt/lifting-bits --llvm-version ${LLVM_VERSION}
 WORKDIR remill-build
 RUN cmake --build . --target install -- -j "$(nproc)"
-RUN cmake --build . --target test_dependencies
-RUN cmake --build . --target test
+
+# Uncomment the following to run tests
+# RUN cmake --build . --target test_dependencies
+# RUN cmake --build . --target test
 
 
 FROM ${DISTRO_BASE} as dist

@@ -87,3 +87,29 @@ jobs:
         run: |
           remill-lift-${{ matrix.llvm }} --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
           remill-lift-${{ matrix.llvm }} --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
+
+  # Only builds 1 Docker image (latest of everything), since we test all
+  # supported combinations above
+  build_docker:
+    runs-on: ubuntu-20.04
+    env:
+      # TODO: Tag this with the remill version?
+      DOCKER_TAG: "trailofbits/remill-11"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build Docker Image
+        run: |
+          docker build -t "${DOCKER_TAG}" --build-arg LLVM_VERSION=11 --build-arg DISTRO=ubuntu --build-arg DISTRO_TAG=20.04 .
+      - name: Test Docker Image
+        run: |
+          docker run --rm "${DOCKER_TAG}" --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
+          docker run --rm "${DOCKER_TAG}" --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
+      - name: Push Docker Image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: |
+          docker login -u "${DOCKER_HUB_USER}" -p "${DOCKER_HUB_TOKEN}"
+
+          for i in 1 2 3; do docker push "${DOCKER_TAG}" && break || sleep 10; done
+        env:
+          DOCKER_HUB_USER: ${{  secrets.DOCKER_HUB_USER  }}
+          DOCKER_HUB_TOKEN: ${{  secrets.DOCKER_HUB_TOKEN  }}
