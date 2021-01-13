@@ -32,7 +32,6 @@
 #include <llvm/ADT/StringExtras.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
-#include <llvm/IR/CallSite.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Instructions.h>
@@ -49,6 +48,7 @@
 #include "remill/BC/ABI.h"
 #include "remill/BC/Annotate.h"
 #include "remill/BC/Compat/BitcodeReaderWriter.h"
+#include "remill/BC/Compat/CallSite.h"
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/IRReader.h"
@@ -701,7 +701,7 @@ std::vector<llvm::CallInst *> CallersOf(llvm::Function *func) {
 
   std::vector<llvm::CallInst *> callers;
   for (auto user : func->users()) {
-    if (auto cs = llvm::CallSite(user); cs.isCall()) {
+    if (auto cs = compat::llvm::CallSite(user); cs.isCall()) {
       if (cs.getCalledFunction() == func) {
         callers.push_back(llvm::cast<llvm::CallInst>(user));
       }
@@ -1383,7 +1383,7 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
         }
       }
 
-      if (auto cs = llvm::CallSite(&inst)) {
+      if (auto cs = compat::llvm::CallSite(&inst)) {
         if (auto callee = cs.getCalledFunction();
             callee && callee->getParent() != dest_module) {
           cs.setCalledFunction(DeclareFunctionInModule(callee, dest_module));
