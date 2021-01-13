@@ -138,3 +138,43 @@ cd ./remill-build
 make test_dependencies
 make test
 ```
+
+### Full Source Builds
+
+Sometimes, you want to build everything from source, including the [cxx-common](https://github.com/trailofbits/cxx-common) libraries remill depends on. To build against a custom cxx-common location, you can use the following `cmake` invocation:
+
+```sh
+mkdir build
+cd build
+cmake  \
+  -DCMAKE_INSTALL_PREFIX="<path where remill will install>" \
+  -DVCPKG_ROOT="<path to cxx-common directory>/vcpkg"  \
+  -G Ninja  \
+  ..
+cmake --build .
+cmake --build . --target install
+```
+
+The output may produce some CMake warnings about policy CMP0003. These warnings are safe to ignore.
+
+### Common Build Issues
+
+If you see errors similar to the following:
+
+```
+fatal error: 'bits/c++config.h' file not found
+```
+
+Then you need to install 32-bit libstdc++ headers and libraries. On a Debian/Ubuntu based distribution, You would want to do something like this:
+
+```sh
+sudo dpkg --add-architecture i386
+sudo apt-get update
+sudo apt-get install libc6-dev:i386 install libstdc++-10-dev:i386 g++-multilib
+```
+
+This error happens because the SPARC32 runtime semantics (the bitcode library which lives in `<install directory>/share/remill/<version>/semantics/sparc32.bc`) are built as 32-bit code, but 32-bit development libraries are not installed by default.
+
+A similar situation occurs when building remill on arm64 Linux. In that case, you want to follow a similar workflow, except the architecture used in `dpkg` and `apt-get` commands  would be `armhf` instead of `i386`.
+
+Another alternative is to disable SPARC32 runtime semantics. To do that, use the `-DREMILL_BUILD_SPARC32_RUNTIME=False` option when invoking `cmake`.
