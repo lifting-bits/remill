@@ -155,7 +155,7 @@ cmake --build .
 cmake --build . --target install
 ```
 
-The output may produce some cmake warnings about policy CMP0003. These warnings are safe to ignore.
+The output may produce some CMake warnings about policy CMP0003. These warnings are safe to ignore.
 
 ### Common Build Issues
 
