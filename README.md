@@ -148,7 +148,7 @@ mkdir build
 cd build
 cmake  \
   -DCMAKE_INSTALL_PREFIX="<path where remill will install>" \
-  -DVCPKG_ROOT="<path to cxx-common diretory>/vcpkg"  \
+  -DVCPKG_ROOT="<path to cxx-common directory>/vcpkg"  \
   -G Ninja  \
   ..
 cmake --build .
@@ -173,4 +173,8 @@ sudo apt-get update
 sudo apt-get install libc6-dev:i386 install libstdc++-10-dev:i386 g++-multilib
 ```
 
-This error happens because the SPARC32 semantics are built as 32-bit code, but 32-bit development libraries are not installed by default. A similar situation occurs when building on arm64 Linux. In that case, you want to follow a similar workflow, except the architecture that you'd add would be `armhf` instead of `i386`. Another alternative is to not build SPARC32 semantics.
+This error happens because the SPARC32 runtime semantics (the bitcode library which lives in `<install directory>/share/remill/<version>/semantics/sparc32.bc`) are built as 32-bit code, but 32-bit development libraries are not installed by default.
+
+A similar situation occurs when building remill on arm64 Linux. In that case, you want to follow a similar workflow, except the architecture used in `dpkg` and `apt-get` commands  would be `armhf` instead of `i386`.
+
+Another alternative is to disable SPARC32 runtime semantics. To do that, use the `-DREMILL_BUILD_SPARC32_RUNTIME=False` option when invoking `cmake`.
