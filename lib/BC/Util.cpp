@@ -48,6 +48,7 @@
 #include "remill/BC/ABI.h"
 #include "remill/BC/Annotate.h"
 #include "remill/BC/Compat/BitcodeReaderWriter.h"
+#include "remill/BC/Compat/CallSite.h"
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/IRReader.h"
@@ -694,13 +695,15 @@ void CloneBlockFunctionInto(llvm::Function *func) {
 
 // Returns a list of callers of a specific function.
 std::vector<llvm::CallInst *> CallersOf(llvm::Function *func) {
+  if (!func) {
+    return {};
+  }
+
   std::vector<llvm::CallInst *> callers;
-  if (func) {
-    for (auto user : func->users()) {
-      if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(user)) {
-        if (call_inst->getCalledOperand() == func) {
-          callers.push_back(call_inst);
-        }
+  for (auto user : func->users()) {
+    if (auto cs = compat::llvm::CallSite(user); cs.isCall()) {
+      if (cs.getCalledFunction() == func) {
+        callers.push_back(llvm::cast<llvm::CallInst>(user));
       }
     }
   }
@@ -1380,15 +1383,10 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
         }
       }
 
-      if (auto ci = llvm::dyn_cast<llvm::CallInst>(&inst); ci) {
-        if (auto callee = ci->getCalledFunction();
+      if (auto cs = compat::llvm::CallSite(&inst)) {
+        if (auto callee = cs.getCalledFunction();
             callee && callee->getParent() != dest_module) {
-          ci->setCalledOperand(DeclareFunctionInModule(callee, dest_module));
-        }
-      } else if (auto ii = llvm::dyn_cast<llvm::InvokeInst>(&inst); ii) {
-        if (auto callee = ii->getCalledFunction();
-            callee && callee->getParent() != dest_module) {
-          ii->setCalledOperand(DeclareFunctionInModule(callee, dest_module));
+          cs.setCalledFunction(DeclareFunctionInModule(callee, dest_module));
         }
       }
     }
