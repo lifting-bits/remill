@@ -43,6 +43,9 @@ class TraceLifter;
 enum LiftStatus {
   kLiftedInvalidInstruction,
   kLiftedUnsupportedInstruction,
+  kLiftedLifterError,
+  kLiftedUnknownISEL,
+  kLiftedMismatchedISEL,
   kLiftedInstruction
 };
 
