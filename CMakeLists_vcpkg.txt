@@ -132,6 +132,7 @@ endif()
 # Configuration options for semantics
 #
 option(REMILL_BARRIER_AS_NOP "Remove compiler barriers (inline assembly) in semantics" OFF)
+option(REMILL_BUILD_SPARC32_RUNTIME "Build the Runtime for SPARC32. Turn this off if you have include errors with <bits/c++config.h>, or read the README for a fix" ON)
 
 #
 # target settings
