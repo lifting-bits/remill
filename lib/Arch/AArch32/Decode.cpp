@@ -112,6 +112,24 @@ union HMultiplyAndAccumulate {
 } __attribute__((packed));
 static_assert(sizeof(HMultiplyAndAccumulate) == 4, " ");
 
+// Signed multiply, Divide
+union SignedMulDiv {
+  uint32_t flat;
+  struct {
+    uint32_t rn : 4;
+    uint32_t _1 : 1;
+    uint32_t op2  : 3;
+    uint32_t rm : 4;
+    uint32_t ra : 4;
+    uint32_t rd : 4;
+    uint32_t op1 : 3;
+    uint32_t _01110 : 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(SignedMulDiv) == 4, " ");
+
+
 // Load/Store Word, Unsigned Byte (immediate, literal)
 union LoadStoreWUBIL {
   uint32_t flat;
@@ -373,6 +391,21 @@ union Misc {
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(Misc) == 4, " ");
+
+// Media
+union Media {
+  uint32_t flat;
+  struct {
+    uint32_t _3_to_0 : 4;
+    uint32_t _1: 1;
+    uint32_t op1 : 3;
+    uint32_t _19_to_8 : 12;
+    uint32_t op0 : 5;
+    uint32_t _011: 3;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(Media) == 4, " ");
 
 // Integer Saturating Arithmetic
 union IntSatArith {
@@ -1359,6 +1392,142 @@ static bool TryHalfwordDecodeMultiplyAndAccumulate(Instruction &inst,
 
 }
 
+// Index from: op1 | Ra == 15 | op2
+static const char * kSMulDiv(uint32_t index) {
+    switch(index) {
+        case 0b0000000:
+          return "SMLAD";
+        case 0b0000001:
+          return "SMLADX";
+        case 0b0000010:
+          return "SMLSD";
+        case 0b0000011:
+          return "SMLSDX";
+        case 0b0001000:
+          return "SMUAD";
+        case 0b0001001:
+          return "SMUADX";
+        case 0b0001010:
+          return "SMUSD";
+        case 0b0001011:
+          return "SMUSDX";
+        // case 0b0010000: - Note(Sonya): a != 15 is constrained UNPREDICTABLE
+        case 0b0011000:
+          return "SDIV";
+        // case 0b0110000: - Note(Sonya): a != 15 is constrained UNPREDICTABLE
+        case 0b0111000:
+          return "UDIV";
+        case 0b1000000:
+        case 0b1001000:
+          return "SMLALD";
+        case 0b1000001:
+        case 0b1001001:
+          return "SMLALDX";
+        case 0b1000010:
+        case 0b1001010:
+          return "SMLSLD";
+        case 0b1000011:
+        case 0b1001011:
+          return "SMLSLDX";
+        case 0b1010000:
+          return "SMMLA";
+        case 0b1010001:
+          return "SMMLAR";
+        case 0b1010110:
+        // case 0b1011110: - Note(Sonya): a == 15 is constrained UNPREDICTABLE
+          return "SMMLS";
+        case 0b1010111:
+        // case 0b1011111: - Note(Sonya): a == 15 is constrained UNPREDICTABLE
+          return "SMMLSR";
+        case 0b1011000:
+          return "SMMUL";
+        case 0b1011001:
+          return "SMMULR";
+        default:
+          return nullptr; // UNALLOCATED
+      }
+}
+
+// op1 Ra      op2
+// 000 != 1111 000 SMLAD, SMLADX — SMLAD     if d == 15 || n == 15 || m == 15 then UNPREDICTABLE;
+// 000 != 1111 001 SMLAD, SMLADX — SMLADX    if d == 15 || n == 15 || m == 15 then UNPREDICTABLE;
+// 000 != 1111 010 SMLSD, SMLSDX — SMLSD     if d == 15 || n == 15 || m == 15 then UNPREDICTABLE;
+// 000 != 1111 011 SMLSD, SMLSDX — SMLSDX    if d == 15 || n == 15 || m == 15 then UNPREDICTABLE;
+// 000         1xx UNALLOCATED
+// 000   1111  000 SMUAD, SMUADX — SMUAD     if d == 15 || n == 15 || m == 15 then UNPREDICTABLE;  // add 0 TODO
+// 000   1111  001 SMUAD, SMUADX — SMUADX    if d == 15 || n == 15 || m == 15 then UNPREDICTABLE;
+// 000   1111  010 SMUSD, SMUSDX — SMUSD     if d == 15 || n == 15 || m == 15 then UNPREDICTABLE; // add 0 TODO
+// 000   1111  011 SMUSD, SMUSDX — SMUSDX    if d == 15 || n == 15 || m == 15 then UNPREDICTABLE;
+// 001         000 SDIV                      if d == 15 || n == 15 || m == 15 || a != 15 then UNPREDICTABLE;
+// 001      != 000 UNALLOCATED
+// 010             UNALLOCATED
+// 011         000 UDIV                      if d == 15 || n == 15 || m == 15 || a != 15 then UNPREDICTABLE;
+// 011      != 000 UNALLOCATED
+// 100         000 SMLALD, SMLALDX — SMLALD  if dLo == 15 || dHi == 15 || n == 15 || m == 15 || dHi == dLo then UNPREDICTABLE;
+// 100         001 SMLALD, SMLALDX — SMLALDX if dLo == 15 || dHi == 15 || n == 15 || m == 15 || dHi == dLo then UNPREDICTABLE;
+// 100         010 SMLSLD, SMLSLDX — SMLSLD  if dLo == 15 || dHi == 15 || n == 15 || m == 15 || dHi == dLo then UNPREDICTABLE;
+// 100         011 SMLSLD, SMLSLDX — SMLSLDX if dLo == 15 || dHi == 15 || n == 15 || m == 15 || dHi == dLo then UNPREDICTABLE;
+// 100         1xx UNALLOCATED
+// 101 != 1111 000 SMMLA, SMMLAR — SMMLA     if d == 15 || n == 15 || m == 15 then UNPREDICTABLE; // add 0x0
+// 101 != 1111 001 SMMLA, SMMLAR — SMMLAR    if d == 15 || n == 15 || m == 15 then UNPREDICTABLE; // add 0x80000000
+// 101         01x UNALLOCATED
+// 101         10x UNALLOCATED
+// 101         110 SMMLS, SMMLSR — SMMLS     if d == 15 || n == 15 || m == 15 || a == 15 then UNPREDICTABLE; // add 0x0
+// 101         111 SMMLS, SMMLSR — SMMLSR    if d == 15 || n == 15 || m == 15 || a == 15 then UNPREDICTABLE; // add 0x80000000
+// 101   1111  000 SMMUL, SMMULR — SMMUL     if d == 15 || n == 15 || m == 15 then UNPREDICTABLE; // add 0 add 0x0
+// 101   1111  001 SMMUL, SMMULR — SMMULR    if d == 15 || n == 15 || m == 15 then UNPREDICTABLE; // add 0 add 0x80000000
+// 11x             UNALLOCATED
+// Signed multiply, Divide
+static bool TryDecodeSignedMultiplyDivide(Instruction &inst, uint32_t bits) {
+  const SignedMulDiv enc = { bits };
+
+  auto instruction = kSMulDiv(enc.op1 << 4 | (enc.ra == kPCRegNum) << 3 | enc.op2);
+  if (!instruction || enc.rd == kPCRegNum || enc.rn == kPCRegNum
+      || enc.rm == kPCRegNum
+      || (enc.op1 == 0b100 && (enc.ra == kPCRegNum || enc.ra == enc.rd))) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+  inst.function = instruction;
+  DecodeCondition(inst, enc.cond);
+  auto div = enc.op1 == 0b001 || enc.op1 == 0b011;
+
+  if (enc.op1 == 0b100) {
+    AddIntRegOp(inst, enc.ra, 32, Operand::kActionWrite);
+  }
+  AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
+  AddIntRegOp(inst, enc.rm, 32, Operand::kActionRead);
+
+  // MSwap
+  if ((enc.op1 == 0b100 || !enc.op1) && (enc.op2 & 0b1)) {
+    const auto word_type = inst.arch->AddressType();
+    const auto _16 = llvm::ConstantInt::get(word_type, 16u, false);
+    inst.operands.back().expr = RORExpr(inst, inst.operands.back().expr,
+                                        inst.EmplaceConstant(_16));
+  }
+
+  if (!div && enc.ra != kPCRegNum) {
+    AddIntRegOp(inst, enc.ra, 32, Operand::kActionRead);
+  } else if (!div) {
+    AddImmOp(inst, 0, 32u, true);
+  }
+
+  if (enc.op1 == 0b100) {
+    AddIntRegOp(inst, enc.rd, 32, Operand::kActionRead);
+  }
+
+  // Round
+  if (enc.op1 == 0b101 && (enc.op2 & 0b1)) {
+    AddImmOp(inst, 0x80000000, 32u, false);
+  } else if (enc.op1 == 0b101) {
+    AddImmOp(inst, 0, 32u, true);
+  }
+
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
+
 static const char * const kLoadSWUB[] = {
     [0b0000] = "STRp",
     [0b0001] = "LDRp",
@@ -2159,6 +2328,89 @@ static bool TryDecodeIntegerSaturatingArithmetic(Instruction &inst,
   return true;
 }
 
+// op0  op1
+//00xxx     Parallel Arithmetic
+//01000 101 SEL
+//01000 001 UNALLOCATED
+//01000 xx0 PKHBT, PKHTB
+//01001 x01 UNALLOCATED
+//01001 xx0 UNALLOCATED
+//0110x x01 UNALLOCATED
+//0110x xx0 UNALLOCATED
+//01x10 001 Saturate 16-bit
+//01x10 101 UNALLOCATED
+//01x11 x01 Reverse Bit/Byte
+//01x1x xx0 Saturate 32-bit
+//01xxx 111 UNALLOCATED
+//01xxx 011 Extend and Add
+//10xxx     Signed multiply, Divide
+//11000 000 Unsigned Sum of Absolute Differences
+//11000 100 UNALLOCATED
+//11001 x00 UNALLOCATED
+//1101x x00 UNALLOCATED
+//110xx 111 UNALLOCATED
+//1110x 111 UNALLOCATED
+//1110x x00 Bitfield Insert
+//11110 111 UNALLOCATED
+//11111 111 Permanently UNDEFINED
+//1111x x00 UNALLOCATED
+//11x0x x10 UNALLOCATED
+//11x1x x10 Bitfield Extract
+//11xxx 011 UNALLOCATED
+//11xxx x01 UNALLOCATED
+static TryDecode * TryMedia(uint32_t bits) {
+  const Media enc = { bits };
+  // op0 | op1
+  switch (enc.op0 >> 3) {
+    case 0b00: //  TODO(Sonya): Parallel Arithmetic
+      return nullptr;
+    case 0b10:
+      return TryDecodeSignedMultiplyDivide;
+  }
+  // TODO(Sonya)
+  switch (enc.op0 << 3 | enc.op1) {
+    case 0b01000101:
+      // SEL
+    case 0b01000000:
+    case 0b01000010:
+    case 0b01000100:
+    case 0b01000110:
+      // PKHBT, PKHTB
+    case 0b01010001:
+    case 0b01110001:
+      // Saturate 16-bit
+    case 0b01000011:
+    case 0b01001011:
+    case 0b01010011:
+    case 0b01011011:
+    case 0b01100011:
+    case 0b01101011:
+    case 0b01110011:
+    case 0b01111011:
+      // Extend and Add
+    case 0b11000000:
+      // Unsigned Sum of Absolute Differences
+    case 0b11100000:
+    case 0b11100100:
+    case 0b11101000:
+    case 0b11101100:
+      // Bitfield Insert
+    case 0b11111111:
+      // Permanently UNDEFINED
+    case 0b11010010:
+    case 0b11010110:
+    case 0b11011010:
+    case 0b11011110:
+    case 0b11110010:
+    case 0b11110110:
+    case 0b11111010:
+    case 0b11111110:
+      // Bitfield Extract
+    default:
+      return nullptr;
+  }
+}
+
 //00  001 UNALLOCATED
 //00  010 UNALLOCATED
 //00  011 UNALLOCATED
@@ -2401,7 +2653,7 @@ static TryDecode * TryDecodeTopLevelEncodings(uint32_t bits) {
   if (!(enc.op0 >> 2)) {
     if (enc.cond != 0b1111u) {
       // Data-processing and miscellaneous instructions -- op0 == 00x
-      if (~(enc.op0 >> 1)) {
+      if (!(enc.op0 >> 1)) {
         return TryDataProcessingAndMisc(bits);
       // Load/Store Word, Unsigned Byte (immediate, literal) -- op0 == 010
       } else if (enc.op0 == 0b010u) {
@@ -2411,9 +2663,9 @@ static TryDecode * TryDecodeTopLevelEncodings(uint32_t bits) {
       } else if (!enc.op1) {
         const LoadStoreWUBR enc_ls_word = { bits };
         return kLoadStoreWordUBR[enc_ls_word.o2 << 1u | enc_ls_word.o1];
-      // TODO(Sonya): Media instructions -- op0 == 011, op1 == 1
+      // Media instructions -- op0 == 011, op1 == 1
       } else {
-        return nullptr;
+        return TryMedia(bits);
       }
     // TODO(Sonya): Unconditional instructions -- cond == 1111
     } else {
