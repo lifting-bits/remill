@@ -327,7 +327,7 @@ class Instruction {
   Operand & EmplaceOperand(const Operand::Address &op);
 
  private:
-  static constexpr auto kMaxNumExpr = 64u;
+  static constexpr auto kMaxNumExpr = 128u;
   OperandExpression exprs[kMaxNumExpr];
   unsigned next_expr_index{0};
 };

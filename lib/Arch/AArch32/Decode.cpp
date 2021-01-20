@@ -213,6 +213,23 @@ union LoadStoreDualHSBR {
 } __attribute__((packed));
 static_assert(sizeof(LoadStoreDualHSBR) == 4, " ");
 
+// Load/Store Multiple
+union LoadStoreM {
+  uint32_t flat;
+  struct {
+    uint32_t register_list : 16;
+    uint32_t rn  : 4;
+    uint32_t L : 1;
+    uint32_t W : 1;
+    uint32_t op : 1;
+    uint32_t U : 1;
+    uint32_t P : 1;
+    uint32_t _100 : 3;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(LoadStoreM) == 4, " ");
+
 
 // Integer Test and Compare (two register, immediate shift)
 union IntTestCompRRI {
@@ -422,6 +439,42 @@ union IntSatArith {
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(IntSatArith) == 4, " ");
+
+// Saturate 16-bit
+union Sat16 {
+  uint32_t flat;
+  struct {
+    uint32_t Rn : 4;
+    uint32_t _0011 : 4;
+    uint32_t _1111 : 4;
+    uint32_t Rd : 4;
+    uint32_t sat_imm : 4;
+    uint32_t _10 : 2;
+    uint32_t U : 1;
+    uint32_t _01101: 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(Sat16) == 4, " ");
+
+// Saturate 32-bit
+union Sat32 {
+  uint32_t flat;
+  struct {
+    uint32_t Rn : 4;
+    uint32_t _01 : 2;
+    uint32_t sh : 1;
+    uint32_t imm5 : 5;
+    uint32_t Rd : 4;
+    uint32_t sat_imm : 5;
+    uint32_t _1 : 1;
+    uint32_t U : 1;
+    uint32_t _01101: 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(Sat32) == 4, " ");
+
 
 
 static constexpr auto kPCRegNum = 15u;
@@ -1961,6 +2014,122 @@ static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
   return true;
 }
 
+// P  U op  L  register_list
+// 0  0  0  0                    STMDA, STMED if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE;
+// 0  0  0  1                    LDMDA, LDMFA if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE; if wback && registers<n> == '1' then UNPREDICTABLE;
+// 0  1  0  0                    STM, STMIA, STMEA if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE;
+// 0  1  0  1                    LDM, LDMIA, LDMFD if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE; if wback && registers<n> == '1' then UNPREDICTABLE;
+//       1  0                    STM (User registers) if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE;
+// 1  0  0  0                    STMDB, STMFD if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE;
+// 1  0  0  1                    LDMDB, LDMEA if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE; if wback && registers<n> == '1' then UNPREDICTABLE;
+//       1  1  0xxxxxxxxxxxxxxx  LDM (User registers) if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE;
+// 1  1  0  0                    STMIB, STMFA if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE;
+// 1  1  0  1                    LDMIB, LDMED if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE; if wback && registers<n> == '1' then UNPREDICTABLE;
+//       1  1  1xxxxxxxxxxxxxxx  LDM (exception return) if n == 15 then UNPREDICTABLE; if wback && registers<n> == '1' then UNPREDICTABLE;
+static const char * const kLoadStoreM[] = {
+    [0b0000] = "STMDA",
+    [0b0001] = "LDMDA",
+    [0b0010] = "STMu", // (User registers)
+    [0b0011] = "LDM", // (User registers) || (exception return)
+    [0b0100] = "STM",
+    [0b0101] = "LDM",
+    [0b0110] = "STMu", // (User registers)
+    [0b0111] = "LDM", // (User registers) || (exception return)
+    [0b1000] = "STMDB",
+    [0b1001] = "LDMDB",
+    [0b1010] = "STMu", // (User registers)
+    [0b1011] = "LDM", // (User registers) || (exception return)
+    [0b1100] = "STMIB",
+    [0b1101] = "LDMIB",
+    [0b1110] = "STMu", // (User registers)
+    [0b1111] = "LDM", // (User registers) || (exception return)
+};
+
+// Load/Store Multiple
+// Note that:
+// LDM{<c>}{<q>} SP!, <registers> is an alias for POP{<c>}{<q>} <registers>
+// STMDB{<c>}{<q>} SP!, <registers> is an alias for PUSH{<c>}{<q>} <registers>
+template<Operand::Action kMemAction, Operand::Action kRegAction,
+    unsigned kMemSize, bool kAlignPC = false>
+static bool TryDecodeLoadStoreMultiple(Instruction &inst, uint32_t bits) {
+  const LoadStoreM enc = { bits };
+  inst.function = kLoadStoreM[enc.P << 3 | enc.U << 2 | enc.op << 1 | enc.L];
+
+  if (enc.op && enc.L && (enc.register_list >> 15)) {
+    // Exception Return
+    inst.function += "e";
+  } else if (enc.op && enc.L) {
+    // User registers
+    inst.function += "u";
+  }
+
+  auto wback = enc.W;
+  uint32_t reg_cnt = 0;
+    for (uint32_t i = 0; 16u > i; i++) {
+      if ((0b1 << i) & enc.register_list) {
+        if (wback && i == enc.rn && ((!reg_cnt && !enc.L) || enc.L)) {
+          // if i == n && wback && i != LowestSetBit(registers) then bits(32) UNKNOWN;
+          inst.category = Instruction::kCategoryError;
+          return false;
+        }
+        reg_cnt++;
+      }
+    }
+
+  if (enc.rn == 15 || (reg_cnt < 1u)) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+
+  auto is_cond = DecodeCondition(inst, enc.cond);
+
+  AddImmOp(inst, enc.register_list, 16u, false);
+
+  // Write Back
+  AddIntRegOp(inst, enc.rn, 32, Operand::kActionWrite);
+  if (wback) {
+    if (enc.L) {
+      // LDM
+      AddAddrRegOp(inst, kIntRegName[enc.rn], 32u, Operand::kActionRead,
+                   4 * reg_cnt);
+    } else {
+      // STMDB
+      AddAddrRegOp(inst, kIntRegName[enc.rn], 32u, Operand::kActionRead,
+                   -4 * reg_cnt);
+    }
+  } else {
+    AddAddrRegOp(inst, kIntRegName[enc.rn], 32u, Operand::kActionRead, 0);
+  }
+
+  // Add mem and reg ops
+  if (enc.L){
+    reg_cnt = 0;
+  } else {
+    reg_cnt = - reg_cnt;
+  }
+  for (uint32_t i = 0u; 16u > i; i++) {
+    AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, 4 * reg_cnt);
+    AddIntRegOp(inst, i, 32, kRegAction);
+    if ((0b1 << i) & enc.register_list) {
+
+        reg_cnt++;
+
+    }
+  }
+
+  if (enc.register_list & (0b1 << 15u)) {
+    if (is_cond) {
+      inst.branch_not_taken_pc = inst.next_pc;
+      inst.category = Instruction::kCategoryConditionalIndirectJump;
+    } else {
+      inst.category = Instruction::kCategoryIndirectJump;
+    }
+  } else {
+    inst.category = Instruction::kCategoryNormal;
+  }
+  return true;
+}
+
 // Can package semantics for MOV with ORR and MVN with BIC since src1 will be
 // 0 and 1 for MOV and MVN respectively, mirroring the semantics in LOGICAL.cpp
 static InstEval * kLogArithEvaluators[] = {
@@ -2328,6 +2497,57 @@ static bool TryDecodeIntegerSaturatingArithmetic(Instruction &inst,
   return true;
 }
 
+// Saturate 16-bit
+static bool TryDecodeSat16(Instruction &inst, uint32_t bits) {
+  const Sat16 enc = { bits };
+  DecodeCondition(inst, enc.cond);
+
+  // if d == 15 || n == 15 then UNPREDICTABLE;
+  if (enc.Rd == kPCRegNum || enc.Rn == kPCRegNum) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+
+  AddIntRegOp(inst, enc.Rd, 32u, Operand::kActionWrite);
+  if (enc.U) {
+    inst.function = "USAT16";
+    AddImmOp(inst, enc.sat_imm);
+  } else {
+    inst.function = "SSAT16";
+    AddImmOp(inst, enc.sat_imm + 1);
+  }
+  AddIntRegOp(inst, enc.Rn, 32u, Operand::kActionRead);
+
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
+
+// Saturate 32-bit
+static bool TryDecodeSat32(Instruction &inst, uint32_t bits) {
+  const Sat32 enc = { bits };
+  DecodeCondition(inst, enc.cond);
+
+  // if d == 15 || n == 15 then UNPREDICTABLE;
+  if (enc.Rd == kPCRegNum || enc.Rn == kPCRegNum) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+
+  AddIntRegOp(inst, enc.Rd, 32u, Operand::kActionWrite);
+  if (enc.U) {
+    inst.function = "USAT";
+    AddImmOp(inst, enc.sat_imm);
+  } else {
+    inst.function = "SSAT";
+    AddImmOp(inst, enc.sat_imm + 1);
+  }
+  // (shift_t, shift_n) = DecodeImmShift(sh:'0', imm5);
+  AddShiftRegImmOperand(inst, enc.Rn, enc.sh << 1, enc.imm5, 0u);
+
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
+
 // op0  op1
 //00xxx     Parallel Arithmetic
 //01000 101 SEL
@@ -2376,9 +2596,33 @@ static TryDecode * TryMedia(uint32_t bits) {
     case 0b01000100:
     case 0b01000110:
       // PKHBT, PKHTB
+      return nullptr;
     case 0b01010001:
     case 0b01110001:
-      // Saturate 16-bit
+      return TryDecodeSat16;
+    case 0b01011001:
+    case 0b01011101:
+    case 0b01111001:
+    case 0b01111101:
+      // Reverse Bit/Byte
+      return nullptr;
+    case 0b01010000:
+    case 0b01010010:
+    case 0b01010100:
+    case 0b01010110:
+    case 0b01011000:
+    case 0b01011010:
+    case 0b01011100:
+    case 0b01011110:
+    case 0b01110000:
+    case 0b01110010:
+    case 0b01110100:
+    case 0b01110110:
+    case 0b01111000:
+    case 0b01111010:
+    case 0b01111100:
+    case 0b01111110:
+      return TryDecodeSat32;
     case 0b01000011:
     case 0b01001011:
     case 0b01010011:
@@ -2573,6 +2817,26 @@ static TryDecode * kExtraLoadStore[] = {
     [0b111111] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
 };
 
+// Load Store Multiple
+static TryDecode * kMLoadStore[] = {
+    [0b0000] = nullptr, //"STMDA",
+    [0b0001] = nullptr, //"LDMDA",
+    [0b0010] = nullptr, //"STMu", // (User registers)
+    [0b0011] = nullptr, //"LDM", // (User registers) || (exception return)
+    [0b0100] = nullptr, //"STM",
+    [0b0101] = TryDecodeLoadStoreMultiple<Operand::kActionRead, Operand::kActionWrite, 32, true>,
+    [0b0110] = nullptr, //"STMu", // (User registers)
+    [0b0111] = nullptr, //"LDM", // (User registers) || (exception return)
+    [0b1000] = TryDecodeLoadStoreMultiple<Operand::kActionWrite, Operand::kActionRead, 32u>,
+    [0b1001] = nullptr, //"LDMDB",
+    [0b1010] = nullptr, //"STMu", // (User registers)
+    [0b1011] = nullptr, //"LDM", // (User registers) || (exception return)
+    [0b1100] = nullptr, //"STMIB",
+    [0b1101] = nullptr, //"LDMIB",
+    [0b1110] = nullptr, //"STMu", // (User registers)
+    [0b1111] = nullptr, //"LDM", // (User registers) || (exception return)
+};
+
 // Corresponds to: Data-processing and miscellaneous instructions
 //op0   op1    op2 op3  op4
 // 0            1 != 00  1 Extra load/store
@@ -2681,9 +2945,11 @@ static TryDecode * TryDecodeTopLevelEncodings(uint32_t bits) {
       // TODO(Sonya): Exception Save/Restore -- cond == 1111, op0 == 100
       } else if (enc.cond == 0b1111u) {
         return nullptr;
-      // TODO(Sonya): Load/Store Multiple -- cond != 1111, op0 == 100
+      // Load/Store Multiple -- cond != 1111, op0 == 100
       } else {
-        return nullptr;
+        const LoadStoreM enc_ls_word = { bits };
+        return kMLoadStore[enc_ls_word.P << 3 | enc_ls_word.U << 2
+            | enc_ls_word.op << 1 | enc_ls_word.L];
       }
     // TODO(Sonya): System register access, Advanced SIMD, floating-point, and Supervisor call -- op0 == 11x
     } else {

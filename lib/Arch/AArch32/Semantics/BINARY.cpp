@@ -348,25 +348,76 @@ DEF_ISEL(SMLALBT) = SMLALh;
 DEF_ISEL(SMLALTB) = SMLALh;
 DEF_ISEL(SMLALTT) = SMLALh;
 
-// Integer Saturating Arithmetic
+// Saturate 16-bit && Saturate 32-bit
 namespace {
+template <typename T>
+T UnsignedSatQ(State &state, T res, uint32_t nbits) {
+  auto upper_bound = T((1 << nbits) - 1);
+  auto lower_bound = T(0);
+  state.sr.q = Select(BOr(UCmpGt(res, upper_bound), UCmpLt(res, lower_bound)),
+                      uint8_t(1u), state.sr.q);
+  res = Select(UCmpGt(res, upper_bound), upper_bound, res);
+  res = Select(UCmpLt(res, lower_bound), lower_bound, res);
+  return res;
+}
+
 template <typename T>
 T SignedSatQ(State &state, T res, int32_t nbits) {
   nbits--;
   auto upper_bound = T((1 << nbits) - 1);
   auto lower_bound = T(-(1 << nbits));
-  state.sr.q = Select(SOr(SCmpGt(res, upper_bound), SCmpLt(res, lower_bound)),
+  state.sr.q = Select(BOr(SCmpGt(res, upper_bound), SCmpLt(res, lower_bound)),
                       uint8_t(1u), state.sr.q);
   res = Select(SCmpGt(res, upper_bound), upper_bound, res);
   res = Select(SCmpLt(res, lower_bound), lower_bound, res);
   return res;
 }
 
+DEF_COND_SEM(USAT, R32W dst, I32 imm, R32 src) {
+  auto res = UnsignedSatQ(state, Read(src), Read(imm));
+  Write(dst, res);
+  return memory;
+}
+
+DEF_COND_SEM(SSAT, R32W dst, I32 imm, R32 src) {
+  auto res = SignedSatQ(state, Signed(Read(src)), Signed(Read(imm)));
+  Write(dst, Unsigned(res));
+  return memory;
+}
+
+DEF_COND_SEM(USAT16, R32W dst, I32 imm1, R32 src1) {
+  auto src = Read(src1);
+  auto imm = Read(imm1);
+  auto high = UnsignedSatQ(state, Trunc(UShr(src, 16u)), imm);
+  auto low = UnsignedSatQ(state, Trunc(src), imm);
+  auto res = UOr(UShl(ZExt(high), 16u), ZExt(low));
+  Write(dst, res);
+  return memory;
+}
+
+DEF_COND_SEM(SSAT16, R32W dst, I32 imm1, R32 src1) {
+  auto src = Signed(Read(src1));
+  auto imm = Signed(Read(imm1));
+  auto high = SignedSatQ(state, Trunc(SShr(src, 16u)), imm);
+  auto low = SignedSatQ(state, Trunc(src), imm);
+  auto res = SOr(SShl(SExt(high), 16u), Signed(ZExt(low)));
+  Write(dst, Unsigned(res));
+  return memory;
+}
+} // namespace
+
+DEF_ISEL(USAT) = USAT;
+DEF_ISEL(SSAT) = SSAT;
+DEF_ISEL(USAT16) = USAT16;
+DEF_ISEL(SSAT16) = SSAT16;
+
+// Integer Saturating Arithmetic
+namespace {
 DEF_COND_SEM(QADD, R32W dst, R32 src1, R32 src2) {
   auto rhs = SExt<int64_t>(Signed(Read(src2)));
   auto lhs = SExt<int64_t>(Signed(Read(src1)));
   auto res = SAdd(lhs, rhs);
-  res = SignedSatQ(state, res, 32u);
+  res = SignedSatQ(state, res, 32);
   Write(dst, TruncTo<uint32_t>(res));
   return memory;
 }
@@ -374,9 +425,9 @@ DEF_COND_SEM(QADD, R32W dst, R32 src1, R32 src2) {
 DEF_COND_SEM(QDADD, R32W dst, R32 src1, R32 src2) {
   auto rhs = SExt<int64_t>(Signed(Read(src2)));
   auto lhs = SExt<int64_t>(Signed(Read(src1)));
-  rhs = SignedSatQ(state, SShl(rhs, 1u), 32u);
+  rhs = SignedSatQ(state, SShl(rhs, 1u), 32);
   auto res = SAdd(lhs, rhs);
-  res = SignedSatQ(state, res, 32u);
+  res = SignedSatQ(state, res, 32);
   Write(dst, TruncTo<uint32_t>(res));
   return memory;
 }
@@ -385,7 +436,7 @@ DEF_COND_SEM(QSUB, R32W dst, R32 src1, R32 src2) {
   auto rhs = SExt<int64_t>(Signed(Read(src2)));
   auto lhs = SExt<int64_t>(Signed(Read(src1)));
   auto res = SSub(lhs, rhs);
-  res = SignedSatQ(state, res, 32u);
+  res = SignedSatQ(state, res, 32);
   Write(dst, TruncTo<uint32_t>(res));
   return memory;
 }
@@ -393,9 +444,9 @@ DEF_COND_SEM(QSUB, R32W dst, R32 src1, R32 src2) {
 DEF_COND_SEM(QDSUB, R32W dst, R32 src1, R32 src2) {
   auto rhs = SExt<int64_t>(Signed(Read(src2)));
   auto lhs = SExt<int64_t>(Signed(Read(src1)));
-  rhs = SignedSatQ(state, SShl(rhs, 1u), 32u);
+  rhs = SignedSatQ(state, SShl(rhs, 1u), 32);
   auto res = SSub(lhs, rhs);
-  res = SignedSatQ(state, res, 32u);
+  res = SignedSatQ(state, res, 32);
   Write(dst, TruncTo<uint32_t>(res));
   return memory;
 }
