@@ -2103,18 +2103,12 @@ static bool TryDecodeLoadStoreMultiple(Instruction &inst, uint32_t bits) {
 
   // Add mem and reg ops
   if (enc.L){
-    reg_cnt = 0;
+    AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, 0);
   } else {
-    reg_cnt = - reg_cnt;
+    AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, -4 * reg_cnt);
   }
   for (uint32_t i = 0u; 16u > i; i++) {
-    AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, 4 * reg_cnt);
     AddIntRegOp(inst, i, 32, kRegAction);
-    if ((0b1 << i) & enc.register_list) {
-
-        reg_cnt++;
-
-    }
   }
 
   if (enc.register_list & (0b1 << 15u)) {

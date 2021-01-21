@@ -289,122 +289,117 @@ DEF_ISEL(LDRSHT) = LDRSHT;
 
 // Load/Store Multiple
 namespace {
-DEF_COND_SEM(LDM, I16 reg_list, R32W dst, R32 dst_new, M32 src0, R32W dst0,
-             M32 src1, R32W dst1, M32 src2, R32W dst2, M32 src3, R32W dst3,
-             M32 src4, R32W dst4, M32 src5, R32W dst5, M32 src6, R32W dst6,
-             M32 src7, R32W dst7, M32 src8, R32W dst8, M32 src9, R32W dst9,
-             M32 src10, R32W dst10, M32 src11, R32W dst11, M32 src12,
-             R32W dst12, M32 src13, R32W dst13, M32 src14, R32W dst14,
-             M32W src15, R32W dst15) {
+DEF_COND_SEM(LDM, I16 reg_list, R32W dst, R32 dst_new, M32 src_mem, R32W dst0,
+             R32W dst1, R32W dst2, R32W dst3, R32W dst4, R32W dst5, R32W dst6,
+             R32W dst7, R32W dst8, R32W dst9, R32W dst10, R32W dst11,
+             R32W dst12, R32W dst13, R32W dst14, R32W dst15) {
   auto regs = Read(reg_list);
+  uint32_t index = 0;
   if (UAnd(regs, uint16_t(0b1u))) {
-    Write(dst0, Read(src0));
+    Write(dst0, Read(GetElementPtr(src_mem, index++)));
   }
-  if (UAnd(regs, uint16_t(0b10u))) {
-    Write(dst1, Read(src1));
+  if (UAnd(regs, uint16_t(0b1u << 1))) {
+    Write(dst1, Read(GetElementPtr(src_mem, index++)));
   }
-  if (UAnd(regs, uint16_t(0b100u))) {
-    Write(dst2, Read(src2));
+  if (UAnd(regs, uint16_t(0b1u << 2))) {
+    Write(dst2, Read(GetElementPtr(src_mem, index++)));
   }
-  if (UAnd(regs, uint16_t(0b1000u))) {
-    Write(dst3, Read(src3));
+  if (UAnd(regs, uint16_t(0b1u << 3))) {
+    Write(dst3, Read(GetElementPtr(src_mem, index++)));
   }
-  if (UAnd(regs, uint16_t(0b10000u))) {
-    Write(dst4, Read(src4));
+  if (UAnd(regs, uint16_t(0b1u << 4))) {
+    Write(dst4, Read(GetElementPtr(src_mem, index++)));
   }
-  if (UAnd(regs, uint16_t(0b100000u))) {
-    Write(dst5, Read(src5));
+  if (UAnd(regs, uint16_t(0b1u << 5))) {
+    Write(dst5, Read(GetElementPtr(src_mem, index++)));
   }
-  if (UAnd(regs, uint16_t(0b1000000u))) {
-    Write(dst6, Read(src6));
+  if (UAnd(regs, uint16_t(0b1u << 6))) {
+    Write(dst6, Read(GetElementPtr(src_mem, index++)));
   }
-  if (UAnd(regs, uint16_t(0b10000000u))) {
-    Write(dst7, Read(src7));
+  if (UAnd(regs, uint16_t(0b1u << 7))) {
+    Write(dst7, Read(GetElementPtr(src_mem, index++)));
   }
-  if (UAnd(regs, uint16_t(0b100000000u))) {
-    Write(dst8, Read(src8));
+  if (UAnd(regs, uint16_t(0b1u << 8))) {
+    Write(dst8, Read(GetElementPtr(src_mem, index++)));
   }
-  if (UAnd(regs, uint16_t(0b1000000000u))) {
-    Write(dst9, Read(src9));
+  if (UAnd(regs, uint16_t(0b1u << 9))) {
+    Write(dst9, Read(GetElementPtr(src_mem, index++)));
   }
-  if (UAnd(regs, uint16_t(0b10000000000u))) {
-    Write(dst10, Read(src10));
+  if (UAnd(regs, uint16_t(0b1u << 10))) {
+    Write(dst10, Read(GetElementPtr(src_mem, index++)));
   }
-  if (UAnd(regs, uint16_t(0b100000000000u))) {
-    Write(dst11, Read(src11));
+  if (UAnd(regs, uint16_t(0b1u << 11))) {
+    Write(dst11, Read(GetElementPtr(src_mem, index++)));
   }
-  if (UAnd(regs, uint16_t(0b1000000000000u))) {
-    Write(dst12, Read(src12));
+  if (UAnd(regs, uint16_t(0b1u << 12))) {
+    Write(dst12, Read(GetElementPtr(src_mem, index++)));
   }
-  if (UAnd(regs, uint16_t(0b10000000000000u))) {
-    Write(dst13, Read(src13));
+  if (UAnd(regs, uint16_t(0b1u << 13))) {
+    Write(dst13, Read(GetElementPtr(src_mem, index++)));
   }
-  if (UAnd(regs, uint16_t(0b100000000000000u))) {
-    Write(dst14, Read(src14));
+  if (UAnd(regs, uint16_t(0b1u << 14))) {
+    Write(dst14, Read(GetElementPtr(src_mem, index++)));
   }
-  if (UAnd(regs, uint16_t(0b1000000000000000u))) {
-    Write(dst15, Read(src15));
+  if (UAnd(regs, uint16_t(0b1u << 15))) {
+    Write(dst15, Read(GetElementPtr(src_mem, index++)));
   }
   Write(dst, Read(dst_new));
   return memory;
 }
 
-DEF_COND_SEM(STMDB, I16 reg_list, R32W dst, R32 dst_new, M32W dst0, R32 src0,
-             M32W dst1, R32 src1, M32W dst2, R32 src2, M32W dst3, R32 src3,
-             M32W dst4, R32 src4, M32W dst5, R32 src5, M32W dst6, R32 src6,
-             M32W dst7, R32 src7, M32W dst8, R32 src8, M32W dst9, R32 src9,
-             M32W dst10, R32 src10, M32W dst11, R32 src11, M32W dst12,
-             R32 src12, M32W dst13, R32 src13, M32W dst14, R32 src14,
-             M32W dst15, R32 src15) {
-
+DEF_COND_SEM(STMDB, I16 reg_list, R32W dst, R32 dst_new, M32W dst_mem, R32 src0,
+             R32 src1, R32 src2, R32 src3, R32 src4, R32 src5, R32 src6,
+             R32 src7, R32 src8, R32 src9, R32 src10, R32 src11, R32 src12,
+             R32 src13,R32 src14, R32 src15) {
   auto regs = Read(reg_list);
+  uint32_t index = 0;
   if (UAnd(regs, uint16_t(0b1u))) {
-    Write(dst0, Read(src0));
+    Write(GetElementPtr(dst_mem, index++), Read(src0));
   }
-  if (UAnd(regs, uint16_t(0b10u))) {
-    Write(dst1, Read(src1));
+  if (UAnd(regs, uint16_t(0b1u << 1))) {
+    Write(GetElementPtr(dst_mem, index++), Read(src1));
   }
-  if (UAnd(regs, uint16_t(0b100u))) {
-    Write(dst2, Read(src2));
+  if (UAnd(regs, uint16_t(0b1u << 2))) {
+    Write(GetElementPtr(dst_mem, index++), Read(src2));
   }
-  if (UAnd(regs, uint16_t(0b1000u))) {
-    Write(dst3, Read(src3));
+  if (UAnd(regs, uint16_t(0b1u << 3))) {
+    Write(GetElementPtr(dst_mem, index++), Read(src3));
   }
-  if (UAnd(regs, uint16_t(0b10000u))) {
-    Write(dst4, Read(src4));
+  if (UAnd(regs, uint16_t(0b1u << 4))) {
+    Write(GetElementPtr(dst_mem, index++), Read(src4));
   }
-  if (UAnd(regs, uint16_t(0b100000u))) {
-    Write(dst5, Read(src5));
+  if (UAnd(regs, uint16_t(0b1u << 5))) {
+    Write(GetElementPtr(dst_mem, index++), Read(src5));
   }
-  if (UAnd(regs, uint16_t(0b1000000u))) {
-    Write(dst6, Read(src6));
+  if (UAnd(regs, uint16_t(0b1u << 6))) {
+    Write(GetElementPtr(dst_mem, index++), Read(src6));
   }
-  if (UAnd(regs, uint16_t(0b10000000u))) {
-    Write(dst7, Read(src7));
+  if (UAnd(regs, uint16_t(0b1u << 7))) {
+    Write(GetElementPtr(dst_mem, index++), Read(src7));
   }
-  if (UAnd(regs, uint16_t(0b100000000u))) {
-    Write(dst8, Read(src8));
+  if (UAnd(regs, uint16_t(0b1u << 8))) {
+    Write(GetElementPtr(dst_mem, index++), Read(src8));
   }
-  if (UAnd(regs, uint16_t(0b1000000000u))) {
-    Write(dst9, Read(src9));
+  if (UAnd(regs, uint16_t(0b1u << 9))) {
+    Write(GetElementPtr(dst_mem, index++), Read(src9));
   }
-  if (UAnd(regs, uint16_t(0b10000000000u))) {
-    Write(dst10, Read(src10));
+  if (UAnd(regs, uint16_t(0b1u << 10))) {
+    Write(GetElementPtr(dst_mem, index++), Read(src10));
   }
-  if (UAnd(regs, uint16_t(0b100000000000u))) {
-    Write(dst11, Read(src11));
+  if (UAnd(regs, uint16_t(0b1u << 11))) {
+    Write(GetElementPtr(dst_mem, index++), Read(src11));
   }
-  if (UAnd(regs, uint16_t(0b1000000000000u))) {
-    Write(dst12, Read(src12));
+  if (UAnd(regs, uint16_t(0b1u << 12))) {
+    Write(GetElementPtr(dst_mem, index++), Read(src12));
   }
-  if (UAnd(regs, uint16_t(0b10000000000000u))) {
-    Write(dst13, Read(src13));
+  if (UAnd(regs, uint16_t(0b1u << 13))) {
+    Write(GetElementPtr(dst_mem, index++), Read(src13));
   }
-  if (UAnd(regs, uint16_t(0b100000000000000u))) {
-    Write(dst14, Read(src14));
+  if (UAnd(regs, uint16_t(0b1u << 14))) {
+    Write(GetElementPtr(dst_mem, index++), Read(src14));
   }
-  if (UAnd(regs, uint16_t(0b1000000000000000u))) {
-    Write(dst15, Read(src15));
+  if (UAnd(regs, uint16_t(0b1u << 15))) {
+    Write(GetElementPtr(dst_mem, index++), Read(src15));
   }
   Write(dst, Read(dst_new));
   return memory;
