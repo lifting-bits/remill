@@ -2015,15 +2015,15 @@ static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
 }
 
 // P  U op  L  register_list
-// 0  0  0  0                    STMDA, STMED if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE;
+// 0  0  0  0                    STMDA, STMED if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE; if i == n && wback && i != LowestSetBit(registers) then bits(32) UNKNOWN;
 // 0  0  0  1                    LDMDA, LDMFA if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE; if wback && registers<n> == '1' then UNPREDICTABLE;
-// 0  1  0  0                    STM, STMIA, STMEA if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE;
+// 0  1  0  0                    STM, STMIA, STMEA if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE; if i == n && wback && i != LowestSetBit(registers) then bits(32) UNKNOWN;
 // 0  1  0  1                    LDM, LDMIA, LDMFD if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE; if wback && registers<n> == '1' then UNPREDICTABLE;
 //       1  0                    STM (User registers) if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE;
-// 1  0  0  0                    STMDB, STMFD if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE;
+// 1  0  0  0                    STMDB, STMFD if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE; if i == n && wback && i != LowestSetBit(registers) then bits(32) UNKNOWN;
 // 1  0  0  1                    LDMDB, LDMEA if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE; if wback && registers<n> == '1' then UNPREDICTABLE;
 //       1  1  0xxxxxxxxxxxxxxx  LDM (User registers) if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE;
-// 1  1  0  0                    STMIB, STMFA if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE;
+// 1  1  0  0                    STMIB, STMFA if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE; if i == n && wback && i != LowestSetBit(registers) then bits(32) UNKNOWN;
 // 1  1  0  1                    LDMIB, LDMED if n == 15 || BitCount(registers) < 1 then UNPREDICTABLE; if wback && registers<n> == '1' then UNPREDICTABLE;
 //       1  1  1xxxxxxxxxxxxxxx  LDM (exception return) if n == 15 then UNPREDICTABLE; if wback && registers<n> == '1' then UNPREDICTABLE;
 static const char * const kLoadStoreM[] = {
@@ -2050,7 +2050,7 @@ static const char * const kLoadStoreM[] = {
 // LDM{<c>}{<q>} SP!, <registers> is an alias for POP{<c>}{<q>} <registers>
 // STMDB{<c>}{<q>} SP!, <registers> is an alias for PUSH{<c>}{<q>} <registers>
 template<Operand::Action kMemAction, Operand::Action kRegAction,
-    unsigned kMemSize, bool kAlignPC = false>
+          bool kAlignPC = false>
 static bool TryDecodeLoadStoreMultiple(Instruction &inst, uint32_t bits) {
   const LoadStoreM enc = { bits };
   inst.function = kLoadStoreM[enc.P << 3 | enc.U << 2 | enc.op << 1 | enc.L];
@@ -2083,32 +2083,42 @@ static bool TryDecodeLoadStoreMultiple(Instruction &inst, uint32_t bits) {
 
   auto is_cond = DecodeCondition(inst, enc.cond);
 
+  uint32_t wback_disp = 0;
+  uint32_t disp = 0;
+  switch (enc.P << 2 | enc.U << 1 | enc.op) {
+    case 0b000:
+      if (wback) {
+        wback_disp = -4 * reg_cnt;
+      }
+      disp = -4 * reg_cnt + 4;
+      break;
+    case 0b010:
+      if (wback) {
+        wback_disp = 4 * reg_cnt;
+      }
+      // disp remains 0
+      break;
+    case 0b100:
+      if (wback) {
+        wback_disp = -4 * reg_cnt;
+      }
+      disp = -4 * reg_cnt;
+      break;
+    case 0b110:
+      if (wback) {
+        wback_disp = 4 * reg_cnt;
+      }
+      disp = 4;
+      break;
+      // TODO(Sonya): STM (User registers), LDM (User registers), LDM (exception return)
+  }
+
   AddImmOp(inst, enc.register_list, 16u, false);
-
-  // Write Back
-  AddIntRegOp(inst, enc.rn, 32, Operand::kActionWrite);
-  if (wback) {
-    if (enc.L) {
-      // LDM
-      AddAddrRegOp(inst, kIntRegName[enc.rn], 32u, Operand::kActionRead,
-                   4 * reg_cnt);
-    } else {
-      // STMDB
-      AddAddrRegOp(inst, kIntRegName[enc.rn], 32u, Operand::kActionRead,
-                   -4 * reg_cnt);
-    }
-  } else {
-    AddAddrRegOp(inst, kIntRegName[enc.rn], 32u, Operand::kActionRead, 0);
-  }
-
-  // Add mem and reg ops
-  if (enc.L){
-    AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, 0);
-  } else {
-    AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, -4 * reg_cnt);
-  }
+  AddIntRegOp(inst, enc.rn, 32u, Operand::kActionWrite);
+  AddAddrRegOp(inst, kIntRegName[enc.rn], 32u, kMemAction, wback_disp);
+  AddAddrRegOp(inst, kIntRegName[enc.rn], 32u, kMemAction, disp);
   for (uint32_t i = 0u; 16u > i; i++) {
-    AddIntRegOp(inst, i, 32, kRegAction);
+    AddIntRegOp(inst, i, 32u, kRegAction);
   }
 
   if (enc.register_list & (0b1 << 15u)) {
@@ -2811,22 +2821,22 @@ static TryDecode * kExtraLoadStore[] = {
     [0b111111] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead, Operand::kActionWrite, 16u, true>,
 };
 
-// Load Store Multiple
+// Load Store Multiple <P> | <U> | <op> | <L>
 static TryDecode * kMLoadStore[] = {
-    [0b0000] = nullptr, //"STMDA",
-    [0b0001] = nullptr, //"LDMDA",
+    [0b0000] = TryDecodeLoadStoreMultiple<Operand::kActionWrite, Operand::kActionRead>, //"STMDA",
+    [0b0001] = TryDecodeLoadStoreMultiple<Operand::kActionRead, Operand::kActionWrite, true>, //"LDMDA",
     [0b0010] = nullptr, //"STMu", // (User registers)
     [0b0011] = nullptr, //"LDM", // (User registers) || (exception return)
-    [0b0100] = nullptr, //"STM",
-    [0b0101] = TryDecodeLoadStoreMultiple<Operand::kActionRead, Operand::kActionWrite, 32, true>,
+    [0b0100] = TryDecodeLoadStoreMultiple<Operand::kActionWrite, Operand::kActionRead>, //"STM",
+    [0b0101] = TryDecodeLoadStoreMultiple<Operand::kActionRead, Operand::kActionWrite, true>,
     [0b0110] = nullptr, //"STMu", // (User registers)
     [0b0111] = nullptr, //"LDM", // (User registers) || (exception return)
-    [0b1000] = TryDecodeLoadStoreMultiple<Operand::kActionWrite, Operand::kActionRead, 32u>,
-    [0b1001] = nullptr, //"LDMDB",
+    [0b1000] = TryDecodeLoadStoreMultiple<Operand::kActionWrite, Operand::kActionRead>,
+    [0b1001] = TryDecodeLoadStoreMultiple<Operand::kActionRead, Operand::kActionWrite, true>, //"LDMDB",
     [0b1010] = nullptr, //"STMu", // (User registers)
     [0b1011] = nullptr, //"LDM", // (User registers) || (exception return)
-    [0b1100] = nullptr, //"STMIB",
-    [0b1101] = nullptr, //"LDMIB",
+    [0b1100] = TryDecodeLoadStoreMultiple<Operand::kActionWrite, Operand::kActionRead>, //"STMIB",
+    [0b1101] = TryDecodeLoadStoreMultiple<Operand::kActionRead, Operand::kActionWrite, true>, //"LDMIB",
     [0b1110] = nullptr, //"STMu", // (User registers)
     [0b1111] = nullptr, //"LDM", // (User registers) || (exception return)
 };
