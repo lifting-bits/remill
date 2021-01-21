@@ -170,7 +170,7 @@ Then you need to install 32-bit libstdc++ headers and libraries. On a Debian/Ubu
 ```sh
 sudo dpkg --add-architecture i386
 sudo apt-get update
-sudo apt-get install libc6-dev:i386 install libstdc++-10-dev:i386 g++-multilib
+sudo apt-get install libc6-dev:i386 libstdc++-10-dev:i386 g++-multilib
 ```
 
 This error happens because the SPARC32 runtime semantics (the bitcode library which lives in `<install directory>/share/remill/<version>/semantics/sparc32.bc`) are built as 32-bit code, but 32-bit development libraries are not installed by default.
