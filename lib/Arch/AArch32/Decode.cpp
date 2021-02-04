@@ -475,6 +475,22 @@ union Sat32 {
 } __attribute__((packed));
 static_assert(sizeof(Sat32) == 4, " ");
 
+// Bitfield Extract
+union BitExt {
+  uint32_t flat;
+  struct {
+    uint32_t Rn : 4;
+    uint32_t _101 : 3;
+    uint32_t lsb : 5;
+    uint32_t Rd : 4;
+    uint32_t widthm1 : 5;
+    uint32_t _1 : 1;
+    uint32_t U : 1;
+    uint32_t _01111: 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(BitExt) == 4, " ");
 
 
 static constexpr auto kPCRegNum = 15u;
@@ -2552,6 +2568,40 @@ static bool TryDecodeSat32(Instruction &inst, uint32_t bits) {
   return true;
 }
 
+// U
+// 0 SBFX
+// 1 UBFX
+static const char * const kBitExt[] = {
+    [0b0] = "SBFX",
+    [0b1] = "UBFX",
+};
+
+// Bitfield Extract
+static bool TryBitExtract(Instruction &inst, uint32_t bits) {
+  const BitExt enc = { bits };
+  DecodeCondition(inst, enc.cond);
+
+  inst.function = kBitExt[enc.U];
+
+  // if d == 15 || n == 15 then UNPREDICTABLE;
+  // msbit = lsbit + widthminus1;
+  // if msbit > 31 then UNPREDICTABLE;
+  if (enc.Rd == kPCRegNum
+      || enc.Rn == kPCRegNum
+      || (enc.lsb + enc.widthm1) > 31) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+
+  AddIntRegOp(inst, enc.Rd, 32u, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.Rn, 32u, Operand::kActionRead);
+  AddImmOp(inst, enc.lsb);
+  AddImmOp(inst, enc.widthm1);
+
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
+
 // op0  op1
 //00xxx     Parallel Arithmetic
 //01000 101 SEL
@@ -2635,7 +2685,7 @@ static TryDecode * TryMedia(uint32_t bits) {
     case 0b01101011:
     case 0b01110011:
     case 0b01111011:
-      // Extend and Add
+      //return TryExtAdd;
     case 0b11000000:
       // Unsigned Sum of Absolute Differences
     case 0b11100000:
@@ -2645,6 +2695,7 @@ static TryDecode * TryMedia(uint32_t bits) {
       // Bitfield Insert
     case 0b11111111:
       // Permanently UNDEFINED
+      return nullptr;
     case 0b11010010:
     case 0b11010110:
     case 0b11011010:
@@ -2653,7 +2704,7 @@ static TryDecode * TryMedia(uint32_t bits) {
     case 0b11110110:
     case 0b11111010:
     case 0b11111110:
-      // Bitfield Extract
+      return TryBitExtract;
     default:
       return nullptr;
   }
