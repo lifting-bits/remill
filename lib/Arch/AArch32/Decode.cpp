@@ -2634,7 +2634,7 @@ static bool TryExtAdd(Instruction &inst, uint32_t bits) {
   const ExtAdd enc = { bits };
   DecodeCondition(inst, enc.cond);
 
-  auto instruction = kExtAdd(enc.U << 3 | enc.op | (enc.Rn == kPCRegNum));
+  auto instruction = kExtAdd(enc.U << 3 | enc.op << 1 | (enc.Rn == kPCRegNum));
 
   // if d == 15 || m == 15 then UNPREDICTABLE;
   if (!instruction || enc.Rd == kPCRegNum || enc.Rm == kPCRegNum) {
