@@ -475,6 +475,23 @@ union Sat32 {
 } __attribute__((packed));
 static_assert(sizeof(Sat32) == 4, " ");
 
+// Extend and Add
+union ExtAdd {
+  uint32_t flat;
+  struct {
+    uint32_t Rm : 4;
+    uint32_t _000111 : 6;
+    uint32_t rot : 2;
+    uint32_t Rd : 4;
+    uint32_t Rn : 4;
+    uint32_t op : 2;
+    uint32_t U : 1;
+    uint32_t _01101: 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(ExtAdd) == 4, " ");
+
 // Bitfield Extract
 union BitExt {
   uint32_t flat;
@@ -2568,6 +2585,77 @@ static bool TryDecodeSat32(Instruction &inst, uint32_t bits) {
   return true;
 }
 
+// U op  Rn == 15
+// 0 00  != 1111  SXTAB16
+// 0 00  1111     SXTB16
+// 0 10  != 1111  SXTAB
+// 0 10  1111     SXTB
+// 0 11  != 1111  SXTAH
+// 0 11  1111     SXTH
+// 1 00  != 1111  UXTAB16
+// 1 00  1111     UXTB16
+// 1 10  != 1111  UXTAB
+// 1 10  1111     UXTB
+// 1 11  != 1111  UXTAH
+// 1 11  1111     UXTH
+static const char * kExtAdd(uint32_t index) {
+    switch(index) {
+        case 0b0000:
+          return "SXTAB16";
+        case 0b0001:
+          return "SXTB16";
+        case 0b0100:
+          return "SXTAB";
+        case 0b0101:
+          return "SXTB";
+        case 0b0110:
+          return "SXTAH";
+        case 0b0111:
+          return "SXTH";
+        case 0b1000:
+          return "UXTAB16";
+        case 0b1001:
+          return "UXTB16";
+        case 0b1100:
+          return "UXTAB";
+        case 0b1101:
+          return "UXTB";
+        case 0b1110:
+          return "UXTAH";
+        case 0b1111:
+          return "UXTH";
+        default:
+          return nullptr;
+    }
+}
+
+// Extend and Add
+static bool TryExtAdd(Instruction &inst, uint32_t bits) {
+  const ExtAdd enc = { bits };
+  DecodeCondition(inst, enc.cond);
+
+  auto instruction = kExtAdd(enc.U << 3 | enc.op | (enc.Rn == kPCRegNum));
+
+  // if d == 15 || m == 15 then UNPREDICTABLE;
+  if (!instruction || enc.Rd == kPCRegNum || enc.Rm == kPCRegNum) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+  inst.function = instruction;
+
+  AddIntRegOp(inst, enc.Rd, 32u, Operand::kActionWrite);
+  if (enc.Rn != kPCRegNum) {
+    AddIntRegOp(inst, enc.Rn, 32u, Operand::kActionRead);
+  } else {
+    AddImmOp(inst, 0u);
+  }
+  AddIntRegOp(inst, enc.Rm, 32u, Operand::kActionRead);
+  AddImmOp(inst, enc.rot << 3);
+
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
+
 // U
 // 0 SBFX
 // 1 UBFX
@@ -2685,7 +2773,7 @@ static TryDecode * TryMedia(uint32_t bits) {
     case 0b01101011:
     case 0b01110011:
     case 0b01111011:
-      //return TryExtAdd;
+      return TryExtAdd;
     case 0b11000000:
       // Unsigned Sum of Absolute Differences
     case 0b11100000:

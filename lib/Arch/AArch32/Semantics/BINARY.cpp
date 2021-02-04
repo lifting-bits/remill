@@ -590,6 +590,121 @@ DEF_ISEL(SMMUL) = SMMLA;
 DEF_ISEL(SMMULR) = SMMLA;
 
 
+// Extend and Add
+namespace {
+template <typename T>
+T ROR_C(T val, T shift) {
+  if (shift == 0) {
+    return val;
+  }
+
+  auto m = URem(shift, sizeof(T));
+  auto shr = UShr(val, m);
+  auto shl = UShl(val, sizeof(T) - m);
+  auto res = UOr(shr, shl);
+  return res;
+}
+
+DEF_COND_SEM(SXTAB16, R32W dst, R32 src1, R32 src2, I32 src3) {
+  auto src = Read(src2);
+  auto src_add = Read(src1);
+  auto rot = Read(src3);
+
+  src = ROR_C(src, rot);
+  // low/high 16 bits of rn + the low byte sign extended of the low/high 16 bits of rm
+  auto low = ZExt(UAdd(Trunc(src_add), Unsigned(SExtTo<uint16_t>(Signed(TruncTo<uint8_t>(src))))));
+  auto high = ZExt(UAdd(Trunc(UShr(src_add, 16u)),
+                        Unsigned(SExtTo<uint16_t>(Signed(TruncTo<uint8_t>(UShr(src, 16u)))))));
+  auto res = UOr(low, UShl(high, 16u));
+
+  Write(dst, res);
+  return memory;
+}
+
+DEF_COND_SEM(SXTAB, R32W dst, R32 src1, R32 src2, I32 src3) {
+  auto src = Read(src2);
+  auto src_add = Read(src1);
+  auto rot = Read(src3);
+
+  src = ROR_C(src, rot);
+  // Extract low byte
+  auto res = UAdd(Unsigned(SExtTo<uint32_t>(Signed(TruncTo<uint8_t>(src)))),
+                  src_add);
+
+  Write(dst, res);
+  return memory;
+}
+
+DEF_COND_SEM(SXTAH, R32W dst, R32 src1, R32 src2, I32 src3) {
+  auto src = Read(src2);
+  auto src_add = Read(src1);
+  auto rot = Read(src3);
+
+  src = ROR_C(src, rot);
+  // Extract low 2 bytes and sign extend
+  auto res = UAdd(Unsigned(SExt(Signed(Trunc(src)))) , src_add);
+
+  Write(dst, res);
+  return memory;
+}
+
+DEF_COND_SEM(UXTAB16, R32W dst, R32 src1, R32 src2, I32 src3) {
+  auto src = Read(src2);
+  auto src_add = Read(src1);
+  auto rot = Read(src3);
+
+  src = ROR_C(src, rot);
+  // low/high 16 bits of rn + the low byte of the low/high 16 bits of rm
+  auto low = ZExt(UAdd(Trunc(src_add), UAnd(Trunc(src), uint16_t(255u))));
+  auto high = ZExt(UAdd(Trunc(UShr(src_add, 16u)),
+                        UAnd(Trunc(UShr(src, 16u)), uint16_t(255u))));
+  auto res = UOr(low, UShl(high, 16u));
+
+  Write(dst, res);
+  return memory;
+}
+
+DEF_COND_SEM(UXTAB, R32W dst, R32 src1, R32 src2, I32 src3) {
+  auto src = Read(src2);
+  auto src_add = Read(src1);
+  auto rot = Read(src3);
+
+  src = ROR_C(src, rot);
+  // Extract low byte i.e. 0b11111111 = 255
+  auto res =  UAdd(UAnd(src, uint32_t(255u)), src_add);
+
+  Write(dst, res);
+  return memory;
+}
+
+DEF_COND_SEM(UXTAH, R32W dst, R32 src1, R32 src2, I32 src3) {
+  auto src = Read(src2);
+  auto src_add = Read(src1);
+  auto rot = Read(src3);
+
+  src = ROR_C(src, rot);
+  // Extract low 2 bytes i.e. 0b1111111111111111 = 65535
+  auto res = UAdd(UAnd(src, uint32_t(65535u)), src_add);
+
+  Write(dst, res);
+  return memory;
+}
+}
+
+DEF_ISEL(SXTAB16) = SXTAB16;
+DEF_ISEL(SXTB16) = SXTAB16;
+DEF_ISEL(SXTAB) = SXTAB;
+DEF_ISEL(SXTB) = SXTAB;
+DEF_ISEL(SXTAH) = SXTAH;
+DEF_ISEL(SXTH) = SXTAH;
+DEF_ISEL(UXTAB16) = UXTAB16;
+DEF_ISEL(UXTB16) = UXTAB16;
+DEF_ISEL(UXTAB) = UXTAB;
+DEF_ISEL(UXTB) = UXTAB;
+DEF_ISEL(UXTAH) = UXTAH;
+DEF_ISEL(UXTH) = UXTAH;
+
+
 // Bitfield Extract
 namespace {
 DEF_COND_SEM(SBFX, R32W dst, R32 src1, I32 src2, I32 src3) {
