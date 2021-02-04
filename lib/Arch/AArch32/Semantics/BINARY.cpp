@@ -613,9 +613,9 @@ DEF_COND_SEM(SXTAB16, R32W dst, R32 src1, R32 src2, I32 src3) {
   src = ROR_C(src, rot, 32u);
   // low/high 16 bits of rn + the low byte sign extended of the low/high 16 bits of rm
   auto low = ZExt(UAdd(Trunc(src_add), Unsigned(SExtTo<uint16_t>(Signed(TruncTo<uint8_t>(src))))));
-  auto high = ZExt(UAdd(Trunc(UShr(src_add, 16u)),
+  auto high = SExt(UAdd(Trunc(UShr(src_add, 16u)),
                         Unsigned(SExtTo<uint16_t>(Signed(TruncTo<uint8_t>(UShr(src, 16u)))))));
-  auto res = UOr(low, UShl(high, 16u));
+  auto res = UOr(low, UShl(Unsigned(high), 16u));
 
   Write(dst, res);
   return memory;
