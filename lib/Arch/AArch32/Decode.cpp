@@ -509,6 +509,21 @@ union BitExt {
 } __attribute__((packed));
 static_assert(sizeof(BitExt) == 4, " ");
 
+// Move Special Register and Hints (immediate)
+union SpecialRegsAndHints {
+  uint32_t flat;
+  struct {
+    uint32_t imm12 : 12;
+    uint32_t _1111 : 4;
+    uint32_t imm4 : 4;
+    uint32_t _10 : 2;
+    uint32_t R : 1;
+    uint32_t _00110: 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(SpecialRegsAndHints) == 4, " ");
+
 
 static constexpr auto kPCRegNum = 15u;
 static constexpr auto kLRRegNum = 14u;
@@ -2167,6 +2182,132 @@ static bool TryDecodeLoadStoreMultiple(Instruction &inst, uint32_t bits) {
   return true;
 }
 
+
+// Index from: op1 | Ra == 15 | op2
+static const char* kSpecial(uint32_t index) {
+  switch (index) {
+    case 0b0000000000000:
+      return "NOP";
+    case 0b0000000000001:
+      // TODO(Sonya) return "YIELD";
+    case 0b0000000000010:
+      // TODO(Sonya) return "WFE";
+    case 0b0000000000011:
+      // TODO(Sonya) return "WFI";
+    case 0b0000000000100:
+      // TODO(Sonya) return "SEV";
+    case 0b0000000000101:
+      // TODO(Sonya) return "SEVL";
+      return nullptr;
+    case 0b0000000000110:
+    case 0b0000000000111:
+      return "HINT_1"; // Reserved hint, behaves as NOP
+    case 0b0000000001000:
+    case 0b0000000001001:
+    case 0b0000000001010:
+    case 0b0000000001011:
+    case 0b0000000001100:
+    case 0b0000000001101:
+    case 0b0000000001110:
+    case 0b0000000001111:
+      return "HINT_2"; // Reserved hint, behaves as NOP
+    // case 0b0000000010000:  ESB ARMv8.2
+    case 0b0000000010001:
+      return "HINT_3"; // Reserved hint, behaves as NOP
+    case 0b0000000010010:
+    case 0b0000000010011:
+      return "HINT_4"; // Reserved hint, behaves as NOP
+    case 0b0000000010100:
+    case 0b0000000010101:
+    case 0b0000000010110:
+    case 0b0000000010111:
+      return "HINT_5"; // Reserved hint, behaves as NOP
+    case 0b0000000011000:
+    case 0b0000000011001:
+    case 0b0000000011010:
+    case 0b0000000011011:
+    case 0b0000000011100:
+    case 0b0000000011101:
+    case 0b0000000011110:
+    case 0b0000000011111:
+      return "HINT_6"; // Reserved hint, behaves as NOP
+    case 0b0000011100000:
+    case 0b0000011100001:
+    case 0b0000011100010:
+    case 0b0000011100011:
+    case 0b0000011100100:
+    case 0b0000011100101:
+    case 0b0000011100110:
+    case 0b0000011100111:
+    case 0b0000011101000:
+    case 0b0000011101001:
+    case 0b0000011101010:
+    case 0b0000011101011:
+    case 0b0000011101100:
+    case 0b0000011101101:
+    case 0b0000011101110:
+    case 0b0000011101111:
+      return "HINT_11"; // Reserved hint, behaves as NOP
+  }
+  switch (index >> 5) {
+    case 0b00000001:
+      return "HINT_7";  // Reserved hint, behaves as NOP
+    case 0b00000010:
+    case 0b00000011:
+      return "HINT_8";  // Reserved hint, behaves as NOP
+    case 0b00000100:
+    case 0b00000101:
+      return "HINT_9";  // Reserved hint, behaves as NOP
+    case 0b00000110:
+      return "HINT_10";  // Reserved hint, behaves as NOP
+    default:
+      return nullptr;
+  }
+}
+
+// R:imm4         imm12
+// != 00000                MSR (immediate)
+// 00000     xxxx00000000  NOP
+// 00000     xxxx00000001  YIELD
+// 00000     xxxx00000010  WFE
+// 00000     xxxx00000011  WFI
+// 00000     xxxx00000100  SEV
+// 00000     xxxx00000101  SEVL
+// 00000     xxxx0000011x  Reserved hint, behaves as NOP
+// 00000     xxxx00001xxx  Reserved hint, behaves as NOP
+// 00000     xxxx00010000  ESB ARMv8.2
+// 00000     xxxx00010001  Reserved hint, behaves as NOP
+// 00000     xxxx0001001x  Reserved hint, behaves as NOP
+// 00000     xxxx000101xx  Reserved hint, behaves as NOP
+// 00000     xxxx00011xxx  Reserved hint, behaves as NOP
+// 00000     xxxx001xxxxx  Reserved hint, behaves as NOP
+// 00000     xxxx01xxxxxx  Reserved hint, behaves as NOP
+// 00000     xxxx10xxxxxx  Reserved hint, behaves as NOP
+// 00000     xxxx110xxxxx  Reserved hint, behaves as NOP
+// 00000     xxxx1110xxxx  Reserved hint, behaves as NOP
+// 00000     xxxx1111xxxx  DBG
+// Move Special Register and Hints (immediate)
+// TODO(Sonya): This literally only has functionality for NOP and "behaves as NOP"
+static bool TryMoveSpecialRegisterAndHintsI(Instruction &inst, uint32_t bits) {
+  const SpecialRegsAndHints enc = { bits };
+
+  // R:imm4:imm12<low 8 bits only>
+  auto instruction = kSpecial(enc.R << 12 | enc.imm4 | (enc.imm12 & 255u));
+  if (!instruction) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+
+  // A NOP is still conditional:
+  //  if ConditionPassed() then
+  //      EncodingSpecificOperations();
+  //      // Do nothing
+  inst.function = instruction;
+  DecodeCondition(inst, enc.cond);
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
+
 // Can package semantics for MOV with ORR and MVN with BIC since src1 will be
 // 0 and 1 for MOV and MVN respectively, mirroring the semantics in LOGICAL.cpp
 static InstEval * kLogArithEvaluators[] = {
@@ -2197,9 +2338,7 @@ static const char * const kLogicalArithmeticRRRI[] = {
 static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
   const LogicalArithRRRI enc = { bits };
 
-  auto instruction = kLogicalArithmeticRRRI[enc.opc << 1u | enc.s];
-
-  inst.function = instruction;
+  inst.function = kLogicalArithmeticRRRI[enc.opc << 1u | enc.s];
   auto is_cond = DecodeCondition(inst, enc.cond);
 
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
@@ -2882,7 +3021,7 @@ static TryDecode * kDataProcessingI[] = {
     [0b0111] = TryDecodeIntegerDataProcessingRRI,
     [0b1000] = TryDecodeMoveHalfword,
     [0b1001] = TryIntegerTestAndCompareRI,
-    [0b1010] = nullptr, // TODO(Sonya): Move Special Register and Hints (immediate)
+    [0b1010] = TryMoveSpecialRegisterAndHintsI,
     [0b1011] = TryIntegerTestAndCompareRI,
     [0b1100] = TryLogicalArithmeticRRI,
     [0b1101] = TryLogicalArithmeticRRI,

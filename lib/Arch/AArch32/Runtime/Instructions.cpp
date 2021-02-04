@@ -67,7 +67,7 @@ DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 #include "lib/Arch/AArch32/Semantics/COND.cpp"
 //#include "lib/Arch/AArch32/Semantics/CONVERT.cpp"
 //#include "lib/Arch/AArch32/Semantics/DATAXFER.cpp"
-//#include "lib/Arch/AArch32/Semantics/MISC.cpp"
+#include "lib/Arch/AArch32/Semantics/MISC.cpp"
 //#include "lib/Arch/AArch32/Semantics/SHIFT.cpp"
 //#include "lib/Arch/AArch32/Semantics/SIMD.cpp"
 //#include "lib/Arch/AArch32/Semantics/SYSTEM.cpp"

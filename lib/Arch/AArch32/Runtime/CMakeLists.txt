@@ -59,6 +59,7 @@ function(add_runtime_helper target_name little_endian)
     "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/MEM.cpp" 
     "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/BRANCH.cpp"   
     "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/BITBYTE.cpp"   
+    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/MISC.cpp"   
   )
 endfunction()
 
