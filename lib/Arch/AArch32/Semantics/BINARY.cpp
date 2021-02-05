@@ -414,40 +414,40 @@ DEF_ISEL(SSAT16) = SSAT16;
 // Integer Saturating Arithmetic
 namespace {
 DEF_COND_SEM(QADD, R32W dst, R32 src1, R32 src2) {
-  auto rhs = SExt<int64_t>(Signed(Read(src2)));
-  auto lhs = SExt<int64_t>(Signed(Read(src1)));
+  auto rhs = SExt(Signed(Read(src2)));
+  auto lhs = SExt(Signed(Read(src1)));
   auto res = SAdd(lhs, rhs);
   res = SignedSatQ(state, res, 32);
-  Write(dst, TruncTo<uint32_t>(res));
+  Write(dst, Trunc(Unsigned(res)));
   return memory;
 }
 
 DEF_COND_SEM(QDADD, R32W dst, R32 src1, R32 src2) {
-  auto rhs = SExt<int64_t>(Signed(Read(src2)));
-  auto lhs = SExt<int64_t>(Signed(Read(src1)));
+  auto rhs = SExt(Signed(Read(src2)));
+  auto lhs = SExt(Signed(Read(src1)));
   rhs = SignedSatQ(state, SShl(rhs, 1u), 32);
   auto res = SAdd(lhs, rhs);
   res = SignedSatQ(state, res, 32);
-  Write(dst, TruncTo<uint32_t>(res));
+  Write(dst, Trunc(Unsigned(res)));
   return memory;
 }
 
 DEF_COND_SEM(QSUB, R32W dst, R32 src1, R32 src2) {
-  auto rhs = SExt<int64_t>(Signed(Read(src2)));
-  auto lhs = SExt<int64_t>(Signed(Read(src1)));
+  auto rhs = SExt(Signed(Read(src2)));
+  auto lhs = SExt(Signed(Read(src1)));
   auto res = SSub(lhs, rhs);
   res = SignedSatQ(state, res, 32);
-  Write(dst, TruncTo<uint32_t>(res));
+  Write(dst, Trunc(Unsigned(res)));
   return memory;
 }
 
 DEF_COND_SEM(QDSUB, R32W dst, R32 src1, R32 src2) {
-  auto rhs = SExt<int64_t>(Signed(Read(src2)));
-  auto lhs = SExt<int64_t>(Signed(Read(src1)));
+  auto rhs = SExt(Signed(Read(src2)));
+  auto lhs = SExt(Signed(Read(src1)));
   rhs = SignedSatQ(state, SShl(rhs, 1u), 32);
   auto res = SSub(lhs, rhs);
   res = SignedSatQ(state, res, 32);
-  Write(dst, TruncTo<uint32_t>(res));
+  Write(dst, Trunc(Unsigned(res)));
   return memory;
 }
 } // namespace
@@ -457,22 +457,22 @@ DEF_ISEL(QDADD) = QDADD;
 DEF_ISEL(QSUB) = QSUB;
 DEF_ISEL(QDSUB) = QDSUB;
 
-// Signed multiply, Divide
+// TODO Signed multiply, Divide
 namespace {
 DEF_COND_SEM(SMLAD, R32W dst, R32 src1, R32 src2, R32 src3) { // rn rm ra
   auto rn = Signed(Read(src1));
   auto rm = Signed(Read(src2));
   auto ra = Signed(Read(src3));
-  auto prod1 = SMul(SExt<int64_t>(Trunc(rn)),
-                    SExt<int64_t>(Trunc(rm)));
-  auto prod2 = SMul(SExt<int64_t>(SShr(rn, 16u)),
-                    SExt<int64_t>(SShr(rm, 16u)));
-  auto res = SAdd(SAdd(prod1, prod2), SExt<int64_t>(ra));
+  auto prod1 = SMul(SExtTo<int64_t>(Trunc(rn)),
+                    SExtTo<int64_t>(Trunc(rm)));
+  auto prod2 = SMul(SExtTo<int64_t>(SShr(rn, 16u)),
+                    SExtTo<int64_t>(SShr(rm, 16u)));
+  auto res = SAdd(SAdd(prod1, prod2), SExt(ra));
   WriteTrunc(dst, Unsigned(res));
 
   //  if result != SInt(result<31:0>) then  // Signed overflow
   //      PSTATE.Q = '1';
-  state.sr.q = Select(SCmpNeq(res, SExt<int64_t>(Trunc(res))),
+  state.sr.q = Select(SCmpNeq(res, SExtTo<int64_t>(Trunc(res))),
                         uint8_t(1), state.sr.q);
   return memory;
 }
@@ -481,16 +481,16 @@ DEF_COND_SEM(SMLSD, R32W dst, R32 src1, R32 src2, R32 src3) { // rn rm ra
   auto rn = Signed(Read(src1));
   auto rm = Signed(Read(src2));
   auto ra = Signed(Read(src3));
-  auto prod1 = SMul(SExt<int64_t>(Signed(Trunc(rn))),
-                    SExt<int64_t>(Signed(Trunc(rm))));
-  auto prod2 = SMul(SExt<int64_t>(SShr(rn, 16u)),
-                    SExt<int64_t>(SShr(rm, 16u)));
-  auto res = SAdd(SSub(prod1, prod2), SExt<int64_t>(ra));
+  auto prod1 = SMul(SExtTo<int64_t>(Signed(Trunc(rn))),
+                    SExtTo<int64_t>(Signed(Trunc(rm))));
+  auto prod2 = SMul(SExtTo<int64_t>(SShr(rn, 16u)),
+                    SExtTo<int64_t>(SShr(rm, 16u)));
+  auto res = SAdd(SSub(prod1, prod2), SExt(ra));
   WriteTrunc(dst, Unsigned(res));
 
   //  if result != SInt(result<31:0>) then  // Signed overflow
   //      PSTATE.Q = '1';
-  state.sr.q = Select(SCmpNeq(res, SExt<int64_t>(Trunc(res))),
+  state.sr.q = Select(SCmpNeq(res, SExtTo<int64_t>(Trunc(res))),
                         uint8_t(1), state.sr.q);
   return memory;
 }
@@ -520,12 +520,12 @@ DEF_COND_SEM(UDIV, R32W dst, R32 src1, R32 src2, R32 src3) { // rn rm
 DEF_COND_SEM(SMLALD, R32W dst_lo, R32W dst_hi, R32 src1, R32 src2, R32 src3, R32 src4) { // ra - lo rd - hi rn rm ra - lo rd - hi
   auto rn = Signed(Read(src1));
   auto rm = Signed(Read(src2));
-  auto lo = SExt<int64_t>(Signed(Read(src3)));
-  auto hi = SExt<int64_t>(Signed(Read(src4)));
-  auto prod1 = SMul(SExt<int64_t>(Trunc(rn)),
-                    SExt<int64_t>(Trunc(rm)));
-  auto prod2 = SMul(SExt<int64_t>(SShr(rn, 16u)),
-                    SExt<int64_t>(SShr(rm, 16u)));
+  auto lo = SExt(Signed(Read(src3)));
+  auto hi = SExt(Signed(Read(src4)));
+  auto prod1 = SMul(SExtTo<int64_t>(Trunc(rn)),
+                    SExtTo<int64_t>(Trunc(rm)));
+  auto prod2 = SMul(SExtTo<int64_t>(SShr(rn, 16u)),
+                    SExtTo<int64_t>(SShr(rm, 16u)));
   auto res = SAdd(SAdd(prod1, prod2), SOr(lo, SShl(hi, 32u)));
   WriteTrunc(dst_lo, Unsigned(res));
   WriteTrunc(dst_hi, Unsigned(SShr(res, 32u)));
@@ -535,12 +535,12 @@ DEF_COND_SEM(SMLALD, R32W dst_lo, R32W dst_hi, R32 src1, R32 src2, R32 src3, R32
 DEF_COND_SEM(SMLSLD, R32W dst_lo, R32W dst_hi, R32 src1, R32 src2, R32 src3, R32 src4) { // ra - lo rd - hi rn rm ra - lo rd - hi
   auto rn = Signed(Read(src1));
   auto rm = Signed(Read(src2));
-  auto lo = SExt<int64_t>(Signed(Read(src3)));
-  auto hi = SExt<int64_t>(Signed(Read(src4)));
-  auto prod1 = SMul(SExt<int64_t>(Trunc(rn)),
-                    SExt<int64_t>(Trunc(rm)));
-  auto prod2 = SMul(SExt<int64_t>(SShr(rn, 16u)),
-                    SExt<int64_t>(SShr(rm, 16u)));
+  auto lo = SExt(Signed(Read(src3)));
+  auto hi = SExt(Signed(Read(src4)));
+  auto prod1 = SMul(SExtTo<int64_t>(Trunc(rn)),
+                    SExtTo<int64_t>(Trunc(rm)));
+  auto prod2 = SMul(SExtTo<int64_t>(SShr(rn, 16u)),
+                    SExtTo<int64_t>(SShr(rm, 16u)));
   auto res = SAdd(SSub(prod1, prod2), SOr(lo, SShl(hi, 32u)));
   WriteTrunc(dst_lo, Unsigned(res));
   WriteTrunc(dst_hi, Unsigned(SShr(res, 32u)));
