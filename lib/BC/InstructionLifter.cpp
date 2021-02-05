@@ -165,10 +165,9 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
   auto arg_num = 2U;
 
   for (auto &op : arch_inst.operands) {
-    CHECK(arg_num < isel_func_type->getNumParams())
-        << "Function " << arch_inst.function << ", implemented by "
-        << isel_func->getName().str() << ", should have at least " << arg_num
-        << " arguments for instruction " << arch_inst.Serialize();
+    if (!(arg_num < isel_func_type->getNumParams())) {
+      return kLiftedMismatchedISEL;
+    }
 
     auto arg = NthArgument(isel_func, arg_num);
     auto arg_type = arg->getType();

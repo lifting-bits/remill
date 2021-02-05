@@ -29,7 +29,9 @@ add_library(remill_arch_sparc32 STATIC
   Extract.cpp
 )
 
-add_subdirectory(Runtime)
+if(${REMILL_BUILD_SPARC32_RUNTIME})
+  add_subdirectory(Runtime)
+endif()
 
 set_property(TARGET remill_arch_sparc32 PROPERTY POSITION_INDEPENDENT_CODE ON)
 

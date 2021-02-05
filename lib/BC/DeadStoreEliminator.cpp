@@ -36,6 +36,7 @@
 #include <vector>
 
 #include "remill/Arch/Arch.h"
+#include "remill/BC/Compat/CallSite.h"
 #include "remill/BC/Compat/VectorType.h"
 #include "remill/BC/ABI.h"
 #include "remill/BC/Util.h"
@@ -407,20 +408,20 @@ static void StreamCallOrInvokeToDOT(std::ostream &dot,
     dot << "%" << inst.getName().str() << " = ";
   }
 
-  llvm::Value *called_val = nullptr;
-  if (auto call_inst = llvm::dyn_cast<llvm::CallInst>(&inst)) {
-    dot << "call ";
-    called_val = call_inst->getCalledOperand();
-  } else {
-    dot << "invoke ";
-    auto invoke_inst = llvm::dyn_cast<llvm::InvokeInst>(&inst);
-    called_val = invoke_inst->getCalledOperand();
-  }
+  if (auto cs = compat::llvm::CallSite(&inst)) {
+    if (cs.isInvoke()) {
+      dot << "invoke ";
+    } else if (cs.isCall()) {
+      dot << "call";
+    } else {
+      LOG(ERROR) << "Encountered callsite that is not call nor invoke!";
+    }
 
-  if (called_val->getName().empty()) {
-    dot << called_val->getValueID();
-  } else {
-    dot << called_val->getName().str();
+    if(!cs.getCalledValue()->getName().empty()) {
+      dot << cs.getCalledValue()->getName().str();
+    } else {
+      dot << cs.getCalledValue()->getValueID();
+    }
   }
 }
 
@@ -1135,7 +1136,8 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &inst) {
 }
 
 VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
-  const auto val = inst.getCalledOperand()->stripPointerCasts();
+  //const auto val = inst.getCalledOperand()->stripPointerCasts();
+  const auto val = compat::llvm::CallSite(&inst).getCalledValue()->stripPointerCasts();
   if (auto const_val = llvm::dyn_cast<llvm::Constant>(val); const_val) {
 
     // Don't let this affect anything.
@@ -1187,7 +1189,7 @@ VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
 }
 
 VisitResult ForwardAliasVisitor::visitInvokeInst(llvm::InvokeInst &inst) {
-  auto val = inst.getCalledOperand()->stripPointerCasts();
+  auto val = compat::llvm::CallSite(&inst).getCalledValue()->stripPointerCasts();
   if (llvm::isa<llvm::InlineAsm>(val)) {
     live_args[&inst].set();  // Weird to invoke inline assembly.
 
