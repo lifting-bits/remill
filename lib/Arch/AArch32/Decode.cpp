@@ -2214,7 +2214,7 @@ static const char* kSpecial(uint32_t index) {
     case 0b000001110:
     case 0b000001111:
       return "HINT_2"; // Reserved hint, behaves as NOP
-    // case 0b0000000010000:  ESB ARMv8.2
+    // case 0b000010000: return "ESB"; // ARMv8.2
     case 0b000010001:
       return "HINT_3"; // Reserved hint, behaves as NOP
     case 0b000010010:
@@ -2294,7 +2294,7 @@ static const char* kSpecial(uint32_t index) {
 static bool TryMoveSpecialRegisterAndHintsI(Instruction &inst, uint32_t bits) {
   const SpecialRegsAndHints enc = { bits };
 
-  // (R:imm4 != 00000):imm12<low 8 bits only>
+  // (R:imm4 != 00000)<1 bit>:imm12<low 8 bits only>
   auto instruction = kSpecial(((enc.R << 4 | enc.imm4) != 0b0u) << 8 | (enc.imm12 & 255u));
   if (!instruction) {
     inst.category = Instruction::kCategoryError;

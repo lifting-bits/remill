@@ -704,35 +704,3 @@ DEF_ISEL(UXTB) = UXTAB;
 DEF_ISEL(UXTAH) = UXTAH;
 DEF_ISEL(UXTH) = UXTAH;
 
-
-// Bitfield Extract
-namespace {
-DEF_COND_SEM(SBFX, R32W dst, R32 src1, I32 src2, I32 src3) {
-  auto src = Signed(Read(src1));
-  auto lsbit = Read(src2);
-  auto widthminus1 = Read(src3);
-  auto msbit = Signed(lsbit + widthminus1);
-  // Extract <msbit:lsbit> and retain high bit sign of msbit
-  // Shift lift to remove the high bits, then shift right to remove the low bits
-  auto res = SShr(SShl(src, int32_t(31) - Signed(msbit)),
-                  int32_t(31) - Signed(widthminus1));
-  Write(dst, Unsigned(res));
-  return memory;
-}
-
-DEF_COND_SEM(UBFX, R32W dst, R32 src1, I32 src2, I32 src3) {
-  auto src = Read(src1);
-  auto lsbit = Read(src2);
-  auto widthminus1 = Read(src3);
-  auto msbit = lsbit + widthminus1;
-  // Extract <msbit:lsbit> unsigned
-  // Shift lift to remove the high bits, then shift right to remove the low bits
-  auto res = UShr(UShl(src, uint32_t(31) - msbit), uint32_t(31) - widthminus1);
-  Write(dst, res);
-  return memory;
-}
-}
-
-DEF_ISEL(SBFX) = SBFX;
-DEF_ISEL(UBFX) = UBFX;
-
