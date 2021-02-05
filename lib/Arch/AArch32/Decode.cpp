@@ -2185,80 +2185,83 @@ static bool TryDecodeLoadStoreMultiple(Instruction &inst, uint32_t bits) {
 
 // Index from: op1 | Ra == 15 | op2
 static const char* kSpecial(uint32_t index) {
+  if (index >> 8) {
+    return nullptr;  // TODO(Sonya) MSR (immediate)
+  }
   switch (index) {
-    case 0b0000000000000:
+    case 0b000000000:
       return "NOP";
-    case 0b0000000000001:
+    case 0b000000001:
       // TODO(Sonya) return "YIELD";
-    case 0b0000000000010:
+    case 0b000000010:
       // TODO(Sonya) return "WFE";
-    case 0b0000000000011:
+    case 0b000000011:
       // TODO(Sonya) return "WFI";
-    case 0b0000000000100:
+    case 0b000000100:
       // TODO(Sonya) return "SEV";
-    case 0b0000000000101:
+    case 0b000000101:
       // TODO(Sonya) return "SEVL";
       return nullptr;
-    case 0b0000000000110:
-    case 0b0000000000111:
+    case 0b000000110:
+    case 0b000000111:
       return "HINT_1"; // Reserved hint, behaves as NOP
-    case 0b0000000001000:
-    case 0b0000000001001:
-    case 0b0000000001010:
-    case 0b0000000001011:
-    case 0b0000000001100:
-    case 0b0000000001101:
-    case 0b0000000001110:
-    case 0b0000000001111:
+    case 0b000001000:
+    case 0b000001001:
+    case 0b000001010:
+    case 0b000001011:
+    case 0b000001100:
+    case 0b000001101:
+    case 0b000001110:
+    case 0b000001111:
       return "HINT_2"; // Reserved hint, behaves as NOP
     // case 0b0000000010000:  ESB ARMv8.2
-    case 0b0000000010001:
+    case 0b000010001:
       return "HINT_3"; // Reserved hint, behaves as NOP
-    case 0b0000000010010:
-    case 0b0000000010011:
+    case 0b000010010:
+    case 0b000010011:
       return "HINT_4"; // Reserved hint, behaves as NOP
-    case 0b0000000010100:
-    case 0b0000000010101:
-    case 0b0000000010110:
-    case 0b0000000010111:
+    case 0b000010100:
+    case 0b000010101:
+    case 0b000010110:
+    case 0b000010111:
       return "HINT_5"; // Reserved hint, behaves as NOP
-    case 0b0000000011000:
-    case 0b0000000011001:
-    case 0b0000000011010:
-    case 0b0000000011011:
-    case 0b0000000011100:
-    case 0b0000000011101:
-    case 0b0000000011110:
-    case 0b0000000011111:
+    case 0b000011000:
+    case 0b000011001:
+    case 0b000011010:
+    case 0b000011011:
+    case 0b000011100:
+    case 0b000011101:
+    case 0b000011110:
+    case 0b000011111:
       return "HINT_6"; // Reserved hint, behaves as NOP
-    case 0b0000011100000:
-    case 0b0000011100001:
-    case 0b0000011100010:
-    case 0b0000011100011:
-    case 0b0000011100100:
-    case 0b0000011100101:
-    case 0b0000011100110:
-    case 0b0000011100111:
-    case 0b0000011101000:
-    case 0b0000011101001:
-    case 0b0000011101010:
-    case 0b0000011101011:
-    case 0b0000011101100:
-    case 0b0000011101101:
-    case 0b0000011101110:
-    case 0b0000011101111:
+    case 0b011100000:
+    case 0b011100001:
+    case 0b011100010:
+    case 0b011100011:
+    case 0b011100100:
+    case 0b011100101:
+    case 0b011100110:
+    case 0b011100111:
+    case 0b011101000:
+    case 0b011101001:
+    case 0b011101010:
+    case 0b011101011:
+    case 0b011101100:
+    case 0b011101101:
+    case 0b011101110:
+    case 0b011101111:
       return "HINT_11"; // Reserved hint, behaves as NOP
   }
   switch (index >> 5) {
-    case 0b00000001:
+    case 0b0001:
       return "HINT_7";  // Reserved hint, behaves as NOP
-    case 0b00000010:
-    case 0b00000011:
+    case 0b0010:
+    case 0b0011:
       return "HINT_8";  // Reserved hint, behaves as NOP
-    case 0b00000100:
-    case 0b00000101:
+    case 0b0100:
+    case 0b0101:
       return "HINT_9";  // Reserved hint, behaves as NOP
-    case 0b00000110:
+    case 0b0110:
       return "HINT_10";  // Reserved hint, behaves as NOP
     default:
       return nullptr;
@@ -2291,8 +2294,8 @@ static const char* kSpecial(uint32_t index) {
 static bool TryMoveSpecialRegisterAndHintsI(Instruction &inst, uint32_t bits) {
   const SpecialRegsAndHints enc = { bits };
 
-  // R:imm4:imm12<low 8 bits only>
-  auto instruction = kSpecial(enc.R << 12 | enc.imm4 | (enc.imm12 & 255u));
+  // (R:imm4 != 00000):imm12<low 8 bits only>
+  auto instruction = kSpecial(((enc.R << 4 | enc.imm4) != 0b0u) << 8 | (enc.imm12 & 255u));
   if (!instruction) {
     inst.category = Instruction::kCategoryError;
     return false;
