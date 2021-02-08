@@ -103,28 +103,27 @@ class InstructionLifter {
                            Operand &reg);
 
   // Lift a register operand to a value.
-  virtual llvm::Value * LiftRegisterOperand(Instruction &inst,
+  virtual llvm::Value *LiftRegisterOperand(Instruction &inst,
                                            llvm::BasicBlock *block,
                                            llvm::Value *state_ptr,
                                            llvm::Argument *arg, Operand &reg);
 
   // Lift an immediate operand.
-  virtual llvm::Value * LiftImmediateOperand(Instruction &inst,
+  virtual llvm::Value *LiftImmediateOperand(Instruction &inst,
                                             llvm::BasicBlock *block,
                                             llvm::Argument *arg, Operand &op);
 
   // Lift an expression operand.
-  virtual llvm::Value * LiftExpressionOperand(Instruction &inst,
+  virtual llvm::Value *LiftExpressionOperand(Instruction &inst,
                                              llvm::BasicBlock *block,
                                              llvm::Value *state_ptr,
                                              llvm::Argument *arg, Operand &op);
 
   // Lift an expression operand.
-  virtual llvm::Value* LiftExpressionOperandRec(Instruction &inst,
-                                             llvm::BasicBlock *block,
-                                             llvm::Value *state_ptr,
-                                             llvm::Argument *arg,
-                                             const OperandExpression *op);
+  virtual llvm::Value *
+  LiftExpressionOperandRec(Instruction &inst, llvm::BasicBlock *block,
+                           llvm::Value *state_ptr, llvm::Argument *arg,
+                           const OperandExpression *op);
 
   // Lift an indirect memory operand to a value.
   virtual llvm::Value *

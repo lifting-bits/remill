@@ -18,8 +18,8 @@
 
 namespace {
 
-ALWAYS_INLINE void SetFlagsLogical(
-    State &state, uint64_t lhs, uint64_t rhs, uint64_t res) {
+ALWAYS_INLINE void SetFlagsLogical(State &state, uint64_t lhs, uint64_t rhs,
+                                   uint64_t res) {
   const auto res_32 = static_cast<uint32_t>(res);
   FLAG_ICC_CF = false;
   FLAG_ICC_ZF = ZeroFlag(res_32);
@@ -32,7 +32,7 @@ ALWAYS_INLINE void SetFlagsLogical(
   FLAG_XCC_VF = false;
 }
 
-}
+}  // namespace
 
 // Logical Operations
 namespace {
@@ -56,7 +56,7 @@ DEF_SEM(ANDCC, S1 src1, S2 src2, D dst) {
   return memory;
 }
 
-}
+}  // namespace
 
 // AND, ANDcc
 DEF_ISEL(AND) = AND<R64, R64, R64W>;
@@ -83,7 +83,7 @@ DEF_SEM(ANDNCC, S1 src1, S2 src2, D dst) {
   return memory;
 }
 
-}
+}  // namespace
 
 // ANDN, ANDNcc
 DEF_ISEL(ANDN) = ANDN<R64, R64, R64W>;
@@ -110,7 +110,7 @@ DEF_SEM(ORCC, S1 src1, S2 src2, D dst) {
   return memory;
 }
 
-}
+}  // namespace
 
 DEF_ISEL(OR) = OR<R64, R64, R64W>;
 DEF_ISEL(ORcc) = ORCC<R64, R64, R64W>;
@@ -136,7 +136,7 @@ DEF_SEM(ORNCC, S1 src1, S2 src2, D dst) {
   return memory;
 }
 
-}
+}  // namespace
 
 DEF_ISEL(ORN) = ORN<R64, R64, R64W>;
 DEF_ISEL(ORNcc) = ORNCC<R64, R64, R64W>;
@@ -162,7 +162,7 @@ DEF_SEM(XORCC, S1 src1, S2 src2, D dst) {
   return memory;
 }
 
-}
+}  // namespace
 
 DEF_ISEL(XOR) = XOR<R64, R64, R64W>;
 DEF_ISEL(XORcc) = XORCC<R64, R64, R64W>;
@@ -188,7 +188,7 @@ DEF_SEM(XNORCC, S1 src1, S2 src2, D dst) {
   return memory;
 }
 
-}
+}  // namespace
 
 DEF_ISEL(XNOR) = XNOR<R64, R64, R64W>;
 DEF_ISEL(XNORcc) = XNORCC<R64, R64, R64W>;
@@ -231,4 +231,3 @@ DEF_ISEL(SRA) = SRA<R32, I32, R64W>;
 DEF_ISEL(SLLX) = SLL<R64, I64, R64W>;
 DEF_ISEL(SRLX) = SRL<R64, I64, R64W>;
 DEF_ISEL(SRAX) = SRA<R64, I64, R64W>;
-

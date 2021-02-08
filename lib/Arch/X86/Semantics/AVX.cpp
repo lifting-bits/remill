@@ -42,13 +42,13 @@ DEF_SEM(VPBROADCASTB, D dst, S1 src1) {
   return memory;
 }
 
-template<typename S2>
+template <typename S2>
 DEF_SEM(VINSERTF128, VV256W dst, V256 src1, S2 src2, I8 src3) {
   auto dst_vec = UReadV128(src1);
   auto src2_vec = UReadV128(src2);
   auto src3_i8 = Read(src3);
   auto i = static_cast<unsigned>(src3_i8 & 1u);
-  dst_vec  = UInsertV128(dst_vec, i, UExtractV128(src2_vec, 0));
+  dst_vec = UInsertV128(dst_vec, i, UExtractV128(src2_vec, 0));
   UWriteV128(dst, dst_vec);
   return memory;
 }

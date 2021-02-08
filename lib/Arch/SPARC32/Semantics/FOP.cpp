@@ -8,15 +8,15 @@ namespace {
 DEF_SEM(FADDS, RF32 src1, RF32 src2, RF32W dst) {
   auto lhs = Read(src1);
   auto rhs = Read(src2);
+
   // Test and clear the Floating point exception and prevent
   // recording of the instructions
-  auto old_except =
-      __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
+  auto old_except = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
   BarrierReorder();
   auto sum = FAdd(lhs, rhs);
   BarrierReorder();
-  auto new_except = __remill_fpu_exception_test_and_clear(
-      FE_ALL_EXCEPT, old_except);
+  auto new_except =
+      __remill_fpu_exception_test_and_clear(FE_ALL_EXCEPT, old_except);
   SetFPSRStatusFlags(state, new_except);
   Write(dst, sum);
   return memory;
@@ -25,15 +25,15 @@ DEF_SEM(FADDS, RF32 src1, RF32 src2, RF32W dst) {
 DEF_SEM(FADDD, RF64 src1, RF64 src2, RF64W dst) {
   auto lhs = Read(src1);
   auto rhs = Read(src2);
+
   // Test and clear the Floating point exception and prevent
   // recording of the instructions
-  auto old_except =
-      __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
+  auto old_except = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
   BarrierReorder();
   auto sum = FAdd64(lhs, rhs);
   BarrierReorder();
-  auto new_except = __remill_fpu_exception_test_and_clear(
-      FE_ALL_EXCEPT, old_except);
+  auto new_except =
+      __remill_fpu_exception_test_and_clear(FE_ALL_EXCEPT, old_except);
   SetFPSRStatusFlags(state, new_except);
   Write(dst, sum);
   return memory;
@@ -42,14 +42,15 @@ DEF_SEM(FADDD, RF64 src1, RF64 src2, RF64W dst) {
 DEF_SEM(FSUBS, RF32 src1, RF32 src2, RF32W dst) {
   auto lhs = Read(src1);
   auto rhs = Read(src2);
+
   // Test and clear the Floating point exception and prevent
   // recording of the instructions
   auto old_except = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
   BarrierReorder();
   auto sub = FSub32(lhs, rhs);
   BarrierReorder();
-  auto new_except = __remill_fpu_exception_test_and_clear(
-      FE_ALL_EXCEPT, old_except);
+  auto new_except =
+      __remill_fpu_exception_test_and_clear(FE_ALL_EXCEPT, old_except);
   SetFPSRStatusFlags(state, new_except);
   Write(dst, sub);
   return memory;
@@ -58,14 +59,15 @@ DEF_SEM(FSUBS, RF32 src1, RF32 src2, RF32W dst) {
 DEF_SEM(FSUBD, RF64 src1, RF64 src2, RF64W dst) {
   auto lhs = Read(src1);
   auto rhs = Read(src2);
+
   // Test and clear the Floating point exception and prevent
   // recording of the instructions
   auto old_except = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
   BarrierReorder();
   auto sub = FSub64(lhs, rhs);
   BarrierReorder();
-  auto new_except = __remill_fpu_exception_test_and_clear(
-      FE_ALL_EXCEPT, old_except);
+  auto new_except =
+      __remill_fpu_exception_test_and_clear(FE_ALL_EXCEPT, old_except);
   SetFPSRStatusFlags(state, new_except);
   Write(dst, sub);
   return memory;
@@ -74,15 +76,15 @@ DEF_SEM(FSUBD, RF64 src1, RF64 src2, RF64W dst) {
 DEF_SEM(FMULS, RF32 src1, RF32 src2, RF32W dst) {
   auto lhs = Read(src1);
   auto rhs = Read(src2);
+
   // Test and clear the Floating point exception and prevent
   // recording of the instructions
-  auto old_except =
-      __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
+  auto old_except = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
   BarrierReorder();
   auto mul = FMul32(lhs, rhs);
   BarrierReorder();
-  auto new_except = __remill_fpu_exception_test_and_clear(
-      FE_ALL_EXCEPT, old_except);
+  auto new_except =
+      __remill_fpu_exception_test_and_clear(FE_ALL_EXCEPT, old_except);
   SetFPSRStatusFlags(state, new_except);
   Write(dst, mul);
   return memory;
@@ -91,15 +93,15 @@ DEF_SEM(FMULS, RF32 src1, RF32 src2, RF32W dst) {
 DEF_SEM(FMULD, RF64 src1, RF64 src2, RF64W dst) {
   auto lhs = Read(src1);
   auto rhs = Read(src2);
+
   // Test and clear the Floating point exception and prevent
   // recording of the instructions
-  auto old_except =
-      __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
+  auto old_except = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
   BarrierReorder();
   auto mul = FMul64(lhs, rhs);
   BarrierReorder();
-  auto new_except = __remill_fpu_exception_test_and_clear(
-      FE_ALL_EXCEPT, old_except);
+  auto new_except =
+      __remill_fpu_exception_test_and_clear(FE_ALL_EXCEPT, old_except);
   SetFPSRStatusFlags(state, new_except);
   Write(dst, mul);
   return memory;
@@ -108,14 +110,14 @@ DEF_SEM(FMULD, RF64 src1, RF64 src2, RF64W dst) {
 DEF_SEM(FDIVS, RF32 src1, RF32 src2, RF32W dst) {
   auto lhs = Read(src1);
   auto rhs = Read(src2);
+
   // Test and clear the fp exception and prevent recording
-  auto old_except =
-      __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
+  auto old_except = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
   BarrierReorder();
   auto div = FDiv32(lhs, rhs);
   BarrierReorder();
-  auto new_except = __remill_fpu_exception_test_and_clear(
-      FE_ALL_EXCEPT, old_except);
+  auto new_except =
+      __remill_fpu_exception_test_and_clear(FE_ALL_EXCEPT, old_except);
   SetFPSRStatusFlags(state, new_except);
   Write(dst, div);
   return memory;
@@ -124,52 +126,52 @@ DEF_SEM(FDIVS, RF32 src1, RF32 src2, RF32W dst) {
 DEF_SEM(FDIVD, RF64 src1, RF64 src2, RF64W dst) {
   auto lhs = Read(src1);
   auto rhs = Read(src2);
+
   // Test and clear the fp exception and prevent recording
-  auto old_except =
-      __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
+  auto old_except = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
   BarrierReorder();
   auto div = FDiv64(lhs, rhs);
   BarrierReorder();
-  auto new_except = __remill_fpu_exception_test_and_clear(
-      FE_ALL_EXCEPT, old_except);
+  auto new_except =
+      __remill_fpu_exception_test_and_clear(FE_ALL_EXCEPT, old_except);
   SetFPSRStatusFlags(state, new_except);
   Write(dst, div);
   return memory;
 }
 
-DEF_SEM(FsMULD, RF32 src1, RF32 src2,  RF64W dst) {
+DEF_SEM(FsMULD, RF32 src1, RF32 src2, RF64W dst) {
   auto lhs = Read(src1);
   auto rhs = Read(src2);
+
   // Test and clear the fp exception and prevent recording
-  auto old_except =
-      __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
+  auto old_except = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
   BarrierReorder();
   auto mul = FMul64(lhs, rhs);
   BarrierReorder();
-  auto new_except = __remill_fpu_exception_test_and_clear(
-      FE_ALL_EXCEPT, old_except);
+  auto new_except =
+      __remill_fpu_exception_test_and_clear(FE_ALL_EXCEPT, old_except);
   SetFPSRStatusFlags(state, new_except);
   Write(dst, mul);
   return memory;
 }
 
-DEF_SEM(FdMULQ, RF64 src1, RF64 src2,  RF64W dst) {
+DEF_SEM(FdMULQ, RF64 src1, RF64 src2, RF64W dst) {
   auto lhs = Read(src1);
   auto rhs = Read(src2);
+
   // Test and clear the fp exception and prevent recording
-  auto old_except =
-      __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
+  auto old_except = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
   BarrierReorder();
   auto mul = FMul64(lhs, rhs);
   BarrierReorder();
-  auto new_except = __remill_fpu_exception_test_and_clear(
-      FE_ALL_EXCEPT, old_except);
+  auto new_except =
+      __remill_fpu_exception_test_and_clear(FE_ALL_EXCEPT, old_except);
   SetFPSRStatusFlags(state, new_except);
   Write(dst, mul);
   return memory;
 }
 
-}
+}  // namespace
 
 DEF_ISEL(FADDS) = FADDS;
 DEF_ISEL(FADDD) = FADDD;
@@ -333,7 +335,7 @@ DEF_SEM(FSTOX, RF32 src, R64W dst) {
   return memory;
 }
 
-}
+}  // namespace
 
 DEF_ISEL(FMOVS) = FMOVS;
 DEF_ISEL(FMOVD) = FMOVD;
@@ -374,24 +376,24 @@ DEF_ISEL(FXTOQ) = FXTOQ;
 
 
 #define MAKE_COMPARE(fcc) \
-	template <typename S> \
-	void FCompare_ ## fcc(State &state, Memory *memory, \
-			S val1, S val2, bool signal) { \
-	  if (std::isnan(val1) || std::isnan(val2)) { \
-	    Write(state.fsr.fcc, Literal<R8>(3)); \
-	  } else { \
-	    if (FCmpEq(val1, val2)) { \
-	      /* result = '00'; */ 	\
-		  Write(state.fsr.fcc, Literal<R8>(0)); \
-	    } else if (FCmpLt(val1, val2)) { \
-		  /* result = '01'; */	\
-		  Write(state.fsr.fcc, Literal<R8>(1)); \
-	    } else {  /* FCmpGt(val1, val2) */ \
-	      /* result = '10'; */ \
-		  Write(state.fsr.fcc, Literal<R8>(2)); \
-	    } \
-	  } \
-    }
+  template <typename S> \
+  void FCompare_##fcc(State &state, Memory *memory, S val1, S val2, \
+                      bool signal) { \
+    if (std::isnan(val1) || std::isnan(val2)) { \
+      Write(state.fsr.fcc, Literal<R8>(3)); \
+    } else { \
+      if (FCmpEq(val1, val2)) { \
+        /* result = '00'; */ \
+        Write(state.fsr.fcc, Literal<R8>(0)); \
+      } else if (FCmpLt(val1, val2)) { \
+        /* result = '01'; */ \
+        Write(state.fsr.fcc, Literal<R8>(1)); \
+      } else { /* FCmpGt(val1, val2) */ \
+        /* result = '10'; */ \
+        Write(state.fsr.fcc, Literal<R8>(2)); \
+      } \
+    } \
+  }
 
 
 namespace {
@@ -401,53 +403,53 @@ MAKE_COMPARE(fcc1)
 MAKE_COMPARE(fcc2)
 MAKE_COMPARE(fcc3)
 
-}
+}  // namespace
 
 #undef MAKE_COMPARE
 
 #define MAKE_SEMANTICS_FCMP(fcc) \
-	DEF_SEM(FCMPS_ ## fcc, RF32 src1, RF32 src2) { \
-	  auto val1 = Read(src1); \
-	  auto val2 = Read(src2); \
-	  FCompare_ ## fcc(state, memory, val1, val2, false); \
-	  return memory; \
-	} \
-	\
-	DEF_SEM(FCMPD_ ## fcc, RF64 src1, RF64 src2) { \
+  DEF_SEM(FCMPS_##fcc, RF32 src1, RF32 src2) { \
     auto val1 = Read(src1); \
     auto val2 = Read(src2); \
-	  FCompare_ ## fcc(state, memory, val1, val2, false); \
-	  return memory; \
-	} \
-	\
-	DEF_SEM(FCMPQ_ ## fcc, RF64 src1, RF64 src2) { \
+    FCompare_##fcc(state, memory, val1, val2, false); \
+    return memory; \
+  } \
+\
+  DEF_SEM(FCMPD_##fcc, RF64 src1, RF64 src2) { \
     auto val1 = Read(src1); \
     auto val2 = Read(src2); \
-	  FCompare_ ## fcc(state, memory, val1, val2, false); \
-	  return memory; \
-	}
+    FCompare_##fcc(state, memory, val1, val2, false); \
+    return memory; \
+  } \
+\
+  DEF_SEM(FCMPQ_##fcc, RF64 src1, RF64 src2) { \
+    auto val1 = Read(src1); \
+    auto val2 = Read(src2); \
+    FCompare_##fcc(state, memory, val1, val2, false); \
+    return memory; \
+  }
 
 #define MAKE_SEMANTICS_FCMPE(fcc) \
-	DEF_SEM(FCMPES_ ## fcc, RF32 src1, RF32 src2) { \
+  DEF_SEM(FCMPES_##fcc, RF32 src1, RF32 src2) { \
     auto val1 = Read(src1); \
     auto val2 = Read(src2); \
-	  FCompare_ ## fcc(state, memory, val1, val2, false); \
-	  return memory; \
-	} \
-	\
-	DEF_SEM(FCMPED_ ## fcc, RF64 src1, RF64 src2) { \
+    FCompare_##fcc(state, memory, val1, val2, false); \
+    return memory; \
+  } \
+\
+  DEF_SEM(FCMPED_##fcc, RF64 src1, RF64 src2) { \
     auto val1 = Read(src1); \
     auto val2 = Read(src2); \
-	  FCompare_ ## fcc(state, memory, val1, val2, false); \
-	  return memory; \
-	} \
-	\
-	DEF_SEM(FCMPEQ_ ## fcc, RF64 src1, RF64 src2) { \
+    FCompare_##fcc(state, memory, val1, val2, false); \
+    return memory; \
+  } \
+\
+  DEF_SEM(FCMPEQ_##fcc, RF64 src1, RF64 src2) { \
     auto val1 = Read(src1); \
     auto val2 = Read(src2); \
-	  FCompare_ ## fcc(state, memory, val1, val2, false); \
-	  return memory; \
-	}
+    FCompare_##fcc(state, memory, val1, val2, false); \
+    return memory; \
+  }
 
 namespace {
 
@@ -461,7 +463,7 @@ MAKE_SEMANTICS_FCMPE(fcc1)
 MAKE_SEMANTICS_FCMPE(fcc2)
 MAKE_SEMANTICS_FCMPE(fcc3)
 
-}
+}  // namespace
 
 #undef MAKE_SEMANTICS_FCMP
 #undef MAKE_SEMANTICS_FCMPE

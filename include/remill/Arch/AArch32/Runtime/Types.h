@@ -27,6 +27,7 @@ typedef RnW<uint16_t> R16W;
 typedef RnW<uint32_t> R32W;
 
 typedef Rn<uint8_t> R8;
+
 //typedef Rn<uint16_t> R16;
 typedef Rn<uint32_t> R32;
 

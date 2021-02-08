@@ -15,7 +15,7 @@
  */
 
 namespace {
-DEF_COND_SEM(ORR, R32W dst, R32 src1, I32 src2){
+DEF_COND_SEM(ORR, R32W dst, R32 src1, I32 src2) {
   auto value = Read(src2);
   auto result = UOr(Read(src1), value);
   Write(dst, result);
@@ -30,11 +30,12 @@ DEF_COND_SEM(ORRS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   state.sr.n = SignFlag(result);
   state.sr.z = ZeroFlag(result);
   state.sr.c = Read(carry_out);
+
   // PSTATE.V unchanged
   return memory;
 }
 
-DEF_COND_SEM(BIC, R32W dst, R32 src1, I32 src2){
+DEF_COND_SEM(BIC, R32W dst, R32 src1, I32 src2) {
   auto value = UNot(Read(src2));
   auto result = UAnd(Read(src1), value);
   Write(dst, result);
@@ -49,11 +50,12 @@ DEF_COND_SEM(BICS, R32W dst, R32 src1, I32 src2, I8 carry_out) {
   state.sr.n = SignFlag(result);
   state.sr.z = ZeroFlag(result);
   state.sr.c = Read(carry_out);
+
   // PSTATE.V unchanged
   return memory;
 }
 
-} // namespace
+}  // namespace
 
 DEF_ISEL(ORRrr) = ORR;
 DEF_ISEL(ORRSrr) = ORRS;
@@ -67,12 +69,12 @@ DEF_ISEL(MVNSrr) = BICS;
 DEF_ISEL(MOVW) = ORR;
 
 namespace {
-DEF_COND_SEM(MOVT, R32W dst, R32 src1, R32 src2){
+DEF_COND_SEM(MOVT, R32W dst, R32 src1, R32 src2) {
   auto value = ZExt(Trunc(Read(src1)));
   auto result = UOr(UShl(Read(src2), 16), value);
   Write(dst, result);
   return memory;
 }
-} // namespace
+}  // namespace
 
 DEF_ISEL(MOVT) = MOVT;

@@ -21,6 +21,7 @@ DEF_COND_SEM(TST, R32 src1, I32 src2, I8 carry_out) {
   state.sr.n = SignFlag(res);
   state.sr.z = ZeroFlag(res);
   state.sr.c = Read(carry_out);
+
   // PSTATE.V unchanged
   return memory;
 }
@@ -31,6 +32,7 @@ DEF_COND_SEM(TEQ, R32 src1, I32 src2, I8 carry_out) {
   state.sr.n = SignFlag(res);
   state.sr.z = ZeroFlag(res);
   state.sr.c = Read(carry_out);
+
   // PSTATE.V unchanged
   return memory;
 }
@@ -48,7 +50,7 @@ DEF_COND_SEM(CMN, R32 src1, I32 src2, I8 carry_out) {
   AddWithCarryNZCV(state, lhs, rhs, uint32_t(0));
   return memory;
 }
-} // namespace
+}  // namespace
 
 DEF_ISEL(TSTr) = TST;
 DEF_ISEL(TEQr) = TEQ;

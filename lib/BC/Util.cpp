@@ -115,8 +115,8 @@ llvm::CallInst *AddCall(llvm::BasicBlock *source_block,
     arg_types[kStatePointerArgNum] = args[kStatePointerArgNum]->getType();
     arg_types[kMemoryPointerArgNum] = args[kMemoryPointerArgNum]->getType();
     arg_types[kPCArgNum] = args[kPCArgNum]->getType();
-    auto func_type = llvm::FunctionType::get(
-        arg_types[kMemoryPointerArgNum], arg_types, false);
+    auto func_type = llvm::FunctionType::get(arg_types[kMemoryPointerArgNum],
+                                             arg_types, false);
     llvm::FunctionCallee callee(func_type, dest_func);
     return ir.CreateCall(callee, args);
   }
@@ -164,8 +164,8 @@ llvm::Value *FindVarInFunction(llvm::BasicBlock *block, std::string_view name,
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
-llvm::Value *FindVarInFunction(llvm::Function *function,
-                               std::string_view name_, bool allow_failure) {
+llvm::Value *FindVarInFunction(llvm::Function *function, std::string_view name_,
+                               bool allow_failure) {
   llvm::StringRef name(name_.data(), name_.size());
   if (!function->empty()) {
     for (auto &instr : function->getEntryBlock()) {
@@ -356,8 +356,8 @@ std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
 
   if (!module) {
     LOG_IF(FATAL, !allow_failure)
-        << "Unable to parse module file " << file_name_
-        << ": " << err.getMessage().str();
+        << "Unable to parse module file " << file_name_ << ": "
+        << err.getMessage().str();
     return {};
   }
 
@@ -474,13 +474,15 @@ namespace {
 #endif  // REMILL_BUILD_SEMANTICS_DIR_AARCH64
 
 #ifndef REMILL_BUILD_SEMANTICS_DIR_SPARC32
-#error "Macro `REMILL_BUILD_SEMANTICS_DIR_SPARC32` must be defined to support the SPARC32 architectures."
-#define REMILL_BUILD_SEMANTICS_DIR_SPARC32
+#  error \
+      "Macro `REMILL_BUILD_SEMANTICS_DIR_SPARC32` must be defined to support the SPARC32 architectures."
+#  define REMILL_BUILD_SEMANTICS_DIR_SPARC32
 #endif  // REMILL_BUILD_SEMANTICS_DIR_SPARC32
 
 #ifndef REMILL_BUILD_SEMANTICS_DIR_SPARC64
-#error "Macro `REMILL_BUILD_SEMANTICS_DIR_SPARC64` must be defined to support the SPARC64 architectures."
-#define REMILL_BUILD_SEMANTICS_DIR_SPARC64
+#  error \
+      "Macro `REMILL_BUILD_SEMANTICS_DIR_SPARC64` must be defined to support the SPARC64 architectures."
+#  define REMILL_BUILD_SEMANTICS_DIR_SPARC64
 #endif  // REMILL_BUILD_SEMANTICS_DIR_SPARC64
 
 #ifndef REMILL_INSTALL_SEMANTICS_DIR
@@ -493,16 +495,17 @@ namespace {
 #define MAJOR_MINOR S(LLVM_VERSION_MAJOR) "." S(LLVM_VERSION_MINOR)
 
 static const char *gSemanticsSearchPaths[] = {
-  // Derived from the build.
-  REMILL_BUILD_SEMANTICS_DIR_X86 "\0",
-  REMILL_BUILD_SEMANTICS_DIR_AARCH32 "\0",
-  REMILL_BUILD_SEMANTICS_DIR_AARCH64 "\0",
-  REMILL_BUILD_SEMANTICS_DIR_SPARC32 "\0",
-  REMILL_BUILD_SEMANTICS_DIR_SPARC64 "\0",
-  REMILL_INSTALL_SEMANTICS_DIR "\0",
-  "/usr/local/share/remill/" MAJOR_MINOR "/semantics",
-  "/usr/share/remill/" MAJOR_MINOR "/semantics",
-  "/share/remill/" MAJOR_MINOR "/semantics",
+
+    // Derived from the build.
+    REMILL_BUILD_SEMANTICS_DIR_X86 "\0",
+    REMILL_BUILD_SEMANTICS_DIR_AARCH32 "\0",
+    REMILL_BUILD_SEMANTICS_DIR_AARCH64 "\0",
+    REMILL_BUILD_SEMANTICS_DIR_SPARC32 "\0",
+    REMILL_BUILD_SEMANTICS_DIR_SPARC64 "\0",
+    REMILL_INSTALL_SEMANTICS_DIR "\0",
+    "/usr/local/share/remill/" MAJOR_MINOR "/semantics",
+    "/usr/share/remill/" MAJOR_MINOR "/semantics",
+    "/share/remill/" MAJOR_MINOR "/semantics",
 };
 
 }  // namespace
@@ -821,10 +824,9 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
     type = ::remill::RecontextualizeType(type, dest_context);
   } else {
 #if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 8)
-    if (!llvm::isa<llvm::Function>(c) &&
-        !llvm::isa<llvm::GlobalVariable>(c) &&
-        !llvm::isa<llvm::GlobalAlias>(c) &&
-        !c->needsRelocation()) {
+    if (!llvm::isa<llvm::Function>(c) && !llvm::isa<llvm::GlobalVariable>(c) &&
+        !llvm::isa<llvm::GlobalAlias>(c) && !c->needsRelocation()) {
+
       //LOG(ERROR) << "Not moving: " << LLVMThingToString(c);
       return c;
     }
@@ -1916,14 +1918,18 @@ BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type, size_t offset,
 
     indexes_out.push_back(llvm::ConstantInt::get(index_type, index, false));
     return BuildIndexes(dl, elem_type, offset, goal_offset, indexes_out);
-  } else if (auto fvt_type = llvm::dyn_cast<llvm::FixedVectorType>(type); fvt_type) {
+  } else if (auto fvt_type = llvm::dyn_cast<llvm::FixedVectorType>(type);
+             fvt_type) {
+
     // It is possible that this gets called on an unexpected type
     // such as FixedVectorType; if so, report the issue and fix if/when it
     // happens
     LOG(FATAL) << "Called BuildIndexes on unsupported type: "
                << remill::LLVMThingToString(type);
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(11, 0)
-  } else if (auto svt_type = llvm::dyn_cast<llvm::ScalableVectorType>(type); svt_type) {
+  } else if (auto svt_type = llvm::dyn_cast<llvm::ScalableVectorType>(type);
+             svt_type) {
+
     // same as above, but for scalable vectors
     LOG(FATAL) << "Called BuildIndexes on unsupported type: "
                << remill::LLVMThingToString(type);

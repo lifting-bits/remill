@@ -82,14 +82,12 @@ static unsigned AddressSize(ArchName arch_name) {
     case kArchX86_AVX:
     case kArchX86_AVX512:
     case kArchAArch32LittleEndian:
-    case kArchSparc32:
-      return 32;
+    case kArchSparc32: return 32;
     case kArchAMD64:
     case kArchAMD64_AVX:
     case kArchAMD64_AVX512:
     case kArchAArch64LittleEndian:
-    case kArchSparc64:
-      return 64;
+    case kArchSparc64: return 64;
   }
   return 0;
 }
@@ -221,8 +219,8 @@ auto Arch::Get(llvm::LLVMContext &context, std::string_view os,
   return Arch::Build(&context, GetOSName(os), GetArchName(arch_name));
 }
 
-auto Arch::Get(llvm::LLVMContext &context, OSName os,
-               ArchName arch_name) -> ArchPtr {
+auto Arch::Get(llvm::LLVMContext &context, OSName os, ArchName arch_name)
+    -> ArchPtr {
   return Arch::Build(&context, os, arch_name);
 }
 
@@ -288,8 +286,8 @@ void Arch::ForEachRegister(std::function<void(const Register *)> cb) const {
 // Return information about a register, given its name.
 const Register *Arch::RegisterByName(std::string_view name_) const {
   std::string name(name_.data(), name_.size());
-  auto [curr_val_it, added] = impl->reg_by_name.emplace(std::move(name),
-                                                        nullptr);
+  auto [curr_val_it, added] =
+      impl->reg_by_name.emplace(std::move(name), nullptr);
   if (added) {
     return nullptr;
   } else {
@@ -648,9 +646,9 @@ void Arch::PrepareModule(llvm::Module *mod) const {
   PrepareModuleDataLayout(mod);
 }
 
-const Register *Arch::AddRegister(
-    const char *reg_name_, llvm::Type *val_type, size_t offset,
-    const char *parent_reg_name) const {
+const Register *Arch::AddRegister(const char *reg_name_, llvm::Type *val_type,
+                                  size_t offset,
+                                  const char *parent_reg_name) const {
 
   const std::string reg_name(reg_name_);
   auto &reg = impl->reg_by_name[reg_name];
@@ -670,8 +668,8 @@ const Register *Arch::AddRegister(
   gep_index_list.push_back(
       llvm::Constant::getNullValue(llvm::Type::getInt32Ty(*context)));
 
-  auto [gep_offset, gep_type_at_offset] = BuildIndexes(
-      dl, impl->state_type, 0, offset, gep_index_list);
+  auto [gep_offset, gep_type_at_offset] =
+      BuildIndexes(dl, impl->state_type, 0, offset, gep_index_list);
 
   if (!val_type) {
     CHECK_EQ(gep_offset, offset);
@@ -716,7 +714,8 @@ void Arch::InitFromSemanticsModule(llvm::Module *module) const {
 
   const auto &dl = module->getDataLayout();
   const auto basic_block = BasicBlockFunction(module);
-  const auto state_ptr_type = NthArgument(basic_block, kStatePointerArgNum)->getType();
+  const auto state_ptr_type =
+      NthArgument(basic_block, kStatePointerArgNum)->getType();
   const auto state_type =
       llvm::dyn_cast<llvm::StructType>(state_ptr_type->getPointerElementType());
 

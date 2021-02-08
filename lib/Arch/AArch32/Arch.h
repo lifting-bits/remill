@@ -21,7 +21,8 @@
 namespace remill {
 class AArch32Arch final : public Arch {
  public:
-  AArch32Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
+  AArch32Arch(llvm::LLVMContext *context_, OSName os_name_,
+              ArchName arch_name_);
 
   virtual ~AArch32Arch(void);
 
@@ -52,4 +53,4 @@ class AArch32Arch final : public Arch {
   AArch32Arch(void) = delete;
 };
 
-} // namespace remill
+}  // namespace remill

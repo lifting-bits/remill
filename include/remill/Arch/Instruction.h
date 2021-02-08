@@ -17,13 +17,13 @@
 #pragma once
 
 #include <string>
-#include <vector>
 #include <variant>
+#include <vector>
 
 namespace llvm {
 class Constant;
 class Type;
-} // namespace llvm
+}  // namespace llvm
 
 namespace remill {
 
@@ -33,17 +33,18 @@ class OperandExpression;
 
 enum ArchName : unsigned;
 
-struct LLVMOpExpr{
+struct LLVMOpExpr {
   unsigned llvm_opcode;
   OperandExpression *op1;
   OperandExpression *op2;
 };
 
 
-class OperandExpression : public std::variant<LLVMOpExpr, const Register *, llvm::Constant *, std::string> {
+class OperandExpression : public std::variant<LLVMOpExpr, const Register *,
+                                              llvm::Constant *, std::string> {
  public:
   std::string Serialize(void) const;
-  llvm::Type * type {nullptr};
+  llvm::Type *type{nullptr};
 };
 
 // Generic instruction operand.
@@ -147,14 +148,13 @@ class Operand {
     }
   } addr;
 
-  OperandExpression * expr;
+  OperandExpression *expr;
 
   std::string Serialize(void) const;
 };
 
 class Condition {
  public:
-
   enum Kind {
     kTypeTrue,
     kTypeIsOne,
@@ -290,7 +290,7 @@ class Instruction {
 
   inline bool IsFunctionReturn(void) const {
     return kCategoryFunctionReturn == category ||
-        kCategoryConditionalFunctionReturn == category;
+           kCategoryConditionalFunctionReturn == category;
   }
 
   inline bool IsValid(void) const {
@@ -313,18 +313,20 @@ class Instruction {
   }
 
   // This allocates an OperandExpression
-  OperandExpression * AllocateExpression(void);
-  OperandExpression * EmplaceRegister(const Register *);
-  OperandExpression * EmplaceRegister(std::string_view reg_name);
-  OperandExpression * EmplaceConstant(llvm::Constant *);
-  OperandExpression * EmplaceVariable(std::string_view, llvm::Type *);
-  OperandExpression * EmplaceBinaryOp(unsigned opcode, OperandExpression * op1, OperandExpression * op2);
-  OperandExpression * EmplaceUnaryOp(unsigned opcode, OperandExpression * op1, llvm::Type *);
+  OperandExpression *AllocateExpression(void);
+  OperandExpression *EmplaceRegister(const Register *);
+  OperandExpression *EmplaceRegister(std::string_view reg_name);
+  OperandExpression *EmplaceConstant(llvm::Constant *);
+  OperandExpression *EmplaceVariable(std::string_view, llvm::Type *);
+  OperandExpression *EmplaceBinaryOp(unsigned opcode, OperandExpression *op1,
+                                     OperandExpression *op2);
+  OperandExpression *EmplaceUnaryOp(unsigned opcode, OperandExpression *op1,
+                                    llvm::Type *);
 
-  Operand & EmplaceOperand(const Operand::Register &op);
-  Operand & EmplaceOperand(const Operand::Immediate &op);
-  Operand & EmplaceOperand(const Operand::ShiftRegister &op);
-  Operand & EmplaceOperand(const Operand::Address &op);
+  Operand &EmplaceOperand(const Operand::Register &op);
+  Operand &EmplaceOperand(const Operand::Immediate &op);
+  Operand &EmplaceOperand(const Operand::ShiftRegister &op);
+  Operand &EmplaceOperand(const Operand::Address &op);
 
  private:
   static constexpr auto kMaxNumExpr = 64u;

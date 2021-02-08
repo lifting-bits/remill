@@ -16,10 +16,10 @@
 
 #pragma once
 
+#include <remill/BC/Lifter.h>
+
 #include <functional>
 #include <unordered_map>
-
-#include <remill/BC/Lifter.h>
 
 namespace remill {
 

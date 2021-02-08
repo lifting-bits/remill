@@ -59,12 +59,15 @@ struct alignas(8) GPR final {
   Reg r11;
   volatile uint32_t _12;
   Reg r12;
+
   // R13 is SP (stack pointer)
   volatile uint32_t _13;
   Reg r13;
+
   // R14 is LR (link register)
   volatile uint32_t _14;
   Reg r14;
+
   // R15 is PC (program counter)
   volatile uint32_t _15;
   Reg r15;

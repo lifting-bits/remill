@@ -15,9 +15,9 @@
  */
 #pragma once
 
-#include "remill/BC/Version.h"
-
 #include <llvm/IR/Instruction.h>
+
+#include "remill/BC/Version.h"
 
 
 /* In llvm-11 llvm::CallSite got partially replace by llvm::AbstractCallSite
@@ -29,76 +29,74 @@
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(11, 0)
 
-#include <llvm/IR/CallSite.h>
+#  include <llvm/IR/CallSite.h>
 namespace remill::compat::llvm {
 
-  struct CallSite : private ::llvm::CallSite {
-    using parent = ::llvm::CallSite;
+struct CallSite : private ::llvm::CallSite {
+  using parent = ::llvm::CallSite;
 
-    /* List of "allowed" methods (thanks to private inheritance)
+  /* List of "allowed" methods (thanks to private inheritance)
      * that prevent user from accidentally using functionality that
      * would break other llvm version.
      * If you want to add method here, make sure other versions have it
      * as well.
      */
-    using parent::parent;
-    using parent::isInvoke;
-    using parent::isCall;
-    using parent::operator bool;
-    using parent::getCalledValue;
-    using parent::getCalledFunction;
-    using parent::setCalledFunction;
-  };
+  using parent::isCall;
+  using parent::isInvoke;
+  using parent::parent;
+  using parent::operator bool;
+  using parent::getCalledFunction;
+  using parent::getCalledValue;
+  using parent::setCalledFunction;
+};
 
-} // namespace remill::compat::llvm
+}  // namespace remill::compat::llvm
 
 #else
 
-#include <llvm/IR/AbstractCallSite.h>
+#  include <llvm/IR/AbstractCallSite.h>
 namespace remill::compat::llvm {
 
-  struct CallSite {
-    ::llvm::CallBase *cb;
+struct CallSite {
+  ::llvm::CallBase *cb;
 
-    CallSite(::llvm::Instruction *inst)
-      : cb(::llvm::dyn_cast<::llvm::CallBase>(inst))
-    {}
+  CallSite(::llvm::Instruction *inst)
+      : cb(::llvm::dyn_cast<::llvm::CallBase>(inst)) {}
 
-    CallSite(::llvm::User *user)
-      : CallSite(::llvm::dyn_cast<::llvm::Instruction>(user))
-    {}
+  CallSite(::llvm::User *user)
+      : CallSite(::llvm::dyn_cast<::llvm::Instruction>(user)) {}
 
-    bool isInvoke() const {
-      return ::llvm::isa<::llvm::InvokeInst>(cb);
+  bool isInvoke() const {
+    return ::llvm::isa<::llvm::InvokeInst>(cb);
+  }
+
+  bool isCall() const {
+    return ::llvm::isa<::llvm::CallInst>(cb);
+  }
+
+  ::llvm::Value *getCalledValue() {
+    if (!static_cast<bool>(*this)) {
+      return nullptr;
     }
+    return cb->getCalledOperand();
+  }
 
-    bool isCall() const {
-      return ::llvm::isa<::llvm::CallInst>(cb);
+  ::llvm::Function *getCalledFunction() {
+    if (!*this) {
+      return nullptr;
     }
+    return cb->getCalledFunction();
+  }
 
-    ::llvm::Value *getCalledValue() {
-      if (!static_cast<bool>(*this)) {
-        return nullptr;
-      }
-      return cb->getCalledOperand();
-    }
+  void setCalledFunction(::llvm::Function *fn) {
+    return cb->setCalledFunction(fn);
+  }
 
-    ::llvm::Function *getCalledFunction() {
-      if ( !*this) {
-        return nullptr;
-      }
-      return cb->getCalledFunction();
-    }
+  operator bool() const {
+    return cb;
+  }
+};
 
-    void setCalledFunction(::llvm::Function *fn) {
-      return cb->setCalledFunction(fn);
-    }
-
-    operator bool() const {
-      return cb;
-    }
-  };
-
-} // namespace remill::compat::llvm
+}  // namespace remill::compat::llvm
 
 #endif

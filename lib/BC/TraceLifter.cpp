@@ -16,15 +16,13 @@
 
 #include <remill/BC/TraceLifter.h>
 
-#include "InstructionLifter.h"
-
 #include <set>
 #include <sstream>
 
-namespace remill {
-namespace {
+#include "InstructionLifter.h"
 
-}  // namespace
+namespace remill {
+namespace {}  // namespace
 
 TraceManager::~TraceManager(void) {}
 
@@ -152,7 +150,8 @@ TraceLifter::Impl::Impl(InstructionLifter *inst_lifter_, TraceManager *manager_)
       intrinsics(inst_lifter.impl->intrinsics),
       context(inst_lifter.impl->word_type->getContext()),
       module(intrinsics->async_hyper_call->getParent()),
-      addr_mask(arch->address_size >= 64 ? ~0ULL : (~0ULL >> arch->address_size)),
+      addr_mask(arch->address_size >= 64 ? ~0ULL
+                                         : (~0ULL >> arch->address_size)),
       manager(*manager_),
       func(nullptr),
       block(nullptr),
@@ -301,8 +300,8 @@ bool TraceLifter::Impl::Lift(
 
     if (auto entry_block = &(func->front())) {
       auto pc = LoadProgramCounterArg(func);
-      auto next_pc_ref =
-          inst_lifter.LoadRegAddress(entry_block, state_ptr, kNextPCVariableName);
+      auto next_pc_ref = inst_lifter.LoadRegAddress(entry_block, state_ptr,
+                                                    kNextPCVariableName);
 
       // Initialize `NEXT_PC`.
       (void) new llvm::StoreInst(pc, next_pc_ref, entry_block);
@@ -607,8 +606,8 @@ bool TraceLifter::Impl::Lift(
         check_call_return:
           do {
             auto pc = LoadProgramCounter(block);
-            auto ret_pc =
-                llvm::ConstantInt::get(inst_lifter.impl->word_type, inst.next_pc);
+            auto ret_pc = llvm::ConstantInt::get(inst_lifter.impl->word_type,
+                                                 inst.next_pc);
 
             llvm::IRBuilder<> ir(block);
             auto eq = ir.CreateICmpEQ(pc, ret_pc);
@@ -630,7 +629,7 @@ bool TraceLifter::Impl::Lift(
           AddTerminatingTailCall(taken_block, intrinsics->function_return);
           auto not_taken_block = GetOrCreateBranchNotTakenBlock();
           llvm::BranchInst::Create(taken_block, not_taken_block,
-                                             LoadBranchTaken(block), block);
+                                   LoadBranchTaken(block), block);
           break;
         }
 
@@ -672,8 +671,8 @@ bool TraceLifter::Impl::Lift(
           // and its original targets.
           if (try_delay) {
             auto new_taken_block = llvm::BasicBlock::Create(context, "", func);
-            auto new_not_taken_block = llvm::BasicBlock::Create(context, "",
-                                                                func);
+            auto new_not_taken_block =
+                llvm::BasicBlock::Create(context, "", func);
 
             try_add_delay_slot(true, new_taken_block);
             try_add_delay_slot(false, new_not_taken_block);

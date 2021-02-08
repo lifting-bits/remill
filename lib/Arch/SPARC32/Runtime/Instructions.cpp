@@ -24,111 +24,111 @@
 #include "remill/Arch/SPARC32/Runtime/State.h"
 #include "remill/Arch/SPARC32/Runtime/Types.h"
 
-#define REG_PC        state.pc.aword
-#define REG_NPC       state.next_pc.aword
-#define REG_SP        state.gpr.o6.aword
-#define REG_FP        state.gpr.i6.aword
+#define REG_PC state.pc.aword
+#define REG_NPC state.next_pc.aword
+#define REG_SP state.gpr.o6.aword
+#define REG_FP state.gpr.i6.aword
 
-#define REG_G0        state.gpr.g0.aword
-#define REG_G1        state.gpr.g1.aword
-#define REG_G7        state.gpr.g7.aword   // Thread local pointer
+#define REG_G0 state.gpr.g0.aword
+#define REG_G1 state.gpr.g1.aword
+#define REG_G7 state.gpr.g7.aword  // Thread local pointer
 
-#define REG_L0        state.gpr.l0.aword
-#define REG_L1        state.gpr.l1.aword
-#define REG_L2        state.gpr.l2.aword
-#define REG_L3        state.gpr.l3.aword
-#define REG_L4        state.gpr.l4.aword
-#define REG_L5        state.gpr.l5.aword
-#define REG_L6        state.gpr.l6.aword
-#define REG_L7        state.gpr.l7.aword
+#define REG_L0 state.gpr.l0.aword
+#define REG_L1 state.gpr.l1.aword
+#define REG_L2 state.gpr.l2.aword
+#define REG_L3 state.gpr.l3.aword
+#define REG_L4 state.gpr.l4.aword
+#define REG_L5 state.gpr.l5.aword
+#define REG_L6 state.gpr.l6.aword
+#define REG_L7 state.gpr.l7.aword
 
-#define REG_I0        state.gpr.i0.aword
-#define REG_I1        state.gpr.i1.aword
-#define REG_I2        state.gpr.i2.aword
-#define REG_I3        state.gpr.i3.aword
-#define REG_I4        state.gpr.i4.aword
-#define REG_I5        state.gpr.i5.aword
-#define REG_I6        state.gpr.i6.aword
-#define REG_I7        state.gpr.i7.aword
+#define REG_I0 state.gpr.i0.aword
+#define REG_I1 state.gpr.i1.aword
+#define REG_I2 state.gpr.i2.aword
+#define REG_I3 state.gpr.i3.aword
+#define REG_I4 state.gpr.i4.aword
+#define REG_I5 state.gpr.i5.aword
+#define REG_I6 state.gpr.i6.aword
+#define REG_I7 state.gpr.i7.aword
 
-#define REG_O0        state.gpr.o0.aword
-#define REG_O1        state.gpr.o1.aword
-#define REG_O2        state.gpr.o2.aword
-#define REG_O3        state.gpr.o3.aword
-#define REG_O4        state.gpr.o4.aword
-#define REG_O5        state.gpr.o5.aword
-#define REG_O6        state.gpr.o6.aword
-#define REG_O7        state.gpr.o7.aword
+#define REG_O0 state.gpr.o0.aword
+#define REG_O1 state.gpr.o1.aword
+#define REG_O2 state.gpr.o2.aword
+#define REG_O3 state.gpr.o3.aword
+#define REG_O4 state.gpr.o4.aword
+#define REG_O5 state.gpr.o5.aword
+#define REG_O6 state.gpr.o6.aword
+#define REG_O7 state.gpr.o7.aword
 
-#define REG_F0        state.fpreg.v[0].floats.elems[0]
-#define REG_F1        state.fpreg.v[0].floats.elems[1]
-#define REG_F2        state.fpreg.v[0].floats.elems[2]
-#define REG_F3        state.fpreg.v[0].floats.elems[3]
+#define REG_F0 state.fpreg.v[0].floats.elems[0]
+#define REG_F1 state.fpreg.v[0].floats.elems[1]
+#define REG_F2 state.fpreg.v[0].floats.elems[2]
+#define REG_F3 state.fpreg.v[0].floats.elems[3]
 
-#define REG_D0        state.fpreg.v[0].qwords.elems[0]
+#define REG_D0 state.fpreg.v[0].qwords.elems[0]
 
 // GSR Register
-#define GSR_ALIGN     state.asr.gsr.align
-#define GSR_MASK      state.asr.gsr.mask
+#define GSR_ALIGN state.asr.gsr.align
+#define GSR_MASK state.asr.gsr.mask
 
-#define REG_Y         state.asr.yreg.aword
+#define REG_Y state.asr.yreg.aword
 
-#define FLAG_ICC_CF   state.asr.ccr.icc.c
-#define FLAG_ICC_VF   state.asr.ccr.icc.v
-#define FLAG_ICC_ZF   state.asr.ccr.icc.z
-#define FLAG_ICC_NF   state.asr.ccr.icc.n
+#define FLAG_ICC_CF state.asr.ccr.icc.c
+#define FLAG_ICC_VF state.asr.ccr.icc.v
+#define FLAG_ICC_ZF state.asr.ccr.icc.z
+#define FLAG_ICC_NF state.asr.ccr.icc.n
 
-#define FLAG_XCC_CF   state.asr.ccr.xcc.c
-#define FLAG_XCC_VF   state.asr.ccr.xcc.v
-#define FLAG_XCC_ZF   state.asr.ccr.xcc.z
-#define FLAG_XCC_NF   state.asr.ccr.xcc.n
+#define FLAG_XCC_CF state.asr.ccr.xcc.c
+#define FLAG_XCC_VF state.asr.ccr.xcc.v
+#define FLAG_XCC_ZF state.asr.ccr.xcc.z
+#define FLAG_XCC_NF state.asr.ccr.xcc.n
 
-#define REG_ICC       state.asr.ccr.icc.flat
-#define REG_XCC       state.asr.ccr.xcc.flat
-#define REG_CCC       state.csr.ccc
+#define REG_ICC state.asr.ccr.icc.flat
+#define REG_XCC state.asr.ccr.xcc.flat
+#define REG_CCC state.csr.ccc
 
-#define FSR_FCC0     state.fsr.fcc0
-#define FSR_FCC1     state.fsr.fcc1
-#define FSR_FCC2     state.fsr.fcc2
-#define FSR_FCC3     state.fsr.fcc3
+#define FSR_FCC0 state.fsr.fcc0
+#define FSR_FCC1 state.fsr.fcc1
+#define FSR_FCC2 state.fsr.fcc2
+#define FSR_FCC3 state.fsr.fcc3
 
-#define FSR_CEXC      state.fsr.cexc
-#define FSR_FTT       state.fsr.ftt
-#define FSR_RD        state.fsr.rd
+#define FSR_CEXC state.fsr.cexc
+#define FSR_FTT state.fsr.ftt
+#define FSR_RD state.fsr.rd
 
-#define PSR_TPC         state.psr.tpc
-#define PSR_TNPC        state.psr.tnpc
-#define PSR_TSTATE      state.psr.tstate
-#define PSR_TT          state.psr.tt
-#define PSR_TBA         state.psr.tba
-#define PSR_PSTATE      state.psr.pstate
-#define PSR_TL          state.psr.tl
-#define PSR_PIL         state.psr.pil
-#define PSR_WSTATE      state.psr.wstate
-#define PSR_CWP         state.psr.cwp
-#define PSR_CANSAVE     state.psr.cansave
-#define PSR_CANRESTORE  state.psr.canrestore
-#define PSR_CLEANWIN    state.psr.cleanwin
-#define PSR_OTHERWIN    state.psr.otherwin
-#define PSR_GL          state.psr.gl
+#define PSR_TPC state.psr.tpc
+#define PSR_TNPC state.psr.tnpc
+#define PSR_TSTATE state.psr.tstate
+#define PSR_TT state.psr.tt
+#define PSR_TBA state.psr.tba
+#define PSR_PSTATE state.psr.pstate
+#define PSR_TL state.psr.tl
+#define PSR_PIL state.psr.pil
+#define PSR_WSTATE state.psr.wstate
+#define PSR_CWP state.psr.cwp
+#define PSR_CANSAVE state.psr.cansave
+#define PSR_CANRESTORE state.psr.canrestore
+#define PSR_CLEANWIN state.psr.cleanwin
+#define PSR_OTHERWIN state.psr.otherwin
+#define PSR_GL state.psr.gl
 
-#define ASR_Y           state.asr.yreg.dword
-#define ASR_ASI         state.asr.asi_flat
-#define ASR_PC          state.pc.aword
-#define ASR_FPRS        state.asr.fprs_flat
-#define ASR_GSR         state.asr.gsr.flat
-#define ASR_SOFTINT     state.asr.softint
-#define ASR_STICK_CMPR  state.asr.stick_cmpr
-#define ASR_PAUSE       state.asr.pause
+#define ASR_Y state.asr.yreg.dword
+#define ASR_ASI state.asr.asi_flat
+#define ASR_PC state.pc.aword
+#define ASR_FPRS state.asr.fprs_flat
+#define ASR_GSR state.asr.gsr.flat
+#define ASR_SOFTINT state.asr.softint
+#define ASR_STICK_CMPR state.asr.stick_cmpr
+#define ASR_PAUSE state.asr.pause
 
-#define HYPER_CALL    state.hyper_call
-#define INTERRUPT_VECTOR    state.hyper_call_vector
-#define HYPER_CALL_VECTOR   state.hyper_call_vector
+#define HYPER_CALL state.hyper_call
+#define INTERRUPT_VECTOR state.hyper_call_vector
+#define HYPER_CALL_VECTOR state.hyper_call_vector
 
 #if ADDRESS_SIZE_BITS == 64
-# define SPARC_STACKBIAS 0
+#  define SPARC_STACKBIAS 0
 #else
-# define SPARC_STACKBIAS   0
+#  define SPARC_STACKBIAS 0
 #endif
 
 namespace {
@@ -136,7 +136,9 @@ namespace {
 // Takes the place of an unsupported instruction.
 DEF_SEM(HandleUnsupported) {
   return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::IF_32BIT_ELSE(kSPARC32EmulateInstruction, kSPARC64EmulateInstruction));
+      state, memory,
+      SyncHyperCall::IF_32BIT_ELSE(kSPARC32EmulateInstruction,
+                                   kSPARC64EmulateInstruction));
 }
 
 // Takes the place of an invalid instruction.
@@ -145,12 +147,13 @@ DEF_SEM(HandleInvalidInstruction) {
   return memory;
 }
 
-DEF_HELPER(SAVE_WINDOW, RegisterWindow *window, RegisterWindow *&prev_window) -> void {
+DEF_HELPER(SAVE_WINDOW, RegisterWindow *window, RegisterWindow *&prev_window)
+    ->void {
 
-// TODO(pag): These two lines should be uncommented for correctness, but then
-//            they don't result in as nice bitcode in McSema :-(
-//  window->prev_window = state.window;
-//  state.window = window;
+  // TODO(pag): These two lines should be uncommented for correctness, but then
+  //            they don't result in as nice bitcode in McSema :-(
+  //  window->prev_window = state.window;
+  //  state.window = window;
 
   prev_window = window;
 
@@ -183,18 +186,18 @@ DEF_HELPER(SAVE_WINDOW, RegisterWindow *window, RegisterWindow *&prev_window) ->
   Write(REG_I7, REG_O7);
 }
 
-DEF_HELPER(RESTORE_WINDOW, RegisterWindow *&prev_window) -> void {
+DEF_HELPER(RESTORE_WINDOW, RegisterWindow *&prev_window)->void {
 
   const auto window = prev_window ? prev_window : state.window;
   if (!window) {
-    memory = __remill_sync_hyper_call(
-        state, memory, SyncHyperCall::kSPARCWindowUnderflow);
+    memory = __remill_sync_hyper_call(state, memory,
+                                      SyncHyperCall::kSPARCWindowUnderflow);
     return;
   }
 
-// TODO(pag): This next line should be uncommented for correctness, but then
-//            it means not as nice bitcode for mcsema.
-//  state.window = window->prev_window;
+  // TODO(pag): This next line should be uncommented for correctness, but then
+  //            it means not as nice bitcode for mcsema.
+  //  state.window = window->prev_window;
 
   // Move input register to output
   Write(REG_O0, REG_I0);
@@ -233,6 +236,7 @@ DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 
 #include "lib/Arch/SPARC32/Semantics/FLAGS.cpp"
 #include "lib/Arch/SPARC32/Semantics/COND.cpp"
+
 #include "lib/Arch/SPARC32/Semantics/BINARY.cpp"
 #include "lib/Arch/SPARC32/Semantics/BRANCH.cpp"
 #include "lib/Arch/SPARC32/Semantics/DATAXFER.cpp"
@@ -241,4 +245,3 @@ DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 #include "lib/Arch/SPARC32/Semantics/MISC.cpp"
 #include "lib/Arch/SPARC32/Semantics/TRAP.cpp"
 #include "lib/Arch/SPARC32/Semantics/WINDOW.cpp"
-

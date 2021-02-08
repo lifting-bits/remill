@@ -36,9 +36,9 @@
 #include <vector>
 
 #include "remill/Arch/Arch.h"
+#include "remill/BC/ABI.h"
 #include "remill/BC/Compat/CallSite.h"
 #include "remill/BC/Compat/VectorType.h"
-#include "remill/BC/ABI.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/FileSystem.h"
 
@@ -417,7 +417,7 @@ static void StreamCallOrInvokeToDOT(std::ostream &dot,
       LOG(ERROR) << "Encountered callsite that is not call nor invoke!";
     }
 
-    if(!cs.getCalledValue()->getName().empty()) {
+    if (!cs.getCalledValue()->getName().empty()) {
       dot << cs.getCalledValue()->getName().str();
     } else {
       dot << cs.getCalledValue()->getValueID();
@@ -1136,8 +1136,10 @@ VisitResult ForwardAliasVisitor::visitPHINode(llvm::PHINode &inst) {
 }
 
 VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
+
   //const auto val = inst.getCalledOperand()->stripPointerCasts();
-  const auto val = compat::llvm::CallSite(&inst).getCalledValue()->stripPointerCasts();
+  const auto val =
+      compat::llvm::CallSite(&inst).getCalledValue()->stripPointerCasts();
   if (auto const_val = llvm::dyn_cast<llvm::Constant>(val); const_val) {
 
     // Don't let this affect anything.
@@ -1189,7 +1191,8 @@ VisitResult ForwardAliasVisitor::visitCallInst(llvm::CallInst &inst) {
 }
 
 VisitResult ForwardAliasVisitor::visitInvokeInst(llvm::InvokeInst &inst) {
-  auto val = compat::llvm::CallSite(&inst).getCalledValue()->stripPointerCasts();
+  auto val =
+      compat::llvm::CallSite(&inst).getCalledValue()->stripPointerCasts();
   if (llvm::isa<llvm::InlineAsm>(val)) {
     live_args[&inst].set();  // Weird to invoke inline assembly.
 

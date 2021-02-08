@@ -14,21 +14,22 @@
  * limitations under the License.
  */
 
+#include "remill/Arch/Arch.h"
+
 #include <glog/logging.h>
 
-#include "remill/Arch/Arch.h"
+#include "Decode.h"
 #include "remill/Arch/Instruction.h"
 #include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/OS.h"
 
-#include "Decode.h"
-
 // clang-format off
 #define ADDRESS_SIZE_BITS 64
 #define INCLUDED_FROM_REMILL
 #include "remill/Arch/SPARC64/Runtime/State.h"
+
 // clang-format on
 
 namespace remill {
@@ -73,9 +74,8 @@ class SPARC64Arch final : public Arch {
   llvm::DataLayout DataLayout(void) const final;
 
   // Decode an instruction.
-  bool DecodeInstruction(
-      uint64_t address, std::string_view instr_bytes,
-      Instruction &inst) const final;
+  bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                         Instruction &inst) const final;
 
   // Returns `true` if memory access are little endian byte ordered.
   bool MemoryAccessIsLittleEndian(void) const final {
@@ -160,7 +160,8 @@ void SPARC64Arch::PopulateBasicBlockFunction(llvm::Module *module,
   REG(o7, gpr.o7.qword, u64);
 
   ir.CreateStore(zero_u64, ir.CreateAlloca(u64, nullptr, "g0"), false);
-  ir.CreateStore(zero_u64, ir.CreateAlloca(u64, nullptr, "ignore_write_to_g0"), false);
+  ir.CreateStore(zero_u64, ir.CreateAlloca(u64, nullptr, "ignore_write_to_g0"),
+                 false);
 
   REG(g1, gpr.g1.qword, u64);
   REG(g2, gpr.g2.qword, u64);
@@ -352,23 +353,27 @@ void SPARC64Arch::PopulateBasicBlockFunction(llvm::Module *module,
 
   // `WINDOW_LINK = &(WINDOW->prev_window);`
   llvm::Value *gep_indexes[2] = {zero_u32, llvm::ConstantInt::get(u32, 33)};
-  auto window_link = ir.CreateInBoundsGEP(window_type, window, gep_indexes, "WINDOW_LINK");
+  auto window_link =
+      ir.CreateInBoundsGEP(window_type, window, gep_indexes, "WINDOW_LINK");
   auto nullptr_window = llvm::Constant::getNullValue(prev_window_link->type);
   ir.CreateStore(nullptr_window, window_link, false);
 
-  ir.CreateStore(zero_u8, ir.CreateAlloca(u8, nullptr, "IGNORE_BRANCH_TAKEN"), false);
+  ir.CreateStore(zero_u8, ir.CreateAlloca(u8, nullptr, "IGNORE_BRANCH_TAKEN"),
+                 false);
   ir.CreateStore(zero_u64, ir.CreateAlloca(u64, nullptr, "IGNORE_PC"), false);
-  ir.CreateStore(zero_u64, ir.CreateAlloca(u64, nullptr, "IGNORE_NEXT_PC"), false);
-  ir.CreateStore(zero_u64, ir.CreateAlloca(u64, nullptr, "IGNORE_RETURN_PC"), false);
+  ir.CreateStore(zero_u64, ir.CreateAlloca(u64, nullptr, "IGNORE_NEXT_PC"),
+                 false);
+  ir.CreateStore(zero_u64, ir.CreateAlloca(u64, nullptr, "IGNORE_RETURN_PC"),
+                 false);
 
   const auto pc_arg = NthArgument(bb_func, kPCArgNum);
   const auto state_ptr_arg = NthArgument(bb_func, kStatePointerArgNum);
 
   (void) RegisterByName(kNextPCVariableName)->AddressOf(state_ptr_arg, ir);
 
-  ir.CreateStore(
-      pc_arg, RegisterByName(kPCVariableName)->AddressOf(state_ptr_arg, ir),
-      false);
+  ir.CreateStore(pc_arg,
+                 RegisterByName(kPCVariableName)->AddressOf(state_ptr_arg, ir),
+                 false);
 }
 
 llvm::Triple SPARC64Arch::Triple(void) const {
@@ -405,8 +410,9 @@ bool SPARC64Arch::NextInstructionIsDelayed(const Instruction &inst,
 }
 
 // Decode an instruction.
-bool SPARC64Arch::DecodeInstruction(
-    uint64_t address, std::string_view inst_bytes, Instruction &inst) const {
+bool SPARC64Arch::DecodeInstruction(uint64_t address,
+                                    std::string_view inst_bytes,
+                                    Instruction &inst) const {
 
   inst.pc = address;
   inst.arch_name = arch_name;
@@ -436,27 +442,25 @@ bool SPARC64Arch::DecodeInstruction(
   if (!sparc64::TryDecode(inst)) {
     inst.category = Instruction::kCategoryInvalid;
     inst.operands.clear();
-    LOG(ERROR)
-        << "Unable to decode: " << inst.Serialize();
+    LOG(ERROR) << "Unable to decode: " << inst.Serialize();
     return false;
   }
 
   return inst.IsValid();
 }
 
-} // namespace sparc
+}  // namespace sparc
 
-Arch::ArchPtr Arch::GetSPARC64(
-    llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_) {
+Arch::ArchPtr Arch::GetSPARC64(llvm::LLVMContext *context_, OSName os_name_,
+                               ArchName arch_name_) {
   if (arch_name_ == kArchSparc64) {
     return std::make_unique<sparc::SPARC64Arch>(context_, os_name_, arch_name_);
 
   } else {
-    LOG(FATAL)
-        << "Invalid arch name passed to Arch::GetSPARC::"
-        << GetArchName(arch_name_);
+    LOG(FATAL) << "Invalid arch name passed to Arch::GetSPARC::"
+               << GetArchName(arch_name_);
     return {};
   }
 }
 
-} // namespace remill
+}  // namespace remill

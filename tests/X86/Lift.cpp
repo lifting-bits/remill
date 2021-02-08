@@ -142,8 +142,8 @@ extern "C" int main(int argc, char *argv[]) {
   }
 
   DLOG(INFO) << "Serializing bitcode to " << FLAGS_bc_out;
-  auto host_arch = remill::Arch::Build(
-      &context, os_name, remill::GetArchName(REMILL_ARCH));
+  auto host_arch =
+      remill::Arch::Build(&context, os_name, remill::GetArchName(REMILL_ARCH));
   host_arch->PrepareModule(module.get());
   remill::StoreModuleToFile(module.get(), FLAGS_bc_out);
 

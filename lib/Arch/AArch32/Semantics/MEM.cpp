@@ -15,6 +15,7 @@
  */
 
 namespace {
+
 // Offset
 DEF_COND_SEM(STR, M32W dst, R32 src1) {
   auto src = Read(src1);
@@ -79,7 +80,8 @@ DEF_COND_SEM(LDRBp, M8 src1, R32W dst, R32W dst_reg, R32 src2) {
 }
 
 DEF_COND_SEM(STRT, M32W dst, R32 src1, R32W dst_reg, R32 src2) {
-  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kAArch32CheckNotEL2);
+  memory = __remill_sync_hyper_call(state, memory,
+                                    SyncHyperCall::kAArch32CheckNotEL2);
   auto src = Read(src1);
   auto new_val = Read(src2);
   Write(dst, TruncTo<uint32_t>(src));
@@ -88,7 +90,8 @@ DEF_COND_SEM(STRT, M32W dst, R32 src1, R32W dst_reg, R32 src2) {
 }
 
 DEF_COND_SEM(STRTB, M8W dst, R32 src1, R32W dst_reg, R32 src2) {
-  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kAArch32CheckNotEL2);
+  memory = __remill_sync_hyper_call(state, memory,
+                                    SyncHyperCall::kAArch32CheckNotEL2);
   auto src = Read(src1);
   auto new_val = Read(src2);
   Write(dst, TruncTo<uint8_t>(src));
@@ -97,7 +100,8 @@ DEF_COND_SEM(STRTB, M8W dst, R32 src1, R32W dst_reg, R32 src2) {
 }
 
 DEF_COND_SEM(LDRT, M32 src1, R32W dst, R32W dst_reg, R32 src2) {
-  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kAArch32CheckNotEL2);
+  memory = __remill_sync_hyper_call(state, memory,
+                                    SyncHyperCall::kAArch32CheckNotEL2);
   auto src = Read(src1);
   auto new_val = Read(src2);
   WriteZExt(dst, src);
@@ -106,7 +110,8 @@ DEF_COND_SEM(LDRT, M32 src1, R32W dst, R32W dst_reg, R32 src2) {
 }
 
 DEF_COND_SEM(LDRTB, M8 src1, R32W dst, R32W dst_reg, R32 src2) {
-  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kAArch32CheckNotEL2);
+  memory = __remill_sync_hyper_call(state, memory,
+                                    SyncHyperCall::kAArch32CheckNotEL2);
   auto src = Read(src1);
   auto new_val = Read(src2);
   WriteZExt(dst, src);
@@ -114,7 +119,7 @@ DEF_COND_SEM(LDRTB, M8 src1, R32W dst, R32W dst_reg, R32 src2) {
   return memory;
 }
 
-} // namespace
+}  // namespace
 
 DEF_ISEL(STR) = STR;
 DEF_ISEL(STRB) = STRB;
@@ -130,6 +135,7 @@ DEF_ISEL(LDRT) = LDRT;
 DEF_ISEL(LDRBT) = LDRTB;
 
 namespace {
+
 // Offset
 DEF_COND_SEM(STRH, M16W dst, R32 src1) {
   auto src = Read(src1);
@@ -233,7 +239,8 @@ DEF_COND_SEM(LDRSHp, M16 src1, R32W dst, R32W dst_reg, R32 src2) {
 }
 
 DEF_COND_SEM(STRHT, M16W dst, R32 src1, R32W dst_reg, R32 src2) {
-  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kAArch32CheckNotEL2);
+  memory = __remill_sync_hyper_call(state, memory,
+                                    SyncHyperCall::kAArch32CheckNotEL2);
   auto src = Read(src1);
   auto new_val = Read(src2);
   WriteTrunc(dst, src);
@@ -242,7 +249,8 @@ DEF_COND_SEM(STRHT, M16W dst, R32 src1, R32W dst_reg, R32 src2) {
 }
 
 DEF_COND_SEM(LDRHT, M16 src1, R32W dst, R32W dst_reg, R32 src2) {
-  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kAArch32CheckNotEL2);
+  memory = __remill_sync_hyper_call(state, memory,
+                                    SyncHyperCall::kAArch32CheckNotEL2);
   auto src = Read(src1);
   auto new_val = Read(src2);
   WriteZExt(dst, src);
@@ -251,7 +259,8 @@ DEF_COND_SEM(LDRHT, M16 src1, R32W dst, R32W dst_reg, R32 src2) {
 }
 
 DEF_COND_SEM(LDRSBT, M8 src1, R32W dst, R32W dst_reg, R32 src2) {
-  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kAArch32CheckNotEL2);
+  memory = __remill_sync_hyper_call(state, memory,
+                                    SyncHyperCall::kAArch32CheckNotEL2);
   auto src = Read(src1);
   auto new_val = Read(src2);
   WriteSExt(dst, src);
@@ -260,7 +269,8 @@ DEF_COND_SEM(LDRSBT, M8 src1, R32W dst, R32W dst_reg, R32 src2) {
 }
 
 DEF_COND_SEM(LDRSHT, M16 src1, R32W dst, R32W dst_reg, R32 src2) {
-  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kAArch32CheckNotEL2);
+  memory = __remill_sync_hyper_call(state, memory,
+                                    SyncHyperCall::kAArch32CheckNotEL2);
   auto src = Read(src1);
   auto new_val = Read(src2);
   WriteSExt(dst, src);
@@ -268,7 +278,7 @@ DEF_COND_SEM(LDRSHT, M16 src1, R32W dst, R32W dst_reg, R32 src2) {
   return memory;
 }
 
-} // namespace
+}  // namespace
 
 DEF_ISEL(STRH) = STRH;
 DEF_ISEL(STRHp) = STRHp;
@@ -350,7 +360,7 @@ DEF_COND_SEM(LDM, I16 reg_list, R32W dst, R32 dst_new, M32 src_mem, R32W dst0,
 DEF_COND_SEM(STMDB, I16 reg_list, R32W dst, R32 dst_new, M32W dst_mem, R32 src0,
              R32 src1, R32 src2, R32 src3, R32 src4, R32 src5, R32 src6,
              R32 src7, R32 src8, R32 src9, R32 src10, R32 src11, R32 src12,
-             R32 src13,R32 src14, R32 src15) {
+             R32 src13, R32 src14, R32 src15) {
   auto regs = Read(reg_list);
   uint32_t index = 0;
   if (UAnd(regs, uint16_t(0b1u))) {
@@ -404,17 +414,19 @@ DEF_COND_SEM(STMDB, I16 reg_list, R32W dst, R32 dst_new, M32W dst_mem, R32 src0,
   Write(dst, Read(dst_new));
   return memory;
 }
-} // namespace
+}  // namespace
 
 DEF_ISEL(STMDA) = STMDB;
 DEF_ISEL(LDMDA) = LDM;
 DEF_ISEL(STM) = STMDB;
 DEF_ISEL(LDM) = LDM;
+
 //DEF_ISEL(STMu) = STMu;
 DEF_ISEL(STMDB) = STMDB;
 DEF_ISEL(LDMDB) = LDM;
+
 //DEF_ISEL(LDMu) = LDMu;
 DEF_ISEL(STMIB) = STMDB;
 DEF_ISEL(LDMIB) = LDM;
-//DEF_ISEL(LDMe) = LDMe;
 
+//DEF_ISEL(LDMe) = LDMe;

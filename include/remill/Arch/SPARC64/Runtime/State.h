@@ -26,17 +26,16 @@ struct Reg final {
   addr_t qword;
 } __attribute__((packed));
 
-static_assert(sizeof(Reg) == 8,
-              "Invalid size of `Reg`.");
+static_assert(sizeof(Reg) == 8, "Invalid size of `Reg`.");
 
 union PtrReg final {
   addr_t qword;
 } __attribute__((packed));
 
-static_assert(sizeof(PtrReg) == 8,
-              "Invalid size of `PtrReg`.");
+static_assert(sizeof(PtrReg) == 8, "Invalid size of `PtrReg`.");
 
 struct GPR {
+
   // Prevents LLVM from casting a `GPR` into an `i64` to access `I0`.
   volatile addr_t _0;
   Reg i0;
@@ -107,8 +106,7 @@ struct GPR {
   Reg g7;
 };
 
-static_assert(512 == sizeof(GPR),
-              "Invalid packing of `struct GPR`.");
+static_assert(512 == sizeof(GPR), "Invalid packing of `struct GPR`.");
 
 enum AlternativeSpaceIdentifier : uint32_t {
   ASI_PST8_PRIMARY = 0xc0,
@@ -132,7 +130,8 @@ struct FPURegs final {
   vec128_t v[16];
 } __attribute__((packed));
 
-static_assert(((128 * 16) / 8) == sizeof(struct FPURegs), "Invalid packing of `struct FPURegs`.");
+static_assert(((128 * 16) / 8) == sizeof(struct FPURegs),
+              "Invalid packing of `struct FPURegs`.");
 
 struct FSRReg final {
   volatile uint8_t _0;
@@ -159,9 +158,10 @@ struct FSRReg final {
   uint8_t fcc2;
   volatile uint8_t _11;
   uint8_t fcc3;
-}__attribute__((packed));
+} __attribute__((packed));
 
-static_assert(24 == sizeof(struct FSRReg), "Invalid packing of `struct FSRReg`.");
+static_assert(24 == sizeof(struct FSRReg),
+              "Invalid packing of `struct FSRReg`.");
 
 // Integer condition code register flags
 struct ICCRFlags final {
@@ -177,57 +177,58 @@ struct ICCRFlags final {
   } __attribute__((packed)) icc, xcc;
 } __attribute__((packed));
 
-static_assert(16 == sizeof(struct ICCRFlags), "Invalid packing of `struct ICCRFlags`.");
+static_assert(16 == sizeof(struct ICCRFlags),
+              "Invalid packing of `struct ICCRFlags`.");
 
 union GSRFlags final {
   uint64_t flat;
   struct {
-    uint64_t align:3;
-    uint64_t scale:5;
-    uint64_t reserved_0:17;
-    uint64_t irnd:2;
-    uint64_t im:1;
-    uint64_t reserved_1:4;
-    uint64_t mask:32;
+    uint64_t align : 3;
+    uint64_t scale : 5;
+    uint64_t reserved_0 : 17;
+    uint64_t irnd : 2;
+    uint64_t im : 1;
+    uint64_t reserved_1 : 4;
+    uint64_t mask : 32;
   } __attribute__((packed));
 } __attribute__((packed));
 
 struct ASR final {
-  Reg yreg;           // ASR 0
+  Reg yreg;  // ASR 0
   volatile uint64_t _0;
-  ICCRFlags ccr;      // ASR 2
+  ICCRFlags ccr;  // ASR 2
   volatile uint64_t _1;
   union {
     uint64_t asi_flat;
     struct {
-      uint64_t asi:8;     // ASR 3
-      uint64_t padding_1:56;
+      uint64_t asi : 8;  // ASR 3
+      uint64_t padding_1 : 56;
     } __attribute__((packed));
   } __attribute__((packed));
   volatile uint64_t _2;
-  uint64_t tick;      // ASR 4
+  uint64_t tick;  // ASR 4
   volatile uint64_t _3;
   union {
     uint64_t fprs_flat;
     struct {
-      uint64_t fprs:3;     // ASR 6
-      uint64_t padding_2:61;
+      uint64_t fprs : 3;  // ASR 6
+      uint64_t padding_2 : 61;
     } __attribute__((packed));
   } __attribute__((packed));
   volatile uint64_t _4;
   GSRFlags gsr;
   volatile uint64_t _5;
-  uint64_t softint;     // ASR 20
+  uint64_t softint;  // ASR 20
   volatile uint64_t _6;
-  uint64_t stick;     // ASR 24
+  uint64_t stick;  // ASR 24
   volatile uint64_t _7;
-  uint64_t stick_cmpr;   // ASR 25
+  uint64_t stick_cmpr;  // ASR 25
   volatile uint64_t _8;
-  uint64_t cfr;     // ASR 26
+  uint64_t cfr;  // ASR 26
   volatile uint64_t _9;
-  uint64_t pause;     // ASR 27
+  uint64_t pause;  // ASR 27
   volatile uint64_t _10;
-  uint64_t mwait;     // ASR 28
+  uint64_t mwait;  // ASR 28
 };
 
 static_assert(192 == sizeof(struct ASR), "Invalid packing of `struct ASR`.");
@@ -242,50 +243,50 @@ struct CSR {
 static_assert(8 == sizeof(struct CSR), "Invalid packing of `struct CSR`.");
 
 struct PSR {
-  uint64_t  tpc;
-  uint64_t  tnpc;
-  uint64_t  tstate;
-  uint64_t  tick;
-  uint64_t  tba;
-  volatile uint8_t _0;    //padding
-  uint8_t   tt;
-  uint8_t   tl;
+  uint64_t tpc;
+  uint64_t tnpc;
+  uint64_t tstate;
+  uint64_t tick;
+  uint64_t tba;
+  volatile uint8_t _0;  //padding
+  uint8_t tt;
+  uint8_t tl;
   union {
-    uint16_t  pstate;
+    uint16_t pstate;
     struct {
-      uint16_t  res1:1;
-      uint16_t  ie:1;
-      uint16_t  priv:1;
-      uint16_t  am:1;
-      uint16_t  pef:1;
-      uint16_t  res2:1;
-      uint16_t  mm:1;
-      uint16_t  tle:1;
-      uint16_t  cle:1;
-      uint16_t  res3:1;
-      uint16_t  res4:1;
-      uint16_t  tct:1;
-      uint16_t  padding:4;
+      uint16_t res1 : 1;
+      uint16_t ie : 1;
+      uint16_t priv : 1;
+      uint16_t am : 1;
+      uint16_t pef : 1;
+      uint16_t res2 : 1;
+      uint16_t mm : 1;
+      uint16_t tle : 1;
+      uint16_t cle : 1;
+      uint16_t res3 : 1;
+      uint16_t res4 : 1;
+      uint16_t tct : 1;
+      uint16_t padding : 4;
     } __attribute__((packed)) ps;
   } __attribute__((packed));
   volatile uint8_t _1;
-  uint8_t   pil;
-  uint8_t   cwp;
-  uint8_t   cansave;
+  uint8_t pil;
+  uint8_t cwp;
+  uint8_t cansave;
   volatile uint8_t _2;
-  uint8_t   canrestore;
-  uint8_t   cleanwin;
-  uint8_t   otherwin;
+  uint8_t canrestore;
+  uint8_t cleanwin;
+  uint8_t otherwin;
   volatile uint8_t _3;
   union {
-    uint8_t  wstate;
+    uint8_t wstate;
     struct {
-      uint8_t normal:2;
-      uint8_t other:3;
-      uint8_t padding:3;
+      uint8_t normal : 2;
+      uint8_t other : 3;
+      uint8_t padding : 3;
     } __attribute__((packed)) ws;
   } __attribute__((packed));
-  uint8_t  gl;
+  uint8_t gl;
 } __attribute__((packed));
 
 struct RegisterWindow {
@@ -330,19 +331,19 @@ struct RegisterWindow {
 struct alignas(16) State : public ArchState {
   FPURegs fpreg;  // 512 bytes
   volatile uint64_t _0;
-  GPR gpr;        // 512 bytes
+  GPR gpr;  // 512 bytes
   volatile uint64_t _1;
-  ASR asr;        // 176 bytes
+  ASR asr;  // 176 bytes
   volatile uint64_t _2;
-  PSR psr;        // 56 bytes
+  PSR psr;  // 56 bytes
   volatile uint64_t _3;
-  FSRReg fsr;     // 24 bytes
+  FSRReg fsr;  // 24 bytes
   volatile uint64_t _4;
-  CSR csr;        // 8 bytes
+  CSR csr;  // 8 bytes
   volatile uint64_t _5;
-  Reg pc;         // 8 bytes
+  Reg pc;  // 8 bytes
   volatile uint64_t _6;
-  Reg next_pc;    // 8 bytes
+  Reg next_pc;  // 8 bytes
   volatile uint64_t _7;
 
   // NOTE(pag): This *must* go at the end, as if we change the target arch/data
@@ -352,7 +353,8 @@ struct alignas(16) State : public ArchState {
   uint64_t window;
 #else
   RegisterWindow *window;  // smuggled.
-  static_assert(sizeof(RegisterWindow *) == 8, "Invalid size of `RegisterWindow`");
+  static_assert(sizeof(RegisterWindow *) == 8,
+                "Invalid size of `RegisterWindow`");
 #endif
 };
 

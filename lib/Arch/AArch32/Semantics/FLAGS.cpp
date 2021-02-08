@@ -148,11 +148,12 @@ struct Carry<tag_sub> {
 };
 
 ALWAYS_INLINE static void SetFPSRStatusFlags(State &state, int mask) {
+
   // TODO(Sonya): Update these flags to work on AArch32
-//  state.sr.ixc |= static_cast<uint8_t>(0 != (mask & FE_INEXACT));
-//  state.sr.ofc |= static_cast<uint8_t>(0 != (mask & FE_OVERFLOW));
-//  state.sr.ufc |= static_cast<uint8_t>(0 != (mask & FE_UNDERFLOW));
-//  state.sr.ioc |= static_cast<uint64_t>(0 != (mask & FE_INVALID));
+  //  state.sr.ixc |= static_cast<uint8_t>(0 != (mask & FE_INEXACT));
+  //  state.sr.ofc |= static_cast<uint8_t>(0 != (mask & FE_OVERFLOW));
+  //  state.sr.ufc |= static_cast<uint8_t>(0 != (mask & FE_UNDERFLOW));
+  //  state.sr.ioc |= static_cast<uint64_t>(0 != (mask & FE_INVALID));
 }
 
 template <typename F, typename T>

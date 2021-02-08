@@ -20,7 +20,7 @@ DEF_COND_SEM(CLZ, R32W dst, R32 src) {
   WriteZExt(dst, count);
   return memory;
 }
-} // namespace
+}  // namespace
 
 DEF_ISEL(CLZ) = CLZ;
 
@@ -31,6 +31,7 @@ DEF_COND_SEM(SBFX, R32W dst, R32 src1, I32 src2, I32 src3) {
   auto lsbit = Read(src2);
   auto widthminus1 = Read(src3);
   auto msbit = Signed(lsbit + widthminus1);
+
   // Extract <msbit:lsbit> and retain high bit sign of msbit
   // Shift lift to remove the high bits, then shift right to remove the low bits
   auto res = SShr(SShl(src, int32_t(31) - Signed(msbit)),
@@ -44,13 +45,14 @@ DEF_COND_SEM(UBFX, R32W dst, R32 src1, I32 src2, I32 src3) {
   auto lsbit = Read(src2);
   auto widthminus1 = Read(src3);
   auto msbit = lsbit + widthminus1;
+
   // Extract <msbit:lsbit> unsigned
   // Shift lift to remove the high bits, then shift right to remove the low bits
   auto res = UShr(UShl(src, uint32_t(31) - msbit), uint32_t(31) - widthminus1);
   Write(dst, res);
   return memory;
 }
-}
+}  // namespace
 
 DEF_ISEL(SBFX) = SBFX;
 DEF_ISEL(UBFX) = UBFX;

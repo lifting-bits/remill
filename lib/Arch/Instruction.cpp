@@ -17,6 +17,8 @@
 #include "remill/Arch/Instruction.h"
 
 #include <glog/logging.h>
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/Instructions.h>
 
 #include <iomanip>
 #include <sstream>
@@ -24,8 +26,6 @@
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Name.h"
 #include "remill/BC/Util.h"
-#include <llvm/IR/Instruction.h>
-#include <llvm/IR/Instructions.h>
 
 namespace remill {
 
@@ -103,11 +103,15 @@ std::string Operand::Serialize(void) const {
         switch (shift_reg.shift_op) {
           case Operand::ShiftRegister::kShiftInvalid: break;
 
-          case Operand::ShiftRegister::kShiftLeftWithZeroes: ss << "(LSL "; break;
+          case Operand::ShiftRegister::kShiftLeftWithZeroes:
+            ss << "(LSL ";
+            break;
 
           case Operand::ShiftRegister::kShiftLeftWithOnes: ss << "(MSL "; break;
 
-          case Operand::ShiftRegister::kShiftUnsignedRight: ss << "(LSR "; break;
+          case Operand::ShiftRegister::kShiftUnsignedRight:
+            ss << "(LSR ";
+            break;
 
           case Operand::ShiftRegister::kShiftSignedRight: ss << "(ASR "; break;
 
@@ -125,8 +129,7 @@ std::string Operand::Serialize(void) const {
 
       auto extract_begin = [&](void) {
         switch (shift_reg.extend_op) {
-          case Operand::ShiftRegister::kExtendInvalid:
-            break;
+          case Operand::ShiftRegister::kExtendInvalid: break;
 
           case Operand::ShiftRegister::kExtendSigned:
             ss << "(SEXT (TRUNC ";
@@ -140,17 +143,14 @@ std::string Operand::Serialize(void) const {
 
       auto extract_end = [&](void) {
         switch (shift_reg.extend_op) {
-          case Operand::ShiftRegister::kExtendInvalid:
-            break;
+          case Operand::ShiftRegister::kExtendInvalid: break;
 
           case Operand::ShiftRegister::kExtendSigned:
-            ss << " " << shift_reg.extract_size << ") "
-               << size << ")";
+            ss << " " << shift_reg.extract_size << ") " << size << ")";
             break;
 
           case Operand::ShiftRegister::kExtendUnsigned:
-            ss << " " << shift_reg.extract_size << ") "
-               << size << ")";
+            ss << " " << shift_reg.extract_size << ") " << size << ")";
             break;
         }
       };
@@ -272,9 +272,7 @@ std::string Operand::Serialize(void) const {
       ss << ")";  // End of `(ADDR_`.
       break;
     }
-    case Operand::kTypeExpression:
-      ss << expr->Serialize();
-      break;
+    case Operand::kTypeExpression: ss << expr->Serialize(); break;
   }
   ss << ")";
   return ss.str();
@@ -295,10 +293,7 @@ std::string Condition::Serialize(void) const {
     case Condition::kTypeIsZero:
       ss << "(REG_" << lhs_reg.size << " " << lhs_reg.name << ") = 0";
       break;
-    case Condition::kTypeTrue:
-      ss << "TRUE";
-      break;
-
+    case Condition::kTypeTrue: ss << "TRUE"; break;
   }
   return ss.str();
 }
@@ -337,55 +332,56 @@ void Instruction::Reset(void) {
   next_expr_index = 0;
 }
 
-OperandExpression * Instruction::AllocateExpression(void) {
+OperandExpression *Instruction::AllocateExpression(void) {
   CHECK_LT(next_expr_index, kMaxNumExpr);
   return &(exprs[next_expr_index++]);
 }
 
-OperandExpression* Instruction::EmplaceRegister(const Register * reg) {
+OperandExpression *Instruction::EmplaceRegister(const Register *reg) {
   auto expr = AllocateExpression();
   expr->emplace<const Register *>(reg);
   expr->type = reg->type;
   return expr;
 }
 
-OperandExpression * Instruction::EmplaceRegister(std::string_view reg_name) {
+OperandExpression *Instruction::EmplaceRegister(std::string_view reg_name) {
   return EmplaceRegister(arch->RegisterByName(reg_name));
 }
 
-OperandExpression* Instruction::EmplaceConstant(llvm::Constant * val) {
+OperandExpression *Instruction::EmplaceConstant(llvm::Constant *val) {
   auto expr = AllocateExpression();
   expr->emplace<llvm::Constant *>(val);
   expr->type = val->getType();
   return expr;
 }
 
-OperandExpression* Instruction::EmplaceVariable(std::string_view var_name, llvm::Type * type) {
+OperandExpression *Instruction::EmplaceVariable(std::string_view var_name,
+                                                llvm::Type *type) {
   auto expr = AllocateExpression();
   expr->emplace<std::string>(var_name.data(), var_name.size());
   expr->type = type;
   return expr;
 }
 
-OperandExpression* Instruction::EmplaceBinaryOp(unsigned opcode,
-                                                  OperandExpression *op1,
-                                                  OperandExpression *op2) {
+OperandExpression *Instruction::EmplaceBinaryOp(unsigned opcode,
+                                                OperandExpression *op1,
+                                                OperandExpression *op2) {
   auto expr = AllocateExpression();
   expr->emplace<LLVMOpExpr>(LLVMOpExpr{opcode, op1, op2});
   expr->type = op1->type;
   return expr;
 }
 
-OperandExpression* Instruction::EmplaceUnaryOp(unsigned opcode,
-                                                  OperandExpression *op1,
-                                                  llvm::Type* type) {
+OperandExpression *Instruction::EmplaceUnaryOp(unsigned opcode,
+                                               OperandExpression *op1,
+                                               llvm::Type *type) {
   auto expr = AllocateExpression();
   expr->emplace<LLVMOpExpr>(LLVMOpExpr{opcode, op1, nullptr});
   expr->type = type;
   return expr;
 }
 
-Operand & Instruction::EmplaceOperand(const Operand::Register &reg_op) {
+Operand &Instruction::EmplaceOperand(const Operand::Register &reg_op) {
   operands.emplace_back();
   auto &op = operands.back();
   op.type = Operand::kTypeExpression;
@@ -406,7 +402,8 @@ Operand &Instruction::EmplaceOperand(const Operand::Immediate &imm_op) {
   auto &context = *arch->context;
 
   auto ty = llvm::Type::getIntNTy(context, arch->address_size);
-  op.expr = EmplaceConstant(llvm::ConstantInt::get(ty, imm_op.val, imm_op.is_signed));
+  op.expr =
+      EmplaceConstant(llvm::ConstantInt::get(ty, imm_op.val, imm_op.is_signed));
   op.size = arch->address_size;
   op.type = Operand::kTypeExpression;
   return op;
@@ -438,8 +435,7 @@ Operand &Instruction::EmplaceOperand(const Operand::ShiftRegister &shift_op) {
   auto do_extract = [&](void) {
     if (Operand::ShiftRegister::kExtendInvalid != shift_op.extend_op) {
 
-      auto extract_type =
-          llvm::Type::getIntNTy(context, shift_op.extract_size);
+      auto extract_type = llvm::Type::getIntNTy(context, shift_op.extract_size);
 
       if (reg_size > shift_op.extract_size) {
         curr_size = shift_op.extract_size;
@@ -449,8 +445,8 @@ Operand &Instruction::EmplaceOperand(const Operand::ShiftRegister &shift_op) {
         CHECK(reg_size == shift_op.extract_size)
             << "Invalid extraction size. Can't extract "
             << shift_op.extract_size << " bits from a " << reg_size
-            << "-bit value in operand " << op.Serialize() << " of instruction at "
-            << std::hex << pc;
+            << "-bit value in operand " << op.Serialize()
+            << " of instruction at " << std::hex << pc;
       }
 
       if (op.size > shift_op.extract_size) {
@@ -490,34 +486,41 @@ Operand &Instruction::EmplaceOperand(const Operand::ShiftRegister &shift_op) {
 
         // Left shift.
         case Operand::ShiftRegister::kShiftLeftWithZeroes:
-          expr = EmplaceBinaryOp(llvm::Instruction::Shl, expr, EmplaceConstant(shift_val));
+          expr = EmplaceBinaryOp(llvm::Instruction::Shl, expr,
+                                 EmplaceConstant(shift_val));
           break;
 
         // Masking shift left.
         case Operand::ShiftRegister::kShiftLeftWithOnes: {
           const auto mask_val =
               llvm::ConstantInt::get(reg_type, ~((~zero) << shift_size));
-          expr = EmplaceBinaryOp(llvm::Instruction::Shl, expr, EmplaceConstant(shift_val));
-          expr = EmplaceBinaryOp(llvm::Instruction::Or, expr, EmplaceConstant(mask_val));
+          expr = EmplaceBinaryOp(llvm::Instruction::Shl, expr,
+                                 EmplaceConstant(shift_val));
+          expr = EmplaceBinaryOp(llvm::Instruction::Or, expr,
+                                 EmplaceConstant(mask_val));
           break;
         }
 
         // Logical right shift.
         case Operand::ShiftRegister::kShiftUnsignedRight:
-          expr = EmplaceBinaryOp(llvm::Instruction::LShr, expr, EmplaceConstant(shift_val));
+          expr = EmplaceBinaryOp(llvm::Instruction::LShr, expr,
+                                 EmplaceConstant(shift_val));
           break;
 
         // Arithmetic right shift.
         case Operand::ShiftRegister::kShiftSignedRight:
-          expr = EmplaceBinaryOp(llvm::Instruction::AShr, expr, EmplaceConstant(shift_val));
+          expr = EmplaceBinaryOp(llvm::Instruction::AShr, expr,
+                                 EmplaceConstant(shift_val));
           break;
 
         // Rotate left.
         case Operand::ShiftRegister::kShiftLeftAround: {
           const uint64_t shr_amount = (~shift_size + one) & (op.size - one);
           const auto shr_val = llvm::ConstantInt::get(op_type, shr_amount);
-          auto expr1 = EmplaceBinaryOp(llvm::Instruction::LShr, expr, EmplaceConstant(shr_val));
-          auto expr2 = EmplaceBinaryOp(llvm::Instruction::Shl, expr, EmplaceConstant(shift_val));
+          auto expr1 = EmplaceBinaryOp(llvm::Instruction::LShr, expr,
+                                       EmplaceConstant(shr_val));
+          auto expr2 = EmplaceBinaryOp(llvm::Instruction::Shl, expr,
+                                       EmplaceConstant(shift_val));
           expr = EmplaceBinaryOp(llvm::Instruction::Or, expr1, expr2);
           break;
         }
@@ -526,8 +529,10 @@ Operand &Instruction::EmplaceOperand(const Operand::ShiftRegister &shift_op) {
         case Operand::ShiftRegister::kShiftRightAround: {
           const uint64_t shl_amount = (~shift_size + one) & (op.size - one);
           const auto shl_val = llvm::ConstantInt::get(op_type, shl_amount);
-          auto expr1 = EmplaceBinaryOp(llvm::Instruction::LShr, expr, EmplaceConstant(shift_val));
-          auto expr2 = EmplaceBinaryOp(llvm::Instruction::Shl, expr, EmplaceConstant(shl_val));
+          auto expr1 = EmplaceBinaryOp(llvm::Instruction::LShr, expr,
+                                       EmplaceConstant(shift_val));
+          auto expr2 = EmplaceBinaryOp(llvm::Instruction::Shl, expr,
+                                       EmplaceConstant(shl_val));
           expr = EmplaceBinaryOp(llvm::Instruction::Or, expr1, expr2);
           break;
         }
@@ -552,7 +557,7 @@ Operand &Instruction::EmplaceOperand(const Operand::ShiftRegister &shift_op) {
   return op;
 }
 
-Operand& Instruction::EmplaceOperand(const Operand::Address &addr_op) {
+Operand &Instruction::EmplaceOperand(const Operand::Address &addr_op) {
   operands.emplace_back();
   auto &op = operands.back();
 
@@ -560,22 +565,23 @@ Operand& Instruction::EmplaceOperand(const Operand::Address &addr_op) {
   const auto zero = llvm::ConstantInt::get(word_type, 0, false);
   const auto word_size = arch->address_size;
 
-  CHECK(word_size >= addr_op.base_reg.size)<< "Memory base register "
-      << addr_op.base_reg.name << "for instruction at " << std::hex << pc
+  CHECK(word_size >= addr_op.base_reg.size)
+      << "Memory base register " << addr_op.base_reg.name
+      << "for instruction at " << std::hex << pc
       << " is wider than the machine word size.";
 
-  CHECK(word_size >= addr_op.index_reg.size)<< "Memory index register "
-      << addr_op.base_reg.name << "for instruction at " << std::hex << pc
+  CHECK(word_size >= addr_op.index_reg.size)
+      << "Memory index register " << addr_op.base_reg.name
+      << "for instruction at " << std::hex << pc
       << " is wider than the machine word size.";
 
-  auto reg_or_zero = [=](const Operand::Register & reg) {
+  auto reg_or_zero = [=](const Operand::Register &reg) {
     if (!reg.name.empty()) {
       if (auto reg_pointer = arch->RegisterByName(reg.name)) {
         return EmplaceRegister(reg_pointer);
       } else {
-        return EmplaceVariable(
-            reg.name,
-            llvm::Type::getIntNTy(*arch->context, reg.size));
+        return EmplaceVariable(reg.name,
+                               llvm::Type::getIntNTy(*arch->context, reg.size));
       }
     } else {
       return EmplaceConstant(zero);
@@ -587,23 +593,25 @@ Operand& Instruction::EmplaceOperand(const Operand::Address &addr_op) {
   if (!addr_op.index_reg.name.empty() && addr_op.scale) {
     auto index = reg_or_zero(addr_op.index_reg);
     if (addr_op.scale != 1) {
-      auto scale = llvm::ConstantInt::get(word_type,
-                                          static_cast<uint64_t>(addr_op.scale),
-                                          true);
-      index = EmplaceBinaryOp(llvm::Instruction::Mul, index, EmplaceConstant(scale));
+      auto scale = llvm::ConstantInt::get(
+          word_type, static_cast<uint64_t>(addr_op.scale), true);
+      index = EmplaceBinaryOp(llvm::Instruction::Mul, index,
+                              EmplaceConstant(scale));
     }
     addr = EmplaceBinaryOp(llvm::Instruction::Add, addr, index);
   }
 
   if (addr_op.displacement) {
     if (0 < addr_op.displacement) {
-      auto disp = llvm::ConstantInt::get(word_type,
-                                         static_cast<uint64_t>(addr_op.displacement));
-      addr = EmplaceBinaryOp(llvm::Instruction::Add, addr, EmplaceConstant(disp));
+      auto disp = llvm::ConstantInt::get(
+          word_type, static_cast<uint64_t>(addr_op.displacement));
+      addr =
+          EmplaceBinaryOp(llvm::Instruction::Add, addr, EmplaceConstant(disp));
     } else {
-      auto disp = llvm::ConstantInt::get(word_type,
-                                               static_cast<uint64_t>(-addr_op.displacement));
-      addr = EmplaceBinaryOp(llvm::Instruction::Sub, addr, EmplaceConstant(disp));
+      auto disp = llvm::ConstantInt::get(
+          word_type, static_cast<uint64_t>(-addr_op.displacement));
+      addr =
+          EmplaceBinaryOp(llvm::Instruction::Sub, addr, EmplaceConstant(disp));
     }
   }
 

@@ -23,7 +23,7 @@ DEF_SEM(B, R8, R8W, I32 taken_pc, R32W next_pc_dst) {
 }
 
 DEF_SEM(BCOND, R8 cond, R8W branch_taken, I32 taken_pc, I32 not_taken_pc,
-             R32W next_pc_dst) {
+        R32W next_pc_dst) {
   auto c = Read(cond);
   auto new_pc = Select(c, Read(taken_pc), Read(not_taken_pc));
   Write(REG_PC, new_pc);
@@ -60,7 +60,7 @@ DEF_SEM(BLCOND, R8 cond, R8W branch_taken, PC target_addr, PC ret_addr,
   Write(branch_taken, c);
   return memory;
 }
-} // namespace
+}  // namespace
 
 DEF_ISEL(B) = B;
 DEF_ISEL(BCOND) = BCOND;
