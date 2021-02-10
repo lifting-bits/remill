@@ -91,6 +91,7 @@ docker run --rm -it remill:llvm800-ubuntu18.04-amd64 \
 First, update aptitude and get install the baseline dependencies.
 
 ```shell
+sudo dpkg --add-architecture i386
 sudo apt-get update
 sudo apt-get upgrade
 
@@ -103,7 +104,10 @@ sudo apt-get install \
      libtinfo-dev \
      lsb-release \
      zlib1g-dev \
-     ccache
+     ccache \
+     libc6-dev:i386 \
+     'libstdc++-*-dev:i386' \
+     g++-multilib
 
 # Ubuntu 14.04, 16.04
 sudo apt-get install realpath
