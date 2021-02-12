@@ -48,6 +48,7 @@ namespace remill::compat::llvm {
     using parent::getCalledValue;
     using parent::getCalledFunction;
     using parent::setCalledFunction;
+    using parent::getInstruction;
   };
 
 } // namespace remill::compat::llvm
@@ -55,6 +56,8 @@ namespace remill::compat::llvm {
 #else
 
 #include <llvm/IR/AbstractCallSite.h>
+#include <llvm/Analysis/InlineCost.h>
+#include <llvm/Transforms/Utils/Cloning.h>
 namespace remill::compat::llvm {
 
   struct CallSite {
@@ -83,7 +86,7 @@ namespace remill::compat::llvm {
       return cb->getCalledOperand();
     }
 
-    ::llvm::Function *getCalledFunction() {
+    ::llvm::Function *getCalledFunction() const {
       if ( !*this) {
         return nullptr;
       }
@@ -95,6 +98,10 @@ namespace remill::compat::llvm {
     }
 
     operator bool() const {
+      return cb;
+    }
+
+    ::llvm::CallBase *getInstruction() {
       return cb;
     }
   };
