@@ -571,6 +571,7 @@ bool TraceLifter::Impl::Lift(
             goto direct_func_call;
           }
           try_add_delay_slot(true, block);
+          try_add_delay_slot(false, block);
           trace_work_list.insert(inst.branch_taken_pc);
           auto target_trace = get_trace_decl(inst.branch_taken_pc);
           auto do_cond_call = llvm::BasicBlock::Create(context, "", func);
