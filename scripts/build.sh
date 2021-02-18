@@ -257,6 +257,34 @@ function Build
   return $?
 }
 
+# Create the packages
+function Package
+{
+  remill_tag=$(cd "${SRC_DIR}" && git describe --tags --always --abbrev=0)
+  remill_commit=$(cd "${SRC_DIR}" && git rev-parse HEAD | cut -c1-7)
+  remill_version="${remill_tag:1}.${remill_commit}"
+
+  (
+    set -x
+
+    if [[ -d "install" ]]; then
+      rm -rf "install"
+    fi
+
+    mkdir "install"
+    export DESTDIR="$(pwd)/install"
+
+    cmake --build . \
+      --target install
+
+    cpack -D REMILL_DATA_PATH="${DESTDIR}" \
+      -R ${remill_version} \
+      --config "${SRC_DIR}/packaging/main.cmake"
+  ) || return $?
+
+  return $?
+}
+
 # Get a LLVM version name for the build. This is used to find the version of
 # cxx-common to download.
 function GetLLVMVersion
@@ -385,7 +413,7 @@ function main
   mkdir -p "${BUILD_DIR}"
   cd "${BUILD_DIR}" || exit 1
 
-  if ! (DownloadLibraries && Configure && Build); then
+  if ! (DownloadLibraries && Configure && Build && Package); then
     echo "[x] Build aborted."
     exit 1
   fi
