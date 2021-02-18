@@ -31,12 +31,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Install utility tools
         shell: bash
         run: |
           # TODO some of these should probably live in the Docker build image
           apt-get update
-          apt-get install -y pixz xz-utils make
+          apt-get install -y pixz xz-utils make rpm
 
       - name: Build with build script
         shell: bash
@@ -54,6 +56,33 @@ jobs:
           remill-lift-${{ matrix.llvm }} --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
           remill-lift-${{ matrix.llvm }} --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
 
+      - name: Locate the packages
+        id: package_names
+        shell: bash
+        working-directory: remill-build
+        run: |
+          echo ::set-output name=DEB_PACKAGE_PATH::remill-build/$(ls *.deb)
+          echo ::set-output name=RPM_PACKAGE_PATH::remill-build/$(ls *.rpm)
+          echo ::set-output name=TGZ_PACKAGE_PATH::remill-build/$(ls *.tar.gz)
+
+      - name: Store the DEB package
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_deb_package
+          path: ${{ steps.package_names.outputs.DEB_PACKAGE_PATH }}
+
+      - name: Store the RPM package
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_rpm_package
+          path: ${{ steps.package_names.outputs.RPM_PACKAGE_PATH }}
+
+      - name: Store the TGZ package
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_tgz_package
+          path: ${{ steps.package_names.outputs.TGZ_PACKAGE_PATH }}
+
   build_mac:
     strategy:
       fail-fast: false
@@ -69,6 +98,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Build with build script
         shell: bash
         run: ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
@@ -84,3 +115,16 @@ jobs:
         run: |
           remill-lift-${{ matrix.llvm }} --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
           remill-lift-${{ matrix.llvm }} --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
+
+      - name: Locate the packages
+        id: package_names
+        shell: bash
+        working-directory: remill-build
+        run: |
+          echo ::set-output name=TGZ_PACKAGE_PATH::remill-build/$(ls *.tar.gz)
+
+      - name: Store the TGZ package
+        uses: actions/upload-artifact@v1
+        with:
+          name: macos-11.0_llvm${{ matrix.llvm }}_tgz_package
+          path: ${{ steps.package_names.outputs.TGZ_PACKAGE_PATH }}
