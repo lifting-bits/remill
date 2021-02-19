@@ -47,6 +47,7 @@ struct CallSite : private ::llvm::CallSite {
   using parent::operator bool;
   using parent::getCalledFunction;
   using parent::getCalledValue;
+  using parent::getInstruction;
   using parent::setCalledFunction;
 };
 
@@ -54,7 +55,9 @@ struct CallSite : private ::llvm::CallSite {
 
 #else
 
+#  include <llvm/Analysis/InlineCost.h>
 #  include <llvm/IR/AbstractCallSite.h>
+#  include <llvm/Transforms/Utils/Cloning.h>
 namespace remill::compat::llvm {
 
 struct CallSite {
@@ -81,7 +84,7 @@ struct CallSite {
     return cb->getCalledOperand();
   }
 
-  ::llvm::Function *getCalledFunction() {
+  ::llvm::Function *getCalledFunction() const {
     if (!*this) {
       return nullptr;
     }
@@ -93,6 +96,10 @@ struct CallSite {
   }
 
   operator bool() const {
+    return cb;
+  }
+
+  ::llvm::CallBase *getInstruction() {
     return cb;
   }
 };
