@@ -128,3 +128,104 @@ jobs:
         with:
           name: macos-11.0_llvm${{ matrix.llvm }}_tgz_package
           path: ${{ steps.package_names.outputs.TGZ_PACKAGE_PATH }}
+
+
+
+
+  release_linux:
+    # Do not run the release procedure if any of the builds has failed
+    needs: [ build_linux, build_mac ]
+    runs-on: ubuntu-20.04
+    if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v2
+
+      - name: Draft the new release
+        id: create_release
+        uses: actions/create-release@v1
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Version ${{ github.ref }}
+          draft: true
+          prerelease: true
+
+      - name: Group the packages by platform
+        run: |
+          zip -r9 remill_ubuntu-18.04_packages.zip \
+                  ubuntu-18.04*
+
+          zip -r9 remill_ubuntu-20.04_packages.zip \
+                  ubuntu-20.04*
+
+      - name: Upload the Ubuntu 18.04 packages
+        uses: actions/upload-release-asset@v1
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: remill_ubuntu-18.04_packages.zip
+          asset_name: remill_ubuntu-18.04_packages.zip
+          asset_content_type: application/gzip
+
+      - name: Upload the Ubuntu 20.04 packages
+        uses: actions/upload-release-asset@v1
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: remill_ubuntu-20.04_packages.zip
+          asset_name: remill_ubuntu-20.04_packages.zip
+          asset_content_type: application/gzip
+
+
+
+
+  release_macos:
+    # Do not run the release procedure if any of the builds has failed
+    needs: [ build_linux, build_mac ]
+    runs-on: 'macos-11.0'
+    if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v2
+
+      - name: Draft the new release
+        id: create_release
+        uses: actions/create-release@v1
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Version ${{ github.ref }}
+          draft: true
+          prerelease: true
+
+      - name: Group the packages by platform
+        run: |
+          zip -r9 remill_macos-11.0_packages.zip \
+                  macos-11.0*
+
+      - name: Upload the macOS 11.0 packages
+        uses: actions/upload-release-asset@v1
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: remill_macos-11.0_packages.zip
+          asset_name: remill_macos-11.0_packages.zip
+          asset_content_type: application/gzip
