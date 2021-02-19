@@ -88,7 +88,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [
-          'macos-11.0'
+          'macos-10.15'
           ]
         llvm: [
           '11'
@@ -126,7 +126,7 @@ jobs:
       - name: Store the TGZ package
         uses: actions/upload-artifact@v1
         with:
-          name: macos-11.0_llvm${{ matrix.llvm }}_tgz_package
+          name: ${{ matrix.os }}_llvm${{ matrix.llvm }}_tgz_package
           path: ${{ steps.package_names.outputs.TGZ_PACKAGE_PATH }}
 
 
@@ -193,7 +193,7 @@ jobs:
   release_macos:
     # Do not run the release procedure if any of the builds has failed
     needs: [ build_linux, build_mac ]
-    runs-on: 'macos-11.0'
+    runs-on: 'macos-10.15'
     if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
 
     steps:
@@ -215,10 +215,10 @@ jobs:
 
       - name: Group the packages by platform
         run: |
-          zip -r9 remill_macos-11.0_packages.zip \
-                  macos-11.0*
+          zip -r9 remill_macos-10.15_packages.zip \
+                  macos-10.15*
 
-      - name: Upload the macOS 11.0 packages
+      - name: Upload the macOS 10.15 packages
         uses: actions/upload-release-asset@v1
 
         env:
@@ -226,6 +226,6 @@ jobs:
 
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: remill_macos-11.0_packages.zip
-          asset_name: remill_macos-11.0_packages.zip
+          asset_path: remill_macos-10.15_packages.zip
+          asset_name: remill_macos-10.15_packages.zip
           asset_content_type: application/gzip
