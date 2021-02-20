@@ -778,12 +778,19 @@ static llvm::Function *DeclareFunctionInModule(llvm::Function *func,
       << "Cannot declare internal function " << func->getName().str()
       << " as external in another module";
 
+  const auto func_type = llvm::dyn_cast<llvm::FunctionType>(
+      RecontextualizeType(func->getFunctionType(), dest_module->getContext()));
+
   dest_func =
-      llvm::Function::Create(func->getFunctionType(), func->getLinkage(),
+      llvm::Function::Create(func_type, func->getLinkage(),
                              func->getName(), dest_module);
 
   dest_func->copyAttributesFrom(func);
   dest_func->setVisibility(func->getVisibility());
+  dest_func->setCallingConv(func->getCallingConv());
+  if (func->hasSection()) {
+    dest_func->setSection(func->getSection());
+  }
 
   return dest_func;
 }
@@ -818,7 +825,6 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
         !llvm::isa<llvm::GlobalVariable>(c) &&
         !llvm::isa<llvm::GlobalAlias>(c) &&
         !c->needsRelocation()) {
-      LOG(ERROR) << "Not moving: " << LLVMThingToString(c);
       return c;
     }
 #endif
@@ -1127,6 +1133,10 @@ llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
 
   dest_var->copyAttributesFrom(var);
 
+  if (var->hasSection()) {
+    dest_var->setSection(var->getSection());
+  }
+
   if (var->hasInitializer() && var->hasLocalLinkage()) {
     auto initializer = var->getInitializer();
     dest_var->setInitializer(MoveConstantIntoModule(initializer, dest_module));
@@ -1383,10 +1393,19 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
         }
       }
 
-      if (auto cs = compat::llvm::CallSite(&inst)) {
-        if (auto callee = cs.getCalledFunction();
-            callee && callee->getParent() != dest_module) {
-          cs.setCalledFunction(DeclareFunctionInModule(callee, dest_module));
+      if (auto call = llvm::dyn_cast<llvm::CallInst>(&inst)) {
+        if (auto callee_func = call->getCalledFunction()) {
+          call->setCalledFunction(
+              DeclareFunctionInModule(callee_func, dest_module));
+
+        } else if (auto callee_val = call->getCalledOperand()) {
+          if (auto callee_const = llvm::dyn_cast<llvm::Constant>(callee_val)) {
+            llvm::FunctionCallee callee(
+                llvm::dyn_cast<llvm::FunctionType>(RecontextualizeType(
+                    call->getFunctionType(), *dest_context)),
+                MoveConstantIntoModule(callee_const, dest_module));
+            call->setCalledFunction(callee);
+          }
         }
       }
     }
