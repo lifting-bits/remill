@@ -132,13 +132,25 @@ jobs:
 
 
 
-  release_linux:
+  release_packages:
     # Do not run the release procedure if any of the builds has failed
     needs: [ build_linux, build_mac ]
     runs-on: ubuntu-20.04
     if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
 
     steps:
+      - name: Clone the remill repository
+        uses: actions/checkout@v2
+        with:
+          path: remill
+          fetch-depth: 0
+
+      - name: Generate the changelog
+        shell: bash
+        working-directory: remill
+        run: |
+          ./scripts/generate_changelog.sh changelog.md
+
       - name: Download all artifacts
         uses: actions/download-artifact@v2
 
@@ -152,6 +164,7 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: Version ${{ github.ref }}
+          body_path: remill/changelog.md
           draft: true
           prerelease: true
 
@@ -162,6 +175,9 @@ jobs:
 
           zip -r9 remill_ubuntu-20.04_packages.zip \
                   ubuntu-20.04*
+
+          zip -r9 remill_macos-10.15_packages.zip \
+                  macos-10.15*
 
       - name: Upload the Ubuntu 18.04 packages
         uses: actions/upload-release-asset@v1
@@ -186,37 +202,6 @@ jobs:
           asset_path: remill_ubuntu-20.04_packages.zip
           asset_name: remill_ubuntu-20.04_packages.zip
           asset_content_type: application/gzip
-
-
-
-
-  release_macos:
-    # Do not run the release procedure if any of the builds has failed
-    needs: [ build_linux, build_mac ]
-    runs-on: 'macos-10.15'
-    if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v2
-
-      - name: Draft the new release
-        id: create_release
-        uses: actions/create-release@v1
-
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Version ${{ github.ref }}
-          draft: true
-          prerelease: true
-
-      - name: Group the packages by platform
-        run: |
-          zip -r9 remill_macos-10.15_packages.zip \
-                  macos-10.15*
 
       - name: Upload the macOS 10.15 packages
         uses: actions/upload-release-asset@v1
