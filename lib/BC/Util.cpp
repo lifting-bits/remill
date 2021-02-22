@@ -1527,9 +1527,6 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
     CHECK_NE(existing_decl_in_dest_module, func);
     CHECK_EQ(existing_decl_in_dest_module->getFunctionType(),
              func->getFunctionType());
-    CHECK(existing_decl_in_dest_module->isDeclaration())
-        << "Function " << func->getName().str()
-        << " already exists in destination module.";
 
     existing_decl_in_dest_module->setName(llvm::Twine::createNull());
     existing_decl_in_dest_module->setLinkage(llvm::GlobalValue::PrivateLinkage);
