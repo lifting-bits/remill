@@ -1464,24 +1464,69 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
   }
 }
 
+// Replace all uses of a constant `old_c` with `new_c` inside of `module`.
+//
+// Returns the number of constant uses of `old_c`.
+static unsigned ReplaceAllUsesOfConstant(llvm::Constant *old_c,
+                                         llvm::Constant *new_c,
+                                         llvm::Module *module) {
+  std::vector<llvm::Use *> repls;
+  for (auto &use : old_c->uses()) {
+    repls.emplace_back(&use);
+  }
+
+  ValueMap value_map;
+  value_map.emplace(old_c, new_c);
+  value_map.emplace(new_c, new_c);
+
+  auto num_const_uses = 0u;
+
+  while (!repls.empty()) {
+    const auto use = repls.back();
+    llvm::User * const user = use->getUser();
+    repls.pop_back();
+
+    const auto used_c = llvm::dyn_cast<llvm::Constant>(use);
+    CHECK_NOTNULL(used_c);
+
+    // Ascend.
+    if (auto user_c = llvm::dyn_cast<llvm::Constant>(user)) {
+      ++num_const_uses;
+      for (auto &user_c_use : user_c->uses()) {
+        repls.emplace_back(&user_c_use);
+      }
+
+    } else if (auto user_inst = llvm::dyn_cast<llvm::Instruction>(user)) {
+      use->set(MoveConstantIntoModule(used_c, module, value_map));
+
+    } else {
+      LOG(ERROR)
+          << "Unrecognized user type";
+    }
+  }
+
+  return num_const_uses;
+}
+
 // Move a function from one module into another module.
 //
 // TODO(pag): Make this work across distinct `llvm::LLVMContext`s.
 void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
   const auto source_context = &(func->getContext());
   const auto dest_context = &(dest_module->getContext());
-  CHECK(source_context == dest_context)
+  CHECK_EQ(source_context, dest_context)
       << "Cannot move function across two independent LLVM contexts.";
 
   auto source_module = func->getParent();
-  CHECK(source_module != dest_module)
+  CHECK_NE(source_module, dest_module)
       << "Cannot move function to the same module.";
 
   const auto func_name = func->getName().str();
   auto existing_decl_in_dest_module = dest_module->getFunction(func_name);
   if (existing_decl_in_dest_module) {
     CHECK_NE(existing_decl_in_dest_module, func);
-    CHECK_EQ(existing_decl_in_dest_module->getFunctionType(), func->getFunctionType());
+    CHECK_EQ(existing_decl_in_dest_module->getFunctionType(),
+             func->getFunctionType());
     CHECK(existing_decl_in_dest_module->isDeclaration())
         << "Function " << func->getName().str()
         << " already exists in destination module.";
@@ -1497,7 +1542,7 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
   func->setName(llvm::Twine::createNull());
   auto replacement_decl_in_source_module = llvm::Function::Create(
       func->getFunctionType(), func->getLinkage(), func_name,
-      *func->getParent());
+      source_module);
 
   replacement_decl_in_source_module->copyAttributesFrom(func);
   replacement_decl_in_source_module->setVisibility(func->getVisibility());
@@ -1509,26 +1554,33 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
   ValueMap value_map;
 
   // When mapping in the destination module, we'll reference `func` any time
-  // se see the `replacement_decl_in_source_module` or `func`.
-  func->replaceAllUsesWith(replacement_decl_in_source_module);
+  // we see the `replacement_decl_in_source_module` or `func`.
+  (void) ReplaceAllUsesOfConstant(func, replacement_decl_in_source_module,
+                                  source_module);
   value_map.emplace(replacement_decl_in_source_module, func);
   value_map.emplace(func, func);
 
   // Move `func` into the destination module.
   if (in_same_context) {
     func->removeFromParent();
-    dest_module->getFunctionList().push_back(func);
     func->setName(func_name);
+    dest_module->getFunctionList().push_back(func);
 
+  // TODO(pag): Probably clone it into the destination module.
   } else {
     LOG(FATAL) << "TODO: Not yet supported.";
   }
 
-  // There was a prior existing_decl_in_dest_module declaration in out target module, so
+  // There was a prior existing_decl_in_dest_module declaration in out target
+  // module, so go and swap all uses of it with `func`. When doing this, we try
+  // to rewrite all constants that might use `existing_decl_in_dest_module` into
+  // constants that instead use `func`.
   if (existing_decl_in_dest_module) {
     value_map.emplace(existing_decl_in_dest_module, func);
-    existing_decl_in_dest_module->replaceAllUsesWith(func);
-    existing_decl_in_dest_module->eraseFromParent();
+    if (!ReplaceAllUsesOfConstant(existing_decl_in_dest_module,
+                                  func, dest_module)) {
+      existing_decl_in_dest_module->eraseFromParent();
+    }
     existing_decl_in_dest_module = nullptr;
   }
 
@@ -1550,6 +1602,7 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
     }
   }
 
+  // Now move all non-locals.
   for (auto &block : *func) {
     for (auto &inst : block) {
       MoveInstructionIntoModule(&inst, dest_module, value_map);
