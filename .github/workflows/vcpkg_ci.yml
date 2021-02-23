@@ -1,12 +1,20 @@
 name: VCPKG Continuous Integration
+
 on:
+  # Run this workflow once every 6 hours against the master branch
+  schedule:
+   - cron: "0 */6 * * *"
+
   push:
     branches:
-      - master
+      - 'master'
+
+    tags:
+      - '*'
+
   pull_request:
-  schedule:
-    # run CI every day even if no PRs/merges occur
-    - cron:  '0 6 * * *'
+    branches:
+      - '*'
 
 jobs:
   build_linux:
