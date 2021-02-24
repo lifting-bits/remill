@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#include <remill/BC/InstructionLifter.h>
-
+#include <glog/logging.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
@@ -33,8 +32,7 @@
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
-
-#include <glog/logging.h>
+#include <remill/BC/InstructionLifter.h>
 
 #include <functional>
 #include <ios>
@@ -76,9 +74,9 @@ class InstructionLifter::Impl {
   // clear out `reg_ptr_cache`.
   llvm::Function *last_func{nullptr};
 
-  llvm::Module * const module;
-  llvm::Function * const invalid_instruction;
-  llvm::Function * const unsupported_instruction;
+  llvm::Module *const module;
+  llvm::Function *const invalid_instruction;
+  llvm::Function *const unsupported_instruction;
 };
 
 }  // namespace remill

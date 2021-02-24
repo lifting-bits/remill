@@ -19,7 +19,7 @@
 namespace {
 
 
-template<typename S1, typename S2, typename D>
+template <typename S1, typename S2, typename D>
 DEF_SEM(BMASK, S1 src1, S2 src2, D dst) {
   auto lhs = Read(src1);
   auto rhs = Read(src2);
@@ -37,23 +37,22 @@ DEF_SEM(BSHUFFLE, V64 src1, V64 src2, V64W dst) {
   auto mask = Read(GSR_MASK);
 
   auto num_elems = NumVectorElems(rs1_vec);
-  _Pragma("unroll")
-  for (size_t i = 0; i < NumVectorElems(dst_vec); ++i) {
-    auto e = UShr(mask, decltype(mask)(28 - i*4));
+  _Pragma("unroll") for (size_t i = 0; i < NumVectorElems(dst_vec); ++i) {
+    auto e = UShr(mask, decltype(mask)(28 - i * 4));
     auto index = UXor(e, Literal<decltype(e)>(0xff));
-    if(index >= num_elems) {
-      dst_vec = UInsertV8(
-          dst_vec, num_elems - i, UExtractV8(rs2_vec, (2*num_elems-1) - index));
+    if (index >= num_elems) {
+      dst_vec = UInsertV8(dst_vec, num_elems - i,
+                          UExtractV8(rs2_vec, (2 * num_elems - 1) - index));
     } else {
-      dst_vec = UInsertV8(
-          dst_vec, num_elems - i, UExtractV8(rs2_vec, (num_elems-1) - index));
+      dst_vec = UInsertV8(dst_vec, num_elems - i,
+                          UExtractV8(rs2_vec, (num_elems - 1) - index));
     }
   }
   UWriteV8(dst, dst_vec);
   return memory;
 }
 
-}
+}  // namespace
 
 DEF_ISEL(BMASK) = BMASK<R64, R64, R64W>;
 DEF_ISEL(BSHUFFLE) = BSHUFFLE;

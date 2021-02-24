@@ -58,6 +58,36 @@
   ALWAYS_INLINE __attribute__((flatten)) static Memory *name( \
       Memory *memory, State &state, ##__VA_ARGS__)
 
+template <typename R, typename... Args>
+inline static constexpr auto Specialize(R (*)(Args...), R (*b)(Args...))
+    -> R (*)(Args...) {
+  return b;
+}
+
+// Define a semantics implementing function.
+#define DEF_COND_SEM(name, ...) \
+  ALWAYS_INLINE __attribute__((flatten)) static Memory *name##_impl( \
+      Memory *memory, State &state, ##__VA_ARGS__); \
+  static Memory *name##_spec(Memory *memory, State &state, R8 __cond, \
+                             R8W __branch_taken, ##__VA_ARGS__) { \
+    return nullptr; \
+  } \
+  template <typename... Args> \
+  ALWAYS_INLINE __attribute__((flatten)) static Memory *name##_wrapped( \
+      Memory *memory, State &state, R8 __cond, R8W __branch_taken, \
+      Args... args) { \
+    if (Read(__cond)) { \
+      Write(__branch_taken, true); \
+      return name##_impl(memory, state, args...); \
+    } else { \
+      Write(__branch_taken, false); \
+      return memory; \
+    } \
+  } \
+  static constexpr auto name = Specialize(name##_spec, name##_wrapped); \
+  ALWAYS_INLINE __attribute__((flatten)) static Memory *name##_impl( \
+      Memory *memory, State &state, ##__VA_ARGS__)
+
 // Define a semantics implementing function.
 #define DEF_HELPER(name, ...) \
   ALWAYS_INLINE __attribute__((flatten)) static auto name( \

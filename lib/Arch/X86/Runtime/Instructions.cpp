@@ -165,11 +165,12 @@ DEF_HELPER(PopFromStack)->T {
   return val;
 }
 
-DEF_HELPER(SquareRoot32, float32_t src_float) -> float32_t {
+DEF_HELPER(SquareRoot32, float32_t src_float)->float32_t {
   auto square_root = src_float;
 
   // Special cases for invalid square root operations. See Intel manual, Table E-10.
   if (IsNaN(src_float)) {
+
     // If src is SNaN, return the SNaN converted to a QNaN:
     if (IsSignalingNaN(src_float)) {
       nan32_t temp_nan = {src_float};
@@ -181,6 +182,7 @@ DEF_HELPER(SquareRoot32, float32_t src_float) -> float32_t {
       square_root = src_float;
     }
   } else {  // a number, that is, not a NaN
+
     // A negative operand (except -0.0) results in the QNaN indefinite value.
     if (IsNegative(src_float) && src_float != -0.0) {
       uint32_t indef_qnan = 0xFFC00000U;

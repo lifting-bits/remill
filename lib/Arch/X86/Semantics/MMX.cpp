@@ -1961,8 +1961,7 @@ DEF_SEM(PFMAX, D dst, S1 src_dst, S2 src) {
   auto src1 = FReadV32(src_dst);
   auto src2 = FReadV32(src);
   auto out = src1;
-  _Pragma("unroll")
-  for (auto i = 0u; i < 2; ++i) {
+  _Pragma("unroll") for (auto i = 0u; i < 2; ++i) {
     auto s1_val = FExtractV32(src1, i);
     auto s2_val = FExtractV32(src2, i);
     if (!std::isunordered(s1_val, s2_val) && s2_val > s1_val) {
@@ -1978,8 +1977,7 @@ DEF_SEM(PFMIN, D dst, S1 src_dst, S2 src) {
   auto src1 = FReadV32(src_dst);
   auto src2 = FReadV32(src);
   auto out = src1;
-  _Pragma("unroll")
-  for (auto i = 0u; i < 2; ++i) {
+  _Pragma("unroll") for (auto i = 0u; i < 2; ++i) {
     auto s1_val = FExtractV32(src1, i);
     auto s2_val = FExtractV32(src2, i);
     if (!std::isunordered(s1_val, s2_val) && s2_val < s1_val) {
@@ -1995,8 +1993,7 @@ DEF_SEM(PFCMPGT, D dst, S1 src_dst, S2 src) {
   auto src1 = FReadV32(src_dst);
   auto src2 = FReadV32(src);
   uint32v2_t out = {};
-  _Pragma("unroll")
-  for (auto i = 0u; i < 2; ++i) {
+  _Pragma("unroll") for (auto i = 0u; i < 2; ++i) {
     auto s1_val = FExtractV32(src1, i);
     auto s2_val = FExtractV32(src2, i);
     if (!std::isunordered(s1_val, s2_val) && s1_val > s2_val) {
@@ -2012,8 +2009,7 @@ DEF_SEM(PFCMPGE, D dst, S1 src_dst, S2 src) {
   auto src1 = FReadV32(src_dst);
   auto src2 = FReadV32(src);
   uint32v2_t out = {};
-  _Pragma("unroll")
-  for (auto i = 0u; i < 2; ++i) {
+  _Pragma("unroll") for (auto i = 0u; i < 2; ++i) {
     auto s1_val = FExtractV32(src1, i);
     auto s2_val = FExtractV32(src2, i);
     if (!std::isunordered(s1_val, s2_val) && s1_val >= s2_val) {
@@ -2029,8 +2025,7 @@ DEF_SEM(PFCMPEQ, D dst, S1 src_dst, S2 src) {
   auto src1 = FReadV32(src_dst);
   auto src2 = FReadV32(src);
   uint32v2_t out = {};
-  _Pragma("unroll")
-  for (auto i = 0u; i < 2; ++i) {
+  _Pragma("unroll") for (auto i = 0u; i < 2; ++i) {
     auto s1_val = FExtractV32(src1, i);
     auto s2_val = FExtractV32(src2, i);
     if (!std::isunordered(s1_val, s2_val) && s1_val == s2_val) {
@@ -2045,8 +2040,10 @@ template <typename D, typename S1, typename S2>
 DEF_SEM(PFRSQRT, D dst, S1, S2 src) {
   auto src2 = FReadV32(src);
   auto out = FClearV32(FReadV32(dst));
-  out = FInsertV32(out, 0, FDiv(1.0f, SquareRoot32(memory, state, FExtractV32(src2, 0))));
-  out = FInsertV32(out, 1, FDiv(1.0f, SquareRoot32(memory, state, FExtractV32(src2, 1))));
+  out = FInsertV32(
+      out, 0, FDiv(1.0f, SquareRoot32(memory, state, FExtractV32(src2, 0))));
+  out = FInsertV32(
+      out, 1, FDiv(1.0f, SquareRoot32(memory, state, FExtractV32(src2, 1))));
   FWriteV32(dst, out);
   return memory;
 }

@@ -15,6 +15,7 @@
  */
 
 #pragma once
+
 // Disable the "loop not unrolled warnings"
 #pragma clang diagnostic ignored "-Wpass-failed"
 
@@ -1631,6 +1632,7 @@ namespace {
 
 template <typename D, typename S1>
 DEF_SEM(SQRTSS, D dst, S1 src1) {
+
   // Extract a "single-precision" (32-bit) float from [31:0] of src1 vector:
   auto src_float = FExtractV32(FReadV32(src1), 0);
 
@@ -1640,7 +1642,7 @@ DEF_SEM(SQRTSS, D dst, S1 src1) {
   temp_vec = FInsertV32(temp_vec, 0, square_root);
 
   // Write out the result and return memory state:
-  FWriteV32(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.  
+  FWriteV32(dst, temp_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
   return memory;
 }
 
@@ -1681,6 +1683,7 @@ DEF_SEM(VSQRTSS, D dst, S1 src1, S2 src2) {
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(VRSQRTSS, D dst, S1 src1, S2 src2) {
+
   // Extract the single-precision float from [31:0] of the src2 vector:
   auto src_float = FExtractV32(FReadV32(src2), 0);
 

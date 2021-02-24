@@ -16,15 +16,13 @@
 
 #include <remill/BC/TraceLifter.h>
 
-#include "InstructionLifter.h"
-
 #include <set>
 #include <sstream>
 
-namespace remill {
-namespace {
+#include "InstructionLifter.h"
 
-}  // namespace
+namespace remill {
+namespace {}  // namespace
 
 TraceManager::~TraceManager(void) {}
 
@@ -102,6 +100,7 @@ class TraceLifter::Impl {
   }
 
   llvm::BasicBlock *GetOrCreateBranchNotTakenBlock(void) {
+    CHECK(inst.branch_not_taken_pc != 0);
     inst_work_list.insert(inst.branch_not_taken_pc);
     return GetOrCreateBlock(inst.branch_not_taken_pc);
   }
@@ -151,7 +150,8 @@ TraceLifter::Impl::Impl(InstructionLifter *inst_lifter_, TraceManager *manager_)
       intrinsics(inst_lifter.impl->intrinsics),
       context(inst_lifter.impl->word_type->getContext()),
       module(intrinsics->async_hyper_call->getParent()),
-      addr_mask(arch->address_size >= 64 ? ~0ULL : (~0ULL >> arch->address_size)),
+      addr_mask(arch->address_size >= 64 ? ~0ULL
+                                         : (~0ULL >> arch->address_size)),
       manager(*manager_),
       func(nullptr),
       block(nullptr),
@@ -300,8 +300,8 @@ bool TraceLifter::Impl::Lift(
 
     if (auto entry_block = &(func->front())) {
       auto pc = LoadProgramCounterArg(func);
-      auto next_pc_ref =
-          inst_lifter.LoadRegAddress(entry_block, state_ptr, kNextPCVariableName);
+      auto next_pc_ref = inst_lifter.LoadRegAddress(entry_block, state_ptr,
+                                                    kNextPCVariableName);
 
       // Initialize `NEXT_PC`.
       (void) new llvm::StoreInst(pc, next_pc_ref, entry_block);
@@ -467,7 +467,7 @@ bool TraceLifter::Impl::Lift(
               LoadNextProgramCounterRef(fall_through_block);
           llvm::IRBuilder<> ir(fall_through_block);
           ir.CreateStore(ir.CreateLoad(ret_pc_ref), next_pc_ref);
-          ir.CreateBr(GetOrCreateNextBlock());
+          ir.CreateBr(GetOrCreateBranchNotTakenBlock());
 
           // The trace manager might know about the targets of things like
           // virtual tables, so we will let it tell us about those possibilities.
@@ -519,6 +519,27 @@ bool TraceLifter::Impl::Lift(
           continue;
         }
 
+        case Instruction::kCategoryConditionalIndirectFunctionCall: {
+          if (inst.branch_not_taken_pc == inst.branch_taken_pc) {
+            goto direct_func_call;
+          }
+          try_add_delay_slot(true, block);
+          trace_work_list.insert(inst.branch_taken_pc);
+          auto do_cond_call = llvm::BasicBlock::Create(context, "", func);
+          auto next_block = GetOrCreateBranchNotTakenBlock();
+          llvm::BranchInst::Create(do_cond_call, next_block,
+                                   LoadBranchTaken(block), block);
+          AddCall(do_cond_call, intrinsics->function_call);
+
+          const auto ret_pc_ref = LoadReturnProgramCounterRef(block);
+          const auto next_pc_ref = LoadNextProgramCounterRef(block);
+          llvm::IRBuilder<> ir(do_cond_call);
+          ir.CreateStore(ir.CreateLoad(ret_pc_ref), next_pc_ref);
+          ir.CreateBr(next_block);
+
+          continue;
+        }
+
         // In the case of a direct function call, we try to handle the
         // pattern of a call to the next PC as a way of getting access to
         // an instruction pointer. It is the case where a call to the next
@@ -528,8 +549,9 @@ bool TraceLifter::Impl::Lift(
         // that up when trying to lift it), or we'll just have a really big
         // trace for this function without sacrificing correctness.
         case Instruction::kCategoryDirectFunctionCall: {
+        direct_func_call:
           try_add_delay_slot(true, block);
-          if (inst.next_pc != inst.branch_taken_pc) {
+          if (inst.branch_not_taken_pc != inst.branch_taken_pc) {
             trace_work_list.insert(inst.branch_taken_pc);
             auto target_trace = get_trace_decl(inst.branch_taken_pc);
             AddCall(block, target_trace);
@@ -539,7 +561,30 @@ bool TraceLifter::Impl::Lift(
           const auto next_pc_ref = LoadNextProgramCounterRef(block);
           llvm::IRBuilder<> ir(block);
           ir.CreateStore(ir.CreateLoad(ret_pc_ref), next_pc_ref);
-          ir.CreateBr(GetOrCreateNextBlock());
+          ir.CreateBr(GetOrCreateBranchNotTakenBlock());
+
+          continue;
+        }
+
+        case Instruction::kCategoryConditionalDirectFunctionCall: {
+          if (inst.branch_not_taken_pc == inst.branch_taken_pc) {
+            goto direct_func_call;
+          }
+          try_add_delay_slot(true, block);
+          try_add_delay_slot(false, block);
+          trace_work_list.insert(inst.branch_taken_pc);
+          auto target_trace = get_trace_decl(inst.branch_taken_pc);
+          auto do_cond_call = llvm::BasicBlock::Create(context, "", func);
+          auto next_block = GetOrCreateBranchNotTakenBlock();
+          llvm::BranchInst::Create(do_cond_call, next_block,
+                                   LoadBranchTaken(block), block);
+          AddCall(do_cond_call, target_trace);
+
+          const auto ret_pc_ref = LoadReturnProgramCounterRef(block);
+          const auto next_pc_ref = LoadNextProgramCounterRef(block);
+          llvm::IRBuilder<> ir(do_cond_call);
+          ir.CreateStore(ir.CreateLoad(ret_pc_ref), next_pc_ref);
+          ir.CreateBr(next_block);
 
           continue;
         }
@@ -562,8 +607,8 @@ bool TraceLifter::Impl::Lift(
         check_call_return:
           do {
             auto pc = LoadProgramCounter(block);
-            auto ret_pc =
-                llvm::ConstantInt::get(inst_lifter.impl->word_type, inst.next_pc);
+            auto ret_pc = llvm::ConstantInt::get(inst_lifter.impl->word_type,
+                                                 inst.next_pc);
 
             llvm::IRBuilder<> ir(block);
             auto eq = ir.CreateICmpEQ(pc, ret_pc);
@@ -580,8 +625,45 @@ bool TraceLifter::Impl::Lift(
           AddTerminatingTailCall(block, intrinsics->function_return);
           break;
 
+        case Instruction::kCategoryConditionalFunctionReturn: {
+          auto taken_block = llvm::BasicBlock::Create(context, "", func);
+          AddTerminatingTailCall(taken_block, intrinsics->function_return);
+          auto not_taken_block = GetOrCreateBranchNotTakenBlock();
+          llvm::BranchInst::Create(taken_block, not_taken_block,
+                                   LoadBranchTaken(block), block);
+          break;
+        }
+
         case Instruction::kCategoryConditionalBranch: {
           auto taken_block = GetOrCreateBranchTakenBlock();
+          auto not_taken_block = GetOrCreateBranchNotTakenBlock();
+
+          // If we might need to add delay slots, then try to lift the delayed
+          // instruction on each side of the conditional branch, injecting in
+          // new blocks (for the delayed instruction) between the branch
+          // and its original targets.
+          if (try_delay) {
+            auto new_taken_block = llvm::BasicBlock::Create(context, "", func);
+            auto new_not_taken_block =
+                llvm::BasicBlock::Create(context, "", func);
+
+            try_add_delay_slot(true, new_taken_block);
+            try_add_delay_slot(false, new_not_taken_block);
+
+            llvm::BranchInst::Create(taken_block, new_taken_block);
+            llvm::BranchInst::Create(not_taken_block, new_not_taken_block);
+
+            taken_block = new_taken_block;
+            not_taken_block = new_not_taken_block;
+          }
+
+          llvm::BranchInst::Create(taken_block, not_taken_block,
+                                   LoadBranchTaken(block), block);
+          break;
+        }
+        case Instruction::kCategoryConditionalIndirectJump: {
+          auto taken_block = llvm::BasicBlock::Create(context, "", func);
+          AddTerminatingTailCall(taken_block, intrinsics->jump);
           auto not_taken_block = GetOrCreateBranchNotTakenBlock();
 
           // If we might need to add delay slots, then try to lift the delayed
