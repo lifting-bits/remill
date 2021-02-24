@@ -2298,6 +2298,9 @@ StripAndAccumulateConstantOffsets(const llvm::DataLayout &dl,
     } else if (auto pti = llvm::dyn_cast<llvm::PtrToIntOperator>(base); pti) {
       base = pti->getOperand(0);
 
+    } else if (auto alias = llvm::dyn_cast<llvm::GlobalAlias>(base); alias) {
+      base = alias->getAliasee();
+
     } else {
       break;
     }
