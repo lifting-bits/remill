@@ -31,6 +31,7 @@
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/IRBuilder.h>
 #pragma clang diagnostic pop
+
 // clang-format on
 
 #include <functional>
@@ -134,12 +135,12 @@ class Arch {
   // Factory method for loading the correct architecture class for a given
   // operating system and architecture class.
   static auto Get(llvm::LLVMContext &context, std::string_view os,
-                         std::string_view arch_name) -> ArchPtr;
+                  std::string_view arch_name) -> ArchPtr;
 
   // Factory method for loading the correct architecture class for a given
   // operating system and architecture class.
-  static auto Get(llvm::LLVMContext &context, OSName os,
-                  ArchName arch_name) -> ArchPtr;
+  static auto Get(llvm::LLVMContext &context, OSName os, ArchName arch_name)
+      -> ArchPtr;
 
   // Return the type of the state structure.
   llvm::StructType *StateStructType(void) const;
@@ -246,6 +247,7 @@ class Arch {
 
   bool IsX86(void) const;
   bool IsAMD64(void) const;
+  bool IsAArch32(void) const;
   bool IsAArch64(void) const;
   bool IsSPARC32(void) const;
   bool IsSPARC64(void) const;
@@ -278,26 +280,29 @@ class Arch {
   llvm::Triple BasicTriple(void) const;
 
   // Add a register into this
-  const Register *AddRegister(const char *reg_name,
-                              llvm::Type *val_type, size_t offset,
-                              const char *parent_reg_name) const;
+  const Register *AddRegister(const char *reg_name, llvm::Type *val_type,
+                              size_t offset, const char *parent_reg_name) const;
 
  private:
   // Defined in `lib/Arch/X86/Arch.cpp`.
   static ArchPtr GetX86(llvm::LLVMContext *context, OSName os,
                         ArchName arch_name);
 
+  // Defined in `lib/Arch/AArch32/Arch.cpp`.
+  static ArchPtr GetAArch32(llvm::LLVMContext *context, OSName os,
+                            ArchName arch_name);
+
   // Defined in `lib/Arch/AArch64/Arch.cpp`.
   static ArchPtr GetAArch64(llvm::LLVMContext *context, OSName os,
                             ArchName arch_name);
 
   // Defined in `lib/Arch/SPARC32/Arch.cpp`.
-  static ArchPtr GetSPARC(
-      llvm::LLVMContext *context, OSName os, ArchName arch_name);
+  static ArchPtr GetSPARC(llvm::LLVMContext *context, OSName os,
+                          ArchName arch_name);
 
   // Defined in `lib/Arch/SPARC64/Arch.cpp`.
-  static ArchPtr GetSPARC64(
-      llvm::LLVMContext *context, OSName os, ArchName arch_name);
+  static ArchPtr GetSPARC64(llvm::LLVMContext *context, OSName os,
+                            ArchName arch_name);
 
   mutable std::unique_ptr<ArchImpl> impl;
 

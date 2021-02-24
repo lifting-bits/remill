@@ -15,9 +15,9 @@
  */
 
 #include <glog/logging.h>
-#include <bitset>
-
 #include <remill/BC/ABI.h>
+
+#include <bitset>
 
 #include "Decode.h"
 
@@ -30,29 +30,15 @@ namespace {
 static constexpr unsigned kAddressSize = 32;
 
 static const std::string_view kCondBrName[1U << 4U] = {
-  [0b0000] = "N",
-  [0b0001] = "123",
-  [0b0010] = "12",
-  [0b0011] = "13",
-  [0b0100] = "1",
-  [0b0101] = "23",
-  [0b0110] = "2",
-  [0b0111] = "3",
-  [0b1000] = "A",
-  [0b1001] = "0",
-  [0b1010] = "03",
-  [0b1011] = "02",
-  [0b1100] = "023",
-  [0b1101] = "01",
-  [0b1110] = "013",
-  [0b1111] = "012"
-};
+    [0b0000] = "N",   [0b0001] = "123", [0b0010] = "12",  [0b0011] = "13",
+    [0b0100] = "1",   [0b0101] = "23",  [0b0110] = "2",   [0b0111] = "3",
+    [0b1000] = "A",   [0b1001] = "0",   [0b1010] = "03",  [0b1011] = "02",
+    [0b1100] = "023", [0b1101] = "01",  [0b1110] = "013", [0b1111] = "012"};
 
 static const std::string_view kFpuRegName_fN[] = {
-  "f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7",
-  "f8", "f9", "f10", "f11", "f12", "f13", "f14", "f15",
-  "f16", "f17", "f18", "f19", "f20", "f21", "f22", "f23",
-  "f24", "f25", "f26", "f27", "f28", "f29", "f30", "f31",
+    "f0",  "f1",  "f2",  "f3",  "f4",  "f5",  "f6",  "f7",  "f8",  "f9",  "f10",
+    "f11", "f12", "f13", "f14", "f15", "f16", "f17", "f18", "f19", "f20", "f21",
+    "f22", "f23", "f24", "f25", "f26", "f27", "f28", "f29", "f30", "f31",
 };
 
 static void AddBranchTaken(Instruction &inst) {
@@ -93,7 +79,7 @@ static void AddIntRegop(Instruction &inst, unsigned index, unsigned size,
   auto &op = inst.operands.back();
   op.type = Operand::kTypeRegister;
   op.size = size;
-  op.action =  action;
+  op.action = action;
   op.reg.size = size;
   if (Operand::kActionRead == action) {
     if (!index) {
@@ -150,7 +136,7 @@ static void AddPCRelop(Instruction &inst, int64_t disp) {
   auto &op = inst.operands.back();
   op.type = Operand::kTypeAddress;
   op.size = kAddressSize;
-  op.action =  Operand::kActionRead;
+  op.action = Operand::kActionRead;
   op.addr.kind = Operand::Address::kControlFlowTarget;
   op.addr.address_size = kAddressSize;
   op.addr.base_reg.name = "PC";
@@ -163,7 +149,7 @@ static void AddNextPCRelop(Instruction &inst, int64_t disp) {
   auto &op = inst.operands.back();
   op.type = Operand::kTypeAddress;
   op.size = kAddressSize;
-  op.action =  Operand::kActionRead;
+  op.action = Operand::kActionRead;
   op.addr.kind = Operand::Address::kControlFlowTarget;
   op.addr.address_size = kAddressSize;
   op.addr.base_reg.name = "NEXT_PC";
@@ -178,11 +164,11 @@ static void AddBasePlusOffsetMemop(Instruction &inst, Operand::Action action,
   auto &op = inst.operands.back();
   op.type = Operand::kTypeAddress;
   op.size = access_size;
-  op.action =  action;
+  op.action = action;
 
-  op.addr.kind = action == Operand::kActionRead ?
-                 Operand::Address::kMemoryRead :
-                 Operand::Address::kMemoryWrite;
+  op.addr.kind = action == Operand::kActionRead
+                     ? Operand::Address::kMemoryRead
+                     : Operand::Address::kMemoryWrite;
   op.addr.address_size = kAddressSize;
 
   if (base_reg && index_reg) {
@@ -242,8 +228,7 @@ static bool TryDecodeRDasr(Instruction &inst, uint32_t bits) {
     case 26:  // rd %cfr, rd
       inst.function = "RDCFR";
       break;
-    default:
-      return false;
+    default: return false;
   }
 
   AddIntRegop(inst, enc.rd, kAddressSize, Operand::kActionWrite);
@@ -286,7 +271,7 @@ static bool TryDecodeWRasr(Instruction &inst, uint32_t bits) {
     case 27:  // wr rs1, reg_or_imm, %pause
       inst.function = "WRPAUSE";
       break;
-    default:return false;
+    default: return false;
   }
 
   AddIntRegop(inst, enc_i0.rs1, kAddressSize, Operand::kActionRead);
@@ -302,8 +287,8 @@ static bool TryDecodeCALL(Instruction &inst, uint32_t bits) {
   union {
     uint32_t flat;
     struct {
-      int32_t disp30:30;
-      uint32_t op:2;
+      int32_t disp30 : 30;
+      uint32_t op : 2;
     } __attribute__((packed));
   } __attribute__((packed)) enc;
   enc.flat = bits;
@@ -321,8 +306,8 @@ static bool TryDecodeCALL(Instruction &inst, uint32_t bits) {
     inst.has_branch_taken_delay_slot = true;
     inst.has_branch_not_taken_delay_slot = false;
 
-    inst.branch_taken_pc = static_cast<uint32_t>(
-        static_cast<int64_t>(inst.pc) + disp);
+    inst.branch_taken_pc =
+        static_cast<uint32_t>(static_cast<int64_t>(inst.pc) + disp);
 
     inst.next_pc += 4;
 
@@ -332,11 +317,10 @@ static bool TryDecodeCALL(Instruction &inst, uint32_t bits) {
     inst.branch_not_taken_pc = inst.next_pc;  // pc+8.
   }
 
-  AddSrcRegop(inst, "PC", kAddressSize); // Old PC.
-  AddSrcRegop(inst, "NEXT_PC", kAddressSize); // New PC.
+  AddSrcRegop(inst, "PC", kAddressSize);  // Old PC.
+  AddSrcRegop(inst, "NEXT_PC", kAddressSize);  // New PC.
   AddPCRelop(inst, disp);  // New NPC.
-  AddIntRegop(inst, 15  /* %o7 */, kAddressSize,
-              Operand::kActionWrite);
+  AddIntRegop(inst, 15 /* %o7 */, kAddressSize, Operand::kActionWrite);
   AddPCDest(inst);
   AddNPCDest(inst);
 
@@ -359,14 +343,14 @@ static bool TryDecodeJMPL(Instruction &inst, uint32_t bits) {
   Format3ai0 enc_i0 = {bits};
   Format3ai1 enc_i1 = {bits};
 
-  AddSrcRegop(inst, "PC", kAddressSize); // Old PC.
-  AddSrcRegop(inst, "NEXT_PC", kAddressSize); // New PC.
+  AddSrcRegop(inst, "PC", kAddressSize);  // Old PC.
+  AddSrcRegop(inst, "NEXT_PC", kAddressSize);  // New PC.
 
   inst.operands.emplace_back();
   auto &op = inst.operands.back();
   op.type = Operand::kTypeAddress;
   op.size = kAddressSize;
-  op.action =  Operand::kActionRead;
+  op.action = Operand::kActionRead;
   op.addr.kind = Operand::Address::kControlFlowTarget;
 
   op.addr.address_size = kAddressSize;
@@ -383,6 +367,7 @@ static bool TryDecodeJMPL(Instruction &inst, uint32_t bits) {
   }
 
   if (!enc_i0.rd) {
+
     // NOTE(pag): This is stricter than what is in the manual, but is more in
     //            line with how we deal with function calls, and how actual
     //            software operates.
@@ -392,7 +377,7 @@ static bool TryDecodeJMPL(Instruction &inst, uint32_t bits) {
     //            an `unimp <struct size>` might be placed after the call's
     //            delay slot, which the callee must skip past in its return.
     if ((enc_i1.simm13 == 8 || enc_i1.simm13 == 12) &&
-        (enc_i1.rs1 == 15  /* %o7 */ || enc_i1.rs1 == 31  /* %i7 */)) {
+        (enc_i1.rs1 == 15 /* %o7 */ || enc_i1.rs1 == 31 /* %i7 */)) {
       inst.function = "RETL";
       inst.category = Instruction::kCategoryFunctionReturn;
     } else {
@@ -443,7 +428,7 @@ static bool TryDecodeRETT(Instruction &inst, uint32_t bits) {
   Format3ai1 enc_i1 = {bits};
   inst.category = Instruction::kCategoryFunctionReturn;
 
-  AddSrcRegop(inst, "NEXT_PC", kAddressSize); // New PC.
+  AddSrcRegop(inst, "NEXT_PC", kAddressSize);  // New PC.
 
   inst.operands.emplace_back();
   auto &dst_op = inst.operands.back();
@@ -474,7 +459,7 @@ static bool TryDecodeRETT(Instruction &inst, uint32_t bits) {
       return false;  // RETT to `0`.
     }
   } else {
-    if (enc_i0.rs1 && enc_i0.rs2) { // `r[rs1] + r[rs2]`.
+    if (enc_i0.rs1 && enc_i0.rs2) {  // `r[rs1] + r[rs2]`.
       dst_op.addr.base_reg.name = kReadIntRegName[enc_i0.rs1];
       dst_op.addr.base_reg.size = kAddressSize;
 
@@ -528,14 +513,14 @@ static bool TryDecodeTcc(Instruction &inst, uint32_t bits) {
   union {
     uint32_t flat;
     struct {
-      uint32_t rs2:5;
-      uint32_t _0:8;
-      uint32_t i:1;
-      uint32_t rs1:5;
-      uint32_t op3:6;
-      uint32_t cond:4;
-      uint32_t _1:1;
-      uint32_t op:2;
+      uint32_t rs2 : 5;
+      uint32_t _0 : 8;
+      uint32_t i : 1;
+      uint32_t rs1 : 5;
+      uint32_t op3 : 6;
+      uint32_t cond : 4;
+      uint32_t _1 : 1;
+      uint32_t op : 2;
     } __attribute__((packed));
   } __attribute__((packed)) enc_i0 = {bits};
   static_assert(sizeof(enc_i0) == 4);
@@ -543,14 +528,14 @@ static bool TryDecodeTcc(Instruction &inst, uint32_t bits) {
   union {
     uint32_t flat;
     struct {
-      uint32_t imm7:7;
-      uint32_t _0:6;
-      uint32_t i:1;
-      uint32_t rs1:5;
-      uint32_t op3:6;
-      uint32_t cond:4;
-      uint32_t _1:1;
-      uint32_t op:2;
+      uint32_t imm7 : 7;
+      uint32_t _0 : 6;
+      uint32_t i : 1;
+      uint32_t rs1 : 5;
+      uint32_t op3 : 6;
+      uint32_t cond : 4;
+      uint32_t _1 : 1;
+      uint32_t op : 2;
     } __attribute__((packed));
   } __attribute__((packed)) enc_i1 = {bits};
   static_assert(sizeof(enc_i1) == 4);
@@ -606,7 +591,7 @@ static bool TryDecodeTcc(Instruction &inst, uint32_t bits) {
   // TODO(pag): Handle write to TBR on `trap_instruction`.
 
   AddBranchTaken(inst);
-  AddSrcRegop(inst, "NEXT_PC", 32); // New PC on taken.
+  AddSrcRegop(inst, "NEXT_PC", 32);  // New PC on taken.
   AddNextPCRelop(inst, 4);  // New NPC on taken.
 
   // Trap vector number.
@@ -623,9 +608,9 @@ static bool TryDecodeTcc(Instruction &inst, uint32_t bits) {
 }
 
 // Generic decoder for conditional branches (Bcc, BPcc).
-static bool TryDecode_Branch(
-    Instruction &inst, unsigned cond, bool anul, int64_t disp,
-    std::string_view iform, std::string_view ccr, bool is_fcc = false) {
+static bool TryDecode_Branch(Instruction &inst, unsigned cond, bool anul,
+                             int64_t disp, std::string_view iform,
+                             std::string_view ccr, bool is_fcc = false) {
 
   // Branch always.
   if (cond == 0b1000) {
@@ -786,42 +771,42 @@ static bool TryDecodeBPr(Instruction &inst, uint32_t bits) {
   inst.next_pc += 4;
   inst.branch_not_taken_pc = inst.next_pc;  // Skip delayed instruction.
 
-   // Not anulled means that the delayed instruction is executed on the taken
-   // and not-taken paths.
-   if (!enc.a) {
-     AddSrcRegop(inst, "NEXT_PC", kAddressSize);  // PC if not taken.
-     AddNextPCRelop(inst, 4);  // NPC if not taken.
+  // Not anulled means that the delayed instruction is executed on the taken
+  // and not-taken paths.
+  if (!enc.a) {
+    AddSrcRegop(inst, "NEXT_PC", kAddressSize);  // PC if not taken.
+    AddNextPCRelop(inst, 4);  // NPC if not taken.
 
-     inst.has_branch_not_taken_delay_slot = true;
+    inst.has_branch_not_taken_delay_slot = true;
 
-     // Anulled means that the delayed instruction is executed on the taken
-     // path, but not on the not-taken path.
-   } else {
-     AddNextPCRelop(inst, 4);  // PC if not taken.
-     AddNextPCRelop(inst, 8);  // NPC if not taken.
+  // Anulled means that the delayed instruction is executed on the taken
+  // path, but not on the not-taken path.
+  } else {
+    AddNextPCRelop(inst, 4);  // PC if not taken.
+    AddNextPCRelop(inst, 8);  // NPC if not taken.
 
-     inst.has_branch_not_taken_delay_slot = false;
-   }
+    inst.has_branch_not_taken_delay_slot = false;
+  }
 
-   AddPCDest(inst);
-   AddNPCDest(inst);
+  AddPCDest(inst);
+  AddNPCDest(inst);
 
-   // NOTE(pag): This is part of a SPARC idiom of `jmpl,rett`, but we don't
-   //            have elaborate pipeline support to handle things. See
-   //            semantics of `UNSUPPORTED_DCTI`.
-   if (inst.in_delay_slot) {
-     inst.function = "UNSUPPORTED_DCTI";
-     inst.operands.clear();
-     inst.has_branch_taken_delay_slot = false;
-     inst.has_branch_not_taken_delay_slot = false;
-     inst.category = Instruction::kCategoryNormal;
-     inst.next_pc = inst.pc + 4;
+  // NOTE(pag): This is part of a SPARC idiom of `jmpl,rett`, but we don't
+  //            have elaborate pipeline support to handle things. See
+  //            semantics of `UNSUPPORTED_DCTI`.
+  if (inst.in_delay_slot) {
+    inst.function = "UNSUPPORTED_DCTI";
+    inst.operands.clear();
+    inst.has_branch_taken_delay_slot = false;
+    inst.has_branch_not_taken_delay_slot = false;
+    inst.category = Instruction::kCategoryNormal;
+    inst.next_pc = inst.pc + 4;
 
-   } else {
-     inst.function.reserve(9);
-     inst.function.insert(0, "BR");
-     inst.function += kRCondName[enc.rcond];
-   }
+  } else {
+    inst.function.reserve(9);
+    inst.function.insert(0, "BR");
+    inst.function += kRCondName[enc.rcond];
+  }
 
   return true;
 }
@@ -831,106 +816,106 @@ static bool TryDecodeCB(Instruction &inst, uint32_t bits) {
   int64_t disp = enc.disp22 << 2;
 
   // Branch always.
-   if (enc.cond == 0b1000) {
-     inst.category = Instruction::kCategoryDirectJump;
-     inst.branch_taken_pc = inst.pc + disp;
-     inst.has_branch_not_taken_delay_slot = false;
+  if (enc.cond == 0b1000) {
+    inst.category = Instruction::kCategoryDirectJump;
+    inst.branch_taken_pc = inst.pc + disp;
+    inst.has_branch_not_taken_delay_slot = false;
 
-     if (!enc.a) {
-       AddSrcRegop(inst, "NEXT_PC", kAddressSize);  // New PC.
-       AddPCRelop(inst, disp);  // New NPC.
+    if (!enc.a) {
+      AddSrcRegop(inst, "NEXT_PC", kAddressSize);  // New PC.
+      AddPCRelop(inst, disp);  // New NPC.
 
-       inst.has_branch_taken_delay_slot = true;
-       inst.delayed_pc = inst.next_pc;
-       inst.next_pc += 4;
+      inst.has_branch_taken_delay_slot = true;
+      inst.delayed_pc = inst.next_pc;
+      inst.next_pc += 4;
 
-     } else {
-       AddPCRelop(inst, disp);  // New PC.
-       AddPCRelop(inst, disp + 4);  // New NPC.
-       inst.has_branch_taken_delay_slot = false;
-     }
+    } else {
+      AddPCRelop(inst, disp);  // New PC.
+      AddPCRelop(inst, disp + 4);  // New NPC.
+      inst.has_branch_taken_delay_slot = false;
+    }
 
-     // Branch never.
-   } else if (enc.cond == 0b0000) {
-     inst.category = Instruction::kCategoryDirectJump;
+  // Branch never.
+  } else if (enc.cond == 0b0000) {
+    inst.category = Instruction::kCategoryDirectJump;
 
-     if (!enc.a) {
-       AddSrcRegop(inst, "NEXT_PC", kAddressSize);  // New PC.
-       AddNextPCRelop(inst, 4);  // New NPC.
+    if (!enc.a) {
+      AddSrcRegop(inst, "NEXT_PC", kAddressSize);  // New PC.
+      AddNextPCRelop(inst, 4);  // New NPC.
 
-       inst.has_branch_taken_delay_slot = true;
-       inst.has_branch_not_taken_delay_slot = false;
-       inst.delayed_pc = inst.next_pc;
+      inst.has_branch_taken_delay_slot = true;
+      inst.has_branch_not_taken_delay_slot = false;
+      inst.delayed_pc = inst.next_pc;
 
-     } else {
-       AddNextPCRelop(inst, 4);  // New PC.
-       AddNextPCRelop(inst, 8);  // New NPC.
+    } else {
+      AddNextPCRelop(inst, 4);  // New PC.
+      AddNextPCRelop(inst, 8);  // New NPC.
 
-       inst.has_branch_taken_delay_slot = false;
-       inst.has_branch_not_taken_delay_slot = false;
-     }
+      inst.has_branch_taken_delay_slot = false;
+      inst.has_branch_not_taken_delay_slot = false;
+    }
 
-     inst.next_pc += 4;
-     inst.branch_taken_pc = inst.next_pc;
+    inst.next_pc += 4;
+    inst.branch_taken_pc = inst.next_pc;
 
-     // Conditional branch.
-   } else {
-     AddBranchTaken(inst);
+  // Conditional branch.
+  } else {
+    AddBranchTaken(inst);
 
-     AddSrcRegop(inst, "NEXT_PC", kAddressSize);  // PC if taken.
-     AddPCRelop(inst, disp);  // NPC if taken.
+    AddSrcRegop(inst, "NEXT_PC", kAddressSize);  // PC if taken.
+    AddPCRelop(inst, disp);  // NPC if taken.
 
-     inst.category = Instruction::kCategoryConditionalBranch;
+    inst.category = Instruction::kCategoryConditionalBranch;
 
-     inst.branch_taken_pc = inst.pc + disp;
-     inst.has_branch_taken_delay_slot = true;
-     inst.delayed_pc = inst.next_pc;
-     inst.next_pc += 4;
-     inst.branch_not_taken_pc = inst.next_pc;  // Skip delayed instruction.
+    inst.branch_taken_pc = inst.pc + disp;
+    inst.has_branch_taken_delay_slot = true;
+    inst.delayed_pc = inst.next_pc;
+    inst.next_pc += 4;
+    inst.branch_not_taken_pc = inst.next_pc;  // Skip delayed instruction.
 
-     // Not anulled means that the delayed instruction is executed on the taken
-     // and not-taken paths.
-     if (!enc.a) {
-       AddSrcRegop(inst, "NEXT_PC", kAddressSize);  // PC if not taken.
-       AddNextPCRelop(inst, 4);  // NPC if not taken.
+    // Not anulled means that the delayed instruction is executed on the taken
+    // and not-taken paths.
+    if (!enc.a) {
+      AddSrcRegop(inst, "NEXT_PC", kAddressSize);  // PC if not taken.
+      AddNextPCRelop(inst, 4);  // NPC if not taken.
 
-       inst.has_branch_not_taken_delay_slot = true;
+      inst.has_branch_not_taken_delay_slot = true;
 
-       // Anulled means that the delayed instruction is executed on the taken
-       // path, but not on the not-taken path.
-     } else {
-       AddNextPCRelop(inst, 4);  // PC if not taken.
-       AddNextPCRelop(inst, 8);  // NPC if not taken.
+    // Anulled means that the delayed instruction is executed on the taken
+    // path, but not on the not-taken path.
+    } else {
+      AddNextPCRelop(inst, 4);  // PC if not taken.
+      AddNextPCRelop(inst, 8);  // NPC if not taken.
 
-       inst.has_branch_not_taken_delay_slot = false;
-     }
-   }
+      inst.has_branch_not_taken_delay_slot = false;
+    }
+  }
 
-   AddPCDest(inst);
-   AddNPCDest(inst);
+  AddPCDest(inst);
+  AddNPCDest(inst);
 
-   // NOTE(pag): This is part of a SPARC idiom of `jmpl,rett`, but we don't
-   //            have elaborate pipeline support to handle things. See
-   //            semantics of `UNSUPPORTED_DCTI`.
-   if (inst.in_delay_slot) {
-     inst.function = "UNSUPPORTED_DCTI";
-     inst.operands.clear();
-     inst.has_branch_taken_delay_slot = false;
-     inst.has_branch_not_taken_delay_slot = false;
-     inst.category = Instruction::kCategoryNormal;
-     inst.next_pc = inst.pc + 4;
+  // NOTE(pag): This is part of a SPARC idiom of `jmpl,rett`, but we don't
+  //            have elaborate pipeline support to handle things. See
+  //            semantics of `UNSUPPORTED_DCTI`.
+  if (inst.in_delay_slot) {
+    inst.function = "UNSUPPORTED_DCTI";
+    inst.operands.clear();
+    inst.has_branch_taken_delay_slot = false;
+    inst.has_branch_not_taken_delay_slot = false;
+    inst.category = Instruction::kCategoryNormal;
+    inst.next_pc = inst.pc + 4;
 
-   } else {
-     inst.function.reserve(9);
-     inst.function.insert(0, "CB");
-     inst.function += kCondBrName[enc.cond];
-   }
+  } else {
+    inst.function.reserve(9);
+    inst.function.insert(0, "CB");
+    inst.function += kCondBrName[enc.cond];
+  }
 
   return true;
 }
 
-static bool TryDecode_rs1_simm32_op_rs2_rd(
-    Instruction &inst, uint32_t bits, const char *iform) {
+static bool TryDecode_rs1_simm32_op_rs2_rd(Instruction &inst, uint32_t bits,
+                                           const char *iform) {
   Format3ai0 enc_i0 = {bits};
   Format3ai1 enc_i1 = {bits};
 
@@ -948,8 +933,8 @@ static bool TryDecode_rs1_simm32_op_rs2_rd(
   return true;
 }
 
-static bool TryDecode_rs1_imm_asi_op_rs2_rd(
-    Instruction &inst, uint32_t bits, const char *iform) {
+static bool TryDecode_rs1_imm_asi_op_rs2_rd(Instruction &inst, uint32_t bits,
+                                            const char *iform) {
   Format3ai0 enc_i0 = {bits};
 
   inst.function = iform;
@@ -1064,7 +1049,7 @@ static bool TryDecodeADDXcc(Instruction &inst, uint32_t bits) {
   return TryDecode_rs1_simm32_op_rs2_rd(inst, bits, "ADDXcc");
 }
 
-static bool TryDecodeIMPDEP1 (Instruction &inst, uint32_t bits) {
+static bool TryDecodeIMPDEP1(Instruction &inst, uint32_t bits) {
   Format3b enc = {bits};
   inst.function = "IMPDEP1";
   inst.category = Instruction::kCategoryNormal;
@@ -1077,38 +1062,36 @@ struct fpu_opcode {
   uint32_t size;
 };
 
-#define SZERO   0
-#define SWORD   32
-#define DWORD   64
-#define QWORD   128
+#define SZERO 0
+#define SWORD 32
+#define DWORD 64
+#define QWORD 128
 
-static bool TryDecodeOpf_rs1_op_rs2_rd(
-    Instruction &inst, uint32_t bits, uint32_t rs1_size,
-    uint32_t rs2_size, uint32_t rd_size, const char *iform) {
+static bool TryDecodeOpf_rs1_op_rs2_rd(Instruction &inst, uint32_t bits,
+                                       uint32_t rs1_size, uint32_t rs2_size,
+                                       uint32_t rd_size, const char *iform) {
   Format3b enc = {bits};
   inst.function = iform;
   inst.category = Instruction::kCategoryNormal;
 
-  if (rs1_size &&
-      !AddFpuRegOp(inst, enc.rs1, rs1_size, Operand::kActionRead)) {
+  if (rs1_size && !AddFpuRegOp(inst, enc.rs1, rs1_size, Operand::kActionRead)) {
     return false;
   }
 
-  if (rs2_size &&
-      !AddFpuRegOp(inst, enc.rs2, rs2_size, Operand::kActionRead)) {
+  if (rs2_size && !AddFpuRegOp(inst, enc.rs2, rs2_size, Operand::kActionRead)) {
     return false;
   }
 
-  if (rd_size &&
-      !AddFpuRegOp(inst, enc.rd, rd_size, Operand::kActionWrite)) {
+  if (rd_size && !AddFpuRegOp(inst, enc.rd, rd_size, Operand::kActionWrite)) {
     return false;
   }
   return true;
 }
 
 #define DEFINE_FUNCTION(name, rs1_size, rs2_size, rd_size) \
-  static bool TryDecode ## name(Instruction &inst, uint32_t bits) { \
-    return TryDecodeOpf_rs1_op_rs2_rd(inst, bits, rs1_size, rs2_size, rd_size, #name); \
+  static bool TryDecode##name(Instruction &inst, uint32_t bits) { \
+    return TryDecodeOpf_rs1_op_rs2_rd(inst, bits, rs1_size, rs2_size, rd_size, \
+                                      #name); \
   }
 
 DEFINE_FUNCTION(FABSS, SZERO, SWORD, SWORD)
@@ -1165,270 +1148,141 @@ DEFINE_FUNCTION(FQTOD, SZERO, QWORD, DWORD)
 #undef DEFINE_FUNCTION
 
 static bool (*const kop10_op352Level[1u << 8])(Instruction &, uint32_t) = {
-  [0b00000000] = nullptr,
-  [0b00000001] = TryDecodeFMOVS,
-  [0b00000010] = TryDecodeFMOVD,
-  [0b00000011] = TryDecodeFMOVQ,
-  [0b00000100] = nullptr,
-  [0b00000101] = TryDecodeFNEGS,
-  [0b00000110] = TryDecodeFNEGD,
-  [0b00000111] = TryDecodeFNEGQ,
-  [0b00001000] = nullptr,
-  [0b00001001] = TryDecodeFABSS,
-  [0b00001010] = TryDecodeFABSD,
-  [0b00001011] = TryDecodeFABSQ,
-  [0b00001100] = nullptr,
-  [0b00001101] = nullptr,
-  [0b00001110] = nullptr,
-  [0b00001111] = nullptr,
-  [0b00010000] = nullptr,
-  [0b00010001] = nullptr,
-  [0b00010010] = nullptr,
-  [0b00010011] = nullptr,
-  [0b00010100] = nullptr,
-  [0b00010101] = nullptr,
-  [0b00010110] = nullptr,
-  [0b00010111] = nullptr,
-  [0b00011000] = nullptr,
-  [0b00011001] = nullptr,
-  [0b00011010] = nullptr,
-  [0b00011011] = nullptr,
-  [0b00011100] = nullptr,
-  [0b00011101] = nullptr,
-  [0b00011110] = nullptr,
-  [0b00011111] = nullptr,
-  [0b00100000] = nullptr,
-  [0b00100001] = nullptr,
-  [0b00100010] = nullptr,
-  [0b00100011] = nullptr,
-  [0b00100100] = nullptr,
-  [0b00100101] = nullptr,
-  [0b00100110] = nullptr,
-  [0b00100111] = nullptr,
-  [0b00101000] = nullptr,
-  [0b00101001] = TryDecodeFSQRTS,
-  [0b00101010] = TryDecodeFSQRTD,
-  [0b00101011] = TryDecodeFSQRTQ,
-  [0b00101100] = nullptr,
-  [0b00101101] = nullptr,
-  [0b00101110] = nullptr,
-  [0b00101111] = nullptr,
-  [0b00110000] = nullptr,
-  [0b00110001] = nullptr,
-  [0b00110010] = nullptr,
-  [0b00110011] = nullptr,
-  [0b00110100] = nullptr,
-  [0b00110101] = nullptr,
-  [0b00110110] = nullptr,
-  [0b00110111] = nullptr,
-  [0b00111000] = nullptr,
-  [0b00111001] = nullptr,
-  [0b00111010] = nullptr,
-  [0b00111011] = nullptr,
-  [0b00111100] = nullptr,
-  [0b00111101] = nullptr,
-  [0b00111110] = nullptr,
-  [0b00111111] = nullptr,
-  [0b01000000] = nullptr,
-  [0b01000001] = TryDecodeFADDS,
-  [0b01000010] = TryDecodeFADDD,
-  [0b01000011] = TryDecodeFADDQ,
-  [0b01000100] = nullptr,
-  [0b01000101] = TryDecodeFSUBS,
-  [0b01000110] = TryDecodeFSUBD,
-  [0b01000111] = TryDecodeFSUBQ,
-  [0b01001000] = nullptr,
-  [0b01001001] = TryDecodeFMULS,
-  [0b01001010] = TryDecodeFMULD,
-  [0b01001011] = TryDecodeFMULQ,
-  [0b01001100] = nullptr,
-  [0b01001101] = TryDecodeFDIVS,
-  [0b01001110] = TryDecodeFDIVD,
-  [0b01001111] = TryDecodeFDIVQ,
-  [0b01010000] = nullptr,
-  [0b01010001] = nullptr,
-  [0b01010010] = nullptr,
-  [0b01010011] = nullptr,
-  [0b01010100] = nullptr,
-  [0b01010101] = nullptr,
-  [0b01010110] = nullptr,
-  [0b01010111] = nullptr,
-  [0b01011000] = nullptr,
-  [0b01011001] = nullptr,
-  [0b01011010] = nullptr,
-  [0b01011011] = nullptr,
-  [0b01011100] = nullptr,
-  [0b01011101] = nullptr,
-  [0b01011110] = nullptr,
-  [0b01011111] = nullptr,
-  [0b01100000] = nullptr,
-  [0b01100001] = TryDecodeFHADDS,
-  [0b01100010] = TryDecodeFHADDD,
-  [0b01100011] = nullptr,
-  [0b01100100] = nullptr,
-  [0b01100101] = nullptr,
-  [0b01100110] = nullptr,
-  [0b01100111] = nullptr,
-  [0b01101000] = nullptr,
-  [0b01101001] = TryDecodeFSMULD,
-  [0b01101010] = nullptr,
-  [0b01101011] = nullptr,
-  [0b01101100] = nullptr,
-  [0b01101101] = nullptr,
-  [0b01101110] = TryDecodeFDMULQ,
-  [0b01101111] = nullptr,
-  [0b01110000] = nullptr,
-  [0b01110001] = nullptr,
-  [0b01110010] = nullptr,
-  [0b01110011] = nullptr,
-  [0b01110100] = nullptr,
-  [0b01110101] = nullptr,
-  [0b01110110] = nullptr,
-  [0b01110111] = nullptr,
-  [0b01111000] = nullptr,
-  [0b01111001] = nullptr,
-  [0b01111010] = nullptr,
-  [0b01111011] = nullptr,
-  [0b01111100] = nullptr,
-  [0b01111101] = nullptr,
-  [0b01111110] = nullptr,
-  [0b01111111] = nullptr,
-  [0b10000000] = nullptr,
-  [0b10000001] = TryDecodeFSTOX,
-  [0b10000010] = TryDecodeFDTOX,
-  [0b10000011] = TryDecodeFQTOX,
-  [0b10000100] = TryDecodeFXTOS,
-  [0b10000101] = nullptr,
-  [0b10000110] = nullptr,
-  [0b10000111] = nullptr,
-  [0b10001000] = TryDecodeFXTOD,
-  [0b10001001] = nullptr,
-  [0b10001010] = nullptr,
-  [0b10001011] = nullptr,
-  [0b10001100] = TryDecodeFXTOQ,
-  [0b10001101] = nullptr,
-  [0b10001110] = nullptr,
-  [0b10001111] = nullptr,
-  [0b10010000] = nullptr,
-  [0b10010001] = nullptr,
-  [0b10010010] = nullptr,
-  [0b10010011] = nullptr,
-  [0b10010100] = nullptr,
-  [0b10010101] = nullptr,
-  [0b10010110] = nullptr,
-  [0b10010111] = nullptr,
-  [0b10011000] = nullptr,
-  [0b10011001] = nullptr,
-  [0b10011010] = nullptr,
-  [0b10011011] = nullptr,
-  [0b10011100] = nullptr,
-  [0b10011101] = nullptr,
-  [0b10011110] = nullptr,
-  [0b10011111] = nullptr,
-  [0b10100000] = nullptr,
-  [0b10100001] = nullptr,
-  [0b10100010] = nullptr,
-  [0b10100011] = nullptr,
-  [0b10100100] = nullptr,
-  [0b10100101] = nullptr,
-  [0b10100110] = nullptr,
-  [0b10100111] = nullptr,
-  [0b10101000] = nullptr,
-  [0b10101001] = nullptr,
-  [0b10101010] = nullptr,
-  [0b10101011] = nullptr,
-  [0b10101100] = nullptr,
-  [0b10101101] = nullptr,
-  [0b10101110] = nullptr,
-  [0b10101111] = nullptr,
-  [0b10110000] = nullptr,
-  [0b10110001] = nullptr,
-  [0b10110010] = nullptr,
-  [0b10110011] = nullptr,
-  [0b10110100] = nullptr,
-  [0b10110101] = nullptr,
-  [0b10110110] = nullptr,
-  [0b10110111] = nullptr,
-  [0b10111000] = nullptr,
-  [0b10111001] = nullptr,
-  [0b10111010] = nullptr,
-  [0b10111011] = nullptr,
-  [0b10111100] = nullptr,
-  [0b10111101] = nullptr,
-  [0b10111110] = nullptr,
-  [0b10111111] = nullptr,
-  [0b11000000] = nullptr,
-  [0b11000001] = nullptr,
-  [0b11000010] = nullptr,
-  [0b11000011] = nullptr,
-  [0b11000100] = TryDecodeFITOS,
-  [0b11000101] = nullptr,
-  [0b11000110] = TryDecodeFDTOS,
-  [0b11000111] = TryDecodeFQTOS,
-  [0b11001000] = TryDecodeFITOD,
-  [0b11001001] = TryDecodeFSTOD,
-  [0b11001010] = nullptr,
-  [0b11001011] = TryDecodeFQTOD,
-  [0b11001100] = TryDecodeFITOQ,
-  [0b11001101] = TryDecodeFSTOQ,
-  [0b11001110] = TryDecodeFDTOQ,
-  [0b11001111] = nullptr,
-  [0b11010000] = nullptr,
-  [0b11010001] = TryDecodeFSTOI,
-  [0b11010010] = TryDecodeFDTOI,
-  [0b11010011] = TryDecodeFQTOI,
-  [0b11010100] = nullptr,
-  [0b11010101] = nullptr,
-  [0b11010110] = nullptr,
-  [0b11010111] = nullptr,
-  [0b11011000] = nullptr,
-  [0b11011001] = nullptr,
-  [0b11011010] = nullptr,
-  [0b11011011] = nullptr,
-  [0b11011100] = nullptr,
-  [0b11011101] = nullptr,
-  [0b11011110] = nullptr,
-  [0b11011111] = nullptr,
-  [0b11100000] = nullptr,
-  [0b11100001] = nullptr,
-  [0b11100010] = nullptr,
-  [0b11100011] = nullptr,
-  [0b11100100] = nullptr,
-  [0b11100101] = nullptr,
-  [0b11100110] = nullptr,
-  [0b11100111] = nullptr,
-  [0b11101000] = nullptr,
-  [0b11101001] = nullptr,
-  [0b11101010] = nullptr,
-  [0b11101011] = nullptr,
-  [0b11101100] = nullptr,
-  [0b11101101] = nullptr,
-  [0b11101110] = nullptr,
-  [0b11101111] = nullptr,
-  [0b11110000] = nullptr,
-  [0b11110001] = nullptr,
-  [0b11110010] = nullptr,
-  [0b11110011] = nullptr,
-  [0b11110100] = nullptr,
-  [0b11110101] = nullptr,
-  [0b11110110] = nullptr,
-  [0b11110111] = nullptr,
-  [0b11111000] = nullptr,
-  [0b11111001] = nullptr,
-  [0b11111010] = nullptr,
-  [0b11111011] = nullptr,
-  [0b11111100] = nullptr,
-  [0b11111101] = nullptr,
-  [0b11111110] = nullptr,
-  [0b11111111] = nullptr,
+    [0b00000000] = nullptr,         [0b00000001] = TryDecodeFMOVS,
+    [0b00000010] = TryDecodeFMOVD,  [0b00000011] = TryDecodeFMOVQ,
+    [0b00000100] = nullptr,         [0b00000101] = TryDecodeFNEGS,
+    [0b00000110] = TryDecodeFNEGD,  [0b00000111] = TryDecodeFNEGQ,
+    [0b00001000] = nullptr,         [0b00001001] = TryDecodeFABSS,
+    [0b00001010] = TryDecodeFABSD,  [0b00001011] = TryDecodeFABSQ,
+    [0b00001100] = nullptr,         [0b00001101] = nullptr,
+    [0b00001110] = nullptr,         [0b00001111] = nullptr,
+    [0b00010000] = nullptr,         [0b00010001] = nullptr,
+    [0b00010010] = nullptr,         [0b00010011] = nullptr,
+    [0b00010100] = nullptr,         [0b00010101] = nullptr,
+    [0b00010110] = nullptr,         [0b00010111] = nullptr,
+    [0b00011000] = nullptr,         [0b00011001] = nullptr,
+    [0b00011010] = nullptr,         [0b00011011] = nullptr,
+    [0b00011100] = nullptr,         [0b00011101] = nullptr,
+    [0b00011110] = nullptr,         [0b00011111] = nullptr,
+    [0b00100000] = nullptr,         [0b00100001] = nullptr,
+    [0b00100010] = nullptr,         [0b00100011] = nullptr,
+    [0b00100100] = nullptr,         [0b00100101] = nullptr,
+    [0b00100110] = nullptr,         [0b00100111] = nullptr,
+    [0b00101000] = nullptr,         [0b00101001] = TryDecodeFSQRTS,
+    [0b00101010] = TryDecodeFSQRTD, [0b00101011] = TryDecodeFSQRTQ,
+    [0b00101100] = nullptr,         [0b00101101] = nullptr,
+    [0b00101110] = nullptr,         [0b00101111] = nullptr,
+    [0b00110000] = nullptr,         [0b00110001] = nullptr,
+    [0b00110010] = nullptr,         [0b00110011] = nullptr,
+    [0b00110100] = nullptr,         [0b00110101] = nullptr,
+    [0b00110110] = nullptr,         [0b00110111] = nullptr,
+    [0b00111000] = nullptr,         [0b00111001] = nullptr,
+    [0b00111010] = nullptr,         [0b00111011] = nullptr,
+    [0b00111100] = nullptr,         [0b00111101] = nullptr,
+    [0b00111110] = nullptr,         [0b00111111] = nullptr,
+    [0b01000000] = nullptr,         [0b01000001] = TryDecodeFADDS,
+    [0b01000010] = TryDecodeFADDD,  [0b01000011] = TryDecodeFADDQ,
+    [0b01000100] = nullptr,         [0b01000101] = TryDecodeFSUBS,
+    [0b01000110] = TryDecodeFSUBD,  [0b01000111] = TryDecodeFSUBQ,
+    [0b01001000] = nullptr,         [0b01001001] = TryDecodeFMULS,
+    [0b01001010] = TryDecodeFMULD,  [0b01001011] = TryDecodeFMULQ,
+    [0b01001100] = nullptr,         [0b01001101] = TryDecodeFDIVS,
+    [0b01001110] = TryDecodeFDIVD,  [0b01001111] = TryDecodeFDIVQ,
+    [0b01010000] = nullptr,         [0b01010001] = nullptr,
+    [0b01010010] = nullptr,         [0b01010011] = nullptr,
+    [0b01010100] = nullptr,         [0b01010101] = nullptr,
+    [0b01010110] = nullptr,         [0b01010111] = nullptr,
+    [0b01011000] = nullptr,         [0b01011001] = nullptr,
+    [0b01011010] = nullptr,         [0b01011011] = nullptr,
+    [0b01011100] = nullptr,         [0b01011101] = nullptr,
+    [0b01011110] = nullptr,         [0b01011111] = nullptr,
+    [0b01100000] = nullptr,         [0b01100001] = TryDecodeFHADDS,
+    [0b01100010] = TryDecodeFHADDD, [0b01100011] = nullptr,
+    [0b01100100] = nullptr,         [0b01100101] = nullptr,
+    [0b01100110] = nullptr,         [0b01100111] = nullptr,
+    [0b01101000] = nullptr,         [0b01101001] = TryDecodeFSMULD,
+    [0b01101010] = nullptr,         [0b01101011] = nullptr,
+    [0b01101100] = nullptr,         [0b01101101] = nullptr,
+    [0b01101110] = TryDecodeFDMULQ, [0b01101111] = nullptr,
+    [0b01110000] = nullptr,         [0b01110001] = nullptr,
+    [0b01110010] = nullptr,         [0b01110011] = nullptr,
+    [0b01110100] = nullptr,         [0b01110101] = nullptr,
+    [0b01110110] = nullptr,         [0b01110111] = nullptr,
+    [0b01111000] = nullptr,         [0b01111001] = nullptr,
+    [0b01111010] = nullptr,         [0b01111011] = nullptr,
+    [0b01111100] = nullptr,         [0b01111101] = nullptr,
+    [0b01111110] = nullptr,         [0b01111111] = nullptr,
+    [0b10000000] = nullptr,         [0b10000001] = TryDecodeFSTOX,
+    [0b10000010] = TryDecodeFDTOX,  [0b10000011] = TryDecodeFQTOX,
+    [0b10000100] = TryDecodeFXTOS,  [0b10000101] = nullptr,
+    [0b10000110] = nullptr,         [0b10000111] = nullptr,
+    [0b10001000] = TryDecodeFXTOD,  [0b10001001] = nullptr,
+    [0b10001010] = nullptr,         [0b10001011] = nullptr,
+    [0b10001100] = TryDecodeFXTOQ,  [0b10001101] = nullptr,
+    [0b10001110] = nullptr,         [0b10001111] = nullptr,
+    [0b10010000] = nullptr,         [0b10010001] = nullptr,
+    [0b10010010] = nullptr,         [0b10010011] = nullptr,
+    [0b10010100] = nullptr,         [0b10010101] = nullptr,
+    [0b10010110] = nullptr,         [0b10010111] = nullptr,
+    [0b10011000] = nullptr,         [0b10011001] = nullptr,
+    [0b10011010] = nullptr,         [0b10011011] = nullptr,
+    [0b10011100] = nullptr,         [0b10011101] = nullptr,
+    [0b10011110] = nullptr,         [0b10011111] = nullptr,
+    [0b10100000] = nullptr,         [0b10100001] = nullptr,
+    [0b10100010] = nullptr,         [0b10100011] = nullptr,
+    [0b10100100] = nullptr,         [0b10100101] = nullptr,
+    [0b10100110] = nullptr,         [0b10100111] = nullptr,
+    [0b10101000] = nullptr,         [0b10101001] = nullptr,
+    [0b10101010] = nullptr,         [0b10101011] = nullptr,
+    [0b10101100] = nullptr,         [0b10101101] = nullptr,
+    [0b10101110] = nullptr,         [0b10101111] = nullptr,
+    [0b10110000] = nullptr,         [0b10110001] = nullptr,
+    [0b10110010] = nullptr,         [0b10110011] = nullptr,
+    [0b10110100] = nullptr,         [0b10110101] = nullptr,
+    [0b10110110] = nullptr,         [0b10110111] = nullptr,
+    [0b10111000] = nullptr,         [0b10111001] = nullptr,
+    [0b10111010] = nullptr,         [0b10111011] = nullptr,
+    [0b10111100] = nullptr,         [0b10111101] = nullptr,
+    [0b10111110] = nullptr,         [0b10111111] = nullptr,
+    [0b11000000] = nullptr,         [0b11000001] = nullptr,
+    [0b11000010] = nullptr,         [0b11000011] = nullptr,
+    [0b11000100] = TryDecodeFITOS,  [0b11000101] = nullptr,
+    [0b11000110] = TryDecodeFDTOS,  [0b11000111] = TryDecodeFQTOS,
+    [0b11001000] = TryDecodeFITOD,  [0b11001001] = TryDecodeFSTOD,
+    [0b11001010] = nullptr,         [0b11001011] = TryDecodeFQTOD,
+    [0b11001100] = TryDecodeFITOQ,  [0b11001101] = TryDecodeFSTOQ,
+    [0b11001110] = TryDecodeFDTOQ,  [0b11001111] = nullptr,
+    [0b11010000] = nullptr,         [0b11010001] = TryDecodeFSTOI,
+    [0b11010010] = TryDecodeFDTOI,  [0b11010011] = TryDecodeFQTOI,
+    [0b11010100] = nullptr,         [0b11010101] = nullptr,
+    [0b11010110] = nullptr,         [0b11010111] = nullptr,
+    [0b11011000] = nullptr,         [0b11011001] = nullptr,
+    [0b11011010] = nullptr,         [0b11011011] = nullptr,
+    [0b11011100] = nullptr,         [0b11011101] = nullptr,
+    [0b11011110] = nullptr,         [0b11011111] = nullptr,
+    [0b11100000] = nullptr,         [0b11100001] = nullptr,
+    [0b11100010] = nullptr,         [0b11100011] = nullptr,
+    [0b11100100] = nullptr,         [0b11100101] = nullptr,
+    [0b11100110] = nullptr,         [0b11100111] = nullptr,
+    [0b11101000] = nullptr,         [0b11101001] = nullptr,
+    [0b11101010] = nullptr,         [0b11101011] = nullptr,
+    [0b11101100] = nullptr,         [0b11101101] = nullptr,
+    [0b11101110] = nullptr,         [0b11101111] = nullptr,
+    [0b11110000] = nullptr,         [0b11110001] = nullptr,
+    [0b11110010] = nullptr,         [0b11110011] = nullptr,
+    [0b11110100] = nullptr,         [0b11110101] = nullptr,
+    [0b11110110] = nullptr,         [0b11110111] = nullptr,
+    [0b11111000] = nullptr,         [0b11111001] = nullptr,
+    [0b11111010] = nullptr,         [0b11111011] = nullptr,
+    [0b11111100] = nullptr,         [0b11111101] = nullptr,
+    [0b11111110] = nullptr,         [0b11111111] = nullptr,
 };
 
 static bool TryDecodeOpf52(Instruction &inst, uint32_t bits) {
   Format3b enc = {bits};
   auto func = kop10_op352Level[enc.opf];
   if (!func) {
-    LOG(ERROR)
-        << "OP=10 op3=110100 opf=" << std::bitset<8>(enc.opf);
+    LOG(ERROR) << "OP=10 op3=110100 opf=" << std::bitset<8>(enc.opf);
     return TryDecodeIMPDEP1(inst, bits);
   }
   return func(inst, bits);
@@ -1438,14 +1292,14 @@ static bool TryDecodeFMOVcc(Instruction &inst, uint32_t bits) {
   union {
     uint32_t flat;
     struct {
-      uint32_t rs2:5;
-      uint32_t opf_low:6;
-      uint32_t opf_cc:3;
-      uint32_t cond:4;
-      uint32_t _1:1;
-      uint32_t op3:6;
-      uint32_t rd:5;
-      uint32_t op:2;
+      uint32_t rs2 : 5;
+      uint32_t opf_low : 6;
+      uint32_t opf_cc : 3;
+      uint32_t cond : 4;
+      uint32_t _1 : 1;
+      uint32_t op3 : 6;
+      uint32_t rd : 5;
+      uint32_t op : 2;
     } __attribute__((packed));
   } __attribute__((packed)) enc = {bits};
   static_assert(sizeof(enc) == 4);
@@ -1458,7 +1312,7 @@ static bool TryDecodeFMOVcc(Instruction &inst, uint32_t bits) {
   inst.category = Instruction::kCategoryNormal;
   inst.function.reserve(12);
   auto access_size = kAddressSize;
-  switch(enc.opf_low) {
+  switch (enc.opf_low) {
     case 0b0001:
       access_size = 32;
       inst.function.insert(0, "FMOVS");
@@ -1471,14 +1325,14 @@ static bool TryDecodeFMOVcc(Instruction &inst, uint32_t bits) {
       access_size = 128;
       inst.function.insert(0, "FMOVQ");
       break;
-    default:
-      return false;
+    default: return false;
   }
 
   AddFpuRegOp(inst, enc.rs2, access_size, Operand::kActionRead);
   AddFpuRegOp(inst, enc.rd, access_size, Operand::kActionWrite);
 
-  inst.function += (enc.opf_cc < 0b100) ? kFCondName[enc.cond] : kCondName[enc.cond];
+  inst.function +=
+      (enc.opf_cc < 0b100) ? kFCondName[enc.cond] : kCondName[enc.cond];
   inst.function.push_back('_');
   inst.function += cc;
   return true;
@@ -1488,14 +1342,14 @@ static bool TryDecodeFMOVr(Instruction &inst, uint32_t bits) {
   union {
     uint32_t flat;
     struct {
-      uint32_t rs2:5;
-      uint32_t opf_low:5;
-      uint32_t rcond:3;
-      uint32_t _1:1;
-      uint32_t rs1:5;
-      uint32_t op3:6;
-      uint32_t rd:5;
-      uint32_t op:2;
+      uint32_t rs2 : 5;
+      uint32_t opf_low : 5;
+      uint32_t rcond : 3;
+      uint32_t _1 : 1;
+      uint32_t rs1 : 5;
+      uint32_t op3 : 6;
+      uint32_t rd : 5;
+      uint32_t op : 2;
     } __attribute__((packed));
   } __attribute__((packed)) enc = {bits};
   static_assert(sizeof(enc) == 4);
@@ -1507,7 +1361,7 @@ static bool TryDecodeFMOVr(Instruction &inst, uint32_t bits) {
   inst.category = Instruction::kCategoryNormal;
   inst.function.reserve(9);
   auto access_size = kAddressSize;
-  switch(enc.opf_low) {
+  switch (enc.opf_low) {
     case 0b0001:
       access_size = 32;
       inst.function.insert(0, "FMOVRS");
@@ -1520,8 +1374,7 @@ static bool TryDecodeFMOVr(Instruction &inst, uint32_t bits) {
       access_size = 128;
       inst.function.insert(0, "FMOVRQ");
       break;
-    default:
-      return false;
+    default: return false;
   }
 
   AddIntRegop(inst, enc.rs1, kAddressSize, Operand::kActionRead);
@@ -1536,43 +1389,42 @@ static bool TryDecodeFMOV(Instruction &inst, uint32_t bits) {
   union {
     uint32_t flat;
     struct {
-      uint32_t rs2:5;
-      uint32_t opf_low:6;
-      uint32_t opf_cc:3;
-      uint32_t cond:4;
-      uint32_t _1:1;
-      uint32_t op3:6;
-      uint32_t rd:5;
-      uint32_t op:2;
+      uint32_t rs2 : 5;
+      uint32_t opf_low : 6;
+      uint32_t opf_cc : 3;
+      uint32_t cond : 4;
+      uint32_t _1 : 1;
+      uint32_t op3 : 6;
+      uint32_t rd : 5;
+      uint32_t op : 2;
     } __attribute__((packed));
   } __attribute__((packed)) enc = {bits};
   static_assert(sizeof(enc) == 4);
 
-  if ((enc.opf_low == 0b0001)
-      || (enc.opf_low == 0b0010)
-      || (enc.opf_low == 0b0011)) {
+  if ((enc.opf_low == 0b0001) || (enc.opf_low == 0b0010) ||
+      (enc.opf_low == 0b0011)) {
     return TryDecodeFMOVcc(inst, bits);
   }
   return TryDecodeFMOVr(inst, bits);
 }
 
 static const fpu_opcode Opf05[1 << 4U] = {
-  [0b0000] = {{}, 0},
-  [0b0001] = {"FCMPS", 0x00002020},
-  [0b0010] = {"FCMPD", 0x00004040},
-  [0b0011] = {"FCMPQ", 0x00008080},
-  [0b0100] = {{}, 0},
-  [0b0101] = {"FCMPES", 0x00002020},
-  [0b0110] = {"FCMPED", 0x00004040},
-  [0b0111] = {"FCMPEQ", 0x00008080},
-  [0b1000] = {{}, 0},
-  [0b1001] = {{}, 0},
-  [0b1010] = {{}, 0},
-  [0b1011] = {{}, 0},
-  [0b1100] = {{}, 0},
-  [0b1101] = {{}, 0},
-  [0b1110] = {{}, 0},
-  [0b1111] = {{}, 0},
+    [0b0000] = {{}, 0},
+    [0b0001] = {"FCMPS", 0x00002020},
+    [0b0010] = {"FCMPD", 0x00004040},
+    [0b0011] = {"FCMPQ", 0x00008080},
+    [0b0100] = {{}, 0},
+    [0b0101] = {"FCMPES", 0x00002020},
+    [0b0110] = {"FCMPED", 0x00004040},
+    [0b0111] = {"FCMPEQ", 0x00008080},
+    [0b1000] = {{}, 0},
+    [0b1001] = {{}, 0},
+    [0b1010] = {{}, 0},
+    [0b1011] = {{}, 0},
+    [0b1100] = {{}, 0},
+    [0b1101] = {{}, 0},
+    [0b1110] = {{}, 0},
+    [0b1111] = {{}, 0},
 };
 
 static bool TryDecodeFCMP(Instruction &inst, uint32_t bits) {
@@ -1580,10 +1432,10 @@ static bool TryDecodeFCMP(Instruction &inst, uint32_t bits) {
   union {
     uint32_t flat;
     struct {
-      uint32_t rs1:8;
-      uint32_t rs2:8;
-      uint32_t rd:8;
-      uint32_t _1:8;
+      uint32_t rs1 : 8;
+      uint32_t rs2 : 8;
+      uint32_t rd : 8;
+      uint32_t _1 : 8;
     } __attribute__((packed));
   } __attribute__((packed)) opd_size = {Opf05[enc.opf & 0b1111].size};
 
@@ -1622,27 +1474,22 @@ static bool TryDecodeFCMP_FMOV(Instruction &inst, uint32_t bits) {
 }
 
 
-enum class RegClass {
-  kInt,
-  kFP
-};
+enum class RegClass { kInt, kFP };
 
-static bool TryDecode_Load(
-    Instruction &inst, uint32_t bits, const char *iform,
-    unsigned mem_size, unsigned reg_size, RegClass rclass=RegClass::kInt) {
+static bool TryDecode_Load(Instruction &inst, uint32_t bits, const char *iform,
+                           unsigned mem_size, unsigned reg_size,
+                           RegClass rclass = RegClass::kInt) {
   Format3ai0 enc_i0 = {bits};
   Format3ai1 enc_i1 = {bits};
   inst.function = iform;
   inst.category = Instruction::kCategoryNormal;
 
   if (enc_i1.i) {
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionRead, mem_size, enc_i0.rs1,
-        0, enc_i1.simm13);
+    AddBasePlusOffsetMemop(inst, Operand::kActionRead, mem_size, enc_i0.rs1, 0,
+                           enc_i1.simm13);
   } else {
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionRead, mem_size, enc_i0.rs1,
-        enc_i0.rs2, 0);
+    AddBasePlusOffsetMemop(inst, Operand::kActionRead, mem_size, enc_i0.rs1,
+                           enc_i0.rs2, 0);
   }
 
   if (RegClass::kInt == rclass) {
@@ -1654,9 +1501,9 @@ static bool TryDecode_Load(
   return true;
 }
 
-static bool TryDecode_Store(
-    Instruction &inst, uint32_t bits, const char *iform,
-    unsigned reg_size, unsigned mem_size, RegClass rclass=RegClass::kInt) {
+static bool TryDecode_Store(Instruction &inst, uint32_t bits, const char *iform,
+                            unsigned reg_size, unsigned mem_size,
+                            RegClass rclass = RegClass::kInt) {
   Format3ai0 enc_i0 = {bits};
   Format3ai1 enc_i1 = {bits};
   inst.function = iform;
@@ -1670,13 +1517,11 @@ static bool TryDecode_Store(
   }
 
   if (enc_i1.i) {
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionWrite, mem_size, enc_i0.rs1,
-        0, enc_i1.simm13);
+    AddBasePlusOffsetMemop(inst, Operand::kActionWrite, mem_size, enc_i0.rs1, 0,
+                           enc_i1.simm13);
   } else {
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionWrite, mem_size, enc_i0.rs1,
-        enc_i0.rs2, 0);
+    AddBasePlusOffsetMemop(inst, Operand::kActionWrite, mem_size, enc_i0.rs1,
+                           enc_i0.rs2, 0);
   }
   return true;
 }
@@ -1701,9 +1546,9 @@ static bool TryDecodeLD(Instruction &inst, uint32_t bits) {
   return TryDecode_Load(inst, bits, "LD", 32, 32);
 }
 
-static bool TryDecode_LoadDouble(
-    Instruction &inst, uint32_t bits, const char *iform,
-    unsigned access_size, RegClass rclass=RegClass::kInt) {
+static bool TryDecode_LoadDouble(Instruction &inst, uint32_t bits,
+                                 const char *iform, unsigned access_size,
+                                 RegClass rclass = RegClass::kInt) {
   Format3ai0 enc_i0 = {bits};
   Format3ai1 enc_i1 = {bits};
   inst.function = iform;
@@ -1716,19 +1561,15 @@ static bool TryDecode_LoadDouble(
     return false;  // Must be an even register.
   }
   if (enc_i1.i) {
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionRead, access_size, enc_i0.rs1,
-        0, enc_i1.simm13);
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionRead, access_size, enc_i0.rs1,
-        0, enc_i1.simm13 + (access_size / 8));
+    AddBasePlusOffsetMemop(inst, Operand::kActionRead, access_size, enc_i0.rs1,
+                           0, enc_i1.simm13);
+    AddBasePlusOffsetMemop(inst, Operand::kActionRead, access_size, enc_i0.rs1,
+                           0, enc_i1.simm13 + (access_size / 8));
   } else {
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionRead, access_size, enc_i0.rs1,
-        enc_i0.rs2, 0);
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionRead, access_size, enc_i0.rs1,
-        enc_i0.rs2, access_size / 8);
+    AddBasePlusOffsetMemop(inst, Operand::kActionRead, access_size, enc_i0.rs1,
+                           enc_i0.rs2, 0);
+    AddBasePlusOffsetMemop(inst, Operand::kActionRead, access_size, enc_i0.rs1,
+                           enc_i0.rs2, access_size / 8);
   }
 
   if (RegClass::kInt == rclass) {
@@ -1765,13 +1606,11 @@ static bool TryDecodeLDSTUB(Instruction &inst, uint32_t bits) {
 
   // if i != 0
   if (enc_i1.i) {
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionWrite, 8, enc_i0.rs1,
-        0, enc_i1.simm13);
+    AddBasePlusOffsetMemop(inst, Operand::kActionWrite, 8, enc_i0.rs1, 0,
+                           enc_i1.simm13);
   } else {
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionWrite, 8, enc_i0.rs1,
-        0, enc_i0.rs2);
+    AddBasePlusOffsetMemop(inst, Operand::kActionWrite, 8, enc_i0.rs1, 0,
+                           enc_i0.rs2);
   }
 
   AddIntRegop(inst, enc_i0.rd, kAddressSize, Operand::kActionWrite);
@@ -1790,9 +1629,9 @@ static bool TryDecodeST(Instruction &inst, uint32_t bits) {
   return TryDecode_Store(inst, bits, "ST", 32, 32);
 }
 
-static bool TryDecode_StoreDouble(
-    Instruction &inst, uint32_t bits, const char *iform,
-    unsigned access_size, RegClass rclass=RegClass::kInt) {
+static bool TryDecode_StoreDouble(Instruction &inst, uint32_t bits,
+                                  const char *iform, unsigned access_size,
+                                  RegClass rclass = RegClass::kInt) {
   Format3ai0 enc_i0 = {bits};
   Format3ai1 enc_i1 = {bits};
   inst.function = iform;
@@ -1815,20 +1654,16 @@ static bool TryDecode_StoreDouble(
   }
 
   if (enc_i1.i) {
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionWrite, access_size, enc_i0.rs1,
-        0, enc_i1.simm13);
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionWrite, access_size, enc_i0.rs1,
-        0, enc_i1.simm13 + (access_size / 8));
+    AddBasePlusOffsetMemop(inst, Operand::kActionWrite, access_size, enc_i0.rs1,
+                           0, enc_i1.simm13);
+    AddBasePlusOffsetMemop(inst, Operand::kActionWrite, access_size, enc_i0.rs1,
+                           0, enc_i1.simm13 + (access_size / 8));
 
   } else {
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionWrite, access_size, enc_i0.rs1,
-        enc_i0.rs2, 0);
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionWrite, access_size, enc_i0.rs1,
-        enc_i0.rs2, (access_size / 8));
+    AddBasePlusOffsetMemop(inst, Operand::kActionWrite, access_size, enc_i0.rs1,
+                           enc_i0.rs2, 0);
+    AddBasePlusOffsetMemop(inst, Operand::kActionWrite, access_size, enc_i0.rs1,
+                           enc_i0.rs2, (access_size / 8));
   }
   return true;
 }
@@ -1865,9 +1700,9 @@ static bool TryDecodeSETHI(Instruction &inst, uint32_t bits) {
   return true;
 }
 
-static bool TryDecodeSET_IDIOM(
-    Instruction &inst, uint32_t bits1, uint32_t bits2,
-    const char *base, const char *multi) {
+static bool TryDecodeSET_IDIOM(Instruction &inst, uint32_t bits1,
+                               uint32_t bits2, const char *base,
+                               const char *multi) {
   Format0a enc1 = {bits1};
   Format3ai0 enc2_i0 = {bits2};
   Format3ai1 enc2_i1 = {bits2};
@@ -1883,6 +1718,7 @@ static bool TryDecodeSET_IDIOM(
       //    sethi imm_high, rd
       //    or rd, imm_low, rd
       if (enc2_i1.rs1 == enc1.rd) {
+
         //const auto imm = static_cast<uint32_t>(imm_low | imm_high);
         inst.function = "SET";
         AddImmop(inst, static_cast<uint32_t>(imm_high), kAddressSize, false);
@@ -1984,13 +1820,13 @@ static bool TryDecodeSET_IDIOM(
   return true;
 }
 
-static bool TryDecodeSET_SETHI_OR(
-    Instruction &inst, uint32_t bits1, uint32_t bits2) {
+static bool TryDecodeSET_SETHI_OR(Instruction &inst, uint32_t bits1,
+                                  uint32_t bits2) {
   return TryDecodeSET_IDIOM(inst, bits1, bits2, "OR", "SETHI_OR");
 }
 
-static bool TryDecodeSET_SETHI_ADD(
-    Instruction &inst, uint32_t bits1, uint32_t bits2) {
+static bool TryDecodeSET_SETHI_ADD(Instruction &inst, uint32_t bits1,
+                                   uint32_t bits2) {
   return TryDecodeSET_IDIOM(inst, bits1, bits2, "ADD", "SETHI_ADD");
 }
 
@@ -2014,11 +1850,11 @@ static bool TryDecode_Shift(Instruction &inst, uint32_t bits,
   Format3ai0 enc_i1 = {bits};
   AddIntRegop(inst, enc_i0.rs1, kAddressSize, Operand::kActionRead);
   if (enc_i1.i) {
-/*    if (enc_i1.asi) {
+    /*    if (enc_i1.asi) {
       LOG(ERROR) << "TryDecode_Shift asi is null";
       return false;  // Reserved bits; must be zero.
     }*/
-    AddImmop(inst, enc_i1.rs2  /* shcnt */, kAddressSize, false);
+    AddImmop(inst, enc_i1.rs2 /* shcnt */, kAddressSize, false);
 
   // Embed the masking of the shift in the operand.
   } else if (enc_i0.rs2) {
@@ -2036,7 +1872,7 @@ static bool TryDecode_Shift(Instruction &inst, uint32_t bits,
 
   // Register `%g0` is `rs2`.
   } else {
-    AddImmop(inst, 0  /* shcnt */, kAddressSize, false);
+    AddImmop(inst, 0 /* shcnt */, kAddressSize, false);
   }
 
   AddIntRegop(inst, enc_i0.rd, kAddressSize, Operand::kActionWrite);
@@ -2067,8 +1903,7 @@ static bool TryDecodeMOVcc(Instruction &inst, uint32_t bits) {
   }
 
   if (enc_i1.i) {
-    AddImmop(inst, static_cast<int64_t>(enc_i1.simm11),
-             kAddressSize, true);
+    AddImmop(inst, static_cast<int64_t>(enc_i1.simm11), kAddressSize, true);
   } else {
     AddIntRegop(inst, enc_i0.rs2, kAddressSize, Operand::kActionRead);
   }
@@ -2078,7 +1913,8 @@ static bool TryDecodeMOVcc(Instruction &inst, uint32_t bits) {
   inst.category = Instruction::kCategoryNormal;
   inst.function.reserve(12);
   inst.function.insert(0, "MOV");
-  inst.function += (cc_index < 0b100) ? kFCondName[enc_i0.cond] : kCondName[enc_i0.cond];
+  inst.function +=
+      (cc_index < 0b100) ? kFCondName[enc_i0.cond] : kCondName[enc_i0.cond];
   inst.function.push_back('_');
   inst.function += cc;
   return true;
@@ -2095,8 +1931,7 @@ static bool TryDecodeMOVr(Instruction &inst, uint32_t bits) {
 
   if (enc_i1.i) {
     AddIntRegop(inst, enc_i1.rs1, kAddressSize, Operand::kActionRead);
-    AddImmop(inst, static_cast<int64_t>(enc_i1.simm10),
-             kAddressSize, true);
+    AddImmop(inst, static_cast<int64_t>(enc_i1.simm10), kAddressSize, true);
   } else {
     AddIntRegop(inst, enc_i0.rs1, kAddressSize, Operand::kActionRead);
     AddIntRegop(inst, enc_i0.rs2, kAddressSize, Operand::kActionRead);
@@ -2163,15 +1998,14 @@ static bool TryDecodeSWAP(Instruction &inst, uint32_t bits) {
   inst.is_atomic_read_modify_write = true;
   inst.function = "SWAP";
   inst.category = Instruction::kCategoryNormal;
+
   // if i != 0
   if (enc_i1.i) {
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionWrite, kAddressSize, enc_i0.rs1,
-        0, enc_i1.simm13);
+    AddBasePlusOffsetMemop(inst, Operand::kActionWrite, kAddressSize,
+                           enc_i0.rs1, 0, enc_i1.simm13);
   } else {
-    AddBasePlusOffsetMemop(
-        inst, Operand::kActionWrite, kAddressSize, enc_i0.rs1,
-        0, enc_i0.rs2);
+    AddBasePlusOffsetMemop(inst, Operand::kActionWrite, kAddressSize,
+                           enc_i0.rs1, 0, enc_i0.rs2);
   }
 
   AddIntRegop(inst, enc_i0.rd, kAddressSize, Operand::kActionWrite);
@@ -2180,153 +2014,85 @@ static bool TryDecodeSWAP(Instruction &inst, uint32_t bits) {
 
 
 static bool (*const kop00_op2Level[1u << 3])(Instruction &, uint32_t) = {
-  [0b000] = TryDecodeUNIMP,
-  [0b001] = TryDecodeBPcc,
-  [0b010] = TryDecodeBcc,
-  [0b011] = TryDecodeBPr,
-  [0b100] = TryDecodeSETHI,
-  [0b101] = TryDecodeFBPcc,
-  [0b110] = TryDecodeFBcc,
-  [0b111] = TryDecodeCB,
+    [0b000] = TryDecodeUNIMP, [0b001] = TryDecodeBPcc,
+    [0b010] = TryDecodeBcc,   [0b011] = TryDecodeBPr,
+    [0b100] = TryDecodeSETHI, [0b101] = TryDecodeFBPcc,
+    [0b110] = TryDecodeFBcc,  [0b111] = TryDecodeCB,
 };
 
 static bool (*const kop10_op3Level[1U << 6])(Instruction &, uint32_t) = {
-  [0b000000] = TryDecodeADD,
-  [0b000001] = TryDecodeAND,
-  [0b000010] = TryDecodeOR,
-  [0b000011] = TryDecodeXOR,
-  [0b000100] = TryDecodeSUB,
-  [0b000101] = TryDecodeANDN,
-  [0b000110] = TryDecodeORN,
-  [0b000111] = TryDecodeXNOR,
-  [0b001000] = TryDecodeADDX,
-  [0b001001] = TryDecodeMULX,
-  [0b001010] = TryDecodeUMUL,
-  [0b001011] = TryDecodeSMUL,
-  [0b001100] = TryDecodeSUBX,
-  [0b001101] = nullptr,
-  [0b001110] = TryDecodeUDIV,
-  [0b001111] = TryDecodeSDIV,
-  [0b010000] = TryDecodeADDcc,
-  [0b010001] = TryDecodeANDcc,
-  [0b010010] = TryDecodeORcc,
-  [0b010011] = TryDecodeXORcc,
-  [0b010100] = TryDecodeSUBcc,
-  [0b010101] = TryDecodeANDNcc,
-  [0b010110] = TryDecodeORNcc,
-  [0b010111] = TryDecodeXNORcc,
-  [0b011000] = TryDecodeADDXcc,
-  [0b011001] = nullptr,
-  [0b011010] = TryDecodeUMULcc,
-  [0b011011] = TryDecodeSMULcc,
-  [0b011100] = TryDecodeSUBXcc,
-  [0b011101] = nullptr,
-  [0b011110] = TryDecodeUDIVcc,
-  [0b011111] = TryDecodeSDIVcc,
-  [0b100000] = nullptr,
-  [0b100001] = nullptr,
-  [0b100010] = nullptr,
-  [0b100011] = nullptr,
-  [0b100100] = TryDecodeMULScc,
-  [0b100101] = TryDecodeSLL,
-  [0b100110] = TryDecodeSRL,
-  [0b100111] = TryDecodeSRA,
-  [0b101000] = TryDecodeRDasr,
-  [0b101001] = nullptr,
-  [0b101010] = nullptr,
-  [0b101011] = nullptr,
-  [0b101100] = TryDecodeMOVcc,
-  [0b101101] = nullptr,
-  [0b101110] = nullptr,
-  [0b101111] = TryDecodeMOVr,
-  [0b110000] = TryDecodeWRasr,
-  [0b110001] = nullptr,
-  [0b110010] = nullptr,
-  [0b110011] = nullptr,
-  [0b110100] = TryDecodeOpf52,
-  [0b110101] = TryDecodeFCMP_FMOV,
-  [0b110110] = nullptr,
-  [0b110111] = nullptr,
-  [0b111000] = TryDecodeJMPL,
-  [0b111001] = TryDecodeRETT,
-  [0b111010] = TryDecodeTcc,
-  [0b111011] = nullptr,
-  [0b111100] = TryDecodeSave,
-  [0b111101] = TryDecodeRestore,
-  [0b111110] = nullptr,
-  [0b111111] = nullptr,
+    [0b000000] = TryDecodeADD,    [0b000001] = TryDecodeAND,
+    [0b000010] = TryDecodeOR,     [0b000011] = TryDecodeXOR,
+    [0b000100] = TryDecodeSUB,    [0b000101] = TryDecodeANDN,
+    [0b000110] = TryDecodeORN,    [0b000111] = TryDecodeXNOR,
+    [0b001000] = TryDecodeADDX,   [0b001001] = TryDecodeMULX,
+    [0b001010] = TryDecodeUMUL,   [0b001011] = TryDecodeSMUL,
+    [0b001100] = TryDecodeSUBX,   [0b001101] = nullptr,
+    [0b001110] = TryDecodeUDIV,   [0b001111] = TryDecodeSDIV,
+    [0b010000] = TryDecodeADDcc,  [0b010001] = TryDecodeANDcc,
+    [0b010010] = TryDecodeORcc,   [0b010011] = TryDecodeXORcc,
+    [0b010100] = TryDecodeSUBcc,  [0b010101] = TryDecodeANDNcc,
+    [0b010110] = TryDecodeORNcc,  [0b010111] = TryDecodeXNORcc,
+    [0b011000] = TryDecodeADDXcc, [0b011001] = nullptr,
+    [0b011010] = TryDecodeUMULcc, [0b011011] = TryDecodeSMULcc,
+    [0b011100] = TryDecodeSUBXcc, [0b011101] = nullptr,
+    [0b011110] = TryDecodeUDIVcc, [0b011111] = TryDecodeSDIVcc,
+    [0b100000] = nullptr,         [0b100001] = nullptr,
+    [0b100010] = nullptr,         [0b100011] = nullptr,
+    [0b100100] = TryDecodeMULScc, [0b100101] = TryDecodeSLL,
+    [0b100110] = TryDecodeSRL,    [0b100111] = TryDecodeSRA,
+    [0b101000] = TryDecodeRDasr,  [0b101001] = nullptr,
+    [0b101010] = nullptr,         [0b101011] = nullptr,
+    [0b101100] = TryDecodeMOVcc,  [0b101101] = nullptr,
+    [0b101110] = nullptr,         [0b101111] = TryDecodeMOVr,
+    [0b110000] = TryDecodeWRasr,  [0b110001] = nullptr,
+    [0b110010] = nullptr,         [0b110011] = nullptr,
+    [0b110100] = TryDecodeOpf52,  [0b110101] = TryDecodeFCMP_FMOV,
+    [0b110110] = nullptr,         [0b110111] = nullptr,
+    [0b111000] = TryDecodeJMPL,   [0b111001] = TryDecodeRETT,
+    [0b111010] = TryDecodeTcc,    [0b111011] = nullptr,
+    [0b111100] = TryDecodeSave,   [0b111101] = TryDecodeRestore,
+    [0b111110] = nullptr,         [0b111111] = nullptr,
 };
 
 static bool (*const kop11_op3Level[1u << 6])(Instruction &, uint32_t) = {
-  [0b000000] = TryDecodeLD,
-  [0b000001] = TryDecodeLDUB,
-  [0b000010] = TryDecodeLDUH,
-  [0b000011] = TryDecodeLDD,
-  [0b000100] = TryDecodeST,
-  [0b000101] = TryDecodeSTB,
-  [0b000110] = TryDecodeSTH,
-  [0b000111] = TryDecodeSTD,
-  [0b001000] = nullptr,
-  [0b001001] = TryDecodeLDSB,
-  [0b001010] = TryDecodeLDSH,
-  [0b001011] = nullptr,
-  [0b001100] = nullptr,
-  [0b001101] = TryDecodeLDSTUB,
-  [0b001110] = TryDecodeSTX,
-  [0b001111] = TryDecodeSWAP,
-  [0b010000] = nullptr,
-  [0b010001] = nullptr,
-  [0b010010] = nullptr,
-  [0b010011] = nullptr,
-  [0b010100] = nullptr,
-  [0b010101] = nullptr,
-  [0b010110] = nullptr,
-  [0b010111] = nullptr,
-  [0b011000] = nullptr,
-  [0b011001] = nullptr,
-  [0b011010] = nullptr,
-  [0b011011] = nullptr,
-  [0b011100] = nullptr,
-  [0b011101] = nullptr,
-  [0b011110] = nullptr,
-  [0b011111] = nullptr,
-  [0b100000] = TryDecodeLDF,
-  [0b100001] = nullptr,
-  [0b100010] = nullptr,
-  [0b100011] = TryDecodeLDDF,
-  [0b100100] = TryDecodeSTF,
-  [0b100101] = nullptr,
-  [0b100110] = nullptr,
-  [0b100111] = TryDecodeSTDF,
-  [0b101000] = nullptr,
-  [0b101001] = nullptr,
-  [0b101010] = nullptr,
-  [0b101011] = nullptr,
-  [0b101100] = nullptr,
-  [0b101101] = nullptr,
-  [0b101110] = nullptr,
-  [0b101111] = nullptr,
-  [0b110000] = nullptr,
-  [0b110001] = nullptr,
-  [0b110010] = nullptr,
-  [0b110011] = nullptr,
-  [0b110100] = nullptr,
-  [0b110101] = nullptr,
-  [0b110110] = nullptr,
-  [0b110111] = nullptr,
-  [0b111000] = nullptr,
-  [0b111001] = nullptr,
-  [0b111010] = nullptr,
-  [0b111011] = nullptr,
-  [0b111100] = TryDecodeCASA,
-  [0b111101] = nullptr,
-  [0b111110] = nullptr,
-  [0b111111] = nullptr,
+    [0b000000] = TryDecodeLD,   [0b000001] = TryDecodeLDUB,
+    [0b000010] = TryDecodeLDUH, [0b000011] = TryDecodeLDD,
+    [0b000100] = TryDecodeST,   [0b000101] = TryDecodeSTB,
+    [0b000110] = TryDecodeSTH,  [0b000111] = TryDecodeSTD,
+    [0b001000] = nullptr,       [0b001001] = TryDecodeLDSB,
+    [0b001010] = TryDecodeLDSH, [0b001011] = nullptr,
+    [0b001100] = nullptr,       [0b001101] = TryDecodeLDSTUB,
+    [0b001110] = TryDecodeSTX,  [0b001111] = TryDecodeSWAP,
+    [0b010000] = nullptr,       [0b010001] = nullptr,
+    [0b010010] = nullptr,       [0b010011] = nullptr,
+    [0b010100] = nullptr,       [0b010101] = nullptr,
+    [0b010110] = nullptr,       [0b010111] = nullptr,
+    [0b011000] = nullptr,       [0b011001] = nullptr,
+    [0b011010] = nullptr,       [0b011011] = nullptr,
+    [0b011100] = nullptr,       [0b011101] = nullptr,
+    [0b011110] = nullptr,       [0b011111] = nullptr,
+    [0b100000] = TryDecodeLDF,  [0b100001] = nullptr,
+    [0b100010] = nullptr,       [0b100011] = TryDecodeLDDF,
+    [0b100100] = TryDecodeSTF,  [0b100101] = nullptr,
+    [0b100110] = nullptr,       [0b100111] = TryDecodeSTDF,
+    [0b101000] = nullptr,       [0b101001] = nullptr,
+    [0b101010] = nullptr,       [0b101011] = nullptr,
+    [0b101100] = nullptr,       [0b101101] = nullptr,
+    [0b101110] = nullptr,       [0b101111] = nullptr,
+    [0b110000] = nullptr,       [0b110001] = nullptr,
+    [0b110010] = nullptr,       [0b110011] = nullptr,
+    [0b110100] = nullptr,       [0b110101] = nullptr,
+    [0b110110] = nullptr,       [0b110111] = nullptr,
+    [0b111000] = nullptr,       [0b111001] = nullptr,
+    [0b111010] = nullptr,       [0b111011] = nullptr,
+    [0b111100] = TryDecodeCASA, [0b111101] = nullptr,
+    [0b111110] = nullptr,       [0b111111] = nullptr,
 
-  //[0b100001] = TryDecodeLDFSR
-  //[0b100101] = TryDecodeSTFSR,
-  //[0b100110] = TryDecodeSTDFQ,
- // [0b111110] = TryDecodeCASXA,
+    //[0b100001] = TryDecodeLDFSR
+    //[0b100101] = TryDecodeSTFSR,
+    //[0b100110] = TryDecodeSTDFQ,
+    // [0b111110] = TryDecodeCASXA,
 };
 
 // SETHI, Branches, and ILLTRAP
@@ -2334,8 +2100,7 @@ static bool TryDecode_op00(Instruction &inst, uint32_t bits) {
   auto index = (bits >> 22u) & 0x7u;
   auto func = kop00_op2Level[index];
   if (!func) {
-    LOG(ERROR)
-        << "OP=00 op2=" << std::bitset<3>(index);
+    LOG(ERROR) << "OP=00 op2=" << std::bitset<3>(index);
     return false;
   }
   return func(inst, bits);
@@ -2350,8 +2115,7 @@ static bool TryDecode_op10(Instruction &inst, uint32_t bits) {
   auto index = (bits >> 19u) & 0x3Fu;
   auto func = kop10_op3Level[index];
   if (!func) {
-    LOG(ERROR)
-        << "OP=10 op3=" << std::bitset<6>(index);
+    LOG(ERROR) << "OP=10 op3=" << std::bitset<6>(index);
     return false;
   }
   return func(inst, bits);
@@ -2361,19 +2125,14 @@ static bool TryDecode_op11(Instruction &inst, uint32_t bits) {
   auto index = (bits >> 19u) & 0x3Fu;
   auto func = kop11_op3Level[index];
   if (!func) {
-    LOG(ERROR)
-        << "OP=11 op3=" << std::bitset<6>(index);
+    LOG(ERROR) << "OP=11 op3=" << std::bitset<6>(index);
     return false;
   }
   return func(inst, bits);
 }
 
 static bool (*const kopLevel[])(Instruction &, uint32_t) = {
-  TryDecode_op00,
-  TryDecode_op01,
-  TryDecode_op10,
-  TryDecode_op11
-};
+    TryDecode_op00, TryDecode_op01, TryDecode_op10, TryDecode_op11};
 
 static uint32_t BytesToBits(const uint8_t *bytes) {
   uint32_t bits = 0;
@@ -2397,9 +2156,8 @@ bool TryDecode(Instruction &inst) {
   } else if (num_bytes == 8) {
 
     if (inst.in_delay_slot) {
-      LOG(WARNING)
-          << "Decoding 8-byte pseudo-op at " << std::hex << inst.pc << std::dec
-          << " in delay slot; ignoring second four bytes";
+      LOG(WARNING) << "Decoding 8-byte pseudo-op at " << std::hex << inst.pc
+                   << std::dec << " in delay slot; ignoring second four bytes";
       inst.bytes.resize(4);
       inst.next_pc = inst.pc + 4;
       return TryDecode(inst);
@@ -2418,7 +2176,7 @@ bool TryDecode(Instruction &inst) {
       const auto bits2_op3 = (bits2 >> 19u) & 0x3Fu;
       if (bits2_op == 0b10 && bits2_op3 == 0b000010) {  // OR.
         ret = TryDecodeSET_SETHI_OR(inst, bits1, bits2);
-      } else if (bits2_op == 0b10 && bits2_op3 == 0b000000) { // ADD
+      } else if (bits2_op == 0b10 && bits2_op3 == 0b000000) {  // ADD
         ret = TryDecodeSET_SETHI_ADD(inst, bits1, bits2);
       }
     }
@@ -2428,8 +2186,8 @@ bool TryDecode(Instruction &inst) {
       inst.next_pc = inst.pc + 4;
       ret = TryDecode(inst);
 
-      LOG_IF(ERROR, !ret)
-          << "Unsupported 8-byte instruction: " << inst.Serialize();
+      LOG_IF(ERROR, !ret) << "Unsupported 8-byte instruction: "
+                          << inst.Serialize();
     }
     return ret;
 

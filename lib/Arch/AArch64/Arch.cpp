@@ -33,6 +33,7 @@
 
 #define REMILL_AARCH_STRICT_REGNUM
 
+#include "Decode.h"
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Instruction.h"
 #include "remill/Arch/Name.h"
@@ -41,13 +42,11 @@
 #include "remill/BC/Version.h"
 #include "remill/OS/OS.h"
 
-
-#include "Decode.h"
-
 // clang-format off
 #define ADDRESS_SIZE_BITS 64
 #define INCLUDED_FROM_REMILL
 #include "remill/Arch/AArch64/Runtime/State.h"
+
 // clang-format on
 
 namespace remill {
@@ -461,7 +460,8 @@ void AArch64Arch::PopulateBasicBlockFunction(llvm::Module *module,
 
   const auto pc_arg = NthArgument(bb_func, kPCArgNum);
   const auto state_ptr_arg = NthArgument(bb_func, kStatePointerArgNum);
-  llvm::StringRef next_pc_name(kNextPCVariableName.data(), kNextPCVariableName.size());
+  llvm::StringRef next_pc_name(kNextPCVariableName.data(),
+                               kNextPCVariableName.size());
   ir.CreateStore(pc_arg, ir.CreateAlloca(addr, nullptr, next_pc_name));
 
   ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "WZR"));
@@ -1859,7 +1859,7 @@ bool TryDecodeBL_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
                                                (data.imm26.simm26 << 2ULL));
   inst.branch_not_taken_pc = inst.next_pc;
   AddPCDisp(inst, data.imm26.simm26 << 2LL);
-  DecodeFallThroughPC(inst); // Decodes the return address.
+  DecodeFallThroughPC(inst);  // Decodes the return address.
   return true;
 }
 

@@ -28,6 +28,7 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #pragma clang diagnostic pop
+
 // clang-format on
 
 #include <array>
@@ -134,8 +135,7 @@ llvm::Value *LoadBranchTakenRef(llvm::BasicBlock *block);
 llvm::Function *FindFunction(llvm::Module *M, std::string_view name);
 
 // Find a global variable with name `name` in the module `M`.
-llvm::GlobalVariable *FindGlobaVariable(llvm::Module *M,
-                                        std::string_view name);
+llvm::GlobalVariable *FindGlobaVariable(llvm::Module *M, std::string_view name);
 
 // Try to verify a module.
 bool VerifyModule(llvm::Module *module);

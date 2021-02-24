@@ -14,21 +14,22 @@
  * limitations under the License.
  */
 
+#include "remill/Arch/Arch.h"
+
 #include <glog/logging.h>
 
-#include "remill/Arch/Arch.h"
+#include "Decode.h"
 #include "remill/Arch/Instruction.h"
 #include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/OS.h"
 
-#include "Decode.h"
-
 // clang-format off
 #define ADDRESS_SIZE_BITS 32
 #define INCLUDED_FROM_REMILL
 #include "remill/Arch/SPARC32/Runtime/State.h"
+
 // clang-format on
 
 namespace remill {
@@ -39,84 +40,72 @@ static const std::string_view kPCRegName = "pc";
 }  // namespace
 
 
-const std::string_view kCCRName[4] = {
-    "icc", {}, "xcc", {}
-};
+const std::string_view kCCRName[4] = {"icc", {}, "xcc", {}};
 
-const std::string_view kFCCRName[8] = {
-    "fcc0", "fcc1", "fcc2", "fcc3",
-    "icc", {}, "xcc", {}
-};
+const std::string_view kFCCRName[8] = {"fcc0", "fcc1", "fcc2", "fcc3",
+                                       "icc",  {},     "xcc",  {}};
 
 const std::string_view kReadIntRegName[32] = {
-  "g0", "g1", "g2", "g3", "g4", "g5", "g6", "g7",
-  "o0", "o1", "o2", "o3", "o4", "o5", "sp", "o7",
-  "l0", "l1", "l2", "l3", "l4", "l5", "l6", "l7",
-  "i0", "i1", "i2", "i3", "i4", "i5", "fp", "i7"
-};
+    "g0", "g1", "g2", "g3", "g4", "g5", "g6", "g7", "o0", "o1", "o2",
+    "o3", "o4", "o5", "sp", "o7", "l0", "l1", "l2", "l3", "l4", "l5",
+    "l6", "l7", "i0", "i1", "i2", "i3", "i4", "i5", "fp", "i7"};
 
-const std::string_view kWriteIntRegName[32] = {
-  "ignore_write_to_g0", "g1", "g2", "g3", "g4", "g5", "g6", "g7",
-  "o0", "o1", "o2", "o3", "o4", "o5", "o6", "o7",
-  "l0", "l1", "l2", "l3", "l4", "l5", "l6", "l7",
-  "i0", "i1", "i2", "i3", "i4", "i5", "i6", "i7"
-};
+const std::string_view kWriteIntRegName[32] = {"ignore_write_to_g0",
+                                               "g1",
+                                               "g2",
+                                               "g3",
+                                               "g4",
+                                               "g5",
+                                               "g6",
+                                               "g7",
+                                               "o0",
+                                               "o1",
+                                               "o2",
+                                               "o3",
+                                               "o4",
+                                               "o5",
+                                               "o6",
+                                               "o7",
+                                               "l0",
+                                               "l1",
+                                               "l2",
+                                               "l3",
+                                               "l4",
+                                               "l5",
+                                               "l6",
+                                               "l7",
+                                               "i0",
+                                               "i1",
+                                               "i2",
+                                               "i3",
+                                               "i4",
+                                               "i5",
+                                               "i6",
+                                               "i7"};
 
 const std::string_view kCondName[16] = {
-  [0b0000] = "N",
-  [0b0001] = "E",
-  [0b0010] = "LE",
-  [0b0011] = "L",
-  [0b0100] = "LEU",
-  [0b0101] = "CS",
-  [0b0110] = "NEG",
-  [0b0111] = "VS",
-  [0b1000] = "A",
-  [0b1001] = "NE",
-  [0b1010] = "G",
-  [0b1011] = "GE",
-  [0b1100] = "GU",
-  [0b1101] = "CC",
-  [0b1110] = "POS",
-  [0b1111] = "VC",
+    [0b0000] = "N",   [0b0001] = "E",  [0b0010] = "LE",  [0b0011] = "L",
+    [0b0100] = "LEU", [0b0101] = "CS", [0b0110] = "NEG", [0b0111] = "VS",
+    [0b1000] = "A",   [0b1001] = "NE", [0b1010] = "G",   [0b1011] = "GE",
+    [0b1100] = "GU",  [0b1101] = "CC", [0b1110] = "POS", [0b1111] = "VC",
 };
 
 const std::string_view kFCondName[16] = {
-  [0b0000] = "N",
-  [0b0001] = "NE",
-  [0b0010] = "LG",
-  [0b0011] = "UL",
-  [0b0100] = "L",
-  [0b0101] = "UG",
-  [0b0110] = "G",
-  [0b0111] = "U",
-  [0b1000] = "A",
-  [0b1001] = "E",
-  [0b1010] = "UE",
-  [0b1011] = "GE",
-  [0b1100] = "UGE",
-  [0b1101] = "LE",
-  [0b1110] = "ULE",
-  [0b1111] = "O"
-};
+    [0b0000] = "N",   [0b0001] = "NE", [0b0010] = "LG",  [0b0011] = "UL",
+    [0b0100] = "L",   [0b0101] = "UG", [0b0110] = "G",   [0b0111] = "U",
+    [0b1000] = "A",   [0b1001] = "E",  [0b1010] = "UE",  [0b1011] = "GE",
+    [0b1100] = "UGE", [0b1101] = "LE", [0b1110] = "ULE", [0b1111] = "O"};
 
 const std::string_view kRCondName[8] = {
-  [0b000] = {},
-  [0b001] = "Z",
-  [0b010] = "LEZ",
-  [0b011] = "LZ",
-  [0b100] = {},
-  [0b101] = "NZ",
-  [0b110] = "GZ",
-  [0b111] = "GEZ"
-};
+    [0b000] = {}, [0b001] = "Z",  [0b010] = "LEZ", [0b011] = "LZ",
+    [0b100] = {}, [0b101] = "NZ", [0b110] = "GZ",  [0b111] = "GEZ"};
 
 void AddSrcRegop(Instruction &inst, const char *reg_name, unsigned size) {
   inst.operands.emplace_back();
   auto &op = inst.operands.back();
   op.type = Operand::kTypeRegister;
   op.size = size;
-  op.action =  Operand::kActionRead;
+  op.action = Operand::kActionRead;
   op.reg.name = reg_name;
   op.reg.size = size;
 }
@@ -126,18 +115,17 @@ void AddDestRegop(Instruction &inst, const char *reg_name, unsigned size) {
   auto &op = inst.operands.back();
   op.type = Operand::kTypeRegister;
   op.size = size;
-  op.action =  Operand::kActionWrite;
+  op.action = Operand::kActionWrite;
   op.reg.name = reg_name;
   op.reg.size = size;
 }
 
-void AddImmop(Instruction &inst, uint64_t imm,
-              unsigned size, bool is_signed) {
+void AddImmop(Instruction &inst, uint64_t imm, unsigned size, bool is_signed) {
   inst.operands.emplace_back();
   auto &op = inst.operands.back();
   op.type = Operand::kTypeImmediate;
   op.size = size;
-  op.action =  Operand::kActionRead;
+  op.action = Operand::kActionRead;
   op.imm.val = imm;
   op.imm.is_signed = is_signed;
 }
@@ -178,9 +166,8 @@ class SPARC32Arch final : public Arch {
   llvm::DataLayout DataLayout(void) const final;
 
   // Decode an instruction.
-  bool DecodeInstruction(
-      uint64_t address, std::string_view instr_bytes,
-      Instruction &inst) const final;
+  bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                         Instruction &inst) const final;
 
   // Returns `true` if memory access are little endian byte ordered.
   bool MemoryAccessIsLittleEndian(void) const final {
@@ -264,7 +251,8 @@ void SPARC32Arch::PopulateBasicBlockFunction(llvm::Module *module,
   REG(o7, gpr.o7.dword, u32);
 
   ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "g0"), false);
-  ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "ignore_write_to_g0"), false);
+  ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "ignore_write_to_g0"),
+                 false);
 
   REG(g1, gpr.g1.dword, u32);
   REG(g2, gpr.g2.dword, u32);
@@ -392,23 +380,27 @@ void SPARC32Arch::PopulateBasicBlockFunction(llvm::Module *module,
 
   // `WINDOW_LINK = &(WINDOW->prev_window);`
   llvm::Value *gep_indexes[2] = {zero_u32, llvm::ConstantInt::get(u32, 33)};
-  auto window_link = ir.CreateInBoundsGEP(window_type, window, gep_indexes, "WINDOW_LINK");
+  auto window_link =
+      ir.CreateInBoundsGEP(window_type, window, gep_indexes, "WINDOW_LINK");
   auto nullptr_window = llvm::Constant::getNullValue(prev_window_link->type);
   ir.CreateStore(nullptr_window, window_link, false);
 
-  ir.CreateStore(zero_u8, ir.CreateAlloca(u8, nullptr, "IGNORE_BRANCH_TAKEN"), false);
+  ir.CreateStore(zero_u8, ir.CreateAlloca(u8, nullptr, "IGNORE_BRANCH_TAKEN"),
+                 false);
   ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "IGNORE_PC"), false);
-  ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "IGNORE_NEXT_PC"), false);
-  ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "IGNORE_RETURN_PC"), false);
+  ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "IGNORE_NEXT_PC"),
+                 false);
+  ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "IGNORE_RETURN_PC"),
+                 false);
 
   const auto pc_arg = NthArgument(bb_func, kPCArgNum);
   const auto state_ptr_arg = NthArgument(bb_func, kStatePointerArgNum);
 
   (void) RegisterByName(kNextPCVariableName)->AddressOf(state_ptr_arg, ir);
 
-  ir.CreateStore(
-      pc_arg, RegisterByName(kPCVariableName)->AddressOf(state_ptr_arg, ir),
-      false);
+  ir.CreateStore(pc_arg,
+                 RegisterByName(kPCVariableName)->AddressOf(state_ptr_arg, ir),
+                 false);
 }
 
 llvm::Triple SPARC32Arch::Triple(void) const {
@@ -445,8 +437,9 @@ bool SPARC32Arch::NextInstructionIsDelayed(const Instruction &inst,
 }
 
 // Decode an instruction.
-bool SPARC32Arch::DecodeInstruction(
-    uint64_t address, std::string_view inst_bytes, Instruction &inst) const {
+bool SPARC32Arch::DecodeInstruction(uint64_t address,
+                                    std::string_view inst_bytes,
+                                    Instruction &inst) const {
   inst.pc = address;
   inst.arch_name = arch_name;
   inst.arch = this;
@@ -475,12 +468,11 @@ bool SPARC32Arch::DecodeInstruction(
   if (!sparc32::TryDecode(inst)) {
     inst.category = Instruction::kCategoryInvalid;
     inst.operands.clear();
-    LOG(ERROR)
-        << "Unable to decode: " << inst.Serialize();
+    LOG(ERROR) << "Unable to decode: " << inst.Serialize();
     return false;
   }
 
-//  LOG(ERROR) << inst.Serialize();
+  //  LOG(ERROR) << inst.Serialize();
 
   return inst.IsValid();
 }
@@ -488,15 +480,14 @@ bool SPARC32Arch::DecodeInstruction(
 }  // namespace sparc
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
-Arch::ArchPtr Arch::GetSPARC(
-    llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_) {
+Arch::ArchPtr Arch::GetSPARC(llvm::LLVMContext *context_, OSName os_name_,
+                             ArchName arch_name_) {
   if (arch_name_ == kArchSparc32) {
     return std::make_unique<sparc::SPARC32Arch>(context_, os_name_, arch_name_);
 
   } else {
-    LOG(FATAL)
-        << "Invalid arch name passed to Arch::GetSPARC: "
-        << GetArchName(arch_name_);
+    LOG(FATAL) << "Invalid arch name passed to Arch::GetSPARC: "
+               << GetArchName(arch_name_);
     return {};
   }
 }

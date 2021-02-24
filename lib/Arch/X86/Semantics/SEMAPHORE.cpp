@@ -17,20 +17,20 @@
 namespace {
 
 #define MAKE_CMPXCHG_XAX(xax, xax_write, xax_read) \
-    template <typename D, typename S1, typename S2> \
-    DEF_SEM(CMPXCHG_ ## xax, D dst, S1 src1, S2 src2) { \
-      auto desired_val = Read(src2); \
-      auto check_val = Read(REG_ ## xax_read); \
-      auto prev_value = check_val; \
-      auto swap_flag = UCmpXchg(dst, check_val, desired_val); \
-      auto sub_res = USub(prev_value, check_val); \
-      WriteFlagsAddSub<tag_sub>(state, prev_value, check_val, sub_res); \
-      Write(FLAG_ZF, swap_flag); \
-      if (!swap_flag) { \
-        WriteZExt(REG_ ## xax_write, check_val); \
-      } \
-      return memory; \
-    }
+  template <typename D, typename S1, typename S2> \
+  DEF_SEM(CMPXCHG_##xax, D dst, S1 src1, S2 src2) { \
+    auto desired_val = Read(src2); \
+    auto check_val = Read(REG_##xax_read); \
+    auto prev_value = check_val; \
+    auto swap_flag = UCmpXchg(dst, check_val, desired_val); \
+    auto sub_res = USub(prev_value, check_val); \
+    WriteFlagsAddSub<tag_sub>(state, prev_value, check_val, sub_res); \
+    Write(FLAG_ZF, swap_flag); \
+    if (!swap_flag) { \
+      WriteZExt(REG_##xax_write, check_val); \
+    } \
+    return memory; \
+  }
 
 MAKE_CMPXCHG_XAX(AL, AL, AL)
 MAKE_CMPXCHG_XAX(AX, AX, AX)

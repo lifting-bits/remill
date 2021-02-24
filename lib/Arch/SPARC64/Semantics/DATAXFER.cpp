@@ -28,8 +28,8 @@ template <typename S, typename D>
 DEF_SEM(STA, R8 asi, S src, D dst) {
   WriteZExt(dst, Read(src));
   HYPER_CALL_VECTOR = Read(asi);
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kSPARCSetAsiRegister);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kSPARCSetAsiRegister);
 }
 
 DEF_SEM(STF, RF32 src, MF32W dst) {
@@ -48,16 +48,16 @@ DEF_SEM(STFA, R8 asi, RF32 src, MF32W dst) {
   auto lhs = Read(src);
   Write(dst, lhs);
   HYPER_CALL_VECTOR = Read(asi);
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kSPARCSetAsiRegister);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kSPARCSetAsiRegister);
 }
 
 DEF_SEM(STDFA, R8 asi, RF64 src, MF64W dst) {
   auto lhs = Read(src);
   Write(dst, lhs);
   HYPER_CALL_VECTOR = Read(asi);
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kSPARCSetAsiRegister);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kSPARCSetAsiRegister);
 }
 
 DEF_SEM(STTW_R32, R32 src1, R32 src2, MV64W dst) {
@@ -87,7 +87,7 @@ DEF_SEM(SETHI, S src, D dst) {
   return memory;
 }
 
-template<typename S1, typename S2, typename D>
+template <typename S1, typename S2, typename D>
 DEF_SEM(SET, S1 src1, S2 src2, D dst) {
   const auto high_bits = Read(src1);
   const auto low_bits = Read(src2);
@@ -113,7 +113,7 @@ DEF_SEM(SETHI_ADD, S1 src1, S2 src2, D1 dst1, D2 dst2) {
   return memory;
 }
 
-}
+}  // namespace
 
 DEF_ISEL(STB) = ST<R8, M8W>;
 DEF_ISEL(STH) = ST<R16, M16W>;
@@ -153,8 +153,8 @@ template <typename S, typename D>
 DEF_SEM(LDUA, R8 asi, S src, D dst) {
   WriteZExt(dst, Read(src));
   HYPER_CALL_VECTOR = Read(asi);
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kSPARCSetAsiRegister);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kSPARCSetAsiRegister);
 }
 
 template <typename S, typename D>
@@ -167,8 +167,8 @@ template <typename S, typename D>
 DEF_SEM(LDSA, R8 asi, S src, D dst) {
   WriteSExt(dst, Signed(Read(src)));
   HYPER_CALL_VECTOR = Read(asi);
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kSPARCSetAsiRegister);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kSPARCSetAsiRegister);
 }
 
 DEF_SEM(LDF, MV64 src, R32W dst) {
@@ -187,16 +187,16 @@ DEF_SEM(LDFA, R8 asi, MV64 src, R32W dst) {
   auto vec = UReadV32(src);
   WriteZExt(dst, UExtractV32(vec, 0));
   HYPER_CALL_VECTOR = Read(asi);
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kSPARCSetAsiRegister);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kSPARCSetAsiRegister);
 }
 
 DEF_SEM(LDDFA, R8 asi, MV64 src, R64W dst) {
   auto vec = UReadV64(src);
   WriteZExt(dst, UExtractV64(vec, 0));
   HYPER_CALL_VECTOR = Read(asi);
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kSPARCSetAsiRegister);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kSPARCSetAsiRegister);
 }
 
 DEF_SEM(LDTW_IMMEXC, MV64 src_mem, R32W dst1, R32W dst2) {
@@ -215,7 +215,7 @@ DEF_SEM(LDTW_R32EXC, MV64 src_mem, R32W dst1, R32W dst2) {
   return memory;
 }
 
-} // namespace
+}  // namespace
 
 DEF_ISEL(LDUB) = LDU<M8, R64W>;
 DEF_ISEL(LDUH) = LDU<M16, R64W>;
@@ -261,8 +261,8 @@ DEF_SEM(LDSTUBA, R8 asi, M8W src_mem, R dst) {
   auto mem_val = Read(src_mem);
   WriteZExt(dst, mem_val);
   Write(src_mem, static_cast<uint8_t>(0xffu));
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kSPARCSetAsiRegister);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kSPARCSetAsiRegister);
 }
 
 DEF_SEM(CASA, R32 src1, R32 src2, R32W dst) {
@@ -291,11 +291,11 @@ DEF_SEM(SWAPA, R8 asi, M32W src, R64W dst) {
   WriteZExt(dst, old_src);
   WriteTrunc(src, old_dst);
   HYPER_CALL_VECTOR = Read(asi);
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kSPARCSetAsiRegister);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kSPARCSetAsiRegister);
 }
 
-}
+}  // namespace
 
 DEF_ISEL(LDSTUB) = LDSTUB<R64W>;
 DEF_ISEL(LDSTUBA) = LDSTUBA<R64W>;
@@ -325,7 +325,7 @@ DEF_SEM(MOVN_xcc, S src, D dst) {
   return memory;
 }
 
-}
+}  // namespace
 
 DEF_ISEL(MOVA_icc) = MOVA_icc<R64, R64W>;
 DEF_ISEL(MOVA_xcc) = MOVA_xcc<R64, R64W>;
@@ -335,17 +335,17 @@ DEF_ISEL(MOVN_xcc) = MOVN_xcc<R64, R64W>;
 #define MAKE_SEMANTICS(name, cond, cc) \
   namespace { \
   template <typename S, typename D> \
-  DEF_SEM(name ## cond ## _ ## cc, S src, D dst) { \
+  DEF_SEM(name##cond##_##cc, S src, D dst) { \
     auto new_value = Read(src); \
     auto old_value = Read(dst); \
-    auto branch_taken = Cond ## cond ## _ ## cc(state); \
-    auto value = Select(branch_taken, new_value, \
-        decltype(new_value)(old_value)); \
+    auto branch_taken = Cond##cond##_##cc(state); \
+    auto value = \
+        Select(branch_taken, new_value, decltype(new_value)(old_value)); \
     WriteZExt(dst, value); \
     return memory; \
   } \
   } \
-  DEF_ISEL(MOV ## cond ## _ ## cc) = name ## cond ## _ ## cc<R64, R64W>;
+  DEF_ISEL(MOV##cond##_##cc) = name##cond##_##cc<R64, R64W>;
 
 #define MAKE_SEMANTICS_CC(name, cond) \
   MAKE_SEMANTICS(name, cond, icc) \
@@ -394,18 +394,19 @@ MAKE_SEMANTICS_FCC(MOVF, O)
 
 #define MAKE_SEMANTICS(name, cond) \
   namespace { \
-	template <typename C, typename S, typename D> \
-	DEF_SEM(name ## cond, C reg_cc, S src, D dst) { \
+  template <typename C, typename S, typename D> \
+  DEF_SEM(name##cond, C reg_cc, S src, D dst) { \
     auto new_value = Read(src); \
     auto old_value = Read(dst); \
     auto cc = Read(reg_cc); \
-    auto cond_taken = CondR ## cond(state, cc); \
-    auto value = Select(cond_taken, new_value, decltype(new_value)(old_value)); \
+    auto cond_taken = CondR##cond(state, cc); \
+    auto value = \
+        Select(cond_taken, new_value, decltype(new_value)(old_value)); \
     WriteZExt(dst, value); \
     return memory; \
   } \
   } \
-  DEF_ISEL(name ## cond) = name ## cond<R64, R64, R64W>;
+  DEF_ISEL(name##cond) = name##cond<R64, R64, R64W>;
 
 MAKE_SEMANTICS(MOVR, Z)
 MAKE_SEMANTICS(MOVR, LEZ)
@@ -454,7 +455,7 @@ DEF_SEM(FMoveNeverQuad, RF64 src, RF64W dst) {
   return memory;
 }
 
-}
+}  // namespace
 
 DEF_ISEL(FMOVSA_icc) = FMoveAlwaysSingle;
 DEF_ISEL(FMOVSA_xcc) = FMoveAlwaysSingle;
@@ -501,43 +502,40 @@ DEF_ISEL(FMOVQN_fcc3) = FMoveNeverQuad;
 
 #define MAKE_SEMANTICS(name, cond, cc) \
   namespace { \
-  DEF_SEM(FMOVS ## cond ## _ ## cc, RF32 src, RF32W dst) { \
+  DEF_SEM(FMOVS##cond##_##cc, RF32 src, RF32W dst) { \
     auto new_val = Read(src); \
     auto old_val = Read(dst); \
-    auto branch_taken = Cond ## cond ## _ ## cc(state); \
-    auto value = Select(branch_taken, new_val, \
-			decltype(new_val)(old_val)); \
+    auto branch_taken = Cond##cond##_##cc(state); \
+    auto value = Select(branch_taken, new_val, decltype(new_val)(old_val)); \
     Write(dst, value); \
     WriteTrunc(FSR_CEXC, 0); \
     WriteTrunc(FSR_FTT, 0); \
     return memory; \
   } \
-  DEF_SEM(FMOVD ## cond ## _ ## cc, RF64 src, RF64W dst) { \
-	  auto new_val = Read(src); \
-	  auto old_val = Read(dst); \
-	  auto branch_taken = Cond ## cond ## _ ## cc(state); \
-    auto value = Select(branch_taken, new_val, \
-                        decltype(new_val)(old_val)); \
+  DEF_SEM(FMOVD##cond##_##cc, RF64 src, RF64W dst) { \
+    auto new_val = Read(src); \
+    auto old_val = Read(dst); \
+    auto branch_taken = Cond##cond##_##cc(state); \
+    auto value = Select(branch_taken, new_val, decltype(new_val)(old_val)); \
     Write(dst, value); \
     WriteTrunc(FSR_CEXC, 0); \
     WriteTrunc(FSR_FTT, 0); \
-		return memory; \
+    return memory; \
   } \
-  DEF_SEM(FMOVQ ## cond ## _ ## cc, RF64 src, RF64W dst) { \
-	  auto new_val = Read(src); \
-	  auto old_val = Read(dst); \
-	  auto branch_taken = Cond ## cond ## _ ## cc(state); \
-	  auto value = Select(branch_taken, new_val, \
-                        decltype(new_val)(old_val)); \
+  DEF_SEM(FMOVQ##cond##_##cc, RF64 src, RF64W dst) { \
+    auto new_val = Read(src); \
+    auto old_val = Read(dst); \
+    auto branch_taken = Cond##cond##_##cc(state); \
+    auto value = Select(branch_taken, new_val, decltype(new_val)(old_val)); \
     Write(dst, value); \
     WriteTrunc(FSR_CEXC, 0); \
     WriteTrunc(FSR_FTT, 0); \
     return memory; \
   } \
   } \
-  DEF_ISEL(FMOVS ## cond ## _ ## cc) = FMOVS ## cond ## _ ## cc; \
-  DEF_ISEL(FMOVD ## cond ## _ ## cc) = FMOVD ## cond ## _ ## cc; \
-  DEF_ISEL(FMOVQ ## cond ## _ ## cc) = FMOVQ ## cond ## _ ## cc;
+  DEF_ISEL(FMOVS##cond##_##cc) = FMOVS##cond##_##cc; \
+  DEF_ISEL(FMOVD##cond##_##cc) = FMOVD##cond##_##cc; \
+  DEF_ISEL(FMOVQ##cond##_##cc) = FMOVQ##cond##_##cc;
 
 #define MAKE_SEMANTICS_CC(name, cond) \
   MAKE_SEMANTICS(name, cond, icc) \
@@ -585,49 +583,43 @@ MAKE_SEMANTICS_FCC(FMOV, O)
 
 #define MAKE_SEMANTICS(name, cond) \
   namespace { \
-	DEF_SEM(name ## S ## cond, R64 reg_cc, V32 src, V32W dst) { \
+  DEF_SEM(name##S##cond, R64 reg_cc, V32 src, V32W dst) { \
     auto new_val = FExtractV32(FReadV32(src), 0); \
     auto old_val = FExtractV32(FReadV32(dst), 0); \
     auto cc = Read(reg_cc); \
-    auto cond_taken = CondR ## cond(state, cc); \
-    auto value = Select(cond_taken, \
-                        new_val, \
-                        decltype(new_val)(old_val)); \
+    auto cond_taken = CondR##cond(state, cc); \
+    auto value = Select(cond_taken, new_val, decltype(new_val)(old_val)); \
     FWriteV32(dst, value); \
     WriteTrunc(FSR_CEXC, 0); \
     WriteTrunc(FSR_FTT, 0); \
     return memory; \
   } \
-  DEF_SEM(name ## D ## cond, R64 reg_cc, V64 src, V64W dst) { \
-	  auto new_val = FExtractV64(FReadV64(src), 0); \
-	  auto old_val = FExtractV64(FReadV64(dst), 0); \
-	  auto cc = Read(reg_cc); \
-	  auto cond_taken = CondR ## cond(state, cc); \
-	  auto value = Select(cond_taken, \
-	                      new_val, \
-	                      decltype(new_val)(old_val)); \
-	  FWriteV64(dst, value); \
-	  WriteTrunc(FSR_CEXC, 0); \
-	  WriteTrunc(FSR_FTT, 0); \
-	  return memory; \
-  } \
-  DEF_SEM(name ## Q ## cond, R64 reg_cc, V64 src, V64W dst) { \
+  DEF_SEM(name##D##cond, R64 reg_cc, V64 src, V64W dst) { \
     auto new_val = FExtractV64(FReadV64(src), 0); \
     auto old_val = FExtractV64(FReadV64(dst), 0); \
     auto cc = Read(reg_cc); \
-    auto cond_taken = CondR ## cond(state, cc); \
-    auto value = Select(cond_taken, \
-                        new_val, \
-                        decltype(new_val)(old_val)); \
+    auto cond_taken = CondR##cond(state, cc); \
+    auto value = Select(cond_taken, new_val, decltype(new_val)(old_val)); \
+    FWriteV64(dst, value); \
+    WriteTrunc(FSR_CEXC, 0); \
+    WriteTrunc(FSR_FTT, 0); \
+    return memory; \
+  } \
+  DEF_SEM(name##Q##cond, R64 reg_cc, V64 src, V64W dst) { \
+    auto new_val = FExtractV64(FReadV64(src), 0); \
+    auto old_val = FExtractV64(FReadV64(dst), 0); \
+    auto cc = Read(reg_cc); \
+    auto cond_taken = CondR##cond(state, cc); \
+    auto value = Select(cond_taken, new_val, decltype(new_val)(old_val)); \
     FWriteV64(dst, value); \
     WriteTrunc(FSR_CEXC, 0); \
     WriteTrunc(FSR_FTT, 0); \
     return memory; \
   } \
   } \
-  DEF_ISEL(name ## S ## cond) = name ## S ## cond; \
-  DEF_ISEL(name ## D ## cond) = name ## D ## cond; \
-  DEF_ISEL(name ## Q ## cond) = name ## Q ## cond;
+  DEF_ISEL(name##S##cond) = name##S##cond; \
+  DEF_ISEL(name##D##cond) = name##D##cond; \
+  DEF_ISEL(name##Q##cond) = name##Q##cond;
 
 MAKE_SEMANTICS(FMOVR, Z)
 MAKE_SEMANTICS(FMOVR, LEZ)
@@ -635,4 +627,3 @@ MAKE_SEMANTICS(FMOVR, LZ)
 MAKE_SEMANTICS(FMOVR, NZ)
 MAKE_SEMANTICS(FMOVR, GZ)
 MAKE_SEMANTICS(FMOVR, GEZ)
-

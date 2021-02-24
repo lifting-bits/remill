@@ -41,34 +41,29 @@ DEF_SEM(ALIGNADDRESS_LITTLE, R64 src1, R64 src2, R64W dst) {
 }
 
 DEF_SEM(FALIGNDATAG, V128 src1, V128 src2, V128W dst) {
+
   // extract F[rs1] and F[rs2] and concat them
   auto rs1 = UReadV8(src1);
   auto rs2 = UReadV8(src2);
   auto concat_vec = UClearV8(UReadV8(dst));
-  _Pragma("unroll")
-  for (size_t i = 0; i < 8; ++i) {
-    concat_vec = UInsertV8(
-        concat_vec, i, UExtractV8(rs1, i));
+  _Pragma("unroll") for (size_t i = 0; i < 8; ++i) {
+    concat_vec = UInsertV8(concat_vec, i, UExtractV8(rs1, i));
   }
-  _Pragma("unroll")
-  for (size_t i = 0; i < 8; ++i) {
-    concat_vec = UInsertV8(
-        concat_vec, i, UExtractV8(rs2, i));
+  _Pragma("unroll") for (size_t i = 0; i < 8; ++i) {
+    concat_vec = UInsertV8(concat_vec, i, UExtractV8(rs2, i));
   }
 
   // Recover the vector from the GSR.align value
   auto align = Read(GSR_ALIGN);
   auto recv_vec = UClearV8(UReadV8(dst));
-  _Pragma("unroll")
-  for (size_t i = 0; i < 8; ++i) {
-    recv_vec = UInsertV8(
-        recv_vec, i, UExtractV8(concat_vec, align + i));
+  _Pragma("unroll") for (size_t i = 0; i < 8; ++i) {
+    recv_vec = UInsertV8(recv_vec, i, UExtractV8(concat_vec, align + i));
   }
   UWriteV8(dst, recv_vec);
   return memory;
 }
 
-} // namespace
+}  // namespace
 
 DEF_ISEL(ALIGNADDRESS) = ALIGNADDRESS;
 DEF_ISEL(ALIGNADDRESS_LITTLE) = ALIGNADDRESS_LITTLE;

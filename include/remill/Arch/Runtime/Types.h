@@ -41,7 +41,8 @@ typedef uint64_t addr64_t;
 typedef IF_64BIT_ELSE(addr64_t, addr32_t) addr_t;
 typedef IF_64BIT_ELSE(int64_t, int32_t) addr_diff_t;
 
-#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86) || defined (__arm__)
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86) || \
+    defined(__arm__)
 typedef unsigned uint128_t __attribute__((mode(TI)));
 typedef int int128_t __attribute__((mode(TI)));
 #elif defined(__aarch64__)

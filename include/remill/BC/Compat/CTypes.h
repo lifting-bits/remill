@@ -17,9 +17,10 @@
 #pragma once
 
 #if __has_include(<llvm-c/Types.h>)
-#include <llvm-c/Types.h>
+#  include <llvm-c/Types.h>
 
 namespace llvm {
+
 // TODO(pag): This is a rather ugly hack; had some issues with anvill not
 //            compiling on macOS due to these C types.
 struct LLVMOpaqueNamedMDNode;

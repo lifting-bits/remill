@@ -189,7 +189,8 @@ DEF_SEM(TBZ, I8 bit_pos, R8W cond, PC taken, PC not_taken, S src, R64W pc_dst) {
 }
 
 template <typename S>
-DEF_SEM(TBNZ, I8 bit_pos, R8W cond, PC taken, PC not_taken, S src, R64W pc_dst) {
+DEF_SEM(TBNZ, I8 bit_pos, R8W cond, PC taken, PC not_taken, S src,
+        R64W pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
   auto bit_n = ZExtTo<S>(Read(bit_pos));

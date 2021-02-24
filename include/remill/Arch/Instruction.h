@@ -17,13 +17,35 @@
 #pragma once
 
 #include <string>
+#include <variant>
 #include <vector>
+
+namespace llvm {
+class Constant;
+class Type;
+}  // namespace llvm
 
 namespace remill {
 
 class Arch;
+struct Register;
+class OperandExpression;
 
 enum ArchName : unsigned;
+
+struct LLVMOpExpr {
+  unsigned llvm_opcode;
+  OperandExpression *op1;
+  OperandExpression *op2;
+};
+
+
+class OperandExpression : public std::variant<LLVMOpExpr, const Register *,
+                                              llvm::Constant *, std::string> {
+ public:
+  std::string Serialize(void) const;
+  llvm::Type *type{nullptr};
+};
 
 // Generic instruction operand.
 class Operand {
@@ -36,7 +58,8 @@ class Operand {
     kTypeRegister,
     kTypeShiftRegister,
     kTypeImmediate,
-    kTypeAddress
+    kTypeAddress,
+    kTypeExpression,
   } type;
 
   enum Action { kActionInvalid, kActionRead, kActionWrite } action;
@@ -61,8 +84,9 @@ class Operand {
     Register reg;
     uint64_t shift_size;
     uint64_t extract_size;
+    bool shift_first;
 
-    enum Shift : unsigned {
+    enum Shift : uint8_t {
       kShiftInvalid,
       kShiftLeftWithZeroes,  // Shift left, filling low order bits with zero.
       kShiftLeftWithOnes,  // Shift left, filling low order bits with one.
@@ -72,7 +96,7 @@ class Operand {
       kShiftRightAround  // Rotate right.
     } shift_op;
 
-    enum Extend : unsigned {
+    enum Extend : uint8_t {
       kExtendInvalid,
       kExtendUnsigned,
       kExtendSigned,
@@ -123,6 +147,23 @@ class Operand {
       return kControlFlowTarget == kind;
     }
   } addr;
+
+  OperandExpression *expr;
+
+  std::string Serialize(void) const;
+};
+
+class Condition {
+ public:
+  enum Kind {
+    kTypeTrue,
+    kTypeIsOne,
+    kTypeIsZero,
+    kTypeIsEqual,
+  } kind;
+
+  Operand::Register lhs_reg;
+  Operand::Register rhs_reg;
 
   std::string Serialize(void) const;
 };
@@ -178,9 +219,13 @@ class Instruction {
     kCategoryError,
     kCategoryDirectJump,
     kCategoryIndirectJump,
+    kCategoryConditionalIndirectJump,
     kCategoryDirectFunctionCall,
+    kCategoryConditionalDirectFunctionCall,
     kCategoryIndirectFunctionCall,
+    kCategoryConditionalIndirectFunctionCall,
     kCategoryFunctionReturn,
+    kCategoryConditionalFunctionReturn,
     kCategoryConditionalBranch,
     kCategoryAsyncHyperCall,
     kCategoryConditionalAsyncHyperCall,
@@ -211,29 +256,41 @@ class Instruction {
   inline bool IsIndirectControlFlow(void) const {
     switch (category) {
       case kCategoryIndirectFunctionCall:
+      case kCategoryConditionalIndirectFunctionCall:
       case kCategoryIndirectJump:
-      case kCategoryConditionalBranch:
+      case kCategoryConditionalIndirectJump:
       case kCategoryAsyncHyperCall:
       case kCategoryConditionalAsyncHyperCall:
-      case kCategoryFunctionReturn: return true;
+      case kCategoryFunctionReturn:
+      case kCategoryConditionalFunctionReturn: return true;
       default: return false;
     }
   }
 
   inline bool IsConditionalBranch(void) const {
-    return kCategoryConditionalBranch == category;
+    switch (category) {
+      case kCategoryConditionalDirectFunctionCall:
+      case kCategoryConditionalBranch:
+      case kCategoryConditionalIndirectJump:
+      case kCategoryConditionalAsyncHyperCall:
+      case kCategoryConditionalFunctionReturn: return true;
+      default: return false;
+    }
   }
 
   inline bool IsFunctionCall(void) const {
     switch (category) {
       case kCategoryDirectFunctionCall:
+      case kCategoryConditionalDirectFunctionCall:
+      case kCategoryConditionalIndirectFunctionCall:
       case kCategoryIndirectFunctionCall: return true;
       default: return false;
     }
   }
 
   inline bool IsFunctionReturn(void) const {
-    return kCategoryFunctionReturn == category;
+    return kCategoryFunctionReturn == category ||
+           kCategoryConditionalFunctionReturn == category;
   }
 
   inline bool IsValid(void) const {
@@ -254,6 +311,27 @@ class Instruction {
   inline bool IsNoOp(void) const {
     return kCategoryNoOp == category;
   }
+
+  // This allocates an OperandExpression
+  OperandExpression *AllocateExpression(void);
+  OperandExpression *EmplaceRegister(const Register *);
+  OperandExpression *EmplaceRegister(std::string_view reg_name);
+  OperandExpression *EmplaceConstant(llvm::Constant *);
+  OperandExpression *EmplaceVariable(std::string_view, llvm::Type *);
+  OperandExpression *EmplaceBinaryOp(unsigned opcode, OperandExpression *op1,
+                                     OperandExpression *op2);
+  OperandExpression *EmplaceUnaryOp(unsigned opcode, OperandExpression *op1,
+                                    llvm::Type *);
+
+  Operand &EmplaceOperand(const Operand::Register &op);
+  Operand &EmplaceOperand(const Operand::Immediate &op);
+  Operand &EmplaceOperand(const Operand::ShiftRegister &op);
+  Operand &EmplaceOperand(const Operand::Address &op);
+
+ private:
+  static constexpr auto kMaxNumExpr = 64u;
+  OperandExpression exprs[kMaxNumExpr];
+  unsigned next_expr_index{0};
 };
 
 }  // namespace remill

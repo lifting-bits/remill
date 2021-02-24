@@ -1465,7 +1465,8 @@ ALWAYS_INLINE static Memory *__remill_write_memory_128(Memory *mem, addr_t addr,
   ALWAYS_INLINE static uint##size##_t name(uint##size##_t val) { \
     const auto in_val = static_cast<uint##input_size##_t>(val); \
     return in_val ? (static_cast<uint##size##_t>(builtin(in_val)) - \
-                     static_cast<uint##input_size##_t>(disp)) : size; \
+                     static_cast<uint##input_size##_t>(disp)) \
+                  : size; \
   }
 
 MAKE_BUILTIN(CountLeadingZeros, 8, 32, __builtin_clz, 24)

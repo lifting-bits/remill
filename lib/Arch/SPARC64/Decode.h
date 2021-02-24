@@ -16,8 +16,9 @@
 
 #pragma once
 
-#include <cstdint>
 #include <glog/logging.h>
+
+#include <cstdint>
 
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Instruction.h"
@@ -25,7 +26,7 @@
 namespace remill {
 namespace sparc64 {
 
-bool TryDecode(Instruction &inst) ;
+bool TryDecode(Instruction &inst);
 
 }  // namespace sparc64
 }  // namespace remill

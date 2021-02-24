@@ -55,8 +55,8 @@ DEF_SEM(PREFETCH, M64 address, I32 fcn) {
 
 DEF_SEM(PREFETCHA, R8 asi, M64 address, I32 fcn) {
   HYPER_CALL_VECTOR = Read(asi);
-  return __remill_sync_hyper_call(
-      state, memory, SyncHyperCall::kSPARCSetAsiRegister);
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kSPARCSetAsiRegister);
 }
 
 }  // namespace
@@ -71,7 +71,8 @@ DEF_ISEL(PREFETCHA) = PREFETCHA;
 namespace {
 
 template <typename S1, typename S2, typename D>
-DEF_SEM(SAVE, S1 src1, S2 src2, D dst, RegisterWindow *window, RegisterWindow *&prev_window) {
+DEF_SEM(SAVE, S1 src1, S2 src2, D dst, RegisterWindow *window,
+        RegisterWindow *&prev_window) {
   addr_t sp_base = Read(src1);
   addr_t sp_offset = Read(src2);
   addr_t new_sp = UAdd(sp_base, sp_offset);

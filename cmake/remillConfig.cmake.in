@@ -65,6 +65,9 @@ if(NOT TARGET remill)
   add_library(remill_arch_x86 STATIC IMPORTED)
   set_property(TARGET remill_arch_x86 PROPERTY IMPORTED_LOCATION "@REMILL_ARCH_X86_LIBRARY_LOCATION@")
   
+  add_library(remill_arch_aarch32 STATIC IMPORTED)
+  set_property(TARGET remill_arch_aarch32 PROPERTY IMPORTED_LOCATION "@REMILL_ARCH_AARCH32_LIBRARY_LOCATION@")
+  
   add_library(remill_arch_aarch64 STATIC IMPORTED)
   set_property(TARGET remill_arch_aarch64 PROPERTY IMPORTED_LOCATION "@REMILL_ARCH_AARCH64_LIBRARY_LOCATION@")
   
@@ -84,6 +87,7 @@ if(NOT TARGET remill)
     remill_os
     remill_arch
     remill_arch_x86
+    remill_arch_aarch32
     remill_arch_aarch64
     remill_arch_sparc32
     remill_arch_sparc64

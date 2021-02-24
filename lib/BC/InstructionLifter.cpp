@@ -55,12 +55,12 @@ InstructionLifter::Impl::Impl(const Arch *arch_,
       unsupported_instruction(
           GetInstructionFunction(module, kUnsupportedInstructionISelName)) {
 
-    CHECK(invalid_instruction != nullptr)
-        << kInvalidInstructionISelName << " doesn't exist";
+  CHECK(invalid_instruction != nullptr)
+      << kInvalidInstructionISelName << " doesn't exist";
 
-    CHECK(unsupported_instruction != nullptr)
-        << kUnsupportedInstructionISelName << " doesn't exist";
-  }
+  CHECK(unsupported_instruction != nullptr)
+      << kUnsupportedInstructionISelName << " doesn't exist";
+}
 
 InstructionLifter::~InstructionLifter(void) {}
 
@@ -114,9 +114,11 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
   }
 
   llvm::IRBuilder<> ir(block);
-  const auto mem_ptr_ref = LoadRegAddress(block, state_ptr, kMemoryVariableName);
+  const auto mem_ptr_ref =
+      LoadRegAddress(block, state_ptr, kMemoryVariableName);
   const auto pc_ref = LoadRegAddress(block, state_ptr, kPCVariableName);
-  const auto next_pc_ref = LoadRegAddress(block, state_ptr, kNextPCVariableName);
+  const auto next_pc_ref =
+      LoadRegAddress(block, state_ptr, kNextPCVariableName);
   const auto next_pc = ir.CreateLoad(next_pc_ref);
 
   // If this instruction appears within a delay slot, then we're going to assume
@@ -140,9 +142,8 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
     // the program counter in the semantics code.
     ir.CreateStore(next_pc, pc_ref);
     ir.CreateStore(
-        ir.CreateAdd(next_pc,
-                     llvm::ConstantInt::get(impl->word_type,
-                                            arch_inst.bytes.size())),
+        ir.CreateAdd(next_pc, llvm::ConstantInt::get(impl->word_type,
+                                                     arch_inst.bytes.size())),
         next_pc_ref);
   }
 
@@ -217,9 +218,10 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
 }
 
 // Load the address of a register.
-llvm::Value *InstructionLifter::LoadRegAddress(
-    llvm::BasicBlock *block, llvm::Value *state_ptr,
-    std::string_view reg_name_) const {
+llvm::Value *
+InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
+                                  llvm::Value *state_ptr,
+                                  std::string_view reg_name_) const {
   const auto func = block->getParent();
 
   // Invalidate the cache.
@@ -231,8 +233,8 @@ llvm::Value *InstructionLifter::LoadRegAddress(
   }
 
   std::string reg_name(reg_name_.data(), reg_name_.size());
-  auto [reg_ptr_it, added] = impl->reg_ptr_cache.emplace(
-      std::move(reg_name), nullptr);
+  auto [reg_ptr_it, added] =
+      impl->reg_ptr_cache.emplace(std::move(reg_name), nullptr);
 
   if (reg_ptr_it->second) {
     (void) added;
@@ -281,8 +283,7 @@ llvm::Value *InstructionLifter::LoadRegAddress(
     return reg_ptr;
 
   } else {
-    LOG(FATAL)
-        << "Could not locate variable or register " << reg_name_;
+    LOG(FATAL) << "Could not locate variable or register " << reg_name_;
     return nullptr;
   }
 }
@@ -294,9 +295,9 @@ void InstructionLifter::ClearCache(void) const {
 }
 
 // Load the value of a register.
-llvm::Value *InstructionLifter::LoadRegValue(
-    llvm::BasicBlock *block, llvm::Value *state_ptr,
-    std::string_view reg_name) const {
+llvm::Value *InstructionLifter::LoadRegValue(llvm::BasicBlock *block,
+                                             llvm::Value *state_ptr,
+                                             std::string_view reg_name) const {
   auto ptr = LoadRegAddress(block, state_ptr, reg_name);
   CHECK_NOTNULL(ptr);
   auto ptr_ty = ptr->getType()->getPointerElementType();
@@ -304,9 +305,10 @@ llvm::Value *InstructionLifter::LoadRegValue(
 }
 
 // Return a register value, or zero.
-llvm::Value *InstructionLifter::LoadWordRegValOrZero(
-    llvm::BasicBlock *block, llvm::Value *state_ptr,
-    std::string_view reg_name, llvm::ConstantInt *zero) {
+llvm::Value *InstructionLifter::LoadWordRegValOrZero(llvm::BasicBlock *block,
+                                                     llvm::Value *state_ptr,
+                                                     std::string_view reg_name,
+                                                     llvm::ConstantInt *zero) {
 
   if (reg_name.empty()) {
     return zero;
@@ -630,6 +632,137 @@ InstructionLifter::LiftImmediateOperand(Instruction &inst, llvm::BasicBlock *,
   }
 }
 
+// Lift an expression operand.
+llvm::Value *InstructionLifter::LiftExpressionOperand(Instruction &inst,
+                                                      llvm::BasicBlock *block,
+                                                      llvm::Value *state_ptr,
+                                                      llvm::Argument *arg,
+                                                      Operand &op) {
+  auto val = LiftExpressionOperandRec(inst, block, state_ptr, arg, op.expr);
+  llvm::Function *func = block->getParent();
+  llvm::Module *module = func->getParent();
+  const auto real_arg_type = arg->getType();
+
+  // LLVM on AArch64 and on amd64 Windows converts things like `RnW<uint64_t>`,
+  // which is a struct containing a `uint64_t *`, into a `uintptr_t` when they
+  // are being passed as arguments.
+  auto arg_type = IntendedArgumentType(arg);
+
+  if (llvm::isa<llvm::PointerType>(arg_type)) {
+    return ConvertToIntendedType(inst, op, block, val, real_arg_type);
+
+  } else {
+    CHECK(arg_type->isIntegerTy() || arg_type->isFloatingPointTy())
+        << "Expected " << op.Serialize() << " to be an integral or float type "
+        << "for instruction at " << std::hex << inst.pc;
+
+    const llvm::DataLayout data_layout(module);
+    auto val_type = val->getType();
+    auto val_size = data_layout.getTypeAllocSizeInBits(val_type);
+    auto arg_size = data_layout.getTypeAllocSizeInBits(arg_type);
+    const auto word_size = impl->arch->address_size;
+
+    if (val_size < arg_size) {
+      if (arg_type->isIntegerTy()) {
+        CHECK(val_type->isIntegerTy())
+            << "Expected " << op.Serialize() << " to be an integral type "
+            << "for instruction at " << std::hex << inst.pc;
+
+        CHECK(word_size == arg_size)
+            << "Expected integer argument to be machine word size ("
+            << word_size << " bits) but is is " << arg_size << " instead "
+            << "in instruction at " << std::hex << inst.pc;
+
+        val = new llvm::ZExtInst(val, impl->word_type, "", block);
+
+      } else if (arg_type->isFloatingPointTy()) {
+        CHECK(val_type->isFloatingPointTy())
+            << "Expected " << op.Serialize() << " to be a floating point type "
+            << "for instruction at " << std::hex << inst.pc;
+
+        val = new llvm::FPExtInst(val, arg_type, "", block);
+      }
+
+    } else if (val_size > arg_size) {
+      if (arg_type->isIntegerTy()) {
+        CHECK(val_type->isIntegerTy())
+            << "Expected " << op.Serialize() << " to be an integral type "
+            << "for instruction at " << std::hex << inst.pc;
+
+        CHECK(word_size == arg_size)
+            << "Expected integer argument to be machine word size ("
+            << word_size << " bits) but is is " << arg_size << " instead "
+            << "in instruction at " << std::hex << inst.pc;
+
+        val = new llvm::TruncInst(val, arg_type, "", block);
+
+      } else if (arg_type->isFloatingPointTy()) {
+        CHECK(val_type->isFloatingPointTy())
+            << "Expected " << op.Serialize() << " to be a floating point type "
+            << "for instruction at " << std::hex << inst.pc;
+
+        val = new llvm::FPTruncInst(val, arg_type, "", block);
+      }
+    }
+
+    return ConvertToIntendedType(inst, op, block, val, real_arg_type);
+  }
+}
+
+// Lift an expression operand.
+llvm::Value *InstructionLifter::LiftExpressionOperandRec(
+    Instruction &inst, llvm::BasicBlock *block, llvm::Value *state_ptr,
+    llvm::Argument *arg, const OperandExpression *op) {
+  if (auto llvm_op = std::get_if<LLVMOpExpr>(op)) {
+    auto lhs =
+        LiftExpressionOperandRec(inst, block, state_ptr, nullptr, llvm_op->op1);
+    llvm::Value *rhs = nullptr;
+    if (llvm_op->op2) {
+      rhs = LiftExpressionOperandRec(inst, block, state_ptr, nullptr,
+                                     llvm_op->op2);
+    }
+    llvm::IRBuilder<> ir(block);
+    switch (llvm_op->llvm_opcode) {
+      case llvm::Instruction::Add: return ir.CreateAdd(lhs, rhs);
+      case llvm::Instruction::Sub: return ir.CreateSub(lhs, rhs);
+      case llvm::Instruction::Mul: return ir.CreateMul(lhs, rhs);
+      case llvm::Instruction::Shl: return ir.CreateShl(lhs, rhs);
+      case llvm::Instruction::LShr: return ir.CreateLShr(lhs, rhs);
+      case llvm::Instruction::AShr: return ir.CreateAShr(lhs, rhs);
+      case llvm::Instruction::ZExt: return ir.CreateZExt(lhs, op->type);
+      case llvm::Instruction::SExt: return ir.CreateSExt(lhs, op->type);
+      case llvm::Instruction::Trunc: return ir.CreateTrunc(lhs, op->type);
+      case llvm::Instruction::And: return ir.CreateAnd(lhs, rhs);
+      case llvm::Instruction::Or: return ir.CreateOr(lhs, rhs);
+      case llvm::Instruction::URem: return ir.CreateURem(lhs, rhs);
+      case llvm::Instruction::Xor: return ir.CreateXor(lhs, rhs);
+      default:
+        LOG(FATAL) << "Invalid Expression "
+                   << llvm::Instruction::getOpcodeName(llvm_op->llvm_opcode);
+        return nullptr;
+    }
+  } else if (auto reg_op = std::get_if<const Register *>(op)) {
+    if (!arg || !llvm::isa<llvm::PointerType>(arg->getType())) {
+      return LoadRegValue(block, state_ptr, (*reg_op)->name);
+    } else {
+      return LoadRegAddress(block, state_ptr, (*reg_op)->name);
+    }
+
+  } else if (auto ci_op = std::get_if<llvm::Constant *>(op)) {
+    return *ci_op;
+
+  } else if (auto str_op = std::get_if<std::string>(op)) {
+    if (!arg || !llvm::isa<llvm::PointerType>(arg->getType())) {
+      return LoadRegValue(block, state_ptr, *str_op);
+    } else {
+      return LoadRegAddress(block, state_ptr, *str_op);
+    }
+  } else {
+    LOG(FATAL) << "Uninitialized Operand Expression";
+    return nullptr;
+  }
+}
+
 // Zero-extend a value to be the machine word size.
 llvm::Value *InstructionLifter::LiftAddressOperand(Instruction &inst,
                                                    llvm::BasicBlock *block,
@@ -729,11 +862,14 @@ InstructionLifter::LiftOperand(Instruction &inst, llvm::BasicBlock *block,
         LOG(FATAL) << "Expected that a memory operand should be represented by "
                    << "machine word type. Argument type is "
                    << LLVMThingToString(arg_type) << " and word type is "
-                   << LLVMThingToString(impl->word_type) << " in instruction at "
-                   << std::hex << inst.pc;
+                   << LLVMThingToString(impl->word_type)
+                   << " in instruction at " << std::hex << inst.pc;
       }
 
       return LiftAddressOperand(inst, block, state_ptr, arg, arch_op);
+
+    case Operand::kTypeExpression:
+      return LiftExpressionOperand(inst, block, state_ptr, arg, arch_op);
   }
 
   LOG(FATAL) << "Got a unknown operand type of "

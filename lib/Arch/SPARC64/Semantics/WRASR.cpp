@@ -21,15 +21,15 @@
 
 #define MAKE_SEMANTICS_WR(op) \
   namespace { \
-    DEF_SEM(WR ## op, R32 src1, I32 src2) { \
-      auto lhs = Read(src1); \
-      auto rhs = Read(src2); \
-      auto res = UXor(lhs, rhs); \
-      WriteZExt(ASR_ ## op, res); \
-      return memory; \
-    } \
+  DEF_SEM(WR##op, R32 src1, I32 src2) { \
+    auto lhs = Read(src1); \
+    auto rhs = Read(src2); \
+    auto res = UXor(lhs, rhs); \
+    WriteZExt(ASR_##op, res); \
+    return memory; \
   } \
-  DEF_ISEL(WR ## op) = WR ## op;
+  } \
+  DEF_ISEL(WR##op) = WR##op;
 
 MAKE_SEMANTICS_WR(Y)
 MAKE_SEMANTICS_WR(PAUSE)
@@ -41,19 +41,19 @@ MAKE_SEMANTICS_WR(ASI)
 
 #define MAKE_SEMANTICS_RD(op) \
   namespace { \
-    DEF_SEM(RD ## op, R64W dst) { \
-      auto asr = Read(ASR_ ## op); \
-      WriteZExt(dst, asr); \
-      return memory; \
-    } \
+  DEF_SEM(RD##op, R64W dst) { \
+    auto asr = Read(ASR_##op); \
+    WriteZExt(dst, asr); \
+    return memory; \
   } \
-  DEF_ISEL(RD ## op) = RD ## op;
+  } \
+  DEF_ISEL(RD##op) = RD##op;
 
 MAKE_SEMANTICS_RD(Y)
 MAKE_SEMANTICS_RD(ASI)
+
 //MAKE_SEMANTICS_RD(PC)
 MAKE_SEMANTICS_RD(FPRS)
-
 
 
 namespace {
@@ -192,7 +192,7 @@ DEF_SEM(WRPRGL, R64 src1, R src2) {
   WriteTrunc(PSR_GL, res);
   return memory;
 }
-}
+}  // namespace
 
 DEF_ISEL(WRPRTPC) = WRPRTPC<R64>;
 DEF_ISEL(WRPRTPC_IMM) = WRPRTPC<I64>;
