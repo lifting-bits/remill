@@ -64,17 +64,17 @@ struct CallSite {
   ::llvm::CallBase *cb;
 
   CallSite(::llvm::Instruction *inst)
-      : cb(::llvm::dyn_cast<::llvm::CallBase>(inst)) {}
+      : cb(::llvm::dyn_cast_or_null<::llvm::CallBase>(inst)) {}
 
   CallSite(::llvm::User *user)
-      : CallSite(::llvm::dyn_cast<::llvm::Instruction>(user)) {}
+      : CallSite(::llvm::dyn_cast_or_null<::llvm::Instruction>(user)) {}
 
   bool isInvoke() const {
-    return ::llvm::isa<::llvm::InvokeInst>(cb);
+    return cb && ::llvm::isa<::llvm::InvokeInst>(*cb);
   }
 
   bool isCall() const {
-    return ::llvm::isa<::llvm::CallInst>(cb);
+    return cb && ::llvm::isa<::llvm::CallInst>(*cb);
   }
 
   ::llvm::Value *getCalledValue() {
