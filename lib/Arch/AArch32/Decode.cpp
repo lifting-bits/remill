@@ -15,6 +15,7 @@
  */
 
 #include <glog/logging.h>
+#include <optional>
 
 #include "Arch.h"
 #include "remill/BC/ABI.h"
