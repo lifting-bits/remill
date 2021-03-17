@@ -1477,9 +1477,9 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
 // Replace all uses of a constant `old_c` with `new_c` inside of `module`.
 //
 // Returns the number of constant uses of `old_c`.
-static unsigned ReplaceAllUsesOfConstant(llvm::Constant *old_c,
-                                         llvm::Constant *new_c,
-                                         llvm::Module *module) {
+unsigned ReplaceAllUsesOfConstant(llvm::Constant *old_c,
+                                  llvm::Constant *new_c,
+                                  llvm::Module *module) {
   std::vector<llvm::Use *> repls;
   for (auto &use : old_c->uses()) {
     repls.emplace_back(&use);
