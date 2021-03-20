@@ -23,7 +23,7 @@
 #include <utility>
 #include <vector>
 
-#ifndef WIN32
+#ifndef _WIN32
 #  include <sys/stat.h>
 #  include <unistd.h>
 #endif
@@ -67,7 +67,7 @@ DEFINE_string(
     "Colon-separated list of search paths to use when searching for semantics files.");
 
 namespace {
-#ifdef WIN32
+#ifdef _WIN32
 extern "C" std::uint32_t GetProcessId(std::uint32_t handle);
 #endif
 
@@ -75,7 +75,7 @@ extern "C" std::uint32_t GetProcessId(std::uint32_t handle);
 // conflict with the (deprecated) getpid function from the Windows
 // ucrt headers
 std::uint32_t nativeGetProcessID(void) {
-#ifdef WIN32
+#ifdef _WIN32
   return GetProcessId(0);
 #else
   return getpid();

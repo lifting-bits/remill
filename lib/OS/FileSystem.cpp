@@ -23,7 +23,7 @@
 #include <fstream>
 #include <vector>
 
-#ifndef WIN32
+#ifndef _WIN32
 #  include <dirent.h>
 #  include <fcntl.h>
 #  include <sys/stat.h>
@@ -47,7 +47,7 @@
 
 // Do not include windows.h, or its macros will end up shadowing our functions
 // (i.e.: MoveFile)
-#ifdef WIN32
+#ifdef _WIN32
 namespace {
 const std::uint32_t INVALID_FILE_ATTRIBUTES = static_cast<std::uint32_t>(-1);
 const std::uint32_t ERROR_NO_MORE_FILES = 18U;
@@ -119,7 +119,7 @@ int link(const char *path1, const char *path2) {
 #endif
 
 namespace remill {
-#ifdef WIN32
+#ifdef _WIN32
 bool IsDirectory(const std::string &path_name) {
   auto attributes = GetFileAttributesA(path_name.data());
   if (attributes == INVALID_FILE_ATTRIBUTES) {
@@ -272,7 +272,7 @@ bool RenameFile(const std::string &from_path, const std::string &to_path) {
   }
 }
 
-#ifndef WIN32
+#ifndef _WIN32
 namespace {
 enum : size_t { kCopyDataSize = 4096ULL };
 
@@ -280,7 +280,7 @@ static uint8_t gCopyData[kCopyDataSize];
 }  // namespace
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
 void CopyFile(const std::string &from_path, const std::string &to_path) {
   if (CopyFileA(from_path.data(), to_path.data(), false) == 0) {
     LOG(FATAL) << "Unable to copy all data read from " << from_path << " to "
@@ -373,7 +373,7 @@ std::string CanonicalPath(const std::string &path) {
 
 // Returns the path separator character for this OS.
 const char *PathSeparator(void) {
-#ifdef WIN32
+#ifdef _WIN32
   return "\\";
 #else
   return "/";
