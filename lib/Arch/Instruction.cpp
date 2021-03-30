@@ -386,6 +386,7 @@ Operand &Instruction::EmplaceOperand(const Operand::Register &reg_op) {
   auto &op = operands.back();
   op.type = Operand::kTypeExpression;
   op.size = reg_op.size;
+  op.reg.name = reg_op.name;
   if (auto reg = arch->RegisterByName(reg_op.name)) {
     op.expr = EmplaceRegister(reg);
   } else {

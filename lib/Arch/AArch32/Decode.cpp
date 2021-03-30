@@ -999,7 +999,8 @@ static bool DecodeCondition(Instruction &inst, uint32_t cond) {
 }
 
 std::optional<uint64_t> EvalReg(const Instruction &inst,
-                                const Operand::Register &op) {
+                                const Operand::Register &op, bool &is_linkreg) {
+  is_linkreg = (op.name == kIntRegName[kLRRegNum] || op.name == "LR");
   if (op.name == kIntRegName[kPCRegNum] || op.name == "PC") {
     return inst.pc;
   } else if (op.name == "NEXT_PC") {
@@ -1072,15 +1073,17 @@ std::optional<uint64_t> EvalExtract(const Operand::ShiftRegister &op,
 }
 
 std::optional<uint64_t> EvalOperand(const Instruction &inst,
-                                    const Operand &op) {
+                                    const Operand &op, bool &uses_linkreg) {
   switch (op.type) {
     case Operand::kTypeInvalid: return std::nullopt;
     case Operand::kTypeImmediate: return op.imm.val;
-    case Operand::kTypeRegister: return EvalReg(inst, op.reg);
+    case Operand::kTypeRegister:{
+      return EvalReg(inst, op.reg, uses_linkreg);
+    }
     case Operand::kTypeAddress: {
-      auto seg_val = EvalReg(inst, op.addr.segment_base_reg);
-      auto base_val = EvalReg(inst, op.addr.base_reg);
-      auto index_val = EvalReg(inst, op.addr.index_reg);
+      auto seg_val = EvalReg(inst, op.addr.segment_base_reg, uses_linkreg);
+      auto base_val = EvalReg(inst, op.addr.base_reg, uses_linkreg);
+      auto index_val = EvalReg(inst, op.addr.index_reg, uses_linkreg);
 
       if (!seg_val || !base_val || !index_val) {
         return std::nullopt;
@@ -1091,16 +1094,20 @@ std::optional<uint64_t> EvalOperand(const Instruction &inst,
           (static_cast<int64_t>(*index_val) * op.addr.scale) +
           op.addr.displacement);
     }
-    case Operand::kTypeShiftRegister:
+    case Operand::kTypeShiftRegister:{
       if (op.shift_reg.shift_first) {
         return EvalExtract(
             op.shift_reg,
-            EvalShift(op.shift_reg, EvalReg(inst, op.shift_reg.reg)));
+            EvalShift(op.shift_reg, EvalReg(inst, op.shift_reg.reg, uses_linkreg)));
       } else {
         return EvalShift(
             op.shift_reg,
-            EvalExtract(op.shift_reg, EvalReg(inst, op.shift_reg.reg)));
+            EvalExtract(op.shift_reg, EvalReg(inst, op.shift_reg.reg, uses_linkreg)));
       }
+    }
+    case Operand::kTypeExpression:{
+      return EvalReg(inst, op.reg, uses_linkreg);
+    }
     default: return std::nullopt;
   }
 }
@@ -1120,10 +1127,31 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
       inst.category = Instruction::kCategoryError;
       return false;
     } else {
-      auto src1 = EvalOperand(inst, inst.operands[1]);
-      auto src2 = EvalOperand(inst, inst.operands[2]);
 
-      if (!src1 || !src2) {
+      // check if the number of operands in instruction is 5
+      CHECK(inst.operands.size() == 5)
+          << "Failed to evaluate PC registers due to missing source operands;";
+
+
+      // NOTE(akshayk): LR register can be used in source expression to update PC.
+      //                These instructions will be of return type. Check if either
+      //                of the operand uses link register to update the PC
+      //  e.g: add pc, lr, #4
+      //
+      bool uses_linkreg = false;
+      auto src1 = EvalOperand(inst, inst.operands[3], uses_linkreg);
+      auto src2 = EvalOperand(inst, inst.operands[4], uses_linkreg);
+
+      if (uses_linkreg) {
+
+        // NOTE(akshayk): conditional return `movne pc, lr`
+        if (is_cond) {
+          inst.branch_not_taken_pc = inst.next_pc;
+          inst.category = Instruction::kCategoryConditionalFunctionReturn;
+        } else {
+          inst.category = Instruction::kCategoryFunctionReturn;
+        }
+      } else if (!src1 || !src2) {
         inst.category = Instruction::kCategoryIndirectJump;
       } else {
         auto res = evaluator(*src1, *src2);
@@ -1623,6 +1651,26 @@ static bool TryDecodeLoadStoreWordUBIL(Instruction &inst, uint32_t bits) {
     disp = -disp;
   }
 
+  //  NOTE(akshayk): The PC of the instruction being fetched is generally of the PC of the
+  //                 executing instruction. This is the legacy pipeline effect which the ARM
+  //                 processor carry. The PC during an instruction execution you see will be
+  //                 "address of the executing instruction +8" for ARM and "address of the
+  //                 executing instruction +4" for Thumb; The decoder should also handle it
+  //                 and add offset to `disp`
+  //
+  //  TODO(akshayk): Decoder does not support thumb architecture; use offset 8 for the ARM;
+  //                 Update it accordingly after adding support for thumb
+  //
+  //       0: e59f2008  ldr r2, [pc, #8]  ; 10 <0x10>
+  //       4: e3510001  cmp r1, #1
+  //       8: 01a00002  moveq r0, r2
+  //       c: e1a0f00e  mov pc, lr
+  //      10: ca4227c5  .word 0xca4227c5
+
+  if (enc.rn == kPCRegNum) {
+	  disp = disp + 8;
+  }
+
   // Not Indexing
   if (!is_index) {
     AddAddrRegOp(inst, kIntRegName[enc.rn], kMemSize, kMemAction, pc_adjust);
@@ -1697,6 +1745,7 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
   }
 
   AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, 0u);
+
   auto disp_expr = inst.operands.back().expr;
   auto disp_op = llvm::Instruction::Add;
   inst.operands.pop_back();
@@ -2253,8 +2302,13 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
     AddImmOp(inst, ~0u);
   }
 
-  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, enc.s);
-  return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u],
+  if (enc.type) {
+	  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, enc.s);
+  } else {
+	  AddIntRegOp(inst, enc.rm, 32, Operand::kActionRead);
+  }
+
+  return  EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u],
                     is_cond);
 }
 
@@ -2270,7 +2324,6 @@ static bool TryLogicalArithmeticRRRR(Instruction &inst, uint32_t bits) {
 
   inst.function = kLogicalArithmeticRRRI[enc.opc << 1u | enc.s];
   DecodeCondition(inst, enc.cond);
-
 
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
 
@@ -2508,17 +2561,20 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
       AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
     } else if (enc.Rm == kLRRegNum) {
       inst.category = Instruction::kCategoryFunctionReturn;
+      AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
     } else if (is_cond) {
       inst.category = Instruction::kCategoryConditionalIndirectJump;
       AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
     } else if (enc.op1 == 0b01) {
       inst.category = Instruction::kCategoryIndirectJump;
+      AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
     }
   } else if (is_cond) {
     inst.category = Instruction::kCategoryConditionalDirectFunctionCall;
     AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
   } else {
     inst.category = Instruction::kCategoryDirectFunctionCall;
+    AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
   }
 
   Operand::Register reg;
@@ -3157,6 +3213,7 @@ static TryDecode *TryDataProcessingAndMisc(uint32_t bits) {
           return nullptr;
         }
       }
+
     // op1 == 10xx0
     } else if (((enc.op1 >> 3) == 0b10u) && !(enc.op1 & 0b00001u)) {
 
@@ -3168,6 +3225,7 @@ static TryDecode *TryDataProcessingAndMisc(uint32_t bits) {
       } else {
         return TryHalfwordDecodeMultiplyAndAccumulate;
       }
+
     // op1 != 10xx0
     } else {
 
@@ -3299,7 +3357,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
 
   auto decoder = TryDecodeTopLevelEncodings(bits);
   if (!decoder) {
-    LOG(ERROR) << "unhandled bits";
+    LOG(ERROR) << "unhandled bits " << std::hex << bits << std::dec;
     return false;
   }
 
