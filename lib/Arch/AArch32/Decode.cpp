@@ -15,6 +15,7 @@
  */
 
 #include <glog/logging.h>
+
 #include <optional>
 
 #include "Arch.h"
@@ -24,7 +25,7 @@ namespace remill {
 
 namespace {
 
-//Integer Data Processing (three register, register shift)
+// Integer Data Processing (three register, register shift)
 union IntDataProcessingRRRR {
   uint32_t flat;
   struct {
@@ -43,7 +44,7 @@ union IntDataProcessingRRRR {
 } __attribute__((packed));
 static_assert(sizeof(IntDataProcessingRRRR) == 4, " ");
 
-//Integer Data Processing (three register, immediate shift)
+// Integer Data Processing (three register, immediate shift)
 union IntDataProcessingRRRI {
   uint32_t flat;
   struct {
@@ -61,7 +62,7 @@ union IntDataProcessingRRRI {
 } __attribute__((packed));
 static_assert(sizeof(IntDataProcessingRRRI) == 4, " ");
 
-//Integer Data Processing (2 register and immediate, immediate shift)
+// Integer Data Processing (2 register and immediate, immediate shift)
 union IntDataProcessingRRI {
   uint32_t flat;
   struct {
@@ -618,7 +619,7 @@ static void AddShiftThenExtractOp(Instruction &inst,
   op.action = Operand::kActionRead;
 }
 
-//static void AddExtractThenShiftOp(Instruction &inst,
+// static void AddExtractThenShiftOp(Instruction &inst,
 //                                  Operand::ShiftRegister::Shift shift_op,
 //                                  Operand::ShiftRegister::Extend extend_op,
 //                                  const char *reg_name, unsigned reg_size,
@@ -633,7 +634,7 @@ static void AddShiftThenExtractOp(Instruction &inst,
 //  shift_reg.shift_first = false;
 //  auto &op = inst.EmplaceOperand(shift_reg);
 //  op.action = Operand::kActionRead;
-//}
+// }
 
 
 // Note: Order is significant; extracted bits may be casted to this type.
@@ -999,7 +1000,12 @@ static bool DecodeCondition(Instruction &inst, uint32_t cond) {
 }
 
 std::optional<uint64_t> EvalReg(const Instruction &inst,
-                                const Operand::Register &op) {
+                                const Operand::Register &op,
+                                bool &uses_linkreg) {
+  if (!uses_linkreg) {
+    uses_linkreg = (op.name == kIntRegName[kLRRegNum] || op.name == "LR");
+  }
+
   if (op.name == kIntRegName[kPCRegNum] || op.name == "PC") {
     return inst.pc;
   } else if (op.name == "NEXT_PC") {
@@ -1071,16 +1077,16 @@ std::optional<uint64_t> EvalExtract(const Operand::ShiftRegister &op,
   }
 }
 
-std::optional<uint64_t> EvalOperand(const Instruction &inst,
-                                    const Operand &op) {
+std::optional<uint64_t> EvalOperand(const Instruction &inst, const Operand &op,
+                                    bool &uses_linkreg) {
   switch (op.type) {
     case Operand::kTypeInvalid: return std::nullopt;
     case Operand::kTypeImmediate: return op.imm.val;
-    case Operand::kTypeRegister: return EvalReg(inst, op.reg);
+    case Operand::kTypeRegister: return EvalReg(inst, op.reg, uses_linkreg);
     case Operand::kTypeAddress: {
-      auto seg_val = EvalReg(inst, op.addr.segment_base_reg);
-      auto base_val = EvalReg(inst, op.addr.base_reg);
-      auto index_val = EvalReg(inst, op.addr.index_reg);
+      auto seg_val = EvalReg(inst, op.addr.segment_base_reg, uses_linkreg);
+      auto base_val = EvalReg(inst, op.addr.base_reg, uses_linkreg);
+      auto index_val = EvalReg(inst, op.addr.index_reg, uses_linkreg);
 
       if (!seg_val || !base_val || !index_val) {
         return std::nullopt;
@@ -1091,16 +1097,21 @@ std::optional<uint64_t> EvalOperand(const Instruction &inst,
           (static_cast<int64_t>(*index_val) * op.addr.scale) +
           op.addr.displacement);
     }
-    case Operand::kTypeShiftRegister:
+    case Operand::kTypeShiftRegister: {
       if (op.shift_reg.shift_first) {
         return EvalExtract(
             op.shift_reg,
-            EvalShift(op.shift_reg, EvalReg(inst, op.shift_reg.reg)));
+            EvalShift(op.shift_reg,
+                      EvalReg(inst, op.shift_reg.reg, uses_linkreg)));
       } else {
         return EvalShift(
             op.shift_reg,
-            EvalExtract(op.shift_reg, EvalReg(inst, op.shift_reg.reg)));
+            EvalExtract(op.shift_reg,
+                        EvalReg(inst, op.shift_reg.reg, uses_linkreg)));
       }
+    }
+    case Operand::kTypeRegisterExpression:
+      return EvalReg(inst, op.reg, uses_linkreg);
     default: return std::nullopt;
   }
 }
@@ -1120,10 +1131,35 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
       inst.category = Instruction::kCategoryError;
       return false;
     } else {
-      auto src1 = EvalOperand(inst, inst.operands[1]);
-      auto src2 = EvalOperand(inst, inst.operands[2]);
 
-      if (!src1 || !src2) {
+      // HACK(akshayk): EvalPCDest is only getting called from the instruction
+      //                decode function emplace 5 operands to the vector. Added
+      //                assert check to make sure it is not getting called else
+      //                where. Update it to pass source operand as parameter
+      //                and use them to identify the instruction category
+      CHECK(inst.operands.size() == 5)
+          << "Failed to evaluate PC registers due to missing source operands;";
+
+
+      // NOTE(akshayk): LR register can be used in source expression to update PC.
+      //                These instructions will be of return type. Check if either
+      //                of the operand uses link register to update the PC
+      //  e.g: add pc, lr, #4
+      //
+      bool uses_linkreg = false;
+      auto src1 = EvalOperand(inst, inst.operands[3], uses_linkreg);
+      auto src2 = EvalOperand(inst, inst.operands[4], uses_linkreg);
+
+      if (uses_linkreg) {
+
+        // NOTE(akshayk): conditional return `movne pc, lr`
+        if (is_cond) {
+          inst.branch_not_taken_pc = inst.next_pc;
+          inst.category = Instruction::kCategoryConditionalFunctionReturn;
+        } else {
+          inst.category = Instruction::kCategoryFunctionReturn;
+        }
+      } else if (!src1 || !src2) {
         inst.category = Instruction::kCategoryIndirectJump;
       } else {
         auto res = evaluator(*src1, *src2);
@@ -1195,20 +1231,20 @@ static const char *const kIdpNamesRRR[] = {
     [0b1100] = "SBCrr",  [0b1101] = "SBCSrr", [0b1110] = "RSCrr",
     [0b1111] = "RSCSrr"};
 
-//000     AND, ANDS (register)
-//001     EOR, EORS (register)
-//010 0 != 1101 SUB, SUBS (register) — SUB
-//010 0 1101  SUB, SUBS (SP minus register) — SUB
-//010 1 != 1101 SUB, SUBS (register) — SUBS
-//010 1 1101  SUB, SUBS (SP minus register) — SUBS
-//011     RSB, RSBS (register)
-//100 0 != 1101 ADD, ADDS (register) — ADD
-//100 0 1101  ADD, ADDS (SP plus register) — ADD
-//100 1 != 1101 ADD, ADDS (register) — ADDS
-//100 1 1101  ADD, ADDS (SP plus register) — ADDS
-//101     ADC, ADCS (register)
-//110     SBC, SBCS (register)
-//111     RSC, RSCS (register)
+// 000     AND, ANDS (register)
+// 001     EOR, EORS (register)
+// 010 0 != 1101 SUB, SUBS (register) — SUB
+// 010 0 1101  SUB, SUBS (SP minus register) — SUB
+// 010 1 != 1101 SUB, SUBS (register) — SUBS
+// 010 1 1101  SUB, SUBS (SP minus register) — SUBS
+// 011     RSB, RSBS (register)
+// 100 0 != 1101 ADD, ADDS (register) — ADD
+// 100 0 1101  ADD, ADDS (SP plus register) — ADD
+// 100 1 != 1101 ADD, ADDS (register) — ADDS
+// 100 1 1101  ADD, ADDS (SP plus register) — ADDS
+// 101     ADC, ADCS (register)
+// 110     SBC, SBCS (register)
+// 111     RSC, RSCS (register)
 static bool TryDecodeIntegerDataProcessingRRRI(Instruction &inst,
                                                uint32_t bits) {
   const IntDataProcessingRRRI enc = {bits};
@@ -1243,22 +1279,22 @@ static bool TryDecodeIntegerDataProcessingRRRR(Instruction &inst,
   return true;
 }
 
-//000           AND, ANDS (immediate)
-//001           EOR, EORS (immediate)
-//010 0 != 11x1 SUB, SUBS (immediate) — SUB
-//010 0    1101 SUB, SUBS (SP minus immediate) — SUB
-//010 0    1111 ADR — A2 (alias of subtract)
-//010 1 != 1101 SUB, SUBS (immediate) — SUBS
-//010 1    1101 SUB, SUBS (SP minus immediate) — SUBS
-//011           RSB, RSBS (immediate)
-//100 0 != 11x1 ADD, ADDS (immediate) — ADD
-//100 0    1101 ADD, ADDS (SP plus immediate) — ADD
-//100 0    1111 ADR — A1 (alias of add)
-//100 1 != 1101 ADD, ADDS (immediate) — ADDS
-//100 1    1101 ADD, ADDS (SP plus immediate) — ADDS
-//101           ADC, ADCS (immediate)
-//110           SBC, SBCS (immediate)
-//111           RSC, RSCS (immediate)
+// 000           AND, ANDS (immediate)
+// 001           EOR, EORS (immediate)
+// 010 0 != 11x1 SUB, SUBS (immediate) — SUB
+// 010 0    1101 SUB, SUBS (SP minus immediate) — SUB
+// 010 0    1111 ADR — A2 (alias of subtract)
+// 010 1 != 1101 SUB, SUBS (immediate) — SUBS
+// 010 1    1101 SUB, SUBS (SP minus immediate) — SUBS
+// 011           RSB, RSBS (immediate)
+// 100 0 != 11x1 ADD, ADDS (immediate) — ADD
+// 100 0    1101 ADD, ADDS (SP plus immediate) — ADD
+// 100 0    1111 ADR — A1 (alias of add)
+// 100 1 != 1101 ADD, ADDS (immediate) — ADDS
+// 100 1    1101 ADD, ADDS (SP plus immediate) — ADDS
+// 101           ADC, ADCS (immediate)
+// 110           SBC, SBCS (immediate)
+// 111           RSC, RSCS (immediate)
 static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst,
                                               uint32_t bits) {
   const IntDataProcessingRRI enc = {bits};
@@ -1289,16 +1325,16 @@ static const char *const kMulAccRRR[] = {
     [0b1100] = "SMULL",  [0b1101] = "SMULLS", [0b1110] = "SMLAL",
     [0b1111] = "SMLALS"};
 
-//000   MUL, MULS
-//001   MLA, MLAS
-//010 0 UMAAL - writes to RdHi + RdLo, read RdHi
-//010 1 UNALLOCATED
-//011 0 MLS
-//011 1 UNALLOCATED
-//100   UMULL, UMULLS - writes to RdHi + RdLo
-//101   UMLAL, UMLALS - writes to RdHi + RdLo, read RdHi
-//110   SMULL, SMULLS - writes to RdHi + RdLo
-//111   SMLAL, SMLALS - writes to RdHi + RdLo, read RdHi
+// 000   MUL, MULS
+// 001   MLA, MLAS
+// 010 0 UMAAL - writes to RdHi + RdLo, read RdHi
+// 010 1 UNALLOCATED
+// 011 0 MLS
+// 011 1 UNALLOCATED
+// 100   UMULL, UMULLS - writes to RdHi + RdLo
+// 101   UMLAL, UMLALS - writes to RdHi + RdLo, read RdHi
+// 110   SMULL, SMULLS - writes to RdHi + RdLo
+// 111   SMLAL, SMLALS - writes to RdHi + RdLo, read RdHi
 static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
   const MultiplyAndAccumulate enc = {bits};
 
@@ -1573,8 +1609,8 @@ static const char *const kLoadSWUB[] = {
 };
 
 // P:W o2 o1    Rn
-//!= 01 0 1    1111 LDR (literal)
-//!= 01 1 1    1111 LDRB (literal)
+// != 01 0 1    1111 LDR (literal)
+// != 01 1 1    1111 LDRB (literal)
 //   00 0 0         STR (immediate) — post-indexed
 //   00 0 1 != 1111 LDR (immediate) — post-indexed
 //   00 1 0         STRB (immediate) — post-indexed
@@ -1621,6 +1657,26 @@ static bool TryDecodeLoadStoreWordUBIL(Instruction &inst, uint32_t bits) {
   // Subtract
   if (!is_add) {
     disp = -disp;
+  }
+
+  //  NOTE(akshayk): The PC of the instruction being fetched is generally of the PC of the
+  //                 executing instruction. This is the legacy pipeline effect which the ARM
+  //                 processor carry. The PC during an instruction execution you see will be
+  //                 "address of the executing instruction +8" for ARM and "address of the
+  //                 executing instruction +4" for Thumb; The decoder should also handle it
+  //                 and add offset to `disp`
+  //
+  //  TODO(akshayk): Decoder does not support thumb architecture; use offset 8 for the ARM;
+  //                 Update it accordingly after adding support for thumb
+  //
+  //       0: e59f2008  ldr r2, [pc, #8]  ; 10 <0x10>
+  //       4: e3510001  cmp r1, #1
+  //       8: 01a00002  moveq r0, r2
+  //       c: e1a0f00e  mov pc, lr
+  //      10: ca4227c5  .word 0xca4227c5
+
+  if (enc.rn == kPCRegNum) {
+    disp = disp + 8;
   }
 
   // Not Indexing
@@ -1697,6 +1753,7 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
   }
 
   AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, 0u);
+
   auto disp_expr = inst.operands.back().expr;
   auto disp_op = llvm::Instruction::Add;
   inst.operands.pop_back();
@@ -1750,11 +1807,11 @@ static const char *const kLoadStoreDHSB[] = {
     [0b11101] = "LDRHp", [0b11110] = "LDRSBp", [0b11111] = "LDRSHp",
 };
 
-//P:W  o1   Rn    op2
+// P:W  o1   Rn    op2
 //      0  1111   10  LDRD (literal)                   if Rt<0> == '1' t2 == 15 || wback then UNPREDICTABLE;
-//!= 01 1  1111   01  LDRH (literal)                   if t == 15 || wback then UNPREDICTABLE;
-//!= 01 1  1111   10  LDRSB (literal)                  if t == 15 || wback then UNPREDICTABLE;
-//!= 01 1  1111   11  LDRSH (literal)                  if t == 15 || wback then UNPREDICTABLE;
+// != 01 1  1111   01  LDRH (literal)                   if t == 15 || wback then UNPREDICTABLE;
+// != 01 1  1111   10  LDRSB (literal)                  if t == 15 || wback then UNPREDICTABLE;
+// != 01 1  1111   11  LDRSH (literal)                  if t == 15 || wback then UNPREDICTABLE;
 // 00   0 != 1111 10  LDRD (immediate) — post-indexed  if t2 == 15   wback && (n == t || n == t2) then UNPREDICTABLE;
 // 00   0         01  STRH (immediate) — post-indexed  if t == 15    wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 00   0         11  STRD (immediate) — post-indexed  if t2 == 15   wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
@@ -2221,10 +2278,10 @@ static InstEval *kLogArithEvaluators[] = {
         },
 };
 
-//00  ORR, ORRS (register) -- rd, rn, & rm
-//01  MOV, MOVS (register) -- rd, & rm only
-//10  BIC, BICS (register) -- rd, rn, & rm
-//11  MVN, MVNS (register) -- rd, & rm only
+// 00  ORR, ORRS (register) -- rd, rn, & rm
+// 01  MOV, MOVS (register) -- rd, & rm only
+// 10  BIC, BICS (register) -- rd, rn, & rm
+// 11  MVN, MVNS (register) -- rd, & rm only
 static const char *const kLogicalArithmeticRRRI[] = {
     [0b000] = "ORRrr",  [0b001] = "ORRSrr", [0b010] = "MOVrr",
     [0b011] = "MOVSrr", [0b100] = "BICrr",  [0b101] = "BICSrr",
@@ -2253,7 +2310,12 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
     AddImmOp(inst, ~0u);
   }
 
-  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, enc.s);
+  if (enc.type) {
+    AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, enc.s);
+  } else {
+    AddIntRegOp(inst, enc.rm, 32, Operand::kActionRead);
+  }
+
   return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u],
                     is_cond);
 }
@@ -2270,7 +2332,6 @@ static bool TryLogicalArithmeticRRRR(Instruction &inst, uint32_t bits) {
 
   inst.function = kLogicalArithmeticRRRI[enc.opc << 1u | enc.s];
   DecodeCondition(inst, enc.cond);
-
 
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
 
@@ -2345,10 +2406,10 @@ static bool TryDecodeMoveHalfword(Instruction &inst, uint32_t bits) {
   return true;
 }
 
-//00  TST (register)
-//01  TEQ (register)
-//10  CMP (register)
-//11  CMN (register)
+// 00  TST (register)
+// 01  TEQ (register)
+// 10  CMP (register)
+// 11  CMN (register)
 static const char *const kIntegerTestAndCompareR[] = {
     [0b00] = "TSTr",
     [0b01] = "TEQr",
@@ -2408,9 +2469,9 @@ static bool TryIntegerTestAndCompareRI(Instruction &inst, uint32_t bits) {
 }
 
 // cond  H
-//!= 1111 0 B
-//!= 1111 1 BL, BLX (immediate) — A1
-//1111    BL, BLX (immediate) — A2
+// != 1111 0 B
+// != 1111 1 BL, BLX (immediate) — A1
+// 1111    BL, BLX (immediate) — A2
 // Branch (immediate)
 static bool TryBranchImm(Instruction &inst, uint32_t bits) {
   const BranchI enc = {bits};
@@ -2508,17 +2569,20 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
       AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
     } else if (enc.Rm == kLRRegNum) {
       inst.category = Instruction::kCategoryFunctionReturn;
+      AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
     } else if (is_cond) {
       inst.category = Instruction::kCategoryConditionalIndirectJump;
       AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
     } else if (enc.op1 == 0b01) {
       inst.category = Instruction::kCategoryIndirectJump;
+      AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
     }
   } else if (is_cond) {
     inst.category = Instruction::kCategoryConditionalDirectFunctionCall;
     AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
   } else {
     inst.category = Instruction::kCategoryDirectFunctionCall;
+    AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
   }
 
   Operand::Register reg;
@@ -2727,35 +2791,35 @@ static bool TryBitExtract(Instruction &inst, uint32_t bits) {
 }
 
 // op0  op1
-//00xxx     Parallel Arithmetic
-//01000 101 SEL
-//01000 001 UNALLOCATED
-//01000 xx0 PKHBT, PKHTB
-//01001 x01 UNALLOCATED
-//01001 xx0 UNALLOCATED
-//0110x x01 UNALLOCATED
-//0110x xx0 UNALLOCATED
-//01x10 001 Saturate 16-bit
-//01x10 101 UNALLOCATED
-//01x11 x01 Reverse Bit/Byte
-//01x1x xx0 Saturate 32-bit
-//01xxx 111 UNALLOCATED
-//01xxx 011 Extend and Add
-//10xxx     Signed multiply, Divide
-//11000 000 Unsigned Sum of Absolute Differences
-//11000 100 UNALLOCATED
-//11001 x00 UNALLOCATED
-//1101x x00 UNALLOCATED
-//110xx 111 UNALLOCATED
-//1110x 111 UNALLOCATED
-//1110x x00 Bitfield Insert
-//11110 111 UNALLOCATED
-//11111 111 Permanently UNDEFINED
-//1111x x00 UNALLOCATED
-//11x0x x10 UNALLOCATED
-//11x1x x10 Bitfield Extract
-//11xxx 011 UNALLOCATED
-//11xxx x01 UNALLOCATED
+// 00xxx     Parallel Arithmetic
+// 01000 101 SEL
+// 01000 001 UNALLOCATED
+// 01000 xx0 PKHBT, PKHTB
+// 01001 x01 UNALLOCATED
+// 01001 xx0 UNALLOCATED
+// 0110x x01 UNALLOCATED
+// 0110x xx0 UNALLOCATED
+// 01x10 001 Saturate 16-bit
+// 01x10 101 UNALLOCATED
+// 01x11 x01 Reverse Bit/Byte
+// 01x1x xx0 Saturate 32-bit
+// 01xxx 111 UNALLOCATED
+// 01xxx 011 Extend and Add
+// 10xxx     Signed multiply, Divide
+// 11000 000 Unsigned Sum of Absolute Differences
+// 11000 100 UNALLOCATED
+// 11001 x00 UNALLOCATED
+// 1101x x00 UNALLOCATED
+// 110xx 111 UNALLOCATED
+// 1110x 111 UNALLOCATED
+// 1110x x00 Bitfield Insert
+// 11110 111 UNALLOCATED
+// 11111 111 Permanently UNDEFINED
+// 1111x x00 UNALLOCATED
+// 11x0x x10 UNALLOCATED
+// 11x1x x10 Bitfield Extract
+// 11xxx 011 UNALLOCATED
+// 11xxx x01 UNALLOCATED
 static TryDecode *TryMedia(uint32_t bits) {
   const Media enc = {bits};
 
@@ -2835,22 +2899,22 @@ static TryDecode *TryMedia(uint32_t bits) {
   }
 }
 
-//00  001 UNALLOCATED
-//00  010 UNALLOCATED
-//00  011 UNALLOCATED
-//00  110 UNALLOCATED
-//01  001 BX
-//01  010 BXJ
-//01  011 BLX (register)
-//01  110 UNALLOCATED
-//10  001 UNALLOCATED
-//10  010 UNALLOCATED
-//10  011 UNALLOCATED
-//10  110 UNALLOCATED
-//11  001 CLZ
-//11  010 UNALLOCATED
-//11  011 UNALLOCATED
-//11  110 ERET
+// 00  001 UNALLOCATED
+// 00  010 UNALLOCATED
+// 00  011 UNALLOCATED
+// 00  110 UNALLOCATED
+// 01  001 BX
+// 01  010 BXJ
+// 01  011 BLX (register)
+// 01  110 UNALLOCATED
+// 10  001 UNALLOCATED
+// 10  010 UNALLOCATED
+// 10  011 UNALLOCATED
+// 10  110 UNALLOCATED
+// 11  001 CLZ
+// 11  010 UNALLOCATED
+// 11  011 UNALLOCATED
+// 11  110 ERET
 //    111 Exception Generation
 //    000 Move special register (register)
 //    100 Cyclic Redundancy Check
@@ -3118,7 +3182,7 @@ static TryDecode *kMLoadStore[] = {
 };
 
 // Corresponds to: Data-processing and miscellaneous instructions
-//op0   op1    op2 op3  op4
+// op0   op1    op2 op3  op4
 // 0            1 != 00  1 Extra load/store
 // 0     0xxxx  1    00  1 Multiply and Accumulate
 // 0     1xxxx  1    00  1 Synchronization primitives and Load-Acquire/Store-Release
@@ -3157,6 +3221,7 @@ static TryDecode *TryDataProcessingAndMisc(uint32_t bits) {
           return nullptr;
         }
       }
+
     // op1 == 10xx0
     } else if (((enc.op1 >> 3) == 0b10u) && !(enc.op1 & 0b00001u)) {
 
@@ -3168,6 +3233,7 @@ static TryDecode *TryDataProcessingAndMisc(uint32_t bits) {
       } else {
         return TryHalfwordDecodeMultiplyAndAccumulate;
       }
+
     // op1 != 10xx0
     } else {
 
@@ -3196,10 +3262,10 @@ static TryDecode *TryDataProcessingAndMisc(uint32_t bits) {
 // Instructions are grouped into subsets based on this the top level and then
 // into smaller sets.
 //   cond op0 op1
-//!= 1111 00x     Data-processing and miscellaneous instructions
-//!= 1111 010     Load/Store Word, Unsigned Byte (immediate, literal)
-//!= 1111 011 0   Load/Store Word, Unsigned Byte (register)
-//!= 1111 011 1   Media instructions
+// != 1111 00x     Data-processing and miscellaneous instructions
+// != 1111 010     Load/Store Word, Unsigned Byte (immediate, literal)
+// != 1111 011 0   Load/Store Word, Unsigned Byte (register)
+// != 1111 011 1   Media instructions
 //        10x     Branch, branch with link, and block data transfer
 //        11x     System register access, Advanced SIMD, floating-point, and Supervisor call
 //   1111 0xx     Unconditional instructions
@@ -3299,7 +3365,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
 
   auto decoder = TryDecodeTopLevelEncodings(bits);
   if (!decoder) {
-    LOG(ERROR) << "unhandled bits";
+    LOG(ERROR) << "unhandled bits " << std::hex << bits << std::dec;
     return false;
   }
 

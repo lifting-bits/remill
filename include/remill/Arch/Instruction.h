@@ -60,6 +60,9 @@ class Operand {
     kTypeImmediate,
     kTypeAddress,
     kTypeExpression,
+    kTypeRegisterExpression,
+    kTypeImmediateExpression,
+    kTypeAddressExpression,
   } type;
 
   enum Action { kActionInvalid, kActionRead, kActionWrite } action;

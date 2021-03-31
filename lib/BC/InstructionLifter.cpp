@@ -869,6 +869,9 @@ InstructionLifter::LiftOperand(Instruction &inst, llvm::BasicBlock *block,
       return LiftAddressOperand(inst, block, state_ptr, arg, arch_op);
 
     case Operand::kTypeExpression:
+    case Operand::kTypeRegisterExpression:
+    case Operand::kTypeImmediateExpression:
+    case Operand::kTypeAddressExpression:
       return LiftExpressionOperand(inst, block, state_ptr, arg, arch_op);
   }
 

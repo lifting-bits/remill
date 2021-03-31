@@ -252,8 +252,7 @@ std::string ModuleName(const std::unique_ptr<llvm::Module> &module);
 // Replace all uses of a constant `old_c` with `new_c` inside of `module`.
 //
 // Returns the number of constant uses of `old_c`.
-unsigned ReplaceAllUsesOfConstant(llvm::Constant *old_c,
-                                  llvm::Constant *new_c,
+unsigned ReplaceAllUsesOfConstant(llvm::Constant *old_c, llvm::Constant *new_c,
                                   llvm::Module *module);
 
 // Move a function from one module into another module.
