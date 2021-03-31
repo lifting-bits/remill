@@ -124,7 +124,7 @@ void AArch32Arch::PopulateBasicBlockFunction(llvm::Module *module,
   //  auto v512 = llvm::ArrayType::get(llvm::Type::getInt8Ty(context), 512u / 8u);
   auto addr = llvm::Type::getIntNTy(context, address_size);
 
-  //auto zero_addr_val = llvm::Constant::getNullValue(addr);
+  // auto zero_addr_val = llvm::Constant::getNullValue(addr);
 
   const auto entry_block = &bb_func->getEntryBlock();
   llvm::IRBuilder<> ir(entry_block);

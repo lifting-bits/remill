@@ -272,7 +272,10 @@ std::string Operand::Serialize(void) const {
       ss << ")";  // End of `(ADDR_`.
       break;
     }
-    case Operand::kTypeExpression: ss << expr->Serialize(); break;
+    case Operand::kTypeExpression:
+    case Operand::kTypeRegisterExpression:
+    case Operand::kTypeImmediateExpression:
+    case Operand::kTypeAddressExpression: ss << expr->Serialize(); break;
   }
   ss << ")";
   return ss.str();
@@ -384,7 +387,7 @@ OperandExpression *Instruction::EmplaceUnaryOp(unsigned opcode,
 Operand &Instruction::EmplaceOperand(const Operand::Register &reg_op) {
   operands.emplace_back();
   auto &op = operands.back();
-  op.type = Operand::kTypeExpression;
+  op.type = Operand::kTypeRegisterExpression;
   op.size = reg_op.size;
   op.reg.name = reg_op.name;
   if (auto reg = arch->RegisterByName(reg_op.name)) {
@@ -406,7 +409,7 @@ Operand &Instruction::EmplaceOperand(const Operand::Immediate &imm_op) {
   op.expr =
       EmplaceConstant(llvm::ConstantInt::get(ty, imm_op.val, imm_op.is_signed));
   op.size = arch->address_size;
-  op.type = Operand::kTypeExpression;
+  op.type = Operand::kTypeImmediateExpression;
   return op;
 }
 
@@ -632,7 +635,7 @@ Operand &Instruction::EmplaceOperand(const Operand::Address &addr_op) {
     addr = EmplaceUnaryOp(llvm::Instruction::ZExt, addr, word_type);
   }
   op.expr = addr;
-  op.type = Operand::kTypeExpression;
+  op.type = Operand::kTypeAddressExpression;
   return op;
 }
 
