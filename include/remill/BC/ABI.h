@@ -40,5 +40,6 @@ extern const std::string_view kBranchTakenVariableName;
 
 extern const std::string_view kInvalidInstructionISelName;
 extern const std::string_view kUnsupportedInstructionISelName;
+extern const std::string_view kIgnoreNextPCVariableName;
 
 }  // namespace remill

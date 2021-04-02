@@ -526,9 +526,10 @@ union SpecialRegsAndHints {
 } __attribute__((packed));
 static_assert(sizeof(SpecialRegsAndHints) == 4, " ");
 
-
+static constexpr auto kAddressSize = 32u;
 static constexpr auto kPCRegNum = 15u;
 static constexpr auto kLRRegNum = 14u;
+static constexpr auto kSPRegNum = 13u;
 
 static const char *const kIntRegName[] = {
     "R0", "R1", "R2",  "R3",  "R4",  "R5",  "R6",  "R7",
@@ -907,6 +908,7 @@ static void AddShiftRegImmOperand(Instruction &inst, uint32_t reg_num,
     inst.operands.back().expr = inst.EmplaceBinaryOp(
         llvm::Instruction::Or, inst.operands.back().expr, rrx_op);
   }
+
   if (carry_out) {
     AddShiftImmCarryOperand(inst, reg_num, shift_type, shift_size, "C");
   }
@@ -1151,6 +1153,8 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
       auto src2 = EvalOperand(inst, inst.operands[4], uses_linkreg);
 
       if (uses_linkreg) {
+        AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
+                     Operand::kActionWrite, 0);
 
         // NOTE(akshayk): conditional return `movne pc, lr`
         if (is_cond) {
@@ -1160,8 +1164,12 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
           inst.category = Instruction::kCategoryFunctionReturn;
         }
       } else if (!src1 || !src2) {
+        AddAddrRegOp(inst, kIgnoreNextPCVariableName.data(), kAddressSize,
+                     Operand::kActionWrite, 0);
         inst.category = Instruction::kCategoryIndirectJump;
       } else {
+        AddAddrRegOp(inst, kIgnoreNextPCVariableName.data(), kAddressSize,
+                     Operand::kActionWrite, 0);
         auto res = evaluator(*src1, *src2);
         if (!res) {
           if (is_cond) {
@@ -1181,6 +1189,8 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
       }
     }
   } else {
+    AddAddrRegOp(inst, kIgnoreNextPCVariableName.data(), kAddressSize,
+                 Operand::kActionWrite, 0);
     inst.category = Instruction::kCategoryNormal;
   }
   return true;
@@ -1248,7 +1258,6 @@ static const char *const kIdpNamesRRR[] = {
 static bool TryDecodeIntegerDataProcessingRRRI(Instruction &inst,
                                                uint32_t bits) {
   const IntDataProcessingRRRI enc = {bits};
-
   inst.function = kIdpNamesRRR[(enc.opc << 1u) | enc.s];
   auto is_cond = DecodeCondition(inst, enc.cond);
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
@@ -1274,6 +1283,8 @@ static bool TryDecodeIntegerDataProcessingRRRR(Instruction &inst,
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
   AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
   AddShiftRegRegOperand(inst, enc.rm, enc.type, enc.rs, enc.s);
+  AddAddrRegOp(inst, kIgnoreNextPCVariableName.data(), kAddressSize,
+               Operand::kActionWrite, 0);
 
   inst.category = Instruction::kCategoryNormal;
   return true;
@@ -1301,15 +1312,16 @@ static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst,
 
   inst.function = kIdpNamesRRR[(enc.opc << 1u) | enc.s];
   auto is_cond = DecodeCondition(inst, enc.cond);
-  AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.rd, kAddressSize, Operand::kActionWrite);
 
   // Raise the program counter to align to a multiple of 4 bytes
   if (enc.rn == kPCRegNum && (enc.opc == 0b100u || enc.opc == 0b010u)) {
     int64_t diff =
         static_cast<int32_t>(inst.pc & ~(3u)) - static_cast<int32_t>(inst.pc);
-    AddAddrRegOp(inst, "PC", 32, Operand::kActionRead, diff);
+    AddAddrRegOp(inst, kPCVariableName.data(), kAddressSize,
+                 Operand::kActionRead, diff);
   } else {
-    AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
+    AddIntRegOp(inst, enc.rn, kAddressSize, Operand::kActionRead);
   }
 
   ExpandTo32AddImmAddCarry(inst, enc.imm12, enc.s);
@@ -1696,14 +1708,43 @@ static bool TryDecodeLoadStoreWordUBIL(Instruction &inst, uint32_t bits) {
                  disp + pc_adjust);
   }
 
+  // NOTE(akshayk): Instruction updating PC register will be a branching
+  //                instruction. A branching instruction(conditional/
+  //                unconditional) may update PC and invalidates `next_pc`.
+  //                The semantics for these instructions take `next_pc` as
+  //                arguments and should update it accordingly.
+
   if (enc.rt == kPCRegNum) {
-    if (is_cond) {
-      inst.branch_not_taken_pc = inst.next_pc;
-      inst.category = Instruction::kCategoryConditionalIndirectJump;
+    AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
+                 Operand::kActionWrite, 0);
+
+    // NOTE(akshayk): A function can return by poping LR register to PC. Decoder
+    //                having single view of instruction can't identify the register
+    //                pushed on to the stack. All pop involving PC is categorized
+    //                as function return
+    //
+    //           e.g: push {r2, lr}; ....; pop {r2, pc}
+    //
+    if (enc.rn == kSPRegNum) {
+      if (is_cond) {
+        inst.branch_not_taken_pc = inst.next_pc;
+        inst.category = Instruction::kCategoryConditionalFunctionReturn;
+      } else {
+        inst.category = Instruction::kCategoryFunctionReturn;
+      }
     } else {
-      inst.category = Instruction::kCategoryIndirectJump;
+      if (is_cond) {
+        inst.branch_not_taken_pc = inst.next_pc;
+        inst.category = Instruction::kCategoryConditionalIndirectJump;
+      } else {
+        inst.category = Instruction::kCategoryIndirectJump;
+      }
     }
   } else {
+
+    // Add operand to ignore any updates of the next pc if done by semantic
+    AddAddrRegOp(inst, kIgnoreNextPCVariableName.data(), kAddressSize,
+                 Operand::kActionWrite, 0);
     inst.category = Instruction::kCategoryNormal;
   }
   return true;
@@ -1781,14 +1822,43 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
         inst.EmplaceBinaryOp(disp_op, inst.operands.back().expr, disp_expr);
   }
 
+  // NOTE(akshayk): Instruction updating PC register will be a branching
+  //                instruction. A branching instruction(conditional/
+  //                unconditional) may update PC and invalidates `next_pc`.
+  //                The semantics for these instructions take `next_pc` as
+  //                arguments and should update it accordingly.
+
   if (enc.rt == kPCRegNum) {
-    if (is_cond) {
-      inst.branch_not_taken_pc = inst.next_pc;
-      inst.category = Instruction::kCategoryConditionalIndirectJump;
+    AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
+                 Operand::kActionWrite, 0);
+
+    // NOTE(akshayk): A function can return by poping LR register to PC. Decoder
+    //                having single view of instruction can't identify the register
+    //                pushed on to the stack. All pop involving PC is categorized
+    //                as function return
+    //
+    //           e.g: push {r2, lr}; ....; pop {r2, pc}
+    //
+    if (enc.rn == kSPRegNum) {
+      if (is_cond) {
+        inst.branch_not_taken_pc = inst.next_pc;
+        inst.category = Instruction::kCategoryConditionalFunctionReturn;
+      } else {
+        inst.category = Instruction::kCategoryFunctionReturn;
+      }
     } else {
-      inst.category = Instruction::kCategoryIndirectJump;
+      if (is_cond) {
+        inst.branch_not_taken_pc = inst.next_pc;
+        inst.category = Instruction::kCategoryConditionalIndirectJump;
+      } else {
+        inst.category = Instruction::kCategoryIndirectJump;
+      }
     }
   } else {
+
+    // Add operand to ignore any updates of the next pc if done by semantic
+    AddAddrRegOp(inst, kIgnoreNextPCVariableName.data(), kAddressSize,
+                 Operand::kActionWrite, 0);
     inst.category = Instruction::kCategoryNormal;
   }
   return true;
@@ -1907,14 +1977,43 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
                  disp + pc_adjust);
   }
 
+  // NOTE(akshayk): Instruction updating PC register will be a branching
+  //                instruction. A branching instruction(conditional/
+  //                unconditional) may update PC and invalidates `next_pc`.
+  //                The semantics for these instructions take `next_pc` as
+  //                arguments and should update it accordingly.
+
   if (enc.rt == kPCRegNum) {
-    if (is_cond) {
-      inst.branch_not_taken_pc = inst.next_pc;
-      inst.category = Instruction::kCategoryConditionalIndirectJump;
+    AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
+                 Operand::kActionWrite, 0);
+
+    // NOTE(akshayk): A function can return by poping LR register to PC. Decoder
+    //                having single view of instruction can't identify the register
+    //                pushed on to the stack. All pop involving PC is categorized
+    //                as function return
+    //
+    //           e.g: push {r2, lr}; ....; pop {r2, pc}
+    //
+    if (enc.rn == kSPRegNum) {
+      if (is_cond) {
+        inst.branch_not_taken_pc = inst.next_pc;
+        inst.category = Instruction::kCategoryConditionalFunctionReturn;
+      } else {
+        inst.category = Instruction::kCategoryFunctionReturn;
+      }
     } else {
-      inst.category = Instruction::kCategoryIndirectJump;
+      if (is_cond) {
+        inst.branch_not_taken_pc = inst.next_pc;
+        inst.category = Instruction::kCategoryConditionalIndirectJump;
+      } else {
+        inst.category = Instruction::kCategoryIndirectJump;
+      }
     }
   } else {
+
+    // Add operand to ignore any updates of the next pc if done by semantic
+    AddAddrRegOp(inst, kIgnoreNextPCVariableName.data(), kAddressSize,
+                 Operand::kActionWrite, 0);
     inst.category = Instruction::kCategoryNormal;
   }
   return true;
@@ -2010,14 +2109,36 @@ static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
         inst.EmplaceBinaryOp(disp_op, inst.operands.back().expr, disp_expr);
   }
 
+  // NOTE(akshayk): Instruction updating PC register will be a branching
+  //                instruction. A branching instruction(conditional/
+  //                unconditional) may update PC and invalidates `next_pc`.
+  //                The semantics for these instructions take `next_pc` as
+  //                arguments and should update it accordingly.
+
   if (enc.rt == kPCRegNum) {
-    if (is_cond) {
-      inst.branch_not_taken_pc = inst.next_pc;
-      inst.category = Instruction::kCategoryConditionalIndirectJump;
+    AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
+                 Operand::kActionWrite, 0);
+
+    if (enc.rn == kSPRegNum) {
+      if (is_cond) {
+        inst.branch_not_taken_pc = inst.next_pc;
+        inst.category = Instruction::kCategoryConditionalFunctionReturn;
+      } else {
+        inst.category = Instruction::kCategoryFunctionReturn;
+      }
     } else {
-      inst.category = Instruction::kCategoryIndirectJump;
+      if (is_cond) {
+        inst.branch_not_taken_pc = inst.next_pc;
+        inst.category = Instruction::kCategoryConditionalIndirectJump;
+      } else {
+        inst.category = Instruction::kCategoryIndirectJump;
+      }
     }
   } else {
+
+    // Add operand to ignore any updates of the next pc if done by semantic
+    AddAddrRegOp(inst, kIgnoreNextPCVariableName.data(), kAddressSize,
+                 Operand::kActionWrite, 0);
     inst.category = Instruction::kCategoryNormal;
   }
   return true;
@@ -2130,14 +2251,44 @@ static bool TryDecodeLoadStoreMultiple(Instruction &inst, uint32_t bits) {
     AddIntRegOp(inst, i, 32u, kRegAction);
   }
 
+  // NOTE(akshayk): `POP` instruction updating PC can move link register
+  //                to program counter and be alias to the return. These
+  //                instructions should be categorized as function return.
+  //          e.g :
+  //                0: e92d4004  push {r2, lr}
+  //                   ...
+  //               10: e8bd8004  pop  {r2, pc}
+  //
+  //                LR can also be moved(pop'd) to PC indirectly using
+  //                one of scratch register. All POP updating PC is
+  //                considered function return and lifting work-list will
+  //                take care of identifying if its indirect jump
+  //
+
   if (enc.register_list & (0b1 << 15u)) {
-    if (is_cond) {
-      inst.branch_not_taken_pc = inst.next_pc;
-      inst.category = Instruction::kCategoryConditionalIndirectJump;
+    AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
+                 Operand::kActionWrite, 0);
+
+    if (enc.rn == kSPRegNum) {
+      if (is_cond) {
+        inst.branch_not_taken_pc = inst.next_pc;
+        inst.category = Instruction::kCategoryConditionalFunctionReturn;
+      } else {
+        inst.category = Instruction::kCategoryFunctionReturn;
+      }
     } else {
-      inst.category = Instruction::kCategoryIndirectJump;
+      if (is_cond) {
+        inst.branch_not_taken_pc = inst.next_pc;
+        inst.category = Instruction::kCategoryConditionalIndirectJump;
+      } else {
+        inst.category = Instruction::kCategoryIndirectJump;
+      }
     }
   } else {
+
+    // Add operand to ignore any updates of the next pc if done by semantic
+    AddAddrRegOp(inst, kIgnoreNextPCVariableName.data(), kAddressSize,
+                 Operand::kActionWrite, 0);
     inst.category = Instruction::kCategoryNormal;
   }
   return true;
@@ -2294,7 +2445,6 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
 
   inst.function = kLogicalArithmeticRRRI[enc.opc << 1u | enc.s];
   auto is_cond = DecodeCondition(inst, enc.cond);
-
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
 
   // enc.opc == x0
@@ -2310,11 +2460,7 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
     AddImmOp(inst, ~0u);
   }
 
-  if (enc.type) {
-    AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, enc.s);
-  } else {
-    AddIntRegOp(inst, enc.rm, 32, Operand::kActionRead);
-  }
+  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, enc.s);
 
   return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u],
                     is_cond);
@@ -2348,6 +2494,9 @@ static bool TryLogicalArithmeticRRRR(Instruction &inst, uint32_t bits) {
     AddImmOp(inst, ~0u);
   }
   AddShiftRegRegOperand(inst, enc.rm, enc.type, enc.rs, enc.s);
+  AddAddrRegOp(inst, kIgnoreNextPCVariableName.data(), kAddressSize,
+               Operand::kActionWrite, 0);
+
   inst.category = Instruction::kCategoryNormal;
   return true;
 }
@@ -2502,32 +2651,32 @@ static bool TryBranchImm(Instruction &inst, uint32_t bits) {
   }
   auto offset = static_cast<uint32_t>(target_pc - inst.pc);
 
-  AddAddrRegOp(inst, "PC", 32u, Operand::kActionRead, offset);
+  AddAddrRegOp(inst, kPCVariableName.data(), kAddressSize, Operand::kActionRead,
+               offset);
 
   inst.branch_taken_pc = target_pc;
   inst.branch_not_taken_pc = inst.pc + 4;
   if (is_cond && is_func) {
     inst.category = Instruction::kCategoryConditionalDirectFunctionCall;
-    AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
   } else if (is_cond) {
     inst.category = Instruction::kCategoryConditionalBranch;
-    AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
   } else if (is_func) {
     inst.category = Instruction::kCategoryDirectFunctionCall;
-    AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
   } else {
     inst.category = Instruction::kCategoryDirectJump;
   }
+  AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
+               Operand::kActionRead, 0);
 
   Operand::Register reg;
-  reg.size = 32u;
+  reg.size = kAddressSize;
   reg.name = remill::kNextPCVariableName;
   auto &next_pc = inst.EmplaceOperand(reg);
   next_pc.action = Operand::kActionWrite;
 
   if (is_func) {
     Operand::Register reg;
-    reg.size = 32u;
+    reg.size = kAddressSize;
     reg.name = remill::kReturnPCVariableName;
     auto &next_pc = inst.EmplaceOperand(reg);
     next_pc.action = Operand::kActionWrite;
@@ -2562,38 +2711,37 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
     inst.function += "COND";
   }
 
-  AddAddrRegOp(inst, kIntRegName[enc.Rm], 32u, Operand::kActionRead, 0);
+  AddAddrRegOp(inst, kIntRegName[enc.Rm], kAddressSize, Operand::kActionRead,
+               0);
+
   if (enc.op1 == 0b01) {
     if (is_cond && (enc.Rm == kLRRegNum)) {
       inst.category = Instruction::kCategoryConditionalFunctionReturn;
-      AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
     } else if (enc.Rm == kLRRegNum) {
       inst.category = Instruction::kCategoryFunctionReturn;
-      AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
     } else if (is_cond) {
       inst.category = Instruction::kCategoryConditionalIndirectJump;
-      AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
     } else if (enc.op1 == 0b01) {
       inst.category = Instruction::kCategoryIndirectJump;
-      AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
     }
   } else if (is_cond) {
     inst.category = Instruction::kCategoryConditionalDirectFunctionCall;
-    AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
   } else {
     inst.category = Instruction::kCategoryDirectFunctionCall;
-    AddAddrRegOp(inst, "NEXT_PC", 32u, Operand::kActionRead, 0);
   }
 
+  AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
+               Operand::kActionRead, 0);
+
   Operand::Register reg;
-  reg.size = 32u;
+  reg.size = kAddressSize;
   reg.name = remill::kNextPCVariableName;
   auto &next_pc = inst.EmplaceOperand(reg);
   next_pc.action = Operand::kActionWrite;
 
   if (enc.op1 == 0b11) {
     Operand::Register reg;
-    reg.size = 32u;
+    reg.size = kAddressSize;
     reg.name = remill::kReturnPCVariableName;
     auto &next_pc = inst.EmplaceOperand(reg);
     next_pc.action = Operand::kActionWrite;
@@ -2613,8 +2761,8 @@ static bool TryDecodeCLZ(Instruction &inst, uint32_t bits) {
   }
   DecodeCondition(inst, enc.cond);
 
-  AddIntRegOp(inst, enc.Rd, 32u, Operand::kActionWrite);
-  AddIntRegOp(inst, enc.Rm, 32u, Operand::kActionRead);
+  AddIntRegOp(inst, enc.Rd, kAddressSize, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.Rm, kAddressSize, Operand::kActionRead);
 
   inst.function = "CLZ";
   inst.category = Instruction::kCategoryNormal;
@@ -2639,9 +2787,9 @@ static bool TryDecodeIntegerSaturatingArithmetic(Instruction &inst,
     return false;
   }
   DecodeCondition(inst, enc.cond);
-  AddIntRegOp(inst, enc.Rd, 32u, Operand::kActionWrite);
-  AddIntRegOp(inst, enc.Rm, 32u, Operand::kActionRead);
-  AddIntRegOp(inst, enc.Rn, 32u, Operand::kActionRead);
+  AddIntRegOp(inst, enc.Rd, kAddressSize, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.Rm, kAddressSize, Operand::kActionRead);
+  AddIntRegOp(inst, enc.Rn, kAddressSize, Operand::kActionRead);
 
   inst.function = kSatArith[enc.opc];
   inst.category = Instruction::kCategoryNormal;
@@ -2659,7 +2807,7 @@ static bool TryDecodeSat16(Instruction &inst, uint32_t bits) {
     return false;
   }
 
-  AddIntRegOp(inst, enc.Rd, 32u, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.Rd, kAddressSize, Operand::kActionWrite);
   if (enc.U) {
     inst.function = "USAT16";
     AddImmOp(inst, enc.sat_imm);
@@ -2667,7 +2815,7 @@ static bool TryDecodeSat16(Instruction &inst, uint32_t bits) {
     inst.function = "SSAT16";
     AddImmOp(inst, enc.sat_imm + 1);
   }
-  AddIntRegOp(inst, enc.Rn, 32u, Operand::kActionRead);
+  AddIntRegOp(inst, enc.Rn, kAddressSize, Operand::kActionRead);
 
   inst.category = Instruction::kCategoryNormal;
   return true;
@@ -2684,7 +2832,7 @@ static bool TryDecodeSat32(Instruction &inst, uint32_t bits) {
     return false;
   }
 
-  AddIntRegOp(inst, enc.Rd, 32u, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.Rd, kAddressSize, Operand::kActionWrite);
   if (enc.U) {
     inst.function = "USAT";
     AddImmOp(inst, enc.sat_imm);
@@ -2744,13 +2892,13 @@ static bool TryExtAdd(Instruction &inst, uint32_t bits) {
   }
   inst.function = instruction;
 
-  AddIntRegOp(inst, enc.Rd, 32u, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.Rd, kAddressSize, Operand::kActionWrite);
   if (enc.Rn != kPCRegNum) {
-    AddIntRegOp(inst, enc.Rn, 32u, Operand::kActionRead);
+    AddIntRegOp(inst, enc.Rn, kAddressSize, Operand::kActionRead);
   } else {
     AddImmOp(inst, 0u);
   }
-  AddIntRegOp(inst, enc.Rm, 32u, Operand::kActionRead);
+  AddIntRegOp(inst, enc.Rm, kAddressSize, Operand::kActionRead);
   AddImmOp(inst, enc.rot << 3);
 
   inst.category = Instruction::kCategoryNormal;
@@ -2781,8 +2929,8 @@ static bool TryBitExtract(Instruction &inst, uint32_t bits) {
     return false;
   }
 
-  AddIntRegOp(inst, enc.Rd, 32u, Operand::kActionWrite);
-  AddIntRegOp(inst, enc.Rn, 32u, Operand::kActionRead);
+  AddIntRegOp(inst, enc.Rd, kAddressSize, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.Rn, kAddressSize, Operand::kActionRead);
   AddImmOp(inst, enc.lsb);
   AddImmOp(inst, enc.widthm1);
 

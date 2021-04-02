@@ -781,9 +781,9 @@ static llvm::Constant *CloneConstant(llvm::Constant *val) {
 
 #endif
 
-static llvm::Function *DeclareFunctionInModule(
-    llvm::Function *func, llvm::Module *dest_module,
-    ValueMap &value_map) {
+static llvm::Function *DeclareFunctionInModule(llvm::Function *func,
+                                               llvm::Module *dest_module,
+                                               ValueMap &value_map) {
 
   auto &moved_func = value_map[func];
   if (moved_func) {
@@ -792,9 +792,9 @@ static llvm::Function *DeclareFunctionInModule(
 
   auto dest_func = dest_module->getFunction(func->getName());
   if (dest_func) {
-    CHECK_EQ(RecontextualizeType(func->getFunctionType(),
-                                 dest_module->getContext()),
-             dest_func->getFunctionType());
+    CHECK_EQ(
+        RecontextualizeType(func->getFunctionType(), dest_module->getContext()),
+        dest_func->getFunctionType());
 
     moved_func = dest_func;
     return dest_func;
@@ -807,9 +807,8 @@ static llvm::Function *DeclareFunctionInModule(
   const auto func_type = llvm::dyn_cast<llvm::FunctionType>(
       RecontextualizeType(func->getFunctionType(), dest_module->getContext()));
 
-  dest_func =
-      llvm::Function::Create(func_type, func->getLinkage(),
-                             func->getName(), dest_module);
+  dest_func = llvm::Function::Create(func_type, func->getLinkage(),
+                                     func->getName(), dest_module);
 
   dest_func->copyAttributesFrom(func);
   dest_func->setVisibility(func->getVisibility());
@@ -839,8 +838,9 @@ static void ClearMetaData(T *value) {
   }
 }
 
-static llvm::Constant *MoveConstantIntoModule(
-    llvm::Constant *c, llvm::Module *dest_module, ValueMap &value_map) {
+static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
+                                              llvm::Module *dest_module,
+                                              ValueMap &value_map) {
 
   auto &moved_c = value_map[c];
   if (moved_c) {
@@ -855,10 +855,8 @@ static llvm::Constant *MoveConstantIntoModule(
     type = ::remill::RecontextualizeType(type, dest_context);
   } else {
 #if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 8)
-    if (!llvm::isa<llvm::Function>(c) &&
-        !llvm::isa<llvm::GlobalVariable>(c) &&
-        !llvm::isa<llvm::GlobalAlias>(c) &&
-        !c->needsRelocation()) {
+    if (!llvm::isa<llvm::Function>(c) && !llvm::isa<llvm::GlobalVariable>(c) &&
+        !llvm::isa<llvm::GlobalAlias>(c) && !c->needsRelocation()) {
       moved_c = c;
       return c;
     }
@@ -889,8 +887,8 @@ static llvm::Constant *MoveConstantIntoModule(
         moved_c = cf;
         return cf;
       } else {
-        auto ret = llvm::ConstantFP::get(
-            type, cf->getValueAPF().convertToDouble());
+        auto ret =
+            llvm::ConstantFP::get(type, cf->getValueAPF().convertToDouble());
         moved_c = ret;
         return ret;
       }
@@ -908,8 +906,8 @@ static llvm::Constant *MoveConstantIntoModule(
         moved_c = p;
         return p;
       } else {
-        auto ret = llvm::ConstantPointerNull::get(
-            llvm::cast<llvm::PointerType>(type));
+        auto ret =
+            llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(type));
         moved_c = ret;
         return ret;
       }
@@ -1170,8 +1168,8 @@ static llvm::Constant *MoveConstantIntoModule(
             g->getSourceElementType(), dest_context);
         std::vector<llvm::Constant *> indices(ni);
         for (auto i = 0u; i < ni; ++i) {
-          indices[i] = MoveConstantIntoModule(
-              ce->getOperand(i + 1u), dest_module, value_map);
+          indices[i] = MoveConstantIntoModule(ce->getOperand(i + 1u),
+                                              dest_module, value_map);
         }
         auto ret = llvm::ConstantExpr::getGetElementPtr(
             source_type,
@@ -1310,8 +1308,8 @@ llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
     return llvm::dyn_cast<llvm::GlobalAlias>(moved_var);
   }
 
-  const auto dest_type = llvm::dyn_cast<llvm::PointerType>(RecontextualizeType(
-      var->getType(), dest_module->getContext()));
+  const auto dest_type = llvm::dyn_cast<llvm::PointerType>(
+      RecontextualizeType(var->getType(), dest_module->getContext()));
   for (auto &alias : dest_module->aliases()) {
     if (alias.getName() == var->getName()) {
       CHECK_EQ(dest_type, alias.getType());
@@ -1323,9 +1321,7 @@ llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
   const auto elem_type = dest_type->getElementType();
   const auto dest_var = llvm::GlobalAlias::create(
       elem_type, var->getType()->getAddressSpace(), var->getLinkage(),
-      var->getName(),
-      nullptr,
-      dest_module);
+      var->getName(), nullptr, dest_module);
 
   moved_var = dest_var;
   dest_var->setAliasee(
@@ -1338,6 +1334,7 @@ llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
 static void MoveInstructionIntoModule(llvm::Instruction *inst,
                                       llvm::Module *dest_module,
                                       ValueMap &value_map) {
+
   // Substitute the operands.
   for (auto &op : inst->operands()) {
     auto new_val_it = value_map.find(op.get());
@@ -1375,8 +1372,8 @@ static void MoveInstructionIntoModule(llvm::Instruction *inst,
       auto &new_callee_val = value_map[callee_val];
       if (!new_callee_val) {
         if (auto callee_const = llvm::dyn_cast<llvm::Constant>(callee_val)) {
-          new_callee_val = MoveConstantIntoModule(
-              callee_const, dest_module, value_map);
+          new_callee_val =
+              MoveConstantIntoModule(callee_const, dest_module, value_map);
 
         } else {
           new_callee_val = callee_val;
@@ -1477,8 +1474,7 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
 // Replace all uses of a constant `old_c` with `new_c` inside of `module`.
 //
 // Returns the number of constant uses of `old_c`.
-unsigned ReplaceAllUsesOfConstant(llvm::Constant *old_c,
-                                  llvm::Constant *new_c,
+unsigned ReplaceAllUsesOfConstant(llvm::Constant *old_c, llvm::Constant *new_c,
                                   llvm::Module *module) {
   std::vector<llvm::Use *> repls;
   for (auto &use : old_c->uses()) {
@@ -1493,7 +1489,7 @@ unsigned ReplaceAllUsesOfConstant(llvm::Constant *old_c,
 
   while (!repls.empty()) {
     const auto use = repls.back();
-    llvm::User * const user = use->getUser();
+    llvm::User *const user = use->getUser();
     repls.pop_back();
 
     const auto used_c = llvm::dyn_cast<llvm::Constant>(use);
@@ -1510,8 +1506,7 @@ unsigned ReplaceAllUsesOfConstant(llvm::Constant *old_c,
       use->set(MoveConstantIntoModule(used_c, module, value_map));
 
     } else {
-      LOG(ERROR)
-          << "Unrecognized user type";
+      LOG(ERROR) << "Unrecognized user type";
     }
   }
 
@@ -1540,7 +1535,8 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
 
     existing_decl_in_dest_module->setName(llvm::Twine::createNull());
     existing_decl_in_dest_module->setLinkage(llvm::GlobalValue::PrivateLinkage);
-    existing_decl_in_dest_module->setVisibility(llvm::GlobalValue::DefaultVisibility);
+    existing_decl_in_dest_module->setVisibility(
+        llvm::GlobalValue::DefaultVisibility);
   }
 
   const auto in_same_context = source_context == dest_context;
@@ -1548,8 +1544,7 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
   // We need to possibly preserve `func` as a declaration in its source module.
   func->setName(llvm::Twine::createNull());
   auto replacement_decl_in_source_module = llvm::Function::Create(
-      func->getFunctionType(), func->getLinkage(), func_name,
-      source_module);
+      func->getFunctionType(), func->getLinkage(), func_name, source_module);
 
   replacement_decl_in_source_module->copyAttributesFrom(func);
   replacement_decl_in_source_module->setVisibility(func->getVisibility());
@@ -1584,8 +1579,8 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
   // constants that instead use `func`.
   if (existing_decl_in_dest_module) {
     value_map.emplace(existing_decl_in_dest_module, func);
-    if (!ReplaceAllUsesOfConstant(existing_decl_in_dest_module,
-                                  func, dest_module)) {
+    if (!ReplaceAllUsesOfConstant(existing_decl_in_dest_module, func,
+                                  dest_module)) {
       existing_decl_in_dest_module->eraseFromParent();
     }
     existing_decl_in_dest_module = nullptr;
