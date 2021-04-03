@@ -1,5 +1,5 @@
 # git_watcher.cmake
-# https://raw.githubusercontent.com/andrew-hardin/cmake-git-version-tracking/master/git_watcher.cmake
+# https://github.com/andrew-hardin/cmake-git-version-tracking/blob/20c58d5d08bad70550d969b478943c962faa6264/git_watcher.cmake
 #
 # Released under the MIT License.
 # https://raw.githubusercontent.com/andrew-hardin/cmake-git-version-tracking/master/LICENSE
@@ -181,6 +181,14 @@ function(GetGitState _working_dir)
         set(ENV{GIT_COMMIT_BODY} "\"${safe}\"")
     else()
         set(ENV{GIT_COMMIT_BODY} "\"\"") # empty string.
+    endif()
+
+    # Get output of git describe
+    RunGitCommand(describe --always ${object})
+    if(NOT exit_code EQUAL 0)
+        set(ENV{GIT_DESCRIBE} "unknown")
+    else()
+        set(ENV{GIT_DESCRIBE} "${output}")
     endif()
 
     # >>>
