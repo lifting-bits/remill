@@ -25,30 +25,6 @@ macro(main)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
   #
-  # cxx-common
-  #
-  
-  if(NOT DEFINED CXX_COMMON_REPOSITORY_ROOT)
-    if(DEFINED ENV{TRAILOFBITS_LIBRARIES})
-      set(CXX_COMMON_REPOSITORY_ROOT $ENV{TRAILOFBITS_LIBRARIES}
-        CACHE PATH "Location of cxx-common libraries."
-      )
-    endif()
-  endif()
-
-  if(DEFINED CXX_COMMON_REPOSITORY_ROOT)
-    set(TOB_CMAKE_INCLUDE "${CXX_COMMON_REPOSITORY_ROOT}/cmake_modules/repository.cmake")
-    if(NOT EXISTS "${TOB_CMAKE_INCLUDE}")
-      message(FATAL_ERROR "The library repository could not be found!")
-    endif()
-
-    include("${TOB_CMAKE_INCLUDE}")
-
-  else()
-    message(STATUS "Using system libraries")
-  endif()
-
-  #
   # compiler and linker flags
   #
 

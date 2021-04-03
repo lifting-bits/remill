@@ -55,7 +55,7 @@ Remill now comes with a Dockerfile for easier testing. This Dockerfile reference
 
 The Dockerfile allows for quick builds of multiple supported LLVM, architecture, and Linux configurations.
 
-Quickstart (builds Remill against LLVM 8.0 on Ubuntu 18.04 for AMD64):
+Quickstart (builds Remill against LLVM 11 on Ubuntu 18.04 for AMD64):
 
 Clone Remill:
 ```shell
@@ -67,21 +67,21 @@ cd remill
 Build Remill Docker container:
 ```shell
 # do the build
-docker build . -t remill:llvm800-ubuntu18.04-amd64 \
+docker build . -t remill \
      -f Dockerfile \
      --build-arg UBUNTU_VERSION=18.04 \
      --build-arg ARCH=amd64 \
-     --build-arg LLVM_VERSION=800
+     --build-arg LLVM_VERSION=11
 ```
 
 Ensure remill works:
 ```shell
 # Decode some AMD64 instructions to LLVM
-docker run --rm -it remill:llvm800-ubuntu18.04-amd64 \
+docker run --rm -it remill \
      --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
      
 # Decode some AArch64 instructions to LLVM
-docker run --rm -it remill:llvm800-ubuntu18.04-amd64 \
+docker run --rm -it remill \
      --arch aarch64 --address 0x400544 --ir_out /dev/stdout \
      --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
 ```
@@ -97,20 +97,15 @@ sudo apt-get upgrade
 
 sudo apt-get install \
      git \
-     python2.7 \
+     python3 \
      wget \
      curl \
      build-essential \
-     libtinfo-dev \
      lsb-release \
-     zlib1g-dev \
      ccache \
      libc6-dev:i386 \
      'libstdc++-*-dev:i386' \
      g++-multilib
-
-# Ubuntu 14.04, 16.04
-sudo apt-get install realpath
 ```
 
 Next, clone the repository. This will clone the code into the `remill` directory.
