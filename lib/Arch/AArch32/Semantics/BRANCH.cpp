@@ -15,10 +15,11 @@
  */
 
 namespace {
-DEF_SEM(B, R8, R8W, I32 taken_pc, R32W next_pc_dst) {
+DEF_SEM(B, R8, R8W, I32 taken_pc, PC next_pc_src, R32W next_pc_dst) {
   auto new_pc = Read(taken_pc);
   Write(REG_PC, new_pc);
   Write(next_pc_dst, new_pc);
+  (void) next_pc_src;
   return memory;
 }
 
@@ -32,8 +33,8 @@ DEF_SEM(BCOND, R8 cond, R8W branch_taken, I32 taken_pc, I32 not_taken_pc,
   return memory;
 }
 
-DEF_SEM(BL, R8, R8W, PC target_addr, PC ret_addr, R32W next_pc_dst,
-        R32W return_pc_dst) {
+DEF_SEM(BL, R8, R8W, PC target_addr, PC ret_addr,
+        R32W next_pc_dst, R32W return_pc_dst) {
   const auto return_pc = Read(ret_addr);
   const auto new_pc = Read(target_addr);
   Write(REG_LR, return_pc);
