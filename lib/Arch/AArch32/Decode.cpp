@@ -1152,9 +1152,10 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
       auto src1 = EvalOperand(inst, inst.operands[3], uses_linkreg);
       auto src2 = EvalOperand(inst, inst.operands[4], uses_linkreg);
 
+      AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
+                   Operand::kActionWrite, 0);
+
       if (uses_linkreg) {
-        AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
-                     Operand::kActionWrite, 0);
 
         // NOTE(akshayk): conditional return `movne pc, lr`
         if (is_cond) {
@@ -1164,12 +1165,8 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
           inst.category = Instruction::kCategoryFunctionReturn;
         }
       } else if (!src1 || !src2) {
-        AddAddrRegOp(inst, kIgnoreNextPCVariableName.data(), kAddressSize,
-                     Operand::kActionWrite, 0);
         inst.category = Instruction::kCategoryIndirectJump;
       } else {
-        AddAddrRegOp(inst, kIgnoreNextPCVariableName.data(), kAddressSize,
-                     Operand::kActionWrite, 0);
         auto res = evaluator(*src1, *src2);
         if (!res) {
           if (is_cond) {
@@ -1725,20 +1722,14 @@ static bool TryDecodeLoadStoreWordUBIL(Instruction &inst, uint32_t bits) {
     //
     //           e.g: push {r2, lr}; ....; pop {r2, pc}
     //
-    if (enc.rn == kSPRegNum) {
-      if (is_cond) {
-        inst.branch_not_taken_pc = inst.next_pc;
-        inst.category = Instruction::kCategoryConditionalFunctionReturn;
-      } else {
-        inst.category = Instruction::kCategoryFunctionReturn;
-      }
+    //                These instructions are categorized as indirect jump and lifter
+    //                will identify if the PC gets updated with the return address
+    //
+    if (is_cond) {
+      inst.branch_not_taken_pc = inst.next_pc;
+      inst.category = Instruction::kCategoryConditionalIndirectJump;
     } else {
-      if (is_cond) {
-        inst.branch_not_taken_pc = inst.next_pc;
-        inst.category = Instruction::kCategoryConditionalIndirectJump;
-      } else {
-        inst.category = Instruction::kCategoryIndirectJump;
-      }
+      inst.category = Instruction::kCategoryIndirectJump;
     }
   } else {
 
@@ -1839,20 +1830,14 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
     //
     //           e.g: push {r2, lr}; ....; pop {r2, pc}
     //
-    if (enc.rn == kSPRegNum) {
-      if (is_cond) {
-        inst.branch_not_taken_pc = inst.next_pc;
-        inst.category = Instruction::kCategoryConditionalFunctionReturn;
-      } else {
-        inst.category = Instruction::kCategoryFunctionReturn;
-      }
+    //                These instructions are categorized as indirect jump and lifter
+    //                will identify if the PC gets updated with the return address
+    //
+    if (is_cond) {
+      inst.branch_not_taken_pc = inst.next_pc;
+      inst.category = Instruction::kCategoryConditionalIndirectJump;
     } else {
-      if (is_cond) {
-        inst.branch_not_taken_pc = inst.next_pc;
-        inst.category = Instruction::kCategoryConditionalIndirectJump;
-      } else {
-        inst.category = Instruction::kCategoryIndirectJump;
-      }
+      inst.category = Instruction::kCategoryIndirectJump;
     }
   } else {
 
@@ -1994,20 +1979,15 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
     //
     //           e.g: push {r2, lr}; ....; pop {r2, pc}
     //
-    if (enc.rn == kSPRegNum) {
-      if (is_cond) {
-        inst.branch_not_taken_pc = inst.next_pc;
-        inst.category = Instruction::kCategoryConditionalFunctionReturn;
-      } else {
-        inst.category = Instruction::kCategoryFunctionReturn;
-      }
+    //                These instructions are categorized as indirect jump and lifter
+    //                will identify if the PC gets updated with the return address
+    //
+
+    if (is_cond) {
+      inst.branch_not_taken_pc = inst.next_pc;
+      inst.category = Instruction::kCategoryConditionalIndirectJump;
     } else {
-      if (is_cond) {
-        inst.branch_not_taken_pc = inst.next_pc;
-        inst.category = Instruction::kCategoryConditionalIndirectJump;
-      } else {
-        inst.category = Instruction::kCategoryIndirectJump;
-      }
+      inst.category = Instruction::kCategoryIndirectJump;
     }
   } else {
 
@@ -2119,20 +2099,11 @@ static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
     AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
                  Operand::kActionWrite, 0);
 
-    if (enc.rn == kSPRegNum) {
-      if (is_cond) {
-        inst.branch_not_taken_pc = inst.next_pc;
-        inst.category = Instruction::kCategoryConditionalFunctionReturn;
-      } else {
-        inst.category = Instruction::kCategoryFunctionReturn;
-      }
+    if (is_cond) {
+      inst.branch_not_taken_pc = inst.next_pc;
+      inst.category = Instruction::kCategoryConditionalIndirectJump;
     } else {
-      if (is_cond) {
-        inst.branch_not_taken_pc = inst.next_pc;
-        inst.category = Instruction::kCategoryConditionalIndirectJump;
-      } else {
-        inst.category = Instruction::kCategoryIndirectJump;
-      }
+      inst.category = Instruction::kCategoryIndirectJump;
     }
   } else {
 
@@ -2269,20 +2240,11 @@ static bool TryDecodeLoadStoreMultiple(Instruction &inst, uint32_t bits) {
     AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
                  Operand::kActionWrite, 0);
 
-    if (enc.rn == kSPRegNum) {
-      if (is_cond) {
-        inst.branch_not_taken_pc = inst.next_pc;
-        inst.category = Instruction::kCategoryConditionalFunctionReturn;
-      } else {
-        inst.category = Instruction::kCategoryFunctionReturn;
-      }
+    if (is_cond) {
+      inst.branch_not_taken_pc = inst.next_pc;
+      inst.category = Instruction::kCategoryConditionalIndirectJump;
     } else {
-      if (is_cond) {
-        inst.branch_not_taken_pc = inst.next_pc;
-        inst.category = Instruction::kCategoryConditionalIndirectJump;
-      } else {
-        inst.category = Instruction::kCategoryIndirectJump;
-      }
+      inst.category = Instruction::kCategoryIndirectJump;
     }
   } else {
 
