@@ -2222,7 +2222,7 @@ llvm::Value *BuildPointerToOffset(llvm::IRBuilder<> &ir, llvm::Value *ptr,
   }
 
   if (const auto diff = dest_elem_offset - reached_disp; diff) {
-    DCHECK_LT(diff, dest_elem_offset);
+    DCHECK_LE(diff, dest_elem_offset);
     const auto i8_type = llvm::Type::getInt8Ty(context);
     const auto i8_ptr_type =
         llvm::PointerType::getInt8PtrTy(context, ptr_addr_space);
