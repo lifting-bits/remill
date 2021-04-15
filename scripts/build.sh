@@ -23,7 +23,7 @@ DOWNLOAD_DIR="$( cd "$( dirname "${SRC_DIR}" )" && pwd )/lifting-bits-downloads"
 CURR_DIR=$( pwd )
 BUILD_DIR="${CURR_DIR}/remill-build"
 INSTALL_DIR=/usr/local
-LLVM_VERSION=llvm-9
+LLVM_VERSION=llvm-11
 OS_VERSION=
 ARCH_VERSION=
 BUILD_FLAGS=
@@ -233,6 +233,8 @@ function Configure
     cmake \
         -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
         -DCMAKE_VERBOSE_MAKEFILE=True \
+        -DCMAKE_C_COMPILER=clang \
+        -DCMAKE_CXX_COMPILER=clang++ \
         -DVCPKG_ROOT="${DOWNLOAD_DIR}/${LIBRARY_VERSION}" \
         ${BUILD_FLAGS} \
         "${SRC_DIR}"
