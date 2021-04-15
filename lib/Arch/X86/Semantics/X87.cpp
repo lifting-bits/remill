@@ -1112,13 +1112,17 @@ DEF_FPU_SEM(FCOMP, RF80 src1, S2 src2) {
 template <typename S2>
 DEF_FPU_SEM(FUCOMPmem, RF80 src1, S2 src2) {
   SetFPUDp(src2);
-  return FUCOMPmem(memory, state, src1, src2, pc, fop);
+  memory = FUCOMP(memory, state, src1, src2, pc, fop);
+  (void) POP_X87_STACK();
+  return memory;
 }
 
 template <typename S2>
 DEF_FPU_SEM(FCOMPmem, RF80 src1, S2 src2) {
   SetFPUDp(src2);
-  return FCOMPmem(memory, state, src1, src2, pc, fop);
+  memory = FCOMP(memory, state, src1, src2, pc, fop);
+  (void) POP_X87_STACK();
+  return memory;
 }
 
 DEF_FPU_SEM(DoFUCOMPP) {
