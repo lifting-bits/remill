@@ -2158,8 +2158,19 @@ llvm::Value *BuildPointerToOffset(llvm::IRBuilder<> &ir, llvm::Value *ptr,
                                   llvm::Type *dest_ptr_type_) {
 
   const auto block = ir.GetInsertBlock();
-  const auto module = block->getModule();
-  auto &context = block->getContext();
+  llvm::Module *module = nullptr;
+  if (block) {
+    module = block->getModule();
+  } else if (auto gv = llvm::dyn_cast<llvm::GlobalValue>(ptr); gv) {
+    module = gv->getParent();
+
+  // TODO(pag): Improve the API to take a `DataLayout`, perhaps.
+  } else {
+    LOG(FATAL)
+        << "Unable to get the current module.";
+  }
+
+  auto &context = ptr->getContext();
   const auto i32_type = llvm::Type::getInt32Ty(context);
 
   const auto &dl = module->getDataLayout();
