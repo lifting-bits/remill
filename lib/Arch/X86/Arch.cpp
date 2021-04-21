@@ -570,10 +570,9 @@ static void DecodeRegister(Instruction &inst, const xed_decoded_inst_t *xedd,
   if (xed_operand_written(xedo)) {
     op.action = Operand::kActionWrite;
     if (Is64Bit(inst.arch_name)) {
-      if (XED_REG_GPR32_FIRST <= reg && XED_REG_GPR32_LAST > reg) {
-        op.reg.name[0] = 'R';  // Convert things like `EAX` into `RAX`.
-        op.size = 64;
-        op.reg.size = 64;
+      if (XED_REG_GPR32_FIRST <= reg && XED_REG_GPR32_LAST >= reg) {
+        op.reg = RegOp(xed_get_largest_enclosing_register(reg));
+        op.size = op.reg.size;
 
       } else if (XED_REG_XMM_FIRST <= reg && XED_REG_ZMM_LAST >= reg) {
         if (kArchAMD64_AVX512 == inst.arch_name) {
