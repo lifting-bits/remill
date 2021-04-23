@@ -3460,6 +3460,11 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   inst.arch = this;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();
+  
+  if (4u > inst_bytes.size()) {
+    return false;
+  }
+  
   if (!inst.bytes.empty() && inst.bytes.data() == inst_bytes.data()) {
     inst.bytes.resize(inst_bytes.size());
   } else {
