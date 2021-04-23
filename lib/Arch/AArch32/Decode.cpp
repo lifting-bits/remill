@@ -3461,7 +3461,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();
   
-  if (4u > inst_bytes.size()) {
+  if (4ull > inst_bytes.size()) {
     return false;
   }
   
