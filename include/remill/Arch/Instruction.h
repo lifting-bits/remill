@@ -215,6 +215,12 @@ class Instruction {
   // Is this instruction decoded within the context of a delay slot?
   bool in_delay_slot;
 
+  // For x86 it is possible to specify a prefix that overrides the default
+  // segment register. This attribute by itself is currently not used directly
+  // by the lifter - it is expeted `Operand`s will include segment reg where appropriate
+  // but it can be used in different applications.
+  const Register *segment_override = nullptr;
+
   enum Category {
     kCategoryInvalid,
     kCategoryNormal,

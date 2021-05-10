@@ -692,6 +692,10 @@ std::string Instruction::Serialize(void) const {
     ss << " " << function;
   }
 
+  if (segment_override) {
+    ss << "(SEGMENT_OVERRIDE " << segment_override->name << ")";
+  }
+
   for (const auto &op : operands) {
     ss << " " << op.Serialize();
   }
