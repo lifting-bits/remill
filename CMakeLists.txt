@@ -19,7 +19,7 @@ cmake_minimum_required(VERSION 3.14)
 include(GNUInstallDirs)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/settings.cmake")
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils_vcpkg.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ccache.cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 include(CTest)
@@ -51,7 +51,7 @@ list(GET LLVM_VERSION_LIST 1 LLVM_MINOR_VERSION)
 
 add_library(thirdparty_llvm INTERFACE)
 target_include_directories(thirdparty_llvm SYSTEM INTERFACE
-  ${LLVM_INCLUDE_DIRS}
+  $<BUILD_INTERFACE:${LLVM_INCLUDE_DIRS}>
 )
 target_compile_definitions(thirdparty_llvm INTERFACE
   ${LLVM_DEFINITIONS}
@@ -293,7 +293,7 @@ list(REMOVE_DUPLICATES THIRDPARTY_LIBRARY_FILES)
 
 # First do the basic substitutions.
 configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/remillConfig_vcpkg.cmake.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/remillConfig.cmake.in"
   "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
   @ONLY
 )
