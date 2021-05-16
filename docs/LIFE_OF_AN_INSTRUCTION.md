@@ -10,7 +10,7 @@ This document will use the instructions in the following basic block as a runnin
 
 ## Decoding instructions
 
-The first step to lifting is to decode the bytes of an instruction. This decoding step takes raw instruction bytes, and turns them into a higher-level [`Instruction`](/remill/Arch/Instruction.h) data structure. This data structure represents the logical operands to the machine code instructions. These operands have a one-to-one correspondence with arguments that will be passed to semantics functions.
+The first step to lifting is to decode the bytes of an instruction. This decoding step takes raw instruction bytes, and turns them into a higher-level [`Instruction`](/include/remill/Arch/Instruction.h) data structure. This data structure represents the logical operands to the machine code instructions. These operands have a one-to-one correspondence with arguments that will be passed to semantics functions.
 
 Below is a string representation of the data structures representing our example assembly.
 
@@ -42,8 +42,8 @@ Below is a string representation of the data structures representing our example
 
 ## From architecture-specific to architecture-neutral
 
-Decoded instructions must be lifted into a compatible function. Compatible functions are clones of the [`__remill_basic_block`](/remill/Arch/X86/Runtime/BasicBlock.cpp) function. The `__remill_basic_block` function is special because it defines local
-variables that "point into" the [`State`](/remill/Arch/X86/Runtime/State.h)) structure, which represents the machine's register state.
+Decoded instructions must be lifted into a compatible function. Compatible functions are clones of the [`__remill_basic_block`](/lib/Arch/X86/Runtime/BasicBlock.cpp) function. The `__remill_basic_block` function is special because it defines local
+variables that "point into" the [`State`](/include/remill/Arch/X86/Runtime/State.h)) structure, which represents the machine's register state.
 
 The following is an example of the `__remill_basic_block` function for X86.
 
