@@ -305,6 +305,10 @@ function GetLLVMVersion
       LLVM_VERSION=llvm-11
       return 0
     ;;
+    12)
+      LLVM_VERSION=llvm-12
+      return 0
+    ;;
     *)
       # unknown option
       echo "[x] Unknown LLVM version ${1}. You may be able to manually build it with cxx-common."
