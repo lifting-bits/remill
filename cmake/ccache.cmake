@@ -12,28 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.4)
+find_program(ccache_path ccache)
+if("${ccache_path}" STREQUAL "ccache_path-NOTFOUND")
+  message(STATUS "ccache: Not found")
+else()
+  set(CMAKE_C_COMPILER_LAUNCHER "${ccache_path}")
+  set(CMAKE_CXX_COMPILER_LAUNCHER "${ccache_path}")
 
-macro(configureCcache)
-  if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND
-     NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
-
-    message(STATUS "ccache: Not supported")
-
-  else()
-    find_program(ccache_path ccache)
-    if("${ccache_path}" STREQUAL "ccache_path-NOTFOUND")
-      message(STATUS "ccache: Not found")
-    else()
-      set(CMAKE_C_COMPILER_LAUNCHER "${ccache_path}")
-      set(CMAKE_CXX_COMPILER_LAUNCHER "${ccache_path}")
-
-      set(ccache_dir "$ENV{CCACHE_DIR}")
-      if("${ccache_dir}" STREQUAL "")
-        set(ccache_dir "$ENV{HOME}/.ccache")
-      endif()
-
-      message(STATUS "ccache: enabled with '${ccache_path}'. The cache folder is located here: '${ccache_dir}'")
-    endif()
+  set(ccache_dir "$ENV{CCACHE_DIR}")
+  if("${ccache_dir}" STREQUAL "")
+    set(ccache_dir "$ENV{HOME}/.ccache")
   endif()
-endmacro()
+
+  message(STATUS "ccache: enabled with '${ccache_path}'. The cache folder is located here: '${ccache_dir}'")
+endif()

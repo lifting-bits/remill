@@ -12,22 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+cmake_minimum_required(VERSION 3.14)
 include(cmake/vcpkg_helper.cmake)
 
-project(remill)
-cmake_minimum_required(VERSION 3.14)
+# Setup to use ccache
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ccache.cmake")
+
+project(remill C CXX ASM)
 include(GNUInstallDirs)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/settings.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake")
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ccache.cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 include(CTest)
 
-configureCcache()
-FindAndSelectClangCompiler()
-
-enable_language(C CXX ASM)
 
 set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 
@@ -322,6 +320,10 @@ install(EXPORT remillTargets
 # tests
 message("compiler ID ${CMAKE_C_COMPILER_ID}")
 if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_C_COMPILER_ID}" STREQUAL "AppleClang")
+  # Tests require enabling exports on binaries
+  # https://cmake.org/cmake/help/latest/variable/CMAKE_ENABLE_EXPORTS.html#variable:CMAKE_ENABLE_EXPORTS
+  set(CMAKE_ENABLE_EXPORTS ON)
+
   find_package(Threads REQUIRED)
   add_custom_target(test_dependencies)
 
