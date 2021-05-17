@@ -304,6 +304,9 @@ function GetLLVMVersion
     11)
       LLVM_VERSION=llvm-11
       return 0
+    12)
+      LLVM_VERSION=llvm-12
+      return 0
     ;;
     *)
       # unknown option
