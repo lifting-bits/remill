@@ -320,6 +320,10 @@ install(EXPORT remillTargets
 # tests
 message("compiler ID ${CMAKE_C_COMPILER_ID}")
 if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_C_COMPILER_ID}" STREQUAL "AppleClang")
+  # Tests require enabling exports on binaries
+  # https://cmake.org/cmake/help/latest/variable/CMAKE_ENABLE_EXPORTS.html#variable:CMAKE_ENABLE_EXPORTS
+  set(CMAKE_ENABLE_EXPORTS ON)
+
   find_package(Threads REQUIRED)
   add_custom_target(test_dependencies)
 

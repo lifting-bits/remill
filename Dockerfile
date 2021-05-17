@@ -28,7 +28,7 @@ RUN apt-get update && \
 FROM deps as build
 ARG LLVM_VERSION
 
-WORKDIR /rellic
+WORKDIR /remill
 COPY ./ ./
 RUN ./scripts/build.sh \
   --llvm-version ${LLVM_VERSION} \
