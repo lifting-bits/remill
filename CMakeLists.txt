@@ -14,20 +14,18 @@
 
 include(cmake/vcpkg_helper.cmake)
 
-project(remill)
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ccache.cmake")
+configureCcache()
+
+project(remill C CXX ASM)
 cmake_minimum_required(VERSION 3.14)
 include(GNUInstallDirs)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/settings.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake")
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ccache.cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 include(CTest)
 
-configureCcache()
-FindAndSelectClangCompiler()
-
-enable_language(C CXX ASM)
 
 set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 
