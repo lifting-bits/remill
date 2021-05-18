@@ -27,7 +27,7 @@ LLVM_VERSION=llvm-11
 OS_VERSION=
 ARCH_VERSION=
 BUILD_FLAGS=
-CXX_COMMON_VERSION="v0.1.3"
+CXX_COMMON_VERSION="v0.1.4"
 
 # There are pre-build versions of various libraries for specific
 # Ubuntu releases.
@@ -116,8 +116,6 @@ function DownloadVcpkgLibraries
     TAR_OPTIONS=""
   fi
 
-  # NOTE: export-raw is the directory that vcpkg used for exporting raw file tree
-  #   we want to rename it
   (
     set -x
     tar -xJf "${GITHUB_LIBS}" ${TAR_OPTIONS}
