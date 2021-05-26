@@ -31,7 +31,7 @@ Remill's Linux version can also be built via Docker for quicker testing.
 
 ## Dependencies
 
-Most of Remill's dependencies can be provided by the [cxx-common](https://github.com/trailofbits/cxx-common) repository. Trail of Bits hosts downloadable, pre-built versions of cxx-common, which makes it substantially easier to get up and running with Remill. Nonetheless, the following table represents most of Remill's dependencies.
+Most of Remill's dependencies can be provided by the [cxx-common](https://github.com/lifting-bits/cxx-common) repository. Trail of Bits hosts downloadable, pre-built versions of cxx-common, which makes it substantially easier to get up and running with Remill. Nonetheless, the following table represents most of Remill's dependencies.
 
 | Name | Version |
 | ---- | ------- |
@@ -51,7 +51,7 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 
 ### Docker Build
 
-Remill now comes with a Dockerfile for easier testing. This Dockerfile references the [cxx-common](https://github.com/trailofbits/cxx-common) container to have all pre-requisite libraries available.
+Remill now comes with a Dockerfile for easier testing. This Dockerfile references the [cxx-common](https://github.com/lifting-bits/cxx-common) container to have all pre-requisite libraries available.
 
 The Dockerfile allows for quick builds of multiple supported LLVM, architecture, and Linux configurations.
 
@@ -140,7 +140,7 @@ make test
 
 ### Full Source Builds
 
-Sometimes, you want to build everything from source, including the [cxx-common](https://github.com/trailofbits/cxx-common) libraries remill depends on. To build against a custom cxx-common location, you can use the following `cmake` invocation:
+Sometimes, you want to build everything from source, including the [cxx-common](https://github.com/lifting-bits/cxx-common) libraries remill depends on. To build against a custom cxx-common location, you can use the following `cmake` invocation:
 
 ```sh
 mkdir build
