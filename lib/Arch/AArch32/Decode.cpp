@@ -2676,6 +2676,11 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
   AddAddrRegOp(inst, kIntRegName[enc.Rm], kAddressSize, Operand::kActionRead,
                0);
 
+  // BX destination is allowed the PC
+  if (enc.Rm == kPCRegNum) {
+    inst.branch_taken_pc = inst.pc;
+  }
+  inst.branch_not_taken_pc = inst.pc + 4;
   if (enc.op1 == 0b01) {
     if (is_cond && (enc.Rm == kLRRegNum)) {
       inst.category = Instruction::kCategoryConditionalFunctionReturn;
