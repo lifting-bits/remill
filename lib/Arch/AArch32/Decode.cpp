@@ -2678,7 +2678,7 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
 
   // BX destination is allowed to be the PC
   if (enc.Rm == kPCRegNum) {
-    inst.branch_taken_pc = inst.pc;
+    inst.branch_taken_pc = inst.pc + 4;
   }
   inst.branch_not_taken_pc = inst.pc + 4;
   if (enc.op1 == 0b01) {
@@ -3465,11 +3465,11 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   inst.arch = this;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();
-  
+
   if (4ull > inst_bytes.size()) {
     return false;
   }
-  
+
   if (!inst.bytes.empty() && inst.bytes.data() == inst_bytes.data()) {
     inst.bytes.resize(inst_bytes.size());
   } else {
