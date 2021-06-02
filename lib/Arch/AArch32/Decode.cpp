@@ -2676,6 +2676,7 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
   AddAddrRegOp(inst, kIntRegName[enc.Rm], kAddressSize, Operand::kActionRead,
                0);
 
+  inst.branch_not_taken_pc = inst.pc + 4;
   if (enc.op1 == 0b01) {
     if (is_cond && (enc.Rm == kLRRegNum)) {
       inst.category = Instruction::kCategoryConditionalFunctionReturn;
@@ -2683,13 +2684,17 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
       inst.category = Instruction::kCategoryFunctionReturn;
     } else if (is_cond) {
       inst.category = Instruction::kCategoryConditionalIndirectJump;
-    } else if (enc.op1 == 0b01) {
+    } else {
       inst.category = Instruction::kCategoryIndirectJump;
     }
+    // BX destination is allowed to be the PC
+    if (enc.Rm == kPCRegNum) {
+      inst.branch_taken_pc = inst.pc + 4;
+    }
   } else if (is_cond) {
-    inst.category = Instruction::kCategoryConditionalDirectFunctionCall;
+    inst.category = Instruction::kCategoryConditionalIndirectFunctionCall;
   } else {
-    inst.category = Instruction::kCategoryDirectFunctionCall;
+    inst.category = Instruction::kCategoryIndirectFunctionCall;
   }
 
   AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
@@ -3460,11 +3465,11 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   inst.arch = this;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();
-  
+
   if (4ull > inst_bytes.size()) {
     return false;
   }
-  
+
   if (!inst.bytes.empty() && inst.bytes.data() == inst_bytes.data()) {
     inst.bytes.resize(inst_bytes.size());
   } else {
