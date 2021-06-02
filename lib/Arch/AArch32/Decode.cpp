@@ -2676,10 +2676,6 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
   AddAddrRegOp(inst, kIntRegName[enc.Rm], kAddressSize, Operand::kActionRead,
                0);
 
-  // BX destination is allowed to be the PC
-  if (enc.Rm == kPCRegNum) {
-    inst.branch_taken_pc = inst.pc + 4;
-  }
   inst.branch_not_taken_pc = inst.pc + 4;
   if (enc.op1 == 0b01) {
     if (is_cond && (enc.Rm == kLRRegNum)) {
@@ -2688,13 +2684,17 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
       inst.category = Instruction::kCategoryFunctionReturn;
     } else if (is_cond) {
       inst.category = Instruction::kCategoryConditionalIndirectJump;
-    } else if (enc.op1 == 0b01) {
+    } else {
       inst.category = Instruction::kCategoryIndirectJump;
     }
+    // BX destination is allowed to be the PC
+    if (enc.Rm == kPCRegNum) {
+      inst.branch_taken_pc = inst.pc + 4;
+    }
   } else if (is_cond) {
-    inst.category = Instruction::kCategoryConditionalDirectFunctionCall;
+    inst.category = Instruction::kCategoryConditionalIndirectFunctionCall;
   } else {
-    inst.category = Instruction::kCategoryDirectFunctionCall;
+    inst.category = Instruction::kCategoryIndirectFunctionCall;
   }
 
   AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
