@@ -2512,6 +2512,10 @@ static bool TryDecodeMoveHalfword(Instruction &inst, uint32_t bits) {
   AddImmOp(inst, enc.imm4 << 12 | enc.imm12);
   if (!enc.H) {
     AddImmOp(inst, 0);
+    // Add kIgnoreNextPCVariableName to allow MOVW to share semantics with ORR
+    AddAddrRegOp(inst, kIgnoreNextPCVariableName.data(), kAddressSize,
+                 Operand::kActionWrite, 0);
+
   }
   inst.category = Instruction::kCategoryNormal;
   return true;
