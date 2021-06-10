@@ -533,7 +533,7 @@ DEF_COND_SEM(SMLSD, R32W dst, R32 src1, R32 src2, R32 src3) {  // rn rm ra
   return memory;
 }
 
-DEF_COND_SEM(SDIV, R32W dst, R32 src1, R32 src2, R32 src3) {  // rn rm
+DEF_COND_SEM(SDIV, R32W dst, R32 src1, R32 src2) {  // rn rm
   auto rn = Signed(Read(src1));
   auto rm = Signed(Read(src2));
   if (!rm) {
@@ -544,7 +544,7 @@ DEF_COND_SEM(SDIV, R32W dst, R32 src1, R32 src2, R32 src3) {  // rn rm
   return memory;
 }
 
-DEF_COND_SEM(UDIV, R32W dst, R32 src1, R32 src2, R32 src3) {  // rn rm
+DEF_COND_SEM(UDIV, R32W dst, R32 src1, R32 src2) {  // rn rm
   auto rn = Read(src1);
   auto rm = Read(src2);
   if (!rm) {
