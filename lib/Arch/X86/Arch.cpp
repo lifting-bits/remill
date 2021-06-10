@@ -411,7 +411,7 @@ static Operand::Register RegOp(xed_reg_enum_t reg) {
 static Operand::Register SegBaseRegOp(xed_reg_enum_t reg, unsigned addr_size) {
   auto op = RegOp(reg);
   if (XED_REG_INVALID != reg) {
-    op.name += "_BASE";
+    op.name += "BASE";
     op.size = addr_size;
   }
   return op;
@@ -1362,17 +1362,40 @@ void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
   REG(DS, seg.ds.flat, u16);
   REG(CS, seg.cs.flat, u16);
 
-  ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "SS_BASE"));
-  ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "ES_BASE"));
-  ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "DS_BASE"));
-  ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "CS_BASE"));
+  ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "ESBASE"));
+  ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "DSBASE"));
+  ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "CSBASE"));
+
+  const auto gs_base =
+      llvm::ConstantExpr::getAddrSpaceCast(
+          llvm::ConstantExpr::getNullValue(llvm::PointerType::get(u8, 256)),
+          llvm::PointerType::get(u8, 0));
+
+  const auto fs_base =
+      llvm::ConstantExpr::getAddrSpaceCast(
+          llvm::ConstantExpr::getNullValue(llvm::PointerType::get(u8, 257)),
+          llvm::PointerType::get(u8, 0));
+
+  ir.CreateStore(llvm::ConstantExpr::getPtrToInt(gs_base, addr),
+                 ir.CreateAlloca(addr, nullptr, "GSBASE"));
+  ir.CreateStore(llvm::ConstantExpr::getPtrToInt(fs_base, addr),
+                 ir.CreateAlloca(addr, nullptr, "FSBASE"));
 
   if (64 == address_size) {
-    REG(GS_BASE, addr.gs_base.qword, addr);
-    REG(FS_BASE, addr.fs_base.qword, addr);
+    ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "SSBASE"));
+//    REG(GSBASE, addr.gs_base.qword, addr);
+//    REG(FSBASE, addr.fs_base.qword, addr);
+
   } else {
-    REG(GS_BASE, addr.gs_base.dword, addr);
-    REG(FS_BASE, addr.fs_base.dword, addr);
+    const auto ss_base =
+        llvm::ConstantExpr::getAddrSpaceCast(
+            llvm::ConstantExpr::getNullValue(llvm::PointerType::get(u8, 258)),
+            llvm::PointerType::get(u8, 0));
+    ir.CreateStore(llvm::ConstantExpr::getPtrToInt(ss_base, addr),
+                   ir.CreateAlloca(addr, nullptr, "SSBASE"));
+
+//    REG(GSBASE, addr.gs_base.dword, addr);
+//    REG(FSBASE, addr.fs_base.dword, addr);
   }
 
   if (has_avx) {
