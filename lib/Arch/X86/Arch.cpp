@@ -1366,36 +1366,15 @@ void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
   ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "DSBASE"));
   ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "CSBASE"));
 
-  const auto gs_base =
-      llvm::ConstantExpr::getAddrSpaceCast(
-          llvm::ConstantExpr::getNullValue(llvm::PointerType::get(u8, 256)),
-          llvm::PointerType::get(u8, 0));
-
-  const auto fs_base =
-      llvm::ConstantExpr::getAddrSpaceCast(
-          llvm::ConstantExpr::getNullValue(llvm::PointerType::get(u8, 257)),
-          llvm::PointerType::get(u8, 0));
-
-  ir.CreateStore(llvm::ConstantExpr::getPtrToInt(gs_base, addr),
-                 ir.CreateAlloca(addr, nullptr, "GSBASE"));
-  ir.CreateStore(llvm::ConstantExpr::getPtrToInt(fs_base, addr),
-                 ir.CreateAlloca(addr, nullptr, "FSBASE"));
-
   if (64 == address_size) {
     ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "SSBASE"));
-//    REG(GSBASE, addr.gs_base.qword, addr);
-//    REG(FSBASE, addr.fs_base.qword, addr);
+    REG(GSBASE, addr.gs_base.qword, addr);
+    REG(FSBASE, addr.fs_base.qword, addr);
 
   } else {
-    const auto ss_base =
-        llvm::ConstantExpr::getAddrSpaceCast(
-            llvm::ConstantExpr::getNullValue(llvm::PointerType::get(u8, 258)),
-            llvm::PointerType::get(u8, 0));
-    ir.CreateStore(llvm::ConstantExpr::getPtrToInt(ss_base, addr),
-                   ir.CreateAlloca(addr, nullptr, "SSBASE"));
-
-//    REG(GSBASE, addr.gs_base.dword, addr);
-//    REG(FSBASE, addr.fs_base.dword, addr);
+    REG(SSBASE, addr.ss_base.qword, addr);
+    REG(GSBASE, addr.gs_base.dword, addr);
+    REG(FSBASE, addr.fs_base.dword, addr);
   }
 
   if (has_avx) {
