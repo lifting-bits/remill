@@ -1372,7 +1372,7 @@ void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
     REG(FSBASE, addr.fs_base.qword, addr);
 
   } else {
-    REG(SSBASE, addr.ss_base.qword, addr);
+    REG(SSBASE, addr.ss_base.dword, addr);
     REG(GSBASE, addr.gs_base.dword, addr);
     REG(FSBASE, addr.fs_base.dword, addr);
   }
