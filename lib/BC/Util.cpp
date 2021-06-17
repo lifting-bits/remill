@@ -1952,9 +1952,9 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
       auto res = ir.CreateAlloca(type);
       ir.CreateStore(val_to_store, res);
 
-      auto i8_type = llvm::Type::getInt8Ty(context);
+      auto i8_array = llvm::ArrayType::get(llvm::Type::getInt8Ty(context), size);
       auto byte_array =
-          ir.CreateBitCast(res, llvm::PointerType::get(i8_type, 0));
+          ir.CreateBitCast(res, llvm::PointerType::get(i8_array, 0));
       llvm::Value *gep_indices[2] = {
           llvm::ConstantInt::get(index_type, 0, false), nullptr};
 
@@ -1963,7 +1963,7 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
         args_3[1] = ir.CreateAdd(
             addr, llvm::ConstantInt::get(addr->getType(), i, false));
         gep_indices[1] = llvm::ConstantInt::get(index_type, i, false);
-        auto byte_ptr = ir.CreateInBoundsGEP(type, byte_array, gep_indices);
+        auto byte_ptr = ir.CreateInBoundsGEP(i8_array, byte_array, gep_indices);
         args_3[2] = ir.CreateLoad(byte_ptr);
         args_3[0] = ir.CreateCall(intrinsics.write_memory_8, args_3);
       }
