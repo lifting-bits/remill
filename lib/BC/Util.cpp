@@ -1774,9 +1774,11 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
     case llvm::Type::PPC_FP128TyID: {
       const auto size = dl.getTypeAllocSize(type);
       auto res = ir.CreateAlloca(type);
-      auto i8_type = llvm::Type::getInt8Ty(context);
+
+      auto i8_array =
+          llvm::ArrayType::get(llvm::Type::getInt8Ty(context), size);
       auto byte_array =
-          ir.CreateBitCast(res, llvm::PointerType::get(i8_type, 0));
+          ir.CreateBitCast(res, llvm::PointerType::get(i8_array, 0));
       llvm::Value *gep_indices[2] = {
           llvm::ConstantInt::get(index_type, 0, false), nullptr};
 
@@ -1787,7 +1789,7 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
             addr, llvm::ConstantInt::get(addr->getType(), i, false));
         auto byte = ir.CreateCall(intrinsics.read_memory_8, args_2);
         gep_indices[1] = llvm::ConstantInt::get(index_type, i, false);
-        auto byte_ptr = ir.CreateInBoundsGEP(type, byte_array, gep_indices);
+        auto byte_ptr = ir.CreateInBoundsGEP(i8_array, byte_array, gep_indices);
         ir.CreateStore(byte, byte_ptr);
       }
 
@@ -1952,7 +1954,8 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
       auto res = ir.CreateAlloca(type);
       ir.CreateStore(val_to_store, res);
 
-      auto i8_array = llvm::ArrayType::get(llvm::Type::getInt8Ty(context), size);
+      auto i8_array =
+          llvm::ArrayType::get(llvm::Type::getInt8Ty(context), size);
       auto byte_array =
           ir.CreateBitCast(res, llvm::PointerType::get(i8_array, 0));
       llvm::Value *gep_indices[2] = {
@@ -2166,8 +2169,7 @@ llvm::Value *BuildPointerToOffset(llvm::IRBuilder<> &ir, llvm::Value *ptr,
 
   // TODO(pag): Improve the API to take a `DataLayout`, perhaps.
   } else {
-    LOG(FATAL)
-        << "Unable to get the current module.";
+    LOG(FATAL) << "Unable to get the current module.";
   }
 
   auto &context = ptr->getContext();
