@@ -1779,17 +1779,18 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
           llvm::ArrayType::get(llvm::Type::getInt8Ty(context), size);
       auto byte_array =
           ir.CreateBitCast(res, llvm::PointerType::get(i8_array, 0));
-      llvm::Value *gep_indices[2] = {
-          llvm::ConstantInt::get(index_type, 0, false), nullptr};
 
+      auto gep_zero = llvm::ConstantInt::get(index_type, 0, false);
       // Load one byte at a time from memory, and store it into
       // `res`.
       for (auto i = 0U; i < size; ++i) {
-        args_2[1] = ir.CreateAdd(
+        llvm::Value *gep_indices[2] = {
+            gep_zero, llvm::ConstantInt::get(index_type, i, false)};
+        auto call_arg_addr = ir.CreateAdd(
             addr, llvm::ConstantInt::get(addr->getType(), i, false));
-        auto byte = ir.CreateCall(intrinsics.read_memory_8, args_2);
-        gep_indices[1] = llvm::ConstantInt::get(index_type, i, false);
-        auto byte_ptr = ir.CreateInBoundsGEP(i8_array, byte_array, gep_indices);
+        llvm::Value* call_args[2] = {mem_ptr, call_arg_addr};
+        auto byte = ir.CreateCall(intrinsics.read_memory_8, llvm::makeArrayRef(call_args));
+        auto byte_ptr = ir.CreateInBoundsGEP(i8_array, byte_array, llvm::makeArrayRef(gep_indices));
         ir.CreateStore(byte, byte_ptr);
       }
 
