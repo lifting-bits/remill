@@ -50,6 +50,7 @@ class FunctionType;
 class GlobalObject;
 class GlobalVariable;
 class IntegerType;
+class Metadata;
 class Module;
 class PointerType;
 class Type;
@@ -222,6 +223,7 @@ llvm::IntegerType *AddressType(llvm::Module *module)
     __attribute__((deprecated));
 
 using ValueMap = std::unordered_map<llvm::Value *, llvm::Value *>;
+using MDMap = std::unordered_map<llvm::Metadata *, llvm::Metadata *>;
 
 // Clone function `source_func` into `dest_func`, using `value_map` to map over
 // values. This will strip out debug info during the clone. This will strip out
@@ -230,7 +232,7 @@ using ValueMap = std::unordered_map<llvm::Value *, llvm::Value *>;
 // Note: this will try to clone globals referenced from the module of
 //       `source_func` into the module of `dest_func`.
 void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
-                       ValueMap &value_map);
+                       ValueMap &value_map, MDMap &md_map);
 
 // Clone function `source_func` into `dest_func`. This will strip out debug
 // info during the clone.
