@@ -1465,7 +1465,6 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
   auto dest_mod = dest_func->getParent();
   auto &source_context = source_mod->getContext();
   auto &dest_context = dest_func->getContext();
-  auto reg_md_id = source_context.getMDKindID("remill_register");
 
   // Make sure that when we're cloning `__remill_basic_block`, we don't
   // throw away register names and such.
