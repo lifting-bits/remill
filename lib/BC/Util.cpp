@@ -676,6 +676,7 @@ llvm::IntegerType *AddressType(llvm::Module *module) {
 void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
   auto new_args = dest_func->arg_begin();
   ValueMap value_map;
+  MDMap md_map;
   for (llvm::Argument &old_arg : source_func->args()) {
     new_args->setName(old_arg.getName());
     value_map[&old_arg] = &*new_args;
@@ -686,7 +687,7 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
                                dest_func->getContext()),
            dest_func->getFunctionType());
 
-  CloneFunctionInto(source_func, dest_func, value_map);
+  CloneFunctionInto(source_func, dest_func, value_map, md_map);
 }
 
 // Make `func` a clone of the `__remill_basic_block` function.
@@ -1389,6 +1390,65 @@ static void MoveInstructionIntoModule(llvm::Instruction *inst,
   }
 }
 
+llvm::Metadata *CloneMetadataInto(
+    llvm::Module *source_mod, llvm::Module *dest_mod,
+    llvm::Metadata *md, ValueMap &value_map, MDMap &md_map) {
+
+  llvm::Metadata *mapped_md = nullptr;
+  auto [it, added] = md_map.emplace(md, mapped_md);
+  if (!added) {
+    return it->second;
+  }
+
+  llvm::LLVMContext &source_context = source_mod->getContext();
+  llvm::LLVMContext &dest_context = dest_mod->getContext();
+
+  if (llvm::ValueAsMetadata *val_md = llvm::dyn_cast<llvm::ValueAsMetadata>(md)) {
+    llvm::Value *val = val_md->getValue();
+    if (auto it = value_map.find(val); it != value_map.end()) {
+      llvm::Value *mapped_val = it->second;
+      mapped_md = llvm::ValueAsMetadata::get(mapped_val);
+
+    } else if (auto cv = llvm::dyn_cast<llvm::Constant>(val)) {
+      llvm::Value *mapped_cv = MoveConstantIntoModule(cv, dest_mod, value_map);
+      if (!mapped_cv) {
+        return nullptr;  // Couldn't move it.
+      }
+      mapped_md = llvm::ValueAsMetadata::get(mapped_cv);
+
+    } else {
+      return nullptr;
+    }
+
+  } else if (llvm::MDString *str = llvm::dyn_cast<llvm::MDString>(md)) {
+    if (&source_context == &dest_context) {
+      mapped_md = str;
+    } else {
+      mapped_md = llvm::MDString::get(dest_context, str->getString());
+    }
+
+  } else if (llvm::MDTuple *tuple = llvm::dyn_cast<llvm::MDTuple>(md)) {
+    std::vector<llvm::Metadata *> mapped_ops;
+    for (llvm::Metadata *op : tuple->operands()) {
+      auto mapped_op = CloneMetadataInto(source_mod, dest_mod, op, value_map,
+                                         md_map);
+      if (!mapped_op) {
+        return nullptr;  // Possibly cyclic or just not clonable.
+      } else {
+        mapped_ops.push_back(mapped_op);
+      }
+    }
+    mapped_md = llvm::MDTuple::get(dest_context, mapped_ops);
+
+  // Not supported.
+  } else {
+    return nullptr;
+  }
+
+  it->second = mapped_md;
+  return mapped_md;
+}
+
 }  // namespace
 
 // Clone function `source_func` into `dest_func`, using `value_map` to map over
@@ -1398,7 +1458,7 @@ static void MoveInstructionIntoModule(llvm::Instruction *inst,
 // Note: this will try to clone globals referenced from the module of
 //       `source_func` into the module of `dest_func`.
 void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
-                       ValueMap &value_map) {
+                       ValueMap &value_map, MDMap &md_map) {
 
   auto func_name = source_func->getName().str();
   auto source_mod = source_func->getParent();
@@ -1447,26 +1507,69 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
   // Fixup the references in the cloned instructions so that they point into
   // the cloned function, or point to declared globals in the module containing
   // `dest_func`.
-  for (auto &old_block : *source_func) {
-    for (auto &old_inst : old_block) {
+  for (llvm::BasicBlock &old_block : *source_func) {
+    for (llvm::Instruction &old_inst : old_block) {
       if (llvm::isa<llvm::DbgInfoIntrinsic>(old_inst)) {
         continue;
       }
 
       auto new_inst = llvm::dyn_cast<llvm::Instruction>(value_map[&old_inst]);
-
-      // Clear out all metadata from the new instruction.
-      old_inst.getAllMetadata(mds);
-      for (auto md_info : mds) {
-        if (md_info.first != reg_md_id || &source_context != &dest_context) {
-          new_inst->setMetadata(md_info.first, nullptr);
-        }
-      }
-
       new_inst->setDebugLoc(llvm::DebugLoc());
       new_inst->setName(old_inst.getName());
 
       MoveInstructionIntoModule(new_inst, dest_mod, value_map);
+    }
+  }
+
+  // NOTE(pag): All fixed MD kinds are part of the custom map, and are
+  //            initialized into the context upon construction. There are about
+  //            40 of them.
+  llvm::SmallVector<llvm::StringRef, 64> source_md_names;
+
+  source_context.getMDKindNames(source_md_names);
+
+  std::unordered_map<unsigned, unsigned> md_id_map;
+  md_id_map.reserve(source_md_names.size());
+  for (auto i = 0u; i < source_md_names.size(); ++i) {
+    if (&source_context != &dest_context) {
+      md_id_map[i] = dest_context.getMDKindID(source_md_names[i]);
+    } else {
+      md_id_map[i] = i;
+    }
+  }
+
+  // Now port the metadata.
+  for (llvm::BasicBlock &old_block : *source_func) {
+    for (llvm::Instruction &old_inst : old_block) {
+      if (llvm::isa<llvm::DbgInfoIntrinsic>(old_inst)) {
+        continue;
+      }
+
+      llvm::Instruction *new_inst =
+          llvm::dyn_cast<llvm::Instruction>(value_map[&old_inst]);
+      if (!new_inst) {
+        continue;
+      }
+
+      mds.clear();
+      old_inst.getAllMetadata(mds);
+
+      // First, clear out the old metadata; the metadata IDs might not all
+      // align.
+      for (auto md_info : mds) {
+        new_inst->setMetadata(md_info.first, nullptr);
+      }
+
+      // Next, try to convert the metadata over, mapping metadata IDs along
+      // the way.
+      for (auto md_info : mds) {
+        llvm::MDNode *new_md = llvm::dyn_cast_or_null<llvm::MDNode>(
+            CloneMetadataInto(source_mod, dest_mod, md_info.second,
+                              value_map, md_map));
+        if (new_md) {
+          new_inst->setMetadata(md_id_map[md_info.first], new_md);
+        }
+      }
     }
   }
 }
@@ -1586,9 +1689,7 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
     existing_decl_in_dest_module = nullptr;
   }
 
-  if (!in_same_context) {
-    IF_LLVM_GTE_370(ClearMetaData(func);)
-  }
+  IF_LLVM_GTE_370(ClearMetaData(func);)
 
   // Fill up the locals so that they map to themselves.
   for (auto &arg : func->args()) {
@@ -1597,9 +1698,7 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
   for (auto &block : *func) {
     value_map.emplace(&block, &block);
     for (auto &inst : block) {
-      if (!in_same_context) {
-        ClearMetaData(&inst);
-      }
+      ClearMetaData(&inst);
       value_map.emplace(&inst, &inst);
     }
   }
