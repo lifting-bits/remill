@@ -920,8 +920,6 @@ static bool DecodeCondition(Instruction &inst, uint32_t cond) {
   auto _8_type = llvm::Type::getInt8Ty(*inst.arch->context);
   const auto _1 = llvm::ConstantInt::get(_8_type, 1u, false);
 
-  // Use ~0 -> 11111111 with XOR op for negation
-  const auto negate = llvm::ConstantInt::get(_8_type, ~0u, false);
   bool negate_conditions = false;
   bool is_cond = true;
 
@@ -952,7 +950,7 @@ static bool DecodeCondition(Instruction &inst, uint32_t cond) {
       auto c_expr = inst.EmplaceRegister("C");
       auto z_expr = inst.EmplaceRegister("Z");
       z_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, z_expr,
-                                    inst.EmplaceConstant(negate));
+                                    inst.EmplaceConstant(_1));
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::And, z_expr, c_expr);
       break;
     }
@@ -962,7 +960,7 @@ static bool DecodeCondition(Instruction &inst, uint32_t cond) {
       auto v_expr = inst.EmplaceRegister("V");
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, n_expr, v_expr);
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, op_expr,
-                                     inst.EmplaceConstant(negate));
+                                     inst.EmplaceConstant(_1));
       break;
     }
     case 0b1101: negate_conditions = true; [[clang::fallthrough]];
@@ -971,10 +969,10 @@ static bool DecodeCondition(Instruction &inst, uint32_t cond) {
       auto v_expr = inst.EmplaceRegister("V");
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, n_expr, v_expr);
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, op_expr,
-                                     inst.EmplaceConstant(negate));
+                                     inst.EmplaceConstant(_1));
       auto z_expr = inst.EmplaceRegister("Z");
       z_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, z_expr,
-                                    inst.EmplaceConstant(negate));
+                                    inst.EmplaceConstant(_1));
       op_expr = inst.EmplaceBinaryOp(llvm::Instruction::And, z_expr, op_expr);
       break;
     }
@@ -991,7 +989,7 @@ static bool DecodeCondition(Instruction &inst, uint32_t cond) {
 
   if (negate_conditions) {
     op_expr = inst.EmplaceBinaryOp(llvm::Instruction::Xor, op_expr,
-                                   inst.EmplaceConstant(negate));
+                                   inst.EmplaceConstant(_1));
   }
 
   AddExprOp(inst, op_expr, 8u);
@@ -3494,7 +3492,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   }
 
   auto ret = decoder(inst, bits);
-  LOG(ERROR) << inst.Serialize();
+//  LOG(ERROR) << inst.Serialize();
   return ret;
 }
 
