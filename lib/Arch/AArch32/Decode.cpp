@@ -511,6 +511,25 @@ union BitExt {
 } __attribute__((packed));
 static_assert(sizeof(BitExt) == 4, " ");
 
+// Reverse Bit/Byte
+union RevBitByte {
+  uint32_t flat;
+  struct {
+    uint32_t Rm : 4;
+    uint32_t _011 : 3;
+    uint32_t o2 : 1;
+    uint32_t _11_to_8 : 4;
+    uint32_t Rd : 4;
+    uint32_t _19_to_16 : 4;
+    uint32_t _11 : 2;
+    uint32_t o1 : 1;
+    uint32_t _01101 : 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(RevBitByte) == 4, " ");
+
+
 // Move Special Register and Hints (immediate)
 union SpecialRegsAndHints {
   uint32_t flat;
@@ -2907,6 +2926,46 @@ static bool TryBitExtract(Instruction &inst, uint32_t bits) {
   return true;
 }
 
+// o1  o2
+//  0   0     REV
+//  0   1   REV16
+//  1   0    RBIT
+//  1   1   REVSH
+static const char *const kRevBitByte[] = {
+    [0b00] = "REV",
+    [0b01] = "REV16",
+    [0b10] = "RBIT",
+    [0b11] = "REVSH",
+};
+
+// Reverse Bit/Byte
+static bool TryReverseBitByte(Instruction &inst, uint32_t bits) {
+  const RevBitByte enc = {bits};
+  DecodeCondition(inst, enc.cond);
+
+  inst.function = kRevBitByte[enc.o1 << 1 | enc.o2];
+
+  // TODO(sks): Support REV16, RBIT, & REVSH
+  if (enc.o1 || enc.o2) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+
+  // if d == 15 || m == 15 then UNPREDICTABLE;
+  if (enc.Rd == kPCRegNum || enc.Rm == kPCRegNum) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+
+  AddIntRegOp(inst, enc.Rd, kAddressSize, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.Rm, kAddressSize, Operand::kActionRead);
+
+
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
+
+
 // op0  op1
 // 00xxx     Parallel Arithmetic
 // 01000 101 SEL
@@ -2963,10 +3022,7 @@ static TryDecode *TryMedia(uint32_t bits) {
     case 0b01011001:
     case 0b01011101:
     case 0b01111001:
-    case 0b01111101:
-
-      // Reverse Bit/Byte
-      return nullptr;
+    case 0b01111101: return TryReverseBitByte;
     case 0b01010000:
     case 0b01010010:
     case 0b01010100:
