@@ -87,19 +87,23 @@ DEF_COND_SEM(REV16, R32W dst, R32 src1) {
   return memory;
 }
 
-//DEF_COND_SEM(RBIT, R32W dst, R32 src1) {
-//  auto src = Read(src1);
-//
-//  auto res_31_24 = UAnd(UShl(src, uint32_t(8u)), uint32_t(255u << 24u)); // result<31:24> = R[m]<23:16>;
-//  auto res_23_16 = UAnd(UShr(src, uint32_t(8u)), uint32_t(255u << 16u)); // result<23:16> = R[m]<31:24>;
-//  auto res_15_8 = UAnd(UShl(src, uint32_t(8u)), uint32_t(255u << 8u)); // result<15:8>  = R[m]<7:0>;
-//  auto res_7_0 = UAnd(UShr(src, uint32_t(8u)), uint32_t(255u)); // result<7:0>   = R[m]<15:8>;
-//
-//  auto res = UOr(res_31_24, UOr(res_23_16, UOr(res_15_8, res_7_0)));
-//
-//  Write(dst, res);
-//  return memory;
-//}
+template <typename T, size_t n>
+ALWAYS_INLINE static T ReverseBits(T v) {
+  T rv = 0;
+  _Pragma("unroll") for (size_t i = 0; i < n; ++i, v >>= 1) {
+    rv = (rv << T(1)) | (v & T(1));
+  }
+  return rv;
+}
+
+#if !__has_builtin(__builtin_bitreverse32)
+#  define __builtin_bitreverse32(x) ReverseBits<uint32_t, 32>(x)
+#endif
+
+DEF_COND_SEM(RBIT, R32W dst, R32 src) {
+  WriteZExt(dst, __builtin_bitreverse32(Read(src)));
+  return memory;
+}
 
 DEF_COND_SEM(REVSH, R32W dst, R32 src1) {
   auto src = Trunc(Read(src1));
@@ -118,5 +122,5 @@ DEF_COND_SEM(REVSH, R32W dst, R32 src1) {
 
 DEF_ISEL(REV) = REV;
 DEF_ISEL(REV16) = REV16;
-//DEF_ISEL(RBIT) = RBIT;
+DEF_ISEL(RBIT) = RBIT;
 DEF_ISEL(REVSH) = REVSH;
