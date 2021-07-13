@@ -75,6 +75,26 @@ DEF_COND_SEM(REV, R32W dst, R32 src1) {
 
 }
 
+DEF_COND_SEM(REV16, R32W dst, R32 src1) {
+
+  auto src = Read(src1);
+
+  auto res_31_24 = UAnd(UShl(src, uint32_t(8u)), uint32_t(255u << 24u)); // result<31:24> = R[m]<23:16>;
+  auto res_23_16 = UAnd(UShr(src, uint32_t(8u)), uint32_t(255u << 16u)); // result<23:16> = R[m]<31:24>;
+  auto res_15_8 = UAnd(UShl(src, uint32_t(8u)), uint32_t(255u << 8u)); // result<15:8>  = R[m]<7:0>;
+  auto res_7_0 = UAnd(UShr(src, uint32_t(8u)), uint32_t(255u)); // result<7:0>   = R[m]<15:8>;
+
+  auto res = UOr(res_31_24, UOr(res_23_16, UOr(res_15_8, res_7_0)));
+
+  Write(dst, res);
+  return memory;
+
+}
+
+
 }  // namespace
 
 DEF_ISEL(REV) = REV;
+DEF_ISEL(REV16) = REV16;
+//DEF_ISEL(RBIT) = RBIT;
+//DEF_ISEL(REVSH) = REVSH;

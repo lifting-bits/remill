@@ -2945,12 +2945,6 @@ static bool TryReverseBitByte(Instruction &inst, uint32_t bits) {
 
   inst.function = kRevBitByte[enc.o1 << 1 | enc.o2];
 
-  // TODO(sks): Support REV16, RBIT, & REVSH
-  if (enc.o1 || enc.o2) {
-    inst.category = Instruction::kCategoryError;
-    return false;
-  }
-
   // if d == 15 || m == 15 then UNPREDICTABLE;
   if (enc.Rd == kPCRegNum || enc.Rm == kPCRegNum) {
     inst.category = Instruction::kCategoryError;
@@ -3548,7 +3542,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   }
 
   auto ret = decoder(inst, bits);
-//  LOG(ERROR) << inst.Serialize();
+  LOG(ERROR) << inst.Serialize();
   return ret;
 }
 
