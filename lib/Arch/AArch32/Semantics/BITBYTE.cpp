@@ -24,6 +24,41 @@ DEF_COND_SEM(CLZ, R32W dst, R32 src) {
 
 DEF_ISEL(CLZ) = CLZ;
 
+// Bitfield Insert
+namespace {
+DEF_COND_SEM(BFI, R32W dst, R32 src1, R32 src2, I32 msb, I32 lsb) {
+  auto rd = Read(src1);
+  auto rn = Read(src2);
+  auto msbit = Read(msb);
+  auto lsbit = Read(lsb);
+
+  auto width = msbit - lsbit + 1;
+  auto mask = uint32_t((1 << width) - 1);
+
+  auto res = UOr(rd, UShl(UAnd(rn, mask), lsbit));
+
+  Write(dst, res);
+  return memory;
+}
+
+DEF_COND_SEM(BFC, R32W dst, R32 src1, I32 msb, I32 lsb) {
+  auto rd = Read(src1);
+  auto msbit = Read(msb);
+  auto lsbit = Read(lsb);
+
+  auto width = msbit - lsbit + 1;
+  auto mask = uint32_t(((1 << width) - 1) << (lsbit + 1));
+
+  auto res = UAnd(rd, UNot(mask));
+
+  Write(dst, res);
+  return memory;
+}
+}  // namespace
+
+DEF_ISEL(BFI) = BFI;
+DEF_ISEL(BFC) = BFC;
+
 // Bitfield Extract
 namespace {
 DEF_COND_SEM(SBFX, R32W dst, R32 src1, I32 src2, I32 src3) {

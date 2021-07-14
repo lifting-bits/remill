@@ -494,6 +494,22 @@ union ExtAdd {
 } __attribute__((packed));
 static_assert(sizeof(ExtAdd) == 4, " ");
 
+// Bitfield Insert
+union BitInsert {
+  uint32_t flat;
+  struct {
+    uint32_t Rn : 4;
+    uint32_t _001 : 3;
+    uint32_t lsb : 5;
+    uint32_t Rd : 4;
+    uint32_t msb : 5;
+    uint32_t _0111110 : 7;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(BitInsert) == 4, " ");
+
+
 // Bitfield Extract
 union BitExt {
   uint32_t flat;
@@ -2893,6 +2909,42 @@ static bool TryExtAdd(Instruction &inst, uint32_t bits) {
   return true;
 }
 
+//    Rn
+// != 1111  BFI
+//   1111   BFC
+static const char *const kBitInsert[] = {
+    [0b0] = "BFI",
+    [0b1] = "BFC",
+};
+
+// Bitfield Insert
+static bool TryBitInsert(Instruction &inst, uint32_t bits) {
+  const BitInsert enc = {bits};
+  DecodeCondition(inst, enc.cond);
+
+  inst.function = kBitInsert[enc.Rn == kPCRegNum];
+
+  // if d == 15 then UNPREDICTABLE;
+  // If msbit < lsbit then UNPREDICTABLE;
+  if (enc.Rd == kPCRegNum || enc.msb < enc.lsb) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+
+  AddIntRegOp(inst, enc.Rd, kAddressSize, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.Rd, kAddressSize, Operand::kActionRead);
+
+  if (enc.Rn != kPCRegNum) {
+    AddIntRegOp(inst, enc.Rn, kAddressSize, Operand::kActionRead);
+  }
+
+  AddImmOp(inst, enc.msb);
+  AddImmOp(inst, enc.lsb);
+
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
+
 // U
 // 0 SBFX
 // 1 UBFX
@@ -3044,13 +3096,14 @@ static TryDecode *TryMedia(uint32_t bits) {
     case 0b11000000:
 
       // Unsigned Sum of Absolute Differences
+      return nullptr;
     case 0b11100000:
     case 0b11100100:
     case 0b11101000:
     case 0b11101100:
 
       // Bitfield Insert
-    case 0b11111111:
+    case 0b11111111: return TryBitInsert;
 
       // Permanently UNDEFINED
       return nullptr;
