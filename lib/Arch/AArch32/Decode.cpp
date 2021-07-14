@@ -494,6 +494,22 @@ union ExtAdd {
 } __attribute__((packed));
 static_assert(sizeof(ExtAdd) == 4, " ");
 
+// Bitfield Insert
+union BitInsert {
+  uint32_t flat;
+  struct {
+    uint32_t Rn : 4;
+    uint32_t _001 : 3;
+    uint32_t lsb : 5;
+    uint32_t Rd : 4;
+    uint32_t msb : 5;
+    uint32_t _0111110 : 7;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(BitInsert) == 4, " ");
+
+
 // Bitfield Extract
 union BitExt {
   uint32_t flat;
@@ -510,6 +526,25 @@ union BitExt {
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(BitExt) == 4, " ");
+
+// Reverse Bit/Byte
+union RevBitByte {
+  uint32_t flat;
+  struct {
+    uint32_t Rm : 4;
+    uint32_t _011 : 3;
+    uint32_t o2 : 1;
+    uint32_t _11_to_8 : 4;
+    uint32_t Rd : 4;
+    uint32_t _19_to_16 : 4;
+    uint32_t _11 : 2;
+    uint32_t o1 : 1;
+    uint32_t _01101 : 5;
+    uint32_t cond : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(RevBitByte) == 4, " ");
+
 
 // Move Special Register and Hints (immediate)
 union SpecialRegsAndHints {
@@ -2510,10 +2545,10 @@ static bool TryDecodeMoveHalfword(Instruction &inst, uint32_t bits) {
   AddImmOp(inst, enc.imm4 << 12 | enc.imm12);
   if (!enc.H) {
     AddImmOp(inst, 0);
+
     // Add kIgnoreNextPCVariableName to allow MOVW to share semantics with ORR
     AddAddrRegOp(inst, kIgnoreNextPCVariableName.data(), kAddressSize,
                  Operand::kActionWrite, 0);
-
   }
   inst.category = Instruction::kCategoryNormal;
   return true;
@@ -2874,6 +2909,42 @@ static bool TryExtAdd(Instruction &inst, uint32_t bits) {
   return true;
 }
 
+//    Rn
+// != 1111  BFI
+//   1111   BFC
+static const char *const kBitInsert[] = {
+    [0b0] = "BFI",
+    [0b1] = "BFC",
+};
+
+// Bitfield Insert
+static bool TryBitInsert(Instruction &inst, uint32_t bits) {
+  const BitInsert enc = {bits};
+  DecodeCondition(inst, enc.cond);
+
+  inst.function = kBitInsert[enc.Rn == kPCRegNum];
+
+  // if d == 15 then UNPREDICTABLE;
+  // If msbit < lsbit then UNPREDICTABLE;
+  if (enc.Rd == kPCRegNum || enc.msb < enc.lsb) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+
+  AddIntRegOp(inst, enc.Rd, kAddressSize, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.Rd, kAddressSize, Operand::kActionRead);
+
+  if (enc.Rn != kPCRegNum) {
+    AddIntRegOp(inst, enc.Rn, kAddressSize, Operand::kActionRead);
+  }
+
+  AddImmOp(inst, enc.msb);
+  AddImmOp(inst, enc.lsb);
+
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
+
 // U
 // 0 SBFX
 // 1 UBFX
@@ -2906,6 +2977,40 @@ static bool TryBitExtract(Instruction &inst, uint32_t bits) {
   inst.category = Instruction::kCategoryNormal;
   return true;
 }
+
+// o1  o2
+//  0   0     REV
+//  0   1   REV16
+//  1   0    RBIT
+//  1   1   REVSH
+static const char *const kRevBitByte[] = {
+    [0b00] = "REV",
+    [0b01] = "REV16",
+    [0b10] = "RBIT",
+    [0b11] = "REVSH",
+};
+
+// Reverse Bit/Byte
+static bool TryReverseBitByte(Instruction &inst, uint32_t bits) {
+  const RevBitByte enc = {bits};
+  DecodeCondition(inst, enc.cond);
+
+  inst.function = kRevBitByte[enc.o1 << 1 | enc.o2];
+
+  // if d == 15 || m == 15 then UNPREDICTABLE;
+  if (enc.Rd == kPCRegNum || enc.Rm == kPCRegNum) {
+    inst.category = Instruction::kCategoryError;
+    return false;
+  }
+
+  AddIntRegOp(inst, enc.Rd, kAddressSize, Operand::kActionWrite);
+  AddIntRegOp(inst, enc.Rm, kAddressSize, Operand::kActionRead);
+
+
+  inst.category = Instruction::kCategoryNormal;
+  return true;
+}
+
 
 // op0  op1
 // 00xxx     Parallel Arithmetic
@@ -2963,10 +3068,7 @@ static TryDecode *TryMedia(uint32_t bits) {
     case 0b01011001:
     case 0b01011101:
     case 0b01111001:
-    case 0b01111101:
-
-      // Reverse Bit/Byte
-      return nullptr;
+    case 0b01111101: return TryReverseBitByte;
     case 0b01010000:
     case 0b01010010:
     case 0b01010100:
@@ -2994,12 +3096,11 @@ static TryDecode *TryMedia(uint32_t bits) {
     case 0b11000000:
 
       // Unsigned Sum of Absolute Differences
+      return nullptr;
     case 0b11100000:
     case 0b11100100:
     case 0b11101000:
-    case 0b11101100:
-
-      // Bitfield Insert
+    case 0b11101100: return TryBitInsert;
     case 0b11111111:
 
       // Permanently UNDEFINED
@@ -3492,7 +3593,8 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   }
 
   auto ret = decoder(inst, bits);
-//  LOG(ERROR) << inst.Serialize();
+
+  //  LOG(ERROR) << inst.Serialize();
   return ret;
 }
 
