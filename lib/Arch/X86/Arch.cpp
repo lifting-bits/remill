@@ -469,7 +469,7 @@ static void DecodeMemory(Instruction &inst, const xed_decoded_inst_t *xedd,
   // Special case: `POP [xSP + ...] uses the value of `xSP` after incrementing
   // it by the stack width.
   if (XED_ICLASS_POP == iclass && XED_REG_RSP == base_wide) {
-    disp += static_cast<int64_t>(size / 8);
+    inst.function = "POP_MEM_XSP_" + std::to_string(size);
   }
 
   Operand op = {};
