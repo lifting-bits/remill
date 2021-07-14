@@ -3100,11 +3100,8 @@ static TryDecode *TryMedia(uint32_t bits) {
     case 0b11100000:
     case 0b11100100:
     case 0b11101000:
-    case 0b11101100:
-
-      // Bitfield Insert
+    case 0b11101100: return TryBitInsert;
     case 0b11111111:
-      return TryBitInsert;
 
       // Permanently UNDEFINED
       return nullptr;
