@@ -2545,10 +2545,10 @@ static bool TryDecodeMoveHalfword(Instruction &inst, uint32_t bits) {
   AddImmOp(inst, enc.imm4 << 12 | enc.imm12);
   if (!enc.H) {
     AddImmOp(inst, 0);
+
     // Add kIgnoreNextPCVariableName to allow MOVW to share semantics with ORR
     AddAddrRegOp(inst, kIgnoreNextPCVariableName.data(), kAddressSize,
                  Operand::kActionWrite, 0);
-
   }
   inst.category = Instruction::kCategoryNormal;
   return true;
@@ -3103,7 +3103,8 @@ static TryDecode *TryMedia(uint32_t bits) {
     case 0b11101100:
 
       // Bitfield Insert
-    case 0b11111111: return TryBitInsert;
+    case 0b11111111:
+      return TryBitInsert;
 
       // Permanently UNDEFINED
       return nullptr;
@@ -3595,7 +3596,8 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   }
 
   auto ret = decoder(inst, bits);
-//  LOG(ERROR) << inst.Serialize();
+
+  //  LOG(ERROR) << inst.Serialize();
   return ret;
 }
 
