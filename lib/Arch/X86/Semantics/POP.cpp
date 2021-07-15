@@ -22,13 +22,33 @@ namespace {
 //       is handled in the arch-specific instruction operand lifter.
 //
 //       The case of `POP xSP` is correctly handled without special casing.
+
 template <typename D>
 DEF_SEM(POP, D dst) {
+  // First store the current top
+  addr_t old_xsp = Read(REG_XSP);
+  WriteZExt(dst, Read(ReadPtr<D>(old_xsp _IF_32BIT(REG_SS_BASE))));
+  // Now bump the XSP - the load form `REG_XSP` is needed again in
+  // case `dst` and `REG_XSP` alias (e.g. `pop rsp`)
+  addr_t op_size = ZExtTo<D>(ByteSizeOf(dst));
+  addr_t new_xsp = UAdd(Read(REG_XSP), op_size);
+  Write(REG_XSP, new_xsp);
+  return memory;
+}
+
+
+template<typename D>
+DEF_SEM(POP_MEM_XSP, D dst) {
   addr_t op_size = ZExtTo<D>(ByteSizeOf(dst));
   addr_t old_xsp = Read(REG_XSP);
   addr_t new_xsp = UAdd(old_xsp, op_size);
+
+  // `XSP` will be adjusted by `op_size`. Unfortunately, `dst` at this point
+  // no longer has any information about the fact it was composed of `XPS`.
+  // This semantic is a special case of general `POP` and it makes sure that
+  // the adjustment happens correctly.
+  WriteZExt(D{dst.addr + op_size}, Read(ReadPtr<D>(old_xsp _IF_32BIT(REG_SS_BASE))));
   Write(REG_XSP, new_xsp);
-  WriteZExt(dst, Read(ReadPtr<D>(old_xsp _IF_32BIT(REG_SS_BASE))));
   return memory;
 }
 
@@ -122,6 +142,9 @@ DEF_ISEL(POP_GPRv_51_16) = POP<R16W>;
 DEF_ISEL(POP_GPRv_58_16) = POP<R16W>;
 DEF_ISEL_R32or64W(POP_GPRv_51, POP);
 DEF_ISEL_R32or64W(POP_GPRv_58, POP);
+
+DEF_ISEL(POP_MEM_XSP_16) = POP<M16W>;
+DEF_ISEL_M32or64W(POP_MEM_XSP, POP_MEM_XSP);
 
 DEF_ISEL(POP_MEMv_16) = POP<M16W>;
 DEF_ISEL_M32or64W(POP_MEMv, POP);
