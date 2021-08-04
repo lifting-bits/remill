@@ -487,10 +487,7 @@ Operand &Instruction::EmplaceOperand(const Operand::ShiftRegister &shift_op) {
       // for example: andseq r3, sl, r0, lsr #32
       CHECK(shift_size < op.size
             || (shift_size <= op.size && arch_name == kArchAArch32LittleEndian
-                && (shift_op.shift_op
-                    == Operand::ShiftRegister::kShiftUnsignedRight
-                    || shift_op.shift_op
-                    == Operand::ShiftRegister::kShiftSignedRight)))
+                && shift_op.can_shift_op_size))
           << "Shift of size " << shift_size
           << " is wider than the base register size in shift register in "
           << Serialize();
