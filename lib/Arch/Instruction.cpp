@@ -481,7 +481,12 @@ Operand &Instruction::EmplaceOperand(const Operand::ShiftRegister &shift_op) {
   auto do_shift = [&](void) {
     if (Operand::ShiftRegister::kShiftInvalid != shift_op.shift_op) {
 
-      CHECK(shift_size < op.size)
+      // Shift size must be smaller than the op size or, in the case of AArch32,
+      // it must be twice the register size. This accounts for using LSR
+      // to shift a register into the carry out operands.
+      // for example: andseq r3, sl, r0, lsr #32
+      CHECK(shift_size < op.size
+            || (shift_size < op.size * 2 && arch_name == kArchAArch32LittleEndian))
           << "Shift of size " << shift_size
           << " is wider than the base register size in shift register in "
           << Serialize();
