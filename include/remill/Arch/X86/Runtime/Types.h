@@ -131,5 +131,5 @@ typedef Rn<float64_t> RF64;
 typedef RnW<float64_t> RF64W;
 
 // Internally, we boil F80s down into F64s.
-typedef Rn<float64_t> RF80;
-typedef RnW<float64_t> RF80W;
+typedef Rn<float80_t> RF80;
+typedef RnW<float80_t> RF80W;

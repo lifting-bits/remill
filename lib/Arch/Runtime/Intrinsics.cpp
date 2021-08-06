@@ -115,4 +115,5 @@ extern "C" void __remill_mark_as_used(const void *);
   USED(__remill_undefined_64);
   USED(__remill_undefined_f32);
   USED(__remill_undefined_f64);
+  USED(__remill_undefined_f80);
 }

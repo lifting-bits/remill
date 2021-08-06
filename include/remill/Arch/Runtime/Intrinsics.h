@@ -85,6 +85,8 @@ __remill_write_memory_f64(Memory *, addr_t, float64_t);
 
 [[gnu::used, gnu::const]] extern float64_t __remill_undefined_f64(void);
 
+[[gnu::used, gnu::const]] extern float80_t __remill_undefined_f80(void);
+
 // Generic error.
 [[gnu::used]] extern Memory *__remill_error(State &, addr_t addr, Memory *);
 

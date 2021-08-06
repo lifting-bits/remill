@@ -85,6 +85,7 @@ class IntrinsicTable {
   llvm::Function *undefined_64;
   llvm::Function *undefined_f32;
   llvm::Function *undefined_f64;
+  llvm::Function *undefined_f80;
 
  private:
   IntrinsicTable(void) = delete;

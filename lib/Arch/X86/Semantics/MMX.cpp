@@ -1900,14 +1900,14 @@ DEF_SEM(DoEMMS) {
   state.mmx.elems[6].val.qwords.elems[0] = __remill_undefined_64();
   state.mmx.elems[7].val.qwords.elems[0] = __remill_undefined_64();
 
-  state.st.elems[0].val = __remill_undefined_f64();
-  state.st.elems[1].val = __remill_undefined_f64();
-  state.st.elems[2].val = __remill_undefined_f64();
-  state.st.elems[3].val = __remill_undefined_f64();
-  state.st.elems[4].val = __remill_undefined_f64();
-  state.st.elems[5].val = __remill_undefined_f64();
-  state.st.elems[6].val = __remill_undefined_f64();
-  state.st.elems[7].val = __remill_undefined_f64();
+  state.st.elems[0].val = __remill_undefined_f80();
+  state.st.elems[1].val = __remill_undefined_f80();
+  state.st.elems[2].val = __remill_undefined_f80();
+  state.st.elems[3].val = __remill_undefined_f80();
+  state.st.elems[4].val = __remill_undefined_f80();
+  state.st.elems[5].val = __remill_undefined_f80();
+  state.st.elems[6].val = __remill_undefined_f80();
+  state.st.elems[7].val = __remill_undefined_f80();
 
   // TODO(pag): Add FPU tag word stuff to the `State` structure, and reset
   //            it here.

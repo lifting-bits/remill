@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <type_traits>
 
@@ -70,6 +71,39 @@ static_assert(8 == sizeof(float128_t), "Invalid `float128_t` size.");
 // TODO(pag): Assumes little endian.
 struct float80_t final {
   uint8_t data[10];
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
+  // convert a long double into an f80 representation on x86/x86-64
+  // this assumes long double uses the f80 format internally, but
+  // is simply aligned to an even boundary (hence size 12 or 16)
+  float80_t(long double ld) {
+    static_assert(12 == sizeof(long double) || 16 == sizeof(long double), "Invalid `long double` size.");
+    union ld_union {
+      long double ld_val;
+      struct {
+        char pad[sizeof(long double) - sizeof(float80_t)];
+        float80_t f80;
+      } __attribute__((packed)) f80_data;
+    };
+
+    ld_union ldu {.ld_val = ld};
+    std::memcpy(&data[0], &ldu.f80_data.f80.data[0], sizeof(data));
+  }
+
+  operator long double() const {
+    static_assert(12 == sizeof(long double) || 16 == sizeof(long double), "Invalid `long double` size.");
+    union ld_union {
+      long double ld_val;
+      struct {
+        char pad[sizeof(long double) - sizeof(float80_t)];
+        float80_t f80;
+      } __attribute__((packed)) f80_data;
+    };
+
+    ld_union ldu {0};
+    std::memcpy(&ldu.f80_data.f80.data[0], &data[0], sizeof(data));
+    return ldu.ld_val;
+  }
+#endif
 } __attribute__((packed));
 
 static_assert(10 == sizeof(float80_t), "Invalid `float80_t` size.");
