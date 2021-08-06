@@ -565,6 +565,7 @@ static constexpr auto kAddressSize = 32u;
 static constexpr auto kPCRegNum = 15u;
 static constexpr auto kLRRegNum = 14u;
 static constexpr auto kSPRegNum = 13u;
+static constexpr auto kSLRegNum = 10u;
 
 static const char *const kIntRegName[] = {
     "R0", "R1", "R2",  "R3",  "R4",  "R5",  "R6",  "R7",
@@ -628,12 +629,14 @@ static void AddAddrRegOp(Instruction &inst, const char *reg_name,
 
 static void
 AddShiftOp(Instruction &inst, Operand::ShiftRegister::Shift shift_op,
-           const char *reg_name, unsigned reg_size, unsigned shift_size) {
+           const char *reg_name, unsigned reg_size, unsigned shift_size,
+           bool can_shift_op_size = false) {
   Operand::ShiftRegister shift_reg;
   shift_reg.reg.name = reg_name;
   shift_reg.reg.size = reg_size;
   shift_reg.shift_op = shift_op;
   shift_reg.shift_size = shift_size;
+  shift_reg.can_shift_op_size = can_shift_op_size;
   auto &op = inst.EmplaceOperand(shift_reg);
   op.action = Operand::kActionRead;
 }
@@ -642,12 +645,14 @@ static void AddShiftThenExtractOp(Instruction &inst,
                                   Operand::ShiftRegister::Shift shift_op,
                                   Operand::ShiftRegister::Extend extend_op,
                                   const char *reg_name, unsigned reg_size,
-                                  unsigned shift_size, unsigned extract_size) {
+                                  unsigned shift_size, unsigned extract_size,
+                                  bool can_shift_op_size = false) {
   Operand::ShiftRegister shift_reg;
   shift_reg.reg.name = reg_name;
   shift_reg.reg.size = reg_size;
   shift_reg.shift_op = shift_op;
   shift_reg.shift_size = shift_size;
+  shift_reg.can_shift_op_size = can_shift_op_size;
   shift_reg.extract_size = extract_size;
   shift_reg.extend_op = extend_op;
   shift_reg.shift_first = true;
@@ -909,14 +914,18 @@ static void AddShiftImmCarryOperand(Instruction &inst, uint32_t reg_num,
 // See an instruction in Integer Data Processing (three register, immediate shift) set for an example
 static void AddShiftRegImmOperand(Instruction &inst, uint32_t reg_num,
                                   uint32_t shift_type, uint32_t shift_size,
-                                  bool carry_out) {
+                                  bool carry_out, bool can_shift_right_by_32) {
   auto is_rrx = false;
+  auto can_shift_op_size = false;
   if (!shift_size && shift_type == Shift::kShiftROR) {
     shift_size = 1;
     is_rrx = true;
   } else if (shift_type == Shift::kShiftLSR || shift_type == Shift::kShiftASR) {
     if (!shift_size) {
       shift_size = 32;
+    }
+    if (can_shift_right_by_32) {
+      can_shift_op_size = true;
     }
   }
 
@@ -928,7 +937,7 @@ static void AddShiftRegImmOperand(Instruction &inst, uint32_t reg_num,
                  kIntRegName[reg_num], 32, 1);
     } else {
       AddShiftOp(inst, GetOperandShift(static_cast<Shift>(shift_type)),
-                 kIntRegName[reg_num], 32, shift_size);
+                 kIntRegName[reg_num], 32, shift_size, can_shift_op_size);
     }
   }
 
@@ -1292,7 +1301,7 @@ static bool TryDecodeIntegerDataProcessingRRRI(Instruction &inst,
   auto is_cond = DecodeCondition(inst, enc.cond);
   AddIntRegOp(inst, enc.rd, 32, Operand::kActionWrite);
   AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
-  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, enc.s);
+  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, enc.s, true);
   return EvalPCDest(inst, enc.s, enc.rd, kIdpEvaluators[enc.opc], is_cond);
 }
 
@@ -1817,7 +1826,7 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
         static_cast<int32_t>(inst.pc & ~(3u)) - static_cast<int32_t>(inst.pc);
   }
 
-  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, 0u);
+  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, 0u, false);
 
   auto disp_expr = inst.operands.back().expr;
   auto disp_op = llvm::Instruction::Add;
@@ -2455,7 +2464,7 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
     AddImmOp(inst, ~0u);
   }
 
-  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, enc.s);
+  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, enc.s, true);
 
   return EvalPCDest(inst, enc.s, enc.rd, kLogArithEvaluators[enc.opc >> 1u],
                     is_cond);
@@ -2575,7 +2584,7 @@ static bool TryIntegerTestAndCompareRRI(Instruction &inst, uint32_t bits) {
   DecodeCondition(inst, enc.cond);
 
   AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
-  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, 1u);
+  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, 1u, true);
 
   inst.category = Instruction::kCategoryNormal;
   return true;
@@ -2845,7 +2854,7 @@ static bool TryDecodeSat32(Instruction &inst, uint32_t bits) {
     AddImmOp(inst, enc.sat_imm + 1);
   }
   // (shift_t, shift_n) = DecodeImmShift(sh:'0', imm5);
-  AddShiftRegImmOperand(inst, enc.Rn, enc.sh << 1, enc.imm5, 0u);
+  AddShiftRegImmOperand(inst, enc.Rn, enc.sh << 1, enc.imm5, 0u, true);
 
   inst.category = Instruction::kCategoryNormal;
   return true;
