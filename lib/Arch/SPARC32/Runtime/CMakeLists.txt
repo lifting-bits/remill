@@ -40,7 +40,7 @@ function(add_runtime_helper target_name little_endian)
 
   # necessary to build code as 32-bit
   # on aarch64
-  if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*|arm64.*|ARM64.*)")
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*|arm64.*|ARM64.*)" AND "${PLATFORM_NAME}" STREQUAL "linux")
     set(arch_flags "--target=arm-linux-gnueabihf")
   else()
     set(arch_flags "-m32")
