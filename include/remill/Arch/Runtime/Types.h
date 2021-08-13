@@ -65,44 +65,86 @@ static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
 typedef double float64_t;
 static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
 
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
+typedef long double float128_t;
+static_assert(12 == sizeof(float128_t) || 16 == sizeof(float128_t), "Invalid `float128_t` size.");
+#else
 typedef double float128_t;
 static_assert(8 == sizeof(float128_t), "Invalid `float128_t` size.");
+#endif
 
-// TODO(pag): Assumes little endian.
+
 struct float80_t final {
   uint8_t data[10];
+
+  inline ~float80_t(void) = default;
+  inline float80_t(void) : data{0,} {}
+
+  float80_t(const float80_t &) = default;
+  float80_t &operator=(const float80_t &) = default;
+
 #if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
-  // convert a long double into an f80 representation on x86/x86-64
-  // this assumes long double uses the f80 format internally, but
-  // is simply aligned to an even boundary (hence size 12 or 16)
-  float80_t(long double ld) {
+  inline float80_t(long double ld) {
     static_assert(12 == sizeof(long double) || 16 == sizeof(long double), "Invalid `long double` size.");
-    union ld_union {
-      long double ld_val;
-      struct {
-        char pad[sizeof(long double) - sizeof(float80_t)];
-        float80_t f80;
-      } __attribute__((packed)) f80_data;
-    };
 
-    ld_union ldu {.ld_val = ld};
-    std::memcpy(&data[0], &ldu.f80_data.f80.data[0], sizeof(data));
+    union union_ld {
+      uint8_t data[sizeof(long double)];
+      long double ld;
+    } __attribute((packed));
+
+    union_ld f80 = {.ld = ld};
+    for (unsigned i = 0; i < sizeof(float80_t); i++) {
+      this->data[i] = f80.data[i];
+    }
   }
 
-  operator long double() const {
+  operator long double() {
     static_assert(12 == sizeof(long double) || 16 == sizeof(long double), "Invalid `long double` size.");
-    union ld_union {
-      long double ld_val;
-      struct {
-        char pad[sizeof(long double) - sizeof(float80_t)];
-        float80_t f80;
-      } __attribute__((packed)) f80_data;
-    };
 
-    ld_union ldu {0};
-    std::memcpy(&ldu.f80_data.f80.data[0], &data[0], sizeof(data));
-    return ldu.ld_val;
+    union union_ld {
+      uint8_t data[sizeof(long double)];
+      long double ld;
+    } __attribute((packed));
+
+    union_ld f80 = {{0}};
+    for (unsigned i = 0; i < sizeof(float80_t); i++) {
+      f80.data[i] = this->data[i];
+    }
+
+    return f80.ld;
   }
+
+#else
+  inline float80_t(double ld) {
+    static_assert(8 == sizeof(double), "Invalid `double` size.");
+
+    union union_ld {
+      uint8_t data[sizeof(double)];
+      double ld;
+    } __attribute((packed));
+
+    union_ld f80 = {.ld = ld};
+    for (unsigned i = 0; i < sizeof(double); i++) {
+      this->data[i] = f80.data[i];
+    }
+  }
+
+  operator double() {
+    static_assert(8 == sizeof(double), "Invalid `double` size.");
+
+    union union_ld {
+      uint8_t data[sizeof(double)];
+      double ld;
+    } __attribute((packed));
+
+    union_ld f80 = {{0}};
+    for (unsigned i = 0; i < sizeof(double); i++) {
+      f80.data[i] = this->data[i];
+    }
+
+    return f80.ld;
+  }
+
 #endif
 } __attribute__((packed));
 
@@ -133,6 +175,20 @@ union nan64_t {
 
 static_assert(sizeof(float64_t) == sizeof(nan64_t),
               "Invalid packing of `nan64_t`.");
+
+union nan80_t {
+  float80_t d;
+  struct {
+    uint64_t payload : 62;
+    uint64_t  is_quiet_nan : 1;
+    uint64_t  interger_bit : 1;
+    uint64_t exponent : 15;
+    uint64_t is_negative : 1;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(sizeof(float80_t) == sizeof(nan80_t),
+              "Invalid packing of `nan80_t`.");
 
 // Note: We are re-defining the `std::is_signed` type trait because we can't
 //       always explicitly specialize it inside of the `std` namespace.
@@ -477,6 +533,11 @@ struct Rn<float64_t> final {
 };
 
 template <>
+struct Rn<float80_t> final {
+  const float80_t val;
+};
+
+template <>
 struct RnW<float32_t> final {
   float32_t *const val_ref;
 };
@@ -550,9 +611,6 @@ template <typename T>
 struct BaseType {
   typedef T BT;
 };
-
-template <>
-struct BaseType<float80_t> : public BaseType<float64_t> {};
 
 template <typename T>
 struct BaseType<volatile T> : public BaseType<T> {};

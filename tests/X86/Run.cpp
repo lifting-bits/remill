@@ -189,11 +189,11 @@ MAKE_RW_MEMORY(64)
 MAKE_RW_FP_MEMORY(32)
 MAKE_RW_FP_MEMORY(64)
 
-NEVER_INLINE float64_t __remill_read_memory_f80(Memory *, addr_t addr) {
-  LongDoubleStorage storage;
+NEVER_INLINE float80_t __remill_read_memory_f80(Memory *, addr_t addr) {
+  LongDoubleStorage storage{0.0, 0};
   storage.val = AccessMemory<float80_t>(addr);
   auto val_long = *reinterpret_cast<long double *>(&storage);
-  return static_cast<float64_t>(val_long);
+  return static_cast<float80_t>(val_long);
 }
 
 NEVER_INLINE float64_t __remill_read_memory_f128(Memory *, addr_t) {
@@ -202,8 +202,8 @@ NEVER_INLINE float64_t __remill_read_memory_f128(Memory *, addr_t) {
 }
 
 NEVER_INLINE Memory *__remill_write_memory_f80(Memory *memory, addr_t addr,
-                                               float64_t val) {
-  LongDoubleStorage storage;
+                                               float80_t val) {
+  LongDoubleStorage storage{0.0, 0};
   auto val_long = static_cast<long double>(val);
   memcpy(&storage, &val_long, sizeof(val_long));
   AccessMemory<float80_t>(addr) = storage.val;
@@ -454,7 +454,7 @@ void __remill_mark_as_used(void *mem) {
 
 }  // extern C
 
-typedef Memory *(LiftedFunc)(X86State &, addr_t, Memory *);
+typedef Memory *(LiftedFunc) (X86State &, addr_t, Memory *);
 
 // Mapping of test name to translated function.
 static std::map<uint64_t, LiftedFunc *> gTranslatedFuncs;
