@@ -577,6 +577,8 @@ ALWAYS_INLINE uint8_t issignaling(float64_t x) {
 }
 
 ALWAYS_INLINE uint8_t issignaling(float80_t x) {
+  // this casts to a float64_t on purpose -- since we know that
+  // it is almost certainly an IEEE 754 double which we can decompose
   const nan64_t x_nan = {static_cast<float64_t>(x)};
   return x_nan.exponent == 0x7FFFU && !(x_nan.is_quiet_nan) && x_nan.payload;
 }
@@ -611,7 +613,7 @@ ALWAYS_INLINE static uint8_t IsNegative(T x) {
 }
 
 ALWAYS_INLINE static uint8_t IsNegative(float80_t x) {
-  return static_cast<uint8_t>(std::signbit(static_cast<float64_t>(x)));
+  return static_cast<uint8_t>(std::signbit(static_cast<native_float80_t>(x)));
 }
 
 ALWAYS_INLINE static uint8_t IsZero(float32_t x) {
@@ -623,7 +625,7 @@ ALWAYS_INLINE static uint8_t IsZero(float64_t x) {
 }
 
 ALWAYS_INLINE static uint8_t IsZero(float80_t x) {
-  return static_cast<uint8_t>(FP_ZERO == std::fpclassify(static_cast<double>(x)));
+  return static_cast<uint8_t>(FP_ZERO == std::fpclassify(static_cast<native_float80_t>(x)));
 }
 
 ALWAYS_INLINE static uint8_t IsInfinite(float32_t x) {
@@ -635,7 +637,7 @@ ALWAYS_INLINE static uint8_t IsInfinite(float64_t x) {
 }
 
 ALWAYS_INLINE static uint8_t IsInfinite(float80_t x) {
-  return static_cast<uint8_t>(FP_INFINITE == std::fpclassify(static_cast<double>(x)));
+  return static_cast<uint8_t>(FP_INFINITE == std::fpclassify(static_cast<native_float80_t>(x)));
 }
 
 ALWAYS_INLINE static uint8_t IsNaN(float32_t x) {
@@ -647,7 +649,7 @@ ALWAYS_INLINE static uint8_t IsNaN(float64_t x) {
 }
 
 ALWAYS_INLINE static uint8_t IsNaN(float80_t x) {
-  return static_cast<uint8_t>(FP_NAN == std::fpclassify(static_cast<double>(x)));
+  return static_cast<uint8_t>(FP_NAN == std::fpclassify(static_cast<native_float80_t>(x)));
 }
 
 ALWAYS_INLINE static uint8_t IsSignalingNaN(float32_t x) {
@@ -661,7 +663,7 @@ ALWAYS_INLINE static uint8_t IsSignalingNaN(float64_t x) {
 }
 
 ALWAYS_INLINE static uint8_t IsSignalingNaN(float80_t x) {
-  return IsSignalingNaN(static_cast<float64_t>(x));
+  return IsSignalingNaN(static_cast<native_float80_t>(x));
 }
 
 template <typename T>
@@ -678,7 +680,7 @@ ALWAYS_INLINE static uint8_t IsDenormal(float64_t x) {
 }
 
 ALWAYS_INLINE static uint8_t IsDenormal(float80_t x) {
-  return static_cast<uint8_t>(FP_SUBNORMAL == std::fpclassify(static_cast<double>(x)));
+  return static_cast<uint8_t>(FP_SUBNORMAL == std::fpclassify(static_cast<native_float80_t>(x)));
 }
 
 template <typename T>
@@ -928,32 +930,32 @@ ALWAYS_INLINE static auto TruncTo(T val) -> typename IntegerType<DT>::BT {
 // the types of the inputs to their "natural" machine size, so we'll just
 // make that explicit, where `addr_t` encodes the natural machine word.
 #define MAKE_OPS(name, op, make_int_op, make_float_op) \
-  make_int_op(U##name, uint8_t, addr_t, op) make_int_op( \
-      U##name##8, uint8_t, addr_t, \
-      op) make_int_op(U##name, uint16_t, addr_t, \
-                      op) make_int_op(U##name##16, uint16_t, addr_t, op) \
-      make_int_op(U##name, uint32_t, addr_t, op) make_int_op( \
-          U##name##32, uint32_t, addr_t, \
-          op) make_int_op(U##name, uint64_t, uint64_t, \
-                          op) make_int_op(U##name##64, uint64_t, uint64_t, op) \
-          make_int_op(U##name, uint128_t, uint128_t, op) make_int_op( \
-              U##name##128, uint128_t, uint128_t, \
-              op) make_int_op(S##name, int8_t, addr_diff_t, op) \
-              make_int_op(S##name##8, int8_t, addr_diff_t, op) make_int_op( \
-                  S##name, int16_t, addr_diff_t, \
-                  op) make_int_op(S##name##16, int16_t, addr_diff_t, op) \
-                  make_int_op(S##name, int32_t, addr_diff_t, op) make_int_op( \
-                      S##name##32, int32_t, addr_diff_t, op) \
-                      make_int_op(S##name, int64_t, int64_t, op) make_int_op( \
-                          S##name##64, int64_t, int64_t, \
-                          op) make_int_op(S##name, int128_t, int128_t, op) \
-                          make_int_op(S##name##128, int128_t, int128_t, op) \
-                              make_float_op(F##name, float32_t, float32_t, op) \
-                                  make_float_op(F##name##32, float32_t, float32_t, op) \
-                                  make_float_op(F##name, float64_t, float64_t, op) \
-                                  make_float_op(F##name##64, float64_t, float64_t, op) \
-								                  make_float_op(F##name, float80_t, float80_t, op) \
-                                  make_float_op(F##name##80, float80_t, float80_t, op)
+  make_int_op(U##name, uint8_t, addr_t, op) \
+  make_int_op(U##name##8, uint8_t, addr_t,op) \
+  make_int_op(U##name, uint16_t, addr_t, op) \
+  make_int_op(U##name##16, uint16_t, addr_t, op) \
+  make_int_op(U##name, uint32_t, addr_t, op) \
+  make_int_op(U##name##32, uint32_t, addr_t, op) \
+  make_int_op(U##name, uint64_t, uint64_t, op) \
+  make_int_op(U##name##64, uint64_t, uint64_t, op) \
+  make_int_op(U##name, uint128_t, uint128_t, op) \
+  make_int_op(U##name##128, uint128_t, uint128_t, op) \
+  make_int_op(S##name, int8_t, addr_diff_t, op) \
+  make_int_op(S##name##8, int8_t, addr_diff_t, op) \
+  make_int_op(S##name, int16_t, addr_diff_t, op) \
+  make_int_op(S##name##16, int16_t, addr_diff_t, op) \
+  make_int_op(S##name, int32_t, addr_diff_t, op) \
+  make_int_op(S##name##32, int32_t, addr_diff_t, op) \
+  make_int_op(S##name, int64_t, int64_t, op) \
+  make_int_op(S##name##64, int64_t, int64_t, op) \
+  make_int_op(S##name, int128_t, int128_t, op) \
+  make_int_op(S##name##128, int128_t, int128_t, op) \
+  make_float_op(F##name, float32_t, float32_t, op) \
+  make_float_op(F##name##32, float32_t, float32_t, op) \
+  make_float_op(F##name, float64_t, float64_t, op) \
+  make_float_op(F##name##64, float64_t, float64_t, op) \
+  make_float_op(F##name, float80_t, float80_t, op) \
+  make_float_op(F##name##80, float80_t, float80_t, op)
 
 MAKE_OPS(Add, +, MAKE_BINOP, MAKE_BINOP)
 MAKE_OPS(Sub, -, MAKE_BINOP, MAKE_BINOP)
