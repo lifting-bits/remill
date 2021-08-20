@@ -1540,8 +1540,8 @@ MAKE_BUILTIN(FSin, __builtin_sin)
 MAKE_BUILTIN(FTan, __builtin_tan)
 MAKE_BUILTIN(FAtan,__builtin_atan)
 MAKE_BUILTIN(FSqrt,__builtin_sqrt)
-MAKE_BUILTIN(FExp2,__builtin_exp2)
-MAKE_BUILTIN(FLog2,__builtin_log2)
+MAKE_BUILTIN(Exp2,__builtin_exp2)
+MAKE_BUILTIN(Log2,__builtin_log2)
 
 MAKE_BUILTIN(FRoundUsingMode, __builtin_nearbyint);
 MAKE_BUILTIN(FTruncTowardZero, __builtin_trunc);

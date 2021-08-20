@@ -118,10 +118,10 @@ DEF_FPU_SEM(FILD, RF80W, T src1) {
 template <typename T>
 DEF_FPU_SEM(FLD, RF80W, T src1) {
   SetFPUIpOp();
-  auto value = Read(src1);
-  state.sw.ie |= IsSignalingNaN(value);
-  state.sw.de = IsDenormal(value);
-  auto res = Float64(value);
+  auto val = Read(src1);
+  state.sw.ie |= IsSignalingNaN(val);
+  state.sw.de = IsDenormal(val);
+  auto res = Float64(val);
 
   // Quietize if signaling NaN.
   if (state.sw.ie) {
@@ -138,7 +138,7 @@ DEF_FPU_SEM(FLDfromstack, RF80W, RF80W src1) {
   SetFPUIpOp();
   state.sw.ie = 0;
   state.sw.de = 0;
-  PUSH_X87_STACK(Float80(Read(src1)));
+  PUSH_X87_STACK(Read(src1));
   return memory;
 }
 
@@ -197,16 +197,16 @@ DEF_FPU_SEM(DoFLDPI) {
 
 DEF_FPU_SEM(DoFABS) {
   SetFPUIpOp();
-  float80_t st0 = Read(X87_ST0);
-  float80_t res = CheckedFloatUnaryOp(state, FAbs80, st0);
+  auto st0 = Read(X87_ST0);
+  auto res = CheckedFloatUnaryOp(state, FAbs80, st0);
   Write(X87_ST0, res);
   return memory;
 }
 
 DEF_FPU_SEM(DoFCHS) {
   SetFPUIpOp();
-  float80_t st0 = Read(X87_ST0);
-  float80_t res = CheckedFloatUnaryOp(state, FNeg80, st0);
+  auto st0 = Read(X87_ST0);
+  auto res = CheckedFloatUnaryOp(state, FNeg80, st0);
   Write(X87_ST0, res);
   return memory;
 }
@@ -237,10 +237,10 @@ ALWAYS_INLINE static uint8_t IsImprecise(float80_t x) {
 
 DEF_FPU_SEM(DoFCOS) {
   SetFPUIpOp();
-  float80_t st0 = Read(X87_ST0);
+  auto st0 = Read(X87_ST0);
   state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
   state.sw.de = IsDenormal(st0);
-  float80_t res = CheckedFloatUnaryOp(state, FCos80, st0);
+  auto res = CheckedFloatUnaryOp(state, FCos80, st0);
   if (!IsNaN(res)) {
     state.sw.pe = IsImprecise(res);
   }
@@ -250,10 +250,10 @@ DEF_FPU_SEM(DoFCOS) {
 
 DEF_FPU_SEM(DoFSIN) {
   SetFPUIpOp();
-  float80_t st0 = Read(X87_ST0);
+  auto st0 = Read(X87_ST0);
   state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
   state.sw.de = IsDenormal(st0);
-  float80_t res = CheckedFloatUnaryOp(state, FSin80, st0);
+  auto res = CheckedFloatUnaryOp(state, FSin80, st0);
   if (!IsNaN(res)) {
     state.sw.pe = IsImprecise(res);
   }
@@ -263,10 +263,10 @@ DEF_FPU_SEM(DoFSIN) {
 
 DEF_FPU_SEM(DoFPTAN) {
   SetFPUIpOp();
-  float80_t st0 = Read(X87_ST0);
+  auto st0 = Read(X87_ST0);
   state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
   state.sw.de = IsDenormal(st0);
-  float80_t res = CheckedFloatUnaryOp(state, FTan80, st0);
+  auto res = CheckedFloatUnaryOp(state, FTan80, st0);
   if (!IsNaN(res)) {
     state.sw.pe = IsImprecise(res);
   }
@@ -278,9 +278,9 @@ DEF_FPU_SEM(DoFPTAN) {
 DEF_FPU_SEM(DoFPATAN) {
   SetFPUIpOp();
 
-  float80_t st0 = Read(X87_ST0);
-  float80_t st1 = Read(X87_ST1);
-  float80_t res = CheckedFloatBinOp(state, FDiv80, st1, st0);
+  auto st0 = Read(X87_ST0);
+  auto st1 = Read(X87_ST1);
+  auto res = CheckedFloatBinOp(state, FDiv80, st1, st0);
   if (!state.sw.ie) {
     state.sw.ie = IsSignalingNaN(res) | IsInfinite(res);
     state.sw.de = IsDenormal(res);
@@ -314,11 +314,11 @@ DEF_FPU_SEM(DoFSQRT) {
 
 DEF_FPU_SEM(DoFSINCOS) {
   SetFPUIpOp();
-  float80_t st0 = Read(X87_ST0);
+  auto st0 = Read(X87_ST0);
   state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
   state.sw.de = IsDenormal(st0);
-  float80_t sin_res = CheckedFloatUnaryOp(state, FSin80, st0);
-  float80_t cos_res = CheckedFloatUnaryOp(state, FCos80, st0);
+  auto sin_res = CheckedFloatUnaryOp(state, FSin80, st0);
+  auto cos_res = CheckedFloatUnaryOp(state, FCos80, st0);
   if (!IsNaN(sin_res) && !IsNaN(cos_res)) {
     state.sw.pe = IsImprecise(sin_res) | IsImprecise(cos_res);
   }
@@ -330,18 +330,18 @@ DEF_FPU_SEM(DoFSINCOS) {
 DEF_FPU_SEM(DoFSCALE) {
   SetFPUIpOp();
   auto st1_int = FTruncTowardZero(Read(X87_ST1));  // Round toward zero.
-  auto shift = FExp2(st1_int);
+  auto shift = Exp2(st1_int);
   Write(X87_ST0, FMul(Read(X87_ST0), Float80(shift)));
   return memory;
 }
 
 DEF_FPU_SEM(DoF2XM1) {
   SetFPUIpOp();
-  float80_t st0 = Read(X87_ST0);
+  auto st0 = Read(X87_ST0);
   state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
   state.sw.de = IsDenormal(st0);
   state.sw.ue = 0;  // TODO(pag): Not sure.
-  float80_t res = FSub(Float80(FExp2(st0)), Float80(1.0));
+  auto res = FSub(Float80(Exp2(st0)), Float80(1.0));
   if (!IsNaN(res)) {
     state.sw.pe = IsImprecise(res);  // TODO(pag): Not sure.
   }
@@ -460,14 +460,14 @@ DEF_FPU_SEM(FISUB, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
   SetFPUDp(src2);
   Write(dst, CheckedFloatBinOp(state, FSub80, Read(src1),
-                               Float80(Float64(Signed(Read(src2))))));
+                               Float80(Signed(Read(src2)))));
   return memory;
 }
 
 template <typename T>
 DEF_FPU_SEM(FSUBR, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
-  Write(dst, CheckedFloatBinOp(state, FSub80, Float80(Float64(Read(src2))), Read(src1)));
+  Write(dst, CheckedFloatBinOp(state, FSub80, Float80(Read(src2)), Read(src1)));
   return memory;
 }
 
@@ -489,7 +489,7 @@ template <typename T>
 DEF_FPU_SEM(FISUBR, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
   SetFPUDp(src2);
-  Write(dst, CheckedFloatBinOp(state, FSub80, Float80(Float64(Signed(Read(src2)))),
+  Write(dst, CheckedFloatBinOp(state, FSub80, Float80(Signed(Read(src2))),
                                Read(src1)));
   return memory;
 }
@@ -517,8 +517,7 @@ namespace {
 template <typename T>
 DEF_FPU_SEM(FADD, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
-  float64_t f64 = Float64(Read(src2));
-  Write(dst, CheckedFloatBinOp(state, FAdd80, Read(src1), Float80(f64)));
+  Write(dst, CheckedFloatBinOp(state, FAdd80, Read(src1), Float80(Read(src2))));
 
   //  state.sw.c1 = 1;
   state.sw.c0 = UUndefined8();
@@ -540,11 +539,16 @@ DEF_FPU_SEM(FADDP, RF80W dst, RF80W src1, T src2) {
   return memory;
 }
 
+// TODO(kumarak) FPU instructions operating on integers causing precision error
+//               on casting to `float80_t` for the operation. To avoid the issue
+//               it is type casted to `float64_t` for double precision operations.
+//
+
 template <typename T>
 DEF_FPU_SEM(FIADD, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
   SetFPUDp(src2);
-  float64_t res = CheckedFloatBinOp(state, FAdd64, Float64(Read(src1)), Float64(Signed(Read(src2))));
+  auto res = CheckedFloatBinOp(state, FAdd64, Float64(Read(src1)), Float64(Signed(Read(src2))));
   Write(dst, Float80(res));
   return memory;
 }
@@ -626,7 +630,8 @@ template <typename T>
 DEF_FPU_SEM(FIDIV, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
   SetFPUDp(src2);
-  Write(dst, Float80(CheckedFloatBinOp(state, FDiv64, Float64(Read(src1)), Float64(Signed(Read(src2))))));
+  auto res = CheckedFloatBinOp(state, FDiv64, Float64(Read(src1)), Float64(Signed(Read(src2))));
+  Write(dst, Float80(res));
   return memory;
 }
 
@@ -790,7 +795,7 @@ DEF_FPU_SEM(FISTm16, M16W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      ConvertToInt(memory, state, Int16<float64_t>, Float80ToInt16, Float64(Read(src)));
+      ConvertToInt(memory, state, Int16<float80_t>, Float64ToInt16, Float64(Read(src)));
   Write(dst, Unsigned(res));
   return memory;
 }
@@ -798,7 +803,7 @@ DEF_FPU_SEM(FISTm16, M16W dst, RF80W src) {
 DEF_FPU_SEM(FISTm32, M32W dst, RF80W src) {
   SetFPUIpOp();
   auto res =
-      ConvertToInt(memory, state, Int32<float64_t>, Float64ToInt32, Float64(Read(src)));
+      ConvertToInt(memory, state, Int32<float80_t>, Float64ToInt32, Float64(Read(src)));
   Write(dst, Unsigned(res));
   return memory;
 }
@@ -819,7 +824,7 @@ DEF_FPU_SEM(FISTPm64, M64W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      ConvertToInt(memory, state, Int64<float64_t>, Float64ToInt64, Float64(Read(src)));
+      ConvertToInt(memory, state, Int64<float80_t>, Float64ToInt64, Float64(Read(src)));
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
@@ -863,7 +868,7 @@ IF_32BIT(DEF_ISEL(FSTPNCE_X87_ST0) = FSTP<RF80W>;)
 template <typename C1, typename C2>
 DEF_HELPER(TruncateToInt, C1 cast, C2 convert, float64_t input)
     ->decltype(cast(input)) {
-  auto truncated = FTruncTowardZero64(input);
+  auto truncated = FTruncTowardZero(input);
   auto casted = CheckedFloatUnaryOp(state, cast, truncated);
   auto converted = convert(truncated);
   auto back = static_cast<float64_t>(converted);
@@ -1347,7 +1352,7 @@ DEF_FPU_SEM(DoFYL2X) {
   state.sw.de = IsDenormal(st0) | IsDenormal(st1);
   state.sw.ie = (IsSignalingNaN(st0) | IsSignalingNaN(st1)) ||
                 (IsNegative(st0) && !IsInfinite(st0) && !state.sw.ze);
-  auto res = FMul64(st1, FLog2(st0));
+  auto res = FMul64(st1, Log2(st0));
   state.sw.pe = IsImprecise(res);
   Write(X87_ST1, Float80(res));
   (void) POP_X87_STACK();
@@ -1361,7 +1366,7 @@ DEF_FPU_SEM(DoFYL2XP1) {
   state.sw.ze = IsZero(st0);
   state.sw.de = IsDenormal(st0) | IsDenormal(st1);
   state.sw.ie = IsSignalingNaN(st0) | IsSignalingNaN(st1);
-  auto res = FMul(st1, Float80(FLog2(FAdd(st0, Float80(1.0)))));
+  auto res = FMul(st1, Float80(Log2(FAdd(st0, Float80(1.0)))));
   state.sw.pe = IsImprecise(res);
   Write(X87_ST1, res);
   (void) POP_X87_STACK();
