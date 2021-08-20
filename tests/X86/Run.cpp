@@ -762,7 +762,7 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
     auto lifted_st = lifted_state->st.elems[i].val;
     auto native_st = native_state->st.elems[i].val;
     if (lifted_st != native_st) {
-      if (fabs(lifted_st - native_st) <= 1e-14) {
+      if (std::abs(lifted_st - native_st) <= 1e-14) {
         lifted_state->st.elems[i].val = native_st;  // Hide the inconsistency.
       }
     }
