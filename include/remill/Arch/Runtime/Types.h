@@ -65,17 +65,49 @@ static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
 typedef double float64_t;
 static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
 
-#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
 typedef long double float128_t;
-static_assert(12 == sizeof(float128_t) || 16 == sizeof(float128_t), "Invalid `float128_t` size.");
+// a long double can be anything from a 128-bit float (on AArch64/Linux) to a 64-bit double (AArch64 MacOS)
+// to an 80-bit precision wrapped with padding (x86/x86-64). We do not do a static assert on the size
+// since there are too  many options.
+
+// A "native_float80_t" is a native type that is closes to approximating
+// an x86 80-bit float.
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
+  #if defined(__float80)
+  typedef __float80 native_float80_t;
+  #else
+  typedef long double native_float80_t;
+  #endif
+static_assert(10 <= sizeof(native_float80_t), "Invalid `native_float80_t` size.");
 #else
-typedef double float128_t;
-static_assert(8 == sizeof(float128_t), "Invalid `float128_t` size.");
+  typedef float64_t native_float80_t;
+  static_assert(8 == sizeof(native_float80_t, "Invalid `native_float80_t` size.");
 #endif
 
+static const int kEightyBitsInBytes = 10;
+union union_ld {
+  struct {
+    uint8_t data[kEightyBitsInBytes];
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
+    // We are doing x86 on x86, so we have native x86 FP80s, but they
+    // are not available in raw 80-bit native form.
+    //
+    // To get to the internal FP80 representation, we have to use a
+    // `long double` which is (usually! but not always)
+    //  an FP80 padded to a 12 or 16 byte boundary
+    //
+    uint8_t padding[sizeof(native_float80_t) - kEightyBitsInBytes];
+#else
+    // The closest native FP type that we can easily deal with is a 64-bit double
+    // this is less than the size of an FP80, so the data variable above will already
+    // enclose it. No extra padding is needed
+#endif
+  } lds __attribute__((packed));
+  native_float80_t ld;
+} __attribute__((packed));
 
 struct float80_t final {
-  uint8_t data[10];
+  uint8_t data[kEightyBitsInBytes];
 
   inline ~float80_t(void) = default;
   inline float80_t(void) : data{0,} {}
@@ -83,72 +115,23 @@ struct float80_t final {
   float80_t(const float80_t &) = default;
   float80_t &operator=(const float80_t &) = default;
 
-#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
-  inline float80_t(long double ld) {
-    static_assert(12 == sizeof(long double) || 16 == sizeof(long double), "Invalid `long double` size.");
-
-    union union_ld {
-      uint8_t data[sizeof(long double)];
-      long double ld;
-    } __attribute((packed));
-
-    union_ld f80 = {.ld = ld};
-    for (unsigned i = 0; i < sizeof(float80_t); i++) {
-      this->data[i] = f80.data[i];
-    }
+  inline float80_t(native_float80_t ld) {
+    union_ld ldu;
+    std::memset(&ldu, 0, sizeof(ldu)); // zero out ldu to make padding consistent
+    ldu.ld = ld; // assign native value
+    // copy the representation to this object
+    std::memcpy(&data[0], &ldu.lds.data[0], sizeof(data));
   }
 
-  operator long double() {
-    static_assert(12 == sizeof(long double) || 16 == sizeof(long double), "Invalid `long double` size.");
-
-    union union_ld {
-      uint8_t data[sizeof(long double)];
-      long double ld;
-    } __attribute((packed));
-
-    union_ld f80 = {{0}};
-    for (unsigned i = 0; i < sizeof(float80_t); i++) {
-      f80.data[i] = this->data[i];
-    }
-
-    return f80.ld;
+  operator native_float80_t() {
+    union_ld ldu;
+    std::memset(&ldu, 0, sizeof(ldu)); // zero out ldu to make padding consistent
+    // copy the internal representation into the union
+    std::memcpy(&ldu.lds.data[0], &data[0], sizeof(data));
+    // extract the native backing type from it
+    return ldu.ld;
   }
-
-#else
-  inline float80_t(double ld) {
-    static_assert(8 == sizeof(double), "Invalid `double` size.");
-
-    union union_ld {
-      uint8_t data[sizeof(double)];
-      double ld;
-    } __attribute((packed));
-
-    union_ld f80 = {.ld = ld};
-    for (unsigned i = 0; i < sizeof(double); i++) {
-      this->data[i] = f80.data[i];
-    }
-  }
-
-  operator double() {
-    static_assert(8 == sizeof(double), "Invalid `double` size.");
-
-    union union_ld {
-      uint8_t data[sizeof(double)];
-      double ld;
-    } __attribute((packed));
-
-    union_ld f80 = {{0}};
-    for (unsigned i = 0; i < sizeof(double); i++) {
-      f80.data[i] = this->data[i];
-    }
-
-    return f80.ld;
-  }
-
-#endif
 } __attribute__((packed));
-
-static_assert(10 == sizeof(float80_t), "Invalid `float80_t` size.");
 
 union nan32_t {
   float32_t f;
