@@ -663,7 +663,7 @@ ALWAYS_INLINE static uint8_t IsSignalingNaN(float64_t x) {
 }
 
 ALWAYS_INLINE static uint8_t IsSignalingNaN(float80_t x) {
-  return IsSignalingNaN(static_cast<native_float80_t>(x));
+  return IsSignalingNaN(static_cast<float64_t>(x));
 }
 
 template <typename T>
