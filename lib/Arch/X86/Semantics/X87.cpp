@@ -299,7 +299,7 @@ DEF_FPU_SEM(DoFSQRT) {
     state.sw.ie = 0;
     state.sw.de = 0;
     state.sw.pe = 0;
-    Write(X87_ST0, Float80(st0));
+    Write(X87_ST0, st0);
   } else {
     state.sw.ie |= IsSignalingNaN(st0) | IsNegative(st0);
     state.sw.de = IsDenormal(st0);
@@ -307,7 +307,7 @@ DEF_FPU_SEM(DoFSQRT) {
     if (!IsNaN(res)) {
       state.sw.pe = IsImprecise(res);
     }
-    Write(X87_ST0, Float80(res));
+    Write(X87_ST0, res);
   }
   return memory;
 }
@@ -590,7 +590,7 @@ DEF_FPU_SEM(FIMUL, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
   SetFPUDp(src2);
   auto res = CheckedFloatBinOp(state, FMul80, Float80(Read(src1)), Float80(Signed(Read(src2))));
-  Write(dst, Float80(res));
+  Write(dst, res);
   return memory;
 }
 
@@ -631,7 +631,7 @@ DEF_FPU_SEM(FIDIV, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
   SetFPUDp(src2);
   auto res = CheckedFloatBinOp(state, FDiv80, Float80(Read(src1)), Float80(Signed(Read(src2))));
-  Write(dst, Float80(res));
+  Write(dst, res);
   return memory;
 }
 
@@ -661,7 +661,7 @@ DEF_FPU_SEM(FIDIVR, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
   SetFPUDp(src2);
   auto res = CheckedFloatBinOp(state, FDiv80, Float80(Signed(Read(src2))), Float80(Read(src1)));
-  Write(dst, Float80(res));
+  Write(dst, res);
   return memory;
 }
 
@@ -690,9 +690,9 @@ DEF_FPU_SEM(FBSTP, MBCD80W dst, RF80W src) {
   SetFPUIpOp();
   bcd80_t out_bcd = {};
 
-  auto read = Float80(Read(src));
-  auto rounded = FRoundUsingMode80(read);
-  auto rounded_abs = FAbs80(rounded);
+  auto read = Read(src);
+  auto rounded = FRoundUsingMode(read);
+  auto rounded_abs = FAbs(rounded);
 
   // Any larger double aliases an integer out of 80-bit packed BCD range.
   constexpr double max_bcd80_float = 1e18 - 65;
@@ -795,7 +795,7 @@ DEF_FPU_SEM(FISTm16, M16W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      ConvertToInt(memory, state, Int16<float80_t>, Float80ToInt16, Float80(Read(src)));
+      ConvertToInt(memory, state, Int16<float80_t>, Float80ToInt16, Read(src));
   Write(dst, Unsigned(res));
   return memory;
 }
@@ -824,7 +824,7 @@ DEF_FPU_SEM(FISTPm64, M64W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      ConvertToInt(memory, state, Int64<float80_t>, Float80ToInt64, Float80(Read(src)));
+      ConvertToInt(memory, state, Int64<float80_t>, Float80ToInt64, Read(src));
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
@@ -896,7 +896,7 @@ DEF_FPU_SEM(FISTTPm16, M16W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      TruncateToInt(memory, state, Int16<float80_t>, Float80ToInt16, Float80(Read(src)));
+      TruncateToInt(memory, state, Int16<float80_t>, Float80ToInt16, Read(src));
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
@@ -906,7 +906,7 @@ DEF_FPU_SEM(FISTTPm32, M32W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      TruncateToInt(memory, state, Int32<float80_t>, Float80ToInt32, Float80(Read(src)));
+      TruncateToInt(memory, state, Int32<float80_t>, Float80ToInt32, Read(src));
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
@@ -916,7 +916,7 @@ DEF_FPU_SEM(FISTTPm64, M64W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      TruncateToInt(memory, state, Int64<float80_t>, Float80ToInt64, Float80(Read(src)));
+      TruncateToInt(memory, state, Int64<float80_t>, Float80ToInt64, Read(src));
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
@@ -1212,7 +1212,7 @@ DEF_FPU_SEM(FUCOMI, RF80W src1, RF80W src2) {
   FLAG_OF = 0;
   FLAG_SF = 0;
   FLAG_AF = 0;
-  UnorderedCompareEflags(memory, state, Float80(st0), Float80(sti));
+  UnorderedCompareEflags(memory, state, st0, sti);
   return memory;
 }
 
@@ -1230,7 +1230,7 @@ DEF_FPU_SEM(FCOMI, RF80W src1, RF80W src2) {
   FLAG_OF = 0;
   FLAG_SF = 0;
   FLAG_AF = 0;
-  OrderedCompareEflags(memory, state, Float80(st0), Float80(sti));
+  OrderedCompareEflags(memory, state, st0, sti);
   return memory;
 }
 
@@ -1331,8 +1331,8 @@ namespace {
 
 DEF_FPU_SEM(DoFRNDINT) {
   SetFPUIpOp();
-  float80_t st0 = Read(X87_ST0);
-  float80_t rounded = FRoundUsingMode80(st0);
+  auto st0 = Read(X87_ST0);
+  auto rounded = FRoundUsingMode(st0);
   state.sw.ie |= IsSignalingNaN(st0);
   state.sw.de = IsDenormal(st0);
   if (!IsNaN(rounded)) {
@@ -1352,7 +1352,7 @@ DEF_FPU_SEM(DoFYL2X) {
   state.sw.de = IsDenormal(st0) | IsDenormal(st1);
   state.sw.ie = (IsSignalingNaN(st0) | IsSignalingNaN(st1)) ||
                 (IsNegative(st0) && !IsInfinite(st0) && !state.sw.ze);
-  auto res = FMul80(st1, Log2(st0));
+  auto res = FMul(st1, Log2(st0));
   state.sw.pe = IsImprecise(res);
   Write(X87_ST1, res);
   (void) POP_X87_STACK();
@@ -1366,7 +1366,7 @@ DEF_FPU_SEM(DoFYL2XP1) {
   state.sw.ze = IsZero(st0);
   state.sw.de = IsDenormal(st0) | IsDenormal(st1);
   state.sw.ie = IsSignalingNaN(st0) | IsSignalingNaN(st1);
-  auto res = FMul(st1, Float80(Log2(FAdd(st0, Float80(1.0)))));
+  auto res = FMul(st1, Log2(FAdd(st0, Float80(1.0))));
   state.sw.pe = IsImprecise(res);
   Write(X87_ST1, res);
   (void) POP_X87_STACK();
