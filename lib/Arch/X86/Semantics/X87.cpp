@@ -78,8 +78,8 @@ DEF_FPU_SEM(FBLD, RF80W, MBCD80 src1) {
   SetFPUDp(src1);
 
   auto src1_bcd = ReadBCD80(src1);
-  double val = 0.0;  // Decoded BCD value
-  double mag = 1.0;  // Magnitude of decimal position
+  native_float80_t val = 0.0;  // Decoded BCD value
+  native_float80_t mag = 1.0;  // Magnitude of decimal position
 
   // Iterate through pairs of digits, encoded as bytes.
   _Pragma("unroll") for (addr_t i = 0; i < sizeof(src1_bcd.digit_pairs); i++) {
@@ -93,9 +93,9 @@ DEF_FPU_SEM(FBLD, RF80W, MBCD80 src1) {
     auto hi = b >> 4;
 
     // Accumulate positional decimal value of decoded digits.
-    val += static_cast<double>(lo) * mag;
+    val += static_cast<native_float80_t>(lo) * mag;
     mag *= 10.0;
-    val += static_cast<double>(hi) * mag;
+    val += static_cast<native_float80_t>(hi) * mag;
     mag *= 10.0;
   }
 
@@ -539,11 +539,6 @@ DEF_FPU_SEM(FADDP, RF80W dst, RF80W src1, T src2) {
   return memory;
 }
 
-// TODO(kumarak) FPU instructions operating on integers causing precision error
-//               on casting to `float80_t` for the operation. To avoid the issue
-//               it is type casted to `float64_t` for double precision operations.
-//
-
 template <typename T>
 DEF_FPU_SEM(FIADD, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
@@ -695,7 +690,7 @@ DEF_FPU_SEM(FBSTP, MBCD80W dst, RF80W src) {
   auto rounded_abs = FAbs(rounded);
 
   // Any larger double aliases an integer out of 80-bit packed BCD range.
-  constexpr double max_bcd80_float = 1e18 - 65;
+  constexpr native_float80_t max_bcd80_float = 1e18 - 65;
   auto out_of_range = rounded_abs > max_bcd80_float;
 
   if (out_of_range || IsNaN(read) || IsInfinite(read)) {
@@ -1290,7 +1285,6 @@ DEF_SEM(FNSTCW, M16W dst) {
   auto &cw = state.x87.fxsave.cwd;
   cw.pc = kPrecisionSingle;
 
-  //cw.flat = 0x027F_u16;  // Our default, with double-precision.
   switch (fegetround()) {
     default:
     case FE_TONEAREST: cw.rc = kFPURoundToNearestEven; break;
