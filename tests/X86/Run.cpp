@@ -732,6 +732,15 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
   native_state->hyper_call = AsyncHyperCall::kInvalid;
   lifted_state->hyper_call = AsyncHyperCall::kInvalid;
 
+  lifted_state->x87.fsave.cwd._rsvd0 = native_state->x87.fsave.cwd._rsvd0 = 0;
+  lifted_state->x87.fsave.cwd._rsvd1 = native_state->x87.fsave.cwd._rsvd1 = 0;
+  lifted_state->x87.fsave._rsvd0 = native_state->x87.fsave._rsvd0 = 0;
+  lifted_state->x87.fsave._rsvd1 = native_state->x87.fsave._rsvd1 = 0;
+  lifted_state->x87.fsave._rsvd2 = native_state->x87.fsave._rsvd2 = 0;
+  lifted_state->x87.fsave._rsvd3 = native_state->x87.fsave._rsvd3 = 0;
+  std::memset(lifted_state->sw._padding, 0, 4);
+  std::memset(native_state->sw._padding, 0, 4);
+
   // Compare the FPU states.
   for (auto i = 0U; i < 8U; ++i) {
     auto lifted_st = lifted_state->st.elems[i].val;
@@ -846,7 +855,23 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
 
     for (size_t i = 0; i < sizeof(State); ++i) {
       LOG_IF(ERROR, lifted_state_bytes[i] != native_state_bytes[i])
-          << "Bytes at offset " << i << " are different";
+          << "Bytes at offset " << i << " are different: "
+	  << "lifted [" << std::hex << static_cast<unsigned int>(lifted_state_bytes[i])
+	  << "] vs native [" << std::hex << static_cast<unsigned int>(native_state_bytes[i])
+	  << "]\n" << std::dec
+	  << "vec: " << offsetof(State, vec) << "\n"
+	  << "aflag:" << offsetof(State, aflag) << "\n"
+	  << "rflag:" << offsetof(State, rflag) << "\n"
+	  << "seg:" << offsetof(State, seg) << "\n"
+	  << "addr:" << offsetof(State, addr) << "\n"
+	  << "gpr:" << offsetof(State, gpr) << "\n"
+	  << "st:" << offsetof(State, st) << "\n"
+	  << "mmx:" << offsetof(State, mmx) << "\n"
+	  << "sw:" << offsetof(State, sw) << "\n"
+	  << "xcr0:" << offsetof(State, xcr0) << "\n"
+	  << "x87:" << offsetof(State, x87) << "\n"
+	  << "seg_caches:" << offsetof(State, seg_caches) << "\n";
+
     }
   }
 
