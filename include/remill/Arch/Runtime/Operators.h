@@ -566,21 +566,19 @@ MAKE_ATOMIC(XorFetch, xor_and_fetch, ^)
 
 #if !defined(issignaling)
 
-ALWAYS_INLINE uint8_t issignaling(float32_t x) {
+ALWAYS_INLINE bool issignaling(float32_t x) {
   const nan32_t x_nan = {x};
   return x_nan.exponent == 0xFFU && !x_nan.is_quiet_nan && x_nan.payload;
 }
 
-ALWAYS_INLINE uint8_t issignaling(float64_t x) {
+ALWAYS_INLINE bool issignaling(float64_t x) {
   const nan64_t x_nan = {x};
   return x_nan.exponent == 0x7FFU && !x_nan.is_quiet_nan && x_nan.payload;
 }
 
-ALWAYS_INLINE uint8_t issignaling(float80_t x) {
-  // this casts to a float64_t on purpose -- since we know that
-  // it is almost certainly an IEEE 754 double which we can decompose
-  const nan64_t x_nan = {static_cast<float64_t>(x)};
-  return x_nan.exponent == 0x7FFFU && !(x_nan.is_quiet_nan) && x_nan.payload;
+ALWAYS_INLINE bool issignaling(float80_t x) {
+  const nan80_t x_nan = {x};
+  return x_nan.exponent == 0x7FFFU && !x_nan.is_quiet_nan && x_nan.payload && x_nan.interger_bit;
 }
 
 #endif  // !defined(issignaling)
@@ -652,24 +650,29 @@ ALWAYS_INLINE static uint8_t IsNaN(float80_t x) {
   return static_cast<uint8_t>(FP_NAN == std::fpclassify(static_cast<native_float80_t>(x)));
 }
 
-ALWAYS_INLINE static uint8_t IsSignalingNaN(float32_t x) {
+ALWAYS_INLINE static bool IsSignalingNaN(float32_t x) {
   const nan32_t x_nan = {x};
   return x_nan.exponent == 0xFFU && !x_nan.is_quiet_nan && x_nan.payload;
 }
 
-ALWAYS_INLINE static uint8_t IsSignalingNaN(float64_t x) {
+ALWAYS_INLINE static bool IsSignalingNaN(float64_t x) {
   const nan64_t x_nan = {x};
   return x_nan.exponent == 0x7FFU && !x_nan.is_quiet_nan && x_nan.payload;
 }
 
-ALWAYS_INLINE static uint8_t IsSignalingNaN(float80_t x) {
+ALWAYS_INLINE static bool IsSignalingNaN(float80_t x) {
   const nan80_t x_nan = {x};
-  return x_nan.exponent == 0x7FFFU && !x_nan.is_quiet_nan && x_nan.payload;
+  return x_nan.exponent == 0x7FFFU && !x_nan.is_quiet_nan && x_nan.payload && x_nan.interger_bit;
 }
 
 template <typename T>
 ALWAYS_INLINE static uint8_t IsSignalingNaN(T) {
   return 0;
+}
+
+template <typename T>
+ALWAYS_INLINE static uint8_t IsDenormal(T x) {
+  return static_cast<uint8_t>(FP_SUBNORMAL == std::fpclassify(x));
 }
 
 ALWAYS_INLINE static uint8_t IsDenormal(float32_t x) {
@@ -681,6 +684,10 @@ ALWAYS_INLINE static uint8_t IsDenormal(float64_t x) {
 }
 
 ALWAYS_INLINE static uint8_t IsDenormal(float80_t x) {
+  return static_cast<uint8_t>(FP_SUBNORMAL == std::fpclassify(static_cast<native_float80_t>(x)));
+}
+
+ALWAYS_INLINE static uint8_t IsDenormal(native_float80_t x) {
   return static_cast<uint8_t>(FP_SUBNORMAL == std::fpclassify(static_cast<native_float80_t>(x)));
 }
 
@@ -696,11 +703,6 @@ ALWAYS_INLINE static uint8_t IsInfinite(T) {
 
 template <typename T>
 ALWAYS_INLINE static uint8_t IsNaN(T) {
-  return 0;
-}
-
-template <typename T>
-ALWAYS_INLINE static uint8_t IsDenormal(T) {
   return 0;
 }
 

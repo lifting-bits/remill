@@ -75,6 +75,18 @@ TEST_INPUTS(TEST_INPUTS_MMX_QWORD)
     fcomi st(2)
 TEST_END_64
 
+TEST_BEGIN_64(FCOMIst0st2_CE, 2)
+TEST_INPUTS(TEST_INPUTS_MMX_QWORD)
+    push ARG1_64
+    fld QWORD PTR [rsp]
+    push ARG2_64
+    fld QWORD PTR [rsp]
+    push ARG2_64
+    fld QWORD PTR [rsp]
+    fnclex
+    fcomi st(2)
+TEST_END_64
+
 TEST_BEGIN_64(FCOMIPst0st2, 2)
 TEST_INPUTS(TEST_INPUTS_MMX_QWORD)
     push ARG1_64

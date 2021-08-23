@@ -270,6 +270,40 @@ TEST_INPUTS(
     ftst
 TEST_END_64
 
+TEST_BEGIN_64(FTST_1, 2)
+TEST_INPUTS(
+    0x8008000000000000, 0x7ff8000000000000,
+    0x7ff8000000000000, 0x8008000000000000)
+    push ARG1_64
+    fld QWORD PTR [rsp]
+    push ARG2_64
+    fld QWORD PTR [rsp]
+    ftst
+TEST_END_64
+
+TEST_BEGIN_64(FTST_CE, 1)
+TEST_INPUTS(
+QNAN_64,
+    SNAN_64,
+    0x7ff0000000000000,  /* +inf */
+    0xfff0000000000000,  /* -inf */
+    0xfff8000000000000,  /* -nan */
+    0x7ff8000000000000,  /* nan */
+    0x0010000000000000,  /* std::numeric_limits<double>::min() */
+    0x7fefffffffffffff,  /* std::numeric_limits<double>::max() */
+    0x0008000000000000,  /* std::numeric_limits<double>::min() / 2.0 */
+    0x8008000000000000,  /* std::numeric_limits<double>::min() / -2.0 */
+    0x0000000000000000,  /* +0 */
+    0x8000000000000000, /* -0 */
+    0x3fe0000000000000,  /* 0.5 */
+    0xbfe0000000000000)  /* -0.5 */
+
+    push ARG1_64
+    fld QWORD PTR [rsp]
+    fnclex
+    ftst
+TEST_END_64
+
 TEST_BEGIN_64(FRNDINT, 1)
 TEST_INPUTS(
     QNAN_64,

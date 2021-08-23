@@ -118,16 +118,16 @@ DEF_FPU_SEM(FILD, RF80W, T src1) {
 template <typename T>
 DEF_FPU_SEM(FLD, RF80W, T src1) {
   SetFPUIpOp();
-  auto val = Float80(Read(src1));
+  auto val = Read(src1);
   state.sw.ie |= IsSignalingNaN(val);
-  state.sw.de = IsDenormal(val);
-  auto res = val;
+  state.sw.de |= IsDenormal(val);
+  auto res = Float80(val);
 
   // Quietize if signaling NaN.
   if (state.sw.ie) {
-    nan64_t res_nan = {Float64(res)};
+    nan80_t res_nan = {res};
     res_nan.is_quiet_nan = 1;
-    res = Float80(res_nan.d);
+    res = res_nan.d;
   }
 
   PUSH_X87_STACK(res);
@@ -239,10 +239,10 @@ DEF_FPU_SEM(DoFCOS) {
   SetFPUIpOp();
   auto st0 = Read(X87_ST0);
   state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
-  state.sw.de = IsDenormal(st0);
+  state.sw.de |= IsDenormal(st0);
   auto res = CheckedFloatUnaryOp(state, FCos80, st0);
   if (!IsNaN(res)) {
-    state.sw.pe = IsImprecise(res);
+    state.sw.pe |= IsImprecise(res);
   }
   Write(X87_ST0, res);
   return memory;
@@ -252,7 +252,7 @@ DEF_FPU_SEM(DoFSIN) {
   SetFPUIpOp();
   auto st0 = Read(X87_ST0);
   state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
-  state.sw.de = IsDenormal(st0);
+  state.sw.de |= IsDenormal(st0);
   auto res = CheckedFloatUnaryOp(state, FSin80, st0);
   if (!IsNaN(res)) {
     state.sw.pe = IsImprecise(res);
@@ -265,7 +265,7 @@ DEF_FPU_SEM(DoFPTAN) {
   SetFPUIpOp();
   auto st0 = Read(X87_ST0);
   state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
-  state.sw.de = IsDenormal(st0);
+  state.sw.de |= IsDenormal(st0);
   auto res = CheckedFloatUnaryOp(state, FTan80, st0);
   if (!IsNaN(res)) {
     state.sw.pe = IsImprecise(res);
@@ -302,7 +302,7 @@ DEF_FPU_SEM(DoFSQRT) {
     Write(X87_ST0, st0);
   } else {
     state.sw.ie |= IsSignalingNaN(st0) | IsNegative(st0);
-    state.sw.de = IsDenormal(st0);
+    state.sw.de |= IsDenormal(st0);
     auto res = CheckedFloatUnaryOp(state, FSqrt80, st0);
     if (!IsNaN(res)) {
       state.sw.pe = IsImprecise(res);
@@ -316,7 +316,7 @@ DEF_FPU_SEM(DoFSINCOS) {
   SetFPUIpOp();
   auto st0 = Read(X87_ST0);
   state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
-  state.sw.de = IsDenormal(st0);
+  state.sw.de |= IsDenormal(st0);
   auto sin_res = CheckedFloatUnaryOp(state, FSin80, st0);
   auto cos_res = CheckedFloatUnaryOp(state, FCos80, st0);
   if (!IsNaN(sin_res) && !IsNaN(cos_res)) {
@@ -339,7 +339,7 @@ DEF_FPU_SEM(DoF2XM1) {
   SetFPUIpOp();
   auto st0 = Read(X87_ST0);
   state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
-  state.sw.de = IsDenormal(st0);
+  state.sw.de |= IsDenormal(st0);
   state.sw.ue = 0;  // TODO(pag): Not sure.
   auto res = FSub(Float80(Exp2(st0)), Float80(1.0));
   if (!IsNaN(res)) {
@@ -392,6 +392,18 @@ DEF_SEM(DoFWAIT) {
 
 DEF_SEM(DoFNCLEX) {
   feclearexcept(FE_ALL_EXCEPT);
+  state.sw.pe = 0;
+  state.sw.ue = 0;
+  state.sw.oe = 0;
+  state.sw.ze = 0;
+  state.sw.de = 0;
+  state.sw.ie = 0;
+
+  state.sw.c0 = UUndefined8();
+  state.sw.c1 = UUndefined8();
+  state.sw.c2 = UUndefined8();
+  state.sw.c3 = UUndefined8();
+
   return memory;
 }
 
@@ -998,7 +1010,7 @@ DEF_FPU_SEM(DoFXAM) {
 }
 
 DEF_HELPER(OrderedCompare, native_float80_t src1, native_float80_t src2)->void {
-  state.sw.de = IsDenormal(src1) | IsDenormal(src2);
+  state.sw.de |= IsDenormal(src1) | IsDenormal(src2);
   state.sw.ie = 0;
 
   if (__builtin_isunordered(src1, src2)) {
@@ -1024,7 +1036,7 @@ DEF_HELPER(OrderedCompare, native_float80_t src1, native_float80_t src2)->void {
 }
 
 DEF_HELPER(UnorderedCompare, native_float80_t src1, native_float80_t src2)->void {
-  state.sw.de = IsDenormal(src1) | IsDenormal(src2);
+  state.sw.de |= IsDenormal(src1) | IsDenormal(src2);
   state.sw.ie = 0;
 
   if (__builtin_isunordered(src1, src2)) {
@@ -1146,7 +1158,7 @@ DEF_FPU_SEM(DoFCOMPP) {
 }
 
 DEF_HELPER(UnorderedCompareEflags, native_float80_t src1, native_float80_t src2)->void {
-  state.sw.de = IsDenormal(src1) | IsDenormal(src2);
+  state.sw.de |= IsDenormal(src1) | IsDenormal(src2);
   state.sw.ie = 0;
 
   if (__builtin_isunordered(src1, src2)) {
@@ -1173,7 +1185,7 @@ DEF_HELPER(UnorderedCompareEflags, native_float80_t src1, native_float80_t src2)
 }
 
 DEF_HELPER(OrderedCompareEflags, native_float80_t src1, native_float80_t src2)->void {
-  state.sw.de = IsDenormal(src1) | IsDenormal(src2);
+  state.sw.de |= IsDenormal(src1) | IsDenormal(src2);
   state.sw.ie = 0;
 
   if (__builtin_isunordered(src1, src2)) {
@@ -1328,7 +1340,7 @@ DEF_FPU_SEM(DoFRNDINT) {
   auto st0 = Read(X87_ST0);
   auto rounded = FRoundUsingMode(st0);
   state.sw.ie |= IsSignalingNaN(st0);
-  state.sw.de = IsDenormal(st0);
+  state.sw.de |= IsDenormal(st0);
   if (!IsNaN(rounded)) {
     state.sw.pe = st0 != rounded;
   }
