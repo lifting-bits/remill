@@ -169,7 +169,7 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     CONST_SECTION
     .align 16
 SYMBOL(fpu_cwd):
-    .long 0x27F  /* Default is 0x37F */
+    .long 0x37F  /* Default is 0x37F */
 
     .align 16
 SYMBOL(vec_data):
@@ -225,8 +225,7 @@ SYMBOL(DoInvokeTestCase):
     fldz
     fninit
 
-    /* Change the precision to double precision (as opposed to the default
-     * extended precision) */
+    /* Ensure FPU is set to double extended precision */
     fldcw [RIP + SYMBOL(fpu_cwd)]
 
     /* Set the bits of some of the vector regs to 1. This makes it easier to

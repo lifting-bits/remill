@@ -90,16 +90,6 @@ static sigjmp_buf gUnsupportedInstrBuf;
 // Are we running in a native test case or a lifted one?
 static bool gInNativeTest = false;
 
-// Long doubles may be represented as 16-byte values depending on LLVM's
-// `DataLayout`, so we marshal into this format.
-struct alignas(16) LongDoubleStorage {
-  float80_t val;
-  uint16_t padding;
-} __attribute__((packed));
-
-static_assert(16 == sizeof(LongDoubleStorage),
-              "Invalid structure packing of `LongDoubleStorage`");
-
 extern "C" {
 
 // Native state before we run the native test case. We then use this as the
@@ -188,26 +178,11 @@ MAKE_RW_MEMORY(64)
 
 MAKE_RW_FP_MEMORY(32)
 MAKE_RW_FP_MEMORY(64)
-
-NEVER_INLINE float80_t __remill_read_memory_f80(Memory *, addr_t addr) {
-  LongDoubleStorage storage;
-  storage.val = AccessMemory<float80_t>(addr);
-  auto val_long = *reinterpret_cast<long double *>(&storage);
-  return static_cast<float80_t>(val_long);
-}
+MAKE_RW_FP_MEMORY(80)
 
 NEVER_INLINE float64_t __remill_read_memory_f128(Memory *, addr_t) {
   LOG(FATAL) << "Unsupported on x86/amd64";
   return 0.0;
-}
-
-NEVER_INLINE Memory *__remill_write_memory_f80(Memory *memory, addr_t addr,
-                                               float80_t val) {
-  LongDoubleStorage storage;
-  auto val_long = static_cast<long double>(val);
-  memcpy(&storage, &val_long, sizeof(val_long));
-  AccessMemory<float80_t>(addr) = storage.val;
-  return memory;
 }
 
 NEVER_INLINE Memory *__remill_write_memory_f128(Memory *, addr_t, double) {
@@ -529,7 +504,7 @@ static void ImportX87X86State(X86State *state) {
     DLOG(INFO) << "Importing FPU state.";
     for (size_t i = 0; i < 8; ++i) {
       auto st = *reinterpret_cast<long double *>(&(fpu.fxsave.st[i].st));
-      state->st.elems[i].val = static_cast<float64_t>(st);
+      state->st.elems[i].val = static_cast<float80_t>(st);
     }
   }
 
