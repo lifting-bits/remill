@@ -80,8 +80,8 @@ typedef long double float128_t;
   #endif
 static_assert(10 <= sizeof(native_float80_t), "Invalid `native_float80_t` size.");
 #else
-  typedef float64_t native_float80_t;
-  static_assert(8 == sizeof(native_float80_t, "Invalid `native_float80_t` size.");
+  typedef double native_float80_t;
+  static_assert(8 == sizeof(native_float80_t), "Invalid `native_float80_t` size.");
 #endif
 
 static const int kEightyBitsInBytes = 10;
