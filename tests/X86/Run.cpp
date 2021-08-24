@@ -853,6 +853,13 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
     auto lifted_state_bytes = reinterpret_cast<uint8_t *>(lifted_state);
     auto native_state_bytes = reinterpret_cast<uint8_t *>(native_state);
 
+// Ignore "invalid use of offsetof" warnings by clang.
+// 1) offsetof still works
+// 2) we know its invalid
+// 3) this is only used for diagnostics/debugging
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winvalid-offsetof"
+
     for (size_t i = 0; i < sizeof(State); ++i) {
       LOG_IF(ERROR, lifted_state_bytes[i] != native_state_bytes[i])
           << "Bytes at offset " << i << " are different: "
@@ -871,8 +878,9 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
 	  << "xcr0:" << offsetof(State, xcr0) << "\n"
 	  << "x87:" << offsetof(State, x87) << "\n"
 	  << "seg_caches:" << offsetof(State, seg_caches) << "\n";
-
     }
+#pragma clang diagnostic pop
+
   }
 
   if (gLiftedStack != gNativeStack) {
