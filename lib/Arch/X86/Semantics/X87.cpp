@@ -125,7 +125,17 @@ DEF_FPU_SEM(FLD, RF80W, T src1) {
 
   // Quietize if signaling NaN.
   if (state.sw.ie) {
-    nan80_t res_nan = {res};
+
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
+// On non-x86 architectures, native_float80_t is defined as a double (float64_t)
+// On x86, it is a long double (80-bit of native representation).
+// Handle these separate cases.
+    static_assert(sizeof(native_float80_t) == sizeof(nan80_t), "Float/NaN size mismatch");
+    nan80_t res_nan = {static_cast<native_float80_t>(res)};
+#else
+    static_assert(sizeof(native_float80_t) == sizeof(nan64_t), "Float/NaN size mismatch");
+    nan64_t res_nan = {static_cast<native_float80_t>(res)};
+#endif
     res_nan.is_quiet_nan = 1;
     res = res_nan.d;
   }
