@@ -123,7 +123,8 @@ IntrinsicTable::IntrinsicTable(llvm::Module *module)
       undefined_32(FindPureIntrinsic(module, "__remill_undefined_32")),
       undefined_64(FindPureIntrinsic(module, "__remill_undefined_64")),
       undefined_f32(FindPureIntrinsic(module, "__remill_undefined_f32")),
-      undefined_f64(FindPureIntrinsic(module, "__remill_undefined_f64")) {
+      undefined_f64(FindPureIntrinsic(module, "__remill_undefined_f64")),
+      undefined_f80(FindPureIntrinsic(module, "__remill_undefined_f80")) {
 
   // Make sure to set the correct attributes on this to make sure that
   // it's never optimized away.

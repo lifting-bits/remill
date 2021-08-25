@@ -106,12 +106,20 @@ ALWAYS_INLINE static float64_t _Read(Memory *, float64_t val) {
   return val;
 }
 
+ALWAYS_INLINE static float80_t _Read(Memory *, float80_t val) {
+  return val;
+}
+
 ALWAYS_INLINE static float32_t _Read(Memory *, In<float32_t> imm) {
   return reinterpret_cast<const float32_t &>(imm.val);
 }
 
 ALWAYS_INLINE static float64_t _Read(Memory *, In<float64_t> imm) {
   return reinterpret_cast<const float64_t &>(imm.val);
+}
+
+ALWAYS_INLINE static float80_t _Read(Memory *, In<float80_t> imm) {
+  return reinterpret_cast<const float80_t &>(imm.val);
 }
 
 template <typename T>
@@ -149,7 +157,7 @@ MAKE_MREAD(128, 128, uint, 128)
 
 MAKE_MREAD(32, 32, float, f32)
 MAKE_MREAD(64, 64, float, f64)
-MAKE_MREAD(80, 64, float, f80)
+MAKE_MREAD(80, 80, float, f80)
 
 #undef MAKE_MREAD
 
@@ -174,6 +182,7 @@ MAKE_RWRITE(uint32_t)
 MAKE_RWRITE(uint64_t)
 MAKE_RWRITE(float32_t)
 MAKE_RWRITE(float64_t)
+MAKE_RWRITE(float80_t)
 
 #undef MAKE_RWRITE
 
@@ -193,7 +202,7 @@ MAKE_MWRITE(128, 128, uint, uint, 128)
 
 MAKE_MWRITE(32, 32, float, float, f32)
 MAKE_MWRITE(64, 64, float, float, f64)
-MAKE_MWRITE(80, 64, float, float, f80)
+MAKE_MWRITE(80, 80, float, float, f80)
 
 #undef MAKE_MWRITE
 
@@ -222,6 +231,7 @@ MAKE_READRV(S, 64, sqwords, int64_t)
 
 MAKE_READRV(F, 32, floats, float32_t)
 MAKE_READRV(F, 64, doubles, float64_t)
+MAKE_READRV(F, 80, tdoubles, float80_t)
 
 #undef MAKE_READRV
 
@@ -252,6 +262,7 @@ MAKE_READV(S, 128, sdqwords)
 
 MAKE_READV(F, 32, floats)
 MAKE_READV(F, 64, doubles)
+MAKE_READV(F, 80, tdouble)
 
 #undef MAKE_READV
 
@@ -295,6 +306,7 @@ MAKE_MREADV(S, 128, sdqwords, s128)
 
 MAKE_MREADV(F, 32, floats, f32)
 MAKE_MREADV(F, 64, doubles, f64)
+MAKE_MREADV(F, 80, tdoubles, f80)
 
 #undef MAKE_MREADV
 
@@ -343,6 +355,7 @@ MAKE_WRITEV(S, 128, sdqwords, VnW, int128_t)
 
 MAKE_WRITEV(F, 32, floats, VnW, float32_t)
 MAKE_WRITEV(F, 64, doubles, VnW, float64_t)
+MAKE_WRITEV(F, 80, tdoubles, VnW, float80_t)
 
 MAKE_WRITEV(U, 8, bytes, RVnW, uint8_t)
 MAKE_WRITEV(U, 16, words, RVnW, uint16_t)
@@ -356,6 +369,7 @@ MAKE_WRITEV(S, 64, sqwords, RVnW, int64_t)
 
 MAKE_WRITEV(F, 32, floats, RVnW, float32_t)
 MAKE_WRITEV(F, 64, doubles, RVnW, float64_t)
+MAKE_WRITEV(F, 80, tdoubles, RVnW, float80_t)
 
 #undef MAKE_WRITEV
 
@@ -404,6 +418,7 @@ MAKE_MWRITEV(S, 128, sdqwords, s128, int128_t)
 
 MAKE_MWRITEV(F, 32, floats, f32, float32_t)
 MAKE_MWRITEV(F, 64, doubles, f64, float64_t)
+MAKE_MWRITEV(F, 80, tdoubles, f80, float80_t)
 
 #undef MAKE_MWRITEV
 
@@ -421,6 +436,7 @@ MAKE_WRITE_REF(uint64_t)
 MAKE_WRITE_REF(uint128_t)
 MAKE_WRITE_REF(float32_t)
 MAKE_WRITE_REF(float64_t)
+MAKE_WRITE_REF(float80_t)
 
 #undef MAKE_WRITE_REF
 
@@ -550,14 +566,25 @@ MAKE_ATOMIC(XorFetch, xor_and_fetch, ^)
 
 #if !defined(issignaling)
 
-ALWAYS_INLINE uint8_t issignaling(float32_t x) {
+ALWAYS_INLINE bool issignaling(float32_t x) {
   const nan32_t x_nan = {x};
   return x_nan.exponent == 0xFFU && !x_nan.is_quiet_nan && x_nan.payload;
 }
 
-ALWAYS_INLINE uint8_t issignaling(float64_t x) {
+ALWAYS_INLINE bool issignaling(float64_t x) {
   const nan64_t x_nan = {x};
   return x_nan.exponent == 0x7FFU && !x_nan.is_quiet_nan && x_nan.payload;
+}
+
+ALWAYS_INLINE bool issignaling(float80_t x) {
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
+// On non-x86 architectures, native_float80_t is defined as a double,
+// which is identical to the float64_t definition above
+  const nan80_t x_nan = {x};
+  return x_nan.exponent == 0x7FFFU && !x_nan.is_quiet_nan && x_nan.payload && x_nan.interger_bit;
+#else
+  return issignaling(static_cast<native_float80_t>(x));
+#endif
 }
 
 #endif  // !defined(issignaling)
@@ -589,12 +616,20 @@ ALWAYS_INLINE static uint8_t IsNegative(T x) {
   return static_cast<uint8_t>(std::signbit(x));
 }
 
+ALWAYS_INLINE static uint8_t IsNegative(float80_t x) {
+  return static_cast<uint8_t>(std::signbit(static_cast<native_float80_t>(x)));
+}
+
 ALWAYS_INLINE static uint8_t IsZero(float32_t x) {
   return static_cast<uint8_t>(FP_ZERO == std::fpclassify(x));
 }
 
 ALWAYS_INLINE static uint8_t IsZero(float64_t x) {
   return static_cast<uint8_t>(FP_ZERO == std::fpclassify(x));
+}
+
+ALWAYS_INLINE static uint8_t IsZero(float80_t x) {
+  return static_cast<uint8_t>(FP_ZERO == std::fpclassify(static_cast<native_float80_t>(x)));
 }
 
 ALWAYS_INLINE static uint8_t IsInfinite(float32_t x) {
@@ -605,6 +640,10 @@ ALWAYS_INLINE static uint8_t IsInfinite(float64_t x) {
   return static_cast<uint8_t>(FP_INFINITE == std::fpclassify(x));
 }
 
+ALWAYS_INLINE static uint8_t IsInfinite(float80_t x) {
+  return static_cast<uint8_t>(FP_INFINITE == std::fpclassify(static_cast<native_float80_t>(x)));
+}
+
 ALWAYS_INLINE static uint8_t IsNaN(float32_t x) {
   return static_cast<uint8_t>(FP_NAN == std::fpclassify(x));
 }
@@ -613,19 +652,39 @@ ALWAYS_INLINE static uint8_t IsNaN(float64_t x) {
   return static_cast<uint8_t>(FP_NAN == std::fpclassify(x));
 }
 
-ALWAYS_INLINE static uint8_t IsSignalingNaN(float32_t x) {
+ALWAYS_INLINE static uint8_t IsNaN(float80_t x) {
+  return static_cast<uint8_t>(FP_NAN == std::fpclassify(static_cast<native_float80_t>(x)));
+}
+
+ALWAYS_INLINE static bool IsSignalingNaN(float32_t x) {
   const nan32_t x_nan = {x};
   return x_nan.exponent == 0xFFU && !x_nan.is_quiet_nan && x_nan.payload;
 }
 
-ALWAYS_INLINE static uint8_t IsSignalingNaN(float64_t x) {
+ALWAYS_INLINE static bool IsSignalingNaN(float64_t x) {
   const nan64_t x_nan = {x};
   return x_nan.exponent == 0x7FFU && !x_nan.is_quiet_nan && x_nan.payload;
+}
+
+ALWAYS_INLINE static bool IsSignalingNaN(float80_t x) {
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
+// On non-x86 architectures, native_float80_t is defined as a double,
+// which is identical to the float64_t definition above
+  const nan80_t x_nan = {x};
+  return x_nan.exponent == 0x7FFFU && !x_nan.is_quiet_nan && x_nan.payload && x_nan.interger_bit;
+#else
+  return IsSignalingNaN(static_cast<native_float80_t>(x));
+#endif
 }
 
 template <typename T>
 ALWAYS_INLINE static uint8_t IsSignalingNaN(T) {
   return 0;
+}
+
+template <typename T>
+ALWAYS_INLINE static uint8_t IsDenormal(T x) {
+  return static_cast<uint8_t>(FP_SUBNORMAL == std::fpclassify(x));
 }
 
 ALWAYS_INLINE static uint8_t IsDenormal(float32_t x) {
@@ -635,6 +694,18 @@ ALWAYS_INLINE static uint8_t IsDenormal(float32_t x) {
 ALWAYS_INLINE static uint8_t IsDenormal(float64_t x) {
   return static_cast<uint8_t>(FP_SUBNORMAL == std::fpclassify(x));
 }
+
+ALWAYS_INLINE static uint8_t IsDenormal(float80_t x) {
+  return static_cast<uint8_t>(FP_SUBNORMAL == std::fpclassify(static_cast<native_float80_t>(x)));
+}
+
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
+// On non-x86 architectures, native_float80_t is defined as a double,
+// which is identical to the float64_t definition above
+ALWAYS_INLINE static uint8_t IsDenormal(native_float80_t x) {
+  return static_cast<uint8_t>(FP_SUBNORMAL == std::fpclassify(static_cast<native_float80_t>(x)));
+}
+#endif
 
 template <typename T>
 ALWAYS_INLINE static uint8_t IsZero(T val) {
@@ -648,11 +719,6 @@ ALWAYS_INLINE static uint8_t IsInfinite(T) {
 
 template <typename T>
 ALWAYS_INLINE static uint8_t IsNaN(T) {
-  return 0;
-}
-
-template <typename T>
-ALWAYS_INLINE static uint8_t IsDenormal(T) {
   return 0;
 }
 
@@ -686,6 +752,7 @@ MAKE_CONVERT(uint64_t, UInt64)
 MAKE_CONVERT(uint128_t, UInt128)
 MAKE_CONVERT(float32_t, Float32)
 MAKE_CONVERT(float64_t, Float64)
+MAKE_CONVERT(float80_t, Float80)
 
 #undef MAKE_CONVERT
 
@@ -882,33 +949,32 @@ ALWAYS_INLINE static auto TruncTo(T val) -> typename IntegerType<DT>::BT {
 // the types of the inputs to their "natural" machine size, so we'll just
 // make that explicit, where `addr_t` encodes the natural machine word.
 #define MAKE_OPS(name, op, make_int_op, make_float_op) \
-  make_int_op(U##name, uint8_t, addr_t, op) make_int_op( \
-      U##name##8, uint8_t, addr_t, \
-      op) make_int_op(U##name, uint16_t, addr_t, \
-                      op) make_int_op(U##name##16, uint16_t, addr_t, op) \
-      make_int_op(U##name, uint32_t, addr_t, op) make_int_op( \
-          U##name##32, uint32_t, addr_t, \
-          op) make_int_op(U##name, uint64_t, uint64_t, \
-                          op) make_int_op(U##name##64, uint64_t, uint64_t, op) \
-          make_int_op(U##name, uint128_t, uint128_t, op) make_int_op( \
-              U##name##128, uint128_t, uint128_t, \
-              op) make_int_op(S##name, int8_t, addr_diff_t, op) \
-              make_int_op(S##name##8, int8_t, addr_diff_t, op) make_int_op( \
-                  S##name, int16_t, addr_diff_t, \
-                  op) make_int_op(S##name##16, int16_t, addr_diff_t, op) \
-                  make_int_op(S##name, int32_t, addr_diff_t, op) make_int_op( \
-                      S##name##32, int32_t, addr_diff_t, op) \
-                      make_int_op(S##name, int64_t, int64_t, op) make_int_op( \
-                          S##name##64, int64_t, int64_t, \
-                          op) make_int_op(S##name, int128_t, int128_t, op) \
-                          make_int_op(S##name##128, int128_t, int128_t, op) \
-                              make_float_op(F##name, float32_t, float32_t, op) \
-                                  make_float_op( \
-                                      F##name##32, float32_t, float32_t, \
-                                      op) make_float_op(F##name, float64_t, \
-                                                        float64_t, op) \
-                                      make_float_op(F##name##64, float64_t, \
-                                                    float64_t, op)
+  make_int_op(U##name, uint8_t, addr_t, op) \
+  make_int_op(U##name##8, uint8_t, addr_t,op) \
+  make_int_op(U##name, uint16_t, addr_t, op) \
+  make_int_op(U##name##16, uint16_t, addr_t, op) \
+  make_int_op(U##name, uint32_t, addr_t, op) \
+  make_int_op(U##name##32, uint32_t, addr_t, op) \
+  make_int_op(U##name, uint64_t, uint64_t, op) \
+  make_int_op(U##name##64, uint64_t, uint64_t, op) \
+  make_int_op(U##name, uint128_t, uint128_t, op) \
+  make_int_op(U##name##128, uint128_t, uint128_t, op) \
+  make_int_op(S##name, int8_t, addr_diff_t, op) \
+  make_int_op(S##name##8, int8_t, addr_diff_t, op) \
+  make_int_op(S##name, int16_t, addr_diff_t, op) \
+  make_int_op(S##name##16, int16_t, addr_diff_t, op) \
+  make_int_op(S##name, int32_t, addr_diff_t, op) \
+  make_int_op(S##name##32, int32_t, addr_diff_t, op) \
+  make_int_op(S##name, int64_t, int64_t, op) \
+  make_int_op(S##name##64, int64_t, int64_t, op) \
+  make_int_op(S##name, int128_t, int128_t, op) \
+  make_int_op(S##name##128, int128_t, int128_t, op) \
+  make_float_op(F##name, float32_t, float32_t, op) \
+  make_float_op(F##name##32, float32_t, float32_t, op) \
+  make_float_op(F##name, float64_t, float64_t, op) \
+  make_float_op(F##name##64, float64_t, float64_t, op) \
+  make_float_op(F##name, float80_t, float80_t, op) \
+  make_float_op(F##name##80, float80_t, float80_t, op)
 
 MAKE_OPS(Add, +, MAKE_BINOP, MAKE_BINOP)
 MAKE_OPS(Sub, -, MAKE_BINOP, MAKE_BINOP)
@@ -1086,6 +1152,7 @@ MAKE_EXTRACTV(64, int64_t, qwords, Signed, S)
 MAKE_EXTRACTV(128, int128_t, dqwords, Signed, S)
 MAKE_EXTRACTV(32, float32_t, floats, Identity, F)
 MAKE_EXTRACTV(64, float64_t, doubles, Identity, F)
+MAKE_EXTRACTV(80, float80_t, tdoubles, Identity, F)
 
 #undef MAKE_EXTRACTV
 
@@ -1103,22 +1170,6 @@ ALWAYS_INLINE static int32_t SAbs(int32_t val) {
 
 ALWAYS_INLINE static int64_t SAbs(int64_t val) {
   return val < 0 ? -val : val;
-}
-
-ALWAYS_INLINE static float32_t FAbs(float32_t val) {
-  return __builtin_fabsf(val);
-}
-
-ALWAYS_INLINE static float64_t FAbs(float64_t val) {
-  return __builtin_fabs(val);
-}
-
-ALWAYS_INLINE static float32_t FAbs32(float32_t val) {
-  return __builtin_fabsf(val);
-}
-
-ALWAYS_INLINE static float64_t FAbs64(float64_t val) {
-  return __builtin_fabs(val);
 }
 
 template <typename T>
@@ -1158,6 +1209,7 @@ MAKE_INSERTV(S, 128, int128_t, sdqwords)
 
 MAKE_INSERTV(F, 32, float32_t, floats)
 MAKE_INSERTV(F, 64, float64_t, doubles)
+MAKE_INSERTV(F, 80, float80_t, tdoubles)
 
 #undef MAKE_INSERTV
 
@@ -1185,6 +1237,7 @@ MAKE_UPDATEV(S, 128, int128_t, sdqwords)
 
 MAKE_UPDATEV(F, 32, float32_t, floats)
 MAKE_UPDATEV(F, 64, float64_t, doubles)
+MAKE_UPDATEV(F, 80, float80_t, tdoubles)
 
 #undef MAKE_UPDATEV
 
@@ -1481,6 +1534,45 @@ MAKE_BUILTIN(CountTrailingZeros, 64, 64, __builtin_ctzll, 0)
 
 #undef MAKE_BUILTIN
 
+
+#define MAKE_BUILTIN_INTRINSIC(name, intrinsic_name, size, type) \
+  ALWAYS_INLINE static type name(type val) { \
+    return intrinsic_name(val); \
+  } \
+  ALWAYS_INLINE static type name##size(type val) { \
+    return intrinsic_name(val); \
+  }
+
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
+#define MAKE_BUILTIN(name, intrinsic_name) \
+  MAKE_BUILTIN_INTRINSIC(name, intrinsic_name##f, 32, float32_t) \
+  MAKE_BUILTIN_INTRINSIC(name, intrinsic_name, 64, float64_t) \
+  MAKE_BUILTIN_INTRINSIC(name, intrinsic_name##l, 80, float80_t)
+#else
+#define MAKE_BUILTIN(name, intrinsic_name) \
+  MAKE_BUILTIN_INTRINSIC(name, intrinsic_name##f, 32, float32_t) \
+  MAKE_BUILTIN_INTRINSIC(name, intrinsic_name, 64, float64_t) \
+  MAKE_BUILTIN_INTRINSIC(name, intrinsic_name, 80, float80_t)
+#endif
+
+MAKE_BUILTIN(FAbs, __builtin_fabs);
+MAKE_BUILTIN(FCos, __builtin_cos)
+MAKE_BUILTIN(FSin, __builtin_sin)
+MAKE_BUILTIN(FTan, __builtin_tan)
+MAKE_BUILTIN(FAtan,__builtin_atan)
+MAKE_BUILTIN(FSqrt,__builtin_sqrt)
+MAKE_BUILTIN(Exp2,__builtin_exp2)
+MAKE_BUILTIN(Log2,__builtin_log2)
+
+MAKE_BUILTIN(FRoundUsingMode, __builtin_nearbyint);
+MAKE_BUILTIN(FTruncTowardZero, __builtin_trunc);
+MAKE_BUILTIN(FRoundAwayFromZero, __builtin_round);
+MAKE_BUILTIN(FRoundToPositiveInfinity, __builtin_ceil);
+MAKE_BUILTIN(FRoundToNegativeInfinity, __builtin_floor);
+
+#undef MAKE_BUILTIN_INTRINSIC
+#undef MAKE_BUILTIN
+
 ALWAYS_INLINE static int16_t Float64ToInt16(float64_t val) {
   auto max_int = Float64(Maximize(Int16(0)));
   return Select<int16_t>(FCmpLt(max_int, FAbs(val)), Int16(0x8000), Int16(val));
@@ -1489,6 +1581,17 @@ ALWAYS_INLINE static int16_t Float64ToInt16(float64_t val) {
 ALWAYS_INLINE static int32_t Float64ToInt32(float64_t val) {
   auto max_int = Float64(Maximize(Int32(0)));
   return Select<int32_t>(FCmpLt(max_int, FAbs(val)), Int32(0x80000000),
+                         Int32(val));
+}
+
+ALWAYS_INLINE static int16_t Float80ToInt16(float80_t val) {
+	auto max_int = Float80(Float64(Maximize(Int16(0))));
+  return Select<int16_t>(FCmpLt80(max_int, FAbs80(val)), Int16(0x8000), Int16(val));
+}
+
+ALWAYS_INLINE static int32_t Float80ToInt32(float80_t val) {
+  auto max_int = Float80(Float64(Maximize(Int32(0))));
+  return Select<int32_t>(FCmpLt80(max_int, FAbs80(val)), Int32(0x80000000),
                          Int32(val));
 }
 
@@ -1513,28 +1616,10 @@ ALWAYS_INLINE static int64_t Float64ToInt64(float64_t val) {
                          Int64(0x8000000000000000LL), Int64(val));
 }
 
-ALWAYS_INLINE static float32_t FRoundUsingMode32(float32_t val) {
-  return __builtin_nearbyintf(val);
-}
-
-ALWAYS_INLINE static float64_t FRoundUsingMode64(float64_t val) {
-  return __builtin_nearbyint(val);
-}
-
-ALWAYS_INLINE static float32_t FTruncTowardZero32(float32_t val) {
-  return __builtin_truncf(val);
-}
-
-ALWAYS_INLINE static float64_t FTruncTowardZero64(float64_t val) {
-  return __builtin_trunc(val);
-}
-
-ALWAYS_INLINE static float32_t FRoundAwayFromZero32(float32_t val) {
-  return __builtin_roundf(val);
-}
-
-ALWAYS_INLINE static float64_t FRoundAwayFromZero64(float64_t val) {
-  return __builtin_round(val);
+ALWAYS_INLINE static int64_t Float80ToInt64(float80_t val) {
+  auto max_int = Float80(Float64(Maximize(Int64(0))));
+  return Select<int64_t>(FCmpLt80(max_int, FAbs80(val)),
+                         Int64(0x8000000000000000LL), Int64(val));
 }
 
 ALWAYS_INLINE static float32_t FRoundToNearestEven32(float32_t val) {
@@ -1575,22 +1660,6 @@ ALWAYS_INLINE static float64_t FRoundToNearestEven64(float64_t val) {
   //  } else {
   //    return __builtin_round(val);
   //  }
-}
-
-ALWAYS_INLINE static float32_t FRoundToPositiveInfinity32(float32_t val) {
-  return __builtin_ceilf(val);
-}
-
-ALWAYS_INLINE static float64_t FRoundToPositiveInfinity64(float64_t val) {
-  return __builtin_ceil(val);
-}
-
-ALWAYS_INLINE static float32_t FRoundToNegativeInfinity32(float32_t val) {
-  return __builtin_floorf(val);
-}
-
-ALWAYS_INLINE static float64_t FRoundToNegativeInfinity64(float64_t val) {
-  return __builtin_floor(val);
 }
 
 }  // namespace

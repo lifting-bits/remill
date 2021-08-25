@@ -1221,6 +1221,7 @@ void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
   auto u32 = llvm::Type::getInt32Ty(context);
   auto u64 = llvm::Type::getInt64Ty(context);
   auto f64 = llvm::Type::getDoubleTy(context);
+  auto f80 = llvm::Type::getX86_FP80Ty(context);
   auto v128 = llvm::ArrayType::get(llvm::Type::getInt8Ty(context), 128u / 8u);
   auto v256 = llvm::ArrayType::get(llvm::Type::getInt8Ty(context), 256u / 8u);
   auto v512 = llvm::ArrayType::get(llvm::Type::getInt8Ty(context), 512u / 8u);
@@ -1492,14 +1493,14 @@ void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
     SUB_REG(XMM31, vec[31].xmm, v128, YMM31);
   }
 
-  REG(ST0, st.elems[0].val, f64);
-  REG(ST1, st.elems[1].val, f64);
-  REG(ST2, st.elems[2].val, f64);
-  REG(ST3, st.elems[3].val, f64);
-  REG(ST4, st.elems[4].val, f64);
-  REG(ST5, st.elems[5].val, f64);
-  REG(ST6, st.elems[6].val, f64);
-  REG(ST7, st.elems[7].val, f64);
+  REG(ST0, st.elems[0].val, f80);
+  REG(ST1, st.elems[1].val, f80);
+  REG(ST2, st.elems[2].val, f80);
+  REG(ST3, st.elems[3].val, f80);
+  REG(ST4, st.elems[4].val, f80);
+  REG(ST5, st.elems[5].val, f80);
+  REG(ST6, st.elems[6].val, f80);
+  REG(ST7, st.elems[7].val, f80);
 
 #if 0  // TODO(pag): Don't emulate directly for now.
   if (32 == address_size) {

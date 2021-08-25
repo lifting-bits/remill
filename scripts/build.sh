@@ -88,7 +88,7 @@ function GetArchVersion
       return 0
     ;;
     aarch64)
-      ARCH_VERSION=aarch64
+      ARCH_VERSION=arm64
       return 0
     ;;
     *)

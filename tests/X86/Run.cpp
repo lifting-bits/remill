@@ -90,16 +90,6 @@ static sigjmp_buf gUnsupportedInstrBuf;
 // Are we running in a native test case or a lifted one?
 static bool gInNativeTest = false;
 
-// Long doubles may be represented as 16-byte values depending on LLVM's
-// `DataLayout`, so we marshal into this format.
-struct alignas(16) LongDoubleStorage {
-  float80_t val;
-  uint16_t padding;
-} __attribute__((packed));
-
-static_assert(16 == sizeof(LongDoubleStorage),
-              "Invalid structure packing of `LongDoubleStorage`");
-
 extern "C" {
 
 // Native state before we run the native test case. We then use this as the
@@ -188,26 +178,11 @@ MAKE_RW_MEMORY(64)
 
 MAKE_RW_FP_MEMORY(32)
 MAKE_RW_FP_MEMORY(64)
-
-NEVER_INLINE float64_t __remill_read_memory_f80(Memory *, addr_t addr) {
-  LongDoubleStorage storage;
-  storage.val = AccessMemory<float80_t>(addr);
-  auto val_long = *reinterpret_cast<long double *>(&storage);
-  return static_cast<float64_t>(val_long);
-}
+MAKE_RW_FP_MEMORY(80)
 
 NEVER_INLINE float64_t __remill_read_memory_f128(Memory *, addr_t) {
   LOG(FATAL) << "Unsupported on x86/amd64";
   return 0.0;
-}
-
-NEVER_INLINE Memory *__remill_write_memory_f80(Memory *memory, addr_t addr,
-                                               float64_t val) {
-  LongDoubleStorage storage;
-  auto val_long = static_cast<long double>(val);
-  memcpy(&storage, &val_long, sizeof(val_long));
-  AccessMemory<float80_t>(addr) = storage.val;
-  return memory;
 }
 
 NEVER_INLINE Memory *__remill_write_memory_f128(Memory *, addr_t, double) {
@@ -441,6 +416,10 @@ float64_t __remill_undefined_f64(void) {
   return 0.0;
 }
 
+float80_t __remill_undefined_f80(void) {
+  return {0};
+}
+
 // Marks `mem` as being used. This is used for making sure certain symbols are
 // kept around through optimization, and makes sure that optimization doesn't
 // perform dead-argument elimination on any of the intrinsics.
@@ -450,7 +429,7 @@ void __remill_mark_as_used(void *mem) {
 
 }  // extern C
 
-typedef Memory *(LiftedFunc)(X86State &, addr_t, Memory *);
+typedef Memory *(LiftedFunc) (X86State &, addr_t, Memory *);
 
 // Mapping of test name to translated function.
 static std::map<uint64_t, LiftedFunc *> gTranslatedFuncs;
@@ -525,7 +504,7 @@ static void ImportX87X86State(X86State *state) {
     DLOG(INFO) << "Importing FPU state.";
     for (size_t i = 0; i < 8; ++i) {
       auto st = *reinterpret_cast<long double *>(&(fpu.fxsave.st[i].st));
-      state->st.elems[i].val = static_cast<float64_t>(st);
+      state->st.elems[i].val = static_cast<float80_t>(st);
     }
   }
 
@@ -753,12 +732,21 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
   native_state->hyper_call = AsyncHyperCall::kInvalid;
   lifted_state->hyper_call = AsyncHyperCall::kInvalid;
 
+  lifted_state->x87.fsave.cwd._rsvd0 = native_state->x87.fsave.cwd._rsvd0 = 0;
+  lifted_state->x87.fsave.cwd._rsvd1 = native_state->x87.fsave.cwd._rsvd1 = 0;
+  lifted_state->x87.fsave._rsvd0 = native_state->x87.fsave._rsvd0 = 0;
+  lifted_state->x87.fsave._rsvd1 = native_state->x87.fsave._rsvd1 = 0;
+  lifted_state->x87.fsave._rsvd2 = native_state->x87.fsave._rsvd2 = 0;
+  lifted_state->x87.fsave._rsvd3 = native_state->x87.fsave._rsvd3 = 0;
+  std::memset(lifted_state->sw._padding, 0, 4);
+  std::memset(native_state->sw._padding, 0, 4);
+
   // Compare the FPU states.
   for (auto i = 0U; i < 8U; ++i) {
     auto lifted_st = lifted_state->st.elems[i].val;
     auto native_st = native_state->st.elems[i].val;
     if (lifted_st != native_st) {
-      if (fabs(lifted_st - native_st) <= 1e-14) {
+      if (std::abs(lifted_st - native_st) <= 1e-14) {
         lifted_state->st.elems[i].val = native_st;  // Hide the inconsistency.
       }
     }
@@ -865,10 +853,34 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
     auto lifted_state_bytes = reinterpret_cast<uint8_t *>(lifted_state);
     auto native_state_bytes = reinterpret_cast<uint8_t *>(native_state);
 
+// Ignore "invalid use of offsetof" warnings by clang.
+// 1) offsetof still works
+// 2) we know its invalid
+// 3) this is only used for diagnostics/debugging
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winvalid-offsetof"
+
     for (size_t i = 0; i < sizeof(State); ++i) {
       LOG_IF(ERROR, lifted_state_bytes[i] != native_state_bytes[i])
-          << "Bytes at offset " << i << " are different";
+          << "Bytes at offset " << i << " are different: "
+	  << "lifted [" << std::hex << static_cast<unsigned int>(lifted_state_bytes[i])
+	  << "] vs native [" << std::hex << static_cast<unsigned int>(native_state_bytes[i])
+	  << "]\n" << std::dec
+	  << "vec: " << offsetof(State, vec) << "\n"
+	  << "aflag:" << offsetof(State, aflag) << "\n"
+	  << "rflag:" << offsetof(State, rflag) << "\n"
+	  << "seg:" << offsetof(State, seg) << "\n"
+	  << "addr:" << offsetof(State, addr) << "\n"
+	  << "gpr:" << offsetof(State, gpr) << "\n"
+	  << "st:" << offsetof(State, st) << "\n"
+	  << "mmx:" << offsetof(State, mmx) << "\n"
+	  << "sw:" << offsetof(State, sw) << "\n"
+	  << "xcr0:" << offsetof(State, xcr0) << "\n"
+	  << "x87:" << offsetof(State, x87) << "\n"
+	  << "seg_caches:" << offsetof(State, seg_caches) << "\n";
     }
+#pragma clang diagnostic pop
+
   }
 
   if (gLiftedStack != gNativeStack) {

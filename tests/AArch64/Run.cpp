@@ -334,6 +334,10 @@ float64_t __remill_undefined_f64(void) {
   return 0.0;
 }
 
+float80_t __remill_undefined_f80(void) {
+  return {0};
+}
+
 // Marks `mem` as being used. This is used for making sure certain symbols are
 // kept around through optimization, and makes sure that optimization doesn't
 // perform dead-argument elimination on any of the intrinsics.

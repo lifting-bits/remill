@@ -16,6 +16,7 @@
 
 #pragma once
 
+
 #define PUSH_X87_STACK(x) \
   do { \
     auto __x = x; \
@@ -77,8 +78,8 @@ DEF_FPU_SEM(FBLD, RF80W, MBCD80 src1) {
   SetFPUDp(src1);
 
   auto src1_bcd = ReadBCD80(src1);
-  double val = 0.0;  // Decoded BCD value
-  double mag = 1.0;  // Magnitude of decimal position
+  native_float80_t val = 0.0;  // Decoded BCD value
+  native_float80_t mag = 1.0;  // Magnitude of decimal position
 
   // Iterate through pairs of digits, encoded as bytes.
   _Pragma("unroll") for (addr_t i = 0; i < sizeof(src1_bcd.digit_pairs); i++) {
@@ -92,9 +93,9 @@ DEF_FPU_SEM(FBLD, RF80W, MBCD80 src1) {
     auto hi = b >> 4;
 
     // Accumulate positional decimal value of decoded digits.
-    val += static_cast<double>(lo) * mag;
+    val += static_cast<native_float80_t>(lo) * mag;
     mag *= 10.0;
-    val += static_cast<double>(hi) * mag;
+    val += static_cast<native_float80_t>(hi) * mag;
     mag *= 10.0;
   }
 
@@ -110,7 +111,7 @@ template <typename T>
 DEF_FPU_SEM(FILD, RF80W, T src1) {
   SetFPUIpOp();
   SetFPUDp(src1);
-  PUSH_X87_STACK(Float64(Signed(Read(src1))));
+  PUSH_X87_STACK(Signed(Read(src1)));
   return memory;
 }
 
@@ -119,12 +120,26 @@ DEF_FPU_SEM(FLD, RF80W, T src1) {
   SetFPUIpOp();
   auto val = Read(src1);
   state.sw.ie |= IsSignalingNaN(val);
-  state.sw.de = IsDenormal(val);
-  auto res = Float64(val);
+  state.sw.de |= IsDenormal(val);
+  auto res = Float80(val);
 
   // Quietize if signaling NaN.
   if (state.sw.ie) {
-    nan64_t res_nan = {res};
+
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
+// On non-x86 architectures, native_float80_t is defined as a double (float64_t)
+// On x86, it is a long double (80-bit of native representation).
+// Handle these separate cases.
+    static_assert(sizeof(native_float80_t) >= sizeof(nan80_t), "Float/NaN size mismatch");
+    // It is resonable to have >= in the above test because
+    // on x86/amd64 a native_float80_t is a float80 + padding
+    nan80_t res_nan = {static_cast<native_float80_t>(res)};
+#else
+    static_assert(sizeof(native_float80_t) == sizeof(nan64_t), "Float/NaN size mismatch");
+    // on non-x86 architectures, native_float80_t should be
+    // a 64-bit double, so the exact size of nan64_t
+    nan64_t res_nan = {static_cast<native_float80_t>(res)};
+#endif
     res_nan.is_quiet_nan = 1;
     res = res_nan.d;
   }
@@ -133,7 +148,7 @@ DEF_FPU_SEM(FLD, RF80W, T src1) {
   return memory;
 }
 
-DEF_FPU_SEM(FLDfromstack, RF80W, RF80 src1) {
+DEF_FPU_SEM(FLDfromstack, RF80W, RF80W src1) {
   SetFPUIpOp();
   state.sw.ie = 0;
   state.sw.de = 0;
@@ -196,29 +211,27 @@ DEF_FPU_SEM(DoFLDPI) {
 
 DEF_FPU_SEM(DoFABS) {
   SetFPUIpOp();
-  float64_t st0 = Read(X87_ST0);
-  float64_t res = CheckedFloatUnaryOp(state, FAbs64, st0);
+  auto st0 = Read(X87_ST0);
+  auto res = CheckedFloatUnaryOp(state, FAbs80, st0);
   Write(X87_ST0, res);
   return memory;
 }
 
 DEF_FPU_SEM(DoFCHS) {
   SetFPUIpOp();
-  float64_t st0 = Read(X87_ST0);
-  float64_t res = CheckedFloatUnaryOp(state, FNeg64, st0);
+  auto st0 = Read(X87_ST0);
+  auto res = CheckedFloatUnaryOp(state, FNeg80, st0);
   Write(X87_ST0, res);
   return memory;
 }
 
-#define WRAP_BUILTIN(name, type, builtin) \
-  ALWAYS_INLINE static type name(type x) { \
-    return builtin(x); \
-  }
-
-WRAP_BUILTIN(FCos64, float64_t, __builtin_cos)
-WRAP_BUILTIN(FSin64, float64_t, __builtin_sin)
-WRAP_BUILTIN(FTan64, float64_t, __builtin_tan)
-WRAP_BUILTIN(FSqrt64, float64_t, __builtin_sqrt)
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
+#define __builtin_fmod_f80 __builtin_fmodl
+#define __builtin_remainder_f80 __builtin_remainderl
+#else
+#define __builtin_fmod_f80 __builtin_fmod
+#define __builtin_remainder_f80 __builtin_remainder
+#endif
 
 // NOTE(pag): This only sort of, but doesn't really make sense. That is, it's
 //            a reasonable guess-y way to say whether or not a given value can
@@ -232,14 +245,18 @@ ALWAYS_INLINE static uint8_t IsImprecise(float64_t x) {
   return 0 != (reinterpret_cast<uint64_t &>(x) & 0xFF);
 }
 
+ALWAYS_INLINE static uint8_t IsImprecise(float80_t x) {
+  return 0 != (reinterpret_cast<uint64_t &>(x) & 0x7FFFF);
+}
+
 DEF_FPU_SEM(DoFCOS) {
   SetFPUIpOp();
-  float64_t st0 = Read(X87_ST0);
+  auto st0 = Read(X87_ST0);
   state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
-  state.sw.de = IsDenormal(st0);
-  auto res = CheckedFloatUnaryOp(state, FCos64, st0);
+  state.sw.de |= IsDenormal(st0);
+  auto res = CheckedFloatUnaryOp(state, FCos80, st0);
   if (!IsNaN(res)) {
-    state.sw.pe = IsImprecise(res);
+    state.sw.pe |= IsImprecise(res);
   }
   Write(X87_ST0, res);
   return memory;
@@ -247,10 +264,10 @@ DEF_FPU_SEM(DoFCOS) {
 
 DEF_FPU_SEM(DoFSIN) {
   SetFPUIpOp();
-  float64_t st0 = Read(X87_ST0);
+  auto st0 = Read(X87_ST0);
   state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
-  state.sw.de = IsDenormal(st0);
-  auto res = CheckedFloatUnaryOp(state, FSin64, st0);
+  state.sw.de |= IsDenormal(st0);
+  auto res = CheckedFloatUnaryOp(state, FSin80, st0);
   if (!IsNaN(res)) {
     state.sw.pe = IsImprecise(res);
   }
@@ -260,10 +277,10 @@ DEF_FPU_SEM(DoFSIN) {
 
 DEF_FPU_SEM(DoFPTAN) {
   SetFPUIpOp();
-  float64_t st0 = Read(X87_ST0);
+  auto st0 = Read(X87_ST0);
   state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
-  state.sw.de = IsDenormal(st0);
-  auto res = CheckedFloatUnaryOp(state, FTan64, st0);
+  state.sw.de |= IsDenormal(st0);
+  auto res = CheckedFloatUnaryOp(state, FTan80, st0);
   if (!IsNaN(res)) {
     state.sw.pe = IsImprecise(res);
   }
@@ -275,23 +292,23 @@ DEF_FPU_SEM(DoFPTAN) {
 DEF_FPU_SEM(DoFPATAN) {
   SetFPUIpOp();
 
-  float64_t st0 = Read(X87_ST0);
-  float64_t st1 = Read(X87_ST1);
-  float64_t res = CheckedFloatBinOp(state, FDiv64, st1, st0);
+  auto st0 = Read(X87_ST0);
+  auto st1 = Read(X87_ST1);
+  auto res = CheckedFloatBinOp(state, FDiv80, st1, st0);
   if (!state.sw.ie) {
     state.sw.ie = IsSignalingNaN(res) | IsInfinite(res);
     state.sw.de = IsDenormal(res);
     state.sw.pe = IsImprecise(res);
   }
 
-  Write(X87_ST1, __builtin_atan(res));
+  Write(X87_ST1, FAtan80(res));
   (void) POP_X87_STACK();
   return memory;
 }
 
 DEF_FPU_SEM(DoFSQRT) {
   SetFPUIpOp();
-  float64_t st0 = Read(X87_ST0);
+  auto st0 = Read(X87_ST0);
   if (IsZero(st0)) {
     state.sw.ie = 0;
     state.sw.de = 0;
@@ -299,8 +316,8 @@ DEF_FPU_SEM(DoFSQRT) {
     Write(X87_ST0, st0);
   } else {
     state.sw.ie |= IsSignalingNaN(st0) | IsNegative(st0);
-    state.sw.de = IsDenormal(st0);
-    float64_t res = CheckedFloatUnaryOp(state, FSqrt64, st0);
+    state.sw.de |= IsDenormal(st0);
+    auto res = CheckedFloatUnaryOp(state, FSqrt80, st0);
     if (!IsNaN(res)) {
       state.sw.pe = IsImprecise(res);
     }
@@ -313,9 +330,9 @@ DEF_FPU_SEM(DoFSINCOS) {
   SetFPUIpOp();
   auto st0 = Read(X87_ST0);
   state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
-  state.sw.de = IsDenormal(st0);
-  auto sin_res = CheckedFloatUnaryOp(state, FSin64, st0);
-  auto cos_res = CheckedFloatUnaryOp(state, FCos64, st0);
+  state.sw.de |= IsDenormal(st0);
+  auto sin_res = CheckedFloatUnaryOp(state, FSin80, st0);
+  auto cos_res = CheckedFloatUnaryOp(state, FCos80, st0);
   if (!IsNaN(sin_res) && !IsNaN(cos_res)) {
     state.sw.pe = IsImprecise(sin_res) | IsImprecise(cos_res);
   }
@@ -326,9 +343,9 @@ DEF_FPU_SEM(DoFSINCOS) {
 
 DEF_FPU_SEM(DoFSCALE) {
   SetFPUIpOp();
-  auto st1_int = __builtin_trunc(Read(X87_ST1));  // Round toward zero.
-  auto shift = __builtin_exp2(st1_int);
-  Write(X87_ST0, FMul(Read(X87_ST0), shift));
+  auto st1_int = FTruncTowardZero(Read(X87_ST1));  // Round toward zero.
+  auto shift = Exp2(st1_int);
+  Write(X87_ST0, FMul(Read(X87_ST0), Float80(shift)));
   return memory;
 }
 
@@ -336,9 +353,9 @@ DEF_FPU_SEM(DoF2XM1) {
   SetFPUIpOp();
   auto st0 = Read(X87_ST0);
   state.sw.ie |= IsSignalingNaN(st0) | IsInfinite(st0);
-  state.sw.de = IsDenormal(st0);
+  state.sw.de |= IsDenormal(st0);
   state.sw.ue = 0;  // TODO(pag): Not sure.
-  auto res = FSub(__builtin_exp2(st0), 1.0);
+  auto res = FSub(Float80(Exp2(st0)), Float80(1.0));
   if (!IsNaN(res)) {
     state.sw.pe = IsImprecise(res);  // TODO(pag): Not sure.
   }
@@ -348,12 +365,12 @@ DEF_FPU_SEM(DoF2XM1) {
 
 DEF_FPU_SEM(DoFPREM) {
   SetFPUIpOp();
-  float64_t st0 = Read(X87_ST0);
-  float64_t st1 = Read(X87_ST1);
-  auto rem = __builtin_fmod(st0, st1);
-  Write(X87_ST0, rem);
+  auto st0 = Read(X87_ST0);
+  auto st1 = Read(X87_ST1);
+  auto rem = __builtin_fmod_f80(st0, st1);
+  Write(X87_ST0, Float80(rem));
 
-  auto quot = Int64(FTruncTowardZero64(FDiv(st0, st1)));
+  auto quot = Int64(FTruncTowardZero(FDiv(st0, st1)));
   auto quot_lsb = TruncTo<uint8_t>(UInt64(SAbs(quot)));
   state.sw.c0 = UAnd(UShr(quot_lsb, 2_u8), 1_u8);  // Q2.
   state.sw.c2 = 0;  // Assumes it's not a partial remainder.
@@ -364,11 +381,11 @@ DEF_FPU_SEM(DoFPREM) {
 
 DEF_FPU_SEM(DoFPREM1) {
   SetFPUIpOp();
-  float64_t st0 = Read(X87_ST0);
-  float64_t st1 = Read(X87_ST1);
-  auto rem = __builtin_remainder(st0, st1);
-  Write(X87_ST0, rem);
-  auto quot = Float64ToInt64(FDiv(st0, st1));
+  auto st0 = Read(X87_ST0);
+  auto st1 = Read(X87_ST1);
+  auto rem = __builtin_remainder_f80(st0, st1);
+  Write(X87_ST0, Float80(rem));
+  auto quot = Float80ToInt64(FDiv80(st0, st1));
   auto quot_lsb = TruncTo<uint8_t>(UInt64(SAbs(quot)));
   state.sw.c0 = UAnd(UShr(quot_lsb, 2_u8), 1_u8);  // Q2.
   state.sw.c2 = 0;  // Assumes it's not a partial remainder.
@@ -389,6 +406,18 @@ DEF_SEM(DoFWAIT) {
 
 DEF_SEM(DoFNCLEX) {
   feclearexcept(FE_ALL_EXCEPT);
+  state.sw.pe = 0;
+  state.sw.ue = 0;
+  state.sw.oe = 0;
+  state.sw.ze = 0;
+  state.sw.de = 0;
+  state.sw.ie = 0;
+
+  state.sw.c0 = UUndefined8();
+  state.sw.c1 = UUndefined8();
+  state.sw.c2 = UUndefined8();
+  state.sw.c3 = UUndefined8();
+
   return memory;
 }
 
@@ -432,20 +461,20 @@ DEF_ISEL(FPREM1) = DoFPREM1;
 namespace {
 
 template <typename T>
-DEF_FPU_SEM(FSUB, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FSUB, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
-  Write(dst, CheckedFloatBinOp(state, FSub64, Read(src1), Float64(Read(src2))));
+  Write(dst, CheckedFloatBinOp(state, FSub80, Read(src1), Float80(Read(src2))));
   return memory;
 }
 
 template <typename T>
-DEF_FPU_SEM(FSUBmem, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FSUBmem, RF80W dst, RF80W src1, T src2) {
   SetFPUDp(src2);
   return FSUB(memory, state, dst, src1, src2, pc, fop);
 }
 
 template <typename T>
-DEF_FPU_SEM(FSUBP, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FSUBP, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
   memory = FSUB<T>(memory, state, dst, src1, src2, pc, fop);
   (void) POP_X87_STACK();
@@ -453,29 +482,29 @@ DEF_FPU_SEM(FSUBP, RF80W dst, RF80 src1, T src2) {
 }
 
 template <typename T>
-DEF_FPU_SEM(FISUB, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FISUB, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
   SetFPUDp(src2);
-  Write(dst, CheckedFloatBinOp(state, FSub64, Read(src1),
-                               Float64(Signed(Read(src2)))));
+  Write(dst, CheckedFloatBinOp(state, FSub80, Read(src1),
+                               Float80(Signed(Read(src2)))));
   return memory;
 }
 
 template <typename T>
-DEF_FPU_SEM(FSUBR, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FSUBR, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
-  Write(dst, CheckedFloatBinOp(state, FSub64, Float64(Read(src2)), Read(src1)));
+  Write(dst, CheckedFloatBinOp(state, FSub80, Float80(Read(src2)), Read(src1)));
   return memory;
 }
 
 template <typename T>
-DEF_FPU_SEM(FSUBRmem, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FSUBRmem, RF80W dst, RF80W src1, T src2) {
   SetFPUDp(src2);
   return FSUBR(memory, state, dst, src1, src2, pc, fop);
 }
 
 template <typename T>
-DEF_FPU_SEM(FSUBRP, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FSUBRP, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
   memory = FSUBR<T>(memory, state, dst, src1, src2, pc, fop);
   (void) POP_X87_STACK();
@@ -483,10 +512,10 @@ DEF_FPU_SEM(FSUBRP, RF80W dst, RF80 src1, T src2) {
 }
 
 template <typename T>
-DEF_FPU_SEM(FISUBR, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FISUBR, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
   SetFPUDp(src2);
-  Write(dst, CheckedFloatBinOp(state, FSub64, Float64(Signed(Read(src2))),
+  Write(dst, CheckedFloatBinOp(state, FSub80, Float80(Signed(Read(src2))),
                                Read(src1)));
   return memory;
 }
@@ -494,15 +523,15 @@ DEF_FPU_SEM(FISUBR, RF80W dst, RF80 src1, T src2) {
 
 DEF_ISEL(FSUB_ST0_MEMmem32real) = FSUBmem<MF32>;
 DEF_ISEL(FSUB_ST0_MEMm64real) = FSUBmem<MF64>;
-DEF_ISEL(FSUB_ST0_X87) = FSUB<RF80>;
-DEF_ISEL(FSUB_X87_ST0) = FSUB<RF80>;
-DEF_ISEL(FSUBP_X87_ST0) = FSUBP<RF80>;
+DEF_ISEL(FSUB_ST0_X87) = FSUB<RF80W>;
+DEF_ISEL(FSUB_X87_ST0) = FSUB<RF80W>;
+DEF_ISEL(FSUBP_X87_ST0) = FSUBP<RF80W>;
 
 DEF_ISEL(FSUBR_ST0_MEMmem32real) = FSUBRmem<MF32>;
 DEF_ISEL(FSUBR_ST0_MEMm64real) = FSUBRmem<MF64>;
-DEF_ISEL(FSUBR_ST0_X87) = FSUBR<RF80>;
-DEF_ISEL(FSUBR_X87_ST0) = FSUBR<RF80>;
-DEF_ISEL(FSUBRP_X87_ST0) = FSUBRP<RF80>;
+DEF_ISEL(FSUBR_ST0_X87) = FSUBR<RF80W>;
+DEF_ISEL(FSUBR_X87_ST0) = FSUBR<RF80W>;
+DEF_ISEL(FSUBRP_X87_ST0) = FSUBRP<RF80W>;
 
 DEF_ISEL(FISUB_ST0_MEMmem32int) = FISUB<M32>;
 DEF_ISEL(FISUB_ST0_MEMmem16int) = FISUB<M16>;
@@ -512,9 +541,9 @@ DEF_ISEL(FISUBR_ST0_MEMmem16int) = FISUBR<M16>;
 namespace {
 
 template <typename T>
-DEF_FPU_SEM(FADD, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FADD, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
-  Write(dst, CheckedFloatBinOp(state, FAdd64, Read(src1), Float64(Read(src2))));
+  Write(dst, CheckedFloatBinOp(state, FAdd80, Read(src1), Float80(Read(src2))));
 
   //  state.sw.c1 = 1;
   state.sw.c0 = UUndefined8();
@@ -524,135 +553,136 @@ DEF_FPU_SEM(FADD, RF80W dst, RF80 src1, T src2) {
 }
 
 template <typename T>
-DEF_FPU_SEM(FADDmem, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FADDmem, RF80W dst, RF80W src1, T src2) {
   SetFPUDp(src2);
   return FADD(memory, state, dst, src1, src2, pc, fop);
 }
 
 template <typename T>
-DEF_FPU_SEM(FADDP, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FADDP, RF80W dst, RF80W src1, T src2) {
   memory = FADD<T>(memory, state, dst, src1, src2, pc, fop);
   (void) POP_X87_STACK();
   return memory;
 }
 
 template <typename T>
-DEF_FPU_SEM(FIADD, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FIADD, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
   SetFPUDp(src2);
-  Write(dst, CheckedFloatBinOp(state, FAdd64, Read(src1),
-                               Float64(Signed(Read(src2)))));
+  auto res = CheckedFloatBinOp(state, FAdd80, Float80(Read(src1)), Float80(Signed(Read(src2))));
+  Write(dst, Float80(res));
   return memory;
 }
 
 }  // namespace
 
 DEF_ISEL(FADD_ST0_MEMmem32real) = FADDmem<MF32>;
-DEF_ISEL(FADD_ST0_X87) = FADD<RF80>;
+DEF_ISEL(FADD_ST0_X87) = FADD<RF80W>;
 DEF_ISEL(FADD_ST0_MEMm64real) = FADDmem<MF64>;
-DEF_ISEL(FADD_X87_ST0) = FADD<RF80>;
-DEF_ISEL(FADDP_X87_ST0) = FADDP<RF80>;
+DEF_ISEL(FADD_X87_ST0) = FADD<RF80W>;
+DEF_ISEL(FADDP_X87_ST0) = FADDP<RF80W>;
 DEF_ISEL(FIADD_ST0_MEMmem32int) = FIADD<M32>;
 DEF_ISEL(FIADD_ST0_MEMmem16int) = FIADD<M16>;
 
 namespace {
 
 template <typename T>
-DEF_FPU_SEM(FMUL, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FMUL, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
-  Write(dst, CheckedFloatBinOp(state, FMul64, Read(src1), Float64(Read(src2))));
+  Write(dst, CheckedFloatBinOp(state, FMul80, Read(src1), Float80(Read(src2))));
   return memory;
 }
 
 template <typename T>
-DEF_FPU_SEM(FMULmem, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FMULmem, RF80W dst, RF80W src1, T src2) {
   SetFPUDp(src2);
   return FMUL(memory, state, dst, src1, src2, pc, fop);
 }
 
 template <typename T>
-DEF_FPU_SEM(FMULP, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FMULP, RF80W dst, RF80W src1, T src2) {
   memory = FMUL<T>(memory, state, dst, src1, src2, pc, fop);
   (void) POP_X87_STACK();
   return memory;
 }
 
 template <typename T>
-DEF_FPU_SEM(FIMUL, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FIMUL, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
   SetFPUDp(src2);
-  Write(dst, CheckedFloatBinOp(state, FMul64, Read(src1),
-                               Float64(Signed(Read(src2)))));
+  auto res = CheckedFloatBinOp(state, FMul80, Float80(Read(src1)), Float80(Signed(Read(src2))));
+  Write(dst, res);
   return memory;
 }
 
 }  // namespace
 
 DEF_ISEL(FMUL_ST0_MEMmem32real) = FMULmem<MF32>;
-DEF_ISEL(FMUL_ST0_X87) = FMUL<RF80>;
+DEF_ISEL(FMUL_ST0_X87) = FMUL<RF80W>;
 DEF_ISEL(FMUL_ST0_MEMm64real) = FMULmem<MF64>;
-DEF_ISEL(FMUL_X87_ST0) = FMUL<RF80>;
-DEF_ISEL(FMULP_X87_ST0) = FMULP<RF80>;
+DEF_ISEL(FMUL_X87_ST0) = FMUL<RF80W>;
+DEF_ISEL(FMULP_X87_ST0) = FMULP<RF80W>;
 DEF_ISEL(FIMUL_ST0_MEMmem32int) = FIMUL<M32>;
 DEF_ISEL(FIMUL_ST0_MEMmem16int) = FIMUL<M16>;
 
 namespace {
 
 template <typename T>
-DEF_FPU_SEM(FDIV, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FDIV, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
-  Write(dst, CheckedFloatBinOp(state, FDiv64, Read(src1), Float64(Read(src2))));
+  Write(dst, CheckedFloatBinOp(state, FDiv80, Read(src1), Float80(Read(src2))));
   return memory;
 }
 
 template <typename T>
-DEF_FPU_SEM(FDIVmem, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FDIVmem, RF80W dst, RF80W src1, T src2) {
   SetFPUDp(src2);
   return FDIV(memory, state, dst, src1, src2, pc, fop);
 }
 
 template <typename T>
-DEF_FPU_SEM(FDIVP, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FDIVP, RF80W dst, RF80W src1, T src2) {
   memory = FDIV<T>(memory, state, dst, src1, src2, pc, fop);
   (void) POP_X87_STACK();
   return memory;
 }
 
 template <typename T>
-DEF_FPU_SEM(FIDIV, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FIDIV, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
   SetFPUDp(src2);
-  Write(dst, CheckedFloatBinOp(state, FDiv64, Read(src1),
-                               Float64(Signed(Read(src2)))));
+  auto res = CheckedFloatBinOp(state, FDiv80, Float80(Read(src1)), Float80(Signed(Read(src2))));
+  Write(dst, res);
   return memory;
 }
 
 template <typename T>
-DEF_FPU_SEM(FDIVR, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FDIVR, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
-  Write(dst, CheckedFloatBinOp(state, FDiv64, Float64(Read(src2)), Read(src1)));
+  auto res = CheckedFloatBinOp(state, FDiv80, Float80(Read(src2)), Read(src1));
+  Write(dst, res);
   return memory;
 }
 
 template <typename T>
-DEF_FPU_SEM(FDIVRmem, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FDIVRmem, RF80W dst, RF80W src1, T src2) {
   SetFPUDp(src2);
   return FDIVR(memory, state, dst, src1, src2, pc, fop);
 }
 
 template <typename T>
-DEF_FPU_SEM(FDIVRP, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FDIVRP, RF80W dst, RF80W src1, T src2) {
   memory = FDIVR<T>(memory, state, dst, src1, src2, pc, fop);
   (void) POP_X87_STACK();
   return memory;
 }
 
 template <typename T>
-DEF_FPU_SEM(FIDIVR, RF80W dst, RF80 src1, T src2) {
+DEF_FPU_SEM(FIDIVR, RF80W dst, RF80W src1, T src2) {
   SetFPUIpOp();
   SetFPUDp(src2);
-  Write(dst, CheckedFloatBinOp(state, FDiv64, Float64(Signed(Read(src2))),
-                               Read(src1)));
+  auto res = CheckedFloatBinOp(state, FDiv80, Float80(Signed(Read(src2))), Float80(Read(src1)));
+  Write(dst, res);
   return memory;
 }
 
@@ -660,15 +690,15 @@ DEF_FPU_SEM(FIDIVR, RF80W dst, RF80 src1, T src2) {
 
 DEF_ISEL(FDIV_ST0_MEMmem32real) = FDIVmem<MF32>;
 DEF_ISEL(FDIV_ST0_MEMm64real) = FDIVmem<MF64>;
-DEF_ISEL(FDIV_ST0_X87) = FDIV<RF80>;
-DEF_ISEL(FDIV_X87_ST0) = FDIV<RF80>;
-DEF_ISEL(FDIVP_X87_ST0) = FDIVP<RF80>;
+DEF_ISEL(FDIV_ST0_X87) = FDIV<RF80W>;
+DEF_ISEL(FDIV_X87_ST0) = FDIV<RF80W>;
+DEF_ISEL(FDIVP_X87_ST0) = FDIVP<RF80W>;
 
 DEF_ISEL(FDIVR_ST0_MEMmem32real) = FDIVRmem<MF32>;
 DEF_ISEL(FDIVR_ST0_MEMm64real) = FDIVRmem<MF64>;
-DEF_ISEL(FDIVR_ST0_X87) = FDIVR<RF80>;
-DEF_ISEL(FDIVR_X87_ST0) = FDIVR<RF80>;
-DEF_ISEL(FDIVRP_X87_ST0) = FDIVRP<RF80>;
+DEF_ISEL(FDIVR_ST0_X87) = FDIVR<RF80W>;
+DEF_ISEL(FDIVR_X87_ST0) = FDIVR<RF80W>;
+DEF_ISEL(FDIVRP_X87_ST0) = FDIVRP<RF80W>;
 
 DEF_ISEL(FIDIV_ST0_MEMmem32int) = FIDIV<M32>;
 DEF_ISEL(FIDIV_ST0_MEMmem16int) = FIDIV<M16>;
@@ -677,16 +707,16 @@ DEF_ISEL(FIDIVR_ST0_MEMmem16int) = FIDIVR<M16>;
 
 namespace {
 
-DEF_FPU_SEM(FBSTP, MBCD80W dst, RF80 src) {
+DEF_FPU_SEM(FBSTP, MBCD80W dst, RF80W src) {
   SetFPUIpOp();
   bcd80_t out_bcd = {};
 
-  auto read = Float64(Read(src));
-  auto rounded = FRoundUsingMode64(read);
+  auto read = Read(src);
+  auto rounded = FRoundUsingMode(read);
   auto rounded_abs = FAbs(rounded);
 
   // Any larger double aliases an integer out of 80-bit packed BCD range.
-  constexpr double max_bcd80_float = 1e18 - 65;
+  constexpr native_float80_t max_bcd80_float = 1e18 - 65;
   auto out_of_range = rounded_abs > max_bcd80_float;
 
   if (out_of_range || IsNaN(read) || IsInfinite(read)) {
@@ -728,41 +758,41 @@ DEF_FPU_SEM(FBSTP, MBCD80W dst, RF80 src) {
 }
 
 template <typename T>
-DEF_FPU_SEM(FST, T dst, RF80 src) {
+DEF_FPU_SEM(FST, T dst, RF80W src) {
   SetFPUIpOp();
   typedef typename BaseType<T>::BT BT;
   auto res = CheckedFloatUnaryOp(
-      state, [=](float64_t x) { return static_cast<BT>(x); }, Read(src));
+      state, [=](native_float80_t x) { return static_cast<BT>(x); }, Read(src));
   Write(dst, res);
   return memory;
 }
 
 template <typename T>
-DEF_FPU_SEM(FSTmem, T dst, RF80 src) {
+DEF_FPU_SEM(FSTmem, T dst, RF80W src) {
   SetFPUDp(dst);
   return FST(memory, state, dst, src, pc, fop);
 }
 
 template <typename T>
-DEF_FPU_SEM(FSTP, T dst, RF80 src) {
+DEF_FPU_SEM(FSTP, T dst, RF80W src) {
   memory = FST<T>(memory, state, dst, src, pc, fop);
   (void) POP_X87_STACK();
   return memory;
 }
 
 template <typename T>
-DEF_FPU_SEM(FSTPmem, T dst, RF80 src) {
+DEF_FPU_SEM(FSTPmem, T dst, RF80W src) {
   SetFPUDp(dst);
   return FSTP(memory, state, dst, src, pc, fop);
 }
 
 template <typename C1, typename C2>
-DEF_HELPER(ConvertToInt, C1 cast, C2 convert, float64_t input)
+DEF_HELPER(ConvertToInt, C1 cast, C2 convert, native_float80_t input)
     ->decltype(cast(input)) {
-  auto rounded = FRoundUsingMode64(input);
+  auto rounded = FRoundUsingMode80(input);
   auto casted = CheckedFloatUnaryOp(state, cast, rounded);
   auto converted = convert(rounded);
-  auto back = static_cast<float64_t>(converted);
+  auto back = static_cast<native_float80_t>(converted);
 
   if (!state.sw.ie && !state.sw.pe) {
     if (converted != casted || IsInfinite(input) || IsNaN(input)) {
@@ -770,7 +800,7 @@ DEF_HELPER(ConvertToInt, C1 cast, C2 convert, float64_t input)
       state.sw.pe = 0;
     } else {
       if (back != rounded) {
-        state.sw.ie = static_cast<uint8_t>(FAbs(back) < FAbs(input));
+        state.sw.ie = static_cast<uint8_t>(FAbs80(back) < FAbs80(input));
         state.sw.pe = 1 - state.sw.ie;
       } else {
         state.sw.pe = static_cast<uint8_t>(rounded != input);
@@ -782,41 +812,40 @@ DEF_HELPER(ConvertToInt, C1 cast, C2 convert, float64_t input)
   return converted;
 }
 
-DEF_FPU_SEM(FISTm16, M16W dst, RF80 src) {
+DEF_FPU_SEM(FISTm16, M16W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      ConvertToInt(memory, state, Int16<float64_t>, Float64ToInt16, Read(src));
+      ConvertToInt(memory, state, Int16<float80_t>, Float80ToInt16, Read(src));
   Write(dst, Unsigned(res));
   return memory;
 }
 
-DEF_FPU_SEM(FISTm32, M32W dst, RF80 src) {
+DEF_FPU_SEM(FISTm32, M32W dst, RF80W src) {
   SetFPUIpOp();
-  SetFPUDp(dst);
   auto res =
-      ConvertToInt(memory, state, Int32<float64_t>, Float64ToInt32, Read(src));
+      ConvertToInt(memory, state, Int32<float80_t>, Float80ToInt32, Read(src));
   Write(dst, Unsigned(res));
   return memory;
 }
 
-DEF_FPU_SEM(FISTPm16, M16W dst, RF80 src) {
+DEF_FPU_SEM(FISTPm16, M16W dst, RF80W src) {
   memory = FISTm16(memory, state, dst, src, pc, fop);
   (void) POP_X87_STACK();
   return memory;
 }
 
-DEF_FPU_SEM(FISTPm32, M32W dst, RF80 src) {
+DEF_FPU_SEM(FISTPm32, M32W dst, RF80W src) {
   memory = FISTm32(memory, state, dst, src, pc, fop);
   (void) POP_X87_STACK();
   return memory;
 }
 
-DEF_FPU_SEM(FISTPm64, M64W dst, RF80 src) {
+DEF_FPU_SEM(FISTPm64, M64W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      ConvertToInt(memory, state, Int64<float64_t>, Float64ToInt64, Read(src));
+      ConvertToInt(memory, state, Int64<float80_t>, Float80ToInt64, Read(src));
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
@@ -858,12 +887,12 @@ DEF_ISEL(FINCSTP) = DoFINCSTP;
 IF_32BIT(DEF_ISEL(FSTPNCE_X87_ST0) = FSTP<RF80W>;)
 
 template <typename C1, typename C2>
-DEF_HELPER(TruncateToInt, C1 cast, C2 convert, float64_t input)
+DEF_HELPER(TruncateToInt, C1 cast, C2 convert, float80_t input)
     ->decltype(cast(input)) {
-  auto truncated = FTruncTowardZero64(input);
+  auto truncated = FTruncTowardZero80(input);
   auto casted = CheckedFloatUnaryOp(state, cast, truncated);
   auto converted = convert(truncated);
-  auto back = static_cast<float64_t>(converted);
+  auto back = static_cast<float80_t>(converted);
 
   if (!state.sw.ie && !state.sw.pe) {
     if (converted != casted || IsInfinite(input) || IsNaN(input)) {
@@ -871,7 +900,7 @@ DEF_HELPER(TruncateToInt, C1 cast, C2 convert, float64_t input)
       state.sw.pe = 0;
     } else {
       if (back != truncated) {
-        state.sw.ie = static_cast<uint8_t>(FAbs(back) < FAbs(input));
+        state.sw.ie = static_cast<uint8_t>(FAbs80(back) < FAbs80(input));
         state.sw.pe = 1 - state.sw.ie;
       } else {
         state.sw.pe = static_cast<uint8_t>(truncated != input);
@@ -884,31 +913,31 @@ DEF_HELPER(TruncateToInt, C1 cast, C2 convert, float64_t input)
 }
 
 namespace {
-DEF_FPU_SEM(FISTTPm16, M16W dst, RF80 src) {
+DEF_FPU_SEM(FISTTPm16, M16W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      TruncateToInt(memory, state, Int16<float64_t>, Float64ToInt16, Read(src));
+      TruncateToInt(memory, state, Int16<float80_t>, Float80ToInt16, Read(src));
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
 }
 
-DEF_FPU_SEM(FISTTPm32, M32W dst, RF80 src) {
+DEF_FPU_SEM(FISTTPm32, M32W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      TruncateToInt(memory, state, Int32<float64_t>, Float64ToInt32, Read(src));
+      TruncateToInt(memory, state, Int32<float80_t>, Float80ToInt32, Read(src));
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
 }
 
-DEF_FPU_SEM(FISTTPm64, M64W dst, RF80 src) {
+DEF_FPU_SEM(FISTTPm64, M64W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      TruncateToInt(memory, state, Int64<float64_t>, Float64ToInt64, Read(src));
+      TruncateToInt(memory, state, Int64<float80_t>, Float80ToInt64, Read(src));
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
@@ -922,7 +951,7 @@ DEF_ISEL(FISTTP_MEMm64int_ST0) = FISTTPm64;
 
 namespace {
 
-DEF_FPU_SEM(FXCH, RF80W dst1, RF80 src1, RF80W dst2, RF80 src2) {
+DEF_FPU_SEM(FXCH, RF80W dst1, RF80W src1, RF80W dst2, RF80W src2) {
   SetFPUIpOp();
   auto st0 = Read(src1);
   auto sti = Read(src2);
@@ -941,7 +970,7 @@ namespace {
 
 DEF_FPU_SEM(DoFXAM) {
   SetFPUIpOp();
-  auto st0 = Read(X87_ST0);
+  auto st0 = static_cast<native_float80_t>(Read(X87_ST0));
 
   uint8_t sign = __builtin_signbit(st0) == 0 ? 0_u8 : 1_u8;
   auto c = __builtin_fpclassify(FP_NAN, FP_INFINITE, FP_NORMAL, FP_SUBNORMAL,
@@ -994,8 +1023,8 @@ DEF_FPU_SEM(DoFXAM) {
   return memory;
 }
 
-DEF_HELPER(OrderedCompare, float64_t src1, float64_t src2)->void {
-  state.sw.de = IsDenormal(src1) | IsDenormal(src2);
+DEF_HELPER(OrderedCompare, native_float80_t src1, native_float80_t src2)->void {
+  state.sw.de |= IsDenormal(src1) | IsDenormal(src2);
   state.sw.ie = 0;
 
   if (__builtin_isunordered(src1, src2)) {
@@ -1020,8 +1049,8 @@ DEF_HELPER(OrderedCompare, float64_t src1, float64_t src2)->void {
   }
 }
 
-DEF_HELPER(UnorderedCompare, float64_t src1, float64_t src2)->void {
-  state.sw.de = IsDenormal(src1) | IsDenormal(src2);
+DEF_HELPER(UnorderedCompare, native_float80_t src1, native_float80_t src2)->void {
+  state.sw.de |= IsDenormal(src1) | IsDenormal(src2);
   state.sw.ie = 0;
 
   if (__builtin_isunordered(src1, src2)) {
@@ -1060,10 +1089,10 @@ DEF_FPU_SEM(DoFTST) {
 }
 
 template <typename S2>
-DEF_FPU_SEM(FUCOM, RF80 src1, S2 src2) {
+DEF_FPU_SEM(FUCOM, RF80W src1, S2 src2) {
   SetFPUIpOp();
   auto st0 = Read(src1);
-  auto sti = Float64(Read(src2));
+  auto sti = Read(src2);
 
   // Note:  Don't modify c1. The docs only state that c1=0 if there was a
   //        stack underflow.
@@ -1072,10 +1101,10 @@ DEF_FPU_SEM(FUCOM, RF80 src1, S2 src2) {
 }
 
 template <typename S2>
-DEF_FPU_SEM(FCOM, RF80 src1, S2 src2) {
+DEF_FPU_SEM(FCOM, RF80W src1, S2 src2) {
   SetFPUIpOp();
   auto st0 = Read(src1);
-  auto sti = Float64(Read(src2));
+  auto sti = Read(src2);
 
   // Note:  Don't modify c1. The docs only state that c1=0 if there was a
   //        stack underflow.
@@ -1084,63 +1113,66 @@ DEF_FPU_SEM(FCOM, RF80 src1, S2 src2) {
 }
 
 template <typename S2>
-DEF_FPU_SEM(FUCOMmem, RF80 src1, S2 src2) {
+DEF_FPU_SEM(FUCOMmem, RF80W src1, S2 src2) {
   SetFPUDp(src2);
   return FUCOM(memory, state, src1, src2, pc, fop);
 }
 
 template <typename S2>
-DEF_FPU_SEM(FCOMmem, RF80 src1, S2 src2) {
+DEF_FPU_SEM(FCOMmem, RF80W src1, S2 src2) {
   SetFPUDp(src2);
   return FCOM(memory, state, src1, src2, pc, fop);
 }
 
 template <typename S2>
-DEF_FPU_SEM(FUCOMP, RF80 src1, S2 src2) {
+DEF_FPU_SEM(FUCOMP, RF80W src1, S2 src2) {
   memory = FUCOM<S2>(memory, state, src1, src2, pc, fop);
   (void) POP_X87_STACK();
   return memory;
 }
 
 template <typename S2>
-DEF_FPU_SEM(FCOMP, RF80 src1, S2 src2) {
+DEF_FPU_SEM(FCOMP, RF80W src1, S2 src2) {
   memory = FCOM<S2>(memory, state, src1, src2, pc, fop);
   (void) POP_X87_STACK();
   return memory;
 }
 
 template <typename S2>
-DEF_FPU_SEM(FUCOMPmem, RF80 src1, S2 src2) {
+DEF_FPU_SEM(FUCOMPmem, RF80W src1, S2 src2) {
   SetFPUDp(src2);
   return FUCOMP(memory, state, src1, src2, pc, fop);
 }
 
 template <typename S2>
-DEF_FPU_SEM(FCOMPmem, RF80 src1, S2 src2) {
+DEF_FPU_SEM(FCOMPmem, RF80W src1, S2 src2) {
   SetFPUDp(src2);
   return FCOMP(memory, state, src1, src2, pc, fop);
 }
 
 DEF_FPU_SEM(DoFUCOMPP) {
-  RF80 st0 = {X87_ST0};
-  RF80 st1 = {X87_ST1};
-  memory = FUCOM<RF80>(memory, state, st0, st1, pc, fop);
+  SetFPUIpOp();
+  RF80W st0 = {&X87_ST0};
+  RF80W st1 = {&X87_ST1};
+  memory = FUCOM<RF80W>(memory, state, st0, st1, pc, fop);
+
   (void) POP_X87_STACK();
   (void) POP_X87_STACK();
   return memory;
 }
 
 DEF_FPU_SEM(DoFCOMPP) {
-  RF80 st0 = {X87_ST0};
-  RF80 st1 = {X87_ST1};
-  memory = FCOM<RF80>(memory, state, st0, st1, pc, fop);
+  RF80W st0 = {&X87_ST0};
+  RF80W st1 = {&X87_ST1};
+  memory = FCOM<RF80W>(memory, state, st0, st1, pc, fop);
+
   (void) POP_X87_STACK();
   (void) POP_X87_STACK();
   return memory;
 }
 
-DEF_HELPER(UnorderedCompareEflags, float64_t src1, float64_t src2)->void {
-  state.sw.de = IsDenormal(src1) | IsDenormal(src2);
+DEF_HELPER(UnorderedCompareEflags, native_float80_t src1, native_float80_t src2)->void {
+  state.sw.de |= IsDenormal(src1) | IsDenormal(src2);
   state.sw.ie = 0;
 
   if (__builtin_isunordered(src1, src2)) {
@@ -1166,8 +1198,8 @@ DEF_HELPER(UnorderedCompareEflags, float64_t src1, float64_t src2)->void {
   }
 }
 
-DEF_HELPER(OrderedCompareEflags, float64_t src1, float64_t src2)->void {
-  state.sw.de = IsDenormal(src1) | IsDenormal(src2);
+DEF_HELPER(OrderedCompareEflags, native_float80_t src1, native_float80_t src2)->void {
+  state.sw.de |= IsDenormal(src1) | IsDenormal(src2);
   state.sw.ie = 0;
 
   if (__builtin_isunordered(src1, src2)) {
@@ -1193,7 +1225,7 @@ DEF_HELPER(OrderedCompareEflags, float64_t src1, float64_t src2)->void {
   }
 }
 
-DEF_FPU_SEM(FUCOMI, RF80 src1, RF80 src2) {
+DEF_FPU_SEM(FUCOMI, RF80W src1, RF80W src2) {
   SetFPUIpOp();
   auto st0 = Read(src1);
   auto sti = Read(src2);
@@ -1205,13 +1237,13 @@ DEF_FPU_SEM(FUCOMI, RF80 src1, RF80 src2) {
   return memory;
 }
 
-DEF_FPU_SEM(FUCOMIP, RF80 src1, RF80 src2) {
+DEF_FPU_SEM(FUCOMIP, RF80W src1, RF80W src2) {
   memory = FUCOMI(memory, state, src1, src2, pc, fop);
   (void) POP_X87_STACK();
   return memory;
 }
 
-DEF_FPU_SEM(FCOMI, RF80 src1, RF80 src2) {
+DEF_FPU_SEM(FCOMI, RF80W src1, RF80W src2) {
   SetFPUIpOp();
   auto st0 = Read(src1);
   auto sti = Read(src2);
@@ -1223,7 +1255,7 @@ DEF_FPU_SEM(FCOMI, RF80 src1, RF80 src2) {
   return memory;
 }
 
-DEF_FPU_SEM(FCOMIP, RF80 src1, RF80 src2) {
+DEF_FPU_SEM(FCOMIP, RF80W src1, RF80W src2) {
   memory = FCOMI(memory, state, src1, src2, pc, fop);
   (void) POP_X87_STACK();
   return memory;
@@ -1234,8 +1266,8 @@ DEF_FPU_SEM(FCOMIP, RF80 src1, RF80 src2) {
 DEF_ISEL(FXAM) = DoFXAM;
 DEF_ISEL(FTST) = DoFTST;
 
-DEF_ISEL(FUCOM_ST0_X87) = FUCOM<RF80>;
-DEF_ISEL(FUCOMP_ST0_X87) = FUCOMP<RF80>;
+DEF_ISEL(FUCOM_ST0_X87) = FUCOM<RF80W>;
+DEF_ISEL(FUCOMP_ST0_X87) = FUCOMP<RF80W>;
 DEF_ISEL(FUCOMPP) = DoFUCOMPP;
 
 DEF_ISEL(FUCOMI_ST0_X87) = FUCOMI;
@@ -1244,16 +1276,16 @@ DEF_ISEL(FUCOMIP_ST0_X87) = FUCOMIP;
 DEF_ISEL(FCOMI_ST0_X87) = FCOMI;
 DEF_ISEL(FCOMIP_ST0_X87) = FCOMIP;
 
-DEF_ISEL(FCOM_ST0_X87) = FCOM<RF80>;
-DEF_ISEL(FCOM_ST0_X87_DCD0) = FCOM<RF80>;
+DEF_ISEL(FCOM_ST0_X87) = FCOM<RF80W>;
+DEF_ISEL(FCOM_ST0_X87_DCD0) = FCOM<RF80W>;
 DEF_ISEL(FCOM_ST0_MEMmem32real) = FCOMmem<MF32>;
 DEF_ISEL(FCOM_ST0_MEMm64real) = FCOMmem<MF64>;
 
-DEF_ISEL(FCOMP_ST0_X87) = FCOMP<RF80>;
+DEF_ISEL(FCOMP_ST0_X87) = FCOMP<RF80W>;
 DEF_ISEL(FCOMP_ST0_MEMmem32real) = FCOMPmem<MF32>;
 DEF_ISEL(FCOMP_ST0_MEMm64real) = FCOMPmem<MF64>;
-DEF_ISEL(FCOMP_ST0_X87_DCD1) = FCOMP<RF80>;
-DEF_ISEL(FCOMP_ST0_X87_DED0) = FCOMP<RF80>;
+DEF_ISEL(FCOMP_ST0_X87_DCD1) = FCOMP<RF80W>;
+DEF_ISEL(FCOMP_ST0_X87_DED0) = FCOMP<RF80W>;
 DEF_ISEL(FCOMPP) = DoFCOMPP;
 
 namespace {
@@ -1279,7 +1311,6 @@ DEF_SEM(FNSTCW, M16W dst) {
   auto &cw = state.x87.fxsave.cwd;
   cw.pc = kPrecisionSingle;
 
-  //cw.flat = 0x027F_u16;  // Our default, with double-precision.
   switch (fegetround()) {
     default:
     case FE_TONEAREST: cw.rc = kFPURoundToNearestEven; break;
@@ -1321,13 +1352,14 @@ namespace {
 DEF_FPU_SEM(DoFRNDINT) {
   SetFPUIpOp();
   auto st0 = Read(X87_ST0);
-  auto rounded = FRoundUsingMode64(st0);
+  auto rounded = FRoundUsingMode(st0);
   state.sw.ie |= IsSignalingNaN(st0);
-  state.sw.de = IsDenormal(st0);
+  state.sw.de |= IsDenormal(st0);
   if (!IsNaN(rounded)) {
     state.sw.pe = st0 != rounded;
   }
-  // state.sw.c1 = __builtin_isgreater(FAbs(rounded), FAbs(st0)) ? 1_u8 : 0_u8;
+
+  //state.sw.c1 = __builtin_isgreater(FAbs(rounded), FAbs(st0)) ? 1_u8 : 0_u8;
   Write(X87_ST0, rounded);
   return memory;
 }
@@ -1340,7 +1372,7 @@ DEF_FPU_SEM(DoFYL2X) {
   state.sw.de = IsDenormal(st0) | IsDenormal(st1);
   state.sw.ie = (IsSignalingNaN(st0) | IsSignalingNaN(st1)) ||
                 (IsNegative(st0) && !IsInfinite(st0) && !state.sw.ze);
-  auto res = FMul64(st1, __builtin_log2(st0));
+  auto res = FMul(st1, Log2(st0));
   state.sw.pe = IsImprecise(res);
   Write(X87_ST1, res);
   (void) POP_X87_STACK();
@@ -1354,20 +1386,20 @@ DEF_FPU_SEM(DoFYL2XP1) {
   state.sw.ze = IsZero(st0);
   state.sw.de = IsDenormal(st0) | IsDenormal(st1);
   state.sw.ie = IsSignalingNaN(st0) | IsSignalingNaN(st1);
-  auto res = FMul(st1, __builtin_log2(FAdd(st0, 1.0)));
+  auto res = FMul(st1, Log2(FAdd(st0, Float80(1.0))));
   state.sw.pe = IsImprecise(res);
   Write(X87_ST1, res);
   (void) POP_X87_STACK();
   return memory;
 }
 
-DEF_FPU_SEM(FFREE, RF80 src) {
+DEF_FPU_SEM(FFREE, RF80W src) {
   SetFPUIpOp();
   (void) src;
   return memory;
 }
 
-DEF_FPU_SEM(FFREEP, RF80 src) {
+DEF_FPU_SEM(FFREEP, RF80W src) {
   SetFPUIpOp();
   (void) POP_X87_STACK();
   (void) src;
@@ -1443,14 +1475,14 @@ DEF_FPU_SEM(FCMOVB, D dst, S1 src1) {
 
 }  // namespace
 
-DEF_ISEL(FCMOVNU_ST0_X87) = FCMOVNP<RF80W, RF80>;
-DEF_ISEL(FCMOVNB_ST0_X87) = FCMOVNB<RF80W, RF80>;
-DEF_ISEL(FCMOVNE_ST0_X87) = FCMOVNZ<RF80W, RF80>;
-DEF_ISEL(FCMOVBE_ST0_X87) = FCMOVBE<RF80W, RF80>;
-DEF_ISEL(FCMOVNBE_ST0_X87) = FCMOVNBE<RF80W, RF80>;
-DEF_ISEL(FCMOVU_ST0_X87) = FCMOVP<RF80W, RF80>;
-DEF_ISEL(FCMOVE_ST0_X87) = FCMOVZ<RF80W, RF80>;
-DEF_ISEL(FCMOVB_ST0_X87) = FCMOVB<RF80W, RF80>;
+DEF_ISEL(FCMOVNU_ST0_X87) = FCMOVNP<RF80W, RF80W>;
+DEF_ISEL(FCMOVNB_ST0_X87) = FCMOVNB<RF80W, RF80W>;
+DEF_ISEL(FCMOVNE_ST0_X87) = FCMOVNZ<RF80W, RF80W>;
+DEF_ISEL(FCMOVBE_ST0_X87) = FCMOVBE<RF80W, RF80W>;
+DEF_ISEL(FCMOVNBE_ST0_X87) = FCMOVNBE<RF80W, RF80W>;
+DEF_ISEL(FCMOVU_ST0_X87) = FCMOVP<RF80W, RF80W>;
+DEF_ISEL(FCMOVE_ST0_X87) = FCMOVZ<RF80W, RF80W>;
+DEF_ISEL(FCMOVB_ST0_X87) = FCMOVB<RF80W, RF80W>;
 
 namespace {
 

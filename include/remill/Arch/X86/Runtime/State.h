@@ -735,12 +735,14 @@ struct alignas(8) GPR final {
 
 static_assert(272 == sizeof(GPR), "Invalid structure packing of `GPR`.");
 
-struct alignas(8) X87Stack final {
-  struct alignas(8) {
-    uint64_t _0;
-    float64_t val;
+// Declare val as float80_t
+struct alignas(16) X87Stack final {
+  struct alignas(16) {
+    uint8_t _[6];
+    float80_t val;
   } __attribute__((packed)) elems[8];
 };
+
 
 static_assert(128 == sizeof(X87Stack),
               "Invalid structure packing of `X87Stack`.");

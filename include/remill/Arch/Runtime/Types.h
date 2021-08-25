@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <type_traits>
 
@@ -64,15 +65,73 @@ static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
 typedef double float64_t;
 static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
 
-typedef double float128_t;
-static_assert(8 == sizeof(float128_t), "Invalid `float128_t` size.");
+typedef long double float128_t;
+// a long double can be anything from a 128-bit float (on AArch64/Linux) to a 64-bit double (AArch64 MacOS)
+// to an 80-bit precision wrapped with padding (x86/x86-64). We do not do a static assert on the size
+// since there are too  many options.
 
-// TODO(pag): Assumes little endian.
-struct float80_t final {
-  uint8_t data[10];
+// A "native_float80_t" is a native type that is closes to approximating
+// an x86 80-bit float.
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
+  #if defined(__float80)
+  typedef __float80 native_float80_t;
+  #else
+  typedef long double native_float80_t;
+  #endif
+static_assert(10 <= sizeof(native_float80_t), "Invalid `native_float80_t` size.");
+#else
+  typedef double native_float80_t;
+  static_assert(8 == sizeof(native_float80_t), "Invalid `native_float80_t` size.");
+#endif
+
+static const int kEightyBitsInBytes = 10;
+union union_ld {
+  struct {
+    uint8_t data[kEightyBitsInBytes];
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
+    // We are doing x86 on x86, so we have native x86 FP80s, but they
+    // are not available in raw 80-bit native form.
+    //
+    // To get to the internal FP80 representation, we have to use a
+    // `long double` which is (usually! but not always)
+    //  an FP80 padded to a 12 or 16 byte boundary
+    //
+    uint8_t padding[sizeof(native_float80_t) - kEightyBitsInBytes];
+#else
+    // The closest native FP type that we can easily deal with is a 64-bit double
+    // this is less than the size of an FP80, so the data variable above will already
+    // enclose it. No extra padding is needed
+#endif
+  } lds __attribute__((packed));
+  native_float80_t ld;
 } __attribute__((packed));
 
-static_assert(10 == sizeof(float80_t), "Invalid `float80_t` size.");
+struct float80_t final {
+  uint8_t data[kEightyBitsInBytes];
+
+  inline ~float80_t(void) = default;
+  inline float80_t(void) : data{0,} {}
+
+  float80_t(const float80_t &) = default;
+  float80_t &operator=(const float80_t &) = default;
+
+  inline float80_t(native_float80_t ld) {
+    union_ld ldu;
+    std::memset(&ldu, 0, sizeof(ldu)); // zero out ldu to make padding consistent
+    ldu.ld = ld; // assign native value
+    // copy the representation to this object
+    std::memcpy(&data[0], &ldu.lds.data[0], sizeof(data));
+  }
+
+  operator native_float80_t() {
+    union_ld ldu;
+    std::memset(&ldu, 0, sizeof(ldu)); // zero out ldu to make padding consistent
+    // copy the internal representation into the union
+    std::memcpy(&ldu.lds.data[0], &data[0], sizeof(data));
+    // extract the native backing type from it
+    return ldu.ld;
+  }
+} __attribute__((packed));
 
 union nan32_t {
   float32_t f;
@@ -99,6 +158,20 @@ union nan64_t {
 
 static_assert(sizeof(float64_t) == sizeof(nan64_t),
               "Invalid packing of `nan64_t`.");
+
+union nan80_t {
+  float80_t d;
+  struct {
+    uint64_t payload : 62;
+    uint64_t  is_quiet_nan : 1;
+    uint64_t  interger_bit : 1;
+    uint64_t exponent : 15;
+    uint64_t is_negative : 1;
+  } __attribute__((packed));
+} __attribute__((packed));
+
+static_assert(sizeof(float80_t) == sizeof(nan80_t),
+              "Invalid packing of `nan80_t`.");
 
 // Note: We are re-defining the `std::is_signed` type trait because we can't
 //       always explicitly specialize it inside of the `std` namespace.
@@ -443,6 +516,11 @@ struct Rn<float64_t> final {
 };
 
 template <>
+struct Rn<float80_t> final {
+  const float80_t val;
+};
+
+template <>
 struct RnW<float32_t> final {
   float32_t *const val_ref;
 };
@@ -516,9 +594,6 @@ template <typename T>
 struct BaseType {
   typedef T BT;
 };
-
-template <>
-struct BaseType<float80_t> : public BaseType<float64_t> {};
 
 template <typename T>
 struct BaseType<volatile T> : public BaseType<T> {};
