@@ -179,16 +179,7 @@ MAKE_RW_MEMORY(64)
 MAKE_RW_FP_MEMORY(32)
 MAKE_RW_FP_MEMORY(64)
 MAKE_RW_FP_MEMORY(80)
-
-NEVER_INLINE float64_t __remill_read_memory_f128(Memory *, addr_t) {
-  LOG(FATAL) << "Unsupported on x86/amd64";
-  return 0.0;
-}
-
-NEVER_INLINE Memory *__remill_write_memory_f128(Memory *, addr_t, double) {
-  LOG(FATAL) << "Unsupported on x86/amd64";
-  return nullptr;
-}
+MAKE_RW_FP_MEMORY(128)
 
 
 Memory *__remill_compare_exchange_memory_8(Memory *memory, addr_t addr,
