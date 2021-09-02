@@ -157,6 +157,24 @@ MAKE_MREAD(128, 128, uint, 128)
 
 MAKE_MREAD(32, 32, float, f32)
 MAKE_MREAD(64, 64, float, f64)
+
+#undef MAKE_MREAD
+
+#define MAKE_MREAD(size, ret_size, type_prefix, access_suffix) \
+  ALWAYS_INLINE static type_prefix##ret_size##_t _Read( \
+      Memory *&memory, Mn<type_prefix##size##_t> op) { \
+	  native_##type_prefix##ret_size##_t val; \
+    memory = __remill_read_memory_##access_suffix(memory, op.addr, val); \
+    return val; \
+  } \
+\
+  ALWAYS_INLINE static type_prefix##ret_size##_t _Read( \
+      Memory *&memory, MnW<type_prefix##size##_t> op) { \
+	  native_##type_prefix##ret_size##_t val; \
+    memory = __remill_read_memory_##access_suffix(memory, op.addr, val); \
+    return val; \
+  }
+
 MAKE_MREAD(80, 80, float, f80)
 
 #undef MAKE_MREAD
