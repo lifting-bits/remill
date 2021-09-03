@@ -188,7 +188,7 @@ NEVER_INLINE Memory *__remill_read_memory_f80(Memory *, addr_t addr,
 }
 
 NEVER_INLINE Memory *__remill_write_memory_f80(Memory *, addr_t addr,
-                                               native_float80_t in) {
+                                               const native_float80_t &in) {
   AccessMemory<native_float80_t>(addr) = in;
   return nullptr;
 }

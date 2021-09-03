@@ -2025,8 +2025,11 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
       return ir.CreateCall(intrinsics.write_memory_f64, args_3);
 
     case llvm::Type::X86_FP80TyID: {
+      auto res = ir.CreateAlloca(type);
       auto fp80_type = llvm::Type::getX86_FP80Ty(context);
-      args_3[2] = ir.CreateFPTrunc(val_to_store, fp80_type);
+      auto fp80_value = ir.CreateFPTrunc(val_to_store, fp80_type);
+      (void) ir.CreateStore(fp80_value, res);
+      args_3[2] = res;
       return ir.CreateCall(intrinsics.write_memory_f80, args_3);
     }
 
