@@ -160,24 +160,17 @@ MAKE_MREAD(64, 64, float, f64)
 
 #undef MAKE_MREAD
 
-#define MAKE_MREAD(size, ret_size, type_prefix, access_suffix) \
-  ALWAYS_INLINE static type_prefix##ret_size##_t _Read( \
-      Memory *&memory, Mn<type_prefix##size##_t> op) { \
-	  native_##type_prefix##ret_size##_t val; \
-    memory = __remill_read_memory_##access_suffix(memory, op.addr, val); \
-    return val; \
-  } \
-\
-  ALWAYS_INLINE static type_prefix##ret_size##_t _Read( \
-      Memory *&memory, MnW<type_prefix##size##_t> op) { \
-	  native_##type_prefix##ret_size##_t val; \
-    memory = __remill_read_memory_##access_suffix(memory, op.addr, val); \
-    return val; \
-  }
+ALWAYS_INLINE static float80_t _Read(Memory *&memory, Mn<float80_t> op) {
+  native_float80_t val;
+  memory = __remill_read_memory_f80(memory, op.addr, val);
+  return val;
+}
 
-MAKE_MREAD(80, 80, float, f80)
-
-#undef MAKE_MREAD
+ALWAYS_INLINE static float80_t _Read(Memory *&memory, MnW<float80_t> op) {
+  native_float80_t val;
+  memory = __remill_read_memory_f80(memory, op.addr, val);
+  return val;
+}
 
 // Basic write form for references.
 template <typename T>
