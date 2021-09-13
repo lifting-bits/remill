@@ -108,9 +108,12 @@ struct alignas(8) GPR final {
   volatile uint64_t _32;
   Reg pc;  // Program counter of the CURRENT instruction!
 
+  volatile uint64_t _33;
+  Reg zr;
+
 } __attribute__((packed));
 
-static_assert(528 == sizeof(GPR), "Invalid structure packing of `GPR`.");
+static_assert(544 == sizeof(GPR), "Invalid structure packing of `GPR`.");
 
 union PSTATE final {
   uint64_t flat;
@@ -300,7 +303,7 @@ struct alignas(16) State final : public ArchState {
 
 } __attribute__((packed));
 
-static_assert((1152 + 16) == sizeof(State),
+static_assert((1168 + 16) == sizeof(State),
               "Invalid packing of `struct State`");
 
 using AArch64State = State;
