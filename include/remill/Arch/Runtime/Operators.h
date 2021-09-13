@@ -157,9 +157,20 @@ MAKE_MREAD(128, 128, uint, 128)
 
 MAKE_MREAD(32, 32, float, f32)
 MAKE_MREAD(64, 64, float, f64)
-MAKE_MREAD(80, 80, float, f80)
 
 #undef MAKE_MREAD
+
+ALWAYS_INLINE static float80_t _Read(Memory *&memory, Mn<float80_t> op) {
+  native_float80_t val;
+  memory = __remill_read_memory_f80(memory, op.addr, val);
+  return val;
+}
+
+ALWAYS_INLINE static float80_t _Read(Memory *&memory, MnW<float80_t> op) {
+  native_float80_t val;
+  memory = __remill_read_memory_f80(memory, op.addr, val);
+  return val;
+}
 
 // Basic write form for references.
 template <typename T>

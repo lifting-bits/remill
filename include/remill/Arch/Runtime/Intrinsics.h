@@ -57,7 +57,8 @@ __remill_write_memory_64(Memory *, addr_t, uint64_t);
 [[gnu::used, gnu::const]] extern float64_t __remill_read_memory_f64(Memory *,
                                                                     addr_t);
 
-[[gnu::used]] extern float80_t __remill_read_memory_f80(Memory *, addr_t);
+[[gnu::used]] extern Memory* __remill_read_memory_f80(Memory *, addr_t,
+                                                      native_float80_t&);
 
 [[gnu::used]] extern float128_t __remill_read_memory_f128(Memory *, addr_t);
 
@@ -68,7 +69,7 @@ __remill_write_memory_f32(Memory *, addr_t, float32_t);
 __remill_write_memory_f64(Memory *, addr_t, float64_t);
 
 [[gnu::used]] extern Memory *__remill_write_memory_f80(Memory *, addr_t,
-                                                       float80_t);
+                                                       const native_float80_t&);
 
 [[gnu::used]] extern Memory *__remill_write_memory_f128(Memory *, addr_t,
                                                         float128_t);

@@ -178,9 +178,20 @@ MAKE_RW_MEMORY(64)
 
 MAKE_RW_FP_MEMORY(32)
 MAKE_RW_FP_MEMORY(64)
-MAKE_RW_FP_MEMORY(80)
+//MAKE_RW_FP_MEMORY(80)
 MAKE_RW_FP_MEMORY(128)
 
+NEVER_INLINE Memory *__remill_read_memory_f80(Memory *, addr_t addr,
+                                              native_float80_t &out) {
+  out = AccessMemory<native_float80_t>(addr);
+  return nullptr;
+}
+
+NEVER_INLINE Memory *__remill_write_memory_f80(Memory *, addr_t addr,
+                                               const native_float80_t &in) {
+  AccessMemory<native_float80_t>(addr) = in;
+  return nullptr;
+}
 
 Memory *__remill_compare_exchange_memory_8(Memory *memory, addr_t addr,
                                            uint8_t &expected, uint8_t desired) {
