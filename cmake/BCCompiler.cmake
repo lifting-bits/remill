@@ -165,7 +165,7 @@ function(add_runtime target_name)
     endif()
 
     add_custom_command(OUTPUT "${absolute_output_file_path}"
-      COMMAND "${CMAKE_BC_COMPILER}" ${include_directory_list} ${additional_windows_settings} "-DADDRESS_SIZE_BITS=${address_size}" ${definition_list} ${DEFAULT_BC_COMPILER_FLAGS} ${bc_flag_list} ${source_file_option_list} -c "${absolute_source_file_path}" -o "${absolute_output_file_path}"
+      COMMAND "${CMAKE_BC_COMPILER}" ${include_directory_list} ${additional_windows_settings} "-target" "x86_64-apple-macosx11.0.0" "-DADDRESS_SIZE_BITS=${address_size}" ${definition_list} ${DEFAULT_BC_COMPILER_FLAGS} ${bc_flag_list} ${source_file_option_list} -c "${absolute_source_file_path}" -o "${absolute_output_file_path}"
       MAIN_DEPENDENCY "${absolute_source_file_path}"
       ${dependency_list_directive}
       COMMENT "Building BC object ${absolute_output_file_path}"
