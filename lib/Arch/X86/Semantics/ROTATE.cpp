@@ -36,10 +36,10 @@ DEF_SEM(ROL, D dst, S1 src1, S2 src2) {
     Write(FLAG_CF, UCmpEq(UAnd(new_val, one), one));
     if (1 == temp_count) {
       Write(FLAG_OF, BXor(FLAG_CF, SignFlag(new_val)));
+    // OF undefined for `1 != temp_count`.
     } else {
-      Write(FLAG_OF, false);
+      Write(FLAG_OF, BUndefined());
     }
-  // OF undefined for `1 == temp_count`.
   } else {
     WriteZExt(dst, val);
   }
@@ -62,9 +62,12 @@ DEF_SEM(ROR, D dst, S1 src1, S2 src2) {
         UOr(UShr(val, temp_count), UShl(val, USub(op_size, temp_count)));
     WriteZExt(dst, new_val);
     Write(FLAG_CF, SignFlag(new_val));
-    Write(FLAG_OF, BXor(FLAG_CF, SignFlag(UShl(new_val, one))));
+    // OF undefined for `1 != temp_count`.
+    if (temp_count == 1)
+      Write(FLAG_OF, BXor(FLAG_CF, SignFlag(UShl(new_val, one))));
+    else
+      Write(FLAG_OF, BUndefined());
 
-  // OF undefined for `1 == temp_count`.
   } else {
     WriteZExt(dst, val);
   }
@@ -146,9 +149,13 @@ DEF_SEM(RCL, D dst, S1 src1, S2 src2) {
             UShr(right, one));
     WriteZExt(dst, new_val);
     Write(FLAG_CF, SignFlag(UShl(val, USub(temp_count, one))));
-    Write(FLAG_OF, BXor(FLAG_CF, SignFlag(new_val)));
+    // OF undefined for `1 != temp_count`.
+    if (temp_count == 1) {
+      Write(FLAG_OF, BXor(FLAG_CF, SignFlag(new_val)));
+    } else {
+      Write(FLAG_OF, BUndefined());
+    }
 
-  // OF undefined for `1 == temp_count`.
   } else {
     WriteZExt(dst, val);
   }
@@ -180,7 +187,11 @@ DEF_SEM(RCR, D dst, S1 src1, S2 src2) {
             UShl(right, one));
     WriteZExt(dst, new_val);
     Write(FLAG_CF, UCmpNeq(UAnd(left, one), zero));
-    Write(FLAG_OF, BXor(SignFlag(UShl(new_val, one)), SignFlag(new_val)));
+    if (temp_count == 1) {
+      Write(FLAG_OF, BXor(SignFlag(UShl(new_val, one)), SignFlag(new_val)));
+    } else {
+      Write(FLAG_OF, BUndefined());
+    }
 
   // OF undefined for `1 == temp_count`.
   } else {

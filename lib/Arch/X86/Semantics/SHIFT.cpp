@@ -148,7 +148,8 @@ DEF_SEM(SHL, D dst, S1 src1, S2 src2) {
     new_val = UShl(res, 1);
 
   } else {
-    new_of = 1;  // Undefined, probably 1.
+    new_of = BUndefined();  // Undefined, probably 1.
+    // TODO(lukas): Double check.
     new_cf = 0;  // Undefined, probably 0.
     new_val = 0;
   }
@@ -156,7 +157,7 @@ DEF_SEM(SHL, D dst, S1 src1, S2 src2) {
   WriteZExt(dst, new_val);
   Write(FLAG_CF, new_cf);
   Write(FLAG_PF, ParityFlag(new_val));
-  Write(FLAG_AF, false);  // Undefined, experimentally 0.
+  Write(FLAG_AF, BUndefined());  // Undefined, experimentally 0.
   Write(FLAG_ZF, ZeroFlag(new_val));
   Write(FLAG_SF, SignFlag(new_val));
   Write(FLAG_OF, new_of);

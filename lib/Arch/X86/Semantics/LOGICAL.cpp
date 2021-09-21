@@ -45,6 +45,7 @@ DEF_SEM(OR, D dst, S1 src1, S2 src2) {
   auto res = UOr(lhs, rhs);
   WriteZExt(dst, res);
   SetFlagsLogical(state, lhs, rhs, res);
+  UndefFlag(af);
   return memory;
 }
 
@@ -55,6 +56,7 @@ DEF_SEM(XOR, D dst, S1 src1, S2 src2) {
   auto res = UXor(lhs, rhs);
   WriteZExt(dst, res);
   SetFlagsLogical(state, lhs, rhs, res);
+  UndefFlag(af);
   return memory;
 }
 
@@ -70,6 +72,7 @@ DEF_SEM(TEST, S1 src1, S2 src2) {
   auto rhs = Read(src2);
   auto res = UAnd(lhs, rhs);
   SetFlagsLogical(state, lhs, rhs, res);
+  UndefFlag(af);
   return memory;
 }
 
