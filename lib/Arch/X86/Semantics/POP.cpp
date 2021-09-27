@@ -32,6 +32,22 @@ DEF_SEM(POP, D dst) {
   return memory;
 }
 
+template<typename D>
+DEF_SEM(POP_MEM_XSP, D dst) {
+  addr_t op_size = ZExtTo<D>(ByteSizeOf(dst));
+  addr_t old_xsp = Read(REG_XSP);
+  addr_t new_xsp = UAdd(old_xsp, op_size);
+
+  // `XSP` will be adjusted by `op_size`. Unfortunately, `dst` at this point
+  // no longer has any information about the fact it was composed of `XPS`.
+  // This semantic is a special case of general `POP` and it makes sure that
+  // the adjustment happens correctly.
+  // See #PR for more details.
+  Write(REG_XSP, new_xsp);
+  WriteZExt(D{dst.addr + op_size}, Read(ReadPtr<D>(old_xsp _IF_32BIT(REG_SS_BASE))));
+  return memory;
+}
+
 #if 32 == ADDRESS_SIZE_BITS
 DEF_SEM(DoPOPA) {
   Write(REG_DI, PopFromStack<uint16_t>(memory, state));
@@ -122,6 +138,9 @@ DEF_ISEL(POP_GPRv_51_16) = POP<R16W>;
 DEF_ISEL(POP_GPRv_58_16) = POP<R16W>;
 DEF_ISEL_R32or64W(POP_GPRv_51, POP);
 DEF_ISEL_R32or64W(POP_GPRv_58, POP);
+
+DEF_ISEL(POP_MEM_XSP_16) = POP_MEM_XSP<M16W>;
+DEF_ISEL_M32or64W(POP_MEM_XSP, POP_MEM_XSP);
 
 DEF_ISEL(POP_MEMv_16) = POP<M16W>;
 DEF_ISEL_M32or64W(POP_MEMv, POP);
