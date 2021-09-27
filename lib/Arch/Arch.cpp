@@ -688,6 +688,13 @@ const Register *Arch::AddRegister(const char *reg_name_, llvm::Type *val_type,
     const_cast<Register *>(reg->parent)->children.push_back(reg);
   }
 
+  auto maybe_get_reg_name = [](auto reg_ptr) -> std::string {
+    if (!reg_ptr) {
+      return "(nullptr)";
+    }
+    return reg_ptr->name;
+  };
+
   // Provide easy access to registers at specific offsets in the `State`
   // structure.
   for (auto i = reg->offset; i < (reg->offset + reg->size); ++i) {
@@ -695,7 +702,9 @@ const Register *Arch::AddRegister(const char *reg_name_, llvm::Type *val_type,
     if (!reg_at_offset) {
       reg_at_offset = reg;
     } else if (reg_at_offset) {
-      CHECK_EQ(reg_at_offset->EnclosingRegister(), reg->EnclosingRegister());
+      CHECK_EQ(reg_at_offset->EnclosingRegister(), reg->EnclosingRegister())
+        << maybe_get_reg_name(reg_at_offset->EnclosingRegister()) << " != "
+        << maybe_get_reg_name(reg->EnclosingRegister());;
       reg_at_offset = reg;
     }
   }

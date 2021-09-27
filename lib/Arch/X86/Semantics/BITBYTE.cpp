@@ -148,12 +148,23 @@ DEF_ISEL(SETBE_GPR8) = SETBE<R8W>;
 
 namespace {
 
+
+#define _BTClearUndefFlags() \
+  do { \
+    UndefFlag(of); \
+    UndefFlag(sf); \
+    UndefFlag(zf); \
+    UndefFlag(af); \
+    UndefFlag(pf); \
+  } while (false)
+
 template <typename S1, typename S2>
 DEF_SEM(BTreg, S1 src1, S2 src2) {
   auto val = Read(src1);
   auto bit = ZExtTo<S1>(Read(src2));
   auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(src1)));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  _BTClearUndefFlags();
   return memory;
 }
 
@@ -164,6 +175,7 @@ DEF_SEM(BTmem, S1 src1, S2 src2) {
   auto index = UDiv(bit, BitSizeOf(src1));
   auto val = Read(GetElementPtr(src1, index));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  _BTClearUndefFlags();
   return memory;
 }
 
@@ -174,6 +186,7 @@ DEF_SEM(BTSreg, D dst, S1 src1, S2 src2) {
   auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(val)));
   WriteZExt(dst, UOr(val, bit_mask));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  _BTClearUndefFlags();
   return memory;
 }
 
@@ -185,6 +198,7 @@ DEF_SEM(BTSmem, D dst, S1 src1, S2 src2) {
   auto val = Read(GetElementPtr(src1, index));
   Write(GetElementPtr(dst, index), UOr(val, bit_mask));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  _BTClearUndefFlags();
   return memory;
 }
 
@@ -195,6 +209,7 @@ DEF_SEM(BTRreg, D dst, S1 src1, S2 src2) {
   auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(src1)));
   WriteZExt(dst, UAnd(val, UNot(bit_mask)));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  _BTClearUndefFlags();
   return memory;
 }
 
@@ -206,6 +221,7 @@ DEF_SEM(BTRmem, D dst, S1 src1, S2 src2) {
   auto val = Read(GetElementPtr(src1, index));
   Write(GetElementPtr(dst, index), UAnd(val, UNot(bit_mask)));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  _BTClearUndefFlags();
   return memory;
 }
 
@@ -216,6 +232,7 @@ DEF_SEM(BTCreg, D dst, S1 src1, S2 src2) {
   auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(val)));
   WriteZExt(dst, UXor(val, bit_mask));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  _BTClearUndefFlags();
   return memory;
 }
 
@@ -227,8 +244,11 @@ DEF_SEM(BTCmem, D dst, S1 src1, S2 src2) {
   auto val = Read(GetElementPtr(src1, index));
   Write(GetElementPtr(dst, index), UXor(val, bit_mask));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
+  _BTClearUndefFlags();
   return memory;
 }
+
+#undef _BTClearUndefFlags
 
 }  // namespace
 
@@ -323,11 +343,11 @@ DEF_SEM(BSR, D dst, S src) {
   auto index = USub(USub(BitSizeOf(src), count), Literal<S>(1));
   Write(FLAG_ZF, ZeroFlag(val));
   auto index_ret = Select(FLAG_ZF, Read(dst), ZExtTo<D>(index));
-  Write(FLAG_OF, false);  // Undefined, but experimentally 0.
-  Write(FLAG_SF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_OF, BUndefined());  // Undefined, but experimentally 0.
+  Write(FLAG_SF, BUndefined());  // Undefined, but experimentally 0.
   Write(FLAG_PF, ParityFlag(index));  // Undefined, but experimentally 1.
-  Write(FLAG_AF, false);  // Undefined, but experimentally 0.
-  Write(FLAG_CF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_AF, BUndefined());  // Undefined, but experimentally 0.
+  Write(FLAG_CF, BUndefined());  // Undefined, but experimentally 0.
   Write(dst, index_ret);
   return memory;
 }
@@ -337,11 +357,11 @@ DEF_SEM(BSF, D dst, S src) {
   auto val = Read(src);
   Write(FLAG_ZF, ZeroFlag(val));
   auto index = Select(FLAG_ZF, Read(dst), ZExtTo<D>(CountTrailingZeros(val)));
-  Write(FLAG_OF, false);  // Undefined, but experimentally 0.
-  Write(FLAG_SF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_OF, BUndefined());  // Undefined, but experimentally 0.
+  Write(FLAG_SF, BUndefined());  // Undefined, but experimentally 0.
   Write(FLAG_PF, ParityFlag(index));
-  Write(FLAG_AF, false);  // Undefined, but experimentally 0.
-  Write(FLAG_CF, false);  // Undefined, but experimentally 0.
+  Write(FLAG_AF, BUndefined());  // Undefined, but experimentally 0.
+  Write(FLAG_CF, BUndefined());  // Undefined, but experimentally 0.
   Write(dst, index);
   return memory;
 }

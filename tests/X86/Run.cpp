@@ -960,8 +960,12 @@ TEST_P(InstrTest, SemanticsMatchNative) {
   }
 }
 
+std::string NameTest(const testing::TestParamInfo< InstrTest::ParamType > &test) {
+  return test.param->test_name;
+}
+
 INSTANTIATE_TEST_SUITE_P(GeneralInstrTest, InstrTest,
-                         testing::ValuesIn(gTests));
+                         testing::ValuesIn(gTests), NameTest);
 
 // Recover from a signal.
 static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {

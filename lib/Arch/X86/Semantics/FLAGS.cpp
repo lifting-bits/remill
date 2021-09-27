@@ -172,6 +172,8 @@ struct Carry<tag_sub> {
 
 }  // namespace
 
+#define UndefFlag(name) do { state.aflag.name = __remill_undefined_8(); } while (false)
+
 #define ClearArithFlags() \
   do { \
     state.aflag.cf = __remill_undefined_8(); \

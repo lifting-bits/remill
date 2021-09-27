@@ -248,10 +248,10 @@ ALWAYS_INLINE static void WriteFlagsMul(State &state, T lhs, T rhs, U res,
                                         V res_trunc) {
   const auto new_of = Overflow<tag_mul>::Flag(lhs, rhs, res);
   FLAG_CF = new_of;
-  FLAG_PF = ParityFlag(res);  // Technically undefined.
+  FLAG_PF = BUndefined();  // Technically undefined.
   FLAG_AF = BUndefined();
   FLAG_ZF = BUndefined();
-  FLAG_SF = std::is_signed<T>::value ? SignFlag(res_trunc) : BUndefined();
+  FLAG_SF = BUndefined();
   FLAG_OF = new_of;
 }
 
