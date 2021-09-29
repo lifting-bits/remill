@@ -1363,17 +1363,19 @@ void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
   REG(DS, seg.ds.flat, u16);
   REG(CS, seg.cs.flat, u16);
 
-  ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "ESBASE"));
-  ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "DSBASE"));
   ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "CSBASE"));
 
   if (64 == address_size) {
     ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "SSBASE"));
+    ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "ESBASE"));
+    ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "DSBASE"));
     REG(GSBASE, addr.gs_base.qword, addr);
     REG(FSBASE, addr.fs_base.qword, addr);
 
   } else {
     REG(SSBASE, addr.ss_base.dword, addr);
+    REG(ESBASE, addr.es_base.dword, addr);
+    REG(DSBASE, addr.ds_base.dword, addr);
     REG(GSBASE, addr.gs_base.dword, addr);
     REG(FSBASE, addr.fs_base.dword, addr);
   }
