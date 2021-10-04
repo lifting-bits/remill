@@ -31,7 +31,7 @@ set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 
 set(REMILL_INSTALL_LIB_DIR "${CMAKE_INSTALL_LIBDIR}" CACHE PATH "Directory in which remill libraries will be installed")
 set(REMILL_INSTALL_BIN_DIR "${CMAKE_INSTALL_BINDIR}" CACHE PATH "Directory in which remill binaries will be installed")
-set(REMILL_INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_INCLUDEDIR}/remill" CACHE PATH "Directory in which remill headers will be installed")
+set(REMILL_INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_INCLUDEDIR}" CACHE PATH "Directory in which remill headers will be installed")
 set(REMILL_INSTALL_SHARE_DIR "${CMAKE_INSTALL_DATADIR}" CACHE PATH "Directory in which remill cmake files will be installed")
 
 #
@@ -302,7 +302,7 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
 )
 
 install(DIRECTORY "${REMILL_INCLUDE_DIR}/remill/"
-  DESTINATION "${REMILL_INSTALL_INCLUDE_DIR}"
+  DESTINATION "${REMILL_INSTALL_INCLUDE_DIR}/remill"
 )
 
 #
