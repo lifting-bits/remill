@@ -7,10 +7,10 @@
 # the source code for watching a git repository.
 set(PRE_CONFIGURE_FILE "Version.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/Version.cpp")
-include("${CMAKE_SOURCE_DIR}/cmake/git_watcher.cmake")
+include("${REMILL_SOURCE_DIR}/cmake/git_watcher.cmake")
 
 set(Version_PUBLIC_H
-    "${PROJECT_SOURCE_DIR}/include/remill/Version/Version.h"
+    "${REMILL_SOURCE_DIR}/include/remill/Version/Version.h"
 )
 # Create a library out of the compiled post-configure file.
 add_library(remill_version STATIC
