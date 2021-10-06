@@ -1220,7 +1220,6 @@ void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
   auto u16 = llvm::Type::getInt16Ty(context);
   auto u32 = llvm::Type::getInt32Ty(context);
   auto u64 = llvm::Type::getInt64Ty(context);
-  auto f64 = llvm::Type::getDoubleTy(context);
   auto f80 = llvm::Type::getX86_FP80Ty(context);
   auto v128 = llvm::ArrayType::get(llvm::Type::getInt8Ty(context), 128u / 8u);
   auto v256 = llvm::ArrayType::get(llvm::Type::getInt8Ty(context), 256u / 8u);

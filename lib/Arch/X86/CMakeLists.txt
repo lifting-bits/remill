@@ -37,5 +37,7 @@ target_link_libraries(remill_arch_x86 LINK_PUBLIC
   remill_settings
 )
 
-install(TARGETS remill_arch_x86
-  EXPORT remillTargets)
+if(REMILL_ENABLE_INSTALL_TARGET)
+  install(TARGETS remill_arch_x86
+    EXPORT remillTargets)
+endif()

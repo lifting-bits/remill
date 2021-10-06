@@ -564,8 +564,6 @@ static_assert(sizeof(SpecialRegsAndHints) == 4, " ");
 static constexpr auto kAddressSize = 32u;
 static constexpr auto kPCRegNum = 15u;
 static constexpr auto kLRRegNum = 14u;
-static constexpr auto kSPRegNum = 13u;
-static constexpr auto kSLRegNum = 10u;
 
 static const char *const kIntRegName[] = {
     "R0", "R1", "R2",  "R3",  "R4",  "R5",  "R6",  "R7",

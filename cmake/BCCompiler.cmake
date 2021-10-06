@@ -187,8 +187,10 @@ function(add_runtime target_name)
 
   add_custom_target("${target_name}" ALL DEPENDS "${absolute_target_path}")
   set_property(TARGET "${target_name}" PROPERTY LOCATION "${absolute_target_path}")
-
-  if(DEFINED install_destination)
-    install(FILES "${absolute_target_path}" DESTINATION "${install_destination}")
+  
+  if(REMILL_ENABLE_INSTALL_TARGET)
+    if(DEFINED install_destination)
+      install(FILES "${absolute_target_path}" DESTINATION "${install_destination}")
+    endif()
   endif()
 endfunction()

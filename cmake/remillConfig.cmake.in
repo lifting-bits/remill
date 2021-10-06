@@ -38,7 +38,7 @@ endforeach()
 if(NOT remill_setup_vcpkg AND NOT TARGET remill)
   set(LLVM_MAJOR_VERSION @LLVM_MAJOR_VERSION@)
   set(LLVM_MINOR_VERSION @LLVM_MINOR_VERSION@)
-  set(REMILL_LLVM_VERSION "@LLVM_MAJOR_VERSION@.@LLVM_MINOR_VERSION@")
+  set(REMILL_LLVM_VERSION @LLVM_MAJOR_VERSION@)
 
   # External libs
   include(CMakeFindDependencyMacro)

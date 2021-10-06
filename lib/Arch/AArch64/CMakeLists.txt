@@ -39,7 +39,9 @@ target_link_libraries(remill_arch_aarch64 LINK_PUBLIC
   remill_settings
 )
 
-install(
-  TARGETS remill_arch_aarch64
-  EXPORT remillTargets
-)
+if(REMILL_ENABLE_INSTALL_TARGET)
+  install(
+    TARGETS remill_arch_aarch64
+    EXPORT remillTargets
+  )
+endif()
