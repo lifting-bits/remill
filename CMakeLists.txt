@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.21)
 include(cmake/vcpkg_helper.cmake)
 
 # Setup to use ccache
@@ -23,16 +23,14 @@ include(GNUInstallDirs)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/settings.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/options.cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
-include(CTest)
 
+if(REMILL_BUILD_TESTING)
+  include(CTest)
+endif()
 
-set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
-
-set(REMILL_INSTALL_LIB_DIR "${CMAKE_INSTALL_LIBDIR}" CACHE PATH "Directory in which remill libraries will be installed")
-set(REMILL_INSTALL_BIN_DIR "${CMAKE_INSTALL_BINDIR}" CACHE PATH "Directory in which remill binaries will be installed")
-set(REMILL_INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_INCLUDEDIR}" CACHE PATH "Directory in which remill headers will be installed")
-set(REMILL_INSTALL_SHARE_DIR "${CMAKE_INSTALL_DATADIR}" CACHE PATH "Directory in which remill cmake files will be installed")
+message(STATUS "Compiler ID is ${CMAKE_C_COMPILER_ID}")
 
 #
 # libraries
@@ -47,8 +45,20 @@ string(REPLACE "." ";" LLVM_VERSION_LIST ${LLVM_PACKAGE_VERSION})
 list(GET LLVM_VERSION_LIST 0 LLVM_MAJOR_VERSION)
 list(GET LLVM_VERSION_LIST 1 LLVM_MINOR_VERSION)
 
-set(LLVM_MAJOR_VERSION "${LLVM_MAJOR_VERSION}" PARENT_SCOPE)
-set(LLVM_MINOR_VERSION "${LLVM_MINOR_VERSION}" PARENT_SCOPE)
+set(LLVM_MAJOR_VERSION "${LLVM_MAJOR_VERSION}")
+set(LLVM_MINOR_VERSION "${LLVM_MINOR_VERSION}")
+
+set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}")
+
+message("Remill llvm version: ${REMILL_LLVM_VERSION}")
+set(REMILL_INSTALL_SEMANTICS_DIR "${CMAKE_INSTALL_PREFIX}/${REMILL_INSTALL_SHARE_DIR}/remill/${REMILL_LLVM_VERSION}/semantics" CACHE PATH "Directory into which semantics are installed")
+set(REMILL_BUILD_SEMANTICS_DIR_X86 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/X86/Runtime")
+set(REMILL_BUILD_SEMANTICS_DIR_AARCH32 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/AArch32/Runtime")
+set(REMILL_BUILD_SEMANTICS_DIR_AARCH64 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/AArch64/Runtime")
+set(REMILL_BUILD_SEMANTICS_DIR_SPARC32 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/SPARC32/Runtime")
+set(REMILL_BUILD_SEMANTICS_DIR_SPARC64 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/SPARC64/Runtime")
+set(REMILL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set(REMILL_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
 add_library(thirdparty_llvm INTERFACE)
 target_include_directories(thirdparty_llvm SYSTEM INTERFACE
@@ -139,21 +149,7 @@ option(REMILL_BUILD_SPARC32_RUNTIME "Build the Runtime for SPARC32. Turn this of
 # target settings
 #
 
-set(REMILL_LLVM_VERSION "${LLVM_MAJOR_VERSION}" PARENT_SCOPE)
-message("Remill llvm version: ${REMILL_LLVM_VERSION}")
-math(EXPR REMILL_LLVM_VERSION_NUMBER "${LLVM_MAJOR_VERSION} * 100 + ${LLVM_MINOR_VERSION}")
-
-set(REMILL_INSTALL_SEMANTICS_DIR "${CMAKE_INSTALL_PREFIX}/${REMILL_INSTALL_SHARE_DIR}/remill/${REMILL_LLVM_VERSION}/semantics" CACHE PATH "Directory into which semantics are installed")
-
-set(REMILL_BUILD_SEMANTICS_DIR_X86 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/X86/Runtime")
-set(REMILL_BUILD_SEMANTICS_DIR_AARCH32 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/AArch32/Runtime")
-set(REMILL_BUILD_SEMANTICS_DIR_AARCH64 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/AArch64/Runtime")
-set(REMILL_BUILD_SEMANTICS_DIR_SPARC32 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/SPARC32/Runtime")
-set(REMILL_BUILD_SEMANTICS_DIR_SPARC64 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/SPARC64/Runtime")
-
 # add everything as public.
-set(REMILL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
-set(REMILL_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
 add_library(remill_settings INTERFACE)
 
@@ -243,8 +239,6 @@ set(THIRDPARTY_LIBRARY_LIST thirdparty_llvm thirdparty_xed thirdparty_glog third
 target_link_libraries(remill_settings INTERFACE
   ${THIRDPARTY_LIBRARY_LIST}
 )
-install(TARGETS remill_settings ${THIRDPARTY_LIBRARY_LIST}
-  EXPORT remillTargets)
 
 add_subdirectory(lib/Arch)
 add_subdirectory(lib/BC)
@@ -261,7 +255,10 @@ target_link_libraries(remill INTERFACE
   remill_version
   ${LINKER_END_GROUP}
 )
-install(TARGETS remill EXPORT remillTargets)
+
+if(REMILL_INSTALL)
+  install(TARGETS remill EXPORT remillTargets)
+endif()
 
 #
 # Also install clang, libllvm and llvm-link
@@ -292,22 +289,6 @@ endforeach()
 
 list(REMOVE_DUPLICATES THIRDPARTY_LIBRARY_FILES)
 
-# First do the basic substitutions.
-configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/remillConfig.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
-  @ONLY
-)
-
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
-              "${CMAKE_CURRENT_LIST_DIR}/cmake/vcpkg_helper.cmake"
-  DESTINATION "${REMILL_INSTALL_LIB_DIR}/cmake/remill"
-)
-
-install(DIRECTORY "${REMILL_INCLUDE_DIR}/remill/"
-  DESTINATION "${REMILL_INSTALL_INCLUDE_DIR}/remill"
-)
-
 #
 # additional targets
 #
@@ -317,12 +298,33 @@ add_custom_target(semantics)
 # tools
 add_subdirectory(bin)
 
-install(EXPORT remillTargets
-  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/remill")
+if(REMILL_INSTALL)
+  install(TARGETS remill_settings ${THIRDPARTY_LIBRARY_LIST}
+    EXPORT remillTargets
+  )
+  
+  # First do the basic substitutions.
+  configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/remillConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
+    @ONLY
+  )
+  
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
+                "${CMAKE_CURRENT_LIST_DIR}/cmake/vcpkg_helper.cmake"
+    DESTINATION "${REMILL_INSTALL_LIB_DIR}/cmake/remill"
+  )
+  
+  install(DIRECTORY "${REMILL_INCLUDE_DIR}/remill/"
+    DESTINATION "${REMILL_INSTALL_INCLUDE_DIR}/remill"
+  )
+
+  install(EXPORT remillTargets
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/remill")
+endif()
 
 # tests
-message("compiler ID ${CMAKE_C_COMPILER_ID}")
-if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_C_COMPILER_ID}" STREQUAL "AppleClang")
+if (REMILL_BUILD_TESTING)
   # Tests require enabling exports on binaries
   # https://cmake.org/cmake/help/latest/variable/CMAKE_ENABLE_EXPORTS.html#variable:CMAKE_ENABLE_EXPORTS
   set(CMAKE_ENABLE_EXPORTS ON)
@@ -330,14 +332,12 @@ if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_C_COMPILER_ID}" STREQU
   find_package(Threads REQUIRED)
   add_custom_target(test_dependencies)
 
-  if(NOT "${PLATFORM_NAME}" STREQUAL "windows")
-    if("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "AMD64" OR "${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-      message(STATUS "X86 tests enabled")
-      add_subdirectory(tests/X86)
-    endif()
+  if(REMILL_BUILD_TESTING_X86)
+    message(STATUS "X86 tests enabled")
+    add_subdirectory(tests/X86)
   endif()
 
-  if("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "aarch64" AND "${PLATFORM_NAME}" STREQUAL "linux")
+  if(REMILL_BUILD_TESTING_AARCH64)
     message(STATUS "aarch64 tests enabled")
     add_subdirectory(tests/AArch64)
   endif()
