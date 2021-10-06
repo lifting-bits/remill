@@ -27,7 +27,9 @@ target_link_libraries(remill_os LINK_PRIVATE
   remill_settings
 )
 
-install(
-  TARGETS remill_os
-  EXPORT remillTargets
-)
+if(REMILL_ENABLE_INSTALL_TARGET)
+  install(
+    TARGETS remill_os
+    EXPORT remillTargets
+  )
+endif()

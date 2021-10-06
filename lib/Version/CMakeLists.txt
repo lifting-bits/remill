@@ -20,7 +20,9 @@ add_library(remill_version STATIC
 target_link_libraries(remill_version LINK_PRIVATE remill_settings)
 add_dependencies(remill_version check_git_${PROJECT_NAME})
 
-install(
-  TARGETS remill_version
-  EXPORT remillTargets
-)
+if(REMILL_ENABLE_INSTALL_TARGET)
+  install(
+    TARGETS remill_version
+    EXPORT remillTargets
+  )
+endif()

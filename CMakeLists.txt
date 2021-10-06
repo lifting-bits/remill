@@ -26,7 +26,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/options.cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
-if(REMILL_BUILD_TESTING)
+if(REMILL_ENABLE_TESTING)
   include(CTest)
 endif()
 
@@ -256,10 +256,6 @@ target_link_libraries(remill INTERFACE
   ${LINKER_END_GROUP}
 )
 
-if(REMILL_INSTALL)
-  install(TARGETS remill EXPORT remillTargets)
-endif()
-
 #
 # Also install clang, libllvm and llvm-link
 #
@@ -298,7 +294,9 @@ add_custom_target(semantics)
 # tools
 add_subdirectory(bin)
 
-if(REMILL_INSTALL)
+if(REMILL_ENABLE_INSTALL_TARGET)
+  install(TARGETS remill EXPORT remillTargets)
+  
   install(TARGETS remill_settings ${THIRDPARTY_LIBRARY_LIST}
     EXPORT remillTargets
   )
@@ -324,7 +322,7 @@ if(REMILL_INSTALL)
 endif()
 
 # tests
-if (REMILL_BUILD_TESTING)
+if (REMILL_ENABLE_TESTING)
   # Tests require enabling exports on binaries
   # https://cmake.org/cmake/help/latest/variable/CMAKE_ENABLE_EXPORTS.html#variable:CMAKE_ENABLE_EXPORTS
   set(CMAKE_ENABLE_EXPORTS ON)
@@ -332,12 +330,12 @@ if (REMILL_BUILD_TESTING)
   find_package(Threads REQUIRED)
   add_custom_target(test_dependencies)
 
-  if(REMILL_BUILD_TESTING_X86)
+  if(REMILL_ENABLE_TESTING_X86)
     message(STATUS "X86 tests enabled")
     add_subdirectory(tests/X86)
   endif()
 
-  if(REMILL_BUILD_TESTING_AARCH64)
+  if(REMILL_ENABLE_TESTING_AARCH64)
     message(STATUS "aarch64 tests enabled")
     add_subdirectory(tests/AArch64)
   endif()
