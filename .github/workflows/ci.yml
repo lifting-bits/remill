@@ -39,12 +39,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - name: Install utility tools
-        shell: bash
-        run: |
-          # TODO some of these should probably live in the Docker build image
-          apt-get update
-          apt-get install -y pixz xz-utils make rpm
 
       - name: Build with build script
         shell: bash
