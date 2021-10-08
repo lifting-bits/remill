@@ -25,15 +25,12 @@ jobs:
           - { name: 'ubuntu', tag: '18.04' }
           - { name: 'ubuntu', tag: '20.04' }
         llvm: [
-          '9',
-          '10',
-          '11',
           '12'
           ]
 
     runs-on: ubuntu-20.04
     container:
-      image: docker.pkg.github.com/lifting-bits/cxx-common/vcpkg-builder-${{ matrix.image.name }}:${{ matrix.image.tag }}
+      image: ghcr.io/lifting-bits/cxx-common/vcpkg-builder-${{ matrix.image.name }}:${{ matrix.image.tag }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -42,12 +39,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - name: Install utility tools
-        shell: bash
-        run: |
-          # TODO some of these should probably live in the Docker build image
-          apt-get update
-          apt-get install -y pixz xz-utils make rpm
 
       - name: Build with build script
         shell: bash
@@ -98,10 +89,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [
-          'macos-10.15'
+          'macos-11'
           ]
         llvm: [
-          '11',
           '12'
           ]
 
@@ -188,8 +178,8 @@ jobs:
           zip -r9 remill_ubuntu-20.04_packages.zip \
                   ubuntu-20.04*
 
-          zip -r9 remill_macos-10.15_packages.zip \
-                  macos-10.15*
+          zip -r9 remill_macos-11_packages.zip \
+                  macos-11*
 
       - name: Upload the Ubuntu 18.04 packages
         uses: actions/upload-release-asset@v1
@@ -215,7 +205,7 @@ jobs:
           asset_name: remill_ubuntu-20.04_packages.zip
           asset_content_type: application/gzip
 
-      - name: Upload the macOS 10.15 packages
+      - name: Upload the macOS 11 packages
         uses: actions/upload-release-asset@v1
 
         env:
@@ -223,8 +213,8 @@ jobs:
 
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: remill_macos-10.15_packages.zip
-          asset_name: remill_macos-10.15_packages.zip
+          asset_path: remill_macos-11_packages.zip
+          asset_name: remill_macos-11_packages.zip
           asset_content_type: application/gzip
 
 
@@ -232,15 +222,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        llvm: ["11"]
+        llvm: ["12"]
         ubuntu: ["18.04"]
     steps:
     - uses: actions/checkout@v2
     - name: Build LLVM ${{ matrix.llvm }} on ${{ matrix.ubuntu }}
       run: |
-        docker build . -t docker.pkg.github.com/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest -f Dockerfile --build-arg UBUNTU_VERSION=${{ matrix.ubuntu }} --build-arg ARCH=amd64 --build-arg LLVM_VERSION=${{ matrix.llvm }}
+        docker build . -t ghcr.io/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest -f Dockerfile --build-arg UBUNTU_VERSION=${{ matrix.ubuntu }} --build-arg ARCH=amd64 --build-arg LLVM_VERSION=${{ matrix.llvm }}
     - name: Test Docker image
       run: |
-        docker run --rm docker.pkg.github.com/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
-        docker run --rm docker.pkg.github.com/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
-        docker run --rm docker.pkg.github.com/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest --arch aarch32 -ir_out /dev/stderr --bytes 0cd04de208008de504108de500208de508309de504009de500109de5903122e0c20fa0e110109fe5001091e5002081e5040081e50cd08de21eff2fe14000000000000000
+        docker run --rm ghcr.io/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
+        docker run --rm ghcr.io/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
+        docker run --rm ghcr.io/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest --arch aarch32 -ir_out /dev/stderr --bytes 0cd04de208008de504108de500208de508309de504009de500109de5903122e0c20fa0e110109fe5001091e5002081e5040081e50cd08de21eff2fe14000000000000000
