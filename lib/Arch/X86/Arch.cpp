@@ -793,27 +793,29 @@ class X86Arch final : public Arch {
   virtual ~X86Arch(void);
 
   // Returns the name of the stack pointer register.
-  std::string_view StackPointerRegisterName(void) const override;
+  std::string_view StackPointerRegisterName(void) const final;
 
   // Returns the name of the program counter register.
-  std::string_view ProgramCounterRegisterName(void) const override;
+  std::string_view ProgramCounterRegisterName(void) const final;
 
   // Decode an instruction.
   bool DecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                         Instruction &inst) const override;
+                         Instruction &inst) const final;
 
   // Maximum number of bytes in an instruction.
-  uint64_t MaxInstructionSize(void) const override;
+  uint64_t MinInstructionAlign(void) const final;
+  uint64_t MinInstructionSize(void) const final;
+  uint64_t MaxInstructionSize(bool permit_fuse_idioms) const final;
 
-  llvm::Triple Triple(void) const override;
-  llvm::DataLayout DataLayout(void) const override;
+  llvm::Triple Triple(void) const final;
+  llvm::DataLayout DataLayout(void) const final;
 
   // Default calling convention for this architecture.
-  llvm::CallingConv::ID DefaultCallingConv(void) const override;
+  llvm::CallingConv::ID DefaultCallingConv(void) const final;
 
   // Populate the `__remill_basic_block` function with variables.
   void PopulateBasicBlockFunction(llvm::Module *module,
-                                  llvm::Function *bb_func) const override;
+                                  llvm::Function *bb_func) const final;
 
  private:
   X86Arch(void) = delete;
@@ -833,8 +835,16 @@ X86Arch::X86Arch(llvm::LLVMContext *context_, OSName os_name_,
 
 X86Arch::~X86Arch(void) {}
 
+uint64_t X86Arch::MinInstructionAlign(void) const {
+  return 1;
+}
+
+uint64_t X86Arch::MinInstructionSize(void) const {
+  return 1;
+}
+
 // Maximum number of bytes in an instruction for this particular architecture.
-uint64_t X86Arch::MaxInstructionSize(void) const {
+uint64_t X86Arch::MaxInstructionSize(bool) const {
   return 15;
 }
 
