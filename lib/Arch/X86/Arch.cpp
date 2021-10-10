@@ -1192,11 +1192,13 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
     dest.size = address_size;
     dest.action = Operand::kActionWrite;
 
-    src.type = Operand::kTypeRegister;
-    src.reg.name = "PC";
-    src.reg.size = address_size;
+    src.type = Operand::kTypeAddress;
     src.size = address_size;
     src.action = Operand::kActionRead;
+    src.addr.address_size = address_size;
+    src.addr.base_reg = "PC";
+    src.addr.displacement = len - 1u;
+    src.addr.kind = Operand::Address::kAddressCalculation;
 
     if (32 == address_size) {
       inst.function = "CALL_POP_FUSED_32";
