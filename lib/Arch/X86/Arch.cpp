@@ -1196,7 +1196,8 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
     src.size = address_size;
     src.action = Operand::kActionRead;
     src.addr.address_size = address_size;
-    src.addr.base_reg = "PC";
+    src.addr.base_reg.name = "PC";
+    src.addr.base_reg.size = address_size;
     src.addr.displacement = len - 1u;
     src.addr.kind = Operand::Address::kAddressCalculation;
 
