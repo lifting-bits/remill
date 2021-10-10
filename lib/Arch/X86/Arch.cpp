@@ -967,7 +967,7 @@ static bool IsAVX(xed_isa_set_enum_t isa_set, xed_category_enum_t category) {
     case XED_ISA_SET_AVX_VNNI:
       return true;
     default:
-      return false;
+      break;
   }
   switch (category) {
     case XED_CATEGORY_AVX:
@@ -1057,7 +1057,7 @@ static bool IsAVX512(xed_isa_set_enum_t isa_set, xed_category_enum_t category) {
   }
 }
 
-static const char *FusablePopReg(char byte) {
+static const char *FusablePopReg32(char byte) {
   switch (static_cast<uint8_t>(byte)) {
     case 0x58: return "EAX";
     case 0x59: return "ECX";
@@ -1073,15 +1073,29 @@ static const char *FusablePopReg(char byte) {
   }
 }
 
+static const char *FusablePopReg64(char byte) {
+  switch (static_cast<uint8_t>(byte)) {
+    case 0x58: return "R8";
+    case 0x59: return "R9";
+    case 0x5a: return "R10";
+    case 0x5b: return "R11";
+    case 0x5c: return "R12";
+    case 0x5d: return "R13";
+    case 0x5e: return "R14";
+    case 0x5f: return "R15";
+    default: return nullptr;
+  }
+}
 static void FillFusedCallPopRegOperands(Instruction &inst,
                                         unsigned address_size,
-                                        const char *dest_reg_name32) {
+                                        const char *dest_reg_name,
+                                        unsigned call_inst_len) {
   inst.operands.resize(2);
   auto &dest = inst.operands[0];
   auto &src = inst.operands[1];
 
   dest.type = Operand::kTypeRegister;
-  dest.reg.name = dest_reg_name32;
+  dest.reg.name = dest_reg_name;
   dest.reg.size = address_size;
   dest.size = address_size;
   dest.action = Operand::kActionWrite;
@@ -1092,7 +1106,7 @@ static void FillFusedCallPopRegOperands(Instruction &inst,
   src.addr.address_size = address_size;
   src.addr.base_reg.name = "PC";
   src.addr.base_reg.size = address_size;
-  src.addr.displacement = (inst.next_pc - inst.pc) - 1u;
+  src.addr.displacement = static_cast<int64_t>(call_inst_len);
   src.addr.kind = Operand::Address::kAddressCalculation;
 
   if (32 == address_size) {
@@ -1117,13 +1131,13 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
 
   xed_decoded_inst_t xedd_;
   xed_decoded_inst_t *xedd = &xedd_;
-  auto mode = 32 == address_size ? &kXEDState32 : &kXEDState64;
-
+  const auto mode = 32 == address_size ? &kXEDState32 : &kXEDState64;
   if (!DecodeXED(xedd, mode, inst_bytes, address)) {
     return false;
   }
 
   auto len = xed_decoded_inst_get_length(xedd);
+  auto extra_len = 0u;  // From fusing.
   const auto iform = xed_decoded_inst_get_iform_enum(xedd);
   const auto xedi = xed_decoded_inst_inst(xedd);
   const auto num_operands = xed_decoded_inst_noperands(xedd);
@@ -1158,33 +1172,42 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
     return false;
   }
 
-  inst.category = CreateCategory(xedd);
-  inst.next_pc = address + len;
-
   // Look for instruction fusing opportunities. For now, just `call; pop`.
   const char *is_fused_call_pop = nullptr;
   if (len < inst_bytes.size() &&
       (iform == XED_IFORM_CALL_NEAR_RELBRd ||
        iform == XED_IFORM_CALL_NEAR_RELBRz) &&
       !xed_decoded_inst_get_branch_displacement(xedd)) {
-    is_fused_call_pop = FusablePopReg(inst_bytes[len]);
+    is_fused_call_pop = FusablePopReg32(inst_bytes[len]);
 
     // Change the instruction length (to influence `next_pc` calculation) and
     // the instruction category, so that users no longer interpret this
     // instruction as semantically being a call.
     if (is_fused_call_pop) {
-      len += 1u;
-      inst.next_pc += 1u;
+      extra_len = 1u;
       inst.category = Instruction::kCategoryNormal;
+
+    // Look for `pop r8` et al.
+    } else if (64 == address_size &&
+               (2 + len) <= inst_bytes.size() &&
+               inst_bytes[len] == 0x41) {
+      is_fused_call_pop = FusablePopReg64(inst_bytes[len + 1]);
+      if (is_fused_call_pop) {
+        extra_len = 2u;
+        inst.category = Instruction::kCategoryNormal;
+      }
     }
   }
 
+  inst.category = CreateCategory(xedd);
+  inst.next_pc = address + len + extra_len;
+
   // Fiddle with the size of the bytes.
   if (!inst.bytes.empty() && inst.bytes.data() == inst_bytes.data()) {
-    CHECK_LE(len, inst.bytes.size());
-    inst.bytes.resize(len);
+    CHECK_LE(len + extra_len, inst.bytes.size());
+    inst.bytes.resize(len + extra_len);
   } else {
-    inst.bytes = inst_bytes.substr(0, len);
+    inst.bytes = inst_bytes.substr(0, len + extra_len);
   }
 
   // Wrap an instruction in atomic begin/end if it accesses memory with RMW
@@ -1207,7 +1230,8 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
   }
 
   if (is_fused_call_pop) {
-    FillFusedCallPopRegOperands(inst, address_size, is_fused_call_pop);
+    FillFusedCallPopRegOperands(inst, address_size, is_fused_call_pop,
+                                len);
 
   } else {
     inst.function = InstructionFunctionName(xedd);
