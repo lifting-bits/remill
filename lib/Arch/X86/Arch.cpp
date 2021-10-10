@@ -1057,6 +1057,10 @@ static bool IsAVX512(xed_isa_set_enum_t isa_set, xed_category_enum_t category) {
   }
 }
 
+// Decode the destination register of a `pop <reg>`, where `byte` is the only
+// byte of a 1-byte opcode. On 64-bit, the same decoded by maps to a 64-bit
+// register. We apply a fixup below in `FillFusedCallPopRegOperands` to account
+// for upgrading the register.
 static const char *FusablePopReg32(char byte) {
   switch (static_cast<uint8_t>(byte)) {
     case 0x58: return "EAX";
@@ -1073,6 +1077,9 @@ static const char *FusablePopReg32(char byte) {
   }
 }
 
+// Decode the destination register of a `pop r8` through `pop r10`, assuming
+// that we've already decoded the `0x41` prefix, and `byte` is the second byte
+// of the two-byte opcode.
 static const char *FusablePopReg64(char byte) {
   switch (static_cast<uint8_t>(byte)) {
     case 0x58: return "R8";
@@ -1086,6 +1093,14 @@ static const char *FusablePopReg64(char byte) {
     default: return nullptr;
   }
 }
+
+// Fill in the operands for a fused `call+pop` pair. This ends up acting like
+// a `mov` variant, and the semantic is located in `DATAXFER`. Fusing of this
+// pair is beneficial to avoid downstream users from treating the initial call
+// as semantically being a function call, when really this is more of a move
+// instruction. Downstream users like McSema and Anvill benefit from seeing this
+// as a MOV-variant because of how they identify cross-references related to
+// uses of the program counter (`PC`) register.
 static void FillFusedCallPopRegOperands(Instruction &inst,
                                         unsigned address_size,
                                         const char *dest_reg_name,
@@ -1114,6 +1129,18 @@ static void FillFusedCallPopRegOperands(Instruction &inst,
 
   } else {
     inst.function = "CALL_POP_FUSED_64";
+
+    // Rename the register to be a 64-bit register. `pop eax` when decoded as
+    // a 32-bit instruction, and `pop rax` when decoded as a 64-bit instruction,
+    // both have the same binary representation. So for these cases, we store
+    // a 32-bit register name, such as `EAX` in `dest_reg_name`. If we're doing
+    // a fuse on 64-bit, then we want to upgrade the destination register to
+    // its `R`-prefixed variant, lest we accidentally discard the high 32 bits.
+    //
+    // For the case of `pop r8` et al. on 64 bit, `dest_reg_name` contains the
+    // 64-bit register name, and so the injection of `R` acts as a no-op.
+    //
+    // NOTE(pag): See `FusablePopReg32` and `FusablePopReg64`.
     dest.reg.name[0] = 'R';
   }
 }
