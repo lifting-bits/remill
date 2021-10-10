@@ -169,7 +169,7 @@ DEF_SEM(VMOVHLPS, VV128W dst, V128 src1, V128 src2) {
 
 }  // namespace
 
-// Fused `CALL + RET` sequences.
+// Fused `CALL $0; POP reg` sequences.
 DEF_ISEL(CALL_POP_FUSED_32) = MOV<R32W, I32>;
 DEF_ISEL(CALL_POP_FUSED_64) = MOV<R64W, I64>;
 

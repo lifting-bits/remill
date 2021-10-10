@@ -1057,6 +1057,53 @@ static bool IsAVX512(xed_isa_set_enum_t isa_set, xed_category_enum_t category) {
   }
 }
 
+static const char *FusablePopReg(char byte) {
+  switch (static_cast<uint8_t>(byte)) {
+    case 0x58: return "EAX";
+    case 0x59: return "ECX";
+    case 0x5a: return "EDX";
+    case 0x5b: return "EBX";
+    // NOTE(pag): We ignore `0x5c`, which is `pop rsp`, as that has funny
+    //            semantics and would be unusual to fuse.
+    case 0x5d: return "EBP";
+    case 0x5e: return "ESI";
+    case 0x5f: return "EDI";
+
+    default: return nullptr;
+  }
+}
+
+static void FillFusedCallPopRegOperands(Instruction &inst,
+                                        unsigned address_size,
+                                        const char *dest_reg_name32) {
+  inst.operands.resize(2);
+  auto &dest = inst.operands[0];
+  auto &src = inst.operands[1];
+
+  dest.type = Operand::kTypeRegister;
+  dest.reg.name = dest_reg_name32;
+  dest.reg.size = address_size;
+  dest.size = address_size;
+  dest.action = Operand::kActionWrite;
+
+  src.type = Operand::kTypeAddress;
+  src.size = address_size;
+  src.action = Operand::kActionRead;
+  src.addr.address_size = address_size;
+  src.addr.base_reg.name = "PC";
+  src.addr.base_reg.size = address_size;
+  src.addr.displacement = (inst.next_pc - inst.pc) - 1u;
+  src.addr.kind = Operand::Address::kAddressCalculation;
+
+  if (32 == address_size) {
+    inst.function = "CALL_POP_FUSED_32";
+
+  } else {
+    inst.function = "CALL_POP_FUSED_64";
+    dest.reg.name[0] = 'R';
+  }
+}
+
 // Decode an instuction.
 bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
                                 Instruction &inst) const {
@@ -1112,6 +1159,7 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
   }
 
   inst.category = CreateCategory(xedd);
+  inst.next_pc = address + len;
 
   // Look for instruction fusing opportunities. For now, just `call; pop`.
   const char *is_fused_call_pop = nullptr;
@@ -1119,40 +1167,17 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
       (iform == XED_IFORM_CALL_NEAR_RELBRd ||
        iform == XED_IFORM_CALL_NEAR_RELBRz) &&
       !xed_decoded_inst_get_branch_displacement(xedd)) {
+    is_fused_call_pop = FusablePopReg(inst_bytes[len]);
 
-    switch (inst_bytes[len]) {
-      case 0x58:  // `pop eax` or `pop rax`.
-        is_fused_call_pop = "EAX";
-        break;
-      case 0x59:  // `pop ecx` or `pop rcx`.
-        is_fused_call_pop = "ECX";
-        break;
-      case 0x5a:  // `pop edx` or `pop rdx`.
-        is_fused_call_pop = "EDX";
-        break;
-      case 0x5b:  // `pop ebx` or `pop rbx`.
-        is_fused_call_pop = "EBX";
-        break;
-      // NOTE(pag): We ignore `0x5c`, which is `pop rsp`, as that has funny
-      //            semantics and would be unusual to fuse.
-      case 0x5d:  // `pop ebp` or `pop rbp`.
-        is_fused_call_pop = "EBP";
-        break;
-      case 0x5e:  // `pop esi` or `pop rsi`.
-        is_fused_call_pop = "ESI";
-        break;
-      case 0x5f:  // `pop edi` or `pop rdi`.
-        is_fused_call_pop = "EDI";
-        break;
-    }
-
+    // Change the instruction length (to influence `next_pc` calculation) and
+    // the instruction category, so that users no longer interpret this
+    // instruction as semantically being a call.
     if (is_fused_call_pop) {
       len += 1u;
+      inst.next_pc += 1u;
       inst.category = Instruction::kCategoryNormal;
     }
   }
-
-  inst.next_pc = address + len;
 
   // Fiddle with the size of the bytes.
   if (!inst.bytes.empty() && inst.bytes.data() == inst_bytes.data()) {
@@ -1182,32 +1207,7 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
   }
 
   if (is_fused_call_pop) {
-    inst.operands.resize(2);
-    auto &dest = inst.operands[0];
-    auto &src = inst.operands[1];
-
-    dest.type = Operand::kTypeRegister;
-    dest.reg.name = is_fused_call_pop;
-    dest.reg.size = address_size;
-    dest.size = address_size;
-    dest.action = Operand::kActionWrite;
-
-    src.type = Operand::kTypeAddress;
-    src.size = address_size;
-    src.action = Operand::kActionRead;
-    src.addr.address_size = address_size;
-    src.addr.base_reg.name = "PC";
-    src.addr.base_reg.size = address_size;
-    src.addr.displacement = len - 1u;
-    src.addr.kind = Operand::Address::kAddressCalculation;
-
-    if (32 == address_size) {
-      inst.function = "CALL_POP_FUSED_32";
-
-    } else {
-      inst.function = "CALL_POP_FUSED_64";
-      dest.reg.name[0] = 'R';
-    }
+    FillFusedCallPopRegOperands(inst, address_size, is_fused_call_pop);
 
   } else {
     inst.function = InstructionFunctionName(xedd);
