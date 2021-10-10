@@ -1206,6 +1206,7 @@ bool AArch64Arch::DecodeInstruction(uint64_t address,
 
   inst.arch = this;
   inst.arch_name = arch_name;
+  inst.sub_arch_name = arch_name;  // TODO(pag): Thumb.
   inst.pc = address;
   inst.next_pc = address + kInstructionSize;
   inst.category = Instruction::kCategoryInvalid;

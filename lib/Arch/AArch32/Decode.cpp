@@ -3572,6 +3572,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   inst.has_branch_taken_delay_slot = false;
   inst.has_branch_not_taken_delay_slot = false;
   inst.arch_name = arch_name;
+  inst.sub_arch_name = arch_name;  // TODO(pag): Thumb.
   inst.arch = this;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();
