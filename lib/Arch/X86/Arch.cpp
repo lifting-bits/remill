@@ -319,6 +319,8 @@ std::map<xed_iform_enum_t, xed_iform_enum_t> kUnlockedIform = {
     {XED_IFORM_CMPXCHG16B_LOCK_MEMdq, XED_IFORM_CMPXCHG16B_MEMdq},
     {XED_IFORM_NEG_LOCK_MEMb, XED_IFORM_NEG_MEMb},
     {XED_IFORM_NEG_LOCK_MEMv, XED_IFORM_NEG_MEMv},
+    {XED_IFORM_XCHG_MEMv_GPRv, XED_IFORM_XCHG_MEMv_GPRv},
+    {XED_IFORM_XCHG_MEMb_GPR8, XED_IFORM_XCHG_MEMb_GPR8},
 };
 
 // Name of this instruction function.
