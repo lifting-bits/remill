@@ -198,6 +198,16 @@ class Arch {
   }
 
   // Decode an instruction.
+  //
+  // NOTE(pag): If you give `DecodeInstruction` a bunch of bytes, then it will
+  //            opportunistically look for opportunities to recognize some
+  //            simple idioms and fuse them (e.g. `call; pop` on x86,
+  //            `sethi; or` on sparc). If you don't want to decode idioms, then
+  //            one usage pattern to avoid them is to start with
+  //            `MinInstructionSize()` bytes, and if that fails to decode, then
+  //            walk up, one byte at a time, to `MaxInstructionSize(false)`
+  //            bytes being passed to the decoder, until you successfully decode
+  //            or ultimately fail.
   virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
                                  Instruction &inst) const = 0;
 
