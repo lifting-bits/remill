@@ -450,6 +450,7 @@ bool SPARC32Arch::DecodeInstruction(uint64_t address,
                                     Instruction &inst) const {
   inst.pc = address;
   inst.arch_name = arch_name;
+  inst.sub_arch_name = arch_name;
   inst.arch = this;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();

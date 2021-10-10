@@ -377,9 +377,10 @@ static bool DecodeXED(xed_decoded_inst_t *xedd, const xed_state_t *mode,
       ss << ' ' << std::hex << std::setw(2) << std::setfill('0')
          << (static_cast<unsigned>(b) & 0xFFu);
     }
-    LOG(ERROR) << "Unable to decode instruction at " << std::hex << address
-               << " with bytes" << ss.str()
-               << " and error: " << xed_error_enum_t2str(err) << std::dec;
+    DLOG(WARNING)
+        << "Unable to decode instruction at " << std::hex << address
+        << " with bytes" << ss.str()
+        << " and error: " << xed_error_enum_t2str(err) << std::dec;
     return false;
   }
 
@@ -575,11 +576,10 @@ static void DecodeRegister(Instruction &inst, const xed_decoded_inst_t *xedd,
   op.reg = RegOp(reg);
   op.size = op.reg.size;
 
-  auto read_op = op;
-
   // Pass the register by reference.
   if (xed_operand_written(xedo)) {
     op.action = Operand::kActionWrite;
+
     if (Is64Bit(inst.arch_name)) {
       if (XED_REG_GPR32_FIRST <= reg && XED_REG_GPR32_LAST >= reg) {
         op.reg = RegOp(xed_get_largest_enclosing_register(reg));
@@ -602,8 +602,8 @@ static void DecodeRegister(Instruction &inst, const xed_decoded_inst_t *xedd,
   }
 
   if (xed_operand_read(xedo)) {
-    read_op.action = Operand::kActionRead;
-    inst.operands.push_back(read_op);
+    op.action = Operand::kActionRead;
+    inst.operands.push_back(op);
   }
 }
 
@@ -957,6 +957,106 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
   return llvm::DataLayout(dl);
 }
 
+static bool IsAVX(xed_isa_set_enum_t isa_set, xed_category_enum_t category) {
+  switch (isa_set) {
+    case XED_ISA_SET_AVX:
+    case XED_ISA_SET_AVX2:
+    case XED_ISA_SET_AVX2GATHER:
+    case XED_ISA_SET_AVXAES:
+    case XED_ISA_SET_AVX_GFNI:
+    case XED_ISA_SET_AVX_VNNI:
+      return true;
+    default:
+      return false;
+  }
+  switch (category) {
+    case XED_CATEGORY_AVX:
+    case XED_CATEGORY_AVX2:
+    case XED_CATEGORY_AVX2GATHER:
+      return true;
+    default:
+      return false;
+  }
+}
+
+static bool IsAVX512(xed_isa_set_enum_t isa_set, xed_category_enum_t category) {
+  switch (isa_set) {
+    case XED_ISA_SET_AVX512BW_128:
+    case XED_ISA_SET_AVX512BW_128N:
+    case XED_ISA_SET_AVX512BW_256:
+    case XED_ISA_SET_AVX512BW_512:
+    case XED_ISA_SET_AVX512BW_KOP:
+    case XED_ISA_SET_AVX512CD_128:
+    case XED_ISA_SET_AVX512CD_256:
+    case XED_ISA_SET_AVX512CD_512:
+    case XED_ISA_SET_AVX512DQ_128:
+    case XED_ISA_SET_AVX512DQ_128N:
+    case XED_ISA_SET_AVX512DQ_256:
+    case XED_ISA_SET_AVX512DQ_512:
+    case XED_ISA_SET_AVX512DQ_KOP:
+    case XED_ISA_SET_AVX512DQ_SCALAR:
+    case XED_ISA_SET_AVX512ER_512:
+    case XED_ISA_SET_AVX512ER_SCALAR:
+    case XED_ISA_SET_AVX512F_128:
+    case XED_ISA_SET_AVX512F_128N:
+    case XED_ISA_SET_AVX512F_256:
+    case XED_ISA_SET_AVX512F_512:
+    case XED_ISA_SET_AVX512F_KOP:
+    case XED_ISA_SET_AVX512F_SCALAR:
+    case XED_ISA_SET_AVX512PF_512:
+    case XED_ISA_SET_AVX512_4FMAPS_512:
+    case XED_ISA_SET_AVX512_4FMAPS_SCALAR:
+    case XED_ISA_SET_AVX512_4VNNIW_512:
+    case XED_ISA_SET_AVX512_BF16_128:
+    case XED_ISA_SET_AVX512_BF16_256:
+    case XED_ISA_SET_AVX512_BF16_512:
+    case XED_ISA_SET_AVX512_BITALG_128:
+    case XED_ISA_SET_AVX512_BITALG_256:
+    case XED_ISA_SET_AVX512_BITALG_512:
+    case XED_ISA_SET_AVX512_GFNI_128:
+    case XED_ISA_SET_AVX512_GFNI_256:
+    case XED_ISA_SET_AVX512_GFNI_512:
+    case XED_ISA_SET_AVX512_IFMA_128:
+    case XED_ISA_SET_AVX512_IFMA_256:
+    case XED_ISA_SET_AVX512_IFMA_512:
+    case XED_ISA_SET_AVX512_VAES_128:
+    case XED_ISA_SET_AVX512_VAES_256:
+    case XED_ISA_SET_AVX512_VAES_512:
+    case XED_ISA_SET_AVX512_VBMI2_128:
+    case XED_ISA_SET_AVX512_VBMI2_256:
+    case XED_ISA_SET_AVX512_VBMI2_512:
+    case XED_ISA_SET_AVX512_VBMI_128:
+    case XED_ISA_SET_AVX512_VBMI_256:
+    case XED_ISA_SET_AVX512_VBMI_512:
+    case XED_ISA_SET_AVX512_VNNI_128:
+    case XED_ISA_SET_AVX512_VNNI_256:
+    case XED_ISA_SET_AVX512_VNNI_512:
+    case XED_ISA_SET_AVX512_VP2INTERSECT_128:
+    case XED_ISA_SET_AVX512_VP2INTERSECT_256:
+    case XED_ISA_SET_AVX512_VP2INTERSECT_512:
+    case XED_ISA_SET_AVX512_VPCLMULQDQ_128:
+    case XED_ISA_SET_AVX512_VPCLMULQDQ_256:
+    case XED_ISA_SET_AVX512_VPCLMULQDQ_512:
+    case XED_ISA_SET_AVX512_VPOPCNTDQ_128:
+    case XED_ISA_SET_AVX512_VPOPCNTDQ_256:
+    case XED_ISA_SET_AVX512_VPOPCNTDQ_512:
+      return true;
+    default:
+      break;
+  }
+  switch (category) {
+    case XED_CATEGORY_AVX512:
+    case XED_CATEGORY_AVX512_4FMAPS:
+    case XED_CATEGORY_AVX512_4VNNIW:
+    case XED_CATEGORY_AVX512_BITALG:
+    case XED_CATEGORY_AVX512_VBMI:
+    case XED_CATEGORY_AVX512_VP2INTERSECT:
+      return true;
+    default:
+      return false;
+  }
+}
+
 // Decode an instuction.
 bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
                                 Instruction &inst) const {
@@ -964,6 +1064,7 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
   inst.pc = address;
   inst.arch = this;
   inst.arch_name = arch_name;
+  inst.sub_arch_name = kArchInvalid;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();
 
@@ -972,21 +1073,94 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
   auto mode = 32 == address_size ? &kXEDState32 : &kXEDState64;
 
   if (!DecodeXED(xedd, mode, inst_bytes, address)) {
-    LOG(ERROR) << "DecodeXED() could not decode the following opcodes: "
-               << inst.Serialize();
     return false;
   }
 
-  const auto len = xed_decoded_inst_get_length(xedd);
+  auto len = xed_decoded_inst_get_length(xedd);
+  const auto iform = xed_decoded_inst_get_iform_enum(xedd);
+  const auto xedi = xed_decoded_inst_inst(xedd);
+  const auto num_operands = xed_decoded_inst_noperands(xedd);
+  const auto xedv = xed_decoded_inst_operands_const(xedd);
+  const auto isa_set = xed_decoded_inst_get_isa_set(xedd);
+  const auto category = xed_decoded_inst_get_category(xedd);
+
+  // Re-classify this instruction to its sub-architecture.
+  if (IsAVX512(isa_set, category)) {
+    inst.sub_arch_name = 32 == address_size ? kArchX86_AVX512 : kArchAMD64_AVX512;
+  } else if (IsAVX(isa_set, category)) {
+    inst.sub_arch_name = 32 == address_size ? kArchX86_AVX : kArchAMD64_AVX;
+  } else if (xed_classify_avx512(xedd) || xed_classify_avx512_maskop(xedd)) {
+    inst.sub_arch_name = 32 == address_size ? kArchX86_AVX512 : kArchAMD64_AVX512;
+  } else if (xed_classify_avx(xedd)) {
+    inst.sub_arch_name = 32 == address_size ? kArchX86_AVX : kArchAMD64_AVX;
+  } else {
+    inst.sub_arch_name = 32 == address_size ? kArchX86 : kArchAMD64;
+  }
+
+  // Make sure we know about
+  if (static_cast<unsigned>(inst.arch_name) <
+      static_cast<unsigned>(inst.sub_arch_name)) {
+    LOG(ERROR)
+        << "Instruction decode of " << xed_iform_enum_t2str(iform)
+        << " requires the " << GetArchName(inst.sub_arch_name)
+        << " architecture semantics to lift but was decoded using the "
+        << GetArchName(inst.arch_name) << " architecture";
+
+    inst.Reset();
+    inst.category = Instruction::kCategoryInvalid;
+    return false;
+  }
+
+  inst.category = CreateCategory(xedd);
+
+  // Look for instruction fusing opportunities. For now, just `call; pop`.
+  const char *is_fused_call_pop = nullptr;
+  if (len < inst_bytes.size() &&
+      (iform == XED_IFORM_CALL_NEAR_RELBRd ||
+       iform == XED_IFORM_CALL_NEAR_RELBRz) &&
+      !xed_decoded_inst_get_branch_displacement(xedd)) {
+
+    switch (inst_bytes[len]) {
+      case 0x58:  // `pop eax` or `pop rax`.
+        is_fused_call_pop = "EAX";
+        break;
+      case 0x59:  // `pop ecx` or `pop rcx`.
+        is_fused_call_pop = "ECX";
+        break;
+      case 0x5a:  // `pop edx` or `pop rdx`.
+        is_fused_call_pop = "EDX";
+        break;
+      case 0x5b:  // `pop ebx` or `pop rbx`.
+        is_fused_call_pop = "EBX";
+        break;
+      // NOTE(pag): We ignore `0x5c`, which is `pop rsp`, as that has funny
+      //            semantics and would be unusual to fuse.
+      case 0x5d:  // `pop ebp` or `pop rbp`.
+        is_fused_call_pop = "EBP";
+        break;
+      case 0x5e:  // `pop esi` or `pop rsi`.
+        is_fused_call_pop = "ESI";
+        break;
+      case 0x5f:  // `pop edi` or `pop rdi`.
+        is_fused_call_pop = "EDI";
+        break;
+    }
+
+    if (is_fused_call_pop) {
+      len += 1u;
+      inst.category = Instruction::kCategoryNormal;
+    }
+  }
+
+  inst.next_pc = address + len;
+
+  // Fiddle with the size of the bytes.
   if (!inst.bytes.empty() && inst.bytes.data() == inst_bytes.data()) {
     CHECK_LE(len, inst.bytes.size());
     inst.bytes.resize(len);
   } else {
     inst.bytes = inst_bytes.substr(0, len);
   }
-
-  inst.category = CreateCategory(xedd);
-  inst.next_pc = address + len;
 
   // Wrap an instruction in atomic begin/end if it accesses memory with RMW
   // semantics or with a LOCK prefix.
@@ -1000,25 +1174,45 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
     DecodeConditionalInterrupt(inst);
   }
 
-  auto iform = xed_decoded_inst_get_iform_enum(xedd);
-
-  inst.function = InstructionFunctionName(xedd);
-
   // Lift the operands. This creates the arguments for us to call the
   // instuction implementation.
-  auto xedi = xed_decoded_inst_inst(xedd);
-  auto num_operands = xed_decoded_inst_noperands(xedd);
-
-  auto xedv = xed_decoded_inst_operands_const(xedd);
   if (xed_operand_values_has_segment_prefix(xedv)) {
     auto reg_name = xed_reg_enum_t2str(xed_operand_values_segment_prefix(xedv));
     inst.segment_override = RegisterByName(reg_name);
   }
 
-  for (auto i = 0U; i < num_operands; ++i) {
-    auto xedo = xed_inst_operand(xedi, i);
-    if (XED_OPVIS_SUPPRESSED != xed_operand_operand_visibility(xedo)) {
-      DecodeOperand(inst, xedd, xedo);
+  if (is_fused_call_pop) {
+    inst.operands.resize(2);
+    auto &dest = inst.operands[0];
+    auto &src = inst.operands[1];
+
+    dest.type = Operand::kTypeRegister;
+    dest.reg.name = is_fused_call_pop;
+    dest.reg.size = address_size;
+    dest.size = address_size;
+    dest.action = Operand::kActionWrite;
+
+    src.type = Operand::kTypeRegister;
+    src.reg.name = "PC";
+    src.reg.size = address_size;
+    src.size = address_size;
+    src.action = Operand::kActionRead;
+
+    if (32 == address_size) {
+      inst.function = "CALL_POP_FUSED_32";
+
+    } else {
+      inst.function = "CALL_POP_FUSED_64";
+      dest.reg.name[0] = 'R';
+    }
+
+  } else {
+    inst.function = InstructionFunctionName(xedd);
+    for (auto i = 0U; i < num_operands; ++i) {
+      auto xedo = xed_inst_operand(xedi, i);
+      if (XED_OPVIS_SUPPRESSED != xed_operand_operand_visibility(xedo)) {
+        DecodeOperand(inst, xedd, xedo);
+      }
     }
   }
 
@@ -1065,9 +1259,8 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
 
   // All non-control FPU instructions update the last instruction pointer
   // and opcode.
-  if (XED_ISA_SET_X87 == xed_decoded_inst_get_isa_set(xedd) ||
-      XED_ISA_SET_FCMOV == xed_decoded_inst_get_isa_set(xedd) ||
-      XED_CATEGORY_X87_ALU == xed_decoded_inst_get_category(xedd)) {
+  if (XED_ISA_SET_X87 == isa_set || XED_ISA_SET_FCMOV == isa_set ||
+      XED_CATEGORY_X87_ALU == category) {
     auto set_ip_dp = false;
     const auto get_attr = xed_decoded_inst_get_attribute;
     switch (iform) {
@@ -1092,102 +1285,9 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
 
   if (xed_decoded_inst_is_xacquire(xedd) ||
       xed_decoded_inst_is_xrelease(xedd)) {
-    LOG(ERROR) << "Ignoring XACQUIRE/XRELEASE prefix at " << std::hex << inst.pc
-               << std::dec;
-  }
-
-  // Make sure we disallow decoding of AVX instructions when running with non-
-  // AVX arch specified. Same thing for AVX512 instructions.
-  switch (xed_decoded_inst_get_isa_set(xedd)) {
-    case XED_ISA_SET_INVALID:
-    case XED_ISA_SET_LAST:
-      LOG(ERROR) << "Instruction decode of " << xed_iform_enum_t2str(iform)
-                 << " failed because XED_ISA_SET_LAST.";
-      return false;
-
-    case XED_ISA_SET_AVX:
-    case XED_ISA_SET_AVX2:
-    case XED_ISA_SET_AVX2GATHER:
-    case XED_ISA_SET_AVXAES:
-    case XED_ISA_SET_AVX_GFNI: {
-      auto supp = kArchAMD64 != inst.arch_name && kArchX86 != inst.arch_name;
-      LOG_IF(ERROR, !supp) << "Instruction decode of "
-                           << xed_iform_enum_t2str(iform)
-                           << " failed because the current arch is specified "
-                           << "as " << GetArchName(inst.arch_name)
-                           << " but what is needed is "
-                           << "the _avx or _avx512 variant.";
-      return supp;
-    }
-
-    case XED_ISA_SET_AVX512BW_128:
-    case XED_ISA_SET_AVX512BW_128N:
-    case XED_ISA_SET_AVX512BW_256:
-    case XED_ISA_SET_AVX512BW_512:
-    case XED_ISA_SET_AVX512BW_KOP:
-    case XED_ISA_SET_AVX512CD_128:
-    case XED_ISA_SET_AVX512CD_256:
-    case XED_ISA_SET_AVX512CD_512:
-    case XED_ISA_SET_AVX512DQ_128:
-    case XED_ISA_SET_AVX512DQ_128N:
-    case XED_ISA_SET_AVX512DQ_256:
-    case XED_ISA_SET_AVX512DQ_512:
-    case XED_ISA_SET_AVX512DQ_KOP:
-    case XED_ISA_SET_AVX512DQ_SCALAR:
-    case XED_ISA_SET_AVX512ER_512:
-    case XED_ISA_SET_AVX512ER_SCALAR:
-    case XED_ISA_SET_AVX512F_128:
-    case XED_ISA_SET_AVX512F_128N:
-    case XED_ISA_SET_AVX512F_256:
-    case XED_ISA_SET_AVX512F_512:
-    case XED_ISA_SET_AVX512F_KOP:
-    case XED_ISA_SET_AVX512F_SCALAR:
-    case XED_ISA_SET_AVX512PF_512:
-    case XED_ISA_SET_AVX512_4FMAPS_512:
-    case XED_ISA_SET_AVX512_4FMAPS_SCALAR:
-    case XED_ISA_SET_AVX512_4VNNIW_512:
-    case XED_ISA_SET_AVX512_BITALG_128:
-    case XED_ISA_SET_AVX512_BITALG_256:
-    case XED_ISA_SET_AVX512_BITALG_512:
-    case XED_ISA_SET_AVX512_GFNI_128:
-    case XED_ISA_SET_AVX512_GFNI_256:
-    case XED_ISA_SET_AVX512_GFNI_512:
-    case XED_ISA_SET_AVX512_IFMA_128:
-    case XED_ISA_SET_AVX512_IFMA_256:
-    case XED_ISA_SET_AVX512_IFMA_512:
-    case XED_ISA_SET_AVX512_VAES_128:
-    case XED_ISA_SET_AVX512_VAES_256:
-    case XED_ISA_SET_AVX512_VAES_512:
-    case XED_ISA_SET_AVX512_VBMI2_128:
-    case XED_ISA_SET_AVX512_VBMI2_256:
-    case XED_ISA_SET_AVX512_VBMI2_512:
-    case XED_ISA_SET_AVX512_VBMI_128:
-    case XED_ISA_SET_AVX512_VBMI_256:
-    case XED_ISA_SET_AVX512_VBMI_512:
-    case XED_ISA_SET_AVX512_VNNI_128:
-    case XED_ISA_SET_AVX512_VNNI_256:
-    case XED_ISA_SET_AVX512_VNNI_512:
-    case XED_ISA_SET_AVX512_VPCLMULQDQ_128:
-    case XED_ISA_SET_AVX512_VPCLMULQDQ_256:
-    case XED_ISA_SET_AVX512_VPCLMULQDQ_512:
-    case XED_ISA_SET_AVX512_VPOPCNTDQ_128:
-    case XED_ISA_SET_AVX512_VPOPCNTDQ_256:
-    case XED_ISA_SET_AVX512_VPOPCNTDQ_512: {
-      const auto supp = kArchAMD64_AVX512 == inst.arch_name ||
-                        kArchX86_AVX512 == inst.arch_name;
-      if (!supp) {
-        LOG(ERROR) << "Instruction decode of " << xed_iform_enum_t2str(iform)
-                   << " failed because the current arch is specified "
-                   << "as " << GetArchName(inst.arch_name)
-                   << " but what is needed is "
-                   << "the _avx512 variant.";
-        inst.Reset();
-        inst.category = Instruction::kCategoryInvalid;
-        return false;
-      }
-      break;
-    }
-    default: break;
+    LOG(WARNING)
+        << "Ignoring XACQUIRE/XRELEASE prefix at " << std::hex << inst.pc
+        << std::dec;
   }
 
   return true;

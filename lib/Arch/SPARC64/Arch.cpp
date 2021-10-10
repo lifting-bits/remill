@@ -424,6 +424,7 @@ bool SPARC64Arch::DecodeInstruction(uint64_t address,
 
   inst.pc = address;
   inst.arch_name = arch_name;
+  inst.sub_arch_name = arch_name;
   inst.arch = this;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();

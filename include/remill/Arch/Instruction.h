@@ -198,8 +198,11 @@ class Instruction {
   uint64_t branch_taken_pc;
   uint64_t branch_not_taken_pc;
 
-  // Name of this instruction's architecture.
+  // Name of this architecture used to decode this instruction.
   ArchName arch_name;
+
+  // Name of the minimum instruction set associated with this instruction.
+  ArchName sub_arch_name;
 
   // Pointer to the `remill::Arch` used to complete the decoding of this
   // instruction.
