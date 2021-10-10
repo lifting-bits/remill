@@ -56,9 +56,17 @@ class SPARC64Arch final : public Arch {
     return kPCRegName;
   }
 
+  uint64_t MinInstructionAlign(void) const final {
+    return 4;
+  }
+
+  uint64_t MinInstructionSize(void) const final {
+    return 4;
+  }
+
   // Maximum number of bytes in an instruction.
-  uint64_t MaxInstructionSize(void) const final {
-    return 8;  // To handle `SET` idioms.
+  uint64_t MaxInstructionSize(bool permit_fuse_idioms) const final {
+    return permit_fuse_idioms ? 8 : 4;  // To handle `SET` idioms.
   }
 
   // Default calling convention for this architecture.

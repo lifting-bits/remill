@@ -51,8 +51,17 @@ AArch32Arch::AArch32Arch(llvm::LLVMContext *context_, OSName os_name_,
 
 AArch32Arch::~AArch32Arch(void) {}
 
+// TODO(pag): Eventually handle Thumb2 and unaligned addresses.
+uint64_t AArch32Arch::MinInstructionAlign(void) const {
+  return 4;
+}
+
+uint64_t AArch32Arch::MinInstructionSize(void) const {
+  return 4;
+}
+
 // Maximum number of bytes in an instruction for this particular architecture.
-uint64_t AArch32Arch::MaxInstructionSize(void) const {
+uint64_t AArch32Arch::MaxInstructionSize(bool) const {
   return 4;
 }
 

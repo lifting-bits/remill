@@ -27,27 +27,29 @@ class AArch32Arch final : public Arch {
   virtual ~AArch32Arch(void);
 
   // Returns the name of the stack pointer register.
-  std::string_view StackPointerRegisterName(void) const override;
+  std::string_view StackPointerRegisterName(void) const final;
 
   // Returns the name of the program counter register.
-  std::string_view ProgramCounterRegisterName(void) const override;
+  std::string_view ProgramCounterRegisterName(void) const final;
 
   // Decode an instuction.
   bool DecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                         Instruction &inst) const override;
+                         Instruction &inst) const final;
 
-  // Maximum number of bytes in an instruction.
-  uint64_t MaxInstructionSize(void) const override;
+  // Align/Minimum/Maximum number of bytes in an instruction.
+  uint64_t MinInstructionAlign(void) const final;
+  uint64_t MinInstructionSize(void) const final;
+  uint64_t MaxInstructionSize(bool permit_fuse_idioms) const final;
 
-  llvm::Triple Triple(void) const override;
-  llvm::DataLayout DataLayout(void) const override;
+  llvm::Triple Triple(void) const final;
+  llvm::DataLayout DataLayout(void) const final;
 
   // Default calling convention for this architecture.
-  llvm::CallingConv::ID DefaultCallingConv(void) const override;
+  llvm::CallingConv::ID DefaultCallingConv(void) const final;
 
   // Populate the `__remill_basic_block` function with variables.
   void PopulateBasicBlockFunction(llvm::Module *module,
-                                  llvm::Function *bb_func) const override;
+                                  llvm::Function *bb_func) const final;
 
  private:
   AArch32Arch(void) = delete;
