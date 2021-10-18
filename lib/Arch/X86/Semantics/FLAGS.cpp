@@ -25,19 +25,19 @@ enum : uint32_t { kLHS = 2415899639U, kRHS = 70623199U };
 // Zero flags, tells us whether or not a value is zero.
 template <typename T>
 [[gnu::const]] ALWAYS_INLINE static bool ZeroFlag(T res) {
-  return T(0) == res;
+  return __remill_zero_flag_computation(T(0) == res, res);
 }
 
 // Zero flags, tells us whether or not a value is zero.
 template <typename T>
 [[gnu::const]] ALWAYS_INLINE static bool NotZeroFlag(T res) {
-  return T(0) != res;
+  return !__remill_zero_flag_computation(T(0) == res, res);
 }
 
 // Sign flag, tells us if a result is signed or unsigned.
 template <typename T>
 [[gnu::const]] ALWAYS_INLINE static bool SignFlag(T res) {
-  return 0 > Signed(res);
+  return __remill_sign_flag_computation(0 > Signed(res), res);
 }
 
 // Auxiliary carry flag. This is used for binary coded decimal operations and
@@ -97,7 +97,8 @@ struct Overflow<tag_add> {
     const T sign_lhs = lhs >> kSignShift;
     const T sign_rhs = rhs >> kSignShift;
     const T sign_res = res >> kSignShift;
-    return 2 == ((sign_lhs ^ sign_res) + (sign_rhs ^ sign_res));
+    return __remill_overflow_flag_computation(
+        2 == ((sign_lhs ^ sign_res) + (sign_rhs ^ sign_res)), lhs, rhs, res);
   }
 };
 
@@ -114,7 +115,8 @@ struct Overflow<tag_sub> {
     const T sign_lhs = lhs >> kSignShift;
     const T sign_rhs = rhs >> kSignShift;
     const T sign_res = res >> kSignShift;
-    return 2 == ((sign_lhs ^ sign_rhs) + (sign_lhs ^ sign_res));
+    return __remill_overflow_flag_computation(
+        2 == ((sign_lhs ^ sign_rhs) + (sign_lhs ^ sign_res)), lhs, rhs, res);
   }
 };
 
@@ -126,10 +128,11 @@ struct Overflow<tag_mul> {
   // the operands.
   template <typename T, typename R>
   [[gnu::const]] ALWAYS_INLINE static bool
-  Flag(T, T, R res,
+  Flag(T lhs, T rhs, R res,
        typename std::enable_if<sizeof(T) < sizeof(R), int>::type = 0) {
 
-    return static_cast<R>(static_cast<T>(res)) != res;
+    return __remill_overflow_flag_computation(
+        static_cast<R>(static_cast<T>(res)) != res, lhs, rhs, res);
   }
 
   // Signed integer multiplication overflow check, where the result is
@@ -172,7 +175,10 @@ struct Carry<tag_sub> {
 
 }  // namespace
 
-#define UndefFlag(name) do { state.aflag.name = __remill_undefined_8(); } while (false)
+#define UndefFlag(name) \
+  do { \
+    state.aflag.name = __remill_undefined_8(); \
+  } while (false)
 
 #define ClearArithFlags() \
   do { \
