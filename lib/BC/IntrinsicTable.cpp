@@ -61,6 +61,12 @@ static llvm::Function *FindPureIntrinsic(llvm::Module *module,
   return function;
 }
 
+static llvm::Function *SetMemoryReadNone(llvm::Function *func) {
+  auto arg = remill::NthArgument(func, 0);
+  arg->addAttr(llvm::Attribute::ReadNone);
+  return func;
+}
+
 }  // namespace
 
 IntrinsicTable::IntrinsicTable(llvm::Module *module)
@@ -76,20 +82,20 @@ IntrinsicTable::IntrinsicTable(llvm::Module *module)
       async_hyper_call(FindIntrinsic(module, "__remill_async_hyper_call")),
 
       // Memory access.
-      read_memory_8(FindPureIntrinsic(module, "__remill_read_memory_8")),
-      read_memory_16(FindPureIntrinsic(module, "__remill_read_memory_16")),
-      read_memory_32(FindPureIntrinsic(module, "__remill_read_memory_32")),
-      read_memory_64(FindPureIntrinsic(module, "__remill_read_memory_64")),
+      read_memory_8(SetMemoryReadNone(FindPureIntrinsic(module, "__remill_read_memory_8"))),
+      read_memory_16(SetMemoryReadNone(FindPureIntrinsic(module, "__remill_read_memory_16"))),
+      read_memory_32(SetMemoryReadNone(FindPureIntrinsic(module, "__remill_read_memory_32"))),
+      read_memory_64(SetMemoryReadNone(FindPureIntrinsic(module, "__remill_read_memory_64"))),
 
       write_memory_8(FindPureIntrinsic(module, "__remill_write_memory_8")),
       write_memory_16(FindPureIntrinsic(module, "__remill_write_memory_16")),
       write_memory_32(FindPureIntrinsic(module, "__remill_write_memory_32")),
       write_memory_64(FindPureIntrinsic(module, "__remill_write_memory_64")),
 
-      read_memory_f32(FindPureIntrinsic(module, "__remill_read_memory_f32")),
-      read_memory_f64(FindPureIntrinsic(module, "__remill_read_memory_f64")),
-      read_memory_f80(FindPureIntrinsic(module, "__remill_read_memory_f80")),
-      read_memory_f128(FindPureIntrinsic(module, "__remill_read_memory_f128")),
+      read_memory_f32(SetMemoryReadNone(FindPureIntrinsic(module, "__remill_read_memory_f32"))),
+      read_memory_f64(SetMemoryReadNone(FindPureIntrinsic(module, "__remill_read_memory_f64"))),
+      read_memory_f80(SetMemoryReadNone(FindPureIntrinsic(module, "__remill_read_memory_f80"))),
+      read_memory_f128(SetMemoryReadNone(FindPureIntrinsic(module, "__remill_read_memory_f128"))),
 
       write_memory_f32(FindPureIntrinsic(module, "__remill_write_memory_f32")),
       write_memory_f64(FindPureIntrinsic(module, "__remill_write_memory_f64")),
@@ -106,8 +112,8 @@ IntrinsicTable::IntrinsicTable(llvm::Module *module)
           FindPureIntrinsic(module, "__remill_barrier_store_load")),
       barrier_store_store(
           FindPureIntrinsic(module, "__remill_barrier_store_store")),
-      atomic_begin(FindPureIntrinsic(module, "__remill_atomic_begin")),
-      atomic_end(FindPureIntrinsic(module, "__remill_atomic_end")),
+      atomic_begin(SetMemoryReadNone(FindPureIntrinsic(module, "__remill_atomic_begin"))),
+      atomic_end(SetMemoryReadNone(FindPureIntrinsic(module, "__remill_atomic_end"))),
       delay_slot_begin(FindPureIntrinsic(module, "__remill_delay_slot_begin")),
       delay_slot_end(FindPureIntrinsic(module, "__remill_delay_slot_end")),
 
