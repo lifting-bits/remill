@@ -642,7 +642,6 @@ void Arch::PrepareModuleDataLayout(llvm::Module *mod) const {
 }
 
 void Arch::PrepareModule(llvm::Module *mod) const {
-  CHECK_EQ(&(mod->getContext()), context);
   PrepareModuleDataLayout(mod);
 }
 
