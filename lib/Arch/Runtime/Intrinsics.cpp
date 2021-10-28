@@ -117,7 +117,8 @@ extern "C" void __remill_mark_as_used(const void *);
   USED(__remill_undefined_f64);
   USED(__remill_undefined_f80);
 
-  USED(__remill_zero_flag_computation);
-  USED(__remill_overflow_flag_computation);
-  USED(__remill_sign_flag_computation);
+  USED(__remill_flag_computation_zero);
+  USED(__remill_flag_computation_overflow);
+  USED(__remill_flag_computation_sign);
+  USED(__remill_compare_leq);
 }

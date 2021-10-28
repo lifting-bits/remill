@@ -89,9 +89,10 @@ class IntrinsicTable {
 
 
   // Flag markers
-  llvm::Function *zero_flag_computation;
-  llvm::Function *sign_flag_computation;
-  llvm::Function *overflow_flag_computation;
+  llvm::Function *flag_computation_zero;
+  llvm::Function *flag_computation_sign;
+  llvm::Function *flag_computation_overflow;
+  llvm::Function *compare_leq;
 
 
  private:

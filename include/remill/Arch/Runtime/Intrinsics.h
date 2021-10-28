@@ -91,13 +91,15 @@ __remill_write_memory_f80(Memory *, addr_t, const native_float80_t &);
 [[gnu::used, gnu::const]] extern float128_t __remill_undefined_f128(void);
 
 [[gnu::used, gnu::const]] extern bool
-__remill_zero_flag_computation(bool result, ...);
+__remill_flag_computation_zero(bool result, ...);
 
 [[gnu::used, gnu::const]] extern bool
-__remill_sign_flag_computation(bool result, ...);
+__remill_flag_computation_sign(bool result, ...);
 
 [[gnu::used, gnu::const]] extern bool
-__remill_overflow_flag_computation(bool result, ...);
+__remill_flag_computation_overflow(bool result, ...);
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_leq(bool result);
 
 // Generic error.
 [[gnu::used]] extern Memory *__remill_error(State &, addr_t addr, Memory *);
