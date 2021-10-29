@@ -92,7 +92,7 @@ class IntrinsicTable {
   llvm::Function *flag_computation_zero;
   llvm::Function *flag_computation_sign;
   llvm::Function *flag_computation_overflow;
-  llvm::Function *compare_leq;
+  llvm::Function *compare_sle;
 
 
  private:

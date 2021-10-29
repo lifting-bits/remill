@@ -140,7 +140,7 @@ IntrinsicTable::IntrinsicTable(llvm::Module *module)
       flag_computation_overflow(
           FindPureIntrinsic(module, "__remill_flag_computation_overflow")),
       // compares
-      compare_leq(FindPureIntrinsic(module, "__remill_compare_leq")) {
+      compare_sle(FindPureIntrinsic(module, "__remill_compare_sle")) {
 
 
   // Make sure to set the correct attributes on this to make sure that

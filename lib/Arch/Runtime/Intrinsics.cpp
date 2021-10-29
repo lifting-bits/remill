@@ -120,5 +120,5 @@ extern "C" void __remill_mark_as_used(const void *);
   USED(__remill_flag_computation_zero);
   USED(__remill_flag_computation_overflow);
   USED(__remill_flag_computation_sign);
-  USED(__remill_compare_leq);
+  USED(__remill_compare_sle);
 }

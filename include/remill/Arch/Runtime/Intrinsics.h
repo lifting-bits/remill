@@ -99,7 +99,7 @@ __remill_flag_computation_sign(bool result, ...);
 [[gnu::used, gnu::const]] extern bool
 __remill_flag_computation_overflow(bool result, ...);
 
-[[gnu::used, gnu::const]] extern bool __remill_compare_leq(bool result);
+[[gnu::used, gnu::const]] extern bool __remill_compare_sle(bool result);
 
 // Generic error.
 [[gnu::used]] extern Memory *__remill_error(State &, addr_t addr, Memory *);
