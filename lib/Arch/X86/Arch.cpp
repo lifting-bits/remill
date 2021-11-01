@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "remill/Arch/Arch.h"
+#include "../Arch.h"  // For `Arch` and `ArchImpl`.
 
 #include <glog/logging.h>
 #include <llvm/ADT/Triple.h>
@@ -815,6 +815,9 @@ class X86Arch final : public Arch {
   // Default calling convention for this architecture.
   llvm::CallingConv::ID DefaultCallingConv(void) const final;
 
+  // Populate the table of register information.
+  void PopulateRegisterTable(void) const final;
+
   // Populate the `__remill_basic_block` function with variables.
   void PopulateBasicBlockFunction(llvm::Module *module,
                                   llvm::Function *bb_func) const final;
@@ -1360,13 +1363,12 @@ std::string_view X86Arch::ProgramCounterRegisterName(void) const {
   return kPCNames[IsX86()];
 }
 
-// Populate the `__remill_basic_block` function with variables.
-void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
-                                         llvm::Function *bb_func) const {
-  const auto &dl = module->getDataLayout();
-  CHECK_EQ(sizeof(State), dl.getTypeAllocSize(StateStructType()))
-      << "Mismatch between size of State type for x86/amd64 and what is in "
-      << "the bitcode module";
+// Populate the table of register information.
+void X86Arch::PopulateRegisterTable(void) const {
+
+  impl->reg_by_offset.resize(sizeof(X86State));
+
+  CHECK_NOTNULL(context);
 
   bool has_avx = false;
   bool has_avx512 = false;
@@ -1381,30 +1383,25 @@ void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
     default: break;
   }
 
-  auto &context = module->getContext();
-  auto u8 = llvm::Type::getInt8Ty(context);
-  auto u16 = llvm::Type::getInt16Ty(context);
-  auto u32 = llvm::Type::getInt32Ty(context);
-  auto u64 = llvm::Type::getInt64Ty(context);
-  auto f80 = llvm::Type::getX86_FP80Ty(context);
-  auto v128 = llvm::ArrayType::get(llvm::Type::getInt8Ty(context), 128u / 8u);
-  auto v256 = llvm::ArrayType::get(llvm::Type::getInt8Ty(context), 256u / 8u);
-  auto v512 = llvm::ArrayType::get(llvm::Type::getInt8Ty(context), 512u / 8u);
-  auto addr = llvm::Type::getIntNTy(context, address_size);
-  auto zero_addr_val = llvm::Constant::getNullValue(addr);
-
-  const auto entry_block = &bb_func->getEntryBlock();
-  llvm::IRBuilder<> ir(entry_block);
+  auto u8 = llvm::Type::getInt8Ty(*context);
+  auto u16 = llvm::Type::getInt16Ty(*context);
+  auto u32 = llvm::Type::getInt32Ty(*context);
+  auto u64 = llvm::Type::getInt64Ty(*context);
+  auto f80 = llvm::Type::getX86_FP80Ty(*context);
+  auto v128 = llvm::ArrayType::get(llvm::Type::getInt8Ty(*context), 128u / 8u);
+  auto v256 = llvm::ArrayType::get(llvm::Type::getInt8Ty(*context), 256u / 8u);
+  auto v512 = llvm::ArrayType::get(llvm::Type::getInt8Ty(*context), 512u / 8u);
+  auto addr = llvm::Type::getIntNTy(*context, address_size);
 
 #define OFFSET_OF(type, access) \
   (reinterpret_cast<uintptr_t>(&reinterpret_cast<const volatile char &>( \
       static_cast<type *>(nullptr)->access)))
 
 #define REG(name, access, type) \
-  AddRegister(#name, type, OFFSET_OF(State, access), nullptr)
+  AddRegister(#name, type, OFFSET_OF(X86State, access), nullptr)
 
 #define SUB_REG(name, access, type, parent_reg_name) \
-  AddRegister(#name, type, OFFSET_OF(State, access), #parent_reg_name)
+  AddRegister(#name, type, OFFSET_OF(X86State, access), #parent_reg_name)
 
 #define SUB_REG64(name, access, type, parent_reg_name) \
   if (64 == address_size) { \
@@ -1509,17 +1506,11 @@ void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
     SUB_REG(R15B, gpr.r15.byte.low, u8, R15W);
   }
 
-  const auto pc_arg = NthArgument(bb_func, kPCArgNum);
-  const auto state_ptr_arg = NthArgument(bb_func, kStatePointerArgNum);
-  ir.CreateStore(pc_arg, ir.CreateAlloca(addr, nullptr, "NEXT_PC"));
-
   if (64 == address_size) {
     SUB_REG(PC, gpr.rip.qword, u64, RIP);
   } else {
     SUB_REG(PC, gpr.rip.dword, u32, EIP);
   }
-
-  (void) this->RegisterByName("PC")->AddressOf(state_ptr_arg, ir);
 
   REG(SS, seg.ss.flat, u16);
   REG(ES, seg.es.flat, u16);
@@ -1528,12 +1519,7 @@ void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
   REG(DS, seg.ds.flat, u16);
   REG(CS, seg.cs.flat, u16);
 
-  ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "CSBASE"));
-
   if (64 == address_size) {
-    ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "SSBASE"));
-    ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "ESBASE"));
-    ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "DSBASE"));
     REG(GSBASE, addr.gs_base.qword, addr);
     REG(FSBASE, addr.fs_base.qword, addr);
 
@@ -1729,6 +1715,36 @@ void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
   //#if 64 == ADDRESS_SIZE_BITS
   //  REG(CR8, lat);
   //#endif
+}
+
+// Populate the `__remill_basic_block` function with variables.
+void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
+                                         llvm::Function *bb_func) const {
+  const auto &dl = module->getDataLayout();
+  CHECK_EQ(sizeof(State), dl.getTypeAllocSize(StateStructType()))
+      << "Mismatch between size of State type for x86/amd64 and what is in "
+      << "the bitcode module";
+
+  auto &context = module->getContext();
+  auto addr = llvm::Type::getIntNTy(context, address_size);
+  auto zero_addr_val = llvm::Constant::getNullValue(addr);
+
+  const auto entry_block = &bb_func->getEntryBlock();
+  llvm::IRBuilder<> ir(entry_block);
+
+  const auto pc_arg = NthArgument(bb_func, kPCArgNum);
+  const auto state_ptr_arg = NthArgument(bb_func, kStatePointerArgNum);
+  ir.CreateStore(pc_arg, ir.CreateAlloca(addr, nullptr, "NEXT_PC"));
+
+  (void) this->RegisterByName("PC")->AddressOf(state_ptr_arg, ir);
+
+  ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "CSBASE"));
+
+  if (64 == address_size) {
+    ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "SSBASE"));
+    ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "ESBASE"));
+    ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "DSBASE"));
+  }
 }
 
 }  // namespace

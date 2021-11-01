@@ -328,7 +328,7 @@ struct RegisterWindow {
   RegisterWindow *prev_window;
 };
 
-struct alignas(16) State : public ArchState {
+struct alignas(16) SPARC64State : public ArchState {
   FPURegs fpreg;  // 512 bytes
   volatile uint64_t _0;
   GPR gpr;  // 512 bytes
@@ -358,6 +358,6 @@ struct alignas(16) State : public ArchState {
 #endif
 };
 
-using SPARCState = State;
+struct State : public SPARC64State {};
 
 #pragma clang diagnostic pop

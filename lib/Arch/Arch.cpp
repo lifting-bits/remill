@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "remill/Arch/Arch.h"
+#include "Arch.h"  // For `Arch` and `ArchImpl`.
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -48,29 +48,7 @@ DEFINE_string(arch, REMILL_ARCH,
               "Valid architectures: x86, amd64 (with or without "
               "`_avx` or `_avx512` appended), aarch64, aarch32");
 
-DECLARE_string(os);
-
 namespace remill {
-
-class ArchImpl {
- public:
-  // State type.
-  llvm::StructType *state_type{nullptr};
-
-  // Memory pointer type.
-  llvm::PointerType *memory_type{nullptr};
-
-  // Lifted function type.
-  llvm::FunctionType *lifted_function_type{nullptr};
-
-  // Metadata type ID for remill registers.
-  unsigned reg_md_id{0};
-
-  std::vector<std::unique_ptr<Register>> registers;
-  std::vector<const Register *> reg_by_offset;
-  std::unordered_map<std::string, const Register *> reg_by_name;
-};
-
 namespace {
 
 static unsigned AddressSize(ArchName arch_name) {
@@ -156,7 +134,7 @@ llvm::Triple Arch::BasicTriple(void) const {
 
 auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
                  ArchName arch_name_) -> ArchPtr {
-
+  ArchPtr ret;
   switch (arch_name_) {
     case kArchInvalid:
       LOG(FATAL) << "Unrecognized architecture.";
@@ -164,54 +142,71 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
 
     case kArchAArch64LittleEndian: {
       DLOG(INFO) << "Using architecture: AArch64, feature set: Little Endian";
-      return GetAArch64(context_, os_name_, arch_name_);
+      ret = GetAArch64(context_, os_name_, arch_name_);
+      break;
     }
 
     case kArchAArch32LittleEndian: {
       DLOG(INFO) << "Using architecture: AArch32, feature set: Little Endian";
-      return GetAArch32(context_, os_name_, arch_name_);
+      ret = GetAArch32(context_, os_name_, arch_name_);
+      break;
     }
 
     case kArchX86: {
       DLOG(INFO) << "Using architecture: X86";
-      return GetX86(context_, os_name_, arch_name_);
+      ret = GetX86(context_, os_name_, arch_name_);
+      break;
     }
 
     case kArchX86_AVX: {
       DLOG(INFO) << "Using architecture: X86, feature set: AVX";
-      return GetX86(context_, os_name_, arch_name_);
+      ret = GetX86(context_, os_name_, arch_name_);
+      break;
     }
 
     case kArchX86_AVX512: {
       DLOG(INFO) << "Using architecture: X86, feature set: AVX512";
-      return GetX86(context_, os_name_, arch_name_);
+      ret = GetX86(context_, os_name_, arch_name_);
+      break;
     }
 
     case kArchAMD64: {
       DLOG(INFO) << "Using architecture: AMD64";
-      return GetX86(context_, os_name_, arch_name_);
+      ret = GetX86(context_, os_name_, arch_name_);
+      break;
     }
 
     case kArchAMD64_AVX: {
       DLOG(INFO) << "Using architecture: AMD64, feature set: AVX";
-      return GetX86(context_, os_name_, arch_name_);
+      ret = GetX86(context_, os_name_, arch_name_);
+      break;
     }
 
     case kArchAMD64_AVX512: {
       DLOG(INFO) << "Using architecture: AMD64, feature set: AVX512";
-      return GetX86(context_, os_name_, arch_name_);
+      ret = GetX86(context_, os_name_, arch_name_);
+      break;
     }
 
     case kArchSparc32: {
       DLOG(INFO) << "Using architecture: 32-bit SPARC";
-      return GetSPARC(context_, os_name_, arch_name_);
+      ret = GetSPARC(context_, os_name_, arch_name_);
+      break;
     }
 
     case kArchSparc64: {
       DLOG(INFO) << "Using architecture: 64-bit SPARC";
-      return GetSPARC64(context_, os_name_, arch_name_);
+      ret = GetSPARC64(context_, os_name_, arch_name_);
+      break;
     }
   }
+
+  if (ret) {
+    ret->impl.reset(new ArchImpl);
+    ret->PopulateRegisterTable();
+  }
+
+  return ret;
 }
 
 auto Arch::Get(llvm::LLVMContext &context, std::string_view os,
@@ -226,10 +221,6 @@ auto Arch::Get(llvm::LLVMContext &context, OSName os, ArchName arch_name)
 
 auto Arch::GetHostArch(llvm::LLVMContext &ctx) -> ArchPtr {
   return Arch::Build(&ctx, GetOSName(REMILL_OS), GetArchName(REMILL_ARCH));
-}
-
-auto Arch::GetTargetArch(llvm::LLVMContext &ctx) -> ArchPtr {
-  return Arch::Build(&ctx, GetOSName(FLAGS_os), GetArchName(FLAGS_arch));
 }
 
 // Return the type of the state structure.
@@ -489,7 +480,9 @@ static uint64_t TotalOffset(const llvm::DataLayout &dl, llvm::Value *base,
 static llvm::Value *
 FinishAddressOf(llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
                 llvm::Type *state_ptr_type, size_t state_size,
-                const Register *reg, unsigned addr_space, llvm::Value *gep) {
+                const Register *reg, unsigned addr_space,
+                llvm::Value *gep) {
+
 
   auto gep_offset = TotalOffset(dl, gep, state_ptr_type);
   auto gep_type_at_offset = gep->getType()->getPointerElementType();
@@ -557,6 +550,21 @@ FinishAddressOf(llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
 
 }  // namespace
 
+void Register::CompteGEPAccessors(const llvm::DataLayout &dl,
+                                  llvm::Type *state_type) {
+  if (gep_type_at_offset || !state_type) {
+    return;
+  }
+
+  auto &context = state_type->getContext();
+
+  gep_index_list.push_back(
+      llvm::Constant::getNullValue(llvm::Type::getInt32Ty(context)));
+
+  std::tie(gep_offset, gep_type_at_offset) =
+      BuildIndexes(dl, state_type, 0, offset, gep_index_list);
+}
+
 // Generate a GEP that will let us load/store to this register, given
 // a `State *`.
 llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
@@ -564,7 +572,6 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
   llvm::IRBuilder<> ir(add_to_end);
   return AddressOf(state_ptr, ir);
 }
-
 
 llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
                                  llvm::IRBuilder<> &ir) const {
@@ -582,6 +589,10 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
   const auto module = ir.GetInsertBlock()->getParent()->getParent();
   const auto &dl = module->getDataLayout();
 
+  if (!gep_type_at_offset) {
+    const_cast<Register *>(this)->CompteGEPAccessors(dl, state_type);
+  }
+
   llvm::Value *gep = nullptr;
   if (auto const_state_ptr = llvm::dyn_cast<llvm::Constant>(state_ptr);
       const_state_ptr) {
@@ -592,8 +603,8 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
   }
 
   auto state_size = dl.getTypeAllocSize(state_type);
-  auto ret = FinishAddressOf(ir, dl, state_ptr_type, state_size, this,
-                             addr_space, gep);
+  auto ret = FinishAddressOf(
+      ir, dl, state_ptr_type, state_size, this, addr_space, gep);
 
   // Add the metadata to `inst`.
   if (auto inst = llvm::dyn_cast<llvm::Instruction>(ret); inst) {
@@ -648,6 +659,7 @@ void Arch::PrepareModule(llvm::Module *mod) const {
 const Register *Arch::AddRegister(const char *reg_name_, llvm::Type *val_type,
                                   size_t offset,
                                   const char *parent_reg_name) const {
+  CHECK_NOTNULL(val_type);
 
   const std::string reg_name(reg_name_);
   auto &reg = impl->reg_by_name[reg_name];
@@ -663,23 +675,11 @@ const Register *Arch::AddRegister(const char *reg_name_, llvm::Type *val_type,
     parent_reg = impl->reg_by_name[parent_reg_name];
   }
 
-  llvm::SmallVector<llvm::Value *, 8> gep_index_list;
-  gep_index_list.push_back(
-      llvm::Constant::getNullValue(llvm::Type::getInt32Ty(*context)));
-
-  auto [gep_offset, gep_type_at_offset] =
-      BuildIndexes(dl, impl->state_type, 0, offset, gep_index_list);
-
-  if (!val_type) {
-    CHECK_EQ(gep_offset, offset);
-    val_type = gep_type_at_offset;
-  }
-
   auto reg_impl = new Register(reg_name, offset, dl.getTypeAllocSize(val_type),
                                val_type, parent_reg, impl.get());
-  reg_impl->gep_index_list = std::move(gep_index_list);
-  reg_impl->gep_offset = gep_offset;
-  reg_impl->gep_type_at_offset = gep_type_at_offset;
+
+  reg_impl->CompteGEPAccessors(dl, impl->state_type);
+
   reg = reg_impl;
   impl->registers.emplace_back(reg_impl);
 
@@ -713,12 +713,13 @@ const Register *Arch::AddRegister(const char *reg_name_, llvm::Type *val_type,
 
 // Get all of the register information from the prepared module.
 void Arch::InitFromSemanticsModule(llvm::Module *module) const {
-  if (impl) {
-    return;
+  if (!impl) {
+    impl.reset(new ArchImpl);
   }
 
-  impl.reset(new ArchImpl);
-  CHECK(!impl->state_type);
+  if (impl->state_type) {
+    return;
+  }
 
   const auto &dl = module->getDataLayout();
   const auto basic_block = BasicBlockFunction(module);

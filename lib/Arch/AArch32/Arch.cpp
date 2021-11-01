@@ -43,6 +43,8 @@
 
 // clang-format on
 
+#include "../Arch.h"  // For `ArchImpl`.
+
 namespace remill {
 
 AArch32Arch::AArch32Arch(llvm::LLVMContext *context_, OSName os_name_,
@@ -112,41 +114,25 @@ std::string_view AArch32Arch::ProgramCounterRegisterName(void) const {
   return "PC";
 }
 
-// Populate the `__remill_basic_block` function with variables.
-void AArch32Arch::PopulateBasicBlockFunction(llvm::Module *module,
-                                             llvm::Function *bb_func) const {
-  const auto &dl = module->getDataLayout();
-  CHECK_EQ(sizeof(State), dl.getTypeAllocSize(StateStructType()))
-      << "Mismatch between size of State type for x86/amd64 and what is in "
-      << "the bitcode module";
+// Populate the table of register information.
+void AArch32Arch::PopulateRegisterTable(void) const {
+  CHECK_NOTNULL(context);
 
-  auto &context = module->getContext();
-  auto u8 = llvm::Type::getInt8Ty(context);
+  impl->reg_by_offset.resize(sizeof(AArch32State));
 
-  //  auto u16 = llvm::Type::getInt16Ty(context);
-  auto u32 = llvm::Type::getInt32Ty(context);
+  auto u8 = llvm::Type::getInt8Ty(*context);
 
-  //  auto u64 = llvm::Type::getInt64Ty(context);
-  //  auto f64 = llvm::Type::getDoubleTy(context);
-  //  auto v128 = llvm::ArrayType::get(llvm::Type::getInt8Ty(context), 128u / 8u);
-  //  auto v256 = llvm::ArrayType::get(llvm::Type::getInt8Ty(context), 256u / 8u);
-  //  auto v512 = llvm::ArrayType::get(llvm::Type::getInt8Ty(context), 512u / 8u);
-  auto addr = llvm::Type::getIntNTy(context, address_size);
-
-  // auto zero_addr_val = llvm::Constant::getNullValue(addr);
-
-  const auto entry_block = &bb_func->getEntryBlock();
-  llvm::IRBuilder<> ir(entry_block);
+  auto u32 = llvm::Type::getInt32Ty(*context);
 
 #define OFFSET_OF(type, access) \
   (reinterpret_cast<uintptr_t>(&reinterpret_cast<const volatile char &>( \
       static_cast<type *>(nullptr)->access)))
 
 #define REG(name, access, type) \
-  AddRegister(#name, type, OFFSET_OF(State, access), nullptr)
+  AddRegister(#name, type, OFFSET_OF(AArch32State, access), nullptr)
 
 #define SUB_REG(name, access, type, parent_reg_name) \
-  AddRegister(#name, type, OFFSET_OF(State, access), #parent_reg_name)
+  AddRegister(#name, type, OFFSET_OF(AArch32State, access), #parent_reg_name)
 
   REG(R0, gpr.r0.dword, u32);
   REG(R1, gpr.r1.dword, u32);
@@ -173,6 +159,26 @@ void AArch32Arch::PopulateBasicBlockFunction(llvm::Module *module,
   REG(C, sr.c, u8);
   REG(Z, sr.z, u8);
   REG(V, sr.v, u8);
+}
+
+
+// Populate the `__remill_basic_block` function with variables.
+void AArch32Arch::PopulateBasicBlockFunction(llvm::Module *module,
+                                             llvm::Function *bb_func) const {
+  const auto &dl = module->getDataLayout();
+  CHECK_EQ(sizeof(State), dl.getTypeAllocSize(StateStructType()))
+      << "Mismatch between size of State type for x86/amd64 and what is in "
+      << "the bitcode module";
+
+  auto &context = module->getContext();
+  auto u8 = llvm::Type::getInt8Ty(context);
+
+  //  auto u16 = llvm::Type::getInt16Ty(context);
+  auto u32 = llvm::Type::getInt32Ty(context);
+  auto addr = llvm::Type::getIntNTy(context, address_size);
+
+  const auto entry_block = &bb_func->getEntryBlock();
+  llvm::IRBuilder<> ir(entry_block);
 
   const auto pc_arg = NthArgument(bb_func, kPCArgNum);
   const auto state_ptr_arg = NthArgument(bb_func, kStatePointerArgNum);

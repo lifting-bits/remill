@@ -33,8 +33,9 @@
 
 #define REMILL_AARCH_STRICT_REGNUM
 
+#include "../Arch.h"  // For `Arch` and `ArchImpl`.
+
 #include "Decode.h"
-#include "remill/Arch/Arch.h"
 #include "remill/Arch/Instruction.h"
 #include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
@@ -133,6 +134,9 @@ class AArch64Arch final : public Arch {
   // Default calling convention for this architecture.
   llvm::CallingConv::ID DefaultCallingConv(void) const final;
 
+  // Populate the table of register information.
+  void PopulateRegisterTable(void) const final;
+
   // Populate the `__remill_basic_block` function with variables.
   void PopulateBasicBlockFunction(llvm::Module *module,
                                   llvm::Function *bb_func) const final;
@@ -152,9 +156,10 @@ llvm::CallingConv::ID AArch64Arch::DefaultCallingConv(void) const {
   return llvm::CallingConv::C;
 }
 
-// Populate the `__remill_basic_block` function with variables.
-void AArch64Arch::PopulateBasicBlockFunction(llvm::Module *module,
-                                             llvm::Function *bb_func) const {
+// Populate the table of register information.
+void AArch64Arch::PopulateRegisterTable(void) const {
+
+  impl->reg_by_offset.resize(sizeof(AArch64State));
 
 #define OFFSET_OF(type, access) \
   (reinterpret_cast<uintptr_t>(&reinterpret_cast<const volatile char &>( \
@@ -166,25 +171,17 @@ void AArch64Arch::PopulateBasicBlockFunction(llvm::Module *module,
 #define SUB_REG(name, access, type, parent_reg_name) \
   AddRegister(#name, type, OFFSET_OF(AArch64State, access), #parent_reg_name)
 
-  auto &context = module->getContext();
-  auto u8 = llvm::Type::getInt8Ty(context);
-  auto u16 = llvm::Type::getInt16Ty(context);
-  auto u32 = llvm::Type::getInt32Ty(context);
-  auto u64 = llvm::Type::getInt64Ty(context);
-  auto u128 = llvm::Type::getInt128Ty(context);
+  auto u8 = llvm::Type::getInt8Ty(*context);
+  auto u16 = llvm::Type::getInt16Ty(*context);
+  auto u32 = llvm::Type::getInt32Ty(*context);
+  auto u64 = llvm::Type::getInt64Ty(*context);
+  auto u128 = llvm::Type::getInt128Ty(*context);
 
   auto v128u8 = llvm::ArrayType::get(u8, 128u / 8u);
   auto v128u16 = llvm::ArrayType::get(u16, 128u / 16u);
   auto v128u32 = llvm::ArrayType::get(u32, 128u / 32u);
   auto v128u64 = llvm::ArrayType::get(u64, 128u / 64u);
   auto v128u128 = llvm::ArrayType::get(u128, 128u / 128u);
-
-  auto addr = u64;
-  auto zero_u32 = llvm::Constant::getNullValue(u32);
-  auto zero_u64 = llvm::Constant::getNullValue(u64);
-
-  const auto entry_block = &bb_func->getEntryBlock();
-  llvm::IRBuilder<> ir(entry_block);
 
   REG(X0, gpr.x0.qword, u64);
   REG(X1, gpr.x1.qword, u64);
@@ -459,6 +456,22 @@ void AArch64Arch::PopulateBasicBlockFunction(llvm::Module *module,
 
   REG(TPIDR_EL0, sr.tpidr_el0.qword, u64);
   REG(TPIDRRO_EL0, sr.tpidrro_el0.qword, u64);
+}
+
+// Populate the `__remill_basic_block` function with variables.
+void AArch64Arch::PopulateBasicBlockFunction(llvm::Module *module,
+                                             llvm::Function *bb_func) const {
+
+  auto &context = module->getContext();
+  auto u32 = llvm::Type::getInt32Ty(context);
+  auto u64 = llvm::Type::getInt64Ty(context);
+
+  auto addr = u64;
+  auto zero_u32 = llvm::Constant::getNullValue(u32);
+  auto zero_u64 = llvm::Constant::getNullValue(u64);
+
+  const auto entry_block = &bb_func->getEntryBlock();
+  llvm::IRBuilder<> ir(entry_block);
 
   const auto pc_arg = NthArgument(bb_func, kPCArgNum);
   const auto state_ptr_arg = NthArgument(bb_func, kStatePointerArgNum);

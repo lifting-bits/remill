@@ -105,7 +105,7 @@ struct alignas(8) SR final {
   uint8_t _padding[2];
 } __attribute__((packed));
 
-struct alignas(16) State final : public ArchState {
+struct alignas(16) AArch32State : public ArchState {
 
 
   GPR gpr;  // 528 bytes.
@@ -115,6 +115,6 @@ struct alignas(16) State final : public ArchState {
 
 } __attribute__((packed));
 
-using AArch32State = State;
+struct State : public AArch32State {};
 
 #pragma clang diagnostic pop

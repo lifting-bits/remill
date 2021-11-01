@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "remill/Arch/Arch.h"
+#include "../Arch.h"  // For `Arch` and `ArchImpl`.
 
 namespace remill {
 class AArch32Arch final : public Arch {
@@ -46,6 +46,9 @@ class AArch32Arch final : public Arch {
 
   // Default calling convention for this architecture.
   llvm::CallingConv::ID DefaultCallingConv(void) const final;
+
+  // Populate the table of register information.
+  void PopulateRegisterTable(void) const final;
 
   // Populate the `__remill_basic_block` function with variables.
   void PopulateBasicBlockFunction(llvm::Module *module,
