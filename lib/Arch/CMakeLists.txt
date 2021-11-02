@@ -18,6 +18,7 @@ add_library(remill_arch STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/Name.h"
 
   Arch.cpp
+  Arch.h
   Instruction.cpp
   Name.cpp
 )

@@ -758,7 +758,7 @@ static_assert(128 == sizeof(MMX), "Invalid structure packing of `MMX`.");
 
 enum : size_t { kNumVecRegisters = 32 };
 
-struct alignas(16) State final : public ArchState {
+struct alignas(16) X86State : public ArchState {
 
   // ArchState occupies 16 bytes.
 
@@ -781,10 +781,10 @@ struct alignas(16) State final : public ArchState {
   SegmentCaches seg_caches;  // 96 bytes
 } __attribute__((packed));
 
-static_assert((96 + 3264 + 16) == sizeof(State),
+static_assert((96 + 3264 + 16) == sizeof(X86State),
               "Invalid packing of `struct State`");
 
-using X86State = State;
+struct State : public X86State {};
 
 union CR0Reg {
   uint64_t flat;

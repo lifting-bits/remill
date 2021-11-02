@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "remill/Arch/Arch.h"
+#include "../Arch.h"  // For `Arch` and `ArchImpl`.
 
 #include <glog/logging.h>
 
@@ -166,6 +166,9 @@ class SPARC32Arch final : public Arch {
     return llvm::CallingConv::C;
   }
 
+  // Populate the table of register information.
+  void PopulateRegisterTable(void) const final;
+
   // Populate the `__remill_basic_block` function with variables.
   void PopulateBasicBlockFunction(llvm::Module *module,
                                   llvm::Function *bb_func) const override;
@@ -193,33 +196,33 @@ class SPARC32Arch final : public Arch {
                                         bool branch_taken_path) const final;
 };
 
-// Populate the `__remill_basic_block` function with variables.
-void SPARC32Arch::PopulateBasicBlockFunction(llvm::Module *module,
-                                             llvm::Function *bb_func) const {
+// Populate the table of register information.
+void SPARC32Arch::PopulateRegisterTable(void) const {
+
+  impl->reg_by_offset.resize(sizeof(SPARC32State));
 
 #define OFFSET_OF(type, access) \
   (reinterpret_cast<uintptr_t>(&reinterpret_cast<const volatile char &>( \
       static_cast<type *>(nullptr)->access)))
 
 #define REG(name, access, type) \
-  AddRegister(#name, type, OFFSET_OF(SPARCState, access), nullptr)
+  AddRegister(#name, type, OFFSET_OF(SPARC32State, access), nullptr)
 
 #define SUB_REG(name, access, type, parent_reg_name) \
-  AddRegister(#name, type, OFFSET_OF(SPARCState, access), #parent_reg_name)
+  AddRegister(#name, type, OFFSET_OF(SPARC32State, access), #parent_reg_name)
 
-  auto &context = module->getContext();
-  auto u8 = llvm::Type::getInt8Ty(context);
-  auto u32 = llvm::Type::getInt32Ty(context);
-  auto u64 = llvm::Type::getInt64Ty(context);
-  auto u128 = llvm::Type::getInt128Ty(context);
-  auto f32 = llvm::Type::getFloatTy(context);
-  auto f64 = llvm::Type::getDoubleTy(context);
+  auto u8 = llvm::Type::getInt8Ty(*context);
+  auto u32 = llvm::Type::getInt32Ty(*context);
+  auto u64 = llvm::Type::getInt64Ty(*context);
+  auto u128 = llvm::Type::getInt128Ty(*context);
+  auto f32 = llvm::Type::getFloatTy(*context);
+  auto f64 = llvm::Type::getDoubleTy(*context);
 
-  auto zero_u8 = llvm::Constant::getNullValue(u8);
-  auto zero_u32 = llvm::Constant::getNullValue(u32);
-
-  const auto entry_block = &bb_func->getEntryBlock();
-  llvm::IRBuilder<> ir(entry_block);
+  std::vector<llvm::Type *> window_types(33, u64);
+  auto window_type = llvm::StructType::create(*context, "RegisterWindow");
+  auto window_ptr_type = llvm::PointerType::get(window_type, 0);
+  window_types.push_back(window_ptr_type);
+  window_type->setBody(window_types, false);
 
   REG(pc, pc.dword, u32);
   SUB_REG(PC, pc.dword, u32, pc);
@@ -258,10 +261,6 @@ void SPARC32Arch::PopulateBasicBlockFunction(llvm::Module *module,
   SUB_REG(o6, gpr.o6.dword, u32, sp);
   REG(o7, gpr.o7.dword, u32);
 
-  ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "g0"), false);
-  ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "ignore_write_to_g0"),
-                 false);
-
   REG(g1, gpr.g1.dword, u32);
   REG(g2, gpr.g2.dword, u32);
   REG(g3, gpr.g3.dword, u32);
@@ -280,9 +279,6 @@ void SPARC32Arch::PopulateBasicBlockFunction(llvm::Module *module,
   REG(stick, asr.stick, u64);
   REG(stick_cmpr, asr.stick_cmpr, u64);
   REG(cfr, asr.cfr, u64);
-
-  // this is for unknown asr to avoid crash.
-  ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "asr"), false);
 
   REG(icc_c, asr.ccr.icc.c, u8);
   REG(icc_v, asr.ccr.icc.v, u8);
@@ -375,10 +371,34 @@ void SPARC32Arch::PopulateBasicBlockFunction(llvm::Module *module,
   SUB_REG(q24, fpreg.v[6].doubles.elems[0], f64, v6);
   SUB_REG(q28, fpreg.v[7].doubles.elems[0], f64, v7);
 
+  REG(PREV_WINDOW_LINK, window, window_ptr_type);
+}
+
+
+// Populate the `__remill_basic_block` function with variables.
+void SPARC32Arch::PopulateBasicBlockFunction(llvm::Module *module,
+                                             llvm::Function *bb_func) const {
+  auto &context = module->getContext();
+  auto u8 = llvm::Type::getInt8Ty(context);
+  auto u32 = llvm::Type::getInt32Ty(context);
+
+  auto zero_u8 = llvm::Constant::getNullValue(u8);
+  auto zero_u32 = llvm::Constant::getNullValue(u32);
+
+  const auto entry_block = &bb_func->getEntryBlock();
+  llvm::IRBuilder<> ir(entry_block);
+
+  ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "g0"), false);
+  ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "ignore_write_to_g0"),
+                 false);
+
+  // this is for unknown asr to avoid crash.
+  ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "asr"), false);
+
   // NOTE(pag): Passing `nullptr` as the type will force `Arch::AddRegister`
   //            to infer the type based on what it finds. It's a pointer to
   //            a structure type, so we can check that.
-  const auto prev_window_link = REG(PREV_WINDOW_LINK, window, nullptr);
+  const auto prev_window_link = RegisterByName("PREV_WINDOW_LINK");
   CHECK(prev_window_link->type->isPointerTy());
   const auto window_type = prev_window_link->type->getPointerElementType();
   CHECK(window_type->isStructTy());

@@ -279,7 +279,7 @@ struct alignas(16) SIMD {
 
 static_assert(512 == sizeof(SIMD), "Invalid packing of `struct SIMD`.");
 
-struct alignas(16) State final : public ArchState {
+struct alignas(16) AArch64State : public ArchState {
   SIMD simd;  // 512 bytes.
 
   uint64_t _0;
@@ -300,9 +300,9 @@ struct alignas(16) State final : public ArchState {
 
 } __attribute__((packed));
 
-static_assert((1152 + 16) == sizeof(State),
+static_assert((1152 + 16) == sizeof(AArch64State),
               "Invalid packing of `struct State`");
 
-using AArch64State = State;
+struct State : public AArch64State {};
 
 #pragma clang diagnostic pop
