@@ -96,10 +96,10 @@ extern "C" {
 // initial state for the lifted testcase. The lifted test case code mutates
 // this, and we require that after running the lifted testcase, `gLiftedState`
 // matches `gNativeState`,
-std::aligned_storage<sizeof(X86State), alignof(X86State)>::type gLiftedState;
+std::aligned_storage<sizeof(State), alignof(State)>::type gLiftedState;
 
 // Native state after running the native test case.
-std::aligned_storage<sizeof(X86State), alignof(X86State)>::type gNativeState;
+std::aligned_storage<sizeof(State), alignof(State)>::type gNativeState;
 
 // The RFLAGS to run the test with.
 Flags gRflagsForTest = {};
@@ -315,15 +315,15 @@ Memory *__remill_delay_slot_end(Memory *) {
 }
 void __remill_defer_inlining(void) {}
 
-Memory *__remill_error(X86State &, addr_t, Memory *) {
+Memory *__remill_error(State &, addr_t, Memory *) {
   siglongjmp(gJmpBuf, 0);
 }
 
-Memory *__remill_missing_block(X86State &, addr_t, Memory *memory) {
+Memory *__remill_missing_block(State &, addr_t, Memory *memory) {
   return memory;
 }
 
-Memory *__remill_sync_hyper_call(X86State &state, Memory *mem,
+Memory *__remill_sync_hyper_call(State &state, Memory *mem,
                                  SyncHyperCall::Name call) {
   switch (call) {
     case SyncHyperCall::kX86CPUID:
@@ -378,19 +378,19 @@ Memory *__remill_write_io_port_32(Memory *, addr_t, uint32_t) {
   abort();
 }
 
-Memory *__remill_function_call(X86State &, addr_t, Memory *) {
+Memory *__remill_function_call(State &, addr_t, Memory *) {
   abort();
 }
 
-Memory *__remill_function_return(X86State &, addr_t, Memory *) {
+Memory *__remill_function_return(State &, addr_t, Memory *) {
   abort();
 }
 
-Memory *__remill_jump(X86State &, addr_t, Memory *) {
+Memory *__remill_jump(State &, addr_t, Memory *) {
   abort();
 }
 
-Memory *__remill_async_hyper_call(X86State &, addr_t, Memory *) {
+Memory *__remill_async_hyper_call(State &, addr_t, Memory *) {
   abort();
 }
 
@@ -431,7 +431,7 @@ void __remill_mark_as_used(void *mem) {
 
 }  // extern C
 
-typedef Memory *(LiftedFunc) (X86State &, addr_t, Memory *);
+typedef Memory *(LiftedFunc) (State &, addr_t, Memory *);
 
 // Mapping of test name to translated function.
 static std::map<uint64_t, LiftedFunc *> gTranslatedFuncs;
@@ -477,9 +477,9 @@ static bool AreFCSAndFDSDeprecated(void) {
 
 #endif  // 32 == ADDRESS_SIZE_BITS
 
-// Convert some native state, stored in various ways, into the `X86State` structure
+// Convert some native state, stored in various ways, into the `State` structure
 // type.
-static void ImportX87X86State(X86State *state) {
+static void ImportX87State(State *state) {
   auto &fpu = state->x87;
 
   // Looks like MMX state.
@@ -587,8 +587,8 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
   memset(&gLiftedState, 0, sizeof(gLiftedState));
   memset(&gNativeState, 0, sizeof(gNativeState));
 
-  auto lifted_state = reinterpret_cast<X86State *>(&gLiftedState);
-  auto native_state = reinterpret_cast<X86State *>(&gNativeState);
+  auto lifted_state = reinterpret_cast<State *>(&gLiftedState);
+  auto native_state = reinterpret_cast<State *>(&gNativeState);
 
   // Set up the run's info.
   gTestToRun = info->test_begin;
@@ -609,7 +609,7 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
     native_test_faulted = true;
   }
 
-  ImportX87X86State(native_state);
+  ImportX87State(native_state);
   ResetFlags();
 
   // Set up the RIP correctly.
@@ -970,10 +970,10 @@ INSTANTIATE_TEST_SUITE_P(GeneralInstrTest, InstrTest,
 // Recover from a signal.
 static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
   if (gInNativeTest) {
-    memcpy(&gNativeState, &gLiftedState, sizeof(X86State));
+    memcpy(&gNativeState, &gLiftedState, sizeof(State));
 
     auto context = reinterpret_cast<ucontext_t *>(context_);
-    auto native_state = reinterpret_cast<X86State *>(&gNativeState);
+    auto native_state = reinterpret_cast<State *>(&gNativeState);
     auto &gpr = native_state->gpr;
     auto &fpu = native_state->x87;
 #ifdef __APPLE__

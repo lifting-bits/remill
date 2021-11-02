@@ -86,20 +86,20 @@ extern "C" {
 
 // Native state before we run the native test case. We then use this as the
 // initial state for the lifted testcase. The lifted test case code mutates
-// this, and we require that after running the lifted testcase, `gAArch64StateBefore`
-// matches `gAArch64StateAfter`,
-std::aligned_storage<sizeof(AArch64State), alignof(AArch64State)>::type
+// this, and we require that after running the lifted testcase, `gStateBefore`
+// matches `gStateAfter`,
+std::aligned_storage<sizeof(State), alignof(State)>::type
     gLiftedState;
 
 // Native state after running the native test case.
-std::aligned_storage<sizeof(AArch64State), alignof(AArch64State)>::type
+std::aligned_storage<sizeof(State), alignof(State)>::type
     gNativeState;
 
 // Address of the native test to run. The `InvokeTestCase` function saves
 // the native program state but then needs a way to figure out where to go
 // without storing that information in any register. So what we do is we
 // store it here and indirectly `JMP` into the native test case code after
-// saving the machine state to `gAArch64StateBefore`.
+// saving the machine state to `gStateBefore`.
 uintptr_t gTestToRun = 0;
 
 // Used for swapping the stack pointer between `gStack` and the normal
@@ -110,8 +110,8 @@ uint8_t *gStackSwitcher = nullptr;
 uint64_t gStackSaveSlots[2] = {0, 0};
 
 // Invoke a native test case addressed by `gTestToRun` and store the machine
-// state before and after executing the test in `gAArch64StateBefore` and
-// `gAArch64StateAfter`, respectively.
+// state before and after executing the test in `gStateBefore` and
+// `gStateAfter`, respectively.
 extern void InvokeTestCase(uint64_t, uint64_t, uint64_t);
 
 #define MAKE_RW_MEMORY(size) \
@@ -250,15 +250,15 @@ Memory *__remill_delay_slot_end(Memory *) {
 
 void __remill_defer_inlining(void) {}
 
-Memory *__remill_error(AArch64State &, addr_t, Memory *) {
+Memory *__remill_error(State &, addr_t, Memory *) {
   siglongjmp(gJmpBuf, 0);
 }
 
-Memory *__remill_missing_block(AArch64State &, addr_t, Memory *memory) {
+Memory *__remill_missing_block(State &, addr_t, Memory *memory) {
   return memory;
 }
 
-Memory *__remill_sync_hyper_call(AArch64State &, Memory *,
+Memory *__remill_sync_hyper_call(State &, Memory *,
                                  SyncHyperCall::Name) {
   abort();
 }
@@ -287,19 +287,19 @@ Memory *__remill_write_io_port_32(Memory *, addr_t, uint32_t) {
   abort();
 }
 
-Memory *__remill_function_call(AArch64State &, addr_t, Memory *) {
+Memory *__remill_function_call(State &, addr_t, Memory *) {
   abort();
 }
 
-Memory *__remill_function_return(AArch64State &, addr_t, Memory *) {
+Memory *__remill_function_return(State &, addr_t, Memory *) {
   abort();
 }
 
-Memory *__remill_jump(AArch64State &, addr_t, Memory *) {
+Memory *__remill_jump(State &, addr_t, Memory *) {
   abort();
 }
 
-Memory *__remill_async_hyper_call(AArch64State &, addr_t, Memory *) {
+Memory *__remill_async_hyper_call(State &, addr_t, Memory *) {
   abort();
 }
 
@@ -344,7 +344,7 @@ void __remill_mark_as_used(void *mem) {
 
 }  // extern C
 
-typedef Memory *(LiftedFunc)(AArch64State &, addr_t, Memory *);
+typedef Memory *(LiftedFunc)(State &, addr_t, Memory *);
 
 // Mapping of test name to translated function.
 static std::map<uint64_t, LiftedFunc *> gTranslatedFuncs;
@@ -378,8 +378,8 @@ static void RunWithFlags(const test::TestInfo *info, NZCV flags,
   memset(&gLiftedState, 0, sizeof(gLiftedState));
   memset(&gNativeState, 0, sizeof(gNativeState));
 
-  auto lifted_state = reinterpret_cast<AArch64State *>(&gLiftedState);
-  auto native_state = reinterpret_cast<AArch64State *>(&gNativeState);
+  auto lifted_state = reinterpret_cast<State *>(&gLiftedState);
+  auto native_state = reinterpret_cast<State *>(&gNativeState);
 
   // Set up the run's info.
   gTestToRun = info->test_begin;
@@ -559,10 +559,10 @@ INSTANTIATE_TEST_CASE_P(GeneralInstrTest, InstrTest, testing::ValuesIn(gTests));
 // Recover from a signal.
 static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
   if (gInNativeTest) {
-    memcpy(&gNativeState, &gLiftedState, sizeof(AArch64State));
+    memcpy(&gNativeState, &gLiftedState, sizeof(State));
 
     auto context = reinterpret_cast<ucontext_t *>(context_);
-    auto native_state = reinterpret_cast<AArch64State *>(&gNativeState);
+    auto native_state = reinterpret_cast<State *>(&gNativeState);
     auto &gpr = native_state->gpr;
 #ifdef __APPLE__
 
