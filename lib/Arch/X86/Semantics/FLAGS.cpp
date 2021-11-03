@@ -158,7 +158,8 @@ struct Carry<tag_add> {
   [[gnu::const]] ALWAYS_INLINE static bool Flag(T lhs, T rhs, T res) {
     static_assert(std::is_unsigned<T>::value,
                   "Invalid specialization of `Carry::Flag` for addition.");
-    return res < lhs || res < rhs;
+    return __remill_flag_computation_carry(res < lhs || res < rhs, lhs, rhs,
+                                           res);
   }
 };
 
@@ -166,10 +167,10 @@ struct Carry<tag_add> {
 template <>
 struct Carry<tag_sub> {
   template <typename T>
-  [[gnu::const]] ALWAYS_INLINE static bool Flag(T lhs, T rhs, T) {
+  [[gnu::const]] ALWAYS_INLINE static bool Flag(T lhs, T rhs, T res) {
     static_assert(std::is_unsigned<T>::value,
                   "Invalid specialization of `Carry::Flag` for addition.");
-    return lhs < rhs;
+    return __remill_flag_computation_carry(lhs < rhs, lhs, rhs, res);
   }
 };
 
