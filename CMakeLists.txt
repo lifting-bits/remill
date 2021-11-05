@@ -120,6 +120,14 @@ target_link_libraries(thirdparty_gflags INTERFACE
   gflags
 )
 
+# GHIDRA SLEIGH
+find_package(sleigh CONFIG REQUIRED)
+add_library(thirdparty_sleigh INTERFACE)
+target_link_libraries(thirdparty_sleigh INTERFACE
+  sleigh::sla
+  sleigh::decomp
+)
+
 # Windows SDK
 add_library(thirdparty_win32 INTERFACE)
 if(DEFINED WIN32)
@@ -235,7 +243,7 @@ target_compile_definitions(remill_settings INTERFACE
   "REMILL_BUILD_SEMANTICS_DIR_SPARC64=\"${REMILL_BUILD_SEMANTICS_DIR_SPARC64}\""
 )
 
-set(THIRDPARTY_LIBRARY_LIST thirdparty_llvm thirdparty_xed thirdparty_glog thirdparty_gflags)
+set(THIRDPARTY_LIBRARY_LIST thirdparty_llvm thirdparty_xed thirdparty_glog thirdparty_gflags thirdparty_sleigh)
 target_link_libraries(remill_settings INTERFACE
   ${THIRDPARTY_LIBRARY_LIST}
 )
