@@ -335,6 +335,10 @@ class Arch {
   static ArchPtr GetAArch64(llvm::LLVMContext *context, OSName os,
                             ArchName arch_name);
 
+  // Defined in `lib/Arch/SleighX86/Arch.cpp`
+  static ArchPtr GetSleighX86(llvm::LLVMContext *context, OSName os,
+                              ArchName arch_name);
+
   // Defined in `lib/Arch/SPARC32/Arch.cpp`.
   static ArchPtr GetSPARC(llvm::LLVMContext *context, OSName os,
                           ArchName arch_name);
