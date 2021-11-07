@@ -154,37 +154,37 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
 
     case kArchX86: {
       DLOG(INFO) << "Using architecture: X86";
-      ret = GetX86(context_, os_name_, arch_name_);
+      ret = GetSleighX86(context_, os_name_, arch_name_);
       break;
     }
 
     case kArchX86_AVX: {
       DLOG(INFO) << "Using architecture: X86, feature set: AVX";
-      ret = GetX86(context_, os_name_, arch_name_);
+      ret = GetSleighX86(context_, os_name_, arch_name_);
       break;
     }
 
     case kArchX86_AVX512: {
       DLOG(INFO) << "Using architecture: X86, feature set: AVX512";
-      ret = GetX86(context_, os_name_, arch_name_);
+      ret = GetSleighX86(context_, os_name_, arch_name_);
       break;
     }
 
     case kArchAMD64: {
       DLOG(INFO) << "Using architecture: AMD64";
-      ret = GetX86(context_, os_name_, arch_name_);
+      ret = GetSleighX86(context_, os_name_, arch_name_);
       break;
     }
 
     case kArchAMD64_AVX: {
       DLOG(INFO) << "Using architecture: AMD64, feature set: AVX";
-      ret = GetX86(context_, os_name_, arch_name_);
+      ret = GetSleighX86(context_, os_name_, arch_name_);
       break;
     }
 
     case kArchAMD64_AVX512: {
       DLOG(INFO) << "Using architecture: AMD64, feature set: AVX512";
-      ret = GetX86(context_, os_name_, arch_name_);
+      ret = GetSleighX86(context_, os_name_, arch_name_);
       break;
     }
 
