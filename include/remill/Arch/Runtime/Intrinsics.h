@@ -104,7 +104,20 @@ __remill_flag_computation_carry(bool result, ...);
 
 [[gnu::used, gnu::const]] extern bool __remill_compare_sle(bool result);
 
+[[gnu::used, gnu::const]] extern bool __remill_compare_slt(bool result);
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_sge(bool result);
+
 [[gnu::used, gnu::const]] extern bool __remill_compare_sgt(bool result);
+
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_ule(bool result);
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_ult(bool result);
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_ugt(bool result);
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_uge(bool result);
 
 [[gnu::used, gnu::const]] extern bool __remill_compare_eq(bool result);
 
