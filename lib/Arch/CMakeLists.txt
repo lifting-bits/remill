@@ -35,7 +35,7 @@ set_property(TARGET remill_arch PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(remill_arch LINK_PUBLIC
   remill_arch_aarch32
   remill_arch_aarch64
-  remill_arch_sleigh
+  remill_arch_sleighx86
   remill_arch_sparc32
   remill_arch_sparc64
   remill_arch_x86

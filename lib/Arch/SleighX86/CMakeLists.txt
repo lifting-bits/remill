@@ -1,4 +1,4 @@
-add_library(remill_arch_sleigh STATIC
+add_library(remill_arch_sleighx86 STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Definitions.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/HyperCall.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Intrinsics.h"
@@ -10,15 +10,15 @@ add_library(remill_arch_sleigh STATIC
   Arch.cpp
   )
 
-set_property(TARGET remill_arch_sleigh PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_property(TARGET remill_arch_sleighx86 PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-target_link_libraries(remill_arch_sleigh LINK_PUBLIC
+target_link_libraries(remill_arch_sleighx86 LINK_PUBLIC
   remill_settings
 )
 
 if(REMILL_ENABLE_INSTALL_TARGET)
   install(
-    TARGETS remill_arch_sleigh
+    TARGETS remill_arch_sleighx86
     EXPORT remillTargets
   )
 endif()
