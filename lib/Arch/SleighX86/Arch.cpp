@@ -84,6 +84,7 @@ class PcodeDecoder final : public PcodeEmit {
     for (int i = 0; i < isize; ++i) {
       DecodeOperand(vars[i]);
     }
+    DecodeCategory(op);
   }
 
  private:
@@ -132,6 +133,21 @@ class PcodeDecoder final : public PcodeEmit {
     op.imm.is_signed = false;  // Not sure
     op.imm.val = var.offset;
     inst.operands.push_back(op);
+  }
+
+  void DecodeCategory(OpCode op) {
+    switch (op) {
+      case CPUI_INT_LESS:
+      case CPUI_INT_SLESS:
+      case CPUI_INT_EQUAL:
+      case CPUI_INT_SUB:
+      case CPUI_INT_SBORROW:
+      case CPUI_INT_AND:
+      case CPUI_POPCOUNT: inst.category = Instruction::kCategoryNormal; break;
+      default:
+        LOG(FATAL) << "Unsupported p-code opcode " << get_opname(op);
+        break;
+    }
   }
 
   Sleigh &engine;
