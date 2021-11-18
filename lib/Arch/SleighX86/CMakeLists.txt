@@ -7,6 +7,10 @@ add_library(remill_arch_sleighx86 STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/State.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Types.h"
 
+  "${REMILL_INCLUDE_DIR}/remill/Arch/X86/Runtime/Operators.h"
+  "${REMILL_INCLUDE_DIR}/remill/Arch/X86/Runtime/State.h"
+  "${REMILL_INCLUDE_DIR}/remill/Arch/X86/Runtime/Types.h"
+
   Arch.cpp
   )
 
