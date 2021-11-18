@@ -69,19 +69,71 @@ class CustomLoadImage final : public LoadImage {
   std::string image_buffer;
 };
 
-class PcodeHandler final : public PcodeEmit {
+class PcodeDecoder final : public PcodeEmit {
  public:
-  PcodeHandler(Sleigh &engine_, Instruction &inst_)
+  PcodeDecoder(Sleigh &engine_, Instruction &inst_)
       : engine(engine_),
         inst(inst_) {}
 
   void dump(const Address &, OpCode op, VarnodeData *outvar, VarnodeData *vars,
-            int32_t) override {
+            int32_t isize) override {
     inst.function = get_opname(op);
-    // TODO(alex): Set operands here.
+    if (outvar) {
+      DecodeOperand(*outvar);
+    }
+    for (int i = 0; i < isize; ++i) {
+      DecodeOperand(vars[i]);
+    }
   }
 
  private:
+  void DecodeOperand(VarnodeData &var) {
+    const auto loc_name = var.space->getName();
+    if (loc_name == "register") {
+      DecodeRegister(var);
+    } else if (loc_name == "unique") {
+      DecodeMemory(var);
+    } else if (loc_name == "constant") {
+      DecodeConstant(var);
+    } else {
+      LOG(FATAL) << "Instruction location " << loc_name << " not supported";
+    }
+  }
+
+  void DecodeRegister(const VarnodeData &var) {
+    const auto reg_name =
+        engine.getRegisterName(var.space, var.offset, var.size);
+    Operand op;
+    op.type = Operand::kTypeRegister;
+    Operand::Register reg;
+    reg.name = reg_name;
+    reg.size = var.size;
+    op.reg = reg;
+    op.size = var.size;
+    // TODO(alex): Pass information about whether its an outvar or not
+    op.action = true ? Operand::kActionRead : Operand::kActionWrite;
+    inst.operands.push_back(op);
+  }
+
+  void DecodeMemory(const VarnodeData &var) {
+    Operand op;
+    op.size = var.size;
+    op.type = Operand::kTypeAddress;
+    op.addr.address_size = 64;  // Not sure
+    op.addr.kind =
+        true ? Operand::Address::kMemoryRead : Operand::Address::kMemoryWrite;
+    inst.operands.push_back(op);
+  }
+
+  void DecodeConstant(const VarnodeData &var) {
+    Operand op;
+    op.type = Operand::kTypeImmediate;
+    op.action = Operand::kActionRead;
+    op.imm.is_signed = false;  // Not sure
+    op.imm.val = var.offset;
+    inst.operands.push_back(op);
+  }
+
   Sleigh &engine;
   Instruction &inst;
 };
@@ -139,12 +191,13 @@ class SleighX86Arch final : public Arch {
     inst.sub_arch_name = arch_name;
     inst.pc = address;
     inst.category = Instruction::kCategoryInvalid;
+    inst.operands.clear();
 
     // The SLEIGH engine will query this image when we try to decode an instruction. Append the bytes so SLEIGH has data to read.
     image.AppendInstruction(instr_bytes);
 
     // Now decode the instruction.
-    PcodeHandler pcode_handler(engine, inst);
+    PcodeDecoder pcode_handler(engine, inst);
     const int32_t instr_len = engine.oneInstruction(pcode_handler, cur_addr);
     cur_addr = cur_addr + instr_len;
 
