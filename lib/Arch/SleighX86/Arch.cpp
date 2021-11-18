@@ -94,7 +94,7 @@ class PcodeDecoder final : public PcodeEmit {
       DecodeRegister(var);
     } else if (loc_name == "unique") {
       DecodeMemory(var);
-    } else if (loc_name == "constant") {
+    } else if (loc_name == "const") {
       DecodeConstant(var);
     } else {
       LOG(FATAL) << "Instruction location " << loc_name << " not supported";
@@ -108,7 +108,8 @@ class PcodeDecoder final : public PcodeEmit {
     op.type = Operand::kTypeRegister;
     Operand::Register reg;
     reg.name = reg_name;
-    reg.size = var.size;
+    reg.size =
+        var.size;  // I don't think this is correct. Need to distinguish between the register width vs the read/write size.
     op.reg = reg;
     op.size = var.size;
     // TODO(alex): Pass information about whether its an outvar or not
@@ -118,7 +119,7 @@ class PcodeDecoder final : public PcodeEmit {
 
   void DecodeMemory(const VarnodeData &var) {
     Operand op;
-    op.size = var.size;
+    op.size = var.size * 8;
     op.type = Operand::kTypeAddress;
     op.addr.address_size = 64;  // Not sure
     op.addr.kind =

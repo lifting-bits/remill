@@ -17,4 +17,5 @@
 #pragma once
 
 #include "InstructionLifter.h"
+#include "SleighLifter.h"
 #include "TraceLifter.h"

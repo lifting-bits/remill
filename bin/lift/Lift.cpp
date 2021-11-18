@@ -260,7 +260,7 @@ int main(int argc, char *argv[]) {
   Memory memory = UnhexlifyInputBytes(addr_mask);
   SimpleTraceManager manager(memory);
   remill::IntrinsicTable intrinsics(module);
-  remill::InstructionLifter inst_lifter(arch, intrinsics);
+  remill::SleighLifter inst_lifter(arch, intrinsics);
   remill::TraceLifter trace_lifter(inst_lifter, manager);
 
   // Lift all discoverable traces starting from `--entry_address` into
