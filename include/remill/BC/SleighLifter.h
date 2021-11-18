@@ -46,13 +46,13 @@ class SleighLifter : public InstructionLifter {
 
     const OpCode op = get_opcode(inst.function);
     switch (op) {
-      case CPUI_INT_LESS: LiftIntLess(inst, block, state_ptr, ir); break;
+      case CPUI_INT_LESS:
       case CPUI_INT_SLESS:
       case CPUI_INT_EQUAL:
       case CPUI_INT_SUB:
       case CPUI_INT_SBORROW:
-      case CPUI_INT_AND:
-      case CPUI_POPCOUNT: break;
+      case CPUI_INT_AND: LiftBinOp(inst, block, state_ptr, ir, op); break;
+      case CPUI_POPCOUNT: LiftPopCount(inst, block, state_ptr, ir); break;
       default:
         LOG(ERROR) << "Unsupported p-code opcode " << inst.function;
         break;
@@ -61,8 +61,8 @@ class SleighLifter : public InstructionLifter {
     return kLiftedInstruction;
   }
 
-  void LiftIntLess(Instruction &inst, llvm::BasicBlock *block,
-                   llvm::Value *state_ptr, llvm::IRBuilder<> &ir) {
+  void LiftBinOp(Instruction &inst, llvm::BasicBlock *block,
+                 llvm::Value *state_ptr, llvm::IRBuilder<> &ir, OpCode op) {
     if (inst.operands.size() != 3) {
       LOG(ERROR) << "Unexpected number of operands";
       return;
@@ -79,8 +79,32 @@ class SleighLifter : public InstructionLifter {
     llvm::Value *rhs_val =
         LiftOperand(inst, block, state_ptr, nullptr, inst.operands[2]);
 
-    llvm::Value *lt_val = ir.CreateICmpULT(lhs_val, rhs_val);
-    ir.CreateStore(lt_val, out_val);
+    llvm::Value *bin_op_val = nullptr;
+    switch (op) {
+      case CPUI_INT_LESS:
+        bin_op_val = ir.CreateICmpULT(lhs_val, rhs_val);
+        break;
+      case CPUI_INT_SLESS:
+        bin_op_val = ir.CreateICmpULT(lhs_val, rhs_val);
+        break;
+      case CPUI_INT_EQUAL:
+        bin_op_val = ir.CreateICmpEQ(lhs_val, rhs_val);
+        break;
+      case CPUI_INT_SUB: bin_op_val = ir.CreateSub(lhs_val, rhs_val); break;
+      case CPUI_INT_SBORROW:
+        bin_op_val = ir.CreateURem(lhs_val, rhs_val);
+        break;
+      case CPUI_INT_AND: bin_op_val = ir.CreateAnd(lhs_val, rhs_val); break;
+      default: LOG(ERROR) << "Invalid binary op " << get_opname(op); break;
+    }
+
+    // Assign the out variable to the result of the binary operation
+    ir.CreateStore(bin_op_val, out_val);
+  }
+
+  void LiftPopCount(Instruction &inst, llvm::BasicBlock *block,
+                    llvm::Value *state_ptr, llvm::IRBuilder<> &ir) {
+    // TODO(alex): Call CTPOP LLVM intrinsic
   }
 };
 
