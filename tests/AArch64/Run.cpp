@@ -88,12 +88,10 @@ extern "C" {
 // initial state for the lifted testcase. The lifted test case code mutates
 // this, and we require that after running the lifted testcase, `gStateBefore`
 // matches `gStateAfter`,
-std::aligned_storage<sizeof(State), alignof(State)>::type
-    gLiftedState;
+std::aligned_storage<sizeof(State), alignof(State)>::type gLiftedState;
 
 // Native state after running the native test case.
-std::aligned_storage<sizeof(State), alignof(State)>::type
-    gNativeState;
+std::aligned_storage<sizeof(State), alignof(State)>::type gNativeState;
 
 // Address of the native test to run. The `InvokeTestCase` function saves
 // the native program state but then needs a way to figure out where to go
@@ -258,8 +256,7 @@ Memory *__remill_missing_block(State &, addr_t, Memory *memory) {
   return memory;
 }
 
-Memory *__remill_sync_hyper_call(State &, Memory *,
-                                 SyncHyperCall::Name) {
+Memory *__remill_sync_hyper_call(State &, Memory *, SyncHyperCall::Name) {
   abort();
 }
 // Read/write to I/O ports.
@@ -335,6 +332,65 @@ float128_t __remill_undefined_f128(void) {
   return {0};
 }
 
+
+bool __remill_flag_computation_zero(bool result, ...) {
+  return result;
+}
+
+bool __remill_flag_computation_sign(bool result, ...) {
+  return result;
+}
+
+bool __remill_flag_computation_overflow(bool result, ...) {
+  return result;
+}
+
+bool __remill_flag_computation_carry(bool result, ...) {
+  return result;
+}
+
+bool __remill_compare_sle(bool result) {
+  return result;
+}
+
+bool __remill_compare_slt(bool result) {
+  return result;
+}
+
+bool __remill_compare_sge(bool result) {
+  return result;
+}
+
+bool __remill_compare_sgt(bool result) {
+  return result;
+}
+
+
+bool __remill_compare_ule(bool result) {
+  return result;
+}
+
+bool __remill_compare_ult(bool result) {
+  return result;
+}
+
+bool __remill_compare_ugt(bool result) {
+  return result;
+}
+
+bool __remill_compare_uge(bool result) {
+  return result;
+}
+
+bool __remill_compare_eq(bool result) {
+  return result;
+}
+
+bool __remill_compare_neq(bool result) {
+  return result;
+}
+
+
 // Marks `mem` as being used. This is used for making sure certain symbols are
 // kept around through optimization, and makes sure that optimization doesn't
 // perform dead-argument elimination on any of the intrinsics.
@@ -344,7 +400,7 @@ void __remill_mark_as_used(void *mem) {
 
 }  // extern C
 
-typedef Memory *(LiftedFunc)(State &, addr_t, Memory *);
+typedef Memory *(LiftedFunc) (State &, addr_t, Memory *);
 
 // Mapping of test name to translated function.
 static std::map<uint64_t, LiftedFunc *> gTranslatedFuncs;
