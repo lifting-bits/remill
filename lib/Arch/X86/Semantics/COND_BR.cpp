@@ -20,7 +20,8 @@ DEF_SEM(JNLE, R8W cond, PC taken, PC not_taken,
         IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
-  auto take_branch = BAnd(BNot(FLAG_ZF), BXnor(FLAG_SF, FLAG_OF));
+  auto take_branch =
+      __remill_compare_sgt(BAnd(BNot(FLAG_ZF), BXnor(FLAG_SF, FLAG_OF)));
   Write(cond, take_branch);
   Write(pc_dst, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
   return memory;
@@ -170,7 +171,7 @@ DEF_SEM(JLE, R8W cond, PC taken, PC not_taken,
         IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
-  auto take_branch = BOr(FLAG_ZF, BXor(FLAG_SF, FLAG_OF));
+  auto take_branch = __remill_compare_sle(BOr(FLAG_ZF, BXor(FLAG_SF, FLAG_OF)));
   Write(cond, take_branch);
   Write(pc_dst, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
   return memory;

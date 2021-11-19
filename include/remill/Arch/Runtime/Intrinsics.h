@@ -57,8 +57,8 @@ __remill_write_memory_64(Memory *, addr_t, uint64_t);
 [[gnu::used, gnu::const]] extern float64_t __remill_read_memory_f64(Memory *,
                                                                     addr_t);
 
-[[gnu::used]] extern Memory* __remill_read_memory_f80(Memory *, addr_t,
-                                                      native_float80_t&);
+[[gnu::used]] extern Memory *__remill_read_memory_f80(Memory *, addr_t,
+                                                      native_float80_t &);
 
 [[gnu::used]] extern float128_t __remill_read_memory_f128(Memory *, addr_t);
 
@@ -68,8 +68,8 @@ __remill_write_memory_f32(Memory *, addr_t, float32_t);
 [[gnu::used, gnu::const]] extern Memory *
 __remill_write_memory_f64(Memory *, addr_t, float64_t);
 
-[[gnu::used]] extern Memory *__remill_write_memory_f80(Memory *, addr_t,
-                                                       const native_float80_t&);
+[[gnu::used]] extern Memory *
+__remill_write_memory_f80(Memory *, addr_t, const native_float80_t &);
 
 [[gnu::used]] extern Memory *__remill_write_memory_f128(Memory *, addr_t,
                                                         float128_t);
@@ -89,6 +89,39 @@ __remill_write_memory_f64(Memory *, addr_t, float64_t);
 [[gnu::used, gnu::const]] extern float80_t __remill_undefined_f80(void);
 
 [[gnu::used, gnu::const]] extern float128_t __remill_undefined_f128(void);
+
+[[gnu::used, gnu::const]] extern bool
+__remill_flag_computation_zero(bool result, ...);
+
+[[gnu::used, gnu::const]] extern bool
+__remill_flag_computation_sign(bool result, ...);
+
+[[gnu::used, gnu::const]] extern bool
+__remill_flag_computation_overflow(bool result, ...);
+
+[[gnu::used, gnu::const]] extern bool
+__remill_flag_computation_carry(bool result, ...);
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_sle(bool result);
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_slt(bool result);
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_sge(bool result);
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_sgt(bool result);
+
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_ule(bool result);
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_ult(bool result);
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_ugt(bool result);
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_uge(bool result);
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_eq(bool result);
+
+[[gnu::used, gnu::const]] extern bool __remill_compare_neq(bool result);
 
 // Generic error.
 [[gnu::used]] extern Memory *__remill_error(State &, addr_t addr, Memory *);

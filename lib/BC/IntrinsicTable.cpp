@@ -130,7 +130,23 @@ IntrinsicTable::IntrinsicTable(llvm::Module *module)
       undefined_64(FindPureIntrinsic(module, "__remill_undefined_64")),
       undefined_f32(FindPureIntrinsic(module, "__remill_undefined_f32")),
       undefined_f64(FindPureIntrinsic(module, "__remill_undefined_f64")),
-      undefined_f80(FindPureIntrinsic(module, "__remill_undefined_f80")) {
+      undefined_f80(FindPureIntrinsic(module, "__remill_undefined_f80")),
+
+      // Flag computations
+      flag_computation_zero(
+          FindPureIntrinsic(module, "__remill_flag_computation_zero")),
+      flag_computation_sign(
+          FindPureIntrinsic(module, "__remill_flag_computation_sign")),
+      flag_computation_overflow(
+          FindPureIntrinsic(module, "__remill_flag_computation_overflow")),
+      flag_computation_carry(
+          FindPureIntrinsic(module, "__remill_flag_computation_carry")),
+      // compares
+      compare_sle(FindPureIntrinsic(module, "__remill_compare_sle")),
+      compare_sgt(FindPureIntrinsic(module, "__remill_compare_sgt")),
+      compare_eq(FindPureIntrinsic(module, "__remill_compare_eq")),
+      compare_neq(FindPureIntrinsic(module, "__remill_compare_neq")) {
+
 
   // Make sure to set the correct attributes on this to make sure that
   // it's never optimized away.

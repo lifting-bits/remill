@@ -422,6 +422,63 @@ float80_t __remill_undefined_f80(void) {
   return {0};
 }
 
+bool __remill_flag_computation_zero(bool result, ...) {
+  return result;
+}
+
+bool __remill_flag_computation_sign(bool result, ...) {
+  return result;
+}
+
+bool __remill_flag_computation_overflow(bool result, ...) {
+  return result;
+}
+
+bool __remill_flag_computation_carry(bool result, ...) {
+  return result;
+}
+
+bool __remill_compare_sle(bool result) {
+  return result;
+}
+
+bool __remill_compare_slt(bool result) {
+  return result;
+}
+
+bool __remill_compare_sge(bool result) {
+  return result;
+}
+
+bool __remill_compare_sgt(bool result) {
+  return result;
+}
+
+
+bool __remill_compare_ule(bool result) {
+  return result;
+}
+
+bool __remill_compare_ult(bool result) {
+  return result;
+}
+
+bool __remill_compare_ugt(bool result) {
+  return result;
+}
+
+bool __remill_compare_uge(bool result) {
+  return result;
+}
+
+bool __remill_compare_eq(bool result) {
+  return result;
+}
+
+bool __remill_compare_neq(bool result) {
+  return result;
+}
+
 // Marks `mem` as being used. This is used for making sure certain symbols are
 // kept around through optimization, and makes sure that optimization doesn't
 // perform dead-argument elimination on any of the intrinsics.
@@ -501,7 +558,7 @@ static void ImportX87State(State *state) {
       }
     }
 
-  // Looks like X87 state.
+    // Looks like X87 state.
   } else {
     DLOG(INFO) << "Importing FPU state.";
     for (size_t i = 0; i < 8; ++i) {
@@ -865,24 +922,24 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
     for (size_t i = 0; i < sizeof(State); ++i) {
       LOG_IF(ERROR, lifted_state_bytes[i] != native_state_bytes[i])
           << "Bytes at offset " << i << " are different: "
-	  << "lifted [" << std::hex << static_cast<unsigned int>(lifted_state_bytes[i])
-	  << "] vs native [" << std::hex << static_cast<unsigned int>(native_state_bytes[i])
-	  << "]\n" << std::dec
-	  << "vec: " << offsetof(State, vec) << "\n"
-	  << "aflag:" << offsetof(State, aflag) << "\n"
-	  << "rflag:" << offsetof(State, rflag) << "\n"
-	  << "seg:" << offsetof(State, seg) << "\n"
-	  << "addr:" << offsetof(State, addr) << "\n"
-	  << "gpr:" << offsetof(State, gpr) << "\n"
-	  << "st:" << offsetof(State, st) << "\n"
-	  << "mmx:" << offsetof(State, mmx) << "\n"
-	  << "sw:" << offsetof(State, sw) << "\n"
-	  << "xcr0:" << offsetof(State, xcr0) << "\n"
-	  << "x87:" << offsetof(State, x87) << "\n"
-	  << "seg_caches:" << offsetof(State, seg_caches) << "\n";
+          << "lifted [" << std::hex
+          << static_cast<unsigned int>(lifted_state_bytes[i]) << "] vs native ["
+          << std::hex << static_cast<unsigned int>(native_state_bytes[i])
+          << "]\n"
+          << std::dec << "vec: " << offsetof(State, vec) << "\n"
+          << "aflag:" << offsetof(State, aflag) << "\n"
+          << "rflag:" << offsetof(State, rflag) << "\n"
+          << "seg:" << offsetof(State, seg) << "\n"
+          << "addr:" << offsetof(State, addr) << "\n"
+          << "gpr:" << offsetof(State, gpr) << "\n"
+          << "st:" << offsetof(State, st) << "\n"
+          << "mmx:" << offsetof(State, mmx) << "\n"
+          << "sw:" << offsetof(State, sw) << "\n"
+          << "xcr0:" << offsetof(State, xcr0) << "\n"
+          << "x87:" << offsetof(State, x87) << "\n"
+          << "seg_caches:" << offsetof(State, seg_caches) << "\n";
     }
 #pragma clang diagnostic pop
-
   }
 
   if (gLiftedStack != gNativeStack) {
@@ -960,12 +1017,12 @@ TEST_P(InstrTest, SemanticsMatchNative) {
   }
 }
 
-std::string NameTest(const testing::TestParamInfo< InstrTest::ParamType > &test) {
+std::string NameTest(const testing::TestParamInfo<InstrTest::ParamType> &test) {
   return test.param->test_name;
 }
 
-INSTANTIATE_TEST_SUITE_P(GeneralInstrTest, InstrTest,
-                         testing::ValuesIn(gTests), NameTest);
+INSTANTIATE_TEST_SUITE_P(GeneralInstrTest, InstrTest, testing::ValuesIn(gTests),
+                         NameTest);
 
 // Recover from a signal.
 static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {

@@ -116,4 +116,22 @@ extern "C" void __remill_mark_as_used(const void *);
   USED(__remill_undefined_f32);
   USED(__remill_undefined_f64);
   USED(__remill_undefined_f80);
+
+  USED(__remill_flag_computation_zero);
+  USED(__remill_flag_computation_overflow);
+  USED(__remill_flag_computation_sign);
+  USED(__remill_flag_computation_carry);
+
+  USED(__remill_compare_sle);
+  USED(__remill_compare_slt);
+  USED(__remill_compare_sgt);
+  USED(__remill_compare_sge);
+
+  USED(__remill_compare_eq);
+  USED(__remill_compare_neq);
+
+  USED(__remill_compare_ugt);
+  USED(__remill_compare_uge);
+  USED(__remill_compare_ult);
+  USED(__remill_compare_ule);
 }

@@ -87,6 +87,19 @@ class IntrinsicTable {
   llvm::Function *undefined_f64;
   llvm::Function *undefined_f80;
 
+
+  // Flag markers
+  llvm::Function *flag_computation_zero;
+  llvm::Function *flag_computation_sign;
+  llvm::Function *flag_computation_overflow;
+  llvm::Function *flag_computation_carry;
+
+  llvm::Function *compare_sle;
+  llvm::Function *compare_sgt;
+  llvm::Function *compare_eq;
+  llvm::Function *compare_neq;
+
+
  private:
   IntrinsicTable(void) = delete;
 };
