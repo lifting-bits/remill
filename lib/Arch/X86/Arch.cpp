@@ -1688,6 +1688,15 @@ void X86Arch::PopulateRegisterTable(void) const {
   REG(MM6, mmx.elems[6].val.qwords.elems[0], u64);
   REG(MM7, mmx.elems[7].val.qwords.elems[0], u64);
 
+  REG(K0, mmx.elems[0].val.qwords.elems[0], u64);
+  REG(K1, mmx.elems[1].val.qwords.elems[0], u64);
+  REG(K2, mmx.elems[2].val.qwords.elems[0], u64);
+  REG(K3, mmx.elems[3].val.qwords.elems[0], u64);
+  REG(K4, mmx.elems[4].val.qwords.elems[0], u64);
+  REG(K5, mmx.elems[5].val.qwords.elems[0], u64);
+  REG(K6, mmx.elems[6].val.qwords.elems[0], u64);
+  REG(K7, mmx.elems[7].val.qwords.elems[0], u64);
+
   // Arithmetic flags. Data-flow analyses will clear these out ;-)
   REG(AF, aflag.af, u8);
   REG(CF, aflag.cf, u8);

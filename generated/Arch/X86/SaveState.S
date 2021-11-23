@@ -235,3 +235,14 @@ movdqu [RIP + STATE_PTR + 1872], XMM29
 movdqu [RIP + STATE_PTR + 1936], XMM30
 movdqu [RIP + STATE_PTR + 2000], XMM31
 #endif  // HAS_FEATURE_AVX512
+#if HAS_FEATURE_AVX512
+kmovq [RIP + STATE_PTR + 3512], K0
+kmovq [RIP + STATE_PTR + 3528], K1
+kmovq [RIP + STATE_PTR + 3544], K2
+kmovq [RIP + STATE_PTR + 3560], K3
+kmovq [RIP + STATE_PTR + 3576], K4
+kmovq [RIP + STATE_PTR + 3592], K5
+kmovq [RIP + STATE_PTR + 3608], K6
+kmovq [RIP + STATE_PTR + 3624], K7
+
+#endif  // HAS_FEATURE_AVX512
