@@ -53,6 +53,8 @@ MAKE_UNDEF(64)
 
 #undef MAKE_UNDEF
 
+#define READBIT(A, B) ((A >> B) & 1)
+
 #define MAKE_SIGNED_MEM_ACCESS(size) \
   ALWAYS_INLINE static int##size##_t __remill_read_memory_s##size( \
       Memory *mem, addr_t addr) { \
