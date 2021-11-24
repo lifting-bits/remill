@@ -754,6 +754,13 @@ struct alignas(8) MMX final {
   } __attribute__((packed)) elems[8];
 };
 
+struct alignas(8) K_REG final {
+  struct alignas(8) {
+    uint64_t _0;
+    uint64_t val;
+  } __attribute__((packed)) elems[8];
+};
+
 static_assert(128 == sizeof(MMX), "Invalid structure packing of `MMX`.");
 
 enum : size_t { kNumVecRegisters = 32 };
@@ -779,9 +786,10 @@ struct alignas(16) X86State : public ArchState {
   XCR0 xcr0;  // 8 bytes.
   FPU x87;  // 512 bytes
   SegmentCaches seg_caches;  // 96 bytes
+  K_REG k_reg; // 128 bytes.
 } __attribute__((packed));
 
-static_assert((96 + 3264 + 16) == sizeof(X86State),
+static_assert((96 + 3264 + 16 + 128) == sizeof(X86State),
               "Invalid packing of `struct State`");
 
 struct State : public X86State {};

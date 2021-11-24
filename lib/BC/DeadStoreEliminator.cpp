@@ -65,7 +65,7 @@ DEFINE_bool(name_register_variables, false,
 namespace remill {
 namespace {
 
-static constexpr size_t kMaxNumSlots = 256;
+static constexpr size_t kMaxNumSlots = 272;
 
 using ValueToOffset = std::unordered_map<llvm::Value *, uint64_t>;
 using InstToOffset = std::unordered_map<llvm::Instruction *, uint64_t>;
