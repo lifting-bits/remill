@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Trail of Bits, Inc.
+ * Copyright (c) 2021 Trail of Bits, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,9 @@ TEST_BEGIN_64(KMOVW_MASKmskw_GPR32u32_AVX512, 1)
 TEST_INPUTS(
     0,
     1,
-    0x41)
+    0x41,
+    0xff,
+    0x80)
 
     kmovw k2, ARG1_32
 TEST_END_64
@@ -29,7 +31,9 @@ TEST_BEGIN_64(KMOVW_MASKmskw_MASKu16_AVX512, 1)
 TEST_INPUTS(
     0,
     1,
-    0x41)
+    0x41,
+    0xff,
+    0x80)
 
     kmovw k2, ARG1_32
     kmovw k2, k1
@@ -39,7 +43,9 @@ TEST_BEGIN_64(KMOVW_GPR32u32_MASKmskw_AVX512, 1)
 TEST_INPUTS(
     0,
     1,
-    0x41)
+    0x41,
+    0xff,
+    0x80)
 
     kmovw k2, ARG1_32
     kmovw RET_32, k2
