@@ -1122,18 +1122,61 @@ IF_64BIT(DEF_ISEL(MOVSXD_GPRv_MEMz_64) = MOVSX<R64W, M32, int64_t>;)
 IF_64BIT(DEF_ISEL(MOVSXD_GPRv_GPR32_64) = MOVSX<R64W, R32, int64_t>;)
 IF_64BIT(DEF_ISEL(MOVSXD_GPRv_GPRz_64) = MOVSX<R64W, R32, int64_t>;)
 
+#if HAS_FEATURE_AVX512
+
 namespace {
+
+template <typename D, typename K, typename S>
+DEF_SEM(VPMOVSXBQ_MASKmskw_SIMD128, D dst, K k1, S src) {
+  auto src_vec = SReadV8(src);
+  auto dst_vec = SClearV64(SReadV64(dst));
+  auto k_vec = Read(k1);
+  for (auto i = 0u; i < 2u; i++) {
+    if (READBIT(k_vec, i) == 0) {
+      dst_vec = SInsertV64(dst_vec, i, 0);
+    } else {
+      auto v = SExtTo<int64_t>(SExtractV8(src_vec, i));
+      dst_vec = SInsertV64(dst_vec, i, v);
+    }
+  }
+  SWriteV64(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename K, typename S>
+DEF_SEM(VPMOVSXWD_MASKmskw_SIMD128, D dst, K k1, S src) {
+  auto src_vec = SReadV16(src);
+  auto dst_vec = SClearV32(SReadV32(dst));
+  auto k_vec = Read(k1);
+  for (auto i = 0u; i < 4u; i++) {
+    if (READBIT(k_vec, i) == 0) {
+      dst_vec = SInsertV32(dst_vec, i, 0);
+    } else {
+      auto v = SExtTo<int32_t>(SExtractV16(src_vec, i));
+      dst_vec = SInsertV32(dst_vec, i, v);
+    }
+  }
+  SWriteV32(dst, dst_vec);
+  return memory;
+}
+
 template <typename S1, typename S2>
 DEF_SEM(KMOVW, S1 dst, S2 src) {
-  auto value = UInt16(Read(src));
-  WriteZExt(dst, value);
+  WriteZExt(dst, UInt16(Read(src)));
   return memory;
 }
 
 }  // namespace
+
+DEF_ISEL(VPMOVSXBQ_XMMi64_MASKmskw_MEMi8_AVX512) = VPMOVSXBQ_MASKmskw_SIMD128<VV128W, R8, MV16>;
+DEF_ISEL(VPMOVSXBQ_XMMi64_MASKmskw_XMMi8_AVX512) = VPMOVSXBQ_MASKmskw_SIMD128<VV128W, R8, V128>;
+DEF_ISEL(VPMOVSXWD_XMMi32_MASKmskw_MEMi16_AVX512) = VPMOVSXWD_MASKmskw_SIMD128<VV128W, R8, MV64>;
+DEF_ISEL(VPMOVSXWD_XMMi32_MASKmskw_XMMi16_AVX512) = VPMOVSXWD_MASKmskw_SIMD128<VV128W, R8, V128>;
 
 DEF_ISEL(KMOVW_MASKmskw_MASKu16_AVX512) = KMOVW<R64W, R64>;
 DEF_ISEL(KMOVW_GPR32u32_MASKmskw_AVX512) = KMOVW<R32W, R64>;
 DEF_ISEL(KMOVW_MASKmskw_GPR32u32_AVX512) = KMOVW<R64W, R32>;
 DEF_ISEL(KMOVW_MASKmskw_MEMu16_AVX512) = KMOVW<R64W, M16>;
 DEF_ISEL(KMOVW_MEMu16_MASKmskw_AVX512) = KMOVW<M16W, R64>;
+
+#endif  // HAS_FEATURE_AVX512
