@@ -1689,14 +1689,14 @@ void X86Arch::PopulateRegisterTable(void) const {
   REG(MM7, mmx.elems[7].val.qwords.elems[0], u64);
 
   if (has_avx512) {
-    REG(K0, k_reg.elems[0].val.qwords.elems[0], u64);
-    REG(K1, k_reg.elems[1].val.qwords.elems[0], u64);
-    REG(K2, k_reg.elems[2].val.qwords.elems[0], u64);
-    REG(K3, k_reg.elems[3].val.qwords.elems[0], u64);
-    REG(K4, k_reg.elems[4].val.qwords.elems[0], u64);
-    REG(K5, k_reg.elems[5].val.qwords.elems[0], u64);
-    REG(K6, k_reg.elems[6].val.qwords.elems[0], u64);
-    REG(K7, k_reg.elems[7].val.qwords.elems[0], u64);
+    REG(K0, k_reg.elems[0].val, u64);
+    REG(K1, k_reg.elems[1].val, u64);
+    REG(K2, k_reg.elems[2].val, u64);
+    REG(K3, k_reg.elems[3].val, u64);
+    REG(K4, k_reg.elems[4].val, u64);
+    REG(K5, k_reg.elems[5].val, u64);
+    REG(K6, k_reg.elems[6].val, u64);
+    REG(K7, k_reg.elems[7].val, u64);
   }
 
   // Arithmetic flags. Data-flow analyses will clear these out ;-)
