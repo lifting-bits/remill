@@ -328,6 +328,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/ABI.S"
 #include "tests/X86/MMX/INPUTS.S"
 
+
 /* Change to `0` and put new `#include`s above when making new tests to speed
  * up compile and test times. */
 #if 1
@@ -356,6 +357,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/DATAXFER/MOVUPS.S"
 #include "tests/X86/DATAXFER/MOVZX.S"
 #include "tests/X86/DATAXFER/XCHG.S"
+#include "tests/X86/DATAXFER/KMOVW.S"
 
 /* Bring in the rest of the semantic tests. */
 
