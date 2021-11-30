@@ -676,6 +676,7 @@ llvm::IntegerType *AddressType(llvm::Module *module) {
 void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
   auto new_args = dest_func->arg_begin();
   ValueMap value_map;
+  TypeMap type_map;
   MDMap md_map;
   for (llvm::Argument &old_arg : source_func->args()) {
     new_args->setName(old_arg.getName());
@@ -687,7 +688,7 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
                                dest_func->getContext()),
            dest_func->getFunctionType());
 
-  CloneFunctionInto(source_func, dest_func, value_map, md_map);
+  CloneFunctionInto(source_func, dest_func, value_map, type_map, md_map);
 }
 
 // Make `func` a clone of the `__remill_basic_block` function.
@@ -824,11 +825,13 @@ static llvm::Function *DeclareFunctionInModule(llvm::Function *func,
 
 static llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
                                                 llvm::Module *dest_module,
-                                                ValueMap &value_map);
+                                                ValueMap &value_map,
+                                                TypeMap &type_map);
 
 static llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
                                                llvm::Module *dest_module,
-                                               ValueMap &value_map);
+                                               ValueMap &value_map,
+                                               TypeMap &type_map);
 
 template <typename T>
 static void ClearMetaData(T *value) {
@@ -839,9 +842,103 @@ static void ClearMetaData(T *value) {
   }
 }
 
+static llvm::Type *
+RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context,
+                    TypeMap &cache) {
+  auto &cached = cache[type];
+  if (cached) {
+    return cached;
+  }
+
+  switch (type->getTypeID()) {
+    case llvm::Type::VoidTyID: return llvm::Type::getVoidTy(context);
+    case llvm::Type::HalfTyID: return llvm::Type::getHalfTy(context);
+    case llvm::Type::FloatTyID: return llvm::Type::getFloatTy(context);
+    case llvm::Type::DoubleTyID: return llvm::Type::getDoubleTy(context);
+    case llvm::Type::X86_FP80TyID: return llvm::Type::getX86_FP80Ty(context);
+    case llvm::Type::FP128TyID: return llvm::Type::getFP128Ty(context);
+    case llvm::Type::PPC_FP128TyID: return llvm::Type::getPPC_FP128Ty(context);
+    case llvm::Type::LabelTyID: return llvm::Type::getLabelTy(context);
+    case llvm::Type::MetadataTyID: return llvm::Type::getMetadataTy(context);
+    case llvm::Type::X86_MMXTyID: return llvm::Type::getX86_MMXTy(context);
+    case llvm::Type::TokenTyID: return llvm::Type::getTokenTy(context);
+    case llvm::Type::IntegerTyID: {
+      auto int_type = llvm::dyn_cast<llvm::IntegerType>(type);
+      cached =
+          llvm::IntegerType::get(context, int_type->getPrimitiveSizeInBits());
+      break;
+    }
+    case llvm::Type::FunctionTyID: {
+      auto func_type = llvm::dyn_cast<llvm::FunctionType>(type);
+      auto ret_type =
+          RecontextualizeType(func_type->getReturnType(), context, cache);
+      llvm::SmallVector<llvm::Type *, 4> param_types;
+      for (auto param_type : func_type->params()) {
+        param_types.push_back(RecontextualizeType(param_type, context, cache));
+      }
+      cached =
+          llvm::FunctionType::get(ret_type, param_types, func_type->isVarArg());
+      break;
+    }
+
+    case llvm::Type::StructTyID: {
+      auto struct_type = llvm::dyn_cast<llvm::StructType>(type);
+      auto new_struct_type =
+          llvm::StructType::create(context, struct_type->getName());
+      cached = new_struct_type;
+
+      llvm::SmallVector<llvm::Type *, 4> elem_types;
+      for (auto elem_type : struct_type->elements()) {
+        elem_types.push_back(RecontextualizeType(elem_type, context, cache));
+      }
+
+      if (elem_types.size()) {
+        new_struct_type->setBody(elem_types, struct_type->isPacked());
+      }
+
+      return new_struct_type;
+    }
+
+    case llvm::Type::ArrayTyID: {
+      auto arr_type = llvm::dyn_cast<llvm::ArrayType>(type);
+      auto elem_type = arr_type->getElementType();
+      cached =
+          llvm::ArrayType::get(RecontextualizeType(elem_type, context, cache),
+                               arr_type->getNumElements());
+      break;
+    }
+
+    case llvm::Type::PointerTyID: {
+      auto ptr_type = llvm::dyn_cast<llvm::PointerType>(type);
+      auto elem_type = ptr_type->getElementType();
+      cached =
+          llvm::PointerType::get(RecontextualizeType(elem_type, context, cache),
+                                 ptr_type->getAddressSpace());
+      break;
+    }
+
+    case llvm::GetFixedVectorTypeId(): {
+      auto arr_type = llvm::dyn_cast<llvm::FixedVectorType>(type);
+      auto elem_type = arr_type->getElementType();
+      cached = llvm::FixedVectorType::get(
+          RecontextualizeType(elem_type, context, cache),
+          arr_type->getNumElements());
+      break;
+    }
+
+    default:
+      LOG(FATAL) << "Unable to recontextualize type "
+                 << LLVMThingToString(type);
+      return nullptr;
+  }
+
+  return cached;
+}
+
 static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
                                               llvm::Module *dest_module,
-                                              ValueMap &value_map) {
+                                              ValueMap &value_map,
+                                              TypeMap &type_map) {
 
   auto &moved_c = value_map[c];
   if (moved_c) {
@@ -853,7 +950,7 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
   auto in_same_context = true;
   if (&(c->getContext()) != &dest_context) {
     in_same_context = false;
-    type = ::remill::RecontextualizeType(type, dest_context);
+    type = RecontextualizeType(type, dest_context, type_map);
   } else {
 #if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 8)
     if (!llvm::isa<llvm::Function>(c) && !llvm::isa<llvm::GlobalVariable>(c) &&
@@ -865,10 +962,10 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
   }
 
   if (auto gv = llvm::dyn_cast<llvm::GlobalVariable>(c); gv) {
-    return DeclareVarInModule(gv, dest_module, value_map);
+    return DeclareVarInModule(gv, dest_module, value_map, type_map);
 
   } else if (auto ga = llvm::dyn_cast<llvm::GlobalAlias>(c); ga) {
-    return DeclareAliasInModule(ga, dest_module, value_map);
+    return DeclareAliasInModule(ga, dest_module, value_map, type_map);
 
   } else if (auto func = llvm::dyn_cast<llvm::Function>(c); func) {
     return DeclareFunctionInModule(func, dest_module, value_map);
@@ -1009,8 +1106,10 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
       case llvm::Instruction::Add: {
         const auto b = llvm::dyn_cast<llvm::AddOperator>(ce);
         auto ret = llvm::ConstantExpr::getAdd(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map),
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                   type_map),
             b->hasNoUnsignedWrap(), b->hasNoSignedWrap());
         moved_c = ret;
         return ret;
@@ -1018,75 +1117,93 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
       case llvm::Instruction::Sub: {
         const auto b = llvm::dyn_cast<llvm::SubOperator>(ce);
         auto ret = llvm::ConstantExpr::getSub(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map),
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                   type_map),
             b->hasNoUnsignedWrap(), b->hasNoSignedWrap());
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::And: {
         auto ret = llvm::ConstantExpr::getAnd(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map));
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                   type_map));
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::Or: {
         auto ret = llvm::ConstantExpr::getOr(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map));
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                   type_map));
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::Xor: {
         auto ret = llvm::ConstantExpr::getXor(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map));
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                   type_map));
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::ICmp: {
         auto ret = llvm::ConstantExpr::getICmp(
             ce->getPredicate(),
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map));
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                   type_map));
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::ZExt: {
         auto ret = llvm::ConstantExpr::getZExt(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
             type);
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::SExt: {
         auto ret = llvm::ConstantExpr::getSExt(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
             type);
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::Trunc: {
         auto ret = llvm::ConstantExpr::getTrunc(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
             type);
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::Select: {
         auto ret = llvm::ConstantExpr::getSelect(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map),
-            MoveConstantIntoModule(ce->getOperand(2), dest_module, value_map));
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(2), dest_module, value_map,
+                                   type_map));
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::Shl: {
         const auto b = llvm::dyn_cast<llvm::ShlOperator>(ce);
         auto ret = llvm::ConstantExpr::getShl(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map),
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                   type_map),
             b->hasNoUnsignedWrap(), b->hasNoSignedWrap());
         moved_c = ret;
         return ret;
@@ -1094,8 +1211,10 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
       case llvm::Instruction::LShr: {
         const auto b = llvm::dyn_cast<llvm::LShrOperator>(ce);
         auto ret = llvm::ConstantExpr::getLShr(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map),
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                   type_map),
             b->isExact());
         moved_c = ret;
         return ret;
@@ -1103,17 +1222,32 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
       case llvm::Instruction::AShr: {
         const auto b = llvm::dyn_cast<llvm::AShrOperator>(ce);
         auto ret = llvm::ConstantExpr::getAShr(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map),
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                   type_map),
             b->isExact());
+        moved_c = ret;
+        return ret;
+      }
+      case llvm::Instruction::Mul: {
+        const auto b = llvm::dyn_cast<llvm::MulOperator>(ce);
+        auto ret = llvm::ConstantExpr::getMul(
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                   type_map),
+            b->hasNoUnsignedWrap(), b->hasNoSignedWrap());
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::UDiv: {
         const auto b = llvm::dyn_cast<llvm::UDivOperator>(ce);
         auto ret = llvm::ConstantExpr::getUDiv(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map),
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                   type_map),
             b->isExact());
         moved_c = ret;
         return ret;
@@ -1121,43 +1255,52 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
       case llvm::Instruction::SDiv: {
         const auto b = llvm::dyn_cast<llvm::SDivOperator>(ce);
         auto ret = llvm::ConstantExpr::getSDiv(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map),
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                   type_map),
             b->isExact());
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::URem: {
         auto ret = llvm::ConstantExpr::getURem(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map));
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                   type_map));
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::SRem: {
         auto ret = llvm::ConstantExpr::getSRem(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map));
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                   type_map));
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::IntToPtr: {
         auto ret = llvm::ConstantExpr::getIntToPtr(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
             type);
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::PtrToInt: {
         auto ret = llvm::ConstantExpr::getPtrToInt(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
             type);
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::BitCast: {
         auto ret = llvm::ConstantExpr::getBitCast(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
             type);
         moved_c = ret;
         return ret;
@@ -1170,17 +1313,48 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
         std::vector<llvm::Constant *> indices(ni);
         for (auto i = 0u; i < ni; ++i) {
           indices[i] = MoveConstantIntoModule(ce->getOperand(i + 1u),
-                                              dest_module, value_map);
+                                              dest_module, value_map,
+                                              type_map);
         }
         auto ret = llvm::ConstantExpr::getGetElementPtr(
             source_type,
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map),
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
             indices, g->isInBounds(), g->getInRangeIndex());
         moved_c = ret;
         return ret;
       }
       default:
-        if (in_same_context) {
+        if (auto bop = llvm::dyn_cast<llvm::BinaryOperator>(ce)) {
+          auto ret = llvm::ConstantExpr::get(
+              ce->getOpcode(),
+              MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                     type_map),
+              MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
+                                     type_map));
+          moved_c = ret;
+          return ret;
+
+        } else if (auto uop = llvm::dyn_cast<llvm::UnaryOperator>(ce)) {
+          if (uop->isCast()) {
+            auto ret = llvm::ConstantExpr::getCast(
+                ce->getOpcode(),
+                MoveConstantIntoModule(ce->getOperand(0), dest_module,
+                                       value_map, type_map),
+                RecontextualizeType(ce->getType(), dest_context, type_map));
+            moved_c = ret;
+            return ret;
+
+          } else {
+            auto ret = llvm::ConstantExpr::get(
+                ce->getOpcode(),
+                MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                       type_map));
+            moved_c = ret;
+            return ret;
+          }
+
+        } else if (in_same_context) {
           LOG(ERROR) << "Unsupported CE when moving across module boundaries: "
                      << LLVMThingToString(ce);
           moved_c = ce;
@@ -1198,7 +1372,8 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
       new_elems.reserve(a->getNumOperands());
       for (auto it = a->op_begin(), end = a->op_end(); it != end; ++it) {
         new_elems.push_back(MoveConstantIntoModule(
-            llvm::cast<llvm::Constant>(it->get()), dest_module, value_map));
+            llvm::cast<llvm::Constant>(it->get()), dest_module, value_map,
+            type_map));
       }
 
       auto ret = llvm::ConstantArray::get(llvm::cast<llvm::ArrayType>(type),
@@ -1211,7 +1386,8 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
       new_elems.reserve(s->getNumOperands());
       for (auto it = s->op_begin(), end = s->op_end(); it != end; ++it) {
         new_elems.push_back(MoveConstantIntoModule(
-            llvm::cast<llvm::Constant>(it->get()), dest_module, value_map));
+            llvm::cast<llvm::Constant>(it->get()), dest_module, value_map,
+            type_map));
       }
 
       auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(type),
@@ -1224,7 +1400,8 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
       new_elems.reserve(v->getNumOperands());
       for (auto it = v->op_begin(), end = v->op_end(); it != end; ++it) {
         new_elems.push_back(MoveConstantIntoModule(
-            llvm::cast<llvm::Constant>(it->get()), dest_module, value_map));
+            llvm::cast<llvm::Constant>(it->get()), dest_module, value_map,
+            type_map));
       }
 
       auto ret = llvm::ConstantVector::get(new_elems);
@@ -1258,7 +1435,8 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
 
 llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
                                          llvm::Module *dest_module,
-                                         ValueMap &value_map) {
+                                         ValueMap &value_map,
+                                         TypeMap &type_map) {
   auto &moved_var = value_map[var];
   if (moved_var) {
     return llvm::dyn_cast<llvm::GlobalVariable>(moved_var);
@@ -1290,7 +1468,7 @@ llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
   if (var->hasInitializer() && var->hasLocalLinkage()) {
     const auto initializer = var->getInitializer();
     dest_var->setInitializer(
-        MoveConstantIntoModule(initializer, dest_module, value_map));
+        MoveConstantIntoModule(initializer, dest_module, value_map, type_map));
   } else {
     LOG_IF(FATAL, var->hasLocalLinkage())
         << "Cannot declare internal variable " << var->getName().str()
@@ -1303,14 +1481,15 @@ llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
 
 llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
                                         llvm::Module *dest_module,
-                                        ValueMap &value_map) {
+                                        ValueMap &value_map,
+                                        TypeMap &type_map) {
   auto &moved_var = value_map[var];
   if (moved_var) {
     return llvm::dyn_cast<llvm::GlobalAlias>(moved_var);
   }
 
   const auto dest_type = llvm::dyn_cast<llvm::PointerType>(
-      RecontextualizeType(var->getType(), dest_module->getContext()));
+      RecontextualizeType(var->getType(), dest_module->getContext(), type_map));
   for (auto &alias : dest_module->aliases()) {
     if (alias.getName() == var->getName()) {
       CHECK_EQ(dest_type, alias.getType());
@@ -1326,7 +1505,8 @@ llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
 
   moved_var = dest_var;
   dest_var->setAliasee(
-      MoveConstantIntoModule(var->getAliasee(), dest_module, value_map));
+      MoveConstantIntoModule(var->getAliasee(), dest_module, value_map,
+                             type_map));
 
   return dest_var;
 }
@@ -1334,7 +1514,8 @@ llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
 
 static void MoveInstructionIntoModule(llvm::Instruction *inst,
                                       llvm::Module *dest_module,
-                                      ValueMap &value_map) {
+                                      ValueMap &value_map,
+                                      TypeMap &type_map) {
 
   // Substitute the operands.
   for (auto &op : inst->operands()) {
@@ -1345,7 +1526,7 @@ static void MoveInstructionIntoModule(llvm::Instruction *inst,
     }
 
     if (auto c = llvm::dyn_cast<llvm::Constant>(op.get()); c) {
-      op.set(MoveConstantIntoModule(c, dest_module, value_map));
+      op.set(MoveConstantIntoModule(c, dest_module, value_map, type_map));
     }
   }
 
@@ -1374,7 +1555,8 @@ static void MoveInstructionIntoModule(llvm::Instruction *inst,
       if (!new_callee_val) {
         if (auto callee_const = llvm::dyn_cast<llvm::Constant>(callee_val)) {
           new_callee_val =
-              MoveConstantIntoModule(callee_const, dest_module, value_map);
+              MoveConstantIntoModule(callee_const, dest_module, value_map,
+                                     type_map);
 
         } else {
           new_callee_val = callee_val;
@@ -1383,7 +1565,7 @@ static void MoveInstructionIntoModule(llvm::Instruction *inst,
 
       llvm::FunctionCallee callee(
           llvm::dyn_cast<llvm::FunctionType>(RecontextualizeType(
-              call->getFunctionType(), dest_module->getContext())),
+              call->getFunctionType(), dest_module->getContext(), type_map)),
           new_callee_val);
       call->setCalledFunction(callee);
     }
@@ -1392,7 +1574,7 @@ static void MoveInstructionIntoModule(llvm::Instruction *inst,
 
 llvm::Metadata *CloneMetadataInto(
     llvm::Module *source_mod, llvm::Module *dest_mod,
-    llvm::Metadata *md, ValueMap &value_map, MDMap &md_map) {
+    llvm::Metadata *md, ValueMap &value_map, TypeMap &type_map, MDMap &md_map) {
 
   llvm::Metadata *mapped_md = nullptr;
   auto [it, added] = md_map.emplace(md, mapped_md);
@@ -1410,7 +1592,8 @@ llvm::Metadata *CloneMetadataInto(
       mapped_md = llvm::ValueAsMetadata::get(mapped_val);
 
     } else if (auto cv = llvm::dyn_cast<llvm::Constant>(val)) {
-      llvm::Value *mapped_cv = MoveConstantIntoModule(cv, dest_mod, value_map);
+      llvm::Value *mapped_cv = MoveConstantIntoModule(cv, dest_mod, value_map,
+                                                      type_map);
       if (!mapped_cv) {
         return nullptr;  // Couldn't move it.
       }
@@ -1431,7 +1614,7 @@ llvm::Metadata *CloneMetadataInto(
     std::vector<llvm::Metadata *> mapped_ops;
     for (llvm::Metadata *op : tuple->operands()) {
       auto mapped_op = CloneMetadataInto(source_mod, dest_mod, op, value_map,
-                                         md_map);
+                                         type_map, md_map);
       if (!mapped_op) {
         return nullptr;  // Possibly cyclic or just not clonable.
       } else {
@@ -1458,7 +1641,7 @@ llvm::Metadata *CloneMetadataInto(
 // Note: this will try to clone globals referenced from the module of
 //       `source_func` into the module of `dest_func`.
 void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
-                       ValueMap &value_map, MDMap &md_map) {
+                       ValueMap &value_map, TypeMap &type_map, MDMap &md_map) {
 
   auto func_name = source_func->getName().str();
   auto source_mod = source_func->getParent();
@@ -1516,7 +1699,7 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
       new_inst->setDebugLoc(llvm::DebugLoc());
       new_inst->setName(old_inst.getName());
 
-      MoveInstructionIntoModule(new_inst, dest_mod, value_map);
+      MoveInstructionIntoModule(new_inst, dest_mod, value_map, type_map);
     }
   }
 
@@ -1564,7 +1747,7 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
       for (auto md_info : mds) {
         llvm::MDNode *new_md = llvm::dyn_cast_or_null<llvm::MDNode>(
             CloneMetadataInto(source_mod, dest_mod, md_info.second,
-                              value_map, md_map));
+                              value_map, type_map, md_map));
         if (new_md) {
           new_inst->setMetadata(md_id_map[md_info.first], new_md);
         }
@@ -1587,6 +1770,8 @@ unsigned ReplaceAllUsesOfConstant(llvm::Constant *old_c, llvm::Constant *new_c,
   value_map.emplace(old_c, new_c);
   value_map.emplace(new_c, new_c);
 
+  TypeMap type_map;
+
   auto num_const_uses = 0u;
 
   while (!repls.empty()) {
@@ -1605,7 +1790,7 @@ unsigned ReplaceAllUsesOfConstant(llvm::Constant *old_c, llvm::Constant *new_c,
       }
 
     } else if (auto user_inst = llvm::dyn_cast<llvm::Instruction>(user)) {
-      use->set(MoveConstantIntoModule(used_c, module, value_map));
+      use->set(MoveConstantIntoModule(used_c, module, value_map, type_map));
 
     } else {
       LOG(ERROR) << "Unrecognized user type";
@@ -1656,6 +1841,7 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
   }
 
   ValueMap value_map;
+  TypeMap type_map;
 
   // When mapping in the destination module, we'll reference `func` any time
   // we see the `replacement_decl_in_source_module` or `func`.
@@ -1705,107 +1891,10 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
   // Now move all non-locals.
   for (auto &block : *func) {
     for (auto &inst : block) {
-      MoveInstructionIntoModule(&inst, dest_module, value_map);
+      MoveInstructionIntoModule(&inst, dest_module, value_map, type_map);
     }
   }
 }
-
-namespace {
-
-static llvm::Type *
-RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context,
-                    std::unordered_map<llvm::Type *, llvm::Type *> &cache) {
-  auto &cached = cache[type];
-  if (cached) {
-    return cached;
-  }
-
-  switch (type->getTypeID()) {
-    case llvm::Type::VoidTyID: return llvm::Type::getVoidTy(context);
-    case llvm::Type::HalfTyID: return llvm::Type::getHalfTy(context);
-    case llvm::Type::FloatTyID: return llvm::Type::getFloatTy(context);
-    case llvm::Type::DoubleTyID: return llvm::Type::getDoubleTy(context);
-    case llvm::Type::X86_FP80TyID: return llvm::Type::getX86_FP80Ty(context);
-    case llvm::Type::FP128TyID: return llvm::Type::getFP128Ty(context);
-    case llvm::Type::PPC_FP128TyID: return llvm::Type::getPPC_FP128Ty(context);
-    case llvm::Type::LabelTyID: return llvm::Type::getLabelTy(context);
-    case llvm::Type::MetadataTyID: return llvm::Type::getMetadataTy(context);
-    case llvm::Type::X86_MMXTyID: return llvm::Type::getX86_MMXTy(context);
-    case llvm::Type::TokenTyID: return llvm::Type::getTokenTy(context);
-    case llvm::Type::IntegerTyID: {
-      auto int_type = llvm::dyn_cast<llvm::IntegerType>(type);
-      cached =
-          llvm::IntegerType::get(context, int_type->getPrimitiveSizeInBits());
-      break;
-    }
-    case llvm::Type::FunctionTyID: {
-      auto func_type = llvm::dyn_cast<llvm::FunctionType>(type);
-      auto ret_type =
-          RecontextualizeType(func_type->getReturnType(), context, cache);
-      llvm::SmallVector<llvm::Type *, 4> param_types;
-      for (auto param_type : func_type->params()) {
-        param_types.push_back(RecontextualizeType(param_type, context, cache));
-      }
-      cached =
-          llvm::FunctionType::get(ret_type, param_types, func_type->isVarArg());
-      break;
-    }
-
-    case llvm::Type::StructTyID: {
-      auto struct_type = llvm::dyn_cast<llvm::StructType>(type);
-      auto new_struct_type =
-          llvm::StructType::create(context, struct_type->getName());
-      cached = new_struct_type;
-
-      llvm::SmallVector<llvm::Type *, 4> elem_types;
-      for (auto elem_type : struct_type->elements()) {
-        elem_types.push_back(RecontextualizeType(elem_type, context, cache));
-      }
-
-      if (elem_types.size()) {
-        new_struct_type->setBody(elem_types, struct_type->isPacked());
-      }
-
-      return new_struct_type;
-    }
-
-    case llvm::Type::ArrayTyID: {
-      auto arr_type = llvm::dyn_cast<llvm::ArrayType>(type);
-      auto elem_type = arr_type->getElementType();
-      cached =
-          llvm::ArrayType::get(RecontextualizeType(elem_type, context, cache),
-                               arr_type->getNumElements());
-      break;
-    }
-
-    case llvm::Type::PointerTyID: {
-      auto ptr_type = llvm::dyn_cast<llvm::PointerType>(type);
-      auto elem_type = ptr_type->getElementType();
-      cached =
-          llvm::PointerType::get(RecontextualizeType(elem_type, context, cache),
-                                 ptr_type->getAddressSpace());
-      break;
-    }
-
-    case llvm::GetFixedVectorTypeId(): {
-      auto arr_type = llvm::dyn_cast<llvm::FixedVectorType>(type);
-      auto elem_type = arr_type->getElementType();
-      cached = llvm::FixedVectorType::get(
-          RecontextualizeType(elem_type, context, cache),
-          arr_type->getNumElements());
-      break;
-    }
-
-    default:
-      LOG(FATAL) << "Unable to recontextualize type "
-                 << LLVMThingToString(type);
-      return nullptr;
-  }
-
-  return cached;
-}
-
-}  // namespace
 
 // Get an instance of `type` that belongs to `context`.
 llvm::Type *RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context) {
@@ -1813,7 +1902,7 @@ llvm::Type *RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context) {
     return type;
   }
 
-  std::unordered_map<llvm::Type *, llvm::Type *> cache;
+  TypeMap cache;
   return RecontextualizeType(type, context, cache);
 }
 
