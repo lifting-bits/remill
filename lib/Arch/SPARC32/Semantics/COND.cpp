@@ -12,60 +12,60 @@
   static inline bool CondE_##cc(const State &state) { \
     const auto ccr = state.asr.ccr.cc; \
     const bool flag_zf = ccr.z; \
-    return flag_zf; \
+    return __remill_compare_eq(flag_zf); \
   } \
   static inline bool CondNE_##cc(const State &state) { \
     const auto ccr = state.asr.ccr.cc; \
     const bool flag_zf = ccr.z; \
-    return !flag_zf; \
+    return __remill_compare_neq(!flag_zf); \
   } \
   static inline bool CondG_##cc(const State &state) { \
     const auto ccr = state.asr.ccr.cc; \
     const bool flag_nf = ccr.n; \
     const bool flag_zf = ccr.z; \
     const bool flag_vf = ccr.v; \
-    return (flag_nf == flag_vf) && !flag_zf; \
+    return __remill_compare_sgt((flag_nf == flag_vf) && !flag_zf); \
   } \
   static inline bool CondLE_##cc(const State &state) { \
     const auto ccr = state.asr.ccr.cc; \
     const bool flag_nf = ccr.n; \
     const bool flag_zf = ccr.z; \
     const bool flag_vf = ccr.v; \
-    return (flag_nf != flag_vf) || flag_zf; \
+    return __remill_compare_sle((flag_nf != flag_vf) || flag_zf); \
   } \
   static inline bool CondGE_##cc(const State &state) { \
     const auto ccr = state.asr.ccr.cc; \
     const bool flag_nf = ccr.n; \
     const bool flag_vf = ccr.v; \
-    return flag_nf == flag_vf; \
+    return __remill_compare_sge(flag_nf == flag_vf); \
   } \
   static inline bool CondL_##cc(const State &state) { \
     const auto ccr = state.asr.ccr.cc; \
     const bool flag_nf = ccr.n; \
     const bool flag_vf = ccr.v; \
-    return flag_nf != flag_vf; \
+    return __remill_compare_slt(flag_nf != flag_vf); \
   } \
   static inline bool CondGU_##cc(const State &state) { \
     const auto ccr = state.asr.ccr.cc; \
     const bool flag_cf = ccr.c; \
     const bool flag_zf = ccr.z; \
-    return !(flag_cf || flag_zf); \
+    return __remill_compare_ugt(!(flag_cf || flag_zf)); \
   } \
   static inline bool CondLEU_##cc(const State &state) { \
     const auto ccr = state.asr.ccr.cc; \
     const bool flag_cf = ccr.c; \
     const bool flag_zf = ccr.z; \
-    return flag_cf || flag_zf; \
+    return __remill_compare_ule(flag_cf || flag_zf); \
   } \
   static inline bool CondCS_##cc(const State &state) { \
     const auto ccr = state.asr.ccr.cc; \
     const bool flag_cf = ccr.c; \
-    return flag_cf; \
+    return __remill_compare_ult(flag_cf); \
   } \
   static inline bool CondCC_##cc(const State &state) { \
     const auto ccr = state.asr.ccr.cc; \
     const bool flag_cf = ccr.c; \
-    return !flag_cf; \
+    return __remill_compare_uge(!flag_cf); \
   } \
   static inline bool CondPOS_##cc(const State &state) { \
     const auto ccr = state.asr.ccr.cc; \

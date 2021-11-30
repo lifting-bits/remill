@@ -21,19 +21,19 @@ namespace {
 // Zero flags, tells us whether or not a value is zero.
 template <typename T>
 [[gnu::const]] ALWAYS_INLINE static bool ZeroFlag(T res) {
-  return T(0) == res;
+  return __remill_flag_computation_zero(T(0) == res, res);
 }
 
 // Zero flags, tells us whether or not a value is zero.
 template <typename T>
 [[gnu::const]] ALWAYS_INLINE static bool NotZeroFlag(T res) {
-  return T(0) != res;
+  return !__remill_flag_computation_zero(T(0) == res);
 }
 
 // Sign flag, tells us if a result is signed or unsigned.
 template <typename T>
 [[gnu::const]] ALWAYS_INLINE static bool SignFlag(T res) {
-  return 0 > Signed(res);
+  return __remill_flag_computation_sign(0 > Signed(res), res);
 }
 
 // Tests whether there is an even number of bits in the low order byte.
@@ -76,7 +76,8 @@ struct Overflow<tag_add> {
     const T sign_lhs = lhs >> kSignShift;
     const T sign_rhs = rhs >> kSignShift;
     const T sign_res = res >> kSignShift;
-    return 2 == ((sign_lhs ^ sign_res) + (sign_rhs ^ sign_res));
+    return __remill_flag_computation_overflow(
+        2 == ((sign_lhs ^ sign_res) + (sign_rhs ^ sign_res)), lhs, rhs, res);
   }
 };
 
@@ -96,7 +97,8 @@ struct Overflow<tag_sub> {
     const T sign_lhs = lhs >> kSignShift;
     const T sign_rhs = rhs >> kSignShift;
     const T sign_res = res >> kSignShift;
-    return 2 == ((sign_lhs ^ sign_rhs) + (sign_lhs ^ sign_res));
+    return __remill_flag_computation_overflow(
+        2 == ((sign_lhs ^ sign_rhs) + (sign_lhs ^ sign_res)), lhs, rhs, res);
   }
 };
 
@@ -108,10 +110,11 @@ struct Overflow<tag_mul> {
   // the operands.
   template <typename T, typename R>
   [[gnu::const]] ALWAYS_INLINE static bool
-  Flag(T, T, R res,
+  Flag(T lhs, T rhs, R res,
        typename std::enable_if<sizeof(T) < sizeof(R), int>::type = 0) {
 
-    return static_cast<R>(static_cast<T>(res)) != res;
+    return __remill_flag_computation_overflow(
+        static_cast<R>(static_cast<T>(res)) != res, lhs, rhs, res);
   }
 
   // Signed integer multiplication overflow check, where the result is
@@ -131,12 +134,14 @@ template <>
 struct Overflow<tag_sdiv> {
   template <typename T, typename R>
   [[gnu::const]] ALWAYS_INLINE static bool
-  Flag(T, T, R res,
+  Flag(T lhs, T rhs, R res,
        typename std::enable_if<sizeof(T) < sizeof(R), int>::type = 0) {
 
     enum { kSignShift = sizeof(T) * 8 - 1 };
 
-    return (SExt(res << kSignShift) > 0) || (SExt(res << kSignShift) < -1);
+    return __remill_flag_computation_overflow(
+        (SExt(res << kSignShift) > 0) || (SExt(res << kSignShift) < -1), lhs,
+        rhs, res);
   }
 
   template <typename T, typename R>
@@ -162,12 +167,13 @@ template <>
 struct Overflow<tag_udiv> {
   template <typename T, typename R>
   [[gnu::const]] ALWAYS_INLINE static bool
-  Flag(T, T, R res,
+  Flag(T lhs, T rhs, R res,
        typename std::enable_if<sizeof(T) < sizeof(R), int>::type = 0) {
 
     enum { kShift = sizeof(T) * 8 };
 
-    return (SExt(res << kShift) > 0);
+    return __remill_flag_computation_overflow((SExt(res << kShift) > 0), lhs,
+                                              rhs, res);
   }
 
   template <typename T, typename R>
@@ -198,7 +204,8 @@ struct Carry<tag_add> {
   [[gnu::const]] ALWAYS_INLINE static bool Flag(T lhs, T rhs, T res) {
     static_assert(std::is_unsigned<T>::value,
                   "Invalid specialization of `Carry::Flag` for addition.");
-    return res < lhs || res < rhs;
+    return __remill_flag_computation_carry(res < lhs || res < rhs, lhs, rhs,
+                                           res);
   }
 };
 
@@ -206,10 +213,10 @@ struct Carry<tag_add> {
 template <>
 struct Carry<tag_sub> {
   template <typename T>
-  [[gnu::const]] ALWAYS_INLINE static bool Flag(T lhs, T rhs, T) {
+  [[gnu::const]] ALWAYS_INLINE static bool Flag(T lhs, T rhs, T res) {
     static_assert(std::is_unsigned<T>::value,
                   "Invalid specialization of `Carry::Flag` for addition.");
-    return lhs < rhs;
+    return __remill_flag_computation_carry(lhs < rhs, lhs, rhs, res);
   }
 };
 
