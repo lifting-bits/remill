@@ -1904,12 +1904,16 @@ static const char *const kLoadStoreDHSB[] = {
 
 // P:W  o1   Rn    op2
 //      0  1111   10  LDRD (literal)                   if Rt<0> == '1' t2 == 15 || wback then UNPREDICTABLE;
+//           Note(sonya): For LDRD (literal), <Rt> is the first general-purpose register to be transferred, encoded
+//           in the "Rt" field. This register must be even-numbered and not R14.
 // != 01 1  1111   01  LDRH (literal)                   if t == 15 || wback then UNPREDICTABLE;
 // != 01 1  1111   10  LDRSB (literal)                  if t == 15 || wback then UNPREDICTABLE;
 // != 01 1  1111   11  LDRSH (literal)                  if t == 15 || wback then UNPREDICTABLE;
-// 00   0 != 1111 10  LDRD (immediate) — post-indexed  if t2 == 15   wback && (n == t || n == t2) then UNPREDICTABLE;
+// 00   0 != 1111 10  LDRD (immediate) — post-indexed  if t2 == 15   wback && (n == t || n == t2) then UNPREDICTABLE; if Rt<0> == '1' then UNPREDICTABLE;
+//           Note(sonya): For LDRD (immediate), <Rt> is the first general-purpose register to be transferred, encoded
+//           in the "Rt" field. This register must be even-numbered and not R14.
 // 00   0         01  STRH (immediate) — post-indexed  if t == 15    wback && (n == 15 || n == t) then UNPREDICTABLE;
-// 00   0         11  STRD (immediate) — post-indexed  if t2 == 15   wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
+// 00   0         11  STRD (immediate) — post-indexed  if t2 == 15   wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE; (t != 15)
 // 00   1 != 1111 01  LDRH (immediate) — post-indexed  if t == 15    wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 00   1 != 1111 10  LDRSB (immediate) — post-indexed if t == 15    wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 00   1 != 1111 11  LDRSH (immediate) — post-indexed if t == 15    wback && (n == 15 || n == t) then UNPREDICTABLE;
@@ -1919,15 +1923,19 @@ static const char *const kLoadStoreDHSB[] = {
 // 01   1         01  LDRHT                            if t == 15 || n == 15 || n == t then UNPREDICTABLE;
 // 01   1         10  LDRSBT                           if t == 15 || n == 15 || n == t then UNPREDICTABLE;
 // 01   1         11  LDRSHT                           if t == 15 || n == 15 || n == t then UNPREDICTABLE;
-// 10   0 != 1111 10  LDRD (immediate) — offset        if t2 == 15   wback && (n == t || n == t2) then UNPREDICTABLE;
+// 10   0 != 1111 10  LDRD (immediate) — offset        if t2 == 15   wback && (n == t || n == t2) then UNPREDICTABLE; if Rt<0> == '1' then UNPREDICTABLE;
+//           Note(sonya): For LDRD (immediate), <Rt> is the first general-purpose register to be transferred, encoded
+//           in the "Rt" field. This register must be even-numbered and not R14.
 // 10   0         01  STRH (immediate) — offset        if t == 15    wback && (n == 15 || n == t) then UNPREDICTABLE;
-// 10   0         11  STRD (immediate) — offset        if t2 == 15   wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
+// 10   0         11  STRD (immediate) — offset        if t2 == 15   wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE; (t != 15)
 // 10   1 != 1111 01  LDRH (immediate) — offset        if t == 15    wback && n == t then UNPREDICTABLE;
 // 10   1 != 1111 10  LDRSB (immediate) — offset       if t == 15    wback && n == t then UNPREDICTABLE;
 // 10   1 != 1111 11  LDRSH (immediate) — offset       if t == 15    wback && n == t then UNPREDICTABLE;
-// 11   0 != 1111 10  LDRD (immediate) — pre-indexed   if t2 == 15   wback && (n == t || n == t2) then UNPREDICTABLE;
+// 11   0 != 1111 10  LDRD (immediate) — pre-indexed   if t2 == 15   wback && (n == t || n == t2) then UNPREDICTABLE; if Rt<0> == '1' then UNPREDICTABLE;
+//           Note(sonya): For LDRD (immediate), <Rt> is the first general-purpose register to be transferred, encoded
+//           in the "Rt" field. This register must be even-numbered and not R14.
 // 11   0         01  STRH (immediate) — pre-indexed   if t == 15    wback && (n == 15 || n == t) then UNPREDICTABLE;
-// 11   0         11  STRD (immediate) — pre-indexed   if t2 == 15   wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
+// 11   0         11  STRD (immediate) — pre-indexed   if t2 == 15   wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE; (t != 15)
 // 11   1 != 1111 01  LDRH (immediate) — pre-indexed   if t == 15    wback && n == t then UNPREDICTABLE;
 // 11   1 != 1111 10  LDRSB (immediate) — pre-indexed  if t == 15    wback && n == t then UNPREDICTABLE;
 // 11   1 != 1111 11  LDRSH (immediate) — pre-indexed  if t == 15    wback && n == t then UNPREDICTABLE;
@@ -1958,7 +1966,7 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
   bool is_dual = !enc.o1 && enc.op2 >> 1;
   uint32_t rt2 = enc.rt + 1;
 
-  if ((!is_dual && enc.rt == kPCRegNum) || (is_dual && rt2 == kPCRegNum) ||
+  if ((is_dual && enc.rt == kPCRegNum) || (is_dual && rt2 == kPCRegNum) ||
       (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt ||
                       (is_dual && enc.rn == rt2)))) {
     inst.category = Instruction::kCategoryError;
