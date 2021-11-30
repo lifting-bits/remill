@@ -1947,11 +1947,14 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
   const LoadStoreDualHSBIL enc = {bits};
   auto instruction =
       kLoadStoreDHSB[enc.P << 4 | enc.W << 3 | enc.o1 << 2 | enc.op2];
+
   if (enc.rn == kPCRegNum && !instruction && enc.op2 == 0b10) {
-    if (enc.rt & 0b1) {
-      inst.category = Instruction::kCategoryError;
-      return false;
-    }
+    // LDRD (literal), LDRH (literal), LDRSB (literal), LDRSH (literal)
+//    if (enc.rt & 0b1) {
+//      // Catches if Rt<0> == '1' then UNPREDICTABLE;
+//      inst.category = Instruction::kCategoryError;
+//      return false;
+//    }
     inst.function = "LDRDp";
   } else if (instruction) {
     inst.function = instruction;
@@ -1960,15 +1963,28 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
     return false;
   }
 
+  // write_back: All insts but LDRD, STRH, STRD, LDRH, LDRSB, LDRSH (immediate) — offset
   bool write_back = (!enc.P || enc.W);
+
   bool is_add = enc.U;
   bool is_index = enc.P;
+
+  // is_dual: LDRD (literal and immediate) && STRD (immediate)
   bool is_dual = !enc.o1 && enc.op2 >> 1;
+
   uint32_t rt2 = enc.rt + 1;
 
-  if ((is_dual && enc.rt == kPCRegNum) || (is_dual && rt2 == kPCRegNum) ||
-      (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt ||
-                      (is_dual && enc.rn == rt2)))) {
+  if (
+      // rt != 15 for any instruction
+      (enc.rt == kPCRegNum) ||
+      // rt must be even && rt != 14 for all LDRD insts
+      (!enc.o1 && (enc.op2 == 0b10) && ((enc.rt & 0b1) || enc.rt != kLRRegNum)) ||
+      // t2 != 15 for all dual instructions
+      (is_dual && rt2 == kPCRegNum) ||
+      // if wback && (n == t  || n == t2) then UNPREDICTABLE; (LDRD)
+      // if wback && (n == 15 || n == t ) then UNPREDICTABLE; (STRH && LDRH)
+      // if wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE; (STRD)
+      (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt || (is_dual && enc.rn == rt2)))) {
     inst.category = Instruction::kCategoryError;
     return false;
   }
