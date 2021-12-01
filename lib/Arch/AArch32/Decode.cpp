@@ -3672,7 +3672,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
 
   auto ret = decoder(inst, bits);
 
-  LOG(ERROR) << inst.Serialize();
+  //  LOG(ERROR) << inst.Serialize();
   return ret;
 }
 
