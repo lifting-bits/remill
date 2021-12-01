@@ -2065,8 +2065,10 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
 
 // P W o1  op2
 // 0 0  0   01  STRH (register) — post-indexed  if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
-// 0 0  0   10  LDRD (register) — post-indexed  if t2 == 15 || m == 15 || m == t || m == t2 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
-// 0 0  0   11  STRD (register) — post-indexed  if t2 == 15 || m == 15 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
+// 0 0  0   10  LDRD (register) — post-indexed  if t2 == 15 || m == 15 || m == t || m == t2 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE; if Rt<0> == '1' then UNPREDICTABLE;
+// 0 0  0   11  STRD (register) — post-indexed  if t2 == 15 || m == 15 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE; if Rt<0> == '1' then UNPREDICTABLE;
+//           Note(sonya): For LDRD (register) and STRD (register), <Rt> Is the first general-purpose register to be transferred,
+//             encoded in the "Rt" field. This register must be even-numbered and not R14.
 // 0 0  1   01  LDRH (register) — post-indexed  if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 0 0  1   10  LDRSB (register) — post-indexed if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 0 0  1   11  LDRSH (register) — post-indexed if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE
@@ -2077,8 +2079,10 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
 // 0 1  1   10  LDRSBT                          if t == 15 || n == 15 || n == t || m == 15 then UNPREDICTABLE;
 // 0 1  1   11  LDRSHT                          if t == 15 || n == 15 || n == t || m == 15 then UNPREDICTABLE;
 // 1    0   01  STRH (register) — pre-indexed   if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
-// 1    0   10  LDRD (register) — pre-indexed   if t2 == 15 || m == 15 || m == t || m == t2 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
-// 1    0   11  STRD (register) — pre-indexed   if t2 == 15 || m == 15 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE;
+// 1    0   10  LDRD (register) — pre-indexed   if t2 == 15 || m == 15 || m == t || m == t2 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE; if Rt<0> == '1' then UNPREDICTABLE;
+// 1    0   11  STRD (register) — pre-indexed   if t2 == 15 || m == 15 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE; if Rt<0> == '1' then UNPREDICTABLE;
+//           Note(sonya): For LDRD (register) and STRD (register), <Rt> Is the first general-purpose register to be transferred,
+//             encoded in the "Rt" field. This register must be even-numbered and not R14.
 // 1    1   01  LDRH (register) — pre-indexed   if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 1    1   10  LDRSB (register) — pre-indexed  if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 1    1   11  LDRSH (register) — pre-indexed  if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE
@@ -3631,7 +3635,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
 
   auto ret = decoder(inst, bits);
 
-  //  LOG(ERROR) << inst.Serialize();
+  LOG(ERROR) << inst.Serialize();
   return ret;
 }
 
