@@ -2068,7 +2068,7 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
 // 0 0  0   10  LDRD (register) — post-indexed  if t2 == 15 || m == 15 || m == t || m == t2 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE; if Rt<0> == '1' then UNPREDICTABLE;
 // 0 0  0   11  STRD (register) — post-indexed  if t2 == 15 || m == 15 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE; if Rt<0> == '1' then UNPREDICTABLE;
 //           Note(sonya): For LDRD (register) and STRD (register), <Rt> Is the first general-purpose register to be transferred,
-//             encoded in the "Rt" field. This register must be even-numbered and not R14.
+//             encoded in the "Rt" field. This register must be even-numbered and not R14. If Rt == 15 then CONSTRAINED UNPREDICTABLE behavior occurs.
 // 0 0  1   01  LDRH (register) — post-indexed  if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 0 0  1   10  LDRSB (register) — post-indexed if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 0 0  1   11  LDRSH (register) — post-indexed if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE
@@ -2082,7 +2082,7 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
 // 1    0   10  LDRD (register) — pre-indexed   if t2 == 15 || m == 15 || m == t || m == t2 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE; if Rt<0> == '1' then UNPREDICTABLE;
 // 1    0   11  STRD (register) — pre-indexed   if t2 == 15 || m == 15 wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE; if Rt<0> == '1' then UNPREDICTABLE;
 //           Note(sonya): For LDRD (register) and STRD (register), <Rt> Is the first general-purpose register to be transferred,
-//             encoded in the "Rt" field. This register must be even-numbered and not R14.
+//             encoded in the "Rt" field. This register must be even-numbered and not R14. If Rt == 15 then CONSTRAINED UNPREDICTABLE behavior occurs.
 // 1    1   01  LDRH (register) — pre-indexed   if t == 15 || m == 15  wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 1    1   10  LDRSB (register) — pre-indexed  if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE;
 // 1    1   11  LDRSH (register) — pre-indexed  if t == 15 || m == 15 wback && (n == 15 || n == t) then UNPREDICTABLE
@@ -2102,17 +2102,27 @@ static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
   bool is_unpriv = enc.W && !enc.P;
   uint32_t rt2 = enc.rt + 1;
 
-  if (!instruction ||
-      (write_back &&
-       (enc.rn == kPCRegNum || enc.rn == enc.rt || (is_dual && enc.rn == rt2) ||
-        (is_unpriv && (enc.rt == kPCRegNum || enc.rm == kPCRegNum)))) ||
-      (is_dual && (enc.rt == kLRRegNum || enc.rm == kPCRegNum ||
-                   (enc.op2 == 0b10 && (enc.rm == enc.rt || enc.rm == rt2))))) {
+  if (
+      // UNALLOCATED instruction
+      !instruction ||
+      // Rt cannot be 15 for any instruction except STRDp as a special exception
+      (enc.rt == kPCRegNum && !(!enc.o1 && enc.op2 == 0b11u)) ||
+      //
+      (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt || (is_dual && enc.rn == rt2) || (is_unpriv && enc.rm == kPCRegNum))) ||
+      //
+      (is_dual && (enc.rt == kLRRegNum || enc.rm == kPCRegNum || (enc.op2 == 0b10 && (enc.rm == enc.rt || enc.rm == rt2))))
+      ) {
     inst.category = Instruction::kCategoryError;
     return false;
   } else {
     inst.function = instruction;
   }
+
+  // Permitted UNPREDICTABLE behavior for STRDp only
+  if (enc.rt == kPCRegNum) {
+    rt2 = kPCRegNum;
+  }
+
   auto is_cond = DecodeCondition(inst, enc.cond);
 
   // LDR & LDRB (literal) are pc relative. Need to align the PC to the next nearest 4 bytes
