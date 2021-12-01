@@ -2105,8 +2105,16 @@ static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
   if (
       // UNALLOCATED instruction
       !instruction ||
+
       // Rt cannot be 15 for any instruction except STRDp as a special exception
       (enc.rt == kPCRegNum && !(!enc.o1 && enc.op2 == 0b11u)) ||
+
+      // all dual insts (except STRDp) must be even and not the link register
+      (is_dual && (((enc.rt & 0b1)) || enc.rt == kLRRegNum) && !(!enc.o1 && enc.op2 == 0b11u) ) ||
+
+      // for STRDp rt can be r15 or must be even and not LR
+      ((!enc.o1 && enc.op2 == 0b11u) && (((enc.rt & 0b1) && enc.rt != kPCRegNum) ||  enc.rt == kLRRegNum))||
+
       (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt ||
           (is_dual && enc.rn == rt2) || (is_unpriv && enc.rm == kPCRegNum))) ||
       (is_dual && (enc.rt == kLRRegNum || enc.rm == kPCRegNum ||
