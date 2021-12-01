@@ -2118,8 +2118,21 @@ static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
     inst.function = instruction;
   }
 
-  // Permitted UNPREDICTABLE behavior for STRDp only
+  // If Rt<0> == '1', then one of the following behaviors must occur:
+  // - The instruction is undefined.
+  // - The instruction executes as NOP.
+  // - The instruction executes with the additional decode: t<0> = '0'.
+  // - The instruction executes with the additional decode: t2 = t.
+  // - The instruction executes as described, with no change to its behavior and no additional side-effects. This does not apply when Rt == '1111'.
+
+  // If t == 15 || t2 == 15, then one of the following behaviors must occur:
+  // - The instruction is undefined.
+  // - The instruction executes as NOP.
+  // - The store instruction performs the store using the specified addressing mode but the value corresponding to R15 is unknown.
+
+  // Permitted UNPREDICTABLE behavior for STRDp only when rt is r15 only
   if (enc.rt == kPCRegNum) {
+    // The instruction executes with the additional decode: t2 = t.
     rt2 = kPCRegNum;
   }
 
