@@ -2107,10 +2107,10 @@ static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
       !instruction ||
       // Rt cannot be 15 for any instruction except STRDp as a special exception
       (enc.rt == kPCRegNum && !(!enc.o1 && enc.op2 == 0b11u)) ||
-      //
-      (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt || (is_dual && enc.rn == rt2) || (is_unpriv && enc.rm == kPCRegNum))) ||
-      //
-      (is_dual && (enc.rt == kLRRegNum || enc.rm == kPCRegNum || (enc.op2 == 0b10 && (enc.rm == enc.rt || enc.rm == rt2))))
+      (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt ||
+          (is_dual && enc.rn == rt2) || (is_unpriv && enc.rm == kPCRegNum))) ||
+      (is_dual && (enc.rt == kLRRegNum || enc.rm == kPCRegNum ||
+          (enc.op2 == 0b10 && (enc.rm == enc.rt || enc.rm == rt2))))
       ) {
     inst.category = Instruction::kCategoryError;
     return false;
@@ -2118,22 +2118,28 @@ static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
     inst.function = instruction;
   }
 
-  // If Rt<0> == '1', then one of the following behaviors must occur:
-  // - The instruction is undefined.
-  // - The instruction executes as NOP.
-  // - The instruction executes with the additional decode: t<0> = '0'.
-  // - The instruction executes with the additional decode: t2 = t.
-  // - The instruction executes as described, with no change to its behavior and no additional side-effects. This does not apply when Rt == '1111'.
-
-  // If t == 15 || t2 == 15, then one of the following behaviors must occur:
-  // - The instruction is undefined.
-  // - The instruction executes as NOP.
-  // - The store instruction performs the store using the specified addressing mode but the value corresponding to R15 is unknown.
-
+  // CONSTRAINED UNPREDICTABLE behavior for STRD (register):
+  //
+  //   If Rt<0> == '1', then one of the following behaviors must occur:
+  //     - The instruction is undefined.
+  //     - The instruction executes as NOP.
+  //     - The instruction executes with the additional decode: t<0> = '0'.
+  //     - The instruction executes with the additional decode: t2 = t.
+  //     - The instruction executes as described, with no change to its behavior
+  //      and no additional side-effects. This does not apply when Rt == '1111'.
+  //
+  //   If t == 15 || t2 == 15, then one of the following behaviors must occur:
+  //     - The instruction is undefined.
+  //     - The instruction executes as NOP.
+  //     - The store instruction performs the store using the specified
+  //      addressing mode but the value corresponding to R15 is unknown.
+  //
   // Permitted UNPREDICTABLE behavior for STRDp only when rt is r15 only
   if (enc.rt == kPCRegNum) {
     // The instruction executes with the additional decode: t2 = t.
-    rt2 = kPCRegNum;
+    CHECK(!enc.o1 && enc.op2 == 0b11u)
+              << "Rt is R15 for an instruction other than STRDp!!";
+    rt2 = enc.rt;
   }
 
   auto is_cond = DecodeCondition(inst, enc.cond);
@@ -2186,7 +2192,7 @@ static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
   //                The semantics for these instructions take `next_pc` as
   //                arguments and should update it accordingly.
 
-  if (enc.rt == kPCRegNum) {
+  if (enc.rt == kPCRegNum && kRegAction == Operand::Action::kActionWrite) {
     AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
                  Operand::kActionWrite, 0);
 
