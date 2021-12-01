@@ -41,7 +41,7 @@ DEF_SEM(JL, R8W cond, PC taken, PC not_taken,
         IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
-  auto take_branch = BXor(FLAG_SF, FLAG_OF);
+  auto take_branch = __remill_compare_slt(BXor(FLAG_SF, FLAG_OF));
   Write(cond, take_branch);
   Write(pc_dst, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
   return memory;
@@ -61,7 +61,7 @@ DEF_SEM(JNZ, R8W cond, PC taken, PC not_taken,
         IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
-  auto take_branch = BNot(FLAG_ZF);
+  auto take_branch = __remill_compare_neq(BNot(FLAG_ZF));
   Write(cond, take_branch);
   Write(pc_dst, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
   return memory;
@@ -71,7 +71,7 @@ DEF_SEM(JNB, R8W cond, PC taken, PC not_taken,
         IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
-  auto take_branch = BNot(FLAG_CF);
+  auto take_branch = __remill_compare_uge(BNot(FLAG_CF));
   Write(cond, take_branch);
   Write(pc_dst, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
   return memory;
@@ -91,7 +91,7 @@ DEF_SEM(JNL, R8W cond, PC taken, PC not_taken,
         IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
-  auto take_branch = BXnor(FLAG_SF, FLAG_OF);
+  auto take_branch = __remill_compare_uge(BXnor(FLAG_SF, FLAG_OF));
   Write(cond, take_branch);
   Write(pc_dst, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
   return memory;
@@ -101,7 +101,7 @@ DEF_SEM(JNBE, R8W cond, PC taken, PC not_taken,
         IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
-  auto take_branch = BNot(BOr(FLAG_CF, FLAG_ZF));
+  auto take_branch = __remill_compare_ugt(BNot(BOr(FLAG_CF, FLAG_ZF)));
   Write(cond, take_branch);
   Write(pc_dst, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
   return memory;
@@ -111,7 +111,7 @@ DEF_SEM(JBE, R8W cond, PC taken, PC not_taken,
         IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
-  auto take_branch = BOr(FLAG_CF, FLAG_ZF);
+  auto take_branch = __remill_compare_ule(BOr(FLAG_CF, FLAG_ZF));
   Write(cond, take_branch);
   Write(pc_dst, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
   return memory;
@@ -121,7 +121,7 @@ DEF_SEM(JZ, R8W cond, PC taken, PC not_taken,
         IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
-  auto take_branch = FLAG_ZF;
+  auto take_branch = __remill_compare_eq(FLAG_ZF);
   Write(cond, take_branch);
   Write(pc_dst, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
   return memory;
@@ -161,7 +161,7 @@ DEF_SEM(JB, R8W cond, PC taken, PC not_taken,
         IF_32BIT_ELSE(R32W, R64W) pc_dst) {
   addr_t taken_pc = Read(taken);
   addr_t not_taken_pc = Read(not_taken);
-  auto take_branch = FLAG_CF;
+  auto take_branch = __remill_compare_ult(FLAG_CF);
   Write(cond, take_branch);
   Write(pc_dst, Select<addr_t>(take_branch, taken_pc, not_taken_pc));
   return memory;
