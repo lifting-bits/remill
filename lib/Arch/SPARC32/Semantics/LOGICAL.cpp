@@ -7,8 +7,8 @@ namespace {
 template <typename T>
 ALWAYS_INLINE void SetFlagsLogical(State &state, T lhs, T rhs, T res) {
   FLAG_ICC_CF = false;
-  FLAG_ICC_ZF = ZeroFlag(res);
-  FLAG_ICC_NF = SignFlag(res);
+  FLAG_ICC_ZF = ZeroFlag(res, lhs, rhs);
+  FLAG_ICC_NF = SignFlag(res, lhs, rhs);
   FLAG_ICC_VF = false;
 }
 

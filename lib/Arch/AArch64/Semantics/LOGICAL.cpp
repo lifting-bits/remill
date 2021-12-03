@@ -56,8 +56,8 @@ template <typename D, typename S1, typename S2>
 DEF_SEM(BICS, D dst, S1 src1, S2 src2) {
   auto res = UAnd(Read(src1), UNot(Read(src2)));
   WriteZExt(dst, res);
-  FLAG_N = SignFlag(res);
-  FLAG_Z = ZeroFlag(res);
+  FLAG_N = SignFlag(res, src1, src2);
+  FLAG_Z = ZeroFlag(res, src1, src2);
   FLAG_C = false;
   FLAG_V = false;
   return memory;
@@ -99,8 +99,8 @@ template <typename D, typename S1, typename S2>
 DEF_SEM(ANDS, D dst, S1 src1, S2 src2) {
   auto res = UAnd(Read(src1), Read(src2));
   WriteZExt(dst, res);
-  FLAG_N = SignFlag(res);
-  FLAG_Z = ZeroFlag(res);
+  FLAG_N = SignFlag(res, src1, src2);
+  FLAG_Z = ZeroFlag(res, src1, src2);
   FLAG_C = false;
   FLAG_V = false;
   return memory;

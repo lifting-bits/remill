@@ -22,13 +22,13 @@ ALWAYS_INLINE void SetFlagsLogical(State &state, uint64_t lhs, uint64_t rhs,
                                    uint64_t res) {
   const auto res_32 = static_cast<uint32_t>(res);
   FLAG_ICC_CF = false;
-  FLAG_ICC_ZF = ZeroFlag(res_32);
-  FLAG_ICC_NF = SignFlag(res_32);
+  FLAG_ICC_ZF = ZeroFlag(res_32, lhs, rhs);
+  FLAG_ICC_NF = SignFlag(res_32, lhs, rhs);
   FLAG_ICC_VF = false;
 
   FLAG_XCC_CF = false;
-  FLAG_XCC_ZF = ZeroFlag(res);
-  FLAG_XCC_NF = SignFlag(res);
+  FLAG_XCC_ZF = ZeroFlag(res, lhs, rhs);
+  FLAG_XCC_NF = SignFlag(res, lhs, rhs);
   FLAG_XCC_VF = false;
 }
 

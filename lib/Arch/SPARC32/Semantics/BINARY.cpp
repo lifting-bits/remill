@@ -6,8 +6,8 @@ namespace {
 
 template <typename Tag, typename T>
 ALWAYS_INLINE static void WriteFlagsIncDec(State &state, T lhs, T rhs, T res) {
-  FLAG_ICC_ZF = ZeroFlag(res);
-  FLAG_ICC_NF = SignFlag(res);
+  FLAG_ICC_ZF = ZeroFlag(res, lhs, rhs);
+  FLAG_ICC_NF = SignFlag(res, lhs, rhs);
   FLAG_ICC_VF = Overflow<Tag>::Flag(lhs, rhs, res);
 }
 
@@ -20,16 +20,16 @@ ALWAYS_INLINE static void WriteFlagsAddSub(State &state, T lhs, T rhs, T res) {
 template <typename Tag, typename T>
 ALWAYS_INLINE static void WriteXCCFlagsIncDec(State &state, T lhs, T rhs,
                                               T res) {
-  FLAG_XCC_ZF = ZeroFlag(res);
-  FLAG_XCC_NF = SignFlag(res);
+  FLAG_XCC_ZF = ZeroFlag(res, lhs, rhs);
+  FLAG_XCC_NF = SignFlag(res, lhs, rhs);
   FLAG_XCC_VF = Overflow<Tag>::Flag(lhs, rhs, res);
 }
 
 template <typename Tag, typename T>
 ALWAYS_INLINE static void WriteICCFlagsIncDec(State &state, T lhs, T rhs,
                                               T res) {
-  FLAG_ICC_ZF = ZeroFlag(res);
-  FLAG_ICC_NF = SignFlag(res);
+  FLAG_ICC_ZF = ZeroFlag(res, lhs, rhs);
+  FLAG_ICC_NF = SignFlag(res, lhs, rhs);
   FLAG_ICC_VF = Overflow<Tag>::Flag(lhs, rhs, res);
 }
 
@@ -145,8 +145,8 @@ DEF_SEM(SMULcc, S1 src1, S2 src2, D dst) {
   auto rhs_wide = SExt(rhs);
   auto res = SMul(lhs_wide, rhs_wide);
   auto res_trunc = TruncTo<S1>(res);
-  FLAG_ICC_NF = SignFlag(static_cast<uint32_t>(res));
-  FLAG_ICC_ZF = ZeroFlag(static_cast<uint32_t>(res));
+  FLAG_ICC_NF = SignFlag(static_cast<uint32_t>(res), src1, src2);
+  FLAG_ICC_ZF = ZeroFlag(static_cast<uint32_t>(res), src1, src2);
   FLAG_ICC_VF = 0;
   FLAG_ICC_CF = 0;
   auto index = Literal<S1>(32);
@@ -176,8 +176,8 @@ DEF_SEM(UMULcc, S1 src1, S2 src2, D dst) {
   auto rhs_wide = ZExt(rhs);
   auto res = UMul(lhs_wide, rhs_wide);
   auto res_trunc = TruncTo<S1>(res);
-  FLAG_ICC_NF = SignFlag(static_cast<uint32_t>(res));
-  FLAG_ICC_ZF = ZeroFlag(static_cast<uint32_t>(res));
+  FLAG_ICC_NF = SignFlag(static_cast<uint32_t>(res), src1, src2);
+  FLAG_ICC_ZF = ZeroFlag(static_cast<uint32_t>(res), src1, src2);
   FLAG_ICC_VF = 0;
   FLAG_ICC_CF = 0;
   auto index = Literal<S1>(32);
@@ -223,8 +223,8 @@ DEF_SEM(SDIVcc, S1 src1, S2 src2, D dst) {
   auto rhs = Read(src2);
   auto rhs_wide = SExt(rhs);
   auto quot = SDiv(y_lhs_wide, rhs_wide);
-  FLAG_ICC_NF = SignFlag(static_cast<uint32_t>(quot));
-  FLAG_ICC_ZF = ZeroFlag(static_cast<uint32_t>(quot));
+  FLAG_ICC_NF = SignFlag(static_cast<uint32_t>(quot), src1, src2);
+  FLAG_ICC_ZF = ZeroFlag(static_cast<uint32_t>(quot), src1, src2);
   FLAG_ICC_VF = Overflow<tag_sdiv>::Flag(lhs, rhs, quot);
   FLAG_ICC_CF = 0;
   auto res = Overflow<tag_sdiv>::Value(lhs, rhs, quot);
@@ -250,8 +250,8 @@ DEF_SEM(UDIVcc, S1 src1, S2 src2, D dst) {
   auto lhs_wide = ZExt(lhs);
   auto rhs_wide = ZExt(rhs);
   auto quot = UDiv(lhs_wide, rhs_wide);
-  FLAG_ICC_NF = SignFlag(static_cast<uint32_t>(quot));
-  FLAG_ICC_ZF = ZeroFlag(static_cast<uint32_t>(quot));
+  FLAG_ICC_NF = SignFlag(static_cast<uint32_t>(quot), src1, src2);
+  FLAG_ICC_ZF = ZeroFlag(static_cast<uint32_t>(quot), src1, src2);
   FLAG_ICC_VF = Overflow<tag_udiv>::Flag(lhs, rhs, quot);
   FLAG_ICC_CF = 0;
   auto res = Overflow<tag_udiv>::Value(lhs, rhs, quot);

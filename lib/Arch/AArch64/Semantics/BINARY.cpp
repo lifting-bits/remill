@@ -50,10 +50,11 @@ T AddWithCarryNZCV(State &state, T lhs, T rhs, T carry) {
   auto unsigned_result = UAdd(UAdd(ZExt(lhs), ZExt(rhs)), ZExt(carry));
   auto signed_result = SAdd(SAdd(SExt(lhs), SExt(rhs)), Signed(ZExt(carry)));
   auto result = TruncTo<T>(unsigned_result);
-  FLAG_N = SignFlag(result);
-  FLAG_Z = ZeroFlag(result);
+  FLAG_N = SignFlag(result, lhs, rhs);
+  FLAG_Z = ZeroFlag(result, lhs, rhs);
   FLAG_C = UCmpNeq(ZExt(result), unsigned_result);
-  FLAG_V = SCmpNeq(SExt(result), signed_result);
+  FLAG_V = __remill_flag_computation_overflow(
+      SCmpNeq(SExt(result), signed_result), lhs, rhs, result);
   return result;
 }
 
@@ -347,7 +348,7 @@ void FCompare(State &state, S val1, S val2, bool signal = true) {
       state.sr.ioc = true;
     }
 
-  // Regular float compare
+    // Regular float compare
   } else {
     if (FCmpEq(val1, val2)) {
 
