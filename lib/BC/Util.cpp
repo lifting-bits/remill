@@ -845,6 +845,10 @@ static void ClearMetaData(T *value) {
 static llvm::Type *
 RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context,
                     TypeMap &cache) {
+  if (&(type->getContext()) == &context) {
+    return type;
+  }
+
   auto &cached = cache[type];
   if (cached) {
     return cached;
@@ -883,8 +887,13 @@ RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context,
 
     case llvm::Type::StructTyID: {
       auto struct_type = llvm::dyn_cast<llvm::StructType>(type);
-      auto new_struct_type =
-          llvm::StructType::create(context, struct_type->getName());
+      llvm::StructType *new_struct_type = nullptr;
+      if (struct_type->isLiteral()) {
+        new_struct_type = llvm::StructType::create(context);
+      } else {
+        new_struct_type = llvm::StructType::create(
+            context, struct_type->getName());
+      }
       cached = new_struct_type;
 
       llvm::SmallVector<llvm::Type *, 4> elem_types;
@@ -947,18 +956,9 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
 
   auto &dest_context = dest_module->getContext();
   auto type = c->getType();
-  auto in_same_context = true;
-  if (&(c->getContext()) != &dest_context) {
-    in_same_context = false;
+  const auto in_same_context = &(c->getContext()) == &dest_context;
+  if (!in_same_context) {
     type = RecontextualizeType(type, dest_context, type_map);
-  } else {
-#if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 8)
-    if (!llvm::isa<llvm::Function>(c) && !llvm::isa<llvm::GlobalVariable>(c) &&
-        !llvm::isa<llvm::GlobalAlias>(c) && !c->needsRelocation()) {
-      moved_c = c;
-      return c;
-    }
-#endif
   }
 
   if (auto gv = llvm::dyn_cast<llvm::GlobalVariable>(c); gv) {
@@ -1305,6 +1305,14 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
         moved_c = ret;
         return ret;
       }
+      case llvm::Instruction::AddrSpaceCast: {
+        auto ret = llvm::ConstantExpr::getAddrSpaceCast(
+            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                   type_map),
+            type);
+        moved_c = ret;
+        return ret;
+      }
       case llvm::Instruction::GetElementPtr: {
         const auto g = llvm::dyn_cast<llvm::GEPOperator>(ce);
         const auto ni = g->getNumIndices();
@@ -1544,11 +1552,10 @@ static void MoveInstructionIntoModule(llvm::Instruction *inst,
   // Substitute the called function.
   } else if (auto call = llvm::dyn_cast<llvm::CallInst>(inst)) {
     if (auto callee_func = call->getCalledFunction()) {
-      if (callee_func->getParent() == dest_module) {
-        return;
+      if (callee_func->getParent() != dest_module) {
+        call->setCalledFunction(
+            DeclareFunctionInModule(callee_func, dest_module, value_map));
       }
-      call->setCalledFunction(
-          DeclareFunctionInModule(callee_func, dest_module, value_map));
 
     } else if (auto callee_val = call->getCalledOperand()) {
       auto &new_callee_val = value_map[callee_val];
@@ -1563,10 +1570,12 @@ static void MoveInstructionIntoModule(llvm::Instruction *inst,
         }
       }
 
-      llvm::FunctionCallee callee(
-          llvm::dyn_cast<llvm::FunctionType>(RecontextualizeType(
-              call->getFunctionType(), dest_module->getContext(), type_map)),
-          new_callee_val);
+      auto dest_func_type = llvm::dyn_cast<llvm::FunctionType>(
+          RecontextualizeType(
+              call->getFunctionType(), dest_module->getContext(), type_map));
+      CHECK_EQ(new_callee_val->getType()->getPointerElementType(),
+               dest_func_type);
+      llvm::FunctionCallee callee(dest_func_type, new_callee_val);
       call->setCalledFunction(callee);
     }
   }
