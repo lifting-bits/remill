@@ -93,7 +93,8 @@ template <bool (*check_cond)(const State &), typename S1, typename S2>
 DEF_SEM(CCMP, S1 src1, S2 src2, S2 nzcv) {
   using T = typename BaseType<S1>::BT;
   if (check_cond(state)) {
-    (void) AddWithCarryNZCV(state, Read(src1), UNot(Read(src2)), T(1));
+    (void) AddWithCarryNZCV(state, Read(src1), UNot(Read(src2)), Read(src2),
+                            T(1));
   } else {
     auto nzcv_val = Read(nzcv);
     FLAG_V = UCmpNeq(UAnd(nzcv_val, T(1)), T(0));
@@ -108,7 +109,7 @@ template <bool (*check_cond)(const State &), typename S1, typename S2>
 DEF_SEM(CCMN, S1 src1, S2 src2, S2 nzcv) {
   using T = typename BaseType<S1>::BT;
   if (check_cond(state)) {
-    (void) AddWithCarryNZCV(state, Read(src1), Read(src2), T(0));
+    (void) AddWithCarryNZCV(state, Read(src1), Read(src2), Read(src2), T(0));
   } else {
     auto nzcv_val = Read(nzcv);
     FLAG_V = UCmpNeq(UAnd(nzcv_val, T(1)), T(0));

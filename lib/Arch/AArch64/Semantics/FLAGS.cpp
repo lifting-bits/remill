@@ -21,21 +21,28 @@ namespace {
 enum : uint32_t { kLHS = 2415899639U, kRHS = 70623199U };
 
 // Zero flags, tells us whether or not a value is zero.
-template <typename T>
-[[gnu::const]] ALWAYS_INLINE static bool ZeroFlag(T res) {
-  return __remill_flag_computation_zero(T(0) == res, res);
+template <typename T, typename S1, typename S2>
+[[gnu::const]] ALWAYS_INLINE static bool ZeroFlag(T res, S1 lhs, S2 rhs) {
+  return __remill_flag_computation_zero(T(0) == res, lhs, rhs, res);
 }
 
 // Zero flags, tells us whether or not a value is zero.
 template <typename T>
-[[gnu::const]] ALWAYS_INLINE static bool NotZeroFlag(T res) {
-  return !__remill_flag_computation_zero(T(0) == res, res);
+[[gnu::const]] ALWAYS_INLINE static bool ZeroFlag(T res) {
+  return T(0) == res;
+}
+
+
+// Zero flags, tells us whether or not a value is zero.
+template <typename T, typename S1, typename S2>
+[[gnu::const]] ALWAYS_INLINE static bool NotZeroFlag(T res, S1 lhs, S2 rhs) {
+  return !__remill_flag_computation_zero(T(0) == res, lhs, rhs, res);
 }
 
 // Sign flag, tells us if a result is signed or unsigned.
-template <typename T>
-[[gnu::const]] ALWAYS_INLINE static bool SignFlag(T res) {
-  return __remill_flag_computation_sign(0 > Signed(res), res);
+template <typename T, typename S1, typename S2>
+[[gnu::const]] ALWAYS_INLINE static bool SignFlag(T res, S1 lhs, S2 rhs) {
+  return __remill_flag_computation_sign(0 > Signed(res), lhs, rhs, res);
 }
 
 // Tests whether there is an even number of bits in the low order byte.
@@ -74,7 +81,8 @@ struct Overflow<tag_add> {
     const T sign_lhs = lhs >> kSignShift;
     const T sign_rhs = rhs >> kSignShift;
     const T sign_res = res >> kSignShift;
-    return 2 == (sign_lhs ^ sign_res) + (sign_rhs ^ sign_res);
+    return __remill_flag_computation_overflow(
+        2 == (sign_lhs ^ sign_res) + (sign_rhs ^ sign_res), lhs, rhs, res);
   }
 };
 

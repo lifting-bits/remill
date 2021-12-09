@@ -22,8 +22,8 @@ template <typename T>
 ALWAYS_INLINE void SetFlagsLogical(State &state, T lhs, T rhs, T res) {
   state.aflag.cf = false;
   state.aflag.pf = ParityFlag(res);
-  state.aflag.zf = ZeroFlag(res);
-  state.aflag.sf = SignFlag(res);
+  state.aflag.zf = ZeroFlag(res, lhs, rhs);
+  state.aflag.sf = SignFlag(res, lhs, rhs);
   state.aflag.of = false;
   state.aflag.af = false;  // Undefined, but ends up being `0`.
 }

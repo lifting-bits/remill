@@ -46,14 +46,15 @@ DEF_ISEL(SUB_64_ADDSUB_EXT) = SUB<R64W, R64, I64>;
 namespace {
 
 template <typename T>
-T AddWithCarryNZCV(State &state, T lhs, T rhs, T carry) {
+T AddWithCarryNZCV(State &state, T lhs, T rhs, T actual_rhs, T carry) {
   auto unsigned_result = UAdd(UAdd(ZExt(lhs), ZExt(rhs)), ZExt(carry));
   auto signed_result = SAdd(SAdd(SExt(lhs), SExt(rhs)), Signed(ZExt(carry)));
   auto result = TruncTo<T>(unsigned_result);
-  FLAG_N = SignFlag(result);
-  FLAG_Z = ZeroFlag(result);
+  FLAG_N = SignFlag(result, lhs, actual_rhs);
+  FLAG_Z = ZeroFlag(result, lhs, actual_rhs);
   FLAG_C = UCmpNeq(ZExt(result), unsigned_result);
-  FLAG_V = SCmpNeq(SExt(result), signed_result);
+  FLAG_V = __remill_flag_computation_overflow(
+      SCmpNeq(SExt(result), signed_result), lhs, actual_rhs, result);
   return result;
 }
 
@@ -62,7 +63,7 @@ DEF_SEM(SUBS, D dst, S1 src1, S2 src2) {
   using T = typename BaseType<S2>::BT;
   auto lhs = Read(src1);
   auto rhs = Read(src2);
-  auto res = AddWithCarryNZCV(state, lhs, UNot(rhs), T(1));
+  auto res = AddWithCarryNZCV(state, lhs, UNot(rhs), rhs, T(1));
   WriteZExt(dst, res);
   return memory;
 }
@@ -72,7 +73,7 @@ DEF_SEM(ADDS, D dst, S1 src1, S2 src2) {
   using T = typename BaseType<S2>::BT;
   auto lhs = Read(src1);
   auto rhs = Read(src2);
-  auto res = AddWithCarryNZCV(state, lhs, rhs, T(0));
+  auto res = AddWithCarryNZCV(state, lhs, rhs, rhs, T(0));
   WriteZExt(dst, res);
   return memory;
 }
@@ -193,7 +194,8 @@ DEF_SEM(SBC, D dst, S src1, S src2) {
 template <typename D, typename S>
 DEF_SEM(SBCS, D dst, S src1, S src2) {
   auto carry = ZExtTo<S>(Unsigned(FLAG_C));
-  auto res = AddWithCarryNZCV(state, Read(src1), UNot(Read(src2)), carry);
+  auto res =
+      AddWithCarryNZCV(state, Read(src1), UNot(Read(src2)), Read(src2), carry);
   WriteZExt(dst, res);
   return memory;
 }
@@ -347,7 +349,7 @@ void FCompare(State &state, S val1, S val2, bool signal = true) {
       state.sr.ioc = true;
     }
 
-  // Regular float compare
+    // Regular float compare
   } else {
     if (FCmpEq(val1, val2)) {
 

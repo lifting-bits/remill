@@ -22,8 +22,8 @@ template <typename Tag, typename T>
 ALWAYS_INLINE static void WriteFlagsIncDec(State &state, T lhs, T rhs, T res) {
   FLAG_PF = ParityFlag(res);
   FLAG_AF = AuxCarryFlag(lhs, rhs, res);
-  FLAG_ZF = ZeroFlag(res);
-  FLAG_SF = SignFlag(res);
+  FLAG_ZF = ZeroFlag(res, lhs, rhs);
+  FLAG_SF = SignFlag(res, lhs, rhs);
   FLAG_OF = Overflow<Tag>::Flag(lhs, rhs, res);
 }
 
