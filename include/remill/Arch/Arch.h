@@ -311,9 +311,10 @@ class Arch {
   // Populate the table of register information.
   virtual void PopulateRegisterTable(void) const = 0;
 
-  // Populate the `__remill_basic_block` function with variables.
-  virtual void PopulateBasicBlockFunction(llvm::Module *module,
-                                          llvm::Function *bb_func) const = 0;
+  // Populate a just-initialized lifted function function with architecture-
+  // specific variables.
+  virtual void FinishLiftedFunctionInitialization(
+      llvm::Module *module, llvm::Function *bb_func) const = 0;
 
   llvm::Triple BasicTriple(void) const;
 

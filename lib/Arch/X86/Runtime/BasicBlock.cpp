@@ -44,11 +44,6 @@ extern CR3Reg gCR3;
 extern CR4Reg gCR4;
 extern CR8Reg gCR8;
 
-// Method that will implement a basic block. We will clone this method for
-// each basic block in the code being lifted.
-//
-// Note: `curr_pc` is first to make sure it's not optimized away.
-[[gnu::used]] Memory *__remill_basic_block(State &, addr_t, Memory *);
 #pragma clang diagnostic pop
 
 }  // extern C

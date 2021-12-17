@@ -381,7 +381,7 @@ bool Arch::IsSolaris(void) const {
 
 namespace {
 
-// These variables must always be defined within `__remill_basic_block`.
+// These variables must always be defined within any lifted function.
 static bool BlockHasSpecialVars(llvm::Function *basic_block) {
   return FindVarInFunction(basic_block, kStateVariableName, true) &&
          FindVarInFunction(basic_block, kMemoryVariableName, true) &&
@@ -708,7 +708,7 @@ void Arch::InitializeEmptyLiftedFunction(llvm::Function *func) const {
   ir.CreateAlloca(addr, nullptr, "MONITOR");
 
   // NOTE(pag): `PC` and `NEXT_PC` are handled by
-  //            `PopulateBasicBlockFunction`.
+  //            `FinishLiftedFunctionInitialization`.
 
   ir.CreateStore(state,
                  ir.CreateAlloca(llvm::PointerType::get(impl->state_type, 0),
@@ -716,7 +716,8 @@ void Arch::InitializeEmptyLiftedFunction(llvm::Function *func) const {
   ir.CreateStore(memory,
                  ir.CreateAlloca(impl->memory_type, nullptr, "MEMORY"));
 
-  PopulateBasicBlockFunction(module, func);
+  FinishLiftedFunctionInitialization(module, func);
+  CHECK(BlockHasSpecialVars(func));
 }
 
 void Arch::PrepareModule(llvm::Module *mod) const {
@@ -789,7 +790,8 @@ void Arch::InitFromSemanticsModule(llvm::Module *module) const {
   }
 
   const auto &dl = module->getDataLayout();
-  const auto basic_block = BasicBlockFunction(module);
+  const auto basic_block = module->getFunction("__remill_jump");
+  CHECK_NOTNULL(basic_block);
   const auto state_ptr_type =
       NthArgument(basic_block, kStatePointerArgNum)->getType();
   const auto state_type =

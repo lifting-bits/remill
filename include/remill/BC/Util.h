@@ -177,15 +177,6 @@ std::string FindSemanticsBitcodeFile(std::string_view arch);
 // Return a pointer to the Nth argument (N=0 is the first argument).
 llvm::Argument *NthArgument(llvm::Function *func, size_t index);
 
-// Returns a pointer to the `__remill_basic_block` function.
-llvm::Function *BasicBlockFunction(llvm::Module *module);
-
-// Return the type of a lifted function.
-//
-// NOTE(pag): Deprecated. Use `remill::Arch::LiftedFunctionType()` instead.
-llvm::FunctionType *LiftedFunctionType(llvm::Module *module)
-    __attribute__((deprecated));
-
 // Return a vector of arguments to pass to a lifted function, where the
 // arguments are derived from `block`.
 std::array<llvm::Value *, kNumBlockArgs>

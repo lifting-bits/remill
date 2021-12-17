@@ -689,9 +689,7 @@ static_assert(96 == sizeof(AddressSpace),
 
 // Named the same way as the 64-bit version to keep names the same
 // across architectures. All registers are here, even the 64-bit ones. The
-// 64-bit ones are inaccessible in lifted 32-bit code because they will
-// not be referenced by named variables in the `__remill_basic_block`
-// function.
+// 64-bit ones are not used in lifted 32-bit code.
 struct alignas(8) GPR final {
 
   // Prevents LLVM from casting a `GPR` into an `i64` to access `rax`.

@@ -137,9 +137,10 @@ class AArch64Arch final : public Arch {
   // Populate the table of register information.
   void PopulateRegisterTable(void) const final;
 
-  // Populate the `__remill_basic_block` function with variables.
-  void PopulateBasicBlockFunction(llvm::Module *module,
-                                  llvm::Function *bb_func) const final;
+  // Populate a just-initialized lifted function function with architecture-
+  // specific variables.
+  void FinishLiftedFunctionInitialization(
+      llvm::Module *module, llvm::Function *bb_func) const final;
 
  private:
   AArch64Arch(void) = delete;
@@ -458,9 +459,10 @@ void AArch64Arch::PopulateRegisterTable(void) const {
   REG(TPIDRRO_EL0, sr.tpidrro_el0.qword, u64);
 }
 
-// Populate the `__remill_basic_block` function with variables.
-void AArch64Arch::PopulateBasicBlockFunction(llvm::Module *module,
-                                             llvm::Function *bb_func) const {
+// Populate a just-initialized lifted function function with architecture-
+// specific variables.
+void AArch64Arch::FinishLiftedFunctionInitialization(
+    llvm::Module *module, llvm::Function *bb_func) const {
 
   auto &context = module->getContext();
   auto u32 = llvm::Type::getInt32Ty(context);

@@ -169,9 +169,10 @@ class SPARC32Arch final : public Arch {
   // Populate the table of register information.
   void PopulateRegisterTable(void) const final;
 
-  // Populate the `__remill_basic_block` function with variables.
-  void PopulateBasicBlockFunction(llvm::Module *module,
-                                  llvm::Function *bb_func) const override;
+  // Populate a just-initialized lifted function function with architecture-
+  // specific variables.
+  void FinishLiftedFunctionInitialization(
+      llvm::Module *module, llvm::Function *bb_func) const override;
 
   llvm::Triple Triple(void) const final;
   llvm::DataLayout DataLayout(void) const final;
@@ -375,9 +376,11 @@ void SPARC32Arch::PopulateRegisterTable(void) const {
 }
 
 
-// Populate the `__remill_basic_block` function with variables.
-void SPARC32Arch::PopulateBasicBlockFunction(llvm::Module *module,
-                                             llvm::Function *bb_func) const {
+// Populate a just-initialized lifted function function with architecture-
+// specific variables.
+void SPARC32Arch::FinishLiftedFunctionInitialization(
+    llvm::Module *module, llvm::Function *bb_func) const {
+
   auto &context = module->getContext();
   auto u8 = llvm::Type::getInt8Ty(context);
   auto u32 = llvm::Type::getInt32Ty(context);

@@ -818,9 +818,10 @@ class X86Arch final : public Arch {
   // Populate the table of register information.
   void PopulateRegisterTable(void) const final;
 
-  // Populate the `__remill_basic_block` function with variables.
-  void PopulateBasicBlockFunction(llvm::Module *module,
-                                  llvm::Function *bb_func) const final;
+  // Populate a just-initialized lifted function function with architecture-
+  // specific variables.
+  void FinishLiftedFunctionInitialization(
+      llvm::Module *module, llvm::Function *bb_func) const final;
 
  private:
   X86Arch(void) = delete;
@@ -1728,9 +1729,10 @@ void X86Arch::PopulateRegisterTable(void) const {
   //#endif
 }
 
-// Populate the `__remill_basic_block` function with variables.
-void X86Arch::PopulateBasicBlockFunction(llvm::Module *module,
-                                         llvm::Function *bb_func) const {
+// Populate a just-initialized lifted function function with architecture-
+// specific variables.
+void X86Arch::FinishLiftedFunctionInitialization(
+    llvm::Module *module, llvm::Function *bb_func) const {
   const auto &dl = module->getDataLayout();
   CHECK_EQ(sizeof(State), dl.getTypeAllocSize(StateStructType()))
       << "Mismatch between size of State type for x86/amd64 and what is in "

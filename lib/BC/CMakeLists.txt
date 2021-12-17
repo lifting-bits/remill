@@ -15,7 +15,6 @@
 add_library(remill_bc STATIC
   "${REMILL_INCLUDE_DIR}/remill/BC/ABI.h"
   "${REMILL_INCLUDE_DIR}/remill/BC/Annotate.h"
-  "${REMILL_INCLUDE_DIR}/remill/BC/DeadStoreEliminator.h"
   "${REMILL_INCLUDE_DIR}/remill/BC/InstructionLifter.h"
   "${REMILL_INCLUDE_DIR}/remill/BC/IntrinsicTable.h"
   "${REMILL_INCLUDE_DIR}/remill/BC/Lifter.h"
@@ -26,7 +25,6 @@ add_library(remill_bc STATIC
 
   ABI.cpp
   Annotate.cpp
-  DeadStoreEliminator.cpp
   InstructionLifter.cpp
   InstructionLifter.h
   IntrinsicTable.cpp
