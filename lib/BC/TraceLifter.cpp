@@ -260,11 +260,13 @@ bool TraceLifter::Impl::Lift(
       return trace;
     }
 
-    if (trace_work_list.count(addr)) {
-      return arch->DeclareLiftedFunction(manager.TraceName(trace_addr), module);
+    auto name = manager.TraceName(trace_addr);
+    if (auto trace = module->getFunction(name)) {
+      return trace;
     }
 
-    return nullptr;
+    trace_work_list.insert(addr);
+    return arch->DeclareLiftedFunction(name, module);
   };
 
   trace_work_list.insert(addr);
