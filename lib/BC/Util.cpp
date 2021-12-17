@@ -648,29 +648,6 @@ llvm::Function *DeclareLiftedFunction(llvm::Module *module,
   return func;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-
-// Returns the type of a state pointer.
-llvm::PointerType *StatePointerType(llvm::Module *module) {
-  return llvm::dyn_cast<llvm::PointerType>(
-      LiftedFunctionType(module)->getParamType(kStatePointerArgNum));
-}
-
-// Returns the type of a state pointer.
-llvm::PointerType *MemoryPointerType(llvm::Module *module) {
-  return llvm::dyn_cast<llvm::PointerType>(
-      LiftedFunctionType(module)->getParamType(kMemoryPointerArgNum));
-}
-
-// Returns the type of an address (addr_t in the State.h).
-llvm::IntegerType *AddressType(llvm::Module *module) {
-  return llvm::dyn_cast<llvm::IntegerType>(
-      LiftedFunctionType(module)->getParamType(kPCArgNum));
-}
-
-#pragma GCC diagnostic pop
-
 // Clone function `source_func` into `dest_func`. This will strip out debug
 // info during the clone.
 void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
@@ -689,24 +666,6 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
            dest_func->getFunctionType());
 
   CloneFunctionInto(source_func, dest_func, value_map, type_map, md_map);
-}
-
-// Make `func` a clone of the `__remill_basic_block` function.
-void CloneBlockFunctionInto(llvm::Function *func) {
-  auto bb_func = BasicBlockFunction(func->getParent());
-  CHECK(remill::FindVarInFunction(bb_func, kMemoryVariableName) != nullptr);
-
-  CloneFunctionInto(bb_func, func);
-
-  // Remove the `return` in `__remill_basic_block`.
-  auto &entry = func->front();
-  auto term = entry.getTerminator();
-  CHECK(llvm::isa<llvm::ReturnInst>(term));
-
-  term->eraseFromParent();
-  func->removeFnAttr(llvm::Attribute::OptimizeNone);
-
-  CHECK(remill::FindVarInFunction(func, kMemoryVariableName) != nullptr);
 }
 
 // Returns a list of callers of a specific function.

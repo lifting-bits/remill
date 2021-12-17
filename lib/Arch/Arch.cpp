@@ -652,6 +652,73 @@ void Arch::PrepareModuleDataLayout(llvm::Module *mod) const {
   }
 }
 
+// Create a lifted function declaration with name `name` inside of `module`.
+//
+// NOTE(pag): This should be called after `PrepareModule` and after the
+//            semantics have been loaded.
+llvm::Function *Arch::DeclareLiftedFunction(std::string_view name_,
+                                            llvm::Module *module) const {
+  auto &context = module->getContext();
+  auto func_type = llvm::dyn_cast<llvm::FunctionType>(
+      RecontextualizeType(LiftedFunctionType(), context));
+  llvm::StringRef name(name_.data(), name_.size());
+  auto func = llvm::Function::Create(
+      func_type, llvm::GlobalValue::ExternalLinkage, 0u, name, module);
+
+  auto memory = remill::NthArgument(func, kMemoryPointerArgNum);
+  auto state = remill::NthArgument(func, kStatePointerArgNum);
+  auto pc = remill::NthArgument(func, kPCArgNum);
+  memory->setName("memory");
+  state->setName("state");
+  pc->setName("program_counter");
+
+  AddNoAliasToArgument(state);
+  AddNoAliasToArgument(memory);
+
+  return func;
+}
+
+// Create a lifted function with name `name` inside of `module`.
+//
+// NOTE(pag): This should be called after `PrepareModule` and after the
+//            semantics have been loaded.
+llvm::Function *Arch::DefineLiftedFunction(std::string_view name_,
+                                           llvm::Module *module) const {
+  auto func = DeclareLiftedFunction(name_, module);
+  InitializeEmptyLiftedFunction(func);
+  InitFunctionAttributes(func);
+  return func;
+}
+
+// Initialize an empty lifted function with the default variables that it
+// should contain.
+void Arch::InitializeEmptyLiftedFunction(llvm::Function *func) const {
+  CHECK(func->isDeclaration());
+  auto module = func->getParent();
+  auto &context = module->getContext();
+  auto block = llvm::BasicBlock::Create(context, "", func);
+  auto u8 = llvm::Type::getInt8Ty(context);
+  auto addr = llvm::Type::getIntNTy(context, address_size);
+  auto memory = remill::NthArgument(func, kMemoryPointerArgNum);
+  auto state = remill::NthArgument(func, kStatePointerArgNum);
+
+  llvm::IRBuilder<> ir(block);
+  ir.CreateAlloca(u8, nullptr, "BRANCH_TAKEN");
+  ir.CreateAlloca(addr, nullptr, "RETURN_PC");
+  ir.CreateAlloca(addr, nullptr, "MONITOR");
+
+  // NOTE(pag): `PC` and `NEXT_PC` are handled by
+  //            `PopulateBasicBlockFunction`.
+
+  ir.CreateStore(state,
+                 ir.CreateAlloca(llvm::PointerType::get(impl->state_type, 0),
+                                 nullptr, "STATE"));
+  ir.CreateStore(memory,
+                 ir.CreateAlloca(impl->memory_type, nullptr, "MEMORY"));
+
+  PopulateBasicBlockFunction(module, func);
+}
+
 void Arch::PrepareModule(llvm::Module *mod) const {
   PrepareModuleDataLayout(mod);
 }
@@ -735,55 +802,7 @@ void Arch::InitFromSemanticsModule(llvm::Module *module) const {
   impl->lifted_function_type = basic_block->getFunctionType();
   impl->reg_md_id = context->getMDKindID("remill_register");
 
-  if (basic_block->isDeclaration()) {
-    basic_block->setLinkage(llvm::GlobalValue::ExternalLinkage);
-    basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
-    basic_block->removeFnAttr(llvm::Attribute::AlwaysInline);
-    basic_block->removeFnAttr(llvm::Attribute::InlineHint);
-    basic_block->addFnAttr(llvm::Attribute::OptimizeNone);
-    basic_block->addFnAttr(llvm::Attribute::NoInline);
-    basic_block->setVisibility(llvm::GlobalValue::DefaultVisibility);
-
-    auto memory = remill::NthArgument(basic_block, kMemoryPointerArgNum);
-    auto state = remill::NthArgument(basic_block, kStatePointerArgNum);
-
-    memory->setName("memory");
-    state->setName("state");
-    remill::NthArgument(basic_block, kPCArgNum)->setName("pc");
-
-    AddNoAliasToArgument(state);
-    AddNoAliasToArgument(memory);
-
-    auto block =
-        llvm::BasicBlock::Create(module->getContext(), "", basic_block);
-    auto u8 = llvm::Type::getInt8Ty(*context);
-    auto addr = llvm::Type::getIntNTy(*context, address_size);
-    llvm::IRBuilder<> ir(block);
-
-    ir.CreateAlloca(u8, nullptr, "BRANCH_TAKEN");
-    ir.CreateAlloca(addr, nullptr, "RETURN_PC");
-    ir.CreateAlloca(addr, nullptr, "MONITOR");
-
-    // NOTE(pag): `PC` and `NEXT_PC` are handled by
-    //            `PopulateBasicBlockFunction`.
-
-    ir.CreateStore(state,
-                   ir.CreateAlloca(llvm::PointerType::get(impl->state_type, 0),
-                                   nullptr, "STATE"));
-    ir.CreateStore(memory,
-                   ir.CreateAlloca(impl->memory_type, nullptr, "MEMORY"));
-
-    PopulateBasicBlockFunction(module, basic_block);
-
-    ir.SetInsertPoint(block);
-    ir.CreateRet(memory);
-
-  } else {
-    CHECK(!impl->reg_by_name.empty());
-  }
-
-  CHECK(BlockHasSpecialVars(basic_block))
-      << "Unable to locate required variables in `__remill_basic_block`.";
+  CHECK(!impl->reg_by_name.empty());
 }
 
 }  // namespace remill

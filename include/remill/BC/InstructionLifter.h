@@ -89,8 +89,6 @@ class InstructionLifter {
   void ClearCache(void) const;
 
  protected:
-  friend class TraceLifter;
-
   // Lift an operand to an instruction.
   virtual llvm::Value *LiftOperand(Instruction &inst, llvm::BasicBlock *block,
                                    llvm::Value *state_ptr, llvm::Argument *arg,
@@ -136,6 +134,8 @@ class InstructionLifter {
                        std::string_view reg_name, llvm::ConstantInt *zero);
 
  private:
+  friend class TraceLifter;
+
   InstructionLifter(const InstructionLifter &) = delete;
   InstructionLifter(InstructionLifter &&) noexcept = delete;
   InstructionLifter(void) = delete;

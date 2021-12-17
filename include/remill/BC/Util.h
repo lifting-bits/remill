@@ -200,28 +200,6 @@ using ISelCallback =
     std::function<void(llvm::GlobalVariable *, llvm::Function *)>;
 void ForEachISel(llvm::Module *module, ISelCallback callback);
 
-// Declare a lifted function of the correct type.
-llvm::Function *DeclareLiftedFunction(llvm::Module *module,
-                                      std::string_view name);
-
-// Returns the type of a state pointer.
-//
-// NOTE(pag): Deprecated. Use `remill::Arch::StatePointerType()` instead.
-llvm::PointerType *StatePointerType(llvm::Module *module)
-    __attribute__((deprecated));
-
-// Returns the type of a state pointer.
-//
-// NOTE(pag): Deprecated. Use `remill::Arch::MemoryPointerType()` instead.
-llvm::PointerType *MemoryPointerType(llvm::Module *module)
-    __attribute__((deprecated));
-
-// Returns the type of an address (addr_t in the State.h).
-//
-// NOTE(pag): Deprecated. Use `remill::Arch::AddressType()` instead.
-llvm::IntegerType *AddressType(llvm::Module *module)
-    __attribute__((deprecated));
-
 using ValueMap = std::unordered_map<llvm::Value *, llvm::Value *>;
 using TypeMap = std::unordered_map<llvm::Type *, llvm::Type *>;
 using MDMap = std::unordered_map<llvm::Metadata *, llvm::Metadata *>;
@@ -241,9 +219,6 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
 // Note: this will try to clone globals referenced from the module of
 //       `source_func` into the module of `dest_func`.
 void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func);
-
-// Make `func` a clone of the `__remill_basic_block` function.
-void CloneBlockFunctionInto(llvm::Function *func);
 
 // Returns a list of callers of a specific function.
 std::vector<llvm::CallInst *> CallersOf(llvm::Function *func);
