@@ -22,7 +22,6 @@
 #include "InstructionLifter.h"
 
 namespace remill {
-namespace {}  // namespace
 
 TraceManager::~TraceManager(void) {}
 
@@ -256,17 +255,14 @@ bool TraceLifter::Impl::Lift(
 
   // Get a trace head that the manager knows about, or that we
   // will eventually tell the trace manager about.
-  auto get_trace_decl = [=](uint64_t addr) -> llvm::Function * {
-    if (auto trace = GetLiftedTraceDeclaration(addr)) {
+  auto get_trace_decl = [=](uint64_t trace_addr) -> llvm::Function * {
+    if (auto trace = GetLiftedTraceDeclaration(trace_addr)) {
       return trace;
+    } else if (trace_work_list.count(trace_addr)) {
+      return arch->DeclareLiftedFunction(manager.TraceName(trace_addr), module);
+    } else {
+      return nullptr;
     }
-
-    if (trace_work_list.count(addr)) {
-      const auto target_trace_name = manager.TraceName(addr);
-      return DeclareLiftedFunction(module, target_trace_name);
-    }
-
-    return nullptr;
   };
 
   trace_work_list.insert(addr);
@@ -284,10 +280,9 @@ bool TraceLifter::Impl::Lift(
 
     func = get_trace_decl(trace_addr);
     blocks.clear();
-
+    
     if (!func || !func->isDeclaration()) {
-      const auto trace_name = manager.TraceName(trace_addr);
-      func = DeclareLiftedFunction(module, trace_name);
+      func = arch->DeclareLiftedFunction(manager.TraceName(trace_addr), module);
     }
 
     CHECK(func->isDeclaration());
@@ -295,7 +290,8 @@ bool TraceLifter::Impl::Lift(
     // Fill in the function, and make sure the block with all register
     // variables jumps to the block that will contain the first instruction
     // of the trace.
-    CloneBlockFunctionInto(func);
+    arch->InitializeEmptyLiftedFunction(func);
+
     auto state_ptr = NthArgument(func, kStatePointerArgNum);
 
     if (auto entry_block = &(func->front())) {

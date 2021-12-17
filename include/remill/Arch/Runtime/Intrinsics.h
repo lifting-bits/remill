@@ -21,10 +21,6 @@
 
 extern "C" {
 
-// The basic block "template".
-[[gnu::used]] Memory *__remill_basic_block(State &state, addr_t pc,
-                                           Memory *memory);
-
 // Memory read intrinsics.
 [[gnu::used, gnu::const]] extern uint8_t __remill_read_memory_8(Memory *,
                                                                 addr_t);

@@ -582,18 +582,6 @@ llvm::Argument *NthArgument(llvm::Function *func, size_t index) {
   return &*it;
 }
 
-// Returns a pointer to the `__remill_basic_block` function.
-llvm::Function *BasicBlockFunction(llvm::Module *module) {
-  auto bb = module->getFunction("__remill_basic_block");
-  CHECK(nullptr != bb);
-  return bb;
-}
-
-// Return the type of a lifted function.
-llvm::FunctionType *LiftedFunctionType(llvm::Module *module) {
-  return BasicBlockFunction(module)->getFunctionType();
-}
-
 // Return a vector of arguments to pass to a lifted function, where the
 // arguments are derived from `block`.
 std::array<llvm::Value *, kNumBlockArgs>
@@ -631,46 +619,6 @@ void ForEachISel(llvm::Module *module, ISelCallback callback) {
   }
 }
 
-// Declare a lifted function of the correct type.
-llvm::Function *DeclareLiftedFunction(llvm::Module *module,
-                                      std::string_view name_) {
-  llvm::StringRef name(name_.data(), name_.size());
-  auto func = module->getFunction(name);
-  if (!func) {
-    auto bb = BasicBlockFunction(module);
-    auto func_type = bb->getFunctionType();
-    llvm::StringRef name_str(name.data(), name.size());
-    func = llvm::Function::Create(func_type, llvm::GlobalValue::InternalLinkage,
-                                  name_str, module);
-    InitFunctionAttributes(func);
-  }
-
-  return func;
-}
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-
-// Returns the type of a state pointer.
-llvm::PointerType *StatePointerType(llvm::Module *module) {
-  return llvm::dyn_cast<llvm::PointerType>(
-      LiftedFunctionType(module)->getParamType(kStatePointerArgNum));
-}
-
-// Returns the type of a state pointer.
-llvm::PointerType *MemoryPointerType(llvm::Module *module) {
-  return llvm::dyn_cast<llvm::PointerType>(
-      LiftedFunctionType(module)->getParamType(kMemoryPointerArgNum));
-}
-
-// Returns the type of an address (addr_t in the State.h).
-llvm::IntegerType *AddressType(llvm::Module *module) {
-  return llvm::dyn_cast<llvm::IntegerType>(
-      LiftedFunctionType(module)->getParamType(kPCArgNum));
-}
-
-#pragma GCC diagnostic pop
-
 // Clone function `source_func` into `dest_func`. This will strip out debug
 // info during the clone.
 void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
@@ -689,24 +637,6 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func) {
            dest_func->getFunctionType());
 
   CloneFunctionInto(source_func, dest_func, value_map, type_map, md_map);
-}
-
-// Make `func` a clone of the `__remill_basic_block` function.
-void CloneBlockFunctionInto(llvm::Function *func) {
-  auto bb_func = BasicBlockFunction(func->getParent());
-  CHECK(remill::FindVarInFunction(bb_func, kMemoryVariableName) != nullptr);
-
-  CloneFunctionInto(bb_func, func);
-
-  // Remove the `return` in `__remill_basic_block`.
-  auto &entry = func->front();
-  auto term = entry.getTerminator();
-  CHECK(llvm::isa<llvm::ReturnInst>(term));
-
-  term->eraseFromParent();
-  func->removeFnAttr(llvm::Attribute::OptimizeNone);
-
-  CHECK(remill::FindVarInFunction(func, kMemoryVariableName) != nullptr);
 }
 
 // Returns a list of callers of a specific function.
@@ -1658,7 +1588,7 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
   auto &source_context = source_mod->getContext();
   auto &dest_context = dest_func->getContext();
 
-  // Make sure that when we're cloning `__remill_basic_block`, we don't
+  // Make sure that when we're cloning functions that we don't
   // throw away register names and such.
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
   dest_func->getContext().setDiscardValueNames(false);

@@ -46,7 +46,6 @@ struct OptimizationGuide {
   bool loop_vectorize;
   bool verify_input;
   bool verify_output;
-  bool eliminate_dead_stores;
 };
 
 template <typename T>
@@ -165,11 +164,8 @@ inline static void OptimizeModule(const remill::Arch *arch,
   return OptimizeModule(arch, module, trace_func_gen, guide);
 }
 
-// Optimize a normal module. This might not contain special functions
-// like `__remill_basic_block`.
-//
-// NOTE(pag): It is an error to specify `guide.eliminate_dead_stores` as
-//            `true`.
+// Optimize a normal module. This might not contain special Remill-specific
+// intrinsics functions like `__remill_jump`, etc.
 void OptimizeBareModule(llvm::Module *module, OptimizationGuide guide = {});
 
 inline static void

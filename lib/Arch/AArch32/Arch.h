@@ -50,9 +50,10 @@ class AArch32Arch final : public Arch {
   // Populate the table of register information.
   void PopulateRegisterTable(void) const final;
 
-  // Populate the `__remill_basic_block` function with variables.
-  void PopulateBasicBlockFunction(llvm::Module *module,
-                                  llvm::Function *bb_func) const final;
+  // Populate a just-initialized lifted function function with architecture-
+  // specific variables.
+  void FinishLiftedFunctionInitialization(
+      llvm::Module *module, llvm::Function *bb_func) const final;
 
  private:
   AArch32Arch(void) = delete;

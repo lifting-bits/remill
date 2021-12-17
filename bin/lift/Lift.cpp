@@ -270,7 +270,6 @@ int main(int argc, char *argv[]) {
   // Optimize the module, but with a particular focus on only the functions
   // that we actually lifted.
   remill::OptimizationGuide guide = {};
-  guide.eliminate_dead_stores = true;
   remill::OptimizeModule(arch, module, manager.traces, guide);
 
   // Create a new module in which we will move all the lifted functions. Prepare
@@ -422,7 +421,6 @@ int main(int argc, char *argv[]) {
 
     guide.slp_vectorize = true;
     guide.loop_vectorize = true;
-    guide.eliminate_dead_stores = false;
     remill::OptimizeBareModule(&dest_module, guide);
   }
 

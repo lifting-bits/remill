@@ -177,15 +177,6 @@ std::string FindSemanticsBitcodeFile(std::string_view arch);
 // Return a pointer to the Nth argument (N=0 is the first argument).
 llvm::Argument *NthArgument(llvm::Function *func, size_t index);
 
-// Returns a pointer to the `__remill_basic_block` function.
-llvm::Function *BasicBlockFunction(llvm::Module *module);
-
-// Return the type of a lifted function.
-//
-// NOTE(pag): Deprecated. Use `remill::Arch::LiftedFunctionType()` instead.
-llvm::FunctionType *LiftedFunctionType(llvm::Module *module)
-    __attribute__((deprecated));
-
 // Return a vector of arguments to pass to a lifted function, where the
 // arguments are derived from `block`.
 std::array<llvm::Value *, kNumBlockArgs>
@@ -199,28 +190,6 @@ std::string LLVMThingToString(llvm::Type *thing);
 using ISelCallback =
     std::function<void(llvm::GlobalVariable *, llvm::Function *)>;
 void ForEachISel(llvm::Module *module, ISelCallback callback);
-
-// Declare a lifted function of the correct type.
-llvm::Function *DeclareLiftedFunction(llvm::Module *module,
-                                      std::string_view name);
-
-// Returns the type of a state pointer.
-//
-// NOTE(pag): Deprecated. Use `remill::Arch::StatePointerType()` instead.
-llvm::PointerType *StatePointerType(llvm::Module *module)
-    __attribute__((deprecated));
-
-// Returns the type of a state pointer.
-//
-// NOTE(pag): Deprecated. Use `remill::Arch::MemoryPointerType()` instead.
-llvm::PointerType *MemoryPointerType(llvm::Module *module)
-    __attribute__((deprecated));
-
-// Returns the type of an address (addr_t in the State.h).
-//
-// NOTE(pag): Deprecated. Use `remill::Arch::AddressType()` instead.
-llvm::IntegerType *AddressType(llvm::Module *module)
-    __attribute__((deprecated));
 
 using ValueMap = std::unordered_map<llvm::Value *, llvm::Value *>;
 using TypeMap = std::unordered_map<llvm::Type *, llvm::Type *>;
@@ -241,9 +210,6 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
 // Note: this will try to clone globals referenced from the module of
 //       `source_func` into the module of `dest_func`.
 void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func);
-
-// Make `func` a clone of the `__remill_basic_block` function.
-void CloneBlockFunctionInto(llvm::Function *func);
 
 // Returns a list of callers of a specific function.
 std::vector<llvm::CallInst *> CallersOf(llvm::Function *func);

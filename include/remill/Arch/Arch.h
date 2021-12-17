@@ -175,9 +175,27 @@ class Arch {
   // Returns the name of the program counter register.
   virtual std::string_view ProgramCounterRegisterName(void) const = 0;
 
+  // Create a lifted function declaration with name `name` inside of `module`.
+  //
+  // NOTE(pag): This should be called after `PrepareModule` and after the
+  //            semantics have been loaded.
+  llvm::Function *DeclareLiftedFunction(std::string_view name,
+                                        llvm::Module *module) const;
+
+  // Create a lifted function with name `name` inside of `module`.
+  //
+  // NOTE(pag): This should be called after `PrepareModule` and after the
+  //            semantics have been loaded.
+  llvm::Function *DefineLiftedFunction(std::string_view name,
+                                       llvm::Module *module) const;
+
+  // Initialize an empty lifted function with the default variables that it
+  // should contain.
+  void InitializeEmptyLiftedFunction(llvm::Function *func) const;
+
   // Converts an LLVM module object to have the right triple / data layout
-  // information for the target architecture and ensures remill required functions
-  // have the appropriate prototype and internal variables
+  // information for the target architecture and ensures remill required
+  // functions have the appropriate prototype and internal variables
   void PrepareModule(llvm::Module *mod) const;
 
   // Get the state pointer and various other types from the `llvm::LLVMContext`
@@ -293,9 +311,10 @@ class Arch {
   // Populate the table of register information.
   virtual void PopulateRegisterTable(void) const = 0;
 
-  // Populate the `__remill_basic_block` function with variables.
-  virtual void PopulateBasicBlockFunction(llvm::Module *module,
-                                          llvm::Function *bb_func) const = 0;
+  // Populate a just-initialized lifted function function with architecture-
+  // specific variables.
+  virtual void FinishLiftedFunctionInitialization(
+      llvm::Module *module, llvm::Function *bb_func) const = 0;
 
   llvm::Triple BasicTriple(void) const;
 

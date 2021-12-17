@@ -39,7 +39,6 @@
 #include "remill/Arch/Arch.h"
 #include "remill/BC/Compat/ScalarTransforms.h"
 #include "remill/BC/Compat/TargetLibraryInfo.h"
-#include "remill/BC/DeadStoreEliminator.h"
 #include "remill/BC/Util.h"
 
 namespace remill {
@@ -47,9 +46,6 @@ namespace remill {
 void OptimizeModule(const remill::Arch *arch, llvm::Module *module,
                     std::function<llvm::Function *(void)> generator,
                     OptimizationGuide guide) {
-
-  auto bb_func = BasicBlockFunction(module);
-  auto slots = StateSlots(arch, module);
 
   llvm::legacy::FunctionPassManager func_manager(module);
   llvm::legacy::PassManager module_manager;
@@ -84,19 +80,11 @@ void OptimizeModule(const remill::Arch *arch, llvm::Module *module,
   }
   func_manager.doFinalization();
   module_manager.run(*module);
-
-  if (guide.eliminate_dead_stores) {
-    RemoveDeadStores(arch, module, bb_func, slots);
-  }
 }
 
-// Optimize a normal module. This might not contain special functions
-// like `__remill_basic_block`.
-//
-// NOTE(pag): It is an error to specify `guide.eliminate_dead_stores` as
-//            `true`.
+// Optimize a normal module. This might not contain special Remill-specific
+// intrinsics functions like `__remill_jump`, etc.
 void OptimizeBareModule(llvm::Module *module, OptimizationGuide guide) {
-  CHECK(!guide.eliminate_dead_stores);
   llvm::legacy::FunctionPassManager func_manager(module);
   llvm::legacy::PassManager module_manager;
 

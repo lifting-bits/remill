@@ -20,10 +20,3 @@
 
 #include "remill/Arch/Runtime/Float.h"
 #include "remill/Arch/SPARC32/Runtime/State.h"
-
-extern "C" {
-
-// Instructions will be lifted into clones of this function.
-[[gnu::used]] Memory *__remill_basic_block(State &, addr_t, Memory *);
-
-}  // extern C
