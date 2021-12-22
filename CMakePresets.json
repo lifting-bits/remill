@@ -1,0 +1,172 @@
+{
+	"version": 3,
+	"cmakeMinimumRequired": {
+		"major": 3,
+		"minor": 19,
+		"patch": 0
+	},
+	"configurePresets": [
+		{
+			"name": "debug-flags",
+			"hidden": true,
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Debug",
+				"CMAKE_C_FLAGS": "-fno-omit-frame-pointer -fno-optimize-sibling-calls -gfull -O0",
+				"CMAKE_CXX_FLAGS": "-fno-omit-frame-pointer -fno-optimize-sibling-calls -gfull -O0"
+			},
+      "environment": {
+        "VCPKG_SUFFIX": ""
+      }
+		},
+		{
+			"name": "release-flags",
+			"hidden": true,
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release"
+			},
+      "environment": {
+        "VCPKG_SUFFIX": "-rel"
+      }
+		},
+    {
+      "name": "arm64",
+      "hidden": true,
+      "environment": {
+        "VCPKG_ARCH": "arm64"
+      },
+      "architecture": {
+        "value": "arm64",
+        "strategy": "external"
+      }
+    },
+    {
+      "name": "x86_64",
+      "hidden": true,
+      "environment": {
+        "VCPKG_ARCH": "x64"
+      },
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      }
+    },
+		{
+			"name": "linux",
+			"hidden": true,
+			"cacheVariables": {
+				"CMAKE_C_COMPILER": "$env{VCPKG_ROOT}/installed/x64-linux$env{VCPKG_SUFFIX}/tools/llvm/clang",
+				"CMAKE_CXX_COMPILER": "$env{VCPKG_ROOT}/installed/x64-linux$env{VCPKG_SUFFIX}/tools/llvm/clang++"
+			},
+      "environment": {
+        "VCPKG_TARGET": "$env{VCPKG_ARCH}-linux"
+      },
+			"condition": {
+				"type": "equals",
+				"lhs": "Linux",
+				"rhs": "${hostSystemName}"
+			}
+		},
+		{
+			"name": "macos",
+			"hidden": true,
+			"cacheVariables": {
+				"CMAKE_C_COMPILER": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang",
+				"CMAKE_CXX_COMPILER": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++"
+			},
+      "environment": {
+        "VCPKG_TARGET": "$env{VCPKG_ARCH}-osx"
+      },
+			"condition": {
+				"type": "equals",
+				"lhs": "Darwin",
+				"rhs": "${hostSystemName}"
+			}
+		},
+		{
+			"name": "vcpkg-debug",
+      "hidden": true,
+			"inherits": ["debug-flags", "linux", "macos"],
+			"binaryDir": "$env{INSTALL_DIR}/build/remill",
+			"generator": "Ninja",
+			"cacheVariables": {
+				"VCPKG_TARGET_TRIPLET": "$env{VCPKG_TARGET}$env{VCPKG_SUFFIX}",
+				"VCPKG_ROOT": "$env{VCPKG_ROOT}",
+				"CMAKE_INSTALL_PREFIX": "$env{INSTALL_DIR}"
+			}
+		},
+		{
+			"name": "vcpkg-release",
+      "hidden": true,
+			"inherits": ["release-flags", "linux", "macos"],
+			"binaryDir": "$env{INSTALL_DIR}/build/remill",
+			"generator": "Ninja",
+			"cacheVariables": {
+				"VCPKG_TARGET_TRIPLET": "$env{VCPKG_TARGET}$env{VCPKG_SUFFIX}",
+				"VCPKG_ROOT": "$env{VCPKG_ROOT}",
+				"CMAKE_INSTALL_PREFIX": "$env{INSTALL_DIR}"
+			}
+		},
+		{
+			"name": "vcpkg-debug-x64",
+			"inherits": ["vcpkg-debug", "x86_64"],
+			"displayName": "Debug Build (vcpkg) (x64)",
+			"description": "Build a Debug version against a VCPKG installation. Define 'VCPKG_ROOT' and 'INSTALL_DIR' env vars!"
+		},
+		{
+			"name": "vcpkg-release-x64",
+			"inherits": ["vcpkg-release", "x86_64"],
+			"displayName": "Release Build (vcpkg) (x64)",
+			"description": "Build a Release version against a VCPKG installation. Define 'VCPKG_ROOT' and 'INSTALL_DIR' env vars!"
+		},
+		{
+			"name": "vcpkg-debug-arm64",
+			"inherits": ["vcpkg-debug", "arm64"],
+			"displayName": "Debug Build (vcpkg) (arm64)",
+			"description": "Build a Debug version against a VCPKG installation. Define 'VCPKG_ROOT' and 'INSTALL_DIR' env vars!"
+		},
+		{
+			"name": "vcpkg-release-arm64",
+			"inherits": ["vcpkg-release", "arm64"],
+			"displayName": "Release Build (vcpkg) (arm64)",
+			"description": "Build a Release version against a VCPKG installation. Define 'VCPKG_ROOT' and 'INSTALL_DIR' env vars!"
+		}
+	],
+	"buildPresets": [
+    {
+      "name": "build-base-debug",
+      "hidden": true,
+			"description": "Build in Debug mode",
+			"configuration": "Debug"
+    },
+    {
+      "name": "build-base-release",
+      "hidden": true,
+			"description": "Build in Release mode",
+			"configuration": "Release"
+    },
+		{
+			"name": "debug-x64",
+			"configurePreset": "vcpkg-debug-x64",
+			"displayName": "Build (debug) (x64)",
+      "inherits": ["build-base-debug"]
+		},
+		{
+			"name": "release-x64",
+			"configurePreset": "vcpkg-release-x64",
+			"displayName": "Build (release) (x64)",
+      "inherits": ["build-base-release"]
+		},
+		{
+			"name": "debug-arm64",
+			"configurePreset": "vcpkg-debug-arm64",
+			"displayName": "Build (debug) (arm64)",
+      "inherits": ["build-base-debug"]
+		},
+		{
+			"name": "release-arm64",
+			"configurePreset": "vcpkg-release-arm64",
+			"displayName": "Build (release) (arm64)",
+      "inherits": ["build-base-release"]
+		}
+	]
+}
