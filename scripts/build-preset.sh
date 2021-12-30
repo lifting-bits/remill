@@ -8,7 +8,7 @@ rm -f ${BUILDLOG} ${CONFIGLOG}
 BUILD_TYPE=dbg
 VCPKG_SUFFIX="-rel"
 
-set -eo pipefail
+set -o pipefail
 
 function sanity_check {
 	if [ -z "${VCPKG_ROOT}" ]; then

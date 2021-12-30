@@ -113,7 +113,7 @@ jobs:
       - name: Build with build-presets script
         shell: bash
         run: |
-          export VCPKG_ROOT=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}-_llvm-${{ matrix.llvm }}_xcode-13.0_amd64
+          export VCPKG_ROOT=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}_llvm-${{ matrix.llvm }}_xcode-13.0_amd64
           export INSTALL_DIR=$(pwd)/remill-preset-install
           ./scripts/build-preset.sh release
       - name: Run tests
