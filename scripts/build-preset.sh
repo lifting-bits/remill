@@ -5,7 +5,7 @@ PROJECT=remill
 BUILDLOG=${PROJECT}-build.log
 CONFIGLOG=${PROJECT}-configure.log
 rm -f ${BUILDLOG} ${CONFIGLOG}
-BUILD_TYPE=debug
+BUILD_TYPE=dbg
 
 set -uo pipefail
 
@@ -53,6 +53,21 @@ function set_arch {
   esac
 }
 
+function set_os {
+  local os=$(uname -s)
+  case ${os} in
+    Darwin)
+      echo "osx"
+      ;;
+    Linux)
+      echo "linux"
+      ;;
+    *)
+      echo "Unknown OS: ${os}"
+      exit 1
+  esac
+}
+
 
 # Make the user specify which build type
 if [[ $# -eq 0 ]]; then
@@ -73,11 +88,11 @@ do
         exit 0
         ;;
         debug)
-        BUILD_TYPE="debug"
+        BUILD_TYPE="dbg"
         shift
         ;;
         release)
-        BUILD_TYPE="release"
+        BUILD_TYPE="rel"
         shift
         ;;
         *)    # unknown option
@@ -90,9 +105,11 @@ do
 done
 
 ARCH=$(set_arch)
+OS=$(set_os)
+VCPKG_TARGET_TRIPLET=${ARCH}-${OS}-${BUILD_TYPE}
 
 echo "Configuring [${BUILD_TYPE}] [${ARCH}]..."
-cmake --preset vcpkg-${BUILD_TYPE}-${ARCH} &>${CONFIGLOG}
+cmake --preset vcpkg-${ARCH}-${BUILD_TYPE} &>${CONFIGLOG}
 if [ "$?" != "0" ]; then
   echo "Configuration failed. See ${CONFIGLOG}"
   echo "Last 10 lines are:"
@@ -102,9 +119,8 @@ else
   echo "Configure success!"
 fi
 
-
 echo "Building [${BUILD_TYPE}] [${ARCH}]..."
-cmake --build --preset ${BUILD_TYPE}-${ARCH} &>${BUILDLOG}
+cmake --build --preset ${ARCH}-${BUILD_TYPE} &>${BUILDLOG}
 if [ "$?" != "0" ]; then
   echo "Build failed. See ${BUILDLOG}"
   echo "Last 10 lines are:"
@@ -116,7 +132,7 @@ fi
 
 echo "Installing [${BUILD_TYPE}] [${ARCH}]..."
 # re-use build log since its mostly a part of build process
-cmake --build --preset ${BUILD_TYPE}-${ARCH} --target install &>>${BUILDLOG}
+cmake --build --preset ${ARCH}-${BUILD_TYPE} --target install &>>${BUILDLOG}
 if [ "$?" != "0" ]; then
   echo "Install failed. See ${BUILDLOG}"
   echo "Last 10 lines are:"

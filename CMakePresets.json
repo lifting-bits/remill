@@ -51,81 +51,48 @@
             }
         },
         {
-            "name": "linux",
-            "hidden": true,
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "$env{VCPKG_ROOT}/installed/x64-linux$env{VCPKG_SUFFIX}/tools/llvm/clang",
-                "CMAKE_CXX_COMPILER": "$env{VCPKG_ROOT}/installed/x64-linux$env{VCPKG_SUFFIX}/tools/llvm/clang++"
-            },
-            "environment": {
-                "VCPKG_TARGET": "$env{VCPKG_ARCH}-linux"
-            },
-            "condition": {
-                "type": "equals",
-                "lhs": "Linux",
-                "rhs": "${hostSystemName}"
-            }
-        },
-        {
-            "name": "macos",
-            "hidden": true,
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang",
-                "CMAKE_CXX_COMPILER": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++"
-            },
-            "environment": {
-                "VCPKG_TARGET": "$env{VCPKG_ARCH}-osx"
-            },
-            "condition": {
-                "type": "equals",
-                "lhs": "Darwin",
-                "rhs": "${hostSystemName}"
-            }
+          "name": "vcpkg-common",
+          "hidden": true,
+          "binaryDir": "$env{INSTALL_DIR}/build/remill",
+          "generator": "Ninja",
+          "cacheVariables": {
+              "VCPKG_TARGET_TRIPLET": "$env{VCPKG_TARGET_TRIPLET}",
+              "VCPKG_ROOT": "$env{VCPKG_ROOT}",
+              "CMAKE_INSTALL_PREFIX": "$env{INSTALL_DIR}",
+              "CMAKE_C_COMPILER": "$env{VCPKG_ROOT}/installed/$env{VCPKG_TARGET_TRIPLET}/tools/llvm/clang",
+              "CMAKE_CXX_COMPILER": "$env{VCPKG_ROOT}/installed/$env{VCPKG_TARGET_TRIPLET}/tools/llvm/clang++"
+          }
         },
         {
             "name": "vcpkg-debug",
             "hidden": true,
-            "inherits": ["debug-flags", "linux", "macos"],
-            "binaryDir": "$env{INSTALL_DIR}/build/remill",
-            "generator": "Ninja",
-            "cacheVariables": {
-                "VCPKG_TARGET_TRIPLET": "$env{VCPKG_TARGET}$env{VCPKG_SUFFIX}",
-                "VCPKG_ROOT": "$env{VCPKG_ROOT}",
-                "CMAKE_INSTALL_PREFIX": "$env{INSTALL_DIR}"
-            }
+            "inherits": ["debug-flags", "vcpkg-common"]
         },
         {
             "name": "vcpkg-release",
             "hidden": true,
-            "inherits": ["release-flags", "linux", "macos"],
-            "binaryDir": "$env{INSTALL_DIR}/build/remill",
-            "generator": "Ninja",
-            "cacheVariables": {
-                "VCPKG_TARGET_TRIPLET": "$env{VCPKG_TARGET}$env{VCPKG_SUFFIX}",
-                "VCPKG_ROOT": "$env{VCPKG_ROOT}",
-                "CMAKE_INSTALL_PREFIX": "$env{INSTALL_DIR}"
-            }
+            "inherits": ["release-flags", "vcpkg-common"]
         },
         {
-            "name": "vcpkg-debug-x64",
+            "name": "vcpkg-x64-dbg",
             "inherits": ["vcpkg-debug", "x86_64"],
             "displayName": "Debug Build (vcpkg) (x64)",
             "description": "Build a Debug version against a VCPKG installation. Define 'VCPKG_ROOT' and 'INSTALL_DIR' env vars!"
         },
         {
-            "name": "vcpkg-release-x64",
+            "name": "vcpkg-x64-rel",
             "inherits": ["vcpkg-release", "x86_64"],
             "displayName": "Release Build (vcpkg) (x64)",
             "description": "Build a Release version against a VCPKG installation. Define 'VCPKG_ROOT' and 'INSTALL_DIR' env vars!"
         },
         {
-            "name": "vcpkg-debug-arm64",
+            "name": "vcpkg-arm64-dbg",
             "inherits": ["vcpkg-debug", "arm64"],
             "displayName": "Debug Build (vcpkg) (arm64)",
             "description": "Build a Debug version against a VCPKG installation. Define 'VCPKG_ROOT' and 'INSTALL_DIR' env vars!"
         },
         {
-            "name": "vcpkg-release-arm64",
+            "name": "vcpkg-arm64-rel",
             "inherits": ["vcpkg-release", "arm64"],
             "displayName": "Release Build (vcpkg) (arm64)",
             "description": "Build a Release version against a VCPKG installation. Define 'VCPKG_ROOT' and 'INSTALL_DIR' env vars!"
@@ -145,26 +112,26 @@
             "configuration": "Release"
         },
         {
-            "name": "debug-x64",
-            "configurePreset": "vcpkg-debug-x64",
+            "name": "x64-dbg",
+            "configurePreset": "vcpkg-x64-dbg",
             "displayName": "Build (debug) (x64)",
             "inherits": ["build-base-debug"]
         },
         {
-            "name": "release-x64",
-            "configurePreset": "vcpkg-release-x64",
+            "name": "x64-rel",
+            "configurePreset": "vcpkg-x64-rel",
             "displayName": "Build (release) (x64)",
             "inherits": ["build-base-release"]
         },
         {
-            "name": "debug-arm64",
-            "configurePreset": "vcpkg-debug-arm64",
+            "name": "arm64-dbg",
+            "configurePreset": "vcpkg-arm64-dbg",
             "displayName": "Build (debug) (arm64)",
             "inherits": ["build-base-debug"]
         },
         {
-            "name": "release-arm64",
-            "configurePreset": "vcpkg-release-arm64",
+            "name": "arm64-rel",
+            "configurePreset": "vcpkg-arm64-rel",
             "displayName": "Build (release) (arm64)",
             "inherits": ["build-base-release"]
         }
