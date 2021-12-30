@@ -6,8 +6,9 @@ BUILDLOG=${PROJECT}-build.log
 CONFIGLOG=${PROJECT}-configure.log
 rm -f ${BUILDLOG} ${CONFIGLOG}
 BUILD_TYPE=dbg
+VCPKG_SUFFIX="-rel"
 
-set -uo pipefail
+set -eo pipefail
 
 function sanity_check {
 	if [ -z "${VCPKG_ROOT}" ]; then
@@ -30,6 +31,7 @@ function show_usage {
   printf "${0}: Build ${PROJECT} <debug|release>"
   printf "\n"
   printf "\t--help: this screen\n"
+  printf "\t--debug-vcpkg: build against a debug vcpkg (default OFF)\n"
   printf "\t<debug|release>: the type of build to do (debug or release)\n"
   printf "\n"
   printf "INSTALL_DIR set to [${INSTALL_DIR}]\n"
@@ -87,6 +89,10 @@ do
         show_usage ${0}
         exit 0
         ;;
+        --debug-vcpkg)
+        VCPKG_SUFFIX="-dbg"
+        shift
+        ;;
         debug)
         BUILD_TYPE="dbg"
         shift
@@ -106,9 +112,9 @@ done
 
 ARCH=$(set_arch)
 OS=$(set_os)
-VCPKG_TARGET_TRIPLET=${ARCH}-${OS}-${BUILD_TYPE}
+VCPKG_TARGET_TRIPLET=${ARCH}-${OS}${VCPKG_SUFFIX}
 
-echo "Configuring [${BUILD_TYPE}] [${ARCH}]..."
+echo "Configuring [${BUILD_TYPE}] [${ARCH}] against vcpkg [${VCPKG_TARGET_TRIPLET}]..."
 cmake --preset vcpkg-${ARCH}-${BUILD_TYPE} &>${CONFIGLOG}
 if [ "$?" != "0" ]; then
   echo "Configuration failed. See ${CONFIGLOG}"
