@@ -40,6 +40,17 @@ function show_usage {
   return 0
 }
 
+function compiler_check {
+  printf "Checking for clang/clang++ in [${VCPKG_ROOT}] [${VCPKG_TARGET_TRIPLET}]:\n"
+  for c in ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/tools/llvm/{clang,clang++}
+  do
+    ver=$(${c} --version)
+    printf "Found a clang [${c}]:\n"
+    printf "${ver}\n"
+  done
+  printf "\n"
+}
+
 function set_arch {
   local arch=$(uname -m)
   case ${arch} in
@@ -113,6 +124,8 @@ done
 ARCH=$(set_arch)
 OS=$(set_os)
 VCPKG_TARGET_TRIPLET=${ARCH}-${OS}${VCPKG_SUFFIX}
+
+compiler_check
 
 echo "Configuring [${BUILD_TYPE}] [${ARCH}] against vcpkg [${VCPKG_TARGET_TRIPLET}]..."
 cmake --preset vcpkg-${ARCH}-${BUILD_TYPE} &>${CONFIGLOG}
