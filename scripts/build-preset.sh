@@ -132,7 +132,10 @@ cmake --preset vcpkg-${ARCH}-${BUILD_TYPE} &>${CONFIGLOG}
 if [ "$?" != "0" ]; then
   echo "Configuration failed. See ${CONFIGLOG}"
   echo "Last 10 lines are:"
-  tail -n 10 "${CONFIGLOG}"
+  #tail -n 10 "${CONFIGLOG}"
+  cat "${CONFIGLOG}"
+  cat "${INSTALL_DIR}"/build/remill/CMakeFiles/CMakeOutput.log
+  cat "${INSTALL_DIR}"/build/remill/CMakeFiles/CMakeError.log
   exit 1
 else
   echo "Configure success!"
