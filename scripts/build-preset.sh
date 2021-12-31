@@ -123,7 +123,7 @@ done
 
 ARCH=$(set_arch)
 OS=$(set_os)
-VCPKG_TARGET_TRIPLET=${ARCH}-${OS}${VCPKG_SUFFIX}
+export VCPKG_TARGET_TRIPLET=${ARCH}-${OS}${VCPKG_SUFFIX}
 
 compiler_check
 
@@ -132,10 +132,7 @@ cmake --preset vcpkg-${ARCH}-${BUILD_TYPE} &>${CONFIGLOG}
 if [ "$?" != "0" ]; then
   echo "Configuration failed. See ${CONFIGLOG}"
   echo "Last 10 lines are:"
-  #tail -n 10 "${CONFIGLOG}"
-  cat "${CONFIGLOG}"
-  cat "${INSTALL_DIR}"/build/remill/CMakeFiles/CMakeOutput.log
-  cat "${INSTALL_DIR}"/build/remill/CMakeFiles/CMakeError.log
+  tail -n 10 "${CONFIGLOG}"
   exit 1
 else
   echo "Configure success!"
