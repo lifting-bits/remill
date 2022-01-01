@@ -151,7 +151,7 @@ fi
 
 echo "Installing [${BUILD_TYPE}] [${ARCH}]..."
 # re-use build log since its mostly a part of build process
-cmake --build --preset ${ARCH}-${BUILD_TYPE} --target install &>>${BUILDLOG}
+cmake --build --preset ${ARCH}-${BUILD_TYPE} --target install >>${BUILDLOG} 2>&1
 if [ "$?" != "0" ]; then
   echo "Install failed. See ${BUILDLOG}"
   echo "Last 10 lines are:"
