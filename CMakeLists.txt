@@ -126,6 +126,7 @@ add_library(thirdparty_sleigh INTERFACE)
 target_link_libraries(thirdparty_sleigh INTERFACE
   sleigh::sla
   sleigh::decomp
+  sleigh::support
 )
 
 # Windows SDK

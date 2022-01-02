@@ -162,12 +162,13 @@ class SleighX86Arch final : public Arch {
       : Arch(context_, os_name_, arch_name_),
         engine(&image, &ctx) {
     DocumentStorage storage;
-    // TODO(alex): Once we have the SLA finding helpers in SLEIGH, replace this.
-    Element *root =
-        storage
-            .openDocument(
-                "/Users/tetsuo/Build/install/share/sleigh/Processors/x86/data/languages/x86-64.sla")
-            ->getRoot();
+    const char *sla_name = "x86-64.sla";
+    const std::optional<std::filesystem::path> sla_path =
+        sleigh::FindSpecFile(sla_name);
+    if (!sla_path) {
+      LOG(FATAL) << "Couldn't find required spec file: " << sla_name << '\n';
+    }
+    Element *root = storage.openDocument(sla_path->string())->getRoot();
     storage.registerTag(root);
     engine.initialize(storage);
 
