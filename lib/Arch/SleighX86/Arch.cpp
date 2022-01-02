@@ -695,8 +695,10 @@ class SleighX86Arch final : public Arch {
     //#endif
   }
 
-  void PopulateBasicBlockFunction(llvm::Module *module,
-                                  llvm::Function *bb_func) const final {
+  // Populate a just-initialized lifted function function with architecture-
+  // specific variables.
+  void FinishLiftedFunctionInitialization(llvm::Module *module,
+                                          llvm::Function *bb_func) const final {
     const auto &dl = module->getDataLayout();
     CHECK_EQ(sizeof(State), dl.getTypeAllocSize(StateStructType()))
         << "Mismatch between size of State type for x86/amd64 and what is in "
