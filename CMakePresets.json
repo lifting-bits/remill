@@ -13,9 +13,6 @@
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_C_FLAGS": "-fno-omit-frame-pointer -fno-optimize-sibling-calls -gfull -O0",
                 "CMAKE_CXX_FLAGS": "-fno-omit-frame-pointer -fno-optimize-sibling-calls -gfull -O0"
-            },
-            "environment": {
-                "VCPKG_SUFFIX": ""
             }
         },
         {
@@ -23,9 +20,6 @@
             "hidden": true,
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
-            },
-            "environment": {
-                "VCPKG_SUFFIX": "-rel"
             }
         },
         {
