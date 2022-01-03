@@ -39,6 +39,7 @@ class SleighLifter : public InstructionLifter {
                            llvm::Value *state_ptr, bool is_delayed) override {
     if (!inst.IsValid()) {
       LOG(ERROR) << "Invalid function" << inst.Serialize();
+      inst.operands.clear();
       return kLiftedInvalidInstruction;
     }
 
@@ -51,7 +52,9 @@ class SleighLifter : public InstructionLifter {
       case CPUI_INT_EQUAL:
       case CPUI_INT_SUB:
       case CPUI_INT_SBORROW:
-      case CPUI_INT_AND: LiftBinOp(inst, block, state_ptr, ir, op); break;
+      case CPUI_INT_AND:
+        return LiftBinOp(inst, block, state_ptr, ir, op);
+        break;
       case CPUI_POPCOUNT: LiftPopCount(inst, block, state_ptr, ir); break;
       default:
         LOG(ERROR) << "Unsupported p-code opcode " << inst.function;
@@ -61,11 +64,13 @@ class SleighLifter : public InstructionLifter {
     return kLiftedInstruction;
   }
 
-  void LiftBinOp(Instruction &inst, llvm::BasicBlock *block,
-                 llvm::Value *state_ptr, llvm::IRBuilder<> &ir, OpCode op) {
+  LiftStatus LiftBinOp(Instruction &inst, llvm::BasicBlock *block,
+                       llvm::Value *state_ptr, llvm::IRBuilder<> &ir,
+                       OpCode op) {
     if (inst.operands.size() != 3) {
       LOG(ERROR) << "Unexpected number of operands";
-      return;
+      inst.operands.clear();
+      return kLiftedInvalidInstruction;
     }
     // We want something like `InstructionLifter::LiftOperand` but without the need for an
     // `llvm::Argument` pointer since we're not calling a function in the runtime.
@@ -100,6 +105,7 @@ class SleighLifter : public InstructionLifter {
 
     // Assign the out variable to the result of the binary operation
     ir.CreateStore(bin_op_val, out_val);
+    return kLiftedInstruction;
   }
 
   void LiftPopCount(Instruction &inst, llvm::BasicBlock *block,
