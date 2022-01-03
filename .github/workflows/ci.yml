@@ -43,6 +43,12 @@ jobs:
       - name: Build with build script
         shell: bash
         run: ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
+      - name: Build with build-presets script
+        shell: bash
+        run: |
+          export VCPKG_ROOT=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm-${{ matrix.llvm }}_amd64
+          export INSTALL_DIR=$(pwd)/remill-preset-install
+          ./scripts/build-preset.sh release
       - name: Run tests
         shell: bash
         working-directory: remill-build
@@ -104,6 +110,13 @@ jobs:
       - name: Build with build script
         shell: bash
         run: ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
+      - name: Build with build-presets script
+        shell: bash
+        run: |
+          brew install ninja
+          export VCPKG_ROOT=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}_llvm-${{ matrix.llvm }}_xcode-13.0_amd64
+          export INSTALL_DIR=$(pwd)/remill-preset-install
+          ./scripts/build-preset.sh release
       - name: Run tests
         shell: bash
         working-directory: remill-build

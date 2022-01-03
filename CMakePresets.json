@@ -1,0 +1,133 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 19,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "debug-flags",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_C_FLAGS": "-fno-omit-frame-pointer -fno-optimize-sibling-calls -gfull -O0",
+                "CMAKE_CXX_FLAGS": "-fno-omit-frame-pointer -fno-optimize-sibling-calls -gfull -O0"
+            }
+        },
+        {
+            "name": "release-flags",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "arm64",
+            "hidden": true,
+            "environment": {
+                "VCPKG_ARCH": "arm64"
+            },
+            "architecture": {
+                "value": "arm64",
+                "strategy": "external"
+            }
+        },
+        {
+            "name": "x86_64",
+            "hidden": true,
+            "environment": {
+                "VCPKG_ARCH": "x64"
+            },
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            }
+        },
+        {
+          "name": "vcpkg-common",
+          "hidden": true,
+          "binaryDir": "$env{INSTALL_DIR}/build/remill",
+          "generator": "Ninja",
+          "cacheVariables": {
+              "VCPKG_TARGET_TRIPLET": "$env{VCPKG_TARGET_TRIPLET}",
+              "VCPKG_ROOT": "$env{VCPKG_ROOT}",
+              "CMAKE_INSTALL_PREFIX": "$env{INSTALL_DIR}",
+              "CMAKE_C_COMPILER": "$env{VCPKG_ROOT}/installed/$env{VCPKG_TARGET_TRIPLET}/tools/llvm/clang",
+              "CMAKE_CXX_COMPILER": "$env{VCPKG_ROOT}/installed/$env{VCPKG_TARGET_TRIPLET}/tools/llvm/clang++"
+          }
+        },
+        {
+            "name": "vcpkg-debug",
+            "hidden": true,
+            "inherits": ["debug-flags", "vcpkg-common"]
+        },
+        {
+            "name": "vcpkg-release",
+            "hidden": true,
+            "inherits": ["release-flags", "vcpkg-common"]
+        },
+        {
+            "name": "vcpkg-x64-dbg",
+            "inherits": ["vcpkg-debug", "x86_64"],
+            "displayName": "Debug Build (vcpkg) (x64)",
+            "description": "Build a Debug version against a VCPKG installation. Define 'VCPKG_ROOT', 'INSTALL_DIR', 'VCPKG_TARGET_TRIPLET' env vars!"
+        },
+        {
+            "name": "vcpkg-x64-rel",
+            "inherits": ["vcpkg-release", "x86_64"],
+            "displayName": "Release Build (vcpkg) (x64)",
+            "description": "Build a Release version against a VCPKG installation. Define 'VCPKG_ROOT', 'INSTALL_DIR', 'VCPKG_TARGET_TRIPLET' env vars!"
+        },
+        {
+            "name": "vcpkg-arm64-dbg",
+            "inherits": ["vcpkg-debug", "arm64"],
+            "displayName": "Debug Build (vcpkg) (arm64)",
+            "description": "Build a Debug version against a VCPKG installation. Define 'VCPKG_ROOT', 'INSTALL_DIR', 'VCPKG_TARGET_TRIPLET' env vars!"
+        },
+        {
+            "name": "vcpkg-arm64-rel",
+            "inherits": ["vcpkg-release", "arm64"],
+            "displayName": "Release Build (vcpkg) (arm64)",
+            "description": "Build a Release version against a VCPKG installation. Define 'VCPKG_ROOT', 'INSTALL_DIR', 'VCPKG_TARGET_TRIPLET' env vars!"
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "build-base-debug",
+            "hidden": true,
+            "description": "Build in Debug mode",
+            "configuration": "Debug"
+        },
+        {
+            "name": "build-base-release",
+            "hidden": true,
+            "description": "Build in Release mode",
+            "configuration": "Release"
+        },
+        {
+            "name": "x64-dbg",
+            "configurePreset": "vcpkg-x64-dbg",
+            "displayName": "Build (debug) (x64)",
+            "inherits": ["build-base-debug"]
+        },
+        {
+            "name": "x64-rel",
+            "configurePreset": "vcpkg-x64-rel",
+            "displayName": "Build (release) (x64)",
+            "inherits": ["build-base-release"]
+        },
+        {
+            "name": "arm64-dbg",
+            "configurePreset": "vcpkg-arm64-dbg",
+            "displayName": "Build (debug) (arm64)",
+            "inherits": ["build-base-debug"]
+        },
+        {
+            "name": "arm64-rel",
+            "configurePreset": "vcpkg-arm64-rel",
+            "displayName": "Build (release) (arm64)",
+            "inherits": ["build-base-release"]
+        }
+    ]
+}

@@ -27,7 +27,7 @@ LLVM_VERSION=llvm-12
 OS_VERSION=
 ARCH_VERSION=
 BUILD_FLAGS=
-CXX_COMMON_VERSION="v0.1.5"
+CXX_COMMON_VERSION="v0.1.7"
 
 # There are pre-build versions of various libraries for specific
 # Ubuntu releases.
@@ -137,6 +137,11 @@ function GetOSVersion
   case "${ID,,}" in
     *ubuntu*)
       GetUbuntuOSVersion
+      return 0
+    ;;
+
+    *debian*)
+      OS_VERSION=ubuntu-20.04
       return 0
     ;;
 
