@@ -1,0 +1,517 @@
+/*
+ * Copyright (c) 2022 Trail of Bits, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <glog/logging.h>
+
+#include <optional>
+
+#include "Arch.h"
+#include "remill/BC/ABI.h"
+
+namespace remill {
+
+namespace {
+
+typedef bool(TryDecode)(Instruction &, uint32_t);
+typedef bool(TryDecode16)(Instruction &, uint16_t);
+typedef std::optional<uint32_t>(InstEval)(uint32_t, uint32_t);
+
+
+// Add, subtract (three low registers)
+union AddSub3LowReg16 {
+  uint16_t flat;
+  struct {
+    uint16_t _000110  : 6;
+    uint16_t S : 1;
+    uint16_t Rm : 3;
+    uint16_t Rn : 3;
+    uint16_t Rd : 3;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(AddSub3LowReg16) == 2, " ");
+
+// Add, subtract (two low registers and immediate)
+union AddSub2LowRegImm16 {
+  uint16_t flat;
+  struct {
+    uint16_t _000111  : 6;
+    uint16_t S : 1;
+    uint16_t imm3 : 3;
+    uint16_t Rn : 3;
+    uint16_t Rd : 3;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(AddSub2LowRegImm16) == 2, " ");
+
+// Add, subtract, compare, move (one low register and immediate)
+union AddSubComp1LowRegImm16 {
+  uint16_t flat;
+  struct {
+    uint16_t _001  : 3;
+    uint16_t op : 2;
+    uint16_t Rd : 3;
+    uint16_t imm8 : 8;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(AddSubComp1LowRegImm16) == 2, " ");
+
+// MOV, MOVS (register) — T2
+union MOVrT2_16 {
+  uint16_t flat;
+  struct {
+    uint16_t _000  : 3;
+    uint16_t op : 2;
+    uint16_t imm5 : 5;
+    uint16_t Rm : 3;
+    uint16_t Rd : 3;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(MOVrT2_16) == 2, " ");
+
+// Load/store word/byte (immediate offset)
+union LoadStoreWordByteImm16 {
+  uint16_t flat;
+  struct {
+    uint16_t _011  : 3;
+    uint16_t B : 1;
+    uint16_t L : 1;
+    uint16_t imm5 : 5;
+    uint16_t Rn : 3;
+    uint16_t Rt : 3;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(LoadStoreWordByteImm16) == 2, " ");
+
+// Load/store (SP-relative)
+union LoadStoreSPRelative16 {
+  uint16_t flat;
+  struct {
+    uint16_t _1001  : 4;
+    uint16_t L : 1;
+    uint16_t Rt : 3;
+    uint16_t imm8 : 8;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(LoadStoreSPRelative16) == 2, " ");
+
+// Add PC/SP (immediate)
+union AddPCSPImm16 {
+  uint16_t flat;
+  struct {
+    uint16_t _1010  : 4;
+    uint16_t SP : 1;
+    uint16_t Rd : 3;
+    uint16_t imm8 : 8;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(AddPCSPImm16) == 2, " ");
+
+// Miscellaneous 16-bit instructions
+union Misc16 {
+  uint16_t flat;
+  struct {
+    uint16_t _1011  : 4;
+    uint16_t op0 : 4;
+    uint16_t op1 : 2;
+    uint16_t op2 : 1;
+    uint16_t _b4 : 1;
+    uint16_t op3 : 4;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(Misc16) == 2, " ");
+
+// B — T1
+union B_T1_16 {
+  uint16_t flat;
+  struct {
+    uint16_t _1101   : 4;
+    uint16_t cond : 4;
+    uint16_t imm8 : 8;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(B_T1_16) == 2, " ");
+
+// B — T2
+union B_T2_16 {
+  uint16_t flat;
+  struct {
+    uint16_t _1101   : 4;
+    uint16_t cond : 4;
+    uint16_t imm8 : 8;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(B_T2_16) == 2, " ");
+
+// Shift (immediate), add, subtract, move, and compare
+union ShiftImmAddSubMoveComp16 {
+  uint16_t flat;
+  struct {
+    uint16_t _00 : 2;
+    uint16_t op0 : 1;
+    uint16_t op1 : 2;
+    uint16_t op2 : 1;
+    uint16_t _9_to_0 : 10;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(ShiftImmAddSubMoveComp16) == 2, " ");
+
+// Load/Store Multiple
+union LoadStoreMult32 {
+  uint32_t flat;
+  struct {
+    uint32_t _1110100  : 7;
+    uint32_t opc : 2;
+    uint32_t _0_b22 : 1;
+    uint32_t W : 1;
+    uint32_t L : 1;
+    uint32_t Rn : 4;
+    uint32_t P : 1;
+    uint32_t M : 1;
+    uint32_t _0_b13 : 1;
+    uint32_t register_list : 13;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(LoadStoreMult32) == 4, " ");
+
+// BL, BLX (immediate) — T1
+union BLT1_32 {
+  uint32_t flat;
+  struct {
+    uint32_t _11110  : 5;
+    uint32_t S : 1;
+    uint32_t imm10 : 10;
+    uint32_t _11 : 2;
+    uint32_t J1 : 1;
+    uint32_t _1 : 1;
+    uint32_t J2 : 1;
+    uint32_t imm11 : 11;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(BLT1_32) == 4, " ");
+
+// BL, BLX (immediate) — T2
+union BLXT2_32 {
+  uint32_t flat;
+  struct {
+    uint32_t _11110  : 5;
+    uint32_t S : 1;
+    uint32_t imm10H : 10;
+    uint32_t _11 : 2;
+    uint32_t J1 : 1;
+    uint32_t _0 : 1;
+    uint32_t J2 : 1;
+    uint32_t imm10L : 10;
+    uint32_t H : 1;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(BLXT2_32) == 4, " ");
+
+// Branches and miscellaneous control
+union BranchesMiscControl32 {
+  uint32_t flat;
+  struct {
+    uint32_t _11110  : 5;
+    uint32_t op0 : 1;
+    uint32_t op1 : 4;
+    uint32_t op2 : 2;
+    uint32_t _19_to_16 : 4;
+    uint32_t _1 : 1;
+    uint32_t op3 : 3;
+    uint32_t _b11 : 1;
+    uint32_t op4 : 3;
+    uint32_t _7_to_6 : 2;
+    uint32_t op5 : 1;
+    uint32_t _4_to_0 : 5;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(BranchesMiscControl32) == 4, " ");
+
+// 32-bit instructions
+union Top32bit {
+  uint32_t flat;
+  struct {
+    uint32_t _111  : 3;
+    uint32_t op0 : 4;
+    uint32_t op1 : 5;
+    uint32_t _19_to_16 : 4;
+    uint32_t op3 : 1;
+    uint32_t _14_to_0 : 15;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(Top32bit) == 4, " ");
+
+// ------------- 16 Bit TryDecode -------------
+
+//  S
+//  0 ADD, ADDS (register)
+//  1 SUB, SUBS (register)
+// Add, subtract (three low registers) TODO(sonya)
+static bool TryDecode16AddSub3LowReg(Instruction &inst, uint16_t bits) {
+  inst.category = Instruction::kCategoryError;
+  return false;
+  const AddSub3LowReg16 enc = {bits};
+}
+
+//  S
+//  0 ADD, ADDS (immediate)
+//  1 SUB, SUBS (immediate)
+// Add, subtract (two low registers and immediate) TODO(sonya)
+static bool TryDecode16AddSub2LowRegImm(Instruction &inst, uint16_t bits) {
+  inst.category = Instruction::kCategoryError;
+  return false;
+  const AddSub2LowRegImm16 enc = {bits};
+  if (enc.S) {
+    inst.function = "SUB";
+  } else {
+    inst.function = "ADD";
+  }
+}
+
+//  op
+//  00  MOV, MOVS (immediate)
+//  01  CMP (immediate)
+//  10  ADD, ADDS (immediate)
+//  11  SUB, SUBS (immediate)
+// Add, subtract, compare, move (one low register and immediate) TODO(sonya)
+static bool TryDecode16AddSubComp1LowRegImm(Instruction &inst, uint16_t bits) {
+  inst.category = Instruction::kCategoryError;
+  return false;
+  const AddSubComp1LowRegImm16 enc = {bits};
+}
+
+// MOV, MOVS (register) — T2 TODO(sonya)
+static bool TryDecode16MOVrT2(Instruction &inst, uint16_t bits) {
+  inst.category = Instruction::kCategoryError;
+  return false;
+  const MOVrT2_16 enc = {bits};
+}
+
+// Load/store word/byte (immediate offset) TODO(sonya)
+static bool TryDecode16LoadStoreWordByteImm(Instruction &inst, uint16_t bits) {
+  inst.category = Instruction::kCategoryError;
+  return false;
+  const LoadStoreWordByteImm16 enc = {bits};
+}
+
+// Load/store (SP-relative) TODO(sonya)
+static bool TryDecode16LoadStoreSPRelative(Instruction &inst, uint16_t bits) {
+  inst.category = Instruction::kCategoryError;
+  return false;
+  const LoadStoreSPRelative16 enc = {bits};
+}
+
+// Add PC/SP (immediate) TODO(sonya)
+static bool TryDecode16AddPCSP(Instruction &inst, uint16_t bits) {
+  inst.category = Instruction::kCategoryError;
+  return false;
+  const AddPCSPImm16 enc = {bits};
+}
+
+// CBNZ, CBZ TODO(sonya)
+static bool TryDecode16CBZ(Instruction &inst, uint16_t bits) {
+  inst.category = Instruction::kCategoryError;
+  return false;
+}
+
+// ------------- End 16 Bit TryDecode -------------
+
+// B — T1 TODO(sonya)
+static bool TryDecode16B_T1(Instruction &inst, uint16_t bits) {
+  inst.category = Instruction::kCategoryError;
+  return false;
+  const B_T1_16 enc = {bits};
+}
+
+// ------------- 32 Bit TryDecode -------------
+
+// Load/Store Multiple TODO(sonya)
+// this should become a template probably
+// (see TryDecodeLoadStoreMultiple in aarch32. the semantics are identical)
+static bool TryDecode32LoadStoreMult(Instruction &inst, uint16_t bits) {
+  inst.category = Instruction::kCategoryError;
+  return false;
+  const LoadStoreMult32 enc = {bits};
+}
+
+// BL, BLX (immediate) — T1 TODO(sonya)
+static bool TryDecode32BL(Instruction &inst, uint16_t bits) {
+  inst.category = Instruction::kCategoryError;
+  return false;
+  const BLT1_32 enc = {bits};
+}
+
+// BL, BLX (immediate) — T2 TODO (sonya)
+static bool TryDecode32BLX(Instruction &inst, uint16_t bits) {
+  inst.category = Instruction::kCategoryError;
+  return false;
+  const BLXT2_32 enc = {bits};
+}
+
+// ------------- End 32 Bit TryDecode -------------
+
+//    op0
+//  00xxxx  Shift (immediate), add, subtract, move, and compare
+//  010000  Data-processing (two low registers)
+//  010001  Special data instructions and branch and exchange
+//  01001x  LDR (literal) — T1
+//  0101xx  Load/store (register offset)
+//  011xxx  Load/store word/byte (immediate offset)
+//  1000xx  Load/store halfword (immediate offset)
+//  1001xx  Load/store (SP-relative)
+//  1010xx  Add PC/SP (immediate)
+//  1011xx  Miscellaneous 16-bit instructions
+//  1100xx  Load/store multiple
+//  1101xx  Conditional branch, and Supervisor Call
+static TryDecode16 *Try16bit(uint16_t bits) {
+  uint16_t op0 = bits >> 10;
+
+  // The following constraints also apply to this encoding: op0<5:3> != 111
+  if ((op0 >> 3) != 0b111) {
+    return nullptr;
+  }
+
+  // 00xxxx  Shift (immediate), add, subtract, move, and compare
+  if (!(op0 >> 4)) {
+
+    // op0   op1   op2
+    //  0     11    0   Add, subtract (three low registers)
+    //  0     11    1   Add, subtract (two low registers and immediate)
+    //  0   != 11       MOV, MOVS (register) — T2
+    //  1               Add, subtract, compare, move (one low register and immediate)
+    const ShiftImmAddSubMoveComp16 enc = {bits};
+
+    if (enc.op0) {
+      return TryDecode16AddSubComp1LowRegImm;
+
+    } else if (enc.op1 != 0b11) {
+      return TryDecode16MOVrT2;
+
+    } else if (enc.op2) {
+      return TryDecode16AddSub2LowRegImm;
+
+    } else {
+      return TryDecode16AddSub3LowReg;
+
+    }
+
+  // 011xxx  Load/store word/byte (immediate offset)
+  } else if ((op0 >> 3) == 0b011) {
+    return TryDecode16LoadStoreWordByteImm;
+
+  // 1001xx  Load/store (SP-relative)
+  } else if ((op0 >> 2) == 0b1001) {
+    return TryDecode16LoadStoreSPRelative;
+
+  // 1010xx  Add PC/SP (immediate)
+  } else if ((op0 >> 2) == 0b1010) {
+    return TryDecode16AddPCSP;
+
+  // 1011xx  Miscellaneous 16-bit instructions
+  } else if ((op0 >> 2) == 0b1011) {
+    const Misc16 enc = {bits};
+
+    // op0 == x0x1    CBNZ, CBZ
+    if ((enc.op0 & 0b0001) && !((enc.op0 << 1) >> 3)) {
+      return TryDecode16CBZ;
+    }
+
+    return nullptr;
+
+  // 1101xx  Conditional branch, and Supervisor Call
+  } else if ((op0 >> 2) == 0b1101) {
+    uint16_t _op0 = (bits << 4) >> 9;
+
+    //  op0
+    //  111x      Exception generation
+    // != 111x    B — T1
+    if (_op0 == 0b111) {
+      return nullptr;
+    } else {
+      return TryDecode16B_T1;
+    }
+  }
+
+  return nullptr;
+}
+
+//  TODO(sonya): B — T2 encoding
+static bool TryB_T2(Instruction &inst, uint16_t bits) {
+  inst.category = Instruction::kCategoryError;
+  return false;
+  const B_T2_16 enc = {bits};
+}
+
+
+//   op0    op1    op3
+//  x11x                  System register access, Advanced SIMD, and floating-point
+//  0100   xx0xx          Load/store multiple
+//  0100   xx1xx          Load/store dual, load/store exclusive, load-acquire/store-release, and table branch
+//  0101                  Data-processing (shifted register)
+//  10xx            1     Branches and miscellaneous control
+//  10x0            0     Data-processing (modified immediate)
+//  10x1            0     Data-processing (plain binary immediate)
+//  1100   1xxx0          Advanced SIMD element or structure load/store
+//  1100  != 1xxx0        Load/store single
+//  1101   0xxxx          Data-processing (register)
+//  1101   10xxx          Multiply, multiply accumulate, and absolute difference
+//  1101   11xxx          Long multiply and divide
+static TryDecode *Try32bit(uint32_t bits) {
+  const Top32bit enc = {bits};
+
+  // op0 == 0100, op1 == xx0xx, Load/store multiple
+  if ((enc.op0 == 0b0100) && !(enc.op1 & 0b00100)) {
+    return TryDecode32LoadStoreMult;
+
+  // op0 == 10xx, op3 == 1, Branches and miscellaneous control
+  } else if (((enc.op0 >> 2) == 0b10) && enc.op3){
+    const BranchesMiscControl32 enc = {bits};
+
+    if (enc.op3 >> 2) { // op3 == 1xx
+      if (enc.op3 & 0b001) { // op3 == 1x1
+        return TryDecode32BL;
+
+      } else { // // op3 == 1x0
+        return TryDecode32BLX;
+      }
+    }
+
+  }
+  return nullptr;
+}
+
+//  op0     op1
+// != 111         16-bit
+//  111      00   B — T2
+//  111    != 00  32-bit
+static TryDecode *TryDecodeTopLevelEncodings(uint32_t bits) {
+  // 16-bit instructions
+  if (bits >> 13 != 0b111) {
+    return Try16bit(uint16_t(bits >> 16));
+
+  // B — T2
+  } else if (!((bits << 3) >> 11)) {
+    return TryB_T2;
+
+  // 32-bit instructions
+  } else {
+    return Try32bit(bits);
+  }
+}
+
+} // namespace
+}  // namespace remill
+
+
