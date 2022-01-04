@@ -3556,14 +3556,14 @@ static TryDecode *TryDataProcessingAndMisc(uint32_t bits) {
 // This is the top level of the instruction encoding schema for AArch32.
 // Instructions are grouped into subsets based on this the top level and then
 // into smaller sets.
-//   cond op0 op1
+//   cond  op0 op1
 // != 1111 00x     Data-processing and miscellaneous instructions
 // != 1111 010     Load/Store Word, Unsigned Byte (immediate, literal)
 // != 1111 011 0   Load/Store Word, Unsigned Byte (register)
 // != 1111 011 1   Media instructions
-//        10x     Branch, branch with link, and block data transfer
-//        11x     System register access, Advanced SIMD, floating-point, and Supervisor call
-//   1111 0xx     Unconditional instructions
+//         10x     Branch, branch with link, and block data transfer
+//         11x     System register access, Advanced SIMD, floating-point, and Supervisor call
+//   1111  0xx     Unconditional instructions
 static TryDecode *TryDecodeTopLevelEncodings(uint32_t bits) {
   const TopLevelEncodings enc = {bits};
 
