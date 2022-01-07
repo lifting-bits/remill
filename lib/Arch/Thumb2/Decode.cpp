@@ -253,7 +253,7 @@ union Top32bit {
 } __attribute__((packed));
 static_assert(sizeof(Top32bit) == 4, " ");
 
-// ------------- 16 Bit TryDecode -------------
+// ------------- 16 Bit Instructions -------------
 
 //  S
 //  0 ADD, ADDS (register)
@@ -299,6 +299,11 @@ static bool TryDecode16MOVrT2(Instruction &inst, uint16_t bits) {
   const MOVrT2_16 enc = {bits};
 }
 
+//  B L
+//  0 0 STR (immediate)
+//  0 1 LDR (immediate)
+//  1 0 STRB (immediate)
+//  1 1 LDRB (immediate)
 // Load/store word/byte (immediate offset) TODO(sonya)
 static bool TryDecode16LoadStoreWordByteImm(Instruction &inst, uint16_t bits) {
   inst.category = Instruction::kCategoryError;
@@ -306,6 +311,9 @@ static bool TryDecode16LoadStoreWordByteImm(Instruction &inst, uint16_t bits) {
   const LoadStoreWordByteImm16 enc = {bits};
 }
 
+//  L
+//  0 STR (immediate)
+//  1 LDR (immediate)
 // Load/store (SP-relative) TODO(sonya)
 static bool TryDecode16LoadStoreSPRelative(Instruction &inst, uint16_t bits) {
   inst.category = Instruction::kCategoryError;
@@ -313,6 +321,9 @@ static bool TryDecode16LoadStoreSPRelative(Instruction &inst, uint16_t bits) {
   const LoadStoreSPRelative16 enc = {bits};
 }
 
+//  SP
+//  0 ADR
+//  1 ADD, ADDS (SP plus immediate)
 // Add PC/SP (immediate) TODO(sonya)
 static bool TryDecode16AddPCSP(Instruction &inst, uint16_t bits) {
   inst.category = Instruction::kCategoryError;
@@ -326,19 +337,33 @@ static bool TryDecode16CBZ(Instruction &inst, uint16_t bits) {
   return false;
 }
 
-// ------------- End 16 Bit TryDecode -------------
-
-// B — T1 TODO(sonya)
+// B — T1 encoding TODO(sonya)
 static bool TryDecode16B_T1(Instruction &inst, uint16_t bits) {
   inst.category = Instruction::kCategoryError;
   return false;
   const B_T1_16 enc = {bits};
 }
 
-// ------------- 32 Bit TryDecode -------------
+// B — T2 encoding TODO(sonya)
+static bool TryDecode16B_T2(Instruction &inst, uint16_t bits) {
+  inst.category = Instruction::kCategoryError;
+  return false;
+  const B_T2_16 enc = {bits};
+}
 
+// ------------- 32 Bit Instructions -------------
+
+//  opc L
+//  00  0 SRS, SRSDA, SRSDB, SRSIA, SRSIB — T1
+//  00  1 RFE, RFEDA, RFEDB, RFEIA, RFEIB — T1
+//  01  0 STM, STMIA, STMEA
+//  01  1 LDM, LDMIA, LDMFD
+//  10  0 STMDB, STMFD
+//  10  1 LDMDB, LDMEA
+//  11  0 SRS, SRSDA, SRSDB, SRSIA, SRSIB — T2
+//  11  1 RFE, RFEDA, RFEDB, RFEIA, RFEIB — T2
 // Load/Store Multiple TODO(sonya)
-// this should become a template probably
+// NOTE(sonya): this should become a template probably
 // (see TryDecodeLoadStoreMultiple in aarch32. the semantics are identical)
 static bool TryDecode32LoadStoreMult(Instruction &inst, uint16_t bits) {
   inst.category = Instruction::kCategoryError;
@@ -353,14 +378,41 @@ static bool TryDecode32BL(Instruction &inst, uint16_t bits) {
   const BLT1_32 enc = {bits};
 }
 
-// BL, BLX (immediate) — T2 TODO (sonya)
+// BL, BLX (immediate) — T2 TODO(sonya)
 static bool TryDecode32BLX(Instruction &inst, uint16_t bits) {
   inst.category = Instruction::kCategoryError;
   return false;
   const BLXT2_32 enc = {bits};
 }
 
-// ------------- End 32 Bit TryDecode -------------
+// -----------------------------------------------
+
+//   op0   op1  op2   op3
+//  0000                    Adjust SP (immediate)
+//  0010                    Extend
+//  0110    00   0          SETPAN  (ARMv8.1)
+//  0110    00   1          UNALLOCATED
+//  0110    01              Change Processor State
+//  0110    1x              UNALLOCATED
+//  0111                    UNALLOCATED
+//  1000                    UNALLOCATED
+//  1010    10              HLT
+//  1010  != 10             Reverse bytes
+//  1110                    BKPT
+//  1111             0000   Hints
+//  1111           != 0000  IT
+//  x0x1                    CBNZ, CBZ
+//  x10x                    Push and Pop
+static TryDecode16 *TryDecodeMisc16(uint16_t bits) {
+  const Misc16 enc = {bits};
+
+  // op0 == x0x1    CBNZ, CBZ
+  if ((enc.op0 & 0b0001) && !((enc.op0 << 1) >> 3)) {
+    return TryDecode16CBZ;
+  }
+
+  return nullptr;
+}
 
 //    op0
 //  00xxxx  Shift (immediate), add, subtract, move, and compare
@@ -375,7 +427,7 @@ static bool TryDecode32BLX(Instruction &inst, uint16_t bits) {
 //  1011xx  Miscellaneous 16-bit instructions
 //  1100xx  Load/store multiple
 //  1101xx  Conditional branch, and Supervisor Call
-static TryDecode16 *Try16bit(uint16_t bits) {
+static TryDecode16 *Try16Bit(uint16_t bits) {
   uint16_t op0 = bits >> 10;
 
   // The following constraints also apply to this encoding: op0<5:3> != 111
@@ -390,7 +442,8 @@ static TryDecode16 *Try16bit(uint16_t bits) {
     //  0     11    0   Add, subtract (three low registers)
     //  0     11    1   Add, subtract (two low registers and immediate)
     //  0   != 11       MOV, MOVS (register) — T2
-    //  1               Add, subtract, compare, move (one low register and immediate)
+    //  1               Add, subtract, compare, move (one low register and
+    //                  immediate)
     const ShiftImmAddSubMoveComp16 enc = {bits};
 
     if (enc.op0) {
@@ -421,20 +474,13 @@ static TryDecode16 *Try16bit(uint16_t bits) {
 
   // 1011xx  Miscellaneous 16-bit instructions
   } else if ((op0 >> 2) == 0b1011) {
-    const Misc16 enc = {bits};
-
-    // op0 == x0x1    CBNZ, CBZ
-    if ((enc.op0 & 0b0001) && !((enc.op0 << 1) >> 3)) {
-      return TryDecode16CBZ;
-    }
-
-    return nullptr;
+    return TryDecodeMisc16(bits);
 
   // 1101xx  Conditional branch, and Supervisor Call
   } else if ((op0 >> 2) == 0b1101) {
     uint16_t _op0 = (bits << 4) >> 9;
 
-    //  op0
+    //   op0
     //  111x      Exception generation
     // != 111x    B — T1
     if (_op0 == 0b111) {
@@ -447,18 +493,50 @@ static TryDecode16 *Try16bit(uint16_t bits) {
   return nullptr;
 }
 
-//  TODO(sonya): B — T2 encoding
-static bool TryB_T2(Instruction &inst, uint16_t bits) {
-  inst.category = Instruction::kCategoryError;
-  return false;
-  const B_T2_16 enc = {bits};
+//  op0    op1  op2 op3   op4 op5
+//   0    1110  0x  0x0        0  MSR (register)
+//   0    1110  0x  0x0        1  MSR (Banked register)
+//   0    1110  10  0x0   000     Hints
+//   0    1110  10  0x0 != 000    Change processor state
+//   0    1110  11  0x0           Miscellaneous system
+//   0    1111  00  0x0           BXJ
+//   0    1111  01  0x0           Exception return
+//   0    1111  1x  0x0        0  MRS
+//   0    1111  1x  0x0        1  MRS (Banked register)
+//   1    1110  00  000           DCPS
+//   1    1110  00  010           UNALLOCATED
+//   1    1110  01  0x0           UNALLOCATED
+//   1    1110  1x  0x0           UNALLOCATED
+//   1    1111  0x  0x0           UNALLOCATED
+//   1    1111  1x  0x0           Exception generation
+//      != 111x     0x0           B — T3
+//                  0x1           B — T4
+//                  1x0           BL, BLX (immediate) — T2
+//                  1x1           BL, BLX (immediate) — T1
+// Branches and miscellaneous control
+static TryDecode *TryBranchesMiscControl32(uint32_t bits) {
+  const BranchesMiscControl32 enc = {bits};
+
+  if (enc.op3 >> 2) { // op3 == 1xx
+    if (enc.op3 & 0b001) { // op3 == 1x1
+      return TryDecode32BL;
+
+    } else { // // op3 == 1x0
+      return TryDecode32BLX;
+
+    }
+  }
+
+  return nullptr;
 }
 
 
 //   op0    op1    op3
-//  x11x                  System register access, Advanced SIMD, and floating-point
+//  x11x                  System register access, Advanced SIMD, and
+//                        floating-point
 //  0100   xx0xx          Load/store multiple
-//  0100   xx1xx          Load/store dual, load/store exclusive, load-acquire/store-release, and table branch
+//  0100   xx1xx          Load/store dual, load/store exclusive,
+//                        load-acquire/store-release, and table branch
 //  0101                  Data-processing (shifted register)
 //  10xx            1     Branches and miscellaneous control
 //  10x0            0     Data-processing (modified immediate)
@@ -468,7 +546,7 @@ static bool TryB_T2(Instruction &inst, uint16_t bits) {
 //  1101   0xxxx          Data-processing (register)
 //  1101   10xxx          Multiply, multiply accumulate, and absolute difference
 //  1101   11xxx          Long multiply and divide
-static TryDecode *Try32bit(uint32_t bits) {
+static TryDecode *Try32Bit(uint32_t bits) {
   const Top32bit enc = {bits};
 
   // op0 == 0100, op1 == xx0xx, Load/store multiple
@@ -477,18 +555,10 @@ static TryDecode *Try32bit(uint32_t bits) {
 
   // op0 == 10xx, op3 == 1, Branches and miscellaneous control
   } else if (((enc.op0 >> 2) == 0b10) && enc.op3){
-    const BranchesMiscControl32 enc = {bits};
-
-    if (enc.op3 >> 2) { // op3 == 1xx
-      if (enc.op3 & 0b001) { // op3 == 1x1
-        return TryDecode32BL;
-
-      } else { // // op3 == 1x0
-        return TryDecode32BLX;
-      }
-    }
+    return TryBranchesMiscControl32(bits);
 
   }
+
   return nullptr;
 }
 
@@ -499,15 +569,15 @@ static TryDecode *Try32bit(uint32_t bits) {
 static TryDecode *TryDecodeTopLevelEncodings(uint32_t bits) {
   // 16-bit instructions
   if (bits >> 13 != 0b111) {
-    return Try16bit(uint16_t(bits >> 16));
+    return Try16Bit(uint16_t(bits >> 16));
 
   // B — T2
   } else if (!((bits << 3) >> 11)) {
-    return TryB_T2;
+    return TryDecode16B_T2;
 
   // 32-bit instructions
   } else {
-    return Try32bit(bits);
+    return Try32Bit(bits);
   }
 }
 
