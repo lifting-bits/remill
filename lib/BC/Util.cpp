@@ -84,6 +84,57 @@ std::uint32_t nativeGetProcessID(void) {
 }  // namespace
 
 namespace remill {
+namespace detail {
+
+// This is an implementation of the non-UB technique to access private
+// object/class members which takes advantage of the fact that explicit
+// instantiations ignore access control checks of the provided template
+// arguments.
+//
+// See:
+// https://bloglitb.blogspot.com/2010/07/access-to-private-members-thats-easy.html
+
+template <typename T, auto tag>
+inline T member_pointer_stash = nullptr;
+
+template <auto ptr, typename T, auto tag>
+inline const int steal_member_pointer = [] {
+  static_assert(std::is_same_v<decltype(ptr), T>);
+  member_pointer_stash<decltype(ptr), tag> = ptr;
+  return 0;
+}();
+
+#define REMILL_BYPASS_MEMBER_OBJECT_ACCESS(ns, cls, member, type) \
+  constexpr int __temp_tag_##ns##_##cls##_##member = 0; \
+  using __temp_type_##ns##_##cls##_##member = type ns::cls::*; \
+  template const int steal_member_pointer<&ns::cls::member, \
+                                    __temp_type_##ns##_##cls##_##member, \
+                                    &__temp_tag_##ns##_##cls##_##member>
+
+#define REMILL_BYPASS_MEMBER_FUNCTION_ACCESS(ns, cls, member, ret_type, ...) \
+  constexpr int __temp_tag_##ns##_##cls##_##member = 0; \
+  using __temp_type_##ns##_##cls##_##member = \
+      ret_type (ns::cls::*)(__VA_ARGS__); \
+  template const int steal_member_pointer<&ns::cls::member, \
+                                    __temp_type_##ns##_##cls##_##member, \
+                                    &__temp_tag_##ns##_##cls##_##member>
+
+#define REMILL_BYPASS_CONST_MEMBER_FUNCTION_ACCESS(ns, cls, member, ret_type, ...) \
+  constexpr int __temp_tag_##ns##_##cls##_##member = 0; \
+  using __temp_type_##ns##_##cls##_##member = \
+      ret_type (ns::cls::*)(__VA_ARGS__) const; \
+  template const int steal_member_pointer<&ns::cls::member, \
+                                    __temp_type_##ns##_##cls##_##member, \
+                                    &__temp_tag_##ns##_##cls##_##member>
+
+#define REMILL_ACCESS_MEMBER(ns, cls, member) \
+    (::remill::detail::member_pointer_stash< \
+        ::remill::detail::__temp_type_##ns##_##cls##_##member, \
+        &::remill::detail::__temp_tag_##ns##_##cls##_##member>)
+
+REMILL_BYPASS_MEMBER_OBJECT_ACCESS(llvm, Value, VTy, llvm::Type *);
+
+}  // namespace detail
 
 // Initialize the attributes for a lifted function.
 void InitFunctionAttributes(llvm::Function *function) {
@@ -1605,6 +1656,9 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
 
   // Clone the basic blocks and their instructions.
   std::unordered_map<llvm::BasicBlock *, llvm::BasicBlock *> block_map;
+  std::unordered_map<
+      llvm::Instruction *,
+      llvm::SmallVector<std::pair<unsigned, llvm::MDNode *>, 4>> inst_mds;
   for (auto &old_block : *source_func) {
     auto new_block = llvm::BasicBlock::Create(dest_func->getContext(),
                                               old_block.getName(), dest_func);
@@ -1617,13 +1671,35 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
         continue;
       }
 
+      // Keep track of what the metadata should be.
+      auto &mds = inst_mds[&old_inst];
+      old_inst.getAllMetadata(mds);
+
+      // Clear out the metadata before cloning.
+      for (auto [md_id, val] : mds) {
+        old_inst.setMetadata(md_id, nullptr);
+      }
+
       auto new_inst = old_inst.clone();
+
+      // Resetthe metadata after cloning.
+      for (auto [md_id, val] : mds) {
+        old_inst.setMetadata(md_id, val);
+      }
+
+      // NOTE(pag): This is pretty evil, there's no reliable way to move the
+      //            type to the destination context, and there are assertions,
+      //            e.g. in `llvm::CallBase::setCalledFunction`, that
+      //            (correctly) detect that the types don't match.
+      new_inst->*REMILL_ACCESS_MEMBER(llvm, Value, VTy) =
+          RecontextualizeType(new_inst->getType(), dest_context, type_map);
+
+
+
       new_insts.push_back(new_inst);
       value_map[&old_inst] = new_inst;
     }
   }
-
-  llvm::SmallVector<std::pair<unsigned, llvm::MDNode *>, 4> mds;
 
   // Fixup the references in the cloned instructions so that they point into
   // the cloned function, or point to declared globals in the module containing
@@ -1672,17 +1748,9 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
         continue;
       }
 
-      mds.clear();
-      old_inst.getAllMetadata(mds);
-
-      // First, clear out the old metadata; the metadata IDs might not all
-      // align.
-      for (auto md_info : mds) {
-        new_inst->setMetadata(md_info.first, nullptr);
-      }
-
-      // Next, try to convert the metadata over, mapping metadata IDs along
+      // Try to convert the metadata over, mapping metadata IDs along
       // the way.
+      auto &mds = inst_mds[&old_inst];
       for (auto md_info : mds) {
         llvm::MDNode *new_md = llvm::dyn_cast_or_null<llvm::MDNode>(
             CloneMetadataInto(source_mod, dest_mod, md_info.second,
