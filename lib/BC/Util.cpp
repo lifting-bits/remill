@@ -966,8 +966,7 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
         moved_c = cf;
         return cf;
       } else {
-        auto ret =
-            llvm::ConstantFP::get(type, cf->getValueAPF().convertToDouble());
+        auto ret = llvm::ConstantFP::get(type, cf->getValueAPF());
         moved_c = ret;
         return ret;
       }
