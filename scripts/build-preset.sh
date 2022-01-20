@@ -28,11 +28,12 @@ function sanity_check {
 
 function show_usage {
 
-  printf "${0}: Build ${PROJECT} <debug|release>"
+  printf "${0}: Build ${PROJECT} <debug|release> [-- extra arguments to CMake]"
   printf "\n"
   printf "\t--help: this screen\n"
   printf "\t--debug-vcpkg: build against a debug vcpkg (default OFF)\n"
   printf "\t<debug|release>: the type of build to do (debug or release)\n"
+  printf "\tArguments after '--' are passed to CMake during configuration (e.g. -DCMAKE_C_COMPILER=foo)\n"
   printf "\n"
   printf "INSTALL_DIR set to [${INSTALL_DIR}]\n"
   printf "VCPKG_ROOT set to [${VCPKG_ROOT}]\n"
@@ -96,12 +97,12 @@ while [[ $# -gt 0 ]]
 do
     key="$1"
     case $key in
-        --help | -h | -?)
+        --help | -h | "-?")
         show_usage ${0}
         exit 0
         ;;
         --debug-vcpkg)
-        VCPKG_SUFFIX="-dbg"
+        VCPKG_SUFFIX=""
         shift
         ;;
         debug)
@@ -111,6 +112,10 @@ do
         release)
         BUILD_TYPE="rel"
         shift
+        ;;
+        "--")
+        shift
+        break
         ;;
         *)    # unknown option
         echo "UNKNOWN OPTION: ${1}"
@@ -127,8 +132,14 @@ export VCPKG_TARGET_TRIPLET=${ARCH}-${OS}${VCPKG_SUFFIX}
 
 compiler_check
 
+
 echo "Configuring [${BUILD_TYPE}] [${ARCH}] against vcpkg [${VCPKG_TARGET_TRIPLET}]..."
-cmake --preset vcpkg-${ARCH}-${BUILD_TYPE} &>${CONFIGLOG}
+if [[ "${@}" != "" ]]
+then
+  echo "Passing extra arguments to CMake: ${@}"
+fi
+
+cmake --preset vcpkg-${ARCH}-${BUILD_TYPE} ${@} &>${CONFIGLOG}
 if [ "$?" != "0" ]; then
   echo "Configuration failed. See ${CONFIGLOG}"
   echo "Last 10 lines are:"
@@ -139,7 +150,7 @@ else
 fi
 
 echo "Building [${BUILD_TYPE}] [${ARCH}]..."
-cmake --build --preset ${ARCH}-${BUILD_TYPE} &>${BUILDLOG}
+cmake --build --preset ${ARCH}-${BUILD_TYPE} --parallel &>${BUILDLOG}
 if [ "$?" != "0" ]; then
   echo "Build failed. See ${BUILDLOG}"
   echo "Last 10 lines are:"
@@ -151,7 +162,7 @@ fi
 
 echo "Installing [${BUILD_TYPE}] [${ARCH}]..."
 # re-use build log since its mostly a part of build process
-cmake --build --preset ${ARCH}-${BUILD_TYPE} --target install >>${BUILDLOG} 2>&1
+cmake --build --preset ${ARCH}-${BUILD_TYPE} --target install --parallel >>${BUILDLOG} 2>&1
 if [ "$?" != "0" ]; then
   echo "Install failed. See ${BUILDLOG}"
   echo "Last 10 lines are:"
