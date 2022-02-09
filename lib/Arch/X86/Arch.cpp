@@ -1525,6 +1525,7 @@ void X86Arch::PopulateRegisterTable(void) const {
     REG(FSBASE, addr.fs_base.qword, addr);
 
   } else {
+    REG(CSBASE, addr.cs_base.dword, addr);
     REG(SSBASE, addr.ss_base.dword, addr);
     REG(ESBASE, addr.es_base.dword, addr);
     REG(DSBASE, addr.ds_base.dword, addr);
@@ -1751,9 +1752,9 @@ void X86Arch::FinishLiftedFunctionInitialization(
 
   (void) this->RegisterByName("PC")->AddressOf(state_ptr_arg, ir);
 
-  ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "CSBASE"));
 
   if (64 == address_size) {
+    ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "CSBASE"));
     ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "SSBASE"));
     ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "ESBASE"));
     ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "DSBASE"));
