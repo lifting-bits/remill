@@ -46,9 +46,13 @@ llvm::Function *GetInstructionFunction(llvm::Module *module,
 InstructionLifter::Impl::Impl(const Arch *arch_,
                               const IntrinsicTable *intrinsics_)
     : arch(arch_),
-      word_type(llvm::Type::getIntNTy(
-          intrinsics_->async_hyper_call->getContext(), arch->address_size)),
       intrinsics(intrinsics_),
+      word_type(
+          remill::NthArgument(intrinsics->async_hyper_call,
+                              remill::kPCArgNum)->getType()),
+      memory_ptr_type(
+          remill::NthArgument(intrinsics->async_hyper_call,
+                              remill::kMemoryPointerArgNum)->getType()),
       module(intrinsics->async_hyper_call->getParent()),
       invalid_instruction(
           GetInstructionFunction(module, kInvalidInstructionISelName)),
@@ -119,7 +123,7 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
   const auto pc_ref = LoadRegAddress(block, state_ptr, kPCVariableName);
   const auto next_pc_ref =
       LoadRegAddress(block, state_ptr, kNextPCVariableName);
-  const auto next_pc = ir.CreateLoad(next_pc_ref);
+  const auto next_pc = ir.CreateLoad(impl->word_type, next_pc_ref);
 
   // If this instruction appears within a delay slot, then we're going to assume
   // that the prior instruction updated `PC` to the target of the CTI, and that
@@ -129,7 +133,8 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
   // TODO(pag): An alternate approach may be to call some kind of `DELAY_SLOT`
   //            semantics function.
   if (is_delayed) {
-    llvm::Value *temp_args[] = {ir.CreateLoad(mem_ptr_ref)};
+    llvm::Value *temp_args[] = {
+        ir.CreateLoad(impl->memory_ptr_type, mem_ptr_ref)};
     ir.CreateStore(ir.CreateCall(impl->intrinsics->delay_slot_begin, temp_args),
                    mem_ptr_ref);
 
@@ -149,7 +154,8 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
 
   // Begin an atomic block.
   if (arch_inst.is_atomic_read_modify_write) {
-    llvm::Value *temp_args[] = {ir.CreateLoad(mem_ptr_ref)};
+    llvm::Value *temp_args[] = {
+        ir.CreateLoad(impl->memory_ptr_type, mem_ptr_ref)};
     ir.CreateStore(ir.CreateCall(impl->intrinsics->atomic_begin, temp_args),
                    mem_ptr_ref);
   }
@@ -185,14 +191,15 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
   }
 
   // Pass in current value of the memory pointer.
-  args[0] = ir.CreateLoad(mem_ptr_ref);
+  args[0] = ir.CreateLoad(impl->memory_ptr_type, mem_ptr_ref);
 
   // Call the function that implements the instruction semantics.
   ir.CreateStore(ir.CreateCall(isel_func, args), mem_ptr_ref);
 
   // End an atomic block.
   if (arch_inst.is_atomic_read_modify_write) {
-    llvm::Value *temp_args[] = {ir.CreateLoad(mem_ptr_ref)};
+    llvm::Value *temp_args[] = {
+        ir.CreateLoad(impl->memory_ptr_type, mem_ptr_ref)};
     ir.CreateStore(ir.CreateCall(impl->intrinsics->atomic_end, temp_args),
                    mem_ptr_ref);
   }
@@ -209,7 +216,8 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
     // are lifted, we do the `PC = NEXT_PC + size`, so this is fine.
     ir.CreateStore(next_pc, next_pc_ref);
 
-    llvm::Value *temp_args[] = {ir.CreateLoad(mem_ptr_ref)};
+    llvm::Value *temp_args[] = {
+        ir.CreateLoad(impl->memory_ptr_type, mem_ptr_ref)};
     ir.CreateStore(ir.CreateCall(impl->intrinsics->delay_slot_end, temp_args),
                    mem_ptr_ref);
   }
@@ -770,7 +778,7 @@ llvm::Value *InstructionLifter::LiftAddressOperand(Instruction &inst,
                                                    llvm::Argument *,
                                                    Operand &op) {
   auto &arch_addr = op.addr;
-  const auto word_type = impl->word_type;
+  const auto word_type = llvm::dyn_cast<llvm::IntegerType>(impl->word_type);
   const auto zero = llvm::ConstantInt::get(word_type, 0, false);
   const auto word_size = impl->arch->address_size;
 
