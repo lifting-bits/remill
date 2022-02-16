@@ -23,7 +23,7 @@ DOWNLOAD_DIR="$( cd "$( dirname "${SRC_DIR}" )" && pwd )/lifting-bits-downloads"
 CURR_DIR=$( pwd )
 BUILD_DIR="${CURR_DIR}/remill-build"
 INSTALL_DIR=/usr/local
-LLVM_VERSION=llvm-12
+LLVM_VERSION=llvm-13
 OS_VERSION=
 ARCH_VERSION=
 BUILD_FLAGS=
@@ -295,6 +295,10 @@ function GetLLVMVersion
       LLVM_VERSION=llvm-12
       return 0
     ;;
+    13)
+      LLVM_VERSION=llvm-13
+      return 0
+    ;;
     *)
       # unknown option
       echo "[x] Unknown or unsupported LLVM version ${1}. You may be able to manually build it with cxx-common."
@@ -310,7 +314,7 @@ function Help
   echo ""
   echo "Options:"
   echo "  --prefix           Change the default (${INSTALL_DIR}) installation prefix."
-  echo "  --llvm-version     Change the default (12) LLVM version."
+  echo "  --llvm-version     Change the default (13) LLVM version."
   echo "  --build-dir        Change the default (${BUILD_DIR}) build directory."
   echo "  --debug            Build with Debug symbols."
   echo "  --extra-cmake-args Extra CMake arguments to build with."
