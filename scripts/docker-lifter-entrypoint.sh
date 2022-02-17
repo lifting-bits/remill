@@ -46,6 +46,9 @@ case ${LLVM_VERSION} in
   llvm12*)
     V=12
   ;;
+  llvm13*)
+    V=13
+  ;;
   *)
     echo "Unknown LLVM version: ${LLVM_VERSION}"
     exit 1

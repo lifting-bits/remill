@@ -145,7 +145,15 @@ IntrinsicTable::IntrinsicTable(llvm::Module *module)
       compare_sle(FindPureIntrinsic(module, "__remill_compare_sle")),
       compare_sgt(FindPureIntrinsic(module, "__remill_compare_sgt")),
       compare_eq(FindPureIntrinsic(module, "__remill_compare_eq")),
-      compare_neq(FindPureIntrinsic(module, "__remill_compare_neq")) {
+      compare_neq(FindPureIntrinsic(module, "__remill_compare_neq")),
+
+      lifted_function_type(error->getFunctionType()),
+      state_ptr_type(llvm::dyn_cast<llvm::PointerType>(
+          lifted_function_type->getParamType(kStatePointerArgNum))),
+      pc_type(llvm::dyn_cast<llvm::IntegerType>(
+          lifted_function_type->getParamType(kPCArgNum))),
+      mem_ptr_type(llvm::dyn_cast<llvm::PointerType>(
+          lifted_function_type->getParamType(kMemoryPointerArgNum))) {
 
 
   // Make sure to set the correct attributes on this to make sure that

@@ -403,7 +403,7 @@ int main(int argc, char *argv[]) {
 
       auto reg_ptr = reg->AddressOf(state_ptr, entry);
       ir.SetInsertPoint(entry);
-      ir.CreateStore(ir.CreateLoad(reg_ptr), &arg);
+      ir.CreateStore(ir.CreateLoad(reg->type, reg_ptr), &arg);
     }
 
     // Return the memory pointer, so that all memory accesses are

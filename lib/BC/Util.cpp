@@ -152,9 +152,10 @@ void InitFunctionAttributes(llvm::Function *function) {
 
 // Create a call from one lifted function to another.
 llvm::CallInst *AddCall(llvm::BasicBlock *source_block,
-                        llvm::Value *dest_func) {
+                        llvm::Value *dest_func,
+                        const IntrinsicTable &intrinsics) {
   llvm::IRBuilder<> ir(source_block);
-  auto args = LiftedFunctionArgs(source_block);
+  auto args = LiftedFunctionArgs(source_block, intrinsics);
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(11, 0)
   return ir.CreateCall(dest_func, args);
 #else
@@ -176,16 +177,19 @@ llvm::CallInst *AddCall(llvm::BasicBlock *source_block,
 
 // Create a tail-call from one lifted function to another.
 llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
-                                       llvm::Value *dest_func) {
+                                       llvm::Value *dest_func,
+                                       const IntrinsicTable &intrinsics) {
   if (source_func->isDeclaration()) {
     llvm::IRBuilder<> ir(
         llvm::BasicBlock::Create(source_func->getContext(), "", source_func));
   }
-  return AddTerminatingTailCall(&(source_func->back()), dest_func);
+  return AddTerminatingTailCall(&(source_func->back()), dest_func,
+                                intrinsics);
 }
 
 llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
-                                       llvm::Value *dest_func) {
+                                       llvm::Value *dest_func,
+                                       const IntrinsicTable &intrinsics) {
   CHECK(nullptr != dest_func) << "Target function/block does not exist!";
 
   LOG_IF(ERROR, source_block->getTerminator())
@@ -195,11 +199,11 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
   llvm::IRBuilder<> ir(source_block);
 
   // get the `NEXT_PC` and set it to `PC`
-  auto next_pc = LoadNextProgramCounter(source_block);
+  auto next_pc = LoadNextProgramCounter(source_block, intrinsics);
   auto pc_ref = LoadProgramCounterRef(source_block);
   (void) new llvm::StoreInst(next_pc, pc_ref, source_block);
 
-  auto call_target_instr = AddCall(source_block, dest_func);
+  auto call_target_instr = AddCall(source_block, dest_func, intrinsics);
   call_target_instr->setTailCall(true);
 
   ir.CreateRet(call_target_instr);
@@ -286,9 +290,10 @@ llvm::Value *LoadStatePointer(llvm::BasicBlock *block) {
 }
 
 // Return the current program counter.
-llvm::Value *LoadProgramCounter(llvm::BasicBlock *block) {
+llvm::Value *LoadProgramCounter(llvm::BasicBlock *block,
+                                const IntrinsicTable &intrinsics) {
   llvm::IRBuilder<> ir(block);
-  return ir.CreateLoad(LoadProgramCounterRef(block));
+  return ir.CreateLoad(intrinsics.pc_type, LoadProgramCounterRef(block));
 }
 
 // Return a reference to the current program counter.
@@ -302,9 +307,10 @@ llvm::Value *LoadNextProgramCounterRef(llvm::BasicBlock *block) {
 }
 
 // Return the next program counter.
-llvm::Value *LoadNextProgramCounter(llvm::BasicBlock *block) {
+llvm::Value *LoadNextProgramCounter(llvm::BasicBlock *block,
+                                    const IntrinsicTable &intrinsics) {
   llvm::IRBuilder<> ir(block);
-  return ir.CreateLoad(LoadNextProgramCounterRef(block));
+  return ir.CreateLoad(intrinsics.pc_type, LoadNextProgramCounterRef(block));
 }
 
 // Return a reference to the return program counter.
@@ -323,25 +329,28 @@ void StoreNextProgramCounter(llvm::BasicBlock *block, llvm::Value *pc) {
 }
 
 // Update the program counter in the state struct with a hard-coded value.
-void StoreProgramCounter(llvm::BasicBlock *block, uint64_t pc) {
+void StoreProgramCounter(llvm::BasicBlock *block, uint64_t pc,
+                         const IntrinsicTable &intrinsics) {
   auto pc_ptr = LoadProgramCounterRef(block);
-  auto type = llvm::dyn_cast<llvm::PointerType>(pc_ptr->getType());
-  (void) new llvm::StoreInst(llvm::ConstantInt::get(type->getElementType(), pc),
-                             pc_ptr, block);
+  (void) new llvm::StoreInst(
+      llvm::ConstantInt::get(intrinsics.pc_type, pc),
+      pc_ptr, block);
 }
 
 // Return the current memory pointer.
-llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block) {
+llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block,
+                               const IntrinsicTable &intrinsics) {
   llvm::IRBuilder<> ir(block);
-  return ir.CreateLoad(LoadMemoryPointerRef(block));
+  return ir.CreateLoad(intrinsics.mem_ptr_type, LoadMemoryPointerRef(block));
 }
 
 // Return an `llvm::Value *` that is an `i1` (bool type) representing whether
 // or not a conditional branch is taken.
 llvm::Value *LoadBranchTaken(llvm::BasicBlock *block) {
   llvm::IRBuilder<> ir(block);
+  auto i8_type = llvm::Type::getInt8Ty(block->getContext());
   auto cond = ir.CreateLoad(
-      FindVarInFunction(block->getParent(), kBranchTakenVariableName));
+      i8_type, FindVarInFunction(block->getParent(), kBranchTakenVariableName));
   auto true_val = llvm::ConstantInt::get(cond->getType(), 1);
   return ir.CreateICmpEQ(cond, true_val);
 }
@@ -374,7 +383,7 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *module,
 std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch) {
   auto arch_name = GetArchName(arch->arch_name);
   auto path = FindSemanticsBitcodeFile(arch_name);
-  LOG(INFO) << "Loading " << arch_name << " semantics from file " << path;
+  DLOG(INFO) << "Loading " << arch_name << " semantics from file " << path;
   auto module = LoadModuleFromFile(arch->context, path);
   arch->PrepareModule(module);
   arch->InitFromSemanticsModule(module.get());
@@ -390,7 +399,7 @@ bool VerifyModule(llvm::Module *module) {
   llvm::raw_string_ostream error_stream(error);
   if (llvm::verifyModule(*module, &error_stream)) {
     error_stream.flush();
-    LOG(ERROR) << "Error verifying module read from file: " << error;
+    DLOG(ERROR) << "Error verifying module read from file: " << error;
     return false;
   } else {
     return true;
@@ -485,15 +494,20 @@ bool StoreModuleToFile(llvm::Module *module, std::string_view file_name,
 bool StoreModuleIRToFile(llvm::Module *module, std::string_view file_name_,
                          bool allow_failure) {
   std::string file_name(file_name_.data(), file_name_.size());
-#if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 5)
+#if LLVM_VERSION_NUMBER <= LLVM_VERSION(3, 5)
+  std::string error;
+  llvm::raw_fd_ostream dest(file_name.c_str(), error, llvm::sys::fs::F_Text);
+  auto good = error.empty();
+#elif LLVM_VERSION_NUMBER < LLVM_VERSION(13, 0)
   std::error_code ec;
   llvm::raw_fd_ostream dest(file_name.c_str(), ec, llvm::sys::fs::F_Text);
   auto good = !ec;
   auto error = ec.message();
 #else
-  std::string error;
-  llvm::raw_fd_ostream dest(file_name.c_str(), error, llvm::sys::fs::F_Text);
-  auto good = error.empty();
+  std::error_code ec;
+  llvm::raw_fd_ostream dest(file_name.c_str(), ec, llvm::sys::fs::OF_Text);
+  auto good = !ec;
+  auto error = ec.message();
 #endif
   if (!good) {
     LOG_IF(FATAL, allow_failure)
@@ -636,16 +650,16 @@ llvm::Argument *NthArgument(llvm::Function *func, size_t index) {
 // Return a vector of arguments to pass to a lifted function, where the
 // arguments are derived from `block`.
 std::array<llvm::Value *, kNumBlockArgs>
-LiftedFunctionArgs(llvm::BasicBlock *block) {
+LiftedFunctionArgs(llvm::BasicBlock *block, const IntrinsicTable &intrinsics) {
   auto func = block->getParent();
 
   // Set up arguments according to our ABI.
   std::array<llvm::Value *, kNumBlockArgs> args;
 
   if (FindVarInFunction(func, kPCVariableName, true)) {
-    args[kMemoryPointerArgNum] = LoadMemoryPointer(block);
+    args[kMemoryPointerArgNum] = LoadMemoryPointer(block, intrinsics);
     args[kStatePointerArgNum] = LoadStatePointer(block);
-    args[kPCArgNum] = LoadProgramCounter(block);
+    args[kPCArgNum] = LoadProgramCounter(block, intrinsics);
   } else {
     args[kMemoryPointerArgNum] = NthArgument(func, kMemoryPointerArgNum);
     args[kStatePointerArgNum] = NthArgument(func, kStatePointerArgNum);
@@ -1949,7 +1963,7 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
       auto res = ir.CreateAlloca(type);
       llvm::Value *args_3[3] = {args_2[0], args_2[1], res};
       ir.CreateCall(intrinsics.read_memory_f80, args_3);
-      return ir.CreateLoad(res);
+      return ir.CreateLoad(type, res);
     }
 
     case llvm::Type::X86_MMXTyID:
@@ -1990,7 +2004,7 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
         ir.CreateStore(byte, byte_ptr);
       }
 
-      return ir.CreateLoad(res);
+      return ir.CreateLoad(type, res);
     }
 
     // Building up a structure requires us to start with an undef value,
@@ -2154,8 +2168,8 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
       auto res = ir.CreateAlloca(type);
       ir.CreateStore(val_to_store, res);
 
-      auto i8_array =
-          llvm::ArrayType::get(llvm::Type::getInt8Ty(context), size);
+      auto i8 = llvm::Type::getInt8Ty(context);
+      auto i8_array = llvm::ArrayType::get(i8, size);
       auto byte_array =
           ir.CreateBitCast(res, llvm::PointerType::get(i8_array, 0));
       llvm::Value *gep_indices[2] = {
@@ -2167,7 +2181,7 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
             addr, llvm::ConstantInt::get(addr->getType(), i, false));
         gep_indices[1] = llvm::ConstantInt::get(index_type, i, false);
         auto byte_ptr = ir.CreateInBoundsGEP(i8_array, byte_array, gep_indices);
-        args_3[2] = ir.CreateLoad(byte_ptr);
+        args_3[2] = ir.CreateLoad(i8, byte_ptr);
         args_3[0] = ir.CreateCall(intrinsics.write_memory_8, args_3);
       }
 

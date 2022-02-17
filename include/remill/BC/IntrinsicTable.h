@@ -21,7 +21,10 @@
 namespace llvm {
 class ConstantArray;
 class Function;
+class FunctionType;
+class IntegerType;
 class Module;
+class PointerType;
 class Value;
 }  // namespace llvm
 namespace remill {
@@ -79,26 +82,29 @@ class IntrinsicTable {
   llvm::Function *const delay_slot_end;
 
   // Optimization enabling.
-  llvm::Function *undefined_8;
-  llvm::Function *undefined_16;
-  llvm::Function *undefined_32;
-  llvm::Function *undefined_64;
-  llvm::Function *undefined_f32;
-  llvm::Function *undefined_f64;
-  llvm::Function *undefined_f80;
-
+  llvm::Function *const undefined_8;
+  llvm::Function *const undefined_16;
+  llvm::Function *const undefined_32;
+  llvm::Function *const undefined_64;
+  llvm::Function *const undefined_f32;
+  llvm::Function *const undefined_f64;
+  llvm::Function *const undefined_f80;
 
   // Flag markers
-  llvm::Function *flag_computation_zero;
-  llvm::Function *flag_computation_sign;
-  llvm::Function *flag_computation_overflow;
-  llvm::Function *flag_computation_carry;
+  llvm::Function *const flag_computation_zero;
+  llvm::Function *const flag_computation_sign;
+  llvm::Function *const flag_computation_overflow;
+  llvm::Function *const flag_computation_carry;
 
-  llvm::Function *compare_sle;
-  llvm::Function *compare_sgt;
-  llvm::Function *compare_eq;
-  llvm::Function *compare_neq;
+  llvm::Function *const compare_sle;
+  llvm::Function *const compare_sgt;
+  llvm::Function *const compare_eq;
+  llvm::Function *const compare_neq;
 
+  llvm::FunctionType *const lifted_function_type;
+  llvm::PointerType *const state_ptr_type;
+  llvm::IntegerType *const pc_type;
+  llvm::PointerType *const mem_ptr_type;
 
  private:
   IntrinsicTable(void) = delete;
