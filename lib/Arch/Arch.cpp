@@ -56,6 +56,7 @@ static unsigned AddressSize(ArchName arch_name) {
     case kArchInvalid:
       LOG(FATAL) << "Cannot get address size for invalid arch.";
       return 0;
+    case kArchThumb2LittleEndian:
     case kArchX86:
     case kArchX86_AVX:
     case kArchX86_AVX512:
@@ -143,6 +144,12 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
     case kArchAArch64LittleEndian: {
       DLOG(INFO) << "Using architecture: AArch64, feature set: Little Endian";
       ret = GetAArch64(context_, os_name_, arch_name_);
+      break;
+    }
+
+    case kArchThumb2LittleEndian: {
+      DLOG(INFO) << "Using architecture: Thumb2, feature set: Little Endian";
+      ret = GetAArch32(context_, os_name_, arch_name_);
       break;
     }
 
@@ -348,7 +355,11 @@ bool Arch::IsAMD64(void) const {
 }
 
 bool Arch::IsAArch32(void) const {
-  return remill::kArchAArch32LittleEndian == arch_name;
+  switch (arch_name) {
+    case remill::kArchAArch32LittleEndian:
+    case remill::kArchThumb2LittleEndian: return true;
+    default: return false;
+  }
 }
 
 bool Arch::IsAArch64(void) const {

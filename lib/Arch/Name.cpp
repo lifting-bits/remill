@@ -26,7 +26,7 @@ ArchName GetArchName(const llvm::Triple &triple) {
     case llvm::Triple::ArchType::x86_64: return kArchAMD64;
     case llvm::Triple::ArchType::aarch64: return kArchAArch64LittleEndian;
     case llvm::Triple::ArchType::arm: return kArchAArch32LittleEndian;
-    case llvm::Triple::ArchType::thumb: return kArchAArch32LittleEndian;
+    case llvm::Triple::ArchType::thumb: return kArchThumb2LittleEndian;
     case llvm::Triple::sparc: return kArchSparc32;
     case llvm::Triple::sparcv9: return kArchSparc64;
     default: return kArchInvalid;
@@ -51,6 +51,9 @@ ArchName GetArchName(std::string_view arch_name) {
 
   } else if (arch_name == "amd64_avx512") {
     return kArchAMD64_AVX512;
+
+  } else if (arch_name == "thumb2") {
+    return kArchThumb2LittleEndian;
 
   } else if (arch_name == "aarch32") {
     return kArchAArch32LittleEndian;
@@ -79,6 +82,7 @@ static const std::string_view kArchNames[] = {
     [kArchAMD64] = "amd64",
     [kArchAMD64_AVX] = "amd64_avx",
     [kArchAMD64_AVX512] = "amd64_avx512",
+    [kArchThumb2LittleEndian] = "thumb2",
     [kArchAArch32LittleEndian] = "aarch32",
     [kArchAArch64LittleEndian] = "aarch64",
     [kArchSparc32] = "sparc32",

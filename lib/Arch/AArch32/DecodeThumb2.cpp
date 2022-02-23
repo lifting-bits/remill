@@ -19,26 +19,22 @@
 #include <optional>
 
 #include "Arch.h"
+#include "Decode.h"
 #include "remill/BC/ABI.h"
 
 namespace remill {
 
-namespace {
-
-typedef bool(TryDecode)(Instruction &, uint32_t);
-typedef bool(TryDecode16)(Instruction &, uint16_t);
-typedef std::optional<uint32_t>(InstEval)(uint32_t, uint32_t);
-
+namespace aarch32 {
 
 // Add, subtract (three low registers)
 union AddSub3LowReg16 {
   uint16_t flat;
   struct {
-    uint16_t _000110  : 6;
-    uint16_t S : 1;
-    uint16_t Rm : 3;
-    uint16_t Rn : 3;
     uint16_t Rd : 3;
+    uint16_t Rn : 3;
+    uint16_t Rm : 3;
+    uint16_t S : 1;
+    uint16_t _000110  : 6;
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(AddSub3LowReg16) == 2, " ");
@@ -47,11 +43,11 @@ static_assert(sizeof(AddSub3LowReg16) == 2, " ");
 union AddSub2LowRegImm16 {
   uint16_t flat;
   struct {
-    uint16_t _000111  : 6;
-    uint16_t S : 1;
-    uint16_t imm3 : 3;
-    uint16_t Rn : 3;
     uint16_t Rd : 3;
+    uint16_t Rn : 3;
+    uint16_t imm3 : 3;
+    uint16_t S : 1;
+    uint16_t _000111  : 6;
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(AddSub2LowRegImm16) == 2, " ");
@@ -60,23 +56,34 @@ static_assert(sizeof(AddSub2LowRegImm16) == 2, " ");
 union AddSubComp1LowRegImm16 {
   uint16_t flat;
   struct {
-    uint16_t _001  : 3;
-    uint16_t op : 2;
-    uint16_t Rd : 3;
     uint16_t imm8 : 8;
+    uint16_t Rd : 3;
+    uint16_t op : 2;
+    uint16_t _001  : 3;
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(AddSubComp1LowRegImm16) == 2, " ");
+
+// Adjust SP (immediate)
+union AdjustSPImm16 {
+  uint16_t flat;
+  struct {
+    uint16_t imm7 : 7;
+    uint16_t S : 1;
+    uint16_t _10110000 : 8;
+  } __attribute__((packed));
+} __attribute__((packed));
+static_assert(sizeof(AdjustSPImm16) == 2, " ");
 
 // MOV, MOVS (register) — T2
 union MOVrT2_16 {
   uint16_t flat;
   struct {
-    uint16_t _000  : 3;
-    uint16_t op : 2;
-    uint16_t imm5 : 5;
-    uint16_t Rm : 3;
     uint16_t Rd : 3;
+    uint16_t Rm : 3;
+    uint16_t imm5 : 5;
+    uint16_t op : 2;
+    uint16_t _000  : 3;
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(MOVrT2_16) == 2, " ");
@@ -85,12 +92,12 @@ static_assert(sizeof(MOVrT2_16) == 2, " ");
 union LoadStoreWordByteImm16 {
   uint16_t flat;
   struct {
-    uint16_t _011  : 3;
-    uint16_t B : 1;
-    uint16_t L : 1;
-    uint16_t imm5 : 5;
-    uint16_t Rn : 3;
     uint16_t Rt : 3;
+    uint16_t Rn : 3;
+    uint16_t imm5 : 5;
+    uint16_t L : 1;
+    uint16_t B : 1;
+    uint16_t _011  : 3;
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(LoadStoreWordByteImm16) == 2, " ");
@@ -99,10 +106,10 @@ static_assert(sizeof(LoadStoreWordByteImm16) == 2, " ");
 union LoadStoreSPRelative16 {
   uint16_t flat;
   struct {
-    uint16_t _1001  : 4;
-    uint16_t L : 1;
-    uint16_t Rt : 3;
     uint16_t imm8 : 8;
+    uint16_t Rt : 3;
+    uint16_t L : 1;
+    uint16_t _1001  : 4;
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(LoadStoreSPRelative16) == 2, " ");
@@ -111,10 +118,10 @@ static_assert(sizeof(LoadStoreSPRelative16) == 2, " ");
 union AddPCSPImm16 {
   uint16_t flat;
   struct {
-    uint16_t _1010  : 4;
-    uint16_t SP : 1;
-    uint16_t Rd : 3;
     uint16_t imm8 : 8;
+    uint16_t Rd : 3;
+    uint16_t SP : 1;
+    uint16_t _1010  : 4;
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(AddPCSPImm16) == 2, " ");
@@ -123,12 +130,12 @@ static_assert(sizeof(AddPCSPImm16) == 2, " ");
 union Misc16 {
   uint16_t flat;
   struct {
-    uint16_t _1011  : 4;
-    uint16_t op0 : 4;
-    uint16_t op1 : 2;
-    uint16_t op2 : 1;
-    uint16_t _b4 : 1;
     uint16_t op3 : 4;
+    uint16_t _b4 : 1;
+    uint16_t op2 : 1;
+    uint16_t op1 : 2;
+    uint16_t op0 : 4;
+    uint16_t _1011  : 4;
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(Misc16) == 2, " ");
@@ -137,9 +144,9 @@ static_assert(sizeof(Misc16) == 2, " ");
 union B_T1_16 {
   uint16_t flat;
   struct {
-    uint16_t _1101   : 4;
-    uint16_t cond : 4;
     uint16_t imm8 : 8;
+    uint16_t cond : 4;
+    uint16_t _1101   : 4;
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(B_T1_16) == 2, " ");
@@ -148,9 +155,8 @@ static_assert(sizeof(B_T1_16) == 2, " ");
 union B_T2_16 {
   uint16_t flat;
   struct {
-    uint16_t _1101   : 4;
-    uint16_t cond : 4;
-    uint16_t imm8 : 8;
+    uint16_t imm11 : 11;
+    uint16_t _11100   : 5;
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(B_T2_16) == 2, " ");
@@ -159,11 +165,11 @@ static_assert(sizeof(B_T2_16) == 2, " ");
 union ShiftImmAddSubMoveComp16 {
   uint16_t flat;
   struct {
-    uint16_t _00 : 2;
-    uint16_t op0 : 1;
-    uint16_t op1 : 2;
-    uint16_t op2 : 1;
     uint16_t _9_to_0 : 10;
+    uint16_t op2 : 1;
+    uint16_t op1 : 2;
+    uint16_t op0 : 1;
+    uint16_t _00 : 2;
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(ShiftImmAddSubMoveComp16) == 2, " ");
@@ -172,16 +178,16 @@ static_assert(sizeof(ShiftImmAddSubMoveComp16) == 2, " ");
 union LoadStoreMult32 {
   uint32_t flat;
   struct {
-    uint32_t _1110100  : 7;
-    uint32_t opc : 2;
-    uint32_t _0_b22 : 1;
-    uint32_t W : 1;
-    uint32_t L : 1;
-    uint32_t Rn : 4;
-    uint32_t P : 1;
-    uint32_t M : 1;
-    uint32_t _0_b13 : 1;
     uint32_t register_list : 13;
+    uint32_t _0_b13 : 1;
+    uint32_t M : 1;
+    uint32_t P : 1;
+    uint32_t Rn : 4;
+    uint32_t L : 1;
+    uint32_t W : 1;
+    uint32_t _0_b22 : 1;
+    uint32_t opc : 2;
+    uint32_t _1110100  : 7;
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(LoadStoreMult32) == 4, " ");
@@ -190,14 +196,14 @@ static_assert(sizeof(LoadStoreMult32) == 4, " ");
 union BLT1_32 {
   uint32_t flat;
   struct {
-    uint32_t _11110  : 5;
-    uint32_t S : 1;
-    uint32_t imm10 : 10;
-    uint32_t _11 : 2;
-    uint32_t J1 : 1;
-    uint32_t _1 : 1;
-    uint32_t J2 : 1;
     uint32_t imm11 : 11;
+    uint32_t J2 : 1;
+    uint32_t _1 : 1;
+    uint32_t J1 : 1;
+    uint32_t _11 : 2;
+    uint32_t imm10 : 10;
+    uint32_t S : 1;
+    uint32_t _11110  : 5;
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(BLT1_32) == 4, " ");
@@ -206,15 +212,15 @@ static_assert(sizeof(BLT1_32) == 4, " ");
 union BLXT2_32 {
   uint32_t flat;
   struct {
-    uint32_t _11110  : 5;
-    uint32_t S : 1;
-    uint32_t imm10H : 10;
-    uint32_t _11 : 2;
-    uint32_t J1 : 1;
-    uint32_t _0 : 1;
-    uint32_t J2 : 1;
-    uint32_t imm10L : 10;
     uint32_t H : 1;
+    uint32_t imm10L : 10;
+    uint32_t J2 : 1;
+    uint32_t _0 : 1;
+    uint32_t J1 : 1;
+    uint32_t _11 : 2;
+    uint32_t imm10H : 10;
+    uint32_t S : 1;
+    uint32_t _11110  : 5;
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(BLXT2_32) == 4, " ");
@@ -243,42 +249,70 @@ static_assert(sizeof(BranchesMiscControl32) == 4, " ");
 union Top32bit {
   uint32_t flat;
   struct {
-    uint32_t _111  : 3;
-    uint32_t op0 : 4;
-    uint32_t op1 : 5;
-    uint32_t _19_to_16 : 4;
-    uint32_t op3 : 1;
     uint32_t _14_to_0 : 15;
+    uint32_t op3 : 1;
+    uint32_t _19_to_16 : 4;
+    uint32_t op1 : 5;
+    uint32_t op0 : 4;
+    uint32_t _111  : 3;
   } __attribute__((packed));
 } __attribute__((packed));
 static_assert(sizeof(Top32bit) == 4, " ");
 
 // ------------- 16 Bit Instructions -------------
 
+static const char *const kIdpNamesAddSubLowReg[] = {
+    [0b0] = "ADDL_T2",  [0b1] = "SUBL_T2"
+};
+
 //  S
 //  0 ADD, ADDS (register)
 //  1 SUB, SUBS (register)
-// Add, subtract (three low registers) TODO(sonya)
+// Add, subtract (three low registers)
 static bool TryDecode16AddSub3LowReg(Instruction &inst, uint16_t bits) {
-  inst.category = Instruction::kCategoryError;
-  return false;
+
+  // TODO(sonya) ADDS, SUBS - Decide how to handle InITBlock()
+
   const AddSub3LowReg16 enc = {bits};
+  inst.category = Instruction::kCategoryNormal;
+  inst.function = kIdpNamesAddSubLowReg[enc.S];
+
+
+  // Unconditionally executed
+  AddIntRegOp(inst, uint32_t(enc.Rd), 32u, Operand::kActionWrite);
+  AddIntRegOp(inst, uint32_t(enc.Rn), 32u, Operand::kActionRead);
+  AddIntRegOp(inst, uint32_t(enc.Rm), 32u, Operand::kActionRead);
+
+  return true;
+
 }
 
 //  S
 //  0 ADD, ADDS (immediate)
 //  1 SUB, SUBS (immediate)
-// Add, subtract (two low registers and immediate) TODO(sonya)
+// Add, subtract (two low registers and immediate)
 static bool TryDecode16AddSub2LowRegImm(Instruction &inst, uint16_t bits) {
-  inst.category = Instruction::kCategoryError;
-  return false;
+
+  // TODO(sonya) ADDS, SUBS - Decide how to handle InITBlock()
+
   const AddSub2LowRegImm16 enc = {bits};
-  if (enc.S) {
-    inst.function = "SUB";
-  } else {
-    inst.function = "ADD";
-  }
+  inst.category = Instruction::kCategoryNormal;
+  inst.function = kIdpNamesAddSubLowReg[enc.S];
+
+  // Unconditionally executed
+  AddIntRegOp(inst, uint32_t(enc.Rd), 32u, Operand::kActionWrite);
+  AddIntRegOp(inst, uint32_t(enc.Rn), 32u, Operand::kActionRead);
+  AddImmOp(inst, uint32_t(enc.imm3));
+
+  return true;
+
 }
+
+static const char *const kIdpAddSubComp1LowRegImm[] = {
+    [0b00] = "MOVL_T2",  [0b01] = "CMPL_T2",
+    [0b10] = "ADDL_T2",  [0b11] = "SUBL_T2"
+};
+
 
 //  op
 //  00  MOV, MOVS (immediate)
@@ -287,16 +321,35 @@ static bool TryDecode16AddSub2LowRegImm(Instruction &inst, uint16_t bits) {
 //  11  SUB, SUBS (immediate)
 // Add, subtract, compare, move (one low register and immediate) TODO(sonya)
 static bool TryDecode16AddSubComp1LowRegImm(Instruction &inst, uint16_t bits) {
-  inst.category = Instruction::kCategoryError;
-  return false;
+
+  // TODO(sonya):  setflags = !InITBlock()
+
   const AddSubComp1LowRegImm16 enc = {bits};
+  inst.category = Instruction::kCategoryNormal;
+  inst.function = kIdpAddSubComp1LowRegImm[enc.op];
+
+  // Unconditionally executed
+  AddIntRegOp(inst, uint32_t(enc.Rd), 32u, Operand::kActionWrite);
+  if (enc.op) {
+    AddIntRegOp(inst, uint32_t(enc.Rd), 32u, Operand::kActionRead);
+  }
+  AddImmOp(inst, uint32_t(enc.imm8));
+
+  return true;
+
 }
 
 // MOV, MOVS (register) — T2 TODO(sonya)
 static bool TryDecode16MOVrT2(Instruction &inst, uint16_t bits) {
   inst.category = Instruction::kCategoryError;
   return false;
-  const MOVrT2_16 enc = {bits};
+
+//  const MOVrT2_16 enc = {bits};
+//  inst.category = Instruction::kCategoryNormal;
+//  inst.function = "MOVL_T2";
+//
+//  return true;
+
 }
 
 //  B L
@@ -308,7 +361,7 @@ static bool TryDecode16MOVrT2(Instruction &inst, uint16_t bits) {
 static bool TryDecode16LoadStoreWordByteImm(Instruction &inst, uint16_t bits) {
   inst.category = Instruction::kCategoryError;
   return false;
-  const LoadStoreWordByteImm16 enc = {bits};
+//  const LoadStoreWordByteImm16 enc = {bits};
 }
 
 //  L
@@ -318,7 +371,7 @@ static bool TryDecode16LoadStoreWordByteImm(Instruction &inst, uint16_t bits) {
 static bool TryDecode16LoadStoreSPRelative(Instruction &inst, uint16_t bits) {
   inst.category = Instruction::kCategoryError;
   return false;
-  const LoadStoreSPRelative16 enc = {bits};
+//  const LoadStoreSPRelative16 enc = {bits};
 }
 
 //  SP
@@ -326,9 +379,24 @@ static bool TryDecode16LoadStoreSPRelative(Instruction &inst, uint16_t bits) {
 //  1 ADD, ADDS (SP plus immediate)
 // Add PC/SP (immediate) TODO(sonya)
 static bool TryDecode16AddPCSP(Instruction &inst, uint16_t bits) {
+
+  const AddPCSPImm16 enc = {bits};
+  inst.function = enc.SP ? "ADDL_T2" : "ADR";
+
+  // TODO(sonya): ADR
+
+  if (enc.SP) {
+    inst.category = Instruction::kCategoryNormal;
+
+    AddIntRegOp(inst, enc.Rd, 32u, Operand::kActionWrite);
+    AddIntRegOp(inst, kSPRegNum, 32u, Operand::kActionRead);
+    AddImmOp(inst, uint32_t(enc.imm8 << 2));
+
+    return true;
+  }
+
   inst.category = Instruction::kCategoryError;
   return false;
-  const AddPCSPImm16 enc = {bits};
 }
 
 // CBNZ, CBZ TODO(sonya)
@@ -337,18 +405,36 @@ static bool TryDecode16CBZ(Instruction &inst, uint16_t bits) {
   return false;
 }
 
+
+// Adjust SP (immediate)
+static bool TryDecode16AdjustSPImm(Instruction &inst, uint16_t bits) {
+
+  const AdjustSPImm16 enc = {bits};
+
+  // TODO(sonya):  setflags = !InITBlock()
+
+  inst.category = Instruction::kCategoryNormal;
+  inst.function = kIdpNamesAddSubLowReg[enc.S];
+
+  AddIntRegOp(inst, kSPRegNum, 32u, Operand::kActionWrite);
+  AddIntRegOp(inst, kSPRegNum, 32u, Operand::kActionRead);
+  AddImmOp(inst, uint32_t(enc.imm7 << 2));
+
+  return true;
+}
+
 // B — T1 encoding TODO(sonya)
 static bool TryDecode16B_T1(Instruction &inst, uint16_t bits) {
   inst.category = Instruction::kCategoryError;
   return false;
-  const B_T1_16 enc = {bits};
+//  const B_T1_16 enc = {bits};
 }
 
 // B — T2 encoding TODO(sonya)
 static bool TryDecode16B_T2(Instruction &inst, uint16_t bits) {
   inst.category = Instruction::kCategoryError;
   return false;
-  const B_T2_16 enc = {bits};
+//  const B_T2_16 enc = {bits};
 }
 
 // ------------- 32 Bit Instructions -------------
@@ -365,24 +451,24 @@ static bool TryDecode16B_T2(Instruction &inst, uint16_t bits) {
 // Load/Store Multiple TODO(sonya)
 // NOTE(sonya): this should become a template probably
 // (see TryDecodeLoadStoreMultiple in aarch32. the semantics are identical)
-static bool TryDecode32LoadStoreMult(Instruction &inst, uint16_t bits) {
+static bool TryDecode32LoadStoreMult(Instruction &inst, uint32_t bits) {
   inst.category = Instruction::kCategoryError;
   return false;
-  const LoadStoreMult32 enc = {bits};
+//  const LoadStoreMult32 enc = {bits};
 }
 
 // BL, BLX (immediate) — T1 TODO(sonya)
-static bool TryDecode32BL(Instruction &inst, uint16_t bits) {
+static bool TryDecode32BL(Instruction &inst, uint32_t bits) {
   inst.category = Instruction::kCategoryError;
   return false;
-  const BLT1_32 enc = {bits};
+//  const BLT1_32 enc = {bits};
 }
 
 // BL, BLX (immediate) — T2 TODO(sonya)
-static bool TryDecode32BLX(Instruction &inst, uint16_t bits) {
+static bool TryDecode32BLX(Instruction &inst, uint32_t bits) {
   inst.category = Instruction::kCategoryError;
   return false;
-  const BLXT2_32 enc = {bits};
+//  const BLXT2_32 enc = {bits};
 }
 
 // -----------------------------------------------
@@ -406,8 +492,11 @@ static bool TryDecode32BLX(Instruction &inst, uint16_t bits) {
 static TryDecode16 *TryDecodeMisc16(uint16_t bits) {
   const Misc16 enc = {bits};
 
+  if (!enc.op0) {
+    return TryDecode16AdjustSPImm;
+
   // op0 == x0x1    CBNZ, CBZ
-  if ((enc.op0 & 0b0001) && !((enc.op0 << 1) >> 3)) {
+  } else if ((enc.op0 & 0b0001) && !((enc.op0 << 1) >> 3)) {
     return TryDecode16CBZ;
   }
 
@@ -427,11 +516,11 @@ static TryDecode16 *TryDecodeMisc16(uint16_t bits) {
 //  1011xx  Miscellaneous 16-bit instructions
 //  1100xx  Load/store multiple
 //  1101xx  Conditional branch, and Supervisor Call
-static TryDecode16 *Try16Bit(uint16_t bits) {
+static TryDecode16 *Try16bit(uint16_t bits) {
   uint16_t op0 = bits >> 10;
 
   // The following constraints also apply to this encoding: op0<5:3> != 111
-  if ((op0 >> 3) != 0b111) {
+  if ((op0 >> 3) == 0b111) {
     return nullptr;
   }
 
@@ -459,6 +548,11 @@ static TryDecode16 *Try16Bit(uint16_t bits) {
       return TryDecode16AddSub3LowReg;
 
     }
+  // 010001  Special data instructions and branch and exchange
+  } else if (op0 == 0b010001) {
+    // TODO(sonya): Add, subtract, compare, move (two high registers)
+    // -- for ADD, ADDS (register)
+    return nullptr;
 
   // 011xxx  Load/store word/byte (immediate offset)
   } else if ((op0 >> 3) == 0b011) {
@@ -562,26 +656,57 @@ static TryDecode *Try32Bit(uint32_t bits) {
   return nullptr;
 }
 
-//  op0     op1
-// != 111         16-bit
-//  111      00   B — T2
-//  111    != 00  32-bit
-static TryDecode *TryDecodeTopLevelEncodings(uint32_t bits) {
-  // 16-bit instructions
-  if (bits >> 13 != 0b111) {
-    return Try16Bit(uint16_t(bits >> 16));
+bool DecodeThumb2Instruction(Instruction &inst, uint32_t bits) {
+  bool ret;
 
-  // B — T2
-  } else if (!((bits << 3) >> 11)) {
-    return TryDecode16B_T2;
+  //  op0     op1
+  // != 111         16-bit
+  //  111      00   B — T2
+  //  111    != 00  32-bit
+  // TODO(sonya): make adjustments to inst for a 16 bit increment
+  {
+    auto bits16 = uint16_t(bits >> 16);
 
-  // 32-bit instructions
-  } else {
-    return Try32Bit(bits);
+    // 16-bit instructions
+    if (bits >> 13 != 0b111) {
+      inst.next_pc = inst.pc + 2ull;  // Default fall-through.
+      //inst.bytes = inst_bytes;
+
+      auto decoder = Try16bit(bits16);
+      if (!decoder) {
+        LOG(ERROR) << "unhandled bits " << std::hex << bits << std::dec;
+        LOG(ERROR) << "unhandled bits16 " << std::hex << bits16 << std::dec;
+        return false;
+      }
+      ret = decoder(inst, bits16);
+
+    // B — T2
+    } else if (!((bits << 3) >> 11)) {
+      inst.next_pc = inst.pc + 2ull;  // Default fall-through.
+      //inst.bytes = inst_bytes;
+
+      auto decoder = TryDecode16B_T2;
+      ret = decoder(inst, bits16);
+
+    // 32-bit instructions
+    } else {
+      auto decoder = Try32Bit(bits);
+
+      if (!decoder) {
+        LOG(ERROR) << "unhandled bits " << std::hex << bits << std::dec;
+        return false;
+      }
+
+      ret = decoder(inst, bits);
+
+    }
   }
-}
 
+  LOG(ERROR) << inst.Serialize();
+  return ret;
+}
 } // namespace
+
 }  // namespace remill
 
 

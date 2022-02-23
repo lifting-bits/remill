@@ -44,6 +44,13 @@ DEF_COND_SEM(CMP, R32 src1, I32 src2, I8 carry_out) {
   return memory;
 }
 
+DEF_SEM(CMPL_T2, R32 src1, I32 src2, I8 carry_out) {
+  auto rhs = Read(src2);
+  auto lhs = Read(src1);
+  AddWithCarryNZCV(state, lhs, UNot(rhs), uint32_t(1));
+  return memory;
+}
+
 DEF_COND_SEM(CMN, R32 src1, I32 src2, I8 carry_out) {
   auto rhs = Read(src2);
   auto lhs = Read(src1);
@@ -56,3 +63,5 @@ DEF_ISEL(TSTr) = TST;
 DEF_ISEL(TEQr) = TEQ;
 DEF_ISEL(CMPr) = CMP;
 DEF_ISEL(CMNr) = CMN;
+
+DEF_ISEL(CMPL_T2) = CMPL_T2;
