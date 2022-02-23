@@ -55,11 +55,23 @@ AArch32Arch::~AArch32Arch(void) {}
 
 // TODO(pag): Eventually handle Thumb2 and unaligned addresses.
 uint64_t AArch32Arch::MinInstructionAlign(void) const {
-  return 4;
+  switch (arch_name) {
+    case kArchAArch32LittleEndian: return 4;
+    case kArchThumb2LittleEndian: return 2;
+    default:
+      LOG(FATAL) << "Cannot get minimum instruction alignment for non-aarch32 "
+          "architecture " << GetArchName(arch_name);
+  }
 }
 
 uint64_t AArch32Arch::MinInstructionSize(void) const {
-  return 4;
+  switch (arch_name) {
+    case kArchAArch32LittleEndian: return 4;
+    case kArchThumb2LittleEndian: return 2;
+    default:
+      LOG(FATAL) << "Cannot get minimum instruction alignment for non-aarch32 "
+          "architecture " << GetArchName(arch_name);
+  }
 }
 
 // Maximum number of bytes in an instruction for this particular architecture.
@@ -77,6 +89,7 @@ llvm::Triple AArch32Arch::Triple(void) const {
   auto triple = BasicTriple();
   switch (arch_name) {
     case kArchAArch32LittleEndian: triple.setArch(llvm::Triple::arm); break;
+    case kArchThumb2LittleEndian: triple.setArch(llvm::Triple::thumb); break;
     default:
       LOG(FATAL) << "Cannot get triple for non-aarch32 architecture "
                  << GetArchName(arch_name);
@@ -159,6 +172,7 @@ void AArch32Arch::PopulateRegisterTable(void) const {
   REG(C, sr.c, u8);
   REG(Z, sr.z, u8);
   REG(V, sr.v, u8);
+  REG(T, sr.t, u8);
 }
 
 
