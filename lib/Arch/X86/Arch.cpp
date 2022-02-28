@@ -1752,7 +1752,6 @@ void X86Arch::FinishLiftedFunctionInitialization(
 
   (void) this->RegisterByName("PC")->AddressOf(state_ptr_arg, ir);
 
-
   if (64 == address_size) {
     ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "CSBASE"));
     ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "SSBASE"));

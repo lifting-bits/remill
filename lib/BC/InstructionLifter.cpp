@@ -231,6 +231,7 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
                                   llvm::Value *state_ptr,
                                   std::string_view reg_name_) const {
   const auto func = block->getParent();
+  const auto module = func->getParent();
 
   // Invalidate the cache.
   if (func != impl->last_func) {
@@ -290,9 +291,25 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
     reg_ptr_it->second = reg_ptr;
     return reg_ptr;
 
+  // Try to find it as a global variable.
+  } else if (auto gvar = module->getGlobalVariable(reg_name)) {
+    return gvar;
+
+  // Invent a fake one and keep going.
   } else {
-    LOG(FATAL) << "Could not locate variable or register " << reg_name_;
-    return nullptr;
+    std::stringstream unk_var;
+    unk_var << "__remill_unknown_register_" << reg_name;
+    auto unk_var_name = unk_var.str();
+    auto var = module->getGlobalVariable(unk_var_name);
+    if (!var) {
+      LOG(ERROR)
+          << "Could not locate variable or register " << reg_name_;
+
+      var = new llvm::GlobalVariable(
+          *module, impl->word_type, false, llvm::GlobalValue::ExternalLinkage,
+          llvm::UndefValue::get(impl->word_type), unk_var_name);
+    }
+    return var;
   }
 }
 
