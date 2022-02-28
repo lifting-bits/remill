@@ -580,11 +580,6 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
             << "Expected " << arch_reg.name << " to be an integral type "
             << "for instruction at " << std::hex << inst.pc;
 
-        CHECK_LE(arg_size, word_size)
-            << "Expected integer argument to at least machine word size ("
-            << word_size << " bits) but is is " << arg_size << " instead "
-            << "in instruction at " << std::hex << inst.pc;
-
         val = new llvm::ZExtInst(val, arg_type,
                                  llvm::Twine::createNull(), block);
 
@@ -602,11 +597,6 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
         CHECK(val_type->isIntegerTy())
             << "Expected " << arch_reg.name << " to be an integral type "
             << "for instruction at " << std::hex << inst.pc;
-
-        CHECK_LE(arg_size, word_size)
-            << "Expected integer argument to be at least machine word size ("
-            << word_size << " bits) but is is " << arg_size << " instead "
-            << "in instruction at " << std::hex << inst.pc;
 
         val = new llvm::TruncInst(val, arg_type, llvm::Twine::createNull(),
                                   block);
