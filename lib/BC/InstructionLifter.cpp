@@ -111,7 +111,6 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
   }
 
   if (!isel_func) {
-    LOG(ERROR) << "Missing semantics for instruction " << arch_inst.Serialize();
     isel_func = impl->unsupported_instruction;
     arch_inst.operands.clear();
     status = kLiftedUnsupportedInstruction;
@@ -302,11 +301,13 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
   std::stringstream unk_var;
   unk_var << "__remill_unknown_register_" << reg_name;
   auto unk_var_name = unk_var.str();
-  auto var = module->getGlobalVariable(unk_var_name);
-  if (var) {
+  if (auto var = module->getGlobalVariable(unk_var_name)) {
     return var;
   }
 
+  // TODO(pag): Eventually refactor into a higher-level issue, perhaps a
+  //            a hyper call to read an unknown register, or a lifting failure,
+  //            with a more elaborate status value returned.
   LOG(ERROR)
       << "Could not locate variable or register " << reg_name_;
 
