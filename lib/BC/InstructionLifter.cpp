@@ -181,7 +181,7 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
     auto operand = LiftOperand(arch_inst, block, state_ptr, arg, op);
     arg_num += 1;
     auto op_type = operand->getType();
-    CHECK(op_type == arg_type)
+    CHECK_EQ(op_type, arg_type)
         << "Lifted operand " << op.Serialize() << " to " << arch_inst.function
         << " does not have the correct type. Expected "
         << LLVMThingToString(arg_type) << " but got "
@@ -248,18 +248,19 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
   if (reg_ptr_it->second) {
     (void) added;
     return reg_ptr_it->second;
+  }
 
   // It's already a variable in the function.
-  } else if (const auto var_ptr = FindVarInFunction(func, reg_name_, true);
-             var_ptr) {
+  if (const auto var_ptr = FindVarInFunction(func, reg_name_, true)) {
     reg_ptr_it->second = var_ptr;
     return var_ptr;
+  }
 
   // It's a register known to this architecture, so go and build a GEP to it
   // right now. We'll try to be careful about the placement of the actual
   // indexing instructions so that they always follow the definition of the
   // state pointer, and thus are most likely to dominate all future uses.
-  } else if (auto reg = impl->arch->RegisterByName(reg_name_); reg) {
+  if (auto reg = impl->arch->RegisterByName(reg_name_)) {
     llvm::Value *reg_ptr = nullptr;
 
     // The state pointer is an argument.
@@ -290,27 +291,28 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
 
     reg_ptr_it->second = reg_ptr;
     return reg_ptr;
+  }
 
   // Try to find it as a global variable.
-  } else if (auto gvar = module->getGlobalVariable(reg_name)) {
+  if (auto gvar = module->getGlobalVariable(reg_name)) {
     return gvar;
+  }
 
   // Invent a fake one and keep going.
-  } else {
-    std::stringstream unk_var;
-    unk_var << "__remill_unknown_register_" << reg_name;
-    auto unk_var_name = unk_var.str();
-    auto var = module->getGlobalVariable(unk_var_name);
-    if (!var) {
-      LOG(ERROR)
-          << "Could not locate variable or register " << reg_name_;
-
-      var = new llvm::GlobalVariable(
-          *module, impl->word_type, false, llvm::GlobalValue::ExternalLinkage,
-          llvm::UndefValue::get(impl->word_type), unk_var_name);
-    }
+  std::stringstream unk_var;
+  unk_var << "__remill_unknown_register_" << reg_name;
+  auto unk_var_name = unk_var.str();
+  auto var = module->getGlobalVariable(unk_var_name);
+  if (var) {
     return var;
   }
+
+  LOG(ERROR)
+      << "Could not locate variable or register " << reg_name_;
+
+  return new llvm::GlobalVariable(
+      *module, impl->word_type, false, llvm::GlobalValue::ExternalLinkage,
+      llvm::UndefValue::get(impl->word_type), unk_var_name);
 }
 
 // Clear out the cache of the current register values/addresses loaded.
@@ -347,7 +349,7 @@ llvm::Value *InstructionLifter::LoadWordRegValOrZero(llvm::BasicBlock *block,
 
   auto val_size = val_type->getBitWidth();
   auto word_size = word_type->getBitWidth();
-  CHECK(val_size <= word_size)
+  CHECK_LE(val_size, word_size)
       << "Register " << reg_name << " expected to be no larger than the "
       << "machine word size (" << word_type->getBitWidth() << " bits).";
 
@@ -398,7 +400,7 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
       reg = ir.CreateTrunc(reg, extract_type);
 
     } else {
-      CHECK(reg_size == op.shift_reg.extract_size)
+      CHECK_EQ(reg_size, op.shift_reg.extract_size)
           << "Invalid extraction size. Can't extract "
           << op.shift_reg.extract_size << " bits from a " << reg_size
           << "-bit value in operand " << op.Serialize() << " of instruction at "
@@ -423,7 +425,7 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
     }
   }
 
-  CHECK(curr_size <= op.size);
+  CHECK_LE(curr_size, op.size);
 
   if (curr_size < op.size) {
     reg = ir.CreateZExt(reg, op_type);
@@ -432,7 +434,7 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
 
   if (Operand::ShiftRegister::kShiftInvalid != op.shift_reg.shift_op) {
 
-    CHECK(shift_size < op.size)
+    CHECK_LT(shift_size, op.size)
         << "Shift of size " << shift_size
         << " is wider than the base register size in shift register in "
         << inst.Serialize();
@@ -489,7 +491,7 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
   if (word_size > op.size) {
     reg = ir.CreateZExt(reg, impl->word_type);
   } else {
-    CHECK(word_size == op.size)
+    CHECK_EQ(word_size, op.size)
         << "Final size of operand " << op.Serialize() << " is " << op.size
         << " bits, but address size is " << word_size;
   }
