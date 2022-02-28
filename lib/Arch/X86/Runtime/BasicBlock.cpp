@@ -37,12 +37,12 @@ extern uint64_t DR6;
 extern uint64_t DR7;
 
 // Control regs.
-extern CR0Reg gCR0;
-extern CR1Reg gCR1;
-extern CR2Reg gCR2;
-extern CR3Reg gCR3;
-extern CR4Reg gCR4;
-extern CR8Reg gCR8;
+extern CR0Reg CR0;
+extern CR1Reg CR1;
+extern CR2Reg CR2;
+extern CR3Reg CR3;
+extern CR4Reg CR4;
+extern CR8Reg CR8;
 
 #pragma clang diagnostic pop
 

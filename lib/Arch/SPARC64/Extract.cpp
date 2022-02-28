@@ -1934,28 +1934,44 @@ static bool TryDecodeOpf54(Instruction &inst, uint32_t bits) {
   }
 
 // Logical Operations
-DEFINE_TryDecode(AND) DEFINE_TryDecode(ANDcc) DEFINE_TryDecode(ANDN)
-    DEFINE_TryDecode(ANDNcc)
+DEFINE_TryDecode(AND)
+DEFINE_TryDecode(ANDcc)
+DEFINE_TryDecode(ANDN)
+DEFINE_TryDecode(ANDNcc)
 
-        DEFINE_TryDecode(OR) DEFINE_TryDecode(ORcc) DEFINE_TryDecode(ORN)
-            DEFINE_TryDecode(ORNcc)
+DEFINE_TryDecode(OR)
+DEFINE_TryDecode(ORcc)
+DEFINE_TryDecode(ORN)
+DEFINE_TryDecode(ORNcc)
 
-                DEFINE_TryDecode(XOR) DEFINE_TryDecode(XORcc)
-                    DEFINE_TryDecode(XNOR) DEFINE_TryDecode(XNORcc)
+DEFINE_TryDecode(XOR)
+DEFINE_TryDecode(XORcc)
+DEFINE_TryDecode(XNOR)
+DEFINE_TryDecode(XNORcc)
 
-    // Binary Operations
-    DEFINE_TryDecode(ADD) DEFINE_TryDecode(ADDC) DEFINE_TryDecode(
-        ADDcc) DEFINE_TryDecode(ADDCcc)
+// Binary Operations
+DEFINE_TryDecode(ADD)
+DEFINE_TryDecode(ADDC)
+DEFINE_TryDecode(ADDcc)
+DEFINE_TryDecode(ADDCcc)
 
-        DEFINE_TryDecode(SUB) DEFINE_TryDecode(SUBC) DEFINE_TryDecode(
-            SUBcc) DEFINE_TryDecode(SUBCcc)
+DEFINE_TryDecode(SUB)
+DEFINE_TryDecode(SUBC)
+DEFINE_TryDecode(SUBcc)
+DEFINE_TryDecode(SUBCcc)
 
-            DEFINE_TryDecode(UMUL) DEFINE_TryDecode(SMUL) DEFINE_TryDecode(MULX)
-                DEFINE_TryDecode(UMULcc) DEFINE_TryDecode(SMULcc)
+DEFINE_TryDecode(UMUL)
+DEFINE_TryDecode(SMUL)
+DEFINE_TryDecode(MULX)
+DEFINE_TryDecode(UMULcc)
+DEFINE_TryDecode(SMULcc)
 
-                    DEFINE_TryDecode(UDIV) DEFINE_TryDecode(SDIV)
-                        DEFINE_TryDecode(UDIVX) DEFINE_TryDecode(SDIVX)
-                            DEFINE_TryDecode(UDIVcc) DEFINE_TryDecode(SDIVcc)
+DEFINE_TryDecode(UDIV)
+DEFINE_TryDecode(SDIV)
+DEFINE_TryDecode(UDIVX)
+DEFINE_TryDecode(SDIVX)
+DEFINE_TryDecode(UDIVcc)
+DEFINE_TryDecode(SDIVcc)
 
 #undef DEFINE_TryDecode
 #define DEFINE_TryDecode(ins) \
@@ -1967,10 +1983,10 @@ DEFINE_TryDecode(AND) DEFINE_TryDecode(ANDcc) DEFINE_TryDecode(ANDN)
     return true; \
   }
 
-                                DEFINE_TryDecode(TADDcc)
-                                    DEFINE_TryDecode(TSUBcc)
-                                        DEFINE_TryDecode(TADDccTV)
-                                            DEFINE_TryDecode(TSUBccTV)
+DEFINE_TryDecode(TADDcc)
+DEFINE_TryDecode(TSUBcc)
+DEFINE_TryDecode(TADDccTV)
+DEFINE_TryDecode(TSUBccTV)
 
 #undef DEFINE_TryDecode
 
