@@ -21,6 +21,7 @@
 #include "Arch.h"
 #include "Decode.h"
 #include "remill/BC/ABI.h"
+#include "remill/Arch/Name.h"
 
 namespace remill {
 
@@ -319,7 +320,7 @@ static const char *const kIdpAddSubComp1LowRegImm[] = {
 //  01  CMP (immediate)
 //  10  ADD, ADDS (immediate)
 //  11  SUB, SUBS (immediate)
-// Add, subtract, compare, move (one low register and immediate) TODO(sonya)
+// Add, subtract, compare, move (one low register and immediate)
 static bool TryDecode16AddSubComp1LowRegImm(Instruction &inst, uint16_t bits) {
 
   // TODO(sonya):  setflags = !InITBlock()
@@ -339,30 +340,60 @@ static bool TryDecode16AddSubComp1LowRegImm(Instruction &inst, uint16_t bits) {
 
 }
 
-// MOV, MOVS (register) — T2 TODO(sonya)
+// MOV, MOVS (register) — T2
 static bool TryDecode16MOVrT2(Instruction &inst, uint16_t bits) {
-  inst.category = Instruction::kCategoryError;
-  return false;
 
-//  const MOVrT2_16 enc = {bits};
-//  inst.category = Instruction::kCategoryNormal;
-//  inst.function = "MOVL_T2";
-//
-//  return true;
+  const MOVrT2_16 enc = {bits};
+  inst.category = Instruction::kCategoryNormal;
+  inst.function = "MOVL_T2";
+
+  // TODO(sonya):  setflags = !InITBlock()
+  // if op == '00' && imm5 == '00000' && InITBlock() then UNPREDICTABLE;
+
+  AddIntRegOp(inst, uint32_t(enc.Rd), 32u, Operand::kActionWrite);
+
+  // (shift_t, shift_n) = DecodeImmShift(op, imm5);
+  AddShiftRegImmOperand(inst, uint32_t(enc.Rm), uint32_t(enc.op),
+                        uint32_t(enc.imm5), false, false);
+
+  return true;
 
 }
+
+static const char *const kIdpLoadStoreWordByte[] = {
+    [0b00] = "STR_T2",  [0b01] = "LDR_T2",
+    [0b10] = "STRB_T2",  [0b11] = "LDRB_T2"
+};
 
 //  B L
 //  0 0 STR (immediate)
 //  0 1 LDR (immediate)
 //  1 0 STRB (immediate)
 //  1 1 LDRB (immediate)
-// Load/store word/byte (immediate offset) TODO(sonya)
+// Load/store word/byte (immediate offset)
+template <Operand::Action kMemAction, Operand::Action kRegAction,
+          unsigned kMemSize>
 static bool TryDecode16LoadStoreWordByteImm(Instruction &inst, uint16_t bits) {
-  inst.category = Instruction::kCategoryError;
-  return false;
-//  const LoadStoreWordByteImm16 enc = {bits};
+  inst.category = Instruction::kCategoryNormal;
+  const LoadStoreWordByteImm16 enc = {bits};
+  inst.function = kIdpLoadStoreWordByte[(enc.B << 1) | enc.L];
+
+  AddAddrRegOp(inst, kIntRegName[enc.Rt], 32u, kRegAction, 0u);
+  AddAddrRegOp(inst, kIntRegName[enc.Rn], 32u, kMemAction, enc.imm5 << 2);
+
+  return true;
 }
+
+static TryDecode16 *kDecode16LoadStoreWordByteImm[] = {
+    [0b00] = TryDecode16LoadStoreWordByteImm<Operand::kActionWrite,
+                                      Operand::kActionRead, 32u >,
+    [0b01] = TryDecode16LoadStoreWordByteImm<Operand::kActionRead,
+                                      Operand::kActionWrite, 32u >,
+    [0b10] = TryDecode16LoadStoreWordByteImm<Operand::kActionWrite,
+                                      Operand::kActionRead, 8u >,
+    [0b11] = TryDecode16LoadStoreWordByteImm<Operand::kActionRead,
+                                      Operand::kActionWrite, 8u >
+};
 
 //  L
 //  0 STR (immediate)
@@ -370,6 +401,7 @@ static bool TryDecode16LoadStoreWordByteImm(Instruction &inst, uint16_t bits) {
 // Load/store (SP-relative) TODO(sonya)
 static bool TryDecode16LoadStoreSPRelative(Instruction &inst, uint16_t bits) {
   inst.category = Instruction::kCategoryError;
+
   return false;
 //  const LoadStoreSPRelative16 enc = {bits};
 }
@@ -377,7 +409,7 @@ static bool TryDecode16LoadStoreSPRelative(Instruction &inst, uint16_t bits) {
 //  SP
 //  0 ADR
 //  1 ADD, ADDS (SP plus immediate)
-// Add PC/SP (immediate) TODO(sonya)
+// Add PC/SP (immediate)
 static bool TryDecode16AddPCSP(Instruction &inst, uint16_t bits) {
 
   const AddPCSPImm16 enc = {bits};
@@ -556,7 +588,7 @@ static TryDecode16 *Try16bit(uint16_t bits) {
 
   // 011xxx  Load/store word/byte (immediate offset)
   } else if ((op0 >> 3) == 0b011) {
-    return TryDecode16LoadStoreWordByteImm;
+    return kDecode16LoadStoreWordByteImm[(op0 >> 1) & 0b11];
 
   // 1001xx  Load/store (SP-relative)
   } else if ((op0 >> 2) == 0b1001) {
@@ -586,6 +618,8 @@ static TryDecode16 *Try16bit(uint16_t bits) {
 
   return nullptr;
 }
+
+
 
 //  op0    op1  op2 op3   op4 op5
 //   0    1110  0x  0x0        0  MSR (register)
@@ -705,7 +739,8 @@ bool DecodeThumb2Instruction(Instruction &inst, uint32_t bits) {
   LOG(ERROR) << inst.Serialize();
   return ret;
 }
-} // namespace
+
+} // namespace aarch32
 
 }  // namespace remill
 
