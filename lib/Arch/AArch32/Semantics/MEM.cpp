@@ -507,3 +507,31 @@ DEF_ISEL(STMIB) = STMDB;
 DEF_ISEL(LDMIB) = LDM;
 
 // DEF_ISEL(LDMe) = LDMe;
+
+// Thumb2
+namespace {
+
+
+template<typename M, typename T>
+DEF_SEM(STR_T2, M dst, R32 src1) {
+  auto src = TruncTo<T>(Read(src1));
+  WriteZExt(dst, src);
+
+  return memory;
+}
+
+template<typename M>
+DEF_SEM(LDR_T2, R32W dst, M src1) {
+  auto src = Read(src1);
+  WriteZExt(dst, src);
+
+  return memory;
+}
+}  // namespace
+
+DEF_ISEL(STR_T2) = STR_T2<M32W, uint32_t>;
+DEF_ISEL(LDR_T2) = LDR_T2<M32>;
+DEF_ISEL(STRB_T2) = STR_T2<M8W, uint8_t>;
+DEF_ISEL(LDRB_T2) = LDR_T2<M8>;
+
+

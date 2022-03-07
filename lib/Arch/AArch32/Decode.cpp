@@ -565,10 +565,6 @@ static_assert(sizeof(SpecialRegsAndHints) == 4, " ");
 
 static constexpr auto kAddressSize = 32u;
 
-static const char *const kIntRegName[] = {
-    "R0", "R1", "R2",  "R3",  "R4",  "R5",  "R6",  "R7",
-    "R8", "R9", "R10", "R11", "R12", "R13", "R14", "R15"};
-
 void AddIntRegOp(Instruction &inst, unsigned index, unsigned size,
                         Operand::Action action) {
   Operand::Register reg;
@@ -608,9 +604,9 @@ void AddImmOp(Instruction &inst, uint64_t value, unsigned size,
   op.size = size;
 }
 
-static void AddAddrRegOp(Instruction &inst, const char *reg_name,
-                         unsigned mem_size, Operand::Action mem_action,
-                         unsigned disp, unsigned scale = 0) {
+void AddAddrRegOp(Instruction &inst, const char *reg_name, unsigned mem_size,
+                         Operand::Action mem_action,
+                         unsigned disp, unsigned scale) {
   Operand::Address addr;
   addr.address_size = 32;
   addr.base_reg.name = reg_name;
@@ -907,7 +903,7 @@ static void AddShiftImmCarryOperand(Instruction &inst, uint32_t reg_num,
 // (shift_t, shift_n) = DecodeImmShift(type, imm5);
 // (shifted, carry) = Shift_C(R[m], shift_t, shift_n, PSTATE.C);
 // See an instruction in Integer Data Processing (three register, immediate shift) set for an example
-static void AddShiftRegImmOperand(Instruction &inst, uint32_t reg_num,
+void AddShiftRegImmOperand(Instruction &inst, uint32_t reg_num,
                                   uint32_t shift_type, uint32_t shift_size,
                                   bool carry_out, bool can_shift_right_by_32) {
   auto is_rrx = false;
@@ -1190,7 +1186,7 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
       auto src2 = EvalOperand(inst, inst.operands[4], uses_linkreg);
 
       AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
-                   Operand::kActionWrite, 0);
+                   Operand::kActionWrite, 0u);
 
       if (uses_linkreg) {
 
@@ -3626,7 +3622,7 @@ static uint32_t BytesToBits(const uint8_t *bytes) {
   bits = (bits << 8) | static_cast<uint32_t>(bytes[0]);
   return bits;
 }
-}  // namespace
+}  // namespace aarch32
 
 // Decode an instruction
 bool AArch32Arch::DecodeInstruction(uint64_t address,
