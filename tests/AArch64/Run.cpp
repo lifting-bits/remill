@@ -141,7 +141,6 @@ MAKE_RW_MEMORY(64)
 
 MAKE_RW_FP_MEMORY(32)
 MAKE_RW_FP_MEMORY(64)
-MAKE_RW_FP_MEMORY(80)
 MAKE_RW_FP_MEMORY(128)
 
 Memory *__remill_compare_exchange_memory_8(Memory *memory, addr_t addr,
@@ -610,7 +609,12 @@ TEST_P(InstrTest, SemanticsMatchNative) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(GeneralInstrTest, InstrTest, testing::ValuesIn(gTests));
+std::string NameTest(const testing::TestParamInfo<InstrTest::ParamType> &test) {
+  return test.param->test_name;
+}
+
+INSTANTIATE_TEST_SUITE_P(GeneralInstrTest, InstrTest, testing::ValuesIn(gTests),
+                         NameTest);
 
 // Recover from a signal.
 static void RecoverFromError(int sig_num, siginfo_t *, void *context_) {
