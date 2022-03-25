@@ -1751,7 +1751,7 @@ static bool TryDecodeLoadStoreWordUBIL(Instruction &inst, uint32_t bits) {
   //                The semantics for these instructions take `next_pc` as
   //                arguments and should update it accordingly.
 
-  if (enc.rt == kPCRegNum) {
+  if (enc.rt == kPCRegNum && kRegAction == Operand::Action::kActionWrite) {
     AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
                  Operand::kActionWrite, 0);
 
@@ -1859,7 +1859,7 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
   //                The semantics for these instructions take `next_pc` as
   //                arguments and should update it accordingly.
 
-  if (enc.rt == kPCRegNum) {
+  if (enc.rt == kPCRegNum && kRegAction == Operand::Action::kActionWrite) {
     AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
                  Operand::kActionWrite, 0);
 
@@ -2032,7 +2032,7 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
   //                The semantics for these instructions take `next_pc` as
   //                arguments and should update it accordingly.
 
-  if (enc.rt == kPCRegNum) {
+  if (enc.rt == kPCRegNum && kRegAction == Operand::Action::kActionWrite) {
     AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
                  Operand::kActionWrite, 0);
 
@@ -2341,7 +2341,8 @@ static bool TryDecodeLoadStoreMultiple(Instruction &inst, uint32_t bits) {
   //                take care of identifying if its indirect jump
   //
 
-  if (enc.register_list & (0b1 << 15u)) {
+  if ((enc.register_list & (0b1 << 15u)) &&
+      kRegAction == Operand::Action::kActionWrite) {
     AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
                  Operand::kActionWrite, 0);
 
