@@ -485,9 +485,9 @@ Operand &Instruction::EmplaceOperand(const Operand::ShiftRegister &shift_op) {
       // AArch32, it <= register size. This is used when using LSR/ASR
       // to shift a register value into the carry out operands.
       // for example: andseq r3, sl, r0, lsr #32
-      CHECK(shift_size < op.size
-            || (shift_size <= op.size && arch_name == kArchAArch32LittleEndian
-                && shift_op.can_shift_op_size))
+      CHECK(shift_size < op.size ||
+            (shift_size <= op.size && arch_name == kArchAArch32LittleEndian &&
+             shift_op.can_shift_op_size))
           << "Shift of size " << shift_size
           << " is wider than the base register size in shift register in "
           << Serialize();

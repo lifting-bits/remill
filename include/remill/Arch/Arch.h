@@ -249,7 +249,7 @@ class Arch {
   // `permit_fuse_idioms` is `true` if Remill is allowed to decode multiple
   // instructions at a time and look for instruction fusing idioms that are
   // common to this architecture.
-  virtual uint64_t MaxInstructionSize(bool permit_fuse_idioms=true) const = 0;
+  virtual uint64_t MaxInstructionSize(bool permit_fuse_idioms = true) const = 0;
 
   // Default calling convention for this architecture.
   virtual llvm::CallingConv::ID DefaultCallingConv(void) const = 0;
@@ -313,8 +313,9 @@ class Arch {
 
   // Populate a just-initialized lifted function function with architecture-
   // specific variables.
-  virtual void FinishLiftedFunctionInitialization(
-      llvm::Module *module, llvm::Function *bb_func) const = 0;
+  virtual void
+  FinishLiftedFunctionInitialization(llvm::Module *module,
+                                     llvm::Function *bb_func) const = 0;
 
   llvm::Triple BasicTriple(void) const;
 
@@ -338,6 +339,10 @@ class Arch {
   // Defined in `lib/Arch/SleighX86/Arch.cpp`
   static ArchPtr GetSleighX86(llvm::LLVMContext *context, OSName os,
                               ArchName arch_name);
+
+  // Defined in `lib/Arch/SleighThumb2/Arch.cpp`
+  static ArchPtr GetSleighThumb2(llvm::LLVMContext *context, OSName os,
+                                 ArchName arch_name);
 
   // Defined in `lib/Arch/SPARC32/Arch.cpp`.
   static ArchPtr GetSPARC(llvm::LLVMContext *context, OSName os,
