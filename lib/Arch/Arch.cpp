@@ -60,6 +60,7 @@ static unsigned AddressSize(ArchName arch_name) {
     case kArchX86_AVX:
     case kArchX86_AVX512:
     case kArchAArch32LittleEndian:
+    case kArchThumb2LittleEndian:
     case kArchSparc32: return 32;
     case kArchAMD64:
     case kArchAMD64_AVX:
@@ -149,6 +150,12 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
     case kArchAArch32LittleEndian: {
       DLOG(INFO) << "Using architecture: AArch32, feature set: Little Endian";
       ret = GetAArch32(context_, os_name_, arch_name_);
+      break;
+    }
+
+    case kArchThumb2LittleEndian: {
+      DLOG(INFO) << "Using architecture: thumb2";
+      ret = GetSleighThumb2(context_, os_name_, arch_name_);
       break;
     }
 
@@ -480,8 +487,7 @@ static uint64_t TotalOffset(const llvm::DataLayout &dl, llvm::Value *base,
 static llvm::Value *
 FinishAddressOf(llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
                 llvm::Type *state_ptr_type, size_t state_size,
-                const Register *reg, unsigned addr_space,
-                llvm::Value *gep) {
+                const Register *reg, unsigned addr_space, llvm::Value *gep) {
 
 
   auto gep_offset = TotalOffset(dl, gep, state_ptr_type);
@@ -603,8 +609,8 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
   }
 
   auto state_size = dl.getTypeAllocSize(state_type);
-  auto ret = FinishAddressOf(
-      ir, dl, state_ptr_type, state_size, this, addr_space, gep);
+  auto ret = FinishAddressOf(ir, dl, state_ptr_type, state_size, this,
+                             addr_space, gep);
 
   // Add the metadata to `inst`.
   if (auto inst = llvm::dyn_cast<llvm::Instruction>(ret); inst) {
@@ -713,8 +719,7 @@ void Arch::InitializeEmptyLiftedFunction(llvm::Function *func) const {
   ir.CreateStore(state,
                  ir.CreateAlloca(llvm::PointerType::get(impl->state_type, 0),
                                  nullptr, "STATE"));
-  ir.CreateStore(memory,
-                 ir.CreateAlloca(impl->memory_type, nullptr, "MEMORY"));
+  ir.CreateStore(memory, ir.CreateAlloca(impl->memory_type, nullptr, "MEMORY"));
 
   FinishLiftedFunctionInitialization(module, func);
   CHECK(BlockHasSpecialVars(func));
@@ -770,8 +775,9 @@ const Register *Arch::AddRegister(const char *reg_name_, llvm::Type *val_type,
       reg_at_offset = reg;
     } else if (reg_at_offset) {
       CHECK_EQ(reg_at_offset->EnclosingRegister(), reg->EnclosingRegister())
-        << maybe_get_reg_name(reg_at_offset->EnclosingRegister()) << " != "
-        << maybe_get_reg_name(reg->EnclosingRegister());;
+          << maybe_get_reg_name(reg_at_offset->EnclosingRegister())
+          << " != " << maybe_get_reg_name(reg->EnclosingRegister());
+      ;
       reg_at_offset = reg;
     }
   }
