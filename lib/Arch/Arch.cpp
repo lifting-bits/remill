@@ -145,6 +145,12 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
       break;
     }
 
+    case kArchThumb2LittleEndian: {
+      DLOG(INFO) << "Using architecture: thumb2";
+      ret = GetSleighThumb2(context_, os_name_, arch_name_);
+      break;
+    }
+
     case kArchX86: {
       DLOG(INFO) << "Using architecture: X86";
       ret = GetSleighX86(context_, os_name_, arch_name_);
@@ -194,7 +200,8 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
     }
 
     case kArchThumb2LittleEndian: {
-      DLOG(WARNING) << "Using architecture: Aarch32/Thumb2. WARNING: not fully implemented at this point.";
+      DLOG(WARNING)
+          << "Using architecture: Aarch32/Thumb2. WARNING: not fully implemented at this point.";
       //TODO(artem): Fix this once Thumb2 fully supported
       ret = GetAArch32(context_, os_name_, arch_name_);
       break;
@@ -490,7 +497,8 @@ FinishAddressOf(llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
   CHECK_LT(gep_offset, state_size);
 
   const auto index_type = reg->gep_index_list[0]->getType();
-  const auto goal_ptr_type = llvm::PointerType::get(ir.getContext(), addr_space);
+  const auto goal_ptr_type =
+      llvm::PointerType::get(ir.getContext(), addr_space);
 
   // Best case: we've found a value field in the structure that
   // is located at the correct byte offset.
@@ -538,7 +546,8 @@ FinishAddressOf(llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
     return llvm::ConstantExpr::getBitCast(const_gep, goal_ptr_type);
 
   } else {
-    gep = ir.CreateBitCast(gep, llvm::PointerType::get(ir.getContext(), addr_space));
+    gep = ir.CreateBitCast(gep,
+                           llvm::PointerType::get(ir.getContext(), addr_space));
     gep = ir.CreateGEP(byte_type, gep, elem_indexes);
     return ir.CreateBitCast(gep, goal_ptr_type);
   }
@@ -601,8 +610,8 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
   }
 
   auto state_size = dl.getTypeAllocSize(state_type);
-  auto ret = FinishAddressOf(
-      ir, dl, state_type, state_size, this, addr_space, gep);
+  auto ret =
+      FinishAddressOf(ir, dl, state_type, state_size, this, addr_space, gep);
 
   // Add the metadata to `inst`.
   if (auto inst = llvm::dyn_cast<llvm::Instruction>(ret); inst) {
@@ -702,11 +711,9 @@ void Arch::InitializeEmptyLiftedFunction(llvm::Function *func) const {
   // NOTE(pag): `PC` and `NEXT_PC` are handled by
   //            `FinishLiftedFunctionInitialization`.
 
-  ir.CreateStore(state,
-                 ir.CreateAlloca(llvm::PointerType::get(context, 0),
-                                 nullptr, "STATE"));
-  ir.CreateStore(memory,
-                 ir.CreateAlloca(impl->memory_type, nullptr, "MEMORY"));
+  ir.CreateStore(state, ir.CreateAlloca(llvm::PointerType::get(context, 0),
+                                        nullptr, "STATE"));
+  ir.CreateStore(memory, ir.CreateAlloca(impl->memory_type, nullptr, "MEMORY"));
 
   FinishLiftedFunctionInitialization(module, func);
   CHECK(BlockHasSpecialVars(func));
@@ -762,8 +769,9 @@ const Register *Arch::AddRegister(const char *reg_name_, llvm::Type *val_type,
       reg_at_offset = reg;
     } else if (reg_at_offset) {
       CHECK_EQ(reg_at_offset->EnclosingRegister(), reg->EnclosingRegister())
-        << maybe_get_reg_name(reg_at_offset->EnclosingRegister()) << " != "
-        << maybe_get_reg_name(reg->EnclosingRegister());;
+          << maybe_get_reg_name(reg_at_offset->EnclosingRegister())
+          << " != " << maybe_get_reg_name(reg->EnclosingRegister());
+      ;
       reg_at_offset = reg;
     }
   }
@@ -787,7 +795,8 @@ void Arch::InitFromSemanticsModule(llvm::Module *module) const {
 
   const auto *state_global = module->getGlobalVariable("__remill_state");
   CHECK_NOTNULL(state_global);
-  auto *state_type = llvm::dyn_cast<llvm::StructType>(state_global->getValueType());
+  auto *state_type =
+      llvm::dyn_cast<llvm::StructType>(state_global->getValueType());
   CHECK_NOTNULL(state_type);
 
   const auto *register_window_global =

@@ -81,6 +81,7 @@ enum ArchName : uint32_t {
   kArchAMD64_AVX,
   kArchAMD64_AVX512,
 
+  kArchThumb2LittleEndian,
   kArchAArch32LittleEndian,
   kArchAArch64LittleEndian,
 
