@@ -1,4 +1,4 @@
-add_library(remill_arch_sleighthumb2 STATIC
+add_library(remill_arch_sleigh STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Definitions.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/HyperCall.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Intrinsics.h"
@@ -7,20 +7,25 @@ add_library(remill_arch_sleighthumb2 STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/State.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Types.h"
 
-  "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/Runtime/State.h"
+  "${REMILL_INCLUDE_DIR}/remill/Arch/X86/Runtime/Operators.h"
+  "${REMILL_INCLUDE_DIR}/remill/Arch/X86/Runtime/State.h"
+  "${REMILL_INCLUDE_DIR}/remill/Arch/X86/Runtime/Types.h"
 
-  Arch.cpp
+  X86Arch.cpp
+  Thumb2Arch.cpp
+  SleighArch.cpp
+  SleighArch.h
   )
 
-set_property(TARGET remill_arch_sleighthumb2 PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_property(TARGET remill_arch_sleigh PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-target_link_libraries(remill_arch_sleighthumb2 LINK_PUBLIC
+target_link_libraries(remill_arch_sleigh LINK_PUBLIC
   remill_settings
 )
 
 if(REMILL_ENABLE_INSTALL_TARGET)
   install(
-    TARGETS remill_arch_sleighthumb2
+    TARGETS remill_arch_sleigh
     EXPORT remillTargets
   )
 endif()

@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include "../Arch.h"
-
 #include <glog/logging.h>
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/Attributes.h>
@@ -28,6 +26,8 @@
 #include <remill/BC/Util.h>
 #include <remill/OS/OS.h>
 
+#include "../Arch.h"
+
 // clang-format off
 #define HAS_FEATURE_AVX 1
 #define HAS_FEATURE_AVX512 1
@@ -37,37 +37,11 @@
 #include <sleigh/libsleigh.hh>
 // clang-format on
 
+#include "SleighArch.h"
 
 namespace remill {
-namespace sleighx86 {
+namespace sleigh::x86 {
 
-// Create a custom load image class that supports incrementally adding instructions to the buffer.
-// On each instruction decode, we should call `AppendInstruction` and then proceed as usual.
-class CustomLoadImage final : public LoadImage {
- public:
-  CustomLoadImage(void) : LoadImage("nofile") {}
-
-  void AppendInstruction(std::string_view instr_bytes) {
-    image_buffer.append(instr_bytes);
-  }
-
-  void loadFill(unsigned char *ptr, int size, const Address &addr) override {
-    uint8_t start = addr.getOffset();
-    for (int i = 0; i < size; ++i) {
-      uint64_t offset = start + i;
-      ptr[i] = offset < image_buffer.size() ? image_buffer[i] : 0;
-    }
-  }
-
-  std::string getArchType(void) const override {
-    return "custom";
-  }
-
-  void adjustVma(long) override {}
-
- private:
-  std::string image_buffer;
-};
 
 class PcodeDecoder final : public PcodeEmit {
  public:
@@ -155,26 +129,11 @@ class PcodeDecoder final : public PcodeEmit {
   Instruction &inst;
 };
 
-class SleighX86Arch final : public Arch {
+class SleighX86Arch final : public remill::sleigh::SleighArch {
  public:
   SleighX86Arch(llvm::LLVMContext *context_, OSName os_name_,
                 ArchName arch_name_)
-      : Arch(context_, os_name_, arch_name_),
-        engine(&image, &ctx) {
-    DocumentStorage storage;
-    const char *sla_name = "x86-64.sla";
-    const std::optional<std::filesystem::path> sla_path =
-        sleigh::FindSpecFile(sla_name);
-    if (!sla_path) {
-      LOG(FATAL) << "Couldn't find required spec file: " << sla_name << '\n';
-    }
-    Element *root = storage.openDocument(sla_path->string())->getRoot();
-    storage.registerTag(root);
-    engine.initialize(storage);
-
-    // This needs to happen after engine initialization
-    cur_addr = Address(engine.getDefaultCodeSpace(), 0x0);
-  }
+      : SleighArch(context_, os_name_, arch_name_, "x86-64.sla") {}
 
   virtual ~SleighX86Arch(void) = default;
 
@@ -726,20 +685,14 @@ class SleighX86Arch final : public Arch {
       ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "DSBASE"));
     }
   }
-
- private:
-  CustomLoadImage image;
-  ContextInternal ctx;
-  Sleigh engine;
-  Address cur_addr;
 };
 
-}  // namespace sleighx86
+}  // namespace sleigh::x86
 
 Arch::ArchPtr Arch::GetSleighX86(llvm::LLVMContext *context_, OSName os_name_,
                                  ArchName arch_name_) {
-  return std::make_unique<sleighx86::SleighX86Arch>(context_, os_name_,
-                                                    arch_name_);
+  return std::make_unique<sleigh::x86::SleighX86Arch>(context_, os_name_,
+                                                      arch_name_);
 }
 
 
