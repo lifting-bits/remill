@@ -16,9 +16,9 @@
 
 #include <glog/logging.h>
 #include <remill/Arch/AArch32/Runtime/State.h>
+#include <remill/Arch/Sleigh/SleighArch.h>
 
 #include "../Arch.h"
-#include "SleighArch.h"
 #include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
 #include "remill/BC/Compat/Attributes.h"
