@@ -567,6 +567,9 @@ class SleighX86Arch final : public remill::sleigh::SleighArch {
       ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "DSBASE"));
     }
   }
+
+  void InitializeSleighContext(
+      remill::sleigh::SingleInstructionSleighContext &ctxt) const override {}
 };
 
 }  // namespace sleigh::x86

@@ -28,19 +28,23 @@
 namespace remill {
 
 class SleighLifter : public InstructionLifter {
+  class PcodeToLLVMEmitIntoBlock;
+
  public:
   inline SleighLifter(const sleigh::SleighArch *arch_,
                       const IntrinsicTable &intrinsics_)
       : InstructionLifter(arch_, intrinsics_),
-        sleigh_context(arch_->GetSLAName()) {}
+        sleigh_context(arch_->GetSLAName()) {
+    arch_->InitializeSleighContext(this->sleigh_context);
+  }
 
   virtual ~SleighLifter(void) = default;
 
   LiftStatus LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
                            llvm::Value *state_ptr, bool is_delayed) override;
 
-
  private:
+  Sleigh &GetEngine();
   sleigh::SingleInstructionSleighContext sleigh_context;
 };
 

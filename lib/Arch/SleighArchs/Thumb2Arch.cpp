@@ -166,6 +166,11 @@ class SleighThumb2Arch final : public remill::sleigh::SleighArch {
 
     (void) this->RegisterByName("PC")->AddressOf(state_ptr_arg, ir);
   }
+
+  void InitializeSleighContext(
+      remill::sleigh::SingleInstructionSleighContext &ctxt) const override {
+    ctxt.GetEngine().setContextDefault("TMode", 1);
+  }
 };
 
 }  // namespace sleighthumb2
@@ -175,5 +180,6 @@ Arch::ArchPtr Arch::GetSleighThumb2(llvm::LLVMContext *context_,
                                                           arch_name_);
 }
 
+//     this->sleigh_ctx.GetEngine().setContextDefault("TMode", 1);
 
 }  // namespace remill
