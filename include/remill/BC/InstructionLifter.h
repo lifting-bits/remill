@@ -55,6 +55,8 @@ enum LiftStatus {
 // is called with the appropriate arguments.
 class InstructionLifter {
  public:
+  using LifterPtr = std::unique_ptr<InstructionLifter>;
+
   virtual ~InstructionLifter(void);
 
   inline InstructionLifter(const std::unique_ptr<const Arch> &arch_,
