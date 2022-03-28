@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#pragma once
+
 #include <remill/Arch/Arch.h>
 
 #include <sleigh/libsleigh.hh>
@@ -90,10 +92,18 @@ class SleighArch : public Arch {
   bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
                          Instruction &inst) const override;
 
+
+  InstructionLifter::LifterPtr
+  GetLifter(const remill::IntrinsicTable &intrinsics) const override;
+
+
+  std::string GetSLAName() const;
+
  protected:
   bool DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,
                              Instruction &inst);
 
   SingleInstructionSleighContext sleigh_ctx;
+  std::string sla_name;
 };
 }  // namespace remill::sleigh

@@ -17,7 +17,7 @@
 
 #include <glog/logging.h>
 #include <remill/Arch/Sleigh/SleighArch.h>
-
+#include <remill/BC/SleighLifter.h>
 namespace remill::sleigh {
 
 
@@ -166,7 +166,8 @@ bool SleighArch::DecodeInstruction(uint64_t address,
 SleighArch::SleighArch(llvm::LLVMContext *context_, OSName os_name_,
                        ArchName arch_name_, std::string sla_name)
     : Arch(context_, os_name_, arch_name_),
-      sleigh_ctx(sla_name) {}
+      sleigh_ctx(sla_name),
+      sla_name(sla_name) {}
 
 bool SleighArch::DecodeInstructionImpl(uint64_t address,
                                        std::string_view instr_bytes,
@@ -208,6 +209,15 @@ SingleInstructionSleighContext::oneInstruction(PcodeEmit &handler,
 
   this->cur_addr = cur_addr + instr_len;
   return instr_len;
+}
+
+InstructionLifter::LifterPtr
+SleighArch::GetLifter(const remill::IntrinsicTable &intrinsics) const {
+  return std::make_unique<SleighLifter>(this, intrinsics);
+}
+
+std::string SleighArch::GetSLAName() const {
+  return this->sla_name;
 }
 
 
