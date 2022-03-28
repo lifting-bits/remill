@@ -42,93 +42,6 @@
 namespace remill {
 namespace sleigh::x86 {
 
-
-class PcodeDecoder final : public PcodeEmit {
- public:
-  PcodeDecoder(Sleigh &engine_, Instruction &inst_)
-      : engine(engine_),
-        inst(inst_) {}
-
-  void dump(const Address &, OpCode op, VarnodeData *outvar, VarnodeData *vars,
-            int32_t isize) override {
-    inst.function = get_opname(op);
-    if (outvar) {
-      DecodeOperand(*outvar);
-    }
-    for (int i = 0; i < isize; ++i) {
-      DecodeOperand(vars[i]);
-    }
-    DecodeCategory(op);
-  }
-
- private:
-  void DecodeOperand(VarnodeData &var) {
-    const auto loc_name = var.space->getName();
-    if (loc_name == "register") {
-      DecodeRegister(var);
-    } else if (loc_name == "unique") {
-      DecodeMemory(var);
-    } else if (loc_name == "const") {
-      DecodeConstant(var);
-    } else {
-      LOG(FATAL) << "Instruction location " << loc_name << " not supported";
-    }
-  }
-
-  void DecodeRegister(const VarnodeData &var) {
-    const auto reg_name =
-        engine.getRegisterName(var.space, var.offset, var.size);
-    Operand op;
-    op.type = Operand::kTypeRegister;
-    Operand::Register reg;
-    reg.name = reg_name;
-    reg.size =
-        var.size;  // I don't think this is correct. Need to distinguish between the register width vs the read/write size.
-    op.reg = reg;
-    op.size = var.size;
-    // TODO(alex): Pass information about whether its an outvar or not
-    op.action = true ? Operand::kActionRead : Operand::kActionWrite;
-    inst.operands.push_back(op);
-  }
-
-  void DecodeMemory(const VarnodeData &var) {
-    Operand op;
-    op.size = var.size * 8;
-    op.type = Operand::kTypeAddress;
-    op.addr.address_size = 64;  // Not sure
-    op.addr.kind =
-        true ? Operand::Address::kMemoryRead : Operand::Address::kMemoryWrite;
-    inst.operands.push_back(op);
-  }
-
-  void DecodeConstant(const VarnodeData &var) {
-    Operand op;
-    op.type = Operand::kTypeImmediate;
-    op.action = Operand::kActionRead;
-    op.imm.is_signed = false;  // Not sure
-    op.imm.val = var.offset;
-    inst.operands.push_back(op);
-  }
-
-  void DecodeCategory(OpCode op) {
-    switch (op) {
-      case CPUI_INT_LESS:
-      case CPUI_INT_SLESS:
-      case CPUI_INT_EQUAL:
-      case CPUI_INT_SUB:
-      case CPUI_INT_SBORROW:
-      case CPUI_INT_AND:
-      case CPUI_POPCOUNT: inst.category = Instruction::kCategoryNormal; break;
-      default:
-        LOG(FATAL) << "Unsupported p-code opcode " << get_opname(op);
-        break;
-    }
-  }
-
-  Sleigh &engine;
-  Instruction &inst;
-};
-
 class SleighX86Arch final : public remill::sleigh::SleighArch {
  public:
   SleighX86Arch(llvm::LLVMContext *context_, OSName os_name_,
@@ -153,36 +66,6 @@ class SleighX86Arch final : public remill::sleigh::SleighArch {
       return "RIP";
     }
   }
-
-  bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                         Instruction &inst) const final {
-    // TODO(alex): We'll need to do a lot of non-const stuff to decode. Just hack this until we get things working.
-    return const_cast<SleighX86Arch *>(this)->DecodeInstructionImpl(
-        address, instr_bytes, inst);
-  }
-
-  bool DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,
-                             Instruction &inst) {
-    inst.bytes = instr_bytes;
-    inst.arch_name = arch_name;
-    inst.sub_arch_name = arch_name;
-    inst.pc = address;
-    inst.category = Instruction::kCategoryInvalid;
-    inst.operands.clear();
-
-    // The SLEIGH engine will query this image when we try to decode an instruction. Append the bytes so SLEIGH has data to read.
-    image.AppendInstruction(instr_bytes);
-
-    // Now decode the instruction.
-    PcodeDecoder pcode_handler(engine, inst);
-    const int32_t instr_len = engine.oneInstruction(pcode_handler, cur_addr);
-    cur_addr = cur_addr + instr_len;
-
-    inst.next_pc = address + instr_len;
-
-    return true;
-  }
-
 
   uint64_t MinInstructionAlign(void) const final {
     return 1;
