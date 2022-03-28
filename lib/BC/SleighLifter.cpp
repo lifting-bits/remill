@@ -64,6 +64,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     } else if (space_name == "register") {
       auto reg_name = this->insn_lifter_parent.GetEngine().getRegisterName(
           vnode.space, vnode.offset, vnode.size);
+      for (auto &c : reg_name)
+        c = toupper(c);
       LOG(INFO) << "Looking for reg name " << reg_name << " from offset "
                 << vnode.offset;
       // TODO(Ian): will probably need to adjust the pointer here in certain circumstances
@@ -115,16 +117,25 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
 
     switch (opc) {
-      case OpCode::CPUI_BOOL_NEGATE:
-        auto inval = this->LiftInParam(
+      case OpCode::CPUI_BOOL_NEGATE: {
+        auto bneg_inval = this->LiftInParam(
             bldr, input_var, llvm::IntegerType::get(this->context, 8));
-        return this->LiftStoreIntoOutParam(bldr, bldr.CreateNot(inval), outvar);
+        return this->LiftStoreIntoOutParam(bldr, bldr.CreateNot(bneg_inval),
+                                           outvar);
+      }
+      case OpCode::CPUI_COPY: {
+        auto copy_inval = this->LiftInParam(
+            bldr, input_var,
+            llvm::IntegerType::get(this->context, input_var.size * 8));
+        return this->LiftStoreIntoOutParam(bldr, copy_inval, outvar);
+      }
     }
     return LiftStatus::kLiftedUnsupportedInstruction;
   }
 
   LiftStatus LiftBinOp(llvm::IRBuilder<> &bldr, OpCode opc, VarnodeData *outvar,
                        VarnodeData lhs, VarnodeData rhs) {
+    switch (opc) {}
     return LiftStatus::kLiftedUnsupportedInstruction;
   }
 
