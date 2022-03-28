@@ -36,8 +36,7 @@
 #include "remill/Arch/X86/Runtime/State.h"
 #include <sleigh/libsleigh.hh>
 // clang-format on
-
-#include "SleighArch.h"
+#include <remill/Arch/Sleigh/SleighArch.h>
 
 namespace remill {
 namespace sleigh::x86 {

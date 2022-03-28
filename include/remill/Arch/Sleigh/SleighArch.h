@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-#include <sleigh/libsleigh.hh>
+#include <remill/Arch/Arch.h>
 
-#include "../Arch.h"
+#include <sleigh/libsleigh.hh>
 
 
 // Unifies shared functionality between sleigh architectures
 
 namespace remill::sleigh {
+
 
 class PcodeDecoder final : public PcodeEmit {
  public:
@@ -60,6 +61,25 @@ class CustomLoadImage final : public LoadImage {
   std::string image_buffer;
 };
 
+// Holds onto contextual sleigh information in order to provide an interface with which you can decode single instructions
+// Give me bytes and i give you pcode (maybe)
+class SingleInstructionSleighContext {
+ private:
+  CustomLoadImage image;
+  ContextInternal ctx;
+  Sleigh engine;
+  Address cur_addr;
+
+ public:
+  std::optional<int32_t> oneInstruction(PcodeEmit &emitter,
+                                        std::string_view instr_bytes);
+
+
+  Sleigh &GetEngine();
+
+  SingleInstructionSleighContext(std::string sla_name);
+};
+
 class SleighArch : public Arch {
  public:
   SleighArch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_,
@@ -73,9 +93,7 @@ class SleighArch : public Arch {
  protected:
   bool DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,
                              Instruction &inst);
-  CustomLoadImage image;
-  ContextInternal ctx;
-  Sleigh engine;
-  Address cur_addr;
+
+  SingleInstructionSleighContext sleigh_ctx;
 };
 }  // namespace remill::sleigh
