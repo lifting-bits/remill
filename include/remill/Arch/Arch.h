@@ -30,6 +30,8 @@
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/IRBuilder.h>
+#include <remill/BC/InstructionLifter.h>
+
 #pragma clang diagnostic pop
 
 // clang-format on
@@ -212,6 +214,12 @@ class Arch {
   // information for the target architecture
   void PrepareModuleDataLayout(llvm::Module *mod) const;
 
+
+  // TODO(Ian): This is kinda messy but only an arch currently knows if it is sleigh or not and sleigh needs different lifting context etc
+  virtual InstructionLifter::LifterPtr
+  GetLifter(const remill::IntrinsicTable &intrinsics) const;
+
+
   inline void
   PrepareModuleDataLayout(const std::unique_ptr<llvm::Module> &mod) const {
     PrepareModuleDataLayout(mod.get());
@@ -351,6 +359,7 @@ class Arch {
   // Defined in `lib/Arch/SPARC64/Arch.cpp`.
   static ArchPtr GetSPARC64(llvm::LLVMContext *context, OSName os,
                             ArchName arch_name);
+
 
   Arch(void) = delete;
 

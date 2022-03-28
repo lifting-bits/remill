@@ -18,20 +18,21 @@
 
 #include <glog/logging.h>
 #include <llvm/IR/IRBuilder.h>
+#include <remill/Arch/Sleigh/SleighArch.h>
 
 #include <sleigh/libsleigh.hh>
 
 #include "remill/Arch/Instruction.h"
 #include "remill/BC/InstructionLifter.h"
 
-
 namespace remill {
 
 class SleighLifter : public InstructionLifter {
  public:
-  inline SleighLifter(const std::unique_ptr<const Arch> &arch_,
+  inline SleighLifter(const sleigh::SleighArch *arch_,
                       const IntrinsicTable &intrinsics_)
-      : InstructionLifter(arch_, intrinsics_) {}
+      : InstructionLifter(arch_, intrinsics_),
+        sleigh_context(arch_->GetSLAName()) {}
 
   virtual ~SleighLifter(void) = default;
 
@@ -48,6 +49,10 @@ class SleighLifter : public InstructionLifter {
 
   void LiftPopCount(Instruction &inst, llvm::BasicBlock *block,
                     llvm::Value *state_ptr, llvm::IRBuilder<> &ir);
+
+
+ private:
+  sleigh::SingleInstructionSleighContext sleigh_context;
 };
 
 }  // namespace remill

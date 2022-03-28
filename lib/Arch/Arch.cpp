@@ -813,4 +813,9 @@ void Arch::InitFromSemanticsModule(llvm::Module *module) const {
   CHECK(!impl->reg_by_name.empty());
 }
 
+InstructionLifter::LifterPtr
+Arch::GetLifter(const remill::IntrinsicTable &intrinsics) const {
+  return std::make_unique<InstructionLifter>(this, intrinsics);
+}
+
 }  // namespace remill
