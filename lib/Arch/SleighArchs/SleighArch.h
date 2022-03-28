@@ -23,6 +23,28 @@
 
 namespace remill::sleigh {
 
+class PcodeDecoder final : public PcodeEmit {
+ public:
+  PcodeDecoder(Sleigh &engine_, Instruction &inst_);
+
+  void dump(const Address &, OpCode op, VarnodeData *outvar, VarnodeData *vars,
+            int32_t isize) override;
+
+ private:
+  void DecodeOperand(VarnodeData &var);
+
+  void DecodeRegister(const VarnodeData &var);
+
+  void DecodeMemory(const VarnodeData &var);
+
+  void DecodeConstant(const VarnodeData &var);
+
+  void DecodeCategory(OpCode op);
+
+  Sleigh &engine;
+  Instruction &inst;
+};
+
 class CustomLoadImage final : public LoadImage {
  public:
   CustomLoadImage(void);
@@ -43,8 +65,15 @@ class SleighArch : public Arch {
   SleighArch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_,
              std::string sla_name);
 
+
+ public:
+  bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                         Instruction &inst) const override;
+
  protected:
-   CustomLoadImage image;
+  bool DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,
+                             Instruction &inst);
+  CustomLoadImage image;
   ContextInternal ctx;
   Sleigh engine;
   Address cur_addr;
