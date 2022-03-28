@@ -36,19 +36,8 @@ class SleighLifter : public InstructionLifter {
 
   virtual ~SleighLifter(void) = default;
 
-
-  LiftStatus LiftUnOp(Instruction &inst, llvm::BasicBlock *block,
-                      llvm::Value *state_ptr, llvm::IRBuilder<> &ir, OpCode op);
-
   LiftStatus LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
                            llvm::Value *state_ptr, bool is_delayed) override;
-
-  LiftStatus LiftBinOp(Instruction &inst, llvm::BasicBlock *block,
-                       llvm::Value *state_ptr, llvm::IRBuilder<> &ir,
-                       OpCode op);
-
-  void LiftPopCount(Instruction &inst, llvm::BasicBlock *block,
-                    llvm::Value *state_ptr, llvm::IRBuilder<> &ir);
 
 
  private:
