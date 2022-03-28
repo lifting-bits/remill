@@ -15,9 +15,8 @@
  */
 
 
-#include "SleighArch.h"
-
 #include <glog/logging.h>
+#include <remill/Arch/Sleigh/SleighArch.h>
 
 namespace remill::sleigh {
 
@@ -116,11 +115,9 @@ void PcodeDecoder::DecodeCategory(OpCode op) {
   }
 }
 
-
-SleighArch::SleighArch(llvm::LLVMContext *context_, OSName os_name_,
-                       ArchName arch_name_, std::string sla_name)
-    : Arch(context_, os_name_, arch_name_),
-      engine(&image, &ctx) {
+SingleInstructionSleighContext::SingleInstructionSleighContext(
+    std::string sla_name)
+    : engine(&image, &ctx) {
   DocumentStorage storage;
   const std::optional<std::filesystem::path> sla_path =
       ::sleigh::FindSpecFile(sla_name.c_str());
@@ -166,6 +163,11 @@ bool SleighArch::DecodeInstruction(uint64_t address,
       address, instr_bytes, inst);
 }
 
+SleighArch::SleighArch(llvm::LLVMContext *context_, OSName os_name_,
+                       ArchName arch_name_, std::string sla_name)
+    : Arch(context_, os_name_, arch_name_),
+      sleigh_ctx(sla_name) {}
+
 bool SleighArch::DecodeInstructionImpl(uint64_t address,
                                        std::string_view instr_bytes,
                                        Instruction &inst) {
@@ -177,16 +179,35 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
   inst.operands.clear();
 
   // The SLEIGH engine will query this image when we try to decode an instruction. Append the bytes so SLEIGH has data to read.
-  image.AppendInstruction(instr_bytes);
+
 
   // Now decode the instruction.
-  PcodeDecoder pcode_handler(engine, inst);
-  const int32_t instr_len = engine.oneInstruction(pcode_handler, cur_addr);
-  cur_addr = cur_addr + instr_len;
+  PcodeDecoder pcode_handler(this->sleigh_ctx.GetEngine(), inst);
+  auto instr_len = this->sleigh_ctx.oneInstruction(pcode_handler, instr_bytes);
 
-  inst.next_pc = address + instr_len;
+  if (instr_len.has_value()) {
+    inst.next_pc = address + *instr_len;
+    return true;
+  } else {
+    return false;
+  }
+}
 
-  return true;
+
+Sleigh &SingleInstructionSleighContext::GetEngine() {
+  return this->engine;
+}
+
+// TODO(Ian): handle decoding failures.
+std::optional<int32_t>
+SingleInstructionSleighContext::oneInstruction(PcodeEmit &handler,
+                                               std::string_view instr_bytes) {
+  this->image.AppendInstruction(instr_bytes);
+  const int32_t instr_len =
+      this->engine.oneInstruction(handler, this->cur_addr);
+
+  this->cur_addr = cur_addr + instr_len;
+  return instr_len;
 }
 
 
