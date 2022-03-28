@@ -30,6 +30,7 @@ class LLVMContext;
 class IntegerType;
 class BasicBlock;
 class Value;
+class Type;
 }  // namespace llvm
 
 namespace remill {
@@ -134,6 +135,10 @@ class InstructionLifter {
   llvm::Value *
   LoadWordRegValOrZero(llvm::BasicBlock *block, llvm::Value *state_ptr,
                        std::string_view reg_name, llvm::ConstantInt *zero);
+
+
+ protected:
+  llvm::Type *GetWordType();
 
  private:
   friend class TraceLifter;

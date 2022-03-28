@@ -20,21 +20,50 @@
 #include <remill/BC/SleighLifter.h>
 namespace remill::sleigh {
 
+namespace {
+
+
+class AssemblyLogger : public AssemblyEmit {
+  void dump(const Address &addr, const string &mnem, const string &body) {
+    LOG(INFO) << "Decoded: " << mnem << " " << body;
+  }
+};
+}  // namespace
 
 PcodeDecoder::PcodeDecoder(Sleigh &engine_, Instruction &inst_)
     : engine(engine_),
       inst(inst_) {}
 
+
+void PcodeDecoder::print_vardata(std::stringstream &s, VarnodeData &data) {
+  s << '(' << data.space->getName() << ',';
+  data.space->printOffset(s, data.offset);
+  s << ',' << dec << data.size << ')';
+
+  auto maybe_name =
+      this->engine.getRegisterName(data.space, data.offset, data.size);
+  if (!maybe_name.empty()) {
+    s << ":" << maybe_name;
+  }
+}
+
 void PcodeDecoder::dump(const Address &, OpCode op, VarnodeData *outvar,
                         VarnodeData *vars, int32_t isize) {
   inst.function = get_opname(op);
+
+  std::stringstream ss;
+
+  ss << get_opname(op);
   if (outvar) {
+    print_vardata(ss, *outvar);
+    ss << " = ";
     DecodeOperand(*outvar);
   }
   for (int i = 0; i < isize; ++i) {
+    print_vardata(ss, vars[i]);
     DecodeOperand(vars[i]);
   }
-
+  LOG(INFO) << "Pcode: " << ss.str();
   DecodeCategory(op);
 }
 
@@ -172,6 +201,7 @@ SleighArch::SleighArch(llvm::LLVMContext *context_, OSName os_name_,
 bool SleighArch::DecodeInstructionImpl(uint64_t address,
                                        std::string_view instr_bytes,
                                        Instruction &inst) {
+
   inst.bytes = instr_bytes;
   inst.arch_name = arch_name;
   inst.sub_arch_name = arch_name;
@@ -183,6 +213,7 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
 
 
   // Now decode the instruction.
+  this->InitializeSleighContext(this->sleigh_ctx);
   PcodeDecoder pcode_handler(this->sleigh_ctx.GetEngine(), inst);
   auto instr_len = this->sleigh_ctx.oneInstruction(pcode_handler, instr_bytes);
 
@@ -194,6 +225,10 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
   }
 }
 
+std::string SleighArch::GetSLAName() const {
+  return this->sla_name;
+}
+
 
 Sleigh &SingleInstructionSleighContext::GetEngine() {
   return this->engine;
@@ -203,9 +238,13 @@ Sleigh &SingleInstructionSleighContext::GetEngine() {
 std::optional<int32_t>
 SingleInstructionSleighContext::oneInstruction(PcodeEmit &handler,
                                                std::string_view instr_bytes) {
+
   this->image.AppendInstruction(instr_bytes);
   const int32_t instr_len =
       this->engine.oneInstruction(handler, this->cur_addr);
+
+  AssemblyLogger logger;
+  this->engine.printAssembly(logger, this->cur_addr);
 
   this->cur_addr = cur_addr + instr_len;
   return instr_len;
@@ -215,10 +254,5 @@ InstructionLifter::LifterPtr
 SleighArch::GetLifter(const remill::IntrinsicTable &intrinsics) const {
   return std::make_unique<SleighLifter>(this, intrinsics);
 }
-
-std::string SleighArch::GetSLAName() const {
-  return this->sla_name;
-}
-
 
 }  // namespace remill::sleigh

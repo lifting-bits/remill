@@ -34,6 +34,8 @@ class PcodeDecoder final : public PcodeEmit {
             int32_t isize) override;
 
  private:
+  void print_vardata(std::stringstream &s, VarnodeData &data);
+
   void DecodeOperand(VarnodeData &var);
 
   void DecodeRegister(const VarnodeData &var);
@@ -96,6 +98,10 @@ class SleighArch : public Arch {
   InstructionLifter::LifterPtr
   GetLifter(const remill::IntrinsicTable &intrinsics) const override;
 
+
+  // Arch specific preperation
+  virtual void
+  InitializeSleighContext(SingleInstructionSleighContext &) const = 0;
 
   std::string GetSLAName() const;
 
