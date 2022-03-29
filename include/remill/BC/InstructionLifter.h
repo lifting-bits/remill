@@ -141,6 +141,8 @@ class InstructionLifter {
   llvm::Type *GetWordType();
   llvm::Type *GetMemoryType();
 
+  const IntrinsicTable *GetIntrinsicTable();
+
  private:
   friend class TraceLifter;
 

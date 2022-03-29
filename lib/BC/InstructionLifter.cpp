@@ -906,4 +906,8 @@ llvm::Type *InstructionLifter::GetMemoryType() {
   return this->impl->memory_ptr_type;
 }
 
+const IntrinsicTable *InstructionLifter::GetIntrinsicTable() {
+  return this->impl->intrinsics;
+}
+
 }  // namespace remill

@@ -147,7 +147,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
     ConstantValue(llvm::Constant *cst) : cst(cst) {}
 
-    static ParamPtr CreatRegister(llvm::Constant *cst) {
+    static ParamPtr CreatConstant(llvm::Constant *cst) {
       return std::make_shared<ConstantValue>(cst);
     }
     virtual ~ConstantValue() {}
@@ -197,36 +197,20 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   }
 
 
-  llvm::Value *CreateMemoryAddress(llvm::IRBuilder<> &bldr, llvm::Value *offset,
-                                   llvm::Type *target_type) {
+  ParamPtr CreateMemoryAddress(llvm::Value *offset) {
 
     const auto mem_ptr_ref = this->insn_lifter_parent.LoadRegAddress(
         this->target_block, this->state_pointer, kMemoryVariableName);
     // compute pointer into memory at offset
 
 
-    auto mem_ptr =
-        bldr.CreateLoad(this->insn_lifter_parent.GetMemoryType(), mem_ptr_ref);
-    auto opaque_mem_ptr = bldr.CreatePointerCast(
-        mem_ptr, llvm::PointerType::getUnqual(this->context));
-    auto new_ptr = bldr.CreateGEP(llvm::IntegerType::get(this->context, 8),
-                                  opaque_mem_ptr, offset);
-
-    assert(new_ptr->getType()->isPointerTy());
-
-    auto new_ptr_ty = llvm::cast<llvm::PointerType>(new_ptr->getType());
-    // TODO(Ian): we should probably follow suite with llvm and just have opaque ptrs, type recovery should be done on a per expression or something.
-    auto tgt_ptr_type = llvm::PointerType::getUnqual(target_type);
-    if (new_ptr_ty->isOpaque() || new_ptr_ty->getElementType() != target_type) {
-      return bldr.CreateBitCast(new_ptr, tgt_ptr_type);
-    } else {
-      return new_ptr;
-    }
+    return Memory::CreateMemory(mem_ptr_ref, offset,
+                                this->insn_lifter_parent.GetIntrinsicTable(),
+                                this->insn_lifter_parent.GetMemoryType());
   }
 
   //TODO(Ian): Maybe this should be a failable function that returns an unsupported insn in certain failures
-  llvm::Value *LiftParamPtr(llvm::IRBuilder<> &bldr, VarnodeData vnode,
-                            llvm::Type *target_inner_type) {
+  ParamPtr LiftParamPtr(llvm::IRBuilder<> &bldr, VarnodeData vnode) {
     auto space_name = vnode.getAddr().getSpace()->getName();
     if (space_name == "ram") {
       // compute pointer into memory at offset
@@ -234,8 +218,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       auto constant_offset = llvm::ConstantInt::get(
           this->insn_lifter_parent.GetWordType(), vnode.offset);
 
-      return this->CreateMemoryAddress(bldr, constant_offset,
-                                       target_inner_type);
+      return this->CreateMemoryAddress(constant_offset);
     } else if (space_name == "register") {
       auto reg_name = this->insn_lifter_parent.GetEngine().getRegisterName(
           vnode.space, vnode.offset, vnode.size);
@@ -244,39 +227,30 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       LOG(INFO) << "Looking for reg name " << reg_name << " from offset "
                 << vnode.offset;
       // TODO(Ian): will probably need to adjust the pointer here in certain circumstances
-      return this->insn_lifter_parent.LoadRegAddress(
+      auto reg_ptr = this->insn_lifter_parent.LoadRegAddress(
           bldr.GetInsertBlock(), this->state_pointer, reg_name);
+      return RegisterValue::CreatRegister(reg_ptr);
     } else if (space_name == "const") {
-      return llvm::ConstantInt::get(this->insn_lifter_parent.GetWordType(),
-                                    vnode.offset);
+      auto cst_v = llvm::ConstantInt::get(
+          this->insn_lifter_parent.GetWordType(), vnode.offset);
+      return ConstantValue::CreatConstant(cst_v);
     } else if (space_name == "unique") {
-      return this->GetUniquePtr(vnode.offset, vnode.size, bldr);
+      auto reg_ptr = this->GetUniquePtr(vnode.offset, vnode.size, bldr);
+      return RegisterValue::CreatRegister(reg_ptr);
     } else {
       LOG(FATAL) << "Unhandled memory space: " << space_name;
     }
   }
 
-  llvm::Value *LiftInParam(llvm::IRBuilder<> &bldr, VarnodeData vnode,
-                           llvm::Type *ty) {
-    llvm::Value *ptr = this->LiftParamPtr(bldr, vnode, ty);
-    LOG(INFO) << "Received ptr for param: " << remill::LLVMThingToString(ptr);
+  std::optional<llvm::Value *> LiftInParam(llvm::IRBuilder<> &bldr,
+                                           VarnodeData vnode, llvm::Type *ty) {
+    ParamPtr ptr = this->LiftParamPtr(bldr, vnode);
 
-    if (ptr->getType()->isPointerTy()) {
-      return bldr.CreateLoad(ty, ptr);
-    } else {
-      // TODO(Ian): probably have to cast here.
-      return ptr;
-    }
+    return ptr->LiftAsInParam(bldr, ty);
   }
 
-
-  llvm::Value *LiftInParamAsWord(llvm::IRBuilder<> &bldr, VarnodeData vnode) {
-    return this->LiftInParam(bldr, vnode,
-                             this->insn_lifter_parent.GetWordType());
-  }
-
-
-  llvm::Value *LiftIntegerInParam(llvm::IRBuilder<> &bldr, VarnodeData vnode) {
+  std::optional<llvm::Value *> LiftIntegerInParam(llvm::IRBuilder<> &bldr,
+                                                  VarnodeData vnode) {
     return this->LiftInParam(
         bldr, vnode, llvm::IntegerType::get(this->context, vnode.size * 8));
   }
@@ -297,11 +271,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
                                    VarnodeData *outvar) {
     return this->LiftRequireOutParam(
         [&bldr, this, inner_lifted](VarnodeData out_param_data) {
-          auto ptr = this->LiftParamPtr(
-              bldr, out_param_data,
-              llvm::IntegerType::get(this->context, out_param_data.size * 8));
-          bldr.CreateStore(inner_lifted, ptr);
-          return LiftStatus::kLiftedInstruction;
+          auto ptr = this->LiftParamPtr(bldr, out_param_data);
+          return ptr->StoreIntoParam(bldr, inner_lifted);
         },
         outvar);
   }
@@ -316,14 +287,18 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       case OpCode::CPUI_BOOL_NEGATE: {
         auto bneg_inval = this->LiftInParam(
             bldr, input_var, llvm::IntegerType::get(this->context, 8));
-        return this->LiftStoreIntoOutParam(bldr, bldr.CreateNot(bneg_inval),
-                                           outvar);
+        if (bneg_inval.has_value()) {
+          return this->LiftStoreIntoOutParam(bldr, bldr.CreateNot(*bneg_inval),
+                                             outvar);
+        }
       }
       case OpCode::CPUI_COPY: {
         auto copy_inval = this->LiftInParam(
             bldr, input_var,
             llvm::IntegerType::get(this->context, input_var.size * 8));
-        return this->LiftStoreIntoOutParam(bldr, copy_inval, outvar);
+        if (copy_inval.has_value()) {
+          return this->LiftStoreIntoOutParam(bldr, *copy_inval, outvar);
+        }
       }
     }
     return LiftStatus::kLiftedUnsupportedInstruction;
@@ -340,10 +315,13 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       auto &op_func = INTEGER_BINARY_OPS.find(opc)->second;
       auto lifted_lhs = this->LiftIntegerInParam(bldr, lhs);
       auto lifted_rhs = this->LiftIntegerInParam(bldr, rhs);
-      LOG(INFO) << "Binop with lhs: " << remill::LLVMThingToString(lifted_lhs);
-      LOG(INFO) << "Binop with rhs" << remill::LLVMThingToString(lifted_rhs);
-      return this->LiftStoreIntoOutParam(
-          bldr, op_func(lifted_lhs, lifted_rhs, bldr), outvar);
+      if (lifted_lhs.has_value() && lifted_rhs.has_value()) {
+        LOG(INFO) << "Binop with lhs: "
+                  << remill::LLVMThingToString(*lifted_lhs);
+        LOG(INFO) << "Binop with rhs" << remill::LLVMThingToString(*lifted_rhs);
+        return this->LiftStoreIntoOutParam(
+            bldr, op_func(*lifted_lhs, *lifted_rhs, bldr), outvar);
+      }
     }
     return LiftStatus::kLiftedUnsupportedInstruction;
   }
@@ -360,11 +338,18 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       auto addr_operand = rhs;
       auto lifted_addr_offset = this->LiftInParam(
           bldr, addr_operand, this->insn_lifter_parent.GetWordType());
-      auto out_type = llvm::IntegerType::get(this->context, out_op.size * 8);
-      auto lifted_addr =
-          this->CreateMemoryAddress(bldr, lifted_addr_offset, out_type);
-      auto loaded_value = bldr.CreateLoad(out_type, lifted_addr);
-      return this->LiftStoreIntoOutParam(bldr, loaded_value, outvar);
+
+      if (lifted_addr_offset) {
+
+        auto out_type = llvm::IntegerType::get(this->context, out_op.size * 8);
+        auto lifted_addr = this->CreateMemoryAddress(*lifted_addr_offset);
+
+        auto loaded_value = lifted_addr->LiftAsInParam(bldr, out_type);
+        if (loaded_value.has_value()) {
+          auto lifted_out = this->LiftParamPtr(bldr, out_op);
+          return lifted_out->StoreIntoParam(bldr, *loaded_value);
+        }
+      }
     }
 
 
