@@ -407,7 +407,7 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
   }
 
   SleighLifter::PcodeToLLVMEmitIntoBlock lifter(block, state_ptr, inst, *this);
-  auto res = this->sleigh_context.oneInstruction(lifter, inst.bytes);
+  auto res = this->sleigh_context.oneInstruction(inst.pc, lifter, inst.bytes);
 
   //NOTE(Ian): If we made it past decoding we should be able to decode the bytes again
   assert(res.has_value());
