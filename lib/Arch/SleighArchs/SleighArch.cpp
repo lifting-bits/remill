@@ -131,6 +131,9 @@ void PcodeDecoder::DecodeCategory(OpCode op) {
     case CPUI_INT_RIGHT:
     case CPUI_SUBPIECE:
     case CPUI_COPY:
+    case CPUI_INT_MULT:
+    case CPUI_INT_ADD:
+    case CPUI_LOAD:
     case CPUI_POPCOUNT: inst.category = Instruction::kCategoryNormal; break;
     // NOTE(Ian): Cbranch semantics are kinda tricky. The varnode passed as an input to the branch defines the address
     // and address space to jump to. The varnode isnt a variable. Constant address spaces are treated specially and reslt in a relative
@@ -153,6 +156,7 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
   if (!sla_path) {
     LOG(FATAL) << "Couldn't find required spec file: " << sla_name << '\n';
   }
+  { LOG(INFO) << "Using spec at: " << sla_path->string(); }
   Element *root = storage.openDocument(sla_path->string())->getRoot();
   storage.registerTag(root);
   engine.initialize(storage);
@@ -225,6 +229,7 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
   }
 }
 
+
 std::string SleighArch::GetSLAName() const {
   return this->sla_name;
 }
@@ -238,10 +243,18 @@ Sleigh &SingleInstructionSleighContext::GetEngine() {
 std::optional<int32_t>
 SingleInstructionSleighContext::oneInstruction(PcodeEmit &handler,
                                                std::string_view instr_bytes) {
+  auto reg = this->engine.getRegister("pc");
+  LOG(INFO) << "(" << reg.space->getName() << "," << std::hex << reg.offset
+            << "," << reg.size << ")";
+
+  for (auto c : this->ctx.getTrackedSet(reg.getAddr())) {
+    LOG(INFO) << "PC val" << c.val;
+  }
 
   this->image.AppendInstruction(instr_bytes);
   const int32_t instr_len =
       this->engine.oneInstruction(handler, this->cur_addr);
+
 
   AssemblyLogger logger;
   this->engine.printAssembly(logger, this->cur_addr);

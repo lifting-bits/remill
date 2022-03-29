@@ -65,12 +65,15 @@ class CustomLoadImage final : public LoadImage {
   std::string image_buffer;
 };
 
+
+class LoggingContext : public ContextInternal {};
+
 // Holds onto contextual sleigh information in order to provide an interface with which you can decode single instructions
 // Give me bytes and i give you pcode (maybe)
 class SingleInstructionSleighContext {
  private:
   CustomLoadImage image;
-  ContextInternal ctx;
+  LoggingContext ctx;
   Sleigh engine;
   Address cur_addr;
 
