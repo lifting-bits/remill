@@ -910,4 +910,8 @@ const IntrinsicTable *InstructionLifter::GetIntrinsicTable() {
   return this->impl->intrinsics;
 }
 
+bool InstructionLifter::ArchHasRegByName(std::string name) {
+  return this->impl->arch->RegisterByName(name) != nullptr;
+}
+
 }  // namespace remill

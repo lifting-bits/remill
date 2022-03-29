@@ -134,15 +134,16 @@ void PcodeDecoder::DecodeCategory(OpCode op) {
     case CPUI_INT_MULT:
     case CPUI_INT_ADD:
     case CPUI_LOAD:
+    case CPUI_INT_OR:
+    case CPUI_INT_NOTEQUAL:
     case CPUI_POPCOUNT: inst.category = Instruction::kCategoryNormal; break;
     // NOTE(Ian): Cbranch semantics are kinda tricky. The varnode passed as an input to the branch defines the address
     // and address space to jump to. The varnode isnt a variable. Constant address spaces are treated specially and reslt in a relative
     // jump within the pcode list for this instruction. We should probably examine the cbranch params and if it is a constant adress space then this isntruction is basically normal.
-    case CPUI_CBRANCH:
-      inst.category = Instruction::kCategoryConditionalBranch;
-      break;
+    case CPUI_CBRANCH: inst.category = Instruction::kCategoryNormal; break;
     default:
-      LOG(FATAL) << "Unsupported p-code opcode " << get_opname(op);
+      inst.category = Instruction::kCategoryNormal;
+      LOG(ERROR) << "Unsupported p-code opcode " << get_opname(op);
       break;
   }
 }
