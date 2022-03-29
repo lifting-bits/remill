@@ -142,6 +142,7 @@ class InstructionLifter {
   llvm::Type *GetMemoryType();
 
   const IntrinsicTable *GetIntrinsicTable();
+  bool ArchHasRegByName(std::string name);
 
  private:
   friend class TraceLifter;

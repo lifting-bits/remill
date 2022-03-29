@@ -160,7 +160,31 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   const Instruction &insn;
   LiftStatus status;
   SleighLifter &insn_lifter_parent;
-  std::unordered_map<uint64_t, llvm::Value *> cached_unique_ptrs;
+
+
+  class UniqueRegSpace {
+   private:
+    std::unordered_map<uint64_t, llvm::Value *> cached_unique_ptrs;
+    llvm::LLVMContext &context;
+
+   public:
+    UniqueRegSpace(llvm::LLVMContext &context) : context(context) {}
+
+    llvm::Value *GetUniquePtr(uint64_t offset, uint64_t size,
+                              llvm::IRBuilder<> &bldr) {
+      if (this->cached_unique_ptrs.find(offset) !=
+          this->cached_unique_ptrs.end()) {
+        return this->cached_unique_ptrs.find(offset)->second;
+      }
+      auto ptr = bldr.CreateAlloca(
+          llvm::IntegerType::get(this->context, size * 8), 0, nullptr);
+      this->cached_unique_ptrs.insert({offset, ptr});
+      return ptr;
+    }
+  };
+
+  UniqueRegSpace uniques;
+  UniqueRegSpace unknown_regs;
 
 
   void UpdateStatus(LiftStatus new_status, OpCode opc) {
@@ -181,24 +205,12 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         context(target_block->getContext()),
         insn(insn),
         status(remill::LiftStatus::kLiftedInvalidInstruction),
-        insn_lifter_parent(insn_lifter_parent){};
-
-
-  llvm::Value *GetUniquePtr(uint64_t offset, uint64_t size,
-                            llvm::IRBuilder<> &bldr) {
-    if (this->cached_unique_ptrs.find(offset) !=
-        this->cached_unique_ptrs.end()) {
-      return this->cached_unique_ptrs.find(offset)->second;
-    }
-    auto ptr = bldr.CreateAlloca(
-        llvm::IntegerType::get(this->context, size * 8), 0, nullptr);
-    this->cached_unique_ptrs.insert({offset, ptr});
-    return ptr;
-  }
+        insn_lifter_parent(insn_lifter_parent),
+        uniques(target_block->getContext()),
+        unknown_regs(target_block->getContext()) {}
 
 
   ParamPtr CreateMemoryAddress(llvm::Value *offset) {
-
     const auto mem_ptr_ref = this->insn_lifter_parent.LoadRegAddress(
         this->target_block, this->state_pointer, kMemoryVariableName);
     // compute pointer into memory at offset
@@ -207,6 +219,22 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     return Memory::CreateMemory(mem_ptr_ref, offset,
                                 this->insn_lifter_parent.GetIntrinsicTable(),
                                 this->insn_lifter_parent.GetMemoryType());
+  }
+
+  std::optional<ParamPtr> LiftNormalRegister(llvm::IRBuilder<> &bldr,
+                                             std::string reg_name) {
+    for (auto &c : reg_name)
+      c = toupper(c);
+
+
+    if (this->insn_lifter_parent.ArchHasRegByName(reg_name)) {
+      // TODO(Ian): will probably need to adjust the pointer here in certain circumstances
+      auto reg_ptr = this->insn_lifter_parent.LoadRegAddress(
+          bldr.GetInsertBlock(), this->state_pointer, reg_name);
+      return RegisterValue::CreatRegister(reg_ptr);
+    } else {
+      return std::nullopt;
+    }
   }
 
   //TODO(Ian): Maybe this should be a failable function that returns an unsupported insn in certain failures
@@ -222,20 +250,26 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     } else if (space_name == "register") {
       auto reg_name = this->insn_lifter_parent.GetEngine().getRegisterName(
           vnode.space, vnode.offset, vnode.size);
-      for (auto &c : reg_name)
-        c = toupper(c);
+
       LOG(INFO) << "Looking for reg name " << reg_name << " from offset "
                 << vnode.offset;
-      // TODO(Ian): will probably need to adjust the pointer here in certain circumstances
-      auto reg_ptr = this->insn_lifter_parent.LoadRegAddress(
-          bldr.GetInsertBlock(), this->state_pointer, reg_name);
-      return RegisterValue::CreatRegister(reg_ptr);
+
+
+      auto res = this->LiftNormalRegister(bldr, reg_name);
+      if (res.has_value()) {
+        return *res;
+      } else {
+        auto reg_ptr =
+            this->unknown_regs.GetUniquePtr(vnode.offset, vnode.size, bldr);
+        return RegisterValue::CreatRegister(reg_ptr);
+      }
+
     } else if (space_name == "const") {
       auto cst_v = llvm::ConstantInt::get(
           this->insn_lifter_parent.GetWordType(), vnode.offset);
       return ConstantValue::CreatConstant(cst_v);
     } else if (space_name == "unique") {
-      auto reg_ptr = this->GetUniquePtr(vnode.offset, vnode.size, bldr);
+      auto reg_ptr = this->uniques.GetUniquePtr(vnode.offset, vnode.size, bldr);
       return RegisterValue::CreatRegister(reg_ptr);
     } else {
       LOG(FATAL) << "Unhandled memory space: " << space_name;
@@ -298,6 +332,20 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
             llvm::IntegerType::get(this->context, input_var.size * 8));
         if (copy_inval.has_value()) {
           return this->LiftStoreIntoOutParam(bldr, *copy_inval, outvar);
+        }
+      }
+
+      case OpCode::CPUI_BRANCH:
+      case OpCode::CPUI_BRANCHIND:
+      case OpCode::CPUI_CALL:
+      case OpCode::CPUI_CALLIND: {
+        auto copy_inval = this->LiftInParam(
+            bldr, input_var,
+            llvm::IntegerType::get(this->context, input_var.size * 8));
+        if (copy_inval.has_value()) {
+          auto pc_reg = this->LiftNormalRegister(bldr, "PC");
+          assert(pc_reg.has_value());
+          return (*pc_reg)->StoreIntoParam(bldr, *copy_inval);
         }
       }
     }
@@ -392,9 +440,16 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
         {OpCode::CPUI_INT_MULT,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
            return bldr.CreateMul(lhs, rhs);
-         }
-
-        }};
+         }},
+        {OpCode::CPUI_INT_OR,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateOr(lhs, rhs);
+         }},
+        {OpCode::CPUI_INT_NOTEQUAL,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateZExt(bldr.CreateICmpNE(lhs, rhs),
+                                  llvm::IntegerType::get(bldr.getContext(), 8));
+         }}};
 
 LiftStatus
 SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
@@ -409,9 +464,18 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
   SleighLifter::PcodeToLLVMEmitIntoBlock lifter(block, state_ptr, inst, *this);
   auto res = this->sleigh_context.oneInstruction(inst.pc, lifter, inst.bytes);
 
+
+  auto var_to_store_into = LoadNextProgramCounterRef(block);
+  auto reg_addr = this->LoadRegAddress(block, state_ptr, "PC");
+
+  llvm::IRBuilder<> ir(block);
+  auto loaded_pc = ir.CreateLoad(this->GetWordType(), reg_addr);
+  ir.CreateStore(loaded_pc, var_to_store_into);
+
   //NOTE(Ian): If we made it past decoding we should be able to decode the bytes again
   assert(res.has_value());
-
+  LOG(INFO) << lifter.GetStatus();
+  block->dump();
   return lifter.GetStatus();
 }
 
