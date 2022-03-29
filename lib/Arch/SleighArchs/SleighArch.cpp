@@ -160,16 +160,19 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
   Element *root = storage.openDocument(sla_path->string())->getRoot();
   storage.registerTag(root);
   engine.initialize(storage);
+}
 
-  // This needs to happen after engine initialization
-  cur_addr = Address(engine.getDefaultCodeSpace(), 0x0);
+Address SingleInstructionSleighContext::GetAddressFromOffset(uint64_t off) {
+  return Address(this->engine.getDefaultCodeSpace(), 0x0);
 }
 
 
 CustomLoadImage::CustomLoadImage(void) : LoadImage("nofile") {}
 
-void CustomLoadImage::AppendInstruction(std::string_view instr_bytes) {
-  image_buffer.append(instr_bytes);
+void CustomLoadImage::SetInstruction(uint64_t new_offset,
+                                     std::string_view instr_bytes) {
+  this->current_bytes = instr_bytes;
+  this->current_offset = new_offset;
 }
 
 void CustomLoadImage::loadFill(unsigned char *ptr, int size,
@@ -177,7 +180,16 @@ void CustomLoadImage::loadFill(unsigned char *ptr, int size,
   uint8_t start = addr.getOffset();
   for (int i = 0; i < size; ++i) {
     uint64_t offset = start + i;
-    ptr[i] = offset < image_buffer.size() ? image_buffer[i] : 0;
+    if (offset >= this->current_offset) {
+      auto index = offset - this->current_offset;
+      if (index < this->current_bytes.length()) {
+        ptr[i] = this->current_bytes[i];
+      } else {
+        ptr[i] = 0;
+      }
+    } else {
+      ptr[i] = 0;
+    }
   }
 }
 
@@ -219,7 +231,8 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
   // Now decode the instruction.
   this->InitializeSleighContext(this->sleigh_ctx);
   PcodeDecoder pcode_handler(this->sleigh_ctx.GetEngine(), inst);
-  auto instr_len = this->sleigh_ctx.oneInstruction(pcode_handler, instr_bytes);
+  auto instr_len =
+      this->sleigh_ctx.oneInstruction(address, pcode_handler, instr_bytes);
 
   if (instr_len.has_value()) {
     inst.next_pc = address + *instr_len;
@@ -240,26 +253,17 @@ Sleigh &SingleInstructionSleighContext::GetEngine() {
 }
 
 // TODO(Ian): handle decoding failures.
-std::optional<int32_t>
-SingleInstructionSleighContext::oneInstruction(PcodeEmit &handler,
-                                               std::string_view instr_bytes) {
-  auto reg = this->engine.getRegister("pc");
-  LOG(INFO) << "(" << reg.space->getName() << "," << std::hex << reg.offset
-            << "," << reg.size << ")";
+std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
+    uint64_t address, PcodeEmit &handler, std::string_view instr_bytes) {
 
-  for (auto c : this->ctx.getTrackedSet(reg.getAddr())) {
-    LOG(INFO) << "PC val" << c.val;
-  }
-
-  this->image.AppendInstruction(instr_bytes);
+  this->image.SetInstruction(address, instr_bytes);
   const int32_t instr_len =
-      this->engine.oneInstruction(handler, this->cur_addr);
+      this->engine.oneInstruction(handler, this->GetAddressFromOffset(address));
 
 
   AssemblyLogger logger;
-  this->engine.printAssembly(logger, this->cur_addr);
+  this->engine.printAssembly(logger, this->GetAddressFromOffset(address));
 
-  this->cur_addr = cur_addr + instr_len;
   return instr_len;
 }
 
