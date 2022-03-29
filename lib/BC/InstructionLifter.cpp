@@ -901,5 +901,8 @@ InstructionLifter::LiftOperand(Instruction &inst, llvm::BasicBlock *block,
 llvm::Type *InstructionLifter::GetWordType() {
   return this->impl->word_type;
 }
+llvm::Type *InstructionLifter::GetMemoryType() {
+  return this->impl->memory_ptr_type;
+}
 
 }  // namespace remill
