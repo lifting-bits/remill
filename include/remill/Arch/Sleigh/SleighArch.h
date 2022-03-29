@@ -54,15 +54,17 @@ class CustomLoadImage final : public LoadImage {
  public:
   CustomLoadImage(void);
 
-  void AppendInstruction(std::string_view instr_bytes);
+  void SetInstruction(uint64_t new_offset, std::string_view instr_bytes);
 
   void loadFill(unsigned char *ptr, int size, const Address &addr) override;
   std::string getArchType(void) const override;
 
   void adjustVma(long) override;
 
+
  private:
-  std::string image_buffer;
+  std::string current_bytes;
+  uint64_t current_offset;
 };
 
 
@@ -75,10 +77,10 @@ class SingleInstructionSleighContext {
   CustomLoadImage image;
   LoggingContext ctx;
   Sleigh engine;
-  Address cur_addr;
 
  public:
-  std::optional<int32_t> oneInstruction(PcodeEmit &emitter,
+  Address GetAddressFromOffset(uint64_t off);
+  std::optional<int32_t> oneInstruction(uint64_t address, PcodeEmit &emitter,
                                         std::string_view instr_bytes);
 
 
