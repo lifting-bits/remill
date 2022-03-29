@@ -140,6 +140,7 @@ class InstructionLifter {
 
  protected:
   llvm::Type *GetWordType();
+  llvm::Type *GetMemoryType();
 
  private:
   friend class TraceLifter;
