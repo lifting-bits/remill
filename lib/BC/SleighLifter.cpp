@@ -363,11 +363,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         }
         break;
       }
+        // TODO(alex): Maybe extract this into a method like `LiftIntegerUnOp`?
+        // Let's see how much duplication there is.
       case OpCode::CPUI_INT_ZEXT:
       case OpCode::CPUI_INT_SEXT: {
-        auto zext_inval = this->LiftInParam(
-            bldr, input_var,
-            llvm::IntegerType::get(this->context, input_var.size * 8));
+        auto zext_inval = this->LiftIntegerInParam(bldr, input_var);
         if (zext_inval.has_value()) {
           auto *zext_type =
               llvm::IntegerType::get(this->context, outvar->size * 8);
@@ -375,6 +375,22 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
                               ? bldr.CreateZExt(*zext_inval, zext_type)
                               : bldr.CreateSExt(*zext_inval, zext_type);
           return this->LiftStoreIntoOutParam(bldr, zext_op, outvar);
+        }
+        break;
+      }
+      case OpCode::CPUI_INT_2COMP: {
+        auto two_comp_inval = this->LiftIntegerInParam(bldr, input_var);
+        if (two_comp_inval.has_value()) {
+          return this->LiftStoreIntoOutParam(
+              bldr, bldr.CreateNeg(*two_comp_inval), outvar);
+        }
+        break;
+      }
+      case OpCode::CPUI_INT_NEGATE: {
+        auto negate_inval = this->LiftIntegerInParam(bldr, input_var);
+        if (negate_inval.has_value()) {
+          return this->LiftStoreIntoOutParam(
+              bldr, bldr.CreateNot(*negate_inval), outvar);
         }
         break;
       }
