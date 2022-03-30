@@ -55,6 +55,9 @@ ArchName GetArchName(std::string_view arch_name) {
   } else if (arch_name == "aarch32") {
     return kArchAArch32LittleEndian;
 
+  } else if (arch_name == "thumb2") {
+    return kArchThumb2LittleEndian;
+
   } else if (arch_name == "aarch64") {
     return kArchAArch64LittleEndian;
 
@@ -80,6 +83,7 @@ static const std::string_view kArchNames[] = {
     [kArchAMD64_AVX] = "amd64_avx",
     [kArchAMD64_AVX512] = "amd64_avx512",
     [kArchAArch32LittleEndian] = "aarch32",
+    [kArchThumb2LittleEndian] = "thumb2",
     [kArchAArch64LittleEndian] = "aarch64",
     [kArchSparc32] = "sparc32",
     [kArchSparc64] = "sparc64",
