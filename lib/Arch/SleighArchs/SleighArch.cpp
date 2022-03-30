@@ -278,7 +278,7 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
 std::mutex SingleInstructionSleighContext::sleigh_parsing_mutex;
 
 Address SingleInstructionSleighContext::GetAddressFromOffset(uint64_t off) {
-  return Address(this->engine.getDefaultCodeSpace(), 0x0);
+  return Address(this->engine.getDefaultCodeSpace(), off);
 }
 
 
@@ -292,7 +292,7 @@ void CustomLoadImage::SetInstruction(uint64_t new_offset,
 
 void CustomLoadImage::loadFill(unsigned char *ptr, int size,
                                const Address &addr) {
-  uint8_t start = addr.getOffset();
+  uint64_t start = addr.getOffset();
   for (int i = 0; i < size; ++i) {
     uint64_t offset = start + i;
     if (offset >= this->current_offset) {
