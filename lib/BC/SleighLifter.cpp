@@ -363,14 +363,17 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         }
         break;
       }
-      case OpCode::CPUI_INT_ZEXT: {
+      case OpCode::CPUI_INT_ZEXT:
+      case OpCode::CPUI_INT_SEXT: {
         auto zext_inval = this->LiftInParam(
             bldr, input_var,
             llvm::IntegerType::get(this->context, input_var.size * 8));
         if (zext_inval.has_value()) {
           auto *zext_type =
               llvm::IntegerType::get(this->context, outvar->size * 8);
-          auto *zext_op = bldr.CreateZExt(*zext_inval, zext_type);
+          auto *zext_op = (opc == OpCode::CPUI_INT_ZEXT)
+                              ? bldr.CreateZExt(*zext_inval, zext_type)
+                              : bldr.CreateSExt(*zext_inval, zext_type);
           return this->LiftStoreIntoOutParam(bldr, zext_op, outvar);
         }
         break;
@@ -485,7 +488,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
 std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
     SleighLifter::PcodeToLLVMEmitIntoBlock::INTEGER_BINARY_OPS = {
-        // TODO(alex): Zero extend, carry, borrow
+        // TODO(alex): Carry, borrow
         {OpCode::CPUI_INT_AND,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
            return bldr.CreateAnd(lhs, rhs);
