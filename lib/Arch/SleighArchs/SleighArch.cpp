@@ -261,7 +261,7 @@ void DirectCBranchResolver::ResolveControlFlow(uint64_t fall_through,
 SingleInstructionSleighContext::SingleInstructionSleighContext(
     std::string sla_name)
     : engine(&image, &ctx) {
-  DocumentStorage storage;
+
   std::lock_guard<std::mutex> guard(
       SingleInstructionSleighContext::sleigh_parsing_mutex);
   const std::optional<std::filesystem::path> sla_path =
@@ -273,6 +273,7 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
   Element *root = storage.openDocument(sla_path->string())->getRoot();
   storage.registerTag(root);
   engine.initialize(storage);
+  this->engine.allowContextSet(false);
 }
 
 std::mutex SingleInstructionSleighContext::sleigh_parsing_mutex;
@@ -375,19 +376,32 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
     uint64_t address, PcodeEmit &handler, std::string_view instr_bytes) {
 
   this->image.SetInstruction(address, instr_bytes);
-  const int32_t instr_len =
-      this->engine.oneInstruction(handler, this->GetAddressFromOffset(address));
+
+  try {
+    const int32_t instr_len = this->engine.oneInstruction(
+        handler, this->GetAddressFromOffset(address));
 
 
-  AssemblyLogger logger;
-  this->engine.printAssembly(logger, this->GetAddressFromOffset(address));
-
-  if (instr_len > 0 && static_cast<size_t>(instr_len) <= instr_bytes.length()) {
-    return instr_len;
-  } else {
+    if (instr_len > 0 &&
+        static_cast<size_t>(instr_len) <= instr_bytes.length()) {
+      //AssemblyLogger logger;
+      //this->engine.printAssembly(logger, this->GetAddressFromOffset(address));
+      return instr_len;
+    } else {
+      return std::nullopt;
+    }
+  } catch (BadDataError e) {
+    LOG(ERROR) << "Bad data error";
+    // NOTE (Ian): if sleigh cant find a constructor it throws an exception... yay for unrolling.
+    return std::nullopt;
+  } catch (UnimplError e) {
+    // NOTE(Ian): Similar... except sleigh did decode we just dont have pcode semantics. unfortunately since we rely on those to correctly decode
+    // the remill instruction we need to treat it as a decoding failure.
+    LOG(ERROR) << "Unimplemented error";
     return std::nullopt;
   }
 }
+
 
 InstructionLifter::LifterPtr
 SleighArch::GetLifter(const remill::IntrinsicTable &intrinsics) const {

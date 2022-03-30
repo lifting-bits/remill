@@ -146,16 +146,14 @@ class CustomLoadImage final : public LoadImage {
   uint64_t current_offset;
 };
 
-
-class LoggingContext : public ContextInternal {};
-
 // Holds onto contextual sleigh information in order to provide an interface with which you can decode single instructions
 // Give me bytes and i give you pcode (maybe)
 class SingleInstructionSleighContext {
  private:
   CustomLoadImage image;
-  LoggingContext ctx;
+  ContextInternal ctx;
   Sleigh engine;
+  DocumentStorage storage;
   //NOTE(Ian): Who knows if this is enough? Need to figure out how much, if any of sleigh is thread safe
   static std::mutex sleigh_parsing_mutex;
 
