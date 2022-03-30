@@ -156,6 +156,8 @@ class SingleInstructionSleighContext {
   CustomLoadImage image;
   LoggingContext ctx;
   Sleigh engine;
+  //NOTE(Ian): Who knows if this is enough? Need to figure out how much, if any of sleigh is thread safe
+  static std::mutex sleigh_parsing_mutex;
 
  public:
   Address GetAddressFromOffset(uint64_t off);

@@ -262,6 +262,8 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
     std::string sla_name)
     : engine(&image, &ctx) {
   DocumentStorage storage;
+  std::lock_guard<std::mutex> guard(
+      SingleInstructionSleighContext::sleigh_parsing_mutex);
   const std::optional<std::filesystem::path> sla_path =
       ::sleigh::FindSpecFile(sla_name.c_str());
   if (!sla_path) {
@@ -272,6 +274,8 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
   storage.registerTag(root);
   engine.initialize(storage);
 }
+
+std::mutex SingleInstructionSleighContext::sleigh_parsing_mutex;
 
 Address SingleInstructionSleighContext::GetAddressFromOffset(uint64_t off) {
   return Address(this->engine.getDefaultCodeSpace(), 0x0);
