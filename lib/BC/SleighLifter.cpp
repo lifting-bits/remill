@@ -350,6 +350,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
         break;
       }
+      case OpCode::CPUI_RETURN:
       case OpCode::CPUI_BRANCHIND:
       case OpCode::CPUI_CALLIND: {
         auto copy_inval = this->LiftInParam(
@@ -391,6 +392,12 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
           auto next_pc_value =
               bldr.CreateSelect(*should_branch, jump_addr, *orig_pc_value);
           return pc_reg_ptr->StoreIntoParam(bldr, next_pc_value);
+        }
+
+        if (this->insn.category ==
+            remill::Instruction::Category::kCategoryConditionalBranch) {
+          auto branch_taken_ref = LoadBranchTakenRef(bldr.GetInsertBlock());
+          bldr.CreateStore(*should_branch, branch_taken_ref);
         }
       }
     }
