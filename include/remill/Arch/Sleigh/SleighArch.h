@@ -25,6 +25,81 @@
 
 namespace remill::sleigh {
 
+// NOTE(Ian): Ok so there is some horrible collaboration with the lifter. The lifter has to add metavars
+// So the lifter is responsible for working out if a branch was taken
+class InstructionFlowResolver {
+ public:
+  using IFRPtr = std::shared_ptr<InstructionFlowResolver>;
+
+  virtual void ResolveControlFlow(uint64_t fall_through,
+                                  remill::Instruction &insn) = 0;
+
+
+  static IFRPtr CreateDirectCBranchResolver(uint64_t target);
+  static IFRPtr CreateIndirectCall();
+  static IFRPtr CreateIndirectRet();
+  static IFRPtr CreateIndirectBranch();
+
+  static IFRPtr CreateDirectBranch(uint64_t target);
+  static IFRPtr CreateDirectCall(uint64_t target);
+
+  static IFRPtr CreateNormal();
+};
+
+
+class NormalResolver : public InstructionFlowResolver {
+ public:
+  NormalResolver();
+  virtual ~NormalResolver();
+
+  void ResolveControlFlow(uint64_t fall_through,
+                          remill::Instruction &insn) override;
+};
+
+// Direct Branch
+class DirectBranchResolver : public InstructionFlowResolver {
+ private:
+  uint64_t target_address;
+
+  // Can be a call or branch.
+  remill::Instruction::Category category;
+
+ public:
+  DirectBranchResolver(uint64_t target_address,
+                       remill::Instruction::Category category);
+  virtual ~DirectBranchResolver();
+
+  void ResolveControlFlow(uint64_t fall_through,
+                          remill::Instruction &insn) override;
+};
+
+// Cbranch(NOTE): this may be normal if the cbranch target is the same as the fallthrough
+class DirectCBranchResolver : public InstructionFlowResolver {
+ private:
+  uint64_t target_address;
+
+ public:
+  DirectCBranchResolver(uint64_t target_address);
+  virtual ~DirectCBranchResolver();
+
+  void ResolveControlFlow(uint64_t fall_through,
+                          remill::Instruction &insn) override;
+};
+
+
+class IndirectBranch : public InstructionFlowResolver {
+  // can be a return, callind, or branchind
+  remill::Instruction::Category category;
+
+ public:
+  IndirectBranch(remill::Instruction::Category category);
+
+  virtual ~IndirectBranch();
+
+  void ResolveControlFlow(uint64_t fall_through,
+                          remill::Instruction &insn) override;
+};
+
 
 class PcodeDecoder final : public PcodeEmit {
  public:
@@ -32,6 +107,8 @@ class PcodeDecoder final : public PcodeEmit {
 
   void dump(const Address &, OpCode op, VarnodeData *outvar, VarnodeData *vars,
             int32_t isize) override;
+
+  InstructionFlowResolver::IFRPtr GetResolver();
 
  private:
   void print_vardata(std::stringstream &s, VarnodeData &data);
@@ -44,10 +121,12 @@ class PcodeDecoder final : public PcodeEmit {
 
   void DecodeConstant(const VarnodeData &var);
 
-  void DecodeCategory(OpCode op);
+  void DecodeCategory(OpCode op, VarnodeData *vars, int32_t isize);
 
   Sleigh &engine;
   Instruction &inst;
+
+  std::optional<InstructionFlowResolver::IFRPtr> current_resolver;
 };
 
 class CustomLoadImage final : public LoadImage {
