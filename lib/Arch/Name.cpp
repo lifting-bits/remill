@@ -26,7 +26,7 @@ ArchName GetArchName(const llvm::Triple &triple) {
     case llvm::Triple::ArchType::x86_64: return kArchAMD64;
     case llvm::Triple::ArchType::aarch64: return kArchAArch64LittleEndian;
     case llvm::Triple::ArchType::arm: return kArchAArch32LittleEndian;
-    case llvm::Triple::ArchType::thumb: return kArchAArch32LittleEndian;
+    case llvm::Triple::ArchType::thumb: return kArchThumb2LittleEndian;
     case llvm::Triple::sparc: return kArchSparc32;
     case llvm::Triple::sparcv9: return kArchSparc64;
     default: return kArchInvalid;
