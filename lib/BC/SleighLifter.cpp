@@ -361,6 +361,19 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
           assert(pc_reg.has_value());
           return (*pc_reg)->StoreIntoParam(bldr, *copy_inval);
         }
+        break;
+      }
+      case OpCode::CPUI_INT_ZEXT: {
+        auto zext_inval = this->LiftInParam(
+            bldr, input_var,
+            llvm::IntegerType::get(this->context, input_var.size * 8));
+        if (zext_inval.has_value()) {
+          auto *zext_type =
+              llvm::IntegerType::get(this->context, outvar->size * 8);
+          auto *zext_op = bldr.CreateZExt(*zext_inval, zext_type);
+          return this->LiftStoreIntoOutParam(bldr, zext_op, outvar);
+        }
+        break;
       }
     }
     return LiftStatus::kLiftedUnsupportedInstruction;
