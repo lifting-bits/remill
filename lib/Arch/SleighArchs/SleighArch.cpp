@@ -64,7 +64,7 @@ void PcodeDecoder::dump(const Address &, OpCode op, VarnodeData *outvar,
     DecodeOperand(vars[i]);
   }
   LOG(INFO) << "Pcode: " << ss.str();
-  DecodeCategory(op);
+  DecodeCategory(op, vars, isize);
 }
 
 void PcodeDecoder::DecodeOperand(VarnodeData &var) {
@@ -116,37 +116,147 @@ void PcodeDecoder::DecodeConstant(const VarnodeData &var) {
   inst.operands.push_back(op);
 }
 
+/*
+CPUI_BRANCH = 4,		///< Always branch
+  CPUI_CBRANCH = 5,		///< Conditional branch
+  CPUI_BRANCHIND = 6,		///< Indirect branch (jumptable)
+
+  CPUI_CALL = 7,		///< Call to an absolute address
+  CPUI_CALLIND = 8,		///< Call through an indirect address
+  CPUI_CALLOTHER = 9,		///< User-defined operation
+  CPUI_RETURN = 10,		///< Return from subroutine
+*/
+
 // TODO(Ian): these are kinda fake Pcode can have a lot of random stuff in the translation of an instruction,
 // We are basically categorizing by the last PcodeOp.
 // THis also might be a problem for operands maybe we consume them properly have to look.
-void PcodeDecoder::DecodeCategory(OpCode op) {
-  switch (op) {
-    case CPUI_INT_LESS:
-    case CPUI_INT_SLESS:
-    case CPUI_INT_EQUAL:
-    case CPUI_INT_SUB:
-    case CPUI_INT_SBORROW:
-    case CPUI_INT_AND:
-    case CPUI_BOOL_NEGATE:
-    case CPUI_INT_RIGHT:
-    case CPUI_SUBPIECE:
-    case CPUI_COPY:
-    case CPUI_INT_MULT:
-    case CPUI_INT_ADD:
-    case CPUI_LOAD:
-    case CPUI_INT_OR:
-    case CPUI_INT_NOTEQUAL:
-    case CPUI_POPCOUNT: inst.category = Instruction::kCategoryNormal; break;
-    // NOTE(Ian): Cbranch semantics are kinda tricky. The varnode passed as an input to the branch defines the address
-    // and address space to jump to. The varnode isnt a variable. Constant address spaces are treated specially and reslt in a relative
-    // jump within the pcode list for this instruction. We should probably examine the cbranch params and if it is a constant adress space then this isntruction is basically normal.
-    case CPUI_CBRANCH: inst.category = Instruction::kCategoryNormal; break;
-    default:
-      inst.category = Instruction::kCategoryNormal;
-      LOG(ERROR) << "Unsupported p-code opcode " << get_opname(op);
-      break;
+void PcodeDecoder::DecodeCategory(OpCode op, VarnodeData *vars, int32_t isize) {
+  if (op >= CPUI_BRANCH && op <= CPUI_RETURN) {
+    if (this->current_resolver.has_value()) {
+      // ok we've already seen a control flow instruction so call it an indirect branch
+      this->current_resolver = InstructionFlowResolver::CreateIndirectBranch();
+    }
+
+    // TODO(Ian): we should check if we know about this address space and do something if not
+    switch (op) {
+      case CPUI_BRANCH:
+        this->current_resolver =
+            InstructionFlowResolver::CreateDirectBranch(vars[0].offset);
+      case CPUI_CALL:
+        this->current_resolver =
+            InstructionFlowResolver::CreateDirectCall(vars[0].offset);
+
+      case CPUI_CBRANCH:
+        this->current_resolver =
+            InstructionFlowResolver::CreateDirectCBranchResolver(
+                vars[0].offset);
+      case CPUI_BRANCHIND:
+        this->current_resolver =
+            InstructionFlowResolver::CreateIndirectBranch();
+      case CPUI_CALLIND:
+        this->current_resolver = InstructionFlowResolver::CreateIndirectCall();
+      case CPUI_RETURN:
+        this->current_resolver = InstructionFlowResolver::CreateIndirectRet();
+    }
   }
 }
+
+InstructionFlowResolver::IFRPtr PcodeDecoder::GetResolver() {
+  if (!this->current_resolver.has_value()) {
+    return InstructionFlowResolver::CreateNormal();
+  } else {
+    return *this->current_resolver;
+  }
+}
+
+InstructionFlowResolver::IFRPtr
+InstructionFlowResolver::CreateDirectCBranchResolver(uint64_t target) {
+  return std::make_shared<DirectCBranchResolver>(
+      remill::Instruction::Category::kCategoryConditionalBranch);
+}
+InstructionFlowResolver::IFRPtr InstructionFlowResolver::CreateIndirectCall() {
+  return std::make_shared<IndirectBranch>(
+      remill::Instruction::Category::kCategoryIndirectFunctionCall);
+}
+InstructionFlowResolver::IFRPtr InstructionFlowResolver::CreateIndirectRet() {
+  return std::make_shared<IndirectBranch>(
+      remill::Instruction::Category::kCategoryFunctionReturn);
+}
+InstructionFlowResolver::IFRPtr
+InstructionFlowResolver::CreateIndirectBranch() {
+  return std::make_shared<IndirectBranch>(
+      remill::Instruction::Category::kCategoryIndirectJump);
+}
+
+InstructionFlowResolver::IFRPtr
+InstructionFlowResolver::CreateDirectBranch(uint64_t target) {
+  return std::make_shared<DirectBranchResolver>(
+      target, remill::Instruction::Category::kCategoryDirectJump);
+}
+InstructionFlowResolver::IFRPtr
+InstructionFlowResolver::CreateDirectCall(uint64_t target) {
+  return std::make_shared<DirectBranchResolver>(
+      target, remill::Instruction::Category::kCategoryDirectFunctionCall);
+}
+
+InstructionFlowResolver::IFRPtr InstructionFlowResolver::CreateNormal() {
+  return std::make_shared<NormalResolver>();
+}
+
+IndirectBranch::IndirectBranch(remill::Instruction::Category category)
+    : category(category) {}
+
+
+NormalResolver::NormalResolver() = default;
+
+DirectBranchResolver::DirectBranchResolver(
+    uint64_t target_address, remill::Instruction::Category category)
+    : target_address(target_address),
+      category(category) {}
+
+
+DirectCBranchResolver::DirectCBranchResolver(uint64_t target_address)
+    : target_address(target_address) {}
+
+NormalResolver::~NormalResolver() = default;
+DirectCBranchResolver::~DirectCBranchResolver() = default;
+DirectBranchResolver::~DirectBranchResolver() = default;
+IndirectBranch::~IndirectBranch() = default;
+
+void IndirectBranch::ResolveControlFlow(uint64_t fall_through,
+                                        remill::Instruction &insn) {
+  insn.next_pc = 0;
+  insn.category = this->category;
+}
+
+
+void DirectBranchResolver::ResolveControlFlow(uint64_t fall_through,
+                                              remill::Instruction &insn) {
+  insn.next_pc = this->target_address;
+  insn.branch_taken_pc = 0;
+  insn.branch_not_taken_pc = 0;
+  insn.category = this->category;
+}
+
+void NormalResolver::ResolveControlFlow(uint64_t fall_through,
+                                        remill::Instruction &insn) {
+  insn.next_pc = fall_through;
+  insn.category = remill::Instruction::Category::kCategoryNormal;
+}
+
+void DirectCBranchResolver::ResolveControlFlow(uint64_t fall_through,
+                                               remill::Instruction &insn) {
+
+  if (this->target_address == fall_through) {
+    insn.next_pc = fall_through;
+    insn.category = remill::Instruction::Category::kCategoryNormal;
+  } else {
+    insn.next_pc = 0;
+    insn.branch_taken_pc = this->target_address;
+    insn.branch_not_taken_pc = fall_through;
+  }
+}
+
 
 SingleInstructionSleighContext::SingleInstructionSleighContext(
     std::string sla_name)
@@ -236,7 +346,10 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
       this->sleigh_ctx.oneInstruction(address, pcode_handler, instr_bytes);
 
   if (instr_len.has_value()) {
-    inst.next_pc = address + *instr_len;
+    auto fallthrough = address + *instr_len;
+    pcode_handler.GetResolver()->ResolveControlFlow(fallthrough, inst);
+
+
     return true;
   } else {
     return false;
@@ -265,7 +378,11 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
   AssemblyLogger logger;
   this->engine.printAssembly(logger, this->GetAddressFromOffset(address));
 
-  return instr_len;
+  if (instr_len > 0 && static_cast<size_t>(instr_len) <= instr_bytes.length()) {
+    return instr_len;
+  } else {
+    return std::nullopt;
+  }
 }
 
 InstructionLifter::LifterPtr
