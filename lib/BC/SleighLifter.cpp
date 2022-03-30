@@ -472,27 +472,90 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
 std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
     SleighLifter::PcodeToLLVMEmitIntoBlock::INTEGER_BINARY_OPS = {
+        // TODO(alex): Zero extend, carry, borrow
         {OpCode::CPUI_INT_AND,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
            return bldr.CreateAnd(lhs, rhs);
-         }},
-        {OpCode::CPUI_INT_ADD,
-         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
-           return bldr.CreateAdd(lhs, rhs);
-         }},
-        {OpCode::CPUI_INT_MULT,
-         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
-           return bldr.CreateMul(lhs, rhs);
          }},
         {OpCode::CPUI_INT_OR,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
            return bldr.CreateOr(lhs, rhs);
          }},
+        {OpCode::CPUI_INT_XOR,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateXor(lhs, rhs);
+         }},
+        {OpCode::CPUI_INT_LEFT,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateShl(lhs, rhs);
+         }},
+        {OpCode::CPUI_INT_RIGHT,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateLShr(lhs, rhs);
+         }},
+        {OpCode::CPUI_INT_SRIGHT,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateAShr(lhs, rhs);
+         }},
+        {OpCode::CPUI_INT_ADD,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateAdd(lhs, rhs);
+         }},
+        {OpCode::CPUI_INT_SUB,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateSub(lhs, rhs);
+         }},
+        {OpCode::CPUI_INT_MULT,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateMul(lhs, rhs);
+         }},
+        {OpCode::CPUI_INT_DIV,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateUDiv(lhs, rhs);
+         }},
+        {OpCode::CPUI_INT_SDIV,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateSDiv(lhs, rhs);
+         }},
+        {OpCode::CPUI_INT_REM,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateURem(lhs, rhs);
+         }},
+        {OpCode::CPUI_INT_SREM,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateSRem(lhs, rhs);
+         }},
+        {OpCode::CPUI_INT_EQUAL,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateZExt(bldr.CreateICmpEQ(lhs, rhs),
+                                  llvm::IntegerType::get(bldr.getContext(), 8));
+         }},
         {OpCode::CPUI_INT_NOTEQUAL,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
            return bldr.CreateZExt(bldr.CreateICmpNE(lhs, rhs),
                                   llvm::IntegerType::get(bldr.getContext(), 8));
-         }}};
+         }},
+        {OpCode::CPUI_INT_LESS,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateZExt(bldr.CreateICmpULT(lhs, rhs),
+                                  llvm::IntegerType::get(bldr.getContext(), 8));
+         }},
+        {OpCode::CPUI_INT_SLESS,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateZExt(bldr.CreateICmpSLT(lhs, rhs),
+                                  llvm::IntegerType::get(bldr.getContext(), 8));
+         }},
+        {OpCode::CPUI_INT_LESSEQUAL,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateZExt(bldr.CreateICmpSLE(lhs, rhs),
+                                  llvm::IntegerType::get(bldr.getContext(), 8));
+         }},
+        {OpCode::CPUI_INT_SLESSEQUAL,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateZExt(bldr.CreateICmpULE(lhs, rhs),
+                                  llvm::IntegerType::get(bldr.getContext(), 8));
+         }},
+};
 
 LiftStatus
 SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
