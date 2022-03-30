@@ -15,10 +15,11 @@ add_library(remill_arch_sleigh STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/Runtime/State.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/Runtime/Types.h"
 
+  "${REMILL_INCLUDE_DIR}/remill/Arch/Sleigh/SleighArch.h"
+
   X86Arch.cpp
   Thumb2Arch.cpp
   SleighArch.cpp
-  SleighArch.h
   )
 
 set_property(TARGET remill_arch_sleigh PROPERTY POSITION_INDEPENDENT_CODE ON)
