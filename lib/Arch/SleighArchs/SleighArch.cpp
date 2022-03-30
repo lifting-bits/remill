@@ -349,7 +349,7 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
     auto fallthrough = address + *instr_len;
     pcode_handler.GetResolver()->ResolveControlFlow(fallthrough, inst);
 
-
+    LOG(INFO) << "Decoded as " << inst.Serialize();
     return true;
   } else {
     return false;
