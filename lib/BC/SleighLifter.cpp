@@ -402,7 +402,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   static std::map<OpCode, BinaryOperator> INTEGER_BINARY_OPS;
 
 
-  LiftStatus LiftIntegerBinop(llvm::IRBuilder<> &bldr, OpCode opc,
+  LiftStatus LiftIntegerBinOp(llvm::IRBuilder<> &bldr, OpCode opc,
                               VarnodeData *outvar, VarnodeData lhs,
                               VarnodeData rhs) {
 
@@ -449,9 +449,58 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     return LiftStatus::kLiftedUnsupportedInstruction;
   }
 
+  LiftStatus LiftBoolBinOp(llvm::IRBuilder<> &bldr, OpCode opc,
+                           VarnodeData *outvar, VarnodeData lhs,
+                           VarnodeData rhs) {
+    std::function<llvm::Value *(llvm::Value *, llvm::Value *,
+                                llvm::IRBuilder<> &)>
+        op_func;
+    switch (opc) {
+      case CPUI_BOOL_AND: {
+        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
+                     llvm::IRBuilder<> &bldr) {
+          return bldr.CreateAnd(lhs, rhs);
+        };
+        break;
+      }
+      case CPUI_BOOL_OR: {
+        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
+                     llvm::IRBuilder<> &bldr) {
+          return bldr.CreateOr(lhs, rhs);
+        };
+        break;
+      }
+      case CPUI_BOOL_XOR: {
+        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
+                     llvm::IRBuilder<> &bldr) {
+          return bldr.CreateXor(lhs, rhs);
+        };
+        break;
+      }
+      default: break;
+    }
+    if (op_func) {
+      auto lifted_lhs = this->LiftInParam(
+               bldr, lhs, llvm::IntegerType::get(this->context, 8)),
+           lifted_rhs = this->LiftInParam(
+               bldr, rhs, llvm::IntegerType::get(this->context, 8));
+      if (lifted_lhs.has_value() && lifted_rhs.has_value()) {
+        return this->LiftStoreIntoOutParam(
+            bldr, op_func(*lifted_lhs, *lifted_rhs, bldr), outvar);
+      }
+    }
+    return LiftStatus::kLiftedUnsupportedInstruction;
+  }
+
+
   LiftStatus LiftBinOp(llvm::IRBuilder<> &bldr, OpCode opc, VarnodeData *outvar,
                        VarnodeData lhs, VarnodeData rhs) {
-    auto res = this->LiftIntegerBinop(bldr, opc, outvar, lhs, rhs);
+    auto res = this->LiftIntegerBinOp(bldr, opc, outvar, lhs, rhs);
+    if (res == LiftStatus::kLiftedInstruction) {
+      return res;
+    }
+
+    res = this->LiftBoolBinOp(bldr, opc, outvar, lhs, rhs);
     if (res == LiftStatus::kLiftedInstruction) {
       return res;
     }
