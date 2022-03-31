@@ -673,7 +673,6 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
 std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
     SleighLifter::PcodeToLLVMEmitIntoBlock::INTEGER_BINARY_OPS = {
-        // TODO(alex): Carry, borrow
         {OpCode::CPUI_INT_AND,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
            return bldr.CreateAnd(lhs, rhs);
@@ -755,6 +754,21 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
            return bldr.CreateZExt(bldr.CreateICmpULE(lhs, rhs),
                                   llvm::IntegerType::get(bldr.getContext(), 8));
+         }},
+        {OpCode::CPUI_INT_CARRY,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           // TODO(alex): Use overflow intrinsics.
+           return nullptr;
+         }},
+        {OpCode::CPUI_INT_SCARRY,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           // TODO(alex): Use overflow intrinsics.
+           return nullptr;
+         }},
+        {OpCode::CPUI_INT_SBORROW,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           // TODO(alex): Use overflow intrinsics.
+           return nullptr;
          }},
 };
 
