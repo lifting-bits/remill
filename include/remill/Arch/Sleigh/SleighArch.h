@@ -146,22 +146,25 @@ class CustomLoadImage final : public LoadImage {
   uint64_t current_offset;
 };
 
+class SleighArch;
 // Holds onto contextual sleigh information in order to provide an interface with which you can decode single instructions
 // Give me bytes and i give you pcode (maybe)
 class SingleInstructionSleighContext {
  private:
+  friend class SleighArch;
   CustomLoadImage image;
   ContextInternal ctx;
   Sleigh engine;
   DocumentStorage storage;
-  //NOTE(Ian): Who knows if this is enough? Need to figure out how much, if any of sleigh is thread safe
-  static std::mutex sleigh_parsing_mutex;
 
  public:
   Address GetAddressFromOffset(uint64_t off);
   std::optional<int32_t> oneInstruction(uint64_t address, PcodeEmit &emitter,
                                         std::string_view instr_bytes);
 
+  //NOTE(Ian): Who knows if this is enough? Need to figure out how much, if any of sleigh is thread safe
+  // TODO(Ian): we are exposing this mutex to clients who also want to use sleigh... this is horrible we need to do something else.
+  static std::mutex sleigh_parsing_mutex;
 
   Sleigh &GetEngine();
 
