@@ -133,6 +133,8 @@ CPUI_BRANCH = 4,		///< Always branch
 void PcodeDecoder::DecodeCategory(OpCode op, VarnodeData *vars, int32_t isize) {
   if (op >= CPUI_BRANCH && op <= CPUI_RETURN) {
     if (this->current_resolver.has_value()) {
+      LOG(ERROR)
+          << "Demoting instruction to indirect branch, already guessed category";
       // ok we've already seen a control flow instruction so call it an indirect branch
       this->current_resolver = InstructionFlowResolver::CreateIndirectBranch();
     }
@@ -142,37 +144,68 @@ void PcodeDecoder::DecodeCategory(OpCode op, VarnodeData *vars, int32_t isize) {
       case CPUI_BRANCH:
         this->current_resolver =
             InstructionFlowResolver::CreateDirectBranch(vars[0].offset);
+        break;
       case CPUI_CALL:
         this->current_resolver =
             InstructionFlowResolver::CreateDirectCall(vars[0].offset);
-
+        break;
       case CPUI_CBRANCH:
         this->current_resolver =
             InstructionFlowResolver::CreateDirectCBranchResolver(
                 vars[0].offset);
+        break;
       case CPUI_BRANCHIND:
         this->current_resolver =
             InstructionFlowResolver::CreateIndirectBranch();
+        break;
       case CPUI_CALLIND:
         this->current_resolver = InstructionFlowResolver::CreateIndirectCall();
+        break;
       case CPUI_RETURN:
         this->current_resolver = InstructionFlowResolver::CreateIndirectRet();
+        break;
     }
   }
 }
 
 InstructionFlowResolver::IFRPtr PcodeDecoder::GetResolver() {
   if (!this->current_resolver.has_value()) {
+    LOG(INFO) << "resolver doesnt have a value";
     return InstructionFlowResolver::CreateNormal();
   } else {
+    LOG(INFO) << "resolver does have a value";
     return *this->current_resolver;
   }
 }
 
+/*
+  switch (category) {
+    case Instruction::kCategoryDirectJump:
+      ss << " (BRANCH " << std::hex << branch_taken_pc << ")";
+      break;
+    case Instruction::kCategoryDirectFunctionCall:
+      ss << " (DIRECT_CALL (TAKEN " << std::hex << branch_taken_pc << ")"
+         << " (RETURN " << branch_not_taken_pc << "))";
+      break;
+    case Instruction::kCategoryIndirectFunctionCall:
+      ss << " (INDIRECT_CALL (TAKEN <unknown>)"
+         << " (RETURN " << branch_not_taken_pc << "))";
+      break;
+    case Instruction::kCategoryConditionalBranch:
+      ss << " (COND_BRANCH (TAKEN " << std::hex << branch_taken_pc << ")"
+         << " (NOT_TAKEN " << branch_not_taken_pc << std::dec << "))";
+      break;
+    case kCategoryConditionalIndirectJump:
+      ss << " (COND_BRANCH (TAKEN <unknown>)"
+         << " (NOT_TAKEN " << branch_not_taken_pc << std::dec << "))";
+    default: break;
+  }
+
+*/
+
 InstructionFlowResolver::IFRPtr
 InstructionFlowResolver::CreateDirectCBranchResolver(uint64_t target) {
-  return std::make_shared<DirectCBranchResolver>(
-      remill::Instruction::Category::kCategoryConditionalBranch);
+  return std::make_shared<DirectCBranchResolver>(target);
 }
 InstructionFlowResolver::IFRPtr InstructionFlowResolver::CreateIndirectCall() {
   return std::make_shared<IndirectBranch>(
@@ -233,8 +266,8 @@ void IndirectBranch::ResolveControlFlow(uint64_t fall_through,
 void DirectBranchResolver::ResolveControlFlow(uint64_t fall_through,
                                               remill::Instruction &insn) {
   insn.next_pc = this->target_address;
-  insn.branch_taken_pc = 0;
-  insn.branch_not_taken_pc = 0;
+  insn.branch_taken_pc = this->target_address;
+  insn.branch_not_taken_pc = fall_through;
   insn.category = this->category;
 }
 
@@ -246,6 +279,7 @@ void NormalResolver::ResolveControlFlow(uint64_t fall_through,
 
 void DirectCBranchResolver::ResolveControlFlow(uint64_t fall_through,
                                                remill::Instruction &insn) {
+  LOG(INFO) << "resolving direct cbranch" << fall_through;
 
   if (this->target_address == fall_through) {
     insn.next_pc = fall_through;
@@ -254,6 +288,7 @@ void DirectCBranchResolver::ResolveControlFlow(uint64_t fall_through,
     insn.next_pc = 0;
     insn.branch_taken_pc = this->target_address;
     insn.branch_not_taken_pc = fall_through;
+    insn.category = remill::Instruction::Category::kCategoryConditionalBranch;
   }
 }
 
