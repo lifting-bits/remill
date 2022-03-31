@@ -333,6 +333,8 @@ SleighArch::SleighArch(llvm::LLVMContext *context_, OSName os_name_,
 bool SleighArch::DecodeInstructionImpl(uint64_t address,
                                        std::string_view instr_bytes,
                                        Instruction &inst) {
+  std::lock_guard<std::mutex> guard(
+      SingleInstructionSleighContext::sleigh_parsing_mutex);
 
   inst.bytes = instr_bytes;
   inst.arch_name = arch_name;
@@ -384,8 +386,8 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
 
     if (instr_len > 0 &&
         static_cast<size_t>(instr_len) <= instr_bytes.length()) {
-      //AssemblyLogger logger;
-      //this->engine.printAssembly(logger, this->GetAddressFromOffset(address));
+      AssemblyLogger logger;
+      this->engine.printAssembly(logger, this->GetAddressFromOffset(address));
       return instr_len;
     } else {
       return std::nullopt;
