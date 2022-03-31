@@ -394,6 +394,39 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         }
         break;
       }
+      case OpCode::CPUI_FLOAT_NEG: {
+        auto negate_inval = this->LiftInParam(
+            bldr, input_var, llvm::Type::getFloatTy(this->context));
+        if (negate_inval.has_value()) {
+          return this->LiftStoreIntoOutParam(
+              bldr, bldr.CreateFNeg(*negate_inval), outvar);
+        }
+        break;
+      }
+      case OpCode::CPUI_FLOAT_ABS: {
+        auto abs_inval = this->LiftInParam(
+            bldr, input_var, llvm::Type::getFloatTy(this->context));
+        if (abs_inval.has_value()) {
+          llvm::Function *abs_intrinsic = llvm::Intrinsic::getDeclaration(
+              bldr.GetInsertBlock()->getModule(), llvm::Intrinsic::fabs);
+          llvm::Value *abs_args[] = {*abs_inval};
+          return this->LiftStoreIntoOutParam(
+              bldr, bldr.CreateCall(abs_intrinsic, abs_args), outvar);
+        }
+        break;
+      }
+      case OpCode::CPUI_FLOAT_SQRT: {
+        auto sqrt_inval = this->LiftInParam(
+            bldr, input_var, llvm::Type::getFloatTy(this->context));
+        if (sqrt_inval.has_value()) {
+          llvm::Function *sqrt_intrinsic = llvm::Intrinsic::getDeclaration(
+              bldr.GetInsertBlock()->getModule(), llvm::Intrinsic::sqrt);
+          llvm::Value *sqrt_args[] = {*sqrt_inval};
+          return this->LiftStoreIntoOutParam(
+              bldr, bldr.CreateCall(sqrt_intrinsic, sqrt_args), outvar);
+        }
+        break;
+      }
     }
     return LiftStatus::kLiftedUnsupportedInstruction;
   }
