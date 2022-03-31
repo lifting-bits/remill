@@ -311,6 +311,21 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         outvar);
   }
 
+  LiftStatus LiftUnOpWithFloatIntrinsic(
+      llvm::IRBuilder<> &bldr,
+      llvm::Intrinsic::IndependentIntrinsics intrinsic_id, VarnodeData *outvar,
+      VarnodeData input_var) {
+    auto inval = this->LiftInParam(bldr, input_var,
+                                   llvm::Type::getFloatTy(this->context));
+    if (inval.has_value()) {
+      llvm::Function *intrinsic = llvm::Intrinsic::getDeclaration(
+          bldr.GetInsertBlock()->getModule(), intrinsic_id);
+      llvm::Value *intrinsic_args[] = {*inval};
+      return this->LiftStoreIntoOutParam(
+          bldr, bldr.CreateCall(intrinsic, intrinsic_args), outvar);
+    }
+    return LiftStatus::kLiftedUnsupportedInstruction;
+  }
 
   LiftStatus LiftUnOp(llvm::IRBuilder<> &bldr, OpCode opc, VarnodeData *outvar,
                       VarnodeData input_var) {
@@ -404,70 +419,30 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         break;
       }
       case OpCode::CPUI_FLOAT_ABS: {
-        auto abs_inval = this->LiftInParam(
-            bldr, input_var, llvm::Type::getFloatTy(this->context));
-        if (abs_inval.has_value()) {
-          llvm::Function *abs_intrinsic = llvm::Intrinsic::getDeclaration(
-              bldr.GetInsertBlock()->getModule(), llvm::Intrinsic::fabs);
-          llvm::Value *abs_args[] = {*abs_inval};
-          return this->LiftStoreIntoOutParam(
-              bldr, bldr.CreateCall(abs_intrinsic, abs_args), outvar);
-        }
-        break;
+        return this->LiftUnOpWithFloatIntrinsic(bldr, llvm::Intrinsic::fabs,
+                                                outvar, input_var);
       }
       case OpCode::CPUI_FLOAT_SQRT: {
-        auto sqrt_inval = this->LiftInParam(
-            bldr, input_var, llvm::Type::getFloatTy(this->context));
-        if (sqrt_inval.has_value()) {
-          llvm::Function *sqrt_intrinsic = llvm::Intrinsic::getDeclaration(
-              bldr.GetInsertBlock()->getModule(), llvm::Intrinsic::sqrt);
-          llvm::Value *sqrt_args[] = {*sqrt_inval};
-          return this->LiftStoreIntoOutParam(
-              bldr, bldr.CreateCall(sqrt_intrinsic, sqrt_args), outvar);
-        }
-        break;
+        return this->LiftUnOpWithFloatIntrinsic(bldr, llvm::Intrinsic::sqrt,
+                                                outvar, input_var);
       }
       case OpCode::CPUI_FLOAT_CEIL: {
-        auto ceil_inval = this->LiftInParam(
-            bldr, input_var, llvm::Type::getFloatTy(this->context));
-        if (ceil_inval.has_value()) {
-          llvm::Function *ceil_intrinsic = llvm::Intrinsic::getDeclaration(
-              bldr.GetInsertBlock()->getModule(), llvm::Intrinsic::ceil);
-          llvm::Value *ceil_args[] = {*ceil_inval};
-          return this->LiftStoreIntoOutParam(
-              bldr, bldr.CreateCall(ceil_intrinsic, ceil_args), outvar);
-        }
-        break;
+        return this->LiftUnOpWithFloatIntrinsic(bldr, llvm::Intrinsic::ceil,
+                                                outvar, input_var);
       }
       case OpCode::CPUI_FLOAT_FLOOR: {
-        auto floor_inval = this->LiftInParam(
-            bldr, input_var, llvm::Type::getFloatTy(this->context));
-        if (floor_inval.has_value()) {
-          llvm::Function *floor_intrinsic = llvm::Intrinsic::getDeclaration(
-              bldr.GetInsertBlock()->getModule(), llvm::Intrinsic::floor);
-          llvm::Value *floor_args[] = {*floor_inval};
-          return this->LiftStoreIntoOutParam(
-              bldr, bldr.CreateCall(floor_intrinsic, floor_args), outvar);
-        }
-        break;
+        return this->LiftUnOpWithFloatIntrinsic(bldr, llvm::Intrinsic::floor,
+                                                outvar, input_var);
       }
       case OpCode::CPUI_FLOAT_ROUND: {
-        auto round_inval = this->LiftInParam(
-            bldr, input_var, llvm::Type::getFloatTy(this->context));
-        if (round_inval.has_value()) {
-          llvm::Function *round_intrinsic = llvm::Intrinsic::getDeclaration(
-              bldr.GetInsertBlock()->getModule(), llvm::Intrinsic::round);
-          llvm::Value *round_args[] = {*round_inval};
-          return this->LiftStoreIntoOutParam(
-              bldr, bldr.CreateCall(round_intrinsic, round_args), outvar);
-        }
-        break;
+        return this->LiftUnOpWithFloatIntrinsic(bldr, llvm::Intrinsic::round,
+                                                outvar, input_var);
       }
       case OpCode::CPUI_FLOAT_NAN: {
         auto nan_inval = this->LiftInParam(
             bldr, input_var, llvm::Type::getFloatTy(this->context));
         if (nan_inval.has_value()) {
-          // LLVM trunk has an `isnan`intrinsic but to support older versions, I think we need to do this.
+          // LLVM trunk has an `isnan` intrinsic but to support older versions, I think we need to do this.
           auto *isnan_check = bldr.CreateZExt(
               bldr.CreateNot(bldr.CreateFCmpOEQ(*nan_inval, *nan_inval)),
               llvm::IntegerType::get(this->context, outvar->size * 8));
