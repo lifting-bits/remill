@@ -86,6 +86,8 @@ enum ArchName : uint32_t {
 
   kArchSparc32,
   kArchSparc64,
+
+  kArchThumb2LittleEndian,
 };
 
 ArchName GetArchName(const llvm::Triple &triple);
