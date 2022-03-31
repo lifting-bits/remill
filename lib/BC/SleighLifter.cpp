@@ -492,6 +492,88 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     return LiftStatus::kLiftedUnsupportedInstruction;
   }
 
+  LiftStatus LiftFloatBinOp(llvm::IRBuilder<> &bldr, OpCode opc,
+                            VarnodeData *outvar, VarnodeData lhs,
+                            VarnodeData rhs) {
+    std::function<llvm::Value *(llvm::Value *, llvm::Value *,
+                                llvm::IRBuilder<> &)>
+        op_func;
+    switch (opc) {
+      case CPUI_FLOAT_EQUAL: {
+        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
+                     llvm::IRBuilder<> &bldr) {
+          return bldr.CreateZExt(bldr.CreateFCmpOEQ(lhs, rhs),
+                                 llvm::IntegerType::get(bldr.getContext(), 8));
+        };
+        break;
+      }
+      case CPUI_FLOAT_NOTEQUAL: {
+        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
+                     llvm::IRBuilder<> &bldr) {
+          return bldr.CreateZExt(bldr.CreateFCmpONE(lhs, rhs),
+                                 llvm::IntegerType::get(bldr.getContext(), 8));
+        };
+        break;
+      }
+      case CPUI_FLOAT_LESS: {
+        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
+                     llvm::IRBuilder<> &bldr) {
+          return bldr.CreateZExt(bldr.CreateFCmpOLT(lhs, rhs),
+                                 llvm::IntegerType::get(bldr.getContext(), 8));
+        };
+        break;
+      }
+      case CPUI_FLOAT_LESSEQUAL: {
+        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
+                     llvm::IRBuilder<> &bldr) {
+          return bldr.CreateZExt(bldr.CreateFCmpOLE(lhs, rhs),
+                                 llvm::IntegerType::get(bldr.getContext(), 8));
+        };
+        break;
+      }
+      case CPUI_FLOAT_ADD: {
+        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
+                     llvm::IRBuilder<> &bldr) {
+          return bldr.CreateFAdd(lhs, rhs);
+        };
+        break;
+      }
+      case CPUI_FLOAT_SUB: {
+        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
+                     llvm::IRBuilder<> &bldr) {
+          return bldr.CreateFSub(lhs, rhs);
+        };
+        break;
+      }
+      case CPUI_FLOAT_MULT: {
+        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
+                     llvm::IRBuilder<> &bldr) {
+          return bldr.CreateFMul(lhs, rhs);
+        };
+        break;
+      }
+      case CPUI_FLOAT_DIV: {
+        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
+                     llvm::IRBuilder<> &bldr) {
+          return bldr.CreateFDiv(lhs, rhs);
+        };
+        break;
+      }
+      default: break;
+    }
+    if (op_func) {
+      auto lifted_lhs =
+          this->LiftInParam(bldr, lhs, llvm::Type::getFloatTy(this->context));
+      auto lifted_rhs =
+          this->LiftInParam(bldr, lhs, llvm::Type::getFloatTy(this->context));
+      if (lifted_lhs.has_value() && lifted_rhs.has_value()) {
+        return this->LiftStoreIntoOutParam(
+            bldr, op_func(*lifted_lhs, *lifted_rhs, bldr), outvar);
+      }
+    }
+    return LiftStatus::kLiftedUnsupportedInstruction;
+  }
+
 
   LiftStatus LiftBinOp(llvm::IRBuilder<> &bldr, OpCode opc, VarnodeData *outvar,
                        VarnodeData lhs, VarnodeData rhs) {
@@ -501,6 +583,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     }
 
     res = this->LiftBoolBinOp(bldr, opc, outvar, lhs, rhs);
+    if (res == LiftStatus::kLiftedInstruction) {
+      return res;
+    }
+
+    res = this->LiftFloatBinOp(bldr, opc, outvar, lhs, rhs);
     if (res == LiftStatus::kLiftedInstruction) {
       return res;
     }
