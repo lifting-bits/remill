@@ -707,7 +707,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         break;
       case 3:
         this->UpdateStatus(
-            this->LiftTernOp(bldr, opc, outvar, vars[0], vars[1], vars[3]),
+            this->LiftTernOp(bldr, opc, outvar, vars[0], vars[1], vars[2]),
             opc);
         break;
       default:
