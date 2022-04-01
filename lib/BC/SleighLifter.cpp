@@ -667,6 +667,28 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       }
     }
 
+    return LiftStatus::kLiftedUnsupportedInstruction;
+  }
+
+  LiftStatus LiftTernOp(llvm::IRBuilder<> &bldr, OpCode opc,
+                        VarnodeData *outvar, VarnodeData param0,
+                        VarnodeData param1, VarnodeData param2) {
+    if (opc == OpCode::CPUI_STORE) {
+      auto addr_operand = param1;
+      auto lifted_addr_offset = this->LiftInParam(
+          bldr, addr_operand, this->insn_lifter_parent.GetWordType());
+
+      if (lifted_addr_offset) {
+        auto store_param = this->LiftInParam(
+            bldr, param2,
+            llvm::IntegerType::get(this->context, param2.size * 8));
+
+        if (store_param.has_value()) {
+          auto lifted_addr = this->CreateMemoryAddress(*lifted_addr_offset);
+          return lifted_addr->StoreIntoParam(bldr, *store_param);
+        }
+      }
+    }
 
     return LiftStatus::kLiftedUnsupportedInstruction;
   }
@@ -682,6 +704,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       case 2:
         this->UpdateStatus(this->LiftBinOp(bldr, opc, outvar, vars[0], vars[1]),
                            opc);
+        break;
+      case 3:
+        this->UpdateStatus(
+            this->LiftTernOp(bldr, opc, outvar, vars[0], vars[1], vars[3]),
+            opc);
         break;
       default:
         this->UpdateStatus(LiftStatus::kLiftedUnsupportedInstruction, opc);
