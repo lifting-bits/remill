@@ -667,6 +667,52 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       }
     }
 
+    if (opc == OpCode::CPUI_PIECE && outvar) {
+      assert(rhs.size + lhs.size == outvar->size);
+
+      // Treat them as integers
+      auto lifted_lhs = this->LiftInParam(
+               bldr, lhs, llvm::IntegerType::get(this->context, lhs.size * 8)),
+           lifted_rhs = this->LiftInParam(
+               bldr, rhs, llvm::IntegerType::get(this->context, rhs.size * 8));
+
+      if (lifted_lhs.has_value() && lifted_rhs.has_value()) {
+        // Widen the most significant operand and then left shift it to make room for the least significant operand.
+        auto *ms_operand = bldr.CreateZExt(
+            *lifted_lhs, llvm::IntegerType::get(this->context, outvar->size));
+        auto *shifted_ms_operand = bldr.CreateShl(
+            ms_operand, llvm::ConstantInt::get(
+                            llvm::Type::getInt8Ty(this->context), rhs.size));
+
+        // Now concatenate them with an OR.
+        auto *concat = bldr.CreateOr(shifted_ms_operand, *lifted_rhs);
+        return this->LiftStoreIntoOutParam(bldr, concat, outvar);
+      }
+    }
+
+    if (opc == OpCode::CPUI_SUBPIECE && outvar) {
+      auto lifted_lhs = this->LiftInParam(
+          bldr, lhs, llvm::IntegerType::get(this->context, lhs.size * 8));
+
+      if (lifted_lhs.has_value()) {
+        auto new_size = lhs.size - rhs.offset;
+        auto *subpiece_lhs = bldr.CreateTrunc(
+            *lifted_lhs, llvm::IntegerType::get(this->context, new_size * 8));
+
+        if (new_size < outvar->size) {
+          subpiece_lhs = bldr.CreateZExt(
+              subpiece_lhs,
+              llvm::IntegerType::get(this->context, outvar->size));
+        } else if (new_size > outvar->size) {
+          subpiece_lhs = bldr.CreateTrunc(
+              subpiece_lhs,
+              llvm::IntegerType::get(this->context, outvar->size));
+        }
+
+        return this->LiftStoreIntoOutParam(bldr, subpiece_lhs, outvar);
+      }
+    }
+
     return LiftStatus::kLiftedUnsupportedInstruction;
   }
 
@@ -777,6 +823,8 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
          }},
         {OpCode::CPUI_INT_EQUAL,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           // TODO(alex): Should these by using `trunc`?
+           // The docs seem to indicate that it's not ok to `zext` to a smaller type.
            return bldr.CreateZExt(bldr.CreateICmpEQ(lhs, rhs),
                                   llvm::IntegerType::get(bldr.getContext(), 8));
          }},
