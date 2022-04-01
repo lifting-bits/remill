@@ -450,6 +450,39 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         }
         break;
       }
+      case OpCode::CPUI_FLOAT_INT2FLOAT: {
+        auto int2float_inval = this->LiftIntegerInParam(bldr, input_var);
+        if (int2float_inval.has_value()) {
+          auto *converted = bldr.CreateSIToFP(
+              *int2float_inval, llvm::Type::getFloatTy(this->context));
+          return this->LiftStoreIntoOutParam(bldr, converted, outvar);
+        }
+        break;
+      }
+      case OpCode::CPUI_FLOAT_FLOAT2FLOAT: {
+        auto float2float_inval = this->LiftInParam(
+            bldr, input_var, llvm::Type::getFloatTy(this->context));
+        if (float2float_inval.has_value()) {
+          // This is a no-op until we make a helper to select an appropriate float type for a given node size.
+          return this->LiftStoreIntoOutParam(
+              bldr,
+              bldr.CreateFPTrunc(*float2float_inval,
+                                 llvm::Type::getFloatTy(this->context)),
+              outvar);
+        }
+        break;
+      }
+      case OpCode::CPUI_FLOAT_TRUNC: {
+        auto trunc_inval = this->LiftInParam(
+            bldr, input_var, llvm::Type::getFloatTy(this->context));
+        if (trunc_inval.has_value()) {
+          auto *converted = bldr.CreateFPToSI(
+              *trunc_inval,
+              llvm::IntegerType::get(this->context, outvar->size * 8));
+          return this->LiftStoreIntoOutParam(bldr, converted, outvar);
+        }
+        break;
+      }
     }
     return LiftStatus::kLiftedUnsupportedInstruction;
   }
@@ -618,6 +651,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       default: break;
     }
     if (op_func) {
+      // TODO(alex): I think we need some helper here to achieve something similar to what `llvm::IntegerType::get`
+      // gives us, except for floating point types.
+      //
+      // So we need to check the size of the node and return either a 32-bit float, brain float, double, etc.
       auto lifted_lhs =
           this->LiftInParam(bldr, lhs, llvm::Type::getFloatTy(this->context));
       auto lifted_rhs =
