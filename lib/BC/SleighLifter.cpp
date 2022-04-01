@@ -780,18 +780,33 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
          }},
         {OpCode::CPUI_INT_CARRY,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
-           // TODO(alex): Use overflow intrinsics.
-           return nullptr;
+           llvm::Function *uadd_intrinsic = llvm::Intrinsic::getDeclaration(
+               bldr.GetInsertBlock()->getModule(),
+               llvm::Intrinsic::uadd_with_overflow);
+           llvm::Value *uadd_args[] = {lhs, rhs};
+           llvm::Value *uadd_val = bldr.CreateCall(uadd_intrinsic, uadd_args);
+           // The value at index 1 is the overflow bit.
+           return bldr.CreateExtractValue(uadd_val, {1});
          }},
         {OpCode::CPUI_INT_SCARRY,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
-           // TODO(alex): Use overflow intrinsics.
-           return nullptr;
+           llvm::Function *sadd_intrinsic = llvm::Intrinsic::getDeclaration(
+               bldr.GetInsertBlock()->getModule(),
+               llvm::Intrinsic::sadd_with_overflow);
+           llvm::Value *sadd_args[] = {lhs, rhs};
+           llvm::Value *sadd_val = bldr.CreateCall(sadd_intrinsic, sadd_args);
+           // The value at index 1 is the overflow bit.
+           return bldr.CreateExtractValue(sadd_val, {1});
          }},
         {OpCode::CPUI_INT_SBORROW,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
-           // TODO(alex): Use overflow intrinsics.
-           return nullptr;
+           llvm::Function *ssub_intrinsic = llvm::Intrinsic::getDeclaration(
+               bldr.GetInsertBlock()->getModule(),
+               llvm::Intrinsic::ssub_with_overflow);
+           llvm::Value *ssub_args[] = {lhs, rhs};
+           llvm::Value *ssub_val = bldr.CreateCall(ssub_intrinsic, ssub_args);
+           // The value at index 1 is the overflow bit.
+           return bldr.CreateExtractValue(ssub_val, {1});
          }},
 };
 
