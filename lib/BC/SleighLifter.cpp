@@ -342,7 +342,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         }
         break;
       }
-      case OpCode::CPUI_COPY: {
+      case OpCode::CPUI_COPY:
+      case OpCode::CPUI_CAST: {
         auto copy_inval = this->LiftInParam(
             bldr, input_var,
             llvm::IntegerType::get(this->context, input_var.size * 8));
@@ -483,6 +484,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         }
         break;
       }
+      default: break;
     }
     return LiftStatus::kLiftedUnsupportedInstruction;
   }
@@ -750,36 +752,96 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       }
     }
 
+    if (opc == OpCode::CPUI_INDIRECT && outvar) {
+      // TODO(alex): This isn't clear to me from the documentation.
+      // I'll probably need to find some code that generates this op in order to understand how to handle it.
+    }
+
     return LiftStatus::kLiftedUnsupportedInstruction;
   }
 
   LiftStatus LiftTernOp(llvm::IRBuilder<> &bldr, OpCode opc,
                         VarnodeData *outvar, VarnodeData param0,
                         VarnodeData param1, VarnodeData param2) {
-    if (opc == OpCode::CPUI_STORE) {
-      auto addr_operand = param1;
-      auto lifted_addr_offset = this->LiftInParam(
-          bldr, addr_operand, this->insn_lifter_parent.GetWordType());
+    switch (opc) {
+      case OpCode::CPUI_STORE: {
+        auto addr_operand = param1;
+        auto lifted_addr_offset = this->LiftInParam(
+            bldr, addr_operand, this->insn_lifter_parent.GetWordType());
 
-      if (lifted_addr_offset) {
-        auto store_param = this->LiftInParam(
-            bldr, param2,
-            llvm::IntegerType::get(this->context, param2.size * 8));
+        if (lifted_addr_offset) {
+          auto store_param = this->LiftInParam(
+              bldr, param2,
+              llvm::IntegerType::get(this->context, param2.size * 8));
 
-        if (store_param.has_value()) {
-          auto lifted_addr = this->CreateMemoryAddress(*lifted_addr_offset);
-          return lifted_addr->StoreIntoParam(bldr, *store_param);
+          if (store_param.has_value()) {
+            auto lifted_addr = this->CreateMemoryAddress(*lifted_addr_offset);
+            return lifted_addr->StoreIntoParam(bldr, *store_param);
+          }
         }
+        break;
       }
+      case OpCode::CPUI_PTRADD: {
+        auto lifted_addr = this->LiftInParam(
+                 bldr, param0, this->insn_lifter_parent.GetWordType()),
+             lifted_index = this->LiftIntegerInParam(bldr, param1);
+        auto *elem_size = llvm::ConstantInt::get(
+            llvm::IntegerType::get(this->context, param2.size * 8),
+            param2.offset);
+        if (lifted_addr.has_value() && lifted_index.has_value()) {
+          auto *offset = bldr.CreateMul(*lifted_index, elem_size),
+               *ptr_add = bldr.CreateAdd(*lifted_addr, offset);
+          return this->LiftStoreIntoOutParam(bldr, ptr_add, outvar);
+        }
+        break;
+      }
+      case OpCode::CPUI_PTRSUB: {
+        auto lifted_addr = this->LiftInParam(
+                 bldr, param0, this->insn_lifter_parent.GetWordType()),
+             lifted_offset = this->LiftIntegerInParam(bldr, param1);
+        if (lifted_addr.has_value() && lifted_offset.has_value()) {
+          return this->LiftStoreIntoOutParam(
+              bldr, bldr.CreateAdd(*lifted_addr, *lifted_offset), outvar);
+        }
+        break;
+      }
+      default: break;
     }
 
     return LiftStatus::kLiftedUnsupportedInstruction;
+  }
+
+  LiftStatus LiftMultiEqualOp(llvm::IRBuilder<> &bldr, VarnodeData *outvar,
+                              VarnodeData *vars, int4 isize) {
+    llvm::Type *phi_type =
+        llvm::IntegerType::get(this->context, vars[0].size * 8);
+    llvm::PHINode *phi_node = bldr.CreatePHI(phi_type, isize);
+    for (int4 i = 0; i < isize; ++i) {
+      VarnodeData &var = vars[i];
+      auto inval = this->LiftInParam(
+          bldr, var, llvm::IntegerType::get(this->context, var.size * 8));
+      if (!inval.has_value()) {
+        return LiftStatus::kLiftedUnsupportedInstruction;
+      }
+      // TODO(alex): This isn't right, just using the current block to get things building.
+      // We need to track the incoming basic blocks for each value.
+      phi_node->addIncoming(*inval, bldr.GetInsertBlock());
+    }
+    return this->LiftStoreIntoOutParam(bldr, phi_node, outvar);
   }
 
 
   void dump(const Address &addr, OpCode opc, VarnodeData *outvar,
             VarnodeData *vars, int4 isize) override {
     llvm::IRBuilder bldr(this->target_block);
+
+    // The MULTIEQUAL op has variadic operands
+    if (opc == OpCode::CPUI_MULTIEQUAL) {
+      this->UpdateStatus(this->LiftMultiEqualOp(bldr, outvar, vars, isize),
+                         opc);
+      return;
+    }
+
     switch (isize) {
       case 1:
         this->UpdateStatus(this->LiftUnOp(bldr, opc, outvar, vars[0]), opc);
