@@ -484,6 +484,17 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         }
         break;
       }
+      case OpCode::CPUI_POPCOUNT: {
+        auto ctpop_inval = this->LiftIntegerInParam(bldr, input_var);
+        if (ctpop_inval.has_value()) {
+          llvm::Function *ctpop_intrinsic = llvm::Intrinsic::getDeclaration(
+              bldr.GetInsertBlock()->getModule(), llvm::Intrinsic::ctpop);
+          llvm::Value *ctpop_args[] = {*ctpop_inval};
+          llvm::Value *ctpop_val = bldr.CreateCall(ctpop_intrinsic, ctpop_args);
+          return this->LiftStoreIntoOutParam(bldr, ctpop_val, outvar);
+        }
+        break;
+      }
       default: break;
     }
     return LiftStatus::kLiftedUnsupportedInstruction;
@@ -755,6 +766,13 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     if (opc == OpCode::CPUI_INDIRECT && outvar) {
       // TODO(alex): This isn't clear to me from the documentation.
       // I'll probably need to find some code that generates this op in order to understand how to handle it.
+      return LiftStatus::kLiftedUnsupportedInstruction;
+    }
+
+    if (opc == OpCode::CPUI_NEW && outvar) {
+      // NOTE(alex): We shouldn't encounter this op as it only get generated when lifting Java or
+      // Dalvik bytecode
+      return LiftStatus::kLiftedUnsupportedInstruction;
     }
 
     return LiftStatus::kLiftedUnsupportedInstruction;
@@ -811,23 +829,36 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     return LiftStatus::kLiftedUnsupportedInstruction;
   }
 
-  LiftStatus LiftMultiEqualOp(llvm::IRBuilder<> &bldr, VarnodeData *outvar,
-                              VarnodeData *vars, int4 isize) {
-    llvm::Type *phi_type =
-        llvm::IntegerType::get(this->context, vars[0].size * 8);
-    llvm::PHINode *phi_node = bldr.CreatePHI(phi_type, isize);
-    for (int4 i = 0; i < isize; ++i) {
-      VarnodeData &var = vars[i];
-      auto inval = this->LiftInParam(
-          bldr, var, llvm::IntegerType::get(this->context, var.size * 8));
-      if (!inval.has_value()) {
+  LiftStatus LiftVariadicOp(llvm::IRBuilder<> &bldr, OpCode opc,
+                            VarnodeData *outvar, VarnodeData *vars,
+                            int4 isize) {
+    switch (opc) {
+      case OpCode::CPUI_MULTIEQUAL: {
+        llvm::Type *phi_type =
+            llvm::IntegerType::get(this->context, vars[0].size * 8);
+        llvm::PHINode *phi_node = bldr.CreatePHI(phi_type, isize);
+        for (int4 i = 0; i < isize; ++i) {
+          VarnodeData &var = vars[i];
+          auto inval = this->LiftInParam(
+              bldr, var, llvm::IntegerType::get(this->context, var.size * 8));
+          if (!inval.has_value()) {
+            return LiftStatus::kLiftedUnsupportedInstruction;
+          }
+          // TODO(alex): This isn't right, just using the current block to get things building.
+          // We need to track the incoming basic blocks for each value.
+          phi_node->addIncoming(*inval, bldr.GetInsertBlock());
+        }
+        return this->LiftStoreIntoOutParam(bldr, phi_node, outvar);
+      }
+      case OpCode::CPUI_CPOOLREF: {
+        // NOTE(alex): We shouldn't encounter this op as it only get generated when lifting Java or
+        // Dalvik bytecode
         return LiftStatus::kLiftedUnsupportedInstruction;
       }
-      // TODO(alex): This isn't right, just using the current block to get things building.
-      // We need to track the incoming basic blocks for each value.
-      phi_node->addIncoming(*inval, bldr.GetInsertBlock());
+      default: break;
     }
-    return this->LiftStoreIntoOutParam(bldr, phi_node, outvar);
+
+    return LiftStatus::kLiftedUnsupportedInstruction;
   }
 
 
@@ -837,7 +868,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
     // The MULTIEQUAL op has variadic operands
     if (opc == OpCode::CPUI_MULTIEQUAL) {
-      this->UpdateStatus(this->LiftMultiEqualOp(bldr, outvar, vars, isize),
+      this->UpdateStatus(this->LiftVariadicOp(bldr, opc, outvar, vars, isize),
                          opc);
       return;
     }
