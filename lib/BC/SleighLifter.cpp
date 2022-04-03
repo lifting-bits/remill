@@ -867,7 +867,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     llvm::IRBuilder bldr(this->target_block);
 
     // The MULTIEQUAL op has variadic operands
-    if (opc == OpCode::CPUI_MULTIEQUAL) {
+    if (opc == OpCode::CPUI_MULTIEQUAL || opc == OpCode::CPUI_CPOOLREF) {
       this->UpdateStatus(this->LiftVariadicOp(bldr, opc, outvar, vars, isize),
                          opc);
       return;
