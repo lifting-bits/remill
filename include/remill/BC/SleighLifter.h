@@ -24,6 +24,7 @@
 
 #include "remill/Arch/Instruction.h"
 #include "remill/BC/InstructionLifter.h"
+#include <mutex>
 
 namespace remill {
 
