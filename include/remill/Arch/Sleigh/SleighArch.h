@@ -19,6 +19,7 @@
 #include <remill/Arch/Arch.h>
 
 #include <sleigh/libsleigh.hh>
+#include <mutex>
 
 
 // Unifies shared functionality between sleigh architectures
