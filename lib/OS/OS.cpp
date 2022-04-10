@@ -20,10 +20,6 @@
 #include <glog/logging.h>
 #include <llvm/ADT/Triple.h>
 
-DEFINE_string(os, REMILL_OS,
-              "Operating system name of the code being "
-              "translated. Valid OSes: linux, macos, windows, solaris.");
-
 namespace remill {
 
 OSName GetOSName(const llvm::Triple &triple) {

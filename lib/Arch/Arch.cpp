@@ -43,11 +43,6 @@
 #include "remill/BC/Version.h"
 #include "remill/OS/OS.h"
 
-DEFINE_string(arch, REMILL_ARCH,
-              "Architecture of the code being translated. "
-              "Valid architectures: x86, amd64 (with or without "
-              "`_avx` or `_avx512` appended), aarch64, aarch32");
-
 namespace remill {
 namespace {
 
