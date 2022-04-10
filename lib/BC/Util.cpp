@@ -392,7 +392,7 @@ std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch,
   if (!path)
     LOG(FATAL) << "Cannot find path to " << arch << " semantics bitcode file.";
 
-  LOG(INFO) << "Loading " << arch_name << " semantics from file " << *path;
+  DLOG(INFO) << "Loading " << arch_name << " semantics from file " << *path;
   auto module = LoadModuleFromFile(arch->context, *path);
   arch->PrepareModule(module);
   arch->InitFromSemanticsModule(module.get());
