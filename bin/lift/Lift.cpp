@@ -47,8 +47,13 @@
 #include <string>
 #include <system_error>
 
-DECLARE_string(arch);
-DECLARE_string(os);
+DEFINE_string(os, REMILL_OS,
+              "Operating system name of the code being "
+              "translated. Valid OSes: linux, macos, windows, solaris.");
+DEFINE_string(arch, REMILL_ARCH,
+              "Architecture of the code being translated. "
+              "Valid architectures: x86, amd64 (with or without "
+              "`_avx` or `_avx512` appended), aarch64, aarch32");
 
 DEFINE_uint64(address, 0,
               "Address at which we should assume the bytes are"
@@ -252,7 +257,7 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-  std::unique_ptr<llvm::Module> module(remill::LoadArchSemantics(arch));
+  std::unique_ptr<llvm::Module> module(remill::LoadArchSemantics(arch.get()));
 
   const auto state_ptr_type = arch->StatePointerType();
   const auto mem_ptr_type = arch->MemoryPointerType();
