@@ -381,16 +381,16 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *module,
 
 // Loads the semantics for the `arch`-specific machine, i.e. the machine of the
 // code that we want to lift.
-std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch) {
+std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch,
+                                                const std::vector<std::string> &sem_dirs) {
   auto arch_name = GetArchName(arch->arch_name);
-  // TODO(lukas): Add option to search for cmd flag provided dirs.
-  auto path = FindSemanticsBitcodeFile(arch_name);
-  DLOG(INFO) << "Loading " << arch_name << " semantics from file " << path;
+  auto path = FindSemanticsBitcodeFile(arch_name, sem_dirs, true);
   // TODO(lukas): We can propagate error up, but we should first check each callsite
   //              properly checks for possible error (this could not return pointer
   //              without value before).
   if (!path)
     LOG(FATAL) << "Cannot find path to " << arch << " semantics bitcode file.";
+
   LOG(INFO) << "Loading " << arch_name << " semantics from file " << *path;
   auto module = LoadModuleFromFile(arch->context, *path);
   arch->PrepareModule(module);

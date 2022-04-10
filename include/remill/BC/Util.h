@@ -158,6 +158,9 @@ std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
 // Loads the semantics for the `arch`-specific machine, i.e. the machine of the
 // code that we want to lift.
 std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch);
+// `sem_dirs` is forwarded to `FindSemanticsBitcodeFile`.
+std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch,
+                                                const std::vector<std::string> &sem_dirs);
 
 // Store an LLVM module into a file.
 bool StoreModuleToFile(llvm::Module *module, std::string_view file_name,
