@@ -559,21 +559,25 @@ namespace {
 #define S(x) _S(x)
 #define MAJOR_MINOR S(LLVM_VERSION_MAJOR) "." S(LLVM_VERSION_MINOR)
 
-static const char *gSemanticsSearchPaths[] = {
-
-    // Derived from the build.
-    REMILL_BUILD_SEMANTICS_DIR_X86 "\0",
-    REMILL_BUILD_SEMANTICS_DIR_AARCH32 "\0",
-    REMILL_BUILD_SEMANTICS_DIR_AARCH64 "\0",
-    REMILL_BUILD_SEMANTICS_DIR_SPARC32 "\0",
-    REMILL_BUILD_SEMANTICS_DIR_SPARC64 "\0",
-    REMILL_INSTALL_SEMANTICS_DIR "\0",
+const std::vector< std::string > &DefaultSemanticsSearchPaths()
+{
+  static const std::vector< std::string > paths =
+  {
+    REMILL_BUILD_SEMANTICS_DIR_X86,
+    REMILL_BUILD_SEMANTICS_DIR_AARCH32,
+    REMILL_BUILD_SEMANTICS_DIR_AARCH64,
+    REMILL_BUILD_SEMANTICS_DIR_SPARC32,
+    REMILL_BUILD_SEMANTICS_DIR_SPARC64,
+    REMILL_INSTALL_SEMANTICS_DIR,
     "/usr/local/share/remill/" MAJOR_MINOR "/semantics",
     "/usr/share/remill/" MAJOR_MINOR "/semantics",
     "/share/remill/" MAJOR_MINOR "/semantics",
-};
+  };
+  return paths;
+}
 
 }  // namespace
+
 
 // Find the path to the semantics bitcode file.
 std::string FindSemanticsBitcodeFile(std::string_view arch) {
@@ -589,7 +593,7 @@ std::string FindSemanticsBitcodeFile(std::string_view arch) {
     }
   }
 
-  for (auto sem_dir : gSemanticsSearchPaths) {
+  for (auto sem_dir : DefaultSemanticsSearchPaths()) {
     std::stringstream ss;
     ss << sem_dir << "/" << arch << ".bc";
     if (auto sem_path = ss.str(); FileExists(sem_path)) {
