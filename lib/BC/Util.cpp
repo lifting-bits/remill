@@ -17,6 +17,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <filesystem>
 #include <sstream>
 #include <system_error>
 #include <unordered_map>
@@ -576,11 +577,14 @@ const std::vector< std::string > &DefaultSemanticsSearchPaths()
   return paths;
 }
 
-std::optional< std::string > IsSemanticsBitcodeFile(std::string_view dir,
-                                                    std::string_view arch)
+using maybe_path_t = std::optional< std::filesystem::path >;
+
+maybe_path_t IsSemanticsBitcodeFile(
+  std::string_view dir,
+  std::string_view arch)
 {
-  auto path = std::string(dir) + "/" + std::string(arch) + ".bc";
-  return (FileExists(path)) ? std::make_optional(std::move(path)) : std::nullopt;
+  auto path = std::filesystem::path(dir) / (std::string(arch) + ".bc");
+  return (std::filesystem::exists(path)) ? std::make_optional(std::move(path)) : std::nullopt;
 }
 
 }  // namespace
@@ -593,14 +597,14 @@ std::string FindSemanticsBitcodeFile(std::string_view arch) {
     pp << FLAGS_semantics_search_paths;
     for (std::string sem_dir; std::getline(pp, sem_dir, ':');) {
       if (auto sem_path = IsSemanticsBitcodeFile(sem_dir, arch)) {
-        return *sem_path;
+        return sem_path->string();
       }
     }
   }
 
   for (auto sem_dir : DefaultSemanticsSearchPaths()) {
     if (auto sem_path = IsSemanticsBitcodeFile(sem_dir, arch)) {
-      return *sem_path;
+      return sem_path->string();
     }
   }
 
