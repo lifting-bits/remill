@@ -590,27 +590,20 @@ maybe_path_t IsSemanticsBitcodeFile(
 }  // namespace
 
 
-// Find the path to the semantics bitcode file.
-std::string FindSemanticsBitcodeFile(std::string_view arch) {
-  if (!FLAGS_semantics_search_paths.empty()) {
-    std::stringstream pp;
-    pp << FLAGS_semantics_search_paths;
-    for (std::string sem_dir; std::getline(pp, sem_dir, ':');) {
-      if (auto sem_path = IsSemanticsBitcodeFile(sem_dir, arch)) {
+std::string FindSemanticsBitcodeFile(std::string_view arch,
+                                     const std::vector< std::string > &dirs) {
+  for (const auto &dir : dirs)
+    if (auto sem_path = IsSemanticsBitcodeFile(dir, arch))
         return sem_path->string();
-      }
-    }
-  }
-
-  for (auto sem_dir : DefaultSemanticsSearchPaths()) {
-    if (auto sem_path = IsSemanticsBitcodeFile(sem_dir, arch)) {
-      return sem_path->string();
-    }
-  }
 
   LOG(FATAL) << "Cannot find path to " << arch << " semantics bitcode file.";
   return "";
 }
+
+std::string FindSemanticsBitcodeFile(std::string_view arch) {
+  return FindSemanticsBitcodeFile(arch, DefaultSemanticsSearchPaths());
+}
+
 
 namespace {
 
