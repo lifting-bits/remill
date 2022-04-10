@@ -34,6 +34,7 @@
 #include <array>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -173,11 +174,11 @@ bool StoreModuleIRToFile(llvm::Module *module, std::string_view file_name,
 
 // Find a semantics bitcode file for the architecture `arch`.
 // Default compile-time created list of directories is searched.
-std::string FindSemanticsBitcodeFile(std::string_view arch);
+std::optional<std::string> FindSemanticsBitcodeFile(std::string_view arch);
 // List of directories to search is provided as second argument.
 // A "shallow" search happens, searching for file `arch` + ".bc".
-std::string FindSemanticsBitcodeFile(std::string_view arch,
-                                     const std::vector< std::string > &dirs);
+std::optional<std::string> FindSemanticsBitcodeFile(std::string_view arch,
+                                                    const std::vector< std::string > &dirs);
 
 // Return a pointer to the Nth argument (N=0 is the first argument).
 llvm::Argument *NthArgument(llvm::Function *func, size_t index);

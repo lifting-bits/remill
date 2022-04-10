@@ -383,9 +383,16 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *module,
 // code that we want to lift.
 std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch) {
   auto arch_name = GetArchName(arch->arch_name);
+  // TODO(lukas): Add option to search for cmd flag provided dirs.
   auto path = FindSemanticsBitcodeFile(arch_name);
   DLOG(INFO) << "Loading " << arch_name << " semantics from file " << path;
-  auto module = LoadModuleFromFile(arch->context, path);
+  // TODO(lukas): We can propagate error up, but we should first check each callsite
+  //              properly checks for possible error (this could not return pointer
+  //              without value before).
+  if (!path)
+    LOG(FATAL) << "Cannot find path to " << arch << " semantics bitcode file.";
+  LOG(INFO) << "Loading " << arch_name << " semantics from file " << *path;
+  auto module = LoadModuleFromFile(arch->context, *path);
   arch->PrepareModule(module);
   arch->InitFromSemanticsModule(module.get());
   for (auto &func : *module) {
@@ -589,18 +596,15 @@ maybe_path_t IsSemanticsBitcodeFile(
 
 }  // namespace
 
-
-std::string FindSemanticsBitcodeFile(std::string_view arch,
+std::optional<std::string> FindSemanticsBitcodeFile(std::string_view arch,
                                      const std::vector< std::string > &dirs) {
   for (const auto &dir : dirs)
     if (auto sem_path = IsSemanticsBitcodeFile(dir, arch))
         return sem_path->string();
-
-  LOG(FATAL) << "Cannot find path to " << arch << " semantics bitcode file.";
-  return "";
+  return {};
 }
 
-std::string FindSemanticsBitcodeFile(std::string_view arch) {
+std::optional<std::string> FindSemanticsBitcodeFile(std::string_view arch) {
   return FindSemanticsBitcodeFile(arch, DefaultSemanticsSearchPaths());
 }
 
