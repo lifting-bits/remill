@@ -576,6 +576,13 @@ const std::vector< std::string > &DefaultSemanticsSearchPaths()
   return paths;
 }
 
+std::optional< std::string > IsSemanticsBitcodeFile(std::string_view dir,
+                                                    std::string_view arch)
+{
+  auto path = std::string(dir) + "/" + std::string(arch) + ".bc";
+  return (FileExists(path)) ? std::make_optional(std::move(path)) : std::nullopt;
+}
+
 }  // namespace
 
 
@@ -585,19 +592,15 @@ std::string FindSemanticsBitcodeFile(std::string_view arch) {
     std::stringstream pp;
     pp << FLAGS_semantics_search_paths;
     for (std::string sem_dir; std::getline(pp, sem_dir, ':');) {
-      std::stringstream ss;
-      ss << sem_dir << "/" << arch << ".bc";
-      if (auto sem_path = ss.str(); FileExists(sem_path)) {
-        return sem_path;
+      if (auto sem_path = IsSemanticsBitcodeFile(sem_dir, arch)) {
+        return *sem_path;
       }
     }
   }
 
   for (auto sem_dir : DefaultSemanticsSearchPaths()) {
-    std::stringstream ss;
-    ss << sem_dir << "/" << arch << ".bc";
-    if (auto sem_path = ss.str(); FileExists(sem_path)) {
-      return sem_path;
+    if (auto sem_path = IsSemanticsBitcodeFile(sem_dir, arch)) {
+      return *sem_path;
     }
   }
 
