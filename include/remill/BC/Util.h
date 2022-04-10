@@ -171,13 +171,6 @@ bool StoreModuleToFile(llvm::Module *module, std::string_view file_name,
 bool StoreModuleIRToFile(llvm::Module *module, std::string_view file_name,
                          bool allow_failure = false);
 
-// Find the path to the semantics bitcode file associated with `FLAGS_arch`.
-std::string FindTargetSemanticsBitcodeFile(void) __attribute__((deprecated));
-
-// Find the path to the semantics bitcode file associated with `REMILL_ARCH`,
-// the architecture on which remill is compiled.
-std::string FindHostSemanticsBitcodeFile(void) __attribute__((deprecated));
-
 // Find a semantics bitcode file for the architecture `arch`.
 std::string FindSemanticsBitcodeFile(std::string_view arch);
 

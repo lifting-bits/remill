@@ -575,17 +575,6 @@ static const char *gSemanticsSearchPaths[] = {
 
 }  // namespace
 
-// Find the path to the semantics bitcode file associated with `FLAGS_arch`.
-std::string FindTargetSemanticsBitcodeFile(void) {
-  return FindSemanticsBitcodeFile(FLAGS_arch);
-}
-
-// Find the path to the semantics bitcode file associated with `REMILL_ARCH`,
-// the architecture on which remill is compiled.
-std::string FindHostSemanticsBitcodeFile(void) {
-  return FindSemanticsBitcodeFile(REMILL_ARCH);
-}
-
 // Find the path to the semantics bitcode file.
 std::string FindSemanticsBitcodeFile(std::string_view arch) {
   if (!FLAGS_semantics_search_paths.empty()) {
