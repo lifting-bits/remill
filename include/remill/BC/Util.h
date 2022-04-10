@@ -159,11 +159,6 @@ std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
 // code that we want to lift.
 std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch);
 
-inline std::unique_ptr<llvm::Module>
-LoadArchSemantics(const std::unique_ptr<const Arch> &arch) {
-  return LoadArchSemantics(arch.get());
-}
-
 // Store an LLVM module into a file.
 bool StoreModuleToFile(llvm::Module *module, std::string_view file_name,
                        bool allow_failure = false);
