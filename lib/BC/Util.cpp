@@ -596,16 +596,29 @@ maybe_path_t IsSemanticsBitcodeFile(
 
 }  // namespace
 
-std::optional<std::string> FindSemanticsBitcodeFile(std::string_view arch,
-                                     const std::vector< std::string > &dirs) {
-  for (const auto &dir : dirs)
+std::optional<std::string> _FindSemanticsBitcodeFile(std::string_view arch,
+                                                     const std::vector< std::string > &dirs) {
+ for (const auto &dir : dirs)
     if (auto sem_path = IsSemanticsBitcodeFile(dir, arch))
         return sem_path->string();
   return {};
 }
 
+std::optional<std::string> FindSemanticsBitcodeFile(std::string_view arch,
+                                     const std::vector< std::string > &dirs,
+                                     bool fallback_to_defaults) {
+  if (auto path = _FindSemanticsBitcodeFile(arch, dirs)) {
+    return path;
+  }
+
+  if (fallback_to_defaults)
+    return _FindSemanticsBitcodeFile(arch, DefaultSemanticsSearchPaths());
+
+  return {};
+}
+
 std::optional<std::string> FindSemanticsBitcodeFile(std::string_view arch) {
-  return FindSemanticsBitcodeFile(arch, DefaultSemanticsSearchPaths());
+  return _FindSemanticsBitcodeFile(arch, DefaultSemanticsSearchPaths());
 }
 
 

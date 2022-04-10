@@ -170,10 +170,12 @@ bool StoreModuleIRToFile(llvm::Module *module, std::string_view file_name,
 // Find a semantics bitcode file for the architecture `arch`.
 // Default compile-time created list of directories is searched.
 std::optional<std::string> FindSemanticsBitcodeFile(std::string_view arch);
-// List of directories to search is provided as second argument.
+// List of directories to search is provided as second argument - default compile time
+// created list is used as fallback only if `fallback_to_defaults` is set.
 // A "shallow" search happens, searching for file `arch` + ".bc".
 std::optional<std::string> FindSemanticsBitcodeFile(std::string_view arch,
-                                                    const std::vector< std::string > &dirs);
+                                                    const std::vector< std::string > &dirs,
+                                                    bool fallback_to_defaults=true);
 
 // Return a pointer to the Nth argument (N=0 is the first argument).
 llvm::Argument *NthArgument(llvm::Function *func, size_t index);
