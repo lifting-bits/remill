@@ -63,10 +63,6 @@
 
 DECLARE_string(arch);
 
-DEFINE_string(
-    semantics_search_paths, "",
-    "Colon-separated list of search paths to use when searching for semantics files.");
-
 namespace {
 #ifdef _WIN32
 extern "C" std::uint32_t GetProcessId(std::uint32_t handle);
