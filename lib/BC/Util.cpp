@@ -375,6 +375,10 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *module,
 
 // Loads the semantics for the `arch`-specific machine, i.e. the machine of the
 // code that we want to lift.
+std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch) {
+    return LoadArchSemantics(arch, {});
+}
+
 std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch,
                                                 const std::vector<std::string> &sem_dirs) {
   auto arch_name = GetArchName(arch->arch_name);
