@@ -384,6 +384,7 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *module,
 std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch,
                                                 const std::vector<std::string> &sem_dirs) {
   auto arch_name = GetArchName(arch->arch_name);
+  // If `sem_dirs` does not contain the dir, fallback to compiled in paths.
   auto path = FindSemanticsBitcodeFile(arch_name, sem_dirs, true);
   // TODO(lukas): We can propagate error up, but we should first check each callsite
   //              properly checks for possible error (this could not return pointer
