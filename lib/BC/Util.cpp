@@ -61,8 +61,6 @@
 #include "remill/BC/Version.h"
 #include "remill/OS/FileSystem.h"
 
-DECLARE_string(arch);
-
 namespace {
 #ifdef _WIN32
 extern "C" std::uint32_t GetProcessId(std::uint32_t handle);
