@@ -18,8 +18,8 @@
 
 #include <remill/Arch/Arch.h>
 
-#include <sleigh/libsleigh.hh>
 #include <mutex>
+#include <sleigh/libsleigh.hh>
 
 
 // Unifies shared functionality between sleigh architectures
@@ -158,9 +158,17 @@ class SingleInstructionSleighContext {
   Sleigh engine;
   DocumentStorage storage;
 
+  std::optional<int32_t>
+  oneInstruction(uint64_t address,
+                 const std::function<int32_t(Address addr)> &decode_func,
+                 std::string_view instr_bytes);
+
  public:
   Address GetAddressFromOffset(uint64_t off);
   std::optional<int32_t> oneInstruction(uint64_t address, PcodeEmit &emitter,
+                                        std::string_view instr_bytes);
+
+  std::optional<int32_t> oneInstruction(uint64_t address, AssemblyEmit &emitter,
                                         std::string_view instr_bytes);
 
   //NOTE(Ian): Who knows if this is enough? Need to figure out how much, if any of sleigh is thread safe
