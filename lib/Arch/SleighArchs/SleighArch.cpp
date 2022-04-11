@@ -22,6 +22,17 @@ namespace remill::sleigh {
 
 namespace {
 
+class InstructionFunctionSetter : public AssemblyEmit {
+ private:
+  remill::Instruction &insn;
+
+ public:
+  InstructionFunctionSetter(remill::Instruction &insn) : insn(insn) {}
+
+  void dump(const Address &addr, const string &mnem, const string &body) {
+    insn.function = mnem;
+  }
+};
 
 class AssemblyLogger : public AssemblyEmit {
   void dump(const Address &addr, const string &mnem, const string &body) {
@@ -387,9 +398,10 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
       this->sleigh_ctx.oneInstruction(address, pcode_handler, instr_bytes);
 
   if (instr_len.has_value()) {
+    InstructionFunctionSetter setter(inst);
+    this->sleigh_ctx.oneInstruction(address, setter, instr_bytes);
     auto fallthrough = address + *instr_len;
     pcode_handler.GetResolver()->ResolveControlFlow(fallthrough, inst);
-
     LOG(INFO) << "Decoded as " << inst.Serialize();
     return true;
   } else {
@@ -407,16 +419,14 @@ Sleigh &SingleInstructionSleighContext::GetEngine() {
   return this->engine;
 }
 
-// TODO(Ian): handle decoding failures.
-std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
-    uint64_t address, PcodeEmit &handler, std::string_view instr_bytes) {
 
+std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
+    uint64_t address, const std::function<int32_t(Address addr)> &decode_func,
+    std::string_view instr_bytes) {
   this->image.SetInstruction(address, instr_bytes);
 
   try {
-    const int32_t instr_len = this->engine.oneInstruction(
-        handler, this->GetAddressFromOffset(address));
-
+    const int32_t instr_len = decode_func(this->GetAddressFromOffset(address));
 
     if (instr_len > 0 &&
         static_cast<size_t>(instr_len) <= instr_bytes.length()) {
@@ -436,6 +446,27 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
     LOG(ERROR) << "Unimplemented error";
     return std::nullopt;
   }
+}
+
+// TODO(Ian): do with templates?.
+std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
+    uint64_t address, PcodeEmit &handler, std::string_view instr_bytes) {
+  return this->oneInstruction(
+      address,
+      [this, &handler](Address addr) {
+        return this->engine.oneInstruction(handler, addr);
+      },
+      instr_bytes);
+}
+
+std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
+    uint64_t address, AssemblyEmit &handler, std::string_view instr_bytes) {
+  return this->oneInstruction(
+      address,
+      [this, &handler](Address addr) {
+        return this->engine.printAssembly(handler, addr);
+      },
+      instr_bytes);
 }
 
 
