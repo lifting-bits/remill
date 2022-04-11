@@ -36,7 +36,8 @@ class InstructionFunctionSetter : public AssemblyEmit {
 
 class AssemblyLogger : public AssemblyEmit {
   void dump(const Address &addr, const string &mnem, const string &body) {
-    LOG(INFO) << "Decoded: " << mnem << " " << body;
+    LOG(INFO) << "Decoded " << std::hex << addr.getOffset() << ": " << mnem
+              << " " << body;
   }
 };
 }  // namespace
@@ -269,6 +270,7 @@ void IndirectBranch::ResolveControlFlow(uint64_t fall_through,
                                         remill::Instruction &insn) {
   insn.next_pc = 0;
   insn.category = this->category;
+  insn.branch_not_taken_pc = fall_through;
 }
 
 
@@ -400,7 +402,10 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
   if (instr_len.has_value()) {
     InstructionFunctionSetter setter(inst);
     this->sleigh_ctx.oneInstruction(address, setter, instr_bytes);
+    LOG(INFO) << "Instr len:" << *instr_len;
+    LOG(INFO) << "Addr: " << address;
     auto fallthrough = address + *instr_len;
+    LOG(INFO) << "Fallthrough: " << fallthrough;
     pcode_handler.GetResolver()->ResolveControlFlow(fallthrough, inst);
     LOG(INFO) << "Decoded as " << inst.Serialize();
     return true;
