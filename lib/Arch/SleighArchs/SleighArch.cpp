@@ -49,8 +49,6 @@ void PcodeDecoder::print_vardata(std::stringstream &s, VarnodeData &data) {
 
 void PcodeDecoder::dump(const Address &, OpCode op, VarnodeData *outvar,
                         VarnodeData *vars, int32_t isize) {
-  inst.function = get_opname(op);
-
   std::stringstream ss;
 
   ss << get_opname(op);
@@ -368,8 +366,9 @@ SleighArch::SleighArch(llvm::LLVMContext *context_, OSName os_name_,
 bool SleighArch::DecodeInstructionImpl(uint64_t address,
                                        std::string_view instr_bytes,
                                        Instruction &inst) {
-  std::lock_guard<std::mutex> guard(
-      SingleInstructionSleighContext::sleigh_parsing_mutex);
+  // TODO(Ian): I dont think we need to lock here?
+  //std::lock_guard<std::mutex> guard(
+  //    SingleInstructionSleighContext::sleigh_parsing_mutex);
 
   inst.bytes = instr_bytes;
   inst.arch_name = arch_name;
