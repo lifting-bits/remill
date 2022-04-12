@@ -32,6 +32,7 @@
 // clang-format on
 
 #include <array>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -159,8 +160,9 @@ std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
 // code that we want to lift.
 std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch);
 // `sem_dirs` is forwarded to `FindSemanticsBitcodeFile`.
-std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch,
-                                                const std::vector<std::string> &sem_dirs);
+std::unique_ptr<llvm::Module>
+LoadArchSemantics(const Arch *arch,
+                  const std::vector<std::filesystem::path> &sem_dirs);
 
 // Store an LLVM module into a file.
 bool StoreModuleToFile(llvm::Module *module, std::string_view file_name,
@@ -172,13 +174,14 @@ bool StoreModuleIRToFile(llvm::Module *module, std::string_view file_name,
 
 // Find a semantics bitcode file for the architecture `arch`.
 // Default compile-time created list of directories is searched.
-std::optional<std::string> FindSemanticsBitcodeFile(std::string_view arch);
+std::optional<std::filesystem::path> FindSemanticsBitcodeFile(std::string_view arch);
 // List of directories to search is provided as second argument - default compile time
 // created list is used as fallback only if `fallback_to_defaults` is set.
 // A "shallow" search happens, searching for file `arch` + ".bc".
-std::optional<std::string> FindSemanticsBitcodeFile(std::string_view arch,
-                                                    const std::vector< std::string > &dirs,
-                                                    bool fallback_to_defaults=true);
+std::optional<std::filesystem::path>
+FindSemanticsBitcodeFile(std::string_view arch,
+                         const std::vector<std::filesystem::path> &dirs,
+                         bool fallback_to_defaults=true);
 
 // Return a pointer to the Nth argument (N=0 is the first argument).
 llvm::Argument *NthArgument(llvm::Function *func, size_t index);
