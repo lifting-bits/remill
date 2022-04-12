@@ -402,17 +402,26 @@ LoadArchSemantics(const Arch *arch,
   return module;
 }
 
-// Try to verify a module.
-bool VerifyModule(llvm::Module *module) {
+std::optional<std::string> VerifyModuleMsg(llvm::Module *module)
+{
   std::string error;
   llvm::raw_string_ostream error_stream(error);
   if (llvm::verifyModule(*module, &error_stream)) {
     error_stream.flush();
-    DLOG(ERROR) << "Error verifying module read from file: " << error;
-    return false;
-  } else {
-    return true;
+    return error;
   }
+
+  return {};
+}
+
+// Try to verify a module.
+bool VerifyModule(llvm::Module *module) {
+  if (auto error = VerifyModuleMsg(module)) {
+    DLOG(ERROR) << "Error verifying module read from file: " << *error;
+    return false;
+  }
+
+  return true;
 }
 
 std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,

@@ -150,6 +150,8 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *M, std::string_view name);
 
 // Try to verify a module.
 bool VerifyModule(llvm::Module *module);
+// Returns diagnostic message if verify failed.
+std::optional<std::string> VerifyModuleMsg(llvm::Module *module);
 
 // Parses and loads a bitcode file into memory.
 std::unique_ptr<llvm::Module>
