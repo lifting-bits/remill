@@ -152,9 +152,13 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *M, std::string_view name);
 bool VerifyModule(llvm::Module *module);
 
 // Parses and loads a bitcode file into memory.
+std::unique_ptr<llvm::Module>
+LoadModuleFromFile(llvm::LLVMContext *context,
+                   std::string_view file_name,
+                   bool allow_failure = false) __attribute__((__deprecated__));
+
 std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
-                                                 std::string_view file_name,
-                                                 bool allow_failure = false);
+                                                 std::filesystem::path file_name);
 
 // Loads the semantics for the `arch`-specific machine, i.e. the machine of the
 // code that we want to lift.

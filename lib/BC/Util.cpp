@@ -415,6 +415,14 @@ bool VerifyModule(llvm::Module *module) {
   }
 }
 
+std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
+                                                 std::filesystem::path path)
+{
+  // NOTE(lukas): Calling deprecated function, once it is remove its body
+  //              will be more or less inlined.
+  return LoadModuleFromFile(context, path.string(), true);
+}
+
 // Reads an LLVM module from a file.
 std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
                                                  std::string_view file_name_,
