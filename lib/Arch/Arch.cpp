@@ -175,12 +175,6 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
       break;
     }
 
-    case kArchX86_SLEIGH: {
-      DLOG(INFO) << "Using architecture: X86, decoder: SLEIGH";
-      ret = GetSleighX86(context_, os_name_, arch_name_);
-      break;
-    }
-
     case kArchAMD64: {
       DLOG(INFO) << "Using architecture: AMD64";
       ret = GetX86(context_, os_name_, arch_name_);
@@ -199,12 +193,6 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
       break;
     }
 
-    case kArchAMD64_SLEIGH: {
-      DLOG(INFO) << "Using architecture: AMD64, decoder: SLEIGH";
-      ret = GetSleighX86(context_, os_name_, arch_name_);
-      break;
-    }
-
     case kArchSparc32: {
       DLOG(INFO) << "Using architecture: 32-bit SPARC";
       ret = GetSPARC(context_, os_name_, arch_name_);
@@ -216,6 +204,7 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
       ret = GetSPARC64(context_, os_name_, arch_name_);
       break;
     }
+<<<<<<< HEAD
 
     case kArchThumb2LittleEndian: {
       DLOG(WARNING)
@@ -224,6 +213,8 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
       ret = GetAArch32(context_, os_name_, arch_name_);
       break;
     }
+=======
+>>>>>>> af720c1 (switch back to x86 normal)
   }
 
   if (ret) {
@@ -730,9 +721,8 @@ void Arch::InitializeEmptyLiftedFunction(llvm::Function *func) const {
   // NOTE(pag): `PC` and `NEXT_PC` are handled by
   //            `FinishLiftedFunctionInitialization`.
 
-  ir.CreateStore(state, ir.CreateAlloca(llvm::PointerType::get(context, 0),
-                                        nullptr, "STATE"));
-  ir.CreateStore(memory, ir.CreateAlloca(impl->memory_type, nullptr, "MEMORY"));
+  ir.CreateStore(state, ir.CreateAlloca(state->getType(), nullptr, "STATE"));
+  ir.CreateStore(memory, ir.CreateAlloca(memory->getType(), nullptr, "MEMORY"));
 
   FinishLiftedFunctionInitialization(module, func);
   CHECK(BlockHasSpecialVars(func));
