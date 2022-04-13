@@ -161,7 +161,7 @@ class SleighThumb2Arch final : public remill::sleigh::SleighArch {
     const auto pc_arg = NthArgument(bb_func, kPCArgNum);
     const auto state_ptr_arg = NthArgument(bb_func, kStatePointerArgNum);
 
-    ir.CreateStore(pc_arg, ir.CreateAlloca(addr, nullptr, "NEXT_PC"));
+    ir.CreateStore(pc_arg, ir.CreateAlloca(addr, nullptr, kNextPCVariableName.data()));
 
 
     (void) this->RegisterByName("PC")->AddressOf(state_ptr_arg, ir);

@@ -673,22 +673,7 @@ std::string Instruction::Serialize(void) const {
   };
 
   stream_arch(arch_name);
-  switch (arch_name) {
-    case kArchInvalid: break;
-    case kArchAMD64:
-    case kArchAMD64_AVX:
-    case kArchAMD64_AVX512:
-    case kArchAMD64_SLEIGH: ss << "AMD64"; break;
-    case kArchX86:
-    case kArchX86_AVX:
-    case kArchX86_AVX512:
-    case kArchX86_SLEIGH: ss << "X86"; break;
-    case kArchThumb2LittleEndian: ss << "Thumb2"; break;
-    case kArchAArch32LittleEndian: ss << "AArch32"; break;
-    case kArchAArch64LittleEndian: ss << "AArch64"; break;
-    case kArchSparc32: ss << "SPARC32"; break;
-    case kArchSparc64: ss << "SPARC64"; break;
-  }
+
   if (sub_arch_name != arch_name) {
     switch (arch_name) {
       default: break;
