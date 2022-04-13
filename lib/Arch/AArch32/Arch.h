@@ -19,7 +19,7 @@
 #include "../Arch.h"  // For `Arch` and `ArchImpl`.
 
 namespace remill {
-class AArch32Arch final : public Arch {
+class AArch32Arch final : public ArchBase {
  public:
   AArch32Arch(llvm::LLVMContext *context_, OSName os_name_,
               ArchName arch_name_);

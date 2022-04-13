@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <remill/Arch/Arch.h>
 
 #include <memory>
@@ -32,23 +31,68 @@ namespace remill {
 
 struct Register;
 
-class ArchImpl {
+// Internal base architecture for all Remill-internal architectures.
+class ArchBase : public remill::Arch {
  public:
+  using ArchPtr = std::unique_ptr<const Arch>;
+
+  ArchBase(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
+
+  virtual ~ArchBase(void) = default;
+
+  // Return the type of the state structure.
+  llvm::StructType *StateStructType(void) const final;
+
+  // Pointer to a state structure type.
+  llvm::PointerType *StatePointerType(void) const final;
+
+  // The type of memory.
+  llvm::PointerType *MemoryPointerType(void) const final;
+
+  // Return the type of a lifted function.
+  llvm::FunctionType *LiftedFunctionType(void) const final;
+
+  // Apply `cb` to every register.
+  void ForEachRegister(std::function<void(const Register *)> cb) const final;
+
+  // Return information about the register at offset `offset` in the `State`
+  // structure.
+  const Register *RegisterAtStateOffset(uint64_t offset) const final;
+
+  // Return information about a register, given its name.
+  const Register *RegisterByName(std::string_view name) const final;
+
+  // TODO(Ian): This is kinda messy but only an arch currently knows if it is
+  //            sleigh or not and sleigh needs different lifting context etc.
+  InstructionLifter::LifterPtr
+  DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
+
+  // Get the state pointer and various other types from the `llvm::LLVMContext`
+  // associated with `module`.
+  //
+  // NOTE(pag): This is an internal API.
+  void InitFromSemanticsModule(llvm::Module *module) const final;
+
+  // Add a register into this architecture.
+  const Register *AddRegister(
+      const char *reg_name, llvm::Type *val_type,
+      size_t offset, const char *parent_reg_name) const final;
+
   // State type.
-  llvm::StructType *state_type{nullptr};
+  mutable llvm::StructType *state_type{nullptr};
 
   // Memory pointer type.
-  llvm::PointerType *memory_type{nullptr};
+  mutable llvm::PointerType *memory_type{nullptr};
 
   // Lifted function type.
-  llvm::FunctionType *lifted_function_type{nullptr};
+  mutable llvm::FunctionType *lifted_function_type{nullptr};
 
   // Metadata type ID for remill registers.
-  unsigned reg_md_id{0};
+  mutable unsigned reg_md_id{0};
 
-  std::vector<std::unique_ptr<Register>> registers;
-  std::vector<const Register *> reg_by_offset;
-  std::unordered_map<std::string, const Register *> reg_by_name;
+  mutable std::vector<std::unique_ptr<Register>> registers;
+  mutable std::vector<const Register *> reg_by_offset;
+  mutable std::unordered_map<std::string, const Register *> reg_by_name;
 };
 
 }  // namespace remill

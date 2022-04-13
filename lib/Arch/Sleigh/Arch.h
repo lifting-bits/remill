@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <remill/Arch/Arch.h>
+#include "../Arch.h"
 
 #include <mutex>
 #include <sleigh/libsleigh.hh>
@@ -26,10 +26,13 @@
 
 namespace remill::sleigh {
 
-// NOTE(Ian): Ok so there is some horrible collaboration with the lifter. The lifter has to add metavars
-// So the lifter is responsible for working out if a branch was taken
+// NOTE(Ian): Ok so there is some horrible collaboration with the lifter.
+// The lifter has to add metavars. So the lifter is responsible for working
+// out if a branch was taken
 class InstructionFlowResolver {
  public:
+  virtual ~InstructionFlowResolver(void) = default;
+
   using IFRPtr = std::shared_ptr<InstructionFlowResolver>;
 
   virtual void ResolveControlFlow(uint64_t fall_through,
@@ -101,10 +104,9 @@ class IndirectBranch : public InstructionFlowResolver {
                           remill::Instruction &insn) override;
 };
 
-
 class PcodeDecoder final : public PcodeEmit {
  public:
-  PcodeDecoder(Sleigh &engine_, Instruction &inst_);
+  PcodeDecoder(::Sleigh &engine_, Instruction &inst_);
 
   void dump(const Address &, OpCode op, VarnodeData *outvar, VarnodeData *vars,
             int32_t isize) override;
@@ -144,7 +146,7 @@ class CustomLoadImage final : public LoadImage {
 
  private:
   std::string current_bytes;
-  uint64_t current_offset;
+  uint64_t current_offset{0};
 };
 
 class SleighArch;
@@ -155,7 +157,7 @@ class SingleInstructionSleighContext {
   friend class SleighArch;
   CustomLoadImage image;
   ContextInternal ctx;
-  Sleigh engine;
+  ::Sleigh engine;
   DocumentStorage storage;
 
   std::optional<int32_t>
@@ -175,12 +177,12 @@ class SingleInstructionSleighContext {
   // TODO(Ian): we are exposing this mutex to clients who also want to use sleigh... this is horrible we need to do something else.
   static std::mutex sleigh_parsing_mutex;
 
-  Sleigh &GetEngine();
+  ::Sleigh &GetEngine(void);
 
   SingleInstructionSleighContext(std::string sla_name);
 };
 
-class SleighArch : public Arch {
+class SleighArch : public ArchBase {
  public:
   SleighArch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_,
              std::string sla_name);
@@ -192,7 +194,7 @@ class SleighArch : public Arch {
 
 
   InstructionLifter::LifterPtr
-  GetLifter(const remill::IntrinsicTable &intrinsics) const override;
+  DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
 
 
   // Arch specific preperation

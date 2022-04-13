@@ -18,8 +18,10 @@
 
 #include <optional>
 
+#include <remill/Arch/Name.h>
+#include <remill/BC/ABI.h>
+
 #include "Arch.h"
-#include "remill/BC/ABI.h"
 
 namespace remill {
 
@@ -1219,9 +1221,23 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
           inst.branch_taken_pc = static_cast<uint64_t>(*res);
           inst.branch_not_taken_pc = inst.next_pc;
           inst.category = Instruction::kCategoryConditionalBranch;
+
+          if (inst.branch_taken_pc % 2u) {
+            inst.branch_taken_arch_name = ArchName::kArchThumb2LittleEndian;
+            inst.branch_taken_pc -= 1u;
+          } else {
+            inst.branch_taken_arch_name = inst.arch_name;
+          }
         } else {
           inst.branch_taken_pc = static_cast<uint64_t>(*res);
           inst.category = Instruction::kCategoryDirectJump;
+
+          if (inst.branch_taken_pc % 2u) {
+            inst.branch_taken_arch_name = ArchName::kArchThumb2LittleEndian;
+            inst.branch_taken_pc -= 1u;
+          } else {
+            inst.branch_taken_arch_name = inst.arch_name;
+          }
         }
       }
     }
@@ -2702,7 +2718,6 @@ static bool TryIntegerTestAndCompareRI(Instruction &inst, uint32_t bits) {
 static bool TryBranchImm(Instruction &inst, uint32_t bits) {
   const BranchI enc = {bits};
   auto is_cond = DecodeCondition(inst, enc.cond);
-
   auto is_func = false;
 
   // PC used by the branch instruction is actually the address of the next instruction
@@ -2717,11 +2732,16 @@ static bool TryBranchImm(Instruction &inst, uint32_t bits) {
       inst.function = "BL";
       is_func = true;
     }
+
+    inst.branch_taken_arch_name = inst.arch_name;
+
   } else {
     inst.function = "BLX";
     target_pc = target_pc & ~0b11u;
     target_pc = target_pc | (enc.H << 1);
     is_func = true;
+
+    inst.branch_taken_arch_name = remill::ArchName::kArchThumb2LittleEndian;
   }
   if (is_cond) {
     inst.function += "COND";
@@ -2771,8 +2791,8 @@ static const char *const kBX[] = {
 static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
   const Misc enc = {bits};
 
-  if (enc.op1 == 0b10) {  // BJX unsupported
-    LOG(ERROR) << "BJX unsupported";
+  if (enc.op1 == 0b10) {  // BXJ (branch and link to Jazelle mode) unsupported
+    LOG(ERROR) << "BXJ unsupported";
     inst.category = Instruction::kCategoryError;
     return false;
   } else if (enc.op1 == 0b11 && enc.Rm == kPCRegNum) {
@@ -2791,6 +2811,7 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
   AddAddrRegOp(inst, kIntRegName[enc.Rm], kAddressSize, Operand::kActionRead,
                0);
 
+  inst.branch_taken_arch_name = inst.arch_name;
   inst.branch_not_taken_pc = inst.pc + 4;
   if (enc.op1 == 0b01) {
     if (is_cond && (enc.Rm == kLRRegNum)) {
@@ -3644,6 +3665,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   inst.has_branch_not_taken_delay_slot = false;
   inst.arch_name = arch_name;
   inst.sub_arch_name = arch_name;  // TODO(pag): Thumb.
+  inst.branch_taken_arch_name = arch_name;
   inst.arch = this;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();

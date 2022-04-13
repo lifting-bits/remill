@@ -308,6 +308,7 @@ static bool TryDecodeCALL(Instruction &inst, uint32_t bits) {
 
     inst.branch_taken_pc =
         static_cast<uint32_t>(static_cast<int64_t>(inst.pc) + disp);
+    inst.branch_taken_arch_name = inst.arch_name;
 
     inst.next_pc += 4;
 
@@ -559,6 +560,7 @@ static bool TryDecodeTcc(Instruction &inst, uint32_t bits) {
     } else {
       inst.category = Instruction::kCategoryAsyncHyperCall;
       inst.branch_taken_pc = inst.next_pc;
+      inst.branch_taken_arch_name = inst.arch_name;
     }
 
   // Trap never.
@@ -570,6 +572,7 @@ static bool TryDecodeTcc(Instruction &inst, uint32_t bits) {
     } else {
       inst.category = Instruction::kCategoryDirectJump;
       inst.branch_taken_pc = inst.next_pc;
+      inst.branch_taken_arch_name = inst.arch_name;
     }
 
   // Conditional trap.
@@ -616,6 +619,7 @@ static bool TryDecode_Branch(Instruction &inst, unsigned cond, bool anul,
   if (cond == 0b1000) {
     inst.category = Instruction::kCategoryDirectJump;
     inst.branch_taken_pc = inst.pc + disp;
+    inst.branch_taken_arch_name = inst.arch_name;
     inst.has_branch_not_taken_delay_slot = false;
 
     if (!anul) {
@@ -654,6 +658,7 @@ static bool TryDecode_Branch(Instruction &inst, unsigned cond, bool anul,
 
     inst.next_pc += 4;
     inst.branch_taken_pc = inst.next_pc;
+    inst.branch_taken_arch_name = inst.arch_name;
 
   // Conditional branch.
   } else {
@@ -665,6 +670,7 @@ static bool TryDecode_Branch(Instruction &inst, unsigned cond, bool anul,
     inst.category = Instruction::kCategoryConditionalBranch;
 
     inst.branch_taken_pc = inst.pc + disp;
+    inst.branch_taken_arch_name = inst.arch_name;
     inst.has_branch_taken_delay_slot = true;
     inst.delayed_pc = inst.next_pc;
     inst.next_pc += 4;
@@ -766,6 +772,7 @@ static bool TryDecodeBPr(Instruction &inst, uint32_t bits) {
 
   inst.category = Instruction::kCategoryConditionalBranch;
   inst.branch_taken_pc = inst.pc + disp;
+  inst.branch_taken_arch_name = inst.arch_name;
   inst.has_branch_taken_delay_slot = true;
   inst.delayed_pc = inst.next_pc;
   inst.next_pc += 4;
@@ -819,6 +826,7 @@ static bool TryDecodeCB(Instruction &inst, uint32_t bits) {
   if (enc.cond == 0b1000) {
     inst.category = Instruction::kCategoryDirectJump;
     inst.branch_taken_pc = inst.pc + disp;
+    inst.branch_taken_arch_name = inst.arch_name;
     inst.has_branch_not_taken_delay_slot = false;
 
     if (!enc.a) {
@@ -857,6 +865,7 @@ static bool TryDecodeCB(Instruction &inst, uint32_t bits) {
 
     inst.next_pc += 4;
     inst.branch_taken_pc = inst.next_pc;
+    inst.branch_taken_arch_name = inst.arch_name;
 
   // Conditional branch.
   } else {
@@ -868,6 +877,7 @@ static bool TryDecodeCB(Instruction &inst, uint32_t bits) {
     inst.category = Instruction::kCategoryConditionalBranch;
 
     inst.branch_taken_pc = inst.pc + disp;
+    inst.branch_taken_arch_name = inst.arch_name;
     inst.has_branch_taken_delay_slot = true;
     inst.delayed_pc = inst.next_pc;
     inst.next_pc += 4;

@@ -574,7 +574,6 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
     auto val_type = val->getType();
     auto val_size = data_layout.getTypeAllocSizeInBits(val_type);
     auto arg_size = data_layout.getTypeAllocSizeInBits(arg_type);
-    const auto word_size = impl->arch->address_size;
 
     if (val_size < arg_size) {
       if (arg_type->isIntegerTy()) {
