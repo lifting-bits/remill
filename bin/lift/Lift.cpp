@@ -268,7 +268,7 @@ int main(int argc, char *argv[]) {
 
 
   remill::InstructionLifter::LifterPtr inst_lifter =
-      arch->GetLifter(intrinsics);
+      arch->DefaultLifter(intrinsics);
 
   remill::TraceLifter trace_lifter(*inst_lifter.get(), manager);
 

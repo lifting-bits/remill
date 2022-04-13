@@ -16,17 +16,17 @@
 
 #include <glog/logging.h>
 #include <remill/Arch/AArch32/Runtime/State.h>
-#include <remill/Arch/Sleigh/SleighArch.h>
 
-#include "../Arch.h"
-#include "remill/Arch/Name.h"
-#include "remill/BC/ABI.h"
-#include "remill/BC/Compat/Attributes.h"
-#include "remill/BC/Compat/DebugInfo.h"
-#include "remill/BC/Compat/GlobalValue.h"
-#include "remill/BC/Util.h"
-#include "remill/BC/Version.h"
-#include "remill/OS/OS.h"
+#include <remill/Arch/Name.h>
+#include <remill/BC/ABI.h>
+#include <remill/BC/Compat/Attributes.h>
+#include <remill/BC/Compat/DebugInfo.h>
+#include <remill/BC/Compat/GlobalValue.h>
+#include <remill/BC/Util.h>
+#include <remill/BC/Version.h>
+#include <remill/OS/OS.h>
+
+#include "Arch.h"
 
 namespace remill {
 namespace sleighthumb2 {
@@ -39,35 +39,35 @@ class SleighThumb2Arch final : public remill::sleigh::SleighArch {
       : SleighArch(context_, os_name_, arch_name_, "ARM7_le.sla") {}
 
 
-  uint64_t MaxInstructionSize(bool permit_fuse_idioms) const override {
+  uint64_t MaxInstructionSize(bool permit_fuse_idioms) const final {
     return 4;
   }
 
-  uint64_t MinInstructionSize(void) const override {
+  uint64_t MinInstructionSize(void) const final {
     return 2;
   }
 
-  uint64_t MinInstructionAlign(void) const override {
+  uint64_t MinInstructionAlign(void) const final {
     return 2;
   }
 
   // TODO(Ian): take from sleigh, we can probably do this at the SLEIGH arch level to DRY.
-  std::string_view StackPointerRegisterName(void) const override {
+  std::string_view StackPointerRegisterName(void) const final {
     return "SP";
   }
 
   // TODO(Ian): take from sleigh
-  std::string_view ProgramCounterRegisterName(void) const override {
+  std::string_view ProgramCounterRegisterName(void) const final {
     return "PC";
   }
 
   // TODO(Ian): take from sleigh
-  llvm::CallingConv::ID DefaultCallingConv(void) const override {
+  llvm::CallingConv::ID DefaultCallingConv(void) const final {
     return llvm::CallingConv::C;
   }
 
 
-  llvm::Triple Triple(void) const override {
+  llvm::Triple Triple(void) const final {
     auto triple = BasicTriple();
     triple.setArch(llvm::Triple::thumb);
     triple.setOS(llvm::Triple::OSType::Linux);
@@ -76,7 +76,7 @@ class SleighThumb2Arch final : public remill::sleigh::SleighArch {
   }
 
   // NOTE(Ian): Copied from Arch32/Arch.cpp
-  llvm::DataLayout DataLayout(void) const override {
+  llvm::DataLayout DataLayout(void) const final {
     std::string dl;
     switch (os_name) {
       case kOSInvalid:
@@ -94,13 +94,12 @@ class SleighThumb2Arch final : public remill::sleigh::SleighArch {
     return llvm::DataLayout(dl);
   }
 
-
-  void PopulateRegisterTable(void) const override {
+  void PopulateRegisterTable(void) const final {
     // TODO(Ian): uh yeah do something here
     // Populate the table of register information.
     CHECK_NOTNULL(context);
 
-    impl->reg_by_offset.resize(sizeof(AArch32State));
+    reg_by_offset.resize(sizeof(AArch32State));
 
     auto u8 = llvm::Type::getInt8Ty(*context);
 
@@ -147,7 +146,7 @@ class SleighThumb2Arch final : public remill::sleigh::SleighArch {
   // specific variables. TODO(Ian)
   void
   FinishLiftedFunctionInitialization(llvm::Module *module,
-                                     llvm::Function *bb_func) const override {
+                                     llvm::Function *bb_func) const final {
     const auto &dl = module->getDataLayout();
     CHECK_EQ(sizeof(State), dl.getTypeAllocSize(StateStructType()))
         << "Mismatch between size of State type for thumb and what is in "
@@ -155,7 +154,6 @@ class SleighThumb2Arch final : public remill::sleigh::SleighArch {
 
     auto &context = module->getContext();
     auto addr = llvm::Type::getIntNTy(context, address_size);
-    auto zero_addr_val = llvm::Constant::getNullValue(addr);
 
     const auto entry_block = &bb_func->getEntryBlock();
     llvm::IRBuilder<> ir(entry_block);
@@ -170,7 +168,7 @@ class SleighThumb2Arch final : public remill::sleigh::SleighArch {
   }
 
   void InitializeSleighContext(
-      remill::sleigh::SingleInstructionSleighContext &ctxt) const override {
+      remill::sleigh::SingleInstructionSleighContext &ctxt) const final {
     ctxt.GetEngine().setContextDefault("TMode", 1);
   }
 };

@@ -26,17 +26,16 @@
 #include <remill/BC/Util.h>
 #include <remill/OS/OS.h>
 
-#include "../Arch.h"
-
 // clang-format off
 #define HAS_FEATURE_AVX 1
 #define HAS_FEATURE_AVX512 1
 #define ADDRESS_SIZE_BITS 64
 #define INCLUDED_FROM_REMILL
-#include "remill/Arch/X86/Runtime/State.h"
+#include <remill/Arch/X86/Runtime/State.h>
 #include <sleigh/libsleigh.hh>
 // clang-format on
-#include <remill/Arch/Sleigh/SleighArch.h>
+
+#include "Arch.h"
 
 namespace remill {
 namespace sleigh::x86 {
@@ -103,10 +102,12 @@ class SleighX86Arch final : public remill::sleigh::SleighArch {
     switch (arch_name) {
       case kArchAMD64:
       case kArchAMD64_AVX:
-      case kArchAMD64_AVX512: triple.setArch(llvm::Triple::x86_64); break;
+      case kArchAMD64_AVX512:
+      case kArchAMD64_SLEIGH: triple.setArch(llvm::Triple::x86_64); break;
       case kArchX86:
       case kArchX86_AVX:
-      case kArchX86_AVX512: triple.setArch(llvm::Triple::x86); break;
+      case kArchX86_AVX512:
+      case kArchX86_SLEIGH: triple.setArch(llvm::Triple::x86); break;
       default:
         LOG(FATAL) << "Cannot get triple for non-x86 architecture "
                    << GetArchName(arch_name);
@@ -128,11 +129,13 @@ class SleighX86Arch final : public remill::sleigh::SleighArch {
           case kArchAMD64:
           case kArchAMD64_AVX:
           case kArchAMD64_AVX512:
+          case kArchAMD64_SLEIGH:
             dl = "e-m:e-i64:64-f80:128-n8:16:32:64-S128";
             break;
           case kArchX86:
           case kArchX86_AVX:
           case kArchX86_AVX512:
+          case kArchX86_SLEIGH:
             dl = "e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128";
             break;
           default:
@@ -147,11 +150,13 @@ class SleighX86Arch final : public remill::sleigh::SleighArch {
           case kArchAMD64:
           case kArchAMD64_AVX:
           case kArchAMD64_AVX512:
+          case kArchAMD64_SLEIGH:
             dl = "e-m:o-i64:64-f80:128-n8:16:32:64-S128";
             break;
           case kArchX86:
           case kArchX86_AVX:
           case kArchX86_AVX512:
+          case kArchX86_SLEIGH:
             dl = "e-m:o-p:32:32-f64:32:64-f80:128-n8:16:32-S128";
             break;
           default:
@@ -165,11 +170,13 @@ class SleighX86Arch final : public remill::sleigh::SleighArch {
           case kArchAMD64:
           case kArchAMD64_AVX:
           case kArchAMD64_AVX512:
+          case kArchAMD64_SLEIGH:
             dl = "e-m:w-i64:64-f80:128-n8:16:32:64-S128";
             break;
           case kArchX86:
           case kArchX86_AVX:
           case kArchX86_AVX512:
+          case kArchX86_SLEIGH:
             dl = "e-m:x-p:32:32-i64:64-f80:32-n8:16:32-a:0:32-S32";
             break;
           default:
@@ -183,7 +190,7 @@ class SleighX86Arch final : public remill::sleigh::SleighArch {
   }
 
   void PopulateRegisterTable(void) const final {
-    impl->reg_by_offset.resize(sizeof(X86State));
+    reg_by_offset.resize(sizeof(X86State));
 
     CHECK_NOTNULL(context);
 
@@ -191,9 +198,12 @@ class SleighX86Arch final : public remill::sleigh::SleighArch {
     bool has_avx512 = false;
     switch (arch_name) {
       case kArchX86_AVX:
-      case kArchAMD64_AVX: has_avx = true; break;
+      case kArchAMD64_AVX:
+        has_avx = true; break;
       case kArchX86_AVX512:
       case kArchAMD64_AVX512:
+      case kArchX86_SLEIGH:
+      case kArchAMD64_SLEIGH:
         has_avx = true;
         has_avx512 = true;
         break;

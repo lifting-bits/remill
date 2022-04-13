@@ -669,6 +669,7 @@ static void DecodeConditionalBranch(Instruction &inst,
   taken_op.addr.kind = Operand::Address::kControlFlowTarget;
   inst.operands.push_back(taken_op);
 
+  inst.branch_taken_arch_name = inst.arch_name;
   inst.branch_taken_pc =
       static_cast<uint64_t>(static_cast<int64_t>(inst.next_pc) + disp);
 
@@ -695,6 +696,7 @@ static void DecodeRelativeBranch(Instruction &inst,
   taken_op.addr.kind = Operand::Address::kControlFlowTarget;
   inst.operands.push_back(taken_op);
 
+  inst.branch_taken_arch_name = inst.arch_name;
   inst.branch_taken_pc =
       static_cast<uint64_t>(static_cast<int64_t>(inst.next_pc) + disp);
   inst.branch_not_taken_pc = inst.next_pc;
@@ -788,7 +790,7 @@ static void DecodeOperand(Instruction &inst, const xed_decoded_inst_t *xedd,
   }
 }
 
-class X86Arch final : public Arch {
+class X86Arch final : public ArchBase {
  public:
   X86Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
 
@@ -829,7 +831,7 @@ class X86Arch final : public Arch {
 
 X86Arch::X86Arch(llvm::LLVMContext *context_, OSName os_name_,
                  ArchName arch_name_)
-    : Arch(context_, os_name_, arch_name_) {
+    : ArchBase(context_, os_name_, arch_name_) {
 
   static bool xed_is_initialized = false;
   if (!xed_is_initialized) {
@@ -881,10 +883,12 @@ llvm::Triple X86Arch::Triple(void) const {
   switch (arch_name) {
     case kArchAMD64:
     case kArchAMD64_AVX:
-    case kArchAMD64_AVX512: triple.setArch(llvm::Triple::x86_64); break;
+    case kArchAMD64_AVX512:
+    case kArchAMD64_SLEIGH: triple.setArch(llvm::Triple::x86_64); break;
     case kArchX86:
     case kArchX86_AVX:
-    case kArchX86_AVX512: triple.setArch(llvm::Triple::x86); break;
+    case kArchX86_AVX512:
+    case kArchX86_SLEIGH: triple.setArch(llvm::Triple::x86); break;
     default:
       LOG(FATAL) << "Cannot get triple for non-x86 architecture "
                  << GetArchName(arch_name);
@@ -907,11 +911,13 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
         case kArchAMD64:
         case kArchAMD64_AVX:
         case kArchAMD64_AVX512:
+        case kArchAMD64_SLEIGH:
           dl = "e-m:e-i64:64-f80:128-n8:16:32:64-S128";
           break;
         case kArchX86:
         case kArchX86_AVX:
         case kArchX86_AVX512:
+        case kArchX86_SLEIGH:
           dl = "e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128";
           break;
         default:
@@ -926,11 +932,13 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
         case kArchAMD64:
         case kArchAMD64_AVX:
         case kArchAMD64_AVX512:
+        case kArchAMD64_SLEIGH:
           dl = "e-m:o-i64:64-f80:128-n8:16:32:64-S128";
           break;
         case kArchX86:
         case kArchX86_AVX:
         case kArchX86_AVX512:
+        case kArchX86_SLEIGH:
           dl = "e-m:o-p:32:32-f64:32:64-f80:128-n8:16:32-S128";
           break;
         default:
@@ -944,11 +952,13 @@ llvm::DataLayout X86Arch::DataLayout(void) const {
         case kArchAMD64:
         case kArchAMD64_AVX:
         case kArchAMD64_AVX512:
+        case kArchAMD64_SLEIGH:
           dl = "e-m:w-i64:64-f80:128-n8:16:32:64-S128";
           break;
         case kArchX86:
         case kArchX86_AVX:
         case kArchX86_AVX512:
+        case kArchX86_SLEIGH:
           dl = "e-m:x-p:32:32-i64:64-f80:32-n8:16:32-a:0:32-S32";
           break;
         default:
@@ -1157,6 +1167,7 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
   inst.arch = this;
   inst.arch_name = arch_name;
   inst.sub_arch_name = kArchInvalid;
+  inst.branch_taken_arch_name = arch_name;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();
 
@@ -1367,7 +1378,7 @@ std::string_view X86Arch::ProgramCounterRegisterName(void) const {
 // Populate the table of register information.
 void X86Arch::PopulateRegisterTable(void) const {
 
-  impl->reg_by_offset.resize(sizeof(X86State));
+  reg_by_offset.resize(sizeof(X86State));
 
   CHECK_NOTNULL(context);
 

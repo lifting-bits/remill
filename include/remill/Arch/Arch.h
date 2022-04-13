@@ -64,13 +64,15 @@ enum OSName : uint32_t;
 enum ArchName : uint32_t;
 
 class Arch;
-class ArchImpl;
 class Instruction;
 
 struct Register {
  public:
-  Register(const std::string &name_, uint64_t offset_, uint64_t size_,
-           llvm::Type *type_, const Register *parent_, const ArchImpl *arch_);
+  friend class Arch;
+
+  Register(const std::string &name_, uint64_t offset_,
+           llvm::Type *type_, const Register *parent_,
+           const Arch *arch_);
 
   std::string name;  // Name of the register.
   uint64_t offset;  // Byte offset in `State`.
@@ -118,16 +120,14 @@ struct Register {
 
   llvm::Value *AddressOf(llvm::Value *state_ptr, llvm::IRBuilder<> &ir) const;
 
- private:
-  friend class Arch;
-
   const Register *const parent;
-  const ArchImpl *const arch;
+  const Arch *const arch;
+
+ private:
+  void CompteGEPAccessors(const llvm::DataLayout &dl, llvm::Type *state_type);
 
   // The directly enclosed registers.
-  std::vector<const Register *> children;
-
-  void CompteGEPAccessors(const llvm::DataLayout &dl, llvm::Type *state_type);
+  mutable std::vector<const Register *> children;
 };
 
 class Arch {
@@ -146,30 +146,32 @@ class Arch {
   static auto Get(llvm::LLVMContext &context, OSName os, ArchName arch_name)
       -> ArchPtr;
 
-  // Return the type of the state structure.
-  llvm::StructType *StateStructType(void) const;
-
-  // Pointer to a state structure type.
-  llvm::PointerType *StatePointerType(void) const;
-
-  // Return the type of an address, i.e. `addr_t` in the semantics.
+  // Return the type of an address, i.e. `addr_t` in the semantics. This is
+  // based off of `context` and `address_size`.
   llvm::IntegerType *AddressType(void) const;
 
+  // Return the type of the state structure.
+  virtual llvm::StructType *StateStructType(void) const = 0;
+
+  // Pointer to a state structure type.
+  virtual llvm::PointerType *StatePointerType(void) const = 0;
+
   // The type of memory.
-  llvm::PointerType *MemoryPointerType(void) const;
+  virtual llvm::PointerType *MemoryPointerType(void) const = 0;
 
   // Return the type of a lifted function.
-  llvm::FunctionType *LiftedFunctionType(void) const;
+  virtual llvm::FunctionType *LiftedFunctionType(void) const = 0;
 
   // Apply `cb` to every register.
-  void ForEachRegister(std::function<void(const Register *)> cb) const;
+  virtual void ForEachRegister(
+      std::function<void(const Register *)> cb) const = 0;
 
   // Return information about the register at offset `offset` in the `State`
   // structure.
-  const Register *RegisterAtStateOffset(uint64_t offset) const;
+  virtual const Register *RegisterAtStateOffset(uint64_t offset) const = 0;
 
   // Return information about a register, given its name.
-  const Register *RegisterByName(std::string_view name) const;
+  virtual const Register *RegisterByName(std::string_view name) const = 0;
 
   // Returns the name of the stack pointer register.
   virtual std::string_view StackPointerRegisterName(void) const = 0;
@@ -204,7 +206,7 @@ class Arch {
   // associated with `module`.
   //
   // NOTE(pag): This is an internal API.
-  void InitFromSemanticsModule(llvm::Module *module) const;
+  virtual void InitFromSemanticsModule(llvm::Module *module) const = 0;
 
   inline void PrepareModule(const std::unique_ptr<llvm::Module> &mod) const {
     PrepareModule(mod.get());
@@ -215,10 +217,10 @@ class Arch {
   void PrepareModuleDataLayout(llvm::Module *mod) const;
 
 
-  // TODO(Ian): This is kinda messy but only an arch currently knows if it is sleigh or not and sleigh needs different lifting context etc
+  // TODO(Ian): This is kinda messy but only an arch currently knows if it is
+  //            sleigh or not and sleigh needs different lifting context etc.
   virtual InstructionLifter::LifterPtr
-  GetLifter(const remill::IntrinsicTable &intrinsics) const;
-
+  DefaultLifter(const remill::IntrinsicTable &intrinsics) const = 0;
 
   inline void
   PrepareModuleDataLayout(const std::unique_ptr<llvm::Module> &mod) const {
@@ -313,23 +315,33 @@ class Arch {
   // include all feature sets.
   static ArchPtr GetHostArch(llvm::LLVMContext &contex);
 
- protected:
-  Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
-
   // Populate the table of register information.
+  //
+  // NOTE(pag): Internal API; do not invoke unless you are proxying/composing
+  //            architectures.
   virtual void PopulateRegisterTable(void) const = 0;
 
   // Populate a just-initialized lifted function function with architecture-
   // specific variables.
+  //
+  // NOTE(pag): Internal API; do not invoke unless you are proxying/composing
+  //            architectures.
   virtual void
   FinishLiftedFunctionInitialization(llvm::Module *module,
                                      llvm::Function *bb_func) const = 0;
 
-  llvm::Triple BasicTriple(void) const;
+  // Add a register into this architecture.
+  //
+  // NOTE(pag): Internal API; do not invoke unless you are proxying/composing
+  //            architectures.
+  virtual const Register *AddRegister(
+      const char *reg_name, llvm::Type *val_type,
+      size_t offset, const char *parent_reg_name) const = 0;
 
-  // Add a register into this
-  const Register *AddRegister(const char *reg_name, llvm::Type *val_type,
-                              size_t offset, const char *parent_reg_name) const;
+ protected:
+  Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
+
+  llvm::Triple BasicTriple(void) const;
 
  private:
   // Defined in `lib/Arch/X86/Arch.cpp`.
@@ -362,9 +374,6 @@ class Arch {
 
 
   Arch(void) = delete;
-
- protected:
-  mutable std::unique_ptr<ArchImpl> impl;
 };
 
 }  // namespace remill

@@ -1,13 +1,32 @@
+/*
+ * Copyright (c) 2022-present Trail of Bits, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <remill/BC/SleighLifter.h>
+
+#include <cassert>
 #include <glog/logging.h>
-#include <remill/Arch/Sleigh/SleighArch.h>
 #include <remill/BC/ABI.h>
 #include <remill/BC/IntrinsicTable.h>
-#include <remill/BC/SleighLifter.h>
 #include <remill/BC/Util.h>
 
 #include <unordered_map>
-namespace remill {
 
+#include "../Arch/Sleigh/Arch.h"
+
+namespace remill {
 
 class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
  private:
@@ -1015,6 +1034,14 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
          }},
 };
 
+SleighLifter::SleighLifter(const sleigh::SleighArch *arch_,
+                           const IntrinsicTable &intrinsics_)
+      : InstructionLifter(arch_, intrinsics_),
+        sleigh_context(
+            new sleigh::SingleInstructionSleighContext(arch_->GetSLAName())) {
+  arch_->InitializeSleighContext(*sleigh_context);
+}
+
 LiftStatus
 SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
                             llvm::Value *state_ptr, bool is_delayed) {
@@ -1026,8 +1053,8 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
   }
 
   SleighLifter::PcodeToLLVMEmitIntoBlock lifter(block, state_ptr, inst, *this);
-  auto res = this->sleigh_context.oneInstruction(inst.pc, lifter, inst.bytes);
-
+  auto res = sleigh_context->oneInstruction(inst.pc, lifter, inst.bytes);
+  (void) res;
 
   auto var_to_store_into = LoadNextProgramCounterRef(block);
   auto reg_addr = this->LoadRegAddress(block, state_ptr, "PC");
@@ -1043,7 +1070,7 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
   return lifter.GetStatus();
 }
 
-Sleigh &SleighLifter::GetEngine() {
-  return this->sleigh_context.GetEngine();
+Sleigh &SleighLifter::GetEngine(void) const {
+  return this->sleigh_context->GetEngine();
 }
 }  // namespace remill

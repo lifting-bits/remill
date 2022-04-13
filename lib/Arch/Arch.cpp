@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "Arch.h"  // For `Arch` and `ArchImpl`.
+#include "Arch.h"  // For `Arch` and `ArchBase`.
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -54,12 +54,14 @@ static unsigned AddressSize(ArchName arch_name) {
     case kArchX86:
     case kArchX86_AVX:
     case kArchX86_AVX512:
+    case kArchX86_SLEIGH:
     case kArchAArch32LittleEndian:
     case kArchThumb2LittleEndian:
     case kArchSparc32: return 32;
     case kArchAMD64:
     case kArchAMD64_AVX:
     case kArchAMD64_AVX512:
+    case kArchAMD64_SLEIGH:
     case kArchAArch64LittleEndian:
     case kArchSparc64: return 64;
   }
@@ -73,6 +75,10 @@ Arch::Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_)
       arch_name(arch_name_),
       address_size(AddressSize(arch_name_)),
       context(context_) {}
+
+ArchBase::ArchBase(llvm::LLVMContext *context_, OSName os_name_,
+                   ArchName arch_name_)
+    : Arch(context_, os_name_, arch_name_) {}
 
 Arch::~Arch(void) {}
 
@@ -156,36 +162,48 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
 
     case kArchX86: {
       DLOG(INFO) << "Using architecture: X86";
-      ret = GetSleighX86(context_, os_name_, arch_name_);
+      ret = GetX86(context_, os_name_, arch_name_);
       break;
     }
 
     case kArchX86_AVX: {
       DLOG(INFO) << "Using architecture: X86, feature set: AVX";
-      ret = GetSleighX86(context_, os_name_, arch_name_);
+      ret = GetX86(context_, os_name_, arch_name_);
       break;
     }
 
     case kArchX86_AVX512: {
       DLOG(INFO) << "Using architecture: X86, feature set: AVX512";
+      ret = GetX86(context_, os_name_, arch_name_);
+      break;
+    }
+
+    case kArchX86_SLEIGH: {
+      DLOG(INFO) << "Using architecture: X86, decoder: SLEIGH";
       ret = GetSleighX86(context_, os_name_, arch_name_);
       break;
     }
 
     case kArchAMD64: {
       DLOG(INFO) << "Using architecture: AMD64";
-      ret = GetSleighX86(context_, os_name_, arch_name_);
+      ret = GetX86(context_, os_name_, arch_name_);
       break;
     }
 
     case kArchAMD64_AVX: {
       DLOG(INFO) << "Using architecture: AMD64, feature set: AVX";
-      ret = GetSleighX86(context_, os_name_, arch_name_);
+      ret = GetX86(context_, os_name_, arch_name_);
       break;
     }
 
     case kArchAMD64_AVX512: {
       DLOG(INFO) << "Using architecture: AMD64, feature set: AVX512";
+      ret = GetX86(context_, os_name_, arch_name_);
+      break;
+    }
+
+    case kArchAMD64_SLEIGH: {
+      DLOG(INFO) << "Using architecture: AMD64, decoder: SLEIGH";
       ret = GetSleighX86(context_, os_name_, arch_name_);
       break;
     }
@@ -211,7 +229,6 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
   }
 
   if (ret) {
-    ret->impl.reset(new ArchImpl);
     ret->PopulateRegisterTable();
   }
 
@@ -233,17 +250,15 @@ auto Arch::GetHostArch(llvm::LLVMContext &ctx) -> ArchPtr {
 }
 
 // Return the type of the state structure.
-llvm::StructType *Arch::StateStructType(void) const {
-  CHECK(impl)
-      << "Have you not run `PrepareModule` on a loaded semantics module?";
-  return impl->state_type;
+llvm::StructType *ArchBase::StateStructType(void) const {
+  CHECK_NOTNULL(state_type);
+  return state_type;
 }
 
 // Pointer to a state structure type.
-llvm::PointerType *Arch::StatePointerType(void) const {
-  CHECK(impl)
-      << "Have you not run `PrepareModule` on a loaded semantics module?";
-  return llvm::PointerType::get(impl->state_type, 0);
+llvm::PointerType *ArchBase::StatePointerType(void) const {
+  CHECK_NOTNULL(state_type);
+  return llvm::PointerType::get(state_type, 0);
 }
 
 // Return the type of an address, i.e. `addr_t` in the semantics.
@@ -252,23 +267,20 @@ llvm::IntegerType *Arch::AddressType(void) const {
 }
 
 // The type of memory.
-llvm::PointerType *Arch::MemoryPointerType(void) const {
-  CHECK(impl)
-      << "Have you not run `PrepareModule` on a loaded semantics module?";
-  return impl->memory_type;
+llvm::PointerType *ArchBase::MemoryPointerType(void) const {
+  CHECK_NOTNULL(memory_type);
+  return memory_type;
 }
 
 // Return the type of a lifted function.
-llvm::FunctionType *Arch::LiftedFunctionType(void) const {
-  CHECK(impl)
-      << "Have you not run `PrepareModule` on a loaded semantics module?";
-  return impl->lifted_function_type;
+llvm::FunctionType *ArchBase::LiftedFunctionType(void) const {
+  CHECK_NOTNULL(lifted_function_type);
+  return lifted_function_type;
 }
 
 // Return information about the register at offset `offset` in the `State`
 // structure.
-const Register *Arch::RegisterAtStateOffset(uint64_t offset) const {
-  auto &reg_by_offset = impl->reg_by_offset;
+const Register *ArchBase::RegisterAtStateOffset(uint64_t offset) const {
   if (offset >= reg_by_offset.size()) {
     return nullptr;
   } else {
@@ -277,17 +289,16 @@ const Register *Arch::RegisterAtStateOffset(uint64_t offset) const {
 }
 
 // Apply `cb` to every register.
-void Arch::ForEachRegister(std::function<void(const Register *)> cb) const {
-  for (const auto &reg : impl->registers) {
+void ArchBase::ForEachRegister(std::function<void(const Register *)> cb) const {
+  for (const auto &reg : registers) {
     cb(reg.get());
   }
 }
 
 // Return information about a register, given its name.
-const Register *Arch::RegisterByName(std::string_view name_) const {
+const Register *ArchBase::RegisterByName(std::string_view name_) const {
   std::string name(name_.data(), name_.size());
-  auto [curr_val_it, added] =
-      impl->reg_by_name.emplace(std::move(name), nullptr);
+  auto [curr_val_it, added] = reg_by_name.emplace(std::move(name), nullptr);
   if (added) {
     return nullptr;
   } else {
@@ -342,7 +353,8 @@ bool Arch::IsX86(void) const {
   switch (arch_name) {
     case remill::kArchX86:
     case remill::kArchX86_AVX:
-    case remill::kArchX86_AVX512: return true;
+    case remill::kArchX86_AVX512:
+    case remill::kArchX86_SLEIGH: return true;
     default: return false;
   }
 }
@@ -351,7 +363,8 @@ bool Arch::IsAMD64(void) const {
   switch (arch_name) {
     case remill::kArchAMD64:
     case remill::kArchAMD64_AVX:
-    case remill::kArchAMD64_AVX512: return true;
+    case remill::kArchAMD64_AVX512:
+    case remill::kArchAMD64_SLEIGH: return true;
     default: return false;
   }
 }
@@ -409,17 +422,22 @@ static void AddNoAliasToArgument(llvm::Argument *arg) {
 
 }  // namespace
 
-Register::Register(const std::string &name_, uint64_t offset_, uint64_t size_,
+Register::Register(const std::string &name_, uint64_t offset_,
                    llvm::Type *type_, const Register *parent_,
-                   const ArchImpl *arch_)
+                   const Arch *arch_)
     : name(name_),
       offset(offset_),
-      size(size_),
+      size(arch_->DataLayout().getTypeAllocSize(type_)),
       type(type_),
       constant_name(
           llvm::ConstantDataArray::getString(type->getContext(), name_)),
       parent(parent_),
-      arch(arch_) {}
+      arch(arch_) {
+
+  if (parent) {
+    parent->children.push_back(this);
+  }
+}
 
 // Returns the enclosing register of size AT LEAST `size`, or `nullptr`.
 const Register *Register::EnclosingRegisterOfSize(uint64_t size_) const {
@@ -590,15 +608,16 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
   CHECK_NOTNULL(state_ptr_type);
   const auto addr_space = state_ptr_type->getAddressSpace();
 
-  const auto state_type =
-      llvm::dyn_cast<llvm::StructType>(state_ptr_type->getPointerElementType());
+  const auto state_type = arch->StateStructType();
   CHECK_NOTNULL(state_type);
+  CHECK_EQ(&context, &(state_type->getContext()));
 
   const auto module = ir.GetInsertBlock()->getParent()->getParent();
   const auto &dl = module->getDataLayout();
 
   if (!gep_type_at_offset) {
-    const_cast<Register *>(this)->CompteGEPAccessors(dl, state_type);
+    const_cast<Register *>(this)->CompteGEPAccessors(
+        arch->DataLayout(), state_type);
   }
 
   llvm::Value *gep = nullptr;
@@ -616,13 +635,15 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
 
   // Add the metadata to `inst`.
   if (auto inst = llvm::dyn_cast<llvm::Instruction>(ret); inst) {
+    if (auto internal_arch = dynamic_cast<const ArchBase *>(arch)) {
 #if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 6)
-    auto reg_name_md = llvm::ValueAsMetadata::get(constant_name);
-    auto reg_name_node = llvm::MDNode::get(context, reg_name_md);
+      auto reg_name_md = llvm::ValueAsMetadata::get(constant_name);
+      auto reg_name_node = llvm::MDNode::get(context, reg_name_md);
 #else
-    auto reg_name_node = llvm::MDNode::get(context, reg->constant_name);
+      auto reg_name_node = llvm::MDNode::get(context, reg->constant_name);
 #endif
-    inst->setMetadata(arch->reg_md_id, reg_name_node);
+      inst->setMetadata(internal_arch->reg_md_id, reg_name_node);
+    }
     inst->setName(name);
   }
 
@@ -726,10 +747,9 @@ void Arch::InitializeEmptyLiftedFunction(llvm::Function *func) const {
   // NOTE(pag): `PC` and `NEXT_PC` are handled by
   //            `FinishLiftedFunctionInitialization`.
 
-  ir.CreateStore(state,
-                 ir.CreateAlloca(llvm::PointerType::get(impl->state_type, 0),
-                                 nullptr, "STATE"));
-  ir.CreateStore(memory, ir.CreateAlloca(impl->memory_type, nullptr, "MEMORY"));
+  ir.CreateStore(state, ir.CreateAlloca(state->getType(),
+                                        nullptr, "STATE"));
+  ir.CreateStore(memory, ir.CreateAlloca(memory->getType(), nullptr, "MEMORY"));
 
   FinishLiftedFunctionInitialization(module, func);
   CHECK(BlockHasSpecialVars(func));
@@ -739,13 +759,14 @@ void Arch::PrepareModule(llvm::Module *mod) const {
   PrepareModuleDataLayout(mod);
 }
 
-const Register *Arch::AddRegister(const char *reg_name_, llvm::Type *val_type,
-                                  size_t offset,
-                                  const char *parent_reg_name) const {
+const Register *ArchBase::AddRegister(
+    const char *reg_name_, llvm::Type *val_type,
+    size_t offset, const char *parent_reg_name) const {
+
   CHECK_NOTNULL(val_type);
 
   const std::string reg_name(reg_name_);
-  auto &reg = impl->reg_by_name[reg_name];
+  auto &reg = reg_by_name[reg_name];
   if (reg) {
     return reg;
   }
@@ -755,20 +776,12 @@ const Register *Arch::AddRegister(const char *reg_name_, llvm::Type *val_type,
   // If this is a sub-register, then link it in.
   const Register *parent_reg = nullptr;
   if (parent_reg_name) {
-    parent_reg = impl->reg_by_name[parent_reg_name];
+    parent_reg = reg_by_name[parent_reg_name];
   }
 
-  auto reg_impl = new Register(reg_name, offset, dl.getTypeAllocSize(val_type),
-                               val_type, parent_reg, impl.get());
-
-  reg_impl->CompteGEPAccessors(dl, impl->state_type);
-
+  auto reg_impl = new Register(reg_name, offset, val_type, parent_reg, this);
   reg = reg_impl;
-  impl->registers.emplace_back(reg_impl);
-
-  if (parent_reg) {
-    const_cast<Register *>(reg->parent)->children.push_back(reg);
-  }
+  registers.emplace_back(reg_impl);
 
   auto maybe_get_reg_name = [](auto reg_ptr) -> std::string {
     if (!reg_ptr) {
@@ -777,10 +790,15 @@ const Register *Arch::AddRegister(const char *reg_name_, llvm::Type *val_type,
     return reg_ptr->name;
   };
 
+  auto needed_size = reg->offset + reg->size;
+  if (needed_size >= reg_by_offset.size()) {
+    reg_by_offset.resize(needed_size);
+  }
+
   // Provide easy access to registers at specific offsets in the `State`
   // structure.
-  for (auto i = reg->offset; i < (reg->offset + reg->size); ++i) {
-    auto &reg_at_offset = impl->reg_by_offset[i];
+  for (auto i = reg->offset; i < needed_size; ++i) {
+    auto &reg_at_offset = reg_by_offset[i];
     if (!reg_at_offset) {
       reg_at_offset = reg;
     } else if (reg_at_offset) {
@@ -796,12 +814,8 @@ const Register *Arch::AddRegister(const char *reg_name_, llvm::Type *val_type,
 }
 
 // Get all of the register information from the prepared module.
-void Arch::InitFromSemanticsModule(llvm::Module *module) const {
-  if (!impl) {
-    impl.reset(new ArchImpl);
-  }
-
-  if (impl->state_type) {
+void ArchBase::InitFromSemanticsModule(llvm::Module *module) const {
+  if (state_type) {
     return;
   }
 
@@ -810,21 +824,23 @@ void Arch::InitFromSemanticsModule(llvm::Module *module) const {
   CHECK_NOTNULL(basic_block);
   const auto state_ptr_type =
       NthArgument(basic_block, kStatePointerArgNum)->getType();
-  const auto state_type =
-      llvm::dyn_cast<llvm::StructType>(state_ptr_type->getPointerElementType());
 
-  impl->state_type = state_type;
-  impl->reg_by_offset.resize(dl.getTypeAllocSize(state_type));
-  impl->memory_type = llvm::dyn_cast<llvm::PointerType>(
+  // TODO(pag): Eventually we need a reliable way to get this that will work
+  //            in the presence of opaque pointers.
+  state_type =
+     llvm::dyn_cast<llvm::StructType>(state_ptr_type->getPointerElementType());
+
+  reg_by_offset.resize(dl.getTypeAllocSize(state_type));
+  memory_type = llvm::dyn_cast<llvm::PointerType>(
       NthArgument(basic_block, kMemoryPointerArgNum)->getType());
-  impl->lifted_function_type = basic_block->getFunctionType();
-  impl->reg_md_id = context->getMDKindID("remill_register");
+  lifted_function_type = basic_block->getFunctionType();
+  reg_md_id = context->getMDKindID("remill_register");
 
-  CHECK(!impl->reg_by_name.empty());
+  CHECK(!reg_by_name.empty());
 }
 
 InstructionLifter::LifterPtr
-Arch::GetLifter(const remill::IntrinsicTable &intrinsics) const {
+ArchBase::DefaultLifter(const remill::IntrinsicTable &intrinsics) const {
   return std::make_unique<InstructionLifter>(this, intrinsics);
 }
 

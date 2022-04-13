@@ -27,7 +27,7 @@ add_subdirectory(AArch32)
 add_subdirectory(AArch64)
 add_subdirectory(SPARC32)
 add_subdirectory(SPARC64)
-add_subdirectory(SleighArchs)
+add_subdirectory(Sleigh)
 add_subdirectory(X86)
 
 set_property(TARGET remill_arch PROPERTY POSITION_INDEPENDENT_CODE ON)
