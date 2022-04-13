@@ -49,7 +49,7 @@ namespace remill {
 
 AArch32Arch::AArch32Arch(llvm::LLVMContext *context_, OSName os_name_,
                          ArchName arch_name_)
-    : Arch(context_, os_name_, arch_name_) {}
+    : ArchBase(context_, os_name_, arch_name_) {}
 
 AArch32Arch::~AArch32Arch(void) {}
 
@@ -118,7 +118,7 @@ std::string_view AArch32Arch::ProgramCounterRegisterName(void) const {
 void AArch32Arch::PopulateRegisterTable(void) const {
   CHECK_NOTNULL(context);
 
-  impl->reg_by_offset.resize(sizeof(AArch32State));
+  reg_by_offset.resize(sizeof(AArch32State));
 
   auto u8 = llvm::Type::getInt8Ty(*context);
 

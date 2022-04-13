@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-present Trail of Bits, Inc.
+ * Copyright (c) 2022-present Trail of Bits, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@
 
 #include <glog/logging.h>
 #include <llvm/IR/IRBuilder.h>
-#include <remill/Arch/Sleigh/SleighArch.h>
 
 #include <sleigh/libsleigh.hh>
 
@@ -26,18 +25,22 @@
 #include "remill/BC/InstructionLifter.h"
 #include <mutex>
 
+class Sleigh;
+
 namespace remill {
+namespace sleigh {
+class SleighArch;
+class SingleInstructionSleighContext;
+}  // namespace sleigh
 
 class SleighLifter : public InstructionLifter {
   class PcodeToLLVMEmitIntoBlock;
 
+  std::unique_ptr<sleigh::SingleInstructionSleighContext> sleigh_context;
+
  public:
-  inline SleighLifter(const sleigh::SleighArch *arch_,
-                      const IntrinsicTable &intrinsics_)
-      : InstructionLifter(arch_, intrinsics_),
-        sleigh_context(arch_->GetSLAName()) {
-    arch_->InitializeSleighContext(this->sleigh_context);
-  }
+  SleighLifter(const sleigh::SleighArch *arch_,
+               const IntrinsicTable &intrinsics_);
 
   virtual ~SleighLifter(void) = default;
 
@@ -45,8 +48,7 @@ class SleighLifter : public InstructionLifter {
                            llvm::Value *state_ptr, bool is_delayed) override;
 
  private:
-  Sleigh &GetEngine();
-  sleigh::SingleInstructionSleighContext sleigh_context;
+  ::Sleigh &GetEngine(void) const;
 };
 
 }  // namespace remill

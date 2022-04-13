@@ -209,6 +209,9 @@ class Instruction {
   // of instructions.
   ArchName sub_arch_name;
 
+  // Name of the architecture of the branch taken target.
+  ArchName branch_taken_arch_name;
+
   // Pointer to the `remill::Arch` used to complete the decoding of this
   // instruction.
   const Arch *arch;

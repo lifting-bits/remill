@@ -309,6 +309,8 @@ Instruction::Instruction(void)
       branch_taken_pc(0),
       branch_not_taken_pc(0),
       arch_name(kArchInvalid),
+      sub_arch_name(kArchInvalid),
+      branch_taken_arch_name(kArchInvalid),
       arch(nullptr),
       is_atomic_read_modify_write(false),
       has_branch_taken_delay_slot(false),
@@ -323,6 +325,8 @@ void Instruction::Reset(void) {
   branch_taken_pc = 0;
   branch_not_taken_pc = 0;
   arch_name = kArchInvalid;
+  sub_arch_name = kArchInvalid;
+  branch_taken_arch_name = kArchInvalid;
   is_atomic_read_modify_write = false;
   has_branch_taken_delay_slot = false;
   has_branch_not_taken_delay_slot = false;
@@ -648,19 +652,52 @@ Operand &Instruction::EmplaceOperand(const Operand::Address &addr_op) {
 std::string Instruction::Serialize(void) const {
   std::stringstream ss;
   ss << "(";
+
+  auto stream_arch = [&ss] (ArchName an) {
+    switch (an) {
+      case kArchInvalid: ss << "INVALID"; break;
+      case kArchAMD64:
+      case kArchAMD64_AVX:
+      case kArchAMD64_AVX512:
+      case kArchAMD64_SLEIGH: ss << "AMD64"; break;
+      case kArchX86:
+      case kArchX86_AVX:
+      case kArchX86_AVX512:
+      case kArchX86_SLEIGH: ss << "X86"; break;
+      case kArchThumb2LittleEndian: ss << "Thumb2"; break;
+      case kArchAArch32LittleEndian: ss << "AArch32"; break;
+      case kArchAArch64LittleEndian: ss << "AArch64"; break;
+      case kArchSparc32: ss << "SPARC32"; break;
+      case kArchSparc64: ss << "SPARC64"; break;
+    }
+  };
+
+  stream_arch(arch_name);
   switch (arch_name) {
     case kArchInvalid: break;
     case kArchAMD64:
     case kArchAMD64_AVX:
-    case kArchAMD64_AVX512: ss << "AMD64"; break;
+    case kArchAMD64_AVX512:
+    case kArchAMD64_SLEIGH: ss << "AMD64"; break;
     case kArchX86:
     case kArchX86_AVX:
-    case kArchX86_AVX512: ss << "X86"; break;
+    case kArchX86_AVX512:
+    case kArchX86_SLEIGH: ss << "X86"; break;
     case kArchThumb2LittleEndian: ss << "Thumb2"; break;
     case kArchAArch32LittleEndian: ss << "AArch32"; break;
     case kArchAArch64LittleEndian: ss << "AArch64"; break;
     case kArchSparc32: ss << "SPARC32"; break;
     case kArchSparc64: ss << "SPARC64"; break;
+  }
+  if (sub_arch_name != arch_name) {
+    switch (arch_name) {
+      default: break;
+      case kArchAMD64_AVX: ss << ":AVX"; break;
+      case kArchAMD64_AVX512: ss << ":AVX512"; break;
+      case kArchX86_AVX: ss << ":AVX"; break;
+      case kArchX86_AVX512: ss << ":AVX512"; break;
+      case kArchThumb2LittleEndian: ss << ":Thumb2"; break;
+    }
   }
 
   ss << " " << std::hex << pc;
@@ -728,23 +765,50 @@ std::string Instruction::Serialize(void) const {
 
   switch (category) {
     case Instruction::kCategoryDirectJump:
-      ss << " (BRANCH " << std::hex << branch_taken_pc << ")";
+      ss << " (BRANCH " << std::hex << branch_taken_pc << std::dec;
+      if (branch_taken_arch_name != arch_name) {
+        ss << ':';
+        stream_arch(branch_taken_arch_name);
+      }
+      ss << ")";
       break;
     case Instruction::kCategoryDirectFunctionCall:
-      ss << " (DIRECT_CALL (TAKEN " << std::hex << branch_taken_pc << ")"
-         << " (RETURN " << branch_not_taken_pc << "))";
+      ss << " (DIRECT_CALL (TAKEN " << std::hex << branch_taken_pc;
+      if (branch_taken_arch_name != arch_name) {
+        ss << ':';
+        stream_arch(branch_taken_arch_name);
+      }
+      ss << ")"
+         << " (RETURN " << branch_not_taken_pc << std::dec << "))";
       break;
     case Instruction::kCategoryIndirectFunctionCall:
-      ss << " (INDIRECT_CALL (TAKEN <unknown>)"
-         << " (RETURN " << branch_not_taken_pc << "))";
+      ss << " (INDIRECT_CALL (TAKEN <unknown>";
+      if (branch_taken_arch_name != arch_name) {
+        ss << ':';
+        stream_arch(branch_taken_arch_name);
+      }
+      ss << ")"
+         << " (RETURN " << std::hex << branch_not_taken_pc << std::dec << "))";
       break;
     case Instruction::kCategoryConditionalBranch:
-      ss << " (COND_BRANCH (TAKEN " << std::hex << branch_taken_pc << ")"
+      ss << " (COND_BRANCH (TAKEN " << std::hex << branch_taken_pc;
+      if (branch_taken_arch_name != arch_name) {
+        ss << ':';
+        stream_arch(branch_taken_arch_name);
+      }
+      ss << ")"
          << " (NOT_TAKEN " << branch_not_taken_pc << std::dec << "))";
       break;
     case kCategoryConditionalIndirectJump:
-      ss << " (COND_BRANCH (TAKEN <unknown>)"
-         << " (NOT_TAKEN " << branch_not_taken_pc << std::dec << "))";
+      ss << " (COND_BRANCH (TAKEN <unknown>";
+      if (branch_taken_arch_name != arch_name) {
+        ss << ':';
+        stream_arch(branch_taken_arch_name);
+      }
+      ss << ")"
+         << " (NOT_TAKEN " << std::hex
+         << branch_not_taken_pc << std::dec << "))";
+      break;
     default: break;
   }
 

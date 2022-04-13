@@ -106,7 +106,7 @@ Instruction::Category InstCategory(const aarch64::InstData &inst) {
   }
 }
 
-class AArch64Arch final : public Arch {
+class AArch64Arch final : public ArchBase {
  public:
   AArch64Arch(llvm::LLVMContext *context_, OSName os_name_,
               ArchName arch_name_);
@@ -148,7 +148,7 @@ class AArch64Arch final : public Arch {
 
 AArch64Arch::AArch64Arch(llvm::LLVMContext *context_, OSName os_name_,
                          ArchName arch_name_)
-    : Arch(context_, os_name_, arch_name_) {}
+    : ArchBase(context_, os_name_, arch_name_) {}
 
 AArch64Arch::~AArch64Arch(void) {}
 
@@ -160,7 +160,7 @@ llvm::CallingConv::ID AArch64Arch::DefaultCallingConv(void) const {
 // Populate the table of register information.
 void AArch64Arch::PopulateRegisterTable(void) const {
 
-  impl->reg_by_offset.resize(sizeof(AArch64State));
+  reg_by_offset.resize(sizeof(AArch64State));
 
 #define OFFSET_OF(type, access) \
   (reinterpret_cast<uintptr_t>(&reinterpret_cast<const volatile char &>( \
@@ -1222,6 +1222,7 @@ bool AArch64Arch::DecodeInstruction(uint64_t address,
   inst.arch = this;
   inst.arch_name = arch_name;
   inst.sub_arch_name = arch_name;  // TODO(pag): Thumb.
+  inst.branch_taken_arch_name = arch_name;
   inst.pc = address;
   inst.next_pc = address + kInstructionSize;
   inst.category = Instruction::kCategoryInvalid;
@@ -1794,6 +1795,7 @@ bool TryDecodeB_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
   AddPCDisp(inst, data.imm26.simm26 << 2LL);
   inst.branch_taken_pc = static_cast<uint64_t>(static_cast<int64_t>(inst.pc) +
                                                (data.imm26.simm26 << 2ULL));
+  inst.branch_taken_arch_name = inst.arch_name;
   return true;
 }
 
@@ -1823,6 +1825,13 @@ static void DecodeConditionalBranch(Instruction &inst, int64_t disp) {
 
   inst.branch_taken_pc =
       static_cast<uint64_t>(static_cast<int64_t>(inst.pc) + disp);
+
+  if (inst.branch_taken_pc % 2u) {
+    inst.branch_taken_arch_name = ArchName::kArchThumb2LittleEndian;
+    inst.branch_taken_pc -= 1u;
+  } else {
+    inst.branch_taken_arch_name = inst.arch_name;
+  }
 
   DecodeFallThroughPC(inst);
 }
@@ -1882,6 +1891,7 @@ bool TryDecodeTBNZ_ONLY_TESTBRANCH(const InstData &data, Instruction &inst) {
 
 // BL  <label>
 bool TryDecodeBL_ONLY_BRANCH_IMM(const InstData &data, Instruction &inst) {
+  inst.branch_taken_arch_name = inst.arch_name;
   inst.branch_taken_pc = static_cast<uint64_t>(static_cast<int64_t>(inst.pc) +
                                                (data.imm26.simm26 << 2ULL));
   inst.branch_not_taken_pc = inst.next_pc;

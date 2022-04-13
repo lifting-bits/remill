@@ -16,8 +16,12 @@
 
 
 #include <glog/logging.h>
-#include <remill/Arch/Sleigh/SleighArch.h>
+
+#include <remill/Arch/Name.h>
 #include <remill/BC/SleighLifter.h>
+
+#include "Arch.h"
+
 namespace remill::sleigh {
 
 namespace {
@@ -42,7 +46,7 @@ class AssemblyLogger : public AssemblyEmit {
 };
 }  // namespace
 
-PcodeDecoder::PcodeDecoder(Sleigh &engine_, Instruction &inst_)
+PcodeDecoder::PcodeDecoder(::Sleigh &engine_, Instruction &inst_)
     : engine(engine_),
       inst(inst_) {}
 
@@ -174,6 +178,8 @@ void PcodeDecoder::DecodeCategory(OpCode op, VarnodeData *vars, int32_t isize) {
       case CPUI_RETURN:
         this->current_resolver = InstructionFlowResolver::CreateIndirectRet();
         break;
+      default:
+        break;
     }
   }
 }
@@ -280,6 +286,15 @@ void DirectBranchResolver::ResolveControlFlow(uint64_t fall_through,
   insn.branch_taken_pc = this->target_address;
   insn.branch_not_taken_pc = fall_through;
   insn.category = this->category;
+
+  insn.branch_taken_arch_name = insn.arch_name;
+  if (insn.arch_name == ArchName::kArchAArch32LittleEndian ||
+      insn.arch_name == ArchName::kArchAArch64LittleEndian) {
+    if (insn.branch_taken_pc % 2u) {
+      insn.branch_taken_arch_name = ArchName::kArchThumb2LittleEndian;
+      insn.branch_taken_pc -= 1u;
+    }
+  }
 }
 
 void NormalResolver::ResolveControlFlow(uint64_t fall_through,
@@ -300,6 +315,15 @@ void DirectCBranchResolver::ResolveControlFlow(uint64_t fall_through,
     insn.branch_taken_pc = this->target_address;
     insn.branch_not_taken_pc = fall_through;
     insn.category = remill::Instruction::Category::kCategoryConditionalBranch;
+
+    insn.branch_taken_arch_name = insn.arch_name;
+    if (insn.arch_name == ArchName::kArchAArch32LittleEndian ||
+        insn.arch_name == ArchName::kArchAArch64LittleEndian) {
+      if (insn.branch_taken_pc % 2u) {
+        insn.branch_taken_arch_name = ArchName::kArchThumb2LittleEndian;
+        insn.branch_taken_pc -= 1u;
+      }
+    }
   }
 }
 
@@ -372,7 +396,7 @@ bool SleighArch::DecodeInstruction(uint64_t address,
 
 SleighArch::SleighArch(llvm::LLVMContext *context_, OSName os_name_,
                        ArchName arch_name_, std::string sla_name)
-    : Arch(context_, os_name_, arch_name_),
+    : ArchBase(context_, os_name_, arch_name_),
       sleigh_ctx(sla_name),
       sla_name(sla_name) {}
 
@@ -386,6 +410,7 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
   inst.bytes = instr_bytes;
   inst.arch_name = arch_name;
   inst.sub_arch_name = arch_name;
+  inst.branch_taken_arch_name = ArchName::kArchInvalid;
   inst.pc = address;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();
@@ -476,7 +501,7 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
 
 
 InstructionLifter::LifterPtr
-SleighArch::GetLifter(const remill::IntrinsicTable &intrinsics) const {
+SleighArch::DefaultLifter(const remill::IntrinsicTable &intrinsics) const {
   return std::make_unique<SleighLifter>(this, intrinsics);
 }
 
