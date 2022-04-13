@@ -32,9 +32,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
  private:
   class Parameter {
    public:
+    virtual ~Parameter(void) = default;
+
     virtual std::optional<llvm::Value *> LiftAsInParam(llvm::IRBuilder<> &bldr,
                                                        llvm::Type *ty) = 0;
-
 
     virtual LiftStatus StoreIntoParam(llvm::IRBuilder<> &bldr,
                                       llvm::Value *inner_lifted) = 0;

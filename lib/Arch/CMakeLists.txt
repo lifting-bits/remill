@@ -19,6 +19,7 @@ add_library(remill_arch STATIC
 
   Arch.cpp
   Arch.h
+  BitManipulation.h
   Instruction.cpp
   Name.cpp
 )

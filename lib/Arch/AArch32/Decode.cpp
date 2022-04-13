@@ -22,6 +22,7 @@
 #include <remill/BC/ABI.h>
 
 #include "Arch.h"
+#include "../BitManipulation.h"
 
 namespace remill {
 
@@ -726,7 +727,7 @@ static void ExpandTo32AddImmAddCarry(Instruction &inst, uint32_t imm12,
   if (!rotation_amount) {
     AddImmOp(inst, unrotated_value);
   } else {
-    AddImmOp(inst, __builtin_rotateright32(unrotated_value, rotation_amount));
+    AddImmOp(inst, RotateRight32(unrotated_value, rotation_amount));
   }
 
   if (carry_out) {
@@ -1076,9 +1077,9 @@ std::optional<uint64_t> EvalShift(const Operand::ShiftRegister &op,
   switch (op.shift_op) {
     case Operand::ShiftRegister::kShiftInvalid: return maybe_val;
     case Operand::ShiftRegister::kShiftLeftAround:
-      return __builtin_rotateleft32(val, static_cast<uint32_t>(op.shift_size));
+      return RotateLeft32(val, static_cast<uint32_t>(op.shift_size));
     case Operand::ShiftRegister::kShiftRightAround:
-      return __builtin_rotateright32(val, static_cast<uint32_t>(op.shift_size));
+      return RotateRight32(val, static_cast<uint32_t>(op.shift_size));
     case Operand::ShiftRegister::kShiftLeftWithOnes:
       return (val << op.shift_size) | ~(~0u << op.shift_size);
     case Operand::ShiftRegister::kShiftLeftWithZeroes:
@@ -1370,9 +1371,10 @@ static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst,
   // Raise the program counter to align to a multiple of 4 bytes
   if (enc.rn == kPCRegNum && (enc.opc == 0b100u || enc.opc == 0b010u)) {
     int64_t diff =
-        static_cast<int32_t>(inst.pc & ~(3u)) - static_cast<int32_t>(inst.pc);
+        static_cast<int32_t>(inst.pc & ~(3u)) -
+        static_cast<int32_t>(inst.pc);
     AddAddrRegOp(inst, kPCVariableName.data(), kAddressSize,
-                 Operand::kActionRead, diff);
+                 Operand::kActionRead, diff + 8);
   } else {
     AddIntRegOp(inst, enc.rn, kAddressSize, Operand::kActionRead);
   }
