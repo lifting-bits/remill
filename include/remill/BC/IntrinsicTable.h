@@ -31,9 +31,6 @@ namespace remill {
 
 class IntrinsicTable {
  public:
-  inline explicit IntrinsicTable(const std::unique_ptr<llvm::Module> &module)
-      : IntrinsicTable(module.get()) {}
-
   explicit IntrinsicTable(llvm::Module *module);
 
   llvm::Function *const error;
