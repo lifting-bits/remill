@@ -18,9 +18,7 @@
 
 #include "../Arch.h"
 
-#include <mutex>
 #include <sleigh/libsleigh.hh>
-
 
 // Unifies shared functionality between sleigh architectures
 
@@ -172,10 +170,6 @@ class SingleInstructionSleighContext {
 
   std::optional<int32_t> oneInstruction(uint64_t address, AssemblyEmit &emitter,
                                         std::string_view instr_bytes);
-
-  //NOTE(Ian): Who knows if this is enough? Need to figure out how much, if any of sleigh is thread safe
-  // TODO(Ian): we are exposing this mutex to clients who also want to use sleigh... this is horrible we need to do something else.
-  static std::mutex sleigh_parsing_mutex;
 
   ::Sleigh &GetEngine(void);
 

@@ -332,8 +332,8 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
     std::string sla_name)
     : engine(&image, &ctx) {
 
-  std::lock_guard<std::mutex> guard(
-      SingleInstructionSleighContext::sleigh_parsing_mutex);
+  auto guard = Arch::Lock(ArchName::kArchX86_SLEIGH);
+
   const std::optional<std::filesystem::path> sla_path =
       ::sleigh::FindSpecFile(sla_name.c_str());
   if (!sla_path) {
@@ -345,8 +345,6 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
   engine.initialize(storage);
   this->engine.allowContextSet(false);
 }
-
-std::mutex SingleInstructionSleighContext::sleigh_parsing_mutex;
 
 Address SingleInstructionSleighContext::GetAddressFromOffset(uint64_t off) {
   return Address(this->engine.getDefaultCodeSpace(), off);
@@ -404,8 +402,7 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
                                        std::string_view instr_bytes,
                                        Instruction &inst) {
   // TODO(Ian): I dont think we need to lock here?
-  //std::lock_guard<std::mutex> guard(
-  //    SingleInstructionSleighContext::sleigh_parsing_mutex);
+  // auto guard = Arch::Lock(ArchName::kArchX86_SLEIGH);
 
   inst.bytes = instr_bytes;
   inst.arch_name = arch_name;

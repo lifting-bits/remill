@@ -38,6 +38,7 @@
 
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -65,6 +66,45 @@ enum ArchName : uint32_t;
 
 class Arch;
 class Instruction;
+
+// An RAII locker for handling issues related to SLEIGH.
+class ArchLocker {
+ private:
+  friend class Arch;
+
+  std::mutex *lock;
+
+  ArchLocker(const ArchLocker &) = delete;
+  ArchLocker &operator=(const ArchLocker &) = delete;
+
+  inline ArchLocker(std::mutex *lock_)
+      : lock(lock_) {
+    if (lock) {
+      lock->lock();
+    }
+  }
+
+ public:
+  inline ArchLocker(void)
+      : lock(nullptr) {}
+
+  inline ~ArchLocker(void) {
+    if (lock) {
+      lock->unlock();
+    }
+  }
+
+  inline ArchLocker(ArchLocker &&that) noexcept
+      : lock(that.lock) {
+    that.lock = nullptr;
+  }
+
+  inline ArchLocker &operator=(ArchLocker &&that) noexcept {
+    ArchLocker copy(std::forward<ArchLocker>(that));
+    std::swap(lock, copy.lock);
+    return *this;
+  }
+};
 
 struct Register {
  public:
@@ -338,6 +378,12 @@ class Arch {
       const char *reg_name, llvm::Type *val_type,
       size_t offset, const char *parent_reg_name) const = 0;
 
+  // Returns a lock on global state. In general, Remill doesn't use global
+  // variables for storing state; however, SLEIGH sometimes does, and so when
+  // using SLEIGH-backed architectures, it can be necessary to acquire this
+  // lock.
+  static ArchLocker Lock(ArchName arch_name_);
+
  protected:
   Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
 
@@ -371,7 +417,6 @@ class Arch {
   // Defined in `lib/Arch/SPARC64/Arch.cpp`.
   static ArchPtr GetSPARC64(llvm::LLVMContext *context, OSName os,
                             ArchName arch_name);
-
 
   Arch(void) = delete;
 };
