@@ -1842,7 +1842,9 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
         static_cast<int32_t>(inst.pc & ~(3u)) - static_cast<int32_t>(inst.pc);
   }
 
-  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, 0u, false);
+  // TODO(pag): Changed `can_shift_right_by_32` to `true` but don't know why
+  //            it was previously `false`.
+  AddShiftRegImmOperand(inst, enc.rm, enc.type, enc.imm5, 0u, true);
 
   auto disp_expr = inst.operands.back().expr;
   auto disp_op = llvm::Instruction::Add;
