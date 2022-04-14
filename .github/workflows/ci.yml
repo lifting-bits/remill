@@ -40,7 +40,9 @@ jobs:
 
       - name: Build with build script
         shell: bash
-        run: ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
+        run: |
+          sudo apt-get update && sudo apt-get install g++-8
+          ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
       - name: Build with build-presets script
         shell: bash
         run: |
