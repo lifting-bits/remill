@@ -32,8 +32,10 @@
 // clang-format on
 
 #include <array>
+#include <filesystem>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -148,20 +150,25 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *M, std::string_view name);
 
 // Try to verify a module.
 bool VerifyModule(llvm::Module *module);
+// Returns diagnostic message if verify failed.
+std::optional<std::string> VerifyModuleMsg(llvm::Module *module);
 
 // Parses and loads a bitcode file into memory.
+std::unique_ptr<llvm::Module>
+LoadModuleFromFile(llvm::LLVMContext *context,
+                   std::string_view file_name,
+                   bool allow_failure = false) __attribute__((__deprecated__));
+
 std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
-                                                 std::string_view file_name,
-                                                 bool allow_failure = false);
+                                                 std::filesystem::path file_name);
 
 // Loads the semantics for the `arch`-specific machine, i.e. the machine of the
 // code that we want to lift.
 std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch);
-
-inline std::unique_ptr<llvm::Module>
-LoadArchSemantics(const std::unique_ptr<const Arch> &arch) {
-  return LoadArchSemantics(arch.get());
-}
+// `sem_dirs` is forwarded to `FindSemanticsBitcodeFile`.
+std::unique_ptr<llvm::Module>
+LoadArchSemantics(const Arch *arch,
+                  const std::vector<std::filesystem::path> &sem_dirs);
 
 // Store an LLVM module into a file.
 bool StoreModuleToFile(llvm::Module *module, std::string_view file_name,
@@ -171,15 +178,16 @@ bool StoreModuleToFile(llvm::Module *module, std::string_view file_name,
 bool StoreModuleIRToFile(llvm::Module *module, std::string_view file_name,
                          bool allow_failure = false);
 
-// Find the path to the semantics bitcode file associated with `FLAGS_arch`.
-std::string FindTargetSemanticsBitcodeFile(void) __attribute__((deprecated));
-
-// Find the path to the semantics bitcode file associated with `REMILL_ARCH`,
-// the architecture on which remill is compiled.
-std::string FindHostSemanticsBitcodeFile(void) __attribute__((deprecated));
-
 // Find a semantics bitcode file for the architecture `arch`.
-std::string FindSemanticsBitcodeFile(std::string_view arch);
+// Default compile-time created list of directories is searched.
+std::optional<std::filesystem::path> FindSemanticsBitcodeFile(std::string_view arch);
+// List of directories to search is provided as second argument - default compile time
+// created list is used as fallback only if `fallback_to_defaults` is set.
+// A "shallow" search happens, searching for file `arch` + ".bc".
+std::optional<std::filesystem::path>
+FindSemanticsBitcodeFile(std::string_view arch,
+                         const std::vector<std::filesystem::path> &dirs,
+                         bool fallback_to_defaults=true);
 
 // Return a pointer to the Nth argument (N=0 is the first argument).
 llvm::Argument *NthArgument(llvm::Function *func, size_t index);

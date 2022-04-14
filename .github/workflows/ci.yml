@@ -22,7 +22,6 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - { name: 'ubuntu', tag: '18.04' }
           - { name: 'ubuntu', tag: '20.04' }
         llvm: ['12', '13']
 
@@ -40,7 +39,9 @@ jobs:
 
       - name: Build with build script
         shell: bash
-        run: ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
+        run: |
+          sudo apt-get update && sudo apt-get install g++-8
+          ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
       - name: Build with build-presets script
         shell: bash
         run: |
@@ -179,26 +180,11 @@ jobs:
 
       - name: Group the packages by platform
         run: |
-          zip -r9 remill_ubuntu-18.04_packages.zip \
-                  ubuntu-18.04*
-
           zip -r9 remill_ubuntu-20.04_packages.zip \
                   ubuntu-20.04*
 
           zip -r9 remill_macos-11_packages.zip \
                   macos-11*
-
-      - name: Upload the Ubuntu 18.04 packages
-        uses: actions/upload-release-asset@v1
-
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: remill_ubuntu-18.04_packages.zip
-          asset_name: remill_ubuntu-18.04_packages.zip
-          asset_content_type: application/gzip
 
       - name: Upload the Ubuntu 20.04 packages
         uses: actions/upload-release-asset@v1
@@ -230,7 +216,7 @@ jobs:
     strategy:
       matrix:
         llvm: ["12", "13"]
-        ubuntu: ["18.04"]
+        ubuntu: ["20.04"]
     steps:
     - uses: actions/checkout@v2
     - name: Build LLVM ${{ matrix.llvm }} on ${{ matrix.ubuntu }}

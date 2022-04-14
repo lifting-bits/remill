@@ -46,25 +46,6 @@ function GetUbuntuOSVersion
       OS_VERSION=ubuntu-20.04
       return 0
     ;;
-    eoam)
-      echo "[!] Ubuntu 19.10 is not supported; using libraries for Ubuntu 18.04 instead"
-      OS_VERSION=ubuntu-18.04
-      return 0
-    ;;
-    disco)
-      echo "[!] Ubuntu 19.04 is not supported; using libraries for Ubuntu 18.04 instead"
-      OS_VERSION=ubuntu-18.04
-      return 0
-    ;;
-    cosmic)
-      echo "[!] Ubuntu 18.10 is not supported; using libraries for Ubuntu 18.04 instead"
-      OS_VERSION=ubuntu-18.04
-      return 0
-    ;;
-    bionic)
-      OS_VERSION=ubuntu-18.04
-      return 0
-    ;;
     *)
       echo "[x] Ubuntu ${DISTRIB_CODENAME} is not supported. Only xenial (16.04) and trusty (14.04) are supported."
       return 1
@@ -146,12 +127,12 @@ function GetOSVersion
     ;;
 
     *arch*)
-      OS_VERSION=ubuntu-18.04
+      OS_VERSION=ubuntu-20.04
       return 0
     ;;
 
     [Kk]ali)
-      OS_VERSION=ubuntu-18.04
+      OS_VERSION=ubuntu-20.04
       return 0;
     ;;
 

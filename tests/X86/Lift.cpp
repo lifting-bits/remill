@@ -49,8 +49,13 @@
 DEFINE_string(bc_out, "",
               "Name of the file in which to place the generated bitcode.");
 
-DECLARE_string(arch);
-DECLARE_string(os);
+DEFINE_string(os, REMILL_OS,
+              "Operating system name of the code being "
+              "translated. Valid OSes: linux, macos, windows, solaris.");
+DEFINE_string(arch, REMILL_ARCH,
+              "Architecture of the code being translated. "
+              "Valid architectures: x86, amd64 (with or without "
+              "`_avx` or `_avx512` appended), aarch64, aarch32");
 
 namespace {
 
@@ -121,7 +126,7 @@ extern "C" int main(int argc, char *argv[]) {
   auto os_name = remill::GetOSName(REMILL_OS);
   auto arch_name = remill::GetArchName(FLAGS_arch);
   auto arch = remill::Arch::Build(&context, os_name, arch_name);
-  auto module = remill::LoadArchSemantics(arch);
+  auto module = remill::LoadArchSemantics(arch.get());
 
   remill::IntrinsicTable intrinsics(module.get());
   remill::InstructionLifter inst_lifter(arch, intrinsics);

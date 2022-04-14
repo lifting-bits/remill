@@ -17,6 +17,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <filesystem>
 #include <sstream>
 #include <system_error>
 #include <unordered_map>
@@ -59,12 +60,6 @@
 #include "remill/BC/Util.h"
 #include "remill/BC/Version.h"
 #include "remill/OS/FileSystem.h"
-
-DECLARE_string(arch);
-
-DEFINE_string(
-    semantics_search_paths, "",
-    "Colon-separated list of search paths to use when searching for semantics files.");
 
 namespace {
 #ifdef _WIN32
@@ -381,10 +376,24 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *module,
 // Loads the semantics for the `arch`-specific machine, i.e. the machine of the
 // code that we want to lift.
 std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch) {
+    return LoadArchSemantics(arch, {});
+}
+
+std::unique_ptr<llvm::Module>
+LoadArchSemantics(const Arch *arch,
+                  const std::vector<std::filesystem::path> &sem_dirs)
+{
   auto arch_name = GetArchName(arch->arch_name);
-  auto path = FindSemanticsBitcodeFile(arch_name);
-  DLOG(INFO) << "Loading " << arch_name << " semantics from file " << path;
-  auto module = LoadModuleFromFile(arch->context, path);
+  // If `sem_dirs` does not contain the dir, fallback to compiled in paths.
+  auto path = FindSemanticsBitcodeFile(arch_name, sem_dirs, true);
+  // TODO(lukas): We can propagate error up, but we should first check each callsite
+  //              properly checks for possible error (this could not return pointer
+  //              without value before).
+  if (!path)
+    LOG(FATAL) << "Cannot find path to " << arch << " semantics bitcode file.";
+
+  DLOG(INFO) << "Loading " << arch_name << " semantics from file " << *path;
+  auto module = LoadModuleFromFile(arch->context, *path);
   arch->PrepareModule(module);
   arch->InitFromSemanticsModule(module.get());
   for (auto &func : *module) {
@@ -393,17 +402,34 @@ std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch) {
   return module;
 }
 
-// Try to verify a module.
-bool VerifyModule(llvm::Module *module) {
+std::optional<std::string> VerifyModuleMsg(llvm::Module *module)
+{
   std::string error;
   llvm::raw_string_ostream error_stream(error);
   if (llvm::verifyModule(*module, &error_stream)) {
     error_stream.flush();
-    DLOG(ERROR) << "Error verifying module read from file: " << error;
-    return false;
-  } else {
-    return true;
+    return error;
   }
+
+  return {};
+}
+
+// Try to verify a module.
+bool VerifyModule(llvm::Module *module) {
+  if (auto error = VerifyModuleMsg(module)) {
+    DLOG(ERROR) << "Error verifying module read from file: " << *error;
+    return false;
+  }
+
+  return true;
+}
+
+std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
+                                                 std::filesystem::path path)
+{
+  // NOTE(lukas): Calling deprecated function, once it is remove its body
+  //              will be more or less inlined.
+  return LoadModuleFromFile(context, path.string(), true);
 }
 
 // Reads an LLVM module from a file.
@@ -559,58 +585,62 @@ namespace {
 #define S(x) _S(x)
 #define MAJOR_MINOR S(LLVM_VERSION_MAJOR) "." S(LLVM_VERSION_MINOR)
 
-static const char *gSemanticsSearchPaths[] = {
+using paths_t = std::vector<std::filesystem::path>;
 
-    // Derived from the build.
-    REMILL_BUILD_SEMANTICS_DIR_X86 "\0",
-    REMILL_BUILD_SEMANTICS_DIR_AARCH32 "\0",
-    REMILL_BUILD_SEMANTICS_DIR_AARCH64 "\0",
-    REMILL_BUILD_SEMANTICS_DIR_SPARC32 "\0",
-    REMILL_BUILD_SEMANTICS_DIR_SPARC64 "\0",
-    REMILL_INSTALL_SEMANTICS_DIR "\0",
+const paths_t &DefaultSemanticsSearchPaths()
+{
+  static const paths_t paths =
+  {
+    REMILL_BUILD_SEMANTICS_DIR_X86,
+    REMILL_BUILD_SEMANTICS_DIR_AARCH32,
+    REMILL_BUILD_SEMANTICS_DIR_AARCH64,
+    REMILL_BUILD_SEMANTICS_DIR_SPARC32,
+    REMILL_BUILD_SEMANTICS_DIR_SPARC64,
+    REMILL_INSTALL_SEMANTICS_DIR,
     "/usr/local/share/remill/" MAJOR_MINOR "/semantics",
     "/usr/share/remill/" MAJOR_MINOR "/semantics",
     "/share/remill/" MAJOR_MINOR "/semantics",
-};
+  };
+  return paths;
+}
+
+using maybe_path_t = std::optional<std::filesystem::path>;
+
+maybe_path_t IsSemanticsBitcodeFile(
+  std::filesystem::path dir,
+  std::string_view arch)
+{
+  auto path = dir / (std::string(arch) + ".bc");
+  return (std::filesystem::exists(path)) ? std::make_optional(std::move(path)) : std::nullopt;
+}
 
 }  // namespace
 
-// Find the path to the semantics bitcode file associated with `FLAGS_arch`.
-std::string FindTargetSemanticsBitcodeFile(void) {
-  return FindSemanticsBitcodeFile(FLAGS_arch);
-}
-
-// Find the path to the semantics bitcode file associated with `REMILL_ARCH`,
-// the architecture on which remill is compiled.
-std::string FindHostSemanticsBitcodeFile(void) {
-  return FindSemanticsBitcodeFile(REMILL_ARCH);
-}
-
-// Find the path to the semantics bitcode file.
-std::string FindSemanticsBitcodeFile(std::string_view arch) {
-  if (!FLAGS_semantics_search_paths.empty()) {
-    std::stringstream pp;
-    pp << FLAGS_semantics_search_paths;
-    for (std::string sem_dir; std::getline(pp, sem_dir, ':');) {
-      std::stringstream ss;
-      ss << sem_dir << "/" << arch << ".bc";
-      if (auto sem_path = ss.str(); FileExists(sem_path)) {
+maybe_path_t _FindSemanticsBitcodeFile(std::string_view arch,
+                                       const paths_t &dirs) {
+ for (const auto &dir : dirs)
+    if (auto sem_path = IsSemanticsBitcodeFile(dir, arch))
         return sem_path;
-      }
-    }
-  }
-
-  for (auto sem_dir : gSemanticsSearchPaths) {
-    std::stringstream ss;
-    ss << sem_dir << "/" << arch << ".bc";
-    if (auto sem_path = ss.str(); FileExists(sem_path)) {
-      return sem_path;
-    }
-  }
-
-  LOG(FATAL) << "Cannot find path to " << arch << " semantics bitcode file.";
-  return "";
+  return {};
 }
+
+maybe_path_t FindSemanticsBitcodeFile(std::string_view arch,
+                                      const paths_t &dirs,
+                                      bool fallback_to_defaults) {
+  if (auto path = _FindSemanticsBitcodeFile(arch, dirs)) {
+    return path;
+  }
+
+  if (fallback_to_defaults)
+    return _FindSemanticsBitcodeFile(arch, DefaultSemanticsSearchPaths());
+
+  return {};
+}
+
+maybe_path_t FindSemanticsBitcodeFile(std::string_view arch) {
+  return _FindSemanticsBitcodeFile(arch, DefaultSemanticsSearchPaths());
+}
+
 
 namespace {
 
