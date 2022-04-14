@@ -98,6 +98,26 @@ bool Arch::NextInstructionIsDelayed(const Instruction &, const Instruction &,
   return false;
 }
 
+namespace {
+static std::mutex gSleighArchLock;
+}  // namespace
+
+// Returns a lock on global state. In general, Remill doesn't use global
+// variables for storing state; however, SLEIGH sometimes does, and so when
+// using SLEIGH-backed architectures, it can be necessary to acquire this
+// lock.
+ArchLocker Arch::Lock(ArchName arch_name_) {
+  switch (arch_name_) {
+    case ArchName::kArchAArch32LittleEndian:
+    case ArchName::kArchThumb2LittleEndian:
+    case ArchName::kArchAMD64_SLEIGH:
+    case ArchName::kArchX86_SLEIGH:
+      return &gSleighArchLock;
+    default:
+      return ArchLocker();
+  }
+}
+
 llvm::Triple Arch::BasicTriple(void) const {
   llvm::Triple triple;
   switch (os_name) {
