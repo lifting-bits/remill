@@ -25,7 +25,7 @@ If you are experiencing undocumented problems with Remill then ask for help in t
 
 ## Supported Platforms
 
-Remill is supported on Linux platforms and has been tested on Ubuntu 14.04, 16.04, and 18.04. Remill also works on macOS, and has experimental support for Windows.
+Remill is supported on Linux platforms and has been tested on Ubuntu 20.04. Remill also works on macOS, and has experimental support for Windows.
 
 Remill's Linux version can also be built via Docker for quicker testing.
 
@@ -55,7 +55,7 @@ Remill now comes with a Dockerfile for easier testing. This Dockerfile reference
 
 The Dockerfile allows for quick builds of multiple supported LLVM, architecture, and Linux configurations.
 
-Quickstart (builds Remill against LLVM 12 on Ubuntu 18.04 for AMD64):
+Quickstart (builds Remill against LLVM 12 on Ubuntu 20.04 for AMD64):
 
 Clone Remill:
 ```shell
@@ -69,7 +69,7 @@ Build Remill Docker container:
 # do the build
 docker build . -t remill \
      -f Dockerfile \
-     --build-arg UBUNTU_VERSION=18.04 \
+     --build-arg UBUNTU_VERSION=20.04 \
      --build-arg ARCH=amd64 \
      --build-arg LLVM_VERSION=12
 ```
