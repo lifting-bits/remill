@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-#include <remill/BC/SleighLifter.h>
-
-#include <cassert>
 #include <glog/logging.h>
 #include <remill/BC/ABI.h>
 #include <remill/BC/IntrinsicTable.h>
+#include <remill/BC/SleighLifter.h>
 #include <remill/BC/Util.h>
 
+#include <cassert>
 #include <unordered_map>
 
 #include "../Arch/Sleigh/Arch.h"
@@ -286,7 +285,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
     } else if (space_name == "const") {
       auto cst_v = llvm::ConstantInt::get(
-          this->insn_lifter_parent.GetWordType(), vnode.offset);
+          llvm::IntegerType::get(this->context, vnode.size * 8), vnode.offset);
       return ConstantValue::CreatConstant(cst_v);
     } else if (space_name == "unique") {
       auto reg_ptr = this->uniques.GetUniquePtr(vnode.offset, vnode.size, bldr);
@@ -563,7 +562,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       if (lifted_lhs.has_value() && lifted_rhs.has_value()) {
         LOG(INFO) << "Binop with lhs: "
                   << remill::LLVMThingToString(*lifted_lhs);
-        LOG(INFO) << "Binop with rhs" << remill::LLVMThingToString(*lifted_rhs);
+        LOG(INFO) << "Binop with rhs: "
+                  << remill::LLVMThingToString(*lifted_rhs);
         return this->LiftStoreIntoOutParam(
             bldr, op_func(*lifted_lhs, *lifted_rhs, bldr), outvar);
       }
@@ -1037,9 +1037,9 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
 
 SleighLifter::SleighLifter(const sleigh::SleighArch *arch_,
                            const IntrinsicTable &intrinsics_)
-      : InstructionLifter(arch_, intrinsics_),
-        sleigh_context(
-            new sleigh::SingleInstructionSleighContext(arch_->GetSLAName())) {
+    : InstructionLifter(arch_, intrinsics_),
+      sleigh_context(
+          new sleigh::SingleInstructionSleighContext(arch_->GetSLAName())) {
   arch_->InitializeSleighContext(*sleigh_context);
 }
 
