@@ -656,7 +656,7 @@ void Arch::PrepareModuleDataLayout(llvm::Module *mod) const {
   for (llvm::Function &func : *mod) {
     auto attribs = func.getAttributes();
     IF_LLVM_LT_1400(
-    attribs = attribs.removeAttributesAtIndex(
+    attribs = attribs.removeAttributes(
         context, llvm::AttributeLoc::FunctionIndex, target_attribs)
     );
 
