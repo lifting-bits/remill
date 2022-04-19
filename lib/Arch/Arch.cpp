@@ -60,6 +60,7 @@ static unsigned AddressSize(ArchName arch_name) {
     case kArchX86_AVX:
     case kArchX86_AVX512:
     case kArchAArch32LittleEndian:
+    case kArchThumb2LittleEndian:
     case kArchSparc32: return 32;
     case kArchAMD64:
     case kArchAMD64_AVX:
@@ -197,6 +198,13 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
     case kArchSparc64: {
       DLOG(INFO) << "Using architecture: 64-bit SPARC";
       ret = GetSPARC64(context_, os_name_, arch_name_);
+      break;
+    }
+
+    case kArchThumb2LittleEndian: {
+      DLOG(WARNING) << "Using architecture: Aarch32/Thumb2. WARNING: not fully implemented at this point."
+      //TODO(artem): Fix this once Thumb2 fully supported
+      ret = GetAArch32(context_, os_name_, arch_name_);
       break;
     }
   }
