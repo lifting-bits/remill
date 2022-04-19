@@ -72,7 +72,8 @@ typedef long double float128_t;
 
 // A "native_float80_t" is a native type that is closes to approximating
 // an x86 80-bit float.
-#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
+// when building against CUDA, default to 64-bit float80s
+#if !defined(__CUDACC__) && (defined(__x86_64__) || defined(__i386__) || defined(_M_X86))
   #if defined(__float80)
   typedef __float80 native_float80_t;
   #else
@@ -88,7 +89,8 @@ static const int kEightyBitsInBytes = 10;
 union union_ld {
   struct {
     uint8_t data[kEightyBitsInBytes];
-#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
+    // when building against CUDA, default to 64-bit float80s
+#if !defined(__CUDACC__) && (defined(__x86_64__) || defined(__i386__) || defined(_M_X86))
     // We are doing x86 on x86, so we have native x86 FP80s, but they
     // are not available in raw 80-bit native form.
     //

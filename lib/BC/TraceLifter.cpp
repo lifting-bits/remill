@@ -18,6 +18,7 @@
 
 #include <glog/logging.h>
 #include <llvm/IR/Instructions.h>
+#include <map>
 #include <set>
 #include <sstream>
 
