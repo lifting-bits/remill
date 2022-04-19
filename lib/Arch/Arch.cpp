@@ -55,6 +55,7 @@ static unsigned AddressSize(ArchName arch_name) {
     case kArchX86_AVX:
     case kArchX86_AVX512:
     case kArchAArch32LittleEndian:
+    case kArchThumb2LittleEndian:
     case kArchSparc32: return 32;
     case kArchAMD64:
     case kArchAMD64_AVX:
@@ -192,6 +193,13 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
     case kArchSparc64: {
       DLOG(INFO) << "Using architecture: 64-bit SPARC";
       ret = GetSPARC64(context_, os_name_, arch_name_);
+      break;
+    }
+
+    case kArchThumb2LittleEndian: {
+      DLOG(WARNING) << "Using architecture: Aarch32/Thumb2. WARNING: not fully implemented at this point.";
+      //TODO(artem): Fix this once Thumb2 fully supported
+      ret = GetAArch32(context_, os_name_, arch_name_);
       break;
     }
   }
@@ -633,6 +641,7 @@ void Arch::PrepareModuleDataLayout(llvm::Module *mod) const {
   auto &context = mod->getContext();
 
   llvm::AttributeSet target_attribs;
+
   target_attribs = target_attribs.addAttribute(
       context,
       IF_LLVM_LT_500_(llvm::AttributeSet::FunctionIndex) "target-features");
@@ -641,8 +650,15 @@ void Arch::PrepareModuleDataLayout(llvm::Module *mod) const {
 
   for (llvm::Function &func : *mod) {
     auto attribs = func.getAttributes();
+    IF_LLVM_LT_1400(
     attribs = attribs.removeAttributes(
-        context, llvm::AttributeLoc::FunctionIndex, target_attribs);
+        context, llvm::AttributeLoc::FunctionIndex, target_attribs)
+    );
+
+    IF_LLVM_GTE_1400(
+    attribs = attribs.removeFnAttributes(context, llvm::AttributeMask(target_attribs))
+    );
+
     func.setAttributes(attribs);
   }
 }
