@@ -15,12 +15,11 @@
  */
 
 
-#include <glog/logging.h>
+#include "Arch.h"
 
+#include <glog/logging.h>
 #include <remill/Arch/Name.h>
 #include <remill/BC/SleighLifter.h>
-
-#include "Arch.h"
 
 namespace remill::sleigh {
 
@@ -178,8 +177,7 @@ void PcodeDecoder::DecodeCategory(OpCode op, VarnodeData *vars, int32_t isize) {
       case CPUI_RETURN:
         this->current_resolver = InstructionFlowResolver::CreateIndirectRet();
         break;
-      default:
-        break;
+      default: break;
     }
   }
 }
@@ -418,22 +416,32 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
   // Now decode the instruction.
   this->InitializeSleighContext(this->sleigh_ctx);
   PcodeDecoder pcode_handler(this->sleigh_ctx.GetEngine(), inst);
-  auto instr_len =
-      this->sleigh_ctx.oneInstruction(address, pcode_handler, instr_bytes);
+  auto max_sz =
+      std::min<uint64_t>(inst.bytes.size(), this->MaxInstructionSize());
+  LOG(INFO) << "Provided insn size: " << inst.bytes.size();
+  for (auto curr_sz = this->MinInstructionSize(); curr_sz <= max_sz;
+       curr_sz++) {
+    LOG(INFO) << "Attempting to decode with len " << curr_sz;
+    auto curr_bytes = instr_bytes.substr(0, curr_sz);
+    auto instr_len =
+        this->sleigh_ctx.oneInstruction(address, pcode_handler, curr_bytes);
+    if (instr_len.has_value()) {
+      // communicate the size back to the caller
+      inst.bytes = curr_bytes;
+      assert(inst.bytes.size() == curr_sz);
 
-  if (instr_len.has_value()) {
-    InstructionFunctionSetter setter(inst);
-    this->sleigh_ctx.oneInstruction(address, setter, instr_bytes);
-    LOG(INFO) << "Instr len:" << *instr_len;
-    LOG(INFO) << "Addr: " << address;
-    auto fallthrough = address + *instr_len;
-    LOG(INFO) << "Fallthrough: " << fallthrough;
-    pcode_handler.GetResolver()->ResolveControlFlow(fallthrough, inst);
-    LOG(INFO) << "Decoded as " << inst.Serialize();
-    return true;
-  } else {
-    return false;
+      InstructionFunctionSetter setter(inst);
+      this->sleigh_ctx.oneInstruction(address, setter, curr_bytes);
+      LOG(INFO) << "Instr len:" << *instr_len;
+      LOG(INFO) << "Addr: " << address;
+      auto fallthrough = address + *instr_len;
+      LOG(INFO) << "Fallthrough: " << fallthrough;
+      pcode_handler.GetResolver()->ResolveControlFlow(fallthrough, inst);
+      LOG(INFO) << "Decoded as " << inst.Serialize();
+      return true;
+    }
   }
+  return false;
 }
 
 
@@ -470,7 +478,12 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
   } catch (UnimplError e) {
     // NOTE(Ian): Similar... except sleigh did decode we just dont have pcode semantics. unfortunately since we rely on those to correctly decode
     // the remill instruction we need to treat it as a decoding failure.
-    LOG(ERROR) << "Unimplemented error";
+    std::stringstream ss;
+    for (auto bt : instr_bytes) {
+      ss << std::hex << (int) bt;
+    }
+
+    LOG(ERROR) << "Unimplemented error: " << ss.str();
     return std::nullopt;
   }
 }
