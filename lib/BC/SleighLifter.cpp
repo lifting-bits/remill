@@ -98,51 +98,25 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
     std::optional<llvm::Value *> LiftAsInParam(llvm::IRBuilder<> &bldr,
                                                llvm::Type *ty) override {
-      if (auto *inty = llvm::dyn_cast<llvm::IntegerType>(ty)) {
-        llvm::Function *intrinsic = nullptr;
-        switch (inty->getBitWidth()) {
-          case 8: intrinsic = this->intrinsics->read_memory_8; break;
-          case 16: intrinsic = this->intrinsics->read_memory_16; break;
-          case 32: intrinsic = this->intrinsics->read_memory_32; break;
-          case 64: intrinsic = this->intrinsics->read_memory_64; break;
-        }
-
-        if (intrinsic) {
-          llvm::Value *temp_args[] = {
-              bldr.CreateLoad(this->memory_ptr_type, this->memory_ref_ptr),
-              this->index};
-          return bldr.CreateCall(intrinsic, temp_args);
-        }
+      auto mem = bldr.CreateLoad(this->memory_ptr_type, this->memory_ref_ptr);
+      auto res = remill::LoadFromMemory(
+          *this->intrinsics, bldr.GetInsertBlock(), ty, mem, this->index);
+      if (res) {
+        return res;
+      } else {
+        return std::nullopt;
       }
-
-      return std::nullopt;
     }
 
     LiftStatus StoreIntoParam(llvm::IRBuilder<> &bldr,
                               llvm::Value *inner_lifted) override {
-
-
-      if (auto *inty =
-              llvm::dyn_cast<llvm::IntegerType>(inner_lifted->getType())) {
-        llvm::Function *intrinsic = nullptr;
-        switch (inty->getBitWidth()) {
-          case 8: intrinsic = this->intrinsics->write_memory_8; break;
-          case 16: intrinsic = this->intrinsics->write_memory_16; break;
-          case 32: intrinsic = this->intrinsics->write_memory_32; break;
-          case 64: intrinsic = this->intrinsics->write_memory_64; break;
-        }
-
-        if (intrinsic) {
-          llvm::Value *temp_args[] = {
-              bldr.CreateLoad(this->memory_ptr_type, this->memory_ref_ptr),
-              this->index, inner_lifted};
-          llvm::Value *new_memory_ptr = bldr.CreateCall(intrinsic, temp_args);
-          bldr.CreateStore(new_memory_ptr, this->memory_ref_ptr);
-          return LiftStatus::kLiftedInstruction;
-        }
+      auto mem = bldr.CreateLoad(this->memory_ptr_type, this->memory_ref_ptr);
+      if (remill::StoreToMemory(*this->intrinsics, bldr.GetInsertBlock(),
+                                inner_lifted, mem, this->index)) {
+        return LiftStatus::kLiftedInstruction;
+      } else {
+        return LiftStatus::kLiftedInvalidInstruction;
       }
-
-      return LiftStatus::kLiftedUnsupportedInstruction;
     }
   };
 
@@ -196,7 +170,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         return this->cached_unique_ptrs.find(offset)->second;
       }
       auto ptr = bldr.CreateAlloca(
-          llvm::IntegerType::get(this->context, size * 8), 0, nullptr);
+          llvm::IntegerType::get(this->context, 8 * size), 0, nullptr);
       this->cached_unique_ptrs.insert({offset, ptr});
       return ptr;
     }
@@ -915,7 +889,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   LiftStatus GetStatus() {
     return this->status;
   }
-};
+};  // namespace remill
 
 std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
     SleighLifter::PcodeToLLVMEmitIntoBlock::INTEGER_BINARY_OPS = {

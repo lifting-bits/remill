@@ -330,6 +330,12 @@ if(REMILL_ENABLE_INSTALL_TARGET)
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/remill")
 endif()
 
+
+if (REMILL_ENABLE_TESTING_SLEIGH_THUMB)
+  message(STATUS "thumb tests enabled")
+  add_subdirectory(tests/Thumb)
+endif()
+
 # tests
 if (REMILL_ENABLE_TESTING)
   # Tests require enabling exports on binaries
