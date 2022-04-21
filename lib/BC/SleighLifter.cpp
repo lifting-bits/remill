@@ -111,8 +111,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     LiftStatus StoreIntoParam(llvm::IRBuilder<> &bldr,
                               llvm::Value *inner_lifted) override {
       auto mem = bldr.CreateLoad(this->memory_ptr_type, this->memory_ref_ptr);
-      if (remill::StoreToMemory(*this->intrinsics, bldr.GetInsertBlock(),
-                                inner_lifted, mem, this->index)) {
+      auto new_mem =
+          remill::StoreToMemory(*this->intrinsics, bldr.GetInsertBlock(),
+                                inner_lifted, mem, this->index);
+      if (new_mem) {
+        bldr.CreateStore(new_mem, this->memory_ref_ptr);
         return LiftStatus::kLiftedInstruction;
       } else {
         return LiftStatus::kLiftedInvalidInstruction;
@@ -746,11 +749,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         if (new_size < outvar->size) {
           subpiece_lhs = bldr.CreateZExt(
               subpiece_lhs,
-              llvm::IntegerType::get(this->context, outvar->size));
+              llvm::IntegerType::get(this->context, 8 * outvar->size));
         } else if (new_size > outvar->size) {
           subpiece_lhs = bldr.CreateTrunc(
               subpiece_lhs,
-              llvm::IntegerType::get(this->context, outvar->size));
+              llvm::IntegerType::get(this->context, 8 * outvar->size));
         }
 
         return this->LiftStoreIntoOutParam(bldr, subpiece_lhs, outvar);
@@ -1041,7 +1044,7 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
   //NOTE(Ian): If we made it past decoding we should be able to decode the bytes again
   assert(res.has_value());
   LOG(INFO) << lifter.GetStatus();
-  block->dump();
+
   return lifter.GetStatus();
 }
 
