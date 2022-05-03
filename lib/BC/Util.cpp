@@ -53,6 +53,7 @@
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/IRReader.h"
+#include "remill/BC/Compat/PointerType.h"
 #include "remill/BC/Compat/ToolOutputFile.h"
 #include "remill/BC/Compat/VectorType.h"
 #include "remill/BC/Compat/Verifier.h"
@@ -944,7 +945,7 @@ RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context,
 
     case llvm::Type::PointerTyID: {
       auto ptr_type = llvm::dyn_cast<llvm::PointerType>(type);
-      auto elem_type = ptr_type->getElementType();
+      auto elem_type = getPointerElementType(ptr_type);
       cached =
           llvm::PointerType::get(RecontextualizeType(elem_type, context, cache),
                                  ptr_type->getAddressSpace());
@@ -1476,11 +1477,11 @@ llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
 
   auto &dest_context = dest_module->getContext();
   const auto type = ::remill::RecontextualizeType(
-      var->getType()->getElementType(), dest_context);
+      getPointerElementType(var->getType()), dest_context);
 
   auto dest_var = dest_module->getGlobalVariable(var->getName());
   if (dest_var) {
-    CHECK_EQ(type, dest_var->getType()->getElementType());
+    CHECK_EQ(type, getPointerElementType(dest_var->getType()));
     moved_var = dest_var;
     return dest_var;
   }
@@ -1530,7 +1531,7 @@ llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
     }
   }
 
-  const auto elem_type = dest_type->getElementType();
+  const auto elem_type = getPointerElementType(dest_type);
   const auto dest_var = llvm::GlobalAlias::create(
       elem_type, var->getType()->getAddressSpace(), var->getLinkage(),
       var->getName(), nullptr, dest_module);
@@ -2446,8 +2447,8 @@ llvm::Value *BuildPointerToOffset(llvm::IRBuilder<> &ir, llvm::Value *ptr,
     }
   }
 
-  const auto dest_elem_type = dest_elem_ptr_type->getElementType();
-  const auto ptr_elem_type = ptr_type->getElementType();
+  const auto dest_elem_type = getPointerElementType(dest_elem_ptr_type);
+  const auto ptr_elem_type = getPointerElementType(ptr_type);
   const auto ptr_elem_size = dl.getTypeAllocSize(ptr_elem_type);
   const auto base_index = dest_elem_offset / ptr_elem_size;
 
