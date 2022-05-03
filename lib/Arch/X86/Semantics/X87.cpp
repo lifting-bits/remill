@@ -1370,7 +1370,7 @@ DEF_FPU_SEM(DoFYL2X) {
   auto st1 = Read(X87_ST1);
   state.sw.ze = IsZero(st0);
   state.sw.de = IsDenormal(st0) | IsDenormal(st1);
-  state.sw.ie = (IsSignalingNaN(st0) | IsSignalingNaN(st1)) ||
+  state.sw.ie = (IsSignalingNaN(st0) || IsSignalingNaN(st1)) ||
                 (IsNegative(st0) && !IsInfinite(st0) && !state.sw.ze);
   auto res = FMul(st1, Log2(st0));
   state.sw.pe = IsImprecise(res);
@@ -1385,7 +1385,7 @@ DEF_FPU_SEM(DoFYL2XP1) {
   auto st1 = Read(X87_ST1);
   state.sw.ze = IsZero(st0);
   state.sw.de = IsDenormal(st0) | IsDenormal(st1);
-  state.sw.ie = IsSignalingNaN(st0) | IsSignalingNaN(st1);
+  state.sw.ie = IsSignalingNaN(st0) || IsSignalingNaN(st1);
   auto res = FMul(st1, Log2(FAdd(st0, Float80(1.0))));
   state.sw.pe = IsImprecise(res);
   Write(X87_ST1, res);
