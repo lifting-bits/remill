@@ -656,6 +656,7 @@ std::string Instruction::Serialize(void) const {
     case kArchX86:
     case kArchX86_AVX:
     case kArchX86_AVX512: ss << "X86"; break;
+    case kArchThumb2LittleEndian: ss << "Thumb2"; break;
     case kArchAArch32LittleEndian: ss << "AArch32"; break;
     case kArchAArch64LittleEndian: ss << "AArch64"; break;
     case kArchSparc32: ss << "SPARC32"; break;
