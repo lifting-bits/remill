@@ -20,6 +20,11 @@
 namespace remill {
 
 inline static llvm::Type *PointerElementType(llvm::PointerType *type) {
+#if LLVM_VERSION_NUMBER > LLVM_VERSION(13, 0)
+  if (type->isOpaque())
+    return nullptr;
+#endif
+
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(14, 0)
   return type->getElementType();
 #else
