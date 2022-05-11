@@ -26,8 +26,7 @@ class LiftingTester {
  public:
   LiftingTester(llvm::LLVMContext *context, remill::OSName os_name,
                 remill::ArchName arch_name) {
-    this->arch = remill::Arch::Build(context, remill::OSName::kOSLinux,
-                                     remill::ArchName::kArchX86_SLEIGH);
+    this->arch = remill::Arch::Build(context, os_name, arch_name);
     this->target_module = remill::LoadArchSemantics(this->arch.get());
     this->table =
         std::make_unique<remill::IntrinsicTable>(this->target_module.get());
@@ -61,13 +60,23 @@ TEST(DifferentialTests, SimpleAddDifferenceX86) {
   llvm::LLVMContext context;
   LiftingTester sleighx86tester(&context, remill::OSName::kOSLinux,
                                 remill::ArchName::kArchX86_SLEIGH);
+
+  LiftingTester x86_base_tester(&context, remill::OSName::kOSLinux,
+                                remill::ArchName::kArchX86);
   std::string_view insn_data("\x01\xca", 2);
-  auto func =
+  auto func1 =
       sleighx86tester.LiftInstructionFunction("add_diff_sleigh", insn_data, 0);
 
-  EXPECT_TRUE(func.has_value());
+  EXPECT_TRUE(func1.has_value());
 
-  LOG(INFO) << remill::LLVMThingToString(*func);
+  LOG(INFO) << remill::LLVMThingToString(*func1);
+
+  auto func2 =
+      x86_base_tester.LiftInstructionFunction("add_diff_x86", insn_data, 0);
+
+  EXPECT_TRUE(func2.has_value());
+
+  LOG(INFO) << remill::LLVMThingToString(*func2);
 }
 
 TEST(LiftingRegressions, AsrsFailsInContext) {

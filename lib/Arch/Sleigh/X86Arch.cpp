@@ -44,7 +44,8 @@ class SleighX86Arch final : public remill::sleigh::SleighArch {
  public:
   SleighX86Arch(llvm::LLVMContext *context_, OSName os_name_,
                 ArchName arch_name_)
-      : SleighArch(context_, os_name_, arch_name_, "x86-64.sla") {}
+      : SleighArch(context_, os_name_, arch_name_,
+                   kArchX86_SLEIGH == arch_name_ ? "x86.sla" : "x86-64.sla") {}
 
   virtual ~SleighX86Arch(void) = default;
 
@@ -198,8 +199,7 @@ class SleighX86Arch final : public remill::sleigh::SleighArch {
     bool has_avx512 = false;
     switch (arch_name) {
       case kArchX86_AVX:
-      case kArchAMD64_AVX:
-        has_avx = true; break;
+      case kArchAMD64_AVX: has_avx = true; break;
       case kArchX86_AVX512:
       case kArchAMD64_AVX512:
       case kArchX86_SLEIGH:
