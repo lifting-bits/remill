@@ -22,6 +22,7 @@
 
 #include <cassert>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "../Arch/Sleigh/Arch.h"
 
@@ -272,6 +273,20 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     }
   }
 
+
+  llvm::Value *FixResultForOutVarnode(llvm::IRBuilder<> &bldr,
+                                      llvm::Value *orig, VarnodeData outvnode) {
+    assert(orig->getType()->isIntegerTy());
+    auto out_bits = outvnode.size * 8;
+    if (out_bits == orig->getType()->getIntegerBitWidth()) {
+      return orig;
+    }
+
+    auto target_ty = llvm::IntegerType::get(bldr.getContext(), out_bits);
+
+    return bldr.CreateZExtOrTrunc(orig, target_ty);
+  }
+
   std::optional<llvm::Value *> LiftInParam(llvm::IRBuilder<> &bldr,
                                            VarnodeData vnode, llvm::Type *ty) {
     ParamPtr ptr = this->LiftParamPtr(bldr, vnode);
@@ -483,10 +498,16 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       case OpCode::CPUI_POPCOUNT: {
         auto ctpop_inval = this->LiftIntegerInParam(bldr, input_var);
         if (ctpop_inval.has_value()) {
+          llvm::Type *overloaded_types[1] = {(*ctpop_inval)->getType()};
           llvm::Function *ctpop_intrinsic = llvm::Intrinsic::getDeclaration(
-              bldr.GetInsertBlock()->getModule(), llvm::Intrinsic::ctpop);
+              bldr.GetInsertBlock()->getModule(), llvm::Intrinsic::ctpop,
+              overloaded_types);
+
           llvm::Value *ctpop_args[] = {*ctpop_inval};
-          llvm::Value *ctpop_val = bldr.CreateCall(ctpop_intrinsic, ctpop_args);
+          llvm::Value *ctpop_val = this->FixResultForOutVarnode(
+              bldr, bldr.CreateCall(ctpop_intrinsic, ctpop_args), *outvar);
+
+
           return this->LiftStoreIntoOutParam(bldr, ctpop_val, outvar);
         }
         break;
@@ -498,6 +519,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   using BinaryOperator = std::function<llvm::Value *(
       llvm::Value *, llvm::Value *, llvm::IRBuilder<> &)>;
   static std::map<OpCode, BinaryOperator> INTEGER_BINARY_OPS;
+  static std::unordered_set<OpCode> INTEGER_COMP_OPS;
 
 
   LiftStatus LiftIntegerBinOp(llvm::IRBuilder<> &bldr, OpCode opc,
@@ -541,8 +563,18 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
                   << remill::LLVMThingToString(*lifted_lhs);
         LOG(INFO) << "Binop with rhs: "
                   << remill::LLVMThingToString(*lifted_rhs);
-        return this->LiftStoreIntoOutParam(
-            bldr, op_func(*lifted_lhs, *lifted_rhs, bldr), outvar);
+        auto orig_res = op_func(*lifted_lhs, *lifted_rhs, bldr);
+        if (INTEGER_COMP_OPS.find(opc) != INTEGER_COMP_OPS.end()) {
+          // Comparison operators always return a byte
+          if (orig_res->getType()->getIntegerBitWidth() != 8) {
+            orig_res = bldr.CreateZExt(
+                orig_res, llvm::IntegerType::get(bldr.getContext(), 8));
+          }
+        }
+        LOG(INFO) << "Res: " << remill::LLVMThingToString(orig_res);
+        LOG(INFO) << "Res ty: "
+                  << remill::LLVMThingToString(orig_res->getType());
+        return this->LiftStoreIntoOutParam(bldr, orig_res, outvar);
       }
     }
     return LiftStatus::kLiftedUnsupportedInstruction;
@@ -894,6 +926,12 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   }
 };  // namespace remill
 
+std::unordered_set<OpCode>
+    SleighLifter::PcodeToLLVMEmitIntoBlock::INTEGER_COMP_OPS = {
+        CPUI_INT_EQUAL,   CPUI_INT_NOTEQUAL,  CPUI_INT_LESS,
+        CPUI_INT_SLESS,   CPUI_INT_LESSEQUAL, CPUI_INT_SLESSEQUAL,
+        CPUI_INT_SBORROW, CPUI_INT_SCARRY,    CPUI_INT_CARRY};
+
 std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
     SleighLifter::PcodeToLLVMEmitIntoBlock::INTEGER_BINARY_OPS = {
         {OpCode::CPUI_INT_AND,
@@ -982,9 +1020,10 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
          }},
         {OpCode::CPUI_INT_CARRY,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           llvm::Type *overloaded_types[1] = {lhs->getType()};
            llvm::Function *uadd_intrinsic = llvm::Intrinsic::getDeclaration(
                bldr.GetInsertBlock()->getModule(),
-               llvm::Intrinsic::uadd_with_overflow);
+               llvm::Intrinsic::uadd_with_overflow, overloaded_types);
            llvm::Value *uadd_args[] = {lhs, rhs};
            llvm::Value *uadd_val = bldr.CreateCall(uadd_intrinsic, uadd_args);
            // The value at index 1 is the overflow bit.
@@ -992,9 +1031,10 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
          }},
         {OpCode::CPUI_INT_SCARRY,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           llvm::Type *overloaded_types[1] = {lhs->getType()};
            llvm::Function *sadd_intrinsic = llvm::Intrinsic::getDeclaration(
                bldr.GetInsertBlock()->getModule(),
-               llvm::Intrinsic::sadd_with_overflow);
+               llvm::Intrinsic::sadd_with_overflow, overloaded_types);
            llvm::Value *sadd_args[] = {lhs, rhs};
            llvm::Value *sadd_val = bldr.CreateCall(sadd_intrinsic, sadd_args);
            // The value at index 1 is the overflow bit.
@@ -1002,9 +1042,10 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
          }},
         {OpCode::CPUI_INT_SBORROW,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           llvm::Type *overloaded_types[1] = {lhs->getType()};
            llvm::Function *ssub_intrinsic = llvm::Intrinsic::getDeclaration(
                bldr.GetInsertBlock()->getModule(),
-               llvm::Intrinsic::ssub_with_overflow);
+               llvm::Intrinsic::ssub_with_overflow, overloaded_types);
            llvm::Value *ssub_args[] = {lhs, rhs};
            llvm::Value *ssub_val = bldr.CreateCall(ssub_intrinsic, ssub_args);
            // The value at index 1 is the overflow bit.

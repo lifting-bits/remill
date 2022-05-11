@@ -75,16 +75,14 @@ class ArchLocker {
   ArchLocker(const ArchLocker &) = delete;
   ArchLocker &operator=(const ArchLocker &) = delete;
 
-  inline ArchLocker(std::mutex *lock_)
-      : lock(lock_) {
+  inline ArchLocker(std::mutex *lock_) : lock(lock_) {
     if (lock) {
       lock->lock();
     }
   }
 
  public:
-  inline ArchLocker(void)
-      : lock(nullptr) {}
+  inline ArchLocker(void) : lock(nullptr) {}
 
   inline ~ArchLocker(void) {
     if (lock) {
@@ -92,8 +90,7 @@ class ArchLocker {
     }
   }
 
-  inline ArchLocker(ArchLocker &&that) noexcept
-      : lock(that.lock) {
+  inline ArchLocker(ArchLocker &&that) noexcept : lock(that.lock) {
     that.lock = nullptr;
   }
 
