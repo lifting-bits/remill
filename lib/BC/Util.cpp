@@ -426,38 +426,28 @@ bool VerifyModule(llvm::Module *module) {
 }
 
 std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
-                                                 std::filesystem::path path)
+                                                 std::filesystem::path file_name)
 {
-  // NOTE(lukas): Calling deprecated function, once it is remove its body
-  //              will be more or less inlined.
-  return LoadModuleFromFile(context, path.string(), true);
-}
-
-// Reads an LLVM module from a file.
-std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
-                                                 std::string_view file_name_,
-                                                 bool allow_failure) {
   llvm::SMDiagnostic err;
-  llvm::StringRef file_name(file_name_.data(), file_name_.size());
-  auto module = llvm::parseIRFile(file_name, err, *context);
+  auto module = llvm::parseIRFile(file_name.string(), err, *context);
 
   if (!module) {
-    LOG_IF(FATAL, !allow_failure)
-        << "Unable to parse module file " << file_name_ << ": "
+    LOG(ERROR)
+        << "Unable to parse module file " << file_name << ": "
         << err.getMessage().str();
     return {};
   }
 
   auto ec = module->materializeAll();  // Just in case.
   if (ec) {
-    LOG_IF(FATAL, !allow_failure)
-        << "Unable to materialize everything from " << file_name_;
+    LOG(ERROR)
+        << "Unable to materialize everything from " << file_name;
     return {};
   }
 
   if (!VerifyModule(module.get())) {
-    LOG_IF(FATAL, !allow_failure)
-        << "Error verifying module read from file " << file_name_;
+    LOG(ERROR)
+        << "Error verifying module read from file " << file_name;
     return {};
   }
 
