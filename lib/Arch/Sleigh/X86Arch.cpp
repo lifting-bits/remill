@@ -44,8 +44,10 @@ class SleighX86Arch final : public remill::sleigh::SleighArch {
  public:
   SleighX86Arch(llvm::LLVMContext *context_, OSName os_name_,
                 ArchName arch_name_)
-      : SleighArch(context_, os_name_, arch_name_,
-                   kArchX86_SLEIGH == arch_name_ ? "x86.sla" : "x86-64.sla") {}
+      : SleighArch(
+            context_, os_name_, arch_name_,
+            kArchX86_SLEIGH == arch_name_ ? "x86.sla" : "x86-64.sla",
+            kArchX86_SLEIGH == arch_name_ ? "x86.pspec" : "x86-64.pspec") {}
 
   virtual ~SleighX86Arch(void) = default;
 

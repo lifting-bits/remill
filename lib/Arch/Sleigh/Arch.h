@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include "../Arch.h"
-
 #include <sleigh/libsleigh.hh>
+
+#include "../Arch.h"
 
 // Unifies shared functionality between sleigh architectures
 
@@ -173,13 +173,13 @@ class SingleInstructionSleighContext {
 
   ::Sleigh &GetEngine(void);
 
-  SingleInstructionSleighContext(std::string sla_name);
+  SingleInstructionSleighContext(std::string sla_name, std::string pspec_name);
 };
 
 class SleighArch : public ArchBase {
  public:
   SleighArch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_,
-             std::string sla_name);
+             std::string sla_name, std::string pspec_name);
 
 
  public:
@@ -197,11 +197,14 @@ class SleighArch : public ArchBase {
 
   std::string GetSLAName() const;
 
+  std::string GetPSpec() const;
+
  protected:
   bool DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,
                              Instruction &inst);
 
   SingleInstructionSleighContext sleigh_ctx;
   std::string sla_name;
+  std::string pspec_name;
 };
 }  // namespace remill::sleigh

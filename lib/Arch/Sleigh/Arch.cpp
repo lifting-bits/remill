@@ -327,7 +327,7 @@ void DirectCBranchResolver::ResolveControlFlow(uint64_t fall_through,
 
 
 SingleInstructionSleighContext::SingleInstructionSleighContext(
-    std::string sla_name)
+    std::string sla_name, std::string pspec_name)
     : engine(&image, &ctx) {
 
   auto guard = Arch::Lock(ArchName::kArchX86_SLEIGH);
@@ -339,13 +339,17 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
   }
   { LOG(INFO) << "Using spec at: " << sla_path->string(); }
 
-  auto pspec_path = *sla_path;
-  pspec_path.replace_extension("pspec");
+  auto pspec_path = ::sleigh::FindSpecFile(pspec_name.c_str());
+
+  if (!pspec_path) {
+    LOG(FATAL) << "Couldn't find required spec file: " << sla_name << '\n';
+  }
+  LOG(INFO) << "Using pspec at: " << pspec_path->string();
 
   Element *root = storage.openDocument(sla_path->string())->getRoot();
   storage.registerTag(root);
 
-  auto pspec = storage.openDocument(pspec_path.generic_string());
+  auto pspec = storage.openDocument(pspec_path->string());
   storage.registerTag(pspec->getRoot());
 
   engine.initialize(storage);
@@ -408,10 +412,12 @@ bool SleighArch::DecodeInstruction(uint64_t address,
 }
 
 SleighArch::SleighArch(llvm::LLVMContext *context_, OSName os_name_,
-                       ArchName arch_name_, std::string sla_name)
+                       ArchName arch_name_, std::string sla_name,
+                       std::string pspec_name)
     : ArchBase(context_, os_name_, arch_name_),
-      sleigh_ctx(sla_name),
-      sla_name(sla_name) {}
+      sleigh_ctx(sla_name, pspec_name),
+      sla_name(sla_name),
+      pspec_name(pspec_name) {}
 
 bool SleighArch::DecodeInstructionImpl(uint64_t address,
                                        std::string_view instr_bytes,
@@ -466,6 +472,10 @@ std::string SleighArch::GetSLAName() const {
   return this->sla_name;
 }
 
+
+std::string SleighArch::GetPSpec() const {
+  return this->pspec_name;
+}
 
 Sleigh &SingleInstructionSleighContext::GetEngine() {
   return this->engine;

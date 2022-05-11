@@ -1056,8 +1056,8 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
 SleighLifter::SleighLifter(const sleigh::SleighArch *arch_,
                            const IntrinsicTable &intrinsics_)
     : InstructionLifter(arch_, intrinsics_),
-      sleigh_context(
-          new sleigh::SingleInstructionSleighContext(arch_->GetSLAName())) {
+      sleigh_context(new sleigh::SingleInstructionSleighContext(
+          arch_->GetSLAName(), arch_->GetPSpec())) {
   arch_->InitializeSleighContext(*sleigh_context);
 }
 

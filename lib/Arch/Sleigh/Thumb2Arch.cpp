@@ -16,7 +16,6 @@
 
 #include <glog/logging.h>
 #include <remill/Arch/AArch32/Runtime/State.h>
-
 #include <remill/Arch/Name.h>
 #include <remill/BC/ABI.h>
 #include <remill/BC/Compat/Attributes.h>
@@ -36,7 +35,8 @@ class SleighThumb2Arch final : public remill::sleigh::SleighArch {
  public:
   SleighThumb2Arch(llvm::LLVMContext *context_, OSName os_name_,
                    ArchName arch_name_)
-      : SleighArch(context_, os_name_, arch_name_, "ARM7_le.sla") {}
+      : SleighArch(context_, os_name_, arch_name_, "ARM7_le.sla",
+                   "ARMt.pspec") {}
 
 
   uint64_t MaxInstructionSize(bool permit_fuse_idioms) const final {
@@ -144,9 +144,8 @@ class SleighThumb2Arch final : public remill::sleigh::SleighArch {
 
   // Populate a just-initialized lifted function function with architecture-
   // specific variables. TODO(Ian)
-  void
-  FinishLiftedFunctionInitialization(llvm::Module *module,
-                                     llvm::Function *bb_func) const final {
+  void FinishLiftedFunctionInitialization(llvm::Module *module,
+                                          llvm::Function *bb_func) const final {
     const auto &dl = module->getDataLayout();
     CHECK_EQ(sizeof(State), dl.getTypeAllocSize(StateStructType()))
         << "Mismatch between size of State type for thumb and what is in "
@@ -161,7 +160,8 @@ class SleighThumb2Arch final : public remill::sleigh::SleighArch {
     const auto pc_arg = NthArgument(bb_func, kPCArgNum);
     const auto state_ptr_arg = NthArgument(bb_func, kStatePointerArgNum);
 
-    ir.CreateStore(pc_arg, ir.CreateAlloca(addr, nullptr, kNextPCVariableName.data()));
+    ir.CreateStore(pc_arg,
+                   ir.CreateAlloca(addr, nullptr, kNextPCVariableName.data()));
 
 
     (void) this->RegisterByName("PC")->AddressOf(state_ptr_arg, ir);
