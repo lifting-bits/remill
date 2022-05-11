@@ -153,11 +153,6 @@ bool VerifyModule(llvm::Module *module);
 // Returns diagnostic message if verify failed.
 std::optional<std::string> VerifyModuleMsg(llvm::Module *module);
 
-// Parses and loads a bitcode file into memory.
-std::unique_ptr<llvm::Module>
-LoadModuleFromFile(llvm::LLVMContext *context,
-                   std::string_view file_name,
-                   bool allow_failure = false) __attribute__((__deprecated__));
 
 std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
                                                  std::filesystem::path file_name);
