@@ -264,7 +264,7 @@ int main(int argc, char *argv[]) {
 
   Memory memory = UnhexlifyInputBytes(addr_mask);
   SimpleTraceManager manager(memory);
-  remill::IntrinsicTable intrinsics(module);
+  remill::IntrinsicTable intrinsics(module.get());
 
 
   remill::InstructionLifter::LifterPtr inst_lifter =
