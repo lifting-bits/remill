@@ -1,0 +1,19 @@
+{
+    "name": "main",
+    "version-string": "latest",
+    "dependencies": [
+      "glog",
+      "gflags",
+      "xed",
+      "z3",
+      {
+        "name": "llvm-14",
+        "default-features": false,
+        "features": [
+          "utils",
+          "tools",
+          "cxx-common-targets"
+        ]
+      }
+    ]
+  }
