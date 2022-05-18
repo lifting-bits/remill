@@ -28,7 +28,7 @@ DEF_SEM(DoVZEROUPPER) {
   return memory;
 }
 
-template <typename D, typename S1, size_t KL, size_t VL>
+template <typename D, typename S1>
 DEF_SEM(VPBROADCASTB, D dst, S1 src1) {
   auto src_vec = UReadV8(src1);
   auto dst_vec = UClearV8(UReadV8(dst));
@@ -39,6 +39,20 @@ DEF_SEM(VPBROADCASTB, D dst, S1 src1) {
     dst_vec = UInsertV8(dst_vec, i, src_byte);
   }
   UWriteV8(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S1>
+DEF_SEM(VPBROADCASTQ, D dst, S1 src1) {
+  auto src_vec = UReadV64(src1);
+  auto dst_vec = UClearV64(UReadV64(dst));
+  auto num_groups = NumVectorElems(dst_vec);
+  auto src_val = UExtractV64(src_vec, 0);
+
+  for (std::size_t i = 0; i < num_groups; ++i) {
+    dst_vec = UInsertV64(dst_vec, i, src_val);
+  }
+  UWriteV64(dst, dst_vec);
   return memory;
 }
 
@@ -70,6 +84,7 @@ DEF_ISEL(VINSERTF128_YMMqq_YMMqq_MEMdq_IMMb) = VINSERTF128<MV128>;
 DEF_ISEL(VINSERTF128_YMMqq_YMMqq_XMMdq_IMMb) = VINSERTF128<V128>;
 
 DEF_ISEL(VZEROUPPER) = DoVZEROUPPER;
-DEF_ISEL(VPBROADCASTB_YMMqq_XMMb) = VPBROADCASTB<VV256W, V128, 32, 256>;
+DEF_ISEL(VPBROADCASTB_YMMqq_XMMb) = VPBROADCASTB<VV256W, V128>;
+DEF_ISEL(VPBROADCASTQ_YMMqq_XMMq) = VPBROADCASTQ<VV256W, V128>;
 
 #endif  // HAS_FEATURE_AVX
