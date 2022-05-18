@@ -42,7 +42,6 @@ struct CallSite : private ::llvm::CallSite {
      * as well.
      */
   using parent::isCall;
-  using parent::isInvoke;
   using parent::parent;
   using parent::operator bool;
   using parent::getCalledFunction;
@@ -68,10 +67,6 @@ struct CallSite {
 
   CallSite(::llvm::User *user)
       : CallSite(::llvm::dyn_cast_or_null<::llvm::Instruction>(user)) {}
-
-  bool isInvoke() const {
-    return cb && ::llvm::isa<::llvm::InvokeInst>(*cb);
-  }
 
   bool isCall() const {
     return cb && ::llvm::isa<::llvm::CallInst>(*cb);
