@@ -813,7 +813,7 @@ static void ClearMetaData(T *value) {
 static llvm::Type *RecontextualizeType(llvm::Type *type,
                                        llvm::LLVMContext &context,
                                        TypeMap &cache) {
-  if (&(type->getContext()) == &context) {
+  if (&(type->getContext()) == &context && cache.find(type) == cache.end()) {
     return type;
   }
 

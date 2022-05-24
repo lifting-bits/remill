@@ -92,6 +92,9 @@ class InstructionLifter {
   // Clear out the cache of the current register values/addresses loaded.
   void ClearCache(void) const;
 
+
+  llvm::Type *GetMemoryType();
+
  protected:
   // Lift an operand to an instruction.
   virtual llvm::Value *LiftOperand(Instruction &inst, llvm::BasicBlock *block,
@@ -140,7 +143,7 @@ class InstructionLifter {
 
  protected:
   llvm::Type *GetWordType();
-  llvm::Type *GetMemoryType();
+
 
   const IntrinsicTable *GetIntrinsicTable();
   bool ArchHasRegByName(std::string name);
