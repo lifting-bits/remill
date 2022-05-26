@@ -6,6 +6,7 @@
 #include <llvm/ExecutionEngine/MCJIT.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Passes/PassBuilder.h>
+#include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <remill/Arch/Arch.h>
@@ -17,6 +18,7 @@
 #include <remill/BC/Util.h>
 #include <remill/OS/OS.h>
 
+#include <functional>
 #include <random>
 
 #include "gtest/gtest.h"
@@ -81,6 +83,7 @@ class LiftingTester {
         this->arch->DefineLiftedFunction(fname, this->semantics_module);
     LOG(INFO) << "Func sig: "
               << remill::LLVMThingToString(target_func->getType());
+
     if (remill::LiftStatus::kLiftedInstruction ==
         this->lifter->LiftIntoBlock(insn, &target_func->getEntryBlock())) {
       auto mem_ptr_ref =
@@ -250,6 +253,30 @@ using random_bytes_engine =
     std::independent_bits_engine<std::default_random_engine, CHAR_BIT, uint8_t>;
 
 
+void *MissingFunctionStub(const std::string &name) {
+  auto res = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(name);
+  if (res) {
+    return res;
+  }
+  LOG(FATAL) << "Missing function: " << name;
+  return nullptr;
+}
+
+extern "C" {
+uint8_t ___remill_undefined_8(void) {
+  return 0;
+}
+}
+
+
+std::string PrintState(X86State *state) {}
+
+struct DiffTestResult {
+  std::string struct_dump1;
+  std::string struct_dump2;
+  bool are_equal;
+};
+
 class ComparisonRunner {
  private:
   random_bytes_engine rbe;
@@ -263,6 +290,17 @@ class ComparisonRunner {
 
  private:
   void ExecuteLiftedFunction(llvm::Function *func, X86State *state) {
+    std::string load_error = "";
+    llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr, &load_error);
+    if (!load_error.empty()) {
+      LOG(FATAL) << "Failed to load: " << load_error;
+    }
+
+    auto symb_addr = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(
+        "___remill_undefined_8");
+
+
+    EXPECT_TRUE(symb_addr != nullptr);
     auto tgt_mod = llvm::CloneModule(*func->getParent());
     tgt_mod->setTargetTriple("");
     tgt_mod->setDataLayout(llvm::DataLayout(""));
@@ -293,6 +331,9 @@ class ComparisonRunner {
 
     auto target = engine->FindFunctionNamed(func->getName());
     this->StubOutFlagComputationInstrinsics(target->getParent(), *engine);
+
+    engine->InstallLazyFunctionCreator(&MissingFunctionStub);
+    engine->DisableSymbolSearching(false);
     // expect traditional remill lifted insn
     assert(func->arg_size() == 3);
 
@@ -317,23 +358,52 @@ class ComparisonRunner {
     }
   }
 
+ private:
+  static void print_into_buffer(std::string &buff, const char *fmt, ...) {}
+
+  static std::string dump_struct(X86State *st) {
+    std::string buf;
+
+    __builtin_dump_struct(st, &printf);
+    return buf;
+  }
 
  public:
-  bool SingleCmpRun(llvm::Function *f1, llvm::Function *f2) {
+  DiffTestResult SingleCmpRun(llvm::Function *f1, llvm::Function *f2) {
     auto func1_state = (X86State *) alloca(sizeof(X86State));
     RandomizeState(func1_state);
     auto func2_state = (X86State *) alloca(sizeof(X86State));
 
     std::memcpy(func2_state, func1_state, sizeof(X86State));
 
+    assert(std::memcmp(func1_state, func2_state, sizeof(X86State)) == 0);
+
     ExecuteLiftedFunction(f1, func1_state);
     ExecuteLiftedFunction(f2, func2_state);
     LOG(INFO) << func1_state->gpr.rdx.dword;
     LOG(INFO) << func1_state->gpr.rdx.dword;
-    return std::memcmp(func1_state, func2_state, sizeof(X86State));
+    auto are_equal =
+        std::memcmp(func1_state, func2_state, sizeof(X86State)) == 0;
+    return {"", "", are_equal};
   }
 };
 
+
+TEST(DifferentialTests, TestROR) {
+  auto modulebuilder = DifferentialModuleBuilder::Create(
+      remill::OSName::kOSLinux, remill::ArchName::kArchX86_SLEIGH,
+      remill::OSName::kOSLinux, remill::ArchName::kArchX86);
+
+  std::string_view insn_data("\xC1\xC8\x02", 3);
+
+  auto diffmod = modulebuilder.build("sleigh_ror", "x86_ror", insn_data, 0);
+
+  ComparisonRunner comp_runner;
+  for (int i = 0; i < 10; i++) {
+    EXPECT_TRUE(
+        comp_runner.SingleCmpRun(diffmod.GetF1(), diffmod.GetF2()).are_equal);
+  }
+}
 
 TEST(DifferentialTests, SimpleAddDifferenceX86) {
   auto modulebuilder = DifferentialModuleBuilder::Create(
@@ -346,7 +416,8 @@ TEST(DifferentialTests, SimpleAddDifferenceX86) {
 
   ComparisonRunner comp_runner;
   for (int i = 0; i < 10; i++) {
-    EXPECT_TRUE(comp_runner.SingleCmpRun(diffmod.GetF1(), diffmod.GetF2()));
+    EXPECT_TRUE(
+        comp_runner.SingleCmpRun(diffmod.GetF1(), diffmod.GetF2()).are_equal);
   }
 }
 

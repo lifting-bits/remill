@@ -22,17 +22,27 @@ enable_language(ASM)
 
 enable_testing()
 
+add_library(differential-runtime  SHARED Runtime.cpp)
+
 add_executable(
   run-thumb-tests
   TestLifting.cpp
 )
 target_link_libraries(
   run-thumb-tests  
+  PRIVATE
   GTest::gtest
   remill
   thirdparty_glog
 )
 
+target_link_libraries(
+  run-thumb-tests  
+  PUBLIC
+  differential-runtime
+)
+
+set_property(TARGET run-thumb-tests   PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 message(STATUS "Adding test: thumb as run-thumb-tests")
 add_test(NAME "thumb" COMMAND "run-thumb-tests")
