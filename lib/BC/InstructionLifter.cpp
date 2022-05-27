@@ -605,7 +605,7 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
 
         CHECK(val_type->isIntegerTy())
             << "Expected " << arch_reg.name << " to be an integral type "
-            << "for instruction at " << std::hex << inst.pc;
+            << "for instruction at " << std::hex << inst.pc << " \n" << inst.Serialize();
 
         val = new llvm::TruncInst(val, arg_type, llvm::Twine::createNull(),
                                   block);
