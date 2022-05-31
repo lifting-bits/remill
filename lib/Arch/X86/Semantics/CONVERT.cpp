@@ -307,7 +307,7 @@ IF_AVX(IF_64BIT(
 namespace {
 
 template <typename S1>
-DEF_SEM(CVTSD2SS, V128W dst, S1 src) {
+DEF_SEM(CVTSD2SS, V128W dst, V128 _nop_read, S1 src) {
   FWriteV32(dst, FInsertV32(FReadV32(dst), 0,
                             Float32(FExtractV64(FReadV64(src), 0))));
   return memory;
