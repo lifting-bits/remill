@@ -596,16 +596,9 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
 
     } else if (val_size > arg_size) {
       if (arg_type->isIntegerTy()) {
-        if (!val_type->isIntegerTy()) {
-          LOG(INFO) << "Failed to match up value to an integer type: " << inst.Serialize();
-          LOG(INFO) << remill::LLVMThingToString(arg_type);
-          LOG(INFO) << remill::LLVMThingToString(val_type);
-        }
-
-
         CHECK(val_type->isIntegerTy())
             << "Expected " << arch_reg.name << " to be an integral type "
-            << "for instruction at " << std::hex << inst.pc << " \n" << inst.Serialize();
+            << "for instruction at " << std::hex << inst.pc;
 
         val = new llvm::TruncInst(val, arg_type, llvm::Twine::createNull(),
                                   block);
