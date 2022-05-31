@@ -585,7 +585,8 @@ DEF_ISEL(MOVNTSS_MEMd_XMMd) = MOVSS_MEM<MV32W, V128>;
 
 namespace {
 
-DEF_SEM(MOVHPD, V128W dst, MV64 src) {
+// NOTE(Ian): Latest xed adds a read operand referring to the read of lower bits.
+DEF_SEM(MOVHPD, V128W dst, V128W _nop_read, MV64 src) {
   FWriteV64(dst, FInsertV64(FReadV64(dst), 1, FExtractV64(FReadV64(src), 0)));
   return memory;
 }
