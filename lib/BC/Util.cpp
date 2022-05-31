@@ -1464,6 +1464,9 @@ llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
     return llvm::dyn_cast<llvm::GlobalVariable>(moved_var);
   }
 
+  // NOTE(alex): This looks difficult to reproduce without querying `PointerElementType`.
+  // It appears to be transferring global variables from one LLVM module to another. The
+  // variables are pointer types.
   auto &dest_context = dest_module->getContext();
   const auto type = ::remill::RecontextualizeType(
       PointerElementType(var->getType()), dest_context);
@@ -2433,6 +2436,7 @@ llvm::Value *BuildPointerToOffset(llvm::IRBuilder<> &ir, llvm::Value *ptr,
     }
   }
 
+  // NOTE(alex): Same here
   const auto dest_elem_type = PointerElementType(dest_elem_ptr_type);
   const auto ptr_elem_type = PointerElementType(ptr_type);
   const auto ptr_elem_size = dl.getTypeAllocSize(ptr_elem_type);

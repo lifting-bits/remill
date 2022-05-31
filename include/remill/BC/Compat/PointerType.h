@@ -21,7 +21,7 @@ namespace remill {
 
 // TODO(alex): Just remove this function entirely
 inline static llvm::Type *PointerElementType(llvm::PointerType *type) {
-  assert(type->isOpaque());
+  // assert(type->isOpaque());
   return nullptr;
 }
 

@@ -496,11 +496,7 @@ FinishAddressOf(llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
   // Best case: we've found a value field in the structure that
   // is located at the correct byte offset.
   if (gep_offset == reg->offset) {
-    if (gep->getType()->isPointerTy()) {
-      return gep;
-
-    } else if (auto const_gep = llvm::dyn_cast<llvm::Constant>(gep);
-               const_gep) {
+    if (auto const_gep = llvm::dyn_cast<llvm::Constant>(gep); const_gep) {
       return llvm::ConstantExpr::getBitCast(const_gep, goal_ptr_type);
 
     } else {
@@ -574,8 +570,7 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
   return AddressOf(state_ptr, ir);
 }
 
-llvm::Value *
-Register::AddressOf(llvm::Value *state_ptr,
+llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
                                  llvm::IRBuilder<> &ir) const {
   auto &context = type->getContext();
   CHECK_EQ(&context, &(state_ptr->getContext()));
