@@ -222,7 +222,7 @@ void SPARC32Arch::PopulateRegisterTable(void) const {
 
   std::vector<llvm::Type *> window_types(33, u64);
   auto window_type = llvm::StructType::create(*context, "RegisterWindow");
-  auto window_ptr_type = llvm::PointerType::get(window_type, 0);
+  auto window_ptr_type = llvm::PointerType::get(*context, 0);
   window_types.push_back(window_ptr_type);
   window_type->setBody(window_types, false);
 
@@ -404,7 +404,7 @@ void SPARC32Arch::FinishLiftedFunctionInitialization(
   //            a structure type, so we can check that.
   const auto prev_window_link = RegisterByName("PREV_WINDOW_LINK");
   CHECK(prev_window_link->type->isPointerTy());
-  const auto window_type = prev_window_link->type->getPointerElementType();
+  const auto window_type = llvm::StructType::getTypeByName(context, "RegisterWindow");
   CHECK(window_type->isStructTy());
 
   auto window = ir.CreateAlloca(window_type, nullptr, "WINDOW");

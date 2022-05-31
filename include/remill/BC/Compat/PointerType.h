@@ -19,17 +19,10 @@
 
 namespace remill {
 
+// TODO(alex): Just remove this function entirely
 inline static llvm::Type *PointerElementType(llvm::PointerType *type) {
-#if LLVM_VERSION_NUMBER > LLVM_VERSION(13, 0)
-  if (type->isOpaque())
-    return nullptr;
-#endif
-
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(14, 0)
-  return type->getElementType();
-#else
-  return type->getPointerElementType();
-#endif
+  assert(type->isOpaque());
+  return nullptr;
 }
 
 }  // namespace remill

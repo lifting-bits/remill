@@ -935,9 +935,8 @@ RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context,
 
     case llvm::Type::PointerTyID: {
       auto ptr_type = llvm::dyn_cast<llvm::PointerType>(type);
-      auto elem_type = PointerElementType(ptr_type);
       cached =
-          llvm::PointerType::get(RecontextualizeType(elem_type, context, cache),
+          llvm::PointerType::get(context,
                                  ptr_type->getAddressSpace());
       break;
     }
@@ -1588,8 +1587,6 @@ static void MoveInstructionIntoModule(llvm::Instruction *inst,
       auto dest_func_type = llvm::dyn_cast<llvm::FunctionType>(
           RecontextualizeType(
               call->getFunctionType(), dest_module->getContext(), type_map));
-      CHECK_EQ(new_callee_val->getType()->getPointerElementType(),
-               dest_func_type);
       llvm::FunctionCallee callee(dest_func_type, new_callee_val);
       call->setCalledFunction(callee);
     }
@@ -2009,7 +2006,7 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
       auto i8_array =
           llvm::ArrayType::get(llvm::Type::getInt8Ty(context), size);
       auto byte_array =
-          ir.CreateBitCast(res, llvm::PointerType::get(i8_array, 0));
+          ir.CreateBitCast(res, llvm::PointerType::get(context, 0));
 
       auto gep_zero = llvm::ConstantInt::get(index_type, 0, false);
       // Load one byte at a time from memory, and store it into
@@ -2192,7 +2189,7 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
       auto i8 = llvm::Type::getInt8Ty(context);
       auto i8_array = llvm::ArrayType::get(i8, size);
       auto byte_array =
-          ir.CreateBitCast(res, llvm::PointerType::get(i8_array, 0));
+          ir.CreateBitCast(res, llvm::PointerType::get(context, 0));
       llvm::Value *gep_indices[2] = {
           llvm::ConstantInt::get(index_type, 0, false), nullptr};
 
@@ -2424,8 +2421,7 @@ llvm::Value *BuildPointerToOffset(llvm::IRBuilder<> &ir, llvm::Value *ptr,
 
   // Change address spaces if necessary before indexing.
   if (dest_ptr_addr_space != ptr_addr_space) {
-    ptr_type = llvm::PointerType::get(ptr_type->getPointerElementType(),
-                                      dest_ptr_addr_space);
+    ptr_type = llvm::PointerType::get(context, dest_ptr_addr_space);
     ptr_addr_space = dest_ptr_addr_space;
 
     if (constant_ptr) {

@@ -328,7 +328,8 @@ llvm::Value *InstructionLifter::LoadRegValue(llvm::BasicBlock *block,
                                              std::string_view reg_name) const {
   auto ptr = LoadRegAddress(block, state_ptr, reg_name);
   CHECK_NOTNULL(ptr);
-  auto ptr_ty = ptr->getType()->getPointerElementType();
+  // NOTE(alex): This isn't right. Not sure how to solve this right now.
+  auto ptr_ty = impl->word_type;
   return new llvm::LoadInst(ptr_ty, ptr, llvm::Twine::createNull(), block);
 }
 
