@@ -349,7 +349,7 @@ DEF_SEM(CVTSI2SD, V128W dst, V128 src1, S2 src2) {
 }
 
 template <typename S2>
-DEF_SEM(CVTSS2SD, VV128W dst_src1, S2 src2) {
+DEF_SEM(CVTSS2SD, VV128W dst_src1, V128 _nop_read, S2 src2) {
   auto src1_vec = FReadV64(dst_src1);
   auto src2_vec = FReadV32(src2);
   auto conv_val = Float64(FExtractV32(src2_vec, 0));
