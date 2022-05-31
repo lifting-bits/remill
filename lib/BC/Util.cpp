@@ -1466,7 +1466,7 @@ llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
 
   // NOTE(alex): This looks difficult to reproduce without querying `PointerElementType`.
   // It appears to be transferring global variables from one LLVM module to another. The
-  // variables are pointer types.
+  // variables are pointer types but we want to move the variable that the pointer is pointing at?
   auto &dest_context = dest_module->getContext();
   const auto type = ::remill::RecontextualizeType(
       PointerElementType(var->getType()), dest_context);
