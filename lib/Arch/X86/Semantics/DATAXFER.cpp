@@ -617,7 +617,8 @@ IF_AVX(DEF_ISEL(VMOVHPD_MEMq_XMMdq) = MOVHPD_STORE;)
 
 namespace {
 
-DEF_SEM(MOVHPS, V128W dst, MV64 src) {
+// NOTE(Ian): Xed adds a read op for the bits read but not written to.
+DEF_SEM(MOVHPS, V128W dst, V128W _nop_read, MV64 src) {
   auto dst_vec = FReadV32(dst);
   auto src_vec = FReadV32(src);
   auto low_entry = FExtractV32(src_vec, 0);
