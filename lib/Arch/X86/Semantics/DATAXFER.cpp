@@ -84,8 +84,8 @@ DEF_SEM(MOVDQx, D dst, S src) {
   return memory;
 }
 
-template <typename D, typename S>
-DEF_SEM(MOVLPS, D dst, S src) {
+template <typename D, typename S, typename... Fs>
+DEF_SEM(MOVLPS, D dst, Fs... _nop_fillers, S src) {
   auto src_vec = FReadV32(src);
   auto low1 = FExtractV32(src_vec, 0);
   auto low2 = FExtractV32(src_vec, 1);
@@ -467,7 +467,7 @@ DEF_ISEL(VMOVDQA_YMMqq_YMMqq_7F) = MOVDQx<VV256W, VV256>;
 #endif  // HAS_FEATURE_AVX
 
 DEF_ISEL(MOVLPS_MEMq_XMMps) = MOVLPS<MV64W, V128>;
-DEF_ISEL(MOVLPS_XMMq_MEMq) = MOVLPS<V128W, MV64>;
+DEF_ISEL(MOVLPS_XMMq_MEMq) = MOVLPS<V128W, MV64, V128>;
 IF_AVX(DEF_ISEL(VMOVLPS_MEMq_XMMq) = MOVLPS<MV64W, VV128>;)
 IF_AVX(DEF_ISEL(VMOVLPS_XMMdq_XMMdq_MEMq) = VMOVLPS;)
 
