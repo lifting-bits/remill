@@ -111,8 +111,8 @@ DEF_SEM(MOVHLPS, V128W dst, V128 src) {
   return memory;
 }
 
-template <typename D, typename S>
-DEF_SEM(MOVLPD, D dst, S src) {
+template <typename D, typename S, typename... Fs>
+DEF_SEM(MOVLPD, D dst, Fs... fargs, S src) {
   FWriteV64(dst, FInsertV64(FReadV64(dst), 0, FExtractV64(FReadV64(src), 0)));
   return memory;
 }
@@ -487,7 +487,7 @@ IF_AVX(DEF_ISEL(VMOVLHPS_XMMdq_XMMdq_XMMdq) = VMOVLHPS;)
 #  endif  // HAS_FEATURE_AVX512
 #endif  // HAS_FEATURE_AVX
 
-DEF_ISEL(MOVLPD_XMMsd_MEMq) = MOVLPD<V128W, MV64>;
+DEF_ISEL(MOVLPD_XMMsd_MEMq) = MOVLPD<V128W, MV64, V128>;
 DEF_ISEL(MOVLPD_MEMq_XMMsd) = MOVLPD<MV64W, V128>;
 IF_AVX(DEF_ISEL(VMOVLPD_MEMq_XMMq) = MOVLPD<MV64W, VV128>;)
 IF_AVX(DEF_ISEL(VMOVLPD_XMMdq_XMMdq_MEMq) = VMOVLPD;)
@@ -586,7 +586,7 @@ DEF_ISEL(MOVNTSS_MEMd_XMMd) = MOVSS_MEM<MV32W, V128>;
 namespace {
 
 // NOTE(Ian): Latest xed adds a read operand referring to the read of lower bits.
-DEF_SEM(MOVHPD, V128W dst, V128W _nop_read, MV64 src) {
+DEF_SEM(MOVHPD, V128W dst, V128 _nop_read, MV64 src) {
   FWriteV64(dst, FInsertV64(FReadV64(dst), 1, FExtractV64(FReadV64(src), 0)));
   return memory;
 }
@@ -618,7 +618,7 @@ IF_AVX(DEF_ISEL(VMOVHPD_MEMq_XMMdq) = MOVHPD_STORE;)
 namespace {
 
 // NOTE(Ian): Xed adds a read op for the bits read but not written to.
-DEF_SEM(MOVHPS, V128W dst, V128W _nop_read, MV64 src) {
+DEF_SEM(MOVHPS, V128W dst, V128 _nop_read, MV64 src) {
   auto dst_vec = FReadV32(dst);
   auto src_vec = FReadV32(src);
   auto low_entry = FExtractV32(src_vec, 0);
