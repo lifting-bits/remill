@@ -1464,16 +1464,13 @@ llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
     return llvm::dyn_cast<llvm::GlobalVariable>(moved_var);
   }
 
-  // NOTE(alex): This looks difficult to reproduce without querying `PointerElementType`.
-  // It appears to be transferring global variables from one LLVM module to another. The
-  // variables are pointer types but we want to move the variable that the pointer is pointing at?
   auto &dest_context = dest_module->getContext();
   const auto type = ::remill::RecontextualizeType(
-      PointerElementType(var->getType()), dest_context);
+      var->getValueType(), dest_context);
 
   auto dest_var = dest_module->getGlobalVariable(var->getName());
   if (dest_var) {
-    CHECK_EQ(type, PointerElementType(dest_var->getType()));
+    CHECK_EQ(type, dest_var->getValueType());
     moved_var = dest_var;
     return dest_var;
   }
@@ -1523,7 +1520,7 @@ llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
     }
   }
 
-  const auto elem_type = PointerElementType(dest_type);
+  const auto elem_type = var->getValueType();
   const auto dest_var = llvm::GlobalAlias::create(
       elem_type, var->getType()->getAddressSpace(), var->getLinkage(),
       var->getName(), nullptr, dest_module);
