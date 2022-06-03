@@ -240,12 +240,6 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
       break;
     }
 
-    case kArchThumb2LittleEndian: {
-      DLOG(WARNING) << "Using architecture: Aarch32/Thumb2. WARNING: not fully implemented at this point.";
-      //TODO(artem): Fix this once Thumb2 fully supported
-      ret = GetAArch32(context_, os_name_, arch_name_);
-      break;
-    }
   }
 
   if (ret) {
