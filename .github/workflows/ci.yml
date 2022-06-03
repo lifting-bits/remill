@@ -94,7 +94,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['macos-11']
-        llvm: ['12', '13']
+        llvm: ['13']
 
     runs-on: ${{ matrix.os }}
 
@@ -215,7 +215,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        llvm: ["12", "13"]
+        llvm: ["13"]
         ubuntu: ["20.04"]
     steps:
     - uses: actions/checkout@v2
