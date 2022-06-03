@@ -93,7 +93,7 @@ DEF_SEM(MOVLPS, D dst, Fs... _nop_fillers, S src) {
   return memory;
 }
 
-DEF_SEM(MOVLHPS, V128W dst, V128 src) {
+DEF_SEM(MOVLHPS, V128W dst, V128 _noop_read, V128 src) {
   auto res = FReadV32(dst);
   auto src1 = FReadV32(src);
   res = FInsertV32(res, 2, FExtractV32(src1, 0));
