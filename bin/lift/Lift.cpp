@@ -264,18 +264,9 @@ int main(int argc, char *argv[]) {
 
   Memory memory = UnhexlifyInputBytes(addr_mask);
   SimpleTraceManager manager(memory);
-<<<<<<< HEAD
   remill::IntrinsicTable intrinsics(module.get());
   remill::InstructionLifter::LifterPtr inst_lifter =
       arch->DefaultLifter(intrinsics);
-=======
-  remill::IntrinsicTable intrinsics(module);
-
-
-  remill::InstructionLifter::LifterPtr inst_lifter =
-      arch->DefaultLifter(intrinsics);
-
->>>>>>> d74438507255acf95c8f07bb62416b10d2fac22d
   remill::TraceLifter trace_lifter(*inst_lifter.get(), manager);
 
   // Lift all discoverable traces starting from `--entry_address` into
