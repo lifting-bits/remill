@@ -7,6 +7,7 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/DynamicLibrary.h>
+#include <llvm/Support/Endian.h>
 #include <llvm/Support/JSON.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/Utils/Cloning.h>
@@ -257,14 +258,10 @@ void *MissingFunctionStub(const std::string &name) {
   return nullptr;
 }
 
-extern "C" {
-uint8_t ___remill_undefined_8(void) {
-  return 0;
-}
-}
 
-
-std::string PrintState(X86State *state) {}
+std::string PrintState(X86State *state) {
+  return "";
+}
 
 struct DiffTestResult {
   std::string struct_dump1;
@@ -272,9 +269,84 @@ struct DiffTestResult {
   bool are_equal;
 };
 
+
+class MemoryHandler {
+ private:
+  std::unordered_map<uint64_t, uint8_t> uninitialized_reads;
+  std::unordered_map<uint64_t, uint8_t> state;
+
+  random_bytes_engine rbe;
+  llvm::support::endianness endian;
+
+ public:
+  MemoryHandler(llvm::support::endianness endian_) : endian(endian_) {}
+
+  MemoryHandler(llvm::support::endianness endian_,
+                std::unordered_map<uint64_t, uint8_t> initial_state)
+      : state(std::move(initial_state)),
+        endian(endian_) {}
+
+  uint8_t read_byte(uint64_t addr) {
+    if (state.find(addr) != state.end()) {
+      return state.find(addr)->second;
+    }
+
+    auto genned = rbe();
+    uninitialized_reads.insert({addr, genned});
+    return genned;
+  }
+
+  std::vector<uint8_t> readSize(uint64_t addr, size_t num) {
+    std::vector<uint8_t> bytes;
+    for (size_t i = 0; i < num; i++) {
+      bytes.push_back(this->read_byte(addr + i));
+    }
+    return bytes;
+  }
+
+  template <class T>
+  T ReadMemory(uint64_t addr) {
+    auto buff = this->readSize(addr, sizeof(T));
+    return llvm::support::endian::read<T>(buff.data(), this->endian);
+  }
+
+
+  template <class T>
+  void WriteMemory(uint64_t addr, T value) {
+    std::vector<uint8_t> buff(sizeof(T));
+    llvm::support::endian::write<T>(buff.data(), value, this->endian);
+
+    for (size_t i = 0; i < sizeof(T); i++) {
+      this->state.insert({addr + i, buff[i]});
+    }
+  }
+
+  std::unordered_map<uint64_t, uint8_t> GetUninitializedReads() {
+    return this->uninitialized_reads;
+  }
+};
+
+extern "C" {
+uint8_t ___remill_undefined_8(void) {
+  return 0;
+}
+
+uint32_t ___remill_read_memory_32(MemoryHandler *memory, uint64_t addr) {
+  return memory->ReadMemory<uint32_t>(addr);
+}
+
+MemoryHandler *___remill_write_memory_32(MemoryHandler *memory, uint64_t addr,
+                                         uint32_t value) {
+  memory->WriteMemory<uint32_t>(addr, value);
+  return memory;
+}
+}
+
+
 class ComparisonRunner {
  private:
   random_bytes_engine rbe;
+  llvm::support::endianness endian;
 
   void RandomizeState(X86State *state) {
     std::vector<uint8_t> data(sizeof(X86State));
@@ -283,8 +355,12 @@ class ComparisonRunner {
     std::memcpy(state, data.data(), sizeof(X86State));
   }
 
+ public:
+  ComparisonRunner(llvm::support::endianness endian_) : endian(endian_) {}
+
  private:
-  void ExecuteLiftedFunction(llvm::Function *func, X86State *state) {
+  void ExecuteLiftedFunction(llvm::Function *func, X86State *state,
+                             MemoryHandler *handler) {
     std::string load_error = "";
     llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr, &load_error);
     if (!load_error.empty()) {
@@ -327,15 +403,12 @@ class ComparisonRunner {
     // expect traditional remill lifted insn
     assert(func->arg_size() == 3);
 
-    void *memory = nullptr;
-
-
     auto returned =
         (void *(*) (X86State *, uint32_t, void *) ) engine->getFunctionAddress(
             target->getName().str());
 
     assert(returned != nullptr);
-    returned(state, 0, memory);
+    returned(state, 0, handler);
   }
 
   void StubOutFlagComputationInstrinsics(llvm::Module *mod,
@@ -368,8 +441,13 @@ class ComparisonRunner {
 
     assert(std::memcmp(func1_state, func2_state, sizeof(X86State)) == 0);
 
-    ExecuteLiftedFunction(f1, func1_state);
-    ExecuteLiftedFunction(f2, func2_state);
+    auto mem_handler = std::make_unique<MemoryHandler>(this->endian);
+
+    ExecuteLiftedFunction(f1, func1_state, mem_handler.get());
+    auto second_handler = std::make_unique<MemoryHandler>(
+        this->endian, mem_handler->GetUninitializedReads());
+    ExecuteLiftedFunction(f2, func2_state, second_handler.get());
+
     LOG(INFO) << func1_state->gpr.rdx.dword;
     LOG(INFO) << func1_state->gpr.rdx.dword;
     auto are_equal =
@@ -458,14 +536,19 @@ int main(int argc, char **argv) {
   }
 
   DifferentialModuleBuilder diffbuilder = DifferentialModuleBuilder::Create(
-      remill::OSName::kOSLinux, remill::ArchName::kArchX86_SLEIGH,
+      remill::OSName::kOSLinux, remill::ArchName::kArchX86,
       remill::OSName::kOSLinux, remill::ArchName::kArchX86);
   uint64_t ctr = 0;
   for (auto tc : testcases) {
+    LOG(INFO) << "Starting testcase: " << llvm::toHex(tc.bytes);
     auto diff_mod =
         diffbuilder.build(test_case_name("f1", ctr), test_case_name("f2", ctr),
                           tc.bytes, tc.addr);
-    ComparisonRunner comp_runner;
+
+    auto end = diff_mod.GetModule()->getDataLayout().isBigEndian()
+                   ? llvm::support::endianness::big
+                   : llvm::support::endianness::little;
+    ComparisonRunner comp_runner(end);
     for (uint64_t i = 0; i < FLAGS_num_iterations; i++) {
       auto tc_result =
           comp_runner.SingleCmpRun(diff_mod.GetF1(), diff_mod.GetF2());
