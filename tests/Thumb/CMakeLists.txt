@@ -22,7 +22,7 @@ enable_language(ASM)
 
 enable_testing()
 
-add_library(differential-runtime  SHARED Runtime.cpp)
+#add_library(differential-runtime  SHARED Runtime.cpp)
 
 add_executable(
   run-thumb-tests
@@ -39,7 +39,7 @@ target_link_libraries(
 target_link_libraries(
   run-thumb-tests  
   PUBLIC
-  differential-runtime
+  #differential-runtime
 )
 
 set_property(TARGET run-thumb-tests   PROPERTY POSITION_INDEPENDENT_CODE ON)

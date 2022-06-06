@@ -13,4 +13,4 @@
 # limitations under the License.
 
 add_subdirectory(lift)
-
+add_subdirectory(differential_tester_x86)
