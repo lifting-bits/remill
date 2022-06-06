@@ -436,41 +436,36 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
   this->sleigh_ctx.resetContext();
   this->InitializeSleighContext(this->sleigh_ctx);
   PcodeDecoder pcode_handler(this->sleigh_ctx.GetEngine(), inst);
-  auto max_sz =
-      std::min<uint64_t>(instr_bytes.size(), this->MaxInstructionSize());
+
   LOG(INFO) << "Provided insn size: " << instr_bytes.size();
-  for (auto curr_sz = this->MinInstructionSize(); curr_sz <= max_sz;
-       curr_sz++) {
 
-    inst.Reset();
+  inst.Reset();
 
-    LOG(INFO) << "Attempting to decode with len " << curr_sz;
-    auto curr_bytes = instr_bytes.substr(0, curr_sz);
-    inst.bytes = curr_bytes;
-    inst.arch_name = arch_name;
-    inst.sub_arch_name = arch_name;
-    inst.branch_taken_arch_name = ArchName::kArchInvalid;
-    inst.pc = address;
-    inst.category = Instruction::kCategoryInvalid;
+  inst.bytes = instr_bytes;
+  inst.arch_name = arch_name;
+  inst.sub_arch_name = arch_name;
+  inst.branch_taken_arch_name = ArchName::kArchInvalid;
+  inst.pc = address;
+  inst.category = Instruction::kCategoryInvalid;
 
-    auto instr_len =
-        this->sleigh_ctx.oneInstruction(address, pcode_handler, curr_bytes);
-    if (instr_len.has_value()) {
-      // communicate the size back to the caller
-      inst.bytes = curr_bytes;
-      assert(inst.bytes.size() == curr_sz);
+  auto instr_len =
+      this->sleigh_ctx.oneInstruction(address, pcode_handler, instr_bytes);
+  if (instr_len.has_value() && instr_len <= instr_bytes.size()) {
+    // communicate the size back to the caller
+    inst.bytes = instr_bytes.substr(0, *instr_len);
+    assert(inst.bytes.size() == instr_len);
 
-      InstructionFunctionSetter setter(inst);
-      this->sleigh_ctx.oneInstruction(address, setter, curr_bytes);
-      LOG(INFO) << "Instr len:" << *instr_len;
-      LOG(INFO) << "Addr: " << address;
-      auto fallthrough = address + *instr_len;
-      LOG(INFO) << "Fallthrough: " << fallthrough;
-      pcode_handler.GetResolver()->ResolveControlFlow(fallthrough, inst);
-      LOG(INFO) << "Decoded as " << inst.Serialize();
-      return true;
-    }
+    InstructionFunctionSetter setter(inst);
+    this->sleigh_ctx.oneInstruction(address, setter, inst.bytes);
+    LOG(INFO) << "Instr len:" << *instr_len;
+    LOG(INFO) << "Addr: " << address;
+    auto fallthrough = address + *instr_len;
+    LOG(INFO) << "Fallthrough: " << fallthrough;
+    pcode_handler.GetResolver()->ResolveControlFlow(fallthrough, inst);
+    LOG(INFO) << "Decoded as " << inst.Serialize();
+    return true;
   }
+
   return false;
 }
 
@@ -497,7 +492,6 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
     uint64_t address, const std::function<int32_t(Address addr)> &decode_func,
     std::string_view instr_bytes) {
   this->image.SetInstruction(address, instr_bytes);
-  this->resetContext();
 
   try {
     const int32_t instr_len = decode_func(this->GetAddressFromOffset(address));

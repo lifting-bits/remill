@@ -198,25 +198,35 @@ class DifferentialModuleBuilder {
         l2(std::move(l2_)) {}
 
  public:
-  DiffModule build(std::string_view fname_f1, std::string_view fname_f2,
-                   std::string_view bytes, uint64_t address) {
+  std::optional<DiffModule> build(std::string_view fname_f1,
+                                  std::string_view fname_f2,
+                                  std::string_view bytes, uint64_t address) {
     auto module = std::make_unique<llvm::Module>("", *this->context);
-    auto f1 = *this->l1.LiftInstructionFunction(fname_f1, bytes, address);
-    auto f2 = *this->l2.LiftInstructionFunction(fname_f2, bytes, address);
+    auto maybe_f1 = this->l1.LiftInstructionFunction(fname_f1, bytes, address);
+    auto maybe_f2 = this->l2.LiftInstructionFunction(fname_f2, bytes, address);
 
-    auto cloned = llvm::CloneModule(*f1->getParent());
-    remill::OptimizeBareModule(cloned);
+    if (maybe_f1.has_value() && maybe_f2.has_value()) {
+      auto f1 = *maybe_f1;
+      auto f2 = *maybe_f2;
 
-    auto new_f1 = llvm::Function::Create(
-        f1->getFunctionType(), f1->getLinkage(), f1->getName(), module.get());
-    auto new_f2 = llvm::Function::Create(
-        f2->getFunctionType(), f2->getLinkage(), f2->getName(), module.get());
+      auto tst = f1->getParent();
 
-    remill::CloneFunctionInto(cloned->getFunction(f1->getName()), new_f1);
-    remill::CloneFunctionInto(cloned->getFunction(f2->getName()), new_f2);
+      auto cloned = llvm::CloneModule(*tst);
+      remill::OptimizeBareModule(cloned);
+
+      auto new_f1 = llvm::Function::Create(
+          f1->getFunctionType(), f1->getLinkage(), f1->getName(), module.get());
+      auto new_f2 = llvm::Function::Create(
+          f2->getFunctionType(), f2->getLinkage(), f2->getName(), module.get());
+
+      remill::CloneFunctionInto(cloned->getFunction(f1->getName()), new_f1);
+      remill::CloneFunctionInto(cloned->getFunction(f2->getName()), new_f2);
 
 
-    return DiffModule(std::move(module), new_f1, new_f2);
+      return DiffModule(std::move(module), new_f1, new_f2);
+    } else {
+      return std::nullopt;
+    }
   }
 };
 
@@ -544,9 +554,10 @@ int main(int argc, char **argv) {
     LOG(FATAL) << "Failed to parse testcases";
   }
 
+
   DifferentialModuleBuilder diffbuilder = DifferentialModuleBuilder::Create(
-      remill::OSName::kOSLinux, remill::ArchName::kArchX86_SLEIGH,
-      remill::OSName::kOSLinux, remill::ArchName::kArchX86);
+      remill::OSName::kOSLinux, remill::ArchName::kArchX86,
+      remill::OSName::kOSLinux, remill::ArchName::kArchX86_SLEIGH);
   uint64_t ctr = 0;
   std::vector<TestCase> failed_testcases;
   for (auto tc : testcases) {
@@ -555,13 +566,19 @@ int main(int argc, char **argv) {
         diffbuilder.build(test_case_name("f1", ctr), test_case_name("f2", ctr),
                           tc.bytes, tc.addr);
 
-    auto end = diff_mod.GetModule()->getDataLayout().isBigEndian()
+    if (!diff_mod.has_value()) {
+      LOG(ERROR) << "Failed to lift " << std::hex << tc.addr << ": "
+                 << llvm::toHex(tc.bytes);
+      continue;
+    }
+
+    auto end = diff_mod->GetModule()->getDataLayout().isBigEndian()
                    ? llvm::support::endianness::big
                    : llvm::support::endianness::little;
     ComparisonRunner comp_runner(end);
     for (uint64_t i = 0; i < FLAGS_num_iterations; i++) {
       auto tc_result =
-          comp_runner.SingleCmpRun(diff_mod.GetF1(), diff_mod.GetF2());
+          comp_runner.SingleCmpRun(diff_mod->GetF1(), diff_mod->GetF2());
 
       if (!tc_result.are_equal) {
         LOG(ERROR) << "Difference in instruction" << std::hex << tc.addr << ": "
