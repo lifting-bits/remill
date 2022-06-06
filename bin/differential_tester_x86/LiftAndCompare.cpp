@@ -8,6 +8,7 @@
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/Endian.h>
+#include <llvm/Support/FileSystem.h>
 #include <llvm/Support/JSON.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/Utils/Cloning.h>
@@ -28,6 +29,7 @@
 
 DEFINE_string(target_insn_file, "", "Path to input test cases");
 DEFINE_uint64(num_iterations, 2, "number of iterations per test case");
+DEFINE_string(repro_file, "", "File to output failing test cases");
 
 enum TypeId { MEMORY = 0, STATE = 1 };
 
@@ -304,6 +306,10 @@ class MemoryHandler {
     return bytes;
   }
 
+  const std::unordered_map<uint64_t, uint8_t> &GetMemory() const {
+    return this->state;
+  }
+
   template <class T>
   T ReadMemory(uint64_t addr) {
     auto buff = this->readSize(addr, sizeof(T));
@@ -448,10 +454,13 @@ class ComparisonRunner {
         this->endian, mem_handler->GetUninitializedReads());
     ExecuteLiftedFunction(f2, func2_state, second_handler.get());
 
-    LOG(INFO) << func1_state->gpr.rdx.dword;
-    LOG(INFO) << func1_state->gpr.rdx.dword;
+
+    auto memory_state_eq =
+        mem_handler->GetMemory() == second_handler->GetMemory();
+
     auto are_equal =
-        std::memcmp(func1_state, func2_state, sizeof(X86State)) == 0;
+        std::memcmp(func1_state, func2_state, sizeof(X86State)) == 0 &&
+        memory_state_eq;
     return {"", "", are_equal};
   }
 };
@@ -536,9 +545,10 @@ int main(int argc, char **argv) {
   }
 
   DifferentialModuleBuilder diffbuilder = DifferentialModuleBuilder::Create(
-      remill::OSName::kOSLinux, remill::ArchName::kArchX86,
+      remill::OSName::kOSLinux, remill::ArchName::kArchX86_SLEIGH,
       remill::OSName::kOSLinux, remill::ArchName::kArchX86);
   uint64_t ctr = 0;
+  std::vector<TestCase> failed_testcases;
   for (auto tc : testcases) {
     LOG(INFO) << "Starting testcase: " << llvm::toHex(tc.bytes);
     auto diff_mod =
@@ -556,6 +566,24 @@ int main(int argc, char **argv) {
       if (!tc_result.are_equal) {
         LOG(ERROR) << "Difference in instruction" << std::hex << tc.addr << ": "
                    << llvm::toHex(tc.bytes);
+
+        failed_testcases.push_back(tc);
+        if (!FLAGS_repro_file.empty()) {
+          std::error_code ec;
+          llvm::raw_fd_ostream o(FLAGS_repro_file, ec);
+          if (ec) {
+            LOG(FATAL) << ec.message();
+          }
+
+          llvm::json::Array arr;
+          for (auto tc : failed_testcases) {
+            arr.push_back(
+                llvm::json::Array({llvm::json::Value(tc.addr),
+                                   llvm::json::Value(llvm::toHex(tc.bytes))}));
+          }
+
+          llvm::json::operator<<(o, llvm::json::Value(std::move(arr)));
+        }
       }
     }
     ctr++;
