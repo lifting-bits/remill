@@ -529,11 +529,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
     if (opc == OpCode::CPUI_CBRANCH) {
       auto should_branch = this->LiftInParam(
-          bldr, lhs, llvm::IntegerType::get(this->context, lhs.size * 8));
+          bldr, rhs, llvm::IntegerType::get(this->context, rhs.size * 8));
       // directs dont read the address of the variable, the offset is the jump
       // TODO(Ian): handle other address spaces
       auto jump_addr = llvm::ConstantInt::get(
-          llvm::IntegerType::get(this->context, rhs.size * 8), rhs.offset);
+          llvm::IntegerType::get(this->context, lhs.size * 8), lhs.offset);
       if (should_branch.has_value()) {
         auto pc_reg_param = this->LiftNormalRegister(bldr, "PC");
         assert(pc_reg_param.has_value());
@@ -541,8 +541,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         auto orig_pc_value = pc_reg_ptr->LiftAsInParam(
             bldr, this->insn_lifter_parent.GetWordType());
         if (orig_pc_value.has_value()) {
-          auto next_pc_value =
-              bldr.CreateSelect(*should_branch, jump_addr, *orig_pc_value);
+          auto next_pc_value = bldr.CreateSelect(
+              bldr.CreateTrunc(
+                  *should_branch,
+                  llvm::IntegerType::get(this->context, rhs.size * 1)),
+              jump_addr, *orig_pc_value);
           return pc_reg_ptr->StoreIntoParam(bldr, next_pc_value);
         }
 

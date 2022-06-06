@@ -80,6 +80,7 @@ void PcodeDecoder::dump(const Address &, OpCode op, VarnodeData *outvar,
   }
 
   DecodeCategory(op, vars, isize);
+  LOG(INFO) << ss.str();
 }
 
 void PcodeDecoder::DecodeOperand(VarnodeData &var) {
