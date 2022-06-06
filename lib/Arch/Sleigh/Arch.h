@@ -163,6 +163,8 @@ class SingleInstructionSleighContext {
                  const std::function<int32_t(Address addr)> &decode_func,
                  std::string_view instr_bytes);
 
+  void restoreEngineFromStorage();
+
  public:
   Address GetAddressFromOffset(uint64_t off);
   std::optional<int32_t> oneInstruction(uint64_t address, PcodeEmit &emitter,
@@ -172,6 +174,8 @@ class SingleInstructionSleighContext {
                                         std::string_view instr_bytes);
 
   ::Sleigh &GetEngine(void);
+
+  void resetContext();
 
   SingleInstructionSleighContext(std::string sla_name, std::string pspec_name);
 };

@@ -33,6 +33,8 @@ class InstructionFunctionSetter : public AssemblyEmit {
   InstructionFunctionSetter(remill::Instruction &insn) : insn(insn) {}
 
   void dump(const Address &addr, const string &mnem, const string &body) {
+    LOG(INFO) << "Decoded " << std::hex << addr.getOffset() << ": " << mnem
+              << " " << body;
     insn.function = mnem;
   }
 };
@@ -351,7 +353,10 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
 
   auto pspec = storage.openDocument(pspec_path->string());
   storage.registerTag(pspec->getRoot());
-
+  this->restoreEngineFromStorage();
+}
+void SingleInstructionSleighContext::restoreEngineFromStorage() {
+  this->ctx = ContextInternal();
   engine.initialize(storage);
   if (const Element *el = storage.getTag("processor_spec")) {
     for (const Element *element : el->getChildren()) {
@@ -381,6 +386,7 @@ void CustomLoadImage::SetInstruction(uint64_t new_offset,
 void CustomLoadImage::loadFill(unsigned char *ptr, int size,
                                const Address &addr) {
   uint64_t start = addr.getOffset();
+  LOG(INFO) << "Fill at: " << start;
   for (int i = 0; i < size; ++i) {
     uint64_t offset = start + i;
     if (offset >= this->current_offset) {
@@ -427,6 +433,7 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
 
 
   // Now decode the instruction.
+  this->sleigh_ctx.resetContext();
   this->InitializeSleighContext(this->sleigh_ctx);
   PcodeDecoder pcode_handler(this->sleigh_ctx.GetEngine(), inst);
   auto max_sz =
@@ -481,11 +488,16 @@ Sleigh &SingleInstructionSleighContext::GetEngine() {
   return this->engine;
 }
 
+void SingleInstructionSleighContext::resetContext() {
+  this->engine.reset(&this->image, &this->ctx);
+  this->restoreEngineFromStorage();
+}
 
 std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
     uint64_t address, const std::function<int32_t(Address addr)> &decode_func,
     std::string_view instr_bytes) {
   this->image.SetInstruction(address, instr_bytes);
+  this->resetContext();
 
   try {
     const int32_t instr_len = decode_func(this->GetAddressFromOffset(address));
