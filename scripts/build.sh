@@ -23,7 +23,7 @@ DOWNLOAD_DIR="$( cd "$( dirname "${SRC_DIR}" )" && pwd )/lifting-bits-downloads"
 CURR_DIR=$( pwd )
 BUILD_DIR="${CURR_DIR}/remill-build"
 INSTALL_DIR=/usr/local
-LLVM_VERSION=llvm-13
+LLVM_VERSION=llvm-14
 OS_VERSION=
 ARCH_VERSION=
 BUILD_FLAGS=
@@ -272,12 +272,12 @@ function Package
 function GetLLVMVersion
 {
   case ${1} in
-    12)
-      LLVM_VERSION=llvm-12
-      return 0
-    ;;
     13)
       LLVM_VERSION=llvm-13
+      return 0
+    ;;
+    14)
+      LLVM_VERSION=llvm-14
       return 0
     ;;
     *)
