@@ -348,12 +348,26 @@ uint8_t ___remill_undefined_8(void) {
 }
 
 uint32_t ___remill_read_memory_32(MemoryHandler *memory, uint64_t addr) {
+  LOG(INFO) << "Reading " << std::hex << addr;
   return memory->ReadMemory<uint32_t>(addr);
 }
 
 MemoryHandler *___remill_write_memory_32(MemoryHandler *memory, uint64_t addr,
                                          uint32_t value) {
+  LOG(INFO) << "Writing " << std::hex << addr;
   memory->WriteMemory<uint32_t>(addr, value);
+  return memory;
+}
+
+uint64_t ___remill_read_memory_64(MemoryHandler *memory, uint64_t addr) {
+  LOG(INFO) << "Reading " << std::hex << addr;
+  return memory->ReadMemory<uint64_t>(addr);
+}
+
+MemoryHandler *___remill_write_memory_64(MemoryHandler *memory, uint64_t addr,
+                                         uint64_t value) {
+  LOG(INFO) << "Writing " << std::hex << addr;
+  memory->WriteMemory<uint64_t>(addr, value);
   return memory;
 }
 }
@@ -451,6 +465,13 @@ class ComparisonRunner {
   DiffTestResult SingleCmpRun(llvm::Function *f1, llvm::Function *f2) {
     auto func1_state = (X86State *) alloca(sizeof(X86State));
     RandomizeState(func1_state);
+    func1_state->addr.ds_base.dword = 0;
+    func1_state->addr.ss_base.dword = 0;
+    func1_state->addr.es_base.dword = 0;
+    func1_state->addr.fs_base.dword = 0;
+    func1_state->addr.gs_base.dword = 0;
+    func1_state->addr.cs_base.dword = 0;
+    func1_state->gpr.rip.qword = 0;
     auto func2_state = (X86State *) alloca(sizeof(X86State));
 
     std::memcpy(func2_state, func1_state, sizeof(X86State));
@@ -556,8 +577,8 @@ int main(int argc, char **argv) {
 
 
   DifferentialModuleBuilder diffbuilder = DifferentialModuleBuilder::Create(
-      remill::OSName::kOSLinux, remill::ArchName::kArchX86,
-      remill::OSName::kOSLinux, remill::ArchName::kArchX86_SLEIGH);
+      remill::OSName::kOSLinux, remill::ArchName::kArchAMD64,
+      remill::OSName::kOSLinux, remill::ArchName::kArchAMD64_SLEIGH);
   uint64_t ctr = 0;
   std::vector<TestCase> failed_testcases;
   for (auto tc : testcases) {
