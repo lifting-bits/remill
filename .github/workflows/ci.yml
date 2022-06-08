@@ -39,7 +39,7 @@ jobs:
       - name: Build with build script
         shell: bash
         run: |
-          git config --global --add safe.directory ./
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           sudo apt-get update && sudo apt-get install g++-8
           ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
       - name: Build with build-presets script
@@ -105,7 +105,7 @@ jobs:
       - name: Build with build script
         shell: bash
         run: |
-          git config --global --add safe.directory ./
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
       - name: Build with build-presets script
         shell: bash
