@@ -104,7 +104,9 @@ jobs:
           fetch-depth: 0
       - name: Build with build script
         shell: bash
-        run: ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
+        run: |
+          git config --global --add safe.directory ./
+          ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
       - name: Build with build-presets script
         shell: bash
         run: |
