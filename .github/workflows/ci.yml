@@ -33,7 +33,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
@@ -99,7 +99,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Build with build script
@@ -150,7 +150,7 @@ jobs:
 
     steps:
       - name: Clone the remill repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: remill
           fetch-depth: 0
@@ -218,7 +218,7 @@ jobs:
         llvm: ["13", "14"]
         ubuntu: ["20.04"]
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Build LLVM ${{ matrix.llvm }} on ${{ matrix.ubuntu }}
       run: |
         docker build . -t ghcr.io/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest -f Dockerfile --build-arg UBUNTU_VERSION=${{ matrix.ubuntu }} --build-arg ARCH=amd64 --build-arg LLVM_VERSION=${{ matrix.llvm }}
