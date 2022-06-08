@@ -36,10 +36,10 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
       - name: Build with build script
         shell: bash
         run: |
+          git config --global --add safe.directory ./
           sudo apt-get update && sudo apt-get install g++-8
           ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
       - name: Build with build-presets script
