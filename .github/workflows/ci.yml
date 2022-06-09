@@ -23,7 +23,7 @@ jobs:
       matrix:
         image:
           - { name: 'ubuntu', tag: '20.04' }
-        llvm: ['12', '13']
+        llvm: ['13', '14']
 
     runs-on: ubuntu-20.04
     container:
@@ -36,10 +36,10 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
       - name: Build with build script
         shell: bash
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           sudo apt-get update && sudo apt-get install g++-8
           ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
       - name: Build with build-presets script
@@ -94,7 +94,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['macos-11']
-        llvm: ['12', '13']
+        llvm: ['13', '14']
 
     runs-on: ${{ matrix.os }}
 
@@ -104,7 +104,9 @@ jobs:
           fetch-depth: 0
       - name: Build with build script
         shell: bash
-        run: ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
       - name: Build with build-presets script
         shell: bash
         run: |
@@ -215,7 +217,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        llvm: ["12", "13"]
+        llvm: ["13", "14"]
         ubuntu: ["20.04"]
     steps:
     - uses: actions/checkout@v2
