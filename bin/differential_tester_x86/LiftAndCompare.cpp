@@ -468,10 +468,7 @@ class ComparisonRunner {
     func1_state->addr.ds_base.dword = 0;
     func1_state->addr.ss_base.dword = 0;
     func1_state->addr.es_base.dword = 0;
-    func1_state->addr.fs_base.dword = 0;
-    func1_state->addr.gs_base.dword = 0;
     func1_state->addr.cs_base.dword = 0;
-    func1_state->gpr.rip.qword = 0;
     auto func2_state = (X86State *) alloca(sizeof(X86State));
 
     std::memcpy(func2_state, func1_state, sizeof(X86State));
