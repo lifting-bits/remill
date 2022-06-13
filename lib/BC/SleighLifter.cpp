@@ -865,6 +865,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
                             VarnodeData *outvar, VarnodeData *vars,
                             int4 isize) {
     switch (opc) {
+      // We shouldnt encounter this afaik MULTIEQUAL is a decompiler concept?
       case OpCode::CPUI_MULTIEQUAL: {
         llvm::Type *phi_type =
             llvm::IntegerType::get(this->context, vars[0].size * 8);
@@ -1081,16 +1082,17 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
   const auto next_pc = ir.CreateLoad(this->GetWordType(), next_pc_ref);
   auto pc_ref = this->LoadRegAddress(block, state_ptr, "PC");
 
-  ir.CreateStore(next_pc, pc_ref);
-  ir.CreateStore(
-      ir.CreateAdd(next_pc, llvm::ConstantInt::get(this->GetWordType(),
-                                                   inst.bytes.size())),
-      next_pc_ref);
+  auto curr_eip = ir.CreateAdd(
+      next_pc, llvm::ConstantInt::get(this->GetWordType(), inst.bytes.size()));
+  ir.CreateStore(curr_eip, next_pc_ref);
+  ir.CreateStore(curr_eip, pc_ref);
+
 
   SleighLifter::PcodeToLLVMEmitIntoBlock lifter(block, state_ptr, inst, *this);
   auto res = sleigh_context->oneInstruction(inst.pc, lifter, inst.bytes);
-  (void) res;
 
+  (void) res;
+  ir.CreateStore(ir.CreateLoad(this->GetWordType(), pc_ref), next_pc_ref);
 
   //NOTE(Ian): If we made it past decoding we should be able to decode the bytes again
   assert(res.has_value());

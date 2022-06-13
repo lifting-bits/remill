@@ -33,6 +33,7 @@ DEFINE_uint64(num_iterations, 2, "number of iterations per test case");
 DEFINE_string(repro_file, "", "File to output failing test cases");
 DEFINE_string(whitelist, "", "File listing instruction states not to check");
 DEFINE_bool(should_dump_functions, false, "Dump each function version");
+DEFINE_bool(stop_on_fail, false, "Stop on first failure");
 
 enum TypeId { MEMORY = 0, STATE = 1 };
 
@@ -80,6 +81,8 @@ class LiftingTester {
       return std::nullopt;
     }
 
+    LOG(INFO) << "Decoded insn " << insn.Serialize();
+
     auto target_func =
         this->arch->DefineLiftedFunction(fname, this->semantics_module);
     LOG(INFO) << "Func sig: "
@@ -87,13 +90,23 @@ class LiftingTester {
 
     if (remill::LiftStatus::kLiftedInstruction ==
         this->lifter->LiftIntoBlock(insn, &target_func->getEntryBlock())) {
+
+
       auto mem_ptr_ref =
           remill::LoadMemoryPointerRef(&target_func->getEntryBlock());
 
       llvm::IRBuilder bldr(&target_func->getEntryBlock());
+      auto pc_ref =
+          remill::LoadProgramCounterRef(&target_func->getEntryBlock());
+      auto next_pc_ref =
+          remill::LoadNextProgramCounterRef(&target_func->getEntryBlock());
+      bldr.CreateStore(bldr.CreateLoad(next_pc_ref), pc_ref);
+
       bldr.CreateRet(
           bldr.CreateLoad(this->lifter->GetMemoryType(), mem_ptr_ref));
 
+
+      LOG(INFO) << "No opt" << remill::LLVMThingToString(target_func);
       return std::make_pair(target_func, insn.function);
     } else {
       target_func->eraseFromParent();
@@ -744,6 +757,10 @@ int main(int argc, char **argv) {
 
           llvm::json::operator<<(o, llvm::json::Value(std::move(arr)));
         }
+      }
+
+      if (!succeeded && FLAGS_stop_on_fail) {
+        return 1;
       }
     }
     ctr++;
