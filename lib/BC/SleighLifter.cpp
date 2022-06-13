@@ -1074,16 +1074,23 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
     return kLiftedInvalidInstruction;
   }
 
+
+  llvm::IRBuilder<> ir(block);
+  const auto next_pc_ref =
+      LoadRegAddress(block, state_ptr, kNextPCVariableName);
+  const auto next_pc = ir.CreateLoad(this->GetWordType(), next_pc_ref);
+  auto pc_ref = this->LoadRegAddress(block, state_ptr, "PC");
+
+  ir.CreateStore(next_pc, pc_ref);
+  ir.CreateStore(
+      ir.CreateAdd(next_pc, llvm::ConstantInt::get(this->GetWordType(),
+                                                   inst.bytes.size())),
+      next_pc_ref);
+
   SleighLifter::PcodeToLLVMEmitIntoBlock lifter(block, state_ptr, inst, *this);
   auto res = sleigh_context->oneInstruction(inst.pc, lifter, inst.bytes);
   (void) res;
 
-  auto var_to_store_into = LoadNextProgramCounterRef(block);
-  auto reg_addr = this->LoadRegAddress(block, state_ptr, "PC");
-
-  llvm::IRBuilder<> ir(block);
-  auto loaded_pc = ir.CreateLoad(this->GetWordType(), reg_addr);
-  ir.CreateStore(loaded_pc, var_to_store_into);
 
   //NOTE(Ian): If we made it past decoding we should be able to decode the bytes again
   assert(res.has_value());

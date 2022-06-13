@@ -24,12 +24,14 @@
 #include <functional>
 #include <random>
 
+#include "Whitelist.h"
 #include "gtest/gtest.h"
 
 
 DEFINE_string(target_insn_file, "", "Path to input test cases");
 DEFINE_uint64(num_iterations, 2, "number of iterations per test case");
 DEFINE_string(repro_file, "", "File to output failing test cases");
+DEFINE_string(whitelist, "", "File listing instruction states not to check");
 
 enum TypeId { MEMORY = 0, STATE = 1 };
 
@@ -69,7 +71,7 @@ class LiftingTester {
   }
 
 
-  std::optional<llvm::Function *>
+  std::optional<std::pair<llvm::Function *, std::string>>
   LiftInstructionFunction(std::string_view fname, std::string_view bytes,
                           uint64_t address) {
     remill::Instruction insn;
@@ -91,7 +93,7 @@ class LiftingTester {
       bldr.CreateRet(
           bldr.CreateLoad(this->lifter->GetMemoryType(), mem_ptr_ref));
 
-      return target_func;
+      return std::make_pair(target_func, insn.function);
     } else {
       target_func->eraseFromParent();
       return std::nullopt;
@@ -113,10 +115,13 @@ bool flag_computation_stub(bool res, ...) {
 class DiffModule {
  public:
   DiffModule(std::unique_ptr<llvm::Module> mod_, llvm::Function *f1_,
-             llvm::Function *f2_)
+             llvm::Function *f2_, std::string f1_insn_name_,
+             std::string f2_insn_name_)
       : mod(std::move(mod_)),
         f1(f1_),
-        f2(f2_) {}
+        f2(f2_),
+        f1_insn_name(f1_insn_name_),
+        f2_insn_name(f2_insn_name_) {}
 
   llvm::Module *GetModule() {
     return this->mod.get();
@@ -130,10 +135,20 @@ class DiffModule {
     return this->f2;
   }
 
+  std::string_view GetNameF1() {
+    return this->f1_insn_name;
+  }
+
+  std::string_view GetNameF2() {
+    return this->f2_insn_name;
+  }
+
  private:
   std::unique_ptr<llvm::Module> mod;
   llvm::Function *f1;
   llvm::Function *f2;
+  std::string f1_insn_name;
+  std::string f2_insn_name;
 };
 
 
@@ -206,8 +221,12 @@ class DifferentialModuleBuilder {
     auto maybe_f2 = this->l2.LiftInstructionFunction(fname_f2, bytes, address);
 
     if (maybe_f1.has_value() && maybe_f2.has_value()) {
-      auto f1 = *maybe_f1;
-      auto f2 = *maybe_f2;
+      auto f1_and_name = *maybe_f1;
+      auto f2_and_name = *maybe_f2;
+
+      auto f1 = f1_and_name.first;
+      auto f2 = f2_and_name.first;
+
 
       auto tst = f1->getParent();
 
@@ -223,7 +242,8 @@ class DifferentialModuleBuilder {
       remill::CloneFunctionInto(cloned->getFunction(f2->getName()), new_f2);
 
 
-      return DiffModule(std::move(module), new_f1, new_f2);
+      return DiffModule(std::move(module), new_f1, new_f2, f1_and_name.second,
+                        f2_and_name.second);
     } else {
       return std::nullopt;
     }
@@ -389,8 +409,8 @@ class ComparisonRunner {
   ComparisonRunner(llvm::support::endianness endian_) : endian(endian_) {}
 
  private:
-  void ExecuteLiftedFunction(llvm::Function *func, X86State *state,
-                             MemoryHandler *handler) {
+  void ExecuteLiftedFunction(llvm::Function *func, size_t insn_length,
+                             X86State *state, MemoryHandler *handler) {
     std::string load_error = "";
     llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr, &load_error);
     if (!load_error.empty()) {
@@ -438,7 +458,7 @@ class ComparisonRunner {
             target->getName().str());
 
     assert(returned != nullptr);
-    returned(state, 0, handler);
+    returned(state, state->gpr.rip.dword, handler);
   }
 
   void StubOutFlagComputationInstrinsics(llvm::Module *mod,
@@ -451,18 +471,54 @@ class ComparisonRunner {
     }
   }
 
+
  private:
-  static void print_into_buffer(std::string &buff, const char *fmt, ...) {}
+  template <class T>
+  void addRegTo(llvm::json::Object &obj, std::string name, T value) {
+    obj[name] = value;
+  }
 
-  static std::string dump_struct(X86State *st) {
-    std::string buf;
 
-    __builtin_dump_struct(st, &printf);
-    return buf;
+  std::string DumpState(X86State *st) {
+
+    llvm::json::Object mapper;
+    llvm::json::Object gpr;
+    addRegTo(gpr, "eax", st->gpr.rax.dword);
+    addRegTo(gpr, "ebx", st->gpr.rbx.dword);
+    addRegTo(gpr, "ecx", st->gpr.rcx.dword);
+    addRegTo(gpr, "edx", st->gpr.rdx.dword);
+    addRegTo(gpr, "eip", st->gpr.rip.dword);
+    addRegTo(gpr, "esp", st->gpr.rsp.dword);
+    addRegTo(gpr, "esi", st->gpr.rsi.dword);
+    addRegTo(gpr, "edi", st->gpr.rdi.dword);
+
+
+    llvm::json::Object flags;
+    addRegTo(flags, "zf", st->aflag.zf);
+    addRegTo(flags, "of", st->aflag.of);
+    addRegTo(flags, "pf", st->aflag.pf);
+    addRegTo(flags, "cf", st->aflag.cf);
+    addRegTo(flags, "df", st->aflag.df);
+    addRegTo(flags, "sf", st->aflag.sf);
+    addRegTo(flags, "af", st->aflag.af);
+
+
+    mapper["gpr"] = std::move(gpr);
+    mapper["flags"] = std::move(flags);
+    std::string res;
+    llvm::json::Value v(std::move(mapper));
+    llvm::raw_string_ostream ss(res);
+    ss << v;
+
+    return ss.str();
   }
 
  public:
-  DiffTestResult SingleCmpRun(llvm::Function *f1, llvm::Function *f2) {
+  DiffTestResult
+  SingleCmpRun(size_t insn_length, llvm::Function *f1, llvm::Function *f2,
+               const std::vector<WhiteListInstruction> &whitelist,
+               std::string_view isel_name) {
+
     auto func1_state = (X86State *) alloca(sizeof(X86State));
     RandomizeState(func1_state);
     func1_state->addr.ds_base.dword = 0;
@@ -476,20 +532,28 @@ class ComparisonRunner {
     assert(std::memcmp(func1_state, func2_state, sizeof(X86State)) == 0);
 
     auto mem_handler = std::make_unique<MemoryHandler>(this->endian);
-
-    ExecuteLiftedFunction(f1, func1_state, mem_handler.get());
+    ExecuteLiftedFunction(f1, insn_length, func1_state, mem_handler.get());
     auto second_handler = std::make_unique<MemoryHandler>(
         this->endian, mem_handler->GetUninitializedReads());
-    ExecuteLiftedFunction(f2, func2_state, second_handler.get());
+    ExecuteLiftedFunction(f2, insn_length, func2_state, second_handler.get());
 
 
     auto memory_state_eq =
         mem_handler->GetMemory() == second_handler->GetMemory();
 
+
+    for (const auto &it : whitelist) {
+      it.ApplyToInsn(isel_name, func1_state);
+      it.ApplyToInsn(isel_name, func2_state);
+    }
+
     auto are_equal =
         std::memcmp(func1_state, func2_state, sizeof(X86State)) == 0 &&
         memory_state_eq;
-    return {"", "", are_equal};
+
+
+    return {this->DumpState(func1_state), this->DumpState(func2_state),
+            are_equal};
   }
 };
 
@@ -572,12 +636,36 @@ int main(int argc, char **argv) {
     LOG(FATAL) << "Failed to parse testcases";
   }
 
+  std::vector<WhiteListInstruction> whitelist;
+
+  if (!FLAGS_whitelist.empty()) {
+    LOG(INFO) << "Reading whitelist";
+    auto maybe_whitelist_buff =
+        llvm::MemoryBuffer::getFileOrSTDIN(FLAGS_whitelist);
+    if (maybe_whitelist_buff.getError()) {
+      LOG(FATAL) << "Failed to read whitelist file with: "
+                 << maybe_whitelist_buff.getError().message();
+    }
+
+    auto maybe_whitelist_json =
+        llvm::json::parse<std::vector<WhiteListInstruction>>(
+            maybe_whitelist_buff.get()->getBuffer());
+    if (auto E = maybe_whitelist_json.takeError()) {
+      LOG(FATAL) << "Failed to parse whitelist json: "
+                 << llvm::toString(std::move(E));
+    }
+
+    whitelist = maybe_whitelist_json.get();
+  } else {
+    LOG(ERROR) << "Not using a whitelist";
+  }
 
   DifferentialModuleBuilder diffbuilder = DifferentialModuleBuilder::Create(
-      remill::OSName::kOSLinux, remill::ArchName::kArchAMD64,
-      remill::OSName::kOSLinux, remill::ArchName::kArchAMD64_SLEIGH);
+      remill::OSName::kOSLinux, remill::ArchName::kArchX86,
+      remill::OSName::kOSLinux, remill::ArchName::kArchX86_SLEIGH);
   uint64_t ctr = 0;
   std::vector<TestCase> failed_testcases;
+  auto succeeded = true;
   for (auto tc : testcases) {
     LOG(INFO) << "Starting testcase: " << llvm::toHex(tc.bytes);
     auto diff_mod =
@@ -595,12 +683,17 @@ int main(int argc, char **argv) {
                    : llvm::support::endianness::little;
     ComparisonRunner comp_runner(end);
     for (uint64_t i = 0; i < FLAGS_num_iterations; i++) {
-      auto tc_result =
-          comp_runner.SingleCmpRun(diff_mod->GetF1(), diff_mod->GetF2());
+      auto tc_result = comp_runner.SingleCmpRun(
+          tc.bytes.size(), diff_mod->GetF1(), diff_mod->GetF2(), whitelist,
+          diff_mod->GetNameF1());
 
       if (!tc_result.are_equal) {
+        succeeded = false;
         LOG(ERROR) << "Difference in instruction" << std::hex << tc.addr << ": "
                    << llvm::toHex(tc.bytes);
+
+        std::cout << tc_result.struct_dump1 << std::endl;
+        std::cout << tc_result.struct_dump2 << std::endl;
 
         failed_testcases.push_back(tc);
         if (!FLAGS_repro_file.empty()) {
@@ -622,5 +715,11 @@ int main(int argc, char **argv) {
       }
     }
     ctr++;
+  }
+
+  if (succeeded) {
+    return 0;
+  } else {
+    return 1;
   }
 }
