@@ -32,6 +32,7 @@ DEFINE_string(target_insn_file, "", "Path to input test cases");
 DEFINE_uint64(num_iterations, 2, "number of iterations per test case");
 DEFINE_string(repro_file, "", "File to output failing test cases");
 DEFINE_string(whitelist, "", "File listing instruction states not to check");
+DEFINE_bool(should_dump_functions, false, "Dump each function version");
 
 enum TypeId { MEMORY = 0, STATE = 1 };
 
@@ -325,6 +326,7 @@ class MemoryHandler {
 
     auto genned = rbe();
     uninitialized_reads.insert({addr, genned});
+    state.insert({addr, genned});
     return genned;
   }
 
@@ -338,6 +340,23 @@ class MemoryHandler {
 
   const std::unordered_map<uint64_t, uint8_t> &GetMemory() const {
     return this->state;
+  }
+
+  std::string DumpState() const {
+
+    llvm::json::Object mapping;
+    for (const auto &kv : this->state) {
+      std::stringstream ss;
+      ss << kv.first;
+      mapping[ss.str()] = kv.second;
+    }
+
+    std::string res;
+    llvm::json::Value v(std::move(mapping));
+    llvm::raw_string_ostream ss(res);
+    ss << v;
+
+    return ss.str();
   }
 
   template <class T>
@@ -369,7 +388,9 @@ uint8_t ___remill_undefined_8(void) {
 
 uint32_t ___remill_read_memory_32(MemoryHandler *memory, uint64_t addr) {
   LOG(INFO) << "Reading " << std::hex << addr;
-  return memory->ReadMemory<uint32_t>(addr);
+  auto res = memory->ReadMemory<uint32_t>(addr);
+  LOG(INFO) << "Read memory " << res;
+  return res;
 }
 
 MemoryHandler *___remill_write_memory_32(MemoryHandler *memory, uint64_t addr,
@@ -541,6 +562,11 @@ class ComparisonRunner {
     auto memory_state_eq =
         mem_handler->GetMemory() == second_handler->GetMemory();
 
+    if (!memory_state_eq) {
+      LOG(ERROR) << "Memory state differs";
+      LOG(ERROR) << mem_handler->DumpState();
+      LOG(ERROR) << second_handler->DumpState();
+    }
 
     for (const auto &it : whitelist) {
       it.ApplyToInsn(isel_name, func1_state);
@@ -682,6 +708,12 @@ int main(int argc, char **argv) {
                    ? llvm::support::endianness::big
                    : llvm::support::endianness::little;
     ComparisonRunner comp_runner(end);
+
+    if (FLAGS_should_dump_functions) {
+      diff_mod->GetF1()->dump();
+      diff_mod->GetF2()->dump();
+    }
+
     for (uint64_t i = 0; i < FLAGS_num_iterations; i++) {
       auto tc_result = comp_runner.SingleCmpRun(
           tc.bytes.size(), diff_mod->GetF1(), diff_mod->GetF2(), whitelist,
