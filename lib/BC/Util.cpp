@@ -53,7 +53,6 @@
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/IRReader.h"
-#include "remill/BC/Compat/PointerType.h"
 #include "remill/BC/Compat/ToolOutputFile.h"
 #include "remill/BC/Compat/VectorType.h"
 #include "remill/BC/Compat/Verifier.h"
@@ -2390,30 +2389,18 @@ BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type, size_t offset,
 // and to give access to a module for data layouts.
 llvm::Value *BuildPointerToOffset(llvm::IRBuilder<> &ir, llvm::Value *ptr,
                                   size_t dest_elem_offset,
-                                  llvm::Type *dest_ptr_type_) {
-
-  const auto block = ir.GetInsertBlock();
-  llvm::Module *module = nullptr;
-  if (block) {
-    module = block->getModule();
-  } else if (auto gv = llvm::dyn_cast<llvm::GlobalValue>(ptr); gv) {
-    module = gv->getParent();
+                                  llvm::Type *dest_ptr_type) {
 
   // TODO(pag): Improve the API to take a `DataLayout`, perhaps.
-  } else {
-    LOG(FATAL) << "Unable to get the current module.";
-  }
-
   auto &context = ptr->getContext();
   const auto i32_type = llvm::Type::getInt32Ty(context);
 
-  const auto &dl = module->getDataLayout();
   llvm::SmallVector<llvm::Value *, 16> indexes;
 
   auto ptr_type = llvm::dyn_cast<llvm::PointerType>(ptr->getType());
   CHECK_NOTNULL(ptr_type);
   const auto dest_elem_ptr_type =
-      llvm::dyn_cast<llvm::PointerType>(dest_ptr_type_);
+      llvm::dyn_cast<llvm::PointerType>(dest_ptr_type);
   CHECK_NOTNULL(dest_elem_ptr_type);
   auto ptr_addr_space = ptr_type->getAddressSpace();
   const auto dest_ptr_addr_space = dest_elem_ptr_type->getAddressSpace();
@@ -2433,73 +2420,17 @@ llvm::Value *BuildPointerToOffset(llvm::IRBuilder<> &ir, llvm::Value *ptr,
     }
   }
 
-  // NOTE(alex): Same here
-  const auto dest_elem_type = PointerElementType(dest_elem_ptr_type);
-  const auto ptr_elem_type = PointerElementType(ptr_type);
-  const auto ptr_elem_size = dl.getTypeAllocSize(ptr_elem_type);
-  const auto base_index = dest_elem_offset / ptr_elem_size;
+  const auto i8_type = llvm::Type::getInt8Ty(context);
 
-  indexes.push_back(llvm::ConstantInt::get(i32_type, base_index, false));
-
-  dest_elem_offset = dest_elem_offset % ptr_elem_size;
-
-  auto [reached_disp, indexed_type] =
-      BuildIndexes(dl, ptr_elem_type, 0, dest_elem_offset, indexes);
-
-  if (reached_disp) {
+  if (dest_elem_offset) {
+    indexes.push_back(
+        llvm::ConstantInt::get(i32_type, dest_elem_offset, false));
     if (constant_ptr) {
-      if (base_index) {
-        constant_ptr = llvm::ConstantExpr::getGetElementPtr(
-            ptr_elem_type, constant_ptr, indexes);
-      } else {
-        constant_ptr = llvm::ConstantExpr::getGetElementPtr(
-            ptr_elem_type, constant_ptr, indexes, true,
-            (base_index * ptr_elem_size) + reached_disp);
-      }
+      constant_ptr =
+          llvm::ConstantExpr::getGetElementPtr(i8_type, constant_ptr, indexes);
       ptr = constant_ptr;
     } else {
-      if (base_index) {
-        ptr = ir.CreateGEP(ptr_elem_type, ptr, indexes);
-      } else {
-        ptr = ir.CreateInBoundsGEP(ptr_elem_type, ptr, indexes);
-      }
-    }
-  }
-
-  if (const auto diff = dest_elem_offset - reached_disp; diff) {
-    DCHECK_LE(diff, dest_elem_offset);
-    const auto i8_type = llvm::Type::getInt8Ty(context);
-    const auto i8_ptr_type =
-        llvm::PointerType::getInt8PtrTy(context, ptr_addr_space);
-
-    const auto dest_elem_size = dl.getTypeAllocSize(dest_elem_type);
-    if (diff % dest_elem_size) {
-      if (constant_ptr) {
-        constant_ptr =
-            llvm::ConstantExpr::getBitCast(constant_ptr, i8_ptr_type);
-        constant_ptr = llvm::ConstantExpr::getGetElementPtr(
-            i8_type, constant_ptr, llvm::ConstantInt::get(i32_type, diff));
-        return llvm::ConstantExpr::getBitCast(constant_ptr, dest_elem_ptr_type);
-
-      } else {
-        ptr = ir.CreateBitCast(ptr, i8_ptr_type);
-        ptr = ir.CreateGEP(i8_type, ptr,
-                           llvm::ConstantInt::get(i32_type, diff, false));
-        return ir.CreateBitCast(ptr, dest_elem_ptr_type);
-      }
-    } else {
-      if (constant_ptr) {
-        constant_ptr =
-            llvm::ConstantExpr::getBitCast(constant_ptr, dest_elem_ptr_type);
-        return llvm::ConstantExpr::getGetElementPtr(
-            dest_elem_type, constant_ptr,
-            llvm::ConstantInt::get(i32_type, diff / dest_elem_size));
-      } else {
-        ptr = ir.CreateBitCast(ptr, dest_elem_ptr_type);
-        return ir.CreateGEP(
-            dest_elem_type, ptr,
-            llvm::ConstantInt::get(i32_type, diff / dest_elem_size, false));
-      }
+      ptr = ir.CreateGEP(i8_type, ptr, indexes);
     }
   }
 

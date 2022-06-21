@@ -22,7 +22,6 @@
 #include "remill/Arch/Instruction.h"
 #include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
-#include "remill/BC/Compat/PointerType.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/OS.h"
 
