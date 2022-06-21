@@ -125,7 +125,8 @@ struct Register {
   // The directly enclosed registers.
   std::vector<const Register *> children;
 
-  void ComputeGEPAccessors(const llvm::DataLayout &dl, llvm::Type *state_type);
+  void ComputeGEPAccessors(const llvm::DataLayout &dl,
+                           llvm::StructType *state_type);
 };
 
 class Arch {

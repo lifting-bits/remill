@@ -444,7 +444,7 @@ namespace {
 
 // Compute the total offset of a GEP chain.
 static uint64_t TotalOffset(const llvm::DataLayout &dl, llvm::Value *base,
-                            llvm::Type *state_type) {
+                            llvm::StructType *state_type) {
   uint64_t total_offset = 0;
   const auto state_size = dl.getTypeAllocSize(state_type);
   while (base) {
@@ -481,9 +481,8 @@ static uint64_t TotalOffset(const llvm::DataLayout &dl, llvm::Value *base,
 
 static llvm::Value *
 FinishAddressOf(llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
-                llvm::Type *state_type, size_t state_size,
-                const Register *reg, unsigned addr_space,
-                llvm::Value *gep) {
+                llvm::StructType *state_type, size_t state_size,
+                const Register *reg, unsigned addr_space, llvm::Value *gep) {
 
 
   auto gep_offset = TotalOffset(dl, gep, state_type);
@@ -548,9 +547,13 @@ FinishAddressOf(llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
 }  // namespace
 
 void Register::ComputeGEPAccessors(const llvm::DataLayout &dl,
-                                   llvm::Type *state_type) {
-  if (gep_type_at_offset || !state_type) {
+                                   llvm::StructType *state_type) {
+  if (gep_type_at_offset) {
     return;
+  }
+
+  if (!state_type) {
+    state_type = arch->state_type;
   }
 
   auto &context = state_type->getContext();
