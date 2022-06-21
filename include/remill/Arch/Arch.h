@@ -149,7 +149,7 @@ class Arch {
   llvm::StructType *StateStructType(void) const;
 
   // Pointer to a state structure type.
-  llvm::PointerType *StatePointerType(void) const;
+  __attribute__((deprecated)) llvm::PointerType *StatePointerType(void) const;
 
   // Return the type of an address, i.e. `addr_t` in the semantics.
   llvm::IntegerType *AddressType(void) const;
