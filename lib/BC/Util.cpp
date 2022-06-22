@@ -207,38 +207,41 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
-llvm::Value *FindVarInFunction(llvm::BasicBlock *block, std::string_view name,
-                               bool allow_failure) {
+std::pair<llvm::Value *, llvm::Type *>
+FindVarInFunction(llvm::BasicBlock *block, std::string_view name,
+                  bool allow_failure) {
   return FindVarInFunction(block->getParent(), name, allow_failure);
 }
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
-llvm::Value *FindVarInFunction(llvm::Function *function, std::string_view name_,
-                               bool allow_failure) {
+std::pair<llvm::Value *, llvm::Type *>
+FindVarInFunction(llvm::Function *function, std::string_view name_,
+                  bool allow_failure) {
+  // TODO(alex): Figure out how to to get types for the two cases below.
   llvm::StringRef name(name_.data(), name_.size());
   if (!function->empty()) {
     for (auto &instr : function->getEntryBlock()) {
       if (instr.getName() == name) {
-        return &instr;
+        return {&instr, nullptr};
       }
     }
   }
 
   for (auto &arg : function->args()) {
     if (arg.getName() == name) {
-      return &arg;
+      return {&arg, nullptr};
     }
   }
 
   auto module = function->getParent();
   if (auto var = module->getGlobalVariable(name)) {
-    return var;
+    return {var, var->getValueType()};
   }
 
   CHECK(allow_failure) << "Could not find variable " << name_ << " in function "
                        << function->getName().str();
-  return nullptr;
+  return {nullptr, nullptr};
 }
 
 // Find the machine state pointer.
@@ -293,12 +296,12 @@ llvm::Value *LoadProgramCounter(llvm::BasicBlock *block,
 
 // Return a reference to the current program counter.
 llvm::Value *LoadProgramCounterRef(llvm::BasicBlock *block) {
-  return FindVarInFunction(block->getParent(), kPCVariableName);
+  return FindVarInFunction(block->getParent(), kPCVariableName).first;
 }
 
 // Return a reference to the next program counter.
 llvm::Value *LoadNextProgramCounterRef(llvm::BasicBlock *block) {
-  return FindVarInFunction(block->getParent(), kNextPCVariableName);
+  return FindVarInFunction(block->getParent(), kNextPCVariableName).first;
 }
 
 // Return the next program counter.
@@ -310,7 +313,7 @@ llvm::Value *LoadNextProgramCounter(llvm::BasicBlock *block,
 
 // Return a reference to the return program counter.
 llvm::Value *LoadReturnProgramCounterRef(llvm::BasicBlock *block) {
-  return FindVarInFunction(block->getParent(), kReturnPCVariableName);
+  return FindVarInFunction(block->getParent(), kReturnPCVariableName).first;
 }
 
 // Update the program counter in the state struct with a new value.
@@ -345,19 +348,19 @@ llvm::Value *LoadBranchTaken(llvm::BasicBlock *block) {
   llvm::IRBuilder<> ir(block);
   auto i8_type = llvm::Type::getInt8Ty(block->getContext());
   auto cond = ir.CreateLoad(
-      i8_type, FindVarInFunction(block->getParent(), kBranchTakenVariableName));
+      i8_type, FindVarInFunction(block->getParent(), kBranchTakenVariableName).first);
   auto true_val = llvm::ConstantInt::get(cond->getType(), 1);
   return ir.CreateICmpEQ(cond, true_val);
 }
 
 // Return a reference to the branch taken
 llvm::Value *LoadBranchTakenRef(llvm::BasicBlock *block) {
-  return FindVarInFunction(block->getParent(), kBranchTakenVariableName);
+  return FindVarInFunction(block->getParent(), kBranchTakenVariableName).first;
 }
 
 // Return a reference to the memory pointer.
 llvm::Value *LoadMemoryPointerRef(llvm::BasicBlock *block) {
-  return FindVarInFunction(block->getParent(), kMemoryVariableName);
+  return FindVarInFunction(block->getParent(), kMemoryVariableName).first;
 }
 
 // Find a function with name `name` in the module `M`.
@@ -676,7 +679,7 @@ LiftedFunctionArgs(llvm::BasicBlock *block, const IntrinsicTable &intrinsics) {
   // Set up arguments according to our ABI.
   std::array<llvm::Value *, kNumBlockArgs> args;
 
-  if (FindVarInFunction(func, kPCVariableName, true)) {
+  if (FindVarInFunction(func, kPCVariableName, true).first) {
     args[kMemoryPointerArgNum] = LoadMemoryPointer(block, intrinsics);
     args[kStatePointerArgNum] = LoadStatePointer(block);
     args[kPCArgNum] = LoadProgramCounter(block, intrinsics);

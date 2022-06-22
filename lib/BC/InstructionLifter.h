@@ -71,7 +71,8 @@ class InstructionLifter::Impl {
   llvm::Type *const memory_ptr_type;
 
   // Cache of looked up registers inside of `last_func`.
-  std::unordered_map<std::string, llvm::Value *> reg_ptr_cache;
+  std::unordered_map<std::string, std::pair<llvm::Value *, llvm::Type *>>
+      reg_ptr_cache;
 
   // The function into which we're lifting. If This gets out of date, we
   // clear out `reg_ptr_cache`.

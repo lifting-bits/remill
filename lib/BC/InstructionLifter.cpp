@@ -117,10 +117,10 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
   }
 
   llvm::IRBuilder<> ir(block);
-  const auto mem_ptr_ref =
+  const auto [mem_ptr_ref, mem_ptr_ref_type] =
       LoadRegAddress(block, state_ptr, kMemoryVariableName);
-  const auto pc_ref = LoadRegAddress(block, state_ptr, kPCVariableName);
-  const auto next_pc_ref =
+  const auto [pc_ref, pc_ref_type] = LoadRegAddress(block, state_ptr, kPCVariableName);
+  const auto [next_pc_ref, next_pc_ref_type] =
       LoadRegAddress(block, state_ptr, kNextPCVariableName);
   const auto next_pc = ir.CreateLoad(impl->word_type, next_pc_ref);
 
@@ -225,7 +225,7 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
 }
 
 // Load the address of a register.
-llvm::Value *
+std::pair<llvm::Value *, llvm::Type *>
 InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
                                   llvm::Value *state_ptr,
                                   std::string_view reg_name_) const {
@@ -241,18 +241,20 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
   }
 
   std::string reg_name(reg_name_.data(), reg_name_.size());
-  auto [reg_ptr_it, added] =
-      impl->reg_ptr_cache.emplace(std::move(reg_name), nullptr);
+  auto [reg_ptr_it, added] = impl->reg_ptr_cache.emplace(
+      std::move(reg_name),
+      std::pair<llvm::Value *, llvm::Type *>{nullptr, nullptr});
 
-  if (reg_ptr_it->second) {
+  if (reg_ptr_it->second.first) {
     (void) added;
     return reg_ptr_it->second;
   }
 
   // It's already a variable in the function.
-  if (const auto var_ptr = FindVarInFunction(func, reg_name_, true)) {
-    reg_ptr_it->second = var_ptr;
-    return var_ptr;
+  const auto [var_ptr, var_ptr_type] = FindVarInFunction(func, reg_name_, true);
+  if (var_ptr) {
+    reg_ptr_it->second = {var_ptr, var_ptr_type};
+    return reg_ptr_it->second;
   }
 
   // It's a register known to this architecture, so go and build a GEP to it
@@ -288,13 +290,13 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
                  << LLVMThingToString(state_ptr);
     }
 
-    reg_ptr_it->second = reg_ptr;
-    return reg_ptr;
+    reg_ptr_it->second = {reg_ptr, reg->type};
+    return reg_ptr_it->second;
   }
 
   // Try to find it as a global variable.
   if (auto gvar = module->getGlobalVariable(reg_name)) {
-    return gvar;
+      return {gvar, gvar->getValueType()};
   }
 
   // Invent a fake one and keep going.
@@ -302,7 +304,7 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
   unk_var << "__remill_unknown_register_" << reg_name;
   auto unk_var_name = unk_var.str();
   if (auto var = module->getGlobalVariable(unk_var_name)) {
-    return var;
+      return {var, var->getValueType()};
   }
 
   // TODO(pag): Eventually refactor into a higher-level issue, perhaps a
@@ -311,9 +313,11 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
   LOG(ERROR)
       << "Could not locate variable or register " << reg_name_;
 
-  return new llvm::GlobalVariable(
-      *module, impl->word_type, false, llvm::GlobalValue::ExternalLinkage,
-      llvm::UndefValue::get(impl->word_type), unk_var_name);
+  return {new llvm::GlobalVariable(*module, impl->word_type, false,
+                                   llvm::GlobalValue::ExternalLinkage,
+                                   llvm::UndefValue::get(impl->word_type),
+                                   unk_var_name),
+          impl->word_type};
 }
 
 // Clear out the cache of the current register values/addresses loaded.
@@ -326,10 +330,8 @@ void InstructionLifter::ClearCache(void) const {
 llvm::Value *InstructionLifter::LoadRegValue(llvm::BasicBlock *block,
                                              llvm::Value *state_ptr,
                                              std::string_view reg_name) const {
-  auto ptr = LoadRegAddress(block, state_ptr, reg_name);
+  auto [ptr, ptr_ty] = LoadRegAddress(block, state_ptr, reg_name);
   CHECK_NOTNULL(ptr);
-  // NOTE(alex): This isn't right. Not sure how to solve this right now.
-  auto ptr_ty = impl->word_type;
   return new llvm::LoadInst(ptr_ty, ptr, llvm::Twine::createNull(), block);
 }
 
@@ -562,7 +564,7 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
   auto arg_type = IntendedArgumentType(arg);
 
   if (llvm::isa<llvm::PointerType>(arg_type)) {
-    auto val = LoadRegAddress(block, state_ptr, arch_reg.name);
+      auto [val, val_type] = LoadRegAddress(block, state_ptr, arch_reg.name);
     return ConvertToIntendedType(inst, op, block, val, real_arg_type);
 
   } else {
@@ -763,7 +765,7 @@ llvm::Value *InstructionLifter::LiftExpressionOperandRec(
     if (!arg || !llvm::isa<llvm::PointerType>(arg->getType())) {
       return LoadRegValue(block, state_ptr, (*reg_op)->name);
     } else {
-      return LoadRegAddress(block, state_ptr, (*reg_op)->name);
+      return LoadRegAddress(block, state_ptr, (*reg_op)->name).first;
     }
 
   } else if (auto ci_op = std::get_if<llvm::Constant *>(op)) {
@@ -773,7 +775,7 @@ llvm::Value *InstructionLifter::LiftExpressionOperandRec(
     if (!arg || !llvm::isa<llvm::PointerType>(arg->getType())) {
       return LoadRegValue(block, state_ptr, *str_op);
     } else {
-      return LoadRegAddress(block, state_ptr, *str_op);
+      return LoadRegAddress(block, state_ptr, *str_op).first;
     }
   } else {
     LOG(FATAL) << "Uninitialized Operand Expression";

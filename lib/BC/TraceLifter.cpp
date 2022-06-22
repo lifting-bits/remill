@@ -289,7 +289,7 @@ bool TraceLifter::Impl::Lift(
 
     func = get_trace_decl(trace_addr);
     blocks.clear();
-    
+
     if (!func || !func->isDeclaration()) {
       func = arch->DeclareLiftedFunction(manager.TraceName(trace_addr), module);
     }
@@ -305,8 +305,8 @@ bool TraceLifter::Impl::Lift(
 
     if (auto entry_block = &(func->front())) {
       auto pc = LoadProgramCounterArg(func);
-      auto next_pc_ref = inst_lifter.LoadRegAddress(entry_block, state_ptr,
-                                                    kNextPCVariableName);
+      auto [next_pc_ref, next_pc_ref_type] = inst_lifter.LoadRegAddress(
+          entry_block, state_ptr, kNextPCVariableName);
 
       // Initialize `NEXT_PC`.
       (void) new llvm::StoreInst(pc, next_pc_ref, entry_block);

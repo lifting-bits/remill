@@ -30,6 +30,7 @@ class LLVMContext;
 class IntegerType;
 class BasicBlock;
 class Value;
+class Type;
 }  // namespace llvm
 
 namespace remill {
@@ -78,8 +79,9 @@ class InstructionLifter {
                            bool is_delayed = false);
 
   // Load the address of a register.
-  llvm::Value *LoadRegAddress(llvm::BasicBlock *block, llvm::Value *state_ptr,
-                              std::string_view reg_name) const;
+  std::pair<llvm::Value *, llvm::Type *>
+  LoadRegAddress(llvm::BasicBlock *block, llvm::Value *state_ptr,
+                 std::string_view reg_name) const;
 
   // Load the value of a register.
   llvm::Value *LoadRegValue(llvm::BasicBlock *block, llvm::Value *state_ptr,

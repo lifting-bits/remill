@@ -83,13 +83,15 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
-llvm::Value *FindVarInFunction(llvm::BasicBlock *block, std::string_view name,
-                               bool allow_failure = false);
+std::pair<llvm::Value *, llvm::Type *>
+FindVarInFunction(llvm::BasicBlock *block, std::string_view name,
+                  bool allow_failure = false);
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
-llvm::Value *FindVarInFunction(llvm::Function *func, std::string_view name,
-                               bool allow_failure = false);
+std::pair<llvm::Value *, llvm::Type *>
+FindVarInFunction(llvm::Function *func, std::string_view name,
+                  bool allow_failure = false);
 
 // Find the machine state pointer. The machine state pointer is, by convention,
 // passed as the first argument to every lifted function.

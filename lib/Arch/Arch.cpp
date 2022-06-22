@@ -386,11 +386,11 @@ namespace {
 
 // These variables must always be defined within any lifted function.
 static bool BlockHasSpecialVars(llvm::Function *basic_block) {
-  return FindVarInFunction(basic_block, kStateVariableName, true) &&
-         FindVarInFunction(basic_block, kMemoryVariableName, true) &&
-         FindVarInFunction(basic_block, kPCVariableName, true) &&
-         FindVarInFunction(basic_block, kNextPCVariableName, true) &&
-         FindVarInFunction(basic_block, kBranchTakenVariableName, true);
+  return FindVarInFunction(basic_block, kStateVariableName, true).first &&
+         FindVarInFunction(basic_block, kMemoryVariableName, true).first &&
+         FindVarInFunction(basic_block, kPCVariableName, true).first &&
+         FindVarInFunction(basic_block, kNextPCVariableName, true).first &&
+         FindVarInFunction(basic_block, kBranchTakenVariableName, true).first;
 }
 
 // Add attributes to llvm::Argument in a way portable across LLVMs
