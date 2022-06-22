@@ -798,7 +798,10 @@ void Arch::InitFromSemanticsModule(llvm::Module *module) const {
   const auto &dl = module->getDataLayout();
   const auto basic_block = module->getFunction("__remill_jump");
   CHECK_NOTNULL(basic_block);
-  const auto state_type = llvm::StructType::getTypeByName(module->getContext(), "struct.State");
+  const auto *state_global = module->getGlobalVariable("__remill_state");
+  CHECK_NOTNULL(state_global);
+  auto *state_type = llvm::dyn_cast<llvm::StructType>(state_global->getValueType());
+  CHECK_NOTNULL(state_type);
 
   impl->state_type = state_type;
   impl->reg_by_offset.resize(dl.getTypeAllocSize(state_type));
