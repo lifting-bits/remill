@@ -43,6 +43,9 @@ class ArchImpl {
   // Lifted function type.
   llvm::FunctionType *lifted_function_type{nullptr};
 
+  // Register window type.
+  llvm::StructType *register_window_type{nullptr};
+
   // Metadata type ID for remill registers.
   unsigned reg_md_id{0};
 

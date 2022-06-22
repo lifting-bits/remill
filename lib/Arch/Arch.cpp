@@ -259,6 +259,12 @@ llvm::FunctionType *Arch::LiftedFunctionType(void) const {
   return impl->lifted_function_type;
 }
 
+llvm::StructType *Arch::RegisterWindowType(void) const {
+  CHECK(impl)
+      << "Have you not run `PrepareModule` on a loaded semantics module?";
+  return impl->register_window_type;
+}
+
 // Return information about the register at offset `offset` in the `State`
 // structure.
 const Register *Arch::RegisterAtStateOffset(uint64_t offset) const {
@@ -798,10 +804,20 @@ void Arch::InitFromSemanticsModule(llvm::Module *module) const {
   const auto &dl = module->getDataLayout();
   const auto basic_block = module->getFunction("__remill_jump");
   CHECK_NOTNULL(basic_block);
+
   const auto *state_global = module->getGlobalVariable("__remill_state");
   CHECK_NOTNULL(state_global);
   auto *state_type = llvm::dyn_cast<llvm::StructType>(state_global->getValueType());
   CHECK_NOTNULL(state_type);
+
+  const auto *register_window_global =
+      module->getGlobalVariable("__remill_register_window");
+  if (register_window_global) {
+    auto *register_window_type = llvm::dyn_cast<llvm::StructType>(
+        register_window_global->getValueType());
+    CHECK_NOTNULL(register_window_type);
+    impl->register_window_type = register_window_type;
+  }
 
   impl->state_type = state_type;
   impl->reg_by_offset.resize(dl.getTypeAllocSize(state_type));
