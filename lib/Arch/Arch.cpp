@@ -548,12 +548,12 @@ FinishAddressOf(llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
 
 void Register::ComputeGEPAccessors(const llvm::DataLayout &dl,
                                    llvm::StructType *state_type) {
-  if (gep_type_at_offset) {
-    return;
-  }
-
   if (!state_type) {
     state_type = arch->state_type;
+  }
+
+  if (gep_type_at_offset || !state_type) {
+    return;
   }
 
   auto &context = state_type->getContext();
