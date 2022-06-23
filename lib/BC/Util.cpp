@@ -218,19 +218,17 @@ FindVarInFunction(llvm::BasicBlock *block, std::string_view name,
 std::pair<llvm::Value *, llvm::Type *>
 FindVarInFunction(llvm::Function *function, std::string_view name_,
                   bool allow_failure) {
-  // TODO(alex): Figure out how to to get types for the two cases below.
   llvm::StringRef name(name_.data(), name_.size());
   if (!function->empty()) {
     for (auto &instr : function->getEntryBlock()) {
       if (instr.getName() == name) {
-        return {&instr, nullptr};
+        if (auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(&instr)) {
+          return {alloca, alloca->getAllocatedType()};
+        }
+        if (auto *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(&instr)) {
+          return {gep, gep->getResultElementType()};
+        }
       }
-    }
-  }
-
-  for (auto &arg : function->args()) {
-    if (arg.getName() == name) {
-      return {&arg, nullptr};
     }
   }
 
