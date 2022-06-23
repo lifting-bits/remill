@@ -120,9 +120,13 @@ class LiftingTester {
 };
 
 static constexpr auto kFlagIntrinsicPrefix = "__remill_flag_computation";
-
+static constexpr auto kCompareFlagIntrinsicPrefix = "__remill_compare";
 
 bool flag_computation_stub(bool res, ...) {
+  return res;
+}
+
+bool compare_instrinsic_stub(bool res) {
   return res;
 }
 
@@ -501,6 +505,11 @@ class ComparisonRunner {
       if (func.isDeclaration() &&
           func.getName().startswith(kFlagIntrinsicPrefix)) {
         exec_engine.addGlobalMapping(&func, (void *) &flag_computation_stub);
+      }
+
+      if (func.isDeclaration() &&
+          func.getName().startswith(kCompareFlagIntrinsicPrefix)) {
+        exec_engine.addGlobalMapping(&func, (void *) &compare_instrinsic_stub);
       }
     }
   }

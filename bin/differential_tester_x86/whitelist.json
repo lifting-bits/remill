@@ -5,5 +5,19 @@
             "aflags",
             "af"
         ]
+    },
+    {
+        "isel_name": "ADD_",
+        "state_target": [
+            "aflags",
+            "af"
+        ]
+    },
+    {
+        "isel_name": "",
+        "state_target": [
+            "aflags",
+            "af"
+        ]
     }
 ]
