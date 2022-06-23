@@ -2,9 +2,6 @@ import argparse
 import re
 from typing import Dict, List, Match, Optional
 
-
-# CONSTRUCTOR_DEF_REGEX = r"(?P<table_name>[\w]+):(?:\s)*(?P<display_section>(?:[\x21-\x7E\s])*)(?:\s)*is(?P<bit_pattern_section>(?:[\s]*(?P<pattern>[\w]+(?:=[\d]+)?)[\s]*[|;&]?[\s]*)*)(?P<action_section>[[](?P<action>(?:[\s]*)[\w]+=[\w+\-*]+(?:[\s]*);(?:[\s]*))*[]])?(?:[\s]*)[{][\s]*(?P<semantic_section>(?:(?P<statement>(?P<export_stat>export[][*:\s\w]+)|(?P<normal_stat>[][*:\s\w]+=[][*:\s\w]+))[;][\s]*)+)[}]"
-
 CONNECTIVES_WITHOUT_SEMICOLON = "&|"
 CONNECTIVES = CONNECTIVES_WITHOUT_SEMICOLON+r";"
 
@@ -39,18 +36,19 @@ CONSTRUCTOR_BASE_REGEX = r"(?P<table_name>[\w]*):" + DISPLAY_SECTION + \
 
 class Context:
     def __init__(self) -> None:
-        program_counter = None
+        self.program_counter = "$(INST_NEXT_PTR)"
 
 
 class Environment:
-    def __init__(self, program_counter: str) -> None:
+    def __init__(self, program_counter: str, size_hint: str) -> None:
         self.names_to_calculating_expression: Dict[str, str] = {}
         self.program_counter = program_counter
+        self.size_hint = size_hint
         self.handle_inst_next_statement("inst_next=inst_next")
 
     def prepare_statement(self, name: str, exp: str):
         replaced_exp = exp.replace("inst_next", self.program_counter)
-        return f"claim_eq({name},{replaced_exp})"
+        return f"remill_please_dont_use_this_temp_name:{self.size_hint}={name};\nclaim_eq(remill_please_dont_use_this_temp_name,{replaced_exp})"
 
     def get_priors(self, stat: str) -> List[str]:
         tot = []
@@ -89,9 +87,14 @@ def build_constructor(env: Environment, constructor: Match[str]) -> Optional[str
     return f"{constructor.string[cons_start:sem_start]}\n{str_sec}\n{constructor.string[sem_end:cons_end]}"
 
 
+ENDIAN_DEF_REGEX = "define\s*endian\s*=[\w()$]+;"
+
+
 def main():
     prsr = argparse.ArgumentParser("Disassembly action replacer")
     prsr.add_argument("target_file")
+    prsr.add_argument("--pc_def", required=True)
+    prsr.add_argument("--inst_next_size_hint", required=True)
     prsr.add_argument("--out", required=True)
 
     args = prsr.parse_args()
@@ -99,33 +102,44 @@ def main():
     construct_pat = re.compile(CONSTRUCTOR_BASE_REGEX)
 
     with open(args.target_file, 'r') as target_f:
-        with open(args.out, 'w') as output_f:
-            target = target_f.read()
-            total_output = ""
-            last_offset = 0
-            for constructor in construct_pat.finditer(target):
-                total_output += constructor.string[last_offset:constructor.start()]
-                last_offset = constructor.end()
-                env = Environment("EIP")
-                act_section = constructor.group("action_section")
-                if act_section:
-                    statements = act_section[
-                        1: -1].split(";")
-                    for stat in statements:
-                        env.handle_inst_next_statement(stat)
-                if len(env.names_to_calculating_expression) > 0:
-                    maybe_new_cons = build_constructor(env, constructor)
-                    if maybe_new_cons:
-                        total_output += maybe_new_cons
-                    else:
-                        total_output += constructor.string[constructor.start(
-                        ): constructor.end()]
+        with open(args.pc_def) as pc_def_file:
+            pc_def = pc_def_file.read()
+            with open(args.out, 'w') as output_f:
+                target = target_f.read()
+                total_output = ""
 
-            total_output += target[last_offset:]
-            output_f.write(total_output)
+                # we know that an endian def has to be the first thing that occurs so go ahead and find that and sub in the preliminaries
+                endian_def = re.search(ENDIAN_DEF_REGEX, target)
+                total_output += target[0:endian_def.end()]
+
+                # can insert our defs here
+                total_output += "\n" + pc_def
+                total_output += "\ndefine pcodeop claim_eq;\n"
+
+                last_offset = endian_def.end()
+                cont = Context()
+                for constructor in construct_pat.finditer(target):
+                    total_output += constructor.string[last_offset:constructor.start()]
+                    last_offset = constructor.end()
+                    env = Environment(cont.program_counter,
+                                      args.inst_next_size_hint)
+                    act_section = constructor.group("action_section")
+                    if act_section:
+                        statements = act_section[
+                            1: -1].split(";")
+                        for stat in statements:
+                            env.handle_inst_next_statement(stat)
+                    if len(env.names_to_calculating_expression) > 0:
+                        maybe_new_cons = build_constructor(env, constructor)
+                        if maybe_new_cons:
+                            total_output += maybe_new_cons
+                        else:
+                            total_output += constructor.string[constructor.start(
+                            ): constructor.end()]
+
+                total_output += target[last_offset:]
+                output_f.write(total_output)
 
 
 if __name__ == "__main__":
     main()
-
-# (?P<table_name>[\w]+):(?:\s)*(?P<display_section>(?:[[:graph:]])*)(?:\s)*is(?P<bit_pattern_section>(?:[[:space:]]*(?P<pattern>[[:word:]]+(?:=[[:digit:]]+)?)[[:space:]]*[|;&]?[[:space:]]*)*)(?<action_section>[[](?P<action>(?:[[:space:]]*)[[:word:]]+=[[:word:]+\-*]+(?:[[:space:]]*);(?:[[:space:]]*))*[]])?(?:[[:space:]]*)[{][[:space:]]*(?P<semantic_section>(?:(?P<statement>(?P<export_stat>export[][*:[:space:][:word:]]+)|(?P<normal_stat>[][*:[:space:][:word:]]+=[][*:[:space:][:word:]]+))[;][[:space:]]*)+)[}]
