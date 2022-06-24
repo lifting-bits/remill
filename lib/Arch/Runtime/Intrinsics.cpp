@@ -27,9 +27,21 @@
 //        addresses taken, and so this prevents dead argument elimination.
 extern "C" void __remill_mark_as_used(const void *);
 
+extern State __remill_state;
+
+#if defined(REMILL_ON_SPARC32) || defined(REMILL_ON_SPARC64)
+extern RegisterWindow __remill_register_window;
+#endif
+
 // This is just a hack to make sure all these functions appear in the bitcode
 // file!
 [[gnu::used]] extern "C" void __remill_intrinsics(void) {
+
+  USED(__remill_state);
+
+#if defined(REMILL_ON_SPARC32) || defined(REMILL_ON_SPARC64)
+  USED(__remill_register_window);
+#endif
 
   USED(__remill_read_memory_8);
   USED(__remill_read_memory_16);

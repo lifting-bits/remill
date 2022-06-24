@@ -21,10 +21,6 @@
 #include "remill/Arch/Runtime/Float.h"
 #include "remill/Arch/X86/Runtime/State.h"
 
-// NOTE(alex): Copied this hack from intrinsics
-#define USED(sym) __remill_mark_as_used(reinterpret_cast<const void *>(&sym))
-extern "C" void __remill_mark_as_used(const void *);
-
 extern "C" {
 
 #pragma clang diagnostic push
@@ -48,12 +44,6 @@ extern CR3Reg CR3;
 extern CR4Reg CR4;
 extern CR8Reg CR8;
 
-extern State __remill_state;
-
 #pragma clang diagnostic pop
-
-[[gnu::used]] void __remill_state_used(void) {
-  USED(__remill_state);
-}
 
 }  // extern C
