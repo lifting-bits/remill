@@ -28,6 +28,8 @@
 
 namespace remill {
 
+class ConstantReplacementContext {};
+
 class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
  private:
   class Parameter {
@@ -904,6 +906,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       this->UpdateStatus(this->LiftVariadicOp(bldr, opc, outvar, vars, isize),
                          opc);
       return;
+    }
+
+    if (opc == OpCode::CPUI_CALLOTHER) {
     }
 
     switch (isize) {

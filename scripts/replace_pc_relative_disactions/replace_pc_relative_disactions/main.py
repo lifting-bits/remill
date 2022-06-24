@@ -1,6 +1,9 @@
 import argparse
 import re
 from typing import Dict, List, Match, Optional
+import os
+import tempfile
+import subprocess
 
 CONNECTIVES_WITHOUT_SEMICOLON = "&|"
 CONNECTIVES = CONNECTIVES_WITHOUT_SEMICOLON+r";"
@@ -95,6 +98,7 @@ def main():
     prsr.add_argument("target_file")
     prsr.add_argument("--pc_def", required=True)
     prsr.add_argument("--inst_next_size_hint", required=True)
+    prsr.add_argument("--base_path", required=True)
     prsr.add_argument("--out", required=True)
 
     args = prsr.parse_args()
@@ -138,7 +142,23 @@ def main():
                             ): constructor.end()]
 
                 total_output += target[last_offset:]
-                output_f.write(total_output)
+
+                # compute the patch header
+                src_and_dst = os.path.relpath(args.target_file, args.base_path)
+
+                # compute the patch
+                with tempfile.NamedTemporaryFile() as temp_out:
+                    temp_out.write(total_output.encode("utf8"))
+                    temp_out.seek(0)
+
+                    res = subprocess.run(
+                        ["diff", "-u", args.target_file, temp_out.name], capture_output=True)
+
+                    new_lines = [f"--- {src_and_dst}\n", f"+++ {src_and_dst}\n"] + \
+                        [l.decode("utf8") +
+                         "\n" for l in res.stdout.splitlines()[2:]]
+                    print(len(new_lines))
+                    output_f.writelines(new_lines)
 
 
 if __name__ == "__main__":

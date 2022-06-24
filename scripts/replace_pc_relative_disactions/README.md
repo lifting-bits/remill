@@ -1,1 +1,1 @@
-Example invocation for x86 `python replace_pc_relative_disactions/main.py <target .sinc file> --out <desired_output> --inst_next_size_hint "\$(SIZE)" --pc_def register_definitions/x86.ia`
+Example invocation for x86 `python replace_pc_relative_disactions/main.py <target .sinc file> --out <output_patch_file> --inst_next_size_hint "\$(SIZE)" --pc_def register_definitions/x86.ia`
