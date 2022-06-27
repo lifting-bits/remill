@@ -53,7 +53,6 @@
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/IRReader.h"
-#include "remill/BC/Compat/PointerType.h"
 #include "remill/BC/Compat/ToolOutputFile.h"
 #include "remill/BC/Compat/VectorType.h"
 #include "remill/BC/Compat/Verifier.h"
@@ -208,38 +207,39 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
-llvm::Value *FindVarInFunction(llvm::BasicBlock *block, std::string_view name,
-                               bool allow_failure) {
+std::pair<llvm::Value *, llvm::Type *>
+FindVarInFunction(llvm::BasicBlock *block, std::string_view name,
+                  bool allow_failure) {
   return FindVarInFunction(block->getParent(), name, allow_failure);
 }
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
-llvm::Value *FindVarInFunction(llvm::Function *function, std::string_view name_,
-                               bool allow_failure) {
+std::pair<llvm::Value *, llvm::Type *>
+FindVarInFunction(llvm::Function *function, std::string_view name_,
+                  bool allow_failure) {
   llvm::StringRef name(name_.data(), name_.size());
   if (!function->empty()) {
     for (auto &instr : function->getEntryBlock()) {
       if (instr.getName() == name) {
-        return &instr;
+        if (auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(&instr)) {
+          return {alloca, alloca->getAllocatedType()};
+        }
+        if (auto *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(&instr)) {
+          return {gep, gep->getResultElementType()};
+        }
       }
-    }
-  }
-
-  for (auto &arg : function->args()) {
-    if (arg.getName() == name) {
-      return &arg;
     }
   }
 
   auto module = function->getParent();
   if (auto var = module->getGlobalVariable(name)) {
-    return var;
+    return {var, var->getValueType()};
   }
 
   CHECK(allow_failure) << "Could not find variable " << name_ << " in function "
                        << function->getName().str();
-  return nullptr;
+  return {nullptr, nullptr};
 }
 
 // Find the machine state pointer.
@@ -294,12 +294,12 @@ llvm::Value *LoadProgramCounter(llvm::BasicBlock *block,
 
 // Return a reference to the current program counter.
 llvm::Value *LoadProgramCounterRef(llvm::BasicBlock *block) {
-  return FindVarInFunction(block->getParent(), kPCVariableName);
+  return FindVarInFunction(block->getParent(), kPCVariableName).first;
 }
 
 // Return a reference to the next program counter.
 llvm::Value *LoadNextProgramCounterRef(llvm::BasicBlock *block) {
-  return FindVarInFunction(block->getParent(), kNextPCVariableName);
+  return FindVarInFunction(block->getParent(), kNextPCVariableName).first;
 }
 
 // Return the next program counter.
@@ -311,7 +311,7 @@ llvm::Value *LoadNextProgramCounter(llvm::BasicBlock *block,
 
 // Return a reference to the return program counter.
 llvm::Value *LoadReturnProgramCounterRef(llvm::BasicBlock *block) {
-  return FindVarInFunction(block->getParent(), kReturnPCVariableName);
+  return FindVarInFunction(block->getParent(), kReturnPCVariableName).first;
 }
 
 // Update the program counter in the state struct with a new value.
@@ -346,19 +346,19 @@ llvm::Value *LoadBranchTaken(llvm::BasicBlock *block) {
   llvm::IRBuilder<> ir(block);
   auto i8_type = llvm::Type::getInt8Ty(block->getContext());
   auto cond = ir.CreateLoad(
-      i8_type, FindVarInFunction(block->getParent(), kBranchTakenVariableName));
+      i8_type, FindVarInFunction(block->getParent(), kBranchTakenVariableName).first);
   auto true_val = llvm::ConstantInt::get(cond->getType(), 1);
   return ir.CreateICmpEQ(cond, true_val);
 }
 
 // Return a reference to the branch taken
 llvm::Value *LoadBranchTakenRef(llvm::BasicBlock *block) {
-  return FindVarInFunction(block->getParent(), kBranchTakenVariableName);
+  return FindVarInFunction(block->getParent(), kBranchTakenVariableName).first;
 }
 
 // Return a reference to the memory pointer.
 llvm::Value *LoadMemoryPointerRef(llvm::BasicBlock *block) {
-  return FindVarInFunction(block->getParent(), kMemoryVariableName);
+  return FindVarInFunction(block->getParent(), kMemoryVariableName).first;
 }
 
 // Find a function with name `name` in the module `M`.
@@ -677,7 +677,7 @@ LiftedFunctionArgs(llvm::BasicBlock *block, const IntrinsicTable &intrinsics) {
   // Set up arguments according to our ABI.
   std::array<llvm::Value *, kNumBlockArgs> args;
 
-  if (FindVarInFunction(func, kPCVariableName, true)) {
+  if (FindVarInFunction(func, kPCVariableName, true).first) {
     args[kMemoryPointerArgNum] = LoadMemoryPointer(block, intrinsics);
     args[kStatePointerArgNum] = LoadStatePointer(block);
     args[kPCArgNum] = LoadProgramCounter(block, intrinsics);
@@ -935,9 +935,8 @@ RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context,
 
     case llvm::Type::PointerTyID: {
       auto ptr_type = llvm::dyn_cast<llvm::PointerType>(type);
-      auto elem_type = PointerElementType(ptr_type);
       cached =
-          llvm::PointerType::get(RecontextualizeType(elem_type, context, cache),
+          llvm::PointerType::get(context,
                                  ptr_type->getAddressSpace());
       break;
     }
@@ -1467,11 +1466,11 @@ llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
 
   auto &dest_context = dest_module->getContext();
   const auto type = ::remill::RecontextualizeType(
-      PointerElementType(var->getType()), dest_context);
+      var->getValueType(), dest_context);
 
   auto dest_var = dest_module->getGlobalVariable(var->getName());
   if (dest_var) {
-    CHECK_EQ(type, PointerElementType(dest_var->getType()));
+    CHECK_EQ(type, dest_var->getValueType());
     moved_var = dest_var;
     return dest_var;
   }
@@ -1521,7 +1520,7 @@ llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
     }
   }
 
-  const auto elem_type = PointerElementType(dest_type);
+  const auto elem_type = var->getValueType();
   const auto dest_var = llvm::GlobalAlias::create(
       elem_type, var->getType()->getAddressSpace(), var->getLinkage(),
       var->getName(), nullptr, dest_module);
@@ -1588,8 +1587,6 @@ static void MoveInstructionIntoModule(llvm::Instruction *inst,
       auto dest_func_type = llvm::dyn_cast<llvm::FunctionType>(
           RecontextualizeType(
               call->getFunctionType(), dest_module->getContext(), type_map));
-      CHECK_EQ(new_callee_val->getType()->getPointerElementType(),
-               dest_func_type);
       llvm::FunctionCallee callee(dest_func_type, new_callee_val);
       call->setCalledFunction(callee);
     }
@@ -2009,7 +2006,7 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
       auto i8_array =
           llvm::ArrayType::get(llvm::Type::getInt8Ty(context), size);
       auto byte_array =
-          ir.CreateBitCast(res, llvm::PointerType::get(i8_array, 0));
+          ir.CreateBitCast(res, llvm::PointerType::get(context, 0));
 
       auto gep_zero = llvm::ConstantInt::get(index_type, 0, false);
       // Load one byte at a time from memory, and store it into
@@ -2192,7 +2189,7 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
       auto i8 = llvm::Type::getInt8Ty(context);
       auto i8_array = llvm::ArrayType::get(i8, size);
       auto byte_array =
-          ir.CreateBitCast(res, llvm::PointerType::get(i8_array, 0));
+          ir.CreateBitCast(res, llvm::PointerType::get(context, 0));
       llvm::Value *gep_indices[2] = {
           llvm::ConstantInt::get(index_type, 0, false), nullptr};
 
@@ -2393,30 +2390,18 @@ BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type, size_t offset,
 // and to give access to a module for data layouts.
 llvm::Value *BuildPointerToOffset(llvm::IRBuilder<> &ir, llvm::Value *ptr,
                                   size_t dest_elem_offset,
-                                  llvm::Type *dest_ptr_type_) {
-
-  const auto block = ir.GetInsertBlock();
-  llvm::Module *module = nullptr;
-  if (block) {
-    module = block->getModule();
-  } else if (auto gv = llvm::dyn_cast<llvm::GlobalValue>(ptr); gv) {
-    module = gv->getParent();
+                                  llvm::Type *dest_ptr_type) {
 
   // TODO(pag): Improve the API to take a `DataLayout`, perhaps.
-  } else {
-    LOG(FATAL) << "Unable to get the current module.";
-  }
-
   auto &context = ptr->getContext();
   const auto i32_type = llvm::Type::getInt32Ty(context);
 
-  const auto &dl = module->getDataLayout();
   llvm::SmallVector<llvm::Value *, 16> indexes;
 
   auto ptr_type = llvm::dyn_cast<llvm::PointerType>(ptr->getType());
   CHECK_NOTNULL(ptr_type);
   const auto dest_elem_ptr_type =
-      llvm::dyn_cast<llvm::PointerType>(dest_ptr_type_);
+      llvm::dyn_cast<llvm::PointerType>(dest_ptr_type);
   CHECK_NOTNULL(dest_elem_ptr_type);
   auto ptr_addr_space = ptr_type->getAddressSpace();
   const auto dest_ptr_addr_space = dest_elem_ptr_type->getAddressSpace();
@@ -2424,8 +2409,7 @@ llvm::Value *BuildPointerToOffset(llvm::IRBuilder<> &ir, llvm::Value *ptr,
 
   // Change address spaces if necessary before indexing.
   if (dest_ptr_addr_space != ptr_addr_space) {
-    ptr_type = llvm::PointerType::get(ptr_type->getPointerElementType(),
-                                      dest_ptr_addr_space);
+    ptr_type = llvm::PointerType::get(context, dest_ptr_addr_space);
     ptr_addr_space = dest_ptr_addr_space;
 
     if (constant_ptr) {
@@ -2437,72 +2421,17 @@ llvm::Value *BuildPointerToOffset(llvm::IRBuilder<> &ir, llvm::Value *ptr,
     }
   }
 
-  const auto dest_elem_type = PointerElementType(dest_elem_ptr_type);
-  const auto ptr_elem_type = PointerElementType(ptr_type);
-  const auto ptr_elem_size = dl.getTypeAllocSize(ptr_elem_type);
-  const auto base_index = dest_elem_offset / ptr_elem_size;
+  const auto i8_type = llvm::Type::getInt8Ty(context);
 
-  indexes.push_back(llvm::ConstantInt::get(i32_type, base_index, false));
-
-  dest_elem_offset = dest_elem_offset % ptr_elem_size;
-
-  auto [reached_disp, indexed_type] =
-      BuildIndexes(dl, ptr_elem_type, 0, dest_elem_offset, indexes);
-
-  if (reached_disp) {
+  if (dest_elem_offset) {
+    indexes.push_back(
+        llvm::ConstantInt::get(i32_type, dest_elem_offset, false));
     if (constant_ptr) {
-      if (base_index) {
-        constant_ptr = llvm::ConstantExpr::getGetElementPtr(
-            ptr_elem_type, constant_ptr, indexes);
-      } else {
-        constant_ptr = llvm::ConstantExpr::getGetElementPtr(
-            ptr_elem_type, constant_ptr, indexes, true,
-            (base_index * ptr_elem_size) + reached_disp);
-      }
+      constant_ptr =
+          llvm::ConstantExpr::getGetElementPtr(i8_type, constant_ptr, indexes);
       ptr = constant_ptr;
     } else {
-      if (base_index) {
-        ptr = ir.CreateGEP(ptr_elem_type, ptr, indexes);
-      } else {
-        ptr = ir.CreateInBoundsGEP(ptr_elem_type, ptr, indexes);
-      }
-    }
-  }
-
-  if (const auto diff = dest_elem_offset - reached_disp; diff) {
-    DCHECK_LE(diff, dest_elem_offset);
-    const auto i8_type = llvm::Type::getInt8Ty(context);
-    const auto i8_ptr_type =
-        llvm::PointerType::getInt8PtrTy(context, ptr_addr_space);
-
-    const auto dest_elem_size = dl.getTypeAllocSize(dest_elem_type);
-    if (diff % dest_elem_size) {
-      if (constant_ptr) {
-        constant_ptr =
-            llvm::ConstantExpr::getBitCast(constant_ptr, i8_ptr_type);
-        constant_ptr = llvm::ConstantExpr::getGetElementPtr(
-            i8_type, constant_ptr, llvm::ConstantInt::get(i32_type, diff));
-        return llvm::ConstantExpr::getBitCast(constant_ptr, dest_elem_ptr_type);
-
-      } else {
-        ptr = ir.CreateBitCast(ptr, i8_ptr_type);
-        ptr = ir.CreateGEP(i8_type, ptr,
-                           llvm::ConstantInt::get(i32_type, diff, false));
-        return ir.CreateBitCast(ptr, dest_elem_ptr_type);
-      }
-    } else {
-      if (constant_ptr) {
-        constant_ptr =
-            llvm::ConstantExpr::getBitCast(constant_ptr, dest_elem_ptr_type);
-        return llvm::ConstantExpr::getGetElementPtr(
-            dest_elem_type, constant_ptr,
-            llvm::ConstantInt::get(i32_type, diff / dest_elem_size));
-      } else {
-        ptr = ir.CreateBitCast(ptr, dest_elem_ptr_type);
-        return ir.CreateGEP(
-            dest_elem_type, ptr,
-            llvm::ConstantInt::get(i32_type, diff / dest_elem_size, false));
-      }
+      ptr = ir.CreateGEP(i8_type, ptr, indexes);
     }
   }
 

@@ -22,7 +22,6 @@
 #include "remill/Arch/Instruction.h"
 #include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
-#include "remill/BC/Compat/PointerType.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/OS.h"
 
@@ -128,8 +127,8 @@ void SPARC64Arch::PopulateRegisterTable(void) const {
   auto f64 = llvm::Type::getDoubleTy(*context);
 
   std::vector<llvm::Type *> window_types(33, u64);
-  auto window_type = llvm::StructType::create(*context, "RegisterWindow");
-  auto window_ptr_type = llvm::PointerType::get(window_type, 0);
+  auto window_type = RegisterWindowType();
+  auto window_ptr_type = llvm::PointerType::get(*context, 0);
   window_types.push_back(window_ptr_type);
   window_type->setBody(window_types, false);
 
@@ -376,7 +375,7 @@ void SPARC64Arch::FinishLiftedFunctionInitialization(
   //            a structure type, so we can check that.
   const auto prev_window_link = this->RegisterByName("PREV_WINDOW_LINK");
   CHECK(prev_window_link->type->isPointerTy());
-  const auto window_type = prev_window_link->type->getPointerElementType();
+  const auto window_type = RegisterWindowType();
   CHECK(window_type->isStructTy());
 
   auto window = ir.CreateAlloca(window_type, nullptr, "WINDOW");

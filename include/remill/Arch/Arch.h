@@ -125,7 +125,8 @@ struct Register {
   // The directly enclosed registers.
   std::vector<const Register *> children;
 
-  void CompteGEPAccessors(const llvm::DataLayout &dl, llvm::Type *state_type);
+  void ComputeGEPAccessors(const llvm::DataLayout &dl,
+                           llvm::StructType *state_type);
 };
 
 class Arch {
@@ -158,6 +159,10 @@ class Arch {
 
   // Return the type of a lifted function.
   llvm::FunctionType *LiftedFunctionType(void) const;
+
+  // Returns the type of the register window. If the architecture doesn't have a register window, a
+  // null pointer will be returned.
+  llvm::StructType *RegisterWindowType() const;
 
   // Apply `cb` to every register.
   void ForEachRegister(std::function<void(const Register *)> cb) const;

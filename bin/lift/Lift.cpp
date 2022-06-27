@@ -240,6 +240,7 @@ int main(int argc, char *argv[]) {
   // Make sure `--address` and `--entry_address` are in-bounds for the target
   // architecture's address size.
   llvm::LLVMContext context;
+  context.enableOpaquePointers();
   auto arch = remill::Arch::Get(context, FLAGS_os, FLAGS_arch);
   const uint64_t addr_mask = ~0ULL >> (64UL - arch->address_size);
   if (FLAGS_address != (FLAGS_address & addr_mask)) {
@@ -259,7 +260,6 @@ int main(int argc, char *argv[]) {
 
   std::unique_ptr<llvm::Module> module(remill::LoadArchSemantics(arch.get()));
 
-  const auto state_ptr_type = arch->StatePointerType();
   const auto mem_ptr_type = arch->MemoryPointerType();
 
   Memory memory = UnhexlifyInputBytes(addr_mask);
@@ -343,10 +343,10 @@ int main(int argc, char *argv[]) {
           << "Invalid register name '" << reg_name.str()
           << "' used in output slice list '" << FLAGS_slice_outputs << "'";
 
-      arg_types.push_back(llvm::PointerType::get(reg->type, 0));
+      arg_types.push_back(llvm::PointerType::get(context, 0));
     }
 
-    const auto state_type = state_ptr_type->getPointerElementType();
+    const auto state_type = llvm::PointerType::get(context, 0);
     const auto func_type =
         llvm::FunctionType::get(mem_ptr_type, arg_types, false);
     const auto func = llvm::Function::Create(

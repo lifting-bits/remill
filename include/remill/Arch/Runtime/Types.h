@@ -34,6 +34,7 @@
 
 struct State;
 struct Memory;
+struct RegisterWindow;
 
 // Address in the source architecture type. We don't use a `uintptr_t` because
 // that might be specific to the destination architecture type.

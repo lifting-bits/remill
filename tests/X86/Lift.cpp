@@ -123,6 +123,7 @@ extern "C" int main(int argc, char *argv[]) {
   }
 
   llvm::LLVMContext context;
+  context.enableOpaquePointers();
   auto os_name = remill::GetOSName(REMILL_OS);
   auto arch_name = remill::GetArchName(FLAGS_arch);
   auto arch = remill::Arch::Build(&context, os_name, arch_name);

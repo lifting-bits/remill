@@ -237,7 +237,7 @@ llvm::StructType *Arch::StateStructType(void) const {
 llvm::PointerType *Arch::StatePointerType(void) const {
   CHECK(impl)
       << "Have you not run `PrepareModule` on a loaded semantics module?";
-  return llvm::PointerType::get(impl->state_type, 0);
+  return llvm::PointerType::get(*context, 0);
 }
 
 // Return the type of an address, i.e. `addr_t` in the semantics.
@@ -257,6 +257,12 @@ llvm::FunctionType *Arch::LiftedFunctionType(void) const {
   CHECK(impl)
       << "Have you not run `PrepareModule` on a loaded semantics module?";
   return impl->lifted_function_type;
+}
+
+llvm::StructType *Arch::RegisterWindowType(void) const {
+  CHECK(impl)
+      << "Have you not run `PrepareModule` on a loaded semantics module?";
+  return impl->register_window_type;
 }
 
 // Return information about the register at offset `offset` in the `State`
@@ -386,11 +392,11 @@ namespace {
 
 // These variables must always be defined within any lifted function.
 static bool BlockHasSpecialVars(llvm::Function *basic_block) {
-  return FindVarInFunction(basic_block, kStateVariableName, true) &&
-         FindVarInFunction(basic_block, kMemoryVariableName, true) &&
-         FindVarInFunction(basic_block, kPCVariableName, true) &&
-         FindVarInFunction(basic_block, kNextPCVariableName, true) &&
-         FindVarInFunction(basic_block, kBranchTakenVariableName, true);
+  return FindVarInFunction(basic_block, kStateVariableName, true).first &&
+         FindVarInFunction(basic_block, kMemoryVariableName, true).first &&
+         FindVarInFunction(basic_block, kPCVariableName, true).first &&
+         FindVarInFunction(basic_block, kNextPCVariableName, true).first &&
+         FindVarInFunction(basic_block, kBranchTakenVariableName, true).first;
 }
 
 // Add attributes to llvm::Argument in a way portable across LLVMs
@@ -444,10 +450,9 @@ namespace {
 
 // Compute the total offset of a GEP chain.
 static uint64_t TotalOffset(const llvm::DataLayout &dl, llvm::Value *base,
-                            llvm::Type *state_ptr_type) {
+                            llvm::StructType *state_type) {
   uint64_t total_offset = 0;
-  const auto state_size =
-      dl.getTypeAllocSize(state_ptr_type->getPointerElementType());
+  const auto state_size = dl.getTypeAllocSize(state_type);
   while (base) {
     if (auto gep = llvm::dyn_cast<llvm::GEPOperator>(base); gep) {
       llvm::APInt accumulated_offset(dl.getPointerSizeInBits(0), 0, false);
@@ -468,7 +473,7 @@ static uint64_t TotalOffset(const llvm::DataLayout &dl, llvm::Value *base,
     } else if (auto pti = llvm::dyn_cast<llvm::PtrToIntOperator>(base); pti) {
       base = pti->getOperand(0);
 
-    } else if (base->getType() == state_ptr_type) {
+    } else if (base->getType()->isPointerTy()) {
       break;
 
     } else {
@@ -482,27 +487,21 @@ static uint64_t TotalOffset(const llvm::DataLayout &dl, llvm::Value *base,
 
 static llvm::Value *
 FinishAddressOf(llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
-                llvm::Type *state_ptr_type, size_t state_size,
-                const Register *reg, unsigned addr_space,
-                llvm::Value *gep) {
+                llvm::StructType *state_type, size_t state_size,
+                const Register *reg, unsigned addr_space, llvm::Value *gep) {
 
 
-  auto gep_offset = TotalOffset(dl, gep, state_ptr_type);
-  auto gep_type_at_offset = gep->getType()->getPointerElementType();
+  auto gep_offset = TotalOffset(dl, gep, state_type);
 
   CHECK_LT(gep_offset, state_size);
 
   const auto index_type = reg->gep_index_list[0]->getType();
-  const auto goal_ptr_type = llvm::PointerType::get(reg->type, addr_space);
+  const auto goal_ptr_type = llvm::PointerType::get(ir.getContext(), addr_space);
 
   // Best case: we've found a value field in the structure that
   // is located at the correct byte offset.
   if (gep_offset == reg->offset) {
-    if (gep_type_at_offset == reg->type) {
-      return gep;
-
-    } else if (auto const_gep = llvm::dyn_cast<llvm::Constant>(gep);
-               const_gep) {
+    if (auto const_gep = llvm::dyn_cast<llvm::Constant>(gep); const_gep) {
       return llvm::ConstantExpr::getBitCast(const_gep, goal_ptr_type);
 
     } else {
@@ -539,13 +538,13 @@ FinishAddressOf(llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
 
   if (auto const_gep = llvm::dyn_cast<llvm::Constant>(gep); const_gep) {
     const_gep = llvm::ConstantExpr::getBitCast(
-        const_gep, llvm::PointerType::get(byte_type, addr_space));
+        const_gep, llvm::PointerType::get(ir.getContext(), addr_space));
     const_gep = llvm::ConstantExpr::getGetElementPtr(byte_type, const_gep,
                                                      elem_indexes);
     return llvm::ConstantExpr::getBitCast(const_gep, goal_ptr_type);
 
   } else {
-    gep = ir.CreateBitCast(gep, llvm::PointerType::get(byte_type, addr_space));
+    gep = ir.CreateBitCast(gep, llvm::PointerType::get(ir.getContext(), addr_space));
     gep = ir.CreateGEP(byte_type, gep, elem_indexes);
     return ir.CreateBitCast(gep, goal_ptr_type);
   }
@@ -553,8 +552,12 @@ FinishAddressOf(llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
 
 }  // namespace
 
-void Register::CompteGEPAccessors(const llvm::DataLayout &dl,
-                                  llvm::Type *state_type) {
+void Register::ComputeGEPAccessors(const llvm::DataLayout &dl,
+                                   llvm::StructType *state_type) {
+  if (!state_type) {
+    state_type = arch->state_type;
+  }
+
   if (gep_type_at_offset || !state_type) {
     return;
   }
@@ -585,15 +588,13 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
   CHECK_NOTNULL(state_ptr_type);
   const auto addr_space = state_ptr_type->getAddressSpace();
 
-  const auto state_type =
-      llvm::dyn_cast<llvm::StructType>(state_ptr_type->getPointerElementType());
-  CHECK_NOTNULL(state_type);
+  const auto state_type = arch->state_type;
 
   const auto module = ir.GetInsertBlock()->getParent()->getParent();
   const auto &dl = module->getDataLayout();
 
   if (!gep_type_at_offset) {
-    const_cast<Register *>(this)->CompteGEPAccessors(dl, state_type);
+    const_cast<Register *>(this)->ComputeGEPAccessors(dl, state_type);
   }
 
   llvm::Value *gep = nullptr;
@@ -607,7 +608,7 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
 
   auto state_size = dl.getTypeAllocSize(state_type);
   auto ret = FinishAddressOf(
-      ir, dl, state_ptr_type, state_size, this, addr_space, gep);
+      ir, dl, state_type, state_size, this, addr_space, gep);
 
   // Add the metadata to `inst`.
   if (auto inst = llvm::dyn_cast<llvm::Instruction>(ret); inst) {
@@ -722,7 +723,7 @@ void Arch::InitializeEmptyLiftedFunction(llvm::Function *func) const {
   //            `FinishLiftedFunctionInitialization`.
 
   ir.CreateStore(state,
-                 ir.CreateAlloca(llvm::PointerType::get(impl->state_type, 0),
+                 ir.CreateAlloca(llvm::PointerType::get(context, 0),
                                  nullptr, "STATE"));
   ir.CreateStore(memory,
                  ir.CreateAlloca(impl->memory_type, nullptr, "MEMORY"));
@@ -757,7 +758,7 @@ const Register *Arch::AddRegister(const char *reg_name_, llvm::Type *val_type,
   auto reg_impl = new Register(reg_name, offset, dl.getTypeAllocSize(val_type),
                                val_type, parent_reg, impl.get());
 
-  reg_impl->CompteGEPAccessors(dl, impl->state_type);
+  reg_impl->ComputeGEPAccessors(dl, impl->state_type);
 
   reg = reg_impl;
   impl->registers.emplace_back(reg_impl);
@@ -803,10 +804,20 @@ void Arch::InitFromSemanticsModule(llvm::Module *module) const {
   const auto &dl = module->getDataLayout();
   const auto basic_block = module->getFunction("__remill_jump");
   CHECK_NOTNULL(basic_block);
-  const auto state_ptr_type =
-      NthArgument(basic_block, kStatePointerArgNum)->getType();
-  const auto state_type =
-      llvm::dyn_cast<llvm::StructType>(state_ptr_type->getPointerElementType());
+
+  const auto *state_global = module->getGlobalVariable("__remill_state");
+  CHECK_NOTNULL(state_global);
+  auto *state_type = llvm::dyn_cast<llvm::StructType>(state_global->getValueType());
+  CHECK_NOTNULL(state_type);
+
+  const auto *register_window_global =
+      module->getGlobalVariable("__remill_register_window");
+  if (register_window_global) {
+    auto *register_window_type = llvm::dyn_cast<llvm::StructType>(
+        register_window_global->getValueType());
+    CHECK_NOTNULL(register_window_type);
+    impl->register_window_type = register_window_type;
+  }
 
   impl->state_type = state_type;
   impl->reg_by_offset.resize(dl.getTypeAllocSize(state_type));
