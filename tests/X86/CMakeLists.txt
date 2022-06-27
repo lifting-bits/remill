@@ -24,21 +24,21 @@ function(COMPILE_X86_TESTS name address_size has_avx has_avx512)
     -DGTEST_HAS_RTTI=0
     -DGTEST_HAS_TR1_TUPLE=0
   )
-    
+
   add_executable(lift-${name}-tests
     EXCLUDE_FROM_ALL
     Lift.cpp
     Tests.S
   )
-    
+
   target_compile_options(lift-${name}-tests
     PRIVATE ${X86_TEST_FLAGS} -DIN_TEST_GENERATOR
   )
-  
+
   file(GLOB X86_TEST_FILES
     "${CMAKE_CURRENT_LIST_DIR}/*/*.S"
   )
-  
+
   set_target_properties(lift-${name}-tests PROPERTIES OBJECT_DEPENDS "${X86_TEST_FILES}")
 
   target_link_libraries(lift-${name}-tests PRIVATE remill GTest::gtest)
@@ -49,19 +49,19 @@ function(COMPILE_X86_TESTS name address_size has_avx has_avx512)
     COMMAND lift-${name}-tests --arch ${name} --bc_out tests_${name}.bc
     DEPENDS semantics
   )
-    
+
   add_custom_command(
     OUTPUT tests_${name}.S
-    COMMAND ${CMAKE_BC_COMPILER} -Wno-override-module -S -O0 -g0 -c tests_${name}.bc -o tests_${name}.S
+    COMMAND ${CMAKE_BC_COMPILER} -Wno-override-module -S -O0 -g0 -c tests_${name}.bc -o tests_${name}.S -mllvm -opaque-pointers
     DEPENDS tests_${name}.bc
   )
- 
+
   add_executable(run-${name}-tests EXCLUDE_FROM_ALL Run.cpp Tests.S tests_${name}.S)
   set_target_properties(run-${name}-tests PROPERTIES OBJECT_DEPENDS "${X86_TEST_FILES}")
 
   target_link_libraries(run-${name}-tests PUBLIC remill GTest::gtest)
   target_compile_definitions(run-${name}-tests PUBLIC ${PROJECT_DEFINITIONS})
-    
+
   target_compile_options(run-${name}-tests
     PRIVATE ${X86_TEST_FLAGS}
   )

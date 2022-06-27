@@ -181,6 +181,8 @@ MAKE_RW_FP_MEMORY(64)
 //MAKE_RW_FP_MEMORY(80)
 MAKE_RW_FP_MEMORY(128)
 
+State __remill_state{};
+
 NEVER_INLINE Memory *__remill_read_memory_f80(Memory *, addr_t addr,
                                               native_float80_t &out) {
   out = AccessMemory<native_float80_t>(addr);
