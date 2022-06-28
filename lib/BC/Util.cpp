@@ -41,6 +41,7 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/SourceMgr.h>
@@ -54,7 +55,6 @@
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/ToolOutputFile.h"
-#include "remill/BC/Compat/Verifier.h"
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Util.h"
 #include "remill/BC/Version.h"
