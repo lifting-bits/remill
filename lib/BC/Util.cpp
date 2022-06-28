@@ -52,7 +52,6 @@
 #include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
 #include "remill/BC/Annotate.h"
-#include "remill/BC/Compat/CallSite.h"
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Util.h"
 #include "remill/BC/Version.h"
@@ -700,9 +699,9 @@ std::vector<llvm::CallInst *> CallersOf(llvm::Function *func) {
 
   std::vector<llvm::CallInst *> callers;
   for (auto user : func->users()) {
-    if (auto cs = compat::llvm::CallSite(user); cs.isCall()) {
-      if (cs.getCalledFunction() == func) {
-        callers.push_back(llvm::cast<llvm::CallInst>(user));
+    if (auto cs = llvm::dyn_cast<llvm::CallInst>(user)) {
+      if (cs->getCalledFunction() == func) {
+        callers.push_back(cs);
       }
     }
   }
