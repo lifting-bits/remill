@@ -46,13 +46,13 @@
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/ToolOutputFile.h>
 
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
 #include "remill/BC/Annotate.h"
 #include "remill/BC/Compat/CallSite.h"
-#include "remill/BC/Compat/ToolOutputFile.h"
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Util.h"
 #include "remill/BC/Version.h"
