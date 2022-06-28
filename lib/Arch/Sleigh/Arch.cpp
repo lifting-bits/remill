@@ -329,6 +329,12 @@ void DirectCBranchResolver::ResolveControlFlow(uint64_t fall_through,
 }
 
 
+std::vector<std::string> SingleInstructionSleighContext::getUserOpNames() {
+  std::vector<std::string> res;
+  this->engine.getUserOpNames(res);
+  return res;
+}
+
 SingleInstructionSleighContext::SingleInstructionSleighContext(
     std::string sla_name, std::string pspec_name)
     : engine(&image, &ctx) {

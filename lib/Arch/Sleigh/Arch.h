@@ -181,7 +181,7 @@ class SingleInstructionSleighContext {
 
 
   // Builds sleigh decompiler arch. Allows access to useropmanager and other internal sleigh info mantained by the arch.
-  unique_ptr<Architecture> buildSleighInternalArch();
+  std::vector<std::string> getUserOpNames();
 };
 
 class SleighArch : public ArchBase {

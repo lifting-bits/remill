@@ -226,7 +226,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
   ConstantReplacementContext replacement_cont;
   // Generic sleigh arch
-  Architecture *sleigh_arch;
+  std::vector<std::string> user_op_names;
 
   void UpdateStatus(LiftStatus new_status, OpCode opc) {
     if (new_status != LiftStatus::kLiftedInstruction) {
@@ -240,7 +240,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
  public:
   PcodeToLLVMEmitIntoBlock(llvm::BasicBlock *target_block,
                            llvm::Value *state_pointer, const Instruction &insn,
-                           SleighLifter &insn_lifter_parent, Architecture *arch)
+                           SleighLifter &insn_lifter_parent,
+                           std::vector<std::string> user_op_names_)
       : target_block(target_block),
         state_pointer(state_pointer),
         context(target_block->getContext()),
@@ -249,7 +250,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         insn_lifter_parent(insn_lifter_parent),
         uniques(target_block->getContext()),
         unknown_regs(target_block->getContext()),
-        sleigh_arch(arch) {}
+        user_op_names(user_op_names_) {}
 
 
   ParamPtr CreateMemoryAddress(llvm::Value *offset) {
@@ -956,15 +957,14 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     if (opc == OpCode::CPUI_MULTIEQUAL || opc == OpCode::CPUI_CPOOLREF) {
       this->UpdateStatus(this->LiftVariadicOp(bldr, opc, outvar, vars, isize),
                          opc);
-      this->replacement_cont.ApplyNonEqualityClaim();
+      //this->replacement_cont.ApplyNonEqualityClaim();
       return;
     }
 
     if (opc == OpCode::CPUI_CALLOTHER) {
-      // TODO(Ian): check for handler here!!!!
-      if (isize == 3 &&
-          this->sleigh_arch->userops.getOp(vars[0].offset)->getName() ==
-              "claim_eq") {
+      if (isize == 3 && vars[0].offset < this->user_op_names.size() &&
+          this->user_op_names[vars[0].offset] == "claim_eq") {
+        LOG(INFO) << "Applying eq claim";
         this->replacement_cont.ApplyEqualityClaim(bldr, *this, vars[1],
                                                   vars[2]);
         return;
@@ -989,12 +989,12 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
             opc);
         break;
       default:
-        this->replacement_cont.ApplyNonEqualityClaim();
+        //this->replacement_cont.ApplyNonEqualityClaim();
         this->UpdateStatus(LiftStatus::kLiftedUnsupportedInstruction, opc);
         return;
     }
 
-    this->replacement_cont.ApplyNonEqualityClaim();
+    //this->replacement_cont.ApplyNonEqualityClaim();
   }
 
   LiftStatus GetStatus() {
@@ -1133,8 +1133,7 @@ SleighLifter::SleighLifter(const sleigh::SleighArch *arch_,
                            const IntrinsicTable &intrinsics_)
     : InstructionLifter(arch_, intrinsics_),
       sleigh_context(new sleigh::SingleInstructionSleighContext(
-          arch_->GetSLAName(), arch_->GetPSpec())),
-      internal_sleigh_arch(this->sleigh_context->buildSleighInternalArch()) {
+          arch_->GetSLAName(), arch_->GetPSpec())) {
   arch_->InitializeSleighContext(*sleigh_context);
 }
 
@@ -1162,7 +1161,7 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
 
 
   SleighLifter::PcodeToLLVMEmitIntoBlock lifter(
-      block, state_ptr, inst, *this, this->internal_sleigh_arch.get());
+      block, state_ptr, inst, *this, this->sleigh_context->getUserOpNames());
   auto res = sleigh_context->oneInstruction(inst.pc, lifter, inst.bytes);
 
   (void) res;
