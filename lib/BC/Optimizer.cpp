@@ -18,6 +18,7 @@
 
 #include <glog/logging.h>
 #include <llvm/ADT/Triple.h>
+#include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/DebugInfo.h>
@@ -38,7 +39,6 @@
 
 #include "remill/Arch/Arch.h"
 #include "remill/BC/Compat/ScalarTransforms.h"
-#include "remill/BC/Compat/TargetLibraryInfo.h"
 #include "remill/BC/Util.h"
 
 namespace remill {
