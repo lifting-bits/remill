@@ -312,6 +312,7 @@ std::string PrintState(X86State *state) {
 }
 
 struct DiffTestResult {
+  std::string init_state_dump;
   std::string struct_dump1;
   std::string struct_dump2;
   bool are_equal;
@@ -554,6 +555,12 @@ class ComparisonRunner {
     return ss.str();
   }
 
+ private:
+  uint8_t random_boolean_flag() {
+    std::uniform_int_distribution<> gen(0, 1);
+    return gen(this->rbe);
+  }
+
  public:
   DiffTestResult
   SingleCmpRun(size_t insn_length, llvm::Function *f1, llvm::Function *f2,
@@ -566,7 +573,16 @@ class ComparisonRunner {
     func1_state->addr.ss_base.dword = 0;
     func1_state->addr.es_base.dword = 0;
     func1_state->addr.cs_base.dword = 0;
+    func1_state->aflag.af = this->random_boolean_flag();
+    func1_state->aflag.cf = this->random_boolean_flag();
+    func1_state->aflag.df = this->random_boolean_flag();
+    func1_state->aflag.of = this->random_boolean_flag();
+    func1_state->aflag.pf = this->random_boolean_flag();
+    func1_state->aflag.sf = this->random_boolean_flag();
+    func1_state->aflag.zf = this->random_boolean_flag();
     auto func2_state = (X86State *) alloca(sizeof(X86State));
+
+    auto init_state = this->DumpState(func1_state);
 
     std::memcpy(func2_state, func1_state, sizeof(X86State));
 
@@ -598,8 +614,8 @@ class ComparisonRunner {
         memory_state_eq;
 
 
-    return {this->DumpState(func1_state), this->DumpState(func2_state),
-            are_equal};
+    return {init_state, this->DumpState(func1_state),
+            this->DumpState(func2_state), are_equal};
   }
 };
 
@@ -743,7 +759,7 @@ int main(int argc, char **argv) {
         succeeded = false;
         LOG(ERROR) << "Difference in instruction" << std::hex << tc.addr << ": "
                    << llvm::toHex(tc.bytes);
-
+        std::cout << "Init state: " << tc_result.init_state_dump << std::endl;
         std::cout << tc_result.struct_dump1 << std::endl;
         std::cout << tc_result.struct_dump2 << std::endl;
 
