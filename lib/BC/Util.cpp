@@ -54,7 +54,6 @@
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/ToolOutputFile.h"
-#include "remill/BC/Compat/VectorType.h"
 #include "remill/BC/Compat/Verifier.h"
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Util.h"
@@ -907,7 +906,7 @@ RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context,
       break;
     }
 
-    case llvm::GetFixedVectorTypeId(): {
+    case llvm::Type::FixedVectorTyID: {
       auto arr_type = llvm::dyn_cast<llvm::FixedVectorType>(type);
       auto elem_type = arr_type->getElementType();
       cached = llvm::FixedVectorType::get(
@@ -2043,7 +2042,7 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
     }
 
     // Build up the vector in the nearly the same was as we do with arrays.
-    case llvm::GetFixedVectorTypeId(): {
+    case llvm::Type::FixedVectorTyID: {
       auto vec_type = llvm::dyn_cast<llvm::FixedVectorType>(type);
       const auto num_elems = vec_type->getNumElements();
       const auto elem_type = vec_type->getElementType();
@@ -2224,7 +2223,7 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
     }
 
     // Build up the vector store in the nearly the same was as we do with arrays.
-    case llvm::GetFixedVectorTypeId(): {
+    case llvm::Type::FixedVectorTyID: {
       auto vec_type = llvm::dyn_cast<llvm::FixedVectorType>(type);
       const auto num_elems = vec_type->getNumElements();
       const auto elem_type = vec_type->getElementType();
