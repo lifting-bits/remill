@@ -953,10 +953,12 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     if (opc == OpCode::CPUI_MULTIEQUAL || opc == OpCode::CPUI_CPOOLREF) {
       this->UpdateStatus(this->LiftVariadicOp(bldr, opc, outvar, vars, isize),
                          opc);
+      this->replacement_cont.ApplyNonEqualityClaim();
       return;
     }
 
     if (opc == OpCode::CPUI_CALLOTHER) {
+      // TODO(Ian): check for handler here!!!!
     }
 
     switch (isize) {
@@ -973,9 +975,12 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
             opc);
         break;
       default:
+        this->replacement_cont.ApplyNonEqualityClaim();
         this->UpdateStatus(LiftStatus::kLiftedUnsupportedInstruction, opc);
         return;
     }
+
+    this->replacement_cont.ApplyNonEqualityClaim();
   }
 
   LiftStatus GetStatus() {
