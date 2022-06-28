@@ -36,7 +36,6 @@
 
 #include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
-#include "remill/BC/Compat/Attributes.h"
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Util.h"
