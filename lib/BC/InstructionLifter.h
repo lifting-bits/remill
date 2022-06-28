@@ -47,7 +47,6 @@
 #include "remill/Arch/Instruction.h"
 #include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
-#include "remill/BC/Compat/DataLayout.h"
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Util.h"
 #include "remill/OS/OS.h"

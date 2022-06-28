@@ -272,10 +272,6 @@ function Package
 function GetLLVMVersion
 {
   case ${1} in
-    13)
-      LLVM_VERSION=llvm-13
-      return 0
-    ;;
     14)
       LLVM_VERSION=llvm-14
       return 0
@@ -295,7 +291,7 @@ function Help
   echo ""
   echo "Options:"
   echo "  --prefix           Change the default (${INSTALL_DIR}) installation prefix."
-  echo "  --llvm-version     Change the default (13) LLVM version."
+  echo "  --llvm-version     Change the default (14) LLVM version."
   echo "  --build-dir        Change the default (${BUILD_DIR}) build directory."
   echo "  --debug            Build with Debug symbols."
   echo "  --extra-cmake-args Extra CMake arguments to build with."

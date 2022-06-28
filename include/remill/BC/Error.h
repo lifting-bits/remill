@@ -18,14 +18,11 @@
 #include <llvm/Support/ErrorOr.h>
 #include <llvm/Support/Format.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/Error.h>
 
 #include <system_error>
 
 #include "remill/BC/Version.h"
-
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
-#  include <llvm/Support/Error.h>
-#endif
 
 namespace remill {
 
@@ -34,12 +31,10 @@ inline static bool IsError(llvm::ErrorOr<T> &val) {
   return !val;
 }
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
 template <typename T>
 inline static bool IsError(llvm::Expected<T> &val) {
   return !val;
 }
-#endif
 
 template <typename T>
 inline static bool IsError(T *ptr) {
@@ -69,14 +64,11 @@ inline static std::string GetErrorString(llvm::Error &val) {
   return err;
 }
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
-
 template <typename T>
 inline static std::string GetErrorString(llvm::Expected<T> &val) {
   auto err = val.takeError();
   return GetErrorString(err);
 }
-#endif
 
 inline static std::error_code GetErrorCode(const char *) {
   return std::make_error_code(std::errc::invalid_argument);
@@ -122,12 +114,10 @@ inline static T *GetPointer(llvm::ErrorOr<T> &val) {
   return val.operator->();
 }
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
 template <typename T>
 inline static T *GetPointer(llvm::Expected<T> &val) {
   return val.operator->();
 }
-#endif
 
 template <typename T>
 inline static T *GetPointer(T *val) {
@@ -144,12 +134,10 @@ inline static T &GetReference(llvm::ErrorOr<T> &val) {
   return val.operator*();
 }
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
 template <typename T>
 inline static T &GetReference(llvm::Expected<T> &val) {
   return val.operator*();
 }
-#endif
 
 template <typename T>
 inline static T &GetReference(T *val) {
@@ -162,31 +150,3 @@ inline static T &GetReference(T &val) {
 }
 
 }  // namespace remill
-namespace llvm {
-
-#if LLVM_VERSION_NUMBER <= LLVM_VERSION(6, 0)
-inline static Error createStringError(std::error_code EC, char const *Msg) {
-  return make_error<StringError>(Msg, EC);
-}
-
-/// Create formatted StringError object.
-template <typename... Ts>
-inline static Error createStringError(std::error_code EC, char const *Fmt,
-                                      const Ts &... Vals) {
-  std::string Buffer;
-  raw_string_ostream Stream(Buffer);
-  Stream << format(Fmt, Vals...);
-  return make_error<StringError>(Stream.str(), EC);
-}
-#endif
-
-#if LLVM_VERSION_NUMBER <= LLVM_VERSION(8, 0)
-
-template <typename... Ts>
-inline static Error createStringError(std::errc EC, char const *Fmt,
-                                      const Ts &... Vals) {
-  return createStringError(std::make_error_code(EC), Fmt, Vals...);
-}
-#endif
-
-}  // namespace llvm

@@ -18,6 +18,7 @@
 
 #include <glog/logging.h>
 #include <llvm/ADT/Triple.h>
+#include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/DebugInfo.h>
@@ -37,8 +38,6 @@
 #include <llvm/Transforms/Utils/ValueMapper.h>
 
 #include "remill/Arch/Arch.h"
-#include "remill/BC/Compat/ScalarTransforms.h"
-#include "remill/BC/Compat/TargetLibraryInfo.h"
 #include "remill/BC/Util.h"
 
 namespace remill {
@@ -64,15 +63,12 @@ void OptimizeModule(const remill::Arch *arch, llvm::Module *module,
   builder.Inliner = llvm::createFunctionInliningPass(250);
   builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
   builder.DisableUnrollLoops = false;  // Unroll loops!
-  IF_LLVM_LT_900(builder.DisableUnitAtATime = false;)
   builder.RerollLoops = false;
   builder.SLPVectorize = guide.slp_vectorize;
   builder.LoopVectorize = guide.loop_vectorize;
-  IF_LLVM_GTE_360(builder.VerifyInput = guide.verify_input;)
-  IF_LLVM_GTE_360(builder.VerifyOutput = guide.verify_output;)
-
-  // TODO(pag): Not sure when this became available.
-  IF_LLVM_GTE_800(builder.MergeFunctions = false;)
+  builder.VerifyInput = guide.verify_input;
+  builder.VerifyOutput = guide.verify_output;
+  builder.MergeFunctions = false;
 
   builder.populateFunctionPassManager(func_manager);
   builder.populateModulePassManager(module_manager);
@@ -105,15 +101,12 @@ void OptimizeBareModule(llvm::Module *module, OptimizationGuide guide) {
   builder.Inliner = llvm::createFunctionInliningPass(250);
   builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
   builder.DisableUnrollLoops = false;  // Unroll loops!
-  IF_LLVM_LT_900(builder.DisableUnitAtATime = false;)
   builder.RerollLoops = false;
   builder.SLPVectorize = guide.slp_vectorize;
   builder.LoopVectorize = guide.loop_vectorize;
-  IF_LLVM_GTE_360(builder.VerifyInput = guide.verify_input;)
-  IF_LLVM_GTE_360(builder.VerifyOutput = guide.verify_output;)
-
-  // TODO(pag): Not sure when this became available.
-  IF_LLVM_GTE_800(builder.MergeFunctions = false;)
+  builder.VerifyInput = guide.verify_input;
+  builder.VerifyOutput = guide.verify_output;
+  builder.MergeFunctions = false;
 
   builder.populateFunctionPassManager(func_manager);
   builder.populateModulePassManager(module_manager);

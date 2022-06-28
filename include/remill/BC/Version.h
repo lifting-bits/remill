@@ -29,216 +29,24 @@
 
 #define LLVM_VERSION_NUMBER LLVM_VERSION(LLVM_VERSION_MAJOR, LLVM_VERSION_MINOR)
 
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 5)
-#  error "Minimum supported LLVM version is 3.5"
-#endif
-
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(5, 0)
-#  define IF_LLVM_LT_500(...) __VA_ARGS__
-#  define IF_LLVM_LT_500_(...) __VA_ARGS__,
-#  define _IF_LLVM_LT_500(...) , __VA_ARGS__
-#  define IF_LLVM_GTE_500(...)
-#  define IF_LLVM_GTE_500_(...)
-#  define _IF_LLVM_GTE_500(...)
-#else
-#  define IF_LLVM_LT_500(...)
-#  define IF_LLVM_LT_500_(...)
-#  define _IF_LLVM_LT_500(...)
-#  define IF_LLVM_GTE_500(...) __VA_ARGS__
-#  define IF_LLVM_GTE_500_(...) __VA_ARGS__,
-#  define _IF_LLVM_GTE_500(...) , __VA_ARGS__
-#endif
-
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(4, 0)
-#  define IF_LLVM_LT_400(...) __VA_ARGS__
-#  define IF_LLVM_LT_400_(...) __VA_ARGS__,
-#  define _IF_LLVM_LT_400(...) , __VA_ARGS__
-#  define IF_LLVM_GTE_400(...)
-#  define IF_LLVM_GTE_400_(...)
-#  define _IF_LLVM_GTE_400(...)
-#else
-#  define IF_LLVM_LT_400(...)
-#  define IF_LLVM_LT_400_(...)
-#  define _IF_LLVM_LT_400(...)
-#  define IF_LLVM_GTE_400(...) __VA_ARGS__
-#  define IF_LLVM_GTE_400_(...) __VA_ARGS__,
-#  define _IF_LLVM_GTE_400(...) , __VA_ARGS__
-#endif
-
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 9)
-#  define IF_LLVM_LT_390(...) __VA_ARGS__
-#  define IF_LLVM_LT_390_(...) __VA_ARGS__,
-#  define _IF_LLVM_LT_390(...) , __VA_ARGS__
-#  define IF_LLVM_GTE_390(...)
-#  define IF_LLVM_GTE_390_(...)
-#  define _IF_LLVM_GTE_390(...)
-#else
-#  define IF_LLVM_LT_390(...)
-#  define IF_LLVM_LT_390_(...)
-#  define _IF_LLVM_LT_390(...)
-#  define IF_LLVM_GTE_390(...) __VA_ARGS__
-#  define IF_LLVM_GTE_390_(...) __VA_ARGS__,
-#  define _IF_LLVM_GTE_390(...) , __VA_ARGS__
-#endif
-
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 8)
-#  define IF_LLVM_LT_380(...) __VA_ARGS__
-#  define IF_LLVM_LT_380_(...) __VA_ARGS__,
-#  define _IF_LLVM_LT_380(...) , __VA_ARGS__
-#  define IF_LLVM_GTE_380(...)
-#  define IF_LLVM_GTE_380_(...)
-#  define _IF_LLVM_GTE_380(...)
-#else
-#  define IF_LLVM_LT_380(...)
-#  define IF_LLVM_LT_380_(...)
-#  define _IF_LLVM_LT_380(...)
-#  define IF_LLVM_GTE_380(...) __VA_ARGS__
-#  define IF_LLVM_GTE_380_(...) __VA_ARGS__,
-#  define _IF_LLVM_GTE_380(...) , __VA_ARGS__
-#endif
-
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 7)
-#  define IF_LLVM_LT_370(...) __VA_ARGS__
-#  define IF_LLVM_LT_370_(...) __VA_ARGS__,
-#  define _IF_LLVM_LT_370(...) , __VA_ARGS__
-#  define IF_LLVM_GTE_370(...)
-#  define IF_LLVM_GTE_370_(...)
-#  define _IF_LLVM_GTE_370(...)
-#else
-#  define IF_LLVM_LT_370(...)
-#  define IF_LLVM_LT_370_(...)
-#  define _IF_LLVM_LT_370(...)
-#  define IF_LLVM_GTE_370(...) __VA_ARGS__
-#  define IF_LLVM_GTE_370_(...) __VA_ARGS__,
-#  define _IF_LLVM_GTE_370(...) , __VA_ARGS__
-#endif
-
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 6)
-#  define IF_LLVM_LT_360(...) __VA_ARGS__
-#  define IF_LLVM_LT_360_(...) __VA_ARGS__,
-#  define _IF_LLVM_LT_360(...) , __VA_ARGS__
-#  define IF_LLVM_GTE_360(...)
-#  define IF_LLVM_GTE_360_(...)
-#  define _IF_LLVM_GTE_360(...)
-#else
-#  define IF_LLVM_LT_360(...)
-#  define IF_LLVM_LT_360_(...)
-#  define _IF_LLVM_LT_360(...)
-#  define IF_LLVM_GTE_360(...) __VA_ARGS__
-#  define IF_LLVM_GTE_360_(...) __VA_ARGS__,
-#  define _IF_LLVM_GTE_360(...) , __VA_ARGS__
-#endif
-
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(8, 0)
-#  define IF_LLVM_LT_800(...) __VA_ARGS__
-#  define IF_LLVM_LT_800_(...) __VA_ARGS__,
-#  define _IF_LLVM_LT_800(...) , __VA_ARGS__
-#  define IF_LLVM_GTE_800(...)
-#  define IF_LLVM_GTE_800_(...)
-#  define _IF_LLVM_GTE_800(...)
-#else
-#  define IF_LLVM_LT_800(...)
-#  define IF_LLVM_LT_800_(...)
-#  define _IF_LLVM_LT_800(...)
-#  define IF_LLVM_GTE_800(...) __VA_ARGS__
-#  define IF_LLVM_GTE_800_(...) __VA_ARGS__,
-#  define _IF_LLVM_GTE_800(...) , __VA_ARGS__
-#endif
-
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(9, 0)
-#  define IF_LLVM_LT_900(...) __VA_ARGS__
-#  define IF_LLVM_LT_900_(...) __VA_ARGS__,
-#  define _IF_LLVM_LT_900(...) , __VA_ARGS__
-#  define IF_LLVM_GTE_900(...)
-#  define IF_LLVM_GTE_900_(...)
-#  define _IF_LLVM_GTE_900(...)
-#else
-#  define IF_LLVM_LT_900(...)
-#  define IF_LLVM_LT_900_(...)
-#  define _IF_LLVM_LT_900(...)
-#  define IF_LLVM_GTE_900(...) __VA_ARGS__
-#  define IF_LLVM_GTE_900_(...) __VA_ARGS__,
-#  define _IF_LLVM_GTE_900(...) , __VA_ARGS__
-#endif
-
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(10, 0)
-#  define IF_LLVM_LT_1000(...) __VA_ARGS__
-#  define IF_LLVM_LT_1000_(...) __VA_ARGS__,
-#  define _IF_LLVM_LT_1000(...) , __VA_ARGS__
-#  define IF_LLVM_GTE_1000(...)
-#  define IF_LLVM_GTE_1000_(...)
-#  define _IF_LLVM_GTE_1000(...)
-#else
-#  define IF_LLVM_LT_1000(...)
-#  define IF_LLVM_LT_1000_(...)
-#  define _IF_LLVM_LT_1000(...)
-#  define IF_LLVM_GTE_1000(...) __VA_ARGS__
-#  define IF_LLVM_GTE_1000_(...) __VA_ARGS__,
-#  define _IF_LLVM_GTE_1000(...) , __VA_ARGS__
-#endif
-
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(11, 0)
-#  define IF_LLVM_LT_1100(...) __VA_ARGS__
-#  define IF_LLVM_LT_1100_(...) __VA_ARGS__,
-#  define _IF_LLVM_LT_1100(...) , __VA_ARGS__
-#  define IF_LLVM_GTE_1100(...)
-#  define IF_LLVM_GTE_1100_(...)
-#  define _IF_LLVM_GTE_1100(...)
-#else
-#  define IF_LLVM_LT_1100(...)
-#  define IF_LLVM_LT_1100_(...)
-#  define _IF_LLVM_LT_1100(...)
-#  define IF_LLVM_GTE_1100(...) __VA_ARGS__
-#  define IF_LLVM_GTE_1100_(...) __VA_ARGS__,
-#  define _IF_LLVM_GTE_1100(...) , __VA_ARGS__
-#endif
-
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(12, 0)
-#  define IF_LLVM_LT_1200(...) __VA_ARGS__
-#  define IF_LLVM_LT_1200_(...) __VA_ARGS__,
-#  define _IF_LLVM_LT_1200(...) , __VA_ARGS__
-#  define IF_LLVM_GTE_1200(...)
-#  define IF_LLVM_GTE_1200_(...)
-#  define _IF_LLVM_GTE_1200(...)
-#else
-#  define IF_LLVM_LT_1200(...)
-#  define IF_LLVM_LT_1200_(...)
-#  define _IF_LLVM_LT_1200(...)
-#  define IF_LLVM_GTE_1200(...) __VA_ARGS__
-#  define IF_LLVM_GTE_1200_(...) __VA_ARGS__,
-#  define _IF_LLVM_GTE_1200(...) , __VA_ARGS__
-#endif
-
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(13, 0)
-#  define IF_LLVM_LT_1300(...) __VA_ARGS__
-#  define IF_LLVM_LT_1300_(...) __VA_ARGS__,
-#  define _IF_LLVM_LT_1300(...) , __VA_ARGS__
-#  define IF_LLVM_GTE_1300(...)
-#  define IF_LLVM_GTE_1300_(...)
-#  define _IF_LLVM_GTE_1300(...)
-#else
-#  define IF_LLVM_LT_1300(...)
-#  define IF_LLVM_LT_1300_(...)
-#  define _IF_LLVM_LT_1300(...)
-#  define IF_LLVM_GTE_1300(...) __VA_ARGS__
-#  define IF_LLVM_GTE_1300_(...) __VA_ARGS__,
-#  define _IF_LLVM_GTE_1300(...) , __VA_ARGS__
-#endif
-
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(14, 0)
-#  define IF_LLVM_LT_1400(...) __VA_ARGS__
-#  define IF_LLVM_LT_1400_(...) __VA_ARGS__,
-#  define _IF_LLVM_LT_1400(...) , __VA_ARGS__
-#  define IF_LLVM_GTE_1400(...)
-#  define IF_LLVM_GTE_1400_(...)
-#  define _IF_LLVM_GTE_1400(...)
+#  error "Minimum supported LLVM version is 14.0"
+#endif
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+#  define IF_LLVM_LT_1500(...) __VA_ARGS__
+#  define IF_LLVM_LT_1500_(...) __VA_ARGS__,
+#  define _IF_LLVM_LT_1500(...) , __VA_ARGS__
+#  define IF_LLVM_GTE_1500(...)
+#  define IF_LLVM_GTE_1500_(...)
+#  define _IF_LLVM_GTE_1500(...)
 #else
-#  define IF_LLVM_LT_1400(...)
-#  define IF_LLVM_LT_1400_(...)
-#  define _IF_LLVM_LT_1400(...)
-#  define IF_LLVM_GTE_1400(...) __VA_ARGS__
-#  define IF_LLVM_GTE_1400_(...) __VA_ARGS__,
-#  define _IF_LLVM_GTE_1400(...) , __VA_ARGS__
+#  define IF_LLVM_LT_1500(...)
+#  define IF_LLVM_LT_1500_(...)
+#  define _IF_LLVM_LT_1500(...)
+#  define IF_LLVM_GTE_1500(...) __VA_ARGS__
+#  define IF_LLVM_GTE_1500_(...) __VA_ARGS__,
+#  define _IF_LLVM_GTE_1500(...) , __VA_ARGS__
 #endif
 
 #define IF_LLVM_LT(major, minor, ...) IF_LLVM_LT_##major##minor##0(__VA_ARGS__)
