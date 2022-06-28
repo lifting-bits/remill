@@ -23,7 +23,6 @@
 #pragma clang diagnostic ignored "-Wold-style-cast"
 #pragma clang diagnostic ignored "-Wdocumentation"
 #pragma clang diagnostic ignored "-Wswitch-enum"
-#include <remill/BC/Compat/CTypes.h>
 
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/Triple.h>
