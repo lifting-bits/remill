@@ -225,6 +225,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   UniqueRegSpace unknown_regs;
 
   ConstantReplacementContext replacement_cont;
+  // Generic sleigh arch
+  Architecture *sleigh_arch;
 
   void UpdateStatus(LiftStatus new_status, OpCode opc) {
     if (new_status != LiftStatus::kLiftedInstruction) {
@@ -238,7 +240,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
  public:
   PcodeToLLVMEmitIntoBlock(llvm::BasicBlock *target_block,
                            llvm::Value *state_pointer, const Instruction &insn,
-                           SleighLifter &insn_lifter_parent)
+                           SleighLifter &insn_lifter_parent, Architecture *arch)
       : target_block(target_block),
         state_pointer(state_pointer),
         context(target_block->getContext()),
@@ -246,7 +248,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         status(remill::LiftStatus::kLiftedInvalidInstruction),
         insn_lifter_parent(insn_lifter_parent),
         uniques(target_block->getContext()),
-        unknown_regs(target_block->getContext()) {}
+        unknown_regs(target_block->getContext()),
+        sleigh_arch(arch) {}
 
 
   ParamPtr CreateMemoryAddress(llvm::Value *offset) {
@@ -959,6 +962,17 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
     if (opc == OpCode::CPUI_CALLOTHER) {
       // TODO(Ian): check for handler here!!!!
+      if (isize == 3 &&
+          this->sleigh_arch->userops.getOp(vars[0].offset)->getName() ==
+              "claim_eq") {
+        this->replacement_cont.ApplyEqualityClaim(bldr, *this, vars[1],
+                                                  vars[2]);
+        return;
+      }
+
+
+      this->UpdateStatus(LiftStatus::kLiftedUnsupportedInstruction, opc);
+      return;
     }
 
     switch (isize) {
@@ -1119,7 +1133,8 @@ SleighLifter::SleighLifter(const sleigh::SleighArch *arch_,
                            const IntrinsicTable &intrinsics_)
     : InstructionLifter(arch_, intrinsics_),
       sleigh_context(new sleigh::SingleInstructionSleighContext(
-          arch_->GetSLAName(), arch_->GetPSpec())) {
+          arch_->GetSLAName(), arch_->GetPSpec())),
+      internal_sleigh_arch(this->sleigh_context->buildSleighInternalArch()) {
   arch_->InitializeSleighContext(*sleigh_context);
 }
 
@@ -1146,7 +1161,8 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
   ir.CreateStore(curr_eip, pc_ref);
 
 
-  SleighLifter::PcodeToLLVMEmitIntoBlock lifter(block, state_ptr, inst, *this);
+  SleighLifter::PcodeToLLVMEmitIntoBlock lifter(
+      block, state_ptr, inst, *this, this->internal_sleigh_arch.get());
   auto res = sleigh_context->oneInstruction(inst.pc, lifter, inst.bytes);
 
   (void) res;

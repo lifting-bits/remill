@@ -19,11 +19,11 @@
 #include <glog/logging.h>
 #include <llvm/IR/IRBuilder.h>
 
+#include <mutex>
 #include <sleigh/libsleigh.hh>
 
 #include "remill/Arch/Instruction.h"
 #include "remill/BC/InstructionLifter.h"
-#include <mutex>
 
 class Sleigh;
 
@@ -34,9 +34,11 @@ class SingleInstructionSleighContext;
 }  // namespace sleigh
 
 class SleighLifter : public InstructionLifter {
+ private:
   class PcodeToLLVMEmitIntoBlock;
 
   std::unique_ptr<sleigh::SingleInstructionSleighContext> sleigh_context;
+  std::unique_ptr<Architecture> internal_sleigh_arch;
 
  public:
   SleighLifter(const sleigh::SleighArch *arch_,

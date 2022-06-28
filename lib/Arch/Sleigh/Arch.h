@@ -178,6 +178,10 @@ class SingleInstructionSleighContext {
   void resetContext();
 
   SingleInstructionSleighContext(std::string sla_name, std::string pspec_name);
+
+
+  // Builds sleigh decompiler arch. Allows access to useropmanager and other internal sleigh info mantained by the arch.
+  unique_ptr<Architecture> buildSleighInternalArch();
 };
 
 class SleighArch : public ArchBase {
