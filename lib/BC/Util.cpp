@@ -31,6 +31,7 @@
 
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/StringExtras.h>
+#include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
@@ -49,7 +50,6 @@
 #include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
 #include "remill/BC/Annotate.h"
-#include "remill/BC/Compat/BitcodeReaderWriter.h"
 #include "remill/BC/Compat/CallSite.h"
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
