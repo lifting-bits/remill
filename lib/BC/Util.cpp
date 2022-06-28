@@ -52,7 +52,6 @@
 #include "remill/BC/ABI.h"
 #include "remill/BC/Annotate.h"
 #include "remill/BC/Compat/CallSite.h"
-#include "remill/BC/Compat/GlobalValue.h"
 #include "remill/BC/Compat/ToolOutputFile.h"
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Util.h"
