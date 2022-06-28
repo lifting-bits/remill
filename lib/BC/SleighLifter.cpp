@@ -185,6 +185,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   class ConstantReplacementContext {
    private:
     std::map<uint64_t, ParamPtr> current_replacements;
+    std::set<uint64_t> used_values;
 
    public:
     void ApplyEqualityClaim(llvm::IRBuilder<> &bldr,
@@ -200,6 +201,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
     void ApplyNonEqualityClaim() {
       this->current_replacements.clear();
+      this->used_values.clear();
     }
 
     llvm::Value *LiftOffsetOrReplace(llvm::IRBuilder<> &bldr,
@@ -207,6 +209,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
                                      llvm::Type *target_type) {
       if (this->current_replacements.find(target.offset) !=
           this->current_replacements.end()) {
+
+        if (this->used_values.find(target.offset) != this->used_values.end()) {
+          LOG(FATAL) << "Ambigous value substitution via claim eq: "
+                     << target.offset;
+        }
         auto replacement = this->current_replacements.find(target.offset)
                                ->second->LiftAsInParam(bldr, target_type);
         if (!replacement.has_value()) {
@@ -214,6 +221,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
                      << target.offset << " as "
                      << remill::LLVMThingToString(target_type);
         }
+        this->used_values.insert(target.offset);
         return *replacement;
       }
 
