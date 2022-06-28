@@ -18,10 +18,5 @@
 
 #include "remill/BC/Version.h"
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 7)
-#  include <llvm/IR/DebugInfoMetadata.h>
-#else
-#  include <llvm/IR/DebugInfo.h>
-#endif
-
+#include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/DebugLoc.h>

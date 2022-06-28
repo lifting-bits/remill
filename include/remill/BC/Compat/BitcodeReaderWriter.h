@@ -17,10 +17,5 @@
 #pragma once
 
 #include "remill/BC/Version.h"
-
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(4, 0)
-#  include <llvm/Bitcode/BitcodeReader.h>
-#  include <llvm/Bitcode/BitcodeWriter.h>
-#else
-#  include <llvm/Bitcode/ReaderWriter.h>
-#endif
+#include <llvm/Bitcode/BitcodeReader.h>
+#include <llvm/Bitcode/BitcodeWriter.h>

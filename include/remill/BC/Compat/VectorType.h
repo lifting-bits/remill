@@ -20,19 +20,10 @@
 
 #include "remill/BC/Version.h"
 
-// Hack in a 'FixedVectorType' for LLVM < 11
 namespace llvm {
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(11, 0)
-using FixedVectorType = VectorType;
-#endif
-
 
 inline static constexpr auto GetFixedVectorTypeId(void) {
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(11, 0)
-  return Type::VectorTyID;
-#else
   return Type::FixedVectorTyID;
-#endif
 }
 
 }  // namespace llvm

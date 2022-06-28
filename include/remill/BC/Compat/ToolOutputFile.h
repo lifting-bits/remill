@@ -19,9 +19,3 @@
 #include <llvm/Support/ToolOutputFile.h>
 
 #include "remill/BC/Version.h"
-
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(6, 0)
-namespace llvm {
-using ToolOutputFile = tool_output_file;
-}  // namespace llvm
-#endif

@@ -18,8 +18,4 @@
 
 #include "remill/BC/Version.h"
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 5)
-#  include <llvm/IR/Verifier.h>
-#else
-#  include <llvm/Analysis/Verifier.h>
-#endif
+#include <llvm/IR/Verifier.h>

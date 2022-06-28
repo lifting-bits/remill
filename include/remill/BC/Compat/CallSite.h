@@ -19,44 +19,10 @@
 
 #include "remill/BC/Version.h"
 
+#include <llvm/Analysis/InlineCost.h>
+#include <llvm/IR/AbstractCallSite.h>
+#include <llvm/Transforms/Utils/Cloning.h>
 
-/* In llvm-11 llvm::CallSite got partially replace by llvm::AbstractCallSite
- * for read-only operations and llvm::CallBase was made public (was considered
- * implementation before)
- * This header tries to provide at least some compatibility for what is
- * currently used.
- */
-
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(11, 0)
-
-#  include <llvm/IR/CallSite.h>
-namespace remill::compat::llvm {
-
-struct CallSite : private ::llvm::CallSite {
-  using parent = ::llvm::CallSite;
-
-  /* List of "allowed" methods (thanks to private inheritance)
-     * that prevent user from accidentally using functionality that
-     * would break other llvm version.
-     * If you want to add method here, make sure other versions have it
-     * as well.
-     */
-  using parent::isCall;
-  using parent::parent;
-  using parent::operator bool;
-  using parent::getCalledFunction;
-  using parent::getCalledValue;
-  using parent::getInstruction;
-  using parent::setCalledFunction;
-};
-
-}  // namespace remill::compat::llvm
-
-#else
-
-#  include <llvm/Analysis/InlineCost.h>
-#  include <llvm/IR/AbstractCallSite.h>
-#  include <llvm/Transforms/Utils/Cloning.h>
 namespace remill::compat::llvm {
 
 struct CallSite {
@@ -100,5 +66,3 @@ struct CallSite {
 };
 
 }  // namespace remill::compat::llvm
-
-#endif

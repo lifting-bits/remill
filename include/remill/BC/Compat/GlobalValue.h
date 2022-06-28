@@ -22,11 +22,7 @@
 namespace remill {
 
 inline static llvm::Type *GetValueType(llvm::GlobalValue *global) {
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 7)
-  return global->getType()->getElementType();
-#else
   return global->getValueType();
-#endif
 }
 
 }  // namespace remill

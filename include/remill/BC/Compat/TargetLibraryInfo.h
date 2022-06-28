@@ -18,15 +18,4 @@
 
 #include "remill/BC/Version.h"
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 7)
-#  include <llvm/Analysis/TargetLibraryInfo.h>
-#else
-#  include <llvm/Target/TargetLibraryInfo.h>
-
-namespace llvm {
-
-using TargetLibraryInfoImpl = TargetLibraryInfo;
-
-}  // namespace llvm
-
-#endif
+#include <llvm/Analysis/TargetLibraryInfo.h>

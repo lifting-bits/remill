@@ -15,16 +15,7 @@
  */
 #pragma once
 
+#include <llvm/BinaryFormat/Magic.h>
 #include <llvm/Support/FileSystem.h>
 
 #include "remill/BC/Version.h"
-
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(5, 0)
-#  include <llvm/BinaryFormat/Magic.h>
-#endif
-
-namespace llvm {
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(5, 0)
-using file_magic = llvm::sys::fs::file_magic;
-#endif
-}  // namespace llvm

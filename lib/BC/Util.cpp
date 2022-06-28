@@ -40,6 +40,7 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
@@ -52,7 +53,6 @@
 #include "remill/BC/Compat/CallSite.h"
 #include "remill/BC/Compat/DebugInfo.h"
 #include "remill/BC/Compat/GlobalValue.h"
-#include "remill/BC/Compat/IRReader.h"
 #include "remill/BC/Compat/ToolOutputFile.h"
 #include "remill/BC/Compat/VectorType.h"
 #include "remill/BC/Compat/Verifier.h"
@@ -151,9 +151,6 @@ llvm::CallInst *AddCall(llvm::BasicBlock *source_block,
                         const IntrinsicTable &intrinsics) {
   llvm::IRBuilder<> ir(source_block);
   auto args = LiftedFunctionArgs(source_block, intrinsics);
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(11, 0)
-  return ir.CreateCall(dest_func, args);
-#else
   if (auto func = llvm::dyn_cast<llvm::Function>(dest_func); func) {
     return ir.CreateCall(func, args);
 
@@ -167,7 +164,6 @@ llvm::CallInst *AddCall(llvm::BasicBlock *source_block,
     llvm::FunctionCallee callee(func_type, dest_func);
     return ir.CreateCall(callee, args);
   }
-#endif
 }
 
 // Create a tail-call from one lifted function to another.
@@ -473,26 +469,11 @@ bool StoreModuleToFile(llvm::Module *module, std::string_view file_name,
     return false;
   }
 
-#if LLVM_VERSION_NUMBER > LLVM_VERSION(3, 5)
   std::error_code ec;
-#  if LLVM_VERSION_NUMBER < LLVM_VERSION(7, 0)
-  llvm::ToolOutputFile bc(tmp_name.c_str(), ec, llvm::sys::fs::F_RW);
-#  else
   llvm::ToolOutputFile bc(tmp_name.c_str(), ec, llvm::sys::fs::OF_None);
-#  endif
   CHECK(!ec) << "Unable to open output bitcode file for writing: " << tmp_name;
-#else
-  llvm::tool_output_file bc(tmp_name.c_str(), error, llvm::sys::fs::F_RW);
-  CHECK(error.empty() && !bc.os().has_error())
-      << "Unable to open output bitcode file for writing: " << tmp_name << ": "
-      << error;
-#endif
 
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(7, 0)
-  llvm::WriteBitcodeToFile(module, bc.os());
-#else
   llvm::WriteBitcodeToFile(*module, bc.os());
-#endif
   bc.keep();
   if (!bc.os().has_error()) {
     std::string file_name_(file_name.data(), file_name.size());
@@ -511,21 +492,10 @@ bool StoreModuleToFile(llvm::Module *module, std::string_view file_name,
 bool StoreModuleIRToFile(llvm::Module *module, std::string_view file_name_,
                          bool allow_failure) {
   std::string file_name(file_name_.data(), file_name_.size());
-#if LLVM_VERSION_NUMBER <= LLVM_VERSION(3, 5)
-  std::string error;
-  llvm::raw_fd_ostream dest(file_name.c_str(), error, llvm::sys::fs::F_Text);
-  auto good = error.empty();
-#elif LLVM_VERSION_NUMBER < LLVM_VERSION(13, 0)
-  std::error_code ec;
-  llvm::raw_fd_ostream dest(file_name.c_str(), ec, llvm::sys::fs::F_Text);
-  auto good = !ec;
-  auto error = ec.message();
-#else
   std::error_code ec;
   llvm::raw_fd_ostream dest(file_name.c_str(), ec, llvm::sys::fs::OF_Text);
   auto good = !ec;
   auto error = ec.message();
-#endif
   if (!good) {
     LOG_IF(FATAL, allow_failure)
         << "Could not save LLVM IR to " << file_name << ": " << error;
@@ -744,11 +714,7 @@ std::vector<llvm::CallInst *> CallersOf(llvm::Function *func) {
 
 // Returns the name of a module.
 std::string ModuleName(llvm::Module *module) {
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(3, 6)
-  return module->getModuleIdentifier();
-#else
   return module->getName().str();
-#endif
 }
 
 std::string ModuleName(const std::unique_ptr<llvm::Module> &module) {
@@ -1672,18 +1638,14 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
 
   // Make sure that when we're cloning functions that we don't
   // throw away register names and such.
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 9)
   dest_func->getContext().setDiscardValueNames(false);
-#endif
 
   dest_func->setAttributes(source_func->getAttributes());
   dest_func->setLinkage(source_func->getLinkage());
   dest_func->setVisibility(source_func->getVisibility());
   dest_func->setCallingConv(source_func->getCallingConv());
 
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 6)
   dest_func->setIsMaterializable(source_func->isMaterializable());
-#endif
 
   // Clone the basic blocks and their instructions.
   std::unordered_map<llvm::BasicBlock *, llvm::BasicBlock *> block_map;
@@ -1912,7 +1874,7 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
     existing_decl_in_dest_module = nullptr;
   }
 
-  IF_LLVM_GTE_370(ClearMetaData(func);)
+  ClearMetaData(func);
 
   // Fill up the locals so that they map to themselves.
   for (auto &arg : func->args()) {
@@ -2371,14 +2333,12 @@ BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type, size_t offset,
     // happens
     LOG(FATAL) << "Called BuildIndexes on unsupported type: "
                << remill::LLVMThingToString(type);
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(11, 0)
   } else if (auto svt_type = llvm::dyn_cast<llvm::ScalableVectorType>(type);
              svt_type) {
 
     // same as above, but for scalable vectors
     LOG(FATAL) << "Called BuildIndexes on unsupported type: "
                << remill::LLVMThingToString(type);
-#endif
   }
 
   return {offset, type};

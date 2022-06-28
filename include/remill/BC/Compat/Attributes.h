@@ -21,12 +21,9 @@
 
 namespace llvm {
 namespace AttributeLoc {
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(5, 0)
-constexpr auto ReturnIndex = llvm::AttributeSet::ReturnIndex;
-constexpr auto FunctionIndex = llvm::AttributeSet::FunctionIndex;
-#else
+
 constexpr auto ReturnIndex = llvm::AttributeList::ReturnIndex;
 constexpr auto FunctionIndex = llvm::AttributeList::FunctionIndex;
-#endif
+
 }  // namespace AttributeLoc
 }  // namespace llvm

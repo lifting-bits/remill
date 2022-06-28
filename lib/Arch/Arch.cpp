@@ -401,10 +401,7 @@ static bool BlockHasSpecialVars(llvm::Function *basic_block) {
 
 // Add attributes to llvm::Argument in a way portable across LLVMs
 static void AddNoAliasToArgument(llvm::Argument *arg) {
-  IF_LLVM_LT_390(arg->addAttr(llvm::AttributeSet::get(
-      arg->getContext(), arg->getArgNo() + 1, llvm::Attribute::NoAlias)););
-
-  IF_LLVM_GTE_390(arg->addAttr(llvm::Attribute::NoAlias););
+  arg->addAttr(llvm::Attribute::NoAlias);
 }
 
 }  // namespace
@@ -612,12 +609,8 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
 
   // Add the metadata to `inst`.
   if (auto inst = llvm::dyn_cast<llvm::Instruction>(ret); inst) {
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(3, 6)
     auto reg_name_md = llvm::ValueAsMetadata::get(constant_name);
     auto reg_name_node = llvm::MDNode::get(context, reg_name_md);
-#else
-    auto reg_name_node = llvm::MDNode::get(context, reg->constant_name);
-#endif
     inst->setMetadata(arch->reg_md_id, reg_name_node);
     inst->setName(name);
   }
@@ -643,23 +636,13 @@ void Arch::PrepareModuleDataLayout(llvm::Module *mod) const {
 
   llvm::AttributeSet target_attribs;
 
-  target_attribs = target_attribs.addAttribute(
-      context,
-      IF_LLVM_LT_500_(llvm::AttributeSet::FunctionIndex) "target-features");
-  target_attribs = target_attribs.addAttribute(
-      context, IF_LLVM_LT_500_(llvm::AttributeSet::FunctionIndex) "target-cpu");
+  target_attribs = target_attribs.addAttribute(context, "target-features");
+  target_attribs = target_attribs.addAttribute(context, "target-cpu");
 
   for (llvm::Function &func : *mod) {
     auto attribs = func.getAttributes();
-    IF_LLVM_LT_1400(
-    attribs = attribs.removeAttributes(
-        context, llvm::AttributeLoc::FunctionIndex, target_attribs)
-    );
-
-    IF_LLVM_GTE_1400(
-    attribs = attribs.removeFnAttributes(context, llvm::AttributeMask(target_attribs))
-    );
-
+    attribs = attribs.removeFnAttributes(context,
+                                         llvm::AttributeMask(target_attribs));
     func.setAttributes(attribs);
   }
 }

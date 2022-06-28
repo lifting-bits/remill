@@ -17,11 +17,6 @@
 
 #include "remill/BC/Version.h"
 
-/* This compatibility relates to the changes made in CallSite.h.
- */
-
-#if LLVM_VERSION_NUMBER >= LLVM_VERSION(11, 0)
-
 #include <llvm/IR/AbstractCallSite.h>
 #include <llvm/Analysis/InlineCost.h>
 #include <llvm/Transforms/Utils/Cloning.h>
@@ -36,5 +31,3 @@ namespace llvm {
   }
 
 }  // namespace llvm
-
-#endif
