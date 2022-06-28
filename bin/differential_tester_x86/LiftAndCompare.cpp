@@ -105,8 +105,6 @@ class LiftingTester {
       bldr.CreateRet(
           bldr.CreateLoad(this->lifter->GetMemoryType(), mem_ptr_ref));
 
-
-      LOG(INFO) << "No opt" << remill::LLVMThingToString(target_func);
       return std::make_pair(target_func, insn.function);
     } else {
       target_func->eraseFromParent();
@@ -732,8 +730,8 @@ int main(int argc, char **argv) {
     ComparisonRunner comp_runner(end);
 
     if (FLAGS_should_dump_functions) {
-      diff_mod->GetF1()->dump();
-      diff_mod->GetF2()->dump();
+      LOG(INFO) << remill::LLVMThingToString(diff_mod->GetF1());
+      LOG(INFO) << remill::LLVMThingToString(diff_mod->GetF2());
     }
 
     for (uint64_t i = 0; i < FLAGS_num_iterations; i++) {

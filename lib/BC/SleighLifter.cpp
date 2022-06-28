@@ -28,7 +28,6 @@
 
 namespace remill {
 
-class ConstantReplacementContext {};
 
 class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
  private:
@@ -45,6 +44,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
 
   using ParamPtr = std::shared_ptr<Parameter>;
+
 
   class RegisterValue : public Parameter {
    private:
@@ -128,7 +128,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
   class ConstantValue : public Parameter {
    private:
-    llvm::Constant *cst;
+    llvm::Value *cst;
 
    public:
     std::optional<llvm::Value *> LiftAsInParam(llvm::IRBuilder<> &bldr,
@@ -144,9 +144,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       return LiftStatus::kLiftedUnsupportedInstruction;
     }
 
-    ConstantValue(llvm::Constant *cst) : cst(cst) {}
+    ConstantValue(llvm::Value *cst) : cst(cst) {}
 
-    static ParamPtr CreatConstant(llvm::Constant *cst) {
+    static ParamPtr CreatConstant(llvm::Value *cst) {
       return std::make_shared<ConstantValue>(cst);
     }
     virtual ~ConstantValue() {}
@@ -182,9 +182,49 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     }
   };
 
+  class ConstantReplacementContext {
+   private:
+    std::map<uint64_t, ParamPtr> current_replacements;
+
+   public:
+    void ApplyEqualityClaim(llvm::IRBuilder<> &bldr,
+                            SleighLifter::PcodeToLLVMEmitIntoBlock &lifter,
+                            VarnodeData lhs_constant,
+                            VarnodeData rhs_unfolded_value) {
+      assert(lhs_constant.space->getIndex() ==
+             lhs_constant.space->constant_space_index);
+      this->current_replacements.insert(
+          {lhs_constant.offset, lifter.LiftParamPtr(bldr, rhs_unfolded_value)});
+    }
+
+
+    void ApplyNonEqualityClaim() {
+      this->current_replacements.clear();
+    }
+
+    llvm::Value *LiftOffsetOrReplace(llvm::IRBuilder<> &bldr,
+                                     VarnodeData target,
+                                     llvm::Type *target_type) {
+      if (this->current_replacements.find(target.offset) !=
+          this->current_replacements.end()) {
+        auto replacement = this->current_replacements.find(target.offset)
+                               ->second->LiftAsInParam(bldr, target_type);
+        if (!replacement.has_value()) {
+          LOG(FATAL) << "Failure to lift replacement value for: "
+                     << target.offset << " as "
+                     << remill::LLVMThingToString(target_type);
+        }
+        return *replacement;
+      }
+
+      return llvm::ConstantInt::get(target_type, target.offset);
+    }
+  };
+
   UniqueRegSpace uniques;
   UniqueRegSpace unknown_regs;
 
+  ConstantReplacementContext replacement_cont;
 
   void UpdateStatus(LiftStatus new_status, OpCode opc) {
     if (new_status != LiftStatus::kLiftedInstruction) {
@@ -237,13 +277,17 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   }
 
   //TODO(Ian): Maybe this should be a failable function that returns an unsupported insn in certain failures
+  // So the times we need to replace an offset via a context are 3 fold.
+  // 1. in Branches where the offset is retrieved directly from the varnode. This isnt handled here.
+  // 2. In ram offsets
+  // 3. In constant offsets
   ParamPtr LiftParamPtr(llvm::IRBuilder<> &bldr, VarnodeData vnode) {
     auto space_name = vnode.getAddr().getSpace()->getName();
     if (space_name == "ram") {
       // compute pointer into memory at offset
 
-      auto constant_offset = llvm::ConstantInt::get(
-          this->insn_lifter_parent.GetWordType(), vnode.offset);
+      auto constant_offset = this->replacement_cont.LiftOffsetOrReplace(
+          bldr, vnode, this->insn_lifter_parent.GetWordType());
 
       return this->CreateMemoryAddress(constant_offset);
     } else if (space_name == "register") {
@@ -264,8 +308,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       }
 
     } else if (space_name == "const") {
-      auto cst_v = llvm::ConstantInt::get(
-          llvm::IntegerType::get(this->context, vnode.size * 8), vnode.offset);
+
+      auto cst_v = this->replacement_cont.LiftOffsetOrReplace(
+          bldr, vnode, llvm::IntegerType::get(this->context, vnode.size * 8));
+
       return ConstantValue::CreatConstant(cst_v);
     } else if (space_name == "unique") {
       auto reg_ptr = this->uniques.GetUniquePtr(vnode.offset, vnode.size, bldr);
