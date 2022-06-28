@@ -402,6 +402,20 @@ uint8_t ___remill_undefined_8(void) {
   return 0;
 }
 
+uint8_t ___remill_read_memory_8(MemoryHandler *memory, uint64_t addr) {
+  LOG(INFO) << "Reading " << std::hex << addr;
+  auto res = memory->ReadMemory<uint8_t>(addr);
+  LOG(INFO) << "Read memory " << res;
+  return res;
+}
+
+MemoryHandler *___remill_write_memory_8(MemoryHandler *memory, uint64_t addr,
+                                        uint8_t value) {
+  LOG(INFO) << "Writing " << std::hex << addr;
+  memory->WriteMemory<uint8_t>(addr, value);
+  return memory;
+}
+
 uint32_t ___remill_read_memory_32(MemoryHandler *memory, uint64_t addr) {
   LOG(INFO) << "Reading " << std::hex << addr;
   auto res = memory->ReadMemory<uint32_t>(addr);
