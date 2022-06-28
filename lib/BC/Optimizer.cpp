@@ -38,7 +38,6 @@
 #include <llvm/Transforms/Utils/ValueMapper.h>
 
 #include "remill/Arch/Arch.h"
-#include "remill/BC/Compat/ScalarTransforms.h"
 #include "remill/BC/Util.h"
 
 namespace remill {
