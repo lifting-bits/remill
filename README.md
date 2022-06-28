@@ -40,8 +40,8 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 | [Google Flags](https://github.com/google/glog) | Latest |
 | [Google Log](https://github.com/google/glog) | Latest |
 | [Google Test](https://github.com/google/googletest) | Latest |
-| [LLVM](http://llvm.org/) | 12 |
-| [Clang](http://clang.llvm.org/) | 12 |
+| [LLVM](http://llvm.org/) | 14 |
+| [Clang](http://clang.llvm.org/) | 14 |
 | [Intel XED](https://software.intel.com/en-us/articles/xed-x86-encoder-decoder-software-library) | Latest |
 | [Python](https://www.python.org/) | 2.7 |
 | Unzip | Latest |
@@ -55,7 +55,7 @@ Remill now comes with a Dockerfile for easier testing. This Dockerfile reference
 
 The Dockerfile allows for quick builds of multiple supported LLVM, architecture, and Linux configurations.
 
-Quickstart (builds Remill against LLVM 12 on Ubuntu 20.04 for AMD64):
+Quickstart (builds Remill against LLVM 14 on Ubuntu 20.04 for AMD64):
 
 Clone Remill:
 ```shell
@@ -71,7 +71,7 @@ docker build . -t remill \
      -f Dockerfile \
      --build-arg UBUNTU_VERSION=20.04 \
      --build-arg ARCH=amd64 \
-     --build-arg LLVM_VERSION=12
+     --build-arg LLVM_VERSION=14
 ```
 
 Ensure remill works:
@@ -79,7 +79,7 @@ Ensure remill works:
 # Decode some AMD64 instructions to LLVM
 docker run --rm -it remill \
      --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
-     
+
 # Decode some AArch64 instructions to LLVM
 docker run --rm -it remill \
      --arch aarch64 --address 0x400544 --ir_out /dev/stdout \
