@@ -416,9 +416,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       case OpCode::CPUI_CALL: {
         // directs dont read the address of the variable, the offset is the jump
         // TODO(Ian): handle other address spaces
-        auto input_val = llvm::ConstantInt::get(
-            llvm::IntegerType::get(this->context, input_var.size * 8),
-            input_var.offset);
+
+
+        auto input_val = this->replacement_cont.LiftOffsetOrReplace(
+            bldr, input_var,
+            llvm::IntegerType::get(this->context, input_var.size * 8));
         auto pc_reg = this->LiftNormalRegister(bldr, "PC");
         assert(pc_reg.has_value());
         return (*pc_reg)->StoreIntoParam(bldr, input_val);
@@ -580,8 +582,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
           bldr, rhs, llvm::IntegerType::get(this->context, rhs.size * 8));
       // directs dont read the address of the variable, the offset is the jump
       // TODO(Ian): handle other address spaces
-      auto jump_addr = llvm::ConstantInt::get(
-          llvm::IntegerType::get(this->context, lhs.size * 8), lhs.offset);
+      auto jump_addr = this->replacement_cont.LiftOffsetOrReplace(
+          bldr, lhs, llvm::IntegerType::get(this->context, lhs.size * 8));
       if (should_branch.has_value()) {
         auto pc_reg_param = this->LiftNormalRegister(bldr, "PC");
         assert(pc_reg_param.has_value());
