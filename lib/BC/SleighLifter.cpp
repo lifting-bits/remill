@@ -308,7 +308,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public LifterWithLookAhead {
     // compute pointer into memory at offset
 
 
-    return Memory::CreateMemory(mem_ptr_ref, offset,
+    return Memory::CreateMemory(mem_ptr_ref.first, offset,
                                 this->insn_lifter_parent.GetIntrinsicTable(),
                                 this->insn_lifter_parent.GetMemoryType());
   }
@@ -323,7 +323,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public LifterWithLookAhead {
       // TODO(Ian): will probably need to adjust the pointer here in certain circumstances
       auto reg_ptr = this->insn_lifter_parent.LoadRegAddress(
           bldr.GetInsertBlock(), this->state_pointer, reg_name);
-      return RegisterValue::CreatRegister(reg_ptr);
+      return RegisterValue::CreatRegister(reg_ptr.first);
     } else {
       return std::nullopt;
     }
@@ -1261,13 +1261,13 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
   llvm::IRBuilder<> ir(block);
   const auto next_pc_ref =
       LoadRegAddress(block, state_ptr, kNextPCVariableName);
-  const auto next_pc = ir.CreateLoad(this->GetWordType(), next_pc_ref);
+  const auto next_pc = ir.CreateLoad(this->GetWordType(), next_pc_ref.first);
   auto pc_ref = this->LoadRegAddress(block, state_ptr, "PC");
 
   auto curr_eip = ir.CreateAdd(
       next_pc, llvm::ConstantInt::get(this->GetWordType(), inst.bytes.size()));
-  ir.CreateStore(curr_eip, next_pc_ref);
-  ir.CreateStore(curr_eip, pc_ref);
+  ir.CreateStore(curr_eip, next_pc_ref.first);
+  ir.CreateStore(curr_eip, pc_ref.first);
 
 
   SleighLifter::PcodeToLLVMEmitIntoBlock lifter(
@@ -1277,7 +1277,8 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
   lifter.finalize();
 
   (void) res;
-  ir.CreateStore(ir.CreateLoad(this->GetWordType(), pc_ref), next_pc_ref);
+  ir.CreateStore(ir.CreateLoad(this->GetWordType(), pc_ref.first),
+                 next_pc_ref.first);
 
   //NOTE(Ian): If we made it past decoding we should be able to decode the bytes again
   assert(res.has_value());
