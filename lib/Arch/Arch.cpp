@@ -264,8 +264,8 @@ llvm::StructType *ArchBase::StateStructType(void) const {
 }
 
 // Pointer to a state structure type.
-llvm::PointerType *Arch::StatePointerType(void) const {
-  CHECK(impl)
+llvm::PointerType *ArchBase::StatePointerType(void) const {
+  CHECK(this->state_type)
       << "Have you not run `PrepareModule` on a loaded semantics module?";
   return llvm::PointerType::get(*context, 0);
 }
@@ -287,10 +287,14 @@ llvm::FunctionType *ArchBase::LiftedFunctionType(void) const {
   return lifted_function_type;
 }
 
-llvm::StructType *Arch::RegisterWindowType(void) const {
-  CHECK(impl)
+llvm::StructType *ArchBase::RegisterWindowType(void) const {
+  CHECK(this->register_window_type)
       << "Have you not run `PrepareModule` on a loaded semantics module?";
-  return impl->register_window_type;
+  return this->register_window_type;
+}
+
+unsigned ArchBase::RegMdID(void) const {
+  return this->reg_md_id;
 }
 
 // Return information about the register at offset `offset` in the `State`
@@ -587,7 +591,7 @@ FinishAddressOf(llvm::IRBuilder<> &ir, const llvm::DataLayout &dl,
 void Register::ComputeGEPAccessors(const llvm::DataLayout &dl,
                                    llvm::StructType *state_type) {
   if (!state_type) {
-    state_type = arch->state_type;
+    state_type = arch->StateStructType();
   }
 
   if (gep_type_at_offset || !state_type) {
@@ -620,7 +624,7 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
   CHECK_NOTNULL(state_ptr_type);
   const auto addr_space = state_ptr_type->getAddressSpace();
 
-  const auto state_type = arch->state_type;
+  const auto state_type = arch->StateStructType();
 
   const auto module = ir.GetInsertBlock()->getParent()->getParent();
   const auto &dl = module->getDataLayout();
@@ -646,7 +650,7 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
   if (auto inst = llvm::dyn_cast<llvm::Instruction>(ret); inst) {
     auto reg_name_md = llvm::ValueAsMetadata::get(constant_name);
     auto reg_name_node = llvm::MDNode::get(context, reg_name_md);
-    inst->setMetadata(arch->reg_md_id, reg_name_node);
+    inst->setMetadata(arch->RegMdID(), reg_name_node);
     inst->setName(name);
   }
 
@@ -771,10 +775,9 @@ const Register *ArchBase::AddRegister(const char *reg_name_,
     parent_reg = reg_by_name[parent_reg_name];
   }
 
-  auto reg_impl = new Register(reg_name, offset, dl.getTypeAllocSize(val_type),
-                               val_type, parent_reg, impl.get());
+  auto reg_impl = new Register(reg_name, offset, val_type, parent_reg, this);
 
-  reg_impl->ComputeGEPAccessors(dl, impl->state_type);
+  reg_impl->ComputeGEPAccessors(dl, this->state_type);
 
   reg = reg_impl;
   registers.emplace_back(reg_impl);
@@ -831,13 +834,12 @@ void ArchBase::InitFromSemanticsModule(llvm::Module *module) const {
     auto *register_window_type = llvm::dyn_cast<llvm::StructType>(
         register_window_global->getValueType());
     CHECK_NOTNULL(register_window_type);
-    impl->register_window_type = register_window_type;
+    this->register_window_type = register_window_type;
   }
 
   // TODO(pag): Eventually we need a reliable way to get this that will work
   //            in the presence of opaque pointers.
-  state_type =
-      llvm::dyn_cast<llvm::StructType>(state_ptr_type->getPointerElementType());
+  this->state_type = state_type;
 
   reg_by_offset.resize(dl.getTypeAllocSize(state_type));
   memory_type = llvm::dyn_cast<llvm::PointerType>(

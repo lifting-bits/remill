@@ -157,6 +157,8 @@ struct Register {
   const Register *const parent;
   const Arch *const arch;
 
+  mutable std::vector<const Register *> children;
+
   void ComputeGEPAccessors(const llvm::DataLayout &dl,
                            llvm::StructType *state_type);
 };
@@ -195,7 +197,10 @@ class Arch {
 
   // Returns the type of the register window. If the architecture doesn't have a register window, a
   // null pointer will be returned.
-  llvm::StructType *RegisterWindowType() const;
+  virtual llvm::StructType *RegisterWindowType(void) const = 0;
+
+
+  virtual unsigned RegMdID(void) const = 0;
 
   // Apply `cb` to every register.
   virtual void

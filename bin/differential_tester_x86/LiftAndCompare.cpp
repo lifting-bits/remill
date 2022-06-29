@@ -62,12 +62,9 @@ class LiftingTester {
     auto ftype = this->arch->LiftedFunctionType();
     auto mem_type = llvm::cast<llvm::PointerType>(
         ftype->getParamType(remill::kMemoryPointerArgNum));
-    auto state_type = llvm::cast<llvm::PointerType>(
-        ftype->getParamType(remill::kStatePointerArgNum));
 
-
-    res.emplace(TypeId::MEMORY, mem_type->getElementType());
-    res.emplace(TypeId::STATE, state_type->getElementType());
+    res.emplace(TypeId::MEMORY, this->arch->MemoryPointerType());
+    res.emplace(TypeId::STATE, this->arch->StateStructType());
 
     return res;
   }
@@ -291,8 +288,8 @@ void RunDefaultOptPipeline(llvm::Module *mod) {
 
   // Create the pass manager.
   // This one corresponds to a typical -O2 optimization pipeline.
-  llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(
-      llvm::PassBuilder::OptimizationLevel::O2);
+  llvm::ModulePassManager MPM =
+      PB.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O2);
 }
 
 

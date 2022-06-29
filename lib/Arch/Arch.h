@@ -52,6 +52,8 @@ class ArchBase : public remill::Arch {
   // Return the type of a lifted function.
   llvm::FunctionType *LiftedFunctionType(void) const final;
 
+  llvm::StructType *RegisterWindowType(void) const final;
+
   // Apply `cb` to every register.
   void ForEachRegister(std::function<void(const Register *)> cb) const final;
 
@@ -61,6 +63,8 @@ class ArchBase : public remill::Arch {
 
   // Return information about a register, given its name.
   const Register *RegisterByName(std::string_view name) const final;
+
+  unsigned RegMdID(void) const final;
 
   // TODO(Ian): This is kinda messy but only an arch currently knows if it is
   //            sleigh or not and sleigh needs different lifting context etc.
@@ -74,9 +78,9 @@ class ArchBase : public remill::Arch {
   void InitFromSemanticsModule(llvm::Module *module) const final;
 
   // Add a register into this architecture.
-  const Register *AddRegister(
-      const char *reg_name, llvm::Type *val_type,
-      size_t offset, const char *parent_reg_name) const final;
+  const Register *AddRegister(const char *reg_name, llvm::Type *val_type,
+                              size_t offset,
+                              const char *parent_reg_name) const final;
 
   // State type.
   mutable llvm::StructType *state_type{nullptr};
@@ -88,7 +92,7 @@ class ArchBase : public remill::Arch {
   mutable llvm::FunctionType *lifted_function_type{nullptr};
 
   // Register window type.
-  llvm::StructType *register_window_type{nullptr};
+  mutable llvm::StructType *register_window_type{nullptr};
 
   // Metadata type ID for remill registers.
   mutable unsigned reg_md_id{0};
