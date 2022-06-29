@@ -100,7 +100,10 @@ class LiftingTester {
           remill::LoadProgramCounterRef(&target_func->getEntryBlock());
       auto next_pc_ref =
           remill::LoadNextProgramCounterRef(&target_func->getEntryBlock());
-      bldr.CreateStore(bldr.CreateLoad(next_pc_ref), pc_ref);
+      bldr.CreateStore(
+          bldr.CreateLoad(llvm::IntegerType::get(target_func->getContext(), 32),
+                          next_pc_ref),
+          pc_ref);
 
       bldr.CreateRet(
           bldr.CreateLoad(this->lifter->GetMemoryType(), mem_ptr_ref));
