@@ -1131,7 +1131,7 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
            auto new_rhs = rhs;
            if (lhs->getType() != rhs->getType()) {
-             new_rhs = bldr.CreateZExt(rhs, lhs->getType());
+             new_rhs = bldr.CreateZExtOrTrunc(rhs, lhs->getType());
            }
            return bldr.CreateShl(lhs, new_rhs);
          }},
@@ -1139,7 +1139,7 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
            auto new_rhs = rhs;
            if (lhs->getType() != rhs->getType()) {
-             new_rhs = bldr.CreateZExt(rhs, lhs->getType());
+             new_rhs = bldr.CreateZExtOrTrunc(rhs, lhs->getType());
            }
            return bldr.CreateLShr(lhs, new_rhs);
          }},
