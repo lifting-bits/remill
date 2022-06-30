@@ -839,6 +839,7 @@ void ArchBase::InitFromSemanticsModule(llvm::Module *module) const {
 
   // TODO(pag): Eventually we need a reliable way to get this that will work
   //            in the presence of opaque pointers.
+  LOG(FATAL) << "Initializing state";
   this->state_type = state_type;
 
   reg_by_offset.resize(dl.getTypeAllocSize(state_type));
