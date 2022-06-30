@@ -49,7 +49,7 @@ class LiftingTester {
   LiftingTester(llvm::Module *semantics_module_, remill::OSName os_name,
                 remill::ArchName arch_name)
       : semantics_module(semantics_module_),
-        arch(remill::Arch::Build(&semantics_module_->getContext(), os_name,
+        arch(remill::Arch::Build(&this->semantics_module->getContext(), os_name,
                                  arch_name)),
         table(std::make_unique<remill::IntrinsicTable>(this->semantics_module)),
         lifter(this->arch->DefaultLifter(*this->table.get())) {
@@ -202,11 +202,11 @@ class DifferentialModuleBuilder {
     auto tmp_arch = remill::Arch::Build(context.get(), os_name_1, arch_name_1);
     auto semantics_module = remill::LoadArchSemantics(tmp_arch.get());
     tmp_arch->PrepareModule(semantics_module);
-
-    return DifferentialModuleBuilder(
-        std::move(context), std::move(semantics_module),
-        LiftingTester(semantics_module.get(), os_name_1, arch_name_1),
-        LiftingTester(semantics_module.get(), os_name_2, arch_name_2));
+    auto l1 = LiftingTester(semantics_module.get(), os_name_1, arch_name_1);
+    auto l2 = LiftingTester(semantics_module.get(), os_name_2, arch_name_2);
+    return DifferentialModuleBuilder(std::move(context),
+                                     std::move(semantics_module), std::move(l1),
+                                     std::move(l2));
   }
 
  private:
