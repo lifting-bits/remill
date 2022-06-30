@@ -81,34 +81,33 @@ class LiftingTester {
     LOG(INFO) << "Func sig: "
               << remill::LLVMThingToString(target_func->getType());
 
-    if (remill::LiftStatus::kLiftedInstruction ==
+    if (remill::LiftStatus::kLiftedInstruction !=
         this->lifter->LiftIntoBlock(insn, &target_func->getEntryBlock())) {
-
-
-      auto mem_ptr_ref =
-          remill::LoadMemoryPointerRef(&target_func->getEntryBlock());
-
-      llvm::IRBuilder bldr(&target_func->getEntryBlock());
-      auto pc_ref =
-          remill::LoadProgramCounterRef(&target_func->getEntryBlock());
-      auto next_pc_ref =
-          remill::LoadNextProgramCounterRef(&target_func->getEntryBlock());
-      bldr.CreateStore(
-          bldr.CreateLoad(llvm::IntegerType::get(target_func->getContext(), 32),
-                          next_pc_ref),
-          pc_ref);
-
-      bldr.CreateRet(
-          bldr.CreateLoad(this->lifter->GetMemoryType(), mem_ptr_ref));
-
-      return std::make_pair(target_func, insn.function);
-    } else {
       target_func->eraseFromParent();
       return std::nullopt;
     }
+    target_func->eraseFromParent();
+    return std::nullopt;
+
+
+    auto mem_ptr_ref =
+        remill::LoadMemoryPointerRef(&target_func->getEntryBlock());
+
+    llvm::IRBuilder bldr(&target_func->getEntryBlock());
+    auto pc_ref = remill::LoadProgramCounterRef(&target_func->getEntryBlock());
+    auto next_pc_ref =
+        remill::LoadNextProgramCounterRef(&target_func->getEntryBlock());
+    bldr.CreateStore(
+        bldr.CreateLoad(llvm::IntegerType::get(target_func->getContext(), 32),
+                        next_pc_ref),
+        pc_ref);
+
+    bldr.CreateRet(bldr.CreateLoad(this->lifter->GetMemoryType(), mem_ptr_ref));
+
+    return std::make_pair(target_func, insn.function);
   }
 
-  const remill::Arch::ArchPtr &GetArch() {
+  const remill::Arch::ArchPtr &GetArch() const {
     return this->arch;
   }
 };
@@ -116,6 +115,8 @@ class LiftingTester {
 static constexpr auto kFlagIntrinsicPrefix = "__remill_flag_computation";
 static constexpr auto kCompareFlagIntrinsicPrefix = "__remill_compare";
 
+/// NOTE(Ian): This stub is variadic to handle flag computations which accept arbitrary operand width types. since this function
+/// stubs out to an identity function at runtime this is fine.
 bool flag_computation_stub(bool res, ...) {
   return res;
 }
@@ -125,6 +126,13 @@ bool compare_instrinsic_stub(bool res) {
 }
 
 class DiffModule {
+ private:
+  std::unique_ptr<llvm::Module> mod;
+  llvm::Function *f1;
+  llvm::Function *f2;
+  std::string f1_insn_name;
+  std::string f2_insn_name;
+
  public:
   DiffModule(std::unique_ptr<llvm::Module> mod_, llvm::Function *f1_,
              llvm::Function *f2_, std::string f1_insn_name_,
@@ -147,20 +155,13 @@ class DiffModule {
     return this->f2;
   }
 
-  std::string_view GetNameF1() {
+  std::string_view GetNameF1() const {
     return this->f1_insn_name;
   }
 
-  std::string_view GetNameF2() {
+  std::string_view GetNameF2() const {
     return this->f2_insn_name;
   }
-
- private:
-  std::unique_ptr<llvm::Module> mod;
-  llvm::Function *f1;
-  llvm::Function *f2;
-  std::string f1_insn_name;
-  std::string f2_insn_name;
 };
 
 
@@ -173,8 +174,8 @@ class MappTypeRemapper : public llvm::ValueMapTypeRemapper {
 
   virtual llvm::Type *remapType(llvm::Type *SrcTy) override {
     LOG(INFO) << "Attempting to remap: " << remill::LLVMThingToString(SrcTy);
-    if (this->tmap.find(SrcTy) != this->tmap.end()) {
-      return this->tmap.find(SrcTy)->second;
+    if (auto it = this->tmap.find(SrcTy); it != this->tmap.end()) {
+      return it->second;
     }
 
     return SrcTy;
@@ -201,12 +202,11 @@ class DifferentialModuleBuilder {
     auto tmp_arch = remill::Arch::Build(context.get(), os_name_1, arch_name_1);
     auto semantics_module = remill::LoadArchSemantics(tmp_arch.get());
     tmp_arch->PrepareModule(semantics_module);
-    auto l1 = LiftingTester(semantics_module.get(), os_name_1, arch_name_1);
-    auto l2 = LiftingTester(semantics_module.get(), os_name_2, arch_name_2);
 
-    return DifferentialModuleBuilder(std::move(context),
-                                     std::move(semantics_module), std::move(l1),
-                                     std::move(l2));
+    return DifferentialModuleBuilder(
+        std::move(context), std::move(semantics_module),
+        LiftingTester(semantics_module.get(), os_name_1, arch_name_1),
+        LiftingTester(semantics_module.get(), os_name_2, arch_name_2));
   }
 
  private:
