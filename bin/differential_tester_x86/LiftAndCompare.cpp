@@ -383,9 +383,8 @@ class MemoryHandler {
   void WriteMemory(uint64_t addr, T value) {
     std::vector<uint8_t> buff(sizeof(T));
     llvm::support::endian::write<T>(buff.data(), value, this->endian);
-
     for (size_t i = 0; i < sizeof(T); i++) {
-      this->state.insert({addr + i, buff[i]});
+      this->state[addr + i] = buff[i];
     }
   }
 
@@ -408,7 +407,8 @@ uint8_t ___remill_read_memory_8(MemoryHandler *memory, uint64_t addr) {
 
 MemoryHandler *___remill_write_memory_8(MemoryHandler *memory, uint64_t addr,
                                         uint8_t value) {
-  LOG(INFO) << "Writing " << std::hex << addr;
+  LOG(INFO) << "Writing " << std::hex << addr
+            << " value: " << (unsigned int) value;
   memory->WriteMemory<uint8_t>(addr, value);
   return memory;
 }
@@ -416,13 +416,13 @@ MemoryHandler *___remill_write_memory_8(MemoryHandler *memory, uint64_t addr,
 uint32_t ___remill_read_memory_32(MemoryHandler *memory, uint64_t addr) {
   LOG(INFO) << "Reading " << std::hex << addr;
   auto res = memory->ReadMemory<uint32_t>(addr);
-  LOG(INFO) << "Read memory " << res;
+  LOG(INFO) << "Read memory " << std::hex << res;
   return res;
 }
 
 MemoryHandler *___remill_write_memory_32(MemoryHandler *memory, uint64_t addr,
                                          uint32_t value) {
-  LOG(INFO) << "Writing " << std::hex << addr;
+  LOG(INFO) << "Writing " << std::hex << addr << " value: " << value;
   memory->WriteMemory<uint32_t>(addr, value);
   return memory;
 }
@@ -434,7 +434,7 @@ uint64_t ___remill_read_memory_64(MemoryHandler *memory, uint64_t addr) {
 
 MemoryHandler *___remill_write_memory_64(MemoryHandler *memory, uint64_t addr,
                                          uint64_t value) {
-  LOG(INFO) << "Writing " << std::hex << addr;
+  LOG(INFO) << "Writing " << std::hex << addr << " value: " << value;
   memory->WriteMemory<uint64_t>(addr, value);
   return memory;
 }
