@@ -447,10 +447,13 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public LifterWithLookAhead {
     switch (opc) {
       case OpCode::CPUI_BOOL_NEGATE: {
         auto bneg_inval = this->LiftInParam(
-            bldr, input_var, llvm::IntegerType::get(this->context, 8));
+            bldr, input_var, llvm::IntegerType::get(this->context, 1));
         if (bneg_inval.has_value()) {
-          return this->LiftStoreIntoOutParam(bldr, bldr.CreateNot(*bneg_inval),
-                                             outvar);
+          return this->LiftStoreIntoOutParam(
+              bldr,
+              bldr.CreateZExt(bldr.CreateNot(*bneg_inval),
+                              llvm::IntegerType::get(this->context, 8)),
+              outvar);
         }
         break;
       }

@@ -40,20 +40,20 @@ enum TypeId { MEMORY = 0, STATE = 1 };
 class LiftingTester {
  private:
   llvm::Module *semantics_module;
-  remill::InstructionLifter::LifterPtr lifter;
-  std::unique_ptr<remill::IntrinsicTable> table;
   remill::Arch::ArchPtr arch;
+  std::unique_ptr<remill::IntrinsicTable> table;
+  remill::InstructionLifter::LifterPtr lifter;
+
 
  public:
   LiftingTester(llvm::Module *semantics_module_, remill::OSName os_name,
                 remill::ArchName arch_name)
-      : semantics_module(semantics_module_) {
-    this->arch = remill::Arch::Build(&semantics_module_->getContext(), os_name,
-                                     arch_name);
+      : semantics_module(semantics_module_),
+        arch(remill::Arch::Build(&semantics_module_->getContext(), os_name,
+                                 arch_name)),
+        table(std::make_unique<remill::IntrinsicTable>(this->semantics_module)),
+        lifter(this->arch->DefaultLifter(*this->table.get())) {
     this->arch->InitFromSemanticsModule(semantics_module_);
-    this->table =
-        std::make_unique<remill::IntrinsicTable>(this->semantics_module);
-    this->lifter = this->arch->DefaultLifter(*this->table.get());
   }
 
   std::unordered_map<TypeId, llvm::Type *> GetTypeMapping() {

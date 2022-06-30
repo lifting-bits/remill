@@ -1,5 +1,3 @@
-#add_library(differential-runtime  SHARED Runtime.cpp)
-
 add_executable(
   lift-and-compare
   LiftAndCompare.cpp
@@ -14,5 +12,4 @@ target_link_libraries(
   thirdparty_glog
 )
 
-set_property(TARGET lift-and-compare   PROPERTY POSITION_INDEPENDENT_CODE ON)
-
+set_property(TARGET lift-and-compare PROPERTY POSITION_INDEPENDENT_CODE ON)
