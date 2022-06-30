@@ -413,6 +413,20 @@ MemoryHandler *___remill_write_memory_8(MemoryHandler *memory, uint64_t addr,
   return memory;
 }
 
+uint16_t ___remill_read_memory_16(MemoryHandler *memory, uint64_t addr) {
+  LOG(INFO) << "Reading " << std::hex << addr;
+  auto res = memory->ReadMemory<uint16_t>(addr);
+  LOG(INFO) << "Read memory " << res;
+  return res;
+}
+
+MemoryHandler *___remill_write_memory_16(MemoryHandler *memory, uint64_t addr,
+                                         uint16_t value) {
+  LOG(INFO) << "Writing " << std::hex << addr << " value: " << value;
+  memory->WriteMemory<uint16_t>(addr, value);
+  return memory;
+}
+
 uint32_t ___remill_read_memory_32(MemoryHandler *memory, uint64_t addr) {
   LOG(INFO) << "Reading " << std::hex << addr;
   auto res = memory->ReadMemory<uint32_t>(addr);
