@@ -86,9 +86,6 @@ class LiftingTester {
       target_func->eraseFromParent();
       return std::nullopt;
     }
-    target_func->eraseFromParent();
-    return std::nullopt;
-
 
     auto mem_ptr_ref =
         remill::LoadMemoryPointerRef(&target_func->getEntryBlock());
@@ -225,6 +222,18 @@ class DifferentialModuleBuilder {
         l1(std::move(l1_)),
         l2(std::move(l2_)) {}
 
+  static llvm::Function *
+  CopyFunctionIntoNewModule(llvm::Module *target,
+                            const llvm::Function *old_func,
+                            const std::unique_ptr<llvm::Module> &old_module) {
+    auto new_f = llvm::Function::Create(old_func->getFunctionType(),
+                                        old_func->getLinkage(),
+                                        old_func->getName(), target);
+    remill::CloneFunctionInto(old_module->getFunction(old_func->getName()),
+                              new_f);
+    return new_f;
+  }
+
  public:
   std::optional<DiffModule> build(std::string_view fname_f1,
                                   std::string_view fname_f2,
@@ -233,33 +242,30 @@ class DifferentialModuleBuilder {
     auto maybe_f1 = this->l1.LiftInstructionFunction(fname_f1, bytes, address);
     auto maybe_f2 = this->l2.LiftInstructionFunction(fname_f2, bytes, address);
 
-    if (maybe_f1.has_value() && maybe_f2.has_value()) {
-      auto f1_and_name = *maybe_f1;
-      auto f2_and_name = *maybe_f2;
-
-      auto f1 = f1_and_name.first;
-      auto f2 = f2_and_name.first;
-
-
-      auto tst = f1->getParent();
-
-      auto cloned = llvm::CloneModule(*tst);
-      remill::OptimizeBareModule(cloned);
-
-      auto new_f1 = llvm::Function::Create(
-          f1->getFunctionType(), f1->getLinkage(), f1->getName(), module.get());
-      auto new_f2 = llvm::Function::Create(
-          f2->getFunctionType(), f2->getLinkage(), f2->getName(), module.get());
-
-      remill::CloneFunctionInto(cloned->getFunction(f1->getName()), new_f1);
-      remill::CloneFunctionInto(cloned->getFunction(f2->getName()), new_f2);
-
-
-      return DiffModule(std::move(module), new_f1, new_f2, f1_and_name.second,
-                        f2_and_name.second);
-    } else {
+    if (!maybe_f1.has_value() || !maybe_f2.has_value()) {
       return std::nullopt;
     }
+
+    auto f1_and_name = *maybe_f1;
+    auto f2_and_name = *maybe_f2;
+
+    auto f1 = f1_and_name.first;
+    auto f2 = f2_and_name.first;
+
+
+    auto tst = f1->getParent();
+
+    auto cloned = llvm::CloneModule(*tst);
+    remill::OptimizeBareModule(cloned);
+
+    auto new_f1 = DifferentialModuleBuilder::CopyFunctionIntoNewModule(
+        module.get(), f1, cloned);
+    auto new_f2 = DifferentialModuleBuilder::CopyFunctionIntoNewModule(
+        module.get(), f2, cloned);
+
+
+    return DiffModule(std::move(module), new_f1, new_f2, f1_and_name.second,
+                      f2_and_name.second);
   }
 };
 
@@ -295,8 +301,7 @@ using random_bytes_engine =
 
 
 void *MissingFunctionStub(const std::string &name) {
-  auto res = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(name);
-  if (res) {
+  if (auto res = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(name)) {
     return res;
   }
   LOG(FATAL) << "Missing function: " << name;
@@ -762,6 +767,11 @@ int main(int argc, char **argv) {
     if (!diff_mod.has_value()) {
       LOG(ERROR) << "Failed to lift " << std::hex << tc.addr << ": "
                  << llvm::toHex(tc.bytes);
+      succeeded = false;
+      if (FLAGS_stop_on_fail) {
+        LOG(FATAL) << "Failed to lift an insn";
+      }
+
       continue;
     }
 

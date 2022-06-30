@@ -281,8 +281,6 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public LifterWithLookAhead {
     if (new_status != LiftStatus::kLiftedInstruction) {
       LOG(ERROR) << "Failed to lift insn with opcode: " << get_opname(opc);
       this->status = new_status;
-    } else if (status == LiftStatus::kLiftedInvalidInstruction) {
-      this->status = new_status;
     }
   }
 
@@ -295,7 +293,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public LifterWithLookAhead {
         state_pointer(state_pointer),
         context(target_block->getContext()),
         insn(insn),
-        status(remill::LiftStatus::kLiftedInvalidInstruction),
+        status(remill::LiftStatus::kLiftedInstruction),
         insn_lifter_parent(insn_lifter_parent),
         uniques(target_block->getContext()),
         unknown_regs(target_block->getContext()),
