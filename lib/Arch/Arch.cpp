@@ -777,7 +777,7 @@ const Register *ArchBase::AddRegister(const char *reg_name_,
 
   auto reg_impl = new Register(reg_name, offset, val_type, parent_reg, this);
 
-  reg_impl->ComputeGEPAccessors(dl, this->state_type);
+  //reg_impl->ComputeGEPAccessors(dl, this->state_type);
 
   reg = reg_impl;
   registers.emplace_back(reg_impl);
@@ -839,7 +839,6 @@ void ArchBase::InitFromSemanticsModule(llvm::Module *module) const {
 
   // TODO(pag): Eventually we need a reliable way to get this that will work
   //            in the presence of opaque pointers.
-  LOG(FATAL) << "Initializing state";
   this->state_type = state_type;
 
   reg_by_offset.resize(dl.getTypeAllocSize(state_type));
