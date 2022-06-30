@@ -29,48 +29,7 @@
 namespace remill {
 
 
-struct EmittedPcode {
-  OpCode opc;
-  VarnodeData *outvar;
-  VarnodeData *vars;
-  int4 isize;
-};
-
-class LifterWithLookAhead : public PcodeEmit {
- private:
-  std::optional<EmittedPcode> prevop;
-
- public:
-  virtual void dump(const Address &addr, OpCode opc, VarnodeData *outvar,
-                    VarnodeData *vars, int4 isize) final override {
-
-    EmittedPcode curr_op = {opc, outvar, vars, isize};
-    if (prevop.has_value()) {
-      if (!this->dump(*this->prevop, curr_op)) {
-        this->prevop = curr_op;
-      } else {
-        this->prevop = std::nullopt;
-      }
-    } else {
-      this->prevop = curr_op;
-    }
-  }
-
-  void finalize() {
-    if (prevop.has_value()) {
-      this->dump(*prevop, std::nullopt);
-      this->prevop = std::nullopt;
-    }
-  }
-
-
- protected:
-  // Returns wether to skip handling the next op
-  virtual bool dump(EmittedPcode curr_handling,
-                    std::optional<EmittedPcode> next_op) = 0;
-};
-
-class SleighLifter::PcodeToLLVMEmitIntoBlock : public LifterWithLookAhead {
+class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
  private:
   class Parameter {
    public:
@@ -626,10 +585,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public LifterWithLookAhead {
   static std::unordered_set<OpCode> INTEGER_COMP_OPS;
 
 
-  std::pair<LiftStatus, bool>
-  LiftIntegerBinOp(llvm::IRBuilder<> &bldr, OpCode opc, VarnodeData *outvar,
-                   VarnodeData lhs, VarnodeData rhs,
-                   std::optional<EmittedPcode> next_op) {
+  LiftStatus LiftIntegerBinOp(llvm::IRBuilder<> &bldr, OpCode opc,
+                              VarnodeData *outvar, VarnodeData lhs,
+                              VarnodeData rhs) {
 
 
     if (opc == OpCode::CPUI_CBRANCH) {
@@ -643,33 +601,6 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public LifterWithLookAhead {
         auto trunc_should_branch = bldr.CreateTrunc(
             *should_branch,
             llvm::IntegerType::get(this->context, rhs.size * 1));
-        if (next_op.has_value()) {
-          if (next_op->opc != CPUI_COPY) {
-            return std::make_pair(LiftStatus::kLiftedUnsupportedInstruction,
-                                  false);
-          }
-
-          // Lift conditional assignment
-          auto maybe_change_to = this->LiftInParam(
-              bldr, next_op->vars[0],
-              llvm::IntegerType::get(this->context, next_op->vars[0].size * 8));
-          auto orig_value = this->LiftInParam(
-              bldr, *next_op->outvar,
-              llvm::IntegerType::get(this->context, next_op->outvar->size * 8));
-          if (!maybe_change_to.has_value() || !orig_value.has_value()) {
-            return std::make_pair(LiftStatus::kLiftedUnsupportedInstruction,
-                                  false);
-          }
-
-          auto new_v_for_target = bldr.CreateSelect(
-              trunc_should_branch, *orig_value, *maybe_change_to);
-          if (LiftStatus::kLiftedInstruction !=
-              this->LiftStoreIntoOutParam(bldr, new_v_for_target,
-                                          next_op->outvar)) {
-            return std::make_pair(LiftStatus::kLiftedUnsupportedInstruction,
-                                  false);
-          }
-        }
 
 
         auto pc_reg_param = this->LiftNormalRegister(bldr, "PC");
@@ -686,8 +617,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public LifterWithLookAhead {
         if (orig_pc_value.has_value()) {
           auto next_pc_value =
               bldr.CreateSelect(trunc_should_branch, jump_addr, *orig_pc_value);
-          return std::make_pair(pc_reg_ptr->StoreIntoParam(bldr, next_pc_value),
-                                next_op.has_value());
+          return pc_reg_ptr->StoreIntoParam(bldr, next_pc_value);
         }
       }
     }
@@ -712,11 +642,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public LifterWithLookAhead {
         LOG(INFO) << "Res: " << remill::LLVMThingToString(orig_res);
         LOG(INFO) << "Res ty: "
                   << remill::LLVMThingToString(orig_res->getType());
-        return std::make_pair(
-            this->LiftStoreIntoOutParam(bldr, orig_res, outvar), false);
+        return this->LiftStoreIntoOutParam(bldr, orig_res, outvar);
       }
     }
-    return std::make_pair(LiftStatus::kLiftedUnsupportedInstruction, false);
+    return LiftStatus::kLiftedUnsupportedInstruction;
   }
 
   LiftStatus LiftBoolBinOp(llvm::IRBuilder<> &bldr, OpCode opc,
@@ -849,23 +778,21 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public LifterWithLookAhead {
   }
 
 
-  std::pair<LiftStatus, bool> LiftBinOp(llvm::IRBuilder<> &bldr, OpCode opc,
-                                        VarnodeData *outvar, VarnodeData lhs,
-                                        VarnodeData rhs,
-                                        std::optional<EmittedPcode> peek_next) {
-    auto res = this->LiftIntegerBinOp(bldr, opc, outvar, lhs, rhs, peek_next);
-    if (res.first == LiftStatus::kLiftedInstruction) {
+  LiftStatus LiftBinOp(llvm::IRBuilder<> &bldr, OpCode opc, VarnodeData *outvar,
+                       VarnodeData lhs, VarnodeData rhs) {
+    auto res = this->LiftIntegerBinOp(bldr, opc, outvar, lhs, rhs);
+    if (res == LiftStatus::kLiftedInstruction) {
       return res;
     }
 
     auto sres = this->LiftBoolBinOp(bldr, opc, outvar, lhs, rhs);
     if (sres == LiftStatus::kLiftedInstruction) {
-      return std::make_pair(sres, false);
+      return sres;
     }
 
     sres = this->LiftFloatBinOp(bldr, opc, outvar, lhs, rhs);
     if (sres == LiftStatus::kLiftedInstruction) {
-      return std::make_pair(sres, false);
+      return sres;
     }
 
     if (opc == OpCode::CPUI_LOAD && outvar) {
@@ -882,8 +809,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public LifterWithLookAhead {
         auto loaded_value = lifted_addr->LiftAsInParam(bldr, out_type);
         if (loaded_value.has_value()) {
           auto lifted_out = this->LiftParamPtr(bldr, out_op);
-          return std::make_pair(lifted_out->StoreIntoParam(bldr, *loaded_value),
-                                false);
+          return lifted_out->StoreIntoParam(bldr, *loaded_value);
         }
       }
     }
@@ -907,8 +833,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public LifterWithLookAhead {
 
         // Now concatenate them with an OR.
         auto *concat = bldr.CreateOr(shifted_ms_operand, *lifted_rhs);
-        return std::make_pair(this->LiftStoreIntoOutParam(bldr, concat, outvar),
-                              false);
+        return this->LiftStoreIntoOutParam(bldr, concat, outvar);
       }
     }
 
@@ -931,24 +856,23 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public LifterWithLookAhead {
               llvm::IntegerType::get(this->context, 8 * outvar->size));
         }
 
-        return std::make_pair(
-            this->LiftStoreIntoOutParam(bldr, subpiece_lhs, outvar), false);
+        return this->LiftStoreIntoOutParam(bldr, subpiece_lhs, outvar);
       }
     }
 
     if (opc == OpCode::CPUI_INDIRECT && outvar) {
       // TODO(alex): This isn't clear to me from the documentation.
       // I'll probably need to find some code that generates this op in order to understand how to handle it.
-      return std::make_pair(LiftStatus::kLiftedUnsupportedInstruction, false);
+      return LiftStatus::kLiftedUnsupportedInstruction;
     }
 
     if (opc == OpCode::CPUI_NEW && outvar) {
       // NOTE(alex): We shouldn't encounter this op as it only get generated when lifting Java or
       // Dalvik bytecode
-      return std::make_pair(LiftStatus::kLiftedUnsupportedInstruction, false);
+      return LiftStatus::kLiftedUnsupportedInstruction;
     }
 
-    return std::make_pair(LiftStatus::kLiftedUnsupportedInstruction, false);
+    return LiftStatus::kLiftedUnsupportedInstruction;
   }
 
   LiftStatus LiftTernOp(llvm::IRBuilder<> &bldr, OpCode opc,
@@ -1036,67 +960,54 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public LifterWithLookAhead {
   }
 
 
-  bool dump(EmittedPcode current_target,
-            std::optional<EmittedPcode> look_ahead_op) override {
+  virtual void dump(const Address &addr, OpCode opc, VarnodeData *outvar,
+                    VarnodeData *vars, int4 isize) final override {
     LOG(INFO) << "inner handle" << std::endl;
     llvm::IRBuilder bldr(this->target_block);
 
     // The MULTIEQUAL op has variadic operands
-    if (current_target.opc == OpCode::CPUI_MULTIEQUAL ||
-        current_target.opc == OpCode::CPUI_CPOOLREF) {
-      this->UpdateStatus(
-          this->LiftVariadicOp(bldr, current_target.opc, current_target.outvar,
-                               current_target.vars, current_target.isize),
-          current_target.opc);
-      return false;
+    if (opc == OpCode::CPUI_MULTIEQUAL || opc == OpCode::CPUI_CPOOLREF) {
+      this->UpdateStatus(this->LiftVariadicOp(bldr, opc, outvar, vars, isize),
+                         opc);
+      return;
     }
 
-    if (current_target.opc == OpCode::CPUI_CALLOTHER) {
-      if (current_target.isize == 3 &&
-          current_target.vars[0].offset < this->user_op_names.size() &&
-          this->user_op_names[current_target.vars[0].offset] == "claim_eq") {
+    if (opc == OpCode::CPUI_CALLOTHER) {
+      if (isize == 3 && vars[0].offset < this->user_op_names.size() &&
+          this->user_op_names[vars[0].offset] == "claim_eq") {
         LOG(INFO) << "Applying eq claim";
-        this->replacement_cont.ApplyEqualityClaim(
-            bldr, *this, current_target.vars[1], current_target.vars[2]);
-        return false;
+        this->replacement_cont.ApplyEqualityClaim(bldr, *this, vars[1],
+                                                  vars[2]);
+        return;
       }
 
 
-      this->UpdateStatus(LiftStatus::kLiftedUnsupportedInstruction,
-                         current_target.opc);
-      return false;
+      this->UpdateStatus(LiftStatus::kLiftedUnsupportedInstruction, opc);
+      return;
     }
 
-    switch (current_target.isize) {
+    switch (isize) {
       case 1: {
-        this->UpdateStatus(
-            this->LiftUnOp(bldr, current_target.opc, current_target.outvar,
-                           current_target.vars[0]),
-            current_target.opc);
+        this->UpdateStatus(this->LiftUnOp(bldr, opc, outvar, vars[0]), opc);
         break;
       }
       case 2: {
-        auto res = this->LiftBinOp(
-            bldr, current_target.opc, current_target.outvar,
-            current_target.vars[0], current_target.vars[1], look_ahead_op);
-        this->UpdateStatus(res.first, current_target.opc);
-        return res.second;
+        this->UpdateStatus(this->LiftBinOp(bldr, opc, outvar, vars[0], vars[1]),
+                           opc);
+        return;
       }
       case 3: {
         this->UpdateStatus(
-            this->LiftTernOp(bldr, current_target.opc, current_target.outvar,
-                             current_target.vars[0], current_target.vars[1],
-                             current_target.vars[2]),
-            current_target.opc);
+            this->LiftTernOp(bldr, opc, outvar, vars[0], vars[1], vars[2]),
+            opc);
         break;
       }
       default:
         //this->replacement_cont.ApplyNonEqualityClaim();
-        this->UpdateStatus(LiftStatus::kLiftedUnsupportedInstruction,
-                           current_target.opc);
-        return false;
+        this->UpdateStatus(LiftStatus::kLiftedUnsupportedInstruction, opc);
+        return;
     }
-    return false;
+    return;
     //this->replacement_cont.ApplyNonEqualityClaim();
   }
 
@@ -1273,16 +1184,12 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
 
   SleighLifter::PcodeToLLVMEmitIntoBlock lifter(
       block, state_ptr, inst, *this, this->sleigh_context->getUserOpNames());
-  auto res = sleigh_context->oneInstruction(inst.pc, lifter, inst.bytes);
+  sleigh_context->oneInstruction(inst.pc, lifter, inst.bytes);
 
-  lifter.finalize();
-
-  (void) res;
   ir.CreateStore(ir.CreateLoad(this->GetWordType(), pc_ref.first),
                  next_pc_ref.first);
 
   //NOTE(Ian): If we made it past decoding we should be able to decode the bytes again
-  assert(res.has_value());
   LOG(INFO) << lifter.GetStatus();
 
   return lifter.GetStatus();
