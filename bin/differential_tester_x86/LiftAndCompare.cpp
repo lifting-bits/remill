@@ -59,10 +59,6 @@ class LiftingTester {
   std::unordered_map<TypeId, llvm::Type *> GetTypeMapping() {
     std::unordered_map<TypeId, llvm::Type *> res;
 
-    auto ftype = this->arch->LiftedFunctionType();
-    auto mem_type = llvm::cast<llvm::PointerType>(
-        ftype->getParamType(remill::kMemoryPointerArgNum));
-
     res.emplace(TypeId::MEMORY, this->arch->MemoryPointerType());
     res.emplace(TypeId::STATE, this->arch->StateStructType());
 
@@ -201,6 +197,7 @@ class DifferentialModuleBuilder {
     // it is expected that compatible arches share a semantics module.
     std::unique_ptr<llvm::LLVMContext> context =
         std::make_unique<llvm::LLVMContext>();
+    context->enableOpaquePointers();
     auto tmp_arch = remill::Arch::Build(context.get(), os_name_1, arch_name_1);
     auto semantics_module = remill::LoadArchSemantics(tmp_arch.get());
     tmp_arch->PrepareModule(semantics_module);
