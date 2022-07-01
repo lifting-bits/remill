@@ -276,6 +276,9 @@ class Arch {
                                         const Instruction &next_inst,
                                         bool branch_taken_path) const;
 
+  // Populate the table of register information.
+  virtual void PopulateRegisterTable(void) const = 0;
+
   // Get the architecture related to a module.
   static remill::Arch::ArchPtr GetModuleArch(const llvm::Module &module);
 
@@ -310,9 +313,6 @@ class Arch {
 
  protected:
   Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
-
-  // Populate the table of register information.
-  virtual void PopulateRegisterTable(void) const = 0;
 
   // Populate a just-initialized lifted function function with architecture-
   // specific variables.

@@ -203,7 +203,6 @@ auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
 
   if (ret) {
     ret->impl.reset(new ArchImpl);
-    ret->PopulateRegisterTable();
   }
 
   return ret;

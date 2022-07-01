@@ -388,6 +388,7 @@ LoadArchSemantics(const Arch *arch,
   DLOG(INFO) << "Loading " << arch_name << " semantics from file " << *path;
   auto module = LoadModuleFromFile(arch->context, *path);
   arch->PrepareModule(module);
+  arch->PopulateRegisterTable();
   arch->InitFromSemanticsModule(module.get());
   for (auto &func : *module) {
     Annotate<remill::Semantics>(&func);
