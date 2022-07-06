@@ -447,7 +447,7 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
   LOG(INFO) << "Provided insn size: " << instr_bytes.size();
 
   inst.Reset();
-
+  inst.arch = this;
   inst.bytes = instr_bytes;
   inst.arch_name = arch_name;
   inst.sub_arch_name = arch_name;

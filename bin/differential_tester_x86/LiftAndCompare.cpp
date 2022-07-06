@@ -5,6 +5,7 @@
 #include <llvm/ExecutionEngine/Interpreter.h>
 #include <llvm/ExecutionEngine/MCJIT.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/Endian.h>
@@ -91,6 +92,7 @@ class LiftingTester {
         remill::LoadMemoryPointerRef(&target_func->getEntryBlock());
 
     llvm::IRBuilder bldr(&target_func->getEntryBlock());
+
     auto pc_ref = remill::LoadProgramCounterRef(&target_func->getEntryBlock());
     auto next_pc_ref =
         remill::LoadNextProgramCounterRef(&target_func->getEntryBlock());
@@ -251,11 +253,39 @@ class DifferentialModuleBuilder {
 
     auto f1 = f1_and_name.first;
     auto f2 = f2_and_name.first;
+    llvm::verifyFunction(*f1, &llvm::errs());
+
+    llvm::verifyFunction(*f2, &llvm::errs());
 
 
     auto tst = f1->getParent();
 
+    for (const auto &f : tst->getFunctionList()) {
+      if (llvm::verifyFunction(f, &llvm::errs())) {
+
+        f.dump();
+        LOG(INFO) << "Num basic block: " << f.getBasicBlockList().size();
+        LOG(FATAL) << "Error in " << f.getName().str();
+      }
+    }
+
+    assert(remill::VerifyModule(tst));
+
     auto cloned = llvm::CloneModule(*tst);
+
+    auto maybe_message = remill::VerifyModuleMsg(cloned.get());
+    if (maybe_message.has_value()) {
+      cloned->getFunction(f1->getName())->dump();
+      cloned->getFunction(f2->getName())->dump();
+      auto insn_func =
+          cloned->getFunction("sleigh_remill_instruction_function");
+      if (insn_func) {
+        insn_func->dump();
+      }
+
+      LOG(FATAL) << *maybe_message;
+    }
+
     remill::OptimizeBareModule(cloned);
 
     auto new_f1 = DifferentialModuleBuilder::CopyFunctionIntoNewModule(
@@ -494,6 +524,7 @@ class ComparisonRunner {
 
     auto res = remill::VerifyModuleMsg(tgt_mod.get());
     if (res.has_value()) {
+
       LOG(FATAL) << *res;
     }
 

@@ -40,6 +40,8 @@ class SleighLifter : public InstructionLifter {
   std::unique_ptr<sleigh::SingleInstructionSleighContext> sleigh_context;
 
  public:
+  static const std::string_view kInstructionFunctionPrefix;
+
   SleighLifter(const sleigh::SleighArch *arch_,
                const IntrinsicTable &intrinsics_);
 
@@ -49,6 +51,10 @@ class SleighLifter : public InstructionLifter {
                            llvm::Value *state_ptr, bool is_delayed) override;
 
  private:
+  std::pair<LiftStatus, llvm::Function *>
+  LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
+                        bool is_delayed);
+
   ::Sleigh &GetEngine(void) const;
 };
 

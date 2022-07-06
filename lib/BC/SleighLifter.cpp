@@ -1159,6 +1159,52 @@ SleighLifter::SleighLifter(const sleigh::SleighArch *arch_,
   arch_->InitializeSleighContext(*sleigh_context);
 }
 
+
+const std::string_view SleighLifter::kInstructionFunctionPrefix =
+    "sleigh_remill_instruction_function";
+
+
+std::pair<LiftStatus, llvm::Function *>
+SleighLifter::LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
+                                    bool is_delayed) {
+  auto target_func = inst.arch->DefineLiftedFunction(
+      SleighLifter::kInstructionFunctionPrefix, target_mod);
+
+  llvm::BasicBlock *target_block = &target_func->getEntryBlock();
+  llvm::IRBuilder<> ir(target_block);
+  auto internal_state_pointer = remill::LoadStatePointer(target_block);
+  const auto next_pc_ref =
+      LoadRegAddress(target_block, internal_state_pointer, kNextPCVariableName);
+  const auto next_pc = ir.CreateLoad(this->GetWordType(), next_pc_ref.first);
+  auto pc_ref =
+      this->LoadRegAddress(target_block, internal_state_pointer, "PC");
+
+  auto curr_eip = ir.CreateAdd(
+      next_pc, llvm::ConstantInt::get(this->GetWordType(), inst.bytes.size()));
+  ir.CreateStore(curr_eip, next_pc_ref.first);
+  ir.CreateStore(curr_eip, pc_ref.first);
+
+
+  SleighLifter::PcodeToLLVMEmitIntoBlock lifter(
+      target_block, internal_state_pointer, inst, *this,
+      this->sleigh_context->getUserOpNames());
+  sleigh_context->oneInstruction(inst.pc, lifter, inst.bytes);
+
+  ir.CreateStore(ir.CreateLoad(this->GetWordType(), pc_ref.first),
+                 next_pc_ref.first);
+
+  ir.CreateRet(remill::LoadMemoryPointer(ir.GetInsertBlock(),
+                                         *this->GetIntrinsicTable()));
+
+  // Setup like an ISEL
+  target_func->setLinkage(llvm::GlobalValue::InternalLinkage);
+  target_func->removeFnAttr(llvm::Attribute::NoInline);
+  target_func->addFnAttr(llvm::Attribute::InlineHint);
+  target_func->addFnAttr(llvm::Attribute::AlwaysInline);
+
+  return std::make_pair(lifter.GetStatus(), target_func);
+}
+
 LiftStatus
 SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
                             llvm::Value *state_ptr, bool is_delayed) {
@@ -1170,29 +1216,36 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
   }
 
 
-  llvm::IRBuilder<> ir(block);
-  const auto next_pc_ref =
-      LoadRegAddress(block, state_ptr, kNextPCVariableName);
-  const auto next_pc = ir.CreateLoad(this->GetWordType(), next_pc_ref.first);
-  auto pc_ref = this->LoadRegAddress(block, state_ptr, "PC");
+  // Call the instruction function
 
-  auto curr_eip = ir.CreateAdd(
-      next_pc, llvm::ConstantInt::get(this->GetWordType(), inst.bytes.size()));
-  ir.CreateStore(curr_eip, next_pc_ref.first);
-  ir.CreateStore(curr_eip, pc_ref.first);
+  auto res = this->LiftIntoInternalBlock(inst, block->getModule(), is_delayed);
+
+  auto target_func = res.second;
 
 
-  SleighLifter::PcodeToLLVMEmitIntoBlock lifter(
-      block, state_ptr, inst, *this, this->sleigh_context->getUserOpNames());
-  sleigh_context->oneInstruction(inst.pc, lifter, inst.bytes);
+  llvm::IRBuilder<> intoblock_builer(block);
 
-  ir.CreateStore(ir.CreateLoad(this->GetWordType(), pc_ref.first),
-                 next_pc_ref.first);
+
+  std::vector<llvm::Value *> args;
+  args.reserve(3);
+
+  args.push_back(remill::LoadStatePointer(block));
+  args.push_back(remill::LoadProgramCounter(block, *this->GetIntrinsicTable()));
+  args.push_back(remill::LoadMemoryPointer(block, *this->GetIntrinsicTable()));
+
+  intoblock_builer.CreateStore(intoblock_builer.CreateCall(target_func, args),
+                               remill::LoadMemoryPointerRef(block));
+
+  // also store off the potentially updated pc into NEXT_PC to keep with traditional lifters
+  intoblock_builer.CreateStore(
+      remill::LoadProgramCounter(block, *this->GetIntrinsicTable()),
+      remill::LoadNextProgramCounterRef(block));
+
 
   //NOTE(Ian): If we made it past decoding we should be able to decode the bytes again
-  LOG(INFO) << lifter.GetStatus();
+  LOG(INFO) << res.first;
 
-  return lifter.GetStatus();
+  return res.first;
 }
 
 Sleigh &SleighLifter::GetEngine(void) const {
