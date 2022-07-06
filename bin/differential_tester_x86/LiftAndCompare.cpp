@@ -641,6 +641,11 @@ class ComparisonRunner {
     func1_state->aflag.pf = this->random_boolean_flag();
     func1_state->aflag.sf = this->random_boolean_flag();
     func1_state->aflag.zf = this->random_boolean_flag();
+
+    if (isel_name.rfind(".REP") != std::string::npos) {
+      func1_state->gpr.rcx.dword = 2;
+    }
+
     auto func2_state = (X86State *) alloca(sizeof(X86State));
 
     auto init_state = this->DumpState(func1_state);
