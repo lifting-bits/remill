@@ -14,365 +14,398 @@
  
  define space ram type=ram_space size=$(SIZE) default;
  define space register type=register_space size=4;
-@@ -712,9 +719,19 @@
+@@ -570,6 +577,9 @@
+ @endif
+ 
+ @ifdef IA64
++
++remill_insn_size: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {export calculated_size; }
++
+ Reg8:   reg8        is rexprefix=0 & reg8                               { export reg8; }
+ Reg8:   reg8_x0     is rexprefix=1 & rexRprefix=0 & reg8_x0             { export reg8_x0; }
+ Reg8:   reg8_x1     is rexprefix=1 & rexRprefix=1 & reg8_x1             { export reg8_x1; }
+@@ -712,9 +722,19 @@
  addr32: [Base + Index*ss]				is mod=2 & r_m=4; Index & Base & ss; imm32=0 { local tmp=Base+Index*ss; export tmp; }
  addr32: [Base]							is mod=2 & r_m=4; index=4 & Base; imm32=0    { export Base; }
  @ifdef IA64
 -addr32: [riprel]						is bit64=1 & mod=0 & r_m=4; index=4 & base=5; simm32 [ riprel=inst_next+simm32; ] { export *[const]:4 riprel; }
-+addr32: [riprel]						is bit64=1 & mod=0 & r_m=4; index=4 & base=5; simm32 [ riprel=inst_next+simm32; ] {
-+remill_please_dont_use_this_temp_name7c:$(SIZE)= riprel;
-+claim_eq(remill_please_dont_use_this_temp_name7c, $(INST_NEXT_PTR)+simm32);
++addr32: [riprel]						is bit64=1 & mod=0 & r_m=4; index=4 & base=5; simm32   [ riprel=inst_next+simm32; ] { 
++remill_please_dont_use_this_temp_namef7:$(SIZE)= riprel;
++claim_eq(remill_please_dont_use_this_temp_namef7, $(INST_NEXT_PTR)+simm32);
 + export *[const]:4 riprel;
++   }
 + 
-+}
  
 -Addr32_64: [eiprel]						is mod=0 & r_m=5; simm32	[ eiprel=inst_next+simm32; ] { export *[const]:8 eiprel; }
-+Addr32_64: [eiprel]						is mod=0 & r_m=5; simm32	[ eiprel=inst_next+simm32; ] {
-+remill_please_dont_use_this_temp_name7e:$(SIZE)= eiprel;
-+claim_eq(remill_please_dont_use_this_temp_name7e, $(INST_NEXT_PTR)+simm32);
++Addr32_64: [eiprel]						is mod=0 & r_m=5; simm32	  [ eiprel=inst_next+simm32; ] { 
++remill_please_dont_use_this_temp_namefa:$(SIZE)= eiprel;
++claim_eq(remill_please_dont_use_this_temp_namefa, $(INST_NEXT_PTR)+simm32);
 + export *[const]:8 eiprel;
++   }
 + 
-+}
  Addr32_64: [imm32]		is mod=0 & r_m=4; index=4 & base=5; imm32    { export *[const]:8 imm32; }
  Addr32_64: addr32		is addr32									 { tmp:8 = sext(addr32); export tmp; }
  	
-@@ -728,7 +745,12 @@
+@@ -728,7 +748,12 @@
  addr64: [Rmr64 + simm32_64]				is mod=2 & Rmr64; simm32_64                        { local tmp=Rmr64+simm32_64; export tmp; }
  addr64: [Rmr64]							is mod=1 & r_m!=4 & Rmr64; simm8=0                 { export Rmr64; }
  addr64: [Rmr64]							is mod=2 & r_m!=4 & Rmr64; simm32=0                { export Rmr64; }
 -addr64: [riprel]						is mod=0 & r_m=5; simm32 [ riprel=inst_next+simm32; ] { export *[const]:8 riprel; }
-+addr64: [riprel]						is mod=0 & r_m=5; simm32 [ riprel=inst_next+simm32; ] {
-+remill_please_dont_use_this_temp_name87:$(SIZE)= riprel;
-+claim_eq(remill_please_dont_use_this_temp_name87, $(INST_NEXT_PTR)+simm32);
++addr64: [riprel]						is mod=0 & r_m=5; simm32   [ riprel=inst_next+simm32; ] { 
++remill_please_dont_use_this_temp_name10b:$(SIZE)= riprel;
++claim_eq(remill_please_dont_use_this_temp_name10b, $(INST_NEXT_PTR)+simm32);
 + export *[const]:8 riprel;
++   }
 + 
-+}
  addr64: [Base64 + Index64*ss]			is mod=0 & r_m=4; Index64 & Base64 & ss            { local tmp=Base64+Index64*ss; export tmp; }
  addr64: [Base64]						is mod=0 & r_m=4; rexXprefix=0 & index64=4 & Base64    { export Base64; }
  addr64: [simm32_64 + Index64*ss]		is mod=0 & r_m=4; Index64 & base64=5 & ss; simm32_64   { local tmp=simm32_64+Index64*ss; export tmp; }
-@@ -743,8 +765,22 @@
+@@ -743,8 +768,22 @@
  addr64: [Base64 + Index64*ss]			is mod=2 & r_m=4; Index64 & Base64 & ss; imm32=0   { local tmp=Base64+Index64*ss; export tmp; }
  @endif
  
 -currentCS: CS is protectedMode=0 & CS { tmp:4 = (inst_next >> 4) & 0xf000; CS = tmp:2; export CS; }
 -currentCS: CS is protectedMode=1 & CS { tmp:4 = (inst_next >> 16) & 0xffff; CS = tmp:2; export CS; }
-+currentCS: CS is protectedMode=0 & CS {
-+remill_please_dont_use_this_temp_name94:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name94, $(INST_NEXT_PTR));
++currentCS: CS is protectedMode=0 & CS    { 
++remill_please_dont_use_this_temp_name124:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name124, $(INST_NEXT_PTR));
 + tmp:4 = (inst_next >> 4) & 0xf000;
 + CS = tmp:2;
 + export CS;
++   }
 + 
-+}
-+currentCS: CS is protectedMode=1 & CS {
-+remill_please_dont_use_this_temp_name95:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name95, $(INST_NEXT_PTR));
++currentCS: CS is protectedMode=1 & CS    { 
++remill_please_dont_use_this_temp_name126:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name126, $(INST_NEXT_PTR));
 + tmp:4 = (inst_next >> 16) & 0xffff;
 + CS = tmp:2;
 + export CS;
++   }
 + 
-+}
   
  segWide: is segover=0		        { export 0:$(SIZE); }
  segWide: CS: is segover=1 & CS	{ export 0:$(SIZE); }
-@@ -785,9 +821,24 @@
+@@ -785,9 +824,24 @@
  @endif
  Mem: segWide^addr32 is $(LONGMODE_OFF) & addrsize=1 & segWide & highseg=1; addr32 	{ tmp:$(SIZE) = segWide + zext(addr32); export tmp; }
  
 -rel8: reloc is simm8        [ reloc=inst_next+simm8; ] { export *[ram]:$(SIZE) reloc; }
 -rel16: reloc is simm16      [ reloc=((inst_next >> 16) << 16) | ((inst_next + simm16) & 0xFFFF); ] { export *[ram]:$(SIZE) reloc; }
 -rel32: reloc is simm32      [ reloc=inst_next+simm32; ] { export *[ram]:$(SIZE) reloc; }
-+rel8: reloc is simm8        [ reloc=inst_next+simm8; ] {
-+remill_please_dont_use_this_temp_namead:$(SIZE)= reloc;
-+claim_eq(remill_please_dont_use_this_temp_namead, $(INST_NEXT_PTR)+simm8);
++rel8: reloc is simm8          [ reloc=inst_next+simm8; ] { 
++remill_please_dont_use_this_temp_name156:$(SIZE)= reloc;
++claim_eq(remill_please_dont_use_this_temp_name156, $(INST_NEXT_PTR)+simm8);
 + export *[ram]:$(SIZE) reloc;
++   }
 + 
-+}
-+rel16: reloc is simm16      [ reloc=((inst_next >> 16) << 16) | ((inst_next + simm16) & 0xFFFF); ] {
-+remill_please_dont_use_this_temp_nameaf:$(SIZE)= reloc;
-+claim_eq(remill_please_dont_use_this_temp_nameaf, (($(INST_NEXT_PTR) >> 16) << 16) | (($(INST_NEXT_PTR) + simm16) & 0xFFFF));
++rel16: reloc is simm16        [ reloc=((inst_next >> 16) << 16) | ((inst_next + simm16) & 0xFFFF); ] { 
++remill_please_dont_use_this_temp_name159:$(SIZE)= reloc;
++claim_eq(remill_please_dont_use_this_temp_name159, (($(INST_NEXT_PTR) >> 16) << 16) | (($(INST_NEXT_PTR) + simm16) & 0xFFFF));
 + export *[ram]:$(SIZE) reloc;
++   }
 + 
-+}
-+rel32: reloc is simm32      [ reloc=inst_next+simm32; ] {
-+remill_please_dont_use_this_temp_nameb1:$(SIZE)= reloc;
-+claim_eq(remill_please_dont_use_this_temp_nameb1, $(INST_NEXT_PTR)+simm32);
++rel32: reloc is simm32        [ reloc=inst_next+simm32; ] { 
++remill_please_dont_use_this_temp_name15c:$(SIZE)= reloc;
++claim_eq(remill_please_dont_use_this_temp_name15c, $(INST_NEXT_PTR)+simm32);
 + export *[ram]:$(SIZE) reloc;
++   }
 + 
-+}
  
  
  m8:   "byte ptr" Mem   	is Mem      { export *:1 Mem; }
-@@ -1039,25 +1090,79 @@
+@@ -1039,30 +1093,99 @@
  cc: "G" is cond=15          { local tmp = !ZF && (OF == SF); export tmp; }
  
  # repeat prefixes
 -rep: ".REP" is ((repprefx=1 & repneprefx=0)|(repprefx=0 & repneprefx=1)) & addrsize=0  { if (CX==0) goto inst_next; CX=CX-1; }
 -rep: ".REP" is ((repprefx=1 & repneprefx=0)|(repprefx=0 & repneprefx=1)) & addrsize=1  { if (ECX==0) goto inst_next; ECX=ECX-1; }
-+rep: ".REP" is ((repprefx=1 & repneprefx=0)|(repprefx=0 & repneprefx=1)) & addrsize=0  {
-+remill_please_dont_use_this_temp_name146:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name146, $(INST_NEXT_PTR));
++rep: ".REP" is ((repprefx=1 & repneprefx=0)|(repprefx=0 & repneprefx=1)) & addrsize=0     { 
++remill_please_dont_use_this_temp_name285:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name285, $(INST_NEXT_PTR));
 + if (CX==0) goto inst_next;
 + CX=CX-1;
++   }
 + 
-+}
-+rep: ".REP" is ((repprefx=1 & repneprefx=0)|(repprefx=0 & repneprefx=1)) & addrsize=1  {
-+remill_please_dont_use_this_temp_name147:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name147, $(INST_NEXT_PTR));
++rep: ".REP" is ((repprefx=1 & repneprefx=0)|(repprefx=0 & repneprefx=1)) & addrsize=1     { 
++remill_please_dont_use_this_temp_name287:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name287, $(INST_NEXT_PTR));
 + if (ECX==0) goto inst_next;
 + ECX=ECX-1;
++   }
 + 
-+}
  @ifdef IA64
 -rep: ".REP" is ((repprefx=1 & repneprefx=0)|(repprefx=0 & repneprefx=1)) & addrsize=2  { if (RCX==0) goto inst_next; RCX=RCX-1; }
-+rep: ".REP" is ((repprefx=1 & repneprefx=0)|(repprefx=0 & repneprefx=1)) & addrsize=2  {
-+remill_please_dont_use_this_temp_name148:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name148, $(INST_NEXT_PTR));
++rep: ".REP" is ((repprefx=1 & repneprefx=0)|(repprefx=0 & repneprefx=1)) & addrsize=2     { 
++remill_please_dont_use_this_temp_name289:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name289, $(INST_NEXT_PTR));
 + if (RCX==0) goto inst_next;
 + RCX=RCX-1;
++   }
 + 
-+}
  @endif
  rep:        is repprefx=0 & repneprefx=0			{ }
  
- reptail:	is ((repprefx=1 & repneprefx=0)|(repprefx=0 & repneprefx=1))			{ goto inst_start; }
+-reptail:	is ((repprefx=1 & repneprefx=0)|(repprefx=0 & repneprefx=1))			{ goto inst_start; }
++reptail:	is ((repprefx=1 & repneprefx=0)|(repprefx=0 & repneprefx=1))			 ; remill_insn_size  { 
++remill_please_dont_use_this_temp_name28e:$(SIZE)=inst_start;
++claim_eq(remill_please_dont_use_this_temp_name28e, ($(INST_NEXT_PTR)-remill_insn_size));
++ goto inst_start;
++   }
++ 
  reptail:	is repprefx=0 & repneprefx=0			{ }
  
 -repe: ".REPE"   is repprefx=1 & repneprefx=0 & addrsize=0  { if (CX==0) goto inst_next; CX=CX-1; }
 -repe: ".REPE"   is repprefx=1 & repneprefx=0 & addrsize=1  { if (ECX==0) goto inst_next; ECX=ECX-1; }
-+repe: ".REPE"   is repprefx=1 & repneprefx=0 & addrsize=0  {
-+remill_please_dont_use_this_temp_name14c:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name14c, $(INST_NEXT_PTR));
++repe: ".REPE"   is repprefx=1 & repneprefx=0 & addrsize=0     { 
++remill_please_dont_use_this_temp_name291:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name291, $(INST_NEXT_PTR));
 + if (CX==0) goto inst_next;
 + CX=CX-1;
++   }
 + 
-+}
-+repe: ".REPE"   is repprefx=1 & repneprefx=0 & addrsize=1  {
-+remill_please_dont_use_this_temp_name14d:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name14d, $(INST_NEXT_PTR));
++repe: ".REPE"   is repprefx=1 & repneprefx=0 & addrsize=1     { 
++remill_please_dont_use_this_temp_name293:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name293, $(INST_NEXT_PTR));
 + if (ECX==0) goto inst_next;
 + ECX=ECX-1;
++   }
 + 
-+}
  @ifdef IA64
 -repe: ".REPE"   is repprefx=1 & repneprefx=0 & addrsize=2  { if (RCX==0) goto inst_next; RCX=RCX-1; }
-+repe: ".REPE"   is repprefx=1 & repneprefx=0 & addrsize=2  {
-+remill_please_dont_use_this_temp_name14e:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name14e, $(INST_NEXT_PTR));
++repe: ".REPE"   is repprefx=1 & repneprefx=0 & addrsize=2     { 
++remill_please_dont_use_this_temp_name295:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name295, $(INST_NEXT_PTR));
 + if (RCX==0) goto inst_next;
 + RCX=RCX-1;
++   }
 + 
-+}
  @endif
 -repe: ".REPNE"  is repneprefx=1 & repprefx=0 & addrsize=0    { if (CX==0) goto inst_next; CX=CX-1; }
 -repe: ".REPNE"  is repneprefx=1 & repprefx=0 & addrsize=1    { if (ECX==0) goto inst_next; ECX=ECX-1; }
-+repe: ".REPNE"  is repneprefx=1 & repprefx=0 & addrsize=0    {
-+remill_please_dont_use_this_temp_name14f:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name14f, $(INST_NEXT_PTR));
++repe: ".REPNE"  is repneprefx=1 & repprefx=0 & addrsize=0       { 
++remill_please_dont_use_this_temp_name297:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name297, $(INST_NEXT_PTR));
 + if (CX==0) goto inst_next;
 + CX=CX-1;
++   }
 + 
-+}
-+repe: ".REPNE"  is repneprefx=1 & repprefx=0 & addrsize=1    {
-+remill_please_dont_use_this_temp_name150:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name150, $(INST_NEXT_PTR));
++repe: ".REPNE"  is repneprefx=1 & repprefx=0 & addrsize=1       { 
++remill_please_dont_use_this_temp_name299:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name299, $(INST_NEXT_PTR));
 + if (ECX==0) goto inst_next;
 + ECX=ECX-1;
++   }
 + 
-+}
  @ifdef IA64
 -repe: ".REPNE"  is repneprefx=1 & repprefx=0 & addrsize=2    { if (RCX==0) goto inst_next; RCX=RCX-1; }
-+repe: ".REPNE"  is repneprefx=1 & repprefx=0 & addrsize=2    {
-+remill_please_dont_use_this_temp_name151:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name151, $(INST_NEXT_PTR));
++repe: ".REPNE"  is repneprefx=1 & repprefx=0 & addrsize=2       { 
++remill_please_dont_use_this_temp_name29b:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name29b, $(INST_NEXT_PTR));
 + if (RCX==0) goto inst_next;
 + RCX=RCX-1;
++   }
 + 
-+}
  @endif
  repe:           is repprefx=0 & repneprefx=0    { }
  
-@@ -2079,65 +2184,273 @@
+-repetail:   is repprefx=1 & repneprefx=0           { if (ZF) goto inst_start; }
+-repetail:   is repneprefx=1 & repprefx=0           { if (!ZF) goto inst_start; }
++repetail:   is repprefx=1 & repneprefx=0            ; remill_insn_size  { 
++remill_please_dont_use_this_temp_name2a0:$(SIZE)=inst_start;
++claim_eq(remill_please_dont_use_this_temp_name2a0, ($(INST_NEXT_PTR)-remill_insn_size));
++ if (ZF) goto inst_start;
++   }
++ 
++repetail:   is repneprefx=1 & repprefx=0            ; remill_insn_size  { 
++remill_please_dont_use_this_temp_name2a2:$(SIZE)=inst_start;
++claim_eq(remill_please_dont_use_this_temp_name2a2, ($(INST_NEXT_PTR)-remill_insn_size));
++ if (!ZF) goto inst_start;
++   }
++ 
+ repetail:   is repprefx=0 & repneprefx=0           { }
+ 
+ # Some macros
+@@ -2079,65 +2202,273 @@
  :BTS rm64,imm8     is $(LONGMODE_ON) & vexMode=0 & opsize=2 & byte=0xf; byte=0xba; (rm64 & reg_opcode=5 ...); imm8   { local bit=imm8&0x3f; local val=(rm64>>bit)&1; rm64=rm64 | (1<<bit); CF=(val!=0); }
  @endif
  
 -:CALL rel16     is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=0 & byte=0xe8; rel16     { push22(&:2 inst_next); call rel16; }
 -:CALL rel16     is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xe8; rel16     { push42(&:2 inst_next); call rel16; }
-+:CALL rel16     is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=0 & byte=0xe8; rel16     {
-+remill_please_dont_use_this_temp_name18a:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name18a, $(INST_NEXT_PTR));
++:CALL rel16     is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=0 & byte=0xe8; rel16        { 
++remill_please_dont_use_this_temp_name30d:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name30d, $(INST_NEXT_PTR));
 + push22(&:2 inst_next);
 + call rel16;
++   }
 + 
-+}
-+:CALL rel16     is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xe8; rel16     {
-+remill_please_dont_use_this_temp_name18b:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name18b, $(INST_NEXT_PTR));
++:CALL rel16     is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xe8; rel16        { 
++remill_please_dont_use_this_temp_name30f:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name30f, $(INST_NEXT_PTR));
 + push42(&:2 inst_next);
 + call rel16;
++   }
 + 
-+}
  @ifdef IA64
 -:CALL rel16     is $(LONGMODE_ON) & vexMode=0 & (addrsize=1 | addrsize=2) & opsize=0 & byte=0xe8; rel16     { push88(&:8 inst_next); call rel16; }
-+:CALL rel16     is $(LONGMODE_ON) & vexMode=0 & (addrsize=1 | addrsize=2) & opsize=0 & byte=0xe8; rel16     {
-+remill_please_dont_use_this_temp_name18c:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name18c, $(INST_NEXT_PTR));
++:CALL rel16     is $(LONGMODE_ON) & vexMode=0 & (addrsize=1 | addrsize=2) & opsize=0 & byte=0xe8; rel16        { 
++remill_please_dont_use_this_temp_name311:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name311, $(INST_NEXT_PTR));
 + push88(&:8 inst_next);
 + call rel16;
++   }
 + 
-+}
  @endif
  
  #  When is a Call a Jump, when it jumps right after.  Not always the case but...
 -:CALL rel16     is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=0 & byte=0xe8; simm16=0 & rel16      { push22(&:2 inst_next); goto rel16; }
 -:CALL rel16     is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xe8; simm16=0 & rel16      { push42(&:2 inst_next); goto rel16; }
-+:CALL rel16     is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=0 & byte=0xe8; simm16=0 & rel16      {
-+remill_please_dont_use_this_temp_name18d:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name18d, $(INST_NEXT_PTR));
++:CALL rel16     is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=0 & byte=0xe8; simm16=0 & rel16         { 
++remill_please_dont_use_this_temp_name313:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name313, $(INST_NEXT_PTR));
 + push22(&:2 inst_next);
 + goto rel16;
++   }
 + 
-+}
-+:CALL rel16     is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xe8; simm16=0 & rel16      {
-+remill_please_dont_use_this_temp_name18e:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name18e, $(INST_NEXT_PTR));
++:CALL rel16     is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xe8; simm16=0 & rel16         { 
++remill_please_dont_use_this_temp_name315:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name315, $(INST_NEXT_PTR));
 + push42(&:2 inst_next);
 + goto rel16;
++   }
 + 
-+}
  @ifdef IA64
 -:CALL rel16     is $(LONGMODE_ON) & vexMode=0 & (addrsize=1 | addrsize=2) & opsize=0 & byte=0xe8; simm16=0 & rel16      { push88(&:8 inst_next); goto rel16; }
-+:CALL rel16     is $(LONGMODE_ON) & vexMode=0 & (addrsize=1 | addrsize=2) & opsize=0 & byte=0xe8; simm16=0 & rel16      {
-+remill_please_dont_use_this_temp_name18f:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name18f, $(INST_NEXT_PTR));
++:CALL rel16     is $(LONGMODE_ON) & vexMode=0 & (addrsize=1 | addrsize=2) & opsize=0 & byte=0xe8; simm16=0 & rel16         { 
++remill_please_dont_use_this_temp_name317:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name317, $(INST_NEXT_PTR));
 + push88(&:8 inst_next);
 + goto rel16;
++   }
 + 
-+}
  @endif
  
 -:CALL rel32     is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=1 & byte=0xe8; rel32     { push24(&:4 inst_next); call rel32; }
 -:CALL rel32     is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xe8; rel32     { push44(&:4 inst_next); call rel32; }
-+:CALL rel32     is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=1 & byte=0xe8; rel32     {
-+remill_please_dont_use_this_temp_name190:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name190, $(INST_NEXT_PTR));
++:CALL rel32     is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=1 & byte=0xe8; rel32        { 
++remill_please_dont_use_this_temp_name319:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name319, $(INST_NEXT_PTR));
 + push24(&:4 inst_next);
 + call rel32;
++   }
 + 
-+}
-+:CALL rel32     is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xe8; rel32     {
-+remill_please_dont_use_this_temp_name191:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name191, $(INST_NEXT_PTR));
++:CALL rel32     is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xe8; rel32        { 
++remill_please_dont_use_this_temp_name31b:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name31b, $(INST_NEXT_PTR));
 + push44(&:4 inst_next);
 + call rel32;
++   }
 + 
-+}
  @ifdef IA64
 -:CALL rel32     is $(LONGMODE_ON) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xe8; rel32     { push88(&:8 inst_next); call rel32; }
 -:CALL rel32     is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & (opsize=1 | opsize=2) & byte=0xe8; rel32     { push88(&:8 inst_next); call rel32; }
-+:CALL rel32     is $(LONGMODE_ON) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xe8; rel32     {
-+remill_please_dont_use_this_temp_name192:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name192, $(INST_NEXT_PTR));
++:CALL rel32     is $(LONGMODE_ON) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xe8; rel32        { 
++remill_please_dont_use_this_temp_name31d:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name31d, $(INST_NEXT_PTR));
 + push88(&:8 inst_next);
 + call rel32;
++   }
 + 
-+}
-+:CALL rel32     is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & (opsize=1 | opsize=2) & byte=0xe8; rel32     {
-+remill_please_dont_use_this_temp_name193:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name193, $(INST_NEXT_PTR));
++:CALL rel32     is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & (opsize=1 | opsize=2) & byte=0xe8; rel32        { 
++remill_please_dont_use_this_temp_name31f:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name31f, $(INST_NEXT_PTR));
 + push88(&:8 inst_next);
 + call rel32;
++   }
 + 
-+}
  @endif
  
  #  When is a call a Jump, when it jumps right after.  Not always the case but...
 -:CALL rel32     is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=1 & byte=0xe8; simm32=0 & rel32      { push24(&:4 inst_next); goto rel32; }
 -:CALL rel32     is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xe8; simm32=0 & rel32      { push44(&:4 inst_next); goto rel32; }
-+:CALL rel32     is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=1 & byte=0xe8; simm32=0 & rel32      {
-+remill_please_dont_use_this_temp_name194:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name194, $(INST_NEXT_PTR));
++:CALL rel32     is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=1 & byte=0xe8; simm32=0 & rel32         { 
++remill_please_dont_use_this_temp_name321:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name321, $(INST_NEXT_PTR));
 + push24(&:4 inst_next);
 + goto rel32;
++   }
 + 
-+}
-+:CALL rel32     is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xe8; simm32=0 & rel32      {
-+remill_please_dont_use_this_temp_name195:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name195, $(INST_NEXT_PTR));
++:CALL rel32     is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xe8; simm32=0 & rel32         { 
++remill_please_dont_use_this_temp_name323:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name323, $(INST_NEXT_PTR));
 + push44(&:4 inst_next);
 + goto rel32;
++   }
 + 
-+}
  @ifdef IA64
 -:CALL rel32     is $(LONGMODE_ON) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xe8; simm32=0 & rel32     { push88(&:8 inst_next); goto rel32; }
 -:CALL rel32     is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & (opsize=1 | opsize=2) & byte=0xe8; simm32=0 & rel32      { push88(&:8 inst_next); goto rel32; }
-+:CALL rel32     is $(LONGMODE_ON) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xe8; simm32=0 & rel32     {
-+remill_please_dont_use_this_temp_name196:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name196, $(INST_NEXT_PTR));
++:CALL rel32     is $(LONGMODE_ON) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xe8; simm32=0 & rel32        { 
++remill_please_dont_use_this_temp_name325:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name325, $(INST_NEXT_PTR));
 + push88(&:8 inst_next);
 + goto rel32;
++   }
 + 
-+}
-+:CALL rel32     is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & (opsize=1 | opsize=2) & byte=0xe8; simm32=0 & rel32      {
-+remill_please_dont_use_this_temp_name197:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name197, $(INST_NEXT_PTR));
++:CALL rel32     is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & (opsize=1 | opsize=2) & byte=0xe8; simm32=0 & rel32         { 
++remill_please_dont_use_this_temp_name327:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name327, $(INST_NEXT_PTR));
 + push88(&:8 inst_next);
 + goto rel32;
++   }
 + 
-+}
  @endif
  
  :CALL rm16	    is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=0 & byte=0xff & currentCS; rm16 & reg_opcode=2 ...	{ local dest:4 = segment(currentCS,rm16); push22(&:2 inst_next); call [dest]; }
 -:CALL rm16      is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xff; rm16 & reg_opcode=2 ...   { local dest:2 = rm16; push42(&:2 inst_next); call [dest]; }
-+:CALL rm16      is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xff; rm16 & reg_opcode=2 ...   {
++:CALL rm16      is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xff; rm16 & reg_opcode=2 ...      { 
 + local dest:2 = rm16;
-+remill_please_dont_use_this_temp_name198:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name198, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name329:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name329, $(INST_NEXT_PTR));
 + push42(&:2 inst_next);
 + call [dest];
++   }
 + 
-+}
  @ifdef IA64
 -:CALL rm16      is $(LONGMODE_ON) & vexMode=0 & (addrsize=1 | addrsize=2) & opsize=0 & byte=0xff; rm16 & reg_opcode=2 ...   { local dest:8 = inst_next + zext(rm16); push88(&:8 inst_next); call [dest]; }
-+:CALL rm16      is $(LONGMODE_ON) & vexMode=0 & (addrsize=1 | addrsize=2) & opsize=0 & byte=0xff; rm16 & reg_opcode=2 ...   {
-+remill_please_dont_use_this_temp_name199:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name199, $(INST_NEXT_PTR));
++:CALL rm16      is $(LONGMODE_ON) & vexMode=0 & (addrsize=1 | addrsize=2) & opsize=0 & byte=0xff; rm16 & reg_opcode=2 ...      { 
++remill_please_dont_use_this_temp_name32b:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name32b, $(INST_NEXT_PTR));
 + local dest:8 = inst_next + zext(rm16);
-+claim_eq(remill_please_dont_use_this_temp_name199, $(INST_NEXT_PTR));
++claim_eq(remill_please_dont_use_this_temp_name32b, $(INST_NEXT_PTR));
 + push88(&:8 inst_next);
 + call [dest];
++   }
 + 
-+}
  @endif
  
 -:CALL rm32      is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=1 & byte=0xff; rm32 & reg_opcode=2 ...   { local dest:4 = rm32; push24(&:4 inst_next); call [dest]; }
 -:CALL rm32      is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xff; rm32 & reg_opcode=2 ...   { local dest:4 = rm32; push44(&:4 inst_next); call [dest]; }
-+:CALL rm32      is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=1 & byte=0xff; rm32 & reg_opcode=2 ...   {
++:CALL rm32      is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=1 & byte=0xff; rm32 & reg_opcode=2 ...      { 
 + local dest:4 = rm32;
-+remill_please_dont_use_this_temp_name19a:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name19a, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name32d:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name32d, $(INST_NEXT_PTR));
 + push24(&:4 inst_next);
 + call [dest];
++   }
 + 
-+}
-+:CALL rm32      is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xff; rm32 & reg_opcode=2 ...   {
++:CALL rm32      is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xff; rm32 & reg_opcode=2 ...      { 
 + local dest:4 = rm32;
-+remill_please_dont_use_this_temp_name19b:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name19b, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name32f:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name32f, $(INST_NEXT_PTR));
 + push44(&:4 inst_next);
 + call [dest];
++   }
 + 
-+}
  @ifdef IA64
 -:CALL rm64      is $(LONGMODE_ON) & vexMode=0 & (addrsize=1 | addrsize=2) & (opsize=1 | opsize=2) & byte=0xff; rm64 & reg_opcode=2 ...   { local dest:8 = rm64; push88(&:8 inst_next); call [dest]; }
-+:CALL rm64      is $(LONGMODE_ON) & vexMode=0 & (addrsize=1 | addrsize=2) & (opsize=1 | opsize=2) & byte=0xff; rm64 & reg_opcode=2 ...   {
++:CALL rm64      is $(LONGMODE_ON) & vexMode=0 & (addrsize=1 | addrsize=2) & (opsize=1 | opsize=2) & byte=0xff; rm64 & reg_opcode=2 ...      { 
 + local dest:8 = rm64;
-+remill_please_dont_use_this_temp_name19c:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name19c, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name331:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name331, $(INST_NEXT_PTR));
 + push88(&:8 inst_next);
 + call [dest];
++   }
 + 
-+}
  @endif
  
  # direct far calls generate an opcode undefined exception in x86-64
@@ -380,156 +413,201 @@
 -:CALLF ptr1616      is vexMode=0 & addrsize=1 & opsize=0 & byte=0x9a; ptr1616           { push42(CS); build ptr1616; push42(&:2 inst_next); call ptr1616; }
 -:CALLF ptr1632      is vexMode=0 & addrsize=0 & opsize=1 & byte=0x9a; ptr1632           { push22(CS); build ptr1632; push24(&:4 inst_next); call ptr1632; }
 -:CALLF ptr1632      is vexMode=0 & addrsize=1 & opsize=1 & byte=0x9a; ptr1632           { push42(CS); build ptr1632; push44(&:4 inst_next); call ptr1632; }
-+:CALLF ptr1616      is vexMode=0 & addrsize=0 & opsize=0 & byte=0x9a; ptr1616           {
++:CALLF ptr1616      is vexMode=0 & addrsize=0 & opsize=0 & byte=0x9a; ptr1616              { 
 + push22(CS);
 + build ptr1616;
-+remill_please_dont_use_this_temp_name19d:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name19d, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name333:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name333, $(INST_NEXT_PTR));
 + push22(&:2 inst_next);
 + call ptr1616;
++   }
 + 
-+}
-+:CALLF ptr1616      is vexMode=0 & addrsize=1 & opsize=0 & byte=0x9a; ptr1616           {
++:CALLF ptr1616      is vexMode=0 & addrsize=1 & opsize=0 & byte=0x9a; ptr1616              { 
 + push42(CS);
 + build ptr1616;
-+remill_please_dont_use_this_temp_name19e:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name19e, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name335:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name335, $(INST_NEXT_PTR));
 + push42(&:2 inst_next);
 + call ptr1616;
++   }
 + 
-+}
-+:CALLF ptr1632      is vexMode=0 & addrsize=0 & opsize=1 & byte=0x9a; ptr1632           {
++:CALLF ptr1632      is vexMode=0 & addrsize=0 & opsize=1 & byte=0x9a; ptr1632              { 
 + push22(CS);
 + build ptr1632;
-+remill_please_dont_use_this_temp_name19f:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name19f, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name337:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name337, $(INST_NEXT_PTR));
 + push24(&:4 inst_next);
 + call ptr1632;
++   }
 + 
-+}
-+:CALLF ptr1632      is vexMode=0 & addrsize=1 & opsize=1 & byte=0x9a; ptr1632           {
++:CALLF ptr1632      is vexMode=0 & addrsize=1 & opsize=1 & byte=0x9a; ptr1632              { 
 + push42(CS);
 + build ptr1632;
-+remill_please_dont_use_this_temp_name1a0:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name1a0, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name339:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name339, $(INST_NEXT_PTR));
 + push44(&:4 inst_next);
 + call ptr1632;
++   }
 + 
-+}
  :CALLF addr16       is vexMode=0 & addrsize=0 & opsize=0 & byte=0xff; addr16 & reg_opcode=3 ... { local ptr:$(SIZE) = segment(DS,addr16); local addrptr:$(SIZE) = segment(*:2 (ptr+2),*:2 ptr);
                                                                                                    push22(CS); push22(&:2 inst_next); call [addrptr]; }
 -:CALLF addr32       is vexMode=0 & addrsize=1 & opsize=0 & byte=0xff; addr32 & reg_opcode=3 ... { local dest:4 = addr32; push42(CS); push42(&:2 inst_next); call [dest]; }
-+:CALLF addr32       is vexMode=0 & addrsize=1 & opsize=0 & byte=0xff; addr32 & reg_opcode=3 ... {
++:CALLF addr32       is vexMode=0 & addrsize=1 & opsize=0 & byte=0xff; addr32 & reg_opcode=3 ...    { 
 + local dest:4 = addr32;
 + push42(CS);
-+remill_please_dont_use_this_temp_name1a1:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name1a1, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name33b:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name33b, $(INST_NEXT_PTR));
 + push42(&:2 inst_next);
 + call [dest];
++   }
 + 
-+}
  @ifdef IA64
 -:CALLF addr64       is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & opsize=0 & byte=0xff; addr64 & reg_opcode=3 ... { local dest:8 = addr64; push82(CS); push82(&:2 inst_next); call [dest]; }
-+:CALLF addr64       is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & opsize=0 & byte=0xff; addr64 & reg_opcode=3 ... {
++:CALLF addr64       is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & opsize=0 & byte=0xff; addr64 & reg_opcode=3 ...    { 
 + local dest:8 = addr64;
 + push82(CS);
-+remill_please_dont_use_this_temp_name1a2:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name1a2, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name33d:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name33d, $(INST_NEXT_PTR));
 + push82(&:2 inst_next);
 + call [dest];
++   }
 + 
-+}
  @endif
  
  
 -:CALLF addr16       is vexMode=0 & addrsize=0 & opsize=1 & byte=0xff; addr16 & reg_opcode=3 ... { local dest:2 = addr16; push22(CS); push24(&:4 inst_next); call [dest]; }
 -:CALLF addr32       is vexMode=0 & addrsize=1 & opsize=1 & byte=0xff; addr32 & reg_opcode=3 ... { local dest:4 = addr32; push42(CS); push44(&:4 inst_next); call [dest]; }
-+:CALLF addr16       is vexMode=0 & addrsize=0 & opsize=1 & byte=0xff; addr16 & reg_opcode=3 ... {
++:CALLF addr16       is vexMode=0 & addrsize=0 & opsize=1 & byte=0xff; addr16 & reg_opcode=3 ...    { 
 + local dest:2 = addr16;
 + push22(CS);
-+remill_please_dont_use_this_temp_name1a3:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name1a3, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name33f:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name33f, $(INST_NEXT_PTR));
 + push24(&:4 inst_next);
 + call [dest];
++   }
 + 
-+}
-+:CALLF addr32       is vexMode=0 & addrsize=1 & opsize=1 & byte=0xff; addr32 & reg_opcode=3 ... {
++:CALLF addr32       is vexMode=0 & addrsize=1 & opsize=1 & byte=0xff; addr32 & reg_opcode=3 ...    { 
 + local dest:4 = addr32;
 + push42(CS);
-+remill_please_dont_use_this_temp_name1a4:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name1a4, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name341:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name341, $(INST_NEXT_PTR));
 + push44(&:4 inst_next);
 + call [dest];
++   }
 + 
-+}
  @ifdef IA64
 -:CALLF addr32       is $(LONGMODE_ON) &vexMode=0 & addrsize=1 & opsize=2 & byte=0xff; addr32 & reg_opcode=3 ... { local dest:4 = addr32; push82(CS); push88(&:8 inst_next); call [dest]; }
 -:CALLF addr64       is $(LONGMODE_ON) &vexMode=0 & addrsize=2 & opsize=1 & byte=0xff; addr64 & reg_opcode=3 ... { local dest:8 = addr64; push82(CS); push84(&:4 inst_next); call [dest]; }
 -:CALLF addr64       is $(LONGMODE_ON) &vexMode=0 & addrsize=2 & opsize=2 & byte=0xff; addr64 & reg_opcode=3 ... { local dest:8 = addr64; push82(CS); push88(&:8 inst_next); call [dest]; }
-+:CALLF addr32       is $(LONGMODE_ON) &vexMode=0 & addrsize=1 & opsize=2 & byte=0xff; addr32 & reg_opcode=3 ... {
++:CALLF addr32       is $(LONGMODE_ON) &vexMode=0 & addrsize=1 & opsize=2 & byte=0xff; addr32 & reg_opcode=3 ...    { 
 + local dest:4 = addr32;
 + push82(CS);
-+remill_please_dont_use_this_temp_name1a5:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name1a5, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name343:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name343, $(INST_NEXT_PTR));
 + push88(&:8 inst_next);
 + call [dest];
++   }
 + 
-+}
-+:CALLF addr64       is $(LONGMODE_ON) &vexMode=0 & addrsize=2 & opsize=1 & byte=0xff; addr64 & reg_opcode=3 ... {
++:CALLF addr64       is $(LONGMODE_ON) &vexMode=0 & addrsize=2 & opsize=1 & byte=0xff; addr64 & reg_opcode=3 ...    { 
 + local dest:8 = addr64;
 + push82(CS);
-+remill_please_dont_use_this_temp_name1a6:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name1a6, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name345:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name345, $(INST_NEXT_PTR));
 + push84(&:4 inst_next);
 + call [dest];
++   }
 + 
-+}
-+:CALLF addr64       is $(LONGMODE_ON) &vexMode=0 & addrsize=2 & opsize=2 & byte=0xff; addr64 & reg_opcode=3 ... {
++:CALLF addr64       is $(LONGMODE_ON) &vexMode=0 & addrsize=2 & opsize=2 & byte=0xff; addr64 & reg_opcode=3 ...    { 
 + local dest:8 = addr64;
 + push82(CS);
-+remill_please_dont_use_this_temp_name1a7:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name1a7, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name347:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name347, $(INST_NEXT_PTR));
 + push88(&:8 inst_next);
 + call [dest];
++   }
 + 
-+}
  @endif
  
  :CBW            is vexMode=0 & opsize=0 & byte=0x98                 { AX = sext(AL); }
-@@ -2179,10 +2492,29 @@
+@@ -2179,10 +2510,29 @@
  
  :CMC			is vexMode=0 & byte=0xf5						{ CF = CF==0; }
  
 -:CMOV^cc Reg16,rm16 is vexMode=0 & opsize=0 & byte=0xf; row=4 & cc; rm16 & Reg16 ...    { if (!cc) goto inst_next; Reg16 = rm16; }
 -:CMOV^cc Reg32,rm32 is vexMode=0 & opsize=1 & byte=0xf; row=4 & cc; rm32 & Reg32 ... & check_Reg32_dest ...   { build check_Reg32_dest; if (!cc) goto inst_next; Reg32 = rm32;}
-+:CMOV^cc Reg16,rm16 is vexMode=0 & opsize=0 & byte=0xf; row=4 & cc; rm16 & Reg16 ...    {
-+remill_please_dont_use_this_temp_name1b9:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name1b9, $(INST_NEXT_PTR));
++:CMOV^cc Reg16,rm16 is vexMode=0 & opsize=0 & byte=0xf; row=4 & cc; rm16 & Reg16 ...       { 
++remill_please_dont_use_this_temp_name36b:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name36b, $(INST_NEXT_PTR));
 + if (!cc) goto inst_next;
 + Reg16 = rm16;
++   }
 + 
-+}
-+:CMOV^cc Reg32,rm32 is vexMode=0 & opsize=1 & byte=0xf; row=4 & cc; rm32 & Reg32 ... & check_Reg32_dest ...   {
++:CMOV^cc Reg32,rm32 is vexMode=0 & opsize=1 & byte=0xf; row=4 & cc; rm32 & Reg32 ... & check_Reg32_dest ...      { 
 + build check_Reg32_dest;
-+remill_please_dont_use_this_temp_name1ba:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name1ba, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name36d:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name36d, $(INST_NEXT_PTR));
 + if (!cc) goto inst_next;
 + Reg32 = rm32;
-+
-+}
++  }
++ 
  @ifdef IA64
 -:CMOV^cc Reg64,rm64 is $(LONGMODE_ON) & vexMode=0 & opsize=2 & byte=0xf; row=4 & cc; rm64 & Reg64 ...    { if (!cc) goto inst_next; Reg64 = rm64; }
-+:CMOV^cc Reg64,rm64 is $(LONGMODE_ON) & vexMode=0 & opsize=2 & byte=0xf; row=4 & cc; rm64 & Reg64 ...    {
-+remill_please_dont_use_this_temp_name1bb:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name1bb, $(INST_NEXT_PTR));
++:CMOV^cc Reg64,rm64 is $(LONGMODE_ON) & vexMode=0 & opsize=2 & byte=0xf; row=4 & cc; rm64 & Reg64 ...       { 
++remill_please_dont_use_this_temp_name36f:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name36f, $(INST_NEXT_PTR));
 + if (!cc) goto inst_next;
 + Reg64 = rm64;
++   }
 + 
-+}
  @endif
  
  :CMP AL,imm8        is vexMode=0 & byte=0x3c; AL & imm8                                 { subflags(   AL,imm8 ); local tmp =    AL -   imm8; resultflags(tmp); }
-@@ -4075,14 +4407,62 @@
+@@ -2679,7 +3029,12 @@
+ # as a NOP.  We treat it as a NOP as well.
+ :FSETPM 	is vexMode=0 & byte=0xdb; byte=0xe4	{ } # 80287 set protected mode
+ 
+-:HLT            is vexMode=0 & byte=0xf4                        { goto inst_start; }
++:HLT            is vexMode=0 & byte=0xf4                         ; remill_insn_size  { 
++remill_please_dont_use_this_temp_name38e:$(SIZE)=inst_start;
++claim_eq(remill_please_dont_use_this_temp_name38e, ($(INST_NEXT_PTR)-remill_insn_size));
++ goto inst_start;
++   }
++ 
+ 
+ :IDIV rm8       is vexMode=0 & byte=0xf6;  rm8 & reg_opcode=7 ...           { rm8ext:2 = sext(rm8);
+                                                   local quotient = AX s/ rm8ext;  # DE exception if quotient doesn't fit in AL
+@@ -3840,9 +4195,27 @@
+ @endif
+ 
+ define pcodeop invalidInstructionException;
+-:UD0  Reg32, rm32 is vexMode=0 & byte=0x0f; byte=0xff; rm32 & Reg32 ...           { invalidInstructionException(); goto inst_start; }
+-:UD1  Reg32, rm32 is vexMode=0 & byte=0x0f; byte=0xb9; rm32 & Reg32 ...           { invalidInstructionException(); goto inst_start; }
+-:UD2              is vexMode=0 & byte=0xf; byte=0xb                               { invalidInstructionException(); goto inst_start; }
++:UD0  Reg32, rm32 is vexMode=0 & byte=0x0f; byte=0xff; rm32 & Reg32 ...            ; remill_insn_size  { 
++ invalidInstructionException();
++remill_please_dont_use_this_temp_name698:$(SIZE)=inst_start;
++claim_eq(remill_please_dont_use_this_temp_name698, ($(INST_NEXT_PTR)-remill_insn_size));
++ goto inst_start;
++   }
++ 
++:UD1  Reg32, rm32 is vexMode=0 & byte=0x0f; byte=0xb9; rm32 & Reg32 ...            ; remill_insn_size  { 
++ invalidInstructionException();
++remill_please_dont_use_this_temp_name69a:$(SIZE)=inst_start;
++claim_eq(remill_please_dont_use_this_temp_name69a, ($(INST_NEXT_PTR)-remill_insn_size));
++ goto inst_start;
++   }
++ 
++:UD2              is vexMode=0 & byte=0xf; byte=0xb                                ; remill_insn_size  { 
++ invalidInstructionException();
++remill_please_dont_use_this_temp_name69c:$(SIZE)=inst_start;
++claim_eq(remill_please_dont_use_this_temp_name69c, ($(INST_NEXT_PTR)-remill_insn_size));
++ goto inst_start;
++   }
++ 
+ 
+ :VERR rm16      is vexMode=0 & byte=0xf; byte=0x0; rm16 & reg_opcode=4 ...      { }
+ :VERW rm16      is vexMode=0 & byte=0xf; byte=0x0; rm16 & reg_opcode=5 ...      { }
+@@ -4075,14 +4448,62 @@
  :FCLEX          is vexMode=0 & byte=0x9B; byte=0xDB; byte=0xE2      { FPUStatusWord[0,8] = 0; FPUStatusWord[15,1] = 0; }
  :FNCLEX         is vexMode=0 & byte=0xDB; byte=0xE2                 { FPUStatusWord[0,8] = 0; FPUStatusWord[15,1] = 0; } 
  
@@ -541,62 +619,62 @@
 -:FCMOVNE ST0, freg  is vexMode=0 & byte=0xDB; frow=12 & fpage=1 & freg & ST0        { if ( ZF ) goto inst_next; ST0 = freg; }    
 -:FCMOVNBE ST0, freg is vexMode=0 & byte=0xDB; frow=13 & fpage=0 & freg & ST0        { if ( CF & ZF ) goto inst_next; ST0 = freg; }   
 -:FCMOVNU  ST0, freg is vexMode=0 & byte=0xDB; frow=13 & fpage=1 & freg & ST0        { if ( PF ) goto inst_next; ST0 = freg; }    
-+:FCMOVB ST0, freg   is vexMode=0 & byte=0xDA; frow=12 & fpage=0 & freg & ST0        {
-+remill_please_dont_use_this_temp_name38b:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name38b, $(INST_NEXT_PTR));
++:FCMOVB ST0, freg   is vexMode=0 & byte=0xDA; frow=12 & fpage=0 & freg & ST0           { 
++remill_please_dont_use_this_temp_name70f:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name70f, $(INST_NEXT_PTR));
 + if ( !CF ) goto inst_next;
 + ST0 = freg;
-+ 
-+}   
-+:FCMOVE ST0, freg   is vexMode=0 & byte=0xDA; frow=12 & fpage=1 & freg & ST0        {
-+remill_please_dont_use_this_temp_name38c:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name38c, $(INST_NEXT_PTR));
++   }
++    
++:FCMOVE ST0, freg   is vexMode=0 & byte=0xDA; frow=12 & fpage=1 & freg & ST0           { 
++remill_please_dont_use_this_temp_name711:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name711, $(INST_NEXT_PTR));
 + if ( !ZF ) goto inst_next;
 + ST0 = freg;
-+ 
-+}   
-+:FCMOVBE ST0, freg  is vexMode=0 & byte=0xDA; frow=13 & fpage=0 & freg & ST0        {
-+remill_please_dont_use_this_temp_name38d:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name38d, $(INST_NEXT_PTR));
++   }
++    
++:FCMOVBE ST0, freg  is vexMode=0 & byte=0xDA; frow=13 & fpage=0 & freg & ST0           { 
++remill_please_dont_use_this_temp_name713:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name713, $(INST_NEXT_PTR));
 + if ( !CF & !ZF ) goto inst_next;
 + ST0 = freg;
-+ 
-+} 
-+:FCMOVU  ST0, freg  is vexMode=0 & byte=0xDA; frow=13 & fpage=1 & freg & ST0        {
-+remill_please_dont_use_this_temp_name38e:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name38e, $(INST_NEXT_PTR));
++   }
++  
++:FCMOVU  ST0, freg  is vexMode=0 & byte=0xDA; frow=13 & fpage=1 & freg & ST0           { 
++remill_please_dont_use_this_temp_name715:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name715, $(INST_NEXT_PTR));
 + if ( !PF ) goto inst_next;
 + ST0 = freg;
-+ 
-+}   
-+:FCMOVNB ST0, freg  is vexMode=0 & byte=0xDB; frow=12 & fpage=0 & freg & ST0        {
-+remill_please_dont_use_this_temp_name38f:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name38f, $(INST_NEXT_PTR));
++   }
++    
++:FCMOVNB ST0, freg  is vexMode=0 & byte=0xDB; frow=12 & fpage=0 & freg & ST0           { 
++remill_please_dont_use_this_temp_name717:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name717, $(INST_NEXT_PTR));
 + if ( CF ) goto inst_next;
 + ST0 = freg;
-+ 
-+}    
-+:FCMOVNE ST0, freg  is vexMode=0 & byte=0xDB; frow=12 & fpage=1 & freg & ST0        {
-+remill_please_dont_use_this_temp_name390:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name390, $(INST_NEXT_PTR));
++   }
++     
++:FCMOVNE ST0, freg  is vexMode=0 & byte=0xDB; frow=12 & fpage=1 & freg & ST0           { 
++remill_please_dont_use_this_temp_name719:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name719, $(INST_NEXT_PTR));
 + if ( ZF ) goto inst_next;
 + ST0 = freg;
-+ 
-+}    
-+:FCMOVNBE ST0, freg is vexMode=0 & byte=0xDB; frow=13 & fpage=0 & freg & ST0        {
-+remill_please_dont_use_this_temp_name391:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name391, $(INST_NEXT_PTR));
++   }
++     
++:FCMOVNBE ST0, freg is vexMode=0 & byte=0xDB; frow=13 & fpage=0 & freg & ST0           { 
++remill_please_dont_use_this_temp_name71b:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name71b, $(INST_NEXT_PTR));
 + if ( CF & ZF ) goto inst_next;
 + ST0 = freg;
-+ 
-+}   
-+:FCMOVNU  ST0, freg is vexMode=0 & byte=0xDB; frow=13 & fpage=1 & freg & ST0        {
-+remill_please_dont_use_this_temp_name392:$(SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name392, $(INST_NEXT_PTR));
++   }
++    
++:FCMOVNU  ST0, freg is vexMode=0 & byte=0xDB; frow=13 & fpage=1 & freg & ST0           { 
++remill_please_dont_use_this_temp_name71d:$(SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name71d, $(INST_NEXT_PTR));
 + if ( PF ) goto inst_next;
 + ST0 = freg;
-+ 
-+}    
++   }
++     
                                                                   
  :FCOM spec_m32       is vexMode=0 & byte=0xD8; reg_opcode=2 ... & spec_m32            { local tmp=float2float(spec_m32); fcom(tmp); }         
  :FCOM spec_m64       is vexMode=0 & byte=0xDC; reg_opcode=2 ... & spec_m64            { local tmp=float2float(spec_m64); fcom(tmp); }         
