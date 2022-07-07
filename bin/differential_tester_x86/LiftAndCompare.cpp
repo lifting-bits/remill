@@ -556,7 +556,11 @@ class ComparisonRunner {
             target->getName().str());
 
     assert(returned != nullptr);
-    returned(state, state->gpr.rip.dword, handler);
+    auto orig_pc = state->gpr.rip.dword;
+    // run until we terminate and exit pc
+    while (state->gpr.rip.dword == orig_pc) {
+      returned(state, state->gpr.rip.dword, handler);
+    }
   }
 
   void StubOutFlagComputationInstrinsics(llvm::Module *mod,
@@ -642,8 +646,9 @@ class ComparisonRunner {
     func1_state->aflag.sf = this->random_boolean_flag();
     func1_state->aflag.zf = this->random_boolean_flag();
 
-    if (isel_name.rfind(".REP") != std::string::npos) {
-      func1_state->gpr.rcx.dword = 2;
+    if (isel_name.rfind("REP_") != std::string::npos) {
+      LOG(INFO) << "setting ecx to 1";
+      func1_state->gpr.rcx.dword = 1;
     }
 
     auto func2_state = (X86State *) alloca(sizeof(X86State));

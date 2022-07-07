@@ -8,7 +8,7 @@ import subprocess
 CONNECTIVES_WITHOUT_SEMICOLON = "&|.!"
 CONNECTIVES = CONNECTIVES_WITHOUT_SEMICOLON+r";"
 
-OPERATORS = r"*+\>\<\(\)$"
+OPERATORS = r"*\-+\>\<\(\)$"
 
 PCODE_SPECIFIC_OPERATORS = r"\[\]:="
 
@@ -17,7 +17,7 @@ GENERIC_CHARACTER_GROUP_WITH_EQUALS = r"["+CONNECTIVES + OPERATORS+r"\w\s\d=]"
 GENERIC_CHARACTER_GROUP_WITHOUT_EQUALS = r"[" + \
     CONNECTIVES + OPERATORS+r"\w\s\d]"
 
-DISPLAY_SECTION = r"(?P<display_section>[][+*\w\s^,]*)(?:[\s]is[\s])"
+DISPLAY_SECTION = r"(?P<display_section>[][\"+*\w\s^,.]*)(?:[\s]is[\s])"
 
 
 DISASSEMBLY_ACTION = r"(?P<action>"+GENERIC_CHARACTER_GROUP_WITH_EQUALS + "+" + \
