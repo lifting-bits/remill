@@ -234,7 +234,7 @@ def main():
 
                 total_output += endian_def.string[endian_def.end(): target_insert_loc]
 
-                total_output += f"\n{REMILL_INSN_SIZE_NAME}: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {{export calculated_size; }}\n"
+                total_output += f"\n{REMILL_INSN_SIZE_NAME}: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {{ local insn_size_hinted:{args.inst_next_size_hint}=calculated_size; \n export insn_size_hinted; }}\n"
 
                 last_offset = target_insert_loc
                 cont = Context()
