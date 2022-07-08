@@ -223,16 +223,23 @@ def main():
                 total_output += "\n" + pc_def
                 total_output += "\ndefine pcodeop claim_eq;\n"
 
-                last_offset = endian_def.end()
+                first_constructor_offset = next(
+                    construct_pat.finditer(target)).start()
+
+                target_insert_match = max(filter(lambda k: k.end() < first_constructor_offset,
+                                                 re.finditer("@endif", target)), key=lambda elem: elem.end())
+
+                target_insert_loc = target_insert_match.end(
+                ) if target_insert_match else (first_constructor_offset-1)
+
+                total_output += endian_def.string[endian_def.end(): target_insert_loc]
+
+                total_output += f"\n{REMILL_INSN_SIZE_NAME}: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {{export calculated_size; }}\n"
+
+                last_offset = target_insert_loc
                 cont = Context()
-                firstConstructor = True
                 for constructor in construct_pat.finditer(target):
                     total_output += constructor.string[last_offset:constructor.start()]
-
-                    if firstConstructor:
-                        # make sure we define instruction size before first cons.
-                        total_output += f"\n{REMILL_INSN_SIZE_NAME}: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {{export calculated_size; }}\n\n"
-                        firstConstructor = False
 
                     last_offset = constructor.end()
                     env = Environment(cont,
