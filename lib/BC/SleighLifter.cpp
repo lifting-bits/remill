@@ -443,7 +443,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
             bldr, input_var,
             llvm::IntegerType::get(this->context, input_var.size * 8));
         auto pc_reg = this->LiftNormalRegister(bldr, "PC");
-        assert(pc_reg.has_value());
+        CHECK(pc_reg.has_value());
         auto res = (*pc_reg)->StoreIntoParam(bldr, input_val);
         this->TerminateBlock();
         return res;
@@ -576,7 +576,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
               bldr.GetInsertBlock()->getModule(), llvm::Intrinsic::ctpop,
               overloaded_types);
 
-          llvm::Value *ctpop_args[] = {*ctpop_inval};
+          std::array<llvm::Value *, 1> ctpop_args = {*ctpop_inval};
           llvm::Value *ctpop_val = this->FixResultForOutVarnode(
               bldr, bldr.CreateCall(ctpop_intrinsic, ctpop_args), *outvar);
 
@@ -687,47 +687,45 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     return LiftStatus::kLiftedUnsupportedInstruction;
   }
 
+
+  std::optional<llvm::Value *>
+  GetResultOfBoolOpFunc(llvm::IRBuilder<> &bldr, OpCode opc,
+                        llvm::Value *in_lhs, llvm::Value *in_rhs) {
+    switch (opc) {
+      case CPUI_BOOL_AND: {
+        return bldr.CreateAnd(in_lhs, in_rhs);
+      }
+      case CPUI_BOOL_OR: {
+
+        return bldr.CreateOr(in_lhs, in_rhs);
+      }
+      case CPUI_BOOL_XOR: {
+        return bldr.CreateXor(in_lhs, in_rhs);
+      }
+      default: return std::nullopt;
+    }
+  }
   LiftStatus LiftBoolBinOp(llvm::IRBuilder<> &bldr, OpCode opc,
                            VarnodeData *outvar, VarnodeData lhs,
                            VarnodeData rhs) {
-    std::function<llvm::Value *(llvm::Value *, llvm::Value *,
-                                llvm::IRBuilder<> &)>
-        op_func;
-    switch (opc) {
-      case CPUI_BOOL_AND: {
-        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
-                     llvm::IRBuilder<> &bldr) {
-          return bldr.CreateAnd(lhs, rhs);
-        };
-        break;
-      }
-      case CPUI_BOOL_OR: {
-        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
-                     llvm::IRBuilder<> &bldr) {
-          return bldr.CreateOr(lhs, rhs);
-        };
-        break;
-      }
-      case CPUI_BOOL_XOR: {
-        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
-                     llvm::IRBuilder<> &bldr) {
-          return bldr.CreateXor(lhs, rhs);
-        };
-        break;
-      }
-      default: break;
+
+
+    auto lifted_lhs = this->LiftInParam(
+             bldr, lhs, llvm::IntegerType::get(this->context, 8)),
+         lifted_rhs = this->LiftInParam(
+             bldr, rhs, llvm::IntegerType::get(this->context, 8));
+    if (!lifted_lhs.has_value() || !lifted_rhs.has_value()) {
+      return LiftStatus::kLiftedUnsupportedInstruction;
     }
-    if (op_func) {
-      auto lifted_lhs = this->LiftInParam(
-               bldr, lhs, llvm::IntegerType::get(this->context, 8)),
-           lifted_rhs = this->LiftInParam(
-               bldr, rhs, llvm::IntegerType::get(this->context, 8));
-      if (lifted_lhs.has_value() && lifted_rhs.has_value()) {
-        return this->LiftStoreIntoOutParam(
-            bldr, op_func(*lifted_lhs, *lifted_rhs, bldr), outvar);
-      }
+
+    auto computed_value =
+        this->GetResultOfBoolOpFunc(bldr, opc, *lifted_lhs, *lifted_rhs);
+    if (!computed_value.has_value()) {
+      return LiftStatus::kLiftedUnsupportedInstruction;
     }
-    return LiftStatus::kLiftedUnsupportedInstruction;
+
+
+    return this->LiftStoreIntoOutParam(bldr, *computed_value, outvar);
   }
 
   LiftStatus LiftFloatBinOp(llvm::IRBuilder<> &bldr, OpCode opc,
