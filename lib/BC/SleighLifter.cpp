@@ -28,6 +28,20 @@
 
 namespace remill {
 
+namespace {
+
+static llvm::Value *ExtractOverflowBitFromCallToIntrinsic(
+    llvm::Intrinsic::IndependentIntrinsics intrinsic, llvm::Value *lhs,
+    llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+  llvm::Type *overloaded_types[1] = {lhs->getType()};
+  llvm::Function *target_instrinsic = llvm::Intrinsic::getDeclaration(
+      bldr.GetInsertBlock()->getModule(), intrinsic, overloaded_types);
+  std::array<llvm::Value *, 2> intrinsic_args = {lhs, rhs};
+  llvm::Value *res_val = bldr.CreateCall(target_instrinsic, intrinsic_args);
+  // The value at index 1 is the overflow bit.
+  return bldr.CreateExtractValue(res_val, {1});
+}
+}  // namespace
 
 class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
  private:
@@ -1155,36 +1169,18 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
          }},
         {OpCode::CPUI_INT_CARRY,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
-           llvm::Type *overloaded_types[1] = {lhs->getType()};
-           llvm::Function *uadd_intrinsic = llvm::Intrinsic::getDeclaration(
-               bldr.GetInsertBlock()->getModule(),
-               llvm::Intrinsic::uadd_with_overflow, overloaded_types);
-           std::array<llvm::Value *, 2> uadd_args = {lhs, rhs};
-           llvm::Value *uadd_val = bldr.CreateCall(uadd_intrinsic, uadd_args);
-           // The value at index 1 is the overflow bit.
-           return bldr.CreateExtractValue(uadd_val, {1});
+           return ExtractOverflowBitFromCallToIntrinsic(
+               llvm::Intrinsic::uadd_with_overflow, lhs, rhs, bldr);
          }},
         {OpCode::CPUI_INT_SCARRY,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
-           llvm::Type *overloaded_types[1] = {lhs->getType()};
-           llvm::Function *sadd_intrinsic = llvm::Intrinsic::getDeclaration(
-               bldr.GetInsertBlock()->getModule(),
-               llvm::Intrinsic::sadd_with_overflow, overloaded_types);
-           llvm::Value *sadd_args[] = {lhs, rhs};
-           llvm::Value *sadd_val = bldr.CreateCall(sadd_intrinsic, sadd_args);
-           // The value at index 1 is the overflow bit.
-           return bldr.CreateExtractValue(sadd_val, {1});
+           return ExtractOverflowBitFromCallToIntrinsic(
+               llvm::Intrinsic::sadd_with_overflow, lhs, rhs, bldr);
          }},
         {OpCode::CPUI_INT_SBORROW,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
-           llvm::Type *overloaded_types[1] = {lhs->getType()};
-           llvm::Function *ssub_intrinsic = llvm::Intrinsic::getDeclaration(
-               bldr.GetInsertBlock()->getModule(),
-               llvm::Intrinsic::ssub_with_overflow, overloaded_types);
-           llvm::Value *ssub_args[] = {lhs, rhs};
-           llvm::Value *ssub_val = bldr.CreateCall(ssub_intrinsic, ssub_args);
-           // The value at index 1 is the overflow bit.
-           return bldr.CreateExtractValue(ssub_val, {1});
+           return ExtractOverflowBitFromCallToIntrinsic(
+               llvm::Intrinsic::ssub_with_overflow, lhs, rhs, bldr);
          }},
 };
 
