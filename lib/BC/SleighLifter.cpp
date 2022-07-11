@@ -805,7 +805,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       auto lifted_lhs =
           this->LiftInParam(bldr, lhs, llvm::Type::getFloatTy(this->context));
       auto lifted_rhs =
-          this->LiftInParam(bldr, lhs, llvm::Type::getFloatTy(this->context));
+          this->LiftInParam(bldr, rhs, llvm::Type::getFloatTy(this->context));
       if (lifted_lhs.has_value() && lifted_rhs.has_value()) {
         return this->LiftStoreIntoOutParam(
             bldr, op_func(*lifted_lhs, *lifted_rhs, bldr), outvar);
@@ -856,9 +856,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
       // Treat them as integers
       auto lifted_lhs = this->LiftInParam(
-               bldr, lhs, llvm::IntegerType::get(this->context, lhs.size * 8)),
-           lifted_rhs = this->LiftInParam(
-               bldr, rhs, llvm::IntegerType::get(this->context, rhs.size * 8));
+          bldr, lhs, llvm::IntegerType::get(this->context, lhs.size * 8));
+      auto lifted_rhs = this->LiftInParam(
+          bldr, rhs, llvm::IntegerType::get(this->context, rhs.size * 8));
 
       if (lifted_lhs.has_value() && lifted_rhs.has_value()) {
         // Widen the most significant operand and then left shift it to make room for the least significant operand.
@@ -912,9 +912,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     return LiftStatus::kLiftedUnsupportedInstruction;
   }
 
-  LiftStatus LiftTernOp(llvm::IRBuilder<> &bldr, OpCode opc,
-                        VarnodeData *outvar, VarnodeData param0,
-                        VarnodeData param1, VarnodeData param2) {
+  LiftStatus LiftThreeOperandOp(llvm::IRBuilder<> &bldr, OpCode opc,
+                                VarnodeData *outvar, VarnodeData param0,
+                                VarnodeData param1, VarnodeData param2) {
     switch (opc) {
       case OpCode::CPUI_STORE: {
         auto addr_operand = param1;
@@ -1034,9 +1034,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         return;
       }
       case 3: {
-        this->UpdateStatus(
-            this->LiftTernOp(bldr, opc, outvar, vars[0], vars[1], vars[2]),
-            opc);
+        this->UpdateStatus(this->LiftThreeOperandOp(bldr, opc, outvar, vars[0],
+                                                    vars[1], vars[2]),
+                           opc);
         break;
       }
       default:
@@ -1159,7 +1159,7 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
            llvm::Function *uadd_intrinsic = llvm::Intrinsic::getDeclaration(
                bldr.GetInsertBlock()->getModule(),
                llvm::Intrinsic::uadd_with_overflow, overloaded_types);
-           llvm::Value *uadd_args[] = {lhs, rhs};
+           std::array<llvm::Value *, 2> uadd_args = {lhs, rhs};
            llvm::Value *uadd_val = bldr.CreateCall(uadd_intrinsic, uadd_args);
            // The value at index 1 is the overflow bit.
            return bldr.CreateExtractValue(uadd_val, {1});
@@ -1257,7 +1257,6 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
 
   if (!inst.IsValid()) {
     LOG(ERROR) << "Invalid function" << inst.Serialize();
-    inst.operands.clear();
     return kLiftedInvalidInstruction;
   }
 
