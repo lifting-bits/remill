@@ -710,10 +710,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
                            VarnodeData rhs) {
 
 
-    auto lifted_lhs = this->LiftInParam(
-             bldr, lhs, llvm::IntegerType::get(this->context, 8)),
-         lifted_rhs = this->LiftInParam(
-             bldr, rhs, llvm::IntegerType::get(this->context, 8));
+    auto lifted_lhs =
+        this->LiftInParam(bldr, lhs, llvm::IntegerType::get(this->context, 8));
+    auto lifted_rhs =
+        this->LiftInParam(bldr, rhs, llvm::IntegerType::get(this->context, 8));
     if (!lifted_lhs.has_value() || !lifted_rhs.has_value()) {
       return LiftStatus::kLiftedUnsupportedInstruction;
     }
