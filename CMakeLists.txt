@@ -121,6 +121,8 @@ target_link_libraries(thirdparty_gflags INTERFACE
   gflags
 )
 
+set(sleigh_ADDITIONAL_PATCHES "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/x86-ia.patch;")
+
 # GHIDRA SLEIGH
 FetchContent_Declare(sleigh
   GIT_REPOSITORY https://github.com/lifting-bits/sleigh.git
