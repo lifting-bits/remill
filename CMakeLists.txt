@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +20,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ccache.cmake")
 
 project(remill C CXX ASM)
 include(GNUInstallDirs)
-
+include(FetchContent)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/settings.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/options.cmake")
@@ -72,6 +72,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/BCCompiler.cmake")
 # Go find only the static libraries of LLVM, and link against those.
 foreach(LLVM_LIB IN LISTS LLVM_AVAILABLE_LIBS)
   get_target_property(LLVM_LIB_TYPE ${LLVM_LIB} TYPE)
+
   if(LLVM_LIB_TYPE STREQUAL "STATIC_LIBRARY")
     list(APPEND LLVM_LIBRARIES "${LLVM_LIB}")
   endif()
@@ -88,7 +89,7 @@ target_link_libraries(thirdparty_llvm INTERFACE
 # Microsoft Z3 with LLVM. Not exactly used in remill, but LLVM doesn't link
 # against it correctly
 # NOTE: If changing this, also replicate in remillConfig file
-if (LLVM_WITH_Z3)
+if(LLVM_WITH_Z3)
   find_package(Z3 CONFIG REQUIRED 4.7.1)
   get_target_property(LLVMSupport_LIBS LLVMSupport INTERFACE_LINK_LIBRARIES)
   list(REMOVE_ITEM LLVMSupport_LIBS Z3)
@@ -121,7 +122,12 @@ target_link_libraries(thirdparty_gflags INTERFACE
 )
 
 # GHIDRA SLEIGH
-find_package(sleigh CONFIG REQUIRED)
+FetchContent_Declare(sleigh
+  GIT_REPOSITORY https://github.com/lifting-bits/sleigh.git
+  GIT_TAG "5c84ea88bce1e8b7752b6e289ce49076ab4faaf8"
+)
+
+FetchContent_MakeAvailable(sleigh)
 add_library(thirdparty_sleigh INTERFACE)
 target_link_libraries(thirdparty_sleigh INTERFACE
   sleigh::sla
@@ -131,12 +137,12 @@ target_link_libraries(thirdparty_sleigh INTERFACE
 
 # Windows SDK
 add_library(thirdparty_win32 INTERFACE)
+
 if(DEFINED WIN32)
   target_link_libraries(thirdparty_win32 INTERFACE
-     "Kernel32.lib"
+    "Kernel32.lib"
   )
 endif()
-
 
 # For Linux builds, group LLVM libraries into a single group
 # that avoids frustrating library ordering issues.
@@ -159,7 +165,6 @@ option(REMILL_BUILD_SPARC32_RUNTIME "Build the Runtime for SPARC32. Turn this of
 #
 
 # add everything as public.
-
 add_library(remill_settings INTERFACE)
 
 target_include_directories(remill_settings INTERFACE
@@ -268,7 +273,6 @@ target_link_libraries(remill INTERFACE
 #
 # Also install clang, libllvm and llvm-link
 #
-
 set(INSTALLED_CLANG_NAME "remill-clang-${REMILL_LLVM_VERSION}${CMAKE_EXECUTABLE_SUFFIX}")
 set(INSTALLED_LLVMLINK_NAME "remill-llvm-link-${REMILL_LLVM_VERSION}${CMAKE_EXECUTABLE_SUFFIX}")
 
@@ -278,15 +282,18 @@ InstallExternalTarget("ext_llvmlink" "${LLVMLINK_PATH}" "BIN" "${INSTALLED_LLVML
 
 GetTargetTree(THIRDPARTY_LIBRARIES ${THIRDPARTY_LIBRARY_LIST})
 GetPublicIncludeFolders(THIRDPARTY_INCLUDE_DIRECTORIES ${THIRDPARTY_LIBRARIES})
+
 foreach(THIRDPARTY_LIB IN LISTS THIRDPARTY_LIBRARIES)
   string(SUBSTRING "${THIRDPARTY_LIB}" 0 1 THIRDPARTY_LIB_PREFIX)
+
   if(TARGET ${THIRDPARTY_LIB})
     get_target_property(THIRDPARTY_LIB_TYPE ${THIRDPARTY_LIB} TYPE)
+
     if(THIRDPARTY_LIB_TYPE STREQUAL "STATIC_LIBRARY" OR THIRDPARTY_LIB_TYPE STREQUAL "SHARED_LIBRARY")
       list(APPEND THIRDPARTY_LIBRARY_FILES "$${}<TARGET_FILE:${THIRDPARTY_LIB}>")
     endif()
   elseif("${THIRDPARTY_LIB_PREFIX}" STREQUAL "$${}")
-    # E.g. $<LINK_ONLY:...>
+  # E.g. $<LINK_ONLY:...>
   else()
     list(APPEND THIRDPARTY_LIBRARY_FILES "${THIRDPARTY_LIB}")
   endif()
@@ -297,7 +304,6 @@ list(REMOVE_DUPLICATES THIRDPARTY_LIBRARY_FILES)
 #
 # additional targets
 #
-
 add_custom_target(semantics)
 
 # tools
@@ -305,23 +311,23 @@ add_subdirectory(bin)
 
 if(REMILL_ENABLE_INSTALL_TARGET)
   install(TARGETS remill EXPORT remillTargets)
-  
+
   install(TARGETS remill_settings ${THIRDPARTY_LIBRARY_LIST}
     EXPORT remillTargets
   )
-  
+
   # First do the basic substitutions.
   configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/remillConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
     @ONLY
   )
-  
+
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
-                "${CMAKE_CURRENT_LIST_DIR}/cmake/vcpkg_helper.cmake"
+    "${CMAKE_CURRENT_LIST_DIR}/cmake/vcpkg_helper.cmake"
     DESTINATION "${REMILL_INSTALL_LIB_DIR}/cmake/remill"
   )
-  
+
   install(DIRECTORY "${REMILL_INCLUDE_DIR}/remill/"
     DESTINATION "${REMILL_INSTALL_INCLUDE_DIR}/remill"
   )
@@ -330,14 +336,13 @@ if(REMILL_ENABLE_INSTALL_TARGET)
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/remill")
 endif()
 
-
-if (REMILL_ENABLE_TESTING_SLEIGH_THUMB)
+if(REMILL_ENABLE_TESTING_SLEIGH_THUMB)
   message(STATUS "thumb tests enabled")
   add_subdirectory(tests/Thumb)
 endif()
 
 # tests
-if (REMILL_ENABLE_TESTING)
+if(REMILL_ENABLE_TESTING)
   # Tests require enabling exports on binaries
   # https://cmake.org/cmake/help/latest/variable/CMAKE_ENABLE_EXPORTS.html#variable:CMAKE_ENABLE_EXPORTS
   set(CMAKE_ENABLE_EXPORTS ON)

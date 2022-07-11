@@ -18,9 +18,6 @@
 #include <remill/Arch/AArch32/Runtime/State.h>
 #include <remill/Arch/Name.h>
 #include <remill/BC/ABI.h>
-#include <remill/BC/Compat/Attributes.h>
-#include <remill/BC/Compat/DebugInfo.h>
-#include <remill/BC/Compat/GlobalValue.h>
 #include <remill/BC/Util.h>
 #include <remill/BC/Version.h>
 #include <remill/OS/OS.h>
