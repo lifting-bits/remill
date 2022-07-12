@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/prepare_git_user.yml
+      - uses: ./.github/actions/prepare_git_user
       - name: Build with build script
         shell: bash
         run: |
@@ -103,7 +103,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/prepare_git_user.yml
+      - uses: ./.github/actions/prepare_git_user
       - name: Build with build script
         shell: bash
         run: |
