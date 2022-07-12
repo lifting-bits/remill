@@ -1,4 +1,5 @@
-name: Setup Git User for Applying Patches
+name: 'Setup Git User for Applying Patches'
+  shell: bash
   description: 'Setup bot user so git doesn't complain when patching'
   # See this thread for more details https://github.community/t/github-actions-bot-email-address/17204/5
   run: |
