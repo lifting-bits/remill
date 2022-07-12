@@ -1,7 +1,10 @@
 name: 'Setup Git User for Applying Patches'
-  shell: bash
-  description: 'Setup bot user so git doesn't complain when patching'
+description: 'Setup bot user so git doesn't complain when patching'
   # See this thread for more details https://github.community/t/github-actions-bot-email-address/17204/5
-  run: |
-    git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-    git config --global user.name "github-actions[bot]"
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --global user.name "github-actions[bot]"
