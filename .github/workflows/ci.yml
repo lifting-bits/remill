@@ -102,11 +102,13 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+      - uses: ../actions/prepare_git_user.yml
       - name: Build with build script
         shell: bash
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
+      - uses: ../actions/prepare_git_user.yml
       - name: Build with build-presets script
         shell: bash
         run: |
