@@ -126,7 +126,7 @@ set(sleigh_ADDITIONAL_PATCHES "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/x86-ia
 # GHIDRA SLEIGH
 FetchContent_Declare(sleigh
   GIT_REPOSITORY https://github.com/lifting-bits/sleigh.git
-  GIT_TAG "09f7007bfc2ebeec46016af07277c15edcf828cc"
+  GIT_TAG "5c84ea88bce1e8b7752b6e289ce49076ab4faaf8"
 )
 
 FetchContent_MakeAvailable(sleigh)
