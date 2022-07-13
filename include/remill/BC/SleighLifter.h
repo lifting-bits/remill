@@ -38,6 +38,9 @@ class SleighLifter : public InstructionLifter {
   class PcodeToLLVMEmitIntoBlock;
 
   std::unique_ptr<sleigh::SingleInstructionSleighContext> sleigh_context;
+  // Architecture being used for lifting.
+  const sleigh::SleighArch *const arch;
+
 
  public:
   static const std::string_view kInstructionFunctionPrefix;

@@ -1188,7 +1188,8 @@ SleighLifter::SleighLifter(const sleigh::SleighArch *arch_,
                            const IntrinsicTable &intrinsics_)
     : InstructionLifter(arch_, intrinsics_),
       sleigh_context(new sleigh::SingleInstructionSleighContext(
-          arch_->GetSLAName(), arch_->GetPSpec())) {
+          arch_->GetSLAName(), arch_->GetPSpec())),
+      arch(arch_) {
   arch_->InitializeSleighContext(*sleigh_context);
 }
 
@@ -1235,6 +1236,10 @@ SleighLifter::LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
   SleighLifter::PcodeToLLVMEmitIntoBlock lifter(
       target_block, internal_state_pointer, inst, *this,
       this->sleigh_context->getUserOpNames(), exit_block);
+  //TODO(Ian): make a safe to use sleighinstruction context that wraps a context with an arch to preform reset reinits
+
+  this->sleigh_context->resetContext();
+  this->arch->InitializeSleighContext(*this->sleigh_context);
   sleigh_context->oneInstruction(inst.pc, lifter, inst.bytes);
 
 
