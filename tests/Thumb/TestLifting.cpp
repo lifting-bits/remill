@@ -9,9 +9,9 @@
 #include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/Utils/Cloning.h>
+#include <remill/Arch/AArch32/Runtime/State.h>
 #include <remill/Arch/Arch.h>
 #include <remill/Arch/Name.h>
-#include <remill/Arch/X86/Runtime/State.h>
 #include <remill/BC/ABI.h>
 #include <remill/BC/IntrinsicTable.h>
 #include <remill/BC/Optimizer.h>
@@ -24,7 +24,61 @@
 #include "gtest/gtest.h"
 
 
-class TestOutputSpec {};
+namespace {
+const static std::unordered_map<std::string,
+                                std::function<uint32_t &(AArch32State &)>>
+    reg_to_accessor = {};
+}
+
+class TestOutputSpec {
+ private:
+  std::string target_bytes;
+  remill::Instruction::Category expected_category;
+  std::vector<std::pair<std::string, uint32_t>> register_preconditions;
+  std::vector<std::pair<std::string, uint32_t>> register_postconditions;
+
+
+  void ApplyCondition(AArch32State &state, std::string reg, uint32_t value) {
+    auto accessor = reg_to_accessor.find(reg);
+    if (accessor != reg_to_accessor.end()) {
+      accessor->second(state) = value;
+    }
+  }
+
+  void CheckCondition(AArch32State &state, std::string reg, uint32_t value) {
+    auto accessor = reg_to_accessor.find(reg);
+    if (accessor != reg_to_accessor.end()) {
+      CHECK_EQ(accessor->second(state), value);
+    }
+  }
+
+ public:
+  TestOutputSpec(
+      std::string target_bytes, remill::Instruction::Category expected_category,
+      std::vector<std::pair<std::string, uint32_t>> register_preconditions,
+      std::vector<std::pair<std::string, uint32_t>> register_postconditions)
+      : target_bytes(target_bytes),
+        expected_category(expected_category),
+        register_preconditions(std::move(register_preconditions)),
+        register_postconditions(std::move(register_postconditions)) {}
+
+
+  void SetupTestPreconditions(AArch32State &state) {
+    for (auto prec : this->register_preconditions) {
+      this->ApplyCondition(state, prec.first, prec.second);
+    }
+  }
+
+  void CheckLiftedInstruction(const remill::Instruction &lifted) {
+    CHECK_EQ(lifted.category, this->expected_category);
+  }
+
+  void CheckResultingState(AArch32State &state) {
+    for (auto post : this->register_postconditions) {
+      this->CheckCondition(state, post.first, post.second);
+    }
+  }
+};
 
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);

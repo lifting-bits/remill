@@ -38,7 +38,7 @@ class DiffTesterInfo:
         repro_file = f"{fname}_repro.json"
         repro_path = os.path.join(self.workdir, repro_file)
         command_args = [self.path, "-num_iterations",
-                        str(self.num_iters), "-target_insn_file", json_file_path, "-whitelist", self.whitelist_path]
+                        str(self.num_iters), "-target_insn_file", json_file_path, "-whitelist", self.whitelist_path, "-repro_file", repro_path]
         exit_stat = subprocess.run(command_args)
         if exit_stat.returncode == 0:
             return TestResults(num_tests, 0)

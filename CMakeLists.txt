@@ -309,6 +309,9 @@ list(REMOVE_DUPLICATES THIRDPARTY_LIBRARY_FILES)
 #
 add_custom_target(semantics)
 
+# shared JIT tools
+add_subdirectory(test_runner_lib)
+
 # tools
 add_subdirectory(bin)
 
