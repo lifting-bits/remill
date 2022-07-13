@@ -71,6 +71,7 @@ class LiftingTester {
   LiftInstructionFunction(std::string_view fname, std::string_view bytes,
                           uint64_t address) {
     remill::Instruction insn;
+    LOG(INFO) << "LIFTING BYTES " << llvm::toHex(bytes);
     if (!this->arch->DecodeInstruction(address, bytes, insn)) {
       return std::nullopt;
     }
@@ -697,28 +698,7 @@ struct TestCase {
 
 namespace llvm::json {
 bool fromJSON(const Value &E, TestCase &Out, Path P) {
-  auto maybe_array = E.getAsArray();
-  if (!maybe_array) {
-    P.report("Should be array");
-    return false;
-  }
-
-  if (maybe_array->size() != 2) {
-    P.report("Expected two elements");
-    return false;
-  }
-
-  auto array = *maybe_array;
-
-  auto addr = array[0];
-  auto maybe_addr = addr.getAsInteger();
-  if (!maybe_addr.hasValue()) {
-    P.report("Expected integer address");
-    return false;
-  }
-
-  auto byte_string = array[1].getAsString();
-
+  auto byte_string = E.getAsString();
   if (!byte_string.hasValue()) {
     P.report("Expected hex string of instruction bytes");
     return false;
@@ -726,8 +706,9 @@ bool fromJSON(const Value &E, TestCase &Out, Path P) {
 
   auto bytes = llvm::fromHex(byte_string.getValue());
 
-  Out.addr = maybe_addr.getValue();
   Out.bytes = bytes;
+  // Should maybe do something else here?
+  Out.addr = 0xdeadbe00;
   return true;
 }
 };  // namespace llvm::json
@@ -738,6 +719,53 @@ std::string test_case_name(std::string_view prefix, uint64_t test_cast_ctr) {
   ss << prefix << "comp_func" << test_cast_ctr;
   return ss.str();
 }
+
+// Returns true when test case succeeds
+bool runTestCase(const TestCase &tc, DifferentialModuleBuilder &diffbuilder,
+                 const std::vector<WhiteListInstruction> &whitelist,
+                 uint64_t ctr) {
+  LOG(INFO) << "Starting testcase: " << llvm::toHex(tc.bytes);
+  auto diff_mod = diffbuilder.build(
+      test_case_name("f1", ctr), test_case_name("f2", ctr), tc.bytes, tc.addr);
+
+  if (!diff_mod.has_value()) {
+    LOG(ERROR) << "Failed to lift " << std::hex << tc.addr << ": "
+               << llvm::toHex(tc.bytes);
+
+    if (FLAGS_stop_on_fail) {
+      LOG(FATAL) << "Failed to lift an insn";
+    }
+    return false;
+  }
+
+  auto end = diff_mod->GetModule()->getDataLayout().isBigEndian()
+                 ? llvm::support::endianness::big
+                 : llvm::support::endianness::little;
+  ComparisonRunner comp_runner(end);
+
+  if (FLAGS_should_dump_functions) {
+    LOG(INFO) << remill::LLVMThingToString(diff_mod->GetF1());
+    LOG(INFO) << remill::LLVMThingToString(diff_mod->GetF2());
+  }
+
+  for (uint64_t i = 0; i < FLAGS_num_iterations; i++) {
+    auto tc_result = comp_runner.SingleCmpRun(
+        tc.bytes.size(), diff_mod->GetF1(), diff_mod->GetF2(), whitelist,
+        diff_mod->GetNameF1());
+
+    if (!tc_result.are_equal) {
+      LOG(ERROR) << "Difference in instruction" << std::hex << tc.addr << ": "
+                 << llvm::toHex(tc.bytes);
+      std::cout << "Init state: " << tc_result.init_state_dump << std::endl;
+      std::cout << tc_result.struct_dump1 << std::endl;
+      std::cout << tc_result.struct_dump2 << std::endl;
+      return false;
+    }
+  }
+
+  return true;
+}
+
 
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -797,77 +825,39 @@ int main(int argc, char **argv) {
       remill::OSName::kOSLinux, remill::ArchName::kArchX86,
       remill::OSName::kOSLinux, remill::ArchName::kArchX86_SLEIGH);
   uint64_t ctr = 0;
+
   std::vector<TestCase> failed_testcases;
-  auto succeeded = true;
+  auto succeeded_tot = true;
   for (auto tc : testcases) {
-    LOG(INFO) << "Starting testcase: " << llvm::toHex(tc.bytes);
-    auto diff_mod =
-        diffbuilder.build(test_case_name("f1", ctr), test_case_name("f2", ctr),
-                          tc.bytes, tc.addr);
-
-    if (!diff_mod.has_value()) {
-      LOG(ERROR) << "Failed to lift " << std::hex << tc.addr << ": "
-                 << llvm::toHex(tc.bytes);
-      succeeded = false;
-      if (FLAGS_stop_on_fail) {
-        LOG(FATAL) << "Failed to lift an insn";
-      }
-
-      continue;
+    auto tc_succeeded = runTestCase(tc, diffbuilder, whitelist, ++ctr);
+    if (!tc_succeeded) {
+      succeeded_tot = false;
+      failed_testcases.push_back(tc);
     }
 
-    auto end = diff_mod->GetModule()->getDataLayout().isBigEndian()
-                   ? llvm::support::endianness::big
-                   : llvm::support::endianness::little;
-    ComparisonRunner comp_runner(end);
-
-    if (FLAGS_should_dump_functions) {
-      LOG(INFO) << remill::LLVMThingToString(diff_mod->GetF1());
-      LOG(INFO) << remill::LLVMThingToString(diff_mod->GetF2());
-    }
-
-    for (uint64_t i = 0; i < FLAGS_num_iterations; i++) {
-      auto tc_result = comp_runner.SingleCmpRun(
-          tc.bytes.size(), diff_mod->GetF1(), diff_mod->GetF2(), whitelist,
-          diff_mod->GetNameF1());
-
-      if (!tc_result.are_equal) {
-        succeeded = false;
-        LOG(ERROR) << "Difference in instruction" << std::hex << tc.addr << ": "
-                   << llvm::toHex(tc.bytes);
-        std::cout << "Init state: " << tc_result.init_state_dump << std::endl;
-        std::cout << tc_result.struct_dump1 << std::endl;
-        std::cout << tc_result.struct_dump2 << std::endl;
-
-        failed_testcases.push_back(tc);
-        if (!FLAGS_repro_file.empty()) {
-          std::error_code ec;
-          llvm::raw_fd_ostream o(FLAGS_repro_file, ec);
-          if (ec) {
-            LOG(FATAL) << ec.message();
-          }
-
-          llvm::json::Array arr;
-          for (auto tc : failed_testcases) {
-            arr.push_back(
-                llvm::json::Array({llvm::json::Value(tc.addr),
-                                   llvm::json::Value(llvm::toHex(tc.bytes))}));
-          }
-
-          llvm::json::operator<<(o, llvm::json::Value(std::move(arr)));
-        }
+    if (!FLAGS_repro_file.empty() && !tc_succeeded) {
+      std::error_code ec;
+      llvm::raw_fd_ostream o(FLAGS_repro_file, ec);
+      if (ec) {
+        LOG(FATAL) << ec.message();
       }
 
-      if (!succeeded && FLAGS_stop_on_fail) {
-        return 1;
+      llvm::json::Array arr;
+      for (auto tc : failed_testcases) {
+        arr.push_back(llvm::toHex(tc.bytes));
       }
+
+      llvm::json::operator<<(o, llvm::json::Value(std::move(arr)));
     }
-    ctr++;
+
+    if (!succeeded_tot && FLAGS_stop_on_fail) {
+      return 2;
+    }
   }
 
-  if (succeeded) {
+  if (succeeded_tot) {
     return 0;
   } else {
-    return 1;
+    return 2;
   }
 }

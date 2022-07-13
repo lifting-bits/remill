@@ -1200,6 +1200,8 @@ const std::string_view SleighLifter::kInstructionFunctionPrefix =
 std::pair<LiftStatus, llvm::Function *>
 SleighLifter::LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
                                     bool is_delayed) {
+
+  LOG(INFO) << "Secondary lift of bytes: " << llvm::toHex(inst.bytes);
   auto target_func = inst.arch->DefineLiftedFunction(
       SleighLifter::kInstructionFunctionPrefix, target_mod);
 
@@ -1237,6 +1239,7 @@ SleighLifter::LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
 
 
   lifter.TerminateBlock();
+  target_func->dump();
 
   // Setup like an ISEL
   target_func->setLinkage(llvm::GlobalValue::InternalLinkage);

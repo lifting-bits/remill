@@ -24,6 +24,8 @@
 #include "gtest/gtest.h"
 
 
+class TestOutputSpec {};
+
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
