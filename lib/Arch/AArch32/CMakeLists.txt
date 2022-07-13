@@ -27,7 +27,8 @@ add_library(remill_arch_aarch32 STATIC
   
   Arch.cpp
   Decode.cpp
-# Decode.h
+  DecodeThumb2.cpp
+  Decode.h
 # Extract.cpp
 )
 

@@ -19,11 +19,13 @@
 #include <optional>
 
 #include "Arch.h"
+#include "Decode.h"
 #include "remill/BC/ABI.h"
+#include "remill/Arch/Name.h"
 
 namespace remill {
 
-namespace {
+namespace aarch32 {
 
 // Integer Data Processing (three register, register shift)
 union IntDataProcessingRRRR {
@@ -562,17 +564,8 @@ union SpecialRegsAndHints {
 static_assert(sizeof(SpecialRegsAndHints) == 4, " ");
 
 static constexpr auto kAddressSize = 32u;
-static constexpr auto kPCRegNum = 15u;
-static constexpr auto kLRRegNum = 14u;
 
-static const char *const kIntRegName[] = {
-    "R0", "R1", "R2",  "R3",  "R4",  "R5",  "R6",  "R7",
-    "R8", "R9", "R10", "R11", "R12", "R13", "R14", "R15"};
-
-typedef bool(TryDecode)(Instruction &, uint32_t);
-typedef std::optional<uint32_t>(InstEval)(uint32_t, uint32_t);
-
-static void AddIntRegOp(Instruction &inst, unsigned index, unsigned size,
+void AddIntRegOp(Instruction &inst, unsigned index, unsigned size,
                         Operand::Action action) {
   Operand::Register reg;
   reg.size = size;
@@ -581,7 +574,7 @@ static void AddIntRegOp(Instruction &inst, unsigned index, unsigned size,
   op.action = action;
 }
 
-static void AddIntRegOp(Instruction &inst, const char *reg_name, unsigned size,
+void AddIntRegOp(Instruction &inst, const char *reg_name, unsigned size,
                         Operand::Action action) {
   Operand::Register reg;
   reg.size = size;
@@ -601,8 +594,8 @@ static void AddExprOp(Instruction &inst, OperandExpression *op_expr,
   op.action = action;
 }
 
-static void AddImmOp(Instruction &inst, uint64_t value, unsigned size = 32,
-                     bool is_signed = false) {
+void AddImmOp(Instruction &inst, uint64_t value, unsigned size,
+                     bool is_signed) {
   Operand::Immediate imm;
   imm.val = value;
   imm.is_signed = is_signed;
@@ -611,9 +604,9 @@ static void AddImmOp(Instruction &inst, uint64_t value, unsigned size = 32,
   op.size = size;
 }
 
-static void AddAddrRegOp(Instruction &inst, const char *reg_name,
-                         unsigned mem_size, Operand::Action mem_action,
-                         unsigned disp, unsigned scale = 0) {
+void AddAddrRegOp(Instruction &inst, const char *reg_name, unsigned mem_size,
+                         Operand::Action mem_action,
+                         unsigned disp, unsigned scale) {
   Operand::Address addr;
   addr.address_size = 32;
   addr.base_reg.name = reg_name;
@@ -910,7 +903,7 @@ static void AddShiftImmCarryOperand(Instruction &inst, uint32_t reg_num,
 // (shift_t, shift_n) = DecodeImmShift(type, imm5);
 // (shifted, carry) = Shift_C(R[m], shift_t, shift_n, PSTATE.C);
 // See an instruction in Integer Data Processing (three register, immediate shift) set for an example
-static void AddShiftRegImmOperand(Instruction &inst, uint32_t reg_num,
+void AddShiftRegImmOperand(Instruction &inst, uint32_t reg_num,
                                   uint32_t shift_type, uint32_t shift_size,
                                   bool carry_out, bool can_shift_right_by_32) {
   auto is_rrx = false;
@@ -1193,7 +1186,7 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
       auto src2 = EvalOperand(inst, inst.operands[4], uses_linkreg);
 
       AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
-                   Operand::kActionWrite, 0);
+                   Operand::kActionWrite, 0u);
 
       if (uses_linkreg) {
 
@@ -3557,14 +3550,14 @@ static TryDecode *TryDataProcessingAndMisc(uint32_t bits) {
 // This is the top level of the instruction encoding schema for AArch32.
 // Instructions are grouped into subsets based on this the top level and then
 // into smaller sets.
-//   cond op0 op1
+//   cond  op0 op1
 // != 1111 00x     Data-processing and miscellaneous instructions
 // != 1111 010     Load/Store Word, Unsigned Byte (immediate, literal)
 // != 1111 011 0   Load/Store Word, Unsigned Byte (register)
 // != 1111 011 1   Media instructions
-//        10x     Branch, branch with link, and block data transfer
-//        11x     System register access, Advanced SIMD, floating-point, and Supervisor call
-//   1111 0xx     Unconditional instructions
+//         10x     Branch, branch with link, and block data transfer
+//         11x     System register access, Advanced SIMD, floating-point, and Supervisor call
+//   1111  0xx     Unconditional instructions
 static TryDecode *TryDecodeTopLevelEncodings(uint32_t bits) {
   const TopLevelEncodings enc = {bits};
 
@@ -3629,7 +3622,7 @@ static uint32_t BytesToBits(const uint8_t *bytes) {
   bits = (bits << 8) | static_cast<uint32_t>(bytes[0]);
   return bits;
 }
-}  // namespace
+}  // namespace aarch32
 
 // Decode an instruction
 bool AArch32Arch::DecodeInstruction(uint64_t address,
@@ -3643,7 +3636,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   inst.has_branch_taken_delay_slot = false;
   inst.has_branch_not_taken_delay_slot = false;
   inst.arch_name = arch_name;
-  inst.sub_arch_name = arch_name;  // TODO(pag): Thumb.
+  inst.sub_arch_name = arch_name;
   inst.arch = this;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();
@@ -3663,9 +3656,13 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   }
 
   const auto bytes = reinterpret_cast<const uint8_t *>(inst.bytes.data());
-  const auto bits = BytesToBits(bytes);
+  const auto bits = aarch32::BytesToBits(bytes);
 
-  auto decoder = TryDecodeTopLevelEncodings(bits);
+  if (arch_name == kArchThumb2LittleEndian) {
+    return aarch32::DecodeThumb2Instruction(inst, bits);
+  }
+
+  auto decoder = aarch32::TryDecodeTopLevelEncodings(bits);
   if (!decoder) {
     LOG(ERROR) << "unhandled bits " << std::hex << bits << std::dec;
     return false;
@@ -3673,7 +3670,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
 
   auto ret = decoder(inst, bits);
 
-  //  LOG(ERROR) << inst.Serialize();
+  LOG(ERROR) << inst.Serialize();
   return ret;
 }
 

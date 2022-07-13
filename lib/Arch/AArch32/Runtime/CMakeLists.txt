@@ -64,3 +64,4 @@ function(add_runtime_helper target_name little_endian)
 endfunction()
 
 add_runtime_helper(aarch32 1)
+add_runtime_helper(thumb2 1)

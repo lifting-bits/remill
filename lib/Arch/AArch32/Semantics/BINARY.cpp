@@ -94,6 +94,12 @@ DEF_COND_SEM(SUB, R32W dst, R32 src1, I32 src2, R32W maybe_next_pc_dst) {
   return memory;
 }
 
+DEF_SEM(SUBL_T2, R32W dst, R32 src1, I32 src2) {
+  auto value = Read(src2);
+  Write(dst, USub(Read(src1), value));
+  return memory;
+}
+
 DEF_COND_SEM(SUBS, R32W dst, R32 src1, I32 src2, I8 carry_out,
              R32W maybe_next_pc_dst) {
   auto rhs = Read(src2);
@@ -108,6 +114,12 @@ DEF_COND_SEM(ADD, R32W dst, R32 src1, I32 src2, R32W maybe_next_pc_dst) {
   auto value = Read(src2);
   Write(dst, UAdd(Read(src1), value));
   Write(maybe_next_pc_dst, Read(REG_PC));
+  return memory;
+}
+
+DEF_SEM(ADDL_T2, R32W dst, R32 src1, I32 src2) {
+  auto value = Read(src2);
+  Write(dst, UAdd(Read(src1), value));
   return memory;
 }
 
@@ -178,12 +190,14 @@ DEF_ISEL(ANDSrr) = ANDS;
 DEF_ISEL(EORrr) = EOR;
 DEF_ISEL(EORSrr) = EORS;
 DEF_ISEL(ADDrr) = ADD;
+DEF_ISEL(ADDL_T2) = ADDL_T2;
 DEF_ISEL(ADDSrr) = ADDS;
 DEF_ISEL(ADCrr) = ADC;
 DEF_ISEL(ADCSrr) = ADCS;
 DEF_ISEL(RSBrr) = RSB;
 DEF_ISEL(RSBSrr) = RSBS;
 DEF_ISEL(SUBrr) = SUB;
+DEF_ISEL(SUBL_T2) = SUBL_T2;
 DEF_ISEL(SUBSrr) = SUBS;
 DEF_ISEL(SBCrr) = SBC;
 DEF_ISEL(SBCSrr) = SBCS;

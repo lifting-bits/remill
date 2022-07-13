@@ -82,6 +82,14 @@ DEF_COND_SEM(MOVT, R32W dst, R32 src1, R32 src2) {
   Write(dst, result);
   return memory;
 }
+
+DEF_SEM(MOVL_T2, R32W dst, I32 src1) {
+  auto value = Read(src1);
+  Write(dst, value);
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(MOVT) = MOVT;
+DEF_ISEL(MOVL_T2) = MOVL_T2;
