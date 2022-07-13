@@ -1244,7 +1244,6 @@ SleighLifter::LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
 
 
   lifter.TerminateBlock();
-  target_func->dump();
 
   // Setup like an ISEL
   target_func->setLinkage(llvm::GlobalValue::InternalLinkage);

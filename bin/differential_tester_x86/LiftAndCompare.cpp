@@ -71,7 +71,6 @@ class LiftingTester {
   LiftInstructionFunction(std::string_view fname, std::string_view bytes,
                           uint64_t address) {
     remill::Instruction insn;
-    LOG(INFO) << "LIFTING BYTES " << llvm::toHex(bytes);
     if (!this->arch->DecodeInstruction(address, bytes, insn)) {
       return std::nullopt;
     }
