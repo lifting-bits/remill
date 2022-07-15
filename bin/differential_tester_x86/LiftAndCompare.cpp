@@ -114,12 +114,13 @@ class DifferentialModuleBuilder {
         std::make_unique<llvm::LLVMContext>();
     context->enableOpaquePointers();
     auto tmp_arch = remill::Arch::Build(context.get(), os_name_1, arch_name_1);
-    auto semantics_module = remill::LoadArchSemantics(tmp_arch.get());
-    tmp_arch->PrepareModule(semantics_module);
-    auto l1 = test_runner::LiftingTester(semantics_module.get(), os_name_1,
-                                         arch_name_1);
-    auto l2 = test_runner::LiftingTester(semantics_module.get(), os_name_2,
-                                         arch_name_2);
+    std::shared_ptr<llvm::Module> semantics_module =
+        remill::LoadArchSemantics(tmp_arch.get());
+    tmp_arch->PrepareModule(semantics_module.get());
+    auto l1 =
+        test_runner::LiftingTester(semantics_module, os_name_1, arch_name_1);
+    auto l2 =
+        test_runner::LiftingTester(semantics_module, os_name_2, arch_name_2);
     return DifferentialModuleBuilder(std::move(context),
                                      std::move(semantics_module), std::move(l1),
                                      std::move(l2));
@@ -127,13 +128,13 @@ class DifferentialModuleBuilder {
 
  private:
   std::unique_ptr<llvm::LLVMContext> context;
-  std::unique_ptr<llvm::Module> semantics_module;
+  std::shared_ptr<llvm::Module> semantics_module;
 
   test_runner::LiftingTester l1;
   test_runner::LiftingTester l2;
 
   DifferentialModuleBuilder(std::unique_ptr<llvm::LLVMContext> context_,
-                            std::unique_ptr<llvm::Module> semantics_module_,
+                            std::shared_ptr<llvm::Module> semantics_module_,
 
                             test_runner::LiftingTester l1_,
                             test_runner::LiftingTester l2_)

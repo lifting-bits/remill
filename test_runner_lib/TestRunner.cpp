@@ -167,14 +167,21 @@ MemoryHandler *___remill_write_memory_64(MemoryHandler *memory, uint64_t addr,
 }
 
 
-LiftingTester::LiftingTester(llvm::Module *semantics_module_,
+LiftingTester::LiftingTester(std::shared_ptr<llvm::Module> semantics_module_,
                              remill::OSName os_name, remill::ArchName arch_name)
-    : semantics_module(semantics_module_),
+    : semantics_module(std::move(semantics_module_)),
       arch(remill::Arch::Build(&this->semantics_module->getContext(), os_name,
                                arch_name)),
       table(std::make_unique<remill::IntrinsicTable>(this->semantics_module)),
       lifter(this->arch->DefaultLifter(*this->table.get())) {
-  this->arch->InitFromSemanticsModule(semantics_module_);
+  this->arch->InitFromSemanticsModule(semantics_module_.get());
+}
+
+LiftingTester::LiftingTester(llvm::LLVMContext &context, remill::OSName os_name,
+                             remill::ArchName arch_name)
+    : arch(remill::Arch::Build(&context, os_name, arch_name)) {
+  this->semantics_module =
+      std::shared_ptr(remill::LoadArchSemantics(this->arch.get()));
 }
 
 std::unordered_map<TypeId, llvm::Type *> LiftingTester::GetTypeMapping() {
@@ -199,7 +206,7 @@ LiftingTester::LiftInstructionFunction(std::string_view fname,
   LOG(INFO) << "Decoded insn " << insn.Serialize();
 
   auto target_func =
-      this->arch->DefineLiftedFunction(fname, this->semantics_module);
+      this->arch->DefineLiftedFunction(fname, this->semantics_module.get());
   LOG(INFO) << "Func sig: "
             << remill::LLVMThingToString(target_func->getType());
 

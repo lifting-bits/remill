@@ -126,16 +126,20 @@ enum TypeId { MEMORY = 0, STATE = 1 };
 
 class LiftingTester {
  private:
-  llvm::Module *semantics_module;
+  std::shared_ptr<llvm::Module> semantics_module;
   remill::Arch::ArchPtr arch;
   std::unique_ptr<remill::IntrinsicTable> table;
   remill::InstructionLifter::LifterPtr lifter;
 
 
  public:
-  LiftingTester(llvm::Module *semantics_module_, remill::OSName os_name,
-                remill::ArchName arch_name);
+  // Produces a tester lifter that lifts into a target prepared semantics module
+  LiftingTester(std::shared_ptr<llvm::Module> semantics_module_,
+                remill::OSName os_name, remill::ArchName arch_name);
 
+  // Builds a new semantics module to lift into
+  LiftingTester(llvm::LLVMContext &context, remill::OSName os_name,
+                remill::ArchName arch_name);
   std::unordered_map<TypeId, llvm::Type *> GetTypeMapping();
 
 

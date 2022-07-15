@@ -17,6 +17,7 @@
 #include <remill/BC/Optimizer.h>
 #include <remill/BC/Util.h>
 #include <remill/OS/OS.h>
+#include <test_runner/TestRunner.h>
 
 #include <functional>
 #include <random>
