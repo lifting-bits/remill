@@ -1,0 +1,148 @@
+#pragma once
+
+#include <glog/logging.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/ExecutionEngine/GenericValue.h>
+#include <llvm/ExecutionEngine/Interpreter.h>
+#include <llvm/ExecutionEngine/MCJIT.h>
+#include <llvm/IR/Function.h>
+#include <llvm/Support/DynamicLibrary.h>
+#include <llvm/Support/Endian.h>
+#include <llvm/Support/JSON.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Transforms/Utils/Cloning.h>
+#include <remill/Arch/Arch.h>
+#include <remill/BC/Util.h>
+
+#include <random>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+
+namespace test_runner {
+
+
+using random_bytes_engine =
+    std::independent_bits_engine<std::default_random_engine, CHAR_BIT, uint8_t>;
+
+
+class MemoryHandler {
+ private:
+  std::unordered_map<uint64_t, uint8_t> uninitialized_reads;
+  std::unordered_map<uint64_t, uint8_t> state;
+
+  random_bytes_engine rbe;
+  llvm::support::endianness endian;
+
+ public:
+  MemoryHandler(llvm::support::endianness endian_);
+
+  MemoryHandler(llvm::support::endianness endian_,
+                std::unordered_map<uint64_t, uint8_t> initial_state);
+
+  uint8_t read_byte(uint64_t addr);
+
+
+  std::vector<uint8_t> readSize(uint64_t addr, size_t num);
+
+  const std::unordered_map<uint64_t, uint8_t> &GetMemory() const;
+
+  std::string DumpState() const;
+
+  template <class T>
+  T ReadMemory(uint64_t addr);
+
+
+  template <class T>
+  void WriteMemory(uint64_t addr, T value);
+
+  std::unordered_map<uint64_t, uint8_t> GetUninitializedReads();
+};
+
+void StubOutFlagComputationInstrinsics(llvm::Module *mod,
+                                       llvm::ExecutionEngine &exec_engine);
+
+void *MissingFunctionStub(const std::string &name);
+
+template <class T>
+void ExecuteLiftedFunction(llvm::Function *func, size_t insn_length, T *state,
+                           test_runner::MemoryHandler *handler) {
+  std::string load_error = "";
+  llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr, &load_error);
+  if (!load_error.empty()) {
+    LOG(FATAL) << "Failed to load: " << load_error;
+  }
+
+  auto tgt_mod = llvm::CloneModule(*func->getParent());
+  tgt_mod->setTargetTriple("");
+  tgt_mod->setDataLayout(llvm::DataLayout(""));
+  llvm::InitializeNativeTarget();
+  llvm::InitializeNativeTargetAsmParser();
+  llvm::InitializeNativeTargetAsmPrinter();
+  llvm::InitializeAllTargetMCs();
+
+  auto res = remill::VerifyModuleMsg(tgt_mod.get());
+  if (res.has_value()) {
+
+    LOG(FATAL) << *res;
+  }
+
+  llvm::EngineBuilder builder(std::move(tgt_mod));
+
+
+  std::string estr;
+  auto eptr =
+      builder.setEngineKind(llvm::EngineKind::JIT).setErrorStr(&estr).create();
+
+  if (eptr == nullptr) {
+    LOG(FATAL) << estr;
+  }
+
+  std::unique_ptr<llvm::ExecutionEngine> engine(eptr);
+
+
+  auto target = engine->FindFunctionNamed(func->getName());
+  StubOutFlagComputationInstrinsics(target->getParent(), *engine);
+
+  engine->InstallLazyFunctionCreator(&MissingFunctionStub);
+  engine->DisableSymbolSearching(false);
+  // expect traditional remill lifted insn
+  assert(func->arg_size() == 3);
+
+  auto returned =
+      (void *(*) (T *, uint32_t, void *) ) engine->getFunctionAddress(
+          target->getName().str());
+
+  assert(returned != nullptr);
+  auto orig_pc = state->gpr.rip.dword;
+  // run until we terminate and exit pc
+  while (state->gpr.rip.dword == orig_pc) {
+    returned(state, state->gpr.rip.dword, handler);
+  }
+}
+
+
+enum TypeId { MEMORY = 0, STATE = 1 };
+
+class LiftingTester {
+ private:
+  llvm::Module *semantics_module;
+  remill::Arch::ArchPtr arch;
+  std::unique_ptr<remill::IntrinsicTable> table;
+  remill::InstructionLifter::LifterPtr lifter;
+
+
+ public:
+  LiftingTester(llvm::Module *semantics_module_, remill::OSName os_name,
+                remill::ArchName arch_name);
+
+  std::unordered_map<TypeId, llvm::Type *> GetTypeMapping();
+
+
+  std::optional<std::pair<llvm::Function *, std::string>>
+  LiftInstructionFunction(std::string_view fname, std::string_view bytes,
+                          uint64_t address);
+
+  const remill::Arch::ArchPtr &GetArch() const;
+};
+}  // namespace test_runner

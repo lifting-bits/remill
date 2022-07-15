@@ -10,6 +10,7 @@ target_link_libraries(
   PRIVATE
   remill
   thirdparty_glog
+  test-runner
 )
 
 set_property(TARGET lift-and-compare PROPERTY POSITION_INDEPENDENT_CODE ON)

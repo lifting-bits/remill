@@ -1,9 +1,13 @@
+set(TEST_RUNNER_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
+
 add_library(
   test-runner
-  LiftAndCompare.cpp
-  Whitelist.cpp
-  Whitelist.h
+  STATIC
+  TestRunner.cpp
+  "${TEST_RUNNER_INCLUDE_DIR}/test_runner/TestRunner.h"
 )
+
+message("Stuff include dir ${TEST_RUNNER_INCLUDE_DIR}")
 
 target_link_libraries(
   test-runner
@@ -11,5 +15,7 @@ target_link_libraries(
   remill
   thirdparty_glog
 )
+
+target_include_directories(test-runner PUBLIC "${TEST_RUNNER_INCLUDE_DIR}")
 
 set_property(TARGET test-runner PROPERTY POSITION_INDEPENDENT_CODE ON)

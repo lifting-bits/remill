@@ -22,6 +22,7 @@
 #include <remill/BC/Optimizer.h>
 #include <remill/BC/Util.h>
 #include <remill/OS/OS.h>
+#include <test_runner/TestRunner.h>
 
 #include <functional>
 #include <random>
@@ -37,93 +38,6 @@ DEFINE_string(whitelist, "", "File listing instruction states not to check");
 DEFINE_bool(should_dump_functions, false, "Dump each function version");
 DEFINE_bool(stop_on_fail, false, "Stop on first failure");
 
-enum TypeId { MEMORY = 0, STATE = 1 };
-
-class LiftingTester {
- private:
-  llvm::Module *semantics_module;
-  remill::Arch::ArchPtr arch;
-  std::unique_ptr<remill::IntrinsicTable> table;
-  remill::InstructionLifter::LifterPtr lifter;
-
-
- public:
-  LiftingTester(llvm::Module *semantics_module_, remill::OSName os_name,
-                remill::ArchName arch_name)
-      : semantics_module(semantics_module_),
-        arch(remill::Arch::Build(&this->semantics_module->getContext(), os_name,
-                                 arch_name)),
-        table(std::make_unique<remill::IntrinsicTable>(this->semantics_module)),
-        lifter(this->arch->DefaultLifter(*this->table.get())) {
-    this->arch->InitFromSemanticsModule(semantics_module_);
-  }
-
-  std::unordered_map<TypeId, llvm::Type *> GetTypeMapping() {
-    std::unordered_map<TypeId, llvm::Type *> res;
-
-    res.emplace(TypeId::MEMORY, this->arch->MemoryPointerType());
-    res.emplace(TypeId::STATE, this->arch->StateStructType());
-
-    return res;
-  }
-
-
-  std::optional<std::pair<llvm::Function *, std::string>>
-  LiftInstructionFunction(std::string_view fname, std::string_view bytes,
-                          uint64_t address) {
-    remill::Instruction insn;
-    if (!this->arch->DecodeInstruction(address, bytes, insn)) {
-      return std::nullopt;
-    }
-
-    LOG(INFO) << "Decoded insn " << insn.Serialize();
-
-    auto target_func =
-        this->arch->DefineLiftedFunction(fname, this->semantics_module);
-    LOG(INFO) << "Func sig: "
-              << remill::LLVMThingToString(target_func->getType());
-
-    if (remill::LiftStatus::kLiftedInstruction !=
-        this->lifter->LiftIntoBlock(insn, &target_func->getEntryBlock())) {
-      target_func->eraseFromParent();
-      return std::nullopt;
-    }
-
-    auto mem_ptr_ref =
-        remill::LoadMemoryPointerRef(&target_func->getEntryBlock());
-
-    llvm::IRBuilder bldr(&target_func->getEntryBlock());
-
-    auto pc_ref = remill::LoadProgramCounterRef(&target_func->getEntryBlock());
-    auto next_pc_ref =
-        remill::LoadNextProgramCounterRef(&target_func->getEntryBlock());
-    bldr.CreateStore(
-        bldr.CreateLoad(llvm::IntegerType::get(target_func->getContext(), 32),
-                        next_pc_ref),
-        pc_ref);
-
-    bldr.CreateRet(bldr.CreateLoad(this->lifter->GetMemoryType(), mem_ptr_ref));
-
-    return std::make_pair(target_func, insn.function);
-  }
-
-  const remill::Arch::ArchPtr &GetArch() const {
-    return this->arch;
-  }
-};
-
-static constexpr auto kFlagIntrinsicPrefix = "__remill_flag_computation";
-static constexpr auto kCompareFlagIntrinsicPrefix = "__remill_compare";
-
-/// NOTE(Ian): This stub is variadic to handle flag computations which accept arbitrary operand width types. since this function
-/// stubs out to an identity function at runtime this is fine.
-bool flag_computation_stub(bool res, ...) {
-  return res;
-}
-
-bool compare_instrinsic_stub(bool res) {
-  return res;
-}
 
 class DiffModule {
  private:
@@ -202,8 +116,10 @@ class DifferentialModuleBuilder {
     auto tmp_arch = remill::Arch::Build(context.get(), os_name_1, arch_name_1);
     auto semantics_module = remill::LoadArchSemantics(tmp_arch.get());
     tmp_arch->PrepareModule(semantics_module);
-    auto l1 = LiftingTester(semantics_module.get(), os_name_1, arch_name_1);
-    auto l2 = LiftingTester(semantics_module.get(), os_name_2, arch_name_2);
+    auto l1 = test_runner::LiftingTester(semantics_module.get(), os_name_1,
+                                         arch_name_1);
+    auto l2 = test_runner::LiftingTester(semantics_module.get(), os_name_2,
+                                         arch_name_2);
     return DifferentialModuleBuilder(std::move(context),
                                      std::move(semantics_module), std::move(l1),
                                      std::move(l2));
@@ -213,13 +129,14 @@ class DifferentialModuleBuilder {
   std::unique_ptr<llvm::LLVMContext> context;
   std::unique_ptr<llvm::Module> semantics_module;
 
-  LiftingTester l1;
-  LiftingTester l2;
+  test_runner::LiftingTester l1;
+  test_runner::LiftingTester l2;
 
   DifferentialModuleBuilder(std::unique_ptr<llvm::LLVMContext> context_,
                             std::unique_ptr<llvm::Module> semantics_module_,
 
-                            LiftingTester l1_, LiftingTester l2_)
+                            test_runner::LiftingTester l1_,
+                            test_runner::LiftingTester l2_)
       : context(std::move(context_)),
         semantics_module(std::move(semantics_module_)),
         l1(std::move(l1_)),
@@ -331,15 +248,6 @@ using random_bytes_engine =
     std::independent_bits_engine<std::default_random_engine, CHAR_BIT, uint8_t>;
 
 
-void *MissingFunctionStub(const std::string &name) {
-  if (auto res = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(name)) {
-    return res;
-  }
-  LOG(FATAL) << "Missing function: " << name;
-  return nullptr;
-}
-
-
 std::string PrintState(X86State *state) {
   return "";
 }
@@ -350,145 +258,6 @@ struct DiffTestResult {
   std::string struct_dump2;
   bool are_equal;
 };
-
-
-class MemoryHandler {
- private:
-  std::unordered_map<uint64_t, uint8_t> uninitialized_reads;
-  std::unordered_map<uint64_t, uint8_t> state;
-
-  random_bytes_engine rbe;
-  llvm::support::endianness endian;
-
- public:
-  MemoryHandler(llvm::support::endianness endian_) : endian(endian_) {}
-
-  MemoryHandler(llvm::support::endianness endian_,
-                std::unordered_map<uint64_t, uint8_t> initial_state)
-      : state(std::move(initial_state)),
-        endian(endian_) {}
-
-  uint8_t read_byte(uint64_t addr) {
-    if (state.find(addr) != state.end()) {
-      return state.find(addr)->second;
-    }
-
-    auto genned = rbe();
-    uninitialized_reads.insert({addr, genned});
-    state.insert({addr, genned});
-    return genned;
-  }
-
-  std::vector<uint8_t> readSize(uint64_t addr, size_t num) {
-    std::vector<uint8_t> bytes;
-    for (size_t i = 0; i < num; i++) {
-      bytes.push_back(this->read_byte(addr + i));
-    }
-    return bytes;
-  }
-
-  const std::unordered_map<uint64_t, uint8_t> &GetMemory() const {
-    return this->state;
-  }
-
-  std::string DumpState() const {
-
-    llvm::json::Object mapping;
-    for (const auto &kv : this->state) {
-      std::stringstream ss;
-      ss << kv.first;
-      mapping[ss.str()] = kv.second;
-    }
-
-    std::string res;
-    llvm::json::Value v(std::move(mapping));
-    llvm::raw_string_ostream ss(res);
-    ss << v;
-
-    return ss.str();
-  }
-
-  template <class T>
-  T ReadMemory(uint64_t addr) {
-    auto buff = this->readSize(addr, sizeof(T));
-    return llvm::support::endian::read<T>(buff.data(), this->endian);
-  }
-
-
-  template <class T>
-  void WriteMemory(uint64_t addr, T value) {
-    std::vector<uint8_t> buff(sizeof(T));
-    llvm::support::endian::write<T>(buff.data(), value, this->endian);
-    for (size_t i = 0; i < sizeof(T); i++) {
-      this->state[addr + i] = buff[i];
-    }
-  }
-
-  std::unordered_map<uint64_t, uint8_t> GetUninitializedReads() {
-    return this->uninitialized_reads;
-  }
-};
-
-extern "C" {
-uint8_t ___remill_undefined_8(void) {
-  return 0;
-}
-
-uint8_t ___remill_read_memory_8(MemoryHandler *memory, uint64_t addr) {
-  LOG(INFO) << "Reading " << std::hex << addr;
-  auto res = memory->ReadMemory<uint8_t>(addr);
-  LOG(INFO) << "Read memory " << res;
-  return res;
-}
-
-MemoryHandler *___remill_write_memory_8(MemoryHandler *memory, uint64_t addr,
-                                        uint8_t value) {
-  LOG(INFO) << "Writing " << std::hex << addr
-            << " value: " << (unsigned int) value;
-  memory->WriteMemory<uint8_t>(addr, value);
-  return memory;
-}
-
-uint16_t ___remill_read_memory_16(MemoryHandler *memory, uint64_t addr) {
-  LOG(INFO) << "Reading " << std::hex << addr;
-  auto res = memory->ReadMemory<uint16_t>(addr);
-  LOG(INFO) << "Read memory " << res;
-  return res;
-}
-
-MemoryHandler *___remill_write_memory_16(MemoryHandler *memory, uint64_t addr,
-                                         uint16_t value) {
-  LOG(INFO) << "Writing " << std::hex << addr << " value: " << value;
-  memory->WriteMemory<uint16_t>(addr, value);
-  return memory;
-}
-
-uint32_t ___remill_read_memory_32(MemoryHandler *memory, uint64_t addr) {
-  LOG(INFO) << "Reading " << std::hex << addr;
-  auto res = memory->ReadMemory<uint32_t>(addr);
-  LOG(INFO) << "Read memory " << std::hex << res;
-  return res;
-}
-
-MemoryHandler *___remill_write_memory_32(MemoryHandler *memory, uint64_t addr,
-                                         uint32_t value) {
-  LOG(INFO) << "Writing " << std::hex << addr << " value: " << value;
-  memory->WriteMemory<uint32_t>(addr, value);
-  return memory;
-}
-
-uint64_t ___remill_read_memory_64(MemoryHandler *memory, uint64_t addr) {
-  LOG(INFO) << "Reading " << std::hex << addr;
-  return memory->ReadMemory<uint64_t>(addr);
-}
-
-MemoryHandler *___remill_write_memory_64(MemoryHandler *memory, uint64_t addr,
-                                         uint64_t value) {
-  LOG(INFO) << "Writing " << std::hex << addr << " value: " << value;
-  memory->WriteMemory<uint64_t>(addr, value);
-  return memory;
-}
-}
 
 
 class ComparisonRunner {
@@ -505,80 +274,6 @@ class ComparisonRunner {
 
  public:
   ComparisonRunner(llvm::support::endianness endian_) : endian(endian_) {}
-
- private:
-  void ExecuteLiftedFunction(llvm::Function *func, size_t insn_length,
-                             X86State *state, MemoryHandler *handler) {
-    std::string load_error = "";
-    llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr, &load_error);
-    if (!load_error.empty()) {
-      LOG(FATAL) << "Failed to load: " << load_error;
-    }
-
-    auto tgt_mod = llvm::CloneModule(*func->getParent());
-    tgt_mod->setTargetTriple("");
-    tgt_mod->setDataLayout(llvm::DataLayout(""));
-    llvm::InitializeNativeTarget();
-    llvm::InitializeNativeTargetAsmParser();
-    llvm::InitializeNativeTargetAsmPrinter();
-    llvm::InitializeAllTargetMCs();
-
-    auto res = remill::VerifyModuleMsg(tgt_mod.get());
-    if (res.has_value()) {
-
-      LOG(FATAL) << *res;
-    }
-
-    llvm::EngineBuilder builder(std::move(tgt_mod));
-
-
-    std::string estr;
-    auto eptr = builder.setEngineKind(llvm::EngineKind::JIT)
-                    .setErrorStr(&estr)
-                    .create();
-
-    if (eptr == nullptr) {
-      LOG(FATAL) << estr;
-    }
-
-    std::unique_ptr<llvm::ExecutionEngine> engine(eptr);
-
-
-    auto target = engine->FindFunctionNamed(func->getName());
-    this->StubOutFlagComputationInstrinsics(target->getParent(), *engine);
-
-    engine->InstallLazyFunctionCreator(&MissingFunctionStub);
-    engine->DisableSymbolSearching(false);
-    // expect traditional remill lifted insn
-    assert(func->arg_size() == 3);
-
-    auto returned =
-        (void *(*) (X86State *, uint32_t, void *) ) engine->getFunctionAddress(
-            target->getName().str());
-
-    assert(returned != nullptr);
-    auto orig_pc = state->gpr.rip.dword;
-    // run until we terminate and exit pc
-    while (state->gpr.rip.dword == orig_pc) {
-      returned(state, state->gpr.rip.dword, handler);
-    }
-  }
-
-  void StubOutFlagComputationInstrinsics(llvm::Module *mod,
-                                         llvm::ExecutionEngine &exec_engine) {
-    for (auto &func : mod->getFunctionList()) {
-      if (func.isDeclaration() &&
-          func.getName().startswith(kFlagIntrinsicPrefix)) {
-        exec_engine.addGlobalMapping(&func, (void *) &flag_computation_stub);
-      }
-
-      if (func.isDeclaration() &&
-          func.getName().startswith(kCompareFlagIntrinsicPrefix)) {
-        exec_engine.addGlobalMapping(&func, (void *) &compare_instrinsic_stub);
-      }
-    }
-  }
-
 
  private:
   template <class T>
@@ -660,11 +355,14 @@ class ComparisonRunner {
 
     assert(std::memcmp(func1_state, func2_state, sizeof(X86State)) == 0);
 
-    auto mem_handler = std::make_unique<MemoryHandler>(this->endian);
-    ExecuteLiftedFunction(f1, insn_length, func1_state, mem_handler.get());
-    auto second_handler = std::make_unique<MemoryHandler>(
+    auto mem_handler =
+        std::make_unique<test_runner::MemoryHandler>(this->endian);
+    test_runner::ExecuteLiftedFunction(f1, insn_length, func1_state,
+                                       mem_handler.get());
+    auto second_handler = std::make_unique<test_runner::MemoryHandler>(
         this->endian, mem_handler->GetUninitializedReads());
-    ExecuteLiftedFunction(f2, insn_length, func2_state, second_handler.get());
+    test_runner::ExecuteLiftedFunction(f2, insn_length, func2_state,
+                                       second_handler.get());
 
 
     auto memory_state_eq =
