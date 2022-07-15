@@ -64,9 +64,11 @@ void StubOutFlagComputationInstrinsics(llvm::Module *mod,
 
 void *MissingFunctionStub(const std::string &name);
 
-template <class T>
-void ExecuteLiftedFunction(llvm::Function *func, size_t insn_length, T *state,
-                           test_runner::MemoryHandler *handler) {
+template <class T, typename P>
+void ExecuteLiftedFunction(
+    llvm::Function *func, size_t insn_length, T *state,
+    test_runner::MemoryHandler *handler,
+    const std::function<uint64_t(T *)> program_counter_fetch) {
   std::string load_error = "";
   llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr, &load_error);
   if (!load_error.empty()) {
@@ -114,12 +116,22 @@ void ExecuteLiftedFunction(llvm::Function *func, size_t insn_length, T *state,
           target->getName().str());
 
   assert(returned != nullptr);
-  auto orig_pc = state->gpr.rip.dword;
+  auto orig_pc = program_counter_fetch(state);
   // run until we terminate and exit pc
-  while (state->gpr.rip.dword == orig_pc) {
-    returned(state, state->gpr.rip.dword, handler);
+  while (program_counter_fetch(state) == orig_pc) {
+    returned(state, program_counter_fetch(state), handler);
   }
 }
+
+template <typename T>
+void RandomizeState(T *state, random_bytes_engine &rbe) {
+  std::vector<uint8_t> data(sizeof(T));
+  std::generate(begin(data), end(data), std::ref(rbe));
+
+  std::memcpy(state, data.data(), sizeof(T));
+}
+
+uint8_t random_boolean_flag(random_bytes_engine &rbe);
 
 
 enum TypeId { MEMORY = 0, STATE = 1 };
@@ -143,7 +155,7 @@ class LiftingTester {
   std::unordered_map<TypeId, llvm::Type *> GetTypeMapping();
 
 
-  std::optional<std::pair<llvm::Function *, std::string>>
+  std::optional<std::pair<llvm::Function *, remill::Instruction>>
   LiftInstructionFunction(std::string_view fname, std::string_view bytes,
                           uint64_t address);
 

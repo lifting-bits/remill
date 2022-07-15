@@ -27,6 +27,11 @@
 
 namespace test_runner {
 
+uint8_t random_boolean_flag(random_bytes_engine &rbe) {
+  std::uniform_int_distribution<> gen(0, 1);
+  return gen(rbe);
+}  // namespace test_runner
+
 void *MissingFunctionStub(const std::string &name) {
   if (auto res = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(name)) {
     return res;
@@ -172,9 +177,10 @@ LiftingTester::LiftingTester(std::shared_ptr<llvm::Module> semantics_module_,
     : semantics_module(std::move(semantics_module_)),
       arch(remill::Arch::Build(&this->semantics_module->getContext(), os_name,
                                arch_name)),
-      table(std::make_unique<remill::IntrinsicTable>(this->semantics_module)),
+      table(std::make_unique<remill::IntrinsicTable>(
+          this->semantics_module.get())),
       lifter(this->arch->DefaultLifter(*this->table.get())) {
-  this->arch->InitFromSemanticsModule(semantics_module_.get());
+  this->arch->InitFromSemanticsModule(this->semantics_module.get());
 }
 
 LiftingTester::LiftingTester(llvm::LLVMContext &context, remill::OSName os_name,
@@ -194,7 +200,7 @@ std::unordered_map<TypeId, llvm::Type *> LiftingTester::GetTypeMapping() {
 }
 
 
-std::optional<std::pair<llvm::Function *, std::string>>
+std::optional<std::pair<llvm::Function *, remill::Instruction>>
 LiftingTester::LiftInstructionFunction(std::string_view fname,
                                        std::string_view bytes,
                                        uint64_t address) {
@@ -231,7 +237,7 @@ LiftingTester::LiftInstructionFunction(std::string_view fname,
 
   bldr.CreateRet(bldr.CreateLoad(this->lifter->GetMemoryType(), mem_ptr_ref));
 
-  return std::make_pair(target_func, insn.function);
+  return std::make_pair(target_func, insn);
 }
 
 const remill::Arch::ArchPtr &LiftingTester::GetArch() const {

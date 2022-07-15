@@ -213,8 +213,8 @@ class DifferentialModuleBuilder {
         module.get(), f2, cloned);
 
 
-    return DiffModule(std::move(module), new_f1, new_f2, f1_and_name.second,
-                      f2_and_name.second);
+    return DiffModule(std::move(module), new_f1, new_f2,
+                      f1_and_name.second.function, f2_and_name.second.function);
   }
 };
 
@@ -266,12 +266,6 @@ class ComparisonRunner {
   random_bytes_engine rbe;
   llvm::support::endianness endian;
 
-  void RandomizeState(X86State *state) {
-    std::vector<uint8_t> data(sizeof(X86State));
-    std::generate(begin(data), end(data), std::ref(rbe));
-
-    std::memcpy(state, data.data(), sizeof(X86State));
-  }
 
  public:
   ComparisonRunner(llvm::support::endianness endian_) : endian(endian_) {}
@@ -317,12 +311,6 @@ class ComparisonRunner {
     return ss.str();
   }
 
- private:
-  uint8_t random_boolean_flag() {
-    std::uniform_int_distribution<> gen(0, 1);
-    return gen(this->rbe);
-  }
-
  public:
   DiffTestResult
   SingleCmpRun(size_t insn_length, llvm::Function *f1, llvm::Function *f2,
@@ -330,18 +318,18 @@ class ComparisonRunner {
                std::string_view isel_name) {
 
     auto func1_state = (X86State *) alloca(sizeof(X86State));
-    RandomizeState(func1_state);
+    test_runner::RandomizeState(func1_state, this->rbe);
     func1_state->addr.ds_base.dword = 0;
     func1_state->addr.ss_base.dword = 0;
     func1_state->addr.es_base.dword = 0;
     func1_state->addr.cs_base.dword = 0;
-    func1_state->aflag.af = this->random_boolean_flag();
-    func1_state->aflag.cf = this->random_boolean_flag();
-    func1_state->aflag.df = this->random_boolean_flag();
-    func1_state->aflag.of = this->random_boolean_flag();
-    func1_state->aflag.pf = this->random_boolean_flag();
-    func1_state->aflag.sf = this->random_boolean_flag();
-    func1_state->aflag.zf = this->random_boolean_flag();
+    func1_state->aflag.af = test_runner::random_boolean_flag(this->rbe);
+    func1_state->aflag.cf = test_runner::random_boolean_flag(this->rbe);
+    func1_state->aflag.df = test_runner::random_boolean_flag(this->rbe);
+    func1_state->aflag.of = test_runner::random_boolean_flag(this->rbe);
+    func1_state->aflag.pf = test_runner::random_boolean_flag(this->rbe);
+    func1_state->aflag.sf = test_runner::random_boolean_flag(this->rbe);
+    func1_state->aflag.zf = test_runner::random_boolean_flag(this->rbe);
 
     if (isel_name.rfind("REP_") != std::string::npos) {
       LOG(INFO) << "setting ecx to 1";
@@ -358,12 +346,15 @@ class ComparisonRunner {
 
     auto mem_handler =
         std::make_unique<test_runner::MemoryHandler>(this->endian);
-    test_runner::ExecuteLiftedFunction(f1, insn_length, func1_state,
-                                       mem_handler.get());
+    std::function<uint64_t(X86State * st)> pc_fetch = [](X86State *st) {
+      return st->gpr.rip.qword;
+    };
+    test_runner::ExecuteLiftedFunction<X86State, uint64_t>(
+        f1, insn_length, func1_state, mem_handler.get(), pc_fetch);
     auto second_handler = std::make_unique<test_runner::MemoryHandler>(
         this->endian, mem_handler->GetUninitializedReads());
-    test_runner::ExecuteLiftedFunction(f2, insn_length, func2_state,
-                                       second_handler.get());
+    test_runner::ExecuteLiftedFunction<X86State, uint64_t>(
+        f2, insn_length, func2_state, second_handler.get(), pc_fetch);
 
 
     auto memory_state_eq =
