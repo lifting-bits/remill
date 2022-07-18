@@ -182,7 +182,6 @@ TEST(ThumbRandomizedLifts, PopPC) {
 
   llvm::LLVMContext curr_context;
   std::string insn_data("\x00\xbd", 2);
-  //std::string insn_data("\x01\x10\x81\xe0");
   TestOutputSpec spec(insn_data,
                       remill::Instruction::Category::kCategoryFunctionReturn,
                       {{"r15", 12}, {"sp", 10}}, {{"r15", 16}});
@@ -199,7 +198,6 @@ TEST(ThumbRandomizedLifts, RelPcTest) {
 
   llvm::LLVMContext curr_context;
   std::string insn_data("\x03\x49", 2);
-  //std::string insn_data("\x01\x10\x81\xe0");
   TestOutputSpec spec(insn_data, remill::Instruction::Category::kCategoryNormal,
                       {{"r15", 11}}, {{"r1", 0xdeadc0de}});
   spec.AddPrecWrite<uint32_t>(23, 0xdeadc0de);

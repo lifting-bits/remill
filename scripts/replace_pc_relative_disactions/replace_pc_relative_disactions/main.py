@@ -11,7 +11,7 @@ CONNECTIVES = CONNECTIVES_WITHOUT_SEMICOLON+r";"
 
 OPERATORS = r"*\-+\>\<\(\)$"
 
-PCODE_SPECIFIC_OPERATORS = r"\[\]:="
+PCODE_SPECIFIC_OPERATORS = r"\[\]:=\#,'"
 
 GENERIC_CHARACTER_GROUP_WITH_EQUALS = r"["+CONNECTIVES + OPERATORS+r"\w\s\d=]"
 
@@ -145,7 +145,7 @@ class Environment:
     def handle_inst_next_statement(self, stat: str):
         if "=" in stat:
             name, exp = stat.split("=", 1)
-
+            name = name.strip()
             matching_replacers = [
                 exp_repr for exp_repr in self.replacements if exp_repr.applies_to_expression(exp)]
 
@@ -227,12 +227,12 @@ def main():
 
                 first_constructor_offset = next(
                     construct_pat.finditer(target)).start()
-
+                print("first constructor at: " + str(first_constructor_offset))
                 target_insert_match = max(filter(lambda k: k.end() < first_constructor_offset,
                                                  re.finditer("@endif", target)), key=lambda elem: elem.end(), default=None)
 
                 target_insert_loc = target_insert_match.end(
-                ) if target_insert_match else (first_constructor_offset-1)
+                ) if target_insert_match else (first_constructor_offset)
 
                 total_output += target[endian_def.end()
                                        if endian_def is not None else 0: target_insert_loc]
@@ -243,7 +243,6 @@ def main():
                 cont = Context()
                 for constructor in construct_pat.finditer(target):
                     total_output += constructor.string[last_offset:constructor.start()]
-
                     last_offset = constructor.end()
                     env = Environment(cont,
                                       args.inst_next_size_hint, [InstStartReplacer(), InstNextReplacer()])
