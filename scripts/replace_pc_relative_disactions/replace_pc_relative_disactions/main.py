@@ -103,7 +103,7 @@ class Environment:
         self.cont = cont
         self.size_hint = size_hint
         self.replacements = replacements
-        self.op_replacements = {"$and": "&", "$or": "|"}
+        self.op_replacements = {"$and": "&", "$or": "|", "$xor": "^"}
         self.handle_inst_next_statement("inst_next=inst_next")
         self.handle_inst_next_statement("inst_start=inst_start")
 
