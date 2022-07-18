@@ -188,6 +188,9 @@ LiftingTester::LiftingTester(llvm::LLVMContext &context, remill::OSName os_name,
     : arch(remill::Arch::Build(&context, os_name, arch_name)) {
   this->semantics_module =
       std::shared_ptr(remill::LoadArchSemantics(this->arch.get()));
+  this->table =
+      std::make_unique<remill::IntrinsicTable>(this->semantics_module.get());
+  this->lifter = this->arch->DefaultLifter(*this->table.get());
 }
 
 std::unordered_map<TypeId, llvm::Type *> LiftingTester::GetTypeMapping() {
@@ -258,6 +261,17 @@ bool compare_instrinsic_stub(bool res) {
   return res;
 }
 
+
+llvm::Function *
+CopyFunctionIntoNewModule(llvm::Module *target, const llvm::Function *old_func,
+                          const std::unique_ptr<llvm::Module> &old_module) {
+  auto new_f = llvm::Function::Create(old_func->getFunctionType(),
+                                      old_func->getLinkage(),
+                                      old_func->getName(), target);
+  remill::CloneFunctionInto(old_module->getFunction(old_func->getName()),
+                            new_f);
+  return new_f;
+}
 
 void StubOutFlagComputationInstrinsics(llvm::Module *mod,
                                        llvm::ExecutionEngine &exec_engine) {

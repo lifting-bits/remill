@@ -143,18 +143,6 @@ class DifferentialModuleBuilder {
         l1(std::move(l1_)),
         l2(std::move(l2_)) {}
 
-  static llvm::Function *
-  CopyFunctionIntoNewModule(llvm::Module *target,
-                            const llvm::Function *old_func,
-                            const std::unique_ptr<llvm::Module> &old_module) {
-    auto new_f = llvm::Function::Create(old_func->getFunctionType(),
-                                        old_func->getLinkage(),
-                                        old_func->getName(), target);
-    remill::CloneFunctionInto(old_module->getFunction(old_func->getName()),
-                              new_f);
-    return new_f;
-  }
-
  public:
   std::optional<DiffModule> build(std::string_view fname_f1,
                                   std::string_view fname_f2,
@@ -207,10 +195,10 @@ class DifferentialModuleBuilder {
 
     remill::OptimizeBareModule(cloned);
 
-    auto new_f1 = DifferentialModuleBuilder::CopyFunctionIntoNewModule(
-        module.get(), f1, cloned);
-    auto new_f2 = DifferentialModuleBuilder::CopyFunctionIntoNewModule(
-        module.get(), f2, cloned);
+    auto new_f1 =
+        test_runner::CopyFunctionIntoNewModule(module.get(), f1, cloned);
+    auto new_f2 =
+        test_runner::CopyFunctionIntoNewModule(module.get(), f2, cloned);
 
 
     return DiffModule(std::move(module), new_f1, new_f2,

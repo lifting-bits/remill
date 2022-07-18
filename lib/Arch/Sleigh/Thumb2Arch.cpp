@@ -33,7 +33,7 @@ class SleighThumb2Arch final : public remill::sleigh::SleighArch {
   SleighThumb2Arch(llvm::LLVMContext *context_, OSName os_name_,
                    ArchName arch_name_)
       : SleighArch(context_, os_name_, arch_name_, "ARM7_le.sla",
-                   "ARMt.pspec") {}
+                   "ARMtTHUMB.pspec") {}
 
 
   uint64_t MaxInstructionSize(bool permit_fuse_idioms) const final {
@@ -166,7 +166,7 @@ class SleighThumb2Arch final : public remill::sleigh::SleighArch {
 
   void InitializeSleighContext(
       remill::sleigh::SingleInstructionSleighContext &ctxt) const final {
-    ctxt.GetEngine().setContextDefault("TMode", 1);
+    ctxt.GetContext().setVariableDefault("TMode", 1);
   }
 };
 

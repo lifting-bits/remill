@@ -87,7 +87,6 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
                                             llvm::BasicBlock *block,
                                             llvm::Value *state_ptr,
                                             bool is_delayed) {
-
   llvm::Function *const func = block->getParent();
   llvm::Module *const module = func->getParent();
   llvm::Function *isel_func = nullptr;
@@ -119,7 +118,8 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
   llvm::IRBuilder<> ir(block);
   const auto [mem_ptr_ref, mem_ptr_ref_type] =
       LoadRegAddress(block, state_ptr, kMemoryVariableName);
-  const auto [pc_ref, pc_ref_type] = LoadRegAddress(block, state_ptr, kPCVariableName);
+  const auto [pc_ref, pc_ref_type] =
+      LoadRegAddress(block, state_ptr, kPCVariableName);
   const auto [next_pc_ref, next_pc_ref_type] =
       LoadRegAddress(block, state_ptr, kNextPCVariableName);
   const auto next_pc = ir.CreateLoad(impl->word_type, next_pc_ref);
@@ -296,7 +296,7 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
 
   // Try to find it as a global variable.
   if (auto gvar = module->getGlobalVariable(reg_name)) {
-      return {gvar, gvar->getValueType()};
+    return {gvar, gvar->getValueType()};
   }
 
   // Invent a fake one and keep going.
@@ -304,7 +304,7 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
   unk_var << "__remill_unknown_register_" << reg_name;
   auto unk_var_name = unk_var.str();
   if (auto var = module->getGlobalVariable(unk_var_name)) {
-      return {var, var->getValueType()};
+    return {var, var->getValueType()};
   }
 
   // TODO(pag): Eventually refactor into a higher-level issue, perhaps a
@@ -563,7 +563,7 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
   auto arg_type = IntendedArgumentType(arg);
 
   if (llvm::isa<llvm::PointerType>(arg_type)) {
-      auto [val, val_type] = LoadRegAddress(block, state_ptr, arch_reg.name);
+    auto [val, val_type] = LoadRegAddress(block, state_ptr, arch_reg.name);
     return ConvertToIntendedType(inst, op, block, val, real_arg_type);
 
   } else {

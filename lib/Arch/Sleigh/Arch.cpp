@@ -393,7 +393,8 @@ void CustomLoadImage::SetInstruction(uint64_t new_offset,
 void CustomLoadImage::loadFill(unsigned char *ptr, int size,
                                const Address &addr) {
   uint64_t start = addr.getOffset();
-  LOG(INFO) << "Fill at: " << start;
+  LOG(INFO) << "Fill at: " << start << " of size: " << size;
+
   for (int i = 0; i < size; ++i) {
     uint64_t offset = start + i;
     if (offset >= this->current_offset) {
@@ -457,6 +458,7 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
 
   auto instr_len =
       this->sleigh_ctx.oneInstruction(address, pcode_handler, instr_bytes);
+
   if (instr_len.has_value() && instr_len <= instr_bytes.size()) {
     // communicate the size back to the caller
     inst.bytes = instr_bytes.substr(0, *instr_len);
@@ -490,6 +492,10 @@ Sleigh &SingleInstructionSleighContext::GetEngine() {
   return this->engine;
 }
 
+ContextDatabase &SingleInstructionSleighContext::GetContext() {
+  return this->ctx;
+}
+
 void SingleInstructionSleighContext::resetContext() {
   this->engine.reset(&this->image, &this->ctx);
   this->restoreEngineFromStorage();
@@ -499,7 +505,6 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
     uint64_t address, const std::function<int32_t(Address addr)> &decode_func,
     std::string_view instr_bytes) {
   this->image.SetInstruction(address, instr_bytes);
-
   try {
     const int32_t instr_len = decode_func(this->GetAddressFromOffset(address));
 
@@ -507,6 +512,8 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
         static_cast<size_t>(instr_len) <= instr_bytes.length()) {
       return instr_len;
     } else {
+      LOG(ERROR) << "Instr too long " << instr_len << " vs "
+                 << instr_bytes.length();
       return std::nullopt;
     }
   } catch (BadDataError e) {

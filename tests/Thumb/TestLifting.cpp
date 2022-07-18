@@ -110,8 +110,19 @@ class TestSpecRunner {
 
     auto maybe_func =
         lifter.LiftInstructionFunction(ss.str(), test.target_bytes, test.addr);
-    EXPECT_TRUE(maybe_func.has_value());
+
+
+    CHECK(maybe_func.has_value());
     auto lifted_func = maybe_func->first;
+
+    auto new_mod = llvm::CloneModule(*lifted_func->getParent());
+    remill::OptimizeBareModule(new_mod.get());
+
+    auto justFuncMod =
+        std::make_unique<llvm::Module>("", new_mod->getContext());
+
+    auto new_func = test_runner::CopyFunctionIntoNewModule(
+        justFuncMod.get(), lifted_func, new_mod);
     AArch32State *st = (AArch32State *) alloca(sizeof(AArch32State));
 
 
@@ -125,10 +136,9 @@ class TestSpecRunner {
     st->sr.n = test_runner::random_boolean_flag(this->rbe);
 
     test.SetupTestPreconditions(*st);
-
     auto mem_hand = std::make_unique<test_runner::MemoryHandler>(this->endian);
     test_runner::ExecuteLiftedFunction<AArch32State, uint32_t>(
-        lifted_func, test.target_bytes.length(), st, mem_hand.get(),
+        new_func, test.target_bytes.length(), st, mem_hand.get(),
         [](AArch32State *st) { return st->gpr.r15.dword; });
     test.CheckResultingState(*st);
   }
@@ -146,12 +156,13 @@ int main(int argc, char **argv) {
 TEST(ThumbRandomizedLifts, PopPC) {
 
   llvm::LLVMContext curr_context;
-  std::string insn_data = "\x00\xbd";
-
+  std::string insn_data("\x00\xbd", 2);
+  //std::string insn_data("\x01\x10\x81\xe0");
   TestOutputSpec spec(insn_data,
                       remill::Instruction::Category::kCategoryFunctionReturn,
                       {{"pc", 12}, {"sp", 10}}, {});
   llvm::LLVMContext context;
+  context.enableOpaquePointers();
   TestSpecRunner runner(context);
   runner.RunTestSpec(spec);
 }

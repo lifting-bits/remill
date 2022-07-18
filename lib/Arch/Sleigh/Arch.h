@@ -175,6 +175,8 @@ class SingleInstructionSleighContext {
 
   ::Sleigh &GetEngine(void);
 
+  ContextDatabase &GetContext(void);
+
   void resetContext();
 
   SingleInstructionSleighContext(std::string sla_name, std::string pspec_name);

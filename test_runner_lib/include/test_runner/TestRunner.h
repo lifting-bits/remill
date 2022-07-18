@@ -61,6 +61,9 @@ class MemoryHandler {
 
 void StubOutFlagComputationInstrinsics(llvm::Module *mod,
                                        llvm::ExecutionEngine &exec_engine);
+llvm::Function *
+CopyFunctionIntoNewModule(llvm::Module *target, const llvm::Function *old_func,
+                          const std::unique_ptr<llvm::Module> &old_module);
 
 void *MissingFunctionStub(const std::string &name);
 
