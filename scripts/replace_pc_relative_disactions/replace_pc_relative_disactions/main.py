@@ -217,7 +217,9 @@ def main():
 
                 # we know that an endian def has to be the first thing that occurs so go ahead and find that and sub in the preliminaries
                 endian_def = re.search(ENDIAN_DEF_REGEX, target)
-                total_output += target[0:endian_def.end()]
+
+                if endian_def is not None:
+                    total_output += target[0:endian_def.end()]
 
                 # can insert our defs here
                 total_output += "\n" + pc_def
@@ -227,12 +229,13 @@ def main():
                     construct_pat.finditer(target)).start()
 
                 target_insert_match = max(filter(lambda k: k.end() < first_constructor_offset,
-                                                 re.finditer("@endif", target)), key=lambda elem: elem.end())
+                                                 re.finditer("@endif", target)), key=lambda elem: elem.end(), default=None)
 
                 target_insert_loc = target_insert_match.end(
                 ) if target_insert_match else (first_constructor_offset-1)
 
-                total_output += endian_def.string[endian_def.end(): target_insert_loc]
+                total_output += target[endian_def.end()
+                                       if endian_def is not None else 0: target_insert_loc]
 
                 total_output += f"\n{REMILL_INSN_SIZE_NAME}: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {{ local insn_size_hinted:{args.inst_next_size_hint}=calculated_size; \n export insn_size_hinted; }}\n"
 
