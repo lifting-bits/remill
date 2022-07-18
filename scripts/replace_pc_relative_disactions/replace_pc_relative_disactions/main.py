@@ -103,11 +103,14 @@ class Environment:
         self.cont = cont
         self.size_hint = size_hint
         self.replacements = replacements
+        self.op_replacements = {"$and": "&", "$or": "|"}
         self.handle_inst_next_statement("inst_next=inst_next")
         self.handle_inst_next_statement("inst_start=inst_start")
 
     def prepare_statement(self, repl: ExpressionReplacer,  name: str, exp: str):
         replaced_exp = repl.generate_unfolded_exp(exp)
+        for k, v in self.op_replacements.items():
+            replaced_exp = replaced_exp.replace(k, v)
         if name not in self.names_to_calculating_expression:
             for k in repl.required_invisible_operands:
                 self.name_to_invisible_variables.setdefault(name, set()).add(k)

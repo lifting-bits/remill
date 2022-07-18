@@ -63,7 +63,7 @@
 -  # don't export as an address, may be PIC code, and would add spurious symbols.
 +   ; remill_insn_size [ reloc = ((inst_start+4) $and 0xfffffffc) + 4*immed8; ] { 
 +remill_please_dont_use_this_temp_name7d:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name7d,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) $and 0xfffffffc) + 4*immed8);
++claim_eq(remill_please_dont_use_this_temp_name7d,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) + 4*immed8);
 + # don't export as an address, may be PIC code, and would add spurious symbols.
    export *[const]:4 reloc;
 -}
@@ -80,7 +80,7 @@
 -}
 +   ; remill_insn_size [ reloc = ((inst_start+4) $and 0xfffffffc) + 4*immed8; ] { 
 +remill_please_dont_use_this_temp_name80:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name80,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) $and 0xfffffffc) + 4*immed8);
++claim_eq(remill_please_dont_use_this_temp_name80,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) + 4*immed8);
 + export *:8 reloc;
 +
 +  }
@@ -97,7 +97,7 @@
 -  # don't export as an address, may be PIC code, and would add spurious symbols.
 +   ; remill_insn_size [ reloc = ((inst_start+4) $and 0xfffffffc) + ((immed12_i<<11) | (immed12_imm3<<8) | (immed12_imm8)); ] { 
 +remill_please_dont_use_this_temp_name83:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name83,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) $and 0xfffffffc) + ((immed12_i<<11) | (immed12_imm3<<8) | (immed12_imm8)));
++claim_eq(remill_please_dont_use_this_temp_name83,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) + ((immed12_i<<11) | (immed12_imm3<<8) | (immed12_imm8)));
 + # don't export as an address, may be PIC code, and would add spurious symbols.
    export *[const]:4 reloc;
 -}
@@ -111,7 +111,7 @@
 -  # don't export as an address, may be PIC code, and would add spurious symbols.
 +   ; remill_insn_size [ reloc = ((inst_start+4) $and 0xfffffffc) - ((immed12_i<<11) | (immed12_imm3<<8) | (immed12_imm8)); ] { 
 +remill_please_dont_use_this_temp_name86:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name86,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) $and 0xfffffffc) - ((immed12_i<<11) | (immed12_imm3<<8) | (immed12_imm8)));
++claim_eq(remill_please_dont_use_this_temp_name86,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) - ((immed12_i<<11) | (immed12_imm3<<8) | (immed12_imm8)));
 + # don't export as an address, may be PIC code, and would add spurious symbols.
    export *[const]:4 reloc;
 -}
@@ -126,7 +126,7 @@
 -}
 +   ; remill_insn_size [ reloc = ((inst_start+4) $and 0xfffffffc) + offset12; ] { 
 +remill_please_dont_use_this_temp_name89:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name89,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) $and 0xfffffffc) + offset12);
++claim_eq(remill_please_dont_use_this_temp_name89,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) + offset12);
 + export *:4 reloc;
 +
 +  }
@@ -138,7 +138,7 @@
 -}
 +   ; remill_insn_size [ reloc = ((inst_start+4) $and 0xfffffffc) - offset12; ] { 
 +remill_please_dont_use_this_temp_name8c:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name8c,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) $and 0xfffffffc) - offset12);
++claim_eq(remill_please_dont_use_this_temp_name8c,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) - offset12);
 + export *:4 reloc;
 +
 +  }
@@ -197,7 +197,7 @@
 -}
 +   ; remill_insn_size [ reloc = inst_start + 4 + ((-1 << 20) $or (part2J2 << 19) $or (part2J1 << 18) $or (part2imm6 << 12) $or (part2imm11 << 1)); ] { 
 +remill_please_dont_use_this_temp_name9c:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name9c,  ($(INST_NEXT_PTR)-remill_insn_size) + 4 + ((-1 << 20) $or (part2J2 << 19) $or (part2J1 << 18) $or (part2imm6 << 12) $or (part2imm11 << 1)));
++claim_eq(remill_please_dont_use_this_temp_name9c,  ($(INST_NEXT_PTR)-remill_insn_size) + 4 + ((-1 << 20) | (part2J2 << 19) | (part2J1 << 18) | (part2imm6 << 12) | (part2imm11 << 1)));
 + export *:4 reloc;
 +
 +  }
@@ -210,7 +210,7 @@
 -}
 +   ; remill_insn_size [ reloc = inst_start + 4 + ((part2J2 << 19) $or (part2J1 << 18) $or (part2imm6 << 12) $or (part2imm11 << 1)); ] { 
 +remill_please_dont_use_this_temp_name9f:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name9f,  ($(INST_NEXT_PTR)-remill_insn_size) + 4 + ((part2J2 << 19) $or (part2J1 << 18) $or (part2imm6 << 12) $or (part2imm11 << 1)));
++claim_eq(remill_please_dont_use_this_temp_name9f,  ($(INST_NEXT_PTR)-remill_insn_size) + 4 + ((part2J2 << 19) | (part2J1 << 18) | (part2imm6 << 12) | (part2imm11 << 1)));
 + export *:4 reloc;
 +
 +  }
@@ -225,7 +225,7 @@
 -}
 +   ; remill_insn_size [ reloc = inst_start + 4 + (((part2J1 $xor 1) << 23) $or ((part2J2 $xor 1) << 22) $or (offset10 << 12) $or (part2off << 1)); ] { 
 +remill_please_dont_use_this_temp_namea2:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_namea2,  ($(INST_NEXT_PTR)-remill_insn_size) + 4 + (((part2J1 $xor 1) << 23) $or ((part2J2 $xor 1) << 22) $or (offset10 << 12) $or (part2off << 1)));
++claim_eq(remill_please_dont_use_this_temp_namea2,  ($(INST_NEXT_PTR)-remill_insn_size) + 4 + (((part2J1 $xor 1) << 23) | ((part2J2 $xor 1) << 22) | (offset10 << 12) | (part2off << 1)));
 + export *:4 reloc;
 +
 +  }
@@ -238,7 +238,7 @@
 -}
 +   ; remill_insn_size [ reloc = inst_start + 4 + ((-1 << 24) $or (part2J1 << 23) $or (part2J2 << 22) $or (offset10 << 12) $or (part2off << 1)); ] { 
 +remill_please_dont_use_this_temp_namea5:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_namea5,  ($(INST_NEXT_PTR)-remill_insn_size) + 4 + ((-1 << 24) $or (part2J1 << 23) $or (part2J2 << 22) $or (offset10 << 12) $or (part2off << 1)));
++claim_eq(remill_please_dont_use_this_temp_namea5,  ($(INST_NEXT_PTR)-remill_insn_size) + 4 + ((-1 << 24) | (part2J1 << 23) | (part2J2 << 22) | (offset10 << 12) | (part2off << 1)));
 + export *:4 reloc;
 +
 +  }
@@ -253,7 +253,7 @@
 -}
 +   ; remill_insn_size [ reloc = ((inst_start + 4) $and 0xfffffffc) + (((part2J1 $xor 1) << 23) $or ((part2J2 $xor 1) << 22) $or (offset10 << 12) $or (part2off_10 << 2)); ] { 
 +remill_please_dont_use_this_temp_namea8:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_namea8,  ((($(INST_NEXT_PTR)-remill_insn_size) + 4) $and 0xfffffffc) + (((part2J1 $xor 1) << 23) $or ((part2J2 $xor 1) << 22) $or (offset10 << 12) $or (part2off_10 << 2)));
++claim_eq(remill_please_dont_use_this_temp_namea8,  ((($(INST_NEXT_PTR)-remill_insn_size) + 4) & 0xfffffffc) + (((part2J1 $xor 1) << 23) | ((part2J2 $xor 1) << 22) | (offset10 << 12) | (part2off_10 << 2)));
 + export *:4 reloc;
 +
 +  }
@@ -266,7 +266,7 @@
 -}
 +   ; remill_insn_size [ reloc = ((inst_start + 4) $and 0xfffffffc) + ((-1 << 24) $or (part2J1 << 23) $or (part2J2 << 22) $or (offset10 << 12) $or (part2off_10 << 2)); ] { 
 +remill_please_dont_use_this_temp_nameab:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_nameab,  ((($(INST_NEXT_PTR)-remill_insn_size) + 4) $and 0xfffffffc) + ((-1 << 24) $or (part2J1 << 23) $or (part2J2 << 22) $or (offset10 << 12) $or (part2off_10 << 2)));
++claim_eq(remill_please_dont_use_this_temp_nameab,  ((($(INST_NEXT_PTR)-remill_insn_size) + 4) & 0xfffffffc) + ((-1 << 24) | (part2J1 << 23) | (part2J2 << 22) | (offset10 << 12) | (part2off_10 << 2)));
 + export *:4 reloc;
 +
 +  }
@@ -299,7 +299,7 @@
 -}
 +   ; remill_insn_size [ reloc = ((inst_start+4) $and 0xfffffffc) + 4*immed8; ] { 
 +remill_please_dont_use_this_temp_name2c0:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name2c0,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) $and 0xfffffffc) + 4*immed8);
++claim_eq(remill_please_dont_use_this_temp_name2c0,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) + 4*immed8);
 + export *:4 reloc;
 +
 +  }
