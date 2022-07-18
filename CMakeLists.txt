@@ -122,7 +122,7 @@ target_link_libraries(thirdparty_gflags INTERFACE
 )
 
 set(sleigh_ENABLE_TESTS OFF)
-set(sleigh_ADDITIONAL_PATCHES "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/x86-ia.patch;")
+set(sleigh_ADDITIONAL_PATCHES "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/x86-ia.patch;${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/arm-thumb.patch")
 
 # GHIDRA SLEIGH
 FetchContent_Declare(sleigh
