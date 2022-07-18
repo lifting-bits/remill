@@ -29,7 +29,11 @@
 namespace {
 const static std::unordered_map<std::string,
                                 std::function<uint32_t &(AArch32State &)>>
-    reg_to_accessor = {};
+    reg_to_accessor = {
+        {"r15",
+         [](AArch32State &st) -> uint32_t & { return st.gpr.r15.dword; }},
+        {"sp", [](AArch32State &st) -> uint32_t & { return st.gpr.r13.dword; }},
+        {"r1", [](AArch32State &st) -> uint32_t & { return st.gpr.r1.dword; }}};
 }
 
 class TestOutputSpec {
@@ -41,7 +45,8 @@ class TestOutputSpec {
   remill::Instruction::Category expected_category;
   std::vector<std::pair<std::string, uint32_t>> register_preconditions;
   std::vector<std::pair<std::string, uint32_t>> register_postconditions;
-
+  std::vector<std::function<void(test_runner::MemoryHandler &)>>
+      initial_memory_conditions;
 
   void ApplyCondition(AArch32State &state, std::string reg,
                       uint32_t value) const {
@@ -60,6 +65,19 @@ class TestOutputSpec {
   }
 
  public:
+  template <typename T>
+  void AddPrecWrite(uint64_t addr, T value) {
+    this->initial_memory_conditions.push_back(
+        [addr, value](test_runner::MemoryHandler &mem_hand) {
+          mem_hand.WriteMemory(addr, value);
+        });
+  }
+
+  const std::vector<std::function<void(test_runner::MemoryHandler &)>> &
+  GetMemoryPrecs() const {
+    return this->initial_memory_conditions;
+  }
+
   TestOutputSpec(
       std::string target_bytes, remill::Instruction::Category expected_category,
       std::vector<std::pair<std::string, uint32_t>> register_preconditions,
@@ -137,9 +155,16 @@ class TestSpecRunner {
 
     test.SetupTestPreconditions(*st);
     auto mem_hand = std::make_unique<test_runner::MemoryHandler>(this->endian);
+
+    for (const auto &prec : test.GetMemoryPrecs()) {
+      prec(*mem_hand);
+    }
+
     test_runner::ExecuteLiftedFunction<AArch32State, uint32_t>(
         new_func, test.target_bytes.length(), st, mem_hand.get(),
         [](AArch32State *st) { return st->gpr.r15.dword; });
+
+    LOG(INFO) << "Pc after execute " << st->gpr.r15.dword;
     test.CheckResultingState(*st);
   }
 };
@@ -160,8 +185,10 @@ TEST(ThumbRandomizedLifts, PopPC) {
   //std::string insn_data("\x01\x10\x81\xe0");
   TestOutputSpec spec(insn_data,
                       remill::Instruction::Category::kCategoryFunctionReturn,
-                      {{"pc", 12}, {"sp", 10}}, {});
+                      {{"r15", 12}, {"sp", 10}}, {{"r15", 16}});
+  spec.AddPrecWrite<uint32_t>(10, 16);
   llvm::LLVMContext context;
+
   context.enableOpaquePointers();
   TestSpecRunner runner(context);
   runner.RunTestSpec(spec);
