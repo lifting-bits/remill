@@ -111,60 +111,60 @@ std::unordered_map<uint64_t, uint8_t> MemoryHandler::GetUninitializedReads() {
 
 
 extern "C" {
-uint8_t ___remill_undefined_8(void) {
+uint8_t __remill_undefined_8(void) {
   return 0;
 }
 
-uint8_t ___remill_read_memory_8(MemoryHandler *memory, uint64_t addr) {
+uint8_t __remill_read_memory_8(MemoryHandler *memory, uint64_t addr) {
   LOG(INFO) << "Reading " << std::hex << addr;
   auto res = memory->ReadMemory<uint8_t>(addr);
   LOG(INFO) << "Read memory " << res;
   return res;
 }
 
-MemoryHandler *___remill_write_memory_8(MemoryHandler *memory, uint64_t addr,
-                                        uint8_t value) {
+MemoryHandler *__remill_write_memory_8(MemoryHandler *memory, uint64_t addr,
+                                       uint8_t value) {
   LOG(INFO) << "Writing " << std::hex << addr
             << " value: " << (unsigned int) value;
   memory->WriteMemory<uint8_t>(addr, value);
   return memory;
 }
 
-uint16_t ___remill_read_memory_16(MemoryHandler *memory, uint64_t addr) {
+uint16_t __remill_read_memory_16(MemoryHandler *memory, uint64_t addr) {
   LOG(INFO) << "Reading " << std::hex << addr;
   auto res = memory->ReadMemory<uint16_t>(addr);
   LOG(INFO) << "Read memory " << res;
   return res;
 }
 
-MemoryHandler *___remill_write_memory_16(MemoryHandler *memory, uint64_t addr,
-                                         uint16_t value) {
+MemoryHandler *__remill_write_memory_16(MemoryHandler *memory, uint64_t addr,
+                                        uint16_t value) {
   LOG(INFO) << "Writing " << std::hex << addr << " value: " << value;
   memory->WriteMemory<uint16_t>(addr, value);
   return memory;
 }
 
-uint32_t ___remill_read_memory_32(MemoryHandler *memory, uint64_t addr) {
+uint32_t __remill_read_memory_32(MemoryHandler *memory, uint64_t addr) {
   LOG(INFO) << "Reading " << std::hex << addr;
   auto res = memory->ReadMemory<uint32_t>(addr);
   LOG(INFO) << "Read memory " << std::hex << res;
   return res;
 }
 
-MemoryHandler *___remill_write_memory_32(MemoryHandler *memory, uint64_t addr,
-                                         uint32_t value) {
+MemoryHandler *__remill_write_memory_32(MemoryHandler *memory, uint64_t addr,
+                                        uint32_t value) {
   LOG(INFO) << "Writing " << std::hex << addr << " value: " << value;
   memory->WriteMemory<uint32_t>(addr, value);
   return memory;
 }
 
-uint64_t ___remill_read_memory_64(MemoryHandler *memory, uint64_t addr) {
+uint64_t __remill_read_memory_64(MemoryHandler *memory, uint64_t addr) {
   LOG(INFO) << "Reading " << std::hex << addr;
   return memory->ReadMemory<uint64_t>(addr);
 }
 
-MemoryHandler *___remill_write_memory_64(MemoryHandler *memory, uint64_t addr,
-                                         uint64_t value) {
+MemoryHandler *__remill_write_memory_64(MemoryHandler *memory, uint64_t addr,
+                                        uint64_t value) {
   LOG(INFO) << "Writing " << std::hex << addr << " value: " << value;
   memory->WriteMemory<uint64_t>(addr, value);
   return memory;
