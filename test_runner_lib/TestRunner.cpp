@@ -36,6 +36,15 @@ void *MissingFunctionStub(const std::string &name) {
   if (auto res = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(name)) {
     return res;
   }
+
+#ifdef __APPLE__
+  if (name.at(0) == '_') {
+    if (auto res = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(
+            name.substr(1, name.length()))) {
+      return res;
+    }
+  }
+#endif
   LOG(FATAL) << "Missing function: " << name;
   return nullptr;
 }
