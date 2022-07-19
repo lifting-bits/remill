@@ -170,9 +170,9 @@ class TestSpecRunner {
 };
 
 int main(int argc, char **argv) {
+  testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
-  testing::InitGoogleTest(&argc, argv);
 
   return RUN_ALL_TESTS();
 }
@@ -200,7 +200,8 @@ TEST(ThumbRandomizedLifts, RelPcTest) {
   std::string insn_data("\x03\x49", 2);
   TestOutputSpec spec(insn_data, remill::Instruction::Category::kCategoryNormal,
                       {{"r15", 11}}, {{"r1", 0xdeadc0de}});
-  spec.AddPrecWrite<uint32_t>(23, 0xdeadc0de);
+  // The bit from 11+12 gets masked off
+  spec.AddPrecWrite<uint32_t>(24, 0xdeadc0de);
   llvm::LLVMContext context;
 
   context.enableOpaquePointers();
