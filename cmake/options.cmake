@@ -29,3 +29,4 @@ cmake_dependent_option(REMILL_ENABLE_TESTING "Build your tests" ON "can_enable_t
 cmake_dependent_option(REMILL_ENABLE_TESTING_X86 "Build your tests" ON "REMILL_ENABLE_TESTING;can_enable_testing_x86" OFF)
 cmake_dependent_option(REMILL_ENABLE_TESTING_AARCH64 "Build your tests" ON "REMILL_ENABLE_TESTING;can_enable_testing_aarch64" OFF)
 cmake_dependent_option(REMILL_ENABLE_TESTING_SLEIGH_THUMB "Build cross platform sliegh tests" ON "REMILL_ENABLE_TESTING" OFF)
+cmake_dependent_option(REMILL_ENABLE_DIFFERENTIAL_TESTING "Build cross platform differential testing of sleigh x86" ON "REMILL_ENABLE_TESTING" OFF)
