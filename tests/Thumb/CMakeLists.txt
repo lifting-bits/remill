@@ -16,15 +16,13 @@ find_package(GTest CONFIG REQUIRED)
 list(APPEND PROJECT_LIBRARIES GTest::gtest)
 
 enable_testing()
-enable_language(ASM)
 
-enable_testing()
-
-# add_library(differential-runtime  SHARED Runtime.cpp)
 add_executable(
   run-thumb-tests
   TestLifting.cpp
 )
+
+add_test(NAME "thumb-tests" COMMAND "run-thumb-tests")
 target_link_libraries(
   run-thumb-tests
   PRIVATE

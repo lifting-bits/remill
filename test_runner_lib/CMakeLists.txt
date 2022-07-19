@@ -7,8 +7,6 @@ add_library(
   "${TEST_RUNNER_INCLUDE_DIR}/test_runner/TestRunner.h"
 )
 
-message("Stuff include dir ${TEST_RUNNER_INCLUDE_DIR}")
-
 target_link_libraries(
   test-runner
   PRIVATE
