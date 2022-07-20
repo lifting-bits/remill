@@ -79,10 +79,12 @@ class TestOutputSpec {
   }
 
   TestOutputSpec(
-      std::string target_bytes, remill::Instruction::Category expected_category,
+      uint64_t disas_addr, std::string target_bytes,
+      remill::Instruction::Category expected_category,
       std::vector<std::pair<std::string, uint32_t>> register_preconditions,
       std::vector<std::pair<std::string, uint32_t>> register_postconditions)
-      : target_bytes(target_bytes),
+      : addr(disas_addr),
+        target_bytes(target_bytes),
         expected_category(expected_category),
         register_preconditions(std::move(register_preconditions)),
         register_postconditions(std::move(register_postconditions)) {}
@@ -182,7 +184,7 @@ TEST(ThumbRandomizedLifts, PopPC) {
 
   llvm::LLVMContext curr_context;
   std::string insn_data("\x00\xbd", 2);
-  TestOutputSpec spec(insn_data,
+  TestOutputSpec spec(0x12, insn_data,
                       remill::Instruction::Category::kCategoryFunctionReturn,
                       {{"r15", 12}, {"sp", 10}}, {{"r15", 16}});
   spec.AddPrecWrite<uint32_t>(10, 16);
@@ -198,7 +200,8 @@ TEST(ThumbRandomizedLifts, RelPcTest) {
 
   llvm::LLVMContext curr_context;
   std::string insn_data("\x03\x49", 2);
-  TestOutputSpec spec(insn_data, remill::Instruction::Category::kCategoryNormal,
+  TestOutputSpec spec(0x12, insn_data,
+                      remill::Instruction::Category::kCategoryNormal,
                       {{"r15", 11}}, {{"r1", 0xdeadc0de}});
   // The bit from 11+12 gets masked off
   spec.AddPrecWrite<uint32_t>(24, 0xdeadc0de);
