@@ -14,6 +14,7 @@ target_link_libraries(
   test-runner
 )
 
+set_property(TARGET lift-and-compare PROPERTY ENABLE_EXPORTS ON)
 set_property(TARGET lift-and-compare PROPERTY POSITION_INDEPENDENT_CODE ON)
 enable_testing()
 

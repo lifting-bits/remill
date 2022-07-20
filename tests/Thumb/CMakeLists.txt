@@ -32,13 +32,7 @@ target_link_libraries(
   thirdparty_glog
 )
 
-target_link_libraries(
-  run-thumb-tests
-  PUBLIC
-
-  # differential-runtime
-)
-
+set_property(TARGET run-thumb-tests PROPERTY ENABLE_EXPORTS ON)
 set_property(TARGET run-thumb-tests PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 message(STATUS "Adding test: thumb as run-thumb-tests")
