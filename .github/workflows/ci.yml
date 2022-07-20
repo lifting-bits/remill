@@ -121,6 +121,10 @@ jobs:
           export VCPKG_ROOT=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}_llvm-${{ matrix.llvm }}_xcode-13.0_amd64
           export INSTALL_DIR=$(pwd)/remill-preset-install
           ./scripts/build-preset.sh release
+      - name: Install Python Test Deps
+        shell: bash
+        run: |
+          pip3 install --user ./scripts/diff_tester_export_insns
       - name: Run tests
         shell: bash
         working-directory: remill-build
