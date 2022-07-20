@@ -211,76 +211,69 @@ def main():
     print(CONSTRUCTOR_BASE_REGEX)
     construct_pat = re.compile(CONSTRUCTOR_BASE_REGEX)
 
+    total_output = ""
     with open(args.target_file, 'r') as target_f:
         with open(args.pc_def) as pc_def_file:
             pc_def = pc_def_file.read()
-            with open(args.out, 'w') as output_f:
-                target = target_f.read()
-                total_output = ""
 
-                # we know that an endian def has to be the first thing that occurs so go ahead and find that and sub in the preliminaries
-                endian_def = re.search(ENDIAN_DEF_REGEX, target)
+            target = target_f.read()
 
-                if endian_def is not None:
-                    total_output += target[0:endian_def.end()]
+            # we know that an endian def has to be the first thing that occurs so go ahead and find that and sub in the preliminaries
+            endian_def = re.search(ENDIAN_DEF_REGEX, target)
 
-                # can insert our defs here
-                total_output += "\n" + pc_def
-                total_output += "\ndefine pcodeop claim_eq;\n"
+            if endian_def is not None:
+                total_output += target[0:endian_def.end()]
 
-                first_constructor_offset = next(
-                    construct_pat.finditer(target)).start()
-                print("first constructor at: " + str(first_constructor_offset))
-                target_insert_match = max(filter(lambda k: k.end() < first_constructor_offset,
-                                                 re.finditer("@endif", target)), key=lambda elem: elem.end(), default=None)
+            # can insert our defs here
+            total_output += "\n" + pc_def
+            total_output += "\ndefine pcodeop claim_eq;\n"
 
-                target_insert_loc = target_insert_match.end(
-                ) if target_insert_match else (first_constructor_offset)
+            first_constructor_offset = next(
+                construct_pat.finditer(target)).start()
+            print("first constructor at: " + str(first_constructor_offset))
+            target_insert_match = max(filter(lambda k: k.end() < first_constructor_offset,
+                                             re.finditer("@endif", target)), key=lambda elem: elem.end(), default=None)
 
-                total_output += target[endian_def.end()
-                                       if endian_def is not None else 0: target_insert_loc]
+            target_insert_loc = target_insert_match.end(
+            ) if target_insert_match else (first_constructor_offset)
 
-                total_output += f"\n{REMILL_INSN_SIZE_NAME}: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {{ local insn_size_hinted:{args.inst_next_size_hint}=calculated_size; \n export insn_size_hinted; }}\n"
+            total_output += target[endian_def.end()
+                                   if endian_def is not None else 0: target_insert_loc]
 
-                last_offset = target_insert_loc
-                cont = Context()
-                for constructor in construct_pat.finditer(target):
-                    total_output += constructor.string[last_offset:constructor.start()]
-                    last_offset = constructor.end()
-                    env = Environment(cont,
-                                      args.inst_next_size_hint, [InstStartReplacer(), InstNextReplacer()])
-                    act_section = constructor.group("action_section")
-                    if act_section:
-                        statements = act_section[
-                            1: -1].split(";")
-                        for stat in statements:
-                            env.handle_inst_next_statement(stat)
-                    if len(env.names_to_calculating_expression) > 0:
-                        maybe_new_cons = build_constructor(env, constructor)
-                        if maybe_new_cons:
-                            total_output += maybe_new_cons
-                        else:
-                            total_output += constructor.string[constructor.start(
-                            ): constructor.end()]
+            total_output += f"\n{REMILL_INSN_SIZE_NAME}: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {{ local insn_size_hinted:{args.inst_next_size_hint}=calculated_size; \n export insn_size_hinted; }}\n"
 
-                total_output += target[last_offset:]
+            last_offset = target_insert_loc
+            cont = Context()
+            for constructor in construct_pat.finditer(target):
+                total_output += constructor.string[last_offset:constructor.start()]
+                last_offset = constructor.end()
+                env = Environment(cont,
+                                  args.inst_next_size_hint, [InstStartReplacer(), InstNextReplacer()])
+                act_section = constructor.group("action_section")
+                if act_section:
+                    statements = act_section[
+                        1: -1].split(";")
+                    for stat in statements:
+                        env.handle_inst_next_statement(stat)
+                if len(env.names_to_calculating_expression) > 0:
+                    maybe_new_cons = build_constructor(env, constructor)
+                    if maybe_new_cons:
+                        total_output += maybe_new_cons
+                    else:
+                        total_output += constructor.string[constructor.start(
+                        ): constructor.end()]
 
-                # compute the patch header
-                src_and_dst = os.path.relpath(args.target_file, args.base_path)
+            total_output += target[last_offset:]
 
-                # compute the patch
-                with tempfile.NamedTemporaryFile() as temp_out:
-                    temp_out.write(total_output.encode("utf8"))
-                    temp_out.seek(0)
+            # compute the patch header
+            src_and_dst = os.path.relpath(args.target_file, args.base_path)
 
-                    res = subprocess.run(
-                        ["diff", "-u", args.target_file, temp_out.name], capture_output=True)
+            # compute the patch
 
-                    new_lines = [f"--- {src_and_dst}\n", f"+++ {src_and_dst}\n"] + \
-                        [l.decode("utf8") +
-                         "\n" for l in res.stdout.splitlines()[2:]]
-                    print(len(new_lines))
-                    output_f.writelines(new_lines)
+    with open(args.target_file, 'w') as target_f:
+        target_f.write(total_output)
+    subprocess.run(
+        ["git", "diff", "-p", f"--output={args.out}"], cwd=args.base_path, capture_output=True)
 
 
 if __name__ == "__main__":

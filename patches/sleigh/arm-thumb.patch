@@ -1,769 +1,141 @@
---- Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc
-+++ Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc
-@@ -1,3 +1,6 @@
-+
-+@define INST_NEXT_PTR "pc"
-+define pcodeop claim_eq;
- # Specification for the THUMB Version 2
- # This closely follows
- #    "Architecture Reference Manual" Second Edition Edited by David Seal
-@@ -266,6 +269,9 @@
- 
- # conditionals for the branch instruction
- 
-+
-+remill_insn_size: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] { local insn_size_hinted:4=calculated_size; 
-+ export insn_size_hinted; }
- thcc: "eq"	is thcond=0	{ tmp:1 = (ZR!=0); export tmp; }
- thcc: "ne"	is thcond=1	{ tmp:1 = (ZR==0); export tmp; }
- thcc: "cs"	is thcond=2	{ tmp:1 = (CY!=0); export tmp; }
-@@ -350,15 +356,33 @@
- 
- Hrd0002: Rd0002		is Rd0002 & h1=0	{ export Rd0002; }
- Hrd0002: hrd0002	is hrd0002 & h1=1	{ export hrd0002; }
--Hrd0002: pc		is pc & hrd0002=7 & h1=1 { tmp:4 = inst_start + 4; export tmp; }
-+Hrd0002: pc		is pc & hrd0002=7 & h1=1  ; remill_insn_size  { 
-+remill_please_dont_use_this_temp_name6e:4=inst_start;
-+claim_eq(remill_please_dont_use_this_temp_name6e, ($(INST_NEXT_PTR)-remill_insn_size));
-+ tmp:4 = inst_start + 4;
-+ export tmp;
-+   }
-+ 
- 
- Hrn0002: Rn0002		is Rn0002 & h1=0	{ export Rn0002; }
- Hrn0002: hrn0002	is hrn0002 & h1=1	{ export hrn0002; }
--Hrn0002: pc		is pc & hrn0002=7 & h1=1 { tmp:4 = inst_start + 4; export tmp; }
-+Hrn0002: pc		is pc & hrn0002=7 & h1=1  ; remill_insn_size  { 
-+remill_please_dont_use_this_temp_name74:4=inst_start;
-+claim_eq(remill_please_dont_use_this_temp_name74, ($(INST_NEXT_PTR)-remill_insn_size));
-+ tmp:4 = inst_start + 4;
-+ export tmp;
-+   }
-+ 
- 
- Hrm0305: Rm0305		is Rm0305 & h2=0	{ export Rm0305; }
- Hrm0305: hrm0305	is hrm0305 & h2=1	{ export hrm0305; }
--Hrm0305: pc		is pc & hrm0305=7 & h2=1 { tmp:4 = inst_start + 4; export tmp; }
-+Hrm0305: pc		is pc & hrm0305=7 & h2=1  ; remill_insn_size  { 
-+remill_please_dont_use_this_temp_name7a:4=inst_start;
-+claim_eq(remill_please_dont_use_this_temp_name7a, ($(INST_NEXT_PTR)-remill_insn_size));
-+ tmp:4 = inst_start + 4;
-+ export tmp;
-+   }
-+ 
- 
- @if defined(VERSION_6T2) || defined(VERSION_7)
- Immed8_4: "#"^immval		is immed8 [ immval = immed8 * 4; ]		{ export *[const]:4 immval; }
-@@ -369,19 +393,25 @@
- Immed3: "#"^immed3		is immed3		{ export *[const]:4 immed3; }
- 
- Pcrel8: [reloc]		is immed8
--  [ reloc = ((inst_start+4) $and 0xfffffffc) + 4*immed8; ]
--{
--  # don't export as an address, may be PIC code, and would add spurious symbols.
-+   ; remill_insn_size [ reloc = ((inst_start+4) $and 0xfffffffc) + 4*immed8; ] { 
-+remill_please_dont_use_this_temp_name7d:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name7d,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) + 4*immed8);
-+ # don't export as an address, may be PIC code, and would add spurious symbols.
-   export *[const]:4 reloc;
--}
-+
-+  }
-+ 
- 
- @if defined(VERSION_6T2) || defined(VERSION_7)
- 
- Pcrel8_s8: [reloc]		is immed8
--  [ reloc = ((inst_start+4) $and 0xfffffffc) + 4*immed8; ]
--{
--  export *:8 reloc;
--}
-+   ; remill_insn_size [ reloc = ((inst_start+4) $and 0xfffffffc) + 4*immed8; ] { 
-+remill_please_dont_use_this_temp_name80:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name80,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) + 4*immed8);
-+ export *:8 reloc;
-+
-+  }
-+ 
- @endif # defined(VERSION_6T2) || defined(VERSION_7)
- 
- 
-@@ -405,29 +435,41 @@
- }
- 
- PcrelImmed12Addr: reloc		is immed12_i; immed12_imm3 & immed12_imm8
--  [ reloc = ((inst_start+4) $and 0xfffffffc) + ((immed12_i<<11) | (immed12_imm3<<8) | (immed12_imm8)); ]
--{
--  # don't export as an address, may be PIC code, and would add spurious symbols.
-+   ; remill_insn_size [ reloc = ((inst_start+4) $and 0xfffffffc) + ((immed12_i<<11) | (immed12_imm3<<8) | (immed12_imm8)); ] { 
-+remill_please_dont_use_this_temp_name83:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name83,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) + ((immed12_i<<11) | (immed12_imm3<<8) | (immed12_imm8)));
-+ # don't export as an address, may be PIC code, and would add spurious symbols.
-   export *[const]:4 reloc;
--}
-+
-+  }
-+ 
- 
- NegPcrelImmed12Addr: reloc	is immed12_i; immed12_imm3 & immed12_imm8
--  [ reloc = ((inst_start+4) $and 0xfffffffc) - ((immed12_i<<11) | (immed12_imm3<<8) | (immed12_imm8)); ]
--{
--  # don't export as an address, may be PIC code, and would add spurious symbols.
-+   ; remill_insn_size [ reloc = ((inst_start+4) $and 0xfffffffc) - ((immed12_i<<11) | (immed12_imm3<<8) | (immed12_imm8)); ] { 
-+remill_please_dont_use_this_temp_name86:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name86,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) - ((immed12_i<<11) | (immed12_imm3<<8) | (immed12_imm8)));
-+ # don't export as an address, may be PIC code, and would add spurious symbols.
-   export *[const]:4 reloc;
--}
-+
-+  }
-+ 
- 
- PcrelOffset12: [reloc]		is thc0707=1; offset12
--  [ reloc = ((inst_start+4) $and 0xfffffffc) + offset12; ]
--{
--  export *:4 reloc;
--}
-+   ; remill_insn_size [ reloc = ((inst_start+4) $and 0xfffffffc) + offset12; ] { 
-+remill_please_dont_use_this_temp_name89:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name89,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) + offset12);
-+ export *:4 reloc;
-+
-+  }
-+ 
- PcrelOffset12: [reloc]		is thc0707=0; offset12
--  [ reloc = ((inst_start+4) $and 0xfffffffc) - offset12; ]
--{
--  export *:4 reloc;
--}
-+   ; remill_insn_size [ reloc = ((inst_start+4) $and 0xfffffffc) - offset12; ] { 
-+remill_please_dont_use_this_temp_name8c:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name8c,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) - offset12);
-+ export *:4 reloc;
-+
-+  }
-+ 
- 
- @endif # defined(VERSION_6T2) || defined(VERSION_7)
- 
-@@ -532,64 +574,91 @@
- @endif # VERSION_6T2 || VERSION_7
- 
- Addr5:  reloc   is imm5 & thc0909
--  [ reloc = inst_start + 4 + ((thc0909 << 6) | (imm5 << 1)); ]
--{
--  export *:4 reloc;
--}
-+   ; remill_insn_size [ reloc = inst_start + 4 + ((thc0909 << 6) | (imm5 << 1)); ] { 
-+remill_please_dont_use_this_temp_name93:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name93,  ($(INST_NEXT_PTR)-remill_insn_size) + 4 + ((thc0909 << 6) | (imm5 << 1)));
-+ export *:4 reloc;
-+
-+  }
-+ 
- 
- Addr8:	reloc	is soffset8
--  [ reloc = (inst_start+4) + 2*soffset8; ]
--{
--  export *:4 reloc;
--}
-+   ; remill_insn_size [ reloc = (inst_start+4) + 2*soffset8; ] { 
-+remill_please_dont_use_this_temp_name96:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name96,  (($(INST_NEXT_PTR)-remill_insn_size)+4) + 2*soffset8);
-+ export *:4 reloc;
-+
-+  }
-+ 
- 
- Addr11:	reloc	is soffset11
--  [ reloc = (inst_start+4) + 2*soffset11; ]
--{
--  export *:4 reloc;
--}
-+   ; remill_insn_size [ reloc = (inst_start+4) + 2*soffset11; ] { 
-+remill_please_dont_use_this_temp_name99:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name99,  (($(INST_NEXT_PTR)-remill_insn_size)+4) + 2*soffset11);
-+ export *:4 reloc;
-+
-+  }
-+ 
- 
- @if defined(VERSION_6T2) || defined(VERSION_7)
- 
- ThAddr20:	reloc	is part2S=1 & part2imm6; part2J1 & part2J2 & part2imm11
--  [ reloc = inst_start + 4 + ((-1 << 20) $or (part2J2 << 19) $or (part2J1 << 18) $or (part2imm6 << 12) $or (part2imm11 << 1)); ]
--{
--  export *:4 reloc;
--}
-+   ; remill_insn_size [ reloc = inst_start + 4 + ((-1 << 20) $or (part2J2 << 19) $or (part2J1 << 18) $or (part2imm6 << 12) $or (part2imm11 << 1)); ] { 
-+remill_please_dont_use_this_temp_name9c:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name9c,  ($(INST_NEXT_PTR)-remill_insn_size) + 4 + ((-1 << 20) | (part2J2 << 19) | (part2J1 << 18) | (part2imm6 << 12) | (part2imm11 << 1)));
-+ export *:4 reloc;
-+
-+  }
-+ 
- 
- ThAddr20:	reloc	is part2S=0 & part2imm6; part2J1 & part2J2 & part2imm11
--  [ reloc = inst_start + 4 + ((part2J2 << 19) $or (part2J1 << 18) $or (part2imm6 << 12) $or (part2imm11 << 1)); ]
--{
--  export *:4 reloc;
--}
-+   ; remill_insn_size [ reloc = inst_start + 4 + ((part2J2 << 19) $or (part2J1 << 18) $or (part2imm6 << 12) $or (part2imm11 << 1)); ] { 
-+remill_please_dont_use_this_temp_name9f:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name9f,  ($(INST_NEXT_PTR)-remill_insn_size) + 4 + ((part2J2 << 19) | (part2J1 << 18) | (part2imm6 << 12) | (part2imm11 << 1)));
-+ export *:4 reloc;
-+
-+  }
-+ 
- 
- @endif # defined(VERSION_6T2) || defined(VERSION_7)
- 
- ThAddr24:	reloc	is offset10S=0 & offset10; part2J1 & part2J2 & part2off
--  [ reloc = inst_start + 4 + (((part2J1 $xor 1) << 23) $or ((part2J2 $xor 1) << 22) $or (offset10 << 12) $or (part2off << 1)); ]
--{
--  export *:4 reloc;
--}
-+   ; remill_insn_size [ reloc = inst_start + 4 + (((part2J1 $xor 1) << 23) $or ((part2J2 $xor 1) << 22) $or (offset10 << 12) $or (part2off << 1)); ] { 
-+remill_please_dont_use_this_temp_namea2:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_namea2,  ($(INST_NEXT_PTR)-remill_insn_size) + 4 + (((part2J1 ^ 1) << 23) | ((part2J2 ^ 1) << 22) | (offset10 << 12) | (part2off << 1)));
-+ export *:4 reloc;
-+
-+  }
-+ 
- 
- ThAddr24:	reloc	is offset10S=1 & offset10; part2J1 & part2J2 & part2off
--  [ reloc = inst_start + 4 + ((-1 << 24) $or (part2J1 << 23) $or (part2J2 << 22) $or (offset10 << 12) $or (part2off << 1)); ]
--{
--  export *:4 reloc;
--}
-+   ; remill_insn_size [ reloc = inst_start + 4 + ((-1 << 24) $or (part2J1 << 23) $or (part2J2 << 22) $or (offset10 << 12) $or (part2off << 1)); ] { 
-+remill_please_dont_use_this_temp_namea5:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_namea5,  ($(INST_NEXT_PTR)-remill_insn_size) + 4 + ((-1 << 24) | (part2J1 << 23) | (part2J2 << 22) | (offset10 << 12) | (part2off << 1)));
-+ export *:4 reloc;
-+
-+  }
-+ 
- 
- @if defined(VERSION_5)
- 
- ThArmAddr23:	reloc	is offset10S=0 & offset10; part2J1 & part2J2 & part2off_10
--  [ reloc = ((inst_start + 4) $and 0xfffffffc) + (((part2J1 $xor 1) << 23) $or ((part2J2 $xor 1) << 22) $or (offset10 << 12) $or (part2off_10 << 2)); ]
--{
--  export *:4 reloc;
--}
-+   ; remill_insn_size [ reloc = ((inst_start + 4) $and 0xfffffffc) + (((part2J1 $xor 1) << 23) $or ((part2J2 $xor 1) << 22) $or (offset10 << 12) $or (part2off_10 << 2)); ] { 
-+remill_please_dont_use_this_temp_namea8:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_namea8,  ((($(INST_NEXT_PTR)-remill_insn_size) + 4) & 0xfffffffc) + (((part2J1 ^ 1) << 23) | ((part2J2 ^ 1) << 22) | (offset10 << 12) | (part2off_10 << 2)));
-+ export *:4 reloc;
-+
-+  }
-+ 
- 
- ThArmAddr23:	reloc	is offset10S=1 & offset10; part2J1 & part2J2 & part2off_10
--  [ reloc = ((inst_start + 4) $and 0xfffffffc) + ((-1 << 24) $or (part2J1 << 23) $or (part2J2 << 22) $or (offset10 << 12) $or (part2off_10 << 2)); ]
--{
--  export *:4 reloc;
--}
-+   ; remill_insn_size [ reloc = ((inst_start + 4) $and 0xfffffffc) + ((-1 << 24) $or (part2J1 << 23) $or (part2J2 << 22) $or (offset10 << 12) $or (part2off_10 << 2)); ] { 
-+remill_please_dont_use_this_temp_nameab:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_nameab,  ((($(INST_NEXT_PTR)-remill_insn_size) + 4) & 0xfffffffc) + ((-1 << 24) | (part2J1 << 23) | (part2J2 << 22) | (offset10 << 12) | (part2off_10 << 2)));
-+ export *:4 reloc;
-+
-+  }
-+ 
- 
- @endif # VERSION_5
- 
-@@ -844,7 +913,13 @@
- @endif # defined(VERSION_6T2) || defined(VERSION_7)
- 
- # thstrlist_dec is the list of registers to be pushed
--thsdec15: pc			is thc1515=1 & pc				{ *:4 mult_addr = inst_start+4; mult_addr = mult_addr - 4; }
-+thsdec15: pc			is thc1515=1 & pc				 ; remill_insn_size  { 
-+remill_please_dont_use_this_temp_name265:4=inst_start;
-+claim_eq(remill_please_dont_use_this_temp_name265, ($(INST_NEXT_PTR)-remill_insn_size));
-+ *:4 mult_addr = inst_start+4;
-+ mult_addr = mult_addr - 4;
-+   }
-+ 
- thsdec15: 			is thc1515=0					{ }
- thsdec14: lr thsdec15		is thc1414=1 & thsdec15 & lr & thc1515=0	{ * mult_addr=lr; mult_addr = mult_addr - 4; }
- thsdec14: lr^"," thsdec15	is thc1414=1 & thsdec15 & lr			{ * mult_addr=lr; mult_addr = mult_addr - 4; }
-@@ -931,10 +1006,13 @@
- RnRmIndirect: [Rn0305,Rm0608]	is Rn0305 & Rm0608	{ local tmp = Rn0305 + Rm0608; export tmp; }
- 
- Pcrel8Indirect: [reloc]	is immed8
--  [ reloc = ((inst_start+4) $and 0xfffffffc) + 4*immed8; ]
--{
--  export *:4 reloc;
--}
-+   ; remill_insn_size [ reloc = ((inst_start+4) $and 0xfffffffc) + 4*immed8; ] { 
-+remill_please_dont_use_this_temp_name2c0:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name2c0,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) + 4*immed8);
-+ export *:4 reloc;
-+
-+  }
-+ 
- 
- Sprel8Indirect: [sp,"#"^immval]	is sp & immed8   [ immval = immed8 * 4; ]  { local tmp = sp + immval; export tmp; }
- 
-@@ -1435,12 +1513,19 @@
- @endif # VERSION_5
- 
- :bl^ItCond 	ThAddr24 			is TMode=1 & ItCond & (op11=0x1e; part2c1415=3 & part2c1212=1) & ThAddr24
--{
--  build ItCond;
-+   { 
-+ build ItCond;
-+remill_please_dont_use_this_temp_name31b:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name31b, $(INST_NEXT_PTR));
-+
-   lr = inst_next|1;
-+
-   SetThumbMode(1);
-+
-   call ThAddr24;
--}
-+
-+  }
-+ 
- 
- @ifndef VERSION_6T2
- 
-@@ -1470,12 +1555,19 @@
- @endif
- 
- :bl^ItCond 	ThAddr24 			is TMode=1 & CALLoverride=1 & ItCond & (op11=0x1e; part2c1415=3 & part2c1212=1) & ThAddr24
--{
--  build ItCond;
-+   { 
-+ build ItCond;
-+remill_please_dont_use_this_temp_name31d:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name31d, $(INST_NEXT_PTR));
-+
-   lr = inst_next|1;
-+
-   SetThumbMode(1);
-+
-   goto ThAddr24;
--}
-+
-+  }
-+ 
- 
- bxns: "" is thc0003 { }
- bxns: "ns" is thc0002=0b100 { }
-@@ -1508,13 +1600,21 @@
- }
- 
- :blx^bxns^ItCond	Hrm0305			is TMode=1 & ItCond & op7=0x08f & Hrm0305 & bxns
--{
--  build ItCond;
-+   { 
-+ build ItCond;
-+
-   BXWritePC(Hrm0305);
-+remill_please_dont_use_this_temp_name323:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name323, $(INST_NEXT_PTR));
-+
-   lr = inst_next|1;
-+
-   call [pc];
-+
-   # Don't set this, assume return will set for emulation.  Was screwing up decompiler. TB = 1;
--}
-+
-+  }
-+ 
- 
- @endif # VERSION_5
- 
-@@ -1592,13 +1692,22 @@
- define pcodeop IndexCheck;
- 
- :chka^ItCond  Hrn0002,Rm0306    is TMode=1 & ItCond & TEEMode=1 & op8=0xca & Rm0306 & Hrn0002
--{
--    build ItCond;
-+   { 
-+ build ItCond;
-+
-     local tmp = Hrn0002 <= Rm0306;
-+remill_please_dont_use_this_temp_name331:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name331, $(INST_NEXT_PTR));
-+
-     if (!tmp) goto inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name331, $(INST_NEXT_PTR));
-+
-     lr = inst_next|1;
-+
-   	IndexCheck();
--}
-+
-+  }
-+ 
- 
- :clrex^ItCond                     is TMode=1 & ItCond & op0=0xf3bf; op0=0x8f2f
- {
-@@ -2691,24 +2800,40 @@
- basepri: "basepri"			is epsilon {}
- 
- :mrs^ItCond Rd0811,basepri 		is TMode=1 & ItCond & op0=0xf3ef; op12=0x8 & Rd0811 & sysm=17 & basepri
--{
--  build ItCond;
-+   { 
-+ build ItCond;
-+
-   Rd0811 = 0;
-+
-   b:1 = isCurrentModePrivileged();
-+remill_please_dont_use_this_temp_name42f:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name42f, $(INST_NEXT_PTR));
-+
-   if (!b) goto inst_next;
-+
-   Rd0811 = getBasePriority();
--}
-+
-+  }
-+ 
- 
- basepri_max: "basepri_max" 	is epsilon {}
- 
- :mrs^ItCond Rd0811,basepri_max 		is TMode=1 & ItCond & op0=0xf3ef; op12=0x8 & Rd0811 & sysm=18 & basepri_max
--{
--  build ItCond;
-+   { 
-+ build ItCond;
-+
-   Rd0811 = 0;
-+
-   b:1 = isCurrentModePrivileged();
-+remill_please_dont_use_this_temp_name431:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name431, $(INST_NEXT_PTR));
-+
-   if (!b) goto inst_next;
-+
-   Rd0811 = getBasePriority();
--}
-+
-+  }
-+ 
- 
- faultmask: "faultmask"		is epsilon {}
- 
-@@ -2781,20 +2906,34 @@
- define pcodeop setBasePriority;
- 
- :msr^ItCond msp,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=8 & msp
--{
--  build ItCond;
-+   { 
-+ build ItCond;
-+
-   b:1 = isCurrentModePrivileged();
-+remill_please_dont_use_this_temp_name44b:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name44b, $(INST_NEXT_PTR));
-+
-   if (!b) goto inst_next;
-+
-   setMainStackPointer(Rn0003);
--}
-+
-+  }
-+ 
- 
- :msr^ItCond psp,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=9 & psp
--{
--  build ItCond;
-+   { 
-+ build ItCond;
-+
-   b:1 = isCurrentModePrivileged();
-+remill_please_dont_use_this_temp_name44d:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name44d, $(INST_NEXT_PTR));
-+
-   if (!b) goto inst_next;
-+
-   setProcessStackPointer(Rn0003);
--}
-+
-+  }
-+ 
- 
- :msr^ItCond primask,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=16 & primask
- {
-@@ -2805,12 +2944,19 @@
- }
- 
- :msr^ItCond basepri,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=17 & basepri
--{
--  build ItCond;
-+   { 
-+ build ItCond;
-+
-   b:1 = isCurrentModePrivileged();
-+remill_please_dont_use_this_temp_name44f:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name44f, $(INST_NEXT_PTR));
-+
-   if (!b) goto inst_next;
-+
-   setBasePriority(Rn0003);
--}
-+
-+  }
-+ 
- 
- :msr^ItCond basepri_max,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=18 & basepri_max
- {
-@@ -2825,12 +2971,19 @@
- }
- 
- :msr^ItCond faultmask,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=19 & faultmask
--{
--  build ItCond;
-+   { 
-+ build ItCond;
-+
-   b:1 = isCurrentModePrivileged();
-+remill_please_dont_use_this_temp_name451:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name451, $(INST_NEXT_PTR));
-+
-   if (!b) goto inst_next;
-+
-   enableFIQinterrupts((Rn0003 & 1) == 1);
--}
-+
-+  }
-+ 
- 
- define pcodeop setStackMode;
- 
-@@ -4446,56 +4599,100 @@
- }
- 
- :strex^ItCond    Rd0811,Rt1215,[Rn0003,Immed8_4]   is TMode=1 & ItCond & op4=0xe84 & Rn0003; Rt1215 & Rd0811 & Immed8_4
--{
--   build ItCond;
-+   { 
-+ build ItCond;
-+
-   local tmp = Rn0003 + Immed8_4;
-+
-   access:1 = hasExclusiveAccess(tmp);
-+
-   Rd0811 = 1;
-+remill_please_dont_use_this_temp_name589:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name589, $(INST_NEXT_PTR));
-+
-   if (!access) goto inst_next;
-+
-   Rd0811 = 0;
-+
-   *tmp = Rt1215;
--}
-+
-+  }
-+ 
- 
- @endif # VERSION_6T2 || VERSION_7
- 
- @if defined(VERSION_7)
- 
- :strexb^ItCond    Rd0003,Rt1215,[Rn0003]   is TMode=1 & ItCond & op4=0xe8c & Rn0003; Rt1215 & thc0811=15 & thc0407=4 & Rd0003
--{
--   build ItCond;
-+   { 
-+ build ItCond;
-+
-   local tmp = Rn0003;
-+
-   access:1 = hasExclusiveAccess(tmp);
-+
-   Rd0003 = 1;
-+remill_please_dont_use_this_temp_name58b:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name58b, $(INST_NEXT_PTR));
-+
-   if (!access) goto inst_next;
-+
-   Rd0003 = 0;
-+
-   local tmpRt1215 = Rt1215;
-+
-   *tmp = tmpRt1215:1;
--}
-+
-+  }
-+ 
- 
- :strexh^ItCond    Rd0003,Rt1215,[Rn0003]   is TMode=1 & ItCond & op4=0xe8c & Rn0003; Rt1215 & thc0811=15 & thc0407=5 & Rd0003
--{
--   build ItCond;
-+   { 
-+ build ItCond;
-+
-   local tmp = Rn0003;
-+
-   access:1 = hasExclusiveAccess(tmp);
-+
-   Rd0003 = 1;
-+remill_please_dont_use_this_temp_name58d:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name58d, $(INST_NEXT_PTR));
-+
-   if (!access) goto inst_next;
-+
-   Rd0003 = 0;
-+
-   local tmpRt1215 = Rt1215;
-+
-   *tmp = tmpRt1215:1;
--}
-+
-+  }
-+ 
- 
- :strexd^ItCond    Rd0003,Rt1215,Rt0811,[Rn0003]   is TMode=1 & ItCond & op4=0xe8c & Rn0003; Rt1215 & Rt0811 & thc0407=7 & Rd0003
--{
--   build ItCond;
-+   { 
-+ build ItCond;
-+
-   local tmp = Rn0003;
-+
-   access:1 = hasExclusiveAccess(tmp);
-+
-   Rd0003 = 1;
-+remill_please_dont_use_this_temp_name58f:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name58f, $(INST_NEXT_PTR));
-+
-   if (!access) goto inst_next;
-+
-   Rd0003 = 0;
-+
-   *tmp = Rt1215;
-+
-   tmp = tmp + 4;
-+
-   *tmp = Rt0811;
--}
-+
-+  }
-+ 
- 
- @endif # VERSION_7
- 
-@@ -4746,49 +4943,95 @@
- @if defined(VERSION_6T2) || defined(VERSION_7)
- 
- :tbb^ItCond  [Rn0003,Rm0003]    is TMode=1 & ItCond & op4=0xe8d & Rn0003; op8=0xf0 & thc0507=0 & thc0404=0 & Rm0003
--{
--   build ItCond;
-+   { 
-+ build ItCond;
-+
-    local tmp = Rn0003 + Rm0003;
-+
-    offs:1 = *tmp;
-+
-    SetThumbMode(1);
-+remill_please_dont_use_this_temp_name5c5:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name5c5, $(INST_NEXT_PTR));
-+
-    pc = inst_next + (zext(offs) * 2);
-+
-    goto [pc];
--}
-+
-+  }
-+ 
- 
- :tbh^ItCond  [Rn0003,Rm0003]    is TMode=1 & ItCond & op4=0xe8d & Rn0003; op8=0xf0 & thc0507=0 & thc0404=1 & Rm0003
--{
--   build ItCond;
-+   { 
-+ build ItCond;
-+
-    local tmp = Rn0003 + (Rm0003 * 2);
-+
-    offs:2 = *tmp;
-+
-    SetThumbMode(1);
-+remill_please_dont_use_this_temp_name5c7:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name5c7, $(INST_NEXT_PTR));
-+
-    pc = inst_next + (zext(offs) * 2);
-+
-    goto [pc];
--}
- 
--Pcrel: [cloc,Rm0003]  is Rm0003 & thc0404=0 [ cloc = inst_next; ] 
--{
--   local tmp = Rm0003; tmp = cloc + tmp; val:1 = *tmp; tmp = zext(val); export tmp;
--}
--Pcrel: [cloc,Rm0003]  is Rm0003 & thc0404=1 [ cloc = inst_next; ] 
--{
--   local tmp = Rm0003; tmp = cloc + (tmp * 2); val:2 = *tmp; tmp = zext(val); export tmp;
--}
-+  }
-+ 
-+
-+Pcrel: [cloc,Rm0003]  is Rm0003 & thc0404=0   [ cloc = inst_next; ] { 
-+ local tmp = Rm0003;
-+remill_please_dont_use_this_temp_name5cb:4=cloc;
-+claim_eq(remill_please_dont_use_this_temp_name5cb,  $(INST_NEXT_PTR));
-+ tmp = cloc + tmp;
-+ val:1 = *tmp;
-+ tmp = zext(val);
-+ export tmp;
-+
-+  }
-+ 
-+Pcrel: [cloc,Rm0003]  is Rm0003 & thc0404=1   [ cloc = inst_next; ] { 
-+ local tmp = Rm0003;
-+remill_please_dont_use_this_temp_name5ce:4=cloc;
-+claim_eq(remill_please_dont_use_this_temp_name5ce,  $(INST_NEXT_PTR));
-+ tmp = cloc + (tmp * 2);
-+ val:2 = *tmp;
-+ tmp = zext(val);
-+ export tmp;
-+
-+  }
-+ 
- 
- :tbb^ItCond  Pcrel    is TMode=1 & ItCond & op4=0xe8d & thc0003=15; op8=0xf0 & thc0507=0 & thc0404=0 & Pcrel
--{
--   build ItCond;
-+   { 
-+ build ItCond;
-+
-    SetThumbMode(1);
-+remill_please_dont_use_this_temp_name5cf:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name5cf, $(INST_NEXT_PTR));
-+
-    pc = inst_next + (Pcrel * 2);
-+
-    goto [pc];
--}
-+
-+  }
-+ 
- 
- :tbh^ItCond  Pcrel    is TMode=1 & ItCond & op4=0xe8d & thc0003=15; op8=0xf0 & thc0507=0 & thc0404=1 & Pcrel
--{
--   build ItCond;
-+   { 
-+ build ItCond;
-+
-    SetThumbMode(1);
-+remill_please_dont_use_this_temp_name5d1:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name5d1, $(INST_NEXT_PTR));
-+
-    pc = inst_next + (Pcrel * 2);
-+
-    goto [pc];
--}
-+
-+  }
-+ 
- 
- @endif # VERSION_6T2 || VERSION_7
- 
+diff --git a/scripts/replace_pc_relative_disactions/replace_pc_relative_disactions/main.py b/scripts/replace_pc_relative_disactions/replace_pc_relative_disactions/main.py
+index e8b7cbe..145a049 100644
+--- a/scripts/replace_pc_relative_disactions/replace_pc_relative_disactions/main.py
++++ b/scripts/replace_pc_relative_disactions/replace_pc_relative_disactions/main.py
+@@ -211,76 +211,69 @@ def main():
+     print(CONSTRUCTOR_BASE_REGEX)
+     construct_pat = re.compile(CONSTRUCTOR_BASE_REGEX)
+ 
++    total_output = ""
+     with open(args.target_file, 'r') as target_f:
+         with open(args.pc_def) as pc_def_file:
+             pc_def = pc_def_file.read()
+-            with open(args.out, 'w') as output_f:
+-                target = target_f.read()
+-                total_output = ""
+-
+-                # we know that an endian def has to be the first thing that occurs so go ahead and find that and sub in the preliminaries
+-                endian_def = re.search(ENDIAN_DEF_REGEX, target)
+-
+-                if endian_def is not None:
+-                    total_output += target[0:endian_def.end()]
+-
+-                # can insert our defs here
+-                total_output += "\n" + pc_def
+-                total_output += "\ndefine pcodeop claim_eq;\n"
+-
+-                first_constructor_offset = next(
+-                    construct_pat.finditer(target)).start()
+-                print("first constructor at: " + str(first_constructor_offset))
+-                target_insert_match = max(filter(lambda k: k.end() < first_constructor_offset,
+-                                                 re.finditer("@endif", target)), key=lambda elem: elem.end(), default=None)
+-
+-                target_insert_loc = target_insert_match.end(
+-                ) if target_insert_match else (first_constructor_offset)
+-
+-                total_output += target[endian_def.end()
+-                                       if endian_def is not None else 0: target_insert_loc]
+-
+-                total_output += f"\n{REMILL_INSN_SIZE_NAME}: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {{ local insn_size_hinted:{args.inst_next_size_hint}=calculated_size; \n export insn_size_hinted; }}\n"
+-
+-                last_offset = target_insert_loc
+-                cont = Context()
+-                for constructor in construct_pat.finditer(target):
+-                    total_output += constructor.string[last_offset:constructor.start()]
+-                    last_offset = constructor.end()
+-                    env = Environment(cont,
+-                                      args.inst_next_size_hint, [InstStartReplacer(), InstNextReplacer()])
+-                    act_section = constructor.group("action_section")
+-                    if act_section:
+-                        statements = act_section[
+-                            1: -1].split(";")
+-                        for stat in statements:
+-                            env.handle_inst_next_statement(stat)
+-                    if len(env.names_to_calculating_expression) > 0:
+-                        maybe_new_cons = build_constructor(env, constructor)
+-                        if maybe_new_cons:
+-                            total_output += maybe_new_cons
+-                        else:
+-                            total_output += constructor.string[constructor.start(
+-                            ): constructor.end()]
+-
+-                total_output += target[last_offset:]
+-
+-                # compute the patch header
+-                src_and_dst = os.path.relpath(args.target_file, args.base_path)
+-
+-                # compute the patch
+-                with tempfile.NamedTemporaryFile() as temp_out:
+-                    temp_out.write(total_output.encode("utf8"))
+-                    temp_out.seek(0)
+-
+-                    res = subprocess.run(
+-                        ["diff", "-u", args.target_file, temp_out.name], capture_output=True)
+-
+-                    new_lines = [f"--- {src_and_dst}\n", f"+++ {src_and_dst}\n"] + \
+-                        [l.decode("utf8") +
+-                         "\n" for l in res.stdout.splitlines()[2:]]
+-                    print(len(new_lines))
+-                    output_f.writelines(new_lines)
++
++            target = target_f.read()
++
++            # we know that an endian def has to be the first thing that occurs so go ahead and find that and sub in the preliminaries
++            endian_def = re.search(ENDIAN_DEF_REGEX, target)
++
++            if endian_def is not None:
++                total_output += target[0:endian_def.end()]
++
++            # can insert our defs here
++            total_output += "\n" + pc_def
++            total_output += "\ndefine pcodeop claim_eq;\n"
++
++            first_constructor_offset = next(
++                construct_pat.finditer(target)).start()
++            print("first constructor at: " + str(first_constructor_offset))
++            target_insert_match = max(filter(lambda k: k.end() < first_constructor_offset,
++                                             re.finditer("@endif", target)), key=lambda elem: elem.end(), default=None)
++
++            target_insert_loc = target_insert_match.end(
++            ) if target_insert_match else (first_constructor_offset)
++
++            total_output += target[endian_def.end()
++                                   if endian_def is not None else 0: target_insert_loc]
++
++            total_output += f"\n{REMILL_INSN_SIZE_NAME}: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {{ local insn_size_hinted:{args.inst_next_size_hint}=calculated_size; \n export insn_size_hinted; }}\n"
++
++            last_offset = target_insert_loc
++            cont = Context()
++            for constructor in construct_pat.finditer(target):
++                total_output += constructor.string[last_offset:constructor.start()]
++                last_offset = constructor.end()
++                env = Environment(cont,
++                                  args.inst_next_size_hint, [InstStartReplacer(), InstNextReplacer()])
++                act_section = constructor.group("action_section")
++                if act_section:
++                    statements = act_section[
++                        1: -1].split(";")
++                    for stat in statements:
++                        env.handle_inst_next_statement(stat)
++                if len(env.names_to_calculating_expression) > 0:
++                    maybe_new_cons = build_constructor(env, constructor)
++                    if maybe_new_cons:
++                        total_output += maybe_new_cons
++                    else:
++                        total_output += constructor.string[constructor.start(
++                        ): constructor.end()]
++
++            total_output += target[last_offset:]
++
++            # compute the patch header
++            src_and_dst = os.path.relpath(args.target_file, args.base_path)
++
++            # compute the patch
++
++    with open(args.target_file, 'w') as target_f:
++        target_f.write(total_output)
++    subprocess.run(
++        ["git", "diff", "-p", f"--output={args.out}"], capture_output=True)
+ 
+ 
+ if __name__ == "__main__":
