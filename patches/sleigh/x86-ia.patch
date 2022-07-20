@@ -1,3 +1,12 @@
+From a26e08f587a25f3ea0862385d4d6c00df0702c51 Mon Sep 17 00:00:00 2001
+From: 2over12 <ian.smith@trailofbits.com>
+Date: Wed, 20 Jul 2022 09:01:09 -0400
+Subject: [PATCH] X86PcRel
+
+---
+ Ghidra/Processors/x86/data/languages/ia.sinc | 687 ++++++++++++++++---
+ 1 file changed, 590 insertions(+), 97 deletions(-)
+
 diff --git a/Ghidra/Processors/x86/data/languages/ia.sinc b/Ghidra/Processors/x86/data/languages/ia.sinc
 index 96d17916a..ae205d7bc 100644
 --- a/Ghidra/Processors/x86/data/languages/ia.sinc
@@ -869,3 +878,6 @@ index 96d17916a..ae205d7bc 100644
  
  :MOVAPD       XmmReg, m128        is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x28; m128 & XmmReg ...
  {
+-- 
+2.32.1 (Apple Git-133)
+

@@ -1,3 +1,12 @@
+From 03c96143c10b39bb082152495e206ceed68cce00 Mon Sep 17 00:00:00 2001
+From: 2over12 <ian.smith@trailofbits.com>
+Date: Wed, 20 Jul 2022 08:59:39 -0400
+Subject: [PATCH] ARMThumbPcRel
+
+---
+ .../data/languages/ARMTHUMBinstructions.sinc  | 503 +++++++++++++-----
+ 1 file changed, 373 insertions(+), 130 deletions(-)
+
 diff --git a/Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc b/Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc
 index daf705731..20a03dd71 100644
 --- a/Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc
@@ -769,3 +778,6 @@ index daf705731..20a03dd71 100644
  
  @endif # VERSION_6T2 || VERSION_7
  
+-- 
+2.32.1 (Apple Git-133)
+

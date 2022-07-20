@@ -205,6 +205,7 @@ def main():
     prsr.add_argument("--pc_def", required=True)
     prsr.add_argument("--inst_next_size_hint", required=True)
     prsr.add_argument("--base_path", required=True)
+    prsr.add_argument("--commit_message", required=True)
     prsr.add_argument("--out", required=True)
 
     args = prsr.parse_args()
@@ -272,8 +273,16 @@ def main():
 
     with open(args.target_file, 'w') as target_f:
         target_f.write(total_output)
+
+    res = subprocess.run(["git", "commit", "-a", "-m", args.commit_message],
+                         cwd=args.base_path, capture_output=True)
+
+    print(res)
+    print(subprocess.run(
+        ["git", "format-patch", "-1", "HEAD", "-o", args.out], cwd=args.base_path, capture_output=True))
+
     subprocess.run(
-        ["git", "diff", "-p", f"--output={args.out}"], cwd=args.base_path, capture_output=True)
+        ["git", "reset", "--hard", "HEAD~1"], cwd=args.base_path, capture_output=True)
 
 
 if __name__ == "__main__":
