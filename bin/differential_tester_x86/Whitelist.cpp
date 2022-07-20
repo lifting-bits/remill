@@ -40,6 +40,10 @@ const static std::unordered_map<
                       target_ptr = &state->aflag.zf;
                     }
 
+                    if (target == "of") {
+                      target_ptr = &state->aflag.of;
+                    }
+
                     if (target_ptr) {
                       *target_ptr = 0;
                       return;
