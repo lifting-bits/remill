@@ -28,6 +28,7 @@ const std::string_view kBranchTakenVariableName = "BRANCH_TAKEN";
 const std::string_view kInvalidInstructionISelName = "INVALID_INSTRUCTION";
 const std::string_view kUnsupportedInstructionISelName =
     "UNSUPPORTED_INSTRUCTION";
+const std::string_view kGetPCISelName = "GET_PC";
 
 const std::string_view kIgnoreNextPCVariableName = "IGNORE_NEXT_PC";
 

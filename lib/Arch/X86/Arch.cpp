@@ -788,6 +788,46 @@ static void DecodeOperand(Instruction &inst, const xed_decoded_inst_t *xedd,
   }
 }
 
+static uint64_t BytesToBits(const uint8_t *bytes) {
+  uint64_t bits = 0;
+  bits = (bits << 8) | static_cast<uint32_t>(bytes[0]);
+  bits = (bits << 8) | static_cast<uint32_t>(bytes[1]);
+  bits = (bits << 8) | static_cast<uint32_t>(bytes[2]);
+  bits = (bits << 8) | static_cast<uint32_t>(bytes[3]);
+  bits = (bits << 8) | static_cast<uint32_t>(bytes[4]);
+  return bits;
+}
+
+static bool TryDecodeIdioms(Instruction &inst) {
+  // Check for CALL+POP idiom used to retrieve PC.
+  if (inst.bytes.size() == 6) {
+    const auto bytes = reinterpret_cast<const uint8_t *>(inst.bytes.data());
+    const auto bits1 = BytesToBits(bytes);
+
+    // Check that we have a CALL pointing one instruction ahead of where we are
+    // now.
+    if (bits1 != 0xe800000000) {
+      return false;
+    }
+
+    // Check whether we have a POP instruction to retrieve the return address
+    // that we just pushed to the stack.
+    inst.bytes.clear();
+    if (!inst.arch->DecodeInstruction(inst.pc + 5, &inst.bytes[5], inst) ||
+        inst.function.size() < 3 || inst.function.substr(0, 3) != "POP") {
+      return false;
+    }
+
+    // We've matched the idiom. Now let's call our custom intrinsic that assigns
+    // the PC to the operand register.
+    assert(inst.operands.size() == 1);
+    inst.function = kGetPCISelName;
+    return true;
+  }
+
+  return false;
+}
+
 class X86Arch final : public Arch {
  public:
   X86Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
@@ -1239,6 +1279,10 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
     inst.bytes.resize(len + extra_len);
   } else {
     inst.bytes = inst_bytes.substr(0, len + extra_len);
+  }
+
+  if (TryDecodeIdioms(inst)) {
+    return inst.IsValid();
   }
 
   // Wrap an instruction in atomic begin/end if it accesses memory with RMW
