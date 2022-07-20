@@ -38,6 +38,8 @@ RUN ./scripts/build.sh \
     --prefix /opt/trailofbits \
     --extra-cmake-args "-DCMAKE_BUILD_TYPE=Release"
 
+RUN pip3 install ./scripts/diff_tester_export_insns/diff_tester_export_insns
+
 RUN cd remill-build && \
     cmake --build . --target test_dependencies -- -j $(nproc) && \
     CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --verbose --target test -- -j $(nproc) && \
