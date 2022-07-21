@@ -206,33 +206,6 @@ class DifferentialModuleBuilder {
   }
 };
 
-void RunDefaultOptPipeline(llvm::Module *mod) {
-  // Create the analysis managers.
-  llvm::LoopAnalysisManager LAM;
-  llvm::FunctionAnalysisManager FAM;
-  llvm::CGSCCAnalysisManager CGAM;
-  llvm::ModuleAnalysisManager MAM;
-
-  // Create the new pass manager builder.
-  // Take a look at the PassBuilder constructor parameters for more
-  // customization, e.g. specifying a TargetMachine or various debugging
-  // options.
-  llvm::PassBuilder PB;
-
-  // Register all the basic analyses with the managers.
-  PB.registerModuleAnalyses(MAM);
-  PB.registerCGSCCAnalyses(CGAM);
-  PB.registerFunctionAnalyses(FAM);
-  PB.registerLoopAnalyses(LAM);
-  PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
-
-  // Create the pass manager.
-  // This one corresponds to a typical -O2 optimization pipeline.
-  llvm::ModulePassManager MPM =
-      PB.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O2);
-}
-
-
 using random_bytes_engine =
     std::independent_bits_engine<std::default_random_engine, CHAR_BIT, uint8_t>;
 
@@ -305,32 +278,30 @@ class ComparisonRunner {
                const std::vector<WhiteListInstruction> &whitelist,
                std::string_view isel_name) {
 
-    auto func1_state = (X86State *) alloca(sizeof(X86State));
-    test_runner::RandomizeState(func1_state, this->rbe);
-    func1_state->addr.ds_base.dword = 0;
-    func1_state->addr.ss_base.dword = 0;
-    func1_state->addr.es_base.dword = 0;
-    func1_state->addr.cs_base.dword = 0;
-    func1_state->aflag.af = test_runner::random_boolean_flag(this->rbe);
-    func1_state->aflag.cf = test_runner::random_boolean_flag(this->rbe);
-    func1_state->aflag.df = test_runner::random_boolean_flag(this->rbe);
-    func1_state->aflag.of = test_runner::random_boolean_flag(this->rbe);
-    func1_state->aflag.pf = test_runner::random_boolean_flag(this->rbe);
-    func1_state->aflag.sf = test_runner::random_boolean_flag(this->rbe);
-    func1_state->aflag.zf = test_runner::random_boolean_flag(this->rbe);
+    X86State func1_state = {};
+    test_runner::RandomizeState(&func1_state, this->rbe);
+    func1_state.addr.ds_base.dword = 0;
+    func1_state.addr.ss_base.dword = 0;
+    func1_state.addr.es_base.dword = 0;
+    func1_state.addr.cs_base.dword = 0;
+    func1_state.aflag.af = test_runner::random_boolean_flag(this->rbe);
+    func1_state.aflag.cf = test_runner::random_boolean_flag(this->rbe);
+    func1_state.aflag.df = test_runner::random_boolean_flag(this->rbe);
+    func1_state.aflag.of = test_runner::random_boolean_flag(this->rbe);
+    func1_state.aflag.pf = test_runner::random_boolean_flag(this->rbe);
+    func1_state.aflag.sf = test_runner::random_boolean_flag(this->rbe);
+    func1_state.aflag.zf = test_runner::random_boolean_flag(this->rbe);
 
     if (isel_name.rfind("REP_") != std::string::npos) {
       LOG(INFO) << "setting ecx to 1";
-      func1_state->gpr.rcx.dword = 1;
+      func1_state.gpr.rcx.dword = 1;
     }
 
-    auto func2_state = (X86State *) alloca(sizeof(X86State));
+    X86State func2_state = {};
 
-    auto init_state = this->DumpState(func1_state);
+    auto init_state = this->DumpState(&func1_state);
 
-    std::memcpy(func2_state, func1_state, sizeof(X86State));
-
-    assert(std::memcmp(func1_state, func2_state, sizeof(X86State)) == 0);
+    std::memcpy(&func2_state, &func1_state, sizeof(X86State));
 
     auto mem_handler =
         std::make_unique<test_runner::MemoryHandler>(this->endian);
@@ -338,11 +309,11 @@ class ComparisonRunner {
       return st->gpr.rip.qword;
     };
     test_runner::ExecuteLiftedFunction<X86State, uint64_t>(
-        f1, insn_length, func1_state, mem_handler.get(), pc_fetch);
+        f1, insn_length, &func1_state, mem_handler.get(), pc_fetch);
     auto second_handler = std::make_unique<test_runner::MemoryHandler>(
         this->endian, mem_handler->GetUninitializedReads());
     test_runner::ExecuteLiftedFunction<X86State, uint64_t>(
-        f2, insn_length, func2_state, second_handler.get(), pc_fetch);
+        f2, insn_length, &func2_state, second_handler.get(), pc_fetch);
 
 
     auto memory_state_eq =
@@ -355,17 +326,17 @@ class ComparisonRunner {
     }
 
     for (const auto &it : whitelist) {
-      it.ApplyToInsn(isel_name, func1_state);
-      it.ApplyToInsn(isel_name, func2_state);
+      it.ApplyToInsn(isel_name, &func1_state);
+      it.ApplyToInsn(isel_name, &func2_state);
     }
 
     auto are_equal =
-        std::memcmp(func1_state, func2_state, sizeof(X86State)) == 0 &&
+        std::memcmp(&func1_state, &func2_state, sizeof(X86State)) == 0 &&
         memory_state_eq;
 
 
-    return {init_state, this->DumpState(func1_state),
-            this->DumpState(func2_state), are_equal};
+    return {init_state, this->DumpState(&func1_state),
+            this->DumpState(&func2_state), are_equal};
   }
 };
 
