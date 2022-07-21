@@ -67,11 +67,11 @@ CopyFunctionIntoNewModule(llvm::Module *target, const llvm::Function *old_func,
 
 void *MissingFunctionStub(const std::string &name);
 
-template <class T, typename P>
+template <typename T, typename P>
 void ExecuteLiftedFunction(
     llvm::Function *func, size_t insn_length, T *state,
     test_runner::MemoryHandler *handler,
-    const std::function<uint64_t(T *)> program_counter_fetch) {
+    const std::function<uint64_t(T *)> &program_counter_fetch) {
   std::string load_error = "";
   llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr, &load_error);
   if (!load_error.empty()) {

@@ -68,8 +68,6 @@ void Accessor::ApplyOverride(X86State *state) const {
 }
 
 bool Accessor::fromJSON(const llvm::json::Value &E, llvm::json::Path P) {
-
-
   std::vector<std::string> section_names;
 
   if (!llvm::json::fromJSON(E, section_names, P.field("state_target"))) {

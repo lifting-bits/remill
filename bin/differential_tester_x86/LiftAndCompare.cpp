@@ -134,35 +134,19 @@ class DifferentialModuleBuilder {
 
     auto f1 = f1_and_name.first;
     auto f2 = f2_and_name.first;
-    llvm::verifyFunction(*f1, &llvm::errs());
 
-    llvm::verifyFunction(*f2, &llvm::errs());
+    for (auto x : {f1, f2}) {
+      llvm::verifyFunction(*x, &llvm::errs());
+    }
 
 
     auto tst = f1->getParent();
 
-    for (const auto &f : tst->getFunctionList()) {
-      if (llvm::verifyFunction(f, &llvm::errs())) {
-        f.print(llvm::errs());
-        LOG(INFO) << "Num basic block: " << f.getBasicBlockList().size();
-        LOG(FATAL) << "Error in " << f.getName().str();
-      }
-    }
-
-    assert(remill::VerifyModule(tst));
+    CHECK(remill::VerifyModule(tst));
 
     auto cloned = llvm::CloneModule(*tst);
 
-    auto maybe_message = remill::VerifyModuleMsg(cloned.get());
-    if (maybe_message.has_value()) {
-      cloned->getFunction(f1->getName())->dump();
-      cloned->getFunction(f2->getName())->dump();
-      auto insn_func =
-          cloned->getFunction("sleigh_remill_instruction_function");
-      if (insn_func) {
-        insn_func->dump();
-      }
-
+    if (auto maybe_message = remill::VerifyModuleMsg(cloned.get())) {
       LOG(FATAL) << *maybe_message;
     }
 
@@ -278,9 +262,7 @@ class ComparisonRunner {
 
     auto mem_handler =
         std::make_unique<test_runner::MemoryHandler>(this->endian);
-    std::function<uint64_t(X86State * st)> pc_fetch = [](X86State *st) {
-      return st->gpr.rip.qword;
-    };
+    auto pc_fetch = [](X86State *st) { return st->gpr.rip.qword; };
     test_runner::ExecuteLiftedFunction<X86State, uint64_t>(
         f1, insn_length, &func1_state, mem_handler.get(), pc_fetch);
     auto second_handler = std::make_unique<test_runner::MemoryHandler>(
@@ -477,9 +459,6 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (succeeded_tot) {
-    return 0;
-  } else {
-    return 2;
-  }
+
+  return succeeded_tot ? 0 : 2;
 }

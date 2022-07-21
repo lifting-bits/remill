@@ -30,6 +30,11 @@ namespace remill {
 
 namespace {
 
+static bool isVarnodeInConstantSpace(VarnodeData vnode) {
+  auto spc = vnode.getAddr().getSpace();
+  return spc->constant_space_index == spc->getIndex();
+}
+
 static llvm::Value *ExtractOverflowBitFromCallToIntrinsic(
     llvm::Intrinsic::IndependentIntrinsics intrinsic, llvm::Value *lhs,
     llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
@@ -206,8 +211,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
                             SleighLifter::PcodeToLLVMEmitIntoBlock &lifter,
                             VarnodeData lhs_constant,
                             VarnodeData rhs_unfolded_value) {
-      assert(lhs_constant.space->getIndex() ==
-             lhs_constant.space->constant_space_index);
+      assert(isVarnodeInConstantSpace(lhs_constant));
       this->current_replacements.insert(
           {lhs_constant.offset, lifter.LiftParamPtr(bldr, rhs_unfolded_value)});
     }
@@ -447,8 +451,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       case OpCode::CPUI_CALL: {
         // directs dont read the address of the variable, the offset is the jump
         // TODO(Ian): handle other address spaces
-        if (input_var.getAddr().getSpace()->constant_space_index ==
-            input_var.getAddr().getSpace()->getIndex()) {
+        if (isVarnodeInConstantSpace(input_var)) {
           LOG(ERROR) << "Internal control flow not supported";
           return LiftStatus::kLiftedUnsupportedInstruction;
         }
@@ -1197,6 +1200,12 @@ SleighLifter::SleighLifter(const sleigh::SleighArch *arch_,
 const std::string_view SleighLifter::kInstructionFunctionPrefix =
     "sleigh_remill_instruction_function";
 
+void SleighLifter::SetISelAttributes(llvm::Function *target_func) {
+  target_func->setLinkage(llvm::GlobalValue::InternalLinkage);
+  target_func->removeFnAttr(llvm::Attribute::NoInline);
+  target_func->addFnAttr(llvm::Attribute::InlineHint);
+  target_func->addFnAttr(llvm::Attribute::AlwaysInline);
+}
 
 std::pair<LiftStatus, llvm::Function *>
 SleighLifter::LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
@@ -1246,10 +1255,7 @@ SleighLifter::LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
   lifter.TerminateBlock();
 
   // Setup like an ISEL
-  target_func->setLinkage(llvm::GlobalValue::InternalLinkage);
-  target_func->removeFnAttr(llvm::Attribute::NoInline);
-  target_func->addFnAttr(llvm::Attribute::InlineHint);
-  target_func->addFnAttr(llvm::Attribute::AlwaysInline);
+  SleighLifter::SetISelAttributes(target_func);
 
   return std::make_pair(lifter.GetStatus(), target_func);
 }
@@ -1270,16 +1276,11 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
 
   auto target_func = res.second;
 
-
   llvm::IRBuilder<> intoblock_builer(block);
-
-
-  std::vector<llvm::Value *> args;
-  args.reserve(3);
-
-  args.push_back(remill::LoadStatePointer(block));
-  args.push_back(remill::LoadProgramCounter(block, *this->GetIntrinsicTable()));
-  args.push_back(remill::LoadMemoryPointer(block, *this->GetIntrinsicTable()));
+  std::array<llvm::Value *, 3> args = {
+      remill::LoadStatePointer(block),
+      remill::LoadProgramCounter(block, *this->GetIntrinsicTable()),
+      remill::LoadMemoryPointer(block, *this->GetIntrinsicTable())};
 
   intoblock_builer.CreateStore(intoblock_builer.CreateCall(target_func, args),
                                remill::LoadMemoryPointerRef(block));

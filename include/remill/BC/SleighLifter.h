@@ -54,6 +54,8 @@ class SleighLifter : public InstructionLifter {
                            llvm::Value *state_ptr, bool is_delayed) override;
 
  private:
+  static void SetISelAttributes(llvm::Function *);
+
   std::pair<LiftStatus, llvm::Function *>
   LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
                         bool is_delayed);
