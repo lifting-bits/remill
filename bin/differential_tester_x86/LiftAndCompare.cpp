@@ -143,8 +143,7 @@ class DifferentialModuleBuilder {
 
     for (const auto &f : tst->getFunctionList()) {
       if (llvm::verifyFunction(f, &llvm::errs())) {
-
-        f.dump();
+        f.print(llvm::errs());
         LOG(INFO) << "Num basic block: " << f.getBasicBlockList().size();
         LOG(FATAL) << "Error in " << f.getName().str();
       }
