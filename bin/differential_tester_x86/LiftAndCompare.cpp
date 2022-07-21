@@ -236,7 +236,7 @@ class ComparisonRunner {
                std::string_view isel_name) {
 
     X86State func1_state = {};
-    test_runner::RandomizeState(&func1_state, this->rbe);
+    test_runner::RandomizeState(func1_state, this->rbe);
     func1_state.addr.ds_base.dword = 0;
     func1_state.addr.ss_base.dword = 0;
     func1_state.addr.es_base.dword = 0;

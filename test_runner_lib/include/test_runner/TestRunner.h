@@ -127,11 +127,11 @@ void ExecuteLiftedFunction(
 }
 
 template <typename T>
-void RandomizeState(T *state, random_bytes_engine &rbe) {
+void RandomizeState(T &state, random_bytes_engine &rbe) {
   std::vector<uint8_t> data(sizeof(T));
   std::generate(begin(data), end(data), std::ref(rbe));
 
-  std::memcpy(state, data.data(), sizeof(T));
+  std::memcpy(&state, data.data(), sizeof(T));
 }
 
 uint8_t random_boolean_flag(random_bytes_engine &rbe);
