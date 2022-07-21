@@ -78,32 +78,6 @@ class DiffModule {
   }
 };
 
-
-class MappTypeRemapper : public llvm::ValueMapTypeRemapper {
- private:
-  const remill::TypeMap &tmap;
-
- public:
-  MappTypeRemapper(const remill::TypeMap &tmap_) : tmap(tmap_) {}
-
-  virtual llvm::Type *remapType(llvm::Type *SrcTy) override {
-    LOG(INFO) << "Attempting to remap: " << remill::LLVMThingToString(SrcTy);
-    if (auto it = this->tmap.find(SrcTy); it != this->tmap.end()) {
-      return it->second;
-    }
-
-    return SrcTy;
-  }
-};
-
-void CloneFunctionWithTypeMap(llvm::Function *NewFunc, llvm::Function *OldFunc,
-                              remill::TypeMap &tmap) {
-
-  remill::ValueMap vmap;
-  remill::MDMap md_map;
-  remill::CloneFunctionInto(OldFunc, NewFunc, vmap, tmap, md_map);
-}
-
 class DifferentialModuleBuilder {
  public:
   static DifferentialModuleBuilder
