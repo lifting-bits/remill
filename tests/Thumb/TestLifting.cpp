@@ -143,19 +143,19 @@ class TestSpecRunner {
 
     auto new_func = test_runner::CopyFunctionIntoNewModule(
         justFuncMod.get(), lifted_func, new_mod);
-    AArch32State *st = (AArch32State *) alloca(sizeof(AArch32State));
+    AArch32State st = {};
 
 
     test.CheckLiftedInstruction(maybe_func->second);
     test_runner::RandomizeState(st, this->rbe);
 
-    st->sr.z = test_runner::random_boolean_flag(this->rbe);
-    st->sr.c = test_runner::random_boolean_flag(this->rbe);
-    st->sr.v = test_runner::random_boolean_flag(this->rbe);
-    st->sr.z = test_runner::random_boolean_flag(this->rbe);
-    st->sr.n = test_runner::random_boolean_flag(this->rbe);
+    st.sr.z = test_runner::random_boolean_flag(this->rbe);
+    st.sr.c = test_runner::random_boolean_flag(this->rbe);
+    st.sr.v = test_runner::random_boolean_flag(this->rbe);
+    st.sr.z = test_runner::random_boolean_flag(this->rbe);
+    st.sr.n = test_runner::random_boolean_flag(this->rbe);
 
-    test.SetupTestPreconditions(*st);
+    test.SetupTestPreconditions(st);
     auto mem_hand = std::make_unique<test_runner::MemoryHandler>(this->endian);
 
     for (const auto &prec : test.GetMemoryPrecs()) {
@@ -163,11 +163,11 @@ class TestSpecRunner {
     }
 
     test_runner::ExecuteLiftedFunction<AArch32State, uint32_t>(
-        new_func, test.target_bytes.length(), st, mem_hand.get(),
+        new_func, test.target_bytes.length(), &st, mem_hand.get(),
         [](AArch32State *st) { return st->gpr.r15.dword; });
 
-    LOG(INFO) << "Pc after execute " << st->gpr.r15.dword;
-    test.CheckResultingState(*st);
+    LOG(INFO) << "Pc after execute " << st.gpr.r15.dword;
+    test.CheckResultingState(st);
   }
 };
 
