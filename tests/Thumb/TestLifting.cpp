@@ -36,6 +36,8 @@ const static std::unordered_map<std::string,
         {"r1", [](AArch32State &st) -> uint32_t & { return st.gpr.r1.dword; }}};
 }
 
+
+using MemoryModifier = std::function<void(test_runner::MemoryHandler &)>;
 class TestOutputSpec {
  public:
   uint64_t addr;
@@ -45,8 +47,7 @@ class TestOutputSpec {
   remill::Instruction::Category expected_category;
   std::vector<std::pair<std::string, uint32_t>> register_preconditions;
   std::vector<std::pair<std::string, uint32_t>> register_postconditions;
-  std::vector<std::function<void(test_runner::MemoryHandler &)>>
-      initial_memory_conditions;
+  std::vector<MemoryModifier> initial_memory_conditions;
 
   void ApplyCondition(AArch32State &state, std::string reg,
                       uint32_t value) const {
@@ -73,8 +74,7 @@ class TestOutputSpec {
         });
   }
 
-  const std::vector<std::function<void(test_runner::MemoryHandler &)>> &
-  GetMemoryPrecs() const {
+  const std::vector<MemoryModifier> &GetMemoryPrecs() const {
     return this->initial_memory_conditions;
   }
 
