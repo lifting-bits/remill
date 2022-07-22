@@ -671,6 +671,13 @@ std::string Instruction::Serialize(void) const {
       case kArchSparc64: ss << "SPARC64"; break;
     }
   };
+  
+  auto maybe_stream_branch_taken_arch = [this, &ss] () {
+    if (branch_taken_arch_name != arch_name) {
+      ss << ':';
+      stream_arch(branch_taken_arch_name);
+    }
+  };
 
   stream_arch(arch_name);
 
@@ -751,45 +758,30 @@ std::string Instruction::Serialize(void) const {
   switch (category) {
     case Instruction::kCategoryDirectJump:
       ss << " (BRANCH " << std::hex << branch_taken_pc << std::dec;
-      if (branch_taken_arch_name != arch_name) {
-        ss << ':';
-        stream_arch(branch_taken_arch_name);
-      }
+      maybe_stream_branch_taken_arch();
       ss << ")";
       break;
     case Instruction::kCategoryDirectFunctionCall:
       ss << " (DIRECT_CALL (TAKEN " << std::hex << branch_taken_pc;
-      if (branch_taken_arch_name != arch_name) {
-        ss << ':';
-        stream_arch(branch_taken_arch_name);
-      }
+      maybe_stream_branch_taken_arch();
       ss << ")"
          << " (RETURN " << branch_not_taken_pc << std::dec << "))";
       break;
     case Instruction::kCategoryIndirectFunctionCall:
       ss << " (INDIRECT_CALL (TAKEN <unknown>";
-      if (branch_taken_arch_name != arch_name) {
-        ss << ':';
-        stream_arch(branch_taken_arch_name);
-      }
+      maybe_stream_branch_taken_arch();
       ss << ")"
          << " (RETURN " << std::hex << branch_not_taken_pc << std::dec << "))";
       break;
     case Instruction::kCategoryConditionalBranch:
       ss << " (COND_BRANCH (TAKEN " << std::hex << branch_taken_pc;
-      if (branch_taken_arch_name != arch_name) {
-        ss << ':';
-        stream_arch(branch_taken_arch_name);
-      }
+      maybe_stream_branch_taken_arch();
       ss << ")"
          << " (NOT_TAKEN " << branch_not_taken_pc << std::dec << "))";
       break;
     case kCategoryConditionalIndirectJump:
       ss << " (COND_BRANCH (TAKEN <unknown>";
-      if (branch_taken_arch_name != arch_name) {
-        ss << ':';
-        stream_arch(branch_taken_arch_name);
-      }
+      maybe_stream_branch_taken_arch();
       ss << ")"
          << " (NOT_TAKEN " << std::hex
          << branch_not_taken_pc << std::dec << "))";
