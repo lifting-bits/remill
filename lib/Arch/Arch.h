@@ -82,7 +82,10 @@ class ArchBase : public remill::Arch {
                               size_t offset,
                               const char *parent_reg_name) const final;
 
-  // State type.
+  // State type. Initially this is `nullptr` because we can construct and arch
+  // without loading in a semantics module. When we load a semantics module, we
+  // learn about the LLVM type of the state structure, and so we need to be
+  // able to update this in-place.
   mutable llvm::StructType *state_type{nullptr};
 
   // Memory pointer type.
