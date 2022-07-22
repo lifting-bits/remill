@@ -1212,33 +1212,28 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
       } else {
         auto res = evaluator(*src1, *src2);
         if (!res) {
+          inst.branch_taken_pc = 0;
           if (is_cond) {
             inst.branch_not_taken_pc = inst.next_pc;
             inst.category = Instruction::kCategoryConditionalIndirectJump;
           } else {
+            inst.branch_not_taken_pc = 0;
             inst.category = Instruction::kCategoryIndirectJump;
           }
         } else if (is_cond) {
           inst.branch_taken_pc = static_cast<uint64_t>(*res);
           inst.branch_not_taken_pc = inst.next_pc;
           inst.category = Instruction::kCategoryConditionalBranch;
-
-          if (inst.branch_taken_pc % 2u) {
-            inst.branch_taken_arch_name = ArchName::kArchThumb2LittleEndian;
-            inst.branch_taken_pc -= 1u;
-          } else {
-            inst.branch_taken_arch_name = inst.arch_name;
-          }
         } else {
           inst.branch_taken_pc = static_cast<uint64_t>(*res);
+          inst.branch_not_taken_pc = 0;
           inst.category = Instruction::kCategoryDirectJump;
-
-          if (inst.branch_taken_pc % 2u) {
-            inst.branch_taken_arch_name = ArchName::kArchThumb2LittleEndian;
-            inst.branch_taken_pc -= 1u;
-          } else {
-            inst.branch_taken_arch_name = inst.arch_name;
-          }
+        }
+        if (inst.branch_taken_pc % 2u) {
+          inst.branch_taken_arch_name = ArchName::kArchThumb2LittleEndian;
+          inst.branch_taken_pc -= 1u;
+        } else {
+          inst.branch_taken_arch_name = inst.arch_name;
         }
       }
     }
