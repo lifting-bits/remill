@@ -653,7 +653,7 @@ std::string Instruction::Serialize(void) const {
   std::stringstream ss;
   ss << "(";
 
-  auto stream_arch = [&ss] (ArchName an) {
+  auto stream_arch = [&ss](ArchName an) {
     switch (an) {
       case kArchInvalid: ss << "INVALID"; break;
       case kArchAMD64:
@@ -671,8 +671,8 @@ std::string Instruction::Serialize(void) const {
       case kArchSparc64: ss << "SPARC64"; break;
     }
   };
-  
-  auto maybe_stream_branch_taken_arch = [this, &ss] () {
+
+  auto maybe_stream_branch_taken_arch = [this, &ss, &stream_arch]() {
     if (branch_taken_arch_name != arch_name) {
       ss << ':';
       stream_arch(branch_taken_arch_name);
@@ -783,8 +783,8 @@ std::string Instruction::Serialize(void) const {
       ss << " (COND_BRANCH (TAKEN <unknown>";
       maybe_stream_branch_taken_arch();
       ss << ")"
-         << " (NOT_TAKEN " << std::hex
-         << branch_not_taken_pc << std::dec << "))";
+         << " (NOT_TAKEN " << std::hex << branch_not_taken_pc << std::dec
+         << "))";
       break;
     default: break;
   }
