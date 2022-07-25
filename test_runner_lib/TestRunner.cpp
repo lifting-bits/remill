@@ -1,4 +1,3 @@
-#include <fenv.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
