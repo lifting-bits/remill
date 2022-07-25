@@ -16,6 +16,8 @@
 
 #pragma once
 
+namespace {
+
 template <typename D, typename S1>
 DEF_SEM(GET_PC, D dst, S1 src1) {
   addr_t pc = Read(dst);
@@ -25,3 +27,5 @@ DEF_SEM(GET_PC, D dst, S1 src1) {
 
 DEF_ISEL(GET_PC_16) = GET_PC<M16W, R32>;
 DEF_ISEL(GET_PC_32) = GET_PC<M32W, R32>;
+
+}  // namespace
