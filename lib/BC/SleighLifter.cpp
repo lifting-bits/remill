@@ -1269,9 +1269,7 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
     return kLiftedInvalidInstruction;
   }
 
-
   // Call the instruction function
-
   auto res = this->LiftIntoInternalBlock(inst, block->getModule(), is_delayed);
 
   auto target_func = res.second;
@@ -1289,7 +1287,6 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
   intoblock_builer.CreateStore(
       remill::LoadProgramCounter(block, *this->GetIntrinsicTable()),
       remill::LoadNextProgramCounterRef(block));
-
 
   //NOTE(Ian): If we made it past decoding we should be able to decode the bytes again
   LOG(INFO) << res.first;
