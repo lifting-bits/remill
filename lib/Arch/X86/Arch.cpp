@@ -815,17 +815,29 @@ static bool TryDecodeIdioms(Instruction &inst) {
     // that we just pushed to the stack.
     Instruction pop_inst;
     if (!inst.arch->DecodeInstruction(inst.pc + 5, &inst.bytes[5], pop_inst) ||
-        inst.function.substr(0, 3) != "POP") {
+        pop_inst.function.substr(0, 3) != "POP") {
       return false;
     }
 
     // We've matched the idiom. Now let's call our custom intrinsic that assigns
     // the PC to the operand register.
 
-    // The operand should be the register that we're popping into. Just take the
-    // operand from the POP instruction.
+    // The first operand should be the register that we're popping into. Just
+    // take the operand from the POP instruction.
     assert(pop_inst.operands.size() == 1);
     inst.operands = std::move(pop_inst.operands);
+
+    // The second operand is the address of the POP instruction.
+    inst.operands.emplace_back();
+    auto &addr_op = inst.operands.back();
+    addr_op.type = Operand::kTypeAddressExpression;
+    auto *pc_reg = inst.EmplaceRegister("EIP");
+    assert(pc_reg);
+    auto *pc_offset = inst.EmplaceConstant(
+        llvm::ConstantInt::get(inst.arch->AddressType(), 5));
+    assert(pc_offset);
+    addr_op.expr =
+        inst.EmplaceBinaryOp(llvm::Instruction::Add, pc_reg, pc_offset);
 
     inst.category = Instruction::kCategoryNormal;
     inst.function = std::string(kGetPCISelPrefix) +
