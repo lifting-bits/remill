@@ -788,7 +788,8 @@ static void DecodeOperand(Instruction &inst, const xed_decoded_inst_t *xedd,
   }
 }
 
-static uint64_t BytesToBits(const uint8_t *bytes) {
+static uint64_t BytesToCallBits(const uint8_t *bytes) {
+  // The pattern we're looking for is 5 bytes long.
   uint64_t bits = 0;
   bits = (bits << 8) | static_cast<uint32_t>(bytes[0]);
   bits = (bits << 8) | static_cast<uint32_t>(bytes[1]);
@@ -801,13 +802,13 @@ static uint64_t BytesToBits(const uint8_t *bytes) {
 static bool TryDecodeIdioms(Instruction &inst) {
   // Check for CALL+POP idiom used to retrieve PC.
   if (inst.bytes.size() == 6) {
-    const auto call_pc = inst.pc;
     const auto bytes = reinterpret_cast<const uint8_t *>(inst.bytes.data());
-    const auto bits1 = BytesToBits(bytes);
+    const auto call_pc = inst.pc;
+    const auto call_bits = BytesToCallBits(bytes);
 
     // Check that we have a CALL pointing one instruction ahead of where we are
     // now.
-    if (bits1 != 0xe800000000) {
+    if (call_bits != 0xe800000000) {
       return false;
     }
 
