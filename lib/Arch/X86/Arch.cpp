@@ -827,7 +827,6 @@ static bool TryDecodeIdioms(Instruction &inst) {
     assert(pop_inst.operands.size() == 1);
     inst.operands = std::move(pop_inst.operands);
 
-    inst.pc = call_pc;
     inst.category = Instruction::kCategoryNormal;
     inst.function = std::string(kGetPCISelPrefix) +
                     std::to_string(inst.operands.front().size);
