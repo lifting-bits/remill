@@ -803,7 +803,6 @@ static bool TryDecodeIdioms(Instruction &inst) {
   // Check for CALL+POP idiom used to retrieve PC.
   if (inst.bytes.size() == 6) {
     const auto bytes = reinterpret_cast<const uint8_t *>(inst.bytes.data());
-    const auto call_pc = inst.pc;
     const auto call_bits = BytesToCallBits(bytes);
 
     // Check that we have a CALL pointing one instruction ahead of where we are
@@ -814,15 +813,20 @@ static bool TryDecodeIdioms(Instruction &inst) {
 
     // Check whether we have a POP instruction to retrieve the return address
     // that we just pushed to the stack.
-    inst.bytes.clear();
-    if (!inst.arch->DecodeInstruction(inst.pc + 5, &inst.bytes[5], inst) ||
+    Instruction pop_inst;
+    if (!inst.arch->DecodeInstruction(inst.pc + 5, &inst.bytes[5], pop_inst) ||
         inst.function.substr(0, 3) != "POP") {
       return false;
     }
 
     // We've matched the idiom. Now let's call our custom intrinsic that assigns
     // the PC to the operand register.
-    assert(inst.operands.size() == 1);
+
+    // The operand should be the register that we're popping into. Just take the
+    // operand from the POP instruction.
+    assert(pop_inst.operands.size() == 1);
+    inst.operands = std::move(pop_inst.operands);
+
     inst.pc = call_pc;
     inst.category = Instruction::kCategoryNormal;
     inst.function = std::string(kGetPCISelPrefix) +
