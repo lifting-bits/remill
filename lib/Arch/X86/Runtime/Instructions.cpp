@@ -211,6 +211,7 @@ DEF_HELPER(SquareRoot32, float32_t src_float)->float32_t {
 #include "lib/Arch/X86/Semantics/DECIMAL.cpp"
 #include "lib/Arch/X86/Semantics/FLAGOP.cpp"
 #include "lib/Arch/X86/Semantics/FMA.cpp"
+#include "lib/Arch/X86/Semantics/GET_PC.cpp"
 #include "lib/Arch/X86/Semantics/INTERRUPT.cpp"
 #include "lib/Arch/X86/Semantics/IO.cpp"
 #include "lib/Arch/X86/Semantics/LOGICAL.cpp"

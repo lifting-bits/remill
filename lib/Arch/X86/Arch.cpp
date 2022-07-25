@@ -801,6 +801,7 @@ static uint64_t BytesToBits(const uint8_t *bytes) {
 static bool TryDecodeIdioms(Instruction &inst) {
   // Check for CALL+POP idiom used to retrieve PC.
   if (inst.bytes.size() == 6) {
+    const auto call_pc = inst.pc;
     const auto bytes = reinterpret_cast<const uint8_t *>(inst.bytes.data());
     const auto bits1 = BytesToBits(bytes);
 
@@ -814,14 +815,17 @@ static bool TryDecodeIdioms(Instruction &inst) {
     // that we just pushed to the stack.
     inst.bytes.clear();
     if (!inst.arch->DecodeInstruction(inst.pc + 5, &inst.bytes[5], inst) ||
-        inst.function.size() < 3 || inst.function.substr(0, 3) != "POP") {
+        inst.function.substr(0, 3) != "POP") {
       return false;
     }
 
     // We've matched the idiom. Now let's call our custom intrinsic that assigns
     // the PC to the operand register.
     assert(inst.operands.size() == 1);
-    inst.function = kGetPCISelName;
+    inst.pc = call_pc;
+    inst.category = Instruction::kCategoryNormal;
+    inst.function = std::string(kGetPCISelPrefix) +
+                    std::to_string(inst.operands.front().size);
     return true;
   }
 
