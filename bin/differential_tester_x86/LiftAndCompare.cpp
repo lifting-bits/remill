@@ -39,42 +39,31 @@ DEFINE_bool(should_dump_functions, false, "Dump each function version");
 DEFINE_bool(stop_on_fail, false, "Stop on first failure");
 
 
+struct InstructionFunction {
+  llvm::Function *llvm_function;
+  std::string isel_name;
+};
+
 class DiffModule {
  private:
   std::unique_ptr<llvm::Module> mod;
-  llvm::Function *f1;
-  llvm::Function *f2;
-  std::string f1_insn_name;
-  std::string f2_insn_name;
+
+  std::tuple<InstructionFunction, InstructionFunction> functions_to_compare;
 
  public:
   DiffModule(std::unique_ptr<llvm::Module> mod_, llvm::Function *f1_,
              llvm::Function *f2_, std::string f1_insn_name_,
              std::string f2_insn_name_)
       : mod(std::move(mod_)),
-        f1(f1_),
-        f2(f2_),
-        f1_insn_name(f1_insn_name_),
-        f2_insn_name(f2_insn_name_) {}
+        functions_to_compare({{f1_, f1_insn_name_}, {f2_, f2_insn_name_}}) {}
 
   llvm::Module *GetModule() {
     return this->mod.get();
   }
 
-  llvm::Function *GetF1() {
-    return this->f1;
-  }
-
-  llvm::Function *GetF2() {
-    return this->f2;
-  }
-
-  std::string_view GetNameF1() const {
-    return this->f1_insn_name;
-  }
-
-  std::string_view GetNameF2() const {
-    return this->f2_insn_name;
+  template <std::size_t N>
+  InstructionFunction GetF() {
+    return std::get<N>(this->functions_to_compare);
   }
 };
 
@@ -348,14 +337,15 @@ bool runTestCase(const TestCase &tc, DifferentialModuleBuilder &diffbuilder,
   ComparisonRunner comp_runner(end);
 
   if (FLAGS_should_dump_functions) {
-    LOG(INFO) << remill::LLVMThingToString(diff_mod->GetF1());
-    LOG(INFO) << remill::LLVMThingToString(diff_mod->GetF2());
+    LOG(INFO) << remill::LLVMThingToString(diff_mod->GetF<0>().llvm_function);
+    LOG(INFO) << remill::LLVMThingToString(diff_mod->GetF<1>().llvm_function);
   }
 
   for (uint64_t i = 0; i < FLAGS_num_iterations; i++) {
     auto tc_result = comp_runner.SingleCmpRun(
-        tc.bytes.size(), diff_mod->GetF1(), diff_mod->GetF2(), whitelist,
-        diff_mod->GetNameF1());
+        tc.bytes.size(), diff_mod->GetF<0>().llvm_function,
+        diff_mod->GetF<1>().llvm_function, whitelist,
+        diff_mod->GetF<0>().isel_name);
 
     if (!tc_result.are_equal) {
       LOG(ERROR) << "Difference in instruction" << std::hex << tc.addr << ": "
