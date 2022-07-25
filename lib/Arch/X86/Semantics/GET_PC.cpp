@@ -25,7 +25,7 @@ DEF_SEM(GET_PC, D dst, S1 src1) {
   return memory;
 }
 
-DEF_ISEL(GET_PC_16) = GET_PC<M16W, R32>;
-DEF_ISEL(GET_PC_32) = GET_PC<M32W, R32>;
+DEF_ISEL(GET_PC_16) = GET_PC<R16W, R32>;
+DEF_ISEL(GET_PC_32) = GET_PC<R32W, R32>;
 
 }  // namespace
