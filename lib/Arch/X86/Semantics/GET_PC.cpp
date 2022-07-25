@@ -20,7 +20,7 @@ namespace {
 
 template <typename D, typename S1>
 DEF_SEM(GET_PC, D dst, S1 src1) {
-  addr_t pc = Read(dst);
+  addr_t pc = Read(src1);
   Write(dst, Read(ReadPtr<D>(pc)));
   return memory;
 }
