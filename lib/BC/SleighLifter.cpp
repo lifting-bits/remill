@@ -15,6 +15,7 @@
  */
 
 #include <glog/logging.h>
+#include <lib/Arch/Sleigh/Arch.h>
 #include <remill/BC/ABI.h>
 #include <remill/BC/IntrinsicTable.h>
 #include <remill/BC/SleighLifter.h>
@@ -23,8 +24,6 @@
 #include <cassert>
 #include <unordered_map>
 #include <unordered_set>
-
-#include "../Arch/Sleigh/Arch.h"
 
 namespace remill {
 
