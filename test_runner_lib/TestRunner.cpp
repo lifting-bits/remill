@@ -241,6 +241,7 @@ LiftingTester::LiftInstructionFunction(std::string_view fname,
                                        uint64_t address) {
   remill::Instruction insn;
   if (!this->arch->DecodeInstruction(address, bytes, insn)) {
+    LOG(ERROR) << "Failed decode";
     return std::nullopt;
   }
 

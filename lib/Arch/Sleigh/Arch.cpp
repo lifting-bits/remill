@@ -408,7 +408,7 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
   auto instr_len =
       this->sleigh_ctx.oneInstruction(address, pcode_handler, instr_bytes);
 
-  if (!instr_len || instr_len >= instr_bytes.size()) {
+  if (!instr_len || instr_len > instr_bytes.size()) {
     return false;
   }
   // communicate the size back to the caller
