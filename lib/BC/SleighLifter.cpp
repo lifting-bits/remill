@@ -1259,7 +1259,7 @@ SleighLifter::LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
   // Setup like an ISEL
   SleighLifter::SetISelAttributes(target_func);
 
-  return std::make_pair(lifter.GetStatus(), target_func);
+  return {lifter.GetStatus(), target_func};
 }
 
 LiftStatus
