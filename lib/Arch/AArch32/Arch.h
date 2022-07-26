@@ -16,44 +16,18 @@
 
 #pragma once
 
-#include <remill/Arch/ArchBase.h>  // For `Arch` and `ArchImpl`.
+#include <remill/Arch/AArch32/AArch32Base.h>
 
 namespace remill {
-class AArch32Arch final : public ArchBase {
+class AArch32Arch final : public AArch32ArchBase {
  public:
   AArch32Arch(llvm::LLVMContext *context_, OSName os_name_,
               ArchName arch_name_);
 
   virtual ~AArch32Arch(void);
 
-  // Returns the name of the stack pointer register.
-  std::string_view StackPointerRegisterName(void) const final;
-
-  // Returns the name of the program counter register.
-  std::string_view ProgramCounterRegisterName(void) const final;
-
-  // Decode an instuction.
   bool DecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                         Instruction &inst) const final;
-
-  // Align/Minimum/Maximum number of bytes in an instruction.
-  uint64_t MinInstructionAlign(void) const final;
-  uint64_t MinInstructionSize(void) const final;
-  uint64_t MaxInstructionSize(bool permit_fuse_idioms) const final;
-
-  llvm::Triple Triple(void) const final;
-  llvm::DataLayout DataLayout(void) const final;
-
-  // Default calling convention for this architecture.
-  llvm::CallingConv::ID DefaultCallingConv(void) const final;
-
-  // Populate the table of register information.
-  void PopulateRegisterTable(void) const final;
-
-  // Populate a just-initialized lifted function function with architecture-
-  // specific variables.
-  void FinishLiftedFunctionInitialization(llvm::Module *module,
-                                          llvm::Function *bb_func) const final;
+                         Instruction &inst) const override;
 
  private:
   AArch32Arch(void) = delete;

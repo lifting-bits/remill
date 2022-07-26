@@ -2,20 +2,20 @@
 #pragma once
 #include <remill/Arch/Arch.h>
 #include <remill/Arch/ArchBase.h>
+
+
 // clang-format off
-#define HAS_FEATURE_AVX 1
-#define HAS_FEATURE_AVX512 1
-#define ADDRESS_SIZE_BITS 64
-#define INCLUDED_FROM_REMILL
-#include <remill/Arch/X86/Runtime/State.h>
+#define ADDRESS_SIZE 32
+#include <remill/Arch/AArch32/Runtime/State.h>
 // clang-format on
 
 #include <string>
 namespace remill {
 /// Class to derive from to handle x86 addregs
-class X86ArchBase : public virtual ArchBase {
+class AArch32ArchBase : public virtual ArchBase {
  public:
-  X86ArchBase(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_)
+  AArch32ArchBase(llvm::LLVMContext *context_, OSName os_name_,
+                  ArchName arch_name_)
       : ArchBase(context_, os_name_, arch_name_) {}
 
   virtual std::string_view StackPointerRegisterName(void) const;
@@ -39,6 +39,6 @@ class X86ArchBase : public virtual ArchBase {
   // specific variables.
   void FinishLiftedFunctionInitialization(llvm::Module *module,
                                           llvm::Function *bb_func) const;
-  virtual ~X86ArchBase(void) = default;
+  virtual ~AArch32ArchBase(void) = default;
 };
 }  // namespace remill
