@@ -267,8 +267,7 @@ int main(int argc, char *argv[]) {
   remill::IntrinsicTable intrinsics(module.get());
 
 
-  remill::InstructionLifter::LifterPtr inst_lifter =
-      arch->DefaultLifter(intrinsics);
+  auto inst_lifter = arch->DefaultLifter(intrinsics);
 
   remill::TraceLifter trace_lifter(*inst_lifter.get(), manager);
 
