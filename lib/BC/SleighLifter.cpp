@@ -257,9 +257,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   llvm::BasicBlock *exit_block;
 
   void UpdateStatus(LiftStatus new_status, OpCode opc) {
+    this->status = new_status;
     if (new_status != LiftStatus::kLiftedInstruction) {
       LOG(ERROR) << "Failed to lift insn with opcode: " << get_opname(opc);
-      this->status = new_status;
     }
   }
 
@@ -308,6 +308,18 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     }
   }
 
+  ParamPtr LiftNormalRegisterOrCreateUnique(llvm::IRBuilder<> &bldr,
+                                            std::string reg_name,
+                                            VarnodeData target_vnode) {
+    if (auto res = this->LiftNormalRegister(bldr, reg_name)) {
+      return *res;
+    } else {
+      auto reg_ptr = this->unknown_regs.GetUniquePtr(target_vnode.offset,
+                                                     target_vnode.size, bldr);
+      return RegisterValue::CreatRegister(reg_ptr);
+    }
+  }
+
   //TODO(Ian): Maybe this should be a failable function that returns an unsupported insn in certain failures
   // So the times we need to replace an offset via a context are 3 fold.
   // 1. in Branches where the offset is retrieved directly from the varnode. This isnt handled here.
@@ -328,17 +340,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
       LOG(INFO) << "Looking for reg name " << reg_name << " from offset "
                 << vnode.offset;
-
-
-      auto res = this->LiftNormalRegister(bldr, reg_name);
-      if (res.has_value()) {
-        return *res;
-      } else {
-        auto reg_ptr =
-            this->unknown_regs.GetUniquePtr(vnode.offset, vnode.size, bldr);
-        return RegisterValue::CreatRegister(reg_ptr);
-      }
-
+      return this->LiftNormalRegisterOrCreateUnique(bldr, reg_name, vnode);
     } else if (space_name == "const") {
 
       auto cst_v = this->replacement_cont.LiftOffsetOrReplace(
