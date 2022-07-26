@@ -347,16 +347,15 @@ void CustomLoadImage::loadFill(unsigned char *ptr, int size,
 
   for (int i = 0; i < size; ++i) {
     uint64_t offset = start + i;
-    if (offset >= this->current_offset) {
-      auto index = offset - this->current_offset;
-      if (index < this->current_bytes.length()) {
-        ptr[i] = this->current_bytes[i];
-      } else {
-        ptr[i] = 0;
-      }
-    } else {
+    uint64_t index = offset - this->current_offset;
+
+    if (offset < this->current_offset ||
+        index >= this->current_bytes.length()) {
       ptr[i] = 0;
+      continue;
     }
+
+    ptr[i] = this->current_bytes[i];
   }
 }
 
