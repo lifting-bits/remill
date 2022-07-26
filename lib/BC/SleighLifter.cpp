@@ -747,7 +747,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
     auto computed_value =
         this->GetResultOfBoolOpFunc(bldr, opc, *lifted_lhs, *lifted_rhs);
-    if (!computed_value.has_value()) {
+    if (!computed_value) {
       return LiftStatus::kLiftedUnsupportedInstruction;
     }
 
