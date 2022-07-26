@@ -26,50 +26,55 @@
 namespace {
 const static std::unordered_map<
     std::string, std::function<void(X86State *, std::string_view)>>
-    accessors = {{"gpr",
-                  [](X86State *state, std::string_view target) {
-                    uint32_t *target_ptr = nullptr;
-                    if (target == "rip") {
-                      target_ptr = &state->gpr.rip.dword;
-                    }
+    accessors = {
+        {"gpr",
+         [](X86State *state, std::string_view target) {
+           uint32_t *target_ptr =
+               [state](std::string_view target) -> uint32_t * {
+             if (target == "rip") {
+               return &state->gpr.rip.dword;
+             }
 
-                    if (target == "rax") {
-                      target_ptr = &state->gpr.rax.dword;
-                    }
+             if (target == "rax") {
+               return &state->gpr.rax.dword;
+             }
 
-                    if (target_ptr) {
-                      *target_ptr = 0;
-                      return;
-                    }
-                    std::string s(target);
-                    throw std::runtime_error(std::string("Unknown reg: ") + s);
-                  }},
-                 {"aflags",
-                  [](X86State *state, std::string_view target) {
-                    uint8_t *target_ptr = nullptr;
-                    if (target == "af") {
-                      target_ptr = &state->aflag.af;
-                    }
+             return nullptr;
+           }(target);
 
-                    if (target == "zf") {
-                      target_ptr = &state->aflag.zf;
-                    }
 
-                    if (target == "of") {
-                      target_ptr = &state->aflag.of;
-                    }
+           if (!target_ptr) {
+             std::string s(target);
+             throw std::runtime_error(std::string("Unknown reg: ") + s);
+           }
 
-                    if (target_ptr) {
-                      *target_ptr = 0;
-                      return;
-                    }
-                    std::string s(target);
-                    throw std::runtime_error(std::string("Unknown reg: ") + s);
-                  }
+           *target_ptr = 0;
+         }},
+        {"aflags", [](X86State *state, std::string_view target) {
+           uint8_t *target_ptr = [state](std::string_view target) -> uint8_t * {
+             if (target == "af") {
+               return &state->aflag.af;
+             }
 
-                 }
+             if (target == "zf") {
+               return &state->aflag.zf;
+             }
 
-};
+             if (target == "of") {
+               return &state->aflag.of;
+             }
+
+             return nullptr;
+           }(target);
+
+
+           if (!target_ptr) {
+             std::string s(target);
+             throw std::runtime_error(std::string("Unknown reg: ") + s);
+           }
+
+           *target_ptr = 0;
+         }}};
 }
 
 
