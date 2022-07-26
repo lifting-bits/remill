@@ -751,90 +751,80 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     return this->LiftStoreIntoOutParam(bldr, *computed_value, outvar);
   }
 
-  LiftStatus LiftFloatBinOp(llvm::IRBuilder<> &bldr, OpCode opc,
-                            VarnodeData *outvar, VarnodeData lhs,
-                            VarnodeData rhs) {
-    std::function<llvm::Value *(llvm::Value *, llvm::Value *,
-                                llvm::IRBuilder<> &)>
-        op_func;
+  std::optional<BinaryOperator> FindFloatBinOpFunc(OpCode opc) {
     switch (opc) {
       case CPUI_FLOAT_EQUAL: {
-        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
-                     llvm::IRBuilder<> &bldr) {
+        return [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
           return bldr.CreateZExt(bldr.CreateFCmpOEQ(lhs, rhs),
                                  llvm::IntegerType::get(bldr.getContext(), 8));
         };
-        break;
       }
       case CPUI_FLOAT_NOTEQUAL: {
-        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
-                     llvm::IRBuilder<> &bldr) {
+        return [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
           return bldr.CreateZExt(bldr.CreateFCmpONE(lhs, rhs),
                                  llvm::IntegerType::get(bldr.getContext(), 8));
         };
-        break;
       }
       case CPUI_FLOAT_LESS: {
-        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
-                     llvm::IRBuilder<> &bldr) {
+        return [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
           return bldr.CreateZExt(bldr.CreateFCmpOLT(lhs, rhs),
                                  llvm::IntegerType::get(bldr.getContext(), 8));
         };
-        break;
       }
       case CPUI_FLOAT_LESSEQUAL: {
-        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
-                     llvm::IRBuilder<> &bldr) {
+        return [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
           return bldr.CreateZExt(bldr.CreateFCmpOLE(lhs, rhs),
                                  llvm::IntegerType::get(bldr.getContext(), 8));
         };
-        break;
       }
       case CPUI_FLOAT_ADD: {
-        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
-                     llvm::IRBuilder<> &bldr) {
+        return [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
           return bldr.CreateFAdd(lhs, rhs);
         };
-        break;
       }
       case CPUI_FLOAT_SUB: {
-        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
-                     llvm::IRBuilder<> &bldr) {
+        return [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
           return bldr.CreateFSub(lhs, rhs);
         };
-        break;
       }
       case CPUI_FLOAT_MULT: {
-        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
-                     llvm::IRBuilder<> &bldr) {
+        return [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
           return bldr.CreateFMul(lhs, rhs);
         };
-        break;
       }
       case CPUI_FLOAT_DIV: {
-        op_func = [](llvm::Value *lhs, llvm::Value *rhs,
-                     llvm::IRBuilder<> &bldr) {
+        return [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
           return bldr.CreateFDiv(lhs, rhs);
         };
-        break;
       }
-      default: break;
+      default: return std::nullopt;
     }
-    if (op_func) {
-      // TODO(alex): I think we need some helper here to achieve something similar to what `llvm::IntegerType::get`
-      // gives us, except for floating point types.
-      //
-      // So we need to check the size of the node and return either a 32-bit float, brain float, double, etc.
-      auto lifted_lhs =
-          this->LiftInParam(bldr, lhs, llvm::Type::getFloatTy(this->context));
-      auto lifted_rhs =
-          this->LiftInParam(bldr, rhs, llvm::Type::getFloatTy(this->context));
-      if (lifted_lhs.has_value() && lifted_rhs.has_value()) {
-        return this->LiftStoreIntoOutParam(
-            bldr, op_func(*lifted_lhs, *lifted_rhs, bldr), outvar);
-      }
+  }
+
+  LiftStatus LiftFloatBinOp(llvm::IRBuilder<> &bldr, OpCode opc,
+                            VarnodeData *outvar, VarnodeData lhs,
+                            VarnodeData rhs) {
+    std::optional<BinaryOperator> op_func = this->FindFloatBinOpFunc(opc);
+    if (!op_func) {
+      return LiftStatus::kLiftedUnsupportedInstruction;
     }
-    return LiftStatus::kLiftedUnsupportedInstruction;
+
+
+    // TODO(alex): I think we need some helper here to achieve something similar to what `llvm::IntegerType::get`
+    // gives us, except for floating point types.
+    //
+    // So we need to check the size of the node and return either a 32-bit float, brain float, double, etc.
+    auto lifted_lhs =
+        this->LiftInParam(bldr, lhs, llvm::Type::getFloatTy(this->context));
+    auto lifted_rhs =
+        this->LiftInParam(bldr, rhs, llvm::Type::getFloatTy(this->context));
+
+    if (!lifted_lhs || !lifted_rhs) {
+      return LiftStatus::kLiftedUnsupportedInstruction;
+    }
+
+    return this->LiftStoreIntoOutParam(
+        bldr, (*op_func)(*lifted_lhs, *lifted_rhs, bldr), outvar);
   }
 
 
