@@ -390,6 +390,9 @@ class Arch {
   llvm::Triple BasicTriple(void) const;
 
  private:
+  static ArchPtr GetArchByName(llvm::LLVMContext *context_, OSName os_name_,
+                               ArchName arch_name_);
+
   // Defined in `lib/Arch/X86/Arch.cpp`.
   static ArchPtr GetX86(llvm::LLVMContext *context, OSName os,
                         ArchName arch_name);
