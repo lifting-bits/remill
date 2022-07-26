@@ -228,9 +228,6 @@ InstructionFlowResolver::IFRPtr InstructionFlowResolver::CreateNormal() {
 IndirectBranch::IndirectBranch(remill::Instruction::Category category)
     : category(category) {}
 
-
-NormalResolver::NormalResolver() = default;
-
 DirectBranchResolver::DirectBranchResolver(
     uint64_t target_address, remill::Instruction::Category category)
     : target_address(target_address),
@@ -240,10 +237,6 @@ DirectBranchResolver::DirectBranchResolver(
 DirectCBranchResolver::DirectCBranchResolver(uint64_t target_address)
     : target_address(target_address) {}
 
-NormalResolver::~NormalResolver() = default;
-DirectCBranchResolver::~DirectCBranchResolver() = default;
-DirectBranchResolver::~DirectBranchResolver() = default;
-IndirectBranch::~IndirectBranch() = default;
 
 void IndirectBranch::ResolveControlFlow(uint64_t fall_through,
                                         remill::Instruction &insn) {

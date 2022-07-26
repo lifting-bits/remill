@@ -51,8 +51,8 @@ class InstructionFlowResolver {
 
 class NormalResolver : public InstructionFlowResolver {
  public:
-  NormalResolver();
-  virtual ~NormalResolver();
+  NormalResolver() = default;
+  virtual ~NormalResolver() = default;
 
   void ResolveControlFlow(uint64_t fall_through,
                           remill::Instruction &insn) override;
@@ -69,7 +69,7 @@ class DirectBranchResolver : public InstructionFlowResolver {
  public:
   DirectBranchResolver(uint64_t target_address,
                        remill::Instruction::Category category);
-  virtual ~DirectBranchResolver();
+  virtual ~DirectBranchResolver() = default;
 
   void ResolveControlFlow(uint64_t fall_through,
                           remill::Instruction &insn) override;
@@ -82,7 +82,7 @@ class DirectCBranchResolver : public InstructionFlowResolver {
 
  public:
   DirectCBranchResolver(uint64_t target_address);
-  virtual ~DirectCBranchResolver();
+  virtual ~DirectCBranchResolver() = default;
 
   void ResolveControlFlow(uint64_t fall_through,
                           remill::Instruction &insn) override;
@@ -96,7 +96,7 @@ class IndirectBranch : public InstructionFlowResolver {
  public:
   IndirectBranch(remill::Instruction::Category category);
 
-  virtual ~IndirectBranch();
+  virtual ~IndirectBranch() = default;
 
   void ResolveControlFlow(uint64_t fall_through,
                           remill::Instruction &insn) override;
