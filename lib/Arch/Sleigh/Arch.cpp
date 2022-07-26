@@ -191,30 +191,6 @@ InstructionFlowResolver::IFRPtr PcodeDecoder::GetResolver() {
   }
 }
 
-/*
-  switch (category) {
-    case Instruction::kCategoryDirectJump:
-      ss << " (BRANCH " << std::hex << branch_taken_pc << ")";
-      break;
-    case Instruction::kCategoryDirectFunctionCall:
-      ss << " (DIRECT_CALL (TAKEN " << std::hex << branch_taken_pc << ")"
-         << " (RETURN " << branch_not_taken_pc << "))";
-      break;
-    case Instruction::kCategoryIndirectFunctionCall:
-      ss << " (INDIRECT_CALL (TAKEN <unknown>)"
-         << " (RETURN " << branch_not_taken_pc << "))";
-      break;
-    case Instruction::kCategoryConditionalBranch:
-      ss << " (COND_BRANCH (TAKEN " << std::hex << branch_taken_pc << ")"
-         << " (NOT_TAKEN " << branch_not_taken_pc << std::dec << "))";
-      break;
-    case kCategoryConditionalIndirectJump:
-      ss << " (COND_BRANCH (TAKEN <unknown>)"
-         << " (NOT_TAKEN " << branch_not_taken_pc << std::dec << "))";
-    default: break;
-  }
-
-*/
 
 InstructionFlowResolver::IFRPtr
 InstructionFlowResolver::CreateDirectCBranchResolver(uint64_t target) {
