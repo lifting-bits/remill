@@ -852,7 +852,7 @@ static bool TryDecodeGetPCIdiom(Instruction &inst) {
 
 static bool TryDecodeIdioms(Instruction &inst) {
   if (TryDecodeGetPCIdiom(inst)) {
-    return inst.IsValid();
+    return true;
   }
   return false;
 }
