@@ -252,15 +252,7 @@ void DirectBranchResolver::ResolveControlFlow(uint64_t fall_through,
   insn.branch_taken_pc = this->target_address;
   insn.branch_not_taken_pc = fall_through;
   insn.category = this->category;
-
   insn.branch_taken_arch_name = insn.arch_name;
-  if (insn.arch_name == ArchName::kArchAArch32LittleEndian ||
-      insn.arch_name == ArchName::kArchAArch64LittleEndian) {
-    if (insn.branch_taken_pc % 2u) {
-      insn.branch_taken_arch_name = ArchName::kArchThumb2LittleEndian;
-      insn.branch_taken_pc -= 1u;
-    }
-  }
 }
 
 void NormalResolver::ResolveControlFlow(uint64_t fall_through,
@@ -276,21 +268,14 @@ void DirectCBranchResolver::ResolveControlFlow(uint64_t fall_through,
   if (this->target_address == fall_through) {
     insn.next_pc = fall_through;
     insn.category = remill::Instruction::Category::kCategoryNormal;
-  } else {
-    insn.next_pc = 0;
-    insn.branch_taken_pc = this->target_address;
-    insn.branch_not_taken_pc = fall_through;
-    insn.category = remill::Instruction::Category::kCategoryConditionalBranch;
-
-    insn.branch_taken_arch_name = insn.arch_name;
-    if (insn.arch_name == ArchName::kArchAArch32LittleEndian ||
-        insn.arch_name == ArchName::kArchAArch64LittleEndian) {
-      if (insn.branch_taken_pc % 2u) {
-        insn.branch_taken_arch_name = ArchName::kArchThumb2LittleEndian;
-        insn.branch_taken_pc -= 1u;
-      }
-    }
+    return;
   }
+
+  insn.next_pc = 0;
+  insn.branch_taken_pc = this->target_address;
+  insn.branch_not_taken_pc = fall_through;
+  insn.category = remill::Instruction::Category::kCategoryConditionalBranch;
+  insn.branch_taken_arch_name = insn.arch_name;
 }
 
 
