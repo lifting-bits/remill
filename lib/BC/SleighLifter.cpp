@@ -801,6 +801,12 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     }
   }
 
+  std::optional<llvm::Value *> LiftFloatInParam(llvm::IRBuilder<> &bldr,
+                                                VarnodeData vnode) {
+    return this->LiftInParam(bldr, vnode,
+                             llvm::Type::getFloatTy(this->context));
+  }
+
   LiftStatus LiftFloatBinOp(llvm::IRBuilder<> &bldr, OpCode opc,
                             VarnodeData *outvar, VarnodeData lhs,
                             VarnodeData rhs) {
@@ -814,10 +820,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     // gives us, except for floating point types.
     //
     // So we need to check the size of the node and return either a 32-bit float, brain float, double, etc.
-    auto lifted_lhs =
-        this->LiftInParam(bldr, lhs, llvm::Type::getFloatTy(this->context));
-    auto lifted_rhs =
-        this->LiftInParam(bldr, rhs, llvm::Type::getFloatTy(this->context));
+
+    auto lifted_lhs = this->LiftFloatInParam(bldr, lhs);
+    auto lifted_rhs = this->LiftFloatInParam(bldr, rhs);
 
     if (!lifted_lhs || !lifted_rhs) {
       return LiftStatus::kLiftedUnsupportedInstruction;
