@@ -824,7 +824,9 @@ static bool TryDecodeIdioms(Instruction &inst) {
 
     // The first operand should be the register that we're popping into. Just
     // take the operand from the POP instruction.
-    assert(pop_inst.operands.size() == 1);
+    CHECK(pop_inst.operands.size() == 1)
+        << "Unexpected number of POP operands, expected=1, got="
+        << pop_inst.operands.size();
     inst.operands = std::move(pop_inst.operands);
 
     // The second operand is the address of the POP instruction.
@@ -833,10 +835,10 @@ static bool TryDecodeIdioms(Instruction &inst) {
     addr_op.type = Operand::kTypeAddressExpression;
     auto *pc_reg =
         inst.EmplaceRegister(inst.arch->ProgramCounterRegisterName());
-    assert(pc_reg);
+    CHECK(pc_reg);
     auto *pc_offset = inst.EmplaceConstant(
         llvm::ConstantInt::get(inst.arch->AddressType(), 5));
-    assert(pc_offset);
+    CHECK(pc_offset);
     addr_op.expr =
         inst.EmplaceBinaryOp(llvm::Instruction::Add, pc_reg, pc_offset);
 
