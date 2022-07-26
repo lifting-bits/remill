@@ -799,55 +799,61 @@ static uint64_t BytesToCallBits(const uint8_t *bytes) {
   return bits;
 }
 
-static bool TryDecodeIdioms(Instruction &inst) {
+static bool TryDecodeGetPCIdiom(Instruction &inst) {
   // Check for CALL+POP idiom used to retrieve PC.
-  if (inst.bytes.size() == 6) {
-    const auto bytes = reinterpret_cast<const uint8_t *>(inst.bytes.data());
-    const auto call_bits = BytesToCallBits(bytes);
-
-    // Check that we have a CALL pointing one instruction ahead of where we are
-    // now.
-    if (call_bits != 0xe800000000) {
-      return false;
-    }
-
-    // Check whether we have a POP instruction to retrieve the return address
-    // that we just pushed to the stack.
-    Instruction pop_inst;
-    if (!inst.arch->DecodeInstruction(inst.pc + 5, &inst.bytes[5], pop_inst) ||
-        pop_inst.function.substr(0, 3) != "POP") {
-      return false;
-    }
-
-    // We've matched the idiom. Now let's call our custom intrinsic that assigns
-    // the PC to the operand register.
-
-    // The first operand should be the register that we're popping into. Just
-    // take the operand from the POP instruction.
-    CHECK(pop_inst.operands.size() == 1)
-        << "Unexpected number of POP operands, expected=1, got="
-        << pop_inst.operands.size();
-    inst.operands = std::move(pop_inst.operands);
-
-    // The second operand is the address of the POP instruction.
-    inst.operands.emplace_back();
-    auto &addr_op = inst.operands.back();
-    addr_op.type = Operand::kTypeAddressExpression;
-    auto *pc_reg =
-        inst.EmplaceRegister(inst.arch->ProgramCounterRegisterName());
-    CHECK(pc_reg);
-    auto *pc_offset = inst.EmplaceConstant(
-        llvm::ConstantInt::get(inst.arch->AddressType(), 5));
-    CHECK(pc_offset);
-    addr_op.expr =
-        inst.EmplaceBinaryOp(llvm::Instruction::Add, pc_reg, pc_offset);
-
-    inst.category = Instruction::kCategoryNormal;
-    inst.function = std::string(kGetPCISelPrefix) +
-                    std::to_string(inst.operands.front().size);
-    return true;
+  if (inst.bytes.size() != 6) {
+    return false;
   }
 
+  const auto bytes = reinterpret_cast<const uint8_t *>(inst.bytes.data());
+  const auto call_bits = BytesToCallBits(bytes);
+
+  // Check that we have a CALL pointing one instruction ahead of where we are
+  // now.
+  if (call_bits != 0xe800000000) {
+    return false;
+  }
+
+  // Check whether we have a POP instruction to retrieve the return address
+  // that we just pushed to the stack.
+  Instruction pop_inst;
+  if (!inst.arch->DecodeInstruction(inst.pc + 5, &inst.bytes[5], pop_inst) ||
+      pop_inst.function.substr(0, 3) != "POP") {
+    return false;
+  }
+
+  // We've matched the idiom. Now let's call our custom intrinsic that assigns
+  // the PC to the operand register.
+
+  // The first operand should be the register that we're popping into. Just
+  // take the operand from the POP instruction.
+  CHECK(pop_inst.operands.size() == 1)
+      << "Unexpected number of POP operands, expected=1, got="
+      << pop_inst.operands.size();
+  inst.operands = std::move(pop_inst.operands);
+
+  // The second operand is the address of the POP instruction.
+  inst.operands.emplace_back();
+  auto &addr_op = inst.operands.back();
+  addr_op.type = Operand::kTypeAddressExpression;
+  auto *pc_reg = inst.EmplaceRegister(inst.arch->ProgramCounterRegisterName());
+  CHECK(pc_reg);
+  auto *pc_offset =
+      inst.EmplaceConstant(llvm::ConstantInt::get(inst.arch->AddressType(), 5));
+  CHECK(pc_offset);
+  addr_op.expr =
+      inst.EmplaceBinaryOp(llvm::Instruction::Add, pc_reg, pc_offset);
+
+  inst.category = Instruction::kCategoryNormal;
+  inst.function = std::string(kGetPCISelPrefix) +
+                  std::to_string(inst.operands.front().size);
+  return true;
+}
+
+static bool TryDecodeIdioms(Instruction &inst) {
+  if (TryDecodeGetPCIdiom(inst)) {
+    return inst.IsValid();
+  }
   return false;
 }
 
