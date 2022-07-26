@@ -408,23 +408,22 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
   auto instr_len =
       this->sleigh_ctx.oneInstruction(address, pcode_handler, instr_bytes);
 
-  if (instr_len.has_value() && instr_len <= instr_bytes.size()) {
-    // communicate the size back to the caller
-    inst.bytes = instr_bytes.substr(0, *instr_len);
-    assert(inst.bytes.size() == instr_len);
-
-    InstructionFunctionSetter setter(inst);
-    this->sleigh_ctx.oneInstruction(address, setter, inst.bytes);
-    LOG(INFO) << "Instr len:" << *instr_len;
-    LOG(INFO) << "Addr: " << address;
-    auto fallthrough = address + *instr_len;
-    LOG(INFO) << "Fallthrough: " << fallthrough;
-    pcode_handler.GetResolver()->ResolveControlFlow(fallthrough, inst);
-    LOG(INFO) << "Decoded as " << inst.Serialize();
-    return true;
+  if (!instr_len || instr_len >= instr_bytes.size()) {
+    return false;
   }
+  // communicate the size back to the caller
+  inst.bytes = instr_bytes.substr(0, *instr_len);
+  assert(inst.bytes.size() == instr_len);
 
-  return false;
+  InstructionFunctionSetter setter(inst);
+  this->sleigh_ctx.oneInstruction(address, setter, inst.bytes);
+  LOG(INFO) << "Instr len:" << *instr_len;
+  LOG(INFO) << "Addr: " << address;
+  auto fallthrough = address + *instr_len;
+  LOG(INFO) << "Fallthrough: " << fallthrough;
+  pcode_handler.GetResolver()->ResolveControlFlow(fallthrough, inst);
+  LOG(INFO) << "Decoded as " << inst.Serialize();
+  return true;
 }
 
 
