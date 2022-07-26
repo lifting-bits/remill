@@ -124,6 +124,9 @@ class PcodeDecoder final : public PcodeEmit {
 
   void DecodeCategory(OpCode op, VarnodeData *vars, int32_t isize);
 
+  static std::optional<InstructionFlowResolver::IFRPtr>
+  GetFlowResolverForOp(OpCode op, VarnodeData *vars, int32_t isize);
+
   Sleigh &engine;
   Instruction &inst;
 

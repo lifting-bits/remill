@@ -141,45 +141,43 @@ CPUI_BRANCH = 4,		///< Always branch
   CPUI_RETURN = 10,		///< Return from subroutine
 */
 
-// TODO(Ian): these are kinda fake Pcode can have a lot of random stuff in the translation of an instruction,
-// We are basically categorizing by the last PcodeOp.
-// THis also might be a problem for operands maybe we consume them properly have to look.
+
+std::optional<InstructionFlowResolver::IFRPtr>
+PcodeDecoder::GetFlowResolverForOp(OpCode op, VarnodeData *vars,
+                                   int32_t isize) {
+  // TODO(Ian): we should check if we know about this address space and do something if not
+  switch (op) {
+    case CPUI_BRANCH:
+      return InstructionFlowResolver::CreateDirectBranch(vars[0].offset);
+
+    case CPUI_CALL:
+      return InstructionFlowResolver::CreateDirectCall(vars[0].offset);
+      break;
+    case CPUI_CBRANCH:
+      return InstructionFlowResolver::CreateDirectCBranchResolver(
+          vars[0].offset);
+      break;
+    case CPUI_BRANCHIND: return InstructionFlowResolver::CreateIndirectBranch();
+    case CPUI_CALLIND: return InstructionFlowResolver::CreateIndirectCall();
+
+    case CPUI_RETURN: return InstructionFlowResolver::CreateIndirectRet();
+
+    default: return std::nullopt;
+  }
+}
+
+
 void PcodeDecoder::DecodeCategory(OpCode op, VarnodeData *vars, int32_t isize) {
-  if (op >= CPUI_BRANCH && op <= CPUI_RETURN) {
-    if (this->current_resolver.has_value()) {
+  if (auto resolver = PcodeDecoder::GetFlowResolverForOp(op, vars, isize)) {
+    if (this->current_resolver) {
       LOG(ERROR)
           << "Demoting instruction to indirect branch, already guessed category";
       // ok we've already seen a control flow instruction so call it an indirect branch
       this->current_resolver = InstructionFlowResolver::CreateIndirectBranch();
+      return;
     }
 
-    // TODO(Ian): we should check if we know about this address space and do something if not
-    switch (op) {
-      case CPUI_BRANCH:
-        this->current_resolver =
-            InstructionFlowResolver::CreateDirectBranch(vars[0].offset);
-        break;
-      case CPUI_CALL:
-        this->current_resolver =
-            InstructionFlowResolver::CreateDirectCall(vars[0].offset);
-        break;
-      case CPUI_CBRANCH:
-        this->current_resolver =
-            InstructionFlowResolver::CreateDirectCBranchResolver(
-                vars[0].offset);
-        break;
-      case CPUI_BRANCHIND:
-        this->current_resolver =
-            InstructionFlowResolver::CreateIndirectBranch();
-        break;
-      case CPUI_CALLIND:
-        this->current_resolver = InstructionFlowResolver::CreateIndirectCall();
-        break;
-      case CPUI_RETURN:
-        this->current_resolver = InstructionFlowResolver::CreateIndirectRet();
-        break;
-      default: break;
-    }
+    this->current_resolver = resolver;
   }
 }
 
