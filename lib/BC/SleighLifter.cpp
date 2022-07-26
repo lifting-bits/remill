@@ -861,17 +861,21 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       auto lifted_addr_offset = this->LiftInParam(
           bldr, addr_operand, this->insn_lifter_parent.GetWordType());
 
-      if (lifted_addr_offset) {
-
-        auto out_type = llvm::IntegerType::get(this->context, out_op.size * 8);
-        auto lifted_addr = this->CreateMemoryAddress(*lifted_addr_offset);
-
-        auto loaded_value = lifted_addr->LiftAsInParam(bldr, out_type);
-        if (loaded_value.has_value()) {
-          auto lifted_out = this->LiftParamPtr(bldr, out_op);
-          return lifted_out->StoreIntoParam(bldr, *loaded_value);
-        }
+      if (!lifted_addr_offset) {
+        return LiftStatus::kLiftedUnsupportedInstruction;
       }
+      auto out_type = llvm::IntegerType::get(this->context, out_op.size * 8);
+      auto lifted_addr = this->CreateMemoryAddress(*lifted_addr_offset);
+
+      auto loaded_value = lifted_addr->LiftAsInParam(bldr, out_type);
+
+      if (!loaded_value) {
+        return LiftStatus::kLiftedUnsupportedInstruction;
+      }
+
+
+      auto lifted_out = this->LiftParamPtr(bldr, out_op);
+      return lifted_out->StoreIntoParam(bldr, *loaded_value);
     }
 
     if (opc == OpCode::CPUI_PIECE && outvar) {
