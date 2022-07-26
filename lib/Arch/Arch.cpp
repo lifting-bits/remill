@@ -315,9 +315,8 @@ const Register *ArchBase::RegisterByName(std::string_view name_) const {
   auto [curr_val_it, added] = reg_by_name.emplace(std::move(name), nullptr);
   if (added) {
     return nullptr;
-  } else {
-    return curr_val_it->second;
   }
+  return curr_val_it->second;
 }
 
 namespace {
