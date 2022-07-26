@@ -408,14 +408,16 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       VarnodeData input_var) {
     auto inval = this->LiftInParam(bldr, input_var,
                                    llvm::Type::getFloatTy(this->context));
-    if (inval.has_value()) {
-      llvm::Function *intrinsic = llvm::Intrinsic::getDeclaration(
-          bldr.GetInsertBlock()->getModule(), intrinsic_id);
-      llvm::Value *intrinsic_args[] = {*inval};
-      return this->LiftStoreIntoOutParam(
-          bldr, bldr.CreateCall(intrinsic, intrinsic_args), outvar);
+
+    if (!inval) {
+      return LiftStatus::kLiftedUnsupportedInstruction;
     }
-    return LiftStatus::kLiftedUnsupportedInstruction;
+
+    llvm::Function *intrinsic = llvm::Intrinsic::getDeclaration(
+        bldr.GetInsertBlock()->getModule(), intrinsic_id);
+    llvm::Value *intrinsic_args[] = {*inval};
+    return this->LiftStoreIntoOutParam(
+        bldr, bldr.CreateCall(intrinsic, intrinsic_args), outvar);
   }
 
   LiftStatus LiftUnOp(llvm::IRBuilder<> &bldr, OpCode opc, VarnodeData *outvar,
