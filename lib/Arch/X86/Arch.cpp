@@ -831,7 +831,8 @@ static bool TryDecodeIdioms(Instruction &inst) {
     inst.operands.emplace_back();
     auto &addr_op = inst.operands.back();
     addr_op.type = Operand::kTypeAddressExpression;
-    auto *pc_reg = inst.EmplaceRegister("EIP");
+    auto *pc_reg =
+        inst.EmplaceRegister(inst.arch->ProgramCounterRegisterName());
     assert(pc_reg);
     auto *pc_offset = inst.EmplaceConstant(
         llvm::ConstantInt::get(inst.arch->AddressType(), 5));
