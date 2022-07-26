@@ -33,7 +33,7 @@
 
 #define REMILL_AARCH_STRICT_REGNUM
 
-#include "../Arch.h"  // For `Arch` and `ArchImpl`.
+#include <remill/Arch/ArchBase.h>
 
 #include "Decode.h"
 #include "remill/Arch/Instruction.h"
@@ -139,8 +139,8 @@ class AArch64Arch final : public ArchBase {
 
   // Populate a just-initialized lifted function function with architecture-
   // specific variables.
-  void FinishLiftedFunctionInitialization(
-      llvm::Module *module, llvm::Function *bb_func) const final;
+  void FinishLiftedFunctionInitialization(llvm::Module *module,
+                                          llvm::Function *bb_func) const final;
 
  private:
   AArch64Arch(void) = delete;
@@ -807,7 +807,7 @@ static void AddExtendRegOperand(Instruction &inst, RegClass reg_class,
     op.shift_reg.extend_op = Operand::ShiftRegister::kExtendInvalid;
     op.shift_reg.extract_size = 0;
 
-  // Extracting a value that is wider than the register.
+    // Extracting a value that is wider than the register.
   } else if (op.shift_reg.extract_size > op.shift_reg.reg.size) {
     op.shift_reg.extend_op = Operand::ShiftRegister::kExtendInvalid;
     op.shift_reg.extract_size = 0;

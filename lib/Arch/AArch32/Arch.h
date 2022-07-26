@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "../Arch.h"  // For `Arch` and `ArchImpl`.
+#include <remill/Arch/ArchBase.h>  // For `Arch` and `ArchImpl`.
 
 namespace remill {
 class AArch32Arch final : public ArchBase {
@@ -52,8 +52,8 @@ class AArch32Arch final : public ArchBase {
 
   // Populate a just-initialized lifted function function with architecture-
   // specific variables.
-  void FinishLiftedFunctionInitialization(
-      llvm::Module *module, llvm::Function *bb_func) const final;
+  void FinishLiftedFunctionInitialization(llvm::Module *module,
+                                          llvm::Function *bb_func) const final;
 
  private:
   AArch32Arch(void) = delete;

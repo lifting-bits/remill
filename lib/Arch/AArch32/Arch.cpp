@@ -43,7 +43,7 @@
 
 // clang-format on
 
-#include "../Arch.h"  // For `ArchImpl`.
+#include <remill/Arch/ArchBase.h>  // For `ArchImpl`.
 
 namespace remill {
 

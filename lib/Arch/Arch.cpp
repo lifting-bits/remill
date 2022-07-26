@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include "Arch.h"  // For `Arch` and `ArchBase`.
-
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <llvm/ADT/APInt.h>
@@ -28,6 +26,7 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
+#include <remill/Arch/ArchBase.h>  // For `Arch` and `ArchBase`.
 
 #include <algorithm>
 #include <memory>

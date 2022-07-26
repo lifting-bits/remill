@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include "../Arch.h"  // For `Arch` and `ArchImpl`.
-
 #include <glog/logging.h>
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/Attributes.h>
@@ -23,6 +21,7 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
+#include <remill/Arch/ArchBase.h>  // For `Arch` and `ArchImpl`.
 
 #include <iomanip>
 #include <map>
@@ -224,16 +223,16 @@ static Instruction::Category CreateCategory(const xed_decoded_inst_t *xedd) {
   } else if (IsConditionalBranch(xedd)) {
     return Instruction::kCategoryConditionalBranch;
 
-  // Instruction implementation handles syscall emulation.
+    // Instruction implementation handles syscall emulation.
   } else if (IsSystemCall(xedd)) {
     return Instruction::kCategoryAsyncHyperCall;
 
   } else if (IsSystemReturn(xedd)) {
     return Instruction::kCategoryAsyncHyperCall;
 
-  // Instruction implementation handles syscall (x86, x32) emulation. This is
-  // invoked even for conditional interrupt, where a special flag is used to
-  // denote that the interrupt should happen.
+    // Instruction implementation handles syscall (x86, x32) emulation. This is
+    // invoked even for conditional interrupt, where a special flag is used to
+    // denote that the interrupt should happen.
   } else if (IsInterruptCall(xedd)) {
     return Instruction::kCategoryAsyncHyperCall;
 
@@ -377,10 +376,9 @@ static bool DecodeXED(xed_decoded_inst_t *xedd, const xed_state_t *mode,
       ss << ' ' << std::hex << std::setw(2) << std::setfill('0')
          << (static_cast<unsigned>(b) & 0xFFu);
     }
-    DLOG(WARNING)
-        << "Unable to decode instruction at " << std::hex << address
-        << " with bytes" << ss.str()
-        << " and error: " << xed_error_enum_t2str(err) << std::dec;
+    DLOG(WARNING) << "Unable to decode instruction at " << std::hex << address
+                  << " with bytes" << ss.str()
+                  << " and error: " << xed_error_enum_t2str(err) << std::dec;
     return false;
   }
 
@@ -822,8 +820,8 @@ class X86Arch final : public ArchBase {
 
   // Populate a just-initialized lifted function function with architecture-
   // specific variables.
-  void FinishLiftedFunctionInitialization(
-      llvm::Module *module, llvm::Function *bb_func) const final;
+  void FinishLiftedFunctionInitialization(llvm::Module *module,
+                                          llvm::Function *bb_func) const final;
 
  private:
   X86Arch(void) = delete;
@@ -978,18 +976,14 @@ static bool IsAVX(xed_isa_set_enum_t isa_set, xed_category_enum_t category) {
     case XED_ISA_SET_AVX2GATHER:
     case XED_ISA_SET_AVXAES:
     case XED_ISA_SET_AVX_GFNI:
-    case XED_ISA_SET_AVX_VNNI:
-      return true;
-    default:
-      break;
+    case XED_ISA_SET_AVX_VNNI: return true;
+    default: break;
   }
   switch (category) {
     case XED_CATEGORY_AVX:
     case XED_CATEGORY_AVX2:
-    case XED_CATEGORY_AVX2GATHER:
-      return true;
-    default:
-      return false;
+    case XED_CATEGORY_AVX2GATHER: return true;
+    default: return false;
   }
 }
 
@@ -1053,10 +1047,8 @@ static bool IsAVX512(xed_isa_set_enum_t isa_set, xed_category_enum_t category) {
     case XED_ISA_SET_AVX512_VPCLMULQDQ_512:
     case XED_ISA_SET_AVX512_VPOPCNTDQ_128:
     case XED_ISA_SET_AVX512_VPOPCNTDQ_256:
-    case XED_ISA_SET_AVX512_VPOPCNTDQ_512:
-      return true;
-    default:
-      break;
+    case XED_ISA_SET_AVX512_VPOPCNTDQ_512: return true;
+    default: break;
   }
   switch (category) {
     case XED_CATEGORY_AVX512:
@@ -1064,10 +1056,8 @@ static bool IsAVX512(xed_isa_set_enum_t isa_set, xed_category_enum_t category) {
     case XED_CATEGORY_AVX512_4VNNIW:
     case XED_CATEGORY_AVX512_BITALG:
     case XED_CATEGORY_AVX512_VBMI:
-    case XED_CATEGORY_AVX512_VP2INTERSECT:
-      return true;
-    default:
-      return false;
+    case XED_CATEGORY_AVX512_VP2INTERSECT: return true;
+    default: return false;
   }
 }
 
@@ -1115,10 +1105,9 @@ static const char *FusablePopReg64(char byte) {
 // instruction. Downstream users like McSema and Anvill benefit from seeing this
 // as a MOV-variant because of how they identify cross-references related to
 // uses of the program counter (`PC`) register.
-static void FillFusedCallPopRegOperands(Instruction &inst,
-                                        unsigned address_size,
-                                        const char *dest_reg_name,
-                                        unsigned call_inst_len) {
+static void
+FillFusedCallPopRegOperands(Instruction &inst, unsigned address_size,
+                            const char *dest_reg_name, unsigned call_inst_len) {
   inst.operands.resize(2);
   auto &dest = inst.operands[0];
   auto &src = inst.operands[1];
@@ -1189,11 +1178,13 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
 
   // Re-classify this instruction to its sub-architecture.
   if (IsAVX512(isa_set, category)) {
-    inst.sub_arch_name = 32 == address_size ? kArchX86_AVX512 : kArchAMD64_AVX512;
+    inst.sub_arch_name =
+        32 == address_size ? kArchX86_AVX512 : kArchAMD64_AVX512;
   } else if (IsAVX(isa_set, category)) {
     inst.sub_arch_name = 32 == address_size ? kArchX86_AVX : kArchAMD64_AVX;
   } else if (xed_classify_avx512(xedd) || xed_classify_avx512_maskop(xedd)) {
-    inst.sub_arch_name = 32 == address_size ? kArchX86_AVX512 : kArchAMD64_AVX512;
+    inst.sub_arch_name =
+        32 == address_size ? kArchX86_AVX512 : kArchAMD64_AVX512;
   } else if (xed_classify_avx(xedd)) {
     inst.sub_arch_name = 32 == address_size ? kArchX86_AVX : kArchAMD64_AVX;
   } else {
@@ -1203,11 +1194,10 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
   // Make sure we know about
   if (static_cast<unsigned>(inst.arch_name) <
       static_cast<unsigned>(inst.sub_arch_name)) {
-    LOG(ERROR)
-        << "Instruction decode of " << xed_iform_enum_t2str(iform)
-        << " requires the " << GetArchName(inst.sub_arch_name)
-        << " architecture semantics to lift but was decoded using the "
-        << GetArchName(inst.arch_name) << " architecture";
+    LOG(ERROR) << "Instruction decode of " << xed_iform_enum_t2str(iform)
+               << " requires the " << GetArchName(inst.sub_arch_name)
+               << " architecture semantics to lift but was decoded using the "
+               << GetArchName(inst.arch_name) << " architecture";
 
     inst.Reset();
     inst.category = Instruction::kCategoryInvalid;
@@ -1229,9 +1219,8 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
       extra_len = 1u;
       inst.category = Instruction::kCategoryNormal;
 
-    // Look for `pop r8` et al.
-    } else if (64 == address_size &&
-               (2 + len) <= inst_bytes.size() &&
+      // Look for `pop r8` et al.
+    } else if (64 == address_size && (2 + len) <= inst_bytes.size() &&
                inst_bytes[len] == 0x41) {
       is_fused_call_pop = FusablePopReg64(inst_bytes[len + 1]);
       if (is_fused_call_pop) {
@@ -1272,8 +1261,7 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
   }
 
   if (is_fused_call_pop) {
-    FillFusedCallPopRegOperands(inst, address_size, is_fused_call_pop,
-                                len);
+    FillFusedCallPopRegOperands(inst, address_size, is_fused_call_pop, len);
 
   } else {
     inst.function = InstructionFunctionName(xedd);
@@ -1354,9 +1342,8 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
 
   if (xed_decoded_inst_is_xacquire(xedd) ||
       xed_decoded_inst_is_xrelease(xedd)) {
-    LOG(WARNING)
-        << "Ignoring XACQUIRE/XRELEASE prefix at " << std::hex << inst.pc
-        << std::dec;
+    LOG(WARNING) << "Ignoring XACQUIRE/XRELEASE prefix at " << std::hex
+                 << inst.pc << std::dec;
   }
 
   return true;

@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include "../Arch.h"  // For `Arch` and `ArchImpl`.
-
 #include <glog/logging.h>
+#include <remill/Arch/ArchBase.h>  // For `Arch` and `ArchImpl`.
 
 #include "Decode.h"
 #include "remill/Arch/Instruction.h"
@@ -171,8 +170,9 @@ class SPARC32Arch final : public ArchBase {
 
   // Populate a just-initialized lifted function function with architecture-
   // specific variables.
-  void FinishLiftedFunctionInitialization(
-      llvm::Module *module, llvm::Function *bb_func) const override;
+  void
+  FinishLiftedFunctionInitialization(llvm::Module *module,
+                                     llvm::Function *bb_func) const override;
 
   llvm::Triple Triple(void) const final;
   llvm::DataLayout DataLayout(void) const final;

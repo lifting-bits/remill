@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <sleigh/libsleigh.hh>
+#include <remill/Arch/ArchBase.h>
 
-#include "../Arch.h"
+#include <sleigh/libsleigh.hh>
 
 // Unifies shared functionality between sleigh architectures
 
