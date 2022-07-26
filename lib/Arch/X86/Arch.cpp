@@ -788,7 +788,7 @@ static void DecodeOperand(Instruction &inst, const xed_decoded_inst_t *xedd,
   }
 }
 
-static unsigned char GET_PC_IDIOM_CALL[] = {0xE8, 0x00, 0x00, 0x00, 0x00};
+static const unsigned char GET_PC_IDIOM_CALL[] = {0xE8, 0x00, 0x00, 0x00, 0x00};
 
 static bool TryDecodeGetPCIdiom(Instruction &inst) {
   // Check for CALL+POP idiom used to retrieve PC.
