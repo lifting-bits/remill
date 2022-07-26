@@ -296,7 +296,7 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
   if (!sla_path) {
     LOG(FATAL) << "Couldn't find required spec file: " << sla_name << '\n';
   }
-  { LOG(INFO) << "Using spec at: " << sla_path->string(); }
+  LOG(INFO) << "Using spec at: " << sla_path->string();
 
   auto pspec_path = ::sleigh::FindSpecFile(pspec_name.c_str());
 
@@ -315,11 +315,11 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
 void SingleInstructionSleighContext::restoreEngineFromStorage() {
   this->ctx = ContextInternal();
   engine.initialize(storage);
-  if (const Element *el = storage.getTag("processor_spec")) {
-    for (const Element *element : el->getChildren()) {
-      if (element->getName() == "context_data") {
+  if (const Element *spec_xml = storage.getTag("processor_spec")) {
+    for (const Element *spec_element : spec_xml->getChildren()) {
+      if (spec_element->getName() == "context_data") {
         LOG(INFO) << "Restoring from pspec context data";
-        ctx.restoreFromSpec(element, &engine);
+        ctx.restoreFromSpec(spec_element, &engine);
         break;
       }
     }
