@@ -645,8 +645,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       return LiftStatus::kLiftedUnsupportedInstruction;
     }
 
-    if (lhs.getAddr().getSpace()->constant_space_index ==
-        lhs.getAddr().getSpace()->getIndex()) {
+    if (isVarnodeInConstantSpace(lhs)) {
       LOG(ERROR) << "Internal control flow not supported";
       return LiftStatus::kLiftedUnsupportedInstruction;
     }
