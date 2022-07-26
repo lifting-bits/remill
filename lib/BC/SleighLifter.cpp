@@ -296,8 +296,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
   std::optional<ParamPtr> LiftNormalRegister(llvm::IRBuilder<> &bldr,
                                              std::string reg_name) {
-    for (auto &c : reg_name)
+    for (auto &c : reg_name) {
       c = toupper(c);
+    }
 
 
     if (this->insn_lifter_parent.ArchHasRegByName(reg_name)) {
