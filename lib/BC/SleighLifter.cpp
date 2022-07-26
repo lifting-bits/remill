@@ -402,7 +402,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         outvar);
   }
 
-  LiftStatus LiftUnOpWithFloatIntrinsic(
+  LiftStatus LiftUnaryOpWithFloatIntrinsic(
       llvm::IRBuilder<> &bldr,
       llvm::Intrinsic::IndependentIntrinsics intrinsic_id, VarnodeData *outvar,
       VarnodeData input_var) {
@@ -420,8 +420,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         bldr, bldr.CreateCall(intrinsic, intrinsic_args), outvar);
   }
 
-  LiftStatus LiftUnOp(llvm::IRBuilder<> &bldr, OpCode opc, VarnodeData *outvar,
-                      VarnodeData input_var) {
+  LiftStatus LiftUnaryOp(llvm::IRBuilder<> &bldr, OpCode opc,
+                         VarnodeData *outvar, VarnodeData input_var) {
     // TODO(Ian): when we lift a param we need to specify the type we want
 
 
@@ -523,24 +523,24 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         break;
       }
       case OpCode::CPUI_FLOAT_ABS: {
-        return this->LiftUnOpWithFloatIntrinsic(bldr, llvm::Intrinsic::fabs,
-                                                outvar, input_var);
+        return this->LiftUnaryOpWithFloatIntrinsic(bldr, llvm::Intrinsic::fabs,
+                                                   outvar, input_var);
       }
       case OpCode::CPUI_FLOAT_SQRT: {
-        return this->LiftUnOpWithFloatIntrinsic(bldr, llvm::Intrinsic::sqrt,
-                                                outvar, input_var);
+        return this->LiftUnaryOpWithFloatIntrinsic(bldr, llvm::Intrinsic::sqrt,
+                                                   outvar, input_var);
       }
       case OpCode::CPUI_FLOAT_CEIL: {
-        return this->LiftUnOpWithFloatIntrinsic(bldr, llvm::Intrinsic::ceil,
-                                                outvar, input_var);
+        return this->LiftUnaryOpWithFloatIntrinsic(bldr, llvm::Intrinsic::ceil,
+                                                   outvar, input_var);
       }
       case OpCode::CPUI_FLOAT_FLOOR: {
-        return this->LiftUnOpWithFloatIntrinsic(bldr, llvm::Intrinsic::floor,
-                                                outvar, input_var);
+        return this->LiftUnaryOpWithFloatIntrinsic(bldr, llvm::Intrinsic::floor,
+                                                   outvar, input_var);
       }
       case OpCode::CPUI_FLOAT_ROUND: {
-        return this->LiftUnOpWithFloatIntrinsic(bldr, llvm::Intrinsic::round,
-                                                outvar, input_var);
+        return this->LiftUnaryOpWithFloatIntrinsic(bldr, llvm::Intrinsic::round,
+                                                   outvar, input_var);
       }
       case OpCode::CPUI_FLOAT_NAN: {
         auto nan_inval = this->LiftInParam(
@@ -1044,7 +1044,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
     switch (isize) {
       case 1: {
-        this->UpdateStatus(this->LiftUnOp(bldr, opc, outvar, vars[0]), opc);
+        this->UpdateStatus(this->LiftUnaryOp(bldr, opc, outvar, vars[0]), opc);
         break;
       }
       case 2: {
