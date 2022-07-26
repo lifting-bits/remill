@@ -629,56 +629,60 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     }
   }
 
+
+  LiftStatus LiftCBranch(llvm::IRBuilder<> &bldr, VarnodeData *outvar,
+                         VarnodeData lhs, VarnodeData rhs) {
+    auto should_branch = this->LiftInParam(
+        bldr, rhs, llvm::IntegerType::get(this->context, rhs.size * 8));
+
+
+    if (!should_branch) {
+      return LiftStatus::kLiftedUnsupportedInstruction;
+    }
+
+    if (lhs.getAddr().getSpace()->constant_space_index ==
+        lhs.getAddr().getSpace()->getIndex()) {
+      LOG(ERROR) << "Internal control flow not supported";
+      return LiftStatus::kLiftedUnsupportedInstruction;
+    }
+
+    // directs dont read the address of the variable, the offset is the jump
+    // TODO(Ian): handle other address spaces
+    auto jump_addr = this->replacement_cont.LiftOffsetOrReplace(
+        bldr, lhs, llvm::IntegerType::get(this->context, lhs.size * 8));
+
+    auto trunc_should_branch = bldr.CreateTrunc(
+        *should_branch, llvm::IntegerType::get(this->context, rhs.size * 1));
+
+
+    auto pc_reg_param = this->LiftNormalRegister(bldr, "PC");
+    assert(pc_reg_param.has_value());
+    auto pc_reg_ptr = *pc_reg_param;
+    auto orig_pc_value =
+        pc_reg_ptr->LiftAsInParam(bldr, this->insn_lifter_parent.GetWordType());
+
+
+    if (this->insn.category ==
+        remill::Instruction::Category::kCategoryConditionalBranch) {
+      auto branch_taken_ref = LoadBranchTakenRef(bldr.GetInsertBlock());
+      bldr.CreateStore(*should_branch, branch_taken_ref);
+    }
+    if (orig_pc_value.has_value()) {
+      auto next_pc_value =
+          bldr.CreateSelect(trunc_should_branch, jump_addr, *orig_pc_value);
+      auto res = pc_reg_ptr->StoreIntoParam(bldr, next_pc_value);
+      if (LiftStatus::kLiftedInstruction != res) {
+        return res;
+      }
+    }
+
+    return this->TerminateBlockWithCondition(trunc_should_branch);
+  }
+
   LiftStatus LiftIntegerBinOp(llvm::IRBuilder<> &bldr, OpCode opc,
                               VarnodeData *outvar, VarnodeData lhs,
                               VarnodeData rhs) {
 
-
-    if (opc == OpCode::CPUI_CBRANCH) {
-      auto should_branch = this->LiftInParam(
-          bldr, rhs, llvm::IntegerType::get(this->context, rhs.size * 8));
-
-      if (lhs.getAddr().getSpace()->constant_space_index ==
-          lhs.getAddr().getSpace()->getIndex()) {
-        LOG(ERROR) << "Internal control flow not supported";
-        return LiftStatus::kLiftedUnsupportedInstruction;
-      }
-
-      // directs dont read the address of the variable, the offset is the jump
-      // TODO(Ian): handle other address spaces
-      auto jump_addr = this->replacement_cont.LiftOffsetOrReplace(
-          bldr, lhs, llvm::IntegerType::get(this->context, lhs.size * 8));
-
-      if (should_branch.has_value()) {
-        auto trunc_should_branch = bldr.CreateTrunc(
-            *should_branch,
-            llvm::IntegerType::get(this->context, rhs.size * 1));
-
-
-        auto pc_reg_param = this->LiftNormalRegister(bldr, "PC");
-        assert(pc_reg_param.has_value());
-        auto pc_reg_ptr = *pc_reg_param;
-        auto orig_pc_value = pc_reg_ptr->LiftAsInParam(
-            bldr, this->insn_lifter_parent.GetWordType());
-
-
-        if (this->insn.category ==
-            remill::Instruction::Category::kCategoryConditionalBranch) {
-          auto branch_taken_ref = LoadBranchTakenRef(bldr.GetInsertBlock());
-          bldr.CreateStore(*should_branch, branch_taken_ref);
-        }
-        if (orig_pc_value.has_value()) {
-          auto next_pc_value =
-              bldr.CreateSelect(trunc_should_branch, jump_addr, *orig_pc_value);
-          auto res = pc_reg_ptr->StoreIntoParam(bldr, next_pc_value);
-          if (LiftStatus::kLiftedInstruction != res) {
-            return res;
-          }
-        }
-
-        return this->TerminateBlockWithCondition(trunc_should_branch);
-      }
-    }
 
     if (INTEGER_BINARY_OPS.find(opc) != INTEGER_BINARY_OPS.end()) {
       auto &op_func = INTEGER_BINARY_OPS.find(opc)->second;
@@ -836,6 +840,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
   LiftStatus LiftBinOp(llvm::IRBuilder<> &bldr, OpCode opc, VarnodeData *outvar,
                        VarnodeData lhs, VarnodeData rhs) {
+
+    if (opc == OpCode::CPUI_CBRANCH) {
+      return this->LiftCBranch(bldr, outvar, lhs, rhs);
+    }
+
     auto res = this->LiftIntegerBinOp(bldr, opc, outvar, lhs, rhs);
     if (res == LiftStatus::kLiftedInstruction) {
       return res;
