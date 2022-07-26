@@ -33,8 +33,6 @@ class InstructionFunctionSetter : public AssemblyEmit {
   InstructionFunctionSetter(remill::Instruction &insn) : insn(insn) {}
 
   void dump(const Address &addr, const string &mnem, const string &body) {
-    LOG(INFO) << "Decoded " << std::hex << addr.getOffset() << ": " << mnem
-              << " " << body;
     insn.function = mnem;
   }
 };
