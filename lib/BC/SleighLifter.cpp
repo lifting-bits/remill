@@ -1044,6 +1044,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     if (other_func_name == kEqualityClaimName && isize == kEqualityClaimArity) {
       LOG(INFO) << "Applying eq claim";
       this->replacement_cont.ApplyEqualityClaim(bldr, *this, vars[1], vars[2]);
+      return kLiftedInstruction;
     }
 
     return kLiftedUnsupportedInstruction;
