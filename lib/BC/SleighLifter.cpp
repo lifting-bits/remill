@@ -1115,19 +1115,17 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
          }},
         {OpCode::CPUI_INT_LEFT,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
-           auto new_rhs = rhs;
            if (lhs->getType() != rhs->getType()) {
-             new_rhs = bldr.CreateZExtOrTrunc(rhs, lhs->getType());
+             rhs = bldr.CreateZExtOrTrunc(rhs, lhs->getType());
            }
-           return bldr.CreateShl(lhs, new_rhs);
+           return bldr.CreateShl(lhs, rhs);
          }},
         {OpCode::CPUI_INT_RIGHT,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
-           auto new_rhs = rhs;
            if (lhs->getType() != rhs->getType()) {
-             new_rhs = bldr.CreateZExtOrTrunc(rhs, lhs->getType());
+             rhs = bldr.CreateZExtOrTrunc(rhs, lhs->getType());
            }
-           return bldr.CreateLShr(lhs, new_rhs);
+           return bldr.CreateLShr(lhs, rhs);
          }},
         {OpCode::CPUI_INT_SRIGHT,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
