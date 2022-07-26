@@ -422,6 +422,16 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         bldr, bldr.CreateCall(intrinsic, intrinsic_args), outvar);
   }
 
+
+  LiftStatus RedirectControlFlow(llvm::IRBuilder<> &bldr,
+                                 llvm::Value *target_addr) {
+    auto pc_reg = this->LiftNormalRegister(bldr, "PC");
+    CHECK(pc_reg.has_value());
+    auto res = (*pc_reg)->StoreIntoParam(bldr, target_addr);
+    this->TerminateBlock();
+    return res;
+  }
+
   LiftStatus LiftUnaryOp(llvm::IRBuilder<> &bldr, OpCode opc,
                          VarnodeData *outvar, VarnodeData input_var) {
     // TODO(Ian): when we lift a param we need to specify the type we want
@@ -463,11 +473,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         auto input_val = this->replacement_cont.LiftOffsetOrReplace(
             bldr, input_var,
             llvm::IntegerType::get(this->context, input_var.size * 8));
-        auto pc_reg = this->LiftNormalRegister(bldr, "PC");
-        CHECK(pc_reg.has_value());
-        auto res = (*pc_reg)->StoreIntoParam(bldr, input_val);
-        this->TerminateBlock();
-        return res;
+
+        return this->RedirectControlFlow(bldr, input_val);
       }
       case OpCode::CPUI_RETURN:
       case OpCode::CPUI_BRANCHIND:
@@ -475,14 +482,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         auto copy_inval = this->LiftInParam(
             bldr, input_var,
             llvm::IntegerType::get(this->context, input_var.size * 8));
-        if (copy_inval.has_value()) {
-          auto pc_reg = this->LiftNormalRegister(bldr, "PC");
-          assert(pc_reg.has_value());
-          auto res = (*pc_reg)->StoreIntoParam(bldr, *copy_inval);
-          this->TerminateBlock();
-          return res;
+        if (!copy_inval) {
+          return LiftStatus::kLiftedUnsupportedInstruction;
         }
-        break;
+        return this->RedirectControlFlow(bldr, *copy_inval);
       }
         // TODO(alex): Maybe extract this into a method like `LiftIntegerUnOp`?
         // Let's see how much duplication there is.
