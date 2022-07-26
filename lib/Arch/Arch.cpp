@@ -231,8 +231,6 @@ auto Arch::GetArchByName(llvm::LLVMContext *context_, OSName os_name_,
 auto Arch::Build(llvm::LLVMContext *context_, OSName os_name_,
                  ArchName arch_name_) -> ArchPtr {
   ArchPtr ret = Arch::GetArchByName(context_, os_name_, arch_name_);
-
-
   if (ret) {
     ret->PopulateRegisterTable();
   }
@@ -759,9 +757,8 @@ const Register *ArchBase::AddRegister(const char *reg_name_,
   CHECK_NOTNULL(val_type);
 
   const std::string reg_name(reg_name_);
-  auto &reg = reg_by_name[reg_name];
-  if (reg) {
-    return reg;
+  if (auto reg = reg_by_name.find(reg_name); reg != reg_by_name.end()) {
+    return reg->second;
   }
 
   const auto dl = this->DataLayout();
@@ -776,7 +773,8 @@ const Register *ArchBase::AddRegister(const char *reg_name_,
 
   //reg_impl->ComputeGEPAccessors(dl, this->state_type);
 
-  reg = reg_impl;
+
+  reg_by_name.emplace(reg_name, reg_impl);
   registers.emplace_back(reg_impl);
 
   auto maybe_get_reg_name = [](auto reg_ptr) -> std::string {
@@ -786,27 +784,28 @@ const Register *ArchBase::AddRegister(const char *reg_name_,
     return reg_ptr->name;
   };
 
-  auto needed_size = reg->offset + reg->size;
+  auto needed_size = reg_impl->offset + reg_impl->size;
   if (needed_size >= reg_by_offset.size()) {
     reg_by_offset.resize(needed_size);
   }
 
   // Provide easy access to registers at specific offsets in the `State`
   // structure.
-  for (auto i = reg->offset; i < needed_size; ++i) {
+  for (auto i = reg_impl->offset; i < needed_size; ++i) {
     auto &reg_at_offset = reg_by_offset[i];
     if (!reg_at_offset) {
-      reg_at_offset = reg;
+      reg_at_offset = reg_impl;
     } else if (reg_at_offset) {
-      CHECK_EQ(reg_at_offset->EnclosingRegister(), reg->EnclosingRegister())
+      CHECK_EQ(reg_at_offset->EnclosingRegister(),
+               reg_impl->EnclosingRegister())
           << maybe_get_reg_name(reg_at_offset->EnclosingRegister())
-          << " != " << maybe_get_reg_name(reg->EnclosingRegister());
+          << " != " << maybe_get_reg_name(reg_impl->EnclosingRegister());
       ;
-      reg_at_offset = reg;
+      reg_at_offset = reg_impl;
     }
   }
 
-  return reg;
+  return reg_impl;
 }
 
 // Get all of the register information from the prepared module.
