@@ -371,9 +371,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
   std::optional<llvm::Value *> LiftInParam(llvm::IRBuilder<> &bldr,
                                            VarnodeData vnode, llvm::Type *ty) {
-    ParamPtr ptr = this->LiftParamPtr(bldr, vnode);
-
-    return ptr->LiftAsInParam(bldr, ty);
+    return this->LiftParamPtr(bldr, vnode)->LiftAsInParam(bldr, ty);
   }
 
   std::optional<llvm::Value *> LiftIntegerInParam(llvm::IRBuilder<> &bldr,
