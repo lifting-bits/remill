@@ -189,7 +189,7 @@ class SingleInstructionSleighContext {
   std::vector<std::string> getUserOpNames();
 };
 
-class SleighArch : public ArchBase {
+class SleighArch : virtual public ArchBase {
  public:
   SleighArch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_,
              std::string sla_name, std::string pspec_name);

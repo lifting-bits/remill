@@ -6,21 +6,21 @@
 #include <remill/OS/OS.h>
 
 namespace remill {
+
+
+static const std::string_view kSPNames[] = {"RSP", "ESP"};
+static const std::string_view kPCNames[] = {"RIP", "EIP"};
+
+// Returns the name of the stack pointer register.
 std::string_view X86ArchBase::StackPointerRegisterName(void) const {
-  if (IsX86()) {
-    return "ESP";
-  } else {
-    return "RSP";
-  }
+  return kSPNames[IsX86()];
 }
 
+// Returns the name of the program counter register.
 std::string_view X86ArchBase::ProgramCounterRegisterName(void) const {
-  if (IsX86()) {
-    return "EIP";
-  } else {
-    return "RIP";
-  }
+  return kPCNames[IsX86()];
 }
+
 
 uint64_t X86ArchBase::MinInstructionAlign(void) const {
   return 1;
@@ -147,6 +147,7 @@ llvm::DataLayout X86ArchBase::DataLayout(void) const {
 }
 
 void X86ArchBase::PopulateRegisterTable(void) const {
+
   reg_by_offset.resize(sizeof(X86State));
 
   CHECK_NOTNULL(context);
@@ -158,8 +159,6 @@ void X86ArchBase::PopulateRegisterTable(void) const {
     case kArchAMD64_AVX: has_avx = true; break;
     case kArchX86_AVX512:
     case kArchAMD64_AVX512:
-    case kArchX86_SLEIGH:
-    case kArchAMD64_SLEIGH:
       has_avx = true;
       has_avx512 = true;
       break;
@@ -307,6 +306,7 @@ void X86ArchBase::PopulateRegisterTable(void) const {
     REG(FSBASE, addr.fs_base.qword, addr);
 
   } else {
+    REG(CSBASE, addr.cs_base.dword, addr);
     REG(SSBASE, addr.ss_base.dword, addr);
     REG(ESBASE, addr.es_base.dword, addr);
     REG(DSBASE, addr.ds_base.dword, addr);
@@ -471,6 +471,17 @@ void X86ArchBase::PopulateRegisterTable(void) const {
   REG(MM6, mmx.elems[6].val.qwords.elems[0], u64);
   REG(MM7, mmx.elems[7].val.qwords.elems[0], u64);
 
+  if (has_avx512) {
+    REG(K0, k_reg.elems[0].val, u64);
+    REG(K1, k_reg.elems[1].val, u64);
+    REG(K2, k_reg.elems[2].val, u64);
+    REG(K3, k_reg.elems[3].val, u64);
+    REG(K4, k_reg.elems[4].val, u64);
+    REG(K5, k_reg.elems[5].val, u64);
+    REG(K6, k_reg.elems[6].val, u64);
+    REG(K7, k_reg.elems[7].val, u64);
+  }
+
   // Arithmetic flags. Data-flow analyses will clear these out ;-)
   REG(AF, aflag.af, u8);
   REG(CF, aflag.cf, u8);
@@ -522,9 +533,8 @@ void X86ArchBase::FinishLiftedFunctionInitialization(
 
   (void) this->RegisterByName("PC")->AddressOf(state_ptr_arg, ir);
 
-  ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "CSBASE"));
-
   if (64 == address_size) {
+    ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "CSBASE"));
     ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "SSBASE"));
     ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "ESBASE"));
     ir.CreateStore(zero_addr_val, ir.CreateAlloca(addr, nullptr, "DSBASE"));

@@ -14,9 +14,12 @@
 #include <string>
 namespace remill {
 /// Class to derive from to handle x86 addregs
-class X86ArchBase : ArchBase {
+class X86ArchBase : public virtual ArchBase {
+ public:
+  X86ArchBase(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_)
+      : ArchBase(context_, os_name_, arch_name_) {}
 
-  std::string_view StackPointerRegisterName(void) const final;
+  virtual std::string_view StackPointerRegisterName(void) const final;
 
   std::string_view ProgramCounterRegisterName(void) const final;
   uint64_t MinInstructionAlign(void) const final;
@@ -37,5 +40,6 @@ class X86ArchBase : ArchBase {
   // specific variables.
   void FinishLiftedFunctionInitialization(llvm::Module *module,
                                           llvm::Function *bb_func) const final;
+  virtual ~X86ArchBase(void) = default;
 };
 }  // namespace remill
