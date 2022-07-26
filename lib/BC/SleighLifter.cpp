@@ -30,6 +30,8 @@ namespace remill {
 
 namespace {
 
+static const std::string kEqualityClaimName = "claim_eq";
+
 static bool isVarnodeInConstantSpace(VarnodeData vnode) {
   auto spc = vnode.getAddr().getSpace();
   return spc->constant_space_index == spc->getIndex();
@@ -257,8 +259,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   llvm::BasicBlock *exit_block;
 
   void UpdateStatus(LiftStatus new_status, OpCode opc) {
-    this->status = new_status;
     if (new_status != LiftStatus::kLiftedInstruction) {
+      this->status = new_status;
       LOG(ERROR) << "Failed to lift insn with opcode: " << get_opname(opc);
     }
   }
@@ -1024,6 +1026,26 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   }
 
 
+  std::optional<std::string> GetOtherFuncName(VarnodeData *ivars, int4 isize) {
+    if (isize < 1 || ivars[0].offset >= this->user_op_names.size()) {
+      return std::nullopt;
+    }
+
+    return this->user_op_names[ivars[0].offset];
+  }
+
+  static const size_t kEqualityClaimArity = 3;
+  LiftStatus HandleCallOther(llvm::IRBuilder<> &bldr, VarnodeData *outvar,
+                             VarnodeData *vars, int4 isize) {
+    auto other_func_name = this->GetOtherFuncName(vars, isize);
+
+    if (other_func_name == kEqualityClaimName && isize == kEqualityClaimArity) {
+      LOG(INFO) << "Applying eq claim";
+      this->replacement_cont.ApplyEqualityClaim(bldr, *this, vars[1], vars[2]);
+    }
+
+    return kLiftedUnsupportedInstruction;
+  }
   virtual void dump(const Address &addr, OpCode opc, VarnodeData *outvar,
                     VarnodeData *vars, int4 isize) final override {
     LOG(INFO) << "inner handle" << std::endl;
@@ -1037,16 +1059,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     }
 
     if (opc == OpCode::CPUI_CALLOTHER) {
-      if (isize == 3 && vars[0].offset < this->user_op_names.size() &&
-          this->user_op_names[vars[0].offset] == "claim_eq") {
-        LOG(INFO) << "Applying eq claim";
-        this->replacement_cont.ApplyEqualityClaim(bldr, *this, vars[1],
-                                                  vars[2]);
-        return;
-      }
-
-
-      this->UpdateStatus(LiftStatus::kLiftedUnsupportedInstruction, opc);
+      this->UpdateStatus(this->HandleCallOther(bldr, outvar, vars, isize), opc);
       return;
     }
 
