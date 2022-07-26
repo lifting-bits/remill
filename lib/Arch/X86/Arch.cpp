@@ -788,16 +788,7 @@ static void DecodeOperand(Instruction &inst, const xed_decoded_inst_t *xedd,
   }
 }
 
-static uint64_t BytesToCallBits(const uint8_t *bytes) {
-  // The pattern we're looking for is 5 bytes long.
-  uint64_t bits = 0;
-  bits = (bits << 8) | static_cast<uint32_t>(bytes[0]);
-  bits = (bits << 8) | static_cast<uint32_t>(bytes[1]);
-  bits = (bits << 8) | static_cast<uint32_t>(bytes[2]);
-  bits = (bits << 8) | static_cast<uint32_t>(bytes[3]);
-  bits = (bits << 8) | static_cast<uint32_t>(bytes[4]);
-  return bits;
-}
+static unsigned char GET_PC_IDIOM_CALL[] = {0xE8, 0x00, 0x00, 0x00, 0x00};
 
 static bool TryDecodeGetPCIdiom(Instruction &inst) {
   // Check for CALL+POP idiom used to retrieve PC.
@@ -805,19 +796,18 @@ static bool TryDecodeGetPCIdiom(Instruction &inst) {
     return false;
   }
 
-  const auto bytes = reinterpret_cast<const uint8_t *>(inst.bytes.data());
-  const auto call_bits = BytesToCallBits(bytes);
-
   // Check that we have a CALL pointing one instruction ahead of where we are
   // now.
-  if (call_bits != 0xe800000000) {
+  const size_t call_size = sizeof(GET_PC_IDIOM_CALL);
+  if (memcmp(inst.bytes.c_str(), GET_PC_IDIOM_CALL, call_size) != 0) {
     return false;
   }
 
   // Check whether we have a POP instruction to retrieve the return address
   // that we just pushed to the stack.
   Instruction pop_inst;
-  if (!inst.arch->DecodeInstruction(inst.pc + 5, &inst.bytes[5], pop_inst) ||
+  if (!inst.arch->DecodeInstruction(inst.pc + call_size, &inst.bytes[call_size],
+                                    pop_inst) ||
       pop_inst.function.substr(0, 3) != "POP") {
     return false;
   }
@@ -838,8 +828,8 @@ static bool TryDecodeGetPCIdiom(Instruction &inst) {
   addr_op.type = Operand::kTypeAddressExpression;
   auto *pc_reg = inst.EmplaceRegister(inst.arch->ProgramCounterRegisterName());
   CHECK(pc_reg);
-  auto *pc_offset =
-      inst.EmplaceConstant(llvm::ConstantInt::get(inst.arch->AddressType(), 5));
+  auto *pc_offset = inst.EmplaceConstant(
+      llvm::ConstantInt::get(inst.arch->AddressType(), call_size));
   CHECK(pc_offset);
   addr_op.expr =
       inst.EmplaceBinaryOp(llvm::Instruction::Add, pc_reg, pc_offset);
