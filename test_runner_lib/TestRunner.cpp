@@ -42,10 +42,18 @@
 
 namespace test_runner {
 
+namespace {
+static bool FuncIsIntrinsicPrefixedBy(const llvm::Function *func,
+                                      const char *prefix) {
+  return func->isDeclaration() && func->getName().startswith(prefix);
+}
+}  // namespace
+
+
 uint8_t random_boolean_flag(random_bytes_engine &rbe) {
   std::uniform_int_distribution<> gen(0, 1);
   return gen(rbe);
-}  // namespace test_runner
+}
 
 void *MissingFunctionStub(const std::string &name) {
   if (auto res = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(name)) {
@@ -272,8 +280,8 @@ const remill::Arch::ArchPtr &LiftingTester::GetArch() const {
 }
 
 
-static constexpr auto kFlagIntrinsicPrefix = "__remill_flag_computation";
-static constexpr auto kCompareFlagIntrinsicPrefix = "__remill_compare";
+static constexpr const char *kFlagIntrinsicPrefix = "__remill_flag_computation";
+static constexpr const char *kCompareFlagIntrinsicPrefix = "__remill_compare";
 
 /// NOTE(Ian): This stub is variadic to handle flag computations which accept arbitrary operand width types. since this function
 /// stubs out to an identity function at runtime this is fine.
@@ -300,13 +308,11 @@ CopyFunctionIntoNewModule(llvm::Module *target, const llvm::Function *old_func,
 void StubOutFlagComputationInstrinsics(llvm::Module *mod,
                                        llvm::ExecutionEngine &exec_engine) {
   for (auto &func : mod->getFunctionList()) {
-    if (func.isDeclaration() &&
-        func.getName().startswith(kFlagIntrinsicPrefix)) {
+    if (FuncIsIntrinsicPrefixedBy(&func, kFlagIntrinsicPrefix)) {
       exec_engine.addGlobalMapping(&func, (void *) &flag_computation_stub);
     }
 
-    if (func.isDeclaration() &&
-        func.getName().startswith(kCompareFlagIntrinsicPrefix)) {
+    if (FuncIsIntrinsicPrefixedBy(&func, kCompareFlagIntrinsicPrefix)) {
       exec_engine.addGlobalMapping(&func, (void *) &compare_instrinsic_stub);
     }
   }

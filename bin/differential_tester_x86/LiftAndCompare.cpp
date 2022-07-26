@@ -77,12 +77,28 @@ class DiffModule {
   }
 
   template <std::size_t N>
-  InstructionFunction GetF() {
+  InstructionFunction GetF() const {
     return std::get<N>(this->functions_to_compare);
   }
 };
 
 class DifferentialModuleBuilder {
+ private:
+  std::unique_ptr<llvm::LLVMContext> context;
+  std::shared_ptr<llvm::Module> semantics_module;
+
+  test_runner::LiftingTester l1;
+  test_runner::LiftingTester l2;
+  DifferentialModuleBuilder(std::unique_ptr<llvm::LLVMContext> context_,
+                            std::shared_ptr<llvm::Module> semantics_module_,
+
+                            test_runner::LiftingTester l1_,
+                            test_runner::LiftingTester l2_)
+      : context(std::move(context_)),
+        semantics_module(std::move(semantics_module_)),
+        l1(std::move(l1_)),
+        l2(std::move(l2_)) {}
+
  public:
   static DifferentialModuleBuilder
   Create(remill::OSName os_name_1, remill::ArchName arch_name_1,
@@ -103,23 +119,6 @@ class DifferentialModuleBuilder {
                                      std::move(semantics_module), std::move(l1),
                                      std::move(l2));
   }
-
- private:
-  std::unique_ptr<llvm::LLVMContext> context;
-  std::shared_ptr<llvm::Module> semantics_module;
-
-  test_runner::LiftingTester l1;
-  test_runner::LiftingTester l2;
-
-  DifferentialModuleBuilder(std::unique_ptr<llvm::LLVMContext> context_,
-                            std::shared_ptr<llvm::Module> semantics_module_,
-
-                            test_runner::LiftingTester l1_,
-                            test_runner::LiftingTester l2_)
-      : context(std::move(context_)),
-        semantics_module(std::move(semantics_module_)),
-        l1(std::move(l1_)),
-        l2(std::move(l2_)) {}
 
  public:
   std::optional<DiffModule> build(std::string_view fname_f1,
@@ -278,6 +277,7 @@ class ComparisonRunner {
     auto memory_state_eq =
         mem_handler->GetMemory() == second_handler->GetMemory();
 
+    // NOTE(Ian): Here we log differences in instructions that arise from a different memory interaction.
     if (!memory_state_eq) {
       LOG(ERROR) << "Memory state differs";
       LOG(ERROR) << mem_handler->DumpState();
@@ -365,9 +365,9 @@ bool runTestCase(const TestCase &tc, DifferentialModuleBuilder &diffbuilder,
     if (!tc_result.are_equal) {
       LOG(ERROR) << "Difference in instruction" << std::hex << tc.addr << ": "
                  << llvm::toHex(tc.bytes);
-      std::cout << "Init state: " << tc_result.init_state_dump << std::endl;
-      std::cout << tc_result.struct_dump1 << std::endl;
-      std::cout << tc_result.struct_dump2 << std::endl;
+      LOG(INFO) << "Init state: " << tc_result.init_state_dump << std::endl;
+      LOG(INFO) << tc_result.struct_dump1 << std::endl;
+      LOG(INFO) << tc_result.struct_dump2 << std::endl;
       return false;
     }
   }
