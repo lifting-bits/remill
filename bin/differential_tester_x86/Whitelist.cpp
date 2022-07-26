@@ -79,12 +79,12 @@ const static std::unordered_map<
 
 
 void Accessor::ApplyOverride(X86State *state) const {
-  if (accessors.find(this->section) != accessors.end()) {
-    accessors.find(this->section)->second(state, this->target_name);
-  } else {
+  if (accessors.find(this->section) == accessors.end()) {
     throw std::runtime_error(std::string("Couldnt find section ") +
                              std::string(this->section));
   }
+
+  accessors.find(this->section)->second(state, this->target_name);
 }
 
 bool Accessor::fromJSON(const llvm::json::Value &E, llvm::json::Path P) {
