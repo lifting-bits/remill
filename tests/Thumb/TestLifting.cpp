@@ -54,6 +54,12 @@ const static std::unordered_map<std::string,
 
 
 using MemoryModifier = std::function<void(test_runner::MemoryHandler &)>;
+
+struct RegisterPrecondition {
+  std::string register_name;
+  uint32_t enforced_value;
+};
+
 class TestOutputSpec {
  public:
   uint64_t addr;
@@ -61,8 +67,8 @@ class TestOutputSpec {
 
  private:
   remill::Instruction::Category expected_category;
-  std::vector<std::pair<std::string, uint32_t>> register_preconditions;
-  std::vector<std::pair<std::string, uint32_t>> register_postconditions;
+  std::vector<RegisterPrecondition> register_preconditions;
+  std::vector<RegisterPrecondition> register_postconditions;
   std::vector<MemoryModifier> initial_memory_conditions;
 
   void ApplyCondition(AArch32State &state, std::string reg,
@@ -94,11 +100,10 @@ class TestOutputSpec {
     return this->initial_memory_conditions;
   }
 
-  TestOutputSpec(
-      uint64_t disas_addr, std::string target_bytes,
-      remill::Instruction::Category expected_category,
-      std::vector<std::pair<std::string, uint32_t>> register_preconditions,
-      std::vector<std::pair<std::string, uint32_t>> register_postconditions)
+  TestOutputSpec(uint64_t disas_addr, std::string target_bytes,
+                 remill::Instruction::Category expected_category,
+                 std::vector<RegisterPrecondition> register_preconditions,
+                 std::vector<RegisterPrecondition> register_postconditions)
       : addr(disas_addr),
         target_bytes(target_bytes),
         expected_category(expected_category),
@@ -108,7 +113,7 @@ class TestOutputSpec {
 
   void SetupTestPreconditions(AArch32State &state) const {
     for (auto prec : this->register_preconditions) {
-      this->ApplyCondition(state, prec.first, prec.second);
+      this->ApplyCondition(state, prec.register_name, prec.enforced_value);
     }
   }
 
@@ -118,7 +123,7 @@ class TestOutputSpec {
 
   void CheckResultingState(AArch32State &state) const {
     for (auto post : this->register_postconditions) {
-      this->CheckCondition(state, post.first, post.second);
+      this->CheckCondition(state, post.register_name, post.enforced_value);
     }
   }
 };
