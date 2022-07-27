@@ -233,4 +233,6 @@ DEF_HELPER(SquareRoot32, float32_t src_float)->float32_t {
 #include "lib/Arch/X86/Semantics/XOP.cpp"
 #include "lib/Arch/X86/Semantics/XSAVE.cpp"
 
+#include "lib/Arch/Runtime/HyperCall.cpp"
+
 // clang-format on
