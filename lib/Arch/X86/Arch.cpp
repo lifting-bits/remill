@@ -821,6 +821,7 @@ static bool TryDecodeGetPCIdiom(Instruction &inst) {
       << "Unexpected number of POP operands, expected=1, got="
       << pop_inst.operands.size();
   inst.operands = std::move(pop_inst.operands);
+  inst.bytes.resize(call_size + pop_inst.bytes.size());
 
   // The second operand is the address of the POP instruction.
   inst.operands.emplace_back();
