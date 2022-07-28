@@ -1230,7 +1230,9 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
     }
   }
 
-  inst.category = CreateCategory(xedd);
+  if (inst.category == Instruction::kCategoryInvalid) {
+    inst.category = CreateCategory(xedd);
+  }
   inst.next_pc = address + len + extra_len;
 
   // Fiddle with the size of the bytes.
