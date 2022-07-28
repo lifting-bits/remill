@@ -1,0 +1,5 @@
+Pcrel8_s8: [reloc]		is immed8
+  [ reloc = ((inst_start+4) $and 0xfffffffc) + 4*immed8; ]
+{
+  export *:8 reloc;
+}

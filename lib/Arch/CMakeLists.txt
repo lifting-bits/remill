@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,9 +16,10 @@ add_library(remill_arch STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/Arch.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/Instruction.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/Name.h"
+  "${REMILL_INCLUDE_DIR}/remill/Arch/ArchBase.h"
 
   Arch.cpp
-  Arch.h
+  BitManipulation.h
   Instruction.cpp
   Name.cpp
 )
@@ -27,6 +28,7 @@ add_subdirectory(AArch32)
 add_subdirectory(AArch64)
 add_subdirectory(SPARC32)
 add_subdirectory(SPARC64)
+add_subdirectory(Sleigh)
 add_subdirectory(X86)
 
 set_property(TARGET remill_arch PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -34,6 +36,7 @@ set_property(TARGET remill_arch PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(remill_arch LINK_PUBLIC
   remill_arch_aarch32
   remill_arch_aarch64
+  remill_arch_sleigh
   remill_arch_sparc32
   remill_arch_sparc64
   remill_arch_x86

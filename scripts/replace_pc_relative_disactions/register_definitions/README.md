@@ -1,0 +1,1 @@
+These are some sample register definitions that setup the INST_NEXT_PTR correctly for archs.

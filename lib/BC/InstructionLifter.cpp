@@ -48,11 +48,11 @@ InstructionLifter::Impl::Impl(const Arch *arch_,
     : arch(arch_),
       intrinsics(intrinsics_),
       word_type(
-          remill::NthArgument(intrinsics->async_hyper_call,
-                              remill::kPCArgNum)->getType()),
-      memory_ptr_type(
-          remill::NthArgument(intrinsics->async_hyper_call,
-                              remill::kMemoryPointerArgNum)->getType()),
+          remill::NthArgument(intrinsics->async_hyper_call, remill::kPCArgNum)
+              ->getType()),
+      memory_ptr_type(remill::NthArgument(intrinsics->async_hyper_call,
+                                          remill::kMemoryPointerArgNum)
+                          ->getType()),
       module(intrinsics->async_hyper_call->getParent()),
       invalid_instruction(
           GetInstructionFunction(module, kInvalidInstructionISelName)),
@@ -87,7 +87,6 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
                                             llvm::BasicBlock *block,
                                             llvm::Value *state_ptr,
                                             bool is_delayed) {
-
   llvm::Function *const func = block->getParent();
   llvm::Module *const module = func->getParent();
   llvm::Function *isel_func = nullptr;
@@ -119,7 +118,8 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
   llvm::IRBuilder<> ir(block);
   const auto [mem_ptr_ref, mem_ptr_ref_type] =
       LoadRegAddress(block, state_ptr, kMemoryVariableName);
-  const auto [pc_ref, pc_ref_type] = LoadRegAddress(block, state_ptr, kPCVariableName);
+  const auto [pc_ref, pc_ref_type] =
+      LoadRegAddress(block, state_ptr, kPCVariableName);
   const auto [next_pc_ref, next_pc_ref_type] =
       LoadRegAddress(block, state_ptr, kNextPCVariableName);
   const auto next_pc = ir.CreateLoad(impl->word_type, next_pc_ref);
@@ -271,20 +271,20 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
       llvm::IRBuilder<> ir(&target_block, target_block.getFirstInsertionPt());
       reg_ptr = reg->AddressOf(state_ptr, ir);
 
-    // The state pointer is an instruction, likely an `AllocaInst`.
+      // The state pointer is an instruction, likely an `AllocaInst`.
     } else if (auto state_inst = llvm::dyn_cast<llvm::Instruction>(state_ptr);
                state_inst) {
       llvm::IRBuilder<> ir(state_inst);
       reg_ptr = reg->AddressOf(state_ptr, ir);
 
-    // The state pointer is a constant, likely an `llvm::GlobalVariable`.
+      // The state pointer is a constant, likely an `llvm::GlobalVariable`.
     } else if (auto state_const = llvm::dyn_cast<llvm::Constant>(state_ptr);
                state_const) {
       auto &target_block = block->getParent()->getEntryBlock();
       llvm::IRBuilder<> ir(&target_block, target_block.getFirstInsertionPt());
       reg_ptr = reg->AddressOf(state_ptr, ir);
 
-    // Not sure.
+      // Not sure.
     } else {
       LOG(FATAL) << "Unsupported value type for the State pointer: "
                  << LLVMThingToString(state_ptr);
@@ -296,7 +296,7 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
 
   // Try to find it as a global variable.
   if (auto gvar = module->getGlobalVariable(reg_name)) {
-      return {gvar, gvar->getValueType()};
+    return {gvar, gvar->getValueType()};
   }
 
   // Invent a fake one and keep going.
@@ -304,14 +304,13 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
   unk_var << "__remill_unknown_register_" << reg_name;
   auto unk_var_name = unk_var.str();
   if (auto var = module->getGlobalVariable(unk_var_name)) {
-      return {var, var->getValueType()};
+    return {var, var->getValueType()};
   }
 
   // TODO(pag): Eventually refactor into a higher-level issue, perhaps a
   //            a hyper call to read an unknown register, or a lifting failure,
   //            with a more elaborate status value returned.
-  LOG(ERROR)
-      << "Could not locate variable or register " << reg_name_;
+  LOG(ERROR) << "Could not locate variable or register " << reg_name_;
 
   return {new llvm::GlobalVariable(*module, impl->word_type, false,
                                    llvm::GlobalValue::ExternalLinkage,
@@ -564,7 +563,7 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
   auto arg_type = IntendedArgumentType(arg);
 
   if (llvm::isa<llvm::PointerType>(arg_type)) {
-      auto [val, val_type] = LoadRegAddress(block, state_ptr, arch_reg.name);
+    auto [val, val_type] = LoadRegAddress(block, state_ptr, arch_reg.name);
     return ConvertToIntendedType(inst, op, block, val, real_arg_type);
 
   } else {
@@ -585,8 +584,8 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
             << "Expected " << arch_reg.name << " to be an integral type "
             << "for instruction at " << std::hex << inst.pc;
 
-        val = new llvm::ZExtInst(val, arg_type,
-                                 llvm::Twine::createNull(), block);
+        val =
+            new llvm::ZExtInst(val, arg_type, llvm::Twine::createNull(), block);
 
       } else if (arg_type->isFloatingPointTy()) {
         CHECK(val_type->isFloatingPointTy())
@@ -900,6 +899,21 @@ InstructionLifter::LiftOperand(Instruction &inst, llvm::BasicBlock *block,
              << std::hex << inst.pc;
 
   return nullptr;
+}
+
+llvm::Type *InstructionLifter::GetWordType() {
+  return this->impl->word_type;
+}
+llvm::Type *InstructionLifter::GetMemoryType() {
+  return this->impl->memory_ptr_type;
+}
+
+const IntrinsicTable *InstructionLifter::GetIntrinsicTable() {
+  return this->impl->intrinsics;
+}
+
+bool InstructionLifter::ArchHasRegByName(std::string name) {
+  return this->impl->arch->RegisterByName(name) != nullptr;
 }
 
 }  // namespace remill
