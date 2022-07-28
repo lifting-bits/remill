@@ -41,16 +41,37 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
                      "d"(state.gpr.rdx.aword));
       break;
 
-    case SyncHyperCall::kX86LoadGlobalDescriptorTable: break;
+    case SyncHyperCall::kX86LoadGlobalDescriptorTable:
+      // TODO(alex): Where do I get the operand from?
+      asm volatile("lgdt" : : "=m"(__remill_read_memory_64(memory, 0)));
+      break;
 
-    case SyncHyperCall::kX86LoadInterruptDescriptorTable: break;
+    case SyncHyperCall::kX86LoadInterruptDescriptorTable:
+      // TODO(alex): Where do I get the operand from?
+      asm volatile("lidt" : : "m"(__remill_read_memory_64(memory, 0)));
+      break;
 
-    case SyncHyperCall::kX86ReadModelSpecificRegister: break;
+    case SyncHyperCall::kX86ReadModelSpecificRegister:
+      asm volatile("rdmsr"
+                   : "=c"(state.gpr.rcx.dword)
+                   : "a"(state.gpr.rax.dword), "d"(state.gpr.rdx.dword));
+      break;
 
-    case SyncHyperCall::kX86WriteModelSpecificRegister: break;
+    case SyncHyperCall::kX86WriteModelSpecificRegister:
+      asm volatile("wrmsr"
+                   : "=c"(state.gpr.rcx.dword)
+                   : "a"(state.gpr.rax.dword), "d"(state.gpr.rdx.dword));
+      break;
 
-    case SyncHyperCall::kX86WriteBackInvalidate: break;
+    case SyncHyperCall::kX86WriteBackInvalidate:
+      // NOTE(alex): This just clears cache so there's no affect on the state.
+      asm volatile("wbinvd" :);
+      break;
 
+    // TODO(alex): There doesn't seem to be a way to figure out what what value
+    // gets written to these segment registers. Is there a reason we can't
+    // just do a write to these registers in the semantic functions
+    // themselves? I don't really get why these are sync hyper calls.
     case SyncHyperCall::kX86SetSegmentES: break;
 
     case SyncHyperCall::kX86SetSegmentSS: break;
@@ -93,6 +114,7 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
 
 #  endif
 
+// TODO(alex): What variable gets set for ARM32?
 #elif defined(REMILL_ON_AARCH64)
 
     case SyncHyperCall::kAArch64EmulateInstruction: break;
