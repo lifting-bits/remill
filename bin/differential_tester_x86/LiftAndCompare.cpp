@@ -238,7 +238,7 @@ class ComparisonRunner {
                const std::vector<WhiteListInstruction> &whitelist,
                std::string_view isel_name) {
 
-    X86State func1_state = {};
+    X86State func1_state{};
     test_runner::RandomizeState(func1_state, this->rbe);
     func1_state.addr.ds_base.dword = 0;
     func1_state.addr.ss_base.dword = 0;
@@ -257,7 +257,7 @@ class ComparisonRunner {
       func1_state.gpr.rcx.dword = 1;
     }
 
-    X86State func2_state = {};
+    X86State func2_state{};
 
     auto init_state = this->DumpState(&func1_state);
 

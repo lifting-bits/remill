@@ -315,11 +315,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
                                             VarnodeData target_vnode) {
     if (auto res = this->LiftNormalRegister(bldr, reg_name)) {
       return *res;
-    } else {
-      auto reg_ptr = this->unknown_regs.GetUniquePtr(target_vnode.offset,
-                                                     target_vnode.size, bldr);
-      return RegisterValue::CreatRegister(reg_ptr);
     }
+
+    return RegisterValue::CreatRegister(this->unknown_regs.GetUniquePtr(
+        target_vnode.offset, target_vnode.size, bldr));
   }
 
   //TODO(Ian): Maybe this should be a failable function that returns an unsupported insn in certain failures
