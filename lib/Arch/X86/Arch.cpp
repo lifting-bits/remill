@@ -1046,6 +1046,8 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
     return false;
   }
 
+  inst.category = CreateCategory(xedd);
+
   // Look for instruction fusing opportunities. For now, just `call; pop`.
   const char *is_fused_call_pop = nullptr;
   if (len < inst_bytes.size() &&
@@ -1072,7 +1074,6 @@ bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
     }
   }
 
-  inst.category = CreateCategory(xedd);
   inst.next_pc = address + len + extra_len;
 
   // Fiddle with the size of the bytes.
