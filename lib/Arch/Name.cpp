@@ -18,6 +18,8 @@
 
 #include <llvm/ADT/Triple.h>
 
+#include <map>
+
 namespace remill {
 
 ArchName GetArchName(const llvm::Triple &triple) {
@@ -97,10 +99,29 @@ static const std::string_view kArchNames[] = {
     [kArchSparc64] = "sparc64",
 };
 
+
+static const std::map<std::set<ArchName>, std::string> kArchGroups = {
+    {{kArchAArch32LittleEndian, kArchThumb2LittleEndian}, "armv7_combination"}};
+
+
 }  // namespace
 
 std::string_view GetArchName(ArchName arch_name) {
   return kArchNames[arch_name];
+}
+
+std::optional<std::string_view> GetArchNameOpt(ArchName arch_name) {
+  return arch_name == kArchInvalid
+             ? std::nullopt
+             : std::optional<std::string_view>(GetArchName(arch_name));
+}
+
+std::optional<std::string_view> GetArchGroupName(std::set<ArchName> names) {
+  if (auto x = kArchGroups.find(names); x != kArchGroups.end()) {
+    return x->second;
+  }
+
+  return std::nullopt;
 }
 
 }  // namespace remill

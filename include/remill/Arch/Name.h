@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <optional>
+#include <set>
+
 #ifndef REMILL_ARCH
 #  if defined(__x86_64__)
 #    define REMILL_ARCH "amd64_avx"
@@ -98,5 +101,10 @@ ArchName GetArchName(const llvm::Triple &triple);
 ArchName GetArchName(std::string_view arch_name);
 
 std::string_view GetArchName(ArchName);
+
+
+std::optional<std::string_view> GetArchGroupName(std::set<ArchName> names);
+
+std::optional<std::string_view> GetArchNameOpt(ArchName arch_name);
 
 }  // namespace remill

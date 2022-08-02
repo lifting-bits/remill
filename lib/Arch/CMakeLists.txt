@@ -17,7 +17,10 @@ add_library(remill_arch STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/Instruction.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/Name.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/ArchBase.h"
+  "${REMILL_INCLUDE_DIR}/remill/Arch/ArchGroup.h"
+  "${REMILL_INCLUDE_DIR}/remill/Arch/MachineSpec.h"
 
+  ArchGroup.cpp
   Arch.cpp
   BitManipulation.h
   Instruction.cpp
