@@ -42,13 +42,15 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       break;
 
     case SyncHyperCall::kX86LoadGlobalDescriptorTable:
-      // TODO(alex): Where do I get the operand from?
-      asm volatile("lgdt" : : "=m"(__remill_read_memory_64(memory, 0)));
+      asm volatile("lgdt"
+                   :
+                   : "=m"(__remill_read_memory_64(memory, state.addr_to_load)));
       break;
 
     case SyncHyperCall::kX86LoadInterruptDescriptorTable:
-      // TODO(alex): Where do I get the operand from?
-      asm volatile("lidt" : : "m"(__remill_read_memory_64(memory, 0)));
+      asm volatile("lidt"
+                   :
+                   : "m"(__remill_read_memory_64(memory, state.addr_to_load)));
       break;
 
     case SyncHyperCall::kX86ReadModelSpecificRegister:
