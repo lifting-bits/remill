@@ -36,6 +36,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/prepare_git_user
       - name: Build with build script
         shell: bash
         run: |
@@ -48,6 +49,11 @@ jobs:
           export VCPKG_ROOT=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm-${{ matrix.llvm }}_amd64
           export INSTALL_DIR=$(pwd)/remill-preset-install
           ./scripts/build-preset.sh release
+
+      - name: Install Python Test Deps
+        shell: bash
+        run: |
+          pip3 install --user ./scripts/diff_tester_export_insns
       - name: Run tests
         shell: bash
         working-directory: remill-build
@@ -102,6 +108,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/prepare_git_user
       - name: Build with build script
         shell: bash
         run: |
@@ -114,6 +121,10 @@ jobs:
           export VCPKG_ROOT=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}_llvm-${{ matrix.llvm }}_xcode-13.0_amd64
           export INSTALL_DIR=$(pwd)/remill-preset-install
           ./scripts/build-preset.sh release
+      - name: Install Python Test Deps
+        shell: bash
+        run: |
+          pip3 install --user ./scripts/diff_tester_export_insns
       - name: Run tests
         shell: bash
         working-directory: remill-build

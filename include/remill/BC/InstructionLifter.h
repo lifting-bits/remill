@@ -56,6 +56,8 @@ enum LiftStatus {
 // is called with the appropriate arguments.
 class InstructionLifter {
  public:
+  using LifterPtr = std::unique_ptr<InstructionLifter>;
+
   virtual ~InstructionLifter(void);
 
   inline InstructionLifter(const std::unique_ptr<const Arch> &arch_,
@@ -89,6 +91,9 @@ class InstructionLifter {
 
   // Clear out the cache of the current register values/addresses loaded.
   void ClearCache(void) const;
+
+
+  llvm::Type *GetMemoryType();
 
  protected:
   // Lift an operand to an instruction.
@@ -134,6 +139,14 @@ class InstructionLifter {
   llvm::Value *
   LoadWordRegValOrZero(llvm::BasicBlock *block, llvm::Value *state_ptr,
                        std::string_view reg_name, llvm::ConstantInt *zero);
+
+
+ protected:
+  llvm::Type *GetWordType();
+
+
+  const IntrinsicTable *GetIntrinsicTable();
+  bool ArchHasRegByName(std::string name);
 
  private:
   friend class TraceLifter;

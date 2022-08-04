@@ -1,0 +1,5 @@
+@ifdef IA64
+@define INST_NEXT_PTR "RIP"
+@else
+@define INST_NEXT_PTR "EIP"
+@endif

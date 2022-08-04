@@ -1,0 +1,58 @@
+[
+    {
+        "comment": "the adjust flag isnt ever updated by sleigh",
+        "isel_name": "SUB_",
+        "state_target": [
+            "aflags",
+            "af"
+        ]
+    },
+    {
+        "comment": "the adjust flag isnt ever updated by sleigh",
+        "isel_name": "ADD_",
+        "state_target": [
+            "aflags",
+            "af"
+        ]
+    },
+    {
+        "comment": "the adjust flag isnt ever updated by sleigh",
+        "isel_name": "",
+        "state_target": [
+            "aflags",
+            "af"
+        ]
+    },
+    {
+        "comment": "the overflow flag has an undefined value when the shift is not 1 so we have to filter this, since remill and sleigh do different things with undefined values, unfortunately currently we wont check 1 bit shifts",
+        "isel_name": "SHR_",
+        "state_target": [
+            "aflags",
+            "of"
+        ]
+    },
+    {
+        "comment": "the overflow flag has an undefined value when the shift is not 1 so we have to filter this, since remill and sleigh do different things with undefined values, unfortunately currently we wont check 1 bit shifts",
+        "isel_name": "SAR_",
+        "state_target": [
+            "aflags",
+            "of"
+        ]
+    },
+    {
+        "comment": "the overflow flag has an undefined value when the shift is not 1 so we have to filter this, since remill and sleigh do different things with undefined values, unfortunately currently we wont check 1 bit shifts",
+        "isel_name": "SHL_",
+        "state_target": [
+            "aflags",
+            "of"
+        ]
+    },
+    {
+        "comment": "the overflow flag has an undefined value when the shift is not 1 so we have to filter this, since remill and sleigh do different things with undefined values, unfortunately currently we wont check 1 bit shifts",
+        "isel_name": "SAL_",
+        "state_target": [
+            "aflags",
+            "of"
+        ]
+    }
+]

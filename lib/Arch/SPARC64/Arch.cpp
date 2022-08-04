@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include "../Arch.h"  // For `Arch` and `ArchImpl`.
-
 #include <glog/logging.h>
+#include <remill/Arch/ArchBase.h>  // For `Arch` and `ArchImpl`.
 
 #include "Decode.h"
 #include "remill/Arch/Instruction.h"
@@ -39,10 +38,10 @@ static const std::string_view kSPRegName = "sp";
 static const std::string_view kPCRegName = "pc";
 }  // namespace
 
-class SPARC64Arch final : public Arch {
+class SPARC64Arch final : public ArchBase {
  public:
   SPARC64Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_)
-      : Arch(context_, os_name_, arch_name_) {}
+      : ArchBase(context_, os_name_, arch_name_) {}
 
   virtual ~SPARC64Arch(void) = default;
 
@@ -79,8 +78,9 @@ class SPARC64Arch final : public Arch {
 
   // Populate a just-initialized lifted function function with architecture-
   // specific variables.
-  void FinishLiftedFunctionInitialization(
-      llvm::Module *module, llvm::Function *bb_func) const override;
+  void
+  FinishLiftedFunctionInitialization(llvm::Module *module,
+                                     llvm::Function *bb_func) const override;
 
   llvm::Triple Triple(void) const final;
   llvm::DataLayout DataLayout(void) const final;
@@ -108,7 +108,7 @@ class SPARC64Arch final : public Arch {
 // Populate the table of register information.
 void SPARC64Arch::PopulateRegisterTable(void) const {
 
-  impl->reg_by_offset.resize(sizeof(SPARC64State));
+  reg_by_offset.resize(sizeof(SPARC64State));
 
 #define OFFSET_OF(type, access) \
   (reinterpret_cast<uintptr_t>(&reinterpret_cast<const volatile char &>( \
@@ -447,6 +447,7 @@ bool SPARC64Arch::DecodeInstruction(uint64_t address,
   inst.pc = address;
   inst.arch_name = arch_name;
   inst.sub_arch_name = arch_name;
+  inst.branch_taken_arch_name = arch_name;
   inst.arch = this;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();

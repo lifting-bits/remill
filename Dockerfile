@@ -30,10 +30,15 @@ ARG LLVM_VERSION
 
 WORKDIR /remill
 COPY ./ ./
+
+RUN git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com" && git config --global user.name "github-actions[bot]"
+
 RUN ./scripts/build.sh \
-  --llvm-version ${LLVM_VERSION} \
-  --prefix /opt/trailofbits \
-  --extra-cmake-args "-DCMAKE_BUILD_TYPE=Release"
+    --llvm-version ${LLVM_VERSION} \
+    --prefix /opt/trailofbits \
+    --extra-cmake-args "-DCMAKE_BUILD_TYPE=Release"
+
+RUN pip3 install ./scripts/diff_tester_export_insns
 
 RUN cd remill-build && \
     cmake --build . --target test_dependencies -- -j $(nproc) && \

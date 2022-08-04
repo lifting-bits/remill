@@ -45,8 +45,8 @@
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/SourceMgr.h>
-#include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/ToolOutputFile.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Name.h"
@@ -99,29 +99,30 @@ inline const int steal_member_pointer = [] {
   constexpr int __temp_tag_##ns##_##cls##_##member = 0; \
   using __temp_type_##ns##_##cls##_##member = type ns::cls::*; \
   template const int steal_member_pointer<&ns::cls::member, \
-                                    __temp_type_##ns##_##cls##_##member, \
-                                    &__temp_tag_##ns##_##cls##_##member>
+                                          __temp_type_##ns##_##cls##_##member, \
+                                          &__temp_tag_##ns##_##cls##_##member>
 
 #define REMILL_BYPASS_MEMBER_FUNCTION_ACCESS(ns, cls, member, ret_type, ...) \
   constexpr int __temp_tag_##ns##_##cls##_##member = 0; \
   using __temp_type_##ns##_##cls##_##member = \
       ret_type (ns::cls::*)(__VA_ARGS__); \
   template const int steal_member_pointer<&ns::cls::member, \
-                                    __temp_type_##ns##_##cls##_##member, \
-                                    &__temp_tag_##ns##_##cls##_##member>
+                                          __temp_type_##ns##_##cls##_##member, \
+                                          &__temp_tag_##ns##_##cls##_##member>
 
-#define REMILL_BYPASS_CONST_MEMBER_FUNCTION_ACCESS(ns, cls, member, ret_type, ...) \
+#define REMILL_BYPASS_CONST_MEMBER_FUNCTION_ACCESS(ns, cls, member, ret_type, \
+                                                   ...) \
   constexpr int __temp_tag_##ns##_##cls##_##member = 0; \
   using __temp_type_##ns##_##cls##_##member = \
       ret_type (ns::cls::*)(__VA_ARGS__) const; \
   template const int steal_member_pointer<&ns::cls::member, \
-                                    __temp_type_##ns##_##cls##_##member, \
-                                    &__temp_tag_##ns##_##cls##_##member>
+                                          __temp_type_##ns##_##cls##_##member, \
+                                          &__temp_tag_##ns##_##cls##_##member>
 
 #define REMILL_ACCESS_MEMBER(ns, cls, member) \
-    (::remill::detail::member_pointer_stash< \
-        ::remill::detail::__temp_type_##ns##_##cls##_##member, \
-        &::remill::detail::__temp_tag_##ns##_##cls##_##member>)
+  (::remill::detail::member_pointer_stash< \
+      ::remill::detail::__temp_type_##ns##_##cls##_##member, \
+      &::remill::detail::__temp_tag_##ns##_##cls##_##member>)
 
 REMILL_BYPASS_MEMBER_OBJECT_ACCESS(llvm, Value, VTy, llvm::Type *);
 
@@ -142,8 +143,7 @@ void InitFunctionAttributes(llvm::Function *function) {
 }
 
 // Create a call from one lifted function to another.
-llvm::CallInst *AddCall(llvm::BasicBlock *source_block,
-                        llvm::Value *dest_func,
+llvm::CallInst *AddCall(llvm::BasicBlock *source_block, llvm::Value *dest_func,
                         const IntrinsicTable &intrinsics) {
   llvm::IRBuilder<> ir(source_block);
   auto args = LiftedFunctionArgs(source_block, intrinsics);
@@ -170,8 +170,7 @@ llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
     llvm::IRBuilder<> ir(
         llvm::BasicBlock::Create(source_func->getContext(), "", source_func));
   }
-  return AddTerminatingTailCall(&(source_func->back()), dest_func,
-                                intrinsics);
+  return AddTerminatingTailCall(&(source_func->back()), dest_func, intrinsics);
 }
 
 llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
@@ -320,9 +319,8 @@ void StoreNextProgramCounter(llvm::BasicBlock *block, llvm::Value *pc) {
 void StoreProgramCounter(llvm::BasicBlock *block, uint64_t pc,
                          const IntrinsicTable &intrinsics) {
   auto pc_ptr = LoadProgramCounterRef(block);
-  (void) new llvm::StoreInst(
-      llvm::ConstantInt::get(intrinsics.pc_type, pc),
-      pc_ptr, block);
+  (void) new llvm::StoreInst(llvm::ConstantInt::get(intrinsics.pc_type, pc),
+                             pc_ptr, block);
 }
 
 // Return the current memory pointer.
@@ -338,7 +336,8 @@ llvm::Value *LoadBranchTaken(llvm::BasicBlock *block) {
   llvm::IRBuilder<> ir(block);
   auto i8_type = llvm::Type::getInt8Ty(block->getContext());
   auto cond = ir.CreateLoad(
-      i8_type, FindVarInFunction(block->getParent(), kBranchTakenVariableName).first);
+      i8_type,
+      FindVarInFunction(block->getParent(), kBranchTakenVariableName).first);
   auto true_val = llvm::ConstantInt::get(cond->getType(), 1);
   return ir.CreateICmpEQ(cond, true_val);
 }
@@ -369,13 +368,12 @@ llvm::GlobalVariable *FindGlobaVariable(llvm::Module *module,
 // Loads the semantics for the `arch`-specific machine, i.e. the machine of the
 // code that we want to lift.
 std::unique_ptr<llvm::Module> LoadArchSemantics(const Arch *arch) {
-    return LoadArchSemantics(arch, {});
+  return LoadArchSemantics(arch, {});
 }
 
 std::unique_ptr<llvm::Module>
 LoadArchSemantics(const Arch *arch,
-                  const std::vector<std::filesystem::path> &sem_dirs)
-{
+                  const std::vector<std::filesystem::path> &sem_dirs) {
   auto arch_name = GetArchName(arch->arch_name);
   // If `sem_dirs` does not contain the dir, fallback to compiled in paths.
   auto path = FindSemanticsBitcodeFile(arch_name, sem_dirs, true);
@@ -383,7 +381,8 @@ LoadArchSemantics(const Arch *arch,
   //              properly checks for possible error (this could not return pointer
   //              without value before).
   if (!path)
-    LOG(FATAL) << "Cannot find path to " << arch << " semantics bitcode file.";
+    LOG(FATAL) << "Cannot find path to " << arch_name
+               << " semantics bitcode file.";
 
   DLOG(INFO) << "Loading " << arch_name << " semantics from file " << *path;
   auto module = LoadModuleFromFile(arch->context, *path);
@@ -395,8 +394,7 @@ LoadArchSemantics(const Arch *arch,
   return module;
 }
 
-std::optional<std::string> VerifyModuleMsg(llvm::Module *module)
-{
+std::optional<std::string> VerifyModuleMsg(llvm::Module *module) {
   std::string error;
   llvm::raw_string_ostream error_stream(error);
   if (llvm::verifyModule(*module, &error_stream)) {
@@ -417,29 +415,26 @@ bool VerifyModule(llvm::Module *module) {
   return true;
 }
 
-std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
-                                                 std::filesystem::path file_name)
-{
+std::unique_ptr<llvm::Module>
+LoadModuleFromFile(llvm::LLVMContext *context,
+                   std::filesystem::path file_name) {
   llvm::SMDiagnostic err;
   auto module = llvm::parseIRFile(file_name.string(), err, *context);
 
   if (!module) {
-    LOG(ERROR)
-        << "Unable to parse module file " << file_name << ": "
-        << err.getMessage().str();
+    LOG(ERROR) << "Unable to parse module file " << file_name << ": "
+               << err.getMessage().str();
     return {};
   }
 
   auto ec = module->materializeAll();  // Just in case.
   if (ec) {
-    LOG(ERROR)
-        << "Unable to materialize everything from " << file_name;
+    LOG(ERROR) << "Unable to materialize everything from " << file_name;
     return {};
   }
 
   if (!VerifyModule(module.get())) {
-    LOG(ERROR)
-        << "Error verifying module read from file " << file_name;
+    LOG(ERROR) << "Error verifying module read from file " << file_name;
     return {};
   }
 
@@ -544,40 +539,37 @@ namespace {
 
 using paths_t = std::vector<std::filesystem::path>;
 
-const paths_t &DefaultSemanticsSearchPaths()
-{
-  static const paths_t paths =
-  {
-    REMILL_BUILD_SEMANTICS_DIR_X86,
-    REMILL_BUILD_SEMANTICS_DIR_AARCH32,
-    REMILL_BUILD_SEMANTICS_DIR_AARCH64,
-    REMILL_BUILD_SEMANTICS_DIR_SPARC32,
-    REMILL_BUILD_SEMANTICS_DIR_SPARC64,
-    REMILL_INSTALL_SEMANTICS_DIR,
-    "/usr/local/share/remill/" MAJOR_MINOR "/semantics",
-    "/usr/share/remill/" MAJOR_MINOR "/semantics",
-    "/share/remill/" MAJOR_MINOR "/semantics",
+const paths_t &DefaultSemanticsSearchPaths() {
+  static const paths_t paths = {
+      REMILL_BUILD_SEMANTICS_DIR_X86,
+      REMILL_BUILD_SEMANTICS_DIR_AARCH32,
+      REMILL_BUILD_SEMANTICS_DIR_AARCH64,
+      REMILL_BUILD_SEMANTICS_DIR_SPARC32,
+      REMILL_BUILD_SEMANTICS_DIR_SPARC64,
+      REMILL_INSTALL_SEMANTICS_DIR,
+      "/usr/local/share/remill/" MAJOR_MINOR "/semantics",
+      "/usr/share/remill/" MAJOR_MINOR "/semantics",
+      "/share/remill/" MAJOR_MINOR "/semantics",
   };
   return paths;
 }
 
 using maybe_path_t = std::optional<std::filesystem::path>;
 
-maybe_path_t IsSemanticsBitcodeFile(
-  std::filesystem::path dir,
-  std::string_view arch)
-{
+maybe_path_t IsSemanticsBitcodeFile(std::filesystem::path dir,
+                                    std::string_view arch) {
   auto path = dir / (std::string(arch) + ".bc");
-  return (std::filesystem::exists(path)) ? std::make_optional(std::move(path)) : std::nullopt;
+  return (std::filesystem::exists(path)) ? std::make_optional(std::move(path))
+                                         : std::nullopt;
 }
 
 }  // namespace
 
 maybe_path_t _FindSemanticsBitcodeFile(std::string_view arch,
                                        const paths_t &dirs) {
- for (const auto &dir : dirs)
+  for (const auto &dir : dirs)
     if (auto sem_path = IsSemanticsBitcodeFile(dir, arch))
-        return sem_path;
+      return sem_path;
   return {};
 }
 
@@ -801,15 +793,13 @@ static llvm::Function *DeclareFunctionInModule(llvm::Function *func,
   return dest_func;
 }
 
-static llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
-                                                llvm::Module *dest_module,
-                                                ValueMap &value_map,
-                                                TypeMap &type_map);
+static llvm::GlobalVariable *
+DeclareVarInModule(llvm::GlobalVariable *var, llvm::Module *dest_module,
+                   ValueMap &value_map, TypeMap &type_map);
 
-static llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
-                                               llvm::Module *dest_module,
-                                               ValueMap &value_map,
-                                               TypeMap &type_map);
+static llvm::GlobalAlias *
+DeclareAliasInModule(llvm::GlobalAlias *var, llvm::Module *dest_module,
+                     ValueMap &value_map, TypeMap &type_map);
 
 template <typename T>
 static void ClearMetaData(T *value) {
@@ -820,10 +810,10 @@ static void ClearMetaData(T *value) {
   }
 }
 
-static llvm::Type *
-RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context,
-                    TypeMap &cache) {
-  if (&(type->getContext()) == &context) {
+static llvm::Type *RecontextualizeType(llvm::Type *type,
+                                       llvm::LLVMContext &context,
+                                       TypeMap &cache) {
+  if (&(type->getContext()) == &context && cache.find(type) == cache.end()) {
     return type;
   }
 
@@ -869,8 +859,8 @@ RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context,
       if (struct_type->isLiteral()) {
         new_struct_type = llvm::StructType::create(context);
       } else {
-        new_struct_type = llvm::StructType::create(
-            context, struct_type->getName());
+        new_struct_type =
+            llvm::StructType::create(context, struct_type->getName());
       }
       cached = new_struct_type;
 
@@ -897,9 +887,7 @@ RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context,
 
     case llvm::Type::PointerTyID: {
       auto ptr_type = llvm::dyn_cast<llvm::PointerType>(type);
-      cached =
-          llvm::PointerType::get(context,
-                                 ptr_type->getAddressSpace());
+      cached = llvm::PointerType::get(context, ptr_type->getAddressSpace());
       break;
     }
 
@@ -921,10 +909,9 @@ RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context,
   return cached;
 }
 
-static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
-                                              llvm::Module *dest_module,
-                                              ValueMap &value_map,
-                                              TypeMap &type_map) {
+static llvm::Constant *
+MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
+                       ValueMap &value_map, TypeMap &type_map) {
 
   auto &moved_c = value_map[c];
   if (moved_c) {
@@ -1297,8 +1284,7 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
         std::vector<llvm::Constant *> indices(ni);
         for (auto i = 0u; i < ni; ++i) {
           indices[i] = MoveConstantIntoModule(ce->getOperand(i + 1u),
-                                              dest_module, value_map,
-                                              type_map);
+                                              dest_module, value_map, type_map);
         }
         auto ret = llvm::ConstantExpr::getGetElementPtr(
             source_type,
@@ -1332,8 +1318,8 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
           } else {
             auto ret = llvm::ConstantExpr::get(
                 ce->getOpcode(),
-                MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
-                                       type_map));
+                MoveConstantIntoModule(ce->getOperand(0), dest_module,
+                                       value_map, type_map));
             moved_c = ret;
             return ret;
           }
@@ -1355,9 +1341,9 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
       std::vector<llvm::Constant *> new_elems;
       new_elems.reserve(a->getNumOperands());
       for (auto it = a->op_begin(), end = a->op_end(); it != end; ++it) {
-        new_elems.push_back(MoveConstantIntoModule(
-            llvm::cast<llvm::Constant>(it->get()), dest_module, value_map,
-            type_map));
+        new_elems.push_back(
+            MoveConstantIntoModule(llvm::cast<llvm::Constant>(it->get()),
+                                   dest_module, value_map, type_map));
       }
 
       auto ret = llvm::ConstantArray::get(llvm::cast<llvm::ArrayType>(type),
@@ -1369,9 +1355,9 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
       std::vector<llvm::Constant *> new_elems;
       new_elems.reserve(s->getNumOperands());
       for (auto it = s->op_begin(), end = s->op_end(); it != end; ++it) {
-        new_elems.push_back(MoveConstantIntoModule(
-            llvm::cast<llvm::Constant>(it->get()), dest_module, value_map,
-            type_map));
+        new_elems.push_back(
+            MoveConstantIntoModule(llvm::cast<llvm::Constant>(it->get()),
+                                   dest_module, value_map, type_map));
       }
 
       auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(type),
@@ -1383,9 +1369,9 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
       std::vector<llvm::Constant *> new_elems;
       new_elems.reserve(v->getNumOperands());
       for (auto it = v->op_begin(), end = v->op_end(); it != end; ++it) {
-        new_elems.push_back(MoveConstantIntoModule(
-            llvm::cast<llvm::Constant>(it->get()), dest_module, value_map,
-            type_map));
+        new_elems.push_back(
+            MoveConstantIntoModule(llvm::cast<llvm::Constant>(it->get()),
+                                   dest_module, value_map, type_map));
       }
 
       auto ret = llvm::ConstantVector::get(new_elems);
@@ -1417,18 +1403,17 @@ static llvm::Constant *MoveConstantIntoModule(llvm::Constant *c,
   }
 }
 
-llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
-                                         llvm::Module *dest_module,
-                                         ValueMap &value_map,
-                                         TypeMap &type_map) {
+llvm::GlobalVariable *
+DeclareVarInModule(llvm::GlobalVariable *var, llvm::Module *dest_module,
+                   ValueMap &value_map, TypeMap &type_map) {
   auto &moved_var = value_map[var];
   if (moved_var) {
     return llvm::dyn_cast<llvm::GlobalVariable>(moved_var);
   }
 
   auto &dest_context = dest_module->getContext();
-  const auto type = ::remill::RecontextualizeType(
-      var->getValueType(), dest_context);
+  const auto type =
+      ::remill::RecontextualizeType(var->getValueType(), dest_context);
 
   auto dest_var = dest_module->getGlobalVariable(var->getName());
   if (dest_var) {
@@ -1463,10 +1448,9 @@ llvm::GlobalVariable *DeclareVarInModule(llvm::GlobalVariable *var,
 }
 
 
-llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
-                                        llvm::Module *dest_module,
-                                        ValueMap &value_map,
-                                        TypeMap &type_map) {
+llvm::GlobalAlias *
+DeclareAliasInModule(llvm::GlobalAlias *var, llvm::Module *dest_module,
+                     ValueMap &value_map, TypeMap &type_map) {
   auto &moved_var = value_map[var];
   if (moved_var) {
     return llvm::dyn_cast<llvm::GlobalAlias>(moved_var);
@@ -1488,9 +1472,8 @@ llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
       var->getName(), nullptr, dest_module);
 
   moved_var = dest_var;
-  dest_var->setAliasee(
-      MoveConstantIntoModule(var->getAliasee(), dest_module, value_map,
-                             type_map));
+  dest_var->setAliasee(MoveConstantIntoModule(var->getAliasee(), dest_module,
+                                              value_map, type_map));
 
   return dest_var;
 }
@@ -1498,8 +1481,7 @@ llvm::GlobalAlias *DeclareAliasInModule(llvm::GlobalAlias *var,
 
 static void MoveInstructionIntoModule(llvm::Instruction *inst,
                                       llvm::Module *dest_module,
-                                      ValueMap &value_map,
-                                      TypeMap &type_map) {
+                                      ValueMap &value_map, TypeMap &type_map) {
 
   // Substitute the operands.
   for (auto &op : inst->operands()) {
@@ -1525,7 +1507,7 @@ static void MoveInstructionIntoModule(llvm::Instruction *inst,
       phi->setIncomingBlock(i, incoming_block);
     }
 
-  // Substitute the called function.
+    // Substitute the called function.
   } else if (auto call = llvm::dyn_cast<llvm::CallInst>(inst)) {
     if (auto callee_func = call->getCalledFunction()) {
       if (callee_func->getParent() != dest_module) {
@@ -1537,17 +1519,16 @@ static void MoveInstructionIntoModule(llvm::Instruction *inst,
       auto &new_callee_val = value_map[callee_val];
       if (!new_callee_val) {
         if (auto callee_const = llvm::dyn_cast<llvm::Constant>(callee_val)) {
-          new_callee_val =
-              MoveConstantIntoModule(callee_const, dest_module, value_map,
-                                     type_map);
+          new_callee_val = MoveConstantIntoModule(callee_const, dest_module,
+                                                  value_map, type_map);
 
         } else {
           new_callee_val = callee_val;
         }
       }
 
-      auto dest_func_type = llvm::dyn_cast<llvm::FunctionType>(
-          RecontextualizeType(
+      auto dest_func_type =
+          llvm::dyn_cast<llvm::FunctionType>(RecontextualizeType(
               call->getFunctionType(), dest_module->getContext(), type_map));
       llvm::FunctionCallee callee(dest_func_type, new_callee_val);
       call->setCalledFunction(callee);
@@ -1555,9 +1536,10 @@ static void MoveInstructionIntoModule(llvm::Instruction *inst,
   }
 }
 
-llvm::Metadata *CloneMetadataInto(
-    llvm::Module *source_mod, llvm::Module *dest_mod,
-    llvm::Metadata *md, ValueMap &value_map, TypeMap &type_map, MDMap &md_map) {
+llvm::Metadata *CloneMetadataInto(llvm::Module *source_mod,
+                                  llvm::Module *dest_mod, llvm::Metadata *md,
+                                  ValueMap &value_map, TypeMap &type_map,
+                                  MDMap &md_map) {
 
   llvm::Metadata *mapped_md = nullptr;
   auto [it, added] = md_map.emplace(md, mapped_md);
@@ -1568,15 +1550,16 @@ llvm::Metadata *CloneMetadataInto(
   llvm::LLVMContext &source_context = source_mod->getContext();
   llvm::LLVMContext &dest_context = dest_mod->getContext();
 
-  if (llvm::ValueAsMetadata *val_md = llvm::dyn_cast<llvm::ValueAsMetadata>(md)) {
+  if (llvm::ValueAsMetadata *val_md =
+          llvm::dyn_cast<llvm::ValueAsMetadata>(md)) {
     llvm::Value *val = val_md->getValue();
     if (auto it = value_map.find(val); it != value_map.end()) {
       llvm::Value *mapped_val = it->second;
       mapped_md = llvm::ValueAsMetadata::get(mapped_val);
 
     } else if (auto cv = llvm::dyn_cast<llvm::Constant>(val)) {
-      llvm::Value *mapped_cv = MoveConstantIntoModule(cv, dest_mod, value_map,
-                                                      type_map);
+      llvm::Value *mapped_cv =
+          MoveConstantIntoModule(cv, dest_mod, value_map, type_map);
       if (!mapped_cv) {
         return nullptr;  // Couldn't move it.
       }
@@ -1606,7 +1589,7 @@ llvm::Metadata *CloneMetadataInto(
     }
     mapped_md = llvm::MDTuple::get(dest_context, mapped_ops);
 
-  // Not supported.
+    // Not supported.
   } else {
     return nullptr;
   }
@@ -1645,9 +1628,9 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
 
   // Clone the basic blocks and their instructions.
   std::unordered_map<llvm::BasicBlock *, llvm::BasicBlock *> block_map;
-  std::unordered_map<
-      llvm::Instruction *,
-      llvm::SmallVector<std::pair<unsigned, llvm::MDNode *>, 4>> inst_mds;
+  std::unordered_map<llvm::Instruction *,
+                     llvm::SmallVector<std::pair<unsigned, llvm::MDNode *>, 4>>
+      inst_mds;
   for (auto &old_block : *source_func) {
     auto new_block = llvm::BasicBlock::Create(dest_func->getContext(),
                                               old_block.getName(), dest_func);
@@ -1682,7 +1665,6 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
       //            (correctly) detect that the types don't match.
       new_inst->*REMILL_ACCESS_MEMBER(llvm, Value, VTy) =
           RecontextualizeType(new_inst->getType(), dest_context, type_map);
-
 
 
       new_insts.push_back(new_inst);
@@ -1742,8 +1724,8 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
       auto &mds = inst_mds[&old_inst];
       for (auto md_info : mds) {
         llvm::MDNode *new_md = llvm::dyn_cast_or_null<llvm::MDNode>(
-            CloneMetadataInto(source_mod, dest_mod, md_info.second,
-                              value_map, type_map, md_map));
+            CloneMetadataInto(source_mod, dest_mod, md_info.second, value_map,
+                              type_map, md_map));
         if (new_md) {
           new_inst->setMetadata(md_id_map[md_info.first], new_md);
         }
@@ -1852,7 +1834,7 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
     func->setName(func_name);
     dest_module->getFunctionList().push_back(func);
 
-  // TODO(pag): Probably clone it into the destination module.
+    // TODO(pag): Probably clone it into the destination module.
   } else {
     LOG(FATAL) << "TODO: Not yet supported.";
   }
@@ -1974,9 +1956,11 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
             gep_zero, llvm::ConstantInt::get(index_type, i, false)};
         auto call_arg_addr = ir.CreateAdd(
             addr, llvm::ConstantInt::get(addr->getType(), i, false));
-        llvm::Value* call_args[2] = {mem_ptr, call_arg_addr};
-        auto byte = ir.CreateCall(intrinsics.read_memory_8, llvm::makeArrayRef(call_args));
-        auto byte_ptr = ir.CreateInBoundsGEP(i8_array, byte_array, llvm::makeArrayRef(gep_indices));
+        llvm::Value *call_args[2] = {mem_ptr, call_arg_addr};
+        auto byte = ir.CreateCall(intrinsics.read_memory_8,
+                                  llvm::makeArrayRef(call_args));
+        auto byte_ptr = ir.CreateInBoundsGEP(i8_array, byte_array,
+                                             llvm::makeArrayRef(gep_indices));
         ir.CreateStore(byte, byte_ptr);
       }
 
@@ -2289,18 +2273,18 @@ BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type, size_t offset,
         prev_elem_type = elem_type;
         continue;
 
-      // Indexing into the `i`th element.
+        // Indexing into the `i`th element.
       } else if ((offset + elem_offset) <= goal_offset) {
         indexes_out.push_back(llvm::ConstantInt::get(index_type, i, false));
         return BuildIndexes(dl, elem_type, offset + elem_offset, goal_offset,
                             indexes_out);
 
-      // We're indexing into some padding before the current element.
+        // We're indexing into some padding before the current element.
       } else if (i) {
         indexes_out.push_back(llvm::ConstantInt::get(index_type, i - 1, false));
         return {offset + prev_elem_offset, prev_elem_type};
 
-      // We're indexing into some padding at the beginning of this structure.
+        // We're indexing into some padding at the beginning of this structure.
       } else {
         return {offset, type};
       }
