@@ -133,7 +133,7 @@ FetchContent_Declare(sleigh
 FetchContent_MakeAvailable(sleigh)
 
 if(IS_DIRECTORY "${sleigh_SOURCE_DIR}")
-  set_property(DIRECTORY ${sleigh_SOURCE_DIR} PROPERTY EXCLUDE_FROM_ALL YES)
+  set_property(DIRECTORY ${sleigh_SOURCE_DIR} PROPERTY EXCLUDE_FROM_ALL ON)
 endif()
 
 add_library(thirdparty_sleigh INTERFACE)
