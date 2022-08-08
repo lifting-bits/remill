@@ -64,6 +64,8 @@ class ArchBase : public remill::Arch {
   // Return information about a register, given its name.
   const Register *RegisterByName(std::string_view name) const final;
 
+  const IntrinsicTable *GetInstrinsicTable(void) const final;
+
   unsigned RegMdID(void) const final;
 
   // TODO(Ian): This is kinda messy but only an arch currently knows if it is
@@ -103,6 +105,7 @@ class ArchBase : public remill::Arch {
   mutable std::vector<std::unique_ptr<Register>> registers;
   mutable std::vector<const Register *> reg_by_offset;
   mutable std::unordered_map<std::string, const Register *> reg_by_name;
+  mutable std::unique_ptr<IntrinsicTable> instrinsics{nullptr};
 };
 
 }  // namespace remill

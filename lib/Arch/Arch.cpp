@@ -842,6 +842,12 @@ void ArchBase::InitFromSemanticsModule(llvm::Module *module) const {
   reg_md_id = context->getMDKindID("remill_register");
 
   CHECK(!reg_by_name.empty());
+
+  this->instrinsics.reset(new IntrinsicTable(module));
+}
+
+const IntrinsicTable *ArchBase::GetInstrinsicTable(void) const {
+  return this->instrinsics.get();
 }
 
 InstructionLifter::LifterPtr

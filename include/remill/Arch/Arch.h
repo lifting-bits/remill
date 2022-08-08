@@ -29,6 +29,7 @@
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/IRBuilder.h>
 #include <remill/BC/InstructionLifter.h>
+#include <remill/BC/IntrinsicTable.h>
 
 #pragma clang diagnostic pop
 
@@ -199,6 +200,8 @@ class Arch {
   // null pointer will be returned.
   virtual llvm::StructType *RegisterWindowType(void) const = 0;
 
+
+  virtual const IntrinsicTable *GetInstrinsicTable(void) const = 0;
 
   virtual unsigned RegMdID(void) const = 0;
 
