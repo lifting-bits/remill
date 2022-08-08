@@ -29,6 +29,7 @@
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/IRBuilder.h>
 #include <remill/BC/InstructionLifter.h>
+#include <remill/Arch/MachineSemantics.h>
 
 #pragma clang diagnostic pop
 
@@ -163,7 +164,7 @@ struct Register {
                            llvm::StructType *state_type);
 };
 
-class Arch {
+class Arch : MachineSemantics {
  public:
   using ArchPtr = std::unique_ptr<const Arch>;
 

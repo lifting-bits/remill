@@ -2,13 +2,24 @@
 #include <remill/Arch/ArchGroup.h>
 #include <remill/Arch/Name.h>
 #include <remill/BC/Annotate.h>
+#include <remill/BC/IntrinsicTable.h>
 #include <remill/BC/Util.h>
+
+#include <algorithm>
+
 namespace remill {
-ArchGroup::ArchGroup(std::unordered_map<ArchName, Arch::ArchPtr> arches_,
+ArchGroup::ArchGroup(std::unordered_map<ArchName, ArchLifter> arches_,
                      std::unique_ptr<llvm::LLVMContext> context_)
     : arches(std::move(arches_)),
       context(std::move(context_)) {}
 
+InstructionLifter::LifterPtr &ArchLifter::GetLifter() {
+  return this->lifter;
+}
+
+Arch::ArchPtr &ArchLifter::GetArch() {
+  return this->arch;
+}
 
 bool ArchGroup::DecodeInstruction(ArchName arch, uint64_t address,
                                   std::string_view instr_bytes,
@@ -18,8 +29,8 @@ bool ArchGroup::DecodeInstruction(ArchName arch, uint64_t address,
         "Attempting to decode with unsupported arch in this group");
   }
 
-  return this->arches.find(arch)->second->DecodeInstruction(address,
-                                                            instr_bytes, inst);
+  return this->arches.find(arch)->second.GetArch()->DecodeInstruction(
+      address, instr_bytes, inst);
 }
 
 
@@ -73,6 +84,7 @@ ArchGroup::Create(llvm::ArrayRef<ArchName> arches, remill::OSName os) {
       ss << "Could not build arch with name: " << GetArchName(nm);
       throw std::runtime_error(ss.str());
     }
+    built_arches.emplace(nm, std::move(child_arch));
   }
 
   // If `sem_dirs` does not contain the dir, fallback to compiled in paths.
@@ -96,11 +108,38 @@ ArchGroup::Create(llvm::ArrayRef<ArchName> arches, remill::OSName os) {
     Annotate<remill::Semantics>(&func);
   }
 
+  IntrinsicTable intrinsic_table(module.get());
 
-  return std::make_pair(ArchGroup(std::move(MachineSpec(*module)),
-                                  std::move(built_arches), std::move(context)),
+  std::unordered_map<ArchName, ArchLifter> lifters;
+  std::transform(
+      built_arches.begin(), built_arches.end(),
+      std::inserter(lifters, lifters.end()),
+      [&intrinsic_table](
+          std::unordered_map<ArchName, Arch::ArchPtr>::value_type &aptr)
+          -> std::pair<ArchName, ArchLifter> {
+        auto lifter = aptr.second->DefaultLifter(intrinsic_table);
+        return {aptr.first,
+                ArchLifter(std::move(lifter), std::move(aptr.second))};
+      });
+
+
+  return std::make_pair(ArchGroup(std::move(lifters), std::move(context)),
                         std::move(module));
 }
 
+std::set<ArchName> ArchGroup::ArchNames() const {
+  std::set<ArchName> archs;
+  std::transform(
+      arches.begin(), arches.end(), std::inserter(archs, archs.begin()),
+      [](const std::unordered_map<ArchName, ArchLifter>::value_type &pr) {
+        return pr.first;
+      });
+
+  return archs;
+}
+
+llvm::LLVMContext &ArchGroup::GetContext() const {
+  return *this->context;
+}
 
 }  // namespace remill

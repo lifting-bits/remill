@@ -71,6 +71,11 @@ class ArchBase : public remill::Arch {
   InstructionLifter::LifterPtr
   DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
 
+  // Get the state pointer and various other types from the `llvm::LLVMContext`
+  // associated with `module`.
+  //
+  // NOTE(pag): This is an internal API.
+  void InitFromSemanticsModule(llvm::Module *module) const final;
 
   // Add a register into this architecture.
   const Register *AddRegister(const char *reg_name, llvm::Type *val_type,
