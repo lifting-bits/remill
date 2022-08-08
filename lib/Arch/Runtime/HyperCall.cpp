@@ -44,13 +44,13 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
     case SyncHyperCall::kX86LoadGlobalDescriptorTable:
       asm volatile("lgdt"
                    :
-                   : "=m"(__remill_read_memory_64(memory, state.addr_to_load)));
+                   : "=m"(__remill_read_memory_64(mem, state.addr_to_load)));
       break;
 
     case SyncHyperCall::kX86LoadInterruptDescriptorTable:
       asm volatile("lidt"
                    :
-                   : "m"(__remill_read_memory_64(memory, state.addr_to_load)));
+                   : "m"(__remill_read_memory_64(mem, state.addr_to_load)));
       break;
 
     case SyncHyperCall::kX86ReadModelSpecificRegister:
