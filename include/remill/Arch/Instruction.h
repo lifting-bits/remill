@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <remill/BC/InstructionLifter.h>
+
 #include <string>
 #include <variant>
 #include <vector>
@@ -349,7 +351,11 @@ class Instruction {
   Operand &EmplaceOperand(const Operand::ShiftRegister &op);
   Operand &EmplaceOperand(const Operand::Address &op);
 
+
+  const InstructionLifter::LifterPtr &GetLifter();
+
  private:
+  InstructionLifter::LifterPtr lifter;
   static constexpr auto kMaxNumExpr = 64u;
   OperandExpression exprs[kMaxNumExpr];
   unsigned next_expr_index{0};

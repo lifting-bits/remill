@@ -56,7 +56,7 @@ enum LiftStatus {
 // is called with the appropriate arguments.
 class InstructionLifter {
  public:
-  using LifterPtr = std::unique_ptr<InstructionLifter>;
+  using LifterPtr = std::shared_ptr<InstructionLifter>;
 
   virtual ~InstructionLifter(void);
 
