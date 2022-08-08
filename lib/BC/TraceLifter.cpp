@@ -14,19 +14,18 @@
  * limitations under the License.
  */
 
-#include <remill/BC/TraceLifter.h>
-
 #include <glog/logging.h>
 #include <llvm/IR/Instructions.h>
+#include <remill/Arch/Instruction.h>
+#include <remill/BC/IntrinsicTable.h>
+#include <remill/BC/TraceLifter.h>
+#include <remill/BC/Util.h>
+
 #include <map>
 #include <set>
 #include <sstream>
 
 #include "InstructionLifter.h"
-
-#include <remill/Arch/Instruction.h>
-#include <remill/BC/IntrinsicTable.h>
-#include <remill/BC/Util.h>
 
 namespace remill {
 
@@ -68,7 +67,7 @@ using DecoderWorkList = std::set<uint64_t>;  // For ordering.
 
 class TraceLifter::Impl {
  public:
-  Impl(InstructionLifter *inst_lifter_, TraceManager *manager_);
+  Impl(const Arch *arch_, TraceManager *manager_);
 
   // Lift one or more traces starting from `addr`. Calls `callback` with each
   // lifted trace.
@@ -131,7 +130,6 @@ class TraceLifter::Impl {
   }
 
   const Arch *const arch;
-  InstructionLifter &inst_lifter;
   const remill::IntrinsicTable *intrinsics;
   llvm::Type *word_type;
   llvm::LLVMContext &context;
@@ -151,11 +149,10 @@ class TraceLifter::Impl {
   std::map<uint64_t, llvm::BasicBlock *> blocks;
 };
 
-TraceLifter::Impl::Impl(InstructionLifter *inst_lifter_, TraceManager *manager_)
-    : arch(inst_lifter_->impl->arch),
-      inst_lifter(*inst_lifter_),
-      intrinsics(inst_lifter.impl->intrinsics),
-      word_type(inst_lifter.impl->word_type),
+TraceLifter::Impl::Impl(const Arch *arch_, TraceManager *manager_)
+    : arch(arch_),
+      intrinsics(arch->GetInstrinsicTable()),
+      word_type(arch->AddressType()),
       context(word_type->getContext()),
       module(intrinsics->async_hyper_call->getParent()),
       addr_mask(arch->address_size >= 64 ? ~0ULL
@@ -210,9 +207,8 @@ llvm::Function *TraceLifter::Impl::GetLiftedTraceDefinition(uint64_t addr) {
 
 TraceLifter::~TraceLifter(void) {}
 
-TraceLifter::TraceLifter(InstructionLifter *inst_lifter_,
-                         TraceManager *manager_)
-    : impl(new Impl(inst_lifter_, manager_)) {}
+TraceLifter::TraceLifter(const Arch *arch_, TraceManager *manager_)
+    : impl(new Impl(arch_, manager_)) {}
 
 void TraceLifter::NullCallback(uint64_t, llvm::Function *) {}
 
@@ -305,8 +301,9 @@ bool TraceLifter::Impl::Lift(
 
     if (auto entry_block = &(func->front())) {
       auto pc = LoadProgramCounterArg(func);
-      auto [next_pc_ref, next_pc_ref_type] = inst_lifter.LoadRegAddress(
-          entry_block, state_ptr, kNextPCVariableName);
+      auto [next_pc_ref, next_pc_ref_type] =
+          this->arch->DefaultLifter(*this->intrinsics)
+              ->LoadRegAddress(entry_block, state_ptr, kNextPCVariableName);
 
       // Initialize `NEXT_PC`.
       (void) new llvm::StoreInst(pc, next_pc_ref, entry_block);
@@ -335,16 +332,14 @@ bool TraceLifter::Impl::Lift(
       // decoding or lifting the instruction.
       if (inst_addr != trace_addr) {
         if (auto inst_as_trace = get_trace_decl(inst_addr)) {
-          AddTerminatingTailCall(block, inst_as_trace,
-                                 *intrinsics);
+          AddTerminatingTailCall(block, inst_as_trace, *intrinsics);
           continue;
         }
       }
 
       // No executable bytes here.
       if (!ReadInstructionBytes(inst_addr)) {
-        AddTerminatingTailCall(block, intrinsics->missing_block,
-                               *intrinsics);
+        AddTerminatingTailCall(block, intrinsics->missing_block, *intrinsics);
         continue;
       }
 
@@ -352,7 +347,8 @@ bool TraceLifter::Impl::Lift(
 
       (void) arch->DecodeInstruction(inst_addr, inst_bytes, inst);
 
-      auto lift_status = inst_lifter.LiftIntoBlock(inst, block, state_ptr);
+      auto lift_status =
+          inst.GetLifter()->LiftIntoBlock(inst, block, state_ptr);
       if (kLiftedInstruction != lift_status) {
         AddTerminatingTailCall(block, intrinsics->error, *intrinsics);
         continue;
@@ -382,7 +378,7 @@ bool TraceLifter::Impl::Lift(
                                             on_branch_taken_path)) {
           return;
         }
-        lift_status = inst_lifter.LiftIntoBlock(
+        lift_status = delayed_inst.GetLifter()->LiftIntoBlock(
             delayed_inst, into_block, state_ptr, true /* is_delayed */);
         if (kLiftedInstruction != lift_status) {
           AddTerminatingTailCall(block, intrinsics->error, *intrinsics);
@@ -559,16 +555,15 @@ bool TraceLifter::Impl::Lift(
         check_call_return:
           do {
             auto pc = LoadProgramCounter(block, *intrinsics);
-            auto ret_pc = llvm::ConstantInt::get(intrinsics->pc_type,
-                                                 inst.next_pc);
+            auto ret_pc =
+                llvm::ConstantInt::get(intrinsics->pc_type, inst.next_pc);
 
             llvm::IRBuilder<> ir(block);
             auto eq = ir.CreateICmpEQ(pc, ret_pc);
             auto unexpected_ret_pc =
                 llvm::BasicBlock::Create(context, "", func);
             ir.CreateCondBr(eq, GetOrCreateNextBlock(), unexpected_ret_pc);
-            AddTerminatingTailCall(unexpected_ret_pc,
-                                   intrinsics->missing_block,
+            AddTerminatingTailCall(unexpected_ret_pc, intrinsics->missing_block,
                                    *intrinsics);
           } while (false);
           break;
@@ -663,8 +658,7 @@ bool TraceLifter::Impl::Lift(
 
     for (auto &block : *func) {
       if (!block.getTerminator()) {
-        AddTerminatingTailCall(&block, intrinsics->missing_block,
-                               *intrinsics);
+        AddTerminatingTailCall(&block, intrinsics->missing_block, *intrinsics);
       }
     }
 

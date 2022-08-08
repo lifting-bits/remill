@@ -86,10 +86,10 @@ class TraceLifter {
  public:
   ~TraceLifter(void);
 
-  inline TraceLifter(InstructionLifter &inst_lifter_, TraceManager &manager_)
-      : TraceLifter(&inst_lifter_, &manager_) {}
+  inline TraceLifter(const Arch *arch_, TraceManager &manager_)
+      : TraceLifter(arch_, &manager_) {}
 
-  TraceLifter(InstructionLifter *inst_lifter_, TraceManager *manager_);
+  TraceLifter(const Arch *arch_, TraceManager *manager_);
 
   static void NullCallback(uint64_t, llvm::Function *);
 
