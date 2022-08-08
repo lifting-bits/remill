@@ -855,4 +855,15 @@ ArchBase::DefaultLifter(const remill::IntrinsicTable &intrinsics) const {
   return std::make_shared<InstructionLifter>(this, intrinsics);
 }
 
+bool ArchBase::DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                                 Instruction &inst) const {
+  auto res = this->ArchDecodeInstruction(address, instr_bytes, inst);
+
+  if (res) {
+    inst.SetLifter(std::make_unique<remill::InstructionLifter>(
+        this, this->GetInstrinsicTable()));
+  }
+  return res;
+}
+
 }  // namespace remill

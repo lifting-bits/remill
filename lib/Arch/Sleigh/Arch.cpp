@@ -366,12 +366,19 @@ std::string CustomLoadImage::getArchType(void) const {
 void CustomLoadImage::adjustVma(long) {}
 
 
-bool SleighArch::DecodeInstruction(uint64_t address,
-                                   std::string_view instr_bytes,
-                                   Instruction &inst) const {
+bool SleighArch::ArchDecodeInstruction(uint64_t address,
+                                       std::string_view instr_bytes,
+                                       Instruction &inst) const {
   // TODO(Ian): Since we dont control sleigh we probably need DecodeInsn to be non const?
-  return const_cast<SleighArch *>(this)->DecodeInstructionImpl(
+  auto res = const_cast<SleighArch *>(this)->DecodeInstructionImpl(
       address, instr_bytes, inst);
+
+  if (res) {
+    inst.SetLifter(
+        std::make_shared<SleighLifter>(this, *this->GetInstrinsicTable()));
+  }
+
+  return res;
 }
 
 SleighArch::SleighArch(llvm::LLVMContext *context_, OSName os_name_,

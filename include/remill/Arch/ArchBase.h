@@ -33,6 +33,11 @@ struct Register;
 
 // Internal base architecture for all Remill-internal architectures.
 class ArchBase : public remill::Arch {
+ protected:
+  virtual bool ArchDecodeInstruction(uint64_t address,
+                                     std::string_view instr_bytes,
+                                     Instruction &inst) const = 0;
+
  public:
   using ArchPtr = std::unique_ptr<const Arch>;
 
@@ -68,8 +73,9 @@ class ArchBase : public remill::Arch {
 
   unsigned RegMdID(void) const final;
 
-  // TODO(Ian): This is kinda messy but only an arch currently knows if it is
-  //            sleigh or not and sleigh needs different lifting context etc.
+  virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                                 Instruction &inst) const override;
+
   OperandLifter::OpLifterPtr
   DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
 

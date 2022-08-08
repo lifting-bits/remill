@@ -354,6 +354,8 @@ class Instruction {
 
   const InstructionLifter::LifterPtr &GetLifter();
 
+  void SetLifter(InstructionLifter::LifterPtr lifter);
+
  private:
   InstructionLifter::LifterPtr lifter;
   static constexpr auto kMaxNumExpr = 64u;
