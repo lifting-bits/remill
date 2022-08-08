@@ -260,9 +260,9 @@ class Arch {
   void PrepareModuleDataLayout(llvm::Module *mod) const;
 
 
-  // TODO(Ian): This is kinda messy but only an arch currently knows if it is
-  //            sleigh or not and sleigh needs different lifting context etc.
-  virtual InstructionLifter::LifterPtr
+  // A default lifter does not know how to lift instructions. The default lifter allows
+  // the user to perform instruction/context independent lifting operations.
+  virtual OperandLifter::OpLifterPtr
   DefaultLifter(const remill::IntrinsicTable &intrinsics) const = 0;
 
   inline void

@@ -51,10 +51,28 @@ enum LiftStatus {
   kLiftedInstruction
 };
 
+// Instruction independent lifting
+class OperandLifter {
+ public:
+  using OpLifterPtr = std::shared_ptr<OperandLifter>;
+
+  // Load the address of a register.
+  virtual std::pair<llvm::Value *, llvm::Type *>
+  LoadRegAddress(llvm::BasicBlock *block, llvm::Value *state_ptr,
+                 std::string_view reg_name) const = 0;
+
+  // Load the value of a register.
+  virtual llvm::Value *LoadRegValue(llvm::BasicBlock *block,
+                                    llvm::Value *state_ptr,
+                                    std::string_view reg_name) const = 0;
+
+  virtual llvm::Type *GetMemoryType() = 0;
+};
+
 // Wraps the process of lifting an instruction into a block. This resolves
 // the intended instruction target to a function, and ensures that the function
 // is called with the appropriate arguments.
-class InstructionLifter {
+class InstructionLifter : public OperandLifter {
  public:
   using LifterPtr = std::shared_ptr<InstructionLifter>;
 
@@ -83,17 +101,17 @@ class InstructionLifter {
   // Load the address of a register.
   std::pair<llvm::Value *, llvm::Type *>
   LoadRegAddress(llvm::BasicBlock *block, llvm::Value *state_ptr,
-                 std::string_view reg_name) const;
+                 std::string_view reg_name) const override final;
 
   // Load the value of a register.
   llvm::Value *LoadRegValue(llvm::BasicBlock *block, llvm::Value *state_ptr,
-                            std::string_view reg_name) const;
+                            std::string_view reg_name) const override final;
 
   // Clear out the cache of the current register values/addresses loaded.
   void ClearCache(void) const;
 
 
-  llvm::Type *GetMemoryType();
+  virtual llvm::Type *GetMemoryType() override final;
 
  protected:
   // Lift an operand to an instruction.

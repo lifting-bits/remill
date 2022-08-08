@@ -70,7 +70,7 @@ class ArchBase : public remill::Arch {
 
   // TODO(Ian): This is kinda messy but only an arch currently knows if it is
   //            sleigh or not and sleigh needs different lifting context etc.
-  InstructionLifter::LifterPtr
+  OperandLifter::OpLifterPtr
   DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
 
   // Get the state pointer and various other types from the `llvm::LLVMContext`

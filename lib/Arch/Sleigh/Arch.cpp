@@ -503,7 +503,7 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
 }
 
 
-InstructionLifter::LifterPtr
+OperandLifter::OpLifterPtr
 SleighArch::DefaultLifter(const remill::IntrinsicTable &intrinsics) const {
   return std::make_unique<SleighLifter>(this, intrinsics);
 }

@@ -850,9 +850,9 @@ const IntrinsicTable *ArchBase::GetInstrinsicTable(void) const {
   return this->instrinsics.get();
 }
 
-InstructionLifter::LifterPtr
+OperandLifter::OpLifterPtr
 ArchBase::DefaultLifter(const remill::IntrinsicTable &intrinsics) const {
-  return std::make_unique<InstructionLifter>(this, intrinsics);
+  return std::make_shared<InstructionLifter>(this, intrinsics);
 }
 
 }  // namespace remill

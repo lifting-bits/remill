@@ -200,7 +200,7 @@ class SleighArch : virtual public ArchBase {
                          Instruction &inst) const override;
 
 
-  InstructionLifter::LifterPtr
+  OperandLifter::OpLifterPtr
   DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
 
 
