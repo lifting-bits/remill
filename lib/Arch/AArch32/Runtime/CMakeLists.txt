@@ -18,7 +18,7 @@ project(arm_runtime)
 set(ARMRUNTIME_SOURCEFILES
   Instructions.cpp
   BasicBlock.cpp
-  
+
   "${REMILL_LIB_DIR}/Arch/Runtime/Intrinsics.cpp"
 )
 
@@ -50,16 +50,19 @@ function(add_runtime_helper target_name little_endian)
     BCFLAGS "${arch_flags}" "-std=${required_cpp_standard}"
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
+    TARGET_TRIPLE "arm-darwin-macho"
 
     DEPENDENCIES
     "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/BINARY.cpp"
     "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/FLAGS.cpp"
     "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/COND.cpp"
     "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/LOGICAL.cpp"
-    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/MEM.cpp" 
-    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/BRANCH.cpp"   
-    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/BITBYTE.cpp"   
-    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/MISC.cpp"   
+    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/MEM.cpp"
+    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/BRANCH.cpp"
+    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/BITBYTE.cpp"
+    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/MISC.cpp"
+
+    "${REMILL_LIB_DIR}/Arch/Runtime/HyperCall.cpp"
   )
 endfunction()
 

@@ -18,7 +18,7 @@ project(AARCH64_runtime)
 set(AARCH64RUNTIME_SOURCEFILES
   Instructions.cpp
   BasicBlock.cpp
-  
+
   "${REMILL_LIB_DIR}/Arch/Runtime/Intrinsics.cpp"
 )
 
@@ -42,6 +42,7 @@ function(add_runtime_helper target_name address_bit_size little_endian)
     BCFLAGS "-std=${required_cpp_standard}"
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
+    TARGET_TRIPLE "aarch64-darwin-macho"
 
     DEPENDENCIES
     "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Float.h"
@@ -51,11 +52,11 @@ function(add_runtime_helper target_name address_bit_size little_endian)
     "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Intrinsics.h"
     "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/HyperCall.h"
     "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Definitions.h"
-    
+
     "${REMILL_INCLUDE_DIR}/remill/Arch/AArch64/Runtime/Operators.h"
     "${REMILL_INCLUDE_DIR}/remill/Arch/AArch64/Runtime/State.h"
     "${REMILL_INCLUDE_DIR}/remill/Arch/AArch64/Runtime/Types.h"
-    
+
     "${REMILL_LIB_DIR}/Arch/AArch64/Semantics/CONVERT.cpp"
     "${REMILL_LIB_DIR}/Arch/AArch64/Semantics/BITBYTE.cpp"
     "${REMILL_LIB_DIR}/Arch/AArch64/Semantics/SIMD.cpp"
@@ -68,7 +69,9 @@ function(add_runtime_helper target_name address_bit_size little_endian)
     "${REMILL_LIB_DIR}/Arch/AArch64/Semantics/MISC.cpp"
     "${REMILL_LIB_DIR}/Arch/AArch64/Semantics/FLAGS.cpp"
     "${REMILL_LIB_DIR}/Arch/AArch64/Semantics/LOGICAL.cpp"
-    "${REMILL_LIB_DIR}/Arch/AArch64/Semantics/SYSTEM.cpp"    
+    "${REMILL_LIB_DIR}/Arch/AArch64/Semantics/SYSTEM.cpp"
+
+    "${REMILL_LIB_DIR}/Arch/Runtime/HyperCall.cpp"
   )
 endfunction()
 

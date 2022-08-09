@@ -303,4 +303,13 @@ __remill_write_io_port_16(Memory *, addr_t, uint16_t);
 [[gnu::used, gnu::const]] extern Memory *
 __remill_write_io_port_32(Memory *, addr_t, uint32_t);
 
+[[gnu::used, gnu::const]] extern Memory *
+__remill_aarch64_emulate_instruction(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_aarch32_emulate_instruction(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_aarch32_check_not_el2(Memory *);
+
 }  // extern C

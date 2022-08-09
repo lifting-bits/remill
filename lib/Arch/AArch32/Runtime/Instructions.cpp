@@ -19,6 +19,7 @@
 #include <cmath>
 
 // clang-format off
+#include "remill/Arch/Name.h"
 #include "remill/Arch/Runtime/Float.h"
 #include "remill/Arch/Runtime/Intrinsics.h"
 #include "remill/Arch/Runtime/Operators.h"
@@ -74,5 +75,7 @@ DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 // #include "lib/Arch/AArch32/Semantics/SHIFT.cpp"
 // #include "lib/Arch/AArch32/Semantics/SIMD.cpp"
 // #include "lib/Arch/AArch32/Semantics/SYSTEM.cpp"
+
+#include "lib/Arch/Runtime/HyperCall.cpp"
 
 // clang-format on

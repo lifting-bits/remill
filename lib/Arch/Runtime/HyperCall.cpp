@@ -18,7 +18,7 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
                                  SyncHyperCall::Name call) {
   switch (call) {
 
-#if defined(REMILL_ON_X86) or defined(REMILL_ON_AMD64)
+#if REMILL_ON_X86 || REMILL_ON_AMD64
 
     case SyncHyperCall::kX86CPUID:
       asm volatile("cpuid"
@@ -84,7 +84,7 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
 
     case SyncHyperCall::kX86SetSegmentGS: break;
 
-#  if defined(REMILL_ON_X86)
+#  if REMILL_ON_X86
 
     case SyncHyperCall::kX86SetDebugReg: break;
 
@@ -98,7 +98,7 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
 
     case SyncHyperCall::kX86SetControlReg4: break;
 
-#  elif defined(REMILL_ON_AMD64)
+#  elif REMILL_ON_AMD64
 
     case SyncHyperCall::kAMD64SetDebugReg: break;
 
@@ -116,18 +116,23 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
 
 #  endif
 
-// TODO(alex): What variable gets set for ARM32?
-#elif defined(REMILL_ON_AARCH64)
+#elif REMILL_ON_AARCH64
 
-    case SyncHyperCall::kAArch64EmulateInstruction: break;
+    case SyncHyperCall::kAArch64EmulateInstruction:
+      mem = __remill_aarch64_emulate_instruction(mem);
+      break;
 
-    case SyncHyperCall::kAArch64Breakpoint: break;
+    case SyncHyperCall::kAArch64Breakpoint: asm volatile("bkpt" :); break;
 
-    case SyncHyperCall::kAArch32EmulateInstruction: break;
+    case SyncHyperCall::kAArch32EmulateInstruction:
+      mem = __remill_aarch32_emulate_instruction(mem);
+      break;
 
-    case SyncHyperCall::kAArch32CheckNotEL2: break;
+    case SyncHyperCall::kAArch32CheckNotEL2:
+      mem = __remill_aarch32_check_not_el2(mem);
+      break;
 
-#elif defined(REMILL_ON_SPARC32) or defined(REMILL_ON_SPARC64)
+#elif REMILL_ON_SPARC32 || REMILL_ON_SPARC64
 
     case SyncHyperCall::kSPARCSetAsiRegister: break;
 
