@@ -42,15 +42,13 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       break;
 
     case SyncHyperCall::kX86LoadGlobalDescriptorTable:
-      asm volatile("lgdt"
-                   :
-                   : "=m"(__remill_read_memory_64(mem, state.addr_to_load)));
+      auto read = __remill_read_memory_64(mem, state.addr_to_load);
+      asm volatile("lgdt" : : "m"(read));
       break;
 
     case SyncHyperCall::kX86LoadInterruptDescriptorTable:
-      asm volatile("lidt"
-                   :
-                   : "m"(__remill_read_memory_64(mem, state.addr_to_load)));
+      auto read = __remill_write_memory_64(mem, state.addr_to_load);
+      asm volatile("lidt" : : "m"(read));
       break;
 
     case SyncHyperCall::kX86ReadModelSpecificRegister:
@@ -66,7 +64,6 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       break;
 
     case SyncHyperCall::kX86WriteBackInvalidate:
-      // NOTE(alex): This just clears cache so there's no affect on the state.
       asm volatile("wbinvd" :);
       break;
 
@@ -138,7 +135,9 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
 
     case SyncHyperCall::kSPARCTagOverflow: break;
 
-    case SyncHyperCall::kSPARCUnimplementedInstruction: break;
+    case SyncHyperCall::kSPARCUnimplementedInstruction:
+      mem = __remill_sparc_unimplemented_instruction(mem);
+      break;
 
     case SyncHyperCall::kSPARCUnhandledDCTI: break;
 
