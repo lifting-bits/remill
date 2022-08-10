@@ -42,12 +42,12 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       break;
 
     case SyncHyperCall::kX86LoadGlobalDescriptorTable:
-      auto read = __remill_read_memory_64(mem, state.addr_to_load);
+      const auto read = __remill_read_memory_64(mem, state.addr_to_load);
       asm volatile("lgdt" : : "m"(read));
       break;
 
     case SyncHyperCall::kX86LoadInterruptDescriptorTable:
-      auto read = __remill_write_memory_64(mem, state.addr_to_load);
+      const auto read = __remill_read_memory_64(mem, state.addr_to_load);
       asm volatile("lidt" : : "m"(read));
       break;
 
@@ -67,49 +67,81 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       asm volatile("wbinvd" :);
       break;
 
-    // TODO(alex): There doesn't seem to be a way to figure out what what value
-    // gets written to these segment registers. Is there a reason we can't
-    // just do a write to these registers in the semantic functions
-    // themselves? I don't really get why these are sync hyper calls.
-    case SyncHyperCall::kX86SetSegmentES: break;
+    case SyncHyperCall::kX86SetSegmentES:
+      mem = __remill_x86_set_segment_es(mem);
+      break;
 
-    case SyncHyperCall::kX86SetSegmentSS: break;
+    case SyncHyperCall::kX86SetSegmentSS:
+      mem = __remill_x86_set_segment_ss(mem);
+      break;
 
-    case SyncHyperCall::kX86SetSegmentDS: break;
+    case SyncHyperCall::kX86SetSegmentDS:
+      mem = __remill_x86_set_segment_ds(mem);
+      break;
 
-    case SyncHyperCall::kX86SetSegmentFS: break;
+    case SyncHyperCall::kX86SetSegmentFS:
+      mem = __remill_x86_set_segment_fs(mem);
+      break;
 
-    case SyncHyperCall::kX86SetSegmentGS: break;
+    case SyncHyperCall::kX86SetSegmentGS:
+      mem = __remill_x86_set_segment_gs(mem);
+      break;
 
 #  if REMILL_ON_X86
 
-    case SyncHyperCall::kX86SetDebugReg: break;
+    case SyncHyperCall::kX86SetDebugReg:
+      mem = __remill_x86_set_debug_reg(mem);
+      break;
 
-    case SyncHyperCall::kX86SetControlReg0: break;
+    case SyncHyperCall::kX86SetControlReg0:
+      mem = __remill_x86_set_control_reg_0(mem);
+      break;
 
-    case SyncHyperCall::kX86SetControlReg1: break;
+    case SyncHyperCall::kX86SetControlReg1:
+      mem = __remill_x86_set_control_reg_1(mem);
+      break;
 
-    case SyncHyperCall::kX86SetControlReg2: break;
+    case SyncHyperCall::kX86SetControlReg2:
+      mem = __remill_x86_set_control_reg_2(mem);
+      break;
 
-    case SyncHyperCall::kX86SetControlReg3: break;
+    case SyncHyperCall::kX86SetControlReg3:
+      mem = __remill_x86_set_control_reg_3(mem);
+      break;
 
-    case SyncHyperCall::kX86SetControlReg4: break;
+    case SyncHyperCall::kX86SetControlReg4:
+      mem = __remill_x86_set_control_reg_4(mem);
+      break;
 
 #  elif REMILL_ON_AMD64
 
-    case SyncHyperCall::kAMD64SetDebugReg: break;
+    case SyncHyperCall::kAMD64SetDebugReg:
+      mem = __remill_amd64_set_debug_reg(mem);
+      break;
 
-    case SyncHyperCall::kAMD64SetControlReg0: break;
+    case SyncHyperCall::kAMD64SetControlReg0:
+      mem = __remill_amd64_set_control_reg_0(mem);
+      break;
 
-    case SyncHyperCall::kAMD64SetControlReg1: break;
+    case SyncHyperCall::kAMD64SetControlReg1:
+      mem = __remill_amd64_set_control_reg_1(mem);
+      break;
 
-    case SyncHyperCall::kAMD64SetControlReg2: break;
+    case SyncHyperCall::kAMD64SetControlReg2:
+      mem = __remill_amd64_set_control_reg_2(mem);
+      break;
 
-    case SyncHyperCall::kAMD64SetControlReg3: break;
+    case SyncHyperCall::kAMD64SetControlReg3:
+      mem = __remill_amd64_set_control_reg_3(mem);
+      break;
 
-    case SyncHyperCall::kAMD64SetControlReg4: break;
+    case SyncHyperCall::kAMD64SetControlReg4:
+      mem = __remill_amd64_set_control_reg_4(mem);
+      break;
 
-    case SyncHyperCall::kAMD64SetControlReg8: break;
+    case SyncHyperCall::kAMD64SetControlReg8:
+      mem = __remill_amd64_set_control_reg_8(mem);
+      break;
 
 #  endif
 
@@ -131,49 +163,85 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
 
 #elif REMILL_ON_SPARC32 || REMILL_ON_SPARC64
 
-    case SyncHyperCall::kSPARCSetAsiRegister: break;
-
-    case SyncHyperCall::kSPARCTagOverflow: break;
+    case SyncHyperCall::kSPARCSetAsiRegister:
+      mem = __remill_sparc_set_asi_register(mem);
+      break;
 
     case SyncHyperCall::kSPARCUnimplementedInstruction:
       mem = __remill_sparc_unimplemented_instruction(mem);
       break;
 
-    case SyncHyperCall::kSPARCUnhandledDCTI: break;
+    case SyncHyperCall::kSPARCUnhandledDCTI:
+      mem = __remill_sparc_unhandled_dcti(mem);
+      break;
 
-    case SyncHyperCall::kSPARCWindowUnderflow: break;
+    case SyncHyperCall::kSPARCWindowUnderflow:
+      mem = __remill_sparc_window_underflow(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondA: break;
+    case SyncHyperCall::kSPARCTrapCondA:
+      mem = __remill_sparc_trap_cond_a(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondN: break;
+    case SyncHyperCall::kSPARCTrapCondN:
+      mem = __remill_sparc_trap_cond_n(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondNE: break;
+    case SyncHyperCall::kSPARCTrapCondNE:
+      mem = __remill_sparc_trap_cond_ne(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondE: break;
+    case SyncHyperCall::kSPARCTrapCondE:
+      mem = __remill_sparc_trap_cond_e(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondG: break;
+    case SyncHyperCall::kSPARCTrapCondG:
+      mem = __remill_sparc_trap_cond_g(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondLE: break;
+    case SyncHyperCall::kSPARCTrapCondLE:
+      mem = __remill_sparc_trap_cond_le(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondGE: break;
+    case SyncHyperCall::kSPARCTrapCondGE:
+      mem = __remill_sparc_trap_cond_ge(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondL: break;
+    case SyncHyperCall::kSPARCTrapCondL:
+      mem = __remill_sparc_trap_cond_l(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondGU: break;
+    case SyncHyperCall::kSPARCTrapCondGU:
+      mem = __remill_sparc_trap_cond_gu(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondLEU: break;
+    case SyncHyperCall::kSPARCTrapCondLEU:
+      mem = __remill_sparc_trap_cond_leu(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondCC: break;
+    case SyncHyperCall::kSPARCTrapCondCC:
+      mem = __remill_sparc_trap_cond_cc(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondCS: break;
+    case SyncHyperCall::kSPARCTrapCondCS:
+      mem = __remill_sparc_trap_cond_cs(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondPOS: break;
+    case SyncHyperCall::kSPARCTrapCondPOS:
+      mem = __remill_sparc_trap_cond_pos(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondNEG: break;
+    case SyncHyperCall::kSPARCTrapCondNEG:
+      mem = __remill_sparc_trap_cond_neg(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondVC: break;
+    case SyncHyperCall::kSPARCTrapCondVC:
+      mem = __remill_sparc_trap_cond_vc(mem);
+      break;
 
-    case SyncHyperCall::kSPARCTrapCondVS: break;
+    case SyncHyperCall::kSPARCTrapCondVS:
+      mem = __remill_sparc_trap_cond_vs(mem);
+      break;
 
 #  if defined(REMILL_ON_SPARC32)
 
