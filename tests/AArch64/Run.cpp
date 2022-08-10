@@ -269,9 +269,6 @@ Memory *__remill_missing_block(State &, addr_t, Memory *memory) {
   return memory;
 }
 
-Memory *__remill_sync_hyper_call(State &, Memory *, SyncHyperCall::Name) {
-  abort();
-}
 // Read/write to I/O ports.
 uint8_t __remill_read_io_port_8(Memory *, addr_t) {
   abort();

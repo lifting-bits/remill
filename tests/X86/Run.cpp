@@ -325,36 +325,6 @@ Memory *__remill_missing_block(State &, addr_t, Memory *memory) {
   return memory;
 }
 
-Memory *__remill_sync_hyper_call(State &state, Memory *mem,
-                                 SyncHyperCall::Name call) {
-  switch (call) {
-    case SyncHyperCall::kX86CPUID:
-      asm volatile("cpuid"
-                   : "=a"(state.gpr.rax.aword), "=b"(state.gpr.rbx.aword),
-                     "=c"(state.gpr.rcx.aword), "=d"(state.gpr.rdx.aword)
-                   : "a"(state.gpr.rax.aword), "b"(state.gpr.rbx.aword),
-                     "c"(state.gpr.rcx.aword), "d"(state.gpr.rdx.aword));
-      break;
-
-    case SyncHyperCall::kX86ReadTSC:
-      asm volatile("rdtsc"
-                   : "=a"(state.gpr.rax.dword), "=d"(state.gpr.rdx.dword));
-      break;
-
-    case SyncHyperCall::kX86ReadTSCP:
-      asm volatile("rdtscp"
-                   : "=a"(state.gpr.rax.aword), "=c"(state.gpr.rcx.aword),
-                     "=d"(state.gpr.rdx.aword)
-                   : "a"(state.gpr.rax.aword), "c"(state.gpr.rcx.aword),
-                     "d"(state.gpr.rdx.aword));
-      break;
-
-    default: abort();
-  }
-
-  return mem;
-}
-
 // Read/write to I/O ports.
 uint8_t __remill_read_io_port_8(Memory *, addr_t) {
   abort();
