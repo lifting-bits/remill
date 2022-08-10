@@ -42,7 +42,7 @@ function(add_runtime_helper target_name address_bit_size little_endian)
     BCFLAGS "-std=${required_cpp_standard}"
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
-    TARGET_TRIPLE "aarch64-darwin-macho"
+    ARCH aarch64
 
     DEPENDENCIES
     "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Float.h"

@@ -42,7 +42,7 @@ function(add_runtime_helper target_name address_bit_size enable_avx enable_avx51
     BCFLAGS "-std=${required_cpp_standard}"
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
-    TARGET_TRIPLE "x86_64-darwin-macho"
+    ARCH x86_64
 
     DEPENDENCIES
     "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Float.h"

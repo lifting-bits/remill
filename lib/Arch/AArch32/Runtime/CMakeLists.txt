@@ -50,7 +50,7 @@ function(add_runtime_helper target_name little_endian)
     BCFLAGS "${arch_flags}" "-std=${required_cpp_standard}"
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
-    TARGET_TRIPLE "arm-darwin-macho"
+    ARCH arm
 
     DEPENDENCIES
     "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/BINARY.cpp"

@@ -88,10 +88,7 @@ function(add_runtime target_name)
       set(state "${macro_parameter}")
       continue()
 
-    elseif("${macro_parameter}" STREQUAL "TARGET_TRIPLE")
-      # TODO(alex): Perhaps this parameter should be just the architecture and
-      # this function should assemble the target triple based on what OS we're
-      # running on.
+    elseif("${macro_parameter}" STREQUAL "ARCH")
       set(state "${macro_parameter}")
       continue()
 
@@ -134,8 +131,8 @@ function(add_runtime target_name)
 
       set(install_destination "${macro_parameter}")
 
-    elseif("${state}" STREQUAL "TARGET_TRIPLE")
-      set(target_triple "${macro_parameter}")
+    elseif("${state}" STREQUAL "ARCH")
+      set(arch "${macro_parameter}")
 
     elseif("${state}" STREQUAL "DEPENDENCIES")
       list(APPEND dependency_list "${macro_parameter}")
@@ -174,8 +171,15 @@ function(add_runtime target_name)
       set(additional_windows_settings "-D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH")
     endif()
 
-  if (NOT "${target_triple}" STREQUAL "")
-    set(target_decl "-target" ${target_triple})
+  # Assemble the target triple that we'd like to compile the runtime with.
+  if (NOT "${arch}" STREQUAL "")
+    if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+      set(target_decl "-target" "${arch}-darwin-macho")
+    elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+      set(target_decl "-target" "${arch}-linux-elf")
+    else()
+      set(target_decl "-target" "${arch}-pc-windows-gnu")
+    endif()
   endif()
 
 
