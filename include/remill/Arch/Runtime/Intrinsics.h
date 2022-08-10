@@ -316,4 +316,10 @@ __remill_aarch32_check_not_el2(Memory *);
 [[gnu::used, gnu::const]] extern Memory *
 __remill_sparc_unimplemented_instruction(Memory *);
 
+[[gnu::used, gnu::const]] extern Memory *
+__remill_sparc32_emulate_instruction(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_sparc64_emulate_instruction(Memory *);
+
 }  // extern C

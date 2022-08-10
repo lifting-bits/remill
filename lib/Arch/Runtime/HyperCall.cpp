@@ -177,11 +177,15 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
 
 #  if defined(REMILL_ON_SPARC32)
 
-    case SyncHyperCall::kSPARC32EmulateInstruction: break;
+    case SyncHyperCall::kSPARC32EmulateInstruction:
+      mem = __remill_sparc32_emulate_instruction(mem);
+      break;
 
 #  elif defined(REMILL_ON_SPARC64)
 
-    case SyncHyperCall::kSPARC64EmulateInstruction: break;
+    case SyncHyperCall::kSPARC64EmulateInstruction:
+      mem = __remill_sparc64_emulate_instruction(mem);
+      break;
 
 #  endif
 
