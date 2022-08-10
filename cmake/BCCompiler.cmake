@@ -172,8 +172,8 @@ function(add_runtime target_name)
     endif()
 
   # Assemble the target triple that we'd like to compile the runtime with.
-  if (NOT "${arch}" STREQUAL "")
-    if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  if(NOT "${arch}" STREQUAL "")
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
       set(target_decl "-target" "${arch}-darwin-macho")
     elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
       set(target_decl "-target" "${arch}-linux-elf")
