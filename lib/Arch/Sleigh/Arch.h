@@ -196,8 +196,12 @@ class SleighArch : virtual public ArchBase {
 
 
  public:
-  bool ArchDecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                             Instruction &inst) const override;
+  virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                                 Instruction &inst) const override;
+
+  virtual bool ArchDecodeInstruction(uint64_t address,
+                                     std::string_view instr_bytes,
+                                     Instruction &inst) const override;
 
 
   OperandLifter::OpLifterPtr
