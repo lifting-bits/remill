@@ -797,8 +797,8 @@ const InstructionLifter::LifterPtr &Instruction::GetLifter() {
   return this->lifter;
 }
 
-void Instruction::SetLifter(InstructionLifter::LifterPtr lifter) {
-  lifter.swap(lifter);
+void Instruction::SetLifter(InstructionLifter::LifterPtr lifter_) {
+  lifter.swap(lifter_);
 }
 
 }  // namespace remill
