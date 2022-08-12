@@ -26,8 +26,8 @@ class AArch32Arch final : public AArch32ArchBase {
 
   virtual ~AArch32Arch(void);
 
-  bool DecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                         Instruction &inst) const override;
+  bool ArchDecodeInstruction(uint64_t address, std::string_view inst_bytes,
+                             Instruction &inst) const override;
 
  private:
   AArch32Arch(void) = delete;

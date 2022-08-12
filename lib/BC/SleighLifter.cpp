@@ -1286,7 +1286,6 @@ SleighLifter::LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
 LiftStatus
 SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
                             llvm::Value *state_ptr, bool is_delayed) {
-
   if (!inst.IsValid()) {
     LOG(ERROR) << "Invalid function" << inst.Serialize();
     return kLiftedInvalidInstruction;

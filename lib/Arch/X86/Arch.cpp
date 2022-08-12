@@ -787,8 +787,8 @@ class X86Arch final : public X86ArchBase {
   virtual ~X86Arch(void);
 
   // Decode an instruction.
-  bool DecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                         Instruction &inst) const final;
+  bool ArchDecodeInstruction(uint64_t address, std::string_view inst_bytes,
+                             Instruction &inst) const final;
 
 
  private:
@@ -991,8 +991,9 @@ FillFusedCallPopRegOperands(Instruction &inst, unsigned address_size,
 }
 
 // Decode an instuction.
-bool X86Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                                Instruction &inst) const {
+bool X86Arch::ArchDecodeInstruction(uint64_t address,
+                                    std::string_view inst_bytes,
+                                    Instruction &inst) const {
 
   inst.pc = address;
   inst.arch = this;
