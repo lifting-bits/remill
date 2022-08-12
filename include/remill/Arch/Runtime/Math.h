@@ -71,18 +71,18 @@ union union_ld {
   native_float80_t ld;
 } __attribute__((packed));
 
-static void *memset_impl(void *b, int c, size_t len) {
+static void *memset_impl(void *b, int c, std::size_t len) {
   auto *p = static_cast<int *>(b);
-  for (size_t i = 0; i < len; ++i) {
+  for (std::size_t i = 0; i < len; ++i) {
     p[i] = c;
   }
   return b;
 }
 
-static void *memcpy_impl(void *dst, const void *src, size_t n) {
+static void *memcpy_impl(void *dst, const void *src, std::size_t n) {
   auto *d = static_cast<int *>(dst);
   const auto *s = static_cast<const int *>(src);
-  for (size_t i = 0; i < n; ++i) {
+  for (std::size_t i = 0; i < n; ++i) {
     d[i] = s[i];
   }
   return dst;
