@@ -46,7 +46,7 @@ function(add_runtime_helper target_name little_endian)
     BCFLAGS "-std=${required_cpp_standard}" "${EXTRA_BC_FLAGS}"
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
-    ARCH sparc
+    ARCH sparc64
 
     DEPENDENCIES
     "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Float.h"

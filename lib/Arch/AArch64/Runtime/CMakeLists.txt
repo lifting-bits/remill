@@ -70,8 +70,6 @@ function(add_runtime_helper target_name address_bit_size little_endian)
     "${REMILL_LIB_DIR}/Arch/AArch64/Semantics/FLAGS.cpp"
     "${REMILL_LIB_DIR}/Arch/AArch64/Semantics/LOGICAL.cpp"
     "${REMILL_LIB_DIR}/Arch/AArch64/Semantics/SYSTEM.cpp"
-
-    "${REMILL_LIB_DIR}/Arch/Runtime/HyperCall.cpp"
   )
 endfunction()
 

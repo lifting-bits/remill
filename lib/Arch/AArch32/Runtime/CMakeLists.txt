@@ -46,7 +46,7 @@ function(add_runtime_helper target_name little_endian)
   add_runtime(${target_name}
     SOURCES ${ARMRUNTIME_SOURCEFILES}
     ADDRESS_SIZE 32
-    DEFINITIONS "LITTLE_ENDIAN=${little_endian}"
+    DEFINITIONS "LITTLE_ENDIAN=${little_endian}" "REMILL_DISABLE_INT128=1"
     BCFLAGS "${arch_flags}" "-std=${required_cpp_standard}"
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
@@ -61,8 +61,6 @@ function(add_runtime_helper target_name little_endian)
     "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/BRANCH.cpp"
     "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/BITBYTE.cpp"
     "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/MISC.cpp"
-
-    "${REMILL_LIB_DIR}/Arch/Runtime/HyperCall.cpp"
   )
 endfunction()
 

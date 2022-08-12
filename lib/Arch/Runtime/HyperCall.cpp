@@ -14,11 +14,39 @@
  * limitations under the License.
  */
 
+#if defined(__x86_64__)
+#  include "remill/Arch/X86/Runtime/State.h"
+#  define REMILL_ON_AMD64 1
+# elif defined(__i386__) || defined(_M_X86)
+#  include "remill/Arch/X86/Runtime/State.h"
+#  define REMILL_ON_X86 1
+#elif defined(__arm__)
+#  include "remill/Arch/AArch32/Runtime/State.h"
+#  define REMILL_ON_ARM 1
+#elif defined(__aarch64__)
+#  include "remill/Arch/AArch64/Runtime/State.h"
+#  define REMILL_ON_AARCH64 1
+#elif defined(__sparc__)
+#  if ADDRESS_SIZE_BITS == 32
+#    include "remill/Arch/SPARC32/Runtime/State.h"
+#    define REMILL_ON_SPARC32 1
+#  elif ADDRESS_SIZE_BITS == 64
+#    include "remill/Arch/SPARC64/Runtime/State.h"
+#    define REMILL_ON_SPARC64 1
+#  else
+#    error "Cannot deduce hyper call architecture for SPARC"
+#  endif
+#else
+#  error "Cannot deduce hyper call architecture"
+#endif
+
+#include "remill/Arch/Runtime/Intrinsics.h"
+
 Memory *__remill_sync_hyper_call(State &state, Memory *mem,
                                  SyncHyperCall::Name call) {
   switch (call) {
 
-#if REMILL_ON_X86 || REMILL_ON_AMD64
+#  if REMILL_ON_X86 || REMILL_ON_AMD64
 
     case SyncHyperCall::kX86CPUID:
       asm volatile("cpuid"
@@ -41,15 +69,19 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
                      "d"(state.gpr.rdx.aword));
       break;
 
-    case SyncHyperCall::kX86LoadGlobalDescriptorTable:
-      const auto read = __remill_read_memory_64(mem, state.addr_to_load);
+    case SyncHyperCall::kX86LoadGlobalDescriptorTable: {
+      const auto read =
+          __remill_read_memory_64(mem, static_cast<addr_t>(state.addr_to_load));
       asm volatile("lgdt" : : "m"(read));
       break;
+    }
 
-    case SyncHyperCall::kX86LoadInterruptDescriptorTable:
-      const auto read = __remill_read_memory_64(mem, state.addr_to_load);
+    case SyncHyperCall::kX86LoadInterruptDescriptorTable: {
+      const auto read =
+          __remill_read_memory_64(mem, static_cast<addr_t>(state.addr_to_load));
       asm volatile("lidt" : : "m"(read));
       break;
+    }
 
     case SyncHyperCall::kX86ReadModelSpecificRegister:
       asm volatile("rdmsr"
@@ -87,7 +119,7 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       mem = __remill_x86_set_segment_gs(mem);
       break;
 
-#  if REMILL_ON_X86
+#    if REMILL_ON_X86
 
     case SyncHyperCall::kX86SetDebugReg:
       mem = __remill_x86_set_debug_reg(mem);
@@ -113,7 +145,7 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       mem = __remill_x86_set_control_reg_4(mem);
       break;
 
-#  elif REMILL_ON_AMD64
+#    elif REMILL_ON_AMD64
 
     case SyncHyperCall::kAMD64SetDebugReg:
       mem = __remill_amd64_set_debug_reg(mem);
@@ -143,15 +175,9 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       mem = __remill_amd64_set_control_reg_8(mem);
       break;
 
-#  endif
+#    endif
 
-#elif REMILL_ON_AARCH64
-
-    case SyncHyperCall::kAArch64EmulateInstruction:
-      mem = __remill_aarch64_emulate_instruction(mem);
-      break;
-
-    case SyncHyperCall::kAArch64Breakpoint: asm volatile("bkpt" :); break;
+# elif REMILL_ON_ARM
 
     case SyncHyperCall::kAArch32EmulateInstruction:
       mem = __remill_aarch32_emulate_instruction(mem);
@@ -161,7 +187,15 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       mem = __remill_aarch32_check_not_el2(mem);
       break;
 
-#elif REMILL_ON_SPARC32 || REMILL_ON_SPARC64
+#  elif REMILL_ON_AARCH64
+
+    case SyncHyperCall::kAArch64EmulateInstruction:
+      mem = __remill_aarch64_emulate_instruction(mem);
+      break;
+
+    case SyncHyperCall::kAArch64Breakpoint: asm volatile("bkpt" :); break;
+
+#  elif REMILL_ON_SPARC32 || REMILL_ON_SPARC64
 
     case SyncHyperCall::kSPARCSetAsiRegister:
       mem = __remill_sparc_set_asi_register(mem);
@@ -243,23 +277,24 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       mem = __remill_sparc_trap_cond_vs(mem);
       break;
 
-#  if defined(REMILL_ON_SPARC32)
+#    if defined(REMILL_ON_SPARC32)
 
     case SyncHyperCall::kSPARC32EmulateInstruction:
       mem = __remill_sparc32_emulate_instruction(mem);
       break;
 
-#  elif defined(REMILL_ON_SPARC64)
+#    elif defined(REMILL_ON_SPARC64)
 
     case SyncHyperCall::kSPARC64EmulateInstruction:
       mem = __remill_sparc64_emulate_instruction(mem);
       break;
 
+#    endif
+
 #  endif
 
-#endif
-
-    default: abort();
+    default:  // abort();
+      break;
   }
 
   return mem;

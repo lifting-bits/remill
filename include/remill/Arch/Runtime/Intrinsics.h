@@ -196,9 +196,11 @@ __remill_compare_exchange_memory_32(Memory *, addr_t addr, uint32_t &expected,
 __remill_compare_exchange_memory_64(Memory *, addr_t addr, uint64_t &expected,
                                     uint64_t desired);
 
+#if !defined(REMILL_DISABLE_INT128)
 [[gnu::used]] extern Memory *
 __remill_compare_exchange_memory_128(Memory *, addr_t addr, uint128_t &expected,
                                      uint128_t &desired);
+#endif
 
 [[gnu::used]] extern Memory *__remill_fetch_and_add_8(Memory *, addr_t addr,
                                                       uint8_t &value);
@@ -359,6 +361,9 @@ __remill_aarch32_emulate_instruction(Memory *);
 
 [[gnu::used, gnu::const]] extern Memory *
 __remill_aarch32_check_not_el2(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_sparc_set_asi_register(Memory *);
 
 [[gnu::used, gnu::const]] extern Memory *
 __remill_sparc_unimplemented_instruction(Memory *);

@@ -31,7 +31,7 @@
 #    define REMILL_ON_AARCH64 0
 #    define REMILL_ON_SPARC64 0
 #    define REMILL_ON_SPARC32 0
-#  elif defined(__aarch64__) || defined(__arm__)
+#  elif defined(__aarch64__)
 #    define REMILL_ARCH "aarch64"
 #    define REMILL_ON_AMD64 0
 #    define REMILL_ON_X86 0

@@ -16,7 +16,11 @@
 
 #pragma once
 
-#include <cfloat>
+#include "Builtin.h"
+
+#if __has_include(<cfloat>)
+#  include <cfloat>
+#endif
 
 // Windows doesn't have the following macros defined
 #ifndef _SW_INEXACT
@@ -33,8 +37,11 @@
 #  define _RC_CHOP 0x00000300  //     chop
 #endif
 
-#include <cfenv>
-#include <cmath>
+#if __has_include(<cfenv>)
+#  include <cfenv>
+#endif
+
+#include "Math.h"
 
 // macOS does not have this flag
 #ifndef __FE_DENORM

@@ -150,6 +150,10 @@ function(add_runtime target_name)
     message(SEND_ERROR "No source files specified.")
   endif()
 
+  # Append the hyper call function to the source list.
+  set(hyper_call_source "${REMILL_LIB_DIR}/Arch/Runtime/HyperCall.cpp")
+  list(APPEND source_file_list ${hyper_call_source})
+
   foreach(source_file ${source_file_list})
     get_filename_component(source_file_name "${source_file}" NAME)
     get_filename_component(absolute_source_file_path "${source_file}" ABSOLUTE)
@@ -171,10 +175,15 @@ function(add_runtime target_name)
       set(additional_windows_settings "-D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH")
     endif()
 
-  # Assemble the target triple that we'd like to compile the runtime with.
-  if(NOT "${arch}" STREQUAL "")
-    set(target_decl "-target" "${arch}-none-eabi")
-  endif()
+    # The hyper call implementation contains inline assembly for each architecture so we'll need to
+    # cross-compile for the runtime architecture.
+    if(${source_file} STREQUAL ${hyper_call_source})
+      set(target_decl "-target" "${arch}-none-eabi")
+    elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+      set(target_decl "-target" "x86_64-apple-macosx11.0.0")
+    else()
+      unset(target_decl)
+    endif()
 
 
     add_custom_command(OUTPUT "${absolute_output_file_path}"
