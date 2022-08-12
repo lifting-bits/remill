@@ -1016,49 +1016,49 @@ ALWAYS_INLINE static auto TruncTo(T val) -> typename IntegerType<DT>::BT {
 // the types of the inputs to their "natural" machine size, so we'll just
 // make that explicit, where `addr_t` encodes the natural machine word.
 #define MAKE_OPS(name, op, make_int_op, make_float_op) \
-    make_int_op(U##name, uint8_t, addr_t, op) \
-    make_int_op(U##name##8, uint8_t, addr_t, op) \
-    make_int_op(U##name, uint16_t, addr_t, op) \
-    make_int_op(U##name##16, uint16_t, addr_t, op) \
-    make_int_op(U##name, uint32_t, addr_t, op) \
-    make_int_op(U##name##32, uint32_t, addr_t, op) \
-    make_int_op(U##name, uint64_t, uint64_t, op) \
-    make_int_op(U##name##64, uint64_t, uint64_t, op) \
-    make_int_op(S##name, int8_t, addr_diff_t, op) \
-    make_int_op(S##name##8, int8_t, addr_diff_t, op) \
-    make_int_op(S##name, int16_t, addr_diff_t, op) \
-    make_int_op(S##name##16, int16_t, addr_diff_t, op) \
-    make_int_op(S##name, int32_t, addr_diff_t, op) \
-    make_int_op(S##name##32, int32_t, addr_diff_t, op) \
-    make_int_op(S##name, int64_t, int64_t, op) \
-    make_int_op(S##name##64, int64_t, int64_t, op) \
-    make_float_op(F##name, float32_t, float32_t, op) \
-    make_float_op(F##name##32, float32_t, float32_t, op) \
-    make_float_op(F##name, float64_t, float64_t, op) \
-    make_float_op(F##name##64, float64_t, float64_t, op) \
-    make_float_op(F##name, float80_t, float80_t, op) \
-    make_float_op(F##name##80, float80_t, float80_t, op)
+  make_int_op(U##name, uint8_t, addr_t, op) \
+  make_int_op(U##name##8, uint8_t, addr_t, op) \
+  make_int_op(U##name, uint16_t, addr_t, op) \
+  make_int_op(U##name##16, uint16_t, addr_t, op) \
+  make_int_op(U##name, uint32_t, addr_t, op) \
+  make_int_op(U##name##32, uint32_t, addr_t, op) \
+  make_int_op(U##name, uint64_t, uint64_t, op) \
+  make_int_op(U##name##64, uint64_t, uint64_t, op) \
+  make_int_op(S##name, int8_t, addr_diff_t, op) \
+  make_int_op(S##name##8, int8_t, addr_diff_t, op) \
+  make_int_op(S##name, int16_t, addr_diff_t, op) \
+  make_int_op(S##name##16, int16_t, addr_diff_t, op) \
+  make_int_op(S##name, int32_t, addr_diff_t, op) \
+  make_int_op(S##name##32, int32_t, addr_diff_t, op) \
+  make_int_op(S##name, int64_t, int64_t, op) \
+  make_int_op(S##name##64, int64_t, int64_t, op) \
+  make_float_op(F##name, float32_t, float32_t, op) \
+  make_float_op(F##name##32, float32_t, float32_t, op) \
+  make_float_op(F##name, float64_t, float64_t, op) \
+  make_float_op(F##name##64, float64_t, float64_t, op) \
+  make_float_op(F##name, float80_t, float80_t, op) \
+  make_float_op(F##name##80, float80_t, float80_t, op)
 
 #define MAKE_INT128OPS(name, op, make_int_op, make_float_op) \
-    make_int_op(U##name, uint128_t, uint128_t, op) \
-    make_int_op(U##name##128, uint128_t, uint128_t, op) \
-    make_int_op(S##name, int128_t, int128_t, op) \
-    make_int_op(S##name##128, int128_t, int128_t, op)
+  make_int_op(U##name, uint128_t, uint128_t, op) \
+  make_int_op(U##name##128, uint128_t, uint128_t, op) \
+  make_int_op(S##name, int128_t, int128_t, op) \
+  make_int_op(S##name##128, int128_t, int128_t, op)
 
 #define DO_MAKE_OPS(make_ops) \
-    make_ops(Add, +, MAKE_BINOP, MAKE_BINOP) \
-    make_ops(Sub, -, MAKE_BINOP, MAKE_BINOP) \
-    make_ops(Mul, *, MAKE_BINOP, MAKE_BINOP) \
-    make_ops(Div, /, MAKE_BINOP, MAKE_BINOP) \
-    make_ops(Rem, %, MAKE_BINOP, MAKE_NOP) \
-    make_ops(And, &, MAKE_BINOP, MAKE_NOP) \
-    make_ops(AndN, &~, MAKE_BINOP, MAKE_NOP) \
-    make_ops(Or, |, MAKE_BINOP, MAKE_NOP) \
-    make_ops(Xor, ^, MAKE_BINOP, MAKE_NOP) \
-    make_ops(Shr, >>, MAKE_BINOP, MAKE_NOP) \
-    make_ops(Shl, <<, MAKE_BINOP, MAKE_NOP) \
-    make_ops(Neg, -, MAKE_UOP, MAKE_UOP) \
-    make_ops(Not, ~, MAKE_UOP, MAKE_NOP)
+  make_ops(Add, +, MAKE_BINOP, MAKE_BINOP) \
+  make_ops(Sub, -, MAKE_BINOP, MAKE_BINOP) \
+  make_ops(Mul, *, MAKE_BINOP, MAKE_BINOP) \
+  make_ops(Div, /, MAKE_BINOP, MAKE_BINOP) \
+  make_ops(Rem, %, MAKE_BINOP, MAKE_NOP) \
+  make_ops(And, &, MAKE_BINOP, MAKE_NOP) \
+  make_ops(AndN, &~, MAKE_BINOP, MAKE_NOP) \
+  make_ops(Or, |, MAKE_BINOP, MAKE_NOP) \
+  make_ops(Xor, ^, MAKE_BINOP, MAKE_NOP) \
+  make_ops(Shr, >>, MAKE_BINOP, MAKE_NOP) \
+  make_ops(Shl, <<, MAKE_BINOP, MAKE_NOP) \
+  make_ops(Neg, -, MAKE_UOP, MAKE_UOP) \
+  make_ops(Not, ~, MAKE_UOP, MAKE_NOP)
 
 // clang-format on
 
