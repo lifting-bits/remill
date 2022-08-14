@@ -130,8 +130,7 @@ extern "C" int main(int argc, char *argv[]) {
   auto module = remill::LoadArchSemantics(arch.get());
 
   remill::IntrinsicTable intrinsics(module.get());
-  remill::InstructionLifter inst_lifter(arch, intrinsics);
-  remill::TraceLifter trace_lifter(inst_lifter, manager);
+  remill::TraceLifter trace_lifter(arch.get(), manager);
 
   for (auto test : tests) {
     if (!trace_lifter.Lift(test->test_begin)) {

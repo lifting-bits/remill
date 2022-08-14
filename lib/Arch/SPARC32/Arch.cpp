@@ -178,8 +178,8 @@ class SPARC32Arch final : public ArchBase {
   llvm::DataLayout DataLayout(void) const final;
 
   // Decode an instruction.
-  bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                         Instruction &inst) const final;
+  bool ArchDecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                             Instruction &inst) const final;
 
   // Returns `true` if memory access are little endian byte ordered.
   bool MemoryAccessIsLittleEndian(void) const final {
@@ -468,9 +468,9 @@ bool SPARC32Arch::NextInstructionIsDelayed(const Instruction &inst,
 }
 
 // Decode an instruction.
-bool SPARC32Arch::DecodeInstruction(uint64_t address,
-                                    std::string_view inst_bytes,
-                                    Instruction &inst) const {
+bool SPARC32Arch::ArchDecodeInstruction(uint64_t address,
+                                        std::string_view inst_bytes,
+                                        Instruction &inst) const {
   inst.pc = address;
   inst.arch_name = arch_name;
   inst.sub_arch_name = arch_name;

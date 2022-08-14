@@ -33,6 +33,11 @@ struct Register;
 
 // Internal base architecture for all Remill-internal architectures.
 class ArchBase : public remill::Arch {
+ protected:
+  virtual bool ArchDecodeInstruction(uint64_t address,
+                                     std::string_view instr_bytes,
+                                     Instruction &inst) const = 0;
+
  public:
   using ArchPtr = std::unique_ptr<const Arch>;
 
@@ -64,11 +69,14 @@ class ArchBase : public remill::Arch {
   // Return information about a register, given its name.
   const Register *RegisterByName(std::string_view name) const final;
 
+  const IntrinsicTable *GetInstrinsicTable(void) const final;
+
   unsigned RegMdID(void) const final;
 
-  // TODO(Ian): This is kinda messy but only an arch currently knows if it is
-  //            sleigh or not and sleigh needs different lifting context etc.
-  InstructionLifter::LifterPtr
+  virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                                 Instruction &inst) const override;
+
+  OperandLifter::OpLifterPtr
   DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
 
   // Get the state pointer and various other types from the `llvm::LLVMContext`
@@ -103,6 +111,7 @@ class ArchBase : public remill::Arch {
   mutable std::vector<std::unique_ptr<Register>> registers;
   mutable std::vector<const Register *> reg_by_offset;
   mutable std::unordered_map<std::string, const Register *> reg_by_name;
+  mutable std::unique_ptr<IntrinsicTable> instrinsics{nullptr};
 };
 
 }  // namespace remill

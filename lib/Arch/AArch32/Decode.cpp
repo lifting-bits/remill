@@ -15,14 +15,13 @@
  */
 
 #include <glog/logging.h>
-
-#include <optional>
-
 #include <remill/Arch/Name.h>
 #include <remill/BC/ABI.h>
 
-#include "Arch.h"
+#include <optional>
+
 #include "../BitManipulation.h"
+#include "Arch.h"
 
 namespace remill {
 
@@ -628,10 +627,10 @@ static void AddAddrRegOp(Instruction &inst, const char *reg_name,
   op.action = mem_action;
 }
 
-static void
-AddShiftOp(Instruction &inst, Operand::ShiftRegister::Shift shift_op,
-           const char *reg_name, unsigned reg_size, unsigned shift_size,
-           bool can_shift_op_size = false) {
+static void AddShiftOp(Instruction &inst,
+                       Operand::ShiftRegister::Shift shift_op,
+                       const char *reg_name, unsigned reg_size,
+                       unsigned shift_size, bool can_shift_op_size = false) {
   Operand::ShiftRegister shift_reg;
   shift_reg.reg.name = reg_name;
   shift_reg.reg.size = reg_size;
@@ -1366,8 +1365,7 @@ static bool TryDecodeIntegerDataProcessingRRI(Instruction &inst,
   // Raise the program counter to align to a multiple of 4 bytes
   if (enc.rn == kPCRegNum && (enc.opc == 0b100u || enc.opc == 0b010u)) {
     int64_t diff =
-        static_cast<int32_t>(inst.pc & ~(3u)) -
-        static_cast<int32_t>(inst.pc);
+        static_cast<int32_t>(inst.pc & ~(3u)) - static_cast<int32_t>(inst.pc);
     AddAddrRegOp(inst, kPCVariableName.data(), kAddressSize,
                  Operand::kActionRead, diff + 8);
   } else {
@@ -1965,11 +1963,11 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
 
   if (enc.rn == kPCRegNum && !instruction && enc.op2 == 0b10) {
     // LDRD (literal), LDRH (literal), LDRSB (literal), LDRSH (literal)
-//    if (enc.rt & 0b1) {
-//      // Catches if Rt<0> == '1' then UNPREDICTABLE;
-//      inst.category = Instruction::kCategoryError;
-//      return false;
-//    }
+    //    if (enc.rt & 0b1) {
+    //      // Catches if Rt<0> == '1' then UNPREDICTABLE;
+    //      inst.category = Instruction::kCategoryError;
+    //      return false;
+    //    }
     inst.function = "LDRDp";
   } else if (instruction) {
     inst.function = instruction;
@@ -1993,13 +1991,15 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
       // rt != 15 for any instruction
       (enc.rt == kPCRegNum) ||
       // rt must be even && rt != 14 for all LDRD insts
-      (!enc.o1 && (enc.op2 == 0b10) && ((enc.rt & 0b1) || enc.rt != kLRRegNum)) ||
+      (!enc.o1 && (enc.op2 == 0b10) &&
+       ((enc.rt & 0b1) || enc.rt != kLRRegNum)) ||
       // t2 != 15 for all dual instructions
       (is_dual && rt2 == kPCRegNum) ||
       // if wback && (n == t  || n == t2) then UNPREDICTABLE; (LDRD)
       // if wback && (n == 15 || n == t ) then UNPREDICTABLE; (STRH && LDRH)
       // if wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE; (STRD)
-      (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt || (is_dual && enc.rn == rt2)))) {
+      (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt ||
+                      (is_dual && enc.rn == rt2)))) {
     inst.category = Instruction::kCategoryError;
     return false;
   }
@@ -2125,16 +2125,18 @@ static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
       (enc.rt == kPCRegNum && !(!enc.o1 && enc.op2 == 0b11u)) ||
 
       // all dual insts (except STRDp) must be even and not the link register
-      (is_dual && (((enc.rt & 0b1)) || enc.rt == kLRRegNum) && !(!enc.o1 && enc.op2 == 0b11u) ) ||
+      (is_dual && (((enc.rt & 0b1)) || enc.rt == kLRRegNum) &&
+       !(!enc.o1 && enc.op2 == 0b11u)) ||
 
       // for STRDp rt can be r15 or must be even and not LR
-      ((!enc.o1 && enc.op2 == 0b11u) && (((enc.rt & 0b1) && enc.rt != kPCRegNum) ||  enc.rt == kLRRegNum))||
+      ((!enc.o1 && enc.op2 == 0b11u) &&
+       (((enc.rt & 0b1) && enc.rt != kPCRegNum) || enc.rt == kLRRegNum)) ||
 
-      (write_back && (enc.rn == kPCRegNum || enc.rn == enc.rt ||
-          (is_dual && enc.rn == rt2) || (is_unpriv && enc.rm == kPCRegNum))) ||
+      (write_back &&
+       (enc.rn == kPCRegNum || enc.rn == enc.rt || (is_dual && enc.rn == rt2) ||
+        (is_unpriv && enc.rm == kPCRegNum))) ||
       (is_dual && (enc.rt == kLRRegNum || enc.rm == kPCRegNum ||
-          (enc.op2 == 0b10 && (enc.rm == enc.rt || enc.rm == rt2))))
-      ) {
+                   (enc.op2 == 0b10 && (enc.rm == enc.rt || enc.rm == rt2))))) {
     inst.category = Instruction::kCategoryError;
     return false;
   } else {
@@ -2161,7 +2163,7 @@ static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
   if (enc.rt == kPCRegNum) {
     // The instruction executes with the additional decode: t2 = t.
     CHECK(!enc.o1 && enc.op2 == 0b11u)
-              << "Rt is R15 for an instruction other than STRDp!!";
+        << "Rt is R15 for an instruction other than STRDp!!";
     rt2 = enc.rt;
   }
 
@@ -2539,11 +2541,11 @@ static bool TryLogicalArithmeticRRRI(Instruction &inst, uint32_t bits) {
   if (!(enc.opc & 0b1u)) {
     AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
 
-  // enc.opc == 01
+    // enc.opc == 01
   } else if (!(enc.opc & 0b10u)) {
     AddImmOp(inst, 0);
 
-  // enc.opc == 11
+    // enc.opc == 11
   } else {
     AddImmOp(inst, ~0u);
   }
@@ -2573,11 +2575,11 @@ static bool TryLogicalArithmeticRRRR(Instruction &inst, uint32_t bits) {
   if (!(enc.opc & 0b1u)) {
     AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
 
-  // enc.opc == 01
+    // enc.opc == 01
   } else if (!(enc.opc & 0b10u)) {
     AddImmOp(inst, 0);
 
-  // enc.opc == 11
+    // enc.opc == 11
   } else {
     AddImmOp(inst, ~0u);
   }
@@ -2602,11 +2604,11 @@ static bool TryLogicalArithmeticRRI(Instruction &inst, uint32_t bits) {
   if (!(enc.opc & 0b1u)) {
     AddIntRegOp(inst, enc.rn, 32, Operand::kActionRead);
 
-  // enc.opc == 01
+    // enc.opc == 01
   } else if (!(enc.opc & 0b10u)) {
     AddImmOp(inst, 0u);
 
-  // enc.opc == 11
+    // enc.opc == 11
   } else {
     AddImmOp(inst, ~0u);
   }
@@ -3525,32 +3527,32 @@ static TryDecode *TryDataProcessingAndMisc(uint32_t bits) {
                                (((enc.op1 >> 1) & 0b1) << 3) |
                                ((enc.op1 & 0b1) << 2) | enc.op3];
 
-      // op3 == 00
+        // op3 == 00
       } else {
 
         // Multiply and Accumulate -- op1 == 0xxxx
         if (!(enc.op1 >> 4)) {
           return TryDecodeMultiplyAndAccumulate;
 
-        // TODO(Sonya): Synchronization primitives and Load-Acquire/Store-Release -- op1 == 1xxxx
+          // TODO(Sonya): Synchronization primitives and Load-Acquire/Store-Release -- op1 == 1xxxx
         } else {
           return nullptr;
         }
       }
 
-    // op1 == 10xx0
+      // op1 == 10xx0
     } else if (((enc.op1 >> 3) == 0b10u) && !(enc.op1 & 0b00001u)) {
 
       // Miscellaneous
       if (!enc.op2) {
         return TryMiscellaneous(bits);
 
-      // Halfword Multiply and Accumulate
+        // Halfword Multiply and Accumulate
       } else {
         return TryHalfwordDecodeMultiplyAndAccumulate;
       }
 
-    // op1 != 10xx0
+      // op1 != 10xx0
     } else {
 
       // Data-processing register (immediate shift) -- op4 == 0
@@ -3560,12 +3562,12 @@ static TryDecode *TryDataProcessingAndMisc(uint32_t bits) {
         // index is the concatenation of op0 and op1
         return kDataProcessingRI[(enc.op1 >> 2) | (enc.op1 & 0b1u)];
 
-      // Data-processing register (register shift) -- op4 == 1
+        // Data-processing register (register shift) -- op4 == 1
       } else {
         return kDataProcessingRR[(enc.op1 >> 2) | (enc.op1 & 0b1u)];
       }
     }
-  // Data-processing immediate -- op0 == 1
+    // Data-processing immediate -- op0 == 1
   } else {
 
     // op0 -> enc.op1 2 high order bits, op1 -> enc.op1 2 lowest bits
@@ -3596,25 +3598,25 @@ static TryDecode *TryDecodeTopLevelEncodings(uint32_t bits) {
       if (!(enc.op0 >> 1)) {
         return TryDataProcessingAndMisc(bits);
 
-      // Load/Store Word, Unsigned Byte (immediate, literal) -- op0 == 010
+        // Load/Store Word, Unsigned Byte (immediate, literal) -- op0 == 010
       } else if (enc.op0 == 0b010u) {
         const LoadStoreWUBIL enc_ls_word = {bits};
         return kLoadStoreWordUBIL[enc_ls_word.o2 << 1u | enc_ls_word.o1];
 
-      // Load/Store Word, Unsigned Byte (register) -- op0 == 011, op1 == 0
+        // Load/Store Word, Unsigned Byte (register) -- op0 == 011, op1 == 0
       } else if (!enc.op1) {
         const LoadStoreWUBR enc_ls_word = {bits};
         return kLoadStoreWordUBR[enc_ls_word.o2 << 1u | enc_ls_word.o1];
 
-      // Media instructions -- op0 == 011, op1 == 1
+        // Media instructions -- op0 == 011, op1 == 1
       } else {
         return TryMedia(bits);
       }
-    // TODO(Sonya): Unconditional instructions -- cond == 1111
+      // TODO(Sonya): Unconditional instructions -- cond == 1111
     } else {
       return nullptr;
     }
-  // op0 == 1xx
+    // op0 == 1xx
   } else {
 
     // Branch, branch with link, and block data transfer -- op0 == 10x
@@ -3624,17 +3626,17 @@ static TryDecode *TryDecodeTopLevelEncodings(uint32_t bits) {
       if (enc.op0 == 0b101u) {
         return TryBranchImm;
 
-      // TODO(Sonya): Exception Save/Restore -- cond == 1111, op0 == 100
+        // TODO(Sonya): Exception Save/Restore -- cond == 1111, op0 == 100
       } else if (enc.cond == 0b1111u) {
         return nullptr;
 
-      // Load/Store Multiple -- cond != 1111, op0 == 100
+        // Load/Store Multiple -- cond != 1111, op0 == 100
       } else {
         const LoadStoreM enc_ls_word = {bits};
         return kMLoadStore[enc_ls_word.P << 3 | enc_ls_word.U << 2 |
                            enc_ls_word.op << 1 | enc_ls_word.L];
       }
-    // TODO(Sonya): System register access, Advanced SIMD, floating-point, and Supervisor call -- op0 == 11x
+      // TODO(Sonya): System register access, Advanced SIMD, floating-point, and Supervisor call -- op0 == 11x
     } else {
       return nullptr;
     }
@@ -3652,9 +3654,9 @@ static uint32_t BytesToBits(const uint8_t *bytes) {
 }  // namespace
 
 // Decode an instruction
-bool AArch32Arch::DecodeInstruction(uint64_t address,
-                                    std::string_view inst_bytes,
-                                    Instruction &inst) const {
+bool AArch32Arch::ArchDecodeInstruction(uint64_t address,
+                                        std::string_view inst_bytes,
+                                        Instruction &inst) const {
 
   inst.pc = address;
   inst.next_pc = address + inst_bytes.size();  // Default fall-through.
