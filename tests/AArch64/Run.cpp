@@ -400,6 +400,17 @@ bool __remill_compare_neq(bool result) {
   return result;
 }
 
+Memory *__remill_aarch64_emulate_instruction(Memory *) {
+  abort();
+}
+
+Memory *__remill_aarch32_emulate_instruction(Memory *) {
+  abort();
+}
+
+Memory *__remill_aarch32_check_not_el2(Memory *) {
+  abort();
+}
 
 // Marks `mem` as being used. This is used for making sure certain symbols are
 // kept around through optimization, and makes sure that optimization doesn't
