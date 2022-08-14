@@ -19,6 +19,8 @@
 struct Memory;
 struct State;
 
+#include <limits>
+
 #include "Float.h"
 
 namespace {
