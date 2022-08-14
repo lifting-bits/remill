@@ -72,14 +72,24 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
     case SyncHyperCall::kX86LoadGlobalDescriptorTable: {
       const auto read =
           __remill_read_memory_64(mem, static_cast<addr_t>(state.addr_to_load));
-      asm volatile("lgdt" : : "m"(read));
+      struct GdtrRecord {
+        uint16_t *length;
+        void *base;
+      } __attribute__((packed));
+      const auto *gdtr = reinterpret_cast<const GdtrRecord *>(&read);
+      asm volatile("lgdt %0" : : "m"(gdtr));
       break;
     }
 
     case SyncHyperCall::kX86LoadInterruptDescriptorTable: {
       const auto read =
           __remill_read_memory_64(mem, static_cast<addr_t>(state.addr_to_load));
-      asm volatile("lidt" : : "m"(read));
+      struct IdtrRecord {
+        uint16_t length;
+        void *base;
+      } __attribute__((packed));
+      const auto *idtr = reinterpret_cast<const IdtrRecord *>(&read);
+      asm volatile("lidt %0" : : "m"(idtr));
       break;
     }
 
