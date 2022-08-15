@@ -376,7 +376,7 @@ SleighArch::DecodeInstruction(uint64_t address, std::string_view instr_bytes,
 
   if (const_cast<SleighArch *>(this)->DecodeInstructionImpl(
           address, instr_bytes, inst)) {
-    return [this](uint64_t x) -> DecodingContext {
+    return [this](uint64_t _) -> DecodingContext {
       return this->CreateInitialContext();
     };
   }

@@ -297,7 +297,8 @@ class Arch {
   DecodeDelayedInstruction(uint64_t address, std::string_view instr_bytes,
                            Instruction &inst, DecodingContext context) const {
     inst.in_delay_slot = true;
-    return this->DecodeInstruction(address, instr_bytes, inst, context);
+    return this->DecodeInstruction(address, instr_bytes, inst,
+                                   std::move(context));
   }
 
   // Minimum alignment of an instruction for this particular architecture.

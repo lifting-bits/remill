@@ -346,8 +346,8 @@ bool TraceLifter::Impl::Lift(
       inst.Reset();
 
       // TODO(Ian): not passing context around in trace lifter
-      (void) arch->DecodeInstruction(inst_addr, inst_bytes, inst,
-                                     this->arch->CreateInitialContext());
+      std::ignore = arch->DecodeInstruction(inst_addr, inst_bytes, inst,
+                                            this->arch->CreateInitialContext());
 
       auto lift_status =
           inst.GetLifter()->LiftIntoBlock(inst, block, state_ptr);
