@@ -253,7 +253,7 @@ LiftingTester::LiftInstructionFunction(std::string_view fname,
             << remill::LLVMThingToString(target_func->getType());
 
   if (remill::LiftStatus::kLiftedInstruction !=
-      this->lifter->LiftIntoBlock(insn, &target_func->getEntryBlock())) {
+      insn.GetLifter()->LiftIntoBlock(insn, &target_func->getEntryBlock())) {
     target_func->eraseFromParent();
     return std::nullopt;
   }

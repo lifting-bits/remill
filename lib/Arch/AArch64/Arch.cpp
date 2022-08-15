@@ -120,8 +120,8 @@ class AArch64Arch final : public ArchBase {
   std::string_view ProgramCounterRegisterName(void) const final;
 
   // Decode an instruction.
-  bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                         Instruction &inst) const final;
+  bool ArchDecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                             Instruction &inst) const final;
 
   // Align/Minimum/Maximum number of bytes in an instruction.
   uint64_t MinInstructionAlign(void) const final;
@@ -1212,9 +1212,9 @@ std::string_view AArch64Arch::ProgramCounterRegisterName(void) const {
   return "PC";
 }
 
-bool AArch64Arch::DecodeInstruction(uint64_t address,
-                                    std::string_view inst_bytes,
-                                    Instruction &inst) const {
+bool AArch64Arch::ArchDecodeInstruction(uint64_t address,
+                                        std::string_view inst_bytes,
+                                        Instruction &inst) const {
 
   aarch64::InstData dinst = {};
   auto bytes = reinterpret_cast<const uint8_t *>(inst_bytes.data());

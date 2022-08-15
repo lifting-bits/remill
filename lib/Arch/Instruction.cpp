@@ -793,4 +793,12 @@ std::string Instruction::Serialize(void) const {
   return ss.str();
 }
 
+const InstructionLifter::LifterPtr &Instruction::GetLifter() {
+  return this->lifter;
+}
+
+void Instruction::SetLifter(InstructionLifter::LifterPtr lifter_) {
+  lifter.swap(lifter_);
+}
+
 }  // namespace remill

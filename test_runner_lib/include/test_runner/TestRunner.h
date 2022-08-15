@@ -160,7 +160,7 @@ class LiftingTester {
   std::shared_ptr<llvm::Module> semantics_module;
   remill::Arch::ArchPtr arch;
   std::unique_ptr<remill::IntrinsicTable> table;
-  remill::InstructionLifter::LifterPtr lifter;
+  remill::OperandLifter::OpLifterPtr lifter;
 
 
  public:

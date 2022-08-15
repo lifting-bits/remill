@@ -269,7 +269,7 @@ int main(int argc, char *argv[]) {
 
   auto inst_lifter = arch->DefaultLifter(intrinsics);
 
-  remill::TraceLifter trace_lifter(*inst_lifter.get(), manager);
+  remill::TraceLifter trace_lifter(arch.get(), manager);
 
   // Lift all discoverable traces starting from `--entry_address` into
   // `module`.
