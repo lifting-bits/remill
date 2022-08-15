@@ -797,9 +797,9 @@ class X86Arch final : public X86ArchBase, public DefaultContextAndLifter {
 
 X86Arch::X86Arch(llvm::LLVMContext *context_, OSName os_name_,
                  ArchName arch_name_)
-    : Arch(context_, os_name_, arch_name_),
-      ArchBase(context_, os_name_, arch_name_),
-      X86ArchBase(context_, os_name_, arch_name_) {
+    : ArchBase(context_, os_name_, arch_name_),
+      X86ArchBase(context_, os_name_, arch_name_),
+      DefaultContextAndLifter(context_, os_name_, arch_name_) {
 
   static bool xed_is_initialized = false;
   if (!xed_is_initialized) {

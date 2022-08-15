@@ -34,8 +34,7 @@ class SleighThumb2Arch final : public remill::sleigh::SleighArch,
  public:
   SleighThumb2Arch(llvm::LLVMContext *context_, OSName os_name_,
                    ArchName arch_name_)
-      : Arch(context_, os_name_, arch_name_),
-        ArchBase(context_, os_name_, arch_name_),
+      : ArchBase(context_, os_name_, arch_name_),
         SleighArch(context_, os_name_, arch_name_, "ARM7_le.sla",
                    "ARMtTHUMB.pspec"),
         AArch32ArchBase(context_, os_name_, arch_name_) {}

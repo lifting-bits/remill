@@ -876,4 +876,10 @@ OperandLifter::OpLifterPtr DefaultContextAndLifter::DefaultLifter(
 }
 
 
+DefaultContextAndLifter::DefaultContextAndLifter(llvm::LLVMContext *context_,
+                                                 OSName os_name_,
+                                                 ArchName arch_name_)
+    : ArchBase(context_, os_name_, arch_name_) {}
+
+
 }  // namespace remill

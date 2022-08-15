@@ -36,8 +36,7 @@ class SleighX86Arch final : public SleighArch, public remill::X86ArchBase {
  public:
   SleighX86Arch(llvm::LLVMContext *context_, OSName os_name_,
                 ArchName arch_name_)
-      : Arch(context_, os_name_, arch_name_),
-        ArchBase(context_, os_name_, arch_name_),
+      : ArchBase(context_, os_name_, arch_name_),
         SleighArch(
             context_, os_name_, arch_name_,
             kArchX86_SLEIGH == arch_name_ ? "x86.sla" : "x86-64.sla",

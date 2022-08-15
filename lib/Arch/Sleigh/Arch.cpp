@@ -393,8 +393,7 @@ DecodingContext SleighArch::CreateInitialContext(void) const {
 SleighArch::SleighArch(llvm::LLVMContext *context_, OSName os_name_,
                        ArchName arch_name_, std::string sla_name,
                        std::string pspec_name)
-    : Arch(context_, os_name_, arch_name_),
-      ArchBase(context_, os_name_, arch_name_),
+    : ArchBase(context_, os_name_, arch_name_),
       sleigh_ctx(sla_name, pspec_name),
       sla_name(sla_name),
       pspec_name(pspec_name) {}
