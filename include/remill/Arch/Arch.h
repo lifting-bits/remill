@@ -285,6 +285,9 @@ class Arch {
   //            walk up, one byte at a time, to `MaxInstructionSize(false)`
   //            bytes being passed to the decoder, until you successfully decode
   //            or ultimately fail.
+
+  // The decoder takes contextual information in the form of a DecodingContext, making a copy to produce a ContextMap which is a function that maps
+  // a successor to a new context that updates the old context.
   virtual std::optional<DecodingContext::ContextMap>
   DecodeInstruction(uint64_t address, std::string_view instr_bytes,
                     Instruction &inst, DecodingContext context) const = 0;

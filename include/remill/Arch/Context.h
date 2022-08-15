@@ -26,7 +26,9 @@ namespace remill {
 /// A decoding context is contextual information about the state of the program that affects decoding, ie. the thumb mode register on ARM
 /// We allow clients to interpose on a context for resolution
 
-/// We return a function of successor -> DecodingContext
+/// We return a function of successor -> DecodingContext. The decoder defines a relation on the
+/// previous context and the successor address that produces a new decoding.
+/// This definition of returned contexts allows us to cleanly handle situations like indirect jumps in arm
 class DecodingContext {
 
  private:
