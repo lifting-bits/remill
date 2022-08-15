@@ -345,7 +345,9 @@ bool TraceLifter::Impl::Lift(
 
       inst.Reset();
 
-      (void) arch->DecodeInstruction(inst_addr, inst_bytes, inst);
+      // TODO(Ian): not passing context around in trace lifter
+      (void) arch->DecodeInstruction(inst_addr, inst_bytes, inst,
+                                     this->arch->CreateInitialContext());
 
       auto lift_status =
           inst.GetLifter()->LiftIntoBlock(inst, block, state_ptr);
@@ -359,8 +361,9 @@ bool TraceLifter::Impl::Lift(
       if (try_delay) {
         delayed_inst.Reset();
         if (!ReadInstructionBytes(inst.delayed_pc) ||
-            !arch->DecodeDelayedInstruction(inst.delayed_pc, inst_bytes,
-                                            delayed_inst)) {
+            !arch->DecodeDelayedInstruction(
+                inst.delayed_pc, inst_bytes, delayed_inst,
+                this->arch->CreateInitialContext())) {
           LOG(ERROR) << "Couldn't read delayed inst "
                      << delayed_inst.Serialize();
           AddTerminatingTailCall(block, intrinsics->error, *intrinsics);

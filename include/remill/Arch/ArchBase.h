@@ -31,13 +31,27 @@ namespace remill {
 
 struct Register;
 
-// Internal base architecture for all Remill-internal architectures.
-class ArchBase : public remill::Arch {
- protected:
+
+/// A simple mixin for a default decoder with a null context and the default insdtruction lifter;
+class DefaultContextAndLifter : virtual public remill::Arch {
   virtual bool ArchDecodeInstruction(uint64_t address,
                                      std::string_view instr_bytes,
                                      Instruction &inst) const = 0;
 
+
+  virtual DecodingContext CreateInitialContext(void) const override;
+
+  virtual std::optional<DecodingContext::ContextMap>
+  DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                    Instruction &inst, DecodingContext context) const override;
+
+
+  OperandLifter::OpLifterPtr
+  DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
+};
+
+// Internal base architecture for all Remill-internal architectures.
+class ArchBase : virtual public remill::Arch {
  public:
   using ArchPtr = std::unique_ptr<const Arch>;
 
@@ -72,12 +86,6 @@ class ArchBase : public remill::Arch {
   const IntrinsicTable *GetInstrinsicTable(void) const final;
 
   unsigned RegMdID(void) const final;
-
-  virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                                 Instruction &inst) const override;
-
-  OperandLifter::OpLifterPtr
-  DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
 
   // Get the state pointer and various other types from the `llvm::LLVMContext`
   // associated with `module`.

@@ -130,10 +130,11 @@ void AddImmop(Instruction &inst, uint64_t imm, unsigned size, bool is_signed) {
 }
 
 
-class SPARC32Arch final : public ArchBase {
+class SPARC32Arch final : public ArchBase, public DefaultContextAndLifter {
  public:
   SPARC32Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_)
-      : ArchBase(context_, os_name_, arch_name_) {}
+      : Arch(context_, os_name_, arch_name_),
+        ArchBase(context_, os_name_, arch_name_) {}
 
   virtual ~SPARC32Arch(void) = default;
 

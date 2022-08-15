@@ -850,16 +850,30 @@ const IntrinsicTable *ArchBase::GetInstrinsicTable(void) const {
   return this->instrinsics.get();
 }
 
-OperandLifter::OpLifterPtr
-ArchBase::DefaultLifter(const remill::IntrinsicTable &intrinsics) const {
+
+DecodingContext DefaultContextAndLifter::CreateInitialContext(void) const {
+  return DecodingContext();
+}
+
+std::optional<DecodingContext::ContextMap>
+DefaultContextAndLifter::DecodeInstruction(uint64_t address,
+                                           std::string_view instr_bytes,
+                                           Instruction &inst,
+                                           DecodingContext context) const {
+  inst.SetLifter(std::make_unique<remill::InstructionLifter>(
+      this, this->GetInstrinsicTable()));
+  if (this->ArchDecodeInstruction(address, instr_bytes, inst)) {
+    return [](uint64_t x) -> DecodingContext { return DecodingContext(); };
+  }
+
+  return std::nullopt;
+}
+
+
+OperandLifter::OpLifterPtr DefaultContextAndLifter::DefaultLifter(
+    const remill::IntrinsicTable &intrinsics) const {
   return std::make_shared<InstructionLifter>(this, intrinsics);
 }
 
-bool ArchBase::DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                                 Instruction &inst) const {
-  inst.SetLifter(std::make_unique<remill::InstructionLifter>(
-      this, this->GetInstrinsicTable()));
-  return this->ArchDecodeInstruction(address, instr_bytes, inst);
-}
 
 }  // namespace remill
