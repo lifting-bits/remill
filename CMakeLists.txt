@@ -130,11 +130,9 @@ FetchContent_Declare(sleigh
   GIT_TAG 3e188779e13935dd14790acfc2faf850810ca943
 )
 
+set(sleigh_BUILD_SUPPORT ON CACHE BOOL "" FORCE)
+set(sleigh_BUILD_SLEIGHSPECS ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(sleigh)
-
-if(IS_DIRECTORY "${sleigh_SOURCE_DIR}")
-  set_property(DIRECTORY ${sleigh_SOURCE_DIR} PROPERTY EXCLUDE_FROM_ALL ON)
-endif()
 
 add_library(thirdparty_sleigh INTERFACE)
 target_link_libraries(thirdparty_sleigh INTERFACE
