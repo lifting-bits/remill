@@ -6,14 +6,7 @@
       "gflags",
       "xed"
     ],
-    "default-features": [
-      "cxx-common-llvm-14"
-    ],
     "features": {
-      "system-llvm": {
-        "description": "Build with system llvm",
-        "dependencies": []
-      },
       "cxx-common-llvm-14": {
         "description": "Build with cxx-common llvm-14 port",
         "dependencies": [
