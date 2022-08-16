@@ -4,16 +4,29 @@
     "dependencies": [
       "glog",
       "gflags",
-      "xed",
-      "z3",
-      {
-        "name": "llvm-14",
-        "default-features": false,
-        "features": [
-          "utils",
-          "tools",
-          "cxx-common-targets"
+      "xed"
+    ],
+    "default-features": [
+      "cxx-common-llvm-14"
+    ],
+    "features": {
+      "system-llvm": {
+        "description": "Build with system llvm",
+        "dependencies": []
+      },
+      "cxx-common-llvm-14": {
+        "description": "Build with cxx-common llvm-14 port",
+        "dependencies": [
+          {
+            "name": "llvm-14",
+            "default-features": false,
+            "features": [
+              "utils",
+              "tools",
+              "cxx-common-targets"
+            ]
+          }
         ]
       }
-    ]
+    }
   }
