@@ -855,11 +855,9 @@ DecodingContext DefaultContextAndLifter::CreateInitialContext(void) const {
   return DecodingContext();
 }
 
-std::optional<DecodingContext::ContextMap>
-DefaultContextAndLifter::DecodeInstruction(uint64_t address,
-                                           std::string_view instr_bytes,
-                                           Instruction &inst,
-                                           DecodingContext context) const {
+Arch::DecodingResult DefaultContextAndLifter::DecodeInstruction(
+    uint64_t address, std::string_view instr_bytes, Instruction &inst,
+    DecodingContext context) const {
   inst.SetLifter(std::make_unique<remill::InstructionLifter>(
       this, this->GetInstrinsicTable()));
   if (this->ArchDecodeInstruction(address, instr_bytes, inst)) {

@@ -288,12 +288,15 @@ class Arch {
 
   // The decoder takes contextual information in the form of a DecodingContext, making a copy to produce a ContextMap which is a function that maps
   // a successor to a new context that updates the old context.
-  virtual std::optional<DecodingContext::ContextMap>
+
+  using DecodingResult = std::optional<DecodingContext::ContextMap>;
+
+  virtual DecodingResult
   DecodeInstruction(uint64_t address, std::string_view instr_bytes,
                     Instruction &inst, DecodingContext context) const = 0;
 
   // Decode an instruction that is within a delay slot.
-  std::optional<DecodingContext::ContextMap>
+  DecodingResult
   DecodeDelayedInstruction(uint64_t address, std::string_view instr_bytes,
                            Instruction &inst, DecodingContext context) const {
     inst.in_delay_slot = true;

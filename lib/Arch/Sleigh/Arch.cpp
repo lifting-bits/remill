@@ -366,7 +366,7 @@ std::string CustomLoadImage::getArchType(void) const {
 void CustomLoadImage::adjustVma(long) {}
 
 
-std::optional<DecodingContext::ContextMap>
+SleighArch::DecodingResult
 SleighArch::DecodeInstruction(uint64_t address, std::string_view instr_bytes,
                               Instruction &inst,
                               DecodingContext context) const {
