@@ -37,6 +37,10 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/prepare_git_user
+      - name: Get Poetry
+        shell: bash
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
       - name: Build with build script
         shell: bash
         run: |
@@ -49,10 +53,6 @@ jobs:
           export VCPKG_ROOT=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm-${{ matrix.llvm }}_amd64
           export INSTALL_DIR=$(pwd)/remill-preset-install
           ./scripts/build-preset.sh release
-      - name: Get Poetry
-        shell: bash
-        run: |
-          curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 -
       - name: Install Python Test Deps
         shell: bash
         run: |
@@ -112,6 +112,14 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/prepare_git_user
+      - name: Get Poetry
+        shell: bash
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+      - name: Test Poetry
+        shell: bash
+        run: |
+          poetry --version
       - name: Build with build script
         shell: bash
         run: |
@@ -124,10 +132,6 @@ jobs:
           export VCPKG_ROOT=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}_llvm-${{ matrix.llvm }}_xcode-13.0_amd64
           export INSTALL_DIR=$(pwd)/remill-preset-install
           ./scripts/build-preset.sh release
-      - name: Get Poetry
-        shell: bash
-        run: |
-          curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 -
       - name: Install Python Test Deps
         shell: bash
         run: |
