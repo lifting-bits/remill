@@ -29,7 +29,7 @@ DecodingContext DecodingContext::PutContextReg(std::string creg,
 
 DecodingContext::ContextMap
 DecodingContext::UniformContextMapping(DecodingContext cst) {
-  return [cst = std::move(cst)](uint64_t _) -> DecodingContext { return cst; };
+  return [cst = std::move(cst)](uint64_t) -> DecodingContext { return cst; };
 }
 
 

@@ -861,7 +861,7 @@ Arch::DecodingResult DefaultContextAndLifter::DecodeInstruction(
   inst.SetLifter(std::make_unique<remill::InstructionLifter>(
       this, this->GetInstrinsicTable()));
   if (this->ArchDecodeInstruction(address, instr_bytes, inst)) {
-    return [](uint64_t _) -> DecodingContext { return DecodingContext(); };
+    return [](uint64_t) -> DecodingContext { return DecodingContext(); };
   }
 
   return std::nullopt;
