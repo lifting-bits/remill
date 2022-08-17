@@ -19,7 +19,8 @@
 #include <remill/Arch/AArch32/AArch32Base.h>
 
 namespace remill {
-class AArch32Arch final : public AArch32ArchBase {
+class AArch32Arch final : public AArch32ArchBase,
+                          public DefaultContextAndLifter {
  public:
   AArch32Arch(llvm::LLVMContext *context_, OSName os_name_,
               ArchName arch_name_);

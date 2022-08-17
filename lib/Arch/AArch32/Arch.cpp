@@ -50,7 +50,8 @@ namespace remill {
 AArch32Arch::AArch32Arch(llvm::LLVMContext *context_, OSName os_name_,
                          ArchName arch_name_)
     : ArchBase(context_, os_name_, arch_name_),
-      AArch32ArchBase(context_, os_name_, arch_name_) {}
+      AArch32ArchBase(context_, os_name_, arch_name_),
+      DefaultContextAndLifter(context_, os_name_, arch_name_) {}
 
 AArch32Arch::~AArch32Arch(void) {}
 

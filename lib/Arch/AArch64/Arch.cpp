@@ -106,7 +106,7 @@ Instruction::Category InstCategory(const aarch64::InstData &inst) {
   }
 }
 
-class AArch64Arch final : public ArchBase {
+class AArch64Arch final : public DefaultContextAndLifter {
  public:
   AArch64Arch(llvm::LLVMContext *context_, OSName os_name_,
               ArchName arch_name_);
@@ -148,7 +148,8 @@ class AArch64Arch final : public ArchBase {
 
 AArch64Arch::AArch64Arch(llvm::LLVMContext *context_, OSName os_name_,
                          ArchName arch_name_)
-    : ArchBase(context_, os_name_, arch_name_) {}
+    : ArchBase(context_, os_name_, arch_name_),
+      DefaultContextAndLifter(context_, os_name_, arch_name_) {}
 
 AArch64Arch::~AArch64Arch(void) {}
 

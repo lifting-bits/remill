@@ -30,6 +30,7 @@
 #include <llvm/IR/IRBuilder.h>
 #include <remill/BC/InstructionLifter.h>
 #include <remill/BC/IntrinsicTable.h>
+#include <remill/Arch/Context.h>
 
 #pragma clang diagnostic pop
 
@@ -170,6 +171,9 @@ class Arch {
 
   virtual ~Arch(void);
 
+
+  virtual DecodingContext CreateInitialContext(void) const = 0;
+
   // Factory method for loading the correct architecture class for a given
   // operating system and architecture class.
   static auto Get(llvm::LLVMContext &context, std::string_view os,
@@ -281,14 +285,23 @@ class Arch {
   //            walk up, one byte at a time, to `MaxInstructionSize(false)`
   //            bytes being passed to the decoder, until you successfully decode
   //            or ultimately fail.
-  virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                                 Instruction &inst) const = 0;
+
+  // The decoder takes contextual information in the form of a DecodingContext, making a copy to produce a ContextMap which is a function that maps
+  // a successor to a new context that updates the old context.
+
+  using DecodingResult = std::optional<DecodingContext::ContextMap>;
+
+  virtual DecodingResult
+  DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                    Instruction &inst, DecodingContext context) const = 0;
 
   // Decode an instruction that is within a delay slot.
-  bool DecodeDelayedInstruction(uint64_t address, std::string_view instr_bytes,
-                                Instruction &inst) const {
+  DecodingResult
+  DecodeDelayedInstruction(uint64_t address, std::string_view instr_bytes,
+                           Instruction &inst, DecodingContext context) const {
     inst.in_delay_slot = true;
-    return this->DecodeInstruction(address, instr_bytes, inst);
+    return this->DecodeInstruction(address, instr_bytes, inst,
+                                   std::move(context));
   }
 
   // Minimum alignment of an instruction for this particular architecture.

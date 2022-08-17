@@ -196,16 +196,15 @@ class SleighArch : virtual public ArchBase {
 
 
  public:
-  virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                                 Instruction &inst) const override;
-
-  virtual bool ArchDecodeInstruction(uint64_t address,
-                                     std::string_view instr_bytes,
-                                     Instruction &inst) const override;
-
-
   OperandLifter::OpLifterPtr
   DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
+
+
+  virtual DecodingContext CreateInitialContext(void) const override;
+
+  virtual std::optional<DecodingContext::ContextMap>
+  DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                    Instruction &inst, DecodingContext context) const override;
 
 
   // Arch specific preperation

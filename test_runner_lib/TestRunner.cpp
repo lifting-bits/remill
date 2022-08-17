@@ -240,7 +240,9 @@ LiftingTester::LiftInstructionFunction(std::string_view fname,
                                        std::string_view bytes,
                                        uint64_t address) {
   remill::Instruction insn;
-  if (!this->arch->DecodeInstruction(address, bytes, insn)) {
+  // This works for now since each arch has an initial context that represents the arch correctly.
+  if (!this->arch->DecodeInstruction(address, bytes, insn,
+                                     this->arch->CreateInitialContext())) {
     LOG(ERROR) << "Failed decode";
     return std::nullopt;
   }
