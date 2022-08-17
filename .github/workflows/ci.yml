@@ -119,7 +119,7 @@ jobs:
       - name: Install Python Test Deps
         shell: bash
         run: |
-          pip3 install --user ./scripts/diff_tester_export_insns
+          python3 -m pip install --user ./scripts/diff_tester_export_insns
       - name: Build with build script
         shell: bash
         run: |
