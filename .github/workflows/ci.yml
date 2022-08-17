@@ -116,6 +116,11 @@ jobs:
         shell: bash
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Upgrade Pip?
+        shell: bash
+        run: |
+          python3 -m pip install --upgrade pip
       - name: Install Python Test Deps
         shell: bash
         run: |
