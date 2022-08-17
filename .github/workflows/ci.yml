@@ -49,7 +49,10 @@ jobs:
           export VCPKG_ROOT=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm-${{ matrix.llvm }}_amd64
           export INSTALL_DIR=$(pwd)/remill-preset-install
           ./scripts/build-preset.sh release
-
+      - name: Get Poetry
+        shell: bash
+        run: |
+          curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
       - name: Install Python Test Deps
         shell: bash
         run: |
@@ -121,6 +124,10 @@ jobs:
           export VCPKG_ROOT=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}_llvm-${{ matrix.llvm }}_xcode-13.0_amd64
           export INSTALL_DIR=$(pwd)/remill-preset-install
           ./scripts/build-preset.sh release
+      - name: Get Poetry
+        shell: bash
+        run: |
+          curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
       - name: Install Python Test Deps
         shell: bash
         run: |
