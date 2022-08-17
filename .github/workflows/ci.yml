@@ -115,12 +115,7 @@ jobs:
       - name: Get Poetry
         shell: bash
         run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-
-      - name: Upgrade Pip?
-        shell: bash
-        run: |
-          python3 -m pip install --upgrade pip
+          python3 -m pip install poetry
       - name: Install Python Test Deps
         shell: bash
         run: |
