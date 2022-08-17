@@ -116,10 +116,10 @@ jobs:
         shell: bash
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
-      - name: Test Poetry
+      - name: Install Python Test Deps
         shell: bash
         run: |
-          poetry --version
+          pip3 install --user ./scripts/diff_tester_export_insns
       - name: Build with build script
         shell: bash
         run: |
@@ -132,10 +132,6 @@ jobs:
           export VCPKG_ROOT=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}_llvm-${{ matrix.llvm }}_xcode-13.0_amd64
           export INSTALL_DIR=$(pwd)/remill-preset-install
           ./scripts/build-preset.sh release
-      - name: Install Python Test Deps
-        shell: bash
-        run: |
-          pip3 install --user ./scripts/diff_tester_export_insns
       - name: Run tests
         shell: bash
         working-directory: remill-build
