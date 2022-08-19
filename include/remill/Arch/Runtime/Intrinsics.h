@@ -137,8 +137,8 @@ __remill_flag_computation_carry(bool result, ...);
 [[gnu::used]] extern Memory *__remill_async_hyper_call(State &, addr_t ret_addr,
                                                        Memory *);
 
-[[gnu::used]] extern Memory *__remill_sync_hyper_call(State &, Memory *,
-                                                      SyncHyperCall::Name);
+[[gnu::used, gnu::always_inline]] extern Memory *
+__remill_sync_hyper_call(State &, Memory *, SyncHyperCall::Name);
 
 // Memory barriers types:
 //  http://g.oswego.edu/dl/jmm/cookbook.html
