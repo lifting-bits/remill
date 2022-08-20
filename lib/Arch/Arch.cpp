@@ -311,6 +311,7 @@ void ArchBase::ForEachRegister(std::function<void(const Register *)> cb) const {
 // Return information about a register, given its name.
 const Register *ArchBase::RegisterByName(std::string_view name_) const {
   std::string name(name_.data(), name_.size());
+
   auto [curr_val_it, added] = reg_by_name.emplace(std::move(name), nullptr);
   if (added) {
     return nullptr;
