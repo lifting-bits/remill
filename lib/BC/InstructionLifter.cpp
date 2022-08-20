@@ -87,7 +87,6 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
                                             llvm::BasicBlock *block,
                                             llvm::Value *state_ptr,
                                             bool is_delayed) {
-  LOG(INFO) << "In instructionlifter";
   llvm::Function *const func = block->getParent();
   llvm::Module *const module = func->getParent();
   llvm::Function *isel_func = nullptr;
