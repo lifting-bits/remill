@@ -191,8 +191,7 @@ class SingleInstructionSleighContext {
 class SleighDecoder {
  public:
   SleighDecoder() = delete;
-  SleighDecoder(const remill::Arch &arch,
-                const remill::IntrinsicTable &intrinsics, std::string sla_name,
+  SleighDecoder(const remill::Arch &arch, std::string sla_name,
                 std::string pspec_name);
   std::string GetSLAName() const;
 
@@ -219,7 +218,7 @@ class SleighDecoder {
   std::string pspec_name;
 
  private:
-  std::shared_ptr<remill::SleighLifter> lifter;
+  mutable std::shared_ptr<remill::SleighLifter> lifter;
   const remill::Arch &arch;
 };
 }  // namespace remill::sleigh

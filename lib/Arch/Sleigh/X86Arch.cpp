@@ -35,11 +35,9 @@ namespace sleigh::x86 {
 class SleighX86Decoder final : public SleighDecoder {
  public:
   SleighX86Decoder() = delete;
-  SleighX86Decoder(const remill::Arch &arch,
-                   const remill::IntrinsicTable &intrinsics)
+  SleighX86Decoder(const remill::Arch &arch)
       : SleighDecoder(
-            arch, intrinsics,
-            kArchX86_SLEIGH == arch.arch_name ? "x86.sla" : "x86-64.sla",
+            arch, kArchX86_SLEIGH == arch.arch_name ? "x86.sla" : "x86-64.sla",
             kArchX86_SLEIGH == arch.arch_name ? "x86.pspec" : "x86-64.pspec") {}
 
   virtual ~SleighX86Decoder(void) = default;
@@ -56,7 +54,7 @@ class SleighX86Arch : public X86ArchBase {
       : ArchBase(context_, os_name_, arch_name_),
         X86ArchBase(context_, os_name_, arch_name_),
         // This doesnt actually work...
-        decoder(*this, *this->GetInstrinsicTable()) {}
+        decoder(*this) {}
 
   virtual DecodingContext CreateInitialContext(void) const override {
     return DecodingContext();

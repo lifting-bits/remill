@@ -31,9 +31,8 @@ namespace sleighthumb2 {
 //ARM7_le.sla"
 class SleighThumb2Decoder final : public remill::sleigh::SleighDecoder {
  public:
-  SleighThumb2Decoder(const remill::Arch &arch,
-                      const remill::IntrinsicTable &intrinsics)
-      : SleighDecoder(arch, intrinsics, "ARM7_le.sla", "ARMtTHUMB.pspec") {}
+  SleighThumb2Decoder(const remill::Arch &arch)
+      : SleighDecoder(arch, "ARM7_le.sla", "ARMtTHUMB.pspec") {}
 
 
   void InitializeSleighContext(

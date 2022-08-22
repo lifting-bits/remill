@@ -366,11 +366,29 @@ std::string CustomLoadImage::getArchType(void) const {
 void CustomLoadImage::adjustVma(long) {}
 
 
+std::shared_ptr<remill::SleighLifter> SleighDecoder::GetLifter() const {
+  if (this->lifter) {
+    return this->lifter;
+  }
+
+  if (!this->arch.GetInstrinsicTable()) {
+    LOG(FATAL)
+        << "Architecture was not initialized before asking for a lifting";
+  }
+
+  auto tab = this->arch.GetInstrinsicTable();
+
+  this->lifter =
+      std::make_shared<remill::SleighLifter>(this->arch, *this, *tab);
+
+  return this->lifter;
+}
+
 Arch::DecodingResult
 SleighDecoder::DecodeInstruction(uint64_t address, std::string_view instr_bytes,
                                  Instruction &inst,
                                  DecodingContext context) const {
-  inst.SetLifter(this->lifter);
+  inst.SetLifter(this->GetLifter());
   assert(inst.GetLifter() != nullptr);
 
   if (const_cast<SleighDecoder *>(this)->DecodeInstructionImpl(
@@ -384,13 +402,12 @@ SleighDecoder::DecodeInstruction(uint64_t address, std::string_view instr_bytes,
 }
 
 
-SleighDecoder::SleighDecoder(const remill::Arch &arch_,
-                             const IntrinsicTable &intrinsics,
-                             std::string sla_name, std::string pspec_name)
+SleighDecoder::SleighDecoder(const remill::Arch &arch_, std::string sla_name,
+                             std::string pspec_name)
     : sleigh_ctx(sla_name, pspec_name),
       sla_name(sla_name),
       pspec_name(pspec_name),
-      lifter(std::make_shared<remill::SleighLifter>(arch_, *this, intrinsics)),
+      lifter(nullptr),
       arch(arch_) {}
 
 bool SleighDecoder::DecodeInstructionImpl(uint64_t address,
