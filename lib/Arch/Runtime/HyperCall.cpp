@@ -303,7 +303,7 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
 
 #endif
 
-    default: break;
+    default: __builtin_unreachable(); break;
   }
 
   return mem;
