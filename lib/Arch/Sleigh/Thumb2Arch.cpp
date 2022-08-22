@@ -28,6 +28,7 @@
 namespace remill {
 namespace sleighthumb2 {
 
+
 //ARM7_le.sla"
 class SleighThumb2Decoder final : public remill::sleigh::SleighDecoder {
  public:
@@ -40,7 +41,46 @@ class SleighThumb2Decoder final : public remill::sleigh::SleighDecoder {
     ctxt.GetContext().setVariableDefault("TMode", 1);
   }
 };
+
+//TODO(Ian): this has code duplication with SleighX86Arch couldnt come up with a way to share implementation and not run into more
+// annoying virtual inheretance from remill Arch. If we go back to virtual Arch then maybe we could just add another virtual inheratance of
+// Arch. All of these are bad tho.
+class SleighThumbArch : public AArch32ArchBase {
+ public:
+  SleighThumbArch(llvm::LLVMContext *context_, OSName os_name_,
+                  ArchName arch_name_)
+      : ArchBase(context_, os_name_, arch_name_),
+        AArch32ArchBase(context_, os_name_, arch_name_),
+
+        decoder(*this) {}
+
+  virtual DecodingContext CreateInitialContext(void) const override {
+    return DecodingContext();
+  }
+
+  virtual OperandLifter::OpLifterPtr
+  DefaultLifter(const remill::IntrinsicTable &intrinsics) const override {
+    return this->decoder.GetLifter();
+  }
+
+  virtual DecodingResult
+  DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                    Instruction &inst, DecodingContext context) const override {
+    return decoder.DecodeInstruction(address, instr_bytes, inst, context);
+  }
+
+ private:
+  SleighThumb2Decoder decoder;
+};
+
+
 }  // namespace sleighthumb2
-//     this->sleigh_ctx.GetEngine().setContextDefault("TMode", 1);
+
+Arch::ArchPtr Arch::GetSleighThumb2(llvm::LLVMContext *context_,
+                                    remill::OSName os_name_,
+                                    remill::ArchName arch_name_) {
+  return std::make_unique<sleighthumb2::SleighThumbArch>(context_, os_name_,
+                                                         arch_name_);
+}
 
 }  // namespace remill
