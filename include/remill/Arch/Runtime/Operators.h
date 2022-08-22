@@ -19,15 +19,19 @@
 struct Memory;
 struct State;
 
+#include <limits>
+
 #include "Float.h"
 
 namespace {
 
+#if !defined(REMILL_DISABLE_INT128)
 ALWAYS_INLINE static uint128_t __remill_read_memory_128(Memory *mem,
                                                         addr_t addr);
 
 ALWAYS_INLINE static Memory *__remill_write_memory_128(Memory *mem, addr_t addr,
                                                        uint128_t val);
+#endif
 
 #define MAKE_UNDEF(n) \
   ALWAYS_INLINE static uint##n##_t Undefined(uint##n##_t) { \
@@ -71,7 +75,10 @@ MAKE_SIGNED_MEM_ACCESS(8)
 MAKE_SIGNED_MEM_ACCESS(16)
 MAKE_SIGNED_MEM_ACCESS(32)
 MAKE_SIGNED_MEM_ACCESS(64)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_SIGNED_MEM_ACCESS(128)
+#endif
 
 // Read a value directly.
 ALWAYS_INLINE static bool _Read(Memory *, bool val) {
@@ -155,7 +162,10 @@ MAKE_MREAD(8, 8, uint, 8)
 MAKE_MREAD(16, 16, uint, 16)
 MAKE_MREAD(32, 32, uint, 32)
 MAKE_MREAD(64, 64, uint, 64)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_MREAD(128, 128, uint, 128)
+#endif
 
 MAKE_MREAD(32, 32, float, f32)
 MAKE_MREAD(64, 64, float, f64)
@@ -211,7 +221,10 @@ MAKE_MWRITE(8, 8, uint, uint, 8)
 MAKE_MWRITE(16, 16, uint, uint, 16)
 MAKE_MWRITE(32, 32, uint, uint, 32)
 MAKE_MWRITE(64, 64, uint, uint, 64)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_MWRITE(128, 128, uint, uint, 128)
+#endif
 
 MAKE_MWRITE(32, 32, float, float, f32)
 MAKE_MWRITE(64, 64, float, float, f64)
@@ -265,13 +278,19 @@ MAKE_READV(U, 8, bytes)
 MAKE_READV(U, 16, words)
 MAKE_READV(U, 32, dwords)
 MAKE_READV(U, 64, qwords)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_READV(U, 128, dqwords)
+#endif
 
 MAKE_READV(S, 8, sbytes)
 MAKE_READV(S, 16, swords)
 MAKE_READV(S, 32, sdwords)
 MAKE_READV(S, 64, sqwords)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_READV(S, 128, sdqwords)
+#endif
 
 MAKE_READV(F, 32, floats)
 MAKE_READV(F, 64, doubles)
@@ -309,13 +328,19 @@ MAKE_MREADV(U, 8, bytes, 8)
 MAKE_MREADV(U, 16, words, 16)
 MAKE_MREADV(U, 32, dwords, 32)
 MAKE_MREADV(U, 64, qwords, 64)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_MREADV(U, 128, dqwords, 128)
+#endif
 
 MAKE_MREADV(S, 8, sbytes, s8)
 MAKE_MREADV(S, 16, swords, s16)
 MAKE_MREADV(S, 32, sdwords, s32)
 MAKE_MREADV(S, 64, sqwords, s64)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_MREADV(S, 128, sdqwords, s128)
+#endif
 
 MAKE_MREADV(F, 32, floats, f32)
 MAKE_MREADV(F, 64, doubles, f64)
@@ -358,13 +383,19 @@ MAKE_WRITEV(U, 8, bytes, VnW, uint8_t)
 MAKE_WRITEV(U, 16, words, VnW, uint16_t)
 MAKE_WRITEV(U, 32, dwords, VnW, uint32_t)
 MAKE_WRITEV(U, 64, qwords, VnW, uint64_t)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_WRITEV(U, 128, dqwords, VnW, uint128_t)
+#endif
 
 MAKE_WRITEV(S, 8, sbytes, VnW, int8_t)
 MAKE_WRITEV(S, 16, swords, VnW, int16_t)
 MAKE_WRITEV(S, 32, sdwords, VnW, int32_t)
 MAKE_WRITEV(S, 64, sqwords, VnW, int64_t)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_WRITEV(S, 128, sdqwords, VnW, int128_t)
+#endif
 
 MAKE_WRITEV(F, 32, floats, VnW, float32_t)
 MAKE_WRITEV(F, 64, doubles, VnW, float64_t)
@@ -421,13 +452,19 @@ MAKE_MWRITEV(U, 8, bytes, 8, uint8_t)
 MAKE_MWRITEV(U, 16, words, 16, uint16_t)
 MAKE_MWRITEV(U, 32, dwords, 32, uint32_t)
 MAKE_MWRITEV(U, 64, qwords, 64, uint64_t)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_MWRITEV(U, 128, dqwords, 128, uint128_t)
+#endif
 
 MAKE_MWRITEV(S, 8, sbytes, s8, int8_t)
 MAKE_MWRITEV(S, 16, swords, s16, int16_t)
 MAKE_MWRITEV(S, 32, sdwords, s32, int32_t)
 MAKE_MWRITEV(S, 64, sqwords, s64, int64_t)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_MWRITEV(S, 128, sdqwords, s128, int128_t)
+#endif
 
 MAKE_MWRITEV(F, 32, floats, f32, float32_t)
 MAKE_MWRITEV(F, 64, doubles, f64, float64_t)
@@ -446,7 +483,11 @@ MAKE_WRITE_REF(uint8_t)
 MAKE_WRITE_REF(uint16_t)
 MAKE_WRITE_REF(uint32_t)
 MAKE_WRITE_REF(uint64_t)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_WRITE_REF(uint128_t)
+#endif
+
 MAKE_WRITE_REF(float32_t)
 MAKE_WRITE_REF(float64_t)
 MAKE_WRITE_REF(float80_t)
@@ -481,7 +522,10 @@ MAKE_CMPXCHG(8, uint, 8)
 MAKE_CMPXCHG(16, uint, 16)
 MAKE_CMPXCHG(32, uint, 32)
 MAKE_CMPXCHG(64, uint, 64)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_CMPXCHG(128, uint, 128)
+#endif
 
 #undef MAKE_CMPXCHG
 #define UCmpXchg(op, oldval, newval) _CmpXchg(memory, op, oldval, newval)
@@ -715,9 +759,9 @@ ALWAYS_INLINE static uint8_t IsDenormal(float80_t x) {
 #if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
 // On non-x86 architectures, native_float80_t is defined as a double,
 // which is identical to the float64_t definition above
-ALWAYS_INLINE static uint8_t IsDenormal(native_float80_t x) {
-  return static_cast<uint8_t>(FP_SUBNORMAL == std::fpclassify(static_cast<native_float80_t>(x)));
-}
+// ALWAYS_INLINE static uint8_t IsDenormal(float80_t x) {
+//   return static_cast<uint8_t>(FP_SUBNORMAL == std::fpclassify(x));
+// }
 #endif
 
 template <typename T>
@@ -757,12 +801,20 @@ MAKE_CONVERT(int8_t, Int8)
 MAKE_CONVERT(int16_t, Int16)
 MAKE_CONVERT(int32_t, Int32)
 MAKE_CONVERT(int64_t, Int64)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_CONVERT(int128_t, Int128)
+#endif
+
 MAKE_CONVERT(uint8_t, UInt8)
 MAKE_CONVERT(uint16_t, UInt16)
 MAKE_CONVERT(uint32_t, UInt32)
 MAKE_CONVERT(uint64_t, UInt64)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_CONVERT(uint128_t, UInt128)
+#endif
+
 MAKE_CONVERT(float32_t, Float32)
 MAKE_CONVERT(float64_t, Float64)
 MAKE_CONVERT(float80_t, Float80)
@@ -898,6 +950,7 @@ ALWAYS_INLINE static auto TruncTo(T val) -> typename IntegerType<DT>::BT {
     memory = _UWriteV64(memory, op, (val)); \
   } while (false)
 
+#if !defined(REMILL_DISABLE_INT128)
 #define SWriteV128(op, val) \
   do { \
     memory = _SWriteV128(memory, op, (val)); \
@@ -907,6 +960,7 @@ ALWAYS_INLINE static auto TruncTo(T val) -> typename IntegerType<DT>::BT {
   do { \
     memory = _UWriteV128(memory, op, (val)); \
   } while (false)
+#endif
 
 #define FWriteV32(op, val) \
   do { \
@@ -931,8 +985,10 @@ ALWAYS_INLINE static auto TruncTo(T val) -> typename IntegerType<DT>::BT {
 #define SReadV64(op) _SReadV64(memory, op)
 #define UReadV64(op) _UReadV64(memory, op)
 
+#if !defined(REMILL_DISABLE_INT128)
 #define SReadV128(op) _SReadV128(memory, op)
 #define UReadV128(op) _UReadV128(memory, op)
+#endif
 
 #define FReadV32(op) _FReadV32(memory, op)
 #define FReadV64(op) _FReadV64(memory, op)
@@ -963,15 +1019,13 @@ ALWAYS_INLINE static auto TruncTo(T val) -> typename IntegerType<DT>::BT {
 // make that explicit, where `addr_t` encodes the natural machine word.
 #define MAKE_OPS(name, op, make_int_op, make_float_op) \
   make_int_op(U##name, uint8_t, addr_t, op) \
-  make_int_op(U##name##8, uint8_t, addr_t,op) \
+  make_int_op(U##name##8, uint8_t, addr_t, op) \
   make_int_op(U##name, uint16_t, addr_t, op) \
   make_int_op(U##name##16, uint16_t, addr_t, op) \
   make_int_op(U##name, uint32_t, addr_t, op) \
   make_int_op(U##name##32, uint32_t, addr_t, op) \
   make_int_op(U##name, uint64_t, uint64_t, op) \
   make_int_op(U##name##64, uint64_t, uint64_t, op) \
-  make_int_op(U##name, uint128_t, uint128_t, op) \
-  make_int_op(U##name##128, uint128_t, uint128_t, op) \
   make_int_op(S##name, int8_t, addr_diff_t, op) \
   make_int_op(S##name##8, int8_t, addr_diff_t, op) \
   make_int_op(S##name, int16_t, addr_diff_t, op) \
@@ -980,8 +1034,6 @@ ALWAYS_INLINE static auto TruncTo(T val) -> typename IntegerType<DT>::BT {
   make_int_op(S##name##32, int32_t, addr_diff_t, op) \
   make_int_op(S##name, int64_t, int64_t, op) \
   make_int_op(S##name##64, int64_t, int64_t, op) \
-  make_int_op(S##name, int128_t, int128_t, op) \
-  make_int_op(S##name##128, int128_t, int128_t, op) \
   make_float_op(F##name, float32_t, float32_t, op) \
   make_float_op(F##name##32, float32_t, float32_t, op) \
   make_float_op(F##name, float64_t, float64_t, op) \
@@ -989,19 +1041,34 @@ ALWAYS_INLINE static auto TruncTo(T val) -> typename IntegerType<DT>::BT {
   make_float_op(F##name, float80_t, float80_t, op) \
   make_float_op(F##name##80, float80_t, float80_t, op)
 
-MAKE_OPS(Add, +, MAKE_BINOP, MAKE_BINOP)
-MAKE_OPS(Sub, -, MAKE_BINOP, MAKE_BINOP)
-MAKE_OPS(Mul, *, MAKE_BINOP, MAKE_BINOP)
-MAKE_OPS(Div, /, MAKE_BINOP, MAKE_BINOP)
-MAKE_OPS(Rem, %, MAKE_BINOP, MAKE_NOP)
-MAKE_OPS(And, &, MAKE_BINOP, MAKE_NOP)
-MAKE_OPS(AndN, &~, MAKE_BINOP, MAKE_NOP)
-MAKE_OPS(Or, |, MAKE_BINOP, MAKE_NOP)
-MAKE_OPS(Xor, ^, MAKE_BINOP, MAKE_NOP)
-MAKE_OPS(Shr, >>, MAKE_BINOP, MAKE_NOP)
-MAKE_OPS(Shl, <<, MAKE_BINOP, MAKE_NOP)
-MAKE_OPS(Neg, -, MAKE_UOP, MAKE_UOP)
-MAKE_OPS(Not, ~, MAKE_UOP, MAKE_NOP)
+#define MAKE_INT128OPS(name, op, make_int_op, make_float_op) \
+  make_int_op(U##name, uint128_t, uint128_t, op) \
+  make_int_op(U##name##128, uint128_t, uint128_t, op) \
+  make_int_op(S##name, int128_t, int128_t, op) \
+  make_int_op(S##name##128, int128_t, int128_t, op)
+
+#define DO_MAKE_OPS(make_ops) \
+  make_ops(Add, +, MAKE_BINOP, MAKE_BINOP) \
+  make_ops(Sub, -, MAKE_BINOP, MAKE_BINOP) \
+  make_ops(Mul, *, MAKE_BINOP, MAKE_BINOP) \
+  make_ops(Div, /, MAKE_BINOP, MAKE_BINOP) \
+  make_ops(Rem, %, MAKE_BINOP, MAKE_NOP) \
+  make_ops(And, &, MAKE_BINOP, MAKE_NOP) \
+  make_ops(AndN, &~, MAKE_BINOP, MAKE_NOP) \
+  make_ops(Or, |, MAKE_BINOP, MAKE_NOP) \
+  make_ops(Xor, ^, MAKE_BINOP, MAKE_NOP) \
+  make_ops(Shr, >>, MAKE_BINOP, MAKE_NOP) \
+  make_ops(Shl, <<, MAKE_BINOP, MAKE_NOP) \
+  make_ops(Neg, -, MAKE_UOP, MAKE_UOP) \
+  make_ops(Not, ~, MAKE_UOP, MAKE_NOP)
+
+// clang-format on
+
+DO_MAKE_OPS(MAKE_OPS)
+
+#if !defined(REMILL_DISABLE_INT128)
+DO_MAKE_OPS(MAKE_INT128OPS)
+#endif
 
 
 template <typename T>
@@ -1040,9 +1107,20 @@ MAKE_OPS(CmpLte, <=, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
 MAKE_OPS(CmpGt, >, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
 MAKE_OPS(CmpGte, >=, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
 
+#if !defined(REMILL_DISABLE_INT128)
+MAKE_INT128OPS(CmpEq, ==, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
+MAKE_INT128OPS(CmpNeq, !=, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
+MAKE_INT128OPS(CmpLt, <, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
+MAKE_INT128OPS(CmpLte, <=, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
+MAKE_INT128OPS(CmpGt, >, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
+MAKE_INT128OPS(CmpGte, >=, MAKE_BOOLBINOP, MAKE_BOOLBINOP)
+#endif
+
+#undef MAKE_INT128OPS
 #undef MAKE_UNOP
 #undef MAKE_BINOP
 #undef MAKE_OPS
+#undef DO_MAKE_OPS
 
 ALWAYS_INLINE static bool BAnd(bool a, bool b) {
   return a && b;
@@ -1157,12 +1235,20 @@ MAKE_EXTRACTV(8, uint8_t, bytes, Unsigned, U)
 MAKE_EXTRACTV(16, uint16_t, words, Unsigned, U)
 MAKE_EXTRACTV(32, uint32_t, dwords, Unsigned, U)
 MAKE_EXTRACTV(64, uint64_t, qwords, Unsigned, U)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_EXTRACTV(128, uint128_t, dqwords, Unsigned, U)
+#endif
+
 MAKE_EXTRACTV(8, int8_t, bytes, Signed, S)
 MAKE_EXTRACTV(16, int16_t, words, Signed, S)
 MAKE_EXTRACTV(32, int32_t, dwords, Signed, S)
 MAKE_EXTRACTV(64, int64_t, qwords, Signed, S)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_EXTRACTV(128, int128_t, dqwords, Signed, S)
+#endif
+
 MAKE_EXTRACTV(32, float32_t, floats, Identity, F)
 MAKE_EXTRACTV(64, float64_t, doubles, Identity, F)
 MAKE_EXTRACTV(80, float80_t, tdoubles, Identity, F)
@@ -1212,13 +1298,19 @@ MAKE_INSERTV(U, 8, uint8_t, bytes)
 MAKE_INSERTV(U, 16, uint16_t, words)
 MAKE_INSERTV(U, 32, uint32_t, dwords)
 MAKE_INSERTV(U, 64, uint64_t, qwords)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_INSERTV(U, 128, uint128_t, dqwords)
+#endif
 
 MAKE_INSERTV(S, 8, int8_t, sbytes)
 MAKE_INSERTV(S, 16, int16_t, swords)
 MAKE_INSERTV(S, 32, int32_t, sdwords)
 MAKE_INSERTV(S, 64, int64_t, sqwords)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_INSERTV(S, 128, int128_t, sdqwords)
+#endif
 
 MAKE_INSERTV(F, 32, float32_t, floats)
 MAKE_INSERTV(F, 64, float64_t, doubles)
@@ -1240,13 +1332,19 @@ MAKE_UPDATEV(U, 8, uint8_t, bytes)
 MAKE_UPDATEV(U, 16, uint16_t, words)
 MAKE_UPDATEV(U, 32, uint32_t, dwords)
 MAKE_UPDATEV(U, 64, uint64_t, qwords)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_UPDATEV(U, 128, uint128_t, dqwords)
+#endif
 
 MAKE_UPDATEV(S, 8, int8_t, sbytes)
 MAKE_UPDATEV(S, 16, int16_t, swords)
 MAKE_UPDATEV(S, 32, int32_t, sdwords)
 MAKE_UPDATEV(S, 64, int64_t, sqwords)
+
+#if !defined(REMILL_DISABLE_INT128)
 MAKE_UPDATEV(S, 128, int128_t, sdqwords)
+#endif
 
 MAKE_UPDATEV(F, 32, float32_t, floats)
 MAKE_UPDATEV(F, 64, float64_t, doubles)
@@ -1267,13 +1365,19 @@ ALWAYS_INLINE static constexpr T _ZeroVec(void) {
 #define UClearV16(...) _ZeroVec<uint16_t, decltype(__VA_ARGS__)>()
 #define UClearV32(...) _ZeroVec<uint32_t, decltype(__VA_ARGS__)>()
 #define UClearV64(...) _ZeroVec<uint64_t, decltype(__VA_ARGS__)>()
+
+#if !defined(REMILL_DISABLE_INT128)
 #define UClearV128(...) _ZeroVec<uint128_t, decltype(__VA_ARGS__)>()
+#endif
 
 #define SClearV8(...) _ZeroVec<int8_t, decltype(__VA_ARGS__)>()
 #define SClearV16(...) _ZeroVec<int16_t, decltype(__VA_ARGS__)>()
 #define SClearV32(...) _ZeroVec<int32_t, decltype(__VA_ARGS__)>()
 #define SClearV64(...) _ZeroVec<int64_t, decltype(__VA_ARGS__)>()
+
+#if !defined(REMILL_DISABLE_INT128)
 #define SClearV128(...) _ZeroVec<int128_t, decltype(__VA_ARGS__)>()
+#endif
 
 #define FClearV32(...) _ZeroVec<float32_t, decltype(__VA_ARGS__)>()
 #define FClearV64(...) _ZeroVec<float64_t, decltype(__VA_ARGS__)>()
@@ -1505,6 +1609,7 @@ ALWAYS_INLINE static T Select(bool cond, T if_true, T if_false) {
 #define UUndefined64 __remill_undefined_64
 
 
+#if !defined(REMILL_DISABLE_INT128)
 // TODO(pag): Assumes little-endian.
 ALWAYS_INLINE static uint128_t __remill_read_memory_128(Memory *mem,
                                                         addr_t addr) {
@@ -1522,6 +1627,7 @@ ALWAYS_INLINE static Memory *__remill_write_memory_128(Memory *mem, addr_t addr,
   mem = __remill_write_memory_64(mem, addr + 8, high_qword);
   return mem;
 }
+#endif
 
 // Issue #374: https://github.com/lifting-bits/remill/issues/374
 //

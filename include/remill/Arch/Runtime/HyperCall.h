@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <cstdint>
+#include "Int.h"
 
 class SyncHyperCall {
  public:

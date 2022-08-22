@@ -88,6 +88,10 @@ function(add_runtime target_name)
       set(state "${macro_parameter}")
       continue()
 
+    elseif("${macro_parameter}" STREQUAL "ARCH")
+      set(state "${macro_parameter}")
+      continue()
+
     elseif("${macro_parameter}" STREQUAL "DEPENDENCIES")
       set(state "${macro_parameter}")
       continue()
@@ -127,6 +131,9 @@ function(add_runtime target_name)
 
       set(install_destination "${macro_parameter}")
 
+    elseif("${state}" STREQUAL "ARCH")
+      set(arch "${macro_parameter}")
+
     elseif("${state}" STREQUAL "DEPENDENCIES")
       list(APPEND dependency_list "${macro_parameter}")
 
@@ -142,6 +149,10 @@ function(add_runtime target_name)
   if("${source_file_list}" STREQUAL "")
     message(SEND_ERROR "No source files specified.")
   endif()
+
+  # Append the hyper call function to the source list.
+  set(hyper_call_source "${REMILL_LIB_DIR}/Arch/Runtime/HyperCall.cpp")
+  list(APPEND source_file_list ${hyper_call_source})
 
   foreach(source_file ${source_file_list})
     get_filename_component(source_file_name "${source_file}" NAME)
@@ -164,9 +175,15 @@ function(add_runtime target_name)
       set(additional_windows_settings "-D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH")
     endif()
 
-  if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    set(target_decl "-target" "x86_64-apple-macosx11.0.0")
-  endif()
+    # The hyper call implementation contains inline assembly for each architecture so we'll need to
+    # cross-compile for the runtime architecture.
+    if(${source_file} STREQUAL ${hyper_call_source})
+      set(target_decl "-target" "${arch}-none-eabi")
+    elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+      set(target_decl "-target" "x86_64-apple-macosx11.0.0")
+    else()
+      unset(target_decl)
+    endif()
 
 
     add_custom_command(OUTPUT "${absolute_output_file_path}"
@@ -192,7 +209,7 @@ function(add_runtime target_name)
 
   add_custom_target("${target_name}" ALL DEPENDS "${absolute_target_path}")
   set_property(TARGET "${target_name}" PROPERTY LOCATION "${absolute_target_path}")
-  
+
   if(REMILL_ENABLE_INSTALL_TARGET)
     if(DEFINED install_destination)
       install(FILES "${absolute_target_path}" DESTINATION "${install_destination}")

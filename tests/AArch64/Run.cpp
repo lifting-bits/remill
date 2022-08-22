@@ -269,9 +269,6 @@ Memory *__remill_missing_block(State &, addr_t, Memory *memory) {
   return memory;
 }
 
-Memory *__remill_sync_hyper_call(State &, Memory *, SyncHyperCall::Name) {
-  abort();
-}
 // Read/write to I/O ports.
 uint8_t __remill_read_io_port_8(Memory *, addr_t) {
   abort();
@@ -403,6 +400,177 @@ bool __remill_compare_neq(bool result) {
   return result;
 }
 
+Memory *__remill_x86_set_segment_es(Memory *) {
+  abort();
+}
+
+Memory *__remill_x86_set_segment_ss(Memory *) {
+  abort();
+}
+
+Memory *__remill_x86_set_segment_ds(Memory *) {
+  abort();
+}
+
+Memory *__remill_x86_set_segment_fs(Memory *) {
+  abort();
+}
+
+Memory *__remill_x86_set_segment_gs(Memory *) {
+  abort();
+}
+
+Memory *__remill_x86_set_debug_reg(Memory *) {
+  abort();
+}
+
+Memory *__remill_x86_set_control_reg_0(Memory *) {
+  abort();
+}
+
+Memory *__remill_x86_set_control_reg_1(Memory *) {
+  abort();
+}
+
+Memory *__remill_x86_set_control_reg_2(Memory *) {
+  abort();
+}
+
+Memory *__remill_x86_set_control_reg_3(Memory *) {
+  abort();
+}
+
+Memory *__remill_x86_set_control_reg_4(Memory *) {
+  abort();
+}
+
+Memory *__remill_amd64_set_debug_reg(Memory *) {
+  abort();
+}
+
+Memory *__remill_amd64_set_control_reg_0(Memory *) {
+  abort();
+}
+
+Memory *__remill_amd64_set_control_reg_1(Memory *) {
+  abort();
+}
+
+Memory *__remill_amd64_set_control_reg_2(Memory *) {
+  abort();
+}
+
+Memory *__remill_amd64_set_control_reg_3(Memory *) {
+  abort();
+}
+
+Memory *__remill_amd64_set_control_reg_4(Memory *) {
+  abort();
+}
+
+Memory *__remill_amd64_set_control_reg_8(Memory *) {
+  abort();
+}
+
+Memory *__remill_aarch64_emulate_instruction(Memory *) {
+  abort();
+}
+
+Memory *__remill_aarch32_emulate_instruction(Memory *) {
+  abort();
+}
+
+Memory *__remill_aarch32_check_not_el2(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_set_asi_register(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_unimplemented_instruction(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_unhandled_dcti(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_window_underflow(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_a(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_n(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_ne(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_e(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_g(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_le(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_ge(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_l(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_gu(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_leu(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_cc(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_cs(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_pos(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_neg(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_vc(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc_trap_cond_vs(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc32_emulate_instruction(Memory *) {
+  abort();
+}
+
+Memory *__remill_sparc64_emulate_instruction(Memory *) {
+  abort();
+}
 
 // Marks `mem` as being used. This is used for making sure certain symbols are
 // kept around through optimization, and makes sure that optimization doesn't

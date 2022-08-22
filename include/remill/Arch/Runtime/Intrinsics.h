@@ -137,8 +137,16 @@ __remill_flag_computation_carry(bool result, ...);
 [[gnu::used]] extern Memory *__remill_async_hyper_call(State &, addr_t ret_addr,
                                                        Memory *);
 
-[[gnu::used]] extern Memory *__remill_sync_hyper_call(State &, Memory *,
-                                                      SyncHyperCall::Name);
+// This intrinsic must be tagged with the `always_inline` function attribute
+// since it has an implementation we want to use in Anvill's lifted IR.
+//
+// Without this attribute, the function will be be marked with `noinline` in
+// each architecture's runtime. During optimization, the intrinsic calls will
+// not be inlined. Then, when the lifted functions are moved to the target
+// module, the intrinsic implementation won't be moved across and will be lost,
+// leaving calls to it in the lifted IR.
+[[gnu::used, gnu::always_inline]] extern Memory *
+__remill_sync_hyper_call(State &, Memory *, SyncHyperCall::Name);
 
 // Memory barriers types:
 //  http://g.oswego.edu/dl/jmm/cookbook.html
@@ -196,9 +204,11 @@ __remill_compare_exchange_memory_32(Memory *, addr_t addr, uint32_t &expected,
 __remill_compare_exchange_memory_64(Memory *, addr_t addr, uint64_t &expected,
                                     uint64_t desired);
 
+#if !defined(REMILL_DISABLE_INT128)
 [[gnu::used]] extern Memory *
 __remill_compare_exchange_memory_128(Memory *, addr_t addr, uint128_t &expected,
                                      uint128_t &desired);
+#endif
 
 [[gnu::used]] extern Memory *__remill_fetch_and_add_8(Memory *, addr_t addr,
                                                       uint8_t &value);
@@ -302,5 +312,112 @@ __remill_write_io_port_16(Memory *, addr_t, uint16_t);
 
 [[gnu::used, gnu::const]] extern Memory *
 __remill_write_io_port_32(Memory *, addr_t, uint32_t);
+
+// More specific hyper calls.
+[[gnu::used, gnu::const]] extern Memory *__remill_x86_set_segment_es(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_x86_set_segment_ss(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_x86_set_segment_ds(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_x86_set_segment_fs(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_x86_set_segment_gs(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_x86_set_debug_reg(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_x86_set_control_reg_0(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_x86_set_control_reg_1(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_x86_set_control_reg_2(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_x86_set_control_reg_3(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_x86_set_control_reg_4(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_amd64_set_debug_reg(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_amd64_set_control_reg_0(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_amd64_set_control_reg_1(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_amd64_set_control_reg_2(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_amd64_set_control_reg_3(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_amd64_set_control_reg_4(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_amd64_set_control_reg_8(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_aarch64_emulate_instruction(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_aarch32_emulate_instruction(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_aarch32_check_not_el2(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_sparc_set_asi_register(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_sparc_unimplemented_instruction(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_sparc_unhandled_dcti(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_sparc_window_underflow(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_a(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_n(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_ne(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_e(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_g(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_le(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_ge(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_l(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_gu(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_leu(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_cc(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_cs(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_pos(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_neg(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_vc(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_sparc_trap_cond_vs(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_sparc32_emulate_instruction(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *
+__remill_sparc64_emulate_instruction(Memory *);
 
 }  // extern C

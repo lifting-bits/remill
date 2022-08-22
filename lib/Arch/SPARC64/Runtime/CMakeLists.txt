@@ -18,7 +18,7 @@ project(sparc64_runtime)
 set(SPARC64RUNTIME_SOURCEFILES
   Instructions.cpp
   BasicBlock.cpp
-  
+
   "${REMILL_LIB_DIR}/Arch/Runtime/Intrinsics.cpp"
 )
 
@@ -46,6 +46,7 @@ function(add_runtime_helper target_name little_endian)
     BCFLAGS "-std=${required_cpp_standard}" "${EXTRA_BC_FLAGS}"
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
+    ARCH sparc64
 
     DEPENDENCIES
     "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Float.h"
@@ -58,10 +59,10 @@ function(add_runtime_helper target_name little_endian)
 
     "${REMILL_INCLUDE_DIR}/remill/Arch/SPARC64/Runtime/State.h"
     "${REMILL_INCLUDE_DIR}/remill/Arch/SPARC64/Runtime/Types.h"
-    
+
     "${REMILL_LIB_DIR}/Arch/SPARC32/Semantics/FLAGS.cpp"
     "${REMILL_LIB_DIR}/Arch/SPARC32/Semantics/COND.cpp"
-    
+
     "${REMILL_LIB_DIR}/Arch/SPARC64/Semantics/ADDRESS.cpp"
     "${REMILL_LIB_DIR}/Arch/SPARC64/Semantics/BINARY.cpp"
     "${REMILL_LIB_DIR}/Arch/SPARC64/Semantics/BITBYTE.cpp"

@@ -18,7 +18,7 @@ project(sparc32_runtime)
 set(SPARC32RUNTIME_SOURCEFILES
   Instructions.cpp
   BasicBlock.cpp
-  
+
   "${REMILL_LIB_DIR}/Arch/Runtime/Intrinsics.cpp"
 )
 
@@ -49,10 +49,11 @@ function(add_runtime_helper target_name little_endian)
   add_runtime(${target_name}
     SOURCES ${SPARC32RUNTIME_SOURCEFILES}
     ADDRESS_SIZE 32
-    DEFINITIONS "LITTLE_ENDIAN=${little_endian}"
+    DEFINITIONS "LITTLE_ENDIAN=${little_endian}" "REMILL_DISABLE_INT128=1"
     BCFLAGS "${arch_flags}" "-std=${required_cpp_standard}" "${EXTRA_BC_FLAGS}"
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
+    ARCH sparc
 
     DEPENDENCIES
     "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Float.h"
@@ -76,7 +77,7 @@ function(add_runtime_helper target_name little_endian)
     "${REMILL_LIB_DIR}/Arch/SPARC32/Semantics/MISC.cpp"
     "${REMILL_LIB_DIR}/Arch/SPARC32/Semantics/TRAP.cpp"
     "${REMILL_LIB_DIR}/Arch/SPARC32/Semantics/WINDOW.cpp"
-    
+
     "${REMILL_LIB_DIR}/Arch/Runtime/Intrinsics.cpp"
   )
 endfunction()
