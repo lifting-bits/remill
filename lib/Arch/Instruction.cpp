@@ -793,7 +793,7 @@ std::string Instruction::Serialize(void) const {
   return ss.str();
 }
 
-const InstructionLifter::LifterPtr &Instruction::GetLifter() {
+const InstructionLifter::LifterPtr &Instruction::GetLifter() const {
   return this->lifter;
 }
 

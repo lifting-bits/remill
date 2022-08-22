@@ -67,6 +67,8 @@ class OperandLifter {
                                     std::string_view reg_name) const = 0;
 
   virtual llvm::Type *GetMemoryType() = 0;
+
+  virtual void ClearCache(void) const = 0;
 };
 
 // Wraps the process of lifting an instruction into a block. This resolves
@@ -108,7 +110,7 @@ class InstructionLifter : public OperandLifter {
                             std::string_view reg_name) const override final;
 
   // Clear out the cache of the current register values/addresses loaded.
-  void ClearCache(void) const;
+  void ClearCache(void) const override;
 
 
   virtual llvm::Type *GetMemoryType() override final;

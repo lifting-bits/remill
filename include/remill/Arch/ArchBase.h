@@ -17,6 +17,7 @@
 #pragma once
 
 #include <remill/Arch/Arch.h>
+#include <remill/Arch/Context.h>
 
 #include <memory>
 #include <unordered_map>
@@ -31,13 +32,9 @@ namespace remill {
 
 struct Register;
 
+
 // Internal base architecture for all Remill-internal architectures.
 class ArchBase : public remill::Arch {
- protected:
-  virtual bool ArchDecodeInstruction(uint64_t address,
-                                     std::string_view instr_bytes,
-                                     Instruction &inst) const = 0;
-
  public:
   using ArchPtr = std::unique_ptr<const Arch>;
 
@@ -73,12 +70,6 @@ class ArchBase : public remill::Arch {
 
   unsigned RegMdID(void) const final;
 
-  virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                                 Instruction &inst) const override;
-
-  OperandLifter::OpLifterPtr
-  DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
-
   // Get the state pointer and various other types from the `llvm::LLVMContext`
   // associated with `module`.
   //
@@ -113,5 +104,28 @@ class ArchBase : public remill::Arch {
   mutable std::unordered_map<std::string, const Register *> reg_by_name;
   mutable std::unique_ptr<IntrinsicTable> instrinsics{nullptr};
 };
+
+class DefaultContextAndLifter : virtual public remill::ArchBase {
+ public:
+  virtual DecodingContext CreateInitialContext(void) const override;
+
+  virtual std::optional<DecodingContext::ContextMap>
+  DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                    Instruction &inst, DecodingContext context) const override;
+
+
+  OperandLifter::OpLifterPtr
+  DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
+
+
+  DefaultContextAndLifter(llvm::LLVMContext *context_, OSName os_name_,
+                          ArchName arch_name_);
+
+ protected:
+  virtual bool ArchDecodeInstruction(uint64_t address,
+                                     std::string_view instr_bytes,
+                                     Instruction &inst) const = 0;
+};
+
 
 }  // namespace remill

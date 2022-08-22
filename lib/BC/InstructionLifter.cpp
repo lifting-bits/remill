@@ -87,7 +87,6 @@ LiftStatus InstructionLifter::LiftIntoBlock(Instruction &arch_inst,
                                             llvm::BasicBlock *block,
                                             llvm::Value *state_ptr,
                                             bool is_delayed) {
-  LOG(INFO) << "In instructionlifter";
   llvm::Function *const func = block->getParent();
   llvm::Module *const module = func->getParent();
   llvm::Function *isel_func = nullptr;
@@ -251,10 +250,18 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
     return reg_ptr_it->second;
   }
 
+
+  auto reg = impl->arch->RegisterByName(reg_name_);
+
   // It's already a variable in the function.
   const auto [var_ptr, var_ptr_type] = FindVarInFunction(func, reg_name_, true);
   if (var_ptr) {
-    reg_ptr_it->second = {var_ptr, var_ptr_type};
+    auto ty = var_ptr_type;
+    //NOTE(Ian) for stuff like NEXT_PC existing in the block we arent going to have reg type info, im not sure i like pulling it from var_ptr_type regardles. Not sure what to do about it
+    if (reg) {
+      ty = reg->type;
+    }
+    reg_ptr_it->second = {var_ptr, ty};
     return reg_ptr_it->second;
   }
 
@@ -262,7 +269,7 @@ InstructionLifter::LoadRegAddress(llvm::BasicBlock *block,
   // right now. We'll try to be careful about the placement of the actual
   // indexing instructions so that they always follow the definition of the
   // state pointer, and thus are most likely to dominate all future uses.
-  if (auto reg = impl->arch->RegisterByName(reg_name_)) {
+  if (reg) {
     llvm::Value *reg_ptr = nullptr;
 
     // The state pointer is an argument.

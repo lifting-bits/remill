@@ -780,7 +780,7 @@ static void DecodeOperand(Instruction &inst, const xed_decoded_inst_t *xedd,
   }
 }
 
-class X86Arch final : public X86ArchBase {
+class X86Arch final : public X86ArchBase, public DefaultContextAndLifter {
  public:
   X86Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
 
@@ -798,7 +798,8 @@ class X86Arch final : public X86ArchBase {
 X86Arch::X86Arch(llvm::LLVMContext *context_, OSName os_name_,
                  ArchName arch_name_)
     : ArchBase(context_, os_name_, arch_name_),
-      X86ArchBase(context_, os_name_, arch_name_) {
+      X86ArchBase(context_, os_name_, arch_name_),
+      DefaultContextAndLifter(context_, os_name_, arch_name_) {
 
   static bool xed_is_initialized = false;
   if (!xed_is_initialized) {

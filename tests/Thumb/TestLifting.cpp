@@ -232,3 +232,25 @@ TEST(ThumbRandomizedLifts, RelPcTest) {
   TestSpecRunner runner(context);
   runner.RunTestSpec(spec);
 }
+
+TEST(RegressionTests, AARCH64RegSize) {
+  llvm::LLVMContext context;
+  context.enableOpaquePointers();
+  auto arch = remill::Arch::Build(&context, remill::OSName::kOSLinux,
+                                  remill::ArchName::kArchAArch64LittleEndian);
+  auto sems = remill::LoadArchSemantics(arch.get());
+  remill::IntrinsicTable instrinsics(sems.get());
+  auto op_lifter = arch->DefaultLifter(instrinsics);
+  auto target_lift = arch->DefineLiftedFunction("test_lift", sems.get());
+  auto st_ptr = remill::LoadStatePointer(target_lift);
+  CHECK_NOTNULL(st_ptr);
+  auto lifted =
+      op_lifter->LoadRegValue(&target_lift->getEntryBlock(), st_ptr, "W0");
+
+  CHECK_EQ(lifted->getType()->getIntegerBitWidth(), 32);
+  op_lifter->ClearCache();
+  auto lifted2 =
+      op_lifter->LoadRegValue(&target_lift->getEntryBlock(), st_ptr, "W0");
+
+  CHECK_EQ(lifted2->getType()->getIntegerBitWidth(), 32);
+}

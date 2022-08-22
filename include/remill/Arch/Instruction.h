@@ -352,7 +352,7 @@ class Instruction {
   Operand &EmplaceOperand(const Operand::Address &op);
 
 
-  const InstructionLifter::LifterPtr &GetLifter();
+  const InstructionLifter::LifterPtr &GetLifter() const;
 
   void SetLifter(InstructionLifter::LifterPtr lifter);
 

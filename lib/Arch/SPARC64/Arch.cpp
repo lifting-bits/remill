@@ -38,10 +38,11 @@ static const std::string_view kSPRegName = "sp";
 static const std::string_view kPCRegName = "pc";
 }  // namespace
 
-class SPARC64Arch final : public ArchBase {
+class SPARC64Arch final : public DefaultContextAndLifter {
  public:
   SPARC64Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_)
-      : ArchBase(context_, os_name_, arch_name_) {}
+      : ArchBase(context_, os_name_, arch_name_),
+        DefaultContextAndLifter(context_, os_name_, arch_name_) {}
 
   virtual ~SPARC64Arch(void) = default;
 
