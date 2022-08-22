@@ -137,6 +137,14 @@ __remill_flag_computation_carry(bool result, ...);
 [[gnu::used]] extern Memory *__remill_async_hyper_call(State &, addr_t ret_addr,
                                                        Memory *);
 
+// This intrinsic must be tagged with the `always_inline` function attribute
+// since it has an implementation we want to use in Anvill's lifted IR.
+//
+// Without this attribute, the function will be be marked with `noinline` in
+// each architecture's runtime. During optimization, the intrinsic calls will
+// not be inlined. Then, when the lifted functions are moved to the target
+// module, the intrinsic implementation won't be moved across and will be lost,
+// leaving calls to it in the lifted IR.
 [[gnu::used, gnu::always_inline]] extern Memory *
 __remill_sync_hyper_call(State &, Memory *, SyncHyperCall::Name);
 
