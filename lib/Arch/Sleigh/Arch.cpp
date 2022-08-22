@@ -375,7 +375,7 @@ SleighDecoder::DecodeInstruction(uint64_t address, std::string_view instr_bytes,
 
   if (const_cast<SleighDecoder *>(this)->DecodeInstructionImpl(
           address, instr_bytes, inst)) {
-    return [this, context = std::move(context)](uint64_t) -> DecodingContext {
+    return [context = std::move(context)](uint64_t) -> DecodingContext {
       return context;
     };
   }
@@ -390,7 +390,7 @@ SleighDecoder::SleighDecoder(const remill::Arch &arch_,
     : sleigh_ctx(sla_name, pspec_name),
       sla_name(sla_name),
       pspec_name(pspec_name),
-      lifter(std::make_shared<remill::SleighLifter>(arch_, this, intrinsics)),
+      lifter(std::make_shared<remill::SleighLifter>(arch_, *this, intrinsics)),
       arch(arch_) {}
 
 bool SleighDecoder::DecodeInstructionImpl(uint64_t address,

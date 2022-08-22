@@ -15,16 +15,17 @@ namespace remill {
 
 
 // TODO(pag): Eventually handle Thumb2 and unaligned addresses.
-uint64_t AArch32ArchBase::MinInstructionAlign(void) const {
+uint64_t AArch32ArchBase::MinInstructionAlign(const DecodingContext &) const {
   return 4;
 }
 
-uint64_t AArch32ArchBase::MinInstructionSize(void) const {
+uint64_t AArch32ArchBase::MinInstructionSize(const DecodingContext &) const {
   return 4;
 }
 
 // Maximum number of bytes in an instruction for this particular architecture.
-uint64_t AArch32ArchBase::MaxInstructionSize(bool) const {
+uint64_t AArch32ArchBase::MaxInstructionSize(const DecodingContext &,
+                                             bool) const {
   return 4;
 }
 

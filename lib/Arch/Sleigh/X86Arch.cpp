@@ -34,6 +34,7 @@ namespace sleigh::x86 {
 
 class SleighX86Decoder final : public SleighDecoder {
  public:
+  SleighX86Decoder() = delete;
   SleighX86Decoder(const remill::Arch &arch,
                    const remill::IntrinsicTable &intrinsics)
       : SleighDecoder(
@@ -48,7 +49,33 @@ class SleighX86Decoder final : public SleighDecoder {
 };
 
 
-class SleighX86Arch : public X86ArchBase {};
+class SleighX86Arch : public X86ArchBase {
+ public:
+  SleighX86Arch(llvm::LLVMContext *context_, OSName os_name_,
+                ArchName arch_name_)
+      : ArchBase(context_, os_name_, arch_name_),
+        X86ArchBase(context_, os_name_, arch_name_),
+        // This doesnt actually work...
+        decoder(*this, *this->GetInstrinsicTable()) {}
+
+  virtual DecodingContext CreateInitialContext(void) const override {
+    return DecodingContext();
+  }
+
+  virtual OperandLifter::OpLifterPtr
+  DefaultLifter(const remill::IntrinsicTable &intrinsics) const override {
+    return this->decoder.GetLifter();
+  }
+
+  virtual DecodingResult
+  DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                    Instruction &inst, DecodingContext context) const override {
+    return decoder.DecodeInstruction(address, instr_bytes, inst, context);
+  }
+
+ private:
+  SleighX86Decoder decoder;
+};
 
 }  // namespace sleigh::x86
 Arch::ArchPtr Arch::GetSleighX86(llvm::LLVMContext *context_, OSName os_name_,

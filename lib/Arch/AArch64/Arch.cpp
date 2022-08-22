@@ -124,9 +124,10 @@ class AArch64Arch final : public DefaultContextAndLifter {
                              Instruction &inst) const final;
 
   // Align/Minimum/Maximum number of bytes in an instruction.
-  uint64_t MinInstructionAlign(void) const final;
-  uint64_t MinInstructionSize(void) const final;
-  uint64_t MaxInstructionSize(bool permit_fuse_idioms) const final;
+  uint64_t MinInstructionAlign(const DecodingContext &) const final;
+  uint64_t MinInstructionSize(const DecodingContext &) const final;
+  uint64_t MaxInstructionSize(const DecodingContext &,
+                              bool permit_fuse_idioms) const final;
 
   llvm::Triple Triple(void) const final;
   llvm::DataLayout DataLayout(void) const final;
@@ -492,16 +493,16 @@ void AArch64Arch::FinishLiftedFunctionInitialization(
 }
 
 // TODO(pag): Eventually handle Thumb2 and unaligned addresses.
-uint64_t AArch64Arch::MinInstructionAlign(void) const {
+uint64_t AArch64Arch::MinInstructionAlign(const DecodingContext &) const {
   return 4;
 }
 
-uint64_t AArch64Arch::MinInstructionSize(void) const {
+uint64_t AArch64Arch::MinInstructionSize(const DecodingContext &) const {
   return 4;
 }
 
 // Maximum number of bytes in an instruction for this particular architecture.
-uint64_t AArch64Arch::MaxInstructionSize(bool) const {
+uint64_t AArch64Arch::MaxInstructionSize(const DecodingContext &, bool) const {
   return 4;
 }
 

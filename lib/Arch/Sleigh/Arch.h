@@ -190,6 +190,7 @@ class SingleInstructionSleighContext {
 
 class SleighDecoder {
  public:
+  SleighDecoder() = delete;
   SleighDecoder(const remill::Arch &arch,
                 const remill::IntrinsicTable &intrinsics, std::string sla_name,
                 std::string pspec_name);
@@ -204,6 +205,9 @@ class SleighDecoder {
   Arch::DecodingResult
   DecodeInstruction(uint64_t address, std::string_view instr_bytes,
                     Instruction &inst, DecodingContext context) const;
+
+
+  std::shared_ptr<remill::SleighLifter> GetLifter() const;
 
  protected:
   bool DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,

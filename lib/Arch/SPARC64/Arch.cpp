@@ -56,16 +56,17 @@ class SPARC64Arch final : public DefaultContextAndLifter {
     return kPCRegName;
   }
 
-  uint64_t MinInstructionAlign(void) const final {
+  uint64_t MinInstructionAlign(const DecodingContext &) const final {
     return 4;
   }
 
-  uint64_t MinInstructionSize(void) const final {
+  uint64_t MinInstructionSize(const DecodingContext &) const final {
     return 4;
   }
 
   // Maximum number of bytes in an instruction.
-  uint64_t MaxInstructionSize(bool permit_fuse_idioms) const final {
+  uint64_t MaxInstructionSize(const DecodingContext &,
+                              bool permit_fuse_idioms) const final {
     return permit_fuse_idioms ? 8 : 4;  // To handle `SET` idioms.
   }
 

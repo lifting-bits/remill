@@ -11,34 +11,37 @@
 
 #include <string>
 namespace remill {
-/// Class to derive from to handle x86 addregs
+
 class AArch32ArchBase : public virtual ArchBase {
  public:
   AArch32ArchBase(llvm::LLVMContext *context_, OSName os_name_,
                   ArchName arch_name_)
       : ArchBase(context_, os_name_, arch_name_) {}
 
-  virtual std::string_view StackPointerRegisterName(void) const;
+  virtual std::string_view StackPointerRegisterName(void) const override;
 
-  std::string_view ProgramCounterRegisterName(void) const;
-  uint64_t MinInstructionAlign(void) const;
+  std::string_view ProgramCounterRegisterName(void) const override;
 
-
-  uint64_t MinInstructionSize(void) const;
-
-  uint64_t MaxInstructionSize(bool) const;
-  llvm::CallingConv::ID DefaultCallingConv(void) const;
-
-  llvm::DataLayout DataLayout(void) const;
-
-  llvm::Triple Triple(void) const;
+  uint64_t MinInstructionAlign(const DecodingContext &) const override;
 
 
-  void PopulateRegisterTable(void) const;
+  uint64_t MinInstructionSize(const DecodingContext &) const override;
+
+  uint64_t MaxInstructionSize(const DecodingContext &, bool) const override;
+
+  llvm::CallingConv::ID DefaultCallingConv(void) const override;
+
+  llvm::DataLayout DataLayout(void) const override;
+
+  llvm::Triple Triple(void) const override;
+
+
+  void PopulateRegisterTable(void) const override;
   // Populate a just-initialized lifted function function with architecture-
   // specific variables.
-  void FinishLiftedFunctionInitialization(llvm::Module *module,
-                                          llvm::Function *bb_func) const;
+  void
+  FinishLiftedFunctionInitialization(llvm::Module *module,
+                                     llvm::Function *bb_func) const override;
   virtual ~AArch32ArchBase(void) = default;
 };
 }  // namespace remill
