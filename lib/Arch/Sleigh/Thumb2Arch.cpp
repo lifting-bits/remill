@@ -24,23 +24,21 @@
 #include <remill/OS/OS.h>
 
 #include "Arch.h"
+#include "Thumb.h"
 
 namespace remill {
 namespace sleighthumb2 {
 
 
 //ARM7_le.sla"
-class SleighThumb2Decoder final : public remill::sleigh::SleighDecoder {
- public:
-  SleighThumb2Decoder(const remill::Arch &arch)
-      : SleighDecoder(arch, "ARM7_le.sla", "ARMtTHUMB.pspec") {}
+SleighThumb2Decoder::SleighThumb2Decoder(const remill::Arch &arch)
+    : SleighDecoder(arch, "ARM7_le.sla", "ARMtTHUMB.pspec") {}
 
 
-  void InitializeSleighContext(
-      remill::sleigh::SingleInstructionSleighContext &ctxt) const final {
-    ctxt.GetContext().setVariableDefault("TMode", 1);
-  }
-};
+void SleighThumb2Decoder::InitializeSleighContext(
+    remill::sleigh::SingleInstructionSleighContext &ctxt) const {
+  ctxt.GetContext().setVariableDefault("TMode", 1);
+}
 
 //TODO(Ian): this has code duplication with SleighX86Arch couldnt come up with a way to share implementation and not run into more
 // annoying virtual inheretance from remill Arch. If we go back to virtual Arch then maybe we could just add another virtual inheratance of
@@ -68,6 +66,22 @@ class SleighThumbArch : public AArch32ArchBase {
                     Instruction &inst, DecodingContext context) const override {
     return decoder.DecodeInstruction(address, instr_bytes, inst, context);
   }
+
+
+  // TODO(pag): Eventually handle Thumb2 and unaligned addresses.
+  uint64_t MinInstructionAlign(const DecodingContext &) const override {
+    return 2;
+  }
+
+  uint64_t MinInstructionSize(const DecodingContext &) const override {
+    return 2;
+  }
+
+  // Maximum number of bytes in an instruction for this particular architecture.
+  uint64_t MaxInstructionSize(const DecodingContext &, bool) const override {
+    return 4;
+  }
+
 
  private:
   SleighThumb2Decoder decoder;

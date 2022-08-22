@@ -15,13 +15,16 @@
  */
 
 #include <glog/logging.h>
+#include <remill/Arch/AArch32/ArchContext.h>
 #include <remill/Arch/Name.h>
 #include <remill/BC/ABI.h>
 
 #include <optional>
 
 #include "../BitManipulation.h"
+#include "../Sleigh/Thumb.h"
 #include "Arch.h"
+
 
 namespace remill {
 
@@ -3653,11 +3656,15 @@ static uint32_t BytesToBits(const uint8_t *bytes) {
 }
 }  // namespace
 
-// Decode an instruction
-bool AArch32Arch::ArchDecodeInstruction(uint64_t address,
-                                        std::string_view inst_bytes,
-                                        Instruction &inst) const {
 
+DecodingContext AArch32Arch::CreateInitialContext(void) const {
+  return DecodingContext();
+}
+
+std::optional<DecodingContext::ContextMap>
+AArch32Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
+                               Instruction &inst,
+                               DecodingContext context) const {
   inst.pc = address;
   inst.next_pc = address + inst_bytes.size();  // Default fall-through.
   inst.branch_taken_pc = 0;
@@ -3665,14 +3672,34 @@ bool AArch32Arch::ArchDecodeInstruction(uint64_t address,
   inst.has_branch_taken_delay_slot = false;
   inst.has_branch_not_taken_delay_slot = false;
   inst.arch_name = arch_name;
-  inst.sub_arch_name = arch_name;  // TODO(pag): Thumb.
+  inst.sub_arch_name = arch_name;
   inst.branch_taken_arch_name = arch_name;
   inst.arch = this;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();
 
+  if (context.GetContextValue(kThumbModeRegName)) {
+    return this->DecodeThumb(address, inst_bytes, inst, std::move(context));
+  } else {
+    return this->DecodeAArch32(address, inst_bytes, inst, std::move(context));
+  }
+}
+
+
+OperandLifter::OpLifterPtr AArch32Arch::DefaultLifter(
+    const remill::IntrinsicTable &intrinsics_table) const {
+  return std::make_shared<InstructionLifter>(this, intrinsics_table);
+}
+
+std::optional<DecodingContext::ContextMap>
+AArch32Arch::DecodeAArch32(uint64_t address, std::string_view inst_bytes,
+                           Instruction &inst, DecodingContext context) const {
+
+  inst.SetLifter(
+      std::make_shared<InstructionLifter>(this, this->instrinsics.get()));
+
   if (4ull > inst_bytes.size()) {
-    return false;
+    return std::nullopt;
   }
 
   if (!inst.bytes.empty() && inst.bytes.data() == inst_bytes.data()) {
@@ -3682,7 +3709,7 @@ bool AArch32Arch::ArchDecodeInstruction(uint64_t address,
   }
 
   if (address & 0b1u) {
-    return false;
+    return std::nullopt;
   }
 
   const auto bytes = reinterpret_cast<const uint8_t *>(inst.bytes.data());
@@ -3691,13 +3718,18 @@ bool AArch32Arch::ArchDecodeInstruction(uint64_t address,
   auto decoder = TryDecodeTopLevelEncodings(bits);
   if (!decoder) {
     LOG(ERROR) << "unhandled bits " << std::hex << bits << std::dec;
-    return false;
+    return std::nullopt;
   }
 
   auto ret = decoder(inst, bits);
 
   //  LOG(ERROR) << inst.Serialize();
-  return ret;
+  if (!ret) {
+    return std::nullopt;
+  }
+
+
+  return DecodingContext::UniformContextMapping(DecodingContext());
 }
 
 }  // namespace remill

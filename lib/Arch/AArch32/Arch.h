@@ -18,19 +18,39 @@
 
 #include <remill/Arch/AArch32/AArch32Base.h>
 
+#include "../Sleigh/Thumb.h"
+
 namespace remill {
-class AArch32Arch final : public AArch32ArchBase,
-                          public DefaultContextAndLifter {
+class AArch32Arch final : public AArch32ArchBase {
  public:
   AArch32Arch(llvm::LLVMContext *context_, OSName os_name_,
               ArchName arch_name_);
 
   virtual ~AArch32Arch(void);
 
-  bool ArchDecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                             Instruction &inst) const override;
+
+  virtual DecodingContext CreateInitialContext(void) const override;
+
+  virtual std::optional<DecodingContext::ContextMap>
+  DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                    Instruction &inst, DecodingContext context) const override;
+
+
+  OperandLifter::OpLifterPtr
+  DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
 
  private:
+  sleighthumb2::SleighThumb2Decoder thumb_decoder;
+  std::optional<DecodingContext::ContextMap>
+  DecodeAArch32(uint64_t address, std::string_view instr_bytes,
+                Instruction &inst, DecodingContext context) const;
+
+
+  std::optional<DecodingContext::ContextMap>
+  DecodeThumb(uint64_t address, std::string_view instr_bytes, Instruction &inst,
+              DecodingContext context) const;
+
+
   AArch32Arch(void) = delete;
 };
 

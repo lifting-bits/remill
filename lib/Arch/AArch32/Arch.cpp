@@ -51,7 +51,7 @@ AArch32Arch::AArch32Arch(llvm::LLVMContext *context_, OSName os_name_,
                          ArchName arch_name_)
     : ArchBase(context_, os_name_, arch_name_),
       AArch32ArchBase(context_, os_name_, arch_name_),
-      DefaultContextAndLifter(context_, os_name_, arch_name_) {}
+      thumb_decoder(*this) {}
 
 AArch32Arch::~AArch32Arch(void) {}
 
@@ -61,5 +61,13 @@ Arch::ArchPtr Arch::GetAArch32(llvm::LLVMContext *context_, OSName os_name_,
                                ArchName arch_name_) {
   return std::make_unique<AArch32Arch>(context_, os_name_, arch_name_);
 }
+
+std::optional<DecodingContext::ContextMap>
+AArch32Arch::DecodeThumb(uint64_t address, std::string_view instr_bytes,
+                         Instruction &inst, DecodingContext context) const {
+  return this->thumb_decoder.DecodeInstruction(address, instr_bytes, inst,
+                                               context);
+}
+
 
 }  // namespace remill

@@ -53,7 +53,6 @@ class SleighX86Arch : public X86ArchBase {
                 ArchName arch_name_)
       : ArchBase(context_, os_name_, arch_name_),
         X86ArchBase(context_, os_name_, arch_name_),
-        // This doesnt actually work...
         decoder(*this) {}
 
   virtual DecodingContext CreateInitialContext(void) const override {

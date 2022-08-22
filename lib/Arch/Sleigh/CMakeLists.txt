@@ -31,6 +31,7 @@ add_library(remill_arch_sleigh STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/Runtime/Types.h"
 
   Arch.h
+  Thumb.h
   Arch.cpp
   X86Arch.cpp
   Thumb2Arch.cpp
