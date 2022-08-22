@@ -32,22 +32,24 @@
 namespace remill {
 namespace sleigh::x86 {
 
-class SleighX86Arch final : public SleighArch, public remill::X86ArchBase {
+class SleighX86Decoder final : public SleighDecoder {
  public:
-  SleighX86Arch(llvm::LLVMContext *context_, OSName os_name_,
-                ArchName arch_name_)
-      : ArchBase(context_, os_name_, arch_name_),
-        SleighArch(
-            context_, os_name_, arch_name_,
-            kArchX86_SLEIGH == arch_name_ ? "x86.sla" : "x86-64.sla",
-            kArchX86_SLEIGH == arch_name_ ? "x86.pspec" : "x86-64.pspec"),
-        X86ArchBase(context_, os_name_, arch_name_) {}
+  SleighX86Decoder(const remill::Arch &arch,
+                   const remill::IntrinsicTable &intrinsics)
+      : SleighDecoder(
+            arch, intrinsics,
+            kArchX86_SLEIGH == arch.arch_name ? "x86.sla" : "x86-64.sla",
+            kArchX86_SLEIGH == arch.arch_name ? "x86.pspec" : "x86-64.pspec") {}
 
-  virtual ~SleighX86Arch(void) = default;
+  virtual ~SleighX86Decoder(void) = default;
 
   void InitializeSleighContext(
       remill::sleigh::SingleInstructionSleighContext &ctxt) const override {}
 };
+
+
+class SleighX86Arch : public X86ArchBase {};
+
 }  // namespace sleigh::x86
 Arch::ArchPtr Arch::GetSleighX86(llvm::LLVMContext *context_, OSName os_name_,
                                  ArchName arch_name_) {

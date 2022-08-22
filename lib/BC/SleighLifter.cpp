@@ -1210,13 +1210,14 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
          }},
 };
 
-SleighLifter::SleighLifter(const sleigh::SleighArch *arch_,
+SleighLifter::SleighLifter(const remill::Arch &arch_,
+                           const remill::sleigh::SleighDecoder &dec_,
                            const IntrinsicTable &intrinsics_)
-    : InstructionLifter(arch_, intrinsics_),
+    : InstructionLifter(&arch_, intrinsics_),
       sleigh_context(new sleigh::SingleInstructionSleighContext(
-          arch_->GetSLAName(), arch_->GetPSpec())),
-      arch(arch_) {
-  arch_->InitializeSleighContext(*sleigh_context);
+          dec_.GetSLAName(), dec_.GetPSpec())),
+      decoder(dec_) {
+  this->decoder.InitializeSleighContext(*sleigh_context);
 }
 
 
@@ -1271,7 +1272,7 @@ SleighLifter::LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
   //TODO(Ian): make a safe to use sleighinstruction context that wraps a context with an arch to preform reset reinits
 
   this->sleigh_context->resetContext();
-  this->arch->InitializeSleighContext(*this->sleigh_context);
+  this->decoder.InitializeSleighContext(*this->sleigh_context);
   sleigh_context->oneInstruction(inst.pc, lifter, inst.bytes);
 
 

@@ -29,7 +29,7 @@ class Sleigh;
 
 namespace remill {
 namespace sleigh {
-class SleighArch;
+class SleighDecoder;
 class SingleInstructionSleighContext;
 }  // namespace sleigh
 
@@ -39,13 +39,15 @@ class SleighLifter : public InstructionLifter {
 
   std::unique_ptr<sleigh::SingleInstructionSleighContext> sleigh_context;
   // Architecture being used for lifting.
-  const sleigh::SleighArch *const arch;
+  // Decoder being used for disassembly
 
+  const sleigh::SleighDecoder &decoder;
 
  public:
   static const std::string_view kInstructionFunctionPrefix;
 
-  SleighLifter(const sleigh::SleighArch *arch_,
+  SleighLifter(const remill::Arch &arch_,
+               const remill::sleigh::SleighDecoder &dec_,
                const IntrinsicTable &intrinsics_);
 
   virtual ~SleighLifter(void) = default;

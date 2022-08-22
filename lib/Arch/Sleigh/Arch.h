@@ -17,6 +17,7 @@
 #pragma once
 
 #include <remill/Arch/ArchBase.h>
+#include <remill/BC/SleighLifter.h>
 
 #include <sleigh/libsleigh.hh>
 
@@ -150,12 +151,10 @@ class CustomLoadImage final : public LoadImage {
   uint64_t current_offset{0};
 };
 
-class SleighArch;
 // Holds onto contextual sleigh information in order to provide an interface with which you can decode single instructions
 // Give me bytes and i give you pcode (maybe)
 class SingleInstructionSleighContext {
  private:
-  friend class SleighArch;
   CustomLoadImage image;
   ContextInternal ctx;
   ::Sleigh engine;
@@ -189,38 +188,34 @@ class SingleInstructionSleighContext {
   std::vector<std::string> getUserOpNames();
 };
 
-class SleighArch : virtual public ArchBase {
+class SleighDecoder {
  public:
-  SleighArch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_,
-             std::string sla_name, std::string pspec_name);
-
-
- public:
-  OperandLifter::OpLifterPtr
-  DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
-
-
-  virtual DecodingContext CreateInitialContext(void) const override;
-
-  virtual std::optional<DecodingContext::ContextMap>
-  DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                    Instruction &inst, DecodingContext context) const override;
-
-
-  // Arch specific preperation
-  virtual void
-  InitializeSleighContext(SingleInstructionSleighContext &) const = 0;
-
+  SleighDecoder(const remill::Arch &arch,
+                const remill::IntrinsicTable &intrinsics, std::string sla_name,
+                std::string pspec_name);
   std::string GetSLAName() const;
 
   std::string GetPSpec() const;
+  // Decoder specific prep
+  virtual void
+  InitializeSleighContext(SingleInstructionSleighContext &) const = 0;
+
+
+  Arch::DecodingResult
+  DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                    Instruction &inst, DecodingContext context) const;
 
  protected:
   bool DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,
                              Instruction &inst);
 
+
   SingleInstructionSleighContext sleigh_ctx;
   std::string sla_name;
   std::string pspec_name;
+
+ private:
+  std::shared_ptr<remill::SleighLifter> lifter;
+  const remill::Arch &arch;
 };
 }  // namespace remill::sleigh

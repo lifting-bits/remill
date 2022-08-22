@@ -366,18 +366,17 @@ std::string CustomLoadImage::getArchType(void) const {
 void CustomLoadImage::adjustVma(long) {}
 
 
-SleighArch::DecodingResult
-SleighArch::DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                              Instruction &inst,
-                              DecodingContext context) const {
-  inst.SetLifter(
-      std::make_shared<SleighLifter>(this, *this->GetInstrinsicTable()));
+Arch::DecodingResult
+SleighDecoder::DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                                 Instruction &inst,
+                                 DecodingContext context) const {
+  inst.SetLifter(this->lifter);
   assert(inst.GetLifter() != nullptr);
 
-  if (const_cast<SleighArch *>(this)->DecodeInstructionImpl(
+  if (const_cast<SleighDecoder *>(this)->DecodeInstructionImpl(
           address, instr_bytes, inst)) {
-    return [this](uint64_t) -> DecodingContext {
-      return this->CreateInitialContext();
+    return [this, context = std::move(context)](uint64_t) -> DecodingContext {
+      return context;
     };
   }
 
@@ -385,22 +384,18 @@ SleighArch::DecodeInstruction(uint64_t address, std::string_view instr_bytes,
 }
 
 
-DecodingContext SleighArch::CreateInitialContext(void) const {
-  return DecodingContext();
-}
-
-
-SleighArch::SleighArch(llvm::LLVMContext *context_, OSName os_name_,
-                       ArchName arch_name_, std::string sla_name,
-                       std::string pspec_name)
-    : ArchBase(context_, os_name_, arch_name_),
-      sleigh_ctx(sla_name, pspec_name),
+SleighDecoder::SleighDecoder(const remill::Arch &arch_,
+                             const IntrinsicTable &intrinsics,
+                             std::string sla_name, std::string pspec_name)
+    : sleigh_ctx(sla_name, pspec_name),
       sla_name(sla_name),
-      pspec_name(pspec_name) {}
+      pspec_name(pspec_name),
+      lifter(std::make_shared<remill::SleighLifter>(arch_, this, intrinsics)),
+      arch(arch_) {}
 
-bool SleighArch::DecodeInstructionImpl(uint64_t address,
-                                       std::string_view instr_bytes,
-                                       Instruction &inst) {
+bool SleighDecoder::DecodeInstructionImpl(uint64_t address,
+                                          std::string_view instr_bytes,
+                                          Instruction &inst) {
 
   // The SLEIGH engine will query this image when we try to decode an instruction. Append the bytes so SLEIGH has data to read.
 
@@ -413,10 +408,10 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
   LOG(INFO) << "Provided insn size: " << instr_bytes.size();
 
   inst.Reset();
-  inst.arch = this;
+  inst.arch = &this->arch;
   inst.bytes = instr_bytes;
-  inst.arch_name = arch_name;
-  inst.sub_arch_name = arch_name;
+  inst.arch_name = this->arch.arch_name;
+  inst.sub_arch_name = this->arch.arch_name;
   inst.branch_taken_arch_name = ArchName::kArchInvalid;
   inst.pc = address;
   inst.category = Instruction::kCategoryInvalid;
@@ -443,12 +438,12 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
 }
 
 
-std::string SleighArch::GetSLAName() const {
+std::string SleighDecoder::GetSLAName() const {
   return this->sla_name;
 }
 
 
-std::string SleighArch::GetPSpec() const {
+std::string SleighDecoder::GetPSpec() const {
   return this->pspec_name;
 }
 
@@ -516,12 +511,6 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
         return this->engine.printAssembly(handler, addr);
       },
       instr_bytes);
-}
-
-
-OperandLifter::OpLifterPtr
-SleighArch::DefaultLifter(const remill::IntrinsicTable &intrinsics) const {
-  return std::make_unique<SleighLifter>(this, intrinsics);
 }
 
 }  // namespace remill::sleigh

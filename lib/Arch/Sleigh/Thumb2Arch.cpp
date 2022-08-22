@@ -29,49 +29,19 @@ namespace remill {
 namespace sleighthumb2 {
 
 //ARM7_le.sla"
-class SleighThumb2Arch final : public remill::sleigh::SleighArch,
-                               public remill::AArch32ArchBase {
+class SleighThumb2Decoder final : public remill::sleigh::SleighDecoder {
  public:
-  SleighThumb2Arch(llvm::LLVMContext *context_, OSName os_name_,
-                   ArchName arch_name_)
-      : ArchBase(context_, os_name_, arch_name_),
-        SleighArch(context_, os_name_, arch_name_, "ARM7_le.sla",
-                   "ARMtTHUMB.pspec"),
-        AArch32ArchBase(context_, os_name_, arch_name_) {}
+  SleighThumb2Decoder(const remill::Arch &arch,
+                      const remill::IntrinsicTable &intrinsics)
+      : SleighDecoder(arch, intrinsics, "ARM7_le.sla", "ARMtTHUMB.pspec") {}
 
-
-  uint64_t MaxInstructionSize(bool permit_fuse_idioms) const final {
-    return 4;
-  }
-
-  uint64_t MinInstructionSize(void) const final {
-    return 2;
-  }
-
-  uint64_t MinInstructionAlign(void) const final {
-    return 2;
-  }
 
   void InitializeSleighContext(
       remill::sleigh::SingleInstructionSleighContext &ctxt) const final {
     ctxt.GetContext().setVariableDefault("TMode", 1);
   }
-
-  llvm::Triple Triple(void) const final {
-    auto triple = BasicTriple();
-    triple.setArch(llvm::Triple::thumb);
-    triple.setOS(llvm::Triple::OSType::Linux);
-    triple.setVendor(llvm::Triple::VendorType::UnknownVendor);
-    return triple;
-  }
 };
 }  // namespace sleighthumb2
-Arch::ArchPtr Arch::GetSleighThumb2(llvm::LLVMContext *context_,
-                                    OSName os_name_, ArchName arch_name_) {
-  return std::make_unique<sleighthumb2::SleighThumb2Arch>(context_, os_name_,
-                                                          arch_name_);
-}
-
 //     this->sleigh_ctx.GetEngine().setContextDefault("TMode", 1);
 
 }  // namespace remill
