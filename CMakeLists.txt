@@ -122,15 +122,18 @@ target_link_libraries(thirdparty_gflags INTERFACE
 )
 
 set(sleigh_ENABLE_TESTS OFF)
-set(sleigh_ADDITIONAL_PATCHES "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/x86-ia.patch;${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/arm-thumb.patch")
+set(sleigh_ADDITIONAL_PATCHES "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/x86-ia.patch;${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/arm-thumb.patch" CACHE STRING "" FORCE)
 
 # GHIDRA SLEIGH
 FetchContent_Declare(sleigh
   GIT_REPOSITORY https://github.com/lifting-bits/sleigh.git
-  GIT_TAG 5ee2f2c16250a6529108e6a6fff89e0f147502d2
+  GIT_TAG 74838a39ba7ddd91becb1d7f59e6cc3d7e3956de
 )
 
+set(sleigh_BUILD_SUPPORT ON CACHE BOOL "" FORCE)
+set(sleigh_BUILD_SLEIGHSPECS ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(sleigh)
+
 add_library(thirdparty_sleigh INTERFACE)
 target_link_libraries(thirdparty_sleigh INTERFACE
   sleigh::sla
