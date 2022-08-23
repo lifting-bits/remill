@@ -36,8 +36,6 @@ class DecodingContext {
   std::unordered_map<std::string, uint64_t> context_value;
 
  public:
-  using ContextMap = std::function<DecodingContext(uint64_t)>;
-
   DecodingContext() = default;
 
   DecodingContext(std::unordered_map<std::string, uint64_t> context_value);
@@ -45,8 +43,6 @@ class DecodingContext {
 
   uint64_t GetContextValue(const std::string &context_reg) const;
   DecodingContext PutContextReg(std::string creg, uint64_t value) const;
-
-  static ContextMap UniformContextMapping(DecodingContext cst);
 };
 
 }  // namespace remill

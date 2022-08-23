@@ -27,10 +27,5 @@ DecodingContext DecodingContext::PutContextReg(std::string creg,
   return DecodingContext(std::move(new_value));
 }
 
-DecodingContext::ContextMap
-DecodingContext::UniformContextMapping(DecodingContext cst) {
-  return [cst = std::move(cst)](uint64_t) -> DecodingContext { return cst; };
-}
-
 
 }  // namespace remill

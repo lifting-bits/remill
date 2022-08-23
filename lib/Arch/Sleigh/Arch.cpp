@@ -393,9 +393,7 @@ SleighDecoder::DecodeInstruction(uint64_t address, std::string_view instr_bytes,
 
   if (const_cast<SleighDecoder *>(this)->DecodeInstructionImpl(
           address, instr_bytes, inst)) {
-    return [context = std::move(context)](uint64_t) -> DecodingContext {
-      return context;
-    };
+    return context;
   }
 
   return std::nullopt;

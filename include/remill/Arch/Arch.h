@@ -289,7 +289,7 @@ class Arch {
   // The decoder takes contextual information in the form of a DecodingContext, making a copy to produce a ContextMap which is a function that maps
   // a successor to a new context that updates the old context.
 
-  using DecodingResult = std::optional<DecodingContext::ContextMap>;
+  using DecodingResult = std::optional<DecodingContext>;
 
   virtual DecodingResult
   DecodeInstruction(uint64_t address, std::string_view instr_bytes,
