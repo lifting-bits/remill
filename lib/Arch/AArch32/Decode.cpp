@@ -3758,7 +3758,7 @@ AArch32Arch::DecodeAArch32(uint64_t address, std::string_view inst_bytes,
     };
 
   } else {
-    // interprocedural
+    // We assume interprocedural fallthrough mantains the context
     return DecodingContext::UniformContextMapping(std::move(context));
   }
 }
