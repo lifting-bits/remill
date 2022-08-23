@@ -20,6 +20,7 @@
 #include <remill/BC/SleighLifter.h>
 
 #include <sleigh/libsleigh.hh>
+#include <unordered_set>
 
 // Unifies shared functionality between sleigh architectures
 
@@ -188,11 +189,32 @@ class SingleInstructionSleighContext {
   std::vector<std::string> getUserOpNames();
 };
 
+
+class ContextUpdater : public PcodeEmit {
+ private:
+  DecodingContext curr_context;
+  const std::unordered_map<std::string, std::string> &register_mapping;
+  Sleigh &engine;
+  std::unordered_set<std::string> already_assigned;
+
+ public:
+  ContextUpdater(
+      DecodingContext curr_context,
+      const std::unordered_map<std::string, std::string> &register_mapping,
+      Sleigh &engine_);
+
+  virtual void dump(const Address &addr, OpCode opc, VarnodeData *outvar,
+                    VarnodeData *vars, int4 isize) override;
+
+  DecodingContext GetContext() const;
+};
+
 class SleighDecoder {
  public:
   SleighDecoder() = delete;
   SleighDecoder(const remill::Arch &arch, std::string sla_name,
-                std::string pspec_name);
+                std::string pspec_name,
+                std::unordered_map<std::string, std::string> register_mapping);
   std::string GetSLAName() const;
 
   std::string GetPSpec() const;
@@ -209,8 +231,9 @@ class SleighDecoder {
   std::shared_ptr<remill::SleighLifter> GetLifter() const;
 
  protected:
-  bool DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,
-                             Instruction &inst);
+  Arch::DecodingResult
+  DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,
+                        Instruction &inst, DecodingContext context);
 
 
   SingleInstructionSleighContext sleigh_ctx;
@@ -220,5 +243,6 @@ class SleighDecoder {
  private:
   mutable std::shared_ptr<remill::SleighLifter> lifter;
   const remill::Arch &arch;
+  std::unordered_map<std::string, std::string> register_mapping;
 };
 }  // namespace remill::sleigh

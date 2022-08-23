@@ -38,7 +38,8 @@ class SleighX86Decoder final : public SleighDecoder {
   SleighX86Decoder(const remill::Arch &arch)
       : SleighDecoder(
             arch, kArchX86_SLEIGH == arch.arch_name ? "x86.sla" : "x86-64.sla",
-            kArchX86_SLEIGH == arch.arch_name ? "x86.pspec" : "x86-64.pspec") {}
+            kArchX86_SLEIGH == arch.arch_name ? "x86.pspec" : "x86-64.pspec",
+            {}) {}
 
   virtual ~SleighX86Decoder(void) = default;
 

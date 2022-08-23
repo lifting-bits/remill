@@ -16,6 +16,7 @@
 
 #include <glog/logging.h>
 #include <remill/Arch/AArch32/AArch32Base.h>
+#include <remill/Arch/AArch32/ArchContext.h>
 #include <remill/Arch/AArch32/Runtime/State.h>
 #include <remill/Arch/Name.h>
 #include <remill/BC/ABI.h>
@@ -32,7 +33,8 @@ namespace sleighthumb2 {
 
 //ARM7_le.sla"
 SleighThumb2Decoder::SleighThumb2Decoder(const remill::Arch &arch)
-    : SleighDecoder(arch, "ARM7_le.sla", "ARMtTHUMB.pspec") {}
+    : SleighDecoder(arch, "ARM7_le.sla", "ARMtTHUMB.pspec",
+                    {{"ISAModeSwitch", kThumbModeRegName}}) {}
 
 
 void SleighThumb2Decoder::InitializeSleighContext(

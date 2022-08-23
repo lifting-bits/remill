@@ -27,5 +27,17 @@ DecodingContext DecodingContext::PutContextReg(std::string creg,
   return DecodingContext(std::move(new_value));
 }
 
+void DecodingContext::UpdateContextReg(std::string creg, uint64_t value) {
+  this->context_value[creg] = value;
+}
+
+void DecodingContext::DropReg(const std::string &creg) {
+  this->context_value.erase(creg);
+}
+
+bool DecodingContext::HasContextValue(const std::string &creg) {
+  return this->context_value.find(creg) != this->context_value.end();
+}
+
 
 }  // namespace remill

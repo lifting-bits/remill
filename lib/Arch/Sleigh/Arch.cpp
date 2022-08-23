@@ -25,6 +25,12 @@ namespace remill::sleigh {
 
 namespace {
 
+static bool isVarnodeInConstantSpace(VarnodeData vnode) {
+  auto spc = vnode.getAddr().getSpace();
+  return spc->constant_space_index == spc->getIndex();
+}
+
+
 class InstructionFunctionSetter : public AssemblyEmit {
  private:
   remill::Instruction &insn;
@@ -391,26 +397,24 @@ SleighDecoder::DecodeInstruction(uint64_t address, std::string_view instr_bytes,
   inst.SetLifter(this->GetLifter());
   assert(inst.GetLifter() != nullptr);
 
-  if (const_cast<SleighDecoder *>(this)->DecodeInstructionImpl(
-          address, instr_bytes, inst)) {
-    return context;
-  }
-
-  return std::nullopt;
+  return const_cast<SleighDecoder *>(this)->DecodeInstructionImpl(
+      address, instr_bytes, inst, std::move(context));
 }
 
 
-SleighDecoder::SleighDecoder(const remill::Arch &arch_, std::string sla_name,
-                             std::string pspec_name)
+SleighDecoder::SleighDecoder(
+    const remill::Arch &arch_, std::string sla_name, std::string pspec_name,
+    std::unordered_map<std::string, std::string> reg_map_)
     : sleigh_ctx(sla_name, pspec_name),
       sla_name(sla_name),
       pspec_name(pspec_name),
       lifter(nullptr),
-      arch(arch_) {}
+      arch(arch_),
+      register_mapping(reg_map_) {}
 
-bool SleighDecoder::DecodeInstructionImpl(uint64_t address,
-                                          std::string_view instr_bytes,
-                                          Instruction &inst) {
+std::optional<DecodingContext> SleighDecoder::DecodeInstructionImpl(
+    uint64_t address, std::string_view instr_bytes, Instruction &inst,
+    DecodingContext curr_context) {
 
   // The SLEIGH engine will query this image when we try to decode an instruction. Append the bytes so SLEIGH has data to read.
 
@@ -435,7 +439,7 @@ bool SleighDecoder::DecodeInstructionImpl(uint64_t address,
       this->sleigh_ctx.oneInstruction(address, pcode_handler, instr_bytes);
 
   if (!instr_len || instr_len > instr_bytes.size()) {
-    return false;
+    return std::nullopt;
   }
   // communicate the size back to the caller
   inst.bytes = instr_bytes.substr(0, *instr_len);
@@ -449,7 +453,12 @@ bool SleighDecoder::DecodeInstructionImpl(uint64_t address,
   LOG(INFO) << "Fallthrough: " << fallthrough;
   pcode_handler.GetResolver()->ResolveControlFlow(fallthrough, inst);
   LOG(INFO) << "Decoded as " << inst.Serialize();
-  return true;
+
+  ContextUpdater updater(std::move(curr_context), this->register_mapping,
+                         this->sleigh_ctx.GetEngine());
+  this->sleigh_ctx.oneInstruction(address, updater, inst.bytes);
+
+  return updater.GetContext();
 }
 
 
@@ -526,6 +535,46 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
         return this->engine.printAssembly(handler, addr);
       },
       instr_bytes);
+}
+
+
+ContextUpdater::ContextUpdater(
+    DecodingContext curr_context,
+    const std::unordered_map<std::string, std::string> &register_mapping_,
+    Sleigh &engine_)
+    : register_mapping(register_mapping_),
+      engine(engine_) {}
+
+void ContextUpdater::dump(const Address &addr, OpCode opc, VarnodeData *outvar,
+                          VarnodeData *vars, int4 isize) {
+  // So we are updating a variable, if it's a target we either need to give it a new constant value or drop it to nonconstant
+  if (!outvar) {
+    return;
+  }
+
+  auto outvar_name =
+      this->engine.getRegisterName(outvar->space, outvar->offset, outvar->size);
+  auto target_remill_cont_reg = this->register_mapping.find(outvar_name);
+  if (target_remill_cont_reg == this->register_mapping.end()) {
+    return;
+  }
+
+  if (this->already_assigned.find(target_remill_cont_reg->second) !=
+          this->already_assigned.end() ||
+      !(opc == OpCode::CPUI_COPY && isVarnodeInConstantSpace(vars[0]))) {
+    this->curr_context.DropReg(target_remill_cont_reg->second);
+    return;
+  }
+
+
+  this->curr_context.UpdateContextReg(target_remill_cont_reg->second,
+                                      vars[0].offset);
+
+  return;
+}
+
+DecodingContext ContextUpdater::GetContext() const {
+  return this->curr_context;
 }
 
 }  // namespace remill::sleigh
