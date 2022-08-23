@@ -22,6 +22,7 @@ llvm::Triple AArch32ArchBase::Triple(void) const {
   auto triple = BasicTriple();
   switch (arch_name) {
     case kArchAArch32LittleEndian: triple.setArch(llvm::Triple::arm); break;
+    case kArchThumb2LittleEndian: triple.setArch(llvm::Triple::thumb); break;
     default:
       LOG(FATAL) << "Cannot get triple for non-aarch32 architecture "
                  << GetArchName(arch_name);
