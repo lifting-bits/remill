@@ -85,7 +85,7 @@ uint64_t AArch32Arch::MaxInstructionSize(const DecodingContext &, bool) const {
 }
 
 
-std::optional<DecodingContext>
+Arch::DecodingResult
 AArch32Arch::DecodeThumb(uint64_t address, std::string_view instr_bytes,
                          Instruction &inst, DecodingContext context) const {
   return this->thumb_decoder.DecodeInstruction(address, instr_bytes, inst,

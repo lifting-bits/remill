@@ -30,12 +30,16 @@ namespace remill {
 /// We return a function of successor -> DecodingContext. The decoder defines a relation on the
 /// previous context and the successor address that produces a new decoding.
 /// This definition of returned contexts allows us to cleanly handle situations like indirect jumps in arm
+///
 class DecodingContext {
 
  private:
   std::unordered_map<std::string, uint64_t> context_value;
 
  public:
+  using ContextMap = std::function<DecodingContext(uint64_t)>;
+
+
   DecodingContext() = default;
 
   DecodingContext(std::unordered_map<std::string, uint64_t> context_value);
@@ -50,6 +54,8 @@ class DecodingContext {
   uint64_t GetContextValue(const std::string &context_reg) const;
   DecodingContext PutContextReg(std::string creg, uint64_t value) const;
   DecodingContext MakeContextRegNonConstant(const std::string &creg) const;
+
+  static ContextMap UniformContextMapping(DecodingContext cont);
 };
 
 }  // namespace remill

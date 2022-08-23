@@ -412,7 +412,7 @@ SleighDecoder::SleighDecoder(
       arch(arch_),
       register_mapping(reg_map_) {}
 
-std::optional<DecodingContext> SleighDecoder::DecodeInstructionImpl(
+Arch::DecodingResult SleighDecoder::DecodeInstructionImpl(
     uint64_t address, std::string_view instr_bytes, Instruction &inst,
     DecodingContext curr_context) {
 
@@ -458,7 +458,7 @@ std::optional<DecodingContext> SleighDecoder::DecodeInstructionImpl(
                          this->sleigh_ctx.GetEngine());
   this->sleigh_ctx.oneInstruction(address, updater, inst.bytes);
 
-  return updater.GetContext();
+  return DecodingContext::UniformContextMapping(updater.GetContext());
 }
 
 

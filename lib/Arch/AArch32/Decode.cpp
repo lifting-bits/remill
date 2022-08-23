@@ -3661,7 +3661,7 @@ DecodingContext AArch32Arch::CreateInitialContext(void) const {
   return DecodingContext();
 }
 
-std::optional<DecodingContext>
+Arch::DecodingResult
 AArch32Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
                                Instruction &inst,
                                DecodingContext context) const {
@@ -3691,7 +3691,7 @@ OperandLifter::OpLifterPtr AArch32Arch::DefaultLifter(
   return std::make_shared<InstructionLifter>(this, intrinsics_table);
 }
 
-std::optional<DecodingContext>
+Arch::DecodingResult
 AArch32Arch::DecodeAArch32(uint64_t address, std::string_view inst_bytes,
                            Instruction &inst, DecodingContext context) const {
 
@@ -3729,7 +3729,7 @@ AArch32Arch::DecodeAArch32(uint64_t address, std::string_view inst_bytes,
   }
 
 
-  return context;
+  return DecodingContext::UniformContextMapping(DecodingContext());
 }
 
 }  // namespace remill
