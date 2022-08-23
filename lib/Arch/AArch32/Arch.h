@@ -39,6 +39,15 @@ class AArch32Arch final : public AArch32ArchBase {
   OperandLifter::OpLifterPtr
   DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
 
+  // TODO(pag): Eventually handle Thumb2 and unaligned addresses.
+  uint64_t MinInstructionAlign(const DecodingContext &) const override;
+
+  uint64_t MinInstructionSize(const DecodingContext &) const override;
+
+  // Maximum number of bytes in an instruction for this particular architecture.
+  uint64_t MaxInstructionSize(const DecodingContext &, bool) const override;
+
+
  private:
   sleighthumb2::SleighThumb2Decoder thumb_decoder;
   std::optional<DecodingContext::ContextMap>

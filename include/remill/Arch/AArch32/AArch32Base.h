@@ -22,12 +22,6 @@ class AArch32ArchBase : public virtual ArchBase {
 
   std::string_view ProgramCounterRegisterName(void) const override;
 
-  uint64_t MinInstructionAlign(const DecodingContext &) const override;
-
-
-  uint64_t MinInstructionSize(const DecodingContext &) const override;
-
-  uint64_t MaxInstructionSize(const DecodingContext &, bool) const override;
 
   llvm::CallingConv::ID DefaultCallingConv(void) const override;
 
