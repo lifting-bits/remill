@@ -14,6 +14,10 @@
 
 @PACKAGE_INIT@
 
+if(NOT TARGET sleigh::support)
+  find_package(sleigh CONFIG REQUIRED COMPONENTS Support Specs)
+endif()
+
 foreach(_comp ${remill_FIND_COMPONENTS})
   if (NOT "VCPKG_DEPS" STREQUAL _comp)
     set(remill_FOUND False)
