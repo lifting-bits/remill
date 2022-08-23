@@ -298,11 +298,11 @@ TEST(ArmContextTests, ArmToThumbIndirectJump) {
   //bx r1
   std::string insn_data("\x11\xff\x2f\xe1", 4);
 
-  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_TRUE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_TRUE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
   EXPECT_TRUE(map(0x100).GetContextValue(remill::kThumbModeRegName));
 }
 
@@ -310,11 +310,11 @@ TEST(ArmContextTests, ArmToThumbConditionalIndirectJump) {
   std::string insn_data("\x11\xff\x2f\x11", 4);
 
 
-  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_FALSE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
   EXPECT_TRUE(map(0x100).GetContextValue(remill::kThumbModeRegName));
 }
 
@@ -324,11 +324,11 @@ TEST(ArmContextTests, ArmToThumbDirectJump) {
   std::string insn_data("\x01\xf0\xa0\xe3", 4);
 
 
-  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_TRUE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_TRUE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
   EXPECT_TRUE(map(0x100).GetContextValue(remill::kThumbModeRegName));
   EXPECT_TRUE(map(0x1).GetContextValue(remill::kThumbModeRegName));
 }
@@ -339,11 +339,11 @@ TEST(ArmContextTests, ArmToArmDirectJump) {
   std::string insn_data("\x00\xf0\xa0\xe3", 4);
 
 
-  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_FALSE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x100).GetContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x1).GetContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x0).GetContextValue(remill::kThumbModeRegName));
@@ -354,11 +354,11 @@ TEST(ArmContextTests, ArmToThumbConditionalDirectJump) {
   std::string insn_data("\x01\xf0\xa0\x13", 4);
 
 
-  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_FALSE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
   EXPECT_TRUE(map(0x1).GetContextValue(remill::kThumbModeRegName));
 }
 
@@ -366,11 +366,11 @@ TEST(ArmContextTests, ArmToArmConditionalDirectJump) {
   // movne pc, 0
   std::string insn_data("\x00\xf0\xa0\x13", 4);
 
-  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_FALSE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x1).GetContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x0).GetContextValue(remill::kThumbModeRegName));
 }
@@ -380,11 +380,11 @@ TEST(ArmContextTests, ArmToEitherIndirectJump) {
   std::string insn_data("\x01\xf0\xa0\xe1", 4);
 
 
-  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_FALSE(map(0xdeadbef3).HasContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).HasContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x1).HasContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x0).HasContextValue(remill::kThumbModeRegName));
 }
@@ -393,11 +393,11 @@ TEST(ArmContextTests, ArmToEitherConditionalIndirectJump) {
   // movne pc, r1
   std::string insn_data("\x01\xf0\xa0\x11", 4);
 
-  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_FALSE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x1).HasContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x0).HasContextValue(remill::kThumbModeRegName));
 }
@@ -407,11 +407,11 @@ TEST(ArmContextTests, ArmBasicBranchToThumb) {
   // b 1
   std::string insn_data("\x01\xf0\xa0\x11", 4);
 
-  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_TRUE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_TRUE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
   EXPECT_TRUE(map(0x1).GetContextValue(remill::kThumbModeRegName));
   EXPECT_TRUE(map(0x0).GetContextValue(remill::kThumbModeRegName));
 }
@@ -422,11 +422,11 @@ TEST(ArmContextTests, ArmBasicBranchToArm) {
   std::string insn_data("\xfe\xff\xff\xea", 4);
 
 
-  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_FALSE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x1).GetContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x0).GetContextValue(remill::kThumbModeRegName));
 }
@@ -436,11 +436,11 @@ TEST(ArmContextTests, ArmCallThumbFunc) {
   std::string insn_data("\xfe\xff\xff\xfa", 4);
 
 
-  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_FALSE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x1).GetContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x0).GetContextValue(remill::kThumbModeRegName));
 }
