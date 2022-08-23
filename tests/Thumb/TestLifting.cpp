@@ -53,21 +53,22 @@ const static std::unordered_map<std::string,
         {"r1", [](AArch32State &st) -> uint32_t & { return st.gpr.r1.dword; }}};
 
 
-remill::DecodingContext::ContextMap
+std::optional<remill::DecodingContext::ContextMap>
 GetSuccessorContext(std::string_view bytes, uint64_t address, uint64_t tm_val) {
 
   llvm::LLVMContext context;
   context.enableOpaquePointers();
   auto arch = remill::Arch::Build(&context, remill::OSName::kOSLinux,
                                   remill::ArchName::kArchAArch32LittleEndian);
+  auto sems = remill::LoadArchSemantics(arch.get());
 
 
   remill::DecodingContext dec_context;
   dec_context.UpdateContextReg(remill::kThumbModeRegName, tm_val);
   remill::Instruction insn;
   auto res = arch->DecodeInstruction(address, bytes, insn, dec_context);
-  EXPECT_TRUE(res.has_value());
-  return *res;
+
+  return res;
 }
 }  // namespace
 
@@ -297,7 +298,9 @@ TEST(ArmContextTests, ArmToThumbIndirectJump) {
   //bx r1
   std::string insn_data("\x11\xff\x2f\xe1", 4);
 
-  auto map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
 
   EXPECT_TRUE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
   EXPECT_TRUE(map(0x100).GetContextValue(remill::kThumbModeRegName));
@@ -306,7 +309,10 @@ TEST(ArmContextTests, ArmToThumbIndirectJump) {
 TEST(ArmContextTests, ArmToThumbConditionalIndirectJump) {
   std::string insn_data("\x11\xff\x2f\x11", 4);
 
-  auto map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
 
   EXPECT_FALSE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
   EXPECT_TRUE(map(0x100).GetContextValue(remill::kThumbModeRegName));
@@ -317,7 +323,10 @@ TEST(ArmContextTests, ArmToThumbDirectJump) {
   // mov pc, 1
   std::string insn_data("\x01\xf0\xa0\xe3", 4);
 
-  auto map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
 
   EXPECT_TRUE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
   EXPECT_TRUE(map(0x100).GetContextValue(remill::kThumbModeRegName));
@@ -329,7 +338,10 @@ TEST(ArmContextTests, ArmToArmDirectJump) {
   // mov pc, 0
   std::string insn_data("\x00\xf0\xa0\xe3", 4);
 
-  auto map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
 
   EXPECT_FALSE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x100).GetContextValue(remill::kThumbModeRegName));
@@ -341,7 +353,10 @@ TEST(ArmContextTests, ArmToThumbConditionalDirectJump) {
   // movne pc, 1
   std::string insn_data("\x01\xf0\xa0\x13", 4);
 
-  auto map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
 
   EXPECT_FALSE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
   EXPECT_TRUE(map(0x1).GetContextValue(remill::kThumbModeRegName));
@@ -351,7 +366,9 @@ TEST(ArmContextTests, ArmToArmConditionalDirectJump) {
   // movne pc, 0
   std::string insn_data("\x00\xf0\xa0\x13", 4);
 
-  auto map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
 
   EXPECT_FALSE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x1).GetContextValue(remill::kThumbModeRegName));
@@ -362,7 +379,10 @@ TEST(ArmContextTests, ArmToEitherIndirectJump) {
   // mov pc, r1
   std::string insn_data("\x01\xf0\xa0\xe1", 4);
 
-  auto map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
 
   EXPECT_FALSE(map(0xdeadbef3).HasContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x1).HasContextValue(remill::kThumbModeRegName));
@@ -373,7 +393,9 @@ TEST(ArmContextTests, ArmToEitherConditionalIndirectJump) {
   // movne pc, r1
   std::string insn_data("\x01\xf0\xa0\x11", 4);
 
-  auto map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
 
   EXPECT_FALSE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x1).HasContextValue(remill::kThumbModeRegName));
@@ -385,7 +407,9 @@ TEST(ArmContextTests, ArmBasicBranchToThumb) {
   // b 1
   std::string insn_data("\x01\xf0\xa0\x11", 4);
 
-  auto map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
 
   EXPECT_TRUE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
   EXPECT_TRUE(map(0x1).GetContextValue(remill::kThumbModeRegName));
@@ -397,7 +421,10 @@ TEST(ArmContextTests, ArmBasicBranchToArm) {
   // b 0
   std::string insn_data("\xfe\xff\xff\xea", 4);
 
-  auto map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
 
   EXPECT_FALSE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x1).GetContextValue(remill::kThumbModeRegName));
@@ -408,7 +435,10 @@ TEST(ArmContextTests, ArmCallThumbFunc) {
   // blx 0
   std::string insn_data("\xfe\xff\xff\xfa", 4);
 
-  auto map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbeef, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
 
   EXPECT_FALSE(map(0xdeadbef3).GetContextValue(remill::kThumbModeRegName));
   EXPECT_FALSE(map(0x1).GetContextValue(remill::kThumbModeRegName));
