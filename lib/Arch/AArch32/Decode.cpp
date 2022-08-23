@@ -26,9 +26,114 @@
 #include "Arch.h"
 
 
+/*
+if (inst.category == Instruction::Category::kCategoryDirectJump &&
+      inst.branch_taken_arch_name == kArchThumb2LittleEndian) {
+    return DecodingContext::UniformContextMapping(
+        context.PutContextReg(kThumbModeRegName, 1));
+  } else if (inst.branch_taken_arch_name == kArchThumb2LittleEndian &&
+             inst.category ==
+                 Instruction::Category::kCategoryConditionalBranch) {
+    auto btaken_pc = inst.branch_taken_pc;
+    return [cont = std::move(context), btaken_pc](uint64_t addr) {
+      if (addr == btaken_pc) {
+        return cont.PutContextReg(kThumbModeRegName, 1);
+      } else {
+        return cont;
+      }
+    };
+  } else if (inst.category == Instruction::Category::kCategoryIndirectJump &&
+             !inst.branch_taken_arch_name.has_value()) {
+    return [cont = std::move(context)](uint64_t addr) {
+      return cont.MakeContextRegNonConstant(kThumbModeRegName);
+    };
+  } else if (inst.category == Instruction::Category::kCategoryIndirectJump &&
+             *inst.branch_taken_arch_name) {
+
+  } else if (inst.category ==
+             Instruction::Category::kCategoryConditionalIndirectJump) {
+    auto branch_not_taken_pc = inst.branch_not_taken_pc;
+    return [cont = std::move(context), branch_not_taken_pc](uint64_t addr) {
+      if (addr == branch_not_taken_pc) {
+        return cont;
+      }
+      return cont.MakeContextRegNonConstant(kThumbModeRegName);
+    };
+
+  } else {
+    // We assume interprocedural fallthrough mantains the context
+    return DecodingContext::UniformContextMapping(std::move(context));
+  }*/
+
 namespace remill {
 
 namespace {
+
+
+uint64_t RegValueFromArchName(remill::ArchName aname) {
+  if (aname == kArchThumb2LittleEndian) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+DecodingContext::ContextMap UpdateContext(const remill::Instruction &inst,
+                                          DecodingContext old_context) {
+  //Direct/Known Arch transition Unconditional
+
+
+  if (inst.branch_taken_arch_name.has_value() &&
+      (inst.category == remill::Instruction::Category::kCategoryDirectJump ||
+       inst.category == remill::Instruction::Category::kCategoryIndirectJump)) {
+    old_context.UpdateContextReg(
+        kThumbModeRegName, RegValueFromArchName(*inst.branch_taken_arch_name));
+    return DecodingContext::UniformContextMapping(std::move(old_context));
+  }
+
+  // Direct/Known Arch transition conditional
+  if (inst.branch_taken_arch_name.has_value() &&
+      (inst.category ==
+           remill::Instruction::Category::kCategoryConditionalBranch ||
+       inst.category ==
+           remill::Instruction::Category::kCategoryConditionalIndirectJump)) {
+    auto fallthrough = inst.branch_not_taken_pc;
+    auto jumped_to_arch = *inst.branch_taken_arch_name;
+    return [c = std::move(old_context), fallthrough,
+            jumped_to_arch](uint64_t addr) {
+      if (addr == fallthrough) {
+        return c;
+      } else {
+        return c.PutContextReg(kThumbModeRegName,
+                               RegValueFromArchName(jumped_to_arch));
+      }
+    };
+  }
+  // Unknown arch transition unconditional
+
+  if (!inst.branch_taken_arch_name.has_value() &&
+      inst.category == remill::Instruction::Category::kCategoryIndirectJump) {
+    old_context.DropReg(kThumbModeRegName);
+    return DecodingContext::UniformContextMapping(std::move(old_context));
+  }
+
+  //Unknown arch transition conditional
+  if (!inst.branch_taken_arch_name.has_value() &&
+      inst.category ==
+          remill::Instruction::Category::kCategoryConditionalIndirectJump) {
+    auto fallthrough = inst.branch_not_taken_pc;
+    return [c = std::move(old_context), fallthrough](uint64_t addr) {
+      if (addr == fallthrough) {
+        return c;
+      } else {
+        return c.MakeContextRegNonConstant(kThumbModeRegName);
+      }
+    };
+  }
+
+  // Interprocedural
+  return DecodingContext::UniformContextMapping(std::move(old_context));
+}
 
 // Integer Data Processing (three register, register shift)
 union IntDataProcessingRRRR {
@@ -1210,6 +1315,7 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
           inst.category = Instruction::kCategoryFunctionReturn;
         }
       } else if (!src1 || !src2) {
+        inst.branch_taken_arch_name = std::nullopt;
         inst.category = Instruction::kCategoryIndirectJump;
       } else {
         auto res = evaluator(*src1, *src2);
@@ -1220,6 +1326,7 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
             inst.category = Instruction::kCategoryConditionalIndirectJump;
           } else {
             inst.branch_not_taken_pc = 0;
+            inst.branch_taken_arch_name = std::nullopt;
             inst.category = Instruction::kCategoryIndirectJump;
           }
         } else if (is_cond) {
@@ -3728,39 +3835,7 @@ AArch32Arch::DecodeAArch32(uint64_t address, std::string_view inst_bytes,
     return std::nullopt;
   }
 
-  if (inst.category == Instruction::Category::kCategoryDirectJump &&
-      inst.branch_taken_arch_name == kArchThumb2LittleEndian) {
-    return DecodingContext::UniformContextMapping(
-        context.PutContextReg(kThumbModeRegName, 1));
-  } else if (inst.branch_taken_arch_name == kArchThumb2LittleEndian &&
-             inst.category ==
-                 Instruction::Category::kCategoryConditionalBranch) {
-    auto btaken_pc = inst.branch_taken_pc;
-    return [cont = std::move(context), btaken_pc](uint64_t addr) {
-      if (addr == btaken_pc) {
-        return cont.PutContextReg(kThumbModeRegName, 1);
-      } else {
-        return cont;
-      }
-    };
-  } else if (inst.category == Instruction::Category::kCategoryIndirectJump) {
-    return [cont = std::move(context)](uint64_t addr) {
-      return cont.MakeContextRegNonConstant(kThumbModeRegName);
-    };
-  } else if (inst.category ==
-             Instruction::Category::kCategoryConditionalIndirectJump) {
-    auto branch_not_taken_pc = inst.branch_not_taken_pc;
-    return [cont = std::move(context), branch_not_taken_pc](uint64_t addr) {
-      if (addr == branch_not_taken_pc) {
-        return cont;
-      }
-      return cont.MakeContextRegNonConstant(kThumbModeRegName);
-    };
-
-  } else {
-    // We assume interprocedural fallthrough mantains the context
-    return DecodingContext::UniformContextMapping(std::move(context));
-  }
+  return UpdateContext(inst, std::move(context));
 }
 
 }  // namespace remill

@@ -18,6 +18,7 @@
 
 #include <remill/BC/InstructionLifter.h>
 
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -212,7 +213,8 @@ class Instruction {
   ArchName sub_arch_name;
 
   // Name of the architecture of the branch taken target.
-  ArchName branch_taken_arch_name;
+  /// We may not know the arch name if it is an indirect jump
+  std::optional<ArchName> branch_taken_arch_name;
 
   // Pointer to the `remill::Arch` used to complete the decoding of this
   // instruction.

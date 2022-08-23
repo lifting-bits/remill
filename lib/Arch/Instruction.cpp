@@ -673,9 +673,10 @@ std::string Instruction::Serialize(void) const {
   };
 
   auto maybe_stream_branch_taken_arch = [this, &ss, &stream_arch]() {
-    if (branch_taken_arch_name != arch_name) {
+    if (branch_taken_arch_name.has_value() &&
+        *branch_taken_arch_name != arch_name) {
       ss << ':';
-      stream_arch(branch_taken_arch_name);
+      stream_arch(*branch_taken_arch_name);
     }
   };
 
