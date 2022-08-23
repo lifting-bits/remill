@@ -40,4 +40,17 @@ bool DecodingContext::HasContextValue(const std::string &creg) {
 }
 
 
+DecodingContext
+DecodingContext::MakeContextRegNonConstant(const std::string &creg) const {
+  DecodingContext cpy = *this;
+  cpy.DropReg(creg);
+  return cpy;
+}
+
+DecodingContext::ContextMap
+DecodingContext::UniformContextMapping(DecodingContext cont) {
+  return [c = std::move(cont)](uint64_t) { return c; };
+}
+
+
 }  // namespace remill

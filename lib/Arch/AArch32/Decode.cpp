@@ -2815,7 +2815,7 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
   AddAddrRegOp(inst, kIntRegName[enc.Rm], kAddressSize, Operand::kActionRead,
                0);
 
-  inst.branch_taken_arch_name = inst.arch_name;
+  inst.branch_taken_arch_name = kArchThumb2LittleEndian;
   inst.branch_not_taken_pc = inst.pc + 4;
   if (enc.op1 == 0b01) {
     if (is_cond && (enc.Rm == kLRRegNum)) {
@@ -3728,8 +3728,39 @@ AArch32Arch::DecodeAArch32(uint64_t address, std::string_view inst_bytes,
     return std::nullopt;
   }
 
+  if (inst.category == Instruction::Category::kCategoryDirectJump &&
+      inst.branch_taken_arch_name == kArchThumb2LittleEndian) {
+    return DecodingContext::UniformContextMapping(
+        context.PutContextReg(kThumbModeRegName, 1));
+  } else if (inst.branch_taken_arch_name == kArchThumb2LittleEndian &&
+             inst.category ==
+                 Instruction::Category::kCategoryConditionalBranch) {
+    auto btaken_pc = inst.branch_taken_pc;
+    return [cont = std::move(context), btaken_pc](uint64_t addr) {
+      if (addr == btaken_pc) {
+        return cont.PutContextReg(kThumbModeRegName, 1);
+      } else {
+        return cont;
+      }
+    };
+  } else if (inst.category == Instruction::Category::kCategoryIndirectJump) {
+    return [cont = std::move(context)](uint64_t addr) {
+      return cont.MakeContextRegNonConstant(kThumbModeRegName);
+    };
+  } else if (inst.category ==
+             Instruction::Category::kCategoryConditionalIndirectJump) {
+    auto branch_not_taken_pc = inst.branch_not_taken_pc;
+    return [cont = std::move(context), branch_not_taken_pc](uint64_t addr) {
+      if (addr == branch_not_taken_pc) {
+        return cont;
+      }
+      return cont.MakeContextRegNonConstant(kThumbModeRegName);
+    };
 
-  return DecodingContext::UniformContextMapping(DecodingContext());
+  } else {
+    // interprocedural
+    return DecodingContext::UniformContextMapping(std::move(context));
+  }
 }
 
 }  // namespace remill
