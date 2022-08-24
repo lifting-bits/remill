@@ -308,27 +308,18 @@ TEST(RegressionTests, AARCH64RegSize) {
   Same but with conditionals:
 
 
-  MOV(reg, thumb) ignores last bit, but does not mode-switch
-
-  Thumb -> Thumb (1, movne pc, r1) -> {true: 1}
-
   B always remains in the same state:
-  Arm -> Arm (0, bne 1) -> {true: 0}
+  Arm -> Arm (0, bne 4) -> {true: 0}
   Arm -> Arm (0, bne 0) -> {true: 0}
-
-  Thumb -> Thumb (1, bne 1) -> {true: 1}
-  Thumb -> Thumb (1, bne 0) -> {true: 1}
+\
 
   BLX immediate always changes, but is interprocedural so we keep the state the same
   Arm -> Arm (0, blxne 1) -> {true: 0}
-  Thumb -> Thumb (1, blxne 1) -> {true: 1}
 
   Indirects (LDR, MOV(reg,ARM), BX):
   
   Arm -> (Thumb/Arm) (0, LDRNE PC, [r0]) -> {!=branch_not_taken_pc: non_constant, ==branch_not_taken_pc: 0}
   Arm -> (Thumb/Arm) (0, BXNE r1) -> {!=branch_not_taken_pc: non_constant, ==branch_not_taken_pc: 0}
-  Thumb -> (Thumb/Arm) (1, LDRNE PC, [r0]) -> {!=branch_not_taken_pc: non_constant, ==branch_not_taken_pc: 1}
-  Thumb -> (Thumb/Arm) (1, BXNE r1) -> {!=branch_not_taken_pc: non_constant, ==branch_not_taken_pc: 1}
   
   Arm only
   Arm -> (Thumb/Arm) (0, movne pc, r1) -> {!=branch_not_taken_pc: non_constant, ==branch_not_taken_pc: 0}
@@ -464,5 +455,78 @@ TEST(ArmContextTests, ThumbBXIndirect) {
   EXPECT_FALSE(map(0x1000).HasContextValue(remill::kThumbModeRegName));
 }
 
+TEST(ArmContextTests, ArmMovPCIndirectDoesAllowModeSwitch) {
+  // mov pc, r1
+  std::string insn_data("\x01\xf0\xa0\xe1", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0xdeadbee4).HasContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasContextValue(remill::kThumbModeRegName));
+}
+
 
 // Conditionals
+
+
+TEST(ArmContextTests, ArmBStaysInArmConditionalAligned1) {
+  // bne 0
+  std::string insn_data("\xfe\xff\xff\x1a", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0x0).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ArmBStaysInArmConditionalAligned2) {
+  // bne 4
+  std::string insn_data("\xff\xff\xff\x1a", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0x0).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ArmLDRIndirectConditional) {
+  // ldrne pc, [r0]
+  std::string insn_data("\x00\xf0\x90\x15", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasContextValue(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ArmBXIndirectConditional) {
+  // bxne r1
+  std::string insn_data("\x11\xff\x2f\x11", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasContextValue(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ArmMovPCIndirectDoesAllowModeSwitchConditional) {
+  // movne pc, r1
+  std::string insn_data("\x01\xf0\xa0\x11", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasContextValue(remill::kThumbModeRegName));
+}
