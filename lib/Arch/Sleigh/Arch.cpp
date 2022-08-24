@@ -539,10 +539,11 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
 
 
 ContextUpdater::ContextUpdater(
-    DecodingContext curr_context,
+    DecodingContext curr_context_,
     const std::unordered_map<std::string, std::string> &register_mapping_,
     Sleigh &engine_)
-    : register_mapping(register_mapping_),
+    : curr_context(std::move(curr_context_)),
+      register_mapping(register_mapping_),
       engine(engine_) {}
 
 void ContextUpdater::dump(const Address &addr, OpCode opc, VarnodeData *outvar,
@@ -562,6 +563,7 @@ void ContextUpdater::dump(const Address &addr, OpCode opc, VarnodeData *outvar,
   if (this->already_assigned.find(target_remill_cont_reg->second) !=
           this->already_assigned.end() ||
       !(opc == OpCode::CPUI_COPY && isVarnodeInConstantSpace(vars[0]))) {
+    LOG(INFO) << "Dropping " << target_remill_cont_reg->second;
     this->curr_context.DropReg(target_remill_cont_reg->second);
     return;
   }
@@ -574,6 +576,7 @@ void ContextUpdater::dump(const Address &addr, OpCode opc, VarnodeData *outvar,
 }
 
 DecodingContext ContextUpdater::GetContext() const {
+  LOG(INFO) << "Getting context updater value";
   return this->curr_context;
 }
 

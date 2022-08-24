@@ -65,6 +65,7 @@ GetSuccessorContext(std::string_view bytes, uint64_t address, uint64_t tm_val) {
 
   remill::DecodingContext dec_context;
   dec_context.UpdateContextReg(remill::kThumbModeRegName, tm_val);
+  assert(dec_context.HasContextValue("TMReg"));
   remill::Instruction insn;
   auto res = arch->DecodeInstruction(address, bytes, insn, dec_context);
 
