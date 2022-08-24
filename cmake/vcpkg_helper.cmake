@@ -27,7 +27,7 @@ if (NOT USE_SYSTEM_DEPENDENCIES)
     else()
       message(WARNING "No detection of architecture for this platform. Assuming x64")
     endif()
-    if (_SYSTEM_ARCH MATCHES "^[Aa][Aa][Rr][Cc][Hh]64$")
+    if (_SYSTEM_ARCH MATCHES "^[Aa][Aa][Rr][Cc][Hh]64$" OR _SYSTEM_ARCH MATCHES "^[Aa][Rr][Mm]64$")
       set(_project_arch "arm64")
     endif()
 
