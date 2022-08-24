@@ -190,9 +190,13 @@ class SingleInstructionSleighContext {
 };
 
 
+/// A context updater concusmes PCode and attempts to associate a context register with a constant value on exit of an instruction.
+/// If the instruction is interprocedural we restore the prior context, assuming fallthrough does not update the context.
 class ContextUpdater : public PcodeEmit {
  private:
+  bool is_inter_procedural;
   DecodingContext curr_context;
+  DecodingContext prev_context;
   const std::unordered_map<std::string, std::string> &register_mapping;
   Sleigh &engine;
   std::unordered_set<std::string> already_assigned;

@@ -542,12 +542,18 @@ ContextUpdater::ContextUpdater(
     DecodingContext curr_context_,
     const std::unordered_map<std::string, std::string> &register_mapping_,
     Sleigh &engine_)
-    : curr_context(std::move(curr_context_)),
+    : curr_context(curr_context_),
+      prev_context(std::move(curr_context_)),
       register_mapping(register_mapping_),
       engine(engine_) {}
 
 void ContextUpdater::dump(const Address &addr, OpCode opc, VarnodeData *outvar,
                           VarnodeData *vars, int4 isize) {
+
+  if (opc == OpCode::CPUI_CALL || opc == OpCode::CPUI_CALLIND) {
+    this->is_inter_procedural = true;
+  }
+
   // So we are updating a variable, if it's a target we either need to give it a new constant value or drop it to nonconstant
   if (!outvar) {
     return;
@@ -577,6 +583,9 @@ void ContextUpdater::dump(const Address &addr, OpCode opc, VarnodeData *outvar,
 
 DecodingContext ContextUpdater::GetContext() const {
   LOG(INFO) << "Getting context updater value";
+  if (this->is_inter_procedural) {
+    return this->prev_context;
+  }
   return this->curr_context;
 }
 

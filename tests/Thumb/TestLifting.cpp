@@ -398,7 +398,7 @@ TEST(ArmContextTests, ArmBLXInterProcStaysInSameMode) {
 
 TEST(ArmContextTests, ThumbBLXInterProcStaysInSameMode) {
   // blx 4
-  std::string insn_data("\xff\xff\xff\xfa", 4);
+  std::string insn_data("\x00\xf0\x00\xe8", 4);
 
   auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 1);
   ASSERT_TRUE(maybe_map.has_value());
