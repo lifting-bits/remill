@@ -41,8 +41,6 @@ uint64_t RegValueFromArchName(remill::ArchName aname) {
 DecodingContext::ContextMap UpdateContext(const remill::Instruction &inst,
                                           DecodingContext old_context) {
   //Direct/Known Arch transition Unconditional
-
-
   if (inst.branch_taken_arch_name.has_value() &&
       (inst.category == remill::Instruction::Category::kCategoryDirectJump ||
        inst.category == remill::Instruction::Category::kCategoryIndirectJump)) {
@@ -1852,6 +1850,7 @@ static bool TryDecodeLoadStoreWordUBIL(Instruction &inst, uint32_t bits) {
     } else {
       inst.category = Instruction::kCategoryIndirectJump;
     }
+    inst.branch_taken_arch_name = std::nullopt;
   } else {
 
     // Add operand to ignore any updates of the next pc if done by semantic
@@ -2882,7 +2881,7 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
   AddAddrRegOp(inst, kIntRegName[enc.Rm], kAddressSize, Operand::kActionRead,
                0);
 
-  inst.branch_taken_arch_name = kArchThumb2LittleEndian;
+  inst.branch_taken_arch_name = std::nullopt;
   inst.branch_not_taken_pc = inst.pc + 4;
   if (enc.op1 == 0b01) {
     if (is_cond && (enc.Rm == kLRRegNum)) {
