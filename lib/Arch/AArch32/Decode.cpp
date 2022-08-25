@@ -80,6 +80,7 @@ DecodingContext::ContextMap UpdateContext(const remill::Instruction &inst,
       inst.category ==
           remill::Instruction::Category::kCategoryConditionalIndirectJump) {
     auto fallthrough = inst.branch_not_taken_pc;
+
     return [c = std::move(old_context), fallthrough](uint64_t addr) {
       if (addr == fallthrough) {
         return c;
@@ -1274,7 +1275,9 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
         }
       } else if (!src1 || !src2) {
         inst.branch_taken_arch_name = std::nullopt;
-        inst.category = Instruction::kCategoryIndirectJump;
+        inst.branch_not_taken_pc = inst.next_pc;
+        inst.category = is_cond ? Instruction::kCategoryConditionalIndirectJump
+                                : Instruction::kCategoryIndirectJump;
       } else {
         auto res = evaluator(*src1, *src2);
         if (!res) {
