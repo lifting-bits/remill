@@ -542,7 +542,8 @@ ContextUpdater::ContextUpdater(
     DecodingContext curr_context_,
     const std::unordered_map<std::string, std::string> &register_mapping_,
     Sleigh &engine_)
-    : curr_context(curr_context_),
+    : is_inter_procedural(false),
+      curr_context(curr_context_),
       prev_context(std::move(curr_context_)),
       register_mapping(register_mapping_),
       engine(engine_) {}
