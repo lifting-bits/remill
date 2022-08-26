@@ -195,8 +195,12 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
           this->cached_unique_ptrs.end()) {
         return this->cached_unique_ptrs.find(offset)->second;
       }
-      auto ptr = bldr.CreateAlloca(
-          llvm::IntegerType::get(this->context, 8 * size), 0, nullptr);
+
+      std::stringstream ss;
+      ss << "unique_" << std::hex << offset << ":" << std::dec << size;
+      auto ptr =
+          bldr.CreateAlloca(llvm::IntegerType::get(this->context, 8 * size), 0,
+                            nullptr, ss.str());
       this->cached_unique_ptrs.insert({offset, ptr});
       return ptr;
     }
@@ -615,6 +619,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   using BinaryOperator = std::function<llvm::Value *(
       llvm::Value *, llvm::Value *, llvm::IRBuilder<> &)>;
   static std::map<OpCode, BinaryOperator> INTEGER_BINARY_OPS;
+  static std::map<OpCode, BinaryOperator> BOOL_BINARY_OPS;
   static std::unordered_set<OpCode> INTEGER_COMP_OPS;
 
 
@@ -714,27 +719,14 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   }
 
 
-  std::optional<llvm::Value *>
-  GetResultOfBoolOpFunc(llvm::IRBuilder<> &bldr, OpCode opc,
-                        llvm::Value *in_lhs, llvm::Value *in_rhs) {
-    switch (opc) {
-      case CPUI_BOOL_AND: {
-        return bldr.CreateAnd(in_lhs, in_rhs);
-      }
-      case CPUI_BOOL_OR: {
-
-        return bldr.CreateOr(in_lhs, in_rhs);
-      }
-      case CPUI_BOOL_XOR: {
-        return bldr.CreateXor(in_lhs, in_rhs);
-      }
-      default: return std::nullopt;
-    }
-  }
   LiftStatus LiftBoolBinOp(llvm::IRBuilder<> &bldr, OpCode opc,
                            VarnodeData *outvar, VarnodeData lhs,
                            VarnodeData rhs) {
 
+
+    if (this->BOOL_BINARY_OPS.find(opc) != this->BOOL_BINARY_OPS.end()) {
+      return LiftStatus::kLiftedUnsupportedInstruction;
+    }
 
     auto lifted_lhs =
         this->LiftInParam(bldr, lhs, llvm::IntegerType::get(this->context, 8));
@@ -745,13 +737,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     }
 
     auto computed_value =
-        this->GetResultOfBoolOpFunc(bldr, opc, *lifted_lhs, *lifted_rhs);
-    if (!computed_value) {
-      return LiftStatus::kLiftedUnsupportedInstruction;
-    }
+        this->BOOL_BINARY_OPS.find(opc)->second(*lifted_lhs, *lifted_rhs, bldr);
 
-
-    return this->LiftStoreIntoOutParam(bldr, *computed_value, outvar);
+    return this->LiftStoreIntoOutParam(bldr, computed_value, outvar);
   }
 
   std::optional<BinaryOperator> FindFloatBinOpFunc(OpCode opc) {
@@ -909,6 +897,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
           bldr, lhs, llvm::IntegerType::get(this->context, lhs.size * 8));
 
       if (lifted_lhs.has_value()) {
+        LOG(INFO) << "SUBPIECE: " << remill::LLVMThingToString(*lifted_lhs);
         auto new_size = lhs.size - rhs.offset;
         auto *subpiece_lhs = bldr.CreateTrunc(
             *lifted_lhs, llvm::IntegerType::get(this->context, new_size * 8));
@@ -1051,6 +1040,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   virtual void dump(const Address &addr, OpCode opc, VarnodeData *outvar,
                     VarnodeData *vars, int4 isize) final override {
     LOG(INFO) << "inner handle" << std::endl;
+
     llvm::IRBuilder bldr(this->target_block);
 
     // The MULTIEQUAL op has variadic operands
@@ -1102,6 +1092,20 @@ std::unordered_set<OpCode>
         CPUI_INT_SBORROW, CPUI_INT_SCARRY,    CPUI_INT_CARRY};
 
 std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
+    SleighLifter::PcodeToLLVMEmitIntoBlock::BOOL_BINARY_OPS = {
+        {OpCode::CPUI_BOOL_AND,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateAnd(lhs, rhs);
+         }},
+        {OpCode::CPUI_BOOL_OR,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateOr(lhs, rhs);
+         }},
+        {OpCode::CPUI_BOOL_XOR,
+         [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           return bldr.CreateXor(lhs, rhs);
+         }}};
+std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
     SleighLifter::PcodeToLLVMEmitIntoBlock::INTEGER_BINARY_OPS = {
         {OpCode::CPUI_INT_AND,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
@@ -1131,6 +1135,9 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
          }},
         {OpCode::CPUI_INT_SRIGHT,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
+           if (lhs->getType() != rhs->getType()) {
+             rhs = bldr.CreateZExtOrTrunc(rhs, lhs->getType());
+           }
            return bldr.CreateAShr(lhs, rhs);
          }},
         {OpCode::CPUI_INT_ADD,
