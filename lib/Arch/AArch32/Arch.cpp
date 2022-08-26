@@ -55,7 +55,6 @@ AArch32Arch::AArch32Arch(llvm::LLVMContext *context_, OSName os_name_,
 
 AArch32Arch::~AArch32Arch(void) {}
 
-
 // TODO(pag): We pretend that these are singletons, but they aren't really!
 Arch::ArchPtr Arch::GetAArch32(llvm::LLVMContext *context_, OSName os_name_,
                                ArchName arch_name_) {

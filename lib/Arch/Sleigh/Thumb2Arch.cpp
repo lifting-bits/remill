@@ -55,7 +55,7 @@ class SleighThumbArch : public AArch32ArchBase {
         decoder(*this) {}
 
   virtual DecodingContext CreateInitialContext(void) const override {
-    return DecodingContext();
+    return DecodingContext().PutContextReg(kThumbModeRegName, 1);
   }
 
   virtual OperandLifter::OpLifterPtr

@@ -3727,7 +3727,7 @@ static uint32_t BytesToBits(const uint8_t *bytes) {
 
 
 DecodingContext AArch32Arch::CreateInitialContext(void) const {
-  return DecodingContext();
+  return DecodingContext().PutContextReg(kThumbModeRegName, 0);
 }
 
 Arch::DecodingResult
