@@ -835,7 +835,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     if (res == LiftStatus::kLiftedInstruction) {
       return res;
     }
-    this->target_block->dump();
+
     auto sres = this->LiftBoolBinOp(bldr, opc, outvar, lhs, rhs);
     if (sres == LiftStatus::kLiftedInstruction) {
       return sres;
@@ -897,7 +897,6 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
           bldr, lhs, llvm::IntegerType::get(this->context, lhs.size * 8));
 
       if (lifted_lhs.has_value()) {
-        this->target_block->dump();
         LOG(INFO) << "SUBPIECE: " << remill::LLVMThingToString(*lifted_lhs);
         auto new_size = lhs.size - rhs.offset;
         auto *subpiece_lhs = bldr.CreateTrunc(
