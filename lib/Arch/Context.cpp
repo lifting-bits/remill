@@ -17,9 +17,9 @@ DecodingContext::GetContextValue(const std::string &context_reg) const {
     return res->second;
   }
 
-  LOG(FATAL) << "No context value for " << context_reg
-             << " but it is required for decoding";
+  LOG(FATAL) << "Required context reg value for: " << context_reg;
 }
+
 DecodingContext DecodingContext::PutContextReg(std::string creg,
                                                uint64_t value) const {
   std::unordered_map<std::string, uint64_t> new_value(this->context_value);

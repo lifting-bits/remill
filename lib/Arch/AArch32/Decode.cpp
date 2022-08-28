@@ -3747,6 +3747,11 @@ AArch32Arch::DecodeInstruction(uint64_t address, std::string_view inst_bytes,
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();
 
+  if (!context.HasContextValue(kThumbModeRegName)) {
+    return std::nullopt;
+  }
+
+
   if (context.GetContextValue(kThumbModeRegName)) {
     return this->DecodeThumb(address, inst_bytes, inst, std::move(context));
   } else {
