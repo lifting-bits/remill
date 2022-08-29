@@ -36,8 +36,24 @@ message(STATUS "Compiler ID is ${CMAKE_C_COMPILER_ID}")
 # libraries
 #
 
+# Z3
+find_package(z3 CONFIG REQUIRED)
+
 # LLVM
 find_package(LLVM CONFIG REQUIRED)
+llvm_map_components_to_libnames(llvm_libs
+  support core irreader
+  bitreader bitwriter
+  passes asmprinter
+  aarch64codegen aarch64asmparser
+  armcodegen armasmparser
+  interpreter mcjit
+  nvptxdesc
+  x86codegen x86asmparser
+  sparccodegen sparcasmparser
+  webassemblydesc)
+message(STATUS "LLVM Libraries: ${llvm_libs}")
+
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
@@ -60,66 +76,16 @@ set(REMILL_BUILD_SEMANTICS_DIR_SPARC64 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/SPA
 set(REMILL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(REMILL_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
-add_library(thirdparty_llvm INTERFACE)
-target_include_directories(thirdparty_llvm SYSTEM INTERFACE
-  $<BUILD_INTERFACE:${LLVM_INCLUDE_DIRS}>
-)
-target_compile_definitions(thirdparty_llvm INTERFACE
-  ${LLVM_DEFINITIONS}
-)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/BCCompiler.cmake")
-
-# Go find only the static libraries of LLVM, and link against those.
-foreach(LLVM_LIB IN LISTS LLVM_AVAILABLE_LIBS)
-  get_target_property(LLVM_LIB_TYPE ${LLVM_LIB} TYPE)
-
-  if(LLVM_LIB_TYPE STREQUAL "STATIC_LIBRARY")
-    list(APPEND LLVM_LIBRARIES "${LLVM_LIB}")
-  endif()
-endforeach()
-
-# These are out-of-order in `LLVM_AVAILABLE_LIBS` and should always be last.
-list(REMOVE_ITEM LLVM_LIBRARIES LLVMMC LLVMCore LLVMSupport)
-list(APPEND LLVM_LIBRARIES LLVMMC LLVMCore LLVMSupport)
-
-target_link_libraries(thirdparty_llvm INTERFACE
-  ${LLVM_LIBRARIES}
-)
-
-# Microsoft Z3 with LLVM. Not exactly used in remill, but LLVM doesn't link
-# against it correctly
-# NOTE: If changing this, also replicate in remillConfig file
-if(LLVM_WITH_Z3)
-  find_package(Z3 CONFIG REQUIRED 4.7.1)
-  get_target_property(LLVMSupport_LIBS LLVMSupport INTERFACE_LINK_LIBRARIES)
-  list(REMOVE_ITEM LLVMSupport_LIBS Z3)
-  list(APPEND LLVMSupport_LIBS z3::libz3)
-  set_target_properties(LLVMSupport PROPERTIES
-    INTERFACE_LINK_LIBRARIES "${LLVMSupport_LIBS}")
-endif()
-
-message(STATUS "LLVM Libraries: ${LLVM_LIBRARIES}")
 
 # Intel XED
 find_package(XED CONFIG REQUIRED)
-add_library(thirdparty_xed INTERFACE)
-target_link_libraries(thirdparty_xed INTERFACE
-  XED::XED
-)
 
 # Google glog module
 find_package(glog CONFIG REQUIRED)
-add_library(thirdparty_glog INTERFACE)
-target_link_libraries(thirdparty_glog INTERFACE
-  glog::glog
-)
 
 # Google gflags
 find_package(gflags CONFIG REQUIRED)
-add_library(thirdparty_gflags INTERFACE)
-target_link_libraries(thirdparty_gflags INTERFACE
-  gflags
-)
 
 set(sleigh_ENABLE_TESTS OFF)
 set(sleigh_ADDITIONAL_PATCHES "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/x86-ia.patch;${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/arm-thumb.patch" CACHE STRING "" FORCE)
@@ -133,22 +99,6 @@ FetchContent_Declare(sleigh
 set(sleigh_BUILD_SUPPORT ON CACHE BOOL "" FORCE)
 set(sleigh_BUILD_SLEIGHSPECS ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(sleigh)
-
-add_library(thirdparty_sleigh INTERFACE)
-target_link_libraries(thirdparty_sleigh INTERFACE
-  sleigh::sla
-  sleigh::decomp
-  sleigh::support
-)
-
-# Windows SDK
-add_library(thirdparty_win32 INTERFACE)
-
-if(DEFINED WIN32)
-  target_link_libraries(thirdparty_win32 INTERFACE
-    "Kernel32.lib"
-  )
-endif()
 
 # For Linux builds, group LLVM libraries into a single group
 # that avoids frustrating library ordering issues.
@@ -255,9 +205,14 @@ target_compile_definitions(remill_settings INTERFACE
   "REMILL_BUILD_SEMANTICS_DIR_SPARC64=\"${REMILL_BUILD_SEMANTICS_DIR_SPARC64}\""
 )
 
-set(THIRDPARTY_LIBRARY_LIST thirdparty_llvm thirdparty_xed thirdparty_glog thirdparty_gflags thirdparty_sleigh)
 target_link_libraries(remill_settings INTERFACE
-  ${THIRDPARTY_LIBRARY_LIST}
+  ${llvm_libs}
+  XED::XED
+  glog::glog
+  gflags::gflags
+  sleigh::sla
+  sleigh::decomp
+  sleigh::support
 )
 
 add_subdirectory(lib/Arch)
@@ -268,7 +223,13 @@ add_subdirectory(lib/Version)
 add_library(remill INTERFACE)
 target_link_libraries(remill INTERFACE
   ${LINKER_START_GROUP}
-  ${THIRDPARTY_LIBRARY_LIST}
+  ${llvm_libs}
+  XED::XED
+  glog::glog
+  gflags::gflags
+  sleigh::sla
+  sleigh::decomp
+  sleigh::support
   remill_bc
   remill_os
   remill_arch
@@ -286,28 +247,6 @@ InstallExternalTarget("ext_clang" "${CLANG_PATH}" "BIN" "${INSTALLED_CLANG_NAME}
 
 InstallExternalTarget("ext_llvmlink" "${LLVMLINK_PATH}" "BIN" "${INSTALLED_LLVMLINK_NAME}")
 
-GetTargetTree(THIRDPARTY_LIBRARIES ${THIRDPARTY_LIBRARY_LIST})
-GetPublicIncludeFolders(THIRDPARTY_INCLUDE_DIRECTORIES ${THIRDPARTY_LIBRARIES})
-
-foreach(THIRDPARTY_LIB IN LISTS THIRDPARTY_LIBRARIES)
-  string(SUBSTRING "${THIRDPARTY_LIB}" 0 1 THIRDPARTY_LIB_PREFIX)
-
-  if(TARGET ${THIRDPARTY_LIB})
-    get_target_property(THIRDPARTY_LIB_TYPE ${THIRDPARTY_LIB} TYPE)
-
-    if(THIRDPARTY_LIB_TYPE STREQUAL "STATIC_LIBRARY" OR THIRDPARTY_LIB_TYPE STREQUAL "SHARED_LIBRARY")
-      list(APPEND THIRDPARTY_LIBRARY_FILES "$${}<TARGET_FILE:${THIRDPARTY_LIB}>")
-    endif()
-  elseif("${THIRDPARTY_LIB_PREFIX}" STREQUAL "$${}")
-  # E.g. $<LINK_ONLY:...>
-  else()
-    list(APPEND THIRDPARTY_LIBRARY_FILES "${THIRDPARTY_LIB}")
-  endif()
-endforeach()
-
-list(REMOVE_DUPLICATES THIRDPARTY_LIBRARY_FILES)
-
-#
 # additional targets
 #
 add_custom_target(semantics)
@@ -321,11 +260,10 @@ add_subdirectory(bin)
 if(REMILL_ENABLE_INSTALL_TARGET)
   install(TARGETS remill EXPORT remillTargets)
 
-  install(TARGETS remill_settings ${THIRDPARTY_LIBRARY_LIST}
+  install(TARGETS remill_settings
     EXPORT remillTargets
   )
 
-  # First do the basic substitutions.
   configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/remillConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"

@@ -29,7 +29,7 @@ target_link_libraries(
   GTest::gtest
   remill
   test-runner
-  thirdparty_glog
+  glog::glog
 )
 
 set_property(TARGET run-thumb-tests PROPERTY ENABLE_EXPORTS ON)
