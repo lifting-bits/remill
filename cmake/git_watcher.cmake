@@ -1,5 +1,5 @@
 # git_watcher.cmake
-# https://github.com/andrew-hardin/cmake-git-version-tracking/blob/20c58d5d08bad70550d969b478943c962faa6264/git_watcher.cmake
+# https://raw.githubusercontent.com/andrew-hardin/cmake-git-version-tracking/master/git_watcher.cmake
 #
 # Released under the MIT License.
 # https://raw.githubusercontent.com/andrew-hardin/cmake-git-version-tracking/master/LICENSE
@@ -26,6 +26,15 @@
 #   GIT_EXECUTABLE (OPTIONAL)
 #   -- The path to the git executable. It'll automatically be set if the
 #      user doesn't supply a path.
+#
+#   GIT_FAIL_IF_NONZERO_EXIT (OPTIONAL)
+#   -- Raise a FATAL_ERROR if any of the git commands return a non-zero
+#      exit code. This is set to TRUE by default. You can set this to FALSE
+#      if you'd like the build to continue even if a git command fails.
+#
+#   GIT_IGNORE_UNTRACKED (OPTIONAL)
+#   -- Ignore the presence of untracked files when detecting if the
+#      working tree is dirty. This is set to FALSE by default.
 #
 # DESIGN
 #   - This script was designed similar to a Python application
@@ -57,17 +66,25 @@ macro(CHECK_REQUIRED_VARIABLE var_name)
 endmacro()
 
 # Check that an optional variable is set, or, set it to a default value.
-macro(CHECK_OPTIONAL_VARIABLE var_name default_value)
+macro(CHECK_OPTIONAL_VARIABLE_NOPATH var_name default_value)
     if(NOT DEFINED ${var_name})
         set(${var_name} ${default_value})
     endif()
+endmacro()
+
+# Check that an optional variable is set, or, set it to a default value.
+# Also converts that path to an abspath.
+macro(CHECK_OPTIONAL_VARIABLE var_name default_value)
+    CHECK_OPTIONAL_VARIABLE_NOPATH(${var_name} ${default_value})
     PATH_TO_ABSOLUTE(${var_name})
 endmacro()
 
 CHECK_REQUIRED_VARIABLE(PRE_CONFIGURE_FILE)
 CHECK_REQUIRED_VARIABLE(POST_CONFIGURE_FILE)
-CHECK_OPTIONAL_VARIABLE(GIT_STATE_FILE "${CMAKE_BINARY_DIR}/git-state-hash")
+CHECK_OPTIONAL_VARIABLE(GIT_STATE_FILE "${CMAKE_CURRENT_BINARY_DIR}/git-state-hash")
 CHECK_OPTIONAL_VARIABLE(GIT_WORKING_DIR "${CMAKE_SOURCE_DIR}")
+CHECK_OPTIONAL_VARIABLE_NOPATH(GIT_FAIL_IF_NONZERO_EXIT TRUE)
+CHECK_OPTIONAL_VARIABLE_NOPATH(GIT_IGNORE_UNTRACKED FALSE)
 
 # Check the optional git variable.
 # If it's not set, we'll try to find it using the CMake packaging system.
@@ -86,7 +103,8 @@ set(_state_variable_names
     GIT_COMMIT_DATE_ISO8601
     GIT_COMMIT_SUBJECT
     GIT_COMMIT_BODY
-    VERSION_STRING
+    GIT_DESCRIBE
+    GIT_BRANCH
     # >>>
     # 1. Add the name of the additional git variable you're interested in monitoring
     #    to this list.
@@ -96,17 +114,30 @@ set(_state_variable_names
 
 # Macro: RunGitCommand
 # Description: short-hand macro for calling a git function. Outputs are the
-#              "exit_code" and "output" variables.
+#              "exit_code" and "output" variables. The "_permit_git_failure"
+#              variable can locally override the exit code checking- use it
+#              with caution.
 macro(RunGitCommand)
     execute_process(COMMAND
         "${GIT_EXECUTABLE}" ${ARGV}
         WORKING_DIRECTORY "${_working_dir}"
         RESULT_VARIABLE exit_code
         OUTPUT_VARIABLE output
-        ERROR_QUIET
+        ERROR_VARIABLE stderr
         OUTPUT_STRIP_TRAILING_WHITESPACE)
-    if(NOT exit_code EQUAL 0)
+    if(NOT exit_code EQUAL 0 AND NOT _permit_git_failure)
         set(ENV{GIT_RETRIEVED_STATE} "false")
+
+        # Issue 26: git info not properly set
+        #
+        # Check if we should fail if any of the exit codes are non-zero.
+        # Most methods have a fall-back default value that's used in case of non-zero
+        # exit codes. If you're feeling risky, disable this safety check and use
+        # those default values.
+        if(GIT_FAIL_IF_NONZERO_EXIT )
+            string(REPLACE ";" " " args_with_spaces "${ARGV}")
+            message(FATAL_ERROR "${stderr} (${GIT_EXECUTABLE} ${args_with_spaces})")
+        endif()
     endif()
 endmacro()
 
@@ -123,7 +154,12 @@ function(GetGitState _working_dir)
     set(ENV{GIT_RETRIEVED_STATE} "true")
 
     # Get whether or not the working tree is dirty.
-    RunGitCommand(status --porcelain)
+    if (GIT_IGNORE_UNTRACKED)
+        set(untracked_flag "-uno")
+    else()
+        set(untracked_flag "-unormal")
+    endif()
+    RunGitCommand(status --porcelain ${untracked_flag})
     if(NOT exit_code EQUAL 0)
         set(ENV{GIT_IS_DIRTY} "false")
     else()
@@ -158,6 +194,8 @@ function(GetGitState _working_dir)
 
     RunGitCommand(show -s "--format=%s" ${object})
     if(exit_code EQUAL 0)
+        # Escape \
+        string(REPLACE "\\" "\\\\" output "${output}")
         # Escape quotes
         string(REPLACE "\"" "\\\"" output "${output}")
         set(ENV{GIT_COMMIT_SUBJECT} "${output}")
@@ -166,6 +204,8 @@ function(GetGitState _working_dir)
     RunGitCommand(show -s "--format=%b" ${object})
     if(exit_code EQUAL 0)
         if(output)
+            # Escape \
+            string(REPLACE "\\" "\\\\" output "${output}")
             # Escape quotes
             string(REPLACE "\"" "\\\"" output "${output}")
             # Escape line breaks in the commit message.
@@ -178,9 +218,9 @@ function(GetGitState _working_dir)
             # There was no commit body - set the safe string to empty.
             set(safe "")
         endif()
-        set(ENV{GIT_COMMIT_BODY} "\"${safe}\"")
+        set(ENV{GIT_COMMIT_BODY} "${safe}")
     else()
-        set(ENV{GIT_COMMIT_BODY} "\"\"") # empty string.
+        set(ENV{GIT_COMMIT_BODY} "") # empty string.
     endif()
 
     # Get output of git describe
@@ -191,19 +231,22 @@ function(GetGitState _working_dir)
         set(ENV{GIT_DESCRIBE} "${output}")
     endif()
 
+    # Convert HEAD to a symbolic ref. This can fail, in which case we just
+    # set that variable to HEAD.
+    set(_permit_git_failure ON)
+    RunGitCommand(symbolic-ref --short -q ${object})
+    unset(_permit_git_failure)
+    if(NOT exit_code EQUAL 0)
+        set(ENV{GIT_BRANCH} "${object}")
+    else()
+        set(ENV{GIT_BRANCH} "${output}")
+    endif()
+
     # >>>
     # 2. Additional git properties can be added here via the
     #    "execute_process()" command. Be sure to set them in
     #    the environment using the same variable name you added
     #    to the "_state_variable_names" list.
-
-    if(EXISTS "${GIT_WORKING_DIR}/VERSION")
-      file(READ "${GIT_WORKING_DIR}/VERSION" version_output_raw)
-      string(STRIP "${version_output_raw}" version_output)
-      set(ENV{VERSION_STRING} "${version_output}")
-    else()
-      set(ENV{VERSION_STRING} "")
-    endif()
 
 endfunction()
 
@@ -296,6 +339,8 @@ function(SetupGitMonitoring)
             -DGIT_STATE_FILE=${GIT_STATE_FILE}
             -DPRE_CONFIGURE_FILE=${PRE_CONFIGURE_FILE}
             -DPOST_CONFIGURE_FILE=${POST_CONFIGURE_FILE}
+            -DGIT_FAIL_IF_NONZERO_EXIT=${GIT_FAIL_IF_NONZERO_EXIT}
+            -DGIT_IGNORE_UNTRACKED=${GIT_IGNORE_UNTRACKED}
             -P "${CMAKE_CURRENT_LIST_FILE}")
 endfunction()
 

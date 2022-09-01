@@ -24,7 +24,7 @@ target_link_libraries(
   lift-and-compare
   PRIVATE
   remill
-  thirdparty_glog
+  glog::glog
   test-runner
 )
 

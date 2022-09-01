@@ -48,27 +48,11 @@ if(NOT remill_setup_vcpkg AND NOT TARGET remill)
   include(CMakeFindDependencyMacro)
   find_dependency(XED)
   find_dependency(glog)
+  find_dependency(Z3)
   find_dependency(LLVM)
-  # NOTE: If changing this, also replicate in CMakeLists.txt
-  if (LLVM_WITH_Z3)
-    find_dependency(Z3)
-    get_target_property(LLVMSupport_LIBS LLVMSupport INTERFACE_LINK_LIBRARIES)
-    list(REMOVE_ITEM LLVMSupport_LIBS Z3)
-    list(APPEND LLVMSupport_LIBS z3::libz3)
-    set_target_properties(LLVMSupport PROPERTIES
-      INTERFACE_LINK_LIBRARIES "${LLVMSupport_LIBS}")
-  endif()
 
   # Exported Targets
   include("${CMAKE_CURRENT_LIST_DIR}/remillTargets.cmake")
-
-  if(TARGET thirdparty_llvm)
-    # Need this so that LLVM doesn't hardcode it's include directories
-    set_target_properties(thirdparty_llvm PROPERTIES
-      INTERFACE_INCLUDE_DIRECTORIES "${LLVM_INCLUDE_DIRS}"
-      INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${LLVM_INCLUDE_DIRS}"
-      )
-  endif()
 
 endif()
 

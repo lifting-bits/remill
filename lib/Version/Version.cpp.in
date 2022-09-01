@@ -57,11 +57,11 @@ std::string_view GetCommitSubject(void) {
 }
 
 std::string_view GetCommitBody(void) {
-  return @GIT_COMMIT_BODY@;
+  return "@GIT_COMMIT_BODY@";
 }
 
 std::string_view GetVersionString(void) {
-  return "@VERSION_STRING@";
+  return "@GIT_DESCRIBE@";
 }
 
 }  // namespace version

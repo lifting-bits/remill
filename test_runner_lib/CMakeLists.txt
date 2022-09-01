@@ -25,7 +25,7 @@ target_link_libraries(
   test-runner
   PRIVATE
   remill
-  thirdparty_glog
+  glog::glog
 )
 
 target_include_directories(test-runner PUBLIC "${TEST_RUNNER_INCLUDE_DIR}")
