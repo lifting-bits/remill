@@ -129,6 +129,14 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       mem = __remill_x86_set_segment_gs(mem);
       break;
 
+    case SyncHyperCall::kX86SysEnter: asm volatile("sysenter" : :); break;
+
+    case SyncHyperCall::kX86SysExit:
+      asm volatile("sysexit"
+                   : "=c"(state.gpr.rcx.aword), "=d"(state.gpr.rdx.aword)
+                   :);
+      break;
+
 #  if REMILL_HYPERCALL_X86
 
     case SyncHyperCall::kX86SetDebugReg:
