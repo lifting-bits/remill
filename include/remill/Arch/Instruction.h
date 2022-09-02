@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <remill/Arch/Context.h>
 #include <remill/BC/InstructionLifter.h>
 
 #include <optional>
@@ -255,6 +256,68 @@ class Instruction {
     kCategoryAsyncHyperCall,
     kCategoryConditionalAsyncHyperCall,
   } category;
+
+
+  struct DirectFlow {
+    uint64_t known_target;
+    DecodingContext static_context;
+  };
+
+  struct IndirectIntraFlow {
+    // We may have info in the decoder that tells us a context value
+    std::optional<DecodingContext> maybe_context;
+  };
+
+  struct FallthroughInsn {
+    DirectFlow fallthrough;
+  };
+
+  struct NormalInsn : public FallthroughInsn {};
+  struct NoOp : public FallthroughInsn {};
+
+  struct InvalidInsn {};
+  struct ErrorInsn {};
+
+  struct DirectJump {
+    DirectFlow taken_flow;
+  };
+
+  struct IndirectJump {
+    IndirectIntraFlow taken_flow;
+  };
+
+  struct ConditionalIndirectJump : public FallthroughInsn,
+                                   public IndirectJump {};
+
+  struct ConditionalDirectJump : public FallthroughInsn, public DirectJump {};
+
+  struct DirectFunctionCall {
+    DirectFlow taken_flow;
+  };
+
+  struct ConditionalDirectFunctionCall : public DirectFunctionCall,
+                                         public FallthroughInsn {};
+
+  struct IndirectFunctionCall {};
+
+  struct ConditionalIndirectFunctionCall : public IndirectFunctionCall,
+                                           public FallthroughInsn {};
+
+  struct FunctionReturn {};
+
+  struct AsyncHyperCall {};
+  struct ConditionalAsyncHyperCall : public AsyncHyperCall,
+                                     public FallthroughInsn {};
+
+
+  using InstructionFlowCategory =
+      std::variant<InvalidInsn, ErrorInsn, DirectJump, IndirectJump,
+                   ConditionalIndirectJump, ConditionalDirectJump,
+                   DirectFunctionCall, ConditionalDirectFunctionCall,
+                   ConditionalIndirectFunctionCall, FunctionReturn,
+                   AsyncHyperCall, ConditionalAsyncHyperCall>;
+
+  InstructionFlowCategory flows;
 
   std::vector<Operand> operands;
 

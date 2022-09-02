@@ -18,9 +18,11 @@
 #pragma once
 
 
+#include <stdint.h>
+
 #include <functional>
+#include <map>
 #include <string_view>
-#include <unordered_map>
 
 namespace remill {
 
@@ -34,7 +36,7 @@ namespace remill {
 class DecodingContext {
 
  private:
-  std::unordered_map<std::string, uint64_t> context_value;
+  std::map<std::string, uint64_t> context_value;
 
  public:
   using ContextMap = std::function<DecodingContext(uint64_t)>;
@@ -42,7 +44,7 @@ class DecodingContext {
 
   DecodingContext() = default;
 
-  DecodingContext(std::unordered_map<std::string, uint64_t> context_value);
+  DecodingContext(std::map<std::string, uint64_t> context_value);
 
 
   void UpdateContextReg(std::string creg, uint64_t value);

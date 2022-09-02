@@ -4,8 +4,7 @@
 
 namespace remill {
 
-DecodingContext::DecodingContext(
-    std::unordered_map<std::string, uint64_t> context_value)
+DecodingContext::DecodingContext(std::map<std::string, uint64_t> context_value)
     : context_value(std::move(context_value)) {}
 
 
@@ -22,7 +21,7 @@ DecodingContext::GetContextValue(const std::string &context_reg) const {
 
 DecodingContext DecodingContext::PutContextReg(std::string creg,
                                                uint64_t value) const {
-  std::unordered_map<std::string, uint64_t> new_value(this->context_value);
+  std::map<std::string, uint64_t> new_value(this->context_value);
   new_value.emplace(creg, value);
   return DecodingContext(std::move(new_value));
 }
