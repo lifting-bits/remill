@@ -197,6 +197,10 @@ function(add_runtime target_name)
     list(APPEND bitcode_file_list "${absolute_output_file_path}")
   endforeach()
 
+  # We'll be linking together cross-compiled bitcode files with those compiled with the host
+  # machine's target triple, so we're expecting warnings. Suppress warnings to reduce noise.
+  list(APPEND linker_flag_list "--suppress-warnings")
+
   set(absolute_target_path "${CMAKE_CURRENT_BINARY_DIR}/${target_name}.bc")
 
   add_custom_command(OUTPUT "${absolute_target_path}"
