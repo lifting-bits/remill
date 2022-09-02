@@ -258,22 +258,24 @@ class Instruction {
   } category;
 
 
-  struct DirectFlow {
+  struct Flow {};
+
+  struct DirectFlow : Flow {
     uint64_t known_target;
     DecodingContext static_context;
   };
 
-  struct IndirectIntraFlow {
+  struct IndirectFlow : Flow {
     // We may have info in the decoder that tells us a context value
     std::optional<DecodingContext> maybe_context;
   };
 
-  struct FallthroughInsn {
-    DirectFlow fallthrough;
+  struct FallthroughFlow : Flow {
+    DecodingContext fallthrough_context;
   };
 
-  struct NormalInsn : public FallthroughInsn {};
-  struct NoOp : public FallthroughInsn {};
+  struct NormalInsn : public FallthroughFlow {};
+  struct NoOp : public FallthroughFlow {};
 
   struct InvalidInsn {};
   struct ErrorInsn {};
@@ -283,31 +285,32 @@ class Instruction {
   };
 
   struct IndirectJump {
-    IndirectIntraFlow taken_flow;
+    IndirectFlow taken_flow;
   };
 
-  struct ConditionalIndirectJump : public FallthroughInsn,
+  struct ConditionalIndirectJump : public FallthroughFlow,
                                    public IndirectJump {};
 
-  struct ConditionalDirectJump : public FallthroughInsn, public DirectJump {};
+  struct ConditionalDirectJump : public FallthroughFlow, public DirectJump {};
 
-  struct DirectFunctionCall {
-    DirectFlow taken_flow;
-  };
+  struct DirectFunctionCall : DirectJump {};
 
   struct ConditionalDirectFunctionCall : public DirectFunctionCall,
-                                         public FallthroughInsn {};
+                                         public FallthroughFlow {};
 
-  struct IndirectFunctionCall {};
+  struct IndirectFunctionCall : IndirectJump {};
 
   struct ConditionalIndirectFunctionCall : public IndirectFunctionCall,
-                                           public FallthroughInsn {};
+                                           public FallthroughFlow {};
 
-  struct FunctionReturn {};
+  struct FunctionReturn : IndirectJump {};
 
   struct AsyncHyperCall {};
   struct ConditionalAsyncHyperCall : public AsyncHyperCall,
-                                     public FallthroughInsn {};
+                                     public FallthroughFlow {};
+
+
+  struct ConditionalFunctionReturn : FunctionReturn, FallthroughFlow {};
 
 
   using InstructionFlowCategory =

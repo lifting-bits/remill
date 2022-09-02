@@ -49,11 +49,17 @@ class AssemblyLogger : public AssemblyEmit {
               << " " << body;
   }
 };
+
+
+static Instruction::InstructionFlowCategory
+computeCategory(const std::vector<PcodeOp> &ops, uint64_t fallthrough_addr,
+                DecodingContext entry_context) {
+  throw std::logic_error("Function not yet implemented");
+}
+
 }  // namespace
 
-PcodeDecoder::PcodeDecoder(::Sleigh &engine_, Instruction &inst_)
-    : engine(engine_),
-      inst(inst_) {}
+PcodeDecoder::PcodeDecoder(::Sleigh &engine_) : engine(engine_) {}
 
 
 void PcodeDecoder::print_vardata(std::stringstream &s, VarnodeData &data) {
@@ -69,221 +75,7 @@ void PcodeDecoder::print_vardata(std::stringstream &s, VarnodeData &data) {
 }
 
 void PcodeDecoder::dump(const Address &, OpCode op, VarnodeData *outvar,
-                        VarnodeData *vars, int32_t isize) {
-  std::stringstream ss;
-
-  ss << get_opname(op);
-  if (outvar) {
-    print_vardata(ss, *outvar);
-    ss << " = ";
-    DecodeOperand(*outvar);
-  }
-  for (int i = 0; i < isize; ++i) {
-    print_vardata(ss, vars[i]);
-    DecodeOperand(vars[i]);
-  }
-
-  DecodeCategory(op, vars, isize);
-  LOG(INFO) << ss.str();
-}
-
-void PcodeDecoder::DecodeOperand(VarnodeData &var) {
-  const auto loc_name = var.space->getName();
-  if (loc_name == "register") {
-    DecodeRegister(var);
-  } else if (loc_name == "unique") {
-    DecodeMemory(var);
-  } else if (loc_name == "ram") {
-    DecodeMemory(var);
-  } else if (loc_name == "const") {
-    DecodeConstant(var);
-  } else {
-    LOG(FATAL) << "Instruction location " << loc_name << " not supported";
-  }
-}
-
-void PcodeDecoder::DecodeRegister(const VarnodeData &var) {
-  const auto reg_name = engine.getRegisterName(var.space, var.offset, var.size);
-  Operand op;
-  op.type = Operand::kTypeRegister;
-  Operand::Register reg;
-  reg.name = reg_name;
-  reg.size =
-      var.size;  // I don't think this is correct. Need to distinguish between the register width vs the read/write size.
-  op.reg = reg;
-  op.size = var.size;
-  // TODO(alex): Pass information about whether its an outvar or not
-  op.action = true ? Operand::kActionRead : Operand::kActionWrite;
-  inst.operands.push_back(op);
-}
-
-void PcodeDecoder::DecodeMemory(const VarnodeData &var) {
-  Operand op;
-  op.size = var.size * 8;
-  op.type = Operand::kTypeAddress;
-  op.addr.address_size = 64;  // Not sure
-  op.addr.kind =
-      true ? Operand::Address::kMemoryRead : Operand::Address::kMemoryWrite;
-  inst.operands.push_back(op);
-}
-
-void PcodeDecoder::DecodeConstant(const VarnodeData &var) {
-  Operand op;
-  op.type = Operand::kTypeImmediate;
-  op.action = Operand::kActionRead;
-  op.imm.is_signed = false;  // Not sure
-  op.imm.val = var.offset;
-  inst.operands.push_back(op);
-}
-
-/*
-CPUI_BRANCH = 4,		///< Always branch
-  CPUI_CBRANCH = 5,		///< Conditional branch
-  CPUI_BRANCHIND = 6,		///< Indirect branch (jumptable)
-
-  CPUI_CALL = 7,		///< Call to an absolute address
-  CPUI_CALLIND = 8,		///< Call through an indirect address
-  CPUI_CALLOTHER = 9,		///< User-defined operation
-  CPUI_RETURN = 10,		///< Return from subroutine
-*/
-
-
-std::optional<InstructionFlowResolver::IFRPtr>
-PcodeDecoder::GetFlowResolverForOp(OpCode op, VarnodeData *vars,
-                                   int32_t isize) {
-  // TODO(Ian): we should check if we know about this address space and do something if not
-  switch (op) {
-    case CPUI_BRANCH:
-      return InstructionFlowResolver::CreateDirectBranch(vars[0].offset);
-
-    case CPUI_CALL:
-      return InstructionFlowResolver::CreateDirectCall(vars[0].offset);
-      break;
-    case CPUI_CBRANCH:
-      return InstructionFlowResolver::CreateDirectCBranchResolver(
-          vars[0].offset);
-      break;
-    case CPUI_BRANCHIND: return InstructionFlowResolver::CreateIndirectBranch();
-    case CPUI_CALLIND: return InstructionFlowResolver::CreateIndirectCall();
-
-    case CPUI_RETURN: return InstructionFlowResolver::CreateIndirectRet();
-
-    default: return std::nullopt;
-  }
-}
-
-
-void PcodeDecoder::DecodeCategory(OpCode op, VarnodeData *vars, int32_t isize) {
-  if (auto resolver = PcodeDecoder::GetFlowResolverForOp(op, vars, isize)) {
-    if (this->current_resolver) {
-      LOG(ERROR)
-          << "Demoting instruction to indirect branch, already guessed category";
-      // ok we've already seen a control flow instruction so call it an indirect branch
-      this->current_resolver = InstructionFlowResolver::CreateIndirectBranch();
-      return;
-    }
-
-    this->current_resolver = resolver;
-  }
-}
-
-InstructionFlowResolver::IFRPtr PcodeDecoder::GetResolver() {
-  if (!this->current_resolver.has_value()) {
-    LOG(INFO) << "resolver doesnt have a value";
-    return InstructionFlowResolver::CreateNormal();
-  } else {
-    LOG(INFO) << "resolver does have a value";
-    return *this->current_resolver;
-  }
-}
-
-
-InstructionFlowResolver::IFRPtr
-InstructionFlowResolver::CreateDirectCBranchResolver(uint64_t target) {
-  return std::make_shared<DirectCBranchResolver>(target);
-}
-InstructionFlowResolver::IFRPtr InstructionFlowResolver::CreateIndirectCall() {
-  return std::make_shared<IndirectBranch>(
-      remill::Instruction::Category::kCategoryIndirectFunctionCall);
-}
-InstructionFlowResolver::IFRPtr InstructionFlowResolver::CreateIndirectRet() {
-  return std::make_shared<IndirectBranch>(
-      remill::Instruction::Category::kCategoryFunctionReturn);
-}
-InstructionFlowResolver::IFRPtr
-InstructionFlowResolver::CreateIndirectBranch() {
-  return std::make_shared<IndirectBranch>(
-      remill::Instruction::Category::kCategoryIndirectJump);
-}
-
-InstructionFlowResolver::IFRPtr
-InstructionFlowResolver::CreateDirectBranch(uint64_t target) {
-  return std::make_shared<DirectBranchResolver>(
-      target, remill::Instruction::Category::kCategoryDirectJump);
-}
-InstructionFlowResolver::IFRPtr
-InstructionFlowResolver::CreateDirectCall(uint64_t target) {
-  return std::make_shared<DirectBranchResolver>(
-      target, remill::Instruction::Category::kCategoryDirectFunctionCall);
-}
-
-InstructionFlowResolver::IFRPtr InstructionFlowResolver::CreateNormal() {
-  return std::make_shared<NormalResolver>();
-}
-
-IndirectBranch::IndirectBranch(remill::Instruction::Category category)
-    : category(category) {}
-
-DirectBranchResolver::DirectBranchResolver(
-    uint64_t target_address, remill::Instruction::Category category)
-    : target_address(target_address),
-      category(category) {}
-
-
-DirectCBranchResolver::DirectCBranchResolver(uint64_t target_address)
-    : target_address(target_address) {}
-
-
-void IndirectBranch::ResolveControlFlow(uint64_t fall_through,
-                                        remill::Instruction &insn) {
-  insn.next_pc = 0;
-  insn.category = this->category;
-  insn.branch_not_taken_pc = fall_through;
-}
-
-
-void DirectBranchResolver::ResolveControlFlow(uint64_t fall_through,
-                                              remill::Instruction &insn) {
-  insn.next_pc = this->target_address;
-  insn.branch_taken_pc = this->target_address;
-  insn.branch_not_taken_pc = fall_through;
-  insn.category = this->category;
-  insn.branch_taken_arch_name = insn.arch_name;
-}
-
-void NormalResolver::ResolveControlFlow(uint64_t fall_through,
-                                        remill::Instruction &insn) {
-  insn.next_pc = fall_through;
-  insn.category = remill::Instruction::Category::kCategoryNormal;
-}
-
-void DirectCBranchResolver::ResolveControlFlow(uint64_t fall_through,
-                                               remill::Instruction &insn) {
-  LOG(INFO) << "resolving direct cbranch" << fall_through;
-
-  if (this->target_address == fall_through) {
-    insn.next_pc = fall_through;
-    insn.category = remill::Instruction::Category::kCategoryNormal;
-    return;
-  }
-
-  insn.next_pc = 0;
-  insn.branch_taken_pc = this->target_address;
-  insn.branch_not_taken_pc = fall_through;
-  insn.category = remill::Instruction::Category::kCategoryConditionalBranch;
-  insn.branch_taken_arch_name = insn.arch_name;
-}
-
+                        VarnodeData *vars, int32_t isize) {}
 
 std::vector<std::string> SingleInstructionSleighContext::getUserOpNames() {
   std::vector<std::string> res;
@@ -422,7 +214,7 @@ Arch::DecodingResult SleighDecoder::DecodeInstructionImpl(
   // Now decode the instruction.
   this->sleigh_ctx.resetContext();
   this->InitializeSleighContext(this->sleigh_ctx);
-  PcodeDecoder pcode_handler(this->sleigh_ctx.GetEngine(), inst);
+  PcodeDecoder pcode_handler(this->sleigh_ctx.GetEngine());
 
   LOG(INFO) << "Provided insn size: " << instr_bytes.size();
 
@@ -446,19 +238,17 @@ Arch::DecodingResult SleighDecoder::DecodeInstructionImpl(
   assert(inst.bytes.size() == instr_len);
 
   InstructionFunctionSetter setter(inst);
+
   this->sleigh_ctx.oneInstruction(address, setter, inst.bytes);
   LOG(INFO) << "Instr len:" << *instr_len;
   LOG(INFO) << "Addr: " << address;
   auto fallthrough = address + *instr_len;
+  inst.next_pc = fallthrough;
+  inst.flows = computeCategory(pcode_handler.ops, fallthrough, curr_context);
   LOG(INFO) << "Fallthrough: " << fallthrough;
-  pcode_handler.GetResolver()->ResolveControlFlow(fallthrough, inst);
   LOG(INFO) << "Decoded as " << inst.Serialize();
 
-  ContextUpdater updater(std::move(curr_context), this->register_mapping,
-                         this->sleigh_ctx.GetEngine());
-  this->sleigh_ctx.oneInstruction(address, updater, inst.bytes);
-
-  return DecodingContext::UniformContextMapping(updater.GetContext());
+  return DecodingContext::UniformContextMapping(curr_context);
 }
 
 
