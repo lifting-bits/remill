@@ -17,7 +17,7 @@
 #if defined(__x86_64__)
 #  include "remill/Arch/X86/Runtime/State.h"
 #  define REMILL_HYPERCALL_AMD64 1
-# elif defined(__i386__) || defined(_M_X86)
+#elif defined(__i386__) || defined(_M_X86)
 #  include "remill/Arch/X86/Runtime/State.h"
 #  define REMILL_HYPERCALL_X86 1
 #elif defined(__arm__)
@@ -155,6 +155,15 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       mem = __remill_x86_set_control_reg_4(mem);
       break;
 
+    case SyncHyperCall::kX86SysCall:
+      asm volatile("syscall"
+                   : "=a"(state.gpr.rax.dword)
+                   : "a"(state.gpr.rax.dword), "b"(state.gpr.rbx.dword),
+                     "c"(state.gpr.rcx.dword), "d"(state.gpr.rdx.dword),
+                     "e"(state.gpr.rsi.dword), "f"(state.gpr.rdi.dword),
+                     "g"(state.gpr.rbp.dword));
+      break;
+
 #  elif REMILL_HYPERCALL_AMD64
 
     case SyncHyperCall::kAMD64SetDebugReg:
@@ -183,6 +192,15 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
 
     case SyncHyperCall::kAMD64SetControlReg8:
       mem = __remill_amd64_set_control_reg_8(mem);
+      break;
+
+    case SyncHyperCall::kX86SysCall:
+      asm volatile("syscall"
+                   : "=a"(state.gpr.rax.qword)
+                   : "a"(state.gpr.rax.qword), "b"(state.gpr.rdi.qword),
+                     "c"(state.gpr.rsi.qword), "d"(state.gpr.rdx.qword),
+                     "e"(state.gpr.r10.qword), "f"(state.gpr.r8.qword),
+                     "g"(state.gpr.r9.qword));
       break;
 
 #  endif
