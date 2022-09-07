@@ -33,8 +33,11 @@ class ContextUpdater {
       const std::unordered_map<std::string, std::string> &register_mapping,
       Sleigh &engine_);
 
-  std::optional<DecodingContext> NextContext(const RemillPcodeOp &,
-                                             DecodingContext prev) const;
+  // Applies a pcode op to the held context, this may produce a complete context
+  void ApplyPcodeOp(const RemillPcodeOp &op);
+
+  // May have a complete context
+  std::optional<DecodingContext> GetContext() const;
 };
 
 class ControlFlowStructureAnalysis {

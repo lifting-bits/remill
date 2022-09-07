@@ -61,6 +61,8 @@ CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc) {
       CoarseFlow cat = {CoarseEffect::NORMAL, false};
       res.emplace(ind, cat);
     }
+
+    ind++;
   }
 
   return res;
@@ -109,25 +111,144 @@ CoarseCategoryFromFlows(const std::map<size_t, CoarseFlow> &ops) {
   return std::nullopt;
 }
 
-static bool isFallthrough(OpCode opc) {
-  return opc == OpCode::CPUI_BRANCH || opc == OpCode::CPUI_CBRANCH ||
-         opc == OpCode::CPUI_CALL || opc == OpCode::CPUI_BRANCHIND ||
-         opc == OpCode::CPUI_CALLIND || opc == OpCode::CPUI_RETURN;
-}
 
 struct Flow {
+  size_t pcode_index;
   CoarseFlow flow;
   std::optional<DecodingContext> context;
 };
 
 std::vector<Flow>
 GetBoundContextsForFlows(const std::vector<RemillPcodeOp> &ops,
-                         const std::map<size_t, CoarseFlow> &cc) {
+                         const std::map<size_t, CoarseFlow> &cc,
+                         ContextUpdater &updater) {
+  size_t curr_ind = 0;
+  std::vector<Flow> res;
   for (auto op : ops) {
+    if (auto curr = cc.find(curr_ind); curr != cc.end()) {
+      auto cont = updater.GetContext();
+      Flow f = {curr_ind, curr->second, cont};
+      res.push_back(std::move(f));
+    }
+
+    updater.ApplyPcodeOp(op);
+    curr_ind += 1;
+  }
+
+  return res;
+}
+
+
+// DirectJump, IndirectJump, FunctionReturn
+static std::optional<Instruction::InstructionFlowCategory>
+AbnormalCategoryOfFlow(const Flow &flow, const RemillPcodeOp &op) {
+  if (op.op == CPUI_RETURN) {
+    Instruction::IndirectFlow id_flow = {{}, flow.context};
+    Instruction::FunctionReturn ret = {{id_flow}};
+    return ret;
+  }
+
+  if (op.op == CPUI_BRANCHIND) {
+    Instruction::IndirectFlow id_flow = {{}, flow.context};
+    Instruction::IndirectJump id_jump = {id_flow};
+    return id_jump;
+  }
+
+  if (op.op == CPUI_BRANCH && !isVarnodeInConstantSpace(op.vars[0]) &&
+      flow.context) {
+    auto target = op.vars[0].offset;
+    Instruction::DirectFlow dflow = {{}, target, *flow.context};
+    Instruction::DirectJump djump = {dflow};
+    return djump;
+  }
+
+
+  return std::nullopt;
+}
+
+
+static std::optional<std::pair<Instruction::InstructionFlowCategory,
+                               std::optional<BranchTakenVar>>>
+ExtractNonConditionalCategory(
+    const std::vector<Flow> &flows, const std::vector<RemillPcodeOp> &ops,
+    const std::function<std::optional<Instruction::InstructionFlowCategory>(
+        const Flow &, const RemillPcodeOp &)> &compute_single_flow_category) {
+
+  // So here the requirement to make this cateogry work is that all flows target the same abnormal (or are all returns), and all decoding contexts are equal
+  std::vector<Instruction::InstructionFlowCategory> cats;
+  for (auto flow : flows) {
+    if (auto cat = compute_single_flow_category(flow, ops[flow.pcode_index])) {
+      cats.push_back(*cat);
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  // if all cats are equal then we have our result
+
+  if (cats.size() < 1) {
+    return std::nullopt;
+  }
+
+  Instruction::InstructionFlowCategory fst = cats[0];
+
+  if (std::all_of(cats.begin(), cats.end(),
+                  [&fst](Instruction::InstructionFlowCategory curr_cat) {
+                    return fst == curr_cat;
+                  })) {
+    return std::make_pair(fst, std::nullopt);
+  }
+
+  return std::nullopt;
+}
+
+static std::optional<std::pair<Instruction::InstructionFlowCategory,
+                               std::optional<BranchTakenVar>>>
+ExtractNormal(const std::vector<Flow> &flows,
+              const std::vector<RemillPcodeOp> &ops) {
+  // So we already know the op fallsthrough
+  return ExtractNonConditionalCategory(
+      flows, ops,
+      [](const Flow &flow, const RemillPcodeOp &op)
+          -> std::optional<Instruction::InstructionFlowCategory> {
+        if (flow.context) {
+          Instruction::NormalInsn norm = {{{}, *flow.context}};
+          return {norm};
+        }
+
+        return std::nullopt;
+      });
+}
+
+
+static std::optional<std::pair<Instruction::InstructionFlowCategory,
+                               std::optional<BranchTakenVar>>>
+ExtractAbnormal(const std::vector<Flow> &flows,
+                const std::vector<RemillPcodeOp> &ops) {
+  return ExtractNonConditionalCategory(flows, ops, AbnormalCategoryOfFlow);
+}
+
+static std::optional<std::pair<Instruction::InstructionFlowCategory,
+                               std::optional<BranchTakenVar>>>
+ExtractConditionalAbnormal(const std::vector<Flow> &flows,
+                           const std::vector<RemillPcodeOp> &ops) {
+  if (flows.size() != 2) {
+    return std::nullopt;
+  }
+
+  auto first_flow = flows[0];
+  auto snd_flow = flows[1];
+
+  // Two case sto handle here either conditional_fallthrough->abnormal
+  // Or conditional_abnormal -> fallthrough
+  if (isConditionalNormal(first_flow.flow)) {
+    CHECK(isUnconditionalAbnormal(snd_flow));
   }
 }
+
 }  // namespace
 
+/*
 
 std::optional<DecodingContext>
 ContextUpdater::NextContext(const RemillPcodeOp &op,
@@ -151,6 +272,7 @@ ContextUpdater::NextContext(const RemillPcodeOp &op,
 
   return std::nullopt;
 }
+*/
 
 bool ControlFlowStructureAnalysis::isControlFlowPcodeOp(OpCode opc) {
   return opc == OpCode::CPUI_BRANCH || opc == OpCode::CPUI_CBRANCH ||
@@ -196,6 +318,12 @@ ControlFlowStructureAnalysis::ComputeCategory(
     return std::nullopt;
   }
 
-  auto flows = GetBoundContextsForFlows(ops, cc);
+  auto flows = GetBoundContextsForFlows(ops, cc, this->context_evaluator);
+
+  switch (*maybe_ccategory) {
+    case CAT_ABNORMAL: return ExtractAbnormal(flows, ops);
+    case CAT_CONDITIONAL_ABNORMAL: return std::nullopt;
+    case CAT_NORMAL: return ExtractNormal(flows, ops);
+  }
 }
 }  // namespace remill::sleigh

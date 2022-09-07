@@ -274,47 +274,75 @@ class Instruction {
     DecodingContext fallthrough_context;
   };
 
-  struct NormalInsn : public FallthroughFlow {};
+  struct NormalInsn : public FallthroughFlow {
+    bool operator==(const NormalInsn &rhs) const;
+  };
   struct NoOp : public FallthroughFlow {};
 
-  struct InvalidInsn {};
-  struct ErrorInsn {};
+  struct InvalidInsn {
+    bool operator==(const InvalidInsn &rhs) const;
+  };
+  struct ErrorInsn {
+    bool operator==(const ErrorInsn &rhs) const;
+  };
 
   struct DirectJump {
+    bool operator==(const DirectJump &rhs) const;
     DirectFlow taken_flow;
   };
 
   struct IndirectJump {
     IndirectFlow taken_flow;
+
+    bool operator==(const IndirectJump &rhs) const;
   };
 
-  struct ConditionalIndirectJump : public FallthroughFlow,
-                                   public IndirectJump {};
+  struct ConditionalIndirectJump : public FallthroughFlow, public IndirectJump {
+    bool operator==(const ConditionalIndirectJump &rhs) const;
+  };
 
-  struct ConditionalDirectJump : public FallthroughFlow, public DirectJump {};
+  struct ConditionalDirectJump : public FallthroughFlow, public DirectJump {
+    bool operator==(const ConditionalDirectJump &rhs) const;
+  };
 
-  struct DirectFunctionCall : DirectJump {};
+  struct DirectFunctionCall : DirectJump {
+    bool operator==(const DirectFunctionCall &rhs) const;
+  };
 
   struct ConditionalDirectFunctionCall : public DirectFunctionCall,
-                                         public FallthroughFlow {};
+                                         public FallthroughFlow {
+    bool operator==(const ConditionalDirectFunctionCall &rhs) const;
+  };
 
-  struct IndirectFunctionCall : IndirectJump {};
+  struct IndirectFunctionCall : IndirectJump {
+    bool operator==(const IndirectFunctionCall &rhs) const;
+  };
 
   struct ConditionalIndirectFunctionCall : public IndirectFunctionCall,
-                                           public FallthroughFlow {};
+                                           public FallthroughFlow {
+    bool operator==(const ConditionalIndirectFunctionCall &rhs) const;
+  };
 
-  struct FunctionReturn : IndirectJump {};
+  struct FunctionReturn : IndirectJump {
+    bool operator==(const FunctionReturn &rhs) const;
+  };
 
-  struct AsyncHyperCall {};
+  struct AsyncHyperCall {
+    bool operator==(const AsyncHyperCall &rhs) const;
+  };
   struct ConditionalAsyncHyperCall : public AsyncHyperCall,
-                                     public FallthroughFlow {};
+                                     public FallthroughFlow {
+    bool operator==(const ConditionalAsyncHyperCall &rhs) const;
+  };
 
 
-  struct ConditionalFunctionReturn : FunctionReturn, FallthroughFlow {};
+  struct ConditionalFunctionReturn : FunctionReturn, FallthroughFlow {
+    bool operator==(const ConditionalFunctionReturn &rhs) const;
+  };
 
 
   using InstructionFlowCategory =
-      std::variant<InvalidInsn, ErrorInsn, DirectJump, IndirectJump,
+      std::variant<NormalInsn, InvalidInsn, ErrorInsn, DirectJump, IndirectJump,
                    ConditionalIndirectJump, ConditionalDirectJump,
                    DirectFunctionCall, ConditionalDirectFunctionCall,
                    ConditionalIndirectFunctionCall, FunctionReturn,

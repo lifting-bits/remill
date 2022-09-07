@@ -244,8 +244,8 @@ Arch::DecodingResult SleighDecoder::DecodeInstructionImpl(
   LOG(INFO) << "Addr: " << address;
   uint64_t fallthrough = address + *instr_len;
   inst.next_pc = fallthrough;
-  inst.flows =
-      computeCategory(pcode_handler.ops, fallthrough, curr_context).first;
+  // inst.flows =
+  //   computeCategory(pcode_handler.ops, fallthrough, curr_context).first;
   LOG(INFO) << "Fallthrough: " << fallthrough;
   LOG(INFO) << "Decoded as " << inst.Serialize();
 

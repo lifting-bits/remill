@@ -41,6 +41,7 @@ class DecodingContext {
  public:
   using ContextMap = std::function<DecodingContext(uint64_t)>;
 
+  bool operator==(const DecodingContext &rhs) const;
 
   DecodingContext() = default;
 
