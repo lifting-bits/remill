@@ -15,23 +15,18 @@
  */
 
 #pragma once
-
 #include <remill/Arch/ArchBase.h>
 #include <remill/BC/SleighLifter.h>
 
 #include <sleigh/libsleigh.hh>
 #include <unordered_set>
 
+#include "ControlFlowStructuring.h"
+
 // Unifies shared functionality between sleigh architectures
 
 namespace remill::sleigh {
 
-
-struct PcodeOp {
-  OpCode op;
-  std::optional<VarnodeData> outvar;
-  std::vector<VarnodeData> vars;
-};
 class PcodeDecoder final : public PcodeEmit {
  public:
   PcodeDecoder(::Sleigh &engine_);
@@ -40,7 +35,7 @@ class PcodeDecoder final : public PcodeEmit {
             int32_t isize) override;
 
 
-  std::vector<PcodeOp> ops;
+  std::vector<RemillPcodeOp> ops;
 
  private:
   ::Sleigh &engine;
@@ -101,29 +96,6 @@ class SingleInstructionSleighContext {
   std::vector<std::string> getUserOpNames();
 };
 
-
-/// A context updater concusmes PCode and attempts to associate a context register with a constant value on exit of an instruction.
-/// If the instruction is interprocedural we restore the prior context, assuming fallthrough does not update the context.
-class ContextUpdater : public PcodeEmit {
- private:
-  bool is_inter_procedural;
-  DecodingContext curr_context;
-  DecodingContext prev_context;
-  const std::unordered_map<std::string, std::string> &register_mapping;
-  Sleigh &engine;
-  std::unordered_set<std::string> already_assigned;
-
- public:
-  ContextUpdater(
-      DecodingContext curr_context,
-      const std::unordered_map<std::string, std::string> &register_mapping,
-      Sleigh &engine_);
-
-  virtual void dump(const Address &addr, OpCode opc, VarnodeData *outvar,
-                    VarnodeData *vars, int4 isize) override;
-
-  DecodingContext GetContext() const;
-};
 
 class SleighDecoder {
  public:

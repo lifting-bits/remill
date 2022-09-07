@@ -25,12 +25,6 @@ namespace remill::sleigh {
 
 namespace {
 
-static bool isVarnodeInConstantSpace(VarnodeData vnode) {
-  auto spc = vnode.getAddr().getSpace();
-  return spc->constant_space_index == spc->getIndex();
-}
-
-
 class InstructionFunctionSetter : public AssemblyEmit {
  private:
   remill::Instruction &insn;
@@ -51,12 +45,6 @@ class AssemblyLogger : public AssemblyEmit {
 };
 
 
-static Instruction::InstructionFlowCategory
-computeCategory(const std::vector<PcodeOp> &ops, uint64_t fallthrough_addr,
-                DecodingContext entry_context) {
-  throw std::logic_error("Function not yet implemented");
-}
-
 }  // namespace
 
 PcodeDecoder::PcodeDecoder(::Sleigh &engine_) : engine(engine_) {}
@@ -75,7 +63,19 @@ void PcodeDecoder::print_vardata(std::stringstream &s, VarnodeData &data) {
 }
 
 void PcodeDecoder::dump(const Address &, OpCode op, VarnodeData *outvar,
-                        VarnodeData *vars, int32_t isize) {}
+                        VarnodeData *vars, int32_t isize) {
+  RemillPcodeOp new_op;
+  new_op.op = op;
+  if (outvar) {
+    new_op.outvar = *outvar;
+  } else {
+    new_op.outvar = std::nullopt;
+  }
+
+  for (int i = 0; i < isize; i++) {
+    new_op.vars.push_back(vars[i]);
+  }
+}
 
 std::vector<std::string> SingleInstructionSleighContext::getUserOpNames() {
   std::vector<std::string> res;
@@ -242,9 +242,10 @@ Arch::DecodingResult SleighDecoder::DecodeInstructionImpl(
   this->sleigh_ctx.oneInstruction(address, setter, inst.bytes);
   LOG(INFO) << "Instr len:" << *instr_len;
   LOG(INFO) << "Addr: " << address;
-  auto fallthrough = address + *instr_len;
+  uint64_t fallthrough = address + *instr_len;
   inst.next_pc = fallthrough;
-  inst.flows = computeCategory(pcode_handler.ops, fallthrough, curr_context);
+  inst.flows =
+      computeCategory(pcode_handler.ops, fallthrough, curr_context).first;
   LOG(INFO) << "Fallthrough: " << fallthrough;
   LOG(INFO) << "Decoded as " << inst.Serialize();
 
@@ -329,55 +330,9 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
 
 
 ContextUpdater::ContextUpdater(
-    DecodingContext curr_context_,
     const std::unordered_map<std::string, std::string> &register_mapping_,
     Sleigh &engine_)
-    : is_inter_procedural(false),
-      curr_context(curr_context_),
-      prev_context(std::move(curr_context_)),
-      register_mapping(register_mapping_),
+    : register_mapping(register_mapping_),
       engine(engine_) {}
-
-void ContextUpdater::dump(const Address &addr, OpCode opc, VarnodeData *outvar,
-                          VarnodeData *vars, int4 isize) {
-
-  if (opc == OpCode::CPUI_CALL || opc == OpCode::CPUI_CALLIND) {
-    this->is_inter_procedural = true;
-  }
-
-  // So we are updating a variable, if it's a target we either need to give it a new constant value or drop it to nonconstant
-  if (!outvar) {
-    return;
-  }
-
-  auto outvar_name =
-      this->engine.getRegisterName(outvar->space, outvar->offset, outvar->size);
-  auto target_remill_cont_reg = this->register_mapping.find(outvar_name);
-  if (target_remill_cont_reg == this->register_mapping.end()) {
-    return;
-  }
-
-  if (this->already_assigned.find(target_remill_cont_reg->second) !=
-          this->already_assigned.end() ||
-      !(opc == OpCode::CPUI_COPY && isVarnodeInConstantSpace(vars[0]))) {
-    LOG(INFO) << "Dropping " << target_remill_cont_reg->second;
-    this->curr_context.DropReg(target_remill_cont_reg->second);
-    return;
-  }
-
-
-  this->curr_context.UpdateContextReg(target_remill_cont_reg->second,
-                                      vars[0].offset);
-
-  return;
-}
-
-DecodingContext ContextUpdater::GetContext() const {
-  LOG(INFO) << "Getting context updater value";
-  if (this->is_inter_procedural) {
-    return this->prev_context;
-  }
-  return this->curr_context;
-}
 
 }  // namespace remill::sleigh
