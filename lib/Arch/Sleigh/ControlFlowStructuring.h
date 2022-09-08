@@ -27,7 +27,7 @@ struct RemillPcodeOp {
 class ContextUpdater {
  private:
   const std::unordered_map<std::string, std::string> &register_mapping;
-
+  DecodingContext curr_context;
   Sleigh &engine;
 
  public:
@@ -45,10 +45,17 @@ class ContextUpdater {
 class ControlFlowStructureAnalysis {
 
  private:
-  ContextUpdater context_evaluator;
+  const std::unordered_map<std::string, std::string> &register_mapping;
+  Sleigh &engine;
 
+
+  ContextUpdater BuildContextUpdater();
 
  public:
+  ControlFlowStructureAnalysis(
+      const std::unordered_map<std::string, std::string> &register_mapping,
+      Sleigh &engine);
+
   static bool isControlFlowPcodeOp(OpCode opc);
 
   std::optional<std::pair<Instruction::InstructionFlowCategory,

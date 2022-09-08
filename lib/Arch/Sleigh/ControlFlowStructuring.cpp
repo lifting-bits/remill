@@ -392,8 +392,8 @@ ControlFlowStructureAnalysis::ComputeCategory(
   if (!maybe_ccategory) {
     return std::nullopt;
   }
-
-  auto flows = GetBoundContextsForFlows(ops, cc, this->context_evaluator);
+  auto context_updater = this->BuildContextUpdater();
+  auto flows = GetBoundContextsForFlows(ops, cc, context_updater);
 
   switch (*maybe_ccategory) {
     case CAT_ABNORMAL: return ExtractAbnormal(flows, ops);
@@ -402,4 +402,38 @@ ControlFlowStructureAnalysis::ComputeCategory(
     case CAT_NORMAL: return ExtractNormal(flows, ops);
   }
 }
+
+// Applies a pcode op to the held context, this may produce a complete context
+void ContextUpdater::ApplyPcodeOp(const RemillPcodeOp &op) {
+  if (!op.outvar) {
+    return;
+  }
+
+  auto out = *op.outvar;
+  auto reg_name = this->engine.getRegisterName(out.space, out.offset, out.size);
+  auto maybe_remill_reg_name = this->register_mapping.find(reg_name);
+  if (maybe_remill_reg_name == this->register_mapping.end()) {
+    return;
+  }
+
+  auto remill_reg_name = maybe_remill_reg_name->second;
+
+  if (op.op == CPUI_COPY && isVarnodeInConstantSpace(op.vars[0])) {
+    this->curr_context.UpdateContextReg(remill_reg_name, op.vars[0].offset);
+  } else {
+    this->curr_context.DropReg(remill_reg_name);
+  }
+}
+
+// May have a complete context
+std::optional<DecodingContext> ContextUpdater::GetContext() const {
+  for (const auto &[_, remill_reg] : this->register_mapping) {
+    if (!this->curr_context.HasContextValue(remill_reg)) {
+      return std::nullopt;
+    }
+  }
+
+  return this->curr_context;
+}
+
 }  // namespace remill::sleigh

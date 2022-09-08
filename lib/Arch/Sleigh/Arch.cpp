@@ -244,7 +244,19 @@ Arch::DecodingResult SleighDecoder::DecodeInstructionImpl(
   LOG(INFO) << "Addr: " << address;
   uint64_t fallthrough = address + *instr_len;
   inst.next_pc = fallthrough;
-  // inst.flows =
+
+  ControlFlowStructureAnalysis analysis(this->register_mapping,
+                                        this->sleigh_ctx.GetEngine());
+
+
+  auto cat =
+      analysis.ComputeCategory(pcode_handler.ops, fallthrough, curr_context);
+  if (!cat) {
+    inst.flows = Instruction::ErrorInsn();
+    return std::nullopt;
+  }
+  inst.flows = cat->first;
+
   //   computeCategory(pcode_handler.ops, fallthrough, curr_context).first;
   LOG(INFO) << "Fallthrough: " << fallthrough;
   LOG(INFO) << "Decoded as " << inst.Serialize();

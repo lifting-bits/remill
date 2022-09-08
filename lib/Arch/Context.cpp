@@ -34,7 +34,7 @@ void DecodingContext::DropReg(const std::string &creg) {
   this->context_value.erase(creg);
 }
 
-bool DecodingContext::HasContextValue(const std::string &creg) {
+bool DecodingContext::HasContextValue(const std::string &creg) const {
   return this->context_value.find(creg) != this->context_value.end();
 }
 
