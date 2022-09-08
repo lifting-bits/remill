@@ -341,21 +341,22 @@ class Instruction {
   };
 
 
-  using AbnormalFlow = std::variant<DirectFunctionCall, IndirectFunctionCall,
-                                    FunctionReturn, AsyncHyperCall>;
+  using AbnormalFlow =
+      std::variant<DirectFunctionCall, IndirectFunctionCall, FunctionReturn,
+                   AsyncHyperCall, IndirectJump, DirectJump>;
 
   struct ConditionalInstruction {
     AbnormalFlow taken_branch;
     FallthroughFlow fall_through;
+
+    bool operator==(const ConditionalInstruction &rhs) const;
   };
 
 
   using InstructionFlowCategory =
       std::variant<NormalInsn, InvalidInsn, ErrorInsn, DirectJump, IndirectJump,
-                   ConditionalIndirectJump, ConditionalDirectJump,
-                   DirectFunctionCall, ConditionalDirectFunctionCall,
-                   ConditionalIndirectFunctionCall, FunctionReturn,
-                   AsyncHyperCall, ConditionalAsyncHyperCall>;
+                   DirectFunctionCall, ConditionalIndirectFunctionCall,
+                   FunctionReturn, AsyncHyperCall, ConditionalInstruction>;
 
   InstructionFlowCategory flows;
 

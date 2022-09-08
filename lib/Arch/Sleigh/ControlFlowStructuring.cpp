@@ -12,6 +12,24 @@ bool isVarnodeInConstantSpace(VarnodeData vnode) {
 
 namespace {
 
+// variant casting taken c&ped.
+template <class... Args>
+struct variant_cast_proxy {
+  std::variant<Args...> v;
+
+  template <class... ToArgs>
+  operator std::variant<ToArgs...>() const {
+    return std::visit([](auto &&arg) -> std::variant<ToArgs...> { return arg; },
+                      v);
+  }
+};
+
+template <class... Args>
+auto variant_cast(const std::variant<Args...> &v)
+    -> variant_cast_proxy<Args...> {
+  return {v};
+}
+
 enum CoarseEffect { ABNORMAL, NORMAL };
 
 struct CoarseFlow {
@@ -148,7 +166,7 @@ GetBoundContextsForFlows(const std::vector<RemillPcodeOp> &ops,
 
 
 // DirectJump, IndirectJump, FunctionReturn
-static std::optional<Instruction::InstructionFlowCategory>
+static std::optional<Instruction::AbnormalFlow>
 AbnormalCategoryOfFlow(const Flow &flow, const RemillPcodeOp &op) {
   if (op.op == CPUI_RETURN) {
     Instruction::IndirectFlow id_flow = {{}, flow.context};
@@ -178,9 +196,10 @@ AbnormalCategoryOfFlow(const Flow &flow, const RemillPcodeOp &op) {
 
 
   // still need to pick up the flow for the actual abnormal transition
-  if (op.op == CPUI_CBRANCH)
+  if (op.op == CPUI_CBRANCH) {
+  }
 
-    return std::nullopt;
+  return std::nullopt;
 }
 
 
@@ -242,7 +261,17 @@ static std::optional<std::pair<Instruction::InstructionFlowCategory,
                                std::optional<BranchTakenVar>>>
 ExtractAbnormal(const std::vector<Flow> &flows,
                 const std::vector<RemillPcodeOp> &ops) {
-  return ExtractNonConditionalCategory(flows, ops, AbnormalCategoryOfFlow);
+  return ExtractNonConditionalCategory(
+      flows, ops,
+      [](const Flow &flow, const RemillPcodeOp &op)
+          -> std::optional<Instruction::InstructionFlowCategory> {
+        auto res = AbnormalCategoryOfFlow(flow, op);
+        if (res) {
+          return variant_cast(*res);
+        } else {
+          return std::nullopt;
+        }
+      });
 }
 
 static std::optional<std::pair<Instruction::InstructionFlowCategory,
