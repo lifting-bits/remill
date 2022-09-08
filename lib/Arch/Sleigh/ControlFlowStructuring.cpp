@@ -189,14 +189,27 @@ AbnormalCategoryOfFlow(const Flow &flow, const RemillPcodeOp &op) {
   }
 
   if (op.op == CPUI_CALL) {
+    auto target = op.vars[0].offset;
+    Instruction::DirectFlow dflow = {{}, target, *flow.context};
+    Instruction::DirectJump djump = {dflow};
+    Instruction::DirectFunctionCall call = {djump};
+    return call;
   }
 
   if (op.op == CPUI_CALLIND) {
+    Instruction::IndirectFlow id_flow = {{}, flow.context};
+    Instruction::IndirectJump id_jump = {id_flow};
+    Instruction::IndirectFunctionCall call = {id_jump};
+    return call;
   }
 
 
   // still need to pick up the flow for the actual abnormal transition
   if (op.op == CPUI_CBRANCH) {
+    auto target = op.vars[0].offset;
+    Instruction::DirectFlow dflow = {{}, target, *flow.context};
+    Instruction::DirectJump djump = {dflow};
+    return djump;
   }
 
   return std::nullopt;
@@ -288,9 +301,6 @@ ExtractConditionalAbnormal(const std::vector<Flow> &flows,
   // Two case sto handle here either conditional_fallthrough->abnormal
   // Or conditional_abnormal -> fallthrough
 
-  auto first_insn = ops[first_flow.pcode_index];
-  auto snd_insn = ops[snd_flow.pcode_index];
-
 
   if (!isConditionalNormal(first_flow.flow) &&
       !isConditionalAbnormal(first_flow.flow)) {
@@ -298,6 +308,10 @@ ExtractConditionalAbnormal(const std::vector<Flow> &flows,
   }
 
   auto flip_cond = isConditionalNormal(first_flow.flow);
+  const auto &abnormal_flow =
+      isConditionalNormal(first_flow.flow) ? snd_flow : first_flow;
+  const auto &normal_flow =
+      isConditionalNormal(first_flow.flow) ? first_flow : snd_flow;
   // so here we know the first flow is conditional of some sort and it should be followed by some unconditonal flow
   CHECK(isUnconditionalAbnormal(snd_flow.flow) ||
         isUnconditionalNormal(snd_flow.flow));
@@ -311,35 +325,29 @@ ExtractConditionalAbnormal(const std::vector<Flow> &flows,
       cond_insn.vars[1],
       first_flow.pcode_index,
   };
+
+  auto abnormal_part =
+      AbnormalCategoryOfFlow(abnormal_flow, ops[abnormal_flow.pcode_index]);
+
+
+  if (!normal_flow.context) {
+    return std::nullopt;
+  }
+  auto normal_context = *normal_flow.context;
+
+
+  if (!abnormal_part) {
+    return std::nullopt;
+  }
+
+  Instruction::ConditionalInstruction cond = {*abnormal_part,
+                                              {{}, normal_context}};
+
+  return {{cond, taken_var}};
 }
 
 }  // namespace
 
-/*
-
-std::optional<DecodingContext>
-ContextUpdater::NextContext(const RemillPcodeOp &op,
-                            DecodingContext prev) const {
-  // So we are updating a variable, if it's a target we either need to give it a new constant value or drop it to nonconstant
-  if (!op.outvar) {
-    return prev;
-  }
-
-  auto outvar_name = this->engine.getRegisterName(
-      op.outvar->space, op.outvar->offset, op.outvar->size);
-  auto target_remill_cont_reg = this->register_mapping.find(outvar_name);
-  if (target_remill_cont_reg == this->register_mapping.end()) {
-    return prev;
-  }
-
-  if (op.op == OpCode::CPUI_COPY && isVarnodeInConstantSpace(op.vars[0])) {
-    prev.UpdateContextReg(target_remill_cont_reg->second, op.vars[0].offset);
-    return prev;
-  }
-
-  return std::nullopt;
-}
-*/
 
 bool ControlFlowStructureAnalysis::isControlFlowPcodeOp(OpCode opc) {
   return opc == OpCode::CPUI_BRANCH || opc == OpCode::CPUI_CBRANCH ||
@@ -389,7 +397,8 @@ ControlFlowStructureAnalysis::ComputeCategory(
 
   switch (*maybe_ccategory) {
     case CAT_ABNORMAL: return ExtractAbnormal(flows, ops);
-    case CAT_CONDITIONAL_ABNORMAL: return std::nullopt;
+    case CAT_CONDITIONAL_ABNORMAL:
+      return ExtractConditionalAbnormal(flows, ops);
     case CAT_NORMAL: return ExtractNormal(flows, ops);
   }
 }
