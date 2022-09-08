@@ -1,4 +1,7 @@
 #include "ControlFlowStructuring.h"
+
+#include <glog/logging.h>
+
 namespace remill::sleigh {
 
 bool isVarnodeInConstantSpace(VarnodeData vnode) {
@@ -57,9 +60,14 @@ CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc) {
 
       res.emplace(ind, *cc);
       // insert a pseudo control flow op at the end
-    } else if (ind == res.size() - 1) {
+    }
+
+    // add a fallthrough insn at +1 to represent a last fallthrough if there is a chance we fallthrough at the end
+    if ((!ControlFlowStructureAnalysis::isControlFlowPcodeOp(op.op) ||
+         op.op == CPUI_CBRANCH) &&
+        ind == res.size() - 1) {
       CoarseFlow cat = {CoarseEffect::NORMAL, false};
-      res.emplace(ind, cat);
+      res.emplace(ind + 1, cat);
     }
 
     ind++;
@@ -162,8 +170,17 @@ AbnormalCategoryOfFlow(const Flow &flow, const RemillPcodeOp &op) {
     return djump;
   }
 
+  if (op.op == CPUI_CALL) {
+  }
 
-  return std::nullopt;
+  if (op.op == CPUI_CALLIND) {
+  }
+
+
+  // still need to pick up the flow for the actual abnormal transition
+  if (op.op == CPUI_CBRANCH)
+
+    return std::nullopt;
 }
 
 
@@ -241,9 +258,30 @@ ExtractConditionalAbnormal(const std::vector<Flow> &flows,
 
   // Two case sto handle here either conditional_fallthrough->abnormal
   // Or conditional_abnormal -> fallthrough
-  if (isConditionalNormal(first_flow.flow)) {
-    CHECK(isUnconditionalAbnormal(snd_flow));
+
+  auto first_insn = ops[first_flow.pcode_index];
+  auto snd_insn = ops[snd_flow.pcode_index];
+
+
+  if (!isConditionalNormal(first_flow.flow) &&
+      !isConditionalAbnormal(first_flow.flow)) {
+    return std::nullopt;
   }
+
+  auto flip_cond = isConditionalNormal(first_flow.flow);
+  // so here we know the first flow is conditional of some sort and it should be followed by some unconditonal flow
+  CHECK(isUnconditionalAbnormal(snd_flow.flow) ||
+        isUnconditionalNormal(snd_flow.flow));
+
+  const auto &cond_insn = ops[first_flow.pcode_index];
+
+  CHECK(cond_insn.op == CPUI_CBRANCH);
+
+  BranchTakenVar taken_var = {
+      flip_cond,
+      cond_insn.vars[1],
+      first_flow.pcode_index,
+  };
 }
 
 }  // namespace

@@ -341,6 +341,15 @@ class Instruction {
   };
 
 
+  using AbnormalFlow = std::variant<DirectFunctionCall, IndirectFunctionCall,
+                                    FunctionReturn, AsyncHyperCall>;
+
+  struct ConditionalInstruction {
+    AbnormalFlow taken_branch;
+    FallthroughFlow fall_through;
+  };
+
+
   using InstructionFlowCategory =
       std::variant<NormalInsn, InvalidInsn, ErrorInsn, DirectJump, IndirectJump,
                    ConditionalIndirectJump, ConditionalDirectJump,
