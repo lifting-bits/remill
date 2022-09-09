@@ -341,10 +341,4 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
 }
 
 
-ContextUpdater::ContextUpdater(
-    const std::unordered_map<std::string, std::string> &register_mapping_,
-    Sleigh &engine_)
-    : register_mapping(register_mapping_),
-      engine(engine_) {}
-
 }  // namespace remill::sleigh

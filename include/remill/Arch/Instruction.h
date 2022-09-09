@@ -263,15 +263,21 @@ class Instruction {
   struct DirectFlow : Flow {
     uint64_t known_target;
     DecodingContext static_context;
+
+    bool operator==(const DirectFlow &rhs) const;
   };
 
   struct IndirectFlow : Flow {
     // We may have info in the decoder that tells us a context value
     std::optional<DecodingContext> maybe_context;
+
+    bool operator==(const IndirectFlow &rhs) const;
   };
 
   struct FallthroughFlow : Flow {
     DecodingContext fallthrough_context;
+
+    bool operator==(const FallthroughFlow &rhs) const;
   };
 
   struct NormalInsn : public FallthroughFlow {
@@ -282,6 +288,7 @@ class Instruction {
   struct InvalidInsn {
     bool operator==(const InvalidInsn &rhs) const;
   };
+
   struct ErrorInsn {
     bool operator==(const ErrorInsn &rhs) const;
   };
@@ -318,11 +325,6 @@ class Instruction {
     bool operator==(const IndirectFunctionCall &rhs) const;
   };
 
-  struct ConditionalIndirectFunctionCall : public IndirectFunctionCall,
-                                           public FallthroughFlow {
-    bool operator==(const ConditionalIndirectFunctionCall &rhs) const;
-  };
-
   struct FunctionReturn : IndirectJump {
     bool operator==(const FunctionReturn &rhs) const;
   };
@@ -355,8 +357,8 @@ class Instruction {
 
   using InstructionFlowCategory =
       std::variant<NormalInsn, InvalidInsn, ErrorInsn, DirectJump, IndirectJump,
-                   DirectFunctionCall, ConditionalIndirectFunctionCall,
-                   FunctionReturn, AsyncHyperCall, ConditionalInstruction>;
+                   DirectFunctionCall, FunctionReturn, AsyncHyperCall,
+                   ConditionalInstruction>;
 
   InstructionFlowCategory flows;
 

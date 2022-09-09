@@ -33,7 +33,7 @@ class ContextUpdater {
  public:
   ContextUpdater(
       const std::unordered_map<std::string, std::string> &register_mapping,
-      Sleigh &engine_);
+      DecodingContext initial_context, Sleigh &engine_);
 
   // Applies a pcode op to the held context, this may produce a complete context
   void ApplyPcodeOp(const RemillPcodeOp &op);
@@ -49,7 +49,7 @@ class ControlFlowStructureAnalysis {
   Sleigh &engine;
 
 
-  ContextUpdater BuildContextUpdater();
+  ContextUpdater BuildContextUpdater(DecodingContext initial_context);
 
  public:
   ControlFlowStructureAnalysis(

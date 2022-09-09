@@ -2,6 +2,77 @@
 
 #include <glog/logging.h>
 
+
+namespace remill {
+bool Instruction::DirectJump::operator==(const DirectJump &rhs) const {
+  return this->taken_flow == rhs.taken_flow;
+}
+
+bool Instruction::DirectFlow::operator==(
+    remill::Instruction::DirectFlow const &rhs) const {
+  return this->known_target == rhs.known_target &&
+         this->static_context == rhs.static_context;
+}
+
+bool Instruction::NormalInsn::operator==(
+    remill::Instruction::NormalInsn const &rhs) const {
+  return Instruction::FallthroughFlow::operator==(rhs);
+}
+
+bool Instruction::InvalidInsn::operator==(
+    remill::Instruction::InvalidInsn const &invalid) const {
+  return true;
+}
+
+bool Instruction::IndirectJump::operator==(
+    remill::Instruction::IndirectJump const &rhs) const {
+  return this->taken_flow == rhs.taken_flow;
+}
+
+bool Instruction::AsyncHyperCall::operator==(
+    remill::Instruction::AsyncHyperCall const &rhs) const {
+  return true;
+}
+
+bool Instruction::FunctionReturn::operator==(
+    remill::Instruction::FunctionReturn const &rhs) const {
+  return Instruction::IndirectJump::operator==(rhs);
+}
+
+bool Instruction::FallthroughFlow::operator==(
+    remill::Instruction::FallthroughFlow const &rhs) const {
+  return this->fallthrough_context == rhs.fallthrough_context;
+}
+
+bool Instruction::DirectFunctionCall::operator==(
+    remill::Instruction::DirectFunctionCall const &rhs) const {
+  return Instruction::DirectJump::operator==(rhs);
+}
+
+bool Instruction::ConditionalInstruction::operator==(
+    remill::Instruction::ConditionalInstruction const &rhs) const {
+  return this->fall_through == rhs.fall_through &&
+         this->taken_branch == rhs.taken_branch;
+}
+
+bool Instruction::IndirectFlow::operator==(
+    remill::Instruction::IndirectFlow const &rhs) const {
+  return this->maybe_context == rhs.maybe_context;
+}
+
+bool Instruction::IndirectFunctionCall::operator==(
+    remill::Instruction::IndirectFunctionCall const &rhs) const {
+  return Instruction::IndirectJump::operator==(rhs);
+}
+
+bool Instruction::ErrorInsn::operator==(
+    remill::Instruction::ErrorInsn const &) const {
+  return true;
+}
+
+
+}  // namespace remill
+
 namespace remill::sleigh {
 
 bool isVarnodeInConstantSpace(VarnodeData vnode) {
@@ -392,7 +463,7 @@ ControlFlowStructureAnalysis::ComputeCategory(
   if (!maybe_ccategory) {
     return std::nullopt;
   }
-  auto context_updater = this->BuildContextUpdater();
+  auto context_updater = this->BuildContextUpdater(std::move(entry_context));
   auto flows = GetBoundContextsForFlows(ops, cc, context_updater);
 
   switch (*maybe_ccategory) {
@@ -435,5 +506,26 @@ std::optional<DecodingContext> ContextUpdater::GetContext() const {
 
   return this->curr_context;
 }
+
+ContextUpdater ControlFlowStructureAnalysis::BuildContextUpdater(
+    DecodingContext initial_context) {
+  return ContextUpdater(this->register_mapping, std::move(initial_context),
+                        this->engine);
+}
+
+ContextUpdater::ContextUpdater(
+    const std::unordered_map<std::string, std::string> &register_mapping,
+    DecodingContext initial_context, Sleigh &engine_)
+    : register_mapping(register_mapping),
+      curr_context(std::move(initial_context)),
+      engine(engine_) {}
+
+
+ControlFlowStructureAnalysis::ControlFlowStructureAnalysis(
+    const std::unordered_map<std::string, std::string> &register_mapping_,
+    Sleigh &engine_)
+    : register_mapping(register_mapping_),
+      engine(engine_) {}
+
 
 }  // namespace remill::sleigh

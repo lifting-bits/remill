@@ -4,6 +4,11 @@
 
 namespace remill {
 
+
+bool DecodingContext::operator==(remill::DecodingContext const &rhs) const {
+  return this->context_value == rhs.context_value;
+}
+
 DecodingContext::DecodingContext(std::map<std::string, uint64_t> context_value)
     : context_value(std::move(context_value)) {}
 
