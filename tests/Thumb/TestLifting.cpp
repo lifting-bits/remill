@@ -44,6 +44,12 @@
 
 
 namespace {
+
+static remill::DecodingContext kThumbContext =
+    remill::DecodingContext({{remill::kThumbModeRegName, 1}});
+static remill::DecodingContext kARMContext =
+    remill::DecodingContext({{remill::kThumbModeRegName, 0}});
+
 const static std::unordered_map<std::string,
                                 std::function<uint32_t &(AArch32State &)>>
     reg_to_accessor = {
@@ -52,10 +58,9 @@ const static std::unordered_map<std::string,
         {"sp", [](AArch32State &st) -> uint32_t & { return st.gpr.r13.dword; }},
         {"r1", [](AArch32State &st) -> uint32_t & { return st.gpr.r1.dword; }}};
 
-/*
 
-std::optional<remill::DecodingContext::ContextMap>
-GetSuccessorContext(std::string_view bytes, uint64_t address, uint64_t tm_val) {
+std::optional<remill::Instruction::InstructionFlowCategory>
+GetFlows(std::string_view bytes, uint64_t address, uint64_t tm_val) {
 
   llvm::LLVMContext context;
   context.enableOpaquePointers();
@@ -69,10 +74,12 @@ GetSuccessorContext(std::string_view bytes, uint64_t address, uint64_t tm_val) {
   assert(dec_context.HasContextValue("TMReg"));
   remill::Instruction insn;
   auto res = arch->DecodeInstruction(address, bytes, insn, dec_context);
-
-  // make these tests fail for now
-  return std::nullopt;
-}*/
+  if (!res) {
+    return std::nullopt;
+  } else {
+    return insn.flows;
+  }
+}
 }  // namespace
 
 
@@ -535,3 +542,19 @@ TEST(ArmContextTests, ArmMovPCIndirectDoesAllowModeSwitchConditional) {
   EXPECT_FALSE(map(0x1000).HasContextValue(remill::kThumbModeRegName));
 }
 */
+
+// Two things we need to test: correct categories and when we lift, the branch taken var is set appropriately
+
+
+TEST(ArmContextTests, ThumbBXIndirect) {
+  // bx r1
+  std::string insn_data("\x08\x47", 2);
+
+  auto maybe_flow = GetFlows(insn_data, 0xdeadbee0, 1);
+  ASSERT_TRUE(maybe_flow.has_value());
+  auto flow = *maybe_flow;
+
+  remill::Instruction::InstructionFlowCategory jmp =
+      remill::Instruction::IndirectJump({{{}, kARMContext}});
+  EXPECT_EQ(flow, jmp);
+}
