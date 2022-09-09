@@ -856,16 +856,13 @@ DecodingContext DefaultContextAndLifter::CreateInitialContext(void) const {
   return DecodingContext();
 }
 
-Arch::DecodingResult DefaultContextAndLifter::DecodeInstruction(
-    uint64_t address, std::string_view instr_bytes, Instruction &inst,
-    DecodingContext context) const {
+bool DefaultContextAndLifter::DecodeInstruction(uint64_t address,
+                                                std::string_view instr_bytes,
+                                                Instruction &inst,
+                                                DecodingContext context) const {
   inst.SetLifter(std::make_unique<remill::InstructionLifter>(
       this, this->GetInstrinsicTable()));
-  if (this->ArchDecodeInstruction(address, instr_bytes, inst)) {
-    return DecodingContext::UniformContextMapping(std::move(context));
-  }
-
-  return std::nullopt;
+  return this->ArchDecodeInstruction(address, instr_bytes, inst);
 }
 
 

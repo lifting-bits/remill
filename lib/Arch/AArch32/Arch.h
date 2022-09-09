@@ -31,9 +31,9 @@ class AArch32Arch final : public AArch32ArchBase {
 
   virtual DecodingContext CreateInitialContext(void) const override;
 
-  virtual Arch::DecodingResult
-  DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                    Instruction &inst, DecodingContext context) const override;
+  bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                         Instruction &inst,
+                         DecodingContext context) const override;
 
 
   OperandLifter::OpLifterPtr
@@ -50,14 +50,12 @@ class AArch32Arch final : public AArch32ArchBase {
 
  private:
   sleighthumb2::SleighThumb2Decoder thumb_decoder;
-  Arch::DecodingResult
-  DecodeAArch32(uint64_t address, std::string_view instr_bytes,
-                Instruction &inst, DecodingContext context) const;
+  bool DecodeAArch32(uint64_t address, std::string_view instr_bytes,
+                     Instruction &inst, DecodingContext context) const;
 
 
-  Arch::DecodingResult
-  DecodeThumb(uint64_t address, std::string_view instr_bytes, Instruction &inst,
-              DecodingContext context) const;
+  bool DecodeThumb(uint64_t address, std::string_view instr_bytes,
+                   Instruction &inst, DecodingContext context) const;
 
 
   AArch32Arch(void) = delete;

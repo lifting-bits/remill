@@ -182,10 +182,10 @@ std::shared_ptr<remill::SleighLifter> SleighDecoder::GetLifter() const {
   return this->lifter;
 }
 
-Arch::DecodingResult
-SleighDecoder::DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                                 Instruction &inst,
-                                 DecodingContext context) const {
+bool SleighDecoder::DecodeInstruction(uint64_t address,
+                                      std::string_view instr_bytes,
+                                      Instruction &inst,
+                                      DecodingContext context) const {
   inst.SetLifter(this->GetLifter());
   assert(inst.GetLifter() != nullptr);
 
@@ -204,9 +204,10 @@ SleighDecoder::SleighDecoder(
       arch(arch_),
       register_mapping(reg_map_) {}
 
-Arch::DecodingResult SleighDecoder::DecodeInstructionImpl(
-    uint64_t address, std::string_view instr_bytes, Instruction &inst,
-    DecodingContext curr_context) {
+bool SleighDecoder::DecodeInstructionImpl(uint64_t address,
+                                          std::string_view instr_bytes,
+                                          Instruction &inst,
+                                          DecodingContext curr_context) {
 
   // The SLEIGH engine will query this image when we try to decode an instruction. Append the bytes so SLEIGH has data to read.
 
@@ -231,7 +232,7 @@ Arch::DecodingResult SleighDecoder::DecodeInstructionImpl(
       this->sleigh_ctx.oneInstruction(address, pcode_handler, instr_bytes);
 
   if (!instr_len || instr_len > instr_bytes.size()) {
-    return std::nullopt;
+    return false;
   }
   // communicate the size back to the caller
   inst.bytes = instr_bytes.substr(0, *instr_len);
@@ -253,15 +254,14 @@ Arch::DecodingResult SleighDecoder::DecodeInstructionImpl(
       analysis.ComputeCategory(pcode_handler.ops, fallthrough, curr_context);
   if (!cat) {
     inst.flows = Instruction::ErrorInsn();
-    return std::nullopt;
+    return false;
   }
   inst.flows = cat->first;
 
-  //   computeCategory(pcode_handler.ops, fallthrough, curr_context).first;
   LOG(INFO) << "Fallthrough: " << fallthrough;
   LOG(INFO) << "Decoded as " << inst.Serialize();
 
-  return DecodingContext::UniformContextMapping(curr_context);
+  return true;
 }
 
 

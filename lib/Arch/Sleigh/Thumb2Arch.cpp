@@ -63,9 +63,9 @@ class SleighThumbArch : public AArch32ArchBase {
     return this->decoder.GetLifter();
   }
 
-  virtual DecodingResult
-  DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                    Instruction &inst, DecodingContext context) const override {
+  virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                                 Instruction &inst,
+                                 DecodingContext context) const override {
     return decoder.DecodeInstruction(address, instr_bytes, inst, context);
   }
 

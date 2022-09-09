@@ -111,17 +111,15 @@ class SleighDecoder {
   InitializeSleighContext(SingleInstructionSleighContext &) const = 0;
 
 
-  Arch::DecodingResult
-  DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                    Instruction &inst, DecodingContext context) const;
+  bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                         Instruction &inst, DecodingContext context) const;
 
 
   std::shared_ptr<remill::SleighLifter> GetLifter() const;
 
  protected:
-  Arch::DecodingResult
-  DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,
-                        Instruction &inst, DecodingContext context);
+  bool DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,
+                             Instruction &inst, DecodingContext context);
 
 
   SingleInstructionSleighContext sleigh_ctx;

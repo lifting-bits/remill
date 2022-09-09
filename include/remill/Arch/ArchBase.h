@@ -109,9 +109,9 @@ class DefaultContextAndLifter : virtual public remill::ArchBase {
  public:
   virtual DecodingContext CreateInitialContext(void) const override;
 
-  virtual Arch::DecodingResult
-  DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                    Instruction &inst, DecodingContext context) const override;
+  virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                                 Instruction &inst,
+                                 DecodingContext context) const override;
 
 
   OperandLifter::OpLifterPtr

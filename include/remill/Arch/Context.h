@@ -39,8 +39,6 @@ class DecodingContext {
   std::map<std::string, uint64_t> context_value;
 
  public:
-  using ContextMap = std::function<DecodingContext(uint64_t)>;
-
   bool operator==(const DecodingContext &rhs) const;
 
   DecodingContext() = default;
@@ -57,8 +55,6 @@ class DecodingContext {
   uint64_t GetContextValue(const std::string &context_reg) const;
   DecodingContext PutContextReg(std::string creg, uint64_t value) const;
   DecodingContext MakeContextRegNonConstant(const std::string &creg) const;
-
-  static ContextMap UniformContextMapping(DecodingContext cont);
 };
 
 }  // namespace remill
