@@ -29,7 +29,7 @@ namespace remill {
 
 namespace {
 
-
+/*
 uint64_t RegValueFromArchName(remill::ArchName aname) {
   if (aname == kArchThumb2LittleEndian) {
     return 1;
@@ -37,7 +37,7 @@ uint64_t RegValueFromArchName(remill::ArchName aname) {
     return 0;
   }
 }
-/*
+
 DecodingContext::ContextMap UpdateContext(const remill::Instruction &inst,
                                           DecodingContext old_context) {
   //Direct/Known Arch transition Unconditional
@@ -3727,7 +3727,7 @@ static uint32_t BytesToBits(const uint8_t *bytes) {
 
 
 DecodingContext AArch32Arch::CreateInitialContext(void) const {
-  return DecodingContext().PutContextReg(kThumbModeRegName, 0);
+  return DecodingContext().PutContextReg(std::string(kThumbModeRegName), 0);
 }
 
 bool AArch32Arch::DecodeInstruction(uint64_t address,
@@ -3747,12 +3747,12 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();
 
-  if (!context.HasContextValue(kThumbModeRegName)) {
+  if (!context.HasContextValue(std::string(kThumbModeRegName))) {
     return false;
   }
 
 
-  if (context.GetContextValue(kThumbModeRegName)) {
+  if (context.GetContextValue(std::string(kThumbModeRegName))) {
     return this->DecodeThumb(address, inst_bytes, inst, std::move(context));
   } else {
     return this->DecodeAArch32(address, inst_bytes, inst, std::move(context));

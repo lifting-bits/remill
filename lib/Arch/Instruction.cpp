@@ -316,7 +316,8 @@ Instruction::Instruction(void)
       has_branch_taken_delay_slot(false),
       has_branch_not_taken_delay_slot(false),
       in_delay_slot(false),
-      category(Instruction::kCategoryInvalid) {}
+      category(Instruction::kCategoryInvalid),
+      flows(Instruction::InvalidInsn()) {}
 
 void Instruction::Reset(void) {
   pc = 0;
@@ -801,5 +802,50 @@ const InstructionLifter::LifterPtr &Instruction::GetLifter() const {
 void Instruction::SetLifter(InstructionLifter::LifterPtr lifter_) {
   lifter.swap(lifter_);
 }
+
+Instruction::DirectFlow::DirectFlow(uint64_t known_target_,
+                                    DecodingContext static_context_)
+    : known_target(known_target_),
+      static_context(std::move(static_context_)) {}
+
+Instruction::IndirectFlow::IndirectFlow(
+    std::optional<DecodingContext> maybe_context_)
+    : maybe_context(std::move(maybe_context_)) {}
+
+
+Instruction::FallthroughFlow::FallthroughFlow(
+    DecodingContext fallthrough_context_)
+    : fallthrough_context(std::move(fallthrough_context_)) {}
+
+
+Instruction::NormalInsn::NormalInsn(FallthroughFlow fallthrough_)
+    : fallthrough(std::move(fallthrough_)) {}
+
+
+Instruction::NoOp::NoOp(FallthroughFlow fallthrough_)
+    : fallthrough(std::move(fallthrough_)) {}
+
+
+Instruction::DirectJump::DirectJump(DirectFlow taken_flow_)
+    : taken_flow(std::move(taken_flow_)) {}
+
+Instruction::IndirectJump::IndirectJump(IndirectFlow taken_flow_)
+    : taken_flow(std::move(taken_flow_)) {}
+
+
+Instruction::DirectFunctionCall::DirectFunctionCall(DirectFlow taken_flow_)
+    : DirectJump(std::move(taken_flow_)) {}
+
+Instruction::IndirectFunctionCall::IndirectFunctionCall(
+    IndirectFlow taken_flow_)
+    : IndirectJump(std::move(taken_flow_)) {}
+
+Instruction::FunctionReturn::FunctionReturn(IndirectFlow id_flow_)
+    : IndirectJump(std::move(id_flow_)) {}
+
+Instruction::ConditionalInstruction::ConditionalInstruction(
+    AbnormalFlow taken_branch_, FallthroughFlow fall_through_)
+    : taken_branch(std::move(taken_branch_)),
+      fall_through(std::move(fall_through_)) {}
 
 }  // namespace remill

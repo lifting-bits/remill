@@ -1,5 +1,5 @@
 #include <remill/Arch/AArch32/ArchContext.h>
 
 namespace remill {
-const std::string kThumbModeRegName("TMReg");
+const std::string_view kThumbModeRegName = "TMReg";
 }

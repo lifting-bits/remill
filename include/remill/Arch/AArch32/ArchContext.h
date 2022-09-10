@@ -4,6 +4,6 @@
 
 namespace remill {
 
-extern const std::string kThumbModeRegName;
+extern const std::string_view kThumbModeRegName;
 
 }

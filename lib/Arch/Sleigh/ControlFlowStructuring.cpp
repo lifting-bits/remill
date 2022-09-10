@@ -4,6 +4,38 @@
 
 
 namespace remill {
+
+namespace {
+
+void print_vardata(Sleigh &engine, std::stringstream &s, VarnodeData &data) {
+  s << '(' << data.space->getName() << ',';
+  data.space->printOffset(s, data.offset);
+  s << ',' << dec << data.size << ')';
+
+  auto maybe_name = engine.getRegisterName(data.space, data.offset, data.size);
+  if (!maybe_name.empty()) {
+    s << ":" << maybe_name;
+  }
+}
+
+std::string DumpPcode(Sleigh &engine, const remill::sleigh::RemillPcodeOp &op) {
+  std::stringstream ss;
+
+  ss << get_opname(op.op);
+  if (op.outvar) {
+    auto ov = *op.outvar;
+    print_vardata(engine, ss, ov);
+    ss << " = ";
+  }
+  for (size_t i = 0; i < op.vars.size(); ++i) {
+    auto iv = op.vars[i];
+    print_vardata(engine, ss, iv);
+  }
+
+  return ss.str();
+}
+}  // namespace
+
 bool Instruction::DirectJump::operator==(const DirectJump &rhs) const {
   return this->taken_flow == rhs.taken_flow;
 }
@@ -16,7 +48,7 @@ bool Instruction::DirectFlow::operator==(
 
 bool Instruction::NormalInsn::operator==(
     remill::Instruction::NormalInsn const &rhs) const {
-  return Instruction::FallthroughFlow::operator==(rhs);
+  return this->fallthrough == rhs.fallthrough;
 }
 
 bool Instruction::InvalidInsn::operator==(
@@ -240,37 +272,35 @@ GetBoundContextsForFlows(const std::vector<RemillPcodeOp> &ops,
 static std::optional<Instruction::AbnormalFlow>
 AbnormalCategoryOfFlow(const Flow &flow, const RemillPcodeOp &op) {
   if (op.op == CPUI_RETURN) {
-    Instruction::IndirectFlow id_flow = {{}, flow.context};
-    Instruction::FunctionReturn ret = {{id_flow}};
+    Instruction::IndirectFlow id_flow(flow.context);
+    Instruction::FunctionReturn ret(id_flow);
     return ret;
   }
 
   if (op.op == CPUI_BRANCHIND) {
-    Instruction::IndirectFlow id_flow = {{}, flow.context};
-    Instruction::IndirectJump id_jump = {id_flow};
+    Instruction::IndirectFlow id_flow(flow.context);
+    Instruction::IndirectJump id_jump(id_flow);
     return id_jump;
   }
 
   if (op.op == CPUI_BRANCH && !isVarnodeInConstantSpace(op.vars[0]) &&
       flow.context) {
     auto target = op.vars[0].offset;
-    Instruction::DirectFlow dflow = {{}, target, *flow.context};
-    Instruction::DirectJump djump = {dflow};
+    Instruction::DirectFlow dflow(target, *flow.context);
+    Instruction::DirectJump djump(dflow);
     return djump;
   }
 
   if (op.op == CPUI_CALL) {
     auto target = op.vars[0].offset;
-    Instruction::DirectFlow dflow = {{}, target, *flow.context};
-    Instruction::DirectJump djump = {dflow};
-    Instruction::DirectFunctionCall call = {djump};
+    Instruction::DirectFlow dflow(target, *flow.context);
+    Instruction::DirectFunctionCall call(dflow);
     return call;
   }
 
   if (op.op == CPUI_CALLIND) {
-    Instruction::IndirectFlow id_flow = {{}, flow.context};
-    Instruction::IndirectJump id_jump = {id_flow};
-    Instruction::IndirectFunctionCall call = {id_jump};
+    Instruction::IndirectFlow id_flow(flow.context);
+    Instruction::IndirectFunctionCall call(id_flow);
     return call;
   }
 
@@ -278,8 +308,8 @@ AbnormalCategoryOfFlow(const Flow &flow, const RemillPcodeOp &op) {
   // still need to pick up the flow for the actual abnormal transition
   if (op.op == CPUI_CBRANCH) {
     auto target = op.vars[0].offset;
-    Instruction::DirectFlow dflow = {{}, target, *flow.context};
-    Instruction::DirectJump djump = {dflow};
+    Instruction::DirectFlow dflow(target, *flow.context);
+    Instruction::DirectJump djump(dflow);
     return djump;
   }
 
@@ -332,8 +362,9 @@ ExtractNormal(const std::vector<Flow> &flows,
       [](const Flow &flow, const RemillPcodeOp &op)
           -> std::optional<Instruction::InstructionFlowCategory> {
         if (flow.context) {
-          Instruction::NormalInsn norm = {{{}, *flow.context}};
-          return {norm};
+          Instruction::NormalInsn norm(
+              Instruction::FallthroughFlow(*flow.context));
+          return norm;
         }
 
         return std::nullopt;
@@ -345,6 +376,7 @@ static std::optional<std::pair<Instruction::InstructionFlowCategory,
                                std::optional<BranchTakenVar>>>
 ExtractAbnormal(const std::vector<Flow> &flows,
                 const std::vector<RemillPcodeOp> &ops) {
+  LOG(INFO) << "Extracting abnormal flow category";
   return ExtractNonConditionalCategory(
       flows, ops,
       [](const Flow &flow, const RemillPcodeOp &op)
@@ -411,8 +443,8 @@ ExtractConditionalAbnormal(const std::vector<Flow> &flows,
     return std::nullopt;
   }
 
-  Instruction::ConditionalInstruction cond = {*abnormal_part,
-                                              {{}, normal_context}};
+  Instruction::ConditionalInstruction cond(
+      *abnormal_part, Instruction::FallthroughFlow(normal_context));
 
   return {{cond, taken_var}};
 }
@@ -452,8 +484,14 @@ std::optional<std::pair<Instruction::InstructionFlowCategory,
 ControlFlowStructureAnalysis::ComputeCategory(
     const std::vector<RemillPcodeOp> &ops, uint64_t fallthrough_addr,
     DecodingContext entry_context) {
+  LOG(INFO) << "Pcode ops... " << ops.size();
+  for (const auto &op : ops) {
+    LOG(INFO) << "Pcode: " << DumpPcode(this->engine, op);
+  }
+
   auto maybe_cc = CoarseFlows(ops, fallthrough_addr);
   if (!maybe_cc) {
+    LOG(ERROR) << "No coarse flow found";
     return std::nullopt;
   }
 
@@ -461,10 +499,12 @@ ControlFlowStructureAnalysis::ComputeCategory(
 
   auto maybe_ccategory = CoarseCategoryFromFlows(cc);
   if (!maybe_ccategory) {
+    LOG(ERROR) << "No coarse category found";
     return std::nullopt;
   }
   auto context_updater = this->BuildContextUpdater(std::move(entry_context));
   auto flows = GetBoundContextsForFlows(ops, cc, context_updater);
+  LOG(INFO) << "Extracting actual category " << *maybe_ccategory;
 
   switch (*maybe_ccategory) {
     case CAT_ABNORMAL: return ExtractAbnormal(flows, ops);

@@ -39,16 +39,17 @@
 #include <functional>
 #include <random>
 #include <sstream>
+#include <variant>
 
 #include "gtest/gtest.h"
 
 
 namespace {
 
-static remill::DecodingContext kThumbContext =
-    remill::DecodingContext({{remill::kThumbModeRegName, 1}});
-static remill::DecodingContext kARMContext =
-    remill::DecodingContext({{remill::kThumbModeRegName, 0}});
+const static remill::DecodingContext kThumbContext =
+    remill::DecodingContext({{std::string(remill::kThumbModeRegName), 1}});
+const static remill::DecodingContext kARMContext =
+    remill::DecodingContext({{std::string(remill::kThumbModeRegName), 0}});
 
 const static std::unordered_map<std::string,
                                 std::function<uint32_t &(AArch32State &)>>
@@ -70,7 +71,7 @@ GetFlows(std::string_view bytes, uint64_t address, uint64_t tm_val) {
 
 
   remill::DecodingContext dec_context;
-  dec_context.UpdateContextReg(remill::kThumbModeRegName, tm_val);
+  dec_context.UpdateContextReg(std::string(remill::kThumbModeRegName), tm_val);
   assert(dec_context.HasContextValue("TMReg"));
   remill::Instruction insn;
   auto res = arch->DecodeInstruction(address, bytes, insn, dec_context);
@@ -555,6 +556,56 @@ TEST(ArmContextTests, ThumbBXIndirect) {
   auto flow = *maybe_flow;
 
   remill::Instruction::InstructionFlowCategory jmp =
-      remill::Instruction::IndirectJump({{{}, kARMContext}});
+      remill::Instruction::IndirectJump(
+          remill::Instruction::IndirectFlow(std::nullopt));
+
+
+  remill::Instruction::IndirectJump str =
+      std::get<remill::Instruction::IndirectJump>(flow);
+
+  EXPECT_FALSE(str.taken_flow.maybe_context.has_value());
+
+
   EXPECT_EQ(flow, jmp);
+}
+
+TEST(ArmContextTests, ThumbMovIgnoresAnyStateChange) {
+  //mov pc, r1
+  std::string insn_data("\x8f\x46", 2);
+
+  auto maybe_flow = GetFlows(insn_data, 0xdeadbee0, 1);
+  ASSERT_TRUE(maybe_flow.has_value());
+  auto flow = *maybe_flow;
+
+
+  remill::Instruction::InstructionFlowCategory jmp =
+      remill::Instruction::IndirectJump(
+          remill::Instruction::IndirectFlow(kThumbContext));
+
+
+  remill::Instruction::IndirectJump str =
+      std::get<remill::Instruction::IndirectJump>(flow);
+
+  EXPECT_TRUE(str.taken_flow.maybe_context.has_value());
+
+
+  remill::Instruction::IndirectJump str2 =
+      std::get<remill::Instruction::IndirectJump>(jmp);
+
+  EXPECT_TRUE(str2.taken_flow.maybe_context.has_value());
+
+  EXPECT_EQ(flow, jmp);
+}
+
+TEST(ArmContextTests, ThumbBLXInterProcStaysInSameMode) {
+  // blx 4
+  std::string insn_data("\x00\xf0\x00\xe8", 4);
+
+  auto maybe_flow = GetFlows(insn_data, 0xdeadbee0, 1);
+  ASSERT_TRUE(maybe_flow.has_value());
+  auto flow = *maybe_flow;
+
+  remill::Instruction::InstructionFlowCategory jmp =
+      remill::Instruction::DirectFunctionCall(
+          remill::Instruction::DirectFlow(0xdeadbee0, kARMContext));
 }

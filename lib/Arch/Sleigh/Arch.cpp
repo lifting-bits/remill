@@ -75,6 +75,8 @@ void PcodeDecoder::dump(const Address &, OpCode op, VarnodeData *outvar,
   for (int i = 0; i < isize; i++) {
     new_op.vars.push_back(vars[i]);
   }
+
+  this->ops.push_back(std::move(new_op));
 }
 
 std::vector<std::string> SingleInstructionSleighContext::getUserOpNames() {
@@ -253,6 +255,8 @@ bool SleighDecoder::DecodeInstructionImpl(uint64_t address,
   auto cat =
       analysis.ComputeCategory(pcode_handler.ops, fallthrough, curr_context);
   if (!cat) {
+    LOG(ERROR) << "Failed to compute category for inst at " << std::hex
+               << inst.pc;
     inst.flows = Instruction::ErrorInsn();
     return false;
   }

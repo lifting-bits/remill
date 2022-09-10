@@ -15,7 +15,6 @@ DecodingContext::DecodingContext(std::map<std::string, uint64_t> context_value)
 
 uint64_t
 DecodingContext::GetContextValue(const std::string &context_reg) const {
-
   if (auto res = this->context_value.find(context_reg);
       res != this->context_value.end()) {
     return res->second;

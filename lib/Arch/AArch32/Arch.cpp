@@ -63,7 +63,7 @@ Arch::ArchPtr Arch::GetAArch32(llvm::LLVMContext *context_, OSName os_name_,
 
 // TODO(pag): Eventually handle Thumb2 and unaligned addresses.
 uint64_t AArch32Arch::MinInstructionAlign(const DecodingContext &cont) const {
-  if (cont.GetContextValue(kThumbModeRegName)) {
+  if (cont.GetContextValue(std::string(kThumbModeRegName))) {
     return 2;
   } else {
     return 4;
@@ -71,7 +71,7 @@ uint64_t AArch32Arch::MinInstructionAlign(const DecodingContext &cont) const {
 }
 
 uint64_t AArch32Arch::MinInstructionSize(const DecodingContext &cont) const {
-  if (cont.GetContextValue(kThumbModeRegName)) {
+  if (cont.GetContextValue(std::string(kThumbModeRegName))) {
     return 2;
   } else {
     return 4;

@@ -34,7 +34,7 @@ namespace sleighthumb2 {
 //ARM7_le.sla"
 SleighThumb2Decoder::SleighThumb2Decoder(const remill::Arch &arch)
     : SleighDecoder(arch, "ARM7_le.sla", "ARMtTHUMB.pspec",
-                    {{"ISAModeSwitch", kThumbModeRegName}}) {}
+                    {{"ISAModeSwitch", std::string(kThumbModeRegName)}}) {}
 
 
 void SleighThumb2Decoder::InitializeSleighContext(
@@ -55,7 +55,7 @@ class SleighThumbArch : public AArch32ArchBase {
         decoder(*this) {}
 
   virtual DecodingContext CreateInitialContext(void) const override {
-    return DecodingContext().PutContextReg(kThumbModeRegName, 1);
+    return DecodingContext().PutContextReg(std::string(kThumbModeRegName), 1);
   }
 
   virtual OperandLifter::OpLifterPtr
