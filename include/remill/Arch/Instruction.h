@@ -306,6 +306,8 @@ class Instruction {
     NoOp() = delete;
     NoOp(FallthroughFlow fallthrough);
 
+    bool operator==(const NoOp &rhs) const;
+
     FallthroughFlow fallthrough;
   };
 
@@ -369,7 +371,7 @@ class Instruction {
 
   class AsyncHyperCall {
    public:
-    AsyncHyperCall();
+    AsyncHyperCall() = default;
     bool operator==(const AsyncHyperCall &rhs) const;
   };
 
@@ -391,9 +393,9 @@ class Instruction {
 
 
   using InstructionFlowCategory =
-      std::variant<NormalInsn, InvalidInsn, ErrorInsn, DirectJump, IndirectJump,
-                   IndirectFunctionCall, DirectFunctionCall, FunctionReturn,
-                   AsyncHyperCall, ConditionalInstruction>;
+      std::variant<NormalInsn, NoOp, InvalidInsn, ErrorInsn, DirectJump,
+                   IndirectJump, IndirectFunctionCall, DirectFunctionCall,
+                   FunctionReturn, AsyncHyperCall, ConditionalInstruction>;
 
   InstructionFlowCategory flows;
 

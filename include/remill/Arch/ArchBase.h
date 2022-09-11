@@ -106,6 +106,16 @@ class ArchBase : public remill::Arch {
 };
 
 class DefaultContextAndLifter : virtual public remill::ArchBase {
+ private:
+  Instruction::FallthroughFlow GetFallthrough() const;
+
+  Instruction::DirectFlow GetDirectFlow(uint64_t target) const;
+
+  Instruction::IndirectFlow GetIndirectFlow() const;
+
+  Instruction::InstructionFlowCategory FillInFlowFromCategoryAndDefaultContext(
+      const remill::Instruction &inst) const;
+
  public:
   virtual DecodingContext CreateInitialContext(void) const override;
 

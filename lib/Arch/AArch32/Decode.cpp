@@ -3759,6 +3759,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   inst.arch = this;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();
+  inst.flows = Instruction::InvalidInsn();
 
   if (!context.HasContextValue(std::string(kThumbModeRegName))) {
     return false;
@@ -3813,6 +3814,23 @@ bool AArch32Arch::DecodeAArch32(uint64_t address, std::string_view inst_bytes,
   //  LOG(ERROR) << inst.Serialize();
   if (!ret) {
     return false;
+  }
+
+
+  if (inst.category == Instruction::Category::kCategoryNormal) {
+    inst.flows =
+        Instruction::NormalInsn(Instruction::FallthroughFlow(kARMContext));
+  } else if (inst.category == Instruction::Category::kCategoryNoOp) {
+    inst.flows = Instruction::NoOp(Instruction::FallthroughFlow(kARMContext));
+  } else if (inst.category == Instruction::Category::kCategoryAsyncHyperCall) {
+    inst.flows = Instruction::AsyncHyperCall();
+  } else if (inst.category ==
+             Instruction::Category::kCategoryConditionalAsyncHyperCall) {
+    inst.flows = Instruction::ConditionalInstruction(
+        Instruction::AsyncHyperCall(),
+        Instruction::FallthroughFlow(kARMContext));
+  } else if (inst.category == Instruction::Category::kCategoryError) {
+    inst.flows = Instruction::ErrorInsn();
   }
 
   return true;

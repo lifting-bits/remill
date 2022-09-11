@@ -103,6 +103,10 @@ bool Instruction::ErrorInsn::operator==(
 }
 
 
+bool Instruction::NoOp::operator==(const NoOp &rhs) const {
+  return this->fallthrough == rhs.fallthrough;
+}
+
 }  // namespace remill
 
 namespace remill::sleigh {
