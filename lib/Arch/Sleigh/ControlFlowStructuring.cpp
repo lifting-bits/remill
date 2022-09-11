@@ -190,7 +190,7 @@ CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc) {
     // add a fallthrough insn at +1 to represent a last fallthrough if there is a chance we fallthrough at the end
     if ((!ControlFlowStructureAnalysis::isControlFlowPcodeOp(op.op) ||
          op.op == CPUI_CBRANCH) &&
-        ind == res.size() - 1) {
+        ind == ops.size() - 1) {
       CoarseFlow cat = {CoarseEffect::NORMAL, false};
       res.emplace(ind + 1, cat);
     }
@@ -255,17 +255,20 @@ std::vector<Flow>
 GetBoundContextsForFlows(const std::vector<RemillPcodeOp> &ops,
                          const std::map<size_t, CoarseFlow> &cc,
                          ContextUpdater &updater) {
-  size_t curr_ind = 0;
+
   std::vector<Flow> res;
-  for (auto op : ops) {
+  CHECK(cc.size() >= 1);
+  CHECK(cc.crbegin()->first <= ops.size());
+  for (size_t curr_ind = 0; curr_ind <= ops.size(); curr_ind++) {
     if (auto curr = cc.find(curr_ind); curr != cc.end()) {
       auto cont = updater.GetContext();
       Flow f = {curr_ind, curr->second, cont};
       res.push_back(std::move(f));
     }
 
-    updater.ApplyPcodeOp(op);
-    curr_ind += 1;
+    if (curr_ind < ops.size()) {
+      updater.ApplyPcodeOp(ops[curr_ind]);
+    }
   }
 
   return res;
@@ -334,6 +337,7 @@ ExtractNonConditionalCategory(
     if (auto cat = compute_single_flow_category(flow, ops[flow.pcode_index])) {
       cats.push_back(*cat);
     } else {
+      LOG(ERROR) << "Missing flow cat";
       return std::nullopt;
     }
   }
@@ -341,6 +345,7 @@ ExtractNonConditionalCategory(
   // if all cats are equal then we have our result
 
   if (cats.size() < 1) {
+    LOG(ERROR) << "No extracted cats";
     return std::nullopt;
   }
 
@@ -352,6 +357,7 @@ ExtractNonConditionalCategory(
                   })) {
     return std::make_pair(fst, std::nullopt);
   }
+  LOG(ERROR) << "Not equal flows";
 
   return std::nullopt;
 }
@@ -370,7 +376,7 @@ ExtractNormal(const std::vector<Flow> &flows,
               Instruction::FallthroughFlow(*flow.context));
           return norm;
         }
-
+        LOG(ERROR) << "Normal does not have context";
         return std::nullopt;
       });
 }
