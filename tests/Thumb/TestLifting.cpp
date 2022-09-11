@@ -46,11 +46,6 @@
 
 namespace {
 
-const static remill::DecodingContext kThumbContext =
-    remill::DecodingContext({{std::string(remill::kThumbModeRegName), 1}});
-const static remill::DecodingContext kARMContext =
-    remill::DecodingContext({{std::string(remill::kThumbModeRegName), 0}});
-
 const static std::unordered_map<std::string,
                                 std::function<uint32_t &(AArch32State &)>>
     reg_to_accessor = {
@@ -580,7 +575,7 @@ TEST(ArmContextTests, ThumbMovIgnoresAnyStateChange) {
 
   remill::Instruction::InstructionFlowCategory jmp =
       remill::Instruction::IndirectJump(
-          remill::Instruction::IndirectFlow(kThumbContext));
+          remill::Instruction::IndirectFlow(remill::kThumbContext));
 
 
   remill::Instruction::IndirectJump str =
@@ -607,5 +602,5 @@ TEST(ArmContextTests, ThumbBLXInterProcStaysInSameMode) {
 
   remill::Instruction::InstructionFlowCategory jmp =
       remill::Instruction::DirectFunctionCall(
-          remill::Instruction::DirectFlow(0xdeadbee0, kARMContext));
+          remill::Instruction::DirectFlow(0xdeadbee0, remill::kARMContext));
 }
