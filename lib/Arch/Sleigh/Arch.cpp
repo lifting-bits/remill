@@ -257,10 +257,14 @@ bool SleighDecoder::DecodeInstructionImpl(uint64_t address,
   if (!cat) {
     LOG(ERROR) << "Failed to compute category for inst at " << std::hex
                << inst.pc;
-    inst.flows = Instruction::ErrorInsn();
+    inst.flows = Instruction::InvalidInsn();
+    inst.category = Instruction::Category::kCategoryInvalid;
     return false;
   }
+
   inst.flows = cat->first;
+
+  this->ApplyFlowToInstruction(inst);
 
   LOG(INFO) << "Fallthrough: " << fallthrough;
   LOG(INFO) << "Decoded as " << inst.Serialize();
@@ -344,5 +348,92 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
       instr_bytes);
 }
 
+
+namespace {
+
+template <typename... Ts>  // (7)
+struct Overload : Ts... {
+  using Ts::operator()...;
+};
+template <class... Ts>
+Overload(Ts...) -> Overload<Ts...>;
+
+}  // namespace
+
+void SleighDecoder::ApplyFlowToInstruction(remill::Instruction &inst) const {
+
+
+  auto applyer = Overload{
+      [&inst](const remill::Instruction::NormalInsn &cat) -> void {
+        inst.category = remill::Instruction::Category::kCategoryNormal;
+      },
+      [&inst](const remill::Instruction::NoOp &cat) {
+        inst.category = remill::Instruction::Category::kCategoryNoOp;
+      },
+      [&inst](const remill::Instruction::InvalidInsn &cat) {
+        inst.category = remill::Instruction::Category::kCategoryInvalid;
+      },
+      [&inst](const remill::Instruction::ErrorInsn &cat) {
+        inst.category = remill::Instruction::Category::kCategoryError;
+      },
+      [&inst](const remill::Instruction::DirectJump &cat) {
+        inst.category = remill::Instruction::Category::kCategoryDirectJump;
+        inst.branch_taken_pc = cat.taken_flow.known_target;
+      },
+      [&inst](const remill::Instruction::IndirectJump &cat) {
+        inst.category = remill::Instruction::Category::kCategoryIndirectJump;
+      },
+      [&inst](const remill::Instruction::DirectFunctionCall &cat) {
+        inst.category =
+            remill::Instruction::Category::kCategoryDirectFunctionCall;
+      },
+      [&inst](const remill::Instruction::IndirectFunctionCall &cat) {
+        inst.category =
+            remill::Instruction::Category::kCategoryIndirectFunctionCall;
+      },
+      [&inst](const remill::Instruction::FunctionReturn &cat) {
+        inst.category = remill::Instruction::Category::kCategoryFunctionReturn;
+      },
+      [&inst](const remill::Instruction::AsyncHyperCall &cat) {
+        inst.category = remill::Instruction::Category::kCategoryAsyncHyperCall;
+      },
+      [&inst](const remill::Instruction::ConditionalInstruction &cat) {
+        // TODO(Ian)
+        inst.branch_not_taken_pc = inst.next_pc;
+
+        auto conditional_applyer = Overload{
+            [&inst](
+                const remill::Instruction::DirectFunctionCall &cat) -> void {
+              inst.category = remill::Instruction::Category::
+                  kCategoryConditionalDirectFunctionCall;
+            },
+            [&inst](const remill::Instruction::IndirectFunctionCall &cat) {
+              inst.category = remill::Instruction::Category::
+                  kCategoryConditionalIndirectFunctionCall;
+            },
+            [&inst](const remill::Instruction::FunctionReturn &cat) {
+              inst.category = remill::Instruction::Category::
+                  kCategoryConditionalFunctionReturn;
+            },
+            [&inst](const remill::Instruction::AsyncHyperCall &cat) {
+              inst.category = remill::Instruction::Category::
+                  kCategoryConditionalAsyncHyperCall;
+            },
+            [&inst](const remill::Instruction::IndirectJump &cat) {
+              inst.category = remill::Instruction::Category::
+                  kCategoryConditionalIndirectJump;
+            },
+            [&inst](const remill::Instruction::DirectJump &cat) {
+              inst.category =
+                  remill::Instruction::Category::kCategoryConditionalBranch;
+              inst.branch_taken_pc = cat.taken_flow.known_target;
+            }};
+
+        std::visit(conditional_applyer, cat.taken_branch);
+      },
+  };  // namespace remill::sleigh
+
+  std::visit(applyer, inst.flows);
+}
 
 }  // namespace remill::sleigh

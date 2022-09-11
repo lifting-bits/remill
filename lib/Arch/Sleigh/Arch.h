@@ -127,6 +127,10 @@ class SleighDecoder {
   std::string pspec_name;
 
  private:
+  // Compatibility that applies old categories from constructed flows
+  void ApplyFlowToInstruction(remill::Instruction &) const;
+
+
   mutable std::shared_ptr<remill::SleighLifter> lifter;
   const remill::Arch &arch;
   std::unordered_map<std::string, std::string> register_mapping;
