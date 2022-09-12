@@ -666,8 +666,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     auto jump_addr = this->replacement_cont.LiftOffsetOrReplace(
         bldr, lhs, llvm::IntegerType::get(this->context, lhs.size * 8));
 
+    // TODO(Ian): this should probably technically be != 0
     auto trunc_should_branch = bldr.CreateTrunc(
-        *should_branch, llvm::IntegerType::get(this->context, rhs.size * 1));
+        *should_branch, llvm::IntegerType::get(this->context, 1));
 
 
     auto pc_reg_param = this->LiftNormalRegister(bldr, "PC");
@@ -676,12 +677,6 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     auto orig_pc_value =
         pc_reg_ptr->LiftAsInParam(bldr, this->insn_lifter_parent.GetWordType());
 
-
-    if (this->insn.category ==
-        remill::Instruction::Category::kCategoryConditionalBranch) {
-      auto branch_taken_ref = LoadBranchTakenRef(bldr.GetInsertBlock());
-      bldr.CreateStore(*should_branch, branch_taken_ref);
-    }
     if (orig_pc_value.has_value()) {
       auto next_pc_value =
           bldr.CreateSelect(trunc_should_branch, jump_addr, *orig_pc_value);
@@ -1044,11 +1039,36 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
     return kLiftedUnsupportedInstruction;
   }
+
+  LiftStatus LiftBranchTaken(llvm::IRBuilder<> &bldr,
+                             const sleigh::BranchTakenVar &btaken_var) {
+
+
+    auto maybe_should_branch =
+        this->LiftIntegerInParam(bldr, btaken_var.target_vnode);
+    if (!maybe_should_branch) {
+      LOG(ERROR) << "Failed to lift iparam branch taken var";
+      return LiftStatus::kLiftedLifterError;
+    }
+
+    auto should_branch = bldr.CreateTrunc(
+        *maybe_should_branch, llvm::IntegerType::get(this->context, 1));
+    auto branch_taken_ref = LoadBranchTakenRef(bldr.GetInsertBlock());
+    bldr.CreateStore(should_branch, branch_taken_ref);
+    return LiftStatus::kLiftedInstruction;
+  }
+
+
   virtual void dump(const Address &addr, OpCode opc, VarnodeData *outvar,
                     VarnodeData *vars, int4 isize) final override {
     LOG(INFO) << "inner handle" << std::endl;
 
     llvm::IRBuilder bldr(this->target_block);
+
+    if (this->to_lift_btaken && curr_id == this->to_lift_btaken->index) {
+      this->UpdateStatus(this->LiftBranchTaken(bldr, *this->to_lift_btaken),
+                         opc);
+    }
 
     // The MULTIEQUAL op has variadic operands
     if (opc == OpCode::CPUI_MULTIEQUAL || opc == OpCode::CPUI_CPOOLREF) {
