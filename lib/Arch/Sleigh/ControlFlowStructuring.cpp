@@ -175,8 +175,8 @@ CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc) {
 // gets a list of indeces and coarse categories in this pcodeop block
 static std::optional<std::map<size_t, CoarseFlow>>
 CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc) {
-  size_t ind = 0;
   std::map<size_t, CoarseFlow> res;
+  size_t ind = 0;
   for (auto op : ops) {
     if (ControlFlowStructureAnalysis::isControlFlowPcodeOp(op.op)) {
       auto cc = CoarseFlowFromControlFlowOp(op, next_pc);
@@ -185,19 +185,20 @@ CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc) {
       }
 
       res.emplace(ind, *cc);
-      // insert a pseudo control flow op at the end
+      ind++;
     }
-
-    // add a fallthrough insn at +1 to represent a last fallthrough if there is a chance we fallthrough at the end
-    if ((!ControlFlowStructureAnalysis::isControlFlowPcodeOp(op.op) ||
-         op.op == CPUI_CBRANCH) &&
-        ind == ops.size() - 1) {
-      CoarseFlow cat = {CoarseEffect::NORMAL, false};
-      res.emplace(ind + 1, cat);
-    }
-
-    ind++;
   }
+
+  auto last_index = ops.size();
+  // insert a pseudo control flow op at the end
+  // add a fallthrough insn at +1 to represent a last fallthrough if there is a chance we fallthrough at the end
+  if (ops.empty() ||
+      !ControlFlowStructureAnalysis::isControlFlowPcodeOp(ops[last_index].op) ||
+      ops[last_index].op == CPUI_CBRANCH) {
+    CoarseFlow cat = {CoarseEffect::NORMAL, false};
+    res.emplace(last_index, cat);
+  }
+
 
   return res;
 }
