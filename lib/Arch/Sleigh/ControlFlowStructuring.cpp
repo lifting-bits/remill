@@ -185,20 +185,21 @@ CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc) {
       }
 
       res.emplace(ind, *cc);
-      ind++;
     }
+
+    ind++;
   }
 
   auto last_index = ops.size();
   // insert a pseudo control flow op at the end
   // add a fallthrough insn at +1 to represent a last fallthrough if there is a chance we fallthrough at the end
   if (ops.empty() ||
-      !ControlFlowStructureAnalysis::isControlFlowPcodeOp(ops[last_index].op) ||
-      ops[last_index].op == CPUI_CBRANCH) {
+      !ControlFlowStructureAnalysis::isControlFlowPcodeOp(
+          ops[last_index - 1].op) ||
+      ops[last_index - 1].op == CPUI_CBRANCH) {
     CoarseFlow cat = {CoarseEffect::NORMAL, false};
     res.emplace(last_index, cat);
   }
-
 
   return res;
 }
@@ -496,6 +497,7 @@ std::optional<std::pair<Instruction::InstructionFlowCategory,
 ControlFlowStructureAnalysis::ComputeCategory(
     const std::vector<RemillPcodeOp> &ops, uint64_t fallthrough_addr,
     DecodingContext entry_context) {
+
   auto maybe_cc = CoarseFlows(ops, fallthrough_addr);
   if (!maybe_cc) {
     LOG(ERROR) << "No coarse flow found";
