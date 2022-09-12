@@ -114,12 +114,16 @@ class SleighDecoder {
   bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
                          Instruction &inst, DecodingContext context) const;
 
+  const std::unordered_map<std::string, std::string> &
+  GetRegisterMapping() const;
 
-  std::shared_ptr<remill::SleighLifter> GetLifter() const;
+  std::shared_ptr<remill::OperandLifter> GetOpLifter() const;
 
  protected:
-  bool DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,
-                             Instruction &inst, DecodingContext context);
+  std::optional<std::pair<Instruction::InstructionFlowCategory,
+                          std::optional<BranchTakenVar>>>
+  DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,
+                        Instruction &inst, DecodingContext context);
 
 
   SingleInstructionSleighContext sleigh_ctx;
@@ -127,6 +131,7 @@ class SleighDecoder {
   std::string pspec_name;
 
  private:
+  std::shared_ptr<remill::SleighLifter> GetLifter() const;
   // Compatibility that applies old categories from constructed flows
   void ApplyFlowToInstruction(remill::Instruction &) const;
 

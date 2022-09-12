@@ -62,7 +62,7 @@ class SleighX86Arch : public X86ArchBase {
 
   virtual OperandLifter::OpLifterPtr
   DefaultLifter(const remill::IntrinsicTable &intrinsics) const override {
-    return this->decoder.GetLifter();
+    return this->decoder.GetOpLifter();
   }
 
   virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,

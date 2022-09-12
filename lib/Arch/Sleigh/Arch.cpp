@@ -165,6 +165,9 @@ std::string CustomLoadImage::getArchType(void) const {
 
 void CustomLoadImage::adjustVma(long) {}
 
+std::shared_ptr<remill::OperandLifter> SleighDecoder::GetOpLifter() const {
+  return this->GetLifter();
+}
 
 std::shared_ptr<remill::SleighLifter> SleighDecoder::GetLifter() const {
   if (this->lifter) {
@@ -188,11 +191,22 @@ bool SleighDecoder::DecodeInstruction(uint64_t address,
                                       std::string_view instr_bytes,
                                       Instruction &inst,
                                       DecodingContext context) const {
-  inst.SetLifter(this->GetLifter());
-  assert(inst.GetLifter() != nullptr);
 
-  return const_cast<SleighDecoder *>(this)->DecodeInstructionImpl(
+
+  auto res_cat = const_cast<SleighDecoder *>(this)->DecodeInstructionImpl(
       address, instr_bytes, inst, std::move(context));
+
+  if (!res_cat->second &&
+      std::holds_alternative<remill::Instruction::ConditionalInstruction>(
+          res_cat->first)) {
+    LOG(FATAL)
+        << "Should always emit branch taken var for conditional instruction";
+  }
+
+  inst.SetLifter(std::make_shared<SleighLifterWithState>(res_cat->second,
+                                                         this->GetLifter()));
+  assert(inst.GetLifter() != nullptr);
+  return res_cat.has_value();
 }
 
 
@@ -206,10 +220,18 @@ SleighDecoder::SleighDecoder(
       arch(arch_),
       register_mapping(reg_map_) {}
 
-bool SleighDecoder::DecodeInstructionImpl(uint64_t address,
-                                          std::string_view instr_bytes,
-                                          Instruction &inst,
-                                          DecodingContext curr_context) {
+
+const std::unordered_map<std::string, std::string> &
+SleighDecoder::GetRegisterMapping() const {
+  return this->register_mapping;
+}
+
+std::optional<std::pair<Instruction::InstructionFlowCategory,
+                        std::optional<BranchTakenVar>>>
+SleighDecoder::DecodeInstructionImpl(uint64_t address,
+                                     std::string_view instr_bytes,
+                                     Instruction &inst,
+                                     DecodingContext curr_context) {
 
   // The SLEIGH engine will query this image when we try to decode an instruction. Append the bytes so SLEIGH has data to read.
 
@@ -234,7 +256,7 @@ bool SleighDecoder::DecodeInstructionImpl(uint64_t address,
       this->sleigh_ctx.oneInstruction(address, pcode_handler, instr_bytes);
 
   if (!instr_len || instr_len > instr_bytes.size()) {
-    return false;
+    return std::nullopt;
   }
   // communicate the size back to the caller
   inst.bytes = instr_bytes.substr(0, *instr_len);
@@ -259,7 +281,7 @@ bool SleighDecoder::DecodeInstructionImpl(uint64_t address,
                << inst.pc;
     inst.flows = Instruction::InvalidInsn();
     inst.category = Instruction::Category::kCategoryInvalid;
-    return false;
+    return std::nullopt;
   }
 
   inst.flows = cat->first;
@@ -269,7 +291,7 @@ bool SleighDecoder::DecodeInstructionImpl(uint64_t address,
   LOG(INFO) << "Fallthrough: " << fallthrough;
   LOG(INFO) << "Decoded as " << inst.Serialize();
 
-  return true;
+  return cat;
 }
 
 

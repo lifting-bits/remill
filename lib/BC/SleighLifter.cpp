@@ -16,6 +16,7 @@
 
 #include <glog/logging.h>
 #include <lib/Arch/Sleigh/Arch.h>
+#include <lib/Arch/Sleigh/ControlFlowStructuring.h>
 #include <remill/BC/ABI.h>
 #include <remill/BC/IntrinsicTable.h>
 #include <remill/BC/SleighLifter.h>
@@ -261,6 +262,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
   llvm::BasicBlock *exit_block;
 
+  size_t curr_id;
+
+  const std::optional<remill::sleigh::BranchTakenVar> &to_lift_btaken;
+
   void UpdateStatus(LiftStatus new_status, OpCode opc) {
     if (new_status != LiftStatus::kLiftedInstruction) {
       this->status = new_status;
@@ -269,11 +274,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   }
 
  public:
-  PcodeToLLVMEmitIntoBlock(llvm::BasicBlock *target_block,
-                           llvm::Value *state_pointer, const Instruction &insn,
-                           SleighLifter &insn_lifter_parent,
-                           std::vector<std::string> user_op_names_,
-                           llvm::BasicBlock *exit_block_)
+  PcodeToLLVMEmitIntoBlock(
+      llvm::BasicBlock *target_block, llvm::Value *state_pointer,
+      const Instruction &insn, SleighLifter &insn_lifter_parent,
+      std::vector<std::string> user_op_names_, llvm::BasicBlock *exit_block_,
+      const std::optional<remill::sleigh::BranchTakenVar> &to_lift_btaken_)
       : target_block(target_block),
         state_pointer(state_pointer),
         context(target_block->getContext()),
@@ -283,7 +288,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         uniques(target_block->getContext()),
         unknown_regs(target_block->getContext()),
         user_op_names(user_op_names_),
-        exit_block(exit_block_) {}
+        exit_block(exit_block_),
+        curr_id(0),
+        to_lift_btaken(to_lift_btaken_) {}
 
 
   ParamPtr CreateMemoryAddress(llvm::Value *offset) {
@@ -1047,37 +1054,40 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     if (opc == OpCode::CPUI_MULTIEQUAL || opc == OpCode::CPUI_CPOOLREF) {
       this->UpdateStatus(this->LiftVariadicOp(bldr, opc, outvar, vars, isize),
                          opc);
+      this->curr_id++;
       return;
     }
 
     if (opc == OpCode::CPUI_CALLOTHER) {
       this->UpdateStatus(this->HandleCallOther(bldr, outvar, vars, isize), opc);
+      this->curr_id++;
       return;
     }
 
     switch (isize) {
       case 1: {
         this->UpdateStatus(this->LiftUnaryOp(bldr, opc, outvar, vars[0]), opc);
+        this->curr_id++;
         break;
       }
       case 2: {
         this->UpdateStatus(this->LiftBinOp(bldr, opc, outvar, vars[0], vars[1]),
                            opc);
+        this->curr_id++;
         return;
       }
       case 3: {
         this->UpdateStatus(this->LiftThreeOperandOp(bldr, opc, outvar, vars[0],
                                                     vars[1], vars[2]),
                            opc);
-        break;
+        this->curr_id++;
+        return;
       }
       default:
-        //this->replacement_cont.ApplyNonEqualityClaim();
+        this->curr_id++;
         this->UpdateStatus(LiftStatus::kLiftedUnsupportedInstruction, opc);
         return;
     }
-    return;
-    //this->replacement_cont.ApplyNonEqualityClaim();
   }
 
   LiftStatus GetStatus() {
@@ -1239,8 +1249,9 @@ void SleighLifter::SetISelAttributes(llvm::Function *target_func) {
 }
 
 std::pair<LiftStatus, llvm::Function *>
-SleighLifter::LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
-                                    bool is_delayed) {
+SleighLifter::LiftIntoInternalBlockWithSleighState(
+    Instruction &inst, llvm::Module *target_mod, bool is_delayed,
+    const std::optional<sleigh::BranchTakenVar> &btaken) {
 
   LOG(INFO) << "Secondary lift of bytes: " << llvm::toHex(inst.bytes);
   auto target_func = inst.arch->DefineLiftedFunction(
@@ -1273,13 +1284,16 @@ SleighLifter::LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
       exit_builder.GetInsertBlock(), *this->GetIntrinsicTable()));
 
 
-  SleighLifter::PcodeToLLVMEmitIntoBlock lifter(
-      target_block, internal_state_pointer, inst, *this,
-      this->sleigh_context->getUserOpNames(), exit_block);
   //TODO(Ian): make a safe to use sleighinstruction context that wraps a context with an arch to preform reset reinits
 
   this->sleigh_context->resetContext();
   this->decoder.InitializeSleighContext(*this->sleigh_context);
+
+
+  SleighLifter::PcodeToLLVMEmitIntoBlock lifter(
+      target_block, internal_state_pointer, inst, *this,
+      this->sleigh_context->getUserOpNames(), exit_block, btaken);
+
   sleigh_context->oneInstruction(inst.pc, lifter, inst.bytes);
 
 
@@ -1291,16 +1305,17 @@ SleighLifter::LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
   return {lifter.GetStatus(), target_func};
 }
 
-LiftStatus
-SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
-                            llvm::Value *state_ptr, bool is_delayed) {
+LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
+    Instruction &inst, llvm::BasicBlock *block, llvm::Value *state_ptr,
+    bool is_delayed, const std::optional<sleigh::BranchTakenVar> &btaken) {
   if (!inst.IsValid()) {
     LOG(ERROR) << "Invalid function" << inst.Serialize();
     return kLiftedInvalidInstruction;
   }
 
   // Call the instruction function
-  auto res = this->LiftIntoInternalBlock(inst, block->getModule(), is_delayed);
+  auto res = this->LiftIntoInternalBlockWithSleighState(
+      inst, block->getModule(), is_delayed, btaken);
 
   auto target_func = res.second;
 
@@ -1327,4 +1342,45 @@ SleighLifter::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
 Sleigh &SleighLifter::GetEngine(void) const {
   return this->sleigh_context->GetEngine();
 }
+
+SleighLifterWithState::SleighLifterWithState(
+    std::optional<sleigh::BranchTakenVar> btaken_,
+    std::shared_ptr<SleighLifter> lifter_)
+    : btaken(btaken_),
+      lifter(std::move(lifter_)) {}
+
+// Lift a single instruction into a basic block. `is_delayed` signifies that
+// this instruction will execute within the delay slot of another instruction.
+LiftStatus
+SleighLifterWithState::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
+                                     llvm::Value *state_ptr, bool is_delayed) {
+  return this->lifter->LiftIntoBlockWithSleighState(inst, block, state_ptr,
+                                                    is_delayed, this->btaken);
+}
+
+
+// Load the address of a register.
+std::pair<llvm::Value *, llvm::Type *>
+SleighLifterWithState::LoadRegAddress(llvm::BasicBlock *block,
+                                      llvm::Value *state_ptr,
+                                      std::string_view reg_name) const {
+  return this->lifter->LoadRegAddress(block, state_ptr, reg_name);
+}
+
+// Load the value of a register.
+llvm::Value *
+SleighLifterWithState::LoadRegValue(llvm::BasicBlock *block,
+                                    llvm::Value *state_ptr,
+                                    std::string_view reg_name) const {
+  return this->lifter->LoadRegValue(block, state_ptr, reg_name);
+}
+
+llvm::Type *SleighLifterWithState::GetMemoryType() {
+  return this->lifter->GetMemoryType();
+}
+
+void SleighLifterWithState::ClearCache(void) const {
+  this->lifter->ClearCache();
+}
+
 }  // namespace remill

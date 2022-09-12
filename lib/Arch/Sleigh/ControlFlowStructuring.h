@@ -1,6 +1,7 @@
 #pragma once
 
 #include <remill/Arch/Instruction.h>
+#include <remill/BC/SleighLifter.h>
 #include <stdint.h>
 
 #include <sleigh/libsleigh.hh>
@@ -10,12 +11,6 @@ namespace remill::sleigh {
 
 bool isVarnodeInConstantSpace(VarnodeData vnode);
 
-// If you lift a varnode before the given pcode index, then you have a branch taken metavar
-struct BranchTakenVar {
-  bool invert;
-  VarnodeData target_vnode;
-  size_t index;
-};
 
 struct RemillPcodeOp {
   OpCode op;

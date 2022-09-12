@@ -6,7 +6,7 @@
 namespace remill {
 
 namespace {
-
+/*
 void print_vardata(Sleigh &engine, std::stringstream &s, VarnodeData &data) {
   s << '(' << data.space->getName() << ',';
   data.space->printOffset(s, data.offset);
@@ -17,6 +17,7 @@ void print_vardata(Sleigh &engine, std::stringstream &s, VarnodeData &data) {
     s << ":" << maybe_name;
   }
 }
+
 
 std::string DumpPcode(Sleigh &engine, const remill::sleigh::RemillPcodeOp &op) {
   std::stringstream ss;
@@ -33,7 +34,7 @@ std::string DumpPcode(Sleigh &engine, const remill::sleigh::RemillPcodeOp &op) {
   }
 
   return ss.str();
-}
+}*/
 }  // namespace
 
 bool Instruction::DirectJump::operator==(const DirectJump &rhs) const {
@@ -494,11 +495,6 @@ std::optional<std::pair<Instruction::InstructionFlowCategory,
 ControlFlowStructureAnalysis::ComputeCategory(
     const std::vector<RemillPcodeOp> &ops, uint64_t fallthrough_addr,
     DecodingContext entry_context) {
-  LOG(INFO) << "Pcode ops... " << ops.size();
-  for (const auto &op : ops) {
-    LOG(INFO) << "Pcode: " << DumpPcode(this->engine, op);
-  }
-
   auto maybe_cc = CoarseFlows(ops, fallthrough_addr);
   if (!maybe_cc) {
     LOG(ERROR) << "No coarse flow found";
