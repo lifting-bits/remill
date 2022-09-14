@@ -241,9 +241,7 @@ SleighDecoder::DecodeInstructionImpl(uint64_t address,
   this->InitializeSleighContext(this->sleigh_ctx);
   PcodeDecoder pcode_handler(this->sleigh_ctx.GetEngine());
 
-  LOG(INFO) << "Provided insn size: " << instr_bytes.size();
 
-  inst.Reset();
   inst.arch = &this->arch;
   inst.bytes = instr_bytes;
   inst.arch_name = this->arch.arch_name;
@@ -253,7 +251,7 @@ SleighDecoder::DecodeInstructionImpl(uint64_t address,
   inst.category = Instruction::kCategoryInvalid;
 
   auto instr_len =
-      this->sleigh_ctx.oneInstruction(address, pcode_handler, instr_bytes);
+      this->sleigh_ctx.oneInstruction(address, pcode_handler, inst.bytes);
 
   if (!instr_len || instr_len > instr_bytes.size()) {
     return std::nullopt;
@@ -265,8 +263,6 @@ SleighDecoder::DecodeInstructionImpl(uint64_t address,
   InstructionFunctionSetter setter(inst);
 
   this->sleigh_ctx.oneInstruction(address, setter, inst.bytes);
-  LOG(INFO) << "Instr len:" << *instr_len;
-  LOG(INFO) << "Addr: " << address;
   uint64_t fallthrough = address + *instr_len;
   inst.next_pc = fallthrough;
 
@@ -406,10 +402,13 @@ void SleighDecoder::ApplyFlowToInstruction(remill::Instruction &inst) const {
         inst.category = remill::Instruction::Category::kCategoryIndirectJump;
       },
       [&inst](const remill::Instruction::DirectFunctionCall &cat) {
+        // TODO(Ian) maybe add a return_to_flow for function call flows
+        inst.branch_not_taken_pc = inst.next_pc;
         inst.category =
             remill::Instruction::Category::kCategoryDirectFunctionCall;
       },
       [&inst](const remill::Instruction::IndirectFunctionCall &cat) {
+        inst.branch_not_taken_pc = inst.next_pc;
         inst.category =
             remill::Instruction::Category::kCategoryIndirectFunctionCall;
       },

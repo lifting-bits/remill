@@ -344,7 +344,7 @@ class Instruction {
     bool operator==(const IndirectJump &rhs) const;
   };
 
-  class DirectFunctionCall : DirectJump {
+  class DirectFunctionCall : public DirectJump {
    public:
     DirectFunctionCall() = delete;
     DirectFunctionCall(DirectFlow taken_flow);
@@ -353,7 +353,7 @@ class Instruction {
   };
 
 
-  class IndirectFunctionCall : IndirectJump {
+  class IndirectFunctionCall : public IndirectJump {
    public:
     IndirectFunctionCall() = delete;
     IndirectFunctionCall(IndirectFlow id_flow);
@@ -361,7 +361,7 @@ class Instruction {
     bool operator==(const IndirectFunctionCall &rhs) const;
   };
 
-  class FunctionReturn : IndirectJump {
+  class FunctionReturn : public IndirectJump {
    public:
     FunctionReturn() = delete;
     FunctionReturn(IndirectFlow id_flow);

@@ -55,8 +55,8 @@ const static std::unordered_map<std::string,
         {"r1", [](AArch32State &st) -> uint32_t & { return st.gpr.r1.dword; }}};
 
 
-std::optional<remill::Instruction::InstructionFlowCategory>
-GetFlows(std::string_view bytes, uint64_t address, uint64_t tm_val) {
+std::optional<remill::Instruction> GetFlows(std::string_view bytes,
+                                            uint64_t address, uint64_t tm_val) {
 
   llvm::LLVMContext context;
   context.enableOpaquePointers();
@@ -73,7 +73,7 @@ GetFlows(std::string_view bytes, uint64_t address, uint64_t tm_val) {
   if (!res) {
     return std::nullopt;
   } else {
-    return insn.flows;
+    return insn;
   }
 }
 }  // namespace
@@ -556,12 +556,12 @@ TEST(ArmContextTests, ThumbBXIndirect) {
 
 
   remill::Instruction::IndirectJump str =
-      std::get<remill::Instruction::IndirectJump>(flow);
+      std::get<remill::Instruction::IndirectJump>(flow.flows);
 
   EXPECT_FALSE(str.taken_flow.maybe_context.has_value());
 
 
-  EXPECT_EQ(flow, jmp);
+  EXPECT_EQ(flow.flows, jmp);
 }
 
 TEST(ArmContextTests, ThumbMovIgnoresAnyStateChange) {
@@ -579,7 +579,7 @@ TEST(ArmContextTests, ThumbMovIgnoresAnyStateChange) {
 
 
   remill::Instruction::IndirectJump str =
-      std::get<remill::Instruction::IndirectJump>(flow);
+      std::get<remill::Instruction::IndirectJump>(flow.flows);
 
   EXPECT_TRUE(str.taken_flow.maybe_context.has_value());
 
@@ -589,7 +589,7 @@ TEST(ArmContextTests, ThumbMovIgnoresAnyStateChange) {
 
   EXPECT_TRUE(str2.taken_flow.maybe_context.has_value());
 
-  EXPECT_EQ(flow, jmp);
+  EXPECT_EQ(flow.flows, jmp);
 }
 
 TEST(ArmContextTests, ThumbBLXInterProcStaysInSameMode) {
@@ -603,4 +603,53 @@ TEST(ArmContextTests, ThumbBLXInterProcStaysInSameMode) {
   remill::Instruction::InstructionFlowCategory jmp =
       remill::Instruction::DirectFunctionCall(
           remill::Instruction::DirectFlow(0xdeadbee0, remill::kARMContext));
+}
+
+
+TEST(ArmContextTests, ThumbBLStaysInSameContext) {
+  // bl 1b528
+  std::string insn_data("\x05\xf0\x74\xfc", 4);
+
+  auto maybe_flow = GetFlows(insn_data, 0x1596c, 1);
+  ASSERT_TRUE(maybe_flow.has_value());
+  auto act_insn = *maybe_flow;
+
+
+  remill::Instruction::InstructionFlowCategory jmp =
+      remill::Instruction::DirectFunctionCall(
+          remill::Instruction::DirectFlow(0x1b258, remill::kThumbContext));
+
+  auto dfcall =
+      std::get<remill::Instruction::DirectFunctionCall>(act_insn.flows);
+
+
+  EXPECT_EQ(0x0001b258, dfcall.taken_flow.known_target);
+
+  EXPECT_EQ(remill::kThumbContext, dfcall.taken_flow.static_context);
+
+  EXPECT_EQ(jmp, act_insn.flows);
+
+  EXPECT_EQ(0x00015970, act_insn.next_pc);
+}
+
+
+TEST(ArmContextTests, ThumbBPLRegressionTest) {
+  // bpl     #0x135e0
+  std::string insn_data("\x7f\xf5\x70\xae", 4);
+
+  auto maybe_flow = GetFlows(insn_data, 0x000138fc, 1);
+  ASSERT_TRUE(maybe_flow.has_value());
+  auto act_insn = *maybe_flow;
+
+
+  remill::Instruction::InstructionFlowCategory expect_cond_flow =
+      remill::Instruction::ConditionalInstruction(
+          remill::Instruction::DirectJump(
+              remill::Instruction::DirectFlow(0x135e0, remill::kThumbContext)),
+          remill::Instruction::FallthroughFlow(remill::kThumbContext));
+
+  auto act_cond_insn_flow =
+      std::get<remill::Instruction::ConditionalInstruction>(act_insn.flows);
+
+  EXPECT_EQ(expect_cond_flow, act_insn.flows);
 }
